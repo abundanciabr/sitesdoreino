@@ -1,0 +1,45 @@
+# =============================================================================
+# GATEWAY DA PLATAFORMA — Traefik v3, file provider.
+# Docker provider OFF por decisão: rotas declaradas em arquivo, revisáveis em PR
+# e protegidas por CODEOWNERS.
+# =============================================================================
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+providers:
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
+
+api:
+  dashboard: false
+
+log:
+  level: INFO
+accessLog: {}
+
+# --- TLS: escolha UM modo -----------------------------------------------------
+# MODO A — RECOMENDADO PARA MULTISSÍTIO (dezenas de domínios):
+#   Cada domínio entra no Cloudflare (plano gratuito), com registro A apontando
+#   para esta VPS e SSL mode "Full". O Cloudflare faz o TLS público de todos;
+#   na origem, o Traefik serve seu certificado padrão autoassinado — que o modo
+#   Full aceita. Resultado: DOMÍNIO NOVO = ZERO mudança neste servidor.
+#   (Domínios críticos podem ser promovidos a Full-Strict depois, caso a caso.)
+# MODO B (Let's Encrypt direto, sem Cloudflare — descomente aqui E liste os
+#   domínios no router "funil" do dynamic/plataforma.yml; cada domínio novo
+#   exige adicionar uma linha lá):
+# certificatesResolvers:
+#   le:
+#     acme:
+#       email: abundanciabr@gmail.com
+#       storage: /letsencrypt/acme.json
+#       httpChallenge:
+#         entryPoint: web

@@ -1,0 +1,94 @@
+# =============================================================================
+# CI DA CÉLULA — detecta a célula tocada e roda o `make ci` DELA.
+# Required check na branch protection de main.
+# =============================================================================
+name: ci-celula
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  detectar:
+    runs-on: ubuntu-latest
+    outputs:
+      celula: ${{ steps.d.outputs.celula }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: d
+        name: Detectar célula tocada
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="origin/${{ github.base_ref }}"
+          else
+            BASE="HEAD^"
+          fi
+          C=$(git diff --name-only "$BASE"...HEAD | grep '^services/' | cut -d/ -f2 | sort -u | head -1 || true)
+          echo "celula=$C" >> "$GITHUB_OUTPUT"
+          echo "Célula detectada: ${C:-nenhuma}"
+
+  rodar:
+    name: ci-celula
+    needs: detectar
+    if: needs.detectar.outputs.celula != ''
+    runs-on: ubuntu-latest
+    env:
+      CELULA: ${{ needs.detectar.outputs.celula }}
+      DATABASE_URL: postgres://ci:ci@localhost:5432/ci_db
+      REDIS_STREAMS_URL: redis://localhost:6379/0
+      HUEY_REDIS_URL: redis://localhost:6379/1
+      DJANGO_SECRET_KEY: ci-apenas-nunca-em-producao
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci_db
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Instalar dependências da célula
+        run: pip install -r "services/$CELULA/requirements.txt"
+      - name: CI da célula (lint + import-linter + type + testes + freeze de contrato)
+        run: make -C "services/$CELULA" ci
+      - name: Cross-smoke Pix↔Cartão (só na fortaleza)
+        if: needs.detectar.outputs.celula == 'pagamentos'
+        env:
+          BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD^' }}
+        run: bash ci/cross-smoke.sh
+
+  # Job terminal que SEMPRE conclui — é ele que a branch protection exige como
+  # required check. Assim, um PR que não toca célula alguma (ex.: o PR do esqueleto
+  # na raiz) não trava a proteção com um check "skipped".
+  gate:
+    name: ci-celula-gate
+    needs: [detectar, rodar]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consolidar resultado
+        run: |
+          R="${{ needs.rodar.result }}"
+          # verde quando a célula passou (success) ou quando não havia célula (skipped);
+          # vermelho quando a célula falhou ou foi cancelada.
+          if [ "$R" = "failure" ] || [ "$R" = "cancelled" ]; then
+            echo "❌ ci-celula: a célula tocada falhou (rodar=$R)"; exit 1
+          fi
+          echo "✅ ci-celula-gate OK (rodar=$R)"

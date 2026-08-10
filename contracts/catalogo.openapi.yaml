@@ -1,0 +1,119 @@
+openapi: 3.1.0
+info:
+  title: Catalogo API
+  version: 1.0.0
+  description: |
+    Fonte da verdade de SITES, produtos, ofertas e bumps. API INTERNA (rede Docker;
+    sem rota pública no gateway). Consumida por funil, quiz, checkout e alunos via
+    Bearer dedicado por par. Multissítio: o catálogo é o registro canônico de sites;
+    as células públicas resolvem Host→Site aqui (middleware CONV-SITE, cache 60s).
+servers:
+  - url: http://catalogo:8000/api/catalogo
+security:
+  - bearerAuth: []
+paths:
+  /sites/by-host/{host}:
+    get:
+      operationId: getSiteByHost
+      summary: Resolve um domínio para o Site correspondente (INV-P11)
+      description: Host desconhecido ⇒ 404. Nunca devolve um site "padrão".
+      parameters:
+        - name: host
+          in: path
+          required: true
+          schema: { type: string }
+          description: Hostname em minúsculas, sem porta (ex. loja1.com.br)
+      responses:
+        '200':
+          description: Site ativo deste domínio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Site' }
+        '404': { description: Domínio não cadastrado ou site inativo }
+  /sites/{site_id}/ofertas/{slug}:
+    get:
+      operationId: getOffer
+      summary: Oferta publicada DE UM SITE, com produto, preço e bumps
+      description: Slugs são únicos por site; a mesma oferta pode existir com preços distintos em sites distintos.
+      parameters:
+        - name: site_id
+          in: path
+          required: true
+          schema: { type: string }
+        - name: slug
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Oferta corrente (versão publicada) deste site
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Offer' }
+        '404': { description: Oferta inexistente/despublicada NESTE site (mesmo que exista em outro — INV-P11) }
+  /produtos/{product_id}:
+    get:
+      operationId: getProduct
+      summary: Produto por id (produtos são globais; ofertas é que são por site)
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Produto
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Product' }
+        '404': { description: Inexistente }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
+  schemas:
+    Site:
+      type: object
+      required: [id, host, name, active]
+      properties:
+        id: { type: string }
+        host: { type: string, description: Domínio canônico do site, minúsculas }
+        name: { type: string }
+        active: { type: boolean }
+        theme:
+          type: object
+          additionalProperties: true
+          description: Tokens de identidade visual (cores, logo) — opaco para quem consome
+        default_offer_slug: { type: string, description: Oferta que a raiz do funil exibe }
+    Product:
+      type: object
+      required: [id, name, price_cents, active]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        price_cents: { type: integer, minimum: 0 }
+        active: { type: boolean }
+    Offer:
+      type: object
+      required: [site_id, slug, version, product, price_cents]
+      properties:
+        site_id: { type: string }
+        slug: { type: string }
+        version: { type: integer, description: Ofertas publicadas não são editadas — mudanças criam nova versão }
+        product:
+          type: object
+          required: [id, name]
+          properties:
+            id: { type: string }
+            name: { type: string }
+        price_cents: { type: integer, minimum: 1 }
+        bumps:
+          type: array
+          items:
+            type: object
+            required: [id, product_id, name, price_cents]
+            properties:
+              id: { type: string }
+              product_id: { type: string }
+              name: { type: string }
+              price_cents: { type: integer, minimum: 0 }
+              headline: { type: string }

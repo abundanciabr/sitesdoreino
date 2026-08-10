@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/pedido.criado.v1.json",
+  "title": "pedido.criado.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "version", "event_id", "occurred_at", "data"],
+  "properties": {
+    "event": { "const": "pedido.criado" },
+    "version": { "const": 1 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["site_id", "order_id", "items", "total_cents", "customer"],
+      "properties": {
+        "site_id": { "type": "string" },
+        "order_id": { "type": "string" },
+        "checkout_session_id": { "type": "string" },
+        "lead_id": { "type": "string" },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["product_id", "name", "price_cents", "kind"],
+            "properties": {
+              "product_id": { "type": "string" },
+              "name": { "type": "string" },
+              "price_cents": { "type": "integer", "minimum": 0 },
+              "kind": { "enum": ["principal", "bump", "upsell"] }
+            }
+          }
+        },
+        "total_cents": { "type": "integer", "minimum": 1 },
+        "customer": {
+          "type": "object",
+          "required": ["email", "name"],
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "name": { "type": "string" },
+            "phone": { "type": "string" }
+          }
+        },
+        "utm": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    }
+  }
+}

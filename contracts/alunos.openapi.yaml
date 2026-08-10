@@ -1,0 +1,68 @@
+openapi: 3.1.0
+info:
+  title: Alunos API
+  version: 1.0.0
+  description: |
+    Matrícula e acesso. O caminho NORMAL de matrícula é o evento pagamento.aprovado.v1
+    (consumer da célula). Esta API interna existe para reprocesso manual e consulta —
+    e é idempotente pelas mesmas chaves do consumer (INV-P5).
+servers:
+  - url: http://alunos:8000/api/alunos
+security:
+  - bearerAuth: []
+paths:
+  /matriculas:
+    post:
+      operationId: createEnrollment
+      summary: Matrícula manual/reprocesso — idempotente por order_id (INV-P5)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [site_id, order_id, product_id, customer]
+              properties:
+                site_id: { type: string }
+                order_id: { type: string }
+                product_id: { type: string }
+                customer:
+                  type: object
+                  required: [email, name]
+                  properties:
+                    email: { type: string, format: email }
+                    name: { type: string }
+      responses:
+        '201': { description: Matrícula criada }
+        '200': { description: Replay idempotente — matrícula deste order_id já existia }
+        '422': { description: Payload inválido }
+  /alunos/{email}/matriculas:
+    get:
+      operationId: listEnrollments
+      summary: Matrículas de um aluno (suporte/E2E)
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema: { type: string, format: email }
+      responses:
+        '200':
+          description: Lista de matrículas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [site_id, order_id, product_id, status, enrolled_at]
+                  properties:
+                    site_id: { type: string }
+                    order_id: { type: string }
+                    product_id: { type: string }
+                    status: { type: string, enum: [ativa, suspensa, reembolsada] }
+                    enrolled_at: { type: string, format: date-time }
+        '404': { description: Aluno inexistente }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }

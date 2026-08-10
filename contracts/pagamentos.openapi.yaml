@@ -1,0 +1,186 @@
+openapi: 3.1.0
+info:
+  title: Pagamentos API
+  version: 1.0.0
+  description: |
+    Única célula da plataforma com credenciais Mercado Pago (INV-P8).
+    Consumida exclusivamente pelo checkout, via token Bearer dedicado por par.
+    CONGELÁVEL: após ratificação, qualquer mudança exige o Rito de Contrato (RITOS.md §3).
+    Rotas públicas via gateway: SOMENTE /webhooks/mp/*. Todo o resto vive na rede interna Docker.
+servers:
+  - url: http://pagamentos:8000/api/pagamentos
+security:
+  - bearerAuth: []
+paths:
+  /intents:
+    post:
+      operationId: createIntent
+      summary: Cria a intenção de pagamento de um pedido (idempotente por X-Idempotency-Key)
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+          description: Repetir a mesma chave devolve a MESMA intent (INV-P4) — nunca dupla cobrança.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IntentCreate' }
+      responses:
+        '201':
+          description: Intent criada
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Intent' }
+        '200':
+          description: Replay idempotente — a intent desta chave já existia
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Intent' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+  /intents/{intent_id}:
+    get:
+      operationId: getIntent
+      summary: Status da intent — a única fonte de verdade de status (INV-P7)
+      parameters:
+        - name: intent_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Intent atual
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Intent' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+  /intents/{intent_id}/card:
+    post:
+      operationId: confirmCard
+      summary: Confirma pagamento com card_token do Card Payment Brick (dado de cartão NUNCA toca a plataforma)
+      parameters:
+        - name: intent_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CardConfirm' }
+      responses:
+        '200':
+          description: Resultado da tentativa (approved ou rejected — ver Intent.status e card.reason_code)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Intent' }
+        '401': { $ref: '#/components/responses/NaoAutorizado' }
+        '404': { $ref: '#/components/responses/NaoEncontrado' }
+        '409':
+          description: Intent não está em estado confirmável (já aprovada/expirada)
+        '422': { $ref: '#/components/responses/ErroValidacao' }
+  /webhooks/mp/pix:
+    post:
+      operationId: webhookMpPix
+      security: []
+      summary: Webhook MP (Pix). Assinatura x-signature obrigatória (INV-P10); idempotente por mp_payment_id (INV-P3).
+      description: Rota PÚBLICA via gateway. O handler mora em methods/pix/ — quebra aqui não afeta cartão.
+      responses:
+        '200': { description: Recebido e enfileirado (sempre 200 após validar assinatura, mesmo em replay) }
+        '403': { description: Assinatura ausente/ inválida — ZERO efeito colateral }
+  /webhooks/mp/card:
+    post:
+      operationId: webhookMpCard
+      security: []
+      summary: Webhook MP (Cartão). Mesmas leis do Pix; handler mora em methods/card/.
+      responses:
+        '200': { description: Recebido e enfileirado }
+        '403': { description: Assinatura ausente/ inválida — ZERO efeito colateral }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Token estático dedicado por par consumidor. Sem fallback de sessão.
+  responses:
+    NaoAutorizado:
+      description: Bearer ausente ou inválido
+    NaoEncontrado:
+      description: Recurso inexistente
+    ErroValidacao:
+      description: Payload viola o schema
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              detail: { type: string }
+  schemas:
+    IntentCreate:
+      type: object
+      additionalProperties: false
+      required: [site_id, order_id, amount_cents, currency, method, customer]
+      properties:
+        site_id:
+          type: string
+          description: Atribuição OPACA — pagamentos armazena e ecoa nos eventos, nunca interpreta.
+        order_id: { type: string }
+        amount_cents:
+          type: integer
+          minimum: 1
+          description: Sempre centavos, inteiro. Float de dinheiro é proibido na plataforma inteira.
+        currency: { type: string, const: BRL }
+        method: { type: string, enum: [pix, card] }
+        customer:
+          type: object
+          required: [email, name]
+          properties:
+            email: { type: string, format: email }
+            name: { type: string }
+            cpf: { type: string }
+            phone: { type: string }
+        metadata:
+          type: object
+          additionalProperties: true
+          description: Opaco para pagamentos — devolvido nos eventos, nunca interpretado.
+    CardConfirm:
+      type: object
+      additionalProperties: false
+      required: [card_token, installments, payer_email]
+      properties:
+        card_token: { type: string, description: Token de uso único gerado pelo Card Payment Brick no navegador }
+        installments: { type: integer, minimum: 1, maximum: 12 }
+        payer_email: { type: string, format: email }
+        payer_identification:
+          type: object
+          properties:
+            type: { type: string, enum: [CPF, CNPJ] }
+            number: { type: string }
+    Intent:
+      type: object
+      required: [id, site_id, order_id, method, status, amount_cents, created_at]
+      properties:
+        id: { type: string }
+        site_id: { type: string }
+        order_id: { type: string }
+        method: { type: string, enum: [pix, card] }
+        status:
+          type: string
+          enum: [created, pending, approved, rejected, expired, refunded]
+        amount_cents: { type: integer }
+        pix:
+          type: object
+          description: Presente apenas quando method=pix
+          properties:
+            qr_code: { type: string, description: Copia-e-cola }
+            qr_code_base64: { type: string, description: Imagem do QR }
+            expires_at: { type: string, format: date-time }
+        card:
+          type: object
+          description: Presente apenas quando method=card
+          properties:
+            reason_code: { type: string, description: status_detail do MP quando rejected }
+        created_at: { type: string, format: date-time }

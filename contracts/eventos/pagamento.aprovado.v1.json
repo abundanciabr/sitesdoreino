@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/pagamento.aprovado.v1.json",
+  "title": "pagamento.aprovado.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "version", "event_id", "occurred_at", "data"],
+  "properties": {
+    "event": { "const": "pagamento.aprovado" },
+    "version": { "const": 1 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["site_id", "payment_id", "order_id", "amount_cents", "method", "mp_payment_id", "customer"],
+      "properties": {
+        "site_id": { "type": "string", "description": "Atribuição — pagamentos apenas ecoa o valor recebido na intent" },
+        "payment_id": { "type": "string" },
+        "order_id": { "type": "string" },
+        "amount_cents": { "type": "integer", "minimum": 1 },
+        "method": { "enum": ["pix", "card"] },
+        "mp_payment_id": { "type": "string" },
+        "customer": {
+          "type": "object",
+          "required": ["email", "name"],
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "name": { "type": "string" },
+            "phone": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

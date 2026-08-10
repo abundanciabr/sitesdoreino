@@ -1,0 +1,64 @@
+# =============================================================================
+# DEPLOY POR CÉLULA — merge na main ⇒ build da imagem SÓ da célula tocada ⇒
+# pull+up SÓ dela na VPS. Rollback = *_TAG anterior (RITOS.md §4).
+# O CI conhece apenas VPS_HOST e a chave de deploy. Segredos de RUNTIME
+# (MP produção etc.) vivem SÓ em /opt/plataforma/env/*.env (INV-P8).
+# =============================================================================
+name: deploy-celula
+on:
+  push:
+    branches: [main]
+    paths: ['services/**']
+permissions:
+  contents: read
+  packages: write
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+jobs:
+  detectar:
+    runs-on: ubuntu-latest
+    outputs:
+      celulas: ${{ steps.d.outputs.celulas }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: d
+        run: |
+          C=$(git diff --name-only HEAD^...HEAD | grep '^services/' | cut -d/ -f2 | sort -u | jq -R . | jq -sc .)
+          echo "celulas=$C" >> "$GITHUB_OUTPUT"
+          echo "Células a deployar: $C"
+
+  deploy:
+    needs: detectar
+    if: needs.detectar.outputs.celulas != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      max-parallel: 1
+      matrix:
+        celula: ${{ fromJSON(needs.detectar.outputs.celulas) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build & push da imagem da célula
+        run: |
+          IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}
+          docker build -t "$IMG:${{ github.sha }}" -t "$IMG:main" "services/${{ matrix.celula }}"
+          docker push "$IMG:${{ github.sha }}"
+          docker push "$IMG:main"
+      - name: Ativar na VPS (pull + up SÓ desta célula)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            cd /opt/plataforma
+            docker compose pull ${{ matrix.celula }}
+            docker compose up -d ${{ matrix.celula }}
+            docker compose ps ${{ matrix.celula }}

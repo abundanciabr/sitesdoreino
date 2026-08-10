@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/pix.expirado.v1.json",
+  "title": "pix.expirado.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "version", "event_id", "occurred_at", "data"],
+  "properties": {
+    "event": { "const": "pix.expirado" },
+    "version": { "const": 1 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["site_id", "payment_id", "order_id", "amount_cents", "customer", "recovery_url"],
+      "properties": {
+        "site_id": { "type": "string" },
+        "payment_id": { "type": "string" },
+        "order_id": { "type": "string" },
+        "amount_cents": { "type": "integer", "minimum": 1 },
+        "customer": {
+          "type": "object",
+          "required": ["email", "name"],
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "name": { "type": "string" },
+            "phone": { "type": "string" }
+          }
+        },
+        "recovery_url": { "type": "string", "format": "uri", "description": "Link no DOMÍNIO DO SITE da venda — a mensageria envia exatamente este" }
+      }
+    }
+  }
+}

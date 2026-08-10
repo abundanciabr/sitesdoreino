@@ -1,0 +1,24 @@
+# =============================================================================
+# AS MURALHAS — rodam em TODO PR. Required check na branch protection de main.
+# =============================================================================
+name: muralhas
+on: pull_request
+permissions:
+  contents: read
+jobs:
+  muralhas:
+    name: muralhas
+    runs-on: ubuntu-latest
+    env:
+      BASE_REF: origin/${{ github.base_ref }}
+      PR_LABELS: ${{ join(github.event.pull_request.labels.*.name, ',') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Cerca de célula (1 PR = 1 célula; contrato só com rito)
+        run: bash ci/cerca-de-celula.sh
+      - name: Orçamento de mudança (>15 arquivos exige label 'arquitetural')
+        run: bash ci/orcamento-de-mudanca.sh
+      - name: Guarda de segredos (INV-P8 — APP_USR- e chaves privadas)
+        run: bash ci/guarda-de-segredos.sh

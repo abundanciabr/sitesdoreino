@@ -1,0 +1,3 @@
+arquivos/
+deploy_ci
+infra/env/*.env

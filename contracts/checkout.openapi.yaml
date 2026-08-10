@@ -1,0 +1,173 @@
+openapi: 3.1.0
+info:
+  title: Checkout API
+  version: 1.0.0
+  description: |
+    Sessões de checkout e pedidos com snapshot imutável (INV-P1/P2).
+    O cliente envia INTENÇÃO (bump_ids marcados); o SERVIDOR recalcula tudo do catálogo
+    e congela o snapshot — client-sends-intent / server-validates.
+    Multissítio: o site NUNCA vem no payload — é resolvido do Host da requisição
+    (middleware CONV-SITE); host desconhecido é 404 (INV-P11). Sessão, pedido e
+    eventos carregam o site_id resolvido.
+    Rotas públicas via gateway: as páginas /checkout/*. Esta API JSON é interna
+    (usada pelas próprias páginas da célula) e não é consumida por outras células,
+    exceto GET /pedidos/{id} pela suíte E2E.
+servers:
+  - url: http://checkout:8000/api/checkout
+security:
+  - bearerAuth: []
+paths:
+  /sessoes:
+    post:
+      operationId: createSession
+      summary: Abre uma sessão de checkout a partir de uma oferta do catálogo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [offer_slug]
+              properties:
+                offer_slug: { type: string }
+                lead_id: { type: string }
+                utm:
+                  type: object
+                  additionalProperties: { type: string }
+      responses:
+        '201':
+          description: Sessão criada com a oferta e bumps disponíveis (preços vindos do catálogo, server-side)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '404': { description: Oferta inexistente ou despublicada }
+  /sessoes/{session_id}/pedido:
+    post:
+      operationId: placeOrder
+      summary: Fecha o pedido — congela o snapshot e cria a intent de pagamento
+      description: |
+        INV-P2 — o payload traz apenas a intenção do cliente (dados + bump_ids + method).
+        O servidor recalcula itens e total a partir do catálogo; qualquer total enviado
+        pelo cliente é ignorado. INV-P1 — o snapshot resultante é create-only.
+      parameters:
+        - name: session_id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [customer, method]
+              properties:
+                customer:
+                  type: object
+                  required: [email, name]
+                  properties:
+                    email: { type: string, format: email }
+                    name: { type: string }
+                    phone: { type: string }
+                    cpf: { type: string }
+                bump_ids:
+                  type: array
+                  items: { type: string }
+                  description: IDs dos bumps MARCADOS — nunca preços, nunca totais.
+                method: { type: string, enum: [pix, card] }
+      responses:
+        '201':
+          description: Pedido criado; dados de pagamento prontos para a página do método
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OrderCreated' }
+        '409': { description: Sessão já fechada (pedido existente é devolvido — idempotência de sessão) }
+        '422': { description: Payload inválido }
+  /pedidos/{order_id}:
+    get:
+      operationId: getOrder
+      summary: Status do pedido — a ÚNICA fonte que o front consulta (INV-P7)
+      description: Atualizado pelos eventos pagamento.aprovado/recusado e pix.expirado.
+      parameters:
+        - name: order_id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Pedido com snapshot e status corrente
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Order' }
+        '404': { description: Pedido inexistente }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  schemas:
+    Session:
+      type: object
+      required: [id, site_id, offer]
+      properties:
+        id: { type: string }
+        site_id: { type: string }
+        offer:
+          type: object
+          required: [slug, product_name, price_cents]
+          properties:
+            slug: { type: string }
+            product_name: { type: string }
+            price_cents: { type: integer }
+            bumps:
+              type: array
+              items:
+                type: object
+                required: [id, name, price_cents]
+                properties:
+                  id: { type: string }
+                  name: { type: string }
+                  price_cents: { type: integer }
+    OrderCreated:
+      type: object
+      required: [order_id, site_id, status, payment]
+      properties:
+        order_id: { type: string }
+        site_id: { type: string }
+        status: { type: string, enum: [aguardando_pagamento] }
+        payment:
+          type: object
+          required: [method, intent_id]
+          properties:
+            method: { type: string, enum: [pix, card] }
+            intent_id: { type: string }
+            pix:
+              type: object
+              description: Presente quando method=pix — a página pix.html só renderiza isto
+              properties:
+                qr_code: { type: string }
+                qr_code_base64: { type: string }
+                expires_at: { type: string, format: date-time }
+    Order:
+      type: object
+      required: [order_id, site_id, status, items, total_cents]
+      properties:
+        order_id: { type: string }
+        site_id: { type: string }
+        status:
+          type: string
+          enum: [aguardando_pagamento, pago, recusado, expirado, reembolsado]
+        items:
+          type: array
+          items:
+            type: object
+            required: [product_id, name, price_cents, kind]
+            properties:
+              product_id: { type: string }
+              name: { type: string, description: Snapshot — nome no momento da compra }
+              price_cents: { type: integer, description: Snapshot — preço no momento da compra }
+              kind: { type: string, enum: [principal, bump, upsell] }
+        total_cents: { type: integer }
+        created_at: { type: string, format: date-time }

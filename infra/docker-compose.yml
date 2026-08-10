@@ -1,0 +1,106 @@
+# =============================================================================
+# /opt/plataforma/docker-compose.yml — PRODUÇÃO
+# Deploy por célula: o CI faz `docker compose pull <celula> && up -d <celula>`.
+# ROLLBACK (Lei das 2h — RITOS.md §4), ex.:
+#   PAGAMENTOS_TAG=<sha-anterior> docker compose up -d pagamentos
+# Cada célula tem sua variável *_TAG; default = main.
+# Segredos de runtime vivem SÓ em ./env/*.env (escritos pelo mantenedor — INV-P8).
+# =============================================================================
+name: plataforma
+
+x-celula: &celula
+  restart: unless-stopped
+  networks: [edge, interna]
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_started
+
+services:
+  traefik:
+    image: traefik:v3.4
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./traefik/dynamic:/etc/traefik/dynamic:ro
+      - letsencrypt:/letsencrypt
+    networks: [edge]
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_SUPER_PASSWORD:?defina no shell do host ao subir}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [interna]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    networks: [interna]
+
+  catalogo:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-catalogo:${CATALOGO_TAG:-main}
+    env_file: [env/catalogo.env]
+
+  funil:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-funil:${FUNIL_TAG:-main}
+    env_file: [env/funil.env]
+    depends_on:
+      redis:
+        condition: service_started
+
+  quiz:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-quiz:${QUIZ_TAG:-main}
+    env_file: [env/quiz.env]
+
+  leads:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-leads:${LEADS_TAG:-main}
+    env_file: [env/leads.env]
+
+  checkout:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-checkout:${CHECKOUT_TAG:-main}
+    env_file: [env/checkout.env]
+
+  pagamentos:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-pagamentos:${PAGAMENTOS_TAG:-main}
+    env_file: [env/pagamentos.env]
+
+  alunos:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-alunos:${ALUNOS_TAG:-main}
+    env_file: [env/alunos.env]
+
+  mensageria:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-mensageria:${MENSAGERIA_TAG:-main}
+    env_file: [env/mensageria.env]
+
+volumes:
+  pgdata: {}
+  redisdata: {}
+  letsencrypt: {}
+
+networks:
+  edge:
+    external: true
+  interna:
+    external: true

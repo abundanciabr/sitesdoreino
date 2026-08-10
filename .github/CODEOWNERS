@@ -1,0 +1,15 @@
+# =============================================================================
+# SEPARAÇÃO DE PODERES (Lei 4) — no repo real, este arquivo vive em .github/CODEOWNERS
+# Com "Require review from Code Owners" ativo, o botão de merge NÃO EXISTE para
+# agentes nestes caminhos. Troque @abundanciabr pelo seu usuário.
+# =============================================================================
+/contracts/                 @abundanciabr
+/services/pagamentos/       @abundanciabr
+/services/checkout/         @abundanciabr
+/infra/                     @abundanciabr
+/ci/                        @abundanciabr
+/.github/                   @abundanciabr
+/CONSTITUICAO.md            @abundanciabr
+/INVARIANTES.md             @abundanciabr
+/RITOS.md                   @abundanciabr
+/CAMINHO-DOURADO.md         @abundanciabr

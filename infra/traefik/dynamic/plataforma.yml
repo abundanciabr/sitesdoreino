@@ -1,0 +1,85 @@
+# =============================================================================
+# ROTAS DA PLATAFORMA — MULTISSÍTIO.
+# Um deploy, N domínios: as rotas casam por CAMINHO em QUALQUER host apontado
+# para esta VPS. Domínio novo NÃO toca este arquivo (Modo A) — só DNS/Cloudflare
+# + cadastro do site no catálogo (Receita R11). Host não cadastrado recebe 404
+# da própria plataforma (middleware CONV-SITE — INV-P11), nunca um site padrão.
+# Única exceção presa a UM host: os webhooks do Mercado Pago, no DOMÍNIO DE
+# OPERAÇÕES (basileiatoutheou.org = o seu domínio principal/da operação).
+# =============================================================================
+http:
+  middlewares:
+    seguranca:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        contentTypeNosniff: true
+        frameDeny: true
+
+  routers:
+    mp-webhooks:
+      # ÚNICA rota amarrada a um host: o MP precisa de um endereço estável.
+      rule: "Host(`basileiatoutheou.org`) && PathPrefix(`/api/pagamentos/webhooks`)"
+      priority: 100
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: pagamentos
+      tls: {}
+
+    quiz:
+      rule: "PathPrefix(`/quiz`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: quiz
+      tls: {}
+
+    checkout:
+      rule: "PathPrefix(`/checkout`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: checkout
+      tls: {}
+
+    alunos:
+      rule: "PathPrefix(`/alunos`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: alunos
+      tls: {}
+
+    funil:
+      # Catch-all: a raiz e tudo que nenhum prefixo pegou, em QUALQUER domínio.
+      rule: "PathPrefix(`/`)"
+      priority: 1
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: funil
+      tls: {}
+      # MODO B (Let's Encrypt): descomente e liste TODOS os domínios dos sites —
+      # o ACME precisa dos nomes explícitos. No Modo A (Cloudflare) deixe como está.
+      # tls:
+      #   certResolver: le
+      #   domains:
+      #     - main: basileiatoutheou.org
+      #     - main: site2.com.br
+      #     - main: site3.com.br
+
+  services:
+    funil:
+      loadBalancer:
+        servers: [ { url: "http://funil:8000" } ]
+    quiz:
+      loadBalancer:
+        servers: [ { url: "http://quiz:8000" } ]
+    checkout:
+      loadBalancer:
+        servers: [ { url: "http://checkout:8000" } ]
+    alunos:
+      loadBalancer:
+        servers: [ { url: "http://alunos:8000" } ]
+    pagamentos:
+      loadBalancer:
+        servers: [ { url: "http://pagamentos:8000" } ]

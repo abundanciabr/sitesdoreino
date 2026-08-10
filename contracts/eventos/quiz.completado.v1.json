@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/quiz.completado.v1.json",
+  "title": "quiz.completado.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["event", "version", "event_id", "occurred_at", "data"],
+  "properties": {
+    "event": { "const": "quiz.completado" },
+    "version": { "const": 1 },
+    "event_id": { "type": "string", "format": "uuid" },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["site_id", "quiz_slug", "result_key", "score", "lead"],
+      "properties": {
+        "site_id": { "type": "string" },
+        "quiz_slug": { "type": "string" },
+        "result_key": { "type": "string" },
+        "score": { "type": "integer" },
+        "lead": {
+          "type": "object",
+          "required": ["email"],
+          "properties": {
+            "email": { "type": "string", "format": "email" },
+            "name": { "type": "string" },
+            "phone": { "type": "string" }
+          }
+        },
+        "utm": { "type": "object", "additionalProperties": { "type": "string" } }
+      }
+    }
+  }
+}
