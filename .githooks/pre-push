@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [[ "$remote_ref" == "refs/heads/main" ]]; then
+    if [[ "${PERMITIR_PUSH_DIRETO_MAIN:-}" != "sim" ]]; then
+      echo "❌ BLOQUEADO: push direto para main."
+      echo "   Todo trabalho vai por branch + Pull Request (RITOS.md §1)."
+      echo "   Emergência genuína e deliberada? Rode:"
+      echo "   PERMITIR_PUSH_DIRETO_MAIN=sim git push origin main"
+      exit 1
+    else
+      echo "⚠️  Push direto para main permitido explicitamente (variável de ambiente)."
+    fi
+  fi
+done
+exit 0
