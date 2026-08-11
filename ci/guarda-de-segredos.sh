@@ -7,7 +7,8 @@
 set -euo pipefail
 VIOLACAO=0
 
-if git grep -nE 'APP_USR-[0-9A-Za-z]' -- . ':!ci/guarda-de-segredos.sh' > /tmp/seg1 2>/dev/null; then
+# 02-RED-TEAM.md cita APP_USR-fake123 como EXEMPLO do golpe nº 10, não como segredo real — excluído para não se autoacusar.
+if git grep -nE 'APP_USR-[0-9A-Za-z]' -- . ':!ci/guarda-de-segredos.sh' ':!02-RED-TEAM.md' > /tmp/seg1 2>/dev/null; then
   echo "❌ SEGREDO: credencial de PRODUÇÃO do Mercado Pago (APP_USR-) no repositório:"
   cat /tmp/seg1
   VIOLACAO=1
