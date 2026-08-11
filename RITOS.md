@@ -42,6 +42,13 @@ para o próximo agente: commite ou descarte explicitamente.
 A gênese de todo labirinto, nomeada: erro → muda A → outro erro → muda B → remove
 validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto tem três peças:
 
+0. **Muralha de branch:** todo trabalho nasce em branch (RITOS.md §1) e chega a
+   `main` só por PR revisado. Proteção nativa do GitHub (Settings → Branches)
+   exige plano pago em repositório privado pessoal; sem orçamento, o fallback
+   gratuito é `.githooks/pre-push` (`git config core.hooksPath .githooks`),
+   que bloqueia push direto para `main` nesta máquina. É mais fraco que a
+   proteção nativa — registre a diferença numa issue `mecanizar:` e migre
+   assim que o plano Pro (~US$4/mês) for viável.
 1. **Catraca:** todo estado verde vira commit IMEDIATAMENTE (Conventional Commits,
    descrição em PT: `fix(pix): corrigir parsing do webhook`). Nenhum trabalho novo
    começa sobre estado não commitado. `git add` por arquivo — **nunca `git add -A`**;

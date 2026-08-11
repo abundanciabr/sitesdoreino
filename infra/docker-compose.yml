@@ -33,8 +33,12 @@ services:
   postgres:
     image: postgres:17
     restart: unless-stopped
+    # POSTGRES_SUPER_PASSWORD: NUNCA passe isso na linha de comando ou em chat
+    # com um agente. Crie, uma única vez, o arquivo /opt/plataforma/.env (fora
+    # do Git) contendo a linha "POSTGRES_SUPER_PASSWORD=<senha>" — o Docker
+    # Compose lê esse arquivo sozinho, sem precisar exportar nada toda vez.
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_SUPER_PASSWORD:?defina no shell do host ao subir}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPER_PASSWORD:?defina em /opt/plataforma/.env (fora do Git), nunca inline}
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks: [interna]
