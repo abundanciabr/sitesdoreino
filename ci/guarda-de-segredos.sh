@@ -22,4 +22,20 @@ fi
 if (( VIOLACAO == 0 )); then
   echo "✅ Guarda de segredos: OK"
 fi
+
+# Os arquivos abaixo são MODELOS e devem SEMPRE conter placeholders TROQUE_.
+# Se um deles perdeu o TROQUE_, é sinal de que um valor real foi gerado ali
+# e commitado por engano (foi exatamente assim que provisionamento-postgres.sql
+# quase vazou 7 senhas reais de banco — pego na auditoria, não pela lista).
+TEMPLATES_COM_TROQUE=("infra/provisionamento-postgres.sql")
+for f in infra/env/*.env.exemplo; do
+  [[ -f "$f" ]] && TEMPLATES_COM_TROQUE+=("$f")
+done
+for f in "${TEMPLATES_COM_TROQUE[@]}"; do
+  if [[ -f "$f" ]] && ! grep -q 'TROQUE' "$f"; then
+    echo "❌ SEGREDO: '$f' perdeu os placeholders TROQUE_ — pode ter valor real commitado."
+    VIOLACAO=1
+  fi
+done
+
 exit $VIOLACAO

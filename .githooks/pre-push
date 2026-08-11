@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# =============================================================================
+# MURALHA LOCAL (fallback gratuito) — bloqueia push direto para main quando a
+# proteção nativa do GitHub não está disponível (exige plano Pro em repo
+# privado pessoal). Só protege pushes feitos DESTA máquina — é um degrau
+# abaixo da proteção nativa na Escada da Imposição, não um substituto
+# permanente. Ver issue "mecanizar:" no repositório para o plano de migração.
+# =============================================================================
 while read -r local_ref local_sha remote_ref remote_sha; do
   if [[ "$remote_ref" == "refs/heads/main" ]]; then
     if [[ "${PERMITIR_PUSH_DIRETO_MAIN:-}" != "sim" ]]; then
