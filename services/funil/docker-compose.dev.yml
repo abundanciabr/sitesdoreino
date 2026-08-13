@@ -1,0 +1,24 @@
+# =============================================================================
+# DEV DA CÉLULA, ISOLADA. funil é stateless (sem banco) — sem serviço `db`.
+# O agente sobe ISTO — nunca a plataforma inteira. As outras células nem existem aqui.
+# =============================================================================
+name: dev-celula
+services:
+  app:
+    build: .
+    env_file: .env.dev
+    ports: ["8000:8000"]
+    volumes: [".:/app"]
+    command: uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload
+
+  # Dependências = CONTRATOS mockados (descomente e ajuste quando a landing consumir):
+  # mock-catalogo:
+  #   image: stoplight/prism:5
+  #   command: mock -h 0.0.0.0 -p 4011 /contracts/catalogo.openapi.yaml
+  #   volumes: ["../../contracts:/contracts:ro"]
+  #   ports: ["4011:4011"]
+  # mock-leads:
+  #   image: stoplight/prism:5
+  #   command: mock -h 0.0.0.0 -p 4012 /contracts/leads.openapi.yaml
+  #   volumes: ["../../contracts:/contracts:ro"]
+  #   ports: ["4012:4012"]
