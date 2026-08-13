@@ -2,7 +2,9 @@
 # AS MURALHAS — rodam em TODO PR. Required check na branch protection de main.
 # =============================================================================
 name: muralhas
-on: pull_request
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
 permissions:
   contents: read
 jobs:

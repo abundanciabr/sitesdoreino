@@ -89,7 +89,7 @@ paths:
       summary: Webhook MP (Pix). Assinatura x-signature obrigatória (INV-P10); idempotente por mp_payment_id (INV-P3).
       description: Rota PÚBLICA via gateway. O handler mora em methods/pix/ — quebra aqui não afeta cartão.
       responses:
-        '200': { description: Recebido e enfileirado (sempre 200 após validar assinatura, mesmo em replay) }
+        '200': { description: "Recebido e enfileirado (sempre 200 após validar assinatura, mesmo em replay)" }
         '403': { description: Assinatura ausente/ inválida — ZERO efeito colateral }
   /webhooks/mp/card:
     post:
