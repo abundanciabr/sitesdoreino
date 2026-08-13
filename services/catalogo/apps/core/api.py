@@ -9,25 +9,9 @@ from ninja.errors import HttpError
 router = Router()
 
 
-def _inline_host_schema(schema: dict) -> None:
-    """Espelha um bug de autoria do contrato congelado: a vírgula não escapada em
-    "description: Domínio canônico do site, minúsculas" (flow-mapping YAML de uma
-    linha só) corta o valor no parse e cria a chave espúria "minúsculas: null".
-    contracts/catalogo.openapi.yaml é somente-leitura nesta sessão — reportar ao
-    mantenedor para correção via Rito de Mudança de Contrato (RITOS.md §3)."""
-    schema.clear()
-    schema.update(
-        {
-            "type": "string",
-            "description": "Domínio canônico do site",
-            "minúsculas": None,
-        }
-    )
-
-
 class Site(Schema):
     id: str
-    host: str = Field(..., json_schema_extra=_inline_host_schema)
+    host: str = Field(..., description="Domínio canônico do site, minúsculas")
     name: str
     active: bool
     theme: dict = Field(
