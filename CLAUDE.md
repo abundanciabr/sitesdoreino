@@ -22,6 +22,15 @@ passo extra opcional. Isso inclui:
   incidentes".
 - Manter a caixa "Precisa de você agora" honesta: só o que está *realmente*
   em aberto, nem mais, nem menos.
+- **Confirmação de merge de PR é gatilho, não pergunta.** Assim que o usuário
+  confirmar que um PR foi mergeado — em qualquer forma ("feito", "mergeado",
+  "ok", um link, um "✓" — não precisa ser a palavra exata — mesmo que a
+  confirmação chegue em uma sessão diferente da que abriu o PR), isso conta
+  como "tarefa mudou de estado": atualize o painel na mesma resposta, sem
+  esperar a pergunta "o painel foi atualizado?". Antes de marcar como
+  concluído, confira o merge de verdade (`gh pr view <N> --json state,
+  mergedBy,mergeCommit`) — a confirmação do usuário é o gatilho para checar,
+  não um substituto para checar.
 
 Não pergunte "quer que eu atualize o painel?". Atualize, e diga o que mudou.
 Perguntar antes de agir continua valendo para a AÇÃO em si quando ela for
