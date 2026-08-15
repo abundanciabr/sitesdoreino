@@ -1,0 +1,28 @@
+# =============================================================================
+# DEV DA CÉLULA, ISOLADA: só ela, seu banco, seu redis e os MOCKS das dependências.
+# O agente sobe ISTO — nunca a plataforma inteira. As outras células nem existem aqui.
+# =============================================================================
+name: dev-celula
+services:
+  app:
+    build: .
+    env_file: .env.dev
+    ports: ["8000:8000"]
+    volumes: [".:/app"]
+    depends_on: [db, redis]
+    command: sh -c "python manage.py migrate --noinput && uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload"
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dev_db
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  # leads consome EVENTOS (quiz.completado, pedido.criado, pagamento.*, pix.expirado),
+  # não chama API síncrona de outra célula — sem mocks de dependência aqui (R4).
