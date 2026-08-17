@@ -1,0 +1,22 @@
+; =============================================================================
+; A ARQUITETURA DIZ "NÃO" AO AGENTE — em check time, antes de qualquer runtime.
+; Roda no `make lint` da fortaleza. INV-P9.
+; =============================================================================
+[importlinter]
+root_package = pagamentos
+
+[importlinter:contract:pix-e-card-invisiveis]
+name = INV-P9 - Pix e cartao mutuamente invisiveis
+type = independence
+modules =
+    pagamentos.methods.pix
+    pagamentos.methods.card
+
+[importlinter:contract:metodos-so-falam-com-core]
+name = Metodos falam com o MP apenas atraves de core.gateway
+type = forbidden
+source_modules =
+    pagamentos.methods.pix
+    pagamentos.methods.card
+forbidden_modules =
+    pagamentos.providers
