@@ -23,7 +23,11 @@ if [[ ${#MARKERS[@]} -eq 0 ]]; then
   MARKERS=("smoke_pix" "smoke_card")   # na dúvida, os dois
 fi
 
-EXPR=$(IFS=' or '; echo "${MARKERS[*]}")
+# IFS só aceita UM caractere separador — "IFS=' or '" vira um CONJUNTO de
+# separadores (espaço, "o", "r"), nunca a string " or ". printf + strip do
+# sufixo é o jeito correto de fazer join com separador multi-caractere em bash.
+EXPR=$(printf '%s or ' "${MARKERS[@]}")
+EXPR="${EXPR% or }"
 echo "▶ Cross-smoke: pytest -m \"$EXPR\" (diff tocou pagamentos)"
 cd services/pagamentos
 python -m pytest -m "$EXPR" -q
