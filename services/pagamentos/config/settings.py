@@ -32,9 +32,14 @@ TOKENS_ACEITOS = {
 
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 
+# [INV-P8] Em dev/CI/worktrees é sempre TEST-... — a credencial de produção
+# (APP_USR-...) só existe em /opt/plataforma/env/pagamentos.env na VPS.
+MP_ACCESS_TOKEN = env("MP_ACCESS_TOKEN")
+
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    "pagamentos.core",
     "pagamentos.api",
 ]
 

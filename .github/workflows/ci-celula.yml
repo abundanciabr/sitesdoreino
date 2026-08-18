@@ -41,6 +41,8 @@ jobs:
       REDIS_STREAMS_URL: redis://localhost:6379/0
       HUEY_REDIS_URL: redis://localhost:6379/1
       DJANGO_SECRET_KEY: ci-apenas-nunca-em-producao
+      # [INV-P8] fake, formato TEST- — só pagamentos lê isto; CI nunca vê APP_USR-.
+      MP_ACCESS_TOKEN: TEST-ci-0000000000000000-000000-fake000000000000000000000000000-000000000
     services:
       postgres:
         image: postgres:17

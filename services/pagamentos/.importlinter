@@ -20,3 +20,10 @@ source_modules =
     pagamentos.methods.card
 forbidden_modules =
     pagamentos.providers
+; "forbidden" checa a cadeia INTEIRA por padrão (import indireto também conta) —
+; sem esta linha, o próprio core.gateway chamando providers.* já quebraria o
+; contrato para quem importa core.gateway, mesmo sendo exatamente o caminho que
+; AGENTS.pagamentos manda usar ("Métodos não importam providers.* diretamente —
+; só através de core.gateway"). allow_indirect_imports restringe a checagem a
+; import DIRETO, que é a regra que este contrato realmente pretende impor.
+allow_indirect_imports = True
