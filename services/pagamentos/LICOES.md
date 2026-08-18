@@ -104,6 +104,29 @@ python manage.py export_openapi > <scratch>/vivo.json # depois comparar manualme
   a mesma URL para `TEST-` e para produção — quem muda o comportamento é só
   o prefixo do token, não o host.
 
+## CI real (GitHub Actions) pegou algo que o `make ci` local não pegava
+
+`.github/workflows/ci-celula.yml` tem um bloco `env:` fixo com as variáveis
+que TODA célula precisa em CI (`DATABASE_URL`, `DJANGO_SECRET_KEY`, etc.).
+Ao adicionar `MP_ACCESS_TOKEN = env("MP_ACCESS_TOKEN")` (fail-hard) em
+`config/settings.py`, o CI real quebrou no target `type` (mypy importa
+`config.settings` via o plugin django-stubs) com
+`ImproperlyConfigured: variável obrigatória ausente: MP_ACCESS_TOKEN` — mas
+localmente eu NUNCA vi isso, porque meu `.env.dev` (gitignored) já tinha
+essa chave desde o início da sessão. **Lição:** toda vez que uma sessão
+adicionar uma variável de ambiente obrigatória nova em `config/settings.py`
+(padrão fail-hard, `CONV v1`), checar/atualizar também o bloco `env:` do
+job `rodar` em `.github/workflows/ci-celula.yml` — é o único lugar que
+fornece env vars pro `make -C services/$CELULA ci` real. `.env.dev` local
+mascara esse tipo de esquecimento porque ele SOBREVIVE entre sessões (é
+gitignored, não é recriado do zero). Corrigido com valor fake `TEST-...`
+(INV-P8) na mesma linha dos outros valores fake de CI já existentes.
+Consequência de orçamento: esse arquivo fica FORA de `services/pagamentos/`
+mas ainda conta no `git diff --name-only origin/main...HEAD` do
+`ci/orcamento-de-mudanca.sh` — precisei tirar um arquivo de teste do total
+(fundido `test_intents_golden_path.py` dentro de `test_smoke.py`) pra
+voltar a 15/15. Ver PR #16, segundo commit.
+
 ## Armadilhas específicas do contrato desta célula (para quem tocar `api/intents.py` de novo)
 
 - **django-ninja: sem `response=` no decorator, só o status 200 é aceito.**
