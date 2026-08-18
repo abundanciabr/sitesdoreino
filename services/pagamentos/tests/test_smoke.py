@@ -21,28 +21,29 @@ def token_valido(settings: Any) -> str:
 
 @pytest.mark.smoke_pix
 @pytest.mark.smoke_card
-@pytest.mark.parametrize(
-    "method,path",
-    [
-        ("post", "/api/pagamentos/intents"),
-        ("get", "/api/pagamentos/intents/intent-1"),
-        ("post", "/api/pagamentos/intents/intent-1/card"),
-    ],
-)
-def test_superficie_de_intents_ainda_nao_implementada(
-    client: Client, token_valido: str, method: str, path: str
-) -> None:
-    """Fase 0 — esqueleto: a superfície existe (espelha o contrato congelado),
-    mas os handlers ainda respondem 501 (regra de negócio real é fora de escopo)."""
-    extra: dict[str, str] = {
-        "HTTP_AUTHORIZATION": f"Bearer {token_valido}",
-        "HTTP_X_IDEMPOTENCY_KEY": "11111111-1111-1111-1111-111111111111",
-    }
-    if method == "post":
-        extra["data"] = "{}"
-        extra["content_type"] = "application/json"
-    resp = getattr(client, method)(path, **extra)
-    assert resp.status_code == 501
+def test_get_intent_inexistente_e_404(client: Client, token_valido: str) -> None:
+    """Fase 3a: create/get/confirm são reais agora (ver test_intents_golden_path.py
+    e test_inv_p4_intent_idempotente.py); esta smoke cobre só a superfície de erro
+    que não muda com o método."""
+    resp = client.get(
+        "/api/pagamentos/intents/intent-inexistente",
+        HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+    )
+    assert resp.status_code == 404
+
+
+@pytest.mark.smoke_pix
+@pytest.mark.smoke_card
+@pytest.mark.django_db  # create_intent consulta idempotency_key (INV-P4) antes de validar o corpo
+def test_create_intent_payload_vazio_e_422(client: Client, token_valido: str) -> None:
+    resp = client.post(
+        "/api/pagamentos/intents",
+        data="{}",
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+        HTTP_X_IDEMPOTENCY_KEY="11111111-1111-1111-1111-111111111111",
+    )
+    assert resp.status_code == 422
 
 
 @pytest.mark.smoke_pix
