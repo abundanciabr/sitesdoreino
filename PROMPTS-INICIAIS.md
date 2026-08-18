@@ -117,6 +117,9 @@ CÉLULA: <celula> · WORKTREE: wt-<celula>-esqueleto · RECEITAS: CONV, R1, R10
 ANTES DE TOCAR QUALQUER ARQUIVO:
 - Leia CONSTITUICAO.md, RITOS.md e constituicoes/AGENTS.<celula>.md.
 - Leia CAMINHO-DOURADO.md §0, §1, §3 e as receitas citadas.
+- Crie o worktree AGORA, antes de escrever qualquer arquivo (RITOS.md §1):
+  `git fetch origin && git worktree add ../wt-<celula>-esqueleto -b agent/<celula>/esqueleto origin/main`
+  — trabalhe só dentro dele; a checkout principal (main) fica intocada até o merge.
 - Produza a declaração de abertura (RITOS.md §1) e confirme baseline limpo.
 
 CONTEXTO: Repositório recém-fundado; nenhuma célula tem lógica. Esta sessão cria SÓ o
@@ -138,12 +141,17 @@ DoD:
 - GET /healthz → 200 com teste de fumaça verde.
 - Se existir contracts/<celula>.openapi.yaml: comando export_openapi implementado (R1) e
   a superfície da API (rotas + schemas) espelha o contrato; handlers levantam
-  NotImplementedError / retornam 501 → `make contrato-check` VERDE.
+  NotImplementedError / retornam 501 → `make contrato-check` VERDE. Se o contrato não
+  tiver `components.schemas` (tudo inline — ver "Notas operacionais" abaixo), use a
+  técnica de `openapi_extra` documentada no addendo do R1 em CAMINHO-DOURADO.md.
 - `make ci` verde (cole a saída no PR).
 ORÇAMENTO: ≤ 15 arquivos (label `arquitetural` se ultrapassar — é scaffolding).
 
 EVIDÊNCIA: saída de `make ci` + `git diff --name-only origin/main...HEAD`. Encerre com o
-handoff (RITOS.md §1).
+handoff (RITOS.md §1) — **o link do PR em linha própria, em destaque**, para eu poder
+copiar sem precisar pedir. Depois que eu confirmar o merge (qualquer forma — "feito",
+"mergeado", "ok"), atualize `arquivos/painel-fundacao.html` na hora, sem eu precisar
+perguntar de novo se já foi atualizado.
 ```
 
 **Especificidades por célula** (o resto do despacho é idêntico):
@@ -158,6 +166,27 @@ handoff (RITOS.md §1).
 | funil | não | Só config + /healthz (contrato-check é pulado) |
 | quiz | não | Só config + /healthz |
 | mensageria | não | Só config + /healthz |
+
+**Notas operacionais (aprendido nas células catalogo/leads — vale para as que faltam):**
+- **Worktree antes de tudo.** Na célula leads o agente leu a documentação mas só criou o
+  worktree no meio da sessão, depois de já ter escrito arquivos na checkout principal —
+  teve que mover tudo para o worktree correto antes de commitar. O passo de `git worktree
+  add` já está embutido no template acima; não pule.
+- **`make` pode não existir na máquina do agente** (ex.: Windows sem Git Bash com make).
+  Se faltar, rode os alvos do Makefile manualmente, na mesma ordem (`black --check .` →
+  mypy se houver `mypy.ini` → `pytest -q` → `export_openapi` + `ci/freeze-de-contrato.sh
+  <celula> <saida>`) e cole essa saída como evidência.
+- **Windows + `ci/freeze-de-contrato.sh`:** o script chama `python3` sem encoding
+  explícito; se acentos virarem lixo (mojibake) na comparação, rode com `PYTHONUTF8=1`
+  só localmente — no CI real (Linux) não é preciso.
+- **Contrato sem `components.schemas` (tudo inline, ex.: leads, alunos):** ninja.Schema
+  tipado no handler vira `$ref` nomeado e quebra o freeze. Ver o addendo do R1 em
+  `CAMINHO-DOURADO.md` (técnica `openapi_extra` + corpo `dict`).
+- **Handoff:** sempre feche com o link do PR em linha própria — não deixe para o
+  mantenedor pedir. Assim que o merge for confirmado (em qualquer sessão, mesmo que não
+  seja a que abriu o PR), atualize `arquivos/painel-fundacao.html` imediatamente —
+  marque o item como concluído, remova a caixa "Precisa de você agora" correspondente,
+  e avance o contador de células da Fase B.
 
 ---
 

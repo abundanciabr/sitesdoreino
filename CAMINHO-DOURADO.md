@@ -174,6 +174,30 @@ JSON é YAML válido — o `ci/freeze-de-contrato.sh` aceita a saída como está
 **Se o endpoint novo não está no contrato congelado: PARE.** É Rito de Contrato
 (RITOS.md §3), não decisão de sessão.
 
+**Addendo — contrato sem `$ref` nomeado (schemas 100% inline nos paths):** alguns
+contratos (ex.: `leads`, `alunos`) não declaram `components.schemas` — todo
+`requestBody`/`response` é inline no próprio path. Se o handler usar um
+`ninja.Schema` tipado normalmente (como `OfferOut` acima), o django-ninja extrai o
+model para um `components.schemas.<Nome>` nomeado e referencia via `$ref` — o
+freeze reprova, porque o congelado não tem esse `$ref`. Nesse caso, não tipe o
+corpo com `Schema`: aceite `request` sem parâmetro de corpo tipado e declare o
+`requestBody`/`responses` inteiros via `openapi_extra` no decorator (dict Python
+literal, na mesma forma exata do YAML congelado — chaves de status como `int`,
+não string). `deep_dict_update` do django-ninja faz merge recursivo: se a chave
+já existir (ex.: `responses[200]["description"]`) o valor é sobrescrito; se não
+existir (ex.: `requestBody`, ou um novo status `422`), é inserida inteira. Depois,
+em `export_openapi.py`, remova também o que o django-ninja sempre emite mas o
+contrato à mão omite quando vazio: `"parameters": []` por operação sem parâmetro
+de path/query, e `components.schemas: {}` quando nenhum model nomeado foi
+registrado. Exemplo completo: `services/leads/apps/core/api.py` +
+`services/leads/apps/core/management/commands/export_openapi.py`.
+
+Nota: esta técnica existe porque os contratos originais desta plataforma
+misturam schemas nomeados e inline sem critério declarado. Contratos NOVOS
+deveriam preferir components.schemas nomeados desde o início — evita este
+workaround por completo. Use openapi_extra só quando o contrato congelado já
+existir inline e mudar a estrutura não for opção (Rito de Contrato).
+
 ## R2 — Cliente da API de outra célula
 
 ```python
