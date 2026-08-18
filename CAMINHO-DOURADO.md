@@ -192,6 +192,12 @@ de path/query, e `components.schemas: {}` quando nenhum model nomeado foi
 registrado. Exemplo completo: `services/leads/apps/core/api.py` +
 `services/leads/apps/core/management/commands/export_openapi.py`.
 
+Nota: esta técnica existe porque os contratos originais desta plataforma
+misturam schemas nomeados e inline sem critério declarado. Contratos NOVOS
+deveriam preferir components.schemas nomeados desde o início — evita este
+workaround por completo. Use openapi_extra só quando o contrato congelado já
+existir inline e mudar a estrutura não for opção (Rito de Contrato).
+
 ## R2 — Cliente da API de outra célula
 
 ```python
