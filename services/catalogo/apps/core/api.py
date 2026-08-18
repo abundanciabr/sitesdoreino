@@ -1,10 +1,18 @@
 # apps/core/api.py  # [RECEITA:R1 v1]
 # Superfície da API espelhando contracts/catalogo.openapi.yaml (somente-leitura).
-# Fase 0 — esqueleto: todo handler responde 501 (regra de negócio real fica para a
-# Etapa D do 01-BRIEF-FASE-0.md). O objetivo aqui é só a FORMA da API bater com o
-# contrato congelado (make contrato-check verde).
+# Handlers servem do banco (apps.sites/produtos/ofertas) — a FORMA da API (schemas,
+# inline hacks abaixo) já era validada contra o contrato congelado na Fase 0 e
+# permanece intocada aqui (make contrato-check verde).
+from django.core.exceptions import ValidationError
 from ninja import Field, Path, Router, Schema
 from ninja.errors import HttpError
+
+# Aliases: os nomes Site/Product/Offer são reusados abaixo pelos Schemas de
+# resposta (mesmo nome do contrato) — sem alias o import do model seria
+# sombreado pela classe Schema de mesmo nome definida no mesmo módulo.
+from apps.ofertas.models import Offer as OfferModel
+from apps.produtos.models import Product as ProductModel
+from apps.sites.models import Site as SiteModel
 
 router = Router()
 
@@ -97,7 +105,17 @@ def get_site_by_host(
         ..., description="Hostname em minúsculas, sem porta (ex. loja1.com.br)"
     ),
 ):
-    raise HttpError(501, "não implementado")
+    site = SiteModel.objects.filter(host=host.lower(), active=True).first()
+    if site is None:
+        raise HttpError(404, "domínio não cadastrado ou site inativo")
+    return {
+        "id": str(site.id),
+        "host": site.host,
+        "name": site.name,
+        "active": site.active,
+        "theme": site.theme or {},
+        "default_offer_slug": site.default_offer_slug or "",
+    }
 
 
 @router.get(
@@ -122,7 +140,33 @@ def get_site_by_host(
     },
 )
 def get_offer(request, site_id: str, slug: str):
-    raise HttpError(501, "não implementado")
+    try:
+        offer = (
+            OfferModel.objects.select_related("product")
+            .prefetch_related("bumps__product")
+            .get(site_id=site_id, slug=slug, site__active=True)
+        )
+    except (OfferModel.DoesNotExist, ValidationError, ValueError):
+        # [INV-P11] mesma slug pode existir noutro site — a query já filtra por
+        # site_id, então "existe noutro site" cai aqui como 404 igual a "não existe".
+        raise HttpError(404, "oferta inexistente/despublicada neste site")
+    return {
+        "site_id": str(offer.site_id),
+        "slug": offer.slug,
+        "version": offer.version,
+        "product": {"id": str(offer.product_id), "name": offer.product.name},
+        "price_cents": offer.price_cents,
+        "bumps": [
+            {
+                "id": str(bump.id),
+                "product_id": str(bump.product_id),
+                "name": bump.name,
+                "price_cents": bump.price_cents,
+                "headline": bump.headline,
+            }
+            for bump in offer.bumps.all()
+        ],
+    }
 
 
 @router.get(
@@ -138,4 +182,13 @@ def get_offer(request, site_id: str, slug: str):
     },
 )
 def get_product(request, product_id: str):
-    raise HttpError(501, "não implementado")
+    try:
+        produto = ProductModel.objects.get(id=product_id)
+    except (ProductModel.DoesNotExist, ValidationError, ValueError):
+        raise HttpError(404, "produto inexistente")
+    return {
+        "id": str(produto.id),
+        "name": produto.name,
+        "price_cents": produto.price_cents,
+        "active": produto.active,
+    }
