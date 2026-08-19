@@ -171,6 +171,40 @@ coisa alguma, e ainda gasta a confiança de todo mundo.
   declarado ⇒ `ERROR`. Roda no workflow `muralhas` a cada PR.
 - **Célula dona:** o repositório (`ci/`) — não pertence a nenhuma célula.
 
+#### Escopo de conformidade (atualize junto com a realidade)
+
+INV-CI01 vale para os portões migrados. Declarar "CI fail-closed global" sem
+esta tabela seria a mesma classe de erro que o invariante combate: afirmar mais
+do que foi medido.
+
+| Portão | Onde roda | Conforme? |
+|---|---|---|
+| freeze de contrato (`ci/contract_freeze.py`) | local + `make ci` da célula | **sim** |
+| sonda de autenticação efetiva | junto do freeze | **sim** |
+| cerca de célula · orçamento · guarda de segredos | workflow `muralhas` | **sim** |
+| detecção de escopo + gate terminal (`ci-celula.yml`) | workflow `ci-celula` | **sim** |
+| runner canônico (`ci/ci.py`) | local, `make`, workflow | **sim** |
+| `contrato-check` dos 8 `services/*/Makefile` | `make ci` da célula | **não** — decide pelo disco em vez do manifesto; ver ARMADILHAS §3.5 |
+| **branch protection** | GitHub | **não existe** — ver abaixo |
+
+#### A cadeia de merge não está fechada
+
+Um portão fail-closed só protege se algo exigir que ele passe. Consultado em
+2026-08-19, o GitHub responde à API de branch protection deste repositório:
+
+```
+Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)
+```
+
+Ou seja: **não há required check algum**. Todo portão descrito aqui pode estar
+vermelho e o merge pelo site continua permitido. O único obstáculo é
+`.githooks/pre-push`, que bloqueia push direto para `main` a partir desta
+máquina — e não bloqueia merge de PR pela interface do GitHub.
+
+Enquanto isso não mudar, o estado honesto é **núcleo fail-closed concluído, CI
+global ainda parcial**. A mecanização está registrada na issue `mecanizar:` do
+RITOS.md §2.
+
 ---
 
 ## Dívida de invariantes (nasce vazia — que permaneça assim)
