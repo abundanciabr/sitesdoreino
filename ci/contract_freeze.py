@@ -116,10 +116,21 @@ def auditar_manifesto(raiz: Path, celulas: dict[str, dict[str, Any]]) -> None:
         for d in dir_services.iterdir()
         if d.is_dir() and not d.name.startswith((".", "__"))
     }
+    # (B) Célula no disco que ninguém declarou.
     for celula in sorted(no_disco - set(celulas)):
         problemas.append(
             f"célula '{celula}' existe em services/ mas não está declarada no "
             f"manifesto — sem declaração não há veredito possível"
+        )
+    # (A) Célula declarada que não existe no disco. Sem esta checagem, o
+    # manifesto podia envelhecer apontando para células removidas ou renomeadas,
+    # e o relatório exibiria SKIPs de coisas que não existem mais — o tipo de
+    # SKIP fossilizado que o manifesto foi criado para impedir.
+    for celula in sorted(set(celulas) - no_disco):
+        problemas.append(
+            f"'{celula}' está declarada no manifesto mas não existe em services/ — "
+            f"declaração órfã: ou a célula foi removida/renomeada sem atualizar o "
+            f"manifesto, ou o nome está errado"
         )
 
     dir_contratos = raiz / "contracts"
@@ -154,6 +165,15 @@ def auditar_manifesto(raiz: Path, celulas: dict[str, dict[str, Any]]) -> None:
             )
         elif freeze == "required" and not spec.get("frozen"):
             problemas.append(f"'{nome}': freeze='required' sem a chave 'frozen'")
+        # (C) required declarado mas o congelado não está lá. `checar_celula` já
+        # pegaria isso ao comparar, mas a auditoria precisa pegar antes: ela é
+        # quem o `doctor` consulta, e um doctor que diz READY com contrato
+        # obrigatório faltando estaria mentindo sobre o ambiente.
+        elif freeze == "required" and not (raiz / spec["frozen"]).is_file():
+            problemas.append(
+                f"'{nome}': freeze='required' mas {spec['frozen']} não existe — "
+                f"contrato obrigatório ausente é ERROR, nunca 'nada a checar'"
+            )
         elif freeze == "not-applicable" and not spec.get("reason"):
             problemas.append(
                 f"'{nome}': freeze='not-applicable' sem 'reason' — SKIP sem motivo "
@@ -204,6 +224,13 @@ def _normalizar(doc: Any, origem: str) -> str:
 
 
 def carregar_congelado(caminho: Path) -> str:
+    """Forma normalizada do congelado (o que entra na comparação textual)."""
+    doc, origem = carregar_congelado_doc(caminho)
+    return _normalizar(doc, origem)
+
+
+def carregar_congelado_doc(caminho: Path) -> tuple[Any, str]:
+    """O congelado como estrutura — para checagens que precisam navegá-lo."""
     origem = f"contrato congelado ({caminho.name})"
     if not caminho.is_file():
         raise ErroDeInstrumentacao(
@@ -231,7 +258,7 @@ def carregar_congelado(caminho: Path) -> str:
         raise ErroDeInstrumentacao(
             f"{origem}: YAML inválido", f"Arquivo: {caminho}\n\n{exc}"
         ) from exc
-    return _normalizar(doc, origem)
+    return doc, origem
 
 
 def carregar_vivo_de_texto(texto: str, origem: str) -> str:
@@ -291,6 +318,13 @@ def exportar_vivo(raiz: Path, celula: str, spec: dict[str, Any]) -> str:
             f"{celula}: 'exportador' malformado no manifesto",
             f"Valor: {comando!r}\nEsperado: lista de strings.",
         )
+    # O manifesto declara "python" por legibilidade, mas quem roda é ESTE
+    # interpretador — o mesmo virtualenv, a mesma versão, as mesmas dependências
+    # que já validaram o congelado. Herdar o "python" do PATH abriria a porta
+    # para o exportador rodar num Python diferente do que a CI está usando, e a
+    # medição passaria a depender de qual interpretador o PATH resolveu primeiro.
+    if comando and comando[0] in ("python", "python3"):
+        comando = [sys.executable, *comando[1:]]
     try:
         execucao = executar(
             comando,
@@ -317,6 +351,189 @@ def exportar_vivo(raiz: Path, celula: str, spec: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Segurança efetiva — a dimensão que o exportador da célula apaga
+# ---------------------------------------------------------------------------
+
+METODOS_HTTP = (
+    "get",
+    "put",
+    "post",
+    "delete",
+    "options",
+    "head",
+    "patch",
+    "trace",
+)
+
+# Sonda que lê a autenticação na FONTE, não no documento OpenAPI.
+#
+# Por que não dá para ler do OpenAPI: o django-ninja 1.3 OMITE a chave
+# `security` das operações declaradas com `auth=None`, em vez de emitir
+# `security: []`. Pela especificação, operação sem `security` HERDA a do
+# documento — ou seja, o schema que o ninja gera descreve uma rota pública como
+# se fosse autenticada. A informação já está perdida antes de qualquer
+# normalização nossa. Medido em 2026-08 com `/sites/by-host/{host}` em catalogo.
+#
+# `op.auth_callbacks` é a lista de autenticadores que o ninja realmente vai
+# executar na requisição: vazia = rota alcançável sem credencial. É atributo
+# interno do ninja; se uma versão futura mudar isso, a sonda estoura e o portão
+# fica ERROR — fail-closed, com a mensagem apontando para cá.
+_SCRIPT_SONDA_AUTH = """
+import json, os, sys, django
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+django.setup()
+from config.api import api
+
+try:
+    roteadores = api._routers
+except AttributeError as exc:
+    sys.stderr.write(
+        "SONDA-AUTH: django-ninja mudou os internals (api._routers sumiu): %s\\n" % exc
+    )
+    raise SystemExit(3)
+
+autenticacao = {}
+for prefixo, roteador in roteadores:
+    for caminho, view in roteador.path_operations.items():
+        for operacao in view.operations:
+            for metodo in operacao.methods:
+                chave = "%s %s%s" % (metodo.upper(), prefixo, caminho)
+                autenticacao[chave] = bool(operacao.auth_callbacks)
+sys.stdout.write(json.dumps(autenticacao, sort_keys=True))
+"""
+
+
+def exige_autenticacao_no_congelado(doc: dict[str, Any]) -> dict[str, bool]:
+    """Para cada operação do contrato congelado: ela exige credencial?
+
+    Resolve a herança do OpenAPI — operação sem `security` herda a do documento;
+    com `security` própria, sobrescreve, inclusive `[]` (rota pública).
+    """
+    global_sec = doc.get("security")
+    exigencia: dict[str, bool] = {}
+    for caminho, item in doc.get("paths", {}).items():
+        if not isinstance(item, dict):
+            continue
+        for metodo, operacao in item.items():
+            if not isinstance(operacao, dict) or metodo.lower() not in METODOS_HTTP:
+                continue
+            efetiva = operacao.get("security", global_sec)
+            exigencia[f"{metodo.upper()} {caminho}"] = bool(efetiva)
+    return exigencia
+
+
+def checar_seguranca(
+    raiz: Path, celula: str, spec: dict[str, Any], congelado_doc: dict[str, Any]
+) -> Resultado:
+    """A comparação documental é cega para autenticação — esta não é.
+
+    Furo medido, não suposto: tornar um endpoint interno PÚBLICO (`auth=None`)
+    em catalogo não produziu nenhuma diferença no contrato exportado, e o freeze
+    devolveu PASS. Duas causas somadas:
+
+    1. o django-ninja 1.3 omite `security` das operações com `auth=None` em vez
+       de emitir `security: []` — e omissão, em OpenAPI, significa "herda a
+       segurança do documento", ou seja, o oposto do que acontece;
+    2. os exportadores de catalogo, checkout, alunos e leads ainda fazem
+       `operation.pop("security", None)` sem condição, apagando o resto.
+
+    Por isso a medição não sai do documento: sai de `op.auth_callbacks`, a lista
+    de autenticadores que o ninja vai de fato executar. Compara-se a pergunta que
+    importa — *esta operação é alcançável sem credencial?* — entre o código vivo
+    e o que o contrato congelado declara.
+
+    Limite conhecido e deliberado: compara alcançabilidade (exige credencial:
+    sim/não), não QUAL esquema. Trocar bearerAuth por outro esquema mantendo a
+    exigência não é detectado aqui; o esquema em si aparece em
+    `components.securitySchemes` e no `security` da raiz, que a comparação
+    documental cobre.
+    """
+    nome = f"seguranca/{celula}"
+    comando = spec.get("sonda_auth") or [sys.executable, "-c", _SCRIPT_SONDA_AUTH]
+    if comando and comando[0] in ("python", "python3"):
+        comando = [sys.executable, *comando[1:]]
+    try:
+        execucao = executar(
+            comando,
+            cwd=raiz / "services" / celula,
+            descricao=f"sondar autenticação efetiva de '{celula}'",
+            exigir_stdout=True,
+        )
+        viva = json.loads(execucao.stdout)
+    except ErroDeInstrumentacao as erro:
+        return Resultado.de_erro(nome, erro)
+    except json.JSONDecodeError as exc:
+        return Resultado(
+            nome,
+            Estado.ERROR,
+            "a sonda de autenticação devolveu JSON inválido",
+            f"{exc}\n\n{recortar(execucao.stdout, 600)}",
+        )
+
+    # A sonda pode devolver JSON válido com a forma errada (foi assim que uma
+    # colisão de nomes de arquivo fez este portão estourar TypeError e sair com
+    # 1 — semântica de FAIL — para o que era uma instrumentação quebrada).
+    if not isinstance(viva, dict) or not all(
+        isinstance(chave, str) and isinstance(valor, bool)
+        for chave, valor in viva.items()
+    ):
+        return Resultado(
+            nome,
+            Estado.ERROR,
+            "a sonda de autenticação devolveu um formato inesperado",
+            "Esperado: objeto JSON de 'MÉTODO /caminho' para booleano.\n"
+            f"Recebido: {recortar(json.dumps(viva)[:600])}",
+        )
+
+    congelada = exige_autenticacao_no_congelado(congelado_doc)
+    if not viva:
+        return Resultado(
+            nome,
+            Estado.ERROR,
+            "a sonda não encontrou nenhuma operação no código",
+            "Nenhuma rota registrada no `api` da célula. Comparar isso com o "
+            "contrato seria comparar o nada.",
+        )
+    if not congelada:
+        return Resultado(
+            nome,
+            Estado.ERROR,
+            "o contrato congelado não declara nenhuma operação",
+            "Sem operações no congelado não há o que conferir. Isto não é 'tudo "
+            "certo': é instrumento sem escala.",
+        )
+
+    def rotulo(v: object) -> str:
+        return {True: "exige credencial", False: "PÚBLICA"}.get(v, "<ausente>")
+
+    divergencias = []
+    for chave in sorted(set(viva) | set(congelada)):
+        if viva.get(chave) != congelada.get(chave):
+            divergencias.append(
+                f"  {chave}\n"
+                f"    congelado: {rotulo(congelada.get(chave))}\n"
+                f"    código:    {rotulo(viva.get(chave))}"
+            )
+    if divergencias:
+        return Resultado(
+            nome,
+            Estado.FAIL,
+            f"a autenticação efetiva do código divergiu do contrato "
+            f"({len(divergencias)} operação(ões))",
+            "\n".join(divergencias)
+            + "\n\nMudar quem pode chamar um endpoint é mudança de contrato "
+            "público: tem rito próprio (RITOS.md §3). Note que a comparação "
+            "documental do freeze NÃO enxerga isto — ver docstring de "
+            "checar_seguranca.",
+        )
+    return Resultado(
+        nome,
+        Estado.PASS,
+        f"{len(viva)} operação(ões) com autenticação conferida na fonte",
+    )
+
+
+# ---------------------------------------------------------------------------
 # A checagem
 # ---------------------------------------------------------------------------
 
@@ -326,37 +543,52 @@ def checar_celula(
     celula: str,
     spec: dict[str, Any],
     vivo_pronto: Path | None = None,
-) -> Resultado:
+) -> list[Resultado]:
+    """Todas as medições de uma célula. Lista vazia é impossível por construção."""
     nome = f"contrato/{celula}"
     freeze = spec.get("freeze")
 
     if freeze == "not-applicable":
         if vivo_pronto is not None:
-            return Resultado(
-                nome,
-                Estado.ERROR,
-                "vivo informado para célula declarada sem contrato",
-                f"'{celula}' está no manifesto como freeze='not-applicable', mas "
-                f"alguém pediu a comparação com {vivo_pronto}.\n"
-                "Ou a declaração está errada, ou a chamada está — as duas versões "
-                "não podem estar certas ao mesmo tempo.",
-            )
-        return Resultado(nome, Estado.SKIP, spec.get("reason", ""))
+            return [
+                Resultado(
+                    nome,
+                    Estado.ERROR,
+                    "vivo informado para célula declarada sem contrato",
+                    f"'{celula}' está no manifesto como freeze='not-applicable', mas "
+                    f"alguém pediu a comparação com {vivo_pronto}.\n"
+                    "Ou a declaração está errada, ou a chamada está — as duas "
+                    "versões não podem estar certas ao mesmo tempo.",
+                )
+            ]
+        return [Resultado(nome, Estado.SKIP, spec.get("reason", ""))]
 
     try:
-        congelado = carregar_congelado(raiz / spec["frozen"])
+        congelado_doc, _ = carregar_congelado_doc(raiz / spec["frozen"])
+        congelado = _normalizar(congelado_doc, f"contrato congelado de '{celula}'")
         if vivo_pronto is not None:
             vivo = carregar_vivo_de_arquivo(vivo_pronto)
         else:
             vivo = exportar_vivo(raiz, celula, spec)
     except ErroDeInstrumentacao as erro:
-        return Resultado.de_erro(nome, erro)
+        return [Resultado.de_erro(nome, erro)]
+
+    # A segurança efetiva é medida na fonte, porque o exportador da célula pode
+    # tê-la descartado antes da comparação documental. Roda mesmo quando os
+    # documentos batem — é justamente aí que o furo se escondia.
+    # Sem porta de saída: não existe "sonda_auth: desativada". Uma célula com
+    # contrato obrigatório que não consegue ser sondada vira ERROR, porque não
+    # saber se um endpoint ficou público não é o mesmo que saber que não ficou.
+    extras: list[Resultado] = [checar_seguranca(raiz, celula, spec, congelado_doc)]
 
     if congelado == vivo:
         linhas = congelado.count("\n") + 1
-        return Resultado(
-            nome, Estado.PASS, f"idêntico ao congelado ({linhas} linhas comparadas)"
-        )
+        return [
+            Resultado(
+                nome, Estado.PASS, f"idêntico ao congelado ({linhas} linhas comparadas)"
+            ),
+            *extras,
+        ]
 
     diff = "\n".join(
         difflib.unified_diff(
@@ -367,14 +599,17 @@ def checar_celula(
             lineterm="",
         )
     )
-    return Resultado(
-        nome,
-        Estado.FAIL,
-        "o schema vivo derivou do contrato congelado",
-        "\n".join(diff.splitlines()[:80])
-        + "\n\nMudança de contrato tem rito próprio (RITOS.md §3) — nunca nasce "
-        "dentro da célula. NÃO atualize o congelado para o freeze passar.",
-    )
+    return [
+        Resultado(
+            nome,
+            Estado.FAIL,
+            "o schema vivo derivou do contrato congelado",
+            "\n".join(diff.splitlines()[:80])
+            + "\n\nMudança de contrato tem rito próprio (RITOS.md §3) — nunca "
+            "nasce dentro da célula. NÃO atualize o congelado para o freeze passar.",
+        ),
+        *extras,
+    ]
 
 
 def rodar(
@@ -406,11 +641,13 @@ def rodar(
                 )
             )
             return relatorio
-        relatorio.registrar(checar_celula(raiz_real, celula, spec, vivo_pronto))
+        for resultado in checar_celula(raiz_real, celula, spec, vivo_pronto):
+            relatorio.registrar(resultado)
         return relatorio
 
     for nome, spec in sorted(celulas.items()):
-        relatorio.registrar(checar_celula(raiz_real, nome, spec))
+        for resultado in checar_celula(raiz_real, nome, spec):
+            relatorio.registrar(resultado)
     return relatorio
 
 
@@ -444,5 +681,35 @@ def main(argv: list[str] | None = None) -> int:
     return relatorio.exit_code
 
 
+def _blindar(rotulo: str, funcao):
+    """Última linha de defesa: exceção não prevista vira ERROR, nunca FAIL.
+
+    [INV-CI01] Sem isto, um bug NOSSO (um TypeError no meio da checagem)
+    derrubava o processo com o exit code 1 do Python — que neste repositório
+    significa "violação detectada". Ou seja: "o portão quebrou" chegava
+    disfarçado de "o código está errado", mandando quem lê investigar o lugar
+    errado. Exceção inesperada é falha de instrumentação: exit 2.
+    """
+
+    def blindada(*args, **kwargs):
+        try:
+            return funcao(*args, **kwargs)
+        except SystemExit:
+            raise
+        except BaseException:  # noqa: BLE001 - a fronteira do processo é aqui
+            import traceback
+
+            print("")
+            print(f"ERROR {rotulo}: exceção não tratada dentro do próprio portão.")
+            print(traceback.format_exc())
+            print(
+                "A medição NÃO foi concluída. Este resultado NÃO é um PASS "
+                "nem um FAIL: nada foi provado sobre o código sob teste."
+            )
+            return 2
+
+    return blindada
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(_blindar("freeze-de-contrato", main)())

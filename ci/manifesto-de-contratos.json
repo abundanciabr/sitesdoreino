@@ -14,7 +14,22 @@
     "",
     "Ao criar uma célula nova, declare-a aqui no mesmo PR. O portão reprova",
     "célula não declarada justamente para que ninguém nasça sem veredito.",
-    "Ao introduzir contrato numa célula not-applicable, o rito é o RITOS.md §3."
+    "Ao introduzir contrato numa célula not-applicable, o rito é o RITOS.md §3.",
+    "",
+    "A consistência é conferida nos DOIS sentidos:",
+    "  célula em services/ ausente daqui         -> ERROR",
+    "  célula declarada aqui ausente do disco    -> ERROR (declaração órfã)",
+    "",
+    "CHAVES OPCIONAIS",
+    "  exportador  comando que imprime o contrato vivo em stdout.",
+    "  sonda_auth  comando que imprime {\"MÉTODO /caminho\": bool} dizendo quais",
+    "              operações exigem credencial. Existe porque o django-ninja",
+    "              OMITE `security` das rotas com auth=None em vez de emitir [],",
+    "              e a comparação documental fica cega para um endpoint interno",
+    "              virando público. Não há como desligar: célula required que não",
+    "              puder ser sondada é ERROR.",
+    "  Em ambos, um \"python\" inicial é trocado pelo interpretador que está",
+    "  rodando a CI (sys.executable) — mesmo venv, mesma versão."
   ],
   "celulas": {
     "alunos": {

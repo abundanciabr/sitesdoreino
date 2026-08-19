@@ -64,6 +64,10 @@ def bash_utilizavel() -> str | None:
 
 BASH = bash_utilizavel()
 
+# A autenticação que CONTRATO_MINIMO declara: /ping não tem `security` própria e
+# o documento não tem `security` na raiz — logo, rota pública.
+AUTENTICACAO_MINIMA = {"GET /ping": False}
+
 CONTRATO_MINIMO = {
     "openapi": "3.1.0",
     "info": {"title": "Falsa API", "version": "1.0.0"},
@@ -102,6 +106,30 @@ class RepoFalso:
         script.write_text(corpo, encoding="utf-8")
         return [sys.executable, "exportador_falso.py"]
 
+    def script(self, celula: str, nome: str, corpo: str) -> list[str]:
+        """Instala um script auxiliar com nome PRÓPRIO e devolve o comando.
+
+        O nome explícito existe porque reaproveitar o mesmo arquivo para
+        exportador e sonda já causou colisão silenciosa num teste — dois papéis
+        diferentes apontando para o mesmo caminho.
+        """
+        destino = self.raiz / "services" / celula / nome
+        destino.write_text(corpo, encoding="utf-8")
+        return [sys.executable, nome]
+
+    def sonda_auth(self, celula: str, autenticacao: dict[str, bool]) -> list[str]:
+        """Sonda de autenticação de mentira, para o repositório falso.
+
+        A sonda real importa Django e lê `op.auth_callbacks` do django-ninja; o
+        repositório falso não tem célula Django nenhuma. O que os testes precisam
+        exercitar é a SEMÂNTICA do portão (concorda ⇒ PASS, diverge ⇒ FAIL, não
+        rodou ⇒ ERROR), não o django-ninja.
+        """
+        script = self.raiz / "services" / celula / "sonda_falsa.py"
+        corpo = "import json, sys\n" f"sys.stdout.write(json.dumps({autenticacao!r}))\n"
+        script.write_text(corpo, encoding="utf-8")
+        return [sys.executable, "sonda_falsa.py"]
+
     def exportador_que_imprime(self, celula: str, doc: dict) -> list[str]:
         corpo = "import json, sys\n" f"sys.stdout.write(json.dumps({doc!r}))\n"
         return self.exportador(celula, corpo)
@@ -131,6 +159,7 @@ def celula_ok(repo: RepoFalso) -> RepoFalso:
                 "freeze": "required",
                 "frozen": "contracts/falsa.openapi.yaml",
                 "exportador": repo.exportador_que_imprime("falsa", CONTRATO_MINIMO),
+                "sonda_auth": repo.sonda_auth("falsa", AUTENTICACAO_MINIMA),
             }
         }
     )

@@ -373,5 +373,35 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if veredito == "READY" else 2
 
 
+def _blindar(rotulo: str, funcao):
+    """Última linha de defesa: exceção não prevista vira ERROR, nunca FAIL.
+
+    [INV-CI01] Sem isto, um bug NOSSO (um TypeError no meio da checagem)
+    derrubava o processo com o exit code 1 do Python — que neste repositório
+    significa "violação detectada". Ou seja: "o portão quebrou" chegava
+    disfarçado de "o código está errado", mandando quem lê investigar o lugar
+    errado. Exceção inesperada é falha de instrumentação: exit 2.
+    """
+
+    def blindada(*args, **kwargs):
+        try:
+            return funcao(*args, **kwargs)
+        except SystemExit:
+            raise
+        except BaseException:  # noqa: BLE001 - a fronteira do processo é aqui
+            import traceback
+
+            print("")
+            print(f"ERROR {rotulo}: exceção não tratada dentro do próprio portão.")
+            print(traceback.format_exc())
+            print(
+                "A medição NÃO foi concluída. Este resultado NÃO é um PASS "
+                "nem um FAIL: nada foi provado sobre o código sob teste."
+            )
+            return 2
+
+    return blindada
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(_blindar("doctor", main)())

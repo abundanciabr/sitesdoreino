@@ -13,6 +13,7 @@ A suíte valida SEMÂNTICA (estado + exit code), não formato de mensagem.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -21,8 +22,8 @@ from pathlib import Path
 import pytest
 
 import contract_freeze
-from _nucleo import Estado, Relatorio, Resultado, raiz_do_repo
-from conftest import BASH, CONTRATO_MINIMO, RepoFalso
+from _nucleo import ErroDeInstrumentacao, Estado, Relatorio, Resultado, raiz_do_repo
+from conftest import AUTENTICACAO_MINIMA, BASH, CONTRATO_MINIMO, RepoFalso
 
 CI = Path(__file__).resolve().parents[1]
 RAIZ_REAL = CI.parent
@@ -54,6 +55,7 @@ def test_contrato_divergente_reprova(repo: RepoFalso) -> None:
             "falsa": {
                 "freeze": "required",
                 "frozen": "contracts/falsa.openapi.yaml",
+                "sonda_auth": repo.sonda_auth("falsa", AUTENTICACAO_MINIMA),
                 "exportador": repo.exportador_que_imprime("falsa", vivo),
             }
         }
@@ -90,6 +92,7 @@ def test_exportador_quebrado_da_error(
             "falsa": {
                 "freeze": "required",
                 "frozen": "contracts/falsa.openapi.yaml",
+                "sonda_auth": repo.sonda_auth("falsa", AUTENTICACAO_MINIMA),
                 "exportador": repo.exportador("falsa", corpo_do_exportador),
             }
         }
@@ -108,6 +111,7 @@ def test_ferramenta_ausente_da_error(repo: RepoFalso) -> None:
             "falsa": {
                 "freeze": "required",
                 "frozen": "contracts/falsa.openapi.yaml",
+                "sonda_auth": repo.sonda_auth("falsa", AUTENTICACAO_MINIMA),
                 "exportador": ["interpretador-que-nao-existe", "manage.py"],
             }
         }
@@ -130,6 +134,7 @@ def test_vazio_contra_vazio_nunca_e_pass(repo: RepoFalso) -> None:
             "falsa": {
                 "freeze": "required",
                 "frozen": "contracts/falsa.openapi.yaml",
+                "sonda_auth": repo.sonda_auth("falsa", AUTENTICACAO_MINIMA),
                 "exportador": repo.exportador("falsa", "pass"),
             }
         }
@@ -152,6 +157,7 @@ def test_contrato_obrigatorio_ausente_da_error(repo: RepoFalso) -> None:
             "falsa": {
                 "freeze": "required",
                 "frozen": "contracts/falsa.openapi.yaml",
+                "sonda_auth": repo.sonda_auth("falsa", AUTENTICACAO_MINIMA),
                 "exportador": repo.exportador_que_imprime("falsa", CONTRATO_MINIMO),
             }
         }
@@ -179,6 +185,7 @@ def test_congelado_malformado_da_error(repo: RepoFalso, conteudo: str) -> None:
             "falsa": {
                 "freeze": "required",
                 "frozen": "contracts/falsa.openapi.yaml",
+                "sonda_auth": repo.sonda_auth("falsa", AUTENTICACAO_MINIMA),
                 "exportador": repo.exportador_que_imprime("falsa", CONTRATO_MINIMO),
             }
         }
@@ -430,6 +437,7 @@ def test_wrapper_propaga_fail_como_exit_1(repo: RepoFalso) -> None:
             "falsa": {
                 "freeze": "required",
                 "frozen": "contracts/falsa.openapi.yaml",
+                "sonda_auth": repo.sonda_auth("falsa", AUTENTICACAO_MINIMA),
                 "exportador": repo.exportador_que_imprime("falsa", vivo),
             }
         }
@@ -498,3 +506,96 @@ def test_manifesto_real_declara_todas_as_celulas_em_disco() -> None:
 
 if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(pytest.main([__file__, "-q"] + sys.argv[1:]))
+
+
+# ---------------------------------------------------------------------------
+# Manifesto bidirecional — disco <-> declaração, nos dois sentidos
+# ---------------------------------------------------------------------------
+
+
+def test_celula_declarada_que_nao_existe_no_disco_da_error(
+    celula_ok: RepoFalso,
+) -> None:
+    """(A) Declaração órfã: o manifesto aponta para uma célula que sumiu.
+
+    Sem isto, o manifesto envelheceria exibindo SKIPs de células removidas —
+    exatamente o SKIP fossilizado que ele existe para impedir.
+    """
+    celulas = json.loads(celula_ok.manifesto.read_text(encoding="utf-8"))["celulas"]
+    celulas["celula-que-foi-removida"] = {
+        "freeze": "not-applicable",
+        "reason": "declarada, mas o diretório não existe mais",
+    }
+    celula_ok.declarar(celulas)
+    assert _rodar(celula_ok, celula=None).estado is Estado.ERROR
+
+
+def test_required_sem_congelado_e_pego_pela_auditoria(repo: RepoFalso) -> None:
+    """(C) required + congelado ausente é ERROR já na auditoria, não só na
+    comparação — é a auditoria que o `doctor` consulta."""
+    repo.criar_celula("falsa")
+    repo.declarar(
+        {
+            "falsa": {
+                "freeze": "required",
+                "frozen": "contracts/falsa.openapi.yaml",
+                "exportador": repo.exportador_que_imprime("falsa", CONTRATO_MINIMO),
+            }
+        }
+    )
+    celulas = contract_freeze.carregar_manifesto(repo.manifesto)
+    with pytest.raises(contract_freeze.ErroDeInstrumentacao):
+        contract_freeze.auditar_manifesto(repo.raiz, celulas)
+
+
+# ---------------------------------------------------------------------------
+# Detecção de escopo — a medição que decide o que a CI vai testar
+# ---------------------------------------------------------------------------
+
+
+def test_deteccao_de_celulas_falha_fechada() -> None:
+    """Base inválida é ERROR, jamais lista vazia.
+
+    Era este o bypass do workflow: `git diff | ... || true` devolvia string
+    vazia quando o git falhava, e vazio significava "nenhuma célula tocada".
+    """
+    import ci as runner
+
+    with pytest.raises(ErroDeInstrumentacao):
+        runner.celulas_tocadas(RAIZ_REAL, "origin/ref-que-nao-existe")
+
+
+def test_deteccao_de_celulas_com_base_valida_mede() -> None:
+    import ci as runner
+
+    tocadas = runner.celulas_tocadas(RAIZ_REAL, "origin/main")
+    assert isinstance(tocadas, list)
+    assert all(isinstance(c, str) and c for c in tocadas)
+
+
+# ---------------------------------------------------------------------------
+# Blindagem de fronteira — bug nosso não pode virar veredito sobre o código
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("modulo", ["contract_freeze", "ci", "doctor"])
+def test_excecao_inesperada_vira_error_e_nao_fail(modulo: str) -> None:
+    """Exceção não tratada dentro do portão sai com 2 (ERROR), não 1 (FAIL).
+
+    Sem a blindagem, um TypeError nosso derrubava o processo com o exit 1 do
+    Python — que neste repositório significa "violação detectada". Um bug do
+    instrumento chegava disfarçado de veredito sobre o código sob teste.
+    """
+    import importlib
+
+    alvo = importlib.import_module(modulo)
+
+    def estoura() -> int:
+        raise TypeError("bug dentro do próprio portão")
+
+    assert alvo._blindar(modulo, estoura)() == 2
+
+
+def test_blindagem_nao_engole_saida_normal() -> None:
+    assert contract_freeze._blindar("x", lambda: 0)() == 0
+    assert contract_freeze._blindar("x", lambda: 1)() == 1
