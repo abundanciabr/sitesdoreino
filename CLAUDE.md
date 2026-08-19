@@ -10,9 +10,9 @@ se for trabalhar dentro de uma célula, leia também `services/<celula>/LICOES.m
 quando existir (o mesmo, mas específico daquela célula).
 
 Não é formalidade: as mesmas armadilhas já pegaram mais de um agente — sombreamento
-de nome entre model Django e `ninja.Schema`, o `python3` que dá falso-positivo no
-freeze de contrato, o orçamento de 15 arquivos que decide a arquitetura antes de você
-escrever código. Cada redescoberta custa tokens e uma rodada de teste.
+de nome entre model Django e `ninja.Schema`, o middleware que derruba o `/healthz`, o
+orçamento de 15 arquivos que decide a arquitetura antes de você escrever código. Cada
+redescoberta custa tokens e uma rodada de teste.
 
 **Ao terminar, acrescente o que aprendeu** — isso faz parte de terminar a tarefa, como
 o painel. Regra de onde escrever: se serve para qualquer célula, vai em

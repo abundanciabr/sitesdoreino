@@ -55,8 +55,8 @@ para sempre.
 
 | # | O atrito (o que acontece hoje) | O que resolveria de vez | Estado |
 |---|---|---|---|
-| H1 | `python3` é o stub quebrado da Microsoft Store ⇒ `make contrato-check` dá **"OK" falso** e todo agente valida o contrato à mão | Desligar o alias de execução do Python da Microsoft Store (Configurações → Aplicativos → Aliases de execução de aplicativo → desligar `python3.exe`). **Alternativa sem depender de você:** um agente pode fazer `ci/freeze-de-contrato.sh` cair para `python` quando `python3` não existir — vale um PR de 1 arquivo | 🔴 aberto |
-| H2 | `make` existe (WinGet) mas o Bash do agente não o vê ⇒ todo comando vira `bash -lc 'make ...'` | Acrescentar a pasta do `make` ao **PATH do sistema** (Windows → Variáveis de ambiente), não só ao PowerShell | 🟡 parcial — instalado 18/08/2026, mas fora do PATH que o agente enxerga |
+| H1 | ~~`python3` era o stub da Microsoft Store ⇒ `make contrato-check` dava **"OK" falso**~~ | Shim `~/bin/python3` apontando para o Python 3.12 real | ✅ **resolvido 19/08/2026** — portão testado: diverge ⇒ vermelho, bate ⇒ verde (§3.2) |
+| H2 | ~~`make` instalado mas invisível para o Bash do agente ⇒ todo comando virava `bash -lc`~~ | Pasta do `make` no PATH **do usuário** (Windows) | ✅ **resolvido 19/08/2026** — `make` roda direto, sem `-l` e sem `export PATH` |
 | H3 | Proteção de branch nativa do GitHub exige plano pago; hoje o guarda é o hook local `.githooks/pre-push`, que só vale nesta máquina | GitHub Pro (~US$4/mês) no repositório | 🔴 aberto — issue `mecanizar:` #1 |
 | H4 | Docker Desktop frio no início da sessão custa 1–2 min parados | Deixar o Docker Desktop iniciar junto com o Windows | 🔴 aberto |
 
@@ -86,7 +86,7 @@ export DATABASE_URL="postgres://dev:dev@localhost:55432/<celula>_db"
 
 # 4. Baseline VERDE antes de tocar qualquer arquivo (RITOS.md §1)
 cd ../wt-<celula>-<tarefa>/services/<celula>
-bash -lc 'make ci'      # note o bash -lc — ver §3.1
+make ci
 ```
 
 Se o baseline não estiver verde: **pare e reporte**. Consertar main quebrada não é
@@ -102,28 +102,30 @@ isso na primeira resposta, não no fim.
 
 ## §3 — Ambiente (Windows, esta máquina)
 
-### 3.1 `make: command not found` — mas `make` está instalado
+### 3.1 `make: command not found` — RESOLVIDO em 19/08/2026
 
-**Sintoma:** a ferramenta de Bash do agente não acha `make`, mesmo com o PATH
-corrigido em `~/.bashrc`.
-**Causa:** a chamada padrão do Bash do agente **não é login shell** — não lê
-`~/.bashrc`. O `make` do WinGet só está no PATH por lá.
-**Solução:** `bash -lc '<comando>'`. Confirmado: `bash -lc 'make --version'` funciona,
-`make --version` direto não. Prefira isso a `export PATH="...:$PATH" &&` manual —
-sobrevive a qualquer PATH novo que o usuário configurar depois.
-**Origem:** Prompt 3a (pagamentos, PR #16).
+**Era:** o Bash do agente não é login shell, não lia `~/.bashrc`, e o `make` do WinGet
+só estava no PATH de lá — todo comando precisava virar `bash -lc 'make ...'`.
+**Resolvido:** a pasta do `make` entrou no PATH do usuário (Windows). Hoje
+`command -v make` responde direto no Bash do agente, sem `-l` e sem `export PATH`.
+**Se voltar a falhar:** confira se o PATH do usuário ainda contém
+`...\WinGet\Packages\ezwinports.make_.../bin` — o sintoma é exatamente este título.
+**Origem:** Prompt 3a (pagamentos, PR #16) · corrigido pelo mantenedor.
 
-### 3.2 `make contrato-check` dá "OK" mesmo com o contrato divergente
+### 3.2 `make contrato-check` dando "OK" falso — RESOLVIDO em 19/08/2026
 
-**Sintoma:** `../../ci/freeze-de-contrato.sh: line 19: python3: command not found`
-seguido de `✅ Freeze de contrato: OK`.
-**Causa:** `python3` nesta máquina resolve para o **stub quebrado da Microsoft Store**.
-As duas pontas do diff falham igual e "batem" — falso-positivo.
-**Solução:** valide na mão com `python` (não `python3`): carregue
-`contracts/<celula>.openapi.yaml` e a saída de `manage.py export_openapi`, normalize
-os dois (`json.dumps(doc, sort_keys=True)`) e compare. No CI real (Linux) o script
-funciona de verdade — o falso-positivo é só local.
-**Origem:** Prompt 2 (catalogo, PR #15).
+**Era:** `python3` resolvia para o stub quebrado da Microsoft Store. O
+`ci/freeze-de-contrato.sh` chama `python3` internamente, as duas pontas do diff falhavam
+igual e "batiam" — **o portão dizia OK sem ter comparado nada**, e cada agente precisava
+validar o contrato à mão.
+**Resolvido:** shim `~/bin/python3` → Python 3.12 real.
+**Evidência de que valida de verdade (não só parou de reclamar):** com uma divergência
+deliberada no `summary` de uma operação, o script imprimiu o diff e saiu com erro
+(`make: *** [contrato-check] Error 1`); restaurado, voltou a `✅ OK`.
+**Se voltar a falhar:** o sintoma é `python3: command not found` seguido de `✅ OK` —
+desconfie de qualquer verde acompanhado dessa linha e valide à mão comparando
+`json.dumps(doc, sort_keys=True)` dos dois lados.
+**Origem:** Prompt 2 (catalogo, PR #15) · corrigido pelo mantenedor.
 
 ### 3.3 `UnicodeEncodeError` / acento virando lixo na saída de comando Django
 
