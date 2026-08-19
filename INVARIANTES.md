@@ -134,6 +134,45 @@ primeira oportunidade de violá-la.
 
 ---
 
+## Invariantes da própria CI
+
+Os invariantes acima protegem a plataforma. Este protege o INSTRUMENTO que
+verifica os outros — porque um portão que erra para o lado do verde não protege
+coisa alguma, e ainda gasta a confiança de todo mundo.
+
+### [INV-CI01] Portão Crítico é Fail-Closed
+- **O quê:** todo portão crítico prova positivamente que executou a medição
+  antes de devolver sucesso. A semântica é de quatro estados, e não de dois:
+
+  | Situação | Estado | Exit |
+  |---|---|---|
+  | mediu e o estado está correto | `PASS` | 0 |
+  | mediu e encontrou violação | `FAIL` | 1 |
+  | **não conseguiu medir** | `ERROR` | 2 |
+  | medição DECLARADA não aplicável | `SKIP` | 0 |
+
+  É proibido o caminho `não conseguiu validar → PASS`. Em particular:
+  ferramenta ausente, arquivo obrigatório ausente, raiz não resolvida, stdout
+  vazio, exceção engolida, subprocesso sem propagação de exit code e `SKIP`
+  inferido da ausência de evidência são todos `ERROR`. `SKIP` só existe quando
+  alguém o declarou por escrito (ex.: `ci/manifesto-de-contratos.json`).
+- **Por quê:** em 2026-08 o freeze de contrato imprimiu
+  `✅ Freeze de contrato: OK` **com o contrato divergente**. O script chamava
+  `python3`, que não existia naquela máquina; as duas pontas de
+  `diff <(norm A) <(norm B)` viraram vazio; `diff(vazio, vazio)` deu igualdade.
+  Uma ferramenta ausente virou aprovação. Um portão que só sabe dizer "não
+  observei diferença" é indistinguível de um portão desligado — e o dia em que
+  ele desliga sozinho é justamente o dia em que ninguém percebe.
+- **Teste-Guarda:** `ci/tests/test_contract_freeze.py` — suíte adversarial que
+  prova o portão reprovando quando deve: contrato divergente ⇒ `FAIL`;
+  exportador quebrado, silencioso, ausente ou cuspindo lixo ⇒ `ERROR`;
+  congelado ausente ou malformado ⇒ `ERROR`; raiz não resolvida ⇒ `ERROR`;
+  dois lados vazios ⇒ `ERROR` (nunca `PASS`); `not-applicable` sem motivo
+  declarado ⇒ `ERROR`. Roda no workflow `muralhas` a cada PR.
+- **Célula dona:** o repositório (`ci/`) — não pertence a nenhuma célula.
+
+---
+
 ## Dívida de invariantes (nasce vazia — que permaneça assim)
 
 | Código | O quê | Dono | Prazo | Motivo de estar sem guarda |

@@ -24,3 +24,14 @@ jobs:
         run: bash ci/orcamento-de-mudanca.sh
       - name: Guarda de segredos (INV-P8 — APP_USR- e chaves privadas)
         run: bash ci/guarda-de-segredos.sh
+      # [INV-CI01] Testar o testador: a suíte adversarial prova que o freeze de
+      # contrato REPROVA quando deve — inclusive quando a ferramenta de medição
+      # é quebrada de propósito. Sem isto, um portão poderia voltar a ficar
+      # verde por não conseguir medir, exatamente como já aconteceu.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependências dos portões
+        run: python -m pip install --quiet pytest pyyaml
+      - name: Testar o testador (suíte adversarial dos portões)
+        run: python ci/ci.py --apenas testador

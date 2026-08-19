@@ -71,11 +71,64 @@ sobrevive a qualquer PATH novo que o usuário configurar depois.
 seguido de `✅ Freeze de contrato: OK`.
 **Causa:** `python3` nesta máquina resolve para o **stub quebrado da Microsoft Store**.
 As duas pontas do diff falham igual e "batem" — falso-positivo.
-**Solução:** valide na mão com `python` (não `python3`): carregue
-`contracts/<celula>.openapi.yaml` e a saída de `manage.py export_openapi`, normalize
-os dois (`json.dumps(doc, sort_keys=True)`) e compare. No CI real (Linux) o script
-funciona de verdade — o falso-positivo é só local.
-**Origem:** Prompt 2 (catalogo, PR #15).
+**Solução:** **resolvido na raiz** — o portão foi reescrito em Python
+(`ci/contract_freeze.py`) e é fail-closed por construção ([INV-CI01]). Ferramenta
+ausente, stdout vazio, congelado ausente ou malformado ⇒ `ERROR` (exit 2), nunca
+`PASS`. O `.sh` virou wrapper fino e procura `python` antes de `python3`.
+Não é mais preciso validar na mão: `python ci/contract_freeze.py <celula>` mede de
+verdade nesta máquina.
+**Ressalva histórica importante:** a nota original dizia "no CI real (Linux) o script
+funciona de verdade — o falso-positivo é só local". Isso estava **errado por sorte**:
+o mecanismo não dependia do sistema operacional, só de a ferramenta de normalização
+falhar nas duas pontas. Qualquer coisa que quebrasse `python3` no runner (imagem sem
+PyYAML, por exemplo) produziria o mesmo verde mentiroso no CI.
+**Origem:** Prompt 2 (catalogo, PR #15); consertado no despacho `agent/ci/fail-closed`.
+
+### 1.2b Portão de CI que fica verde porque *não conseguiu* medir
+
+**Sintoma:** um portão imprime `✅ ... OK` (exit 0) e, logo acima, o `git`/`python`
+gritou `fatal:` ou `command not found`.
+**Causa:** o padrão `X=$(comando || true)` seguido de `if [[ -z "$X" ]]; then
+echo "nada a fazer"; exit 0; fi`. Falha da ferramenta e "não há nada a verificar"
+chegam ao `if` com o mesmo valor — vazio.
+**Solução:** separar os três casos. Modelo usado em `ci/cerca-de-celula.sh`,
+`ci/cross-smoke.sh` e `ci/orcamento-de-mudanca.sh`:
+
+```bash
+if ! DIFF="$(git diff --name-only "$BASE"...HEAD)"; then
+  echo "❌ ERROR <portao>: não foi possível calcular o diff."   # não consegui medir
+  exit 2
+fi
+if [[ -z "$DIFF" ]]; then echo "SKIP <portao>: git leu o diff e não há nada"; exit 0; fi
+```
+
+O mesmo vale para `git grep`, cujo exit code tem TRÊS significados: `0` achou,
+`1` não achou, `>1` **erro** (ver `ci/guarda-de-segredos.sh`). Tratar `>1` como
+"não achou" faz a guarda de segredos passar sem ter varrido nada.
+**Origem:** auditoria §12 do despacho `agent/ci/fail-closed`.
+
+### 1.2c `shutil.which("bash")` no Windows acha o WSL, não o Git Bash
+
+**Sintoma:** `<3>WSL (…) ERROR: CreateProcessCommon:800: execvpe(/bin/bash) failed:
+No such file or directory` ao rodar um `.sh` do repositório a partir de Python.
+**Causa:** `C:\Windows\System32\bash.exe` (o lançador do WSL) vem antes do Git Bash
+no PATH. Ele existe, é executável, e não roda script do Git Bash.
+**Solução:** não basta *encontrar* a ferramenta — é preciso **sondá-la**. Ver
+`_bash()` em `ci/ci.py` e `bash_utilizavel()` em `ci/tests/conftest.py`: cada
+candidato roda `bash -c "printf sondagem-ok"` antes de ser aceito.
+**Origem:** despacho `agent/ci/fail-closed`.
+
+### 1.2d `/tmp/arquivo` significa dois lugares diferentes na mesma linha
+
+**Sintoma:** um script Python escreve em `/tmp/x.json` e outro comando não acha o
+arquivo, mesmo com o caminho idêntico na tela.
+**Causa:** o Git Bash **traduz** argumentos POSIX ao chamar um `.exe` nativo:
+`/tmp/x.json` na linha de comando vira `C:\Users\<voce>\AppData\Local\Temp\x.json`.
+Mas `Path("/tmp/x.json")` **dentro** do Python vira `C:\tmp\x.json`. São dois
+arquivos.
+**Solução:** em script que atravessa a fronteira Bash↔Python, use caminho absoluto
+explícito (ou `tempfile.mkdtemp()`), nunca `/tmp` literal.
+**Origem:** despacho `agent/ci/fail-closed`.
 
 ### 1.3 `UnicodeEncodeError` / acento virando lixo na saída de comando Django
 
@@ -194,6 +247,35 @@ fixture `autouse` antes e depois de cada teste.
 ---
 
 ## §3 — Portões mecânicos do CI (eles reprovam de verdade)
+
+### 3.0 Como rodar os portões sem adivinhar (comece por aqui)
+
+Dois comandos, com perguntas **diferentes**:
+
+```bash
+python ci/doctor.py     # "este ambiente consegue executar o trabalho?"
+python ci/ci.py         # "esta mudanca respeita as invariantes?"
+```
+
+`make doctor` / `make ci` na raiz fazem exatamente isso — o Makefile é fachada, a
+implementação é o Python. Se `make` faltar numa máquina, os comandos acima
+continuam sendo o caminho oficial.
+
+**Leia o estado, não a cor.** Os portões falam quatro palavras ([INV-CI01]):
+
+| Estado | Significa | Exit |
+|---|---|---|
+| `PASS` | mediu e está correto | 0 |
+| `FAIL` | mediu e achou violação — **conserte o código** | 1 |
+| `ERROR` | **não conseguiu medir** — conserte o ambiente | 2 |
+| `SKIP` | declarado não aplicável, com motivo escrito | 0 |
+
+`ERROR` nunca é "quase passou": é a CI dizendo que não sabe. Se aparecer
+`ERROR contrato/<celula>` localmente, quase sempre falta variável de ambiente do
+§0 — o detalhe do erro traz o comando, o exit code e o stderr crus.
+
+`python ci/ci.py --apenas freeze,muralhas` roda um subconjunto;
+`python ci/ci.py --listar` mostra o que existe.
 
 ### 3.1 `❌ ORÇAMENTO: N arquivos sem a label 'arquitetural'`
 

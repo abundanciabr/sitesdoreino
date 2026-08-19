@@ -1,0 +1,58 @@
+{
+  "_leia": [
+    "MANIFESTO DE CONTRATOS — a declaração explícita de quais células têm",
+    "contrato congelado. Existe para eliminar uma ambiguidade que já produziu",
+    "falso positivo: 'arquivo não encontrado' era lido como 'não existe",
+    "contrato para esta célula'. Aqui a diferença é declarada, nunca inferida.",
+    "",
+    "  freeze: required        + arquivo presente  -> compara (PASS/FAIL)",
+    "  freeze: required        + arquivo ausente   -> ERROR",
+    "  freeze: not-applicable  + motivo declarado  -> SKIP explícito",
+    "  freeze: not-applicable  + arquivo presente  -> ERROR (contradição)",
+    "  célula em services/ fora deste manifesto    -> ERROR",
+    "  contrato em contracts/ fora deste manifesto -> ERROR",
+    "",
+    "Ao criar uma célula nova, declare-a aqui no mesmo PR. O portão reprova",
+    "célula não declarada justamente para que ninguém nasça sem veredito.",
+    "Ao introduzir contrato numa célula not-applicable, o rito é o RITOS.md §3."
+  ],
+  "celulas": {
+    "alunos": {
+      "freeze": "required",
+      "frozen": "contracts/alunos.openapi.yaml",
+      "exportador": ["python", "manage.py", "export_openapi"]
+    },
+    "catalogo": {
+      "freeze": "required",
+      "frozen": "contracts/catalogo.openapi.yaml",
+      "exportador": ["python", "manage.py", "export_openapi"]
+    },
+    "checkout": {
+      "freeze": "required",
+      "frozen": "contracts/checkout.openapi.yaml",
+      "exportador": ["python", "manage.py", "export_openapi"]
+    },
+    "leads": {
+      "freeze": "required",
+      "frozen": "contracts/leads.openapi.yaml",
+      "exportador": ["python", "manage.py", "export_openapi"]
+    },
+    "pagamentos": {
+      "freeze": "required",
+      "frozen": "contracts/pagamentos.openapi.yaml",
+      "exportador": ["python", "manage.py", "export_openapi"]
+    },
+    "funil": {
+      "freeze": "not-applicable",
+      "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."
+    },
+    "mensageria": {
+      "freeze": "not-applicable",
+      "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."
+    },
+    "quiz": {
+      "freeze": "not-applicable",
+      "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."
+    }
+  }
+}
