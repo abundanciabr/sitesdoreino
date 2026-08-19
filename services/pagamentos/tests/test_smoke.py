@@ -116,13 +116,27 @@ def test_intents_sem_token_e_401(client: Client) -> None:
     "path",
     ["/api/pagamentos/webhooks/mp/pix", "/api/pagamentos/webhooks/mp/card"],
 )
-def test_webhooks_sao_publicos_e_ainda_nao_implementados(
-    client: Client, path: str
-) -> None:
-    """Webhooks não exigem Bearer (autenticam por assinatura x-signature, INV-P10) —
-    sem token, o handler é alcançado e responde 501, nunca 401."""
+def test_webhooks_sao_publicos_e_exigem_assinatura(client: Client, path: str) -> None:
+    """Webhooks não exigem Bearer (autenticam por assinatura x-signature,
+    INV-P10) — sem token E sem assinatura, o handler é alcançado (não é 404)
+    e responde 403 (assinatura ausente), nunca 401. Guarda completo do
+    invariante em tests/test_inv_p10_assinatura.py."""
     resp = client.post(path, data="{}", content_type="application/json")
-    assert resp.status_code == 501
+    assert resp.status_code == 403
+
+
+@pytest.mark.smoke_pix
+@pytest.mark.smoke_card
+def test_debug_simulate_webhook_nao_existe_com_debug_0(
+    client: Client, settings: Any
+) -> None:
+    """Com DEBUG=0 o endpoint de simulação NÃO EXISTE — 404, nem 403 (ver
+    ESQUELETO-QUE-ANDA.md)."""
+    settings.DEBUG = False
+    resp = client.post(
+        "/debug/simulate-webhook", data="{}", content_type="application/json"
+    )
+    assert resp.status_code == 404
 
 
 @pytest.mark.smoke_pix
@@ -250,3 +264,38 @@ def test_card_recusado_expoe_reason_code_e_confirmar_de_novo_e_409(
     assert (
         resp_segunda_tentativa.status_code == 409
     )  # já resolvida — nunca cobra de novo
+
+
+@pytest.mark.smoke_pix
+@patch.object(MercadoPagoClient, "criar_pagamento_pix", return_value=_RESPOSTA_PIX_MP)
+def test_debug_simulate_webhook_entrega_webhook_assinado_a_si_mesma(
+    mock_criar: Any, client: Client, token_valido: str, settings: Any
+) -> None:
+    """Caminho local do esqueleto (ESQUELETO-QUE-ANDA.md): com DEBUG=1, o
+    endpoint de debug constrói e entrega a si mesma um webhook Pix REAL e
+    assinado — valida o caminho inteiro (assinatura → idempotência → outbox →
+    relay) sem depender do Mercado Pago alcançar localhost."""
+    settings.DEBUG = True
+    resp = _post_intent(
+        client, token_valido, "55555555-5555-5555-5555-555555555555", method="pix"
+    )
+    intent = resp.json()
+
+    resp_debug = client.post(
+        "/debug/simulate-webhook",
+        data=json.dumps(
+            {
+                "method": "pix",
+                "mp_payment_id": str(_RESPOSTA_PIX_MP["id"]),
+                "status": "approved",
+            }
+        ),
+        content_type="application/json",
+    )
+
+    assert resp_debug.status_code == 200
+    corpo = resp_debug.json()
+    assert corpo["webhook_status_code"] == 200
+    assert (
+        Intent.objects.get(id=intent["id"]).status == "approved"
+    )  # o caminho inteiro andou

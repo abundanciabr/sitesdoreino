@@ -36,6 +36,14 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 # (APP_USR-...) só existe em /opt/plataforma/env/pagamentos.env na VPS.
 MP_ACCESS_TOKEN = env("MP_ACCESS_TOKEN")
 
+# [INV-P10] Segredo do HMAC de x-signature — nunca tem default, fail-hard.
+MP_WEBHOOK_SECRET = env("MP_WEBHOOK_SECRET")
+
+# [RECEITA:R3 v1] Redis Streams — destino do relay da outbox (pagamentos.core.
+# models.relay_outbox). Já provisionado em .github/workflows/ci-celula.yml e em
+# infra/env/pagamentos.env.exemplo por convenção da plataforma.
+REDIS_STREAMS_URL = env("REDIS_STREAMS_URL")
+
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
