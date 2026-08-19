@@ -485,8 +485,13 @@ def test_manifesto_real_declara_todas_as_celulas_em_disco() -> None:
     celulas = contract_freeze.carregar_manifesto(
         raiz / contract_freeze.MANIFESTO_PADRAO
     )
+    # Mesma regra da auditoria: qualquer diretório em services/ é célula a
+    # declarar. Se o teste usasse um critério mais frouxo que o portão, ele
+    # poderia ficar verde para um estado que o portão reprova.
     em_disco = {
-        d.name for d in (raiz / "services").iterdir() if (d / "Makefile").is_file()
+        d.name
+        for d in (raiz / "services").iterdir()
+        if d.is_dir() and not d.name.startswith((".", "__"))
     }
     assert em_disco == set(celulas)
 
