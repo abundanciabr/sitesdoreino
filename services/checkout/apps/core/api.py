@@ -1,12 +1,76 @@
 # apps/core/api.py  # [RECEITA:R1 v1]
 # Superfície da API espelhando contracts/checkout.openapi.yaml (somente-leitura).
-# Fase 0 — esqueleto: todo handler responde 501 (regra de negócio real fica para a
-# Fase D). O objetivo aqui é só a FORMA da API bater com o contrato congelado
-# (make contrato-check verde).
+# Os decorators (response=, openapi_extra=) são o que o freeze de contrato compara —
+# só os CORPOS dos handlers mudam aqui; a forma exportada continua idêntica.
+# Respostas saem por JsonResponse direto, e não por (status, dict): rota sem
+# response= para o status devolvido estoura ConfigError no django-ninja, e
+# declarar mais status em response= criaria Schema dinâmico que vaza para
+# components.schemas e quebra o freeze.
+import json
+import uuid
+
+from django.db import transaction
+from django.http import JsonResponse
 from ninja import Field, Router, Schema
 from ninja.errors import HttpError
 
+from apps.core.clients import CatalogoClient, PagamentosClient
+from apps.pedidos.emitir import emitir
+
+# Alias obrigatório: as classes Session/Order definidas abaixo são ninja.Schema
+# (a FORMA exportada no contrato). Importar os models com o mesmo nome faria o
+# Schema sombreá-los silenciosamente — Session.objects viraria o Schema.
+from apps.pedidos.models import Order as OrderModel
+from apps.pedidos.models import Session as SessionModel
+
 router = Router()
+
+
+def _corpo(request) -> dict:
+    try:
+        corpo = json.loads(request.body or b"{}")
+    except ValueError:
+        raise HttpError(422, "corpo não é JSON válido")
+    if not isinstance(corpo, dict):
+        raise HttpError(422, "corpo deve ser um objeto JSON")
+    return corpo
+
+
+def _itens_do_catalogo(oferta: dict, bump_ids: list) -> list:
+    """[INV-P2] O cliente diz QUAIS bumps marcou; todo valor monetário vem do
+    catálogo. Nenhum preço/total do payload é lido — nem para conferência."""
+    itens = [
+        {
+            "product_id": str(oferta["product"]["id"]),
+            "name": oferta["product"]["name"],
+            "price_cents": int(oferta["price_cents"]),
+            "kind": "principal",
+        }
+    ]
+    marcados = {str(b) for b in bump_ids}
+    for bump in oferta.get("bumps") or []:
+        if str(bump["id"]) in marcados:
+            itens.append(
+                {
+                    "product_id": str(bump["product_id"]),
+                    "name": bump["name"],
+                    "price_cents": int(bump["price_cents"]),
+                    "kind": "bump",
+                }
+            )
+    return itens
+
+
+def _pedido_criado(pedido: OrderModel) -> dict:
+    pagamento = {"method": pedido.method, "intent_id": pedido.intent_id}
+    if pedido.method == "pix" and pedido.pix:
+        pagamento["pix"] = pedido.pix
+    return {
+        "order_id": str(pedido.id),
+        "site_id": pedido.site_id,
+        "status": pedido.status,
+        "payment": pagamento,
+    }
 
 
 def _inline_session_offer(schema: dict) -> None:
@@ -86,7 +150,44 @@ _CREATE_SESSION_OPENAPI = {
     openapi_extra=_CREATE_SESSION_OPENAPI,
 )
 def create_session(request):
-    raise HttpError(501, "não implementado")
+    site = request.site  # [INV-P11] resolvido do Host pelo CONV-SITE, nunca do payload
+    corpo = _corpo(request)
+    offer_slug = corpo.get("offer_slug")
+    if not isinstance(offer_slug, str) or not offer_slug:
+        raise HttpError(422, "offer_slug é obrigatório")
+
+    oferta = CatalogoClient().obter_oferta(site["id"], offer_slug)
+    if oferta is None:
+        raise HttpError(404, "oferta inexistente ou despublicada neste site")
+
+    utm = corpo.get("utm") or {}
+    sessao = SessionModel.objects.create(
+        site_id=site["id"],
+        offer_slug=offer_slug,
+        offer=oferta,
+        lead_id=str(corpo.get("lead_id") or ""),
+        utm={str(k): str(v) for k, v in utm.items()},
+    )
+    return JsonResponse(
+        {
+            "id": str(sessao.id),
+            "site_id": sessao.site_id,
+            "offer": {
+                "slug": oferta["slug"],
+                "product_name": oferta["product"]["name"],
+                "price_cents": int(oferta["price_cents"]),
+                "bumps": [
+                    {
+                        "id": str(b["id"]),
+                        "name": b["name"],
+                        "price_cents": int(b["price_cents"]),
+                    }
+                    for b in oferta.get("bumps") or []
+                ],
+            },
+        },
+        status=201,
+    )
 
 
 def _inline_order_created_status(schema: dict) -> None:
@@ -188,7 +289,92 @@ _PLACE_ORDER_OPENAPI = {
     openapi_extra=_PLACE_ORDER_OPENAPI,
 )
 def place_order(request, session_id: str):
-    raise HttpError(501, "não implementado")
+    site = request.site
+    try:
+        # [INV-P11] a sessão só existe DENTRO do site do Host — sessão do site A
+        # nunca fecha pedido servindo o site B.
+        sessao = SessionModel.objects.get(pk=uuid.UUID(session_id), site_id=site["id"])
+    except (SessionModel.DoesNotExist, ValueError):
+        raise HttpError(404, "sessão inexistente neste site")
+
+    corpo = _corpo(request)
+    customer = corpo.get("customer")
+    if not isinstance(customer, dict) or not customer.get("email"):
+        raise HttpError(422, "customer.email é obrigatório")
+    if not customer.get("name"):
+        raise HttpError(422, "customer.name é obrigatório")
+    method = corpo.get("method")
+    if method not in ("pix", "card"):
+        raise HttpError(422, "method deve ser pix ou card")
+    bump_ids = corpo.get("bump_ids") or []
+    if not isinstance(bump_ids, list):
+        raise HttpError(422, "bump_ids deve ser uma lista de ids")
+
+    existente = OrderModel.objects.filter(session=sessao).first()
+    if existente is not None:
+        # Idempotência de sessão: devolve o pedido que já foi congelado, sem
+        # recriar intent nem tocar o snapshot ([INV-P1]).
+        return JsonResponse(_pedido_criado(existente), status=409)
+
+    # [INV-P2] preços relidos do catálogo AGORA, no fechamento — o payload só
+    # informa quais bumps foram marcados.
+    oferta = CatalogoClient().obter_oferta(site["id"], sessao.offer_slug)
+    if oferta is None:
+        raise HttpError(404, "oferta inexistente ou despublicada neste site")
+    itens = _itens_do_catalogo(oferta, bump_ids)
+    total_cents = sum(item["price_cents"] for item in itens)
+
+    order_id = uuid.uuid4()
+    comprador = {
+        "email": str(customer["email"]),
+        "name": str(customer["name"]),
+        **({"phone": str(customer["phone"])} if customer.get("phone") else {}),
+        **({"cpf": str(customer["cpf"])} if customer.get("cpf") else {}),
+    }
+    intent = PagamentosClient().criar_intent(
+        # Mesma sessão ⇒ mesma chave ⇒ retry/refresh não vira dupla cobrança [INV-P4].
+        idempotency_key=str(sessao.id),
+        payload={
+            "site_id": site["id"],
+            "order_id": str(order_id),
+            "amount_cents": total_cents,
+            "currency": "BRL",
+            "method": method,
+            "customer": comprador,
+            "metadata": {"checkout_session_id": str(sessao.id)},
+        },
+    )
+
+    with transaction.atomic():
+        pedido = OrderModel.objects.create(
+            id=order_id,
+            session=sessao,
+            site_id=site["id"],
+            items=itens,
+            total_cents=total_cents,
+            customer=comprador,
+            method=method,
+            intent_id=str(intent["id"]),
+            pix=intent.get("pix") or {},
+        )
+        emitir(  # [INV-P6] mesma transação da criação do pedido
+            "pedido.criado",
+            {
+                "site_id": pedido.site_id,
+                "order_id": str(pedido.id),
+                "checkout_session_id": str(sessao.id),
+                "items": itens,
+                "total_cents": total_cents,
+                "customer": {
+                    k: v
+                    for k, v in comprador.items()
+                    if k in ("email", "name", "phone")
+                },
+                **({"lead_id": sessao.lead_id} if sessao.lead_id else {}),
+                **({"utm": sessao.utm} if sessao.utm else {}),
+            },
+        )
+    return JsonResponse(_pedido_criado(pedido), status=201)
 
 
 def _inline_order_status(schema: dict) -> None:
@@ -257,4 +443,20 @@ class Order(Schema):
     },
 )
 def get_order(request, order_id: str):
-    raise HttpError(501, "não implementado")
+    site = request.site
+    try:
+        # [INV-P11] pedido de outro site é 404 aqui, não "não autorizado":
+        # a existência do pedido alheio não vaza nem pelo código de status.
+        pedido = OrderModel.objects.get(pk=uuid.UUID(order_id), site_id=site["id"])
+    except (OrderModel.DoesNotExist, ValueError):
+        raise HttpError(404, "pedido inexistente neste site")
+    return JsonResponse(
+        {
+            "order_id": str(pedido.id),
+            "site_id": pedido.site_id,
+            "status": pedido.status,  # [INV-P7] única fonte de status para o front
+            "items": pedido.items,
+            "total_cents": pedido.total_cents,
+            "created_at": pedido.created_at.isoformat(),
+        }
+    )
