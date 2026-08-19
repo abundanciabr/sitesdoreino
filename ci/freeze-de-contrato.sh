@@ -12,6 +12,14 @@
 # originou o INV-CI01: chamava `python3` (inexistente na máquina do dono), as
 # duas pontas de `diff <(norm A) <(norm B)` viraram vazio, `diff` deu igualdade
 # e o script imprimiu "✅ OK". Bash aqui é wiring, nunca medição.
+#
+# O PR #21 chegou primeiro ao mesmo diagnóstico e endureceu esta versão em Bash
+# (raiz sem fallback, interpretador obrigatório, substituição de comando no lugar
+# de `<(...)`, normalização vazia rejeitada). Aquele conteúdo foi substituído
+# aqui de propósito: com a lógica em Python, os mesmos quatro buracos deixam de
+# depender de disciplina de shell, e os dois que faltavam também fecham —
+# contrato obrigatório ausente vira ERROR (via ci/manifesto-de-contratos.json) e
+# a busca por interpretador passa a preferir `python` a `python3`.
 # =============================================================================
 set -euo pipefail
 
