@@ -18,20 +18,23 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Cerca de célula (1 PR = 1 célula; contrato só com rito)
-        run: bash ci/cerca-de-celula.sh
-      - name: Orçamento de mudança (>15 arquivos exige label 'arquitetural')
-        run: bash ci/orcamento-de-mudanca.sh
-      - name: Guarda de segredos (INV-P8 — APP_USR- e chaves privadas)
-        run: bash ci/guarda-de-segredos.sh
-      # [INV-CI01] Testar o testador: a suíte adversarial prova que o freeze de
-      # contrato REPROVA quando deve — inclusive quando a ferramenta de medição
-      # é quebrada de propósito. Sem isto, um portão poderia voltar a ficar
-      # verde por não conseguir medir, exatamente como já aconteceu.
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - name: Dependências dos portões
         run: python -m pip install --quiet pytest pyyaml
+      # UMA fonte de verdade para quais muralhas rodam e o que cada estado
+      # significa: ci/ci.py. O YAML cuida de checkout, Python e env — não de
+      # decidir PASS/FAIL. Antes, este workflow listava os três scripts à mão,
+      # e a lista podia divergir da que o agente roda localmente sem ninguém
+      # perceber. `python ci/ci.py --apenas muralhas` é literalmente o mesmo
+      # comando dos dois lados.
+      - name: Muralhas (cerca de célula · orçamento · guarda de segredos)
+        run: python ci/ci.py --apenas muralhas
+      # [INV-CI01] Testar o testador: a suíte adversarial prova que os portões
+      # REPROVAM quando devem — inclusive quando a ferramenta de medição é
+      # quebrada de propósito, e inclusive a tabela-verdade do gate terminal de
+      # ci-celula. Sem isto, um portão poderia voltar a ficar verde por não
+      # conseguir medir, exatamente como já aconteceu.
       - name: Testar o testador (suíte adversarial dos portões)
         run: python ci/ci.py --apenas testador

@@ -14,26 +14,50 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       celula: ${{ steps.d.outputs.celula }}
+      n: ${{ steps.d.outputs.n }}
+      # [INV-CI01] Carimbo de que a detecção CONCLUIU. Sem ele, o `gate` não
+      # sabe distinguir "nenhuma célula tocada" de "não consegui descobrir".
+      deteccao: ${{ steps.d.outputs.deteccao }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - id: d
-        name: Detectar célula tocada
+        name: Detectar célula tocada (via runner canônico)
+        shell: bash
         run: |
+          set -euo pipefail
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             BASE="origin/${{ github.base_ref }}"
           else
             BASE="HEAD^"
           fi
-          C=$(git diff --name-only "$BASE"...HEAD | grep '^services/' | cut -d/ -f2 | sort -u | head -1 || true)
-          echo "celula=$C" >> "$GITHUB_OUTPUT"
-          echo "Célula detectada: ${C:-nenhuma}"
+          # A semântica de detecção vive em ci/ci.py — a mesma que o agente roda
+          # localmente. O YAML só faz wiring. O `| head -1 || true` que morava
+          # aqui mascarava falha de git como "nenhuma célula": ver INV-CI01.
+          if ! CELULAS="$(python ci/ci.py --detectar-celulas --base "$BASE")"; then
+            echo "::error::ERROR — a detecção de célula não concluiu (BASE='$BASE')."
+            echo "A CI não soube o que deveria testar. Isto NÃO é 'nenhuma célula'."
+            exit 1
+          fi
+          if [[ -z "$CELULAS" ]]; then N=0; else N=$(printf '%s\n' "$CELULAS" | wc -l); fi
+          C="$(printf '%s\n' "$CELULAS" | head -1)"
+          {
+            echo "celula=$C"
+            echo "n=$N"
+            echo "deteccao=ok"
+          } >> "$GITHUB_OUTPUT"
+          echo "Células tocadas ($N): ${CELULAS:-nenhuma}"
 
   rodar:
     name: ci-celula
     needs: detectar
-    if: needs.detectar.outputs.celula != ''
+    # Defesa em profundidade: além de a célula existir, a detecção precisa
+    # ter carimbado sucesso. (Se `detectar` falha, o GitHub já pula este job.)
+    if: needs.detectar.outputs.celula != '' && needs.detectar.outputs.deteccao == 'ok'
     runs-on: ubuntu-latest
     env:
       CELULA: ${{ needs.detectar.outputs.celula }}
@@ -79,9 +103,14 @@ jobs:
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD^' }}
         run: bash ci/cross-smoke.sh
 
-  # Job terminal que SEMPRE conclui — é ele que a branch protection exige como
-  # required check. Assim, um PR que não toca célula alguma (ex.: o PR do esqueleto
-  # na raiz) não trava a proteção com um check "skipped".
+  # Job terminal que SEMPRE conclui — é ele que a branch protection deve exigir
+  # como required check. Um PR que não toca célula alguma (ex.: um PR só de ci/)
+  # não trava a proteção com um check "skipped".
+  #
+  # [INV-CI01] A versão anterior deste job aceitava QUALQUER `skipped` como
+  # verde. Isso abria um bypass completo: git falha -> célula vazia -> `rodar`
+  # pulado -> gate verde -> merge liberado sem um único teste ter rodado. Agora
+  # `skipped` só é verde quando a detecção CONCLUIU e concluiu que não há célula.
   gate:
     name: ci-celula-gate
     needs: [detectar, rodar]
@@ -89,11 +118,65 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Consolidar resultado
+        shell: bash
+        env:
+          D_RESULT: ${{ needs.detectar.result }}
+          D_STATUS: ${{ needs.detectar.outputs.deteccao }}
+          CELULA: ${{ needs.detectar.outputs.celula }}
+          N: ${{ needs.detectar.outputs.n }}
+          R: ${{ needs.rodar.result }}
         run: |
-          R="${{ needs.rodar.result }}"
-          # verde quando a célula passou (success) ou quando não havia célula (skipped);
-          # vermelho quando a célula falhou ou foi cancelada.
-          if [ "$R" = "failure" ] || [ "$R" = "cancelled" ]; then
-            echo "❌ ci-celula: a célula tocada falhou (rodar=$R)"; exit 1
+          set -uo pipefail
+          echo "detectar=$D_RESULT deteccao='${D_STATUS:-}' celula='${CELULA:-}' n='${N:-}' rodar=$R"
+
+          # 1. A detecção precisa ter concluído. Sem escopo conhecido não há
+          #    veredito possível — nem PASS, nem SKIP.
+          if [ "$D_RESULT" != "success" ]; then
+            echo "::error::ERROR — a detecção de célula não concluiu (detectar=$D_RESULT)."
+            echo "A CI não soube o que deveria testar. Este resultado NÃO é um PASS."
+            exit 1
           fi
-          echo "✅ ci-celula-gate OK (rodar=$R)"
+          if [ "${D_STATUS:-}" != "ok" ]; then
+            echo "::error::ERROR — 'detectar' terminou sem carimbar deteccao=ok."
+            echo "O job saiu com sucesso sem provar que mediu. Fail-closed."
+            exit 1
+          fi
+
+          # 2. Escopo COMPLETO: o job `rodar` testa uma célula só. Mais de uma
+          #    célula no diff significa que parte do escopo não seria verificada.
+          #    (A cerca de célula em `muralhas` também reprova isso; aqui é
+          #    defesa em profundidade, porque este é o check terminal.)
+          case "${N:-}" in
+            ''|*[!0-9]*)
+              echo "::error::ERROR — contagem de células ausente ou inválida (n='${N:-}')."
+              echo "Sem saber quantas células o diff toca, não há como afirmar escopo completo."
+              exit 1 ;;
+          esac
+          if [ "$N" -gt 1 ]; then
+            echo "::error::ERROR — o diff toca $N células e este job testa uma só."
+            echo "O escopo completo não seria verificado. 1 PR = 1 célula (RITOS.md §1)."
+            exit 1
+          fi
+
+          # 3. Veredito da célula.
+          case "$R" in
+            failure)
+              echo "::error::FAIL — a célula '$CELULA' reprovou."; exit 1 ;;
+            cancelled)
+              echo "::error::ERROR — o job da célula foi cancelado; nada foi provado."; exit 1 ;;
+            success)
+              if [ -z "${CELULA:-}" ]; then
+                echo "::error::ERROR — 'rodar' concluiu sem célula detectada (estado incoerente)."
+                exit 1
+              fi
+              echo "PASS — célula '$CELULA' verde." ;;
+            skipped)
+              if [ -n "${CELULA:-}" ]; then
+                echo "::error::ERROR — célula '$CELULA' foi detectada mas o job não rodou."
+                echo "Skip por falha de instrumentação NÃO é skip permitido."
+                exit 1
+              fi
+              echo "SKIP — a detecção concluiu e nenhuma célula foi tocada." ;;
+            *)
+              echo "::error::ERROR — estado desconhecido de 'rodar': '$R'."; exit 1 ;;
+          esac

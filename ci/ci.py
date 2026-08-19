@@ -53,6 +53,7 @@ from _nucleo import (  # noqa: E402
     Relatorio,
     Resultado,
     configurar_saida,
+    executar,
     raiz_do_repo,
     recortar,
 )
@@ -258,6 +259,36 @@ def rodar_celula(raiz: Path, celula: str) -> Resultado:
     )
 
 
+def celulas_tocadas(raiz: Path, base: str) -> list[str]:
+    """Quais células o diff contra `base` toca. Falha do git é ERROR, não lista vazia.
+
+    Esta é a MEDIÇÃO que decide o escopo da CI da célula no GitHub Actions. O
+    workflow calculava isso em YAML com `... | head -1 || true`: o `|| true`
+    cobria o pipeline inteiro, então um `git diff` que falhasse devolvia string
+    vazia — indistinguível de "nenhuma célula foi tocada". Daí o job da célula
+    era pulado e o gate aceitava `skipped` como verde: merge liberado sem que um
+    único teste tivesse rodado.
+
+    Aqui as duas situações são separadas na origem: git com exit != 0 levanta
+    ErroDeInstrumentacao; lista vazia só existe quando o git respondeu com
+    sucesso e o diff realmente não tocou `services/`.
+    """
+    execucao = executar(
+        ["git", "diff", "--name-only", f"{base}...HEAD"],
+        cwd=raiz,
+        descricao=f"detectar células tocadas contra '{base}'",
+        # Diff vazio é resposta legítima ("nada mudou"), não instrumento quebrado
+        # — o que não pode passar é exit != 0, e disso `executar` já cuida.
+        exigir_stdout=False,
+    )
+    encontradas = set()
+    for linha in execucao.stdout.splitlines():
+        partes = linha.strip().replace("\\", "/").split("/")
+        if len(partes) >= 2 and partes[0] == "services" and partes[1]:
+            encontradas.add(partes[1])
+    return sorted(encontradas)
+
+
 PORTOES = ("freeze", "muralhas", "testador")
 
 
@@ -310,7 +341,35 @@ def main(argv: list[str] | None = None) -> int:
         "--celula", default=None, help="também roda o `make ci` da célula"
     )
     parser.add_argument("--listar", action="store_true", help="lista os portões e sai")
+    parser.add_argument(
+        "--detectar-celulas",
+        action="store_true",
+        help="imprime em stdout, uma por linha, as células tocadas pelo diff contra --base",
+    )
+    parser.add_argument(
+        "--base", default=None, help="ref base do diff (ex.: origin/main, HEAD^)"
+    )
     args = parser.parse_args(argv)
+
+    if args.detectar_celulas:
+        # Modo máquina: stdout carrega SÓ os nomes das células (o workflow lê
+        # daqui). Diagnóstico vai para stderr para não contaminar a leitura.
+        if not args.base:
+            print("ERROR: --detectar-celulas exige --base <ref>", file=sys.stderr)
+            return 2
+        try:
+            raiz = raiz_do_repo()
+            for nome in celulas_tocadas(raiz, args.base):
+                print(nome)
+        except ErroDeInstrumentacao as erro:
+            print(f"ERROR {erro.resumo}\n{erro.detalhe}", file=sys.stderr)
+            print(
+                "\nA detecção de escopo NÃO concluiu. Tratar isto como 'nenhuma "
+                "célula tocada' seria aprovar sem saber o que deveria testar.",
+                file=sys.stderr,
+            )
+            return 2
+        return 0
 
     if args.listar:
         print("Portões disponíveis:")
@@ -332,5 +391,35 @@ def main(argv: list[str] | None = None) -> int:
     return relatorio.exit_code
 
 
+def _blindar(rotulo: str, funcao):
+    """Última linha de defesa: exceção não prevista vira ERROR, nunca FAIL.
+
+    [INV-CI01] Sem isto, um bug NOSSO (um TypeError no meio da checagem)
+    derrubava o processo com o exit code 1 do Python — que neste repositório
+    significa "violação detectada". Ou seja: "o portão quebrou" chegava
+    disfarçado de "o código está errado", mandando quem lê investigar o lugar
+    errado. Exceção inesperada é falha de instrumentação: exit 2.
+    """
+
+    def blindada(*args, **kwargs):
+        try:
+            return funcao(*args, **kwargs)
+        except SystemExit:
+            raise
+        except BaseException:  # noqa: BLE001 - a fronteira do processo é aqui
+            import traceback
+
+            print("")
+            print(f"ERROR {rotulo}: exceção não tratada dentro do próprio portão.")
+            print(traceback.format_exc())
+            print(
+                "A medição NÃO foi concluída. Este resultado NÃO é um PASS "
+                "nem um FAIL: nada foi provado sobre o código sob teste."
+            )
+            return 2
+
+    return blindada
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(_blindar("ci", main)())
