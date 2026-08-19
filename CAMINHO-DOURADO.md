@@ -40,6 +40,9 @@
 ```markdown
 # DESPACHO — <celula>: <tarefa em ≤5 palavras>
 CÉLULA: <celula> · WORKTREE: wt-<celula>-<tarefa> · RECEITAS: R_, R_
+ANTES: ARMADILHAS.md (raiz) + services/<celula>/LICOES.md, se existir. Ao terminar,
+  acrescente o que aprendeu; o que só o mantenedor resolve vai na tabela §1 do
+  ARMADILHAS.md E no seu relatório final.
 CONTEXTO (≤5 linhas): ...
 MISSÃO (1 frase): ...
 ALVOS (PERMITIDO ESCREVER): services/<celula>/apps/<x>/..., services/<celula>/tests/...

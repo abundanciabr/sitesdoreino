@@ -3,24 +3,72 @@
 > Documento **vivo**. Cada entrada aqui é tempo que um agente já perdeu — e que o
 > próximo não precisa perder. Leia antes de começar; acrescente ao terminar.
 
-**Como usar (agente):**
+**Existe para uma coisa só: impedir que o mesmo problema seja resolvido do zero em
+toda tarefa.** Cada redescoberta custa tokens, custa rodadas de teste e atrasa o
+despacho. Se você gastou mais de dois minutos entendendo algo que não era a sua
+tarefa, isso pertence aqui.
 
-1. **Antes de codar:** leia o §0 (partida rápida) e dê um Ctrl+F pela tecnologia que
-   vai tocar (`django-ninja`, `importlinter`, `respx`, `middleware`…).
+## Como usar (agente)
+
+1. **Antes de codar:** leia o §1 (precisa de você) e o §2 (partida rápida), e dê um
+   Ctrl+F pela tecnologia que vai tocar (`django-ninja`, `importlinter`, `respx`,
+   `middleware`, `mypy`…).
 2. **Quando bater de frente com algo:** procure a mensagem de erro crua aqui. As
    entradas começam pelo **sintoma** justamente para serem encontradas assim.
-3. **Ao terminar o despacho:** acrescente o que você aprendeu, no formato
-   `Sintoma → Causa → Solução → Origem`. Não crie seção nova se já existir uma que
-   sirva. Entrada sem sintoma concreto não ajuda ninguém — descreva o erro real.
+3. **Ao terminar o despacho — isto não é opcional:** acrescente o que você aprendeu,
+   no formato `Sintoma → Causa → Solução → Origem`. Não crie seção nova se já existir
+   uma que sirva. Entrada sem sintoma concreto não ajuda ninguém: descreva o erro real,
+   não a lição abstrata.
+4. **Se a solução definitiva não estiver nas suas mãos** — depende de instalar algo na
+   máquina, de uma conta paga, de uma permissão, de uma decisão de arquitetura —
+   **registre no §1 E avise o humano no seu relatório final, em texto claro.** Você
+   contorna hoje para não travar; ele resolve de vez quando puder. Contornar em
+   silêncio é o que faz o mesmo atrito voltar no próximo despacho, e no seguinte.
 
-**Relação com os outros documentos:** `CONSTITUICAO.md` e as constituições de célula
-dizem o que é **proibido**; `CAMINHO-DOURADO.md` diz **como fazer certo**;
-`INVARIANTES.md` diz **o que não pode quebrar**. Este arquivo é diferente dos três:
-ele não é lei nem receita, é **memória de campo** — o que a realidade cobrou.
+## Onde cada coisa mora (para não duplicar)
+
+| Documento | Público | Guarda |
+|---|---|---|
+| `CONSTITUICAO.md` + `constituicoes/` | agentes | o que é **proibido** |
+| `CAMINHO-DOURADO.md` | agentes | como fazer **certo** (receitas) |
+| `INVARIANTES.md` | agentes | o que **não pode quebrar** |
+| **`ARMADILHAS.md`** (este) | **todo agente, qualquer célula** | o que a **realidade cobrou** — vale em qualquer tarefa |
+| `services/<celula>/LICOES.md` | agente **daquela** célula | decisões e armadilhas **só** daquela célula |
+| `arquivos/painel-*.html` | **o humano** | status, fila, roadmap, incidentes |
+
+Regra de bolso: **se serve para qualquer célula, é aqui. Se só faz sentido dentro de
+uma célula, é no `LICOES.md` dela.**
+
+> **Por que estes documentos são versionados e os painéis não:** um agente trabalha
+> dentro de um `git worktree`, e worktree só contém arquivo rastreado. A pasta
+> `arquivos/` está no `.gitignore` — ela **não existe** dentro do worktree, o agente
+> não consegue abrir os painéis nem se quiser. Conhecimento destinado a agente
+> precisa estar no git; painel é para o humano, e por isso fica de fora.
 
 ---
 
-## §0 — Partida rápida (os 6 primeiros minutos de qualquer sessão)
+## §1 — PRECISA DE VOCÊ (humano) — atritos que só você resolve de vez
+
+Cada linha aqui é um atrito que **todo agente contorna, toda vez**. O contorno
+funciona, mas custa tempo e tokens em cada despacho. Resolver na raiz é de uma vez
+para sempre.
+
+| # | O atrito (o que acontece hoje) | O que resolveria de vez | Estado |
+|---|---|---|---|
+| H1 | `python3` é o stub quebrado da Microsoft Store ⇒ `make contrato-check` dá **"OK" falso** e todo agente valida o contrato à mão | Desligar o alias de execução do Python da Microsoft Store (Configurações → Aplicativos → Aliases de execução de aplicativo → desligar `python3.exe`). **Alternativa sem depender de você:** um agente pode fazer `ci/freeze-de-contrato.sh` cair para `python` quando `python3` não existir — vale um PR de 1 arquivo | 🔴 aberto |
+| H2 | `make` existe (WinGet) mas o Bash do agente não o vê ⇒ todo comando vira `bash -lc 'make ...'` | Acrescentar a pasta do `make` ao **PATH do sistema** (Windows → Variáveis de ambiente), não só ao PowerShell | 🟡 parcial — instalado 18/08/2026, mas fora do PATH que o agente enxerga |
+| H3 | Proteção de branch nativa do GitHub exige plano pago; hoje o guarda é o hook local `.githooks/pre-push`, que só vale nesta máquina | GitHub Pro (~US$4/mês) no repositório | 🔴 aberto — issue `mecanizar:` #1 |
+| H4 | Docker Desktop frio no início da sessão custa 1–2 min parados | Deixar o Docker Desktop iniciar junto com o Windows | 🔴 aberto |
+
+**Como manter esta tabela:** ao encontrar um atrito novo cuja correção definitiva não
+está nas suas mãos, acrescente uma linha (`H5`, `H6`…) e **diga isso no relatório final
+da sessão**. Ao ver que um item foi resolvido, marque ✅ com a data e mova o texto para
+a seção técnica correspondente como registro histórico — a tabela é lista de trabalho,
+não arquivo morto.
+
+---
+
+## §2 — Partida rápida (os 6 primeiros minutos de qualquer sessão)
 
 ```bash
 # 1. Worktree próprio (RITOS.md §1) — nunca trabalhe no clone principal
@@ -38,23 +86,23 @@ export DATABASE_URL="postgres://dev:dev@localhost:55432/<celula>_db"
 
 # 4. Baseline VERDE antes de tocar qualquer arquivo (RITOS.md §1)
 cd ../wt-<celula>-<tarefa>/services/<celula>
-bash -lc 'make ci'      # note o bash -lc — ver §1.1
+bash -lc 'make ci'      # note o bash -lc — ver §3.1
 ```
 
 Se o baseline não estiver verde: **pare e reporte**. Consertar main quebrada não é
 escopo de sessão de feature.
 
 **Planeje a divisão ANTES de escrever código.** O orçamento de 15 arquivos é portão
-mecânico (§3.1). Uma célula nova com modelo + migrations + clientes + middleware +
+mecânico (§5.1). Uma célula nova com modelo + migrations + clientes + middleware +
 guardas de invariante **não cabe** em 15 arquivos junto com páginas. Conte os arquivos
 no papel antes da primeira linha; se estourar, divida o despacho em dois PRs e diga
 isso na primeira resposta, não no fim.
 
 ---
 
-## §1 — Ambiente (Windows, esta máquina)
+## §3 — Ambiente (Windows, esta máquina)
 
-### 1.1 `make: command not found` — mas `make` está instalado
+### 3.1 `make: command not found` — mas `make` está instalado
 
 **Sintoma:** a ferramenta de Bash do agente não acha `make`, mesmo com o PATH
 corrigido em `~/.bashrc`.
@@ -65,7 +113,7 @@ corrigido em `~/.bashrc`.
 sobrevive a qualquer PATH novo que o usuário configurar depois.
 **Origem:** Prompt 3a (pagamentos, PR #16).
 
-### 1.2 `make contrato-check` dá "OK" mesmo com o contrato divergente
+### 3.2 `make contrato-check` dá "OK" mesmo com o contrato divergente
 
 **Sintoma:** `../../ci/freeze-de-contrato.sh: line 19: python3: command not found`
 seguido de `✅ Freeze de contrato: OK`.
@@ -77,13 +125,13 @@ os dois (`json.dumps(doc, sort_keys=True)`) e compare. No CI real (Linux) o scri
 funciona de verdade — o falso-positivo é só local.
 **Origem:** Prompt 2 (catalogo, PR #15).
 
-### 1.3 `UnicodeEncodeError` / acento virando lixo na saída de comando Django
+### 3.3 `UnicodeEncodeError` / acento virando lixo na saída de comando Django
 
 **Sintoma:** saída com emoji ou acento quebra no terminal (cp1252).
 **Solução:** `export PYTHONUTF8=1` antes de rodar qualquer coisa localmente.
 **Origem:** Prompt 2 (catalogo, PR #15).
 
-### 1.4 Docker Desktop frio no meio do trabalho
+### 3.4 Docker Desktop frio no meio do trabalho
 
 **Sintoma:** 1–2 minutos parado esperando o Docker subir, bem quando você ia rodar
 os testes.
@@ -91,7 +139,7 @@ os testes.
 paralelo com a leitura da constituição. Nunca no meio.
 **Origem:** Prompt 2 (catalogo, PR #15).
 
-### 1.5 `black` local reformata o que o CI aprovaria (e vice-versa)
+### 3.5 `black` local reformata o que o CI aprovaria (e vice-versa)
 
 **Sintoma:** `black --check` verde local, vermelho no CI (ou o contrário).
 **Causa:** a versão instalada globalmente nesta máquina é mais nova que a pinada no
@@ -100,11 +148,43 @@ paralelo com a leitura da constituição. Nunca no meio.
 muda entre versões. Se o CI reclamar de formatação que passou local, é isto.
 **Origem:** Prompt 4 (checkout).
 
+### 3.6 Arquivo escrito no bash não é encontrado pelo Python em seguida
+
+**Sintoma:** `> /tmp/x.json` funciona no bash, e o `open("/tmp/x.json")` do Python
+logo depois estoura `FileNotFoundError: '\tmp\x.json'`.
+**Causa:** o `/tmp` do Git Bash (MSYS) não é o mesmo `/tmp` que o `python.exe` nativo
+do Windows enxerga.
+**Solução:** para qualquer arquivo intermediário que um processo vá escrever e outro
+ler, use o diretório de scratchpad da sessão, com **caminho absoluto do Windows**.
+**Origem:** Prompt 3a (pagamentos) — e repetido no Prompt 4 (checkout).
+
+### 3.7 Path `/c/Users/...` dentro de código Python não resolve
+
+**Sintoma:** o mesmo caminho funciona como argumento no bash e falha dentro do script.
+**Causa:** o `python.exe` nativo do Windows não entende paths estilo MSYS quando eles
+são **literal de string no código** — só quando o próprio Bash converte o argv.
+**Solução:** dentro de código Python, escreva `C:/Users/.../arquivo.json` (o Python
+aceita `/` como separador no Windows).
+**Origem:** Prompt 3a (pagamentos, PR #16).
+
+### 3.8 `.venv` dentro do worktree é risco de commit acidental
+
+**Causa:** o `.gitignore` das células não lista `.venv/`.
+**Solução:** crie o venv **fora** do worktree (ex.: no scratchpad da sessão).
+**Origem:** Prompt 3a (pagamentos, PR #16).
+
+### 3.9 Subir a célula inteira só para rodar teste
+
+**Solução:** só o banco basta — `docker compose -f docker-compose.dev.yml up -d db`.
+Ou um container avulso, como no §2. As dependências (catálogo, pagamentos) nunca sobem:
+elas existem como contrato mockado.
+**Origem:** Prompt 3a (pagamentos, PR #16).
+
 ---
 
-## §2 — Django e django-ninja
+## §4 — Django e django-ninja
 
-### 2.1 `AttributeError: DoesNotExist` / `AttributeError: objects`
+### 4.1 `AttributeError: DoesNotExist` / `AttributeError: objects`
 
 **Sintoma:** `Session.objects` estoura `AttributeError: objects`, ou
 `except Model.DoesNotExist` estoura `AttributeError: DoesNotExist` — vindo de dentro
@@ -123,7 +203,7 @@ from apps.pedidos.models import Session as SessionModel
 **Origem:** Prompt 2 (catalogo, PR #15) — e repetido em Prompt 4 (checkout), o que
 mostra que a armadilha é estrutural, não distração.
 
-### 2.2 `ConfigError: Schema for status 201 is not set in response`
+### 4.2 `ConfigError: Schema for status 201 is not set in response`
 
 **Sintoma:** handler devolve `(201, {...})` e a rota estoura.
 **Causa:** rota **sem** `response=` no decorator só aceita 200.
@@ -134,7 +214,7 @@ um `ninja.Schema` dinâmico que pode vazar para `components.schemas` do document
 exportado e **quebrar o freeze de contrato**.
 **Origem:** Prompt 3a (pagamentos, PR #16).
 
-### 2.3 `migrate` não encontra as migrations do app novo
+### 4.3 `migrate` não encontra as migrations do app novo
 
 **Sintoma:** app novo com modelo, migration criada, e o `migrate` ignora.
 **Causa:** falta `apps/<novo>/migrations/__init__.py` — é **obrigatório**.
@@ -145,7 +225,7 @@ próprio pacote do app também: `apps/core` não tem `__init__.py` e está em
 **Conte esse arquivo no orçamento** de qualquer app novo com modelo próprio.
 **Origem:** Prompt 2 (catalogo, PR #15).
 
-### 2.4 `QuerySet.update()` fura o guarda escrito em `Model.save()`
+### 4.4 `QuerySet.update()` fura o guarda escrito em `Model.save()`
 
 **Sintoma:** o teste de imutabilidade passa por `save()` mas o campo muda via
 `Model.objects.filter(...).update(campo=...)`.
@@ -155,7 +235,7 @@ de `save()` **e** de `update()` num `QuerySet` customizado. (O `save()` interno 
 Django usa `_update()`, com underscore, então não entra em laço com o seu override.)
 **Origem:** Prompt 4 (checkout, INV-P1).
 
-### 2.5 Middleware intercepta `/healthz` e derruba a sonda
+### 4.5 Middleware intercepta `/healthz` e derruba a sonda
 
 **Sintoma:** `/healthz` passa a devolver 404 depois de instalar o middleware
 CONV-SITE; o teste de fumaça quebra e, em produção, o container ficaria "unhealthy".
@@ -171,7 +251,7 @@ if request.path.startswith(CAMINHOS_SEM_SITE):
 
 **Origem:** Prompt 4 (checkout).
 
-### 2.6 Middleware roda ANTES da autenticação do django-ninja
+### 4.6 Middleware roda ANTES da autenticação do django-ninja
 
 **Sintoma:** teste que espera 401 (sem token) recebe 404, ou tenta uma conexão HTTP
 real e estoura.
@@ -181,7 +261,7 @@ real e estoura.
 ativo — inclusive os testes de "sem token".
 **Origem:** Prompt 4 (checkout).
 
-### 2.7 Cache de módulo vaza entre testes
+### 4.7 Cache de módulo vaza entre testes
 
 **Sintoma:** teste passa sozinho e falha na suíte (ou o contrário), envolvendo
 resolução de site/host.
@@ -193,9 +273,9 @@ fixture `autouse` antes e depois de cada teste.
 
 ---
 
-## §3 — Portões mecânicos do CI (eles reprovam de verdade)
+## §5 — Portões mecânicos do CI (eles reprovam de verdade)
 
-### 3.1 `❌ ORÇAMENTO: N arquivos sem a label 'arquitetural'`
+### 5.1 `❌ ORÇAMENTO: N arquivos sem a label 'arquitetural'`
 
 **Sintoma:** o workflow `muralhas` reprova o PR.
 **Causa:** `ci/orcamento-de-mudanca.sh` conta
@@ -212,7 +292,7 @@ Se estourou, **divida em PRs**, não peça label. Vários despachos proíbem
 explicitamente usar label para inchar escopo.
 **Origem:** Prompt 2 (catalogo, PR #15 — 16 arquivos, reprovado, corrigido para 15).
 
-### 3.2 `❌ MURALHA: este PR toca N células`
+### 5.2 `❌ MURALHA: este PR toca N células`
 
 **Causa:** `ci/cerca-de-celula.sh` — 1 PR = 1 célula, sem exceção. `contracts/` nunca
 muda junto com `services/` (Rito de Contrato, RITOS.md §3).
@@ -221,7 +301,7 @@ corrigir um script de CI no mesmo PR sem violar a cerca (mas eles contam no
 orçamento).
 **Origem:** Prompt 3a (pagamentos, PR #16 — o fix do `cross-smoke.sh` entrou junto).
 
-### 3.3 CI vermelho por variável de ambiente que existe só na sua máquina
+### 5.3 CI vermelho por variável de ambiente que existe só na sua máquina
 
 **Sintoma:** `make ci` verde local, `ImproperlyConfigured: variável obrigatória
 ausente: X` no CI.
@@ -236,7 +316,7 @@ dentro do cliente/middleware, como fazem as receitas R2 e CONV-SITE) em vez de n
 `settings.py` — aí nada é fail-hard no import e o CI não precisa conhecê-la.
 **Origem:** Prompt 3a (pagamentos, PR #16).
 
-### 3.4 `lint-imports` reprova a rota que a própria constituição manda usar
+### 5.4 `lint-imports` reprova a rota que a própria constituição manda usar
 
 **Sintoma:** contrato `forbidden` do import-linter acusa
 `methods.pix -> core.gateway -> providers...` — exatamente o caminho aprovado.
@@ -245,7 +325,7 @@ dentro do cliente/middleware, como fazem as receitas R2 e CONV-SITE) em vez de n
 import **direto**, que é o que "só fale com X através de Y" realmente significa.
 **Origem:** Prompt 3a (pagamentos, PR #16).
 
-### 3.5 `Wrong expression passed to '-m'` no cross-smoke
+### 5.5 `Wrong expression passed to '-m'` no cross-smoke
 
 **Causa:** `IFS=' or '` em bash é um **conjunto** de separadores (espaço, `o`, `r`),
 não a string `" or "`.
@@ -255,9 +335,9 @@ mesmo erro de `IFS` é fácil de repetir em qualquer script novo.
 
 ---
 
-## §4 — Testes
+## §6 — Testes
 
-### 4.1 Evidência vermelho→verde sem criar branch descartável
+### 6.1 Evidência vermelho→verde sem criar branch descartável
 
 O protocolo (INVARIANTES.md, Lei 3) exige a saída **crua** do guarda vermelho sem o
 fix e verde com o fix. O jeito rápido:
@@ -272,7 +352,7 @@ python -m pytest tests/test_inv_pX_*.py -q   # VERDE
 Mais rápido e limpo que criar branch/commit só para isso.
 **Origem:** Prompt 2 (catalogo, PR #15).
 
-### 4.2 `respx.models.AllMockedAssertionError: ... not mocked!`
+### 6.2 `respx.models.AllMockedAssertionError: ... not mocked!`
 
 **Sintoma:** o teste do caminho "recurso inexistente" estoura em vez de receber 404.
 **Causa:** o `respx` só responde o que foi registrado; rota não registrada é erro, não
@@ -285,7 +365,7 @@ mock.get(url__regex=r".*/sites/[^/]+/ofertas/.+").mock(return_value=httpx.Respon
 
 **Origem:** Prompt 4 (checkout).
 
-### 4.3 Comparação de data/hora falha por 3 horas
+### 6.3 Comparação de data/hora falha por 3 horas
 
 **Sintoma:** o mesmo instante "não bate" antes vs. depois de um `save()`+`fetch`.
 **Causa:** o Postgres normaliza `timestamptz` para UTC ao persistir — `-03:00` vira
@@ -293,18 +373,58 @@ mock.get(url__regex=r".*/sites/[^/]+/ofertas/.+").mock(return_value=httpx.Respon
 **Solução:** compare via `datetime.fromisoformat(...)`, nunca string ou dict cru.
 **Origem:** Prompt 3a (pagamentos, PR #16).
 
-### 4.4 Teste-guarda é intocável
+### 6.4 Teste-guarda é intocável
 
 Proibido deletar, desativar, comentar ou afrouxar teste para passar (RITOS.md §2.3).
 Se o teste parece errado: **pare e reporte**, não ajuste o assert. Duas tentativas
 consecutivas de correção falharam ⇒ `git reset --hard <último-verde>` e reporte —
 a terceira tentativa é onde nascem labirintos.
 
+### 6.5 `transaction.on_commit(...)` nunca dispara no teste
+
+**Sintoma:** o código chama `on_commit` (relay de outbox, por exemplo) e o teste jura
+que nada foi publicado.
+**Causa:** o `@pytest.mark.django_db` padrão embrulha cada teste numa transação que
+sofre **rollback** no fim — nunca há COMMIT, então os callbacks são descartados.
+**Solução:** no teste específico que precisa disso,
+`@pytest.mark.django_db(transaction=True)` (sobrescreve o `pytestmark` do módulo).
+**Origem:** Prompt 3b (pagamentos, PR #19).
+
+### 6.6 `@patch.object` como decorator de função auxiliar embaralha os argumentos
+
+**Sintoma:** `AttributeError: 'str' object has no attribute 'post'` — silencioso até
+quebrar longe da causa.
+**Causa:** decorar uma função **auxiliar** (não um método de teste) injeta o mock como
+**último** argumento posicional, depois dos que o chamador passou. E sob `mypy --strict`
+o decorator não esconde o parâmetro: toda chamada reprova com `Missing positional
+argument`.
+**Solução:** não decore a auxiliar — use `with patch.object(...):` **dentro** dela.
+Resolve a ordem dos argumentos e o mypy de uma vez.
+**Origem:** Prompt 3b (pagamentos, PR #19).
+
+### 6.7 `mypy --strict` + `redis`: o ignore vai na chamada, não no import
+
+**Sintoma:** `# type: ignore[import-untyped]` no `import redis` vira erro de "unused
+ignore"; sem ele, `redis.from_url(...)` acusa `no-untyped-call`.
+**Causa:** o redis-py ≥ 5 já traz `py.typed` (o import é tipado), mas a assinatura de
+`from_url` não está totalmente anotada.
+**Solução:** o ignore vai na linha da **chamada**.
+**Origem:** Prompt 3b (pagamentos, PR #19).
+
+### 6.8 `mypy --strict` + `django.test.Client` com headers desempacotados
+
+**Sintoma:** `Argument 4 ... incompatible type "**dict[str, str]"; expected "bool"`.
+**Causa:** o stub do `Client` tem parâmetros nomeados tipados (`follow: bool`, …) e o
+mypy não consegue casar as chaves de um dict dinâmico com eles.
+**Solução:** passe os headers como kwargs explícitos
+(`HTTP_X_SIGNATURE=...`, `HTTP_X_REQUEST_ID=...`) em vez de `**{...}`.
+**Origem:** Prompt 3b (pagamentos, PR #19).
+
 ---
 
-## §5 — Coordenação (humano, painéis, outros agentes)
+## §7 — Coordenação (humano, painéis, outros agentes)
 
-### 5.1 Mais de uma IA no mesmo repositório
+### 7.1 Mais de uma IA no mesmo repositório
 
 **Sintoma:** PRs aparecem mergeados sem que esta sessão tenha pedido; arquivos mudam
 sozinhos no meio do trabalho.
@@ -316,7 +436,7 @@ contra o que qualquer sessão pediu para segurar; e antes de editar um arquivo
 compartilhado (painéis, docs de raiz), releia-o do disco — ele pode ter mudado.
 **Origem:** incidentes dos PRs #2 e #5.
 
-### 5.2 Painel HTML "some" / cards desaparecem
+### 7.2 Painel HTML "some" / cards desaparecem
 
 **Sintoma:** os cards do painel somem; a página renderiza só o cabeçalho.
 **Causa:** o JS quebrou. O caso concreto: uma crase (`` ` ``) usada para formatar
@@ -333,7 +453,7 @@ new Function(s)();console.log('JS OK');"
 
 **Origem:** sessão de 18/08/2026, painel da Fase D.
 
-### 5.3 O despacho colado no chat pode divergir do card do painel
+### 7.3 O despacho colado no chat pode divergir do card do painel
 
 **Sintoma:** o agente entrega exatamente o que foi pedido — e mesmo assim está
 desalinhado com o que o painel prometia.
@@ -345,7 +465,7 @@ até a retrospectiva, depois do merge.
 os dois antes de começar. Divergência é decisão do humano, não do agente.
 **Origem:** Prompt 2 (catalogo, PR #15) — pendência ainda aberta.
 
-### 5.4 O painel é parte de terminar a tarefa
+### 7.4 O painel é parte de terminar a tarefa
 
 `arquivos/painel-fundacao.html` é o checklist vivo do dono do projeto (leigo em
 código). Atualizá-lo depois de cada mudança de estado é obrigatório e **não se
@@ -355,7 +475,26 @@ state,mergedBy,mergeCommit`), não substituto da conferência.
 
 ---
 
-## §6 — Pendências conhecidas (não são armadilhas, são dívidas abertas)
+## §8 — Ferramentas do agente (o harness também tem armadilha)
+
+### 8.1 Agente delegado nasce num worktree diferente do que o despacho manda
+
+**Sintoma:** as ferramentas de edição recusam mecanicamente qualquer caminho fora de
+um worktree que o despacho nunca mencionou (`.claude/worktrees/agent-<id>`), inclusive
+operações git contra o worktree que é claramente o alvo legítimo.
+**Causa:** um agente disparado com `isolation: worktree` recebe um worktree **próprio**
+criado pelo harness, e as ferramentas ficam confinadas a ele.
+**Solução que funcionou:** não lute contra a ferramenta. Como os dois worktrees nascem
+do mesmo commit, desenvolva e teste no worktree do agente e, no fim, copie os arquivos
+prontos para o worktree do despacho (a ferramenta PowerShell não tem a mesma trava de
+caminho), onde acontecem commit/push/PR.
+**Melhor ainda:** se o despacho nomeia um worktree, dispare o agente **sem**
+`isolation: worktree` — deixe-o criar o worktree do jeito que o RITOS §1 manda.
+**Origem:** Prompt 3b (pagamentos, PR #19).
+
+---
+
+## §9 — Pendências conhecidas (não são armadilhas, são dívidas abertas)
 
 | O quê | Estado |
 |---|---|
