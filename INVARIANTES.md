@@ -184,7 +184,7 @@ do que foi medido.
 | cerca de célula · orçamento · guarda de segredos | workflow `muralhas` | **sim** |
 | detecção de escopo + gate terminal (`ci-celula.yml`) | workflow `ci-celula` | **sim** |
 | runner canônico (`ci/ci.py`) | local, `make`, workflow | **sim** |
-| `contrato-check` dos 8 `services/*/Makefile` | `make ci` da célula | **não** — decide pelo disco em vez do manifesto; ver ARMADILHAS §3.5 |
+| `contrato-check` dos 8 `services/*/Makefile` | `make ci` da célula | **não** — decide pelo disco em vez do manifesto (mitigado: a auditoria do manifesto roda em `muralhas` a cada PR) |
 | **branch protection** | GitHub | **não existe** — ver abaixo |
 
 #### A cadeia de merge não está fechada

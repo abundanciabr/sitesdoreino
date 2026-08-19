@@ -33,7 +33,7 @@ ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo ""
 	@echo ""
 	@echo "O freeze roda o exportador de cada celula, entao 'make ci' espera o"
-	@echo "mesmo ambiente que .github/workflows/ci-celula.yml declara (ARMADILHAS.md §0)."
+	@echo "mesmo ambiente que .github/workflows/ci-celula.yml declara (ARMADILHAS.md §2)."
 	@echo "Sem essas variaveis o freeze devolve ERROR, nao PASS — de proposito."
 	@echo ""
 	@echo "Sem make na maquina? Os mesmos caminhos, oficiais e equivalentes:"

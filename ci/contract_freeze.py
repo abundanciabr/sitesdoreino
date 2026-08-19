@@ -344,7 +344,7 @@ def exportar_vivo(raiz: Path, celula: str, spec: dict[str, Any]) -> str:
             "declara em .github/workflows/ci-celula.yml:\n"
             "  PYTHONUTF8, DJANGO_SECRET_KEY, DATABASE_URL, REDIS_STREAMS_URL,\n"
             "  HUEY_REDIS_URL e, em pagamentos, MP_ACCESS_TOKEN e MP_WEBHOOK_SECRET.\n"
-            "Ver ARMADILHAS.md §0."
+            "Ver ARMADILHAS.md §2 (partida rápida)."
         )
         raise
     return carregar_vivo_de_texto(execucao.stdout, f"contrato vivo de '{celula}'")

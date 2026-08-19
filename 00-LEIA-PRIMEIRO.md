@@ -19,6 +19,9 @@ falsificaria. A Fase 0 só termina quando o **red-team** (02-RED-TEAM.md) falha 
 | `INVARIANTES.md` | Jurisprudência pré-paga: os invariantes de dinheiro, com teste-guarda ANTES da primeira feature. |
 | `ESQUELETO-QUE-ANDA.md` | Marco zero: uma transação sandbox atravessando todas as células. |
 | `CAMINHO-DOURADO.md` | As receitas canônicas: o despacho cita por número, o agente cola — velocidade sem divergência. |
+| `ARMADILHAS.md` | **Memória de campo — leia antes de cada sessão.** O que já custou tempo aqui (sintoma → causa → solução) + a tabela `PRECISA DE VOCÊ`, com os atritos que só o mantenedor resolve de vez. |
+| `services/<celula>/LICOES.md` | O mesmo, restrito a uma célula: decisões e armadilhas de quem já trabalhou nela. |
+| `ARMADILHAS.md` | **Leia antes de cada sessão.** Memória de campo: o que já custou tempo, com sintoma → causa → solução. |
 | `constituicoes/AGENTS.<celula>.md` | Constituição de 1 página por célula (a lei espacial). |
 | `contracts/` | OpenAPI por célula + eventos versionados. CONGELADOS após ratificação. |
 | `infra/` | Provisionamento da VPS, Postgres por célula, Traefik (file provider), compose, envs. |

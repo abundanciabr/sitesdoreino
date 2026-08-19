@@ -2,6 +2,28 @@
 
 Instruções para qualquer sessão do Claude Code neste repositório.
 
+## Antes de começar qualquer tarefa: leia as armadilhas
+
+`ARMADILHAS.md` (raiz) é a memória de campo do projeto: o que já custou tempo aqui,
+em formato sintoma → causa → solução. **Leia antes de escrever a primeira linha**, e
+se for trabalhar dentro de uma célula, leia também `services/<celula>/LICOES.md`
+quando existir (o mesmo, mas específico daquela célula).
+
+Não é formalidade: as mesmas armadilhas já pegaram mais de um agente — sombreamento
+de nome entre model Django e `ninja.Schema`, o middleware que derruba o `/healthz`, o
+orçamento de 15 arquivos que decide a arquitetura antes de você escrever código. Cada
+redescoberta custa tokens e uma rodada de teste.
+
+**Ao terminar, acrescente o que aprendeu** — isso faz parte de terminar a tarefa, como
+o painel. Regra de onde escrever: se serve para qualquer célula, vai em
+`ARMADILHAS.md`; se só faz sentido dentro de uma célula, vai no `LICOES.md` dela.
+
+**Se a correção definitiva não estiver nas suas mãos** — depende de instalar algo na
+máquina, de plano pago, de permissão — registre na tabela `§1 — PRECISA DE VOCÊ` do
+`ARMADILHAS.md` **e diga isso ao usuário no relatório final, em texto claro**. Ele não
+lê o documento a cada sessão; se você contornar em silêncio, o mesmo atrito volta no
+próximo despacho, e no seguinte.
+
 ## O painel vivo é obrigatório, não opcional
 
 `arquivos/painel-fundacao.html` é o checklist vivo deste projeto — feito para o
