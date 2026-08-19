@@ -55,7 +55,7 @@ para sempre.
 
 | # | O atrito (o que acontece hoje) | O que resolveria de vez | Estado |
 |---|---|---|---|
-| H1 | ~~`python3` era o stub da Microsoft Store ⇒ `make contrato-check` dava **"OK" falso**~~ | Shim `~/bin/python3` apontando para o Python 3.12 real | ✅ **resolvido 19/08/2026** — portão testado: diverge ⇒ vermelho, bate ⇒ verde (§3.2) |
+| H1 | ~~`python3` era o stub da Microsoft Store ⇒ `make contrato-check` dava **"OK" falso**~~ | Shim `~/bin/python3` apontando para o Python 3.12 real **+ o script passou a falhar alto quando nao consegue validar (PR #21)** | ✅ **resolvido 19/08/2026** — portão testado: diverge ⇒ vermelho, bate ⇒ verde (§3.2) |
 | H2 | ~~`make` instalado mas invisível para o Bash do agente ⇒ todo comando virava `bash -lc`~~ | Pasta do `make` no PATH **do usuário** (Windows) | ✅ **resolvido 19/08/2026** — `make` roda direto, sem `-l` e sem `export PATH` |
 | H3 | Proteção de branch nativa do GitHub exige plano pago; hoje o guarda é o hook local `.githooks/pre-push`, que só vale nesta máquina | GitHub Pro (~US$4/mês) no repositório | 🔴 aberto — issue `mecanizar:` #1 |
 | H4 | Docker Desktop frio no início da sessão custa 1–2 min parados | Deixar o Docker Desktop iniciar junto com o Windows | 🔴 aberto |
@@ -493,6 +493,16 @@ caminho), onde acontecem commit/push/PR.
 **Melhor ainda:** se o despacho nomeia um worktree, dispare o agente **sem**
 `isolation: worktree` — deixe-o criar o worktree do jeito que o RITOS §1 manda.
 **Origem:** Prompt 3b (pagamentos, PR #19).
+
+### 8.2 Heredoc dentro de heredoc com o mesmo delimitador
+
+**Sintoma:** `SyntaxError: unterminated triple-quoted string literal` no Python, seguido
+de `bash: syntax error near unexpected token`.
+**Causa:** escrever um script Python via `python - <<'PY'` cujo conteúdo contém outro
+heredoc `<<'PY'` — o delimitador interno fecha o externo antes da hora.
+**Solução:** delimitadores distintos (`<<'PYEOF'` dentro de `<<'PY'`), ou escreva o
+arquivo com a ferramenta de escrita em vez de heredoc. Vale para qualquer par aninhado.
+**Origem:** sessão de 19/08/2026, ao endurecer `ci/freeze-de-contrato.sh`.
 
 ---
 
