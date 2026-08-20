@@ -34,6 +34,8 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
+    "apps.eventos",
+    "apps.matriculas",
 ]
 
 MIDDLEWARE = [
