@@ -7,7 +7,20 @@ set -euo pipefail
 BASE="${BASE_REF:-origin/main}"
 PR_LABELS="${PR_LABELS:-}"
 
-mapfile -t FILES < <(git diff --name-only "$BASE"...HEAD)
+# [INV-CI01] O diff é a MEDIÇÃO desta muralha. `mapfile < <(git diff ...)` não
+# propaga a falha da substituição de processo: com um BASE_REF inválido, FILES
+# vinha vazia, N virava 0 e a muralha imprimia "OK — 0 células". Aqui a falha do
+# git é ERROR explícito, porque "não consegui ler o diff" não é "o diff está
+# limpo".
+if ! DIFF_BRUTO="$(git diff --name-only "$BASE"...HEAD)"; then
+  echo "❌ ERROR cerca-de-celula: não foi possível calcular o diff."
+  echo "   Comando: git diff --name-only $BASE...HEAD"
+  echo "   BASE_REF='$BASE' existe? O checkout tem fetch-depth: 0?"
+  echo "   A muralha NÃO inspecionou o PR. Este resultado NÃO é um OK."
+  exit 2
+fi
+
+mapfile -t FILES <<< "$DIFF_BRUTO"
 
 CELULAS=()
 TEM_CONTRATO=0
@@ -19,7 +32,9 @@ for f in "${FILES[@]}"; do
 done
 
 UNICAS=$(printf '%s\n' "${CELULAS[@]:-}" | sed '/^$/d' | sort -u)
-N=$(printf '%s' "$UNICAS" | grep -c . || true)
+# Contagem em bash puro: `grep -c . || true` mascarava tanto "zero linhas"
+# (saída 1, legítima) quanto erro real do grep (saída 2) no mesmo resultado.
+if [[ -z "$UNICAS" ]]; then N=0; else N=$(printf '%s\n' "$UNICAS" | wc -l); fi
 
 if (( N > 1 )); then
   echo "❌ MURALHA: este PR toca $N células — o limite é 1."

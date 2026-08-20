@@ -7,9 +7,19 @@
 set -euo pipefail
 BASE="${BASE_REF:-origin/main}"
 
-DIFF=$(git diff --name-only "$BASE"...HEAD -- services/pagamentos || true)
+# [INV-CI01] O `|| true` daqui transformava "o git falhou" em "pagamentos
+# intocado" — a muralha interna da fortaleza saía verde sem ter olhado o diff.
+# Falha do git agora é ERROR; SKIP só quando o git respondeu e a resposta foi
+# realmente "nenhum arquivo de pagamentos mudou".
+if ! DIFF="$(git diff --name-only "$BASE"...HEAD -- services/pagamentos)"; then
+  echo "❌ ERROR cross-smoke: não foi possível calcular o diff de pagamentos."
+  echo "   Comando: git diff --name-only $BASE...HEAD -- services/pagamentos"
+  echo "   BASE_REF='$BASE' existe? O checkout tem fetch-depth: 0?"
+  echo "   O cross-smoke NÃO rodou. Este resultado NÃO é um OK."
+  exit 2
+fi
 if [[ -z "$DIFF" ]]; then
-  echo "ℹ Pagamentos intocado — cross-smoke dispensado."
+  echo "SKIP cross-smoke: o git leu o diff e pagamentos não foi tocado."
   exit 0
 fi
 

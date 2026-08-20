@@ -7,18 +7,30 @@
 set -euo pipefail
 VIOLACAO=0
 
-# 02-RED-TEAM.md cita APP_USR-fake123 como EXEMPLO do golpe nº 10, não como segredo real — excluído para não se autoacusar.
-if git grep -nE 'APP_USR-[0-9A-Za-z]' -- . ':!ci/guarda-de-segredos.sh' ':!02-RED-TEAM.md' > /tmp/seg1 2>/dev/null; then
-  echo "❌ SEGREDO: credencial de PRODUÇÃO do Mercado Pago (APP_USR-) no repositório:"
-  cat /tmp/seg1
-  VIOLACAO=1
-fi
+# [INV-CI01] `git grep` devolve 0 com achados, 1 sem achados e >1 em ERRO. O
+# `if git grep ... 2>/dev/null` original juntava "não achei" e "não consegui
+# procurar" no mesmo ramo — um git quebrado ou um repositório não resolvido
+# fazia a guarda passar sem ter varrido nada. Aqui os três casos são distintos,
+# e o stderr do git deixou de ser jogado fora.
+procurar() {
+  local rotulo="$1" saida="$2"; shift 2
+  local status=0
+  git grep -nE "$@" > "$saida" || status=$?
+  case "$status" in
+    0) echo "❌ SEGREDO: $rotulo no repositório:"; cat "$saida"; VIOLACAO=1 ;;
+    1) : ;;  # nenhuma ocorrência — a varredura ACONTECEU e não achou nada
+    *) echo "❌ ERROR guarda-de-segredos: git grep saiu com $status ao procurar $rotulo."
+       echo "   A varredura NÃO aconteceu. Este resultado NÃO é um OK."
+       exit 2 ;;
+  esac
+}
 
-if git grep -nE 'BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY' -- . > /tmp/seg2 2>/dev/null; then
-  echo "❌ SEGREDO: chave privada no repositório:"
-  cat /tmp/seg2
-  VIOLACAO=1
-fi
+# 02-RED-TEAM.md cita APP_USR-fake123 como EXEMPLO do golpe nº 10, não como segredo real — excluído para não se autoacusar.
+procurar "credencial de PRODUÇÃO do Mercado Pago (APP_USR-)" /tmp/seg1 \
+  'APP_USR-[0-9A-Za-z]' -- . ':!ci/guarda-de-segredos.sh' ':!02-RED-TEAM.md'
+
+procurar "chave privada" /tmp/seg2 \
+  'BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY' -- .
 
 if (( VIOLACAO == 0 )); then
   echo "✅ Guarda de segredos: OK"

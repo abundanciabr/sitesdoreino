@@ -134,6 +134,79 @@ primeira oportunidade de violá-la.
 
 ---
 
+## Invariantes da própria CI
+
+Os invariantes acima protegem a plataforma. Este protege o INSTRUMENTO que
+verifica os outros — porque um portão que erra para o lado do verde não protege
+coisa alguma, e ainda gasta a confiança de todo mundo.
+
+### [INV-CI01] Portão Crítico é Fail-Closed
+- **O quê:** todo portão crítico prova positivamente que executou a medição
+  antes de devolver sucesso. A semântica é de quatro estados, e não de dois:
+
+  | Situação | Estado | Exit |
+  |---|---|---|
+  | mediu e o estado está correto | `PASS` | 0 |
+  | mediu e encontrou violação | `FAIL` | 1 |
+  | **não conseguiu medir** | `ERROR` | 2 |
+  | medição DECLARADA não aplicável | `SKIP` | 0 |
+
+  É proibido o caminho `não conseguiu validar → PASS`. Em particular:
+  ferramenta ausente, arquivo obrigatório ausente, raiz não resolvida, stdout
+  vazio, exceção engolida, subprocesso sem propagação de exit code e `SKIP`
+  inferido da ausência de evidência são todos `ERROR`. `SKIP` só existe quando
+  alguém o declarou por escrito (ex.: `ci/manifesto-de-contratos.json`).
+- **Por quê:** em 2026-08 o freeze de contrato imprimiu
+  `✅ Freeze de contrato: OK` **com o contrato divergente**. O script chamava
+  `python3`, que não existia naquela máquina; as duas pontas de
+  `diff <(norm A) <(norm B)` viraram vazio; `diff(vazio, vazio)` deu igualdade.
+  Uma ferramenta ausente virou aprovação. Um portão que só sabe dizer "não
+  observei diferença" é indistinguível de um portão desligado — e o dia em que
+  ele desliga sozinho é justamente o dia em que ninguém percebe.
+- **Teste-Guarda:** `ci/tests/test_contract_freeze.py` — suíte adversarial que
+  prova o portão reprovando quando deve: contrato divergente ⇒ `FAIL`;
+  exportador quebrado, silencioso, ausente ou cuspindo lixo ⇒ `ERROR`;
+  congelado ausente ou malformado ⇒ `ERROR`; raiz não resolvida ⇒ `ERROR`;
+  dois lados vazios ⇒ `ERROR` (nunca `PASS`); `not-applicable` sem motivo
+  declarado ⇒ `ERROR`. Roda no workflow `muralhas` a cada PR.
+- **Célula dona:** o repositório (`ci/`) — não pertence a nenhuma célula.
+
+#### Escopo de conformidade (atualize junto com a realidade)
+
+INV-CI01 vale para os portões migrados. Declarar "CI fail-closed global" sem
+esta tabela seria a mesma classe de erro que o invariante combate: afirmar mais
+do que foi medido.
+
+| Portão | Onde roda | Conforme? |
+|---|---|---|
+| freeze de contrato (`ci/contract_freeze.py`) | local + `make ci` da célula | **sim** |
+| sonda de autenticação efetiva | junto do freeze | **sim** |
+| cerca de célula · orçamento · guarda de segredos | workflow `muralhas` | **sim** |
+| detecção de escopo + gate terminal (`ci-celula.yml`) | workflow `ci-celula` | **sim** |
+| runner canônico (`ci/ci.py`) | local, `make`, workflow | **sim** |
+| `contrato-check` dos 8 `services/*/Makefile` | `make ci` da célula | **não** — decide pelo disco em vez do manifesto (mitigado: a auditoria do manifesto roda em `muralhas` a cada PR) |
+| **branch protection** | GitHub | **não existe** — ver abaixo |
+
+#### A cadeia de merge não está fechada
+
+Um portão fail-closed só protege se algo exigir que ele passe. Consultado em
+2026-08-19, o GitHub responde à API de branch protection deste repositório:
+
+```
+Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)
+```
+
+Ou seja: **não há required check algum**. Todo portão descrito aqui pode estar
+vermelho e o merge pelo site continua permitido. O único obstáculo é
+`.githooks/pre-push`, que bloqueia push direto para `main` a partir desta
+máquina — e não bloqueia merge de PR pela interface do GitHub.
+
+Enquanto isso não mudar, o estado honesto é **núcleo fail-closed concluído, CI
+global ainda parcial**. A mecanização está registrada na issue `mecanizar:` do
+RITOS.md §2.
+
+---
+
 ## Dívida de invariantes (nasce vazia — que permaneça assim)
 
 | Código | O quê | Dono | Prazo | Motivo de estar sem guarda |

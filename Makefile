@@ -1,0 +1,61 @@
+# =============================================================================
+# FACHADA — interface humana conveniente. A implementação canônica é Python.
+#
+#            ci/ci.py
+#               ▲
+#         ┌─────┼─────┐
+#         │     │     │
+#     Makefile  CI   Agentes
+#
+# Nenhum alvo aqui contém lógica: se `make` não existir numa máquina, os mesmos
+# comandos rodam direto e com o mesmo resultado.
+#
+#     make ci       ==  python ci/ci.py
+#     make doctor   ==  python ci/doctor.py
+#     make freeze   ==  python ci/contract_freeze.py
+#
+# `python`, nunca `python3`: o shim de python3 desta máquina resolve um problema
+# local e não pode virar requisito arquitetural. Sobrescreva com PYTHON=... se o
+# seu ambiente chamar o interpretador de outro jeito.
+# =============================================================================
+PYTHON ?= python
+
+.PHONY: ajuda ci doctor freeze muralhas testador celula
+
+ajuda:          ## lista os alvos (é o alvo padrão)
+	@echo "Alvos da raiz — fachada de ci/ci.py:"
+	@echo "  make doctor            o ambiente consegue executar o trabalho?"
+	@echo "  make ci                a mudanca respeita as invariantes?"
+	@echo "  make freeze            so o freeze de contrato (todas as celulas)"
+	@echo "  make muralhas          so cerca + orcamento + segredos"
+	@echo "  make testador          so a suite adversarial do proprio portao"
+	@echo "  make celula CELULA=x   os portoes de repositorio + o make ci da celula"
+	@echo ""
+	@echo ""
+	@echo "O freeze roda o exportador de cada celula, entao 'make ci' espera o"
+	@echo "mesmo ambiente que .github/workflows/ci-celula.yml declara (ARMADILHAS.md §2)."
+	@echo "Sem essas variaveis o freeze devolve ERROR, nao PASS — de proposito."
+	@echo ""
+	@echo "Sem make na maquina? Os mesmos caminhos, oficiais e equivalentes:"
+	@echo "  $(PYTHON) ci/doctor.py"
+	@echo "  $(PYTHON) ci/ci.py"
+	@echo "  $(PYTHON) ci/contract_freeze.py"
+
+ci:             ## roda todos os portoes de repositorio
+	$(PYTHON) ci/ci.py
+
+doctor:         ## diagnostica o ambiente (read-only, idempotente)
+	$(PYTHON) ci/doctor.py
+
+freeze:         ## contrato vivo x contrato congelado, em todas as celulas
+	$(PYTHON) ci/contract_freeze.py
+
+muralhas:       ## cerca de celula + orcamento de mudanca + guarda de segredos
+	$(PYTHON) ci/ci.py --apenas muralhas
+
+testador:       ## a suite que prova que o freeze reprova quando deve
+	$(PYTHON) ci/ci.py --apenas testador
+
+celula:         ## make celula CELULA=pagamentos
+	@test -n "$(CELULA)" || { echo "ERROR: informe CELULA=<nome>"; exit 2; }
+	$(PYTHON) ci/ci.py --celula $(CELULA)
