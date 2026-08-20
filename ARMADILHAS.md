@@ -309,6 +309,38 @@ testes, inclusive cacheando o 404.
 fixture `autouse` antes e depois de cada teste.
 **Origem:** Prompt 4 (checkout).
 
+### 4.8 Guarda de idempotência do R4 (`IntegrityError` do dedup) quebra o teste seguinte
+
+**Sintoma:** `TransactionManagementError: An error occurred in the current
+transaction. You can't execute queries until the end of the 'atomic' block` numa
+query **depois** de um `except IntegrityError:` que já tinha capturado a exceção
+certa — o `except` roda, mas a próxima linha (mesmo um `.count()` de asserção)
+estoura.
+**Causa:** o padrão de dedup do R4 (`try: EventoProcessado.objects.create(...)
+except IntegrityError: ...`) captura a exceção, mas não desfaz o estado "transação
+abortada" que o Postgres deixa depois de um erro dentro de uma transação aberta.
+`pytest-django` embrulha cada teste numa transação (`@pytest.mark.django_db`), e é
+aí que aparece — o comando `consume_eventos` em produção roda em autocommit, sem
+transação explícita ao redor do loop, e por isso nunca reproduz o sintoma lá.
+**Solução:** todo INSERT usado como guarda de idempotência precisa do próprio
+savepoint:
+
+```python
+try:
+    with transaction.atomic():
+        EventoProcessado.objects.create(event_id=envelope["event_id"])
+except IntegrityError:
+    return False
+```
+
+**Nota sobre a receita:** o R4 em `CAMINHO-DOURADO.md` não mostra esse `atomic()`
+— funciona em produção por acidente de ambiente (autocommit), não por design. Toda
+célula que testar o handler de R4 diretamente (chamando a função, não só via loop
+do Redis) precisa do savepoint, senão o teste de reentrega quebra na segunda
+asserção, não na primeira.
+**Origem:** Prompt leads (timeline por evento), ao escrever o teste-guarda de
+`event_id` duplicado.
+
 ---
 
 ## §5 — Portões mecânicos do CI (eles reprovam de verdade)

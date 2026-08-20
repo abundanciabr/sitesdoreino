@@ -15,18 +15,11 @@ def token_valido(settings):
     return "token-de-teste"
 
 
-@pytest.mark.parametrize(
-    "path",
-    [
-        "/api/leads/leads",
-        "/api/leads/leads/lead-1/tags",
-    ],
-)
-def test_superficie_da_api_ainda_nao_implementada(client, token_valido, path):
-    """Fase 0 — esqueleto: a superfície existe (espelha o contrato congelado),
-    mas os handlers ainda respondem 501 (regra de negócio real é fora de escopo)."""
+def test_tags_ainda_nao_implementado(client, token_valido):
+    """addTags é fora do escopo desta sessão (mission: só POST /leads + consumer);
+    a superfície existe (espelha o contrato congelado), o handler responde 501."""
     resp = client.post(
-        path,
+        "/api/leads/leads/lead-1/tags",
         data="{}",
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {token_valido}",
