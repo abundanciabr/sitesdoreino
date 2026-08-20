@@ -1,0 +1,4 @@
+# .sh precisa de LF sempre — CRLF quebra o shebang e heredocs quando o script
+# roda dentro de um container Linux ou é chamado via `bash arquivo.sh` depois
+# de um checkout com core.autocrlf=true (comum em máquina Windows).
+*.sh text eol=lf

@@ -1,5 +1,6 @@
 arquivos/
 deploy_ci
 infra/env/*.env
+e2e/.env.e2e
 __pycache__/
 .pytest_cache/

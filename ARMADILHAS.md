@@ -59,6 +59,7 @@ para sempre.
 | H2 | ~~`make` instalado mas invisível para o Bash do agente ⇒ todo comando virava `bash -lc`~~ | Pasta do `make` no PATH **do usuário** (Windows) | ✅ **resolvido 19/08/2026** — `make` roda direto, sem `-l` e sem `export PATH` |
 | H3 | **Nenhum check é obrigatório para mergear.** Medido em 19/08/2026: a API responde `Upgrade to GitHub Pro or make this repository public` (HTTP 403). Todos os portões podem estar vermelhos e o botão de merge continua funcionando; `.githooks/pre-push` só barra push direto para `main` **desta** máquina, e não vê merge feito pelo site | GitHub Pro (~US$4/mês) **ou** tornar o repositório público — as duas liberam required checks | 🔴 aberto — issue `mecanizar:` #1 · é o que impede afirmar "CI fail-closed global" (ver [INV-CI01]) |
 | H4 | Docker Desktop frio no início da sessão custa 1–2 min parados | Deixar o Docker Desktop iniciar junto com o Windows | 🔴 aberto |
+| H5 | `make esqueleto` local para no elo "cobrança": a intent Pix chama a API REAL da Mercado Pago (`services/pagamentos/pagamentos/providers/mercadopago/client.py`, `_BASE_URL` fixo, sem modo mock) mesmo em dev — só o webhook é simulado (ESQUELETO-QUE-ANDA.md). Sem uma credencial sandbox de verdade, a MP responde erro e a intent fica com `provider_payment_id` vazio | Credencial `MP_ACCESS_TOKEN` (TEST-... sandbox real, nunca APP_USR-) de uma conta Mercado Pago Developers, colocada em `e2e/.env.e2e` (git-ignorado — ver `e2e/.env.e2e.exemplo`) | 🔴 aberto — sem ela, `e2e/esqueleto.sh` para no elo 4 ("cobrança") com mensagem clara; elos 1-3 (seed/sessão/pedido) já rodam verdes contra containers reais |
 
 **Como manter esta tabela:** ao encontrar um atrito novo cuja correção definitiva não
 está nas suas mãos, acrescente uma linha (`H5`, `H6`…) e **diga isso no relatório final
@@ -219,6 +220,33 @@ em `ci/ci.py` e `bash_utilizavel()` em `ci/tests/conftest.py`: cada candidato ro
 `bash -c "printf sondagem-ok"` antes de ser aceito. Vale como regra geral em portão de
 CI: presença no PATH não é prova de que funciona.
 **Origem:** PR #22.
+
+### 3.11 `psql` num script de `docker-entrypoint-initdb.d/` conecta no banco errado
+
+**Sintoma:** `FATAL: database "dev" does not exist` dentro do log do container
+Postgres, mesmo com o container saudável e o `POSTGRES_DB` configurado.
+**Causa:** `psql --username dev` **sem** `--dbname` tenta conectar num banco com o
+MESMO NOME do usuário (`dev`) — comportamento padrão do cliente `psql`, não tem nada
+a ver com `POSTGRES_DB` (`dev_db`), que só existe porque a imagem oficial cria esse
+banco específico no boot.
+**Solução:** em qualquer script de init que crie bancos adicionais (ex.: um Postgres
+compartilhado por várias células num compose de e2e), passe sempre
+`--dbname "$POSTGRES_DB"` explicitamente.
+**Origem:** `e2e/postgres-init.sh` (despacho e2e/esqueleto — Postgres compartilhado
+criando `catalogo_db`/`checkout_db`/`pagamentos_db`/`alunos_db`).
+
+### 3.12 CRLF num `.sh` comitado a partir do Windows quebra dentro de container Linux
+
+**Sintoma:** nada quebra localmente (o Git Bash tolera), mas o mesmo script rodando
+dentro de um container Linux (ou clonado num runner Linux) falha com erros
+estranhos de shebang ou parsing.
+**Causa:** `core.autocrlf=true` (comum em máquina Windows) reescreve `.sh` para CRLF
+no working tree; sem uma regra explícita, o `\r` pode entrar no blob comitado.
+**Solução:** `.gitattributes` com `*.sh text eol=lf` na raiz do repo — força LF no
+blob independente do `core.autocrlf` de quem commitou. Confira sempre com
+`git show :<arquivo> | grep -c $'\r'` (deve dar 0) antes de considerar um `.sh`
+pronto.
+**Origem:** `e2e/esqueleto.sh` e `e2e/postgres-init.sh` (despacho e2e/esqueleto).
 
 ## §4 — Django e django-ninja
 
@@ -647,3 +675,6 @@ arquivo com a ferramenta de escrita em vez de heredoc. Vale para qualquer par an
 | `seed_esqueleto` do catalogo usa env `DOMINIO_OPERACOES` com fallback hardcoded, em vez do `--host` obrigatório que o card do painel pedia | sem decisão do mantenedor |
 | Proteção de branch nativa do GitHub exige plano Pro; hoje o fallback é `.githooks/pre-push` | issue `mecanizar:` #1 |
 | Relay do outbox (Huey → Redis Streams, R3) ainda não instanciado no checkout — o evento é gravado transacionalmente, mas ninguém publica | Fase D, despacho seguinte |
+| **alunos não tem consumer de `pagamento.aprovado`** (nenhum `management/commands/consume_eventos`) e `POST /matriculas` + `GET /alunos/{email}/matriculas` são stubs `501` (`apps/core/api.py`, comentário "Fase 0 — todo handler responde 501"). `e2e/esqueleto.sh` chega até aqui verde (seed→sessão→pedido→cobrança→webhook→outbox→relay todos ✅, confirmados rodando de verdade) e falha exatamente neste elo, de propósito — é o gap real, não um bug do script | despacho dedicado à célula alunos (Fase D) — descoberto/confirmado por e2e/esqueleto.sh |
+| **checkout não consome `pagamento.aprovado`** — `GET /api/checkout/pedidos/{id}.status` nunca sai de `aguardando_pagamento` (nenhum consumer, nenhum webhook recebido de pagamentos; a doc do endpoint promete atualização "pelos eventos pagamento.aprovado/recusado" mas o mecanismo não existe). `e2e/esqueleto.sh` faz essa checagem como diagnóstico não-bloqueante (fora do caminho numerado do ESQUELETO-QUE-ANDA.md) e sempre mostra o status parado | despacho dedicado à célula checkout — mesma família do item de relay acima |
+| **pagamentos não valida o status HTTP da resposta da Mercado Pago ao criar uma intent Pix** — `pagamentos/core/gateway.py:_traduzir_resposta_pix` lê `resposta.get("id", "")` sem checar se a chamada deu certo; `MercadoPagoClient._post` só levanta `MercadoPagoError` para `status_code >= 500`. Com uma credencial inválida (401/4xx), a MP responde erro e a intent é criada silenciosamente com `provider_payment_id` vazio, e a API devolve `201` como se tivesse dado certo. Descoberto rodando `e2e/esqueleto.sh` com um `MP_ACCESS_TOKEN` de exemplo (ver ARMADILHAS.md §1 H5) | despacho dedicado à célula pagamentos — validar `resp.status_code` antes de traduzir a resposta |
