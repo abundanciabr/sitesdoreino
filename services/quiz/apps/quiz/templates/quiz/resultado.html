@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seu resultado — {{ quiz.title }}</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #f5f5f5; }
+  main { max-width: 480px; margin: 0 auto; padding: 1.5rem 1rem; text-align: center; }
+  h1 { margin-bottom: .5rem; }
+  .descricao { color: #444; }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{ banda.title|default:submissao.result_key }}</h1>
+  {% if banda %}<p class="descricao">{{ banda.description }}</p>{% endif %}
+</main>
+</body>
+</html>
