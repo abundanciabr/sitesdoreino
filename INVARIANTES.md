@@ -185,6 +185,8 @@ do que foi medido.
 | detecção de escopo + gate terminal (`ci-celula.yml`) | workflow `ci-celula` | **sim** |
 | runner canônico (`ci/ci.py`) | local, `make`, workflow | **sim** |
 | `contrato-check` dos 8 `services/*/Makefile` | `make ci` da célula | **não** — decide pelo disco em vez do manifesto (mitigado: a auditoria do manifesto roda em `muralhas` a cada PR) |
+| merge guardado (`ci/mergear.py`) | terminal, antes do merge | **sim** — recusa check vermelho, ausente ou pulado sem declaração |
+| alarme da `main` (`alarme-main.yml`) | GitHub, após push na main | **não é portão** — avisa depois; modo de falha é "não avisou" |
 | **branch protection** | GitHub | **não existe** — ver abaixo |
 
 #### A cadeia de merge não está fechada
@@ -204,6 +206,14 @@ máquina — e não bloqueia merge de PR pela interface do GitHub.
 Enquanto isso não mudar, o estado honesto é **núcleo fail-closed concluído, CI
 global ainda parcial**. A mecanização está registrada na issue `mecanizar:` do
 RITOS.md §2.
+
+Em 20/08/2026 a decisão de custo foi tomada de forma consciente: o repositório
+segue privado e sem plano pago enquanto o projeto não fatura. Em troca foram
+construídos dois degraus grátis da Escada da Imposição (RITOS.md §2):
+`ci/mergear.py`, que recusa mergear PR com check vermelho quando o merge sai do
+terminal, e o workflow `alarme-main`, que abre issue se a `main` quebrar. Nenhum
+dos dois impede o clique no botão do site — e chamá-los de proteção seria a
+mesma mentira que este invariante existe para eliminar.
 
 ---
 
