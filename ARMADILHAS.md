@@ -309,6 +309,37 @@ testes, inclusive cacheando o 404.
 fixture `autouse` antes e depois de cada teste.
 **Origem:** Prompt 4 (checkout).
 
+### 4.8 `IntegrityError` capturado sem savepoint quebra a transação do teste inteira
+
+**Sintoma:** um `except IntegrityError:` que deveria simplesmente ignorar uma
+duplicata (dedup por `unique=True`, padrão da Receita R4) funciona isolado, mas a
+**query seguinte** — no mesmo teste, ou até um teste depois que reusa a conexão —
+estoura `django.db.transaction.TransactionManagementError: An error occurred in the
+current transaction. You can't execute queries until the end of the 'atomic' block.`
+**Causa:** `Model.objects.create(...)` dentro de um `try/except IntegrityError` sem
+`transaction.atomic()` próprio roda na transação corrente inteira (a que o
+`pytest.mark.django_db` já abriu para o teste). Quando o INSERT viola a constraint
+`UNIQUE`, o Postgres marca **essa transação inteira** como abortada — o Django só
+descobre isso na tentativa de query seguinte, não na hora do `except`.
+**Solução:** todo `create()` que pode legitimamente colidir com uma constraint única
+(dedup de evento, corrida de criação idempotente) precisa do próprio savepoint:
+
+```python
+try:
+    with transaction.atomic():          # savepoint — só ISTO é desfeito no IntegrityError
+        EventoProcessado.objects.create(event_id=envelope["event_id"])
+except IntegrityError:
+    return
+```
+
+**Atenção — a Receita R4 em `CAMINHO-DOURADO.md` (bloco `apps/eventos/management/
+commands/consume_eventos.py`) mostra o `create()` sem esse `with transaction.atomic()`
+aninhado.** Reproduz o bug assim que dois eventos (ou o mesmo evento 2×) passarem pelo
+mesmo teste. Quem copiar a receita ao pé da letra herda o bug — considere `issue
+arquitetura:` para corrigir a receita na fonte.
+**Origem:** alunos (matrícula por evento, R4/INV-P5) — descoberto ao escrever o
+teste-guarda de reentrega de `event_id`.
+
 ---
 
 ## §5 — Portões mecânicos do CI (eles reprovam de verdade)
