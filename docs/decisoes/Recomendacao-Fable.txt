@@ -1,0 +1,111 @@
+Vou responder como consultor externo, na ordem que você pediu.
+
+---
+
+## Veredito antes de tudo
+
+O problema do seu projeto **não é a arquitetura**. É que o aparato de governança começou a **descrever um sistema que não existe**.
+
+Você mesmo escreveu a prova: *"o teste de ponta a ponta não roda no CI — só manualmente, quando eu lembro — apesar da minha própria documentação afirmar que roda a cada PR."* E: dos 4 critérios de aceite do esqueleto, 1 foi cumprido, e a etapa seguiu adiante mesmo assim.
+
+Para um dono que **não lê código**, a documentação não é documentação — é o painel de instrumentos. É o único órgão sensorial que você tem. E um instrumento seu está mentindo. Isso é categoricamente mais grave do que qualquer dívida técnica da sua lista, porque contamina a confiança em *todo o resto* que está marcado como "concluído".
+
+---
+
+## 1. Você está super-construindo?
+
+**A arquitetura: não.** As 8 células isoladas com negação no nível do Postgres são defensáveis — não por escala (você não tem escala), mas porque o raio de explosão dos *seus agentes* é o seu risco real, e você resolveu isso mecanicamente. Isso é engenharia legítima para o seu modo de produção.
+
+**A governança: sim, e a linha é nítida.**
+
+> **A linha está entre garantia mecanicamente imposta e garantia escrita em prosa.**
+
+- Postgres negando acesso cruzado: **mecânico**. Vale ouro. Mantenha.
+- Guarda de segredos, orçamento de 15 arquivos, 1 PR = 1 célula: **mecânico**. Mantenha.
+- Constituição da plataforma + constituição por célula + ritos + doc de armadilhas: **prosa**. Um agente obedece isso se e enquanto couber no contexto dele e ele quiser.
+- Portões de CI **sem proteção de branch**: prosa fantasiada de mecânica. Pior que nada — produz confiança sem produzir garantia.
+
+E há um custo que você provavelmente não contabilizou: **cada documento de governança consome janela de contexto de todo agente, em toda sessão.** Governança demais literalmente degrada o desempenho do agente. Teste isso hoje: no fim de uma sessão, peça ao agente para recitar os 12 invariantes de dinheiro sem consultar. Se ele não conseguir, eles não estão operantes — estão decorativos.
+
+**Red-team de 15 golpes pré-receita: isso é super-construção pura.** Você está otimizando contra um adversário que ainda não existe. Seus adversários reais hoje são três: seus próprios agentes, os casos de borda do Mercado Pago, e o silêncio do mercado. Nenhum deles é atacante.
+
+---
+
+## 2. Ordem recomendada
+
+Sua lista tem um erro de premissa: (c) está apresentada como excludente de (a). Não é. E falta o item que eu colocaria em primeiro.
+
+**Hoje, 30 minutos — o portão que importa:**
+Você não consegue impedir um merge ruim. Mas **consegue impedir um deploy ruim**, e é o deploy que machuca cliente. Pegue aquele comando que confere os checks antes do merge e **mova-o para dentro do pipeline de deploy, como bloqueio obrigatório**: consultar a API de checks do commit; se não estiver verde, abortar. Isso é grátis, é mecânico, e cobre o buraco onde ele realmente dói. Instrução para o agente, uma sessão.
+
+**Hoje também, sem deliberar:** pague os US$4. Detalhes no item 4.
+
+**Semana 1 — reparo de honestidade (não é dívida técnica, é reparo de instrumento):**
+1. Colocar o E2E no CI. E depois **varrer a documentação atrás de outras afirmações que não são verdade.** Se uma mentiu, presuma que outras mentem.
+2. Corrigir os dois bugs de dinheiro. O de `pagamentos` (201 falso com credencial inválida) não é dívida — é um bug que faz o sistema dizer ao cliente que a cobrança existe quando não existe. Isso é falha voltada ao cliente.
+3. Corrigir o relay de `checkout`, ou remover o evento órfão. Evento que nasce parado é armadilha esperando alguém confiar nele.
+
+**Semana 2 — fechar o esqueleto de verdade (sua opção (a)):**
+Rodar na VPS + **teste cronometrado de rollback**. Se eu pudesse escolher um único item desta lista inteira, seria o rollback. É a sua única superpotência real: quando quebrar às 23h no meio de um lançamento e você não puder ler o código, a única jogada disponível é voltar. Se ela nunca foi cronometrada, você não tem jogada nenhuma.
+
+**Semana 3 — primeira venda real, mas em modo concierge.** Ver item 3.
+
+**Red-team (b): adiado indefinidamente.** Dos 10 restantes, mantenha apenas os que mapeiam diretamente para um dos 12 invariantes de dinheiro. Os outros, apague. Eles não vão bloquear o lançamento.
+
+---
+
+## 3. O mínimo inegociável antes de aceitar dinheiro real
+
+Bloqueadores de verdade — todos são "cliente paga e algo ruim acontece":
+
+1. **Uma consulta que responde "quem pagou e não recebeu acesso".** Não está na sua lista. É a coisa mais importante que falta. Sem isso você não descobre a falha — o cliente descobre por você, no WhatsApp, irritado.
+2. **Uma ação manual de conceder acesso.** Duas linhas no admin. Transforma catástrofe em aborrecimento.
+3. **Os dois bugs de dinheiro corrigidos.**
+4. **Backup automático do banco de pedidos/pagamentos, com restauração testada uma vez.** Você não mencionou backup em nenhum lugar do documento. Se esse Postgres sumir, você não consegue provar quem comprou o quê. É existencial e são 15 minutos de trabalho.
+5. **Rollback cronometrado.**
+6. **Caminho de reembolso funcionando** — inclusive revogar acesso. Não é preferência técnica: CDC Art. 49 dá 7 dias de arrependimento para compra pela internet, sem justificativa. Você precisa conseguir executar isso, mesmo que manualmente pelo painel do Mercado Pago.
+
+**Não bloqueadores, se você assumir o modo concierge:**
+- Provedores de e-mail/WhatsApp em stub: aceitável **se** você mandar o acesso manualmente para os primeiros compradores. Aceitável até uns 20 clientes. Depois vira bloqueador.
+- Mensageria e leads fora do E2E, os 10 golpes restantes, ritos de contrato.
+
+**A recomendação tática que mais reduz a sua superfície de risco: lance só com Pix.** Sem cartão. Você elimina chargeback inteiro, elimina fraude com cartão de terceiros em produto digital de entrega instantânea, elimina metade do caminho de código, e Pix já é a forma dominante de pagamento em infoproduto no Brasil. Cartão entra depois das primeiras 50 vendas. Isso apaga vários itens da sua lista de bloqueadores de uma vez.
+
+---
+
+## 4. Os US$4
+
+**Você está errado, e o erro é instrutivo.**
+
+"Não faturou, não gasto" é disciplina boa aplicada no lugar errado. Você gastou semanas de tempo de agente construindo um sistema de portões — e depois recusou a fechadura de US$4 que faz os portões significarem alguma coisa. Isso não é frugalidade; é **inversão de custo afundado**: pagou caro pela parte cara e economizou na parte barata que ativa a parte cara.
+
+Uma venda de curso paga um ano de GitHub Pro. Isso não é decisão financeira, é regra de identidade — e regras de identidade merecem ser examinadas quando começam a custar mais do que poupam.
+
+**Sobre alternativa gratuita: não existe dentro do GitHub.** Verifiquei. Proteção de branch em repositórios privados exige Pro, Team ou Enterprise; nos planos gratuitos ela só vale em repositórios públicos. Rulesets seguem exatamente a mesma regra — públicos no Free, privados só a partir do Pro. Então as opções reais são duas:
+
+- **Pagar Pro.** Recomendo. É a resposta certa e você para de pensar nisso.
+- **Tornar o repositório público.** Genuinamente viável — segredo nenhum deveria estar no repo (você tem guarda de segredos), e ninguém ganha vantagem competitiva lendo seu Django. Se for por esse caminho: rode `gitleaks` ou `trufflehog` no **histórico completo** antes de virar a chave, e rotacione qualquer credencial que aparecer.
+
+Mas registre o ponto principal: **os US$4 não são o conserto de verdade.** O conserto de verdade é o portão no deploy (item 2). Faça os dois — um é defesa em profundidade do outro.
+
+---
+
+## 5. O que você não perguntou
+
+**a) O gargalo provavelmente não é a plataforma.**
+Você está pré-receita e tratando infraestrutura como se fosse o caminho crítico até o primeiro real. Mas você mesmo já diagnosticou, nos dados de Meta Ads, uma taxa de checkout→compra criticamente baixa. Isso é evidência de que o gargalo mora em oferta, tráfego e conversão — não em arquitetura de células. Um checkout melhor não conserta uma oferta fraca.
+
+Pergunta desconfortável: **você precisa desta plataforma para vender?** Se a Lívia já tem histórico de lançamento, ela lançou em *alguma coisa* — Hotmart, Kiwify, link de pagamento. Se sim, a plataforma não é acesso ao mercado; é margem, controle e, eventualmente, produto próprio. Tudo isso é real, mas nenhum é urgente do jeito que faturamento é urgente. **Valide a demanda com link de pagamento e Drive antes de terminar a plataforma, não depois.**
+
+**b) Fator ônibus = 1, e esse 1 não programa.**
+Se você adoecer um mês, ou perder a conta, ou o ferramental de agente mudar, o sistema não tem segundo operador. Recomendação contra-intuitiva mas que eu defendo com convicção: **gaste dinheiro em um humano competente para auditar as células `checkout` e `pagamentos` — uma vez, algumas horas.** Uma auditoria paga por um dev brasileiro sênior vale mais que os 10 golpes restantes do red-team, e provavelmente custa menos que o tempo de agente que você gastaria neles.
+
+**c) Você virou o comerciante de registro.**
+Ao hospedar o próprio checkout com Mercado Pago como gateway, chargeback, MED do Pix, emissão de nota fiscal e disputa caem em você — não numa plataforma que absorve isso. É um custo real de auto-hospedar que raramente entra na conta. Some LGPD: você coleta leads em vários domínios, o que exige política de privacidade, base legal e caminho de exclusão. Não urgente com 10 clientes; urgente rápido depois.
+
+**d) Reaudite tudo que está marcado "concluído".**
+"As 8 células nascem vazias com CI verde — concluída" é uma barra muito baixa chamada de conclusão. O esqueleto foi tratado como avançado com 1 de 4 critérios. O sistema que você construiu para se manter honesto **não te manteve honesto nessa ocasião**. Faça uma passada única relendo cada "concluída" contra os critérios de aceite que ela mesma declarou. Vai ser desagradável. É exatamente o que você pediu.
+
+---
+
+**Resumo de uma linha:** pare de construir muralha, conserte o instrumento que está mentindo, torne o rollback e o backup reais, lance só com Pix em modo concierge para dez pessoas — e descubra se alguém quer comprar antes de gastar mais um mês provando que a plataforma aguentaria se quisessem.

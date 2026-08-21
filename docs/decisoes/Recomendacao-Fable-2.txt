@@ -1,0 +1,56 @@
+Vou direto: o maior risco do seu projeto hoje não é falta de muralha — é muralha pintada. Você tem portões que não impedem o merge, documentação que afirma um CI que não roda, dois bugs conhecidos no caminho do dinheiro que não entraram na fila de prioridade, e um mercado que nunca foi tocado. Nada disso exige mais construção; exige tornar verdadeiro o que já existe. Respondo na ordem.
+
+## 1. Você está super-construindo?
+
+Em parte sim, mas não onde você imagina. A arquitetura de 8 células é mais do que o estágio pede — um monólito teria chegado ao mercado meses antes. Só que ela está construída, é custo afundado, e tem um mérito real no seu modelo de operação: limita o raio de explosão de qualquer sessão de agente. Não mexa nela.
+
+O aparato de governança eu defendo com uma ressalva importante. Constituições, invariantes e portões mecânicos não são elaboração vaidosa no seu caso — são o substituto racional da revisão de código que você não consegue fazer. Um dono não-programador comandando agentes *precisa* de controles que mordem sozinhos. O problema é de sequenciamento: você adicionou camadas de garantia mais rápido do que verificou as garantias existentes. Red-team de 15 golpes enquanto a proteção de branch está desligada é simular arrombadores com a porta da frente destrancada.
+
+A linha que você pediu: um controle novo só se justifica se **morde mecanicamente** (impede, não avisa) e protege o caminho do dinheiro ou delimita agentes. Se o resultado é um documento, um rito ou uma simulação, é elaboração. Regra prática daqui em diante: pare de adicionar controles; passe a auditar se os que existem são reais. O custo do excesso não é o tempo gasto — é a falsa confiança. O e2e "que roda a cada PR" e não roda é a prova viva.
+
+## 2. Qual a próxima coisa, e em que ordem
+
+A sua lista de opções tem uma omissão reveladora: consertar os dois bugs conhecidos do caminho do dinheiro não está no menu. Você os registrou como dívida e seguiu construindo muralha nova. Essa omissão é, na prática, a resposta da pergunta 1.
+
+Ordem recomendada:
+
+1. **Hoje, opção (d)**: pague os US$4 e ligue a proteção de branch com os checks obrigatórios nomeados (seus portões de CI), exigência de PR, e revisão obrigatória nos caminhos sensíveis. Detalhe técnico que muda tudo: o GitHub não deixa o autor aprovar o próprio PR. Crie uma conta-máquina para os agentes — eles autoram os PRs, você aprova. Isso faz a exigência de revisão morder de verdade e ainda gera trilha de auditoria separando ação de agente de decisão humana. Uma hora de trabalho.
+2. **Consertar os dois bugs + e2e no CI** (tarefas de tamanho perfeito para agente): (i) na célula pagamentos, tratar como falha qualquer resposta de criação de cobrança com status HTTP inesperado ou payload sem os campos mínimos, com teste-guarda cobrindo credencial inválida — considere promover isso a invariante nº 13: "resposta de provedor só vira sucesso interno após validação de status e payload"; (ii) mapear os consumidores do evento "pedido criado" — se nenhum estiver no caminho do dinheiro, registre como não-bloqueador e implemente o relay depois; se o relay for cópia trivial do padrão das outras células, faça na mesma sessão; (iii) colocar o e2e no CI e corrigir a documentação que mente sobre isso.
+3. **Opção (a)**: fechar o esqueleto — VPS com cartão de teste e webhook real, e o ensaio cronometrado de rollback. Seus próprios critérios de aceite estavam certos; cumpra-os. No ensaio de rollback, inclua o cenário com migração de banco no meio do caminho — é onde rollbacks de 5 minutos viram de 5 horas. Política mínima: migrações sempre retrocompatíveis (expand/contract).
+4. **Opção (c)**: um domínio, um curso, primeira venda. Não é "parar tudo e lançar" — é lançar depois dos passos 1–3, que executados por agentes são dias, não meses.
+5. **Opção (b), adiada**: dos 10 golpes restantes, incorpore ao checklist do passo 3 apenas os que atacam webhook/cobrança; o resto espera o primeiro cliente existir.
+
+Trilha paralela de negócio, que não estava nas suas opções: você pode testar demanda esta semana com custo zero de código, usando um link de pagamento hospedado do Mercado Pago e matrícula manual. Seu primeiro real não precisa passar pelo seu código. Isso também força cedo os mínimos legais e operacionais da pergunta 3. E uma pergunta que seu documento inteiro não responde: o conteúdo dos cursos existe e está pronto? Se não, o caminho crítico do projeto não é técnico.
+
+## 3. Mínimo inegociável antes de dinheiro real
+
+Bloqueadores — sem estes, não cobre ninguém:
+
+- Proteção de branch ligada (é a integridade de todos os outros controles).
+- Bug do status HTTP corrigido com teste-guarda (é o bug que faz um cliente real ver um Pix que não existe).
+- E2e rodando no CI, verde.
+- O caminho completo na VPS com webhook real assinado (sandbox local verde não prova certificado, URL e assinatura em produção).
+- Rollback ensaiado em menos de 5 minutos. Para um operador solo não-programador, reverter *é* a sua única resposta a incidente; se a primeira vez for sob estresse, vira evento reputacional.
+- **Backup automático dos bancos + um restore testado.** Isso não está em lugar nenhum do seu documento. Rollback de código não devolve dados, e você tem 8 Postgres para proteger, não um.
+- Reconciliação mínima: um script diário que cruza pedidos pagos no Mercado Pago × cobranças × matrículas concedidas e te avisa de divergência; mais um procedimento manual escrito de reembolso e um canal de suporte que chega em você.
+- Mínimo legal: termos de compra, política de privacidade (LGPD) e reembolso honrando os 7 dias de arrependimento do CDC. Defina também como você recebe (PF ou PJ) antes da primeira venda, não depois.
+
+Podem esperar: relay do checkout (se o rastreio confirmar que só alimenta funil), provedores reais de e-mail/WhatsApp, cobertura de leads/mensageria no e2e, golpes restantes, multi-site. Uma ressalva no item dos provedores: se o e-mail de acesso do aluno é stub, defina explicitamente quem entrega o acesso ao comprador nº 1 e em quanto tempo. Atendimento manual "concierge" para os primeiros clientes é aceitável e até bom — comprador pagante sem acesso não é.
+
+## 4. A decisão dos US$4
+
+Discordo, e discordo também do enquadramento. Isso não é despesa a adiar até faturar; é o mecanismo que torna reais todos os outros controles — e seu valor é máximo exatamente *antes* da primeira transação real, quando dá para instalar com calma em vez de durante um incêndio. A inversão é gritante: você investiu dias em 12 invariantes e 15 golpes e recusou o controle mais barato do sistema inteiro, o único que impede portão vermelho de virar merge. Uns R$20 por mês contra "código não revisado no caminho de pagamento chegando à main" não é um trade-off de verdade. E se R$20 mensais forem decisão difícil, o projeto tem um problema de fôlego que nenhuma arquitetura resolve — vale encarar essa conversa também.
+
+Alternativas gratuitas, avaliadas com honestidade: repositório público resolve tecnicamente, mas publicaria seu documento de armadilhas e suas dívidas conhecidas — um mapa dos seus buracos abertos, incluindo o bug do 201, para uma base de código que mexe com pagamento e é operada por uma pessoa só. Má ideia aqui. GitLab no plano gratuito tem branch protection nativa em repositório privado, mas a migração custa muito mais atenção do que US$4. Seu paliativo atual (script + alarme) é mitigação, não controle: nada impede o clique. Conclusão: pague hoje.
+
+## 5. O que você não perguntou
+
+**Risco de mercado.** É o maior de todos e está ausente do documento. Todos os 15 golpes modelam atacantes; nenhum modela a ausência de compradores. O modo de falha mais provável deste projeto não é webhook furado — é lançar perfeito e não vender. O teste custa zero código (item da trilha paralela acima).
+
+**Deriva entre documentação e realidade como risco sistêmico.** Num repositório operado por agentes, documento falso não é cosmético — é contexto corrompido que os agentes tratam como verdade e propagam em decisões. A alegação falsa sobre o e2e é o caso um. Regra a instituir: toda afirmação de comportamento automatizado nos docs referencia o job de CI que a prova. Tarefa de agente imediata: varrer os documentos por alegações de automação, mapear cada uma a um job real, e corrigir ou marcar as órfãs.
+
+**Operação às 2 da manhã.** 8 processos e 8 bancos numa VPS é superfície de monitoramento, e o plantonista é você. Mínimo antes do primeiro cliente: monitoramento externo de disponibilidade com alerta no seu celular e um script único de "estado do sistema".
+
+**O padrão a vigiar em você mesmo.** Duas vezes você aceitou o simulacro de um controle: o script no lugar da proteção de branch, e a documentação no lugar do CI. Controle que não morde é pior que controle ausente, porque compra confiança sem comprar segurança — e a premissa inteira do seu modelo (não-programador operando com segurança via agentes) depende de controles que mordem mecanicamente. Guarde essa premissa com mais ferocidade do que guarda as muralhas.
+
+O resumo executivo em uma frase: pague os US$4 hoje, gaste uma semana tornando verdadeiro o que seus documentos já afirmam, feche o esqueleto nos seus próprios critérios, e coloque um curso à venda em um domínio — o resto espera o primeiro cliente existir.
