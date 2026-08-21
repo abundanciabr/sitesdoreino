@@ -57,7 +57,7 @@ para sempre.
 |---|---|---|---|
 | H1 | ~~`python3` era o stub da Microsoft Store ⇒ `make contrato-check` dava **"OK" falso**~~ | Shim `~/bin/python3` resolveu **a máquina**; o **portão** foi resolvido reescrevendo a lógica em Python, fail-closed por construção (PR #21 endureceu o Bash, PR #22 tirou a medição do Bash) | ✅ **resolvido 19/08/2026** — provado nos três estados: igual ⇒ PASS, divergente ⇒ FAIL, instrumento quebrado ⇒ ERROR (§3.2) |
 | H2 | ~~`make` instalado mas invisível para o Bash do agente ⇒ todo comando virava `bash -lc`~~ | Pasta do `make` no PATH **do usuário** (Windows) | ✅ **resolvido 19/08/2026** — `make` roda direto, sem `-l` e sem `export PATH` |
-| H3 | **Nenhum check é obrigatório para mergear.** Medido em 19/08/2026: a API responde `Upgrade to GitHub Pro or make this repository public` (HTTP 403). Todos os portões podem estar vermelhos e o botão de merge continua funcionando; `.githooks/pre-push` só barra push direto para `main` **desta** máquina, e não vê merge feito pelo site | GitHub Pro (~US$4/mês) **ou** tornar o repositório público — as duas liberam required checks | 🔴 aberto — issue `mecanizar:` #1 · é o que impede afirmar "CI fail-closed global" (ver [INV-CI01]) |
+| H3 | **Nenhum check é obrigatório para mergear.** Medido em 19/08/2026: a API responde `Upgrade to GitHub Pro or make this repository public` (HTTP 403). Todos os portões podem estar vermelhos e o botão de merge continua funcionando; `.githooks/pre-push` só barra push direto para `main` **desta** máquina, e não vê merge feito pelo site | GitHub Pro **ou** tornar o repositório público — as duas liberam required checks. Confirmado na documentação: **não há caminho grátis** para repo privado (rulesets exigem Team/Enterprise) | 🟡 **mitigado, não resolvido** — decisão de custo adiada de propósito enquanto o projeto não fatura. Enquanto isso: `python ci/mergear.py <PR>` recusa merge com check vermelho, e o workflow `alarme-main` abre issue se a `main` quebrar. Os dois são degraus da Escada da Imposição (RITOS.md §2), não substitutos — ver §5.9. É o que impede afirmar "CI fail-closed global" ([INV-CI01]) |
 | H4 | Docker Desktop frio no início da sessão custa 1–2 min parados | Deixar o Docker Desktop iniciar junto com o Windows | 🔴 aberto |
 
 **Como manter esta tabela:** ao encontrar um atrito novo cuja correção definitiva não
@@ -470,6 +470,36 @@ MERGE PROTECTED  o GitHub EXIGE o check para permitir merge  <- hoje: nenhum
 Dizer "CI verde" quando você só rodou local é a mesma família de erro que este
 documento inteiro combate. Ver a tabela de escopo em `INVARIANTES.md` ([INV-CI01]).
 **Origem:** PR #22.
+
+### 5.9 Como mergear sem required check (e por que existe um comando para isso)
+
+**Contexto:** este repositório não tem required check (§1, H3). O botão verde do
+GitHub funciona com tudo vermelho.
+**O que já custou:** em 19/08/2026 o PR #21 foi mergeado no lugar do #20 — números
+parecidos, recomendações opostas, e nada na tela dizia qual era qual. No mesmo dia, um
+PR com o `muralhas` vermelho seguia mergeável.
+**Solução — prevenção (quando você mergeia pelo terminal):**
+
+```bash
+python ci/mergear.py 22            # confere e pergunta antes
+python ci/mergear.py 22 --conferir # só confere, nunca mergeia
+```
+
+Ele mostra **número e título em destaque**, consulta o estado real de cada check e
+recusa se algo não estiver verde. Pede confirmação digitando o número do PR — não
+"s/n", justamente porque o erro que aconteceu foi de identidade, não de intenção.
+Semântica igual à dos outros portões: reprovou = `FAIL` (1), não consegui consultar =
+`ERROR` (2). **Nenhum check reportado é `ERROR`**, nunca sinal verde: um PR sem check é
+indistinguível de um PR cujos workflows não dispararam.
+
+**Solução — detecção (quando você mergeia pelo site):** o workflow `alarme-main` roda
+as guardas de repositório a cada push na `main` e **abre uma issue** (label
+`main-vermelha`) se elas falharem. É alarme, não portão: avisa depois. O modo de falha
+dele é "não avisou", nunca "aprovou o que não devia".
+
+**O que nenhum dos dois faz:** impedir o clique no site. Só required check faz isso, e
+ele custa dinheiro. Não confunda os três estados ao relatar (ver §5.8).
+**Origem:** decisão de custo consciente, 20/08/2026.
 
 ## §6 — Testes
 

@@ -475,6 +475,34 @@ def test_scripts_de_ci_nao_escondem_erro() -> None:
 # ---------------------------------------------------------------------------
 
 
+def test_workflows_nao_escondem_erro() -> None:
+    """A mesma proibição de `|| true`, agora também nos blocos `run:` do YAML.
+
+    O bypass do `ci-celula` nasceu num `|| true` dentro do YAML, não num `.sh` —
+    o guarda anterior só varria `ci/*.sh` e não teria pego. Aqui a varredura
+    alcança onde o problema de verdade aconteceu.
+    """
+    import yaml as _yaml
+
+    ofensas = []
+    for workflow in sorted((RAIZ_REAL / ".github" / "workflows").glob("*.yml")):
+        doc = _yaml.safe_load(workflow.read_text(encoding="utf-8"))
+        for nome_job, job in (doc.get("jobs") or {}).items():
+            for passo in job.get("steps") or []:
+                script = passo.get("run")
+                if not script:
+                    continue
+                for n, linha in enumerate(script.splitlines(), 1):
+                    if linha.lstrip().startswith("#"):
+                        continue
+                    for padrao in ("|| true", "set +e"):
+                        if padrao in linha:
+                            ofensas.append(
+                                f"{workflow.name}:{nome_job}:{n}: {linha.strip()}"
+                            )
+    assert not ofensas, "padrão de falso positivo em workflow:\n" + "\n".join(ofensas)
+
+
 def test_manifesto_real_e_coerente_com_o_repositorio() -> None:
     """Não roda exportador: só confere declaração × disco.
 
