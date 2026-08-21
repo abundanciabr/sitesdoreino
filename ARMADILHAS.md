@@ -63,6 +63,10 @@ para sempre.
 
 | H6 | `python ci/mergear.py <PR>` confere tudo verde e então falha ao mergear de verdade: `gh pr merge <PR> --merge --yes` estoura `unknown flag: --yes` — o `gh` instalado nesta máquina (`gh version 2.97.0`) não tem essa flag para `pr merge` | Decisão do mantenedor: fixar/atualizar a versão do `gh` que aceita `--yes`, ou trocar a chamada em `ci/mergear.py` para não depender dela (ex.: `gh pr merge <PR> --merge < /dev/null`, que funcionou como contorno — ver §5.9.1) | 🟡 **contornado, não resolvido** — o merge do PR #35 foi concluído chamando o `gh` direto sem `--yes`; `ci/mergear.py` continua quebrando para qualquer agente que rode exatamente o comando que ele mesmo imprime |
 
+| H10 | Duas correções de **código de célula** que o despacho "consumers em produção" só pôde **contornar**, porque `services/**` estava fora do escopo dele — e as duas ficam em caminho CODEOWNERS, logo dependem de você despachar e mergear. **(1) `checkout`:** `GET /healthz` responde **404** com o ambiente de produção — medido em 21/08/2026 (§4.9); o healthcheck dessa célula teve de virar sonda de TCP em `infra/docker-compose.yml`. **(2) `mensageria`:** não existe entrypoint de Huey na célula (§4.10), então o worker sobe por um bootstrap de 6 linhas embutido no `command:` do compose | **(1)** uma linha em `services/checkout/apps/core/middleware.py`: `request.path` → `request.path_info`. **(2)** `huey.contrib.djhuey` em `INSTALLED_APPS` (destrava `manage.py run_huey`) ou um management command próprio. Duas tarefas de célula normais, 1 PR cada, ambas pequenas | 🟡 **contornado, não resolvido** — a plataforma funciona, mas com dois remendos morando na infra; eles saem de lá quando a célula for corrigida (os dois estão comentados no compose apontando para cá) |
+
+| H11 | **`infra/docker-compose.yml` não chega à VPS por pipeline nenhum.** `grep -rn "docker-compose" .github/` só encontra o `cd /opt/plataforma` do deploy: o arquivo é copiado **à mão** (passo 1 da lista final de `infra/provisionamento-vps.sh`). Consequência: todo PR que muda o compose — inclusive o que criou os consumers de evento — **não muda nada em produção** até você copiar o arquivo para lá. Não existe alarme para a divergência entre o compose do Git e o do servidor | Mecanizar: um passo no `deploy-celula` (ou um workflow próprio disparado por `paths: ['infra/**']`) que envie o compose para `/opt/plataforma/` antes do `up`. É a Lei 1 — hoje esta regra está no degrau "documento", o mais fraco da escada | 🔴 aberto — decisão do mantenedor |
+
 **Como manter esta tabela:** ao encontrar um atrito novo cuja correção definitiva não
 está nas suas mãos, acrescente uma linha (`H5`, `H6`…) e **diga isso no relatório final
 da sessão**. Ao ver que um item foi resolvido, marque ✅ com a data e mova o texto para
@@ -393,6 +397,102 @@ teste-guarda de reentrega de `event_id`. **Redescoberto de forma independente** 
 leads (timeline por evento) na sessão seguinte, mesmo sintoma, mesma causa — reforça
 que é falha da receita, não acidente de uma célula: qualquer célula que testar o
 handler de R4 direto (sem passar pelo loop do Redis) bate nisso.
+
+### 4.9 `/healthz` responde 404/500 em produção, mas 200 em dev — `SCRIPT_NAME` + Django 5.0
+
+**Sintoma:** a mesma imagem que devolve `200 {"status": "ok"}` em `GET /healthz`
+localmente devolve **404** (ou 500, se a resolução de site fizer uma chamada HTTP que
+falha) quando sobe com o `env/*.env` de produção. Efeito prático: healthcheck de
+container nunca fica `healthy`, e qualquer serviço com
+`depends_on: condition: service_healthy` **nunca sobe**.
+**Causa:** a isenção do middleware CONV-SITE (§4.5) é escrita como
+`request.path.startswith(("/healthz", "/static/"))`, e `request.path` **inclui o
+script name**. Com `SCRIPT_NAME=/checkout` no env de produção, `FORCE_SCRIPT_NAME`
+faz `request.path` virar `/checkout/healthz` — a isenção não casa, o middleware tenta
+resolver o site a partir do Host `localhost`, não acha, e levanta `Http404`.
+`request.path_info` continua `/healthz` (por isso a URL **resolve** normalmente; quem
+erra é só a comparação).
+
+E depende da versão do Django — as duas convivem neste repositório:
+
+| Django | `ASGIRequest.__init__` | `request.path` com `FORCE_SCRIPT_NAME=/checkout` |
+|---|---|---|
+| **5.0.9** (alunos, catalogo, checkout, leads, pagamentos) | `self.path = script_name.rstrip("/") + "/" + path_info[1:]` | `/checkout/healthz` ⇒ **quebra** |
+| **5.1.4** (funil, mensageria, quiz) | `self.path = scope["path"]` | `/healthz` ⇒ funciona |
+
+Ou seja: a armadilha só dispara onde as **três** coisas coincidem — `SCRIPT_NAME` no
+env, middleware CONV-SITE na célula, e Django 5.0.x. Hoje isso é **só `checkout`**
+(medido nas 8 células em 21/08/2026 com `infra/env/*.exemplo`: 7 respondem 200,
+`checkout` responde 404). `quiz` tem `SCRIPT_NAME` e middleware, mas está em 5.1.4;
+`alunos` tem `SCRIPT_NAME` e 5.0.9, mas não tem middleware. Qualquer uma das três
+muda ⇒ mais uma célula cai, **em silêncio**.
+
+**Solução:** no middleware, comparar `request.path_info`, não `request.path` — é o
+caminho independente de prefixo de gateway. Enquanto a célula não for corrigida
+(ARMADILHAS §1/H10), o contorno em `infra/docker-compose.yml` é sondar o socket TCP
+em vez do HTTP: prova que o `migrate` do `CMD` terminou e o uvicorn subiu, que é tudo
+o que o `depends_on` precisa saber.
+
+**Como medir sem adivinhar** (roda contra a imagem, com o env real da célula):
+
+```bash
+docker run -d --name sonda --env-file infra/env/<celula>.env <imagem>
+docker exec sonda python -c "import urllib.request; print(urllib.request.urlopen('http://localhost:8000/healthz').status)"
+```
+
+⚠ **No Git Bash, passe o env por `--env-file`, nunca por `-e SCRIPT_NAME=/checkout`:**
+o MSYS converte o `/checkout` em `C:/Program Files/Git/checkout` (§3.7) e o teste
+mede outra coisa — foi exatamente isso que fez a primeira rodada desta medição dar
+um resultado sem sentido (`quiz` "passando" por motivo errado).
+
+**De quebra:** `ALLOWED_HOSTS` nos `infra/env/*.exemplo` é decorativo — as 8 células
+têm `ALLOWED_HOSTS = ["*"]` fixo no `config/settings.py` e **não leem** essa variável.
+Por isso a sonda com `Host: localhost` passa mesmo em `catalogo`/`leads`/`mensageria`,
+cujo exemplo diz `ALLOWED_HOSTS=<nome-da-célula>`.
+**Origem:** despacho infra/consumers — ao acrescentar healthcheck ao bloco `x-celula`.
+
+### 4.10 Worker do Huey não executa nada: `TaskRegistry` vazio ou `AppRegistryNotReady`
+
+**Sintoma:** o `huey_consumer.py` sobe e loga
+`The following commands are available:` **sem nada listado** — e nenhuma task jamais
+roda. Trocando o caminho do módulo para o das tasks, o processo nem sobe:
+`django.core.exceptions.AppRegistryNotReady: Apps aren't loaded yet.`
+**Causa:** duas peças que precisam acontecer **nesta ordem** e que o
+`huey_consumer.py` não faz sozinho:
+1. `huey_consumer.py <caminho>` importa **só** o módulo que você nomeou. Apontando
+   para `config.huey.huey`, ele acha a instância do Huey — mas `apps/eventos/tasks.py`
+   nunca é importado, então o `@huey.task` nunca se registra. Registro vazio ⇒ o
+   worker não reconhece nenhuma mensagem da fila.
+2. Apontando para `apps.eventos.tasks.huey` o registro seria preenchido, mas o import
+   estoura antes: `tasks.py` importa models, e model fora de `django.setup()` é
+   `AppRegistryNotReady`. `DJANGO_SETTINGS_MODULE` sozinho **não** resolve — ele
+   configura as settings, não o registro de apps.
+
+Isso só não aparece antes porque `huey.contrib.djhuey` (que traria `manage.py
+run_huey`, que faz o setup e o autodiscover) **não** está em `INSTALLED_APPS`.
+Medido em 21/08/2026, dentro da imagem de `mensageria`; `grep -rn
+"run_huey\|huey_consumer\|djhuey" .` no repositório inteiro não devolve nada — não
+havia comando canônico a copiar.
+
+**Solução (a definitiva):** `huey.contrib.djhuey` em `INSTALLED_APPS` e
+`python manage.py run_huey` — uma linha de `command:`. Enquanto isso não entra
+(ARMADILHAS §1/H10), o contorno que **funciona e está medido** é fazer o bootstrap no
+próprio `command:` do compose, nesta ordem:
+
+```python
+import os, django
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+django.setup()
+import apps.eventos.tasks              # é este import que popula o TaskRegistry
+from huey.bin.huey_consumer import consumer_main
+consumer_main()                        # lê o caminho da instância de sys.argv[1:]
+```
+
+Sinal de que deu certo, no log do worker: a linha
+`+ apps.eventos.tasks.enviar_notificacao` logo abaixo de
+`The following commands are available:`. Se essa linha não aparecer, o worker está
+de pé e inútil — e nada no `docker compose ps` vai dizer isso.
+**Origem:** despacho infra/consumers — ao subir o worker Huey de `mensageria`.
 
 ---
 
@@ -839,4 +939,5 @@ arquivo com a ferramenta de escrita em vez de heredoc. Vale para qualquer par an
 | Relay do outbox (Huey → Redis Streams, R3) ainda não instanciado no checkout — o evento é gravado transacionalmente, mas ninguém publica | Fase D, despacho seguinte |
 | ~~alunos não tem consumer de `pagamento.aprovado`~~ **RESOLVIDO em parte** (PR #26, `agent/alunos/matricula`): hoje existe `apps/eventos/management/commands/consume_eventos.py` + `apps/matriculas/` (models/services/handlers, idempotente por `order_id`, INV-P5) e `POST /matriculas` funciona de verdade. Confirmado rodando ao vivo em `e2e/esqueleto.sh` (container `alunos-consumer` dedicado): o evento `pagamento.aprovado` publicado por pagamentos é consumido e a `Matricula` nasce com `status=ativa` no banco de alunos, ponta a ponta. **O que falta é só** `GET /alunos/{email}/matriculas` — ainda `HttpError(501)` por design (`apps/core/api.py`, comentário "listEnrollments segue fora de escopo desta sessão") — é esse endpoint de LEITURA, sozinho, que segura o elo 8 do esqueleto e o critério 1 do DoD de `ESQUELETO-QUE-ANDA.md` | despacho pequeno e focado: implementar só `list_enrollments` lendo `Matricula.objects.filter(email=email)` — o resto da célula já funciona |
 | ~~checkout não consome `pagamento.aprovado`~~ **RESOLVIDO**: `apps/pedidos/management/commands/consume_eventos.py` existe e funciona — confirmado ao vivo em `e2e/esqueleto.sh` (container `checkout-consumer` dedicado), `GET /api/checkout/pedidos/{id}.status` vai de `aguardando_pagamento` para `pago` de verdade depois do webhook aprovado | — |
+| **Um evento malformado mata o consumer e some — sem retry, sem fila morta, sem alarme.** Medido em 21/08/2026 ao subir os consumers em produção: publiquei um `pagamento.aprovado` com `order_id` que não era UUID; `checkout-consumer` estourou `ValidationError` no handler, o container morreu e o `restart: unless-stopped` o trouxe de volta **saudável** — porque `xreadgroup(..., ">")` só entrega mensagem **nova**, e a mensagem sem `xack` fica pendente para sempre, nunca reentregue. Não é crash-loop (bom), é **perda silenciosa** (ruim). Nas células que gravam `EventoProcessado` **antes** de chamar o handler (alunos, leads, mensageria) é pior: o evento fica marcado como processado sem nunca ter sido processado. Vale para os 4 consumers | despacho de robustez: `try/except` em volta do handler + `XAUTOCLAIM`/fila morta para o pendente; hoje nenhuma das duas peças existe |
 | **pagamentos não valida o status HTTP da resposta da Mercado Pago ao criar uma intent Pix** — `pagamentos/core/gateway.py:_traduzir_resposta_pix` lê `resposta.get("id", "")` sem checar se a chamada deu certo; `MercadoPagoClient._post` só levanta `MercadoPagoError` para `status_code >= 500`. Com uma credencial inválida (401/4xx), a MP responde erro e a intent é criada silenciosamente com `provider_payment_id` vazio, e a API devolve `201` como se tivesse dado certo. Descoberto rodando `e2e/esqueleto.sh` com um `MP_ACCESS_TOKEN` de exemplo (ver ARMADILHAS.md §1 H5) | despacho dedicado à célula pagamentos — validar `resp.status_code` antes de traduzir a resposta |
