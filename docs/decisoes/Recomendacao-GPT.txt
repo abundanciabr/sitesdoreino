@@ -1,0 +1,306 @@
+## Veredito direto
+
+Sim: você superconstruiu a arquitetura e a governança em relação ao estágio comercial, mas ainda sub-construiu a operação de produção.
+
+Isso parece contraditório, mas não é:
+
+* O sistema possui isolamento e documentação de plataforma madura.
+* Ainda não consegue provar, de maneira confiável, que uma cobrança defeituosa falhará com segurança, que eventos não ficarão presos, que a produção será recuperada e que você perceberá rapidamente uma venda inconsistente.
+
+A ordem que recomendo é:
+
+> **(d) proteção de branch → corrigir defeitos críticos conhecidos → (a) concluir VPS e recuperação → (c) piloto pago controlado → (b) red-team restante por prioridade de risco.**
+
+Eu não colocaria uma venda real no sistema no estado atual.
+
+---
+
+## 1. Você está super-construindo?
+
+### Sim, mas não em tudo
+
+As seguintes decisões são proporcionais a uma plataforma que lida com pagamentos e é desenvolvida por agentes de IA:
+
+* Preço calculado exclusivamente no servidor.
+* Idempotência.
+* Snapshot imutável do pedido.
+* Webhooks autenticados.
+* Bancos isolados.
+* Contratos versionados.
+* Testes-guarda para invariantes financeiras.
+* Limitação do raio de impacto de cada agente.
+
+O red-team ter bloqueado quatro ataques demonstra que parte dessa estrutura produz proteção real.
+
+Entretanto, oito processos Django, oito bancos, APIs, Redis Streams, outbox, contratos e deploys independentes constituem uma arquitetura objetivamente muito complexa para uma plataforma pré-receita. A célula `checkout` sem relay já é evidência concreta do custo dessa complexidade: um monólito não precisaria publicar pela rede aquilo que acabou de gravar no próprio processo.
+
+A arquitetura é parcialmente justificável porque resolve um problema incomum: limitar o dano produzido por agentes que o proprietário não consegue auditar linha por linha. Mesmo assim, ela está muito à frente da validação operacional.
+
+### Onde está a linha
+
+Um controle é proporcional quando:
+
+1. Protege um risco financeiro, jurídico, de dados ou de acesso realmente plausível.
+2. É mecanicamente imposto, e não apenas documentado.
+3. Possui teste negativo: prova que o sistema bloqueia a violação.
+4. Possui mecanismo de detecção e recuperação.
+5. Reduz mais risco do que complexidade adiciona.
+
+Você cruza para a superconstrução quando:
+
+* Escreve mais uma regra antes de mecanizar as existentes.
+* Investiga dez falhas hipotéticas antes de corrigir duas falhas críticas já conhecidas.
+* Chama de “verde” um caminho que não verifica a semântica da resposta externa.
+* Acrescenta células, contratos ou ritos antes de colocar um único site em piloto.
+* Mantém documentação afirmando que algo roda no CI quando não roda.
+* Usa “15 arquivos por PR” como dogma, mesmo quando isso fragmenta uma correção coerente em estados intermediários incompatíveis.
+
+Minha recomendação não é desmontar as oito células agora. Isso produziria mais atraso e novos riscos. Aplique um **congelamento arquitetural**:
+
+> Nenhuma nova célula, rito, constituição, abstração estrutural ou generalização multissite até um piloto pago funcionar e permanecer operacionalmente estável.
+
+---
+
+## 2. O que fazer agora — na ordem
+
+| Ordem | Ação                                             | Critério de conclusão                                                                                       |
+| ----- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| 1     | Pagar o GitHub Pro e proteger a `main`           | PR vermelho não pode ser mesclado; push direto, force-push, exclusão e bypass administrativo são rejeitados |
+| 2     | Corrigir os dois defeitos financeiros conhecidos | Mercado Pago falha de modo fechado; nenhum evento financeiro fica permanentemente preso                     |
+| 3     | Transformar o E2E em evidência confiável         | Testes determinísticos em cada PR; sandbox externo em pré-release; documentação corrigida                   |
+| 4     | Rodar na VPS e testar recuperação operacional    | Cartão, Pix, webhook, falhas, alertas, backup, kill switch e rollback comprovados                           |
+| 5     | Executar somente os red-teams P0                 | Ataques ligados a cobrança, pagamento falso, duplicidade, replay, refund e inconsistência                   |
+| 6     | Abrir um piloto pago limitado                    | Um site, um produto, poucos compradores, release congelada e acompanhamento manual                          |
+| 7     | Completar o restante do red-team                 | Ordenado pela evidência do piloto, não pelo número “15”                                                     |
+
+### 1. Proteção de branch antes do próximo PR
+
+Não basta assinar o plano. Configure e prove:
+
+* PR obrigatório para `main`.
+* Checks obrigatórios e em modo estrito.
+* Nomes únicos para os checks.
+* Fonte dos checks vinculada à integração confiável, não “qualquer fonte”.
+* “Do not allow bypassing” ativado também para administradores.
+* Force-push e exclusão desativados.
+* Conversas não resolvidas bloqueando merge.
+* Agentes sem permissão administrativa nem credenciais de produção.
+
+O GitHub informa que branches protegidas em repositórios privados exigem Pro, Team ou Enterprise; também esclarece que administradores podem ignorar as regras por padrão, a menos que a opção de impedir bypass seja ativada. Portanto, “paguei” não é critério de aceite; **tente violar a proteção e registre que foi impedido**. [Documentação oficial do GitHub](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)
+
+Se os agentes criam PRs usando sua própria identidade GitHub, não tente fabricar uma falsa independência de revisão: o autor e o aprovador continuam sendo o mesmo ator. Nesse estágio, o controle mais importante é CI obrigatório sem bypass. Uma aprovação independente real exigiria outra identidade técnica ou outro revisor.
+
+### 2. Corrigir primeiro o que já se sabe estar quebrado
+
+#### Pagamentos: falhar fechado
+
+A célula de pagamentos precisa:
+
+* Rejeitar HTTP não exitoso.
+* Validar JSON e campos obrigatórios da cobrança.
+* Confirmar identificador externo, valor, moeda, referência, status e dados necessários do Pix.
+* Nunca devolver `201` interno se o provedor não criou uma cobrança válida.
+* Diferenciar falha de autenticação, rejeição, indisponibilidade, timeout e resposta malformada.
+* Repetir somente operações seguras, sempre com idempotência.
+* Testar `400`, `401`, `403`, `429`, `500`, timeout, JSON inválido e resposta aparentemente exitosa com campos ausentes.
+
+Esse defeito é **bloqueador absoluto**.
+
+#### Checkout: publicar ou remover o evento
+
+O evento “pedido criado” não pode existir em um estado intermediário permanente.
+
+Há somente duas soluções corretas:
+
+* Implementar o relay, com retry, observabilidade e consumidor idempotente.
+* Demonstrar que o evento não pertence ao fluxo e removê-lo formalmente.
+
+Mantê-lo gravado e abandonado não é uma terceira opção. Além disso, o E2E deve provar que o caminho realmente usado em produção passa por esse evento. Caso contrário, o “8 de 8” pode estar validando uma rota paralela que contorna justamente o componente quebrado.
+
+### 3. Corrigir a estratégia de testes
+
+Eu não colocaria necessariamente o Mercado Pago externo em cada PR. Isso cria testes lentos, dependentes de segredo e sujeitos à disponibilidade do provedor.
+
+Faria três camadas:
+
+* **Em todo PR:** testes determinísticos de unidade, contrato e integração, incluindo falhas do provedor.
+* **Em pré-release ou execução agendada:** fluxo real na sandbox do Mercado Pago, partindo da VPS e recebendo webhook externo.
+* **Depois do deploy:** smoke test sem cobrança, monitoramento e reconciliação.
+
+O Mercado Pago fornece cartões e estados de teste precisamente para validar aprovações, rejeições e outros resultados antes da disponibilização aos compradores. [Documentação de testes do Mercado Pago](https://www.mercadopago.com.br/developers/pt/docs/checkout-bricks/integration-test/test-payment-flow)
+
+A documentação interna deve dizer o que realmente ocorre. Um teste “manual quando lembro” não é CI.
+
+---
+
+## 3. Mínimo inegociável antes do primeiro dinheiro real
+
+Se qualquer item abaixo estiver vermelho, minha decisão seria **NO-GO**.
+
+### Integridade financeira
+
+* A resposta do Mercado Pago é validada de modo fechado.
+* O front-end, redirect de sucesso ou retorno do navegador jamais consegue declarar um pedido pago.
+* O estado financeiro deriva de consulta autenticada ao provedor ou de webhook válido.
+* A assinatura HMAC do webhook é validada; assinatura inválida não altera nenhum estado. O Mercado Pago documenta o envio de `x-signature` para essa finalidade. [Webhooks do Mercado Pago](https://www.mercadopago.com.br/developers/pt/docs/checkout-pro/additional-content/notifications/webhooks)
+* Duplicatas, retries, replay e eventos fora de ordem não duplicam matrícula nem cobrança.
+* O valor, produto, site, comprador e referência externa são conferidos.
+* Existe fluxo testado de cancelamento, reembolso e chargeback.
+* Existe reconciliação entre pedido interno, pagamento no Mercado Pago e matrícula.
+
+### Consistência distribuída
+
+* O outbox do checkout é publicado e monitorado.
+* Eventos presos geram alerta.
+* Pagamento aprovado sem matrícula é detectado e recuperado.
+* Matrícula sem pagamento aprovado é detectada.
+* Reembolso ou chargeback produz o estado correto no acesso do aluno.
+* Um único `order_id` ou `correlation_id` permite acompanhar a operação pelas oito células.
+
+### Deploy e recuperação
+
+* O fluxo completo funciona na VPS com domínio, TLS, credenciais de teste e webhook externo.
+* Há um kill switch para suspender novas cobranças sem derrubar o acesso dos alunos.
+* Backup existe e foi efetivamente restaurado em ambiente isolado.
+* O rollback foi cronometrado.
+* Migrações de banco são compatíveis com rollback ou possuem plano explícito de recuperação.
+* Após rollback, existe reconciliação das transações ocorridas durante o incidente.
+
+Aqui há uma correção conceitual importante: **rollback de software não desfaz uma cobrança externa**. Seu teste precisa verificar três coisas diferentes:
+
+1. Interromper novas transações.
+2. Restaurar o software.
+3. Reconciliar ou compensar os efeitos financeiros produzidos durante a falha.
+
+“Voltou o container anterior em menos de cinco minutos” sozinho é evidência insuficiente.
+
+### Operação
+
+* Alertas para erro de webhook, outbox envelhecido, pedidos presos, divergência financeira e falhas de banco.
+* Procedimento seguro para consultar um pedido e reenviar uma matrícula.
+* Procedimento testado de reembolso.
+* Canal de suporte funcionando.
+* Confirmação de compra e instrução de acesso funcionando.
+
+Email e WhatsApp não precisam estar completamente automatizados no piloto. Mas o resultado prometido precisa existir. **Manual é aceitável em piloto; inexistente não é.** O WhatsApp pode esperar. Confirmação contratual, acesso e suporte não podem ser stubs.
+
+### Jurídico, consumidor e dados
+
+Antes da cobrança, o site precisa apresentar corretamente:
+
+* Identificação do fornecedor.
+* Endereço físico e eletrônico.
+* Características e restrições do curso.
+* Preço total e condições de pagamento.
+* Forma e prazo de disponibilização.
+* Resumo e conservação do contrato.
+* Confirmação da contratação.
+* Atendimento, cancelamento e arrependimento.
+* Aviso de privacidade e bases do tratamento de dados.
+
+Esses elementos não são “acabamento de landing page”: estão previstos no Decreto do Comércio Eletrônico. O decreto também exige mecanismo eficaz de arrependimento, confirmação de sua solicitação e comunicação ao meio de pagamento. [Decreto nº 7.962/2013](https://www.planalto.gov.br/ccivil_03/_ato2011-2014/2013/decreto/d7962.htm)
+
+O prazo de sete dias do art. 49 do CDC não significa “depois disso, jamais existe direito a reembolso”. Problemas de entrega, vício, descumprimento da oferta ou cláusulas abusivas continuam juridicamente relevantes. Uma política “sem reembolso sob nenhuma hipótese após sete dias” é arriscada. [Código de Defesa do Consumidor](https://www.planalto.gov.br/ccivil_03/leis/l8078compilado.htm)
+
+Valide a versão final com advogado brasileiro e alinhe entidade vendedora, documentação fiscal e conciliação contábil com contador.
+
+### O que pode esperar
+
+* Os red-teams restantes que não envolvam dinheiro, autenticação, dados ou isolamento.
+* Automação completa de WhatsApp.
+* A célula de leads no E2E, se ela não participa da identidade contratual nem do acesso.
+* Otimizações de escala.
+* Novas células.
+* Expansão multissite.
+* Dashboards sofisticados.
+* Alta disponibilidade de nível empresarial.
+* Novas constituições ou ritos.
+
+---
+
+## 4. A decisão de adiar os US$4 está errada
+
+Discordo explicitamente da premissa “não faturou, não gasto”.
+
+A regra saudável para um projeto pré-receita não é “gasto zero”; é:
+
+> Gastar pouco, exclusivamente nos riscos que podem invalidar todo o investimento já realizado.
+
+Você já investiu muito mais que US$48 anuais em tempo, arquitetura, testes e agentes. Economizar US$4 enquanto todos esses controles permanecem opcionalmente contornáveis é uma inversão de prioridade.
+
+A página oficial continua listando o plano individual pago em torno de **US$4 por usuário/mês**, e a documentação confirma a necessidade do plano pago para proteção em repositório privado. [Preços do GitHub](https://github.com/pricing)
+
+Alternativas gratuitas existem, mas são piores no seu contexto:
+
+* **Tornar público:** tecnicamente resolve a disponibilidade da proteção no GitHub Free, mas expõe código, estrutura e histórico. Não deve ser uma decisão tomada apenas para economizar US$4.
+* **Migrar para GitLab Free:** o GitLab oferece protected branches no plano gratuito, mas migração, adaptação do CI e validação das diferenças de aprovação possuem custo e risco operacional. [Documentação do GitLab](https://docs.gitlab.com/user/project/repository/branches/protected/)
+* **Hospedar GitLab/Gitea:** licença possivelmente gratuita; operação, atualização, backup e segurança não são.
+* **Hooks locais e scripts:** não são equivalentes a controle no servidor.
+* **Alarme após quebra:** detecta o acidente depois que ocorreu.
+
+Portanto: **pague agora, configure agora e tente violar agora**.
+
+---
+
+## 5. O que você não perguntou
+
+### 1. Seu maior risco já não é invasão; é divergência silenciosa
+
+O pior incidente provável não é necessariamente “um hacker roubou tudo”. É algo como:
+
+* Mercado Pago aprovou.
+* O webhook chegou.
+* O relay falhou.
+* A matrícula não ocorreu.
+* Nenhum alerta disparou.
+* O cliente reclama horas depois.
+
+Por isso, reconciliação e observabilidade são mais urgentes que vários ataques teóricos.
+
+### 2. O mesmo agente pode escrever o bug e o teste que confirma o bug
+
+Testes automáticos provam conformidade com a expectativa codificada. Eles não garantem que a expectativa esteja correta.
+
+Use separação epistemológica:
+
+* Um agente implementa.
+* Outra sessão recebe somente contrato, invariantes e comportamento esperado para elaborar testes black-box adversariais.
+* Antes da abertura pública, contrate uma revisão humana limitada ao caminho pagamento → webhook → matrícula → refund → recuperação.
+
+Automação substitui muita inspeção mecânica, mas não substitui completamente julgamento técnico independente.
+
+### 3. Multissite é outro portão de risco
+
+Antes do segundo site, teste especificamente:
+
+* Isolamento de catálogo, preço, aluno e pedido por tenant.
+* Um domínio não consegue matricular no curso de outro.
+* Cache não mistura tenants.
+* Webhook resolve inequivocamente o vendedor e o pedido.
+* Backoffice e suporte não expõem dados entre sites.
+
+Se domínios diferentes representarem empresas ou fornecedores juridicamente diferentes, surge ainda a questão de quem é o vendedor formal, quem recebe, emite documento fiscal, atende, reembolsa e atua como controlador de dados. Não trate isso como simples configuração de domínio.
+
+### 4. Seu público pode envolver menores
+
+Se cursos relacionados a Roblox forem acessados provavelmente por crianças ou adolescentes, a LGPD e o ECA Digital tornam privacidade, segurança, melhor interesse e desenho protetivo uma frente própria de go-live. A Lei nº 15.211/2025 alcança serviços digitais direcionados a esse público ou de acesso provável por ele. [ECA Digital](https://www.planalto.gov.br/ccivil_03/_ato2023-2026/2025/lei/l15211.htm) A LGPD também possui regras específicas para dados de crianças e adolescentes. [LGPD, art. 14](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709.htm)
+
+Isso merece análise jurídica antes de matricular menores, especialmente quanto a cadastro, consentimento, comunicação, perfilamento e publicidade.
+
+### 5. O limite de 15 arquivos pode virar uma métrica enganosa
+
+Quinze arquivos não tornam uma mudança segura. Uma alteração de três arquivos pode quebrar pagamentos; uma migração mecânica de vinte pode ser correta.
+
+Mantenha o limite como gatilho de revisão, não como proibição absoluta. Mudanças legítimas acima do limite devem exigir justificativa, plano de teste e aprovação explícita — não fragmentação artificial.
+
+---
+
+## Decisão final
+
+Eu declararia imediatamente:
+
+> “A plataforma entra em congelamento arquitetural. Nenhuma venda real e nenhuma nova funcionalidade até: proteção de branch comprovada; correção fail-closed do Mercado Pago; resolução do outbox; testes em camadas; fluxo completo na VPS; recuperação, reconciliação, reembolso, suporte e requisitos jurídicos mínimos comprovados.”
+
+Depois disso, não faria um grande lançamento. Faria um **piloto limitado a um único site, produto, entidade vendedora e release congelada**, acompanhado transação por transação.
+
+O erro agora seria escolher entre perfeccionismo e imprudência. O caminho correto é outro: **encerrar os riscos críticos conhecidos, cobrar de poucos clientes com controle intenso e deixar que a realidade determine o próximo investimento**.
