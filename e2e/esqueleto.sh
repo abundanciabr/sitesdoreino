@@ -249,6 +249,22 @@ if ! echo "$STREAM_OUT" | grep -q "$ORDER_ID"; then
 fi
 ok "evento presente no stream eventos.pagamento.aprovado"
 
+# ── diagnóstico extra, não bloqueia (config/api.py do checkout documenta
+#    este GET como consumido pela suíte E2E — fora do caminho numerado do
+#    ESQUELETO-QUE-ANDA.md, por isso não falha o script; container
+#    checkout-consumer é assíncrono, dá um tempo antes de checar). Roda
+#    ANTES do elo 8 de propósito: elo 8 pode `parar` (exit) se alunos ainda
+#    não implementou o GET, e essa informação não pode ficar presa depois. ──
+STATUS_PEDIDO="?"
+for _ in $(seq 1 15); do
+  STATUS_PEDIDO="$(curl -sS "http://localhost:8002/api/checkout/pedidos/${ORDER_ID}" \
+    -H "Host: ${DOMINIO_OPERACOES}" -H "Authorization: Bearer ${TOKEN_CHECKOUT}" | jget status 2>/dev/null || echo "?")"
+  [[ "$STATUS_PEDIDO" == "pago" ]] && break
+  sleep 1
+done
+echo ""
+echo "ℹ diagnóstico (não bloqueia): GET /pedidos/${ORDER_ID}.status = ${STATUS_PEDIDO}"
+
 # ── elo 8: matrícula (verificação final) ────────────────────────────────
 elo "matrícula (GET /api/alunos/alunos/{email}/matriculas ⇒ matrícula ativa)"
 
@@ -297,15 +313,6 @@ if [[ "$TEM_ATIVA" != "SIM" ]]; then
   parar "matrícula"
 fi
 ok "matrícula ativa confirmada para $EMAIL"
-
-# ── diagnóstico extra, não bloqueia (config/api.py do checkout documenta
-#    este GET como consumido pela suíte E2E; a transição para "pago" depende
-#    de um consumer em checkout que ainda não existe — ARMADILHAS.md §9) ──
-STATUS_PEDIDO="$(curl -sS "http://localhost:8002/api/checkout/pedidos/${ORDER_ID}" \
-  -H "Host: ${DOMINIO_OPERACOES}" -H "Authorization: Bearer ${TOKEN_CHECKOUT}" | jget status 2>/dev/null || echo "?")"
-echo ""
-echo "ℹ diagnóstico (não bloqueia): GET /pedidos/${ORDER_ID}.status = ${STATUS_PEDIDO}"
-echo "  (esperado continuar 'aguardando_pagamento' até checkout ganhar um consumer de pagamento.aprovado — ver ARMADILHAS.md §9)"
 
 echo ""
 echo "═══════════════════════════════════════════════════════════════"

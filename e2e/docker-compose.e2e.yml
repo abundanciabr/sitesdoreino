@@ -93,6 +93,29 @@ services:
       # esta última documentada em config/api.py como consumida pela suíte E2E).
       TOKENS_ACEITOS_E2E: e2e-token-e2e-para-checkout
     ports: ["8002:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Idem alunos-consumer: processo dedicado pra consume_eventos, sem migrate
+  # embutido (ver ARMADILHAS.md §3.13), depende de checkout já saudável.
+  checkout-consumer:
+    build: ../services/checkout
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      checkout:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: e2e-esqueleto-nunca-em-producao
+      DEBUG: "0"
+      DATABASE_URL: postgres://dev:dev@postgres:5432/checkout_db
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: python manage.py consume_eventos
 
   alunos:
     build: ../services/alunos
