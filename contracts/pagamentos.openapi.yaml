@@ -183,4 +183,5 @@ components:
           description: Presente apenas quando method=card
           properties:
             reason_code: { type: string, description: status_detail do MP quando rejected }
+# golpe 2 do rito de graduação (02-RED-TEAM.md) — mudança cosmética e reversível
         created_at: { type: string, format: date-time }
