@@ -18,16 +18,38 @@ def processar_envelope(envelope: dict, handlers: dict) -> None:
     """Dedup por event_id: evento reentregue não dispara o handler de novo.
     handlers mapeia envelope["event"] (ex.: "pagamento.aprovado") -> callable(data).
 
-    O create() precisa do próprio savepoint (transaction.atomic() aninhado): sem
-    ele, o IntegrityError do event_id duplicado marca a transação inteira como
-    quebrada e qualquer query seguinte (inclusive de outro teste) estoura
-    TransactionManagementError em vez de simplesmente ser ignorada."""
-    try:
-        with transaction.atomic():
-            EventoProcessado.objects.create(event_id=envelope["event_id"])
-    except IntegrityError:
-        return
-    handlers[envelope["event"]](envelope["data"])
+    São DUAS transações aninhadas. Parecem redundantes; não são — cada uma fecha
+    um modo de falha diferente, e remover qualquer uma reabre um bug silencioso.
+    Guarda das duas: tests/test_inv_p5_dedup_atomico.py.
+
+    (1) A EXTERNA envolve o registro E o efeito, para que falhem juntos. Se o
+        handler estourar (deadlock, conexão caída, timeout), o EventoProcessado
+        é desfeito junto e a reentrega volta a funcionar. Com o create()
+        commitando sozinho — como era antes —, um hiccup de 2s do Postgres no
+        meio da matrícula deixava o evento marcado como visto: toda reentrega
+        futura caía no `except IntegrityError` abaixo e era descartada em
+        silêncio. O cliente pagou e nunca foi matriculado, sem nada no sistema
+        para descobrir isso (não há reconciliação).
+
+    (2) A INTERNA é savepoint SÓ em volta do create(), por dois motivos.
+        Primeiro, ARMADILHAS.md §4.8: sem savepoint próprio, o IntegrityError
+        do event_id duplicado marca a transação inteira como abortada e a query
+        seguinte estoura TransactionManagementError em vez de o evento ser
+        simplesmente ignorado. Segundo — e é por isso que o handler está FORA
+        do try, não só fora do savepoint —, o `except` precisa enxergar
+        exclusivamente o IntegrityError DESTE create. Com o handler dentro do
+        try, um IntegrityError vindo de dentro dele (qualquer constraint que
+        nada tem a ver com event_id) seria lido como "já processado" e o evento
+        seria descartado em silêncio: o mesmo bug de antes, só que mais difícil
+        de enxergar.
+    """
+    with transaction.atomic():  # (1) registro e efeito: vivem ou morrem juntos
+        try:
+            with transaction.atomic():  # (2) savepoint: SÓ o create
+                EventoProcessado.objects.create(event_id=envelope["event_id"])
+        except IntegrityError:
+            return  # já processado: nada foi gravado, o handler não roda de novo
+        handlers[envelope["event"]](envelope["data"])
 
 
 class Command(BaseCommand):
