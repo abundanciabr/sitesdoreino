@@ -10,10 +10,28 @@ Específico desta célula. Transversal vai em `ARMADILHAS.md` (raiz).
 manual) **exige** `product_id` no payload.
 **Decisão:** matrícula criada pelo consumer (`apps/matriculas/handlers.py`) grava
 `product_id=""`. Só o reprocesso manual (`POST /matriculas`) informa o valor real.
-**Se for implementar `GET /alunos/{email}/matriculas` (hoje 501, fora de escopo desta
-sessão):** o campo virá vazio para matrículas automáticas — não é bug, é o contrato
-como está. Se isso incomodar, é `issue arquitetura:` para acrescentar `product_id`
+**`GET /alunos/{email}/matriculas` foi implementado** (branch
+`agent/alunos/listagem-matriculas`): o campo `product_id` vem vazio na resposta para
+matrículas automáticas, exatamente como previsto aqui — não é bug, é o contrato como
+está. Se isso incomodar, é `issue arquitetura:` para acrescentar `product_id`
 (opcional, retrocompatível) ao evento — Rito de Contrato, não decisão de sessão.
+
+## `GET /alunos/{email}/matriculas` — 404 por ausência total, não por site
+
+**Decisão:** o endpoint devolve `404 "aluno inexistente"` quando o e-mail não tem
+**nenhuma** `Matricula`, e `200` com a lista completa quando tem pelo menos uma —
+mesmo que as matrículas sejam de sites/produtos diferentes. A rota não é escopada por
+`site_id`: identidade do aluno é global por e-mail (já era invariante desta célula,
+ver `constituicoes/AGENTS.alunos.md`), então "matrículas do aluno" significa todas,
+não só as do site que está perguntando.
+**Handler:** `Matricula.objects.filter(email=email).order_by("enrolled_at")` — se
+`.exists()` for falso, `HttpError(404, ...)`; senão serializa a lista via
+`JsonResponse(..., safe=False)`, do mesmo jeito que `createEnrollment` já bypassa
+`response=` do ninja (ver ARMADILHAS.md §4.2 — não se aplica aqui porque não há status
+customizado além de 200, mas o padrão de retornar `JsonResponse` direto, sem
+`response=` no decorator, foi mantido por consistência com R1).
+**Origem:** despacho "alunos: implementar GET /matriculas", branch
+`agent/alunos/listagem-matriculas`.
 
 ## `select_for_update()` não trava linha que ainda não existe
 

@@ -76,12 +76,40 @@ def test_create_enrollment_payload_invalido_e_422(client, token_valido):
     assert resp.status_code == 422
 
 
-def test_superficie_list_enrollments_ainda_nao_implementada(client, token_valido):
+@pytest.mark.django_db
+def test_list_enrollments_devolve_matriculas_do_aluno(client, token_valido):
+    Matricula.objects.create(
+        site_id="site-1",
+        order_id="order-list-1",
+        product_id="prod-1",
+        email="aluno-lista@example.com",
+        name="Aluno Lista",
+    )
+    Matricula.objects.create(
+        site_id="site-2",
+        order_id="order-list-2",
+        product_id="",
+        email="aluno-lista@example.com",
+        name="Aluno Lista",
+    )
     resp = client.get(
-        "/api/alunos/alunos/aluno@example.com/matriculas",
+        "/api/alunos/alunos/aluno-lista@example.com/matriculas",
         HTTP_AUTHORIZATION=f"Bearer {token_valido}",
     )
-    assert resp.status_code == 501
+    assert resp.status_code == 200
+    corpo = resp.json()
+    assert len(corpo) == 2
+    assert {m["order_id"] for m in corpo} == {"order-list-1", "order-list-2"}
+    assert corpo[0]["status"] == "ativa"
+
+
+@pytest.mark.django_db
+def test_list_enrollments_sem_matricula_e_404(client, token_valido):
+    resp = client.get(
+        "/api/alunos/alunos/aluno-sem-matricula@example.com/matriculas",
+        HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+    )
+    assert resp.status_code == 404
 
 
 def test_superficie_sem_token_e_401(client):
