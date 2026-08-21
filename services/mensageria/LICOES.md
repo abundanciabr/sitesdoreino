@@ -34,11 +34,16 @@ precisa aparecer em `pytest.raises`, não ser engolida).
 
 ## Cobertura de teste do `consume_eventos.py` (o loop do Redis Stream em si)
 
-O arquivo `apps/eventos/management/commands/consume_eventos.py` segue a receita R4
-ao pé da letra e **não tem teste automatizado próprio** — testar o loop `xreadgroup`
-de verdade pediria um Redis real ou `fakeredis` (nenhum dos dois estava no
-orçamento deste despacho). A garantia de "reentrega ⇒ 1 envio" está coberta em
-duas camadas testáveis sem Redis:
+**Corrigido em parte, e a parte que faltava escondia um bug.** O texto original
+dizia que o arquivo "segue a receita R4 ao pé da letra e não tem teste automatizado
+próprio", e que a garantia estava coberta pelas duas camadas abaixo. As duas camadas
+existem e continuam válidas — mas **nenhuma delas alcançava a lógica de dedup dentro
+do `handle()`**, e era exatamente lá que morava o descarte silencioso (ver a última
+lição deste arquivo). Hoje `processar_envelope()` vive fora do `handle()` e é testada
+direto, sem Redis: `test_inv_mensageria_evento_atomico.py`. O que continua sem teste é
+só o loop `xreadgroup`/`xack` em si.
+
+A garantia de "reentrega ⇒ 1 envio" está coberta em duas camadas testáveis sem Redis:
 
 1. `EventoProcessado` — unicidade de `event_id` testada direto no modelo
    (`test_event_id_repetido_estoura_integridade`).
@@ -64,3 +69,60 @@ o fallback.
 mas o despacho desta sessão (mensageria/envios) pediu explicitamente só os três
 do fluxo de pagamento: `pagamento.aprovado`, `pix.expirado`, `pagamento.recusado`.
 Ficam de fora por escopo, não por esquecimento — próximo despacho.
+
+## Dedup de evento e efeito do evento vivem na MESMA transação
+
+**Onde:** `apps/eventos/management/commands/consume_eventos.py::processar_envelope()`.
+
+**O bug (esteve em `main` até o PR desta lição):** o `create()` do `EventoProcessado`
+rodava solto dentro do `handle()` — sem savepoint algum — e **commitava** antes de o
+handler rodar. Se o handler falhasse por motivo transitório (SMTP fora, deadlock,
+conexão caída), o evento já estava marcado como processado.
+
+**Aqui isso era pior do que em `alunos` e `leads`, e a diferença importa:** o caminho de
+dedup desta célula chama `r.xack(...)` antes do `continue`. Ou seja, a reentrega
+descartada era **removida do stream** — não ficava na PEL, não sobrava nada para
+recuperar depois. Nas outras duas células a mensagem ao menos sobreviveria a uma
+recuperação futura via `xautoclaim`; aqui, não.
+
+E há uma janela de falha parcial concreta: `ao_pagamento_aprovado()` chama
+`_registrar_e_enfileirar()` **duas vezes** — e-mail e depois WhatsApp, cada um na sua
+própria transação. Bastava a segunda falhar para o WhatsApp nunca mais ser enviado, com
+o e-mail já entregue e o evento marcado como visto.
+
+Demonstração crua contra o código anterior:
+
+```
+--- depois da falha ---
+EventoProcessado gravado? True
+--- depois da reentrega ---
+processar_envelope devolveu: False -> handle() faz r.xack() e descarta
+Envios registrados: 0
+Chamadas ao provedor: 0
+```
+
+**A estrutura correta são duas transações aninhadas** — a externa envolvendo registro e
+efeito, a interna sendo savepoint só em volta do `create()`. O detalhe que fecha o
+raciocínio: **com o fix, o `xack` do dedup volta a ser seguro.** `False` agora só
+acontece quando o efeito daquele evento realmente commitou alguma vez; antes, `False`
+também significava "marcado mas nunca feito", e era nesse caso que o ack destruía a
+mensagem.
+
+**A armadilha da correção óbvia:** mover o handler para dentro do `try` faria um
+`IntegrityError` vindo dele ser lido como "já processado". Não é hipótese — a constraint
+`uniq_envio_por_order_tipo_canal` é disputada por `get_or_create()` sob corrida. O
+guarda desse caso colide na constraint real.
+
+**Por que a reentrega não duplica envio:** esta célula já tem a segunda camada de
+idempotência por chave de negócio (`EnvioRegistrado`, por `order_id+tipo+canal`). A
+transação externa entra sem risco de duplicata — a camada de negócio absorve o retry.
+É por isso que "refazer o evento inteiro" é seguro aqui.
+
+**Consequência no loop do Redis (sabida, não corrigida aqui):** com a exceção propagando
+para fora de `processar_envelope()`, o `xack` não roda e a mensagem fica na PEL. É o
+comportamento desejado, mas a recuperação de mensagens presas (`xautoclaim`) não existe
+nesta célula — hoje depende de o processo reiniciar. Vale igual para `alunos` e `leads`.
+
+**Origem:** varredura das quatro células que consomem eventos, depois dos mesmos
+consertos em `alunos` (PR #43) e `leads` (PR #46). Três das quatro tinham o mesmo bug,
+todas herdado da receita R4 — `checkout` escapou por não usar a tabela de dedup.
