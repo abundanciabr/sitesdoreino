@@ -20,7 +20,7 @@
 # =============================================================================
 PYTHON ?= python
 
-.PHONY: ajuda ci doctor freeze muralhas testador celula mergear
+.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto
 
 ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "Alvos da raiz — fachada de ci/ci.py:"
@@ -31,6 +31,7 @@ ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "  make testador          so a suite adversarial do proprio portao"
 	@echo "  make celula CELULA=x   os portoes de repositorio + o make ci da celula"
 	@echo "  make mergear PR=22     confere os checks no GitHub e mergeia com confirmacao"
+	@echo "  make esqueleto         o esqueleto que anda (e2e local, ESQUELETO-QUE-ANDA.md)"
 	@echo ""
 	@echo ""
 	@echo "O freeze roda o exportador de cada celula, entao 'make ci' espera o"
@@ -64,3 +65,6 @@ celula:         ## make celula CELULA=pagamentos
 mergear:        ## make mergear PR=22 — recusa merge com check vermelho
 	@test -n "$(PR)" || { echo "ERROR: informe PR=<numero>"; exit 2; }
 	$(PYTHON) ci/mergear.py $(PR)
+
+esqueleto:      ## sobe o compose de dev do caminho e percorre a transacao inteira via curl
+	bash e2e/esqueleto.sh

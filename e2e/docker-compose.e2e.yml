@@ -1,0 +1,161 @@
+# e2e/docker-compose.e2e.yml
+# =============================================================================
+# Sobe as 4 células do caminho do esqueleto (ESQUELETO-QUE-ANDA.md) ligadas
+# entre si, para uma sessão local de e2e/esqueleto.sh — NUNCA para dev de
+# célula isolada (isso continua sendo services/<celula>/docker-compose.dev.yml,
+# ver comentário em cada um deles). Build a partir do código local (não das
+# imagens GHCR de produção), com DEBUG=1 só em pagamentos (necessário para o
+# endpoint /debug/simulate-webhook existir — ver ESQUELETO-QUE-ANDA.md).
+#
+# Segredo real (MP_ACCESS_TOKEN sandbox) vem de e2e/.env.e2e (git-ignorado,
+# nunca comitado) — ver e2e/.env.e2e.exemplo. Todo o resto aqui é valor fixo
+# de infraestrutura efêmera de teste, sem segredo de verdade.
+# =============================================================================
+name: e2e-esqueleto
+
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dev_db
+    volumes:
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/postgres-init.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  redis:
+    image: redis:7
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  catalogo:
+    build: ../services/catalogo
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: e2e-esqueleto-nunca-em-producao
+      DEBUG: "0"
+      DATABASE_URL: postgres://dev:dev@postgres:5432/catalogo_db
+      TOKENS_ACEITOS_CHECKOUT: e2e-token-checkout-para-catalogo
+      DOMINIO_OPERACOES: ${DOMINIO_OPERACOES:-esqueleto.e2e.local}
+    ports: ["8001:8000"]
+
+  pagamentos:
+    build: ../services/pagamentos
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: e2e-esqueleto-nunca-em-producao
+      # [INV-P8] DEBUG=1 SÓ nesta stack efêmera de e2e local — é o que expõe
+      # /debug/simulate-webhook (ESQUELETO-QUE-ANDA.md). Em produção é sempre 0.
+      DEBUG: "1"
+      DATABASE_URL: postgres://dev:dev@postgres:5432/pagamentos_db
+      REDIS_STREAMS_URL: redis://redis:6379/0
+      # [INV-P8] TEST- de verdade, nunca APP_USR-. Vem de e2e/.env.e2e (fora do
+      # Git) ou do ambiente do chamador — sem default, fail-hard de propósito:
+      # sem credencial real o elo "cobrança" falha alto contra a MP de verdade.
+      MP_ACCESS_TOKEN: ${MP_ACCESS_TOKEN:?defina MP_ACCESS_TOKEN (sandbox TEST-... real) em e2e/.env.e2e — ver e2e/.env.e2e.exemplo}
+      MP_WEBHOOK_SECRET: e2e-esqueleto-webhook-secret
+      TOKENS_ACEITOS_CHECKOUT: e2e-token-checkout-para-pagamentos
+    ports: ["8003:8000"]
+
+  checkout:
+    build: ../services/checkout
+    depends_on:
+      postgres:
+        condition: service_healthy
+      catalogo:
+        condition: service_started
+      pagamentos:
+        condition: service_started
+    environment:
+      DJANGO_SECRET_KEY: e2e-esqueleto-nunca-em-producao
+      DEBUG: "0"
+      DATABASE_URL: postgres://dev:dev@postgres:5432/checkout_db
+      CATALOGO_API_URL: http://catalogo:8000/api/catalogo
+      TOKEN_CATALOGO: e2e-token-checkout-para-catalogo
+      PAGAMENTOS_API_URL: http://pagamentos:8000/api/pagamentos
+      TOKEN_PAGAMENTOS: e2e-token-checkout-para-pagamentos
+      # Bearer que o PRÓPRIO esqueleto.sh usa para chamar a API JSON do
+      # checkout de fora (POST /sessoes, POST /pedido, GET /pedidos/{id} —
+      # esta última documentada em config/api.py como consumida pela suíte E2E).
+      TOKENS_ACEITOS_E2E: e2e-token-e2e-para-checkout
+    ports: ["8002:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Idem alunos-consumer: processo dedicado pra consume_eventos, sem migrate
+  # embutido (ver ARMADILHAS.md §3.13), depende de checkout já saudável.
+  checkout-consumer:
+    build: ../services/checkout
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      checkout:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: e2e-esqueleto-nunca-em-producao
+      DEBUG: "0"
+      DATABASE_URL: postgres://dev:dev@postgres:5432/checkout_db
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: python manage.py consume_eventos
+
+  alunos:
+    build: ../services/alunos
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: e2e-esqueleto-nunca-em-producao
+      DEBUG: "0"
+      DATABASE_URL: postgres://dev:dev@postgres:5432/alunos_db
+      REDIS_STREAMS_URL: redis://redis:6379/0
+      # Token só para o esqueleto poder bater na API de leitura/reprocesso manual.
+      TOKENS_ACEITOS_E2E: e2e-token-e2e-para-alunos
+    ports: ["8004:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Processo separado do servidor HTTP — consome eventos.pagamento.aprovado e
+  # cria a Matrícula (R4). "roda como processo supervisionado" por design
+  # (comentário no próprio management command); aqui é um container dedicado.
+  # NÃO roda `migrate` aqui: junto com o `alunos` migrando em paralelo contra
+  # o mesmo banco novo, dois `migrate --noinput` concorrentes correm pra criar
+  # a tabela django_migrations e um perde com IntegrityError (visto ao vivo —
+  # ver ARMADILHAS.md §3.13). `depends_on: alunos condition: service_healthy`
+  # garante que o `alunos` (que já migra sozinho) terminou antes deste subir.
+  alunos-consumer:
+    build: ../services/alunos
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      alunos:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: e2e-esqueleto-nunca-em-producao
+      DEBUG: "0"
+      DATABASE_URL: postgres://dev:dev@postgres:5432/alunos_db
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: python manage.py consume_eventos
