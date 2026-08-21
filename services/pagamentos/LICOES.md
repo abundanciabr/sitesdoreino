@@ -161,6 +161,17 @@ voltar a 15/15. Ver PR #16, segundo commit.
   tocar `core/gateway.py` ou `providers/` de novo e ver `lint-imports`
   reprovando um caminho que passa por `core.gateway`, comece por aqui antes
   de desenhar outra coisa.
+- **Confirmado ao vivo (golpe 5, 02-RED-TEAM.md, 21/08/2026): o contrato
+  `pix-e-card-invisiveis` (`type = independence`) NÃO tem a mesma brecha do
+  item acima.** `independence` não é "forbidden sem allow_indirect_imports"
+  — é uma família de checagem diferente, que cobre qualquer dependência
+  entre os módulos listados (direta ou indireta) sem opção de restringir a
+  import direto. Adicionar `from pagamentos.methods.card import service` em
+  `pagamentos/methods/pix/__init__.py` (nada além disso, import não usado)
+  fez `lint-imports` reprovar imediatamente: `INV-P9 - Pix e cartao
+  mutuamente invisiveis BROKEN` (exit 1), revertido em seguida e confirmado
+  `KEPT` de novo (exit 0). Bloqueio robusto, sem ressalva conhecida — não
+  precisou de issue `mecanizar:`.
 - **Timezone em `DateTimeField` (USE_TZ=True):** um valor aware criado em
   memória (ex.: `datetime.fromisoformat("...-03:00")`) mantém o offset
   original ANTES de qualquer save/fetch; depois de um round-trip pelo
