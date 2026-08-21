@@ -31,6 +31,8 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
+    # [RECEITA:CONV-SITE v1] logo após os middlewares de segurança do Django.
+    "apps.core.middleware.SiteResolutionMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -40,7 +42,17 @@ ASGI_APPLICATION = "config.asgi.application"
 # Vitrine pura: formulários postam em leads, compra redireciona para checkout.
 DATABASES = {}
 
+TEMPLATES = [  # [RECEITA:R6 v1] — landing (ilha Alpine)
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {"context_processors": []},
+    },
+]
+
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

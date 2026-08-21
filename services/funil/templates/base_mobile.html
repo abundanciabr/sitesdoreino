@@ -1,0 +1,27 @@
+<!-- templates/base_mobile.html  [RECEITA:R6 v1] -->
+<!-- O viewport abaixo é contrato, não decoração: test_mobile_first_contract.py
+     verifica esta tag em toda página que estende este arquivo. Não troque por
+     um viewport de largura fixa. -->
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}{{ site.name }}{% endblock %}</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
+    .wrap { width: 100%; max-width: 32rem; margin: 0 auto; padding: 1rem; }
+    .card { background: #fff; border-radius: .75rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    {% block estilo %}{% endblock %}
+  </style>
+  {% block head_extra %}{% endblock %}
+</head>
+<body>
+  <div class="wrap">
+    {% block conteudo %}{% endblock %}
+  </div>
+  {% block script_extra %}{% endblock %}
+</body>
+</html>

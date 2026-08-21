@@ -1,0 +1,40 @@
+{% load static %}
+<!-- templates/checkout/pix.html  [RECEITA:R6 v1] — NÃO carrega SDK do Mercado Pago. -->
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pagamento via Pix</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
+    .wrap { max-width: 28rem; margin: 0 auto; padding: 1rem; }
+    .card { background: #fff; border-radius: .75rem; padding: 1.25rem; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .qr { width: 100%; max-width: 16rem; margin: 1rem auto; display: block; }
+    .copia { display: flex; gap: .5rem; align-items: center; justify-content: center; margin-top: .75rem; }
+    .copia code { flex: 1; overflow-wrap: anywhere; font-size: .75rem; text-align: left; }
+    .copia button { padding: .5rem .75rem; border-radius: .5rem; border: 1px solid #ccc; background: #fff; }
+    .status { margin-top: 1rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+  {{ order_id|json_script:"order-id" }}
+  {{ pix_data|json_script:"pix-data" }}
+  {{ api_token|json_script:"api-token" }}
+  <div class="wrap" x-data="pixIsland()" x-init="init()">
+    <div class="card">
+      <h1>Pague com Pix</h1>
+      <img :src="`data:image/png;base64,${qr.qr_code_base64}`" alt="QR Code Pix" class="qr" x-show="qr.qr_code_base64">
+      <p class="copia" x-show="qr.qr_code">
+        <code x-text="qr.qr_code"></code>
+        <button type="button" @click="copiar">Copiar</button>
+      </p>
+      <p class="status" x-text="statusLabel()"></p>
+    </div>
+  </div>
+  <script src="{% static 'checkout/api.js' %}"></script>
+  <script src="{% static 'checkout/pix.js' %}"></script>
+</body>
+</html>

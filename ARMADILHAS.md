@@ -57,7 +57,7 @@ para sempre.
 |---|---|---|---|
 | H1 | ~~`python3` era o stub da Microsoft Store ⇒ `make contrato-check` dava **"OK" falso**~~ | Shim `~/bin/python3` resolveu **a máquina**; o **portão** foi resolvido reescrevendo a lógica em Python, fail-closed por construção (PR #21 endureceu o Bash, PR #22 tirou a medição do Bash) | ✅ **resolvido 19/08/2026** — provado nos três estados: igual ⇒ PASS, divergente ⇒ FAIL, instrumento quebrado ⇒ ERROR (§3.2) |
 | H2 | ~~`make` instalado mas invisível para o Bash do agente ⇒ todo comando virava `bash -lc`~~ | Pasta do `make` no PATH **do usuário** (Windows) | ✅ **resolvido 19/08/2026** — `make` roda direto, sem `-l` e sem `export PATH` |
-| H3 | **Nenhum check é obrigatório para mergear.** Medido em 19/08/2026: a API responde `Upgrade to GitHub Pro or make this repository public` (HTTP 403). Todos os portões podem estar vermelhos e o botão de merge continua funcionando; `.githooks/pre-push` só barra push direto para `main` **desta** máquina, e não vê merge feito pelo site | GitHub Pro (~US$4/mês) **ou** tornar o repositório público — as duas liberam required checks | 🔴 aberto — issue `mecanizar:` #1 · é o que impede afirmar "CI fail-closed global" (ver [INV-CI01]) |
+| H3 | **Nenhum check é obrigatório para mergear.** Medido em 19/08/2026: a API responde `Upgrade to GitHub Pro or make this repository public` (HTTP 403). Todos os portões podem estar vermelhos e o botão de merge continua funcionando; `.githooks/pre-push` só barra push direto para `main` **desta** máquina, e não vê merge feito pelo site | GitHub Pro **ou** tornar o repositório público — as duas liberam required checks. Confirmado na documentação: **não há caminho grátis** para repo privado (rulesets exigem Team/Enterprise) | 🟡 **mitigado, não resolvido** — decisão de custo adiada de propósito enquanto o projeto não fatura. Enquanto isso: `python ci/mergear.py <PR>` recusa merge com check vermelho, e o workflow `alarme-main` abre issue se a `main` quebrar. Os dois são degraus da Escada da Imposição (RITOS.md §2), não substitutos — ver §5.9. É o que impede afirmar "CI fail-closed global" ([INV-CI01]) |
 | H4 | Docker Desktop frio no início da sessão custa 1–2 min parados | Deixar o Docker Desktop iniciar junto com o Windows | 🔴 aberto |
 | H5 | ~~`make esqueleto` local para no elo "cobrança": a intent Pix chama a API REAL da Mercado Pago (`services/pagamentos/pagamentos/providers/mercadopago/client.py`, `_BASE_URL` fixo, sem modo mock) mesmo em dev — só o webhook é simulado (ESQUELETO-QUE-ANDA.md). Sem uma credencial sandbox de verdade, a MP responde erro e a intent fica com `provider_payment_id` vazio~~ | Credencial `MP_ACCESS_TOKEN` (TEST-... sandbox real, nunca APP_USR-) de uma conta Mercado Pago Developers, colocada em `e2e/.env.e2e` (git-ignorado — ver `e2e/.env.e2e.exemplo`) | ✅ **resolvido 21/08/2026** — o mantenedor guarda essa credencial fora do repo (correto, INV-P8), num compartilhamento de rede pessoal; qualquer sessão futura que precise rodar `e2e/esqueleto.sh` local deve **pedir ao mantenedor onde está a credencial de teste** em vez de tentar gerar uma nova. **Nunca escreva o valor do token em nenhum arquivo versionado** (nem aqui) — só o `e2e/.env.e2e` local, git-ignorado. Com o token real, elos 1-7 (seed→sessão→pedido→cobrança→webhook→outbox→relay) rodaram verdes de ponta a ponta contra containers reais e a MP sandbox de verdade (`mp_payment_id` retornado por ela, não simulado) |
 
@@ -289,7 +289,9 @@ funciona **sem** `__init__.py` (namespace package — já usado em `apps/core`).
 próprio pacote do app também: `apps/core` não tem `__init__.py` e está em
 `INSTALLED_APPS`.
 **Conte esse arquivo no orçamento** de qualquer app novo com modelo próprio.
-**Origem:** Prompt 2 (catalogo, PR #15).
+**Origem:** Prompt 2 (catalogo, PR #15) — confirmado de novo no despacho do quiz
+(PR do Crivo): `apps/quiz/__init__.py` foi removido de propósito, só para caber no
+orçamento de 15 arquivos, e `make ci` continuou verde.
 
 ### 4.4 `QuerySet.update()` fura o guarda escrito em `Model.save()`
 
@@ -336,6 +338,40 @@ testes, inclusive cacheando o 404.
 **Solução:** exponha uma função de limpeza (`limpar_cache_de_sites()`) e chame numa
 fixture `autouse` antes e depois de cada teste.
 **Origem:** Prompt 4 (checkout).
+
+### 4.8 `IntegrityError` capturado sem savepoint quebra a transação do teste inteira
+
+**Sintoma:** um `except IntegrityError:` que deveria simplesmente ignorar uma
+duplicata (dedup por `unique=True`, padrão da Receita R4) funciona isolado, mas a
+**query seguinte** — no mesmo teste, ou até um teste depois que reusa a conexão —
+estoura `django.db.transaction.TransactionManagementError: An error occurred in the
+current transaction. You can't execute queries until the end of the 'atomic' block.`
+**Causa:** `Model.objects.create(...)` dentro de um `try/except IntegrityError` sem
+`transaction.atomic()` próprio roda na transação corrente inteira (a que o
+`pytest.mark.django_db` já abriu para o teste). Quando o INSERT viola a constraint
+`UNIQUE`, o Postgres marca **essa transação inteira** como abortada — o Django só
+descobre isso na tentativa de query seguinte, não na hora do `except`.
+**Solução:** todo `create()` que pode legitimamente colidir com uma constraint única
+(dedup de evento, corrida de criação idempotente) precisa do próprio savepoint:
+
+```python
+try:
+    with transaction.atomic():          # savepoint — só ISTO é desfeito no IntegrityError
+        EventoProcessado.objects.create(event_id=envelope["event_id"])
+except IntegrityError:
+    return
+```
+
+**Atenção — a Receita R4 em `CAMINHO-DOURADO.md` (bloco `apps/eventos/management/
+commands/consume_eventos.py`) mostra o `create()` sem esse `with transaction.atomic()`
+aninhado.** Reproduz o bug assim que dois eventos (ou o mesmo evento 2×) passarem pelo
+mesmo teste. Quem copiar a receita ao pé da letra herda o bug — considere `issue
+arquitetura:` para corrigir a receita na fonte.
+**Origem:** alunos (matrícula por evento, R4/INV-P5) — descoberto ao escrever o
+teste-guarda de reentrega de `event_id`. **Redescoberto de forma independente** em
+leads (timeline por evento) na sessão seguinte, mesmo sintoma, mesma causa — reforça
+que é falha da receita, não acidente de uma célula: qualquer célula que testar o
+handler de R4 direto (sem passar pelo loop do Redis) bate nisso.
 
 ---
 
@@ -499,6 +535,36 @@ Dizer "CI verde" quando você só rodou local é a mesma família de erro que es
 documento inteiro combate. Ver a tabela de escopo em `INVARIANTES.md` ([INV-CI01]).
 **Origem:** PR #22.
 
+### 5.9 Como mergear sem required check (e por que existe um comando para isso)
+
+**Contexto:** este repositório não tem required check (§1, H3). O botão verde do
+GitHub funciona com tudo vermelho.
+**O que já custou:** em 19/08/2026 o PR #21 foi mergeado no lugar do #20 — números
+parecidos, recomendações opostas, e nada na tela dizia qual era qual. No mesmo dia, um
+PR com o `muralhas` vermelho seguia mergeável.
+**Solução — prevenção (quando você mergeia pelo terminal):**
+
+```bash
+python ci/mergear.py 22            # confere e pergunta antes
+python ci/mergear.py 22 --conferir # só confere, nunca mergeia
+```
+
+Ele mostra **número e título em destaque**, consulta o estado real de cada check e
+recusa se algo não estiver verde. Pede confirmação digitando o número do PR — não
+"s/n", justamente porque o erro que aconteceu foi de identidade, não de intenção.
+Semântica igual à dos outros portões: reprovou = `FAIL` (1), não consegui consultar =
+`ERROR` (2). **Nenhum check reportado é `ERROR`**, nunca sinal verde: um PR sem check é
+indistinguível de um PR cujos workflows não dispararam.
+
+**Solução — detecção (quando você mergeia pelo site):** o workflow `alarme-main` roda
+as guardas de repositório a cada push na `main` e **abre uma issue** (label
+`main-vermelha`) se elas falharem. É alarme, não portão: avisa depois. O modo de falha
+dele é "não avisou", nunca "aprovou o que não devia".
+
+**O que nenhum dos dois faz:** impedir o clique no site. Só required check faz isso, e
+ele custa dinheiro. Não confunda os três estados ao relatar (ver §5.8).
+**Origem:** decisão de custo consciente, 20/08/2026.
+
 ## §6 — Testes
 
 ### 6.1 Evidência vermelho→verde sem criar branch descartável
@@ -636,6 +702,33 @@ código). Atualizá-lo depois de cada mudança de estado é obrigatório e **nã
 pergunta antes** (`CLAUDE.md`). Só marque item como concluído com evidência real —
 confirmação de merge do usuário é **gatilho para conferir** (`gh pr view <N> --json
 state,mergedBy,mergeCommit`), não substituto da conferência.
+
+### 7.5 `AGENTS.<celula>.md` diz se a célula chama outra API — leia Fronteiras E Comunicação juntas
+
+**Sintoma:** a receita genérica (`CAMINHO-DOURADO.md` §3, CONV-SITE) manda toda
+célula pública chamar a API do catálogo para resolver Host→Site — mas seguir a
+receita ao pé da letra, sem checar a constituição da célula, pode implementar uma
+dependência de rede que a célula nunca deveria ter.
+**Causa:** as duas seções de `AGENTS.<celula>.md` são redundantes de propósito:
+toda vez que uma célula realmente consome a API de outra, isso aparece **nas duas**
+— `Fronteiras → SOMENTE LEITURA` lista o `.openapi.yaml` da célula consumida, E
+`Comunicação → Consome` nomeia a célula. Compare `AGENTS.checkout.md` (`SOMENTE
+LEITURA: contracts/catalogo.openapi.yaml, contracts/pagamentos.openapi.yaml`;
+`Consome: catalogo (ofertas/preços), pagamentos (intents)`) com `AGENTS.quiz.md`
+(`SOMENTE LEITURA: contracts/eventos/quiz.completado.v1.json` — só isso; `Consome:
+nada`). Ausência dos dois ao mesmo tempo não é esquecimento do autor do documento,
+é a célula deliberadamente isolada — mesmo que a receita genérica a liste como
+usuária de CONV-SITE.
+**Solução:** antes de implementar qualquer chamada de rede a outra célula (mesmo
+uma convenção "óbvia" como CONV-SITE), leia as duas seções de
+`AGENTS.<sua-celula>.md` juntas. Se a constituição não autoriza (nem em Fronteiras
+nem em Comunicação), a receita genérica não vale sozinha — é desvio consciente
+(Lei 2 do `CAMINHO-DOURADO.md`: precisa de issue `arquitetura:`), não improviso.
+No caso do quiz, a solução foi um cadastro `Site` **local** à célula (seedado via
+R9), em vez do `CatalogoClient` que a receita sugere — ver
+`services/quiz/LICOES.md` para o raciocínio completo e o alerta para o mantenedor
+revisar essa leitura.
+**Origem:** despacho do quiz (PR do Crivo), ao decidir a resolução de site.
 
 ---
 

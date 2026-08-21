@@ -1,13 +1,17 @@
 # apps/core/api.py  # [RECEITA:R1 v1]
-# Superfície da API espelhando contracts/alunos.openapi.yaml (somente-leitura).
-# Fase 0 — esqueleto: todo handler responde 501 (regra de negócio real é fora de escopo
-# desta sessão). O objetivo aqui é só a FORMA da API bater com o contrato congelado
-# (make contrato-check verde). Schemas inline via openapi_extra: o contrato congelado
-# desta célula não declara components.schemas (tudo inline nos paths), então os
-# handlers não usam ninja.Schema tipado — isso criaria refs nomeadas que o contrato
-# não tem.
+# Superfície da API espelhando contracts/alunos.openapi.yaml (somente-leitura quanto
+# à FORMA — make contrato-check verde). Schemas inline via openapi_extra: o contrato
+# congelado desta célula não declara components.schemas (tudo inline nos paths), então
+# os handlers não usam ninja.Schema tipado — isso criaria refs nomeadas que o contrato
+# não tem. createEnrollment é o reprocesso manual (mesma idempotência do consumer,
+# INV-P5); listEnrollments segue fora de escopo desta sessão (501).
+import json
+
+from django.http import JsonResponse
 from ninja import Router
 from ninja.errors import HttpError
+
+from apps.matriculas.services import matricular
 
 router = Router()
 
@@ -54,7 +58,30 @@ _CREATE_ENROLLMENT_OPENAPI = {
     openapi_extra=_CREATE_ENROLLMENT_OPENAPI,
 )
 def create_enrollment(request):
-    raise HttpError(501, "não implementado")
+    try:
+        payload = json.loads(request.body)
+        site_id = payload["site_id"]
+        order_id = payload["order_id"]
+        product_id = payload["product_id"]
+        email = payload["customer"]["email"]
+        name = payload["customer"]["name"]
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return JsonResponse({"detail": "payload inválido"}, status=422)
+
+    matricula, criada = matricular(
+        site_id=site_id,
+        order_id=order_id,
+        product_id=product_id,
+        email=email,
+        name=name,
+    )
+    corpo = {
+        "site_id": matricula.site_id,
+        "order_id": matricula.order_id,
+        "product_id": matricula.product_id,
+        "customer": {"email": matricula.email, "name": matricula.name},
+    }
+    return JsonResponse(corpo, status=201 if criada else 200)
 
 
 _LIST_ENROLLMENTS_OPENAPI = {
