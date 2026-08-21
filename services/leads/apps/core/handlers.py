@@ -7,16 +7,42 @@ from .models import EventoProcessado, Lead, TimelineEvent
 def processar_envelope(envelope: dict, handler) -> bool:
     """[INV-leads-idempotencia] Reentrega do mesmo event_id não roda o handler de
     novo. Retorna True se o handler rodou, False se o evento já havia sido
-    processado antes (dedup, não erro)."""
-    try:
-        with transaction.atomic():  # savepoint: sem isso, o IntegrityError deixa
-            EventoProcessado.objects.create(
-                event_id=envelope["event_id"]
-            )  # a conexão inteira "quebrada" fora do bloco
-    except IntegrityError:
-        return False
-    handler(envelope["event_id"], envelope["data"])
-    return True
+    processado antes (dedup, não erro).
+
+    São DUAS transações aninhadas. Parecem redundantes; não são — cada uma fecha
+    um modo de falha diferente, e remover qualquer uma reabre um bug silencioso.
+    Guarda das duas: tests/test_inv_leads_evento_atomico.py.
+
+    (1) A EXTERNA envolve o registro E o efeito, para que falhem juntos. Se o
+        handler estourar (deadlock, conexão caída, timeout), o EventoProcessado
+        é desfeito junto e a reentrega volta a funcionar. Com o create()
+        commitando sozinho — como era antes —, um hiccup do Postgres no meio da
+        gravação da timeline deixava o evento marcado como visto: toda reentrega
+        futura caía no `except IntegrityError` abaixo e era descartada em
+        silêncio, deixando um buraco permanente na história daquela pessoa. E a
+        timeline é justamente o que esta célula existe para não perder.
+
+    (2) A INTERNA é savepoint SÓ em volta do create(), por dois motivos.
+        Primeiro, o savepoint em si (ver a primeira lição do LICOES.md desta
+        célula e ARMADILHAS.md §4.8): sem ele, o IntegrityError do event_id
+        duplicado marca a transação inteira como abortada e a query seguinte
+        estoura TransactionManagementError. Segundo — e é por isso que o handler
+        está FORA do try, não só fora do savepoint —, o `except` precisa
+        enxergar exclusivamente o IntegrityError DESTE create. Aqui isso não é
+        hipótese: `_upsert_lead()` usa get_or_create() sobre a constraint
+        uniq_lead_site_email, que sob corrida levanta IntegrityError de verdade.
+        Com o handler dentro do try, essa colisão seria lida como "já
+        processado" e o evento sumiria em silêncio — o mesmo bug de antes, só
+        que mais difícil de enxergar.
+    """
+    with transaction.atomic():  # (1) registro e efeito: vivem ou morrem juntos
+        try:
+            with transaction.atomic():  # (2) savepoint: SÓ o create
+                EventoProcessado.objects.create(event_id=envelope["event_id"])
+        except IntegrityError:
+            return False  # já processado: nada foi gravado, o handler não roda
+        handler(envelope["event_id"], envelope["data"])
+        return True
 
 
 def _upsert_lead(
