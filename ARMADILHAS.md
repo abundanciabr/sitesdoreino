@@ -340,7 +340,10 @@ aninhado.** Reproduz o bug assim que dois eventos (ou o mesmo evento 2×) passar
 mesmo teste. Quem copiar a receita ao pé da letra herda o bug — considere `issue
 arquitetura:` para corrigir a receita na fonte.
 **Origem:** alunos (matrícula por evento, R4/INV-P5) — descoberto ao escrever o
-teste-guarda de reentrega de `event_id`.
+teste-guarda de reentrega de `event_id`. **Redescoberto de forma independente** em
+leads (timeline por evento) na sessão seguinte, mesmo sintoma, mesma causa — reforça
+que é falha da receita, não acidente de uma célula: qualquer célula que testar o
+handler de R4 direto (sem passar pelo loop do Redis) bate nisso.
 
 ---
 
