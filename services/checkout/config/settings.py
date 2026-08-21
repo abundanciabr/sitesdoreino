@@ -51,7 +51,17 @@ ASGI_APPLICATION = "config.asgi.application"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+TEMPLATES = [  # [RECEITA:R6 v1] — páginas dados/pix/cartão (ilhas Alpine)
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {"context_processors": []},
+    },
+]
+
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 USE_TZ = True

@@ -21,8 +21,8 @@ FORCE_SCRIPT_NAME = (
     os.environ.get("SCRIPT_NAME") or None
 )  # célula dona do próprio prefixo
 
-# Atrás do Traefik; a resolução de site (Host) via middleware CONV-SITE ainda
-# não instanciada neste esqueleto (sem regra de negócio).
+# Atrás do Traefik. Quem decide se um Host é legítimo é o middleware CONV-SITE
+# (cadastro LOCAL — [INV-P11], ver LICOES.md), não esta lista.
 ALLOWED_HOSTS = ["*"]
 
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
@@ -31,11 +31,27 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
+    "apps.quiz",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
+    # [RECEITA:CONV-SITE v1] logo após os middlewares de segurança do Django.
+    "apps.core.middleware.SiteResolutionMiddleware",
+]
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+            ],
+        },
+    },
 ]
 
 ROOT_URLCONF = "config.urls"

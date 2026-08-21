@@ -1,0 +1,70 @@
+{% load static %}
+<!-- templates/checkout/dados.html  [RECEITA:R6 v1] -->
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Finalizar compra</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
+    .wrap { max-width: 32rem; margin: 0 auto; padding: 1rem; }
+    .card { background: #fff; border-radius: .75rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    label { display: block; font-size: .875rem; margin: .75rem 0 .25rem; }
+    input[type=text], input[type=email], input[type=tel] { width: 100%; padding: .75rem; border: 1px solid #ccc; border-radius: .5rem; font-size: 1rem; }
+    .bump { display: flex; align-items: center; gap: .5rem; padding: .5rem 0; }
+    .metodo { display: flex; gap: .5rem; margin-top: .75rem; }
+    .metodo button { flex: 1; padding: .75rem; border-radius: .5rem; border: 1px solid #ccc; background: #fff; font-size: 1rem; }
+    .metodo button[aria-pressed=true] { border-color: #1a1a1a; background: #1a1a1a; color: #fff; }
+    .total { font-size: 1.25rem; font-weight: 600; text-align: right; }
+    .cta { width: 100%; padding: 1rem; border: 0; border-radius: .5rem; background: #16a34a; color: #fff; font-size: 1.1rem; font-weight: 600; }
+    .cta:disabled { opacity: .5; }
+    .erro { color: #b91c1c; font-size: .875rem; margin-top: .5rem; }
+  </style>
+</head>
+<body>
+  {{ offer_slug|json_script:"offer-slug" }}
+  {{ api_token|json_script:"api-token" }}
+  <div class="wrap" x-data="dadosIsland()" x-init="init()">
+    <div class="card" x-show="!carregando">
+      <h1 x-text="offer.product_name"></h1>
+      <template x-if="offer.bumps && offer.bumps.length">
+        <div>
+          <p>Adicione:</p>
+          <template x-for="bump in offer.bumps" :key="bump.id">
+            <label class="bump">
+              <input type="checkbox" :value="bump.id" @change="alternarBump(bump.id)">
+              <span x-text="`${bump.name} — R$ ${(bump.price_cents / 100).toFixed(2)}`"></span>
+            </label>
+          </template>
+        </div>
+      </template>
+      <p class="total" x-text="`Total: R$ ${(totalCents() / 100).toFixed(2)}`"></p>
+    </div>
+
+    <form class="card" @submit.prevent="finalizar" x-show="!carregando">
+      <label for="name">Nome completo</label>
+      <input id="name" type="text" x-model="customer.name" required>
+      <label for="email">E-mail</label>
+      <input id="email" type="email" x-model="customer.email" required>
+      <label for="phone">Telefone (opcional)</label>
+      <input id="phone" type="tel" x-model="customer.phone">
+
+      <label>Forma de pagamento</label>
+      <div class="metodo">
+        <button type="button" :aria-pressed="method === 'pix'" @click="method = 'pix'">Pix</button>
+        <button type="button" :aria-pressed="method === 'card'" @click="method = 'card'">Cartão</button>
+      </div>
+
+      <p class="erro" x-show="erro" x-text="erro"></p>
+      <button class="cta" type="submit" :disabled="enviando">
+        <span x-text="enviando ? 'Processando…' : 'Continuar'"></span>
+      </button>
+    </form>
+  </div>
+  <script src="{% static 'checkout/api.js' %}"></script>
+  <script src="{% static 'checkout/dados.js' %}"></script>
+</body>
+</html>

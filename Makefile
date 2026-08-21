@@ -20,7 +20,7 @@
 # =============================================================================
 PYTHON ?= python
 
-.PHONY: ajuda ci doctor freeze muralhas testador celula
+.PHONY: ajuda ci doctor freeze muralhas testador celula mergear
 
 ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "Alvos da raiz — fachada de ci/ci.py:"
@@ -30,6 +30,7 @@ ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "  make muralhas          so cerca + orcamento + segredos"
 	@echo "  make testador          so a suite adversarial do proprio portao"
 	@echo "  make celula CELULA=x   os portoes de repositorio + o make ci da celula"
+	@echo "  make mergear PR=22     confere os checks no GitHub e mergeia com confirmacao"
 	@echo ""
 	@echo ""
 	@echo "O freeze roda o exportador de cada celula, entao 'make ci' espera o"
@@ -59,3 +60,7 @@ testador:       ## a suite que prova que o freeze reprova quando deve
 celula:         ## make celula CELULA=pagamentos
 	@test -n "$(CELULA)" || { echo "ERROR: informe CELULA=<nome>"; exit 2; }
 	$(PYTHON) ci/ci.py --celula $(CELULA)
+
+mergear:        ## make mergear PR=22 — recusa merge com check vermelho
+	@test -n "$(PR)" || { echo "ERROR: informe PR=<numero>"; exit 2; }
+	$(PYTHON) ci/mergear.py $(PR)

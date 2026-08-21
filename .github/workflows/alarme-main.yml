@@ -1,0 +1,111 @@
+# =============================================================================
+# ALARME DA MAIN — a rede embaixo do trapézio.
+#
+# Este repositório é privado numa conta pessoal, e o GitHub NÃO oferece required
+# checks nesse plano (medido: `Upgrade to GitHub Pro or make this repository
+# public`, HTTP 403). Ou seja: dá para mergear com tudo vermelho pelo site.
+#
+# `ci/mergear.py` fecha esse caminho quando o merge sai do terminal. Este
+# workflow cobre o outro caminho — o clique no botão verde: se algo entrar na
+# `main` e as invariantes do repositório quebrarem, ele ABRE UMA ISSUE em vez de
+# deixar o vermelho só na aba Actions, onde ninguém olha.
+#
+# Ele NÃO é um portão: não impede nada, avisa depois. A distinção está escrita
+# assim de propósito — chamar isto de proteção seria a mesma mentira que o
+# INV-CI01 existe para eliminar. O modo de falha dele é "não avisou", nunca
+# "aprovou o que não devia".
+# =============================================================================
+name: alarme-main
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  guardas-do-repositorio:
+    name: guardas do repositório
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependências dos portões
+        run: python -m pip install --quiet pytest pyyaml
+      # A suíte adversarial cobre as invariantes de repositório que não dependem
+      # de célula: coerência do manifesto de contratos, a tabela-verdade do gate
+      # terminal, a semântica fail-closed e o normalizador. As invariantes DE
+      # célula (lint/type/testes/freeze) continuam com o workflow `ci-celula`,
+      # que também roda neste push.
+      - name: Testar o testador
+        run: python ci/ci.py --apenas testador
+
+  alarme:
+    name: alarme
+    needs: guardas-do-repositorio
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Abrir (ou atualizar) a issue de main vermelha
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORPO="$(cat <<EOF
+          As guardas de repositório falharam **na \`main\`**, depois de um merge.
+
+          - commit: \`$SHA\`
+          - execução: $RUN_URL
+
+          ## O que isto significa
+
+          Alguma coisa entrou na \`main\` e quebrou uma invariante do repositório —
+          coerência do manifesto de contratos, a tabela-verdade do portão terminal,
+          ou a própria semântica fail-closed ([INV-CI01]).
+
+          Isto é um **alarme**, não um portão: ele avisa depois do fato. O motivo de
+          ele existir está no \`ARMADILHAS.md §1 H3\` — este repositório não tem
+          required check, então o merge não pode ser impedido pelo GitHub.
+
+          ## O que fazer
+
+          1. Abra a execução acima e leia o estado (\`FAIL\` = violação, \`ERROR\` = não
+             conseguiu medir — são coisas diferentes).
+          2. Reproduza local: \`python ci/ci.py --apenas testador\`
+          3. Conserte por PR, como sempre. Se a \`main\` estiver inutilizável, reverter
+             o merge é resposta legítima (RITOS.md §4: a resposta canônica é rollback).
+
+          Feche esta issue quando a \`main\` voltar ao verde.
+          EOF
+          )"
+
+          # Não empilhar issue: se já existe uma aberta, comenta nela.
+          EXISTENTE="$(gh issue list --label main-vermelha --state open \
+            --json number --jq '.[0].number // empty')"
+
+          if [ -n "$EXISTENTE" ]; then
+            echo "Issue #$EXISTENTE já aberta — comentando nela."
+            gh issue comment "$EXISTENTE" --body "$CORPO"
+          else
+            # `|| true` aqui seria a mesma preguiça que o INV-CI01 combate: ele
+            # esconderia "não consegui criar a label" junto com "ela já existe".
+            # A pergunta é feita de forma explícita.
+            if ! gh label list --json name --jq '.[].name' | grep -qx main-vermelha; then
+              gh label create main-vermelha \
+                --description "A main quebrou uma invariante do repositório" \
+                --color b60205
+            fi
+            gh issue create \
+              --title "main vermelha: guardas do repositório falharam em ${SHA:0:8}" \
+              --label main-vermelha \
+              --body "$CORPO"
+          fi
