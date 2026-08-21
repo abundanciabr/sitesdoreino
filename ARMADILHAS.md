@@ -61,6 +61,8 @@ para sempre.
 | H4 | Docker Desktop frio no início da sessão custa 1–2 min parados | Deixar o Docker Desktop iniciar junto com o Windows | 🔴 aberto |
 | H5 | ~~`make esqueleto` local para no elo "cobrança": a intent Pix chama a API REAL da Mercado Pago (`services/pagamentos/pagamentos/providers/mercadopago/client.py`, `_BASE_URL` fixo, sem modo mock) mesmo em dev — só o webhook é simulado (ESQUELETO-QUE-ANDA.md). Sem uma credencial sandbox de verdade, a MP responde erro e a intent fica com `provider_payment_id` vazio~~ | Credencial `MP_ACCESS_TOKEN` (TEST-... sandbox real, nunca APP_USR-) de uma conta Mercado Pago Developers, colocada em `e2e/.env.e2e` (git-ignorado — ver `e2e/.env.e2e.exemplo`) | ✅ **resolvido 21/08/2026** — o mantenedor guarda essa credencial fora do repo (correto, INV-P8), num compartilhamento de rede pessoal; qualquer sessão futura que precise rodar `e2e/esqueleto.sh` local deve **pedir ao mantenedor onde está a credencial de teste** em vez de tentar gerar uma nova. **Nunca escreva o valor do token em nenhum arquivo versionado** (nem aqui) — só o `e2e/.env.e2e` local, git-ignorado. Com o token real, elos 1-7 (seed→sessão→pedido→cobrança→webhook→outbox→relay) rodaram verdes de ponta a ponta contra containers reais e a MP sandbox de verdade (`mp_payment_id` retornado por ela, não simulado) |
 
+| H6 | `python ci/mergear.py <PR>` confere tudo verde e então falha ao mergear de verdade: `gh pr merge <PR> --merge --yes` estoura `unknown flag: --yes` — o `gh` instalado nesta máquina (`gh version 2.97.0`) não tem essa flag para `pr merge` | Decisão do mantenedor: fixar/atualizar a versão do `gh` que aceita `--yes`, ou trocar a chamada em `ci/mergear.py` para não depender dela (ex.: `gh pr merge <PR> --merge < /dev/null`, que funcionou como contorno — ver §5.9.1) | 🟡 **contornado, não resolvido** — o merge do PR #35 foi concluído chamando o `gh` direto sem `--yes`; `ci/mergear.py` continua quebrando para qualquer agente que rode exatamente o comando que ele mesmo imprime |
+
 **Como manter esta tabela:** ao encontrar um atrito novo cuja correção definitiva não
 está nas suas mãos, acrescente uma linha (`H5`, `H6`…) e **diga isso no relatório final
 da sessão**. Ao ver que um item foi resolvido, marque ✅ com a data e mova o texto para
@@ -583,6 +585,33 @@ dele é "não avisou", nunca "aprovou o que não devia".
 **O que nenhum dos dois faz:** impedir o clique no site. Só required check faz isso, e
 ele custa dinheiro. Não confunda os três estados ao relatar (ver §5.8).
 **Origem:** decisão de custo consciente, 20/08/2026.
+
+### 5.9.1 `ci/mergear.py` estoura `unknown flag: --yes` nesta máquina
+
+**Sintoma:** `python ci/mergear.py <PR>` confere tudo verde (PASS em todos os checks),
+você digita o número do PR para confirmar, e o comando interno falha:
+`ERROR ao mergear: ... gh pr merge <PR> --merge --yes ... stderr: unknown flag: --yes`.
+**Causa:** `gh pr merge` **nesta instalação** (`gh version 2.97.0`) não tem a flag
+`--yes`/`-y` — confirmado com `gh pr merge --help`, a lista de FLAGS não a inclui.
+`ci/mergear.py` (linha ~371) assume que ela existe, para evitar que o próprio `gh`
+faça uma SEGUNDA pergunta de confirmação depois da que o script já fez.
+**Contorno que funcionou:** chamar o `gh` direto, sem `--yes`, com stdin explicitamente
+não-interativo — não trava esperando resposta, e não faz segunda pergunta:
+
+```bash
+gh pr merge <PR> --merge --delete-branch < /dev/null
+```
+
+Se o PR estiver checked out num worktree separado (comum neste repositório — RITOS.md
+§1), `--delete-branch` falha só nessa etapa (`cannot delete branch ... used by
+worktree`) — o merge em si já aconteceu; confira com
+`gh pr view <PR> --json state,mergedBy,mergeCommit` e depois
+`git worktree remove <caminho>` + `git branch -D <branch>` na sequência certa.
+**Não é a correção do script** — `ci/mergear.py` ainda quebra para qualquer agente
+que rode exatamente o comando que ele mesmo imprime. Registrado também em §1
+(H6) porque decidir se a correção é trocar `--yes` por detecção de versão do `gh`,
+remover a flag, ou fixar a versão do `gh` no ambiente é decisão do mantenedor.
+**Origem:** despacho red-team, golpe 1 (PR #35), 21/08/2026.
 
 ## §6 — Testes
 
