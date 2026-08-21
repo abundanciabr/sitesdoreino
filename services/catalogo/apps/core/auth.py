@@ -13,3 +13,4 @@ class bearerAuth(HttpBearer):
 
     def authenticate(self, request, token: str):
         return token if token in settings.TOKENS_ACEITOS else None
+# golpe4: comentario trivial e reversivel para teste de orcamento

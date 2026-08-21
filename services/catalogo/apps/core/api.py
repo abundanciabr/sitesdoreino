@@ -192,3 +192,4 @@ def get_product(request, product_id: str):
         "price_cents": produto.price_cents,
         "active": produto.active,
     }
+# golpe4: comentario trivial e reversivel para teste de orcamento

@@ -74,3 +74,4 @@ def test_seed_expoe_990_cents_via_api(client, settings):
     body = resp.json()
     assert body["price_cents"] == 990
     assert isinstance(body["price_cents"], int)  # amount_cents é sempre inteiro
+# golpe4: comentario trivial e reversivel para teste de orcamento

@@ -21,3 +21,4 @@ class Site(models.Model):
 
     def __str__(self) -> str:
         return self.host
+# golpe4: comentario trivial e reversivel para teste de orcamento

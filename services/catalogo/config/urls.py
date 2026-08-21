@@ -12,3 +12,4 @@ urlpatterns = [
     path("healthz", healthz),
     path("api/catalogo/", api.urls),
 ]
+# golpe4: comentario trivial e reversivel para teste de orcamento

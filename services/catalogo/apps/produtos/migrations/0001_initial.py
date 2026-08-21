@@ -37,3 +37,4 @@ class Migration(migrations.Migration):
             ],
         ),
     ]
+# golpe4: comentario trivial e reversivel para teste de orcamento

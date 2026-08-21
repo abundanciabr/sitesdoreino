@@ -56,3 +56,4 @@ class Command(BaseCommand):
                 f"{status(oferta_criada)}: oferta {oferta.slug} em {site.host} → {oferta.price_cents} cents"
             )
         )
+# golpe4: comentario trivial e reversivel para teste de orcamento

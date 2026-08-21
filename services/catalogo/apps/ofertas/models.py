@@ -50,3 +50,4 @@ class Bump(models.Model):
 
     def __str__(self) -> str:
         return self.name
+# golpe4: comentario trivial e reversivel para teste de orcamento

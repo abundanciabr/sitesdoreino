@@ -53,3 +53,4 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 USE_TZ = True
+# golpe4: comentario trivial e reversivel para teste de orcamento

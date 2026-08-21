@@ -18,3 +18,4 @@ api = NinjaAPI(
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", catalogo_router)
+# golpe4: comentario trivial e reversivel para teste de orcamento

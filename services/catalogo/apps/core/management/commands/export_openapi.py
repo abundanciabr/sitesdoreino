@@ -49,3 +49,4 @@ class Command(BaseCommand):
         # cp1252 quebra em caracteres como "→"); o conteúdo semântico é idêntico —
         # \uXXXX decodifica para o mesmo unicode na leitura via yaml.safe_load.
         self.stdout.write(json.dumps(schema))
+# golpe4: comentario trivial e reversivel para teste de orcamento

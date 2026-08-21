@@ -65,3 +65,4 @@ def test_site_inativo_e_404_por_host_e_por_oferta(client, token_valido):
 
     assert resp_host.status_code == 404
     assert resp_oferta.status_code == 404
+# golpe4: comentario trivial e reversivel para teste de orcamento

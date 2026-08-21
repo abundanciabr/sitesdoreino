@@ -20,3 +20,4 @@ class Command(BaseCommand):
                 f"{'✅ criado' if criado else 'ℹ já existia'}: {site.host} → {site.id}"
             )
         )
+# golpe4: comentario trivial e reversivel para teste de orcamento
