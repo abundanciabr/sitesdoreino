@@ -103,7 +103,36 @@ services:
       DJANGO_SECRET_KEY: e2e-esqueleto-nunca-em-producao
       DEBUG: "0"
       DATABASE_URL: postgres://dev:dev@postgres:5432/alunos_db
-      # Nenhum consumidor síncrono real ainda (ARMADILHAS.md §9) — token só
-      # para o esqueleto poder bater na API de leitura/reprocesso manual.
+      REDIS_STREAMS_URL: redis://redis:6379/0
+      # Token só para o esqueleto poder bater na API de leitura/reprocesso manual.
       TOKENS_ACEITOS_E2E: e2e-token-e2e-para-alunos
     ports: ["8004:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  # Processo separado do servidor HTTP — consome eventos.pagamento.aprovado e
+  # cria a Matrícula (R4). "roda como processo supervisionado" por design
+  # (comentário no próprio management command); aqui é um container dedicado.
+  # NÃO roda `migrate` aqui: junto com o `alunos` migrando em paralelo contra
+  # o mesmo banco novo, dois `migrate --noinput` concorrentes correm pra criar
+  # a tabela django_migrations e um perde com IntegrityError (visto ao vivo —
+  # ver ARMADILHAS.md §3.13). `depends_on: alunos condition: service_healthy`
+  # garante que o `alunos` (que já migra sozinho) terminou antes deste subir.
+  alunos-consumer:
+    build: ../services/alunos
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      alunos:
+        condition: service_healthy
+    environment:
+      DJANGO_SECRET_KEY: e2e-esqueleto-nunca-em-producao
+      DEBUG: "0"
+      DATABASE_URL: postgres://dev:dev@postgres:5432/alunos_db
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: python manage.py consume_eventos

@@ -248,6 +248,25 @@ blob independente do `core.autocrlf` de quem commitou. Confira sempre com
 pronto.
 **Origem:** `e2e/esqueleto.sh` e `e2e/postgres-init.sh` (despacho e2e/esqueleto).
 
+### 3.13 Dois containers rodando `migrate --noinput` ao mesmo tempo, banco novo
+
+**Sintoma:** `django.db.utils.IntegrityError: duplicate key value violates unique
+constraint "pg_type_typname_nsp_index"` / `MigrationSchemaMissing: Unable to
+create the django_migrations table` — um dos dois containers simplesmente morre
+no boot, o outro sobe normal.
+**Causa:** dois processos Django apontando pro MESMO banco recém-criado (sem a
+tabela `django_migrations` ainda) rodam `migrate --noinput` em paralelo — os
+dois tentam criar a tabela ao mesmo tempo, um perde a corrida e estoura. Em
+compose de e2e isso aparece fácil: célula com um servidor HTTP (roda `migrate`
+no `CMD` do Dockerfile) + um sidecar da MESMA célula pra outro processo (ex.:
+um consumer de eventos) também herdando esse `CMD`, ambos subindo juntos.
+**Solução:** só UM container migra. O outro depende dele com
+`condition: service_healthy` (exige um `healthcheck:` no primeiro — checar
+`/healthz` já resolve) e roda só o comando dele (`command: python manage.py
+consume_eventos`), sem `migrate` embutido.
+**Origem:** `e2e/docker-compose.e2e.yml` — serviço `alunos-consumer`, subindo
+junto com `alunos` contra `alunos_db` recém-criado (despacho e2e/esqueleto).
+
 ## §4 — Django e django-ninja
 
 ### 4.1 `AttributeError: DoesNotExist` / `AttributeError: objects`
@@ -768,6 +787,6 @@ arquivo com a ferramenta de escrita em vez de heredoc. Vale para qualquer par an
 | `seed_esqueleto` do catalogo usa env `DOMINIO_OPERACOES` com fallback hardcoded, em vez do `--host` obrigatório que o card do painel pedia | sem decisão do mantenedor |
 | Proteção de branch nativa do GitHub exige plano Pro; hoje o fallback é `.githooks/pre-push` | issue `mecanizar:` #1 |
 | Relay do outbox (Huey → Redis Streams, R3) ainda não instanciado no checkout — o evento é gravado transacionalmente, mas ninguém publica | Fase D, despacho seguinte |
-| **alunos não tem consumer de `pagamento.aprovado`** (nenhum `management/commands/consume_eventos`) e `POST /matriculas` + `GET /alunos/{email}/matriculas` são stubs `501` (`apps/core/api.py`, comentário "Fase 0 — todo handler responde 501"). `e2e/esqueleto.sh` chega até aqui verde (seed→sessão→pedido→cobrança→webhook→outbox→relay todos ✅, confirmados rodando de verdade) e falha exatamente neste elo, de propósito — é o gap real, não um bug do script | despacho dedicado à célula alunos (Fase D) — descoberto/confirmado por e2e/esqueleto.sh |
+| ~~alunos não tem consumer de `pagamento.aprovado`~~ **RESOLVIDO em parte** (PR #26, `agent/alunos/matricula`): hoje existe `apps/eventos/management/commands/consume_eventos.py` + `apps/matriculas/` (models/services/handlers, idempotente por `order_id`, INV-P5) e `POST /matriculas` funciona de verdade. Confirmado rodando ao vivo em `e2e/esqueleto.sh` (container `alunos-consumer` dedicado): o evento `pagamento.aprovado` publicado por pagamentos é consumido e a `Matricula` nasce com `status=ativa` no banco de alunos, ponta a ponta. **O que falta é só** `GET /alunos/{email}/matriculas` — ainda `HttpError(501)` por design (`apps/core/api.py`, comentário "listEnrollments segue fora de escopo desta sessão") — é esse endpoint de LEITURA, sozinho, que segura o elo 8 do esqueleto e o critério 1 do DoD de `ESQUELETO-QUE-ANDA.md` | despacho pequeno e focado: implementar só `list_enrollments` lendo `Matricula.objects.filter(email=email)` — o resto da célula já funciona |
 | **checkout não consome `pagamento.aprovado`** — `GET /api/checkout/pedidos/{id}.status` nunca sai de `aguardando_pagamento` (nenhum consumer, nenhum webhook recebido de pagamentos; a doc do endpoint promete atualização "pelos eventos pagamento.aprovado/recusado" mas o mecanismo não existe). `e2e/esqueleto.sh` faz essa checagem como diagnóstico não-bloqueante (fora do caminho numerado do ESQUELETO-QUE-ANDA.md) e sempre mostra o status parado | despacho dedicado à célula checkout — mesma família do item de relay acima |
 | **pagamentos não valida o status HTTP da resposta da Mercado Pago ao criar uma intent Pix** — `pagamentos/core/gateway.py:_traduzir_resposta_pix` lê `resposta.get("id", "")` sem checar se a chamada deu certo; `MercadoPagoClient._post` só levanta `MercadoPagoError` para `status_code >= 500`. Com uma credencial inválida (401/4xx), a MP responde erro e a intent é criada silenciosamente com `provider_payment_id` vazio, e a API devolve `201` como se tivesse dado certo. Descoberto rodando `e2e/esqueleto.sh` com um `MP_ACCESS_TOKEN` de exemplo (ver ARMADILHAS.md §1 H5) | despacho dedicado à célula pagamentos — validar `resp.status_code` antes de traduzir a resposta |

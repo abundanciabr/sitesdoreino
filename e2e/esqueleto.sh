@@ -251,13 +251,34 @@ ok "evento presente no stream eventos.pagamento.aprovado"
 
 # ── elo 8: matrícula (verificação final) ────────────────────────────────
 elo "matrícula (GET /api/alunos/alunos/{email}/matriculas ⇒ matrícula ativa)"
+
+# Diagnóstico: o consumer (apps/eventos/management/commands/consume_eventos.py,
+# container alunos-consumer) é assíncrono — dá um tempo pra ele processar o
+# evento antes de checar o banco. Não é o critério de aprovação do elo (esse é
+# o GET abaixo, o que ESQUELETO-QUE-ANDA.md pede), só contexto pra mensagem de
+# erro ser precisa se o GET falhar.
+MATRICULA_NO_BANCO="NAO"
+for _ in $(seq 1 15); do
+  MATRICULA_NO_BANCO="$(DC exec -T alunos python manage.py shell -c "
+from apps.matriculas.models import Matricula
+m = Matricula.objects.filter(order_id='${ORDER_ID}').first()
+print('SIM' if m and m.status == 'ativa' else 'NAO')
+" 2>/dev/null | tr -d '\r' | tail -n1)"
+  [[ "$MATRICULA_NO_BANCO" == "SIM" ]] && break
+  sleep 1
+done
+
 RESP="$(curl -sS -w '\n%{http_code}' "http://localhost:8004/api/alunos/alunos/${EMAIL}/matriculas" \
   -H "Authorization: Bearer ${TOKEN_ALUNOS}")"
 HTTP_STATUS="$(echo "$RESP" | tail -n1)"
 BODY="$(echo "$RESP" | sed '$d')"
 if [[ "$HTTP_STATUS" == "501" ]]; then
   echo "$BODY"
-  falhar "alunos devolveu 501 — não implementado (ARMADILHAS.md §9: sem consumer de pagamento.aprovado nem handler real em GET /alunos/{email}/matriculas). O outbox/relay JÁ FUNCIONAM (elos 6-7 verdes); falta a célula alunos consumir o evento."
+  if [[ "$MATRICULA_NO_BANCO" == "SIM" ]]; then
+    falhar "GET /alunos/{email}/matriculas devolveu 501 (ainda não implementado — comentário em apps/core/api.py: 'listEnrollments segue fora de escopo'), MAS o consumer JÁ criou a matrícula ativa para order_id=$ORDER_ID no banco de alunos. O caminho de dados funciona ponta a ponta (evento -> consumer -> Matricula); só falta o endpoint de LEITURA."
+  else
+    falhar "GET /alunos/{email}/matriculas devolveu 501 e a matrícula também NÃO apareceu no banco para order_id=$ORDER_ID — o consumer não processou o evento (confira 'docker compose -f e2e/docker-compose.e2e.yml logs alunos-consumer')."
+  fi
   parar "matrícula"
 fi
 if [[ "$HTTP_STATUS" != "200" ]]; then
