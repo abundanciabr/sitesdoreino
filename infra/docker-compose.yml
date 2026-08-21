@@ -5,6 +5,17 @@
 #   PAGAMENTOS_TAG=<sha-anterior> docker compose up -d pagamentos
 # Cada célula tem sua variável *_TAG; default = main.
 # Segredos de runtime vivem SÓ em ./env/*.env (escritos pelo mantenedor — INV-P8).
+#
+# DOIS TIPOS DE PROCESSO POR CÉLULA:
+#   <celula>          servidor HTTP — roda `migrate` no boot (CMD do Dockerfile)
+#   <celula>-<papel>  processo auxiliar (consumer de evento, worker Huey):
+#                     MESMA imagem, MESMA *_TAG, MESMO env_file, `command:`
+#                     sobrescrito e SEM `migrate` (ARMADILHAS.md §3.13)
+#
+# O nome do auxiliar SEMPRE começa com "<celula>-". Não é estética: é assim que
+# .github/workflows/deploy-celula.yml descobre, lendo o próprio compose, o que
+# subir junto com a célula — sem lista fixa que envelhece em silêncio. Auxiliar
+# batizado fora desse padrão fica rodando a imagem antiga depois de um deploy.
 # =============================================================================
 name: plataforma
 
@@ -16,6 +27,26 @@ x-celula: &celula
       condition: service_healthy
     redis:
       condition: service_started
+  # [ARMADILHAS §3.13] Sem healthcheck aqui, o processo auxiliar não tem como
+  # esperar o `migrate` do servidor HTTP terminar: os dois migram em paralelo
+  # contra o mesmo banco e um morre com IntegrityError. /healthz respondendo é
+  # o sinal de que o `migrate --noinput && uvicorn` do CMD chegou ao fim.
+  # Medido em 21/08/2026 com o ambiente real de infra/env/*.exemplo: 7 das 8
+  # células respondem 200 nesta sonda. `checkout` responde 404 e por isso
+  # sobrescreve esta sonda logo abaixo — ver ARMADILHAS.md §4.10.
+  healthcheck:
+    test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+    interval: 10s
+    timeout: 5s
+    retries: 12
+    start_period: 30s
+
+# Processo auxiliar de célula. Não serve HTTP e não tem rota pública: fica só na
+# rede `interna` (Lei 2, muralha de execução). Sem healthcheck — o que ele tem a
+# provar é que não morreu, e disso o `up -d --wait` do deploy já cuida.
+x-processo: &processo
+  restart: unless-stopped
+  networks: [interna]
 
 services:
   traefik:
@@ -78,10 +109,52 @@ services:
     image: ghcr.io/abundanciabr/plataforma-leads:${LEADS_TAG:-main}
     env_file: [env/leads.env]
 
+  # Consome os eventos de pagamento para a linha do tempo do lead.
+  leads-consumer:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-leads:${LEADS_TAG:-main}
+    env_file: [env/leads.env]
+    command: ["python", "manage.py", "consume_eventos"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      leads:
+        condition: service_healthy
+
   checkout:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-checkout:${CHECKOUT_TAG:-main}
     env_file: [env/checkout.env]
+    # [ARMADILHAS §4.10] Sonda de TCP, não de HTTP, e SÓ nesta célula: com
+    # SCRIPT_NAME=/checkout (env/checkout.env) e Django 5.0.9, `GET /healthz`
+    # responde 404 aqui — medido em 21/08/2026, com a MESMA imagem respondendo
+    # 200 quando SCRIPT_NAME sai do ambiente. Herdar a sonda de /healthz deixaria
+    # `checkout` unhealthy para sempre, e `checkout-consumer` jamais subiria.
+    # O que a sonda precisa provar é que o `migrate` do CMD terminou e o uvicorn
+    # está escutando; o socket aberto prova exatamente isso, e nada além.
+    # Volte para a sonda herdada assim que a célula corrigir o middleware.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=3).close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  # Consome eventos.pagamento.aprovado e tira o pedido de `aguardando_pagamento`.
+  checkout-consumer:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-checkout:${CHECKOUT_TAG:-main}
+    env_file: [env/checkout.env]
+    command: ["python", "manage.py", "consume_eventos"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      checkout:
+        condition: service_healthy
 
   pagamentos:
     <<: *celula
@@ -93,10 +166,76 @@ services:
     image: ghcr.io/abundanciabr/plataforma-alunos:${ALUNOS_TAG:-main}
     env_file: [env/alunos.env]
 
+  # Consome eventos.pagamento.aprovado e cria a Matrícula (R4).
+  alunos-consumer:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-alunos:${ALUNOS_TAG:-main}
+    env_file: [env/alunos.env]
+    command: ["python", "manage.py", "consume_eventos"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      alunos:
+        condition: service_healthy
+
   mensageria:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-mensageria:${MENSAGERIA_TAG:-main}
     env_file: [env/mensageria.env]
+
+  # Consome os eventos e REGISTRA o envio, enfileirando a task no Huey.
+  # Quem entrega de fato é o mensageria-huey logo abaixo.
+  mensageria-consumer:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-mensageria:${MENSAGERIA_TAG:-main}
+    env_file: [env/mensageria.env]
+    command: ["python", "manage.py", "consume_eventos"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mensageria:
+        condition: service_healthy
+
+  # Única célula com Huey (services/mensageria/config/huey.py). Sem este worker
+  # a R8 nunca executa: o handler enfileira `enviar_notificacao` e ninguém tira
+  # da fila — nenhum e-mail sai, e o retry de 5 tentativas é decorativo.
+  #
+  # [ARMADILHAS §4.11] Por que isto não é um comando de uma linha: a célula não
+  # tem entrypoint de Huey (nem `huey.contrib.djhuey`, nem `manage.py run_huey`).
+  # Medido em 21/08/2026, dentro da própria imagem:
+  #   huey_consumer.py config.huey.huey        -> sobe, mas com o registro de
+  #                                               tasks VAZIO (nada a executar)
+  #   huey_consumer.py apps.eventos.tasks.huey -> AppRegistryNotReady
+  # O bootstrap abaixo é o mínimo que registra a task: django.setup() primeiro,
+  # importar apps.eventos.tasks depois. A correção definitiva é um `run_huey`
+  # dentro da célula (mudança em services/**, fora do escopo deste despacho —
+  # ver ARMADILHAS.md §1/H10); quando existir, isto volta a ser uma linha só.
+  mensageria-huey:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-mensageria:${MENSAGERIA_TAG:-main}
+    env_file: [env/mensageria.env]
+    command:
+      - python
+      - -c
+      - |
+        import os, django
+        os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+        django.setup()
+        import apps.eventos.tasks  # registra @huey.task no TaskRegistry
+        from huey.bin.huey_consumer import consumer_main
+        consumer_main()
+      - apps.eventos.tasks.huey
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mensageria:
+        condition: service_healthy
 
 volumes:
   pgdata: {}

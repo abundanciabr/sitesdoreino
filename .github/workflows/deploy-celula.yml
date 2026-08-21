@@ -51,14 +51,31 @@ jobs:
           docker build -t "$IMG:${{ github.sha }}" -t "$IMG:main" "services/${{ matrix.celula }}"
           docker push "$IMG:${{ github.sha }}"
           docker push "$IMG:main"
-      - name: Ativar na VPS (pull + up SÓ desta célula)
+      - name: Ativar na VPS (pull + up da célula E dos processos auxiliares dela)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
+            set -eu
             cd /opt/plataforma
-            docker compose pull ${{ matrix.celula }}
-            docker compose up -d ${{ matrix.celula }}
-            docker compose ps ${{ matrix.celula }}
+            CELULA='${{ matrix.celula }}'
+            # A célula não é mais UM container: os consumers de evento e o worker
+            # Huey vivem em serviços "<celula>-<papel>" (infra/docker-compose.yml).
+            # Subir só "<celula>" deixaria o auxiliar rodando a IMAGEM ANTIGA, em
+            # silêncio — duas versões do mesmo código no ar, sem alarme nenhum.
+            # A lista sai do PRÓPRIO compose, não de uma lista fixa aqui: a célula
+            # que ganhar um auxiliar amanhã já entra sozinha, sem editar este arquivo.
+            SERVICOS=$(docker compose config --services | grep -E "^${CELULA}(-|\$)" || true)
+            if [ -z "$SERVICOS" ]; then
+              echo "ERRO: '$CELULA' não tem serviço algum em /opt/plataforma/docker-compose.yml."
+              echo "Abortado de propósito: 'up -d' sem argumento subiria a plataforma inteira."
+              exit 1
+            fi
+            echo "Serviços desta célula: $SERVICOS"
+            docker compose pull $SERVICOS
+            # --wait reprova o deploy se algum container não ficar de pé. Sem ele,
+            # 'ps' devolve sucesso com container em crash-loop (ARMADILHAS §3.13).
+            docker compose up -d --wait --wait-timeout 180 $SERVICOS
+            docker compose ps $SERVICOS
