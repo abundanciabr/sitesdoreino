@@ -48,6 +48,56 @@ então faz um `select_for_update().get(...)` que bloqueia até o vencedor commit
 direto) estourando `IntegrityError` sob duas threads — ver corpo do PR de feature
 (`agent/alunos/matricula`).
 
+## Dedup de evento e efeito do evento vivem na MESMA transação
+
+**Onde:** `apps/eventos/management/commands/consume_eventos.py::processar_envelope()`.
+
+**O bug (esteve em `main` até o PR desta lição):** o `create()` do `EventoProcessado`
+ficava num `transaction.atomic()` que **commitava** antes de o handler rodar — o
+handler estava fora do `with`. Se `matricular()` falhasse por motivo transitório
+(deadlock, conexão caída, timeout num pico), o evento já estava marcado como
+processado: **toda reentrega futura caía no `except IntegrityError: return` e era
+descartada em silêncio.** O cliente pagou, a matrícula nunca acontece, e nada no
+sistema descobre — esta célula não tem reconciliação.
+
+**A estrutura correta são duas transações aninhadas.** Parece redundante e não é:
+
+- **A externa** envolve o registro **e** o efeito, para que falhem juntos. É ela que
+  faz a reentrega voltar a funcionar depois de uma falha no meio.
+- **A interna** é savepoint **só** em volta do `create()`. Tem duas razões, e as duas
+  precisam ser ditas: (1) `ARMADILHAS.md` §4.8 — sem savepoint próprio o
+  `IntegrityError` do `event_id` duplicado aborta a transação inteira e a query
+  seguinte estoura `TransactionManagementError`; (2) o **escopo do `except`** — ele
+  precisa enxergar apenas o `IntegrityError` daquele `create()`.
+
+**A armadilha da correção óbvia:** mover o handler para **dentro do `try`** conserta a
+atomicidade e planta um bug novo — um `IntegrityError` vindo do handler (qualquer
+constraint sem relação com `event_id`) passa a ser lido como "já processado" e o evento
+some em silêncio. É o mesmo bug de antes, mais difícil de enxergar. Por isso o handler
+fica dentro do `atomic` externo mas **fora do `try`**; guarda disso:
+`tests/test_inv_p5_dedup_atomico.py::test_integrityerror_do_handler_nao_e_confundido_com_evento_ja_processado`.
+
+**INV-P5 tem duas metades.** `test_inv_p5_matricula_lock.py` guarda "nunca DUAS"
+(evento duplicado/concorrente ⇒ uma matrícula). `test_inv_p5_dedup_atomico.py` guarda
+"nunca ZERO" (evento que falhou no meio ⇒ a reentrega ainda matricula). Entrega
+at-least-once só vira exatamente-uma com as duas.
+
+**Evidência vermelho→verde** (protocolo `ARMADILHAS.md` §6.1, `git stash` do handler):
+sem o fix, os dois testes do guarda falham — e a demonstração crua do descarte foi
+`Matriculas para order-demo: 0` depois da reentrega do mesmo evento. Com o fix, 12
+testes verdes na célula.
+
+**Consequência no loop do Redis (sabida, fora do escopo daquele despacho):** com a
+exceção agora propagando para fora de `processar_envelope()`, o `r.xack(...)` do
+`Command.handle()` não roda — a mensagem fica na PEL do consumer group. Isso é o
+comportamento desejado (a mensagem *precisa* sobreviver para ser reentregue), mas a
+recuperação de mensagens presas (`xautoclaim`) ainda não existe nesta célula: hoje
+depende de o processo ser reiniciado. Despacho próprio.
+
+**Fora desta célula:** `leads` tinha o mesmo formato de bug em
+`apps/core/handlers.py::processar_envelope` na data deste PR. Não é conserto daqui —
+1 PR = 1 célula (cerca de CI).
+
 ## `consume_eventos.py` carrega o dedup junto (orçamento de 15 arquivos)
 
 `processar_envelope()` e `HANDLERS` vivem dentro de
