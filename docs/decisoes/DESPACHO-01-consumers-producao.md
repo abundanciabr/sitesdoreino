@@ -3,8 +3,9 @@
 > ## ✅ EXECUTADO — PR #45, mergeado em 21/08/2026. NÃO redespache.
 > Entregou os 4 consumers + worker Huey + healthchecks + o deploy descobrindo os
 > auxiliares do próprio compose. **Duas ressalvas que seguem abertas** (ARMADILHAS §1):
-> **H11** — o compose NÃO chega à VPS por pipeline: os consumers só existem em produção
-> depois que o mantenedor copiar `infra/docker-compose.yml` para `/opt/plataforma/`.
+> **H11** — ~~o compose NÃO chega à VPS por pipeline~~ **mecanizado pelo despacho 04**
+> (`.github/workflows/deploy-infra.yml`): o merge daquele PR dispara a sincronização
+> que entrega estes consumers à VPS — 🟡 até a prova do primeiro run verde.
 > **H10** — dois remendos moram no compose (healthcheck TCP do checkout; bootstrap Huey
 > da mensageria) até as correções de célula saírem em PRs próprios.
 >
