@@ -1,0 +1,160 @@
+# =============================================================================
+# DEPLOY DE INFRA — merge na main tocando infra/docker-compose.yml ou
+# infra/traefik/** ⇒ sincroniza esses arquivos para /opt/plataforma/ na VPS e
+# aplica — fail-closed: valida ANTES de trocar, backup datado ANTES de
+# sobrescrever, verificação DEPOIS de aplicar, e `docker compose ps` impresso
+# SEMPRE como evidência do run.
+#
+# Mata o H11 (ARMADILHAS.md §1): até este workflow existir, o compose e o
+# traefik só chegavam à VPS copiados à mão — todo PR de infra mergeado ficava
+# sem efeito real em produção, e o deploy-celula (que descobre os serviços
+# auxiliares lendo o compose DA VPS) ficava silenciosamente incompleto.
+#
+# O QUE ESTE WORKFLOW JAMAIS TOCA: infra/env/ e /opt/plataforma/env/.
+# Os .env reais são segredos escritos à mão pelo mantenedor (INV-P8); este
+# workflow não os lê, não os escreve e não os lista — nenhum comando de cópia
+# aqui menciona env/. Os scripts de provisionamento também não viajam: são de
+# execução única, pelo humano, como root (infra/provisionamento-vps.sh).
+#
+# SEM workflow_dispatch, DE PROPÓSITO: caminho de entrega que ninguém amarra a
+# commit revisado na main não existe aqui (mesma razão do portão de deploy).
+#
+# O CI conhece apenas VPS_HOST e a chave do usuário `deploy` — os MESMOS
+# secrets do deploy-celula. Lei 5 (CONSTITUICAO.md): agente não tem chave SSH
+# por inexistência; o canal do repositório para a VPS é este pipeline,
+# auditável, revisado e reversível (o backup datado é o caminho de volta).
+# =============================================================================
+name: deploy-infra
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'infra/docker-compose.yml'
+      - 'infra/traefik/**'
+      # O próprio workflow nos paths, de propósito: o merge do PR que o cria
+      # já dispara a primeira sincronização — é ela que finalmente entrega à
+      # produção os consumers criados no PR #45, sem passo manual nenhum.
+      - '.github/workflows/deploy-infra.yml'
+permissions:
+  contents: read
+# MESMO grupo do deploy-celula: dois workflows fazendo SSH na VPS ao mesmo
+# tempo (um merge de célula + um de infra) seriam intercalados; o grupo único
+# os enfileira, sem cancelar o que já está no meio de um deploy.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+jobs:
+  sincronizar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Transferência via appleboy/scp-action: mesmo autor da appleboy/ssh-action
+      # que o deploy-celula já usa com runs verdes medidos — nenhuma família
+      # nova de action de terceiro entra no repositório, e não reimplementamos
+      # à mão o manuseio de chave/known_hosts que essa família já resolve.
+      # O destino é uma ÁREA DE STAGING (infra.new/), nunca os caminhos finais:
+      # a troca só acontece no passo seguinte, DEPOIS da validação na VPS.
+      - name: Enviar compose e traefik para staging na VPS
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          # SÓ estes dois caminhos. env/ NUNCA entra nesta lista (INV-P8).
+          source: "infra/docker-compose.yml,infra/traefik"
+          target: /opt/plataforma/infra.new
+          strip_components: 1
+          # rm limpa SÓ o staging (o target acima) antes do upload, para que
+          # restos de um run anterior interrompido não contaminem este.
+          # JAMAIS aponte o target para /opt/plataforma com rm ligado.
+          rm: true
+
+      - name: Validar, trocar com backup datado e aplicar (fail-closed)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          # O primeiro run recria as 8 células (ganham healthcheck) e espera
+          # cada uma ficar healthy antes de subir os consumers — folga real.
+          command_timeout: 30m
+          # set -eu, sem `|| true`: padrão da casa (ARMADILHAS.md §5.6) — falha
+          # de ferramenta nunca pode virar "nada a fazer".
+          script: |
+            set -eu
+            cd /opt/plataforma
+
+            # ── 0) staging → caminhos temporários. Nada EM USO muda aqui. ──
+            ls infra.new
+            rm -rf traefik.new
+            mv -f infra.new/docker-compose.yml docker-compose.yml.new
+            mv infra.new/traefik traefik.new
+            rmdir infra.new
+
+            # ── 1) VALIDAR ANTES DE TROCAR. O -f aponta para o .new, mas o
+            # project dir continua /opt/plataforma: a interpolação roda contra
+            # o .env e os env/*.env REAIS, que só existem aqui. --quiet para
+            # nenhum valor interpolado (segredo) ir ao log do Actions. ──
+            if ! docker compose -f docker-compose.yml.new config --quiet; then
+              echo "ERRO: o compose novo reprovou na validação — NADA foi trocado."
+              echo "O material recusado ficou em docker-compose.yml.new e traefik.new/ para inspeção."
+              exit 1
+            fi
+
+            # ── 2) BACKUP DATADO do que está em uso, antes de sobrescrever. ──
+            STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+            cp -a docker-compose.yml "docker-compose.yml.bak-$STAMP"
+            cp -a traefik "traefik.bak-$STAMP"
+            echo "Backup: docker-compose.yml.bak-$STAMP e traefik.bak-$STAMP"
+
+            # ── 3) TROCA + APLICAÇÃO. `up -d` é idempotente: só recria o que
+            # mudou no compose. Sem `docker compose pull`: sincronizar infra
+            # não pode, de carona, trocar a versão das células — imagem nova
+            # é assunto do deploy-celula. ──
+            mv -f docker-compose.yml.new docker-compose.yml
+            rm -rf traefik
+            mv traefik.new traefik
+            docker compose up -d
+
+            # O traefik monta ./traefik por bind mount, e bind mount prende o
+            # INODE: depois do mv acima, o container em execução continua lendo
+            # o diretório ANTIGO, e `up -d` não o recria (a definição do
+            # serviço no compose não mudou). Sem este recreate condicional,
+            # mudança de config do traefik viraria exatamente a divergência
+            # silenciosa que este workflow existe para matar. `diff` com erro
+            # também recria — na dúvida, aplicar é o lado fail-closed.
+            if ! diff -r "traefik.bak-$STAMP" traefik >/dev/null; then
+              echo "traefik/ mudou — recriando o container para o bind mount enxergar os arquivos novos"
+              docker compose up -d --force-recreate traefik
+            fi
+
+            # ── 4) VERIFICAÇÃO: todo serviço declarado precisa estar rodando.
+            # `docker compose ps` impresso SEMPRE — é a evidência do run. ──
+            sleep 20
+            ESPERADOS=$(docker compose config --services | sort)
+            RODANDO=$(docker compose ps --services --status running | sort)
+            echo "── docker compose ps (evidência do run) ──"
+            docker compose ps
+            if [ "$ESPERADOS" != "$RODANDO" ]; then
+              echo "ERRO: divergência entre o compose e o que está em estado running."
+              echo "Declarados: $(printf '%s' "$ESPERADOS" | tr '\n' ' ')"
+              echo "Rodando:    $(printf '%s' "$RODANDO" | tr '\n' ' ')"
+              FALHOS=""
+              for s in $ESPERADOS; do
+                if ! printf '%s\n' "$RODANDO" | grep -qx -- "$s"; then
+                  FALHOS="$FALHOS $s"
+                fi
+              done
+              if [ -n "$FALHOS" ]; then
+                echo "── logs (tail 60) dos serviços não-rodando:$FALHOS ──"
+                docker compose logs --tail 60 $FALHOS
+              fi
+              echo "RESTAURAÇÃO (você, na VPS — agente não tem chave, Lei 5):"
+              echo "  cd /opt/plataforma"
+              echo "  cp -a docker-compose.yml.bak-$STAMP docker-compose.yml"
+              echo "  rm -rf traefik && cp -a traefik.bak-$STAMP traefik"
+              echo "  docker compose up -d && docker compose up -d --force-recreate traefik"
+              exit 1
+            fi
+            echo "OK: infra sincronizada — todos os serviços declarados estão rodando."

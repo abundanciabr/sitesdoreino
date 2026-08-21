@@ -68,7 +68,7 @@ para sempre.
 
 | H10 | Duas correções de **código de célula** que o despacho "consumers em produção" só pôde **contornar**, porque `services/**` estava fora do escopo dele — e as duas ficam em caminho CODEOWNERS, logo dependem de você despachar e mergear. **(1) `checkout`:** `GET /healthz` responde **404** com o ambiente de produção — medido em 21/08/2026 (§4.10); o healthcheck dessa célula teve de virar sonda de TCP em `infra/docker-compose.yml`. **(2) `mensageria`:** não existe entrypoint de Huey na célula (§4.11), então o worker sobe por um bootstrap de 6 linhas embutido no `command:` do compose | **(1)** uma linha em `services/checkout/apps/core/middleware.py`: `request.path` → `request.path_info`. **(2)** `huey.contrib.djhuey` em `INSTALLED_APPS` (destrava `manage.py run_huey`) ou um management command próprio. Duas tarefas de célula normais, 1 PR cada, ambas pequenas | 🟡 **contornado, não resolvido** — a plataforma funciona, mas com dois remendos morando na infra; eles saem de lá quando a célula for corrigida (os dois estão comentados no compose apontando para cá) |
 
-| H11 | **`infra/docker-compose.yml` não chega à VPS por pipeline nenhum.** `grep -rn "docker-compose" .github/` só encontra o `cd /opt/plataforma` do deploy: o arquivo é copiado **à mão** (passo 1 da lista final de `infra/provisionamento-vps.sh`). Consequência: todo PR que muda o compose — inclusive o que criou os consumers de evento — **não muda nada em produção** até você copiar o arquivo para lá. Não existe alarme para a divergência entre o compose do Git e o do servidor | Mecanizar: um passo no `deploy-celula` (ou um workflow próprio disparado por `paths: ['infra/**']`) que envie o compose para `/opt/plataforma/` antes do `up`. É a Lei 1 — hoje esta regra está no degrau "documento", o mais fraco da escada | 🔴 aberto — decisão do mantenedor |
+| H11 | **`infra/docker-compose.yml` não chega à VPS por pipeline nenhum.** `grep -rn "docker-compose" .github/` só encontra o `cd /opt/plataforma` do deploy: o arquivo é copiado **à mão** (passo 1 da lista final de `infra/provisionamento-vps.sh`). Consequência: todo PR que muda o compose — inclusive o que criou os consumers de evento — **não muda nada em produção** até você copiar o arquivo para lá. Não existe alarme para a divergência entre o compose do Git e o do servidor | Mecanizar: um passo no `deploy-celula` (ou um workflow próprio disparado por `paths: ['infra/**']`) que envie o compose para `/opt/plataforma/` antes do `up`. É a Lei 1 — hoje esta regra está no degrau "documento", o mais fraco da escada | 🟡 **mecanizado — aguardando prova do primeiro run** (despacho 04): `.github/workflows/deploy-infra.yml` sincroniza compose+traefik para `/opt/plataforma/` a cada merge na `main` que os toque, fail-closed (valida na VPS antes de trocar, backup datado, verificação de serviços rodando). O merge do próprio PR dispara o primeiro run — é ele que entrega os consumers do PR #45 à produção. Quem confirmar o run verde (mantenedor ou sessão seguinte) promove esta linha para ✅ **com o link do run**; a evidência é o `docker compose ps` impresso no run, com os `*-consumer` e o `mensageria-huey` em `running` |
 | H12 | O alvo `contrato-check` das 8 células decide pelo **disco** (`if [ -f ../../contracts/$(CELULA).openapi.yaml ]`) em vez do manifesto — é a linha "não conforme" da tabela do [INV-CI01]. **A correção já existe em `celula-template/Makefile`; nenhuma das 8 células a usa.** Efeito: apagar um contrato deixa o `make ci` local da célula **verde**, e é esse baseline que o agente usa para decidir se pode trabalhar (mitigado no CI: `test_manifesto_real_e_coerente_com_o_repositorio` reprova em `muralhas` e em `alarme-main`) | Decidir se a correção entra **de uma vez** (1 linha × 8 arquivos + 1 teste que proíba o `if [ -f`, cabe no orçamento) ou por célula, junto de outro trabalho | 🟡 mitigado no CI, aberto localmente |
 
 **Como manter esta tabela:** ao encontrar um atrito novo cuja correção definitiva não
@@ -296,6 +296,25 @@ necessários, em lugares diferentes.)
 que você acha que mediu. Passou verde com o interpretador errado, e um `make ci`
 que "passa" contra pacotes de outra versão não prova nada sobre o CI real.
 **Origem:** despacho 03 (pagamentos, fail-closed do Mercado Pago).
+
+### 3.15 Trocar por `mv`/`rm` um arquivo ou diretório bind-mounted não muda nada no container que já roda
+
+**Sintoma:** você substitui, no servidor, um arquivo ou diretório que o compose
+monta por bind (`./traefik/traefik.yml:...:ro`), roda `docker compose up -d`, nada
+é recriado — e o container continua servindo a configuração **antiga**, sem erro
+nenhum em lugar nenhum.
+**Causa:** bind mount prende o **inode** resolvido na criação do container, não o
+caminho. `mv novo antigo` e `rm -rf dir && mv dir.new dir` criam inodes novos; o
+container em execução segue lendo o inode velho (que sobrevive enquanto montado,
+mesmo "apagado" do disco). E `up -d` só recria serviço cuja **definição** no
+compose mudou — conteúdo de arquivo montado não conta como mudança.
+**Solução:** depois de trocar arquivo/diretório montado, force o recreate de quem
+o monta: `docker compose up -d --force-recreate <servico>`. É o que
+`.github/workflows/deploy-infra.yml` faz com o traefik, condicionado a um
+`diff -r` entre o backup e o material novo — recriar sem necessidade seria um
+blip de edge gratuito a cada sync de compose.
+**Origem:** despacho 04 (deploy-infra), ao desenhar a troca fail-closed de
+`/opt/plataforma/traefik/`.
 
 ---
 
