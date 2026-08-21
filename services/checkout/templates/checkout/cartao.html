@@ -1,0 +1,36 @@
+{% load static %}
+<!-- templates/checkout/cartao.html  [RECEITA:R6 v1] — esqueleto funcional; o mount
+     do Card Payment Brick do MP entra numa sessão futura. -->
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pagamento com cartão</title>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
+    .wrap { max-width: 28rem; margin: 0 auto; padding: 1rem; }
+    .card { background: #fff; border-radius: .75rem; padding: 1.25rem; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    .total { font-size: 1.25rem; font-weight: 600; margin: .5rem 0 1rem; }
+    .brick { min-height: 8rem; border: 1px dashed #ccc; border-radius: .5rem; display: flex; align-items: center; justify-content: center; color: #777; font-size: .875rem; }
+    .status { margin-top: 1rem; font-weight: 600; }
+  </style>
+</head>
+<body>
+  {{ order_id|json_script:"order-id" }}
+  {{ total_cents|json_script:"total-cents" }}
+  {{ api_token|json_script:"api-token" }}
+  <div class="wrap" x-data="cartaoIsland()" x-init="init()">
+    <div class="card">
+      <h1>Pague com cartão</h1>
+      <p class="total" x-text="`Total: R$ ${(totalCents / 100).toFixed(2)}`"></p>
+      <div id="cardPaymentBrick_container" class="brick">Formulário de cartão</div>
+      <p class="status" x-text="statusLabel()"></p>
+    </div>
+  </div>
+  <script src="{% static 'checkout/api.js' %}"></script>
+  <script src="{% static 'checkout/cartao.js' %}"></script>
+</body>
+</html>
