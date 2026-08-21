@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from typing import Any
 
@@ -18,15 +19,51 @@ from django.http import HttpRequest, JsonResponse
 from ninja import Router
 from ninja.errors import HttpError
 
+from pagamentos.core.gateway import FalhaNoProvedor
 from pagamentos.core.models import Intent
 from pagamentos.methods.card.service import (
     IntentNaoConfirmavel,
     confirmar_intent_card,
     criar_intent_card,
 )
-from pagamentos.methods.pix.service import criar_intent_pix
+from pagamentos.methods.pix.service import (
+    completar_intent_pix,
+    criar_intent_pix,
+    intent_pix_incompleta,
+)
+
+logger = logging.getLogger(__name__)
 
 router = Router()
+
+_ERRO_PROVEDOR = (
+    "nao foi possivel obter a cobranca junto ao provedor de pagamento; "
+    "repita a requisicao com a MESMA X-Idempotency-Key"
+)
+
+
+def _falha_de_provedor(exc: FalhaNoProvedor) -> JsonResponse:
+    """502, e nunca 2xx.
+
+    Por que 502 e não 422: o payload do checkout estava correto — quem falhou foi
+    o upstream. Um 422 mandaria o checkout caçar um erro que não existe no
+    request dele. E por que não deixar estourar 500: 500 é "bug aqui"; isto é uma
+    condição prevista, com ação conhecida do outro lado (repetir a mesma chave).
+
+    [ARMADILHAS §4.2] O status novo NÃO entra como `response={...}` no decorator
+    (qualquer valor não-`None` ali vira `ninja.Schema` dinâmico e pode vazar para
+    `components.schemas`, quebrando o freeze) e também NÃO entra no
+    `openapi_extra`: mudar o documento exportado é Rito de Contrato (RITOS §3),
+    fora do escopo deste despacho. `JsonResponse` direto atravessa
+    `_result_to_response` intacto, sem tocar em `response_models`.
+
+    Consequência conhecida e deliberada: o 502 fica, por ora, INDOCUMENTADO no
+    contrato congelado. Está registrado no handoff como pendência de Rito de
+    Contrato — antes deste fix o mesmo caminho devolvia 201 mentiroso, o que é
+    estritamente pior do que um erro honesto ainda não documentado."""
+    logger.warning("falha do provedor de pagamento: %s", exc)
+    return JsonResponse({"detail": _ERRO_PROVEDOR}, status=502)
+
 
 _INTENT_SCHEMA_REF = {"$ref": "#/components/schemas/Intent"}
 
@@ -77,7 +114,14 @@ def _intent_to_dict(intent: Intent) -> dict[str, Any]:
         "amount_cents": intent.amount_cents,
         "created_at": intent.created_at.isoformat(),
     }
-    if intent.method == "pix":
+    # O bloco `pix` só aparece quando existe um Pix PAGÁVEL. Devolver
+    # `{"qr_code": ""}` era a cara do bug: o front desenhava um QR em branco e um
+    # botão "copiar" que copiava string vazia, e o cliente não tinha como saber
+    # que nada ali funcionava. `pix` não é campo obrigatório em
+    # components.schemas.Intent, então omiti-lo é legítimo no contrato congelado
+    # — e é a garantia MECÂNICA, num lugar só, de que nenhum caminho de leitura
+    # (criação, replay ou GET de status) apresenta copia-e-cola vazio.
+    if intent.method == "pix" and not intent_pix_incompleta(intent):
         data["pix"] = {
             "qr_code": intent.pix_qr_code,
             "qr_code_base64": intent.pix_qr_code_base64,
@@ -164,6 +208,24 @@ def create_intent(request: HttpRequest) -> JsonResponse:
     existente = Intent.objects.filter(idempotency_key=idem_key).first()
     if existente is not None:
         # [INV-P4] replay: mesma chave, mesma intent, SEM nova tentativa de cobrança.
+        #
+        # Exceto quando a intent está INCOMPLETA (o provedor falhou depois de a
+        # linha nascer). Reentregá-la calada era o segundo lugar por onde o QR
+        # vazio saía — e, como não existe endpoint nem comando de reparo, ali o
+        # cliente ficava sem caminho nenhum.
+        #
+        # DECISÃO: o replay COMPLETA em vez de recusar. Terminar o serviço é
+        # melhor do que devolver um erro que ninguém sabe reparar, e o replay já
+        # é o gesto natural de quem tentou pagar e não conseguiu (refresh, retry
+        # de rede). É seguro porque a chamada ao MP leva a MESMA
+        # X-Idempotency-Key: o MP deduplica por ela, então retentar não vira
+        # segunda cobrança — exatamente o que INV-P4 existe para proteger. Se o
+        # provedor ainda estiver fora, sai 502; nunca 200 com o vazio.
+        if existente.method == "pix" and intent_pix_incompleta(existente):
+            try:
+                existente = completar_intent_pix(existente)
+            except FalhaNoProvedor as exc:
+                return _falha_de_provedor(exc)
         return JsonResponse(_intent_to_dict(existente), status=200)
 
     payload = _parse_intent_create(request.body)
@@ -186,6 +248,14 @@ def create_intent(request: HttpRequest) -> JsonResponse:
         return JsonResponse(
             _intent_to_dict(Intent.objects.get(idempotency_key=idem_key)), status=200
         )
+    except FalhaNoProvedor as exc:
+        # A linha da intent SOBREVIVE de propósito (ver `completar_intent_pix`):
+        # é o registro de que uma cobrança pode ter sido iniciada no MP, e é o
+        # que impede a mesma chave de ser reusada para outro payload. O que não
+        # sobrevive é o 201 — sem cobrança utilizável não houve criação, e dizer
+        # 201 aqui é a mentira que originou este despacho. O reparo é repetir a
+        # requisição com a MESMA chave (o replay logo acima termina o serviço).
+        return _falha_de_provedor(exc)
     return JsonResponse(_intent_to_dict(intent), status=201)
 
 
@@ -287,7 +357,7 @@ def _parse_card_confirm(body: bytes) -> dict[str, Any]:
     ),
     openapi_extra=_CONFIRM_CARD_OPENAPI,
 )
-def confirm_card(request: HttpRequest, intent_id: str) -> dict[str, Any]:
+def confirm_card(request: HttpRequest, intent_id: str) -> dict[str, Any] | JsonResponse:
     intent = _get_intent_ou_404(intent_id)
     payload = _parse_card_confirm(request.body)
     try:
@@ -302,4 +372,12 @@ def confirm_card(request: HttpRequest, intent_id: str) -> dict[str, Any]:
         raise HttpError(
             409, "intent nao esta em estado confirmavel (ja aprovada/expirada)"
         ) from exc
+    except FalhaNoProvedor as exc:
+        # A intent continua em `created` — `confirmar_intent_card` só salva depois
+        # de um resultado válido — ou seja, continua CONFIRMÁVEL. É o ponto todo:
+        # uma falha do provedor não pode queimar a única chance do cliente
+        # (status vazio virando "pending" travava a intent em 409 para sempre).
+        # A retentativa usa a mesma chave derivada, então o MP deduplica se a
+        # cobrança tiver de fato saído.
+        return _falha_de_provedor(exc)
     return _intent_to_dict(intent)

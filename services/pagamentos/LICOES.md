@@ -302,3 +302,102 @@ assumir que é proibido, e prefira `env VAR=x cmd` (uma linha) a vários
   a correção foi passar `HTTP_X_SIGNATURE=headers["x-signature"],
   HTTP_X_REQUEST_ID=headers["x-request-id"]` como kwargs explícitos em vez
   de desempacotar um dict.
+
+## Sessão C — fail-closed na resposta do Mercado Pago (despacho 03)
+
+**O que estava quebrado, em uma frase:** `_post` só levantava para `status_code
+>= 500`, então 400/401/403/404/429 atravessavam como sucesso; o corpo de erro do
+MP (sem `id`, sem `point_of_interaction`) era traduzido em campos vazios por
+`str(resposta.get("id", ""))`, e a intent nascia com `provider_payment_id` e
+`qr_code` em branco com a API respondendo **201**.
+
+**Por que nenhum dos 19 testes via isso** (é a lição que mais economiza tempo
+aqui): todos mockavam com `patch.object(MercadoPagoClient, "criar_pagamento_pix",
+...)`. O método inteiro era substituído, então `_post` — o transporte, onde o bug
+morava — **nunca rodava em teste nenhum**. Registrado como armadilha geral em
+`ARMADILHAS.md` §6.9. Se você for testar qualquer coisa de integração nesta
+célula, use `respx` (`respx==0.23.1`, mesma versão de `checkout` e `funil`) e
+falsifique a rede, não o próprio código.
+
+### Decisões de arquitetura desta sessão
+
+- **`FalhaNoProvedor` mora em `core/gateway.py`, não em `providers/`.** É
+  vocabulário de domínio pelo mesmo motivo que `ResultadoPix`/`ResultadoCard`:
+  `methods/*` não pode importar `providers.*` (INV-P9, `.importlinter`). Se o
+  gateway deixasse `MercadoPagoError` vazar, quem chama não teria como capturá-la
+  sem furar a arquitetura — e acabaria não capturando nada, que é exatamente como
+  o bug original sobreviveu. O gateway traduz na fronteira (`except
+  MercadoPagoError → raise FalhaNoProvedor`).
+- **A linha da `Intent` SOBREVIVE quando o provedor falha** — deliberadamente. Ela
+  é o registro de que uma cobrança pode ter sido iniciada lá fora (um timeout não
+  diz se chegou) e é o que impede a mesma chave de idempotência de ser
+  reaproveitada para outro payload. Apagar a linha perderia a trilha numa célula
+  de dinheiro. O que não sobrevive é o **201**.
+- **O replay do INV-P4 virou o caminho de REPARO** (`api/intents.py`,
+  `create_intent`). Uma intent de Pix incompleta não é reentregue calada: o replay
+  chama `completar_intent_pix()` e termina o serviço. É seguro porque a chamada ao
+  MP leva a **MESMA** `X-Idempotency-Key` — o MP deduplica por ela, então retentar
+  não vira segunda cobrança, que é o que INV-P4 protege. Se o provedor ainda
+  estiver fora, sai 502; nunca 200 com o vazio. Escolhi completar em vez de
+  recusar porque **não existia** endpoint nem comando de reparo: devolver um erro
+  que ninguém sabe consertar deixaria o cliente sem caminho do mesmo jeito.
+- **`_intent_to_dict` omite o bloco `pix` quando não há copia-e-cola.** É a
+  garantia mecânica, num lugar só, para os três caminhos de leitura (criação,
+  replay e `GET /intents/{id}`) — inclusive para as linhas-fantasma que o bug já
+  criou e que continuam no banco. `pix` **não** é campo obrigatório em
+  `components.schemas.Intent`, então omitir é legítimo no contrato congelado;
+  devolver `{"qr_code": ""}` é que era a mentira.
+- **502, e o contrato NÃO mudou.** `JsonResponse(dict, status=502)` direto
+  (ARMADILHAS §4.2: `response={...}` no decorator viraria `ninja.Schema` dinâmico
+  e pode vazar para `components.schemas`). O `openapi_extra` ficou intocado e o
+  documento exportado saiu **byte a byte idêntico** ao congelado. Consequência
+  conhecida: o 502 está **indocumentado** no contrato — é Rito de Contrato (RITOS
+  §3), fora do alcance de uma sessão de célula. Registrado em `ARMADILHAS.md` §1
+  **H7**, junto com a proposta de invariante novo.
+- **`qr_code_base64` continua opcional.** É a imagem do QR — cosmética. O
+  copia-e-cola basta para pagar (e o front consegue desenhar o QR a partir dele).
+  A fronteira do fail-closed aqui é "o cliente consegue pagar?", não "a resposta
+  veio perfeita?". `id` e `qr_code` são obrigatórios; `qr_code_base64` não.
+- **`methods/card/service.py` não precisou mudar.** O `save()` já acontecia só
+  depois de um resultado válido, então uma `FalhaNoProvedor` deixa a intent
+  intocada em `created` — ou seja, ainda confirmável. Era esse o estrago do
+  cartão: `status` vazio virava `"pending"` pelo `.get(..., "pending")`, e
+  `"pending"` não é confirmável ⇒ **409 permanente** em toda tentativa seguinte.
+  O gateway agora recusa `status` vazio, então o mapa nunca mais vê o caso.
+
+### Armadilhas encontradas nesta sessão
+
+- **`resp.json()` levanta `JSONDecodeError`, subclasse de `ValueError` — que NÃO é
+  `httpx.HTTPError`.** O `except httpx.HTTPError` do `_post` não pegava uma página
+  HTML de erro de CDN/WAF: virava 500 não tratado. Precisa de `except ValueError`
+  próprio.
+- **`httpx.TimeoutException` É subclasse de `httpx.HTTPError`** — o `except` dele
+  precisa vir **antes**, ou o timeout se disfarça de "falha de rede" genérica. A
+  distinção importa: num timeout a cobrança pode ter sido criada do lado do MP,
+  num erro de conexão não.
+- **`export PATH="C:/Users/.../venv/Scripts:$PATH"` não funciona no Git Bash.** A
+  entrada é ignorada em silêncio e o script do portão roda com o Python **global**
+  — `bash ci/cross-smoke.sh` ficou verde contra pacotes de outra versão sem avisar
+  nada. Use `/c/Users/...` no PATH e confira com `which python`. É o **oposto** do
+  que o §3.7 do ARMADILHAS pede para caminhos *dentro* de código Python
+  (`C:/Users/...`). Detalhe completo em `ARMADILHAS.md` §3.14.
+- **Heredoc `<<'EOF'` do Bash tool quebrou** ao escrever um arquivo Python longo
+  com acentos e aspas (`unexpected EOF while looking for matching`). Não insista:
+  use a ferramenta de escrita de arquivo. Para editar arquivo grande já existente
+  (ex.: `ARMADILHAS.md`), um script Python com âncoras exatas + `count(...) == 1`
+  antes de escrever é mais seguro que `sed`.
+
+### Ambiente desta sessão (o que funcionou de primeira)
+
+Postgres avulso na porta **55435** (as 55432/55433/55434 já estavam ocupadas por
+`alunos-pg`, `quiz-pg` e `mensageria-pg`):
+
+```bash
+docker run -d --name pagamentos-pg -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev \
+  -e POSTGRES_DB=pagamentos_db -p 55435:5432 postgres:17
+```
+
+`REDIS_STREAMS_URL` pode apontar para o `mensageria-redis` já de pé
+(`redis://localhost:16379/5`) — não precisa de container próprio para rodar
+`make ci`. Venv fora do worktree (§3.8), `pip install -r requirements.txt`, e o
+equivalente manual do `make ci` está na seção "Comandos" no topo deste arquivo.
