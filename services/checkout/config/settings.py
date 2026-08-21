@@ -1,4 +1,5 @@
 # config/settings.py — padrão fail-hard  # [RECEITA:CONV v1]
+# golpe-1-red-team: alteração trivial e reversível (02-RED-TEAM.md #1)
 import os
 from pathlib import Path
 
