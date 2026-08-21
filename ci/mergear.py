@@ -169,8 +169,16 @@ def checar_checks(pr: dict[str, Any]) -> list[Resultado]:
         status = (check.get("status") or "").upper()
         # CheckRun usa `conclusion`; StatusContext usa `state`.
         conclusao = (check.get("conclusion") or check.get("state") or "").upper()
+        # StatusContext (API antiga de commit status) não tem campo `status` —
+        # o próprio `state` marca "ainda não terminou" com PENDING/EXPECTED,
+        # nunca com status="" vazio como o CheckRun faz.
+        ainda_rodando_legado = status == "" and conclusao in ("PENDING", "EXPECTED")
 
-        if status not in ("COMPLETED", "") or (status == "" and not conclusao):
+        if (
+            status not in ("COMPLETED", "")
+            or (status == "" and not conclusao)
+            or ainda_rodando_legado
+        ):
             resultados.append(
                 Resultado(
                     f"check/{nome}",
@@ -354,8 +362,13 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         raiz = raiz_do_repo()
+        # --yes: sem isto, o próprio `gh` faz UMA SEGUNDA pergunta de confirmação
+        # ("Merge pull request #N? (y/N)") — mas `executar()` roda com
+        # capture_output=True, então essa pergunta nunca aparece na tela. O
+        # usuário já confirmou digitando o número do PR; `gh` ficaria esperando
+        # uma resposta a uma pergunta que ninguém viu, até estourar o timeout.
         saida = _gh(
-            ["pr", "merge", str(args.pr), f"--{args.metodo}"],
+            ["pr", "merge", str(args.pr), f"--{args.metodo}", "--yes"],
             raiz,
             f"mergear o PR #{args.pr}",
         )

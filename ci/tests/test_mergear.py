@@ -111,6 +111,23 @@ def test_check_ainda_rodando_e_error() -> None:
     assert _pior(mergear.checar_checks(pr)) is Estado.ERROR
 
 
+def test_status_context_pendente_e_error() -> None:
+    """StatusContext (API legada) não tem `status`; PENDING marca em andamento.
+
+    Sem o `state` mapeado para "ainda rodando", um check nesse formato caía no
+    `else: FAIL` — reportando "não passou" para um check que só não tinha
+    terminado ainda.
+    """
+    pr = _pr(
+        statusCheckRollup=[
+            {"context": "servico-externo", "state": "PENDING"},
+            _check("muralhas"),
+            _check("ci-celula-gate"),
+        ]
+    )
+    assert _pior(mergear.checar_checks(pr)) is Estado.ERROR
+
+
 def test_skip_declarado_e_permitido() -> None:
     pr = _pr(
         statusCheckRollup=[
@@ -208,6 +225,25 @@ def test_excecao_inesperada_vira_error() -> None:
         raise RuntimeError("bug dentro do próprio portão")
 
     assert mergear._blindar("mergear", estoura)() == 2
+
+
+def test_limite_de_arquivos_bate_com_orcamento_de_mudanca() -> None:
+    """LIMITE_DE_ARQUIVOS é uma cópia solta do limite em orcamento-de-mudanca.sh.
+
+    Duas fontes independentes para o mesmo número só ficam honestas se algo
+    mecânico denuncia quando elas divergirem — do contrário é exatamente o
+    tipo de deriva silenciosa que o INV-CI01 existe para eliminar.
+    """
+    import re
+
+    script = (mergear.raiz_do_repo() / "ci" / "orcamento-de-mudanca.sh").read_text(
+        encoding="utf-8"
+    )
+    match = re.search(r"\(\(\s*N\s*>\s*(\d+)\s*\)\)", script)
+    assert (
+        match
+    ), "não encontrei o limite em ci/orcamento-de-mudanca.sh — script mudou de formato?"
+    assert mergear.LIMITE_DE_ARQUIVOS == int(match.group(1))
 
 
 def test_skips_permitidos_tem_motivo_escrito() -> None:
