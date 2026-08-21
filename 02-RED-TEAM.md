@@ -13,7 +13,7 @@ graduação. Golpe que passa = muralha falsa = Fase 0 não graduou.
 | # | Golpe (a tentativa de assassinato) | Como executar | Bloqueio esperado | Evidência |
 |---|---|---|---|---|
 | 1 | PR tocando duas células (quiz + checkout) | branch com 1 arquivo em cada, abrir PR | `muralhas` vermelho: "toca 2 células — o limite é 1" | ☑ [PR #33](https://github.com/abundanciabr/sitesdoreino/pull/33), fechado sem merge, 21/08/2026 |
-| 2 | Mudar `contracts/` sem a label `contrato` | editar `pagamentos.openapi.yaml`, PR sem label | `muralhas` vermelho: exige label 'contrato' | ☐ |
+| 2 | Mudar `contracts/` sem a label `contrato` | editar `pagamentos.openapi.yaml`, PR sem label | `muralhas` vermelho: exige label 'contrato' | ☑ [PR #36](https://github.com/abundanciabr/sitesdoreino/pull/36), fechado sem merge, 21/08/2026 |
 | 3 | Contrato + código no MESMO PR | editar `contracts/` e `services/checkout/` juntos | `muralhas` vermelho: "contracts/ não muda junto com services/" | ☑ [PR #34](https://github.com/abundanciabr/sitesdoreino/pull/34), fechado sem merge, 21/08/2026 |
 | 4 | PR com 20 arquivos sem label `arquitetural` | gerar 20 mudanças triviais numa célula | `muralhas` vermelho: orçamento estourado | ☑ [PR #37](https://github.com/abundanciabr/sitesdoreino/pull/37), fechado sem merge, 21/08/2026 |
 | 5 | `methods/pix` importando `methods/card` | adicionar `from pagamentos.methods.card import x` | `lint-imports` vermelho no `make ci` (INV-P9) | ☐ |
