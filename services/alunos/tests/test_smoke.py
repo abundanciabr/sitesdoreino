@@ -1,5 +1,9 @@
 # [RECEITA:R10 v1]
+import json
+
 import pytest
+
+from apps.matriculas.models import Matricula
 
 
 @pytest.mark.smoke_alunos
@@ -15,16 +19,61 @@ def token_valido(settings):
     return "token-de-teste"
 
 
-def test_superficie_create_enrollment_ainda_nao_implementada(client, token_valido):
-    """Fase 0 — esqueleto: a superfície existe (espelha o contrato congelado),
-    mas os handlers ainda respondem 501 (regra de negócio real é fora de escopo)."""
+@pytest.mark.django_db
+def test_create_enrollment_cria_matricula(client, token_valido):
+    resp = client.post(
+        "/api/alunos/matriculas",
+        data=json.dumps(
+            {
+                "site_id": "site-1",
+                "order_id": "order-abc",
+                "product_id": "prod-1",
+                "customer": {"email": "aluno@example.com", "name": "Aluno Exemplo"},
+            }
+        ),
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+    )
+    assert resp.status_code == 201
+    assert resp.json()["order_id"] == "order-abc"
+
+
+@pytest.mark.django_db
+def test_create_enrollment_e_idempotente_por_order_id(client, token_valido):
+    corpo = json.dumps(
+        {
+            "site_id": "site-1",
+            "order_id": "order-repetido",
+            "product_id": "prod-1",
+            "customer": {"email": "aluno@example.com", "name": "Aluno Exemplo"},
+        }
+    )
+    r1 = client.post(
+        "/api/alunos/matriculas",
+        data=corpo,
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+    )
+    r2 = client.post(
+        "/api/alunos/matriculas",
+        data=corpo,
+        content_type="application/json",
+        HTTP_AUTHORIZATION=f"Bearer {token_valido}",
+    )
+    assert r1.status_code == 201
+    assert r2.status_code == 200
+    assert Matricula.objects.filter(order_id="order-repetido").count() == 1
+
+
+@pytest.mark.django_db
+def test_create_enrollment_payload_invalido_e_422(client, token_valido):
     resp = client.post(
         "/api/alunos/matriculas",
         data="{}",
         content_type="application/json",
         HTTP_AUTHORIZATION=f"Bearer {token_valido}",
     )
-    assert resp.status_code == 501
+    assert resp.status_code == 422
 
 
 def test_superficie_list_enrollments_ainda_nao_implementada(client, token_valido):
