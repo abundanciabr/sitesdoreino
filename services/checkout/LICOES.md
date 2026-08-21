@@ -1,5 +1,7 @@
 # LIÇÕES — célula checkout
 
+<!-- golpe-3 red-team (02-RED-TEAM.md): linha trivial, revertida ao fechar o PR. -->
+
 Documento vivo, versionado. Objetivo: qualquer agente que abrir uma sessão dentro de
 `services/checkout/` lê isto em 1 minuto e não perde tempo redescobrindo o que segue.
 Acrescente ao encontrar algo novo; não reescreva o que já está registrado.

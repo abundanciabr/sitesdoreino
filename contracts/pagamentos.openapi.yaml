@@ -1,4 +1,5 @@
 openapi: 3.1.0
+# golpe-3 red-team (02-RED-TEAM.md): comentário cosmético, sem efeito semântico.
 info:
   title: Pagamentos API
   version: 1.0.0
