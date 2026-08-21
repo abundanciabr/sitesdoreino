@@ -4,13 +4,14 @@
 # congelado desta célula não declara components.schemas (tudo inline nos paths), então
 # os handlers não usam ninja.Schema tipado — isso criaria refs nomeadas que o contrato
 # não tem. createEnrollment é o reprocesso manual (mesma idempotência do consumer,
-# INV-P5); listEnrollments segue fora de escopo desta sessão (501).
+# INV-P5); listEnrollments lê Matricula direto (leitura pura, sem invariante novo).
 import json
 
 from django.http import JsonResponse
 from ninja import Router
 from ninja.errors import HttpError
 
+from apps.matriculas.models import Matricula
 from apps.matriculas.services import matricular
 
 router = Router()
@@ -139,4 +140,17 @@ _LIST_ENROLLMENTS_OPENAPI = {
     openapi_extra=_LIST_ENROLLMENTS_OPENAPI,
 )
 def list_enrollments(request, email: str):
-    raise HttpError(501, "não implementado")
+    matriculas = Matricula.objects.filter(email=email).order_by("enrolled_at")
+    if not matriculas.exists():
+        raise HttpError(404, "aluno inexistente")
+    corpo = [
+        {
+            "site_id": m.site_id,
+            "order_id": m.order_id,
+            "product_id": m.product_id,
+            "status": m.status,
+            "enrolled_at": m.enrolled_at.isoformat(),
+        }
+        for m in matriculas
+    ]
+    return JsonResponse(corpo, safe=False, status=200)
