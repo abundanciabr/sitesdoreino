@@ -12,9 +12,13 @@ certa.
 "transação abortada" que o Postgres deixa depois de um erro dentro de uma
 transação aberta. `pytest-django` embrulha cada teste em uma transação
 (`@pytest.mark.django_db`); a query seguinte (mesmo que só um `.count()` de
-asserção) esbarra na trava. Isso é invisível fora de teste porque o comando
-`consume_eventos` roda em autocommit, sem transação explícita ao redor do
-loop — a mesma linha de código só quebra dentro do isolamento do teste.
+asserção) esbarra na trava. **Isto mudou:** quando esta lição foi escrita, o
+comando `consume_eventos` rodava em autocommit e a falta do savepoint só
+quebrava dentro do isolamento do teste. Hoje `processar_envelope()` abre uma
+transação externa de propósito (ver a lição sobre atomicidade, no fim deste
+arquivo), então o savepoint interno passou a ser obrigatório **também em
+produção**: sem ele, um `event_id` duplicado abortaria a transação inteira do
+consumer, não só a do teste.
 **Solução:** todo INSERT usado como guarda de idempotência (`try: ...create()
 except IntegrityError`) precisa do próprio savepoint:
 
@@ -27,10 +31,12 @@ except IntegrityError:
 ```
 
 **Isto generaliza:** a receita R4 em `CAMINHO-DOURADO.md` não mostra esse
-`atomic()` — funciona em produção só porque o consumer nunca roda dentro de
-uma transação externa. Qualquer célula que testar o handler de R4 diretamente
-(em vez de só via loop do Redis) precisa do savepoint para o teste não quebrar
-na segunda asserção. Ver também `ARMADILHAS.md` §4 (mesma lição, versão
+`atomic()`. A explicação original dizia que isso era inofensivo em produção
+"porque o consumer nunca roda dentro de uma transação externa" — **deixou de ser
+verdade nesta célula**, e nunca foi uma aposta boa. Qualquer célula que testar o
+handler de R4 diretamente (em vez de só via loop do Redis) já quebrava na segunda
+asserção; qualquer célula que envolva o dedup numa transação (como esta agora
+envolve, e por bom motivo) quebra em produção também. Ver também `ARMADILHAS.md` §4 (mesma lição, versão
 transversal).
 **Origem:** despacho leads/timeline, ao escrever `test_inv_leads_evento_idempotente.py`.
 
@@ -42,3 +48,57 @@ sessão), o handler de tags continuou 501 (fora de escopo) — o teste
 parametrizado teve que virar dois testes: um smoke isolado para tags (ainda
 501) e um arquivo novo (`test_leads_upsert.py`) para o comportamento real.
 **Origem:** despacho leads/timeline.
+
+## Dedup de evento e efeito do evento vivem na MESMA transação
+
+**Onde:** `apps/core/handlers.py::processar_envelope()`.
+
+**O bug (esteve em `main` até o PR desta lição):** o `create()` do `EventoProcessado`
+ficava num `transaction.atomic()` que **commitava** antes de o handler rodar — o
+handler estava fora do `with`. Se o handler estourasse por motivo transitório
+(deadlock, conexão caída, timeout num pico), o evento já estava marcado como
+processado: **toda reentrega futura caía no `except IntegrityError: return False` e era
+descartada em silêncio.** Buraco permanente na história da pessoa — e a timeline é
+justamente o que esta célula existe para não perder.
+
+Demonstração crua contra o código anterior:
+
+```
+--- depois da falha ---
+EventoProcessado gravado? True
+--- depois da reentrega ---
+processar_envelope devolveu: False
+Entradas de timeline: 0
+```
+
+Repare no `False`: o dedup relatou "já processado" para um evento cujo efeito nunca
+aconteceu. Nada distingue isso de um dedup legítimo — nem no log, nem no retorno.
+
+**A estrutura correta são duas transações aninhadas.** Parece redundante e não é:
+
+- **A externa** envolve o registro **e** o efeito, para que falhem juntos. É ela que
+  faz a reentrega voltar a funcionar depois de uma falha no meio.
+- **A interna** é savepoint **só** em volta do `create()` — a primeira lição deste
+  arquivo, agora obrigatória também em produção (ver a correção lá em cima).
+
+**A armadilha da correção óbvia:** mover o handler para **dentro do `try`** conserta a
+atomicidade e planta um bug novo — um `IntegrityError` vindo do handler passa a ser
+lido como "já processado". **Nesta célula isso não é hipótese:** `_upsert_lead()` usa
+`get_or_create()` sobre a constraint `uniq_lead_site_email`, que sob corrida levanta
+`IntegrityError` de verdade. O handler fica dentro do `atomic` externo mas **fora do
+`try`**; guarda disso:
+`tests/test_inv_leads_evento_atomico.py::test_integrityerror_do_handler_nao_e_confundido_com_evento_ja_processado`,
+que colide na constraint real em vez de levantar um `IntegrityError` sintético.
+
+**O invariante da célula tem duas metades.** `test_inv_leads_evento_idempotente.py`
+guarda "nunca DUAS entradas de timeline"; `test_inv_leads_evento_atomico.py` guarda
+"nunca ZERO". Entrega at-least-once só vira exatamente-uma com as duas.
+
+**Consequência no loop do Redis (sabida, não corrigida aqui):** com a exceção
+propagando para fora de `processar_envelope()`, o `r.xack(...)` do `Command.handle()`
+não roda — a mensagem fica na PEL do consumer group. É o comportamento desejado (ela
+*precisa* sobreviver para ser reentregue), mas a recuperação de mensagens presas
+(`xautoclaim`) não existe nesta célula: hoje depende de o processo reiniciar.
+
+**Origem:** despacho de dedup atômico, depois do mesmo conserto em `alunos` (PR #43) —
+o bug era idêntico nas duas células porque as duas copiaram a receita R4.

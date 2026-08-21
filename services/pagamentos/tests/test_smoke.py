@@ -4,18 +4,26 @@
 # smoke_card quando methods/pix é tocado, e vice-versa (INV-P9). O guarda de
 # INV-P4 fica em tests/test_inv_p4_intent_idempotente.py (um arquivo por
 # invariante, RECEITA:R5).
+#
+# O mock destes golden paths desceu de `patch.object(MercadoPagoClient, ...)`
+# para o HTTP (respx). Substituir o método inteiro fazia o caminho feliz pular
+# `_post` — a camada de transporte — e foi exatamente ali que um 401 do Mercado
+# Pago passou meses atravessando como sucesso sem nenhum teste enxergar. Golden
+# path que não atravessa o transporte não é golden path: é meio caminho.
 import json
 from datetime import datetime
 from typing import Any
-from unittest.mock import patch
 
+import httpx
 import pytest
+import respx
 from django.test import Client
 
 from pagamentos.core.models import Intent
-from pagamentos.providers.mercadopago.client import MercadoPagoClient
 
 pytestmark = pytest.mark.django_db
+
+_URL_PAGAMENTOS = "https://api.mercadopago.com/v1/payments"
 
 _RESPOSTA_PIX_MP = {
     "id": 123456789,
@@ -140,13 +148,16 @@ def test_debug_simulate_webhook_nao_existe_com_debug_0(
 
 
 @pytest.mark.smoke_pix
-@patch.object(MercadoPagoClient, "criar_pagamento_pix", return_value=_RESPOSTA_PIX_MP)
 def test_caminho_feliz_pix_gera_qr_e_expiracao(
-    mock_criar: Any, client: Client, token_valido: str
+    client: Client, token_valido: str
 ) -> None:
-    resp = _post_intent(
-        client, token_valido, "11111111-1111-1111-1111-111111111111", method="pix"
-    )
+    with respx.mock(assert_all_called=True) as mp:
+        rota = mp.post(_URL_PAGAMENTOS).mock(
+            return_value=httpx.Response(201, json=_RESPOSTA_PIX_MP)
+        )
+        resp = _post_intent(
+            client, token_valido, "11111111-1111-1111-1111-111111111111", method="pix"
+        )
 
     assert resp.status_code == 201
     corpo = resp.json()
@@ -157,9 +168,11 @@ def test_caminho_feliz_pix_gera_qr_e_expiracao(
     assert corpo["pix"]["qr_code_base64"]
     assert corpo["pix"]["expires_at"]
     assert "card" not in corpo
-    mock_criar.assert_called_once()
-    _, kwargs = mock_criar.call_args
-    assert kwargs["idempotency_key"] == "11111111-1111-1111-1111-111111111111"
+    assert rota.call_count == 1
+    assert (
+        rota.calls.last.request.headers["X-Idempotency-Key"]
+        == "11111111-1111-1111-1111-111111111111"
+    )
 
     resp_get = client.get(
         f"/api/pagamentos/intents/{corpo['id']}",
@@ -190,11 +203,10 @@ def test_caminho_feliz_card_cria_pendente_e_confirma_aprovado(
         Intent.objects.get(id=corpo["id"]).provider_payment_id == ""
     )  # [INV-P9] sem chamada ao MP ainda
 
-    with patch.object(
-        MercadoPagoClient,
-        "criar_pagamento_card",
-        return_value=_RESPOSTA_CARD_APROVADO_MP,
-    ) as mock_confirmar:
+    with respx.mock(assert_all_called=True) as mp:
+        rota = mp.post(_URL_PAGAMENTOS).mock(
+            return_value=httpx.Response(201, json=_RESPOSTA_CARD_APROVADO_MP)
+        )
         resp_confirm = client.post(
             f"/api/pagamentos/intents/{corpo['id']}/card",
             data=json.dumps(
@@ -210,11 +222,10 @@ def test_caminho_feliz_card_cria_pendente_e_confirma_aprovado(
     assert resp_confirm.status_code == 200
     corpo_confirmado = resp_confirm.json()
     assert corpo_confirmado["status"] == "approved"
-    mock_confirmar.assert_called_once()
-    _, kwargs = mock_confirmar.call_args
-    assert (
-        kwargs["idempotency_key"] != ""
-    )  # [INV-P4] escrita própria ao MP, nunca vazia
+    assert rota.call_count == 1
+    # [INV-P4] escrita própria ao MP, nunca vazia — agora conferida no header do
+    # request de verdade, não nos kwargs de um método substituído.
+    assert rota.calls.last.request.headers["X-Idempotency-Key"] != ""
 
 
 @pytest.mark.smoke_card
@@ -226,11 +237,10 @@ def test_card_recusado_expoe_reason_code_e_confirmar_de_novo_e_409(
     )
     intent_id = resp.json()["id"]
 
-    with patch.object(
-        MercadoPagoClient,
-        "criar_pagamento_card",
-        return_value=_RESPOSTA_CARD_RECUSADO_MP,
-    ):
+    with respx.mock(assert_all_called=True) as mp:
+        mp.post(_URL_PAGAMENTOS).mock(
+            return_value=httpx.Response(201, json=_RESPOSTA_CARD_RECUSADO_MP)
+        )
         resp_confirm = client.post(
             f"/api/pagamentos/intents/{intent_id}/card",
             data=json.dumps(
@@ -267,18 +277,21 @@ def test_card_recusado_expoe_reason_code_e_confirmar_de_novo_e_409(
 
 
 @pytest.mark.smoke_pix
-@patch.object(MercadoPagoClient, "criar_pagamento_pix", return_value=_RESPOSTA_PIX_MP)
 def test_debug_simulate_webhook_entrega_webhook_assinado_a_si_mesma(
-    mock_criar: Any, client: Client, token_valido: str, settings: Any
+    client: Client, token_valido: str, settings: Any
 ) -> None:
     """Caminho local do esqueleto (ESQUELETO-QUE-ANDA.md): com DEBUG=1, o
     endpoint de debug constrói e entrega a si mesma um webhook Pix REAL e
     assinado — valida o caminho inteiro (assinatura → idempotência → outbox →
     relay) sem depender do Mercado Pago alcançar localhost."""
     settings.DEBUG = True
-    resp = _post_intent(
-        client, token_valido, "55555555-5555-5555-5555-555555555555", method="pix"
-    )
+    with respx.mock(assert_all_called=True) as mp:
+        mp.post(_URL_PAGAMENTOS).mock(
+            return_value=httpx.Response(201, json=_RESPOSTA_PIX_MP)
+        )
+        resp = _post_intent(
+            client, token_valido, "55555555-5555-5555-5555-555555555555", method="pix"
+        )
     intent = resp.json()
 
     resp_debug = client.post(

@@ -62,8 +62,9 @@ para sempre.
 | H5 | ~~`make esqueleto` local para no elo "cobrança": a intent Pix chama a API REAL da Mercado Pago (`services/pagamentos/pagamentos/providers/mercadopago/client.py`, `_BASE_URL` fixo, sem modo mock) mesmo em dev — só o webhook é simulado (ESQUELETO-QUE-ANDA.md). Sem uma credencial sandbox de verdade, a MP responde erro e a intent fica com `provider_payment_id` vazio~~ | Credencial `MP_ACCESS_TOKEN` (TEST-... sandbox real, nunca APP_USR-) de uma conta Mercado Pago Developers, colocada em `e2e/.env.e2e` (git-ignorado — ver `e2e/.env.e2e.exemplo`) | ✅ **resolvido 21/08/2026** — o mantenedor guarda essa credencial fora do repo (correto, INV-P8), num compartilhamento de rede pessoal; qualquer sessão futura que precise rodar `e2e/esqueleto.sh` local deve **pedir ao mantenedor onde está a credencial de teste** em vez de tentar gerar uma nova. **Nunca escreva o valor do token em nenhum arquivo versionado** (nem aqui) — só o `e2e/.env.e2e` local, git-ignorado. Com o token real, elos 1-7 (seed→sessão→pedido→cobrança→webhook→outbox→relay) rodaram verdes de ponta a ponta contra containers reais e a MP sandbox de verdade (`mp_payment_id` retornado por ela, não simulado) |
 
 | H6 | `python ci/mergear.py <PR>` confere tudo verde e então falha ao mergear de verdade: `gh pr merge <PR> --merge --yes` estoura `unknown flag: --yes` — o `gh` instalado nesta máquina (`gh version 2.97.0`) não tem essa flag para `pr merge` | Decisão do mantenedor: fixar/atualizar a versão do `gh` que aceita `--yes`, ou trocar a chamada em `ci/mergear.py` para não depender dela (ex.: `gh pr merge <PR> --merge < /dev/null`, que funcionou como contorno — ver §5.9.1) | 🟡 **contornado, não resolvido** — o merge do PR #35 foi concluído chamando o `gh` direto sem `--yes`; `ci/mergear.py` continua quebrando para qualquer agente que rode exatamente o comando que ele mesmo imprime |
+| H7 | `POST /intents` e `POST /intents/{id}/card` passaram a devolver **502** quando o Mercado Pago falha (antes devolviam 201 mentiroso). O 502 **não está no contrato congelado** — `contracts/pagamentos.openapi.yaml` lista só 201/200/401/422 — porque mudar o contrato é Rito de Contrato (RITOS §3), que exige sessão de arquitetura com o mantenedor e PR só de `contracts/` com a label `contrato`. Um agente de célula não pode fazer isso sozinho | Duas coisas, ambas em arquivo CODEOWNERS: (1) documentar `502` nas duas operações do contrato de pagamentos, pelo Rito §3; (2) decidir sobre o invariante novo proposto — *"resposta de provedor só vira sucesso interno após validação de status e payload"* — em `INVARIANTES.md` | 🔴 **aberto** — o código já falha fechado e está testado (PR do despacho 03); o que falta é só o registro formal. Enquanto não acontecer, o checkout precisa tratar 502 como "tente de novo com a mesma chave", e nenhum documento diz isso a ele |
 
-| H10 | Duas correções de **código de célula** que o despacho "consumers em produção" só pôde **contornar**, porque `services/**` estava fora do escopo dele — e as duas ficam em caminho CODEOWNERS, logo dependem de você despachar e mergear. **(1) `checkout`:** `GET /healthz` responde **404** com o ambiente de produção — medido em 21/08/2026 (§4.9); o healthcheck dessa célula teve de virar sonda de TCP em `infra/docker-compose.yml`. **(2) `mensageria`:** não existe entrypoint de Huey na célula (§4.10), então o worker sobe por um bootstrap de 6 linhas embutido no `command:` do compose | **(1)** uma linha em `services/checkout/apps/core/middleware.py`: `request.path` → `request.path_info`. **(2)** `huey.contrib.djhuey` em `INSTALLED_APPS` (destrava `manage.py run_huey`) ou um management command próprio. Duas tarefas de célula normais, 1 PR cada, ambas pequenas | 🟡 **contornado, não resolvido** — a plataforma funciona, mas com dois remendos morando na infra; eles saem de lá quando a célula for corrigida (os dois estão comentados no compose apontando para cá) |
+| H10 | Duas correções de **código de célula** que o despacho "consumers em produção" só pôde **contornar**, porque `services/**` estava fora do escopo dele — e as duas ficam em caminho CODEOWNERS, logo dependem de você despachar e mergear. **(1) `checkout`:** `GET /healthz` responde **404** com o ambiente de produção — medido em 21/08/2026 (§4.10); o healthcheck dessa célula teve de virar sonda de TCP em `infra/docker-compose.yml`. **(2) `mensageria`:** não existe entrypoint de Huey na célula (§4.11), então o worker sobe por um bootstrap de 6 linhas embutido no `command:` do compose | **(1)** uma linha em `services/checkout/apps/core/middleware.py`: `request.path` → `request.path_info`. **(2)** `huey.contrib.djhuey` em `INSTALLED_APPS` (destrava `manage.py run_huey`) ou um management command próprio. Duas tarefas de célula normais, 1 PR cada, ambas pequenas | 🟡 **contornado, não resolvido** — a plataforma funciona, mas com dois remendos morando na infra; eles saem de lá quando a célula for corrigida (os dois estão comentados no compose apontando para cá) |
 
 | H11 | **`infra/docker-compose.yml` não chega à VPS por pipeline nenhum.** `grep -rn "docker-compose" .github/` só encontra o `cd /opt/plataforma` do deploy: o arquivo é copiado **à mão** (passo 1 da lista final de `infra/provisionamento-vps.sh`). Consequência: todo PR que muda o compose — inclusive o que criou os consumers de evento — **não muda nada em produção** até você copiar o arquivo para lá. Não existe alarme para a divergência entre o compose do Git e o do servidor | Mecanizar: um passo no `deploy-celula` (ou um workflow próprio disparado por `paths: ['infra/**']`) que envie o compose para `/opt/plataforma/` antes do `up`. É a Lei 1 — hoje esta regra está no degrau "documento", o mais fraco da escada | 🔴 aberto — decisão do mantenedor |
 
@@ -273,6 +274,28 @@ consume_eventos`), sem `migrate` embutido.
 **Origem:** `e2e/docker-compose.e2e.yml` — serviço `alunos-consumer`, subindo
 junto com `alunos` contra `alunos_db` recém-criado (despacho e2e/esqueleto).
 
+### 3.14 Portão roda com o Python ERRADO porque o PATH estava em formato Windows
+
+**Sintoma:** `bash ci/cross-smoke.sh` fica **verde**, mas o traceback/warning na
+saída mostra `C:\Users\...\Programs\Python\Python312\Lib\site-packages\...` —
+o Python **global** da máquina, não o venv da célula com as versões pinadas.
+**Causa:** `export PATH="C:/Users/.../venv/Scripts:$PATH"` **não funciona** no Git
+Bash. A busca de executáveis do Bash espera caminhos POSIX; `C:/...` entra no PATH
+como uma entrada inválida, é ignorada em silêncio, e o `python` do script resolve
+para o primeiro do PATH herdado — o global. Nada falha, nada avisa.
+**Solução:** no PATH, use a forma `/c/Users/...`:
+`export PATH="/c/Users/davia/AppData/Local/Temp/claude/<venv>/Scripts:$PATH"`.
+Confira antes de confiar no portão: `which python` tem de apontar para o venv.
+(Isto é o oposto do §3.7 — *dentro* de código Python o caminho precisa ser
+`C:/Users/...`; no PATH do Bash precisa ser `/c/Users/...`. Os dois formatos são
+necessários, em lugares diferentes.)
+**Por que importa mais aqui:** é um primo do §5.6 — portão verde que não mediu o
+que você acha que mediu. Passou verde com o interpretador errado, e um `make ci`
+que "passa" contra pacotes de outra versão não prova nada sobre o CI real.
+**Origem:** despacho 03 (pagamentos, fail-closed do Mercado Pago).
+
+---
+
 ## §4 — Django e django-ninja
 
 ### 4.1 `AttributeError: DoesNotExist` / `AttributeError: objects`
@@ -398,7 +421,44 @@ leads (timeline por evento) na sessão seguinte, mesmo sintoma, mesma causa — 
 que é falha da receita, não acidente de uma célula: qualquer célula que testar o
 handler de R4 direto (sem passar pelo loop do Redis) bate nisso.
 
-### 4.9 `/healthz` responde 404/500 em produção, mas 200 em dev — `SCRIPT_NAME` + Django 5.0
+### 4.9 Cliente de provedor externo que só levanta em 5xx **falha aberto**
+
+**Sintoma:** a API responde **201/200 de sucesso** com os campos do recurso vazios
+(`"qr_code": ""`, `provider_payment_id=""`). Nada nos logs, nenhum teste vermelho.
+**Causa:** o cliente HTTP só trata o erro grosso:
+
+```python
+if resp.status_code >= 500:          # ⟵ 400/401/403/404/429 passam batido
+    raise ProviderError(...)
+data = resp.json()                   # corpo de ERRO lido como se fosse o recurso
+```
+
+O corpo de erro do provedor não tem os campos que o tradutor procura, e
+`resposta.get("id", "")` transforma **campo ausente em string vazia** — o erro vira
+um objeto de aparência normal e segue adiante como sucesso.
+**Três buracos, sempre os mesmos:**
+1. **status** — qualquer não-2xx tem de levantar, não só 5xx;
+2. **corpo** — `resp.json()` levanta `JSONDecodeError`, que é `ValueError` e **não**
+   `httpx.HTTPError`: um `except httpx.HTTPError` não pega uma página HTML de erro
+   de CDN/WAF, e ela vira 500 não tratado;
+3. **payload** — 2xx não é prova: valide os campos sem os quais o recurso é inútil,
+   e **nunca** traduza ausente para `""`.
+
+**Solução:** falhe fechado nos três, com a causa nomeada na mensagem (autenticação,
+rejeição, rate limit, indisponibilidade, timeout, corpo ilegível) — no meio de um
+incidente, "credencial recusada" e "rate limit" levam a ações opostas. Capture
+`httpx.TimeoutException` **antes** de `httpx.HTTPError` (é subclasse dela), porque
+num timeout a operação pode ter acontecido do outro lado e um erro de conexão não.
+**Onde já estava certo:** `services/checkout/apps/core/clients.py` e
+`services/funil/apps/core/clients.py` (`raise_for_status()` / `else None`) — a
+armadilha era só de pagamentos, mas confira o seu ao escrever um cliente novo.
+**Ao consertar, cuidado com o status novo:** devolver um 502 **não** pode virar
+`response={...}` no decorator do django-ninja (§4.2) nem entrar no `openapi_extra`
+sem Rito de Contrato — use `JsonResponse(dict, status=502)` direto.
+**Origem:** despacho 03 (pagamentos) — o bug estava em produção desde o Prompt 3a e
+nenhum dos 19 testes da célula o via (ver §6.9).
+
+### 4.10 `/healthz` responde 404/500 em produção, mas 200 em dev — `SCRIPT_NAME` + Django 5.0
 
 **Sintoma:** a mesma imagem que devolve `200 {"status": "ok"}` em `GET /healthz`
 localmente devolve **404** (ou 500, se a resolução de site fizer uma chamada HTTP que
@@ -451,7 +511,7 @@ Por isso a sonda com `Host: localhost` passa mesmo em `catalogo`/`leads`/`mensag
 cujo exemplo diz `ALLOWED_HOSTS=<nome-da-célula>`.
 **Origem:** despacho infra/consumers — ao acrescentar healthcheck ao bloco `x-celula`.
 
-### 4.10 Worker do Huey não executa nada: `TaskRegistry` vazio ou `AppRegistryNotReady`
+### 4.11 Worker do Huey não executa nada: `TaskRegistry` vazio ou `AppRegistryNotReady`
 
 **Sintoma:** o `huey_consumer.py` sobe e loga
 `The following commands are available:` **sem nada listado** — e nenhuma task jamais
@@ -798,6 +858,37 @@ mypy não consegue casar as chaves de um dict dinâmico com eles.
 (`HTTP_X_SIGNATURE=...`, `HTTP_X_REQUEST_ID=...`) em vez de `**{...}`.
 **Origem:** Prompt 3b (pagamentos, PR #19).
 
+### 6.9 `patch.object` no método do cliente esconde a camada onde o bug mora
+
+**Sintoma:** suíte inteira verde, cobertura aparentemente boa — e um bug de
+integração vivo há semanas exatamente no cliente HTTP.
+**Causa:** `@patch.object(Cliente, "criar_pagamento_pix", return_value=...)`
+substitui o **método inteiro**. Tudo abaixo dele — montagem do request, headers,
+checagem de status, parsing do corpo — **nunca roda** em teste nenhum. O mock
+devolve um dicionário perfeito que o código real nunca teria produzido.
+**Solução:** desça o mock para o **transporte** com `respx` (já pinado em
+`checkout`, `funil` e `pagamentos`: `respx==0.23.1`) — falsifique a *rede*, não o
+seu próprio código:
+
+```python
+with respx.mock(assert_all_called=True) as mp:
+    rota = mp.post("https://api.provedor.com/v1/recurso").mock(
+        return_value=httpx.Response(401, json={"message": "invalid access token"})
+    )
+    resp = client.post("/api/celula/recurso", ...)   # atravessa a pilha inteira
+assert rota.calls.last.request.headers["X-Idempotency-Key"] == chave
+```
+
+**Dois ganhos, não um:** além de enxergar o bug, você passa a poder afirmar coisas
+sobre o **request que saiu** (headers, corpo, contagem de chamadas). O INV-P4 de
+pagamentos tem uma cláusula — "toda escrita ao MP leva `X-Idempotency-Key` própria"
+— que era **impossível de verificar** com mock de método: o header nem existia no
+mundo do teste.
+**Regra prática:** se o despacho fala em falha de integração (status, timeout,
+payload torto), mock de método **não serve como evidência** — ele prova o
+comportamento do mock. Verifique em qual camada o teste entra antes de confiar nele.
+**Origem:** despacho 03 (pagamentos, fail-closed do Mercado Pago).
+
 ---
 
 ## §7 — Coordenação (humano, painéis, outros agentes)
@@ -939,5 +1030,5 @@ arquivo com a ferramenta de escrita em vez de heredoc. Vale para qualquer par an
 | Relay do outbox (Huey → Redis Streams, R3) ainda não instanciado no checkout — o evento é gravado transacionalmente, mas ninguém publica | Fase D, despacho seguinte |
 | ~~alunos não tem consumer de `pagamento.aprovado`~~ **RESOLVIDO em parte** (PR #26, `agent/alunos/matricula`): hoje existe `apps/eventos/management/commands/consume_eventos.py` + `apps/matriculas/` (models/services/handlers, idempotente por `order_id`, INV-P5) e `POST /matriculas` funciona de verdade. Confirmado rodando ao vivo em `e2e/esqueleto.sh` (container `alunos-consumer` dedicado): o evento `pagamento.aprovado` publicado por pagamentos é consumido e a `Matricula` nasce com `status=ativa` no banco de alunos, ponta a ponta. **O que falta é só** `GET /alunos/{email}/matriculas` — ainda `HttpError(501)` por design (`apps/core/api.py`, comentário "listEnrollments segue fora de escopo desta sessão") — é esse endpoint de LEITURA, sozinho, que segura o elo 8 do esqueleto e o critério 1 do DoD de `ESQUELETO-QUE-ANDA.md` | despacho pequeno e focado: implementar só `list_enrollments` lendo `Matricula.objects.filter(email=email)` — o resto da célula já funciona |
 | ~~checkout não consome `pagamento.aprovado`~~ **RESOLVIDO**: `apps/pedidos/management/commands/consume_eventos.py` existe e funciona — confirmado ao vivo em `e2e/esqueleto.sh` (container `checkout-consumer` dedicado), `GET /api/checkout/pedidos/{id}.status` vai de `aguardando_pagamento` para `pago` de verdade depois do webhook aprovado | — |
-| **Um evento malformado mata o consumer e some — sem retry, sem fila morta, sem alarme.** Medido em 21/08/2026 ao subir os consumers em produção: publiquei um `pagamento.aprovado` com `order_id` que não era UUID; `checkout-consumer` estourou `ValidationError` no handler, o container morreu e o `restart: unless-stopped` o trouxe de volta **saudável** — porque `xreadgroup(..., ">")` só entrega mensagem **nova**, e a mensagem sem `xack` fica pendente para sempre, nunca reentregue. Não é crash-loop (bom), é **perda silenciosa** (ruim). Nas células que gravam `EventoProcessado` **antes** de chamar o handler (alunos, leads, mensageria) é pior: o evento fica marcado como processado sem nunca ter sido processado. Vale para os 4 consumers | despacho de robustez: `try/except` em volta do handler + `XAUTOCLAIM`/fila morta para o pendente; hoje nenhuma das duas peças existe |
-| **pagamentos não valida o status HTTP da resposta da Mercado Pago ao criar uma intent Pix** — `pagamentos/core/gateway.py:_traduzir_resposta_pix` lê `resposta.get("id", "")` sem checar se a chamada deu certo; `MercadoPagoClient._post` só levanta `MercadoPagoError` para `status_code >= 500`. Com uma credencial inválida (401/4xx), a MP responde erro e a intent é criada silenciosamente com `provider_payment_id` vazio, e a API devolve `201` como se tivesse dado certo. Descoberto rodando `e2e/esqueleto.sh` com um `MP_ACCESS_TOKEN` de exemplo (ver ARMADILHAS.md §1 H5) | despacho dedicado à célula pagamentos — validar `resp.status_code` antes de traduzir a resposta |
+| **Evento que faz o handler estourar fica pendente para sempre — a reentrega é possível, mas ninguém a executa.** Medido em 21/08/2026 (despacho infra/consumers), já com o `alunos` **depois** do PR #43: publiquei um `pagamento.aprovado` sem `customer`; o handler estourou `KeyError`, a transação externa desfez o registro (`EventoProcessado = 0` — **o fix do #43/#46 faz exatamente o que promete**), o container morreu e o `restart: unless-stopped` o trouxe de volta. Um evento bom publicado em seguida foi processado normal: **não é crash-loop**. Mas o envenenado segue em `XPENDING` do grupo com `delivery-count = 1`, **nunca reentregue** — `xreadgroup(..., ">")` só entrega mensagem nova, e nenhum consumer chama `XAUTOCLAIM` nem relê o próprio PEL com `XREADGROUP ... 0`. O #43/#46 devolveu a *possibilidade* de reentregar; falta a peça que reentrega. Em `mensageria` (não recebeu o fix, `create()` commita sozinho antes do handler) é pior: fica marcado como processado sem nunca ter sido. Em `checkout` (sem `EventoProcessado`) é só o pendente eterno | despacho de robustez nas 4 células: `XAUTOCLAIM` (ou releitura do PEL) + fila morta com alarme depois de N tentativas — hoje nenhuma das duas peças existe. Estender a `mensageria` o registro-atômico do #43 entra junto |
+| ~~**pagamentos não valida o status HTTP da resposta da Mercado Pago ao criar uma intent Pix**~~ **RESOLVIDO** (despacho 03, `agent/pagamentos/failclosed`): `_post` falha fechado em todo não-2xx, em timeout e em corpo não-JSON; `core/gateway.py` recusa traduzir 2xx incompleto e levanta `FalhaNoProvedor`; a API devolve **502** em vez de 201, e o replay de INV-P4 virou o caminho de reparo que não existia (completa a intent incompleta com a MESMA `X-Idempotency-Key`, que o MP deduplica). Evidência vermelho→verde no caso 401 colada no PR; testes descem para o transporte com `respx` (§6.9) | **falta só o registro formal:** o 502 ainda não está no contrato congelado e o invariante novo ainda não está em `INVARIANTES.md` — os dois são CODEOWNERS, ver §1 H7 |
