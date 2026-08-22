@@ -241,6 +241,7 @@ vez de confiar numa só; se for corrigir §9, isso é PR de docs à parte.
 | `/healthz` começou a devolver 404 depois de mexer em middleware | `ARMADILHAS.md` §4.5 |
 | `make contrato-check` "OK" mas você alterou a API | `ARMADILHAS.md` §5.7 + `INVARIANTES.md` INV-CI01 |
 | Ambiente Windows: `python3`/`make` não encontrados, acento quebrado, path `/tmp` sumindo | `ARMADILHAS.md` §3 inteiro |
+| Run do `deploy-infra`/`deploy-celula` vermelho no passo da VPS | `gh run view <id> --log-failed` diz onde parou. Causas já mapeadas: ghcr sem login (H13), env incompleto — `DJANGO_SECRET_KEY` etc. (§3.16 vizinho), banco não provisionado. Repetir sem novo merge: `gh run rerun <id> --failed`. Veredito SEMPRE por `gh run view --json status,conclusion` (§5.10) |
 
 ## 9. O que NÃO fazer aqui
 

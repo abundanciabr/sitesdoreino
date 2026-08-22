@@ -889,6 +889,23 @@ que rode exatamente o comando que ele mesmo imprime. Registrado também em §1
 remover a flag, ou fixar a versão do `gh` no ambiente é decisão do mantenedor.
 **Origem:** despacho red-team, golpe 1 (PR #35), 21/08/2026.
 
+### 5.10 O exit de um pipeline é do ÚLTIMO comando — veredito de run nunca vem de `| tail`
+
+**Sintoma:** `gh run watch <id> --exit-status | tail -25` termina com exit 0 e o
+agente anuncia o run como verde — mas o run tinha **FALHADO**. Aconteceu de verdade
+em 21/08/2026, no 1º run do `deploy-infra`: o exit era do `tail`, não do `watch`.
+**Causa:** em `A | B`, o status do pipeline é o de **B**. Qualquer `| head`,
+`| tail`, `| grep` pendurado num comando cujo exit importa mascara a falha — é a
+versão de shell do §5.6.
+**Solução:** o veredito de um run vem de
+`gh run view <id> --json status,conclusion` DEPOIS do watch. Se precisar limitar a
+saída do watch, capture o exit antes do pipe (`watch ...; ec=$?`) ou descarte a
+saída (`>/dev/null`) e confira o JSON. Regra geral: **exit que decide algo nunca
+atravessa pipe sem ser capturado**.
+**Origem:** sessão deploy-infra (21-22/08/2026) — o agente reproduziu em si mesmo o
+falso-verde que este repositório combate; corrigido na mesma sessão, veredito
+refeito pelo JSON.
+
 ## §6 — Testes
 
 ### 6.1 Evidência vermelho→verde sem criar branch descartável
@@ -1142,6 +1159,7 @@ arquivo com a ferramenta de escrita em vez de heredoc. Vale para qualquer par an
 | O quê | Estado |
 |---|---|
 | `seed_esqueleto` do catalogo usa env `DOMINIO_OPERACOES` com fallback hardcoded, em vez do `--host` obrigatório que o card do painel pedia | sem decisão do mantenedor |
+| **Cobrança REAL em produção depende de credenciais Mercado Pago de verdade** — `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET` em `/opt/plataforma/env/pagamentos.env` e `MP_PUBLIC_KEY` no de checkout. A plataforma está no ar e navega sem isso (22/08/2026); a primeira venda de verdade é que não passa — e falha fechado, com 502 e log claro. De quebra: sobrou `/home/deploy/provisionamento-postgres.sql` na VPS (cópia com senhas usada no provisionamento) — apagar | mantenedor, antes do primeiro teste de venda real |
 | Proteção de branch nativa do GitHub exige plano Pro; hoje o fallback é `.githooks/pre-push` | issue `mecanizar:` #1 |
 | Relay do outbox (Huey → Redis Streams, R3) ainda não instanciado no checkout — o evento é gravado transacionalmente, mas ninguém publica | Fase D, despacho seguinte |
 | ~~alunos não tem consumer de `pagamento.aprovado`~~ **RESOLVIDO em parte** (PR #26, `agent/alunos/matricula`): hoje existe `apps/eventos/management/commands/consume_eventos.py` + `apps/matriculas/` (models/services/handlers, idempotente por `order_id`, INV-P5) e `POST /matriculas` funciona de verdade. Confirmado rodando ao vivo em `e2e/esqueleto.sh` (container `alunos-consumer` dedicado): o evento `pagamento.aprovado` publicado por pagamentos é consumido e a `Matricula` nasce com `status=ativa` no banco de alunos, ponta a ponta. **O que falta é só** `GET /alunos/{email}/matriculas` — ainda `HttpError(501)` por design (`apps/core/api.py`, comentário "listEnrollments segue fora de escopo desta sessão") — é esse endpoint de LEITURA, sozinho, que segura o elo 8 do esqueleto e o critério 1 do DoD de `ESQUELETO-QUE-ANDA.md` | despacho pequeno e focado: implementar só `list_enrollments` lendo `Matricula.objects.filter(email=email)` — o resto da célula já funciona |
