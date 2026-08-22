@@ -4,3 +4,6 @@ infra/env/*.env
 e2e/.env.e2e
 __pycache__/
 .pytest_cache/
+
+# Documentos pessoais do mantenedor (podem conter credenciais) — NUNCA versionar
+docs/documentos/
