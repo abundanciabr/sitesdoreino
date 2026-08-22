@@ -159,3 +159,36 @@ custou uma checagem extra. Confirme o orçamento DEPOIS do commit, não antes.
 - Para simular produção em teste: `settings.DEBUG = False` +
   `settings.FORCE_SCRIPT_NAME = "/checkout"` no client de teste reproduzem o
   cenário sem container (guarda: `tests/test_paginas_producao.py`).
+
+## Sessão: reentrega do PEL + fila morta (lote 2)
+
+- **O desenho é convenção de lote, não decisão local**: a cada iteração do
+  loop, ANTES do `xreadgroup ">"`, `XAUTOCLAIM` (min-idle
+  `IDLE_MS_REENTREGA = 60000` ms) reivindica as presas e as reprocessa pelo
+  MESMO caminho do handler; quem chega à entrega de número
+  `MAX_ENTREGAS = 5` NÃO roda o handler — vai para `<stream>.dlq` com o
+  payload original + `motivo`/`delivery_count`/`movida_em`, é ACKada no
+  stream original e deixa `logger.error` com o event_id. As 4 células
+  consumidoras implementam exatamente isto, com os mesmos nomes.
+- **`XAUTOCLAIM` incrementa o delivery_count ao reivindicar, mas NÃO o
+  devolve** — o número real vem do PEL, via `xpending_range` da faixa
+  reivindicada (`times_delivered`). É esse valor que decide handler × fila
+  morta; contar tentativas em variável local seria mentira após restart.
+- **`XAUTOCLAIM` em stream sem o grupo estoura `NOGROUP`** — a função de
+  reentrega assume a pré-condição que o `handle()` garante (grupo criado com
+  `mkstream=True` nos 3 streams antes do loop). Teste que chame a função
+  direto precisa criar os grupos dos TRÊS streams, não só o que vai usar —
+  custou uma rodada vermelha desta sessão.
+- **Fabricar mensagem presa em teste sem esperar 60 s**: `XCLAIM` com
+  `idle=` (envelhece a mensagem além do limiar), `retrycount=` (fixa o
+  delivery_count exato) e `justid=True` (o próprio XCLAIM não conta como
+  entrega). Com isso o teste controla em qual entrega a mensagem está e o
+  `XAUTOCLAIM` seguinte a enxerga como presa de verdade — Redis real, zero
+  sleep. Ver `tests/test_reentrega_pel.py`.
+- **`tests/test_reentrega_pel.py` exige Redis REAL** (`REDIS_STREAMS_URL`;
+  no CI o serviço redis:7 do `ci-celula.yml` já existe e a variável já está
+  no bloco `env:` — nada a mudar lá; localmente, container exclusivo da
+  sessão, ex. porta 16384). Sem a variável o teste FALHA com instrução, não
+  skipa — skip silencioso é o falso-verde que o §5.6 combate.
+- **DLQ publica antes do ACK** (mesma ordem do relay do outbox, §4.12): pior
+  caso é entrada duplicada na `.dlq`, nunca mensagem perdida.
