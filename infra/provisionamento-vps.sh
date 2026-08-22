@@ -18,6 +18,13 @@ chown deploy:deploy /home/deploy/.ssh/authorized_keys
 echo "▶ 2) SSH endurecido — sem senha, sem root por senha"
 sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+# Ubuntu 24.04: o cloud-init entrega /etc/ssh/sshd_config.d/50-cloud-init.conf com
+# PasswordAuthentication yes, e o Include dos drop-ins roda ANTES do arquivo
+# principal — no sshd o PRIMEIRO valor vence, então os sed acima sozinhos NÃO
+# desligam a senha (medido em 21-22/08/2026; ARMADILHAS.md §3.16). O drop-in
+# 00-* vence qualquer 50-*.
+printf '%s\n' 'PasswordAuthentication no' > /etc/ssh/sshd_config.d/00-endurecimento.conf
+rm -f /etc/ssh/sshd_config.d/50-cloud-init.conf
 systemctl reload ssh 2>/dev/null || systemctl reload sshd
 
 echo "▶ 3) Firewall"
