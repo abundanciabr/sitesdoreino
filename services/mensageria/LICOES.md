@@ -120,8 +120,9 @@ transação externa entra sem risco de duplicata — a camada de negócio absorv
 
 **Consequência no loop do Redis (sabida, não corrigida aqui):** com a exceção propagando
 para fora de `processar_envelope()`, o `xack` não roda e a mensagem fica na PEL. É o
-comportamento desejado, mas a recuperação de mensagens presas (`xautoclaim`) não existe
-nesta célula — hoje depende de o processo reiniciar. Vale igual para `alunos` e `leads`.
+comportamento desejado, mas a recuperação de mensagens presas (`xautoclaim`) não existia
+nesta célula — dependia de o processo reiniciar. **Resolvido nesta célula pelo despacho
+reentrega-pel (lote 2) — ver a lição "Reentrega do PEL + fila morta" abaixo.**
 
 **Origem:** varredura das quatro células que consomem eventos, depois dos mesmos
 consertos em `alunos` (PR #43) e `leads` (PR #46). Três das quatro tinham o mesmo bug,
@@ -161,3 +162,37 @@ bootstrap antigo — a troca para `python manage.py run_huey` é escopo do despa
 de infra do mesmo lote. O bootstrap antigo continua funcionando com este código.
 
 **Origem:** despacho mensageria/entrypoint-huey (H10.2).
+
+## Reentrega do PEL + fila morta: o delivery_count é lido DEPOIS do claim, e o claim soma 1
+
+**Contexto:** o consumer agora reivindica mensagens presas (`XAUTOCLAIM`,
+`min_idle_time=IDLE_MS_REENTREGA`) a cada iteração, ANTES do `xreadgroup ">"`, e
+reprocessa pelo MESMO caminho das novas (`_processar_e_ack`). Quem já esgotou
+`MAX_ENTREGAS` vai para `<stream>.dlq` com o payload original + `motivo`,
+`delivery_count`, `movida_em`, é ACKada e loga ERROR com o `event_id`. Desenho e
+constantes são convenção do lote 2 — as 4 células consumidoras têm o MESMO;
+não "melhore" só aqui.
+
+**A pegadinha do off-by-one:** a regra é "delivery_count do PEL já em
+`MAX_ENTREGAS` ⇒ fila morta", mas o próprio `XAUTOCLAIM` **incrementa** o
+contador ao reivindicar. Como o código lê o PEL (`xpending_range` do msg_id)
+DEPOIS do claim, `_entregas_ja_feitas()` subtrai 1 para recuperar o valor que a
+regra compara. Remover esse `- 1` daria uma entrega a menos a cada mensagem —
+e nenhum teste de caminho feliz veria.
+
+**Para plantar delivery_count arbitrário em teste, sem loop:** `XCLAIM` com
+`retrycount=N` **grava** o contador direto (não incrementa) — é assim que
+`tests/test_reentrega_pel.py` cria uma mensagem "na 5ª entrega" numa chamada só.
+
+**Redis dos testes vem de `REDIS_STREAMS_URL`, nunca de porta fixa:** local é o
+container exclusivo do lote (16383); no CI o service `redis:7` responde em 6379
+— a env já aponta certo nos dois. Sem a env, o teste **falha** com mensagem
+clara (fail, não skip: pular seria verde falso, §5.6).
+
+**O que a fila morta NÃO tem ainda:** consumidor. O log ERROR é o único alarme;
+reprocessar uma mensagem do `.dlq` é operação manual (`XRANGE` + `XADD` de volta
+no stream original). Se o volume aparecer, um comando de reprocesso é despacho
+pequeno.
+
+**Origem:** despacho mensageria/reentrega-pel (lote 2), fechando a linha
+"evento que faz o handler estourar fica pendente para sempre" do ARMADILHAS §9.
