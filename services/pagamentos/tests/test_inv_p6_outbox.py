@@ -5,7 +5,9 @@ import uuid
 from typing import Any
 from unittest.mock import patch
 
+import httpx
 import pytest
+import respx
 from django.test import Client
 
 from pagamentos.core.models import Intent, OutboxEvent, relay_outbox
@@ -61,13 +63,22 @@ def _criar_intent_pix(client: Client, token: str) -> Intent:
 def _postar_webhook_assinado(client: Client, *, status: str) -> Any:
     request_id = str(uuid.uuid4())
     headers = assinar(data_id=_MP_PAYMENT_ID, request_id=request_id)
-    return client.post(
-        f"/api/pagamentos/webhooks/mp/pix?data.id={_MP_PAYMENT_ID}",
-        data=json.dumps({"data": {"id": _MP_PAYMENT_ID, "status": status}}),
-        content_type="application/json",
-        HTTP_X_SIGNATURE=headers["x-signature"],
-        HTTP_X_REQUEST_ID=headers["x-request-id"],
-    )
+    # Desde o endurecimento do webhook, a decisão vem da consulta GET à API do
+    # MP (o corpo não é assinado) — aqui a API responde o mesmo status do
+    # webhook, o cenário legítimo. Mock no TRANSPORTE (respx, ARMADILHAS §6.9).
+    with respx.mock(assert_all_called=True) as mp:
+        mp.get(f"https://api.mercadopago.com/v1/payments/{_MP_PAYMENT_ID}").mock(
+            return_value=httpx.Response(
+                200, json={"id": int(_MP_PAYMENT_ID), "status": status}
+            )
+        )
+        return client.post(
+            f"/api/pagamentos/webhooks/mp/pix?data.id={_MP_PAYMENT_ID}",
+            data=json.dumps({"data": {"id": _MP_PAYMENT_ID, "status": status}}),
+            content_type="application/json",
+            HTTP_X_SIGNATURE=headers["x-signature"],
+            HTTP_X_REQUEST_ID=headers["x-request-id"],
+        )
 
 
 @pytest.mark.django_db(transaction=True)

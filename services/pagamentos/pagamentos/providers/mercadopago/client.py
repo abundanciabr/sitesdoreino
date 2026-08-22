@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 from django.conf import settings
@@ -108,7 +109,38 @@ class MercadoPagoClient:
             raise MercadoPagoError(
                 f"falha de rede ao chamar o Mercado Pago em {path}: {exc}"
             ) from exc
+        return self._corpo_json_de_2xx(resp, path)
 
+    def _get(self, path: str) -> dict[str, Any]:
+        """Leitura fail-closed — mesmas três muralhas do `_post` (status, corpo,
+        tipo), porque a resposta de um GET decide coisas tão caras quanto a de
+        um POST: é ela que diz se um webhook vira "aprovado" ou "recusado".
+        Sem X-Idempotency-Key: INV-P4 cobre ESCRITAS; um GET não cria nada do
+        lado do MP e retentar é sempre seguro."""
+        try:
+            resp = httpx.get(
+                f"{_BASE_URL}{path}",
+                headers={"Authorization": f"Bearer {self._token}"},
+                timeout=self._timeout,
+            )
+        except httpx.TimeoutException as exc:
+            # Ver comentário no _post: TimeoutException É subclasse de HTTPError
+            # e precisa vir antes. Aqui a mensagem difere de propósito — numa
+            # LEITURA o timeout não deixa nada criado do outro lado.
+            raise MercadoPagoError(
+                f"timeout ({self._timeout}s) ao consultar o Mercado Pago em "
+                f"{path}: {exc}. Consulta e leitura pura — retentar e seguro."
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise MercadoPagoError(
+                f"falha de rede ao consultar o Mercado Pago em {path}: {exc}"
+            ) from exc
+        return self._corpo_json_de_2xx(resp, path)
+
+    def _corpo_json_de_2xx(self, resp: httpx.Response, path: str) -> dict[str, Any]:
+        """As três muralhas compartilhadas por _post e _get (ARMADILHAS §4.9):
+        todo não-2xx levanta; corpo não-JSON levanta; corpo que não é objeto
+        levanta. Nada sai daqui que não seja um 2xx com um objeto JSON."""
         if not 200 <= resp.status_code < 300:
             raise MercadoPagoError(
                 f"{_motivo_do_status(resp.status_code)} "
@@ -136,6 +168,14 @@ class MercadoPagoClient:
             )
         resultado: dict[str, Any] = data
         return resultado
+
+    def obter_pagamento(self, payment_id: str) -> dict[str, Any]:
+        """GET /v1/payments/{id} — a fonte de verdade do status. O webhook do MP
+        assina só `data.id` + request-id + ts (o corpo NÃO é coberto pela
+        x-signature); quem decide aprovar/recusar é ESTA consulta, nunca o corpo
+        do webhook. `quote(...)` porque o id entra no path da URL — mesmo vindo
+        do manifesto assinado, id não vira fragmento de rota sem escape."""
+        return self._get(f"/v1/payments/{quote(payment_id, safe='')}")
 
     def criar_pagamento_pix(
         self,
