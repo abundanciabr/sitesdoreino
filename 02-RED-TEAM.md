@@ -20,7 +20,7 @@ graduação. Golpe que passa = muralha falsa = Fase 0 não graduou.
 | 6 | Método falando direto com o provider | `from pagamentos.providers.mercadopago import client` em `methods/pix` | `lint-imports` vermelho: "so falam com core" | ☐ |
 | 7 | Célula lendo o banco de outra | `psql "postgres://quiz_user:SENHA@postgres:5432/pagamentos_db"` | **permission denied** do próprio Postgres | ☐ |
 | 8 | Push direto na `main` | `git push origin HEAD:main` de um clone | Recusado pela branch protection | ☐ |
-| 9 | Agente tentando mergear PR de `pagamentos` sozinho | abrir PR verde em pagamentos e tentar merge sem sua review | Botão de merge bloqueado: "Review required (Code Owners)" | ☐ |
+| 9 | Agente mergeando PR de `pagamentos` com check VERMELHO | abrir PR em pagamentos com um check reprovado e rodar `python ci/mergear.py <PR> --confirmo <PR>` | `mergear.py` recusa (FAIL/ERROR, exit ≠ 0) sem chamar `gh pr merge` — desde 22/08/2026 merge VERDE é lícito ao agente (Lei 4), então o golpe testa o portão, não a review *(reescrito em 22/08/2026: a versão original esperava "Review required", que nunca existiu — H3/H9)* | ☐ |
 | 10 | Credencial de produção commitada | adicionar `MP_ACCESS_TOKEN=APP_USR-fake123` num .py e abrir PR | `muralhas` vermelho: guarda de segredos (INV-P8) | ☐ |
 | 11 | Webhook forjado sem assinatura | `curl -X POST https://.../webhooks/mp/pix -d '{"id":"123"}'` | **403** + banco intacto + outbox vazia (teste INV-P10 também cobre) | ☐ |
 | 12 | Drift de contrato por dentro da célula | mudar um schema Ninja em pagamentos sem tocar `contracts/` | `make contrato-check` vermelho: FREEZE detectou drift | ☐ |

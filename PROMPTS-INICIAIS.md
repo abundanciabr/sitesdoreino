@@ -9,8 +9,10 @@
 
 1. **Você** executa o Prompt Zero pessoalmente (agentes não tocam a VPS).
 2. Para cada prompt de agente: abra o worktree que o despacho nomeia, cole o prompt,
-   espere o PR verde. Você mergeia os PRs sob CODEOWNERS (fortaleza, checkout, contratos);
-   os demais podem ter auto-merge.
+   espere o PR verde. *(Atualização 22/08/2026: o merge deixou de ser seu — o agente
+   mergeia pelo portão, `python ci/mergear.py <N> --confirmo <N>`, inclusive sob
+   CODEOWNERS, com anúncio nominal no relatório. Lei 4 e
+   `docs/decisoes/DECISAO-merge-pelo-agente.md`.)*
 3. Um prompt por vez. Integração é o fato do fim da Etapa D, não uma aposta.
 4. Só depois do esqueleto verde na VPS + red-team (Etapa E), abrem-se os briefs de produto.
 5. **Multissítio:** um deploy, N domínios (Lei 9). Células públicas usam o middleware

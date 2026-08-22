@@ -216,7 +216,10 @@ porta está fechada. Ver ARMADILHAS §1 H3.)
 Os degraus grátis da Escada da Imposição (RITOS.md §2), em ordem de força:
 
 1. `ci/mergear.py` — recusa mergear PR com check vermelho quando o merge sai
-   do terminal. Não vê o botão do site.
+   do terminal. Não vê o botão do site. Desde 22/08/2026 é o caminho único
+   legítimo de merge, executado pelo agente (Lei 4 — mergear é trabalho do
+   agente; `--confirmo <N>` no lugar do prompt, e conferência `state=MERGED`
+   embutida no próprio script).
 2. `alarme-main` — abre issue se a `main` quebrar. Avisa depois; não impede.
 3. **Portão de deploy** (`ci/portao_de_deploy.py`, 22/08/2026) — o degrau que
    faltava: ANTES de qualquer build ou SSH, prova que `ci-celula`,

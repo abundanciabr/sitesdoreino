@@ -61,10 +61,10 @@ para sempre.
 | H4 | Docker Desktop frio no início da sessão custa 1–2 min parados | Deixar o Docker Desktop iniciar junto com o Windows | 🔴 aberto |
 | H5 | ~~`make esqueleto` local para no elo "cobrança": a intent Pix chama a API REAL da Mercado Pago (`services/pagamentos/pagamentos/providers/mercadopago/client.py`, `_BASE_URL` fixo, sem modo mock) mesmo em dev — só o webhook é simulado (ESQUELETO-QUE-ANDA.md). Sem uma credencial sandbox de verdade, a MP responde erro e a intent fica com `provider_payment_id` vazio~~ | Credencial `MP_ACCESS_TOKEN` (TEST-... sandbox real, nunca APP_USR-) de uma conta Mercado Pago Developers, colocada em `e2e/.env.e2e` (git-ignorado — ver `e2e/.env.e2e.exemplo`) | ✅ **resolvido 21/08/2026** — o mantenedor guarda essa credencial fora do repo (correto, INV-P8), num compartilhamento de rede pessoal; qualquer sessão futura que precise rodar `e2e/esqueleto.sh` local deve **pedir ao mantenedor onde está a credencial de teste** em vez de tentar gerar uma nova. **Nunca escreva o valor do token em nenhum arquivo versionado** (nem aqui) — só o `e2e/.env.e2e` local, git-ignorado. Com o token real, elos 1-7 (seed→sessão→pedido→cobrança→webhook→outbox→relay) rodaram verdes de ponta a ponta contra containers reais e a MP sandbox de verdade (`mp_payment_id` retornado por ela, não simulado) |
 
-| H6 | `python ci/mergear.py <PR>` confere tudo verde e então falha ao mergear de verdade: `gh pr merge <PR> --merge --yes` estoura `unknown flag: --yes` — o `gh` instalado nesta máquina (`gh version 2.97.0`) não tem essa flag para `pr merge` | Decisão do mantenedor: fixar/atualizar a versão do `gh` que aceita `--yes`, ou trocar a chamada em `ci/mergear.py` para não depender dela (ex.: `gh pr merge <PR> --merge < /dev/null`, que funcionou como contorno — ver §5.9.1) | 🟡 **contornado, não resolvido** — o merge do PR #35 foi concluído chamando o `gh` direto sem `--yes`; `ci/mergear.py` continua quebrando para qualquer agente que rode exatamente o comando que ele mesmo imprime |
+| H6 | ~~`python ci/mergear.py <PR>` confere tudo verde e então falha ao mergear de verdade: `gh pr merge <PR> --merge --yes` estoura `unknown flag: --yes` — o `gh` instalado nesta máquina (`gh version 2.97.0`) não tem essa flag para `pr merge`~~ | A correção escolhida (22/08/2026): `ci/mergear.py` deixou de usar `--yes` (`comando_de_merge()` monta o comando sem a flag), o stdin de TODO subprocesso de portão passou a ser fechado por construção (`_nucleo.executar`, `stdin=DEVNULL` — sem TTY o `gh` não faz segunda pergunta, age direto), e a conferência pós-merge (`state=MERGED` consultado no GitHub) ficou embutida no script | ✅ **resolvido 22/08/2026** — teste-guarda `test_comando_de_merge_nao_usa_yes` impede a flag de voltar; evidência vermelho→verde no PR do despacho governança/merge-pelo-agente; detalhe em §5.9.1 |
 | H7 | `POST /intents` e `POST /intents/{id}/card` passaram a devolver **502** quando o Mercado Pago falha (antes devolviam 201 mentiroso). O 502 **não está no contrato congelado** — `contracts/pagamentos.openapi.yaml` lista só 201/200/401/422 — porque mudar o contrato é Rito de Contrato (RITOS §3), que exige sessão de arquitetura com o mantenedor e PR só de `contracts/` com a label `contrato`. Um agente de célula não pode fazer isso sozinho | Duas coisas, ambas em arquivo CODEOWNERS: (1) documentar `502` nas duas operações do contrato de pagamentos, pelo Rito §3; (2) decidir sobre o invariante novo proposto — *"resposta de provedor só vira sucesso interno após validação de status e payload"* — em `INVARIANTES.md` | 🔴 **aberto** — o código já falha fechado e está testado (PR do despacho 03); o que falta é só o registro formal. Enquanto não acontecer, o checkout precisa tratar 502 como "tente de novo com a mesma chave", e nenhum documento diz isso a ele |
 | H8 | O e2e (`e2e/esqueleto.sh`) só roda **manualmente**: `grep -rn "esqueleto\|e2e" .github/` não devolve nada. E ele exige `MP_ACCESS_TOKEN` sandbox real (`docker-compose.e2e.yml:69` usa `${MP_ACCESS_TOKEN:?}`, que **recusa subir** sem ela) — logo é inexecutável em CI por construção. Nenhum PR é barrado hoje por quebrar o caminho ponta a ponta, apesar de `ESQUELETO-QUE-ANDA.md` afirmar que ele "roda no CI a cada PR de célula" | Colar o `MP_ACCESS_TOKEN` **sandbox** (`TEST-...`) em *Settings → Environments → Secrets* do GitHub, num environment protegido por *required reviewers* (compatível com INV-P8, que proíbe `APP_USR-` fora da VPS, não `TEST-`). Isso destrava a camada de e2e contra a MP real, agendada 1×/dia — as camadas mockadas por PR não dependem disso | 🔴 aberto — decisão do mantenedor |
-| H9 | **A Lei 4 (Separação de Poderes) é inexecutável, e não por falta de plano pago.** `gh api repos/<owner>/<repo>/collaborators` devolve **um único colaborador**, e o GitHub **proíbe aprovar o próprio PR**. Logo, exigir "revisão do dono" nos caminhos CODEOWNERS travaria todo PR para sempre — mesmo se a branch protection existisse. Medido: os PRs #38–#42 têm `reviews=0`, todos | Criar uma **segunda conta GitHub gratuita** só para revisar: os agentes abrem PR com uma identidade, o mantenedor aprova com a outra. Custo zero. Sem isso, `ci/mergear.py` **não pode** passar a exigir aprovação (viraria deadlock) e a Lei 4 segue sendo prosa | 🔴 aberto — decisão do mantenedor |
+| H9 | ~~**A Lei 4 (Separação de Poderes) é inexecutável, e não por falta de plano pago.** `gh api repos/<owner>/<repo>/collaborators` devolve **um único colaborador**, e o GitHub **proíbe aprovar o próprio PR**. Logo, exigir "revisão do dono" nos caminhos CODEOWNERS travaria todo PR para sempre — mesmo se a branch protection existisse. Medido: os PRs #38–#42 têm `reviews=0`, todos~~ | A saída escolhida NÃO foi a segunda conta revisora: em 22/08/2026 o mantenedor decidiu que **mergear é trabalho do agente**, e a Lei 4 foi reescrita — a aprovação humana prévia saiu do fluxo (era simultaneamente inexecutável E o maior gargalo medido: mediana 22 min, média 264 min por merge — PLANO-10X Alavanca 1); no lugar entraram mandato do despacho + anúncio nominal de merge em caminho CODEOWNERS + o portão de deploy provado (H3) como rede | ✅ **resolvido por decisão em 22/08/2026** — `docs/decisoes/DECISAO-merge-pelo-agente.md`; a Lei 4 deixou de ser prosa inexecutável |
 
 | H10 | Duas correções de **código de célula** que o despacho "consumers em produção" só pôde **contornar**, porque `services/**` estava fora do escopo dele — e as duas ficam em caminho CODEOWNERS, logo dependem de você despachar e mergear. **(1) `checkout`:** `GET /healthz` responde **404** com o ambiente de produção — medido em 21/08/2026 (§4.10); o healthcheck dessa célula teve de virar sonda de TCP em `infra/docker-compose.yml`. **(2) `mensageria`:** não existe entrypoint de Huey na célula (§4.11), então o worker sobe por um bootstrap de 6 linhas embutido no `command:` do compose | **(1)** uma linha em `services/checkout/apps/core/middleware.py`: `request.path` → `request.path_info`. **(2)** `huey.contrib.djhuey` em `INSTALLED_APPS` (destrava `manage.py run_huey`) ou um management command próprio. Duas tarefas de célula normais, 1 PR cada, ambas pequenas | 🟡 **contornado, não resolvido** — a plataforma funciona, mas com dois remendos morando na infra; eles saem de lá quando a célula for corrigida (os dois estão comentados no compose apontando para cá) |
 
@@ -832,37 +832,45 @@ Dizer "CI verde" quando você só rodou local é a mesma família de erro que es
 documento inteiro combate. Ver a tabela de escopo em `INVARIANTES.md` ([INV-CI01]).
 **Origem:** PR #22.
 
-### 5.9 Como mergear sem required check (e por que existe um comando para isso)
+### 5.9 Como se mergeia aqui: o agente, pelo portão — nunca pelo site
 
-**Contexto:** este repositório não tem required check (§1, H3). O botão verde do
-GitHub funciona com tudo vermelho.
+**Contexto:** este repositório não tem required check (§1, H3) — o botão verde do
+GitHub funciona com tudo vermelho. E desde 22/08/2026 **mergear é trabalho do
+agente** (Lei 4; `docs/decisoes/DECISAO-merge-pelo-agente.md`): não se pede ao
+humano, não se espera janela de atenção.
 **O que já custou:** em 19/08/2026 o PR #21 foi mergeado no lugar do #20 — números
-parecidos, recomendações opostas, e nada na tela dizia qual era qual. No mesmo dia, um
-PR com o `muralhas` vermelho seguia mergeável.
-**Solução — prevenção (quando você mergeia pelo terminal):**
+parecidos, recomendações opostas, e nada na tela dizia qual era qual. E a espera
+pelo merge humano custava **mediana 22 min, média 264 min por PR** (medido —
+PLANO-10X, Alavanca 1): era o maior gargalo do projeto inteiro.
+**O caminho (RITOS.md §2 peça 4):**
 
 ```bash
-python ci/mergear.py 22            # confere e pergunta antes
-python ci/mergear.py 22 --conferir # só confere, nunca mergeia
+python ci/mergear.py 22 --conferir    # os checks acabaram? tudo verde?
+python ci/mergear.py 22 --confirmo 22 # mergeia e confere state=MERGED no GitHub
 ```
 
 Ele mostra **número e título em destaque**, consulta o estado real de cada check e
-recusa se algo não estiver verde. Pede confirmação digitando o número do PR — não
-"s/n", justamente porque o erro que aconteceu foi de identidade, não de intenção.
-Semântica igual à dos outros portões: reprovou = `FAIL` (1), não consegui consultar =
-`ERROR` (2). **Nenhum check reportado é `ERROR`**, nunca sinal verde: um PR sem check é
-indistinguível de um PR cujos workflows não dispararam.
+recusa se algo não estiver verde. O `--confirmo` exige REPETIR o número do PR — não
+é "s/n", porque o erro que já aconteceu foi de identidade, não de intenção (sem
+`--confirmo`, a pergunta interativa de digitar o número continua existindo, para
+uso humano). Semântica [INV-CI01]: reprovou = `FAIL` (1), não consegui consultar =
+`ERROR` (2). **Nenhum check reportado é `ERROR`**, nunca sinal verde: um PR sem
+check é indistinguível de um PR cujos workflows não dispararam. Depois do merge o
+próprio script confere `state=MERGED` — mas o painel e o veredito do run de deploy
+(CLAUDE.md) continuam sendo seus.
+**Merge em caminho CODEOWNERS** (`contracts/`, `pagamentos`, `checkout`, `infra/`,
+`ci/`, `.github/`, arquivos-lei da raiz): só com mandato do despacho, e anunciado
+nominalmente no relatório final (Lei 4).
 
-**Solução — detecção (quando você mergeia pelo site):** o workflow `alarme-main` roda
-as guardas de repositório a cada push na `main` e **abre uma issue** (label
-`main-vermelha`) se elas falharem. É alarme, não portão: avisa depois. O modo de falha
-dele é "não avisou", nunca "aprovou o que não devia".
+**Detecção por trás (site, push direto):** o `alarme-main` abre issue (label
+`main-vermelha`) se a `main` quebrar — alarme, não portão. E o **portão de deploy**
+impede commit não-verde de alcançar a VPS (provado ao vivo, ver H3). O clique no
+site continua fisicamente possível e continua **proibido** — não confunda os três
+estados do §5.8 ao relatar.
+**Origem:** decisão de custo consciente, 20/08/2026; reescrito em 22/08/2026,
+quando o merge passou ao agente.
 
-**O que nenhum dos dois faz:** impedir o clique no site. Só required check faz isso, e
-ele custa dinheiro. Não confunda os três estados ao relatar (ver §5.8).
-**Origem:** decisão de custo consciente, 20/08/2026.
-
-### 5.9.1 `ci/mergear.py` estoura `unknown flag: --yes` nesta máquina
+### 5.9.1 `ci/mergear.py` estoura `unknown flag: --yes` nesta máquina — RESOLVIDO 22/08/2026
 
 **Sintoma:** `python ci/mergear.py <PR>` confere tudo verde (PASS em todos os checks),
 você digita o número do PR para confirmar, e o comando interno falha:
@@ -883,11 +891,17 @@ Se o PR estiver checked out num worktree separado (comum neste repositório — 
 worktree`) — o merge em si já aconteceu; confira com
 `gh pr view <PR> --json state,mergedBy,mergeCommit` e depois
 `git worktree remove <caminho>` + `git branch -D <branch>` na sequência certa.
-**Não é a correção do script** — `ci/mergear.py` ainda quebra para qualquer agente
-que rode exatamente o comando que ele mesmo imprime. Registrado também em §1
-(H6) porque decidir se a correção é trocar `--yes` por detecção de versão do `gh`,
-remover a flag, ou fixar a versão do `gh` no ambiente é decisão do mantenedor.
-**Origem:** despacho red-team, golpe 1 (PR #35), 21/08/2026.
+**RESOLVIDO em 22/08/2026** — a decisão saiu, junto com a de o merge passar ao
+agente: `ci/mergear.py` não usa mais `--yes` (`comando_de_merge()` monta o comando
+sem a flag; teste-guarda `test_comando_de_merge_nao_usa_yes` impede a volta), o
+stdin de TODO subprocesso de portão é fechado por construção (`_nucleo.executar`,
+`stdin=DEVNULL` — sem TTY o `gh` não pergunta, age; era exatamente o comportamento
+do contorno acima), e a conferência `state=MERGED` ficou embutida no próprio script.
+O contorno fica como registro histórico; o comando que o script imprime voltou a
+ser o comando que funciona. A ressalva do `--delete-branch` com worktree continua
+valendo para quem o usar à mão — o script não o usa.
+**Origem:** despacho red-team, golpe 1 (PR #35), 21/08/2026; correção no despacho
+governança/merge-pelo-agente, 22/08/2026.
 
 ### 5.10 O exit de um pipeline é do ÚLTIMO comando — veredito de run nunca vem de `| tail`
 
