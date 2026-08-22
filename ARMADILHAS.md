@@ -337,6 +337,26 @@ real era limitado (deploy sem senha utilizável, root em `prohibit-password`), m
 **Origem:** sessão deploy-infra (22/08/2026), ao notar o prompt de senha num teste
 de SSH do mantenedor.
 
+### 3.17 Cloudflare na frente do domínio ⇒ deploy morre em `dial tcp <host>:22: i/o timeout`
+
+**Sintoma:** `deploy-celula`/`deploy-infra` falham na etapa de SSH com
+`dial tcp ***:22: i/o timeout` — com runs verdes NO MESMO DIA, minutos antes, e a
+VPS saudável (porta 22 respondendo o banner `SSH-2.0-...` no IP direto).
+**Causa:** o segredo `VPS_HOST` guardava o **domínio** (`basileiatoutheou.org`). Ao
+colocar o domínio atrás do Cloudflare (nuvem laranja/Proxied), o nome passa a
+resolver para a borda do Cloudflare — que só repassa HTTP/HTTPS, nunca a porta 22.
+A pegadinha: os primeiros deploys pós-mudança ainda PASSAM (cache de DNS com o IP
+antigo), e a falha só aparece quando o cache vence — no lote 2 foram 4 deploys
+verdes e o 5º vermelho, o que disfarça completamente a causa.
+**Solução:** pipeline fala com a VPS por **IP**, nunca pelo domínio público
+proxiado — `VPS_HOST=217.196.62.220` (trocado pelo mantenedor em 22/08/2026;
+segredo de repositório é território dele). Regra geral: mudou DNS/proxy de um
+host que algum pipeline usa ⇒ teste o canal do pipeline IMEDIATAMENTE, não espere
+o próximo merge descobrir. Conferir SSH vivo de fora, sem ssh:
+`exec 3<>/dev/tcp/217.196.62.220/22 && head -c 30 <&3` (imprime o banner).
+**Origem:** janela de merge do lote 2 (22/08/2026), deploy do PR #75 — 2 reruns
+para diagnosticar, causa externa, `gh run rerun <id> --failed` verde após a troca.
+
 ---
 
 ## §4 — Django e django-ninja
@@ -555,6 +575,13 @@ têm `ALLOWED_HOSTS = ["*"]` fixo no `config/settings.py` e **não leem** essa v
 Por isso a sonda com `Host: localhost` passa mesmo em `catalogo`/`leads`/`mensageria`,
 cujo exemplo diz `ALLOWED_HOSTS=<nome-da-célula>`.
 **Origem:** despacho infra/consumers — ao acrescentar healthcheck ao bloco `x-celula`.
+**Atualização (lote 2, 22/08/2026) — Django 5.1 NÃO imuniza quando o acesso vem
+pelo gateway:** a tabela acima mede a sonda INTERNA (request line `/healthz`, sem
+prefixo). Pela borda pública o Traefik NÃO remove o prefixo — a request line é
+`/quiz/healthz` — e aí `request.path` contém o prefixo em QUALQUER versão do
+Django. Medido: `quiz` (5.1.4) respondia 404 em `/quiz/healthz` pela internet até
+o PR #71 trocar a comparação para `request.path_info`. A regra vale para toda
+célula com middleware: a isenção compara `path_info`, sempre.
 
 ### 4.11 Worker do Huey não executa nada: `TaskRegistry` vazio ou `AppRegistryNotReady`
 
@@ -1233,5 +1260,5 @@ arquivo com a ferramenta de escrita em vez de heredoc. Vale para qualquer par an
 | Relay do outbox (Huey → Redis Streams, R3) ainda não instanciado no checkout — o evento é gravado transacionalmente, mas ninguém publica | Fase D, despacho seguinte |
 | ~~alunos não tem consumer de `pagamento.aprovado`~~ **RESOLVIDO em parte** (PR #26, `agent/alunos/matricula`): hoje existe `apps/eventos/management/commands/consume_eventos.py` + `apps/matriculas/` (models/services/handlers, idempotente por `order_id`, INV-P5) e `POST /matriculas` funciona de verdade. Confirmado rodando ao vivo em `e2e/esqueleto.sh` (container `alunos-consumer` dedicado): o evento `pagamento.aprovado` publicado por pagamentos é consumido e a `Matricula` nasce com `status=ativa` no banco de alunos, ponta a ponta. **O que falta é só** `GET /alunos/{email}/matriculas` — ainda `HttpError(501)` por design (`apps/core/api.py`, comentário "listEnrollments segue fora de escopo desta sessão") — é esse endpoint de LEITURA, sozinho, que segura o elo 8 do esqueleto e o critério 1 do DoD de `ESQUELETO-QUE-ANDA.md` | despacho pequeno e focado: implementar só `list_enrollments` lendo `Matricula.objects.filter(email=email)` — o resto da célula já funciona |
 | ~~checkout não consome `pagamento.aprovado`~~ **RESOLVIDO**: `apps/pedidos/management/commands/consume_eventos.py` existe e funciona — confirmado ao vivo em `e2e/esqueleto.sh` (container `checkout-consumer` dedicado), `GET /api/checkout/pedidos/{id}.status` vai de `aguardando_pagamento` para `pago` de verdade depois do webhook aprovado | — |
-| **Evento que faz o handler estourar fica pendente para sempre — a reentrega é possível, mas ninguém a executa.** Medido em 21/08/2026 (despacho infra/consumers), já com o `alunos` **depois** do PR #43: publiquei um `pagamento.aprovado` sem `customer`; o handler estourou `KeyError`, a transação externa desfez o registro (`EventoProcessado = 0` — **o fix do #43/#46 faz exatamente o que promete**), o container morreu e o `restart: unless-stopped` o trouxe de volta. Um evento bom publicado em seguida foi processado normal: **não é crash-loop**. Mas o envenenado segue em `XPENDING` do grupo com `delivery-count = 1`, **nunca reentregue** — `xreadgroup(..., ">")` só entrega mensagem nova, e nenhum consumer chama `XAUTOCLAIM` nem relê o próprio PEL com `XREADGROUP ... 0`. Os PRs #43/#46/#47 devolveram a *possibilidade* de reentregar (`alunos`, `leads` e `mensageria` já registram e efetivam na mesma transação; `checkout` não tem `EventoProcessado`, o handler dele é um `.update()` idempotente) — **o que falta é a peça que de fato reentrega**, e ela não existe em nenhuma das quatro | despacho de robustez nas 4 células: `XAUTOCLAIM` (ou releitura do próprio PEL com `XREADGROUP ... 0`) + fila morta com alarme depois de N tentativas |
+| **Evento que faz o handler estourar fica pendente para sempre — a reentrega é possível, mas ninguém a executa.** Medido em 21/08/2026 (despacho infra/consumers), já com o `alunos` **depois** do PR #43: publiquei um `pagamento.aprovado` sem `customer`; o handler estourou `KeyError`, a transação externa desfez o registro (`EventoProcessado = 0` — **o fix do #43/#46 faz exatamente o que promete**), o container morreu e o `restart: unless-stopped` o trouxe de volta. Um evento bom publicado em seguida foi processado normal: **não é crash-loop**. Mas o envenenado segue em `XPENDING` do grupo com `delivery-count = 1`, **nunca reentregue** — `xreadgroup(..., ">")` só entrega mensagem nova, e nenhum consumer chama `XAUTOCLAIM` nem relê o próprio PEL com `XREADGROUP ... 0`. Os PRs #43/#46/#47 devolveram a *possibilidade* de reentregar (`alunos`, `leads` e `mensageria` já registram e efetivam na mesma transação; `checkout` não tem `EventoProcessado`, o handler dele é um `.update()` idempotente) — **o que falta é a peça que de fato reentrega**, e ela não existe em nenhuma das quatro | ✅ **RESOLVIDO 22/08/2026 (lote 2)** — as 4 células reivindicam presas (`XAUTOCLAIM`, idle ≥ 60s, constantes `IDLE_MS_REENTREGA`/`MAX_ENTREGAS` iguais nas quatro) e movem para `<stream>.dlq` na 5ª entrega (payload original + motivo/delivery_count/movida_em, ACK na origem, log ERROR com o event_id): PRs #74 alunos, #72 leads, #73 mensageria, #75 checkout, todos com teste-guarda contra Redis real e evidência vermelho→verde por patch. O que resta em aberto: a `.dlq` ainda NÃO tem consumidor — reprocessar é manual (`XRANGE` + `XADD` de volta) e o alarme é o log ERROR; se aparecer volume, é despacho pequeno |
 | ~~**pagamentos não valida o status HTTP da resposta da Mercado Pago ao criar uma intent Pix**~~ **RESOLVIDO** (despacho 03, `agent/pagamentos/failclosed`): `_post` falha fechado em todo não-2xx, em timeout e em corpo não-JSON; `core/gateway.py` recusa traduzir 2xx incompleto e levanta `FalhaNoProvedor`; a API devolve **502** em vez de 201, e o replay de INV-P4 virou o caminho de reparo que não existia (completa a intent incompleta com a MESMA `X-Idempotency-Key`, que o MP deduplica). Evidência vermelho→verde no caso 401 colada no PR; testes descem para o transporte com `respx` (§6.9) | **falta só o registro formal:** o 502 ainda não está no contrato congelado e o invariante novo ainda não está em `INVARIANTES.md` — os dois são CODEOWNERS, ver §1 H7 |
