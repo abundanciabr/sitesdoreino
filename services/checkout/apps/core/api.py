@@ -16,6 +16,7 @@ from ninja.errors import HttpError
 
 from apps.core.clients import CatalogoClient, PagamentosClient
 from apps.pedidos.emitir import emitir
+from apps.pedidos.tasks import relay_apos_commit
 
 # Alias obrigatório: as classes Session/Order definidas abaixo são ninja.Schema
 # (a FORMA exportada no contrato). Importar os models com o mesmo nome faria o
@@ -374,6 +375,9 @@ def place_order(request, session_id: str):
                 **({"utm": sessao.utm} if sessao.utm else {}),
             },
         )
+        # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica
+        # do worker cobre qualquer falha aqui — o evento nunca se perde.
+        transaction.on_commit(relay_apos_commit)
     return JsonResponse(_pedido_criado(pedido), status=201)
 
 
