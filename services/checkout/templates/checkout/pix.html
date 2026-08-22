@@ -23,6 +23,7 @@
   {{ order_id|json_script:"order-id" }}
   {{ pix_data|json_script:"pix-data" }}
   {{ api_token|json_script:"api-token" }}
+  {{ api_base|json_script:"api-base" }}
   <div class="wrap" x-data="pixIsland()" x-init="init()">
     <div class="card">
       <h1>Pague com Pix</h1>
@@ -34,6 +35,11 @@
       <p class="status" x-text="statusLabel()"></p>
     </div>
   </div>
+  <script>
+    /* Prefixo REAL da requisicao (SCRIPT_NAME do gateway) vindo do servidor —
+       nunca hardcoded: atras do Traefik a celula vive sob /checkout. */
+    window.API_BASE = JSON.parse(document.getElementById("api-base").textContent);
+  </script>
   <script src="{% static 'checkout/api.js' %}"></script>
   <script src="{% static 'checkout/pix.js' %}"></script>
 </body>

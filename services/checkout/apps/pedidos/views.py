@@ -17,11 +17,24 @@ from apps.pedidos.models import Order as OrderModel
 _API_TOKEN = os.environ.get("TOKENS_ACEITOS_PAGINAS", "")
 
 
+def _api_base(request) -> str:
+    """Base da API interna a partir do prefixo REAL da requisição. Atrás do
+    Traefik a célula vive sob SCRIPT_NAME=/checkout — um caminho hardcoded
+    ("/api/checkout") no front chamaria a raiz do domínio e cairia FORA da
+    célula. O template embute isto como window.API_BASE; api.js nunca hardcoda
+    prefixo nenhum."""
+    return request.META.get("SCRIPT_NAME", "") + "/api/checkout"
+
+
 def dados(request, offer_slug: str):
     return render(
         request,
         "checkout/dados.html",
-        {"offer_slug": offer_slug, "api_token": _API_TOKEN},
+        {
+            "offer_slug": offer_slug,
+            "api_token": _API_TOKEN,
+            "api_base": _api_base(request),
+        },
     )
 
 
@@ -45,6 +58,7 @@ def pix(request, order_id: uuid.UUID):
             "order_id": str(pedido.id),
             "pix_data": pedido.pix,
             "api_token": _API_TOKEN,
+            "api_base": _api_base(request),
         },
     )
 
@@ -58,5 +72,6 @@ def cartao(request, order_id: uuid.UUID):
             "order_id": str(pedido.id),
             "total_cents": pedido.total_cents,
             "api_token": _API_TOKEN,
+            "api_base": _api_base(request),
         },
     )

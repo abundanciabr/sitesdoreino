@@ -48,7 +48,10 @@ function dadosIsland() {
           method: this.method,
         });
         const destino = pedido.payment.method === "pix" ? "pix" : "cartao";
-        window.location = `/checkout/pedido/${pedido.order_id}/${destino}/`;
+        // Relativo de proposito: esta pagina vive em <prefixo>/checkout/<slug>/,
+        // e o destino em <prefixo>/checkout/pedido/... — um caminho absoluto
+        // hardcoded perderia o prefixo do gateway (SCRIPT_NAME=/checkout).
+        window.location = `../pedido/${pedido.order_id}/${destino}/`;
       } catch (e) {
         this.erro =
           "Não foi possível concluir o pedido. Confira os dados e tente novamente.";
