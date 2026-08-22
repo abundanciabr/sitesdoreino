@@ -35,9 +35,17 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    # [RECEITA:R8 v1] dá o entrypoint `python manage.py run_huey` (django.setup
+    # + autodiscover de tasks.py — sem isso o worker sobe com registro vazio e
+    # não executa nada, ARMADILHAS §4.11). É o comando que o compose usará.
+    "huey.contrib.djhuey",
     "apps.core",
     "apps.pedidos",
 ]
+
+# O run_huey do djhuey consome a MESMA instância onde as tasks se registram
+# (config/huey.py — leitura de HUEY_REDIS_URL nunca fail-hard no import).
+from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

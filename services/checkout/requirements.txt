@@ -11,3 +11,4 @@ respx==0.23.1
 black==24.10.0
 PyYAML==6.0.2
 redis==5.1.1
+huey==2.5.1

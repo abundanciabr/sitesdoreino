@@ -121,3 +121,24 @@ custou uma checagem extra. Confirme o orçamento DEPOIS do commit, não antes.
     DATABASE_URL=postgres://dev:dev@localhost:55433/checkout_db
   make ci
   ```
+
+## Sessão: relay do outbox (R3 + R8)
+
+- **`settings.HUEY` deve ser a MESMA instância de `config/huey.py`** (`from
+  config.huey import huey as HUEY`): o `run_huey` do djhuey consome
+  `settings.HUEY`, e as tasks se registram na instância que importaram — se
+  forem objetos diferentes, o worker sobe de pé e inútil (registro vazio,
+  ARMADILHAS §4.11). Guarda: `test_worker_encontra_a_task_periodica_registrada`.
+- **`HUEY_REDIS_URL` é lida com `os.environ.get` + default inofensivo** em
+  `config/huey.py` — o container web importa o módulo via INSTALLED_APPS
+  (djhuey) e não pode morrer se a variável faltar; a conexão do Huey é
+  preguiçosa, só o worker conecta de verdade. Já `REDIS_STREAMS_URL` é lida no
+  ponto de uso (`apps/pedidos/tasks.py`), então também não é fail-hard no
+  import (§5.3).
+- **Publicar no stream ANTES de marcar `published_at`** (espelho do relay de
+  pagamentos): pior caso é republicar — o transporte é at-least-once e os
+  consumidores dedupam; a ordem invertida perderia evento (§4.12).
+- O worker em produção é `python manage.py run_huey` — o compose que o sobe é
+  escopo de infra (outro despacho), e o env real da VPS precisa de
+  `HUEY_REDIS_URL` (e de `REDIS_STREAMS_URL`, que o web já usava só em teoria:
+  até este PR ninguém publicava).
