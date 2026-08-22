@@ -159,6 +159,35 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 | Dois despachos precisam da MESMA célula | fila interna, nunca paralelo |
 | Algo exige aprovação/segredo do humano | isole o passo, termine o resto, entregue UM bloco de colar rotulado |
 
+## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
+
+**Lote 1 — 22/08/2026** (6 despachos, 8 PRs #61–#68, 8 merges, 8 deploys verdes, 0 revert):
+
+1. **A pilha de `git stash` é ÚNICA por repositório — compartilhada por todos os
+   worktrees.** Duas sessões usando o protocolo vermelho→verde por stash (§6.1 do
+   ARMADILHAS) ao mesmo tempo poparam o stash uma da outra. Ninguém perdeu trabalho,
+   mas custou uma investigação no meio da janela. Regra nova (ARMADILHAS §6.1.1):
+   em lote, evidência vermelho→verde por **patch**, nunca stash — e a maestro deve
+   INJETAR essa regra em todo brief (regra 3 do §3).
+2. **Recursos locais compartilhados se pré-atribuem no brief.** Porta de Postgres/Redis
+   exclusiva por despacho (55433, 55434, …), nome de container exclusivo — zero colisão
+   em 5 células paralelas. Sem isso, todos usariam o 55432 do ARMADILHAS §2.
+3. **Convenção transversal se dita no brief, não se negocia depois.** As três células
+   que mexeram com Huey e o despacho de infra convergiram sem coordenação em tempo real
+   porque TODOS os briefs traziam a mesma frase ("worker sobe com `manage.py run_huey`;
+   env de Redis nunca fail-hard no import"). O custo de escrever a convenção uma vez é
+   muito menor que o de reconciliar quatro desenhos divergentes na janela de merge.
+4. **Na janela de merge, `--conferir | tail && --confirmo` mascara o exit do primeiro
+   comando** (§5.10 do ARMADILHAS, versão da maestro). Inofensivo aqui porque o
+   `--confirmo` reconfere tudo por construção — mas o hábito certo é rodar o
+   `--confirmo` sozinho ou capturar o exit antes do pipe.
+5. **Conflito entre PRs da MESMA célula na janela é normal e barato**: o GitHub recalcula
+   (`mergeable: UNKNOWN` → espere; `CONFLICTING` → o agente daquele PR rebaseia e o
+   portão roda de novo). Custou ~5 minutos e funcionou exatamente como o §5 previa.
+6. **Sequenciar dependências por ordem de merge funciona**: o PR de infra que liga
+   workers novos (`run_huey`) mergeou por último, depois dos deploys verdes das células
+   que ele referencia — nenhuma janela de incompatibilidade em produção.
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
