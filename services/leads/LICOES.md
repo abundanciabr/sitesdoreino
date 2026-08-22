@@ -99,6 +99,38 @@ propagando para fora de `processar_envelope()`, o `r.xack(...)` do `Command.hand
 não roda — a mensagem fica na PEL do consumer group. É o comportamento desejado (ela
 *precisa* sobreviver para ser reentregue), mas a recuperação de mensagens presas
 (`xautoclaim`) não existe nesta célula: hoje depende de o processo reiniciar.
+*[Atualização 22/08/2026: resolvido — `reivindicar_presas()` roda a cada iteração
+do loop do consumer; ver a lição seguinte.]*
 
 **Origem:** despacho de dedup atômico, depois do mesmo conserto em `alunos` (PR #43) —
 o bug era idêntico nas duas células porque as duas copiaram a receita R4.
+
+## Reentrega de presas: a fila morta lê o PEL ANTES do `XAUTOCLAIM`
+
+**Onde:** `apps/core/management/commands/consume_eventos.py` —
+`reivindicar_presas()`, chamada por `uma_iteracao()` antes do `xreadgroup ">"`.
+Convenção do lote de reentrega (mesma nas 4 células consumidoras):
+`IDLE_MS_REENTREGA = 60000`, `MAX_ENTREGAS = 5`, fila morta em `<stream>.dlq`
+com `motivo`/`delivery_count`/`movida_em`.
+
+**A sutileza de ordem que não está em manual nenhum:** `XAUTOCLAIM` **incrementa
+o delivery counter ao reivindicar**. Se a checagem de `MAX_ENTREGAS` viesse
+depois dele, a própria reivindicação contaria como entrega — a mensagem iria à
+fila morta com uma tentativa real a menos do que o PEL promete. Por isso o
+descarte vem PRIMEIRO, lendo `times_delivered` direto do PEL
+(`xpending_range(..., idle=IDLE_MS_REENTREGA)`), movendo quem já está em
+`MAX_ENTREGAS` para o `.dlq` (payload original + os 3 campos, `XACK` na origem,
+log ERROR com o event_id); só então o `XAUTOCLAIM` reivindica o resto e o
+processa pelo MESMO `processar_mensagem()` das mensagens novas.
+
+**Como testar sem esperar 60 segundos de relógio:** `XCLAIM` aceita `IDLE`
+(backdata o tempo parado) e `RETRYCOUNT` (força o delivery_count do PEL). É
+assim que `tests/test_inv_leads_reentrega_pel.py` fabrica, contra Redis REAL,
+uma mensagem "presa há mais de 60s" e outra "na 5ª entrega" — mock de Redis
+esconderia exatamente a semântica de PEL que está em teste. De quebra,
+`uma_iteracao(r, block_ms=...)` existe para o teste não pagar os 5s de `block`
+do loop de produção.
+
+**Origem:** despacho leads/reentrega-pel (lote 2, 22/08/2026) — a pendência era
+a linha "evento que faz o handler estourar fica pendente para sempre" do
+ARMADILHAS §9.
