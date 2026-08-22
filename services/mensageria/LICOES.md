@@ -126,3 +126,38 @@ nesta célula — hoje depende de o processo reiniciar. Vale igual para `alunos`
 **Origem:** varredura das quatro células que consomem eventos, depois dos mesmos
 consertos em `alunos` (PR #43) e `leads` (PR #46). Três das quatro tinham o mesmo bug,
 todas herdado da receita R4 — `checkout` escapou por não usar a tabela de dedup.
+
+## Entrypoint oficial do worker: `python manage.py run_huey` (fecha o lado-célula do H10.2)
+
+**Contexto:** até este despacho o worker de produção subia por um bootstrap de 6
+linhas embutido no `command:` do compose (ARMADILHAS §4.11), porque `manage.py
+run_huey` não existia. Agora existe: `huey.contrib.djhuey` está em INSTALLED_APPS
+e o comando faz o `django.setup()` + `autodiscover_modules("tasks")` sozinho.
+
+**As duas regras que mantêm isso funcionando:**
+1. **`settings.HUEY` DEVE ser a MESMA instância de `config/huey.py`** (o settings
+   importa `from config.huey import huey as HUEY`). O djhuey aceita uma instância
+   pronta; se alguém trocar por um dict de config, nasce uma SEGUNDA fila — o
+   handler enfileira numa, o worker escuta a outra, e nenhum e-mail sai, sem erro
+   nenhum. Teste-guarda: `tests/test_entrypoint_huey.py` (os 3 testes reprovavam
+   contra o código anterior — vermelho→verde real).
+2. **`config/huey.py` não pode ser fail-hard no import.** Com djhuey instalado, o
+   `settings.py` importa esse módulo — ou seja, o container WEB também passa por
+   ali no boot. Por isso `HUEY_REDIS_URL` é lido com `os.environ.get(...)` e
+   default inofensivo (o pool do redis-py é preguiçoso, nada conecta no import);
+   produção define o valor real em `infra/env/mensageria.env`, compartilhado
+   pelos três containers da célula. Trade-off assumido: o worker não morre mais
+   no boot se a var faltar — ele apontaria para localhost e ficaria surdo; a
+   guarda contra isso é o env de produção ser um arquivo só para web+worker
+   (faltou para um, faltou para todos, e o web denuncia).
+
+**Prova viva (22/08/2026, local, Redis efêmero):** `run_huey` logou
+`+ apps.eventos.tasks.enviar_notificacao` sob `The following commands are
+available:` (o sinal do §4.11), e uma task enfileirada pelo caminho real foi
+executada — `EnvioRegistrado` saiu de `pendente` para `enviado`/`resultado=ok`.
+
+**O que NÃO mudou aqui:** o `command:` do `mensageria-huey` no compose ainda é o
+bootstrap antigo — a troca para `python manage.py run_huey` é escopo do despacho
+de infra do mesmo lote. O bootstrap antigo continua funcionando com este código.
+
+**Origem:** despacho mensageria/entrypoint-huey (H10.2).
