@@ -26,6 +26,18 @@ http:
       service: pagamentos
       tls: {}
 
+    checkout-api:
+      # API do checkout (POST /api/checkout/sessions, /orders…): sem esta rota
+      # o caminho cai no catch-all do funil e vira 404 — ninguém compra.
+      # priority 20 > 10 (prefixos de página) e > 1 (funil); não colide com
+      # mp-webhooks (100), que casa só /api/pagamentos/webhooks.
+      rule: "PathPrefix(`/api/checkout`)"
+      priority: 20
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: checkout
+      tls: {}
+
     quiz:
       rule: "PathPrefix(`/quiz`)"
       priority: 10

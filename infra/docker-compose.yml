@@ -31,9 +31,6 @@ x-celula: &celula
   # esperar o `migrate` do servidor HTTP terminar: os dois migram em paralelo
   # contra o mesmo banco e um morre com IntegrityError. /healthz respondendo é
   # o sinal de que o `migrate --noinput && uvicorn` do CMD chegou ao fim.
-  # Medido em 21/08/2026 com o ambiente real de infra/env/*.exemplo: 7 das 8
-  # células respondem 200 nesta sonda. `checkout` responde 404 e por isso
-  # sobrescreve esta sonda logo abaixo — ver ARMADILHAS.md §4.10.
   healthcheck:
     test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
     interval: 10s
@@ -104,6 +101,21 @@ services:
     image: ghcr.io/abundanciabr/plataforma-quiz:${QUIZ_TAG:-main}
     env_file: [env/quiz.env]
 
+  # Relay de outbox (Huey): publica no Redis Streams os eventos que a célula
+  # gravou na outbox (ex.: quiz concluído → lead).
+  quiz-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-quiz:${QUIZ_TAG:-main}
+    env_file: [env/quiz.env]
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      quiz:
+        condition: service_healthy
+
   leads:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-leads:${LEADS_TAG:-main}
@@ -127,20 +139,21 @@ services:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-checkout:${CHECKOUT_TAG:-main}
     env_file: [env/checkout.env]
-    # [ARMADILHAS §4.10] Sonda de TCP, não de HTTP, e SÓ nesta célula: com
-    # SCRIPT_NAME=/checkout (env/checkout.env) e Django 5.0.9, `GET /healthz`
-    # responde 404 aqui — medido em 21/08/2026, com a MESMA imagem respondendo
-    # 200 quando SCRIPT_NAME sai do ambiente. Herdar a sonda de /healthz deixaria
-    # `checkout` unhealthy para sempre, e `checkout-consumer` jamais subiria.
-    # O que a sonda precisa provar é que o `migrate` do CMD terminou e o uvicorn
-    # está escutando; o socket aberto prova exatamente isso, e nada além.
-    # Volte para a sonda herdada assim que a célula corrigir o middleware.
-    healthcheck:
-      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=3).close()"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
+
+  # Relay de outbox (Huey): publica no Redis Streams os eventos que a célula
+  # gravou na outbox. Sem ele, pedido pago não vira evento — nada downstream.
+  checkout-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-checkout:${CHECKOUT_TAG:-main}
+    env_file: [env/checkout.env]
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      checkout:
+        condition: service_healthy
 
   # Consome eventos.pagamento.aprovado e tira o pedido de `aguardando_pagamento`.
   checkout-consumer:
@@ -200,35 +213,14 @@ services:
       mensageria:
         condition: service_healthy
 
-  # Única célula com Huey (services/mensageria/config/huey.py). Sem este worker
-  # a R8 nunca executa: o handler enfileira `enviar_notificacao` e ninguém tira
-  # da fila — nenhum e-mail sai, e o retry de 5 tentativas é decorativo.
-  #
-  # [ARMADILHAS §4.11] Por que isto não é um comando de uma linha: a célula não
-  # tem entrypoint de Huey (nem `huey.contrib.djhuey`, nem `manage.py run_huey`).
-  # Medido em 21/08/2026, dentro da própria imagem:
-  #   huey_consumer.py config.huey.huey        -> sobe, mas com o registro de
-  #                                               tasks VAZIO (nada a executar)
-  #   huey_consumer.py apps.eventos.tasks.huey -> AppRegistryNotReady
-  # O bootstrap abaixo é o mínimo que registra a task: django.setup() primeiro,
-  # importar apps.eventos.tasks depois. A correção definitiva é um `run_huey`
-  # dentro da célula (mudança em services/**, fora do escopo deste despacho —
-  # ver ARMADILHAS.md §1/H10); quando existir, isto volta a ser uma linha só.
+  # Worker Huey da mensageria (services/mensageria/config/huey.py). Sem este
+  # worker a R8 nunca executa: o handler enfileira `enviar_notificacao` e ninguém
+  # tira da fila — nenhum e-mail sai, e o retry de 5 tentativas é decorativo.
   mensageria-huey:
     <<: *processo
     image: ghcr.io/abundanciabr/plataforma-mensageria:${MENSAGERIA_TAG:-main}
     env_file: [env/mensageria.env]
-    command:
-      - python
-      - -c
-      - |
-        import os, django
-        os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-        django.setup()
-        import apps.eventos.tasks  # registra @huey.task no TaskRegistry
-        from huey.bin.huey_consumer import consumer_main
-        consumer_main()
-      - apps.eventos.tasks.huey
+    command: ["python", "manage.py", "run_huey"]
     depends_on:
       postgres:
         condition: service_healthy
