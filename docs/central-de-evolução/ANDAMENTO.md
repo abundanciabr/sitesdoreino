@@ -62,5 +62,9 @@ esta página existem e estão no repositório. O próximo passo é o Lote 0.
 
 ## Linha do tempo
 
+- **22/08/2026 (noite)** — O PR do próprio plano (#78) ficou **represado**: o
+  GitHub parou de executar qualquer CI (suspeita de cota de minutos esgotada —
+  ARMADILHAS H14, item 1 do "Precisa de você agora" no painel). O plano está
+  pronto; o merge acontece assim que o CI voltar. Nenhum lote dispara antes disso.
 - **22/08/2026** — Plano mestre em 5 lotes criado a partir das duas
   especificações e do protótipo v2. Modelo de despacho e esta página criados.
