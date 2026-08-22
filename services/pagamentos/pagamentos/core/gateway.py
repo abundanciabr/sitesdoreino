@@ -47,6 +47,16 @@ class ResultadoCard:
     reason_code: str
 
 
+@dataclass(frozen=True)
+class StatusDoPagamento:
+    """Resultado da CONSULTA a um pagamento existente (GET) — a fonte de
+    verdade que os webhook handlers usam no lugar do corpo não assinado."""
+
+    payment_id: str
+    status: str  # status cru do provider (approved/rejected/cancelled/...)
+    reason_code: str  # status_detail do provider ("" quando ausente)
+
+
 def criar_pagamento_pix(
     *, idempotency_key: str, amount_cents: int, order_id: str, payer_email: str
 ) -> ResultadoPix:
@@ -85,6 +95,30 @@ def criar_pagamento_card(
     except MercadoPagoError as exc:
         raise FalhaNoProvedor(str(exc)) from exc
     return _traduzir_resposta_card(resposta)
+
+
+def consultar_status_do_pagamento(*, payment_id: str) -> StatusDoPagamento:
+    """Usada pelos webhook handlers: o `data.id` assinado entra, o status QUE A
+    API RESPONDEU sai. Fail-closed como as criações — provedor fora do ar,
+    corpo ilegível ou resposta sem `status` levantam FalhaNoProvedor (o webhook
+    responde 5xx e o MP reentrega; nunca se decide sem a fonte de verdade)."""
+    try:
+        resposta = MercadoPagoClient().obter_pagamento(payment_id)
+    except MercadoPagoError as exc:
+        raise FalhaNoProvedor(str(exc)) from exc
+    payment_id_confirmado = _exigir_id(resposta)
+    status = str(resposta.get("status") or "").strip()
+    if not status:
+        raise FalhaNoProvedor(
+            "consulta ao Mercado Pago sem `status` no corpo "
+            f"(payment_id={payment_id_confirmado}) — sem ele nao ha decisao "
+            "possivel para o webhook."
+        )
+    return StatusDoPagamento(
+        payment_id=payment_id_confirmado,
+        status=status,
+        reason_code=str(resposta.get("status_detail") or ""),
+    )
 
 
 # ---------------------------------------------------------------------------

@@ -412,3 +412,54 @@ docker run -d --name pagamentos-pg -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev
 (`redis://localhost:16379/5`) — não precisa de container próprio para rodar
 `make ci`. Venv fora do worktree (§3.8), `pip install -r requirements.txt`, e o
 equivalente manual do `make ci` está na seção "Comandos" no topo deste arquivo.
+
+## Sessão D — endurecimento do webhook (despacho webhook-endurecimento)
+
+**O risco fechado, em uma frase:** a x-signature do MP assina só o manifesto
+`data.id` + `x-request-id` + `ts` — o CORPO fica fora; e a decisão
+aprovar/recusar vinha de `data.status` do corpo: um corpo adulterado com
+assinatura válida (mesmo data.id/ts) mudava a decisão. A pendência já estava
+anotada na Sessão B ("Webhook NÃO busca status via API do MP") — esta sessão a
+paga.
+
+### Decisões de arquitetura desta sessão
+
+- **A janela de tempo mora DENTRO de `assinatura_valida()`** (core/
+  webhook_signature.py): ts fora da janela = assinatura inválida = 403 com
+  zero efeito colateral — é a semântica do INV-P10, sem inventar um segundo
+  tipo de rejeição. Default 300s; configurável por env
+  `MP_WEBHOOK_TS_TOLERANCIA_SEGUNDOS` lida NO PONTO DE USO (não é fail-hard em
+  settings.py de propósito: env obrigatória nova exigiria tocar
+  `.github/workflows/ci-celula.yml`, fora do escopo — ARMADILHAS §5.3). Config
+  ilegível/não-positiva cai no default, nunca desliga a janela.
+- **`data.id` vem do query param (assinado), nunca mais do corpo.** O corpo do
+  webhook em produção é 100% ignorado agora.
+- **Status confiável = consulta `GET /v1/payments/{id}`** via
+  `core.gateway.consultar_status_do_pagamento()` → `MercadoPagoClient.
+  obter_pagamento()` (`_get` novo com as MESMAS três muralhas do `_post`,
+  extraídas para `_corpo_json_de_2xx()`; §4.9). Consulta que falha ⇒
+  `HttpError(502)` — o MP trata 5xx como "reentregue depois", então o webhook
+  não se perde; decidir sem a fonte de verdade não existe. `reason_code` do
+  evento `pagamento.recusado` agora é o `status_detail` da API.
+- **`DEBUG=1` mantém o caminho antigo (status do corpo) — deliberado.** O
+  e2e/esqueleto usa `/debug/simulate-webhook`, que forja um "approved" para um
+  pagamento sandbox que NUNCA será pago (a consulta real devolveria "pending"
+  para sempre e o esqueleto nunca aprovaria). Com DEBUG=1 esse endpoint já
+  forja webhooks assinados de qualquer status, então confiar no corpo ali não
+  abre brecha nova. Produção roda DEBUG=0 (infra/env/pagamentos.env.exemplo)
+  e SEMPRE consulta.
+- **Testes-guarda (INV-P3/P6/P10): só o SETUP mudou, assert nenhum.** Os
+  helpers `_postar_webhook_assinado` ganharam a rota respx do GET respondendo
+  o MESMO status do webhook (o cenário legítimo); o que cada invariante afirma
+  ficou intocado. Intent dos testes novos nasce por ORM direto — o alvo é o
+  webhook, não a criação de intent.
+
+### Pendência conhecida (para quem atacar o webhook REAL do MP)
+
+- O mapa de status do Pix conhece `approved/rejected/expired`, mas um Pix
+  expirado consultado na API real do MP vem como `status="cancelled"`
+  (`status_detail="expired"`) — o valor `expired` é dialeto do nosso
+  simulador. Quando o critério 2 do ESQUELETO-QUE-ANDA (webhook real na VPS)
+  for atacado, decidir o mapeamento de `cancelled` (e conferir os demais
+  status reais: `in_process`, `refunded`, `charged_back`). Hoje um
+  `cancelled` real é ignorado — não quebra nada, só não emite `pix.expirado`.

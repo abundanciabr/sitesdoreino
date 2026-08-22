@@ -5,7 +5,9 @@ import uuid
 from typing import Any
 from unittest.mock import patch
 
+import httpx
 import pytest
+import respx
 from django.test import Client
 
 from pagamentos.core.models import Intent, OutboxEvent
@@ -110,12 +112,20 @@ def test_webhook_com_assinatura_valida_e_200(client: Client, token_valido: str) 
     request_id = str(uuid.uuid4())
     headers = assinar(data_id=_MP_PAYMENT_ID, request_id=request_id)
 
-    resp = client.post(
-        f"/api/pagamentos/webhooks/mp/pix?data.id={_MP_PAYMENT_ID}",
-        data=_corpo(),
-        content_type="application/json",
-        HTTP_X_SIGNATURE=headers["x-signature"],
-        HTTP_X_REQUEST_ID=headers["x-request-id"],
-    )
+    # Desde o endurecimento, assinatura válida ⇒ o handler consulta a API do
+    # MP para decidir (o corpo não é assinado) — mock no transporte (§6.9).
+    with respx.mock(assert_all_called=True) as mp:
+        mp.get(f"https://api.mercadopago.com/v1/payments/{_MP_PAYMENT_ID}").mock(
+            return_value=httpx.Response(
+                200, json={"id": int(_MP_PAYMENT_ID), "status": "approved"}
+            )
+        )
+        resp = client.post(
+            f"/api/pagamentos/webhooks/mp/pix?data.id={_MP_PAYMENT_ID}",
+            data=_corpo(),
+            content_type="application/json",
+            HTTP_X_SIGNATURE=headers["x-signature"],
+            HTTP_X_REQUEST_ID=headers["x-request-id"],
+        )
 
     assert resp.status_code == 200

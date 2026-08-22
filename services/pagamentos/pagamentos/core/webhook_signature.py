@@ -15,10 +15,30 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import os
 import time
 
 from django.conf import settings
 from django.http import HttpRequest
+
+# Janela anti-replay sobre o `ts` do manifesto assinado: um webhook capturado
+# hoje não pode ser reapresentado amanhã com a mesma assinatura válida. 5 min
+# acomodam retry legítimo do MP + clock skew razoável; configurável por env
+# (NÃO é fail-hard em settings.py de propósito — variável nova obrigatória
+# exigiria tocar .github/workflows/ci-celula.yml, fora do escopo deste
+# despacho; ver ARMADILHAS §5.3, alternativa "leia no ponto de uso").
+_TS_TOLERANCIA_PADRAO_SEGUNDOS = 300
+
+
+def _tolerancia_ts_segundos() -> int:
+    bruto = os.environ.get("MP_WEBHOOK_TS_TOLERANCIA_SEGUNDOS", "")
+    try:
+        valor = int(bruto)
+    except ValueError:
+        return _TS_TOLERANCIA_PADRAO_SEGUNDOS
+    # Config ilegível ou não-positiva NUNCA desliga a janela — cai no default
+    # seguro (fail-closed: erro de configuração não pode abrir replay infinito).
+    return valor if valor > 0 else _TS_TOLERANCIA_PADRAO_SEGUNDOS
 
 
 def _manifest(*, data_id: str, request_id: str, ts: str) -> str:
@@ -27,8 +47,12 @@ def _manifest(*, data_id: str, request_id: str, ts: str) -> str:
 
 def assinatura_valida(request: HttpRequest) -> bool:
     """[INV-P10] Chamar ANTES de qualquer leitura do payload com efeito. Corpo
-    ausente/assinatura ausente/HMAC que não bate ⇒ False (o handler devolve 403,
-    zero efeito colateral)."""
+    ausente/assinatura ausente/HMAC que não bate/`ts` fora da janela ⇒ False
+    (o handler devolve 403, zero efeito colateral).
+
+    A janela sobre `ts` é parte da validade da assinatura: o HMAC prova que o
+    MP assinou ESTE manifesto um dia — só o `ts` diz que foi AGORA. Sem a
+    janela, um webhook antigo capturado seria reapresentável para sempre."""
     cabecalho = request.headers.get("x-signature", "")
     partes = dict(p.split("=", 1) for p in cabecalho.split(",") if "=" in p)
     ts = partes.get("ts", "")
@@ -43,7 +67,15 @@ def assinatura_valida(request: HttpRequest) -> bool:
     esperado = hmac.new(
         settings.MP_WEBHOOK_SECRET.encode(), manifest.encode(), hashlib.sha256
     ).hexdigest()
-    return hmac.compare_digest(esperado, v1)
+    if not hmac.compare_digest(esperado, v1):
+        return False
+    try:
+        ts_segundos = int(ts)
+    except ValueError:
+        # `ts` não-numérico jamais foi emitido pelo MP; assinatura formalmente
+        # válida sobre um ts ilegível continua sendo rejeitada.
+        return False
+    return abs(time.time() - ts_segundos) <= _tolerancia_ts_segundos()
 
 
 def assinar(*, data_id: str, request_id: str) -> dict[str, str]:
