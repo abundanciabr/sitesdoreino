@@ -2,7 +2,10 @@
 // Único arquivo comum entre dados/pix/cartão (doutrina: zero estado compartilhado
 // além deste cliente).
 const api = {
-  _base: "/api/checkout",
+  // Definida pelo template (prefixo REAL da requisicao + /api/checkout):
+  // atras do Traefik a celula vive sob SCRIPT_NAME=/checkout, e um caminho
+  // hardcoded aqui chamaria a raiz do dominio — fora da celula.
+  _base: window.API_BASE,
   _token() {
     const el = document.getElementById("api-token");
     return el ? JSON.parse(el.textContent) : "";

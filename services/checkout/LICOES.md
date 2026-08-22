@@ -142,3 +142,20 @@ custou uma checagem extra. Confirme o orçamento DEPOIS do commit, não antes.
   escopo de infra (outro despacho), e o env real da VPS precisa de
   `HUEY_REDIS_URL` (e de `REDIS_STREAMS_URL`, que o web já usava só em teoria:
   até este PR ninguém publicava).
+
+## Sessão: páginas em produção (DEBUG=0 + SCRIPT_NAME)
+
+- **`{% static %}` já é prefix-aware; o que NÃO era: servir o arquivo e chamar
+  a API.** Com DEBUG=0 o Django não serve estático nenhum (as páginas subiam
+  sem um único .js), e `api.js` hardcodava `/api/checkout` — atrás do Traefik
+  a célula vive sob `SCRIPT_NAME=/checkout`, então o fetch caía FORA da
+  célula. Correções: rota `re_path("^static/...")` com
+  `django.views.static.serve` do diretório-fonte (sem dependência nova; sai no
+  dia em que houver CDN/collectstatic de verdade) e `window.API_BASE` definido
+  pelo template a partir de `request.META["SCRIPT_NAME"]` — nunca hardcoded.
+- **Navegação entre páginas da célula: caminho RELATIVO** (`../pedido/...` em
+  `dados.js`). Absoluto hardcoded perde o prefixo do gateway; o relativo
+  funciona com e sem prefixo.
+- Para simular produção em teste: `settings.DEBUG = False` +
+  `settings.FORCE_SCRIPT_NAME = "/checkout"` no client de teste reproduzem o
+  cenário sem container (guarda: `tests/test_paginas_producao.py`).

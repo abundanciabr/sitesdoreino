@@ -22,6 +22,7 @@
   {{ order_id|json_script:"order-id" }}
   {{ total_cents|json_script:"total-cents" }}
   {{ api_token|json_script:"api-token" }}
+  {{ api_base|json_script:"api-base" }}
   <div class="wrap" x-data="cartaoIsland()" x-init="init()">
     <div class="card">
       <h1>Pague com cartão</h1>
@@ -30,6 +31,11 @@
       <p class="status" x-text="statusLabel()"></p>
     </div>
   </div>
+  <script>
+    /* Prefixo REAL da requisicao (SCRIPT_NAME do gateway) vindo do servidor —
+       nunca hardcoded: atras do Traefik a celula vive sob /checkout. */
+    window.API_BASE = JSON.parse(document.getElementById("api-base").textContent);
+  </script>
   <script src="{% static 'checkout/api.js' %}"></script>
   <script src="{% static 'checkout/cartao.js' %}"></script>
 </body>

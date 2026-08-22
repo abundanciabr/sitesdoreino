@@ -27,6 +27,7 @@
 <body>
   {{ offer_slug|json_script:"offer-slug" }}
   {{ api_token|json_script:"api-token" }}
+  {{ api_base|json_script:"api-base" }}
   <div class="wrap" x-data="dadosIsland()" x-init="init()">
     <div class="card" x-show="!carregando">
       <h1 x-text="offer.product_name"></h1>
@@ -64,6 +65,11 @@
       </button>
     </form>
   </div>
+  <script>
+    /* Prefixo REAL da requisicao (SCRIPT_NAME do gateway) vindo do servidor —
+       nunca hardcoded: atras do Traefik a celula vive sob /checkout. */
+    window.API_BASE = JSON.parse(document.getElementById("api-base").textContent);
+  </script>
   <script src="{% static 'checkout/api.js' %}"></script>
   <script src="{% static 'checkout/dados.js' %}"></script>
 </body>
