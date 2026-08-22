@@ -30,6 +30,7 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    "huey.contrib.djhuey",  # entrypoint oficial do worker: manage.py run_huey (§4.11)
     "apps.core",
     "apps.eventos",
 ]
@@ -48,3 +49,9 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 USE_TZ = True
+
+# djhuey lê `settings.HUEY`. Precisa ser a MESMA instância que as tasks decoram
+# (config/huey.py) — uma instância nova aqui criaria uma SEGUNDA fila: o handler
+# enfileira numa, o `run_huey` escuta a outra, e nenhum e-mail sai (ARMADILHAS
+# §4.11). O import é seguro: config/huey.py não é fail-hard (default inofensivo).
+from config.huey import huey as HUEY  # noqa: E402
