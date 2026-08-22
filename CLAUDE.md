@@ -79,6 +79,11 @@ CODEOWNERS (`contracts/`, `pagamentos`, `checkout`, `infra/`, `ci/`,
 `.github/`, arquivos-lei da raiz) só com mandato do despacho, e **anunciado
 nominalmente no relatório final**.
 
+**Vários despachos em paralelo (lote):** a sessão raiz rege pelo
+`RUNBOOK-LOTES.md` — composição, as sete regras de inteligência, janela de
+merge serial e fechamento. Se o mantenedor pedir "toque um lote", é esse
+documento que define o como.
+
 Se o painel ainda não tiver uma seção adequada para o que aconteceu, crie uma
 (ex.: a "Linha do tempo de incidentes" foi criada assim, sob demanda) — o
 painel deve crescer para caber a realidade do projeto, não o contrário.

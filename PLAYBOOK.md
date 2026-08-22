@@ -141,6 +141,10 @@ jurisdição (diz onde o anúncio é obrigatório), não trava.
 
 ## 4. Como operar uma sessão (RITOS.md §1, resumo executável)
 
+> **Vários despachos em paralelo?** A sessão-maestro (janela raiz) rege pelo
+> `RUNBOOK-LOTES.md` — este §4 descreve UMA sessão de célula; o runbook descreve
+> como N delas rodam juntas e como a janela de merge fecha o lote.
+
 ```bash
 git fetch origin
 git worktree add ../wt-<celula>-<tarefa> -b agent/<celula>/<tarefa> origin/main
