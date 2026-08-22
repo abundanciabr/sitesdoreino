@@ -108,6 +108,53 @@ HANDLERS`. Se a célula ganhar um segundo stream/handler e o arquivo crescer, se
 volta em `apps/eventos/despacho.py` é natural — não é dívida, é antecipação de
 orçamento.
 
+## Reentrega do PEL + fila morta: o desenho e as pegadinhas dos comandos de stream
+
+**Onde:** `reentregar_presas()` e `_mover_para_fila_morta()` em
+`apps/eventos/management/commands/consume_eventos.py`; guarda em
+`tests/test_reentrega_pel.py`. Fecha o buraco medido em `ARMADILHAS.md` §9:
+`xreadgroup(">")` só entrega mensagem NOVA — o evento que estourava o handler
+ficava em XPENDING para sempre. Convenção do lote (mesma nas 4 células
+consumidoras): `IDLE_MS_REENTREGA = 60_000`, `MAX_ENTREGAS = 5`, DLQ em
+`<stream>.dlq` com payload original + `motivo`/`delivery_count`/`movida_em`.
+
+**Por que XPENDING E XAUTOCLAIM, nesta ordem:** `XAUTOCLAIM` devolve o corpo mas
+NÃO a contagem de entregas; `XPENDING` (forma estendida, com filtro `idle`)
+devolve a contagem mas NÃO o corpo. Então: primeiro `xpending_range` decide quem
+já chegou a `MAX_ENTREGAS` → busca o corpo por `XRANGE id id`, `XADD` na `.dlq`
+e `XACK` (o ACK a tira do PEL, e o `XAUTOCLAIM` seguinte já não a vê). Só depois
+o `XAUTOCLAIM` reivindica o resto e reprocessa pelo MESMO `processar_envelope()`
+das mensagens novas. A ordem inversa (reivindicar primeiro) incrementaria a
+contagem antes da decisão e mudaria a semântica do teto.
+
+**Semântica do teto:** cada `XAUTOCLAIM` incrementa o `delivery_count`. Uma
+mensagem envenenada faz então: entrega 1 (`xreadgroup`) + reivindicações 2..5 —
+cinco tentativas de processamento no total; quando o PEL mostra 5, o ciclo
+seguinte a move para a `.dlq` sem rodar o handler. Reprocesso que estoura segue
+matando o processo (mesmo caminho do handler novo, de propósito — supervisor
+reinicia); o teto é o que impede o ciclo de ser eterno.
+
+**Na `.dlq`, XADD antes do XACK, de propósito:** morrer entre os dois deixa a
+mensagem presa e o próximo ciclo a move DE NOVO — duplicata na fila morta é
+melhor que mensagem perdida. E o caminho da fila morta não assume payload
+legível (`json` ilegível ⇒ `event_id=desconhecido` no log ERROR): o motivo de a
+mensagem estourar pode ser exatamente um JSON quebrado.
+
+**Como testar mensagem presa SEM esperar 60s de relógio:** `XCLAIM` aceita
+`IDLE` (backdata o tempo parado), `RETRYCOUNT` (grava a contagem de entregas) e
+`JUSTID` (não incrementa a contagem ao reivindicar) — juntos permitem esculpir
+qualquer estado de PEL em milissegundos. Ver `_prender()` no teste. Sem isso, o
+teste do limiar dormiria 60s ou o limiar viraria parâmetro injetável (e o guarda
+deixaria de provar o valor real).
+
+**`make ci` local desta célula agora precisa de `REDIS_STREAMS_URL`:** os
+testes-guarda falam com Redis REAL (PEL não existe em mock). Local:
+`docker run -d --name alunos-redis -p 16381:6379 redis:7` e
+`export REDIS_STREAMS_URL=redis://localhost:16381/0`. Sem a variável o teste
+falha com instrução no texto (fail-closed, não skip); no CI o service de
+`ci-celula.yml` já fornece. Os testes usam stream com sufixo `uuid4` e limpam no
+teardown — não colidem com outra sessão no mesmo Redis.
+
 ## Ponte (`apps/bridge/`) não foi tocada
 
 Fase 0: `notificar_pontes()` continua stub vazio, sem chamada nenhuma a partir de
