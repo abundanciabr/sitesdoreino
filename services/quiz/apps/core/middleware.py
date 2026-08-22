@@ -22,7 +22,13 @@ class SiteResolutionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path.startswith(CAMINHOS_SEM_SITE):
+        # [H10.1 / ARMADILHAS §4.10] path_info, NUNCA request.path: com
+        # SCRIPT_NAME=/quiz (FORCE_SCRIPT_NAME) o Traefik NÃO remove o prefixo
+        # e a borda pública chega como "/quiz/healthz" — request.path inclui o
+        # prefixo, a isenção deixa de casar e a sonda morre em 404 na resolução
+        # de site (medido ao vivo em 22/08/2026 na basileiatoutheou.org).
+        # request.path_info segue "/healthz" independente do prefixo do gateway.
+        if request.path_info.startswith(CAMINHOS_SEM_SITE):
             return self.get_response(request)
         host = request.get_host().split(":")[0].lower()
         site = (

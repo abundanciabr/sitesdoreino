@@ -102,3 +102,25 @@ Crivo não expõe API JSON nenhuma: é formulário HTML simples com POST-redirec
 (sem Alpine, sem `api.js` — não há necessidade de polling de status como no
 Pix). `make contrato-check` já cai no fallback "não expõe contrato congelado"
 sem precisar de nenhum ajuste.
+
+## `/healthz` sob prefixo de gateway: Django 5.1 NÃO imuniza contra o §4.10
+
+A tabela de `ARMADILHAS.md` §4.10 diz que no Django 5.1.4 (o desta célula)
+`request.path` "funciona" com `FORCE_SCRIPT_NAME` — mas aquela medição foi da
+**sonda interna** (`localhost:8000/healthz`, sem prefixo). Pela **borda
+pública** o Traefik não remove o prefixo: a requisição chega como
+`/quiz/healthz`, e no 5.1 `request.path = scope["path"]` — ou seja, o path COM
+prefixo, em qualquer versão do Django. Medido em 22/08/2026:
+`https://basileiatoutheou.org/quiz/healthz` → 404, enquanto o healthcheck do
+container respondia 200. Isenção de middleware compara **sempre**
+`request.path_info` (o path sem o prefixo do gateway), nunca `request.path` —
+mesma correção do checkout (PR #65); o guarda daqui é
+`tests/test_healthz_script_name.py`, que reproduz o cenário no test client
+WSGI (`FORCE_SCRIPT_NAME="/quiz"` faz `client.get("/healthz")` virar
+`request.path == "/quiz/healthz"` com `path_info == "/healthz"` — a
+reprodução fiel da borda; os asserts de sanidade no teste provam isso).
+Detalhe do guarda: `@pytest.mark.django_db` é necessário porque no estado
+bugado o middleware consulta o `Site` local — sem a marca, o vermelho seria
+erro de acesso a banco em vez do 404 genuíno; e o teste de `/static/` afirma
+`django_assert_num_queries(0)` (aqui a resolução é query local, não chamada
+ao catálogo — o equivalente do `assert not rota.called` do checkout).
