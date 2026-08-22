@@ -6,6 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
 from .models import OutboxEvent, Quiz, Submission
+from .tasks import relay_apos_commit
 
 
 def _quiz_do_site(request, slug):
@@ -85,6 +86,9 @@ def formulario(request, slug):
                 "utm": submissao.utm,
             },
         )
+        # [RECEITA:R3 v1] publica já (latência sub-segundo); a task periódica
+        # do worker cobre qualquer falha aqui — o evento nunca se perde.
+        transaction.on_commit(relay_apos_commit)
 
     destino = reverse("quiz-resultado", args=[slug])
     return redirect(f"{destino}?lead={submissao.id}")

@@ -5,6 +5,8 @@ from pathlib import Path
 import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
+from config.huey import huey as _huey
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -30,9 +32,18 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    # [RECEITA:R8 v1] traz `manage.py run_huey` (o worker de produção sobe com
+    # esse comando) e o autodiscover de apps/*/tasks.py — sem isso o worker
+    # subiria com o TaskRegistry VAZIO (ARMADILHAS §4.11).
+    "huey.contrib.djhuey",
     "apps.core",
     "apps.quiz",
 ]
+
+# [RECEITA:R8 v1] djhuey lê settings.HUEY; sendo a INSTÂNCIA de config/huey.py
+# (não um dict), worker e web compartilham exatamente o mesmo registro de
+# tasks — `run_huey` executa o que apps/quiz/tasks.py registra.
+HUEY = _huey
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

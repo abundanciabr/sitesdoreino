@@ -2,6 +2,8 @@ Django==5.1.4
 psycopg[binary]==3.2.3
 dj-database-url==2.3.0
 uvicorn==0.32.1
+redis==5.1.1
+huey==2.5.1
 pytest==8.3.4
 pytest-django==4.9.0
 black==24.10.0

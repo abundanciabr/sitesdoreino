@@ -57,13 +57,43 @@ também para o pacote raiz do app, não só para `management/commands/`. Usado
 aqui para caber no orçamento de arquivos do despacho — não é necessidade
 técnica, é economia deliberada.
 
-## Sem relay do outbox (Huey → Redis Streams)
+## Relay do outbox instanciado (despacho quiz/relay-outbox, 22/08/2026)
 
-Igual ao estado atual do checkout (`ARMADILHAS.md` §9): o evento
-`quiz.completado.v1` é gravado transacionalmente na outbox
-(`apps.quiz.models.OutboxEvent`), mas ninguém publica no Redis Streams ainda.
-Fica pendente para um despacho futuro, mesma dívida já registrada para
-checkout.
+A dívida "ninguém publica" foi paga: `apps/quiz/tasks.py` espelha o relay de
+`pagamentos/core/models.py` (provado em produção) — `relay_outbox()` publica
+os pendentes em `eventos.quiz.completado` e SÓ DEPOIS marca `published_at`
+(ordem intocável: invertê-la perde evento em silêncio, irmão produtor de
+`ARMADILHAS.md` §4.12). O ponto de emissão (`views.formulario`) registra
+`transaction.on_commit(relay_apos_commit)` para latência sub-segundo, e
+`relay_outbox_periodico` (Huey, `crontab(minute="*")`) é a rede de segurança
+que o worker `python manage.py run_huey` executa.
+
+O que aprender aqui, específico desta célula:
+
+- **`settings.HUEY` recebe a INSTÂNCIA de `config/huey.py`, não um dict.**
+  `huey.contrib.djhuey` aceita instância pronta; é isso que faz worker e web
+  compartilharem o MESMO `TaskRegistry` (sem isso, `run_huey` sobe com o
+  registro vazio — `ARMADILHAS.md` §4.11). O teste
+  `test_rede_de_seguranca_periodica_registrada_na_instancia_do_huey` guarda o
+  fio inteiro mecanicamente.
+- **`HUEY_REDIS_URL` NÃO é fail-hard no import** (`os.environ.get` + default
+  localhost em `config/huey.py`): o container web importa o módulo via
+  INSTALLED_APPS e não pode morrer no boot se a variável faltar em produção.
+  `REDIS_STREAMS_URL` é lida no ponto de uso (`apps/quiz/tasks.py`,
+  `ARMADILHAS.md` §5.3) pelo mesmo motivo — nada novo entrou no
+  `settings.py` como `env()` fail-hard, e o bloco `env:` de
+  `.github/workflows/ci-celula.yml` (que já tinha as duas variáveis) não foi
+  tocado.
+- **Os testes do relay publicam num Redis REAL** (o do CI, serviço `redis:7`;
+  local, um container exclusivo do despacho) e validam o envelope QUE CHEGOU
+  NO FIO contra `contracts/eventos/quiz.completado.v1.json` — mock de Redis
+  aqui seria o §6.9 de novo. E `@pytest.mark.django_db(transaction=True)` é
+  obrigatório nos testes de on_commit (§6.5).
+- **Produção depende de duas coisas fora deste PR:** (1) o worker
+  `quiz-huey` no compose rodando `python manage.py run_huey` (escopo de outro
+  despacho do lote); (2) `REDIS_STREAMS_URL` e `HUEY_REDIS_URL` presentes no
+  `/opt/plataforma/env/quiz.env` REAL da VPS (o `.exemplo` já as tem; o real
+  é do mantenedor conferir).
 
 ## Sem contrato REST — só páginas HTML
 
