@@ -188,6 +188,24 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
    workers novos (`run_huey`) mergeou por último, depois dos deploys verdes das células
    que ele referencia — nenhuma janela de incompatibilidade em produção.
 
+**Lote 2 — 22/08/2026** (5 despachos, PRs #71–#75, 5 merges, deploys verdes — o último
+após incidente externo):
+
+7. **A convenção ditada precisa incluir a SEMÂNTICA do instrumento, não só nomes.**
+   As 4 células convergiram no mesmo desenho, mas três descobriram de forma
+   independente a mesma nuance (`XAUTOCLAIM` incrementa o delivery_count e não o
+   devolve — o número que decide fila morta vem do PEL). Se o brief tivesse ditado
+   isso, teriam sido três rodadas vermelhas a menos.
+8. **Mudança de DNS/proxy no meio do dia vira incidente de deploy HORAS depois.**
+   O Cloudflare na frente do domínio matou o SSH do pipeline (`VPS_HOST` guardava o
+   domínio) só quando o cache de DNS venceu: 4 deploys verdes e o 5º vermelho no
+   MESMO lote. Mudou DNS/proxy de host que pipeline usa ⇒ teste o canal do pipeline
+   imediatamente (ARMADILHAS §3.17). O diagnóstico certo levou 2 reruns: o 1º
+   rerun reprovando IGUAL foi o que separou "blip de rede" de "causa estrutural".
+9. **`mergeable: UNKNOWN` logo após o merge anterior é rotina da janela**, não
+   anomalia: espere o recálculo do GitHub (loop até sair de UNKNOWN) antes de
+   acionar o portão — duas ocorrências neste lote, zero dano.
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
