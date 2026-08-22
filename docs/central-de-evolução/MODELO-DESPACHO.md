@@ -1,0 +1,84 @@
+# MODELO DE DESPACHO — Central de Evolução
+
+> Template padrão para todo despacho desta iniciativa. A sessão-maestro copia,
+> preenche os `<campos>`, apaga as instruções em itálico e cola para o agente.
+> Herdado do formato da casa (ver `docs/decisoes/DESPACHO-04-deploy-infra.md`
+> como exemplo real) + as regras do `RUNBOOK-LOTES.md`.
+>
+> Arquivo preenchido vai para `docs/central-de-evolução/despachos/DESPACHO-EVO-NN-<apelido>.md`
+> — assim o histórico de cada despacho fica versionado ao lado do plano.
+
+---
+
+# DESPACHO — EVO-NN: <título curto, em linguagem de resultado>
+
+> **Copie tudo abaixo da linha e cole para o agente.**
+> Criado em <data> · Lote <N> do PLANO-MESTRE · merge: **agente** (Lei 4)
+> *— se tocar caminho CODEOWNERS, escreva aqui o mandato e a obrigação de
+> anúncio nominal no relatório final.*
+
+ÁREA: `services/<celula>/` *(ou `infra/`, `.github/`…)* · WORKTREE: `wt-<celula>-<tarefa>`
+
+ANTES: leia `ARMADILHAS.md` §1 e §2, `services/<celula>/LICOES.md` (se existir),
+<documentos específicos desta tarefa — só os necessários; agente afogado em
+documentação erra mais (RUNBOOK §3.3)>. Declaração de abertura (RITOS §1) e
+baseline `make ci` VERDE antes de tocar qualquer arquivo.
+
+## CONTEXTO
+
+*2–5 frases: por que este despacho existe, o que ele destrava, onde ele se
+encaixa no PLANO-MESTRE. Cite o atrito ou o item da spec que ele resolve.*
+
+## MISSÃO
+
+*1 frase. Se precisar de duas, o despacho está grande demais — divida.*
+
+## ESPECIFICAÇÃO (decisões já tomadas — siga; desvio é issue `arquitetura:`)
+
+1. *Cada decisão de desenho já fechada, numerada, com o porquê em uma linha.*
+2. *…*
+
+## ARMADILHAS INJETADAS (as desta tarefa, não o catálogo inteiro)
+
+- *ex.: consumer de evento ⇒ ARMADILHAS §4.8 + §4.12 (cole o bloco de código correto)*
+- *ex.: schema Ninja com nome de model ⇒ §4.1 (importe com alias)*
+- *ex.: script `.sh` ⇒ §3.12 (LF no blob, confira com `git show`)*
+
+## ALVOS (PERMITIDO ESCREVER) — orçamento contado: <N>/15 arquivos
+
+- `caminho/arquivo1` *(novo | editar)*
+- …
+
+*Conte NO PAPEL antes de escrever o brief. Estourou por coesão legítima ⇒
+pare e avise a maestro, nunca esprema arquivos (RUNBOOK §3.7).*
+
+## FORA DE ESCOPO
+
+- *Lista explícita — inclusive o que parece adjacente e tentador.*
+- Pagamentos/checkout/Mercado Pago: **sempre fora**, em todo despacho desta iniciativa.
+- **NÃO toque em `arquivos/painel-*.html`** (sempre da janela raiz).
+
+## REGRAS ANTICOLISÃO (se o lote tiver despachos em paralelo)
+
+- Arquivo de texto compartilhado (`ARMADILHAS.md`, manifesto…): escreva SÓ a
+  própria linha; `git fetch origin && git rebase origin/main` antes do push;
+  conflito de proximidade ⇒ as duas linhas sobrevivem.
+
+## DoD
+
+**Antes do merge (você prova, com saída colada — "deveria funcionar" não é evidência):**
+- [ ] `make ci` verde no worktree — cole inteiro
+- [ ] *cada critério de aceitação, verificável objetivamente*
+- [ ] *evidência vermelho→verde do teste-guarda novo (mostre-o falhando antes do fix)*
+- [ ] Lição registrada (`ARMADILHAS.md` se serve a qualquer célula; `LICOES.md` da célula se não)
+
+**Depois do merge (a maestro confere):**
+- [ ] PR mergeado por `python ci/mergear.py <N> --confirmo <N>` (state=MERGED conferido)
+- [ ] Se disparou deploy: veredito REAL por `gh run view <id> --json status,conclusion`
+- [ ] `ANDAMENTO.md` + painel atualizados na mesma resposta
+
+## PROTOCOLO DE STATUS (como reportar)
+
+Relatório final do agente, nesta ordem: resultado em 1 frase de gente ·
+placar (PR, portão, evidências) · o que ficou de fora e por quê · lições ·
+o que precisa do humano (se algo — em bloco único de colar, janela rotulada).
