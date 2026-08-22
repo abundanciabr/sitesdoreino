@@ -192,3 +192,30 @@ custou uma checagem extra. Confirme o orçamento DEPOIS do commit, não antes.
   skipa — skip silencioso é o falso-verde que o §5.6 combate.
 - **DLQ publica antes do ACK** (mesma ordem do relay do outbox, §4.12): pior
   caso é entrada duplicada na `.dlq`, nunca mensagem perdida.
+
+## Sessão: rotas de página sem o prefixo (Fase D)
+
+- **Rota de página escrita COM o prefixo do gateway dentro (`checkout/<slug>/`)
+  só casa com a URL DOBRADA em produção.** O env real tem
+  `SCRIPT_NAME=/checkout` e o handler ASGI REMOVE esse prefixo do `path_info`
+  antes do casamento de rotas — então `/checkout/<slug>/` chegava ao URLconf
+  como `/<slug>/` (404 no código antigo) e só `/checkout/checkout/<slug>/`
+  casava (medido ao vivo em 22/08/2026). O URLconf se escreve como se o
+  prefixo não existisse — exatamente como `healthz` e `static/`, que por isso
+  nunca quebraram. `{% url %}`/`reverse()` seguem certos: o Django prefixa o
+  `SCRIPT_NAME` sozinho na hora de GERAR URL, não de casar.
+- **O test client do Django NÃO reproduz essa remoção**: o caminho pedido no
+  `client.get()` vira o `path_info` inteiro, com `FORCE_SCRIPT_NAME` setado ou
+  não. Foi por isso que os testes do PR #68 (que pediam
+  `client.get("/checkout/<slug>/")`) ficaram verdes com o bug vivo em
+  produção: testavam a semântica do test client, não a do servidor. Para
+  simular produção, peça o caminho JÁ SEM prefixo
+  (`client.get("/<slug>/")` com `FORCE_SCRIPT_NAME="/checkout"`) — semântica
+  documentada na docstring de `tests/test_paginas_producao.py`. É a mesma
+  família do ARMADILHAS §4.10 (lá o `request.path` da isenção; aqui o
+  casamento de rotas).
+- **Ordem no URLconf pós-fix**: `pedido/<uuid>/...` declarado ANTES de
+  `<slug:offer_slug>/` (o slug pega qualquer segmento único; as específicas
+  vêm primeiro). O redirect relativo de `dados.js` (`../pedido/...`) continua
+  correto sem mudança — relativo sobrevive a mudança de prefixo, era o motivo
+  de ele ser relativo.
