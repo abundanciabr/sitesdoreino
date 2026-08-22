@@ -39,13 +39,23 @@ janela** — 5x de calendário, já provado, só não codificado.
 **Movimentos:**
 1. Aposentar a regra serial por escrito (1 parágrafo; corrigir a atribuição falsa no
    painel). Custo: minutos. Decisão: do mantenedor.
+   **✅ FEITO em 22/08/2026** — decisão dada em sessão ("aposenta");
+   `PROMPTS-INICIAIS.md` §"Como operar" reescrito (o "um prompt por vez" virou o
+   padrão de lote) e os painéis corrigidos, inclusive a atribuição falsa.
 2. Codificar o padrão de lote: 1 lote = N células **distintas** + 1 janela de merge.
    Merge serial dentro da janela (`make mergear` um a um), desenvolvimento paralelo.
+   **✅ FEITO em 22/08/2026, no mesmo parágrafo** — com uma atualização que este
+   plano não previa: desde `DECISAO-merge-pelo-agente.md`, quem executa os merges
+   da janela é o próprio agente (`python ci/mergear.py <N> --confirmo <N>`, um a
+   um), então a "janela de merge" não depende mais de atenção humana.
 3. Tornar os 3 arquivos de colisão *append-safe* — resolvido de graça pela Alavanca 2
    (particionamento do ARMADILHAS) e por regra de despacho ("tabela do red-team: cada
    golpe escreve SÓ a própria linha").
+   **🟡 parcial em 22/08/2026:** a regra de despacho (cada sessão escreve só a
+   própria entrada/linha + rebase antes do push, §7.6) está codificada no parágrafo
+   novo; o particionamento do ARMADILHAS segue na Alavanca 2.
 4. Manter serial onde há dependência real: Rito de Contrato (provedor→consumidores) e
-   o e2e de fechamento.
+   o e2e de fechamento. **Codificado no mesmo parágrafo em 22/08/2026.**
 
 **Risco:** baixo — o mecanismo de segurança (cerca + worktree) já segurou os dois
 episódios reais. O que muda é só a permissão.
