@@ -25,7 +25,12 @@ class SiteResolutionMiddleware:
         self.get_response = get_response
 
     def __call__(self, request):
-        if request.path.startswith(CAMINHOS_SEM_SITE):
+        # [H10.1 / ARMADILHAS §4.10] path_info, NUNCA request.path: com
+        # SCRIPT_NAME=/checkout (FORCE_SCRIPT_NAME), no Django 5.0.x o
+        # request.path vira "/checkout/healthz" e a isenção deixa de casar —
+        # a sonda cai na resolução de site e o healthcheck morre em 404.
+        # request.path_info segue "/healthz" independente do prefixo do gateway.
+        if request.path_info.startswith(CAMINHOS_SEM_SITE):
             return self.get_response(request)
         host = request.get_host().split(":")[0].lower()
         site = self._resolver(host)

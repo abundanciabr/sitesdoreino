@@ -82,6 +82,17 @@ Rodei o diff contra `origin/main` antes de commitar qualquer coisa e ele voltou 
 arquivos — óbvio em retrospecto (branch sem commit próprio ainda não diverge), mas
 custou uma checagem extra. Confirme o orçamento DEPOIS do commit, não antes.
 
+## Sessão: healthz × SCRIPT_NAME (H10.1)
+
+- **Isenção de middleware compara `request.path_info`, nunca `request.path`.**
+  Com `SCRIPT_NAME=/checkout` (FORCE_SCRIPT_NAME) e Django 5.0.x, `request.path`
+  vira `/checkout/healthz` e a isenção do CONV-SITE deixa de casar — `/healthz`
+  respondia 404 só em produção (mecanismo completo em ARMADILHAS §4.10). Para
+  reproduzir em teste não precisa de container: `settings.FORCE_SCRIPT_NAME =
+  "/checkout"` + `client.get("/healthz")` — o test client (WSGI) monta
+  `request.path` do mesmo jeito que o ASGI do 5.0.x (a mudança do 5.1 foi só no
+  ASGIRequest). Guarda: `tests/test_healthz_script_name.py`.
+
 ## Ambiente local (Windows, esta máquina) — achado nesta sessão
 
 - **Prepender um path absoluto do Windows a `$PATH` no Git Bash quebra se você
