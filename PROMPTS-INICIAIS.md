@@ -5,7 +5,7 @@
 > Zero, o kit É o repositório** — os agentes leem constituições, contratos e receitas
 > direto da árvore em que nasceram.
 
-## Como operar (serial, não paralelo — até o esqueleto andar)
+## Como operar (em LOTES paralelos — a regra serial foi aposentada em 22/08/2026)
 
 1. **Você** executa o Prompt Zero pessoalmente (agentes não tocam a VPS).
 2. Para cada prompt de agente: abra o worktree que o despacho nomeia, cole o prompt,
@@ -13,7 +13,18 @@
    mergeia pelo portão, `python ci/mergear.py <N> --confirmo <N>`, inclusive sob
    CODEOWNERS, com anúncio nominal no relatório. Lei 4 e
    `docs/decisoes/DECISAO-merge-pelo-agente.md`.)*
-3. Um prompt por vez. Integração é o fato do fim da Etapa D, não uma aposta.
+3. *(Aposentada em 22/08/2026, decisão do mantenedor — PLANO-10X Alavanca 1. A regra
+   era "um prompt por vez", com validade autodeclarada "até o esqueleto andar" — e o
+   esqueleto andou no PR #31. O paralelo já tinha sido demonstrado duas vezes sem
+   colisão de código: 7 células em 51 min na Fase D, e 6 PRs numa noite, #43–#48.)*
+   **O padrão agora é o LOTE:** N despachos em paralelo, cada um em célula/área
+   **distinta** (a cerca 1 PR = 1 célula segue sendo a proteção real) e em seu
+   próprio worktree; os merges saem serial, um a um, pelo portão (RITOS.md §2
+   peça 4). Continua serial o que tem dependência real: Rito de Contrato
+   (provedor → consumidores, RITOS.md §3) e o e2e de fechamento. Arquivo de texto
+   compartilhado (ARMADILHAS, tabela do red-team, bloco `env:` do `ci-celula.yml`):
+   cada sessão escreve SÓ a própria entrada/linha e faz
+   `git fetch origin && git rebase origin/main` antes do push (ARMADILHAS §7.6).
 4. Só depois do esqueleto verde na VPS + red-team (Etapa E), abrem-se os briefs de produto.
 5. **Multissítio:** um deploy, N domínios (Lei 9). Células públicas usam o middleware
    CONV-SITE; entidades públicas e eventos carregam `site_id` (INV-P11); domínio novo
