@@ -1,5 +1,20 @@
 # PROJETO — Portão de Deploy (o required check que o GitHub não vende)
 
+> ## ✅ EXECUTADO E PROVADO — PR #54, 22/08/2026. NÃO redespache.
+> **Nível A:** 25 testes adversariais (`ci/tests/test_portao_de_deploy.py`) — a
+> tabela de estados completa + homônimo + exclusão do próprio run + teste de
+> forma dos YAMLs, rodando em `muralhas` e `alarme-main`.
+> **Nível B (ao vivo, mesmo dia):** PR #55 vermelho de propósito, mergeado sem
+> guarda ⇒ run 32567765127: `portao-de-deploy: failure`, `deploy: skipped`;
+> revert #56 verde ⇒ run 32567900961: portão `success`, quiz deployado e
+> `healthy` na VPS. Estreia verde do modo infra: run 32567326357.
+> **Reconciliações honestas com esta especificação:** F5 (sonda pós-deploy) é
+> atendida pelos healthchecks + `up -d --wait` que o PR #45 entregou; o portão
+> foi ESTENDIDO ao `deploy-infra` (modo `infra`: o `rodar` pode pular, o gate
+> não) — pedido do handoff do despacho 04; a checagem de `updated_at` do
+> package não rodou (token `gh` sem `read:packages`) — a prova de imagem
+> intocada veio do próprio `deploy: skipped`, que contém o build.
+
 > **Origem:** relatório da auditoria de portões de CI (agente Opus, 21/08/2026),
 > preservado aqui porque o projeto completo existia só no contexto da sessão.
 > **Para quem:** o agente que receber o despacho B1 do painel 10X. Este arquivo é a

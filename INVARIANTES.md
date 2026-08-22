@@ -186,6 +186,7 @@ do que foi medido.
 | runner canônico (`ci/ci.py`) | local, `make`, workflow | **sim** |
 | `contrato-check` dos 8 `services/*/Makefile` | `make ci` da célula | **não** — decide pelo disco em vez do manifesto (mitigado: a auditoria do manifesto roda em `muralhas` a cada PR) |
 | merge guardado (`ci/mergear.py`) | terminal, antes do merge | **sim** — recusa check vermelho, ausente ou pulado sem declaração |
+| **portão de deploy** (`ci/portao_de_deploy.py`) | workflows `deploy-celula` e `deploy-infra`, ANTES de build/SSH | **sim** — 25 testes adversariais (tabela de estados completa) em `muralhas` e `alarme-main`; **provado ao vivo em 22/08/2026**: commit vermelho mergeado de propósito ⇒ `portao: failure`, `deploy: skipped` (run 32567765127); revert verde ⇒ deploy executado (run 32567900961) |
 | alarme da `main` (`alarme-main.yml`) | GitHub, após push na main | **não é portão** — avisa depois; modo de falha é "não avisou" |
 | **branch protection** | GitHub | **não existe** — ver abaixo |
 
@@ -203,17 +204,28 @@ vermelho e o merge pelo site continua permitido. O único obstáculo é
 `.githooks/pre-push`, que bloqueia push direto para `main` a partir desta
 máquina — e não bloqueia merge de PR pela interface do GitHub.
 
-Enquanto isso não mudar, o estado honesto é **núcleo fail-closed concluído, CI
-global ainda parcial**. A mecanização está registrada na issue `mecanizar:` do
-RITOS.md §2.
+Enquanto isso não mudar, o estado honesto é: **o merge não é barrável; o deploy
+é — e está barrado desde 22/08/2026** (ver o terceiro degrau abaixo).
 
-Em 20/08/2026 a decisão de custo foi tomada de forma consciente: o repositório
-segue privado e sem plano pago enquanto o projeto não fatura. Em troca foram
-construídos dois degraus grátis da Escada da Imposição (RITOS.md §2):
-`ci/mergear.py`, que recusa mergear PR com check vermelho quando o merge sai do
-terminal, e o workflow `alarme-main`, que abre issue se a `main` quebrar. Nenhum
-dos dois impede o clique no botão do site — e chamá-los de proteção seria a
-mesma mentira que este invariante existe para eliminar.
+(Correção de registro, 21/08/2026: o parágrafo anterior desta seção dizia
+"decisão de custo consciente enquanto o projeto não fatura". Está incorreto —
+é **impossibilidade de pagamento**: o cartão do mantenedor não é aceito pelo
+GitHub e não há outra forma disponível. Não recomende "assine o Pro" — essa
+porta está fechada. Ver ARMADILHAS §1 H3.)
+
+Os degraus grátis da Escada da Imposição (RITOS.md §2), em ordem de força:
+
+1. `ci/mergear.py` — recusa mergear PR com check vermelho quando o merge sai
+   do terminal. Não vê o botão do site.
+2. `alarme-main` — abre issue se a `main` quebrar. Avisa depois; não impede.
+3. **Portão de deploy** (`ci/portao_de_deploy.py`, 22/08/2026) — o degrau que
+   faltava: ANTES de qualquer build ou SSH, prova que `ci-celula`,
+   `alarme-main` e as muralhas do PR de origem estão verdes no commit;
+   `skipped` não é verde; push direto na main não vira deploy; workflow novo
+   e vermelho no mesmo SHA também barra. **Provado ao vivo**: merge vermelho
+   deliberado ⇒ `deploy: skipped` (run 32567765127); revert verde ⇒ deploy
+   executado (run 32567900961). O clique no botão continua livre — mas deixou
+   de alcançar a produção, que é onde mora o cliente.
 
 ---
 
