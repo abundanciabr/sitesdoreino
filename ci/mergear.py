@@ -9,8 +9,15 @@ Este comando é o substituto possível — a mesma família do `.githooks/pre-pu
 que o RITOS.md §2 já documenta como "um degrau abaixo da proteção nativa".
 Ele não impede o clique no site; impede o merge feito por aqui.
 
-    python ci/mergear.py 22            # confere tudo e pergunta antes de mergear
-    python ci/mergear.py 22 --conferir # só confere, nunca mergeia
+    python ci/mergear.py 22               # confere e pergunta antes de mergear
+    python ci/mergear.py 22 --conferir    # só confere, nunca mergeia
+    python ci/mergear.py 22 --confirmo 22 # confere e mergeia sem prompt
+
+Desde 22/08/2026 **mergear é trabalho do agente** (Lei 4 da CONSTITUICAO.md;
+decisão e motivos em docs/decisoes/DECISAO-merge-pelo-agente.md). O caminho
+normal é `--confirmo`, que exige REPETIR o número do PR: o erro real que já
+aconteceu foi de identidade (mergear o PR errado), não de intenção, e a
+repetição é a mesma defesa que a versão interativa sempre teve.
 
 [INV-CI01] Vale a mesma semântica dos outros portões:
 
@@ -68,8 +75,28 @@ CHECKS_OBRIGATORIOS = ("muralhas", "ci-celula-gate")
 LIMITE_DE_ARQUIVOS = 15
 
 
-def _gh(args: list[str], raiz: Path, descricao: str) -> str:
-    """Chama o `gh`. Qualquer falha vira ERROR — nunca "então está tudo bem"."""
+def comando_de_merge(numero: int, metodo: str) -> list[str]:
+    """Argumentos do `gh` para o merge — SEM `--yes`.
+
+    O `gh` desta máquina (2.97.0) não tem a flag `--yes` em `pr merge`, e o
+    portão conferia tudo verde e quebrava exatamente na hora de agir (H6,
+    ARMADILHAS §5.9.1). A segunda pergunta que a flag evitava não acontece:
+    todo subprocesso de portão roda com stdin fechado (`_nucleo.executar`), e
+    sem TTY o `gh` mergeia direto, sem prompt — comprovado no merge do PR #35.
+    `test_comando_de_merge_nao_usa_yes` impede a flag de voltar.
+    """
+    return ["pr", "merge", str(numero), f"--{metodo}"]
+
+
+def _gh(
+    args: list[str], raiz: Path, descricao: str, *, exigir_stdout: bool = True
+) -> str:
+    """Chama o `gh`. Qualquer falha vira ERROR — nunca "então está tudo bem".
+
+    `exigir_stdout=False` existe para o próprio `pr merge`: o `gh` escreve a
+    mensagem de sucesso no stderr, e "mergeou mas stdout veio vazio" não pode
+    virar ERROR — o veredito do merge vem da conferência posterior, não daqui.
+    """
     caminho = shutil.which("gh")
     if caminho is None:
         raise ErroDeInstrumentacao(
@@ -78,7 +105,7 @@ def _gh(args: list[str], raiz: Path, descricao: str) -> str:
             "não há como saber se o PR está verde — e não saber não é estar verde.",
         )
     return executar(
-        [caminho, *args], cwd=raiz, descricao=descricao, exigir_stdout=True
+        [caminho, *args], cwd=raiz, descricao=descricao, exigir_stdout=exigir_stdout
     ).stdout
 
 
@@ -320,6 +347,14 @@ def main(argv: list[str] | None = None) -> int:
         choices=["merge", "squash", "rebase"],
         help="como mergear (padrão: merge)",
     )
+    parser.add_argument(
+        "--confirmo",
+        type=int,
+        metavar="N",
+        help="confirma o merge sem prompt: N PRECISA repetir o número do PR "
+        "(mesma defesa de identidade da pergunta interativa). É o caminho "
+        "normal dos agentes (Lei 4).",
+    )
     args = parser.parse_args(argv)
 
     relatorio, pr = conferir(args.pr)
@@ -343,41 +378,78 @@ def main(argv: list[str] | None = None) -> int:
         print("\nTudo verde. (--conferir: nada foi mergeado.)")
         return 0
 
-    print(
-        f"\nTudo verde. Para mergear o PR #{args.pr}, digite o número dele e Enter.\n"
-        "Qualquer outra coisa cancela."
-    )
-    try:
-        resposta = input("  número do PR: ").strip()
-    except (EOFError, KeyboardInterrupt):
-        print("\nCancelado — nada foi mergeado.")
-        return 1
-
-    if resposta != str(args.pr):
+    if args.confirmo is not None:
+        if args.confirmo != args.pr:
+            print(
+                f"\nCancelado: --confirmo {args.confirmo} não bate com o PR "
+                f"conferido (#{args.pr}).\nNada foi mergeado. A repetição do "
+                "número é de propósito — confirme o PR certo."
+            )
+            return 1
+    else:
         print(
-            f"\nCancelado: você digitou '{resposta}', e o PR conferido é o "
-            f"#{args.pr}.\nNada foi mergeado."
+            f"\nTudo verde. Para mergear o PR #{args.pr}, digite o número dele e "
+            "Enter.\nQualquer outra coisa cancela."
         )
-        return 1
+        try:
+            resposta = input("  número do PR: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nCancelado — nada foi mergeado. (Sessão sem teclado? O caminho")
+            print(f" não-interativo é: python ci/mergear.py {args.pr} --confirmo {args.pr})")
+            return 1
+
+        if resposta != str(args.pr):
+            print(
+                f"\nCancelado: você digitou '{resposta}', e o PR conferido é o "
+                f"#{args.pr}.\nNada foi mergeado."
+            )
+            return 1
 
     try:
         raiz = raiz_do_repo()
-        # --yes: sem isto, o próprio `gh` faz UMA SEGUNDA pergunta de confirmação
-        # ("Merge pull request #N? (y/N)") — mas `executar()` roda com
-        # capture_output=True, então essa pergunta nunca aparece na tela. O
-        # usuário já confirmou digitando o número do PR; `gh` ficaria esperando
-        # uma resposta a uma pergunta que ninguém viu, até estourar o timeout.
         saida = _gh(
-            ["pr", "merge", str(args.pr), f"--{args.metodo}", "--yes"],
+            comando_de_merge(args.pr, args.metodo),
             raiz,
             f"mergear o PR #{args.pr}",
+            exigir_stdout=False,
         )
     except ErroDeInstrumentacao as erro:
         print(f"\nERROR ao mergear: {erro.resumo}\n{erro.detalhe}")
         return 2
-    print(saida)
-    print(f"PR #{args.pr} mergeado.")
-    print("Lembre de atualizar arquivos/painel-fundacao.html (CLAUDE.md).")
+    if saida.strip():
+        print(saida)
+
+    # Merge não se declara, confere-se (Lei 6): o veredito vem do estado real
+    # no GitHub, nunca do exit do comando que disparou a ação.
+    try:
+        estado_final = json.loads(
+            _gh(
+                ["pr", "view", str(args.pr), "--json", "state,mergedBy,mergeCommit"],
+                raiz,
+                f"conferir o merge do PR #{args.pr}",
+            )
+        )
+    except (ErroDeInstrumentacao, json.JSONDecodeError) as erro:
+        print(f"\nERROR: o merge foi disparado, mas a conferência falhou: {erro}")
+        print(
+            f"Confira à mão antes de qualquer outra coisa:\n"
+            f"  gh pr view {args.pr} --json state,mergedBy,mergeCommit"
+        )
+        return 2
+    if estado_final.get("state") != "MERGED":
+        print(
+            f"\nFAIL: o gh não recusou, mas o PR #{args.pr} não consta como "
+            f"MERGED (state={estado_final.get('state')}). Investigue antes de "
+            "tentar de novo."
+        )
+        return 1
+    quem = (estado_final.get("mergedBy") or {}).get("login", "?")
+    sha = (estado_final.get("mergeCommit") or {}).get("oid") or "?"
+    print(f"PR #{args.pr} mergeado de verdade (por {quem}, commit {sha[:12]}).")
+    print(
+        "Agora: se o merge toca services/ ou infra/, confira o run de deploy "
+        "(CLAUDE.md); e atualize arquivos/painel-fundacao.html."
+    )
     return 0
 
 

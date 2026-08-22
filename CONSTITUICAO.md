@@ -40,13 +40,20 @@ ou é pacote versionado.
 
 ## Lei 4 — Separação de Poderes
 
-Quem escreve código **não certifica** (o CI certifica, via required checks na
-configuração do GitHub — não na honestidade do agente) e **não aprova dinheiro**
-(CODEOWNERS: `contracts/`, `services/pagamentos/`, `services/checkout/`, `infra/`,
-`ci/` e este arquivo exigem aprovação do mantenedor; o botão de merge não existe para
-o agente ali). Política de merge por jurisdição: auto-merge com CI verde é permitido
-em `funil`, `quiz`, `catalogo`, `leads`, `mensageria`; proibido onde o CODEOWNERS
-alcança.
+Quem escreve código **não certifica**: o CI certifica, e todo merge passa pelo
+portão `ci/mergear.py`, que recusa check vermelho, ausente, pendente ou pulado sem
+declaração — o botão de merge do site não é caminho válido para ninguém. **Mergear
+é trabalho do agente, não do humano** (decisão do mantenedor em 22/08/2026; motivos
+e mecânica em `docs/decisoes/DECISAO-merge-pelo-agente.md`): a exigência de
+aprovação humana prévia era o maior gargalo medido do projeto (mediana 22 min,
+média 264 min por merge — PLANO-10X, Alavanca 1) e, com um único colaborador no
+repositório, era inexecutável como trava (o GitHub proíbe aprovar o próprio PR —
+ARMADILHAS H9). Nos caminhos CODEOWNERS (`contracts/`, `services/pagamentos/`,
+`services/checkout/`, `infra/`, `ci/`, `.github/` e os arquivos-lei da raiz), a
+aprovação prévia foi substituída por **mandato + transparência**: agente só mergeia
+ali o que o despacho pediu, e anuncia cada merge desses caminhos nominalmente no
+relatório final e no painel. O Rito de Contrato (RITOS.md §3) continua valendo por
+inteiro — mudou quem executa o merge, não a liturgia antes dele.
 
 ## Lei 5 — A Lei das 2h da Manhã
 

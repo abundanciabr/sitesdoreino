@@ -251,3 +251,75 @@ def test_skips_permitidos_tem_motivo_escrito() -> None:
     assert mergear.SKIPS_PERMITIDOS
     for nome, motivo in mergear.SKIPS_PERMITIDOS.items():
         assert motivo.strip(), f"'{nome}' está na lista de skips sem justificativa"
+
+
+# ---------------------------------------------------------------------------
+# O merge em si (desde 22/08/2026 é o agente quem o executa — Lei 4)
+# ---------------------------------------------------------------------------
+
+
+def test_comando_de_merge_nao_usa_yes() -> None:
+    """H6: o `gh` 2.97.0 não tem `--yes` em `pr merge` — o portão conferia tudo
+    verde e quebrava exatamente na hora de agir. Se a flag voltar, este teste
+    acusa antes de o próximo merge real quebrar (ARMADILHAS §5.9.1)."""
+    for metodo in ("merge", "squash", "rebase"):
+        cmd = mergear.comando_de_merge(99, metodo)
+        assert "--yes" not in cmd
+        assert "-y" not in cmd
+        assert f"--{metodo}" in cmd
+        assert "99" in cmd
+
+
+def _relatorio_verde() -> "mergear.Relatorio":
+    relatorio = mergear.Relatorio("teste")
+    relatorio.registrar(mergear.Resultado("tudo", Estado.PASS, "verde"))
+    return relatorio
+
+
+def _gh_de_mentira(chamadas: list, estado_apos_merge: str = "MERGED"):
+    import json as _json
+
+    def falso(argumentos, raiz, descricao, **kwargs):
+        chamadas.append(list(argumentos))
+        if argumentos[:2] == ["pr", "view"]:
+            return _json.dumps(
+                {
+                    "state": estado_apos_merge,
+                    "mergedBy": {"login": "robo"},
+                    "mergeCommit": {"oid": "a" * 40},
+                }
+            )
+        return ""
+
+    return falso
+
+
+def test_confirmo_errado_recusa_sem_chamar_o_gh(monkeypatch) -> None:
+    """A defesa de identidade sobrevive no caminho não-interativo: --confirmo
+    com número diferente do PR conferido cancela ANTES de qualquer merge —
+    o erro que já aconteceu (PR #21 no lugar do #20) era de identidade."""
+    chamadas: list = []
+    monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "98"]) == 1
+    assert chamadas == []
+
+
+def test_confirmo_certo_mergeia_e_confere_o_estado(monkeypatch) -> None:
+    """O caminho do agente: --confirmo com o número certo mergeia E confere no
+    GitHub que o PR virou MERGED — o veredito nunca é o exit do disparo."""
+    chamadas: list = []
+    monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "99"]) == 0
+    assert ["pr", "merge", "99", "--merge"] in chamadas
+    assert any(c[:2] == ["pr", "view"] for c in chamadas)
+
+
+def test_merge_que_nao_vira_merged_reprova(monkeypatch) -> None:
+    """Se o gh não recusar mas o PR não constar como MERGED, o resultado é
+    FAIL — 'o comando não reclamou' não é evidência de merge (Lei 6)."""
+    chamadas: list = []
+    monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas, "OPEN"))
+    assert mergear.main(["99", "--confirmo", "99"]) == 1

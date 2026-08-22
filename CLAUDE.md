@@ -44,20 +44,40 @@ passo extra opcional. Isso inclui:
   incidentes".
 - Manter a caixa "Precisa de você agora" honesta: só o que está *realmente*
   em aberto, nem mais, nem menos.
-- **Confirmação de merge de PR é gatilho, não pergunta.** Assim que o usuário
-  confirmar que um PR foi mergeado — em qualquer forma ("feito", "mergeado",
-  "ok", um link, um "✓" — não precisa ser a palavra exata — mesmo que a
-  confirmação chegue em uma sessão diferente da que abriu o PR), isso conta
-  como "tarefa mudou de estado": atualize o painel na mesma resposta, sem
-  esperar a pergunta "o painel foi atualizado?". Antes de marcar como
-  concluído, confira o merge de verdade (`gh pr view <N> --json state,
-  mergedBy,mergeCommit`) — a confirmação do usuário é o gatilho para checar,
-  não um substituto para checar.
+- **Merge é gatilho de painel, não pergunta.** Desde 22/08/2026 quem mergeia é
+  o agente (seção "Mergear é trabalho do agente" abaixo): mergeou, atualize o
+  painel na MESMA resposta. E se um merge acontecer fora da sessão (o usuário
+  clicou no site, outra sessão mergeou) e alguém o confirmar — em qualquer
+  forma ("feito", "ok", um link, um "✓", mesmo em sessão diferente da que
+  abriu o PR) — vale o mesmo gatilho: confira o merge de verdade
+  (`gh pr view <N> --json state,mergedBy,mergeCommit`) e atualize o painel sem
+  esperar a pergunta. A confirmação é o gatilho para checar, não um substituto
+  para checar.
 
 Não pergunte "quer que eu atualize o painel?". Atualize, e diga o que mudou.
 Perguntar antes de agir continua valendo para a AÇÃO em si quando ela for
-arriscada (push direto, merge, apagar algo) — não para manter o painel em
-dia, que é sempre de baixo risco e reversível.
+arriscada (push direto na `main`, apagar algo irrecuperável, agir fora do
+mandato do despacho) — não para manter o painel em dia, que é sempre de baixo
+risco e reversível.
+
+## Mergear é trabalho do agente (desde 22/08/2026)
+
+Decisão do mantenedor — motivos e mecânica em
+`docs/decisoes/DECISAO-merge-pelo-agente.md`; lei: `CONSTITUICAO.md` Lei 4;
+rito: `RITOS.md` §2 peça 4. O fluxo, sem perguntar "posso mergear?":
+
+1. PR aberto dentro do escopo de um despacho → espere os checks concluírem.
+2. `python ci/mergear.py <N> --conferir` — tudo verde?
+3. `python ci/mergear.py <N> --confirmo <N>` — mergeia e já confere no GitHub
+   que o PR virou `MERGED`.
+4. Painel; e, se o merge toca `services/` ou `infra/`, o veredito do run de
+   deploy (seção "Depois de todo merge que dispara deploy").
+
+Vermelho, pendente, ausente ou ERROR **nunca** se mergeia — conserte ou
+reporte. O botão de merge do site não é caminho para ninguém. Merge em caminho
+CODEOWNERS (`contracts/`, `pagamentos`, `checkout`, `infra/`, `ci/`,
+`.github/`, arquivos-lei da raiz) só com mandato do despacho, e **anunciado
+nominalmente no relatório final**.
 
 Se o painel ainda não tiver uma seção adequada para o que aconteceu, crie uma
 (ex.: a "Linha do tempo de incidentes" foi criada assim, sob demanda) — o
@@ -72,8 +92,9 @@ no meio dos passos manuais):
 
 - **Faça você o máximo.** Tudo que der por `gh`, pipeline e arquivos, o agente
   faz — o mantenedor só entra onde é insubstituível (segredos, console do
-  provedor, merge). Agente não tem SSH para a VPS (Lei 5) e o harness bloqueia
-  a tentativa — não insista; o canal do agente é o pipeline.
+  provedor; desde 22/08/2026 nem o merge: ele é do agente, seção acima).
+  Agente não tem SSH para a VPS (Lei 5) e o harness bloqueia a tentativa —
+  não insista; o canal do agente é o pipeline.
 - **Quando sobrar passo manual, entregue UM bloco único de colar**, fail-closed
   (que se recusa a agir se algo estiver estranho, com uma mensagem tipo "PAROU
   POR SEGURANÇA"), nunca uma sequência de comandos avulsos para digitar um a um.

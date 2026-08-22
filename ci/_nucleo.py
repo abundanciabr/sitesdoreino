@@ -294,6 +294,11 @@ def executar(
         proc = subprocess.run(
             comando,
             cwd=str(cwd),
+            # Portão nunca espera teclado: stdin fechado por construção. Sem
+            # isto, um subprocesso que resolva perguntar algo (ex.: `gh pr
+            # merge` com TTY) ficaria travado até o timeout — e com stdin
+            # fechado o `gh` nem pergunta, age direto (ARMADILHAS §5.9.1/H6).
+            stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,
             encoding="utf-8",

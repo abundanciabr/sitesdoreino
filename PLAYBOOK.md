@@ -111,30 +111,33 @@ Consequências diretas para qualquer agente:
   Detalhe completo: `ARMADILHAS.md` §1 item H3, `INVARIANTES.md` (seção
   "A cadeia de merge não está fechada").
 
-**Segundo atrito aberto (H6):** `python ci/mergear.py <PR>` confere tudo e
-então falha ao mergear de verdade — `gh pr merge <PR> --merge --yes` estoura
-`unknown flag: --yes` no `gh` desta máquina (2.97.0). Contorno que funciona:
-`gh pr merge <PR> --merge --delete-branch < /dev/null`. Detalhe e ressalvas em
-`ARMADILHAS.md` §5.9.1. Ou seja: o comando que o próprio script imprime não
-funciona aqui — não conclua que o merge falhou por causa de check vermelho.
+**Atrito H6, resolvido em 22/08/2026:** `ci/mergear.py` não usa mais `--yes`
+(o `gh` 2.97.0 desta máquina não tem a flag) e ganhou o caminho não-interativo
+`--confirmo <N>`, com conferência `state=MERGED` embutida — o comando que o
+script imprime voltou a ser o comando que funciona. E, desde a mesma data,
+**mergear é trabalho do agente** (Lei 4; RITOS.md §2 peça 4):
+`python ci/mergear.py <N> --confirmo <N>`, nunca o botão do site.
 
 ## 3. As 8 células
 
 | Célula | Papel | Banco | Merge | Status (21/08/2026) |
 |---|---|---|---|---|
 | `catalogo` | Fonte de verdade de site/produto/oferta; resolve Host→Site (CONV-SITE) para as demais | `catalogo_db` | auto (CI verde) | ✅ Fase D — PR #15 |
-| `checkout` | Sessão, snapshot imutável do pedido, order bumps, páginas de pagamento | `checkout_db` | **humano** (CODEOWNERS) | ✅ Fase D — PR #17 + #24 |
-| `pagamentos` | Intents Pix/cartão via Mercado Pago, webhooks, outbox de eventos de dinheiro | `pagamentos_db` | **humano** (CODEOWNERS) | ✅ Fase D — PR #16 + #19 |
+| `checkout` | Sessão, snapshot imutável do pedido, order bumps, páginas de pagamento | `checkout_db` | agente — portão verde + anúncio (Lei 4) | ✅ Fase D — PR #17 + #24 |
+| `pagamentos` | Intents Pix/cartão via Mercado Pago, webhooks, outbox de eventos de dinheiro | `pagamentos_db` | agente — portão verde + anúncio (Lei 4) | ✅ Fase D — PR #16 + #19 |
 | `alunos` | Matrícula por evento (`pagamento.aprovado`), idempotente e sob lock | `alunos_db` | auto (CI verde) | ✅ Fase D — PR #26 + #27 + #32 |
 | `leads` | Upsert de pessoa + timeline por evento | `leads_db` | auto (CI verde) | ✅ Fase D — PR #29 |
 | `mensageria` | Envios (e-mail/WhatsApp) disparados por evento — provedores hoje são stubs que logam | `mensageria_db` (role `mensageria_user`) — log de envios e templates | auto (CI verde) | ✅ Fase D — PR #25 |
 | `quiz` | Fluxo de perguntas, pontuação server-side, emite `quiz.completado.v1` | `quiz_db` | auto (CI verde) | ✅ Fase D — PR #28 (resolução de site LOCAL, decisão aceita — ver `services/quiz/LICOES.md`) |
 | `funil` | Vitrine/landing mínima, stateless, preserva UTM até o checkout | sem banco (stateless) | auto (CI verde) | ✅ Fase D — PR #30 |
 
-Áreas com merge sempre humano além das células acima: `contracts/`, `infra/`,
-`ci/`, `.github/`, e os arquivos de raiz que são lei (`CONSTITUICAO.md`,
-`INVARIANTES.md`, `RITOS.md`, `CAMINHO-DOURADO.md`) — ver `.github/CODEOWNERS`
-(lembre: sem branch protection ativa, isso é sugestão forte, não trava mecânica — §2 acima).
+Nenhuma área tem merge humano desde 22/08/2026
+(`docs/decisoes/DECISAO-merge-pelo-agente.md`): o agente mergeia tudo pelo portão
+(`ci/mergear.py`), inclusive `contracts/`, `infra/`, `ci/`, `.github/` e os
+arquivos de raiz que são lei (`CONSTITUICAO.md`, `INVARIANTES.md`, `RITOS.md`,
+`CAMINHO-DOURADO.md`) — nesses caminhos CODEOWNERS, só com mandato do despacho e
+com anúncio nominal no relatório (Lei 4). O `.github/CODEOWNERS` virou mapa de
+jurisdição (diz onde o anúncio é obrigatório), não trava.
 
 ## 4. Como operar uma sessão (RITOS.md §1, resumo executável)
 

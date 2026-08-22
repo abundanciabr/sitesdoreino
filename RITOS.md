@@ -40,15 +40,16 @@ para o próximo agente: commite ou descarte explicitamente.
 ## §2 — Catraca Verde + Anti-Thrashing
 
 A gênese de todo labirinto, nomeada: erro → muda A → outro erro → muda B → remove
-validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto tem três peças:
+validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto tem quatro peças:
 
 0. **Muralha de branch:** todo trabalho nasce em branch (RITOS.md §1) e chega a
-   `main` só por PR revisado. Proteção nativa do GitHub (Settings → Branches)
-   exige plano pago em repositório privado pessoal; sem orçamento, o fallback
-   gratuito é `.githooks/pre-push` (`git config core.hooksPath .githooks`),
-   que bloqueia push direto para `main` nesta máquina. É mais fraco que a
-   proteção nativa — registre a diferença numa issue `mecanizar:` e migre
-   assim que o plano Pro (~US$4/mês) for viável.
+   `main` só por PR com portão verde (peça 4). Proteção nativa do GitHub exige
+   plano pago em repositório privado pessoal e está **fora de alcance** (H3 —
+   não há forma de pagamento aceita; não sugira "assine o Pro"). Os degraus
+   reais: `.githooks/pre-push` (bloqueia push direto para `main` nesta máquina),
+   o merge guardado da peça 4, o `alarme-main` (issue se a main quebrar) e o
+   portão de deploy (commit não-verde não alcança a VPS — provado ao vivo em
+   22/08/2026).
 1. **Catraca:** todo estado verde vira commit IMEDIATAMENTE (Conventional Commits,
    descrição em PT: `fix(pix): corrigir parsing do webhook`). Nenhum trabalho novo
    começa sobre estado não commitado. `git add` por arquivo — **nunca `git add -A`**;
@@ -60,8 +61,16 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    teste para passar. Correção em invariante apresenta evidência falsificável:
    saída crua do guarda **vermelho sem o fix, verde com o fix**. "Eu arrumei" não
    é aceito.
-
-Antes de concluir, o agente revisa o próprio diff contra o escopo do brief. Se o
+4. **Fecho da catraca — o merge é do agente (desde 22/08/2026):** aberto o PR, o
+   próprio agente conclui, sem pedir nem esperar o humano: espera os checks
+   terminarem, confere com `python ci/mergear.py <PR> --conferir` e mergeia com
+   `python ci/mergear.py <PR> --confirmo <PR>` — o `--confirmo` repete o número
+   do PR de propósito (o erro real da história foi mergear o PR errado, não
+   mergear sem querer). Vermelho, pendente, ausente ou ERROR ⇒ **não se mergeia**:
+   conserta-se ou reporta-se. O botão do site não é caminho. Depois do merge, o
+   script já confere `state=MERGED`; ao agente restam o painel e, se o merge
+   dispara deploy, o veredito do run (CLAUDE.md). Merge em caminho CODEOWNERS
+   exige mandato do despacho e anúncio nominal no relatório (Lei 4). Se o
 objetivo era Pix e o diff mostra `methods/card/` ou 42 arquivos — é o alarme dele,
 antes de ser o alarme do CI.
 
