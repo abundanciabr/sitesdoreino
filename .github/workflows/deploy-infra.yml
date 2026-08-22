@@ -44,7 +44,39 @@ concurrency:
   group: deploy
   cancel-in-progress: false
 jobs:
+  # O MESMO portão do deploy-celula (docs/decisoes/PROJETO-PORTAO-DEPLOY.md),
+  # em modo infra: prova que ci-celula-gate, alarme-main e as muralhas do PR
+  # de origem estão verdes ANTES de tocar a VPS. Sem célula no diff, o job
+  # `ci-celula` (rodar) pula legitimamente — o gate continua obrigatório.
+  portao:
+    name: portao-de-deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SHA: ${{ github.sha }}
+      RUN_ID: ${{ github.run_id }}
+      EVENTO: ${{ github.event_name }}
+      CELULAS: '[]'
+      PORTAO_MODO: infra
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Portão de deploy (0 = verde provado · 1 = reprovado · 2 = não mediu)
+        run: python ci/portao_de_deploy.py
+
   sincronizar:
+    needs: portao
+    # Explícito de propósito; NUNCA always()/failure().
+    if: needs.portao.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

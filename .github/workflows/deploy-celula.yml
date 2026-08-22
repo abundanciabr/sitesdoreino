@@ -1,6 +1,15 @@
 # =============================================================================
-# DEPLOY POR CÉLULA — merge na main ⇒ build da imagem SÓ da célula tocada ⇒
-# pull+up SÓ dela na VPS. Rollback = *_TAG anterior (RITOS.md §4).
+# DEPLOY POR CÉLULA — merge na main ⇒ PORTÃO DE DEPLOY ⇒ build da imagem SÓ da
+# célula tocada ⇒ pull+up SÓ dela na VPS. Rollback = *_TAG anterior (RITOS §4).
+#
+# O PORTÃO (docs/decisoes/PROJETO-PORTAO-DEPLOY.md) é o required check que o
+# GitHub não vende (ARMADILHAS §1 H3): sem branch protection, o merge não é
+# barrável — o DEPLOY é. Antes de qualquer build (push :main já armaria o
+# próximo `up` na VPS), ci/portao_de_deploy.py prova que ci-celula, alarme-main
+# e as muralhas do PR de origem estão VERDES; skipped não é verde; sem
+# evidência é ERROR (INV-CI01). SEM workflow_dispatch, de propósito: deploy que
+# ninguém amarra a commit revisado não existe aqui.
+#
 # O CI conhece apenas VPS_HOST e a chave de deploy. Segredos de RUNTIME
 # (MP produção etc.) vivem SÓ em /opt/plataforma/env/*.env (INV-P8).
 # =============================================================================
@@ -11,7 +20,6 @@ on:
     paths: ['services/**']
 permissions:
   contents: read
-  packages: write
 concurrency:
   group: deploy
   cancel-in-progress: false
@@ -20,20 +28,81 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       celulas: ${{ steps.d.outputs.celulas }}
+      n: ${{ steps.d.outputs.n }}
+      # [INV-CI01] Carimbo de que a detecção CONCLUIU (mesma semântica do
+      # ci-celula): sem ele, "nenhuma célula tocada" e "não consegui medir"
+      # seriam indistinguíveis para o job de deploy.
+      deteccao: ${{ steps.d.outputs.deteccao }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - id: d
+        name: Detectar células tocadas (runner canônico, base = event.before)
+        shell: bash
         run: |
-          C=$(git diff --name-only HEAD^...HEAD | grep '^services/' | cut -d/ -f2 | sort -u | jq -R . | jq -sc .)
-          echo "celulas=$C" >> "$GITHUB_OUTPUT"
-          echo "Células a deployar: $C"
+          set -eu
+          BASE='${{ github.event.before }}'
+          # event.before, não HEAD^: um push com vários commits perderia célula
+          # tocada em commit anterior. Vazio/zeros (branch nova, force-push) é
+          # ERROR: "não sei o que mudou" nunca vira "nada mudou".
+          case "$BASE" in
+            ''|0000000000000000000000000000000000000000)
+              echo "ERROR: github.event.before inutilizável ('$BASE')." >&2
+              exit 1;;
+          esac
+          CEL="$(python ci/ci.py --detectar-celulas --base "$BASE")"
+          # jq -R lê linha a linha; entrada vazia => [] (push em services/ sem
+          # célula, ex.: services/README) — SKIP legítimo do portão, não erro.
+          JSON="$(printf '%s' "$CEL" | jq -R . | jq -sc 'map(select(length>0))')"
+          echo "celulas=$JSON" >> "$GITHUB_OUTPUT"
+          echo "n=$(jq -n --argjson c "$JSON" '$c|length')" >> "$GITHUB_OUTPUT"
+          echo "deteccao=ok" >> "$GITHUB_OUTPUT"
+          echo "Células tocadas: $JSON"
+
+  portao:
+    name: portao-de-deploy
+    needs: detectar
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    # Least privilege: o portão LÊ checks — nunca recebe packages nem SSH.
+    permissions:
+      contents: read
+      actions: read
+      checks: read
+      pull-requests: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      SHA: ${{ github.sha }}
+      RUN_ID: ${{ github.run_id }}
+      EVENTO: ${{ github.event_name }}
+      CELULAS: ${{ needs.detectar.outputs.celulas }}
+      PORTAO_MODO: celula
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Portão de deploy (0 = verde provado · 1 = reprovado · 2 = não mediu)
+        run: python ci/portao_de_deploy.py
 
   deploy:
-    needs: detectar
-    if: needs.detectar.outputs.celulas != '[]'
+    needs: [detectar, portao]
+    # Explícito de propósito; NUNCA always()/failure(): deploy só existe com o
+    # portão VERDE e a detecção CONCLUÍDA com pelo menos uma célula.
+    if: >-
+      needs.portao.result == 'success' &&
+      needs.detectar.result == 'success' &&
+      needs.detectar.outputs.deteccao == 'ok' &&
+      needs.detectar.outputs.celulas != '[]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       max-parallel: 1
       matrix:
@@ -75,7 +144,9 @@ jobs:
             fi
             echo "Serviços desta célula: $SERVICOS"
             docker compose pull $SERVICOS
-            # --wait reprova o deploy se algum container não ficar de pé. Sem ele,
-            # 'ps' devolve sucesso com container em crash-loop (ARMADILHAS §3.13).
+            # --wait reprova o deploy se algum container não ficar de pé (ou não
+            # ficar HEALTHY — os healthchecks do compose, entregues pelo PR #45,
+            # são a sonda pós-deploy F5 do PROJETO-PORTAO-DEPLOY). Sem ele, 'ps'
+            # devolve sucesso com container em crash-loop (ARMADILHAS §3.13).
             docker compose up -d --wait --wait-timeout 180 $SERVICOS
             docker compose ps $SERVICOS
