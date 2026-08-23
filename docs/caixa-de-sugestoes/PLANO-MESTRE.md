@@ -1,8 +1,8 @@
-# PLANO MESTRE — Central de Evolução
+# PLANO MESTRE — Caixa de Sugestões
 
-> Criado em 22/08/2026, a partir de `feedback_cell_spec.md` (a célula),
-> `changespec_format.md` (o corredor sugestão→código) e dos protótipos visuais
-> `central_evolucao_design.html` / `central_evolucao_design_v2.html`.
+> Criado em 22/08/2026, a partir de `ESPECIFICACAO-CELULA.md` (a célula),
+> `FORMATO-CHANGESPEC.md` (o corredor sugestão→código) e dos protótipos visuais
+> `prototipo-v1.html` / `prototipo-v2.html`.
 >
 > **Como executar:** em LOTES, regidos pelo `RUNBOOK-LOTES.md` (raiz). Cada lote
 > abaixo já vem recortado pela cerca 1 PR = 1 célula e com o orçamento de 15
@@ -11,6 +11,13 @@
 >
 > **O modelo de despacho** desta iniciativa é [`MODELO-DESPACHO.md`](MODELO-DESPACHO.md)
 > — todo brief de agente nasce dele.
+>
+> **Nome, endereço e vocabulário são decisão fechada do mantenedor (23/08/2026)
+> e não se reabrem**: a ferramenta chama-se **Caixa de Sugestões**, mora em
+> `meshcraft.top/forms/sugestoes/`, e a célula chama-se `sugestoes`. Nenhuma
+> sessão futura deve "melhorar" esses nomes — mudá-los depois custa URL,
+> contrato, imagem no registry e banco. Ajustes de texto de interface, sim;
+> renomear a coisa, não.
 
 ---
 
@@ -28,11 +35,11 @@ por baixo.
 
 | Pronto | Faltando |
 |---|---|
-| Especificação técnica da célula (`feedback_cell_spec.md`): modelos, eventos, invariantes, fases | A célula `feedback` em si (seria a 9ª de `services/`) |
-| Formato do ChangeSpec (`changespec_format.md`) com regras de validade | O contrato `contracts/feedback.openapi.yaml` (exige Rito de Contrato) |
+| Especificação técnica da célula (`ESPECIFICACAO-CELULA.md`): modelos, eventos, invariantes, fases | A célula `sugestoes` em si (seria a 9ª de `services/`) |
+| Formato do ChangeSpec (`FORMATO-CHANGESPEC.md`) com regras de validade | O contrato `contracts/sugestoes.openapi.yaml` (exige Rito de Contrato) |
 | Protótipo visual navegável (v2: quadro, tabs, inspector, roadmap) | **A decisão de identidade** — ver risco nº 1 abaixo |
 | Infra de eventos provada (outbox + Redis Streams + consumers no ar desde 22/08) | Auditoria AS-IS exigida pela própria spec (§3 e DoD §11) |
-| Esteira completa: PR → portão → merge pelo agente → deploy → VPS | Banco `feedback_db` + env real na VPS (passo do mantenedor) |
+| Esteira completa: PR → portão → merge pelo agente → deploy → VPS | Banco `sugestoes_db` + env real na VPS (passo do mantenedor) |
 
 ## 3. Riscos e divergências spec ↔ realidade (encarar ANTES de codar)
 
@@ -57,7 +64,7 @@ por baixo.
 ## 4. Fora do escopo — de todo o plano
 
 - **Pagamentos, checkout, Mercado Pago: NADA.** Diretiva vigente do mantenedor
-  (22/08/2026) — a Central não toca e não depende de nenhuma célula de dinheiro.
+  (22/08/2026) — a Caixa não toca e não depende de nenhuma célula de dinheiro.
 - Cálculo de XP/gamificação, e-mail/push/WhatsApp (só o evento; consumidores futuros).
 - Merge administrativo de sugestões, "seguir sugestão" (V1.1), "em alta" com
   recência e "meu impacto" (V1.2), busca semântica/clustering (depois do volume).
@@ -97,23 +104,29 @@ Responde, com evidência (comando + saída), as perguntas que a spec §3 exige:
 5. Convenções reais dos eventos (nomes de stream, envelope, versão) medidas no
    código produtor de `pagamentos` e nos 4 consumers.
 
-Entrega: `docs/central-de-evolução/AUDITORIA-AS-IS.md` + a lista de
+Entrega: `docs/caixa-de-sugestoes/AUDITORIA-AS-IS.md` + a lista de
 divergências spec↔realidade. **Este documento é pré-requisito do DoD do MVP**
 (spec §11, último item).
 
 **EVO-01 — Sessão de arquitetura (VOCÊ presente — Rito de Contrato, RITOS §3)**
 Com a auditoria na mesa, decidir e congelar:
 - o contrato mínimo de identidade do MVP (de onde vem `actor_id`, o que é staff);
-- `contracts/feedback.openapi.yaml` v1 (superfície mínima: sugestões, votos,
+- `contracts/sugestoes.openapi.yaml` v1 (superfície mínima: sugestões, votos,
   comentários, status, avaliação staff);
-- a URL pública (proposta: `SCRIPT_NAME=/evolucao`, roteada pelo Traefik como
-  as demais);
 - tenant/produto: como o quadro referencia o site e o produto (IDs opacos, sem FK).
+
+**Já decidido em 23/08/2026, fora da reunião** (não reabrir): endereço público
+`meshcraft.top/forms/sugestoes/` — a célula é dona do prefixo `/forms`
+(`SCRIPT_NAME=/forms`, rota `PathPrefix('/forms')` no Traefik, priority 10 como
+`/quiz` e `/checkout`), e a página do quadro fica em `/forms/sugestoes/`. O
+prefixo é do tipo genérico de propósito: outros formulários cabem ali depois sem
+célula nem rota nova. `meshcraft.top` já está no ar em Modo B (Let's Encrypt
+direto, sem Cloudflare) e registrado em `infra/sites.json` — nada de TLS a fazer.
 
 Sai daqui: PR só de `contracts/` com a label `contrato`, mergeado com mandato.
 É o único passo do plano inteiro que exige reunião — todo o resto é lote.
 
-### LOTE 1 — A célula nasce (`services/feedback/`, fila interna: 4 PRs seriais)
+### LOTE 1 — A célula nasce (`services/sugestoes/`, fila interna: 4 PRs seriais)
 
 > Mesma célula ⇒ nunca em paralelo (RUNBOOK §1). A maestro rege a fila e
 > mergeia um a um. Canário do lote = EVO-10 (o mais inofensivo).
@@ -146,41 +159,41 @@ schema é exatamente o cenário do sombreamento).
 
 **EVO-13 — API staff + pipeline de status** (~7 arquivos):
 mudança de status com `HistoricoStatus`, "não planejado" exige justificativa,
-`AvaliacaoProduto` (403 para qualquer ator sem role staff — teste obrigatório,
+`AvaliacaoInterna` (403 para qualquer ator sem role staff — teste obrigatório,
 DoD spec §11), endpoint staff nunca exposto ao aluno.
 
 ### LOTE 2 — Eventos e produção (paralelismo real: 3 células/áreas distintas)
 
-**EVO-20 — Produtor de eventos** · célula `feedback`:
+**EVO-20 — Produtor de eventos** · célula `sugestoes`:
 tabela outbox gravada NA MESMA transação do estado, relay Huey → Redis Streams,
 os 5 eventos da spec §7. Padrão copiado do produtor de `pagamentos` (o lado que
 está íntegro — §4.12, nota final). Evento de status publicado antes do commit
 externo confirmar (DoD spec §11).
 
 **EVO-21 — Notificação in-app** · célula `mensageria` (paralelo):
-consumer de `feedback.suggestion.status_changed` → notificação simples para os
+consumer de `sugestao.status-alterado` → notificação simples para os
 autores que votaram. Brief leva injetadas as duas metades da armadilha R4
 (§4.8 + §4.12: dois `atomic` aninhados, handler fora do `try`) e a variante do
 `xack` que é justamente da mensageria.
 
 **EVO-22 — Infra** · `infra/**` (paralelo, CODEOWNERS — mandato + anúncio nominal):
-serviço `feedback` no compose (healthcheck, bloco `x-celula`), rota Traefik,
-`infra/env/feedback.exemplo`, lista de provisionamento atualizada. O merge
+serviço `sugestoes` no compose (healthcheck, bloco `x-celula`), rota Traefik,
+`infra/env/sugestoes.exemplo`, lista de provisionamento atualizada. O merge
 dispara o `deploy-infra` — canal provado (H11 ✅); veredito do run conferido por
 `gh run view --json` antes de fechar a janela.
 
 **Precisa de você (único passo manual do plano, além do EVO-01):** criar
-`feedback_db` + role isolada na VPS e escrever o `feedback.env` real — chega
+`sugestoes_db` + role isolada na VPS e escrever o `sugestoes.env` real — chega
 como UM bloco de colar fail-closed, com a janela rotulada (`root@srv...` = já
 dentro da VPS).
 
 Janela de merge do lote: EVO-20 (canário) → EVO-21 → EVO-22 (infra por último,
 com o deploy conferido antes de qualquer celebração).
 
-### LOTE 3 — O rosto (célula `feedback`, fila interna: 2 PRs)
+### LOTE 3 — O rosto (célula `sugestoes`, fila interna: 2 PRs)
 
 **EVO-30 — Quadro e sugestão:** templates + static próprios da célula (não
-existe base.html compartilhado), seguindo `central_evolucao_design_v2.html`:
+existe base.html compartilhado), seguindo `prototipo-v2.html`:
 quadro com tabs (Mais votadas / Novas — "Em alta" fica p/ V1.2), card com voto,
 inspector/detalhe com comentários e histórico, formulário "Nova ideia" com a
 busca de duplicata na frente.
@@ -190,18 +203,18 @@ do protótipo) e a exibição da notificação in-app vinda da mensageria.
 
 ### LOTE 4 — O corredor ChangeSpec
 
-**EVO-40 — A trava** · célula `feedback`:
+**EVO-40 — A trava** · célula `sugestoes`:
 `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir
 registro de ChangeSpec aprovado referenciando o `suggestion_id`
-(`changespec_format.md` §5) — validação no `save()`, com teste-guarda. Registro
+(`FORMATO-CHANGESPEC.md` §5) — validação no `save()`, com teste-guarda. Registro
 mínimo na própria célula (id do CS, `aprovado_por`, data, link), preenchido por
 endpoint staff — a célula não lê o repositório em runtime.
 
 **EVO-41 — Fechamento do MVP:**
-`docs/changespecs/` criado com `changespec_format.md` como lei local + um
+`docs/changespecs/` criado com `FORMATO-CHANGESPEC.md` como lei local + um
 `CS-TEMPLATE.md` pronto para copiar; conferência item a item do Definition of
 Done da spec §11, com evidência colada; ANDAMENTO e painel fechados; lições
-para `ARMADILHAS.md` / `services/feedback/LICOES.md`.
+para `ARMADILHAS.md` / `services/sugestoes/LICOES.md`.
 
 Regra de autoria que atravessa tudo (changespec_format §1): **quem escreve o
 ChangeSpec nunca é o agente que o implementa**, e `APROVADO_POR` é sempre você.
@@ -218,10 +231,10 @@ A auditoria confirmou o desenho geral e impôs 4 correções ao texto acima:
    quiz) e o contrato congela pelo Rito §3 na fronteira EVO-11→EVO-12. O
    EVO-01 vira sessão só de DECISÃO: identidade (não existe login de usuário
    final na plataforma — o maior achado), IDs (strings opacas, não UUID),
-   nomes de evento em PT (`feedback.sugestao.criada` etc.) e URL pública.
+   nomes de evento em PT (`sugestao.criada` etc.) e URL pública.
 2. **EVO-10 toca `ci/manifesto-de-contratos.json`** (obrigatório no MESMO PR
    do scaffold) — `ci/` é CODEOWNERS: mandato + anúncio nominal.
-3. **Vermelho esperado no Lote 1:** cada merge em `services/feedback/` dispara
+3. **Vermelho esperado no Lote 1:** cada merge em `services/sugestoes/` dispara
    `deploy-celula`, que falha no passo da VPS até o compose ganhar o serviço
    (Lote 2). Vermelho de causa conhecida e registrada — não pausa a janela;
    o Lote 2 o cura (as imagens já publicadas no ghcr são puxadas então).
@@ -238,7 +251,7 @@ Depois, só com volume real: similaridade trigram, busca semântica, clustering.
 ## 7. Como pedir cada lote (cole numa janela raiz nova — `PS C:\>` = seu PC)
 
 ```
-Leia RUNBOOK-LOTES.md e docs/central-de-evolução/PLANO-MESTRE.md e toque o LOTE <N> da Central de Evolução, atualizando ANDAMENTO.md e o painel no fechamento.
+Leia RUNBOOK-LOTES.md e docs/caixa-de-sugestoes/PLANO-MESTRE.md e toque o LOTE <N> da Caixa de Sugestões, atualizando ANDAMENTO.md e o painel no fechamento.
 ```
 
 A sessão monta os briefs a partir do [`MODELO-DESPACHO.md`](MODELO-DESPACHO.md),

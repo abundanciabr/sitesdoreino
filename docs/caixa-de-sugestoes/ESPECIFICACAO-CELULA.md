@@ -1,6 +1,6 @@
-# Feedback Cell — Especificação Técnica v1
+# Célula de Sugestões — Especificação Técnica v1
 
-Central de Evolução: célula de Voice of Customer / Product Discovery reutilizável por qualquer produto da plataforma (curso, comunidade, plataforma geral).
+Caixa de Sugestões: célula de Voice of Customer / Product Discovery reutilizável por qualquer produto da plataforma (curso, comunidade, plataforma geral).
 
 ## 1. Propósito
 
@@ -45,10 +45,10 @@ Assunção provisória: `actor_id` é UUID. Isso precisa ser confirmado contra o
 
 ## 5. Fronteira de contexto
 
-`QuadroFeedback` é o boundary. Toda sugestão pertence a exatamente um quadro.
+`Quadro` é o boundary. Toda sugestão pertence a exatamente um quadro.
 
 ```python
-class QuadroFeedback(models.Model):
+class Quadro(models.Model):
     tenant_id = models.UUIDField()
     produto_id = models.UUIDField(null=True, blank=True)  # null = quadro de plataforma inteira
     nome = models.CharField(max_length=100)
@@ -59,8 +59,8 @@ Optei por não introduzir `scope_type` / `scope_id` aqui. É uma camada de abstr
 ## 6. Modelo de dados
 
 ```python
-class CategoriaFeedback(models.Model):
-    quadro = models.ForeignKey(QuadroFeedback, related_name="categorias", on_delete=models.CASCADE)
+class Categoria(models.Model):
+    quadro = models.ForeignKey(Quadro, related_name="categorias", on_delete=models.CASCADE)
     slug = models.SlugField()
     nome = models.CharField(max_length=80)
     ordem = models.PositiveIntegerField(default=0)
@@ -79,8 +79,8 @@ class Sugestao(models.Model):
         NAO_PLANEJADO = "nao_planejado", "Não planejado"
         MESCLADO = "mesclado", "Mesclado"
 
-    quadro = models.ForeignKey(QuadroFeedback, related_name="sugestoes", on_delete=models.CASCADE)
-    categoria = models.ForeignKey(CategoriaFeedback, related_name="sugestoes", on_delete=models.PROTECT)
+    quadro = models.ForeignKey(Quadro, related_name="sugestoes", on_delete=models.CASCADE)
+    categoria = models.ForeignKey(Categoria, related_name="sugestoes", on_delete=models.PROTECT)
     autor_id = models.UUIDField()  # confirmar contrato de identidade — seção 4
     titulo = models.CharField(max_length=140)
     problema = models.TextField()
@@ -118,7 +118,7 @@ class HistoricoStatus(models.Model):
     criado_em = models.DateTimeField(auto_now_add=True)
 
 
-class AvaliacaoProduto(models.Model):
+class AvaliacaoInterna(models.Model):
     """Staff-only. Nunca exposta ou editável pelo aluno."""
     sugestao = models.OneToOneField(Sugestao, related_name="avaliacao", on_delete=models.CASCADE)
     impacto_educacional = models.PositiveSmallIntegerField(default=0)
@@ -134,22 +134,22 @@ class AvaliacaoProduto(models.Model):
 
 A célula nunca decide XP, nunca envia notificação, nunca calcula analytics — só afirma fatos.
 
-- `feedback.suggestion.created` — `{suggestion_id, quadro_id, categoria_id, autor_id}`
-- `feedback.suggestion.vote_added` — `{suggestion_id, autor_id, total_votos}`
-- `feedback.suggestion.vote_removed` — `{suggestion_id, autor_id, total_votos}`
-- `feedback.suggestion.status_changed` — `{suggestion_id, status_anterior, status_novo, autores_que_votaram[]}`
-- `feedback.suggestion.merged` — `{suggestion_id_origem, suggestion_id_canonica}`
+- `sugestao.criada` — `{suggestion_id, quadro_id, categoria_id, autor_id}`
+- `sugestao.voto-adicionado` — `{suggestion_id, autor_id, total_votos}`
+- `sugestao.voto-removido` — `{suggestion_id, autor_id, total_votos}`
+- `sugestao.status-alterado` — `{suggestion_id, status_anterior, status_novo, autores_que_votaram[]}`
+- `sugestao.mesclada` — `{suggestion_id_origem, suggestion_id_canonica}`
 
-As células de gamificação, notificação e analytics assinam esses eventos e decidem sozinhas o que fazer. A célula feedback não sabe que gamificação ou notificação existem.
+As células de gamificação, notificação e analytics assinam esses eventos e decidem sozinhas o que fazer. A célula sugestoes não sabe que gamificação ou notificação existem.
 
 ## 8. Invariantes
 
 - Um ator vota no máximo uma vez por sugestão (`unique_together`); desvotar apaga a linha, nunca marca como inativa.
 - `HistoricoStatus` é append-only — nenhuma linha é editada ou apagada depois de criada.
-- `AvaliacaoProduto` nunca é lida ou escrita por um endpoint que o aluno acessa.
+- `AvaliacaoInterna` nunca é lida ou escrita por um endpoint que o aluno acessa.
 - Nenhum model desta célula tem ForeignKey apontando para fora do banco da própria célula.
 - Merge de sugestão é transacional: ator que votou nas duas sugestões não vira dois votos; comentários e histórico da sugestão mesclada são preservados, nunca apagados; a URL da sugestão mesclada continua resolvendo, redirecionando para a canônica.
-- `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec aprovado referenciando aquele `suggestion_id` — ver `changespec_format.md`, seção 5.
+- `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec aprovado referenciando aquele `suggestion_id` — ver `FORMATO-CHANGESPEC.md`, seção 5.
 
 ## 9. Modos de falha a considerar
 
