@@ -1,9 +1,14 @@
 # =============================================================================
-# DEPLOY DE INFRA — merge na main tocando infra/docker-compose.yml ou
-# infra/traefik/** ⇒ sincroniza esses arquivos para /opt/plataforma/ na VPS e
-# aplica — fail-closed: valida ANTES de trocar, backup datado ANTES de
-# sobrescrever, verificação DEPOIS de aplicar, e `docker compose ps` impresso
-# SEMPRE como evidência do run.
+# DEPLOY DE INFRA — merge na main tocando infra/docker-compose.yml,
+# infra/traefik/** ou infra/sites.json ⇒ sincroniza esses arquivos para
+# /opt/plataforma/ na VPS e aplica — fail-closed: valida ANTES de trocar,
+# backup datado ANTES de sobrescrever, verificação DEPOIS de aplicar, e
+# `docker compose ps` impresso SEMPRE como evidência do run.
+#
+# SITES (R11 mecanizada): infra/sites.json é o registro declarativo dos sites;
+# o passo 5 converge o catálogo da PRODUÇÃO a ele (via manage.py dentro do
+# container do catalogo) e prova cada host com smoke na raiz. Domínio novo =
+# PR neste arquivo + DNS no Cloudflare — nenhum comando manual na VPS.
 #
 # Mata o H11 (ARMADILHAS.md §1): até este workflow existir, o compose e o
 # traefik só chegavam à VPS copiados à mão — todo PR de infra mergeado ficava
@@ -31,6 +36,8 @@ on:
     paths:
       - 'infra/docker-compose.yml'
       - 'infra/traefik/**'
+      - 'infra/sites.json'
+      - 'infra/sincronizar_sites.py'
       # O próprio workflow nos paths, de propósito: o merge do PR que o cria
       # já dispara a primeira sincronização — é ela que finalmente entrega à
       # produção os consumers criados no PR #45, sem passo manual nenhum.
@@ -93,8 +100,8 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          # SÓ estes dois caminhos. env/ NUNCA entra nesta lista (INV-P8).
-          source: "infra/docker-compose.yml,infra/traefik"
+          # SÓ estes caminhos. env/ NUNCA entra nesta lista (INV-P8).
+          source: "infra/docker-compose.yml,infra/traefik,infra/sites.json,infra/sincronizar_sites.py"
           target: /opt/plataforma/infra.new
           strip_components: 1
           # rm limpa SÓ o staging (o target acima) antes do upload, para que
@@ -122,6 +129,8 @@ jobs:
             rm -rf traefik.new
             mv -f infra.new/docker-compose.yml docker-compose.yml.new
             mv infra.new/traefik traefik.new
+            mv -f infra.new/sites.json sites.json.new
+            mv -f infra.new/sincronizar_sites.py sincronizar_sites.py.new
             rmdir infra.new
 
             # ── 1) VALIDAR ANTES DE TROCAR. O -f aponta para o .new, mas o
@@ -133,11 +142,18 @@ jobs:
               echo "O material recusado ficou em docker-compose.yml.new e traefik.new/ para inspeção."
               exit 1
             fi
+            # sites.json malformado também não chega ao caminho final.
+            if ! python3 -m json.tool sites.json.new >/dev/null; then
+              echo "ERRO: sites.json novo não é JSON válido — NADA foi trocado."
+              exit 1
+            fi
 
             # ── 2) BACKUP DATADO do que está em uso, antes de sobrescrever. ──
             STAMP=$(date -u +%Y%m%dT%H%M%SZ)
             cp -a docker-compose.yml "docker-compose.yml.bak-$STAMP"
             cp -a traefik "traefik.bak-$STAMP"
+            # sites.json pode não existir ainda (1º run desta mecânica).
+            if [ -f sites.json ]; then cp -a sites.json "sites.json.bak-$STAMP"; fi
             echo "Backup: docker-compose.yml.bak-$STAMP e traefik.bak-$STAMP"
 
             # ── 3) TROCA + APLICAÇÃO. `up -d` é idempotente: só recria o que
@@ -147,6 +163,8 @@ jobs:
             mv -f docker-compose.yml.new docker-compose.yml
             rm -rf traefik
             mv traefik.new traefik
+            mv -f sites.json.new sites.json
+            mv -f sincronizar_sites.py.new sincronizar_sites.py
             docker compose up -d
 
             # O traefik monta ./traefik por bind mount, e bind mount prende o
@@ -190,3 +208,25 @@ jobs:
               exit 1
             fi
             echo "OK: infra sincronizada — todos os serviços declarados estão rodando."
+
+            # ── 5) SITES (R11 mecanizada): converge o catálogo da PRODUÇÃO ao
+            # sites.json do Git e prova cada host listado respondendo 200 na
+            # raiz, por dentro da VPS. `shell -c` propaga exceção como exit
+            # != 0 (fail-closed); o funil cacheia a resolução de host por 60s
+            # INCLUSIVE o 404 (CONV-SITE), então o smoke insiste por até ~80s
+            # antes de reprovar — 404 persistente é reprovação de verdade. ──
+            docker compose exec -T -e SITES_JSON="$(cat sites.json)" catalogo python manage.py shell -c "$(cat sincronizar_sites.py)"
+            for H in $(python3 -c "import json; print(' '.join(s['host'] for s in json.load(open('sites.json'))['sites']))"); do
+              CODIGO=000
+              for _ in 1 2 3 4 5 6 7 8; do
+                CODIGO=$(curl -sk -o /dev/null -w '%{http_code}' -H "Host: $H" https://localhost/) || CODIGO=000
+                if [ "$CODIGO" = "200" ]; then break; fi
+                sleep 10
+              done
+              if [ "$CODIGO" != "200" ]; then
+                echo "ERRO: a raiz de $H respondeu $CODIGO (esperava 200) — cadastro convergiu mas o site não serve."
+                exit 1
+              fi
+              echo "OK: $H responde 200 na raiz (smoke por dentro da VPS)"
+            done
+            echo "OK: sites do sites.json cadastrados/convergidos e provados."

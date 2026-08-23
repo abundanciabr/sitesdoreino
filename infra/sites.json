@@ -1,0 +1,24 @@
+{
+  "_doc": [
+    "Registro declarativo dos sites da plataforma — a Receita R11 mecanizada (Lei 1).",
+    "Merge na main tocando este arquivo => deploy-infra converge o catálogo da PRODUÇÃO a ele e prova cada host com smoke (raiz 200) por dentro da VPS.",
+    "Contrato: todo site listado precisa de default_offer_slug apontando para uma das suas ofertas — sem oferta padrão a raiz responde 404 (funil) e o smoke reprova.",
+    "Sites NÃO listados aqui nunca são tocados. Desativar um site listado: active=false. O domínio de operações (esqueleto) fica FORA até alguém trazê-lo com os valores reais de produção conferidos.",
+    "Preço de oferta já publicada NUNCA é editado por aqui (oferta publicada não muda): divergência vira AVISO no log do run; mudança real de preço = nova versão, decisão humana."
+  ],
+  "sites": [
+    {
+      "host": "meshcraft.top",
+      "name": "Meshcraft (site de testes)",
+      "active": true,
+      "default_offer_slug": "curso-teste",
+      "ofertas": [
+        {
+          "slug": "curso-teste",
+          "price_cents": 990,
+          "produto": { "slug": "curso-teste", "name": "Curso de Teste" }
+        }
+      ]
+    }
+  ]
+}

@@ -2,3 +2,9 @@
 # roda dentro de um container Linux ou é chamado via `bash arquivo.sh` depois
 # de um checkout com core.autocrlf=true (comum em máquina Windows).
 *.sh text eol=lf
+
+# O deploy-infra injeta estes dois num bash/container Linux da VPS
+# (`shell -c "$(cat sincronizar_sites.py)"` e parsing do sites.json) — LF
+# garantido no blob, pela mesma razão dos .sh.
+infra/sincronizar_sites.py text eol=lf
+infra/sites.json text eol=lf
