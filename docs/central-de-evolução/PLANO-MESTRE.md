@@ -208,6 +208,26 @@ ChangeSpec nunca é o agente que o implementa**, e `APROVADO_POR` é sempre voc�
 
 ---
 
+## 5.1 Ajustes pós-auditoria (23/08/2026 — EVO-00 executado, ver [`AUDITORIA-AS-IS.md`](AUDITORIA-AS-IS.md))
+
+A auditoria confirmou o desenho geral e impôs 4 correções ao texto acima:
+
+1. **O contrato NÃO nasce no EVO-01.** O manifesto de contratos reprova
+   contrato sem célula (e célula declarada sem disco). A célula nasce
+   `freeze: not-applicable` no EVO-10 (padrão provado por funil/mensageria/
+   quiz) e o contrato congela pelo Rito §3 na fronteira EVO-11→EVO-12. O
+   EVO-01 vira sessão só de DECISÃO: identidade (não existe login de usuário
+   final na plataforma — o maior achado), IDs (strings opacas, não UUID),
+   nomes de evento em PT (`feedback.sugestao.criada` etc.) e URL pública.
+2. **EVO-10 toca `ci/manifesto-de-contratos.json`** (obrigatório no MESMO PR
+   do scaffold) — `ci/` é CODEOWNERS: mandato + anúncio nominal.
+3. **Vermelho esperado no Lote 1:** cada merge em `services/feedback/` dispara
+   `deploy-celula`, que falha no passo da VPS até o compose ganhar o serviço
+   (Lote 2). Vermelho de causa conhecida e registrada — não pausa a janela;
+   o Lote 2 o cura (as imagens já publicadas no ghcr são puxadas então).
+4. **Modelos ajustados:** `tenant_id`/`produto_id`/`autor_id` como strings
+   opacas (`CharField`), seguindo os contratos vivos de catálogo e alunos.
+
 ## 6. Backlog pós-MVP (não entra em lote nenhum agora)
 
 V1.1: merge administrativo transacional · seguir sugestão · gamificação por

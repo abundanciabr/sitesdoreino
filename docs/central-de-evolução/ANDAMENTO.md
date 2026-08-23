@@ -26,8 +26,8 @@ esta página existem e estão no repositório. O próximo passo é o Lote 0.
 
 | Despacho | O que entrega | Estado | PR | Nota |
 |---|---|---|---|---|
-| EVO-00 | Auditoria do estado real da plataforma (identidade, bancos, eventos, como nasce célula) | ⬜ | — | somente leitura, sem risco |
-| EVO-01 | Contrato da célula aprovado + decisão de identidade | 🙋 | — | única reunião do plano |
+| EVO-00 | Auditoria do estado real da plataforma (identidade, bancos, eventos, como nasce célula) | ✅ | #78 | feita em 23/08 — `AUDITORIA-AS-IS.md`; achado maior: não existe login de aluno na plataforma |
+| EVO-01 | Decisões de arquitetura: como o aluno se identifica, nomes dos eventos, endereço da página | 🙋 | — | única reunião do plano; o contrato congela depois, no meio do Lote 1 |
 
 ## Lote 1 — A célula nasce
 
@@ -62,6 +62,12 @@ esta página existem e estão no repositório. O próximo passo é o Lote 0.
 
 ## Linha do tempo
 
+- **23/08/2026** — A auditoria EVO-00 foi executada (não precisa de CI): as 5
+  perguntas respondidas com evidência em `AUDITORIA-AS-IS.md`. Achado maior:
+  **não existe login de aluno em nenhuma célula** — a decisão de identidade é
+  o coração da reunião EVO-01. O plano ganhou a seção 5.1 com 4 ajustes.
+  O apagão do CI foi re-testado no mesmo dia (rerun dos checks do PR #78):
+  **continua** — mesma mensagem de cobrança do GitHub.
 - **22/08/2026 (noite)** — O PR do próprio plano (#78) ficou **represado**: o
   GitHub parou de executar qualquer CI (suspeita de cota de minutos esgotada —
   ARMADILHAS H14, item 1 do "Precisa de você agora" no painel). O plano está
