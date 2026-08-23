@@ -62,6 +62,10 @@ esta página existem e estão no repositório. O próximo passo é o Lote 0.
 
 ## Linha do tempo
 
+- **23/08/2026 (tarde)** — **O apagão do CI acabou**: o mantenedor tornou o
+  repositório público (saída C do H3), depois de varredura de segredos limpa
+  no histórico completo. Minutos de Actions ilimitados; este PR pôde ser
+  mergeado e o plano entrou na `main`.
 - **23/08/2026** — A auditoria EVO-00 foi executada (não precisa de CI): as 5
   perguntas respondidas com evidência em `AUDITORIA-AS-IS.md`. Achado maior:
   **não existe login de aluno em nenhuma célula** — a decisão de identidade é
