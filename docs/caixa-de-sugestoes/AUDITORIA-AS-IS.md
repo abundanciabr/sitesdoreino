@@ -1,8 +1,8 @@
-# AUDITORIA AS-IS — EVO-00 (Lote 0 da Central de Evolução)
+# AUDITORIA AS-IS — EVO-00 (Lote 0 da Caixa de Sugestões)
 
 > Executada em 23/08/2026, somente leitura, pela sessão-maestro (o apagão do CI
 > — H14 — não impede auditoria; impede merge). É o documento que a spec exige
-> antes de qualquer implementação (`feedback_cell_spec.md` §3 e DoD §11).
+> antes de qualquer implementação (`ESPECIFICACAO-CELULA.md` §3 e DoD §11).
 > Método: evidência medida no repositório, com caminho de arquivo citado.
 
 ## Q1 — As células operam com banco próprio isolado? ✅ SIM
@@ -17,7 +17,7 @@
   Prompt Zero ("banco cruzado" no painel).
 
 **Consequência:** o pressuposto da spec §3 vale. A restrição "nenhuma FK para
-fora da célula" é estrutural mesmo. `feedback_db` + `feedback_user` entram no
+fora da célula" é estrutural mesmo. `sugestoes_db` + `sugestoes_user` entram no
 provisionamento no Lote 2 (passo do mantenedor, via console — Lei 5).
 
 ## Q2 — Como um aluno se autentica hoje? ❌ NÃO SE AUTENTICA — o maior achado
@@ -37,7 +37,7 @@ mecanismo a criar. A decisão é do EVO-01 (mantenedor presente). Caminho de
 menor invenção compatível com o AS-IS: identidade por e-mail + link mágico
 validado contra a matrícula na célula `alunos` (contrato já existente), com
 `actor_id` = e-mail normalizado ou um UUID cunhado pela própria célula
-feedback na primeira aparição. "Staff" também não existe como role em lugar
+sugestoes na primeira aparição. "Staff" também não existe como role em lugar
 nenhum — precisa nascer junto (ex.: lista de e-mails staff no env da célula,
 fail-hard).
 
@@ -64,9 +64,9 @@ Medido em `.github/workflows/*` + `ci/`:
 | Deploy (`deploy-celula.yml`) | Mesma detecção; builda `ghcr.io/.../plataforma-<celula>` e exige o serviço no compose **da VPS** | ❌ nada no `.github/` |
 | **Manifesto** `ci/manifesto-de-contratos.json` | "célula em services/ fora deste manifesto → ERROR"; o próprio arquivo manda: **"Ao criar uma célula nova, declare-a aqui no MESMO PR"** | ✅ no PR do scaffold — e `ci/` é CODEOWNERS (mandato + anúncio nominal) |
 | Compose + Traefik (`infra/**`) | Bloco `x-celula` reutilizável; entrega mecanizada pelo `deploy-infra` (H11 ✅) | ✅ Lote 2 (CODEOWNERS) |
-| Env (`infra/env/feedback.exemplo` + `.env` real na VPS) | Real é segredo escrito à mão (INV-P8) | ✅ exemplo no repo; real = 🙋 mantenedor |
+| Env (`infra/env/sugestoes.exemplo` + `.env` real na VPS) | Real é segredo escrito à mão (INV-P8) | ✅ exemplo no repo; real = 🙋 mantenedor |
 | Banco na VPS (`provisionamento-postgres.sql`) | `CREATE ROLE/DATABASE` como superuser | 🙋 mantenedor, console |
-| Constituição `constituicoes/AGENTS.feedback.md` | As 8 células têm a sua | ✅ Lote 1 |
+| Constituição `constituicoes/AGENTS.sugestoes.md` | As 8 células têm a sua | ✅ Lote 1 |
 
 **Descoberta de sequenciamento nº 1 — o contrato NÃO pode nascer antes da célula.**
 O manifesto reprova nos dois sentidos: contrato em `contracts/` sem célula
@@ -81,14 +81,14 @@ nomes de evento, URL); o congelamento do contrato desloca-se para a fronteira
 EVO-11→EVO-12.
 
 **Descoberta de sequenciamento nº 2 — vermelho esperado no deploy durante o Lote 1.**
-Todo merge em `services/feedback/` dispara o `deploy-celula`, que **exige** o
+Todo merge em `services/sugestoes/` dispara o `deploy-celula`, que **exige** o
 serviço no compose da VPS ("ERRO: '<celula>' não tem serviço algum...") — e o
-compose só ganha `feedback` no Lote 2 (depois do banco existir, senão o
+compose só ganha `sugestoes` no Lote 2 (depois do banco existir, senão o
 container cai em crashloop com `DATABASE_URL` fail-hard e o `deploy-infra`
 reprova a verificação de serviços rodando). Portanto: **durante o Lote 1, o
-job de deploy da célula feedback fica vermelho por causa conhecida e
+job de deploy da célula sugestoes fica vermelho por causa conhecida e
 registrada** — a maestro trata esse vermelho específico como esperado (não
-pausa a janela por ele), e o Lote 2 o cura. As imagens `plataforma-feedback`
+pausa a janela por ele), e o Lote 2 o cura. As imagens `plataforma-sugestoes`
 já vão sendo publicadas no ghcr nesses merges — o Lote 2 só as puxa.
 
 ## Q5 — Convenções reais dos eventos (medidas no código vivo)
@@ -99,11 +99,12 @@ já vão sendo publicadas no ghcr nesses merges — o Lote 2 só as puxa.
   `f"eventos.{evento.event}"`. **A versão vai no envelope, não no nome do
   stream** (streams reais: `eventos.pagamento.aprovado`, `eventos.quiz.completado`,
   `eventos.pedido.criado`, `eventos.pix.expirado`).
-- **Nomes em PT, `substantivo.verbo-no-particípio`** — a spec §7 usa inglês
-  (`feedback.suggestion.created`): divergência. Proposta para EVO-01, seguindo
-  a casa: `feedback.sugestao.criada`, `feedback.sugestao.voto-adicionado`,
-  `feedback.sugestao.voto-removido`, `feedback.sugestao.status-alterado`,
-  `feedback.sugestao.mesclada` (v1 no envelope).
+- **Nomes em PT, `substantivo.verbo-no-particípio`** — a spec nascera com nomes
+  em inglês (`suggestion.created`…), divergindo da casa. **Resolvido em
+  23/08/2026**, junto da decisão de nome: os eventos passaram a ser
+  `sugestao.criada`, `sugestao.voto-adicionado`, `sugestao.voto-removido`,
+  `sugestao.status-alterado` e `sugestao.mesclada` (v1 no envelope), e a
+  ESPECIFICACAO-CELULA.md §7 já está reescrita assim.
 - **Consumer group = nome da célula**; e os consumers atuais (alunos, checkout,
   leads) já têm **reentrega via XAUTOCLAIM** — a peça que faltava do §9 do
   ARMADILHAS existe no código novo. O consumer do EVO-21 (mensageria) copia
@@ -116,13 +117,13 @@ já vão sendo publicadas no ghcr nesses merges — o Lote 2 só as puxa.
 | 1 | `AuthenticatedActor` emitido por célula de auth | Não existe auth de usuário final; aluno = e-mail na matrícula | Link mágico validado em `alunos` (contrato existente); staff por lista no env |
 | 2 | `actor_id`/`tenant_id`/`produto_id` UUID | IDs inter-célula são strings opacas | Strings opacas, como toda a plataforma |
 | 3 | Contrato congelado antes da célula | Manifesto proíbe contrato sem célula | Nascer `not-applicable`; Rito §3 na fronteira EVO-11→EVO-12 |
-| 4 | Eventos `feedback.suggestion.*` (EN) | Streams `eventos.<nome-pt>`, versão no envelope | Nomes PT (lista acima) |
+| 4 | Eventos em inglês (`suggestion.created`…) | Streams `eventos.<nome-pt>`, versão no envelope | Nomes PT (lista acima) |
 | 5 | — (spec não trata deploy) | deploy-celula exige serviço no compose da VPS | Vermelho esperado no Lote 1; cura no Lote 2 |
 
 ## Veredito
 
 Nenhum impedimento estrutural: a arquitetura da casa comporta a célula
-`feedback` exatamente como especificada — com as 5 adaptações da tabela, todas
+`sugestoes` exatamente como especificada — com as 5 adaptações da tabela, todas
 baratas porque **nada foi persistido ainda** (a própria spec previu isso).
 O item do DoD "auditoria AS-IS documentada e anexada antes da implementação"
 (spec §11) está cumprido por este documento.

@@ -1,11 +1,11 @@
-# MODELO DE DESPACHO — Central de Evolução
+# MODELO DE DESPACHO — Caixa de Sugestões
 
 > Template padrão para todo despacho desta iniciativa. A sessão-maestro copia,
 > preenche os `<campos>`, apaga as instruções em itálico e cola para o agente.
 > Herdado do formato da casa (ver `docs/decisoes/DESPACHO-04-deploy-infra.md`
 > como exemplo real) + as regras do `RUNBOOK-LOTES.md`.
 >
-> Arquivo preenchido vai para `docs/central-de-evolução/despachos/DESPACHO-EVO-NN-<apelido>.md`
+> Arquivo preenchido vai para `docs/caixa-de-sugestoes/despachos/DESPACHO-EVO-NN-<apelido>.md`
 > — assim o histórico de cada despacho fica versionado ao lado do plano.
 
 ---

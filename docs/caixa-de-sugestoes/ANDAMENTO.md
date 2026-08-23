@@ -1,25 +1,27 @@
-# ANDAMENTO — Central de Evolução
+# ANDAMENTO — Caixa de Sugestões
 
 > **Para você, mantenedor.** Uma página, sem jargão: o que já está no ar, o que
 > está sendo feito agora e o que espera na fila. Toda sessão que trabalhar na
-> Central atualiza esta página **e** o painel no fechamento — se os dois
+> Caixa atualiza esta página **e** o painel no fechamento — se os dois
 > discordarem, avise: é bug de processo.
 >
-> Última atualização: **22/08/2026** — plano mestre criado; nenhum lote disparado ainda.
+> Última atualização: **23/08/2026** — nome e endereço definidos; auditoria feita.
 
 **Legenda:** ⬜ na fila · 🔵 em andamento · ✅ entregue (com prova) · 🔴 travado · 🙋 precisa de você
 
 ## Onde estamos
 
-**Fase atual: planejamento concluído.** O plano mestre, o modelo de despacho e
-esta página existem e estão no repositório. O próximo passo é o Lote 0.
+**Fase atual: Lote 0, quase fechado.** O plano mestre existe, a auditoria do
+terreno foi feita, e o nome e o endereço estão decididos: a ferramenta chama-se
+**Caixa de Sugestões** e vai morar em **meshcraft.top/forms/sugestoes/**. Falta
+só a conversa EVO-01 (abaixo) para o Lote 1 poder começar.
 
 ## 🙋 Precisa de você (tudo que o plano inteiro vai pedir)
 
 | Quando | O quê | Como vai chegar |
 |---|---|---|
-| Antes do Lote 1 | Sessão de arquitetura EVO-01: decidir a identidade do aluno e aprovar o contrato da célula | Uma conversa numa janela raiz; o agente prepara tudo antes |
-| No Lote 2 | Criar o banco `feedback_db` na VPS + preencher o `feedback.env` real | UM bloco de colar, fail-closed, com a janela rotulada |
+| Antes do Lote 1 | Conversa EVO-01: decidir **como o aluno entra** na Caixa (proposta: link mágico pelo e-mail da matrícula, sem senha) | Uma conversa numa janela raiz; o agente prepara tudo antes |
+| No Lote 2 | Criar o banco `sugestoes_db` na VPS + preencher o `sugestoes.env` real | UM bloco de colar, fail-closed, com a janela rotulada |
 | No Lote 4 | Assinar `APROVADO_POR` no primeiro ChangeSpec real | Um campo para preencher, nada técnico |
 
 ## Lote 0 — Alicerce
@@ -27,13 +29,13 @@ esta página existem e estão no repositório. O próximo passo é o Lote 0.
 | Despacho | O que entrega | Estado | PR | Nota |
 |---|---|---|---|---|
 | EVO-00 | Auditoria do estado real da plataforma (identidade, bancos, eventos, como nasce célula) | ✅ | #78 | feita em 23/08 — `AUDITORIA-AS-IS.md`; achado maior: não existe login de aluno na plataforma |
-| EVO-01 | Decisões de arquitetura: como o aluno se identifica, nomes dos eventos, endereço da página | 🙋 | — | única reunião do plano; o contrato congela depois, no meio do Lote 1 |
+| EVO-01 | Decisão de arquitetura que sobrou: **como o aluno se identifica** (proposta: link mágico pelo e-mail da matrícula) | 🙋 | — | única reunião do plano; nome, endereço e nomes de evento já foram decididos em 23/08 |
 
 ## Lote 1 — A célula nasce
 
 | Despacho | O que entrega | Estado | PR | Nota |
 |---|---|---|---|---|
-| EVO-10 | A célula `feedback` existe, sobe e passa no CI | ⬜ | — | canário do lote |
+| EVO-10 | A célula `sugestoes` existe, sobe e passa no CI | ⬜ | — | canário do lote |
 | EVO-11 | Os dados: quadros, sugestões, votos, comentários, histórico | ⬜ | — | |
 | EVO-12 | Aluno consegue sugerir, votar e comentar (via API) | ⬜ | — | |
 | EVO-13 | Equipe consegue mudar status e avaliar (só staff) | ⬜ | — | |
@@ -44,7 +46,7 @@ esta página existem e estão no repositório. O próximo passo é o Lote 0.
 |---|---|---|---|---|---|
 | EVO-20 | Cada fato vira evento (outros sistemas podem reagir) | ⬜ | — | — | |
 | EVO-21 | Aluno recebe aviso quando a sugestão dele muda de status | ⬜ | — | — | célula mensageria |
-| EVO-22 | A Central entra no ar na VPS | ⬜ | — | — | inclui o passo 🙋 do banco |
+| EVO-22 | A Caixa entra no ar na VPS | ⬜ | — | — | inclui o passo 🙋 do banco |
 
 ## Lote 3 — O rosto
 
@@ -62,6 +64,11 @@ esta página existem e estão no repositório. O próximo passo é o Lote 0.
 
 ## Linha do tempo
 
+- **23/08/2026 (noite)** — **Nome e endereço decididos pelo mantenedor:**
+  *Caixa de Sugestões*, em `meshcraft.top/forms/sugestoes/`. A célula passa a
+  chamar-se `sugestoes` e os eventos ganham nomes no padrão da casa
+  (`sugestao.criada`, `sugestao.votada`…). Renomeado enquanto ainda era papel:
+  zero linha de código escrita, custo zero.
 - **23/08/2026 (tarde)** — **O apagão do CI acabou**: o mantenedor tornou o
   repositório público (saída C do H3), depois de varredura de segredos limpa
   no histórico completo. Minutos de Actions ilimitados; este PR pôde ser

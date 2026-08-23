@@ -1,6 +1,6 @@
 # ChangeSpec — Formato e Regras v1
 
-Formato do documento que fica entre a decisão de produto e a implementação por agente. Complementa `feedback_cell_spec.md`.
+Formato do documento que fica entre a decisão de produto e a implementação por agente. Complementa `ESPECIFICACAO-CELULA.md`.
 
 ## 1. Propósito e regra de autoria
 
@@ -17,16 +17,16 @@ Sugestao (linguagem do aluno)
     → agente implementa
 ```
 
-Todo ChangeSpec referencia pelo menos um `suggestion_id` real da célula de feedback. Se nasceu de várias sugestões mescladas, ou de um padrão identificado em várias sugestões (fase de clustering, mais adiante), referencia todas.
+Todo ChangeSpec referencia pelo menos um `suggestion_id` real da célula de sugestões. Se nasceu de várias sugestões mescladas, ou de um padrão identificado em várias sugestões (fase de clustering, mais adiante), referencia todas.
 
-A decisão de produto — o passo do meio — agora tem um lugar concreto: `AvaliacaoProduto.decisao_produto`, na célula de feedback. É onde a tradução de "problema do aluno" para "vamos resolver assim" fica registrada antes de virar ChangeSpec — uma linha, não um documento novo.
+A decisão de produto — o passo do meio — agora tem um lugar concreto: `AvaliacaoInterna.decisao_produto`, na célula de sugestões. É onde a tradução de "problema do aluno" para "vamos resolver assim" fica registrada antes de virar ChangeSpec — uma linha, não um documento novo.
 
 ## 3. Campos obrigatórios
 
 - **CHANGE-ID** — `CS-{celula}-{sequencial}`, ex: `CS-PORTFOLIO-0001`
-- **ORIGEM** — suggestion_id(s) da célula de feedback
+- **ORIGEM** — suggestion_id(s) da célula de sugestões
 - **PROBLEMA** — reescrito em linguagem de produto; nunca a frase literal do aluno
-- **EVIDÊNCIAS** — total de votos, autores únicos, comentários relevantes, puxados dos eventos da Feedback Cell
+- **EVIDÊNCIAS** — total de votos, autores únicos, comentários relevantes, puxados dos eventos da Célula de Sugestões
 - **OBJETIVO** — o que muda para o aluno quando isso for entregue
 - **FORA DO ESCOPO** — lista explícita do que não será construído nesta entrega. Campo obrigatório, não pode ficar vazio
 - **CÉLULA(S) RESPONSÁVEL(IS)** — qual célula (ou células) este ChangeSpec autoriza a tocar
@@ -47,11 +47,11 @@ Um ChangeSpec não está pronto para um agente pegar enquanto:
 - algum item de `CRITÉRIOS DE ACEITAÇÃO` não for verificável objetivamente — "melhorar a experiência" não é AC; "aluno publica portfólio e recebe URL pública em até 3 cliques" é
 - `APROVADO_POR` estiver vazio
 
-Imutabilidade: depois de aprovado, um ChangeSpec não é editado. Se o escopo mudar durante a implementação, nasce `CS-PORTFOLIO-0001-v2`, com um campo `SUBSTITUI` apontando para o anterior — o mesmo princípio do histórico append-only da célula de feedback, aplicado aqui.
+Imutabilidade: depois de aprovado, um ChangeSpec não é editado. Se o escopo mudar durante a implementação, nasce `CS-PORTFOLIO-0001-v2`, com um campo `SUBSTITUI` apontando para o anterior — o mesmo princípio do histórico append-only da célula de sugestões, aplicado aqui.
 
 ## 5. Gatilho no pipeline de status
 
-`Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec com `APROVADO_POR` preenchido referenciando aquele `suggestion_id`. Isso não é regra de interface — é validação no `save()` ou no serializer da célula de feedback. Ninguém, agente ou pessoa apressada, move o status sem o corredor existir primeiro.
+`Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec com `APROVADO_POR` preenchido referenciando aquele `suggestion_id`. Isso não é regra de interface — é validação no `save()` ou no serializer da célula de sugestões. Ninguém, agente ou pessoa apressada, move o status sem o corredor existir primeiro.
 
 ## 6. Exemplo preenchido
 
@@ -75,7 +75,7 @@ Imutabilidade: depois de aprovado, um ChangeSpec não é editado. Se o escopo mu
 
 **CONTRATOS PERMITIDOS:** `IdentityContract` (leitura de actor_id), `CourseEnrollmentContract` (leitura de projetos marcados como concluídos e publicáveis)
 
-**CÉLULAS PROIBIDAS:** `checkout`, `payments`, `leads`, `feedback` (leitura direta — só via evento), `gamification`, `catalogo`
+**CÉLULAS PROIBIDAS:** `checkout`, `payments`, `leads`, `sugestoes` (leitura direta — só via evento), `gamification`, `catalogo`
 
 **CRITÉRIOS DE ACEITAÇÃO:**
 - AC-01: aluno matriculado marca um projeto como publicável e gera URL pública em até 3 cliques
@@ -93,6 +93,6 @@ Imutabilidade: depois de aprovado, um ChangeSpec não é editado. Se o escopo mu
 - [ ] AC-01, AC-02, AC-03 com teste automatizado
 - [ ] nenhuma FK cruzando banco de célula
 - [ ] feature flag testada em ambos os estados
-- [ ] evento `feedback.suggestion.status_changed` disparado ao mover suggestion_id 728 para `IMPLEMENTADO`
+- [ ] evento `sugestao.status-alterado` disparado ao mover suggestion_id 728 para `IMPLEMENTADO`
 
 **APROVADO_POR:** _(vazio até revisão humana)_
