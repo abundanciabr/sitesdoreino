@@ -1,9 +1,11 @@
 # =============================================================================
 # ROTAS DA PLATAFORMA — MULTISSÍTIO.
 # Um deploy, N domínios: as rotas casam por CAMINHO em QUALQUER host apontado
-# para esta VPS. Domínio novo NÃO toca este arquivo (Modo A) — só DNS/Cloudflare
-# + cadastro do site no catálogo (Receita R11). Host não cadastrado recebe 404
-# da própria plataforma (middleware CONV-SITE — INV-P11), nunca um site padrão.
+# para esta VPS. Domínio novo Modo A (Cloudflare) NÃO toca este arquivo — só
+# DNS/Cloudflare + entrada no infra/sites.json (R11 mecanizada). Domínio novo
+# Modo B (direto, Let's Encrypt) acrescenta UMA linha na lista `tls.domains`
+# do router "funil" abaixo. Host não cadastrado recebe 404 da própria
+# plataforma (middleware CONV-SITE — INV-P11), nunca um site padrão.
 # Única exceção presa a UM host: os webhooks do Mercado Pago, no DOMÍNIO DE
 # OPERAÇÕES (basileiatoutheou.org = o seu domínio principal/da operação).
 # =============================================================================
@@ -69,15 +71,20 @@ http:
       entryPoints: [websecure]
       middlewares: [seguranca]
       service: funil
-      tls: {}
-      # MODO B (Let's Encrypt): descomente e liste TODOS os domínios dos sites —
-      # o ACME precisa dos nomes explícitos. No Modo A (Cloudflare) deixe como está.
-      # tls:
-      #   certResolver: le
-      #   domains:
-      #     - main: basileiatoutheou.org
-      #     - main: site2.com.br
-      #     - main: site3.com.br
+      # TLS misto, decidido POR DOMÍNIO (traefik.yml explica os dois modos):
+      # - Modo A (Cloudflare): o domínio NÃO entra na lista — a borda faz o
+      #   TLS público e aceita o autoassinado da origem (SSL mode Full).
+      # - Modo B (direto): o domínio entra em `domains` — o resolver `le`
+      #   emite Let's Encrypt para ele. A emissão só acontece DEPOIS de o DNS
+      #   apontar para a VPS; o cert emitido serve QUALQUER router (a escolha
+      #   é por SNI), então a lista vive só aqui no catch-all.
+      # ATENÇÃO (ARMADILHAS §1/H15): domínio direto MORRE se a VPS um dia só
+      # aceitar web das faixas do Cloudflare — confira esta lista antes de
+      # aplicar aquele endurecimento.
+      tls:
+        certResolver: le
+        domains:
+          - main: meshcraft.top
 
   services:
     funil:

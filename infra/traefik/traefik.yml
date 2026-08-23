@@ -26,20 +26,24 @@ log:
   level: INFO
 accessLog: {}
 
-# --- TLS: escolha UM modo -----------------------------------------------------
-# MODO A — RECOMENDADO PARA MULTISSÍTIO (dezenas de domínios):
-#   Cada domínio entra no Cloudflare (plano gratuito), com registro A apontando
-#   para esta VPS e SSL mode "Full". O Cloudflare faz o TLS público de todos;
-#   na origem, o Traefik serve seu certificado padrão autoassinado — que o modo
-#   Full aceita. Resultado: DOMÍNIO NOVO = ZERO mudança neste servidor.
-#   (Domínios críticos podem ser promovidos a Full-Strict depois, caso a caso.)
-# MODO B (Let's Encrypt direto, sem Cloudflare — descomente aqui E liste os
-#   domínios no router "funil" do dynamic/plataforma.yml; cada domínio novo
-#   exige adicionar uma linha lá):
-# certificatesResolvers:
-#   le:
-#     acme:
-#       email: abundanciabr@gmail.com
-#       storage: /letsencrypt/acme.json
-#       httpChallenge:
-#         entryPoint: web
+# --- TLS: os dois modos COEXISTEM, decididos POR DOMÍNIO ----------------------
+# MODO A (Cloudflare na frente) — o padrão para dezenas de domínios:
+#   O domínio entra no Cloudflare (plano gratuito), registro A apontando para
+#   esta VPS, SSL mode "Full". O Cloudflare faz o TLS público; na origem o
+#   Traefik serve o certificado padrão autoassinado, que o Full aceita.
+#   Domínio novo Modo A = ZERO mudança neste servidor (ex.: basileiatoutheou.org).
+# MODO B (Let's Encrypt direto, sem Cloudflare) — ATIVO desde 23/08/2026
+#   (decisão do mantenedor para o meshcraft.top): o resolver abaixo emite
+#   certificado para os domínios listados em `tls.domains` do router "funil"
+#   (dynamic/plataforma.yml) — domínio novo direto = uma linha lá. O ACME só
+#   emite DEPOIS de o DNS do domínio apontar para esta VPS (httpChallenge na
+#   porta 80); até lá o Traefik serve o autoassinado e re-tenta sozinho. O
+#   storage persiste no volume `letsencrypt` do compose — NUNCA dentro de
+#   ./traefik/, que o deploy-infra substitui inteiro a cada sync.
+certificatesResolvers:
+  le:
+    acme:
+      email: abundanciabr@gmail.com
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
