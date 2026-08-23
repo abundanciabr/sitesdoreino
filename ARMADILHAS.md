@@ -387,6 +387,29 @@ merge de recarga — e diga isso ao mantenedor, para "ainda sem cadeado" não pa
 falha do trabalho.
 **Origem:** meshcraft.top (23/08/2026), primeiro domínio direto da plataforma.
 
+### 3.19 A conferência de CRLF do §3.12 (`grep -c $'\r'`) dá FALSO-POSITIVO no Git Bash desta máquina
+
+**Sintoma:** `git show :ci/orcamento-de-mudanca.sh | grep -c $'\r'` responde `88`
+num arquivo cujo blob tem **zero** bytes CR (provado por
+`git cat-file blob :<arquivo> | tr -dc '\r' | wc -c` → `0`, e por `od -c`
+mostrando `\n` puro). O número "de CRs" é na verdade o número de LINHAS do
+arquivo: o CR do argumento se perde no caminho MSYS→grep e o grep roda com
+padrão vazio — que casa toda linha. Medido em 23/08/2026, neste repositório.
+**Causa:** conversão de argumentos do MSYS2 ao invocar o `grep` nativo — o
+byte `\r` sozinho como argv não chega inteiro. O comando é o recomendado no
+§3.12, então quem segue aquela receita ao pé da letra conclui "CRLF!" num
+arquivo limpo (o inverso do falso-verde: um falso-VERMELHO que manda o agente
+"consertar" o que não está quebrado).
+**Solução:** medir por bytes, não por linhas casadas:
+```bash
+git cat-file blob :<arquivo> | tr -dc '\r' | wc -c   # 0 = limpo, N>0 = tem CR
+```
+Se der N>0, aí sim vale o §3.12 (`.gitattributes` com `*.sh text eol=lf` já
+protege o blob neste repositório). Em caso de dúvida, `od -c` é o juiz.
+**Origem:** despacho ci/lane-traducoes (23/08/2026) — a conferência exigida
+pelo próprio despacho acusou 88 CRs num `.sh` limpo; meia hora de diagnóstico
+para descobrir que o instrumento era o problema.
+
 ---
 
 ## §4 — Django e django-ninja
@@ -998,6 +1021,33 @@ atravessa pipe sem ser capturado**.
 **Origem:** sessão deploy-infra (21-22/08/2026) — o agente reproduziu em si mesmo o
 falso-verde que este repositório combate; corrigido na mesma sessão, veredito
 refeito pelo JSON.
+
+### 5.11 Lane `traducoes` no orçamento: as muralhas aceitam, mas `mergear.py` ainda NÃO conhece a válvula
+
+**Sintoma (previsto, mecânico — ainda não medido num PR real):** um lote de
+tradução com a label `traducoes` e >15 arquivos, todos em
+`services/*/traducoes/**`, passa verde no `orcamento-de-mudanca` das muralhas —
+e na hora do merge `python ci/mergear.py <N>` reprova com
+`"N arquivos sem a label 'arquitetural'"`.
+**Causa:** `checar_labels()` em `ci/mergear.py` REIMPLEMENTA o orçamento (de
+propósito — confere antes do merge o que as muralhas conferiram no PR), mas só
+conhece a válvula `arquitetural`; a lane `traducoes` (PLANO-I18N.md, D9) entrou
+só no `ci/orcamento-de-mudanca.sh`, porque `mergear.py` estava fora do escopo do
+despacho que a criou. Duplicação de semântica entre portão e catraca = os dois
+podem divergir, e divergiram aqui por um despacho de distância.
+**Solução:** antes do primeiro lote de tradução de verdade, um despacho pequeno
+em `ci/` ensina a lane ao `checar_labels()` de `mergear.py` (mesma regra: todo
+arquivo do PR casando `services/[^/]+/traducoes/.+` e nenhum executável) — com
+teste-guarda em `ci/tests/test_mergear.py`. Enquanto isso não acontecer, a lane
+existe no CI mas nenhum lote >15 passa da catraca.
+**Detalhes da lane que valem para quem for mexer:** a checagem de modo usa
+`git diff --raw --no-renames` (rename desdobrado em remoção+adição, para nenhum
+lado escapar; dst mode `100644`/`000000` são os únicos aceitos — `100755`,
+symlink `120000` e submódulo `160000` reprovam). Nos testes, o jeito de comitar
+um executável de verdade no Windows é `git update-index --chmod=+x <arquivo>`
+(o `core.filemode=false` ignora o bit do disco).
+**Origem:** despacho ci/lane-traducoes (23/08/2026), ao ler `mergear.py` para
+escrever a nota exigida pela especificação.
 
 ## §6 — Testes
 
