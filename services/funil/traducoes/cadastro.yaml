@@ -1,0 +1,71 @@
+# traducoes/cadastro.yaml — página de cadastro do meshcraft (PLANO-I18N fase 2).
+# Formato key-major (D2): todas as línguas da página lado a lado; `_fonte` é
+# sha256[:6] do valor `en` no momento da tradução (D4 — anti-obsolescência).
+# en é a FONTE; pt-br é tradução FIEL (janela de auditoria do mantenedor — D8.5);
+# Meshcraft / Roblox / Roblox Studio nunca se traduzem (glossário, D8.1).
+
+titulo:
+  # <title> e og:title da página — inclui a marca (glossário).
+  _fonte: "9741dd"
+  en: "Sign up — Meshcraft"
+  pt-br: "Cadastro — Meshcraft"
+  es: "Registro — Meshcraft"
+
+meta_descricao:
+  # meta description e og:description.
+  _fonte: "c4fdbf"
+  en: "Sign up to learn to build games with Roblox Studio."
+  pt-br: "Cadastre-se para aprender a criar jogos com o Roblox Studio."
+  es: "Regístrate para aprender a crear juegos con Roblox Studio."
+
+titulo_pagina:
+  # <h1> visível da página.
+  _fonte: "f1682f"
+  en: "Sign up for Meshcraft"
+  pt-br: "Cadastre-se no Meshcraft"
+  es: "Regístrate en Meshcraft"
+
+subtitulo:
+  _fonte: "05551f"
+  en: "Leave your name and e-mail to follow the news."
+  pt-br: "Deixe seu nome e e-mail para acompanhar as novidades."
+  es: "Deja tu nombre y correo para seguir las novedades."
+
+campo_nome:
+  _fonte: "dcd1d5"
+  en: "Name"
+  pt-br: "Nome"
+  es: "Nombre"
+
+campo_email:
+  _fonte: "2550d9"
+  en: "E-mail"
+  pt-br: "E-mail"
+  es: "Correo electrónico"
+
+campo_whatsapp:
+  # WhatsApp é nome de produto — não se traduz (mesmo espírito do glossário).
+  _fonte: "1e9e69"
+  en: "WhatsApp (optional)"
+  pt-br: "WhatsApp (opcional)"
+  es: "WhatsApp (opcional)"
+
+botao_enviar:
+  _fonte: "5e2b8e"
+  en: "Sign up"
+  pt-br: "Cadastrar"
+  es: "Registrarme"
+
+sucesso:
+  _fonte: "bdbe77"
+  en: "Done! We received your sign-up."
+  pt-br: "Pronto! Recebemos seu cadastro."
+  es: "¡Listo! Recibimos tu registro."
+
+erro_envio:
+  # Falha ao repassar o lead à célula leads (a página responde 502 e mantém o
+  # que a pessoa digitou — nunca perde o formulário em silêncio).
+  _fonte: "37c9df"
+  en: "We could not send your sign-up. Try again."
+  pt-br: "Não foi possível enviar seu cadastro. Tente de novo."
+  es: "No pudimos enviar tu registro. Inténtalo de nuevo."

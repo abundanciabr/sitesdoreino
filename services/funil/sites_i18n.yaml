@@ -4,8 +4,7 @@
 #
 # REGRAS (o validador da célula reprova o que sair disto — boot e CI):
 # - Site AUSENTE deste registro = monolíngue, comportamento de hoje, intocado
-#   por construção. NENHUM site real é registrado na fase 1 (a fase 2 registra
-#   o meshcraft junto com a página de cadastro).
+#   por construção.
 # - Todo host declarado aqui PRECISA existir em infra/sites.json (teste de
 #   coerência no CI — dívida de dois-lugares-declarando só é aceitável vigiada).
 # - Código de idioma: minúsculo, BCP 47 com hífen (URL); `tag` é a mesma coisa
@@ -15,17 +14,13 @@
 # - `glossario`: termos que NUNCA se traduzem (D8.1) — presença literal
 #   conferida em toda tradução.
 #
-# Exemplo COMENTADO (não registrado — fase 2 traz o real):
-#
-# sites:
-#   meshcraft.top:
-#     i18n_mode: prefixed        # único modo: TODO idioma com prefixo na URL (D1)
-#     default: en                # recebe o 302 da raiz e o x-default
-#     idiomas:
-#       en:    { tag: en,    dir: ltr, indexavel: true }
-#       pt-br: { tag: pt-BR, dir: ltr, indexavel: true }
-#       es:    { tag: es,    dir: ltr, indexavel: false }   # D5: es NASCE noindex
-#       # pt-pt: { tag: pt-PT, dir: ltr, indexavel: false, base: pt-br }
-#     glossario: [Meshcraft, Roblox, Roblox Studio]
-
-sites: {}
+sites:
+  meshcraft.top:                 # fase 2: o PRIMEIRO site multilíngue da plataforma
+    i18n_mode: prefixed          # único modo: TODO idioma com prefixo na URL (D1)
+    default: en                  # recebe o 302 da raiz e o x-default
+    idiomas:
+      en:    { tag: en,    dir: ltr, indexavel: true }
+      pt-br: { tag: pt-BR, dir: ltr, indexavel: true }
+      es:    { tag: es,    dir: ltr, indexavel: false }   # D5: es NASCE noindex até haver demanda
+      # pt-pt: { tag: pt-PT, dir: ltr, indexavel: false, base: pt-br }
+    glossario: [Meshcraft, Roblox, Roblox Studio]

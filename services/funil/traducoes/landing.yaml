@@ -1,0 +1,68 @@
+# traducoes/landing.yaml — landing de site REGISTRADO no i18n (PLANO-I18N
+# fase 2; template funil/landing_i18n.html). O conteúdo é o placeholder de
+# teste da landing atual, traduzido fiel — en é a fonte, pt-br espelha o copy
+# PT-BR que a landing monolíngue já serve hoje.
+# A subárvore js.* alimenta a ilha Alpine via json_script (D2.6).
+
+preco:
+  # Moeda é DADO (BRL da oferta), não copy — igual nas três línguas até a
+  # fase que separar idioma de moeda (D9: es não implica EUR).
+  _fonte: "bd992a"
+  en: "R$ {preco}"
+  pt-br: "R$ {preco}"
+  es: "R$ {preco}"
+
+cta_comprar:
+  _fonte: "ddac15"
+  en: "I want to buy"
+  pt-br: "Quero comprar"
+  es: "Quiero comprar"
+
+novidades_titulo:
+  _fonte: "aa2139"
+  en: "Receive news"
+  pt-br: "Receba novidades"
+  es: "Recibe novedades"
+
+campo_nome:
+  _fonte: "dcd1d5"
+  en: "Name"
+  pt-br: "Nome"
+  es: "Nombre"
+
+campo_email:
+  _fonte: "2550d9"
+  en: "E-mail"
+  pt-br: "E-mail"
+  es: "Correo electrónico"
+
+campo_whatsapp:
+  _fonte: "1e9e69"
+  en: "WhatsApp (optional)"
+  pt-br: "WhatsApp (opcional)"
+  es: "WhatsApp (opcional)"
+
+sucesso:
+  _fonte: "03642b"
+  en: "Received! We will be in touch soon."
+  pt-br: "Recebido! Em breve entramos em contato."
+  es: "¡Recibido! Pronto entraremos en contacto."
+
+js:
+  # Strings que a ilha Alpine troca em runtime (estado enviando/erro) —
+  # emitidas com |json_script; proibido catálogo de tradução em JS (D2.6).
+  enviando:
+    _fonte: "b8ed52"
+    en: "Sending…"
+    pt-br: "Enviando…"
+    es: "Enviando…"
+  cta_receber:
+    _fonte: "2f3f4a"
+    en: "I want to receive"
+    pt-br: "Quero receber"
+    es: "Quiero recibir"
+  erro:
+    _fonte: "764ed9"
+    en: "Could not send. Try again."
+    pt-br: "Não foi possível enviar. Tente de novo."
+    es: "No se pudo enviar. Inténtalo de nuevo."

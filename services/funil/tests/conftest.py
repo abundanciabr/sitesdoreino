@@ -45,6 +45,28 @@ OFERTA_A = {
     "bumps": [],
 }
 
+# meshcraft.top é o ÚNICO host real aqui, de propósito: desde a fase 2 do
+# PLANO-I18N ele está registrado no sites_i18n.yaml REAL (instalado no boot),
+# e os testes da matriz/cadastro/sitemap exercitam esse registro de verdade.
+# No catálogo ele continua mockado como qualquer outro (R2: só o contrato).
+HOST_MESH = "meshcraft.top"
+SLUG_MESH = "curso-teste"
+SITE_MESH = {
+    "id": "site-mesh",
+    "host": HOST_MESH,
+    "name": "Meshcraft (site de testes)",
+    "active": True,
+    "default_offer_slug": SLUG_MESH,
+}
+OFERTA_MESH = {
+    "site_id": SITE_MESH["id"],
+    "slug": SLUG_MESH,
+    "version": 1,
+    "product": {"id": "prod-mesh", "name": "Curso de Teste"},
+    "price_cents": 990,
+    "bumps": [],
+}
+
 
 @pytest.fixture(autouse=True)
 def ambiente(monkeypatch):
@@ -70,15 +92,22 @@ def rede():
         mock.get(f"{CATALOGO}/sites/by-host/{HOST_DESCONHECIDO}").mock(
             return_value=httpx.Response(404)
         )
+        mock.get(f"{CATALOGO}/sites/by-host/{HOST_MESH}").mock(
+            return_value=httpx.Response(200, json=SITE_MESH)
+        )
         mock.get(f"{CATALOGO}/sites/{SITE_A['id']}/ofertas/{SLUG}").mock(
             return_value=httpx.Response(200, json=OFERTA_A)
+        )
+        mock.get(f"{CATALOGO}/sites/{SITE_MESH['id']}/ofertas/{SLUG_MESH}").mock(
+            return_value=httpx.Response(200, json=OFERTA_MESH)
         )
         # Qualquer outra oferta não existe — registrada por último porque o respx
         # resolve na ordem de registro (as específicas acima ganham).
         mock.get(url__regex=r".*/sites/[^/]+/ofertas/.+").mock(
             return_value=httpx.Response(404)
         )
-        mock.post(f"{LEADS}/leads").mock(
+        # Nomeada para os testes que trocam a resposta (ex.: leads fora do ar).
+        mock.post(f"{LEADS}/leads", name="upsert_lead").mock(
             return_value=httpx.Response(
                 200, json={"lead_id": "lead-de-teste", "created": True}
             )
