@@ -73,15 +73,23 @@ jobs:
     outputs:
       celula: ${{ steps.v.outputs.celula }}
       tag: ${{ steps.v.outputs.tag }}
-      imagem: ${{ steps.v.outputs.imagem }}
       var_tag: ${{ steps.v.outputs.var_tag }}
     steps:
-      # fetch-depth: 0 não é detalhe — a checagem de ancestralidade precisa do
-      # histórico inteiro. Com o clone raso, um sha legítimo de dois dias atrás
-      # seria "desconhecido", e o portão reprovaria um alvo bom (ERROR honesto,
-      # mas no meio de uma emergência isso custa os minutos que o rito conta).
+      # `ref: main` NÃO é decoração — é a régua da checagem de linhagem.
+      # `workflow_dispatch` aceita ser disparado de QUALQUER ref (`gh workflow
+      # run --ref <branch>`), e com o checkout padrão o repositório viria nesse
+      # ref: a promessa "o alvo é ancestral da MAIN" viraria, na prática, "é
+      # ancestral da branch de quem disparou". Fixando aqui, a régua é sempre a
+      # linha principal — e, de quebra, o `ci/rollback.py` que julga também vem
+      # da main, não da branch do disparo.
+      #
+      # fetch-depth: 0 pelo mesmo peso — a ancestralidade precisa do histórico
+      # inteiro. Com clone raso, um sha legítimo de dois dias atrás seria
+      # "desconhecido", e o portão reprovaria um alvo BOM (ERROR honesto, mas no
+      # meio de uma emergência isso custa os minutos que o rito conta).
       - uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
@@ -97,7 +105,10 @@ jobs:
           ROLLBACK_CELULA: ${{ inputs.celula }}
           ROLLBACK_ALVO: ${{ inputs.alvo }}
           ROLLBACK_MOTIVO: ${{ inputs.motivo }}
-          ROLLBACK_BASE: ${{ github.sha }}
+          # HEAD, e não `github.sha`: o checkout acima fixa `ref: main`, então
+          # HEAD É a main. Usar `github.sha` aqui era o furo — ele é o sha do
+          # ref DO DISPARO, o que deixava a régua nas mãos de quem dispara.
+          ROLLBACK_BASE: HEAD
         run: python ci/rollback.py
 
   aplicar:

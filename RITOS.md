@@ -121,6 +121,12 @@ revisado em produção (os dois workflows de deploy o recusam justamente por iss
 **Desfazer:** o mesmo comando com `alvo=main`. E o pin não persiste sozinho: o próximo
 deploy da célula já volta para `:main` — é o item 3 desta lista, mecanizado.
 
+> ⚠️ **O outro lado disso, que morde:** enquanto o rollback estiver ATIVO, **não mergeie
+> nada que toque `infra/`**. O `deploy-infra` termina com `docker compose up -d` sem
+> argumento, o que devolve TODAS as células ao `:main` — inclusive a que você acabou de
+> voltar, em silêncio e com o run verde. Se acontecer, redispare o rollback (é idempotente,
+> ~76s). Detalhe e as saídas definitivas em `ARMADILHAS.md` §5.16.
+
 > Até 23/08/2026 este rito era um bloco de `ssh deploy@…` para o mantenedor colar, e
 > isso violava a própria Lei das 2h da Manhã: o caminho mais rápido dependia de acordar
 > uma pessoa. O bloco antigo segue valendo como ÚLTIMO recurso, se o GitHub Actions
