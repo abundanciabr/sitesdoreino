@@ -1,0 +1,75 @@
+{% extends "base_mobile.html" %}
+{% load static %}
+{% load t %}
+{% load url_i18n %}
+<!-- templates/funil/landing_i18n.html  [RECEITA:R6 v1] — PLANO-I18N fase 2.
+     Landing de site REGISTRADO no i18n (Lei 7: template PRÓPRIO, copiado do
+     padrão funil/landing.html — o caminho do site não registrado continua
+     renderizando landing.html byte-idêntico, provado pelo golden da fase 1).
+     A ilha Alpine posta em {% url_i18n 'capturar_lead' %}: /leads NU é 404
+     pela matriz D1 — o prefixo de idioma é obrigatório em todo link/action.
+     O link do checkout segue SEM prefixo de propósito: checkout é outra
+     célula, monolíngue — prefixá-lo é a decisão D6, fora desta fase. -->
+{% block titulo %}{{ oferta.product.name }} — {{ site.name }}{% endblock %}
+{% block estilo %}
+    .preco { font-size: 1.5rem; font-weight: 700; }
+    .cta { display: block; width: 100%; padding: 1rem; border: 0; border-radius: .5rem; background: #16a34a; color: #fff; font-size: 1.1rem; font-weight: 600; text-align: center; text-decoration: none; }
+    .cta[aria-disabled=true] { opacity: .5; pointer-events: none; }
+    input[type=text], input[type=email], input[type=tel] { width: 100%; padding: .75rem; border: 1px solid #ccc; border-radius: .5rem; font-size: 1rem; margin-bottom: .5rem; }
+    .msg { font-size: .875rem; margin-top: .5rem; }
+    .erro { color: #b91c1c; }
+    .sucesso { color: #16a34a; }
+{% endblock %}
+{% block conteudo %}
+{{ utm|json_script:"utm-data" }}
+{{ i18n_js|json_script:"i18n-data" }}
+<div class="card">
+  <h1>{{ oferta.product.name }}</h1>
+  <p class="preco">{% t "landing.preco" preco=preco_formatado %}</p>
+  <a class="cta" href="{{ url_checkout }}">{% t "landing.cta_comprar" %}</a>
+</div>
+
+<div class="card" x-data="capturaIsland()" x-init="init()">
+  <h2>{% t "landing.novidades_titulo" %}</h2>
+  <form @submit.prevent="enviar">
+    <input type="text" placeholder="{% t "landing.campo_nome" %}" x-model="name">
+    <input type="email" placeholder="{% t "landing.campo_email" %}" x-model="email" required>
+    <input type="tel" placeholder="{% t "landing.campo_whatsapp" %}" x-model="phone">
+    <button class="cta" type="submit" :aria-disabled="enviando ? 'true' : 'false'" :disabled="enviando">
+      <span x-text="enviando ? i18n.enviando : i18n.cta_receber">{% t "landing.js.cta_receber" %}</span>
+    </button>
+    <p class="msg sucesso" x-show="sucesso">{% t "landing.sucesso" %}</p>
+    <p class="msg erro" x-show="erro" x-text="erro"></p>
+  </form>
+</div>
+{% endblock %}
+{% block script_extra %}
+<script src="{% static 'funil/api.js' %}"></script>
+<script>
+function capturaIsland() {
+  return {
+    name: "", email: "", phone: "",
+    enviando: false, sucesso: false, erro: "",
+    utm: {}, i18n: {},
+    init() {
+      this.utm = JSON.parse(document.getElementById("utm-data").textContent);
+      this.i18n = JSON.parse(document.getElementById("i18n-data").textContent);
+    },
+    async enviar() {
+      this.enviando = true; this.erro = ""; this.sucesso = false;
+      try {
+        await api.post("{% url_i18n 'capturar_lead' %}", {
+          name: this.name, email: this.email, phone: this.phone,
+          source: "lp-funil-{{ request.idioma }}", utm: this.utm,
+        });
+        this.sucesso = true;
+      } catch (e) {
+        this.erro = this.i18n.erro;
+      } finally {
+        this.enviando = false;
+      }
+    },
+  };
+}
+</script>
+{% endblock %}

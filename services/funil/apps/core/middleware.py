@@ -13,9 +13,11 @@ _CACHE: dict = {}
 TTL_SEGUNDOS = 60
 
 # /healthz é sonda do container e do gateway — chega sem Host de site e não pode
-# depender do catálogo estar de pé. Estáticos idem. A isenção roda ANTES de
-# QUALQUER lógica (inclusive a de idioma): rota de máquina nunca se localiza.
-CAMINHOS_SEM_SITE = ("/healthz", "/static/")
+# depender do catálogo estar de pé. Estáticos idem. /sitemap.xml é rota de
+# MÁQUINA (D6): sem prefixo de idioma e sem depender do catálogo — a view lê o
+# Host direto do registro i18n. A isenção roda ANTES de QUALQUER lógica
+# (inclusive a de idioma): rota de máquina nunca se localiza.
+CAMINHOS_SEM_SITE = ("/healthz", "/static/", "/sitemap.xml")
 
 # D1/D6: primeiro segmento com FORMA de idioma (2-3 letras ± região, qualquer
 # caixa/separador) que NÃO seja código habilitado ⇒ 404 fail-closed — cobre

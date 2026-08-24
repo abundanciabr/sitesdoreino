@@ -27,6 +27,10 @@ DIR_TEMPLATES = "templates"
 MARCADOR_REVISAO = "# revisado-sem-alteracao"
 
 RE_USO_T = re.compile(r"\{%\s*t\s+(.+?)\s*%\}")
+# {% url %} CRU (o \s exclui {% url_i18n %}): não gera prefixo de idioma — em
+# template i18n o link cairia na matriz D1 (GET vira 302 extra; POST vira 404
+# com corpo descartado). Pendência 2 do PR #87: o caminho certo é {% url_i18n %}.
+RE_URL_CRU = re.compile(r"\{%\s*url\s")
 RE_LINHA_FONTE = re.compile(r"\s*_fonte\s*:")
 RE_ON_ATTR = re.compile(r"\bon[a-z]+\s*=", re.I)
 RE_TAG_HTML = re.compile(r"</?\s*([a-zA-Z0-9]+)")
@@ -253,6 +257,12 @@ def _checar_templates(raiz: Path, chaves: dict, problemas: "list[str]"):
     pasta = raiz / DIR_TEMPLATES
     for arquivo in sorted(pasta.rglob("*.html")) if pasta.is_dir() else []:
         texto = arquivo.read_text(encoding="utf-8")
+        usa_t = RE_USO_T.search(texto) is not None
+        if usa_t and RE_URL_CRU.search(texto):
+            problemas.append(
+                f"{arquivo.name}: {{% url %}} cru em template i18n (usa {{% t %}}) "
+                "— use {% url_i18n %}, que gera o prefixo de idioma (D1/D6)"
+            )
         for uso in RE_USO_T.finditer(texto):
             primeiro = uso.group(1).split()[0]
             if (

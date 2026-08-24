@@ -1,0 +1,45 @@
+{% extends "base_mobile.html" %}
+{% load t %}
+{% load url_i18n %}
+<!-- templates/funil/cadastro.html  [RECEITA:R6 v1] — PLANO-I18N fase 2.
+     Página SÓ de site registrado no i18n (a view devolve 404 fora do regime).
+     Todo texto visível sai do catálogo via a tag t; o action do form é a
+     PRÓPRIA URL prefixada, via url_i18n — a tag url crua do Django é proibida
+     aqui (lint do validador: ela não gera o prefixo de idioma). -->
+{% block titulo %}{% t "cadastro.titulo" %}{% endblock %}
+{% block head_extra %}
+  <meta name="description" content="{% t "cadastro.meta_descricao" %}">
+  <meta property="og:title" content="{% t "cadastro.titulo" %}">
+  <meta property="og:description" content="{% t "cadastro.meta_descricao" %}">
+{% endblock %}
+{% block estilo %}
+    .cta { display: block; width: 100%; padding: 1rem; border: 0; border-radius: .5rem; background: #16a34a; color: #fff; font-size: 1.1rem; font-weight: 600; text-align: center; text-decoration: none; }
+    input[type=text], input[type=email], input[type=tel] { width: 100%; padding: .75rem; border: 1px solid #ccc; border-radius: .5rem; font-size: 1rem; margin-bottom: .5rem; }
+    label { display: block; font-size: .875rem; margin-bottom: .25rem; }
+    .msg { font-size: .875rem; margin-top: .5rem; }
+    .erro { color: #b91c1c; }
+    .sucesso { color: #16a34a; }
+{% endblock %}
+{% block conteudo %}
+<div class="card">
+  <h1>{% t "cadastro.titulo_pagina" %}</h1>
+  <p>{% t "cadastro.subtitulo" %}</p>
+  {% if sucesso %}<p class="msg sucesso">{% t "cadastro.sucesso" %}</p>{% endif %}
+  {% if erro_envio %}<p class="msg erro">{% t "cadastro.erro_envio" %}</p>{% endif %}
+  <form method="post" action="{% url_i18n 'cadastro' %}">
+    <label>{% t "cadastro.campo_nome" %}
+      <input type="text" name="name" value="{{ form.name.value|default:'' }}">
+    </label>
+    {% for erro in form.name.errors %}<p class="msg erro">{{ erro }}</p>{% endfor %}
+    <label>{% t "cadastro.campo_email" %}
+      <input type="email" name="email" value="{{ form.email.value|default:'' }}">
+    </label>
+    {% for erro in form.email.errors %}<p class="msg erro">{{ erro }}</p>{% endfor %}
+    <label>{% t "cadastro.campo_whatsapp" %}
+      <input type="tel" name="phone" value="{{ form.phone.value|default:'' }}">
+    </label>
+    {% for erro in form.phone.errors %}<p class="msg erro">{{ erro }}</p>{% endfor %}
+    <button class="cta" type="submit">{% t "cadastro.botao_enviar" %}</button>
+  </form>
+</div>
+{% endblock %}

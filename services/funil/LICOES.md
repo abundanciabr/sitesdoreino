@@ -76,6 +76,11 @@ prefixar o destino do form (`/{idioma}/leads`, que o resolver decapa e o
 urlconf resolve), ou promover `/leads` a rota de máquina. Sem essa decisão, o
 formulário do site registrado nasce morto.
 **Origem:** despacho funil/i18n-fundacao.
+**RESOLVIDA no despacho funil/i18n-cadastro (decisão da maestro):** todo POST
+de site registrado vai para a PRÓPRIA URL prefixada — a ilha da landing posta
+em `{% url_i18n 'capturar_lead' %}` (`/{idioma}/leads`) e o form de cadastro
+em `{% url_i18n 'cadastro' %}`; caminho nu segue 404. `/leads` NÃO virou rota
+de máquina.
 
 ## O resolver decapa o prefixo em `request.path_info`; `request.path` fica intacto
 
@@ -112,3 +117,49 @@ formato, o link daqui quebra silenciosamente — nenhum teste desta célula pode
 pegar isso, porque checkout não roda aqui (R2: só o contrato). Vale a pena um
 smoke cross-célula manual depois que os dois PRs (funil e checkout/paginas)
 estiverem mergeados.
+
+## Lint de template por regex também lê os COMENTÁRIOS do template
+
+**Sintoma:** `pytest` morre na inicialização da sessão inteira com
+`ImproperlyConfigured: [i18n] catálogo inválido — célula não sobe`, apontando
+um template que parece correto — a violação citada (a tag `url` crua) só
+existe dentro de um comentário HTML que explicava a própria regra.
+**Causa:** os lints do validador (`RE_USO_T`, `RE_URL_CRU`) varrem o ARQUIVO
+inteiro por regex; comentário HTML é texto como qualquer outro. E como o
+validador roda no BOOT (D4 fail-closed), a "violação" documentada derruba o
+`django.setup()` do pytest antes de qualquer teste ser coletado.
+**Solução:** em comentário de template, descreva a tag pelo NOME ("a tag url
+crua do Django"), nunca pela sintaxe literal. Vale para qualquer lint novo.
+**Origem:** despacho funil/i18n-cadastro — o comentário de cabeçalho de
+`templates/funil/cadastro.html`.
+
+## `hreflang="es"` continua aparecendo na página noindex — mas só na âncora do seletor
+
+**Sintoma:** asserção de "es fora do hreflang" escrita como
+`'hreflang="es"' not in html` falha mesmo com a emissão SEO correta.
+**Causa:** o seletor de idiomas emite `<a ... hreflang="es">` de propósito —
+seletor é para gente; o hreflang de robô é a tag `<link rel="alternate">`.
+**Solução:** a asserção negativa mira `'<link rel="alternate" hreflang="es"'`
+(mesmo padrão do teste da fase 1), nunca o atributo solto.
+**Origem:** despacho funil/i18n-cadastro — `tests/test_cadastro.py`.
+
+## Erro de form localizado se afirma com `override()`+`gettext`, nunca com string estrangeira colada
+
+O `activate()` do resolver faz o Django traduzir sozinho as mensagens de erro
+de formulário. No teste, o valor esperado sai do próprio catálogo do Django
+(`with override("es"): esperado = gettext("This field is required.")`) — se a
+versão do Django mudar a frase, o teste continua medindo a coisa certa (a
+LOCALIZAÇÃO), em vez de quebrar por copy desatualizado dentro do teste.
+**Origem:** despacho funil/i18n-cadastro — `tests/test_cadastro.py`.
+
+## Link cross-célula em página multilíngue NÃO ganha prefixo de idioma (por enquanto)
+
+A landing i18n continua linkando `/checkout/<slug>/` SEM prefixo: o gateway
+não tem a regra locale-first do D6, então `/en/checkout/...` cairia no funil
+(catch-all do Traefik), o resolver decaparia o idioma e o path morreria 404
+dentro DESTA célula. Regra prática: link interno da célula = `{% url_i18n %}`
+(obrigatório — lint no validador reprova a tag `url` crua em template i18n);
+link para OUTRA célula = cru e monolíngue, até a mecânica do D6 entrar no
+Traefik. Quando a primeira página de outra célula se internacionalizar, este é
+o lugar a revisar (pendência já registrada no PLANO-I18N D6).
+**Origem:** despacho funil/i18n-cadastro — `templates/funil/landing_i18n.html`.
