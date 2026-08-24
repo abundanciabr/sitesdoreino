@@ -3,7 +3,7 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
-## O que existe aqui hoje (EVO-10 + EVO-11 + EVO-12a) — e o que NÃO existe
+## O que existe aqui hoje (EVO-10 + EVO-11 + EVO-12a + EVO-12b) — e o que NÃO existe
 
 Do EVO-10, o esqueleto: `config/` (settings fail-hard, urls, asgi),
 `GET /healthz`, `apps/core`. Do EVO-11, **a camada de dados**:
@@ -11,13 +11,101 @@ Do EVO-10, o esqueleto: `config/` (settings fail-hard, urls, asgi),
 testes-guarda de invariante. Do EVO-12a, **a porta de entrada**:
 `apps/core/clients.py` (Google + `alunos`), `apps/core/sessao.py`, as rotas de
 entrar/sair em `views.py`, a página `templates/sugestoes/entrar.html` e cinco
-guardas de invariante novos.
+guardas de invariante novos. Do EVO-12b, **a participação do aluno**:
+`apps/core/participacao.py`, as três páginas (`quadro`, `nova`, `sugestao`)
+sobre `base_caixa.html`, e cinco guardas de invariante a mais.
 
-**Continua não existindo**, e cada um tem despacho próprio: sugerir/votar/
-comentar (EVO-12b), moderação (EVO-13 — o papel `staff` já é RECONHECIDO, mas
-não há nada atrás dele), middleware CONV-SITE, `config/api.py` e outbox/eventos
-(Lote 2, EVO-20 — a célula ainda não emite nada). Se você chegou aqui esperando
-encontrar endpoint de sugestão ou evento, o despacho é outro.
+**Continua não existindo**, e cada um tem despacho próprio: moderação e
+avaliação interna (EVO-13 — o papel `staff` já é RECONHECIDO, mas não há nada
+atrás dele), merge de sugestão (V1.1 na spec §10), middleware CONV-SITE,
+`config/api.py` e outbox/eventos (Lote 2, EVO-20 — a célula ainda não emite
+nada). Se você chegou aqui esperando encontrar evento ou tela de staff, o
+despacho é outro.
+
+## A participação (EVO-12b): as cinco decisões de desenho
+
+**1. Páginas renderizadas no servidor, não uma API JSON — e o `contrato-check`
+já dizia isso.** O `reason` do manifesto para esta célula é explícito: *"nem
+hoje (esqueleto), nem quando a API de sugerir/votar/comentar nascer"*. A
+superfície é consumida pelo front-end da PRÓPRIA célula; um `NinjaAPI` aqui
+seria um contrato sem consumidor, mais uma dependência no `requirements.txt` e
+uma ilha de JS para renderizar o que um `<form>` já renderiza. O dia em que
+outra célula precisar consumir a Caixa é RITOS.md §3, não uma decisão de
+sessão — e aí nasce `config/api.py` ao lado destas páginas, não no lugar delas.
+
+**2. TODA rota exige sessão, inclusive a de só olhar o quadro.** A Caixa é de
+quem tem matrícula (`DECISAO-EVO-01` §2). Uma lista pública de sugestões seria a
+única superfície da célula que não respeita essa decisão — e a mais fácil de
+alguém abrir "só para o pessoal ver", sem perceber que está publicando o que os
+alunos escreveram. O porteiro é o decorador `exige_sessao`, e ele deixa um
+atributo no objeto da view: é por esse atributo que
+`test_inv_sem_sessao_nada.py` **varre o urlconf** e reprova rota nova que tenha
+nascido aberta. Detalhe que faz isso funcionar: `functools.wraps` copia o
+`__dict__` da função embrulhada, então o atributo sobrevive ao `require_GET`/
+`require_POST` **desde que `exige_sessao` seja o decorador de dentro**.
+
+**3. `quadro_atual()` é a costura do CONV-SITE, e ela é fail-closed.** A célula
+ainda não resolve Host→Site, então não há de onde tirar o `site_id`. Um quadro
+no banco serve; **zero ou dois param com 404 e uma mensagem dizendo o que
+falta**. Escolher "o primeiro" seria esta célula inventando um site padrão em
+silêncio — o erro exato que a Lei 9 proíbe. Quando o middleware chegar, muda
+essa função e nada mais.
+
+**4. A busca de duplicatas informa; não bloqueia.** O formulário tem duas
+etapas — "conferir se já existe" devolve as parecidas sem criar nada, e só
+então aparece "publicar assim mesmo". Um portão que recusasse por semelhança
+calaria a segunda pessoa a descrever a mesma dor com outras palavras, que é
+caso comum, não exótico. A busca é `icontains` por palavra de 4+ letras (a §10
+admite `icontains` ou trigram): palavra curta casa com tudo, e o que sempre
+casa não avisa nada.
+
+**5. O redirecionamento depois de votar tem DOIS destinos fixos, escolhidos
+pelo código.** O formulário só diz de onde veio (`de=quadro`); a URL de destino
+nunca vem do POST. Um campo `proximo` com o endereço dentro seria
+redirecionamento aberto — a Caixa mandando o aluno para onde o atacante
+escrever. Há guarda para isso (`test_um_destino_inventado_no_formulario_e_ignorado`).
+
+## O guarda da `AvaliacaoInterna` tem três degraus, e o do meio é o que pega
+
+A spec §8 diz que a avaliação interna nunca é lida por endpoint que o aluno
+alcança. Provar isso com "não escrevi o campo no template" não prova nada — o
+Django resolve `{{ sugestao.avaliacao.notas }}` na hora de renderizar, sem
+import nenhum. Os três degraus de
+`tests/test_inv_avaliacao_interna_fora_do_alcance.py`:
+
+1. **o SQL**: a jornada inteira do aluno roda dentro de um
+   `CaptureQueriesContext` e o nome da tabela não pode aparecer em consulta
+   nenhuma — é o degrau que pega o acesso por template e o `select_related`
+   distraído;
+2. **o corpo das respostas**: a avaliação é semeada com uma marca
+   inconfundível, e nenhuma página do aluno pode devolvê-la;
+3. **a AST do módulo**: `participacao.py` não pode nomear `AvaliacaoInterna`
+   nem o atributo `avaliacao` — via `ast`, não `grep`, para que citar o nome num
+   comentário (como o próprio arquivo de teste faz) não conte.
+
+E a completude é mecânica: a lista de rotas percorridas é conferida contra o
+urlconf, então rota de participação nova deixa o guarda VERMELHO até alguém
+acrescentá-la à jornada.
+
+## A raiz virou o quadro, e a porta ganhou um link (senão vira beco)
+
+`path("", ver_quadro, name="quadro")` — o `urls.py` do EVO-12a já previa isso.
+Mas o `_abrir()` da entrada continua redirecionando para `entrar`, **de
+propósito**: o quadro exige um `Quadro` semeado, e uma porta que caísse em 404
+logo depois de um login bem-sucedido seria pior que um clique a mais. Daí o
+link "Ver o quadro de sugestões" no `entrar.html` — sem ele a pessoa entra,
+lê "você está dentro" e não tem para onde ir.
+
+## O que ficou fora do EVO-12b, e não por esquecimento
+
+- **Status e histórico**: mudar status é do staff (EVO-13). Nenhuma rota daqui
+  escreve `HistoricoStatus` — e `Sugestao` não é apagada em lugar nenhum, o que
+  mantém o `PROTECT` do histórico verdadeiro sem nenhum caso especial.
+- **Merge de sugestão**: a §10 põe em V1.1. `sugestao_canonica` continua no
+  model, sem ninguém escrevendo nela.
+- **Evento de `sugestao.criada` / `voto-adicionado`**: Lote 2. A célula grava o
+  fato e não conta a ninguém — quando o outbox entrar, os pontos de emissão são
+  exatamente os quatro `create()`/`delete()` de `participacao.py`.
 
 ## A porta de entrada (EVO-12a): as cinco decisões de desenho
 
