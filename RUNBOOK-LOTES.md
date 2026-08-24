@@ -244,6 +244,51 @@ documento de decisão aprovado no mesmo dia):
     hreflang) **e contra um site legado**, para provar no mundo real o que o teste
     *golden* prova no CI: quem não entrou no regime novo não mudou.
 
+
+**Lote 4 — 23/08/2026** (2 despachos paralelos, PRs #94–#95, 2 merges, 1 deploy verde,
+0 revert — o lote das *dívidas declaradas* do Lote 3, e o primeiro a conviver com outra
+sessão mergeando na mesma `main`):
+
+15. **Dívida que o lote anterior declarou vira o lote seguinte — e sai barata.** Os dois
+    despachos aqui nasceram de pendências que o Lote 3 registrou em vez de contornar
+    (ARMADILHAS §5.11 e a linha do `_juridico` na §9). Porque a dívida estava escrita
+    com sintoma, causa e solução, os briefs saíram quase prontos e os dois despachos
+    couberam no orçamento sem investigação. **Corolário:** o custo de registrar uma
+    dívida bem descrita é pago pelo despacho que a fecha, não pelo que a descobriu.
+16. **Toda regra copiada entre dois portões precisa de guarda mecânica contra deriva.**
+    A §5.11 nasceu porque `orcamento-de-mudanca.sh` e `mergear.py` implementam a mesma
+    regra de propósito (portão + catraca, Escada da Imposição) e uma evoluiu sem a outra.
+    O conserto não foi só ensinar a lane à catraca: foram dois testes que **leem o
+    próprio `.sh`** e reprovam se as cópias divergirem — inclusive um que vigia a
+    *assimetria deliberada* (a catraca confere caminho, as muralhas conferem modo,
+    porque a API de PR do GitHub não devolve modo). Duplicação consciente é aceitável;
+    duplicação sem guarda é armadilha com data marcada.
+17. **Marcador declarativo sem expiração é carimbo perpétuo.** O `_juridico` exigia
+    "revisão humana declarada". A implementação foi além do brief e acertou: a
+    declaração é **por idioma** (revisar o inglês não valida o espanhol) **e expira no
+    diff** — se o texto de um idioma muda e a declaração daquele idioma não, reprova.
+    É a mesma mecânica anti-burla do `_fonte`, pelo mesmo motivo: sem ela, recarimbar
+    sai mais barato que cumprir. **Regra geral para qualquer marcador de qualidade
+    declarado por agente: amarre-o ao conteúdo que ele atesta, ou ele vira decoração.**
+18. **Peça ao agente a decisão, não a implementação, quando a escolha depende do que a
+    ferramenta REALMENTE faz.** O brief de `ci/` não mandou conferir o modo dos
+    arquivos: mandou **sondar a API e decidir**, justificando. O agente mediu
+    (`gh pr view --json files` não traz modo), escolheu a barreira em profundidade e
+    transformou a premissa em teste. Brief que decide por antecipação teria produzido
+    ou um campo inventado ou uma remedição frágil.
+19. **Duas sessões na mesma `main` são rotina, não incidente — se a regra anticolisão
+    estiver no brief.** Outra sessão mergeou três PRs (#91–#93) durante este lote,
+    inclusive tocando `ci/` e `ARMADILHAS.md`. Os dois agentes rebasearam, as entradas
+    de todos sobreviveram lado a lado, e um deles precisou de `push --force-with-lease`
+    na **própria** branch — o que é correto. A maestro só precisa: (a) `git fetch` no
+    pré-voo e antes de cada janela; (b) desconfiar de "PR #N foi mergeado no meio do meu
+    trabalho" e **conferir quem mergeou** (`gh pr view <N> --json mergedBy,headRefName`)
+    antes de concluir que um agente do lote furou a janela — aqui não tinha furado.
+20. **Merge que não muda comportamento também se prova de fora.** O PR do `_juridico`
+    mexeu só no validador, mas dispara `deploy-celula` igual. O fechamento honesto foi
+    medir a matriz pública de novo depois do deploy: nada mudou — que era exatamente a
+    afirmação a provar.
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
