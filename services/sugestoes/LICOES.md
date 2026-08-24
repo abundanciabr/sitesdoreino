@@ -303,7 +303,7 @@ vaza entre testes) e confere as três partes do endereço separadamente, porque
 elas falham por motivos diferentes: o esquema vem de `SECURE_PROXY_SSL_HEADER`, o
 domínio vem do `Host` da requisição, o caminho vem de `reverse()`.
 
-## Matrícula `reembolsada` ainda deixa entrar — decisão adiada, não esquecida
+## Matrícula `reembolsada` entra — DECIDIDO pelo mantenedor em 24/08/2026
 
 O contrato de `alunos` devolve matrículas com `status` em
 `[ativa, suspensa, reembolsada]`. A `DECISAO-EVO-01` diz "só quem tem matrícula"
@@ -311,9 +311,16 @@ e **não fala de status**. Esta implementação segue a decisão ao pé da letra
 qualquer matrícula devolvida deixa entrar.
 
 Não foi descuido — filtrar por `status == "ativa"` seria decidir, dentro de um
-despacho, que quem pediu reembolso perde a voz na Caixa. Isso é decisão de
-produto, e o lugar dela é uma sessão com o mantenedor (EVO-13, quando a moderação
-entrar). Se a regra mudar, muda em uma linha de `views.py` e num guarda novo.
+despacho, que quem pediu reembolso perde a voz na Caixa.
+
+**A pergunta foi levada ao mantenedor e ele decidiu em 24/08/2026: TODAS as
+situações entram, inclusive a `reembolsada`.** Quem já foi aluno mantém a voz.
+Está na `DECISAO-EVO-01-identidade.md` **§4.1**, que é a lei do assunto.
+
+**Isto agora tem guarda** (EVO-13): o patch que "conserta" o filtro para
+`status == "ativa"` deixa o CI VERMELHO, de propósito. Se você chegou aqui
+achando que deixar reembolsado entrar é bug esquecido — não é. Foi escolhido, e
+mudar exige nova sessão com o mantenedor, nunca uma decisão de despacho.
 
 ## O modelo de dados diverge da spec em três pontos, e os três são deliberados
 

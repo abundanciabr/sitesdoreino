@@ -11,7 +11,7 @@
 
 ## Onde estamos
 
-**Fase atual: Lote 0 FECHADO — o Lote 1 está liberado.** O plano mestre existe, a auditoria do
+**Fase atual: LOTE 1 FECHADO (24/08/2026) — a Caixa funciona por dentro.** O plano mestre existe, a auditoria do
 terreno foi feita, e o nome e o endereço estão decididos: a ferramenta chama-se
 **Caixa de Sugestões** e vai morar em **meshcraft.top/forms/sugestoes/**. Falta
 a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem nenhuma pendência sua.
@@ -35,10 +35,11 @@ a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem ne
 
 | Despacho | O que entrega | Estado | PR | Nota |
 |---|---|---|---|---|
-| EVO-10 | A célula `sugestoes` existe, sobe e passa no CI | ⬜ | — | canário do lote |
-| EVO-11 | Os dados: quadros, sugestões, votos, comentários, histórico | ⬜ | — | |
-| EVO-12 | Aluno consegue sugerir, votar e comentar (via API) | ⬜ | — | |
-| EVO-13 | Equipe consegue mudar status e avaliar (só staff) | ⬜ | — | |
+| EVO-10 | A célula `sugestoes` existe, sobe e passa no CI | ✅ | #108 | canário; achou que faltava declarar a célula no `rollback.yml` — a auditoria Q4 estava incompleta |
+| EVO-11 | Os dados: quadros, sugestões, votos, comentários, histórico | ✅ | #113 | IDs opacos (não UUID); histórico append-only em 3 degraus, o 3º é trigger no Postgres |
+| EVO-12a | Entrar com Google (a porta) | ✅ | #116 | dividido do EVO-12 por orçamento; suíte roda com a REDE PROIBIDA, provado |
+| EVO-12b | Aluno sugere, vota, desvota, comenta e vê o quadro | ✅ | #122 | busca de duplicata, limite 3/7 dias, avaliação interna invisível ao aluno (3 degraus) |
+| EVO-13 | Equipe muda status e avalia (só staff) | ✅ | #126 | histórico na MESMA transação; `nao_planejado` exige justificativa; guarda que protege a §4.1 |
 
 ## Lote 2 — Eventos e produção
 
