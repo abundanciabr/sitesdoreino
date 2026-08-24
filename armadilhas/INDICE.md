@@ -93,5 +93,7 @@
 | [076](076-celula-nova-reprova-em-testar-o-testador-rollback.md) | Célula nova reprova em `testar-o-testador`: `Right contains one more item: '<celula>'` — a lista fixa de `rollback.yml` — você cria uma célula nova, declara-a em `ci/manifesto-de-contratos.json` como o próprio arquivo… | — |
 | [077](077-pr-criado-com-label-arquitetural-roda-com-pr-labels.md) | PR criado JÁ com `--label arquitetural` mesmo assim reprova o orçamento: no log, `PR_LABELS:` vazio — você conta os arquivos antes, sabe que passou de 15, e abre o PR com a label na mesma linha de comando: | — |
 | [078](078-script-injetado-no-container-que-ja-roda-importa.md) | Script injetado no container que já roda importa símbolo NOVO — e trava o canal de deploy inteiro — o merge de um PR de célula deixa os DOIS deploys vermelhos de uma vez. | — |
+| [079](079-guarda-de-imutabilidade-nao-sobrevive-ao-cascade.md) | Guarda de imutabilidade passa em todos os testes e mesmo assim o CASCADE apaga as linhas — você protegeu uma tabela append-only nas duas metades que a `armadilhas/023` manda proteger — `Model.save()` **e**… | — |
+| [080](080-column-does-not-exist-em-teste-que-nem-toca-a-tabela.md) | `ProgrammingError: column <tabela>.<campo> does not exist` num teste que nem toca aquela tabela — você acrescenta um campo a um model, ainda sem rodar `makemigrations`, e roda **um único** teste que só lê metadados: | — |
 
-**68 entradas.**
+**70 entradas.**

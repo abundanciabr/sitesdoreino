@@ -26,7 +26,7 @@ errado:
 |---|---|---|
 | `tenant_id = models.UUIDField()` | `site_id = models.CharField()` | "Tenant" não existe no vocabulário da casa; site existe (Lei 9). E em toda a plataforma o ID que atravessa fronteira é `type: string` **sem** `format: uuid` (auditoria Q3) |
 | `autor_id = models.UUIDField()` | `autor = FK(Identidade)` | Ver abaixo |
-| `HistoricoStatus.sugestao` com `CASCADE` | `PROTECT` | A §8 da mesma spec diz "nenhuma linha é apagada". As duas não cabiam juntas (`armadilhas/078`) |
+| `HistoricoStatus.sugestao` com `CASCADE` | `PROTECT` | A §8 da mesma spec diz "nenhuma linha é apagada". As duas não cabiam juntas (`armadilhas/079`) |
 
 Há um teste-guarda mecânico para o primeiro item
 (`tests/test_inv_sem_fk_para_fora.py::test_os_ids_inter_celula_sao_texto_opaco_e_nao_uuid`):
@@ -59,7 +59,7 @@ entra no guarda sem ninguém lembrar de cadastrá-lo.
 (`update`/`delete`/`bulk_update` — `armadilhas/023`) **e** num trigger plpgsql
 criado pela `0001_initial`. O terceiro não é zelo excessivo: sem ele, o
 `Collector` do Django apagaria o histórico inteiro por um `CASCADE`, sem passar
-por nenhum dos dois primeiros e sem erro nenhum (`armadilhas/078`).
+por nenhum dos dois primeiros e sem erro nenhum (`armadilhas/079`).
 
 Consequência prática para quem for escrever a API (EVO-12/EVO-13): **não existe
 "corrigir o histórico"**. Correção é `HistoricoStatus.objects.create(...)` com o
