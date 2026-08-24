@@ -15,8 +15,10 @@
 > documentados em outra forma. Catálogo de sintomas cura o caso; só o padrão
 > cura a classe.
 
-Escrito em 23/08/2026, ao fim da Fase D (3 de 4 critérios de
-`ESQUELETO-QUE-ANDA.md`), a pedido do mantenedor.
+Escrito em 23/08/2026, ao fim de um dia de trabalho na Fase D (2 de 4 critérios
+de `ESQUELETO-QUE-ANDA.md` — ✅ 1 local · ☐ 2 VPS/MP, adiado por decisão do
+mantenedor · ✅ 3 drill de rollback · ☐ 4 fecha junto com o 2), a pedido do
+mantenedor.
 
 ---
 
@@ -61,8 +63,10 @@ propriedade estava falsa quando alguém finalmente olhou:
   "ancestral da `main`"; o código media contra o **ref do disparo**. Só a
   auditoria pegou.
 - Os golpes 5 e 14 do red-team foram **executados com evidência real** e a
-  tabela do rito continuou `☐` nos dois casos — meses de distância entre eles,
-  mesma falha.
+  tabela do rito continuou `☐` nos dois casos — **2 dias** de distância entre
+  eles (21/08 e 23/08/2026), mesma falha. A proximidade é o ponto: não foi uma
+  lição esquecida com o tempo, foi a mesma sessão repetindo em 48h algo que já
+  estava documentado.
 
 **A regra:** toda promessa escrita precisa de **(a)** um mecanismo que a imponha
 e **(b)** um teste-guarda que reprove se alguém a desfizer. Se hoje não dá para
