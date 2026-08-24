@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/sugestao.voto-adicionado.v1.json",
+  "title": "sugestao.voto-adicionado.v1",
+  "description": "Alguém votou numa sugestão.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "sugestao.voto-adicionado"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "suggestion_id",
+        "autor_id",
+        "total_votos"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) a que o quadro pertence — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "suggestion_id": {
+          "type": "string",
+          "description": "Id opaco da sugestão."
+        },
+        "autor_id": {
+          "type": "string",
+          "description": "Id OPACO da identidade dentro da célula sugestoes. NUNCA é o e-mail: por decisão do mantenedor (DECISAO-EVO-01 §3) o e-mail vive numa linha só, dentro da Caixa. Consumidor que precise falar com a pessoa não resolve isto sozinho."
+        },
+        "total_votos": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total de votos da sugestão DEPOIS deste voto."
+        }
+      }
+    }
+  }
+}
