@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
+    "apps.sugestoes",  # modelo de dados da Caixa (EVO-11)
 ]
 
 MIDDLEWARE = [
