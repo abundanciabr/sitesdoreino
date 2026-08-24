@@ -1,0 +1,69 @@
+{% extends "sugestoes/base_caixa.html" %}
+{% comment %}
+Os avisos DESTA pessoa — o sininho do EVO-21.
+
+Esta é a página onde a justificativa de um "não planejado" finalmente alcança
+quem sugeriu: a equipe é obrigada a escrevê-la desde o EVO-13 *porque quem
+sugeriu vai ler*, e até aqui não havia tela nenhuma do aluno que a mostrasse.
+
+O que esta página NÃO mostra, e por desenho de tabela e não de template: **quem**
+moderou. Esse dado mora no `HistoricoStatus`, que é a auditoria da equipe; o
+`Aviso` é a cópia do aluno e não tem a coluna. É a mesma separação que manteve a
+`AvaliacaoInterna` fora do alcance dele (spec §8).
+
+A tela bonita é o EVO-31 (Lote 3). Aqui vale a mesma regra da moldura: sem CSS
+externo, sem JS, sem fonte remota — e todo endereço saindo de `{% templatetag openblock %} url {% templatetag closeblock %}`,
+nunca escrito à mão, senão o prefixo público (/forms/sugestoes) some em produção
+e só lá (armadilhas/081).
+{% endcomment %}
+{% block titulo %}Seus avisos — Caixa de Sugestões{% endblock %}
+{% block conteudo %}
+<h1>Seus avisos</h1>
+<p class="sub">
+  {% if nao_lidos %}
+    Você tem {{ nao_lidos }} aviso{{ nao_lidos|pluralize }} não lido{{ nao_lidos|pluralize }}.
+  {% else %}
+    Nada de novo por aqui — todos os seus avisos já foram lidos.
+  {% endif %}
+</p>
+
+{% for aviso in avisos %}
+  <div class="cartao">
+    <h3>
+      {% if not aviso.lido_em %}<span class="votos">novo</span>{% endif %}
+      <a href="{% url 'sugestao' aviso.sugestao.id %}">{{ aviso.sugestao.titulo }}</a>
+    </h3>
+    <p class="meta">
+      {% if aviso.status_anterior %}
+        {{ aviso.get_status_anterior_display }} → {{ aviso.get_status_novo_display }}
+      {% else %}
+        Agora está em {{ aviso.get_status_novo_display }}
+      {% endif %}
+      {% comment %}
+      Formato cravado (`d/m/Y H:i`) e não o `{% templatetag openvariable %} aviso.criado_em {% templatetag closevariable %}` nu: o formato
+      padrão do Django sai no LOCALE do processo, que aqui é `en-us` — a Caixa
+      mostrava "Aug. 24, 2026, 9 a.m." a um aluno brasileiro. A hora certa vem do
+      `TIME_ZONE` de `config/settings.py`; o formato certo vem daqui.
+      {% endcomment %}
+      · {{ aviso.criado_em|date:"d/m/Y H:i" }}
+    </p>
+    {% if aviso.nota %}
+      <p>{{ aviso.nota|linebreaksbr }}</p>
+    {% endif %}
+    {% if not aviso.lido_em %}
+      <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+        {% csrf_token %}
+        <button type="submit" class="botao discreto">Marcar como lido</button>
+      </form>
+    {% endif %}
+  </div>
+{% empty %}
+  <div class="recado">
+    <h2>Nenhum aviso ainda</h2>
+    <p>
+      Quando a equipe mexer no status de alguma sugestão sua, o recado aparece
+      aqui — com o motivo que ela escreveu.
+    </p>
+  </div>
+{% endfor %}
+{% endblock %}

@@ -86,8 +86,15 @@ def _rotas_de_participacao() -> set[str]:
     }
 
 
-def _jornada_completa(cliente, sugestao) -> dict[str, list]:
-    """Todo endereço que um aluno com sessão alcança, uma vez cada."""
+def _jornada_completa(cliente, sugestao, aviso) -> dict[str, list]:
+    """Todo endereço que um aluno com sessão alcança, uma vez cada.
+
+    As duas rotas do sininho (EVO-21) entraram aqui pelo mecanismo, não por
+    lembrança: elas exigem sessão e não exigem crachá, então
+    `_rotas_de_participacao()` passou a listá-las e
+    `test_a_jornada_cobre_TODAS_as_rotas_de_participacao` ficou vermelho até
+    serem percorridas. É exatamente o lembrete que este guarda existe para dar.
+    """
     quadro = reverse("quadro")
     nova = reverse("nova_sugestao")
     base = {
@@ -108,16 +115,20 @@ def _jornada_completa(cliente, sugestao) -> dict[str, list]:
         "comentar": [
             cliente.post(reverse("comentar", args=[sugestao.id]), {"texto": "isso!"})
         ],
+        "avisos": [cliente.get(reverse("avisos"))],
+        "marcar_aviso_lido": [
+            cliente.post(reverse("marcar_aviso_lido", args=[aviso.id]))
+        ],
     }
 
 
 def test_nenhuma_consulta_do_aluno_toca_a_tabela_da_avaliacao(
-    dentro, sugestao, avaliacao
+    dentro, sugestao, avaliacao, aviso
 ):
     tabela = AvaliacaoInterna._meta.db_table
 
     with CaptureQueriesContext(connection) as consultas:
-        respostas = _jornada_completa(dentro.client, sugestao)
+        respostas = _jornada_completa(dentro.client, sugestao, aviso)
 
     achatadas = [r for lista in respostas.values() for r in lista]
     assert all(r.status_code in (200, 302) for r in achatadas), [
@@ -132,9 +143,9 @@ def test_nenhuma_consulta_do_aluno_toca_a_tabela_da_avaliacao(
 
 
 def test_nenhuma_pagina_do_aluno_mostra_o_texto_da_avaliacao(
-    dentro, sugestao, avaliacao
+    dentro, sugestao, avaliacao, aviso
 ):
-    respostas = _jornada_completa(dentro.client, sugestao)
+    respostas = _jornada_completa(dentro.client, sugestao, aviso)
 
     for nome, lista in respostas.items():
         for resposta in lista:
@@ -145,9 +156,9 @@ def test_nenhuma_pagina_do_aluno_mostra_o_texto_da_avaliacao(
             ), f"a rota '{nome}' devolveu o texto da avaliação interna."
 
 
-def test_a_jornada_cobre_TODAS_as_rotas_de_participacao(dentro, sugestao):
+def test_a_jornada_cobre_TODAS_as_rotas_de_participacao(dentro, sugestao, aviso):
     """Sem isto, rota nova nasceria fora do guarda e ninguém perceberia."""
-    percorridas = set(_jornada_completa(dentro.client, sugestao))
+    percorridas = set(_jornada_completa(dentro.client, sugestao, aviso))
 
     assert percorridas == _rotas_de_participacao(), (
         "a jornada deste guarda não cobre as mesmas rotas do urlconf: "
@@ -156,14 +167,16 @@ def test_a_jornada_cobre_TODAS_as_rotas_de_participacao(dentro, sugestao):
     )
 
 
-def test_a_jornada_do_aluno_nao_escreve_na_avaliacao(dentro, sugestao, avaliacao):
+def test_a_jornada_do_aluno_nao_escreve_na_avaliacao(
+    dentro, sugestao, avaliacao, aviso
+):
     antes = (
         avaliacao.notas,
         avaliacao.decisao_produto,
         AvaliacaoInterna.objects.count(),
     )
 
-    _jornada_completa(dentro.client, sugestao)
+    _jornada_completa(dentro.client, sugestao, aviso)
 
     avaliacao.refresh_from_db()
     assert (

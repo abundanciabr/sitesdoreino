@@ -108,6 +108,13 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # O sininho (EVO-21): a contagem de não-lidos fica disponível em
+                # TODA página sem nenhuma view lembrar de pô-la no contexto —
+                # Lei 1, porque um combinado desses é esquecido pela primeira
+                # view escrita depois. O valor é preguiçoso (um callable que o
+                # Django só executa se o template pedir), então página que não
+                # mostra o sino não paga consulta. Ver apps/core/avisos.py.
+                "apps.core.avisos.sino",
             ],
         },
     },
@@ -122,3 +129,11 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 USE_TZ = True
+
+# O fuso em que a Caixa MOSTRA hora — o armazenamento continua em UTC (USE_TZ).
+# Sem esta linha vale o default de fábrica do Django, `America/Chicago`: até o
+# EVO-21 nenhuma página desta célula renderizava data, então o erro não tinha
+# como aparecer. A primeira que renderiza é a dos avisos, e ela mostrava a um
+# aluno brasileiro o horário de Chicago — cinco horas antes, sem nada indicando
+# a troca. É dívida das outras células também, não invenção desta.
+TIME_ZONE = "America/Sao_Paulo"

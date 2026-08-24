@@ -3,7 +3,114 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
-## O que existe aqui hoje (EVO-10 a EVO-20) — e o que NÃO existe
+## O sininho (EVO-21): o aviso é da Caixa, não do fio
+
+**A decisão do mantenedor, 24/08/2026, e ela não se reabre.** O plano original
+mandava a célula `mensageria` avisar o aluno. Foi descartado com motivo medido: a
+`mensageria` é feita para e-mail/WhatsApp, exige um destinatário, é organizada em
+torno de *pedidos de compra* — e o envio de e-mail dela é um **esqueleto vazio**.
+Pior: para ela mandar qualquer coisa, o e-mail do aluno teria de SAIR de dentro da
+Caixa, desfazendo a `DECISAO-EVO-01` §3. O aviso é in-app, dentro da própria
+Caixa, que é o que a `ESPECIFICACAO-CELULA.md` §10 já pedia. E-mail só se um dia
+fizer falta.
+
+**1. O aviso NÃO consome o próprio evento, embora o `sugestao.status-alterado`
+exista desde o EVO-20 e carregue o `autor_da_sugestao_id` exatamente para isso.**
+O evento existe para o mundo de FORA (gamificação, analytics — que nascem depois).
+Consumir o próprio evento para escrever na própria tabela manda o fato dar uma
+volta pela rede para voltar ao ponto de partida, e o preço são três coisas de
+graça: modo de falha novo (Redis fora do ar ⇒ status mudado e aluno sem aviso, sem
+nada indicando a falta), atraso, e — o que decide — **status e aviso passando a
+poder divergir**. Por isso `avisar_o_autor()` é chamada dentro do
+`transaction.atomic()` de `registrar_mudanca_de_status()`, logo abaixo do
+histórico. Rollback leva os três juntos. Há guarda medindo a independência do fio:
+`test_o_aviso_nasce_mesmo_sem_redis_nenhum`, com `django_db(transaction=True)`.
+
+**2. `Aviso` tem colunas próprias e NÃO uma FK para a linha do `HistoricoStatus`.**
+A FK parece mais limpa (zero duplicação, impossível divergir) e foi considerada. O
+que a derruba é o `alterado_por`: com a FK, o template do aluno alcançaria **quem
+moderou** — uma `Identidade`, com e-mail dentro. As duas tabelas guardam o mesmo
+fato para leitores diferentes, e é essa diferença que decide o desenho: o
+`HistoricoStatus` é a auditoria da EQUIPE, o `Aviso` é a cópia do ALUNO. É a mesma
+lição que fez a `AvaliacaoInterna` nascer em tabela separada, e é a Virtude da
+Lei 3 (*copiar dados — snapshots são sagrados*). `status_novo` e `nota` aqui não
+são espelho de estado mutável: são o retrato do que mudou naquele instante.
+
+**3. `avisar_o_autor()` recusa ser chamada fora de transação**, na forma exata do
+`eventos.emitir()` do EVO-20. Lei 1: em vez de confiar que todo ponto futuro de
+mudança de status lembre do `atomic`, a função levanta `AvisoForaDaTransacao`. O
+guarda disso precisa de `django_db(transaction=True)` — no `django_db` padrão todo
+teste já roda dentro de um atomic e a recusa nunca dispararia.
+
+**4. O aviso vai para o autor SEMPRE, inclusive quando quem moderou foi ele
+mesmo.** Suprimir esse caso seria um ramo a mais e uma exceção que o guarda de
+atomicidade teria de conhecer. Do jeito que está, o invariante é uma igualdade sem
+ressalva: **uma linha de `HistoricoStatus` ⇒ um `Aviso`**.
+
+**5. `lido_em` (timestamp) e não `lido` (booleano).** O booleano responde "já
+viu?"; o instante responde também "quando" — e é isso que torna a idempotência
+**verificável**: a segunda marcação não pode mexer no carimbo da primeira.
+
+**6. O aviso de outra pessoa é 404, nunca 403.** 403 diria "existe, mas não é
+seu", que é confirmar a existência de um aviso alheio a quem chutou um número. O
+recorte por dono mora dentro do próprio `get` (`_meus()`), de modo que não há
+nenhum instante em que a linha de outra pessoa esteja carregada na requisição.
+
+**7. A contagem de não-lidos é context processor PREGUIÇOSO.** Um item que cada
+view acrescenta ao contexto seria esquecido pela primeira view escrita depois
+(Lei 1). O valor no contexto é um callable, que o Django só executa se o template
+pedir: página que não mostra o sino não paga consulta, e a `entrar.html` — que nem
+estende a moldura — não paga nada. **O sino desenhado é o EVO-31 (Lote 3);** o que
+nasceu aqui é o dado.
+
+**8. Fica para depois, e cabe sem mudar forma nenhuma:** avisar quem VOTOU são
+mais linhas de `Aviso`, com outro `destinatario`. Foi por isso que o contrato
+congelado do `status-alterado` NÃO leva a lista de votantes (lista sem teto dentro
+de evento).
+
+## O fuso de fábrica do Django é `America/Chicago` — e ninguém tinha notado
+
+A página de avisos é a **primeira desta célula a renderizar uma data**, e por isso
+dois defaults passaram sete despachos despercebidos:
+
+| o que saía | por quê |
+|---|---|
+| `Aug. 24, 2026, 9 a.m.` | o formato padrão sai no LOCALE do processo, que é `en-us` |
+| hora cinco horas antes | `TIME_ZONE` nunca foi definido ⇒ `America/Chicago` |
+
+`USE_TZ = True` guarda em UTC e **converte na exibição** — para o fuso do
+`settings`, que ninguém tinha escolhido. Correção: `TIME_ZONE = "America/Sao_Paulo"`
+e formato cravado no template (`|date:"d/m/Y H:i"`), que não depende de locale. O
+guarda compara com `timezone.localtime(...).strftime(...)`, nunca com uma string
+escrita à mão — essa envelheceria no dia seguinte.
+
+**Isto é dívida das outras 8 células, não invenção desta:** nenhuma define
+`TIME_ZONE`, e a primeira que mostrar data ao usuário vai mostrar Chicago.
+
+## Patch de prova gerado com `git diff` leva junto o trabalho não commitado
+
+Armadilha nova, mordida neste despacho, e ela **refina a `armadilhas/084`** (que
+manda gerar o patch com `git diff`, aplicar `-R` para o vermelho e aplicar de novo
+para o verde). O que a 084 não diz: `git diff` captura **tudo** que está sem
+commit, não só a quebra que você acabou de escrever. Se você quebrou o código
+depois de fazer uma correção que ainda não commitou, o `git apply -R` do "volte ao
+verde" **também desfaz a correção** — e desfaz em silêncio, com a suíte verde,
+porque os testes que a cobriam sumiram no mesmo patch.
+
+Foi exatamente o que aconteceu aqui: a correção de fuso horário e o teste-guarda
+dela viajaram dentro do patch da prova e voltaram ao nada. O sintoma é discreto —
+a contagem de testes cai de 217 para 216 e ninguém olha.
+
+**A regra que fecha isso é a catraca do RITOS §2.1, e ela não é opcional:**
+*commite o verde ANTES de gerar o patch de prova.* Com o verde commitado, o
+`git diff` só pode conter a quebra, e `git apply -R` só pode restaurar. Confira
+com `git diff --stat` (vazio) e com a **contagem de testes**, que é o número que
+denuncia a perda.
+
+> Não coube em `armadilhas/NNN` pelo orçamento de 15 arquivos deste despacho —
+> fica registrada aqui e no handoff, para a maestro promover em PR próprio.
+
+## O que existe aqui hoje (EVO-10 a EVO-21) — e o que NÃO existe
 
 Do EVO-10, o esqueleto: `config/` (settings fail-hard, urls, asgi),
 `GET /healthz`, `apps/core`. Do EVO-11, **a camada de dados**:
@@ -19,11 +126,16 @@ cinco guardas — o Lote 1 fecha aqui, do lado do comportamento. Do **EVO-20**, 
 **emissão**: `apps/sugestoes/eventos.py` (os quatro construtores de `data` +
 `emitir`), `apps/sugestoes/tasks.py` (o relay), `config/huey.py`, o model
 `OutboxEvent` com a migration `0002`, e três arquivos de guarda novos
-(162 → 195 testes).
+(162 → 195 testes). Do **EVO-21**, o **sininho**: `apps/core/avisos.py` (a
+criação transacional, as duas rotas e o context processor da contagem), o model
+`Aviso` com a migration `0003`, a página `avisos.html`, o link na moldura e três
+arquivos de guarda novos (195 → 217 testes). Aqui fecha o Lote 2, e a Caixa passa
+a ter jornada completa: a pessoa sugere, a equipe responde, e ela **fica sabendo**.
 
 **Continua não existindo**, e cada um tem despacho próprio: **consumir** evento
-e o aviso do aluno — o sininho (EVO-21), merge de sugestão (V1.1 na spec §10),
-middleware CONV-SITE, `config/api.py` e a tela bonita (EVO-30, Lote 3).
+(nenhuma célula assina os quatro ainda), avisar quem VOTOU, merge de sugestão
+(V1.1 na spec §10), middleware CONV-SITE, `config/api.py` e a tela bonita — o sino
+desenhado é o EVO-31 (Lote 3).
 
 ## A emissão (EVO-20): a Caixa passou a AFIRMAR fatos
 

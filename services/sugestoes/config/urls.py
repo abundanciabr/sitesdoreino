@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.core.avisos import marcar_lido, ver_avisos
 from apps.core.moderacao import avaliar, moderar, mudar_status, ver_fila
 from apps.core.participacao import (
     comentar,
@@ -37,6 +38,13 @@ urlpatterns = [
     path("sugestoes/<int:sugestao_id>/votar", votar, name="votar"),
     path("sugestoes/<int:sugestao_id>/desvotar", desvotar, name="desvotar"),
     path("sugestoes/<int:sugestao_id>/comentarios", comentar, name="comentar"),
+    # O sininho (EVO-21). Prefixo próprio, como a moderação: `/avisos` é do
+    # ALUNO e só dele — cada rota daqui enxerga exclusivamente os avisos de quem
+    # está na sessão (apps/core/avisos.py). Marcar como lido é POST, e não GET,
+    # porque muda estado: um GET seria marcado como lido por qualquer
+    # pré-carregamento de link do navegador.
+    path("avisos", ver_avisos, name="avisos"),
+    path("avisos/<int:aviso_id>/lido", marcar_lido, name="marcar_aviso_lido"),
     # A moderação (EVO-13) mora sob um prefixo próprio, `/moderacao`, e não
     # espalhada por `/sugestoes/<id>/...`: assim a fronteira do crachá é legível
     # no urlconf, e não só no decorador. Toda rota daqui responde **403** a quem

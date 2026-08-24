@@ -91,6 +91,19 @@ o prefixo público (/forms/sugestoes) em produção — ver armadilhas/029 e /08
         <span>
           {{ ator.identidade.nome_exibido|default:ator.identidade.email }}
           {% comment %}
+          O sininho do EVO-21, ainda sem sino desenhado (a tela bonita é o
+          EVO-31, Lote 3): o que existe aqui é o dado certo, em toda página.
+          A contagem vem do context processor `apps.core.avisos.sino` e é
+          preguiçosa — `{% templatetag openblock %} with {% templatetag closeblock %}` a resolve UMA vez, senão o
+          template pagaria duas consultas para escrever o mesmo número duas
+          vezes.
+          {% endcomment %}
+          {% with nao_lidos=avisos_nao_lidos %}
+            <a href="{% url 'avisos' %}" class="papel">
+              avisos{% if nao_lidos %} ({{ nao_lidos }}){% endif %}
+            </a>
+          {% endwith %}
+          {% comment %}
           O crachá vira o caminho: sem este link a fila de moderação seria uma
           URL que só quem leu o urlconf conhece. Ele só existe para quem tem o
           papel `staff`, que é DERIVADO a cada requisição da
