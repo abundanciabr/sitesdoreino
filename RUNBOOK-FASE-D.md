@@ -221,11 +221,37 @@ Rollback de uma célula não toca nenhuma outra — mas toca TODOS os serviços 
 `deploy-celula`: deixar o auxiliar na imagem nova seria rodar duas versões do
 mesmo código, em silêncio, no meio de uma emergência.
 
-**Critério 3 de `ESQUELETO-QUE-ANDA.md`** (drill cronometrado, < 5 min do
-"decidi" ao "voltou") — é também o golpe 14 de `02-RED-TEAM.md` (Fase E), o
-único golpe "do bem" do rito. O drill é: escolher uma célula, disparar o
-workflow para o sha anterior, medir de FORA que a produção mudou, disparar de
-volta com `alvo=main`, medir de novo. Evidência = a saída crua dos dois runs.
+### Critério 3 de `ESQUELETO-QUE-ANDA.md` — ✅ EXECUTADO em 23/08/2026
+
+Drill cronometrado (< 5 min do "decidi" ao "voltou"), na VPS de produção, com o
+`checkout` — é também o golpe 14 de `02-RED-TEAM.md`, o único golpe "do bem" do
+rito. Alvo escolhido de propósito: `825ff857` (o commit ANTES do PR #77), cuja
+diferença é visível de fora — as páginas do checkout respondiam 404 sem o fix
+das rotas sem prefixo. Assim o drill não prova só "o container reiniciou": prova
+que a produção passou a servir a outra versão, medido pela internet pública.
+
+| | run | veredito | medido de fora | na VPS |
+|---|---|---|---|---|
+| **volta** (`alvo=825ff857`) | [32678099024](https://github.com/abundanciabr/sitesdoreino/actions/runs/32678099024) | success | mudou em **t+30s**, run verde em **t+76s** | `SEGUNDOS_NA_VPS=42` |
+| **desfaz** (`alvo=main`) | [32678175555](https://github.com/abundanciabr/sitesdoreino/actions/runs/32678175555) | success | voltou em **t+58s**, run verde em **t+69s** | `SEGUNDOS_NA_VPS=32` |
+
+**76 segundos** do "decidi" ao "voltou", contra os 300 do critério. Os três
+serviços da célula (`checkout`, `checkout-consumer`, `checkout-relay`) trocaram
+juntos e terminaram `healthy` nos dois sentidos — `docker compose images` no log
+de cada run mostra a tag antes e depois. Amostras externas:
+`https://meshcraft.top/checkout/curso-teste/` 200 → 404 → 200; `INV-P11` (host
+desconhecido = 404) intacto no fim.
+
+**O que o drill ensinou e não estava escrito em lugar nenhum:** existe uma
+janela de ~30s de **502** durante a troca — o Traefik fica sem backend saudável
+enquanto o container é recriado. Rollback não é instantâneo do ponto de vista de
+quem está no site; é rápido. Numa emergência real isso é aceitável (trocar 502
+por 502) e é bom saber de antemão, para não achar que o rollback falhou ao ver
+502 no primeiro `curl`. Registrado em `ARMADILHAS.md` §5.14.
+
+Falta para fechar a Fase D: o critério 2 (esqueleto na VPS com cartão APRO e
+webhook real do MP — §5 acima) e o critério 4 (PR de fechamento com a saída crua
+dos dois runs).
 
 ## 7. Pendências herdadas — o que ainda NÃO é "de verdade" (não confunda com bug)
 
