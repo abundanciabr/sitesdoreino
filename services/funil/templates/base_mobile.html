@@ -1,12 +1,23 @@
 <!-- templates/base_mobile.html  [RECEITA:R6 v1] -->
 <!-- O viewport abaixo é contrato, não decoração: test_mobile_first_contract.py
      verifica esta tag em toda página que estende este arquivo. Não troque por
-     um viewport de largura fixa. -->
+     um viewport de largura fixa. -->{% comment %}
+i18n (PLANO-I18N D5): request.i18n_seo só existe para site registrado em
+sites_i18n.yaml — TODAS as tags {% if %} e este {% comment %} colam no fim da
+linha anterior de propósito, para que site NÃO registrado renderize saída
+byte-idêntica à de antes (teste de regressão compara os bytes).
+{% endcomment %}
 <!doctype html>
-<html lang="pt-br">
+{% if request.i18n_seo %}<html lang="{{ request.i18n_seo.lang }}" dir="{{ request.i18n_seo.dir }}">{% else %}<html lang="pt-br">{% endif %}
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">{% if request.i18n_seo %}
+  <link rel="canonical" href="{{ request.i18n_seo.canonical }}">{% for alternativa in request.i18n_seo.alternates %}
+  <link rel="alternate" hreflang="{{ alternativa.hreflang }}" href="{{ alternativa.href }}">{% endfor %}
+  <link rel="alternate" hreflang="x-default" href="{{ request.i18n_seo.x_default }}">
+  <meta property="og:locale" content="{{ request.i18n_seo.og_locale }}">{% for og in request.i18n_seo.og_alternates %}
+  <meta property="og:locale:alternate" content="{{ og }}">{% endfor %}{% if request.i18n_seo.noindex %}
+  <meta name="robots" content="noindex">{% endif %}{% endif %}
   <title>{% block titulo %}{{ site.name }}{% endblock %}</title>
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
   <style>
@@ -19,7 +30,8 @@
   {% block head_extra %}{% endblock %}
 </head>
 <body>
-  <div class="wrap">
+  <div class="wrap">{% if request.i18n_seo %}
+    <nav class="idiomas" translate="no">{% for opcao in request.i18n_seo.seletor %}{% if not forloop.first %} · {% endif %}<a href="{{ opcao.href }}" hreflang="{{ opcao.tag }}" lang="{{ opcao.tag }}">{{ opcao.codigo }}</a>{% endfor %}</nav>{% endif %}
     {% block conteudo %}{% endblock %}
   </div>
   {% block script_extra %}{% endblock %}

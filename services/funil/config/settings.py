@@ -26,6 +26,9 @@ ALLOWED_HOSTS = ["*"]
 INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.core",
+    # i18n da célula (PLANO-I18N fase 1): o AppConfig.ready() valida o
+    # catálogo no BOOT (fail-closed) e o congela em memória.
+    "apps.i18n",
 ]
 
 MIDDLEWARE = [
@@ -47,7 +50,12 @@ TEMPLATES = [  # [RECEITA:R6 v1] — landing (ilha Alpine)
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
-        "OPTIONS": {"context_processors": []},
+        # `request` no contexto: o base_mobile.html lê request.i18n_seo para a
+        # emissão SEO de site registrado (D5). Site não registrado não referencia
+        # a variável — saída byte-idêntica à anterior (teste de regressão).
+        "OPTIONS": {
+            "context_processors": ["django.template.context_processors.request"]
+        },
     },
 ]
 
