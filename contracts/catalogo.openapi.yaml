@@ -84,6 +84,31 @@ components:
           additionalProperties: true
           description: Tokens de identidade visual (cores, logo) — opaco para quem consome
         default_offer_slug: { type: string, description: Oferta que a raiz do funil exibe }
+        default_language:
+          type: string
+          description: >-
+            Idioma padrão do site, BCP 47 em minúsculas, como aparece na URL
+            (en, pt-br, es). AUSENTE ⇒ site monolíngue: nenhuma URL ganha
+            prefixo de idioma e o comportamento herdado é preservado.
+        languages:
+          type: array
+          description: >-
+            Idiomas que este site serve. Ausente ou vazio ⇒ monolíngue. Quando
+            presente, DEVE conter default_language. A ordem não é significativa.
+          items:
+            type: object
+            required: [code]
+            properties:
+              code:
+                type: string
+                description: BCP 47 em minúsculas, exatamente como aparece na URL
+              indexable:
+                type: boolean
+                default: true
+                description: >-
+                  false ⇒ as páginas desse idioma saem com noindex e ficam fora
+                  do hreflang e do sitemap. Serve para lançar um idioma antes de
+                  querer tráfego nele.
     Product:
       type: object
       required: [id, name, price_cents, active]
