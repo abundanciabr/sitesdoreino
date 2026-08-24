@@ -272,3 +272,56 @@ def entrar_como(rede, matricula, db):
 def dentro(entrar_como):
     """Um aluno já dentro — o ponto de partida de todo guarda de participação."""
     return entrar_como()
+
+
+# ---------------------------------------------------------------------------
+# A moderação (EVO-13) — o crachá também vem pela porta, e da variável de env
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def lista_da_staff(monkeypatch):
+    """Põe um e-mail em `SUGESTOES_STAFF_EMAILS`, acumulando.
+
+    Acumula porque a variável é UMA lista separada por vírgula: um
+    `setenv` por pessoa faria a segunda apagar o crachá da primeira, e um
+    guarda com duas pessoas da equipe falharia por um motivo que não é o dele.
+
+    Note que ela nasce ausente (fixture `ambiente`): **ninguém é staff por
+    acidente**, e o teste que precisa de crachá o pede explicitamente.
+    """
+    emails: list[str] = []
+
+    def _incluir(email: str) -> None:
+        emails.append(email.strip().lower())
+        monkeypatch.setenv("SUGESTOES_STAFF_EMAILS", ",".join(emails))
+
+    return _incluir
+
+
+@pytest.fixture
+def entrar_como_staff(rede, lista_da_staff, db):
+    """Abre uma sessão de EQUIPE pelo mesmo fluxo real do aluno.
+
+    Uma diferença que é prova por si: aqui **não se dubla a `alunos`**. A
+    checagem de staff acontece antes da de matrícula (`DECISAO-EVO-01` §4), e o
+    `respx` estoura em qualquer requisição não registrada (armadilhas/054) — se
+    alguém inverter a ordem um dia, esta fixture cai com
+    `AllMockedAssertionError`, não com um teste verde de mentira.
+    """
+    from django.test import Client
+
+    def _entrar(email: str = "equipe@meshcraft.test", nome: str = "Equipe") -> Porta:
+        lista_da_staff(email)
+        pessoa = Porta(Client(), rede)
+        resposta = pessoa.bater(perfil_google(email=email, nome=nome))
+        assert pessoa.esta_dentro, resposta.content
+        return pessoa
+
+    return _entrar
+
+
+@pytest.fixture
+def equipe(entrar_como_staff):
+    """Alguém da equipe já dentro — o ponto de partida de todo guarda do EVO-13."""
+    return entrar_como_staff()
