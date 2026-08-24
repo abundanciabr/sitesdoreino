@@ -60,12 +60,29 @@ def avaliacao(sugestao, aluno):
 
 
 def _rotas_de_participacao() -> set[str]:
+    """As rotas que o ALUNO alcança: exigem sessão e NÃO exigem crachá.
+
+    O recorte por `exige_staff` entrou no EVO-13, quando as rotas de moderação
+    nasceram — e ele não afrouxa nada, porque as três varreduras do urlconf
+    juntas continuam cobrindo o urlconf inteiro, sem sobra:
+
+    * rota sem `exige_sessao` e fora da lista pública ⇒ cai em
+      `test_inv_sem_sessao_nada.py::test_toda_rota_nao_publica_carrega_o_porteiro`;
+    * rota com `exige_staff` ⇒ cai em `test_inv_so_staff_modera.py`, que a
+      percorre com uma sessão de ALUNO e exige 403 em todas;
+    * rota com `exige_sessao` e sem `exige_staff` ⇒ é o aluno, e é aqui.
+
+    Sem o recorte, este guarda passaria a exigir que a jornada do aluno
+    percorresse as páginas da equipe — que devolvem 403 exatamente porque ele
+    não pode entrar nelas. Seria medir o contrário do invariante.
+    """
     from config.urls import urlpatterns
 
     return {
         rota.name
         for rota in urlpatterns
         if getattr(rota.callback, "exige_sessao", False)
+        and not getattr(rota.callback, "exige_staff", False)
     }
 
 

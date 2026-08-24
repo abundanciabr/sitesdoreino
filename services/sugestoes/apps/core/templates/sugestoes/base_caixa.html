@@ -41,7 +41,7 @@ o prefixo público (/forms/sugestoes) em produção — ver armadilhas/029 e /08
     .papel {
       display: inline-block; padding: .1rem .45rem; border-radius: 1rem;
       border: 1px solid currentColor; font-size: .75rem; text-transform: uppercase;
-      letter-spacing: .04em; vertical-align: middle;
+      letter-spacing: .04em; vertical-align: middle; text-decoration: none;
     }
     .cartao {
       border: 1px solid currentColor; border-radius: .6rem;
@@ -61,7 +61,7 @@ o prefixo público (/forms/sugestoes) em produção — ver armadilhas/029 e /08
     .recado h2 { font-size: 1.05rem; margin: 0 0 .5rem; }
     .recado p, .recado li { margin: 0; font-size: .95rem; }
     label { display: block; margin: 1rem 0 .25rem; font-weight: 600; font-size: .95rem; }
-    input[type=text], textarea, select {
+    input[type=text], input[type=number], textarea, select {
       width: 100%; padding: .6rem .7rem; border-radius: .5rem;
       border: 1px solid currentColor; background: transparent; color: inherit;
       font: inherit;
@@ -90,7 +90,19 @@ o prefixo público (/forms/sugestoes) em produção — ver armadilhas/029 e /08
       {% if ator %}
         <span>
           {{ ator.identidade.nome_exibido|default:ator.identidade.email }}
-          {% if ator.e_staff %}<span class="papel">equipe</span>{% endif %}
+          {% comment %}
+          O crachá vira o caminho: sem este link a fila de moderação seria uma
+          URL que só quem leu o urlconf conhece. Ele só existe para quem tem o
+          papel `staff`, que é DERIVADO a cada requisição da
+          SUGESTOES_STAFF_EMAILS — sai da variável, some da tela no ato.
+
+          `{% templatetag openbrace %}#` só comenta UMA linha no Django: um
+          comentário de quatro linhas escrito assim vai INTEIRO para o HTML, e
+          o guarda `test_o_aluno_nao_ve_esse_link` pegou isso aqui mesmo.
+          {% endcomment %}
+          {% if ator.e_staff %}
+            <a href="{% url 'fila' %}" class="papel">moderação</a>
+          {% endif %}
           <form method="post" action="{% url 'sair' %}">
             {% csrf_token %}
             <button type="submit" class="botao discreto">Sair</button>

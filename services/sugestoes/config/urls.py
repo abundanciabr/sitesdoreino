@@ -1,5 +1,6 @@
 from django.urls import path
 
+from apps.core.moderacao import avaliar, moderar, mudar_status, ver_fila
 from apps.core.participacao import (
     comentar,
     desvotar,
@@ -36,4 +37,12 @@ urlpatterns = [
     path("sugestoes/<int:sugestao_id>/votar", votar, name="votar"),
     path("sugestoes/<int:sugestao_id>/desvotar", desvotar, name="desvotar"),
     path("sugestoes/<int:sugestao_id>/comentarios", comentar, name="comentar"),
+    # A moderação (EVO-13) mora sob um prefixo próprio, `/moderacao`, e não
+    # espalhada por `/sugestoes/<id>/...`: assim a fronteira do crachá é legível
+    # no urlconf, e não só no decorador. Toda rota daqui responde **403** a quem
+    # tem sessão sem papel `staff` (apps/core/moderacao.py).
+    path("moderacao", ver_fila, name="fila"),
+    path("moderacao/<int:sugestao_id>", moderar, name="moderar"),
+    path("moderacao/<int:sugestao_id>/status", mudar_status, name="mudar_status"),
+    path("moderacao/<int:sugestao_id>/avaliacao", avaliar, name="avaliar"),
 ]

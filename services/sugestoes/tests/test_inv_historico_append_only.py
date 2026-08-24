@@ -13,11 +13,19 @@ tem o seu teste aqui — porque um degrau sozinho tem porta dos fundos:
 
 O degrau 3 é o que transforma "convenção" em "impossibilidade física": nenhum
 código futuro desta célula precisa conhecer a classe para ficar preso à regra.
+
+**Degrau 4, acrescentado pelo EVO-13:** as rotas da EQUIPE existem agora, e são
+as únicas do projeto que escrevem nesta tabela. O último bloco deste arquivo
+percorre a moderação inteira com as consultas capturadas e prova que nenhuma
+delas edita ou apaga uma linha — "corrigir o histórico" continua não existindo,
+nem pela porta nova.
 """
 
 import pytest
 from django.db import DatabaseError, connection, models, transaction
 from django.db.models import ProtectedError
+from django.test.utils import CaptureQueriesContext
+from django.urls import NoReverseMatch, reverse
 
 from apps.sugestoes.models import HistoricoStatus, RegistroImutavel, Sugestao
 
@@ -138,6 +146,111 @@ def test_correcao_e_registro_novo_e_o_anterior_continua_de_pe(registro, aluno):
         "entra na próxima trilha",
         "voltou: o ChangeSpec não foi aprovado",
     ]
+
+
+# --------------------------------------------------------------------------
+# Degrau 4 (EVO-13) — as rotas da equipe, as únicas que escrevem aqui
+# --------------------------------------------------------------------------
+def _rotas_de_moderacao() -> set[str]:
+    from config.urls import urlpatterns
+
+    return {
+        rota.name
+        for rota in urlpatterns
+        if getattr(rota.callback, "exige_staff", False)
+    }
+
+
+def _moderacao_completa(cliente, sugestao) -> dict[str, list]:
+    """Todo endereço que a EQUIPE alcança, exercitado uma vez cada.
+
+    Duas mudanças de status seguidas, e não uma: a segunda é o caso em que
+    alguém "corrige" a primeira, que é exatamente onde um `update()` distraído
+    nasceria.
+    """
+    return {
+        "fila": [cliente.get(reverse("fila"))],
+        "moderar": [cliente.get(reverse("moderar", args=[sugestao.id]))],
+        "mudar_status": [
+            cliente.post(
+                reverse("mudar_status", args=[sugestao.id]),
+                {"status": Sugestao.Status.EM_DESENVOLVIMENTO, "nota": "começou"},
+            ),
+            cliente.post(
+                reverse("mudar_status", args=[sugestao.id]),
+                {"status": Sugestao.Status.EM_ANALISE, "nota": "voltou: me enganei"},
+            ),
+        ],
+        "avaliar": [
+            cliente.post(
+                reverse("avaliar", args=[sugestao.id]),
+                {"impacto_educacional": 4, "notas": "vale a pena"},
+            )
+        ],
+    }
+
+
+def test_a_varredura_cobre_TODAS_as_rotas_da_equipe(equipe, sugestao):
+    """Sem isto, rota de moderação nova nasceria fora deste degrau."""
+    percorridas = set(_moderacao_completa(equipe.client, sugestao))
+    assert percorridas == _rotas_de_moderacao(), (
+        f"faltando {_rotas_de_moderacao() - percorridas}, "
+        f"sobrando {percorridas - _rotas_de_moderacao()}"
+    )
+
+
+def test_nenhuma_rota_da_equipe_edita_ou_apaga_o_historico(equipe, sugestao, registro):
+    tabela = HistoricoStatus._meta.db_table
+
+    with CaptureQueriesContext(connection) as consultas:
+        _moderacao_completa(equipe.client, sugestao)
+
+    culpadas = [
+        c["sql"]
+        for c in consultas.captured_queries
+        if tabela in c["sql"]
+        and c["sql"].lstrip().upper().startswith(("UPDATE", "DELETE"))
+    ]
+    assert culpadas == [], (
+        f"uma rota da equipe emitiu UPDATE/DELETE em {tabela}: {culpadas[:3]}. "
+        "Corrigir o histórico é um registro NOVO (spec §8)."
+    )
+
+
+def test_a_linha_antiga_continua_intacta_depois_da_moderacao(
+    equipe, sugestao, registro
+):
+    """A outra metade: o SQL pode estar limpo e a linha ter sumido por outro
+    caminho. Aqui se olha para a linha, não para as consultas."""
+    _moderacao_completa(equipe.client, sugestao)
+
+    recarregada = HistoricoStatus.objects.get(pk=registro.pk)
+    assert recarregada.nota == "entra na próxima trilha"
+    assert recarregada.status_anterior == Sugestao.Status.EM_ANALISE
+    assert recarregada.status_novo == Sugestao.Status.PLANEJADO
+    assert recarregada.alterado_por_id == registro.alterado_por_id
+    # A moderação ACRESCENTA — três linhas novas, nenhuma no lugar da antiga.
+    assert HistoricoStatus.objects.count() == 3
+
+
+def test_nenhuma_rota_da_equipe_aceita_apagar_uma_linha_do_historico(
+    equipe, sugestao, registro
+):
+    """A tabela não tem rota de remoção, e é assim que se prova: tentando.
+
+    Se um dia alguém acrescentar `/moderacao/<id>/historico/<id>/apagar`, este
+    guarda continua verde por acidente — mas o `_rotas_de_moderacao()` acima
+    passa a exigir que ela entre na varredura, e aí os dois de cima a pegam.
+    """
+    for verbo in ("delete", "post"):
+        endereco = reverse("moderar", args=[sugestao.id]) + f"/historico/{registro.pk}"
+        try:
+            resposta = getattr(equipe.client, verbo)(endereco)
+        except NoReverseMatch:  # pragma: no cover - defensivo
+            continue
+        assert resposta.status_code == 404, f"{verbo} {endereco}: existe rota aqui?"
+
+    assert HistoricoStatus.objects.filter(pk=registro.pk).exists()
 
 
 def test_o_gerente_do_historico_recusa_escrita_e_nao_e_o_padrao_do_django():
