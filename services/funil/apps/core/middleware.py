@@ -1,5 +1,5 @@
 # apps/core/middleware.py  # [RECEITA:CONV-SITE v1] + resolver de idioma
-# (PLANO-I18N §2 D1 — matriz HTTP; site fora do registro = fluxo de hoje).
+# (PLANO-I18N §2 D1 — matriz HTTP; site sem idiomas = fluxo de hoje).
 import re
 import time
 
@@ -7,17 +7,22 @@ from django.http import Http404, HttpResponseRedirect
 from django.utils import translation
 
 from apps.core.clients import CatalogoClient
-from apps.i18n.registro import dados_seo, registro_do_host
+from apps.i18n.idiomas import dados_seo, idiomas_do_site
 
 _CACHE: dict = {}
 TTL_SEGUNDOS = 60
 
 # /healthz é sonda do container e do gateway — chega sem Host de site e não pode
-# depender do catálogo estar de pé. Estáticos idem. /sitemap.xml é rota de
-# MÁQUINA (D6): sem prefixo de idioma e sem depender do catálogo — a view lê o
-# Host direto do registro i18n. A isenção roda ANTES de QUALQUER lógica
-# (inclusive a de idioma): rota de máquina nunca se localiza.
-CAMINHOS_SEM_SITE = ("/healthz", "/static/", "/sitemap.xml")
+# depender do catálogo estar de pé. Estáticos idem. A isenção roda ANTES de
+# QUALQUER lógica.
+CAMINHOS_SEM_SITE = ("/healthz", "/static/")
+
+# Rota de MÁQUINA (D6): precisa do Site — desde a fase 4 os idiomas vêm do
+# catálogo, e o sitemap é feito deles — mas NUNCA se localiza (nenhum prefixo
+# de idioma, nenhum redirect da matriz D1). Custo do dado ter virado contrato:
+# o sitemap deixou de ser servível com o catálogo fora do ar; em compensação
+# usa o MESMO cache de 60s de qualquer outra rota.
+CAMINHOS_DE_MAQUINA = ("/sitemap.xml",)
 
 # D1/D6: primeiro segmento com FORMA de idioma (2-3 letras ± região, qualquer
 # caixa/separador) que NÃO seja código habilitado ⇒ 404 fail-closed — cobre
@@ -36,8 +41,9 @@ def limpar_cache_de_sites() -> None:
 
 class SiteResolutionMiddleware:
     """[INV-P11] Resolve Host→Site UMA vez por requisição, via catálogo (com cache).
-    Host não cadastrado ⇒ 404 — nunca um site padrão. Site cadastrado no
-    registro i18n (sites_i18n.yaml) ⇒ resolve também o idioma do prefixo."""
+    Host não cadastrado ⇒ 404 — nunca um site padrão. Site que o catálogo serve
+    com `languages` ⇒ resolve também o idioma do prefixo (fase 4: a fonte dos
+    idiomas é o Site, não mais um arquivo local)."""
 
     def __init__(self, get_response):
         self.get_response = get_response
@@ -48,23 +54,28 @@ class SiteResolutionMiddleware:
         if request.path_info.startswith(CAMINHOS_SEM_SITE):
             return self.get_response(request)
         host = request.get_host().split(":")[0].lower()
-        site = self._resolver(host)
+        site, cfg = self._resolver(host)
         if site is None:
             raise Http404("site desconhecido")
         request.site = site  # todo o resto da célula lê daqui
-        cfg = registro_do_host(host)
-        if cfg is None:
-            # Site monolíngue (fora do registro): fluxo de hoje, intocado.
+        request.i18n = cfg  # idiomas do site — None = monolíngue
+        if cfg is None or request.path_info.startswith(CAMINHOS_DE_MAQUINA):
+            # Monolíngue (fluxo de hoje, intocado) ou rota de máquina (D6).
             return self.get_response(request)
         return self._com_idioma(request, site, cfg)
 
     def _resolver(self, host: str):
         hit = _CACHE.get(host)
         if hit and hit[0] > time.time():
-            return hit[1]
+            return hit[1], hit[2]
         site = CatalogoClient().obter_site_por_host(host)
-        _CACHE[host] = (time.time() + TTL_SEGUNDOS, site)  # cacheia inclusive o 404
-        return site
+        # Os idiomas são derivados UMA vez por janela de cache, junto com o
+        # Site: zero trabalho por request, e o ERROR de dado inválido não vira
+        # enxurrada de log a cada acesso.
+        cfg = idiomas_do_site(site)
+        # Cacheia inclusive o 404 (site None).
+        _CACHE[host] = (time.time() + TTL_SEGUNDOS, site, cfg)
+        return site, cfg
 
     def _com_idioma(self, request, site, cfg):
         caminho = request.path_info
@@ -86,7 +97,6 @@ class SiteResolutionMiddleware:
             definicao = cfg["idiomas"][segmento]
             caminho_sem_prefixo = f"/{resto}"
             request.idioma = segmento
-            request.i18n = cfg
             request.i18n_seo = dados_seo(site, cfg, segmento, caminho_sem_prefixo)
             # O urlconf da célula continua sem prefixo: o resolver decapa o
             # idioma ANTES da resolução de URL (path_info é o que o Django

@@ -2,10 +2,11 @@
 <!-- O viewport abaixo é contrato, não decoração: test_mobile_first_contract.py
      verifica esta tag em toda página que estende este arquivo. Não troque por
      um viewport de largura fixa. -->{% comment %}
-i18n (PLANO-I18N D5): request.i18n_seo só existe para site registrado em
-sites_i18n.yaml — TODAS as tags {% if %} e este {% comment %} colam no fim da
-linha anterior de propósito, para que site NÃO registrado renderize saída
-byte-idêntica à de antes (teste de regressão compara os bytes).
+i18n (PLANO-I18N D5): request.i18n_seo só existe para site que o catálogo
+serve COM idiomas (campo languages do contrato) — TODAS as tags {% if %} e
+este {% comment %} colam no fim da linha anterior de propósito, para que site
+monolíngue renderize saída byte-idêntica à de antes (o teste de regressão
+compara os bytes).
 {% endcomment %}
 <!doctype html>
 {% if request.i18n_seo %}<html lang="{{ request.i18n_seo.lang }}" dir="{{ request.i18n_seo.dir }}">{% else %}<html lang="pt-br">{% endif %}

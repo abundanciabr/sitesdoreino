@@ -9,7 +9,6 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from apps.core.clients import CatalogoClient, LeadsClient
 from apps.i18n.catalogo import js_da_pagina
-from apps.i18n.registro import registro_do_host
 
 # Ordem fixa: é também a ordem em que a query string do link do checkout é
 # montada — preservar isso torna o teste de UTM determinístico.
@@ -117,18 +116,19 @@ def cadastro(request):
 
 @require_GET
 def sitemap_xml(request):
-    """D6: rota de MÁQUINA — sem prefixo de idioma, isenta do CONV-SITE (não
-    depende do catálogo, como /healthz). Por Host: URLs dos idiomas indexáveis
-    do site registrado, absolutas com o host canônico (a chave do registro É o
-    host canônico — host desconhecido dele, inclusive preview, é 404). Site
-    não registrado: 404, o comportamento de hoje, intocado."""
+    """D6: rota de MÁQUINA — nunca se localiza. Desde a fase 4 ela PRECISA do
+    Site: os idiomas vêm do catálogo, então o CONV-SITE resolve o Host aqui
+    como em qualquer rota (mesmo cache de 60s) e a view lê `request.i18n`. As
+    URLs saem absolutas com o **host canônico do Site** — nunca
+    `request.get_host()` (D5: preview não vaza pro sitemap de produção). Site
+    monolíngue: 404, o comportamento de hoje, intocado."""
     if getattr(request, "idioma", None) is not None or request.path != "/sitemap.xml":
         # /en/sitemap.xml e afins: rota de máquina nunca se localiza (D6).
         raise Http404("sitemap não tem prefixo de idioma")
-    host = request.get_host().split(":")[0].lower()
-    cfg = registro_do_host(host)
+    cfg = getattr(request, "i18n", None)
     if cfg is None:
         raise Http404("site sem sitemap")
+    host = request.site["host"]
 
     urls = [
         f"https://{host}/{codigo}{pagina}"

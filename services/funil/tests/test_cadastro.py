@@ -1,9 +1,10 @@
 """Fase 2 do PLANO-I18N — página de cadastro do meshcraft nos 3 idiomas.
 
-O registro usado é o REAL (sites_i18n.yaml, instalado no boot) — nada aqui
-monkeypatcha idiomas. O catálogo (célula) e a leads entram só como contrato
-mockado (respx), com Host válido (ARMADILHAS §4.6) e filtro por endpoint nas
-asserções de chamada (LICOES: o CONV-SITE sempre bate no catálogo)."""
+Os 3 idiomas vêm do CATÁLOGO (fase 4: `conftest.SITE_MESH`, no formato do
+contrato) — nada aqui monkeypatcha idioma. O catálogo (célula) e a leads
+entram só como contrato mockado (respx), com Host válido (ARMADILHAS §4.6) e
+filtro por endpoint nas asserções de chamada (LICOES: o CONV-SITE sempre bate
+no catálogo)."""
 
 import json
 from types import MappingProxyType

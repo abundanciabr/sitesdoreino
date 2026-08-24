@@ -2,7 +2,10 @@
 #
 # Divisão de trabalho do módulo apps.i18n:
 #   catalogo.py  → carregar YAML estrito, achatar, resolver em runtime (t/t_lazy)
-#   registro.py  → registro interim de idiomas por site (sites_i18n.yaml)
+#                  + a política de TRADUÇÃO da célula (IDIOMAS_BASE, VARIANTES,
+#                    GLOSSARIO): o que ela sabe renderizar, e como
+#   idiomas.py   → os idiomas DO SITE, vindos do catálogo (contrato `Site`),
+#                  + derivação de tag BCP 47/dir + emissão SEO
 #   validador.py → portão fail-closed (mesma implementação no CI e no boot)
 #   apps.py      → boot: valida e congela o catálogo em memória (zero parse/request)
 import hashlib
@@ -21,10 +24,26 @@ from django.utils.safestring import mark_safe
 
 logger = logging.getLogger("funil.i18n")
 
-# D2/D4: idiomas-base da célula — paridade EXATA entre eles. Variantes regionais
-# (pt-pt…) entram pelo registro (campo `base`), nunca por esta tupla.
+# D2/D4: idiomas-base da célula — paridade EXATA entre eles. Variantes
+# regionais (pt-pt…) entram por VARIANTES, nunca por esta tupla.
 IDIOMA_FONTE = "en"
 IDIOMAS_BASE = ("en", "pt-br", "es")
+
+# D4 — variantes regionais: variante → base, overlay esparso, MÁXIMO 1 nível
+# (variante → base → en; a base tem de ser idioma-BASE, e o validador confere).
+# Fica na CÉLULA e não no contrato do catálogo porque a cadeia de fallback é
+# propriedade do catálogo de TRADUÇÃO — dois sites que sirvam `pt-pt` caem no
+# mesmo `pt-br` porque o texto é o mesmo, não porque cada um configurou isso.
+# Vazio hoje; `{"pt-pt": "pt-br"}` é o formato. Idioma fora daqui e de
+# IDIOMAS_BASE não é servível: `idiomas.idiomas_do_site` o ignora (com ERROR)
+# ainda que o catálogo o declare para o site.
+VARIANTES: "dict[str, str]" = {}
+
+# D8.1 — glossário: nomes próprios que NUNCA se traduzem; o validador confere
+# a presença literal em toda tradução cujo `en` os contenha. Vinha do registro
+# interim (por site); é conhecimento da CÉLULA — quem escreve a tradução é
+# quem precisa da regra, e ela não muda de site para site.
+GLOSSARIO = ("Meshcraft", "Roblox", "Roblox Studio")
 
 FONTE_PENDENTE = "pendente"  # D4: degradação declarável, nunca inferível
 

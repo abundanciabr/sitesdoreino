@@ -45,18 +45,35 @@ OFERTA_A = {
     "bumps": [],
 }
 
-# meshcraft.top é o ÚNICO host real aqui, de propósito: desde a fase 2 do
-# PLANO-I18N ele está registrado no sites_i18n.yaml REAL (instalado no boot),
-# e os testes da matriz/cadastro/sitemap exercitam esse registro de verdade.
-# No catálogo ele continua mockado como qualquer outro (R2: só o contrato).
+# meshcraft.top é o ÚNICO host real aqui, de propósito: é o primeiro site
+# multilíngue da plataforma, e os testes de matriz/cadastro/sitemap o
+# exercitam. Desde a FASE 4 os idiomas dele vêm do CATÁLOGO, exatamente no
+# formato do contrato (`contracts/catalogo.openapi.yaml`, schema Site) — o
+# interim `sites_i18n.yaml` foi aposentado, e é este mock que faz o papel do
+# provedor. Nenhum arquivo local declara idioma nesta célula.
 HOST_MESH = "meshcraft.top"
 SLUG_MESH = "curso-teste"
+IDIOMAS_MESH = [
+    {"code": "en", "indexable": True},
+    {"code": "pt-br", "indexable": True},
+    {"code": "es", "indexable": False},  # D5: es NASCE noindex até haver demanda
+]
 SITE_MESH = {
     "id": "site-mesh",
     "host": HOST_MESH,
     "name": "Meshcraft (site de testes)",
     "active": True,
     "default_offer_slug": SLUG_MESH,
+    "default_language": "en",
+    "languages": IDIOMAS_MESH,
+}
+# O MESMO site como o catálogo o serve HOJE, antes do provedor da fase 4 ir ao
+# ar: sem os campos de idioma. Serve à prova de degradação (o funil o trata
+# como monolíngue) — ver test_meshcraft_vivo.
+SITE_MESH_SEM_IDIOMAS = {
+    chave: valor
+    for chave, valor in SITE_MESH.items()
+    if chave not in ("default_language", "languages")
 }
 OFERTA_MESH = {
     "site_id": SITE_MESH["id"],
