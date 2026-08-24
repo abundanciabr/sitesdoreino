@@ -11,17 +11,17 @@
 
 ## Onde estamos
 
-**Fase atual: Lote 0, quase fechado.** O plano mestre existe, a auditoria do
+**Fase atual: Lote 0 FECHADO — o Lote 1 está liberado.** O plano mestre existe, a auditoria do
 terreno foi feita, e o nome e o endereço estão decididos: a ferramenta chama-se
 **Caixa de Sugestões** e vai morar em **meshcraft.top/forms/sugestoes/**. Falta
-só a conversa EVO-01 (abaixo) para o Lote 1 poder começar.
+a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem nenhuma pendência sua.
 
 ## 🙋 Precisa de você (tudo que o plano inteiro vai pedir)
 
 | Quando | O quê | Como vai chegar |
 |---|---|---|
-| Antes do Lote 1 | Conversa EVO-01: decidir **como o aluno entra** na Caixa (proposta: link mágico pelo e-mail da matrícula, sem senha) | Uma conversa numa janela raiz; o agente prepara tudo antes |
-| No Lote 2 | Criar o banco `sugestoes_db` na VPS + preencher o `sugestoes.env` real | UM bloco de colar, fail-closed, com a janela rotulada |
+| ~~Antes do Lote 1~~ ✅ | ~~Conversa EVO-01~~ **FEITA em 23/08/2026** — decisão: **Entrar com Google**, e só entra quem tem matrícula. O link mágico foi descartado (a plataforma não manda e-mail). Lei em `DECISAO-EVO-01-identidade.md` | — |
+| No Lote 2 | Criar o banco `sugestoes_db` na VPS + preencher o `sugestoes.env` real — **agora inclui criar o aplicativo OAuth no Google** (ID de cliente + segredo, retorno em `/forms/sugestoes/entrar/google/retorno`) e a lista `SUGESTOES_STAFF_EMAILS` | UM bloco de colar, fail-closed, com a janela rotulada |
 | No Lote 4 | Assinar `APROVADO_POR` no primeiro ChangeSpec real | Um campo para preencher, nada técnico |
 
 ## Lote 0 — Alicerce
@@ -29,7 +29,7 @@ só a conversa EVO-01 (abaixo) para o Lote 1 poder começar.
 | Despacho | O que entrega | Estado | PR | Nota |
 |---|---|---|---|---|
 | EVO-00 | Auditoria do estado real da plataforma (identidade, bancos, eventos, como nasce célula) | ✅ | #78 | feita em 23/08 — `AUDITORIA-AS-IS.md`; achado maior: não existe login de aluno na plataforma |
-| EVO-01 | Decisão de arquitetura que sobrou: **como o aluno se identifica** (proposta: link mágico pelo e-mail da matrícula) | 🙋 | — | única reunião do plano; nome, endereço e nomes de evento já foram decididos em 23/08 |
+| EVO-01 | Decisão de arquitetura que sobrou: **como o aluno se identifica** | ✅ | — | **fechada em 23/08/2026**: Entrar com Google prova quem é, a célula `alunos` decide se pode (só matriculado). Staff por lista de e-mails no env. `DECISAO-EVO-01-identidade.md` é a lei |
 
 ## Lote 1 — A célula nasce
 
