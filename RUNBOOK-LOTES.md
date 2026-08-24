@@ -350,6 +350,64 @@ Contrato** e o primeiro a travar o **canal** de entrega sem travar o site):
     e a regra que o agente aplicou é a de sempre: teto apertado não justifica entrega
     pela metade — justifica declarar.
 
+**Lote 6 — 24/08/2026** (Caixa de Sugestões, Lote 1 do plano mestre: 5 despachos em
+**fila interna** na MESMA célula, PRs #108/#113/#116/#122/#126, mais #110/#119/#121/#123
+de registro; 9 merges, 0 revert, 0 minuto de produção derrubada — o primeiro lote a
+criar uma célula do zero, e o primeiro cujo deploy nasce vermelho de propósito):
+
+27. **Fila interna só funciona se cada elo herdar o que o anterior descobriu.** Cinco
+    despachos na mesma célula, um de cada vez. O que fez a fila andar não foi a ordem:
+    foi cada brief mandar **ler o `LICOES.md` da célula** e trazer injetadas as
+    armadilhas que o elo anterior achou. A do `reverse()` (achada no EVO-12a) entrou nos
+    briefs do EVO-12b e do EVO-13 e não mordeu de novo. Sem isso, fila é só
+    serialização — e cada agente redescobre o mesmo buraco.
+
+28. **Dividir despacho é decisão da maestro na MONTAGEM, não do agente no meio.** O
+    EVO-12 virou 12a (a porta) + 12b (a participação) **antes de qualquer agente ser
+    disparado**, porque o orçamento de 15 arquivos foi contado no papel e não fechava
+    com o login junto. Os dois saíram com 15/15 exatos. Deixar o agente descobrir isso
+    no meio custa uma rodada e tenta a fusão de arquivos, que é anti-meta.
+
+29. **O que não coube no orçamento do agente é trabalho da maestro, não dívida.** Três
+    vezes neste lote o agente achou armadilha nova e ela não coube (entrada + índice
+    regenerado estouram o teto). O padrão que funcionou: **o agente registra no
+    `LICOES.md` da célula e avisa no handoff; a maestro promove para `armadilhas/` num
+    PR próprio** (#119, #123, e o do fechamento). A lição não se perde e o teto não é
+    burlado.
+
+30. **Relato de agente é hipótese até alguém rodar o comando.** Um handoff afirmou que
+    patch de dois arquivos "falha em silêncio sem a linha `diff --git`, e o erro aponta
+    para o arquivo errado". Antes de virar entrada, a maestro reproduziu num repositório
+    de teste: **nenhuma das duas metades se confirma**. O mecanismo real era outro
+    (contagem de linha errada no cabeçalho do trecho), e a entrada #084 foi escrita com
+    o desmentido junto. Gravar como lei o que não reproduz é pior que não gravar.
+
+31. **Vermelho ESPERADO vai no brief; vermelho novo é lido no log — sempre.** Os cinco
+    merges deixaram o `deploy-celula` vermelho de propósito (o compose da VPS só ganha a
+    célula no Lote 2). Declarar isso em cada brief impediu cinco agentes de "consertar" o
+    que não era deles. **Mas no terceiro merge apareceu um vermelho DIFERENTE** —
+    `dial tcp :22: i/o timeout`, o runner sem alcançar a VPS. Presumir "é o de sempre"
+    teria engolido uma falha de canal. Foi medido (três sites em 200, porta 22
+    respondendo do PC), repetido, e voltou ao vermelho esperado. **Conferir custou dois
+    minutos; presumir custaria descobrir dias depois.**
+
+32. **Decisão de produto que aparece no meio do lote vira LEI antes do despacho que a
+    implementa.** O EVO-12a achou que o contrato de `alunos` devolve `status` em
+    `[ativa, suspensa, reembolsada]` e que a decisão de identidade não falava disso — e
+    **parou de decidir**, registrando a lacuna. A maestro levou ao mantenedor na hora;
+    ele decidiu; virou a §4.1 da `DECISAO-EVO-01` (PR #121) **antes** de o EVO-13 ser
+    despachado, e o EVO-13 nasceu com o guarda que trava aquela decisão — o patch que
+    "conserta" o filtro deixa o CI vermelho. Decisão que fica só na conversa evapora;
+    decisão sem guarda é "consertada" pelo próximo agente de boa-fé.
+
+33. **Gênese de célula toca TRÊS caminhos CODEOWNERS, não dois.** A auditoria dizia que
+    célula nova não mexe em `.github/` — mediu `ci-celula.yml` e `deploy-celula.yml`, que
+    detectam a célula sozinhos, e generalizou. O `rollback.yml` **não detecta nada** e
+    tem guarda de paridade exata com o manifesto. O canário travou no `muralhas` por
+    **uma linha**, e o agente de célula não podia corrigir. Corrigido na fonte (#110):
+    a Q4 da auditoria e o `MODELO-DESPACHO.md` agora nomeiam os três. **Documento que
+    "generaliza a partir de dois" é armadilha esperando o terceiro caso.**
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
