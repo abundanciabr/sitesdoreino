@@ -678,3 +678,90 @@ células (`contracts/README.md`), e a superfície HTTP da Caixa é consumida pel
 front-end **dela mesma**. Mesmo depois de EVO-12, com sugerir/votar/comentar no
 ar, continua não havendo contrato a congelar. Só muda se outra célula precisar
 consumir a Caixa — e aí é RITOS.md §3, não edição de manifesto.
+
+> **O dia chegou — 24/08/2026.** O `funil` passou a consumir a Caixa
+> (`docs/decisoes/DECISAO-onde-mora-a-sessao.md`), exatamente pela porta que o
+> parágrafo acima previu. O manifesto vira `freeze: required` no PR seguinte, o
+> do contrato — que anda sozinho, porque `ci/cerca-de-celula.sh` proíbe
+> `contracts/` e `services/` no mesmo PR. O exportador
+> (`apps/core/management/commands/export_openapi.py`) nasceu **neste** PR por
+> causa dessa mesma cerca: ele é `services/`, então não poderia viajar junto
+> com o contrato.
+
+## O cookie de sessão tinha um endereço escrito nele — e era esse o bug do site
+
+Até 24/08/2026 esta linha era `SESSION_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"`.
+Parecia zelo — "o cookie nem sai para o resto do domínio" — e era, para a
+pergunta de 23/08 ("como o aluno entra **na Caixa**?").
+
+Quando a pergunta virou "como a pessoa entra **no site**?", essa linha passou a
+ser o problema inteiro: em produção o caminho é `/forms/sugestoes`, então o
+navegador **não envia** o cookie para `/pt-br/qualquer-coisa`, e o site não tem
+como saber que a pessoa entrou. Nenhuma quantidade de botão "Entrar" espalhado
+resolveria — não era falta de tela, era o crachá não valer fora da sala.
+
+Três coisas que andam juntas nessa mudança, e **as três são obrigatórias**:
+
+1. **`SESSION_COOKIE_PATH = "/"`** — alcance de site. Não é
+   `SESSION_COOKIE_DOMAIN`: alcance de CAMINHO é um host, todas as páginas;
+   alcance de DOMÍNIO espalharia por subdomínios que não são desta plataforma.
+2. **Nome novo do cookie** (`sugestoes_sessao` → `meshcraft_sessao`). O
+   navegador guarda cookie por (nome, domínio, **caminho**): publicar o mesmo
+   nome em `/` deixaria dois cookies homônimos convivendo, e qual deles o
+   servidor lê passa a depender de precedência por caminho. Nome novo faz o
+   velho ser ignorado. Preço: todo mundo logado é deslogado **uma** vez.
+3. **O CSRF NÃO acompanhou.** `CSRF_COOKIE_PATH` era `= SESSION_COOKIE_PATH`,
+   por acidente de escrita. Agora diverge por decisão: a sessão precisa do
+   site inteiro, o token de CSRF protege os `<form>` **desta** célula.
+
+### O guarda óbvio deste item seria falso-verde
+
+O primeiro teste que escrevi para isso abria a porta, lia o cookie e afirmava
+`path == "/"`. **Ele passava com e sem a correção** — porque em dev não há
+`SCRIPT_NAME`, e a linha antiga (`FORCE_SCRIPT_NAME or "/"`) também devolvia
+`/`. Um guarda que nunca reprova é um guarda que ninguém sabe se reprova
+(RETROSPECTIVA §1).
+
+O guarda que vale carrega `config/settings.py` como um módulo NOVO, com
+`SCRIPT_NAME` no ambiente — o regime da VPS
+(`tests/test_sessao_interno.py::test_em_producao_a_sessao_vale_no_site_e_o_csrf_so_na_caixa`).
+Falsificado antes de entrar: com a linha antiga de volta, ele reprova com
+`assert '/forms/sugestoes' == '/'`.
+
+E use módulo novo via `importlib.util`, **nunca `reload` de `config.settings`**:
+o `django.conf.settings` da suíte aponta para aquele objeto, e recarregá-lo
+troca a configuração viva no meio dos outros testes — falha que só apareceria
+como teste vizinho quebrando por ordem de execução.
+
+## A superfície de MÁQUINA: duas perguntas, dois códigos de resposta
+
+`/interno/sessao` cruza duas perguntas, e confundi-las é o erro caro:
+
+| Pergunta | Prova | Falha vira |
+|---|---|---|
+| quem CHAMA? | Bearer do par (`TOKENS_ACEITOS_*`) | **401** |
+| quem é a PESSOA? | cookie repassado pelo chamador | **200** com `autenticado: false` |
+
+Visitante anônimo respondendo 401 faria o `funil` ler "ninguém entrou ainda"
+como "a Caixa recusou a minha credencial" — e a primeira coisa que alguém faria
+para "consertar" seria afrouxar o token.
+
+**Rota nova nasce fora da varredura de porteiro, e o guarda pegou.**
+`path("interno/", api.urls)` é um `URLResolver`, não um `URLPattern`: não tem
+`.name` nem `.callback`, e os guardas que varrem o urlconf estouraram
+`AttributeError` — três de uma vez. A correção NÃO foi ignorar todo
+`URLResolver` (aí bastaria montar páginas por `include()` para a participação
+inteira sair da varredura em silêncio): a montagem é **declarada** por
+igualdade exata em `MONTAGENS_DE_MAQUINA`, e o mesmo teste **mede o 401** do
+lado de fora. Declaração sem prova seria licença para tirar rota do guarda
+escrevendo o nome dela numa lista.
+
+### Dívida aberta: a trava do gateway (Lei 1, um degrau acima)
+
+Como o Traefik roteia o prefixo inteiro da Caixa, `…/forms/sugestoes/interno/sessao`
+**também resolve pela borda pública**. Hoje quem fecha essa porta é o Bearer
+(401 sem token, e o conjunto de tokens nasce vazio) — o que é proteção, mas é
+*documento + código*, não *impossibilidade*. A trava de verdade é uma regra de
+negação no gateway, e ela mora em `infra/traefik/dynamic/plataforma.yml`, fora
+do alcance de um PR de célula (CODEOWNERS). **Fica registrada aqui e não foi
+paga neste PR** — quem for mexer em `infra/` a próximo, pague junto.

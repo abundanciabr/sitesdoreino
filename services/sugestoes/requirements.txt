@@ -1,4 +1,10 @@
 Django==5.1.4
+# A superfície de MÁQUINA da Caixa (DECISAO-onde-mora-a-sessao): o `funil`
+# pergunta "quem é o dono desta sessão?". Mesma versão EXATA de alunos e
+# checkout de propósito — quatro versões da mesma biblioteca para o mesmo
+# padrão são quatro comportamentos a depurar (`armadilhas/071`), e o freeze de
+# contrato compara o schema que ELA gera.
+django-ninja==1.3.0
 psycopg[binary]==3.2.3
 dj-database-url==2.3.0
 uvicorn==0.32.1

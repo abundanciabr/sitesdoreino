@@ -25,7 +25,7 @@ rotas do sininho já caem nela por derivação, sem ninguém cadastrá-las.
 """
 
 import pytest
-from django.urls import reverse
+from django.urls import URLPattern, reverse
 
 from apps.core.avisos import contar_nao_lidos
 from apps.sugestoes.models import Aviso
@@ -182,6 +182,10 @@ def test_as_duas_rotas_do_sininho_carregam_o_porteiro():
     porteiros = {
         rota.name: getattr(rota.callback, "exige_sessao", False)
         for rota in urlpatterns
-        if rota.name in {"avisos", "marcar_aviso_lido"}
+        # `URLPattern` só: desde a DECISAO-onde-mora-a-sessao o urlconf também
+        # carrega uma montagem por `include()` (a superfície de máquina), e
+        # `URLResolver` não tem `.name` nem `.callback`. Quem guarda a montagem
+        # é `test_inv_sem_sessao_nada.py`, que a declara e prova o 401.
+        if isinstance(rota, URLPattern) and rota.name in {"avisos", "marcar_aviso_lido"}
     }
     assert porteiros == {"avisos": True, "marcar_aviso_lido": True}
