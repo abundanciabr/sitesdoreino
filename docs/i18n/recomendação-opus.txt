@@ -1,0 +1,245 @@
+Veredito curto
+
+Cinco peças que eu trocaria, em ordem de custo-de-corrigir-depois:
+
+Todos com prefixo, inclusive o inglês. O "padrão sem prefixo" amarra a forma da URL ao valor de um dado que vai mudar.
+Inverta o eixo dos arquivos YAML: um arquivo por página contendo todos os idiomas, não um arquivo por idioma contendo todas as páginas.
+O portão de 15 arquivos não deve valer para traducoes/**. A métrica está distorcendo o desenho.
+Paridade total só para idiomas-base. Variantes regionais como overlay esparso, com cadeia de fallback declarada como dado.
+Separe idioma de mercado/moeda agora, antes do checkout entrar na conversa.
+
+O que está certo e eu não mexeria: idiomas por site como dado declarado (item 4) e SEO desde a primeira página (item 5). O instinto fail-closed também está certo — só precisa de escopo.
+
+1. URL
+
+Recomendação: /en/cadastro, /pt-br/cadastro, /es/cadastro. Nenhuma URL de conteúdo sem prefixo. Raiz e caminhos nus viram 301 para o prefixo padrão (/cadastro → /en/cadastro), o que preserva links curtos de marketing sem criar uma segunda URL canônica.
+
+Porquê — o argumento decisivo não é SEO (o Google trata os dois igual), é este: com padrão-sem-prefixo, mudar o idioma padrão do site reescreve a URL canônica de todas as páginas em dois idiomas. Vocês estão no dia 1 de um negócio; a chance de o inglês ser questionado como padrão é alta. Com tudo prefixado, trocar o padrão é uma linha no registro e um redirect na raiz.
+
+O segundo motivo é o que vocês mesmos pediram: uma forma só. ^/(?<lang>[a-z]{2}(-[a-z]{2})?)/ resolve gateway, URLconf, teste e seletor de idioma. Padrão-sem-prefixo introduz exatamente o "if" que o item 4 do desenho de vocês existe para eliminar — só que agora dentro do resolvedor de URL, onde o agente de IA precisa saber qual é o padrão daquele site para gerar um link.
+
+Evitar: redirecionar por Accept-Language. É armadilha por quatro razões: (a) exige Vary: Accept-Language, e a cardinalidade real desse header estilhaça o cache de CDN; (b) o Googlebot rastreia dos EUA sem preferência — vocês entregam sempre a mesma versão ou pior, ricocheteiam o crawler; (c) Accept-Language costuma refletir o idioma do SO, não de leitura (brasileiro com macOS em inglês); (d) sem persistência, o usuário fica preso em loop. Se quiser negociar, negocie só na raiz nua, com 302, e resolva o resto com uma ilha Alpine que oferece a troca ("Also in Português") gravando cookie — cookie que nunca muda o conteúdo servido numa URL fixa.
+
+Invariante para virar teste: uma URL = um idioma, sempre. É a regra mais barata de manter e a mais cara de recuperar depois que o CDN estiver envenenado.
+
+Um detalhe que envelhece mal se ignorado: decida agora se o slug também traduz (/es/registro vs /es/cadastro). Não precisa implementar, mas resolva a rota por ID de página + mapa de slug por idioma, não por literal no URLconf. Retrofit disso é migração em massa de 301.
+
+2. YAML próprio vs gettext
+
+Fique com YAML. Mas o motivo que vocês deram é o mais fraco dos disponíveis, e vale corrigir:
+
+"Exige binários GNU gettext": falso hoje. pybabel compile compila .po em Python puro.
+"Falha aberto": gettext cai no msgid, que é o texto-fonte em inglês — em runtime isso é melhor do que qualquer coisa que vocês vão construir. E o check de completude é ortogonal: dá para reprovar merge lendo o .po.
+
+Os motivos reais, que são fortes:
+
+msgid é a chave. Com agentes editando copy livremente, qualquer ajuste de vírgula no inglês invalida as N traduções e vira fuzzy. Churn permanente.
+makemessages regenera todos os locales de uma vez. Uma frase alterada = N arquivos .po tocados. Com 10 idiomas, isso estoura o portão de 15 arquivos sozinho.
+
+O que perdem e como mitigar barato:
+
+Plurais: não improvise if n == 1. Adote as categorias CLDR (zero/one/two/few/many/other) como submapa e use babel.plural para escolher — Python puro, ~20 linhas. Defina o formato da chave agora mesmo que só other esteja preenchido, porque mudar a forma da chave depois é reescrever o catálogo.
+Interpolação: só placeholders nomeados ({nome}), nunca posicionais — a ordem das palavras muda entre idiomas. Teste de CI: o conjunto de placeholders de uma chave tem que ser idêntico em todos os idiomas. Isso pega o bug nº 1 de tradução por IA (o agente traduz o nome do placeholder).
+Escape: decida hoje que tradução é escapada por padrão e que chaves com HTML são marcadas explicitamente (sufixo .html), com teste. Senão vocês colhem &amp; duplicado e XSS.
+Contexto: as chaves com namespace já dão o que pgettext daria. Comentários YAML acima de chaves ambíguas — é a razão principal de YAML ganhar de JSON aqui.
+Gênero: pt/es precisam ("bem-vindo/bem-vinda"). Mitigação barata é regra de copy: evite construções com gênero na fonte.
+RTL: não é problema de tradução, é de CSS. Ver §8.
+
+Terceiras vias: Fluent é tecnicamente superior em plural/gênero e roda sem build (fluent.runtime), mas os agentes escrevem YAML muito melhor do que escrevem FTL, e vocês ganhariam uma DSL para validar. JSON i18next é o mesmo que YAML, pior de ler. Banco: não — quebra Git-como-fonte-da-verdade, quebra a revisão em PR e adiciona dependência de runtime para renderizar uma landing.
+
+O ponto arquitetural que importa mais que a escolha: {% t %} é a costura. Se toda leitura passar por uma função, o formato de armazenamento vira detalhe substituível e migrar YAML→Fluent é um script.
+
+3. Estrutura de chaves
+
+Híbrido, mas provavelmente o oposto do que vocês estão imaginando: namespace por página como arquivo, idiomas dentro dele.
+
+traducoes/cadastro.yaml
+  titulo:
+    en: ...
+    pt-br: ...
+    es: ...
+
+Porquê, contra a alternativa en.yaml/pt-br.yaml/es.yaml:
+
+Conflito de merge some. Dois agentes em páginas diferentes tocam arquivos diferentes. Com arquivo-por-idioma, todo agente que cria página toca en.yaml — hotspot garantido.
+Página nova = 1 arquivo, independente de haver 3 ou 30 idiomas. Diff pequeno, que é o critério de vocês.
+Tradução automática fica muito mais confiável: o agente vê a fonte em inglês colada no que está escrevendo, e uma lacuna é visualmente óbvia no diff. Paridade vira verificável a olho, não só por teste.
+
+O contra honesto: adicionar um idioma toca todos os arquivos de página (30 páginas = 30 arquivos). É aí que entra a recomendação mais importante desta seção.
+
+O portão de 15 arquivos está errado para catálogo de tradução. O portão existe para limitar superfície de revisão humana; o custo de revisar dados mecanicamente verificados não escala com contagem de arquivos. Isente traducoes/** da contagem e compense endurecendo os portões mecânicos sobre essa árvore: paridade, sem chave órfã, sem chave não usada em template, aridade de placeholder, encoding, HTML só onde marcado. Vocês preservam a intenção do portão sem deixar a métrica desenhar o sistema.
+
+Regras de nomenclatura que economizam meses:
+
+Chave codifica papel, não texto. cadastro.cta_primaria, nunca cadastro.botao_clique_aqui — senão cada mudança de copy vira rename e o diff mente.
+Máximo 3 níveis.
+Nunca monte chave dinamicamente (t("erro." + codigo)). Isso mata a análise estática que encontra chave faltando ou órfã. Vire lint: {% t %} só aceita literal. Fail-closed de verdade.
+Chaves em português está ok — consistência com funil/alunos vale mais que pureza. Só nunca deixe a chave ser o texto.
+
+(Se um dia entrarem tradutores humanos via Crowdin/Weblate, o formato esperado é locale-major. Converter é um script de 50 linhas — a decisão é reversível, o que é o que importa.)
+
+4. Fallback e variantes regionais
+
+Paridade total em 10+ idiomas com variantes é a invariante errada. pt-pt difere de pt-br em talvez 10% das strings. Exigir 100% de duplicação produz paridade falsa: cobertura verde no CI e 90% de texto na variante errada, sem nenhum sinal de qual é qual. Paridade falsa é pior que parcialidade declarada, porque é invisível.
+
+Modelo de dois níveis:
+
+Idiomas-base (en, pt-br, es): paridade total obrigatória, fail-closed. Sem fallback esperado em runtime — chave faltando em prod é ERROR + métrica, não warning num log que ninguém lê. Em dev/staging, exceção.
+Variantes regionais (pt-pt, es-mx, en-gb): overlay esparso. Só existem as chaves que divergem. CI valida três coisas, todas baratas: (a) toda chave do overlay existe na base — pega typo e chave morta; (b) o valor difere da base — proíbe duplicata inútil; (c) placeholders batem.
+
+Um benefício real do desenho de vocês que vale registrar: como a paridade é garantida por idioma-base e as páginas são template-driven, lacuna em nível de página não pode acontecer nos idiomas-base. Isso elimina a pior categoria de bug de i18n (URL /es/precos servindo inglês e sendo indexada como espanhol).
+
+Declare a cadeia de fallback como dado, nunca a derive da string BCP-47. pt-pt: [pt-br, en]. É o mesmo princípio que vocês já aplicaram a "quais idiomas o site tem", e resolve o fato de que pt-br está ocupando o lugar de base que "naturalmente" seria de pt — sem obrigar a uma migração para introduzir um pt neutro.
+
+5. SEO multilíngue
+
+Essencial no dia 1:
+
+Canonical autorreferente. Cada URL de idioma aponta para si mesma. O erro nº 1 em i18n é canonical apontando para o idioma padrão — isso desindexa todas as traduções. Vale um teste.
+hreflang recíproco e completo, incluindo a própria página. Não-recíproco o Google ignora inteiro. Como o base template emite a partir do registro, isso sai automático — só assere reciprocidade no teste.
+Host correto no hreflang. Armadilha específica do modelo de vocês: use o host canônico do Site resolvido, não request.get_host(), ou domínios de preview vazam para dentro do hreflang em produção.
+x-default apontando direto para a URL do idioma padrão, não para a raiz que redireciona.
+Sitemap com xhtml:link alternates (a classe Sitemap do Django já suporta alternates/x_default). Para domínio novo sem backlink, vale o esforço.
+Traduzir <title>, meta description e Open Graph (og:locale + og:locale:alternate). Esquecido em 90% dos projetos.
+dir no <html> junto com lang, vindo do registro.
+
+Mitos:
+
+Content-Language (header ou meta): o Google ignora para targeting. Emitir é inofensivo, gastar tempo não.
+ccTLD/subdomínio por idioma sendo "melhor": não é. Subdiretório consolida autoridade num domínio novo. O desenho de vocês está certo.
+hreflang como fator de ranking: não é. É dica de canonicalização/serving.
+Redirect por geo/IP como requisito: não é, e prejudica.
+
+O risco que ninguém menciona: tradução automática em massa não é penalizada em si, mas 10 idiomas rasos num site novo é exatamente o padrão que os classificadores de spam procuram. Recomendação estratégica: 3 idiomas bons antes do quarto, e noindex em idioma que ainda não está pronto.
+
+6. Roteamento no gateway
+
+Idioma sempre no primeiro segmento. O gateway casa a forma, o app decide a política.
+
+Regra no Traefik v3 usando PathRegexp com um segmento de locale opcional e genérico — ^/([a-z]{2}(-[a-z]{2})?/)?checkout(/|$) — com prioridade explícita acima do catch-all. O gateway não conhece a lista de idiomas; ele reconhece o formato de um locale. O app valida contra o registro e 404 se não habilitado. Assim vocês não duplicam a lista de idiomas na infraestrutura, o que violaria o princípio de dado declarado de vocês.
+
+Rejeito idioma-depois-da-célula (/checkout/pt-br/). Ganha simplicidade no gateway e perde tudo o mais: duas formas de URL no mesmo site, seletor de idioma que precisa saber em qual célula está, hreflang com lógica por célula, e agentes de IA gerando link errado metade das vezes. É a otimização de hoje que vira dívida em toda página futura.
+
+Alternativa intermediária, se quiserem risco zero nas células existentes: ReplacePathRegex no Traefik removendo o segmento e propagando X-Forwarded-Prefix, com middleware Django setando SCRIPT_NAME. Funciona, é padrão conhecido, mas introduz bugs sutis em redirect e action de formulário. Só faria isso se converter as células fosse inviável.
+
+O que os grandes fazem: locale como primeiro segmento, praticamente sem exceção (Apple /br/, Netflix /br-en/, Shopify, Booking). Ninguém coloca locale no meio do caminho.
+
+Decida isso agora, mesmo com o checkout distante — a escolha determina a forma da URL das páginas de funil que vocês vão publicar nas próximas semanas. Mudar depois é migração de 301.
+
+Dois detalhes que quebram em silêncio, portanto viram teste: /static/** nunca pode receber prefixo de locale; e nenhuma rota de célula pode começar com um segmento de duas letras (hoje quiz, checkout, alunos estão seguros — amanhã alguém cria /ao).
+
+7. Traduzir dados
+
+Antes do armazenamento, a decisão que importa mais: a política de ausência. Dados não estão no Git, então o portão fail-closed do CI não alcança. Para cada campo traduzível, declare qual dos três comportamentos vale: fallback pela cadeia, esconder o item naquele idioma, ou bloquear publicação até traduzir. Sem isso vocês vão descobrir a lacuna pelo cliente.
+
+Padrão recomendado: coluna JSONB por campo traduzível, com chave por tag de idioma, resolvida por um único helper (t_campo(obj, "nome")) que usa a mesma cadeia de fallback das strings de UI.
+
+Porquê: sem join, sem N+1, e — o critério decisivo para "10+ idiomas sem dor" — adicionar o décimo idioma não gera migração nenhuma. Uma migração por campo, nunca por idioma. Índices de expressão no Postgres cobrem busca/ordenação se precisar, e WHERE NOT (nome ? 'es') responde "o que falta traduzir".
+
+Contras honestos: sem constraint no nível do banco, admin pior sem widget customizado, e paridade vira responsabilidade do validador da aplicação.
+
+Evitar: coluna por idioma (nome_en, nome_pt_br) — migração por idioma × campo, exatamente o custo que vocês querem evitar. Evitar tabela genérica de traduções (content_type/object_id/field/lang) a menos que precisem de workflow de revisão por idioma; ela explode em joins e agentes escrevem query ruim contra ela.
+
+A linha divisória: é dado do site com ciclo de vida próprio (produto, oferta, preço) → banco. É copy/design da página → Git. Não misture nas duas direções.
+
+8. O que quebra em 10+ idiomas
+
+Em ordem de retorno sobre esforço:
+
+dir + propriedades lógicas de CSS. Escreva margin-inline-start e text-align: start a partir de hoje, nunca left/right, e emita dir do registro. Custa zero agora; retrofitar RTL em 30 páginas de CSS escrito à mão custa semanas.
+Idioma ≠ mercado ≠ moeda. Um brasileiro lendo em inglês paga em BRL. Se /es/ virar sinônimo de "preço da Espanha", vocês vão descobrir isso com o checkout já em produção. Três eixos independentes, o de mercado vindo de dado do site, não da URL.
+Pseudo-locale no CI. Gere um idioma sintético a partir do en que infla cada string em 40% e adiciona acentos ([Ŗéĝíšţéŕ————]). ~30 linhas, roda antes de existir qualquer tradução real, e pega layout quebrado por expansão de texto (alemão e finlandês correm 30–50% mais longos que inglês). Muito no espírito fail-closed de vocês.
+Booleano de YAML. no: (norueguês) vira False em YAML 1.1, que é o que PyYAML.safe_load implementa. Mesma coisa com on, off, yes, y, n. Isso atinge diretamente o layout que recomendei em §3, onde códigos de idioma são chaves. Sempre entre aspas, com check no CI.
+Canonicalização da tag de locale. Slug de URL pt-br vs BCP-47 pt-BR no lang/hreflang vs código interno. Escolha uma representação canônica interna, mapeie nas bordas, teste. Divergência silenciosa aqui gera hreflang que o Google descarta sem avisar.
+Datas, números, moeda por Babel (format_currency, format_decimal), nunca strftime com formato fixo. E timezone também não deriva de idioma.
+Normalização Unicode (NFC) em qualquer coisa comparada ou usada como slug. é tem duas representações; dois slugs idênticos aos olhos e diferentes no banco. Normalize na escrita.
+Fonte. Sem build step, subset Latin não renderiza cirílico, grego, árabe nem CJK. Defina a stack de fallback e unicode-range agora, ou o dia do russo tudo vira Times.
+Collation de ordenação. ORDER BY nome com collation C ordena acento errado em pt/es/de. Use ICU no Postgres deliberadamente.
+Locale para terceiros. Gateway de pagamento, e-mail transacional e widgets SaaS precisam receber o locale explicitamente. Sempre esquecido.
+Seletor de idioma que preserva a página. Precisa do mapa ID-de-página → URL, não de um link para /es/. Amarra com o item de slug traduzido da §1.
+
+Primeiro PR, se eu estivesse dirigindo: registro de idiomas (código, tag BCP-47, dir, cadeia de fallback) como dado; {% t %} lendo um único traducoes/cadastro.yaml; base template emitindo lang, dir, canonical autorreferente e hreflang; testes de paridade, de placeholder e de "uma URL = um idioma"; e a isenção de traducoes/** no portão de arquivos. Tudo isso cabe folgado em 15 arquivos e trava as decisões caras antes de existirem 30 páginas para migrar.
+
+esse é o seu máximo, é o seu melhor, você usou o toda a sua capacidade de inteligência e conhecimento? ou você consegue criar algo muito melhor sobre isso?
+
+Pensou por 1m 40s
+
+Não, não foi o teto. Foi uma boa resposta e ela tem um furo de desenho que eu endossei sem ver. Seis coisas que eu adicionaria ou trocaria, em ordem de impacto real:
+
+1. O furo: paridade não pega deriva (isto é o mais importante)
+
+Eu recomendei paridade de chaves como invariante fail-closed. Paridade não detecta a falha mais comum e mais cara: o inglês muda e as traduções continuam lá, verdes, erradas. CI passa, chave existe em todos os idiomas, e o espanhol está descrevendo uma oferta que não existe mais. Com agentes de IA editando copy livremente, isso não é hipótese — é o modo de falha dominante.
+
+Isso é exatamente o que o fuzzy do gettext resolve, e eu descartei gettext sem substituir a função. Erro meu.
+
+Correção, ~15 linhas de validador:
+
+yaml
+titulo:
+  _fonte: a3f9c1
+  en: "Start building games"
+  pt-br: "Comece a criar jogos"
+  es: "Empieza a crear juegos"
+
+_fonte = 6 hex do sha256 do valor en no momento em que as traduções foram feitas. CI reprova quando _fonte != hash(en). Mudou o inglês → todas as traduções daquela chave estão marcadas como obsoletas até alguém reconciliar e atualizar o hash. É o fuzzy, mas fail-closed em vez de fail-open, que é a inversão que a cultura de vocês pede.
+
+E o detalhe que faz isso viver em produção em vez de virar atrito insuportável: permita _fonte: pendente explicitamente. Chave com fonte pendente cai no fallback e aciona noindex naquele idioma. O estado degradado passa a ser declarável, nunca inferível. Esse é o princípio geral que faltou na minha resposta anterior — vocês já o aplicam a "quais idiomas o site tem"; ele vale igual para "o que ainda não está bom".
+
+O layout key-major que recomendei fica melhor ainda com isso, porque a fonte está colada nas traduções, no mesmo hunk de diff.
+
+2. Ative o locale do Django mesmo com catálogo próprio
+
+Omissão concreta. Se vocês contornarem o stack de i18n do Django inteiro, a página em espanhol vai renderizar erros de validação de formulário em inglês ou português, mais {{ data|date }}, floatformat, separador de milhar e humanize no locale errado. A primeira página de vocês é um cadastro — é um formulário. Isso ia aparecer no dia 1.
+
+Custa quase nada: um middleware que chama django.utils.translation.activate(locale) e seta LANGUAGE_CODE. Vocês continuam lendo copy do YAML e ganham de graça as traduções que o Django já traz (form errors, admin, humanize) e toda a formatação de django.utils.formats. Nada de .po, nada de makemessages, nada de binário. Só o interruptor.
+
+3. Reviso a §6: locale é contrato de gateway, não biblioteca compartilhada
+
+Aqui eu mudo a recomendação, não só complemento.
+
+Eu tratei "middleware de i18n em todas as células" como custo baixo. Não é — contradiz a arquitetura que vocês construíram. Células fisicamente isoladas, banco separado, container separado, contrato OpenAPI. Uma biblioteca de i18n compartilhada entre elas é acoplamento cruzado com versionamento distribuído: o dia em que funil e checkout estiverem em versões diferentes do parser de locale, vocês vão ter um bug que não reproduz em lugar nenhum.
+
+No idioma da arquitetura de vocês, a resposta é: o gateway remove o segmento de locale e injeta X-Locale + X-Forwarded-Prefix, e esse par vira parte do contrato de toda célula — igual aos contratos OpenAPI que já existem. Célula que não liga, ignora. Célula que liga, lê o header e seta SCRIPT_NAME a partir do prefix (com isso reverse() e redirects saem corretos).
+
+Isso também resolve o requisito duro de vocês melhor do que qualquer coisa que eu disse antes: os sites monolíngues não mudam de comportamento por construção, porque nunca recebem o header. Não é uma promessa mantida por código; é uma propriedade do roteamento.
+
+A URL pública continua idêntica ao que recomendei (/pt-br/checkout/...). O que muda é onde mora a lógica. Contra honesto: SCRIPT_NAME via X-Forwarded-Prefix tem arestas (interação com ALLOWED_HOSTS, geração de URL de estático) e exige um teste de contrato por célula. Aceitável, e testável — o que a versão com biblioteca compartilhada não é.
+
+4. Valide o catálogo no boot, não só no CI
+
+CI protege PRs. Não protege merge sujo, hotfix, config drift, nem o pipeline que converge produção pro JSON. Fail-closed de verdade é: carregue e valide o catálogo inteiro na inicialização e recuse subir se estiver inválido. Paridade, placeholders, _fonte, cadeia de fallback resolvível — tudo checado uma vez, no arranque, e o resultado é um dict imutável achatado por (locale, chave) com fallback já resolvido, não resolvido a cada lookup.
+
+Duas coisas de graça: performance (zero parse de YAML por request) e a garantia de que nenhuma instância viva serve um catálogo quebrado.
+
+5. Template é o schema — e o buraco do Alpine
+
+Eu mencionei "sem chave órfã" de passagem. A formulação certa é mais forte e mais útil para agentes: o conjunto de chaves do catálogo tem que ser exatamente igual ao conjunto extraído dos templates. Nem falta, nem sobra. O template é o schema; o catálogo é o dado. Isso transforma "traduzir uma página nova" numa tarefa que o agente não consegue entregar pela metade.
+
+E aí aparece o que eu não tratei: vocês têm Alpine sem bundler. Mensagens de validação client-side, estados de erro, textos de loading — tudo isso vive em JS e não passa por {% t %}. Sem tratamento, ou ficam hardcoded em português no meio do x-data, ou o extrator de chaves marca como órfãs.
+
+Convenção: prefixo js. dentro do namespace da página, e o base template emite só essa subárvore com {{ dados|json_script:"i18n" }} — filtro nativo do Django, que já escapa </script> corretamente. Alpine lê do <script type="application/json">. O extrator sabe que js.* é consumido por script daquela página e valida contra o próprio arquivo. Zero build step, e a validação continua total.
+
+6. Copy Lab × i18n: colisão que vocês vão descobrir tarde
+
+A célula de Copy Lab gera e testa variantes de copy por seção de página. Isso multiplica direto contra o catálogo: variante × idioma. Três variantes de headline em 10 idiomas são 30 textos em paridade, para um teste que não tem poder estatístico nenhum por célula depois de fatiar o tráfego por locale.
+
+Recomendação, e é uma restrição de processo, não de código: experimento não se traduz. Variantes existem só no idioma-base, o vencedor é promovido para o catálogo, e só então entra na fila de tradução. Na prática isso quer dizer que a variante seleciona um namespace de chaves (cadastro@v2), nunca um valor dentro de uma chave — e namespaces de experimento são isentos da paridade e marcados noindex. Se vocês deixarem a dimensão de variante entrar dentro do catálogo traduzido, ela não sai mais.
+
+Bônus: o portão de 15 arquivos merece uma regra, não uma exceção
+
+Eu propus isentar traducoes/**. Isso é remendo. O princípio por trás é melhor e vocês vão precisar dele de novo: um caminho é isento da contagem quando é coberto por uma especificação mecânica total. Catálogo de tradução se qualifica. O JSON de registro de sites, que vocês já têm, também — e vai bater no mesmo muro no dia em que cadastrarem vinte sites de uma vez. Escreva a regra assim e ela se aplica sozinha ao próximo caso.
+
+O mapa que eu deveria ter dado
+Decisão	Custo de errar
+Forma da URL e posição do locale	Porta de mão única — migração de 301
+Contrato locale gateway↔célula	Porta de mão única — toca toda célula
+Formato da chave de plural	Porta de mão única — reescreve o catálogo
+Idioma ≠ mercado ≠ moeda	Porta de mão única — atinge dados de venda
+Propriedades lógicas de CSS	Caro — auditoria de CSS inteiro
+Key-major vs locale-major	Barato — script de 50 linhas
+YAML vs Fluent vs outro	Barato — se {% t %} for a única costura
+Slug traduzido	Barato se rotear por ID de página desde já
+
+Concentre a discussão nas quatro primeiras linhas. O resto vocês podem errar e corrigir.
+
+Limite honesto do que eu posso te dar aqui: estou raciocinando pela descrição, sem o código. Não consigo verificar a regra de prioridade real do Traefik de vocês (e é lá que a §3 quebra em silêncio: célula nova com regra mais curta perde para o catch-all sem avisar ninguém), nem o tamanho real do catálogo, nem se o Copy Lab já tem opinião sobre namespace. Se você colar o docker-compose/dynamic config do Traefik e um template representativo, a próxima rodada sai concreta em vez de arquitetural.

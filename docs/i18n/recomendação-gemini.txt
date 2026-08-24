@@ -1,0 +1,64 @@
+Sua arquitetura tem uma base excelente: o uso de GitOps, o portão rígido de CI para os agentes de IA e a estratégia "fail-closed" são decisões maduras. Abandonar o gettext padrão do Django no seu contexto (sem build step, operado por IA) é, de fato, a decisão correta, pois ele introduz complexidade binária e opacidade desnecessárias.
+
+No entanto, há pontos no seu desenho inicial que criarão atritos em escala, especialmente no roteamento, na manutenção por IAs e na gestão de URLs.
+
+Abaixo, a segunda opinião técnica respondendo às suas perguntas.
+
+1. URL: Padrão sem prefixo vs. Todos com prefixo
+Recomendação: Use todos com prefixo (/en/cadastro, /pt-br/cadastro).
+
+Por quê: Ter o idioma padrão sem prefixo cria ambiguidade de roteamento e dificulta regras de cache na CDN. Se amanhã o meshcraft.top mudar o foco para o Brasil e o padrão virar pt-br, você terá que redirecionar e reestruturar todas as URLs antigas de inglês. Manter o prefixo explícito torna a URL uma fonte absoluta de verdade.
+
+Redirect por Accept-Language: Faça isso apenas na raiz (/). Se o usuário acessar meshcraft.top/, leia o header e faça um redirect HTTP 302 para meshcraft.top/en/ ou /pt-br/. O que evitar (Armadilha): Nunca force redirects baseados em IP ou cabeçalhos em URLs profundas (ex: redirecionar quem acessa /en/cadastro para /pt-br/cadastro só porque o browser está em português). Isso destrói o rastreamento do Googlebot (que geralmente navega em inglês a partir dos EUA) e impede que usuários bilíngues compartilhem links específicos.
+
+2. Formato: YAML vs Gettext vs Terceira Via
+Recomendação: Abandone o YAML e use JSON segmentado (estilo i18next).
+
+Por quê: Agentes de IA geram JSON de forma determinística e perfeita. O YAML tem armadilhas clássicas de indentação e tipagem (o famoso problema de "NO" virar booleano false) que frequentemente fazem IAs "alucinarem" quebras de sintaxe. Além disso, a biblioteca padrão do Python carrega JSON nativamente com extrema velocidade; YAML em Python geralmente exige a compilação do PyYAML com extensões C (libyaml) para ter boa performance.
+
+O que você perde sem Gettext (e como mitigar): Você perde a pluralização nativa. Mitigue isso no JSON adotando a convenção de sufixos do i18next (ex: "dias": "1 day", "dias_plural": "{{count}} days"). Na sua template tag {% t %}, você intercepta a variável count e decide qual chave puxar.
+
+3. Estrutura de Chaves
+Recomendação: Adote o modelo Híbrido (Arquivos separados por domínio/página + Global).
+
+Por quê: Você tem um CI que reprova PRs com mais de 15 arquivos. Se você usar um JSON global único, toda tradução nova vai gerar conflitos de merge (IAs alterando o mesmo arquivo simultaneamente). Se usar namespace estrito por página sem um global, você repetirá "Confirmar" 50 vezes.
+
+O desenho: Crie common.json (nav, rodapé, botões genéricos) e pages/cadastro.json, pages/quiz.json. Para a IA, adicionar uma página nova significa tocar em apenas 2 arquivos por idioma (o template e o seu respectivo JSON), mantendo os diffs minúsculos e à prova de conflitos.
+
+4. Fallback e Variantes Regionais (pt-pt vs pt-br)
+Recomendação: Implemente a árvore de fallback (pt-pt -> pt-br -> en) e NÃO exija paridade total nas variantes regionais.
+
+Por quê: Exigir paridade total no pt-pt forçará seus agentes de IA a copiarem 95% do arquivo pt-br de forma idêntica. Isso gasta tokens, polui PRs e fere seu limite de 15 arquivos.
+
+Como adaptar o CI: O teste deve garantir 100% de paridade dos idiomas "raiz" (en, es, pt-br) contra a master (Inglês). Para variantes (pt-pt), o CI deve apenas validar se as chaves presentes existem no idioma de fallback (para evitar chaves órfãs), mas aceitar arquivos menores. Em runtime, sua tag de tradução busca no dicionário específico; se não achar, busca no fallback definido no registro de sites.
+
+5. SEO Multilíngue no Dia 1
+Recomendação: Foque em hreflang (HTML) + XML Sitemap com alternates.
+
+O essencial: Cada página deve apontar para todas as suas versões (incluindo ela mesma) via <link rel="alternate" hreflang="...">. A versão x-default deve apontar para o idioma principal ou para a raiz com redirect.
+
+O que é mito: Achar que o Googlebot lê Content-Language no header HTTP para classificar a página. Ele ignora isso hoje. Outro mito é que você precisa ter o sitemap traduzido antes do lançamento; no entanto, colocar os alternate links no Sitemap XML (além do HTML) acelera incrivelmente a indexação das novas línguas pelo Google.
+
+6. Roteamento no Gateway (Traefik) e as Células
+Recomendação: Idioma SEMPRE primeiro na URL (/pt-br/checkout), resolvido por Regex no Traefik.
+
+O que evitar: Colocar o idioma depois da célula (/checkout/pt-br) fere convenções de UX e SEO que os usuários e motores de busca esperam, além de dificultar configurações de analytics (Google Analytics, Meta Pixel).
+
+Como grandes multissites fazem: A URL pública mantém o idioma no início. No Traefik, em vez de rotear por PathPrefix(/checkout), você usa PathRegexp(^/(?:[a-z]{2}(?:-[a-z]{2})?/)?checkout).
+
+Dica Operacional: Você pode configurar um middleware no Traefik que remove o prefixo de idioma da URL antes de repassar para a célula e o injeta como um cabeçalho (ex: X-Language: pt-br). Assim, seu microsserviço de checkout continua recebendo requisições em / ou /api/..., sem precisar saber a lógica de prefixos, lendo apenas o cabeçalho.
+
+7. Conteúdo que é DADO (Banco de Dados)
+Recomendação: Use um campo JSONB (ou equivalente) por coluna na própria tabela (ex: nome_i18n, descricao_i18n).
+
+Por quê: Para a escala que você mencionou (10+ idiomas, catálogos não gigantescos), criar tabelas separadas de tradução (ProdutoTranslation) exige joins complexos e fere a facilidade dos agentes de IA mexerem no ORM. Com um campo JSONB, você mantém a estrutura simples: {"en": "Course", "pt-br": "Curso"}. Se a chave não existir, faça o fallback para o nome original.
+
+8. O que quebra em 10+ idiomas (Decida agora)
+Layouts quebrando com texto maior: O alemão e o espanhol costumam ocupar 30% a mais de espaço que o inglês. Mitigação: Proíba alturas fixas (height) nos cards e botões no seu CSS. Abrace o Flexbox/Grid fluido.
+
+Direção de Escrita (RTL para Árabe/Hebraico no futuro): Vai custar caríssimo refatorar o CSS depois. Mitigação hoje: Troque imediatamente as regras de margem no seu CSS/Tailwind (ex: de margin-left para propriedades lógicas do CSS: margin-inline-start). Isso faz com que a interface vire automaticamente um "espelho" se a tag <html> receber dir="rtl".
+
+Formatação de Datas, Números e Moedas: Nunca coloque isso nos arquivos JSON de tradução. Mitigação: Use as ferramentas nativas do Django (se renderizado no back-end) ou a API Intl.NumberFormat do JavaScript no Alpine.js. O sistema deve receber o código do idioma e cuidar disso sozinho.
+
+Resumo da divergência com o seu desenho:
+Troque o YAML por JSON segmentado para poupar as IAs, garanta que o inglês tenha prefixo na URL para simplificar roteamento e caches, não force paridade estrita no CI para variantes regionais (use cadeia de fallbacks) e utilize Regex no Traefik para manter a semântica da URL sem acoplar as células ao roteamento multilíngue.

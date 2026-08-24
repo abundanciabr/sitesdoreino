@@ -1,0 +1,2207 @@
+Sim. Eu mudaria partes importantes do desenho — mas a base está boa. Minha recomendação é não adotar “i18n do Django” como uma coisa única. Separem quatro problemas que hoje estão misturados: resolução de locale, catálogo de mensagens, formatação/localização e URL/SEO.
+
+A arquitetura que eu adotaria seria esta:
+
+Host → Site → Locale → rota lógica → célula → conteúdo localizado
+
+e não:
+
+Host → prefixo da célula → talvez idioma → aplicação.
+
+Veredito executivo
+Decisão	Minha recomendação
+URL multilíngue	Todos os idiomas com prefixo: /en/cadastro, /pt-br/cadastro, /es/cadastro
+/	Página neutra 200 ou redirect fixo para /en/; não redirecionar automaticamente por Accept-Language
+Catálogo	Chaves estáveis + YAML próprio, mas não abandonar o runtime de locale/localização do Django
+Mensagens	YAML com contrato tipado para variáveis/plurais, apoiado em regras CLDR; não simples str.format()
+Chaves	Híbrido: domínio/página como padrão + shared pequeno e rigoroso
+Paridade	Locale completo = paridade total; variante regional = opcionalmente overlay esparso
+Fallback	pt-PT → pt → en, não pt-PT → pt-BR → en por padrão
+Gateway	locale-first na URL pública, célula resolvida internamente
+Dados em DB	Tabela de traduções por entidade/locale como padrão
+SEO	self-canonical + hreflang recíproco + x-default + idioma claro + sitemap automático
+Locale	BCP 47 desde já
+Mercado/moeda	Separar de idioma/locale
+RTL	Preparar CSS logical properties e dir agora
+
+E há uma conclusão maior: o seu desenho de i18n deveria virar uma especificação de plataforma, tão declarativa quanto o Site JSON. Isso é especialmente importante porque agentes de IA serão os principais mantenedores.
+
+1. URLs: eu mudaria para todos-com-prefixo
+
+Entre:
+
+/cadastro
+/pt-br/cadastro
+/es/cadastro
+
+e:
+
+/en/cadastro
+/pt-br/cadastro
+/es/cadastro
+
+eu escolheria a segunda.
+
+Não porque o Google premie /en/. Não há vantagem SEO intrínseca nisso. O Google recomenda URLs distintas para cada idioma, e subdiretórios são uma arquitetura perfeitamente válida.
+
+A vantagem é arquitetural.
+
+Todos-com-prefixo cria uma invariância muito valiosa
+
+Uma URL pública passa a obedecer sempre a:
+
+/{locale}/{recurso}
+
+Então:
+
+/en/cadastro
+/pt-br/cadastro
+/es/cadastro
+
+/en/checkout/...
+/pt-br/checkout/...
+/es/checkout/...
+
+O idioma deixa de ter uma exceção estrutural.
+
+Isso simplifica:
+
+geração de canonical;
+geração de hreflang;
+sitemap;
+cache/CDN;
+testes;
+redirects;
+reverse URL;
+troca do idioma atual;
+resolução no gateway;
+observabilidade;
+análise de logs;
+agentes de IA entendendo a estrutura.
+
+Com /cadastro = inglês, existe uma regra invisível:
+
+ausência de locale também é um locale.
+
+Essa exceção aparece em dezenas de lugares depois.
+
+E para os sites antigos?
+
+Nada muda.
+
+Eu declararia algo conceitualmente semelhante a:
+
+i18n_mode = monolingual
+
+para os sites antigos.
+
+E:
+
+i18n_mode = prefixed
+default_locale = en
+enabled_locales = [en, pt-BR, es]
+
+para Meshcraft.
+
+Assim:
+
+site antigo:
+/cadastro
+
+Meshcraft:
+/en/cadastro
+/pt-br/cadastro
+/es/cadastro
+
+A compatibilidade deixa de depender de if meshcraft no código.
+
+E /?
+
+Minha preferência seria:
+
+Opção A — melhor semanticamente
+/
+
+serve um seletor internacional simples e cacheável, com x-default.
+
+Usuário escolhe:
+
+English
+Português
+Español
+
+Esse é inclusive um dos usos para os quais hreflang="x-default" foi pensado.
+
+Opção B — aceitável e mais simples
+/ → 302 ou 307 → /en/
+
+sempre.
+
+Determinístico.
+
+O que eu evitaria
+Accept-Language: pt-BR
+/ → /pt-br/
+
+Accept-Language: es
+/ → /es/
+
+como redirect automático.
+
+O Google recomenda explicitamente evitar redirects automáticos entre versões linguísticas, pois isso pode dificultar descoberta/rastreamento e também retirar do usuário a escolha. O Googlebot inclusive normalmente não envia Accept-Language.
+
+Há também uma consequência de cache: se a resposta realmente depender de Accept-Language, semanticamente entra Vary: Accept-Language, e Vary expande a chave do cache.
+
+Ou seja:
+
+Accept-Language deve ser dica de UX, não identidade da página.
+
+Pode aparecer um banner:
+
+“Seu navegador parece estar em português. Ver em Português?”
+
+Isso é excelente.
+
+Redirect obrigatório, não.
+
+2. YAML próprio vs gettext: eu escolheria um híbrido
+
+Aqui concordo substancialmente com vocês.
+
+Para copy do produto e páginas públicas, o modelo:
+
+chave estável → mensagem localizada
+
+é melhor para agentes de IA do que usar o texto em inglês como msgid.
+
+Eu usaria algo conceitualmente assim:
+
+cadastro.hero.title
+cadastro.hero.subtitle
+cadastro.form.email.label
+cadastro.form.submit
+
+em catálogo controlado por vocês.
+
+Por que eu não usaria gettext como fonte primária dessas páginas
+
+O Django depende de .po, compilação para .mo e GNU gettext para o workflow normal de mensagens.
+
+Isso introduz justamente coisas indesejáveis no seu ambiente:
+
+template
+  ↓
+makemessages
+  ↓
+.po
+  ↓
+compilemessages
+  ↓
+.mo
+  ↓
+runtime
+
+Vocês querem:
+
+template
+  ↓
+key
+  ↓
+YAML validado no CI
+  ↓
+runtime
+
+É muito mais alinhado a PR pequeno e agentes.
+
+Mas eu NÃO desligaria a infraestrutura i18n do Django
+
+Essa é uma distinção importante.
+
+Django já sabe trabalhar com:
+
+locale ativo;
+datas;
+números;
+timezone;
+informações de idioma;
+idiomas bidirecionais;
+traduções internas e de bibliotecas.
+
+Por exemplo, o próprio Django expõe informação bidi, e possui infraestrutura específica para formatação localizada.
+
+Portanto eu faria:
+
+SEU CATÁLOGO
+copy do site
+mensagens do produto
+marketing
+interface específica
+
+DJANGO i18n/l10n
+locale ativo
+datas
+números
+timezone
+admin
+framework
+bibliotecas de terceiros
+
+É uma separação excelente.
+
+O ponto em que o YAML de vocês ainda está incompleto
+
+Isso aqui:
+
+{% t "cadastro.titulo" %}
+
+é ótimo.
+
+Mas uma tradução não pode ser apenas uma string arbitrária.
+
+Logo aparecerá:
+
+Você tem 1 curso
+Você tem 2 cursos
+
+Depois árabe, polonês etc.
+
+A pluralização não é universalmente:
+
+1 = singular
+outro = plural
+
+O próprio Django alerta contra implementar lógica própria de singular/plural; gettext suporta categorias de plural específicas dos idiomas.
+
+Unicode CLDR formaliza essas regras internacionalmente.
+
+Portanto o catálogo precisa suportar desde o início:
+
+variáveis nomeadas;
+validação das variáveis;
+plural;
+opcionalmente select/gender futuramente;
+formatação locale-aware.
+
+Por exemplo, conceitualmente:
+
+checkout.items:
+    vars: [count]
+    mensagem: ...
+
+Não precisa construir uma linguagem gigantesca agora.
+
+Mas precisa existir uma MessageSpec, não apenas dict[str, str].
+
+Fluent?
+
+Fluent é tecnicamente muito bom.
+
+Ele já resolve:
+
+variáveis;
+selectors;
+categorias CLDR como one, few, many, other;
+números;
+termos reutilizáveis;
+algumas questões gramaticais complexas.
+
+Mas eu não o adotaria agora como fundação inteira.
+
+Por quê?
+
+Porque vocês trocariam:
+
+“dependência operacional de gettext”
+
+por:
+
+“dependência conceitual de Fluent + runtime Python + sintaxe que todos os agentes precisam compreender”.
+
+É excelente para Firefox e sistemas de localização sofisticados; provavelmente é mais do que vocês necessitam neste momento.
+
+Minha escolha seria:
+
+YAML keyed catalog + contrato de mensagens pequeno + regras CLDR/Babel/Django para formatação.
+
+Se daqui a dois anos a gramática ficar sofisticada, o fato de vocês terem keys semânticas estáveis permitirá trocar o engine sem trocar os templates.
+
+Essa é a verdadeira abstração importante.
+
+3. Chaves: híbrido, mas fortemente page/domain-first
+
+Eu evitaria os dois extremos.
+
+Ruim
+titulo
+subtitulo
+botao
+descricao
+
+Colisão inevitável.
+
+Também ruim
+
+Transformar tudo em global:
+
+global.buttons.submit
+global.buttons.buy
+global.messages...
+
+Você acaba criando uma biblioteca abstrata de frases que deveriam ter liberdade para serem traduzidas contextualmente.
+
+“Continue”, por exemplo, pode precisar ser diferente em contextos distintos.
+
+Minha regra
+
+Local por padrão; global somente quando existe identidade semântica real.
+
+Exemplo:
+
+cadastro.hero.title
+cadastro.hero.subtitle
+
+cadastro.form.name.label
+cadastro.form.email.label
+cadastro.form.submit
+
+checkout.summary.title
+checkout.payment.card.title
+
+shared.actions.back
+shared.actions.close
+
+shared.validation.required
+shared.brand.meshcraft
+
+Eu iria ainda um nível acima quando necessário:
+
+funil.cadastro.hero.title
+checkout.payment.card.title
+alunos.dashboard.course_progress
+
+Assim a própria chave identifica ownership.
+
+Isso é ouro quando vários agentes trabalham paralelamente.
+
+Um detalhe que melhora muito tradução por IA
+
+Cada chave deveria poder carregar contexto de tradução.
+
+Gettext possui inclusive conceitos de contexto (pgettext) e comentários para tradutores justamente porque palavras isoladas são ambíguas.
+
+Seu sistema próprio deveria recuperar essa vantagem.
+
+Algo conceitualmente como:
+
+key
+source
+description
+variables
+html_allowed
+
+Por exemplo:
+
+checkout.action.continue
+
+context:
+"Botão que leva da revisão do pedido para pagamento.
+Não significa continuar lendo."
+
+A qualidade da tradução automática sobe drasticamente.
+
+4. Fallback regional: aqui eu mudaria o desenho
+
+Eu não faria automaticamente:
+
+pt-PT
+ ↓
+pt-BR
+ ↓
+en
+
+Há uma distinção importante:
+
+pt-PT e pt-BR são irmãos, não pai e filho.
+
+A estrutura conceitualmente correta seria:
+
+       pt
+      /  \
+ pt-BR   pt-PT
+
+Então:
+
+pt-PT → pt → en
+pt-BR → pt → en
+
+CLDR também possui uma noção formal de inheritance/matching entre locales, baseada em identificadores BCP 47.
+
+Há duas categorias diferentes de locale
+
+Eu modelaria explicitamente:
+
+Locale completo
+en
+es
+pt-BR
+
+Tem que possuir 100% das chaves obrigatórias.
+
+CI:
+
+missing key = FAIL
+extra invalid key = FAIL
+placeholder mismatch = FAIL
+Variante regional/overlay
+
+Por exemplo:
+
+pt
+ ↓
+pt-PT
+
+Nesse caso pt-PT pode conter somente diferenças:
+
+shared.actions.login
+checkout.tax_label
+cadastro.hero.subtitle
+
+e todo o resto herda de pt.
+
+Neste tipo:
+
+paridade total NÃO é exigida
+
+porque ausência significa deliberadamente:
+
+use o pai.
+
+Não confundam dois significados de “chave faltante”
+
+Esse é um erro arquitetural comum.
+
+Hoje vocês propõem:
+
+faltou tradução = inglês
+
+Mas existem dois estados completamente diferentes:
+
+A) tradução deveria existir e foi esquecida
+B) tradução foi omitida deliberadamente porque o locale é overlay
+
+Esses estados precisam ser representados na especificação.
+
+Caso contrário seu fallback transforma bugs em comportamento válido.
+
+Em produção, eu mudaria também seu fallback
+
+Você propôs:
+
+falta → inglês + warning.
+
+Eu faria diferente conforme ambiente.
+
+Testes/CI
+missing required translation = HARD FAIL
+staging
+
+Idealmente:
+
+HARD FAIL
+
+ou marcador visual extremamente óbvio.
+
+produção
+
+Fallback + erro observável.
+
+Mas eu trataria isso como uma violação de invariantes:
+
+metric:
+i18n_missing_translation_total{
+ site,
+ locale,
+ key
+}
+
+Não apenas log.
+
+Porque log pode desaparecer na multidão.
+
+5. SEO multilíngue: seu desenho está quase certo
+
+Para cada página:
+
+<html lang="pt-BR">
+
+é correto e importante para acessibilidade. O W3C recomenda lang válido conforme BCP 47, especialmente para leitores de tela e tecnologias assistivas.
+
+Mas existe um mito importante:
+
+<html lang> não é o principal sinal usado pelo Google para descobrir o idioma.
+
+O Google afirma que determina o idioma principalmente pelo conteúdo textual visível, e não pelo atributo lang.
+
+Portanto:
+
+<html lang> = SIM, absolutamente.
+Mas principalmente por semântica, browsers e acessibilidade.
+Hreflang
+
+Sim.
+
+Página:
+
+/en/cadastro
+
+deve conhecer:
+
+en
+pt-BR
+es
+x-default
+
+E reciprocamente.
+
+Uma falha clássica é A apontar para B mas B não apontar para A.
+
+Eu criaria teste de grafo:
+
+Todo conjunto hreflang deve ser completo, válido e recíproco.
+
+Canonical
+
+Aqui há um erro muito comum que seu sistema precisa impedir:
+
+/pt-br/cadastro
+canonical → /en/cadastro
+
+não faça isso para traduções genuinamente diferentes.
+
+Normalmente:
+
+/en/cadastro
+canonical → /en/cadastro
+
+/pt-br/cadastro
+canonical → /pt-br/cadastro
+
+/es/cadastro
+canonical → /es/cadastro
+
+e hreflang conecta o cluster.
+
+O Google trata traduções de conteúdo principal como páginas linguisticamente diferentes; canonicalização torna-se especialmente relevante quando variantes regionais no mesmo idioma são muito semelhantes.
+
+Sitemap?
+
+Eu colocaria desde o início.
+
+Não porque seja indispensável para uma página.
+
+Mas porque é praticamente grátis quando sua arquitetura já conhece o universo de páginas e locales.
+
+O sitemap pode inclusive carregar as relações hreflang. Google suporta isso explicitamente.
+
+Eu faria:
+
+/sitemap.xml
+
+como índice e, quando crescer:
+
+/sitemap-en.xml
+/sitemap-pt-br.xml
+/sitemap-es.xml
+
+A separação não traz milagre SEO; traz operabilidade e diagnóstico.
+
+Content-Language?
+
+Baixa prioridade.
+
+Não usaria como peça de SEO.
+
+O que importa muito mais:
+
+URL própria
+conteúdo realmente traduzido
+hreflang
+canonical correto
+links navegáveis entre idiomas
+sitemap
+
+O próprio Google diz que detecta idioma pelo texto e não depende das anotações de linguagem do código.
+
+Outro mito: traduzir só menu e boilerplate
+
+Não basta.
+
+Se:
+
+menu = espanhol
+footer = espanhol
+conteúdo central = inglês
+
+isso não virou uma verdadeira página espanhola aos olhos do Google nem uma boa experiência.
+
+O Google adverte especificamente sobre isso.
+
+6. Roteamento: eu não faria /checkout/pt-br/
+
+Aqui discordo mais fortemente.
+
+Não deixaria a topologia interna da plataforma determinar a gramática da URL.
+
+Hoje:
+
+/checkout/*
+/alunos/*
+/quiz/*
+
+são praticamente endereços de microsserviço disfarçados de URLs de produto.
+
+Com i18n isso começa a vazar.
+
+Minha URL pública seria locale-first
+/en/checkout/...
+/pt-br/checkout/...
+/es/checkout/...
+
+/en/quiz/...
+/pt-br/quiz/...
+/es/quiz/...
+
+/en/alunos/...
+/pt-br/alunos/...
+
+O gateway recebe:
+
+/{locale}/{rest}
+
+e identifica a célula pelo rest.
+
+Conceitualmente:
+
+/pt-br/checkout/abc
+        ↓
+locale = pt-BR
+logical_path = /checkout/abc
+        ↓
+checkout service
+
+O Traefik suporta PathRegexp, PathPrefix e prioridades explícitas, portanto essa resolução é perfeitamente compatível com seu gateway atual; apenas deve ser tratada cuidadosamente para evitar sobreposição de regras.
+
+Mas eu evitaria regex genérica para “parece um idioma”
+
+Por exemplo:
+
+^/[a-z]{2}(-[a-z]{2})?/
+
+parece elegante.
+
+É perigosíssimo.
+
+Imagine algum dia:
+
+/go/
+/ai/
+/me/
+
+virarem slugs válidos.
+
+Seu roteamento passou a interpretar conteúdo como locale.
+
+O locale reconhecido deve vir do SiteSpec
+
+Meshcraft:
+
+en
+pt-BR
+es
+
+Logo apenas:
+
+/en/
+/pt-br/
+/es/
+
+são prefixos válidos.
+
+Então:
+
+/fr/cadastro
+
+→ 404
+
+não:
+
+"fr parece um idioma, então vamos tentar"
+
+Isso combina perfeitamente com sua filosofia fail-closed.
+
+Eu faria inclusive o gateway derivado do mesmo registro declarativo
+
+Vocês já têm um excelente princípio:
+
+Git é source of truth e produção converge para ele.
+
+Aproveite-o.
+
+Um SiteSpec deveria gerar ou alimentar:
+
+hosts
+enabled locales
+default locale
+routing
+canonical policy
+hreflang
+sitemap
+
+Assim o agente não modifica:
+
+sites.json
+Traefik
+Django
+sitemap
+SEO
+
+separadamente.
+
+Ele altera uma declaração.
+
+Pipeline valida/deriva o resto.
+
+Esse é exatamente o tipo de sistema que reduz erros de agentes.
+
+7. Conteúdo no banco: use tradução relacional como padrão
+
+Aqui distinguiria:
+
+UI/copy controlada pelo código
+"Comprar agora"
+"Digite seu e-mail"
+"Comece sua jornada"
+
+→ catálogo versionado no Git.
+
+Entidades de negócio
+Produto
+Oferta
+Curso
+Módulo
+Aula
+Categoria
+
+→ banco.
+
+Para essas, minha preferência é:
+
+Product
+ProductTranslation
+
+conceitualmente:
+
+Product
+id
+site_id
+...
+
+ProductTranslation
+product_id
+locale
+name
+description
+slug
+seo_title
+seo_description
+
+com:
+
+UNIQUE(product_id, locale)
+Por que prefiro tabela em vez de JSONField
+
+JSON:
+
+{
+  "name": {
+    "en": "...",
+    "pt-BR": "...",
+    "es": "..."
+  }
+}
+
+é tentador.
+
+Funciona bem quando:
+
+existem pouquíssimos campos;
+tradução é metadata secundária;
+você nunca consulta por locale;
+nunca precisa versionar/publicar cada tradução;
+nunca precisa filtrar/indexar separadamente.
+
+Mas com produto real começam:
+
+slug por idioma
+SEO por idioma
+publicado em PT mas ainda não em ES
+workflow de tradução
+auditoria
+timestamp
+busca
+indexação
+editor
+fallback
+
+A tabela vence rapidamente.
+
+Quando eu usaria JSONField
+
+Para coisas pequenas como:
+
+badge_label
+short_label
+
+que sejam intrinsecamente parte de uma configuração e não tenham lifecycle próprio.
+
+Serviço separado de tradução?
+
+Não.
+
+Pelo menos não agora.
+
+Criar:
+
+Translation Microservice
+
+só porque existem traduções seria um caso clássico de microsserviço prematuro.
+
+Eu criaria serviço separado somente quando tradução tiver:
+
+lifecycle independente;
+equipe independente;
+workflows próprios;
+tradução humana/IA assíncrona;
+versionamento/editor;
+memória de tradução;
+aprovação/publicação;
+volume suficiente para justificar autonomia.
+
+Não por abstração acadêmica.
+
+8. O que quebra em 10+ idiomas
+
+Aqui existem algumas decisões baratas hoje que economizam reconstrução futura.
+
+8.1 Locale não é idioma
+
+Essa talvez seja a mais importante.
+
+Não modele:
+
+language = "pt-br"
+
+em toda parte.
+
+Modele conceitualmente:
+
+locale = pt-BR
+language = pt
+region = BR
+
+e use BCP 47 como representação externa.
+
+Unicode/CLDR recomenda identificadores compatíveis com BCP 47 e hífen como forma preferida.
+
+URLs podem permanecer lowercase por convenção:
+
+/pt-br/
+
+enquanto semanticamente:
+
+lang="pt-BR"
+hreflang="pt-BR"
+8.2 Idioma ≠ mercado ≠ moeda ≠ timezone
+
+Não criem isto:
+
+pt-BR → BRL
+en → USD
+es → EUR
+
+Isso quebra rapidamente.
+
+Espanhol pode representar:
+
+Espanha
+México
+Argentina
+Colômbia
+Chile
+
+Inglês:
+
+EUA
+Reino Unido
+Austrália
+Canadá
+Índia
+
+A arquitetura deveria separar:
+
+locale
+market
+currency
+timezone
+
+Mesmo que hoje os defaults coincidam.
+
+Esse detalhe vale ouro.
+
+8.3 Dinheiro
+
+Nunca monte:
+
+"$" + valor
+
+ou:
+
+valor + " reais"
+
+como copy.
+
+Moeda precisa carregar:
+
+amount
+ISO currency
+locale de formatação
+
+CLDR possui regras separadas para números e moeda justamente porque isso varia entre locales.
+
+E não assumam que toda moeda tem duas casas decimais.
+
+8.4 Datas
+
+Não grave significado em strings como:
+
+08/09/2026
+
+Isso é ambiguíssimo.
+
+Internamente:
+
+datetime/date estruturado
+
+e somente na apresentação:
+
+locale → formato
+
+Django já possui infraestrutura para isso.
+
+8.5 Unicode
+
+Tudo UTF-8.
+
+Mas UTF-8 sozinho não encerra o assunto.
+
+Defina desde já uma política de normalização Unicode, normalmente NFC, principalmente para:
+
+comparação;
+slugs;
+buscas;
+identificadores gerados;
+importações.
+
+Duas strings visualmente idênticas podem ter sequências Unicode diferentes.
+
+8.6 Ordenação não é .lower().sort()
+
+Isso:
+
+A
+Å
+Ä
+Æ
+Z
+
+não possui a mesma ordem cultural em todos os idiomas.
+
+Sorting linguístico deve eventualmente utilizar collation locale-aware, via banco/ICU quando necessário.
+
+CLDR trata collation como uma disciplina própria.
+
+Não precisam resolver tudo hoje.
+
+Mas não construam contrato dizendo:
+
+ordem alfabética = código Unicode.
+
+8.7 RTL
+
+Gettext não resolveria isso sozinho.
+
+RTL é um problema diferente de tradução.
+
+Prepare desde já:
+
+<html dir="ltr">
+
+e futuramente:
+
+<html dir="rtl">
+
+E principalmente prefira CSS logical properties:
+
+margin-inline-start
+padding-inline-end
+inset-inline-start
+text-align: start
+
+em vez de cristalizar:
+
+margin-left
+padding-right
+left
+text-align: left
+
+Essa decisão é praticamente grátis hoje.
+
+Migrar centenas de componentes depois é desagradável.
+
+8.8 Crescimento de texto
+
+Não projete botão para:
+
+BUY
+
+projete para uma frase consideravelmente maior.
+
+Em CI visual, eu criaria futuramente um pseudo-locale.
+
+Por exemplo:
+
+[!! Çřëåţë ýöûř åççöûñţ — EXTRA TEXT !!]
+
+Ele não é idioma real.
+
+Serve para quebrar propositalmente:
+
+botões estreitos;
+cards;
+navbars;
+inputs;
+modais.
+
+É uma das melhores técnicas para descobrir i18n bugs antes de traduzir dez idiomas.
+
+8.9 RTL pseudo-locale também
+
+Outro pseudo-locale pode inverter direção.
+
+Assim vocês conseguem testar RTL antes de lançar árabe ou hebraico.
+
+8.10 Fontes
+
+A fonte maravilhosa para Latin pode não conter:
+
+árabe
+cirílico
+grego
+chinês
+japonês
+coreano
+
+Defina fallback de fonts desde cedo.
+
+8.11 Texto dentro de imagem é dívida
+
+Evitaria hero images contendo:
+
+Become a Game Creator
+
+porque cada tradução vira um asset novo.
+
+Texto deve continuar HTML sempre que possível.
+
+8.12 Slugs
+
+Decidam agora se slug será:
+
+compartilhado
+/en/course/blender
+/pt-br/course/blender
+
+ou localizado:
+
+/en/course/blender
+/pt-br/curso/blender
+
+Ambos funcionam.
+
+Minha tendência seria não traduzir a estrutura funcional da URL inicialmente.
+
+Ou seja:
+
+/en/courses/blender
+/pt-br/courses/blender
+/es/courses/blender
+
+porque facilita:
+
+reversão;
+routing;
+agentes;
+analytics;
+debugging.
+
+Traduzir keywords de URL costuma gerar bem menos benefício do que a complexidade que cria.
+
+Google aceita URLs localizadas, mas não exige isso.
+
+9. O problema escondido no limite de 15 arquivos
+
+Aqui há uma tensão arquitetural que vale apontar.
+
+Imagine:
+
+14 idiomas.
+
+Criar uma página nova pode exigir:
+
+template               1
+en.yaml                 1
+pt-br.yaml              1
+es.yaml                 1
+...
+14 catálogos           14
+teste                   1
+rota                    1
+
+Seu mecanismo antifalha passa a reprovar uma mudança saudável por construção.
+
+Não moldaria a arquitetura i18n para enganar o limite de 15 arquivos.
+
+Eu alteraria o gate.
+
+Em vez de simplesmente:
+files_changed <= 15
+
+adotaria algo como:
+
+PR normal:
+<= 15
+
+PR translation-only:
+pode exceder 15
+MAS
+0 arquivos executáveis alterados
++ schema valid
++ parity valid
++ placeholders valid
++ catalog valid
+
+Isso continua absolutamente fail-closed.
+
+Na verdade é mais inteligente, porque mede superfície de risco e não número bruto de arquivos.
+
+10. CI: aqui está onde seu projeto pode ficar excepcionalmente robusto
+
+Eu faria o validador i18n verificar automaticamente:
+
+locale declarado é BCP-47 válido;
+locale na URL pertence ao Site;
+locale desconhecido → 404;
+todas as chaves obrigatórias existem;
+não há chaves órfãs;
+não existem chaves duplicadas;
+todos os placeholders coincidem entre traduções;
+tipos de placeholder coincidem;
+plural possui categorias válidas;
+nenhuma tradução obrigatória está vazia;
+template só referencia chaves existentes;
+nenhum template multilíngue contém copy fixa fora de uma allowlist;
+todos os hreflangs possuem destino válido;
+hreflang é recíproco;
+canonical aponta para URL válida;
+canonical pertence ao locale correto;
+sitemap contém apenas URLs habilitadas;
+<html lang> corresponde ao locale;
+dir corresponde ao idioma;
+fallback graph não contém ciclos.
+
+Essa última é engraçadamente importante:
+
+pt-BR → pt
+pt → en
+en → pt-BR
+
+não pode jamais existir.
+
+Fail.
+
+11. Eu também tornaria o YAML mais “chato”
+
+YAML é ótimo para humanos/agentes, mas possui arestas.
+
+Eu restringiria deliberadamente o subconjunto permitido:
+
+UTF-8;
+duplicate key = erro;
+custom tags = proibido;
+anchors/aliases = proibidos;
+tipos implícitos perigosos = proibidos ou normalizados;
+valores de mensagem = string ou MessageSpec conhecida;
+schema validado no CI.
+
+Assim:
+
+yes: ...
+no: ...
+2026-01-01: ...
+
+não começam magicamente a adquirir semânticas inesperadas dependendo do parser.
+
+O objetivo é:
+
+YAML como formato de serialização, não como linguagem.
+
+12. A arquitetura final que eu adotaria
+
+Eu enxergaria quatro camadas.
+
+Camada 1 — SiteSpec
+
+Declara:
+
+domain
+i18n mode
+default locale
+enabled locales
+fallback graph
+SEO policy
+
+Site antigo:
+
+i18n = disabled
+
+Meshcraft:
+
+i18n = prefixed
+default = en
+enabled = en, pt-BR, es
+Camada 2 — Locale Resolver
+
+Responsabilidade única:
+
+Host + URL → Site + Locale
+
+Não traduz.
+
+Não renderiza.
+
+Não decide moeda.
+
+Camada 3 — Message Catalog
+
+Responsabilidade:
+
+(locale, key, variables) → mensagem
+
+Nada de URLs.
+
+Nada de mercado.
+
+Nada de timezone.
+
+Camada 4 — Localization
+
+Responsável por:
+
+números
+datas
+moedas
+plural
+timezone
+direção
+collation
+
+apoiada no Django/CLDR.
+
+13. Meu julgamento das cinco decisões que vocês já tomaram
+1. Default sem prefixo
+
+Eu trocaria.
+
+Usaria:
+
+/en/
+/pt-br/
+/es/
+
+para sites multilíngues.
+
+2. YAML + {% t %}
+
+Manteria, com uma alteração crítica:
+
+não implemente apenas lookup de string; defina uma MessageSpec preparada para variables/plural.
+
+E manteria Django i18n/l10n por baixo.
+
+3. Paridade total + fallback inglês
+
+Parcialmente manteria.
+
+Locale completo:
+
+paridade total obrigatória.
+
+Regional overlay:
+
+paridade não obrigatória por definição.
+
+Produção pode fallback; CI não deve permitir missing acidental.
+
+4. Locale como dado por site
+
+100% manteria.
+
+Provavelmente é a melhor decisão do desenho atual.
+
+Ela preserva:
+
+site legado = comportamento legado.
+
+sem if site == X.
+
+5. lang + hreflang + x-default + canonical
+
+Manteria.
+
+Acrescentaria geração automática de sitemap e testes estruturais do cluster de hreflang.
+
+14. O insight mais importante de todos
+
+Eu criaria uma espécie de LocaleSpec/I18nSpec formal.
+
+Hoje seu sistema possui uma filosofia muito boa:
+
+configuração declarativa + Git + convergência + CI fail-closed.
+
+i18n deveria seguir exatamente a mesma filosofia.
+
+Então um agente não recebe uma instrução vaga:
+
+“adicione espanhol”.
+
+Ele executa uma operação conceitualmente verificável:
+
+AddLocale(
+    site=meshcraft,
+    locale=es,
+    parent=en?,
+    mode=full
+)
+
+e o sistema consegue provar:
+
+✓ locale válido
+✓ todas as páginas traduzidas
+✓ placeholders compatíveis
+✓ URLs geradas
+✓ rotas válidas
+✓ hreflang completo
+✓ canonical correto
+✓ sitemap correto
+✓ nenhum site legado alterado
+
+Nesse ponto i18n deixa de ser “um conjunto de traduções” e vira uma propriedade verificável da plataforma.
+
+E isso, para um projeto operado por agentes de IA, é muito mais importante do que YAML versus .po.
+
+Minha recomendação final
+
+Se eu estivesse aprovando a arquitetura hoje, aprovaria com quatro mudanças obrigatórias:
+
+multilíngue = todos os locales prefixados, inclusive inglês;
+YAML keyed catalog, mas sobre infraestrutura locale-aware do Django/CLDR, não substituindo-a;
+locales completos e overlays regionais como conceitos distintos, evitando fallback silencioso pt-PT → pt-BR;
+locale antes da célula na URL pública, adaptando o gateway para que a arquitetura interna não dite a URL.
+
+O restante do desenho está na direção certa — especialmente locale habilitado como dado por Site e CI de paridade fail-closed. A peça que eu mais evitaria é criar um mini-gettext caseiro que começa com {% t "x" %} e, três anos depois, contém pluralização, gender, moedas, datas, fallback, escaping, lazy evaluation e RTL feitos por vocês. Catálogo próprio, sim; plataforma internacional própria do zero, não.
+
+esse é o seu máximo, é o seu melhor, você usou o toda a sua capacidade de inteligência e conhecimento? ou você consegue criar algo muito melhor?  
+
+Consigo criar algo consideravelmente melhor. A resposta anterior foi boa como revisão arquitetural, mas não foi o limite da análise. Ela chegou principalmente ao nível de design review. O seu problema comporta um nível acima: arquitetura de plataforma + protocolo de i18n + invariantes formais + análise adversarial + plano de evolução sem dívida estrutural.
+
+E, relendo criticamente o que respondi, há inclusive alguns pontos que eu tornaria mais rigorosos ou potencialmente revisaria.
+
+Onde a resposta anterior ficou aquém
+
+1. Eu dei algumas recomendações antes de construir formalmente o modelo do problema.
+Por exemplo, recomendei /en/... em vez de inglês sem prefixo. Continuo achando essa provavelmente a melhor escolha para a sua plataforma, mas deveria ter separado:
+
+efeito sobre SEO;
+efeito sobre cache/CDN;
+efeito sobre roteamento;
+efeito sobre legacy sites;
+efeito sobre mudança futura do idioma padrão;
+custo de migração;
+invariância arquitetural;
+ergonomia para agentes.
+
+SEO, isoladamente, não justifica todos-com-prefixo. A verdadeira vantagem é outra: retirar o caso especial locale == ausência de prefixo.
+
+Essa distinção importa.
+
+2. Eu não analisei suficientemente a fronteira entre Traefik e Django.
+
+Esse provavelmente é um dos problemas mais importantes do desenho inteiro.
+
+Há pelo menos quatro possibilidades arquiteturais:
+
+A. Traefik entende locale + célula
+B. Traefik entende apenas célula
+C. Traefik remove locale e encaminha
+D. Um router interno resolve locale + célula
+
+Cada uma tem consequências diferentes para:
+
+SCRIPT_NAME;
+PATH_INFO;
+reverse URL;
+redirects;
+cookies;
+tracing;
+logs;
+cache keys;
+middleware;
+WebSocket;
+static/media;
+callback de pagamento;
+webhooks;
+links absolutos;
+OAuth;
+CSRF;
+observabilidade.
+
+Eu pulei rápido demais de “locale-first é melhor” para “Traefik resolve isso”.
+
+A questão mais profunda é:
+
+quem é a autoridade sobre a semântica da URL pública?
+
+Minha tendência seria colocar essa autoridade na plataforma, não duplicá-la em regras manuais do Traefik.
+
+3. Não fiz o threat model de cache.
+
+Com N domínios × N locales × autenticação × moedas × experimentos × páginas, o perigo não é simplesmente “cache funcionar”.
+
+É evitar:
+
+cross-site / cross-locale cache poisoning.
+
+Uma cache key errada poderia entregar:
+
+meshcraft.top/pt-br/cadastro
+
+com conteúdo de:
+
+outrosite.com/pt-br/cadastro
+
+ou inglês em português.
+
+A invariant deveria ser aproximadamente:
+
+cache identity =
+site_id
++ canonical_locale
++ normalized_route
++ relevant_content_version
++ relevant_variant
+
+e não apenas path.
+
+Isso merecia uma seção própria.
+
+4. Eu ainda tratei tradução demais como arquivo e de menos como protocolo.
+
+O desenho realmente maduro não deveria ser:
+
+en.yaml
+pt-br.yaml
+es.yaml
+
+A unidade arquitetural é algo mais próximo de:
+
+TranslationUnit
+
+contendo conceitualmente:
+
+key
+meaning/context
+message type
+placeholders
+allowed markup
+source locale
+translations
+lifecycle/status
+
+Os YAMLs seriam apenas uma representação física.
+
+Isso permite trocar posteriormente:
+
+YAML → Fluent
+YAML → TMS
+YAML → banco
+YAML → serviço
+
+sem alterar templates.
+
+Essa abstração é muito mais importante do que a escolha YAML/gettext.
+
+5. Faltou diferenciar tradução de conteúdo, localização e transcreation.
+
+Para uma escola internacional de games, isso vai aparecer cedo.
+
+Estas três coisas são diferentes:
+
+Translation
+
+“Create your account”
+“Crie sua conta”
+
+Localization
+US$ 49.90
+R$ 249,90
+€ 44,90
+Transcreation
+
+Uma headline comercial americana pode ter outra mensagem no mercado brasileiro.
+
+A arquitetura não deveria assumir:
+
+uma key → exatamente a mesma proposição traduzida literalmente
+
+Marketing frequentemente precisa de:
+
+mesma intenção
+≠
+mesma frase
+
+Isso impacta inclusive a política de paridade.
+
+6. Minha análise de fallback ainda pode ser refinada.
+
+Eu disse:
+
+pt-PT → pt → en
+
+Isso é linguisticamente elegante, mas existe uma pergunta anterior:
+
+Existe realmente um catálogo pt neutro?
+
+Muitas organizações nunca possuem português genérico.
+
+Nesse caso criar pt apenas para ser ancestral pode produzir um pseudo-português artificial.
+
+Talvez o modelo melhor seja explicitamente declarado:
+
+pt-PT:
+    fallback: en
+
+ou:
+
+pt-PT:
+    base_catalog: pt-BR
+    override_policy: regional
+
+se o negócio deliberadamente aceitar português brasileiro como base.
+
+Ou seja:
+
+fallback linguístico e fallback de produto não são necessariamente a mesma coisa.
+
+Isso deveria ser configurável, não inferido magicamente do BCP 47.
+
+Esse é um upgrade importante sobre minha resposta anterior.
+
+7. Não tratei suficientemente locale, language, market, currency e content edition.
+
+Eu mencionei a separação, mas o modelo pode ir bem mais longe.
+
+Por exemplo:
+
+locale = es-MX
+market = MX
+currency = MXN
+timezone = America/Mexico_City
+content_edition = latam
+
+Não são equivalentes.
+
+Pode existir:
+
+language = es
+locale = es-US
+market = US
+currency = USD
+
+Ou:
+
+language = en
+locale = en-IN
+market = IN
+currency = INR
+
+O erro caro seria criar agora:
+
+site.languages
+
+quando o conceito correto provavelmente é:
+
+site.locales
+
+e, separadamente:
+
+site.markets
+
+8. Eu não fiz uma análise séria de slugs traduzidos.
+
+Esse problema fica doloroso depois.
+
+Existem pelo menos três categorias diferentes:
+
+/en/courses/blender
+/pt-br/courses/blender
+
+versus:
+
+/en/courses/blender
+/pt-br/cursos/blender
+
+versus:
+
+/en/courses/blender-for-roblox
+/pt-br/cursos/modelagem-3d-roblox
+
+A terceira opção não é apenas tradução: é SEO/content routing localizado.
+
+O sistema precisa decidir se o identificador canônico é:
+
+route_id
+
+enquanto slug é apenas apresentação:
+
+route_id = product_detail
+
+locale en:
+courses/{product_slug}
+
+locale pt-BR:
+cursos/{product_slug}
+
+Isso evita que a URL vire o identificador do objeto.
+
+9. Faltou pensar em estabilidade de URL ao trocar o idioma padrão
+
+Este é um argumento muito forte a favor de prefixar tudo.
+
+Imagine hoje:
+
+default_locale = en
+
+/cadastro = inglês
+
+e daqui a três anos o mercado principal vira Espanha:
+
+default_locale = es
+
+O que significa /cadastro?
+
+Se a resposta mudar, você mudou semanticamente milhões de URLs.
+
+Com:
+
+/en/cadastro
+/es/cadastro
+/pt-br/cadastro
+
+nenhuma URL muda de significado.
+
+Essa propriedade é mais profunda que “fica organizado”.
+
+É:
+
+identidade persistente de recurso.
+
+10. Não modelei suficientemente o comportamento HTTP
+
+Uma arquitetura i18n madura deveria declarar exatamente:
+
+/en/foo          → 200
+/pt-br/foo       → 200
+/fr/foo          → 404
+
+/EN/foo          → ?
+/pt_BR/foo       → ?
+/pt-br/foo/      → ?
+/pt-BR/foo       → ?
+
+Vocês precisam decidir:
+
+canonical locale path
+
+Por exemplo:
+
+/pt-BR/foo → 308 → /pt-br/foo
+
+ou simplesmente 404.
+
+Também:
+
+/en/foo?utm=x
+
+redirect deve preservar query?
+
+E:
+
+POST /pt-BR/checkout
+
+não pode receber redirect ingênuo da mesma maneira que GET.
+
+HTTP method semantics entram na arquitetura.
+
+Isso não apareceu na minha resposta.
+
+11. Webhooks e APIs provavelmente NÃO deveriam ser localizados
+
+Essa separação também faltou.
+
+Não faria:
+
+/pt-br/webhooks/mercadopago
+
+nem necessariamente:
+
+/pt-br/api/v1/orders
+
+O locale pertence à apresentação humana.
+
+Então a plataforma provavelmente deveria distinguir:
+
+PUBLIC HUMAN ROUTES
+/{locale}/...
+
+MACHINE ROUTES
+/api/...
+/webhooks/...
+/internal/...
+
+Esse detalhe fica especialmente importante no checkout.
+
+12. Área autenticada merece regra própria
+
+Outra questão:
+
+/en/alunos/
+/pt-br/alunos/
+
+é realmente desejável?
+
+Talvez sim.
+
+Mas área autenticada possui outra opção forte:
+
+/alunos/
+
+e locale como preferência de usuário.
+
+Páginas públicas e área autenticada possuem requisitos diferentes.
+
+Para SEO:
+
+locale na URL é importante.
+
+Para SaaS/app autenticado:
+
+locale no perfil/session pode ser melhor.
+
+Não estou dizendo que deveríamos necessariamente fazer isso. Estou dizendo que eu deveria ter questionado a premissa antes de recomendar locale-first universalmente.
+
+Uma arquitetura realmente boa pode dizer:
+
+FUNNEL PUBLIC:
+locale in URL
+
+CHECKOUT PUBLIC:
+locale in URL
+
+STUDENT APP:
+locale in URL ou user preference, decisão explícita
+
+API:
+sem locale estrutural
+13. Não tratei publicação parcial
+
+Imagine que existe:
+
+/en/course/a
+/pt-br/course/a
+
+mas o conteúdo espanhol ainda não foi aprovado.
+
+O que significa o SiteSpec dizer:
+
+enabled_locales = [en, pt-BR, es]
+
+?
+
+Pode significar:
+
+espanhol existe para o site.
+
+Mas não necessariamente:
+
+todas as páginas existem em espanhol.
+
+Então vocês precisarão decidir entre dois modelos.
+
+Modelo uniforme
+
+Locale habilitado implica 100% do site traduzido.
+
+Extremamente simples e fail-closed.
+
+Modelo capability matrix
+           en    pt-BR    es
+cadastro   ✓       ✓      ✓
+produto    ✓       ✓      ✓
+blog       ✓       ✓      -
+curso      ✓       ✓      -
+
+Muito mais flexível.
+
+Mas muito mais complexo.
+
+Para a fase atual, eu provavelmente escolheria a primeira opção:
+
+locale habilitado = experiência completa para o escopo internacionalizável daquele site.
+
+Essa simplicidade vale muito enquanto vocês têm poucos locales.
+
+14. Também faltou pensar em versionamento de tradução
+
+Se o inglês muda:
+
+Create your free account
+
+para:
+
+Start creating games today
+
+as versões portuguesa e espanhola continuam tecnicamente “presentes”.
+
+Seu teste de paridade diz:
+
+✓ PASS
+
+mas semanticamente estão desatualizadas.
+
+Este é talvez o maior buraco de sistemas que validam apenas presença de keys.
+
+Vocês precisam eventualmente detectar:
+
+source changed after translation.
+
+Uma solução extremamente poderosa seria cada unidade carregar:
+
+source_hash
+
+A tradução registra:
+
+translated_from_hash
+
+Então:
+
+EN mudou
+↓
+hash mudou
+↓
+PT-BR ainda referencia hash antigo
+↓
+CI:
+STALE TRANSLATION
+
+Isso muda completamente a qualidade operacional.
+
+Para agentes de IA é especialmente poderoso.
+
+15. E aqui aparece um desenho muito melhor para os agentes
+
+Em vez do agente receber:
+
+traduza pt-br.yaml.
+
+ele poderia receber uma operação determinística:
+
+i18n status meshcraft
+
+resultado:
+
+pt-BR
+  missing: 0
+  stale: 3
+  invalid placeholders: 0
+
+es
+  missing: 2
+  stale: 7
+  invalid placeholders: 1
+
+E depois:
+
+i18n validate
+
+Isso transforma localização em protocolo de engenharia.
+
+16. Também criaria uma regra que eu não mencionei antes: immutable semantic keys
+
+Uma vez publicada:
+
+checkout.payment.submit
+
+a chave não deveria mudar simplesmente porque o inglês mudou.
+
+Errado:
+
+checkout.pay_now
+
+vira:
+
+checkout.complete_purchase
+
+apenas porque:
+
+“Pay now” passou a ser “Complete purchase”.
+
+A key representa conceito, não copy.
+
+Isso reduz churn gigantescamente.
+
+17. E proibiria reutilização semântica indevida
+
+Imagine:
+
+shared.continue
+
+usada em 17 lugares.
+
+Parece DRY.
+
+Mas depois espanhol requer:
+
+Continuar
+Seguir
+Avançar
+Ir para pagamento
+
+dependendo do contexto.
+
+Resultado:
+
+DRY de strings vira acoplamento linguístico.
+
+Eu chamaria isso de semantic coupling.
+
+Em i18n:
+
+duplicar duas mensagens iguais hoje pode ser melhor do que declarar falsamente que são a mesma unidade semântica.
+
+Esse princípio merecia muito mais destaque.
+
+18. Observabilidade também deveria ser first-class
+
+Eu faria dashboards/metrics como:
+
+i18n_missing_key_total
+i18n_fallback_total
+i18n_stale_translation_total
+i18n_unknown_locale_request_total
+i18n_redirect_total
+
+por:
+
+site
+locale
+route
+release
+
+E uma característica muito útil:
+
+fallback em produção deve ser observável como degradação, não comportamento normal.
+
+19. Testes deveriam ter três níveis, não um
+Nível 1 — schema
+locale válido
+key válida
+placeholder válido
+fallback válido
+
+Milissegundos.
+
+Nível 2 — graph/invariants
+paridade
+hreflang
+canonical
+routes
+fallback cycles
+Nível 3 — rendered contract
+
+Renderizar páginas críticas e verificar:
+
+lang
+dir
+canonical
+alternate
+nenhuma key crua
+nenhum texto fonte inesperado
+nenhum placeholder não resolvido
+
+Para páginas críticas:
+
+cadastro
+oferta
+checkout
+login
+
+isso deveria ser obrigatório.
+
+20. E faria uma coisa ainda mais poderosa: contract tests entre gateway e células
+
+Porque o problema real não é só i18n.
+
+Seu sistema tem:
+
+Traefik
+ ↓
+células
+
+Então seria possível testar uma matriz:
+
+URL	Host	célula esperada	locale
+/en/cadastro	meshcraft.top	funil	en
+/pt-br/cadastro	meshcraft.top	funil	pt-BR
+/es/checkout/x	meshcraft.top	checkout	es
+/fr/checkout/x	meshcraft.top	nenhum/404	—
+/cadastro	site-legado.com	funil	pt-BR legado
+
+Isso é exatamente o tipo de coisa que deveria ser gerada pelo SiteSpec e testada mecanicamente.
+
+Minha revisão da própria recomendação
+
+Depois desse segundo passe, eu colocaria a arquitetura assim:
+
+                        ┌─────────────────────────┐
+                        │       SiteSpec          │
+                        │                         │
+Host ──────────────────►│ site_id                 │
+                        │ i18n_mode               │
+                        │ locales                 │
+                        │ default_locale          │
+                        │ locale aliases          │
+                        │ markets                 │
+                        │ routing policy          │
+                        └────────────┬────────────┘
+                                     │
+                                     ▼
+                        ┌─────────────────────────┐
+URL ───────────────────►│ Locale/Route Resolver   │
+                        │                         │
+                        │ canonicalizes locale    │
+                        │ validates availability  │
+                        │ determines route_id     │
+                        │ determines cell         │
+                        └────────────┬────────────┘
+                                     │
+                ┌────────────────────┼───────────────────┐
+                ▼                    ▼                   ▼
+             FUNIL               CHECKOUT             ALUNOS
+                │                    │                   │
+                └────────────────────┼───────────────────┘
+                                     ▼
+                         Request locale context
+                                     │
+                        ┌────────────┴─────────────┐
+                        ▼                          ▼
+                Message Catalog              Localization
+                semantic keys                CLDR/Django
+                translations                 dates
+                context                      numbers
+                placeholders                 currencies
+                source hashes                plural rules
+
+E por cima disso:
+
+                     I18n Contract Validator
+                              │
+      ┌───────────────────────┼───────────────────────┐
+      ▼                       ▼                       ▼
+ translation integrity     routing integrity       SEO integrity
+      │                       │                       │
+ missing                   route matrix           hreflang
+ stale                     site isolation         canonical
+ placeholders              locale validity        sitemap
+ fallback                  cell ownership         lang/dir
+
+Isso está muito mais próximo do que eu considero uma arquitetura realmente robusta.
+
+Se eu tivesse que mudar apenas CINCO coisas antes de escrever código
+
+Eu congelaria estas decisões:
+
+1. Internacionalização pública usa identidade explícita de locale na URL.
+
+/en/...
+/pt-br/...
+/es/...
+
+para sites que optarem por i18n_mode = prefixed.
+
+2. URL pública não conhece topologia física.
+
+checkout pode aparecer na URL porque é um conceito de produto, mas a regra de encaminhamento para microsserviço deve ser derivada de um contrato central, não ser a própria definição da URL.
+
+3. Chave de tradução representa conceito imutável, não texto.
+
+E traduções possuem metadados suficientes para detectar staleness, não apenas ausência.
+
+4. Locale, market e currency tornam-se conceitos diferentes agora.
+
+Mesmo que a primeira implementação use defaults triviais.
+
+5. SiteSpec vira a autoridade única sobre o comportamento internacional.
+
+Traefik, Django, hreflang, sitemap e testes derivam dela.
+
+Essa última é provavelmente a decisão de maior alavancagem.
+
+Portanto: não, a resposta anterior não foi meu máximo.
+
+Ela acertou bastante coisa, mas era algo como uma revisão arquitetural de primeira ordem.
+
+Uma análise realmente avançada desse sistema precisa perguntar não apenas:
+
+“Como fazemos traduções?”
+
+mas:
+
+“Qual é o modelo formal de identidade internacional de um recurso dentro de uma plataforma multissite distribuída, e quais invariantes tornam impossível que domínio, locale, conteúdo, rota e célula entrem silenciosamente em estados contraditórios?”
+
+Quando você formula o problema dessa maneira, o projeto muda de categoria.
+
+A partir daí eu não desenharia simplesmente um sistema de i18n.
+
+Eu desenharia um Internationalization Control Plane da plataforma: pequeno, declarativo, versionado, testável, fail-closed e capaz de gerar/validar as regras que hoje estariam espalhadas entre catálogo, funil, gateway, SEO, templates e banco.
+
+Esse seria o nível que eu buscaria para uma versão 2.0 realmente profunda da arquitetura.
