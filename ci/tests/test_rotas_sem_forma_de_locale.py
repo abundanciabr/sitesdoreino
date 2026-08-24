@@ -201,13 +201,26 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # duas. Sem isto, o adversarial poderia estar exercitando outra coisa.
     documento = _rotas_reais()
     nomes = {nome for nome, _ in rotas_declaradas(documento)}
-    assert {"quiz", "checkout", "alunos", "funil", "checkout-api"} <= nomes
+    assert {
+        "quiz",
+        "checkout",
+        "alunos",
+        "funil",
+        "checkout-api",
+        "sugestoes",
+    } <= nomes
     segmentos = {
         primeiro_segmento(prefixo)
         for nome, regra in rotas_declaradas(documento)
         for prefixo in prefixos_de_caminho(nome, regra)
     }
-    assert segmentos == {"", "quiz", "checkout", "alunos", "api"}
+    # `forms` entrou com a Caixa de Sugestões (`PathPrefix(/forms/sugestoes)`,
+    # EVO-22). Esta igualdade é um INVENTÁRIO, não uma regra de segurança:
+    # rota nova obriga quem a acrescenta a passar por aqui e olhar as duas
+    # regras acima. As regras que julgam de fato (A: forma de locale; B:
+    # colisão com idioma declarado) continuam medindo a tabela real e nada
+    # nelas foi afrouxado — `forms` tem 5 letras, logo nem casa a FORMA.
+    assert segmentos == {"", "quiz", "checkout", "alunos", "api", "forms"}
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +274,15 @@ def test_regra_b_fecha_a_valvula_dos_reservados_de_maquina():
 
 @pytest.mark.parametrize(
     "prefixo",
-    ["/checkout", "/quiz", "/alunos", "/api/checkout", "/", "/estatisticas"],
+    [
+        "/checkout",
+        "/quiz",
+        "/alunos",
+        "/api/checkout",
+        "/forms/sugestoes",
+        "/",
+        "/estatisticas",
+    ],
 )
 def test_aprova_os_prefixos_legitimos_de_hoje(prefixo):
     assert violacoes(_doc(f"PathPrefix(`{prefixo}`)"), _idiomas_reais()) == []

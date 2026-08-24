@@ -229,6 +229,38 @@ services:
       mensageria:
         condition: service_healthy
 
+  # A Caixa de Sugestões (docs/caixa-de-sugestoes/DECISAO-EVO-01-identidade.md).
+  # Serve sob o prefixo público /forms/sugestoes — quem conhece o prefixo é
+  # SCRIPT_NAME no env/sugestoes.env, nunca o urls.py da célula.
+  # O healthcheck herdado do x-celula bate em http://localhost:8000/healthz SEM
+  # prefixo, e está certo assim: a sonda interna não passa pelo Traefik, então a
+  # request line chega crua (armadilhas/029). Os DOIS caminhos — o interno
+  # `/healthz` e o público `/forms/sugestoes/healthz` — estão travados por
+  # services/sugestoes/tests/test_healthz_script_name.py.
+  sugestoes:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-sugestoes:${SUGESTOES_TAG:-main}
+    env_file: [env/sugestoes.env]
+
+  # Relay de outbox (Huey): publica no Redis Streams o que a Caixa gravou na
+  # outbox (contracts/eventos/sugestao.criada.v1.json e irmãos). Sem ele,
+  # sugestão que muda de status não vira evento e ninguém é avisado.
+  # [ARMADILHAS §3.13] O `condition: service_healthy` em `sugestoes` é o que
+  # impede este processo de migrar em paralelo com o CMD do servidor HTTP
+  # contra o mesmo banco — um dos dois morreria com IntegrityError.
+  sugestoes-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-sugestoes:${SUGESTOES_TAG:-main}
+    env_file: [env/sugestoes.env]
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      sugestoes:
+        condition: service_healthy
+
 volumes:
   pgdata: {}
   redisdata: {}
