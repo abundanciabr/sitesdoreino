@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/sugestao.status-alterado.v1.json",
+  "title": "sugestao.status-alterado.v1",
+  "description": "A equipe mudou o status de uma sugestão. É o fato que o aviso do aluno consome.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "sugestao.status-alterado"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "suggestion_id",
+        "autor_da_sugestao_id",
+        "status_anterior",
+        "status_novo"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) a que o quadro pertence — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "suggestion_id": {
+          "type": "string",
+          "description": "Id opaco da sugestão."
+        },
+        "autor_da_sugestao_id": {
+          "type": "string",
+          "description": "Id OPACO da identidade dentro da célula sugestoes. NUNCA é o e-mail: por decisão do mantenedor (DECISAO-EVO-01 §3) o e-mail vive numa linha só, dentro da Caixa. Consumidor que precise falar com a pessoa não resolve isto sozinho."
+        },
+        "status_anterior": {
+          "type": "string",
+          "enum": [
+            "em_analise",
+            "planejado",
+            "em_desenvolvimento",
+            "implementado",
+            "nao_planejado",
+            "mesclado"
+          ]
+        },
+        "status_novo": {
+          "type": "string",
+          "enum": [
+            "em_analise",
+            "planejado",
+            "em_desenvolvimento",
+            "implementado",
+            "nao_planejado",
+            "mesclado"
+          ]
+        },
+        "nota": {
+          "type": "string",
+          "description": "Justificativa da equipe. OPCIONAL no contrato, mas OBRIGATÓRIA na origem quando status_novo = nao_planejado (ESPECIFICACAO §10)."
+        }
+      }
+    }
+  }
+}
