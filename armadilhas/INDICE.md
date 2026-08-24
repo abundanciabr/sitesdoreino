@@ -118,5 +118,6 @@
 | [089](089-rota-nova-no-traefik-reprova-o-inventario-do.md) | Rota nova no Traefik reprova `test_rotas_sem_forma_de_locale` com "Extra items in the left set" — você acrescenta um router a `infra/traefik/dynamic/plataforma.yml` — um PR que não toca célula nenhuma — e o `muralhas`… | — |
 | [090](090-segredo-em-argumento-de-linha-de-comando-vaza.md) | Segredo em argumento de linha de comando vaza por quatro caminhos — você entrega ao mantenedor um comando pronto no formato `bash script.sh "ID" "SEGREDO" "email"`, ele executa, funciona — e o segredo agora está no… | — |
 | [091](091-env-criado-por-root-o-deploy-nao-le.md) | Env criado como `root` ⇒ `deploy-infra` reprova com "permission denied" — o deploy da infraestrutura falha na **validação**, antes de trocar qualquer coisa: | — |
+| [092](092-git-diff-do-patch-de-prova-leva-junto-o-que-nao-foi.md) | O patch de prova leva junto o que ainda não foi commitado — e o `-R` apaga — você segue o protocolo vermelho→verde por patch (`armadilhas/084`), a suíte fica verde no fim, tudo parece certo — e **uma correção sua… | — |
 
-**81 entradas.**
+**82 entradas.**
