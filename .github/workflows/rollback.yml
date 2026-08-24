@@ -45,6 +45,7 @@ on:
           - mensageria
           - pagamentos
           - quiz
+          - sugestoes
       alvo:
         description: 'sha COMPLETO (40 hex) de um commit da main — ou "main" para desfazer o pin'
         required: true

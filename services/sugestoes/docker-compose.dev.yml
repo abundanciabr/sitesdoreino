@@ -1,0 +1,29 @@
+# =============================================================================
+# DEV DA CÉLULA, ISOLADA: só ela e seu banco. O agente sobe ISTO — nunca a
+# plataforma inteira. As outras células nem existem aqui.
+#
+# Duas escolhas fora do molde, e o motivo de cada uma (ver LICOES.md):
+#   - `name: dev-sugestoes` (as demais células usam `dev-celula`): o nome do
+#     projeto é o namespace dos containers. Com o mesmo nome em todas, duas
+#     sessões paralelas colidem no `dev-celula-db-1`.
+#   - `55440` no host (as demais usam 5432): porta pré-atribuída a esta célula,
+#     para não brigar com o `55432` da partida rápida do ARMADILHAS §2.
+# =============================================================================
+name: dev-sugestoes
+services:
+  app:
+    build: .
+    env_file: .env.dev
+    ports: ["8000:8000"]
+    volumes: [".:/app"]
+    depends_on: [db]
+    command: sh -c "python manage.py migrate --noinput && uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload"
+
+  db:
+    image: postgres:17
+    container_name: sugestoes-pg-dev
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: sugestoes_db
+    ports: ["55440:5432"]
