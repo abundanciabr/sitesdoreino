@@ -7,7 +7,11 @@
 #
 # O que este código FAZ e o que ele NUNCA faz:
 #   - Converge cada site LISTADO no JSON: cria se não existe; ajusta name,
-#     active e default_offer_slug se divergirem — o Git é a fonte da verdade.
+#     active, default_offer_slug e os idiomas (default_language + languages) se
+#     divergirem — o Git é a fonte da verdade.
+#   - Valida os idiomas com o MESMO código do modelo (normalizar_idiomas): este
+#     script é a última barreira antes do banco de produção, e uma regra escrita
+#     duas vezes é uma regra que diverge.
 #   - Cria produto e oferta que faltarem (get_or_create, idempotente).
 #   - NUNCA edita preço de oferta existente (oferta publicada não muda):
 #     divergência vira AVISO no log; nova versão é decisão humana.
@@ -17,11 +21,12 @@
 import json
 import os
 
+from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from apps.ofertas.models import Offer
 from apps.produtos.models import Product
-from apps.sites.models import Site
+from apps.sites.models import Site, normalizar_idiomas
 
 bruto = os.environ.get("SITES_JSON", "")
 if not bruto.strip():
@@ -46,12 +51,25 @@ with transaction.atomic():
                 f"ERRO: default_offer_slug {padrao!r} de {host} não está nas ofertas {slugs} — a raiz responderia 404."
             )
 
+        # Idioma é dado do site (PLANO-I18N D3). Ausência dos dois campos =
+        # site monolíngue, que é o caso de todo site que não declarou nada.
+        try:
+            idioma_padrao, idiomas = normalizar_idiomas(
+                s.get("default_language", ""), s.get("languages", [])
+            )
+        except ValidationError as erro:
+            raise SystemExit(
+                f"ERRO: idiomas de {host} incoerentes — {' '.join(erro.messages)}"
+            )
+
         site, criado = Site.objects.get_or_create(
             host=host,
             defaults={
                 "name": s["name"],
                 "active": bool(s.get("active", True)),
                 "default_offer_slug": padrao,
+                "default_language": idioma_padrao,
+                "languages": idiomas,
             },
         )
         if criado:
@@ -62,6 +80,11 @@ with transaction.atomic():
                 ("name", s["name"]),
                 ("active", bool(s.get("active", True))),
                 ("default_offer_slug", padrao),
+                # `idiomas` já vem normalizado (code minúsculo, indexable
+                # explícito) e é assim que fica guardado — então o != compara
+                # duas formas canônicas, sem falso "mudou" a cada deploy.
+                ("default_language", idioma_padrao),
+                ("languages", idiomas),
             ):
                 if getattr(site, campo) != valor:
                     setattr(site, campo, valor)
