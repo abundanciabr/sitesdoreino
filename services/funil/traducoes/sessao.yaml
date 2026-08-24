@@ -1,0 +1,39 @@
+# traducoes/sessao.yaml — o cabeçalho de sessão, presente em TODA página
+# multilíngue (DECISAO-onde-mora-a-sessao). Formato key-major (D2); `_fonte` é
+# sha256[:6] do valor `en`; en é a FONTE.
+#
+# Por que é catálogo PRÓPRIO e não parte de `landing`/`cadastro`: estes textos
+# não pertencem a página nenhuma — eles aparecem em todas, pela peça
+# `templates/funil/_sessao.html`. Enfiá-los no catálogo de uma página faria a
+# chave de uma página ser usada no template de outra, e o validador confere
+# template↔catálogo nos dois sentidos.
+#
+# **Não há "Sair" aqui, e é decisão.** Encerrar a sessão é um POST com CSRF da
+# célula que a emitiu; um link daqui não conseguiria apresentar aquele token, e
+# um botão que falha em silêncio é pior do que botão nenhum. Sair continua onde
+# funciona: dentro da Caixa.
+
+entrar:
+  # O rótulo do link para quem ainda não entrou. Curto de propósito: divide
+  # espaço com o seletor de idiomas no topo, e em telas de celular os dois
+  # precisam caber na mesma linha.
+  _fonte: "bfd402"
+  en: "Sign in"
+  pt-br: "Entrar"
+  es: "Entrar"
+
+ola:
+  # `{nome}` é o `nome_exibido` que a Caixa devolve — nunca o e-mail, que não
+  # atravessa a fronteira (contracts/sugestoes.openapi.yaml).
+  _fonte: "a10bbe"
+  en: "Hi, {nome}"
+  pt-br: "Olá, {nome}"
+  es: "Hola, {nome}"
+
+minha_conta:
+  # O caso em que a pessoa apagou o próprio nome de exibição: `nome_exibido` é
+  # editável e pode ficar vazio. "Olá, " sozinho pareceria defeito.
+  _fonte: "b53181"
+  en: "My account"
+  pt-br: "Minha conta"
+  es: "Mi cuenta"

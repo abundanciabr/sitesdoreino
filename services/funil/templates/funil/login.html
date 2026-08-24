@@ -1,0 +1,36 @@
+{% extends "base_mobile.html" %}
+{% load t %}
+<!-- templates/funil/login.html — a porta de entrada do site, com a marca dele
+     e nos três idiomas (DECISAO-onde-mora-a-sessao). Página SÓ de site
+     registrado no i18n, como o cadastro: a view devolve 404 fora do regime.
+
+     O botão NÃO é um formulário: entrar é uma navegação para o Google, e o
+     endereço vem de `apps/core/enderecos.py` — nunca cravado aqui, para que a
+     mudança de casa da identidade seja uma variável de ambiente e não uma caça
+     a strings em template. Também não há tag de rota (nem a crua, nem a
+     url_i18n) apontando para o destino: ele não é rota desta célula.
+
+     Nota para quem editar: o lint do validador varre o TEXTO do arquivo, e não
+     a árvore do template — escrever o nome da tag de rota crua aqui, mesmo
+     dentro deste comentário, reprova o boot da célula. Aconteceu ao escrever
+     esta página. -->
+{% block titulo %}{% t "login.titulo" %}{% endblock %}
+{% block head_extra %}
+  <meta name="description" content="{% t "login.meta_descricao" %}">
+  <meta property="og:title" content="{% t "login.titulo" %}">
+  <meta property="og:description" content="{% t "login.meta_descricao" %}">
+{% endblock %}
+{% block estilo %}
+    .cta { display: block; width: 100%; padding: 1rem; border: 0; border-radius: .5rem; background: #16a34a; color: #fff; font-size: 1.1rem; font-weight: 600; text-align: center; text-decoration: none; }
+    .aviso { font-size: .875rem; color: #52525b; margin-top: 1rem; }
+    .sessao { font-size: .875rem; text-align: right; margin-bottom: .5rem; }
+{% endblock %}
+{% block conteudo %}
+{% include "funil/_sessao.html" %}
+<div class="card">
+  <h1>{% t "login.titulo_pagina" %}</h1>
+  <p>{% t "login.subtitulo" %}</p>
+  <a class="cta" href="{{ url_de_entrada }}">{% t "login.botao_google" %}</a>
+  <p class="aviso">{% t "login.aviso_email" %}</p>
+</div>
+{% endblock %}

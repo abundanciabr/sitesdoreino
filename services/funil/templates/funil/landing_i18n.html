@@ -19,10 +19,12 @@
     .msg { font-size: .875rem; margin-top: .5rem; }
     .erro { color: #b91c1c; }
     .sucesso { color: #16a34a; }
+    .sessao { font-size: .875rem; text-align: right; margin-bottom: .5rem; }
 {% endblock %}
 {% block conteudo %}
 {{ utm|json_script:"utm-data" }}
 {{ i18n_js|json_script:"i18n-data" }}
+{% include "funil/_sessao.html" %}
 <div class="card">
   <h1>{{ oferta.product.name }}</h1>
   <p class="preco">{% t "landing.preco" preco=preco_formatado %}</p>

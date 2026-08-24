@@ -1,0 +1,16 @@
+{% load t %}{% load url_i18n %}{% comment %}
+templates/funil/_sessao.html — o cabeçalho de sessão, incluído por TODA página
+multilíngue (DECISAO-onde-mora-a-sessao). Peça única: o mesmo cabeçalho em três
+lugares seria a mesma coisa escrita três vezes, e Pecado 3 da Lei 3.
+
+**NÃO entra no `base_mobile.html`**, e isso não é preguiça: aquele arquivo é
+compartilhado com os sites monolíngues (basileiatoutheou.org), cuja landing é
+comparada BYTE A BYTE em
+`tests/test_i18n_http.py::test_regressao_site_nao_registrado_landing_byte_identica`.
+Login existe no site multilíngue; os domínios antigos seguem intocados.
+
+`{% include %}` daqui não custa consulta nenhuma quando ninguém entrou: o
+`request.ator` é preguiçoso e `{% if %}` só o resolve se houver cookie
+(apps/core/middleware.py). E se a Caixa estiver fora do ar, ele é falso — a
+página abre mostrando "Entrar", nunca um erro.
+{% endcomment %}<nav class="sessao">{% if request.ator %}<a href="{{ request.url_da_caixa }}">{% if request.ator.nome %}{% t "sessao.ola" nome=request.ator.nome %}{% else %}{% t "sessao.minha_conta" %}{% endif %}</a>{% else %}<a href="{% url_i18n 'entrar' %}">{% t "sessao.entrar" %}</a>{% endif %}</nav>

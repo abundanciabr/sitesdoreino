@@ -452,3 +452,73 @@ custa uma rodada para entender de onde veio.
 > virou pergunta que o teste faz por você; foi a rota `/healthz` esquecida que provou
 > que disciplina sozinha não bastava. Ver a lição `CAMINHOS_SEM_SITE` casa o
 > `path_info` CRU, acima, e `armadilhas/086`.
+>
+> **E ele cobrou de novo em 24/08/2026**, na entrega da sessão: `/login` entrou no
+> urlconf e o guarda reprovou na hora, pedindo a classificação. Custou 30 segundos e
+> uma linha em `ROTAS_LOCALIZAVEIS` — contra a alternativa, que era `/pt-br/login`
+> funcionando e `/login` respondendo alguma coisa inesperada só em produção.
+
+## O site PERGUNTA quem é a pessoa; ele nunca lê o cookie
+
+Lei do assunto: `docs/decisoes/DECISAO-onde-mora-a-sessao.md`. O cookie de sessão é
+assinado com a chave da `sugestoes` e aponta para uma linha no banco **dela**; o
+`funil` não tem chave nem banco. Ler seria impossível e ilegal (Leis 2 e 3). Ele
+repassa o cabeçalho `Cookie` **opaco** e pergunta pelo contrato congelado.
+
+Duas credenciais viajam juntas e provam coisas diferentes — confundi-las é o erro
+caro: o `Bearer` do par prova **quem chama**; o `Cookie` prova **quem é a pessoa**.
+Por isso "ninguém entrou ainda" volta como **200 com `autenticado: false`**, e não
+401: um 401 faria esta célula ler "não há visitante" como "recusaram minha
+credencial", e o conserto óbvio de quem estivesse com pressa seria afrouxar o token.
+
+### Fail-OPEN aqui, e é o contrário do resto da casa
+
+`AlunosIndisponivel`, na outra ponta, **fecha a porta** quando não consegue
+perguntar — lá a resposta decide ACESSO. Aqui ela decide **um nome no canto da
+tela**, e a regra se inverte: Caixa fora do ar ⇒ a página abre mostrando "Entrar".
+Trocar isso por fail-closed transformaria o raio de explosão de uma célula na
+vitrine inteira do site.
+
+O corolário está no invariante da decisão (§4) e vale repetir: **a resposta desta
+pergunta nunca autoriza nada.** `request.ator.papel` serve para decidir se um atalho
+aparece, jamais para liberar rota. Autorização é fail-closed, na célula dona do
+recurso.
+
+### O guarda de cache nasceu de um bug meu, na mesma sessão
+
+A primeira versão marcava a resposta como não-cacheável sempre que o template
+**consultava** a sessão. Como toda página consulta (é o template perguntando "tem
+alguém?"), o efeito real era **tirar o cache da vitrine inteira do site** — e a
+suíte pegou na hora, porque o guarda foi escrito em PAR: um teste para "página com
+nome não pode ser guardada" e outro para "página de visitante continua cacheável".
+Guarda sozinho teria passado.
+
+A marca certa é `identificado` (alguém foi reconhecido), não "foi consultado". E a
+assimetria que sobra é deliberada: sem `Vary` na resposta anônima, um cache
+compartilhado pode servir a versão "Entrar" para quem já entrou — **feio, não
+perigoso** (um clique resolve). A direção perigosa, conteúdo pessoal num cache
+compartilhado, está fechada por `no-store` na resposta de quem foi reconhecido.
+Há Cloudflare na frente de domínio desta plataforma (`armadilhas/017`), então isto
+não é hipótese.
+
+### `request.ator` é preguiçoso, e isso é arquitetura, não micro-otimização
+
+A esmagadora maioria das requisições desta célula é visitante anônimo em página de
+marketing. Nenhuma delas pode pagar um salto de rede para descobrir que não há
+ninguém. O objeto só resolve na primeira leitura, e **sem cookie nenhum ele nem
+tenta** — o caminho de quase todo visitante não toca a rede uma vez sequer.
+
+### O cabeçalho de sessão NÃO entra no `base_mobile.html`
+
+Aquele arquivo é compartilhado com os sites monolíngues, cuja landing é comparada
+byte a byte em `test_regressao_site_nao_registrado_landing_byte_identica`. A peça
+`templates/funil/_sessao.html` é incluída pelos templates multilíngues — uma peça
+só, três `include`, zero duplicação (Pecado 3). Login existe no site multilíngue;
+os domínios antigos seguem intocados.
+
+### O lint do i18n varre TEXTO, não a árvore do template
+
+Escrever o nome da tag de rota crua dentro de um **comentário HTML**, para explicar
+por que ela não é usada, **reprova o boot da célula**. Aconteceu ao escrever
+`login.html`: a mensagem diz "`{% url %}` cru em template i18n" e o arquivo não tem
+nenhum. Se precisar mencionar a tag numa explicação, descreva-a em palavras.
