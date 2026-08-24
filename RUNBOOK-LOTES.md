@@ -290,6 +290,66 @@ sessão mergeando na mesma `main`):
     medir a matriz pública de novo depois do deploy: nada mudou — que era exatamente a
     afirmação a provar.
 
+**Lote 5 — 24/08/2026** (fase 4 do i18n: contrato → provedor → consumidor, PRs
+#104/#106/#107, mais #109 e #112 para destravar; 1 incidente de canal de deploy, 0
+revert, 0 minuto de produção derrubada — o primeiro lote a atravessar o **Rito de
+Contrato** e o primeiro a travar o **canal** de entrega sem travar o site):
+
+21. **O Rito de Contrato cabe num PR isolado — e o preço é uma janela de divergência
+    que o brief tem de nomear.** Antes de mergear o contrato sozinho (#104), a maestro
+    conferiu quais workflows obrigatórios rodam o portão `freeze`: `muralhas` e
+    `alarme-main` medem outra coisa, e o `ci-celula` só roda o `make ci` da **célula
+    tocada** — um PR que só mexe em `contracts/` não toca célula nenhuma, então a
+    `main` não fica vermelha entre o contrato e o provedor. **Mas o baseline do
+    provedor nasce vermelho no `make contrato-check` da célula**, que é o comportamento
+    certo (o contrato mudou, a implementação ainda não). Isso **precisa estar escrito
+    no brief do provedor**: sem isso o agente abre o worktree, vê vermelho no baseline
+    e para achando que a `main` quebrou — gastando uma rodada de investigação para
+    redescobrir a ordem do próprio rito.
+22. **Dois workflows que disparam no MESMO merge não têm ordem entre si — e um
+    artefato que atravessa os dois vira impasse fechado.** O `deploy-infra` injeta
+    `infra/sincronizar_sites.py` (do commit recém-mergeado) dentro do container que o
+    `deploy-celula` ainda vai atualizar. O script novo importou um símbolo que só
+    existe na imagem nova ⇒ `ImportError` ⇒ `deploy-infra` vermelho ⇒ o
+    `portao-de-deploy`, fail-closed, barrou o `deploy-celula` por
+    `vermelhos-nao-previstos` ⇒ cada um esperando o outro. Produção seguiu 100%
+    saudável: o que travou foi o **canal**, não o site — e o portão fez exatamente o
+    que devia. **Regra geral: arquivo injetado num artefato versionado à parte só pode
+    depender de símbolo que já existia na versão anterior.** Detalhe em
+    `armadilhas/078`; a regra de quem rege é reconhecer a FORMA — se a resposta a
+    "isso funciona?" depende da ordem de dois pipelines, a resposta é não.
+23. **Impasse de pipeline não se resolve com `rerun` — resolve-se com um caminho
+    NOVO.** O portão consulta `actions/runs?head_sha=<SHA>`: re-rodar o run antigo
+    reavalia o **mesmo commit**, que contém o código quebrado. A sequência que
+    destravou foi (a) corrigir o script (#109), (b) um PR que tocasse
+    `services/catalogo/**` para o `deploy-celula` **existir** naquele SHA — aqui, a
+    correção de uma lição errada no `LICOES.md` da célula (#112), **legítima e
+    necessária por si**, nunca um commit de conveniência para mover o pipeline —, e
+    (c) rerun do `deploy-infra` para gravar os dados já com a imagem nova. Quem rege
+    precisa saber distinguir as duas coisas: se o PR-veículo não se sustentaria
+    sozinho no review, o problema é outro.
+24. **`i/o timeout` no SSH do runner com a VPS viva é blip, não estrutura — mas só
+    depois de medir.** O reflexo (lição 8: "mudou DNS/proxy ⇒ incidente horas depois")
+    apontava para causa estrutural. A medição feita antes do diagnóstico disse o
+    contrário: site respondendo 200, porta 22 devolvendo o banner SSH, 443 no IP
+    em 404. Um rerun
+    bastou. É a §3.17 aplicada na direção difícil — **medir antes de diagnosticar vale
+    inclusive para confirmar que NÃO é o incidente que você já conhece.**
+25. **A catraca recusou duas vezes por não conseguir MEDIR (`ERROR`, não `FAIL`), e as
+    duas vezes a resposta certa foi esperar.** Uma por consulta transitória incompleta,
+    outra pelo `mergeable: UNKNOWN` que a lição 9 já descreve. Um `ERROR` da catraca
+    nunca é convite a forçar: é a diferença entre "medi e reprovei" e "não consegui
+    medir", e tratá-los igual destruiria a única informação que o portão tem a dar.
+26. **Teto de despacho mal calibrado é erro de quem escreve o brief — e apagar arquivo
+    é o caso clássico.** O despacho do consumidor recebeu teto de 10 arquivos e entregou
+    14: todos os extras eram **leitores do arquivo que estava sendo apagado**
+    (`sites_i18n.yaml`), e não havia como remover a fonte sem tocar quem a lia. O agente
+    fez o certo — **declarou o estouro em vez de espremer**, ficou dentro do portão do
+    CI (15) e explicou arquivo por arquivo. **Regra para a maestro: ao mandar apagar um
+    arquivo, o orçamento tem de contar quem o lê** (`grep` antes de escrever o número),
+    e a regra que o agente aplicou é a de sempre: teto apertado não justifica entrega
+    pela metade — justifica declarar.
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),

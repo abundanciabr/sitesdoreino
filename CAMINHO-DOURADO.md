@@ -461,8 +461,9 @@ const api = {
 Cada página é uma ilha: estado próprio, zero variáveis compartilhadas entre páginas.
 Comunicação entre páginas = servidor (snapshot/status), nunca `localStorage` ou globais.
 
-Página de site multilíngue (host no `sites_i18n.yaml`): **R12** manda — texto por
-`{% t %}`, link por `{% url_i18n %}`, strings da ilha pela subárvore `js.*`.
+Página de site multilíngue (site que o catálogo serve com `languages` — R12,
+fluxo B): **R12** manda — texto por `{% t %}`, link por `{% url_i18n %}`,
+strings da ilha pela subárvore `js.*`.
 
 ## R7 — Migration Expand-and-Contract (a dança de três releases)
 
@@ -609,7 +610,7 @@ célula.
 | O que você vai fazer | Fluxo | Regra dura |
 |---|---|---|
 | Página NOVA em site já multilíngue | **A** | Nasce com TODOS os idiomas do site **no mesmo PR** — a paridade exata força, e o formato key-major faz custar **1 arquivo** de catálogo, tenha o site 3 ou 15 idiomas |
-| Idioma NOVO em site que já tem páginas | **B** | Idioma-**base** novo toca TODO `traducoes/*.yaml` da célula de uma vez. Lote pela lane `traducoes`, ou sequência com `_fonte: pendente` + `indexavel: false` até completar |
+| Idioma NOVO em site que já tem páginas | **B** | Idioma-**base** novo toca TODO `traducoes/*.yaml` da célula de uma vez. Lote pela lane `traducoes`, ou sequência com `_fonte: pendente` + `indexable: false` até completar |
 
 > ✅ **Fluxo B — a lane funciona ponta a ponta desde 23/08/2026.** O portão
 > (`ci/orcamento-de-mudanca.sh`) e a catraca (`ci/mergear.py`, `checar_labels()`)
@@ -662,8 +663,9 @@ Regras que o portão IMPÕE neste arquivo (não são estilo):
   no Traefik.
 - **`title`, meta description e og:\* saem do catálogo** como qualquer texto —
   `lang`, `dir`, canonical, hreflang, `x-default`, `og:locale`, `robots
-  noindex` e o seletor de idiomas o `base_mobile.html` já emite sozinho, do
-  registro (`registro.dados_seo`). Não escreva nenhum deles à mão.
+  noindex` e o seletor de idiomas o `base_mobile.html` já emite sozinho, dos
+  idiomas do site (`apps/i18n/idiomas.py` → `dados_seo()`, que o middleware põe
+  em `request.i18n_seo`). Não escreva nenhum deles à mão.
 - **Ilha Alpine**: as strings que o JS troca em runtime moram na subárvore
   `<pagina>.js.*`, emitidas com `|json_script` e lidas no `init()`. **Proibido
   catálogo de tradução em JS.**
@@ -726,13 +728,14 @@ path("<pagina>", <pagina>, name="<pagina>"),   # sem prefixo: o resolver já dec
 # apps/core/views.py  # [RECEITA:R12 v1]
 def <pagina>(request):
     if getattr(request, "idioma", None) is None:
-        raise Http404("página só existe em site registrado no i18n")   # decida EXPLICITAMENTE
+        raise Http404("página só existe em site multilíngue")          # decida EXPLICITAMENTE
     contexto = {"i18n_js": js_da_pagina("<pagina>", request.idioma)}
     return render(request, "<celula>/<pagina>.html", contexto)
 ```
 
-Site fora do registro é monolíngue por construção: decida — **404** (como
-`cadastro`) ou **template próprio separado** (como `landing`/`landing_i18n`).
+Site monolíngue (sem `languages` no catálogo) nunca tem `request.idioma`:
+decida — **404** (como `cadastro`) ou **template próprio separado** (como
+`landing`/`landing_i18n`).
 Nunca um `if` de idioma dentro de um template só: é o que quebra o golden
 byte-idêntico da landing.
 
@@ -763,29 +766,83 @@ localizado se afirma com `override()` + `gettext`).
 
 ### B — Idioma novo em site que já existe
 
-**1. Registro** `services/<celula>/sites_i18n.yaml` (interim; destino final é
-`infra/sites.json`, fase 4 com Rito de Contrato):
+**1. Primeiro a CÉLULA, depois o DADO — nesta ordem.** Desde a fase 4 (PRs
+#104/#106/#107) **não existe registro local de idiomas**: o interim
+`sites_i18n.yaml` foi apagado, e quem declara idioma de site é o catálogo.
+São dois lugares, e trocar a ordem publica URL quebrada.
 
-```yaml
-    idiomas:
-      en:    { tag: en,    dir: ltr, indexavel: true }
-      fr:    { tag: fr,    dir: ltr, indexavel: false }              # idioma-BASE novo
-      pt-pt: { tag: pt-PT, dir: ltr, indexavel: false, base: pt-br } # VARIANTE (overlay)
+**1a — a célula tem de saber renderizar o idioma**, em
+`services/<celula>/apps/i18n/catalogo.py`:
+
+```python
+IDIOMAS_BASE = ("en", "pt-br", "es")   # idioma-BASE: paridade EXATA no catálogo
+VARIANTES: "dict[str, str]" = {}       # variante → base, ex.: {"pt-pt": "pt-br"}
 ```
 
-Campos obrigatórios e fail-closed: **código minúsculo** na URL (`[a-z]{2,3}`
-com região opcional; `/pt-BR/` e `/pt_br/` são 404 por decisão), **`tag`** BCP 47
-igual ao código em caixa canônica (`pt-br` ⇄ `pt-BR`), **`dir`** (`ltr`/`rtl`),
-**`indexavel`** booleano explícito, **`base`** só em variante (máximo 1 nível —
-base de variante não pode ter base; o `default` do site nunca é variante). Campo
-desconhecido reprova. Todo host aqui tem de existir em `infra/sites.json`
-(teste de coerência).
+Idioma que o catálogo declare para o site e não esteja em nenhum dos dois é
+**ignorado** por `idiomas.idiomas_do_site()` (com `logger.error` nomeando o
+host): a URL prefixada simplesmente não existe. Fazer o inverso — dado antes de
+tradução — seria publicar uma URL prefixada servindo inglês, exatamente o padrão
+que o D5 existe para evitar.
 
-**2. Entenda o que você acabou de disparar.** Idioma **sem `base`** é
+**1b — o idioma do site é DADO**, declarado em `infra/sites.json` e convergido
+para a produção pelo `deploy-infra`. A lei é `contracts/catalogo.openapi.yaml`,
+schema `Site`:
+
+```json
+{ "host": "meshcraft.top",
+  "default_language": "en",
+  "languages": [ { "code": "en" },
+                 { "code": "pt-br" },
+                 { "code": "es", "indexable": false } ] }
+```
+
+Site **sem os dois campos** é monolíngue — é assim que todo site que não declara
+idioma segue com o comportamento de sempre.
+
+Só o que varia por site virou campo. O resto do registro antigo não sumiu: virou
+derivação ou constante da célula, porque é propriedade do IDIOMA, não do site
+(escrever `dir` por site seria N lugares para escrever a mesma verdade, e N para
+escrevê-la errado):
+
+| campo do interim morto | onde a verdade mora agora |
+|---|---|
+| `tag` (`pt-br` → `pt-BR`) | derivado: `idiomas.tag_bcp47(codigo)` |
+| `dir` (`ltr`/`rtl`) | derivado: `idiomas.direcao(codigo)`, tabela `IDIOMAS_RTL` |
+| `base` da variante | `catalogo.VARIANTES` — política de tradução da célula |
+| `indexavel` | contrato: `languages[].indexable`, default `true` |
+
+Fail-closed nos dois lados, com regras DIFERENTES — e quem manda é a mais
+apertada, que é a de quem grava:
+
+- **No `deploy-infra`, antes de gravar** — `infra/sincronizar_sites.py` →
+  `normalizar_idiomas`, cópia consciente do mesmo nome em
+  `services/catalogo/apps/sites/models.py` (armadilhas/078: o script injetado
+  não pode importar da imagem; a deriva entre as cópias tem teste-guarda em
+  `ci/tests/test_sincronizar_sites_tolerante.py`). Ali o código tem de casar
+  `^[a-z]{2}(-[a-z]{2})?$` — **só isso**.
+  `en`, `pt-br`, `es` passam; `es-419` e `zh-hant` **não** (o run fica vermelho,
+  o dado não entra). Também reprovam: código duplicado, `indexable`
+  não-booleano, `languages` sem `default_language`, `default_language` sem
+  `languages`, e `default_language` fora dos idiomas declarados.
+- **Na célula, ao servir** (`apps/i18n/idiomas.py` → `RE_CODIGO`): a forma
+  aceita é mais larga (`[a-z]{2,3}` com região de 2–8 alfanuméricos), porque é
+  ela que decide o 404 da URL — `/pt-BR/` e `/pt_br/` são **404 por decisão**,
+  nunca redirect e nunca fallback.
+
+E dado que a célula não sabe servir **degrada para monolíngue com ERROR, nunca
+para um idioma escolhido por conta**: `default_language` fora dos idiomas
+servíveis, ou que seja variante, derruba o site inteiro para monolíngue;
+`indexable` não-booleano vira `noindex` (indexar por engano é o erro caro; o
+contrário reverte).
+
+**2. Entenda o que você acabou de disparar.** Idioma em **`IDIOMAS_BASE`** é
 idioma-BASE: a paridade exata passa a exigi-lo em **toda chave de todo
-`traducoes/*.yaml` da célula** — não só nas páginas novas. Idioma **com `base`**
-é variante: overlay esparso, ausência herda (válido), presença tem de DIFERIR da
-base (overlay idêntico reprova: "remova, a herança já cobre").
+`traducoes/*.yaml` da célula** — não só nas páginas novas. Idioma em
+**`VARIANTES`** é variante: overlay esparso, ausência herda (válido), presença
+tem de DIFERIR da base (overlay idêntico reprova: "remova, a herança já cobre").
+Máximo 1 nível — a base de uma variante tem de ser idioma-base, e o
+`default_language` do site nunca pode ser variante.
 
 **3. Complete o eixo** em cada `traducoes/*.yaml`, com o `_fonte` correto por
 chave. As duas saídas legítimas quando não dá para traduzir tudo no mesmo PR:
@@ -793,12 +850,14 @@ chave. As duas saídas legítimas quando não dá para traduzir tudo no mesmo PR
 - **`_fonte: pendente` na chave** — isenta aquela chave da paridade e declara a
   degradação; em runtime cai pela cadeia (variante → base → en) com **ERROR +
   contador**. Degradação declarável, nunca inferível.
-- **`indexavel: false`** — mantém o idioma fora do hreflang, do `x-default` e do
-  sitemap enquanto está incompleto, e emite `robots noindex`.
+- **`indexable: false`** no `languages[]` do site — mantém o idioma fora do
+  hreflang, do `x-default` e do sitemap enquanto está incompleto, e emite
+  `robots noindex`.
 
-**4. Nasça `indexavel: false`** (D5 — "3 idiomas bons antes do 4º"): idioma novo
+**4. Nasça `indexable: false`** (D5 — "3 idiomas bons antes do 4º"): idioma novo
 em domínio novo com tradução de agente é o padrão que classificador de spam
-procura. Indexar depois custa flipar um dado. Foi assim que o `es` nasceu.
+procura. Indexar depois custa flipar um dado no `infra/sites.json` — não um
+deploy de código. Foi assim que o `es` nasceu.
 
 **5. Lote**: label `traducoes` no PR (`gh pr edit <N> --add-label traducoes`) —
 o `ci/orcamento-de-mudanca.sh` deixa passar >15 arquivos **somente se** 100% do
@@ -844,8 +903,8 @@ bash ci/orcamento-de-mudanca.sh                 # orçamento / lane traducoes
 O que ele reprova, item a item (se um destes ficar vermelho, é isto que ele está
 medindo):
 
-1. **Paridade exata** entre idiomas-base: falta E sobra reprovam (idioma não
-   declarado no registro dentro de um MessageSpec = FAIL).
+1. **Paridade exata** entre idiomas-base: falta E sobra reprovam (chave de
+   idioma fora de `IDIOMAS_BASE`/`VARIANTES` dentro de um MessageSpec = FAIL).
 2. **Template ↔ catálogo nas DUAS direções**: chave usada e não definida, e
    chave definida e não usada em nenhum template. Só `*.js.*` é isenta da
    segunda (a ilha consome por `json_script`).
@@ -854,8 +913,9 @@ medindo):
 4. **Plural CLDR do idioma**, consultado no `babel` pinado — exatamente as
    categorias daquele idioma, nunca lista à mão.
 5. **Glossário de não-traduzir**: se o termo protegido aparece no `en`, tem de
-   aparecer **literal** em toda tradução daquela chave. Os termos são a união
-   dos glossários de todos os sites do registro.
+   aparecer **literal** em toda tradução daquela chave. Os termos vêm de
+   `catalogo.GLOSSARIO` — **constante da CÉLULA**, não dado de site: quem
+   precisa da regra é quem escreve a tradução, e ela não muda de site para site.
 6. **Overlay de variante**: presente sem a base reprova; idêntico à base
    reprova; ausência herda.
 7. **Escape e `.html`**: whitelist de tags, nada de `on*=` nem `javascript:`;
@@ -902,8 +962,10 @@ Os portões acima verificam **integridade**. Nenhum verifica se a tradução est
 
 Propriedades **lógicas** em todo CSS novo: `margin-inline-start`,
 `padding-inline-end`, `inset-inline`, `text-align: start/end`. **Nunca
-`left`/`right`** — a direção vem do `dir` do registro, e o dia do primeiro RTL
-vira flip de dado em vez de varredura de folha de estilo.
+`left`/`right`** — a direção vem do `dir` que `idiomas.direcao()` deriva do
+código do idioma, e o dia do primeiro RTL vira uma linha nova em `IDIOMAS_BASE`
+em vez de varredura de folha de estilo (a tabela `IDIOMAS_RTL` já responde
+`rtl` para `ar`/`he`/`fa`/…, sem dado novo de site).
 
 ### Armadilhas já pagas (não redescubra)
 

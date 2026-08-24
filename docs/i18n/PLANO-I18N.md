@@ -144,7 +144,8 @@ Regras do formato ("MessageSpec", não `dict[str, str]`):
    (o PyYAML aceita em silêncio — verificado), sem anchors/aliases/tags;
    **toda folha é `str`** (mata `no`/`yes`/`on` virando booleano e `12:30`
    virando 750 — verificado no PyYAML 6.0.2); **as chaves de idioma parseadas
-   têm de ser exatamente as strings declaradas no registro** — no dia em que
+   têm de ser exatamente as strings de `IDIOMAS_BASE`/`VARIANTES`** (o
+   `idiomas_conhecidos` que o `achatar()` recebe) — no dia em que
    existir norueguês, `no:` viraria `False` como CHAVE antes de qualquer
    validação de folha; com esta regra, cai como tipo inválido de chave.
 8. **Chaves semânticas imutáveis**: a chave nomeia o papel
@@ -166,16 +167,45 @@ contra o teto de 15. "Falha aberto" é motivo secundário (corrigível com
 comentários = perde contexto), PyICU (binário C — mesmo critério do gettext),
 banco para copy de UI (fora do alcance do CI).
 
-### D3 — Idioma é dado do site, com interim local vigiado
+### D3 — Idioma é dado do site ✅ (fechado na fase 4, 24/08/2026)
 
-Registro de idiomas por site — interim `services/funil/sites_i18n.yaml`,
-destino final `infra/sites.json` (fase 4, Rito de Contrato). Campos por
-idioma: código (minúsculo na URL), tag BCP 47 (`pt-BR` para `lang`/hreflang),
-`dir`, `base` (fallback declarado — ver D4), `indexavel` (ver D5). Site fora
-do registro = monolíngue como hoje.
+Idioma de site é dado do **catálogo**: declarado em `infra/sites.json`,
+convergido para a produção pelo `deploy-infra`, servido pela API do catálogo sob
+o contrato `contracts/catalogo.openapi.yaml` (schema `Site`). Dois campos, e só
+dois:
 
-**Cinto do interim:** teste de CI — todo host em `sites_i18n.yaml` existe em
-`infra/sites.json`. Dívida de dois-lugares-declarando só é aceitável vigiada.
+```yaml
+default_language: "en"                            # ausente ⇒ monolíngue
+languages: [{code: "pt-br", indexable: true}]     # ausente/vazio ⇒ monolíngue
+```
+
+Site sem os dois = monolíngue como hoje: nenhuma URL ganha prefixo. A célula lê
+os idiomas do `Site` que o `SiteResolutionMiddleware` já resolve por Host
+([INV-P11]), uma vez por janela de cache — zero trabalho por requisição.
+
+**O interim `services/funil/sites_i18n.yaml` morreu aqui** (PRs #104/#106/#107):
+o arquivo foi apagado, e com ele o teste de coerência que o vigiava — não há
+mais dois lugares declarando, então não há mais o que cruzar. A aposentadoria
+tem guarda mecânica: `services/funil/tests/test_i18n_catalogo.py` reprova se o
+arquivo voltar a existir.
+
+O interim declarava CINCO coisas; o contrato recebeu **duas**. As outras três
+não podiam virar campo de site, porque não variam por site:
+
+- **tag BCP 47** (`pt-br` → `pt-BR`) e **`dir`** (`ltr`/`rtl`) **derivam do
+  código do idioma** (`apps/i18n/idiomas.py`: `tag_bcp47()`, `direcao()` sobre a
+  tabela `IDIOMAS_RTL`). Como dado por site seriam N lugares para escrever a
+  mesma verdade — e N para escrevê-la errado: `dir: rtl` num site em inglês
+  passaria pelo contrato e quebraria a página.
+- **base da variante** (D4) vive em `apps/i18n/catalogo.py` → `VARIANTES`, e o
+  **glossário** (D8.1) ao lado, em `GLOSSARIO`: são política de TRADUÇÃO da
+  célula. Dois sites que sirvam `pt-pt` caem no mesmo `pt-br` porque o texto é o
+  mesmo, não porque cada um configurou isso.
+
+Regra de bolso que sobrou: **o contrato carrega o que varia por site; a célula
+carrega o que varia por idioma ou por catálogo de tradução.** Antes de propor
+campo novo no contrato do catálogo, pergunte se dois sites poderiam querer
+valores diferentes — se não poderiam, o campo é da célula.
 
 ### D4 — Paridade em dois níveis + `_fonte` anti-obsolescência
 
@@ -217,8 +247,8 @@ do registro = monolíngue como hoje.
 
 ### D5 — SEO desde a primeira página
 
-O `base_mobile.html` do funil emite, por página, tudo gerado do registro
-(D3), nunca à mão:
+O `base_mobile.html` do funil emite, por página, tudo gerado dos idiomas do
+site (D3) — hoje por `idiomas.dados_seo()`, nunca à mão:
 
 - `<html lang="pt-BR" dir="ltr">` (tag BCP 47; URL continua minúscula — cada
   convenção no seu lugar, com canonicalização interna única: nosso teste de
@@ -240,9 +270,10 @@ O `base_mobile.html` do funil emite, por página, tudo gerado do registro
   hreflang só no HTML, versão sem link rastreável pode nunca ser descoberta.
   Teste: **toda URL alternativa do hreflang aparece como `href` de âncora na
   página renderizada.**
-- **`indexavel` por idioma é DADO** (D3) e controla `noindex` + exclusão do
-  hreflang/sitemap. **Aplicando a própria regra "3 idiomas bons antes do
-  4º": o `es` NASCE `noindex`** — o público inicial é brasileiro; espanhol no
+- **`indexable` por idioma é DADO** (D3 — campo do contrato, default `true`) e
+  controla `noindex` + exclusão do hreflang/sitemap. **Aplicando a própria
+  regra "3 idiomas bons antes do 4º": o `es` NASCE `noindex`** — o público
+  inicial é brasileiro; espanhol no
   dia 1 em domínio novo com tradução de agente é exatamente o padrão que
   classificador de spam procura. Constrói-se já; indexa-se quando houver
   razão de demanda (custa flipar um dado).
@@ -370,22 +401,26 @@ produto; o risco residual concentra-se no único lugar sem portão. Defesas:
 - **Dois fluxos de PR nomeados** (entram na R12): página nova nasce com
   **todos** os idiomas do site no mesmo PR (a paridade já força; key-major
   faz custar 1 arquivo); idioma-base novo em site grande = lote
-  translation-only pela lane, ou sequência com `indexavel: false` até
+  translation-only pela lane, ou sequência com `indexable: false` até
   completar.
 - **CSS com propriedades lógicas** (`margin-inline-start`, `text-align:
-  start`) + `dir` do registro em todo CSS novo — regra da R12; RTL futuro
-  vira flip de dado.
-- **Idioma ≠ mercado ≠ moeda ≠ timezone**: campos separados no registro
-  desde já, mesmo com defaults triviais (es não implica EUR; dinheiro segue
-  `(centavos, moeda ISO)`).
+  start`) + o `dir` **derivado do código do idioma** (`idiomas.direcao()`) em
+  todo CSS novo — regra da R12; RTL futuro não precisa de dado novo nenhum: a
+  tabela `IDIOMAS_RTL` já responde `rtl` para `ar`/`he`/`fa`/… pelo código.
+- **Idioma ≠ mercado ≠ moeda ≠ timezone**: campos separados no contrato do
+  site desde já, mesmo com defaults triviais (es não implica EUR; dinheiro
+  segue `(centavos, moeda ISO)`).
 - **Idioma do lead é dado de negócio**: o cadastro captura o idioma da
   requisição — interim sem tocar contrato:
   `source="cadastro-meshcraft-<locale>"`; campo próprio quando houver Rito.
   Lead sem idioma não tem retrofit.
 - **Mensageria/eventos**: e-mails transacionais têm copy PT-BR fixa em dict
-  Python e nenhum evento de `contracts/eventos/` carrega locale (medido).
-  Registrado para a fase 4 (Rito): campo `locale` nos eventos + strings da
-  mensageria no mesmo formato de catálogo.
+  Python e nenhum evento de `contracts/eventos/` carrega locale (medido —
+  continua verdade em 24/08/2026). Estava registrado para a fase 4; **ficou de
+  fora dela por decisão** (§4, a nota abaixo da tabela de fases): os 5 esquemas
+  são `additionalProperties: false` ⇒ campo novo é breaking, e 4 dos 5 são do
+  fluxo de pagamento, hoje fechado por diretiva do mantenedor. Fase própria,
+  quando houver motivo de negócio.
 - **Texto dentro de imagem é dívida**: hero com frase em inglês = um asset
   novo por idioma; texto fica em HTML. Fonte: stack de fallback +
   `unicode-range` quando houver primeiro idioma não-latino declarado.
@@ -410,21 +445,35 @@ Nada da fase 1–2 é jogado fora.
 
 | Fase | Entrega | Depende de |
 |---|---|---|
-| **1** | Fundação no funil: resolver de prefixo + matriz HTTP + `activate()`; registro `sites_i18n.yaml` (com `dir`, `base`, `indexavel`, tag BCP 47) + teste de coerência com `sites.json`; `t()`/`{% t %}`/`t_lazy`; `ci/i18n_check.py` no molde do `contract_freeze.py` (PASS/FAIL/ERROR — formato, paridade exata, template↔catálogo, placeholders, plural CLDR, `_fonte` + regra anti-burla, overlay, glossário, pseudo-locale) rodando no CI **e no boot**; `base_mobile` com lang/dir/canonical/hreflang/seletor-`<a href>` | **nada — o "segue" foi dado em 23/08** |
-| **2** | Página `/[en\|pt-br\|es]/cadastro` (template + `traducoes/cadastro.yaml` + view + testes), POST a leads com locale, `sitemap.xml` + Search Console | fase 1 |
+| **1** ✅ | **ENTREGUE** — Fundação no funil: resolver de prefixo + matriz HTTP + `activate()`; registro **interim** `sites_i18n.yaml` (com `dir`, `base`, `indexavel`, tag BCP 47) + teste de coerência com `sites.json` — **os dois aposentados na fase 4**, o idioma passou a vir do catálogo (D3); `t()`/`{% t %}`/`t_lazy`; o portão no molde do `contract_freeze.py` (PASS/FAIL/ERROR — formato, paridade exata, template↔catálogo, placeholders, plural CLDR, `_fonte` + regra anti-burla, overlay, glossário, pseudo-locale) rodando no CI **e no boot** — nasceu como `apps/i18n/validador.py` dentro do `make ci` da célula, **não** como `ci/i18n_check.py` na raiz; `base_mobile` com lang/dir/canonical/hreflang/seletor-`<a href>` | **nada — o "segue" foi dado em 23/08** |
+| **2** ✅ | **ENTREGUE** (no ar desde 23/08, matriz medida de fora) — Página `/[en\|pt-br\|es]/cadastro` (template + `traducoes/cadastro.yaml` + view + testes), POST a leads com locale, `sitemap.xml` (rota de máquina, `apps/core/views.py`). O **envio ao Search Console** é passo do mantenedor e não consta como feito | fase 1 |
 | **3** ✅ | **ENTREGUE** — **Receita R12** no `CAMINHO-DOURADO.md`: os dois fluxos de PR (página nova / idioma novo), passo a passo verificado contra o código da fase 1–2, contrato do `_fonte` + regra anti-burla, checklist das 10 regras do validador, o que a máquina NÃO protege (D8), CSS com propriedades lógicas, armadilhas por número. Registrado ali o que a implementação real ainda NÃO tinha: o marcador `_juridico` do D8.2 e a lane `traducoes` na catraca `mergear.py` — **os dois fechados em 23/08/2026** (PRs #95 e #94; ver D8.2, `docs/historico/RESOLVIDAS.md` §5.11 e a §5.15 em `armadilhas/`) | fases 1–2 no ar |
-| **4** | Idioma no `sites.json`/catálogo/contrato (Rito) + locale nos eventos/mensageria + aposentadoria do interim | mandato próprio |
+| **4** ✅ | **ENTREGUE 24/08/2026, provada em produção** — idioma no `sites.json`/catálogo/**contrato** e **aposentadoria do interim**: `contracts/catalogo.openapi.yaml` ganhou `default_language` + `languages[{code,indexable}]` pelo Rito de Contrato (**#104**), o catálogo passou a servir os campos (**#106**), o funil passou a lê-los e o `services/funil/sites_i18n.yaml` foi **apagado** (**#107**). Ver D3. ⚠️ **A metade "locale nos eventos/mensageria" ficou de fora DE PROPÓSITO** — não é esquecimento: ver a linha abaixo da tabela | mandato próprio (dado em 24/08) |
 | **5** | D6 (células além do funil) e D7-tabela se gatilho disparar | necessidade real |
 
-A fase 1 não muda a landing atual em nada (site da operação fora do
-registro = monolíngue por construção; teste de regressão prova).
+A fase 1 não muda a landing atual em nada (site sem `languages` no catálogo =
+monolíngue por construção; teste de regressão prova). Continua valendo depois
+da fase 4: o que era "fora do registro" hoje é "sem os dois campos no `Site`".
+
+**Por que a fase 4 fechou pela metade, e por que a metade certa.** O `locale`
+nos eventos/mensageria **não** entrou, por decisão, não por falta de tempo:
+os 5 esquemas de `contracts/eventos/` são `additionalProperties: false`, então
+acrescentar um campo é **breaking** — exigiria `.v2.json`, emissão dupla e a
+migração das 4 células consumidoras (`alunos`, `checkout`, `leads`,
+`mensageria`). Além disso, 4 dos 5 esquemas são do fluxo de pagamento/pedido,
+área que o mantenedor mandou **não tocar até o site vender**. Fica como fase
+própria, com mandato próprio, quando houver motivo de negócio — e o interim do
+D9 (`source="cadastro-meshcraft-<locale>"`) segue carregando o idioma do lead
+sem tocar contrato nenhum.
 
 ## §5 — O que precisa do mantenedor · o que NÃO precisa
 
-**Nada para as fases 1–3** — o "segue" foi dado em 23/08/2026 (com as
-correções da revisão final incorporadas aqui). Continuam dele: a conversa
-EVO-01 (identidade); mandato do Rito na fase 4; e — quando possível, sem
-bloquear nada — **um falante nativo de inglês (ou dado de conversão) para o
+**Nada para as fases 1–4** — o "segue" foi dado em 23/08/2026 (com as
+correções da revisão final incorporadas aqui) e o mandato do Rito de Contrato
+da fase 4 foi dado em 24/08/2026 e já foi exercido (#104). Continuam dele: a
+conversa EVO-01 (identidade); a decisão de negócio que reabriria o `locale` nos
+eventos (fluxo de pagamento — hoje fechado por diretiva); e — quando possível,
+sem bloquear nada — **um falante nativo de inglês (ou dado de conversão) para o
 risco estrutural do D8.5**, que nenhum portão cobre.
 
 ---
