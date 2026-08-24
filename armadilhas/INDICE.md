@@ -119,5 +119,7 @@
 | [090](090-segredo-em-argumento-de-linha-de-comando-vaza.md) | Segredo em argumento de linha de comando vaza por quatro caminhos — você entrega ao mantenedor um comando pronto no formato `bash script.sh "ID" "SEGREDO" "email"`, ele executa, funciona — e o segredo agora está no… | — |
 | [091](091-env-criado-por-root-o-deploy-nao-le.md) | Env criado como `root` ⇒ `deploy-infra` reprova com "permission denied" — o deploy da infraestrutura falha na **validação**, antes de trocar qualquer coisa: | — |
 | [092](092-git-diff-do-patch-de-prova-leva-junto-o-que-nao-foi.md) | O patch de prova leva junto o que ainda não foi commitado — e o `-R` apaga — você segue o protocolo vermelho→verde por patch (`armadilhas/084`), a suíte fica verde no fim, tudo parece certo — e **uma correção sua… | — |
+| [093](093-contrabarra-dupla-some-no-caminho-ate-o-bash.md) | `re.error: unterminated character set` num regex que está certo — você roda um script Python pelo Bash — heredoc `<<'PY'` (delimitador entre aspas, que em bash *não* processa nada) ou `python -c` — e um regex correto… | — |
+| [094](094-edicao-de-uma-linha-vira-diff-do-arquivo-inteiro.md) | Edição de UMA linha vira diff do arquivo inteiro (`449 +++---` num arquivo intocado) — você troca uma frase dentro de um arquivo por script Python, roda `git diff --stat` e lê: | — |
 
-**82 entradas.**
+**84 entradas.**
