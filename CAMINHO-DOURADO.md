@@ -600,12 +600,15 @@ célula.
 | Página NOVA em site já multilíngue | **A** | Nasce com TODOS os idiomas do site **no mesmo PR** — a paridade exata força, e o formato key-major faz custar **1 arquivo** de catálogo, tenha o site 3 ou 15 idiomas |
 | Idioma NOVO em site que já tem páginas | **B** | Idioma-**base** novo toca TODO `traducoes/*.yaml` da célula de uma vez. Lote pela lane `traducoes`, ou sequência com `_fonte: pendente` + `indexavel: false` até completar |
 
-> ⚠ **Fluxo B, leia antes de planejar o lote:** a catraca de merge
-> (`ci/mergear.py`, `checar_labels()`) **ainda NÃO conhece a lane `traducoes`** —
-> ela entrou só no `ci/orcamento-de-mudanca.sh` (ARMADILHAS §5.11). Um lote com
-> >15 arquivos passa verde nas muralhas e é **recusado no merge**. Enquanto
-> aquele despacho de `ci/` não acontecer: ou o lote cabe em 15 arquivos, ou vá
-> pela sequência com `pendente`.
+> ✅ **Fluxo B — a lane funciona ponta a ponta desde 23/08/2026.** O portão
+> (`ci/orcamento-de-mudanca.sh`) e a catraca (`ci/mergear.py`, `checar_labels()`)
+> conhecem os dois a lane `traducoes` (ARMADILHAS §5.11, PR #94). Um lote com
+> >15 arquivos passa **se e somente se** todo caminho casar
+> `services/<celula>/traducoes/...` — e a label `traducoes` existe no GitHub.
+> Divisão de trabalho entre os dois, de propósito: a catraca confere o
+> **caminho**; o **modo** (executável, symlink, submódulo) fica com as muralhas,
+> porque a API de PR do GitHub não devolve modo. Dois testes-guarda leem o
+> próprio `.sh` e reprovam se as duas cópias da regra divergirem.
 
 ### A — Página nova (todos os idiomas de uma vez)
 
