@@ -3,9 +3,11 @@ from urllib.parse import urlencode
 
 import httpx
 from django import forms
+from django.conf import settings
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import render
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.static import serve as serve_do_django
 
 from apps.core.clients import CatalogoClient, LeadsClient
 from apps.i18n.catalogo import js_da_pagina
@@ -26,6 +28,38 @@ def _utm_da_requisicao(request) -> dict:
 @require_GET
 def healthz(request):
     return JsonResponse({"status": "ok"})
+
+
+def servir_estatico(request, path):
+    """Estáticos em produção. Sem esta rota o formulário da landing não existe.
+
+    Com `DEBUG=0` o Django não serve estático por conta própria, e esta célula
+    está SOZINHA atrás do Traefik: não há nginx, CDN nem router `/static` no
+    gateway (o catch-all `PathPrefix(/)` manda tudo para cá). Resultado medido
+    ao vivo em 24/08/2026: `/static/funil/api.js` respondia 404 nos dois
+    domínios, as landings carregavam esse `<script>` mesmo assim, e a ilha
+    Alpine quebrava no `api.post(...)` — em silêncio para o visitante. A célula
+    checkout resolveu o MESMO problema assim em 22/08/2026 e está verde em
+    produção desde então; aqui se copia o padrão, não o arquivo (Lei 7).
+
+    Duas escolhas que parecem detalhe e são o fix:
+
+    1. **Serve do diretório-FONTE (`STATICFILES_DIRS[0]`), nunca de
+       `STATIC_ROOT`.** O `collectstatic --noinput || true` do Dockerfile falha
+       em TODO build — não há `DJANGO_SECRET_KEY` em tempo de build e o
+       `settings.py` é fail-hard — e o `|| true` engole o erro: a imagem sobe
+       com `STATIC_ROOT` vazio. Servir de lá (o default do whitenoise, entre
+       outros) manteria o 404 com a suíte inteira verde. O diretório-fonte
+       está na imagem pelo `COPY . .`, e é o mesmo caminho em dev e em prod.
+    2. **É rota de MÁQUINA e nunca se localiza (D6).** O resolver de idioma
+       decapa o prefixo em `path_info` ANTES da resolução de URL, então sem
+       esta guarda `/pt-br/static/funil/api.js` passaria a responder 200 —
+       uma URL de máquina por idioma, conteúdo duplicado para robô e
+       superfície nova para ninguém. Mesma guarda do `sitemap_xml` abaixo.
+    """
+    if getattr(request, "idioma", None) is not None:
+        raise Http404("estático não tem prefixo de idioma")
+    return serve_do_django(request, path, document_root=settings.STATICFILES_DIRS[0])
 
 
 @require_GET
