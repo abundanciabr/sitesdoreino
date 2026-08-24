@@ -181,14 +181,66 @@ credencial de produção (INV-P8); a única credencial real neste caminho é o
 
 **Ainda sem evidência registrada** (critério 2 de `ESQUELETO-QUE-ANDA.md`) —
 isto é uma pendência aberta, não um "já fizemos e esqueci de documentar".
+Decisão do mantenedor em 23/08/2026: **parar e deixar registrado** — o critério
+2 volta quando for a hora de construir o site de vendas (a diretiva "pagamento
+por último" segue valendo). O que está abaixo é o mapa do que ele exige, medido
+na fonte em 23/08 para a próxima sessão não redescobrir.
 
 Diferença do caminho local: não existe `/debug/simulate-webhook` em
 `DEBUG=0` — o webhook chega de verdade em
 `/api/pagamentos/webhooks/mp/card` (ou `/pix`), assinado pelo MP real, ao
 usar o cartão de teste **APRO** (aprova automaticamente) contra a credencial
 sandbox. `deploy-celula.yml` já publica cada célula na VPS a cada merge em
-`services/**` — a infraestrutura para este passo já existe, falta rodar o
-teste manual e colar a evidência crua no PR de fechamento da Fase D/E.
+`services/**` — a infraestrutura de DEPLOY já existe. O que **falta** são três
+coisas, e duas delas não são "rodar um teste", são obra e configuração:
+
+**5.1 — Não existe caminho alcançável para CONFIRMAR um cartão (é obra, não teste).**
+Medido em 23/08/2026 lendo o código:
+- `POST /api/pagamentos/intents/{id}/card` (a confirmação de cartão, em
+  `services/pagamentos/pagamentos/api/intents.py`) é **interna** — o Traefik só
+  expõe `/api/pagamentos/webhooks` (`infra/traefik/dynamic/plataforma.yml`,
+  router `mp-webhooks`), nada mais de pagamentos sai para a internet.
+- `checkout` **não** tem proxy de confirmação de cartão (`apps/core/api.py` só
+  tem `createSession`, `placeOrder`, `getOrder`).
+- O **Card Payment Brick** do MP nunca foi montado: `templates/checkout/cartao.html`
+  e `static/checkout/cartao.js` são esqueletos que só fazem *poll* do status
+  (o próprio arquivo diz "o mount do Card Payment Brick entra numa sessão futura").
+
+  Ou seja: dá para *criar* o pedido de cartão (o intent nasce em `created`,
+  `provider_payment_id` vazio), mas **não há como pagá-lo** — nem por um cliente,
+  nem por uma sessão de agente via HTTP público. Fechar isto é construir a
+  confirmação de cartão (rota pública + o Brick, ou uma rota de confirmação que
+  receba um `card_token`). É a "obra do formulário de cartão" que o painel
+  registra como deixada para o fim.
+
+**5.2 — Mesmo com o cartão confirmado, a matrícula só sai pelo WEBHOOK.**
+`confirmar_intent_card` (`methods/card/service.py`) aprova de forma **síncrona** e
+grava `status`/`provider_payment_id` no intent — mas **não emite**
+`pagamento.aprovado`. Quem emite (→ outbox → relay → matrícula em `alunos`) é só
+o handler de webhook (`methods/card/webhook.py` → `transicionar_e_emitir`). Logo,
+sem o webhook real chegando, o esqueleto **não anda até a matrícula** — o critério
+2 não fecha com a aprovação síncrona sozinha.
+
+**5.3 — O webhook exige passo do mantenedor (INV-P8 / Lei 5), não do agente.**
+O handler é fail-closed por assinatura (INV-P10): só aceita um webhook cuja
+`x-signature` bata com `settings.MP_WEBHOOK_SECRET`. Para um webhook REAL do MP
+validar, é preciso:
+1. registrar o endpoint no **painel do Mercado Pago**
+   (`https://basileiatoutheou.org/api/pagamentos/webhooks/mp/card`, eventos de
+   pagamento) — isso **gera uma senha secreta de assinatura**;
+2. colocar essa senha em `MP_WEBHOOK_SECRET` no `env/pagamentos.env` da VPS;
+3. garantir que o MP realmente ENVIE o webhook — ou pela config de eventos no
+   painel (nível de conta), ou acrescentando `notification_url` na criação do
+   pagamento (`providers/mercadopago/client.py` hoje **não** manda esse campo —
+   seria uma mudança de código na célula de pagamentos).
+
+   Os passos 1 e 2 são só do mantenedor: painel e `env/` da VPS nunca passam pelo
+   agente. A credencial no ar hoje é `TEST-` (o QR Pix real de 22/08 prova que a
+   sandbox responde na VPS), que é a postura certa para este teste sandbox.
+
+Quando for retomar: decidir 5.1 (como confirmar cartão) e 5.3.3 (eventos no
+painel vs. `notification_url`), depois rodar o teste e colar a evidência crua no
+PR de fechamento (critério 4).
 
 ## 6. Rollback (RITOS.md §4 — a resposta canônica a qualquer emergência)
 
