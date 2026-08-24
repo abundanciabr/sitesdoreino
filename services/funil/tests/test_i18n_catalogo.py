@@ -392,6 +392,15 @@ def test_site_sem_languages_e_monolingue(site):
     assert idi.idiomas_do_site(_site(**site)) is None
 
 
+def test_languages_sem_default_language_nao_elege_um_por_conta(caplog):
+    # O contrato manda `languages` conter `default_language`; se vier sem,
+    # escolher "o primeiro da lista" seria o site-padrão silencioso que o
+    # [INV-P11] proíbe — e mandaria a raiz redirecionar para um idioma que
+    # ninguém escolheu. Monolíngue, com ERROR no log.
+    assert idi.idiomas_do_site(_site(languages=TRES_IDIOMAS)) is None
+    assert "MONOLÍNGUE" in caplog.text
+
+
 def test_indexable_ausente_e_true_por_contrato():
     cfg = idi.idiomas_do_site(_site(default_language="en", languages=[{"code": "en"}]))
     assert cfg["idiomas"]["en"]["indexavel"] is True

@@ -228,3 +228,87 @@ não está medindo a célula. Cuidado prático ao montar chave jurídica de test
 glossário continua valendo, então `Meshcraft` no `en` obriga `Meshcraft`
 literal no pt-br e no es.
 **Origem:** despacho funil/i18n-juridico.
+
+## Onde mora cada pedaço do i18n depois que o idioma virou dado do catálogo (fase 4)
+
+O interim `sites_i18n.yaml` declarava CINCO coisas juntas; o contrato do
+catálogo (schema `Site`) só recebeu DUAS. As outras três não podiam sumir, e
+espalhá-las seria pior que o interim. Onde cada uma foi parar, e por quê:
+
+| coisa | onde vive agora | por quê |
+|---|---|---|
+| quais idiomas o site serve (`code`) | **catálogo** (`languages[]`) | é dado do SITE — muda por site, sem deploy |
+| `indexable` por idioma | **catálogo** (`languages[].indexable`) | idem: flipar um dado indexa o `es` |
+| tag BCP 47 (`pt-br`→`pt-BR`) e `dir` | `apps/i18n/idiomas.py`, **derivados do código** | propriedade do IDIOMA, igual em todo site: como dado por site seriam N lugares para escrever a mesma verdade, e N para escrevê-la errado (`dir: rtl` num site em inglês passaria pelo contrato) |
+| glossário de não-traduzir (D8.1) | `catalogo.py` → `GLOSSARIO` | política de TRADUÇÃO da célula; quem precisa da regra é quem escreve a tradução, e o validador a lê de lá |
+| cadeia de fallback de variante (D4) | `catalogo.py` → `VARIANTES` | idem: dois sites servindo `pt-pt` caem no mesmo `pt-br` porque o TEXTO é o mesmo, não porque cada um configurou isso |
+
+Regra de bolso que sobrou: **o contrato carrega o que varia por site; a célula
+carrega o que varia por idioma ou por catálogo de tradução.** Antes de propor
+campo novo no contrato do catálogo, pergunte se dois sites poderiam querer
+valores diferentes — se não poderiam, o campo é da célula.
+**Origem:** despacho funil/idioma-do-catalogo (fase 4).
+
+## Idioma que o catálogo declara e a célula não sabe renderizar é IGNORADO, não servido
+
+`idiomas_do_site()` cruza o `languages` do catálogo com o que a célula sabe
+renderizar (`cat.IDIOMAS_BASE` + `cat.VARIANTES`). Idioma de fora — um `fr`
+adicionado ao site antes das traduções — **não vira URL**: sai da lista com um
+ERROR no log. Servir `/fr/` cairia inteiro no fallback para o inglês, ou seja,
+publicar uma URL francesa com página inglesa: exatamente o padrão que o D5
+manda evitar. Consequência prática para quem lançar idioma novo: **traduções
+primeiro** (`IDIOMAS_BASE` + `traducoes/*.yaml`, com o validador verde), **o
+dado do site depois** — a ordem inversa não quebra nada, só não faz efeito.
+**Origem:** despacho funil/idioma-do-catalogo — `apps/i18n/idiomas.py`.
+
+## Rota isenta do CONV-SITE não tem `request.site` — e a isenção envelhece
+
+**Sintoma:** o `/sitemap.xml` estava em `CAMINHOS_SEM_SITE` ("não depende do
+catálogo, como o `/healthz`") e tinha até um teste provando isso. Quando os
+idiomas passaram a vir do catálogo, essa isenção virou um beco: sem
+`request.site` não há `languages`, e o sitemap não tinha como saber quais URLs
+listar.
+**Causa:** a isenção fora escrita em função da ROTA ("é rota de máquina"), mas
+o que a decide é o DADO de que a rota precisa. O dado migrou; a isenção não.
+**Solução:** dividir em duas listas — `CAMINHOS_SEM_SITE` (`/healthz`,
+`/static/`: sonda e estáticos, que não podem depender do catálogo estar de pé)
+e `CAMINHOS_DE_MAQUINA` (`/sitemap.xml`: resolve o Site normalmente, com o
+mesmo cache de 60s, mas **nunca se localiza** — nenhum prefixo, nenhum redirect
+da matriz D1). De brinde, o sitemap passou a usar o host canônico do Site em
+vez de `request.get_host()`, como o canonical já fazia (D5).
+**Preço, declarado:** o sitemap deixou de ser servível com o catálogo fora do
+ar. Se um dia isso doer, a saída é cache, não isenção.
+**Origem:** despacho funil/idioma-do-catalogo — `apps/core/middleware.py`,
+`apps/core/views.py`.
+
+## Dado de site que a célula não entende: degradar para monolíngue, nunca adivinhar
+
+Três casos de `Site` malformado, e a decisão de cada um (todos com ERROR no
+logger `funil.i18n`, nunca em silêncio):
+
+- **`languages` ausente/vazio** ⇒ monolíngue, SEM alarme: é o contrato dizendo
+  "site de um idioma só". É também a degradação da fase 4 — enquanto o catálogo
+  não servir os campos, o site multilíngue volta a ser o de antes, byte a byte.
+- **`default_language` ausente ou fora da lista** ⇒ monolíngue COM alarme.
+  Eleger "o primeiro da lista" seria o site-padrão silencioso que o [INV-P11]
+  proíbe, e mandaria a raiz redirecionar para um idioma que ninguém escolheu.
+- **`indexable` não-booleano** (`"false"` string, p.ex.) ⇒ **noindex** com
+  alarme. Fail-closed pelo lado barato: indexar por engano custa caro e demora
+  a reverter; não indexar custa tráfego e reverte flipando um dado.
+
+O alarme sai UMA vez por janela de cache (60s), não por requisição: o
+`idiomas_do_site()` roda no `_resolver` do middleware, junto com a resolução do
+Site, e o resultado é cacheado com ele. Dado inválido não vira enxurrada de log.
+**Origem:** despacho funil/idioma-do-catalogo — `apps/i18n/idiomas.py`,
+`apps/core/middleware.py`.
+
+## Fixture de teste especializa o mock do conftest re-registrando a MESMA rota
+
+Com o idioma vindo do catálogo, o "site multilíngue" dos testes nasce do mock:
+a fixture `com_i18n` faz `rede.get(f"{CATALOGO}/sites/by-host/{HOST_A}").mock(...)`
+sobre uma rota que o `conftest` já tinha registrado. Isso **substitui** a rota
+anterior — é comportamento documentado do respx (`Router.add`: "replacing any
+existing route with same name or pattern"), não sorte de ordenação. É o que
+permite ter, no mesmo arquivo, testes multilíngues e a regressão monolíngue
+byte-idêntica sobre o MESMO host, sem inventar um terceiro domínio.
+**Origem:** despacho funil/idioma-do-catalogo — `tests/test_i18n_http.py`.
