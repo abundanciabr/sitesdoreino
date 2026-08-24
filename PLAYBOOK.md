@@ -39,11 +39,14 @@ quebráveis, e um raio de explosão de qualquer falha = **1 célula**.
 | `02-RED-TEAM.md` | Fase E (atual). | Os 15 golpes de graduação — o rito ainda não fechou. |
 | `services/<celula>/LICOES.md` | Ao tocar UMA célula. | Decisões e armadilhas só daquela célula (se existir). |
 | `RUNBOOK-FASE-D.md` | Ao rodar, depurar ou estender o esqueleto que anda. | Manual operacional do que a Fase D entregou (comandos, pendências herdadas). |
+| **`docs/decisoes/RETROSPECTIVA-FASE-D.md`** | **Depois deste arquivo e do `armadilhas/INDICE.md`, antes de escrever código.** | Os **8 padrões que atravessam** as 67 armadilhas — o andar de cima do catálogo (falso-verde, garantia sem mecanismo, prova de fora, fail-closed na borda, humano no caminho crítico, contexto é orçamento, sessões paralelas, viabilidade sem ler config). Existe porque conhecer os casos não impede repetir a categoria. |
 | `00-LEIA-PRIMEIRO.md`, `01-BRIEF-FASE-0.md`, `PROMPTS-INICIAIS.md` | Só para entender a HISTÓRIA (como o kit nasceu). | Framing original de bootstrapping — a Fase 0 já fechou; não descreve o estado atual. |
 | `arquivos/*.html` | **Provavelmente você não consegue ler isto.** | Painéis para o humano (não-técnico). `arquivos/` está no `.gitignore` — não existe dentro de um worktree de célula. Se você é root window e consegue ver, é conveniência, nunca fonte de lei. |
 
 **Ordem de leitura para uma sessão nova, root window, sem tarefa ainda definida:**
 este arquivo → `ARMADILHAS.md` (§2 partida rápida) + `armadilhas/INDICE.md` →
+`docs/decisoes/RETROSPECTIVA-FASE-D.md` (os 8 padrões — leitura curta, evita
+repetir a CATEGORIA de erro que o catálogo já cobre caso a caso) →
 `ARMADILHAS-OPERACAO.md` §1 → `CONSTITUICAO.md` → `RITOS.md` §1 →
 pergunte ao humano qual é a tarefa, ou veja `git log`/`gh pr list` para inferir
 onde o projeto parou.
@@ -60,7 +63,7 @@ gh api repos/abundanciabr/sitesdoreino/branches/main/protection   # ver nota H3 
 |---|---|---|
 | Fase 0 | Fundação (impossibilidades, jaula verde vazia, contratos congelados) | ✅ concluída, sobreviveu à auditoria |
 | Fase B | As 8 células nascem vazias, CI verde antes de existir feature | ✅ concluída (8/8) |
-| Fase D | O esqueleto que anda — 1 transação sandbox ponta a ponta | ✅ concluída localmente — 8/8 elos verdes (PRs #15 a #32). Critérios 2–4 de `ESQUELETO-QUE-ANDA.md` (VPS com cartão APRO, drill de rollback cronometrado) **ainda sem evidência registrada** — ver `RUNBOOK-FASE-D.md` §5/§6. |
+| Fase D | O esqueleto que anda — 1 transação sandbox ponta a ponta | ✅ concluída localmente — 8/8 elos verdes (PRs #15 a #32). **2 de 4 critérios** de `ESQUELETO-QUE-ANDA.md`: ✅ 1 (local) · ✅ 3 (drill de rollback cronometrado, **76s**, 23/08/2026 — `RUNBOOK-FASE-D.md` §6) · ☐ 2 (VPS com cartão APRO + webhook real — **adiado por decisão do mantenedor**, exige obra de checkout + passo dele no painel do MP; mapa em §5.1–5.3) · ☐ 4 (fecha junto com o 2). |
 | Fase E | Red-team — 15 golpes deliberados contra as muralhas | 🟡 **em andamento — 5 rodados, 4 ☑ na tabela.** Golpes 1–4 bloqueados e marcados (PRs #33, #36, #34, #37, fechados sem merge). O **golpe 5 rodou e bloqueou** (evidência `lint-imports` FAIL→PASS, commit `a05e085` na branch `redteam/golpe5-pix-importa-card`) mas **a linha dele em `02-RED-TEAM.md` ainda é ☐ e a branch nunca foi mergeada** — ver §2.1. **A tabela de `02-RED-TEAM.md` é a fonte de verdade do certificado; leia-a, não confie nesta linha.** |
 
 ### 2.1 Trabalho executado que não chegou à `main` — confira antes de refazer
