@@ -3,7 +3,7 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
-## O que existe aqui hoje (EVO-10 + EVO-11 + EVO-12a + EVO-12b) — e o que NÃO existe
+## O que existe aqui hoje (EVO-10 a EVO-13) — e o que NÃO existe
 
 Do EVO-10, o esqueleto: `config/` (settings fail-hard, urls, asgi),
 `GET /healthz`, `apps/core`. Do EVO-11, **a camada de dados**:
@@ -13,14 +13,106 @@ testes-guarda de invariante. Do EVO-12a, **a porta de entrada**:
 entrar/sair em `views.py`, a página `templates/sugestoes/entrar.html` e cinco
 guardas de invariante novos. Do EVO-12b, **a participação do aluno**:
 `apps/core/participacao.py`, as três páginas (`quadro`, `nova`, `sugestao`)
-sobre `base_caixa.html`, e cinco guardas de invariante a mais.
+sobre `base_caixa.html`, e cinco guardas de invariante a mais. Do EVO-13, **a
+moderação**: `apps/core/moderacao.py`, as páginas `fila` e `moderar`, e mais
+cinco guardas — o Lote 1 fecha aqui, do lado do comportamento.
 
-**Continua não existindo**, e cada um tem despacho próprio: moderação e
-avaliação interna (EVO-13 — o papel `staff` já é RECONHECIDO, mas não há nada
-atrás dele), merge de sugestão (V1.1 na spec §10), middleware CONV-SITE,
-`config/api.py` e outbox/eventos (Lote 2, EVO-20 — a célula ainda não emite
-nada). Se você chegou aqui esperando encontrar evento ou tela de staff, o
-despacho é outro.
+**Continua não existindo**, e cada um tem despacho próprio: merge de sugestão
+(V1.1 na spec §10), middleware CONV-SITE, `config/api.py` e outbox/eventos
+(Lote 2, EVO-20 — a célula ainda não emite nada) e a tela bonita (EVO-30, Lote
+3). Se você chegou aqui esperando encontrar evento, o despacho é outro.
+
+## A moderação (EVO-13): as seis decisões de desenho
+
+**1. `exige_staff` EMPILHA sobre `exige_sessao`, e não fica ao lado dele.** O
+anônimo continua sendo mandado para a porta (302), como em toda a célula; só
+quem já tem sessão chega a receber **403**. A diferença de código é uma linha
+(`return exige_sessao(cracha)`), e ela é o que mantém verdadeiro o guarda que
+varre o urlconf exigindo o porteiro de sessão em toda rota não pública. É
+também o que faz as **três varreduras do urlconf** cobrirem o urlconf inteiro,
+sem sobra nem sobreposição:
+
+| rota | quem a pega |
+|---|---|
+| sem `exige_sessao`, fora da lista pública | `test_inv_sem_sessao_nada.py` |
+| com `exige_staff` | `test_inv_so_staff_modera.py` (aluno ⇒ 403 em todas) |
+| com `exige_sessao`, sem `exige_staff` | `test_inv_avaliacao_interna_fora_do_alcance.py` |
+
+Foi por causa disso que o `_rotas_de_participacao()` do terceiro arquivo ganhou
+o recorte `and not exige_staff`: sem ele, o guarda do aluno passaria a exigir
+que a jornada dele percorresse as páginas da equipe — que devolvem 403
+justamente porque ele não pode entrar nelas. **Não é afrouxamento; é o recorte
+que faz as três somarem o urlconf inteiro.**
+
+**2. 403 e não 302.** Quem chega à moderação sem crachá não esqueceu de entrar:
+já entrou e não tem o papel. Mandá-lo para a tela de login seria dizer "tente de
+novo" a quem não tem o que tentar — e esconderia a única resposta verdadeira
+atrás de um redirecionamento. É também a letra da DoD do MVP (spec §11).
+
+**3. Mudar o status quando ele já é aquele é PERMITIDO, e grava histórico.** A
+tentação é recusar o no-op. Mas metade do valor do formulário é a nota
+("seguimos analisando, e o motivo é este"), e recusar levaria a equipe a agir
+sem nada ficar escrito — exatamente o que o histórico existe para impedir. Cada
+POST aceito ⇒ **uma** linha, sempre.
+
+**4. `mesclado` fica FORA do `<select>`, mesmo existindo no model.** Mesclar é
+V1.1 (§10) e é uma operação transacional inteira — mover votos sem duplicar
+ator, preservar comentários e histórico, manter a URL antiga resolvendo. Deixar
+o rótulo disponível daria à equipe um jeito de marcar "mesclado" sem que nada
+tivesse sido mesclado, e a lista de mescladas nasceria mentindo, com
+`sugestao_canonica` vazia. Há guarda
+(`test_mesclado_nao_entra_pela_porta_do_status`).
+
+**5. A escala 0–5 das notas é decisão desta implementação, não da spec.** A §6
+só diz `PositiveSmallIntegerField`. O teto existe para que a recusa venha como
+uma frase em português em vez de um `IntegrityError` do check constraint do
+Postgres — que é o que um `-1` produziria, com 500 na cara de quem digitou.
+
+**6. O ponto de emissão do evento está marcado, e não é decorativo.** A DoD do
+MVP pede o `sugestao.status-alterado` *"publicado antes do commit da transação
+de status"*. O comentário `[EVO-20 — Lote 2]` está **dentro** do
+`with transaction.atomic()` de `registrar_mudanca_de_status()`, e não uma linha
+depois do `with`. Quem for escrever o outbox: é ali, e a diferença de duas
+linhas é a diferença entre evento transacional e evento perdido.
+
+## `{# … #}` do Django comenta UMA linha — e a de baixo vai para o HTML
+
+Armadilha nova, mordida neste despacho e ainda sem entrada em `armadilhas/`
+(não coube no orçamento de 15 arquivos — fica registrada aqui e no handoff).
+
+```django
+{# comentário de quatro linhas
+   escrito assim vai INTEIRO
+   para dentro da página, e o
+   navegador mostra o texto #}
+```
+
+`{# … #}` é **de uma linha só**. Multi-linha exige
+`{% comment %} … {% endcomment %}`. O que torna isso caro é o modo de falha:
+não há erro, não há aviso, a página renderiza — e o comentário aparece na tela
+do usuário. Aqui ele vazou um comentário sobre o crachá da equipe para dentro da
+página do ALUNO, e quem pegou foi um guarda que procurava outra coisa
+(`test_o_aluno_nao_ve_esse_link`), pelo texto "moderação" no corpo. Se a
+asserção fosse só pelo `href`, teria passado.
+
+## A spec §8 pede um ChangeSpec que esta célula não tem — divergência registrada
+
+A `ESPECIFICACAO-CELULA.md` §8 tem um invariante a mais que os outros:
+
+> `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir
+> um ChangeSpec aprovado referenciando aquele `suggestion_id`.
+
+**Não há model de ChangeSpec nesta célula** — a `0001_initial` (mergeada) não o
+tem, e `FORMATO-CHANGESPEC.md` descreve um artefato de processo, não uma tabela.
+O EVO-13 seguiu a regra de parada do despacho ("siga o banco e registre a
+divergência"): a transição `planejado → em_desenvolvimento` é aceita sem
+conferir ChangeSpec nenhum, e **isso está sem guarda de propósito** — um guarda
+aqui teria de inventar o modelo de dados que a decisão ainda não tomou.
+
+Quem for fechar isso decide primeiro **onde o ChangeSpec mora**: tabela nesta
+célula, ou um `changespec_id` no `HistoricoStatus` (que é append-only e já
+carrega quem mudou o quê). As duas mudam migration; nenhuma é decisão de
+despacho.
 
 ## A participação (EVO-12b): as cinco decisões de desenho
 
