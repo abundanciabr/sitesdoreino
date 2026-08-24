@@ -4,7 +4,9 @@
     "Merge na main tocando este arquivo => deploy-infra converge o catálogo da PRODUÇÃO a ele e prova cada host com smoke (raiz 200) por dentro da VPS.",
     "Contrato: todo site listado precisa de default_offer_slug apontando para uma das suas ofertas — sem oferta padrão a raiz responde 404 (funil) e o smoke reprova.",
     "Sites NÃO listados aqui nunca são tocados. Desativar um site listado: active=false. O domínio de operações (esqueleto) fica FORA até alguém trazê-lo com os valores reais de produção conferidos.",
-    "Preço de oferta já publicada NUNCA é editado por aqui (oferta publicada não muda): divergência vira AVISO no log do run; mudança real de preço = nova versão, decisão humana."
+    "Preço de oferta já publicada NUNCA é editado por aqui (oferta publicada não muda): divergência vira AVISO no log do run; mudança real de preço = nova versão, decisão humana.",
+    "Idioma é DADO do site (PLANO-I18N D3): default_language + languages[{code, indexable}]. Site SEM esses campos é monolíngue — é assim que todo site que não declara idioma segue com o comportamento de sempre.",
+    "indexable=false serve para lançar um idioma antes de querer tráfego nele (noindex, fora do hreflang e do sitemap — D5). Flipar para true é mudar um dado, não um deploy de código."
   ],
   "sites": [
     {
@@ -12,6 +14,12 @@
       "name": "Meshcraft (site de testes)",
       "active": true,
       "default_offer_slug": "curso-teste",
+      "default_language": "en",
+      "languages": [
+        { "code": "en" },
+        { "code": "pt-br" },
+        { "code": "es", "indexable": false }
+      ],
       "ofertas": [
         {
           "slug": "curso-teste",
