@@ -34,6 +34,8 @@
 | Dado inicial, demo ou fixture de ambiente | **R9** | INSERT manual no banco |
 | Marcar testes de caminho feliz por método | **R10** | Smoke sem marker registrado |
 | Colocar um site/domínio novo no ar | **R11** | Editar o Traefik ou criar stack nova |
+| Criar uma página em vários idiomas | **R12** | Texto fixo no template; a tag `url` crua; página nascendo com um idioma só |
+| Acrescentar um idioma a um site | **R12** | Recalcular o `_fonte` sem traduzir; idioma novo nascendo indexável |
 
 ## §2 — O Despacho (template de brief — copie e preencha)
 
@@ -448,6 +450,9 @@ const api = {
 Cada página é uma ilha: estado próprio, zero variáveis compartilhadas entre páginas.
 Comunicação entre páginas = servidor (snapshot/status), nunca `localStorage` ou globais.
 
+Página de site multilíngue (host no `sites_i18n.yaml`): **R12** manda — texto por
+`{% t %}`, link por `{% url_i18n %}`, strings da ilha pela subárvore `js.*`.
+
 ## R7 — Migration Expand-and-Contract (a dança de três releases)
 
 | Release | O que entra | Regra |
@@ -575,6 +580,325 @@ curl -sS https://<dominio-novo>/ | head -20                  # landing do site c
 # na VPS — host não cadastrado DEVE dar 404 (INV-P11):
 curl -k -s -o /dev/null -w "%{http_code}\n" -H "Host: nao-cadastrado.teste" https://localhost/
 ```
+
+---
+
+## R12 — Página multilíngue (prefixo de idioma + catálogo key-major + `{% t %}`)
+
+Lei: `docs/i18n/PLANO-I18N.md`, decisões D1–D9. Implementação de referência,
+verificada e no ar desde 23/08/2026: `services/funil/` — **copie o padrão, não o
+arquivo** (Lei 7). O portão é `apps/i18n/validador.py`, com DUAS entradas: o teste
+`test_validador_da_celula_real_passa` (protege o merge) e `AppConfig.ready()`
+(protege a produção — **catálogo inválido ⇒ a célula não sobe**, D4 fail-closed).
+Não existe `ci/i18n_check.py` na raiz: o portão i18n roda dentro do `make ci` da
+célula.
+
+**Antes de escrever a primeira linha, escolha o fluxo (D9):**
+
+| O que você vai fazer | Fluxo | Regra dura |
+|---|---|---|
+| Página NOVA em site já multilíngue | **A** | Nasce com TODOS os idiomas do site **no mesmo PR** — a paridade exata força, e o formato key-major faz custar **1 arquivo** de catálogo, tenha o site 3 ou 15 idiomas |
+| Idioma NOVO em site que já tem páginas | **B** | Idioma-**base** novo toca TODO `traducoes/*.yaml` da célula de uma vez. Lote pela lane `traducoes`, ou sequência com `_fonte: pendente` + `indexavel: false` até completar |
+
+> ⚠ **Fluxo B, leia antes de planejar o lote:** a catraca de merge
+> (`ci/mergear.py`, `checar_labels()`) **ainda NÃO conhece a lane `traducoes`** —
+> ela entrou só no `ci/orcamento-de-mudanca.sh` (ARMADILHAS §5.11). Um lote com
+> >15 arquivos passa verde nas muralhas e é **recusado no merge**. Enquanto
+> aquele despacho de `ci/` não acontecer: ou o lote cabe em 15 arquivos, ou vá
+> pela sequência com `pendente`.
+
+### A — Página nova (todos os idiomas de uma vez)
+
+**1. Template** em `templates/<celula>/<pagina>.html` — `{% extends %}` na
+LINHA 1, sempre (LICOES do funil: até um `{% load %}` antes derruba o parse):
+
+```html
+{% extends "base_mobile.html" %}
+{% load t %}
+{% load url_i18n %}
+<!-- templates/<celula>/<pagina>.html  [RECEITA:R12 v1]
+     Todo texto visível sai do catálogo. Em COMENTÁRIO de template, cite a tag
+     url crua do Django pelo NOME — nunca escreva a sintaxe dela aqui: o lint do
+     validador varre o arquivo inteiro por regex e reprova o comentário. -->
+{% block titulo %}{% t "<pagina>.titulo" %}{% endblock %}
+{% block head_extra %}
+  <meta name="description" content="{% t "<pagina>.meta_descricao" %}">
+  <meta property="og:title" content="{% t "<pagina>.titulo" %}">
+  <meta property="og:description" content="{% t "<pagina>.meta_descricao" %}">
+{% endblock %}
+{% block conteudo %}
+{{ i18n_js|json_script:"i18n-data" }}
+<div class="card" x-data="ilha()" x-init="init()">
+  <h1>{% t "<pagina>.titulo_pagina" %}</h1>
+  <form method="post" action="{% url_i18n '<pagina>' %}">
+    <button class="cta" type="submit"><span x-text="i18n.enviando">{% t "<pagina>.js.enviar" %}</span></button>
+  </form>
+</div>
+{% endblock %}
+```
+
+Regras que o portão IMPÕE neste arquivo (não são estilo):
+
+- **`{% t %}` com chave LITERAL entre aspas.** Chave dinâmica (`{% t variavel %}`)
+  cega a análise estática e reprova.
+- **`{% url_i18n %}` em TODO link/action interno.** A tag `url` crua do Django
+  em template que usa `{% t %}` é **FAIL** — ela não gera o prefixo, e o link
+  cairia na matriz D1 (GET vira 302 extra; POST vira 404 com o corpo
+  descartado). Link para OUTRA célula continua cru e monolíngue até o D6 entrar
+  no Traefik.
+- **`title`, meta description e og:\* saem do catálogo** como qualquer texto —
+  `lang`, `dir`, canonical, hreflang, `x-default`, `og:locale`, `robots
+  noindex` e o seletor de idiomas o `base_mobile.html` já emite sozinho, do
+  registro (`registro.dados_seo`). Não escreva nenhum deles à mão.
+- **Ilha Alpine**: as strings que o JS troca em runtime moram na subárvore
+  `<pagina>.js.*`, emitidas com `|json_script` e lidas no `init()`. **Proibido
+  catálogo de tradução em JS.**
+
+**2. Catálogo** `traducoes/<pagina>.yaml` — 1 arquivo, todos os idiomas lado a
+lado. O nome do arquivo (`[a-z0-9_]+`) é o PRIMEIRO segmento de toda chave:
+
+```yaml
+# traducoes/<pagina>.yaml  # [RECEITA:R12 v1]
+titulo:
+  # Comentário YAML é o contexto que o tradutor-IA lê — use.
+  _fonte: "9741dd"                       # sha256(valor en)[:6]
+  en: "Sign up — Meshcraft"
+  pt-br: "Cadastro — Meshcraft"
+  es: "Registro — Meshcraft"
+
+itens:
+  _fonte: "a1b2c3"                       # plural: categorias CLDR DO IDIOMA
+  en:    { one: "{quantidade} item", other: "{quantidade} items" }
+  pt-br: { one: "{quantidade} item", many: "{quantidade} de itens", other: "{quantidade} itens" }
+
+aviso.html:                              # única forma que admite markup
+  _fonte: "d4e5f6"
+  en: "See <strong>{nome}</strong>"
+
+js:                                      # subárvore da ilha Alpine
+  enviar:
+    _fonte: "0f1e2d"
+    en: "Send"
+```
+
+Formato, ponto a ponto (tudo verificado em `apps/i18n/catalogo.py`):
+
+- **Chave semântica, imutável**: nomeia o papel (`cadastro.cta_primaria`), nunca
+  o texto. Mudança de copy NÃO renomeia chave. Duplicar é melhor que acoplar.
+- **Toda folha é string entre aspas** — o loader estrito recusa folha não-string
+  (`12:30` viraria 750, `no` viraria `False`), chave duplicada, âncora, alias e
+  tag explícita.
+- **Placeholders `{nome_simples}`** em `[a-z_][a-z0-9_]*` — sem ponto, sem
+  índice, sem `!r`, sem `:>10`. O conjunto de placeholders tem de ser IDÊNTICO
+  em todos os idiomas da chave.
+- **Meta permitida hoje: só `_fonte`.** Qualquer outra chave com `_` (inclusive
+  o `_juridico` do D8.2, ainda não implementado) reprova como meta desconhecida.
+- **Sufixo `.html` só na folha**, com whitelist (`a abbr b br code em i small
+  span strong`); handler `on*=` e `javascript:` reprovam. Todo o resto é
+  escapado por padrão.
+
+**3. View e rota.** O urlconf da célula **não conhece prefixo de idioma** — o
+resolver decapa `/en|pt-br|es` de `request.path_info` antes da resolução:
+
+```python
+# config/urls.py  # [RECEITA:R12 v1]
+path("<pagina>", <pagina>, name="<pagina>"),   # sem prefixo: o resolver já decapou
+```
+
+```python
+# apps/core/views.py  # [RECEITA:R12 v1]
+def <pagina>(request):
+    if getattr(request, "idioma", None) is None:
+        raise Http404("página só existe em site registrado no i18n")   # decida EXPLICITAMENTE
+    contexto = {"i18n_js": js_da_pagina("<pagina>", request.idioma)}
+    return render(request, "<celula>/<pagina>.html", contexto)
+```
+
+Site fora do registro é monolíngue por construção: decida — **404** (como
+`cadastro`) ou **template próprio separado** (como `landing`/`landing_i18n`).
+Nunca um `if` de idioma dentro de um template só: é o que quebra o golden
+byte-idêntico da landing.
+
+**4. Sitemap**: acrescente o caminho a `PAGINAS_PUBLICAS` em `apps/core/views.py`
+(hoje `("/", "/cadastro")`). Sem isso a página nasce fora do sitemap.
+
+**5. Testes mínimos** (molde real: `tests/test_cadastro.py`) — parametrizados
+pelos idiomas:
+
+```python
+@pytest.mark.parametrize("idioma", ("en", "pt-br", "es"))
+def test_pagina_nos_3_idiomas(client, rede, idioma):
+    resp = client.get(f"/{idioma}/<pagina>", HTTP_HOST=HOST_MESH)   # Host SEMPRE (§4.6)
+    conteudo = resp.content.decode()
+    assert f'<html lang="{TAGS[idioma]}" dir="ltr">' in conteudo
+    assert f"<title>{escape(t('<pagina>.titulo', idioma))}</title>" in conteudo
+    assert f'action="/{idioma}/<pagina>"' in conteudo
+
+def test_pseudo_locale_sem_texto_hardcoded(catalogo_pseudo):        # D8.4
+    html = get_template("<celula>/<pagina>.html").render({...}, request=_request_pseudo("/qps/<pagina>"))
+    assert texto_hardcoded(html) == []
+```
+
+O teste de pseudo-locale é o **único detector mecânico de string fora do
+catálogo** — página nova sem ele nasce sem rede. Valor esperado vem SEMPRE do
+próprio `t()`/`gettext`, nunca de copy colado no teste (erro de formulário
+localizado se afirma com `override()` + `gettext`).
+
+### B — Idioma novo em site que já existe
+
+**1. Registro** `services/<celula>/sites_i18n.yaml` (interim; destino final é
+`infra/sites.json`, fase 4 com Rito de Contrato):
+
+```yaml
+    idiomas:
+      en:    { tag: en,    dir: ltr, indexavel: true }
+      fr:    { tag: fr,    dir: ltr, indexavel: false }              # idioma-BASE novo
+      pt-pt: { tag: pt-PT, dir: ltr, indexavel: false, base: pt-br } # VARIANTE (overlay)
+```
+
+Campos obrigatórios e fail-closed: **código minúsculo** na URL (`[a-z]{2,3}`
+com região opcional; `/pt-BR/` e `/pt_br/` são 404 por decisão), **`tag`** BCP 47
+igual ao código em caixa canônica (`pt-br` ⇄ `pt-BR`), **`dir`** (`ltr`/`rtl`),
+**`indexavel`** booleano explícito, **`base`** só em variante (máximo 1 nível —
+base de variante não pode ter base; o `default` do site nunca é variante). Campo
+desconhecido reprova. Todo host aqui tem de existir em `infra/sites.json`
+(teste de coerência).
+
+**2. Entenda o que você acabou de disparar.** Idioma **sem `base`** é
+idioma-BASE: a paridade exata passa a exigi-lo em **toda chave de todo
+`traducoes/*.yaml` da célula** — não só nas páginas novas. Idioma **com `base`**
+é variante: overlay esparso, ausência herda (válido), presença tem de DIFERIR da
+base (overlay idêntico reprova: "remova, a herança já cobre").
+
+**3. Complete o eixo** em cada `traducoes/*.yaml`, com o `_fonte` correto por
+chave. As duas saídas legítimas quando não dá para traduzir tudo no mesmo PR:
+
+- **`_fonte: pendente` na chave** — isenta aquela chave da paridade e declara a
+  degradação; em runtime cai pela cadeia (variante → base → en) com **ERROR +
+  contador**. Degradação declarável, nunca inferível.
+- **`indexavel: false`** — mantém o idioma fora do hreflang, do `x-default` e do
+  sitemap enquanto está incompleto, e emite `robots noindex`.
+
+**4. Nasça `indexavel: false`** (D5 — "3 idiomas bons antes do 4º"): idioma novo
+em domínio novo com tradução de agente é o padrão que classificador de spam
+procura. Indexar depois custa flipar um dado. Foi assim que o `es` nasceu.
+
+**5. Lote**: label `traducoes` no PR (`gh pr edit <N> --add-label traducoes`) —
+o `ci/orcamento-de-mudanca.sh` deixa passar >15 arquivos **somente se** 100% do
+diff casar `services/<celula>/traducoes/...` e **todo arquivo entrar como dado**
+(modo `100644` ou remoção `000000`; executável, symlink e submódulo reprovam).
+Um único arquivo fora dessa árvore derruba a lane inteira de volta ao teto de 15.
+**E releia o aviso da catraca lá em cima antes de montar o lote.**
+
+### O contrato do `_fonte` (D4) — e a regra anti-burla
+
+`_fonte` são os **6 primeiros hex do sha256 do valor `en`** no momento em que a
+tradução foi feita. É o detector de obsolescência: `_fonte != hash(en)` ⇒ o
+inglês mudou e as traduções daquela chave estão velhas ⇒ **FAIL**.
+
+```bash
+# hash de um valor simples (a fonte da verdade, plural incluso, é
+# apps/i18n/catalogo.py::hash_da_fonte — plural entra em forma canônica)
+python -c "import hashlib,sys; print(hashlib.sha256(sys.argv[1].encode()).hexdigest()[:6])" "Sign up — Meshcraft"
+```
+
+**Regra anti-burla (o portão de verdade):** se o `_fonte` de uma chave **mudou
+no diff** contra `origin/main`, os valores não-base daquela chave têm de ter
+mudado também, **OU** estar `pendente`, **OU** a linha carregar o marcador
+literal `# revisado-sem-alteracao` (o caso legítimo: typo no inglês que não
+altera as traduções — auditável, greppável, contável).
+
+> **Recalcular o hash sem traduzir é violação, não atalho.** É a primeira ideia
+> de um agente instruído a "deixar o CI verde", e é exatamente o que esta regra
+> existe para matar. Se você não vai traduzir agora, escreva `pendente`.
+
+O diff é medido com `git` contra `${BASE_REF:-origin/main}`; **diff
+incalculável ⇒ ERROR**, nunca skip. No boot a regra não roda (container não tem
+git nem `origin/main`) — ela é do CI, por construção do checkout `fetch-depth: 0`.
+
+### Checklist do validador — rode ANTES do push
+
+```bash
+cd services/<celula> && python -m pytest -q     # inclui o validador (entrada a)
+make -C services/<celula> ci                    # lint + type + testes + freeze
+bash ci/orcamento-de-mudanca.sh                 # orçamento / lane traducoes
+```
+
+O que ele reprova, item a item (se um destes ficar vermelho, é isto que ele está
+medindo):
+
+1. **Paridade exata** entre idiomas-base: falta E sobra reprovam (idioma não
+   declarado no registro dentro de um MessageSpec = FAIL).
+2. **Template ↔ catálogo nas DUAS direções**: chave usada e não definida, e
+   chave definida e não usada em nenhum template. Só `*.js.*` é isenta da
+   segunda (a ilha consome por `json_script`).
+3. **Placeholders idênticos** entre idiomas e **restritos** (sem `{a.b}`,
+   `{a[0]}`, `{a!r}`, `{a:>10}`).
+4. **Plural CLDR do idioma**, consultado no `babel` pinado — exatamente as
+   categorias daquele idioma, nunca lista à mão.
+5. **Glossário de não-traduzir**: se o termo protegido aparece no `en`, tem de
+   aparecer **literal** em toda tradução daquela chave. Os termos são a união
+   dos glossários de todos os sites do registro.
+6. **Overlay de variante**: presente sem a base reprova; idêntico à base
+   reprova; ausência herda.
+7. **Escape e `.html`**: whitelist de tags, nada de `on*=` nem `javascript:`;
+   todo o resto escapado por padrão.
+8. **YAML estrito**: chave duplicada, âncora, alias, tag explícita, folha
+   não-string, chave não-string, mapeamento vazio, segmento fora de
+   `[a-z0-9_]+`.
+9. **`{% t %}` literal-only** e **tag `url` crua proibida** em template i18n.
+10. **`_fonte`** presente, válido (6 hex ou `pendente`), igual a `hash(en)`, e a
+    regra anti-burla acima.
+
+Estados ([INV-CI01]): **PASS** mediu e está certo · **FAIL** mediu e achou
+violação (conserte o catálogo) · **ERROR** não conseguiu medir (conserte o
+ambiente — jamais leia como "quase passou").
+
+### O que a máquina NÃO protege (D8) — sua responsabilidade, agente
+
+Os portões acima verificam **integridade**. Nenhum verifica se a tradução está
+**boa**. Numa página de cadastro de curso pago, copy é o produto:
+
+- **Namespace jurídico** (termos de uso, privacidade, consentimento) **exige
+  revisão humana antes de publicar** — e o marcador mecânico do D8.2
+  (`_juridico`) **ainda não existe**: hoje ele reprovaria como meta
+  desconhecida. Enquanto não existir, texto com efeito legal traduzido por
+  agente **não entra sozinho**: escreva a pendência no PR e peça o mantenedor.
+- **Nunca concatene frases** para montar um período — ordem de palavras e
+  gênero mudam por idioma. Uma frase = uma chave.
+- **Nunca traduza termo do glossário** (Meshcraft, Roblox, Roblox Studio, nomes
+  de produto). O portão pega o caso fácil; o julgamento é seu.
+- **`pt-br` é a janela de auditoria do mantenedor** — ele não lê inglês.
+  Tradução **fiel ao sentido, nunca adaptação criativa**: se o pt-br "melhorar"
+  o inglês, a única auditoria interna que existe deixa de funcionar. Risco
+  estrutural ABERTO (D8.5) — só humano nativo ou conversão medida resolve.
+- **Texto dentro de imagem é dívida**: um asset por idioma. Texto fica em HTML.
+
+### CSS de página multilíngue
+
+Propriedades **lógicas** em todo CSS novo: `margin-inline-start`,
+`padding-inline-end`, `inset-inline`, `text-align: start/end`. **Nunca
+`left`/`right`** — a direção vem do `dir` do registro, e o dia do primeiro RTL
+vira flip de dado em vez de varredura de folha de estilo.
+
+### Armadilhas já pagas (não redescubra)
+
+`ARMADILHAS.md` **§4.10** (`path_info` vs `path` — o resolver reescreve
+`path_info`; `request.path` segue completo e é dele que sai o canonical) ·
+**§4.5** (isenção do `/healthz`; rota de máquina nunca se localiza — `/healthz`,
+`/static/`, `/sitemap.xml`, `/api/**`, `/webhooks/**`) · **§4.6** e **§4.7**
+(Host válido em todo teste, mock por endpoint, cache de sites limpo entre
+testes) · **§4.14** (tags coladas quando a saída tem de ficar byte-idêntica) ·
+**§5.1** (orçamento) · **§5.11** (a lane e a catraca) · **§6.1.1** (evidência
+vermelho→verde por **patch**, nunca `git stash` — em lote o pop devolve o stash
+de outro agente).
+
+`services/funil/LICOES.md`: `{% extends %}` é a primeira tag, sempre · o
+autoescape transforma `&` em `&amp;` (a asserção espera o escapado) · **o lint
+lê os COMENTÁRIOS do template** — comentário que escreve a sintaxe proibida
+derruba o `django.setup()` inteiro · `hreflang="es"` continua na **âncora** do
+seletor mesmo com `noindex`; a asserção negativa mira
+`<link rel="alternate" hreflang="es"`, nunca o atributo solto.
 
 ## §4 — Anti-padrões com resposta pronta
 

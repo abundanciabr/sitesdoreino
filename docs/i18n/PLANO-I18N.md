@@ -394,7 +394,7 @@ Nada da fase 1–2 é jogado fora.
 |---|---|---|
 | **1** | Fundação no funil: resolver de prefixo + matriz HTTP + `activate()`; registro `sites_i18n.yaml` (com `dir`, `base`, `indexavel`, tag BCP 47) + teste de coerência com `sites.json`; `t()`/`{% t %}`/`t_lazy`; `ci/i18n_check.py` no molde do `contract_freeze.py` (PASS/FAIL/ERROR — formato, paridade exata, template↔catálogo, placeholders, plural CLDR, `_fonte` + regra anti-burla, overlay, glossário, pseudo-locale) rodando no CI **e no boot**; `base_mobile` com lang/dir/canonical/hreflang/seletor-`<a href>` | **nada — o "segue" foi dado em 23/08** |
 | **2** | Página `/[en\|pt-br\|es]/cadastro` (template + `traducoes/cadastro.yaml` + view + testes), POST a leads com locale, `sitemap.xml` + Search Console | fase 1 |
-| **3** | **Receita R12** no `CAMINHO-DOURADO.md`: página nova, idioma novo, os dois fluxos de PR, propriedades lógicas, glossário, jurídico | fases 1–2 no ar |
+| **3** ✅ | **ENTREGUE** — **Receita R12** no `CAMINHO-DOURADO.md`: os dois fluxos de PR (página nova / idioma novo), passo a passo verificado contra o código da fase 1–2, contrato do `_fonte` + regra anti-burla, checklist das 10 regras do validador, o que a máquina NÃO protege (D8), CSS com propriedades lógicas, armadilhas por número. Registrado ali o que a implementação real ainda NÃO tem: o marcador `_juridico` do D8.2 (hoje reprovaria como meta desconhecida) e a lane `traducoes` na catraca `mergear.py` (ARMADILHAS §5.11) | fases 1–2 no ar |
 | **4** | Idioma no `sites.json`/catálogo/contrato (Rito) + locale nos eventos/mensageria + aposentadoria do interim | mandato próprio |
 | **5** | D6 (células além do funil) e D7-tabela se gatilho disparar | necessidade real |
 
