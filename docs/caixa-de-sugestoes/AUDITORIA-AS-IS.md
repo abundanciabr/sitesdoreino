@@ -62,11 +62,28 @@ Medido em `.github/workflows/*` + `ci/`:
 |---|---|---|
 | CI de PR (`ci-celula.yml`) | **Detecção automática** (`python ci/ci.py --detectar-celulas`) — sem matriz fixa | ❌ nada no `.github/` |
 | Deploy (`deploy-celula.yml`) | Mesma detecção; builda `ghcr.io/.../plataforma-<celula>` e exige o serviço no compose **da VPS** | ❌ nada no `.github/` |
+| **Rollback (`rollback.yml`)** ⚠️ | **NÃO detecta nada.** A célula é um `type: choice` do `workflow_dispatch`, e choice do Actions não aceita lista dinâmica — as células estão escritas à mão em `options:`. `ci/tests/test_rollback.py::test_opcoes_de_celula_do_workflow_batem_com_o_manifesto` exige **paridade EXATA** com o manifesto, e reprova nos DOIS sentidos | ✅ **SIM, no MESMO PR do scaffold** — `.github/` é CODEOWNERS: o despacho de gênese precisa nascer com esse mandato |
 | **Manifesto** `ci/manifesto-de-contratos.json` | "célula em services/ fora deste manifesto → ERROR"; o próprio arquivo manda: **"Ao criar uma célula nova, declare-a aqui no MESMO PR"** | ✅ no PR do scaffold — e `ci/` é CODEOWNERS (mandato + anúncio nominal) |
 | Compose + Traefik (`infra/**`) | Bloco `x-celula` reutilizável; entrega mecanizada pelo `deploy-infra` (H11 ✅) | ✅ Lote 2 (CODEOWNERS) |
 | Env (`infra/env/sugestoes.exemplo` + `.env` real na VPS) | Real é segredo escrito à mão (INV-P8) | ✅ exemplo no repo; real = 🙋 mantenedor |
 | Banco na VPS (`provisionamento-postgres.sql`) | `CREATE ROLE/DATABASE` como superuser | 🙋 mantenedor, console |
 | Constituição `constituicoes/AGENTS.sugestoes.md` | As 8 células têm a sua | ✅ Lote 1 |
+
+> ⚠️ **CORREÇÃO DE 24/08/2026 — esta Q4 estava incompleta e custou uma rodada.**
+> A linha do `rollback.yml` acima **não existia**: a auditoria mediu o `ci-celula.yml`
+> e o `deploy-celula.yml`, viu que os dois detectam a célula sozinhos, e generalizou
+> para "❌ nada no `.github/`". O `rollback.yml` não foi medido.
+>
+> O resultado, no PR de gênese da `sugestoes` (#108): o `muralhas` reprovou com
+> `AssertionError: Right contains one more item: 'sugestoes'`, o agente de célula
+> **não podia** corrigir (`.github/` fora do escopo, CODEOWNERS sem mandato, e o
+> harness bloqueia a edição), e o merge parou até a sessão-maestro entrar com o
+> mandato dela. Uma linha. O guarda estava certo: sem ela a célula nasceria **sem
+> rollback** — a válvula do `RITOS.md` §4.
+>
+> **Regra que fica:** todo despacho de gênese de célula nasce com mandato explícito
+> para `.github/workflows/rollback.yml`, do mesmo jeito que já nascia para `ci/`.
+> Registro completo: `ARMADILHAS-OPERACAO.md` §1 H17 e `armadilhas/076`.
 
 **Descoberta de sequenciamento nº 1 — o contrato NÃO pode nascer antes da célula.**
 O manifesto reprova nos dois sentidos: contrato em `contracts/` sem célula

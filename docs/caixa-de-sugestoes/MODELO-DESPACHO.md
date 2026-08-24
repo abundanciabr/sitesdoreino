@@ -45,6 +45,26 @@ encaixa no PLANO-MESTRE. Cite o atrito ou o item da spec que ele resolve.*
 - *ex.: schema Ninja com nome de model ⇒ §4.1 (importe com alias)*
 - *ex.: script `.sh` ⇒ §3.12 (LF no blob, confira com `git show`)*
 
+## SE O DESPACHO FOR GÊNESE DE CÉLULA — os 3 caminhos CODEOWNERS obrigatórios
+
+Célula nova **não existe de ponta a ponta** sem estes três, e os três são CODEOWNERS:
+
+1. `ci/manifesto-de-contratos.json` — declarar a célula (o portão reprova célula em
+   `services/` fora do manifesto, e declaração órfã no sentido inverso).
+2. **`.github/workflows/rollback.yml`** — acrescentar a célula em `options:`. O
+   workflow **não** detecta células (choice do Actions não aceita lista dinâmica) e
+   há teste-guarda exigindo paridade exata com o manifesto. **Sem esta linha a
+   célula nasce sem rollback**, e o merge trava no `muralhas`.
+3. `constituicoes/AGENTS.<celula>.md` — a constituição da célula.
+
+Os três no **mesmo PR** (o guarda do rollback reprova nos dois sentidos, então
+separar em dois PRs deixa a `main` vermelha no meio). **Escreva o mandato no brief**
+e exija o anúncio nominal no relatório. Aprendido no PR #108 (gênese da
+`sugestoes`), onde o item 2 faltava e travou o merge: `ARMADILHAS-OPERACAO.md` H17.
+
+Orçamento: gênese passa dos 15 arquivos por natureza — abra o PR **já** com a label
+`arquitetural` (adicionar depois faz o check rodar com `PR_LABELS` vazio).
+
 ## ALVOS (PERMITIDO ESCREVER) — orçamento contado: <N>/15 arquivos
 
 - `caminho/arquivo1` *(novo | editar)*
