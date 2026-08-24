@@ -92,5 +92,6 @@
 | [075](075-campo-opcional-novo-numa-api-congelada-o-default.md) | Campo opcional novo numa API congelada: `default=` reprova o freeze, e `""` vaza para o consumidor — você acrescenta um campo **opcional** a um `ninja.Schema` cuja célula tem contrato congelado, e o `make… | — |
 | [076](076-celula-nova-reprova-em-testar-o-testador-rollback.md) | Célula nova reprova em `testar-o-testador`: `Right contains one more item: '<celula>'` — a lista fixa de `rollback.yml` — você cria uma célula nova, declara-a em `ci/manifesto-de-contratos.json` como o próprio arquivo… | — |
 | [077](077-pr-criado-com-label-arquitetural-roda-com-pr-labels.md) | PR criado JÁ com `--label arquitetural` mesmo assim reprova o orçamento: no log, `PR_LABELS:` vazio — você conta os arquivos antes, sabe que passou de 15, e abre o PR com a label na mesma linha de comando: | — |
+| [078](078-script-injetado-no-container-que-ja-roda-importa.md) | Script injetado no container que já roda importa símbolo NOVO — e trava o canal de deploy inteiro — o merge de um PR de célula deixa os DOIS deploys vermelhos de uma vez. | — |
 
-**67 entradas.**
+**68 entradas.**
