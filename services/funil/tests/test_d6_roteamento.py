@@ -29,8 +29,10 @@ from django.urls import Resolver404, resolve
 from apps.core.middleware import (
     CAMINHOS_DE_MAQUINA,
     CAMINHOS_SEM_SITE,
+    ROTAS_DE_MAQUINA,
     SiteResolutionMiddleware,
 )
+from config.urls import urlpatterns
 from tests.conftest import CATALOGO, HOST_MESH, IDIOMAS_MESH, OFERTA_MESH
 
 IDIOMAS = tuple(idioma["code"] for idioma in IDIOMAS_MESH)
@@ -105,45 +107,69 @@ def test_rota_de_maquina_prefixada_nao_vira_rota_localizada(client, rede, caminh
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "DESVIO REAL, MEDIDO EM 24/08/2026 — o D6 supunha que o desenho já "
-        "obedecia 'por construção', e para /api/**, /webhooks/** e "
-        "/sitemap.xml obedece. Para /healthz NÃO: a isenção do middleware casa "
-        "o path_info CRU ('/healthz'), então '/pt-br/healthz' não é isento; o "
-        "resolver decapa o prefixo e o urlconf resolve a view normalmente — "
-        "200. Vale para toda rota de máquina que o PRÓPRIO funil sirva sem "
-        "estar em CAMINHOS_DE_MAQUINA. O conserto é uma linha em "
-        "apps/core/middleware.py (tratar CAMINHOS_SEM_SITE também depois de "
-        "decapar), mas apps/** estava SOMENTE-LEITURA neste despacho. Este "
-        "xfail é strict: no dia em que consertarem, ele fica VERMELHO por "
-        "XPASS e obriga a apagar o marcador — o desvio não some em silêncio."
-    ),
-)
 @pytest.mark.parametrize("idioma", IDIOMAS)
 def test_healthz_prefixado_deveria_ser_404(client, rede, idioma):
-    assert client.get(f"/{idioma}/healthz", HTTP_HOST=HOST_MESH).status_code == 404
+    """CONSERTADO em 24/08/2026 — nasceu `xfail(strict=True)` e virou guarda.
 
-
-def test_healthz_prefixado_hoje_responde_200_e_esta_registrado(client, rede):
-    """O mesmo desvio dito na positiva, para ninguém achar que é boato.
-
-    Se um dia isto virar 404, este teste fica vermelho JUNTO com o XPASS
-    acima — os dois se apagam na mesma edição, e não sobra teste mentindo.
+    O desvio era real e medido: a isenção do middleware casava o `path_info`
+    CRU, então `/pt-br/healthz` não era isenta — o resolver decapava o prefixo
+    e o urlconf servia a view, 200. A cura foi conferir `ROTAS_DE_MAQUINA`
+    também DEPOIS de decapar (`apps/core/middleware.py`). O `strict=True`
+    existia exatamente para este dia: o conserto deixou o teste vermelho por
+    XPASS e obrigou a apagar o marcador, junto com o teste que afirmava o 200.
+    O desvio não sumiu em silêncio — foi essa a intenção de quem o registrou.
     """
-    resp = client.get("/pt-br/healthz", HTTP_HOST=HOST_MESH)
-    assert resp.status_code == 200
-    assert resp.json() == {"status": "ok"}
+    assert client.get(f"/{idioma}/healthz", HTTP_HOST=HOST_MESH).status_code == 404
 
 
 def test_healthz_nu_continua_servindo_com_o_catalogo_fora_do_ar(client, rede):
     # A garantia que a isenção existe para dar: sonda do container não morre
-    # junto com o catálogo. (O /pt-br/healthz acima NÃO tem esta garantia —
-    # mais uma razão para ele não existir.)
+    # junto com o catálogo. É por isso que ela roda no path_info CRU, antes de
+    # tudo — e por isso o /{idioma}/healthz do teste acima jamais poderia ter
+    # esta garantia: para chegar até ele, o middleware já precisou resolver o
+    # Host no catálogo. Rota de máquina com dependência a mais é rota de
+    # máquina pior; mais uma razão para ela não existir.
     rede.get(f"{CATALOGO}/sites/by-host/{HOST_MESH}").mock(side_effect=OSError)
     resp = client.get("/healthz", HTTP_HOST=HOST_MESH)
     assert resp.status_code == 200
+
+
+# --- o cadeado da CLASSE, não só do caso ------------------------------------
+# O 200 do /pt-br/healthz não foi desatenção de quem escreveu o middleware: foi
+# uma rota de máquina que o funil servia sem estar em NENHUMA das duas listas, e
+# nada avisava. A guarda do middleware cura aquele caso; esta cura a classe —
+# rota nova no urlconf entra numa das listas ou aqui, de propósito e por
+# escrito. (RETROSPECTIVA-FASE-D: o catálogo cura o caso, só o padrão cura a
+# classe.)
+ROTAS_LOCALIZAVEIS = ("/", "/leads", "/cadastro")
+
+
+def test_toda_rota_do_urlconf_e_classificada_maquina_ou_localizavel():
+    caminhos = [f"/{padrao.pattern}" for padrao in urlpatterns]
+
+    sem_classificacao = [
+        caminho
+        for caminho in caminhos
+        if caminho not in ROTAS_LOCALIZAVEIS
+        and not caminho.startswith(ROTAS_DE_MAQUINA)
+    ]
+    assert sem_classificacao == [], (
+        f"Rota nova no urlconf sem classificação: {sem_classificacao}.\n"
+        "Toda rota do funil é uma das duas coisas, e a escolha é sua:\n"
+        "  · de MÁQUINA (nunca se localiza) — entre com ela em CAMINHOS_SEM_SITE "
+        "se não pode depender do catálogo, ou em CAMINHOS_DE_MAQUINA se precisa "
+        "do Site; as duas ficam em apps/core/middleware.py.\n"
+        "  · de PÁGINA (serve sob /{idioma}/…) — entre com ela em "
+        "ROTAS_LOCALIZAVEIS, aqui.\n"
+        "Rota de máquina esquecida fora das listas ganha versão localizada em "
+        "silêncio: foi exatamente assim que /pt-br/healthz respondeu 200 até "
+        "24/08/2026."
+    )
+
+    # A lista não pode apodrecer: rota que sai do urlconf sai daqui também,
+    # senão o guarda segue verde vigiando uma rota que não existe mais.
+    fantasmas = sorted(set(ROTAS_LOCALIZAVEIS) - set(caminhos))
+    assert fantasmas == [], f"ROTAS_LOCALIZAVEIS cita rota inexistente: {fantasmas}"
 
 
 # ===========================================================================
