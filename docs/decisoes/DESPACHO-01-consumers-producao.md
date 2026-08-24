@@ -2,7 +2,7 @@
 
 > ## ✅ EXECUTADO — PR #45, mergeado em 21/08/2026. NÃO redespache.
 > Entregou os 4 consumers + worker Huey + healthchecks + o deploy descobrindo os
-> auxiliares do próprio compose. **Duas ressalvas que seguem abertas** (ARMADILHAS §1):
+> auxiliares do próprio compose. **Duas ressalvas que seguem abertas** (ARMADILHAS-OPERACAO.md §1):
 > **H11** — ~~o compose NÃO chega à VPS por pipeline~~ **mecanizado pelo despacho 04**
 > (`.github/workflows/deploy-infra.yml`) e **✅ provado em 22/08/2026**: run
 > 32538231311 verde — estes consumers e o worker Huey estão em `running` na produção.

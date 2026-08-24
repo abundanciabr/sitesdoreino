@@ -10,7 +10,7 @@
 # container do catalogo) e prova cada host com smoke na raiz. Domínio novo =
 # PR neste arquivo + DNS no Cloudflare — nenhum comando manual na VPS.
 #
-# Mata o H11 (ARMADILHAS.md §1): até este workflow existir, o compose e o
+# Mata o H11 (ARMADILHAS-OPERACAO.md §1): até este workflow existir, o compose e o
 # traefik só chegavam à VPS copiados à mão — todo PR de infra mergeado ficava
 # sem efeito real em produção, e o deploy-celula (que descobre os serviços
 # auxiliares lendo o compose DA VPS) ficava silenciosamente incompleto.

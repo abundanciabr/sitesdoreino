@@ -23,7 +23,7 @@ portão que não impede o merge não é portão; é confiança sem garantia.** O
 solução. Onde os quatro escreveram "pague", leia "resolva o buraco por outro caminho",
 e o §1 abaixo é esse caminho.
 
-> **Correção de registro obrigatória:** `ARMADILHAS.md` §1 (H3), `INVARIANTES.md` e os
+> **Correção de registro obrigatória:** `ARMADILHAS-OPERACAO.md` §1 (H3), `INVARIANTES.md` e os
 > painéis descrevem H3 como decisão de custo adiada. Isso agora é **falso** e precisa ser
 > corrigido — senão todo agente futuro vai continuar recomendando "assine o Pro", que é
 > conselho morto. Ver §6.
@@ -205,7 +205,7 @@ novas células ou ritos.
 
 ## 6. Correções de registro que este documento obriga
 
-1. **H3 em `ARMADILHAS.md` §1** — hoje diz "decisão de custo adiada de propósito enquanto
+1. **H3 em `ARMADILHAS-OPERACAO.md` §1** — hoje diz "decisão de custo adiada de propósito enquanto
    o projeto não fatura". É falso: é impossibilidade de pagamento. Sem corrigir, todo
    agente futuro recomenda "assine o Pro".
 2. **`INVARIANTES.md`**, seção "A cadeia de merge não está fechada" — mesma correção, e
@@ -292,7 +292,7 @@ paralela**. O caminho do código é real; a topologia testada não existe no ser
 > paralelos — **#43** (alunos dedup), **#44** (pagamentos fail-closed, com `respx`),
 > **#45** (consumers + worker + healthchecks + deploy descobrindo auxiliares),
 > **#46/#47** (mesmo dedup em leads e mensageria), **#48** (lição §4.12).
-> **Duas ressalvas novas, registradas em `ARMADILHAS.md` §1:** o compose **não chega à
+> **Duas ressalvas novas, registradas em `ARMADILHAS-OPERACAO.md` §1:** o compose **não chega à
 > VPS por pipeline** (H11 — a produção só muda quando o mantenedor copiar o arquivo), e
 > o 502 novo do fail-closed **não está no contrato congelado** (H7 — Rito de Contrato).
 
@@ -332,7 +332,7 @@ paralela**. O caminho do código é real; a topologia testada não existe no ser
 > Varredura transversal dos settings das 8 células: limpa (DEBUG off por padrão, sem
 > SECRET_KEY hardcoded, sem csrf_exempt; `ALLOWED_HOSTS=["*"]` segue como observação).
 
-### Novas linhas para `ARMADILHAS.md` §1 (PRECISA DE VOCÊ)
+### Novas linhas para `ARMADILHAS-OPERACAO.md` §1 (PRECISA DE VOCÊ)
 
 - **H8** — secret `MP_ACCESS_TOKEN` sandbox em Environment do GitHub, para o e2e em
   camadas rodar contra a MP real 1×/dia.

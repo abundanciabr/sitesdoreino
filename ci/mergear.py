@@ -89,7 +89,7 @@ def comando_de_merge(numero: int, metodo: str) -> list[str]:
 
     O `gh` desta máquina (2.97.0) não tem a flag `--yes` em `pr merge`, e o
     portão conferia tudo verde e quebrava exatamente na hora de agir (H6,
-    ARMADILHAS §5.9.1). A segunda pergunta que a flag evitava não acontece:
+    docs/historico/RESOLVIDAS.md §5.9.1). A segunda pergunta que a flag evitava não acontece:
     todo subprocesso de portão roda com stdin fechado (`_nucleo.executar`), e
     sem TTY o `gh` mergeia direto, sem prompt — comprovado no merge do PR #35.
     `test_comando_de_merge_nao_usa_yes` impede a flag de voltar.

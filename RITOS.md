@@ -125,7 +125,8 @@ deploy da célula já volta para `:main` — é o item 3 desta lista, mecanizado
 > nada que toque `infra/`**. O `deploy-infra` termina com `docker compose up -d` sem
 > argumento, o que devolve TODAS as células ao `:main` — inclusive a que você acabou de
 > voltar, em silêncio e com o run verde. Se acontecer, redispare o rollback (é idempotente,
-> ~76s). Detalhe e as saídas definitivas em `ARMADILHAS.md` §5.16.
+> ~76s). Detalhe e as saídas definitivas na §5.16 de `armadilhas/`
+> (`armadilhas/INDICE.md` leva ao arquivo).
 
 > Até 23/08/2026 este rito era um bloco de `ssh deploy@…` para o mantenedor colar, e
 > isso violava a própria Lei das 2h da Manhã: o caminho mais rápido dependia de acordar

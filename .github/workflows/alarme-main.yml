@@ -73,7 +73,7 @@ jobs:
           ou a própria semântica fail-closed ([INV-CI01]).
 
           Isto é um **alarme**, não um portão: ele avisa depois do fato. O motivo de
-          ele existir está no \`ARMADILHAS.md §1 H3\` — este repositório não tem
+          ele existir está no \`ARMADILHAS-OPERACAO.md §1 H3\` — este repositório não tem
           required check, então o merge não pode ser impedido pelo GitHub.
 
           ## O que fazer

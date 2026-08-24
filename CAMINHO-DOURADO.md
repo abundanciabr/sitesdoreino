@@ -11,6 +11,15 @@
 (§1) + SOMENTE as receitas citadas. As receitas assumem a árvore do
 `celula-template/` (projeto `config/`, apps em `apps/`).
 
+**A memória de campo segue a mesma dieta, desde 23/08/2026.** `ARMADILHAS.md` deixou
+de ser um monólito: cada armadilha é um arquivo em `armadilhas/`, e a regra é **ler
+`armadilhas/INDICE.md` e abrir SÓ a entrada que casa com a sua tarefa** (Ctrl+F pela
+mensagem de erro crua). O que é do humano — §1 precisa-de-você, como se mergeia,
+painéis, §9 dívidas abertas — está fora dessa dieta, em `ARMADILHAS-OPERACAO.md`;
+o que já foi resolvido, em `docs/historico/RESOLVIDAS.md`. **Armadilha nova ao
+terminar o despacho é arquivo NOVO** (`armadilhas/NNN-slug.md`) + `make indice`,
+nunca um append no fim de um arquivo que outra sessão também está escrevendo.
+
 **Três leis das receitas:**
 1. Todo trecho colado leva o marcador da origem na primeira linha:
    `# [RECEITA:R3 v1]`. É assim que detectamos drift depois.
@@ -42,9 +51,11 @@
 ```markdown
 # DESPACHO — <celula>: <tarefa em ≤5 palavras>
 CÉLULA: <celula> · WORKTREE: wt-<celula>-<tarefa> · RECEITAS: R_, R_
-ANTES: ARMADILHAS.md (raiz) + services/<celula>/LICOES.md, se existir. Ao terminar,
-  acrescente o que aprendeu; o que só o mantenedor resolve vai na tabela §1 do
-  ARMADILHAS.md E no seu relatório final.
+ANTES: ARMADILHAS.md §2 (raiz) + armadilhas/INDICE.md — abra SÓ as entradas que
+  casam com esta tarefa — + services/<celula>/LICOES.md, se existir. Ao terminar,
+  acrescente o que aprendeu como ARQUIVO NOVO em armadilhas/NNN-slug.md + `make
+  indice`; o que só o mantenedor resolve vai na tabela §1 do
+  ARMADILHAS-OPERACAO.md E no seu relatório final.
 CONTEXTO (≤5 linhas): ...
 MISSÃO (1 frase): ...
 ALVOS (PERMITIDO ESCREVER): services/<celula>/apps/<x>/..., services/<celula>/tests/...
@@ -602,7 +613,7 @@ célula.
 
 > ✅ **Fluxo B — a lane funciona ponta a ponta desde 23/08/2026.** O portão
 > (`ci/orcamento-de-mudanca.sh`) e a catraca (`ci/mergear.py`, `checar_labels()`)
-> conhecem os dois a lane `traducoes` (ARMADILHAS §5.11, PR #94). Um lote com
+> conhecem os dois a lane `traducoes` (docs/historico/RESOLVIDAS.md §5.11, PR #94). Um lote com
 > >15 arquivos passa **se e somente se** todo caminho casar
 > `services/<celula>/traducoes/...` — e a label `traducoes` existe no GitHub.
 > Divisão de trabalho entre os dois, de propósito: a catraca confere o

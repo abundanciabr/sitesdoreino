@@ -4,10 +4,17 @@ Instruções para qualquer sessão do Claude Code neste repositório.
 
 ## Antes de começar qualquer tarefa: leia as armadilhas
 
-`ARMADILHAS.md` (raiz) é a memória de campo do projeto: o que já custou tempo aqui,
-em formato sintoma → causa → solução. **Leia antes de escrever a primeira linha**, e
-se for trabalhar dentro de uma célula, leia também `services/<celula>/LICOES.md`
-quando existir (o mesmo, mas específico daquela célula).
+A memória de campo do projeto — o que já custou tempo aqui, em formato sintoma →
+causa → solução — mora em **`armadilhas/`**, uma entrada por arquivo. Desde
+23/08/2026 ela **não é mais um monólito**: o antigo `ARMADILHAS.md` de 1.490 linhas
+era 48% da carga de contexto de todo despacho (PLANO-10X, Alavanca 2).
+
+**A regra de leitura, em uma frase: leia `armadilhas/INDICE.md` e abra SÓ a entrada
+que casa com a sua tarefa.** O índice tem uma linha por armadilha, com a mensagem de
+erro crua como chave — dê Ctrl+F pelo erro que você está vendo, ou pela tecnologia
+que vai tocar. Ler a pasta inteira desfaz o motivo de ela existir. Leia também o
+`ARMADILHAS.md` (que ficou curto: a regra de uso + a partida rápida do §2) e, se for
+trabalhar dentro de uma célula, o `services/<celula>/LICOES.md` quando existir.
 
 Não é formalidade: as mesmas armadilhas já pegaram mais de um agente — sombreamento
 de nome entre model Django e `ninja.Schema`, o middleware que derruba o `/healthz`, o
@@ -15,14 +22,19 @@ orçamento de 15 arquivos que decide a arquitetura antes de você escrever códi
 redescoberta custa tokens e uma rodada de teste.
 
 **Ao terminar, acrescente o que aprendeu** — isso faz parte de terminar a tarefa, como
-o painel. Regra de onde escrever: se serve para qualquer célula, vai em
-`ARMADILHAS.md`; se só faz sentido dentro de uma célula, vai no `LICOES.md` dela.
+o painel. Regra de onde escrever: se serve para qualquer célula, **crie um arquivo
+novo** `armadilhas/NNN-slug.md` (NNN = próximo número livre) e rode
+`python ci/indice_de_armadilhas.py` para regenerar o índice; se só faz sentido dentro
+de uma célula, vai no `LICOES.md` dela. **Nunca acrescente ao fim do `ARMADILHAS.md`
+nem edite a entrada de outro agente para encaixar a sua** — arquivo novo por entrada
+é exatamente o que faz duas sessões paralelas pararem de colidir no mesmo hunk.
 
 **Se a correção definitiva não estiver nas suas mãos** — depende de instalar algo na
 máquina, de plano pago, de permissão — registre na tabela `§1 — PRECISA DE VOCÊ` do
-`ARMADILHAS.md` **e diga isso ao usuário no relatório final, em texto claro**. Ele não
-lê o documento a cada sessão; se você contornar em silêncio, o mesmo atrito volta no
-próximo despacho, e no seguinte.
+**`ARMADILHAS-OPERACAO.md`** (o arquivo do humano: §1, como se mergeia, painéis, §9
+dívidas abertas) **e diga isso ao usuário no relatório final, em texto claro**. Ele
+não lê o documento a cada sessão; se você contornar em silêncio, o mesmo atrito volta
+no próximo despacho, e no seguinte.
 
 ## O painel vivo é obrigatório, não opcional
 

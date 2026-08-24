@@ -1,0 +1,193 @@
+# ARMADILHAS — OPERAÇÃO (o que é do humano, não do agente)
+
+> Separado do `ARMADILHAS.md` em 23/08/2026, quando o monólito de 1.490 linhas foi
+> particionado (PLANO-10X, Alavanca 2). **O conteúdo é o mesmo, palavra por
+> palavra** — mudou só onde ele mora.
+>
+> Aqui vive o que **não** ajuda a escrever a próxima linha de código: os atritos que
+> só o mantenedor resolve de vez (§1), como o merge funciona neste repositório
+> (§5.8–§5.9), a coordenação com o humano e os painéis (§7.1–§7.4) e as dívidas
+> abertas (§9). Um despacho de célula não precisa carregar nada disto — é 38% da
+> antiga leitura obrigatória que virava token gasto em toda tarefa.
+>
+> **Quem PRECISA ler:** a sessão-maestro de um lote, quem vai mergear, quem vai
+> atualizar painel — e o mantenedor. **Quem precisa ESCREVER aqui:** todo agente
+> que topar com um atrito cuja correção definitiva não está nas mãos dele — a
+> linha nova vai na tabela do §1, **e** no relatório final, em texto claro
+> (`CLAUDE.md`).
+>
+> O que vale para a próxima linha de código está em `armadilhas/INDICE.md`.
+
+---
+
+## §1 — PRECISA DE VOCÊ (humano) — atritos que só você resolve de vez
+
+Cada linha aqui é um atrito que **todo agente contorna, toda vez**. O contorno
+funciona, mas custa tempo e tokens em cada despacho. Resolver na raiz é de uma vez
+para sempre.
+
+| # | O atrito (o que acontece hoje) | O que resolveria de vez | Estado |
+|---|---|---|---|
+| H1 | ~~`python3` era o stub da Microsoft Store ⇒ `make contrato-check` dava **"OK" falso**~~ | Shim `~/bin/python3` resolveu **a máquina**; o **portão** foi resolvido reescrevendo a lógica em Python, fail-closed por construção (PR #21 endureceu o Bash, PR #22 tirou a medição do Bash) | ✅ **resolvido 19/08/2026** — provado nos três estados: igual ⇒ PASS, divergente ⇒ FAIL, instrumento quebrado ⇒ ERROR (§3.2) |
+| H2 | ~~`make` instalado mas invisível para o Bash do agente ⇒ todo comando virava `bash -lc`~~ | Pasta do `make` no PATH **do usuário** (Windows) | ✅ **resolvido 19/08/2026** — `make` roda direto, sem `-l` e sem `export PATH` |
+| H3 | **Nenhum check é obrigatório para mergear.** Medido em 19/08/2026: a API responde `Upgrade to GitHub Pro or make this repository public` (HTTP 403). Todos os portões podem estar vermelhos e o botão de merge continua funcionando; `.githooks/pre-push` só barra push direto para `main` **desta** máquina, e não vê merge feito pelo site | GitHub Pro **ou** tornar o repositório público — as duas liberam required checks. Confirmado na documentação: **não há caminho grátis** para repo privado (rulesets exigem Team/Enterprise) | 🟡 **o MERGE segue sem proteção (impossibilidade de pagamento — NÃO é decisão de custo), mas desde 22/08/2026 o DEPLOY é protegido: a saída (A) está implementada E PROVADA — ver a atualização no fim desta célula.** Atualizado em 21/08/2026: o cartão de crédito do mantenedor **não é aceito pelo GitHub** e não há outra forma de pagamento disponível. GitHub Pro está descartado por impossibilidade, não por preferência — **não recomende "assine o Pro" ao mantenedor, essa porta está fechada.** (O registro anterior dizia "decisão de custo adiada enquanto o projeto não fatura"; era o entendimento da época e está incorreto.) Saídas reais, das quais só a primeira é imediata: **(A)** portão no workflow de deploy consultando `gh api repos/<owner>/<repo>/commits/<sha>/check-runs` e abortando se algo não estiver verde — grátis, mecânico, viabilidade confirmada em 21/08/2026; protege a VPS e o cliente, **não** a `main`; cuidado: `skipped` NÃO é verde (INV-CI01, §5.6). **(B)** migrar para GitLab, cujo plano gratuito teria branch protection em repo privado — **não verificado por nenhuma sessão, confirme antes de mover**. **(C)** tornar o repositório público — libera a proteção no plano grátis, mas publicaria este próprio arquivo, que é um mapa dos buracos abertos; só considerar depois de fechados os bugs de dinheiro, e exigindo varredura de segredos no histórico completo (`gitleaks`/`trufflehog`) antes. Enquanto A não existir: `python ci/mergear.py <PR>` recusa merge com check vermelho e `alarme-main` abre issue se a `main` quebrar — degraus da Escada da Imposição (RITOS.md §2), não substitutos (§5.9). É o que impede afirmar "CI fail-closed global" ([INV-CI01]). Análise completa: `docs/decisoes/SINTESE-E-PLANO.md` §1. **Atualização 22/08/2026 — a saída (A) EXISTE E ESTÁ PROVADA AO VIVO:** `ci/portao_de_deploy.py` + job `portao-de-deploy` nos DOIS workflows de deploy (PR #54, card B1; desenho em `docs/decisoes/PROJETO-PORTAO-DEPLOY.md`; 25 testes adversariais em `muralhas`/`alarme-main`). A prova, quatro saídas cruas no mesmo dia: PR #55 vermelho de propósito (`ci-celula: fail`) → mergeado pelo caminho sem guarda → run 32567765127: `portao-de-deploy: failure`, `deploy: skipped` (imagem intocada — o build mora no job pulado) → revert #56 verde → run 32567900961: portão `success`, deploy do quiz executado e `healthy` na VPS. O clique do botão continua livre; o que ele não alcança mais é a produção. **Atualização 23/08/2026 — a saída (C) FOI EXECUTADA: o repositório está PÚBLICO** (decisão do mantenedor durante o apagão H14, com a varredura de segredos exigida aqui feita e limpa antes do clique). Consequência dupla: Actions ilimitado (mata o H14) e **required checks disponíveis de graça** — ligá-los é o degrau final da Escada da Imposição, decisão registrada como proposta ao mantenedor; até lá `mergear.py` segue sendo a catraca |
+| H4 | Docker Desktop frio no início da sessão custa 1–2 min parados | Deixar o Docker Desktop iniciar junto com o Windows | 🔴 aberto |
+| H5 | ~~`make esqueleto` local para no elo "cobrança": a intent Pix chama a API REAL da Mercado Pago (`services/pagamentos/pagamentos/providers/mercadopago/client.py`, `_BASE_URL` fixo, sem modo mock) mesmo em dev — só o webhook é simulado (ESQUELETO-QUE-ANDA.md). Sem uma credencial sandbox de verdade, a MP responde erro e a intent fica com `provider_payment_id` vazio~~ | Credencial `MP_ACCESS_TOKEN` (TEST-... sandbox real, nunca APP_USR-) de uma conta Mercado Pago Developers, colocada em `e2e/.env.e2e` (git-ignorado — ver `e2e/.env.e2e.exemplo`) | ✅ **resolvido 21/08/2026** — o mantenedor guarda essa credencial fora do repo (correto, INV-P8), num compartilhamento de rede pessoal; qualquer sessão futura que precise rodar `e2e/esqueleto.sh` local deve **pedir ao mantenedor onde está a credencial de teste** em vez de tentar gerar uma nova. **Nunca escreva o valor do token em nenhum arquivo versionado** (nem aqui) — só o `e2e/.env.e2e` local, git-ignorado. Com o token real, elos 1-7 (seed→sessão→pedido→cobrança→webhook→outbox→relay) rodaram verdes de ponta a ponta contra containers reais e a MP sandbox de verdade (`mp_payment_id` retornado por ela, não simulado) |
+
+| H6 | ~~`python ci/mergear.py <PR>` confere tudo verde e então falha ao mergear de verdade: `gh pr merge <PR> --merge --yes` estoura `unknown flag: --yes` — o `gh` instalado nesta máquina (`gh version 2.97.0`) não tem essa flag para `pr merge`~~ | A correção escolhida (22/08/2026): `ci/mergear.py` deixou de usar `--yes` (`comando_de_merge()` monta o comando sem a flag), o stdin de TODO subprocesso de portão passou a ser fechado por construção (`_nucleo.executar`, `stdin=DEVNULL` — sem TTY o `gh` não faz segunda pergunta, age direto), e a conferência pós-merge (`state=MERGED` consultado no GitHub) ficou embutida no script | ✅ **resolvido 22/08/2026** — teste-guarda `test_comando_de_merge_nao_usa_yes` impede a flag de voltar; evidência vermelho→verde no PR do despacho governança/merge-pelo-agente; detalhe em §5.9.1 |
+| H7 | `POST /intents` e `POST /intents/{id}/card` passaram a devolver **502** quando o Mercado Pago falha (antes devolviam 201 mentiroso). O 502 **não está no contrato congelado** — `contracts/pagamentos.openapi.yaml` lista só 201/200/401/422 — porque mudar o contrato é Rito de Contrato (RITOS §3), que exige sessão de arquitetura com o mantenedor e PR só de `contracts/` com a label `contrato`. Um agente de célula não pode fazer isso sozinho | Duas coisas, ambas em arquivo CODEOWNERS: (1) documentar `502` nas duas operações do contrato de pagamentos, pelo Rito §3; (2) decidir sobre o invariante novo proposto — *"resposta de provedor só vira sucesso interno após validação de status e payload"* — em `INVARIANTES.md` | 🔴 **aberto** — o código já falha fechado e está testado (PR do despacho 03); o que falta é só o registro formal. Enquanto não acontecer, o checkout precisa tratar 502 como "tente de novo com a mesma chave", e nenhum documento diz isso a ele |
+| H8 | O e2e (`e2e/esqueleto.sh`) só roda **manualmente**: `grep -rn "esqueleto\|e2e" .github/` não devolve nada. E ele exige `MP_ACCESS_TOKEN` sandbox real (`docker-compose.e2e.yml:69` usa `${MP_ACCESS_TOKEN:?}`, que **recusa subir** sem ela) — logo é inexecutável em CI por construção. Nenhum PR é barrado hoje por quebrar o caminho ponta a ponta, apesar de `ESQUELETO-QUE-ANDA.md` afirmar que ele "roda no CI a cada PR de célula" | Colar o `MP_ACCESS_TOKEN` **sandbox** (`TEST-...`) em *Settings → Environments → Secrets* do GitHub, num environment protegido por *required reviewers* (compatível com INV-P8, que proíbe `APP_USR-` fora da VPS, não `TEST-`). Isso destrava a camada de e2e contra a MP real, agendada 1×/dia — as camadas mockadas por PR não dependem disso | 🔴 aberto — decisão do mantenedor |
+| H9 | ~~**A Lei 4 (Separação de Poderes) é inexecutável, e não por falta de plano pago.** `gh api repos/<owner>/<repo>/collaborators` devolve **um único colaborador**, e o GitHub **proíbe aprovar o próprio PR**. Logo, exigir "revisão do dono" nos caminhos CODEOWNERS travaria todo PR para sempre — mesmo se a branch protection existisse. Medido: os PRs #38–#42 têm `reviews=0`, todos~~ | A saída escolhida NÃO foi a segunda conta revisora: em 22/08/2026 o mantenedor decidiu que **mergear é trabalho do agente**, e a Lei 4 foi reescrita — a aprovação humana prévia saiu do fluxo (era simultaneamente inexecutável E o maior gargalo medido: mediana 22 min, média 264 min por merge — PLANO-10X Alavanca 1); no lugar entraram mandato do despacho + anúncio nominal de merge em caminho CODEOWNERS + o portão de deploy provado (H3) como rede | ✅ **resolvido por decisão em 22/08/2026** — `docs/decisoes/DECISAO-merge-pelo-agente.md`; a Lei 4 deixou de ser prosa inexecutável |
+
+| H10 | Duas correções de **código de célula** que o despacho "consumers em produção" só pôde **contornar**, porque `services/**` estava fora do escopo dele — e as duas ficam em caminho CODEOWNERS, logo dependem de você despachar e mergear. **(1) `checkout`:** `GET /healthz` responde **404** com o ambiente de produção — medido em 21/08/2026 (§4.10); o healthcheck dessa célula teve de virar sonda de TCP em `infra/docker-compose.yml`. **(2) `mensageria`:** não existe entrypoint de Huey na célula (§4.11), então o worker sobe por um bootstrap de 6 linhas embutido no `command:` do compose | **(1)** uma linha em `services/checkout/apps/core/middleware.py`: `request.path` → `request.path_info`. **(2)** `huey.contrib.djhuey` em `INSTALLED_APPS` (destrava `manage.py run_huey`) ou um management command próprio. Duas tarefas de célula normais, 1 PR cada, ambas pequenas | ✅ **resolvido 22/08/2026 (lote "ligar o checkout")** — as células foram corrigidas nos PRs do lote (checkout: `request.path_info`; mensageria: `djhuey` + `run_huey`) e o PR de infra do mesmo lote removeu os dois remendos do compose: o healthcheck do `checkout` voltou a ser o HTTP `/healthz` herdado e o `mensageria-huey` virou `command: python manage.py run_huey` — a convenção do lote é que TODO worker Huey sobe assim |
+
+| H11 | **`infra/docker-compose.yml` não chega à VPS por pipeline nenhum.** `grep -rn "docker-compose" .github/` só encontra o `cd /opt/plataforma` do deploy: o arquivo é copiado **à mão** (passo 1 da lista final de `infra/provisionamento-vps.sh`). Consequência: todo PR que muda o compose — inclusive o que criou os consumers de evento — **não muda nada em produção** até você copiar o arquivo para lá. Não existe alarme para a divergência entre o compose do Git e o do servidor | Mecanizar: um passo no `deploy-celula` (ou um workflow próprio disparado por `paths: ['infra/**']`) que envie o compose para `/opt/plataforma/` antes do `up`. É a Lei 1 — hoje esta regra está no degrau "documento", o mais fraco da escada | 🟡 **mecanizado — aguardando prova do primeiro run** (despacho 04): `.github/workflows/deploy-infra.yml` sincroniza compose+traefik para `/opt/plataforma/` a cada merge na `main` que os toque, fail-closed (valida na VPS antes de trocar, backup datado, verificação de serviços rodando). O merge do próprio PR dispara o primeiro run — é ele que entrega os consumers do PR #45 à produção. Quem confirmar o run verde (mantenedor ou sessão seguinte) promove esta linha para ✅ **com o link do run**; a evidência é o `docker compose ps` impresso no run, com os `*-consumer` e o `mensageria-huey` em `running`. **1º run (21/08/2026, run 32538231311): VERMELHO — mas o canal em si funcionou:** staging, validação contra os `env/` reais, backup datado e troca dos arquivos aconteceram (o compose e o traefik do Git **JÁ estão** em `/opt/plataforma/`); morreu no `up -d`, em `unauthorized` do ghcr — causa **fora** do workflow: a VPS nunca fez `docker login` (ver **H13**). **✅ RESOLVIDO 22/08/2026 — primeiro run VERDE na 3ª tentativa do mesmo commit:** <https://github.com/abundanciabr/sitesdoreino/actions/runs/32538231311>. O `docker compose ps` impresso no run mostra os **16 serviços** declarados em `running`: as 8 células (todas `healthy`), os 4 `*-consumer`, o `mensageria-huey`, mais traefik (80/443 publicados), postgres e redis — **a plataforma subiu em produção pela primeira vez, com os consumers do PR #45 no ar**. As tentativas 1 e 2 reprovaram honesto (1ª: H13/ghcr; 2ª: env sem `DJANGO_SECRET_KEY`, preenchido pelo mantenedor em 22/08). O canal está provado: compose e traefik chegam à produção só por merge na `main` |
+| H12 | O alvo `contrato-check` das 8 células decide pelo **disco** (`if [ -f ../../contracts/$(CELULA).openapi.yaml ]`) em vez do manifesto — é a linha "não conforme" da tabela do [INV-CI01]. **A correção já existe em `celula-template/Makefile`; nenhuma das 8 células a usa.** Efeito: apagar um contrato deixa o `make ci` local da célula **verde**, e é esse baseline que o agente usa para decidir se pode trabalhar (mitigado no CI: `test_manifesto_real_e_coerente_com_o_repositorio` reprova em `muralhas` e em `alarme-main`) | Decidir se a correção entra **de uma vez** (1 linha × 8 arquivos + 1 teste que proíba o `if [ -f`, cabe no orçamento) ou por célula, junto de outro trabalho | 🟡 mitigado no CI, aberto localmente |
+| H13 | **A VPS não consegue puxar NENHUMA imagem do ghcr: `docker login` nunca foi feito lá** (o provisionamento não tinha esse passo). Medido em 21/08/2026: o 1º run do `deploy-infra` (32538231311) morreu em `error from registry: unauthorized` — e precisou tentar puxar até `traefik:v3.4` (imagem pública), prova de que o Docker local da VPS está **vazio**: a plataforma nunca subiu nesta VPS. Pior: os runs "verdes" do `deploy-celula` até 21:51 daquele dia rodavam o script **antigo** (sem `set -eu`, sem `--wait`) — o run do PR #47 mostra o MESMO `unauthorized` no pull E no up, um `docker compose ps` **vazio**, e "✅ Successfully executed" no fim, porque o último comando (`ps`) sai com 0. É o falso-verde do §5.6, medido em produção: **nenhum green histórico do deploy-celula provou deploy real**. O push das imagens no runner sempre funcionou (`docker/login-action` + GITHUB_TOKEN): as 8 imagens `plataforma-*:main` existem no registry — o buraco é só o pull do lado da VPS. O script novo do PR #45 já falha honesto daqui em diante | Uma vez, na VPS: entrar como `deploy` e rodar `docker login ghcr.io -u abundanciabr`, usando como senha um PAT (classic) com escopo **read:packages** (fica salvo em `/home/deploy/.docker/config.json`). Depois, re-rodar os jobs falhos: `gh run rerun 32538231311 --failed` — os arquivos já estão lá; o `up -d` finalmente puxa e sobe a plataforma inteira (traefik, postgres, redis, 8 células, 5 auxiliares). Se o rerun reprovar de novo com células caindo por erro de banco, o passo faltante é o `infra/provisionamento-postgres.sql` da lista final do provisionamento. O passo de login entrou na lista de `infra/provisionamento-vps.sh`. Alternativa de arquitetura, se preferir zero segredo de longa duração na VPS: login por run no pipeline, com GITHUB_TOKEN passado via `envs` da ssh-action — decisão sua, issue `arquitetura:` | ✅ **resolvido 22/08/2026** — o mantenedor fez o `docker login` pelo console do provedor (persistido em `/home/deploy/.docker/config.json`); prova: todos os pulls verdes na 3ª tentativa do run 32538231311, plataforma inteira no ar. O passo é o item 3 da lista final do provisionamento |
+
+| H14 | **O GitHub parou de INICIAR qualquer job de Actions em 22/08/2026 ~19:32 UTC** — todo workflow (ci-celula, muralhas, alarme-main, deploy-celula) "falha" em 2–4s, com ZERO steps executados e `log not found`. A anotação do check-run diz a causa: `The job was not started because recent account payments have failed or your spending limit needs to be increased`. Suspeita forte: os 2.000 min/mês do plano grátis esgotaram no dia mais pesado de CI do projeto (o cartão do mantenedor não é aceito pelo GitHub — H3 — então o limite de gasto é $0 e não sobe). Efeito: **nenhum PR consegue ficar verde ⇒ nenhum merge** (vermelho não se mergeia, e ERROR de instrumento não é FAIL de código — não toque no código por causa disso); o deploy do merge do PR #77 (checkout) NÃO rodou (run 32594025501) — a produção segue com o código anterior; `alarme-main` mudo. Como distinguir de FAIL real: falha em segundos + `steps: []` na API + a anotação acima | Só o mantenedor: abrir `github.com/settings/billing` e ler a barra de uso do Actions. Se 2.000/2.000: esperar o reset do ciclo mensal OU decidir a saída C do H3 (repo público, com varredura de segredos antes). Quando voltar: `gh run rerun 32594025501 --failed` (entrega o checkout do #77 à VPS) e re-rodar os checks dos PRs represados (o #78 é o primeiro) | ✅ **resolvido 23/08/2026** — o mantenedor executou a saída C do H3: **o repositório é PÚBLICO** (Actions ilimitado em repo público ⇒ o bloqueio de minutos deixa de existir por construção). Pré-requisito cumprido antes do clique: varredura de segredos no histórico completo (531 blobs de texto, todos os commits, inclusive arquivos apagados) — zero credencial, zero chave, zero `.env`; únicos achados: o IP da VPS neste arquivo (virou H15) e um vetor de teste todo-zeros. A prova do desbloqueio são os checks verdes do próprio PR #78 |
+| H16 | **Critério 2 da Fase D (cartão APRO + webhook real na VPS) não fecha sem duas coisas — uma é OBRA, a outra é sua.** Medido na fonte em 23/08/2026: (1) **não existe caminho alcançável para confirmar um cartão** em produção — `POST /api/pagamentos/intents/{id}/card` é interno (o Traefik só expõe `/api/pagamentos/webhooks`), `checkout` não faz proxy disso, e o Card Payment Brick nunca foi montado (`templates/checkout/cartao.html` só faz *poll*); (2) mesmo confirmando, a matrícula só sai pelo **webhook** (a aprovação síncrona de `confirmar_intent_card` não emite `pagamento.aprovado`); (3) o webhook é fail-closed por assinatura (INV-P10) e exige o secret do painel do MP em `MP_WEBHOOK_SECRET` na VPS | **(a)** construir a confirmação de cartão (rota pública + Brick, ou rota que receba `card_token`) — é a obra de checkout adiada, célula `checkout`/`pagamentos`, caminho CODEOWNERS; **(b)** você: registrar o webhook no painel do Mercado Pago (gera o secret), pôr o secret em `env/pagamentos.env` da VPS, e habilitar o envio (eventos no painel **ou** `notification_url` na criação do pagamento — hoje `providers/mercadopago/client.py` não manda esse campo) | 🟡 **registrado por decisão do mantenedor em 23/08/2026 — "parar e deixar registrado"**: volta quando for construir o site de vendas (diretiva "pagamento por último" segue). Mapa completo em `RUNBOOK-FASE-D.md` §5.1–5.3. A credencial no ar hoje é `TEST-` (postura sandbox correta, provada pelo QR Pix de 22/08) |
+| H15 | **O IP de origem da VPS (`217.196.62.220`) está público** — aparece neste arquivo (e no histórico do git, que repo público expõe inteiro; reescrever histórico não compensa: quebraria todos os SHAs e PRs por um segredo fraco — scanners tipo Shodan/Censys acham origens de qualquer forma). Com o Cloudflare na frente do domínio, conhecer a origem permite bater direto nela, pulando a proteção | Endurecer na VPS (console do provedor — Lei 5): firewall aceitando 80/443 **somente das faixas de IP do Cloudflare** (lista oficial: `https://www.cloudflare.com/ips/`), mantendo 22 como está (SSH já é key-only). Um bloco de colar fail-closed a pedir à maestro quando for fazer. **Atualização 23/08/2026:** o mantenedor decidiu servir `meshcraft.top` DIRETO, sem Cloudflare (Modo B/Let's Encrypt — lista `tls.domains` do router `funil` em `infra/traefik/dynamic/plataforma.yml`); se o firewall só-Cloudflare for aplicado como descrito aqui, **todo domínio dessa lista morre** — antes de aplicar, ou migre os diretos para o Cloudflare, ou excetue-os na regra | 🔴 **aberto 23/08/2026** — exposição fraca, sem urgência; registrado para não se perder |
+
+**Como manter esta tabela:** ao encontrar um atrito novo cuja correção definitiva não
+está nas suas mãos, acrescente uma linha (`H5`, `H6`…) e **diga isso no relatório final
+da sessão**. Ao ver que um item foi resolvido, marque ✅ com a data e mova o texto para
+a seção técnica correspondente como registro histórico — a tabela é lista de trabalho,
+não arquivo morto.
+
+---
+
+---
+
+## §5 — Portões mecânicos do CI (eles reprovam de verdade)
+
+> Só as duas entradas de operação vivem aqui. As outras 14 entradas do §5
+> são de agente e ficaram em `armadilhas/` — veja o `armadilhas/INDICE.md`.
+
+### 5.8 Portão verde não significa merge bloqueado
+
+**Sintoma:** confia-se que a CI "não deixa passar", mas nada impede o merge.
+**Causa:** branch protection exige GitHub Pro em repositório privado pessoal — ver §1,
+linha H3. **Não há required check nenhum.**
+**Solução:** distinga sempre os três conceitos ao relatar estado de CI:
+
+```text
+LOCAL VERIFIED   rodou na máquina do agente
+CANONICAL CI     rodou no GitHub Actions
+MERGE PROTECTED  o GitHub EXIGE o check para permitir merge  <- hoje: nenhum
+```
+
+Dizer "CI verde" quando você só rodou local é a mesma família de erro que este
+documento inteiro combate. Ver a tabela de escopo em `INVARIANTES.md` ([INV-CI01]).
+**Origem:** PR #22.
+
+### 5.9 Como se mergeia aqui: o agente, pelo portão — nunca pelo site
+
+**Contexto:** este repositório não tem required check (§1, H3) — o botão verde do
+GitHub funciona com tudo vermelho. E desde 22/08/2026 **mergear é trabalho do
+agente** (Lei 4; `docs/decisoes/DECISAO-merge-pelo-agente.md`): não se pede ao
+humano, não se espera janela de atenção.
+**O que já custou:** em 19/08/2026 o PR #21 foi mergeado no lugar do #20 — números
+parecidos, recomendações opostas, e nada na tela dizia qual era qual. E a espera
+pelo merge humano custava **mediana 22 min, média 264 min por PR** (medido —
+PLANO-10X, Alavanca 1): era o maior gargalo do projeto inteiro.
+**O caminho (RITOS.md §2 peça 4):**
+
+```bash
+python ci/mergear.py 22 --conferir    # os checks acabaram? tudo verde?
+python ci/mergear.py 22 --confirmo 22 # mergeia e confere state=MERGED no GitHub
+```
+
+Ele mostra **número e título em destaque**, consulta o estado real de cada check e
+recusa se algo não estiver verde. O `--confirmo` exige REPETIR o número do PR — não
+é "s/n", porque o erro que já aconteceu foi de identidade, não de intenção (sem
+`--confirmo`, a pergunta interativa de digitar o número continua existindo, para
+uso humano). Semântica [INV-CI01]: reprovou = `FAIL` (1), não consegui consultar =
+`ERROR` (2). **Nenhum check reportado é `ERROR`**, nunca sinal verde: um PR sem
+check é indistinguível de um PR cujos workflows não dispararam. Depois do merge o
+próprio script confere `state=MERGED` — mas o painel e o veredito do run de deploy
+(CLAUDE.md) continuam sendo seus.
+**Merge em caminho CODEOWNERS** (`contracts/`, `pagamentos`, `checkout`, `infra/`,
+`ci/`, `.github/`, arquivos-lei da raiz): só com mandato do despacho, e anunciado
+nominalmente no relatório final (Lei 4).
+
+**Detecção por trás (site, push direto):** o `alarme-main` abre issue (label
+`main-vermelha`) se a `main` quebrar — alarme, não portão. E o **portão de deploy**
+impede commit não-verde de alcançar a VPS (provado ao vivo, ver H3). O clique no
+site continua fisicamente possível e continua **proibido** — não confunda os três
+estados do §5.8 ao relatar.
+**Origem:** decisão de custo consciente, 20/08/2026; reescrito em 22/08/2026,
+quando o merge passou ao agente.
+
+---
+
+## §7 — Coordenação (humano, painéis, outros agentes)
+
+> Só as quatro entradas de operação vivem aqui. As de agente (§7.5, §7.6 e
+> §7.7 — constituição da célula, colisão em lote) ficaram em `armadilhas/`.
+
+### 7.1 Mais de uma IA no mesmo repositório
+
+**Sintoma:** PRs aparecem mergeados sem que esta sessão tenha pedido; arquivos mudam
+sozinhos no meio do trabalho.
+**Causa real (investigada em PR #2 e #5):** não foi invasão — o usuário seguia, em
+paralelo, instruções de **outra IA**, e rodou comandos dela sem cruzar com o que esta
+sessão pediu para segurar.
+**Solução:** quando mais de um agente atua no mesmo repo, cheque cada `merge`/`push`
+contra o que qualquer sessão pediu para segurar; e antes de editar um arquivo
+compartilhado (painéis, docs de raiz), releia-o do disco — ele pode ter mudado.
+**Origem:** incidentes dos PRs #2 e #5.
+
+### 7.2 Painel HTML "some" / cards desaparecem
+
+**Sintoma:** os cards do painel somem; a página renderiza só o cabeçalho.
+**Causa:** o JS quebrou. O caso concreto: uma crase (`` ` ``) usada para formatar
+código **dentro de um template literal** — que também é delimitado por crases — fecha
+a string mais cedo e quebra o parse.
+**Solução:** ao editar os painéis, valide antes de considerar pronto:
+
+```bash
+node -e "const fs=require('fs');const h=fs.readFileSync('arquivos/painel-X.html','utf8');
+const s=h.split('<script>')[1].split('</script>')[0];
+global.document={getElementById:()=>({innerHTML:'',style:{},textContent:'',addEventListener:()=>{},querySelectorAll:()=>[]})};
+new Function(s)();console.log('JS OK');"
+```
+
+**Origem:** sessão de 18/08/2026, painel da Fase D.
+
+### 7.3 O despacho colado no chat pode divergir do card do painel
+
+**Sintoma:** o agente entrega exatamente o que foi pedido — e mesmo assim está
+desalinhado com o que o painel prometia.
+**Causa concreta:** o texto cru de `PROMPTS-INICIAIS.md` foi colado no chat, mas o
+card do catalogo em `painel-prompts-fase-d.html` já tinha uma versão **mais segura**
+(exigia `--host` obrigatório no `seed_esqueleto`, nunca hardcoded). Ninguém percebeu
+até a retrospectiva, depois do merge.
+**Solução:** ao receber um despacho, se houver card correspondente no painel, compare
+os dois antes de começar. Divergência é decisão do humano, não do agente.
+**Origem:** Prompt 2 (catalogo, PR #15) — pendência ainda aberta.
+
+### 7.4 O painel é parte de terminar a tarefa
+
+`arquivos/painel-fundacao.html` é o checklist vivo do dono do projeto (leigo em
+código). Atualizá-lo depois de cada mudança de estado é obrigatório e **não se
+pergunta antes** (`CLAUDE.md`). Só marque item como concluído com evidência real —
+confirmação de merge do usuário é **gatilho para conferir** (`gh pr view <N> --json
+state,mergedBy,mergeCommit`), não substituto da conferência.
+
+---
+
+## §9 — Pendências conhecidas (não são armadilhas, são dívidas abertas)
+
+| O quê | Estado |
+|---|---|
+| **12 citações dentro de `services/` ainda dizem `ARMADILHAS.md §1` / `§9`, mas essas seções mudaram de arquivo** (viraram este `ARMADILHAS-OPERACAO.md` em 23/08/2026). O **número** resolve — `test_toda_referencia_a_uma_armadilha_resolve` prova isso a cada `make ci` —; envelheceu só o **nome do arquivo** na prosa. Os 12 lugares: `alunos` (`apps/eventos/…/consume_eventos.py:110`, `LICOES.md:115`, `tests/test_reentrega_pel.py:4`), `checkout` (`apps/pedidos/…/consume_eventos.py:12` e `:152`, `tests/test_reentrega_pel.py:1`), `leads` (`apps/core/…/consume_eventos.py:88`, `tests/test_inv_leads_reentrega_pel.py:3`), `mensageria` (`apps/eventos/…/consume_eventos.py:139`, `tests/test_entrypoint_huey.py:1`, `tests/test_reentrega_pel.py:2`), `pagamentos` (`LICOES.md:366`) | 🟡 **declarado, não urgente** — não cabia no PR do particionamento: `ci/cerca-de-celula.sh` reprova PR que toque mais de uma célula, e são 5 células. Custa **uma linha por arquivo**; o barato é pegar carona — o próximo despacho que abrir cada célula corrige a citação dela de passagem |
+| `seed_esqueleto` do catalogo usa env `DOMINIO_OPERACOES` com fallback hardcoded, em vez do `--host` obrigatório que o card do painel pedia | sem decisão do mantenedor |
+| ~~**O marcador de namespace jurídico do i18n (`_juridico`, PLANO-I18N D8.2) não existe no código**~~ — escrever `_juridico: true` reprovava como meta desconhecida e, com o validador no boot (D4), derrubava a célula: a lei mandava usar um marcador que quebrava a produção | ✅ **RESOLVIDO 23/08/2026** (despacho funil/i18n-juridico): `_juridico: "true"` é meta reconhecida e **só passa** com `_revisado_humano` — mapa **idioma → "Quem revisou AAAA-MM-DD"**, um por idioma (revisar o inglês não valida o espanhol), com `_fonte` fora de `pendente`; a declaração **expira no diff** (texto que muda num idioma exige declaração nova daquele idioma — §5.15). Sem revisão, FAIL no CI **e boot recusado**. Do D8.3 entrou a **razão de comprimento como RELATÓRIO** (>3× ou <0,3× do `en` avisa, nunca reprova; `Resultado.avisos` + WARNING no boot + sumário do pytest). **Continua aberta a retrotradução** do D8.3: exige chamar modelo externo (chave de API, custo) — **decisão do mantenedor**, ninguém deve simular |
+| **Cobrança REAL em produção depende de credenciais Mercado Pago de verdade** — `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET` em `/opt/plataforma/env/pagamentos.env` e `MP_PUBLIC_KEY` no de checkout. A plataforma está no ar e navega sem isso (22/08/2026); a primeira venda de verdade é que não passa — e falha fechado, com 502 e log claro. De quebra: sobrou `/home/deploy/provisionamento-postgres.sql` na VPS (cópia com senhas usada no provisionamento) — apagar | mantenedor, antes do primeiro teste de venda real |
+| Proteção de branch nativa do GitHub exige plano Pro; hoje o fallback é `.githooks/pre-push` | issue `mecanizar:` #1 |
+| Relay do outbox (Huey → Redis Streams, R3) ainda não instanciado no checkout — o evento é gravado transacionalmente, mas ninguém publica | Fase D, despacho seguinte |
+| ~~alunos não tem consumer de `pagamento.aprovado`~~ **RESOLVIDO em parte** (PR #26, `agent/alunos/matricula`): hoje existe `apps/eventos/management/commands/consume_eventos.py` + `apps/matriculas/` (models/services/handlers, idempotente por `order_id`, INV-P5) e `POST /matriculas` funciona de verdade. Confirmado rodando ao vivo em `e2e/esqueleto.sh` (container `alunos-consumer` dedicado): o evento `pagamento.aprovado` publicado por pagamentos é consumido e a `Matricula` nasce com `status=ativa` no banco de alunos, ponta a ponta. **O que falta é só** `GET /alunos/{email}/matriculas` — ainda `HttpError(501)` por design (`apps/core/api.py`, comentário "listEnrollments segue fora de escopo desta sessão") — é esse endpoint de LEITURA, sozinho, que segura o elo 8 do esqueleto e o critério 1 do DoD de `ESQUELETO-QUE-ANDA.md` | despacho pequeno e focado: implementar só `list_enrollments` lendo `Matricula.objects.filter(email=email)` — o resto da célula já funciona |
+| ~~checkout não consome `pagamento.aprovado`~~ **RESOLVIDO**: `apps/pedidos/management/commands/consume_eventos.py` existe e funciona — confirmado ao vivo em `e2e/esqueleto.sh` (container `checkout-consumer` dedicado), `GET /api/checkout/pedidos/{id}.status` vai de `aguardando_pagamento` para `pago` de verdade depois do webhook aprovado | — |
+| **Evento que faz o handler estourar fica pendente para sempre — a reentrega é possível, mas ninguém a executa.** Medido em 21/08/2026 (despacho infra/consumers), já com o `alunos` **depois** do PR #43: publiquei um `pagamento.aprovado` sem `customer`; o handler estourou `KeyError`, a transação externa desfez o registro (`EventoProcessado = 0` — **o fix do #43/#46 faz exatamente o que promete**), o container morreu e o `restart: unless-stopped` o trouxe de volta. Um evento bom publicado em seguida foi processado normal: **não é crash-loop**. Mas o envenenado segue em `XPENDING` do grupo com `delivery-count = 1`, **nunca reentregue** — `xreadgroup(..., ">")` só entrega mensagem nova, e nenhum consumer chama `XAUTOCLAIM` nem relê o próprio PEL com `XREADGROUP ... 0`. Os PRs #43/#46/#47 devolveram a *possibilidade* de reentregar (`alunos`, `leads` e `mensageria` já registram e efetivam na mesma transação; `checkout` não tem `EventoProcessado`, o handler dele é um `.update()` idempotente) — **o que falta é a peça que de fato reentrega**, e ela não existe em nenhuma das quatro | ✅ **RESOLVIDO 22/08/2026 (lote 2)** — as 4 células reivindicam presas (`XAUTOCLAIM`, idle ≥ 60s, constantes `IDLE_MS_REENTREGA`/`MAX_ENTREGAS` iguais nas quatro) e movem para `<stream>.dlq` na 5ª entrega (payload original + motivo/delivery_count/movida_em, ACK na origem, log ERROR com o event_id): PRs #74 alunos, #72 leads, #73 mensageria, #75 checkout, todos com teste-guarda contra Redis real e evidência vermelho→verde por patch. O que resta em aberto: a `.dlq` ainda NÃO tem consumidor — reprocessar é manual (`XRANGE` + `XADD` de volta) e o alarme é o log ERROR; se aparecer volume, é despacho pequeno |
+| ~~**pagamentos não valida o status HTTP da resposta da Mercado Pago ao criar uma intent Pix**~~ **RESOLVIDO** (despacho 03, `agent/pagamentos/failclosed`): `_post` falha fechado em todo não-2xx, em timeout e em corpo não-JSON; `core/gateway.py` recusa traduzir 2xx incompleto e levanta `FalhaNoProvedor`; a API devolve **502** em vez de 201, e o replay de INV-P4 virou o caminho de reparo que não existia (completa a intent incompleta com a MESMA `X-Idempotency-Key`, que o MP deduplica). Evidência vermelho→verde no caso 401 colada no PR; testes descem para o transporte com `respx` (§6.9) | **falta só o registro formal:** o 502 ainda não está no contrato congelado e o invariante novo ainda não está em `INVARIANTES.md` — os dois são CODEOWNERS, ver §1 H7 |

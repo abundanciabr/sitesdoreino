@@ -219,7 +219,7 @@ def test_contrato_com_label_passa() -> None:
 # Lane 'traducoes' — a mesma válvula que as muralhas abrem (PLANO-I18N.md, D9)
 #
 # Sem estes testes o modo de falha é mecânico e já estava previsto
-# (ARMADILHAS §5.11): um lote de tradução legítimo passa nas muralhas e é
+# (docs/historico/RESOLVIDAS.md §5.11): um lote de tradução legítimo passa nas muralhas e é
 # recusado NA CATRACA, porque as duas cópias da regra divergiram.
 # ---------------------------------------------------------------------------
 
@@ -302,7 +302,7 @@ def test_padrao_da_lane_bate_com_orcamento_de_mudanca() -> None:
     """Como o LIMITE_DE_ARQUIVOS: o padrão de caminho da lane é cópia solta do
     que as muralhas aplicam. Duas fontes para a mesma regra só ficam honestas
     se algo mecânico denuncia a divergência — foi a divergência entre portão e
-    catraca que abriu a ARMADILHAS §5.11."""
+    catraca que abriu a docs/historico/RESOLVIDAS.md §5.11."""
     import re
 
     script = (mergear.raiz_do_repo() / "ci" / "orcamento-de-mudanca.sh").read_text(
@@ -377,7 +377,7 @@ def test_skips_permitidos_tem_motivo_escrito() -> None:
 def test_comando_de_merge_nao_usa_yes() -> None:
     """H6: o `gh` 2.97.0 não tem `--yes` em `pr merge` — o portão conferia tudo
     verde e quebrava exatamente na hora de agir. Se a flag voltar, este teste
-    acusa antes de o próximo merge real quebrar (ARMADILHAS §5.9.1)."""
+    acusa antes de o próximo merge real quebrar (docs/historico/RESOLVIDAS.md §5.9.1)."""
     for metodo in ("merge", "squash", "rebase"):
         cmd = mergear.comando_de_merge(99, metodo)
         assert "--yes" not in cmd
