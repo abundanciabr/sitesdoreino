@@ -1061,7 +1061,7 @@ conhecia a válvula `arquitetural`; a lane `traducoes` (PLANO-I18N.md, D9) entro
 só no `ci/orcamento-de-mudanca.sh`, porque `mergear.py` estava fora do escopo do
 despacho que a criou. Duplicação de semântica entre portão e catraca = os dois
 podem divergir, e divergiram aqui por um despacho de distância.
-**✅ RESOLVIDO em 23/08/2026** (despacho ci/catraca-lane, branch
+**✅ RESOLVIDO em 23/08/2026** (PR #94, despacho ci/catraca-lane, branch
 `agent/ci/catraca-lane`): `checar_labels()` aprendeu a lane com a MESMA
 semântica do `.sh` — `arquitetural` passa na frente (inclusive com as duas
 labels juntas), a label nunca APERTA (≤15 passa com ou sem ela), e com
