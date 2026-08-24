@@ -313,7 +313,11 @@ permite ter, no mesmo arquivo, testes multilíngues e a regressão monolíngue
 byte-idêntica sobre o MESMO host, sem inventar um terceiro domínio.
 **Origem:** despacho funil/idioma-do-catalogo — `tests/test_i18n_http.py`.
 
-## `CAMINHOS_SEM_SITE` casa o `path_info` CRU — `/pt-br/healthz` responde 200
+## `CAMINHOS_SEM_SITE` casa o `path_info` CRU — `/pt-br/healthz` respondia 200
+
+> ✅ **RESOLVIDO em 24/08/2026.** A lição fica porque a CAUSA continua valendo
+> para a próxima rota de máquina que a célula servir: o que mudou é que agora
+> existe mecanismo, e não só vigilância.
 
 **Sintoma:** o D6 do PLANO-I18N afirma que rota de máquina nunca se localiza e
 que "o desenho atual já obedece por construção". Medido em 24/08/2026, no
@@ -331,15 +335,27 @@ células, e lá o Traefik nem chega a casar a rota prefixada.
 gêmea localizada de graça*, a menos que esteja em `CAMINHOS_DE_MAQUINA` ou que a
 view se defenda sozinha. A isenção protege o caminho nu; ela não protege a
 forma prefixada.
-**Solução (não aplicada — `apps/**` era somente-leitura no despacho):** tratar
-`CAMINHOS_SEM_SITE` também DEPOIS de decapar o prefixo, ou fazer o decapamento
-recusar caminho que caia em rota de máquina. Enquanto isso, o desvio está
-fixado como `xfail(strict=True)` em `tests/test_d6_roteamento.py`: hoje ele
-conta como xfail, e no dia do conserto vira XPASS — vermelho — obrigando a
-apagar o marcador. Desvio conhecido com alarme de conserto vale mais que desvio
+**Solução (aplicada em 24/08/2026):** o middleware confere `ROTAS_DE_MAQUINA` —
+a união de `CAMINHOS_SEM_SITE` e `CAMINHOS_DE_MAQUINA` — também **depois** de
+decapar o prefixo, dentro do `_com_idioma()`. É o único ponto do fluxo em que dá
+para ver que `/pt-br/healthz` **é** a rota de máquina `/healthz`: antes dali o
+caminho ainda está cru, depois dali o urlconf já resolveu. Uma guarda, as três
+rotas cobertas (`/healthz`, `/static/**`, `/sitemap.xml`) e as próximas de
+graça — quem entrar nas listas fica protegido nas duas formas, nua e prefixada.
+**O que impede a REINCIDÊNCIA (a classe, não o caso):** o
+`test_toda_rota_do_urlconf_e_classificada_maquina_ou_localizavel` obriga toda
+rota do `config/urls.py` a estar declarada como de máquina (nas listas do
+middleware) ou como página (em `ROTAS_LOCALIZAVEIS`, no próprio teste). Rota
+nova sem classificação fica vermelha, e a pergunta "esta se localiza?" é feita
+na hora de criá-la, não meses depois por medição. A guarda cura o caso; este
+teste cura a classe.
+**O que o `xfail(strict=True)` provou:** ele foi escrito para ficar vermelho por
+XPASS no dia do conserto, e foi exatamente assim que o conserto se anunciou — o
+marcador e o teste que afirmava o 200 saíram na mesma edição, sem sobrar teste
+mentindo. Desvio registrado com alarme de conserto vale mais que desvio
 consertado sem registro.
-**Origem:** despacho funil/guardas-d6 — `apps/core/middleware.py`,
-`tests/test_d6_roteamento.py`.
+**Origem:** despacho funil/guardas-d6 (o achado) e funil/desvio-d6-healthz (o
+conserto, 24/08/2026) — `apps/core/middleware.py`, `tests/test_d6_roteamento.py`.
 
 ## Guarda cuja violação nasce em `infra/` não pode morar em `services/<celula>/tests/`
 
@@ -425,3 +441,14 @@ Checklist de rota nova aqui: é de gente ou de máquina? Se for de máquina, a g
 entra junto com a rota, no mesmo commit — depois, o vermelho vem do guarda alheio e
 custa uma rodada para entender de onde veio.
 **Origem:** despacho funil/static-em-producao — `apps/core/views.py`.
+
+> **Atualização de 24/08/2026 (despacho funil/desvio-d6-healthz):** a guarda por view
+> continua valendo como defesa em profundidade, mas deixou de ser a única coisa entre
+> a célula e a regressão. O `SiteResolutionMiddleware` agora confere
+> `ROTAS_DE_MAQUINA` **depois** de decapar o prefixo — rota de máquina listada está
+> protegida mesmo se a view esquecer — e o
+> `test_toda_rota_do_urlconf_e_classificada_maquina_ou_localizavel` obriga toda rota
+> nova do `config/urls.py` a se declarar de máquina ou de página. O checklist acima
+> virou pergunta que o teste faz por você; foi a rota `/healthz` esquecida que provou
+> que disciplina sozinha não bastava. Ver a lição `CAMINHOS_SEM_SITE` casa o
+> `path_info` CRU, acima, e `armadilhas/086`.

@@ -112,5 +112,6 @@
 | [083](083-static-404-em-producao-com-todos-os-settings.md) | `/static/**` responde 404 em produção com TODOS os settings de estático certos — a página sobe, o HTML chega inteiro, e o `<script src="/static/...">` dela devolve **404** só em produção. No navegador do visitante não… | — |
 | [084](084-patch-de-prova-se-gera-com-git-diff-nunca-se-escreve.md) | Patch de prova se GERA com `git diff` — escrever à mão custa uma rodada — o protocolo de evidência vermelho→verde por patch (obrigatório em lote, porque a pilha de `git stash` é única por repositório e vaza entre… | — |
 | [085](085-dois-arquivos-com-o-mesmo-nnn-passam-pelo-rebase.md) | Dois arquivos com o mesmo `NNN` em `armadilhas/` passam pelo rebase sem conflito — depois de um `git rebase origin/main` limpo, a pasta tem dois arquivos com o mesmo número: | — |
+| [086](086-isencao-de-middleware-que-casa-o-caminho-cru-nao.md) | Isenção de middleware que casa o caminho CRU não protege a forma reescrita — `/healthz` responde 200 (correto), e **`/pt-br/healthz` também responde 200** — com o mesmo JSON da sonda. A rota de máquina ganhou uma gêmea… | — |
 
-**75 entradas.**
+**76 entradas.**

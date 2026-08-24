@@ -24,6 +24,13 @@ CAMINHOS_SEM_SITE = ("/healthz", "/static/")
 # usa o MESMO cache de 60s de qualquer outra rota.
 CAMINHOS_DE_MAQUINA = ("/sitemap.xml",)
 
+# D6: TODA rota de máquina desta célula — as isentas de Site e a que precisa
+# dele. Nenhuma delas se localiza. As duas listas acima são conferidas no
+# path_info CRU, no topo do __call__; esta é conferida DE NOVO depois de
+# decapar o prefixo de idioma — é o único ponto em que dá para ver que
+# /pt-br/healthz é a rota de máquina /healthz (desvio medido em 24/08/2026).
+ROTAS_DE_MAQUINA = CAMINHOS_SEM_SITE + CAMINHOS_DE_MAQUINA
+
 # D1/D6: primeiro segmento com FORMA de idioma (2-3 letras ± região, qualquer
 # caixa/separador) que NÃO seja código habilitado ⇒ 404 fail-closed — cobre
 # /fr/, /PT-BR/, /pt_br/ de uma vez. Caminho sem forma de idioma é "caminho nu".
@@ -94,8 +101,16 @@ class SiteResolutionMiddleware:
                 if not seguro:
                     raise Http404("prefixo de idioma sem caminho")
                 return self._redirect(f"/{segmento}/", request)
-            definicao = cfg["idiomas"][segmento]
             caminho_sem_prefixo = f"/{resto}"
+            if caminho_sem_prefixo.startswith(ROTAS_DE_MAQUINA):
+                # D6: a isenção do topo casa o path_info CRU, e para
+                # /pt-br/healthz ela NÃO casa — sem esta guarda o urlconf
+                # resolveria a view e devolveria 200 numa URL que não
+                # deveria existir. Cobre /healthz, /static/** e
+                # /sitemap.xml de uma vez, e a próxima rota de máquina que
+                # entrar nas listas, sem tocar neste método de novo.
+                raise Http404(f"rota de máquina não se localiza: {caminho}")
+            definicao = cfg["idiomas"][segmento]
             request.idioma = segmento
             request.i18n_seo = dados_seo(site, cfg, segmento, caminho_sem_prefixo)
             # O urlconf da célula continua sem prefixo: o resolver decapa o

@@ -306,9 +306,12 @@ site (D3) — hoje por `idiomas.dados_seo()`, nunca à mão:
   Traefik stock não injeta header com valor dinâmico do path, e o strip
   criaria dois regimes de path convivendo.
 - **Rotas de máquina nunca se localizam:** `/api/**`, `/webhooks/**`,
-  `/static/**`, `/healthz` não ganham prefixo de idioma — o desenho atual já
-  obedece por construção (`/pt-br/api/...` não casa a priority 20 e morre
-  404 no funil); a regra escrita impede alguém de "consertar" isso. Teste.
+  `/static/**`, `/healthz` não ganham prefixo de idioma. Onde a rota é de OUTRA
+  célula, o desenho obedece por construção (`/pt-br/api/...` não casa a
+  priority 20 e morre 404 no funil); onde a célula serve a rota ELA MESMA, isso
+  **não** basta — foi o achado do `/healthz`, registrado abaixo, e hoje quem
+  garante é uma guarda no middleware. A regra escrita impede alguém de
+  "consertar" isso. Teste.
 - **Nenhum prefixo de célula novo pode ter formato de locale** (2–3 letras ±
   região) — teste; vale dobrado porque `PathPrefix` casa prefixo de string
   cru.
@@ -340,16 +343,21 @@ Dois achados da implementação, onde o D6 supunha outra coisa:
   forma como rede para o futuro, com os namespaces de máquina do próprio D6
   (`api`, `webhooks`, `static`, `healthz`) isentos **da forma, nunca da
   colisão**.
-- **"O desenho atual já obedece por construção" vale para `/api/**`,
-  `/webhooks/**` e `/sitemap.xml` — e NÃO vale para `/healthz`.** A isenção do
-  middleware casa o `path_info` cru, então `/pt-br/healthz` não é isenta: o
-  resolver decapa o prefixo e o urlconf serve a view. Medido: **200**, hoje.
-  Vale para qualquer rota de máquina que o próprio funil sirva sem estar em
-  `CAMINHOS_DE_MAQUINA`. Está fixado como `xfail(strict=True)` no teste da
-  célula — no dia em que consertarem, ele fica vermelho por XPASS e obriga a
-  apagar o marcador; o desvio não some em silêncio. O conserto é uma linha em
-  `apps/core/middleware.py` e **precisa de mandato próprio**: `apps/**` estava
-  somente-leitura no despacho dos guardas.
+- **"O desenho atual já obedece por construção" valia para `/api/**`,
+  `/webhooks/**` e `/sitemap.xml` — e NÃO valia para `/healthz`.** A isenção do
+  middleware casa o `path_info` cru, então `/pt-br/healthz` não era isenta: o
+  resolver decapava o prefixo e o urlconf servia a view. Medido: **200**. Valia
+  para qualquer rota de máquina que o próprio funil sirva sem estar em
+  `CAMINHOS_DE_MAQUINA`. ✅ **CONSERTADO em 24/08/2026** (despacho
+  `funil/desvio-d6-healthz`): o middleware confere `ROTAS_DE_MAQUINA` — a união
+  das duas listas — também **depois** de decapar o prefixo, e `/{idioma}/healthz`
+  responde 404 nos três idiomas. O `xfail(strict=True)` fez o que fora escrito
+  para fazer: ficou vermelho por XPASS no dia do conserto e saiu na mesma edição
+  que o teste que afirmava o 200. Contra a REINCIDÊNCIA ficou um guarda de
+  classe (`test_toda_rota_do_urlconf_e_classificada_maquina_ou_localizavel`):
+  toda rota do `config/urls.py` tem de estar declarada como de máquina — nas
+  listas do middleware — ou como página; rota nova sem classificação fica
+  vermelha. O caso tinha cura; faltava o alarme da próxima.
 
 ### D7 — Conteúdo que é dado: tradução DENTRO do `sites.json`
 
