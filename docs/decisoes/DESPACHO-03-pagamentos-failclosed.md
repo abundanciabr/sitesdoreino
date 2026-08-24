@@ -3,7 +3,7 @@
 > ## ✅ EXECUTADO — PR #44, mergeado em 21/08/2026. NÃO redespache.
 > `respx` entrou no `requirements.txt` da célula e as lições foram registradas em
 > `services/pagamentos/LICOES.md`. Atenção ao efeito colateral registrado como **H7**
-> em `ARMADILHAS.md` §1: `POST /intents` agora devolve **502** quando o MP falha —
+> em `ARMADILHAS-OPERACAO.md` §1: `POST /intents` agora devolve **502** quando o MP falha —
 > comportamento correto (fail-closed), mas o checkout precisa tratar esse 502 com uma
 > mensagem digna para o cliente (hoje vira erro genérico).
 > **Continuam FORA (despachos próprios):** endurecimento do webhook (`data.id` +

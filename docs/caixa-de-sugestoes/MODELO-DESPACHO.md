@@ -19,7 +19,8 @@
 
 ÁREA: `services/<celula>/` *(ou `infra/`, `.github/`…)* · WORKTREE: `wt-<celula>-<tarefa>`
 
-ANTES: leia `ARMADILHAS.md` §1 e §2, `services/<celula>/LICOES.md` (se existir),
+ANTES: leia `ARMADILHAS.md` §2 (partida rápida) + `armadilhas/INDICE.md` (abra só as
+entradas que casarem com esta tarefa), `services/<celula>/LICOES.md` (se existir),
 <documentos específicos desta tarefa — só os necessários; agente afogado em
 documentação erra mais (RUNBOOK §3.3)>. Declaração de abertura (RITOS §1) e
 baseline `make ci` VERDE antes de tocar qualquer arquivo.

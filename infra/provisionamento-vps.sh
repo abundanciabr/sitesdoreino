@@ -61,7 +61,7 @@ cat <<'FIM'
       docker login ghcr.io -u <dono-do-repo>
     senha = PAT (classic) com escopo read:packages. As imagens são privadas:
     sem este passo NENHUM deploy consegue puxar imagem — todo pull morre em
-    "unauthorized" (medido em 21/08/2026; ARMADILHAS.md §1, H13).
+    "unauthorized" (medido em 21/08/2026; ARMADILHAS-OPERACAO.md §1, H13).
  4. Rodar infra/provisionamento-postgres.sql no Postgres (senhas: openssl rand -hex 24)
  5. GitHub → Secrets do repo: VPS_HOST e DEPLOY_SSH_KEY (a chave PRIVADA do par do CI)
  6. GitHub → Branch protection de main: checklist no 00-LEIA-PRIMEIRO.md

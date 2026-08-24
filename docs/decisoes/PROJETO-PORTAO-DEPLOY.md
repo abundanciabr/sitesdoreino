@@ -19,7 +19,7 @@
 > preservado aqui porque o projeto completo existia só no contexto da sessão.
 > **Para quem:** o agente que receber o despacho B1 do painel 10X. Este arquivo é a
 > especificação; o despacho define escopo, DoD e evidência.
-> **Contexto:** não há branch protection e NÃO PODE haver (ARMADILHAS §1 H3 — sem
+> **Contexto:** não há branch protection e NÃO PODE haver (ARMADILHAS-OPERACAO.md §1 H3 — sem
 > forma de pagamento aceita). Todo portão pode estar vermelho e o merge acontece.
 > O que não pode acontecer é o DEPLOY — e é o deploy que alcança cliente.
 

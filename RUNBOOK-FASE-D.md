@@ -48,10 +48,10 @@ por este harness.
 ## 2. Rodar localmente
 
 Pré-requisitos: Docker rodando (suba o Docker Desktop no INÍCIO da sessão, em
-background — `ARMADILHAS.md` §1 item H4: parti-lo frio no meio do trabalho
+background — `ARMADILHAS-OPERACAO.md` §1 item H4: parti-lo frio no meio do trabalho
 custa 1–2 min parados) e `e2e/.env.e2e` preenchido (copie de
 `e2e/.env.e2e.exemplo` — precisa de `MP_ACCESS_TOKEN` **sandbox real**, não o
-fake de CI; ver §3 e `ARMADILHAS.md` §1 item H5 se não souber onde conseguir
+fake de CI; ver §3 e `ARMADILHAS-OPERACAO.md` §1 item H5 se não souber onde conseguir
 um).
 
 **Estado agora:** `e2e/.env.e2e` **não existe no disco** — só o `.exemplo`.
@@ -313,7 +313,7 @@ dos dois runs).
 
 ## 7. Pendências herdadas — o que ainda NÃO é "de verdade" (não confunda com bug)
 
-Lista viva. `ARMADILHAS.md` §9 cobre o mesmo terreno, mas **está parcialmente
+Lista viva. `ARMADILHAS-OPERACAO.md` §9 cobre o mesmo terreno, mas **está parcialmente
 desatualizada** — ela ainda descreve `GET /alunos/{email}/matriculas` como stub
 501 "e o que falta é só" implementá-lo, quando o PR #32 já o fechou (o elo 8
 deste runbook depende dele funcionando, e funciona). Cruze as duas listas em
@@ -323,7 +323,7 @@ vez de confiar numa só; se for corrigir §9, isso é PR de docs à parte.
 |---|---|---|
 | **A tela de checkout DESCARTA a UTM ao criar a sessão** | checkout | Smoke vitrine→checkout feito ao vivo em 23/08/2026 (`meshcraft.top`): o link da vitrine leva à página certa (200, oferta certa) E carrega a UTM na query (`/checkout/<slug>/?utm_source=…`), mas `static/checkout/dados.js` chama `api.post("/sessoes", { offer_slug })` **sem ler a UTM da URL** — então `createSession` (que ACEITA `utm` no corpo, `apps/core/api.py:164`) grava `utm={}`, e `pedido.criado` sai sem origem. Toda a cadeia (funil monta o link, servidor aceita, evento repassaria) existe MENOS este elo no front. Correção = ler `URLSearchParams(location.search)` em `dados.js` e passar no corpo; célula `checkout` (CODEOWNERS), 1 linha + teste. **Decisão do mantenedor 23/08: deixar para quando for construir o site de vendas** (sem tráfego pago hoje, atribuição não impacta). Registro-irmão em `services/funil/LICOES.md` (resíduo dos PRs #30/#29) |
 | `seed_esqueleto` usa env `DOMINIO_OPERACOES` com fallback, não `--host` obrigatório | catalogo | Divergência entre o despacho colado e a versão mais seg do painel — nunca resolvida; decisão do mantenedor |
-| ~~`pagamentos` não valida o status HTTP da resposta da MP~~ **RESOLVIDO** (PR #44, 21/08/2026): resposta do provedor só vira sucesso depois de validada (status + payload), testes na camada de transporte com `respx`. **Efeito colateral aberto:** `POST /intents` agora devolve 502 quando o MP falha, e 502 não está no contrato congelado — ver `ARMADILHAS.md` §1 H7 | pagamentos | — |
+| ~~`pagamentos` não valida o status HTTP da resposta da MP~~ **RESOLVIDO** (PR #44, 21/08/2026): resposta do provedor só vira sucesso depois de validada (status + payload), testes na camada de transporte com `respx`. **Efeito colateral aberto:** `POST /intents` agora devolve 502 quando o MP falha, e 502 não está no contrato congelado — ver `ARMADILHAS-OPERACAO.md` §1 H7 | pagamentos | — |
 | ~~Consumers de evento não existiam em produção~~ **RESOLVIDO NO GIT** (PR #45, 21/08/2026): 4 consumers + worker Huey + healthchecks no `infra/docker-compose.yml`, e o deploy descobre os auxiliares do próprio compose. ~~MAS o compose não chega à VPS por pipeline nenhum~~ **mecanizado** (despacho 04): `.github/workflows/deploy-infra.yml` sincroniza compose+traefik para `/opt/plataforma/` a cada merge na `main` que os toque — o merge do próprio PR dispara a primeira sincronização, que entrega estes consumers; **provado em 22/08/2026** (H11 ✅): run 32538231311 verde, `docker compose ps` com os 16 serviços em `running` — células `healthy`, consumers e worker Huey no ar em produção. Dois remendos moram no compose até as células serem corrigidas (H10: healthcheck TCP do checkout, bootstrap Huey da mensageria) | infra | — |
 | Dedup de evento commitava ANTES do efeito — **RESOLVIDO em 3 células** (alunos PR #43, leads PR #46, mensageria PR #47; lição em `ARMADILHAS.md` §4.12). O consumer do checkout não tinha o bug (idempotência por estado, sem `EventoProcessado`) | alunos, leads, mensageria | — |
 | **`checkout` NÃO publica `pedido.criado` — ninguém faz o relay** | checkout | `apps/pedidos/emitir.py` só grava a linha na outbox; não há `on_commit`, `xadd`, `config/huey.py` nem `tasks.py` na célula. O evento nasce e **fica parado no banco** — não chega ao Redis Streams nem a consumidor nenhum. Não confunda com o caso de pagamentos (linha abaixo): aqui não é "falta a rede de segurança", é "falta o relay inteiro" |

@@ -297,7 +297,7 @@ def executar(
             # Portão nunca espera teclado: stdin fechado por construção. Sem
             # isto, um subprocesso que resolva perguntar algo (ex.: `gh pr
             # merge` com TTY) ficaria travado até o timeout — e com stdin
-            # fechado o `gh` nem pergunta, age direto (ARMADILHAS §5.9.1/H6).
+            # fechado o `gh` nem pergunta, age direto (docs/historico/RESOLVIDAS.md §5.9.1/H6).
             stdin=subprocess.DEVNULL,
             capture_output=True,
             text=True,

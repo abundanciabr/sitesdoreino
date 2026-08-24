@@ -211,7 +211,7 @@ Enquanto isso não mudar, o estado honesto é: **o merge não é barrável; o de
 "decisão de custo consciente enquanto o projeto não fatura". Está incorreto —
 é **impossibilidade de pagamento**: o cartão do mantenedor não é aceito pelo
 GitHub e não há outra forma disponível. Não recomende "assine o Pro" — essa
-porta está fechada. Ver ARMADILHAS §1 H3.)
+porta está fechada. Ver ARMADILHAS-OPERACAO.md §1 H3.)
 
 Os degraus grátis da Escada da Imposição (RITOS.md §2), em ordem de força:
 

@@ -3,7 +3,7 @@
 # célula tocada ⇒ pull+up SÓ dela na VPS. Rollback = *_TAG anterior (RITOS §4).
 #
 # O PORTÃO (docs/decisoes/PROJETO-PORTAO-DEPLOY.md) é o required check que o
-# GitHub não vende (ARMADILHAS §1 H3): sem branch protection, o merge não é
+# GitHub não vende (ARMADILHAS-OPERACAO.md §1 H3): sem branch protection, o merge não é
 # barrável — o DEPLOY é. Antes de qualquer build (push :main já armaria o
 # próximo `up` na VPS), ci/portao_de_deploy.py prova que ci-celula, alarme-main
 # e as muralhas do PR de origem estão VERDES; skipped não é verde; sem

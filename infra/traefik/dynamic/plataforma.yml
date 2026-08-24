@@ -83,7 +83,7 @@ http:
       #   renovação, ~24h). O empurrão: qualquer mudança neste arquivo (até
       #   comentário) faz o deploy-infra recriar o traefik ⇒ tentativa nova
       #   na hora. Medido em 23/08/2026, no primeiro cert do meshcraft.top.
-      # ATENÇÃO (ARMADILHAS §1/H15): domínio direto MORRE se a VPS um dia só
+      # ATENÇÃO (ARMADILHAS-OPERACAO.md §1/H15): domínio direto MORRE se a VPS um dia só
       # aceitar web das faixas do Cloudflare — confira esta lista antes de
       # aplicar aquele endurecimento.
       tls:

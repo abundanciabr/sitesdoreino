@@ -1,6 +1,6 @@
 """PORTÃO DE DEPLOY — o required check que o GitHub não vende.
 
-[INV-CI01] Sem branch protection (ARMADILHAS §1 H3, impossibilidade de
+[INV-CI01] Sem branch protection (ARMADILHAS-OPERACAO.md §1 H3, impossibilidade de
 pagamento), TODO merge acontece — inclusive com checks vermelhos. O que este
 portão garante é que o DEPLOY não acontece: antes de qualquer build ou SSH,
 ele prova que os checks do commit estavam verdes. Especificação completa:

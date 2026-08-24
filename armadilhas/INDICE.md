@@ -1,0 +1,89 @@
+<!-- GERADO por `python ci/indice_de_armadilhas.py`. NÃO EDITE À MÃO:
+     a próxima regeneração apaga o que você escrever aqui. Para mudar uma linha,
+     mude a entrada correspondente em armadilhas/ e regenere. -->
+
+# ÍNDICE DAS ARMADILHAS — uma linha por entrada
+
+> **Como usar:** dê Ctrl+F pela **mensagem de erro crua** que você está vendo (ou
+> pela tecnologia: `django-ninja`, `respx`, `middleware`, `mypy`, `traefik`,
+> `stash`…). Achou a linha? Abra **só aquele arquivo**. Ler a pasta inteira
+> desfaz o motivo de ela existir.
+>
+> **Entrada nova ao terminar o despacho:** crie
+> `armadilhas/NNN-slug.md` (NNN = próximo número livre), comece pelo **sintoma
+> concreto** e rode `python ci/indice_de_armadilhas.py`. Nunca edite este
+> arquivo à mão, e nunca acrescente ao fim de um arquivo alheio — arquivo novo
+> por entrada é o que faz duas sessões paralelas pararem de colidir.
+>
+> `§ antigo` é o número que a entrada tinha no `ARMADILHAS.md` monolítico, até
+> 23/08/2026 — é por ele que as referências antigas (`ARMADILHAS §5.3`) ainda
+> resolvem. Entrada nova não precisa de um.
+>
+> Resolvidas (histórico, fora da dieta do agente): `docs/historico/RESOLVIDAS.md`.
+> O que é do humano (§1 precisa-de-você, como mergear, painéis, dívidas abertas):
+> `ARMADILHAS-OPERACAO.md`.
+
+| # | Sintoma / mensagem de erro (chave de busca) | § antigo |
+|---|---|---|
+| [003](003-unicodeencodeerror-acento-virando-lixo-na-saida-de.md) | `UnicodeEncodeError` / acento virando lixo na saída de comando Django — saída com emoji ou acento quebra no terminal (cp1252). | §3.3 |
+| [004](004-docker-desktop-frio-no-meio-do-trabalho.md) | Docker Desktop frio no meio do trabalho — 1–2 minutos parado esperando o Docker subir, bem quando você ia rodar os testes. | §3.4 |
+| [005](005-black-local-reformata-o-que-o-ci-aprovaria-e-vice.md) | `black` local reformata o que o CI aprovaria (e vice-versa) — `black --check` verde local, vermelho no CI (ou o contrário). | §3.5 |
+| [006](006-arquivo-escrito-no-bash-nao-e-encontrado-pelo.md) | Arquivo escrito no bash não é encontrado pelo Python em seguida — `> /tmp/x.json` funciona no bash, e o `open("/tmp/x.json")` do Python logo depois estoura `FileNotFoundError: '\tmp\x.json'`. | §3.6 |
+| [007](007-path-c-users-dentro-de-codigo-python-nao-resolve.md) | Path `/c/Users/...` dentro de código Python não resolve — o mesmo caminho funciona como argumento no bash e falha dentro do script. | §3.7 |
+| [008](008-venv-dentro-do-worktree-e-risco-de-commit-acidental.md) | `.venv` dentro do worktree é risco de commit acidental | §3.8 |
+| [009](009-subir-a-celula-inteira-so-para-rodar-teste.md) | Subir a célula inteira só para rodar teste | §3.9 |
+| [010](010-shutil-which-bash-no-windows-acha-o-wsl-nao-o-git.md) | `shutil.which("bash")` no Windows acha o WSL, não o Git Bash — `<3>WSL (…) ERROR: CreateProcessCommon:800: execvpe(/bin/bash) failed: No such file or directory` ao rodar um `.sh` do repositório a partir de Python. | §3.10 |
+| [011](011-psql-num-script-de-docker-entrypoint-initdb-d.md) | `psql` num script de `docker-entrypoint-initdb.d/` conecta no banco errado — `FATAL: database "dev" does not exist` dentro do log do container Postgres, mesmo com o container saudável e o `POSTGRES_DB` configurado. | §3.11 |
+| [012](012-crlf-num-sh-comitado-a-partir-do-windows-quebra.md) | CRLF num `.sh` comitado a partir do Windows quebra dentro de container Linux — nada quebra localmente (o Git Bash tolera), mas o mesmo script rodando dentro de um container Linux (ou clonado num runner Linux) falha com… | §3.12 |
+| [013](013-dois-containers-rodando-migrate-noinput-ao-mesmo.md) | Dois containers rodando `migrate --noinput` ao mesmo tempo, banco novo — `django.db.utils.IntegrityError: duplicate key value violates unique constraint "pg_type_typname_nsp_index"` / `MigrationSchemaMissing: Unable to… | §3.13 |
+| [014](014-portao-roda-com-o-python-errado-porque-o-path.md) | Portão roda com o Python ERRADO porque o PATH estava em formato Windows — `bash ci/cross-smoke.sh` fica **verde**, mas o traceback/warning na saída mostra `C:\Users\...\Programs\Python\Python312\Lib\site-packages\...`… | §3.14 |
+| [015](015-trocar-por-mv-rm-um-arquivo-ou-diretorio-bind.md) | Trocar por `mv`/`rm` um arquivo ou diretório bind-mounted não muda nada no container que já roda — você substitui, no servidor, um arquivo ou diretório que o compose monta por bind (`./traefik/traefik.yml:...:ro`), roda… | §3.15 |
+| [016](016-sed-no-sshd-config-nao-desliga-login-por-senha-no.md) | `sed` no `sshd_config` não desliga login por senha no Ubuntu 24.04 — o cloud-init religa por baixo — o provisionamento rodou `sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config` e… | §3.16 |
+| [017](017-cloudflare-na-frente-do-dominio-deploy-morre-em.md) | Cloudflare na frente do domínio ⇒ deploy morre em `dial tcp <host>:22: i/o timeout` — `deploy-celula`/`deploy-infra` falham na etapa de SSH com `dial tcp ***:22: i/o timeout` — com runs verdes NO MESMO DIA, minutos… | §3.17 |
+| [018](018-traefik-serve-traefik-default-cert-para-sempre.md) | Traefik serve `TRAEFIK DEFAULT CERT` para sempre depois de UMA falha do ACME — domínio no Modo B (Let's Encrypt direto, `certResolver: le` + `tls.domains`), DNS já apontando para a VPS — conferido no **autoritativo**… | §3.18 |
+| [019](019-a-conferencia-de-crlf-do-3-12-grep-c-r-da-falso.md) | A conferência de CRLF do §3.12 (`grep -c $'\r'`) dá FALSO-POSITIVO no Git Bash desta máquina — `git show :ci/orcamento-de-mudanca.sh \| grep -c $'\r'` responde `88` num arquivo cujo blob tem **zero** bytes CR (provado… | §3.19 |
+| [020](020-attributeerror-doesnotexist-attributeerror-objects.md) | `AttributeError: DoesNotExist` / `AttributeError: objects` — `Session.objects` estoura `AttributeError: objects`, ou `except Model.DoesNotExist` estoura `AttributeError: DoesNotExist` — vindo de dentro do pydantic… | §4.1 |
+| [021](021-configerror-schema-for-status-201-is-not-set-in.md) | `ConfigError: Schema for status 201 is not set in response` — handler devolve `(201, {...})` e a rota estoura. | §4.2 |
+| [022](022-migrate-nao-encontra-as-migrations-do-app-novo.md) | `migrate` não encontra as migrations do app novo — app novo com modelo, migration criada, e o `migrate` ignora. | §4.3 |
+| [023](023-queryset-update-fura-o-guarda-escrito-em-model-save.md) | `QuerySet.update()` fura o guarda escrito em `Model.save()` — o teste de imutabilidade passa por `save()` mas o campo muda via `Model.objects.filter(...).update(campo=...)`. | §4.4 |
+| [024](024-middleware-intercepta-healthz-e-derruba-a-sonda.md) | Middleware intercepta `/healthz` e derruba a sonda — `/healthz` passa a devolver 404 depois de instalar o middleware CONV-SITE; o teste de fumaça quebra e, em produção, o container ficaria "unhealthy". | §4.5 |
+| [025](025-middleware-roda-antes-da-autenticacao-do-django.md) | Middleware roda ANTES da autenticação do django-ninja — teste que espera 401 (sem token) recebe 404, ou tenta uma conexão HTTP real e estoura. | §4.6 |
+| [026](026-cache-de-modulo-vaza-entre-testes.md) | Cache de módulo vaza entre testes — teste passa sozinho e falha na suíte (ou o contrário), envolvendo resolução de site/host. | §4.7 |
+| [027](027-integrityerror-capturado-sem-savepoint-quebra-a.md) | `IntegrityError` capturado sem savepoint quebra a transação do teste inteira — um `except IntegrityError:` que deveria simplesmente ignorar uma duplicata (dedup por `unique=True`, padrão da Receita R4) funciona isolado… | §4.8 |
+| [028](028-cliente-de-provedor-externo-que-so-levanta-em-5xx.md) | Cliente de provedor externo que só levanta em 5xx **falha aberto** — a API responde **201/200 de sucesso** com os campos do recurso vazios (`"qr_code": ""`, `provider_payment_id=""`). Nada nos logs, nenhum teste… | §4.9 |
+| [029](029-healthz-responde-404-500-em-producao-mas-200-em-dev.md) | `/healthz` responde 404/500 em produção, mas 200 em dev — `SCRIPT_NAME` + Django 5.0 — a mesma imagem que devolve `200 {"status": "ok"}` em `GET /healthz` localmente devolve **404** (ou 500, se a resolução de site fizer… | §4.10 |
+| [030](030-worker-do-huey-nao-executa-nada-taskregistry-vazio.md) | Worker do Huey não executa nada: `TaskRegistry` vazio ou `AppRegistryNotReady` — o `huey_consumer.py` sobe e loga `The following commands are available:` **sem nada listado** — e nenhuma task jamais roda. Trocando o… | §4.11 |
+| [031](031-marcar-o-evento-como-processado-antes-de-aplicar-o.md) | Marcar o evento como processado ANTES de aplicar o efeito descarta reentrega em silêncio — nenhum — e é esse o problema. Um pagamento aprovado não vira matrícula, uma timeline fica com buraco, um e-mail de boas-vindas… | §4.12 |
+| [032](032-site-recem-cadastrado-responde-404-na-raiz-e-pode.md) | Site recém-cadastrado responde 404 na raiz — e pode SEGUIR 404 por 60s depois do cadastro — o site novo está cadastrado no catálogo (o `Site` existe, `active=True`), o DNS aponta certo, e `https://<dominio>/` responde… | §4.13 |
+| [033](033-mudar-um-template-django-preservando-saida-byte.md) | Mudar um template Django preservando saída BYTE-IDÊNTICA: as tags coladas, não em linha própria — um teste de regressão que compara a página renderizada byte a byte quebra com uma linha em branco a mais (ou um… | §4.14 |
+| [034](034-como-rodar-os-portoes-sem-adivinhar-comece-por-aqui.md) | Como rodar os portões sem adivinhar (comece por aqui) | §5.0 |
+| [035](035-orcamento-n-arquivos-sem-a-label-arquitetural.md) | `❌ ORÇAMENTO: N arquivos sem a label 'arquitetural'` — o workflow `muralhas` reprova o PR. | §5.1 |
+| [036](036-muralha-este-pr-toca-n-celulas.md) | `❌ MURALHA: este PR toca N células` | §5.2 |
+| [037](037-ci-vermelho-por-variavel-de-ambiente-que-existe-so.md) | CI vermelho por variável de ambiente que existe só na sua máquina — `make ci` verde local, `ImproperlyConfigured: variável obrigatória ausente: X` no CI. | §5.3 |
+| [038](038-lint-imports-reprova-a-rota-que-a-propria.md) | `lint-imports` reprova a rota que a própria constituição manda usar — contrato `forbidden` do import-linter acusa `methods.pix -> core.gateway -> providers...` — exatamente o caminho aprovado. | §5.4 |
+| [039](039-wrong-expression-passed-to-m-no-cross-smoke.md) | `Wrong expression passed to '-m'` no cross-smoke | §5.5 |
+| [040](040-portao-de-ci-que-fica-verde-porque-nao-conseguiu.md) | Portão de CI que fica verde porque *não conseguiu* medir — um portão imprime `✅ ... OK` (exit 0) e, logo acima, o `git`/`python` gritou `fatal:` ou `command not found`. | §5.6 |
+| [041](041-o-freeze-passa-verde-e-a-mudanca-de-api-e-real.md) | O freeze passa verde e a mudança de API é real — `contrato/<celula>  PASS`, e mesmo assim o comportamento público mudou. | §5.7 |
+| [045](045-o-exit-de-um-pipeline-e-do-ultimo-comando-veredito.md) | O exit de um pipeline é do ÚLTIMO comando — veredito de run nunca vem de `\| tail` — `gh run watch <id> --exit-status \| tail -25` termina com exit 0 e o agente anuncia o run como verde — mas o run tinha **FALHADO**.… | §5.10 |
+| [047](047-inputs-dentro-do-script-da-ssh-action-e-injecao-de.md) | `${{ inputs.* }}` dentro do `script:` da ssh-action é injeção de comando na VPS — nenhum — e é esse o problema. O workflow roda, o deploy funciona, e um input de texto livre como `motivo='urgente"; curl atacante \| sh… | §5.12 |
+| [048](048-run-algo-coisa-sem-aspas-e-scannererror-mapping.md) | `run: algo: coisa` sem aspas é `ScannerError: mapping values are not allowed here` — `yaml.scanner.ScannerError: mapping values are not allowed here` apontando para uma linha de `run:` perfeitamente válida como shell… | §5.13 |
+| [049](049-rollback-tem-uma-janela-de-30s-de-502-nao-e-sinal.md) | Rollback tem uma janela de ~30s de 502 — não é sinal de que falhou — você dispara o `rollback.yml`, roda `curl` no site logo em seguida e recebe **502**. A tentação é concluir que o rollback quebrou a produção e… | §5.14 |
+| [050](050-portao-que-exige-revisao-humana-vira-carimbo.md) | Portão que exige "revisão humana" vira carimbo perpétuo se não expirar no diff — um campo tipo `_revisado_humano: "Fulano 2026-08-23"` fica verde para sempre — o texto é reescrito em dezembro e a declaração de agosto… | §5.15 |
+| [051](051-um-merge-de-infra-desfaz-um-rollback-ativo-em.md) | Um merge de `infra/` DESFAZ um rollback ativo — em silencio, sem alarme — voce dispara o `rollback.yml`, a producao volta para a versao boa e o incidente para. Minutos ou horas depois, alguem mergeia um PR que toca… | §5.16 |
+| [052](052-evidencia-vermelho-verde-sem-criar-branch.md) | Evidência vermelho→verde sem criar branch descartável | §6.1 |
+| [053](053-em-lote-paralelo-git-stash-pop-pode-devolver-o.md) | Em LOTE paralelo, `git stash pop` pode devolver o stash de OUTRO agente — o `git stash pop` do protocolo acima devolve arquivos de OUTRA célula (e o seu trabalho "some"), sem erro nenhum. Medido em 22/08/2026, no… | §6.1.1 |
+| [054](054-respx-models-allmockedassertionerror-not-mocked.md) | `respx.models.AllMockedAssertionError: ... not mocked!` — o teste do caminho "recurso inexistente" estoura em vez de receber 404. | §6.2 |
+| [055](055-comparacao-de-data-hora-falha-por-3-horas.md) | Comparação de data/hora falha por 3 horas — o mesmo instante "não bate" antes vs. depois de um `save()`+`fetch`. | §6.3 |
+| [056](056-teste-guarda-e-intocavel.md) | Teste-guarda é intocável | §6.4 |
+| [057](057-transaction-on-commit-nunca-dispara-no-teste.md) | `transaction.on_commit(...)` nunca dispara no teste — o código chama `on_commit` (relay de outbox, por exemplo) e o teste jura que nada foi publicado. | §6.5 |
+| [058](058-patch-object-como-decorator-de-funcao-auxiliar.md) | `@patch.object` como decorator de função auxiliar embaralha os argumentos — `AttributeError: 'str' object has no attribute 'post'` — silencioso até quebrar longe da causa. | §6.6 |
+| [059](059-mypy-strict-redis-o-ignore-vai-na-chamada-nao-no.md) | `mypy --strict` + `redis`: o ignore vai na chamada, não no import — `# type: ignore[import-untyped]` no `import redis` vira erro de "unused ignore"; sem ele, `redis.from_url(...)` acusa `no-untyped-call`. | §6.7 |
+| [060](060-mypy-strict-django-test-client-com-headers.md) | `mypy --strict` + `django.test.Client` com headers desempacotados — `Argument 4 ... incompatible type "**dict[str, str]"; expected "bool"`. | §6.8 |
+| [061](061-patch-object-no-metodo-do-cliente-esconde-a-camada.md) | `patch.object` no método do cliente esconde a camada onde o bug mora — suíte inteira verde, cobertura aparentemente boa — e um bug de integração vivo há semanas exatamente no cliente HTTP. | §6.9 |
+| [066](066-agents-celula-md-diz-se-a-celula-chama-outra-api.md) | `AGENTS.<celula>.md` diz se a célula chama outra API — leia Fronteiras E Comunicação juntas — a receita genérica (`CAMINHO-DOURADO.md` §3, CONV-SITE) manda toda célula pública chamar a API do catálogo para resolver… | §7.5 |
+| [067](067-fase-e-red-team-golpes-paralelos-colidem-na-mesma.md) | Fase E (red-team): golpes paralelos colidem na MESMA linha da tabela — `git push origin main` (ou merge de um PR de docs) recusa com "non-fast-forward", e o `git merge`/`rebase` seguinte estoura `CONFLICT (content)` bem… | §7.6 |
+| [068](068-lote-outra-sessao-escrevendo-no-seu-worktree-git.md) | LOTE: outra sessão escrevendo no SEU worktree — `git stash pop` devolve o arquivo SEM a sua edição — durante um lote paralelo, `git status` no seu worktree mostra arquivos de OUTRA célula modificados (que você nunca… | §7.7 |
+| [069](069-agente-delegado-nasce-num-worktree-diferente-do-que.md) | Agente delegado nasce num worktree diferente do que o despacho manda — as ferramentas de edição recusam mecanicamente qualquer caminho fora de um worktree que o despacho nunca mencionou (`.claude/worktrees/agent-<id>`)… | §8.1 |
+| [070](070-heredoc-dentro-de-heredoc-com-o-mesmo-delimitador.md) | Heredoc dentro de heredoc com o mesmo delimitador — `SyntaxError: unterminated triple-quoted string literal` no Python, seguido de `bash: syntax error near unexpected token`. | §8.2 |
+
+**60 entradas.**

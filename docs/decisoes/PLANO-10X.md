@@ -6,7 +6,7 @@
 > e duas varreduras de código linha a linha (incluindo os PRs #43–#48).
 >
 > **O que este documento NÃO é:** uma lista de tudo que dá para melhorar. Isso já
-> existe (`SINTESE-E-PLANO.md`, `ARMADILHAS.md` §1/§9). Um 10x não vem de vinte
+> existe (`SINTESE-E-PLANO.md`, `ARMADILHAS-OPERACAO.md` §1/§9). Um 10x não vem de vinte
 > melhorias de 10% — vem de poucas alavancas onde a linha de base medida está uma
 > ordem de grandeza longe do possível. Encontramos **cinco**. Cada uma traz: a linha
 > de base MEDIDA, o alvo, os movimentos (dimensionados como despachos), e o risco.

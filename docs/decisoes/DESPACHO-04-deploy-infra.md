@@ -2,7 +2,7 @@
 
 > **Copie tudo abaixo da linha e cole para o agente.**
 > Criado em 21/08/2026 · merge: **humano** (toca `.github/`, CODEOWNERS)
-> Resolve o item **H11** de `ARMADILHAS.md` §1 e substitui o passo manual H0.1 do
+> Resolve o item **H11** de `ARMADILHAS-OPERACAO.md` §1 e substitui o passo manual H0.1 do
 > painel 10X: depois deste despacho, mudou infra no Git ⇒ o robô entrega na VPS.
 
 ---
@@ -11,7 +11,7 @@
 
 ÁREA: `.github/` (+ docs) — nenhuma célula · WORKTREE: wt-infra-sync
 
-ANTES: leia `ARMADILHAS.md` §1 (H11 — o atrito que este despacho mata), o workflow
+ANTES: leia `ARMADILHAS-OPERACAO.md` §1 (H11 — o atrito que este despacho mata), o workflow
 `.github/workflows/deploy-celula.yml` INTEIRO (é o padrão de SSH/secrets a seguir),
 `infra/provisionamento-vps.sh` (a lista final diz o que a VPS consome),
 `INVARIANTES.md` [INV-CI01] (semântica fail-closed) e `CONSTITUICAO.md` Lei 5.

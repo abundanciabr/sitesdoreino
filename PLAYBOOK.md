@@ -25,7 +25,10 @@ quebráveis, e um raio de explosão de qualquer falha = **1 célula**.
 
 | Documento | Leia quando | O que resolve |
 |---|---|---|
-| **`ARMADILHAS.md`** | **Sempre, primeiro.** | Sintoma → causa → solução do que já custou tempo aqui. §1 lista o que só o mantenedor resolve. |
+| **`ARMADILHAS.md`** | **Sempre, primeiro** — é curto: a regra de uso + a partida rápida (§2). | Manda você para o índice. Desde 23/08/2026 o conteúdo é **uma entrada por arquivo** em `armadilhas/`, não um monólito. |
+| **`armadilhas/INDICE.md`** | **Sempre, junto com o de cima.** | Uma linha por armadilha, com a mensagem de erro crua. Ctrl+F pelo seu erro e **abra só a entrada que casar** — nunca a pasta inteira. |
+| `ARMADILHAS-OPERACAO.md` | Maestro de lote, quem vai mergear, quem fala com o humano. | §1 o que só o mantenedor resolve · como se mergeia (§5.8–§5.9) · painéis (§7.1–§7.4) · §9 dívidas abertas. |
+| `docs/historico/RESOLVIDAS.md` | Só quando precisar do histórico de um item já encerrado. | Armadilhas resolvidas — fora da dieta de um despacho normal. |
 | `CLAUDE.md` | Sempre (Claude Code lê sozinho; outras ferramentas, leia à mão). | Instruções de operação específicas deste harness — painel obrigatório, etc. |
 | `CONSTITUICAO.md` | Antes de qualquer código. | As leis que não se negociam (4 muralhas, escada da imposição). |
 | `constituicoes/AGENTS.<celula>.md` | Antes de tocar UMA célula específica. | Jurisdição, fronteiras, o que a célula expõe/consome/emite. |
@@ -40,7 +43,8 @@ quebráveis, e um raio de explosão de qualquer falha = **1 célula**.
 | `arquivos/*.html` | **Provavelmente você não consegue ler isto.** | Painéis para o humano (não-técnico). `arquivos/` está no `.gitignore` — não existe dentro de um worktree de célula. Se você é root window e consegue ver, é conveniência, nunca fonte de lei. |
 
 **Ordem de leitura para uma sessão nova, root window, sem tarefa ainda definida:**
-este arquivo → `ARMADILHAS.md` §1 e §2 → `CONSTITUICAO.md` → `RITOS.md` §1 →
+este arquivo → `ARMADILHAS.md` (§2 partida rápida) + `armadilhas/INDICE.md` →
+`ARMADILHAS-OPERACAO.md` §1 → `CONSTITUICAO.md` → `RITOS.md` §1 →
 pergunte ao humano qual é a tarefa, ou veja `git log`/`gh pr list` para inferir
 onde o projeto parou.
 
@@ -62,7 +66,7 @@ gh api repos/abundanciabr/sitesdoreino/branches/main/protection   # ver nota H3 
 ### 2.1 Trabalho executado que não chegou à `main` — confira antes de refazer
 
 Durante a Fase E, mais de uma sessão trabalha no repositório ao mesmo tempo
-(`ARMADILHAS.md` §7.1 e §7.6). Consequência observada em 21/08/2026: **o golpe
+(`ARMADILHAS-OPERACAO.md` §7.1 e `armadilhas/` §7.6). Consequência observada em 21/08/2026: **o golpe
 5 foi executado de verdade e bloqueou** — evidência crua de `lint-imports`
 FAIL→PASS nos dois sentidos, e a confirmação escrita em
 `services/pagamentos/LICOES.md` no commit `a05e085` — mas esse commit vive
@@ -108,7 +112,7 @@ Consequências diretas para qualquer agente:
   (abre issue se a `main` quebrar DEPOIS do fato — alarme, não portão).
 - **Nunca trate um merge ou um push como seguro só porque "o GitHub deixou"** —
   deixar passar é o comportamento esperado enquanto este item não for resolvido.
-  Detalhe completo: `ARMADILHAS.md` §1 item H3, `INVARIANTES.md` (seção
+  Detalhe completo: `ARMADILHAS-OPERACAO.md` §1 item H3, `INVARIANTES.md` (seção
   "A cadeia de merge não está fechada").
 
 **Atrito H6, resolvido em 22/08/2026:** `ci/mergear.py` não usa mais `--yes`
@@ -248,7 +252,9 @@ próprio bug que `ci/contract_freeze.py` foi reescrito para eliminar
 ## 9. Antes de abrir a boca — checklist dos primeiros 5 minutos
 
 1. Este arquivo, inteiro.
-2. `ARMADILHAS.md` §1 (o que só o humano resolve) e §2 (partida rápida).
+2. `ARMADILHAS.md` §2 (partida rápida) + `armadilhas/INDICE.md` (o mapa das
+   armadilhas — abra só o que casar); `ARMADILHAS-OPERACAO.md` §1 se for maestro
+   de lote ou for mergear (o que só o humano resolve).
 3. Se a tarefa já é conhecida: `constituicoes/AGENTS.<celula>.md` +
    `services/<celula>/LICOES.md` (se existir).
 4. Rode o baseline (`make ci`) ANTES de tocar qualquer arquivo. Vermelho ⇒

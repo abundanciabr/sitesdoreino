@@ -228,7 +228,7 @@ documento de decisão aprovado no mesmo dia):
     qualquer coisa, e diga no PR quais arquivos leu". Resultado: três divergências entre
     o plano aprovado e a implementação — inclusive uma **ativa e perigosa** (o marcador
     `_juridico` que o plano manda usar reprova o catálogo e, como o validador roda no
-    boot, derruba a célula — ARMADILHAS §9). Sem essa exigência, a receita teria
+    boot, derruba a célula — ARMADILHAS-OPERACAO.md §9). Sem essa exigência, a receita teria
     descrito um sistema imaginário e o próximo agente executaria o comando que quebra.
 13. **Documento aprovado não é código — audite-o no fim do lote.** Um plano validado
     pelo mantenedor vira *lei* para os agentes seguintes, e eles não desconfiam dele.
@@ -251,7 +251,8 @@ sessão mergeando na mesma `main`):
 
 15. **Dívida que o lote anterior declarou vira o lote seguinte — e sai barata.** Os dois
     despachos aqui nasceram de pendências que o Lote 3 registrou em vez de contornar
-    (ARMADILHAS §5.11 e a linha do `_juridico` na §9). Porque a dívida estava escrita
+    (`docs/historico/RESOLVIDAS.md` §5.11 e a linha do `_juridico` na §9 do
+    `ARMADILHAS-OPERACAO.md`). Porque a dívida estava escrita
     com sintoma, causa e solução, os briefs saíram quase prontos e os dois despachos
     couberam no orçamento sem investigação. **Corolário:** o custo de registrar uma
     dívida bem descrita é pago pelo despacho que a fecha, não pelo que a descobriu.
@@ -293,4 +294,5 @@ sessão mergeando na mesma `main`):
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
 CLAUDE.md (merge pelo agente; deploy pós-merge), CAMINHO-DOURADO.md §2 (template de
-brief), PLANO-10X (Alavancas 1, 2 e 5; anti-metas), ARMADILHAS (§5.9, §5.10, §7.6, §8.1).*
+brief), PLANO-10X (Alavancas 1, 2 e 5; anti-metas), ARMADILHAS-OPERACAO.md (§5.9 — como
+se mergeia) e `armadilhas/` (§5.10, §7.6, §8.1 — abra pelo `armadilhas/INDICE.md`).*

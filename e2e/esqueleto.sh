@@ -10,7 +10,7 @@
 #
 # Cada elo imprime ✅ ou ❌. Qualquer ❌ falha o script (exit != 0) — inclusive
 # quando o motivo é uma célula ainda não implementada (ver o aviso "ELOS
-# CONHECIDOS EM ABERTO" no fim deste arquivo e ARMADILHAS.md §9): honestidade
+# CONHECIDOS EM ABERTO" no fim deste arquivo e ARMADILHAS-OPERACAO.md §9): honestidade
 # sobre o estado real do caminho é o objetivo, não um "verde" fabricado.
 #
 # Uso:

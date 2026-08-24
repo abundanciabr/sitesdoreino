@@ -62,7 +62,7 @@ que participe do caminho; (2) manual na VPS com cartão APRO — uma vez por mar
    confirmação de cartão — não há caminho público para pagar um cartão hoje (o
    Card Payment Brick nunca foi montado) — e (b) do mantenedor registrar o
    webhook no painel do MP e pôr o secret na VPS (INV-P8/Lei 5). Mapa completo
-   em `RUNBOOK-FASE-D.md` §5.1–5.3 e `ARMADILHAS.md` §1 H16. Volta quando for
+   em `RUNBOOK-FASE-D.md` §5.1–5.3 e `ARMADILHAS-OPERACAO.md` §1 H16. Volta quando for
    construir o site de vendas.
 3. ✅ **FEITO em 23/08/2026** — Rollback drill executado e cronometrado:
    **76s** do "decidi" ao "voltou", contra os 300s do critério. Não foi por SSH:
