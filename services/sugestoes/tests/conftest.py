@@ -21,11 +21,14 @@ Os endereços de `alunos` são de mentira (`alunos.teste`), no mesmo espírito d
 `conftest.py` do `checkout`: não existe host real por trás deles.
 """
 
+import json
+from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pytest
 import respx
+from django.urls import reverse
 
 from apps.core.clients import GoogleOAuth
 from apps.sugestoes.models import Categoria, Identidade, Quadro, Sugestao
@@ -325,3 +328,123 @@ def entrar_como_staff(rede, lista_da_staff, db):
 def equipe(entrar_como_staff):
     """Alguém da equipe já dentro — o ponto de partida de todo guarda do EVO-13."""
     return entrar_como_staff()
+
+
+# ---------------------------------------------------------------------------
+# Os eventos (EVO-20) — o fio e os quatro fatos, provocados pela jornada REAL
+# ---------------------------------------------------------------------------
+
+
+class Fio:
+    """O transporte do relay sob controle do teste: o que saiu no `xadd`.
+
+    O Redis é dublado no transporte (`redis.from_url`), e não com um servidor
+    de verdade, pelo mesmo motivo que Google e `alunos` são dublados acima: uma
+    suíte que precisa de container é uma suíte que fica vermelha por motivo
+    alheio, e a máquina do mantenedor é Windows. O que se prova aqui é o
+    comportamento do relay e a FORMA do que ele publica — a prova de que o fio
+    de verdade funciona é o roteiro de Redis real do handoff (worker +
+    `XRANGE`), que nenhum teste substitui.
+    """
+
+    def __init__(self) -> None:
+        self.mensagens: list[tuple[str, dict]] = []
+        self.cliente = mock.Mock()
+        self.cliente.xadd.side_effect = self._xadd
+
+    def _xadd(self, stream: str, campos: dict) -> None:
+        # `json.loads` aqui de propósito: se o relay publicar algo que não é
+        # JSON, o teste morre no ponto exato em vez de comparar strings.
+        self.mensagens.append((stream, json.loads(campos["json"])))
+
+    @property
+    def streams(self) -> list[str]:
+        return [stream for stream, _ in self.mensagens]
+
+    def envelopes(self, event: str) -> list[dict]:
+        return [
+            envelope for _, envelope in self.mensagens if envelope["event"] == event
+        ]
+
+    def um_envelope(self, event: str) -> dict:
+        achados = self.envelopes(event)
+        assert len(achados) == 1, f"esperava 1 {event} no fio, vieram {len(achados)}"
+        return achados[0]
+
+
+@pytest.fixture
+def fio(monkeypatch):
+    """O relay publicando contra o dublê — e `REDIS_STREAMS_URL` presente.
+
+    A variável é montada aqui e não na fixture `ambiente` de propósito: o relay
+    a lê NO PONTO DE USO, e um teste que prove "Redis fora do ar" precisa poder
+    tirá-la sem lutar com um `autouse`.
+    """
+    monkeypatch.setenv("REDIS_STREAMS_URL", "redis://redis.teste:6379/0")
+    linha = Fio()
+    monkeypatch.setattr("redis.from_url", lambda *a, **k: linha.cliente)
+    return linha
+
+
+class Caixa:
+    """Os quatro fatos, provocados pelo clique de verdade — nunca pelo ORM.
+
+    Um teste que criasse `Sugestao.objects.create(...)` à mão provaria que o
+    construtor de evento funciona, e continuaria verde no dia em que a view
+    parasse de chamá-lo. O que interessa aqui é o contrário: que a JORNADA
+    emite. Por isso tudo passa pelo `client` da sessão aberta na porta.
+    """
+
+    def __init__(self, aluno, equipe) -> None:
+        self.aluno = aluno
+        self.equipe = equipe
+
+    def publicar(self, titulo: str = "Legendas nas aulas", **extra) -> Sugestao:
+        resposta = self.aluno.client.post(
+            reverse("nova_sugestao"),
+            {
+                "titulo": titulo,
+                "problema": "Assisto no ônibus e não dá para ouvir.",
+                "categoria": "curso",
+                "publicar": "1",
+                **extra,
+            },
+        )
+        assert resposta.status_code == 302, resposta.content
+        return Sugestao.objects.get(titulo=titulo)
+
+    def votar(self, sugestao: Sugestao, quem=None):
+        return (quem or self.aluno).client.post(reverse("votar", args=[sugestao.id]))
+
+    def desvotar(self, sugestao: Sugestao, quem=None):
+        return (quem or self.aluno).client.post(reverse("desvotar", args=[sugestao.id]))
+
+    def mudar_status(self, sugestao: Sugestao, status: str, nota: str = ""):
+        return self.equipe.client.post(
+            reverse("mudar_status", args=[sugestao.id]),
+            {"status": status, "nota": nota},
+        )
+
+    def os_quatro_fatos(self) -> Sugestao:
+        """Publicar, votar, desvotar e mudar o status — nesta ordem.
+
+        A ordem não é decorativa: desvotar depois de votar é o único jeito de o
+        `voto-removido` existir, e mudar o status por último deixa o
+        `HistoricoStatus` contando a história inteira.
+        """
+        sugestao = self.publicar()
+        assert self.votar(sugestao).status_code == 302
+        assert self.desvotar(sugestao).status_code == 302
+        assert (
+            self.mudar_status(
+                sugestao, Sugestao.Status.PLANEJADO, nota="Entra no próximo ciclo."
+            ).status_code
+            == 302
+        )
+        return sugestao
+
+
+@pytest.fixture
+def caixa(dentro, equipe, categoria):
+    """Um aluno e alguém da equipe, os dois já dentro pela porta de verdade."""
+    return Caixa(dentro, equipe)

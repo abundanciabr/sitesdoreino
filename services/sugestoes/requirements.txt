@@ -4,8 +4,18 @@ dj-database-url==2.3.0
 uvicorn==0.32.1
 # Cliente das duas conversas de fora (Google e alunos) — R2, timeout explícito.
 httpx==0.28.1
+# O relay da outbox (EVO-20). As versões são as MESMAS de checkout/quiz/
+# mensageria de propósito: um relay por célula em versão própria seria quatro
+# comportamentos de biblioteca para o mesmo padrão (`armadilhas/071` mostra o
+# preço de divergir — o freeze da raiz roda com o Python global da máquina).
+redis==5.1.1
+huey==2.5.1
 pytest==8.3.4
 pytest-django==4.9.0
+# Só de teste: é com ele que `contracts/eventos/*.json` deixa de ser
+# documentação e passa a reprovar o CI — o envelope real é validado contra o
+# arquivo do contrato, não contra uma cópia do formato dentro do teste.
+jsonschema==4.23.0
 # O dublê de rede dos testes. Sem ele a suíte precisaria de internet, e uma
 # suíte que depende do Google é uma suíte que fica vermelha por motivo alheio.
 respx==0.23.1

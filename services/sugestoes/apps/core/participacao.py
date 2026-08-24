@@ -6,8 +6,11 @@ total de votos com filtro por categoria, busca simples de possíveis duplicatas
 antes de publicar e o limite leve de 3 sugestões por 7 dias.
 
 **O que NÃO mora aqui, e por quê**: mudar status e avaliação interna são do
-staff (EVO-13); merge de sugestão é V1.1 na própria §10; evento/outbox é o
-Lote 2 — a célula ainda não emite nada. E, o mais importante deste arquivo:
+staff (EVO-13); merge de sugestão é V1.1 na própria §10. Desde o EVO-20 a célula
+**emite**: três dos quatro fatos nascem neste arquivo — cada um DENTRO da
+transação do fato que o justifica, via `apps/sugestoes/eventos.py`, com o
+publish registrado em `transaction.on_commit` depois dela. E, o mais importante
+deste arquivo:
 `AvaliacaoInterna` **não é importada nem nomeada em lugar nenhum daqui**. Ela
 guarda a decisão de produto sobre a ideia da pessoa; o jeito de garantir que um
 serializer de aluno nunca a vaze por descuido de campo é o código do aluno não
@@ -35,7 +38,9 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from apps.sugestoes import eventos
 from apps.sugestoes.models import Comentario, Quadro, Sugestao, Voto
+from apps.sugestoes.tasks import relay_apos_commit
 
 from . import sessao as ses
 
@@ -269,14 +274,23 @@ def nova_sugestao(request, ator):
         )
         return render(request, PAGINA_NOVA, contexto, status=429)
 
-    sugestao = Sugestao.objects.create(
-        quadro=quadro,
-        categoria=categoria,
-        autor=ator.identidade,
-        titulo=rascunho["titulo"],
-        problema=rascunho["problema"],
-        solucao_proposta=rascunho["solucao_proposta"],
-    )
+    # [INV-P6] A sugestão e o `sugestao.criada` nascem na MESMA transação: o
+    # evento não pode sobreviver a um rollback, e a sugestão não pode nascer
+    # calada. `emitir()` recusa a escrita se este `atomic` sumir um dia.
+    with transaction.atomic():
+        sugestao = Sugestao.objects.create(
+            quadro=quadro,
+            categoria=categoria,
+            autor=ator.identidade,
+            titulo=rascunho["titulo"],
+            problema=rascunho["problema"],
+            solucao_proposta=rascunho["solucao_proposta"],
+        )
+        eventos.emitir_sugestao_criada(sugestao)
+    # Publica DEPOIS do commit (latência sub-segundo). Redis fora do ar aqui
+    # não muda nada para quem publicou: o evento fica pendente na outbox e a
+    # task periódica do worker o republica.
+    transaction.on_commit(relay_apos_commit)
     return HttpResponseRedirect(reverse("sugestao", args=[sugestao.id]))
 
 
@@ -316,13 +330,31 @@ def votar(request, ator, sugestao_id):
     simultâneos, em que os dois passam pelo SELECT antes de qualquer INSERT.
     O `atomic` aninhado é obrigatório: sem o savepoint, a exceção do Postgres
     envenenaria a transação e a resposta morreria depois do `except`.
+
+    [INV-P6] O `sugestao.voto-adicionado` nasce DENTRO desse mesmo `atomic`, e
+    **só quando uma linha de voto foi de fato criada**: o segundo clique não
+    cria voto e, portanto, não é fato nenhum — emitir ali faria a plataforma
+    contar dois votos onde há um. `total_votos` é contado depois do INSERT,
+    ainda dentro da transação, que é o que o contrato pede ("DEPOIS deste
+    voto").
     """
-    sugestao = get_object_or_404(Sugestao, pk=sugestao_id)
+    sugestao = get_object_or_404(
+        Sugestao.objects.select_related("quadro"), pk=sugestao_id
+    )
+    criado = False
     try:
         with transaction.atomic():
-            Voto.objects.get_or_create(sugestao=sugestao, autor=ator.identidade)
+            _, criado = Voto.objects.get_or_create(
+                sugestao=sugestao, autor=ator.identidade
+            )
+            if criado:
+                eventos.emitir_voto_adicionado(
+                    sugestao=sugestao, autor_id=ator.identidade.id
+                )
     except IntegrityError:
-        pass
+        criado = False
+    if criado:
+        transaction.on_commit(relay_apos_commit)
     return _de_volta(request, sugestao)
 
 
@@ -335,9 +367,23 @@ def desvotar(request, ator, sugestao_id):
     o campo, e há guarda mecânico contra ele nascer
     (`test_voto_nao_tem_campo_de_desvoto_logico`). Desvotar de novo é um
     `delete()` que não acha nada: zero linhas, zero erro.
+
+    [INV-P6] E zero linhas apagadas é zero eventos. O `delete()` devolve quantas
+    linhas saíram, e é essa contagem — não o clique — que decide se houve fato.
+    Emitir no segundo clique faria a plataforma acreditar que alguém tirou um
+    voto que já não existia.
     """
-    sugestao = get_object_or_404(Sugestao, pk=sugestao_id)
-    Voto.objects.filter(sugestao=sugestao, autor=ator.identidade).delete()
+    sugestao = get_object_or_404(
+        Sugestao.objects.select_related("quadro"), pk=sugestao_id
+    )
+    with transaction.atomic():
+        apagados, _ = Voto.objects.filter(
+            sugestao=sugestao, autor=ator.identidade
+        ).delete()
+        if apagados:
+            eventos.emitir_voto_removido(sugestao=sugestao, autor_id=ator.identidade.id)
+    if apagados:
+        transaction.on_commit(relay_apos_commit)
     return _de_volta(request, sugestao)
 
 
