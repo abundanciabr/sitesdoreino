@@ -3,7 +3,7 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
-## O que existe aqui hoje (EVO-10 a EVO-13) — e o que NÃO existe
+## O que existe aqui hoje (EVO-10 a EVO-20) — e o que NÃO existe
 
 Do EVO-10, o esqueleto: `config/` (settings fail-hard, urls, asgi),
 `GET /healthz`, `apps/core`. Do EVO-11, **a camada de dados**:
@@ -15,12 +15,120 @@ guardas de invariante novos. Do EVO-12b, **a participação do aluno**:
 `apps/core/participacao.py`, as três páginas (`quadro`, `nova`, `sugestao`)
 sobre `base_caixa.html`, e cinco guardas de invariante a mais. Do EVO-13, **a
 moderação**: `apps/core/moderacao.py`, as páginas `fila` e `moderar`, e mais
-cinco guardas — o Lote 1 fecha aqui, do lado do comportamento.
+cinco guardas — o Lote 1 fecha aqui, do lado do comportamento. Do **EVO-20**, a
+**emissão**: `apps/sugestoes/eventos.py` (os quatro construtores de `data` +
+`emitir`), `apps/sugestoes/tasks.py` (o relay), `config/huey.py`, o model
+`OutboxEvent` com a migration `0002`, e três arquivos de guarda novos
+(162 → 195 testes).
 
-**Continua não existindo**, e cada um tem despacho próprio: merge de sugestão
-(V1.1 na spec §10), middleware CONV-SITE, `config/api.py` e outbox/eventos
-(Lote 2, EVO-20 — a célula ainda não emite nada) e a tela bonita (EVO-30, Lote
-3). Se você chegou aqui esperando encontrar evento, o despacho é outro.
+**Continua não existindo**, e cada um tem despacho próprio: **consumir** evento
+e o aviso do aluno — o sininho (EVO-21), merge de sugestão (V1.1 na spec §10),
+middleware CONV-SITE, `config/api.py` e a tela bonita (EVO-30, Lote 3).
+
+## A emissão (EVO-20): a Caixa passou a AFIRMAR fatos
+
+Os quatro contratos foram congelados pelo Rito (RITOS §3, PR #128) **antes** de
+existir código que os emitisse — e isso mudou o trabalho: aqui não houve nenhuma
+decisão de formato a tomar, só a de como não divergir do que já era lei.
+
+**1. Um lugar só monta o `data`, e é ele que o guarda mira.** Os quatro
+construtores moram em `apps/sugestoes/eventos.py`; as views chamam e não montam
+dicionário. Se cada ponto de emissão montasse o seu, o dia em que o contrato
+ganhasse um campo seriam quatro lugares para lembrar, e o guarda estaria
+conferindo quatro cópias que envelhecem em ritmos diferentes.
+
+**2. O guarda de contrato LÊ o arquivo de `contracts/eventos/` — nunca uma
+cópia.** `jsonschema` com `Draft202012Validator` + `FormatChecker` (sem o
+`FormatChecker` o `format: uuid` vira anotação decorativa e um `event_id` igual
+a `"abc"` passaria). **E ele morde**: os quatro contratos são
+`additionalProperties: false`, então um `email` a mais no `data` reprova o CI
+nos quatro. É a decisão de privacidade do EVO-01 §3 virando trava mecânica em
+vez de combinado — medido, não suposto: o patch que acrescenta
+`"email": sugestao.autor.email` deixa 4 testes vermelhos.
+
+**3. `emitir()` recusa ser chamada fora de `transaction.atomic()`.** Lei 1: em
+vez de confiar que todo ponto de emissão futuro se lembre do `atomic`, a própria
+função levanta `EventoForaDaTransacao`. O guarda disso precisa de
+`django_db(transaction=True)` — no `django_db` padrão TODO teste já roda dentro
+de um atomic e a recusa nunca dispararia (é a `armadilhas/057` pelo avesso).
+
+**4. A metade do INV-P6 que quase ninguém escreve.** "Rollback não deixa evento
+órfão" é a metade fácil, e ela continua verde mesmo se alguém mover a emissão
+para DEPOIS do `with`. A metade que pega esse erro é a inversa: **emissão que
+falha desfaz o fato**. `tests/test_inv_outbox_transacional.py` a varre sobre os
+quatro pontos, e é ela que fica vermelha (4 testes) quando a emissão sai de
+dentro do `atomic`.
+
+**5. Emite-se o FATO, não o clique.** `votar` só emite quando o `get_or_create`
+devolveu `criado=True`; `desvotar` só quando o `delete()` devolveu contagem > 0.
+Sem isso, o segundo clique faria a plataforma contar dois votos onde há um, e o
+`total_votos` do evento passaria a divergir da contagem do banco.
+
+**6. `nota` ausente ≠ `nota` vazia.** O contrato tem `nota` como opcional em
+`status-alterado`; mandar `""` obrigaria todo consumidor a distinguir "sem
+justificativa" de "justificativa vazia", que são dois nomes para a mesma coisa.
+O campo só entra quando existe.
+
+## O guarda de UUID ganhou UMA exceção — e ela é derivada do contrato
+
+`test_os_ids_inter_celula_sao_texto_opaco_e_nao_uuid` proibia **qualquer**
+`UUIDField` nos models desta célula. `OutboxEvent.event_id` colide com isso de
+frente — e a colisão é aparente, não real: o guarda fala de **ids inter-célula
+de domínio** (`site_id`, `produto_id`, `Identidade.id`), e `event_id` é o id do
+**envelope**, que os quatro contratos congelados pedem em `format: uuid`, como
+pagamentos, checkout e quiz já fazem há meses.
+
+A saída **não** foi transformar o campo em `CharField` para o guarda calar (isso
+faria o outbox desta célula divergir do padrão provado em produção, que o
+despacho manda copiar). Foi estreitar o guarda com uma exceção nominal — e,
+para que ela não envelheça em silêncio, um teste novo
+(`test_a_excecao_do_event_id_e_o_que_o_contrato_congelado_pede`) **lê os quatro
+`.json`** e cai se algum deixar de pedir `format: uuid`. A exceção só se
+sustenta enquanto o contrato a justificar.
+
+Regra que vale para o próximo: **guarda que colide com contrato congelado não
+se afrouxa nem se contorna — se ESTREITA, com a exceção derivada da lei que a
+justifica.** Exceção escrita à mão é uma linha que alguém pôs um dia para o CI
+parar de reclamar, e que continua valendo depois de o motivo sumir.
+
+## Redis de dev: porta 16380, container `sugestoes-redis-dev`
+
+`docker run -d --name sugestoes-redis-dev -p 16380:6379 redis:7`. Porta
+exclusiva pelo mesmo motivo do `55440` do Postgres desta célula: `16379` já é do
+`mensageria-redis`, e duas sessões de agente em paralelo (o modo normal desta
+casa) não podem disputar o mesmo Redis — `XRANGE` de uma leria evento da outra.
+
+**Isso NÃO está no `docker-compose.dev.yml`**: o orçamento de 15 arquivos deste
+despacho fechou exatamente em 15, e o compose ficou de fora. Quem tiver um
+arquivo sobrando, acrescente o serviço `redis` (com essa porta) e o
+`sugestoes-relay` ao compose de dev — está registrado no handoff do EVO-20.
+
+## Como provar o relay CONTRA REDIS DE VERDADE (o roteiro que valeu no EVO-20)
+
+A suíte dubla o transporte (`redis.from_url`), e de propósito: uma suíte que
+precisa de container fica vermelha por motivo alheio, e a máquina do mantenedor
+é Windows. A prova do fio de verdade é este roteiro, e ele tem um truque que
+vale guardar:
+
+1. sobe o Redis de dev (acima) e o worker, **com** as duas variáveis:
+   `REDIS_STREAMS_URL=redis://127.0.0.1:16380/0`,
+   `HUEY_REDIS_URL=redis://127.0.0.1:16380/1`, `python manage.py run_huey`;
+2. provoca os quatro fatos num processo **SEM** `REDIS_STREAMS_URL`. O
+   `relay_apos_commit` engole o `KeyError` (§5.3) e os quatro eventos ficam
+   PENDENTES na outbox;
+3. espera o minuto do periódico e confere com
+   `docker exec sugestoes-redis-dev redis-cli -n 0 XRANGE eventos.sugestao.criada - +`.
+
+O passo 2 é o truque: sem ele, quem publica é o `on_commit` do próprio processo
+de teste, e o roteiro **não prova nada sobre o worker**. Tirando a variável, a
+única coisa capaz de publicar é o `run_huey` — que é exatamente o que o serviço
+`sugestoes-relay` roda na VPS. No EVO-20 isso pegou o log que interessa:
+`The following commands are available: + apps.sugestoes.tasks.relay_outbox_periodico`
+(o oposto do registro vazio da `armadilhas/030`).
+
+Detalhe que custou uma rodada: um script de limpeza de banco de dev **não pode**
+usar `HistoricoStatus.objects.all().delete()` — o append-only do EVO-11 recusa,
+nos três degraus. Use `TRUNCATE ... RESTART IDENTITY CASCADE` por cursor.
 
 ## A moderação (EVO-13): as seis decisões de desenho
 
@@ -195,9 +303,10 @@ lê "você está dentro" e não tem para onde ir.
   mantém o `PROTECT` do histórico verdadeiro sem nenhum caso especial.
 - **Merge de sugestão**: a §10 põe em V1.1. `sugestao_canonica` continua no
   model, sem ninguém escrevendo nela.
-- **Evento de `sugestao.criada` / `voto-adicionado`**: Lote 2. A célula grava o
-  fato e não conta a ninguém — quando o outbox entrar, os pontos de emissão são
-  exatamente os quatro `create()`/`delete()` de `participacao.py`.
+- **Evento de `sugestao.criada` / `voto-adicionado`**: era do Lote 2 e **entrou
+  no EVO-20** — os pontos de emissão são exatamente os `create()`/`delete()`
+  deste arquivo, como o EVO-12b previu. O que a célula ainda NÃO faz é
+  **consumir** evento (EVO-21).
 
 ## A porta de entrada (EVO-12a): as cinco decisões de desenho
 
