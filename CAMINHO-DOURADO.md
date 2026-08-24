@@ -691,8 +691,11 @@ Formato, ponto a ponto (tudo verificado em `apps/i18n/catalogo.py`):
 - **Placeholders `{nome_simples}`** em `[a-z_][a-z0-9_]*` — sem ponto, sem
   índice, sem `!r`, sem `:>10`. O conjunto de placeholders tem de ser IDÊNTICO
   em todos os idiomas da chave.
-- **Meta permitida hoje: só `_fonte`.** Qualquer outra chave com `_` (inclusive
-  o `_juridico` do D8.2, ainda não implementado) reprova como meta desconhecida.
+- **Meta permitida hoje: `_fonte`, `_juridico` e `_revisado_humano`** (os dois
+  últimos andam juntos — D8.2, ver abaixo). Qualquer outra chave com `_`
+  reprova como meta desconhecida. `_juridico` vai **entre aspas**
+  (`_juridico: "true"`): toda folha do catálogo é `str`, então o booleano nu
+  morre antes, na regra do loader.
 - **Sufixo `.html` só na folha**, com whitelist (`a abbr b br code em i small
   span strong`); handler `on*=` e `javascript:` reprovam. Todo o resto é
   escapado por padrão.
@@ -860,10 +863,17 @@ Os portões acima verificam **integridade**. Nenhum verifica se a tradução est
 **boa**. Numa página de cadastro de curso pago, copy é o produto:
 
 - **Namespace jurídico** (termos de uso, privacidade, consentimento) **exige
-  revisão humana antes de publicar** — e o marcador mecânico do D8.2
-  (`_juridico`) **ainda não existe**: hoje ele reprovaria como meta
-  desconhecida. Enquanto não existir, texto com efeito legal traduzido por
-  agente **não entra sozinho**: escreva a pendência no PR e peça o mantenedor.
+  revisão humana antes de publicar** — e desde 23/08/2026 o marcador do D8.2
+  **existe e tem dente**. Marque a chave com `_juridico: "true"` e declare a
+  revisão em `_revisado_humano`, um mapa **idioma → "Quem revisou AAAA-MM-DD"**
+  com uma entrada **por idioma** (revisar o inglês não valida o espanhol); o
+  `_fonte` não pode estar `pendente`. Sem isso é FAIL no CI **e o boot recusa
+  subir**. A declaração **expira**: se o texto daquele idioma mudar no diff,
+  ela tem de mudar junto. Você não inventa o nome que vai ali — **peça a
+  revisão ao mantenedor e registre o que ele responder**.
+  ⛔ A outra guarda do D8.3, a **retrotradução**, continua NÃO implementada:
+  depende de modelo externo (chave de API, custo) e é decisão do mantenedor —
+  não escreva stub que finja fazê-la.
 - **Nunca concatene frases** para montar um período — ordem de palavras e
   gênero mudam por idioma. Uma frase = uma chave.
 - **Nunca traduza termo do glossário** (Meshcraft, Roblox, Roblox Studio, nomes

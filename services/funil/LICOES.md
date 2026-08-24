@@ -163,3 +163,68 @@ link para OUTRA célula = cru e monolíngue, até a mecânica do D6 entrar no
 Traefik. Quando a primeira página de outra célula se internacionalizar, este é
 o lugar a revisar (pendência já registrada no PLANO-I18N D6).
 **Origem:** despacho funil/i18n-cadastro — `templates/funil/landing_i18n.html`.
+
+## `_juridico: true` sem aspas nunca chega ao portão do D8.2 — morre antes, no loader
+
+**Sintoma:** você escreve `_juridico: true` exatamente como o PLANO-I18N D8.2
+manda, e a mensagem que volta não fala de revisão humana nenhuma: é
+`folha True não é string (bool) — escreva o valor entre aspas`.
+**Causa:** a regra "toda folha é `str`" do loader estrito (D2.7) roda ANTES de
+qualquer regra semântica, e `true` em YAML é booleano. O portão jurídico nem
+chegou a ser consultado.
+**Solução:** no catálogo escreve-se **`_juridico: "true"`**, com aspas — e o
+validador só aceita esse literal. Não existe `"false"`: a **ausência** da chave
+é a forma de dizer "não é jurídico"; um valor que desligasse o portão seria o
+silenciador barato (mesmo espírito da regra anti-burla do `_fonte`). Vale para
+qualquer meta booleana futura do catálogo.
+**Origem:** despacho funil/i18n-juridico — `apps/i18n/catalogo.py`.
+
+## A revisão humana do texto jurídico é declarada POR IDIOMA, e expira no diff
+
+`_revisado_humano` é um **mapa idioma → "Quem revisou AAAA-MM-DD"**, nunca uma
+string única da chave. Duas razões, as duas mecânicas:
+
+1. **Por idioma** porque revisar o inglês não valida o espanhol — uma
+   declaração agregada faria uma leitura responder por textos que o revisor
+   nunca viu, exatamente a responsabilidade que o D8.2 existe para evitar.
+   Declaração para idioma que a chave não tem reprova (órfã), e
+   `_revisado_humano` sem `_juridico` também.
+2. **Expira no diff** (`_revisao_no_diff`, mesma mecânica do anti-burla do
+   `_fonte`): se o valor de um idioma mudou contra `${BASE_REF:-origin/main}` e
+   a declaração daquele idioma NÃO mudou, reprova. Sem isso, a declaração seria
+   carimbo perpétuo (ARMADILHAS §5.15).
+
+A data ISO é obrigatória no valor: sem "quando", "revisado" é inverificável.
+Auditar tudo isso é um grep — `grep -rn "_revisado_humano" services/*/traducoes/`.
+E o portão é fail-closed nas duas entradas: texto jurídico sem revisão reprova
+no `make ci` **e o boot recusa subir** (`ImproperlyConfigured`, D4). Também
+por isso `_juridico` com `_fonte: pendente` reprova — texto com efeito legal não
+vai ao ar em estado degradado, senão o fallback publica o inglês numa página
+que se apresenta traduzida.
+**Origem:** despacho funil/i18n-juridico — `apps/i18n/validador.py`,
+`tests/test_i18n_juridico.py`.
+
+## Guarda de comprimento (D8.3) é RELATÓRIO — e precisa de piso, senão vira ruído
+
+`Resultado.avisos` carrega os avisos de razão de comprimento (>3× ou <0,3× do
+`en`); eles **não** mudam o estado PASS/FAIL, sobem como WARNING no boot e
+aparecem no `make ci` pelo sumário de warnings do pytest
+(`test_relatorio_de_comprimento_da_celula_real`). O piso de 12 caracteres no
+`en` não é enfeite: `"E-mail"` → `"Correo electrónico"` já é 3× e está CERTO —
+sem o piso, o relatório nasceria com falso positivo no catálogo real, e
+relatório barulhento é relatório ignorado. Reprovar por comprimento também
+estava fora de questão: idioma legitimamente prolixo existe, e o D8.3 diz
+RELATÓRIO, não portão.
+**Origem:** despacho funil/i18n-juridico — `apps/i18n/validador.py`.
+
+## Teste novo do i18n reusa os helpers de `test_i18n_catalogo`, não um mundo próprio
+
+`tests/test_i18n_juridico.py` importa `_celula`, `_doc_ok`, `_git`,
+`TEMPLATE_OK` e `RAIZ_REAL` de `test_i18n_catalogo` (import pelo nome do
+módulo, sem `tests.` — a pasta não é pacote e o pytest a põe no `sys.path`).
+A regra que isso protege: **regra nova não pode precisar de uma célula de
+mentira própria para passar** — se ela só fecha num mundo feito sob medida,
+não está medindo a célula. Cuidado prático ao montar chave jurídica de teste: o
+glossário continua valendo, então `Meshcraft` no `en` obriga `Meshcraft`
+literal no pt-br e no es.
+**Origem:** despacho funil/i18n-juridico.

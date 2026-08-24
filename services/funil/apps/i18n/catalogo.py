@@ -27,8 +27,24 @@ IDIOMA_FONTE = "en"
 IDIOMAS_BASE = ("en", "pt-br", "es")
 
 FONTE_PENDENTE = "pendente"  # D4: degradação declarável, nunca inferível
+
+# D8.2 — texto com efeito legal (termos de uso, privacidade, consentimento).
+# Toda folha do catálogo é `str` (D2.7), então em YAML escreve-se
+# `_juridico: "true"` COM aspas — o booleano nu cai antes, no loader estrito.
+# Não existe `"false"`: a AUSÊNCIA da chave é a forma de dizer "não é jurídico".
+# Um valor que desligasse o portão seria o silenciador barato que um agente
+# instruído a "deixar o CI verde" acharia primeiro (mesmo espírito da regra
+# anti-burla do `_fonte`).
+CHAVE_JURIDICO = "_juridico"
+VALOR_JURIDICO = "true"
+# Declaração de revisão humana: mapa idioma → "Quem revisou AAAA-MM-DD".
+# POR IDIOMA de propósito — revisar o inglês não valida o espanhol (D8.2).
+CHAVE_REVISAO_HUMANA = "_revisado_humano"
+
 CHAVES_META = (
     "_fonte",
+    CHAVE_JURIDICO,
+    CHAVE_REVISAO_HUMANA,
 )  # meta desconhecida = FAIL (fail-closed; fases futuras ampliam)
 SUFIXO_HTML = ".html"  # única forma de chave que admite markup (com whitelist)
 

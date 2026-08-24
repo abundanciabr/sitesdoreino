@@ -7,6 +7,7 @@
 # violação; ERROR = NÃO CONSEGUIU medir (nunca vira verde, nunca vira skip).
 import html
 import json
+import logging
 import os
 import re
 import shutil
@@ -21,10 +22,21 @@ from django.core.exceptions import ImproperlyConfigured
 from apps.i18n import catalogo as cat
 from apps.i18n import registro as reg
 
+logger = logging.getLogger("funil.i18n")
+
 ARQUIVO_REGISTRO = "sites_i18n.yaml"
 DIR_TRADUCOES = "traducoes"
 DIR_TEMPLATES = "templates"
 MARCADOR_REVISAO = "# revisado-sem-alteracao"
+
+# D8.3 — guarda de razão de comprimento como RELATÓRIO, nunca portão: uma
+# tradução muito maior ou muito menor que o `en` sinaliza truncamento ou
+# alucinação. Não reprova: idioma legitimamente prolixo existe, e reprovar por
+# comprimento reprovaria copy boa. O piso evita o falso positivo de rótulo
+# curto ("E-mail" → "Correo electrónico" já é 3×, e está certo).
+RAZAO_MAXIMA = 3.0
+RAZAO_MINIMA = 0.3
+MINIMO_PARA_RAZAO = 12
 
 RE_USO_T = re.compile(r"\{%\s*t\s+(.+?)\s*%\}")
 # {% url %} CRU (o \s exclui {% url_i18n %}): não gera prefixo de idioma — em
@@ -34,6 +46,9 @@ RE_URL_CRU = re.compile(r"\{%\s*url\s")
 RE_LINHA_FONTE = re.compile(r"\s*_fonte\s*:")
 RE_ON_ATTR = re.compile(r"\bon[a-z]+\s*=", re.I)
 RE_TAG_HTML = re.compile(r"</?\s*([a-zA-Z0-9]+)")
+RE_DATA_ISO = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+FORMATO_DA_REVISAO = '"Nome de quem revisou AAAA-MM-DD"'
 
 
 @dataclass
@@ -41,6 +56,7 @@ class Resultado:
     estado: str  # PASS | FAIL | ERROR
     problemas: "list[str]" = field(default_factory=list)
     chaves: dict = field(default_factory=dict)  # catálogo achatado (p/ instalar)
+    avisos: "list[str]" = field(default_factory=list)  # D8.3: relatório, não gate
 
 
 class ErroDeInstrumento(Exception):
@@ -107,9 +123,11 @@ def validar_celula(
         except ErroDeInstrumento as exc:
             instrumento.append(str(exc))
 
+    avisos = _avisos_de_comprimento(chaves)  # D8.3: relatório, nunca reprovação
+
     if instrumento:
-        return Resultado("ERROR", instrumento + problemas, chaves)
-    return Resultado("FAIL" if problemas else "PASS", problemas, chaves)
+        return Resultado("ERROR", instrumento + problemas, chaves, avisos)
+    return Resultado("FAIL" if problemas else "PASS", problemas, chaves, avisos)
 
 
 def _arquivos_do_catalogo(raiz: Path) -> "list[Path]":
@@ -145,6 +163,10 @@ def _checar_chave(chave, spec, idiomas_base, variantes, glossario, problemas):
         problemas.append(f"{chave}: sem `_fonte` (hash de 6 hex do en, ou `pendente`)")
     elif fonte != cat.FONTE_PENDENTE and not cat.RE_HEX6.fullmatch(fonte):
         problemas.append(f"{chave}: `_fonte` inválido: {fonte!r}")
+
+    # D8.2 antes do early-return do `en`: chave jurídica malformada tem de
+    # reprovar mesmo quando falta o inglês.
+    _checar_juridico(chave, spec, problemas)
 
     valor_en = spec.get(cat.IDIOMA_FONTE)
     if valor_en is None:
@@ -236,6 +258,111 @@ def _checar_chave(chave, spec, idiomas_base, variantes, glossario, problemas):
 
 def _texto_de(valor) -> str:
     return " ".join(valor.values()) if isinstance(valor, dict) else valor
+
+
+# ---------------------------------------------------------------------------
+# D8.2 — namespace jurídico. Texto com efeito legal (termos de uso,
+# privacidade, consentimento) SÓ passa com revisão humana declarada, e a
+# declaração é POR IDIOMA: revisar o inglês não valida o espanhol. Uma
+# declaração única por chave deixaria a revisão de um idioma responder por
+# textos que o revisor nunca leu — exatamente a responsabilidade que o D8.2
+# existe para evitar. Complemento no diff: `_revisao_no_diff()`, que expira a
+# declaração do idioma cujo texto mudou.
+# ---------------------------------------------------------------------------
+def _declaracao_valida(valor) -> bool:
+    """Auditável = QUEM revisou e QUANDO. Sem data, "revisado" é inverificável
+    (e greppável por `_revisado_humano` em todo o catálogo)."""
+    if not isinstance(valor, str):
+        return False
+    data = RE_DATA_ISO.search(valor)
+    if data is None:
+        return False
+    return len((valor[: data.start()] + valor[data.end() :]).strip()) >= 2
+
+
+def _checar_juridico(chave, spec, problemas):
+    marca = spec.get(cat.CHAVE_JURIDICO)
+    revisao = spec.get(cat.CHAVE_REVISAO_HUMANA)
+
+    if marca is not None and marca != cat.VALOR_JURIDICO:
+        problemas.append(
+            f"{chave}: `{cat.CHAVE_JURIDICO}` só aceita a string "
+            f'"{cat.VALOR_JURIDICO}" (achei {marca!r}) — para dizer que o texto '
+            "NÃO é jurídico, REMOVA a chave; o portão não se desliga por valor"
+        )
+        return
+    if marca is None:
+        if revisao is not None:
+            problemas.append(
+                f"{chave}: `{cat.CHAVE_REVISAO_HUMANA}` sem "
+                f'`{cat.CHAVE_JURIDICO}: "{cat.VALOR_JURIDICO}"` — declaração de '
+                "revisão humana só existe para texto jurídico"
+            )
+        return
+
+    if spec.get("_fonte") == cat.FONTE_PENDENTE:
+        problemas.append(
+            f"{chave}: texto jurídico com `_fonte: {cat.FONTE_PENDENTE}` — texto "
+            "com efeito legal não vai ao ar em estado degradado (o fallback "
+            "publicaria o inglês numa página que se apresenta traduzida)"
+        )
+
+    idiomas = sorted(k for k in spec if k not in cat.CHAVES_META)
+    if not isinstance(revisao, dict) or not revisao:
+        problemas.append(
+            f"{chave}: texto jurídico exige revisão humana declarada; peça ao "
+            f"mantenedor e registre em `{cat.CHAVE_REVISAO_HUMANA}` um mapa "
+            f"idioma → {FORMATO_DA_REVISAO}, um por idioma ({', '.join(idiomas)})"
+        )
+        return
+
+    for idioma in idiomas:
+        declaracao = revisao.get(idioma)
+        if declaracao is None:
+            problemas.append(
+                f"{chave}: texto jurídico exige revisão humana declarada para "
+                f"`{idioma}`; peça ao mantenedor e registre em "
+                f"`{cat.CHAVE_REVISAO_HUMANA}.{idioma}` — revisar um idioma NÃO "
+                "vale pelos outros"
+            )
+        elif not _declaracao_valida(declaracao):
+            problemas.append(
+                f"{chave}: `{cat.CHAVE_REVISAO_HUMANA}.{idioma}`: {declaracao!r} "
+                f"não é revisão auditável — use {FORMATO_DA_REVISAO} (quem "
+                "revisou, e em que data)"
+            )
+    for idioma in sorted(set(revisao) - set(idiomas)):
+        problemas.append(
+            f"{chave}: `{cat.CHAVE_REVISAO_HUMANA}.{idioma}` declara revisão de "
+            "um idioma que a chave não tem — declaração órfã não vale por nada"
+        )
+
+
+# ---------------------------------------------------------------------------
+# D8.3 — razão de comprimento: RELATÓRIO (avisos), nunca portão.
+# ---------------------------------------------------------------------------
+def _avisos_de_comprimento(chaves: dict) -> "list[str]":
+    avisos = []
+    for chave, spec in sorted(chaves.items()):
+        valor_en = spec.get(cat.IDIOMA_FONTE)
+        if valor_en is None:
+            continue
+        tamanho_en = len(_texto_de(valor_en))
+        if tamanho_en < MINIMO_PARA_RAZAO:
+            continue
+        for idioma in sorted(spec):
+            if idioma in cat.CHAVES_META or idioma == cat.IDIOMA_FONTE:
+                continue
+            tamanho = len(_texto_de(spec[idioma]))
+            razao = tamanho / tamanho_en
+            if RAZAO_MINIMA <= razao <= RAZAO_MAXIMA:
+                continue
+            avisos.append(
+                f"{chave}: `{idioma}` tem {razao:.1f}× o comprimento do `en` "
+                f"({tamanho} × {tamanho_en} caracteres) — confira truncamento "
+                "ou alucinação (D8.3: aviso, NÃO reprova)"
+            )
+    return avisos
 
 
 def _checar_html(chave, idioma, forma, problemas):
@@ -339,7 +466,37 @@ def _anti_burla(raiz, infos, base_ref, idiomas_conhecidos) -> "list[str]":
             raise ErroDeInstrumento(
                 f"anti-burla: versão-base de {rel} ilegível: {exc}"
             ) from exc
+        problemas.extend(_revisao_no_diff(planas, velhas))
         problemas.extend(_comparar_fontes(arquivo.name, texto, planas, velhas))
+    return problemas
+
+
+def _revisao_no_diff(planas, velhas) -> "list[str]":
+    """D8.2 no diff: texto jurídico que MUDOU num idioma exige declaração NOVA
+    daquele idioma. Sem isto, a declaração viraria carimbo perpétuo — revisada
+    uma vez em agosto, valendo para o texto reescrito em dezembro."""
+    problemas = []
+    for chave, spec in planas.items():
+        if spec.get(cat.CHAVE_JURIDICO) != cat.VALOR_JURIDICO:
+            continue
+        velho = velhas.get(chave)
+        if velho is None:
+            continue  # chave nova — a declaração nasce agora, com o texto
+        nova = spec.get(cat.CHAVE_REVISAO_HUMANA)
+        velha = velho.get(cat.CHAVE_REVISAO_HUMANA)
+        if not isinstance(nova, dict):
+            continue  # formato já reprovou em _checar_juridico
+        velha = velha if isinstance(velha, dict) else {}
+        for idioma in sorted(k for k in spec if k not in cat.CHAVES_META):
+            if idioma not in velho or spec[idioma] == velho[idioma]:
+                continue  # idioma novo, ou texto intacto: a declaração vale
+            if nova.get(idioma) != velha.get(idioma):
+                continue  # re-declarada junto com o texto
+            problemas.append(
+                f"{chave}: o texto jurídico de `{idioma}` mudou e a revisão "
+                f"humana não — peça ao mantenedor e atualize "
+                f"`{cat.CHAVE_REVISAO_HUMANA}.{idioma}` ({FORMATO_DA_REVISAO})"
+            )
     return problemas
 
 
@@ -421,6 +578,10 @@ def validar_e_instalar(raiz) -> None:
         raise ImproperlyConfigured(
             f"[i18n] catálogo inválido — célula não sobe (D4 fail-closed):\n  - {detalhe}"
         )
+    for aviso in resultado.avisos:
+        # D8.3 é relatório: sobe como WARNING no log estruturado e NÃO impede o
+        # boot. Reprovar por comprimento derrubaria a célula por copy prolixo.
+        logger.warning("i18n: guarda de comprimento (D8.3): %s", aviso)
     reg.instalar_registro(registro)
     cat.instalar_catalogo(resultado.chaves, bases=reg.variantes_de(registro))
 

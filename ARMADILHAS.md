@@ -1153,6 +1153,25 @@ GitHub Actions e checkout do runner. O critério do `ESQUELETO-QUE-ANDA.md` é
 **Origem:** drill cronometrado do critério 3 da Fase D (23/08/2026), runs
 32678099024 e 32678175555.
 
+### 5.15 Portão que exige "revisão humana" vira carimbo perpétuo se não expirar no diff
+
+**Sintoma:** um campo tipo `_revisado_humano: "Fulano 2026-08-23"` fica verde
+para sempre — o texto é reescrito em dezembro e a declaração de agosto continua
+respondendo por ele. O portão MEDE que alguém escreveu uma linha, não que
+alguém leu o texto que está no ar.
+**Causa:** declaração de revisão é um dado ao lado do conteúdo, não um hash
+DELE. Nada no estado atual do arquivo revela que o conteúdo mudou depois.
+**Solução:** o portão precisa de duas metades — a estática (a declaração existe,
+está bem formada, cobre cada unidade que precisa de revisão) e a **do diff**
+(`git show ${BASE_REF}:arquivo`): se o conteúdo revisado mudou e a declaração
+NÃO mudou, reprova. É a mesma mecânica da regra anti-burla do `_fonte`
+(PLANO-I18N D4), e pelo mesmo motivo: sem ela, "recarimbar" é mais barato que
+cumprir. Corolário de granularidade: declaração por unidade que o revisor
+realmente leu (no i18n, POR IDIOMA) — uma declaração agregada faz uma leitura
+responder por textos que o revisor nunca viu.
+**Origem:** despacho funil/i18n-juridico (23/08/2026) — implementação do D8.2
+em `services/funil/apps/i18n/validador.py` (`_checar_juridico` + `_revisao_no_diff`).
+
 ## §6 — Testes
 
 ### 6.1 Evidência vermelho→verde sem criar branch descartável
@@ -1461,7 +1480,7 @@ arquivo com a ferramenta de escrita em vez de heredoc. Vale para qualquer par an
 | O quê | Estado |
 |---|---|
 | `seed_esqueleto` do catalogo usa env `DOMINIO_OPERACOES` com fallback hardcoded, em vez do `--host` obrigatório que o card do painel pedia | sem decisão do mantenedor |
-| **O marcador de namespace jurídico do i18n (`_juridico`, PLANO-I18N D8.2) não existe no código.** Medido em 23/08/2026 ao escrever a Receita R12: `CHAVES_META` em `services/funil/apps/i18n/catalogo.py` é `("_fonte",)` e meta desconhecida é FAIL por desenho — escrever `_juridico: true` numa chave hoje **reprova o catálogo**, e como o validador roda no boot (D4 fail-closed), a célula não sobe. Também não existem as guardas semânticas de RELATÓRIO do D8.3 (razão de comprimento, retrotradução). Consequência prática: **texto com efeito legal traduzido por agente não tem portão nenhum** — a R12 manda pedir revisão humana e escrever a pendência no PR | despacho pequeno em `services/funil/apps/i18n/` quando a primeira página jurídica for traduzida; até lá, a defesa é humana |
+| ~~**O marcador de namespace jurídico do i18n (`_juridico`, PLANO-I18N D8.2) não existe no código**~~ — escrever `_juridico: true` reprovava como meta desconhecida e, com o validador no boot (D4), derrubava a célula: a lei mandava usar um marcador que quebrava a produção | ✅ **RESOLVIDO 23/08/2026** (despacho funil/i18n-juridico): `_juridico: "true"` é meta reconhecida e **só passa** com `_revisado_humano` — mapa **idioma → "Quem revisou AAAA-MM-DD"**, um por idioma (revisar o inglês não valida o espanhol), com `_fonte` fora de `pendente`; a declaração **expira no diff** (texto que muda num idioma exige declaração nova daquele idioma — §5.15). Sem revisão, FAIL no CI **e boot recusado**. Do D8.3 entrou a **razão de comprimento como RELATÓRIO** (>3× ou <0,3× do `en` avisa, nunca reprova; `Resultado.avisos` + WARNING no boot + sumário do pytest). **Continua aberta a retrotradução** do D8.3: exige chamar modelo externo (chave de API, custo) — **decisão do mantenedor**, ninguém deve simular |
 | **Cobrança REAL em produção depende de credenciais Mercado Pago de verdade** — `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET` em `/opt/plataforma/env/pagamentos.env` e `MP_PUBLIC_KEY` no de checkout. A plataforma está no ar e navega sem isso (22/08/2026); a primeira venda de verdade é que não passa — e falha fechado, com 502 e log claro. De quebra: sobrou `/home/deploy/provisionamento-postgres.sql` na VPS (cópia com senhas usada no provisionamento) — apagar | mantenedor, antes do primeiro teste de venda real |
 | Proteção de branch nativa do GitHub exige plano Pro; hoje o fallback é `.githooks/pre-push` | issue `mecanizar:` #1 |
 | Relay do outbox (Huey → Redis Streams, R3) ainda não instanciado no checkout — o evento é gravado transacionalmente, mas ninguém publica | Fase D, despacho seguinte |

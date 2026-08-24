@@ -326,10 +326,28 @@ produto; o risco residual concentra-se no único lugar sem portão. Defesas:
    marcador `_juridico: true`; o CI **reprova** publicação sem marcador de
    revisão humana. Texto com efeito legal traduzido por agente em N
    jurisdições é risco de responsabilidade, não de conversão.
+   ✅ **IMPLEMENTADO 23/08/2026** (despacho funil/i18n-juridico): no catálogo
+   escreve-se `_juridico: "true"` (com aspas — toda folha é `str` por D2.7), e
+   a chave **só passa** com `_revisado_humano`, um mapa **idioma → "Quem
+   revisou AAAA-MM-DD"** com uma entrada por idioma da chave, e com `_fonte`
+   fora de `pendente`. A granularidade é **por idioma** porque revisar o inglês
+   não valida o espanhol; e a declaração **expira no diff** — texto jurídico
+   que muda num idioma exige declaração nova daquele idioma (mesma mecânica da
+   regra anti-burla do `_fonte`, e pelo mesmo motivo). Reprova no CI **e o boot
+   recusa subir** (D4). Detalhes em `services/funil/LICOES.md`.
 3. **Guardas semânticas como RELATÓRIO no PR** (não gate): razão de
    comprimento (3× ou 0,3× do `en` sinaliza — pega truncamento e alucinação);
    retrotradução com modelo diferente (sinaliza divergência — pega negação
    invertida e cláusula perdida).
+   ✅ **Razão de comprimento IMPLEMENTADA 23/08/2026** como relatório puro
+   (`Resultado.avisos`: WARNING no boot e sumário de warnings do pytest no
+   `make ci`; nunca muda PASS/FAIL), com piso de 12 caracteres no `en` para não
+   sinalizar rótulo curto legítimo (`E-mail` → `Correo electrónico` já é 3×).
+   ⛔ **Retrotradução: NÃO implementada, e não deve ser simulada.** Ela exige
+   chamar um modelo externo — chave de API, custo por PR, escolha de provedor —
+   e isso é **decisão do mantenedor**, não de agente. Enquanto não houver
+   decisão, a defesa contra negação invertida e cláusula perdida é a revisão
+   humana do item 2; nenhum stub deve fingir que a checagem existe.
 4. **Pseudo-locale nos testes**: renderizar em idioma sintético (`en` inflado
    40% com acentos) e reprovar texto visível sem a marca — detector mecânico
    de string hardcoded + layout estourado.
@@ -394,7 +412,7 @@ Nada da fase 1–2 é jogado fora.
 |---|---|---|
 | **1** | Fundação no funil: resolver de prefixo + matriz HTTP + `activate()`; registro `sites_i18n.yaml` (com `dir`, `base`, `indexavel`, tag BCP 47) + teste de coerência com `sites.json`; `t()`/`{% t %}`/`t_lazy`; `ci/i18n_check.py` no molde do `contract_freeze.py` (PASS/FAIL/ERROR — formato, paridade exata, template↔catálogo, placeholders, plural CLDR, `_fonte` + regra anti-burla, overlay, glossário, pseudo-locale) rodando no CI **e no boot**; `base_mobile` com lang/dir/canonical/hreflang/seletor-`<a href>` | **nada — o "segue" foi dado em 23/08** |
 | **2** | Página `/[en\|pt-br\|es]/cadastro` (template + `traducoes/cadastro.yaml` + view + testes), POST a leads com locale, `sitemap.xml` + Search Console | fase 1 |
-| **3** ✅ | **ENTREGUE** — **Receita R12** no `CAMINHO-DOURADO.md`: os dois fluxos de PR (página nova / idioma novo), passo a passo verificado contra o código da fase 1–2, contrato do `_fonte` + regra anti-burla, checklist das 10 regras do validador, o que a máquina NÃO protege (D8), CSS com propriedades lógicas, armadilhas por número. Registrado ali o que a implementação real ainda NÃO tem: o marcador `_juridico` do D8.2 (hoje reprovaria como meta desconhecida) e a lane `traducoes` na catraca `mergear.py` (ARMADILHAS §5.11) | fases 1–2 no ar |
+| **3** ✅ | **ENTREGUE** — **Receita R12** no `CAMINHO-DOURADO.md`: os dois fluxos de PR (página nova / idioma novo), passo a passo verificado contra o código da fase 1–2, contrato do `_fonte` + regra anti-burla, checklist das 10 regras do validador, o que a máquina NÃO protege (D8), CSS com propriedades lógicas, armadilhas por número. Registrado ali o que a implementação real ainda NÃO tinha: o marcador `_juridico` do D8.2 (**fechado em 23/08/2026** — ver D8.2) e a lane `traducoes` na catraca `mergear.py` (ARMADILHAS §5.11) | fases 1–2 no ar |
 | **4** | Idioma no `sites.json`/catálogo/contrato (Rito) + locale nos eventos/mensageria + aposentadoria do interim | mandato próprio |
 | **5** | D6 (células além do funil) e D7-tabela se gatilho disparar | necessidade real |
 
