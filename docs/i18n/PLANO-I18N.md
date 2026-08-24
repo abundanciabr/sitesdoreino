@@ -320,6 +320,37 @@ site (D3) — hoje por `idiomas.dados_seo()`, nunca à mão:
   do usuário é decisão **explícita** na hora, por classe de rota — não
   herança automática deste esquema.
 
+✅ **Os três guardas acima viraram teste em 24/08/2026** (despacho
+`funil/guardas-d6`), e valem **independentemente** de a fase 5 ser ativada — é
+justamente por isso que foram escritos com o resto da fase 5 congelado:
+
+| guarda | onde vive | por que ali |
+|---|---|---|
+| prefixo de rota com forma de locale | `ci/tests/test_rotas_sem_forma_de_locale.py` | a mudança que ele pega toca `infra/`, e o `ci-celula` só roda o `make ci` de uma célula quando o diff tem `services/<celula>/…` — na célula o guarda seria decoração no único PR para o qual existe. Em `ci/tests` roda em TODO PR (workflow `muralhas`), e é o único lugar de onde se enxergam as duas pontas da colisão: a tabela de rotas **e** `infra/sites.json` |
+| rota de máquina nunca se localiza | `services/funil/tests/test_d6_roteamento.py` | comportamento da célula, medido contra o middleware e o urlconf reais |
+| link cross-célula sem prefixo | `services/funil/tests/test_d6_roteamento.py` | idem — varre a página renderizada nos 3 idiomas |
+
+Dois achados da implementação, onde o D6 supunha outra coisa:
+
+- **O guarda de rota precisou de uma segunda regra, com dado.** Só a FORMA
+  errava nas duas direções: reprovava `/api/checkout` (o `api` tem 3 letras e
+  casa `[a-z]{2,3}`) e deixaria passar um idioma longo (`zh-hant-tw`). O teste
+  cruza os prefixos com os idiomas realmente declarados em `infra/sites.json`
+  — a colisão de verdade, que cresce sozinha a cada idioma novo — e mantém a
+  forma como rede para o futuro, com os namespaces de máquina do próprio D6
+  (`api`, `webhooks`, `static`, `healthz`) isentos **da forma, nunca da
+  colisão**.
+- **"O desenho atual já obedece por construção" vale para `/api/**`,
+  `/webhooks/**` e `/sitemap.xml` — e NÃO vale para `/healthz`.** A isenção do
+  middleware casa o `path_info` cru, então `/pt-br/healthz` não é isenta: o
+  resolver decapa o prefixo e o urlconf serve a view. Medido: **200**, hoje.
+  Vale para qualquer rota de máquina que o próprio funil sirva sem estar em
+  `CAMINHOS_DE_MAQUINA`. Está fixado como `xfail(strict=True)` no teste da
+  célula — no dia em que consertarem, ele fica vermelho por XPASS e obriga a
+  apagar o marcador; o desvio não some em silêncio. O conserto é uma linha em
+  `apps/core/middleware.py` e **precisa de mandato próprio**: `apps/**` estava
+  somente-leitura no despacho dos guardas.
+
 ### D7 — Conteúdo que é dado: tradução DENTRO do `sites.json`
 
 Os nomes de produto/oferta já nascem em `infra/sites.json` e convergem por
@@ -449,7 +480,7 @@ Nada da fase 1–2 é jogado fora.
 | **2** ✅ | **ENTREGUE** (no ar desde 23/08, matriz medida de fora) — Página `/[en\|pt-br\|es]/cadastro` (template + `traducoes/cadastro.yaml` + view + testes), POST a leads com locale, `sitemap.xml` (rota de máquina, `apps/core/views.py`). O **envio ao Search Console** é passo do mantenedor e não consta como feito | fase 1 |
 | **3** ✅ | **ENTREGUE** — **Receita R12** no `CAMINHO-DOURADO.md`: os dois fluxos de PR (página nova / idioma novo), passo a passo verificado contra o código da fase 1–2, contrato do `_fonte` + regra anti-burla, checklist das 10 regras do validador, o que a máquina NÃO protege (D8), CSS com propriedades lógicas, armadilhas por número. Registrado ali o que a implementação real ainda NÃO tinha: o marcador `_juridico` do D8.2 e a lane `traducoes` na catraca `mergear.py` — **os dois fechados em 23/08/2026** (PRs #95 e #94; ver D8.2, `docs/historico/RESOLVIDAS.md` §5.11 e a §5.15 em `armadilhas/`) | fases 1–2 no ar |
 | **4** ✅ | **ENTREGUE 24/08/2026, provada em produção** — idioma no `sites.json`/catálogo/**contrato** e **aposentadoria do interim**: `contracts/catalogo.openapi.yaml` ganhou `default_language` + `languages[{code,indexable}]` pelo Rito de Contrato (**#104**), o catálogo passou a servir os campos (**#106**), o funil passou a lê-los e o `services/funil/sites_i18n.yaml` foi **apagado** (**#107**). Ver D3. ⚠️ **A metade "locale nos eventos/mensageria" ficou de fora DE PROPÓSITO** — não é esquecimento: ver a linha abaixo da tabela | mandato próprio (dado em 24/08) |
-| **5** | D6 (células além do funil) e D7-tabela se gatilho disparar | necessidade real |
+| **5** ❄️ | **CONGELADA por decisão do mantenedor (24/08/2026)** — D6 (internacionalizar célula além do funil) e D7-tabela se gatilho disparar. **Motivo:** não há alvo legítimo hoje — `checkout` é pagamento (diretiva do mantenedor: não tocar até o site vender), `quiz` não é declarado por site nenhum em `infra/sites.json`, `alunos` não tem página. **O que destrava:** a primeira página real fora do funil que precisar de idioma. Os **guardas do D6 já estão no ar** e independem da ativação (ver D6) | necessidade real |
 
 A fase 1 não muda a landing atual em nada (site sem `languages` no catálogo =
 monolíngue por construção; teste de regressão prova). Continua valendo depois
@@ -465,6 +496,15 @@ migração das 4 células consumidoras (`alunos`, `checkout`, `leads`,
 própria, com mandato próprio, quando houver motivo de negócio — e o interim do
 D9 (`source="cadastro-meshcraft-<locale>"`) segue carregando o idioma do lead
 sem tocar contrato nenhum.
+
+**Este projeto está ENCERRADO em 24/08/2026.** Fases 1–4 entregues e no ar; a
+fase 5 congelada acima. Congelar não é abandonar: os três guardas do D6 foram
+escritos e estão vermelhos-quando-devem (a prova está no PR do despacho
+`funil/guardas-d6`), então o roteamento de hoje não quebra em silêncio enquanto
+ninguém olha. O dia em que a fase 5 destravar, quem a ativar vai **descobrir
+pelos próprios testes**: o guarda de link cross-célula e o de matcher
+desconhecido no gateway ficam vermelhos de propósito e mandam descongelar isto
+aqui antes de mergear.
 
 ## §5 — O que precisa do mantenedor · o que NÃO precisa
 

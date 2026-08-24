@@ -312,3 +312,70 @@ existing route with same name or pattern"), não sorte de ordenação. É o que
 permite ter, no mesmo arquivo, testes multilíngues e a regressão monolíngue
 byte-idêntica sobre o MESMO host, sem inventar um terceiro domínio.
 **Origem:** despacho funil/idioma-do-catalogo — `tests/test_i18n_http.py`.
+
+## `CAMINHOS_SEM_SITE` casa o `path_info` CRU — `/pt-br/healthz` responde 200
+
+**Sintoma:** o D6 do PLANO-I18N afirma que rota de máquina nunca se localiza e
+que "o desenho atual já obedece por construção". Medido em 24/08/2026, no
+meshcraft: `/pt-br/api/...` 404, `/pt-br/webhooks/...` 404, `/pt-br/sitemap.xml`
+404 — e **`/pt-br/healthz` 200**, com o JSON da sonda.
+**Causa:** a isenção do `SiteResolutionMiddleware` roda ANTES de tudo, contra o
+`path_info` como ele chega (`/pt-br/healthz`.startswith(`/healthz`) é False).
+Não sendo isenta, a requisição segue para `_com_idioma()`, que decapa o prefixo
+e devolve `path_info = "/healthz"` ao urlconf — que resolve a view normalmente.
+O `/sitemap.xml` escapa por acidente feliz: a VIEW dele tem guarda própria
+(`request.path != "/sitemap.xml"` ⇒ 404). O `/api/**` e o `/webhooks/**` escapam
+porque o funil não serve rota nenhuma nesses prefixos — quem serve são outras
+células, e lá o Traefik nem chega a casar a rota prefixada.
+**Regra que sobra:** *toda rota de máquina que a PRÓPRIA célula serve ganha uma
+gêmea localizada de graça*, a menos que esteja em `CAMINHOS_DE_MAQUINA` ou que a
+view se defenda sozinha. A isenção protege o caminho nu; ela não protege a
+forma prefixada.
+**Solução (não aplicada — `apps/**` era somente-leitura no despacho):** tratar
+`CAMINHOS_SEM_SITE` também DEPOIS de decapar o prefixo, ou fazer o decapamento
+recusar caminho que caia em rota de máquina. Enquanto isso, o desvio está
+fixado como `xfail(strict=True)` em `tests/test_d6_roteamento.py`: hoje ele
+conta como xfail, e no dia do conserto vira XPASS — vermelho — obrigando a
+apagar o marcador. Desvio conhecido com alarme de conserto vale mais que desvio
+consertado sem registro.
+**Origem:** despacho funil/guardas-d6 — `apps/core/middleware.py`,
+`tests/test_d6_roteamento.py`.
+
+## Guarda cuja violação nasce em `infra/` não pode morar em `services/<celula>/tests/`
+
+**Sintoma:** o guarda 1 do D6 ("nenhum prefixo de rota de célula pode ter forma
+de locale") parece teste de célula — mas o arquivo que ele vigia é
+`infra/traefik/dynamic/plataforma.yml`.
+**Causa:** o `ci-celula.yml` roda o `make ci` de uma célula SOMENTE quando o
+diff tem `services/<celula>/…` (`ci/ci.py::celulas_tocadas` conta exatamente
+isso; lista vazia ⇒ o job `rodar` é pulado e o gate aceita como SKIP legítimo).
+Um PR que acrescenta `PathPrefix('/pt')` ao Traefik toca ZERO células — a
+suíte do funil nunca rodaria. O guarda seria decoração exatamente no PR para o
+qual foi escrito.
+**Solução:** guardas de plataforma vão para `ci/tests/`, que o workflow
+`muralhas` roda em TODO PR (`ci/ci.py --apenas testador`). Bônus: só de lá se
+enxergam as DUAS pontas de uma colisão de roteamento — a tabela de rotas e o
+`infra/sites.json` que declara os idiomas. Nenhuma célula pode ler as duas.
+**Pergunta de bolso antes de escrever teste-guarda:** *qual diff introduziria a
+violação que estou tentando pegar?* Se esse diff não toca a célula, o teste não
+é da célula.
+**Origem:** despacho funil/guardas-d6 — `ci/tests/test_rotas_sem_forma_de_locale.py`.
+
+## Guarda de FORMA erra dos dois lados; cruze com o DADO real
+
+**Sintoma:** a regra do D6 é "prefixo de rota não pode ter forma de locale
+(2-3 letras ± região)". Escrita ao pé da letra, ela reprova `/api/checkout`
+(`api` são 3 letras minúsculas — casa a forma por acidente de comprimento) e
+deixa passar `/zh-hant-tw` (longo demais para a forma, e ainda assim um idioma
+perfeitamente declarável).
+**Solução:** duas regras, e as duas precisam passar. (A) FORMA, com os
+namespaces de máquina que o próprio D6 reservou (`api`, `webhooks`, `static`,
+`healthz`) isentos — é a rede para idiomas que ninguém declarou ainda. (B)
+COLISÃO com os `code`/`default_language` realmente declarados em
+`infra/sites.json` — é a que pega o caso de hoje, cresce sozinha a cada idioma
+novo, e **fecha a válvula da regra A**: se um dia alguém declarasse o idioma
+`api`, a isenção de máquina deixaria de servir de esconderijo.
+**Generalização:** heurística de forma é ótima para o futuro e péssima para o
+presente; o cruzamento com o dado é o contrário. Guarda bom tem os dois, e a
+isenção de um nunca é isenção do outro.
+**Origem:** despacho funil/guardas-d6 — `ci/tests/test_rotas_sem_forma_de_locale.py`.
