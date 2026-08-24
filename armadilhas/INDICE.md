@@ -102,5 +102,7 @@
 | [078](078-script-injetado-no-container-que-ja-roda-importa.md) | Script injetado no container que já roda importa símbolo NOVO — e trava o canal de deploy inteiro — o merge de um PR de célula deixa os DOIS deploys vermelhos de uma vez. | — |
 | [079](079-guarda-de-imutabilidade-nao-sobrevive-ao-cascade.md) | Guarda de imutabilidade passa em todos os testes e mesmo assim o CASCADE apaga as linhas — você protegeu uma tabela append-only nas duas metades que a `armadilhas/023` manda proteger — `Model.save()` **e**… | — |
 | [080](080-column-does-not-exist-em-teste-que-nem-toca-a-tabela.md) | `ProgrammingError: column <tabela>.<campo> does not exist` num teste que nem toca aquela tabela — você acrescenta um campo a um model, ainda sem rodar `makemigrations`, e roda **um único** teste que só lê metadados: | — |
+| [081](081-reverse-mente-no-teste-e-acerta-em-producao.md) | `reverse()` mente no teste e acerta em produção (célula sob `SCRIPT_NAME`) — numa célula servida sob prefixo de caminho (`/forms/sugestoes/`, `/checkout/`, `/quiz/`), a MESMA requisição de teste tem `request.path_info`… | — |
+| [082](082-httpx-get-direto-constroi-um-sslcontext-por-chamada.md) | `httpx.get()` direto constrói um `SSLContext` por chamada (0,4 s cada) — a suíte de uma célula que fala com outra célula demora **dezenas de segundos** sem nenhum teste lento aparente, e cada requisição de usuário que… | — |
 
-**70 entradas.**
+**72 entradas.**
