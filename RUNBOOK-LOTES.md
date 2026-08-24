@@ -206,6 +206,44 @@ após incidente externo):
    anomalia: espere o recálculo do GitHub (loop até sair de UNKNOWN) antes de
    acionar o portão — duas ocorrências neste lote, zero dano.
 
+**Lote 3 — 23/08/2026** (4 despachos, PRs #86–#89, 4 merges, 2 deploys verdes, 0 revert
+— o primeiro lote com **fila interna** de 3 fases na MESMA célula, guiado por um
+documento de decisão aprovado no mesmo dia):
+
+10. **Fila serial na mesma célula ACELERA quando cada fase entrega baseline para a
+    seguinte.** As fases 1→2 do funil não podiam ser paralelas (cerca 1 PR = 1 célula).
+    Mas a fase 2 nasceu do commit já EM PRODUÇÃO da fase 1, herdou os 81 testes dela
+    como baseline e o teste *golden* byte-idêntico como cinto de regressão — e saiu em
+    22 min contra 38 da fase 1, com escopo maior. Sequenciar não foi o custo da cerca;
+    foi o que deu velocidade. **Regra:** ao dividir uma entrega grande em fases na mesma
+    célula, faça a fase N terminar deixando *portões* que a fase N+1 herda, não só código.
+11. **Pendência devolvida por um despacho é DECISÃO no brief do seguinte — nunca
+    pergunta ao humano.** A fase 1 devolveu duas em aberto (canal do POST de site
+    prefixado; helper de URL com idioma). A maestro decidiu as duas no brief da fase 2
+    (postar na própria URL prefixada — o que de quebra capturou o idioma do lead; e
+    promover o helper a template tag com lint). Nenhuma foi ao mantenedor, nenhuma
+    virou dívida. Perguntar teria custado uma rodada de conversa por pendência.
+12. **Brief que manda VERIFICAR antes de documentar encontra divergência entre a lei e
+    o código.** O despacho da receita exigia "confira no código real antes de afirmar
+    qualquer coisa, e diga no PR quais arquivos leu". Resultado: três divergências entre
+    o plano aprovado e a implementação — inclusive uma **ativa e perigosa** (o marcador
+    `_juridico` que o plano manda usar reprova o catálogo e, como o validador roda no
+    boot, derruba a célula — ARMADILHAS §9). Sem essa exigência, a receita teria
+    descrito um sistema imaginário e o próximo agente executaria o comando que quebra.
+13. **Documento aprovado não é código — audite-o no fim do lote.** Um plano validado
+    pelo mantenedor vira *lei* para os agentes seguintes, e eles não desconfiam dele.
+    Quando o lote é guiado por um documento de decisão, o ÚLTIMO despacho deve auditar
+    documento×realidade e registrar cada divergência (aqui: portão que mora no `make ci`
+    e não em `ci/`, marcador inexistente, semântica de `pendente` mais ampla que a
+    descrita). Custa um parágrafo no brief; evita que a próxima sessão trate promessa
+    como fato.
+14. **Lote que muda site ao vivo só fecha com prova MEDIDA DE FORA.** CI verde e deploy
+    verde não provam que a URL responde — provam que o pipeline rodou (a lição do H13
+    vale aqui). O fechamento honesto foi `curl` na internet pública contra a matriz
+    inteira (raiz→302, os três idiomas, prefixo inválido→404, POST nu→404, sitemap,
+    hreflang) **e contra um site legado**, para provar no mundo real o que o teste
+    *golden* prova no CI: quem não entrou no regime novo não mudou.
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
