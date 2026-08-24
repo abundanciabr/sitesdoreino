@@ -35,6 +35,12 @@ FORCE_SCRIPT_NAME = (
 # CONV-SITE, ainda não instanciado neste esqueleto (sem regra de negócio).
 ALLOWED_HOSTS = ["*"]
 
+# O TLS termina no Traefik: para o uvicorn, a requisição chega em http. Sem esta
+# linha, `request.build_absolute_uri()` juraria `http://` e o `redirect_uri`
+# mandado ao Google não bateria com o cadastrado no console — `redirect_uri_mismatch`
+# em produção, e SÓ em produção (em dev não há proxy, e o endereço é http mesmo).
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 
 INSTALLED_APPS = [
@@ -46,8 +52,44 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
 ]
+
+# ---------------------------------------------------------------------------
+# Sessão da Caixa (DECISAO-EVO-01 §7: "a sugestoes cuida da própria sessão")
+# ---------------------------------------------------------------------------
+# Cookie assinado, e não tabela: o único conteúdo é um `Identidade.id` opaco que
+# já é reconferido no banco a cada requisição (`apps/core/sessao.py`). A tabela
+# `django_session` custaria uma escrita por login e um SELECT por requisição em
+# troca de nada — e por isso `django.contrib.sessions` NÃO entra em
+# INSTALLED_APPS: este backend não tem model. Trocar por sessão em banco no dia
+# em que a Caixa precisar revogar sessão de longe é mudar esta linha.
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+
+# Nome próprio, não o `sessionid` de fábrica: `meshcraft.top` serve o `funil` na
+# raiz e a Caixa sob /forms/sugestoes. Duas células no MESMO domínio com o mesmo
+# nome de cookie é uma sobrescrevendo a sessão da outra.
+SESSION_COOKIE_NAME = "sugestoes_sessao"
+
+# E o cookie nem sequer sai para o resto do domínio: o navegador só o envia sob
+# o prefixo da Caixa. Sem SCRIPT_NAME (dev) vira "/", que é o certo lá.
+SESSION_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
+
+# `Lax` é OBRIGATÓRIO aqui, não preferência: a volta do Google é uma navegação
+# de topo vinda de accounts.google.com. Com `Strict` o navegador NÃO manda o
+# cookie nessa volta, o `state` guardado some, e todo login legítimo falha como
+# se fosse falsificação.
+SESSION_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = not DEBUG
+
+# O cookie de CSRF (o `<form>` do /sair) leva o mesmo tratamento e pelo mesmo
+# motivo: `csrftoken` genérico no domínio compartilhado é colisão entre células.
+CSRF_COOKIE_NAME = "sugestoes_csrf"
+CSRF_COOKIE_PATH = SESSION_COOKIE_PATH
+CSRF_COOKIE_SECURE = not DEBUG
 
 TEMPLATES = [
     {

@@ -2,6 +2,11 @@ Django==5.1.4
 psycopg[binary]==3.2.3
 dj-database-url==2.3.0
 uvicorn==0.32.1
+# Cliente das duas conversas de fora (Google e alunos) — R2, timeout explícito.
+httpx==0.28.1
 pytest==8.3.4
 pytest-django==4.9.0
+# O dublê de rede dos testes. Sem ele a suíte precisaria de internet, e uma
+# suíte que depende do Google é uma suíte que fica vermelha por motivo alheio.
+respx==0.23.1
 black==24.10.0

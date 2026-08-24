@@ -1,0 +1,88 @@
+{% comment %}
+A porta da Caixa de Sugestões — uma página só, três estados.
+
+  1. de fora            → o botão "Entrar com Google"
+  2. de fora, com recado → a explicação (§5 da DECISAO-EVO-01) + o MESMO botão
+  3. de dentro          → quem é você aqui + sair
+
+O estado 2 usar a mesma página que o 1 é a decisão que importa: quem levou um
+"não encontramos matrícula para esse e-mail" precisa do botão logo abaixo para
+tentar com a outra conta. Tela de erro sem saída é o "acesso negado" seco que a
+decisão proibiu, com outro nome.
+
+Sem CSS externo, sem JS, sem fonte remota: a Caixa ainda não tem base_mobile.html
+(R6), e uma dependência de rede numa página de LOGIN é o tipo de coisa que
+quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
+{% endcomment %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Caixa de Sugestões</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; min-height: 100vh; display: flex;
+      align-items: center; justify-content: center; padding: 1.5rem;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.55; background: Canvas; color: CanvasText;
+    }
+    main { width: 100%; max-width: 26rem; }
+    h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+    .sub { margin: 0 0 1.5rem; opacity: .7; font-size: .95rem; }
+    .recado {
+      border: 1px solid currentColor; border-radius: .6rem;
+      padding: 1rem; margin-bottom: 1.5rem; opacity: .95;
+    }
+    .recado h2 { font-size: 1.05rem; margin: 0 0 .5rem; }
+    .recado p { margin: 0; font-size: .95rem; }
+    .email {
+      display: inline-block; margin-top: .75rem; padding: .3rem .5rem;
+      border-radius: .35rem; font-family: ui-monospace, "SFMono-Regular", monospace;
+      font-size: .9rem; background: color-mix(in srgb, CanvasText 12%, Canvas);
+      word-break: break-all;
+    }
+    .botao {
+      display: block; width: 100%; padding: .85rem 1rem; border-radius: .6rem;
+      border: 1px solid currentColor; background: transparent; color: inherit;
+      font: inherit; font-weight: 600; text-align: center; text-decoration: none;
+      cursor: pointer;
+    }
+    .discreto { border: 0; font-weight: 400; opacity: .75; text-decoration: underline; }
+    .papel {
+      display: inline-block; padding: .1rem .45rem; border-radius: 1rem;
+      border: 1px solid currentColor; font-size: .75rem; text-transform: uppercase;
+      letter-spacing: .04em; vertical-align: middle;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Caixa de Sugestões</h1>
+    <p class="sub">O lugar de pedir o que falta e votar no que importa.</p>
+
+    {% if ator %}
+      <p>
+        Você está dentro como <strong>{{ ator.identidade.nome_exibido|default:ator.identidade.email }}</strong>
+        {% if ator.e_staff %}<span class="papel">equipe</span>{% endif %}
+      </p>
+      <form method="post" action="{% url 'sair' %}">
+        {% csrf_token %}
+        <button type="submit" class="botao discreto">Sair</button>
+      </form>
+    {% else %}
+      {% if titulo %}
+        <div class="recado">
+          <h2>{{ titulo }}</h2>
+          <p>{{ texto }}</p>
+          {% if email %}<span class="email">{{ email }}</span>{% endif %}
+        </div>
+      {% endif %}
+      <a class="botao" href="{% url 'entrar_google' %}">
+        {% if titulo %}Entrar com outra conta Google{% else %}Entrar com Google{% endif %}
+      </a>
+    {% endif %}
+  </main>
+</body>
+</html>
