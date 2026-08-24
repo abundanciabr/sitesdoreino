@@ -1,0 +1,104 @@
+{% comment %}
+A moldura das páginas de participação da Caixa (EVO-12b).
+
+Base DESTA célula, e de nenhuma outra (Lei 7 — zonas quentes nascem vazias):
+copia-se o padrão, nunca o arquivo. Sem CSS externo, sem JS, sem fonte remota —
+a Caixa é um formulário, e uma dependência de rede aqui só acrescentaria um
+jeito novo de a página falhar.
+
+A `entrar.html` do EVO-12a NÃO estende esta base, de propósito: ela é a única
+página que aparece para quem ainda não tem sessão, e mexer nela para economizar
+CSS mudaria arquivo de outro despacho sem nenhum ganho de comportamento.
+
+Todo link interno sai de `{% templatetag openblock %} url {% templatetag closeblock %}`,
+jamais de caminho escrito à mão: é o `reverse()` de dentro dessa tag que carrega
+o prefixo público (/forms/sugestoes) em produção — ver armadilhas/029 e /081.
+{% endcomment %}<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Caixa de Sugestões{% endblock %}</title>
+  <style>
+    :root { color-scheme: light dark; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 1.5rem 1rem 4rem;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.55; background: Canvas; color: CanvasText;
+    }
+    main { width: 100%; max-width: 44rem; margin: 0 auto; }
+    a { color: inherit; }
+    h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+    h2 { font-size: 1.1rem; margin: 2rem 0 .75rem; }
+    .sub { margin: 0 0 1.5rem; opacity: .7; font-size: .95rem; }
+    .topo {
+      display: flex; flex-wrap: wrap; gap: .75rem; align-items: baseline;
+      justify-content: space-between; margin-bottom: 1.5rem;
+      padding-bottom: .75rem; border-bottom: 1px solid currentColor;
+    }
+    .topo form { display: inline; }
+    .papel {
+      display: inline-block; padding: .1rem .45rem; border-radius: 1rem;
+      border: 1px solid currentColor; font-size: .75rem; text-transform: uppercase;
+      letter-spacing: .04em; vertical-align: middle;
+    }
+    .cartao {
+      border: 1px solid currentColor; border-radius: .6rem;
+      padding: 1rem; margin-bottom: .75rem;
+    }
+    .cartao h3 { margin: 0 0 .35rem; font-size: 1.05rem; }
+    .meta { font-size: .85rem; opacity: .7; margin: 0; }
+    .votos {
+      display: inline-block; min-width: 2.5rem; text-align: center;
+      border: 1px solid currentColor; border-radius: .5rem;
+      padding: .2rem .5rem; font-weight: 700; margin-inline-end: .6rem;
+    }
+    .recado {
+      border: 1px solid currentColor; border-radius: .6rem;
+      padding: 1rem; margin-bottom: 1.5rem;
+    }
+    .recado h2 { font-size: 1.05rem; margin: 0 0 .5rem; }
+    .recado p, .recado li { margin: 0; font-size: .95rem; }
+    label { display: block; margin: 1rem 0 .25rem; font-weight: 600; font-size: .95rem; }
+    input[type=text], textarea, select {
+      width: 100%; padding: .6rem .7rem; border-radius: .5rem;
+      border: 1px solid currentColor; background: transparent; color: inherit;
+      font: inherit;
+    }
+    textarea { min-height: 6rem; resize: vertical; }
+    .botao {
+      display: inline-block; padding: .7rem 1.1rem; border-radius: .6rem;
+      border: 1px solid currentColor; background: transparent; color: inherit;
+      font: inherit; font-weight: 600; text-align: center; text-decoration: none;
+      cursor: pointer; margin-top: 1rem;
+    }
+    .discreto { border: 0; font-weight: 400; opacity: .75; text-decoration: underline;
+                padding-inline: 0; margin-top: 0; }
+    .filtros { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.25rem; }
+    .filtros a {
+      border: 1px solid currentColor; border-radius: 1rem;
+      padding: .15rem .7rem; font-size: .85rem; text-decoration: none; opacity: .75;
+    }
+    .filtros a.ativo { opacity: 1; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topo">
+      <strong><a href="{% url 'quadro' %}">Caixa de Sugestões</a></strong>
+      {% if ator %}
+        <span>
+          {{ ator.identidade.nome_exibido|default:ator.identidade.email }}
+          {% if ator.e_staff %}<span class="papel">equipe</span>{% endif %}
+          <form method="post" action="{% url 'sair' %}">
+            {% csrf_token %}
+            <button type="submit" class="botao discreto">Sair</button>
+          </form>
+        </span>
+      {% endif %}
+    </div>
+    {% block conteudo %}{% endblock %}
+  </main>
+</body>
+</html>

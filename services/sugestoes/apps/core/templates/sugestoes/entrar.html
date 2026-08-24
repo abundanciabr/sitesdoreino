@@ -67,6 +67,16 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
         Você está dentro como <strong>{{ ator.identidade.nome_exibido|default:ator.identidade.email }}</strong>
         {% if ator.e_staff %}<span class="papel">equipe</span>{% endif %}
       </p>
+      {% comment %}
+      O EVO-12b acrescentou esta linha, e ela não é enfeite: sem ela a porta é
+      um beco. Quem entra volta para cá (o `_abrir` redireciona para `entrar`) e
+      lê "você está dentro" sem nenhum caminho para o quadro — teria de digitar
+      a URL. O redirecionamento em si continua vindo para esta página, e não
+      direto para o quadro, porque o quadro exige um `Quadro` semeado e uma
+      porta que caia em 404 depois de um login bem-sucedido é pior que um
+      clique a mais.
+      {% endcomment %}
+      <a class="botao" href="{% url 'quadro' %}">Ver o quadro de sugestões</a>
       <form method="post" action="{% url 'sair' %}">
         {% csrf_token %}
         <button type="submit" class="botao discreto">Sair</button>
