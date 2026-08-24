@@ -32,14 +32,32 @@ POR idioma (relatório, roteamento reverso). Aí a migração é mecânica, e os
 de `tests/test_idioma_do_site.py` continuam valendo sem reescrita, porque testam
 comportamento, não armazenamento.
 
-## `normalizar_idiomas()` é fonte única — e por isso mora no modelo
+## `normalizar_idiomas()` NÃO pode ser fonte única do sincronizador — e o porquê custou um deploy
 
-A mesma função é chamada por **três** caminhos: `Site.save()`,
-`SiteQuerySet.update()` e `infra/sincronizar_sites.py`. O script de infra a
-importa (`from apps.sites.models import Site, normalizar_idiomas`) porque roda
-DENTRO do container do catalogo — então "a última barreira antes do banco de
-produção" é literalmente o mesmo código do guarda do modelo, não uma cópia dele.
-Regra escrita duas vezes é regra que diverge.
+> **Corrigido em 24/08/2026, depois do incidente.** A versão anterior desta
+> entrada dizia que `infra/sincronizar_sites.py` importava `normalizar_idiomas`
+> do modelo, e chamava isso de fonte única. **Estava errado, e travou o canal de
+> deploy inteiro** — ver `armadilhas/078`.
+
+Dentro da célula, a função continua sendo fonte única de verdade: `Site.save()`
+e `SiteQuerySet.update()` a chamam, e é isso que faz a regra valer nos dois
+caminhos de escrita do ORM.
+
+**Mas o `infra/sincronizar_sites.py` não pode importá-la.** Ele é *injetado*
+pelo `deploy-infra` dentro do container do catálogo **que já está rodando na
+VPS** — e essa imagem pode ser mais VELHA que o próprio script, porque
+`deploy-infra` e `deploy-celula` disparam em paralelo no mesmo merge, sem ordem
+entre si. Foi exatamente o que aconteceu: o script novo importou um símbolo que
+só existia na imagem nova, o `deploy-infra` morreu em `ImportError`, e o
+`deploy-celula` — que traria a imagem nova — foi barrado pelo portão fail-closed
+por causa do irmão vermelho. Impasse fechado: cada um esperando o outro.
+
+Por isso o script hoje traz uma **cópia consciente** da regra, com guarda
+mecânica contra deriva (`ci/tests/test_sincronizar_sites_tolerante.py`, que lê
+o AST e reprova qualquer `from apps.* import` fora de `{Site, Product, Offer}`).
+A regra geral, que vale para qualquer arquivo injetado num container: **só
+dependa de símbolo que já existia na versão anterior.** Duplicação vigiada custa
+menos que acoplamento de versão entre dois workflows paralelos.
 
 **Ela normaliza além de validar** (código para minúsculas, `indexable` sempre
 explícito), pelo mesmo motivo que `save()` já fazia `host.lower()`: o código
