@@ -192,19 +192,40 @@ teste manual e colar a evidência crua no PR de fechamento da Fase D/E.
 
 ## 6. Rollback (RITOS.md §4 — a resposta canônica a qualquer emergência)
 
+**Pelo pipeline — o agente dispara sozinho, não há passo humano** (desde
+23/08/2026; antes disto o rollback só existia como bloco de SSH, e agente não
+tem chave — Lei 5):
+
 ```bash
-ssh deploy@IP-DA-VPS-NOVA          # você, não agente — chave não existe para sessão de IA
-cd /opt/plataforma
-CHECKOUT_TAG=<sha-anterior> docker compose up -d checkout
-docker compose ps checkout
+gh workflow run rollback.yml -f celula=checkout -f alvo=<sha-anterior> -f motivo="..."
+gh run list --workflow=rollback.yml --limit 1     # pegue o id
+gh run view <id> --json status,conclusion         # veredito REAL (§5.10 das ARMADILHAS)
 ```
 
-`<sha-anterior>` está no histórico do workflow `deploy-celula` (cada deploy
-publica `:sha` e `:main` em `ghcr.io/abundanciabr/plataforma-<celula>`).
-Rollback de uma célula não toca nenhuma outra. **Critério 3 de
-`ESQUELETO-QUE-ANDA.md`** (drill cronometrado, < 5 min do "decidi" ao
-"voltou") também ainda não tem evidência registrada — é o golpe 14 de
-`02-RED-TEAM.md` (Fase E), o único golpe "do bem" do rito.
+`<sha-anterior>` é o sha COMPLETO de um commit da `main` em que **esta** célula
+foi construída — histórico do `deploy-celula` (cada deploy publica `:sha` e
+`:main` em `ghcr.io/abundanciabr/plataforma-<celula>`), ou:
+
+```bash
+gh api users/abundanciabr/packages/container/plataforma-checkout/versions \
+  --jq '.[] | {tags: .metadata.container.tags, created: .created_at}'
+```
+
+`ci/rollback.py` valida antes de qualquer SSH (célula do manifesto · alvo
+ancestral da `main` · imagem existente no registry) e o job que entra na VPS é
+pulado se algo reprovar. **Desfazer: o mesmo comando com `alvo=main`** — e o pin
+não persiste sozinho, o próximo deploy da célula já volta para `:main`.
+
+Rollback de uma célula não toca nenhuma outra — mas toca TODOS os serviços dela
+(`checkout`, `checkout-consumer`, `checkout-relay`), pela mesma razão do
+`deploy-celula`: deixar o auxiliar na imagem nova seria rodar duas versões do
+mesmo código, em silêncio, no meio de uma emergência.
+
+**Critério 3 de `ESQUELETO-QUE-ANDA.md`** (drill cronometrado, < 5 min do
+"decidi" ao "voltou") — é também o golpe 14 de `02-RED-TEAM.md` (Fase E), o
+único golpe "do bem" do rito. O drill é: escolher uma célula, disparar o
+workflow para o sha anterior, medir de FORA que a produção mudou, disparar de
+volta com `alvo=main`, medir de novo. Evidência = a saída crua dos dois runs.
 
 ## 7. Pendências herdadas — o que ainda NÃO é "de verdade" (não confunda com bug)
 

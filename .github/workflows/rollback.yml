@@ -1,0 +1,171 @@
+# =============================================================================
+# ROLLBACK — a resposta canônica a qualquer emergência (RITOS §4), pelo
+# pipeline. Volta UMA célula a uma imagem que a produção JÁ rodou:
+# `<CELULA>_TAG=<sha> docker compose up -d <servicos-da-celula>`.
+#
+# POR QUE ESTE TEM workflow_dispatch E OS DOIS DEPLOYS NÃO: deploy-celula e
+# deploy-infra ENTREGAM código — caminho de entrega que ninguém amarra a commit
+# revisado não existe aqui. Este workflow só ANDA PARA TRÁS, e ci/rollback.py
+# prova antes de qualquer SSH que o alvo é (a) uma célula declarada no
+# manifesto, (b) um commit ANCESTRAL da main — logo, um commit que já passou
+# pelo portão de deploy — e (c) uma imagem que existe no registry. Fora dessas
+# três, o job de aplicar é pulado (INV-CI01: não medir nunca vira verde).
+#
+# Antes disto, o rollback existia só como bloco de SSH no RITOS §4 — e agente
+# não tem chave (Lei 5). Na prática, o caminho MAIS RÁPIDO numa emergência
+# dependia de acordar o mantenedor e fazê-lo colar comando em terminal, que é
+# exatamente o que a Lei das 2h da Manhã existe para impedir.
+#
+# O PIN NÃO PERSISTE, DE PROPÓSITO: a variável é exportada só para este `up`.
+# O próximo deploy da célula (ou qualquer `up` sem ela) volta para `:main`.
+# É o RITOS §4 item 3 — "estado manual jamais persiste como fonte de verdade":
+# o rollback segura o fogo; quem apaga é o PR com a correção. Enquanto a
+# correção não vem, disparar de novo é o caminho — nunca editar o servidor.
+#
+# COMO DESFAZER: dispare com alvo = `main`.
+#
+# O CI conhece apenas VPS_HOST e a chave do usuário `deploy` — os MESMOS
+# secrets do deploy-celula. Segredos de RUNTIME vivem SÓ em
+# /opt/plataforma/env/*.env (INV-P8) e este workflow não os lê nem os escreve.
+# =============================================================================
+name: rollback
+on:
+  workflow_dispatch:
+    inputs:
+      celula:
+        description: 'Célula a voltar (uma só — rollback de uma não toca nenhuma outra)'
+        required: true
+        type: choice
+        options:
+          - alunos
+          - catalogo
+          - checkout
+          - funil
+          - leads
+          - mensageria
+          - pagamentos
+          - quiz
+      alvo:
+        description: 'sha COMPLETO (40 hex) de um commit da main — ou "main" para desfazer o pin'
+        required: true
+        type: string
+      motivo:
+        description: 'Por que estamos voltando (vai para o log do run — é a trilha de auditoria)'
+        required: true
+        type: string
+permissions:
+  contents: read
+# MESMO grupo dos dois deploys: um rollback disparado no meio de um deploy
+# seria intercalado no mesmo `docker compose`. O grupo os enfileira sem
+# cancelar — cancelar um deploy pela metade é pior que esperar por ele.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+jobs:
+  validar:
+    name: validar-alvo
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Least privilege: quem VALIDA lê o registry — nunca recebe a chave SSH.
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      celula: ${{ steps.v.outputs.celula }}
+      tag: ${{ steps.v.outputs.tag }}
+      imagem: ${{ steps.v.outputs.imagem }}
+      var_tag: ${{ steps.v.outputs.var_tag }}
+    steps:
+      # fetch-depth: 0 não é detalhe — a checagem de ancestralidade precisa do
+      # histórico inteiro. Com o clone raso, um sha legítimo de dois dias atrás
+      # seria "desconhecido", e o portão reprovaria um alvo bom (ERROR honesto,
+      # mas no meio de uma emergência isso custa os minutos que o rito conta).
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: v
+        name: Validar o alvo (0 = seguro · 1 = reprovado · 2 = não mediu)
+        env:
+          ROLLBACK_CELULA: ${{ inputs.celula }}
+          ROLLBACK_ALVO: ${{ inputs.alvo }}
+          ROLLBACK_MOTIVO: ${{ inputs.motivo }}
+          ROLLBACK_BASE: ${{ github.sha }}
+        run: python ci/rollback.py
+
+  aplicar:
+    name: aplicar-na-vps
+    needs: validar
+    # Explícito de propósito; NUNCA always()/failure(). E as saídas conferidas
+    # uma a uma: um job que "passou" sem produzir plano é instrumentação
+    # quebrada, não autorização para mexer na produção.
+    if: >-
+      needs.validar.result == 'success' &&
+      needs.validar.outputs.celula != '' &&
+      needs.validar.outputs.tag != '' &&
+      needs.validar.outputs.var_tag != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      # O motivo é texto LIVRE — ele nunca entra no script do SSH. Interpolar
+      # `${{ inputs.* }}` dentro de um `script:` é substituição de TEXTO: um
+      # motivo com aspas e `;` viraria comando na VPS. Por env não vira: o
+      # shell recebe o valor como dado, não como código. Os outros valores
+      # usados lá embaixo podem ser interpolados porque ci/rollback.py já
+      # provou que são um nome do manifesto e um sha/`main` — é para isso que
+      # a validação existe antes do SSH.
+      - name: Motivo declarado no disparo (trilha de auditoria)
+        env:
+          MOTIVO: ${{ inputs.motivo }}
+        run: |
+          printf 'MOTIVO: %s\n' "$MOTIVO"
+      - name: Voltar a célula na VPS (pull + up dela E dos auxiliares dela)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -eu
+            cd /opt/plataforma
+            CELULA='${{ needs.validar.outputs.celula }}'
+            VAR_TAG='${{ needs.validar.outputs.var_tag }}'
+            TAG='${{ needs.validar.outputs.tag }}'
+            # A célula não é UM container: consumers de evento e worker Huey
+            # vivem em "<celula>-<papel>". Voltar só "<celula>" deixaria o
+            # auxiliar na imagem nova, em silêncio — duas versões do mesmo
+            # código no ar durante uma emergência. A lista sai do PRÓPRIO
+            # compose da VPS, como no deploy-celula.
+            SERVICOS=$(docker compose config --services | grep -E "^${CELULA}(-|\$)" || true)
+            if [ -z "$SERVICOS" ]; then
+              echo "ERRO: '$CELULA' não tem serviço algum em /opt/plataforma/docker-compose.yml."
+              echo "Abortado de propósito: 'up -d' sem argumento subiria a plataforma inteira."
+              exit 1
+            fi
+            echo "Serviços desta célula: $SERVICOS"
+            echo "Imagens ANTES:"
+            docker compose images $SERVICOS
+            # export com name=value: o nome da variável é indireto, e
+            # `$VAR_TAG=$TAG` sem as aspas não é atribuição em sh nenhum.
+            export "${VAR_TAG}=${TAG}"
+            echo "Aplicando ${VAR_TAG}=${TAG}"
+            INICIO=$(date +%s)
+            docker compose pull $SERVICOS
+            # --wait reprova se algum container não ficar de pé/healthy. Num
+            # rollback isso importa mais que num deploy: voltar para uma imagem
+            # que não sobe é ficar sem serviço nenhum, e em silêncio.
+            docker compose up -d --wait --wait-timeout 180 $SERVICOS
+            FIM=$(date +%s)
+            echo "Imagens DEPOIS:"
+            docker compose images $SERVICOS
+            docker compose ps $SERVICOS
+            echo "SEGUNDOS_NA_VPS=$((FIM - INICIO))"

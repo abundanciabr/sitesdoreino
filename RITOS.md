@@ -98,18 +98,34 @@ Numa emergência real, o caminho seguro precisa ser o MAIS RÁPIDO — ou às 2h
 o atalho vence, e atalho aplicado direto em produção vira estado que ninguém sabe
 reproduzir. Aqui a física está do lado certo:
 
-**A resposta canônica a QUALQUER emergência é ROLLBACK — segundos, não cirurgia:**
+**A resposta canônica a QUALQUER emergência é ROLLBACK — segundos, não cirurgia.
+Pelo pipeline, e o agente dispara sozinho:**
 
 ```bash
-# Você (agentes não têm chave — inexistência, não proibição):
-ssh deploy@IP-DA-VPS-NOVA
-cd /opt/plataforma
-PAGAMENTOS_TAG=<sha-anterior-que-funcionava> docker compose up -d pagamentos
-docker compose ps pagamentos
+gh workflow run rollback.yml \
+  -f celula=pagamentos \
+  -f alvo=<sha-anterior-que-funcionava> \
+  -f motivo="o que está acontecendo"
 ```
 
-O `<sha-anterior>` está no histórico do workflow `deploy-celula` (cada deploy publica
-`:sha` e `:main`). Rollback de UMA célula não toca nenhuma outra.
+O `<sha-anterior>` é o sha COMPLETO de um commit da `main` em que ESSA célula foi
+construída — o histórico do workflow `deploy-celula` (cada deploy publica `:sha` e
+`:main`). Rollback de UMA célula não toca nenhuma outra.
+
+Antes de qualquer SSH, `ci/rollback.py` prova três coisas, fail-closed: a célula está
+no manifesto, o alvo é ancestral da `main` (logo já passou pelo portão de deploy) e a
+imagem existe no registry. Reprovou, o job que entra na VPS é pulado — é o que permite
+a este workflow ter `workflow_dispatch` sem virar um caminho para rodar código não
+revisado em produção (os dois workflows de deploy o recusam justamente por isso).
+
+**Desfazer:** o mesmo comando com `alvo=main`. E o pin não persiste sozinho: o próximo
+deploy da célula já volta para `:main` — é o item 3 desta lista, mecanizado.
+
+> Até 23/08/2026 este rito era um bloco de `ssh deploy@…` para o mantenedor colar, e
+> isso violava a própria Lei das 2h da Manhã: o caminho mais rápido dependia de acordar
+> uma pessoa. O bloco antigo segue valendo como ÚLTIMO recurso, se o GitHub Actions
+> estiver fora do ar — `ssh deploy@<IP>`, `cd /opt/plataforma`,
+> `PAGAMENTOS_TAG=<sha> docker compose up -d pagamentos`, `docker compose ps pagamentos`.
 
 Depois do fogo apagado:
 1. A correção definitiva viaja por PR + pipeline — **nunca** editar arquivo no
