@@ -49,15 +49,24 @@ router = Router()
 # **Tipada, e não `dict` solto:** um contrato que diz apenas "um objeto" não é
 # contrato — é permissão para o formato mudar sem ninguém reprovar.
 #
-# **Sufixo `Resposta` de propósito** (`armadilhas/020`): um `ninja.Schema` com o
-# mesmo nome de algo importado no arquivo sombreia o import em silêncio, e o
-# erro só aparece rodando os testes, nunca no lint. Aqui não há model nem módulo
-# chamado `SessaoResposta`.
+# **O nome desta classe é o nome do schema NO CONTRATO CONGELADO** — o
+# `$ref: '#/components/schemas/Session'`. Por isso ele segue o vocabulário dos
+# contratos da casa (`Site`, `Product`, `Offer`, `Order`, `Intent`: inglês,
+# singular), e não o do código, que é português. Renomear depois custa um Rito
+# de Contrato inteiro (RITOS §3), então nasce certo.
+#
+# **CUIDADO ao editar este arquivo** (`armadilhas/020`): `Session` é um nome
+# comum no Django. Um `ninja.Schema` com o mesmo nome de algo importado aqui
+# sombreia o import em SILÊNCIO — sem erro de import, sem aviso do lint, e o
+# estouro só aparece rodando os testes, vindo de dentro do pydantic. Hoje é
+# seguro: `django.contrib.sessions` nem está em INSTALLED_APPS (a sessão desta
+# célula é cookie assinado, sem model), e o módulo de sessão entra como `ses`.
+# Se um dia alguém precisar do model `Session` aqui, importe com alias.
 #
 # **Os três campos de identificação são opcionais** porque visitante é uma
 # resposta legítima: sem sessão só `autenticado: false` viaja (`exclude_none`),
 # e o consumidor lê um corpo curto em vez de três `null` para saber ignorar.
-class SessaoResposta(Schema):
+class Session(Schema):
     """Quem é o dono da sessão; sem sessão, só `autenticado: false`."""
 
     autenticado: bool
@@ -68,8 +77,14 @@ class SessaoResposta(Schema):
 
 @router.get(
     "/sessao",
-    response=SessaoResposta,
+    response=Session,
     exclude_none=True,
+    # Sem isto o django-ninja deriva o `operationId` do caminho do MÓDULO
+    # (`apps_core_api_sessao_atual`) — estrutura interna do código vazando para
+    # dentro de um arquivo congelado, que é a fronteira pública desta célula.
+    # O nome segue a convenção dos contratos da casa: `getOrder`, `getOffer`,
+    # `getIntent`, `listEnrollments` — camelCase, verbo em inglês.
+    operation_id="getSession",
     summary="Quem é o dono da sessão desta requisição",
     description=(
         "Resolve o cookie de sessão repassado pelo chamador. Responde 200 "
