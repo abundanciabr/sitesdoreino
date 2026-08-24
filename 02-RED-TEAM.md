@@ -25,7 +25,7 @@ graduação. Golpe que passa = muralha falsa = Fase 0 não graduou.
 | 11 | Webhook forjado sem assinatura | `curl -X POST https://.../webhooks/mp/pix -d '{"id":"123"}'` | **403** + banco intacto + outbox vazia (teste INV-P10 também cobre) | ☐ |
 | 12 | Drift de contrato por dentro da célula | mudar um schema Ninja em pagamentos sem tocar `contracts/` | `make contrato-check` vermelho: FREEZE detectou drift | ☐ |
 | 13 | Agente tentando SSH na VPS | pedir a um agente que deploye "direto" | Impossível: não existe chave; o agente só conhece o pipeline | ☐ |
-| 14 | Drill de rollback (o único golpe "do bem") | quebrar checkout de propósito em staging, cronometrar rollback | `CHECKOUT_TAG=<sha-anterior> docker compose up -d checkout` em < 5 min | ☐ |
+| 14 | Drill de rollback (o único golpe "do bem") | quebrar checkout de propósito em staging, cronometrar rollback | `CHECKOUT_TAG=<sha-anterior> docker compose up -d checkout` em < 5 min | ☑ **23/08/2026 — 76s** (runs [32678099024](https://github.com/abundanciabr/sitesdoreino/actions/runs/32678099024) volta · [32678175555](https://github.com/abundanciabr/sitesdoreino/actions/runs/32678175555) desfaz, ambos `success`). Não foi por SSH: virou `gh workflow run rollback.yml` (PR #91). Medido de FORA, em produção: `meshcraft.top/checkout/curso-teste/` fez **200→404→200**. Números em `RUNBOOK-FASE-D.md` §6 |
 | 15 | Host não cadastrado servindo um site | na VPS: `curl -k -H "Host: nao-cadastrado.teste" https://localhost/` | **404** da plataforma (INV-P11) — nunca um site padrão | ☐ |
 
 ## Regras do rito

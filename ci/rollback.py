@@ -48,7 +48,7 @@ Ambiente esperado (fiação em .github/workflows/rollback.yml):
 
 Saídas em GITHUB_OUTPUT, consumidas pelo job de aplicar:
 
-    celula · tag · imagem · var_tag (ex.: CHECKOUT_TAG)
+    celula · tag · var_tag (ex.: CHECKOUT_TAG)
 """
 
 from __future__ import annotations
@@ -329,10 +329,12 @@ def publicar_saidas(ctx: Contexto) -> None:
     destino = os.environ.get("GITHUB_OUTPUT", "").strip()
     if not destino:
         return
+    # `imagem` NÃO entra: o job de aplicar usa var_tag+tag e deixa o compose
+    # resolver o nome. Publicar um valor que ninguém lê é convite para alguém
+    # começar a lê-lo amanhã por um caminho que este portão não cobre.
     linhas = {
         "celula": ctx.celula,
         "tag": ctx.tag,
-        "imagem": ctx.imagem,
         "var_tag": ctx.var_tag,
     }
     with open(destino, "a", encoding="utf-8") as saida:

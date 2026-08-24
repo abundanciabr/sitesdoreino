@@ -186,7 +186,6 @@ def test_alvo_ancestral_com_imagem_publicada_passa(repo_git, tmp_path):
     assert saidas(tmp_path) == {
         "celula": "checkout",
         "tag": repo_git.sha_antigo,
-        "imagem": f"ghcr.io/abundanciabr/plataforma-checkout:{repo_git.sha_antigo}",
         "var_tag": "CHECKOUT_TAG",
     }
 
@@ -243,9 +242,14 @@ def test_commit_de_branch_nao_mergeada_reprova(repo_git, tmp_path):
     assert "NÃO é ancestral" in proc.stdout
 
 
-def test_sha_inexistente_no_repositorio_nao_vira_pass(repo_git, tmp_path):
+def test_sha_inexistente_no_repositorio_e_error_nunca_pass(repo_git, tmp_path):
+    # ERROR (2), não FAIL (1), de propósito: "o git não conhece esse objeto"
+    # pode ser um sha inventado OU um clone raso/desatualizado — não dá para
+    # afirmar que o ALVO está errado sem antes saber que o histórico está
+    # completo. `(1, 2)` aqui seria asserção frouxa: esconderia uma mudança de
+    # comportamento em vez de reprovar.
     proc = rodar(repo_git, tmp_path, alvo="f" * 40)
-    assert proc.returncode in (1, 2), proc.stdout + proc.stderr
+    assert proc.returncode == 2, proc.stdout + proc.stderr
     assert saidas(tmp_path) == {}
 
 
@@ -375,6 +379,38 @@ def test_workflow_de_rollback_exige_a_validacao():
     # Mesmo grupo dos deploys: dois `docker compose` simultâneos na mesma VPS
     # seriam intercalados.
     assert wf["concurrency"]["group"] == "deploy"
+
+
+def test_workflow_mede_linhagem_contra_a_MAIN_nao_contra_o_ref_do_disparo():
+    """O furo que a auditoria de 23/08/2026 encontrou.
+
+    `workflow_dispatch` aceita `--ref <branch>`. Com o checkout padrão, o
+    repositório vinha nesse ref e `ROLLBACK_BASE: ${{ github.sha }}` media a
+    ancestralidade contra ELE — ou seja, a promessa "o alvo é ancestral da
+    main", escrita em RITOS §4, RUNBOOK §6 e no cabeçalho deste workflow, não
+    era a que o código impunha. A checagem de imagem no registry segurava na
+    prática (só a main gera imagem), mas garantia declarada que ninguém impõe
+    apodrece — este teste é o que a mantém honesta.
+    """
+    wf = _carregar("rollback.yml")
+    passos = wf["jobs"]["validar"]["steps"]
+    checkout = next(p for p in passos if "checkout" in str(p.get("uses", "")))
+    # `.get`, não `[...]`: sem a chave o teste tem de dizer O QUE FALTA, não
+    # estourar KeyError. Guarda que reprova de forma críptica é meio-guarda —
+    # quem lê isto vai estar com pressa.
+    com = checkout.get("with") or {}
+    assert com.get("ref") == "main", (
+        "o checkout do job de validação precisa fixar `ref: main` — sem isso a "
+        f"régua da linhagem vira a branch de quem disparou (achei: {com.get('ref')!r})"
+    )
+    assert com.get("fetch-depth") == 0, (
+        f"fetch-depth: 0 é obrigatório para medir ancestralidade (achei: {com.get('fetch-depth')!r})"
+    )
+    base = next(p for p in passos if p.get("id") == "v")["env"]["ROLLBACK_BASE"]
+    assert "github.sha" not in str(base), (
+        "github.sha é o sha do ref DO DISPARO; a base tem de ser a main "
+        "(HEAD, já que o checkout acima a fixa)"
+    )
 
 
 def test_workflow_de_rollback_nao_define_as_costuras_de_teste():

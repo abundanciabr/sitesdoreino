@@ -264,9 +264,15 @@ gh api users/abundanciabr/packages/container/plataforma-checkout/versions \
 ```
 
 `ci/rollback.py` valida antes de qualquer SSH (célula do manifesto · alvo
-ancestral da `main` · imagem existente no registry) e o job que entra na VPS é
-pulado se algo reprovar. **Desfazer: o mesmo comando com `alvo=main`** — e o pin
-não persiste sozinho, o próximo deploy da célula já volta para `:main`.
+ancestral da `main` — régua fixada em `ref: main` no checkout, não no ref do
+disparo · imagem existente no registry) e o job que entra na VPS é pulado se
+algo reprovar. **Desfazer: o mesmo comando com `alvo=main`** — e o pin não
+persiste sozinho, o próximo deploy da célula já volta para `:main`.
+
+⚠️ **Enquanto um rollback estiver ATIVO, `infra/` está congelado.** O
+`deploy-infra` termina com `docker compose up -d` sem argumento e devolve todas
+as células ao `:main` — desfazendo o rollback em silêncio, com o run verde. Se
+acontecer, redispare (idempotente, ~76s). `ARMADILHAS.md` §5.16.
 
 Rollback de uma célula não toca nenhuma outra — mas toca TODOS os serviços dela
 (`checkout`, `checkout-consumer`, `checkout-relay`), pela mesma razão do
