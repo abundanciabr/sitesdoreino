@@ -3,14 +3,76 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
-## O que existe aqui hoje (Lote 1, EVO-10) — e o que NÃO existe
+## O que existe aqui hoje (EVO-10 + EVO-11) — e o que NÃO existe
 
-Esta célula nasceu como esqueleto puro: `config/` (settings fail-hard, urls,
-asgi), `GET /healthz`, `apps/core` e dois arquivos de teste. **Não existe**
-modelo de dados, migration, API, identidade, middleware CONV-SITE nem
-`config/api.py`. Cada um tem despacho próprio (EVO-11 dados, EVO-12
-sugerir/votar/comentar, EVO-13 staff). Se você chegou aqui esperando encontrar
-`apps/sugestoes/models.py`, o despacho é outro — confira antes de escrever.
+Do EVO-10, o esqueleto: `config/` (settings fail-hard, urls, asgi),
+`GET /healthz`, `apps/core`. Do EVO-11, **só a camada de dados**:
+`apps/sugestoes/models.py`, a migration `0001_initial`, o seed e os três
+testes-guarda de invariante.
+
+**Continua não existindo**, e cada um tem despacho próprio: API/endpoints
+(EVO-12), moderação e staff (EVO-13), o FLUXO de entrar com Google (o model
+`Identidade` existe; o login não), middleware CONV-SITE, `config/api.py` e
+outbox/eventos (Lote 2, EVO-20 — a célula ainda não emite nada). Se você chegou
+aqui esperando encontrar rota, sessão ou evento, o despacho é outro.
+
+## O modelo de dados diverge da spec em três pontos, e os três são deliberados
+
+A `ESPECIFICACAO-CELULA.md` §6 foi escrita antes da `AUDITORIA-AS-IS.md`. Onde
+as duas discordam, **vence a realidade medida** — e é isto que a §6 diz de
+errado:
+
+| A spec §6 diz | O que está no código | Por quê |
+|---|---|---|
+| `tenant_id = models.UUIDField()` | `site_id = models.CharField()` | "Tenant" não existe no vocabulário da casa; site existe (Lei 9). E em toda a plataforma o ID que atravessa fronteira é `type: string` **sem** `format: uuid` (auditoria Q3) |
+| `autor_id = models.UUIDField()` | `autor = FK(Identidade)` | Ver abaixo |
+| `HistoricoStatus.sugestao` com `CASCADE` | `PROTECT` | A §8 da mesma spec diz "nenhuma linha é apagada". As duas não cabiam juntas (`armadilhas/078`) |
+
+Há um teste-guarda mecânico para o primeiro item
+(`tests/test_inv_sem_fk_para_fora.py::test_os_ids_inter_celula_sao_texto_opaco_e_nao_uuid`):
+qualquer `UUIDField` que apareça em model desta célula reprova o CI. Não é
+gosto — é a fronteira que os consumidores já falam.
+
+## `Identidade` é FK de verdade, e isso NÃO fura a Lei 3
+
+A leitura apressada da Lei 3 ("nenhuma FK saindo da célula") vira, na cabeça de
+quem está com pressa, "nenhuma FK". São coisas diferentes: o que o Postgres não
+sustenta é constraint **entre bancos**, e `Identidade` mora no mesmo
+`sugestoes_db` de `Sugestao`, `Voto` e `Comentario`. Dentro do banco, a
+integridade referencial é de graça — recusá-la seria pagar o preço da restrição
+sem receber nada em troca.
+
+E não custa o nome: FK chamada `autor` faz o Django criar a coluna `autor_id`,
+que é exatamente o campo que a spec pede — e continua sendo **texto opaco**,
+porque `Identidade.id` é `CharField`. Ganha-se o `ON DELETE` explícito de
+brinde: `PROTECT` em toda referência a `Identidade`, para que apagar uma pessoa
+nunca vire histórico órfão em silêncio.
+
+**O que continua proibido, e o guarda que impõe:** FK para model de outra
+célula. `tests/test_inv_sem_fk_para_fora.py` varre `apps.get_models()` e deriva
+sozinho quais apps são desta célula (os que moram em `apps/`), então app novo
+entra no guarda sem ninguém lembrar de cadastrá-lo.
+
+## O append-only tem TRÊS degraus, e o terceiro é o banco
+
+`HistoricoStatus` (spec §8) é imposto em `save()`, no `AppendOnlyQuerySet`
+(`update`/`delete`/`bulk_update` — `armadilhas/023`) **e** num trigger plpgsql
+criado pela `0001_initial`. O terceiro não é zelo excessivo: sem ele, o
+`Collector` do Django apagaria o histórico inteiro por um `CASCADE`, sem passar
+por nenhum dos dois primeiros e sem erro nenhum (`armadilhas/078`).
+
+Consequência prática para quem for escrever a API (EVO-12/EVO-13): **não existe
+"corrigir o histórico"**. Correção é `HistoricoStatus.objects.create(...)` com o
+estado novo; qualquer tentativa de editar levanta `RegistroImutavel` antes de
+chegar ao banco, e o banco recusa de novo se alguém desviar do ORM.
+
+## O e-mail vive numa linha só, e há guarda para isso
+
+`Identidade.email` é o único campo de e-mail da célula (EVO-01 §3), e
+`test_o_email_vive_numa_linha_so` reprova qualquer `EmailField` — ou campo com
+"email" no nome — que apareça em outro model. Dado pessoal espalhado por cada
+voto de cada pessoa não é problema de estilo: é o que faz uma troca de endereço
+virar migração de dados em vez de um `UPDATE` de uma linha.
 
 ## O prefixo mora no env, e o `/healthz` foi travado ANTES de o middleware chegar
 

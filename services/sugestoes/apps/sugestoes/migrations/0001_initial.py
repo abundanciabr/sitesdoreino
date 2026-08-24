@@ -11,9 +11,12 @@ from django.db import migrations, models
 # collector de CASCADE do Django e qualquer código futuro que não conheça a
 # classe. Sem ele, "append-only" seria uma convenção — com ele, é o banco.
 #
-# `RunSQL` recebe uma LISTA de propósito: com uma string única o Django passaria
-# o SQL por `prepare_sql_script`, que fatia em `;` e não entende o corpo
-# dollar-quoted (`$$ ... ; ... $$`) de uma função plpgsql.
+# `RunSQL` recebe uma LISTA de propósito, e não uma string única: string única
+# passa por `prepare_sql_script`, que fatia o SQL em `;` usando o `sqlparse`. O
+# `sqlparse` 0.6.0 entende corpo dollar-quoted (`$$ ... ; ... $$`) e devolve o
+# CREATE FUNCTION inteiro — conferido — mas isso é comportamento de uma
+# dependência transitiva do Django, não contrato do Django. Com lista, cada
+# elemento vai direto ao cursor e o fatiamento nunca acontece.
 CRIAR_FUNCAO = """
 CREATE OR REPLACE FUNCTION sugestoes_historico_append_only()
 RETURNS trigger AS $$
