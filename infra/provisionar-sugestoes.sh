@@ -13,7 +13,14 @@
 # quebrar, e o `exit` acontece dentro de um bash filho.
 #
 # COMO O MANTENEDOR RODA (dentro da VPS, uma linha só):
-#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-sugestoes.sh -o /tmp/p.sh && bash /tmp/p.sh "ID_DO_GOOGLE" "SEGREDO_DO_GOOGLE" "email@staff"
+#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-sugestoes.sh -o /tmp/p.sh && bash /tmp/p.sh "ID_DO_GOOGLE" "email@staff"
+#
+# O SEGREDO DO GOOGLE **NÃO** É ARGUMENTO — o script pergunta, e a digitação é
+# invisível. Foi assim que a primeira versão vazou um segredo em 24/08/2026:
+# argumento de linha de comando aparece na TELA, no `~/.bash_history`, na saída
+# de `ps` enquanto roda, e em qualquer print do terminal que a pessoa mande
+# para alguém. O id do cliente pode ser argumento — ele é público por desenho
+# (vai no HTML da página de login). O segredo, não.
 #
 # SEGREDOS: as três senhas (banco, Django, token do par) são geradas AQUI,
 # dentro da VPS, e gravadas direto nos arquivos. Nenhuma aparece na tela,
@@ -27,13 +34,24 @@
 # =============================================================================
 set -u
 
-ID="${1:-}"; SEGREDO="${2:-}"; STAFF="${3:-}"
+ID="${1:-}"; STAFF="${2:-}"
 
 parar() { echo "PAROU POR SEGURANÇA: $1"; exit 1; }
 
-[ $# -eq 3 ] || parar "esperava 3 valores (id do google, segredo do google, e-mail de staff); vieram $#."
-case "$ID$SEGREDO$STAFF" in
-  *COLE_*|*ID_DO_GOOGLE*|"") parar "os três valores não foram preenchidos de verdade." ;;
+[ $# -eq 2 ] || parar "esperava 2 valores (id do cliente do Google, e-mail de staff); vieram $#. O SEGREDO não é argumento — eu pergunto."
+case "$ID$STAFF" in
+  *COLE_*|*ID_DO_GOOGLE*|"") parar "os dois valores não foram preenchidos de verdade." ;;
+esac
+
+# O segredo entra aqui, com a digitação invisível: nunca na linha de comando,
+# nunca no histórico, nunca num print de tela. `read -s` não ecoa; o `echo`
+# depois existe só para a quebra de linha que o -s engole.
+printf 'Cole o SEGREDO do cliente do Google (nada vai aparecer na tela): '
+read -r -s SEGREDO
+echo
+[ -n "$SEGREDO" ] || parar "o segredo veio vazio."
+case "$SEGREDO" in
+  *SEGREDO_DO_GOOGLE*|*COLE_*) parar "o segredo ainda é o texto de exemplo." ;;
 esac
 
 cd /opt/plataforma 2>/dev/null || parar "não achei /opt/plataforma — você está na VPS certa?"
@@ -110,6 +128,6 @@ echo "  linhas em sugestoes.env .. $(wc -l < env/sugestoes.env)  (esperado 11)"
 if grep -q '^TOKENS_ACEITOS_SUGESTOES=' env/alunos.env
 then echo "  linha no alunos.env ...... OK"; else echo "  linha no alunos.env ...... FALTANDO"; fi
 echo
-echo "PRONTO. Nenhuma senha apareceu na tela — todas foram geradas aqui dentro"
+echo "PRONTO. Nenhum segredo apareceu na tela — nem os gerados, nem o do Google"
 echo "e gravadas direto nos arquivos. Avise a sessão do agente para ela mergear"
 echo "o PR da infraestrutura e conferir o deploy."
