@@ -17,10 +17,15 @@
 > desfaz o motivo de ela existir.
 >
 > **Entrada nova ao terminar o despacho:** crie
-> `armadilhas/NNN-slug.md` (NNN = próximo número livre), comece pelo **sintoma
-> concreto** e rode `python ci/indice_de_armadilhas.py`. Nunca edite este
-> arquivo à mão, e nunca acrescente ao fim de um arquivo alheio — arquivo novo
-> por entrada é o que faz duas sessões paralelas pararem de colidir.
+> `armadilhas/NNN-slug.md` (NNN = **o primeiro número acima de todos**, nunca um
+> vago no meio: os vagos estão aposentados e ainda são citados), comece pelo
+> **sintoma concreto** e rode `python ci/indice_de_armadilhas.py`. Nunca edite
+> este arquivo à mão, e nunca acrescente ao fim de um arquivo alheio — arquivo
+> novo por entrada é o que faz duas sessões paralelas pararem de colidir.
+>
+> Se o seu rebase trouxe um `NNN` que outra sessão já usou, o gerador para com
+> `ERROR` e diz para qual número renomear — dois arquivos com o mesmo número
+> passam pelo `git rebase` sem conflito nenhum.
 >
 > `§ antigo` é o número que a entrada tinha no `ARMADILHAS.md` monolítico, até
 > 23/08/2026 — é por ele que as referências antigas (`ARMADILHAS §5.3`) ainda
@@ -106,5 +111,6 @@
 | [082](082-httpx-get-direto-constroi-um-sslcontext-por-chamada.md) | `httpx.get()` direto constrói um `SSLContext` por chamada (0,4 s cada) — a suíte de uma célula que fala com outra célula demora **dezenas de segundos** sem nenhum teste lento aparente, e cada requisição de usuário que… | — |
 | [083](083-static-404-em-producao-com-todos-os-settings.md) | `/static/**` responde 404 em produção com TODOS os settings de estático certos — a página sobe, o HTML chega inteiro, e o `<script src="/static/...">` dela devolve **404** só em produção. No navegador do visitante não… | — |
 | [084](084-patch-de-prova-se-gera-com-git-diff-nunca-se-escreve.md) | Patch de prova se GERA com `git diff` — escrever à mão custa uma rodada — o protocolo de evidência vermelho→verde por patch (obrigatório em lote, porque a pilha de `git stash` é única por repositório e vaza entre… | — |
+| [085](085-dois-arquivos-com-o-mesmo-nnn-passam-pelo-rebase.md) | Dois arquivos com o mesmo `NNN` em `armadilhas/` passam pelo rebase sem conflito — depois de um `git rebase origin/main` limpo, a pasta tem dois arquivos com o mesmo número: | — |
 
-**74 entradas.**
+**75 entradas.**

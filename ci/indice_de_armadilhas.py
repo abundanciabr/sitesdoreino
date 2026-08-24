@@ -35,11 +35,26 @@ ordem de nome** — de propósito: agrupar por categoria exigiria uma declaraç�
 que o próximo agente esquece, e declaração esquecida esconde a entrada do
 grupo em silêncio. Uma tabela plana não consegue esconder ninguém.
 
+O NNN É ÚNICO — E ISSO É PORTÃO, NÃO COMBINADO
+----------------------------------------------
+"NNN = próximo número livre" evita conflito de hunk, mas NÃO evita duas sessões
+escolherem o mesmo número. Em 24/08/2026 (EVO-11) um ramo criou
+`078-guarda-de-imutabilidade-...md` enquanto outra sessão mergeava
+`078-script-injetado-...md` na main: o `git rebase origin/main` juntou os dois
+arquivos **sem conflito** — nomes diferentes, hunks diferentes, nada para o git
+reclamar — e a pasta ficou com dois `078-`. Este gerador rodava por cima e
+produzia um índice com as duas linhas, exit 0. Só um `ls` na mão pegou.
+
+Por isso `NNN` repetido aqui é **ERROR (2)**, não um índice bonito: enquanto o
+número for ambíguo, toda citação `armadilhas/078` aponta para dois lugares, e
+"o índice está em dia" deixa de significar alguma coisa.
+
 SEMÂNTICA DE SAÍDA ([INV-CI01], igual ao resto da CI)
 -----------------------------------------------------
     0  PASS   índice em dia (ou regenerado com sucesso)
     1  FAIL   `--conferir` e o índice no disco diverge das entradas
-    2  ERROR  não foi possível medir (pasta ausente, entrada ilegível)
+    2  ERROR  não foi possível medir (pasta ausente, entrada ilegível,
+              dois arquivos com o mesmo NNN)
 
 `ERROR` nunca é "quase passou".
 """
@@ -53,7 +68,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _nucleo import ErroDeInstrumentacao, raiz_do_repo  # noqa: E402
+from _nucleo import (  # noqa: E402
+    ErroDeInstrumentacao,
+    configurar_saida,
+    raiz_do_repo,
+)
 
 PASTA = "armadilhas"
 NOME_DO_INDICE = "INDICE.md"
@@ -61,6 +80,7 @@ NOME_DO_INDICE = "INDICE.md"
 RE_TITULO = re.compile(r"^#\s+(.*\S)\s*$")
 RE_ID_NO_TITULO = re.compile(r"^([0-9]+(?:\.[0-9]+)+)\s+(.*)$")
 RE_SINTOMA = re.compile(r"^\*\*Sintoma[^*]*\*\*:?\s*(.*)$")
+RE_NUMERO_DO_NOME = re.compile(r"^([0-9]+)-")
 
 LIMITE_DA_CELULA = 220
 
@@ -83,10 +103,15 @@ CABECALHO = """<!-- GERADO por `python ci/indice_de_armadilhas.py`. NÃO EDITE �
 > desfaz o motivo de ela existir.
 >
 > **Entrada nova ao terminar o despacho:** crie
-> `armadilhas/NNN-slug.md` (NNN = próximo número livre), comece pelo **sintoma
-> concreto** e rode `python ci/indice_de_armadilhas.py`. Nunca edite este
-> arquivo à mão, e nunca acrescente ao fim de um arquivo alheio — arquivo novo
-> por entrada é o que faz duas sessões paralelas pararem de colidir.
+> `armadilhas/NNN-slug.md` (NNN = **o primeiro número acima de todos**, nunca um
+> vago no meio: os vagos estão aposentados e ainda são citados), comece pelo
+> **sintoma concreto** e rode `python ci/indice_de_armadilhas.py`. Nunca edite
+> este arquivo à mão, e nunca acrescente ao fim de um arquivo alheio — arquivo
+> novo por entrada é o que faz duas sessões paralelas pararem de colidir.
+>
+> Se o seu rebase trouxe um `NNN` que outra sessão já usou, o gerador para com
+> `ERROR` e diz para qual número renomear — dois arquivos com o mesmo número
+> passam pelo `git rebase` sem conflito nenhum.
 >
 > `§ antigo` é o número que a entrada tinha no `ARMADILHAS.md` monolítico, até
 > 23/08/2026 — é por ele que as referências antigas (`ARMADILHAS §5.3`) ainda
@@ -169,6 +194,83 @@ class Entrada:
     def numero(self) -> str:
         return self.nome.split("-", 1)[0]
 
+    @staticmethod
+    def numero_de(nome: str) -> int | None:
+        """O NNN do nome do arquivo como NÚMERO — `078` e `78` são a mesma gaveta.
+
+        Comparar como texto deixaria passar a colisão escrita com outra
+        quantidade de zeros, que na hora de citar é igualmente ambígua.
+        Devolve `None` para nome sem prefixo numérico — não é entrada numerada,
+        e quem chama decide o que fazer com isso.
+        """
+        achado = RE_NUMERO_DO_NOME.match(nome)
+        return int(achado.group(1)) if achado else None
+
+    @property
+    def numero_canonico(self) -> int | None:
+        return self.numero_de(self.nome)
+
+
+def conferir_numeracao(entradas: list[Entrada]) -> None:
+    """Dois arquivos com o mesmo NNN param o gerador — ERROR, nunca índice.
+
+    Este é o portão que faltava enquanto a regra "NNN = próximo número livre"
+    morava só na prosa do CLAUDE.md: a prosa evita o conflito de hunk, mas nada
+    impedia duas sessões de escolherem 078 no mesmo dia. Aqui a informação já
+    está toda na mão (a pasta inteira acabou de ser varrida), então a checagem
+    custa zero e vale em todo caminho — regenerar, `--conferir` e a suíte do
+    testador, que é por onde o CI de PR passa.
+    """
+    por_numero: dict[int, list[str]] = {}
+    for entrada in entradas:
+        numero = entrada.numero_canonico
+        if numero is None:
+            continue
+        por_numero.setdefault(numero, []).append(entrada.nome)
+
+    colisoes = sorted(
+        (numero, sorted(nomes))
+        for numero, nomes in por_numero.items()
+        if len(nomes) > 1
+    )
+    if not colisoes:
+        return
+
+    livre = max(por_numero) + 1
+    detalhe = []
+    for numero, nomes in colisoes:
+        detalhe.append(f"  {numero:03d} — {len(nomes)} arquivos:")
+        detalhe.extend(f"    - {PASTA}/{nome}" for nome in nomes)
+    repetido = f"{colisoes[0][0]:03d}"
+    # Qual dos dois arquivos renomear é uma decisão que este gerador NÃO tem
+    # como tomar sozinho (ele não olha o git): renomear o que já está na main
+    # quebraria as referências de quem já cita aquela entrada. Por isso a
+    # mensagem entrega o comando com o slug em branco e o jeito de descobrir
+    # qual é o seu — instrução errada em mensagem de erro custa mais que
+    # instrução incompleta.
+    detalhe.append(
+        "\nDuas sessões escolheram o mesmo 'próximo número livre'. O `git rebase`\n"
+        "junta os dois arquivos SEM conflito (nomes diferentes, hunks diferentes)\n"
+        "e a pasta fica com dois NNN iguais — foi o que aconteceu em 24/08/2026.\n"
+        "\n"
+        "Conserte renomeando a SUA entrada — a que ainda NÃO está na main — para o\n"
+        f"primeiro número acima de todos, hoje {livre:03d}, e regenere o índice:\n"
+        "\n"
+        f"  git log origin/main --oneline -- {PASTA}/{repetido}-<slug>.md"
+        "   # vazio = essa é a sua\n"
+        f"  git mv {PASTA}/{repetido}-<o-seu-slug>.md "
+        f"{PASTA}/{livre:03d}-<o-seu-slug>.md\n"
+        "  python ci/indice_de_armadilhas.py\n"
+        "\n"
+        "Não reaproveite um número vago no meio (042, 046…): eles estão\n"
+        "aposentados e as referências antigas continuam apontando para eles."
+    )
+    raise ErroDeInstrumentacao(
+        f"número repetido em '{PASTA}/': "
+        + ", ".join(f"{numero:03d}" for numero, _ in colisoes),
+        "\n".join(detalhe),
+    )
+
 
 def coletar(raiz: Path) -> list[Entrada]:
     pasta = raiz / PASTA
@@ -186,7 +288,9 @@ def coletar(raiz: Path) -> list[Entrada]:
             "Zero entradas é indistinguível de 'não consegui listar a pasta';\n"
             "por isso isto é ERROR, não um índice vazio.",
         )
-    return [Entrada(p) for p in arquivos]
+    entradas = [Entrada(p) for p in arquivos]
+    conferir_numeracao(entradas)
+    return entradas
 
 
 def montar(entradas: list[Entrada]) -> str:
@@ -232,6 +336,9 @@ def rodar(raiz: Path, conferir: bool) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # Console cp1252 do Windows não pode virar UnicodeEncodeError no meio de uma
+    # mensagem de erro acentuada (armadilhas/003).
+    configurar_saida()
     parser = argparse.ArgumentParser(
         description="Regenera (ou confere) o índice das armadilhas."
     )
