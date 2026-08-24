@@ -87,5 +87,6 @@
 | [070](070-heredoc-dentro-de-heredoc-com-o-mesmo-delimitador.md) | Heredoc dentro de heredoc com o mesmo delimitador — `SyntaxError: unterminated triple-quoted string literal` no Python, seguido de `bash: syntax error near unexpected token`. | §8.2 |
 | [071](071-make-ci-da-raiz-erro-modulenotfounderror-huey.md) | `make ci` da raiz devolve ERROR com `ModuleNotFoundError: No module named 'huey'` — `python ci/ci.py` (ou `make ci`) na raiz devolve `RESULTADO ERROR` — não FAIL — e o rodapé diz "O exportador não rodou, então a CI NÃO… | — |
 | [072](072-substituicao-em-massa-de-secao-3-1-casa-dentro-de.md) | Substituição em massa de `§3.1` também casa dentro de `§3.13`, `§3.16`, `§3.19` — um `sed`/`re.sub` que renomeia referências a seções numeradas (`ARMADILHAS §3.1` → `RESOLVIDAS.md §3.1`) sai reescrevendo **outras**… | — |
+| [073](073-deploy-infra-vermelho-com-a-plataforma-saudavel.md) | `deploy-infra` vermelho com a plataforma 100% saudável: a sonda envelheceu — o run do `deploy-infra` termina em `failure` com `ERRO: a raiz de meshcraft.top respondeu 302 (esperava 200) — cadastro convergiu mas o site… | — |
 
-**62 entradas.**
+**63 entradas.**

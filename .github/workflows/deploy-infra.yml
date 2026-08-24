@@ -210,23 +210,37 @@ jobs:
             echo "OK: infra sincronizada — todos os serviços declarados estão rodando."
 
             # ── 5) SITES (R11 mecanizada): converge o catálogo da PRODUÇÃO ao
-            # sites.json do Git e prova cada host listado respondendo 200 na
-            # raiz, por dentro da VPS. `shell -c` propaga exceção como exit
-            # != 0 (fail-closed); o funil cacheia a resolução de host por 60s
-            # INCLUSIVE o 404 (CONV-SITE), então o smoke insiste por até ~80s
-            # antes de reprovar — 404 persistente é reprovação de verdade. ──
+            # sites.json do Git e prova cada host listado SERVINDO, por dentro
+            # da VPS. `shell -c` propaga exceção como exit != 0 (fail-closed);
+            # o funil cacheia a resolução de host por 60s INCLUSIVE o 404
+            # (CONV-SITE), então o smoke insiste por até ~80s antes de reprovar
+            # — 404 persistente é reprovação de verdade.
+            #
+            # POR QUE `-L --resolve` E NÃO `-H "Host:"` (medido em 23/08/2026):
+            # desde a fase 2 do PLANO-I18N a raiz de um site multilíngue
+            # responde 302 para /<idioma>/ DE PROPÓSITO. A sonda antiga exigia
+            # 200 na raiz e reprovava esse redirecionamento legítimo — o run
+            # 32682355021 ficou vermelho com a plataforma 100% saudável (16
+            # serviços de pé; /en/ e /pt-br/cadastro medidos em 200 da internet
+            # pública no mesmo minuto). Seguir o redirecionamento com `-L`
+            # mantém a exigência REAL ("o site serve") sem mentir sobre o
+            # desenho; `--resolve` prende o host em 127.0.0.1, então a prova
+            # continua acontecendo DENTRO da VPS (as duas portas presas, para
+            # um eventual redirecionamento para http:// também não sair da
+            # máquina) e não vira um teste da
+            # internet; `--max-redirs 3` impede laço de redirecionamento. ──
             docker compose exec -T -e SITES_JSON="$(cat sites.json)" catalogo python manage.py shell -c "$(cat sincronizar_sites.py)"
             for H in $(python3 -c "import json; print(' '.join(s['host'] for s in json.load(open('sites.json'))['sites']))"); do
               CODIGO=000
               for _ in 1 2 3 4 5 6 7 8; do
-                CODIGO=$(curl -sk -o /dev/null -w '%{http_code}' -H "Host: $H" https://localhost/) || CODIGO=000
+                CODIGO=$(curl -sk -L --max-redirs 3 --resolve "$H:443:127.0.0.1" --resolve "$H:80:127.0.0.1" -o /dev/null -w '%{http_code}' "https://$H/") || CODIGO=000
                 if [ "$CODIGO" = "200" ]; then break; fi
                 sleep 10
               done
               if [ "$CODIGO" != "200" ]; then
-                echo "ERRO: a raiz de $H respondeu $CODIGO (esperava 200) — cadastro convergiu mas o site não serve."
+                echo "ERRO: a raiz de $H terminou em $CODIGO (esperava 200 ao seguir o redirecionamento) — cadastro convergiu mas o site não serve."
                 exit 1
               fi
-              echo "OK: $H responde 200 na raiz (smoke por dentro da VPS)"
+              echo "OK: $H serve 200 na raiz (seguindo redirecionamento; smoke por dentro da VPS)"
             done
             echo "OK: sites do sites.json cadastrados/convergidos e provados."
