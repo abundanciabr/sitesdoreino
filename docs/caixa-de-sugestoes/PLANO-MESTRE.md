@@ -43,7 +43,13 @@ por baixo.
 
 ## 3. Riscos e divergências spec ↔ realidade (encarar ANTES de codar)
 
-1. **Identidade — o maior.** A spec pressupõe um `AuthenticatedActor` emitido
+1. **Identidade — o maior. ✅ RESOLVIDO em 23/08/2026** pela sessão EVO-01
+   (`DECISAO-EVO-01-identidade.md`): **Entrar com Google** prova quem é, e a célula
+   `alunos` decide se pode (só matriculado entra). Staff = lista de e-mails no env.
+   O link mágico foi descartado com motivo medido: a plataforma não manda e-mail.
+   O texto abaixo fica como registro do problema original.
+
+   A spec pressupunha um `AuthenticatedActor` emitido
    por uma "célula de auth". **Essa célula não existe**: as 8 células são
    alunos, catalogo, checkout, funil, leads, mensageria, pagamentos e quiz.
    Quem sabe quem é o aluno hoje é a célula `alunos` (matrículas). O Lote 0

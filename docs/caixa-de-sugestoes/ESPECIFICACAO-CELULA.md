@@ -30,18 +30,37 @@ Fora do escopo, por design:
 
 ## 4. Contrato de identidade
 
-A célula recebe um ator autenticado por contrato assinado pela célula de auth, nunca via ORM direto:
+> **Reescrito em 23/08/2026 pela `DECISAO-EVO-01-identidade.md`** (sessão de
+> arquitetura com o mantenedor). A versão anterior pressupunha uma "célula de auth"
+> que **não existe** — a auditoria EVO-00 (Q2) mediu zero login de usuário final em
+> toda a plataforma. Não era campo a confirmar: era mecanismo a criar.
+
+**O Google prova QUEM É; a célula `alunos` decide SE PODE.** A `sugestoes` emite a
+própria sessão — não recebe ator pronto de ninguém.
+
+1. Entrar com Google ⇒ e-mail **verificado** (`email_verified` falso é recusado).
+2. `GET /alunos/{email}/matriculas` (`listEnrollments`, contrato existente e
+   implementado) responde se há matrícula. **Sem matrícula, não entra** — decisão 2
+   do EVO-01.
+3. Com matrícula ⇒ a `sugestoes` cunha/recupera a `Identidade` e abre a sessão.
 
 ```
-AuthenticatedActor {
-  actor_id
-  tenant_id
-  roles: []
-  entitlements: []
-}
+Ator (interno da sugestoes, nunca vindo de fora)
+  actor_id     texto opaco cunhado pela sugestoes  (NÃO é UUID, NÃO é o e-mail)
+  site_id      texto opaco (CONV-SITE resolve pelo Host)
+  papeis       ["aluno"] | ["staff"] | ambos
 ```
 
-Assunção provisória: `actor_id` é UUID. Isso precisa ser confirmado contra o contrato canônico de identidade da célula de auth antes da implementação. Se for inteiro ou outro formato opaco, é uma troca de tipo de campo sem custo de dado, porque nada foi persistido ainda.
+`actor_id` e `site_id` são **texto opaco** porque é o que a plataforma inteira já faz
+(`Site.id`, `product_id`, `site_id`: `type: string` sem `format: uuid`).
+
+**Staff** = lista de e-mails no `.env` da célula (`SUGESTOES_STAFF_EMAILS`), lida no
+ponto de uso, nunca fail-hard no import. Staff **não** precisa de matrícula, e a
+checagem dele vem ANTES da de matrícula.
+
+Sugestões, votos e comentários referenciam `Identidade.id` — **nunca o e-mail**, que
+vive numa linha só. Detalhes, alternativas descartadas e a fricção conhecida do
+e-mail divergente: `DECISAO-EVO-01-identidade.md`.
 
 ## 5. Fronteira de contexto
 
