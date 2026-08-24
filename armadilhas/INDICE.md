@@ -91,5 +91,6 @@
 | [074](074-guarda-de-mtime-que-so-mede-antes-nao-protege.md) | Guarda de mtime que só mede ANTES não protege nada — você transforma um arquivo grande que outra sessão pode estar editando, protege a operação lendo o `mtime` antes de começar, o guarda passa — e mesmo assim o… | — |
 | [075](075-campo-opcional-novo-numa-api-congelada-o-default.md) | Campo opcional novo numa API congelada: `default=` reprova o freeze, e `""` vaza para o consumidor — você acrescenta um campo **opcional** a um `ninja.Schema` cuja célula tem contrato congelado, e o `make… | — |
 | [076](076-celula-nova-reprova-em-testar-o-testador-rollback.md) | Célula nova reprova em `testar-o-testador`: `Right contains one more item: '<celula>'` — a lista fixa de `rollback.yml` — você cria uma célula nova, declara-a em `ci/manifesto-de-contratos.json` como o próprio arquivo… | — |
+| [077](077-pr-criado-com-label-arquitetural-roda-com-pr-labels.md) | PR criado JÁ com `--label arquitetural` mesmo assim reprova o orçamento: no log, `PR_LABELS:` vazio — você conta os arquivos antes, sabe que passou de 15, e abre o PR com a label na mesma linha de comando: | — |
 
-**66 entradas.**
+**67 entradas.**
