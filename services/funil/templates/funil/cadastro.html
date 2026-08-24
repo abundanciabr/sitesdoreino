@@ -19,8 +19,10 @@
     .msg { font-size: .875rem; margin-top: .5rem; }
     .erro { color: #b91c1c; }
     .sucesso { color: #16a34a; }
+    .sessao { font-size: .875rem; text-align: right; margin-bottom: .5rem; }
 {% endblock %}
 {% block conteudo %}
+{% include "funil/_sessao.html" %}
 <div class="card">
   <h1>{% t "cadastro.titulo_pagina" %}</h1>
   <p>{% t "cadastro.subtitulo" %}</p>

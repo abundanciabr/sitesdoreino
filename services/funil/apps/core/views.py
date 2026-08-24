@@ -10,6 +10,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from django.views.static import serve as serve_do_django
 
 from apps.core.clients import CatalogoClient, LeadsClient
+from apps.core.enderecos import url_de_entrada
 from apps.i18n.catalogo import js_da_pagina
 
 # Ordem fixa: é também a ordem em que a query string do link do checkout é
@@ -146,6 +147,30 @@ def cadastro(request):
         {"form": form, "sucesso": sucesso, "erro_envio": erro_envio},
         status=status,
     )
+
+
+@require_GET
+def entrar(request):
+    """`/{idioma}/login` — a porta de entrada do site (DECISAO-onde-mora-a-sessao).
+
+    Ela leva ao Google; a sessão nasce do outro lado, na célula que hoje cuida
+    dela. **Esta view não abre sessão nenhuma e não lê cookie nenhum** — quem
+    faz isso é a Caixa, que tem a chave e o banco (Lei 2, Lei 3).
+
+    Por que existe uma página, se o cabeçalho de sessão já tem "Entrar" em toda
+    página: é aqui que a pessoa lê, **antes** da tela do Google, qual e-mail
+    usar. É a metade barata de evitar a fricção conhecida da `DECISAO-EVO-01`
+    §5 (conta Google ≠ e-mail da compra) — a outra metade é a tela de recusa,
+    que já existe do lado de lá. Também dá um endereço para compartilhar.
+
+    Fora do sitemap de propósito: página de entrada não é conteúdo que alguém
+    procure no Google, e indexá-la só a faria concorrer com a própria marca.
+    """
+    if getattr(request, "idioma", None) is None:
+        # Mesmo tratamento do cadastro: site fora do registro i18n não tem esta
+        # página — 404, e não uma página em inglês servida por engano.
+        raise Http404("login só existe em site registrado no i18n")
+    return render(request, "funil/login.html", {"url_de_entrada": url_de_entrada()})
 
 
 @require_GET

@@ -1,0 +1,57 @@
+# traducoes/login.yaml — a porta de entrada do site (DECISAO-onde-mora-o-login).
+# Formato key-major (D2): todas as línguas da página lado a lado; `_fonte` é
+# sha256[:6] do valor `en` no momento da tradução (D4 — anti-obsolescência).
+# en é a FONTE; Meshcraft nunca se traduz (glossário, D8.1).
+#
+# O que esta página promete, e o que ela NÃO promete: ela é a PORTA — leva a
+# pessoa ao Google e a sessão nasce do outro lado, na célula que hoje cuida
+# dela. Nenhum texto aqui pode dizer "você está conectado no site", porque o
+# site não sabe disso (o cookie da sessão é escopado no prefixo da outra
+# célula — armadilhas/093). Copy que promete sessão é copy que mente.
+
+titulo:
+  # <title> e og:title da página — inclui a marca (glossário).
+  _fonte: "3098c1"
+  en: "Sign in — Meshcraft"
+  pt-br: "Entrar — Meshcraft"
+  es: "Entrar — Meshcraft"
+
+meta_descricao:
+  # meta description e og:description.
+  _fonte: "d79783"
+  en: "Sign in to Meshcraft with your Google account."
+  pt-br: "Entre no Meshcraft com sua conta Google."
+  es: "Entra en Meshcraft con tu cuenta de Google."
+
+titulo_pagina:
+  # <h1> visível da página.
+  _fonte: "9c729e"
+  en: "Sign in to Meshcraft"
+  pt-br: "Entrar no Meshcraft"
+  es: "Entrar en Meshcraft"
+
+subtitulo:
+  # Diz qual e-mail usar ANTES do clique. É a metade barata de evitar a
+  # fricção conhecida da DECISAO-EVO-01 §5 (conta Google ≠ e-mail da compra):
+  # a outra metade é a tela de recusa, que já existe do lado de lá.
+  _fonte: "4ed99c"
+  en: "Use the Google account with the same e-mail as your enrollment."
+  pt-br: "Use a conta Google com o mesmo e-mail da sua matrícula."
+  es: "Usa la cuenta de Google con el mismo correo de tu matrícula."
+
+botao_google:
+  # "Continuar com" e não "Entrar com": a pessoa ainda vai escolher a conta na
+  # tela do Google, e o `prompt=select_account` do outro lado garante isso.
+  _fonte: "cce937"
+  en: "Continue with Google"
+  pt-br: "Continuar com o Google"
+  es: "Continuar con Google"
+
+aviso_email:
+  # O conselho acionável da DECISAO-EVO-01 §5, dito na porta e não só depois
+  # da recusa — quem lê aqui não chega a ver a tela de "não encontramos
+  # matrícula".
+  _fonte: "db5a5d"
+  en: "Bought with a different e-mail? Sign in with that one — it is the one that carries your enrollment."
+  pt-br: "Comprou com outro e-mail? Entre com ele — é ele que tem a sua matrícula."
+  es: "¿Compraste con otro correo? Entra con ese — es el que tiene tu matrícula."

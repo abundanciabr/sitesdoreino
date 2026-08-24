@@ -5,12 +5,108 @@ import time
 
 from django.http import Http404, HttpResponseRedirect
 from django.utils import translation
+from django.utils.cache import patch_vary_headers
 
-from apps.core.clients import CatalogoClient
+from apps.core import enderecos
+from apps.core.clients import CatalogoClient, SugestoesClient
 from apps.i18n.idiomas import dados_seo, idiomas_do_site
 
 _CACHE: dict = {}
 TTL_SEGUNDOS = 60
+
+# ---------------------------------------------------------------------------
+# Quem é a pessoa desta requisição (DECISAO-onde-mora-a-sessao)
+# ---------------------------------------------------------------------------
+# Cache por cabeçalho `Cookie` inteiro, e não pelo cookie de sessão isolado: o
+# `funil` NÃO conhece o nome do cookie da outra célula, e não deve conhecer —
+# saber o nome é o primeiro passo para tentar ler o conteúdo, que é justamente
+# o que a Lei 3 proíbe. Ele repassa o cabeçalho opaco e pergunta.
+_CACHE_DE_SESSAO: dict = {}
+TTL_DA_SESSAO = 60
+# Teto de segurança: sem ele, um robô mandando cookies diferentes a cada
+# requisição faria o dicionário crescer sem fim dentro do processo. Estourou,
+# esvazia — perder cache custa um salto interno, vazar memória custa a célula.
+MAXIMO_DE_SESSOES_EM_CACHE = 500
+
+
+def limpar_cache_de_sessao() -> None:
+    _CACHE_DE_SESSAO.clear()
+
+
+def _consultar_sessao(cookie: str) -> "dict | None":
+    agora = time.time()
+    hit = _CACHE_DE_SESSAO.get(cookie)
+    if hit and hit[0] > agora:
+        return hit[1]
+    dados = SugestoesClient().obter_sessao(cookie)
+    if len(_CACHE_DE_SESSAO) >= MAXIMO_DE_SESSOES_EM_CACHE:
+        _CACHE_DE_SESSAO.clear()
+    # O `None` também é cacheado: visitante com cookie de outra coisa (ou sessão
+    # expirada) não pode custar um salto interno por página que ele abrir.
+    _CACHE_DE_SESSAO[cookie] = (agora + TTL_DA_SESSAO, dados)
+    return dados
+
+
+class AtorDaRequisicao:
+    """Quem está vendo esta página — resolvido na PRIMEIRA leitura, nunca antes.
+
+    Preguiçoso de propósito: a esmagadora maioria das requisições desta célula
+    é de visitante anônimo em página de marketing, e nenhuma delas pode pagar um
+    salto de rede para descobrir que não há ninguém. Página que não mostra o
+    cabeçalho de sessão não pergunta nada.
+
+    `identificado` é o que decide o cabeçalho de cache da resposta: página que
+    mostrou o nome de ALGUÉM não pode ser guardada por proxy nenhum — é a
+    diferença entre um detalhe de performance e o Cloudflare servindo o nome de
+    uma pessoa para outra. Note que é `identificado`, e não "foi consultado":
+    quase toda página consulta (o template pergunta "tem alguém?") e não
+    identifica ninguém, e marcar as duas iguais tiraria o cache do site inteiro.
+    """
+
+    def __init__(self, cookie: str) -> None:
+        self._cookie = cookie
+        self._resolvido = False
+        self._dados: "dict | None" = None
+
+    @property
+    def identificado(self) -> bool:
+        """Alguém foi RECONHECIDO nesta requisição — não apenas consultado.
+
+        A diferença decide o cabeçalho de cache, e ela não é sutil: quase toda
+        página lida por um visitante anônimo *consulta* (o template pergunta se
+        há alguém) e não *identifica* ninguém. Marcar as duas iguais tiraria o
+        cache da vitrine inteira do site, que ninguém pediu.
+
+        Não resolve nada por conta própria: é lida DEPOIS da resposta pronta,
+        quando o template já decidiu se precisava ou não da sessão.
+        """
+        return self._resolvido and self._dados is not None
+
+    def _resolver(self) -> "dict | None":
+        if not self._resolvido:
+            self._resolvido = True
+            # Sem cookie nenhum não há o que perguntar. É o caminho de quase
+            # todo visitante, e ele não toca a rede.
+            self._dados = _consultar_sessao(self._cookie) if self._cookie else None
+        return self._dados
+
+    def __bool__(self) -> bool:
+        """`{% if request.ator %}` — entrou ou não."""
+        return self._resolver() is not None
+
+    @property
+    def nome(self) -> str:
+        """Pode ser vazio: `nome_exibido` é editável pela pessoa. Quem exibe
+        decide o que fazer com vazio — o template cai no rótulo genérico."""
+        return (self._resolver() or {}).get("nome_exibido") or ""
+
+    @property
+    def papel(self) -> str:
+        """Para EXIBIÇÃO apenas (mostrar ou não um atalho). Nunca para liberar
+        coisa alguma: autorização é fail-closed, na célula dona do recurso
+        (DECISAO-onde-mora-a-sessao §4)."""
+        return (self._resolver() or {}).get("papel") or ""
+
 
 # /healthz é sonda do container e do gateway — chega sem Host de site e não pode
 # depender do catálogo estar de pé. Estáticos idem. A isenção roda ANTES de
@@ -117,11 +213,22 @@ class SiteResolutionMiddleware:
             # idioma ANTES da resolução de URL (path_info é o que o Django
             # resolve; request.path segue completo p/ canonical/logs).
             request.path_info = caminho_sem_prefixo
+            # Quem está vendo a página. Objeto preguiçoso: construí-lo não custa
+            # nada, e só a leitura no template dispara a pergunta à Caixa. Fica
+            # SÓ no regime prefixado, que é onde o login existe — site
+            # monolíngue (os domínios antigos) segue byte-idêntico ao de antes.
+            request.ator = AtorDaRequisicao(request.META.get("HTTP_COOKIE", ""))
+            # O destino do link de quem já entrou. Fica no request (e não no
+            # contexto de cada view) porque a peça `_sessao.html` aparece em
+            # TODA página multilíngue: passá-lo view a view seria a mesma linha
+            # repetida em cada uma, e a próxima view nasceria sem ela.
+            request.url_da_caixa = enderecos.url_da_caixa()
             translation.activate(definicao["tag"])  # D2.4: runtime do Django LIGADO
             try:
-                return self.get_response(request)
+                resposta = self.get_response(request)
             finally:
                 translation.deactivate()
+            return self._marcar_variacao_por_pessoa(request, resposta)
 
         if RE_FORMA_DE_IDIOMA.fullmatch(segmento):
             # /fr/…, /PT-BR/…, /pt_br/… — forma de idioma não habilitada:
@@ -134,6 +241,39 @@ class SiteResolutionMiddleware:
         if not seguro:
             raise Http404("caminho sem prefixo de idioma não aceita método não-seguro")
         return self._redirect(f"/{cfg['default']}{caminho}", request)
+
+    @staticmethod
+    def _marcar_variacao_por_pessoa(request, resposta):
+        """Página que mostrou QUEM É a pessoa não pode ser guardada por ninguém.
+
+        Sem isto, a página de um visitante logado é indistinguível — para um
+        proxy — da de qualquer outro: mesma URL, mesmo status, corpo diferente.
+        Há Cloudflare na frente de domínio desta plataforma
+        (`armadilhas/017`), e um cache compartilhado servindo o nome de uma
+        pessoa para outra é o pior bug possível desta entrega.
+
+        Marca-se **apenas quando alguém foi RECONHECIDO** — não quando o
+        template apenas perguntou. Visitante anônimo recebe a página genérica,
+        e ela continua cacheável como sempre foi; senão o preço desta entrega
+        seria a vitrine inteira deixar de ser cacheável.
+
+        A assimetria é deliberada e vale escrever, porque parece um buraco e
+        não é. Sem `Vary` na resposta anônima, um cache compartilhado pode
+        servir a versão "Entrar" para alguém que já entrou. Isso é **feio, não
+        perigoso**: a pessoa vê um botão a mais e um clique a devolve. A
+        direção perigosa — conteúdo pessoal guardado num cache compartilhado —
+        está fechada por completo, porque a resposta de quem foi reconhecido
+        leva `no-store` e nunca chega a ser guardada por ninguém.
+
+        `patch_vary_headers` acrescenta ao `Vary` existente em vez de
+        sobrescrevê-lo.
+        """
+        ator = getattr(request, "ator", None)
+        if ator is None or not ator.identificado:
+            return resposta
+        patch_vary_headers(resposta, ("Cookie",))
+        resposta["Cache-Control"] = "private, no-store"
+        return resposta
 
     @staticmethod
     def _redirect(destino: str, request) -> HttpResponseRedirect:
