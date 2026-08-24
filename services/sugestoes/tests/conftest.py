@@ -31,7 +31,7 @@ import respx
 from django.urls import reverse
 
 from apps.core.clients import GoogleOAuth
-from apps.sugestoes.models import Categoria, Identidade, Quadro, Sugestao
+from apps.sugestoes.models import Aviso, Categoria, Identidade, Quadro, Sugestao
 
 # ---------------------------------------------------------------------------
 # O quadro mínimo do modelo de dados (EVO-11)
@@ -448,3 +448,32 @@ class Caixa:
 def caixa(dentro, equipe, categoria):
     """Um aluno e alguém da equipe, os dois já dentro pela porta de verdade."""
     return Caixa(dentro, equipe)
+
+
+# ---------------------------------------------------------------------------
+# O sininho (EVO-21) — um aviso já na caixa de quem está dentro
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def aviso(dentro, sugestao):
+    """Um aviso pronto, escrito direto pelo ORM — e isso é deliberado.
+
+    Os guardas que provam COMO o aviso nasce (dentro da transação da mudança de
+    status) provocam o fato pela jornada de verdade, em
+    `test_inv_aviso_nasce_com_o_status.py`. Esta fixture serve aos outros — os de
+    quem-vê-o-quê e de idempotência —, que precisam de um aviso existindo e não
+    têm nada a dizer sobre o nascimento dele. Montá-lo pela equipe aqui faria
+    cada um desses guardas depender do caminho do EVO-13 para medir outra coisa.
+
+    O destinatário é quem a fixture `dentro` abriu a sessão — NÃO o autor da
+    fixture `sugestao`, que é outra identidade. É de propósito: o aviso é do
+    destinatário, não de quem escreveu a sugestão.
+    """
+    return Aviso.objects.create(
+        destinatario=dentro.identidade,
+        sugestao=sugestao,
+        status_anterior=Sugestao.Status.EM_ANALISE,
+        status_novo=Sugestao.Status.PLANEJADO,
+        nota="Entra no próximo ciclo.",
+    )

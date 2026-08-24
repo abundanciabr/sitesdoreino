@@ -108,6 +108,13 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # O sininho (EVO-21): a contagem de não-lidos fica disponível em
+                # TODA página sem nenhuma view lembrar de pô-la no contexto —
+                # Lei 1, porque um combinado desses é esquecido pela primeira
+                # view escrita depois. O valor é preguiçoso (um callable que o
+                # Django só executa se o template pedir), então página que não
+                # mostra o sino não paga consulta. Ver apps/core/avisos.py.
+                "apps.core.avisos.sino",
             ],
         },
     },

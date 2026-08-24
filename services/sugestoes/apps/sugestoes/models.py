@@ -20,7 +20,8 @@ escrever código (`AUDITORIA-AS-IS.md`, Q3 e tabela de divergências nº 2):
 O que **não** mora aqui, de propósito: endpoint (EVO-12) e fluxo de login
 (EVO-01 decidiu o desenho; o fluxo é despacho próprio). Desde o EVO-20 mora
 aqui também a **outbox** (`OutboxEvent`) — a célula deixou de só guardar fatos
-e passou a afirmá-los.
+e passou a afirmá-los. Desde o EVO-21 mora aqui o `Aviso`: o mesmo fato, escrito
+para o aluno ler dentro da própria Caixa.
 """
 
 import secrets
@@ -299,6 +300,73 @@ class AvaliacaoInterna(models.Model):
         on_delete=models.PROTECT,
     )
     atualizado_em = models.DateTimeField(auto_now=True)
+
+
+class Aviso(models.Model):
+    """O sininho: o aluno fica sabendo que a ideia dele andou (EVO-21).
+
+    A `ESPECIFICACAO-CELULA.md` §10 pede *"evento de mudança de status consumido
+    por uma notificação in-app simples"*. **In-app, dentro da própria Caixa** —
+    o mantenedor descartou em 24/08/2026 o caminho pela `mensageria`: ela precisa
+    de um destinatário, e tirar o e-mail do aluno de dentro da Caixa desfaria a
+    `DECISAO-EVO-01` §3 ("o e-mail vive numa linha só").
+
+    **Por que colunas próprias, e não uma FK para a linha do `HistoricoStatus`
+    que originou o aviso.** As duas tabelas guardam o mesmo fato para leitores
+    diferentes, e é essa diferença que decide o desenho:
+
+    * o `HistoricoStatus` é a **auditoria da equipe** — carrega `alterado_por`,
+      que é quem moderou;
+    * o `Aviso` é a **cópia do aluno** — e a única maneira de garantir que a
+      tela dele nunca mostre quem moderou é a linha dele não ter esse dado.
+
+    É a mesma lição que fez a `AvaliacaoInterna` nascer em tabela separada, e é
+    a Virtude da Lei 3: *copiar dados — snapshots são sagrados*. `status_novo` e
+    `nota` aqui não são espelho de estado mutável; são o retrato do que mudou
+    naquele instante, exatamente como a linha do histórico.
+
+    **`nota` é a primeira vez que a justificativa alcança quem sugeriu.** O
+    `nao_planejado` exige justificativa desde o EVO-13 (`moderacao.py`) *"porque
+    quem sugeriu vai ler"* — só que até aqui não havia nenhuma tela do aluno que
+    a mostrasse. É esta.
+
+    **`lido_em` (timestamp) e não `lido` (booleano):** um booleano responde "já
+    viu?" e nada mais; o instante responde também "quando", que é o que torna
+    `marcar como lido` verificavelmente idempotente — a segunda chamada não pode
+    mexer no carimbo da primeira.
+
+    **Quem recebe é só o AUTOR, neste despacho.** Avisar também quem votou é
+    desejável e fica para depois — e cabe aqui sem migração de forma: são mais
+    linhas, com outro `destinatario`. Foi por isso que o contrato congelado do
+    `sugestao.status-alterado` NÃO leva a lista de votantes (lista sem teto
+    dentro de evento).
+    """
+
+    # `PROTECT` nos dois, como em todo o resto da célula: nem a pessoa nem a
+    # sugestão somem por baixo de um aviso. Sugestão, aliás, já não é apagada em
+    # lugar nenhum — o `PROTECT` do `HistoricoStatus` (EVO-11) garante isso.
+    destinatario = models.ForeignKey(
+        "Identidade", related_name="avisos", on_delete=models.PROTECT
+    )
+    sugestao = models.ForeignKey(
+        Sugestao, related_name="avisos", on_delete=models.PROTECT
+    )
+    status_anterior = models.CharField(
+        max_length=20, choices=Sugestao.Status.choices, blank=True
+    )
+    status_novo = models.CharField(max_length=20, choices=Sugestao.Status.choices)
+    nota = models.TextField(blank=True)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    # Nulo = não lido. O índice é sobre o par, porque a pergunta que a Caixa faz
+    # a cada página é sempre a mesma: "quantos NÃO lidos desta pessoa?".
+    lido_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em", "-id"]
+        indexes = [models.Index(fields=["destinatario", "lido_em"])]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
+        return f"aviso de {self.sugestao_id} para {self.destinatario_id}"
 
 
 class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
