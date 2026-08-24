@@ -64,6 +64,27 @@ http:
       service: alunos
       tls: {}
 
+    sugestoes:
+      # A Caixa de Sugestões (docs/caixa-de-sugestoes/DECISAO-EVO-01-identidade.md
+      # §2): meshcraft.top/forms/sugestoes/. O Traefik NÃO remove o prefixo — a
+      # célula o conhece por SCRIPT_NAME=/forms/sugestoes no env dela.
+      #
+      # POR QUE ESTA REGRA GANHA DO CURINGA DO FUNIL, e não por sorte:
+      # o `funil` casa `PathPrefix(`/`)`, ou seja casa TAMBÉM /forms/sugestoes.
+      # Quem decide entre dois routers que casam é a PRIORIDADE, e ela está
+      # DECLARADA nos dois lados: 10 aqui contra 1 no funil. Só quando a
+      # prioridade é omitida é que o Traefik a calcula do comprimento da regra
+      # (v3: `len(rule)`) — desempate implícito que este arquivo nunca usa,
+      # porque a rota que decide qual célula responde não pode depender de
+      # contagem de caracteres. Mesma escala do resto: 1 = catch-all,
+      # 10 = prefixo de página, 20 = API, 100 = webhook amarrado a host.
+      rule: "PathPrefix(`/forms/sugestoes`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: sugestoes
+      tls: {}
+
     funil:
       # Catch-all: a raiz e tudo que nenhum prefixo pegou, em QUALQUER domínio.
       rule: "PathPrefix(`/`)"
@@ -107,3 +128,6 @@ http:
     pagamentos:
       loadBalancer:
         servers: [ { url: "http://pagamentos:8000" } ]
+    sugestoes:
+      loadBalancer:
+        servers: [ { url: "http://sugestoes:8000" } ]
