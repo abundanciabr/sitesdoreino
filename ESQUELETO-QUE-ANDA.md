@@ -57,6 +57,13 @@ que participe do caminho; (2) manual na VPS com cartão APRO — uma vez por mar
 
 1. `make esqueleto` verde LOCALMENTE (webhook simulado assinado).
 2. Esqueleto verde NA VPS com cartão sandbox APRO e webhook real do MP.
+   ☐ **em aberto por decisão do mantenedor (23/08/2026): "parar e deixar
+   registrado".** Não é só "rodar um teste": depende de (a) construir a
+   confirmação de cartão — não há caminho público para pagar um cartão hoje (o
+   Card Payment Brick nunca foi montado) — e (b) do mantenedor registrar o
+   webhook no painel do MP e pôr o secret na VPS (INV-P8/Lei 5). Mapa completo
+   em `RUNBOOK-FASE-D.md` §5.1–5.3 e `ARMADILHAS.md` §1 H16. Volta quando for
+   construir o site de vendas.
 3. ✅ **FEITO em 23/08/2026** — Rollback drill executado e cronometrado:
    **76s** do "decidi" ao "voltou", contra os 300s do critério. Não foi por SSH:
    virou `gh workflow run rollback.yml` (RITOS §4, `ci/rollback.py` +
