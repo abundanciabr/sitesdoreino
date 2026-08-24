@@ -26,10 +26,8 @@ quem já está com a sessão aberta. Há guarda para isso.
   `mesclado` existe no model e continua sem ninguém escrevendo nele — e a lista
   `STATUS_QUE_A_EQUIPE_ESCOLHE` abaixo o exclui de propósito, para que ele não
   entre pela porta dos fundos de um `<select>`.
-- **Evento `sugestao.status-alterado`.** É o Lote 2 (EVO-20). O ponto de emissão
-  está marcado dentro da transação de `registrar_mudanca_de_status()`, que é
-  onde a DoD do MVP manda ("publicado antes do commit da transação de status").
-  A célula ainda não emite nada.
+- **Consumir o evento e avisar o aluno (o sininho).** É o EVO-21. Este arquivo
+  AFIRMA o fato; quem escuta e notifica é outro despacho, na mesma célula.
 - **Apagar sugestão.** Não existe: "remover" é status. A FK do histórico é
   `PROTECT` de propósito (EVO-11), e nenhuma rota daqui chama `delete()`.
 """
@@ -43,7 +41,9 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
+from apps.sugestoes import eventos
 from apps.sugestoes.models import AvaliacaoInterna, HistoricoStatus, Sugestao
+from apps.sugestoes.tasks import relay_apos_commit
 
 from .participacao import exige_sessao, quadro_atual, sugestoes_ordenadas
 
@@ -150,7 +150,11 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
         )
 
     with transaction.atomic():
-        travada = Sugestao.objects.select_for_update().get(pk=sugestao.pk)
+        travada = (
+            Sugestao.objects.select_for_update()
+            .select_related("quadro")
+            .get(pk=sugestao.pk)
+        )
         status_anterior = travada.status
         travada.status = status_novo
         travada.save(update_fields=["status"])
@@ -161,11 +165,20 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
             nota=nota,
             alterado_por=por,
         )
-        # [EVO-20 — Lote 2] O evento `sugestao.status-alterado` nasce AQUI
-        # DENTRO, na outbox, antes do commit — é o que a DoD do MVP (§11) pede:
-        # "publicado antes do commit da transação de status". Hoje a célula não
-        # emite nada; quando o outbox entrar, este é o ponto, e não uma linha
-        # depois do `with`.
+        # [EVO-20] [INV-P6] O `sugestao.status-alterado` nasce AQUI DENTRO, na
+        # outbox, antes do commit — é a letra da DoD do MVP (§11): "publicado
+        # antes do commit da transação de status". Uma linha depois do `with`
+        # já seria outro desenho: o status mudaria e o aviso do aluno poderia
+        # nunca existir, sem nada indicando a falta.
+        eventos.emitir_status_alterado(
+            sugestao=travada,
+            status_anterior=status_anterior,
+            status_novo=status_novo,
+            nota=nota,
+        )
+    # E o publish, esse sim, é DEPOIS do commit: no fio nunca aparece um fato
+    # que a transação ainda pode desfazer.
+    transaction.on_commit(relay_apos_commit)
     return status_anterior
 
 

@@ -17,12 +17,14 @@ escrever código (`AUDITORIA-AS-IS.md`, Q3 e tabela de divergências nº 2):
    plataforma; site existe (Lei 9), é resolvido do Host uma vez por requisição
    (CONV-SITE) e viaja nos eventos (INV-P11).
 
-O que **não** mora aqui, de propósito: endpoint (EVO-12), fluxo de login
-(EVO-01 decidiu o desenho; o fluxo é despacho próprio) e outbox/eventos
-(Lote 2, EVO-20). Esta camada só guarda fatos.
+O que **não** mora aqui, de propósito: endpoint (EVO-12) e fluxo de login
+(EVO-01 decidiu o desenho; o fluxo é despacho próprio). Desde o EVO-20 mora
+aqui também a **outbox** (`OutboxEvent`) — a célula deixou de só guardar fatos
+e passou a afirmá-los.
 """
 
 import secrets
+import uuid
 
 from django.db import models
 
@@ -297,3 +299,38 @@ class AvaliacaoInterna(models.Model):
         on_delete=models.PROTECT,
     )
     atualizado_em = models.DateTimeField(auto_now=True)
+
+
+class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
+    """Uma linha por fato que a Caixa afirma ao resto da plataforma (EVO-20).
+
+    Mora AQUI, e não num app `eventos` à parte, pela mesma decisão de orçamento
+    que `pagamentos` tomou: `apps/sugestoes` é o único app desta célula com
+    `models.py` + `migrations/`, e um app novo custaria outro
+    `migrations/__init__.py` sem ganho arquitetural nenhum.
+
+    `payload` guarda **só o campo `data`** do envelope. O envelope inteiro
+    (`event`/`version`/`event_id`/`occurred_at`/`data`) é montado pelo relay,
+    no instante da publicação — guardar o envelope pronto duplicaria em JSON o
+    que já são colunas, e as duas cópias envelheceriam separadas.
+
+    `event_id` é `UUIDField` **de propósito**, e é a única exceção ao guarda
+    `test_os_ids_inter_celula_sao_texto_opaco_e_nao_uuid`: os quatro contratos
+    congelados em `contracts/eventos/sugestao.*.v1.json` pedem
+    `"format": "uuid"` neste campo — como TODO evento desta plataforma. A
+    exceção não é afrouxamento; é o guarda deixando de valer onde o contrato
+    diz o contrário, e o próprio guarda confere isso lendo o contrato.
+    """
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    event = models.CharField(max_length=100)  # ex.: "sugestao.criada"
+    version = models.PositiveSmallIntegerField(default=1)
+    payload = models.JSONField()  # SÓ o campo `data` do envelope
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["published_at"])]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
+        return f"{self.event}:{self.event_id}"

@@ -13,8 +13,21 @@ para `django.contrib.*` ou para qualquer app que não seja desta célula reprova
 sem ninguém precisar lembrar da regra.
 """
 
+import json
+from pathlib import Path
+
 from django.apps import apps
 from django.db.models import ForeignKey, ManyToManyField, OneToOneField
+
+CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
+
+# A ÚNICA exceção do guarda de UUID abaixo, e ela não é afrouxamento (RITOS §2.3):
+# `OutboxEvent.event_id` é o id do ENVELOPE, não um id inter-célula de domínio, e
+# os contratos congelados o pedem em `format: uuid` — como pagamentos, checkout e
+# quiz já fazem. Escrever a exceção à mão a deixaria envelhecer em silêncio; por
+# isso `test_a_excecao_do_event_id_e_o_que_o_contrato_congelado_pede` a confere
+# LENDO `contracts/eventos/`. Mude o contrato e o guarda cai junto.
+UUID_PERMITIDO = {"sugestoes.OutboxEvent.event_id"}
 
 
 def _apps_desta_celula():
@@ -80,7 +93,29 @@ def test_os_ids_inter_celula_sao_texto_opaco_e_nao_uuid():
         for c in m._meta.get_fields()
         if isinstance(c, UUIDField)
     ]
-    assert not uuids, f"ID em UUIDField, divergindo da plataforma: {uuids}"
+    assert (
+        not set(uuids) - UUID_PERMITIDO
+    ), f"ID em UUIDField, divergindo da plataforma: {sorted(set(uuids) - UUID_PERMITIDO)}"
+
+
+def test_a_excecao_do_event_id_e_o_que_o_contrato_congelado_pede():
+    """A exceção do guarda acima é DERIVADA do contrato, não uma decisão nossa.
+
+    Sem este teste, `UUID_PERMITIDO` seria uma linha que alguém escreveu um dia
+    para o CI parar de reclamar — e continuaria valendo depois de o motivo
+    sumir. Aqui ela só se sustenta enquanto os quatro contratos congelados de
+    `contracts/eventos/sugestao.*.v1.json` pedirem `format: uuid` no `event_id`.
+    No dia em que um rito de contrato mudar isso, este teste fica vermelho e a
+    exceção cai junto — que é o comportamento certo.
+    """
+    contratos = sorted(CONTRATOS.glob("sugestao.*.v1.json"))
+    assert len(contratos) == 4, f"esperava os 4 contratos da Caixa, achei {contratos}"
+    for arquivo in contratos:
+        schema = json.loads(arquivo.read_text(encoding="utf-8"))
+        assert schema["properties"]["event_id"] == {
+            "type": "string",
+            "format": "uuid",
+        }, f"{arquivo.name} deixou de pedir uuid no event_id"
 
 
 def test_o_email_vive_numa_linha_so():
