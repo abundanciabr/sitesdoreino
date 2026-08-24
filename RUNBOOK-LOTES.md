@@ -408,6 +408,66 @@ criar uma célula do zero, e o primeiro cujo deploy nasce vermelho de propósito
     a Q4 da auditoria e o `MODELO-DESPACHO.md` agora nomeiam os três. **Documento que
     "generaliza a partir de dois" é armadilha esperando o terceiro caso.**
 
+**Lote 7 — 24/08/2026** (Caixa de Sugestões, Lote 2 do plano mestre: Rito de Contrato +
+3 despachos, PRs #128/#130/#129/#133, mais #131/#132/#134 de ferramenta; 7 merges,
+0 revert, 0 minuto de produção derrubada — o primeiro lote a **pôr uma célula nova no
+ar** e o primeiro em que o passo do mantenedor falhou TRÊS vezes antes de dar certo):
+
+34. **A ordem de merge entre células é achado de despacho, não palpite da maestro.** O
+    agente de infra descobriu sozinho que o PR dele **não podia** entrar antes do PR da
+    célula: o compose declarava `sugestoes-relay` rodando `manage.py run_huey`, e a
+    imagem daquele momento não tinha o Huey. Mergear na ordem errada faria o serviço
+    subir como `Unknown command` e **reprovar a verificação da plataforma inteira**, não
+    só da célula nova. Ele escreveu isso no handoff; a maestro obedeceu e conferiu passo
+    a passo que a imagem nova saíra antes (o step *Build & push* verde dentro de um run
+    que falhou na ativação). **Peça ao agente de infra a ordem, sempre — ele leu o
+    compose, você não.**
+
+35. **Convenção ditada nos DOIS briefs é o que deixa despachos paralelos convergirem.**
+    `sugestoes-relay` + `python manage.py run_huey` + `SCRIPT_NAME=/forms/sugestoes`
+    foram escritos, iguais, no brief da célula e no de infra — que rodaram ao mesmo
+    tempo, sem se falar. Encaixaram de primeira. É a lição 3 do Lote 1 aplicada de
+    propósito, e continua sendo o truque mais barato de regência que existe.
+
+36. **O passo do mantenedor é software, e software se testa antes de entregar.** O
+    bloco de colar falhou TRÊS vezes seguidas, cada uma por um motivo diferente, e
+    nenhuma por culpa dele: (a) `set -euo pipefail` + `exit` dentro de um shell
+    interativo **matou a sessão** dele; (b) o console **embaralhou** a colagem
+    multi-linha e o script rodou pela metade; (c) o env nasceu `root:root 600` e o
+    usuário do pipeline não conseguiu ler. A cura foi parar de entregar texto: o passo
+    virou **script versionado** (`infra/provisionar-sugestoes.sh`), invocado por uma
+    linha curta, com guardas provados fora da VPS antes de chegar nele. **Se você vai
+    pedir que um humano cole algo, escreva como script, teste os guardas, e entregue o
+    endereço — não o corpo.**
+
+37. **Segredo em argumento de linha de comando vaza pelo caminho mais natural que
+    existe: o print que a pessoa manda para provar que funcionou.** A regra
+    "segredo não passa por chat com agente" já estava escrita (INV-P8) e a **ferramenta
+    a contradizia**. Corrigido com `read -s`, e o id do cliente segue como argumento de
+    propósito — ele é público. **Regra: separe o que é público do que é segredo no
+    desenho do comando; tratar tudo como segredo cansa, tratar tudo como público vaza.**
+    Ver `armadilhas/090`.
+
+38. **Vermelho esperado não dispensa ler o log — dispensa consertar.** Sete
+    `deploy-celula` seguidos vermelhos com a mesma linha, todos previstos e declarados
+    nos briefs. **A maestro leu o log das sete vezes**, e foi assim que apareceram os
+    dois que NÃO eram o de sempre: um `i/o timeout` de SSH (Lote 1) e o
+    `permission denied` do env (este lote). Os dois teriam passado por "é o de sempre".
+    O custo de conferir é um comando; o de presumir é descobrir dias depois.
+
+39. **Portão que reprova ANTES de trocar vale mais que portão que avisa depois.** O
+    `deploy-infra` recusou o compose novo na validação — `ERRO: ... NADA foi trocado` —
+    e a plataforma seguiu servindo os três sites em 200 durante a falha. O modo de falha
+    dele é "não instalou", nunca "instalou quebrado". É o que tornou possível errar três
+    vezes num passo de produção **sem um minuto de site fora do ar**.
+
+40. **Contagem de testes que CAI entre dois verdes é sinal de trabalho perdido.** O
+    agente do sininho viu `217 passed` virar `216 passed` e foi atrás: o patch de prova,
+    gerado com `git diff`, tinha levado junto uma correção ainda não commitada, e o
+    `apply -R` a apagou em silêncio. **Verde não significa "nada se perdeu"** — teste que
+    some junto com o código dele não reprova nada. Compare a contagem com a do início do
+    despacho, sempre. Ver `armadilhas/092`.
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),

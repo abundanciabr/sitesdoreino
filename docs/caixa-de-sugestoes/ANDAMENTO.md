@@ -11,7 +11,7 @@
 
 ## Onde estamos
 
-**Fase atual: LOTE 1 FECHADO (24/08/2026) — a Caixa funciona por dentro.** O plano mestre existe, a auditoria do
+**Fase atual: LOTE 2 FECHADO (24/08/2026) — A CAIXA ESTÁ NO AR** em `meshcraft.top/forms/sugestoes/` (medido da internet: `/entrar` responde 200). O plano mestre existe, a auditoria do
 terreno foi feita, e o nome e o endereço estão decididos: a ferramenta chama-se
 **Caixa de Sugestões** e vai morar em **meshcraft.top/forms/sugestoes/**. Falta
 a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem nenhuma pendência sua.
@@ -45,9 +45,9 @@ a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem ne
 
 | Despacho | O que entrega | Estado | PR | Deploy | Nota |
 |---|---|---|---|---|---|
-| EVO-20 | Cada fato vira evento (outros sistemas podem reagir) | ⬜ | — | — | |
-| EVO-21 | Aluno recebe aviso quando a sugestão dele muda de status | ⬜ | — | — | célula mensageria |
-| EVO-22 | A Caixa entra no ar na VPS | ⬜ | — | — | inclui o passo 🙋 do banco |
+| EVO-20 | Cada fato vira evento (outros sistemas podem reagir) | ✅ | #130 | — | 4 eventos congelados pelo Rito (#128); provado em Redis real, XLEN=1 após 4 voltas do relay |
+| EVO-21 | Aluno recebe aviso quando a sugestão dele muda de status | ✅ | #133 | — | **NÃO foi na mensageria**: ela não manda e-mail (stub) e exigiria vazar o e-mail do aluno. Decisão do mantenedor: sininho dentro da Caixa |
+| EVO-22 | A Caixa entra no ar na VPS | ✅ | #129 | **run verde** | o passo do mantenedor virou script versionado (#131/#132/#134) depois de falhar 3x como bloco de colar |
 
 ## Lote 3 — O rosto
 
