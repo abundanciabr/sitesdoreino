@@ -85,5 +85,7 @@
 | [068](068-lote-outra-sessao-escrevendo-no-seu-worktree-git.md) | LOTE: outra sessão escrevendo no SEU worktree — `git stash pop` devolve o arquivo SEM a sua edição — durante um lote paralelo, `git status` no seu worktree mostra arquivos de OUTRA célula modificados (que você nunca… | §7.7 |
 | [069](069-agente-delegado-nasce-num-worktree-diferente-do-que.md) | Agente delegado nasce num worktree diferente do que o despacho manda — as ferramentas de edição recusam mecanicamente qualquer caminho fora de um worktree que o despacho nunca mencionou (`.claude/worktrees/agent-<id>`)… | §8.1 |
 | [070](070-heredoc-dentro-de-heredoc-com-o-mesmo-delimitador.md) | Heredoc dentro de heredoc com o mesmo delimitador — `SyntaxError: unterminated triple-quoted string literal` no Python, seguido de `bash: syntax error near unexpected token`. | §8.2 |
+| [071](071-make-ci-da-raiz-erro-modulenotfounderror-huey.md) | `make ci` da raiz devolve ERROR com `ModuleNotFoundError: No module named 'huey'` — `python ci/ci.py` (ou `make ci`) na raiz devolve `RESULTADO ERROR` — não FAIL — e o rodapé diz "O exportador não rodou, então a CI NÃO… | — |
+| [072](072-substituicao-em-massa-de-secao-3-1-casa-dentro-de.md) | Substituição em massa de `§3.1` também casa dentro de `§3.13`, `§3.16`, `§3.19` — um `sed`/`re.sub` que renomeia referências a seções numeradas (`ARMADILHAS §3.1` → `RESOLVIDAS.md §3.1`) sai reescrevendo **outras**… | — |
 
-**60 entradas.**
+**62 entradas.**
