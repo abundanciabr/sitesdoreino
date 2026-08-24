@@ -1,12 +1,24 @@
-"""Fase 2 do PLANO-I18N — o meshcraft.top registrado DE VERDADE: matriz D1
-viva contra o sites_i18n.yaml real (instalado no boot — nenhum monkeypatch de
-registro aqui), landing prefixada nos 3 idiomas e sitemap.xml por Host."""
+"""O meshcraft.top multilíngue DE VERDADE: matriz D1 viva, landing prefixada
+nos 3 idiomas e sitemap.xml.
 
+Desde a FASE 4 os 3 idiomas vêm do CATÁLOGO (`conftest.SITE_MESH`, no formato
+do contrato) — nenhum arquivo local declara idioma, e nenhum teste aqui
+monkeypatcha registro nenhum. O `es` continua `indexable: false`: noindex,
+fora do hreflang e fora do sitemap."""
+
+import httpx
 import pytest
 from django.utils.html import escape
 
 from apps.i18n.catalogo import t
-from tests.conftest import HOST_A, HOST_MESH, OFERTA_MESH
+from tests.conftest import (
+    CATALOGO,
+    HOST_A,
+    HOST_DESCONHECIDO,
+    HOST_MESH,
+    OFERTA_MESH,
+    SITE_MESH_SEM_IDIOMAS,
+)
 
 IDIOMAS = ("en", "pt-br", "es")
 
@@ -79,9 +91,9 @@ def test_checkout_segue_sem_prefixo_de_idioma(client, rede):
 
 
 # ---------------------------------------------------------------------------
-# sitemap.xml — rota de máquina (D6): por Host, host canônico, es fora.
+# sitemap.xml — rota de máquina (D6): host canônico do Site, es fora.
 # ---------------------------------------------------------------------------
-def test_sitemap_lista_so_os_idiomas_indexaveis_com_host_canonico(client):
+def test_sitemap_lista_so_os_idiomas_indexaveis_com_host_canonico(client, rede):
     resp = client.get("/sitemap.xml", HTTP_HOST=HOST_MESH)
     assert resp.status_code == 200
     assert resp["Content-Type"] == "application/xml"
@@ -93,22 +105,43 @@ def test_sitemap_lista_so_os_idiomas_indexaveis_com_host_canonico(client):
         f"https://{HOST_MESH}/pt-br/cadastro",
     ):
         assert f"<loc>{url}</loc>" in conteudo
-    assert "/es" not in conteudo  # D5: noindex fica fora do sitemap
+    assert "/es" not in conteudo  # D5: `indexable: false` fica fora do sitemap
 
 
-def test_sitemap_nao_depende_do_catalogo(client):
-    # SEM fixture de rede de propósito: se o sitemap resolvesse o site no
-    # catálogo, o httpx estouraria aqui (nenhum mock ativo) — é isenção como
-    # o /healthz, por construção.
-    resp = client.get("/sitemap.xml", HTTP_HOST=HOST_MESH)
-    assert resp.status_code == 200
+def test_sitemap_agora_depende_do_catalogo_e_404_em_host_desconhecido(client, rede):
+    # MUDANÇA DA FASE 4, declarada: os idiomas do sitemap vêm do catálogo,
+    # então esta rota deixou de ser isenta do CONV-SITE (só /healthz e
+    # /static/ continuam). Host que o catálogo não conhece morre 404 no
+    # middleware, como qualquer outra rota — nunca um sitemap de site padrão.
+    assert client.get("/sitemap.xml", HTTP_HOST=HOST_DESCONHECIDO).status_code == 404
+    assert [c for c in rede.calls if "/sites/by-host/" in str(c.request.url)] != []
 
 
-def test_sitemap_de_site_nao_registrado_404(client):
-    resp = client.get("/sitemap.xml", HTTP_HOST=HOST_A)
+def test_sitemap_de_site_monolingue_404(client, rede):
+    resp = client.get("/sitemap.xml", HTTP_HOST=HOST_A)  # Site sem `languages`
     assert resp.status_code == 404
 
 
 def test_sitemap_prefixado_404_rota_de_maquina_nunca_se_localiza(client, rede):
     resp = client.get("/en/sitemap.xml", HTTP_HOST=HOST_MESH)
     assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# DEGRADAÇÃO DECLARADA (fase 4): o catálogo ainda não serve os campos.
+# ---------------------------------------------------------------------------
+def test_catalogo_sem_os_campos_de_idioma_serve_o_site_monolingue(client, rede):
+    """O motivo de este PR só entrar DEPOIS do deploy verde do catálogo.
+
+    Site vivo, catálogo de pé, mas sem `default_language`/`languages` (o que o
+    provedor devolve hoje): o funil serve o meshcraft como MONOLÍNGUE — a
+    landing volta a responder na raiz e as URLs prefixadas somem (404). Nada
+    quebra, nada fica meio-traduzido, e o sitemap some junto. Mergear na ordem
+    inversa deixaria o site sem /en/ até o catálogo subir."""
+    rede.get(f"{CATALOGO}/sites/by-host/{HOST_MESH}").mock(
+        return_value=httpx.Response(200, json=SITE_MESH_SEM_IDIOMAS)
+    )
+    assert client.get("/", HTTP_HOST=HOST_MESH).status_code == 200
+    for caminho in ("/en/", "/pt-br/", "/es/", "/en/cadastro"):
+        assert client.get(caminho, HTTP_HOST=HOST_MESH).status_code == 404
+    assert client.get("/sitemap.xml", HTTP_HOST=HOST_MESH).status_code == 404

@@ -1,7 +1,7 @@
-"""Fase 1 do PLANO-I18N — validador fail-closed nos TRÊS estados (PASS, FAIL,
-ERROR — semântica INV-CI01), loader YAML estrito (D2.7), runtime t()/plural/
-escape (D2), overlay de variante (D4), glossário e anti-burla do _fonte (D8),
-coerência sites_i18n × infra/sites.json (D3).
+"""Validador fail-closed nos TRÊS estados (PASS, FAIL, ERROR — semântica
+INV-CI01), loader YAML estrito (D2.7), runtime t()/plural/escape (D2), overlay
+de variante (D4), glossário e anti-burla do _fonte (D8) — e, desde a FASE 4,
+os idiomas do SITE lidos do catálogo (`apps.i18n.idiomas`, contrato `Site`).
 
 O teste `test_validador_da_celula_real_passa` É a entrada (a) do portão: roda
 o validador contra a célula de verdade dentro do `make ci`."""
@@ -17,23 +17,15 @@ from django.template import engines
 from django.test import RequestFactory
 
 from apps.i18n import catalogo as cat
-from apps.i18n import registro as reg
+from apps.i18n import idiomas as idi
 from apps.i18n import validador as val
 
 RAIZ_REAL = Path(__file__).resolve().parent.parent
 
-REGISTRO_TESTE = """\
-sites:
-  teste-a.exemplo.com:
-    i18n_mode: prefixed
-    default: en
-    idiomas:
-      en: {tag: en, dir: ltr, indexavel: true}
-      pt-br: {tag: pt-BR, dir: ltr, indexavel: true}
-      es: {tag: es, dir: ltr, indexavel: false}
-      pt-pt: {tag: pt-PT, dir: ltr, indexavel: false, base: pt-br}
-    glossario: [Meshcraft]
-"""
+# Variante de mentira para os testes de overlay (D4). A célula real tem
+# `cat.VARIANTES` vazio; o validador aceita a tabela por parâmetro justamente
+# para o teste não precisar mexer no estado global do módulo.
+VARIANTES_TESTE = {"pt-pt": "pt-br"}
 
 
 def _plural(texto_um: str, texto_outros: str, idioma: str) -> dict:
@@ -74,10 +66,12 @@ TEMPLATE_OK = (
 )
 
 
-def _celula(tmp_path, doc=None, registro=REGISTRO_TESTE, template=TEMPLATE_OK):
+def _celula(tmp_path, doc=None, template=TEMPLATE_OK):
+    """Célula de mentira: traduções + templates. Desde a fase 4 não há mais
+    arquivo de registro de idiomas para escrever — a política de tradução vem
+    do módulo (`cat.IDIOMAS_BASE`/`VARIANTES`/`GLOSSARIO`)."""
     (tmp_path / "traducoes").mkdir(exist_ok=True)
     (tmp_path / "templates").mkdir(exist_ok=True)
-    (tmp_path / val.ARQUIVO_REGISTRO).write_text(registro, encoding="utf-8")
     if doc is not None:
         texto = doc if isinstance(doc, str) else yaml.safe_dump(doc, allow_unicode=True)
         (tmp_path / "traducoes" / "cadastro.yaml").write_text(texto, encoding="utf-8")
@@ -87,20 +81,18 @@ def _celula(tmp_path, doc=None, registro=REGISTRO_TESTE, template=TEMPLATE_OK):
 
 
 # ---------------------------------------------------------------------------
-# A entrada (a) do portão: a célula REAL passa — e os arquivos reais são
-# coerentes com infra/sites.json (cinto do interim, D3).
+# A entrada (a) do portão: a célula REAL passa.
 # ---------------------------------------------------------------------------
 def test_validador_da_celula_real_passa():
     resultado = val.validar_celula(RAIZ_REAL)
     assert resultado.estado == "PASS", resultado.problemas
 
 
-def test_coerencia_dos_arquivos_reais_passa():
-    registro = reg.carregar_registro(RAIZ_REAL / val.ARQUIVO_REGISTRO)
-    resultado = val.conferir_coerencia(
-        registro, RAIZ_REAL.parent.parent / "infra" / "sites.json"
-    )
-    assert resultado.estado == "PASS", resultado.problemas
+def test_nenhum_registro_local_de_idioma_sobrou_na_celula():
+    # Fase 4: o interim `sites_i18n.yaml` morreu — quem declara idioma é o
+    # catálogo. Se alguém recriar o arquivo, este teste conta a história.
+    assert not (RAIZ_REAL / "sites_i18n.yaml").exists()
+    assert not list(RAIZ_REAL.glob("*i18n*.yaml"))
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +175,9 @@ def test_html_fora_da_whitelist_reprova(tmp_path):
 def test_overlay_de_variante_igual_a_base_reprova(tmp_path):
     doc = _doc_ok()
     doc["titulo"]["pt-pt"] = doc["titulo"]["pt-br"]  # idêntico ⇒ remova
-    resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
+    resultado = val.validar_celula(
+        _celula(tmp_path, doc), com_diff=False, variantes=VARIANTES_TESTE
+    )
     assert resultado.estado == "FAIL"
     assert any("idêntico à base" in p for p in resultado.problemas)
 
@@ -198,12 +192,28 @@ def test_overlay_de_variante_igual_a_base_reprova(tmp_path):
             tmp_path, doc, template=TEMPLATE_OK + ' {% t "cadastro.so_variante" %}'
         ),
         com_diff=False,
+        variantes=VARIANTES_TESTE,
     )
     assert resultado.estado == "FAIL"
     assert any("sem a base" in p for p in resultado.problemas)
 
 
+def test_variante_com_base_que_nao_e_idioma_base_reprova(tmp_path):
+    # D4, fallback de fallback: a base de uma variante tem de ser idioma-BASE
+    # da célula. Com a tabela em código (fase 4), é aqui que a regra vive.
+    resultado = val.validar_celula(
+        _celula(tmp_path, _doc_ok()),
+        com_diff=False,
+        variantes={"pt-pt": "pt-br", "pt-ao": "pt-pt"},
+    )
+    assert resultado.estado == "FAIL"
+    assert any("fallback de fallback" in p for p in resultado.problemas)
+
+
 def test_glossario_termo_traduzido_reprova(tmp_path):
+    # O glossário vem da CÉLULA (cat.GLOSSARIO) desde a fase 4 — antes vinha
+    # do registro por site, que morreu com o interim.
+    assert "Meshcraft" in cat.GLOSSARIO
     doc = _doc_ok()
     doc["titulo"]["pt-br"] = "Aprenda MalhaCraft agora"  # traduziu a marca
     resultado = val.validar_celula(_celula(tmp_path, doc), com_diff=False)
@@ -347,20 +357,105 @@ def test_anti_burla_ref_incalculavel_e_error_nunca_skip(repo_burla):
 
 
 # ---------------------------------------------------------------------------
-# Coerência com infra/sites.json — FAIL e ERROR.
+# Fase 4 — os idiomas do SITE vêm do catálogo (contrato `Site`), e o que o
+# contrato NÃO carrega (tag BCP 47, dir) a célula deriva do código.
 # ---------------------------------------------------------------------------
-def test_coerencia_host_fora_do_sites_json_reprova(tmp_path):
-    registro = {"fantasma.exemplo.com": {"glossario": ()}}
-    caminho = tmp_path / "sites.json"
-    caminho.write_text('{"sites": [{"host": "meshcraft.top"}]}', encoding="utf-8")
-    resultado = val.conferir_coerencia(registro, caminho)
-    assert resultado.estado == "FAIL"
-    assert any("fantasma.exemplo.com" in p for p in resultado.problemas)
+TRES_IDIOMAS = [
+    {"code": "en", "indexable": True},
+    {"code": "pt-br", "indexable": True},
+    {"code": "es", "indexable": False},
+]
 
 
-def test_coerencia_sem_sites_json_e_error(tmp_path):
-    resultado = val.conferir_coerencia({}, tmp_path / "nao-existe.json")
-    assert resultado.estado == "ERROR"
+def _site(**extras) -> dict:
+    return {"id": "s1", "host": "x.exemplo.com", "name": "X", "active": True, **extras}
+
+
+def test_idiomas_do_site_saem_do_contrato_com_tag_e_dir_derivados():
+    cfg = idi.idiomas_do_site(_site(default_language="en", languages=TRES_IDIOMAS))
+    assert cfg["default"] == "en"
+    assert list(cfg["idiomas"]) == ["en", "pt-br", "es"]
+    # tag e dir NÃO vêm do contrato: derivam do código, aqui na célula.
+    assert cfg["idiomas"]["pt-br"] == {"tag": "pt-BR", "dir": "ltr", "indexavel": True}
+    assert cfg["idiomas"]["es"]["indexavel"] is False  # D5: es segue noindex
+
+
+@pytest.mark.parametrize(
+    "site",
+    [
+        {},  # nem default_language nem languages — o caso da degradação
+        {"languages": []},
+        {"default_language": "en"},  # default sem lista de idiomas
+    ],
+)
+def test_site_sem_languages_e_monolingue(site):
+    assert idi.idiomas_do_site(_site(**site)) is None
+
+
+def test_languages_sem_default_language_nao_elege_um_por_conta(caplog):
+    # O contrato manda `languages` conter `default_language`; se vier sem,
+    # escolher "o primeiro da lista" seria o site-padrão silencioso que o
+    # [INV-P11] proíbe — e mandaria a raiz redirecionar para um idioma que
+    # ninguém escolheu. Monolíngue, com ERROR no log.
+    assert idi.idiomas_do_site(_site(languages=TRES_IDIOMAS)) is None
+    assert "MONOLÍNGUE" in caplog.text
+
+
+def test_indexable_ausente_e_true_por_contrato():
+    cfg = idi.idiomas_do_site(_site(default_language="en", languages=[{"code": "en"}]))
+    assert cfg["idiomas"]["en"]["indexavel"] is True
+
+
+def test_indexable_nao_booleano_vira_noindex_e_alarma(caplog):
+    cfg = idi.idiomas_do_site(
+        _site(default_language="en", languages=[{"code": "en", "indexable": "false"}])
+    )
+    # Fail-closed para o lado barato: indexar por engano é o erro caro.
+    assert cfg["idiomas"]["en"]["indexavel"] is False
+    assert "indexable" in caplog.text
+
+
+def test_default_language_fora_dos_idiomas_serve_monolingue(caplog):
+    assert (
+        idi.idiomas_do_site(_site(default_language="fr", languages=TRES_IDIOMAS))
+        is None
+    )
+    assert "MONOLÍNGUE" in caplog.text  # nunca um default silencioso (INV-P11)
+
+
+def test_idioma_sem_catalogo_na_celula_e_ignorado(caplog):
+    cfg = idi.idiomas_do_site(
+        _site(default_language="en", languages=TRES_IDIOMAS + [{"code": "fr"}])
+    )
+    # Servir /fr/ publicaria a página em inglês sob URL francesa (D5).
+    assert "fr" not in cfg["idiomas"]
+    assert "fr" in caplog.text
+
+
+def test_codigo_de_idioma_fora_da_forma_e_ignorado(caplog):
+    cfg = idi.idiomas_do_site(
+        _site(
+            default_language="en",
+            languages=TRES_IDIOMAS + [{"code": "PT_BR"}, {"codigo": "es"}],
+        )
+    )
+    assert list(cfg["idiomas"]) == ["en", "pt-br", "es"]
+    assert caplog.text.count("inválido") == 2
+
+
+@pytest.mark.parametrize(
+    "codigo,tag",
+    [("en", "en"), ("pt-br", "pt-BR"), ("es-419", "es-419"), ("zh-hant", "zh-Hant")],
+)
+def test_tag_bcp47_deriva_do_codigo_da_url(codigo, tag):
+    assert idi.tag_bcp47(codigo) == tag
+
+
+@pytest.mark.parametrize(
+    "codigo,dir_", [("en", "ltr"), ("pt-br", "ltr"), ("ar", "rtl"), ("he-il", "rtl")]
+)
+def test_dir_deriva_do_idioma_nunca_do_site(codigo, dir_):
+    assert idi.direcao(codigo) == dir_
 
 
 # ---------------------------------------------------------------------------
@@ -370,7 +465,6 @@ def test_coerencia_sem_sites_json_e_error(tmp_path):
 def estado_protegido(monkeypatch):
     monkeypatch.setattr(cat, "_CATALOGO", cat._CATALOGO)
     monkeypatch.setattr(cat, "_BASES", cat._BASES)
-    monkeypatch.setattr(reg, "_REGISTRO", reg._REGISTRO)
     monkeypatch.setattr(cat, "CONTADOR_DE_FALTAS", {})
 
 
@@ -381,16 +475,19 @@ def test_boot_recusa_catalogo_invalido(tmp_path, estado_protegido):
         val.validar_e_instalar(_celula(tmp_path, doc))
 
 
-def test_boot_recusa_registro_invalido(tmp_path, estado_protegido):
-    _celula(tmp_path, _doc_ok(), registro="sites:\n  x.com:\n    i18n_mode: magico\n")
-    with pytest.raises(ImproperlyConfigured, match="registro inválido"):
-        val.validar_e_instalar(tmp_path)
+def test_boot_recusa_variantes_incoerentes(tmp_path, estado_protegido, monkeypatch):
+    # A tabela de variantes virou código (fase 4) — e o boot continua
+    # fail-closed sobre ela, como era sobre o registro em arquivo.
+    monkeypatch.setattr(cat, "VARIANTES", {"pt-pt": "pt-ao"})
+    with pytest.raises(ImproperlyConfigured, match="não sobe"):
+        val.validar_e_instalar(_celula(tmp_path, _doc_ok()))
 
 
-def test_boot_instala_catalogo_imutavel(tmp_path, estado_protegido):
+def test_boot_instala_catalogo_imutavel(tmp_path, estado_protegido, monkeypatch):
+    monkeypatch.setattr(cat, "VARIANTES", VARIANTES_TESTE)
     val.validar_e_instalar(_celula(tmp_path, _doc_ok()))
     assert "cadastro.titulo" in cat.catalogo_instalado()
-    assert cat.bases_instaladas() == {"pt-pt": "pt-br"}
+    assert cat.bases_instaladas() == VARIANTES_TESTE  # a cadeia de fallback (D4)
     with pytest.raises(TypeError):
         cat.catalogo_instalado()["cadastro.titulo"] = {}
 

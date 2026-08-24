@@ -1,9 +1,11 @@
-"""Fase 1 do PLANO-I18N — matriz HTTP do resolver (D1), emissão SEO (D5),
-pseudo-locale (D8.4) e REGRESSÃO MONOLÍNGUE (site fora do registro: bytes
-idênticos ao comportamento de antes desta fase).
+"""Matriz HTTP do resolver (D1), emissão SEO (D5), pseudo-locale (D8.4) e
+REGRESSÃO MONOLÍNGUE (site sem idiomas: bytes idênticos ao comportamento de
+antes do i18n).
 
-Todos os hosts são de teste; nenhum site real está registrado em
-sites_i18n.yaml nesta fase — o registro dos testes entra por monkeypatch."""
+Todos os hosts são de teste. Desde a FASE 4 o idioma é dado do SITE, servido
+pelo catálogo: o site multilíngue destes testes nasce do mock do catálogo
+(fixture `com_i18n`), no formato do contrato — nenhum arquivo local declara
+idioma nesta célula."""
 
 from types import MappingProxyType
 
@@ -16,34 +18,35 @@ from django.utils import translation
 
 from apps.core.middleware import SiteResolutionMiddleware
 from apps.i18n import catalogo as catalogo_mod
-from apps.i18n import registro as registro_mod
 from apps.i18n.validador import pseudo_do_catalogo, texto_hardcoded
 from tests.conftest import CATALOGO, HOST_A, OFERTA_A, SITE_A
 
 HOST_PREVIEW = "preview.exemplo.com"  # resolve para o MESMO Site A (host canônico)
 
-IDIOMAS_TESTE = {
-    "en": {"tag": "en", "dir": "ltr", "indexavel": True},
-    "pt-br": {"tag": "pt-BR", "dir": "ltr", "indexavel": True},
-    "es": {"tag": "es", "dir": "ltr", "indexavel": False},  # D5: es nasce noindex
-}
-CFG_I18N = {
-    "i18n_mode": "prefixed",
-    "default": "en",
-    "idiomas": IDIOMAS_TESTE,
-    "glossario": ("Meshcraft",),
+IDIOMAS_TESTE = ("en", "pt-br", "es")
+# Formato do contrato (`contracts/catalogo.openapi.yaml`, schema Site): o
+# catálogo diz o CÓDIGO e o `indexable`; tag BCP 47 e dir a célula deriva.
+SITE_A_MULTILINGUE = {
+    **SITE_A,
+    "default_language": "en",
+    "languages": [
+        {"code": "en", "indexable": True},
+        {"code": "pt-br", "indexable": True},
+        {"code": "es", "indexable": False},  # D5: es nasce noindex
+    ],
 }
 
 
 @pytest.fixture
-def com_i18n(monkeypatch):
-    """HOST_A vira site multilíngue registrado (fixture própria — o
-    sites_i18n.yaml REAL fica vazio na fase 1, de propósito)."""
-    monkeypatch.setattr(
-        registro_mod,
-        "_REGISTRO",
-        MappingProxyType({HOST_A: CFG_I18N, HOST_PREVIEW: CFG_I18N}),
-    )
+def com_i18n(rede):
+    """HOST_A — e o host de preview, que resolve para o MESMO Site — passa a
+    ser servido pelo catálogo COM idiomas. Sem esta fixture o SITE_A não tem
+    `languages` e o site é monolíngue: é a regressão do fim do arquivo."""
+    for host in (HOST_A, HOST_PREVIEW):
+        rede.get(f"{CATALOGO}/sites/by-host/{host}").mock(
+            return_value=httpx.Response(200, json=SITE_A_MULTILINGUE)
+        )
+    return rede
 
 
 # ---------------------------------------------------------------------------
@@ -199,11 +202,9 @@ def test_es_noindex_emite_robots_e_pt_br_nao(client, rede, com_i18n):
 def test_canonical_usa_o_host_canonico_do_site_nunca_o_da_requisicao(
     client, rede, com_i18n
 ):
-    # Host de preview resolve para o MESMO Site A: o canonical/hreflang têm de
+    # Host de preview resolve para o MESMO Site A (a fixture com_i18n o mocka
+    # devolvendo o Site cujo `host` é o canônico): o canonical/hreflang têm de
     # sair com o host canônico do Site — nunca request.get_host() (D5).
-    rede.get(f"{CATALOGO}/sites/by-host/{HOST_PREVIEW}").mock(
-        return_value=httpx.Response(200, json=SITE_A)
-    )
     conteudo = client.get("/en/", HTTP_HOST=HOST_PREVIEW).content.decode()
     assert f'<link rel="canonical" href="https://{HOST_A}/en/">' in conteudo
     assert HOST_PREVIEW not in conteudo
@@ -249,7 +250,9 @@ def test_pseudo_locale_detecta_string_hardcoded(monkeypatch):
 
 
 # ---------------------------------------------------------------------------
-# REGRESSÃO MONOLÍNGUE — host fora do registro: NADA muda (nem um byte).
+# REGRESSÃO MONOLÍNGUE — Site que o catálogo serve SEM `languages`: NADA muda
+# (nem um byte). É também a prova da degradação da fase 4: se o provedor não
+# estiver no ar, é exatamente isto que o site multilíngue vira.
 # ---------------------------------------------------------------------------
 HTML_DE_HOJE = """<!-- templates/base_mobile.html  [RECEITA:R6 v1] -->
 <!-- O viewport abaixo é contrato, não decoração: test_mobile_first_contract.py
@@ -337,7 +340,7 @@ function capturaIsland() {
 
 
 def test_regressao_site_nao_registrado_landing_byte_identica(client, rede):
-    # Capturado do código ANTERIOR a esta fase (baseline verde do despacho).
+    # Capturado do código ANTERIOR à fase 1 (baseline verde daquele despacho).
     # Se este teste quebrar por mudança LEGÍTIMA de layout, recapture o HTML
     # renderizado da landing de teste e atualize a constante — nunca o afrouxe.
     resp = client.get("/", HTTP_HOST=HOST_A)
@@ -345,10 +348,25 @@ def test_regressao_site_nao_registrado_landing_byte_identica(client, rede):
     assert resp.content.decode("utf-8") == HTML_DE_HOJE
 
 
+@pytest.mark.parametrize("caminho", ["/en/", "/pt-br/", "/es/", "/en/cadastro"])
+def test_site_sem_languages_nao_tem_url_prefixada(client, rede, caminho):
+    # A outra metade da regressão: sem `languages` no Site, as URLs de idioma
+    # não existem — nem como redirect. É o que o funil serve enquanto o
+    # provedor do catálogo não estiver no ar (degradação declarada da fase 4).
+    assert client.get(caminho, HTTP_HOST=HOST_A).status_code == 404
+
+
 def test_regressao_healthz_intocado(client):
     resp = client.get("/healthz")
     assert resp.status_code == 200
     assert resp.json() == {"status": "ok"}
+
+
+def test_healthz_nao_toca_o_catalogo(client, rede):
+    # A isenção do /healthz é a de sempre (sonda do container e do gateway não
+    # pode depender do catálogo) — a fase 4 só tirou o /sitemap.xml dela.
+    client.get("/healthz")
+    assert [c for c in rede.calls if "/sites/by-host/" in str(c.request.url)] == []
 
 
 def test_regressao_leads_de_site_nao_registrado_segue_funcionando(client, rede):

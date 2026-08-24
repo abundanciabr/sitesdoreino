@@ -6,7 +6,6 @@
 # Semântica [INV-CI01]: PASS = mediu e está certo; FAIL = mediu e achou
 # violação; ERROR = NÃO CONSEGUIU medir (nunca vira verde, nunca vira skip).
 import html
-import json
 import logging
 import os
 import re
@@ -20,11 +19,9 @@ from babel.core import UnknownLocaleError
 from django.core.exceptions import ImproperlyConfigured
 
 from apps.i18n import catalogo as cat
-from apps.i18n import registro as reg
 
 logger = logging.getLogger("funil.i18n")
 
-ARQUIVO_REGISTRO = "sites_i18n.yaml"
 DIR_TRADUCOES = "traducoes"
 DIR_TEMPLATES = "templates"
 MARCADOR_REVISAO = "# revisado-sem-alteracao"
@@ -68,32 +65,27 @@ class ErroDeInstrumento(Exception):
 # ---------------------------------------------------------------------------
 def validar_celula(
     raiz: Path,
-    registro: "dict | None" = None,
     base_ref: "str | None" = None,
     com_diff: bool = True,
+    variantes: "dict | None" = None,
 ) -> Resultado:
     """`com_diff=False` no BOOT (container não tem git nem origin/main — a
     regra anti-burla é do CI, onde BASE_REF/origin/main existem por construção
-    do checkout fetch-depth:0)."""
+    do checkout fetch-depth:0).
+
+    O que se mede é a POLÍTICA DE TRADUÇÃO da célula (`cat.IDIOMAS_BASE`,
+    `cat.VARIANTES`, `cat.GLOSSARIO`) contra os arquivos — nunca os idiomas de
+    um site: desde a fase 4 esses são dado do catálogo, resolvidos por
+    requisição, e não existem em tempo de CI."""
     raiz = Path(raiz)
     problemas: "list[str]" = []
     instrumento: "list[str]" = []
 
-    if registro is None:
-        try:
-            registro = reg.carregar_registro(raiz / ARQUIVO_REGISTRO)
-        except reg.ErroDeRegistro as exc:
-            return Resultado("FAIL", [f"registro: {exc}"])
-
-    variantes = _variantes_coerentes(registro, problemas)
-    idiomas_base = set(cat.IDIOMAS_BASE) | {
-        codigo
-        for cfg in registro.values()
-        for codigo, definicao in cfg["idiomas"].items()
-        if "base" not in definicao
-    }
+    variantes = dict(cat.VARIANTES if variantes is None else variantes)
+    _conferir_variantes(variantes, problemas)
+    idiomas_base = set(cat.IDIOMAS_BASE)
     idiomas_conhecidos = frozenset(idiomas_base | set(variantes))
-    glossario = sorted({t for cfg in registro.values() for t in cfg["glossario"]})
+    glossario = sorted(cat.GLOSSARIO)
 
     arquivos = _arquivos_do_catalogo(raiz)
     chaves: dict = {}
@@ -137,20 +129,21 @@ def _arquivos_do_catalogo(raiz: Path) -> "list[Path]":
     return sorted(pasta.glob("*.yaml"))
 
 
-def _variantes_coerentes(registro: dict, problemas: "list[str]") -> dict:
-    mapa: dict = {}
-    for host, cfg in registro.items():
-        for codigo, definicao in cfg["idiomas"].items():
-            base = definicao.get("base")
-            if base is None:
-                continue
-            if mapa.get(codigo, base) != base:
-                problemas.append(
-                    f"registro: variante `{codigo}` declara bases diferentes "
-                    f"entre sites ({mapa[codigo]} × {base}) — o catálogo é um só"
-                )
-            mapa[codigo] = base
-    return mapa
+def _conferir_variantes(variantes: dict, problemas: "list[str]") -> None:
+    """D4 — overlay de variante tem MÁXIMO 1 nível: variante → base → en. Com
+    a base obrigada a ser idioma-BASE da célula, fallback de fallback fica
+    impossível por construção, e o grafo é acíclico sem precisar percorrê-lo."""
+    for codigo, base in sorted(variantes.items()):
+        if codigo in cat.IDIOMAS_BASE:
+            problemas.append(
+                f"variantes: `{codigo}` é idioma-base da célula — não pode ser "
+                f"overlay de `{base}`"
+            )
+        if base not in cat.IDIOMAS_BASE:
+            problemas.append(
+                f"variantes: a base `{base}` de `{codigo}` não é idioma-base "
+                f"({', '.join(cat.IDIOMAS_BASE)}) — fallback de fallback é ERROR (D4)"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -540,39 +533,16 @@ def _comparar_fontes(nome, texto, planas, velhas) -> "list[str]":
 
 
 # ---------------------------------------------------------------------------
-# Coerência com infra/sites.json (D3, cinto do interim) — SÓ no CI: o
-# container da célula não carrega infra/, então isto NÃO roda no boot.
-# ---------------------------------------------------------------------------
-def conferir_coerencia(registro: dict, caminho_sites_json) -> Resultado:
-    try:
-        dados = json.loads(Path(caminho_sites_json).read_text(encoding="utf-8"))
-        hosts = {site["host"] for site in dados["sites"]}
-    except (OSError, ValueError, KeyError, TypeError) as exc:
-        return Resultado("ERROR", [f"coerência: não li {caminho_sites_json}: {exc!r}"])
-    orfaos = sorted(host for host in registro if host not in hosts)
-    if orfaos:
-        return Resultado(
-            "FAIL",
-            [
-                f"coerência: host `{host}` declarado em sites_i18n.yaml não "
-                "existe em infra/sites.json"
-                for host in orfaos
-            ],
-        )
-    return Resultado("PASS")
-
-
-# ---------------------------------------------------------------------------
 # Entrada (b): BOOT. Catálogo inválido ⇒ exceção ⇒ o processo NÃO sobe (D4).
-# Válido ⇒ registro + catálogo achatado congelados em memória.
+# Válido ⇒ catálogo achatado congelado em memória.
+#
+# O que sumiu na fase 4: `conferir_coerencia(registro, infra/sites.json)` — o
+# cinto do interim, que vigiava a dívida de dois-lugares-declarando-idioma. Com
+# o catálogo servindo `languages`, o lugar é UM só; não há o que conferir.
 # ---------------------------------------------------------------------------
 def validar_e_instalar(raiz) -> None:
     raiz = Path(raiz)
-    try:
-        registro = reg.carregar_registro(raiz / ARQUIVO_REGISTRO)
-    except reg.ErroDeRegistro as exc:
-        raise ImproperlyConfigured(f"[i18n] registro inválido — célula não sobe: {exc}")
-    resultado = validar_celula(raiz, registro=registro, com_diff=False)
+    resultado = validar_celula(raiz, com_diff=False)
     if resultado.estado != "PASS":
         detalhe = "\n  - ".join(resultado.problemas)
         raise ImproperlyConfigured(
@@ -582,8 +552,7 @@ def validar_e_instalar(raiz) -> None:
         # D8.3 é relatório: sobe como WARNING no log estruturado e NÃO impede o
         # boot. Reprovar por comprimento derrubaria a célula por copy prolixo.
         logger.warning("i18n: guarda de comprimento (D8.3): %s", aviso)
-    reg.instalar_registro(registro)
-    cat.instalar_catalogo(resultado.chaves, bases=reg.variantes_de(registro))
+    cat.instalar_catalogo(resultado.chaves, bases=cat.VARIANTES)
 
 
 # ---------------------------------------------------------------------------
