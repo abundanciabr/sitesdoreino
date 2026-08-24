@@ -216,6 +216,122 @@ def test_contrato_com_label_passa() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Lane 'traducoes' — a mesma válvula que as muralhas abrem (PLANO-I18N.md, D9)
+#
+# Sem estes testes o modo de falha é mecânico e já estava previsto
+# (ARMADILHAS §5.11): um lote de tradução legítimo passa nas muralhas e é
+# recusado NA CATRACA, porque as duas cópias da regra divergiram.
+# ---------------------------------------------------------------------------
+
+
+def _traducoes(quantidade: int, celula: str = "meshcraft") -> list[dict[str, str]]:
+    return [
+        {"path": f"services/{celula}/traducoes/en/pagina{i}.json"}
+        for i in range(quantidade)
+    ]
+
+
+def test_lane_traducoes_aceita_lote_grande_de_traducao() -> None:
+    """>15 arquivos, todos dados de tradução, label 'traducoes': passa."""
+    pr = _pr(
+        files=_traducoes(mergear.LIMITE_DE_ARQUIVOS + 10),
+        labels=[{"name": "traducoes"}],
+    )
+    assert _pior(mergear.checar_labels(pr)) is Estado.PASS
+
+
+def test_lane_traducoes_reprova_arquivo_fora_e_o_nomeia() -> None:
+    """Um arquivo fora da árvore de traduções fecha a lane inteira — e a
+    mensagem NOMEIA o intruso: "algo está fora" manda procurar entre dezenas."""
+    arquivos = _traducoes(mergear.LIMITE_DE_ARQUIVOS + 10)
+    arquivos.insert(7, {"path": "services/meshcraft/views.py"})
+    resultados = mergear.checar_labels(
+        _pr(files=arquivos, labels=[{"name": "traducoes"}])
+    )
+    assert _pior(resultados) is Estado.FAIL
+    reprovado = [r for r in resultados if r.estado is Estado.FAIL]
+    assert any("services/meshcraft/views.py" in r.resumo for r in reprovado)
+
+
+@pytest.mark.parametrize(
+    "caminho",
+    [
+        "services/traducoes/pt.json",  # sem célula no meio
+        "services/meshcraft/traducoes",  # a própria pasta, sem arquivo dentro
+        "services/meshcraft/traducoes/",  # idem, com barra
+        "docs/traducoes/pt.json",  # fora de services/
+        "services/meshcraft/a/traducoes/pt.json",  # traducoes aninhada
+        "outro/services/meshcraft/traducoes/pt.json",  # prefixo colado
+    ],
+)
+def test_lane_traducoes_nao_cobre_caminho_parecido(caminho: str) -> None:
+    """A lane cobre services/<celula>/traducoes/<algo> — nada que só se pareça."""
+    arquivos = _traducoes(mergear.LIMITE_DE_ARQUIVOS) + [{"path": caminho}]
+    pr = _pr(files=arquivos, labels=[{"name": "traducoes"}])
+    assert _pior(mergear.checar_labels(pr)) is Estado.FAIL
+
+
+def test_lane_traducoes_nao_aperta_dentro_do_teto() -> None:
+    """Label NUNCA aperta o portão: ≤15 arquivos passa com ou sem 'traducoes',
+    estejam eles na árvore de traduções ou não (mesma regra do .sh, onde o
+    bloco da lane nem chega a rodar com N ≤ 15)."""
+    arquivos = [{"path": f"ci/f{i}.py"} for i in range(mergear.LIMITE_DE_ARQUIVOS)]
+    assert _pior(mergear.checar_labels(_pr(files=arquivos))) is Estado.PASS
+    pr_com_label = _pr(files=arquivos, labels=[{"name": "traducoes"}])
+    assert _pior(mergear.checar_labels(pr_com_label)) is Estado.PASS
+
+
+def test_arquitetural_passa_na_frente_da_lane() -> None:
+    """As duas labels juntas: 'arquitetural' continua valendo como sempre valeu
+    — inclusive para arquivos que a lane jamais aceitaria."""
+    arquivos = [{"path": f"ci/f{i}.py"} for i in range(mergear.LIMITE_DE_ARQUIVOS + 1)]
+    pr = _pr(
+        files=arquivos,
+        labels=[{"name": "arquitetural"}, {"name": "traducoes"}],
+    )
+    assert _pior(mergear.checar_labels(pr)) is Estado.PASS
+
+
+def test_lote_grande_de_traducao_sem_label_reprova() -> None:
+    """A lane é uma DECLARAÇÃO por label, não uma inferência pelo caminho."""
+    pr = _pr(files=_traducoes(mergear.LIMITE_DE_ARQUIVOS + 10))
+    assert _pior(mergear.checar_labels(pr)) is Estado.FAIL
+
+
+def test_padrao_da_lane_bate_com_orcamento_de_mudanca() -> None:
+    """Como o LIMITE_DE_ARQUIVOS: o padrão de caminho da lane é cópia solta do
+    que as muralhas aplicam. Duas fontes para a mesma regra só ficam honestas
+    se algo mecânico denuncia a divergência — foi a divergência entre portão e
+    catraca que abriu a ARMADILHAS §5.11."""
+    import re
+
+    script = (mergear.raiz_do_repo() / "ci" / "orcamento-de-mudanca.sh").read_text(
+        encoding="utf-8"
+    )
+    match = re.search(r'"\$CAMINHO"\s*=~\s*(\S+)\s*\]\]', script)
+    assert match, (
+        "não encontrei o padrão da lane em ci/orcamento-de-mudanca.sh — "
+        "script mudou de formato?"
+    )
+    assert mergear.PADRAO_DA_LANE_TRADUCOES.pattern == match.group(1)
+
+
+def test_lane_depende_do_modo_conferido_pelas_muralhas() -> None:
+    """A catraca confere só o CAMINHO; o MODO (executável/symlink/submódulo)
+    fica com as muralhas, porque `gh pr view --json files` não devolve modo
+    (ver a decisão comentada em checar_labels). Esta assimetria só é segura
+    enquanto o .sh continuar medindo modo — se ele parar, este teste acusa
+    antes de a lane virar porta aberta."""
+    script = (mergear.raiz_do_repo() / "ci" / "orcamento-de-mudanca.sh").read_text(
+        encoding="utf-8"
+    )
+    assert "git diff --raw --no-renames" in script
+    for modo_proibido in ("100755", "120000", "160000"):
+        assert modo_proibido in script
+    assert "muralhas" in mergear.CHECKS_OBRIGATORIOS
+
+
+# ---------------------------------------------------------------------------
 # Fronteira
 # ---------------------------------------------------------------------------
 

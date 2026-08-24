@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -73,6 +74,14 @@ SKIPS_PERMITIDOS = {
 CHECKS_OBRIGATORIOS = ("muralhas", "ci-celula-gate")
 
 LIMITE_DE_ARQUIVOS = 15
+
+# Lane 'traducoes' (docs/i18n/PLANO-I18N.md, decisão D9): um lote de tradução
+# pode passar do teto de arquivos SE E SOMENTE SE todo caminho do PR estiver
+# dentro da árvore de traduções de alguma célula. É o mesmo padrão do bloco da
+# lane em ci/orcamento-de-mudanca.sh — cópia solta, como o LIMITE_DE_ARQUIVOS,
+# e com o mesmo tipo de guarda mecânica contra deriva
+# (`test_padrao_da_lane_bate_com_orcamento_de_mudanca`).
+PADRAO_DA_LANE_TRADUCOES = re.compile(r"^services/[^/]+/traducoes/.+$")
 
 
 def comando_de_merge(numero: int, metodo: str) -> list[str]:
@@ -257,25 +266,85 @@ def checar_checks(pr: dict[str, Any]) -> list[Resultado]:
     return resultados
 
 
+def fora_da_lane_traducoes(arquivos: list[str]) -> str | None:
+    """Primeiro caminho do PR que a lane 'traducoes' NÃO cobre — ou None.
+
+    Mesma regra do bloco da lane em ci/orcamento-de-mudanca.sh: a lane cobre
+    dados dentro da árvore de traduções de uma célula, e nada mais. Devolve o
+    caminho violador (não um booleano) porque a mensagem precisa NOMEAR o
+    arquivo: "algum arquivo está fora" manda quem lê procurar entre dezenas.
+    """
+    for caminho in arquivos:
+        if not PADRAO_DA_LANE_TRADUCOES.match(caminho):
+            return caminho
+    return None
+
+
 def checar_labels(pr: dict[str, Any]) -> list[Resultado]:
     """As mesmas regras que as muralhas aplicam, conferidas antes do merge."""
     labels = {rotulo["name"] for rotulo in pr.get("labels") or []}
     arquivos = [f["path"] for f in pr.get("files") or []]
     resultados: list[Resultado] = []
 
-    if len(arquivos) > LIMITE_DE_ARQUIVOS and "arquitetural" not in labels:
+    # A ordem é a mesma do ci/orcamento-de-mudanca.sh, e importa: a label nunca
+    # APERTA o portão (dentro do teto passa com ou sem label) e 'arquitetural'
+    # passa na frente da lane — inclusive quando as duas vêm juntas.
+    if len(arquivos) <= LIMITE_DE_ARQUIVOS or "arquitetural" in labels:
+        resultados.append(
+            Resultado("orçamento", Estado.PASS, f"{len(arquivos)} arquivo(s)")
+        )
+    elif "traducoes" in labels:
+        # DECISÃO — o MODO dos arquivos não é reconferido aqui, de propósito.
+        # O bloco da lane no .sh também barra executável (100755), symlink
+        # (120000) e submódulo (160000), lendo o modo com `git diff --raw`.
+        # Esta catraca recebe a lista de arquivos do `gh pr view --json files`,
+        # que devolve só {path, additions, deletions, changeType} — não existe
+        # campo de modo (sondado em PR real: `gh pr view 88 --json files --jq
+        # '.files[0]'`), e inventar um campo que a API não dá seria pior que
+        # não ter. Remedir por outra via (git local, API de trees) trocaria uma
+        # segunda barreira barata por dependência de estado local/rede, que
+        # ERRORaria em PR legítimo — fail-closed virando fail-irritante.
+        # A defesa segue fechada em profundidade: 'muralhas' é check
+        # OBRIGATÓRIO (CHECKS_OBRIGATORIOS) e precisa estar SUCCESS para o
+        # merge sair daqui; modo proibido reprova lá, e PR com muralhas
+        # vermelha nunca chega ao merge por este script. A catraca é a segunda
+        # barreira do caminho, não a única.
+        # `test_lane_depende_do_modo_conferido_pelas_muralhas` acusa se o .sh
+        # perder a conferência de modo em que esta decisão se apoia.
+        intruso = fora_da_lane_traducoes(arquivos)
+        if intruso is None:
+            resultados.append(
+                Resultado(
+                    "orçamento",
+                    Estado.PASS,
+                    f"{len(arquivos)} arquivo(s) — lane traducoes, todos em "
+                    "services/*/traducoes/",
+                )
+            )
+        else:
+            resultados.append(
+                Resultado(
+                    "orçamento",
+                    Estado.FAIL,
+                    f"lane 'traducoes': '{intruso}' está fora de "
+                    "services/*/traducoes/",
+                    "A lane só cobre dados dentro da árvore de traduções de uma "
+                    "célula.\nTire esse arquivo do lote (ele tem PR próprio) ou "
+                    "volte ao orçamento\nnormal (≤15 arquivos) / ao rito "
+                    "arquitetural.",
+                )
+            )
+    else:
         resultados.append(
             Resultado(
                 "orçamento",
                 Estado.FAIL,
                 f"{len(arquivos)} arquivos sem a label 'arquitetural'",
                 "É o mesmo limite do ci/orcamento-de-mudanca.sh. Ou o escopo vazou,\n"
-                "ou é mudança estrutural — e aí a label declara isso por escrito.",
+                "ou é mudança estrutural — e aí a label declara isso por escrito.\n"
+                "Lote só de tradução em services/*/traducoes/ tem lane própria: "
+                "label 'traducoes'.",
             )
-        )
-    else:
-        resultados.append(
-            Resultado("orçamento", Estado.PASS, f"{len(arquivos)} arquivo(s)")
         )
 
     if any(a.startswith("contracts/") for a in arquivos) and "contrato" not in labels:

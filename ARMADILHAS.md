@@ -1048,24 +1048,46 @@ atravessa pipe sem ser capturado**.
 falso-verde que este repositório combate; corrigido na mesma sessão, veredito
 refeito pelo JSON.
 
-### 5.11 Lane `traducoes` no orçamento: as muralhas aceitam, mas `mergear.py` ainda NÃO conhece a válvula
+### 5.11 Lane `traducoes` no orçamento: as muralhas aceitavam, mas `mergear.py` não conhecia a válvula — ✅ RESOLVIDO em 23/08/2026
 
-**Sintoma (previsto, mecânico — ainda não medido num PR real):** um lote de
-tradução com a label `traducoes` e >15 arquivos, todos em
-`services/*/traducoes/**`, passa verde no `orcamento-de-mudanca` das muralhas —
-e na hora do merge `python ci/mergear.py <N>` reprova com
+**Sintoma (previsto, mecânico — nunca chegou a acontecer num PR real):** um lote
+de tradução com a label `traducoes` e >15 arquivos, todos em
+`services/*/traducoes/**`, passava verde no `orcamento-de-mudanca` das muralhas —
+e na hora do merge `python ci/mergear.py <N>` reprovava com
 `"N arquivos sem a label 'arquitetural'"`.
 **Causa:** `checar_labels()` em `ci/mergear.py` REIMPLEMENTA o orçamento (de
 propósito — confere antes do merge o que as muralhas conferiram no PR), mas só
-conhece a válvula `arquitetural`; a lane `traducoes` (PLANO-I18N.md, D9) entrou
+conhecia a válvula `arquitetural`; a lane `traducoes` (PLANO-I18N.md, D9) entrou
 só no `ci/orcamento-de-mudanca.sh`, porque `mergear.py` estava fora do escopo do
 despacho que a criou. Duplicação de semântica entre portão e catraca = os dois
 podem divergir, e divergiram aqui por um despacho de distância.
-**Solução:** antes do primeiro lote de tradução de verdade, um despacho pequeno
-em `ci/` ensina a lane ao `checar_labels()` de `mergear.py` (mesma regra: todo
-arquivo do PR casando `services/[^/]+/traducoes/.+` e nenhum executável) — com
-teste-guarda em `ci/tests/test_mergear.py`. Enquanto isso não acontecer, a lane
-existe no CI mas nenhum lote >15 passa da catraca.
+**✅ RESOLVIDO em 23/08/2026** (despacho ci/catraca-lane, branch
+`agent/ci/catraca-lane`): `checar_labels()` aprendeu a lane com a MESMA
+semântica do `.sh` — `arquitetural` passa na frente (inclusive com as duas
+labels juntas), a label nunca APERTA (≤15 passa com ou sem ela), e com
+`traducoes` + >15 arquivos só passa se todo caminho casar
+`PADRAO_DA_LANE_TRADUCOES` (`^services/[^/]+/traducoes/.+$`); um caminho fora
+reprova NOMEANDO o arquivo. 13 testes-guarda novos em `ci/tests/test_mergear.py`
+(198 no total, verdes), evidência vermelho→verde por patch.
+**A assimetria que ficou de propósito (leia antes de "consertar"):** a catraca
+confere só o CAMINHO; o MODO (executável/symlink/submódulo) segue sendo medido
+só pelas muralhas. Motivo medido, não preguiça: `gh pr view --json files`
+devolve apenas `{path, additions, deletions, changeType}` — **não existe campo
+de modo** (sonde com `gh pr view <PR> --json files --jq '.files[0]'` antes de
+supor que existe). Remedir o modo por outra via (git local, API de trees) seria
+trocar uma segunda barreira barata por dependência de estado local/rede, que
+ERRORa em PR legítimo. A defesa continua fechada em profundidade: `muralhas` é
+check OBRIGATÓRIO e precisa estar SUCCESS para o merge sair da catraca, então
+modo proibido reprova antes — e `test_lane_depende_do_modo_conferido_pelas_muralhas`
+acusa se o `.sh` perder a conferência de modo em que essa decisão se apoia.
+**Lição geral (vale para qualquer regra duplicada entre portão e catraca):**
+duplicar semântica é aceitável aqui (a Escada da Imposição, §5.9, quer duas
+barreiras), mas **toda cópia precisa de guarda mecânica contra deriva** — foi a
+falta dela que abriu esta armadilha. Hoje são duas, ambas lendo o próprio `.sh`:
+`test_limite_de_arquivos_bate_com_orcamento_de_mudanca` (o número) e
+`test_padrao_da_lane_bate_com_orcamento_de_mudanca` (o padrão de caminho). Copiou
+regra de outro portão? Escreva junto o teste que denuncia quando as duas cópias
+divergirem.
 **Detalhes da lane que valem para quem for mexer:** a checagem de modo usa
 `git diff --raw --no-renames` (rename desdobrado em remoção+adição, para nenhum
 lado escapar; dst mode `100644`/`000000` são os únicos aceitos — `100755`,
