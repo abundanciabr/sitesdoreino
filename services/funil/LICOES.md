@@ -60,6 +60,48 @@ não o arquivo"). `services/checkout` já roda R6 sem base compartilhada
 um `base_mobile.html` local, mas ele não deve ser extraído para fora desta
 célula sem decisão explícita do mantenedor.
 
+## A matriz HTTP do i18n (D1) devolve 404 ao POST /leads de site REGISTRADO — pendência real da fase 2
+
+**Sintoma:** com um site registrado em `sites_i18n.yaml`, o formulário da
+landing quebraria: a ilha Alpine posta em `/leads` (caminho nu), e a matriz do
+PLANO-I18N D1 manda caminho nu não-GET para **404** (redirect converteria POST
+em GET e descartaria o corpo).
+**Causa:** `/leads` não está em `CAMINHOS_SEM_SITE` nem na lista de rotas de
+máquina do D6 (`/api/**`, `/webhooks/**`, `/static/**`, `/healthz`) — é
+caminho nu como qualquer outro. Comportamento INTENCIONAL da fase 1 (testado
+em `test_post_leads_em_site_registrado_e_404_pela_matriz`): nenhum site real
+está registrado, então nada quebra em produção.
+**Solução (fase 2):** quando registrar o meshcraft, decidir o canal de POST —
+prefixar o destino do form (`/{idioma}/leads`, que o resolver decapa e o
+urlconf resolve), ou promover `/leads` a rota de máquina. Sem essa decisão, o
+formulário do site registrado nasce morto.
+**Origem:** despacho funil/i18n-fundacao.
+
+## O resolver decapa o prefixo em `request.path_info`; `request.path` fica intacto
+
+O middleware reescreve `request.path_info` (`/en/cadastro` → `/cadastro`)
+ANTES da resolução de URL — o urlconf da célula continua sem nenhum prefixo, e
+toda página futura ganha os idiomas de graça. `request.path` segue completo
+(`/en/cadastro`), e é dele que sai o canonical. Duas consequências:
+1. `{% url %}`/links relativos gerados por view NÃO levam prefixo de idioma —
+   a fase 2 precisa do helper de URL com idioma antes de linkar entre páginas
+   de site registrado (pendência já registrada no D6 do plano).
+2. `/en` sem barra → 302 `/en/` (decisão desta célula, não estava na matriz:
+   evita duas URLs servindo o mesmo conteúdo).
+**Origem:** despacho funil/i18n-fundacao — `apps/core/middleware.py`.
+
+## Regressão byte-idêntica do base_mobile: como o template muda sem mudar um byte
+
+`test_regressao_site_nao_registrado_landing_byte_identica` compara a landing
+de site NÃO registrado com o HTML capturado ANTES desta fase (constante
+`HTML_DE_HOJE` embutida no teste). Para o template crescer sem quebrar isso,
+todas as tags `{% if %}`/`{% comment %}` novas colam no fim da linha anterior
+(ver ARMADILHAS §4.14 — a lição vale para qualquer célula). Se um despacho
+futuro mudar a landing DE PROPÓSITO: recapture o HTML renderizado (site de
+teste, sem i18n) e atualize a constante — nunca afrouxe a comparação para
+`in`/regex, que é o que deixaria o vazamento de i18n passar.
+**Origem:** despacho funil/i18n-fundacao — `tests/test_i18n_http.py`.
+
 ## `/checkout/<slug>/` tem barra final — confirmado na branch paralela
 
 O link do botão de compra usa `f"/checkout/{slug}/"` (com `/` no final) porque
