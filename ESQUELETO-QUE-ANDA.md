@@ -57,8 +57,13 @@ que participe do caminho; (2) manual na VPS com cartão APRO — uma vez por mar
 
 1. `make esqueleto` verde LOCALMENTE (webhook simulado assinado).
 2. Esqueleto verde NA VPS com cartão sandbox APRO e webhook real do MP.
-3. Rollback drill: `CHECKOUT_TAG=<sha-anterior> docker compose up -d checkout`
-   executado e cronometrado (< 5 min do "decidi" ao "voltou").
+3. ✅ **FEITO em 23/08/2026** — Rollback drill executado e cronometrado:
+   **76s** do "decidi" ao "voltou", contra os 300s do critério. Não foi por SSH:
+   virou `gh workflow run rollback.yml` (RITOS §4, `ci/rollback.py` +
+   `.github/workflows/rollback.yml`, PR #91). Runs 32678099024 (volta) e
+   32678175555 (desfaz), os dois `success`, com a troca de tag e o `healthy` dos
+   três serviços do `checkout` impressos no log — e a mudança medida de FORA,
+   pela internet pública. Detalhes e números em `RUNBOOK-FASE-D.md` §6.
 4. Evidência: saída crua dos dois runs anexada ao PR de fechamento da etapa.
 
 ## Depois do esqueleto: as 12 personas douradas
