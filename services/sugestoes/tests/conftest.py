@@ -221,7 +221,54 @@ class Porta:
             return False
         return CHAVE_IDENTIDADE in self.client.session
 
+    @property
+    def identidade(self) -> Identidade:
+        """Quem a sessão diz que é — lido do cookie, não guardado à parte.
+
+        Um atributo gravado na entrada mentiria depois de um `/sair`, e é
+        exatamente nos guardas de sessão que essa mentira apareceria tarde.
+        """
+        from apps.core.sessao import CHAVE_IDENTIDADE
+
+        return Identidade.objects.get(pk=self.client.session[CHAVE_IDENTIDADE])
+
 
 @pytest.fixture
 def porta(client, rede, db):
     return Porta(client, rede)
+
+
+# ---------------------------------------------------------------------------
+# A participação do aluno (EVO-12b) — sessão aberta PELA PORTA, nunca à mão
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def entrar_como(rede, matricula, db):
+    """Abre uma sessão de aluno pelo fluxo REAL do EVO-12a — quantas precisar.
+
+    Poderia ser mais rápido assinar um cookie de sessão na mão. Seria também
+    um guarda que continua verde no dia em que a porta parar de funcionar: a
+    sessão de teste passaria a ser feita por um caminho que a produção não tem.
+    Cada aluno destes entrou clicando no botão, com o Google e a `alunos`
+    dublados como em qualquer outro guarda desta suíte.
+
+    Cada chamada usa um `Client` próprio — dois alunos ao mesmo tempo é o caso
+    normal de "votos de atores diferentes", e um cliente só teria um cookie só.
+    """
+    from django.test import Client
+
+    def _entrar(email: str = "joao.silva@exemplo.test", nome: str = "João") -> Porta:
+        rede.alunos_diz(email, [matricula])
+        pessoa = Porta(Client(), rede)
+        resposta = pessoa.bater(perfil_google(email=email, nome=nome))
+        assert pessoa.esta_dentro, resposta.content
+        return pessoa
+
+    return _entrar
+
+
+@pytest.fixture
+def dentro(entrar_como):
+    """Um aluno já dentro — o ponto de partida de todo guarda de participação."""
+    return entrar_como()

@@ -1,0 +1,50 @@
+{% extends "sugestoes/base_caixa.html" %}
+{% comment %}
+O quadro: o ranking por total de votos (§10), com filtro por categoria.
+
+A ordem vem do SERVIDOR, sempre — `sugestoes_ordenadas()` já entrega a lista
+ordenada e com `total_votos` anotado. Ordenar no cliente daria duas verdades
+sobre a mesma coisa, e a que a pessoa vê seria a que ninguém testa.
+{% endcomment %}
+{% block titulo %}{{ quadro.nome }} — Caixa de Sugestões{% endblock %}
+{% block conteudo %}
+<h1>{{ quadro.nome }}</h1>
+<p class="sub">O que os alunos pediram, do mais votado para o menos.</p>
+
+<div class="filtros">
+  <a href="{% url 'quadro' %}" class="{% if not categoria_escolhida %}ativo{% endif %}">Todas</a>
+  {% for categoria in categorias %}
+    <a href="{% url 'quadro' %}?categoria={{ categoria.slug }}"
+       class="{% if categoria.slug == categoria_escolhida %}ativo{% endif %}">{{ categoria.nome }}</a>
+  {% endfor %}
+</div>
+
+<a class="botao" href="{% url 'nova_sugestao' %}">Sugerir alguma coisa</a>
+
+{% for sugestao in sugestoes %}
+  <div class="cartao">
+    <h3>
+      <span class="votos">{{ sugestao.total_votos }}</span>
+      <a href="{% url 'sugestao' sugestao.id %}">{{ sugestao.titulo }}</a>
+    </h3>
+    <p class="meta">
+      {{ sugestao.categoria.nome }} ·
+      {{ sugestao.autor.nome_exibido|default:"Aluno" }} ·
+      {{ sugestao.get_status_display }}
+    </p>
+    <form method="post"
+          action="{% if sugestao.id in votadas %}{% url 'desvotar' sugestao.id %}{% else %}{% url 'votar' sugestao.id %}{% endif %}">
+      {% csrf_token %}
+      <input type="hidden" name="de" value="quadro">
+      <button type="submit" class="botao">
+        {% if sugestao.id in votadas %}Tirar meu voto{% else %}Votar{% endif %}
+      </button>
+    </form>
+  </div>
+{% empty %}
+  <div class="recado">
+    <h2>Ainda não há sugestões aqui</h2>
+    <p>Seja a primeira pessoa a dizer o que está faltando.</p>
+  </div>
+{% endfor %}
+{% endblock %}
