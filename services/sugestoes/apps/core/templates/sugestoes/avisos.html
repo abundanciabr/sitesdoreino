@@ -39,7 +39,13 @@ e só lá (armadilhas/081).
       {% else %}
         Agora está em {{ aviso.get_status_novo_display }}
       {% endif %}
-      · {{ aviso.criado_em }}
+      {% comment %}
+      Formato cravado (`d/m/Y H:i`) e não o `{% templatetag openvariable %} aviso.criado_em {% templatetag closevariable %}` nu: o formato
+      padrão do Django sai no LOCALE do processo, que aqui é `en-us` — a Caixa
+      mostrava "Aug. 24, 2026, 9 a.m." a um aluno brasileiro. A hora certa vem do
+      `TIME_ZONE` de `config/settings.py`; o formato certo vem daqui.
+      {% endcomment %}
+      · {{ aviso.criado_em|date:"d/m/Y H:i" }}
     </p>
     {% if aviso.nota %}
       <p>{{ aviso.nota|linebreaksbr }}</p>

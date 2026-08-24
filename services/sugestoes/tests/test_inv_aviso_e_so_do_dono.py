@@ -51,6 +51,25 @@ def test_a_lista_mostra_o_meu_aviso(dentro, aviso):
     assert aviso.nota in corpo
 
 
+def test_a_data_do_aviso_sai_no_fuso_e_no_formato_de_quem_le(dentro, aviso):
+    """A primeira data que a Caixa mostra a um aluno — e ela saía errada duas vezes.
+
+    Nenhuma página desta célula renderizava data até o EVO-21, então dois defaults
+    de fábrica passaram despercebidos: o `TIME_ZONE` do Django é
+    `America/Chicago` (o aviso aparecia cinco horas antes do que aconteceu) e o
+    formato padrão sai no locale `en-us` ("Aug. 24, 2026, 9 a.m."). O guarda
+    mede as duas coisas juntas, comparando com o que o próprio Django converte
+    para o fuso da Caixa — nunca com uma string escrita à mão, que envelheceria
+    no dia seguinte.
+    """
+    from django.utils import timezone
+
+    corpo = dentro.client.get(reverse("avisos")).content.decode()
+    esperado = timezone.localtime(aviso.criado_em).strftime("%d/%m/%Y %H:%M")
+
+    assert esperado in corpo, f"a data não saiu como {esperado}: {corpo[-1200:]}"
+
+
 def test_a_lista_de_outra_pessoa_nao_mostra_o_meu_aviso(outra_pessoa, aviso):
     resposta = outra_pessoa.client.get(reverse("avisos"))
     corpo = resposta.content.decode()

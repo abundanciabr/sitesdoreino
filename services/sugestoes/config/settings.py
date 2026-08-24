@@ -129,3 +129,11 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 USE_TZ = True
+
+# O fuso em que a Caixa MOSTRA hora — o armazenamento continua em UTC (USE_TZ).
+# Sem esta linha vale o default de fábrica do Django, `America/Chicago`: até o
+# EVO-21 nenhuma página desta célula renderizava data, então o erro não tinha
+# como aparecer. A primeira que renderiza é a dos avisos, e ela mostrava a um
+# aluno brasileiro o horário de Chicago — cinco horas antes, sem nada indicando
+# a troca. É dívida das outras células também, não invenção desta.
+TIME_ZONE = "America/Sao_Paulo"
