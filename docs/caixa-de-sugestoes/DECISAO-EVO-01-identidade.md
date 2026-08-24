@@ -91,6 +91,27 @@ migração, sem deploy de código.
 
 ---
 
+## 4.1 Situação da matrícula: TODAS entram (decidido em 24/08/2026)
+
+O contrato de `alunos` devolve matrículas com `status` em **`ativa`**, **`suspensa`**
+e **`reembolsada`**. A decisão original (§1) disse "só quem tem matrícula" e **não**
+falou de situação — a implementação do EVO-12a seguiu ao pé da letra e deixou as três
+entrarem, registrando a lacuna em vez de decidir sozinha. Foi a atitude certa: quem
+perde a voz na Caixa é decisão de produto, não de despacho.
+
+**Decisão do mantenedor, 24/08/2026: qualquer matrícula entra, inclusive a
+`reembolsada`.** Quem já foi aluno mantém a voz.
+
+Isto **não é o comportamento atual por acidente** — é o comportamento atual porque foi
+escolhido. A diferença importa: sem este parágrafo, o próximo agente que ler o contrato
+de `alunos` vai achar que filtrar por `status == "ativa"` é um bug esquecido, e vai
+"consertar" o que ninguém pediu.
+
+Se um dia mudar, muda em uma linha (o filtro na consulta a `alunos`) mais um
+teste-guarda — e muda **aqui**, com o mantenedor, nunca dentro de um despacho.
+
+---
+
 ## 5. A fricção conhecida desta escolha (e o que fazer com ela)
 
 **Cenário real:** a pessoa comprou o curso com `joao@empresa.com` e a conta Google dela
