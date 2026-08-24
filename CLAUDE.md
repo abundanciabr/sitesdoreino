@@ -21,6 +21,15 @@ de nome entre model Django e `ninja.Schema`, o middleware que derruba o `/health
 orçamento de 15 arquivos que decide a arquitetura antes de você escrever código. Cada
 redescoberta custa tokens e uma rodada de teste.
 
+**E leia também, uma vez por sessão, os 8 padrões de
+`docs/decisoes/RETROSPECTIVA-FASE-D.md`** — é curto e é o *andar de cima* do catálogo:
+as categorias que atravessam as armadilhas individuais (falso-verde · garantia sem
+mecanismo · prova de fora · fail-closed na borda · humano no caminho crítico · contexto
+é orçamento · sessões paralelas · viabilidade sem ler a config). O catálogo cura o caso;
+só o padrão cura a classe — e a Fase D provou isso do jeito caro: em 48h, uma sessão
+repetiu **duas** falhas que já estavam documentadas em outra forma, por conhecer os casos
+e não a categoria.
+
 **Ao terminar, acrescente o que aprendeu** — isso faz parte de terminar a tarefa, como
 o painel. Regra de onde escrever: se serve para qualquer célula, **crie um arquivo
 novo** `armadilhas/NNN-slug.md` (NNN = próximo número livre) e rode

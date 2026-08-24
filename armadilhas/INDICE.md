@@ -4,6 +4,13 @@
 
 # ÍNDICE DAS ARMADILHAS — uma linha por entrada
 
+> **Antes de codar, leia os 8 padrões:** `docs/decisoes/RETROSPECTIVA-FASE-D.md`.
+> Este índice cura o **caso**; lá estão as **categorias** que os atravessam
+> (falso-verde · garantia sem mecanismo · prova de fora · fail-closed na borda ·
+> humano no caminho crítico · contexto é orçamento · sessões paralelas ·
+> viabilidade sem ler a config). É curto, e existe porque conhecer os casos não
+> impede repetir a classe — em 48h uma sessão repetiu duas falhas já catalogadas.
+
 > **Como usar:** dê Ctrl+F pela **mensagem de erro crua** que você está vendo (ou
 > pela tecnologia: `django-ninja`, `respx`, `middleware`, `mypy`, `traefik`,
 > `stash`…). Achou a linha? Abra **só aquele arquivo**. Ler a pasta inteira
