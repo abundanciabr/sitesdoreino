@@ -179,6 +179,108 @@ def test_conferir_do_repositorio_real_pela_linha_de_comando() -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
+# ------------------------------------- dois arquivos com o MESMO NNN (EVO-11)
+#
+# 24/08/2026: um ramo criou `armadilhas/078-guarda-de-imutabilidade...md`
+# enquanto outra sessão mergeava `armadilhas/078-script-injetado...md` na main.
+# `git rebase origin/main` juntou os dois SEM conflito — nomes diferentes,
+# hunks diferentes, nada para o git reclamar — e a pasta ficou com dois `078-`.
+# Só foi pego porque um humano-agente olhou a pasta com `ls` na mão. O índice
+# era gerado em silêncio, com as duas linhas, como se estivesse tudo em ordem.
+
+
+def test_dois_arquivos_com_o_mesmo_numero_sao_ERROR(
+    repo_falso: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """ERROR (2), não FAIL (1): o índice não é medível enquanto o NNN for ambíguo.
+
+    Um índice com duas linhas `078` não é "conteúdo desatualizado" — é uma
+    numeração que deixou de identificar entrada, e toda citação
+    `armadilhas/078` passa a apontar para dois lugares.
+    """
+    _entrada(repo_falso / indice.PASTA, "002-outra-coisa.md", "Colidiu com a 002")
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+
+    assert indice.main([]) == 2
+
+    erro = capsys.readouterr().err
+    assert "ERROR" in erro
+    assert "002-segunda.md" in erro and "002-outra-coisa.md" in erro
+    # a mensagem precisa entregar o conserto pronto: o próximo número livre
+    assert "003" in erro
+
+
+def test_numero_repetido_nao_deixa_o_indice_ser_escrito(
+    repo_falso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Gerar o índice apesar da colisão é justamente o silêncio que se combate."""
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main([]) == 0
+    destino = repo_falso / indice.PASTA / indice.NOME_DO_INDICE
+    antes = destino.read_bytes()
+
+    _entrada(repo_falso / indice.PASTA, "002-outra-coisa.md", "Colidiu com a 002")
+    assert indice.main([]) == 2
+    assert destino.read_bytes() == antes
+
+
+def test_conferir_tambem_reprova_o_numero_repetido(
+    repo_falso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """É por `--conferir` que a CI passa — se ele não vir, o portão não existe."""
+    _entrada(repo_falso / indice.PASTA, "002-outra-coisa.md", "Colidiu com a 002")
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main(["--conferir"]) == 2
+
+
+def test_zero_a_esquerda_nao_esconde_a_colisao(
+    repo_falso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`2-` e `002-` são a mesma gaveta: a comparação é numérica, não textual."""
+    _entrada(repo_falso / indice.PASTA, "2-sem-zeros.md", "Mesmo número, outra grafia")
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main([]) == 2
+
+
+def test_numeracao_sem_repeticao_continua_passando(
+    repo_falso: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """O verde do par: entrada nova com número livre não pode ser reprovada.
+
+    Sem este, um guarda que reprovasse SEMPRE também passaria no teste vermelho
+    — e portão que reprova tudo é desligado na primeira urgência.
+    """
+    _entrada(repo_falso / indice.PASTA, "003-terceira.md", "Número livre, sem colisão")
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+    assert indice.main([]) == 0
+    assert indice.main(["--conferir"]) == 0
+
+
+def test_a_pasta_real_nao_tem_dois_arquivos_com_o_mesmo_numero() -> None:
+    """O guarda medindo a pasta de verdade — é aqui que a colisão do PR aparece.
+
+    Roda dentro de `python ci/ci.py --apenas testador`, que o workflow
+    `muralhas` executa em TODO PR: um `NNN` duplicado deixa o PR vermelho antes
+    do merge, sem depender de alguém lembrar de listar a pasta.
+    """
+    por_numero: dict[int, list[str]] = {}
+    for caminho in (RAIZ / indice.PASTA).glob("*.md"):
+        if caminho.name == indice.NOME_DO_INDICE:
+            continue
+        numero = indice.Entrada.numero_de(caminho.name)
+        if numero is not None:
+            por_numero.setdefault(numero, []).append(caminho.name)
+    colisoes = {n: sorted(v) for n, v in por_numero.items() if len(v) > 1}
+    assert not colisoes, (
+        "dois arquivos com o mesmo NNN em armadilhas/:\n  "
+        + "\n  ".join(f"{n:03d}: {', '.join(v)}" for n, v in sorted(colisoes.items()))
+        + "\n\nRenomeie a entrada mais nova para o primeiro número acima de todos "
+        "e regenere o índice."
+    )
+
+
 # ------------------------------------------------- o repositório de verdade
 
 
