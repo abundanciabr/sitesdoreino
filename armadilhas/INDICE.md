@@ -88,5 +88,6 @@
 | [071](071-make-ci-da-raiz-erro-modulenotfounderror-huey.md) | `make ci` da raiz devolve ERROR com `ModuleNotFoundError: No module named 'huey'` — `python ci/ci.py` (ou `make ci`) na raiz devolve `RESULTADO ERROR` — não FAIL — e o rodapé diz "O exportador não rodou, então a CI NÃO… | — |
 | [072](072-substituicao-em-massa-de-secao-3-1-casa-dentro-de.md) | Substituição em massa de `§3.1` também casa dentro de `§3.13`, `§3.16`, `§3.19` — um `sed`/`re.sub` que renomeia referências a seções numeradas (`ARMADILHAS §3.1` → `RESOLVIDAS.md §3.1`) sai reescrevendo **outras**… | — |
 | [073](073-deploy-infra-vermelho-com-a-plataforma-saudavel.md) | `deploy-infra` vermelho com a plataforma 100% saudável: a sonda envelheceu — o run do `deploy-infra` termina em `failure` com `ERRO: a raiz de meshcraft.top respondeu 302 (esperava 200) — cadastro convergiu mas o site… | — |
+| [074](074-guarda-de-mtime-que-so-mede-antes-nao-protege.md) | Guarda de mtime que só mede ANTES não protege nada — você transforma um arquivo grande que outra sessão pode estar editando, protege a operação lendo o `mtime` antes de começar, o guarda passa — e mesmo assim o… | — |
 
-**63 entradas.**
+**64 entradas.**
