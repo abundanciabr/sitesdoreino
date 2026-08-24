@@ -1,0 +1,57 @@
+openapi: 3.1.0
+info:
+  title: Caixa de Sugestoes — API interna
+  version: 1.0.0
+  description: |
+    Superfície de MÁQUINA da Caixa. Existe por uma razão só: o site
+    (`funil`) precisa saber quem é a pessoa em qualquer página, e o cookie
+    de sessão é assinado e resolvido AQUI (Lei 2, Lei 3 — o banco e o
+    segredo não saem desta célula).
+
+    Lei do assunto: docs/decisoes/DECISAO-onde-mora-a-sessao.md. A resposta
+    desta API RECONHECE uma pessoa; ela nunca AUTORIZA nada — autorização
+    é fail-closed na célula dona do recurso.
+servers:
+  - url: http://sugestoes:8000/interno
+security:
+  - bearerAuth: []
+paths:
+  /sessao:
+    get:
+      operationId: getSession
+      summary: Quem é o dono da sessão desta requisição
+      description: >-
+        Resolve o cookie de sessão repassado pelo chamador. Responde 200 sempre que o chamador
+        estiver autorizado: `autenticado: false` significa que não há sessão (visitante), e NÃO é um erro.
+        O e-mail nunca é devolvido.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+components:
+  schemas:
+    Session:
+      description: 'Quem é o dono da sessão; sem sessão, só `autenticado: false`.'
+      type: object
+      required: [autenticado]
+      properties:
+        autenticado: { type: boolean }
+        id:
+          anyOf:
+            - type: string
+            - type: 'null'
+        nome_exibido:
+          anyOf:
+            - type: string
+            - type: 'null'
+        papel:
+          anyOf:
+            - type: string
+            - type: 'null'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
