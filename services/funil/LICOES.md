@@ -379,3 +379,49 @@ novo, e **fecha a válvula da regra A**: se um dia alguém declarasse o idioma
 presente; o cruzamento com o dado é o contrário. Guarda bom tem os dois, e a
 isenção de um nunca é isenção do outro.
 **Origem:** despacho funil/guardas-d6 — `ci/tests/test_rotas_sem_forma_de_locale.py`.
+
+## A isenção de `/static/` no CONV-SITE não era uma rota — e por 3 dias não houve nenhuma
+
+**Sintoma:** `/static/funil/api.js` respondia **404 em produção** nos dois domínios
+(medido em 24/08/2026), enquanto `/healthz` respondia 200 no mesmo host. As duas
+landings carregam esse `<script>` e a ilha Alpine chama `api.post(...)` logo abaixo:
+o formulário "Quero receber novidades" estava morto no navegador, sem erro visível
+para o visitante e sem uma linha vermelha em lugar nenhum.
+**Causa:** `CAMINHOS_SEM_SITE = ("/healthz", "/static/")` no middleware faz o que diz
+— entrega a requisição ao urlconf sem resolver Host. Só que o urlconf **não tinha
+rota de estático**, e com `DEBUG=0` o Django não serve nada por conta própria. A
+isenção parecia a solução inteira porque ela é metade dela; a outra metade nunca foi
+escrita. Foi por isso que `test_d6_roteamento` ficou verde o tempo todo: ele mede a
+isenção com um **espião no lugar da view** — ou seja, tudo menos a resposta HTTP.
+**Solução:** `apps/core/views.py::servir_estatico` + `re_path(r"^static/...")` no
+urlconf, servindo de `STATICFILES_DIRS[0]` (o diretório-fonte). O mecanismo completo
+— inclusive por que `STATIC_ROOT` está VAZIO na imagem e por que whitenoise não
+resolveria — está em `armadilhas/083-static-404-em-producao-com-todos-os-settings.md`.
+**Regra que sobra para esta célula:** isenção de middleware nunca é rota. Toda vez
+que um caminho entrar em `CAMINHOS_SEM_SITE` ou `CAMINHOS_DE_MAQUINA`, pergunte quem
+responde por ele no `config/urls.py` — se a resposta for "ninguém", o caminho está
+isento de tudo, inclusive de existir.
+**Origem:** despacho funil/static-em-producao — `apps/core/views.py`,
+`config/urls.py`, `tests/test_static_em_producao.py`.
+
+## Rota nova nesta célula precisa passar pela matriz de idioma ANTES de existir
+
+O resolver reescreve `request.path_info` (`/pt-br/static/x.js` → `/static/x.js`)
+antes da resolução de URL. Consequência prática que pegou a rota de estático em
+cheio: **toda rota nova nasce alcançável por `/{idioma}/<rota>`**, de graça e sem
+ninguém pedir. Para página, isso é o recurso funcionando. Para rota de MÁQUINA
+(`/healthz`, `/static/**`, `/sitemap.xml`) é regressão: publica uma URL por idioma
+para o mesmo byte, que é exatamente o que o guarda 2 do D6 proíbe — e o
+`test_rota_de_maquina_prefixada_nao_vira_rota_localizada` teria ficado **vermelho**
+se a rota de estático entrasse sem a guarda. A guarda é uma linha, a mesma do
+`sitemap_xml`:
+
+```python
+if getattr(request, "idioma", None) is not None:
+    raise Http404("<rota> não tem prefixo de idioma")
+```
+
+Checklist de rota nova aqui: é de gente ou de máquina? Se for de máquina, a guarda
+entra junto com a rota, no mesmo commit — depois, o vermelho vem do guarda alheio e
+custa uma rodada para entender de onde veio.
+**Origem:** despacho funil/static-em-producao — `apps/core/views.py`.

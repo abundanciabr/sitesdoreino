@@ -104,5 +104,6 @@
 | [080](080-column-does-not-exist-em-teste-que-nem-toca-a-tabela.md) | `ProgrammingError: column <tabela>.<campo> does not exist` num teste que nem toca aquela tabela — você acrescenta um campo a um model, ainda sem rodar `makemigrations`, e roda **um único** teste que só lê metadados: | — |
 | [081](081-reverse-mente-no-teste-e-acerta-em-producao.md) | `reverse()` mente no teste e acerta em produção (célula sob `SCRIPT_NAME`) — numa célula servida sob prefixo de caminho (`/forms/sugestoes/`, `/checkout/`, `/quiz/`), a MESMA requisição de teste tem `request.path_info`… | — |
 | [082](082-httpx-get-direto-constroi-um-sslcontext-por-chamada.md) | `httpx.get()` direto constrói um `SSLContext` por chamada (0,4 s cada) — a suíte de uma célula que fala com outra célula demora **dezenas de segundos** sem nenhum teste lento aparente, e cada requisição de usuário que… | — |
+| [083](083-static-404-em-producao-com-todos-os-settings.md) | `/static/**` responde 404 em produção com TODOS os settings de estático certos — a página sobe, o HTML chega inteiro, e o `<script src="/static/...">` dela devolve **404** só em produção. No navegador do visitante não… | — |
 
-**72 entradas.**
+**73 entradas.**
