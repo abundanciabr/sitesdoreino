@@ -117,5 +117,6 @@
 | [088](088-celula-nova-deixa-o-deploy-celula-vermelho-ate-o.md) | Célula nova deixa o `deploy-celula` VERMELHO em todo merge, até o compose da VPS conhecê-la — a célula nasceu, o `make ci` dela é verde, o `muralhas` é verde, o PR mergeia — e o `deploy-celula` fica **vermelho no merge… | — |
 | [089](089-rota-nova-no-traefik-reprova-o-inventario-do.md) | Rota nova no Traefik reprova `test_rotas_sem_forma_de_locale` com "Extra items in the left set" — você acrescenta um router a `infra/traefik/dynamic/plataforma.yml` — um PR que não toca célula nenhuma — e o `muralhas`… | — |
 | [090](090-segredo-em-argumento-de-linha-de-comando-vaza.md) | Segredo em argumento de linha de comando vaza por quatro caminhos — você entrega ao mantenedor um comando pronto no formato `bash script.sh "ID" "SEGREDO" "email"`, ele executa, funciona — e o segredo agora está no… | — |
+| [091](091-env-criado-por-root-o-deploy-nao-le.md) | Env criado como `root` ⇒ `deploy-infra` reprova com "permission denied" — o deploy da infraestrutura falha na **validação**, antes de trocar qualquer coisa: | — |
 
-**80 entradas.**
+**81 entradas.**

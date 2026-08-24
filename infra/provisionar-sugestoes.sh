@@ -109,6 +109,16 @@ ALUNOS_API_TOKEN=$TOKEN_PAR
 SUGESTOES_STAFF_EMAILS=$STAFF
 ENV
 
+# DONO E MODO: copiados de um env que JÁ FUNCIONA, em vez de escolhidos por
+# mim. O `umask 077` acima cria o arquivo 600 e do dono que rodou o script — e
+# se isso for `root`, o usuário `deploy` (que é quem o pipeline usa) NÃO
+# consegue ler, e o `deploy-infra` reprova com "permission denied" na validação
+# do compose. Medido em 24/08/2026, no primeiro deploy da Caixa. `--reference`
+# não exige que este script adivinhe dono nem modo certos: ele copia os do
+# `alunos.env`, que é a definição de "certo" nesta máquina.
+chown --reference=env/alunos.env env/sugestoes.env 2>/dev/null   || parar "não consegui ajustar o dono de env/sugestoes.env — rode como root ou como o dono dos outros env."
+chmod --reference=env/alunos.env env/sugestoes.env 2>/dev/null   || parar "não consegui ajustar as permissões de env/sugestoes.env."
+
 # O outro lado do par: `alunos` monta TOKENS_ACEITOS de QUALQUER variável
 # TOKENS_ACEITOS_*, então isto não exige uma linha de código naquela célula.
 if grep -q '^TOKENS_ACEITOS_SUGESTOES=' env/alunos.env; then
@@ -125,6 +135,7 @@ echo "== estado DEPOIS =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='sugestoes_db'" 2>/dev/null | grep -q 1
 then echo "  banco sugestoes_db ....... OK"; else echo "  banco sugestoes_db ....... FALTANDO"; fi
 echo "  linhas em sugestoes.env .. $(wc -l < env/sugestoes.env)  (esperado 11)"
+echo "  dono/modo do env ......... $(stat -c '%U:%G %a' env/sugestoes.env) (igual ao alunos.env: $(stat -c '%U:%G %a' env/alunos.env))"
 if grep -q '^TOKENS_ACEITOS_SUGESTOES=' env/alunos.env
 then echo "  linha no alunos.env ...... OK"; else echo "  linha no alunos.env ...... FALTANDO"; fi
 echo
