@@ -80,11 +80,36 @@ SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 # Nome próprio, não o `sessionid` de fábrica: `meshcraft.top` serve o `funil` na
 # raiz e a Caixa sob /forms/sugestoes. Duas células no MESMO domínio com o mesmo
 # nome de cookie é uma sobrescrevendo a sessão da outra.
-SESSION_COOKIE_NAME = "sugestoes_sessao"
+#
+# O nome mudou de `sugestoes_sessao` para `meshcraft_sessao` em 24/08/2026
+# (DECISAO-onde-mora-a-sessao §5.1), e a troca é OBRIGATÓRIA junto com a do
+# PATH logo abaixo — não é cosmética. O navegador guarda cookie por
+# (nome, domínio, **caminho**): publicar o mesmo `sugestoes_sessao` em "/" sem
+# renomear deixaria DOIS cookies de mesmo nome convivendo — o velho ainda em
+# /forms/sugestoes, o novo em / — e qual deles o servidor lê passa a depender
+# de regra de precedência por caminho. Nome novo faz o velho ser simplesmente
+# ignorado (e expirar sozinho). Preço aceito e anunciado: quem estava logado no
+# momento do deploy é deslogado UMA vez, e reentra com um clique — sessão
+# ausente já responde 302 para a porta, nunca erro.
+SESSION_COOKIE_NAME = "meshcraft_sessao"
 
-# E o cookie nem sequer sai para o resto do domínio: o navegador só o envia sob
-# o prefixo da Caixa. Sem SCRIPT_NAME (dev) vira "/", que é o certo lá.
-SESSION_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
+# ALCANCE DE SITE, e é este o coração da DECISAO-onde-mora-a-sessao.
+#
+# Até 24/08/2026 esta linha era `FORCE_SCRIPT_NAME or "/"`, ou seja o cookie
+# valia só dentro de /forms/sugestoes — o navegador NÃO o enviava para
+# /pt-br/qualquer-coisa, e por isso o site não tinha como saber que a pessoa
+# tinha entrado. Não era falta de tela: era o crachá não valer fora da sala.
+#
+# Com "/", o cookie acompanha a pessoa por todo o domínio, e o `funil` pode
+# perguntar "quem é este?" (config/api.py). Quem CONTINUA lendo e assinando o
+# cookie é esta célula, e só ela: o segredo e a tabela `Identidade` não saem
+# daqui (Lei 2, Lei 3). O site nunca lê o cookie — ele pergunta.
+#
+# Não é `SESSION_COOKIE_DOMAIN`: alcance de CAMINHO (um host, todas as páginas)
+# é o que o site precisa; alcance de DOMÍNIO espalharia o cookie por
+# subdomínios que não são desta plataforma. Lei 9 serve N domínios, e cookie
+# não atravessa domínio nenhum — cada host tem a sua sessão, como deve ser.
+SESSION_COOKIE_PATH = "/"
 
 # `Lax` é OBRIGATÓRIO aqui, não preferência: a volta do Google é uma navegação
 # de topo vinda de accounts.google.com. Com `Strict` o navegador NÃO manda o
@@ -97,8 +122,32 @@ SESSION_COOKIE_SECURE = not DEBUG
 # O cookie de CSRF (o `<form>` do /sair) leva o mesmo tratamento e pelo mesmo
 # motivo: `csrftoken` genérico no domínio compartilhado é colisão entre células.
 CSRF_COOKIE_NAME = "sugestoes_csrf"
-CSRF_COOKIE_PATH = SESSION_COOKIE_PATH
+
+# O CSRF NÃO acompanhou a sessão para "/" — ele fica onde estão os formulários.
+# Até 24/08/2026 esta linha era `= SESSION_COOKIE_PATH` e as duas andavam
+# juntas por acidente de escrita, não por decisão. Agora divergem de propósito:
+# a SESSÃO precisa de alcance de site (o `funil` pergunta quem é a pessoa); o
+# token de CSRF protege os `<form>` DESTA célula, que vivem todos sob o prefixo
+# dela. Mandá-lo para "/" seria superfície a mais — um cookie viajando em toda
+# página do site para proteger formulário que não está lá.
+CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
 CSRF_COOKIE_SECURE = not DEBUG
+
+# ---------------------------------------------------------------------------
+# Tokens do PAR consumidor→provedor (R1), um por par: TOKENS_ACEITOS_FUNIL etc.
+# ---------------------------------------------------------------------------
+# A Caixa passa a ser PROVEDORA a partir da DECISAO-onde-mora-a-sessao: o
+# `funil` pergunta "quem é este?" pela API interna (config/api.py). O mesmo
+# padrão que `alunos` já usa para aceitar a própria Caixa como consumidora.
+#
+# Env ausente ⇒ conjunto VAZIO ⇒ toda chamada é recusada com 401. Fail-closed
+# por construção, e sem derrubar o boot: a célula sobe, as páginas seguem
+# servindo, e só a API interna fica fechada até o token existir no env.
+TOKENS_ACEITOS = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_ACEITOS_") and valor
+}
 
 TEMPLATES = [
     {

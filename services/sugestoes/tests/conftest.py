@@ -219,7 +219,11 @@ class Porta:
         """A prova de sessão aberta, lida do cookie de verdade do navegador."""
         from apps.core.sessao import CHAVE_IDENTIDADE
 
-        cookie = self.client.cookies.get("sugestoes_sessao")
+        # Nome escrito à mão, e não lido de settings: um teste que lê a mesma
+        # variável que o código passaria mesmo com o valor errado. Mudou de
+        # `sugestoes_sessao` para `meshcraft_sessao` em 24/08/2026, junto com o
+        # PATH — ver DECISAO-onde-mora-a-sessao §5.1.
+        cookie = self.client.cookies.get("meshcraft_sessao")
         if cookie is None or not cookie.value:
             return False
         return CHAVE_IDENTIDADE in self.client.session

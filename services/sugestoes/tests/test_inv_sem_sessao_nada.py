@@ -18,7 +18,7 @@ ficaria verde sem nunca ter testado o porteiro.
 """
 
 import pytest
-from django.urls import NoReverseMatch, reverse
+from django.urls import NoReverseMatch, URLPattern, URLResolver, reverse
 
 from apps.sugestoes.models import Comentario, Sugestao, Voto
 
@@ -28,11 +28,54 @@ pytestmark = pytest.mark.django_db
 # entra, no caso do /healthz, que é máquina falando com máquina).
 PUBLICAS = {"entrar", "entrar_google", "entrar_google_retorno", "sair", None}
 
+# A superfície de MÁQUINA da célula (DECISAO-onde-mora-a-sessao): montada por
+# `include()`, e por isso um `URLResolver` — não um `URLPattern` com callback.
+# Ela fica fora do porteiro de SESSÃO de propósito, porque responde a uma
+# pergunta diferente: quem CHAMA (Bearer do par), e não quem é a PESSOA.
+#
+# **Declarada aqui, nunca inferida.** Se o guarda simplesmente ignorasse todo
+# `URLResolver`, bastaria alguém montar páginas por `include()` para a
+# participação inteira sair da varredura sem ninguém notar — e o guarda
+# continuaria verde. Por isso a lista é conferida por igualdade EXATA abaixo, e
+# a proteção alternativa é medida do lado de fora, não prometida em comentário.
+MONTAGENS_DE_MAQUINA = {"interno/"}
+
 
 def _rotas():
+    """Só as rotas de GENTE — as que têm view própria e porteiro de sessão."""
     from config.urls import urlpatterns
 
-    return list(urlpatterns)
+    return [rota for rota in urlpatterns if isinstance(rota, URLPattern)]
+
+
+def test_toda_montagem_incluida_e_declarada_e_fechada_por_bearer(client):
+    """O outro lado de `_rotas()`: o que ela filtra não pode ficar sem guarda.
+
+    Duas afirmações, e as duas precisam ser verdade:
+
+    1. **Nada entrou por `include()` sem declaração.** Igualdade exata, não
+       `issubset` — montagem nova derruba este teste e obriga quem a criou a
+       dizer aqui o que ela é e por que está fora do porteiro de sessão.
+    2. **A montagem declarada é mesmo fechada**, medida como qualquer um a
+       veria: sem o Bearer do par, 401. Sem esta metade, o item 1 viraria uma
+       licença para tirar rota da varredura escrevendo o nome dela numa lista.
+    """
+    from config.urls import urlpatterns
+
+    incluidas = {
+        str(rota.pattern) for rota in urlpatterns if isinstance(rota, URLResolver)
+    }
+    assert incluidas == MONTAGENS_DE_MAQUINA, (
+        f"montagens por include() no urlconf: {sorted(incluidas)}, declaradas: "
+        f"{sorted(MONTAGENS_DE_MAQUINA)}. Montagem nova fica FORA da varredura "
+        "de porteiro — declare-a aqui e prove que ela tem guarda própria."
+    )
+
+    anonimo = client.get("/interno/sessao")
+    assert anonimo.status_code == 401, (
+        "a superfície de máquina respondeu "
+        f"{anonimo.status_code} a quem não apresentou o token do par."
+    )
 
 
 def _endereco(nome: str, sugestao) -> str:

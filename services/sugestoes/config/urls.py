@@ -11,6 +11,7 @@ from apps.core.participacao import (
     votar,
 )
 from apps.core.views import entrar, entrar_google, entrar_google_retorno, healthz, sair
+from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (/forms/sugestoes): quem o
 # aplica é FORCE_SCRIPT_NAME, lido do env em config/settings.py. Mover a Caixa
@@ -28,6 +29,13 @@ from apps.core.views import entrar, entrar_google, entrar_google_retorno, health
 # todo o resto da participação (apps/core/participacao.py).
 urlpatterns = [
     path("healthz", healthz),
+    # Superfície de MÁQUINA (DECISAO-onde-mora-a-sessao): o `funil` pergunta
+    # quem é o dono da sessão. Prefixo `interno/` no nome porque é assim que a
+    # fronteira fica legível no urlconf — do mesmo jeito que `moderacao/`
+    # deixa visível a fronteira do crachá, e não só no decorador. Não confundir
+    # com as rotas de GENTE abaixo: esta não renderiza página nenhuma e exige
+    # Bearer do par consumidor.
+    path("interno/", api.urls),
     path("", ver_quadro, name="quadro"),
     path("entrar", entrar, name="entrar"),
     path("entrar/google", entrar_google, name="entrar_google"),
