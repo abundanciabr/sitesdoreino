@@ -441,3 +441,14 @@ Checklist de rota nova aqui: é de gente ou de máquina? Se for de máquina, a g
 entra junto com a rota, no mesmo commit — depois, o vermelho vem do guarda alheio e
 custa uma rodada para entender de onde veio.
 **Origem:** despacho funil/static-em-producao — `apps/core/views.py`.
+
+> **Atualização de 24/08/2026 (despacho funil/desvio-d6-healthz):** a guarda por view
+> continua valendo como defesa em profundidade, mas deixou de ser a única coisa entre
+> a célula e a regressão. O `SiteResolutionMiddleware` agora confere
+> `ROTAS_DE_MAQUINA` **depois** de decapar o prefixo — rota de máquina listada está
+> protegida mesmo se a view esquecer — e o
+> `test_toda_rota_do_urlconf_e_classificada_maquina_ou_localizavel` obriga toda rota
+> nova do `config/urls.py` a se declarar de máquina ou de página. O checklist acima
+> virou pergunta que o teste faz por você; foi a rota `/healthz` esquecida que provou
+> que disciplina sozinha não bastava. Ver a lição `CAMINHOS_SEM_SITE` casa o
+> `path_info` CRU, acima, e `armadilhas/086`.

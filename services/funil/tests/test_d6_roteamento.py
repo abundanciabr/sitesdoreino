@@ -24,7 +24,7 @@ from urllib.parse import urlsplit
 import pytest
 from django.http import HttpResponse
 from django.test import RequestFactory
-from django.urls import Resolver404, resolve
+from django.urls import Resolver404, path, re_path, resolve
 
 from apps.core.middleware import (
     CAMINHOS_DE_MAQUINA,
@@ -36,6 +36,10 @@ from config.urls import urlpatterns
 from tests.conftest import CATALOGO, HOST_MESH, IDIOMAS_MESH, OFERTA_MESH
 
 IDIOMAS = tuple(idioma["code"] for idioma in IDIOMAS_MESH)
+
+
+def _view(request):  # dublê: path()/re_path() exigem um callable
+    return HttpResponse("ok")
 
 
 # ===========================================================================
@@ -143,9 +147,43 @@ def test_healthz_nu_continua_servindo_com_o_catalogo_fora_do_ar(client, rede):
 # classe.)
 ROTAS_LOCALIZAVEIS = ("/", "/leads", "/cadastro")
 
+# Um urlconf tem `path()` e `re_path()`, e o guarda precisa comparar os dois com
+# as listas do middleware — que casam por `startswith` sobre prefixo LITERAL.
+RE_METACARACTERE = re.compile(r"[(\[\?*+{<$]")
+
+
+def caminho_literal(padrao) -> str:
+    """O prefixo literal da rota, com a barra da raiz.
+
+    `path("healthz", …)` → `/healthz`;
+    `re_path(r"^static/(?P<path>.*)$", …)` → `/static/`.
+
+    Cortar no primeiro metacaractere não é aproximação: é exatamente o pedaço do
+    caminho que decide a isenção no middleware, porque é sobre ele que o
+    `startswith` de `ROTAS_DE_MAQUINA` roda.
+    """
+    bruto = str(padrao.pattern).lstrip("^")
+    return "/" + RE_METACARACTERE.split(bruto, maxsplit=1)[0]
+
+
+@pytest.mark.parametrize(
+    "padrao, esperado",
+    [
+        (path("healthz", _view), "/healthz"),
+        (path("sitemap.xml", _view), "/sitemap.xml"),
+        (path("", _view), "/"),  # catch-all da landing
+        (re_path(r"^static/(?P<path>.*)$", _view), "/static/"),
+        (path("cursos/<slug:slug>/", _view), "/cursos/"),
+    ],
+)
+def test_o_caminho_literal_e_o_pedaco_que_o_middleware_compara(padrao, esperado):
+    # Sem esta prova o guarda abaixo poderia ficar verde lendo lixo: um
+    # `re_path` cru vira "/^static/(?P<path>.*)$", que não casa lista nenhuma.
+    assert caminho_literal(padrao) == esperado
+
 
 def test_toda_rota_do_urlconf_e_classificada_maquina_ou_localizavel():
-    caminhos = [f"/{padrao.pattern}" for padrao in urlpatterns]
+    caminhos = [caminho_literal(padrao) for padrao in urlpatterns]
 
     sem_classificacao = [
         caminho
