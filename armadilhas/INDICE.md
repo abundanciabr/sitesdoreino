@@ -114,5 +114,6 @@
 | [085](085-dois-arquivos-com-o-mesmo-nnn-passam-pelo-rebase.md) | Dois arquivos com o mesmo `NNN` em `armadilhas/` passam pelo rebase sem conflito — depois de um `git rebase origin/main` limpo, a pasta tem dois arquivos com o mesmo número: | — |
 | [086](086-isencao-de-middleware-que-casa-o-caminho-cru-nao.md) | Isenção de middleware que casa o caminho CRU não protege a forma reescrita — `/healthz` responde 200 (correto), e **`/pt-br/healthz` também responde 200** — com o mesmo JSON da sonda. A rota de máquina ganhou uma gêmea… | — |
 | [087](087-chave-comentario-do-django-comenta-uma-linha-so.md) | `{# … #}` do Django comenta UMA linha — a de baixo vai para a página — um comentário de template escrito em várias linhas **aparece na tela do usuário**. Sem erro, sem aviso, sem log: a página renderiza normalmente e o… | — |
+| [090](090-segredo-em-argumento-de-linha-de-comando-vaza.md) | Segredo em argumento de linha de comando vaza por quatro caminhos — você entrega ao mantenedor um comando pronto no formato `bash script.sh "ID" "SEGREDO" "email"`, ele executa, funciona — e o segredo agora está no… | — |
 
-**77 entradas.**
+**78 entradas.**
