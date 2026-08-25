@@ -125,5 +125,6 @@
 | [096](096-celula-que-congela-contrato-em-pr-de-contracts-so.md) | Célula que vira `freeze: required` em PR de `contracts/` só quebra no PRÓXIMO PR dela: `contrato/<celula> ERROR — No module named 'yaml'` — um PR normal da célula — testes verdes no runner, `214 passed` — morre no… | — |
 | [097](097-cliente-que-le-env-no-init-fura-o-fail-open-e.md) | Cliente que lê env no `__init__` fura o fail-open: `KeyError` vira **HTTP 500 em toda página**, com o deploy verde — a célula promete, por escrito e com testes, que uma dependência fora do ar **não derruba** a página… | — |
 | [098](098-tirar-o-prefixo-do-idioma-padrao-torna-o-primeiro.md) | Tirar o prefixo do idioma padrão torna o primeiro segmento da URL ambíguo — e a rota perdedora some sem erro nenhum — você serve o idioma padrão do site na raiz nua (`/cadastro` = inglês) e mantém os outros prefixados… | — |
+| [099](099-use-tz-true-nao-escolhe-fuso-a-celula-mostra.md) | `USE_TZ = True` não escolhe fuso: a célula mostra hora de Chicago e nada acusa — não há erro nenhum. O CI está verde, o deploy sobe, o `/healthz` responde 200 — e a data na tela está cinco horas atrás. Pior: perto da… | — |
 
-**88 entradas.**
+**89 entradas.**
