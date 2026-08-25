@@ -4,6 +4,12 @@
 veredito da consulta (§6) e o **"segue" do mantenedor** — as decisões abaixo são
 **FINAIS** para as fases 1–3; nenhum marcador `[CONSULTA]` resta.
 
+> ⚠️ **REVISÃO de 25/08/2026 — o D1 mudou.** O idioma **padrão** de um site passou
+> a morar na **raiz nua, sem prefixo** (`meshcraft.top` = inglês); só os outros
+> idiomas levam prefixo, e `/en/…` virou **404**. Decisão do mantenedor,
+> registrada em `docs/decisoes/DECISAO-raiz-sem-prefixo-do-idioma-padrao.md`.
+> Todo o resto deste documento — D2 a D9 — continua valendo sem alteração.
+
 **Mandato:** preparar o meshcraft.top para vários idiomas — padrão **inglês**,
 `pt-br` e `es` desde já (outros `pt-*` depois), começando pela página de
 cadastro. Critérios: escalável, sustentável, operável por agentes de IA.
@@ -46,37 +52,59 @@ agente futuro copiá-los — está no §6.
 
 ## §2 — Decisões de desenho (FINAIS)
 
-### D1 — URL: TODOS os idiomas com prefixo, inclusive o inglês
+### D1 — URL: o idioma PADRÃO na raiz, sem prefixo; os outros com prefixo
+
+> **REVISTO em 25/08/2026** por decisão do mantenedor —
+> `docs/decisoes/DECISAO-raiz-sem-prefixo-do-idioma-padrao.md`. A versão
+> original deste D1 mandava **todos** os idiomas levarem prefixo, inclusive o
+> inglês. Se você está lendo isto porque o código parece "errado" perto de um
+> documento antigo: **o código está certo**, leia a decisão.
 
 ```
-meshcraft.top/en/cadastro       → inglês (padrão do site, COM prefixo)
+meshcraft.top/cadastro          → inglês (padrão do site, SEM prefixo)
 meshcraft.top/pt-br/cadastro    → português do Brasil
 meshcraft.top/es/cadastro       → espanhol
+meshcraft.top/en/cadastro       → 404 (o padrão não tem prefixo — uma forma só)
 ```
 
-Decisão unânime das 4 IAs consultadas, contra o plano original — e endossada:
-mudar o idioma padrão no futuro vira **uma linha de dado**, não migração de
-301 em massa ("identidade persistente de recurso"); "ausência de prefixo
-também é um idioma" era uma exceção invisível que reapareceria em dezenas de
-lugares onde agentes geram URL; e hoje não há nada indexado — trocar é grátis.
+**O argumento revogado, preservado porque é o custo que se paga:** o D1 original
+era decisão unânime das 4 IAs consultadas — com prefixo em todos, trocar o
+idioma padrão vira *uma linha de dado* em vez de migração de 301 em massa
+("identidade persistente de recurso"). Isso continua sendo verdade, e agora é
+**dívida assumida**: mudar o `default_language` de um site deixou de ser barato.
+A decisão pesou isso contra o endereço público do produto — a coisa mais visível
+que ele tem — e escolheu o endereço. Não reabra sem ler a decisão inteira.
 
 Regras de borda (a "matriz HTTP", toda ela vira teste):
 
-- **Raiz `/` de site multilíngue:** `302` fixo e determinístico para
-  `/{default}/` — **nunca 301** (301 fica cacheado no navegador e travaria a
-  troca de default) — com **`Cache-Control: max-age=300`** (o redirect é
-  determinístico por decisão nossa — não varia por usuário — logo É cacheável;
-  `no-store` obrigaria round-trip à origem no caminho de maior volume de um
-  funil de tráfego pago; max-age curto propaga uma troca de default em
-  minutos). Só GET/HEAD; query preservada.
-- **Caminho nu** (`GET /cadastro`): `302` para `/{default}/cadastro`
-  (preserva link curto de marketing). **Métodos não-GET: `404`** — 301/302
-  fazem o navegador converter POST em GET e descartar o corpo em silêncio; se
-  um dia for preciso redirect preservando método, é 307/308.
-- **Caixa e forma:** só minúsculo é válido (`/pt-br/`); `/pt-BR/`, `/PT-BR/`,
-  `/pt_br/` ⇒ `404` (fail-closed; nada nunca linkou para essas formas).
-- **Prefixo não habilitado para o site** (`/fr/cadastro`) e prefixo
-  desconhecido ⇒ `404`.
+- **Raiz `/` e todo caminho nu** (`/cadastro`, `/faq`): **200**, servidos no
+  idioma padrão do site. Sem redirecionamento no meio ⇒ **método nenhum é
+  perdido**: `POST /leads` e `POST /cadastro` funcionam (na matriz antiga eram
+  404, porque um 302 converteria POST em GET e descartaria o corpo).
+- **Prefixo do idioma PADRÃO** (`/en`, `/en/`, `/en/cadastro`): **404**. A regra
+  vem **antes de todas as outras** no resolver, inclusive antes da guarda de
+  rota de máquina — senão `/en/healthz` viraria um caminho para a sonda
+  (`armadilhas/086`).
+- **Prefixo de idioma não-padrão habilitado** (`/pt-br/…`, `/es/…`): **200**,
+  como sempre. `/pt-br` sem barra ⇒ **302** para `/pt-br/` (uma forma canônica
+  por página); só GET/HEAD, query preservada, `Cache-Control: max-age=300`
+  — **nunca 301** (301 fica cacheado no navegador e travaria qualquer troca).
+- **Caixa e forma:** só minúsculo com hífen é válido (`/pt-br/`). Segmento que
+  **normaliza** para um idioma habilitado (minúsculo, `_`→`-`) mas não é ele —
+  `/pt-BR/`, `/PT-BR/`, `/pt_br/`, `/EN/`, `/Es/` — ⇒ **404 fail-closed**, nunca
+  redirecionamento. Nada nunca linkou para essas formas.
+- **Prefixo desconhecido** (`/fr/cadastro`, `/de/`): **404** — agora porque o
+  urlconf não tem a rota, não porque uma regex adivinhou. A antiga
+  `RE_FORMA_DE_IDIOMA` recusava **qualquer** primeiro segmento de 2-3 letras,
+  o que impedia para sempre uma página em inglês chamada `/faq` ou `/api`.
+  Endereços curtos em inglês estão liberados por decisão (25/08/2026).
+- **Rota de máquina** (`/healthz`, `/static/**`, `/sitemap.xml`): servida na
+  forma nua, **nunca** com prefixo nenhum, em nenhum idioma.
+- **O idioma vence o urlconf** — e isso obriga uma guarda. Com o padrão na raiz
+  nua o primeiro segmento é ambíguo: `/es` pode ser "espanhol" ou "página em
+  inglês chamada es". O resolver decide idioma primeiro, então rota do urlconf
+  que colida com código de idioma servível fica **inalcançável em silêncio**.
+  `tests/test_d6_roteamento.py` varre o urlconf e reprova a colisão.
 - **Sem negociação de `Accept-Language` em lugar nenhum** (recomendação
   documentada do Google; o Googlebot normalmente nem envia o header; `Vary:
   Accept-Language` estilhaça cache). Melhoria futura: banner client-side
@@ -84,12 +112,20 @@ Regras de borda (a "matriz HTTP", toda ela vira teste):
   conteúdo servido numa URL fixa**.
 - **Invariante-teste: uma URL = um idioma** — a mesma URL requisitada com
   `Accept-Language` opostos devolve **bytes idênticos**.
-- **Modo por site é dado** (`i18n_mode`): site sem declaração = monolíngue sem
-  prefixo, comportamento atual **intocado por construção**.
+- **Modo por site é dado**: site sem `languages`/`default_language` no catálogo
+  = monolíngue sem prefixo, comportamento anterior ao i18n **intocado por
+  construção** (golden byte-a-byte em `tests/test_i18n_http.py`).
+- **A exceção mora num lugar só.** "Ausência de prefixo também é um idioma" era
+  o segundo argumento do D1 original, e continua válido: uma exceção espalhada
+  reapareceria em cada lugar que gera URL. Por isso **toda** URL pública da
+  célula sai de `apps/i18n/idiomas.py::caminho_publico(cfg, codigo, caminho)` —
+  canonical, hreflang, x-default, seletor, sitemap e link interno. Não escreva
+  `f"/{codigo}{caminho}"` à mão em lugar nenhum.
 - **Resolver próprio** de prefixo (poucas linhas, testável) — **não**
   `i18n_patterns`: a configuração dele é global por settings (um
   `LANGUAGE_CODE`, uma lista), inaplicável a um serviço que atende N sites com
-  conjuntos e defaults diferentes por Host. O resolver chama
+  conjuntos e defaults diferentes por Host. (O `prefix_default_language=False`
+  do Django resolveria só metade disto, e ainda global.) O resolver chama
   `django.utils.translation.activate(locale)` por requisição (ver D2.4).
 - Registrada para o dia em que houver CDN: **identidade de cache = site +
   locale + rota**, nunca só o path (funil multissite ⇒ path sozinho é
@@ -260,8 +296,9 @@ site (D3) — hoje por `idiomas.dados_seo()`, nunca à mão:
   canonical de `/pt-br/*` apontando para a versão inglesa = reprovado.
 - **hreflang recíproco, auto-incluído, absoluto**, um por idioma habilitado
   **e indexável** do site + **exatamente um `x-default`** por página →
-  a URL `/en/` da MESMA página (x-default é por cluster de página, não do
-  site). **Canal único: as tags `<link>` no HTML** — dois canais (HTML +
+  a URL do **idioma padrão** da MESMA página (x-default é por cluster de
+  página, não do site) — desde 25/08/2026 essa URL é a **forma nua**, sem
+  prefixo, como toda URL que sai do `caminho_publico()` (D1). **Canal único: as tags `<link>` no HTML** — dois canais (HTML +
   sitemap) divergem em silêncio e sinal conflitante é descartado.
 - **`<title>`, meta description e og:title/description por idioma** — chaves
   normais do catálogo, cobertas pela paridade. `og:locale` em formato
@@ -471,7 +508,8 @@ produto; o risco residual concentra-se no único lugar sem portão. Defesas:
 
 ## §3 — A página de cadastro: o que entra já, o que espera o EVO-01
 
-**Fase já:** `/en/cadastro`, `/pt-br/cadastro`, `/es/cadastro` no funil
+**Fase já:** `/cadastro` (inglês, sem prefixo — D1 revisto em 25/08/2026),
+`/pt-br/cadastro`, `/es/cadastro` no funil
 (es `noindex` — D5) — formulário nome + e-mail (+ WhatsApp opcional),
 postando server-side para `leads` com
 `source="cadastro-meshcraft-<locale>"` (D9). Erros de validação saem no

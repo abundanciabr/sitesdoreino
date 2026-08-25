@@ -599,7 +599,14 @@ curl -k -s -o /dev/null -w "%{http_code}\n" -H "Host: nao-cadastrado.teste" http
 
 Lei: `docs/i18n/PLANO-I18N.md`, decisões D1–D9. Implementação de referência,
 verificada e no ar desde 23/08/2026: `services/funil/` — **copie o padrão, não o
-arquivo** (Lei 7). O portão é `apps/i18n/validador.py`, com DUAS entradas: o teste
+arquivo** (Lei 7).
+
+> ⚠️ **A URL do idioma PADRÃO não tem prefixo** (D1 revisto em 25/08/2026 —
+> `docs/decisoes/DECISAO-raiz-sem-prefixo-do-idioma-padrao.md`). No meshcraft o
+> inglês é `/cadastro`, não `/en/cadastro`; `/en/…` é **404**. Consequência para
+> quem escreve página: **nunca monte URL de idioma à mão.** Toda URL pública sai
+> de `apps/i18n/idiomas.py::caminho_publico(cfg, codigo, caminho)` — no template,
+> pela tag `{% url_i18n %}`; no HTML de SEO, pelo `dados_seo()`. O portão é `apps/i18n/validador.py`, com DUAS entradas: o teste
 `test_validador_da_celula_real_passa` (protege o merge) e `AppConfig.ready()`
 (protege a produção — **catálogo inválido ⇒ a célula não sobe**, D4 fail-closed).
 Não existe `ci/i18n_check.py` na raiz: o portão i18n roda dentro do `make ci` da
@@ -657,10 +664,13 @@ Regras que o portão IMPÕE neste arquivo (não são estilo):
 - **`{% t %}` com chave LITERAL entre aspas.** Chave dinâmica (`{% t variavel %}`)
   cega a análise estática e reprova.
 - **`{% url_i18n %}` em TODO link/action interno.** A tag `url` crua do Django
-  em template que usa `{% t %}` é **FAIL** — ela não gera o prefixo, e o link
-  cairia na matriz D1 (GET vira 302 extra; POST vira 404 com o corpo
-  descartado). Link para OUTRA célula continua cru e monolíngue até o D6 entrar
-  no Traefik.
+  em template que usa `{% t %}` é **FAIL** — ela não gera o prefixo. Desde o D1
+  revisto (25/08/2026) esse erro ficou **mais traiçoeiro, não menos**: o link cru
+  *funciona* na versão do idioma padrão — que é justamente a que você abre para
+  conferir — e joga quem está em `/pt-br/` de volta para o inglês, sem erro
+  nenhum na tela. Antes ele quebrava igual em todos os idiomas e aparecia na
+  primeira olhada. Link para OUTRA célula continua cru e monolíngue até o D6
+  entrar no Traefik.
 - **`title`, meta description e og:\* saem do catálogo** como qualquer texto —
   `lang`, `dir`, canonical, hreflang, `x-default`, `og:locale`, `robots
   noindex` e o seletor de idiomas o `base_mobile.html` já emite sozinho, dos
@@ -717,12 +727,20 @@ Formato, ponto a ponto (tudo verificado em `apps/i18n/catalogo.py`):
   escapado por padrão.
 
 **3. View e rota.** O urlconf da célula **não conhece prefixo de idioma** — o
-resolver decapa `/en|pt-br|es` de `request.path_info` antes da resolução:
+resolver decapa o prefixo dos idiomas **não-padrão** (`/pt-br`, `/es`) de
+`request.path_info` antes da resolução; o idioma padrão chega já sem prefixo:
 
 ```python
 # config/urls.py  # [RECEITA:R12 v1]
 path("<pagina>", <pagina>, name="<pagina>"),   # sem prefixo: o resolver já decapou
 ```
+
+⚠️ **O nome da rota não pode colidir com um código de idioma.** Com o padrão na
+raiz nua, o primeiro segmento é ambíguo (`/es` = espanhol ou página chamada
+`es`?) e **o idioma vence sempre** — uma rota chamada `es` ou `pt-br` fica
+inalcançável **em silêncio**. `tests/test_d6_roteamento.py` varre o urlconf e
+reprova a colisão antes do merge; se ele ficar vermelho, renomeie a rota, não o
+teste.
 
 ```python
 # apps/core/views.py  # [RECEITA:R12 v1]
@@ -746,13 +764,16 @@ byte-idêntico da landing.
 pelos idiomas:
 
 ```python
+# O caminho de cada idioma vem do MESMO lugar que o código usa — escrever
+# f"/{idioma}/<pagina>" no teste faria o caso do idioma PADRÃO bater em 404.
 @pytest.mark.parametrize("idioma", ("en", "pt-br", "es"))
 def test_pagina_nos_3_idiomas(client, rede, idioma):
-    resp = client.get(f"/{idioma}/<pagina>", HTTP_HOST=HOST_MESH)   # Host SEMPRE (§4.6)
+    caminho = caminho_publico(CFG_MESH, idioma, "/<pagina>")        # nu no padrão
+    resp = client.get(caminho, HTTP_HOST=HOST_MESH)                 # Host SEMPRE (§4.6)
     conteudo = resp.content.decode()
     assert f'<html lang="{TAGS[idioma]}" dir="ltr">' in conteudo
     assert f"<title>{escape(t('<pagina>.titulo', idioma))}</title>" in conteudo
-    assert f'action="/{idioma}/<pagina>"' in conteudo
+    assert f'action="{caminho}"' in conteudo
 
 def test_pseudo_locale_sem_texto_hardcoded(catalogo_pseudo):        # D8.4
     html = get_template("<celula>/<pagina>.html").render({...}, request=_request_pseudo("/qps/<pagina>"))
