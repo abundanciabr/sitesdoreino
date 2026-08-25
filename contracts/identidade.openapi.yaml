@@ -1,0 +1,94 @@
+openapi: 3.1.0
+info:
+  title: Identidade — API interna
+  version: 1.0.0
+  description: |
+    Superfície de MÁQUINA da identidade do site. Existe por uma razão só:
+    qualquer célula precisa saber quem é a pessoa em qualquer página, e o
+    cookie de sessão é assinado e resolvido AQUI (Lei 2, Lei 3 — o banco e
+    o segredo não saem desta célula).
+
+    Lei do assunto: docs/decisoes/DECISAO-celula-de-identidade.md. A
+    resposta desta API RECONHECE uma pessoa; ela nunca AUTORIZA nada —
+    autorização é fail-closed na célula dona do recurso.
+servers:
+  - url: http://identidade:8000/interno
+security:
+  - bearerAuth: []
+paths:
+  /sessao:
+    get:
+      operationId: getSession
+      summary: Quem é o dono da sessão desta requisição
+      description: >-
+        Resolve o cookie de sessão repassado pelo chamador. Responde 200 sempre que o chamador
+        estiver autorizado: `autenticado: false` significa que não há sessão (visitante), e NÃO é um erro.
+        O e-mail nunca é devolvido.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Session'
+  /sessao/completa:
+    get:
+      operationId: getSessionFull
+      summary: Quem é o dono da sessão, com e-mail — par autorizado apenas
+      description: >-
+        Como getSession, acrescentando o e-mail — o dado que uma célula dona de recurso precisa
+        para conferir as PRÓPRIAS listas (matrícula, staff). Exige que o token do par esteja
+        também em TOKENS_COMPLETOS_*; sem esse degrau a resposta é 403, mesmo com Bearer válido.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionFull'
+components:
+  schemas:
+    Session:
+      description: 'Quem é o dono da sessão; sem sessão, só `autenticado: false`.'
+      type: object
+      required: [autenticado]
+      properties:
+        autenticado: { type: boolean }
+        id:
+          anyOf:
+            - type: string
+            - type: 'null'
+        nome_exibido:
+          anyOf:
+            - type: string
+            - type: 'null'
+        papel:
+          anyOf:
+            - type: string
+            - type: 'null'
+    SessionFull:
+      description: Como Session, com o e-mail — só para par autorizado em TOKENS_COMPLETOS.
+      type: object
+      required: [autenticado]
+      properties:
+        autenticado: { type: boolean }
+        id:
+          anyOf:
+            - type: string
+            - type: 'null'
+        nome_exibido:
+          anyOf:
+            - type: string
+            - type: 'null'
+        papel:
+          anyOf:
+            - type: string
+            - type: 'null'
+        email:
+          anyOf:
+            - type: string
+            - type: 'null'
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
