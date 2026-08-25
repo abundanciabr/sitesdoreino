@@ -61,6 +61,10 @@
       "freeze": "not-applicable",
       "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."
     },
+    "identidade": {
+      "freeze": "not-applicable",
+      "reason": "Gênese (DECISAO-celula-de-identidade, 25/08/2026): a superfície /interno já existe e CONGELA no PR seguinte, pelo RITOS.md §3 — o mesmo caminho em dois tempos da sugestoes (#137 criou a superfície, #139 congelou). Esta razão expira com aquele PR."
+    },
     "mensageria": {
       "freeze": "not-applicable",
       "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."
