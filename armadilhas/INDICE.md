@@ -133,5 +133,6 @@
 | [104](104-inventario-de-nomes-lido-como-guarda-de.md) | Inventário de NOMES lido como guarda de COMPORTAMENTO: o teste fica vermelho quando o nome some, e verde quando a coisa quebra — existe um teste que lê o arquivo perigoso, tem nome de guarda, e fica vermelho quando você… | — |
 | [105](105-muralha-de-pr-posta-a-rodar-num-push-passa-por.md) | Muralha de PR posta a rodar num push passa por vacuidade — e "rodar as três" é pior que rodar uma — um portão que reprova de verdade em PR imprime, no push da `main`, um verde de aparência impecável: | — |
 | [106](106-varredor-que-anda-no-disco-entra-em-claude.md) | Varredor que anda no disco entra em `.claude/worktrees/` — vermelho invisível na CI, barulhento na sua máquina — `python -m pytest ci/tests` no clone principal devolve `1 failed` e a mensagem acusa arquivos que você… | — |
+| [107](107-gnu-make-devolve-exit-2-quando-a-receita-reprova.md) | GNU Make devolve exit **2** quando a receita reprova — e quem lê `1 = FAIL` chama reprovação de "não consegui medir" — um portão que roda `make -C services/<celula> ci` como subprocesso imprime, diante de um `black… | — |
 
-**96 entradas.**
+**97 entradas.**
