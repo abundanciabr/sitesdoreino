@@ -4,6 +4,35 @@
 > — H14 — não impede auditoria; impede merge). É o documento que a spec exige
 > antes de qualquer implementação (`ESPECIFICACAO-CELULA.md` §3 e DoD §11).
 > Método: evidência medida no repositório, com caminho de arquivo citado.
+>
+> ---
+>
+> ## ⚠️ ESTE DOCUMENTO É UM RETRATO DE 23/08/2026, E O RETRATO ENVELHECEU
+>
+> **Auditado contra a realidade em 25/08/2026 (EVO-41, fechamento do MVP).**
+> Quatro afirmações abaixo **não valem mais** — e a mais perigosa é justamente
+> a que o documento chama de "o maior achado":
+>
+> | O documento diz | A realidade em 25/08/2026 |
+> |---|---|
+> | **Q2:** "não existe login de usuário final em nenhuma célula" | **FALSO.** A célula
+> `identidade` está **no ar** desde 25/08 (`docs/decisoes/DECISAO-celula-de-identidade.md`):
+> entrada por Google, cookie de sessão assinado, e `/entrar/google` respondendo 302 na
+> internet pública |
+> | **Q1:** 7 bancos | **10** — medidos em `infra/provisionamento-postgres.sql` |
+> | 8 células | **11** — `admin`, `alunos`, `catalogo`, `checkout`, `funil`, `identidade`, `leads`, `mensageria`, `pagamentos`, `quiz`, `sugestoes` |
+> | o "link mágico" como caminho de entrada | **descartado** com motivo medido
+> (`DECISAO-EVO-01-identidade.md`): a plataforma não manda e-mail |
+>
+> **Por que a tarja existe em vez de o texto ser reescrito:** este documento é o
+> registro do que foi medido *naquele dia*, e é o anexo que a DoD §11 exige. Reescrevê-lo
+> apagaria a prova de que a decisão da Caixa foi tomada com a informação correta da
+> época. O que não pode continuar é ele ser lido como estado atual — **um documento
+> auditado não continua auditado depois** (`armadilhas/109`), e um AS-IS sem data na
+> testa induz o próximo agente a construir de novo o que já existe.
+>
+> **Leia o resto como história, não como mapa.** Para o estado de hoje: os documentos
+> em `docs/decisoes/` e o código em `origin/main`.
 
 ## Q1 — As células operam com banco próprio isolado? ✅ SIM
 
