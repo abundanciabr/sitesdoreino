@@ -31,13 +31,20 @@ titulo_pagina:
   es: "Entrar en Meshcraft"
 
 subtitulo:
-  # Diz qual e-mail usar ANTES do clique. É a metade barata de evitar a
-  # fricção conhecida da DECISAO-EVO-01 §5 (conta Google ≠ e-mail da compra):
-  # a outra metade é a tela de recusa, que já existe do lado de lá.
-  _fonte: "4ed99c"
-  en: "Use the Google account with the same e-mail as your enrollment."
-  pt-br: "Use a conta Google com o mesmo e-mail da sua matrícula."
-  es: "Usa la cuenta de Google con el mismo correo de tu matrícula."
+  # REESCRITO em 25/08/2026. O texto anterior — "use a conta Google com o mesmo
+  # e-mail da sua matrícula" — era verdade quando entrar ERA entrar na Caixa.
+  # Depois da DECISAO-celula-de-identidade §1.3 ("qualquer conta Google com
+  # e-mail verificado entra"), ele dizia à pessoa sem matrícula: *este login
+  # não é para você*. Ela fechava a aba — o oposto exato do mandato do
+  # mantenedor ("como em qualquer site padrão").
+  #
+  # A redação nova faz as duas coisas ao mesmo tempo: abre a porta para todo
+  # mundo E mantém o conselho da EVO-01 §5 para quem é aluno, que virou a
+  # chave `aviso_email` abaixo.
+  _fonte: "9c2969"
+  en: "Sign in with your Google account — no password needed. Any Google account can sign in; some areas also ask for an enrollment."
+  pt-br: "Entre com sua conta Google — sem senha. Qualquer conta pode entrar; algumas áreas também pedem matrícula."
+  es: "Entra con tu cuenta de Google — sin contraseña. Cualquier cuenta puede entrar; algunas áreas también piden matrícula."
 
 botao_google:
   # "Continuar com" e não "Entrar com": a pessoa ainda vai escolher a conta na
@@ -48,13 +55,14 @@ botao_google:
   es: "Continuar con Google"
 
 aviso_email:
-  # O conselho acionável da DECISAO-EVO-01 §5, dito na porta e não só depois
-  # da recusa — quem lê aqui não chega a ver a tela de "não encontramos
-  # matrícula".
-  _fonte: "db5a5d"
-  en: "Bought with a different e-mail? Sign in with that one — it is the one that carries your enrollment."
-  pt-br: "Comprou com outro e-mail? Entre com ele — é ele que tem a sua matrícula."
-  es: "¿Compraste con otro correo? Entra con ese — es el que tiene tu matrícula."
+  # O conselho acionável da DECISAO-EVO-01 §5, dito na porta e não só depois da
+  # recusa — quem lê aqui não chega a ver a tela de "não encontramos matrícula".
+  # Reescrito em 25/08/2026 para ser CONDICIONAL ("já é aluno?") em vez de
+  # instrução geral: quem não é aluno não deve ler isto como requisito.
+  _fonte: "6e7df8"
+  en: "Already a student? Use the same e-mail as your enrollment — it is the one that opens the student areas."
+  pt-br: "Já é aluno? Use o mesmo e-mail da sua matrícula — é ele que abre as áreas de aluno."
+  es: "¿Ya eres alumno? Usa el mismo correo de tu matrícula — es el que abre las áreas de alumno."
 
 erro_interrompida:
   # A pessoa voltou do Google sem concluir (?error= no retorno).

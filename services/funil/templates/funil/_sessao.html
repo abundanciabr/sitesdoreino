@@ -13,4 +13,4 @@ Login existe no site multilíngue; os domínios antigos seguem intocados.
 `request.ator` é preguiçoso e `{% if %}` só o resolve se houver cookie
 (apps/core/middleware.py). E se a Caixa estiver fora do ar, ele é falso — a
 página abre mostrando "Entrar", nunca um erro.
-{% endcomment %}<nav class="sessao">{% if request.ator %}<a href="{{ request.url_da_caixa }}">{% if request.ator.nome %}{% t "sessao.ola" nome=request.ator.nome %}{% else %}{% t "sessao.minha_conta" %}{% endif %}</a>{% else %}<a href="{% url_i18n 'entrar' %}">{% t "sessao.entrar" %}</a>{% endif %}</nav>
+{% endcomment %}<nav class="sessao">{% if request.ator %}<span class="eu">{% if request.ator.nome %}{% t "sessao.ola" nome=request.ator.nome %}{% else %}{% t "sessao.minha_conta" %}{% endif %}</span> <form method="post" action="/entrar/sair" class="sair"><input type="hidden" name="next" value="{{ request.path }}"><button type="submit">{% t "sessao.sair" %}</button></form>{% else %}<a href="{% url_i18n 'entrar' %}?next={{ request.path|urlencode }}">{% t "sessao.entrar" %}</a>{% endif %}</nav>
