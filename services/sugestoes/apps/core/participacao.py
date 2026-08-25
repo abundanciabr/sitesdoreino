@@ -88,6 +88,25 @@ ETAPAS = (
     Sugestao.Status.IMPLEMENTADO,
 )
 
+# ...e as duas que NÃO são zona da faixa. Elas não somem da tela por isso: a
+# faixa do EVO-31 as lista logo abaixo do trilho, em "Fora do trilho". Escondê-las
+# faria a aritmética do quadro mentir — a soma das quatro zonas deixaria de dar o
+# total de sugestões do quadro, sem nada na tela explicando a diferença — e
+# enterraria a justificativa que a equipe é OBRIGADA a escrever desde o EVO-13
+# (`EXIGEM_JUSTIFICATIVA` em `moderacao.py`) justamente porque quem sugeriu vai
+# ler. Há guarda para a soma em `tests/test_faixa_de_roadmap.py`.
+SAIDAS = (
+    Sugestao.Status.NAO_PLANEJADO,
+    Sugestao.Status.MESCLADO,
+)
+
+# Quantos marcos uma zona desenha antes de virar "+ N". A zona é uma faixa
+# horizontal estreita: cem losangos ali não informam nada e ainda empurram as
+# quatro zonas para alturas diferentes. O corte é feito em Python sobre a MESMA
+# consulta (ver `_marcos`), então cortar não custa consulta nenhuma — e o número
+# total da zona continua saindo inteiro, ao lado do rótulo.
+MARCOS_POR_ZONA = 8
+
 
 def exige_sessao(view):
     """Sem sessão de aluno, a rota não acontece — nem para ler.
@@ -177,6 +196,89 @@ def numeros_do_quadro(quadro) -> dict:
             quadro=quadro, status=Sugestao.Status.IMPLEMENTADO
         ).count(),
     }
+
+
+def _marcos(quadro, estados, *, categoria_slug: str = ""):
+    """UMA consulta para a faixa inteira — nunca uma por zona, nem uma por marco.
+
+    O jeito ingênuo de desenhar quatro zonas é um `filter(status=...)` por zona,
+    e o jeito ingênuo de mostrar os votos de cada marco é `s.votos.count()` no
+    template: juntos, dão *quatro mais uma por sugestão*. Aqui o banco devolve a
+    faixa inteira de uma vez, já contada e já ordenada, e quem separa por zona é
+    um laço em Python sobre o resultado — que não custa ida ao banco nenhuma.
+
+    **O recorte de colunas é a proteção, não o cuidado do template**, como na
+    `linha_do_tempo`: `Sugestao` tem `autor`, uma `Identidade`, e o `__str__`
+    dela devolve **o e-mail** quando a pessoa não tem nome de exibição. Um
+    `{{ marco.autor }}` distraído num template futuro imprimiria dado pessoal na
+    tela de todo mundo; com `.values(...)`, a coluna nem foi buscada.
+
+    `Count("votos")` sem `distinct`: aqui há um `JOIN` só, então não há linha
+    duplicada para desduplicar (diferente de `sugestoes_ordenadas`, que junta
+    votos E comentários). O desempate por `criado_em`/`id` é o MESMO do quadro,
+    de propósito: duas ideias empatadas em votos aparecem na mesma ordem na
+    grade e na faixa.
+    """
+    consulta = Sugestao.objects.filter(quadro=quadro, status__in=estados)
+    if categoria_slug:
+        consulta = consulta.filter(categoria__slug=categoria_slug)
+    return (
+        consulta.annotate(total_votos=Count("votos"))
+        .values("id", "titulo", "status", "criado_em", "total_votos")
+        .order_by("status", "-total_votos", "criado_em", "id")
+    )
+
+
+def faixa_de_roadmap(quadro, *, categoria_slug: str = ""):
+    """As quatro zonas do rodapé do protótipo, com as ideias REAIS de cada uma.
+
+    **A faixa OBEDECE ao filtro de categoria da grade, e ignora a aba.** As duas
+    metades têm motivo:
+
+    * *o filtro* — quem clica em "Blender" está dizendo "hoje só quero ver
+      Blender", e uma faixa que continuasse mostrando o resto devolveria na parte
+      de baixo da página exatamente o que a pessoa acabou de tirar da de cima. Há
+      guarda antigo medindo isso (`test_o_quadro_filtra_por_categoria`, EVO-12b):
+      ele afirma sobre o CORPO da página, não sobre a grade — e foi ele que
+      decidiu esta questão, vermelho, na primeira rodada do EVO-31;
+    * *a aba* — `?ordem=` troca a ordem da GRADE. Dentro de uma zona, a ordem é
+      sempre a mesma (mais votadas primeiro): a faixa mostra por onde as ideias
+      andam, não uma segunda cópia do ranking.
+
+    O que sai daqui é a lista de zonas na ORDEM do caminho (`ETAPAS`), cada uma
+    com os seus marcos, o total inteiro e quantos ficaram de fora do corte.
+    Zona sem nenhuma ideia continua na lista, com a lista de marcos vazia — quem
+    desenha o estado vazio é o template. Sumir com a zona faria o trilho encolher
+    de quatro para três colunas conforme o quadro enche, e a pessoa perderia a
+    referência de para onde as ideias caminham.
+    """
+    por_zona = {etapa: [] for etapa in ETAPAS}
+    for marco in _marcos(quadro, ETAPAS, categoria_slug=categoria_slug):
+        por_zona[marco["status"]].append(marco)
+    return [
+        {
+            "chave": etapa,
+            "rotulo": Sugestao.Status(etapa).label,
+            "marcos": por_zona[etapa][:MARCOS_POR_ZONA],
+            "total": len(por_zona[etapa]),
+            "escondidos": max(0, len(por_zona[etapa]) - MARCOS_POR_ZONA),
+        }
+        for etapa in ETAPAS
+    ]
+
+
+def fora_do_trilho(quadro, *, categoria_slug: str = ""):
+    """As ideias que saíram do caminho: `nao_planejado` e `mesclado` (ver `SAIDAS`).
+
+    Uma consulta, a mesma de cima, com outros estados — e o mesmo respeito ao
+    filtro de categoria, pelo mesmo motivo. O `rotulo` é resolvido aqui porque o
+    `.values(...)` devolve dicionário, e dicionário não tem `get_status_display`
+    — resolver no Python é o preço do recorte de colunas, e ele é barato.
+    """
+    return [
+        dict(marco, rotulo=Sugestao.Status(marco["status"]).label)
+        for marco in _marcos(quadro, SAIDAS, categoria_slug=categoria_slug)
+    ]
 
 
 def linha_do_tempo(sugestao):
@@ -308,6 +410,15 @@ def ver_quadro(request, ator):
             ),
             "votadas": _ids_votados(ator, quadro),
             "numeros": numeros_do_quadro(quadro),
+            # A faixa de roadmap (EVO-31) mora DENTRO do quadro, como no
+            # protótipo — uma seção com `id`, que o botão do trilho alcança por
+            # âncora. Rota própria seria uma segunda página a proteger, a
+            # nomear no urlconf e a manter em pé, para mostrar um recorte do
+            # que esta já tem em mãos. As duas consultas abaixo são constantes:
+            # não crescem com o tamanho do quadro (ver `_marcos`). E as duas
+            # recebem a categoria escolhida: a faixa encolhe junto com a grade.
+            "faixa": faixa_de_roadmap(quadro, categoria_slug=escolhida),
+            "fora_do_trilho": fora_do_trilho(quadro, categoria_slug=escolhida),
         },
     )
 
