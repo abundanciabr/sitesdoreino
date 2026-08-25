@@ -134,5 +134,6 @@
 | [105](105-muralha-de-pr-posta-a-rodar-num-push-passa-por.md) | Muralha de PR posta a rodar num push passa por vacuidade — e "rodar as três" é pior que rodar uma — um portão que reprova de verdade em PR imprime, no push da `main`, um verde de aparência impecável: | — |
 | [106](106-varredor-que-anda-no-disco-entra-em-claude.md) | Varredor que anda no disco entra em `.claude/worktrees/` — vermelho invisível na CI, barulhento na sua máquina — `python -m pytest ci/tests` no clone principal devolve `1 failed` e a mensagem acusa arquivos que você… | — |
 | [107](107-gnu-make-devolve-exit-2-quando-a-receita-reprova.md) | GNU Make devolve exit **2** quando a receita reprova — e quem lê `1 = FAIL` chama reprovação de "não consegui medir" — um portão que roda `make -C services/<celula> ci` como subprocesso imprime, diante de um `black… | — |
+| [108](108-git-checkout-de-um-commit-esvazia-o-git-diff-da.md) | `git checkout <commit> -- <arquivos>` esvazia o `git diff` da prova — e o patch de 0 byte aplica ao contrário sem erro — você está montando a evidência vermelho→verde da Lei 6 pelo caminho que a `armadilhas/084` manda… | — |
 
-**97 entradas.**
+**98 entradas.**
