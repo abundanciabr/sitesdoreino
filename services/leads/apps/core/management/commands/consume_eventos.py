@@ -85,7 +85,7 @@ def _mover_para_fila_morta(r: redis.Redis, stream: str, msg_id, entregas: int) -
 def reivindicar_presas(r: redis.Redis, stream: str, handler) -> None:
     """Reentrega de mensagens presas na PEL do grupo. Sem isto, um evento cujo
     handler estourou fica pendente PARA SEMPRE: xreadgroup(..., ">") só entrega
-    mensagem nova (ARMADILHAS §9). Roda ANTES do xreadgroup, a cada iteração.
+    mensagem nova (ARMADILHAS-OPERACAO.md §9). Roda ANTES do xreadgroup, a cada iteração.
 
     A ordem importa: a fila morta vem PRIMEIRO, lendo o delivery_count direto
     do PEL (XPENDING), porque o XAUTOCLAIM incrementa o contador ao reivindicar

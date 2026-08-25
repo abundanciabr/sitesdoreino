@@ -1,6 +1,6 @@
 # tests/test_inv_leads_reentrega_pel.py
 # Guarda da reentrega: evento cujo handler estourou NÃO pode ficar pendente para
-# sempre na PEL do grupo (ARMADILHAS §9). As duas metades do invariante:
+# sempre na PEL do grupo (ARMADILHAS-OPERACAO.md §9). As duas metades do invariante:
 #   (a) mensagem presa é reivindicada (XAUTOCLAIM) e o efeito acontece;
 #   (b) mensagem na MAX_ENTREGAS-ésima entrega vai para a fila morta (.dlq),
 #       é ACKada e o handler NÃO roda — envenenada não trava o consumer.
