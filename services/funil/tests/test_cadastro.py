@@ -20,7 +20,7 @@ from apps.core.views import FormularioDeCadastro
 from apps.i18n import catalogo as cat
 from apps.i18n.catalogo import t
 from apps.i18n.validador import pseudo_do_catalogo, texto_hardcoded
-from tests.conftest import HOST_MESH, SITE_MESH
+from tests.conftest import HOST_MESH, SITE_MESH, caminho_mesh
 
 IDIOMAS = ("en", "pt-br", "es")
 TAGS = {"en": "en", "pt-br": "pt-BR", "es": "es"}
@@ -37,7 +37,7 @@ def _chamadas_a_leads(rede):
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("idioma", IDIOMAS)
 def test_pagina_nos_3_idiomas_title_meta_e_action(client, rede, idioma):
-    resp = client.get(f"/{idioma}/cadastro", HTTP_HOST=HOST_MESH)
+    resp = client.get(caminho_mesh(idioma, "/cadastro"), HTTP_HOST=HOST_MESH)
     assert resp.status_code == 200
     conteudo = resp.content.decode()
     assert f'<html lang="{TAGS[idioma]}" dir="ltr">' in conteudo
@@ -53,7 +53,10 @@ def test_pagina_nos_3_idiomas_title_meta_e_action(client, rede, idioma):
     assert f"<h1>{escape(t('cadastro.titulo_pagina', idioma))}</h1>" in conteudo
     # O form posta para a PRÓPRIA URL prefixada ({% url_i18n %}) — decisão da
     # maestro sobre a pendência 1 do PR #87.
-    assert f'action="/{idioma}/cadastro"' in conteudo
+    # O form posta para a PRÓPRIA URL pública da página — nua em inglês,
+    # prefixada nos outros. É o {% url_i18n %} do template, e a asserção sai do
+    # mesmo caminho_publico que ele usa.
+    assert f'action="{caminho_mesh(idioma, "/cadastro")}"' in conteudo
 
 
 # ---------------------------------------------------------------------------
@@ -62,7 +65,7 @@ def test_pagina_nos_3_idiomas_title_meta_e_action(client, rede, idioma):
 @pytest.mark.parametrize("idioma", IDIOMAS)
 def test_post_feliz_grava_lead_com_idioma_no_source(client, rede, idioma):
     resp = client.post(
-        f"/{idioma}/cadastro",
+        caminho_mesh(idioma, "/cadastro"),
         {
             "name": "Aluno Teste",
             "email": "aluno@exemplo.com",
@@ -90,7 +93,7 @@ def test_post_feliz_grava_lead_com_idioma_no_source(client, rede, idioma):
 @pytest.mark.parametrize("idioma", IDIOMAS)
 def test_post_sem_email_erro_localizado_e_nenhum_lead(client, rede, idioma):
     resp = client.post(
-        f"/{idioma}/cadastro", {"name": "Sem E-mail"}, HTTP_HOST=HOST_MESH
+        caminho_mesh(idioma, "/cadastro"), {"name": "Sem E-mail"}, HTTP_HOST=HOST_MESH
     )
     assert resp.status_code == 200
     with override(TAGS[idioma]):

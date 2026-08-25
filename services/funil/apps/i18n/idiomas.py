@@ -4,7 +4,7 @@
 #
 # A LEI é `contracts/catalogo.openapi.yaml`, schema `Site`:
 #
-#     default_language: "en"                          # ausente ⇒ monolíngue
+#     default_language: "en"   # ausente ⇒ monolíngue; SEM prefixo na URL (D1)
 #     languages: [{code: "pt-br", indexable: true}]   # ausente/vazio ⇒ monolíngue
 #
 # O contrato carrega SÓ o que é dado POR SITE. O que é conhecimento desta
@@ -140,6 +140,29 @@ def idiomas_do_site(site) -> "dict | None":
     return {"default": padrao, "idiomas": idiomas}
 
 
+def caminho_publico(cfg: dict, codigo: str, caminho_sem_prefixo: str) -> str:
+    """A forma canônica ÚNICA de uma página deste site (D1, revisto em 25/08/2026).
+
+    O idioma **padrão** do site mora na raiz, sem prefixo (`/cadastro` = inglês no
+    meshcraft); todo outro idioma leva o seu código (`/pt-br/cadastro`). A forma
+    prefixada do padrão — `/en/cadastro` — não existe: é 404 no resolver.
+
+    Toda URL pública desta célula sai daqui, e só daqui: canonical, hreflang,
+    x-default, seletor de idioma, sitemap e link interno (`{% url_i18n %}`).
+    Enquanto a regra era incondicional (`/{codigo}{caminho}`, D1 original) três
+    cópias dela conviviam sem risco; **condicional, cada cópia é uma chance de o
+    canonical discordar do link** — e a versão que um humano confere é justamente
+    a do idioma padrão, onde a cópia errada acerta por acaso.
+
+    `caminho_sem_prefixo` começa com "/" e é o que o urlconf resolve — para a
+    landing é "/", e o padrão devolve "/" (nunca string vazia: a raiz de um site
+    tem barra).
+    """
+    if codigo == cfg["default"]:
+        return caminho_sem_prefixo
+    return f"/{codigo}{caminho_sem_prefixo}"
+
+
 def dados_seo(site: dict, cfg: dict, codigo: str, caminho_sem_prefixo: str) -> dict:
     """Tudo que o base_mobile.html emite para site multilíngue (D5) — gerado
     dos idiomas do site, nunca à mão. Host canônico vem do Site resolvido pelo
@@ -150,7 +173,7 @@ def dados_seo(site: dict, cfg: dict, codigo: str, caminho_sem_prefixo: str) -> d
     atual = idiomas[codigo]
 
     def url_de(cod: str) -> str:
-        return f"https://{host}/{cod}{caminho_sem_prefixo}"
+        return f"https://{host}{caminho_publico(cfg, cod, caminho_sem_prefixo)}"
 
     return {
         "lang": atual["tag"],

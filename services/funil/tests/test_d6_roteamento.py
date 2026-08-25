@@ -32,8 +32,15 @@ from apps.core.middleware import (
     ROTAS_DE_MAQUINA,
     SiteResolutionMiddleware,
 )
+from apps.i18n import catalogo as cat
 from config.urls import urlpatterns
-from tests.conftest import CATALOGO, HOST_MESH, IDIOMAS_MESH, OFERTA_MESH
+from tests.conftest import (
+    CATALOGO,
+    HOST_MESH,
+    IDIOMAS_MESH,
+    OFERTA_MESH,
+    caminho_mesh,
+)
 
 IDIOMAS = tuple(idioma["code"] for idioma in IDIOMAS_MESH)
 
@@ -214,6 +221,59 @@ def test_toda_rota_do_urlconf_e_classificada_maquina_ou_localizavel():
     assert fantasmas == [], f"ROTAS_LOCALIZAVEIS cita rota inexistente: {fantasmas}"
 
 
+# --- o cadeado da AMBIGUIDADE que o D1 revisto criou ------------------------
+# Enquanto o inglês vivia atrás de `/en/`, TODO primeiro segmento de URL ou era
+# um código de idioma ou era uma rota — nunca os dois. Desde 25/08/2026 o idioma
+# padrão mora na raiz nua, e `/es` passou a ser uma pergunta de verdade:
+# "espanhol" ou "página chamada es"? O resolver responde **idioma**, sempre
+# (ramo 2 de `_com_idioma`, antes do ramo que serve o padrão).
+#
+# Isso é uma escolha, não um bug — mas cobra uma guarda: uma rota do urlconf que
+# colida com um código de idioma servível nasceria **inalcançável em silêncio**,
+# sem erro de boot, sem 500, sem nada na tela além de um 404 que parece um
+# esquecimento. Este teste faz a colisão doer no CI, no PR que a introduzir.
+def _codigos_servivies() -> set:
+    """Todo código que ESTA célula sabe servir — base ou variante.
+
+    A comparação é com o que a célula sabe renderizar, não com o que um site
+    declara hoje: um site que ganhe `es` amanhã não pode transformar uma rota
+    `/es` que já existe numa página fantasma.
+    """
+    return set(cat.IDIOMAS_BASE) | set(cat.VARIANTES)
+
+
+def test_o_codigo_de_idioma_e_a_rota_nao_colidem_no_primeiro_segmento():
+    colisoes = sorted(
+        {
+            caminho
+            for caminho in (caminho_literal(padrao) for padrao in urlpatterns)
+            if caminho.strip("/").partition("/")[0] in _codigos_servivies()
+        }
+    )
+    assert colisoes == [], (
+        f"Rota do urlconf colide com código de idioma: {colisoes}.\n"
+        "Desde o D1 revisto (25/08/2026) o idioma padrão não tem prefixo, então "
+        "o primeiro segmento da URL é ambíguo e o IDIOMA vence: esta rota nunca "
+        "seria alcançada — o resolver a leria como pedido de tradução e o "
+        "urlconf jamais a veria.\n"
+        "Conserto: renomeie a rota (`/es` → `/espanhol`, `/pt-br` → `/brasil`). "
+        "Nunca mude a ordem dos ramos do resolver para 'resolver' isto — a "
+        "ordem é o que mantém /pt-br/cadastro sendo cadastro em português."
+    )
+
+
+def test_a_guarda_de_colisao_reprova_uma_rota_colidente_de_verdade():
+    """O guarda acima só vale se ele reprovar quando deve (RETROSPECTIVA §1).
+
+    Um portão que nunca foi visto reprovando é um portão que ninguém sabe se
+    reprova — então aqui a colisão é fabricada de propósito, com o mesmo
+    `caminho_literal` que o guarda usa.
+    """
+    idioma = sorted(_codigos_servivies())[0]
+    colidente = caminho_literal(path(f"{idioma}/oferta", _view))
+    assert colidente.strip("/").partition("/")[0] in _codigos_servivies()
+
+
 # ===========================================================================
 # GUARDA 3 — link cross-célula não leva prefixo de idioma, e é deliberado.
 # ===========================================================================
@@ -278,7 +338,7 @@ def test_nenhum_link_cross_celula_leva_prefixo_de_idioma(client, rede, idioma):
 def test_o_link_do_checkout_e_exatamente_o_caminho_nu(client, rede, idioma):
     # Metade "não é vazio" do teste acima: se a landing deixasse de linkar para
     # outra célula, o scanner ficaria verde por não ter o que varrer.
-    conteudo = client.get(f"/{idioma}/", HTTP_HOST=HOST_MESH).content.decode()
+    conteudo = client.get(caminho_mesh(idioma), HTTP_HOST=HOST_MESH).content.decode()
     assert f'href="/checkout/{OFERTA_MESH["slug"]}/"' in conteudo
     assert f'href="/{idioma}/checkout/' not in conteudo
 
@@ -332,4 +392,6 @@ def test_o_scanner_enxerga_a_pagina_de_verdade(client, rede):
     caminhos = caminhos_internos(conteudo, HOST_MESH)
     assert f"/checkout/{OFERTA_MESH['slug']}/" in caminhos  # link cross-célula
     assert "/pt-br/leads" in caminhos  # rota do funil, prefixada
-    assert f"/{IDIOMAS[0]}/" in caminhos  # seletor de idioma (absoluto)
+    # Seletor de idioma (absoluto). No idioma PADRÃO ele aponta para a raiz
+    # nua — é a mesma regra do canonical, e vem do mesmo caminho_publico.
+    assert caminho_mesh(IDIOMAS[0]) in caminhos

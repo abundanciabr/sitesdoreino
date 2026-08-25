@@ -19,6 +19,7 @@ from django.utils import translation
 from apps.core.middleware import SiteResolutionMiddleware
 from apps.i18n import catalogo as catalogo_mod
 from apps.i18n.validador import pseudo_do_catalogo, texto_hardcoded
+from apps.i18n.idiomas import caminho_publico, idiomas_do_site
 from tests.conftest import CATALOGO, HOST_A, OFERTA_A, SITE_A
 
 HOST_PREVIEW = "preview.exemplo.com"  # resolve para o MESMO Site A (host canônico)
@@ -35,6 +36,18 @@ SITE_A_MULTILINGUE = {
         {"code": "es", "indexable": False},  # D5: es nasce noindex
     ],
 }
+# O caminho público de cada idioma vem do MESMO lugar que o código usa. Montar
+# f"/{idioma}{caminho}" aqui faria os casos do idioma PADRÃO baterem em 404 —
+# desde o D1 revisto (25/08/2026) o padrão mora na raiz nua.
+CFG_A = idiomas_do_site(SITE_A_MULTILINGUE)
+
+
+def caminho_de(idioma: str, caminho: str = "/") -> str:
+    return caminho_publico(CFG_A, idioma, caminho)
+
+
+def url_de(idioma: str, caminho: str = "/") -> str:
+    return f"https://{HOST_A}{caminho_de(idioma, caminho)}"
 
 
 @pytest.fixture
@@ -50,52 +63,63 @@ def com_i18n(rede):
 
 
 # ---------------------------------------------------------------------------
-# Matriz HTTP (D1) — toda ela vira teste.
+# Matriz HTTP (D1, REVISTO em 25/08/2026) — toda ela vira teste.
+# O idioma PADRÃO mora na raiz nua; `/{padrão}/…` é 404; os outros idiomas
+# seguem prefixados, exatamente como antes.
 # ---------------------------------------------------------------------------
-def test_raiz_302_para_o_default_com_cache_control(client, rede, com_i18n):
+def test_raiz_serve_o_idioma_padrao_em_uma_requisicao(client, rede, com_i18n):
     resp = client.get("/", HTTP_HOST=HOST_A)
-    assert resp.status_code == 302  # nunca 301: 301 cacheado travaria a troca
-    assert resp["Location"] == "/en/"
-    assert resp["Cache-Control"] == "max-age=300"
+    assert resp.status_code == 200
+    assert b'<html lang="en"' in resp.content
 
 
-def test_raiz_preserva_query_string(client, rede, com_i18n):
+def test_raiz_com_query_nao_perde_a_query_nem_redireciona(client, rede, com_i18n):
+    # A query de campanha chega inteira à página, sem salto no meio — antes ela
+    # sobrevivia a um 302, agora não há 302 nenhum no caminho de maior volume.
     resp = client.get("/?utm_source=ig&utm_medium=cpc", HTTP_HOST=HOST_A)
-    assert resp.status_code == 302
-    assert resp["Location"] == "/en/?utm_source=ig&utm_medium=cpc"
+    assert resp.status_code == 200
+    assert b'"utm_source": "ig"' in resp.content
 
 
-def test_raiz_head_tambem_redireciona(client, rede, com_i18n):
-    resp = client.head("/", HTTP_HOST=HOST_A)
-    assert resp.status_code == 302
+def test_raiz_head_serve(client, rede, com_i18n):
+    assert client.head("/", HTTP_HOST=HOST_A).status_code == 200
 
 
-def test_raiz_metodo_nao_seguro_e_404(client, rede, com_i18n):
-    resp = client.post("/", {}, HTTP_HOST=HOST_A)
-    assert resp.status_code == 404
+def test_raiz_metodo_nao_seguro_chega_ao_urlconf(client, rede, com_i18n):
+    # A matriz não recusa mais método nenhum: quem decide o que fazer com um
+    # POST é a view (aqui o urlconf da landing, que só aceita GET) — não um
+    # redirecionamento que engoliria o corpo antes de qualquer view ver.
+    assert client.post("/", {}, HTTP_HOST=HOST_A).status_code == 405
 
 
-def test_caminho_nu_redireciona_preservando_query(client, rede, com_i18n):
+def test_caminho_nu_serve_o_padrao_com_a_query_intacta(client, rede, com_i18n):
     resp = client.get("/cadastro?ref=email", HTTP_HOST=HOST_A)
-    assert resp.status_code == 302
-    assert resp["Location"] == "/en/cadastro?ref=email"
-    assert resp["Cache-Control"] == "max-age=300"
+    assert resp.status_code == 200
+    assert b'<html lang="en"' in resp.content
 
 
-def test_caminho_nu_nao_get_e_404(client, rede, com_i18n):
-    # 301/302 converteriam POST em GET e descartariam o corpo em silêncio (D1).
-    resp = client.post("/cadastro", {}, HTTP_HOST=HOST_A)
-    assert resp.status_code == 404
+def test_post_no_caminho_nu_chega_a_view(client, rede, com_i18n):
+    # Era 404 pela matriz antiga (302 converteria POST em GET e descartaria o
+    # corpo). Sem redirecionamento no meio, o POST é o cadastro em inglês.
+    assert client.post("/cadastro", {}, HTTP_HOST=HOST_A).status_code == 200
 
 
-def test_post_leads_em_site_registrado_e_404_pela_matriz(client, rede, com_i18n):
-    # Consequência documentada da matriz: /leads é caminho nu não-GET ⇒ 404.
-    # A fase 2 (página de cadastro) decide o canal de POST do site registrado;
-    # em site NÃO registrado o /leads segue funcionando (regressão abaixo).
+def test_post_leads_em_site_multilingue_funciona(client, rede, com_i18n):
+    # A consequência mais estranha da matriz antiga morreu aqui: `POST /leads`
+    # em site multilíngue respondia 404 por ser "caminho nu não-GET", enquanto
+    # o MESMO POST funcionava em site monolíngue. Agora é só o /leads inglês.
     resp = client.post(
         "/leads", '{"email": "a@b.c"}', "application/json", HTTP_HOST=HOST_A
     )
-    assert resp.status_code == 404
+    assert resp.status_code == 200
+    assert resp.json()["created"] is True
+
+
+@pytest.mark.parametrize("caminho", ["/en", "/en/", "/en/cadastro", "/en/login"])
+def test_prefixo_do_idioma_padrao_e_404(client, rede, com_i18n, caminho):
+    # Decisão do mantenedor (25/08/2026): `/en/…` não redireciona, deixa de
+    # existir. Uma forma canônica por página, sem gêmea.
+    assert client.get(caminho, HTTP_HOST=HOST_A).status_code == 404
 
 
 @pytest.mark.parametrize("prefixo", ["pt-BR", "PT-BR", "pt_br", "EN", "Es"])
@@ -105,30 +129,39 @@ def test_caixa_ou_forma_nao_minuscula_e_404(client, rede, com_i18n, prefixo):
 
 
 @pytest.mark.parametrize("caminho", ["/fr/cadastro", "/de/", "/pt/"])
-def test_prefixo_com_forma_de_idioma_nao_habilitado_e_404(
-    client, rede, com_i18n, caminho
-):
+def test_prefixo_de_idioma_nao_habilitado_e_404(client, rede, com_i18n, caminho):
+    # Continua 404 — mas agora pelo urlconf (não há rota `fr/cadastro`), e não
+    # por uma regex adivinhando que o segmento "tem cara de idioma". A
+    # diferença é o que libera /faq e /api a existirem um dia.
     resp = client.get(caminho, HTTP_HOST=HOST_A)
     assert resp.status_code == 404
 
 
 @pytest.mark.parametrize("idioma", ["en", "pt-br", "es"])
-def test_prefixo_habilitado_serve_a_pagina(client, rede, com_i18n, idioma):
-    resp = client.get(f"/{idioma}/", HTTP_HOST=HOST_A)
+def test_cada_idioma_serve_a_pagina_no_seu_caminho(client, rede, com_i18n, idioma):
+    resp = client.get(caminho_de(idioma), HTTP_HOST=HOST_A)
     assert resp.status_code == 200
     assert OFERTA_A["product"]["name"].encode() in resp.content
 
 
 def test_prefixo_sem_barra_redireciona_para_a_forma_canonica(client, rede, com_i18n):
-    resp = client.get("/en", HTTP_HOST=HOST_A)
+    # Vale para os idiomas prefixados; o padrão não tem essa forma (404 acima).
+    resp = client.get("/pt-br", HTTP_HOST=HOST_A)
     assert resp.status_code == 302
-    assert resp["Location"] == "/en/"
+    assert resp["Location"] == "/pt-br/"
+    assert resp["Cache-Control"] == "max-age=300"  # nunca 301
+
+
+def test_prefixo_sem_barra_preserva_query(client, rede, com_i18n):
+    resp = client.get("/pt-br?utm_source=ig", HTTP_HOST=HOST_A)
+    assert resp["Location"] == "/pt-br/?utm_source=ig"
 
 
 def test_uma_url_um_idioma_bytes_identicos(client, rede, com_i18n):
     # Invariante D1: Accept-Language NUNCA muda o conteúdo de uma URL fixa.
-    a = client.get("/en/", HTTP_HOST=HOST_A, HTTP_ACCEPT_LANGUAGE="pt-BR,pt;q=0.9")
-    b = client.get("/en/", HTTP_HOST=HOST_A, HTTP_ACCEPT_LANGUAGE="en")
+    # Medido na RAIZ, que é onde a tentação de negociar idioma sempre mora.
+    a = client.get("/", HTTP_HOST=HOST_A, HTTP_ACCEPT_LANGUAGE="pt-BR,pt;q=0.9")
+    b = client.get("/", HTTP_HOST=HOST_A, HTTP_ACCEPT_LANGUAGE="en")
     assert a.status_code == b.status_code == 200
     assert a.content == b.content
     assert "accept-language" not in a.get("Vary", "").lower()
@@ -155,6 +188,35 @@ def test_resolver_ativa_traducao_decapa_prefixo_e_expoe_idioma(rede, com_i18n):
     assert translation.get_language() != "pt-br"
 
 
+def test_o_caminho_nu_ativa_o_idioma_padrao_sem_reescrever_o_path(rede, com_i18n):
+    """O ramo do idioma padrão faz TUDO que o ramo prefixado faz — menos decapar.
+
+    Este é o teste que pega a falha por omissão mais provável desta mudança: um
+    ramo novo que serve a página mas esquece de ativar a tradução, ou de
+    preparar quem-está-vendo. Ele afirma as três coisas de uma vez.
+    """
+    capturado = {}
+
+    def espiao(request):
+        capturado["idioma"] = request.idioma
+        capturado["path_info"] = request.path_info
+        capturado["lang_ativo"] = translation.get_language()
+        capturado["tem_ator"] = getattr(request, "ator", None) is not None
+        capturado["tem_seo"] = getattr(request, "i18n_seo", None) is not None
+        return HttpResponse("ok")
+
+    request = RequestFactory().get("/cadastro", HTTP_HOST=HOST_A)
+    SiteResolutionMiddleware(espiao)(request)
+    assert capturado == {
+        "idioma": "en",
+        "path_info": "/cadastro",  # NÃO reescrito: já é o que o urlconf resolve
+        "lang_ativo": "en",
+        "tem_ator": True,  # sem isto, o cabeçalho de sessão some só no inglês
+        "tem_seo": True,
+    }
+    assert translation.get_language() != "en"
+
+
 # ---------------------------------------------------------------------------
 # Emissão SEO (D5) — tudo gerado do registro, nunca à mão.
 # ---------------------------------------------------------------------------
@@ -168,28 +230,45 @@ def test_html_lang_dir_e_og_locale_da_pagina(client, rede, com_i18n):
 def test_canonical_auto_referente_nunca_cruzado(client, rede, com_i18n):
     # Anti-padrão reprovado: canonical de /pt-br/* apontando pra versão inglesa.
     conteudo = client.get("/pt-br/", HTTP_HOST=HOST_A).content.decode()
-    assert f'<link rel="canonical" href="https://{HOST_A}/pt-br/">' in conteudo
-    assert f'<link rel="canonical" href="https://{HOST_A}/en/">' not in conteudo
+    assert f'<link rel="canonical" href="{url_de("pt-br")}">' in conteudo
+    assert f'<link rel="canonical" href="{url_de("en")}">' not in conteudo
+
+
+def test_canonical_do_idioma_padrao_e_a_raiz_nua(client, rede, com_i18n):
+    # O que o Google lê no endereço principal do site. `/en/` aqui seria pior
+    # que inútil: apontaria o canônico para uma URL que responde 404.
+    conteudo = client.get("/", HTTP_HOST=HOST_A).content.decode()
+    assert f'<link rel="canonical" href="https://{HOST_A}/">' in conteudo
+    assert f"https://{HOST_A}/en/" not in conteudo
 
 
 def test_hreflang_reciproco_so_de_idioma_indexavel_e_um_x_default(
     client, rede, com_i18n
 ):
     conteudo = client.get("/pt-br/", HTTP_HOST=HOST_A).content.decode()
+    # O alternate do inglês aponta para a raiz nua — é a URL que existe.
+    assert f'<link rel="alternate" hreflang="en" href="{url_de("en")}">' in conteudo
     assert (
-        f'<link rel="alternate" hreflang="en" href="https://{HOST_A}/en/">' in conteudo
-    )
-    assert (
-        f'<link rel="alternate" hreflang="pt-BR" href="https://{HOST_A}/pt-br/">'
-        in conteudo
+        f'<link rel="alternate" hreflang="pt-BR" href="{url_de("pt-br")}">' in conteudo
     )
     # es é noindex ⇒ fora do hreflang (o SELETOR <a> continua listando es —
     # seletor é para gente, hreflang é para robô).
     assert '<link rel="alternate" hreflang="es"' not in conteudo
     assert conteudo.count('hreflang="x-default"') == 1
     assert (
-        f'hreflang="x-default" href="https://{HOST_A}/en/"' in conteudo
+        f'hreflang="x-default" href="{url_de("en")}"' in conteudo
     )  # x-default da MESMA página, no idioma padrão
+
+
+def test_o_par_hreflang_da_pagina_interna_usa_a_forma_nua_do_padrao(
+    client, rede, com_i18n
+):
+    # A regra vale em toda página, não só na raiz: o inglês de /cadastro é
+    # /cadastro, e o pt-br é /pt-br/cadastro. Um par errado aqui é o tipo de
+    # coisa que só aparece meses depois, no relatório de cobertura do Google.
+    conteudo = client.get("/pt-br/cadastro", HTTP_HOST=HOST_A).content.decode()
+    assert f'hreflang="en" href="{url_de("en", "/cadastro")}"' in conteudo
+    assert f'hreflang="pt-BR" href="{url_de("pt-br", "/cadastro")}"' in conteudo
 
 
 def test_es_noindex_emite_robots_e_pt_br_nao(client, rede, com_i18n):
@@ -205,17 +284,18 @@ def test_canonical_usa_o_host_canonico_do_site_nunca_o_da_requisicao(
     # Host de preview resolve para o MESMO Site A (a fixture com_i18n o mocka
     # devolvendo o Site cujo `host` é o canônico): o canonical/hreflang têm de
     # sair com o host canônico do Site — nunca request.get_host() (D5).
-    conteudo = client.get("/en/", HTTP_HOST=HOST_PREVIEW).content.decode()
-    assert f'<link rel="canonical" href="https://{HOST_A}/en/">' in conteudo
+    conteudo = client.get("/", HTTP_HOST=HOST_PREVIEW).content.decode()
+    assert f'<link rel="canonical" href="{url_de("en")}">' in conteudo
     assert HOST_PREVIEW not in conteudo
 
 
 def test_toda_url_do_hreflang_aparece_como_ancora_real(client, rede, com_i18n):
     # D5: seletor de idioma é <a href> real — versão sem link rastreável pode
-    # nunca ser descoberta. O seletor cobre TODOS os idiomas habilitados.
-    conteudo = client.get("/en/", HTTP_HOST=HOST_A).content.decode()
+    # nunca ser descoberta. O seletor cobre TODOS os idiomas habilitados, e o
+    # link do padrão é a raiz nua (mesma regra do canonical, mesma função).
+    conteudo = client.get("/", HTTP_HOST=HOST_A).content.decode()
     for codigo in IDIOMAS_TESTE:
-        assert f'<a href="https://{HOST_A}/{codigo}/"' in conteudo
+        assert f'<a href="{url_de(codigo)}"' in conteudo
 
 
 # ---------------------------------------------------------------------------
@@ -348,7 +428,7 @@ def test_regressao_site_nao_registrado_landing_byte_identica(client, rede):
     assert resp.content.decode("utf-8") == HTML_DE_HOJE
 
 
-@pytest.mark.parametrize("caminho", ["/en/", "/pt-br/", "/es/", "/en/cadastro"])
+@pytest.mark.parametrize("caminho", ["/en/", "/pt-br/", "/es/", "/pt-br/cadastro"])
 def test_site_sem_languages_nao_tem_url_prefixada(client, rede, caminho):
     # A outra metade da regressão: sem `languages` no Site, as URLs de idioma
     # não existem — nem como redirect. É o que o funil serve enquanto o

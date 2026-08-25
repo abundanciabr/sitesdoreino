@@ -1,6 +1,8 @@
 # apps/core/middleware.py  # [RECEITA:CONV-SITE v1] + resolver de idioma
 # (PLANO-I18N §2 D1 — matriz HTTP; site sem idiomas = fluxo de hoje).
-import re
+#
+# D1 REVISTO em 25/08/2026 (docs/decisoes/DECISAO-raiz-sem-prefixo-do-idioma-padrao.md):
+# o idioma PADRÃO do site é servido na raiz nua, sem prefixo; `/{padrão}/…` é 404.
 import time
 
 from django.http import Http404, HttpResponseRedirect
@@ -127,10 +129,22 @@ CAMINHOS_DE_MAQUINA = ("/sitemap.xml",)
 # /pt-br/healthz é a rota de máquina /healthz (desvio medido em 24/08/2026).
 ROTAS_DE_MAQUINA = CAMINHOS_SEM_SITE + CAMINHOS_DE_MAQUINA
 
-# D1/D6: primeiro segmento com FORMA de idioma (2-3 letras ± região, qualquer
-# caixa/separador) que NÃO seja código habilitado ⇒ 404 fail-closed — cobre
-# /fr/, /PT-BR/, /pt_br/ de uma vez. Caminho sem forma de idioma é "caminho nu".
-RE_FORMA_DE_IDIOMA = re.compile(r"[A-Za-z]{2,3}([_-][A-Za-z0-9]{2,8})?\Z")
+
+def _forma_canonica(segmento: str) -> str:
+    """`PT-BR` → `pt-br`, `pt_br` → `pt-br`. A forma como o código se escreve na URL.
+
+    Serve para uma coisa só: reconhecer o segmento que QUERIA ser um idioma
+    habilitado e foi escrito na caixa/separador errado, para recusá-lo
+    fail-closed em vez de redirecionar (D1 — nada nunca linkou para essas formas).
+
+    Note o que ela deliberadamente NÃO faz: adivinhar que um segmento tem "cara
+    de idioma". Até 25/08/2026 uma regex de 2-3 letras cumpria esse papel, e ela
+    recusava `/faq`, `/api` e `/pro` como se fossem idiomas — o que só não doeu
+    porque o inglês vivia atrás de `/en/`. Com o padrão na raiz nua esses são
+    endereços de página legítimos, e quem decide se existem é o urlconf.
+    """
+    return segmento.lower().replace("_", "-")
+
 
 # O redirect é determinístico por decisão (nunca varia por usuário) ⇒ cacheável;
 # max-age curto propaga troca de default em minutos (D1).
@@ -181,20 +195,30 @@ class SiteResolutionMiddleware:
         return site, cfg
 
     def _com_idioma(self, request, site, cfg):
+        """A matriz HTTP do D1, em quatro ramos — e **a ordem deles é a regra**.
+
+        Desde 25/08/2026 o idioma padrão não tem prefixo, o que torna o primeiro
+        segmento da URL ambíguo: `/es` é "espanhol" ou "página chamada es"? Aqui o
+        **idioma vence sempre** (ramo 2 antes do 4). Uma rota do urlconf que
+        colida com um código de idioma ficaria inalcançável em silêncio — quem
+        impede isso de nascer é `tests/test_d6_roteamento.py`, não este método.
+        """
         caminho = request.path_info
-        seguro = request.method in METODOS_SEGUROS
-
-        # Raiz: 302 fixo p/ /{default}/ — nunca 301 (301 cacheado travaria a
-        # troca de default). Só GET/HEAD; POST perderia o corpo no redirect.
-        if caminho == "/":
-            if not seguro:
-                raise Http404("raiz de site multilíngue não aceita método não-seguro")
-            return self._redirect(f"/{cfg['default']}/", request)
-
         segmento, barra, resto = caminho[1:].partition("/")
+
+        # ── 1. O prefixo do idioma PADRÃO não existe (D1 revisto) ──────────
+        # Primeiro de todos, e isso importa: se este ramo viesse depois da
+        # decapagem, `/en/healthz` seria reescrito para `/healthz` e devolveria a
+        # sonda com 200 (armadilhas/086 — middleware que reescreve caminho tem
+        # DOIS caminhos na mesma requisição). Morrendo aqui, morre para toda rota
+        # de máquina de uma vez, inclusive a que nascer amanhã.
+        if segmento == cfg["default"]:
+            raise Http404(f"o idioma padrão não tem prefixo: {caminho}")
+
+        # ── 2. Idioma não-padrão habilitado: serve prefixado ───────────────
         if segmento in cfg["idiomas"]:
-            if not barra:  # /en → /en/ (uma forma canônica por página)
-                if not seguro:
+            if not barra:  # /pt-br → /pt-br/ (uma forma canônica por página)
+                if request.method not in METODOS_SEGUROS:
                     raise Http404("prefixo de idioma sem caminho")
                 return self._redirect(f"/{segmento}/", request)
             caminho_sem_prefixo = f"/{resto}"
@@ -206,41 +230,55 @@ class SiteResolutionMiddleware:
                 # /sitemap.xml de uma vez, e a próxima rota de máquina que
                 # entrar nas listas, sem tocar neste método de novo.
                 raise Http404(f"rota de máquina não se localiza: {caminho}")
-            definicao = cfg["idiomas"][segmento]
-            request.idioma = segmento
-            request.i18n_seo = dados_seo(site, cfg, segmento, caminho_sem_prefixo)
             # O urlconf da célula continua sem prefixo: o resolver decapa o
             # idioma ANTES da resolução de URL (path_info é o que o Django
             # resolve; request.path segue completo p/ canonical/logs).
             request.path_info = caminho_sem_prefixo
-            # Quem está vendo a página. Objeto preguiçoso: construí-lo não custa
-            # nada, e só a leitura no template dispara a pergunta à Caixa. Fica
-            # SÓ no regime prefixado, que é onde o login existe — site
-            # monolíngue (os domínios antigos) segue byte-idêntico ao de antes.
-            request.ator = AtorDaRequisicao(request.META.get("HTTP_COOKIE", ""))
-            # O destino do link de quem já entrou. Fica no request (e não no
-            # contexto de cada view) porque a peça `_sessao.html` aparece em
-            # TODA página multilíngue: passá-lo view a view seria a mesma linha
-            # repetida em cada uma, e a próxima view nasceria sem ela.
-            request.url_da_caixa = enderecos.url_da_caixa()
-            translation.activate(definicao["tag"])  # D2.4: runtime do Django LIGADO
-            try:
-                resposta = self.get_response(request)
-            finally:
-                translation.deactivate()
-            return self._marcar_variacao_por_pessoa(request, resposta)
+            return self._servir(request, site, cfg, segmento, caminho_sem_prefixo)
 
-        if RE_FORMA_DE_IDIOMA.fullmatch(segmento):
-            # /fr/…, /PT-BR/…, /pt_br/… — forma de idioma não habilitada:
-            # 404 fail-closed, nunca redirect, nunca fallback (D1).
-            raise Http404(f"idioma não habilitado para este site: {segmento}")
+        # ── 3. Idioma habilitado escrito na forma errada: 404 fail-closed ────
+        # /PT-BR/, /pt_br/, /EN/, /Es/ — nunca redirect, nunca fallback (D1).
+        if _forma_canonica(segmento) in cfg["idiomas"]:
+            raise Http404(f"forma não canônica de idioma: {segmento}")
 
-        # Caminho nu (/cadastro): preserva link curto de marketing via 302;
-        # métodos não-seguros ⇒ 404 (redirect converteria POST em GET e
-        # descartaria o corpo em silêncio — D1).
-        if not seguro:
-            raise Http404("caminho sem prefixo de idioma não aceita método não-seguro")
-        return self._redirect(f"/{cfg['default']}{caminho}", request)
+        # ── 4. Todo o resto — inclusive "/" — é o idioma PADRÃO, sem prefixo ─
+        # Não há path_info a reescrever: o caminho JÁ é o que o urlconf resolve.
+        # Endereço que não existe (`/fr/cadastro`, `/qualquer-coisa`) cai no 404
+        # natural do urlconf, e não numa regex que adivinha idioma.
+        #
+        # Ramo sem redirect ⇒ **método nenhum se perde**: POST /leads e
+        # POST /cadastro passaram a funcionar aqui (na matriz antiga eram 404,
+        # porque o 302 do caminho nu converteria POST em GET e descartaria o
+        # corpo em silêncio).
+        return self._servir(request, site, cfg, cfg["default"], caminho)
+
+    def _servir(self, request, site, cfg, codigo: str, caminho_sem_prefixo: str):
+        """Serve uma página NUM idioma — o mesmo preparo para os ramos 2 e 4.
+
+        Extraído, e não copiado, de propósito: a metade fácil de esquecer é o
+        `request.ator`. Sem ele a página não sabe quem está vendo, e o cabeçalho
+        de sessão ("Entrar" / o nome de quem entrou) desaparece **só** no idioma
+        padrão — que é a versão que alguém abre para conferir. Falha silenciosa e
+        assimétrica é exatamente o que uma cópia produz.
+        """
+        request.idioma = codigo
+        request.i18n_seo = dados_seo(site, cfg, codigo, caminho_sem_prefixo)
+        # Quem está vendo a página. Objeto preguiçoso: construí-lo não custa
+        # nada, e só a leitura no template dispara a pergunta à Caixa. Fica
+        # SÓ no regime multilíngue, que é onde o login existe — site
+        # monolíngue (os domínios antigos) segue byte-idêntico ao de antes.
+        request.ator = AtorDaRequisicao(request.META.get("HTTP_COOKIE", ""))
+        # O destino do link de quem já entrou. Fica no request (e não no
+        # contexto de cada view) porque a peça `_sessao.html` aparece em
+        # TODA página multilíngue: passá-lo view a view seria a mesma linha
+        # repetida em cada uma, e a próxima view nasceria sem ela.
+        request.url_da_caixa = enderecos.url_da_caixa()
+        translation.activate(cfg["idiomas"][codigo]["tag"])  # D2.4: runtime LIGADO
+        try:
+            resposta = self.get_response(request)
+        finally:
+            translation.deactivate()
+        return self._marcar_variacao_por_pessoa(request, resposta)
 
     @staticmethod
     def _marcar_variacao_por_pessoa(request, resposta):

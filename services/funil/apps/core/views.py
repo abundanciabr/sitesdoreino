@@ -6,12 +6,17 @@ from django import forms
 from django.conf import settings
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import render
-from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.http import (
+    require_http_methods,
+    require_POST,
+    require_safe,
+)
 from django.views.static import serve as serve_do_django
 
 from apps.core.clients import CatalogoClient, LeadsClient
 from apps.core.enderecos import url_de_entrada
 from apps.i18n.catalogo import js_da_pagina
+from apps.i18n.idiomas import caminho_publico
 
 # Ordem fixa: é também a ordem em que a query string do link do checkout é
 # montada — preservar isso torna o teste de UTM determinístico.
@@ -26,7 +31,7 @@ def _utm_da_requisicao(request) -> dict:
     return {chave: valor for chave in CHAVES_UTM if (valor := request.GET.get(chave))}
 
 
-@require_GET
+@require_safe
 def healthz(request):
     return JsonResponse({"status": "ok"})
 
@@ -63,7 +68,7 @@ def servir_estatico(request, path):
     return serve_do_django(request, path, document_root=settings.STATICFILES_DIRS[0])
 
 
-@require_GET
+@require_safe
 def landing(request):
     """[RECEITA:R6 v1] Vitrine mínima: lê a default_offer do site (R2, server-side)
     e monta o link do checkout preservando UTM na query string."""
@@ -113,7 +118,14 @@ def cadastro(request):
     pendência 1 do PR #87): o resolver decapa o prefixo, esta view recebe e
     repassa à célula leads server-side — mesmo canal POST /leads da landing,
     com o idioma do lead gravado em `source` (D9: lead sem idioma não tem
-    retrofit). Caminho nu POST /cadastro morre 404 na matriz, antes daqui."""
+    retrofit).
+
+    Desde o D1 revisto (25/08/2026) o caminho nu `/cadastro` **é** a página em
+    inglês, e o POST dele chega aqui normalmente. Na matriz antiga ele morria
+    404 antes desta view — o caminho nu era um 302 para `/en/cadastro`, e
+    redirecionar um POST converteria o método em GET e descartaria o corpo em
+    silêncio, então recusar era o menos pior. Sem redirecionamento no meio, o
+    problema deixou de existir."""
     if getattr(request, "idioma", None) is None:
         # Site fora do registro i18n não tem cadastro — 404, o mesmo que o
         # caminho respondia antes desta fase (rota inexistente).
@@ -179,9 +191,9 @@ CHAVES_DE_RECUSA = {
 }
 
 
-@require_GET
+@require_safe
 def entrar(request):
-    """`/{idioma}/login` — a porta de entrada do site.
+    """A porta de entrada do site — `/login` em inglês, `/{idioma}/login` nos outros.
 
     Leis: DECISAO-onde-mora-a-sessao e, desde 25/08/2026,
     DECISAO-celula-de-identidade. Ela leva ao Google; a sessão nasce do outro
@@ -207,7 +219,14 @@ def entrar(request):
     # de toda página manda o caminho atual no `?next=`; sem isso, quem clicava
     # "Entrar" no meio de um cadastro meio preenchido voltava para a home e
     # perdia o que tinha digitado.
-    destino = destino_local(request.GET.get("next"), f"/{request.idioma}/")
+    # O fallback é a home DESTE idioma, e ela sai do caminho_publico como
+    # qualquer outra URL pública. Escrevê-la à mão aqui — f"/{idioma}/" — era a
+    # QUARTA cópia da regra de prefixo, e a que mais doeria: no idioma padrão
+    # ela devolveria a pessoa, depois de entrar, para /en/ — 404 desde o D1
+    # revisto (25/08/2026). Quem não passa `?next=` é justamente quem clicou
+    # "Entrar" na home.
+    home = caminho_publico(request.i18n, request.idioma, "/")
+    destino = destino_local(request.GET.get("next"), home)
     entrada = f"{url_de_entrada()}?{urlencode({'next': destino})}"
     return render(
         request,
@@ -216,7 +235,7 @@ def entrar(request):
     )
 
 
-@require_GET
+@require_safe
 def sitemap_xml(request):
     """D6: rota de MÁQUINA — nunca se localiza. Desde a fase 4 ela PRECISA do
     Site: os idiomas vêm do catálogo, então o CONV-SITE resolve o Host aqui
@@ -233,7 +252,10 @@ def sitemap_xml(request):
     host = request.site["host"]
 
     urls = [
-        f"https://{host}/{codigo}{pagina}"
+        # O caminho sai do caminho_publico, nunca de uma f-string local: desde o
+        # D1 revisto (25/08/2026) o idioma padrão não leva prefixo, e um sitemap
+        # anunciando /en/ mandaria o Google a 404 nossos.
+        f"https://{host}{caminho_publico(cfg, codigo, pagina)}"
         for codigo, definicao in cfg["idiomas"].items()
         if definicao["indexavel"]  # D5: es (noindex) fica fora
         for pagina in PAGINAS_PUBLICAS
