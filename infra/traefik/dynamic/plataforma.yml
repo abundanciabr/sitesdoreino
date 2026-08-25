@@ -94,7 +94,16 @@ http:
       # quem pergunta "quem é este?" o faz pela rede interna do Docker.
       # Mesma escala de prioridade do resto: 10 = prefixo de página, contra o
       # 1 do catch-all do funil.
-      rule: "PathPrefix(`/entrar`)"
+      # `Host(...)` explicito, ao contrario das outras rotas de pagina: o
+      # `redirect_uri` que vai ao Google e montado a partir do Host da
+      # REQUISICAO (Lei 9, multissitio) e o Google so aceita o endereco
+      # cadastrado no console — que hoje existe para `meshcraft.top` e mais
+      # nenhum. Sem esta clausula, qualquer dominio apontado para esta VPS
+      # serviria a tela de login da plataforma (o login falharia no Google,
+      # mas a pagina apareceria: materia-prima de golpe). Dominio novo com
+      # login = uma linha aqui + o retorno dele cadastrado no console.
+      # Achado da cadeira de IAM, auditoria de 25/08/2026.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/entrar`)"
       priority: 10
       entryPoints: [websecure]
       middlewares: [seguranca]
