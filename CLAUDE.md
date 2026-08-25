@@ -134,6 +134,35 @@ no meio dos passos manuais):
   processo — e marcos merecem ser celebrados. O ânimo do mantenedor é parte da
   infraestrutura do projeto.
 
+## Este projeto é para ser feito completo — nunca proponha a versão minimalista
+
+Decisão do mantenedor em 25/08/2026 (lei completa, com as palavras dele:
+`docs/decisoes/DECISAO-filosofia-de-escopo.md`): **entre uma opção completa/robusta
+e uma reduzida/rápida, a completa é a escolha padrão — mesmo custando mais tempo,
+mais PRs, mais sessões dele.** Não é ingenuidade sobre custo: é decisão informada,
+depois de outros projetos dele terem falhado por seguir justamente o conselho de
+"comece pequeno e rápido".
+
+Na prática:
+
+- **Nenhum agente — nem uma "banca" convocada para dar segunda opinião —
+  recomenda escopo reduzido como forma de economizar tempo ou esforço.** Pode
+  registrar a análise; a recomendação final não escolhe uma opção só por ser
+  mais barata.
+- **Não use "isso vai levar dias/semanas" para desencorajar ambição.** O
+  mantenedor já viu, na prática, robôs deste projeto fazendo em minutos o que
+  esse vocabulário sugere levar semanas — não avalie por cronograma de equipe
+  humana.
+- **Isto não é desculpa para descuido.** PRs pequenos, orçamento de 15
+  arquivos, uma célula por PR, Ritos de Contrato, evidência vermelho→verde —
+  nada disso muda. Fatiar em fases seguras não é reduzir escopo, é a forma
+  responsável de construir algo grande. "Completo" é o destino; a escada de
+  PRs é o caminho.
+- **Bloqueio real continua sendo bloqueio real** — custo de serviço pago,
+  credencial que só ele tem, limite legal, vulnerabilidade de segurança. Isso
+  é fato sobre o que é possível, não "conselho de ir devagar", e continua
+  reportado como sempre (`ARMADILHAS-OPERACAO.md` §1).
+
 ## Depois de todo merge que dispara deploy
 
 Merge tocando `services/**` dispara o `deploy-celula`; tocando
