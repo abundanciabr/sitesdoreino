@@ -678,6 +678,11 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # inseriram blocos no mesmo arquivo e a lista ficou com um código
         # repetido. O inventário pegou na hora.
         "INV-P13",
+        # Fase 1 do plano de notificações (25/08/2026), célula `sugestoes`: a
+        # identidade cunhada aqui guarda o id da identidade da PLATAFORMA, que a
+        # resposta do contrato já entregava e a porta descartava. Sem ele nenhum
+        # evento da Caixa consegue endereçar uma pessoa fora dela.
+        "INV-SUG11",
         "INV-CI01",
     ]
 

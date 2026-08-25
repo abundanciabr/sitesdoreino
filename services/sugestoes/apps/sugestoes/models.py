@@ -70,6 +70,9 @@ class Identidade(models.Model):
     comentário apontam para esta linha; nenhum deles guarda e-mail. É dado
     pessoal: uma pessoa que troque de endereço é uma linha editada, não um
     histórico reescrito.
+
+    Desde a Fase 1 do `docs/notificacoes/PLANO-MESTRE.md` (25/08/2026) a linha
+    guarda TAMBÉM `id_da_plataforma` — ver o campo, logo abaixo.
     """
 
     id = models.CharField(
@@ -79,9 +82,37 @@ class Identidade(models.Model):
     # amanhã por outro provedor — um código, por exemplo — precisa RECUPERAR
     # esta identidade, não cunhar uma segunda (EVO-01 §3).
     email = models.EmailField(unique=True)
+    # [INV-SUG11] O id da MESMA pessoa na célula `identidade` — o único
+    # identificador que atravessa a plataforma. A resposta de `getSessionFull`
+    # já o entrega (`SessionFull.id`, contrato congelado) e a porta o descartava
+    # até hoje; guardá-lo é a Fase 1 do plano de notificações, e sem ele nenhuma
+    # caixa central consegue endereçar ninguém (PLANO-MESTRE §2).
+    #
+    # **`null=True`, e a escolha decide se a migration sobe.** Toda linha que já
+    # existe em produção nasceu sem este dado, e no Postgres um índice único
+    # trata cada `NULL` como distinto dos outros — mil linhas vazias convivem.
+    # String vazia NÃO: `''` colide com `''`, e o `AddField` estouraria com
+    # `duplicate key value violates unique constraint` na segunda linha antiga.
+    # Daí o par que parece redundante e não é: `null=True` (o estado "ainda não
+    # sei") **mais** o `CheckConstraint` abaixo, que impede o segundo jeito de
+    # não saber. Um campo com duas formas de "vazio" é um campo que dois pedaços
+    # de código consultam de jeitos diferentes.
+    #
+    # NÃO substitui o casamento por e-mail: `cunhar_ou_recuperar` continua
+    # buscando por `email`, que é o que preservou a autoria inteira quando o
+    # login mudou de casa (DECISAO-celula-de-identidade §3).
+    id_da_plataforma = models.CharField(max_length=64, null=True, unique=True)
     provedor = models.CharField(max_length=20, default="google")
     nome_exibido = models.CharField(max_length=120, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(id_da_plataforma=""),
+                name="identidade_id_da_plataforma_nunca_vazio",
+            ),
+        ]
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
         return self.nome_exibido or self.email
@@ -90,10 +121,11 @@ class Identidade(models.Model):
 class Quadro(models.Model):
     """A fronteira de contexto: toda sugestão pertence a exatamente um quadro.
 
-    Spec §5. `produto_id` nulo = quadro da plataforma inteira. É a única
-    coluna de texto desta célula que aceita NULL, e de propósito: aqui "vazio"
-    e "todos os produtos" são estados DIFERENTES, e string vazia os
-    confundiria.
+    Spec §5. `produto_id` nulo = quadro da plataforma inteira. Aceita NULL de
+    propósito: aqui "vazio" e "todos os produtos" são estados DIFERENTES, e
+    string vazia os confundiria. (Era a única coluna de texto nulável da célula
+    até a Fase 1 do plano de notificações, que acrescentou
+    `Identidade.id_da_plataforma` — lá o motivo é outro: unicidade parcial.)
     """
 
     site_id = models.CharField(max_length=64)

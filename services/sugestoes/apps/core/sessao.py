@@ -19,6 +19,14 @@ FKs de autoria apontando para ela — foi isso que fez a mudança de casa custar
 ZERO migração de dado em produção. A mesma pessoa entrando pelo site recupera
 a linha que já era dela.
 
+**E desde a Fase 1 do `docs/notificacoes/PLANO-MESTRE.md` (25/08/2026) o
+snapshot guarda também o `id` da resposta** — o identificador da pessoa na
+célula `identidade`, o único que atravessa a plataforma. Ele já vinha em toda
+resposta (`SessionFull.id`, contrato congelado) e era jogado fora nesta função;
+sem ele, uma caixa central de notificações receberia o fato e um id que não
+significa nada fora da Caixa (PLANO-MESTRE §2). **O casamento por e-mail
+continua sendo a chave** — o id novo é dado a mais, não substituto.
+
 **Fail-CLOSED, dos dois lados.** `identidade` fora do ar OU `alunos` fora do
 ar ⇒ ninguém participa e a porta explica ("não conseguimos conferir"). É o
 oposto do reconhecimento de exibição do `funil` (fail-open) — lá a resposta
@@ -31,9 +39,12 @@ contrato é de EXIBIÇÃO e não autoriza nada aqui (invariante da
 DECISAO-onde-mora-a-sessao §4).
 """
 
+import logging
 import os
 import time
 from dataclasses import dataclass
+
+from django.db import IntegrityError, transaction
 
 from apps.sugestoes.models import Identidade
 
@@ -49,6 +60,8 @@ from .clients import (
 # 25/08/2026). Só o leitor legado da API interna a usa — ver
 # `ator_da_sessao_legada` e o comentário no `apps/core/api.py`.
 CHAVE_IDENTIDADE = "identidade"
+
+logger = logging.getLogger(__name__)
 
 PAPEL_ALUNO = "aluno"
 PAPEL_STAFF = "staff"
@@ -97,23 +110,125 @@ def papel_de(email: str) -> str:
     return PAPEL_STAFF if e_staff(email) else PAPEL_ALUNO
 
 
-def cunhar_ou_recuperar(*, email: str, nome: str) -> Identidade:
+def _id_da_plataforma(dados: dict) -> str | None:
+    """O `SessionFull.id` da resposta, normalizado — ou `None`.
+
+    O contrato declara o campo **opcional e nulável** (`anyOf: [string, null]`),
+    então "veio", "veio nulo" e "não veio" chegam aqui como três formas do mesmo
+    fato: não sei quem é do lado de lá. A coluna tem **uma** forma de não saber
+    (`NULL`, imposta por `CheckConstraint`), e é aqui que as três viram uma.
+    """
+    valor = (dados.get("id") or "").strip()[:64]
+    return valor or None
+
+
+def cunhar_ou_recuperar(
+    *, email: str, nome: str, id_da_plataforma: str | None = None
+) -> Identidade:
     """A mesma pessoa tem UMA linha local (EVO-01 §3) — hoje como snapshot.
 
     A idempotência é do banco: `Identidade.email` é `unique`, e `get_or_create`
     transforma a corrida de duas requisições simultâneas numa recuperação. É o
     casamento por e-mail que preservou a autoria de tudo que já existia quando
-    o login mudou de casa: quem entra pelo site recupera a linha antiga.
+    o login mudou de casa: quem entra pelo site recupera a linha antiga — e é
+    por isso que **a busca continua sendo por e-mail** depois da Fase 1 do plano
+    de notificações. O id da plataforma é dado a MAIS, nunca a chave.
 
     `nome_exibido` só é gravado na CUNHAGEM. Reentrar não sobrescreve: o campo
     é editável pela pessoa, e deixar o provedor reescrevê-lo a cada visita
     apagaria essa escolha sem aviso.
+
+    **[INV-SUG11] O `id_da_plataforma` é gravado em duas frentes**, e a segunda
+    é o que faz a Fase 1 valer para quem já existia:
+
+    1. na **cunhagem**, junto com a linha;
+    2. na **reentrada**, quando a linha está sem ele — o caminho de toda linha
+       nascida antes desta migration, que não tinha de onde tirar o dado.
+
+    Uma linha que JÁ tem id da plataforma **não é sobrescrita** por outro valor:
+    seria a mesma pessoa mudando de identidade da plataforma, que é anomalia e
+    não rotina. Fica no log e a porta segue — a Caixa não pode cair por causa
+    disso, e escolher em silêncio qual dos dois ids é o certo seria pior.
+
+    **Nada disto pode recusar ninguém.** O id da plataforma é dado que a Caixa
+    passou a coletar hoje; transformar um problema com ele em porta fechada seria
+    punir a pessoa por uma anomalia que ela não tem como resolver. As duas
+    frentes engolem o `IntegrityError` da unicidade, cada uma na sua metade.
     """
-    identidade, _ = Identidade.objects.get_or_create(
-        email=email.strip().lower(),
-        defaults={"provedor": "google", "nome_exibido": nome.strip()[:120]},
-    )
+    email = email.strip().lower()
+    defaults = {"provedor": "google", "nome_exibido": nome.strip()[:120]}
+    try:
+        # O `atomic()` é o savepoint: sem ele, o `IntegrityError` do `unique`
+        # envenenaria a transação da requisição inteira, e a página cairia em
+        # 500 DEPOIS de a pessoa já ter sido autorizada.
+        with transaction.atomic():
+            identidade, criada = Identidade.objects.get_or_create(
+                email=email,
+                defaults={**defaults, "id_da_plataforma": id_da_plataforma},
+            )
+    except IntegrityError:
+        # O id da plataforma já é de OUTRA linha local — acontece quando a
+        # pessoa troca de e-mail do lado de lá e vira uma segunda linha aqui.
+        # A linha nasce SEM o id (o casamento por e-mail, que é a chave, não
+        # depende dele) e a porta segue. Na visita seguinte a frente 2 tenta de
+        # novo; se ainda colidir, volta a recusar em silêncio de log.
+        logger.warning(
+            "nao deu para cunhar %s com o id da plataforma %s "
+            "(provavelmente ja pertence a outra linha local); "
+            "a identidade nasce sem ele (INV-SUG11)",
+            email,
+            id_da_plataforma,
+        )
+        identidade, _ = Identidade.objects.get_or_create(email=email, defaults=defaults)
+        return identidade
+
+    if not criada:
+        _casar_com_a_plataforma(identidade, id_da_plataforma)
     return identidade
+
+
+def _casar_com_a_plataforma(
+    identidade: Identidade, id_da_plataforma: str | None
+) -> None:
+    """A frente 2: a linha antiga ganha o id na reentrada. Nunca derruba a porta.
+
+    Três recusas, e cada uma existe por um motivo diferente:
+
+    - **sem id na resposta** ⇒ nada a fazer (a Caixa não inventa o dado);
+    - **linha já casada** ⇒ nunca sobrescreve. Igual é no-op; DIFERENTE é
+      anomalia, e vai para o log com os dois valores;
+    - **`IntegrityError`** ⇒ o id já pertence a OUTRA linha local. Acontece de
+      verdade: alguém troca de e-mail lá e vira uma segunda linha aqui. O
+      `atomic()` existe por isso — sem o savepoint, a exceção envenenaria a
+      transação da requisição inteira e a página cairia em 500 depois de a
+      pessoa já ter sido autorizada.
+    """
+    if id_da_plataforma is None:
+        return
+    if identidade.id_da_plataforma == id_da_plataforma:
+        return
+    if identidade.id_da_plataforma:
+        logger.warning(
+            "identidade local %s ja aponta para %s e a plataforma respondeu %s; "
+            "mantido o primeiro (INV-SUG11)",
+            identidade.id,
+            identidade.id_da_plataforma,
+            id_da_plataforma,
+        )
+        return
+
+    identidade.id_da_plataforma = id_da_plataforma
+    try:
+        with transaction.atomic():
+            identidade.save(update_fields=["id_da_plataforma"])
+    except IntegrityError:
+        identidade.refresh_from_db(fields=["id_da_plataforma"])
+        logger.warning(
+            "id da plataforma %s ja pertence a outra identidade local; "
+            "a linha %s segue sem ele (INV-SUG11)",
+            id_da_plataforma,
+            identidade.id,
+        )
 
 
 @dataclass(frozen=True)
@@ -209,9 +324,15 @@ def resolver(request) -> Resolucao:
         return Resolucao(INDISPONIVEL)
 
     nome = (dados.get("nome_exibido") or "").strip()
+    # [INV-SUG11] O elo que atravessa a plataforma — e que a porta descartava
+    # até 25/08/2026. Ausente ou nulo NÃO recusa ninguém: quem autoriza aqui
+    # continua sendo e-mail + (staff | matrícula). Ver `_id_da_plataforma`.
+    da_plataforma = _id_da_plataforma(dados)
 
     if e_staff(email):
-        identidade = cunhar_ou_recuperar(email=email, nome=nome)
+        identidade = cunhar_ou_recuperar(
+            email=email, nome=nome, id_da_plataforma=da_plataforma
+        )
         return Resolucao(DENTRO, Ator(identidade, PAPEL_STAFF), email)
 
     try:
@@ -224,7 +345,9 @@ def resolver(request) -> Resolucao:
     if not tem:
         return Resolucao(SEM_MATRICULA, email=email)
 
-    identidade = cunhar_ou_recuperar(email=email, nome=nome)
+    identidade = cunhar_ou_recuperar(
+        email=email, nome=nome, id_da_plataforma=da_plataforma
+    )
     return Resolucao(DENTRO, Ator(identidade, PAPEL_ALUNO), email)
 
 

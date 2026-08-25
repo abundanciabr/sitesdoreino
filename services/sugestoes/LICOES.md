@@ -3,6 +3,74 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
+## O id que atravessa (Fase 1 das notificações): guardar o que já passava na mão
+
+`docs/notificacoes/PLANO-MESTRE.md` §2 mediu o nó: `identidade` e `sugestoes`
+cunham **dois ids opacos diferentes** para a mesma pessoa, e o único elo entre
+eles é o e-mail, que não circula. A porta desta célula recebia o elo que falta em
+toda entrada (`SessionFull.id`, contrato congelado) e o jogava fora em
+`_sessao_central`. Este despacho parou de jogar fora. Sete coisas que custaram
+alguma coisa, ou que decidem o comportamento de quem mexer nisto depois:
+
+**1. O e-mail continua sendo a CHAVE; o id da plataforma é dado a mais.** Trocar
+`get_or_create(email=…)` por `get_or_create(id_da_plataforma=…)` parece a
+evolução natural e é a regressão: a linha antiga (que não tem id nenhum) nunca
+seria encontrada, e a pessoa perderia a autoria de tudo que escreveu antes de o
+login mudar de casa. Há guarda nominal para isso
+(`test_o_casamento_por_email_continua_sendo_a_chave`), porque a tentação é real e
+o sintoma só apareceria como "sumiram as minhas sugestões".
+
+**2. `null=True`, e não `default=""` — a escolha decide se a migration SOBE.** No
+Postgres o índice único trata cada `NULL` como distinto; `''` colide com `''`.
+Com string vazia o próprio `AddField` estouraria na segunda linha antiga da
+tabela. Medido por mutação (model **e** migration juntos, estado coerente): a
+suíte foi a **20 vermelhos**, quase todos de fixtures que criam duas pessoas.
+Virou `armadilhas/120`, porque não é desta casa só.
+
+**3. O `CheckConstraint` contra `''` não é zelo — é fechar o SEGUNDO jeito de não
+saber.** Com `null=True` sozinho, a coluna teria duas formas de vazio, e o dia em
+que alguém gravasse `""` por descuido o `__isnull=True` do relatório passaria a
+contar errado, em silêncio. Uma forma só de "não sei" é o que faz duas consultas
+escritas por pessoas diferentes concordarem.
+
+**4. A colisão de unicidade tem DOIS caminhos, e o teste parametrizado achou o
+que faltava.** O primeiro `try/except` que escrevi cobria só a **reentrada** (o
+`UPDATE` de `_casar_com_a_plataforma`); a **cunhagem** — o `INSERT` do
+`get_or_create` com o id nos `defaults` — ficou de fora e o guarda reprovou na
+hora, com `duplicate key value violates unique constraint`. Não é caso exótico:
+alguém que troque de e-mail na `identidade` vira uma segunda linha aqui com o
+mesmo id da plataforma. As duas metades engolem, cada uma com **savepoint
+próprio** (`with transaction.atomic()`), senão o `IntegrityError` envenena a
+transação da requisição inteira e a página cai em 500 **depois** de a pessoa já
+ter sido autorizada.
+
+**5. Ausência de id NÃO pode virar recusa de acesso.** O contrato declara
+`SessionFull.id` opcional e nulável; quem autoriza aqui continua sendo e-mail +
+(staff | matrícula). Transformar a falta de um dado que a Caixa passou a coletar
+hoje em porta fechada seria punir quem não tem como resolver o problema — e o
+guarda cobre as **três** formas de "não veio" (ausente, `null`, só espaços), que
+a borda normaliza para um `None` só.
+
+**6. Um lugar só cunha `Identidade`, e agora isso tem varredura de AST.** O
+invariante "toda identidade cunhada guarda o id" é completo só enquanto existir
+**um** caminho de escrita: um segundo, escrito daqui a seis meses por quem nunca
+leu isto, nasceria sem o campo e o buraco apareceria meses depois, do outro lado
+da plataforma, como notificação que não chega. É a mesma forma do degrau 3 do
+guarda da `AvaliacaoInterna` (AST, não `grep`, para que citar o nome num
+comentário não conte).
+
+**7. A migration não preenche NADA, e isso é o desenho.** Não há de onde derivar
+o id da plataforma de uma linha antiga sem pedir à `identidade` a lista de gente
+dela — que é a Lei 3. As linhas nascem `NULL` e casam **na reentrada** de cada
+pessoa. Por isso o número não zera no dia do deploy, e por isso existe
+`manage.py relatorio_id_da_plataforma`: um número que não desce em semanas é o
+sintoma de que a frente 2 parou de funcionar. É o antídoto que a §9 do plano
+exige nominalmente, e é somente-leitura (dois `COUNT`).
+
+**O que NÃO entrou, e é do elo seguinte:** o `ator_id` no envelope dos eventos é
+a **Fase 2**, e é Rito de Contrato (RITOS §3) com o mantenedor presente — não
+cabe em despacho de célula, e nada aqui o improvisou.
+
 ## O leque de avisos (EVO-42): o que muda quando o destinatário deixa de ser um
 
 Fecha o "fica para depois" que o EVO-21 deixou escrito no topo do `avisos.py`, e

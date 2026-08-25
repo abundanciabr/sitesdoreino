@@ -144,5 +144,6 @@
 | [115](115-distinct-num-model-com-meta-ordering-nao-e.md) | `.distinct()` num model com `Meta.ordering` não é distinto pelo que você pediu — e sai certo por acidente — você quer as pessoas distintas que comentaram numa sugestão e escreve o óbvio: | — |
 | [116](116-bulk-create-nao-chama-save-e-o-guarda-que-vigiava.md) | `bulk_create` não chama `save()` — e o guarda que vigiava o `save()` vira decoração sem ficar vermelho — existe um teste-guarda que prova uma regra interceptando `Model.save` — por `monkeypatch`, por sinal `pre_save`… | — |
 | [117](117-painel-novo-por-necessidade-nova-espalha-a.md) | Painel novo a cada necessidade nova espalha a verdade — e o "precisa de você" acaba em três painéis diferentes, onde um pedido do mantenedor pode se perder — o mantenedor abre um painel, não acha o que procura, abre… | — |
+| [120](120-campo-unique-novo-que-pode-ficar-vazio-string.md) | Campo `unique` novo que pode ficar vazio: `default=""` colide, `NULL` não — e a colisão precisa de savepoint — você acrescenta a um model uma coluna `unique=True` cujo valor vem de fora (o id da pessoa em outra célula… | — |
 
-**107 entradas.**
+**108 entradas.**
