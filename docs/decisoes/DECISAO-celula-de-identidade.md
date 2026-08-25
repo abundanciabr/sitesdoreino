@@ -80,14 +80,33 @@ O `funil` não vê e-mail por desenho — ele quer um nome para o canto da pági
 |---|---|---|
 | 1 | gênese `services/identidade` + manifesto + rollback.yml + esta lei | H17 item (2): célula nasce COM rollback; `deploy-celula` fica vermelho até o PR 3 — esperado (`armadilhas/088`) |
 | 2 | `contracts/identidade.openapi.yaml` + manifesto `required` | Rito §3, o caminho em dois tempos da própria Caixa (#137→#139) |
-| — | **bloco do mantenedor** (banco + `env/identidade.env` + tokens) | ANTES do PR 3, senão o `deploy-infra` reprova em crashloop (lição H18) |
+| — | **passo do mantenedor**: `infra/provisionar-identidade.sh` (banco + `env/identidade.env` + tokens dos dois pares) | ANTES do PR 3, senão o `deploy-infra` reprova em crashloop (lição H18). Escreve os env dos DOIS consumidores, então é pré-requisito dos PRs 4 e 5 também |
 | 3 | `infra/` (compose + traefik + env exemplo + provisionamento) | o deploy que põe a célula no ar |
-| 4 | `funil` reaponta (env + chaves de erro na tela de login) | a mudança que 24/08 prometeu barata: `enderecos.py` + env |
-| 5 | `sugestoes` vira consumidora (porta central, snapshot por e-mail) | o "muito menos dentro de Caixa" do mandato |
+| **4** | **`sugestoes` vira consumidora** (porta central, snapshot por e-mail) | o "muito menos dentro de Caixa" do mandato — e vem ANTES do site, ver a nota abaixo |
+| **5** | **`funil` reaponta** (env + chaves de erro na tela de login) | a mudança que 24/08 prometeu barata: `enderecos.py` + env |
 
-O `/interno/sessao` da Caixa fica **deprecado e inerte** após o PR 5 (nenhum
-consumidor, nenhum cookie que ele saiba ler); a remoção do contrato dela é um
-Rito §3 futuro, registrado como dívida — não trava nada.
+O `/interno/sessao` da Caixa fica **deprecado e inerte** ao fim da escada
+(nenhum consumidor, nenhum cookie que ele saiba ler); a remoção do contrato
+dela é um Rito §3 futuro, registrado como dívida — não trava nada.
+
+### Por que a Caixa vem ANTES do site (corrigido em 25/08/2026)
+
+A ordem original desta tabela era o inverso, e a auditoria de duas bancas
+mostrou que ela abria uma janela ruim entre os dois merges. Enquanto a Caixa
+ainda tem login próprio E o site já aponta para a porta central, **duas
+células assinam o MESMO cookie** (`meshcraft_sessao`, `Path=/`) com **chaves
+diferentes**: entrar pelo site desloga da Caixa, entrar pela Caixa desloga do
+site — um cabo de guerra, sem erro em lugar nenhum, e que não fecha sozinho
+se o merge seguinte reprovar.
+
+Invertendo, a janela vira o oposto: a Caixa para de assinar imediatamente (há
+guarda: `test_inv_caixa_nao_assina_sessao.py`) e passa a consumir a
+`identidade`; o site ainda pergunta ao `/interno/sessao` da Caixa, que já está
+inerte, e portanto mostra "Entrar" para todo mundo — inclusive para quem
+acabou de entrar. É **degradação cosmética, fail-open, com a página abrindo
+normal** — exatamente o modo de falha que o §4 escolheu tolerar. Trocar um
+cookie disputado por um cabeçalho desatualizado por alguns minutos é troca
+óbvia.
 
 ## 6. O que fica decidido para o próximo agente
 
