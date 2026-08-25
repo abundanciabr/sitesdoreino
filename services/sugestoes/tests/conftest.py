@@ -113,6 +113,12 @@ def ambiente(monkeypatch):
     monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
     monkeypatch.setenv("ALUNOS_API_TOKEN", "token-do-par-sugestoes-alunos")
     monkeypatch.delenv("SUGESTOES_STAFF_EMAILS", raising=False)
+    # [INV-SUG10] A lista de APROVADORES começa ausente pelo mesmo motivo — e
+    # aqui ele é ainda mais duro: sem ela ninguém autoriza desenvolvimento, e é
+    # esse o comportamento CERTO (EVO-40, decisão do mantenedor em 25/08/2026).
+    # Montá-la por conveniência aqui faria a suíte inteira rodar num regime que
+    # a produção não tem, e o guarda de fail-closed nunca reprovaria.
+    monkeypatch.delenv("SUGESTOES_APROVADORES", raising=False)
     ses.limpar_caches()
     yield
     ses.limpar_caches()
@@ -313,6 +319,66 @@ def entrar_como_staff(rede, lista_da_staff, db):
 def equipe(entrar_como_staff):
     """Alguém da equipe já dentro — o ponto de partida dos guardas do EVO-13."""
     return entrar_como_staff()
+
+
+# ---------------------------------------------------------------------------
+# O corredor do ChangeSpec (EVO-40) — o segundo papel, e ele NÃO é o crachá
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def lista_de_aprovadores(monkeypatch):
+    """Põe um e-mail em `SUGESTOES_APROVADORES`, acumulando.
+
+    Gêmea da `lista_da_staff`, e separada dela de propósito: moderar é da
+    equipe, autorizar desenvolvimento é do aprovador. Uma fixture que fizesse
+    as duas coisas ao mesmo tempo apagaria da suíte a diferença que o
+    mantenedor decidiu em 25/08/2026 — e o guarda de "staff não basta" ficaria
+    verde sem nunca ter medido nada.
+    """
+    emails: list[str] = []
+
+    def _incluir(email: str) -> None:
+        emails.append(email.strip().lower())
+        monkeypatch.setenv("SUGESTOES_APROVADORES", ",".join(emails))
+
+    return _incluir
+
+
+@pytest.fixture
+def aprovador(entrar_como_staff, lista_de_aprovadores):
+    """Quem pode registrar ChangeSpec: da equipe **e** na lista de aprovadores.
+
+    Os dois papéis, porque a tela mora atrás do crachá e o registro atrás do
+    mandato. Na prática de hoje é uma pessoa só (o mantenedor); no dado e no
+    código são dois portões, porque um dia pode não ser.
+    """
+    email = "mantenedor@meshcraft.test"
+    lista_de_aprovadores(email)
+    return entrar_como_staff(email=email, nome="Mantenedor")
+
+
+@pytest.fixture
+def changespec(aprovador, sugestao):
+    """Um ChangeSpec aprovado já registrado — pelo caminho de escrita real.
+
+    Nunca por `ChangeSpecAprovado.objects.create(...)` à mão: o que os guardas
+    da trava precisam provar é que a JORNADA abre o corredor, e um `create()`
+    continuaria verde no dia em que a tela parasse de conferir qualquer coisa.
+    """
+    from django.urls import reverse
+
+    resposta = aprovador.client.post(
+        reverse("changespecs", args=[sugestao.id]),
+        {
+            "change_id": "CS-SUGESTOES-0001",
+            "documento": "docs/changespecs/CS-SUGESTOES-0001.md",
+            "aprovado_por": "Davi (mantenedor)",
+            "aprovado_em": "2026-08-25",
+        },
+    )
+    assert resposta.status_code == 302, resposta.content
+    return sugestao.changespecs.get()
 
 
 # ---------------------------------------------------------------------------

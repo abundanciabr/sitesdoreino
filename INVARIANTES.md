@@ -155,6 +155,30 @@ primeira oportunidade de violá-la.
   a primeira célula a nascer **depois** da regra; toda célula futura que
   consuma sessão herda a mesma obrigação.
 
+### [INV-SUG10] Corredor do ChangeSpec (nada entra em desenvolvimento sem ele)
+- **O quê:** `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se
+  existir um ChangeSpec **aprovado** registrado referenciando aquela sugestão
+  (`docs/caixa-de-sugestoes/FORMATO-CHANGESPEC.md` §5 e a última linha da §8 da
+  `ESPECIFICACAO-CELULA.md`). Quem registra é só quem está em
+  `SUGESTOES_APROVADORES` — lista **fail-closed**: ausente ou vazia ⇒ ninguém
+  aprova ⇒ nada entra em desenvolvimento. Estar em `SUGESTOES_STAFF_EMAILS` não
+  basta: moderar e autorizar desenvolvimento são dois papéis. O registro é
+  append-only, como o histórico de status.
+- **Por quê:** o corredor existe para que uma ideia aprovada **nunca** vire um
+  prompt aberto do tipo "implemente isso" para um agente. Sem ele, o passo em que
+  se decide escopo, células proibidas e critérios de aceitação é justamente o que
+  desaparece sob pressa — e o agente escreve o próprio mandato. Fail-closed no
+  aprovador pelo mesmo motivo: "não sei quem pode aprovar" não pode virar "então
+  pode qualquer um".
+- **Teste-Guarda:**
+  `services/sugestoes/tests/test_inv_changespec_trava_o_desenvolvimento.py` —
+  a trava reprovando nos três degraus (ponto de estrangulamento, `Sugestao.save()`
+  e o trigger `sugestoes_exige_changespec` do Postgres, que pega `QuerySet.update()`
+  e SQL cru), passando com ChangeSpec registrado, sem quebrar as outras transições,
+  e o registro recusando edição e remoção. O portão do aprovador (lista ausente,
+  lista vazia, staff sem mandato) está em `services/sugestoes/tests/test_changespecs.py`.
+- **Célula dona:** sugestoes
+
 ---
 
 ## Invariantes da própria CI

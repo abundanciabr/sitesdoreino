@@ -45,7 +45,12 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.sugestoes import eventos
-from apps.sugestoes.models import AvaliacaoInterna, HistoricoStatus, Sugestao
+from apps.sugestoes.models import (
+    AvaliacaoInterna,
+    CorredorAusente,
+    HistoricoStatus,
+    Sugestao,
+)
 from apps.sugestoes.tasks import relay_apos_commit
 
 from .avisos import avisar_o_autor
@@ -84,6 +89,23 @@ CAMPOS_DE_NOTA = ("impacto_educacional", "impacto_comercial", "esforco_tecnico")
 SEM_CRACHA = (
     "Esta parte da Caixa é da equipe. Sua sessão está aberta, mas o seu e-mail "
     "não está na lista de quem modera."
+)
+
+# [INV-SUG10] A frase que a trava do ChangeSpec diz — uma só, usada na recusa
+# do POST e no aviso que a página mostra ANTES de alguém tentar. Duas cópias
+# divergiriam no primeiro ajuste, e a que ninguém testa é a que fica errada.
+#
+# Ela diz o CAMINHO, e não só o "não": erro que não ensina o que fazer custa
+# uma rodada de investigação a quem o lê. O endereço da tela de registro não
+# entra aqui — sai de `{% url %}` no template, como todo endereço desta casa
+# (`armadilhas/102`).
+SEM_CORREDOR = (
+    "Esta ideia está em “Planejado” e ainda não tem ChangeSpec aprovado "
+    "registrado — por isso ela não vai para “Em desenvolvimento”. O corredor "
+    "existe para que uma ideia aprovada nunca vire um prompt aberto do tipo "
+    "“implemente isso” (FORMATO-CHANGESPEC.md §5). O caminho: escreva o "
+    "ChangeSpec em docs/changespecs/, colha a aprovação humana e registre-a "
+    "no botão “Registrar ChangeSpec aprovado”, aqui embaixo."
 )
 
 
@@ -135,6 +157,14 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
     [INVARIANTE 3] A justificativa é conferida **antes** de abrir a transação:
     recusa não precisa de rollback.
 
+    [INVARIANTE 4 — INV-SUG10, EVO-40] `planejado → em_desenvolvimento` só
+    acontece com ChangeSpec aprovado registrado. A conferência aqui é a que
+    produz a frase; a que produz a IMPOSSIBILIDADE está dois degraus abaixo
+    (`Sugestao.save()` e o trigger `sugestoes_exige_changespec`). A corrida
+    entre o `sugestao.status` lido pela view e o estado real do banco é
+    resolvida pelo degrau 2, que relê o status DENTRO da transação, depois do
+    `select_for_update`.
+
     Repare no que NÃO está aqui: nenhum caminho de correção. `HistoricoStatus`
     é append-only nos três degraus do EVO-11 (instância, queryset e trigger no
     Postgres) — corrigir é registrar de novo, e é isso que uma segunda chamada
@@ -152,6 +182,24 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
             "Para marcar como “Não planejado” é preciso escrever o porquê — "
             "quem sugeriu vai ler essa justificativa (spec §10)."
         )
+
+    # [INV-SUG10] A trava do ChangeSpec, degrau 1 de 3 — o ponto de
+    # estrangulamento. Aqui ela não acrescenta poder nenhum ao que o
+    # `Sugestao.save()` já impõe (degrau 2) e o trigger do Postgres impõe
+    # abaixo dele (degrau 3): o que ela acrescenta é a FRASE. Sem esta linha, a
+    # recusa chegaria à equipe como um erro de servidor no meio de um POST, e
+    # não como uma página dizendo o que fazer em seguida.
+    #
+    # Conferida ANTES de abrir a transação, como a justificativa acima: recusa
+    # não precisa de rollback. E lida pelo gerente relacionado
+    # (`sugestao.changespecs`), não por um import de `apps/core/changespecs.py`
+    # — que importa `exige_staff` DESTE arquivo, e o par viraria um ciclo.
+    if (
+        status_novo == Sugestao.Status.EM_DESENVOLVIMENTO
+        and sugestao.status == Sugestao.Status.PLANEJADO
+        and not sugestao.changespecs.exists()
+    ):
+        raise CorredorAusente(SEM_CORREDOR)
 
     with transaction.atomic():
         travada = (
@@ -254,6 +302,17 @@ def _pagina_de_moderacao(request, ator, sugestao, *, erros=(), status=200):
             "status_disponiveis": opcoes_de_status(),
             "nota_rascunho": (request.POST.get("nota") or "").strip(),
             "erros": list(erros),
+            # [INV-SUG10] O corredor do EVO-40, nas duas metades que a página
+            # precisa: o que JÁ está registrado (a lista, que é a prova de que
+            # a ideia pode andar) e a frase do que está barrado agora — que a
+            # página mostra ANTES de alguém tentar, e não só depois do 400.
+            "changespecs": sugestao.changespecs.select_related("registrado_por"),
+            "sem_corredor": (
+                SEM_CORREDOR
+                if sugestao.status == Sugestao.Status.PLANEJADO
+                and not sugestao.changespecs.exists()
+                else ""
+            ),
         },
         status=status,
     )
@@ -295,7 +354,11 @@ def mudar_status(request, ator, sugestao_id):
             nota=request.POST.get("nota"),
             por=ator.identidade,
         )
-    except JustificativaObrigatoria as erro:
+    except (JustificativaObrigatoria, CorredorAusente) as erro:
+        # As duas recusam ANTES de qualquer escrita e as duas voltam como
+        # página, com o motivo em português — nunca como 500. A `CorredorAusente`
+        # também pode subir de dentro do `save()` (degrau 2), e cair aqui é o
+        # que garante que nem o caminho de corrida vire erro de servidor.
         return _pagina_de_moderacao(
             request, ator, sugestao, erros=[str(erro)], status=400
         )

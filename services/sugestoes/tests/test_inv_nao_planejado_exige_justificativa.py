@@ -67,10 +67,18 @@ def test_com_justificativa_passa_e_a_nota_fica_no_historico(equipe, sugestao):
     assert linha.nota == motivo
 
 
-def test_os_outros_status_nao_exigem_nota(equipe, sugestao):
+def test_os_outros_status_nao_exigem_nota(equipe, sugestao, changespec):
     """A exigência é DESTE status, não do formulário — senão a equipe passaria
     a escrever "ok" em tudo, e o campo perderia o sentido justamente onde ele
-    importa."""
+    importa.
+
+    **O `changespec` no argumento é do EVO-40, e é precondição, não
+    afrouxamento.** A volta deste teste passa por `planejado →
+    em_desenvolvimento`, que desde a trava do ChangeSpec (INV-SUG10) exige
+    corredor registrado. Sem a fixture, este guarda passaria a medir a trava —
+    e ficaria vermelho por um motivo que não é o dele. O que ele afirma
+    continua idêntico: nenhum destes quatro status pede justificativa.
+    """
     for status in (
         Sugestao.Status.PLANEJADO,
         Sugestao.Status.EM_DESENVOLVIMENTO,

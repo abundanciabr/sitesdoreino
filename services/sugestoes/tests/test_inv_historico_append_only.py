@@ -187,6 +187,14 @@ def _moderacao_completa(cliente, sugestao) -> dict[str, list]:
                 {"impacto_educacional": 4, "notas": "vale a pena"},
             )
         ],
+        # [EVO-40] A tela do corredor do ChangeSpec. Entra aqui porque a
+        # varredura abaixo exige o urlconf INTEIRO — e o que este arquivo mede
+        # nela é o que ela NÃO faz: nenhuma tela da equipe emite UPDATE ou
+        # DELETE no histórico, nem a que autoriza desenvolvimento. Sem mandato
+        # de aprovador a resposta é 403, e isso não enfraquece a medição: o que
+        # se conta são as consultas emitidas, e uma recusa que não escreve nada
+        # é justamente o caso mais fácil de estar certo.
+        "changespecs": [cliente.get(reverse("changespecs", args=[sugestao.id]))],
     }
 
 

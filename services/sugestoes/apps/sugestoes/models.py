@@ -49,6 +49,16 @@ class RegistroImutavel(Exception):
     """
 
 
+class CorredorAusente(Exception):
+    """`planejado → em_desenvolvimento` sem ChangeSpec aprovado (EVO-40).
+
+    Mora AQUI, e não em `apps/core/changespecs.py`, porque quem a levanta é o
+    `Sugestao.save()` — o degrau que pega qualquer caminho Python, inclusive um
+    `manage.py` escrito daqui a seis meses que nunca ouviu falar da moderação.
+    `apps/sugestoes` não importa `apps/core`; é o contrário.
+    """
+
+
 class Identidade(models.Model):
     """Quem é a pessoa, para esta célula — cunhada na primeira entrada.
 
@@ -163,6 +173,46 @@ class Sugestao(models.Model):
     def __str__(self) -> str:  # pragma: no cover
         return self.titulo
 
+    def save(self, *args, **kwargs):
+        """[INV-SUG10] Degrau 2 da trava do ChangeSpec — o que pega TODO
+        caminho Python.
+
+        A `ESPECIFICACAO-CELULA.md` §8 pede a validação "no `save()` ou no
+        serializer", e é literalmente aqui. O degrau 1 é o ponto de
+        estrangulamento (`apps/core/changespecs.py`), que recusa com uma frase
+        que ensina o caminho; este degrau existe para o dia em que alguém
+        escrever um SEGUNDO caminho — um comando de `manage.py`, uma correção
+        em massa, um `python manage.py shell` às onze da noite.
+
+        **Custa uma consulta por gravação de linha existente**, para saber o
+        status anterior. É a única forma de o guarda não depender de quem
+        chama: uma assinatura que recebesse `status_anterior` seria um guarda
+        com porta dos fundos do tamanho da confiança em cada chamador. O preço
+        é pago só em mudança de status (a criação de sugestão não passa por
+        aqui: `_state.adding` é `True`), que acontece algumas vezes por dia.
+
+        O que este degrau NÃO pega: `QuerySet.update(status=...)` e SQL cru —
+        eles não passam por `save()` (`armadilhas/023`). Quem os pega é o
+        degrau 3, o trigger `sugestoes_exige_changespec` da migration `0004`.
+        """
+        if not self._state.adding and self.status == self.Status.EM_DESENVOLVIMENTO:
+            anterior = (
+                Sugestao.objects.filter(pk=self.pk)
+                .values_list("status", flat=True)
+                .first()
+            )
+            if (
+                anterior == self.Status.PLANEJADO
+                and not ChangeSpecAprovado.objects.filter(sugestao_id=self.pk).exists()
+            ):
+                raise CorredorAusente(
+                    f"INV-SUG10: a sugestão {self.pk} não tem ChangeSpec "
+                    "aprovado registrado — 'planejado' não vira "
+                    "'em_desenvolvimento' sem o corredor existir primeiro "
+                    "(FORMATO-CHANGESPEC.md §5)."
+                )
+        return super().save(*args, **kwargs)
+
 
 class Voto(models.Model):
     """Um ator vota no máximo uma vez por sugestão (spec §8).
@@ -210,19 +260,61 @@ class AppendOnlyQuerySet(models.QuerySet):
     larga: `Model.objects.filter(...).update(...)` e `bulk_update()` (que
     internamente chama este `update()`) mudariam a linha sem nunca tocar o
     modelo. As duas metades precisam existir.
+
+    A mensagem sai de `self.model.__name__` e não de um nome cravado: desde o
+    EVO-40 são DUAS as tabelas append-only desta célula, e um texto fixo faria
+    a segunda acusar a primeira.
     """
 
     def update(self, **kwargs):
         raise RegistroImutavel(
-            "HistoricoStatus é append-only: update() é proibido. "
-            "Correção de histórico é um registro NOVO."
+            f"{self.model.__name__} é append-only: update() é proibido. "
+            "Correção é um registro NOVO."
         )
 
     def delete(self):
-        raise RegistroImutavel("HistoricoStatus é append-only: delete() é proibido.")
+        raise RegistroImutavel(
+            f"{self.model.__name__} é append-only: delete() é proibido."
+        )
 
 
-class HistoricoStatus(models.Model):
+class RegistroAppendOnly(models.Model):
+    """Os dois degraus Python do append-only, para quem precisar deles.
+
+    Existe desde o EVO-40, quando a segunda tabela append-only desta célula
+    nasceu (`ChangeSpecAprovado`). Antes disto os dois degraus moravam
+    copiados dentro do `HistoricoStatus` — e cópia é o jeito de as duas
+    envelhecerem separadas.
+
+    **Os degraus 1 e 2 e nada mais.** O terceiro é o trigger no Postgres, que
+    cada migração cria para a SUA tabela: uma classe Python não tem como
+    prometer o que só o banco impõe (`armadilhas/079` — o collector do
+    `CASCADE` apaga sem passar por nenhum dos dois primeiros).
+    """
+
+    objects = AppendOnlyQuerySet.as_manager()
+
+    class Meta:
+        abstract = True
+
+    def save(self, *args, **kwargs):
+        # `_state.adding` é o único sinal confiável aqui: a chave é
+        # `BigAutoField`, então checar `self.pk is None` daria falso-verde em
+        # qualquer caminho que atribua o pk antes de gravar.
+        if not self._state.adding:
+            raise RegistroImutavel(
+                f"{type(self).__name__} é append-only: esta linha já existe. "
+                "Correção é um registro NOVO."
+            )
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise RegistroImutavel(
+            f"{type(self).__name__} é append-only: delete() é proibido."
+        )
+
+
+class HistoricoStatus(RegistroAppendOnly):
     """Append-only: nenhuma linha é editada ou apagada depois de criada.
 
     A regra é imposta em **três degraus** (Lei 1 — empurrar a regra escada
@@ -233,6 +325,10 @@ class HistoricoStatus(models.Model):
     3. **o Postgres recusa** — trigger `BEFORE UPDATE OR DELETE` criado na
        migration `0001_initial`. É o degrau que sobrevive a `cursor.execute`
        cru, a `psql` e a qualquer código futuro que não conheça esta classe.
+
+    Os degraus 1 e 2 mudaram de casa no EVO-40 (`RegistroAppendOnly`), sem
+    mudar de comportamento: a célula ganhou uma SEGUNDA tabela append-only e
+    duas cópias do mesmo guarda envelheceriam separadas.
 
     A FK para `Sugestao` é `PROTECT`, não `CASCADE` como na §6 da spec: com
     `CASCADE`, apagar uma sugestão apagaria o histórico dela por dentro do
@@ -253,24 +349,94 @@ class HistoricoStatus(models.Model):
     )
     criado_em = models.DateTimeField(auto_now_add=True)
 
-    objects = AppendOnlyQuerySet.as_manager()
-
     class Meta:
         ordering = ["criado_em", "id"]
 
-    def save(self, *args, **kwargs):
-        # `_state.adding` é o único sinal confiável aqui: a chave é
-        # `BigAutoField`, então checar `self.pk is None` daria falso-verde em
-        # qualquer caminho que atribua o pk antes de gravar.
-        if not self._state.adding:
-            raise RegistroImutavel(
-                "HistoricoStatus é append-only: esta linha já existe. "
-                "Correção de histórico é um registro NOVO."
-            )
-        return super().save(*args, **kwargs)
 
-    def delete(self, *args, **kwargs):
-        raise RegistroImutavel("HistoricoStatus é append-only: delete() é proibido.")
+class ChangeSpecAprovado(RegistroAppendOnly):
+    """O corredor entre a decisão de produto e a implementação (EVO-40).
+
+    Lei: `docs/caixa-de-sugestoes/FORMATO-CHANGESPEC.md` §3/§4/§5 e a última
+    linha da §8 da `ESPECIFICACAO-CELULA.md` — *"`Sugestao.status` só sai de
+    `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec aprovado
+    referenciando aquele `suggestion_id`"*.
+
+    **Isto é um REGISTRO, não o documento.** O ChangeSpec de verdade mora em
+    `docs/changespecs/`, no repositório, e a célula **não lê o repositório em
+    runtime** (decisão do plano mestre). O que fica aqui é o mínimo que a trava
+    precisa para existir sem adivinhar: qual sugestão, qual CHANGE-ID, onde
+    está o documento, quem aprovou e quando — e, separado disto, quem trouxe
+    esse fato para dentro da Caixa.
+
+    **`aprovado_por` e `registrado_por` são coisas diferentes, e as duas
+    importam.** O §1 do formato diz que a aprovação é humana e nominal; o
+    registro é o ato de trazer essa aprovação para dentro do sistema. Hoje o
+    mantenedor decidiu que só quem está em `SUGESTOES_APROVADORES` registra —
+    então na prática são a mesma pessoa. O dado guarda os dois porque um dia
+    pode não ser, e porque um campo só responderia "quem" a duas perguntas
+    diferentes.
+
+    **`aprovado_por` é NOME, nunca e-mail** (`DECISAO-EVO-01` §3: o e-mail vive
+    numa linha só, a `Identidade`). Não é combinado: `registrar()` recusa um
+    valor com `@`, e há guarda. Uma FK para `Identidade` também não serve — a
+    pessoa que assina o documento pode não ter nunca entrado na Caixa.
+
+    **Append-only, e pelo mesmo motivo do `HistoricoStatus`.** O §4 do formato:
+    *"depois de aprovado, um ChangeSpec não é editado. Se o escopo mudar, nasce
+    `CS-…-v2` com um campo `SUBSTITUI` apontando para o anterior"*. Aqui isso é
+    uma linha NOVA, com o `change_id` da v2 — e o `SUBSTITUI` mora no
+    documento, que é a autoridade. Guardar a corrente aqui seria a célula
+    modelando o que ela decidiu não ler.
+
+    Os três degraus, como no `HistoricoStatus`: `save()` e `AppendOnlyQuerySet`
+    de `RegistroAppendOnly`, mais o trigger `BEFORE UPDATE OR DELETE` da
+    migration `0004`.
+    """
+
+    # `PROTECT` como em toda referência desta célula: a sugestão não some por
+    # baixo do corredor que autorizou o desenvolvimento dela.
+    sugestao = models.ForeignKey(
+        Sugestao, related_name="changespecs", on_delete=models.PROTECT
+    )
+    # `CS-{celula}-{sequencial}` (formato §3). NÃO é único sozinho: um mesmo
+    # ChangeSpec pode referenciar várias sugestões (§2 — "se nasceu de várias
+    # sugestões mescladas, referencia todas"). O par é que é único.
+    change_id = models.CharField(max_length=60)
+    # Onde o documento está: URL ou o caminho dele no repositório. Texto livre
+    # com forma conferida em `registrar()` — link que não leva a lugar nenhum é
+    # um corredor que ninguém consegue auditar.
+    documento = models.CharField(max_length=300)
+    aprovado_por = models.CharField(max_length=120)
+    aprovado_em = models.DateField()
+    registrado_por = models.ForeignKey(
+        "Identidade", related_name="changespecs_registrados", on_delete=models.PROTECT
+    )
+    registrado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-registrado_em", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["sugestao", "change_id"],
+                name="changespec_unico_por_sugestao",
+            ),
+            # O que a trava lê é a EXISTÊNCIA da linha. Estas duas checagens são
+            # o que impede a existência de significar menos do que promete: uma
+            # linha sem quem aprovou, ou sem para onde apontar, seria um
+            # ChangeSpec "aprovado" por ninguém — exatamente o que o §4 do
+            # formato chama de não-pronto.
+            models.CheckConstraint(
+                condition=~models.Q(aprovado_por=""),
+                name="changespec_tem_quem_aprovou",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(documento=""),
+                name="changespec_tem_documento",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
+        return f"{self.change_id} → sugestão {self.sugestao_id}"
 
 
 class AvaliacaoInterna(models.Model):
