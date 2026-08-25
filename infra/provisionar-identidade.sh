@@ -49,6 +49,45 @@ cd /opt/plataforma 2>/dev/null || parar "não achei /opt/plataforma — você es
 [ -f env/sugestoes.env ]  || parar "não achei env/sugestoes.env — a Caixa precisa estar provisionada antes (é dela que eu copio as credenciais do Google)."
 [ -f env/funil.env ]      || parar "não achei env/funil.env."
 
+# ---------------------------------------------------------------------------
+# TRAVA DE DERIVA — mesma classe (e mesmo remédio) da que existe no
+# `provisionar-sugestoes.sh`. Este script REESCREVE `env/identidade.env` inteiro
+# (o `cat >` lá embaixo); logo, só pode rodar enquanto o heredoc souber gerar
+# TODAS as chaves que o arquivo vivo já tem.
+#
+# Aqui a trava chega ANTES do primeiro caso, e não depois: em 25/08/2026 o
+# script irmão foi flagrado com exatamente este buraco — o env vivo da Caixa
+# tinha ganho `IDENTIDADE_API_URL`/`IDENTIDADE_API_TOKEN`, o heredoc de lá nunca
+# soube delas, e re-rodar teria derrubado a porta da Caixa (500 em toda visita)
+# com o deploy verde. `env/identidade.env` é novo e ainda não divergiu; esperar
+# ele divergir para então guardá-lo seria esperar um incidente cujo mecanismo já
+# conhecemos — "documento que generaliza a partir de dois é armadilha esperando
+# o terceiro caso".
+#
+# A lista abaixo acompanha o heredoc, e
+# `ci/tests/test_provisionamento_nao_perde_variavel.py` reprova se divergirem.
+# ---------------------------------------------------------------------------
+CHAVES_QUE_EU_GERO="DATABASE_URL DEBUG DJANGO_SECRET_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET IDENTIDADE_STAFF_EMAILS TOKENS_ACEITOS_FUNIL TOKENS_ACEITOS_SUGESTOES TOKENS_COMPLETOS_SUGESTOES"
+
+if [ -f env/identidade.env ]; then
+  SOBRANDO=""
+  for CHAVE in $(grep -oE '^[A-Z_][A-Z0-9_]*=' env/identidade.env | tr -d '=' | sort -u); do
+    case " $CHAVES_QUE_EU_GERO " in
+      *" $CHAVE "*) : ;;
+      *) SOBRANDO="$SOBRANDO $CHAVE" ;;
+    esac
+  done
+  if [ -n "$SOBRANDO" ]; then
+    echo "PAROU POR SEGURANÇA: o env/identidade.env desta máquina tem variável que"
+    echo "eu NÃO sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
+    for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
+    echo
+    echo "NADA foi alterado. Mande esta tela ao agente: ou o script aprende a chave,"
+    echo "ou ela pertence a outro script de provisionamento, que é quem deve rodar."
+    exit 1
+  fi
+fi
+
 docker compose ps postgres >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 psql_super() { docker compose exec -T postgres psql -U postgres "$@"; }
 

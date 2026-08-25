@@ -66,6 +66,27 @@ Caixa hoje **fecharia a Caixa** — o próprio `sugestoes.env.exemplo` diz que s
    houver dois scripts com `cat > env/`, o comentário é a única coisa segurando — e
    comentário não reprova PR nenhum.
 
+**✅ FECHADO no mesmo dia, pela segunda das duas saídas.** A opção "quem escreve tudo
+passa a ler o que existe" foi descartada com motivo: o script teria de **adivinhar** valor
+que não é dele — o token do par `sugestoes↔identidade` pertence ao
+`provisionar-identidade.sh`. Adivinhar seria trocar um estrago silencioso por outro. Ficou
+a opção de **medir a divergência e parar**:
+
+* cada script que reescreve env inteiro ganhou uma **trava de deriva** — antes do `cat >`,
+  compara as chaves do arquivo vivo com uma lista `CHAVES_QUE_EU_GERO` e imprime
+  `PAROU POR SEGURANÇA` com **a lista nominal do que seria apagado**, dizendo qual script
+  é dono de cada chave órfã. Sai 1, e nada é alterado;
+* a trava entrou nos **dois** scripts da família "cria", não só no flagrado — o
+  `identidade.env` ainda não divergiu, e esperar ele divergir seria aguardar um incidente
+  cujo mecanismo já se conhece;
+* e a lista, que é cópia consciente do heredoc (o script roda na VPS, sem Python e sem o
+  repositório), ganhou guarda próprio: `ci/tests/test_provisionamento_nao_perde_variavel.py`
+  lê os dois arquivos e reprova se divergirem, se a trava sumir, ou se o script escrever
+  chave que o molde não documenta. Provado por mutação nos dois sentidos.
+* o cabeçalho que dizia "IDEMPOTENTE: rodar de novo é seguro" foi corrigido: a promessa
+  agora vem com a ressalva e com o aviso de que re-rodar **rotaciona a chave do Django**
+  (todo mundo deslogado) e a senha do banco.
+
 **A regra que generaliza:** quando dois escritores dividem um arquivo e um deles escreve
 o arquivo *inteiro*, o outro está sempre a uma execução de ser apagado. Ou o que escreve
 tudo passa a ler o que existe, ou alguém mede a divergência — comentário pedindo
