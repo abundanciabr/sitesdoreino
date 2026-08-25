@@ -765,3 +765,30 @@ Como o Traefik roteia o prefixo inteiro da Caixa, `…/forms/sugestoes/interno/s
 negação no gateway, e ela mora em `infra/traefik/dynamic/plataforma.yml`, fora
 do alcance de um PR de célula (CODEOWNERS). **Fica registrada aqui e não foi
 paga neste PR** — quem for mexer em `infra/` a próximo, pague junto.
+
+## O login foi embora — e o que ficou é o que sempre foi desta célula (25/08/2026)
+
+Lei: `docs/decisoes/DECISAO-celula-de-identidade.md`. O Google, o cookie e o
+"quem é?" mudaram para a célula `identidade`; a Caixa virou CONSUMIDORA da
+resposta completa (`getSessionFull`, com e-mail — degrau `TOKENS_COMPLETOS_*`
+do lado de lá). O que ficou aqui, fail-closed como sempre: staff antes de
+matrícula, matrícula na `alunos`, recusa explicando com o e-mail na tela.
+
+As três decisões que valem releitura antes de mexer nesta área:
+
+- **A tabela `Identidade` local virou SNAPSHOT casado por e-mail** — as 6 FKs
+  de autoria continuam locais e ninguém migrou dado nenhum. Apagar a linha
+  local NÃO revoga sessão (ela renasce na visita seguinte); revogação é lá.
+- **`/interno/sessao` está DEPRECADO E INERTE**: responde pela sessão legada,
+  que ninguém mais assina — sempre `autenticado: false`. NÃO o "conserte"
+  ricocheteando para a identidade (`test_inv_sessao_nao_vaza_email` morde).
+  Remover a operação é Rito §3 futuro — dívida em ARMADILHAS-OPERACAO §9.
+- **Sair da Caixa é sair do site**: o `flush()` apaga `meshcraft_sessao` em
+  `Path=/` porque nome e Path dos settings CASAM com os da identidade — par
+  guardado em `test_inv_caixa_nao_assina_sessao.py`. E nenhuma página daqui
+  pode voltar a ESCREVER esse cookie (sobrescreveria a sessão do site com
+  assinatura que só esta célula lê).
+
+Custo por requisição: 1 salto à identidade (cache 60s por cookie) + 1 à
+`alunos` (cache 10 min por e-mail, positivo E negativo) — módulo, então os
+testes limpam via `ses.limpar_caches()` no `ambiente` (armadilhas/026).

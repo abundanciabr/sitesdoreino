@@ -164,9 +164,19 @@ def test_depois_de_sair_a_pessoa_volta_a_ser_anonima(dentro, sugestao):
     assert Voto.objects.count() == 0
 
 
-def test_um_cookie_de_identidade_que_nao_existe_mais_nao_vale(dentro, sugestao):
-    """O cookie assinado sobrevive à linha que ele aponta — a sessão, não."""
-    dentro.identidade.delete()
+def test_sessao_revogada_na_identidade_nao_vale_mais_aqui(dentro, sugestao):
+    """A revogação mudou de casa junto com o login (25/08/2026).
+
+    Antes, apagar a linha local derrubava o cookie na hora. Hoje a linha local
+    é SNAPSHOT (renasce do casamento por e-mail — apagar ela não revoga nada);
+    quem revoga é a `identidade`, e o que este guarda prova é que a revogação
+    DE LÁ vale AQUI no request seguinte: sessão que o site não reconhece mais
+    não participa de nada.
+    """
+    from apps.core import sessao as ses
+
+    dentro.rede.sessoes.clear()  # a identidade "esqueceu" esta sessão
+    ses.limpar_caches()  # e a janela de cache desta célula acabou
 
     assert dentro.client.get(reverse("quadro")).status_code == 302
     assert dentro.client.post(reverse("votar", args=[sugestao.id])).status_code == 302

@@ -1,120 +1,100 @@
-"""[INVARIANTE 5] `alunos` fora do ar ⇒ a porta FECHA, com erro claro.
+"""[INVARIANTE] Peça fora do ar ⇒ a porta FECHA, com erro claro.
 
-O modo de falha que este guarda existe para tornar impossível tem nome e é
-tentador de escrever:
+Desde a `DECISAO-celula-de-identidade` são DUAS as peças que a porta consulta:
+a `identidade` (quem é) e a `alunos` (se pode). Falhar QUALQUER uma delas
+nunca vira "deixa entrar" — a resposta daqui alimenta autorização, e
+autorização falha fechada (é o oposto do reconhecimento de exibição do
+`funil`, que falha aberto porque lá a resposta só decide um nome na tela).
 
-    try:
-        matriculas = AlunosClient().matriculas_de(email)
-    except Exception:
-        matriculas = [...]        # "deixa entrar, depois a gente confere"
-
-"Não consegui perguntar" NÃO é sinônimo de "perguntei e pode". A `alunos` é a
-fonte de verdade da matrícula (`DECISAO-EVO-01-identidade.md` §2); indisponível,
-a resposta honesta é *não sei*, e não saber fecha a porta.
-
-O guarda cobre as quatro formas de não saber que a rede oferece — conexão
-recusada, timeout, 500 e 401 — porque cada uma chega por um caminho diferente do
-`httpx` e é perfeitamente possível tratar uma e esquecer as outras três.
-
-A outra metade do invariante é a mensagem: o texto tem de dizer que o problema é
-NOSSO. Quem vê "não encontramos sua matrícula" quando o sistema é que caiu passa
-a tarde achando que perdeu o acesso ao curso que comprou.
+E a tela diz que o problema é NOSSO: a pessoa não pode sair daqui achando que
+perdeu a matrícula.
 """
 
 import httpx
 import pytest
 
 from apps.sugestoes.models import Identidade
+from tests.conftest import sessao_do_site
 
-pytestmark = pytest.mark.django_db
-
-PESSOA = "aluna@exemplo.test"
+PESSOA = "joao.silva@exemplo.test"
 
 
-@pytest.mark.parametrize(
-    "modo",
-    ["alunos_fora_do_ar", "alunos_demora_demais"],
-    ids=["conexão recusada", "timeout"],
-)
-def test_rede_que_nao_responde_nao_deixa_entrar(porta, perfil, rede, modo):
-    getattr(rede, modo)(PESSOA)
-
-    resposta = porta.bater(perfil(PESSOA))
-
+def _porta_fechada_explicando(pessoa):
+    resposta = pessoa.abrir()
     assert resposta.status_code == 503, resposta.content
-    assert not porta.esta_dentro
-    assert Identidade.objects.count() == 0
+    conteudo = resposta.content.decode()
+    assert "Não conseguimos conferir" in conteudo
+    assert "problema nosso" in conteudo
+    return conteudo
 
 
-@pytest.mark.parametrize("http", [401, 403, 500, 502, 503])
-def test_resposta_de_erro_da_alunos_nao_deixa_entrar(
-    porta, perfil, rede, http, matricula
-):
-    """Inclusive 401: token errado é falha de configuração, não permissão.
-
-    O 404 fica de fora de propósito — ele é uma RESPOSTA ("aluno inexistente"),
-    e está coberto pelo guarda do invariante 2.
-    """
-    rede.alunos_responde(PESSOA, httpx.Response(http))
-
-    resposta = porta.bater(perfil(PESSOA))
-
-    assert resposta.status_code == 503, resposta.content
-    assert not porta.esta_dentro
-    assert Identidade.objects.count() == 0
-
-
-def test_resposta_fora_do_contrato_nao_deixa_entrar(porta, perfil, rede):
-    """200 com um corpo que não é lista: `if matriculas:` acharia isto verdadeiro.
-
-    Um dicionário de erro (`{"detail": "..."}`) é truthy em Python. Sem a
-    conferência de tipo no cliente, este seria o caminho mais silencioso de
-    todos para alguém entrar sem matrícula.
-    """
-    rede.alunos_responde(
-        PESSOA, httpx.Response(200, json={"detail": "algo deu errado"})
-    )
-
-    resposta = porta.bater(perfil(PESSOA))
-
-    assert resposta.status_code == 503, resposta.content
-    assert not porta.esta_dentro
-    assert Identidade.objects.count() == 0
-
-
-def test_a_tela_diz_que_o_problema_e_nosso(porta, perfil, rede):
+def test_alunos_fora_do_ar_fecha_a_porta(rede, db):
     rede.alunos_fora_do_ar(PESSOA)
+    pessoa = sessao_do_site(rede, email=PESSOA)
 
-    corpo = porta.bater(perfil(PESSOA)).content.decode()
-
-    assert "problema nosso" in corpo
-    assert "não encontramos matrícula" not in corpo.lower()
+    _porta_fechada_explicando(pessoa)
+    assert Identidade.objects.count() == 0, "recusa não cunha identidade local"
 
 
-def test_configuracao_ausente_tambem_fecha_a_porta(porta, perfil, monkeypatch):
-    """Sem `ALUNOS_API_URL` no env, ninguém entra — e o log nomeia a variável.
+def test_alunos_demorando_demais_fecha_a_porta(rede, db):
+    rede.alunos_demora_demais(PESSOA)
+    pessoa = sessao_do_site(rede, email=PESSOA)
 
-    É a contrapartida de ler configuração no ponto de uso em vez de fail-hard no
-    import: a célula sobe, o `/healthz` responde, e o caminho que precisa da
-    variável falha fechado e alto. Sobe sem entrar em silêncio seria o pior dos
-    dois mundos.
+    _porta_fechada_explicando(pessoa)
+
+
+@pytest.mark.parametrize("status", [500, 401, 403])
+def test_alunos_com_erro_fecha_a_porta(rede, db, status):
+    """5xx e 401/403 (token errado) são "não consegui perguntar" — nunca
+    "não tem matrícula": as duas recusas têm telas diferentes."""
+    rede.alunos_responde(PESSOA, httpx.Response(status))
+    pessoa = sessao_do_site(rede, email=PESSOA)
+
+    _porta_fechada_explicando(pessoa)
+
+
+def test_identidade_fora_do_ar_fecha_a_porta(rede, db, client):
+    """A peça NOVA da mesma regra: sem saber QUEM É, nada de participação.
+
+    Note o detalhe: o visitante SEM cookie nenhum não é este caso — ele nem
+    gera pergunta e vê a porta normal. O caso é quem TEM cookie e a identidade
+    não responde: pode ser alguém logado, e mostrar "Entrar" mentiria.
     """
-    monkeypatch.delenv("ALUNOS_API_URL")
+    rede.central_fora_do_ar()
+    client.cookies["meshcraft_sessao"] = "algum-valor"
+    from tests.conftest import Porta
 
-    resposta = porta.bater(perfil(PESSOA))
-
-    assert resposta.status_code == 503, resposta.content
-    assert "ALUNOS_API_URL" in resposta.content.decode()
-    assert not porta.esta_dentro
-    assert Identidade.objects.count() == 0
+    _porta_fechada_explicando(Porta(client, rede))
 
 
-def test_o_google_fora_do_ar_tambem_fecha(porta, perfil, rede):
-    """O mesmo princípio no outro salto: sem perfil, não há quem entrar."""
-    rede.google_fora_do_ar()
+def test_identidade_respondendo_fora_do_contrato_fecha_a_porta(rede, db, client):
+    rede.central_responde(httpx.Response(200, json={"isto": "não é o contrato"}))
+    client.cookies["meshcraft_sessao"] = "algum-valor"
+    from tests.conftest import Porta
 
-    resposta = porta.bater()
+    _porta_fechada_explicando(Porta(client, rede))
 
-    assert resposta.status_code == 503, resposta.content
-    assert not porta.esta_dentro
-    assert Identidade.objects.count() == 0
+
+def test_resposta_autenticada_sem_email_fecha_a_porta(rede, db, client):
+    """`autenticado: true` sem e-mail = o degrau TOKENS_COMPLETOS faltando do
+    outro lado. Sem e-mail não há como conferir lista nenhuma — fecha, em vez
+    de tratar a pessoa como visitante (que esconderia a má configuração)."""
+    rede.central_responde(
+        httpx.Response(200, json={"autenticado": True, "nome_exibido": "João"})
+    )
+    client.cookies["meshcraft_sessao"] = "algum-valor"
+    from tests.conftest import Porta
+
+    _porta_fechada_explicando(Porta(client, rede))
+
+
+def test_participacao_tambem_fecha_quando_nao_da_para_conferir(rede, db, quadro):
+    """A outra metade: não é só a porta — nenhuma rota de participação roda."""
+    rede.alunos_fora_do_ar(PESSOA)
+    pessoa = sessao_do_site(rede, email=PESSOA)
+
+    from django.urls import reverse
+
+    resposta = pessoa.client.get(reverse("quadro"))
+    assert resposta.status_code == 302
+    assert resposta["Location"] == reverse("entrar")

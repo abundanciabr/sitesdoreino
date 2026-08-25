@@ -1,83 +1,57 @@
-"""[INVARIANTE 2] Sem matrícula não entra — e a tela NOMEIA o e-mail consultado.
+"""[INVARIANTE] Sem matrícula não participa — e a tela NOMEIA o e-mail.
 
-`DECISAO-EVO-01-identidade.md` §2 (só quem tem matrícula) e §5 (a fricção
-conhecida). São dois invariantes numa coisa só, e o segundo é o que separa esta
-recusa de um "acesso negado" seco:
-
-    "Entramos com joao.silva@gmail.com, mas não encontramos matrícula para esse
-     endereço. Se você comprou com outro e-mail, entre com ele."
-
-O cenário é real e o mantenedor foi avisado dele antes de escolher: a pessoa
-comprou com `joao@empresa.test` e a conta Google dela é `joao.silva@exemplo.test`.
-Sem o e-mail na tela ela não tem como descobrir sozinha o que aconteceu — e é
-por isso que o e-mail aparecer na resposta é INVARIANTE, não capricho de texto.
-
-O guarda também prova que a `alunos` foi perguntada **pelo e-mail certo**: uma
-consulta com o endereço errado devolveria "sem matrícula" para todo mundo, e a
-Caixa ficaria trancada sem ninguém entender.
+A pessoa pode estar LOGADA NO SITE (a `identidade` a reconhece) e ainda assim
+não ter voz na Caixa: entrar no site é ser reconhecido; participar daqui exige
+matrícula ou crachá (`DECISAO-EVO-01` §2, preservada pela
+`DECISAO-celula-de-identidade`). O e-mail na tela é a única informação que
+torna a recusa resolvível pela própria pessoa (§5): quem comprou com outro
+endereço precisa VER com qual entrou.
 """
 
-import pytest
+from django.urls import reverse
 
 from apps.sugestoes.models import Identidade
+from tests.conftest import sessao_do_site
 
-pytestmark = pytest.mark.django_db
-
-SEM_MATRICULA = "joao.silva@exemplo.test"
+PESSOA = "sem.matricula@exemplo.test"
 
 
-def test_sem_matricula_nao_abre_sessao_e_nao_cunha_identidade(porta, perfil, rede):
-    rede.alunos_nao_conhece(SEM_MATRICULA)
+def test_logado_no_site_sem_matricula_leva_recado_com_o_email(rede, db):
+    rede.alunos_nao_conhece(PESSOA)
+    pessoa = sessao_do_site(rede, email=PESSOA)
 
-    resposta = porta.bater(perfil(SEM_MATRICULA))
+    resposta = pessoa.abrir()
 
     assert resposta.status_code == 403, resposta.content
-    assert not porta.esta_dentro
+    conteudo = resposta.content.decode()
+    assert "Não encontramos matrícula" in conteudo
+    assert PESSOA in conteudo, "a tela precisa NOMEAR o e-mail (EVO-01 §5)"
+    assert "Entrar com outra conta Google" in conteudo, (
+        "quem levou um não precisa do botão logo abaixo para tentar com a "
+        "outra conta — tela de erro sem saída é acesso negado seco"
+    )
+
+
+def test_lista_vazia_de_matriculas_tambem_e_recusa(rede, db):
+    rede.alunos_diz(PESSOA, [])
+    pessoa = sessao_do_site(rede, email=PESSOA)
+
+    assert pessoa.abrir().status_code == 403
+
+
+def test_recusa_nao_cunha_identidade_local(rede, db):
+    """A linha local só nasce para quem PODE participar: cunhar na recusa
+    encheria o snapshot de gente que nunca teve voz aqui."""
+    rede.alunos_nao_conhece(PESSOA)
+    sessao_do_site(rede, email=PESSOA).abrir()
+
     assert Identidade.objects.count() == 0
 
 
-def test_a_recusa_mostra_o_email_que_o_google_mandou(porta, perfil, rede):
-    """O invariante da §5: a tela precisa ser útil, não só correta."""
-    rede.alunos_nao_conhece(SEM_MATRICULA)
+def test_sem_matricula_nenhuma_rota_de_participacao_roda(rede, db, quadro):
+    rede.alunos_nao_conhece(PESSOA)
+    pessoa = sessao_do_site(rede, email=PESSOA)
 
-    resposta = porta.bater(perfil(SEM_MATRICULA))
-
-    assert SEM_MATRICULA in resposta.content.decode()
-
-
-def test_lista_vazia_conta_como_sem_matricula(porta, perfil, rede):
-    """200 com `[]` e 404 significam a mesma coisa para esta porta.
-
-    O contrato manda 404 ("aluno inexistente"), mas um consumidor que só saiba
-    tratar o 404 fica refém de um detalhe de implementação da outra célula.
-    """
-    rede.alunos_diz(SEM_MATRICULA, [])
-
-    resposta = porta.bater(perfil(SEM_MATRICULA))
-
-    assert resposta.status_code == 403, resposta.content
-    assert not porta.esta_dentro
-    assert Identidade.objects.count() == 0
-
-
-def test_a_alunos_e_perguntada_pelo_email_verificado_do_google(porta, perfil, rede):
-    consulta = rede.alunos_nao_conhece(SEM_MATRICULA)
-
-    porta.bater(perfil(SEM_MATRICULA))
-
-    assert consulta.call_count == 1
-    pedido = consulta.calls[0].request
-    assert SEM_MATRICULA in str(pedido.url)
-    # R2: Bearer do par, e a rede interna — nunca a borda pública.
-    assert pedido.headers["Authorization"] == "Bearer token-do-par-sugestoes-alunos"
-
-
-def test_com_matricula_entra(porta, perfil, rede, matricula):
-    """O outro lado da moeda: sem ele, um guarda que recusa TUDO passaria."""
-    rede.alunos_diz(SEM_MATRICULA, [matricula])
-
-    resposta = porta.bater(perfil(SEM_MATRICULA))
-
-    assert resposta.status_code == 200, resposta.content
-    assert porta.esta_dentro
-    assert Identidade.objects.filter(email=SEM_MATRICULA).count() == 1
+    resposta = pessoa.client.get(reverse("quadro"))
+    assert resposta.status_code == 302
+    assert resposta["Location"] == reverse("entrar")

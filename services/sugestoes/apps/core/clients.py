@@ -1,33 +1,32 @@
 # apps/core/clients.py  # [RECEITA:R2 v1]
 """O que esta célula fala com o mundo lá fora — e nada além disso.
 
-Duas conversas, e a `DECISAO-EVO-01-identidade.md` §2 separa as duas com uma
-frase que organiza este arquivo inteiro: **o Google prova QUEM É; a célula
-`alunos` decide SE PODE.** São perguntas diferentes, feitas a serviços
-diferentes, e nenhuma das duas autoriza sozinha.
+Duas conversas, e a `DECISAO-celula-de-identidade` (25/08/2026) reorganizou a
+primeira: **a célula `identidade` prova QUEM É; a célula `alunos` decide SE
+PODE.** O Google saiu deste arquivo — a dança do OAuth mudou de casa junto com
+a sessão, e quem a executa hoje é a `identidade`. O que a Caixa faz é
+PERGUNTAR, pelo contrato congelado (`contracts/identidade.openapi.yaml`,
+operação `getSessionFull` — a resposta COM e-mail, que esta célula precisa
+para conferir as listas DELA).
 
-**Lei 3:** a `sugestoes` NUNCA lê o banco de `alunos`. Pergunta por HTTP, pelo
-contrato congelado (`contracts/alunos.openapi.yaml`, operação
-`listEnrollments`), com Bearer do par e **timeout sempre explícito** — o mesmo
-padrão que `checkout` já usa para falar com `catalogo` e `pagamentos`.
+**Lei 3:** a `sugestoes` NUNCA lê banco alheio. Pergunta por HTTP, pelo
+contrato, com Bearer do par e **timeout sempre explícito**.
 
 **Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de
-uso, via `exigir()`: o container web não pode morrer no boot porque uma
-credencial do Google ainda não foi colada no servidor (convenção da casa —
-`LICOES.md`, "Fail-hard: só as duas variáveis que o CI já fornece"). Faltando a
-variável, quem falha é o CAMINHO que precisa dela, fechado e com o nome da
-variável na mensagem.
+uso, via `exigir()`: o container web não pode morrer no boot porque um token
+ainda não foi colado no servidor. Faltando a variável, quem falha é o CAMINHO
+que precisa dela, fechado e com o nome da variável na mensagem.
 
-Em dev e no CI **nada disto chega à rede**: `tests/conftest.py` dubla as três
-URLs de fora com `respx`. O aplicativo OAuth de verdade só nasce no Lote 2.
+Em dev e no CI **nada disto chega à rede**: `tests/conftest.py` dubla as duas
+URLs com `respx`.
 """
 
 import os
-from urllib.parse import quote, urlencode
+from urllib.parse import quote
 
 import httpx
 
-# Timeout SEMPRE explícito (R2). Curto de propósito: estes dois saltos estão no
+# Timeout SEMPRE explícito (R2). Curto de propósito: estes saltos estão no
 # caminho de uma pessoa esperando uma página abrir, e a resposta certa para
 # "demorou" é falhar fechado depressa, não pendurar a requisição dela.
 TIMEOUT = 5.0
@@ -38,21 +37,10 @@ _cliente: httpx.Client | None = None
 def http() -> httpx.Client:
     """Um `httpx.Client` por processo, em vez de `httpx.get()` a cada chamada.
 
-    Não é micro-otimização: `httpx.get()` constrói um cliente novo por chamada, e
-    com ele um `ssl.SSLContext` que carrega os certificados raiz do sistema.
-    **Medido nesta máquina: 0,4 s por chamada, contra 0,0 s com o cliente
-    reaproveitado.** São dois saltos por login (Google + `alunos`), então é
-    quase um segundo de espera pura para quem está entrando — e a suíte desta
-    célula caía de 85 s para segundos com a mesma troca.
-
-    Vale também o que vem de brinde: conexão reaproveitada entre logins, em vez
-    de handshake TLS novo a cada um.
-
-    `httpx.Client` é seguro entre threads, que é o que o uvicorn precisa. E o
-    dublê continua valendo: o `respx` troca o transporte na classe, então um
-    cliente criado ANTES de o mock entrar em cena é interceptado do mesmo jeito
-    (conferido; e fora do mock ele volta a falhar de verdade, que é o que torna
-    "a suíte não usa a rede" uma afirmação verificável).
+    Não é micro-otimização (`armadilhas/082`): `httpx.get()` constrói um
+    cliente novo por chamada, e com ele um `ssl.SSLContext` — 0,4 s por
+    chamada, medido nesta máquina. `httpx.Client` é seguro entre threads, e o
+    `respx` troca o transporte na classe, então o dublê continua valendo.
     """
     global _cliente
     if _cliente is None:
@@ -68,8 +56,15 @@ class ConfiguracaoAusente(RuntimeError):
     """
 
 
-class GoogleIndisponivel(RuntimeError):
-    """O Google não respondeu, ou respondeu coisa que não dá para usar."""
+class IdentidadeIndisponivel(RuntimeError):
+    """A célula `identidade` não respondeu, ou respondeu fora do contrato.
+
+    **Isto NUNCA vira "então ninguém entrou".** Para a pergunta "quem é?",
+    "não consegui perguntar" e "perguntei e é visitante" são fatos diferentes:
+    o segundo mostra a porta; o primeiro mostra uma explicação honesta e fecha
+    a participação (fail-closed — a resposta daqui alimenta AUTORIZAÇÃO local,
+    ao contrário do reconhecimento de exibição do `funil`, que falha aberto).
+    """
 
 
 class AlunosIndisponivel(RuntimeError):
@@ -77,7 +72,7 @@ class AlunosIndisponivel(RuntimeError):
 
     **Isto NUNCA pode virar "deixa entrar porque não deu para conferir".** Não
     conseguir perguntar não é sinônimo de resposta positiva; quem trata esta
-    exceção fecha a porta (ver `apps/core/views.py`).
+    exceção fecha a porta (ver `apps/core/sessao.py`).
     """
 
 
@@ -92,88 +87,54 @@ def exigir(nome: str) -> str:
     return valor
 
 
-class GoogleOAuth:
-    """Fluxo de código de autorização do Google — só o pedaço que interessa.
+class IdentidadeClient:
+    """`contracts/identidade.openapi.yaml`, operação `getSessionFull`.
 
-    Por que o perfil vem do endpoint `userinfo` e não da verificação local do
-    `id_token`: verificar o JWT na mão exigiria buscar o JWKS do Google (mais
-    uma ida à rede, mais um cache para envelhecer errado) e uma biblioteca de
-    criptografia a mais no `requirements.txt`. O `access_token` que usamos aqui
-    veio da PRÓPRIA troca servidor-a-servidor com o Google, sobre TLS — trocá-lo
-    pelo perfil no `userinfo` é um salto a mais na mesma conversa, não um
-    afrouxamento de confiança.
+    Duas credenciais viajam juntas e provam coisas diferentes — confundi-las é
+    o erro caro (a lição veio da outra ponta desta mesma pergunta): o `Bearer`
+    do par prova **quem chama**; o cabeçalho `Cookie`, repassado OPACO, prova
+    **quem é a pessoa** do outro lado do navegador. O cookie nunca é
+    interpretado aqui — esta célula não tem a chave que o assina (Lei 2).
+
+    Por que a resposta completa, e não a `getSession` que o `funil` usa: esta
+    célula precisa do **e-mail** para conferir as listas DELA (matrícula na
+    `alunos`, staff no env) — autorização local sobre dado que a resposta de
+    exibição, por desenho, não carrega. O degrau que permite isso é o token do
+    par estar também em `TOKENS_COMPLETOS_SUGESTOES` no env da `identidade`.
     """
 
-    AUTORIZACAO = "https://accounts.google.com/o/oauth2/v2/auth"
-    TOKEN = "https://oauth2.googleapis.com/token"
-    PERFIL = "https://openidconnect.googleapis.com/v1/userinfo"
-    ESCOPO = "openid email profile"
+    def sessao_completa(self, cookie: str) -> dict:
+        """Quem é a pessoa desta requisição — corpo do contrato, ou exceção.
 
-    def url_de_autorizacao(self, *, redirect_uri: str, estado: str) -> str:
-        """Para onde o botão "Entrar com Google" manda a pessoa.
-
-        `prompt=select_account` não é enfeite: é o que torna acionável o
-        conselho da §5 da decisão ("se você comprou com outro e-mail, entre com
-        ele"). Sem ele, o Google reentra em silêncio com a mesma conta e a
-        pessoa fica presa no mesmo "não encontramos matrícula" para sempre.
+        200 fora de forma, não-200 e erro de rede viram
+        `IdentidadeIndisponivel`: quem chama precisa distinguir "visitante"
+        (corpo com `autenticado: false`) de "não deu para perguntar" — as duas
+        situações têm telas diferentes na porta.
         """
-        parametros = {
-            "client_id": exigir("GOOGLE_CLIENT_ID"),
-            "redirect_uri": redirect_uri,
-            "response_type": "code",
-            "scope": self.ESCOPO,
-            "state": estado,
-            "access_type": "online",
-            "prompt": "select_account",
-        }
-        return f"{self.AUTORIZACAO}?{urlencode(parametros)}"
-
-    def perfil_do_codigo(self, *, codigo: str, redirect_uri: str) -> dict:
-        """Troca o código pelo perfil. `redirect_uri` tem de ser IDÊNTICO ao do
-        pedido — o Google confere, e é por isso que ele nunca é montado à mão
-        (ver `_url_de_retorno` em `views.py`)."""
+        base = exigir("IDENTIDADE_API_URL").rstrip("/")
+        token = exigir("IDENTIDADE_API_TOKEN")
         try:
-            resposta = http().post(
-                self.TOKEN,
-                data={
-                    "code": codigo,
-                    "client_id": exigir("GOOGLE_CLIENT_ID"),
-                    "client_secret": exigir("GOOGLE_CLIENT_SECRET"),
-                    "redirect_uri": redirect_uri,
-                    "grant_type": "authorization_code",
+            resposta = http().get(
+                f"{base}/sessao/completa",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Cookie": cookie,
                 },
             )
         except httpx.RequestError as erro:
-            raise GoogleIndisponivel(
-                f"não deu para falar com o Google: {erro}"
+            raise IdentidadeIndisponivel(
+                f"não deu para falar com a célula identidade: {erro}"
             ) from erro
 
         if resposta.status_code != 200:
-            raise GoogleIndisponivel(
-                f"o Google recusou a troca do código (HTTP {resposta.status_code})"
+            raise IdentidadeIndisponivel(
+                f"a célula identidade respondeu HTTP {resposta.status_code}"
             )
-
-        acesso = (resposta.json() or {}).get("access_token")
-        if not acesso:
-            raise GoogleIndisponivel("o Google não devolveu access_token na troca")
-
-        try:
-            perfil = http().get(
-                self.PERFIL, headers={"Authorization": f"Bearer {acesso}"}
+        corpo = resposta.json()
+        if not isinstance(corpo, dict) or "autenticado" not in corpo:
+            raise IdentidadeIndisponivel(
+                "a célula identidade respondeu fora do contrato"
             )
-        except httpx.RequestError as erro:
-            raise GoogleIndisponivel(
-                f"não deu para buscar o perfil no Google: {erro}"
-            ) from erro
-
-        if perfil.status_code != 200:
-            raise GoogleIndisponivel(
-                f"o Google recusou o perfil (HTTP {perfil.status_code})"
-            )
-
-        corpo = perfil.json()
-        if not isinstance(corpo, dict):
-            raise GoogleIndisponivel("o perfil do Google veio num formato inesperado")
         return corpo
 
 
