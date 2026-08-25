@@ -341,25 +341,32 @@ Nenhuma delas é decisão de agente:
    (`DECISAO-filosofia-de-escopo.md`) que este projeto sempre escolhe a opção
    completa sobre a reduzida, mesmo custando mais tempo — inclusive quebrando
    de novo, deliberadamente, o congelamento arquitetural do §3.5.
-2. **A área admin vai ESCREVER no catálogo, ou só ler?** Decide o §2.5 e o
-   tamanho da seção de cursos. Se for escrever, a área ganha autoridade sobre
-   preço de oferta — o que roça a diretiva "pagamento por último".
-3. **A métrica pode ser de "há alguns segundos" (evento, barato) ou precisa ser
-   "agora" (HTTP, 5 ritos de contrato)?** Decide o §3.3.
-4. **A área que escreve configuração de produção mora na mesma origem e na mesma
-   sessão que os visitantes comuns do site?** É a pergunta-mãe da cadeira de
-   segurança: (a) mesma origem com compensações (CSP + re-autenticação + sessão
-   curta), (b) origem separada (mata o XSS pela fronteira do navegador, mas perde
-   a elegância do "usa o login do site"), ou (c) mesma origem e **somente
-   leitura**, com toda escrita continuando por PR.
-5. **Marketing sai do congelamento junto com vendas, ou vira seção própria?**
-   (§3.6)
-6. **O que ele faz às 2h quando a porta do admin estiver fechada contra ele** —
-   e-mail errado no env, identidade fora do ar, sessão a matar? Se a resposta for
-   "não há caminho, é um passo manual na VPS", isso precisa estar escrito **antes**
-   do PR 1, não descoberto na noite em que acontecer.
+2. ~~A área admin vai ESCREVER no catálogo, ou só ler?~~ **[RESPONDIDA] Só
+   ler.** Decidido pelo mesmo caminho de pergunta estruturada — §4.5 do plano
+   é somente-leitura; editar continua por PR. Fecha o achado A2/2.5 de fato:
+   sem escrita nenhuma no catálogo, a autoridade sobre preço de oferta nem
+   chega a existir na área admin.
+3. ~~A métrica pode ser de "há alguns segundos" (evento, barato) ou precisa
+   ser "agora" (HTTP, 5 ritos de contrato)?~~ **[RESPONDIDA] Agora, sempre
+   exata.** HTTP direto, aceitando os 5 Ritos de Contrato — vista a opção
+   barata, escolhida a cara, de olhos abertos.
+4. ~~A área que escreve configuração de produção mora na mesma origem e na
+   mesma sessão que os visitantes comuns do site?~~ **[RESPONDIDA] Sim — opção
+   (a): mesma origem com compensações** (CSP própria + verificação de frescor
+   de sessão para escrita, em vez de encurtar a sessão do site inteiro). Sem
+   login próprio, sem domínio separado.
+5. ~~Marketing sai do congelamento junto com vendas, ou vira seção própria?~~
+   **[RESPONDIDA] Seção própria, liberada desde já** (§4.6b do plano).
+6. ~~O que ele faz às 2h quando a porta do admin estiver fechada contra ele?~~
+   **[RESPONDIDA] O conserto normal já basta** — PR pequeno pelo pipeline,
+   poucos minutos, sem precisar do servidor; nenhum botão de emergência à
+   parte. Combina com a Lei 5 da Constituição (emergência é sempre pipeline).
 
 ## Estado
 
-**Parecer emitido em 25/08/2026.** O plano segue aguardando a decisão do
-mantenedor, agora com os fatos corrigidos e as perguntas do §7 na mesa.
+**Parecer emitido em 25/08/2026, e as seis perguntas do §7 respondidas pelo
+mantenedor no mesmo dia** — todas colhidas por pergunta estruturada de
+múltipla escolha, formato que ele confirmou como o certo para toda decisão
+dele daqui em diante. O plano (`PLANO-AREA-ADMIN.md`) já reflete as seis
+respostas nas seções técnicas. Falta só ele dizer "aprovado" para o PR 1
+começar.
