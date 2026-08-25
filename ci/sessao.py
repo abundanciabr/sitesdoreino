@@ -112,6 +112,11 @@ FERRAMENTAS_DE_PORTAO = ("PyYAML==6.0.2",)
 PADRAO_DE_NOME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 LIMITE_DE_NOME = 40
 
+# Os exit codes que `correr_de_verdade` inventa quando o comando NÃO chegou a
+# rodar (ausente, timeout, erro de SO). Só eles significam "não foi possível
+# medir" — qualquer outro número veio do programa e é veredito dele.
+SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
+
 PASSOS = (
     "conferir o repositório e a célula",
     "git fetch origin",
@@ -1119,22 +1124,29 @@ class Sessao:
             env=self._ambiente(),
             timeout=3600,
         )
-        if saida.exit_code == 1:
+        if saida.exit_code in SENTINELAS_DE_INSTRUMENTACAO:
             raise ErroDeSessao(
                 passo,
-                "o baseline REPROVOU — a main está vermelha para esta célula",
+                f"o baseline NÃO chegou a rodar (exit {saida.exit_code})",
+                comando=f"make -C {self.plano.celula_no_worktree} ci",
+                detalhe=recortar(saida.texto, 4000)
+                + "\n\nEste resultado não é um FAIL: nada foi provado sobre o código.",
+            )
+        if saida.exit_code != 0:
+            # O GNU Make devolve 2 quando uma receita reprova (`black --check`
+            # sai 1 e o make traduz para 2). Tratar o 2 como "não consegui
+            # medir" mandaria quem lê investigar o lugar errado — o que reprovou
+            # foi a célula, não o instrumento. Só as sentinelas do próprio
+            # `correr_de_verdade` (127/126/124) significam instrumentação.
+            raise ErroDeSessao(
+                passo,
+                f"o baseline REPROVOU (exit {saida.exit_code}) — a main está "
+                "vermelha para esta célula",
                 comando=f"make -C {self.plano.celula_no_worktree} ci",
                 detalhe=recortar(saida.texto, 4000)
                 + "\n\nRITOS.md §1: consertar main quebrada NÃO é escopo de sessão de\n"
                 "feature. Pare e reporte ao mantenedor.",
                 codigo=1,
-            )
-        if saida.exit_code != 0:
-            raise ErroDeSessao(
-                passo,
-                f"o baseline não conseguiu rodar (exit {saida.exit_code})",
-                comando=f"make -C {self.plano.celula_no_worktree} ci",
-                detalhe=recortar(saida.texto, 4000),
             )
         resumo = resumo_do_baseline(saida.texto)
         self._nota(f"make ci verde ({resumo})")

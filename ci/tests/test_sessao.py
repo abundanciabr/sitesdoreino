@@ -552,25 +552,36 @@ def test_falha_num_passo_nao_deixa_os_passos_seguintes_rodarem():
     assert mundo.escritos == {}
 
 
-def test_baseline_vermelho_e_FAIL_exit_1_e_manda_parar_e_reportar():
+@pytest.mark.parametrize("codigo_do_make", [1, 2])
+def test_baseline_vermelho_e_FAIL_exit_1_e_manda_parar_e_reportar(codigo_do_make):
+    """O GNU Make devolve 2 quando a receita reprova — e 2 aqui não é ERROR.
+
+    Foi medido ao vivo: `black --check` sai 1, o make traduz para 2. Chamar
+    isso de "não consegui medir" mandaria quem lê investigar o instrumento em
+    vez do código que reprovou.
+    """
     mundo = MundoFalso(
-        plano_de_teste(), falhar={"rev-parse --verify": 1, "/usr/bin/make": 1}
+        plano_de_teste(),
+        falhar={"rev-parse --verify": 1, "/usr/bin/make": codigo_do_make},
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
     assert erro.value.passo == "baseline: make ci da célula"
     assert erro.value.codigo == 1
+    assert "REPROVOU" in erro.value.resumo
     assert "Pare e reporte" in erro.value.detalhe
 
 
-def test_baseline_que_nem_rodou_e_ERROR_exit_2_e_nao_FAIL():
+@pytest.mark.parametrize("sentinela", sorted(sessao.SENTINELAS_DE_INSTRUMENTACAO))
+def test_baseline_que_nem_rodou_e_ERROR_exit_2_e_nao_FAIL(sentinela):
     """Não conseguir medir nunca pode chegar disfarçado de reprovação."""
     mundo = MundoFalso(
-        plano_de_teste(), falhar={"rev-parse --verify": 1, "/usr/bin/make": 127}
+        plano_de_teste(), falhar={"rev-parse --verify": 1, "/usr/bin/make": sentinela}
     )
     with pytest.raises(sessao.ErroDeSessao) as erro:
         mundo.sessao().rodar()
     assert erro.value.codigo == 2
+    assert "NÃO chegou a rodar" in erro.value.resumo
 
 
 def test_worktree_sujo_depois_do_baseline_recusa_a_declaracao():
