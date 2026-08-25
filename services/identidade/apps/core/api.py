@@ -81,13 +81,20 @@ class SessionFull(Schema):
     email: "str | None" = None
 
 
-def _quem_e(request) -> dict:
+def _quem_e(request) -> "tuple[dict, object | None]":
+    """A resposta de exibição E o ator que a produziu.
+
+    Devolve o PAR de propósito: `/sessao/completa` precisa do e-mail, que
+    mora no `Ator`. Antes esta função descartava o objeto e o handler
+    chamava `ator_atual` de novo — dois SELECT por resposta completa, no
+    caminho de TODA página da Caixa (auditoria de 25/08/2026).
+    """
     ator = ses.ator_atual(request)
     if ator is None:
         # Visitante. Nada de 401/404: "não entrou ainda" é o estado normal da
         # maioria das requisições do site, e o chamador precisa distinguí-lo
         # de "não consegui perguntar" (que para ele é exceção de rede).
-        return {"autenticado": False}
+        return {"autenticado": False}, None
     return {
         "autenticado": True,
         # Id opaco — é ELE que as células guardam em snapshot, nunca o e-mail.
@@ -96,7 +103,7 @@ def _quem_e(request) -> dict:
         # decide o que fazer com vazio.
         "nome_exibido": ator.identidade.nome_exibido,
         "papel": ator.papel,
-    }
+    }, ator
 
 
 @router.get(
@@ -116,7 +123,8 @@ def _quem_e(request) -> dict:
     ),
 )
 def sessao_atual(request):
-    return _quem_e(request)
+    resposta, _ = _quem_e(request)
+    return resposta
 
 
 @router.get(
@@ -139,8 +147,8 @@ def sessao_completa(request):
     # Conjunto vazio ⇒ 403 para todo mundo — fail-closed por construção.
     if request.auth not in settings.TOKENS_COMPLETOS:
         raise HttpError(403, "este par não está autorizado à resposta completa")
-    resposta = _quem_e(request)
-    if resposta["autenticado"]:
-        ator = ses.ator_atual(request)
+    resposta, ator = _quem_e(request)
+    if ator is not None:
+        # O MESMO objeto que `_quem_e` já resolveu — nunca um SELECT novo.
         resposta["email"] = ator.identidade.email
     return resposta

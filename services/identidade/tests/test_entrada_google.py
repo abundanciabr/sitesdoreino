@@ -100,3 +100,36 @@ def test_o_redirect_uri_e_o_endereco_neutro_cadastrado_no_google(client, rede, d
 
     redirect_uri = parse_qs(destino.query)["redirect_uri"][0]
     assert urlparse(redirect_uri).path == "/entrar/google/retorno"
+
+
+def test_email_verified_AUSENTE_e_recusado(porta):
+    """[INVARIANTE] Ausência não é permissão — o guarda que a mudança de casa
+    perdeu (auditoria de 25/08 provou por mutação: `perfil.get("email_verified",
+    True)` deixava os 55 testes verdes e abria a porta para qualquer conta).
+
+    Um provedor futuro que simplesmente OMITA o campo, ou uma mudança de escopo
+    do `userinfo` do Google, não pode virar "entra todo mundo".
+    """
+    perfil = perfil_google()
+    del perfil["email_verified"]
+
+    resposta = porta.bater(perfil)
+
+    assert "erro=email-nao-verificado" in _para_onde(resposta)
+    assert not porta.esta_dentro
+    assert Identidade.objects.count() == 0
+
+
+def test_email_VAZIO_do_google_e_recusado(porta):
+    """[INVARIANTE] E-mail vazio nunca cunha identidade.
+
+    O modo de falha é pior do que parece: `email` é `unique`, então a SEGUNDA
+    pessoa com e-mail vazio não criaria linha nova — ela RECUPERARIA a
+    primeira. Duas pessoas diferentes compartilhando a mesma identidade, e o
+    site mostrando no canto da página o nome de outra.
+    """
+    resposta = porta.bater(perfil_google(email=""))
+
+    assert "erro=email-nao-verificado" in _para_onde(resposta)
+    assert not porta.esta_dentro
+    assert Identidade.objects.count() == 0

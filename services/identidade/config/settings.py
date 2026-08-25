@@ -35,7 +35,14 @@ ALLOWED_HOSTS = ["*"]
 # `redirect_uri_mismatch` em produção, e SÓ em produção.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
+# `conn_max_age=60`: a conexão de banco é REAPROVEITADA por até 60s em vez
+# de aberta e fechada a cada requisição (o default 0 do Django). Medido pela
+# auditoria de 25/08/2026 contra o Postgres real: conexão nova + SELECT custa
+# ~24ms; o MESMO SELECT numa conexão reaproveitada custa ~0,2ms — o handshake
+# TCP + a autenticação SCRAM-SHA-256 dominam, e nenhum dos dois fica barato
+# só porque a rede é rápida. Esta célula responde "quem é você" no caminho de
+# toda página logada do site, então é onde esse custo mais aparece.
+DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"), conn_max_age=60)}
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
