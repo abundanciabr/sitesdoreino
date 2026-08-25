@@ -225,6 +225,42 @@ def rodar_testes_do_testador(raiz: Path) -> Resultado:
     )
 
 
+# Os exit codes que o PRÓPRIO executor inventa quando o comando não chegou a
+# rodar (ausente, erro de SO, timeout). Só eles significam "não foi possível
+# medir" — qualquer outro número veio do programa e é veredito dele.
+#
+# Este conjunto é DELIBERADAMENTE igual ao de `ci/sessao.py`, que encapsula o
+# mesmo `make ci` para o baseline de sessão. Duplicação consciente é aceitável;
+# duplicação sem guarda é armadilha com data marcada — por isso
+# `ci/tests/test_exit_do_make.py` lê os DOIS arquivos e reprova se as cópias
+# divergirem.
+SENTINELAS_DE_INSTRUMENTACAO = frozenset({124, 126, 127})
+
+
+def classificar_exit_do_make(codigo: int) -> Estado:
+    """FAIL ou ERROR para o exit de um `make` cujo alvo JÁ se provou planejável.
+
+    O GNU Make **não** repassa o exit da receita: devolve **2** para toda receita
+    que falhou (`black --check` sai 1, o make imprime `Error 1` e sai com 2) — e
+    **2** também para alvo inexistente. A tabela antiga daqui era a do `_nucleo`
+    (`1 = FAIL, resto = ERROR`), certa para os portões escritos em Python e
+    errada para o make: como ele quase nunca devolve 1, TODA reprovação de célula
+    (lint, mypy, pytest, contrato) chegava classificada como ERROR — mandando
+    quem lê investigar o instrumento quando o que reprovou foi o código. É o
+    §5.6 ao contrário: em vez de um verde que não mediu, um "não medi" que mediu
+    e reprovou (`armadilhas/107`).
+
+    A ambiguidade do 2 ("receita reprovou" × "não há regra para o alvo") NÃO se
+    resolve lendo a mensagem do make — ela é traduzível pelo locale, e um portão
+    que depende do idioma do runner é um portão com data para quebrar. Resolve-se
+    ANTES, em `rodar_celula`: um ensaio (`make -n`) prova que o alvo existe e é
+    planejável. Provado isso, um 2 só pode ser reprovação.
+    """
+    if codigo in SENTINELAS_DE_INSTRUMENTACAO:
+        return Estado.ERROR
+    return Estado.FAIL
+
+
 def rodar_celula(raiz: Path, celula: str) -> Resultado:
     """Delega o `make ci` da célula — sem reimplementar lint/type/test aqui."""
     destino = raiz / "services" / celula
@@ -234,6 +270,15 @@ def rodar_celula(raiz: Path, celula: str) -> Resultado:
             Estado.ERROR,
             "célula inexistente",
             f"Esperada em:\n  {destino}",
+        )
+    if not (destino / "Makefile").is_file():
+        return Resultado(
+            f"celula/{celula}",
+            Estado.ERROR,
+            "a célula não tem Makefile",
+            f"Esperado em:\n  {destino / 'Makefile'}\n\n"
+            "A Definição de Pronto da célula mora no `make ci` dela. Portão\n"
+            "ausente não é portão satisfeito.",
         )
     make = shutil.which("make")
     if make is None:
@@ -246,27 +291,74 @@ def rodar_celula(raiz: Path, celula: str) -> Resultado:
             "Os portões de repositório (`python ci/ci.py --apenas freeze,muralhas`)\n"
             "continuam disponíveis sem make.",
         )
-    proc = subprocess.run(
-        [make, "-C", str(destino), "ci"],
-        cwd=str(raiz),
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
-        timeout=1800,
-        check=False,
-    )
+
+    def _correr(argumentos: list[str], limite: int) -> subprocess.CompletedProcess | int:
+        """Roda o make; devolve o processo, ou 124 se estourou o tempo.
+
+        `subprocess.run(timeout=...)` LEVANTA em vez de devolver um código —
+        deixar a exceção subir derrubaria o runner inteiro com traceback, que é
+        o oposto de fail-closed legível. 124 é a sentinela de timeout, a mesma
+        que `ci/sessao.py` usa.
+        """
+        try:
+            return subprocess.run(
+                [make, "-C", str(destino), *argumentos],
+                cwd=str(raiz),
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=limite,
+                check=False,
+            )
+        except subprocess.TimeoutExpired:
+            return 124
+
+    # ENSAIO: `make -n ci` planeja sem executar. Ele existe para desambiguar o
+    # exit 2 do make — se o alvo `ci` não existe, ou o Makefile não é analisável,
+    # é AQUI que se descobre, e isso é ERROR de verdade. Nenhum Makefile de
+    # célula recorre com `$(MAKE)`, então o ensaio não dispara trabalho real.
+    ensaio = _correr(["-n", "ci"], 120)
+    if isinstance(ensaio, int) or ensaio.returncode != 0:
+        codigo = ensaio if isinstance(ensaio, int) else ensaio.returncode
+        detalhe = "" if isinstance(ensaio, int) else (ensaio.stdout or "") + (
+            ensaio.stderr or ""
+        )
+        return Resultado(
+            f"celula/{celula}",
+            Estado.ERROR,
+            f"o alvo `ci` da célula não é sequer planejável (make -n saiu {codigo})",
+            f"Comando:\n  {make} -C {destino} -n ci\n\n"
+            + recortar(detalhe, 4000)
+            + "\n\nIsto NÃO é uma reprovação da célula: o `make ci` não chegou a\n"
+            "rodar. Alvo ausente, Makefile ilegível ou make quebrado.",
+        )
+
+    proc = _correr(["ci"], 1800)
+    if isinstance(proc, int):
+        return Resultado(
+            f"celula/{celula}",
+            Estado.ERROR,
+            "o `make ci` da célula estourou o tempo (30 min)",
+            f"Comando:\n  {make} -C {destino} ci\n\n"
+            "Nada foi provado sobre o código — este resultado NÃO é um FAIL.",
+        )
     saida = (proc.stdout or "") + (proc.stderr or "")
     if proc.returncode == 0:
         return Resultado(f"celula/{celula}", Estado.PASS, "make ci verde")
-    if proc.returncode == 1:
+    estado = classificar_exit_do_make(proc.returncode)
+    if estado is Estado.ERROR:
         return Resultado(
-            f"celula/{celula}", Estado.FAIL, "make ci reprovou", recortar(saida, 4000)
+            f"celula/{celula}",
+            Estado.ERROR,
+            f"o `make ci` da célula não chegou a rodar (exit {proc.returncode})",
+            recortar(saida, 4000)
+            + "\n\nNada foi provado sobre o código — este resultado NÃO é um FAIL.",
         )
     return Resultado(
         f"celula/{celula}",
-        Estado.ERROR,
-        f"make ci não conseguiu rodar (exit {proc.returncode})",
+        Estado.FAIL,
+        f"make ci reprovou (exit {proc.returncode})",
         recortar(saida, 4000),
     )
 
