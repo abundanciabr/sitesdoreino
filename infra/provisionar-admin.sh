@@ -67,6 +67,46 @@ case "$STAFF" in
   *TROQUE_*|*COLE_*|*voce@exemplo.com*) parar "IDENTIDADE_STAFF_EMAILS ainda é o texto de exemplo — a área admin nasceria com uma lista falsa." ;;
 esac
 
+# ---------------------------------------------------------------------------
+# TRAVA DE DERIVA — porque este script reescreve `env/admin.env` INTEIRO.
+#
+# A lista abaixo é a cópia consciente das chaves do heredoc lá embaixo, e o
+# guarda `ci/tests/test_provisionamento_nao_perde_variavel.py` reprova se as
+# duas divergirem: cópia consciente é aceitável; cópia sem guarda é armadilha
+# com data marcada.
+#
+# O modo de falha que isto evita nasceu de verdade na Caixa
+# (`armadilhas/111`): o script dela reescrevia o env sem conhecer as chaves que
+# o login acrescentara depois, e re-rodá-lo deixaria a porta em HTTP 500 a cada
+# visita — com o deploy VERDE. Aqui a mina ainda não existe (o `env/admin.env`
+# nasce neste script), e a trava entra ANTES de ela poder nascer: no dia em que
+# outra célula acrescentar chave neste env, quem re-rodar recebe uma parada
+# nominal em vez de um apagamento silencioso.
+#
+# Por que a lista mora aqui em vez de ser derivada do heredoc: este script roda
+# na VPS, onde não há Python nem a suíte de testes — só shell puro.
+# ---------------------------------------------------------------------------
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
+
+if [ -f env/admin.env ]; then
+  SOBRANDO=""
+  for CHAVE in $(grep -oE '^[A-Z_][A-Z0-9_]*=' env/admin.env | tr -d '=' | sort -u); do
+    case " $CHAVES_QUE_EU_GERO " in
+      *" $CHAVE "*) : ;;
+      *) SOBRANDO="$SOBRANDO $CHAVE" ;;
+    esac
+  done
+  if [ -n "$SOBRANDO" ]; then
+    echo "PAROU POR SEGURANÇA: o env/admin.env desta máquina tem variável que"
+    echo "eu NÃO sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
+    for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
+    echo
+    echo "NADA foi alterado. Mande esta tela ao agente: ou o script aprende a chave,"
+    echo "ou ela pertence a outro script de provisionamento, que é quem deve rodar."
+    exit 1
+  fi
+fi
+
 echo "== estado ANTES =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='admin_db'" 2>/dev/null | grep -q 1
 then echo "  banco admin_db ............... já existe"; else echo "  banco admin_db ............... não existe"; fi
