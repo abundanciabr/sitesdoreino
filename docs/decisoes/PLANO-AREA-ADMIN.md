@@ -14,10 +14,17 @@
 >
 > ⚠️ **AUDITADO EM 25/08/2026 POR UMA BANCA DE QUATRO CADEIRAS — leia o
 > `PARECER-BANCA-AREA-ADMIN.md` ANTES de agir por este plano.** Três cadeiras
-> aprovaram com ressalvas; a de produto recomenda uma versão reduzida ("O
-> Mirante", parecer §4). As correções de **fato** já entraram neste documento,
-> marcadas com **[BANCA]**; o que depende de decisão do mantenedor está no §7 do
-> parecer e **não** foi alterado aqui.
+> aprovaram com ressalvas; a de produto recomendou uma versão reduzida ("O
+> Mirante", parecer §4) — **superseded no mesmo dia** por
+> `DECISAO-filosofia-de-escopo.md`. As correções de **fato** já entraram neste
+> documento, marcadas com **[BANCA]**.
+>
+> ✅ **AS SEIS PERGUNTAS DO §9 ESTÃO TODAS RESPONDIDAS (25/08/2026)**, colhidas
+> por pergunta estruturada de múltipla escolha — formato que o mantenedor
+> confirmou como o certo para toda decisão dele daqui em diante (`CLAUDE.md`,
+> "Como trabalhar com o mantenedor"). As respostas já foram aplicadas nas
+> seções técnicas abaixo, marcadas **[DECIDIDO 25/08]**. **Falta só ele dizer
+> "aprovado" para o PR 1 começar.**
 
 ---
 
@@ -115,6 +122,30 @@ teste-guarda no mesmo PR (Lei 8).
 append-only (quem, quando, o quê, valor anterior) — protegida nas TRÊS metades
 que as armadilhas 023 e 079 cobram: `save()`, `QuerySet.update()` e cascade.
 
+**[DECIDIDO 25/08] Mesma origem e mesma sessão do site — com reforços,
+não com login próprio.** A parecer §7.4 pôs três caminhos na mesa: mesma
+origem, origem separada, ou mesma origem só-leitura. O mantenedor escolheu
+mesma origem com proteções extras — não vale a pena duplicar todo o sistema
+de login por uma segunda "casa" só para administração. Isso exige três
+reforços que o PR 3 carrega, respondendo aos achados A1/A4 da cadeira de
+segurança:
+
+- **CSP própria da célula admin** (`default-src 'self'; script-src 'self';
+  object-src 'none'; frame-ancestors 'none'`) — nenhuma outra célula precisa
+  disto hoje; é específico de uma área que vai renderizar HTML enviado
+  (galeria, §4.3) e markdown (roadmap, §4.8).
+- **Verificação de frescor para escrita**, não sessão curta para o site
+  inteiro (mudar `SESSION_COOKIE_AGE` afetaria todo visitante comum). A
+  `identidade` passa a devolver `autenticada_em` em `/sessao/completa` —
+  mudança de contrato, mesmo Rito §3 do PR 3 que já mexe nesse contrato para
+  os tokens do §3 item 2, sem PR extra. Escrita na área admin com
+  `autenticada_em` mais velho que uma janela a definir (proposta: 24h) pede
+  para passar pelo Google de novo antes de aceitar.
+- **Nenhum login próprio, nenhum domínio separado** — descartado por
+  decisão explícita, não por omissão. Registrar aqui para ninguém reabrir:
+  a defesa contra XSS em outra página do site é a CSP acima, não uma
+  segunda porta de entrada.
+
 ## §4 — O mapa das seções (o produto, por fase)
 
 A UI é **só PT-BR** (o público é o mantenedor) e **nenhuma rota tem forma de
@@ -127,9 +158,9 @@ tem filtro por site — a plataforma é uma, as lojas são N.
 | 4.2 | **Métricas** | tiles vivos por célula: sugestões/votos/comentários (Caixa), contas criadas (`identidade`), leads, alunos, cursos no catálogo — federados por contrato (§5) | 2 |
 | 4.3 | **Galeria de painéis** | upload de painéis HTML datados (ex.: `painel-retomada.html`), servidos em iframe sandbox; a história do projeto navegável de qualquer lugar | 3 |
 | 4.4 | **Usuários** | lista paginada das contas do site (via operação interna nova na `identidade` — Rito §3) | 4 |
-| 4.5 | **Cursos & conteúdo** | formulários sobre a API do `catalogo` (ofertas, cursos); é o embrião da gestão da Meshcraft Academy — cresce quando a escola nascer | 4 |
+| 4.5 | **Cursos & conteúdo** | **[DECIDIDO 25/08] SOMENTE LEITURA.** Mostra ofertas/cursos do `catalogo`, sem formulário de edição — mudar preço ou criar curso continua sendo por PR, como hoje. Reavaliar quando a Meshcraft Academy nascer e houver o que editar de verdade | 4 |
 | 4.6 | **Vendas** | **CONGELADA** — nem métricas de checkout/pagamentos. Só nasce quando o mantenedor disser que o site vai vender | — |
-| 4.6b | **Público & demanda** (marketing) | **[BANCA] separada da anterior: congelar marketing junto com vendas foi erro de categoria.** Visitas, cadastros no `/cadastro`, leads, quizzes completados — por idioma e por site. Existe hoje, é dado real e **não encosta no Mercado Pago**. E é a inversão que importa: métricas de venda seriam zeros; o que produz a ordem "o site vai vender" é ver pessoas deixarem e-mail sem que exista produto | **2** (candidata a primeira seção de métricas) |
+| 4.6b | **Público & demanda** (marketing) | **[DECIDIDO 25/08] Liberada, seção própria, fora do congelamento de vendas** — confirmado pelo mantenedor. Visitas, cadastros no `/cadastro`, leads, quizzes completados — por idioma e por site. Não encosta no Mercado Pago, e é o tipo de número capaz de mostrar que existe interesse antes mesmo de o produto existir | 2 |
 | 4.7 | **Configuração** | o que é **dado** (chave-valor por site no `admin_db`; dados do `catalogo`), com formulário. O que é **código/infra** (`sites.json`, Traefik, envs) continua entrando por PR — a seção mostra somente-leitura e aponta o caminho | 4 |
 | 4.8 | **Roadmap & planos** | página interna editável (markdown no banco). Não confundir com o roadmap PÚBLICO da Caixa (EVO-31): este é o de dentro | 4 |
 
@@ -161,14 +192,17 @@ tem filtro por site — a plataforma é uma, as lojas são N.
     escopo: o mesmo token valeria para `POST /leads` e `POST /matriculas`. O par
     do admin entra também em `TOKENS_SOMENTE_LEITURA_<PAR>`, conferido no handler
     — o padrão que a `identidade` já usa para `TOKENS_COMPLETOS` — com
-    teste-guarda no mesmo PR.
-- **[BANCA] A alternativa mais barata para metade disto é evento, não HTTP.**
-  A Caixa já emite `sugestao.criada.v1`, `voto-adicionado`, `voto-removido` e
-  `status-alterado`, todos com `site_id`. Um `admin-consumer` construindo read
-  model no `admin_db` é a Virtude da Lei 3 e faz a primeira provedora da fila
-  custar **zero** rito. Desenho certo: **híbrido** — evento onde já há evento,
-  HTTP onde não há. Qual dos dois depende de uma decisão do mantenedor (parecer
-  §7.3: a métrica pode ser de "há alguns segundos"?).
+    teste-guarda no mesmo PR. **Isto deixou de ser só prudência**: com o §4.5
+    decidido somente-leitura, é a mecanização exata dessa promessa — sem esta
+    lista, "só ver" seria só texto.
+- **[DECIDIDO 25/08] HTTP direto, tempo real — não evento.** A alternativa
+  mais barata foi posta na mesa (um `admin-consumer` fazendo read-model
+  sobre os eventos que a Caixa já emite, custando zero Rito de Contrato para
+  essa provedora) e o mantenedor escolheu pagar o caminho mais caro — **HTTP
+  direto em cada provedora, aceitando as 5 sessões de Rito de Contrato do
+  §6** — porque quer os números sempre exatos, não com alguns segundos de
+  atraso. Registrado para não ser reaberto: a opção barata foi vista e
+  recusada, não esquecida.
 - **Cliente HTTP único e reutilizado** (armadilha 082) e **lido em request,
   nunca no `__init__`** (armadilha 097: env no init vira 500 em toda página).
 
@@ -199,8 +233,8 @@ estavam erradas:
 | **H21** | **mantenedor** | **UMA LINHA**, não um bloco de colar: `curl` do script + `bash`. Idempotente, sem argumentos, sem perguntas, terminando em `PRONTO:` ou `PAROU POR SEGURANÇA:` com o estado DEPOIS conferido. Cria banco+role `admin`, escreve `env/admin.env`, acrescenta as duas chaves ao `env/identidade.env` | Molde: `infra/provisionar-identidade.sh` (H20, deu certo de primeira). **Bloco de colar multi-linha é proibido** — falhou 3× (H18/H19, `RUNBOOK-LOTES.md` §36). **As duas chaves de token precisam ter o MESMO valor**, senão 403 silencioso |
 | **PR 2b** | agente | **Infra**: serviço no `infra/docker-compose.yml` + router/service no Traefik (Host-bound, §2) + cadeia de middleware **própria** do admin **[BANCA]** (o `frameDeny` compartilhado quebraria a galeria do §4.3, e afrouxá-lo enfraqueceria `checkout` e `pagamentos`) + inventário em **três lugares** de `ci/tests/test_rotas_sem_forma_de_locale.py` (`armadilhas/089`) | mandato `infra/` + `ci/`; merge SÓ com H21 conferido — senão o `deploy-infra` reprova **depois** de instalar o compose e devolve o mantenedor ao terminal da VPS |
 | PR 3 | agente | **A porta** (§3): middleware fail-closed + página Visão geral + auditoria append-only (com trigger no banco, não só guarda em Python — `armadilhas/079`) + CSP + lista de caminhos isentos **enumerada e guardada por igualdade exata** **[BANCA]** | testes-guarda das três linhas da tabela do §3 no mesmo PR |
-| PRs 4+ | agente | **Fase 2 — [BANCA] 11 PRs, não 5**: por provedora congelada são **2 PRs** (o Rito §3 proíbe `contracts/` junto com `services/`) **e uma sessão de arquitetura com o mantenedor presente**. Ordem sugerida: `sugestoes` → `identidade` → `leads` → `alunos` → `catalogo`, mais a página Métricas | **Aprovar a fase 2 é aprovar cinco sessões com o mantenedor.** O caminho por evento (§5) reduz isso — decisão dele |
-| depois | agente | **Fase 3** (galeria, 2–3 PRs) → **Fase 4** (usuários, cursos, config, roadmap — 8–12 PRs, 1 despacho por seção, serializados entre si pela muralha "1 PR = 1 célula") | Fase 4.4 exige Rito §3 na `identidade` |
+| PRs 4+ | agente | **Fase 2 — 11 PRs**: por provedora congelada são **2 PRs** (o Rito §3 proíbe `contracts/` junto com `services/`) **e uma sessão de arquitetura com o mantenedor presente**. Ordem sugerida: `sugestoes` → `identidade` → `leads` → `alunos` → `catalogo`, mais a página Métricas | **[DECIDIDO 25/08]** cinco sessões com o mantenedor, aceitas — ele escolheu tempo real (§5) sabendo do custo |
+| depois | agente | **Fase 3** (galeria, 2–3 PRs) → **Fase 4** (usuários, config, roadmap — 6–9 PRs, 1 despacho por seção, serializados entre si pela muralha "1 PR = 1 célula"; cursos/§4.5 fica mais barato que o estimado por ser somente-leitura) | Fase 4.4 exige Rito §3 na `identidade` |
 
 **Aviso de fenômeno esperado — [BANCA] são TRÊS, não um:**
 
@@ -250,36 +284,51 @@ para o vermelho não assustar.
    linha de auditoria não mergeia.
 5. **O `painel-fundacao.html` local continua vivo e obrigatório** — a galeria
    (§4.3) recebe cópias datadas, não o substitui.
-6. **Métricas jamais leem banco alheio** — entram por contrato HTTP **ou por
-   evento** (§5), e **[BANCA]** provedora congelada custa **2 PRs + uma sessão
-   de arquitetura**, não um PR. Token de métrica nunca concede escrita.
+6. **Métricas jamais leem banco alheio** — entram por contrato HTTP em tempo
+   real (decidido; §5), e provedora congelada custa **2 PRs + uma sessão de
+   arquitetura**, não um PR. Token de métrica nunca concede escrita.
 7. **`/admin` é preso a `Host(meshcraft.top)`** — domínio novo com área admin é
    decisão nova, não uma linha a menos no router.
 8. UI só PT-BR, sem rota com forma de idioma, sem página pública.
+9. **A área admin não escreve fora do próprio banco** — nem no `catalogo`
+   (§4.5 é somente-leitura), nem em nenhuma outra célula. Se isso mudar um
+   dia, é decisão nova, registrada aqui, não um formulário acrescentado de
+   passagem.
+10. **Sem login próprio, sem domínio separado, sem botão de emergência
+    à parte** — as três foram descartadas por decisão explícita do
+    mantenedor (§3, §9), não por omissão. Quem travar a própria porta é
+    consertado por PR normal, como qualquer outra coisa neste projeto.
 
-## §9 — O que o mantenedor decide agora
+## §9 — As seis perguntas, e as seis respostas (25/08/2026)
 
-**[BANCA] Esta seção foi reescrita**, e **[FILOSOFIA-DE-ESCOPO] a pergunta 1
-já foi respondida em 25/08/2026** — `DECISAO-filosofia-de-escopo.md`: este
-projeto é para ser feito completo, não minimalista, mesmo custando mais tempo.
-As perguntas que restam são as do `PARECER-BANCA-AREA-ADMIN.md` §7:
+Todas colhidas por pergunta estruturada de múltipla escolha, em português
+simples — formato que o mantenedor confirmou como o certo para toda decisão
+dele daqui em diante (ver `CLAUDE.md`). Nenhuma é decisão de agente; todas
+já aplicadas nas seções técnicas acima.
 
-1. ~~Fazer agora, ou fazer "O Mirante" primeiro?~~ **RESPONDIDA: plano
-   completo.** A escola só existe quando existir; até lá, a área admin nasce e
-   cresce mesmo assim — inclusive quebrando de novo, deliberadamente, o
-   congelamento arquitetural que dizia "nenhuma célula nova até um piloto
-   pago". Isso não dispensa a disciplina de entrega (PRs pequenos, uma célula
-   por PR, Ritos de Contrato) — só decide que a construção não espera.
-2. **A área admin vai ESCREVER no catálogo, ou só ler?** Decide o tamanho do
-   §4.5 e se a área ganha autoridade sobre preço de oferta.
-3. **A métrica pode ser de "há alguns segundos" (evento, barato) ou precisa ser
-   "agora" (HTTP, 5 ritos de contrato)?**
-4. **A área que escreve configuração de produção mora na mesma origem e sessão
-   dos visitantes comuns?** (a) mesma origem com CSP + re-autenticação + sessão
-   curta, (b) origem separada, ou (c) mesma origem e **somente leitura**.
-5. **Marketing vira seção própria** (§4.6b), fora do congelamento de vendas?
-6. **O que ele faz às 2h se a porta fechar contra ele?** Se não houver caminho,
-   isso precisa estar escrito antes do PR 1.
+1. ~~Fazer agora, ou fazer "O Mirante" primeiro?~~ **Plano completo.**
+   `DECISAO-filosofia-de-escopo.md`: este projeto é para ser feito completo,
+   não minimalista, mesmo custando mais tempo — inclusive quebrando de novo,
+   deliberadamente, o congelamento arquitetural que dizia "nenhuma célula
+   nova até um piloto pago". Não dispensa a disciplina de entrega (PRs
+   pequenos, uma célula por PR, Ritos de Contrato) — só decide que a
+   construção não espera.
+2. ~~A área admin vai ESCREVER no catálogo, ou só ler?~~ **Só ler.** §4.5 é
+   somente-leitura; editar continua por PR. Reavaliar quando a escola nascer.
+3. ~~A métrica pode ter alguns segundos de atraso (evento, barato) ou precisa
+   ser exata (HTTP, mais caro)?~~ **Sempre exata.** HTTP direto em cada
+   provedora, aceitando as 5 sessões de Rito de Contrato (§5, §6) — a opção
+   barata foi vista e recusada, não esquecida.
+4. ~~Mesma origem do site, ou separada?~~ **Mesma origem, com reforços**
+   (CSP própria + verificação de frescor de sessão para escrita, §3) — sem
+   login próprio, sem domínio separado.
+5. ~~Marketing sai do congelamento de vendas?~~ **Sim, seção própria**
+   (§4.6b), liberada desde já.
+6. ~~O que ele faz às 2h se a porta travar contra ele?~~ **O conserto normal
+   já basta** — PR pequeno pelo caminho de sempre, poucos minutos, sem
+   precisar do servidor. Sem botão de emergência à parte: seria mais uma
+   porta para proteger, sem ganho real de velocidade. Combina com a Lei 5 do
+   projeto (emergência é sempre pipeline, nunca acesso direto ao servidor).
 
 Sobre o endereço: se preferir `/operacao/` é troca de uma palavra — a proteção
 real é a porta, não o nome. E o passo manual H21 passa a ser **uma linha**, não
@@ -287,6 +336,7 @@ um bloco de colar (§6).
 
 ## Estado
 
-**Proposta em 25/08/2026 — auditada no mesmo dia por uma banca de quatro
-cadeiras (`PARECER-BANCA-AREA-ADMIN.md`), com as correções de fato já aplicadas.
-Aguardando a palavra do mantenedor sobre as seis perguntas do §9.**
+**Proposta em 25/08/2026, auditada no mesmo dia por uma banca de quatro
+cadeiras (`PARECER-BANCA-AREA-ADMIN.md`) e com as seis perguntas do §9 todas
+respondidas pelo mantenedor no mesmo dia. Falta só ele dizer "aprovado" —
+a partir daí o PR 1 (gênese da célula) pode começar.**

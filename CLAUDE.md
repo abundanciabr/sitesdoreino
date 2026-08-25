@@ -133,6 +133,15 @@ no meio dos passos manuais):
 - **Reporte em linguagem de resultado** ("a plataforma está no ar"), não de
   processo — e marcos merecem ser celebrados. O ânimo do mantenedor é parte da
   infraestrutura do projeto.
+- **Decisão que só ele pode tomar → pergunta estruturada de múltipla escolha,
+  nunca prosa técnica esperando que ele extraia a resposta sozinho.** Use
+  `AskUserQuestion` (ou equivalente) com cada opção traduzida para português
+  simples — o porquê e a consequência prática de cada lado, sem jargão cru
+  ("evento ou HTTP" vira "os números podem demorar alguns segundos, ou
+  precisam ser sempre exatos?") — e marque a opção recomendada quando houver
+  uma. **Confirmado por ele em 25/08/2026** como o formato certo, ao responder
+  as 5 perguntas pendentes da área administrativa desse jeito: use sempre que
+  uma bifurcação real do projeto depender da palavra dele.
 
 ## Este projeto é para ser feito completo — nunca proponha a versão minimalista
 
