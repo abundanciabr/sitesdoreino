@@ -96,13 +96,24 @@ fechar() {
 
 esperar_healthz() {
   local nome="$1" porta="$2"
+  local codigo=""
+  # [INV-CI01] `curl` SEM `-f` sai 0 em HTTP 500: o laço dava o serviço como "de
+  # pé" enquanto ele respondia erro, e o esqueleto seguia para os elos seguintes
+  # achando que a célula estava sã. É a mesma família do `git grep` sem separar
+  # os exit codes — "não consegui" e "está tudo bem" no mesmo ramo (armadilhas/040).
+  # `-f` faz o curl sair 22 em 4xx/5xx; a conferência explícita do código é
+  # redundante de propósito, para o log dizer QUAL resposta veio — e para o dia
+  # em que alguém tirar o `-f` a sonda continuar fechada.
   for _ in $(seq 1 60); do
-    if curl -sS -o /dev/null -w '' "http://localhost:${porta}/healthz" 2>/dev/null; then
-      ok "$nome respondeu /healthz"
-      return 0
-    fi
+    codigo="$(curl -fsS -o /dev/null -w '%{http_code}' "http://localhost:${porta}/healthz" 2>/dev/null)" \
+      && [[ "$codigo" == "200" ]] && {
+        ok "$nome respondeu /healthz (HTTP $codigo)"
+        return 0
+      }
     sleep 2
   done
+  # 000 = nem houve resposta HTTP (conexão recusada, porta errada, host mudo).
+  echo "   última resposta de ${nome} em localhost:${porta}/healthz: HTTP ${codigo:-000}"
   return 1
 }
 
