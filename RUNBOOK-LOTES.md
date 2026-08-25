@@ -161,6 +161,45 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 ## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
 
+**Lote 4 — 25/08/2026** (5 despachos em paralelo + 3 PRs de fechamento da maestro; PRs #160–#163, #166–#167; 7 merges, 4 deploys verdes, 0 revert; rodou ao lado de OUTRA sessão que mexia na célula `funil`):
+
+1. **O arquivo gerado é o ponto de colisão previsível do lote — numere por último.**
+   `armadilhas/INDICE.md` é regenerado por script e conflita em TODO rebase; pior, o
+   próximo número livre muda a cada merge da janela. A entrada do EVO-30 nasceu 099 e
+   fechou em **102**, renumerada três vezes. Quem pegou as colisões foi o próprio
+   `ci/indice_de_armadilhas.py`, que recusa número repetido e diz qual renomear — o
+   mecanismo funcionou. Regra para o próximo brief: **escolher o número da armadilha
+   imediatamente antes do push**, nunca no começo do trabalho; e resolver conflito de
+   índice sempre por `python ci/indice_de_armadilhas.py`, jamais editando o índice à mão.
+2. **Agente que lê o trabalho dos irmãos evita duplicata sozinho.** O despacho de `alunos`
+   percebeu que o de `quiz` (PR irmão, mesma classe de conserto) já tinha criado a
+   armadilha da classe e **não criou a sua** — registrou só o que era particular da
+   célula. Vale injetar no brief de lotes com conserto repetido em N células: “a classe
+   se cataloga UMA vez; o resto vai no `LICOES.md` da célula”.
+3. **`arquivos/` (os painéis) é do maestro, e isso precisa estar no brief.** Como a pasta
+   é gitignored, ela **só existe no clone principal** — agente em worktree não a enxerga,
+   e duas sessões editando o mesmo `painel-dados.js` no clone principal se atropelam sem
+   que o Git perceba. Nesta sessão a própria maestro quebrou o painel com um item
+   multilinha (`armadilhas/095`) e desfez pelo backup. Proibir `arquivos/` em todo brief
+   e fechar o painel no §6 funcionou: zero colisão em 5 despachos.
+4. **ERROR no portão de merge é instrumento, não código — repita a medição.** Logo após um
+   merge, o `mergear.py` do PR seguinte devolveu **ERROR** (o GitHub ainda calculava
+   conflito de forma assíncrona). A resposta certa é esperar e rodar de novo; 25 segundos
+   depois veio PASS. Forçar o merge ou “consertar” algo aí seria criar problema onde não
+   havia (regra 5 do §3, [INV-CI01]).
+5. **Auditoria só-leitura é a frente mais barata de rodar em paralelo — e a que mais
+   descobre.** A AUD1 não abre PR, não mergeia e não disputa arquivo com ninguém: colisão
+   zero por construção. Foi ela que fechou a Onda 1 do PLANO-10X **e** achou os 4 buracos
+   de cobertura (§9 do `ARMADILHAS-OPERACAO.md`). O método que produziu o valor foi
+   **prova por mutação** em worktree descartável: quebrar o código de propósito e exigir
+   que a suíte fique vermelha. Injete isso em todo brief de auditoria — “desconfie de
+   teste que passa mas nunca poderia falhar” só vira evidência quando alguém tenta.
+6. **Lote roda ao lado de sessão alheia se a superfície for medida antes.** Uma outra
+   sessão trabalhava na célula `funil` e em 3 documentos; o lote foi composto só com
+   células fora dessa lista e não houve um único conflito. Medir a superfície da sessão
+   vizinha (`gh pr view --json files` + `git status` do worktree dela) é parte da
+   montagem do §2, não cortesia.
+
 **Lote 1 — 22/08/2026** (6 despachos, 8 PRs #61–#68, 8 merges, 8 deploys verdes, 0 revert):
 
 1. **A pilha de `git stash` é ÚNICA por repositório — compartilhada por todos os
