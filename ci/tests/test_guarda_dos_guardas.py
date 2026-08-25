@@ -633,7 +633,19 @@ def test_parse_ignora_crase_que_nao_e_caminho() -> None:
     assert inv.codigo == "INV-F7"
 
 
-def test_parse_do_documento_real_casa_os_doze_blocos() -> None:
+def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
+    """Inventário por igualdade exata dos invariantes declarados hoje.
+
+    Ele não julga se o invariante é bom — julga se o PARSE continua casando o
+    documento real. Falhar quando um invariante nasce é o comportamento
+    pretendido: obriga quem escreve o próximo a passar por aqui e conferir que
+    o parser ainda enxerga todos.
+
+    **Acrescentar o código novo a esta lista é manutenção de inventário, não
+    afrouxamento** — mesma distinção de `armadilhas/089`. Trocar o `==` por
+    `<=`, ou apagar a asserção, seria afrouxar: mataria o único mecanismo que
+    força a revisão.
+    """
     invariantes = gg.invariantes_declarados(
         (RAIZ / gg.DOCUMENTO).read_text(encoding="utf-8")
     )
@@ -650,6 +662,9 @@ def test_parse_do_documento_real_casa_os_doze_blocos() -> None:
         "INV-P9",
         "INV-P10",
         "INV-P11",
+        # Nasceu na gênese da célula `admin` (25/08/2026): um único assinante
+        # do cookie de sessão do site.
+        "INV-P12",
         "INV-CI01",
     ]
 

@@ -136,5 +136,6 @@
 | [107](107-gnu-make-devolve-exit-2-quando-a-receita-reprova.md) | GNU Make devolve exit **2** quando a receita reprova — e quem lê `1 = FAIL` chama reprovação de "não consegui medir" — um portão que roda `make -C services/<celula> ci` como subprocesso imprime, diante de um `black… | — |
 | [108](108-git-checkout-de-um-commit-esvazia-o-git-diff-da.md) | `git checkout <commit> -- <arquivos>` esvazia o `git diff` da prova — e o patch de 0 byte aplica ao contrário sem erro — você está montando a evidência vermelho→verde da Lei 6 pelo caminho que a `armadilhas/084` manda… | — |
 | [109](109-o-documento-auditado-nao-continua-auditado-depois.md) | O documento auditado não continua auditado depois que você aplica as respostas nele — não há erro nenhum, e é esse o problema. Um documento passa por uma auditoria séria — no caso real, **quatro cadeiras… | — |
+| [110](110-portao-verde-local-e-vermelho-no-ci-porque-o.md) | Portão verde local e vermelho no CI porque o arquivo novo ainda não tinha `git add` — você roda o portão local antes de abrir o PR, e ele passa: | — |
 
-**99 entradas.**
+**100 entradas.**
