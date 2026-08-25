@@ -19,13 +19,14 @@ lint:
 type:
 	@if [ -f mypy.ini ]; then mypy .; else echo "ℹ sem mypy nesta célula"; fi
 
+# [INV-CI01] Quem decide se esta célula tem contrato é ci/manifesto-de-contratos.json,
+# não a presença do arquivo em disco. O `if [ -f ... ]` que morava aqui tratava
+# "não achei o congelado" como "esta célula não tem contrato" — indistinguível de
+# "o congelado sumiu", e apagar contracts/$(CELULA).openapi.yaml deixava este alvo
+# VERDE. A `mensageria` é `not-applicable` no manifesto: o portão devolve SKIP
+# declarado, com o motivo escrito — nunca silêncio.
 contrato-check:
-	@if [ -f ../../contracts/$(CELULA).openapi.yaml ]; then \
-		python manage.py export_openapi > /tmp/$(CELULA).openapi.yaml && \
-		bash ../../ci/freeze-de-contrato.sh $(CELULA) /tmp/$(CELULA).openapi.yaml; \
-	else \
-		echo "ℹ $(CELULA) não expõe contrato congelado"; \
-	fi
+	bash ../../ci/freeze-de-contrato.sh $(CELULA)
 
 ci: lint type test contrato-check
 	@echo "✅ $(CELULA): Definição de Pronto local atingida"
