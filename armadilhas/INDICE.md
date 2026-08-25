@@ -138,5 +138,6 @@
 | [109](109-o-documento-auditado-nao-continua-auditado-depois.md) | O documento auditado não continua auditado depois que você aplica as respostas nele — não há erro nenhum, e é esse o problema. Um documento passa por uma auditoria séria — no caso real, **quatro cadeiras… | — |
 | [110](110-portao-verde-local-e-vermelho-no-ci-porque-o.md) | Portão verde local e vermelho no CI porque o arquivo novo ainda não tinha `git add` — você roda o portão local antes de abrir o PR, e ele passa: | — |
 | [111](111-variavel-some-do-env-quando-o-provisionamento-da.md) | Variável some do env quando o provisionamento da célula roda de novo — uma variável que já estava funcionando em `/opt/plataforma/env/<celula>.env` simplesmente **não está mais lá** depois que alguém re-executou o… | — |
+| [112](112-o-endereco-raw-do-github-serve-a-versao-antiga-do.md) | O endereço `raw.githubusercontent.com/.../main/...` serve a versão ANTIGA do script — às vezes — você mergeia a correção de um script de provisionamento, entrega ao mantenedor a linha de sempre — | — |
 
-**101 entradas.**
+**102 entradas.**

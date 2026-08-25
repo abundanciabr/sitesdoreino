@@ -82,8 +82,28 @@ if [ -f env/identidade.env ]; then
     echo "eu NÃO sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
     for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
     echo
-    echo "NADA foi alterado. Mande esta tela ao agente: ou o script aprende a chave,"
-    echo "ou ela pertence a outro script de provisionamento, que é quem deve rodar."
+    echo "NADA foi alterado. O caminho de volta, por tipo de chave:"
+    # `TOKENS_ACEITOS_<CELULA>` / `TOKENS_COMPLETOS_<CELULA>` são o par que CADA
+    # célula consumidora registra aqui pelo provisionamento DELA — o `funil` e a
+    # `sugestoes` no H20, o `admin` no H21, e assim por diante. Ou seja: esta
+    # lista cresce sozinha a cada célula nova, e esbarrar nela é o caso ESPERADO
+    # deste script, não a exceção. Por isso a recuperação vem nomeada, e não
+    # como "fale com um agente": quem está na VPS precisa saber o que rodar.
+    for CHAVE in $SOBRANDO; do
+      case "$CHAVE" in
+        TOKENS_ACEITOS_*|TOKENS_COMPLETOS_*)
+          CELULA=$(echo "$CHAVE" | sed -E 's/^TOKENS_(ACEITOS|COMPLETOS)_//' | tr '[:upper:]' '[:lower:]')
+          echo "   · $CHAVE -> é o par da célula '$CELULA'. Rode-me primeiro e"
+          echo "     DEPOIS o infra/provisionar-$CELULA.sh, que regrava os dois lados."
+          ;;
+        *)
+          echo "   · $CHAVE -> não sei de quem é. Mande esta tela ao agente."
+          ;;
+      esac
+    done
+    echo
+    echo "Atenção: re-rodar este script ROTACIONA a chave do Django e a senha do"
+    echo "banco da identidade — todo mundo é deslogado. Só re-rode se for isso mesmo."
     exit 1
   fi
 fi
