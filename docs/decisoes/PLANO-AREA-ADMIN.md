@@ -127,20 +127,46 @@ não com login próprio.** A parecer §7.4 pôs três caminhos na mesa: mesma
 origem, origem separada, ou mesma origem só-leitura. O mantenedor escolheu
 mesma origem com proteções extras — não vale a pena duplicar todo o sistema
 de login por uma segunda "casa" só para administração. Isso exige três
-reforços que o PR 3 carrega, respondendo aos achados A1/A4 da cadeira de
-segurança:
+reforços, respondendo aos achados A1/A4 da cadeira de segurança — **[REVISÃO
+25/08] e eles NÃO cabem todos no PR 3**, como a versão anterior deste plano
+afirmava: o primeiro é do PR 3, o segundo é um Rito §3 à parte (detalhado
+abaixo) e o terceiro é uma decisão já tomada, sem trabalho:
 
-- **CSP própria da célula admin** (`default-src 'self'; script-src 'self';
-  object-src 'none'; frame-ancestors 'none'`) — nenhuma outra célula precisa
-  disto hoje; é específico de uma área que vai renderizar HTML enviado
-  (galeria, §4.3) e markdown (roadmap, §4.8).
+- **CSP própria da célula admin.** Base: `default-src 'self'; script-src
+  'self'; object-src 'none'`. **[REVISÃO 25/08] `frame-ancestors` NÃO pode ser
+  `'none'` em toda a célula** — a versão anterior deste plano escreveu
+  `'none'` e teria recriado, por dentro da célula, exatamente o bug que a
+  banca pegou no `frameDeny` do Traefik: `'none'` proíbe enquadramento
+  **inclusive de mesma origem**, e a galeria do §4.3 serve painel em iframe
+  a partir da própria área admin. Correto: `frame-ancestors 'self'` (ou CSP
+  por rota, mais estrita nas páginas que não são enquadradas). O guarda do
+  PR 3 tem de medir a galeria renderizando de verdade, não só a presença do
+  cabeçalho.
 - **Verificação de frescor para escrita**, não sessão curta para o site
   inteiro (mudar `SESSION_COOKIE_AGE` afetaria todo visitante comum). A
-  `identidade` passa a devolver `autenticada_em` em `/sessao/completa` —
-  mudança de contrato, mesmo Rito §3 do PR 3 que já mexe nesse contrato para
-  os tokens do §3 item 2, sem PR extra. Escrita na área admin com
-  `autenticada_em` mais velho que uma janela a definir (proposta: 24h) pede
-  para passar pelo Google de novo antes de aceitar.
+  `identidade` passaria a devolver `autenticada_em` em `/sessao/completa`.
+  **[REVISÃO 25/08] Isto custa MAIS do que a versão anterior deste plano
+  dizia, e o texto errado precisa ser desfeito com todas as letras:** ele
+  afirmava que pegaria carona no "mesmo Rito §3 do PR 3, sem PR extra". Não
+  existe essa carona — **o PR 3 não toca contrato nenhum**, porque os tokens
+  do §3 item 2 são env puro (`TOKENS_ACEITOS_ADMIN`/`TOKENS_COMPLETOS_ADMIN`,
+  zero código, conferido no `settings.py` da identidade). Acrescentar
+  `autenticada_em` ao `SessionFull` é mudança no **contrato congelado** da
+  `identidade` e custa, de verdade:
+  - **uma sessão de arquitetura com o mantenedor presente** (Rito §3);
+  - **um PR só de `contracts/`**, com a label `contrato`;
+  - **um PR de implementação na `identidade`** — que é outra célula, e
+    portanto **nunca** poderia caber no PR 3 (muralha "1 PR = 1 célula");
+  - e cai na `armadilhas/075`: campo opcional novo com `default=` reprova o
+    freeze, e sem cuidado o campo vaza como `""` para o `funil`, que é o
+    outro consumidor de `/sessao` hoje.
+
+  **Consequência de ordem, que o plano precisa respeitar:** o PR 3 pode
+  nascer com a porta e a auditoria; a verificação de frescor só existe
+  depois desse rito. Ou a escrita da área admin espera o frescor, ou o PR 3
+  entrega escrita sem esse degrau — **decisão a tomar quando a fase 4
+  chegar** (é lá que nasce o primeiro formulário; até a fase 3 a área é toda
+  de leitura, e o frescor não protege nada ainda).
 - **Nenhum login próprio, nenhum domínio separado** — descartado por
   decisão explícita, não por omissão. Registrar aqui para ninguém reabrir:
   a defesa contra XSS em outra página do site é a CSP acima, não uma
@@ -160,9 +186,30 @@ tem filtro por site — a plataforma é uma, as lojas são N.
 | 4.4 | **Usuários** | lista paginada das contas do site (via operação interna nova na `identidade` — Rito §3) | 4 |
 | 4.5 | **Cursos & conteúdo** | **[DECIDIDO 25/08] SOMENTE LEITURA.** Mostra ofertas/cursos do `catalogo`, sem formulário de edição — mudar preço ou criar curso continua sendo por PR, como hoje. Reavaliar quando a Meshcraft Academy nascer e houver o que editar de verdade | 4 |
 | 4.6 | **Vendas** | **CONGELADA** — nem métricas de checkout/pagamentos. Só nasce quando o mantenedor disser que o site vai vender | — |
-| 4.6b | **Público & demanda** (marketing) | **[DECIDIDO 25/08] Liberada, seção própria, fora do congelamento de vendas** — confirmado pelo mantenedor. Visitas, cadastros no `/cadastro`, leads, quizzes completados — por idioma e por site. Não encosta no Mercado Pago, e é o tipo de número capaz de mostrar que existe interesse antes mesmo de o produto existir | 2 |
+| 4.6b | **Público & demanda** (marketing) | **[DECIDIDO 25/08] Liberada, seção própria, fora do congelamento de vendas.** **[REVISÃO 25/08] mas só metade do dado existe hoje** — ver a nota logo abaixo desta tabela. **Existe:** cadastros/leads (model `Lead`), quizzes completados (célula `quiz`), por site. **NÃO existe:** contagem de visitas — não há nenhum modelo de pageview em lugar nenhum do repositório, e construí-la é trabalho novo (middleware de contagem + tabela + decisão de privacidade), não uma leitura de algo pronto | 2 |
 | 4.7 | **Configuração** | o que é **dado** (chave-valor por site no `admin_db`; dados do `catalogo`), com formulário. O que é **código/infra** (`sites.json`, Traefik, envs) continua entrando por PR — a seção mostra somente-leitura e aponta o caminho | 4 |
-| 4.8 | **Roadmap & planos** | página interna editável (markdown no banco). Não confundir com o roadmap PÚBLICO da Caixa (EVO-31): este é o de dentro | 4 |
+| 4.8 | **Roadmap & planos** | página interna editável (markdown no banco). Não confundir com o roadmap PÚBLICO da Caixa (EVO-31, já no ar): este é o de dentro | 4 |
+
+**[REVISÃO 25/08] A pendência aberta do §4.6b — contagem de visitas.** O
+mantenedor liberou a seção de marketing com a informação, dada por mim, de que
+o dado "existe hoje". Conferido depois: **existe para cadastros, leads e
+quizzes; não existe para visitas.** Nenhuma célula conta acesso a página —
+`grep` por pageview/visita nos apps do `funil` e do `leads` não encontra
+modelo nenhum. As opções, quando a fase 2 chegar (**decisão do mantenedor, não
+do agente**):
+
+- **Construir a contagem** — middleware no `funil` + tabela + agregação por
+  site/idioma. É a opção coerente com "sempre completo", e é um despacho
+  próprio (não cabe de carona na página de métricas). Tem uma pergunta de
+  privacidade embutida: contar visita sem identificar pessoa (contador
+  agregado) é simples; contar "visitantes únicos" mexe com dado pessoal e
+  merece decisão separada.
+- **Nascer sem visitas**, mostrando só o que existe (cadastros, leads,
+  quizzes) — e a seção cresce depois.
+
+Enquanto isso não for decidido, **a seção 4.6b não promete visitas**: nenhum
+agente deve construir um tile de visitas assumindo que o dado está em algum
+lugar, porque não está.
 
 ## §5 — Onde os dados moram (as muralhas aplicadas)
 
@@ -216,9 +263,12 @@ com os degraus que as armadilhas 076/088/089 provaram serem obrigatórios.
 estavam erradas:
 
 - **7–9 merges abre a PORTA (fase 1). O §4 inteiro é da ordem de 30 merges** —
-  a fase 2 sozinha são 11 PRs. E os "Lotes 6 e 7" citados não eram dois
-  exemplos: eram as duas metades do **mesmo** nascimento (9 + 7 = 16 merges para
-  pôr a `sugestoes` do zero ao ar).
+  a fase 2 sozinha são 12–13 PRs (**[REVISÃO 25/08]**: a conta da banca dizia
+  11 e esquecera o `quiz`, que o §4.6b precisa). E os "Lotes 6 e 7" citados não
+  eram dois exemplos: eram as duas metades do **mesmo** nascimento (9 + 7 = 16
+  merges para pôr a `sugestoes` do zero ao ar). Fora da conta, porque dependem
+  de decisão dele: a contagem de visitas (§4.6b) e o frescor de sessão (§3,
+  +1 sessão e +2 PRs se for construído).
 - **O PR 1 tem ~21 arquivos e NÃO cabe em 15.** O esqueleto Django é
   indivisível (meia-célula não passa no `make ci`), e os dois precedentes foram
   **24** (`sugestoes`, #108) e **44** (`identidade`, #142). A saída é a válvula
@@ -232,8 +282,8 @@ estavam erradas:
 | **PR 2a** | agente | **[BANCA] O provisionamento, SOZINHO e ANTES do passo humano**: `infra/provisionar-admin.sh` + bloco no `infra/provisionamento-postgres.sql` + `infra/env/admin.env.exemplo` + `infra/env/identidade.env.exemplo` (as duas chaves novas) + linha **H21** no `ARMADILHAS-OPERACAO.md` §1 | **Corrige o impasse circular do plano original**: o comando do mantenedor busca o script **da `main`** (`curl .../main/infra/...`). Precedentes: #131 (`sugestoes`) e `a55a179` (`identidade`), ambos com o script separado do compose |
 | **H21** | **mantenedor** | **UMA LINHA**, não um bloco de colar: `curl` do script + `bash`. Idempotente, sem argumentos, sem perguntas, terminando em `PRONTO:` ou `PAROU POR SEGURANÇA:` com o estado DEPOIS conferido. Cria banco+role `admin`, escreve `env/admin.env`, acrescenta as duas chaves ao `env/identidade.env` | Molde: `infra/provisionar-identidade.sh` (H20, deu certo de primeira). **Bloco de colar multi-linha é proibido** — falhou 3× (H18/H19, `RUNBOOK-LOTES.md` §36). **As duas chaves de token precisam ter o MESMO valor**, senão 403 silencioso |
 | **PR 2b** | agente | **Infra**: serviço no `infra/docker-compose.yml` + router/service no Traefik (Host-bound, §2) + cadeia de middleware **própria** do admin **[BANCA]** (o `frameDeny` compartilhado quebraria a galeria do §4.3, e afrouxá-lo enfraqueceria `checkout` e `pagamentos`) + inventário em **três lugares** de `ci/tests/test_rotas_sem_forma_de_locale.py` (`armadilhas/089`) | mandato `infra/` + `ci/`; merge SÓ com H21 conferido — senão o `deploy-infra` reprova **depois** de instalar o compose e devolve o mantenedor ao terminal da VPS |
-| PR 3 | agente | **A porta** (§3): middleware fail-closed + página Visão geral + auditoria append-only (com trigger no banco, não só guarda em Python — `armadilhas/079`) + CSP + lista de caminhos isentos **enumerada e guardada por igualdade exata** **[BANCA]** | testes-guarda das três linhas da tabela do §3 no mesmo PR |
-| PRs 4+ | agente | **Fase 2 — 11 PRs**: por provedora congelada são **2 PRs** (o Rito §3 proíbe `contracts/` junto com `services/`) **e uma sessão de arquitetura com o mantenedor presente**. Ordem sugerida: `sugestoes` → `identidade` → `leads` → `alunos` → `catalogo`, mais a página Métricas | **[DECIDIDO 25/08]** cinco sessões com o mantenedor, aceitas — ele escolheu tempo real (§5) sabendo do custo |
+| PR 3 | agente | **A porta** (§3): middleware fail-closed + página Visão geral + auditoria append-only (com trigger no banco, não só guarda em Python — `armadilhas/079`) + CSP (`frame-ancestors 'self'`, **não** `'none'` — **[REVISÃO 25/08]**) + lista de caminhos isentos **enumerada e guardada por igualdade exata** **[BANCA]** | testes-guarda das três linhas da tabela do §3 no mesmo PR. **Não toca contrato nenhum** — os tokens são env puro; o frescor de sessão é rito à parte (§3) |
+| PRs 4+ | agente | **Fase 2 — [REVISÃO 25/08] 12–13 PRs, não 11.** Por provedora **congelada** são **2 PRs** (o Rito §3 proíbe `contracts/` junto com `services/`) **e uma sessão de arquitetura com o mantenedor presente**: `sugestoes`, `identidade`, `leads`, `alunos`, `catalogo` = 10 PRs + 5 sessões. **Some o `quiz`** — que a conta anterior esquecera, e que o §4.6b precisa: ele é `not-applicable` no manifesto, então custa **1 PR e nenhuma sessão**. Mais a página Métricas e a página Público & demanda | **[DECIDIDO 25/08]** cinco sessões com o mantenedor, aceitas — ele escolheu tempo real (§5) sabendo do custo. **Não inclui** a contagem de visitas (§4.6b), que é despacho próprio se ele mandar construir |
 | depois | agente | **Fase 3** (galeria, 2–3 PRs) → **Fase 4** (usuários, config, roadmap — 6–9 PRs, 1 despacho por seção, serializados entre si pela muralha "1 PR = 1 célula"; cursos/§4.5 fica mais barato que o estimado por ser somente-leitura) | Fase 4.4 exige Rito §3 na `identidade` |
 
 **Aviso de fenômeno esperado — [BANCA] são TRÊS, não um:**
@@ -321,7 +371,9 @@ já aplicadas nas seções técnicas acima.
    barata foi vista e recusada, não esquecida.
 4. ~~Mesma origem do site, ou separada?~~ **Mesma origem, com reforços**
    (CSP própria + verificação de frescor de sessão para escrita, §3) — sem
-   login próprio, sem domínio separado.
+   login próprio, sem domínio separado. **[REVISÃO 25/08]** a CSP é do PR 3;
+   o frescor exige um Rito §3 próprio e só faz falta na fase 4, quando nascer
+   o primeiro formulário (§3).
 5. ~~Marketing sai do congelamento de vendas?~~ **Sim, seção própria**
    (§4.6b), liberada desde já.
 6. ~~O que ele faz às 2h se a porta travar contra ele?~~ **O conserto normal
@@ -337,6 +389,16 @@ um bloco de colar (§6).
 ## Estado
 
 **Proposta em 25/08/2026, auditada no mesmo dia por uma banca de quatro
-cadeiras (`PARECER-BANCA-AREA-ADMIN.md`) e com as seis perguntas do §9 todas
-respondidas pelo mantenedor no mesmo dia. Falta só ele dizer "aprovado" —
-a partir daí o PR 1 (gênese da célula) pode começar.**
+cadeiras (`PARECER-BANCA-AREA-ADMIN.md`), com as seis perguntas do §9 todas
+respondidas pelo mantenedor, e revisada uma última vez depois das respostas
+(marcações `[REVISÃO 25/08]`) — essa revisão achou quatro erros de fato, três
+deles introduzidos ao aplicar as próprias respostas: a CSP que recriava o bug
+do iframe, o custo do frescor de sessão dado como "de carona" quando é um
+Rito §3 inteiro, o `quiz` ausente da conta da fase 2, e a promessa de contagem
+de visitas sobre um dado que não existe.**
+
+**Falta só ele dizer "aprovado" — a partir daí o PR 1 (gênese da célula) pode
+começar.** Duas coisas ficam explicitamente **em aberto** e não travam o PR 1,
+porque só aparecem lá na frente: se a contagem de visitas será construída
+(§4.6b, fase 2) e se o frescor de sessão será construído antes do primeiro
+formulário (§3, fase 4).
