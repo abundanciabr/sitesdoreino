@@ -104,6 +104,14 @@ services:
     image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
     env_file: [env/identidade.env]
 
+  # A área administrativa (DECISAO-celula-admin, 25/08/2026): painéis, métricas
+  # e configuração, atrás do login do site e de uma lista própria de e-mails.
+  # Sem auxiliar — não publica evento e não consome fila: ela pergunta e mostra.
+  admin:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-admin:${ADMIN_TAG:-main}
+    env_file: [env/admin.env]
+
   quiz:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-quiz:${QUIZ_TAG:-main}
