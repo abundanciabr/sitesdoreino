@@ -3,6 +3,79 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
+## O leque de avisos (EVO-42): o que muda quando o destinatário deixa de ser um
+
+Fecha o "fica para depois" que o EVO-21 deixou escrito no topo do `avisos.py`, e
+a previsão de lá estava certa: *"cabe sem mudar forma nenhuma, são mais linhas
+com outro `destinatario`"*. Mudou uma coisa que aquele despacho não podia prever
+porque não havia plateia: **o custo passou a depender de gente.**
+
+**1. A igualdade não foi afrouxada para caber o leque — ela mudou de forma e o
+guarda mudou junto.** *"Uma linha de `HistoricoStatus` ⇒ um `Aviso`"* virou *"⇒
+um `Aviso` por interessado DISTINTO"*. Tudo o que era exigido do aviso único
+continua exigido do leque inteiro: mesma transação, mesmo rollback, mesma recusa
+fora do `atomic`. A tentação de baixar a asserção para `>= 1` existe e é o erro:
+um guarda que aceita "pelo menos um" não distingue seis avisos de um.
+
+**2. `bulk_create` não chama `Model.save()` — e o guarda que mirava o `save()`
+ficou apontando para o vazio.** `test_se_o_AVISO_nao_puder_nascer_o_status_nao_muda`
+monkeypatchava `Aviso.save`, que era o ponto exato onde o `create()` tocava o
+banco. Com a escrita em lote, esse ponto deixou de existir — e o teste teria
+ficado **verde sem nunca disparar**, que é a forma mais discreta de um portão ser
+desligado. Aqui ele reprovou alto (`DID NOT RAISE`), porque esperava a exceção;
+num guarda escrito ao contrário, não reprovaria. **Regra: quando o caminho de
+escrita muda, o alvo do monkeypatch é parte do que muda.** O alvo novo é
+`monkeypatch.setattr(Aviso.objects, "bulk_create", …)`.
+
+**3. `.distinct()` num model com `Meta.ordering` não é distinto pelo que você
+pediu.** `Comentario` ordena por `criado_em`, e o Django acrescenta a coluna de
+ordenação ao `SELECT DISTINCT`: o SQL vira `SELECT DISTINCT autor_id, criado_em`,
+distinto **por par**, ou seja uma linha por comentário. O resultado final saía
+certo (o `dict` do fan-out deduplica), então nada reprovava — a única coisa que
+denunciou foi olhar o SQL cru que o teste de volume imprime. `.order_by()` vazio
+antes do `.distinct()` devolve ao `DISTINCT` o sentido que o nome promete. Vale
+para qualquer célula; `Voto` não sofre disso porque não tem `ordering`.
+
+**4. O guarda de volume não crava um número: compara dois medidos.** `== 3`
+transformaria qualquer `select_related` novo em vermelho falso, e a pergunta
+nunca foi "quantas consultas" — foi *"o número depende da plateia?"*. Mede-se com
+2 e com 20 e exige-se igualdade; a mensagem de falha carrega os dois números e o
+SQL. O teto absoluto existe só para o fan-out isolado (três idas ao banco), e
+`SAVEPOINT`/`RELEASE` saem dessa conta porque são artefato do `django_db` da
+suíte, não do desenho.
+
+**5. Dois degraus de volume, falsificados separadamente — é a lição do EVO-40
+paga adiantado.** O degrau 1 mede `avisar_os_interessados()`; o degrau 2 mede o
+POST inteiro da moderação. Só o degrau 1 mentiria sobre um laço escrito na
+**view**, por fora da função: a função continuaria com as três consultas dela.
+Medido com um `create()` por pessoa: 9 × 45 no degrau 1, 15 × 51 no degrau 2.
+
+**6. O vínculo é COLUNA, e a alternativa foi medida, não descartada por gosto.**
+A tela precisa dizer "sua ideia" × "ideia em que você votou/comentou". Derivar na
+leitura parece mais limpo (zero duplicação) e perde por duas coisas: (a) é
+espelho de **estado mutável** — quem desvota amanhã vê o recado de ontem mudar de
+explicação, e o `Aviso` é snapshot desde o EVO-21, como `status_novo` e `nota`;
+(b) custa leitura por página. As duas estão medidas em teste:
+`test_o_vinculo_sobrevive_ao_desvoto` e
+`test_ler_a_pagina_de_avisos_nao_paga_consulta_pelo_vinculo`. A precedência de
+quem acumula papéis (autor > comentário > voto) tem guarda próprio, senão a
+etiqueta passaria a depender da ordem em que o fan-out leu as tabelas.
+
+**7. Fixture de volume pelo ORM, fixture de verdade pela jornada — e as duas.**
+A `plateia` escreve `Voto`/`Comentario` por `bulk_create`: vinte logins dublados
+não acrescentariam nada à medição de consultas e custariam segundos de suíte. Mas
+ela sozinha continuaria verde no dia em que o endpoint de votar parasse de gravar
+a linha que o fan-out lê — por isso existe
+`test_a_jornada_de_verdade_bota_quem_votou_e_quem_comentou_no_leque`, com POST em
+`votar` e em `comentarios`. Nenhuma das duas fecha a escada sozinha.
+
+**8. O que ficou de fora, e é rito e não decisão:** o sininho **ao lado do nome**,
+visível em qualquer página do site. Ele exige que o `funil` pergunte à
+`sugestoes` quantos avisos a pessoa tem — operação nova num contrato
+**congelado**, ou seja Rito de Contrato (RITOS §3) com o mantenedor presente, e
+nunca dentro de um lote. Está escrito na §2 da `DECISAO-EVO-40`, e este despacho
+não o improvisou de propósito.
+
 ## A trava do ChangeSpec (EVO-40): o degrau que eu quase deixei sem dente
 
 Fecha a divergência que o EVO-13 registrou logo abaixo ("A spec §8 pede um
@@ -206,6 +279,10 @@ mais linhas de `Aviso`, com outro `destinatario`. Foi por isso que o contrato
 congelado do `status-alterado` NÃO leva a lista de votantes (lista sem teto dentro
 de evento).
 
+> **PAGO no EVO-42** (25/08/2026), e a previsão se confirmou: a forma não mudou,
+> ganhou uma coluna (`vinculo`). Ver "O leque de avisos (EVO-42)" no topo deste
+> arquivo — inclusive o que a previsão NÃO cobria, que é o custo em consultas.
+
 ## O fuso de fábrica do Django é `America/Chicago` — e ninguém tinha notado
 
 A página de avisos é a **primeira desta célula a renderizar uma data**, e por isso
@@ -271,9 +348,11 @@ arquivos de guarda novos (195 → 217 testes). Aqui fecha o Lote 2, e a Caixa pa
 a ter jornada completa: a pessoa sugere, a equipe responde, e ela **fica sabendo**.
 
 **Continua não existindo**, e cada um tem despacho próprio: **consumir** evento
-(nenhuma célula assina os quatro ainda), avisar quem VOTOU, merge de sugestão
-(V1.1 na spec §10), middleware CONV-SITE, `config/api.py` e a tela bonita — o sino
-desenhado é o EVO-31 (Lote 3).
+(nenhuma célula assina os quatro ainda), merge de sugestão (V1.1 na spec §10),
+middleware CONV-SITE e `config/api.py`. O sino desenhado saiu no EVO-31 (Lote 3);
+**avisar quem VOTOU saiu no EVO-42** (Lote 4), junto com quem comentou. O que
+segue fora, e é rito e não despacho: o sininho VISÍVEL FORA da Caixa, que exige
+operação nova num contrato congelado.
 
 ## A emissão (EVO-20): a Caixa passou a AFIRMAR fatos
 

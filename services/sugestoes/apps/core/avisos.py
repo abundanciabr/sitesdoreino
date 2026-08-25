@@ -1,8 +1,22 @@
-"""O sininho: o aluno fica sabendo que a ideia dele andou (EVO-21).
+"""O sininho: quem interagiu com a ideia fica sabendo que ela andou.
 
-Escopo deste despacho, e só ele: o aviso NASCE junto com a mudança de status, o
-aluno vê a lista dos avisos DELE, a contagem de não-lidos está disponível em
-toda página, e marcar como lido é idempotente.
+EVO-21 escreveu o dado para o autor. **EVO-42 abre o leque**: autor, quem votou
+e quem comentou — um `Aviso` por pessoa distinta, na mesma transação da mudança
+de status. Lei: `docs/caixa-de-sugestoes/DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md`
+§2, decidida pelo mantenedor em 25/08/2026.
+
+O aviso NASCE junto com a mudança de status, cada pessoa vê a lista dos avisos
+DELA, a contagem de não-lidos está disponível em toda página, e marcar como lido
+é idempotente.
+
+**O leque é escrito em LOTE, e isso é desenho, não otimização.** Uma sugestão
+popular tem centenas de votantes; um `create()` por pessoa dentro do laço faria
+o custo de mudar um status crescer com o tamanho da plateia, dentro de uma
+transação que segura um `SELECT … FOR UPDATE` na linha da sugestão. São **três**
+consultas, sempre: quem comentou, quem votou, e um `bulk_create`. O guarda que
+impede a volta do laço é `tests/test_volume_dos_avisos.py`, que mede com 2 e com
+20 interessados e exige o MESMO número — é a única forma de o desenho certo não
+ser desfeito de boa-fé pelo próximo agente.
 
 **A decisão que define este arquivo (mantenedor, 24/08/2026).** O plano original
 mandava a célula `mensageria` avisar o aluno. Foi descartado com motivo medido:
@@ -25,15 +39,18 @@ rede para voltar ao ponto de partida, e o preço é grande:
 * **e o pior: divergência possível.** Status e aviso passariam a poder discordar,
   e é exatamente isso que a transação existe para impedir.
 
-Por isso `avisar_o_autor()` é chamada DENTRO do `transaction.atomic()` de
+Por isso `avisar_os_interessados()` é chamada DENTRO do `transaction.atomic()` de
 `registrar_mudanca_de_status()` (`apps/core/moderacao.py`) — o mesmo lugar onde o
 evento é escrito na outbox. Um rollback leva os três juntos: status, histórico e
-aviso.
+**todos** os avisos.
 
-**Fora daqui, de propósito:** avisar quem VOTOU (fica para depois; cabe sem
-mudar forma nenhuma, são mais linhas com outro `destinatario`), e-mail/WhatsApp
-(decisão acima) e o sino desenhado — a tela bonita é o EVO-31, Lote 3. O que
-importa aqui é o dado certo e a página funcionando.
+**Fora daqui, de propósito:** e-mail/WhatsApp (decisão acima) e o sininho fora da
+Caixa — o sino visível em qualquer página do site exige que o `funil` pergunte à
+`sugestoes` quantos avisos a pessoa tem, o que é operação nova num contrato
+CONGELADO. Isso não é decisão pendente, é **rito** pendente (RITOS §3, com o
+mantenedor presente, nunca dentro de um lote) — está escrito na §2 da decisão.
+Um sistema de notificações que vai crescer merece plano próprio, não uma extensão
+improvisada desta tela.
 """
 
 from django.db import transaction
@@ -43,7 +60,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.sugestoes.models import Aviso
+from apps.sugestoes.models import Aviso, Comentario, Voto
 
 from . import sessao as ses
 from .participacao import exige_sessao
@@ -52,7 +69,7 @@ PAGINA_AVISOS = "sugestoes/avisos.html"
 
 
 class AvisoForaDaTransacao(Exception):
-    """`avisar_o_autor()` chamada sem transação aberta.
+    """`avisar_os_interessados()` chamada sem transação aberta.
 
     Mesma forma — e mesmo motivo — do `EventoForaDaTransacao` do EVO-20
     (`apps/sugestoes/eventos.py`), que é a Lei 1 aplicada: em vez de confiar que
@@ -63,32 +80,94 @@ class AvisoForaDaTransacao(Exception):
     """
 
 
-def avisar_o_autor(*, sugestao, status_anterior: str, status_novo: str, nota: str = ""):
-    """[INVARIANTE 1] O aviso nasce na MESMA transação da mudança de status.
+def interessados_em(sugestao) -> dict[str, str]:
+    """Quem interagiu com a ideia → por qual vínculo. Distintos, em DUAS consultas.
 
-    Quem recebe é o autor da sugestão, sempre — inclusive quando quem moderou
-    foi o próprio autor (alguém da equipe mexendo na própria ideia). Suprimir
-    esse caso seria um ramo a mais e uma exceção que o guarda de atomicidade
-    teria de conhecer; do jeito que está, o invariante é uma igualdade sem
-    ressalva: **uma linha de `HistoricoStatus` ⇒ um `Aviso`**.
+    A ordem de preenchimento É a precedência de quem acumula papéis, e o
+    `setdefault` é o que a impõe: autor primeiro, depois quem comentou, depois
+    quem votou. Quem é as três coisas entra **uma vez**, como `AUTOR`.
+
+    Um `set` de ids não bastaria — perderia o motivo, que é o que a tela precisa
+    dizer. Um `dict` guarda os dois e ainda deduplica sozinho: não existe o
+    caminho de código em que a mesma pessoa entre duas vezes, então a ausência
+    de duplicata não depende de ninguém lembrar de filtrar.
+
+    **Duas consultas, e não uma por pessoa.** As duas são `values_list` de uma
+    coluna só: o que sobe para a memória é uma lista de ids opacos, nunca linhas
+    inteiras de `Voto`/`Comentario` — e nunca a `Identidade`, que carrega e-mail
+    (`DECISAO-EVO-01` §3). O `.distinct()` do comentário existe porque uma
+    pessoa comenta várias vezes na mesma ideia; o do voto não existe porque o
+    banco já o garante (`voto_unico_por_ator_e_sugestao`).
+
+    **O `.order_by()` vazio antes do `.distinct()` não é enfeite.** `Comentario`
+    tem `ordering = ["criado_em"]` no `Meta`, e o Django acrescenta a coluna de
+    ordenação ao `SELECT DISTINCT` — o SQL vira
+    `SELECT DISTINCT autor_id, criado_em`, que é distinto por PAR e portanto não
+    deduplica pessoa nenhuma. Ainda voltaria certo daqui (o `dict` deduplica), só
+    que trazendo uma linha por comentário e uma data que este código não tem o
+    que fazer com ela. Limpar a ordenação devolve ao `DISTINCT` o sentido que o
+    nome dele promete.
+    """
+    vinculos: dict[str, str] = {sugestao.autor_id: Aviso.Vinculo.AUTOR}
+    for identidade_id in (
+        Comentario.objects.filter(sugestao=sugestao)
+        .order_by()
+        .values_list("autor_id", flat=True)
+        .distinct()
+    ):
+        vinculos.setdefault(identidade_id, Aviso.Vinculo.COMENTARIO)
+    for identidade_id in Voto.objects.filter(sugestao=sugestao).values_list(
+        "autor_id", flat=True
+    ):
+        vinculos.setdefault(identidade_id, Aviso.Vinculo.VOTO)
+    return vinculos
+
+
+def avisar_os_interessados(
+    *, sugestao, status_anterior: str, status_novo: str, nota: str = ""
+) -> list[Aviso]:
+    """[INVARIANTE 1] Os avisos nascem na MESMA transação da mudança de status.
+
+    A igualdade que o EVO-21 protegia era *"uma linha de `HistoricoStatus` ⇒ um
+    `Aviso`"*. Desde o EVO-42 ela é *"⇒ um `Aviso` por interessado DISTINTO"* — e
+    o guarda de atomicidade continua mordendo na forma nova, que é a parte cara
+    de acertar: relaxar o guarda para acomodar o leque desfaria o motivo de ele
+    existir.
+
+    Quem recebe: autor, quem comentou e quem votou — **sem ressalva**, inclusive
+    quando quem moderou foi uma dessas pessoas (alguém da equipe mexendo na
+    própria ideia, ou tendo votado nela). Suprimir esse caso seria um ramo a mais
+    e uma exceção que o guarda de atomicidade teria de conhecer.
 
     `nota` entra como veio: é a justificativa que a equipe escreveu sabendo que
-    quem sugeriu vai ler (spec §10, e o `EXIGEM_JUSTIFICATIVA` do EVO-13). Esta
-    é a primeira tela da Caixa em que ela alcança o aluno.
+    quem sugeriu vai ler (spec §10, e o `EXIGEM_JUSTIFICATIVA` do EVO-13). Ela
+    alcança agora todo mundo que participou da conversa, que é o ponto da
+    decisão: a resposta "não vamos fazer, e por quê" é para quem se importou.
+
+    **`bulk_create` e não um laço de `create()`.** É UM `INSERT` para a plateia
+    inteira, dentro de uma transação que já segura o `SELECT … FOR UPDATE` da
+    sugestão — o desenho errado alonga essa trava proporcionalmente ao número de
+    votantes, que é justamente o número que cresce quando a Caixa dá certo.
     """
     if not transaction.get_connection().in_atomic_block:
         raise AvisoForaDaTransacao(
-            "avisar_o_autor() foi chamada fora de transaction.atomic(). O aviso "
-            "tem de nascer na MESMA transação da mudança de status: sem isso, um "
-            "rollback deixa o aluno avisado de algo que não aconteceu — e o "
+            "avisar_os_interessados() foi chamada fora de transaction.atomic(). "
+            "Os avisos têm de nascer na MESMA transação da mudança de status: sem "
+            "isso, um rollback deixa gente avisada de algo que não aconteceu — e o "
             "aviso e o status passam a poder divergir."
         )
-    return Aviso.objects.create(
-        destinatario_id=sugestao.autor_id,
-        sugestao=sugestao,
-        status_anterior=status_anterior,
-        status_novo=status_novo,
-        nota=nota,
+    return Aviso.objects.bulk_create(
+        [
+            Aviso(
+                destinatario_id=destinatario_id,
+                sugestao=sugestao,
+                status_anterior=status_anterior,
+                status_novo=status_novo,
+                nota=nota,
+                vinculo=vinculo,
+            )
+            for destinatario_id, vinculo in interessados_em(sugestao).items()
+        ]
     )
 
 

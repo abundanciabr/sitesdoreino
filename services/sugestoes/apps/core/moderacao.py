@@ -27,10 +27,11 @@ quem já está com a sessão aberta. Há guarda para isso.
   `STATUS_QUE_A_EQUIPE_ESCOLHE` abaixo o exclui de propósito, para que ele não
   entre pela porta dos fundos de um `<select>`.
 - **A lista de avisos do aluno e o marcar-como-lido.** Moram em
-  `apps/core/avisos.py` (EVO-21). O que ESTE arquivo faz é a metade que não podia
-  morar em outro lugar: o aviso do autor nasce dentro do mesmo
-  `transaction.atomic()` da mudança de status, logo abaixo do histórico — nunca
-  de uma volta pelo Redis, que faria status e aviso poderem divergir.
+  `apps/core/avisos.py` (EVO-21; leque aberto no EVO-42). O que ESTE arquivo faz
+  é a metade que não podia morar em outro lugar: os avisos de todos os
+  interessados nascem dentro do mesmo `transaction.atomic()` da mudança de
+  status, logo abaixo do histórico — nunca de uma volta pelo Redis, que faria
+  status e aviso poderem divergir.
 - **Apagar sugestão.** Não existe: "remover" é status. A FK do histórico é
   `PROTECT` de propósito (EVO-11), e nenhuma rota daqui chama `delete()`.
 """
@@ -53,7 +54,7 @@ from apps.sugestoes.models import (
 )
 from apps.sugestoes.tasks import relay_apos_commit
 
-from .avisos import avisar_o_autor
+from .avisos import avisar_os_interessados
 from .participacao import exige_sessao, quadro_atual, sugestoes_ordenadas
 
 PAGINA_FILA = "sugestoes/fila.html"
@@ -217,13 +218,18 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
             nota=nota,
             alterado_por=por,
         )
-        # [EVO-21] [INVARIANTE 1] E o aviso do AUTOR nasce na mesma transação —
-        # não de uma volta pelo Redis. O evento acima existe para o mundo de
-        # fora; o aviso é da própria Caixa, e fazê-lo depender do fio só
-        # acrescentaria um jeito de o status mudar sem o aluno ficar sabendo.
-        # Rollback aqui leva os três juntos: status, histórico e aviso
-        # (`apps/core/avisos.py`).
-        avisar_o_autor(
+        # [EVO-21 → EVO-42] [INVARIANTE 1] E os avisos de TODOS os interessados
+        # nascem na mesma transação — não de uma volta pelo Redis. O evento
+        # acima existe para o mundo de fora; o aviso é da própria Caixa, e
+        # fazê-lo depender do fio só acrescentaria um jeito de o status mudar
+        # sem ninguém ficar sabendo. Rollback aqui leva tudo junto: status,
+        # histórico e o leque inteiro de avisos (`apps/core/avisos.py`).
+        #
+        # É UMA chamada, com custo de consultas CONSTANTE — não um laço aqui
+        # nem lá dentro. A trava `select_for_update` acima está aberta neste
+        # ponto: alongá-la proporcionalmente ao número de votantes seria fazer a
+        # moderação ficar mais lenta exatamente nas ideias mais populares.
+        avisar_os_interessados(
             sugestao=travada,
             status_anterior=status_anterior,
             status_novo=status_novo,
