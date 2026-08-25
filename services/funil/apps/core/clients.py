@@ -1,5 +1,5 @@
 # apps/core/clients.py  # [RECEITA:R2 v1]
-# Fala SÓ o que está nos contratos congelados de catalogo, leads e sugestoes.
+# Fala SÓ o que está nos contratos congelados de catalogo, leads e identidade.
 # Em dev, aponte CATALOGO_API_URL/LEADS_API_URL/IDENTIDADE_API_URL para os mocks
 # prism (make mocks) — nunca suba a outra célula, nunca leia o banco dela.
 import logging
@@ -77,11 +77,11 @@ class LeadsClient:
 
 
 class IdentidadeClient:
-    """`contracts/sugestoes.openapi.yaml`, operação `getSession` — leitura pura.
+    """`contracts/identidade.openapi.yaml`, operação `getSession` — leitura pura.
 
     Lei do assunto: `docs/decisoes/DECISAO-onde-mora-a-sessao.md`. O site não lê
     o cookie de sessão: ele **pergunta** quem é o dono dele. O cookie é assinado
-    com a chave da `sugestoes` e aponta para uma linha no banco DELA — o `funil`
+    com a chave da `identidade` e aponta para uma linha no banco DELA — o `funil`
     não tem chave nem banco (Lei 2, Lei 3). Perguntar é a única forma legal, e é
     também a que faz a identidade poder mudar de casa um dia sem que este
     arquivo mude: troca-se o endereço no env.
@@ -131,11 +131,11 @@ class IdentidadeClient:
         except httpx.HTTPError as erro:
             # ERROR e não silêncio: fail-open é decisão de produto, não licença
             # para a Caixa cair sem ninguém saber (RETROSPECTIVA §1).
-            logger.error("sessao: não deu para perguntar à sugestoes: %s", erro)
+            logger.error("sessao: não deu para perguntar à identidade: %s", erro)
             return None
 
         if r.status_code != 200:
-            logger.error("sessao: a sugestoes respondeu HTTP %s", r.status_code)
+            logger.error("sessao: a identidade respondeu HTTP %s", r.status_code)
             return None
 
         corpo = r.json()
