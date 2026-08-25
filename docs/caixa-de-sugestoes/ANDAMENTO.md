@@ -11,7 +11,7 @@
 
 ## Onde estamos
 
-**Fase atual: LOTE 3 — A CAIXA TEM ROSTO (25/08/2026).** O EVO-30 está no ar: o aluno abre o quadro em grade, alterna entre *Mais votadas* e *Novas*, vota e desvota no card, abre uma ideia e vê o histórico com a resposta da equipe, e manda a dele com a busca de duplicata na frente. Falta o EVO-31 (roadmap público + sininho) para fechar o lote. *(Marco anterior: LOTE 2, 24/08/2026 — a Caixa entrou no ar)* em `meshcraft.top/forms/sugestoes/` (medido da internet: `/entrar` responde 200). O plano mestre existe, a auditoria do
+**Fase atual: LOTE 3 FECHADO — A CAIXA TEM ROSTO E TEM ROADMAP (25/08/2026).** O EVO-30 e o EVO-31 estão no ar: o aluno abre o quadro em grade, alterna entre *Mais votadas* e *Novas*, vota e desvota no card, abre uma ideia e vê o histórico com a resposta da equipe, manda a dele com a busca de duplicata na frente — e agora vê **por onde as ideias andaram**, nas quatro zonas do roadmap (com as recusadas e as mescladas em "Fora do trilho", nunca escondidas), e a página de avisos ganhou a mesma linguagem visual do quadro. *(Marco anterior: LOTE 2, 24/08/2026 — a Caixa entrou no ar)* em `meshcraft.top/forms/sugestoes/` (medido da internet: `/entrar` responde 200). O plano mestre existe, a auditoria do
 terreno foi feita, e o nome e o endereço estão decididos: a ferramenta chama-se
 **Caixa de Sugestões** e vai morar em **meshcraft.top/forms/sugestoes/**. Falta
 a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem nenhuma pendência sua.
@@ -54,7 +54,7 @@ a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem ne
 | Despacho | O que entrega | Estado | PR | Nota |
 |---|---|---|---|---|
 | EVO-30 | O quadro visual do protótipo v2: ver, votar, sugerir pelo navegador | ✅ | #166 | **deploy verde 25/08**; coube inteiro em 14 arquivos (sem split 30a/30b); suíte 218 → 233. Achado que vale para a plataforma: `armadilhas/102` — sob prefixo de caminho, `{% static %}` e `{% url %}` leem prefixos DIFERENTES, e a página chega sem estilo **só em produção** |
-| EVO-31 | O roadmap público + o sininho de notificação | ⬜ | — | próximo da fila; o trilho da esquerda do quadro já nasceu com o lugar da faixa de roadmap. A aba "Em alta" e o painel "Meu impacto" ficaram para a V1.2 |
+| EVO-31 | O roadmap público + o sininho de notificação | ✅ | #175 | fecha o Lote 3; coube em 12 arquivos, suíte 233 → 252. A faixa vive DENTRO do quadro (âncora `#roadmap`, sem rota nova) e obedece ao filtro de categoria — quem decidiu isso foi um guarda do EVO-12b, vermelho. `nao_planejado`/`mesclado` ficam em "Fora do trilho", com guarda aritmético: zonas + saídas == quadro. A aba "Em alta" e o "Meu impacto" continuam na V1.2 |
 
 ## Lote 4 — O corredor
 
