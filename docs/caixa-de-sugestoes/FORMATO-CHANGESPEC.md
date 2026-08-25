@@ -53,6 +53,8 @@ Imutabilidade: depois de aprovado, um ChangeSpec não é editado. Se o escopo mu
 
 `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec com `APROVADO_POR` preenchido referenciando aquele `suggestion_id`. Isso não é regra de interface — é validação no `save()` ou no serializer da célula de sugestões. Ninguém, agente ou pessoa apressada, move o status sem o corredor existir primeiro.
 
+**Quem pode aprovar, decidido em 25/08/2026 — lei em [`DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md`](DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md).** O `APROVADO_POR` do §1 deixou de ser só prosa: a célula reconhece como aprovador **apenas** quem estiver em `SUGESTOES_APROVADORES` (variável de ambiente da VPS, hoje só o mantenedor), e a lista vazia é **fail-closed** — ninguém aprova, nada entra em desenvolvimento. Ser da equipe (`SUGESTOES_STAFF_EMAILS`) **não basta**: moderar e autorizar desenvolvimento são papéis diferentes. E a célula **não lê o repositório em runtime**: ela guarda o registro do ChangeSpec (id, aprovador, data, link), não confere o documento — a garantia é "alguém autorizado afirmou, e ficou registrado quem e quando".
+
 ## 6. Exemplo preenchido
 
 **CHANGE-ID:** `CS-PORTFOLIO-0001`
