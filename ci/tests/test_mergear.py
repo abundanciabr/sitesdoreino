@@ -439,3 +439,141 @@ def test_merge_que_nao_vira_merged_reprova(monkeypatch) -> None:
     monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
     monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas, "OPEN"))
     assert mergear.main(["99", "--confirmo", "99"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# Execução repetida do MESMO check no MESMO commit (medido em 25/08/2026)
+#
+# O `muralhas.yml` dispara em `labeled`. Aplicar a label `arquitetural` para
+# abrir a válvula do orçamento roda o workflow de novo no mesmo SHA — e o
+# GitHub mantém as DUAS execuções penduradas nele. O portão emitia um veredito
+# por entrada e reprovava para sempre, com o check verde na cara do GitHub.
+# ---------------------------------------------------------------------------
+def _check_datado(nome, conclusao, inicio, status="COMPLETED"):
+    return {
+        "__typename": "CheckRun",
+        "name": nome,
+        "status": status,
+        "conclusion": conclusao,
+        "startedAt": inicio,
+    }
+
+
+def test_rerun_verde_depois_de_vermelho_no_mesmo_sha_passa() -> None:
+    """O caso real do PR #187: label aplicada, workflow re-rodou, ficou verde."""
+    pr = _pr(
+        statusCheckRollup=[
+            _check_datado("muralhas", "FAILURE", "2026-08-25T19:35:07Z"),
+            _check_datado("detectar", "SUCCESS", "2026-08-25T19:35:08Z"),
+            _check_datado("muralhas", "SUCCESS", "2026-08-25T19:39:33Z"),
+            _check_datado("ci-celula-gate", "SUCCESS", "2026-08-25T19:36:04Z"),
+        ]
+    )
+    resultados = mergear.checar_checks(pr)
+    assert _pior(resultados) is Estado.PASS
+    # E o veredito de `muralhas` aparece UMA vez só — não dois, contraditórios.
+    assert [r for r in resultados if r.nome == "check/muralhas"].__len__() == 1
+
+
+def test_rerun_VERMELHO_depois_de_verde_no_mesmo_sha_reprova() -> None:
+    """A direção que importa mais: a mais recente vale mesmo quando é a pior.
+
+    Sem esta asserção, alguém poderia "consertar" o dedup pegando a melhor das
+    duas — que passaria o teste de cima e transformaria o portão em decoração.
+    """
+    pr = _pr(
+        statusCheckRollup=[
+            _check_datado("muralhas", "SUCCESS", "2026-08-25T19:35:07Z"),
+            _check_datado("muralhas", "FAILURE", "2026-08-25T19:39:33Z"),
+            _check_datado("detectar", "SUCCESS", "2026-08-25T19:35:08Z"),
+            _check_datado("ci-celula-gate", "SUCCESS", "2026-08-25T19:36:04Z"),
+        ]
+    )
+    assert _pior(mergear.checar_checks(pr)) is Estado.FAIL
+
+
+def test_sem_hora_o_desempate_fica_com_a_PIOR() -> None:
+    """[INV-CI01] "não sei qual é a atual" nunca vira "considero a verde"."""
+    pr = _pr(
+        statusCheckRollup=[
+            _check("muralhas", "SUCCESS"),
+            _check("muralhas", "FAILURE"),
+            _check("detectar"),
+            _check("ci-celula-gate"),
+        ]
+    )
+    assert _pior(mergear.checar_checks(pr)) is Estado.FAIL
+
+
+def test_hora_IGUAL_o_desempate_fica_com_a_PIOR() -> None:
+    pr = _pr(
+        statusCheckRollup=[
+            _check_datado("muralhas", "SUCCESS", "2026-08-25T19:35:07Z"),
+            _check_datado("muralhas", "FAILURE", "2026-08-25T19:35:07Z"),
+            _check_datado("detectar", "SUCCESS", "2026-08-25T19:35:08Z"),
+            _check_datado("ci-celula-gate", "SUCCESS", "2026-08-25T19:36:04Z"),
+        ]
+    )
+    assert _pior(mergear.checar_checks(pr)) is Estado.FAIL
+
+
+def test_rerun_que_ainda_roda_nao_e_aprovado_pela_execucao_velha() -> None:
+    """Re-rodar deixa o check EM ANDAMENTO; o verde velho não vale por ele."""
+    pr = _pr(
+        statusCheckRollup=[
+            _check_datado("muralhas", "SUCCESS", "2026-08-25T19:35:07Z"),
+            _check_datado("muralhas", None, "2026-08-25T19:39:33Z", status="IN_PROGRESS"),
+            _check_datado("detectar", "SUCCESS", "2026-08-25T19:35:08Z"),
+            _check_datado("ci-celula-gate", "SUCCESS", "2026-08-25T19:36:04Z"),
+        ]
+    )
+    assert _pior(mergear.checar_checks(pr)) is Estado.ERROR
+
+
+def test_check_obrigatorio_duplicado_nao_some_da_lista_de_vistos() -> None:
+    """Desduplicar não pode fazer um check obrigatório parecer ausente."""
+    pr = _pr(
+        statusCheckRollup=[
+            _check_datado("muralhas", "FAILURE", "2026-08-25T19:35:07Z"),
+            _check_datado("muralhas", "SUCCESS", "2026-08-25T19:39:33Z"),
+            _check_datado("detectar", "SUCCESS", "2026-08-25T19:35:08Z"),
+            _check_datado("ci-celula-gate", "SUCCESS", "2026-08-25T19:36:04Z"),
+        ]
+    )
+    resultados = mergear.checar_checks(pr)
+    assert not [r for r in resultados if r.nome == "checks obrigatórios"]
+
+
+def test_a_ordem_da_lista_nao_decide_nada_a_hora_decide() -> None:
+    """A entrada MAIS NOVA vem PRIMEIRO — quem só guarda "a última vista" erra.
+
+    Este teste nasceu de uma mutação que passou: trocar a comparação de hora por
+    `if True` (= fica sempre com a última entrada percorrida) deixava a suíte
+    inteira verde, porque todas as fixtures tinham o rerun no fim da lista. O
+    `statusCheckRollup` não promete ordem nenhuma, então depender dela seria um
+    guarda que funciona por acidente do dado.
+    """
+    pr = _pr(
+        statusCheckRollup=[
+            # o rerun VERDE vem primeiro; a execução velha VERMELHA vem depois
+            _check_datado("muralhas", "SUCCESS", "2026-08-25T19:39:33Z"),
+            _check_datado("muralhas", "FAILURE", "2026-08-25T19:35:07Z"),
+            _check_datado("detectar", "SUCCESS", "2026-08-25T19:35:08Z"),
+            _check_datado("ci-celula-gate", "SUCCESS", "2026-08-25T19:36:04Z"),
+        ]
+    )
+    assert _pior(mergear.checar_checks(pr)) is Estado.PASS
+
+
+def test_a_ordem_da_lista_nao_salva_um_vermelho_recente() -> None:
+    """O espelho do de cima: velho-verde primeiro, novo-VERMELHO depois na lista
+    já é coberto acima; aqui o novo-VERMELHO vem PRIMEIRO e ainda tem de valer."""
+    pr = _pr(
+        statusCheckRollup=[
+            _check_datado("muralhas", "FAILURE", "2026-08-25T19:39:33Z"),
+            _check_datado("muralhas", "SUCCESS", "2026-08-25T19:35:07Z"),
+            _check_datado("detectar", "SUCCESS", "2026-08-25T19:35:08Z"),
+            _check_datado("ci-celula-gate", "SUCCESS", "2026-08-25T19:36:04Z"),
+        ]
+    )
+    assert _pior(mergear.checar_checks(pr)) is Estado.FAIL
