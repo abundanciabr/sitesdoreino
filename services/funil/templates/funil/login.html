@@ -24,11 +24,23 @@
     .cta { display: block; width: 100%; padding: 1rem; border: 0; border-radius: .5rem; background: #16a34a; color: #fff; font-size: 1.1rem; font-weight: 600; text-align: center; text-decoration: none; }
     .aviso { font-size: .875rem; color: #52525b; margin-top: 1rem; }
     .sessao { font-size: .875rem; text-align: right; margin-bottom: .5rem; }
+    .recusa { font-size: .9rem; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: .5rem; padding: .75rem 1rem; margin-bottom: 1rem; }
 {% endblock %}
 {% block conteudo %}
 {% include "funil/_sessao.html" %}
 <div class="card">
   <h1>{% t "login.titulo_pagina" %}</h1>
+  {% comment %}
+  O vocabulário de recusa da célula identidade (?erro=chave, whitelist na
+  view). Um if por chave porque a tag t só aceita chave LITERAL — chave
+  dinâmica cegaria a análise estática do catálogo (D2.3).
+  {% endcomment %}
+  {% if erro == "interrompida" %}<p class="recusa">{% t "login.erro_interrompida" %}</p>
+  {% elif erro == "nao-confere" %}<p class="recusa">{% t "login.erro_nao_confere" %}</p>
+  {% elif erro == "nao-configurada" %}<p class="recusa">{% t "login.erro_nao_configurada" %}</p>
+  {% elif erro == "google-indisponivel" %}<p class="recusa">{% t "login.erro_google_indisponivel" %}</p>
+  {% elif erro == "email-nao-verificado" %}<p class="recusa">{% t "login.erro_email_nao_verificado" %}</p>
+  {% endif %}
   <p>{% t "login.subtitulo" %}</p>
   <a class="cta" href="{{ url_de_entrada }}">{% t "login.botao_google" %}</a>
   <p class="aviso">{% t "login.aviso_email" %}</p>

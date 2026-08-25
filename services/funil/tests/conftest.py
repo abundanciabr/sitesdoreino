@@ -16,7 +16,7 @@ LEADS = "http://leads.teste/api/leads"
 # A Caixa como PROVEDORA de "quem é o dono desta sessão"
 # (contracts/sugestoes.openapi.yaml, operação getSession). Endereço de mentira,
 # como os outros: esta suíte nunca fala com célula de verdade.
-SUGESTOES = "http://sugestoes.teste/interno"
+IDENTIDADE = "http://identidade.teste/interno"
 
 HOST_A = "teste-a.exemplo.com"
 HOST_B = "teste-b.exemplo.com"
@@ -95,8 +95,8 @@ def ambiente(monkeypatch):
     monkeypatch.setenv("TOKEN_CATALOGO", "token-catalogo-de-teste")
     monkeypatch.setenv("LEADS_API_URL", LEADS)
     monkeypatch.setenv("TOKEN_LEADS", "token-leads-de-teste")
-    monkeypatch.setenv("SUGESTOES_API_URL", SUGESTOES)
-    monkeypatch.setenv("TOKEN_SUGESTOES", "token-do-par-funil-sugestoes")
+    monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
+    monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-funil-identidade")
     limpar_cache_de_sites()  # o cache do CONV-SITE não pode vazar entre testes
     # O da sessão pelo MESMO motivo, e é mais perigoso que o outro: uma sessão
     # que vaze entre testes faz um guarda de "visitante" passar mostrando o nome
@@ -144,7 +144,7 @@ def rede():
         # maioria das requisições. Teste que precisa de gente logada troca esta
         # resposta pelo nome (ver `logado` em test_sessao_no_site.py); assim
         # nenhum teste fica logado por acidente de fixture.
-        mock.get(f"{SUGESTOES}/sessao", name="get_session").mock(
+        mock.get(f"{IDENTIDADE}/sessao", name="get_session").mock(
             return_value=httpx.Response(200, json={"autenticado": False})
         )
         yield mock

@@ -3,11 +3,11 @@
 # sha256[:6] do valor `en` no momento da tradução (D4 — anti-obsolescência).
 # en é a FONTE; Meshcraft nunca se traduz (glossário, D8.1).
 #
-# O que esta página promete, e o que ela NÃO promete: ela é a PORTA — leva a
-# pessoa ao Google e a sessão nasce do outro lado, na célula que hoje cuida
-# dela. Nenhum texto aqui pode dizer "você está conectado no site", porque o
-# site não sabe disso (o cookie da sessão é escopado no prefixo da outra
-# célula — armadilhas/093). Copy que promete sessão é copy que mente.
+# O que esta página promete: ela é a PORTA — leva a pessoa ao Google e a
+# sessão nasce do outro lado, na célula `identidade` (desde 25/08/2026,
+# DECISAO-celula-de-identidade), com alcance de site inteiro. As chaves
+# `erro_*` são o vocabulário de recusa daquela célula (?erro=chave): a porta
+# de lá não renderiza página, e quem explica a recusa é esta tela.
 
 titulo:
   # <title> e og:title da página — inclui a marca (glossário).
@@ -55,3 +55,38 @@ aviso_email:
   en: "Bought with a different e-mail? Sign in with that one — it is the one that carries your enrollment."
   pt-br: "Comprou com outro e-mail? Entre com ele — é ele que tem a sua matrícula."
   es: "¿Compraste con otro correo? Entra con ese — es el que tiene tu matrícula."
+
+erro_interrompida:
+  # A pessoa voltou do Google sem concluir (?error= no retorno).
+  _fonte: "e571a2"
+  en: "Sign-in was interrupted before finishing. Nothing was created — just try again."
+  pt-br: "A entrada foi interrompida antes do fim. Nada foi criado — é só tentar de novo."
+  es: "La entrada se interrumpió antes de terminar. No se creó nada — solo inténtalo de nuevo."
+
+erro_nao_confere:
+  # `state` ausente ou errado — retorno fora de ordem, página velha ou forja.
+  _fonte: "f70b1d"
+  en: "The return from Google did not match the request that left this site. Nothing was created — start again from the button below."
+  pt-br: "A volta do Google não confere com o pedido que saiu daqui. Nada foi criado — comece de novo pelo botão abaixo."
+  es: "El regreso de Google no coincide con la solicitud que salió de aquí. No se creó nada — empieza de nuevo con el botón de abajo."
+
+erro_nao_configurada:
+  # Falta credencial do Google no env da identidade — problema NOSSO, e a
+  # frase diz isso (a pessoa não deve sair achando que errou algo).
+  _fonte: "4964a3"
+  en: "Sign-in is not fully set up yet. This is on us — please try again later."
+  pt-br: "A entrada ainda não está toda configurada. O problema é nosso — tente de novo mais tarde."
+  es: "La entrada aún no está configurada del todo. El problema es nuestro — inténtalo más tarde."
+
+erro_google_indisponivel:
+  _fonte: "d301a5"
+  en: "Google did not respond. Nothing was created — try again in a few moments."
+  pt-br: "O Google não respondeu. Nada foi criado — tente de novo em instantes."
+  es: "Google no respondió. No se creó nada — inténtalo de nuevo en unos instantes."
+
+erro_email_nao_verificado:
+  # O único "não" que é da conta da pessoa — e a frase diz como consertar.
+  _fonte: "05ecc8"
+  en: "Google does not confirm that e-mail as verified. Verify it in your Google account and try again."
+  pt-br: "O Google não confirma esse e-mail como verificado. Verifique o endereço na sua conta Google e tente de novo."
+  es: "Google no confirma ese correo como verificado. Verifícalo en tu cuenta de Google y vuelve a intentarlo."
