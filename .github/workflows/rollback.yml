@@ -41,6 +41,7 @@ on:
           - catalogo
           - checkout
           - funil
+          - identidade
           - leads
           - mensageria
           - pagamentos

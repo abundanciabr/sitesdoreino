@@ -204,3 +204,11 @@ apenas uma tela bonita.
 **Decidido em 24/08/2026.** Nenhuma pendência do mantenedor — os dois passos que
 existiam (banco novo, endereço no Google) foram, respectivamente, **eliminados** por
 esta escolha e **já executados** por ele.
+
+**Atualização 25/08/2026:** o atrito do §3 incomodou, e a célula dedicada nasceu
+— pelo rito que o §7.1 exige (sessão com o mantenedor presente). A lei daquele
+passo é `DECISAO-celula-de-identidade.md`; o token do par `funil→sugestoes`
+(H19) morreu **sem ser executado**, substituído pelo bloco único da célula nova
+(H20). Este documento continua sendo a lei do que ele decide: a costura (quem
+pergunta), o invariante do §4 e as armadilhas do §5 valem palavra por palavra —
+mudou QUEM responde, como o §3 previu que mudaria.

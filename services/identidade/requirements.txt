@@ -1,0 +1,18 @@
+Django==5.1.4
+# A superfície de MÁQUINA desta célula (DECISAO-celula-de-identidade): o `funil`
+# e a Caixa perguntam "quem é o dono desta sessão?". Mesma versão EXATA das
+# outras células com contrato, de propósito — versões divergentes da mesma
+# biblioteca para o mesmo padrão são comportamentos a mais para depurar
+# (`armadilhas/071`), e o freeze de contrato compara o schema que ELA gera.
+django-ninja==1.3.0
+psycopg[binary]==3.2.3
+dj-database-url==2.3.0
+uvicorn==0.32.1
+# Cliente da única conversa de fora (o Google) — R2, timeout explícito.
+httpx==0.28.1
+pytest==8.3.4
+pytest-django==4.9.0
+# O dublê de rede dos testes. Sem ele a suíte precisaria de internet, e uma
+# suíte que depende do Google é uma suíte que fica vermelha por motivo alheio.
+respx==0.23.1
+black==24.10.0
