@@ -141,5 +141,7 @@
 | [112](112-o-endereco-raw-do-github-serve-a-versao-antiga-do.md) | O endereço `raw.githubusercontent.com/.../main/...` serve a versão ANTIGA do script — às vezes — você mergeia a correção de um script de provisionamento, entrega ao mantenedor a linha de sempre — | — |
 | [113](113-o-portao-de-merge-reprova-um-check-que-o-github.md) | O portão de merge reprova um check que o GitHub mostra VERDE — dois runs do mesmo workflow no mesmo commit — `python ci/mergear.py <N> --conferir` devolve | — |
 | [114](114-o-log-da-ssh-action-ecoa-o-script-inteiro-e-voce.md) | O log da ssh-action ecoa o `script:` inteiro — e você lê o eco como se fosse a saída da execução — um run do `deploy-celula` (ou `deploy-infra`) falha, você filtra o log atrás do erro, e encontra **exatamente a mensagem… | — |
+| [115](115-distinct-num-model-com-meta-ordering-nao-e.md) | `.distinct()` num model com `Meta.ordering` não é distinto pelo que você pediu — e sai certo por acidente — você quer as pessoas distintas que comentaram numa sugestão e escreve o óbvio: | — |
+| [116](116-bulk-create-nao-chama-save-e-o-guarda-que-vigiava.md) | `bulk_create` não chama `save()` — e o guarda que vigiava o `save()` vira decoração sem ficar vermelho — existe um teste-guarda que prova uma regra interceptando `Model.save` — por `monkeypatch`, por sinal `pre_save`… | — |
 
-**104 entradas.**
+**106 entradas.**
