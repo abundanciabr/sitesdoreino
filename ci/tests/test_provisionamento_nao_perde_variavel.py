@@ -64,6 +64,16 @@ SCRIPTS = [
         "env/identidade.env",
         "infra/env/identidade.env.exemplo",
     ),
+    # A terceira da família (25/08/2026, gênese da área administrativa). Entrou
+    # aqui no MESMO PR que lhe deu a trava, e é essa simultaneidade que importa:
+    # script que reescreve env inteiro e não está nesta lista é a
+    # `armadilhas/111` com data marcada — a trava dele seria uma convenção
+    # lembrada, e convenção lembrada não sobrevive ao próximo despacho.
+    (
+        "infra/provisionar-admin.sh",
+        "env/admin.env",
+        "infra/env/admin.env.exemplo",
+    ),
 ]
 
 RE_LISTA = re.compile(r'^CHAVES_QUE_EU_GERO="([^"]*)"', re.MULTILINE)
