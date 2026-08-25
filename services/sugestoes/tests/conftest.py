@@ -29,7 +29,15 @@ import respx
 from django.urls import reverse
 
 from apps.core import sessao as ses
-from apps.sugestoes.models import Aviso, Categoria, Identidade, Quadro, Sugestao
+from apps.sugestoes.models import (
+    Aviso,
+    Categoria,
+    Comentario,
+    Identidade,
+    Quadro,
+    Sugestao,
+    Voto,
+)
 
 # ---------------------------------------------------------------------------
 # O quadro mínimo do modelo de dados (EVO-11)
@@ -525,3 +533,57 @@ def aviso(dentro, sugestao):
         status_novo=Sugestao.Status.PLANEJADO,
         nota="Entra no próximo ciclo.",
     )
+
+
+# ---------------------------------------------------------------------------
+# A plateia (EVO-42) — gente em volta de uma ideia, em quantidade regulável
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def plateia(db):
+    """N pessoas que votaram e M que comentaram numa sugestão.
+
+    **Escrita pelo ORM, e a diferença para a fixture `changespec` — que registra
+    pela jornada real — é deliberada e vale explicar.** O que esta fixture
+    alimenta são os guardas de VOLUME e de forma do leque: quem eles medem é a
+    consulta que o fan-out faz sobre as tabelas `Voto`/`Comentario`, e vinte
+    logins de verdade dublados só acrescentariam vinte segundos de suíte à mesma
+    medição. Que o clique de verdade escreve nessas tabelas — e portanto entra no
+    leque — é provado à parte, pela jornada, em
+    `test_a_jornada_de_verdade_bota_quem_votou_e_quem_comentou_no_leque`. As duas
+    metades juntas fecham a escada; nenhuma sozinha fecha.
+
+    `bulk_create` nos três: uma plateia de vinte pessoas montada a `create()` faz
+    a própria fixture custar sessenta viagens ao banco, e um guarda de desempenho
+    que demora não é rodado.
+    """
+
+    def _montar(
+        sugestao, *, votantes: int = 0, comentaristas: int = 0, marca: str = "p"
+    ):
+        def _gente(papel: str, quantos: int) -> list[Identidade]:
+            return Identidade.objects.bulk_create(
+                [
+                    Identidade(
+                        email=f"{marca}-{papel}-{n}@exemplo.test",
+                        nome_exibido=f"{papel} {n}",
+                    )
+                    for n in range(quantos)
+                ]
+            )
+
+        quem_votou = _gente("voto", votantes)
+        quem_comentou = _gente("comentario", comentaristas)
+        Voto.objects.bulk_create(
+            [Voto(sugestao=sugestao, autor=pessoa) for pessoa in quem_votou]
+        )
+        Comentario.objects.bulk_create(
+            [
+                Comentario(sugestao=sugestao, autor=pessoa, texto="Também sinto isso.")
+                for pessoa in quem_comentou
+            ]
+        )
+        return {"votaram": quem_votou, "comentaram": quem_comentou}
+
+    return _montar

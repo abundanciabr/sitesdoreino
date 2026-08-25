@@ -470,7 +470,9 @@ class AvaliacaoInterna(models.Model):
 
 
 class Aviso(models.Model):
-    """O sininho: o aluno fica sabendo que a ideia dele andou (EVO-21).
+    """O sininho: quem interagiu com a ideia fica sabendo que ela andou.
+
+    EVO-21 (o dado, só para o autor) → **EVO-42** (todo mundo que interagiu).
 
     A `ESPECIFICACAO-CELULA.md` §10 pede *"evento de mudança de status consumido
     por uma notificação in-app simples"*. **In-app, dentro da própria Caixa** —
@@ -502,12 +504,46 @@ class Aviso(models.Model):
     `marcar como lido` verificavelmente idempotente — a segunda chamada não pode
     mexer no carimbo da primeira.
 
-    **Quem recebe é só o AUTOR, neste despacho.** Avisar também quem votou é
-    desejável e fica para depois — e cabe aqui sem migração de forma: são mais
-    linhas, com outro `destinatario`. Foi por isso que o contrato congelado do
-    `sugestao.status-alterado` NÃO leva a lista de votantes (lista sem teto
-    dentro de evento).
+    **Quem recebe, desde o EVO-42: todos os que interagiram com a ideia** —
+    autor, quem votou e quem comentou, um aviso por pessoa DISTINTA. É a
+    `DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md` §2, e o EVO-21 já a tinha
+    previsto: *"são mais linhas, com outro `destinatario`"*. A previsão estava
+    certa — a forma não mudou; ganhou uma coluna (`vinculo`, abaixo).
+
+    O contrato congelado do `sugestao.status-alterado` continua **não** levando
+    a lista de votantes (lista sem teto dentro de evento), e continua sem
+    precisar: o leque é resolvido aqui dentro, na mesma transação.
+
+    **`vinculo`: por que o motivo é COLUNA e não uma derivação na leitura.** A
+    tela precisa distinguir "sua ideia" de "ideia em que você votou/comentou" —
+    sem isso o aluno recebe recado de coisa que não lembra ter tocado. As duas
+    formas foram pesadas:
+
+    * **derivar na leitura** (perguntar ao `Voto`/`Comentario` na hora de
+      montar a página) é espelho de estado **mutável**: quem tira o voto
+      amanhã vê o aviso de ontem mudar de explicação — ou perdê-la. O recado
+      passaria a mentir sobre o passado, e ainda custaria consulta por página;
+    * **coluna** é retrato do instante, como `status_novo` e `nota` já são. No
+      dia em que a pessoa desvota, o aviso continua dizendo a verdade: *quando
+      isto aconteceu, você tinha votado*.
+
+    A segunda ganha porque é a Virtude da Lei 3 aplicada ao mesmo dado — e
+    porque a alternativa quebra a regra que esta classe inteira encarna
+    (*snapshots são sagrados*). Há guarda: `test_o_vinculo_sobrevive_ao_desvoto`.
     """
+
+    class Vinculo(models.TextChoices):
+        """Por que ESTA pessoa está recebendo ESTE aviso.
+
+        A ordem aqui é a de PRECEDÊNCIA de quem acumula papéis (autor que
+        também votou e comentou recebe **um** aviso, com o vínculo mais forte).
+        Ser o autor vence tudo — a ideia é dela. Ter escrito vence ter votado:
+        quem comentou pôs palavra na conversa, quem votou pôs um clique.
+        """
+
+        AUTOR = "autor", "Sua ideia"
+        COMENTARIO = "comentario", "Ideia em que você comentou"
+        VOTO = "voto", "Ideia em que você votou"
 
     # `PROTECT` nos dois, como em todo o resto da célula: nem a pessoa nem a
     # sugestão somem por baixo de um aviso. Sugestão, aliás, já não é apagada em
@@ -523,6 +559,15 @@ class Aviso(models.Model):
     )
     status_novo = models.CharField(max_length=20, choices=Sugestao.Status.choices)
     nota = models.TextField(blank=True)
+    # O default é `AUTOR` e ele NÃO é um chute sobre o futuro: é um fato sobre o
+    # passado. Até o EVO-42 a única linha que esta tabela sabia escrever era a
+    # do autor, então toda linha que já existe em produção É de autor — a
+    # migração `0005` não precisa adivinhar nada. Quem escreve daqui em diante
+    # passa por `avisar_os_interessados()`, que informa o vínculo sempre, e há
+    # guarda medindo isso pelos três papéis.
+    vinculo = models.CharField(
+        max_length=20, choices=Vinculo.choices, default=Vinculo.AUTOR
+    )
     criado_em = models.DateTimeField(auto_now_add=True)
     # Nulo = não lido. O índice é sobre o par, porque a pergunta que a Caixa faz
     # a cada página é sempre a mesma: "quantos NÃO lidos desta pessoa?".

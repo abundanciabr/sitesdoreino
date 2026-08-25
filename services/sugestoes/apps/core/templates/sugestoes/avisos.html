@@ -59,6 +59,20 @@ avaliação — o número custa zero consulta a mais e não obriga a view a muda
     <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
       <div class="aviso-topo">
         <span class="selo selo-{{ aviso.status_novo }}">{{ aviso.get_status_novo_display }}</span>
+        {% comment %}
+        [EVO-42] POR QUE este recado chegou a esta pessoa. Sem esta linha, quem
+        votou numa ideia em março recebe em agosto um aviso sobre algo que não
+        lembra ter tocado — e a Caixa passa a parecer barulhenta em vez de
+        atenta. O texto sai de `get_vinculo_display`, ou seja das `TextChoices`
+        do model: uma frase escrita aqui à mão seria uma segunda verdade sobre o
+        mesmo dado, e a que ninguém testa é a que fica errada.
+
+        O valor é SNAPSHOT, não espelho: quem tirar o voto amanhã continua vendo
+        "Ideia em que você votou" neste aviso, porque na hora em que ele nasceu
+        era verdade. O docstring de `Aviso.vinculo` pesa a alternativa (derivar
+        na leitura) e diz por que ela perdeu.
+        {% endcomment %}
+        <span class="aviso-vinculo vinculo-{{ aviso.vinculo }}">{{ aviso.get_vinculo_display }}</span>
         {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
         <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
       </div>
@@ -95,8 +109,8 @@ avaliação — o número custa zero consulta a mais e não obriga a view a muda
     <div class="recado">
       <h2>Nenhum aviso ainda</h2>
       <p>
-        Quando a equipe mexer no status de alguma sugestão sua, o recado aparece
-        aqui — com o motivo que ela escreveu.
+        Quando a equipe mexer no status de uma ideia sua — ou de uma em que você
+        votou ou comentou — o recado aparece aqui, com o motivo que ela escreveu.
       </p>
     </div>
   {% endfor %}
@@ -108,9 +122,10 @@ avaliação — o número custa zero consulta a mais e não obriga a view a muda
   <p class="identificacao">Como isto funciona</p>
   <h2>Você é avisado, sempre</h2>
   <p class="meta" style="margin-bottom:14px">
-    Toda vez que a equipe mexe no status de uma ideia sua, o recado nasce aqui —
-    junto com a mudança, nunca depois dela. Quando a resposta for "não vamos
-    fazer", o motivo vem escrito junto: é regra da casa.
+    Toda vez que a equipe mexe no status de uma ideia que você criou, votou ou
+    comentou, o recado nasce aqui — junto com a mudança, nunca depois dela. Cada
+    aviso diz de onde veio, e quando a resposta for "não vamos fazer" o motivo
+    vem escrito junto: é regra da casa.
   </p>
   <a class="botao principal" href="{% url 'quadro' %}#roadmap">Ver o roadmap</a>
 </aside>

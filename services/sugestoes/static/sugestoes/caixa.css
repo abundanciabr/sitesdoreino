@@ -345,6 +345,16 @@ textarea { resize: vertical; min-height: 72px; }
   text-transform: uppercase; color: var(--tinta); background: var(--laranja);
   border-radius: 5px; padding: 2px 6px;
 }
+/* [EVO-42] De onde veio o recado. Discreto de propósito: quem manda no cartão é
+   o selo de status: este aqui só responde "por que isto chegou para mim?", que é
+   a pergunta que faz a Caixa parecer atenta em vez de barulhenta. "Sua ideia"
+   ganha um traço de cor porque é o único vínculo em que a pessoa é dona da
+   conversa — nos outros dois ela é plateia, e a etiqueta é neutra. */
+.aviso-vinculo {
+  font-size: 11px; color: var(--texto-tenue); border: 1px solid var(--linha);
+  border-radius: 5px; padding: 2px 7px;
+}
+.aviso-vinculo.vinculo-autor { color: var(--azul); border-color: var(--azul-fraco); background: var(--azul-fraco); }
 .aviso-titulo { font-family: var(--f-titulo); font-size: 14px; margin: 0 0 6px; }
 .aviso-titulo a { text-decoration: none; }
 .aviso-titulo a:hover { text-decoration: underline; }
