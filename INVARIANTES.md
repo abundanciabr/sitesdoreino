@@ -132,6 +132,29 @@ primeira oportunidade de violá-la.
   (sessão criada no site A não fecha pedido com oferta do site B).
 - **Célula dona:** catalogo + checkout (padrão replicado em quiz, leads e alunos)
 
+### [INV-P12] Um Único Assinante do Cookie de Sessão do Site
+- **O quê:** o cookie `meshcraft_sessao` (`Path=/`, alcance de site inteiro) é
+  emitido e assinado por **uma só célula: `identidade`**. Nenhuma outra célula
+  escreve `request.session`, instala `SessionMiddleware`, declara
+  `SESSION_ENGINE` ou assina cookie com esse nome — as demais **perguntam**
+  quem é a pessoa por HTTP (`getSession`/`getSessionFull`).
+- **Por quê:** duas células assinando o MESMO cookie com chaves diferentes
+  produzem um cabo-de-guerra invisível — entrar por uma desloga da outra, e
+  vice-versa — **sem erro em lugar nenhum, sem log, sem alarme**. Ninguém
+  reporta "fui deslogado": as pessoas reentram e seguem, e a plataforma perde
+  sessão o dia inteiro sem nada acusar. A `DECISAO-celula-de-identidade.md` §5
+  registra o episódio em que isso quase entrou em produção, e a §6.4 o proíbe
+  por escrito; este invariante é o mecanismo que faltava à proibição.
+- **Teste-Guarda:**
+  `services/admin/tests/test_inv_admin_nao_assina_sessao.py` — mede a
+  CONFIGURAÇÃO da célula (sem SessionMiddleware, sem django.contrib.sessions
+  e sem SESSION_ENGINE no settings dela), porque sem essas três
+  `request.session` nem existe. Provado por mutação na gênese da célula:
+  instalar o SessionMiddleware deixa o guarda vermelho.
+- **Célula dona:** identidade (única emissora) — guarda plantado em `admin`,
+  a primeira célula a nascer **depois** da regra; toda célula futura que
+  consuma sessão herda a mesma obrigação.
+
 ---
 
 ## Invariantes da própria CI

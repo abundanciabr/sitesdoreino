@@ -1,0 +1,13 @@
+# Versões PINADAS e iguais às das células vizinhas de propósito: quatro versões
+# da mesma biblioteca para o mesmo padrão são quatro comportamentos a depurar
+# (`armadilhas/071`).
+#
+# Django 5.1.4 (e não 5.0.x) porque é a versão das células nascidas depois de
+# 22/08 — `funil`, `quiz`, `mensageria`, `sugestoes`, `identidade`.
+Django==5.1.4
+psycopg[binary]==3.2.3
+dj-database-url==2.3.0
+uvicorn==0.32.1
+pytest==8.3.4
+pytest-django==4.9.0
+black==24.10.0

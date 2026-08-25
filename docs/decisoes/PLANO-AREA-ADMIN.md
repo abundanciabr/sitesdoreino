@@ -23,8 +23,20 @@
 > por pergunta estruturada de múltipla escolha — formato que o mantenedor
 > confirmou como o certo para toda decisão dele daqui em diante (`CLAUDE.md`,
 > "Como trabalhar com o mantenedor"). As respostas já foram aplicadas nas
-> seções técnicas abaixo, marcadas **[DECIDIDO 25/08]**. **Falta só ele dizer
-> "aprovado" para o PR 1 começar.**
+> seções técnicas abaixo, marcadas **[DECIDIDO 25/08]**.
+>
+> 🏛️ **APROVADO PELO MANTENEDOR EM 25/08/2026 — e promovido a lei.** O que é
+> **lei** (o que não se re-decide sem sessão nova com ele) mora agora em
+> **`DECISAO-celula-admin.md`**; **este documento segue como o mapa de
+> execução** — as seções por fase (§4), a escada de PRs (§6) e as armadilhas do
+> caminho (§7), que é o que cada despacho vem buscar aqui. **Se os dois
+> divergirem, a lei vence.**
+>
+> **O PR 1 (gênese) foi executado.** A célula `services/admin` existe, com
+> `/healthz` nas duas formas, os dois guardas de arquitetura provados por
+> mutação, linha no `rollback.yml` e declaração no manifesto. O próximo degrau
+> da escada é o **PR 2a** (provisionamento), e depois o **H21** — o passo do
+> mantenedor.
 
 ---
 
