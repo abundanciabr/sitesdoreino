@@ -31,6 +31,7 @@ if str(CI) not in sys.path:
 
 import indice_de_armadilhas as indice  # noqa: E402
 from _nucleo import raiz_do_repo  # noqa: E402
+from guarda_dos_guardas import arquivos_versionados  # noqa: E402
 
 RAIZ = raiz_do_repo()
 
@@ -307,7 +308,6 @@ RE_ID_DE_ENTRADA = re.compile(r"ID historico: §([0-9]+(?:\.[0-9]+)*)")
 RE_H1_COM_ID = re.compile(r"^#\s+([0-9]+(?:\.[0-9]+)+)\s")
 RE_H_COM_ID = re.compile(r"^#{2,3}\s+§?([0-9]+(?:\.[0-9]+)*)\s")
 
-PASTAS_IGNORADAS = {".git", "__pycache__", "node_modules", ".pytest_cache"}
 EXTENSOES_VARRIDAS = {".md", ".py", ".sh", ".yml", ".yaml", ".txt", ".exemplo", ".json"}
 
 
@@ -342,11 +342,26 @@ def _ids_conhecidos() -> set[str]:
 
 
 def _arquivos_do_repo() -> list[Path]:
+    """Os arquivos do REPOSITÓRIO — perguntados ao git, não andados no disco.
+
+    Antes daqui saía um `RAIZ.rglob("*")` com uma lista de pastas a pular. Ele
+    entrava em `.claude/worktrees/`, onde o harness do agente guarda worktrees
+    de OUTRAS sessões: na máquina do agente este teste acusava três vezes a
+    sentinela `§99.99` do fixture logo abaixo, copiada dentro de worktrees
+    velhos. No runner do GitHub essas pastas não existem — ou seja, o furo era
+    mudo na CI e barulhento em quem trabalha, que é exatamente como um guarda
+    morre: todo mundo aprende a ignorar o vermelho dele.
+
+    Acrescentar `.claude` à lista de pastas ignoradas curaria o caso e não a
+    classe. `git ls-files` cura a classe: o que o git rastreia é o repositório;
+    o resto é lixo de máquina. O varredor mora em `ci/guarda_dos_guardas.py`
+    para que o guarda-dos-guardas e este teste NÃO tenham dois varredores com
+    dois bugs diferentes.
+    """
     saida: list[Path] = []
-    for caminho in RAIZ.rglob("*"):
+    for relativo in arquivos_versionados(RAIZ):
+        caminho = RAIZ / relativo
         if not caminho.is_file():
-            continue
-        if any(parte in PASTAS_IGNORADAS for parte in caminho.parts):
             continue
         if caminho.resolve() == ARQUIVO_DESTE_TESTE:
             continue
@@ -354,6 +369,21 @@ def _arquivos_do_repo() -> list[Path]:
             continue
         saida.append(caminho)
     return saida
+
+
+def test_o_varredor_enxerga_o_repositorio_e_ignora_worktree_de_agente() -> None:
+    """Prova de que o conserto acima é o conserto — e continua varrendo de verdade.
+
+    Duas afirmações, porque uma sem a outra é armadilha: (a) nada de
+    `.claude/` entra; (b) os arquivos que importam continuam entrando — um
+    varredor que devolvesse lista vazia também passaria em (a).
+    """
+    varridos = {p.relative_to(RAIZ).as_posix() for p in _arquivos_do_repo()}
+    assert not [p for p in varridos if p.startswith(".claude/")]
+    assert "CLAUDE.md" in varridos
+    assert "INVARIANTES.md" in varridos
+    assert any(p.startswith("services/") for p in varridos)
+    assert len(varridos) > 100
 
 
 def test_toda_referencia_a_uma_armadilha_resolve() -> None:
