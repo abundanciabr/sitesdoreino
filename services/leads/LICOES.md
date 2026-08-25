@@ -133,4 +133,4 @@ do loop de produção.
 
 **Origem:** despacho leads/reentrega-pel (lote 2, 22/08/2026) — a pendência era
 a linha "evento que faz o handler estourar fica pendente para sempre" do
-ARMADILHAS §9.
+ARMADILHAS-OPERACAO.md §9.

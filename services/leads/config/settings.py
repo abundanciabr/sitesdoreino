@@ -50,3 +50,11 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 USE_TZ = True
+
+# O fuso em que datas seriam MOSTRADAS — o armazenamento continua em UTC
+# (USE_TZ). Sem esta linha vale o default de fábrica do Django,
+# `America/Chicago`: cinco horas atrás, e sem nada na tela indicando a troca.
+# É falha silenciosa até a primeira página renderizar uma data — foi assim que
+# a `sugestoes` foi pega em 24/08/2026 (EVO-21; dívida em
+# ARMADILHAS-OPERACAO.md §9). Guarda: tests/test_fuso_horario.py.
+TIME_ZONE = "America/Sao_Paulo"
