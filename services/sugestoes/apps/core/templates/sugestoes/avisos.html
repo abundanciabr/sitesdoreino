@@ -1,22 +1,49 @@
 {% extends "sugestoes/base_caixa.html" %}
 {% comment %}
-Os avisos DESTA pessoa — o sininho do EVO-21.
+Os avisos DESTA pessoa — o dado é do EVO-21, o rosto é do EVO-31.
 
 Esta é a página onde a justificativa de um "não planejado" finalmente alcança
 quem sugeriu: a equipe é obrigada a escrevê-la desde o EVO-13 *porque quem
-sugeriu vai ler*, e até aqui não havia tela nenhuma do aluno que a mostrasse.
+sugeriu vai ler*, e até o EVO-21 não havia tela nenhuma do aluno que a mostrasse.
 
 O que esta página NÃO mostra, e por desenho de tabela e não de template: **quem**
 moderou. Esse dado mora no `HistoricoStatus`, que é a auditoria da equipe; o
 `Aviso` é a cópia do aluno e não tem a coluna. É a mesma separação que manteve a
 `AvaliacaoInterna` fora do alcance dele (spec §8).
 
-A tela bonita é o EVO-31 (Lote 3). Aqui vale a mesma regra da moldura: sem CSS
-externo, sem JS, sem fonte remota — e todo endereço saindo de `{% templatetag openblock %} url {% templatetag closeblock %}`,
-nunca escrito à mão, senão o prefixo público (/forms/sugestoes) some em produção
-e só lá (armadilhas/081).
+**O EVO-31 vestiu esta página; não reescreveu nada da lógica.** Os avisos, a
+contagem de não-lidos e o "marcar como lido" continuam exatamente os de
+`apps/core/avisos.py`. O que mudou é que cada aviso virou um cartão com a
+linguagem do quadro — o selo de status do card da grade, a mudança desenhada
+como `de → para`, e a nota da equipe dentro de uma `.ficha`, que é a mesma peça
+que a página da sugestão usa para o texto da equipe.
+
+Três amarras que não podem cair na vestimenta:
+
+* **o número do sino continua sendo o do trilho** (`base_caixa.html`), com o nome
+  acessível `avisos (N)` em minúsculas — `test_o_sino_de_toda_pagina_conta_so_os_meus`
+  o mede assim, e ele NÃO se afrouxa para caber em HTML novo;
+* **a data sai `d/m/Y H:i`**, formato cravado, nunca o `{{ … }}` nu: o padrão do
+  Django sai no locale do processo (`en-us`) e a hora vem do `TIME_ZONE` de
+  `config/settings.py` (armadilhas/099);
+* **todo endereço sai de `{% templatetag openblock %} url {% templatetag closeblock %}`**, senão o prefixo público
+  (/forms/sugestoes) some em produção e só lá (armadilhas/081). Sem CSS externo,
+  sem JS, sem fonte remota — como o resto da moldura.
+
+`{{ avisos|length }}` no topo em vez de um número novo no contexto: a lista já
+vai ser percorrida logo abaixo, e o queryset guarda o resultado da primeira
+avaliação — o número custa zero consulta a mais e não obriga a view a mudar.
 {% endcomment %}
 {% block titulo %}Seus avisos — Caixa de Sugestões{% endblock %}
+{% block migalha %}Avisos{% endblock %}
+
+{% block numeros %}
+<div class="numeros">
+  <span><b>{{ avisos|length }}</b> aviso{{ avisos|length|pluralize }}</span>
+  <span><b>{{ nao_lidos }}</b> não lido{{ nao_lidos|pluralize }}</span>
+</div>
+{% endblock %}
+
 {% block conteudo %}
 <h1>Seus avisos</h1>
 <p class="sub">
@@ -27,43 +54,64 @@ e só lá (armadilhas/081).
   {% endif %}
 </p>
 
-{% for aviso in avisos %}
-  <div class="cartao">
-    <h3>
-      {% if not aviso.lido_em %}<span class="votos">novo</span>{% endif %}
-      <a href="{% url 'sugestao' aviso.sugestao.id %}">{{ aviso.sugestao.titulo }}</a>
-    </h3>
-    <p class="meta">
-      {% if aviso.status_anterior %}
-        {{ aviso.get_status_anterior_display }} → {{ aviso.get_status_novo_display }}
-      {% else %}
-        Agora está em {{ aviso.get_status_novo_display }}
+<div class="avisos">
+  {% for aviso in avisos %}
+    <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
+      <div class="aviso-topo">
+        <span class="selo selo-{{ aviso.status_novo }}">{{ aviso.get_status_novo_display }}</span>
+        {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
+        <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
+      </div>
+
+      <h3 class="aviso-titulo">
+        <a href="{% url 'sugestao' aviso.sugestao.id %}">{{ aviso.sugestao.titulo }}</a>
+      </h3>
+
+      <p class="aviso-mudanca">
+        {% if aviso.status_anterior %}
+          <span class="de">{{ aviso.get_status_anterior_display }}</span>
+          <span class="seta-mudanca" aria-hidden="true">→</span>
+          <span class="para">{{ aviso.get_status_novo_display }}</span>
+        {% else %}
+          Agora está em <span class="para">{{ aviso.get_status_novo_display }}</span>
+        {% endif %}
+      </p>
+
+      {% if aviso.nota %}
+        <div class="ficha">
+          <h3>O que a equipe escreveu</h3>
+          <p>{{ aviso.nota|linebreaksbr }}</p>
+        </div>
       {% endif %}
-      {% comment %}
-      Formato cravado (`d/m/Y H:i`) e não o `{% templatetag openvariable %} aviso.criado_em {% templatetag closevariable %}` nu: o formato
-      padrão do Django sai no LOCALE do processo, que aqui é `en-us` — a Caixa
-      mostrava "Aug. 24, 2026, 9 a.m." a um aluno brasileiro. A hora certa vem do
-      `TIME_ZONE` de `config/settings.py`; o formato certo vem daqui.
-      {% endcomment %}
-      · {{ aviso.criado_em|date:"d/m/Y H:i" }}
-    </p>
-    {% if aviso.nota %}
-      <p>{{ aviso.nota|linebreaksbr }}</p>
-    {% endif %}
-    {% if not aviso.lido_em %}
-      <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
-        {% csrf_token %}
-        <button type="submit" class="botao discreto">Marcar como lido</button>
-      </form>
-    {% endif %}
-  </div>
-{% empty %}
-  <div class="recado">
-    <h2>Nenhum aviso ainda</h2>
-    <p>
-      Quando a equipe mexer no status de alguma sugestão sua, o recado aparece
-      aqui — com o motivo que ela escreveu.
-    </p>
-  </div>
-{% endfor %}
+
+      {% if not aviso.lido_em %}
+        <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+          {% csrf_token %}
+          <button type="submit" class="botao discreto">Marcar como lido</button>
+        </form>
+      {% endif %}
+    </article>
+  {% empty %}
+    <div class="recado">
+      <h2>Nenhum aviso ainda</h2>
+      <p>
+        Quando a equipe mexer no status de alguma sugestão sua, o recado aparece
+        aqui — com o motivo que ela escreveu.
+      </p>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
+
+{% block inspetor %}
+<aside class="inspetor">
+  <p class="identificacao">Como isto funciona</p>
+  <h2>Você é avisado, sempre</h2>
+  <p class="meta" style="margin-bottom:14px">
+    Toda vez que a equipe mexe no status de uma ideia sua, o recado nasce aqui —
+    junto com a mudança, nunca depois dela. Quando a resposta for "não vamos
+    fazer", o motivo vem escrito junto: é regra da casa.
+  </p>
+  <a class="botao principal" href="{% url 'quadro' %}#roadmap">Ver o roadmap</a>
+</aside>
 {% endblock %}
