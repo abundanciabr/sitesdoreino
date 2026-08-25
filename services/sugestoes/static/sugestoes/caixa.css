@@ -41,6 +41,12 @@
   --azul-fraco: rgba(76, 141, 255, .14);
   --verde: #34d399;
   --verde-fraco: rgba(52, 211, 153, .14);
+  /* O vermelho já existia solto, escrito à mão no gizmo do topo da moldura
+     (EVO-30). Virou variável no EVO-31, quando a faixa de roadmap precisou de
+     uma cor para o "não planejado" — a única situação da Caixa em que a
+     resposta é não. */
+  --vermelho: #ff5c5c;
+  --vermelho-fraco: rgba(255, 92, 92, .14);
   --texto: #edeef2;
   --texto-fraco: #9a9db0;
   --texto-tenue: #5c5f70;
@@ -189,6 +195,10 @@ h3 { font-family: var(--f-titulo); font-size: 1rem; margin: 0 0 .35rem; }
 .selo-planejado { color: var(--azul); background: var(--azul-fraco); }
 .selo-em_desenvolvimento { color: var(--laranja); background: var(--laranja-fraco); }
 .selo-implementado { color: var(--verde); background: var(--verde-fraco); }
+/* As duas saídas do trilho (EVO-31). `nao_planejado` é a única resposta "não"
+   da Caixa e ganha cor própria; `mesclado` fica no neutro de propósito — a ideia
+   não foi recusada, ela virou outra. */
+.selo-nao_planejado { color: var(--vermelho); background: var(--vermelho-fraco); }
 
 /* --- o voto -------------------------------------------------------------- */
 
@@ -265,6 +275,84 @@ textarea { resize: vertical; min-height: 72px; }
 .ficha h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--texto-tenue); margin: 0 0 5px; font-weight: 500; }
 .ficha p { font-size: 13px; color: var(--texto-fraco); margin: 0; line-height: 1.55; }
 
+/* --- a faixa de roadmap (EVO-31) ---------------------------------------- */
+
+/* O mapa de nomes continua o do topo do arquivo:
+   .faixa=tl-strip · .zona=tl-zone · .trilha=tl-track · .marco=tl-marker
+   .losango=tl-diamond · .marco-votos=tl-v · .rotulo-de-secao=section-label
+
+   `.marco-votos` e não `.votos`: a segunda é a classe que o guarda do EVO-30
+   lê para saber a contagem do BOTÃO DE VOTO da grade, e reaproveitá-la aqui
+   faria aquele teste medir a faixa achando que media o voto. */
+
+.rotulo-de-secao {
+  font-family: var(--f-mono); font-size: 12px; letter-spacing: .08em;
+  color: var(--texto-tenue); text-transform: uppercase; margin: 40px 0 14px;
+}
+
+.faixa { display: flex; border: 1px solid var(--linha); border-radius: 10px; overflow: hidden; background: var(--painel); }
+.zona { flex: 1; padding: 14px 16px; min-width: 0; }
+.zona + .zona { border-left: 1px solid var(--linha); }
+.zona-rotulo { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--texto-fraco); margin: 0 0 16px; }
+.zona-rotulo .bolinha { width: 8px; height: 8px; border-radius: 50%; background: var(--texto-tenue); flex-shrink: 0; }
+.zona-total { font-family: var(--f-mono); font-size: 11px; color: var(--texto-tenue); font-weight: 500; margin-left: auto; }
+
+/* A cor por zona sai do STATUS do model (`data-zona="em_analise"` etc.), e não
+   de uma chave curta inventada no template: assim status novo no model nasce
+   sem cor — degrada — em vez de casar com a zona errada. */
+.zona[data-zona="planejado"] .bolinha, .zona[data-zona="planejado"] .losango { background: var(--azul); }
+.zona[data-zona="em_desenvolvimento"] .bolinha, .zona[data-zona="em_desenvolvimento"] .losango { background: var(--laranja); }
+.zona[data-zona="implementado"] .bolinha, .zona[data-zona="implementado"] .losango { background: var(--verde); }
+
+.trilha { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end; min-height: 30px; }
+.marco { display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; }
+.losango { width: 9px; height: 9px; background: var(--texto-tenue); transform: rotate(45deg); }
+.marco:hover .losango { outline: 2px solid var(--linha-forte); outline-offset: 2px; }
+.marco-votos { font-family: var(--f-mono); font-size: 10px; color: var(--texto-tenue); }
+.zona-vazia { font-size: 11px; color: var(--texto-tenue); font-style: italic; }
+.zona-mais { font-family: var(--f-mono); font-size: 10px; color: var(--texto-fraco); align-self: center; }
+
+/* As duas situações que não são zona do trilho. Ficam ABAIXO da faixa, e não
+   escondidas: sem elas a soma das quatro zonas deixaria de dar o total do topo,
+   e a resposta que a equipe escreveu para quem foi recusado não teria vitrine. */
+.fora-do-trilho { margin-top: 20px; }
+.fora-do-trilho h2 { margin-top: 0; }
+.saidas { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.saidas li {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--painel); border: 1px solid var(--linha); border-radius: 8px;
+  padding: 9px 12px; font-size: 13px;
+}
+.saidas a { text-decoration: none; }
+.saidas a:hover { text-decoration: underline; }
+.saidas .marco-votos { margin-left: auto; }
+
+/* --- os avisos vestidos (EVO-31 sobre o dado do EVO-21) ------------------ */
+
+.avisos { display: flex; flex-direction: column; gap: 10px; }
+.aviso {
+  background: var(--painel); border: 1px solid var(--linha); border-radius: 10px;
+  padding: 14px 16px;
+}
+/* O não-lido se anuncia por borda, não só pela etiqueta: quem abre a página com
+   dez avisos precisa ver de longe quais são os novos. */
+.aviso.nao-lido { border-color: var(--laranja); background: linear-gradient(var(--laranja-fraco), var(--laranja-fraco)), var(--painel); }
+.aviso form { margin: 0; }
+.aviso-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.aviso-topo .meta { margin-left: auto; font-family: var(--f-mono); }
+.marca-novo {
+  font-family: var(--f-mono); font-size: 10px; font-weight: 600; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--tinta); background: var(--laranja);
+  border-radius: 5px; padding: 2px 6px;
+}
+.aviso-titulo { font-family: var(--f-titulo); font-size: 14px; margin: 0 0 6px; }
+.aviso-titulo a { text-decoration: none; }
+.aviso-titulo a:hover { text-decoration: underline; }
+.aviso-mudanca { font-size: 12.5px; color: var(--texto-tenue); margin: 0 0 10px; }
+.aviso-mudanca .para { color: var(--texto-fraco); }
+.aviso-mudanca .seta-mudanca { color: var(--texto-tenue); margin: 0 2px; }
+.aviso .ficha { margin-bottom: 10px; }
+
 /* --- comentários --------------------------------------------------------- */
 
 .conversa { display: flex; flex-direction: column; gap: 10px; }
@@ -297,6 +385,11 @@ th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transfo
   .trilho { flex-direction: row; width: 100%; }
   .inspetor { width: 100%; position: static; }
   .grade { grid-template-columns: repeat(2, 1fr); }
+  /* Quatro zonas lado a lado num celular dariam colunas de dois dedos de largura,
+     com o rótulo quebrando em três linhas. Empilhadas, o trilho vira uma lista —
+     e a ordem das etapas, que é a informação, continua de pé. */
+  .faixa { flex-direction: column; }
+  .zona + .zona { border-left: 0; border-top: 1px solid var(--linha); }
 }
 @media (max-width: 520px) {
   .grade { grid-template-columns: 1fr; }

@@ -857,3 +857,81 @@ As três decisões que valem releitura antes de mexer nesta área:
 Custo por requisição: 1 salto à identidade (cache 60s por cookie) + 1 à
 `alunos` (cache 10 min por e-mail, positivo E negativo) — módulo, então os
 testes limpam via `ses.limpar_caches()` no `ambiente` (armadilhas/026).
+## O EVO-31: a faixa de roadmap e o sino vestido — o que este elo aprendeu
+
+Fecha o Lote 3. Nenhuma regra de negócio nasceu aqui: a faixa é um recorte novo
+de dados que já existiam desde o EVO-11, e o sino é o EVO-21 com roupa. As sete
+coisas que custaram alguma coisa:
+
+**1. Quem decidiu o escopo da faixa foi um guarda de dois despachos atrás.** A
+pergunta "a faixa mostra o quadro inteiro ou só o que o filtro deixou passar?"
+tinha resposta boa dos dois lados, e eu tinha escolhido *o quadro inteiro*. O
+`test_o_quadro_filtra_por_categoria` (EVO-12b) ficou **vermelho** — porque ele
+afirma sobre o CORPO da página, não sobre a grade: quem filtrou por "Blender"
+estava recebendo o resto do quadro de volta na parte de baixo da mesma página.
+A faixa obedece ao filtro, e a decisão não foi de gosto: foi medida. É a lição
+da `armadilhas/087` pelo outro lado — guarda que afirma sobre o corpo
+renderizado pega o vazamento que ninguém previu, inclusive o vazamento de
+DESENHO.
+
+**2. Nesta célula, classe de CSS é interface de teste.** `.votos` é lida por
+regex pelo guarda do botão de voto (`CONTAGEM` em `test_o_rosto.py`), que afirma
+`== ["0"]` na grade inteira. Reaproveitar a classe na faixa faria aquele guarda
+contar losangos achando que contava votos — verde ou vermelho pelo motivo
+errado, os dois igualmente ruins. Daí `.marco-votos`. **Antes de batizar classe
+nova numa página que já tem guarda, dê um `grep` pelo nome nos testes.**
+
+**3. A faixa não é rota — é âncora — e isso decide onde mora a proteção dela.**
+`{% url 'quadro' %}#roadmap`, seção com `id` dentro do quadro. Consequência que
+vale escrever: ela **não entra** em nenhuma das três varreduras de urlconf
+(`test_inv_sem_sessao_nada`, `test_inv_so_staff_modera`,
+`test_inv_avaliacao_interna_fora_do_alcance`), porque não há `URLPattern` novo.
+O porteiro dela é o do quadro, e o guarda de "exige sessão" da faixa mede o
+quadro — não uma rota que não existe. Rota própria teria sido uma segunda porta
+a proteger para mostrar um recorte do que a primeira já tem em mãos.
+
+**4. O botão do roadmap no trilho NÃO se pinta de `ativo`.** Âncora não muda
+`request.resolver_match`, então não há como saber se a pessoa está olhando a
+faixa. Pintá-lo por adivinhação (ou pintar os dois) faria o trilho — que
+descobre sozinho onde a pessoa está desde o EVO-30 — passar a mentir. E o ícone
+é novo (`#i-trilha`): o protótipo reaproveita o `#i-bars` no roadmap, mas aqui
+esse desenho já é o da **moderação**, e dois botões idênticos no mesmo trilho é
+economia que faz a pessoa clicar no errado.
+
+**5. O guarda de N+1 que não envelhece é a COMPARAÇÃO, não o número.**
+`assertNumQueries(9)` na página inteira envelhece a cada mudança e é
+"consertado" para o valor novo sem ninguém olhar o motivo. O que não envelhece é
+*a mesma página, com mais dados, custa o mesmo*. Duas armadilhas para montá-lo
+nesta célula: as duas medições têm de ser da **mesma pessoa** e depois de uma
+**leitura de aquecimento** — sessão e matrícula têm cache de módulo com janela
+própria (`apps/core/sessao.py`), então um leitor novo entre as medições traz
+consultas de estreia e o guarda acusa N+1 onde não há.
+
+**6. O limite de 3 sugestões por 7 dias mora dentro de toda fixture que povoa
+quadro.** Uma zona cheia precisa de mais de três ideias; publicá-las pela mesma
+pessoa dá **429** na quarta, e o teste morre num lugar que não tem nada a ver
+com o que ele mede. A fixture `povoar` de `test_faixa_de_roadmap.py` cunha um
+autor novo por ideia. `mesclado`, por sua vez, só entra pelo ORM: ele fica FORA
+do `<select>` da moderação desde o EVO-13 e há guarda impedindo que entre por
+lá — mas a tela tem de saber desenhá-lo hoje, senão o dia em que o merge nascer
+é o dia em que a página quebra.
+
+**7. `nao_planejado` e `mesclado` ficaram na tela, e a aritmética é o guarda.**
+Eles não são degraus do caminho, são saídas dele — não têm zona. Mas somem da
+existência se ninguém os desenhar, e aí a soma das quatro zonas deixa de dar o
+total de sugestões do quadro **sem nada na tela explicando a diferença**, e a
+justificativa que a equipe é obrigada a escrever desde o EVO-13 perde a vitrine.
+Ficam em "Fora do trilho", logo abaixo da faixa, com o caminho para o detalhe. O
+guarda que impede alguém de "limpar" a faixa um dia é
+`test_nenhuma_ideia_do_quadro_fica_de_fora_da_conta`: zonas + saídas == quadro.
+
+### E uma de instrumento, que quase virou prova falsa
+
+`git checkout origin/main -- <arquivos>` **também mexe no ÍNDICE**, não só na
+árvore. Depois dele, o `git diff` que a `armadilhas/084` manda gerar sai
+**VAZIO** — e o patch de prova de 0 bytes aplica ao contrário sem erro nenhum,
+sem efeito nenhum. A evidência vermelho→verde teria sido escrita sobre um patch
+que não existia. A cura é `git reset` (misto: desfaz o índice, preserva a árvore)
+antes do `git diff`, ou `git diff HEAD` direto — e **conferir o tamanho do
+patch** (`wc -l`) antes de confiar nele. Isto foi promovido a `armadilhas/108`,
+porque é mecânica de git e não desta casa.

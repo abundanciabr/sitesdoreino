@@ -74,6 +74,88 @@ essas palavras que os guardas do EVO-12b medem de quem é o voto.
     </div>
   {% endfor %}
 </div>
+
+{% comment %}
+A FAIXA DE ROADMAP (EVO-31) — as quatro zonas do rodapé do protótipo.
+
+Ela mora AQUI, dentro do quadro, e não numa rota própria: é o que o protótipo
+faz, e o botão do trilho a alcança por âncora (`#roadmap`), sem uma linha de
+JavaScript. Rota nova seria uma segunda página a proteger e a manter em pé para
+mostrar um recorte do que esta já tem em mãos.
+
+"Público" aqui quer dizer público DENTRO da Caixa: quem tem sessão vê, como no
+resto da participação. Uma página anônima mudaria a `DECISAO-EVO-01-identidade`,
+que é lei — não decisão de template.
+
+A faixa OBEDECE ao filtro de categoria da grade — quem clicou em "Blender" não
+recebe o resto do quadro de volta na parte de baixo da página. Quem decidiu isso
+foi um guarda do EVO-12b (`test_o_quadro_filtra_por_categoria`), que afirma sobre
+o CORPO da página e ficou vermelho na primeira rodada deste despacho.
+
+Os marcos vêm do servidor já contados e já ordenados, numa consulta agregada
+(`apps/core/participacao.py::_marcos`). O número de votos sai em
+`<span class="marco-votos">` e **não** em `<span class="votos">`, de propósito: a
+segunda classe é a que `test_o_rosto.py` mede para saber a contagem do botão de
+voto da grade, e reaproveitá-la aqui faria aquele guarda medir a faixa achando
+que media o voto.
+
+O rótulo de cada marco vive no `title`/`aria-label`: um losango sozinho não é
+nome para quem usa leitor de tela — a mesma regra do botão de voto (LICOES §6).
+{% endcomment %}
+<section id="roadmap" class="roadmap" aria-labelledby="roadmap-titulo">
+  <p class="rotulo-de-secao" id="roadmap-titulo">Roadmap</p>
+
+  <div class="faixa">
+    {% for zona in faixa %}
+      <div class="zona" data-zona="{{ zona.chave }}">
+        <p class="zona-rotulo">
+          <span class="bolinha" aria-hidden="true"></span>{{ zona.rotulo }}
+          <b class="zona-total">{{ zona.total }}</b>
+        </p>
+        <div class="trilha">
+          {% for marco in zona.marcos %}
+            <a class="marco" href="{% url 'sugestao' marco.id %}"
+               title="{{ marco.titulo }}"
+               aria-label="{{ marco.titulo }} — {{ marco.total_votos }} voto{{ marco.total_votos|pluralize }}"><span class="losango" aria-hidden="true"></span><span class="marco-votos">{{ marco.total_votos }}</span></a>
+          {% empty %}
+            <span class="zona-vazia">nenhuma ideia por aqui ainda</span>
+          {% endfor %}
+          {% if zona.escondidos %}
+            <span class="zona-mais">+{{ zona.escondidos }}</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% comment %}
+  As duas situações que NÃO são zona do trilho — `nao_planejado` e `mesclado`.
+  Elas não são etapas do caminho, são saídas dele, e por isso não têm coluna na
+  faixa; mas continuam na tela. Escondê-las faria a soma das quatro zonas
+  discordar do total de sugestões do topo sem nada explicando a diferença — e,
+  o que pesa mais, enterraria a justificativa que a equipe é obrigada a escrever
+  desde o EVO-13 justamente porque quem sugeriu vai ler. Cada uma leva ao seu
+  detalhe, que é onde a nota está escrita por inteiro.
+  {% endcomment %}
+  {% if fora_do_trilho %}
+    <div class="fora-do-trilho">
+      <h2>Fora do trilho</h2>
+      <p class="meta">
+        Ideias que a equipe decidiu não fazer, ou que viraram outra. O motivo
+        está escrito dentro de cada uma.
+      </p>
+      <ul class="saidas">
+        {% for marco in fora_do_trilho %}
+          <li>
+            <span class="selo selo-{{ marco.status }}">{{ marco.rotulo }}</span>
+            <a href="{% url 'sugestao' marco.id %}">{{ marco.titulo }}</a>
+            <span class="marco-votos">{{ marco.total_votos }} voto{{ marco.total_votos|pluralize }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+</section>
 {% endblock %}
 
 {% block inspetor %}

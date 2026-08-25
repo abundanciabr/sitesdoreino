@@ -47,6 +47,14 @@ renderiza vazio, não quebra.
   <symbol id="i-mais" viewBox="0 0 20 20"><line x1="10" y1="4" x2="10" y2="16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="4" y1="10" x2="16" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
   <symbol id="i-sino" viewBox="0 0 20 20"><path d="M6 8a4 4 0 018 0c0 3 1 4 1.5 4.7H4.5C5 12 6 11 6 8z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8.5 15a1.6 1.6 0 003 0" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
   <symbol id="i-barras" viewBox="0 0 20 20"><line x1="3" y1="6" x2="17" y2="6" stroke="currentColor" stroke-width="1.3"/><line x1="3" y1="10" x2="13" y2="10" stroke="currentColor" stroke-width="1.3"/><line x1="3" y1="14" x2="15" y2="14" stroke="currentColor" stroke-width="1.3"/></symbol>
+  {% comment %}
+  O ícone do roadmap (EVO-31). O protótipo reaproveita o `#i-bars` no botão
+  `#nav-roadmap` — aqui esse desenho já é o da MODERAÇÃO, e dois lugares
+  diferentes com o mesmo ícone no mesmo trilho é o tipo de economia que faz a
+  pessoa clicar no errado. Este é o desenho da própria faixa: um trilho com três
+  marcos em cima.
+  {% endcomment %}
+  <symbol id="i-trilha" viewBox="0 0 20 20"><line x1="2" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.3"/><g fill="currentColor"><rect x="2.6" y="8.6" width="2.8" height="2.8" transform="rotate(45 4 10)"/><rect x="8.6" y="8.6" width="2.8" height="2.8" transform="rotate(45 10 10)"/><rect x="14.6" y="8.6" width="2.8" height="2.8" transform="rotate(45 16 10)"/></g></symbol>
 </svg>
 
 <div class="wrap">
@@ -79,6 +87,18 @@ renderiza vazio, não quebra.
     {% if ator %}
       <nav class="trilho" aria-label="Seções da Caixa">
         <a href="{% url 'quadro' %}" title="Quadro" aria-label="Quadro" class="{% if request.resolver_match.url_name == 'quadro' or request.resolver_match.url_name == 'sugestao' %}ativo{% endif %}"><svg aria-hidden="true"><use href="#i-grade"/></svg></a>
+        {% comment %}
+        O lugar que o trilho já tinha reservado desde o EVO-30 (`#nav-roadmap` no
+        protótipo). A faixa NÃO é uma rota: ela vive dentro do quadro, e este
+        botão é uma âncora para a seção — `{% templatetag openblock %} url 'quadro' {% templatetag closeblock %}` + `#roadmap`, com o
+        prefixo público vindo do `{% templatetag openblock %} url {% templatetag closeblock %}` como todo endereço desta casa.
+
+        Ele NÃO se pinta de `ativo`: âncora não muda `resolver_match`, então
+        quem está aceso no quadro é o botão do quadro — que é a verdade. Pintar
+        os dois, ou pintar este por adivinhação, seria o trilho mentindo sobre
+        onde a pessoa está.
+        {% endcomment %}
+        <a href="{% url 'quadro' %}#roadmap" title="Roadmap" aria-label="Roadmap"><svg aria-hidden="true"><use href="#i-trilha"/></svg></a>
         <a href="{% url 'nova_sugestao' %}" title="Nova ideia" aria-label="Nova ideia" class="{% if request.resolver_match.url_name == 'nova_sugestao' %}ativo{% endif %}"><svg aria-hidden="true"><use href="#i-mais"/></svg></a>
         {% comment %}
         A contagem do sino vem do context processor `apps.core.avisos.sino` e é
