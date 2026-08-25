@@ -59,6 +59,16 @@ CREATE ROLE identidade_user LOGIN PASSWORD 'TROQUE_identidade';
 CREATE DATABASE identidade_db OWNER identidade_user;
 REVOKE ALL ON DATABASE identidade_db FROM PUBLIC;
 
+-- admin (a área administrativa) ------------------------------------------------
+-- Guarda a AUDITORIA da plataforma — quem mexeu em quê, quando, e qual era o
+-- valor antes (DECISAO-celula-admin §4). É justamente o banco que alguém com
+-- acesso indevido gostaria de editar para apagar o próprio rastro, então o par
+-- isolado vale dobrado aqui. A área admin também não lê o banco de NINGUÉM:
+-- métricas entram por HTTP, com token de leitura (Lei 3).
+CREATE ROLE admin_user LOGIN PASSWORD 'TROQUE_admin';
+CREATE DATABASE admin_db OWNER admin_user;
+REVOKE ALL ON DATABASE admin_db FROM PUBLIC;
+
 -- =============================================================================
 -- PROVA DA MURALHA (o red-team repete isto — golpe nº 7):
 --   psql "postgres://quiz_user:SENHA@localhost:5432/pagamentos_db"
