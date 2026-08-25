@@ -1,36 +1,34 @@
 """Fixtures compartilhadas pelos testes-guarda da célula.
 
 Duas metades: o quadro mínimo do modelo de dados (EVO-11) e o **dublê do mundo
-lá fora** da porta de entrada (EVO-12a).
+lá fora** da porta — que desde a `DECISAO-celula-de-identidade` (25/08/2026)
+são DUAS células: a `identidade` (quem é — `getSessionFull`, com e-mail) e a
+`alunos` (se pode). O Google saiu daqui junto com o login.
 
 --------------------------------------------------------------------------
 NADA AQUI TOCA A REDE — e é isto que torna a suíte executável sem internet
 --------------------------------------------------------------------------
-A porta fala com dois serviços de fora: o Google (quem é) e a célula `alunos`
-(se pode). Os dois são dublados com `respx`, que troca o transporte do `httpx`
-por um roteador em memória. Nenhuma das três URLs abaixo é resolvida, nenhum
-socket é aberto, e o aplicativo OAuth de verdade — que o mantenedor só cria no
-Lote 2 — não faz falta para nada aqui.
+As duas conversas são dubladas com `respx`, que troca o transporte do `httpx`
+por um roteador em memória. A prova é mecânica, não promessa: `respx.mock` sem
+`assert_all_called` levanta `AllMockedAssertionError` para QUALQUER requisição
+que não tenha sido registrada (armadilhas/054). Se alguém acrescentar amanhã
+um salto de rede novo, a suíte estoura em vez de sair para a internet.
 
-A prova disso é mecânica, não promessa: `respx.mock` sem `assert_all_called`
-levanta `AllMockedAssertionError` para QUALQUER requisição que não tenha sido
-registrada (armadilhas/054). Se alguém acrescentar amanhã um salto de rede novo
-neste fluxo, a suíte estoura em vez de sair silenciosamente para a internet.
-
-Os endereços de `alunos` são de mentira (`alunos.teste`), no mesmo espírito do
-`conftest.py` do `checkout`: não existe host real por trás deles.
+O dublê da `identidade` responde POR COOKIE: cada pessoa "logada no site" é um
+valor de `meshcraft_sessao` registrado em `Rede.site_reconhece` — o mesmo
+mecanismo de produção (a Caixa repassa o cabeçalho `Cookie` opaco; quem o
+entende é a outra célula).
 """
 
-import json
-from unittest import mock
-from urllib.parse import parse_qs, urlparse
+import re
+import secrets
 
 import httpx
 import pytest
 import respx
 from django.urls import reverse
 
-from apps.core.clients import GoogleOAuth
+from apps.core import sessao as ses
 from apps.sugestoes.models import Aviso, Categoria, Identidade, Quadro, Sugestao
 
 # ---------------------------------------------------------------------------
@@ -74,9 +72,10 @@ def sugestao(quadro, categoria, aluno):
 
 
 # ---------------------------------------------------------------------------
-# A porta de entrada (EVO-12a) — o mundo lá fora, de mentira
+# A porta — o mundo lá fora, de mentira (identidade + alunos)
 # ---------------------------------------------------------------------------
 
+IDENTIDADE = "http://identidade.teste/interno"
 ALUNOS = "http://alunos.teste/api/alunos"
 
 MATRICULA_ATIVA = {
@@ -87,27 +86,7 @@ MATRICULA_ATIVA = {
     "enrolled_at": "2026-08-01T12:00:00+00:00",
 }
 
-
-def perfil_google(
-    email: str = "joao.silva@exemplo.test",
-    *,
-    verificado: bool = True,
-    nome: str = "João",
-) -> dict:
-    """O corpo que o `userinfo` do Google devolve — com os campos que a porta lê."""
-    return {
-        "sub": "1234567890",
-        "email": email,
-        "email_verified": verificado,
-        "given_name": nome,
-        "name": f"{nome} da Silva",
-    }
-
-
-@pytest.fixture
-def perfil():
-    """A fábrica de perfis do Google, como fixture — cada guarda monta o seu."""
-    return perfil_google
+_COOKIE_DO_SITE = re.compile(r"meshcraft_sessao=([^;]+)")
 
 
 @pytest.fixture
@@ -120,16 +99,23 @@ def matricula():
 def ambiente(monkeypatch):
     """O env da célula como ele será na VPS — menos os segredos, que são falsos.
 
-    `autouse` porque a porta lê tudo NO PONTO DE USO: um teste que esqueça de
-    montar o ambiente não veria um erro claro, veria um 503 de configuração
-    ausente e perderia tempo. A lista de staff começa VAZIA de propósito —
-    ninguém é staff por acidente; o teste que precisa dela a declara.
+    `autouse` porque tudo é lido NO PONTO DE USO: um teste que esqueça de
+    montar o ambiente veria uma recusa de configuração ausente e perderia
+    tempo. A lista de staff começa VAZIA de propósito — ninguém é staff por
+    acidente; o teste que precisa dela a declara.
+
+    Os caches de sessão/matrícula (armadilhas/026: módulo vaza entre testes)
+    são limpos ANTES e DEPOIS: uma sessão que vazasse faria um guarda de
+    "visitante" passar mostrando o nome de alguém que outro teste logou.
     """
-    monkeypatch.setenv("GOOGLE_CLIENT_ID", "id-de-teste.apps.googleusercontent.com")
-    monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "segredo-de-teste-nunca-real")
+    monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
+    monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-sugestoes-identidade")
     monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
     monkeypatch.setenv("ALUNOS_API_TOKEN", "token-do-par-sugestoes-alunos")
     monkeypatch.delenv("SUGESTOES_STAFF_EMAILS", raising=False)
+    ses.limpar_caches()
+    yield
+    ses.limpar_caches()
 
 
 class Rede:
@@ -142,36 +128,51 @@ class Rede:
 
     def __init__(self, mock: respx.MockRouter) -> None:
         self.mock = mock
-        # A troca do código pelo access_token é sempre a mesma e nunca é o
-        # assunto de nenhum guarda: fica pronta desde o começo.
-        self.token = mock.post(GoogleOAuth.TOKEN).mock(
-            return_value=httpx.Response(200, json={"access_token": "acesso-de-teste"})
+        # A identidade de mentira: um dicionário cookie→pessoa. O default é
+        # "visitante" para qualquer cookie desconhecido — o estado normal.
+        self.sessoes: dict[str, dict] = {}
+        self._central_fora = False
+        self.completa = mock.get(f"{IDENTIDADE}/sessao/completa").mock(
+            side_effect=self._quem_e
         )
-        self.perfil = mock.get(GoogleOAuth.PERFIL)
-        self.google_diz(perfil_google())
 
-    def google_diz(self, perfil: dict) -> None:
-        self.perfil.mock(return_value=httpx.Response(200, json=perfil))
+    # -- identidade ---------------------------------------------------------
+    def _quem_e(self, request):
+        if self._central_fora:
+            raise httpx.ConnectError("connection refused")
+        achado = _COOKIE_DO_SITE.search(request.headers.get("cookie", ""))
+        corpo = self.sessoes.get(achado.group(1)) if achado else None
+        return httpx.Response(200, json=corpo or {"autenticado": False})
 
-    def google_fora_do_ar(self):
-        return self.perfil.mock(side_effect=httpx.ConnectError("connection refused"))
+    def site_reconhece(self, valor: str, *, email: str, nome: str = "João") -> None:
+        """Registra: quem carregar `meshcraft_sessao=<valor>` é esta pessoa."""
+        self.sessoes[valor] = {
+            "autenticado": True,
+            "id": f"idt-{email}",
+            "nome_exibido": nome,
+            "email": email,
+        }
 
+    def central_fora_do_ar(self) -> None:
+        self._central_fora = True
+
+    def central_responde(self, resposta: httpx.Response) -> None:
+        """A forma crua, para os guardas de resposta fora do contrato."""
+        self.completa.mock(return_value=resposta)
+
+    # -- alunos -------------------------------------------------------------
     def alunos_responde(self, email: str, resposta: httpx.Response):
-        """A forma crua, para os guardas que varrem faixas de status."""
         return self.mock.get(self._url(email)).mock(return_value=resposta)
 
     def alunos_diz(self, email: str, matriculas: list[dict]):
-        """200 com a lista — o caminho feliz do contrato."""
         return self.alunos_responde(email, httpx.Response(200, json=matriculas))
 
     def alunos_nao_conhece(self, email: str):
-        """404 = "aluno inexistente", a resposta contratual para quem não comprou."""
         return self.alunos_responde(
             email, httpx.Response(404, json={"detail": "aluno inexistente"})
         )
 
     def alunos_fora_do_ar(self, email: str):
-        """Conexão que não se estabelece — o mesmo que timeout, para esta porta."""
         return self.mock.get(self._url(email)).mock(
             side_effect=httpx.ConnectError("connection refused")
         )
@@ -193,83 +194,68 @@ def rede():
 
 
 class Porta:
-    """O fluxo inteiro do clique até a volta, com o Google dublado.
+    """Uma pessoa diante da porta da Caixa — com (ou sem) a sessão do site.
 
-    Existe para que cada guarda mostre só o seu invariante em vez de repetir a
-    dança do `state` cinco vezes. O `state` é lido do redirecionamento REAL que
-    a célula produziu — não é inventado aqui, senão o guarda do antifalsificação
-    passaria a testar a si mesmo.
+    `esta_dentro` é medido ABRINDO A PORTA de verdade (um GET em `entrar`), e
+    não lendo estado interno: é o que a pessoa veria, que é o que o guarda
+    deve medir.
     """
 
-    def __init__(self, client, rede: Rede) -> None:
+    def __init__(self, client, rede: Rede, email: str = "") -> None:
         self.client = client
         self.rede = rede
+        self.email = email.strip().lower()
 
-    def bater(self, perfil: dict | None = None, **extra):
-        if perfil is not None:
-            self.rede.google_diz(perfil)
-        inicio = self.client.get("/entrar/google")
-        assert inicio.status_code == 302, inicio.content
-        estado = parse_qs(urlparse(inicio["Location"]).query)["state"][0]
-        parametros = {"code": "codigo-de-teste", "state": estado, **extra}
-        return self.client.get("/entrar/google/retorno", parametros, follow=True)
+    def abrir(self):
+        return self.client.get(reverse("entrar"))
 
     @property
     def esta_dentro(self) -> bool:
-        """A prova de sessão aberta, lida do cookie de verdade do navegador."""
-        from apps.core.sessao import CHAVE_IDENTIDADE
-
-        # Nome escrito à mão, e não lido de settings: um teste que lê a mesma
-        # variável que o código passaria mesmo com o valor errado. Mudou de
-        # `sugestoes_sessao` para `meshcraft_sessao` em 24/08/2026, junto com o
-        # PATH — ver DECISAO-onde-mora-a-sessao §5.1.
-        cookie = self.client.cookies.get("meshcraft_sessao")
-        if cookie is None or not cookie.value:
-            return False
-        return CHAVE_IDENTIDADE in self.client.session
+        resposta = self.abrir()
+        return (
+            resposta.status_code == 200
+            and "Ver o quadro de sugestões" in resposta.content.decode()
+        )
 
     @property
     def identidade(self) -> Identidade:
-        """Quem a sessão diz que é — lido do cookie, não guardado à parte.
-
-        Um atributo gravado na entrada mentiria depois de um `/sair`, e é
-        exatamente nos guardas de sessão que essa mentira apareceria tarde.
-        """
-        from apps.core.sessao import CHAVE_IDENTIDADE
-
-        return Identidade.objects.get(pk=self.client.session[CHAVE_IDENTIDADE])
+        """A linha LOCAL desta pessoa — o snapshot casado por e-mail."""
+        return Identidade.objects.get(email=self.email)
 
 
 @pytest.fixture
 def porta(client, rede, db):
+    """Um visitante sem sessão nenhuma, diante da porta."""
     return Porta(client, rede)
 
 
-# ---------------------------------------------------------------------------
-# A participação do aluno (EVO-12b) — sessão aberta PELA PORTA, nunca à mão
-# ---------------------------------------------------------------------------
+def sessao_do_site(rede: Rede, *, email: str, nome: str = "João"):
+    """Um `Client` novo já carregando uma sessão VÁLIDA do site.
+
+    O cookie é opaco e registrado no dublê da identidade — exatamente o
+    contrato de produção: a Caixa não entende o valor, só o repassa.
+    """
+    from django.test import Client
+
+    valor = secrets.token_urlsafe(12)
+    rede.site_reconhece(valor, email=email, nome=nome)
+    cliente = Client()
+    cliente.cookies["meshcraft_sessao"] = valor
+    return Porta(cliente, rede, email=email)
 
 
 @pytest.fixture
 def entrar_como(rede, matricula, db):
-    """Abre uma sessão de aluno pelo fluxo REAL do EVO-12a — quantas precisar.
+    """Uma pessoa com sessão do site E matrícula — o aluno participante.
 
-    Poderia ser mais rápido assinar um cookie de sessão na mão. Seria também
-    um guarda que continua verde no dia em que a porta parar de funcionar: a
-    sessão de teste passaria a ser feita por um caminho que a produção não tem.
-    Cada aluno destes entrou clicando no botão, com o Google e a `alunos`
-    dublados como em qualquer outro guarda desta suíte.
-
-    Cada chamada usa um `Client` próprio — dois alunos ao mesmo tempo é o caso
-    normal de "votos de atores diferentes", e um cliente só teria um cookie só.
+    A matrícula é dublada porque a autorização continua DESTA célula: sessão
+    do site sozinha não participa (há guarda para isso).
     """
-    from django.test import Client
 
     def _entrar(email: str = "joao.silva@exemplo.test", nome: str = "João") -> Porta:
         rede.alunos_diz(email, [matricula])
-        pessoa = Porta(Client(), rede)
-        resposta = pessoa.bater(perfil_google(email=email, nome=nome))
-        assert pessoa.esta_dentro, resposta.content
+        pessoa = sessao_do_site(rede, email=email, nome=nome)
+        assert pessoa.esta_dentro
         return pessoa
 
     return _entrar
@@ -282,7 +268,7 @@ def dentro(entrar_como):
 
 
 # ---------------------------------------------------------------------------
-# A moderação (EVO-13) — o crachá também vem pela porta, e da variável de env
+# A moderação (EVO-13) — o crachá vem da lista DESTA célula, nunca do contrato
 # ---------------------------------------------------------------------------
 
 
@@ -290,12 +276,9 @@ def dentro(entrar_como):
 def lista_da_staff(monkeypatch):
     """Põe um e-mail em `SUGESTOES_STAFF_EMAILS`, acumulando.
 
-    Acumula porque a variável é UMA lista separada por vírgula: um
-    `setenv` por pessoa faria a segunda apagar o crachá da primeira, e um
-    guarda com duas pessoas da equipe falharia por um motivo que não é o dele.
-
-    Note que ela nasce ausente (fixture `ambiente`): **ninguém é staff por
-    acidente**, e o teste que precisa de crachá o pede explicitamente.
+    Acumula porque a variável é UMA lista separada por vírgula: um `setenv`
+    por pessoa faria a segunda apagar o crachá da primeira. Note que ela nasce
+    ausente (fixture `ambiente`): **ninguém é staff por acidente**.
     """
     emails: list[str] = []
 
@@ -308,21 +291,19 @@ def lista_da_staff(monkeypatch):
 
 @pytest.fixture
 def entrar_como_staff(rede, lista_da_staff, db):
-    """Abre uma sessão de EQUIPE pelo mesmo fluxo real do aluno.
+    """Alguém da equipe, pela mesma porta real do aluno.
 
     Uma diferença que é prova por si: aqui **não se dubla a `alunos`**. A
-    checagem de staff acontece antes da de matrícula (`DECISAO-EVO-01` §4), e o
-    `respx` estoura em qualquer requisição não registrada (armadilhas/054) — se
-    alguém inverter a ordem um dia, esta fixture cai com
+    checagem de staff acontece antes da de matrícula (herdada da porta
+    antiga), e o `respx` estoura em qualquer requisição não registrada
+    (armadilhas/054) — se alguém inverter a ordem um dia, esta fixture cai com
     `AllMockedAssertionError`, não com um teste verde de mentira.
     """
-    from django.test import Client
 
     def _entrar(email: str = "equipe@meshcraft.test", nome: str = "Equipe") -> Porta:
         lista_da_staff(email)
-        pessoa = Porta(Client(), rede)
-        resposta = pessoa.bater(perfil_google(email=email, nome=nome))
-        assert pessoa.esta_dentro, resposta.content
+        pessoa = sessao_do_site(rede, email=email, nome=nome)
+        assert pessoa.esta_dentro
         return pessoa
 
     return _entrar
@@ -330,7 +311,7 @@ def entrar_como_staff(rede, lista_da_staff, db):
 
 @pytest.fixture
 def equipe(entrar_como_staff):
-    """Alguém da equipe já dentro — o ponto de partida de todo guarda do EVO-13."""
+    """Alguém da equipe já dentro — o ponto de partida dos guardas do EVO-13."""
     return entrar_como_staff()
 
 
@@ -338,22 +319,23 @@ def equipe(entrar_como_staff):
 # Os eventos (EVO-20) — o fio e os quatro fatos, provocados pela jornada REAL
 # ---------------------------------------------------------------------------
 
+import json  # noqa: E402  (usado só pelo Fio abaixo)
+from unittest import mock as unittest_mock  # noqa: E402
+
 
 class Fio:
     """O transporte do relay sob controle do teste: o que saiu no `xadd`.
 
-    O Redis é dublado no transporte (`redis.from_url`), e não com um servidor
-    de verdade, pelo mesmo motivo que Google e `alunos` são dublados acima: uma
-    suíte que precisa de container é uma suíte que fica vermelha por motivo
-    alheio, e a máquina do mantenedor é Windows. O que se prova aqui é o
-    comportamento do relay e a FORMA do que ele publica — a prova de que o fio
-    de verdade funciona é o roteiro de Redis real do handoff (worker +
-    `XRANGE`), que nenhum teste substitui.
+    O Redis é dublado no transporte (`redis.from_url`), pelo mesmo motivo que
+    identidade e `alunos` são dublados acima: uma suíte que precisa de
+    container fica vermelha por motivo alheio, e a máquina do mantenedor é
+    Windows. O que se prova é o comportamento do relay e a FORMA do que ele
+    publica.
     """
 
     def __init__(self) -> None:
         self.mensagens: list[tuple[str, dict]] = []
-        self.cliente = mock.Mock()
+        self.cliente = unittest_mock.Mock()
         self.cliente.xadd.side_effect = self._xadd
 
     def _xadd(self, stream: str, campos: dict) -> None:
@@ -395,8 +377,7 @@ class Caixa:
 
     Um teste que criasse `Sugestao.objects.create(...)` à mão provaria que o
     construtor de evento funciona, e continuaria verde no dia em que a view
-    parasse de chamá-lo. O que interessa aqui é o contrário: que a JORNADA
-    emite. Por isso tudo passa pelo `client` da sessão aberta na porta.
+    parasse de chamá-lo. O que interessa é o contrário: que a JORNADA emite.
     """
 
     def __init__(self, aluno, equipe) -> None:
@@ -463,12 +444,9 @@ def caixa(dentro, equipe, categoria):
 def aviso(dentro, sugestao):
     """Um aviso pronto, escrito direto pelo ORM — e isso é deliberado.
 
-    Os guardas que provam COMO o aviso nasce (dentro da transação da mudança de
-    status) provocam o fato pela jornada de verdade, em
-    `test_inv_aviso_nasce_com_o_status.py`. Esta fixture serve aos outros — os de
-    quem-vê-o-quê e de idempotência —, que precisam de um aviso existindo e não
-    têm nada a dizer sobre o nascimento dele. Montá-lo pela equipe aqui faria
-    cada um desses guardas depender do caminho do EVO-13 para medir outra coisa.
+    Os guardas que provam COMO o aviso nasce provocam o fato pela jornada de
+    verdade, em `test_inv_aviso_nasce_com_o_status.py`. Esta fixture serve aos
+    outros — os de quem-vê-o-quê e de idempotência.
 
     O destinatário é quem a fixture `dentro` abriu a sessão — NÃO o autor da
     fixture `sugestao`, que é outra identidade. É de propósito: o aviso é do

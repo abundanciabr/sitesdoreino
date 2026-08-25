@@ -22,6 +22,12 @@ pytest-django==4.9.0
 # documentação e passa a reprovar o CI — o envelope real é validado contra o
 # arquivo do contrato, não contra uma cópia do formato dentro do teste.
 jsonschema==4.23.0
+# O freeze de contrato (make contrato-check) LÊ o contrato congelado, que é
+# YAML. Faltou desde o #139 (a célula virou freeze:required num PR que não
+# tocava services/, então o ci-celula nunca rodou o freeze dela no runner) e
+# só apareceu no primeiro PR da célula depois do congelamento — local ficava
+# verde pelo PyYAML global da máquina. Mesma versão das outras 6 células.
+PyYAML==6.0.2
 # O dublê de rede dos testes. Sem ele a suíte precisaria de internet, e uma
 # suíte que depende do Google é uma suíte que fica vermelha por motivo alheio.
 respx==0.23.1

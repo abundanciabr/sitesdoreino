@@ -1,53 +1,89 @@
-"""Quem está dentro, agora — a sessão da Caixa e o papel de quem a abriu.
+"""Quem está dentro, agora — resolvido pela sessão DO SITE, conferido AQUI.
 
-A `DECISAO-EVO-01-identidade.md` §7 descartou uma célula de auth: "a `sugestoes`
-cuida da própria sessão". Este arquivo é essa sessão inteira, e ela é
-deliberadamente magra.
+Desde a `DECISAO-celula-de-identidade` (25/08/2026) esta célula **não tem mais
+login próprio**: quem prova QUEM É é a célula `identidade` (o cookie
+`meshcraft_sessao` é assinado e resolvido lá). O que continua sendo desta
+célula — e não pode sair dela — é a AUTORIZAÇÃO: a Caixa é de quem tem
+matrícula ou é da equipe (`DECISAO-EVO-01` §2/§4), e essas duas listas são
+conferidas aqui, sobre o e-mail que a resposta completa do contrato entrega
+(`getSessionFull` — o degrau `TOKENS_COMPLETOS_SUGESTOES` existe para isso).
 
-**O que a sessão carrega: um `Identidade.id`, e mais nada.** Nem e-mail, nem
-papel, nem nome. Duas razões, e as duas são regra da casa, não gosto:
+O caminho de toda requisição de gente:
 
-1. **O e-mail vive numa linha só** (EVO-01 §3, e há guarda para isso no
-   `test_inv_sem_fk_para_fora.py`). O backend de sessão desta célula é o de
-   cookie assinado: o conteúdo é *assinado*, não *cifrado* — quem tem o cookie
-   consegue LER o que há dentro. E-mail ali dentro seria dado pessoal
-   espalhado, exatamente o que a decisão evitou no banco.
-2. **O papel NÃO é persistido, é derivado a cada requisição** da lista
-   `SUGESTOES_STAFF_EMAILS`. A decisão §4 promete: "trocar quem é staff = editar
-   uma variável no servidor e reiniciar a célula. Sem migração, sem deploy de
-   código." Um papel gravado na linha da `Identidade` — ou dentro do cookie —
-   quebraria essa promessa em silêncio: tirar alguém da lista não tiraria o
-   crachá de quem já estava dentro.
+    cookie (opaco) → identidade responde quem é → staff? → tem matrícula?
+                   → Ator(linha LOCAL, papel das listas LOCAIS)
 
-Por que cookie assinado e não sessão em banco: o único conteúdo é um
-identificador opaco que já é conferido contra o banco a cada leitura
-(`ator_atual` faz o `SELECT`), então a tabela `django_session` daria uma
-escrita por login e um `SELECT` por requisição em troca de nada. A conta muda no
-dia em que a Caixa precisar **revogar** uma sessão de longe — aí a sessão volta
-para o banco, e é só trocar `SESSION_ENGINE`.
+**A linha local é snapshot, casado por e-mail** (Virtude da Lei 3: snapshots
+são sagrados): `Identidade` desta célula continua existindo, com as mesmas 6
+FKs de autoria apontando para ela — foi isso que fez a mudança de casa custar
+ZERO migração de dado em produção. A mesma pessoa entrando pelo site recupera
+a linha que já era dela.
+
+**Fail-CLOSED, dos dois lados.** `identidade` fora do ar OU `alunos` fora do
+ar ⇒ ninguém participa e a porta explica ("não conseguimos conferir"). É o
+oposto do reconhecimento de exibição do `funil` (fail-open) — lá a resposta
+decide um nome no canto da tela; aqui ela decide ACESSO.
+
+**O papel continua derivado a cada requisição** da lista
+`SUGESTOES_STAFF_EMAILS` — a promessa da EVO-01 §4, intocada. E a lista de
+staff DESTA célula é desta célula: o `papel` que a `identidade` responde no
+contrato é de EXIBIÇÃO e não autoriza nada aqui (invariante da
+DECISAO-onde-mora-a-sessao §4).
 """
 
 import os
+import time
 from dataclasses import dataclass
 
 from apps.sugestoes.models import Identidade
 
-# Chaves do dicionário de sessão. Nomeadas aqui e importadas por quem precisa —
-# string solta espalhada por views é como uma delas vira `estado_oauth2` num
-# lugar só e o CSRF do OAuth para de conferir sem ninguém notar.
+from .clients import (
+    AlunosClient,
+    AlunosIndisponivel,
+    ConfiguracaoAusente,
+    IdentidadeClient,
+    IdentidadeIndisponivel,
+)
+
+# Chave do dicionário da sessão LEGADA (o cookie que ESTA célula assinava, até
+# 25/08/2026). Só o leitor legado da API interna a usa — ver
+# `ator_da_sessao_legada` e o comentário no `apps/core/api.py`.
 CHAVE_IDENTIDADE = "identidade"
-CHAVE_ESTADO_OAUTH = "estado_oauth"
 
 PAPEL_ALUNO = "aluno"
 PAPEL_STAFF = "staff"
+
+# Os quatro estados que a porta precisa distinguir — cada um vira uma tela
+# diferente em `apps/core/views.py`.
+VISITANTE = "visitante"
+DENTRO = "dentro"
+SEM_MATRICULA = "sem-matricula"
+INDISPONIVEL = "indisponivel"
+
+# ---------------------------------------------------------------------------
+# Caches por processo (armadilhas/026: módulo vaza entre testes — o conftest
+# limpa via `limpar_caches`). O desenho é o mesmo do `funil`: chave pelo
+# cabeçalho `Cookie` INTEIRO e opaco (conhecer o nome do cookie alheio é o
+# primeiro passo para tentar lê-lo), teto de tamanho para robô não estourar a
+# memória, e SÓ RESPOSTAS entram — erro de rede nunca é cacheado.
+# ---------------------------------------------------------------------------
+TTL_DO_RECONHECIMENTO = 60
+TTL_DA_MATRICULA = 600
+MAXIMO_EM_CACHE = 500
+_CACHE_DE_RECONHECIMENTO: dict = {}
+_CACHE_DE_MATRICULA: dict = {}
+
+
+def limpar_caches() -> None:
+    _CACHE_DE_RECONHECIMENTO.clear()
+    _CACHE_DE_MATRICULA.clear()
 
 
 def emails_da_staff() -> set[str]:
     """A lista de staff, lida NO PONTO DE USO (EVO-01 §4).
 
     Ausente ou vazia ⇒ conjunto vazio, e a célula sobe normalmente: ninguém é
-    staff, e a porta continua funcionando para alunos. É o default inofensivo
-    que a convenção da casa pede — o oposto de fail-hard no import.
+    staff, e a porta continua funcionando para alunos.
     """
     crua = os.environ.get("SUGESTOES_STAFF_EMAILS", "")
     return {parte.strip().lower() for parte in crua.split(",") if parte.strip()}
@@ -62,15 +98,16 @@ def papel_de(email: str) -> str:
 
 
 def cunhar_ou_recuperar(*, email: str, nome: str) -> Identidade:
-    """A mesma pessoa entrando dez vezes tem UMA linha (EVO-01 §3).
+    """A mesma pessoa tem UMA linha local (EVO-01 §3) — hoje como snapshot.
 
-    A idempotência é do banco, não desta função: `Identidade.email` é `unique`,
-    e `get_or_create` transforma a corrida de dois logins simultâneos numa
-    recuperação, não numa segunda linha.
+    A idempotência é do banco: `Identidade.email` é `unique`, e `get_or_create`
+    transforma a corrida de duas requisições simultâneas numa recuperação. É o
+    casamento por e-mail que preservou a autoria de tudo que já existia quando
+    o login mudou de casa: quem entra pelo site recupera a linha antiga.
 
-    `nome_exibido` só é gravado na CUNHAGEM. Reentrar não sobrescreve: o campo é
-    editável pela pessoa (é o nome que aparece nas sugestões dela), e deixar o
-    Google reescrevê-lo a cada login apagaria essa escolha sem aviso.
+    `nome_exibido` só é gravado na CUNHAGEM. Reentrar não sobrescreve: o campo
+    é editável pela pessoa, e deixar o provedor reescrevê-lo a cada visita
+    apagaria essa escolha sem aviso.
     """
     identidade, _ = Identidade.objects.get_or_create(
         email=email.strip().lower(),
@@ -92,28 +129,124 @@ class Ator:
         return self.papel == PAPEL_STAFF
 
 
-def abrir_sessao(request, identidade: Identidade) -> None:
-    """`flush()` antes de gravar, sempre.
+@dataclass(frozen=True)
+class Resolucao:
+    """O que a porta precisa saber: o estado, quem é (se dentro) e o e-mail
+    (para o recado — a única informação que torna uma recusa resolvível pela
+    própria pessoa, EVO-01 §5)."""
 
-    Não é zelo: o `estado_oauth` do login que acabou de terminar ainda está na
-    sessão, e uma sessão que começa carregando lixo do passo anterior é como um
-    `state` já usado vira reutilizável. Sessão nova, chave nova, dicionário
-    limpo — e só então o identificador de quem entrou.
+    estado: str
+    ator: "Ator | None" = None
+    email: str = ""
+
+
+def _sessao_central(cookie: str) -> dict:
+    """A resposta da `identidade` para este cookie — com cache curto.
+
+    Erro NÃO entra no cache (senão 60s de indisponibilidade virariam 120):
+    só respostas de verdade, inclusive `autenticado: false` — visitante com
+    cookie de outra coisa não pode custar um salto por página.
     """
-    request.session.flush()
-    request.session[CHAVE_IDENTIDADE] = identidade.id
+    agora = time.time()
+    hit = _CACHE_DE_RECONHECIMENTO.get(cookie)
+    if hit and hit[0] > agora:
+        return hit[1]
+    dados = IdentidadeClient().sessao_completa(cookie)
+    if len(_CACHE_DE_RECONHECIMENTO) >= MAXIMO_EM_CACHE:
+        _CACHE_DE_RECONHECIMENTO.clear()
+    _CACHE_DE_RECONHECIMENTO[cookie] = (agora + TTL_DO_RECONHECIMENTO, dados)
+    return dados
 
 
-def encerrar_sessao(request) -> None:
-    request.session.flush()
+def _tem_matricula(email: str) -> bool:
+    """A decisão da `alunos`, com cache — positivo E negativo.
+
+    O negativo também é cacheado (TTL igual, 10 min): quem acabou de comprar
+    espera no máximo esse tempo para a Caixa enxergar — e sem ele, uma pessoa
+    sem matrícula clicando pelo site custaria um salto à `alunos` por página.
+    QUALQUER matrícula conta (EVO-01 §4.1: quem já foi aluno mantém a voz —
+    reembolsada inclusive; mudar isso é decisão do mantenedor).
+    """
+    chave = email.strip().lower()
+    agora = time.time()
+    hit = _CACHE_DE_MATRICULA.get(chave)
+    if hit and hit[0] > agora:
+        return hit[1]
+    tem = bool(AlunosClient().matriculas_de(chave))
+    if len(_CACHE_DE_MATRICULA) >= MAXIMO_EM_CACHE:
+        _CACHE_DE_MATRICULA.clear()
+    _CACHE_DE_MATRICULA[chave] = (agora + TTL_DA_MATRICULA, tem)
+    return tem
+
+
+def resolver(request) -> Resolucao:
+    """O fluxo inteiro da porta, para QUALQUER requisição de gente.
+
+    A ordem dos portões é herança direta da porta antiga, e continua não sendo
+    arbitrária: **staff antes de matrícula** — quem modera não pode ficar de
+    fora quando a `alunos` estiver fora do ar (a pergunta nem chega a ser
+    feita; há guarda que estoura se alguém inverter isso um dia).
+    """
+    cookie = request.META.get("HTTP_COOKIE", "")
+    if not cookie:
+        # Sem cookie nenhum não há o que perguntar — e é o caminho de quase
+        # toda primeira visita: zero salto de rede.
+        return Resolucao(VISITANTE)
+
+    try:
+        dados = _sessao_central(cookie)
+    except (IdentidadeIndisponivel, ConfiguracaoAusente):
+        return Resolucao(INDISPONIVEL)
+
+    if not dados.get("autenticado"):
+        return Resolucao(VISITANTE)
+
+    email = (dados.get("email") or "").strip().lower()
+    if not email:
+        # `autenticado: true` sem e-mail é resposta fora do contrato completo —
+        # provavelmente o degrau TOKENS_COMPLETOS faltando do outro lado. Sem
+        # e-mail não há como autorizar nada: fecha explicando.
+        return Resolucao(INDISPONIVEL)
+
+    nome = (dados.get("nome_exibido") or "").strip()
+
+    if e_staff(email):
+        identidade = cunhar_ou_recuperar(email=email, nome=nome)
+        return Resolucao(DENTRO, Ator(identidade, PAPEL_STAFF), email)
+
+    try:
+        tem = _tem_matricula(email)
+    except (AlunosIndisponivel, ConfiguracaoAusente):
+        # Falha FECHADA, com a tela dizendo que o problema é nosso — a pessoa
+        # não pode sair daqui achando que perdeu a matrícula.
+        return Resolucao(INDISPONIVEL, email=email)
+
+    if not tem:
+        return Resolucao(SEM_MATRICULA, email=email)
+
+    identidade = cunhar_ou_recuperar(email=email, nome=nome)
+    return Resolucao(DENTRO, Ator(identidade, PAPEL_ALUNO), email)
 
 
 def ator_atual(request):
-    """O ator desta requisição, ou `None`.
+    """O ator desta requisição, ou `None` — a interface que participação,
+    moderação e avisos sempre usaram, agora servida pela resolução central.
+    `None` cobre visitante, sem-matrícula e indisponível: para quem AUTORIZA,
+    os três significam a mesma coisa (não roda); quem EXPLICA a diferença é a
+    porta, via `resolver`."""
+    return resolver(request).ator
 
-    A identidade é reconferida no banco a cada requisição, de propósito: um
-    cookie assinado sobrevive à linha que ele aponta. Identidade apagada ⇒ o
-    cookie deixa de valer no mesmo instante, sem precisar revogar nada.
+
+def ator_da_sessao_legada(request):
+    """O leitor do cookie que ESTA célula assinava até 25/08/2026 — e só dele.
+
+    Existe por uma razão: a operação congelada `getSession` da API interna
+    desta célula ficou DEPRECADA E INERTE (DECISAO-celula-de-identidade §5) —
+    o contrato não muda sem Rito §3, então o endpoint continua respondendo,
+    mas nenhum cookie novo é assinado por esta célula desde a virada. Este
+    leitor responde pela sessão legada (Django `request.session`), que para
+    todo cookie novo falha a assinatura e volta vazia: a resposta real é
+    sempre "ninguém". NÃO use em página nenhuma — é peça de museu com contrato.
     """
     identificador = request.session.get(CHAVE_IDENTIDADE)
     if not identificador:
@@ -122,3 +255,12 @@ def ator_atual(request):
     if identidade is None:
         return None
     return Ator(identidade=identidade, papel=papel_de(identidade.email))
+
+
+def encerrar_sessao(request) -> None:
+    """O `flush()` da sessão Django apaga o cookie `meshcraft_sessao` do
+    navegador — nome e Path=/ desta célula são os MESMOS que a `identidade`
+    usa (herança da virada de 24/08), então sair da Caixa é sair do site.
+    Não é coincidência mantida por sorte: há guarda de settings para o par
+    (nome, path) em `tests/test_inv_caixa_nao_assina_sessao.py`."""
+    request.session.flush()

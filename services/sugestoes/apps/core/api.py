@@ -1,11 +1,14 @@
 # apps/core/api.py  # [RECEITA:R1 v1]
-"""A única superfície de máquina desta célula: "quem é o dono desta sessão?".
+"""A única superfície de máquina desta célula — DEPRECADA E INERTE desde 25/08/2026.
 
-Lei do assunto: `docs/decisoes/DECISAO-onde-mora-a-sessao.md`. A Caixa continua
-sendo dona da identidade e da sessão; o que nasce aqui é a **pergunta** que
-torna a sessão útil ao site inteiro — o `funil` pergunta, esta célula responde,
-e no dia em que a identidade mudar de casa muda **quem responde**, não quem
-pergunta.
+O dia que a `DECISAO-onde-mora-a-sessao` previu chegou: a identidade mudou de
+casa (`DECISAO-celula-de-identidade`), e quem responde "quem é o dono desta
+sessão?" ao site inteiro é a célula `identidade` — pelo MESMO vocabulário
+(`getSession`/`Session`) que nasceu aqui. Esta operação continua existindo
+porque o contrato dela está CONGELADO e contrato só muda pelo Rito §3 (a
+remoção é dívida registrada); mas ela responde pela sessão LEGADA — o cookie
+que esta célula assinava — e nenhum cookie novo é assinado por ela desde a
+virada. Na prática, a resposta real é sempre `autenticado: false`.
 
 **Duas perguntas se cruzam neste endpoint, e elas têm respostas diferentes:**
 
@@ -94,7 +97,12 @@ class Session(Schema):
     ),
 )
 def sessao_atual(request):
-    ator = ses.ator_atual(request)
+    # O leitor LEGADO, de propósito — nunca `ator_atual`, que hoje resolve
+    # pela célula `identidade`: encaminhar a pergunta de volta para quem já é
+    # o dono dela seria um ricochete de rede fingindo ser resposta. Este
+    # endpoint responde SÓ pelo cookie que esta célula assinava (ver o
+    # docstring do módulo e `sessao.ator_da_sessao_legada`).
+    ator = ses.ator_da_sessao_legada(request)
     if ator is None:
         # Visitante. Nada de 401/404: "não entrou ainda" é o estado normal da
         # maioria das requisições do site, e o chamador precisa distinguí-lo de

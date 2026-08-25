@@ -1,25 +1,26 @@
-"""A porta de entrada da Caixa de Sugestões — e só ela.
+"""A porta de entrada da Caixa — que desde 25/08/2026 é a porta DO SITE.
 
-Implementa o passo a passo da `DECISAO-EVO-01-identidade.md` §2, nesta ordem,
-que não é arbitrária:
+A `DECISAO-celula-de-identidade` tirou o login de dentro desta célula: o botão
+de entrar leva à célula `identidade` (que dança com o Google e assina o cookie
+do site inteiro), e o que sobra aqui é o que sempre foi desta célula — dizer
+quem PODE participar, e explicar toda recusa com o e-mail na tela:
 
-    botão → Google → e-mail VERIFICADO → é staff? → tem matrícula? → sessão
+    porta → [identidade responde quem é] → é staff? → tem matrícula? → dentro
 
-**A checagem de staff vem antes da de matrícula** (§4): quem modera a Caixa não
-pode ser obrigado a comprar o próprio curso para conseguir entrar. Consequência
-direta e desejada: com a `alunos` fora do ar, a staff ainda entra — a pergunta
-sobre matrícula nem chega a ser feita.
+A resolução mora em `apps/core/sessao.py` (`resolver`); esta camada só escolhe
+a TELA de cada estado. **Toda porta que não abre, fecha explicando** — a regra
+da EVO-01 §5 segue intacta, e o recado continua nomeando o e-mail, que é a
+única informação que torna a recusa resolvível pela própria pessoa.
 
-**Toda porta que não abre, fecha explicando.** Um "acesso negado" seco é o modo
-de falha que a §5 da decisão nomeou: a pessoa que comprou com um e-mail e entrou
-com outro precisa VER qual e-mail o Google mandou, ou não tem como consertar
-sozinha. Por isso `_recado()` sempre recebe o `email` quando ele é conhecido.
-
-Não mora aqui: sugerir, votar, comentar (EVO-12b) e moderar (EVO-13). Esta
-camada só reconhece quem é.
+As rotas antigas do OAuth (`/entrar/google`, `/entrar/google/retorno`)
+continuam existindo como REDIRECIONAMENTO para a porta central: link salvo,
+botão em cache e template antigo não podem virar 404 — e o nome de rota
+`entrar_google` continua sendo o que o template da porta usa, agora levando ao
+lugar certo com `?next=` de volta para cá.
 """
 
-import secrets
+import os
+from urllib.parse import urlencode
 
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
@@ -27,24 +28,8 @@ from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
 
 from . import sessao as ses
-from .clients import (
-    AlunosClient,
-    AlunosIndisponivel,
-    ConfiguracaoAusente,
-    GoogleIndisponivel,
-    GoogleOAuth,
-)
 
 PAGINA = "sugestoes/entrar.html"
-
-_RETORNO_NAO_CONFERE = {
-    "titulo": "Não deu para concluir a entrada",
-    "texto": (
-        "O retorno do Google não confere com o pedido que saiu daqui — pode ter "
-        "sido uma página antiga, ou o link ter sido aberto fora de ordem. "
-        "Nada foi criado aqui. Comece de novo pelo botão abaixo."
-    ),
-}
 
 
 @require_GET
@@ -52,21 +37,24 @@ def healthz(request):
     return JsonResponse({"status": "ok"})
 
 
-def _url_de_retorno(request) -> str:
-    """O `redirect_uri` que vai ao Google — montado por `reverse()`, jamais à mão.
+def url_de_entrada_do_site() -> str:
+    """O endereço PÚBLICO da porta central — destino de link, não credencial.
 
-    [armadilhas/029] A Caixa serve sob `SCRIPT_NAME` (`/forms/sugestoes`), e o
-    Traefik **não remove** o prefixo. `reverse()` o inclui porque
-    `FORCE_SCRIPT_NAME` está ligado; um `f"{request.path}/retorno"` ou um
-    `"/entrar/google/retorno"` cravado aqui produziria uma URL sem prefixo, e o
-    Google recusa com `redirect_uri_mismatch` — em produção, e só lá, porque em
-    dev não há prefixo nenhum para faltar.
-
-    O `https` depende de `SECURE_PROXY_SSL_HEADER` (ver `config/settings.py`):
-    o TLS termina no Traefik, então sem ele `build_absolute_uri` juraria `http`
-    e o endereço não bateria com o cadastrado no console do Google.
+    Lido no ponto de uso, com default: faltar a variável não pode fechar a
+    porta. O default é o endereço real (`/entrar/google`, célula `identidade`);
+    o env existe para o dia em que ele mudar de novo custar zero deploy.
     """
-    return request.build_absolute_uri(reverse("entrar_google_retorno"))
+    return (os.environ.get("URL_DE_ENTRADA") or "").strip() or "/entrar/google"
+
+
+def _para_a_porta_central(request) -> str:
+    """O destino do clique de entrar: a porta central, voltando PARA CÁ.
+
+    `reverse("entrar")` carrega o prefixo público (`FORCE_SCRIPT_NAME`) — é o
+    que faz o `next` sair `/forms/sugestoes/entrar` em produção e `/entrar` em
+    dev, sem uma string cravada em lugar nenhum (armadilhas/029 e /081).
+    """
+    return f"{url_de_entrada_do_site()}?{urlencode({'next': reverse('entrar')})}"
 
 
 def _recado(request, *, titulo: str, texto: str, email: str = "", status: int = 200):
@@ -74,8 +62,8 @@ def _recado(request, *, titulo: str, texto: str, email: str = "", status: int = 
 
     De propósito é a MESMA página, e não uma tela de erro separada: quem levou
     um "não" precisa do botão de entrar logo ali embaixo para tentar com a
-    outra conta (§5). Uma tela de erro sem saída é o "acesso negado" seco com
-    outro nome.
+    outra conta (§5) — e a porta central usa `select_account`, então o botão
+    de fato oferece a troca.
     """
     return render(
         request,
@@ -88,158 +76,55 @@ def _recado(request, *, titulo: str, texto: str, email: str = "", status: int = 
 @require_GET
 def entrar(request):
     """A porta. Aberta a qualquer um — o que está atrás dela é que não é."""
-    return render(request, PAGINA, {"ator": ses.ator_atual(request)})
+    resolucao = ses.resolver(request)
 
+    if resolucao.estado == ses.DENTRO:
+        return render(request, PAGINA, {"ator": resolucao.ator})
 
-@require_GET
-def entrar_google(request):
-    """Manda a pessoa ao Google, guardando o `state` que vai provar a volta.
-
-    O `state` é o antifalsificação deste fluxo: sem ele, qualquer um poderia
-    arrastar o navegador de alguém até `/entrar/google/retorno` com um código
-    próprio e abrir uma sessão da conta dele. Ele vive na sessão (o cookie já
-    existe antes do login, e é para isto que serve) e é consumido uma vez só.
-    """
-    estado = secrets.token_urlsafe(24)
-    try:
-        destino = GoogleOAuth().url_de_autorizacao(
-            redirect_uri=_url_de_retorno(request), estado=estado
-        )
-    except ConfiguracaoAusente as erro:
-        return _recado(
-            request,
-            titulo="A entrada ainda não está configurada",
-            texto=str(erro),
-            status=503,
-        )
-    request.session[ses.CHAVE_ESTADO_OAUTH] = estado
-    return HttpResponseRedirect(destino)
-
-
-@require_GET
-def entrar_google_retorno(request):
-    """A volta do Google. Portões em série, todos fechando por padrão."""
-    esperado = request.session.pop(ses.CHAVE_ESTADO_OAUTH, None)
-
-    if request.GET.get("error"):
-        return _recado(
-            request,
-            titulo="A entrada foi interrompida",
-            texto=(
-                "Você voltou do Google sem concluir a entrada. "
-                "Nada foi criado aqui. É só tentar de novo quando quiser."
-            ),
-            status=400,
-        )
-
-    codigo = request.GET.get("code") or ""
-    estado = request.GET.get("state") or ""
-    if not codigo or not estado or not esperado:
-        return _recado(request, **_RETORNO_NAO_CONFERE, status=400)
-    if not secrets.compare_digest(estado, esperado):
-        return _recado(request, **_RETORNO_NAO_CONFERE, status=400)
-
-    try:
-        perfil = GoogleOAuth().perfil_do_codigo(
-            codigo=codigo, redirect_uri=_url_de_retorno(request)
-        )
-    except ConfiguracaoAusente as erro:
-        return _recado(
-            request,
-            titulo="A entrada ainda não está configurada",
-            texto=str(erro),
-            status=503,
-        )
-    except GoogleIndisponivel as erro:
-        return _recado(
-            request,
-            titulo="O Google não respondeu",
-            texto=(
-                f"Não conseguimos concluir a entrada pelo Google ({erro}). "
-                "Nada foi criado aqui. Tente de novo em alguns instantes."
-            ),
-            status=503,
-        )
-
-    email = (perfil.get("email") or "").strip().lower()
-
-    # [INVARIANTE 1] E-mail não verificado é RECUSADO, sem exceção (§2 da
-    # decisão). `is not True` e não `not perfil.get(...)`: só o booleano True do
-    # Google passa. A string "false" é verdadeira em Python, e um `if not` aqui
-    # deixaria entrar exatamente quem este portão existe para barrar.
-    if not email or perfil.get("email_verified") is not True:
-        return _recado(
-            request,
-            titulo="Esse e-mail não está verificado no Google",
-            texto=(
-                "A Caixa só aceita e-mail que o Google confirme como verificado — "
-                "é o que garante que a conta é mesmo de quem está entrando. "
-                "Verifique o endereço na sua conta Google e tente de novo."
-            ),
-            email=email,
-            status=403,
-        )
-
-    nome = (perfil.get("given_name") or perfil.get("name") or "").strip()
-
-    # [INVARIANTE 3] Staff ANTES de matrícula (§4). Repare que a `alunos` nem
-    # chega a ser chamada: quem modera não precisa ter comprado o curso, e não
-    # pode ficar de fora quando a célula de matrículas estiver fora do ar.
-    if ses.e_staff(email):
-        return _abrir(request, email=email, nome=nome)
-
-    try:
-        matriculas = AlunosClient().matriculas_de(email)
-    except ConfiguracaoAusente as erro:
-        return _recado(
-            request,
-            titulo="A entrada ainda não está configurada",
-            texto=str(erro),
-            email=email,
-            status=503,
-        )
-    except AlunosIndisponivel as erro:
-        # [INVARIANTE 5] Falha FECHADA. "Não consegui conferir" nunca vira
-        # "deixa entrar". E a tela diz que o problema é nosso, não da pessoa —
-        # ela não deve sair daqui achando que perdeu a matrícula.
-        return _recado(
-            request,
-            titulo="Não conseguimos conferir sua matrícula agora",
-            texto=(
-                f"O sistema de matrículas não respondeu ({erro}). "
-                "Isso é problema nosso, não seu: sua matrícula continua onde "
-                "estava. Tente de novo em alguns minutos."
-            ),
-            email=email,
-            status=503,
-        )
-
-    # [INVARIANTE 2] Sem matrícula não entra — e a tela NOMEIA o e-mail. É a
-    # única informação que torna a recusa resolvível pela própria pessoa (§5).
-    if not matriculas:
+    if resolucao.estado == ses.SEM_MATRICULA:
+        # [INVARIANTE] Sem matrícula não participa — e a tela NOMEIA o e-mail.
         return _recado(
             request,
             titulo="Não encontramos matrícula para esse e-mail",
             texto=(
-                f"Entramos com {email}, mas não encontramos matrícula para esse "
-                "endereço. Se você comprou o curso com outro e-mail, entre com "
-                "ele — ou fale com a gente que a gente resolve."
+                f"Você entrou no site com {resolucao.email}, mas não encontramos "
+                "matrícula para esse endereço. Se você comprou o curso com outro "
+                "e-mail, entre com ele — ou fale com a gente que a gente resolve."
             ),
-            email=email,
+            email=resolucao.email,
             status=403,
         )
 
-    return _abrir(request, email=email, nome=nome)
+    if resolucao.estado == ses.INDISPONIVEL:
+        # [INVARIANTE] Falha FECHADA. "Não consegui conferir" nunca vira
+        # "deixa entrar". E a tela diz que o problema é nosso, não da pessoa.
+        return _recado(
+            request,
+            titulo="Não conseguimos conferir sua entrada agora",
+            texto=(
+                "Uma das peças que conferem quem pode participar não respondeu. "
+                "Isso é problema nosso, não seu: sua matrícula continua onde "
+                "estava. Tente de novo em alguns minutos."
+            ),
+            email=resolucao.email,
+            status=503,
+        )
+
+    return render(request, PAGINA, {"ator": None})
 
 
-def _abrir(request, *, email: str, nome: str):
-    """Cunha (ou recupera) a identidade e abre a sessão.
+@require_GET
+def entrar_google(request):
+    """(legado → central) O botão da porta e todo link antigo aterrissam aqui;
+    daqui, na porta central — com a volta marcada para esta Caixa."""
+    return HttpResponseRedirect(_para_a_porta_central(request))
 
-    É o ÚNICO caminho deste arquivo que escreve alguma coisa — todos os outros
-    terminam sem criar nada, e os testes-guarda contam as linhas para provar.
-    """
-    identidade = ses.cunhar_ou_recuperar(email=email, nome=nome)
-    ses.abrir_sessao(request, identidade)
+
+@require_GET
+def entrar_google_retorno(request):
+    """(legado) O retorno do OAuth que morava aqui. Nenhum fluxo novo passa por
+    este caminho; quem chegar (link velho, história do navegador) só precisa de
+    um lugar são para aterrissar: a porta."""
     return HttpResponseRedirect(reverse("entrar"))
 
 
@@ -247,9 +132,10 @@ def _abrir(request, *, email: str, nome: str):
 def sair(request):
     """POST, e não GET, porque encerra estado.
 
-    Link de logout em `GET` é acionável por qualquer `<img src>` de terceiro: o
-    incômodo é pequeno, o custo de evitá-lo é um `<form>` com `{% csrf_token %}`,
-    e a régua da casa é empurrar a regra escada acima até onde ela couber.
+    Sair da Caixa É sair do site: o `flush()` apaga o cookie `meshcraft_sessao`
+    do navegador (mesmo nome, mesmo `Path=/` que a `identidade` usa — ver
+    `sessao.encerrar_sessao`). A sessão do site é sem estado do lado de lá
+    (cookie assinado), então apagar o cookie é o logout inteiro.
     """
     ses.encerrar_sessao(request)
     return HttpResponseRedirect(reverse("entrar"))

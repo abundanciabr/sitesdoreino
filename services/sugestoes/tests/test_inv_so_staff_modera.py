@@ -122,17 +122,26 @@ def test_a_equipe_alcanca_as_mesmas_rotas(equipe, sugestao):
         assert 403 not in codigos.values(), f"a equipe levou 403 em '{nome}': {codigos}"
 
 
-def test_o_cracha_sai_com_a_variavel_de_ambiente(equipe, sugestao, monkeypatch):
+def test_o_cracha_sai_com_a_variavel_de_ambiente(
+    equipe, sugestao, monkeypatch, rede, matricula
+):
     """O papel é DERIVADO a cada requisição (DECISAO-EVO-01 §4), nunca gravado.
 
     A promessa da decisão é "editar uma variável no servidor e reiniciar, sem
-    migração e sem deploy". Se o papel viajasse no cookie ou na linha da
-    `Identidade`, tirar alguém da lista não tiraria o crachá de quem já estava
-    dentro — e a promessa seria falsa exatamente no dia em que ela importa.
+    migração e sem deploy". Se o papel viajasse no cookie, na linha local ou na
+    resposta da `identidade`, tirar alguém da lista não tiraria o crachá de
+    quem já estava dentro — e a promessa seria falsa no dia em que importa.
+
+    Desde a mudança de casa do login a queda é ainda mais dura: quem sai da
+    lista volta a ser conferido como aluno na `alunos`, NA REQUISIÇÃO SEGUINTE
+    (antes, a matrícula só era conferida no login — o ex-staff sem matrícula
+    ficava dentro até sair sozinho).
     """
     assert equipe.client.get(reverse("fila")).status_code == 200
 
     monkeypatch.delenv("SUGESTOES_STAFF_EMAILS")
 
+    # Com matrícula, o ex-staff segue DENTRO — como aluno, sem moderação.
+    rede.alunos_diz("equipe@meshcraft.test", [matricula])
     assert equipe.client.get(reverse("fila")).status_code == 403
     assert equipe.esta_dentro, "a sessão continua aberta — o que caiu foi o papel"
