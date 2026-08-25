@@ -52,3 +52,11 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 USE_TZ = True
+
+# O fuso em que a célula MOSTRA hora ao aluno — o armazenamento continua em UTC
+# (é isso que o USE_TZ acima garante). Sem esta linha vale o default de fábrica
+# do Django, `America/Chicago`: duas horas atrás de Brasília, e dia virado
+# quando aqui já passou da meia-noite. É falha silenciosa até a primeira data
+# aparecer na tela de alguém — foi assim que a célula `sugestoes` foi pega em
+# 24/08/2026 (EVO-21). Guarda de comportamento: tests/test_fuso_horario.py.
+TIME_ZONE = "America/Sao_Paulo"

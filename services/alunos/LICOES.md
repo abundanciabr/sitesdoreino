@@ -112,7 +112,7 @@ orçamento.
 
 **Onde:** `reentregar_presas()` e `_mover_para_fila_morta()` em
 `apps/eventos/management/commands/consume_eventos.py`; guarda em
-`tests/test_reentrega_pel.py`. Fecha o buraco medido em `ARMADILHAS.md` §9:
+`tests/test_reentrega_pel.py`. Fecha o buraco medido em `ARMADILHAS-OPERACAO.md` §9:
 `xreadgroup(">")` só entrega mensagem NOVA — o evento que estourava o handler
 ficava em XPENDING para sempre. Convenção do lote (mesma nas 4 células
 consumidoras): `IDLE_MS_REENTREGA = 60_000`, `MAX_ENTREGAS = 5`, DLQ em
@@ -168,3 +168,29 @@ Este `LICOES.md` (e o §4.8 de `ARMADILHAS.md`) chegou num PR próprio
 (`agent/alunos/matricula`) — os dois juntos estouravam o orçamento mecânico de 15
 arquivos (`ci/orcamento-de-mudanca.sh`), e a resposta certa era dividir, não pedir
 label `arquitetural` para inchar o limite (ARMADILHAS.md §5.1).
+
+## Fuso: a linha é preventiva aqui; quem morde é o guarda
+
+**Contexto:** esta célula não tem `TEMPLATES` configurado nem um `.html` sequer —
+`GET /alunos/{email}/matriculas` devolve JSON e nada renderiza data para um humano.
+Ainda assim `config/settings.py` fixa `TIME_ZONE = "America/Sao_Paulo"` (25/08/2026):
+sem a linha valia o default de fábrica do Django, `America/Chicago`, e a falha só
+apareceria na primeira tela — foi exatamente o roteiro que pegou a `sugestoes` em
+24/08 (EVO-21). A classe está catalogada em `armadilhas/099`.
+
+**O que isso obriga quem for renderizar a primeira data aqui:** nada de novo no
+settings, mas `enrolled_at` (e qualquer `timestamptz`) chega do banco em UTC — a
+conversão para Brasília acontece no `template_localtime` do template ou num
+`timezone.localtime()` explícito, nunca no `.isoformat()` cru de um dict de resposta.
+A API interna continua devolvendo ISO-8601 em UTC de propósito: fuso é assunto de
+exibição, não de contrato.
+
+**Como o guarda foi desenhado (sem tela para testar):** `tests/test_fuso_horario.py`
+não confere a string do settings — isso seria tautologia e passaria com qualquer fuso
+errado que alguém escrevesse ali. Ele confere comportamento, com um instante escolhido
+para cair em **dias diferentes** nos dois fusos (`2026-08-25 03:30 UTC` = dia 25 em São
+Paulo, dia 24 em Chicago): offset de `timezone.localtime()`, dia renderizado por um
+`Engine().from_string('{{ quando|date:"d/m/Y H:i" }}')`, e o offset igual em janeiro e
+agosto (o Brasil não tem horário de verão desde 2019 — um fuso com DST reprova mesmo
+acertando um mês). O `Engine()` avulso existe porque a célula não tem `TEMPLATES`: dá
+para exercitar a conversão do template sem inventar tela nem mexer no settings.

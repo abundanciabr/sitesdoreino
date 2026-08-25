@@ -1,7 +1,7 @@
 # tests/test_reentrega_pel.py
 """Guardas da reentrega de mensagens presas no PEL + fila morta (.dlq).
 
-ARMADILHAS.md §9 mediu o buraco: evento que faz o handler estourar fica em
+ARMADILHAS-OPERACAO.md §9 mediu o buraco: evento que faz o handler estourar fica em
 XPENDING do grupo com delivery-count=1 PARA SEMPRE — `xreadgroup(">")` só
 entrega mensagem NOVA e ninguém chamava XAUTOCLAIM nem relia o PEL.
 

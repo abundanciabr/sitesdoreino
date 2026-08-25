@@ -107,7 +107,7 @@ def _mover_para_fila_morta(
 
 
 def reentregar_presas(r: "redis.Redis", stream: str, handlers: dict) -> None:
-    """A peça que faltava (ARMADILHAS.md §9): `xreadgroup(">")` só entrega
+    """A peça que faltava (ARMADILHAS-OPERACAO.md §9): `xreadgroup(">")` só entrega
     mensagem NOVA — quem estourava o handler ficava em XPENDING para sempre.
     Roda a cada iteração do loop, ANTES da leitura de mensagens novas:
 
