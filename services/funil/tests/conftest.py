@@ -10,6 +10,7 @@ import pytest
 import respx
 
 from apps.core.middleware import limpar_cache_de_sessao, limpar_cache_de_sites
+from apps.i18n.idiomas import caminho_publico, idiomas_do_site
 
 CATALOGO = "http://catalogo.teste/api/catalogo"
 LEADS = "http://leads.teste/api/leads"
@@ -79,6 +80,21 @@ SITE_MESH_SEM_IDIOMAS = {
     for chave, valor in SITE_MESH.items()
     if chave not in ("default_language", "languages")
 }
+# A URL pública de cada idioma sai do MESMO lugar que o código usa. Escrever
+# f"/{idioma}{caminho}" num teste faria o caso do idioma PADRÃO bater em 404:
+# desde o D1 revisto (25/08/2026) o padrão mora na raiz nua, sem prefixo.
+CFG_MESH = idiomas_do_site(SITE_MESH)
+
+
+def caminho_mesh(idioma: str, caminho: str = "/") -> str:
+    """O caminho público de uma página do meshcraft NAQUELE idioma.
+
+    `caminho_mesh("en", "/cadastro")` → "/cadastro";
+    `caminho_mesh("pt-br", "/cadastro")` → "/pt-br/cadastro".
+    """
+    return caminho_publico(CFG_MESH, idioma, caminho)
+
+
 OFERTA_MESH = {
     "site_id": SITE_MESH["id"],
     "slug": SLUG_MESH,

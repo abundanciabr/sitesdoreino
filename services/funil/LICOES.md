@@ -560,3 +560,67 @@ Três coisas que valem para o próximo consumidor que copiar este padrão:
 E o `.json()` foi para DENTRO do `try`: `json.JSONDecodeError` é `ValueError`,
 não `httpx.HTTPError` — um `200` com corpo de página de erro de proxy furava o
 fail-open pelo mesmo caminho. É a família do *2xx não é sucesso*.
+
+## O ramo novo do resolver tem de fazer TUDO que o antigo fazia (25/08/2026)
+
+**Contexto:** o D1 foi revisto e o inglês passou a ser servido na raiz nua
+(`docs/decisoes/DECISAO-raiz-sem-prefixo-do-idioma-padrao.md`). No
+`_com_idioma`, o ramo do "caminho nu" deixou de ser um `302` e virou um ramo que
+**serve uma página** — igual ao ramo prefixado, menos a decapagem do
+`path_info`.
+
+**A tentação:** copiar as sete linhas do ramo prefixado e apagar a que reescreve
+o caminho. Funciona no primeiro teste que se roda (a página abre, o texto está
+em inglês) e deixa um buraco assimétrico: das sete linhas, seis são óbvias e uma
+não é — `request.ator = AtorDaRequisicao(...)`. Sem ela, `{% if request.ator %}`
+é falso em toda página do idioma padrão, e o cabeçalho de sessão — o "Entrar", o
+nome de quem entrou, o "Sair" — **desaparece só no inglês**. Nenhum erro,
+nenhum log: a página renderiza inteira, com um pedaço a menos.
+
+Por que isso é pior do que parece: o inglês é a versão que se abre para
+conferir. Uma falha que atinge só o padrão é uma falha que passa pela revisão
+manual e é encontrada em produção, por quem estava tentando entrar.
+
+**O que ficou:** um método `_servir(request, site, cfg, codigo, caminho)`,
+**extraído** e chamado pelos dois ramos — não copiado. E o teste que prova o
+preparo inteiro numa asserção só, com espião no lugar da view
+(`test_o_caminho_nu_ativa_o_idioma_padrao_sem_reescrever_o_path`): idioma,
+`path_info` **não** reescrito, tradução ativa, `ator` presente, `i18n_seo`
+presente. Cinco fatos, um `assert ==`.
+
+**A regra, para a próxima:** quando um ramo de middleware deixa de redirecionar
+e passa a servir, ele herda o preparo INTEIRO da requisição. Liste o que o ramo
+antigo põe no `request` antes de escrever o novo — e prefira extrair a copiar,
+porque a lista cresce (este preparo ganhou `ator` e `url_da_caixa` em 25/08, e o
+próximo item vai nascer só num dos ramos se eles forem dois blocos gêmeos).
+
+## O caminho da página é dado derivado — teste nenhum monta URL de idioma à mão
+
+**Sintoma:** depois de o idioma padrão perder o prefixo, ~30 testes ficaram
+vermelhos de uma vez. Quase todos pela mesma linha: `client.get(f"/{idioma}/")`.
+
+**A causa é boa notícia, não má:** o teste tinha uma cópia da regra de URL. Ela
+estava certa enquanto a regra era `/{codigo}{caminho}` para todo mundo, e passou
+a mentir quando a regra virou condicional — no idioma padrão, exatamente onde
+uma cópia errada acerta por acaso se o autor só olhar `pt-br`.
+
+**O que ficou:** `tests/conftest.py` expõe `caminho_mesh(idioma, caminho="/")`,
+casca fina sobre o `idiomas.caminho_publico()` que o **código** usa. Todo teste
+parametrizado por idioma chama ela:
+
+```python
+@pytest.mark.parametrize("idioma", IDIOMAS)
+def test_algo(client, rede, idioma):
+    resp = client.get(caminho_mesh(idioma, "/cadastro"), HTTP_HOST=HOST_MESH)
+```
+
+Não é DRY por estética: é o teste medindo o contrato ("a página existe no
+caminho público deste idioma") em vez de uma transcrição do contrato que
+envelhece sozinha. O `test_i18n_http.py` tem o par equivalente para o site de
+teste genérico (`caminho_de` / `url_de`), e o `CAMINHO-DOURADO.md` §R12 manda o
+mesmo para página nova.
+
+**A exceção que continua sendo à mão, de propósito:** a matriz HTTP em si
+(`/en/` é 404, `/PT-BR/` é 404, `/pt-br` redireciona para `/pt-br/`). Ali a URL
+literal **é** o objeto do teste — derivá-la de `caminho_publico` faria o teste
+concordar com o código por construção e nunca reprovar nada.

@@ -18,10 +18,12 @@ de esta entrega dar errado:
 4. **O e-mail não atravessa** — o contrato não o traz, e o site não o mostra.
 """
 
+from urllib.parse import quote
+
 import httpx
 import pytest
 
-from tests.conftest import HOST_A, HOST_MESH, SITE_MESH
+from tests.conftest import HOST_A, HOST_MESH, SITE_MESH, caminho_mesh
 
 IDIOMAS = ("en", "pt-br", "es")
 NOME = "João"
@@ -52,28 +54,30 @@ def logado(rede):
 # ---------------------------------------------------------------------------
 # 1. A porta aparece em toda página, nos três idiomas
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("caminho", ["/{}/", "/{}/cadastro", "/{}/login"])
+@pytest.mark.parametrize("pagina", ["/", "/cadastro", "/login"])
 @pytest.mark.parametrize("idioma", IDIOMAS)
-def test_visitante_ve_entrar_em_toda_pagina(client, rede, idioma, caminho):
-    resp = client.get(caminho.format(idioma), HTTP_HOST=HOST_MESH)
+def test_visitante_ve_entrar_em_toda_pagina(client, rede, idioma, pagina):
+    resp = client.get(caminho_mesh(idioma, pagina), HTTP_HOST=HOST_MESH)
 
     assert resp.status_code == 200, resp.content
     conteudo = resp.content.decode()
     assert 'class="sessao"' in conteudo
-    # O link aponta para a porta DESTE site, com o prefixo de idioma — nunca
-    # para um caminho nu, que cairia no redirect da matriz do resolver.
+    # O link aponta para a porta DESTE site, na forma pública do idioma da
+    # página — prefixada em pt-br/es, nua em inglês. Escrever /{idioma}/login à
+    # mão aqui daria um link 404 justamente no idioma padrão.
     # O link carrega o `next` da página atual desde 25/08/2026: quem clica
     # "Entrar" no meio de um cadastro volta para o cadastro, não para a home.
-    assert f'href="/{idioma}/login?next=' in conteudo
+    assert f'href="{caminho_mesh(idioma, "/login")}?next=' in conteudo
 
 
 @pytest.mark.parametrize("idioma", IDIOMAS)
 def test_quem_entrou_ve_o_proprio_nome_em_toda_pagina(client, logado, idioma):
-    resp = client.get(f"/{idioma}/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
+    resp = client.get(caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
 
     conteudo = resp.content.decode()
     assert NOME in conteudo
-    assert f'href="/{idioma}/login?next=' not in conteudo  # já entrou: some o "Entrar"
+    # já entrou: some o "Entrar"
+    assert f'href="{caminho_mesh(idioma, "/login")}?next=' not in conteudo
 
 
 def test_o_cookie_e_repassado_intacto_e_o_par_se_identifica(client, logado):
@@ -205,9 +209,12 @@ def test_o_site_nunca_recebe_nem_mostra_email(client, rede):
 def test_a_pagina_de_entrada_leva_ao_google(client, rede, idioma):
     """O botão vai à porta da `identidade`, dizendo aonde voltar (`next` =
     a home DO IDIOMA da página — quem entrou em espanhol volta ao espanhol)."""
-    conteudo = client.get(f"/{idioma}/login", HTTP_HOST=HOST_MESH).content.decode()
+    conteudo = client.get(
+        caminho_mesh(idioma, "/login"), HTTP_HOST=HOST_MESH
+    ).content.decode()
 
-    assert f'href="/entrar/google?next=%2F{idioma}%2F"' in conteudo
+    volta_para = quote(caminho_mesh(idioma), safe="")  # "/" → %2F; "/es/" → %2Fes%2F
+    assert f'href="/entrar/google?next={volta_para}"' in conteudo
 
 
 def test_o_endereco_de_entrada_vem_do_ambiente(client, rede, monkeypatch):
@@ -220,11 +227,15 @@ def test_o_endereco_de_entrada_vem_do_ambiente(client, rede, monkeypatch):
     assert 'href="/outra/porta?next=%2Fpt-br%2F"' in conteudo
 
 
-def test_caminho_nu_leva_ao_idioma_padrao(client, rede):
+def test_caminho_nu_e_a_porta_no_idioma_padrao(client, rede):
+    # Era 302 para /en/login. Desde o D1 revisto (25/08/2026) o caminho nu É a
+    # página no idioma padrão: serve direto, sem salto.
     resp = client.get("/login", HTTP_HOST=HOST_MESH)
 
-    assert resp.status_code == 302
-    assert resp["Location"] == f"/{SITE_MESH['default_language']}/login"
+    assert resp.status_code == 200
+    assert f'<html lang="{SITE_MESH["default_language"]}"' in resp.content.decode()
+    # E a forma prefixada do padrão não existe mais.
+    assert client.get("/en/login", HTTP_HOST=HOST_MESH).status_code == 404
 
 
 def test_site_monolingue_nao_tem_pagina_de_entrada(client, rede):
@@ -333,7 +344,7 @@ def test_quem_entrou_tem_como_SAIR_em_toda_pagina(client, logado, idioma):
     em computador compartilhado, a sessão de uma pessoa para a seguinte.
     """
     conteudo = client.get(
-        f"/{idioma}/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+        caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
     ).content.decode()
 
     assert 'action="/entrar/sair"' in conteudo, "não há como sair do site"
@@ -360,7 +371,7 @@ def test_o_nome_de_quem_entrou_NAO_e_link_para_a_caixa(client, logado, idioma):
     existir quando houver uma página de conta de verdade.
     """
     conteudo = client.get(
-        f"/{idioma}/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+        caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
     ).content.decode()
 
     assert NOME in conteudo
@@ -373,7 +384,9 @@ def test_a_porta_nao_exige_mais_matricula_no_texto(client, rede, idioma):
     """A decisão de 25/08 diz que qualquer conta Google entra. O texto tem de
     dizer o mesmo — enquanto ele pedia "o e-mail da sua matrícula", ele
     mandava embora exatamente quem a decisão acabou de deixar entrar."""
-    conteudo = client.get(f"/{idioma}/login", HTTP_HOST=HOST_MESH).content.decode()
+    conteudo = client.get(
+        caminho_mesh(idioma, "/login"), HTTP_HOST=HOST_MESH
+    ).content.decode()
 
     # A frase INCONDICIONAL do subtítulo antigo — a que dizia à pessoa sem
     # matrícula "este login não é para você". O aviso condicional ("já é
