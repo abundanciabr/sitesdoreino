@@ -131,5 +131,6 @@
 | [102](102-static-sob-script-name-manda-o-navegador-para-a.md) | `{% static %}` sob `SCRIPT_NAME` manda o navegador para a célula ERRADA — e a rota `/static` de `armadilhas/083` não salva — a célula serve sob prefixo (`meshcraft.top/forms/sugestoes/`), você já pagou a… | — |
 | [103](103-api-interna-de-celula-sob-script-name-responde.md) | A API "interna" de uma célula sob `SCRIPT_NAME` responde pela internet — e o plano que diz "rede interna do Docker" está errado — não há erro nenhum. Você escreve — num plano, num despacho, numa constituição de célula… | — |
 | [104](104-inventario-de-nomes-lido-como-guarda-de.md) | Inventário de NOMES lido como guarda de COMPORTAMENTO: o teste fica vermelho quando o nome some, e verde quando a coisa quebra — existe um teste que lê o arquivo perigoso, tem nome de guarda, e fica vermelho quando você… | — |
+| [105](105-muralha-de-pr-posta-a-rodar-num-push-passa-por.md) | Muralha de PR posta a rodar num push passa por vacuidade — e "rodar as três" é pior que rodar uma — um portão que reprova de verdade em PR imprime, no push da `main`, um verde de aparência impecável: | — |
 
-**94 entradas.**
+**95 entradas.**
