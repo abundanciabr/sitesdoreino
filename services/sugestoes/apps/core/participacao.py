@@ -60,6 +60,34 @@ PAGINA_QUADRO = "sugestoes/quadro.html"
 PAGINA_NOVA = "sugestoes/nova.html"
 PAGINA_SUGESTAO = "sugestoes/sugestao.html"
 
+# As abas do quadro (EVO-30, protótipo v2). São DUAS: "Em alta" — a terceira do
+# protótipo — é V1.2 na §6 do PLANO-MESTRE, porque exige peso de recência, que é
+# uma fórmula a decidir e não um `order_by`.
+#
+# A ordem vem sempre do SERVIDOR, e a chave da URL é validada contra este
+# dicionário: `?ordem=` desconhecido é 404, como `?categoria=` desconhecida já
+# era. Aceitar em silêncio faria a aba mentir — a pessoa pediria "novas" e
+# receberia "mais votadas" sem nada dizendo isso.
+#
+# O desempate por `criado_em`/`id` não é enfeite em nenhuma das duas: sem um
+# critério determinístico o Postgres devolve empate em ordem arbitrária, e o
+# quadro "muda sozinho" entre dois carregamentos.
+ORDENS = {
+    "mais-votadas": ("Mais votadas", ("-total_votos", "criado_em", "id")),
+    "novas": ("Novas", ("-criado_em", "-id")),
+}
+ORDEM_PADRAO = "mais-votadas"
+
+# As quatro zonas da faixa do protótipo, na ordem em que uma ideia as percorre.
+# `nao_planejado` e `mesclado` ficam de fora porque não são etapas do caminho:
+# são saídas dele, e a página as mostra pelo selo de status, não pela linha.
+ETAPAS = (
+    Sugestao.Status.EM_ANALISE,
+    Sugestao.Status.PLANEJADO,
+    Sugestao.Status.EM_DESENVOLVIMENTO,
+    Sugestao.Status.IMPLEMENTADO,
+)
+
 
 def exige_sessao(view):
     """Sem sessão de aluno, a rota não acontece — nem para ler.
@@ -114,21 +142,90 @@ def quadro_atual():
     return quadros[0]
 
 
-def sugestoes_ordenadas(quadro, *, categoria_slug: str = ""):
-    """O ranking da §10: total de votos primeiro, empate desfeito pela idade.
+def sugestoes_ordenadas(quadro, *, categoria_slug: str = "", ordem: str = ORDEM_PADRAO):
+    """O ranking da §10 (mais votadas) ou a fila do que chegou por último.
 
-    `criado_em` como segundo critério (e `id` como terceiro) não é enfeite: sem
-    um desempate determinístico o Postgres devolve empate em ordem arbitrária,
-    e o quadro "muda sozinho" entre dois carregamentos.
+    A contagem de comentários entra aqui e não numa consulta por linha: o card
+    do protótipo mostra "N comentários", e um `sugestao.comentarios.count()` no
+    template daria uma consulta por peça da grade — o N+1 clássico, invisível
+    até o quadro encher.
     """
     consulta = (
         Sugestao.objects.filter(quadro=quadro)
-        .annotate(total_votos=Count("votos", distinct=True))
+        .annotate(
+            total_votos=Count("votos", distinct=True),
+            total_comentarios=Count("comentarios", distinct=True),
+        )
         .select_related("categoria", "autor")
     )
     if categoria_slug:
         consulta = consulta.filter(categoria__slug=categoria_slug)
-    return consulta.order_by("-total_votos", "criado_em", "id")
+    return consulta.order_by(*ORDENS[ordem][1])
+
+
+def numeros_do_quadro(quadro) -> dict:
+    """Os três números do topo do protótipo. Uma consulta cada, e só no quadro.
+
+    Ficam FORA da moldura de propósito: no `base_caixa.html` eles seriam três
+    consultas em toda página da célula — inclusive nas da equipe, que não os
+    mostram.
+    """
+    return {
+        "sugestoes": Sugestao.objects.filter(quadro=quadro).count(),
+        "votos": Voto.objects.filter(sugestao__quadro=quadro).count(),
+        "implementadas": Sugestao.objects.filter(
+            quadro=quadro, status=Sugestao.Status.IMPLEMENTADO
+        ).count(),
+    }
+
+
+def linha_do_tempo(sugestao):
+    """As quatro zonas do protótipo, com a data em que a ideia entrou em cada uma.
+
+    **O recorte de colunas é a proteção, não o cuidado do template.** O
+    `HistoricoStatus` carrega `alterado_por` — uma `Identidade`, com e-mail
+    dentro (LICOES: é a auditoria da EQUIPE). O `.values(...)` decide na
+    CONSULTA o que existe, então não há nada para um `{{ … }}` distraído
+    alcançar: a coluna nem foi buscada.
+
+    A primeira etapa não tem registro de histórico — uma sugestão nasce
+    `em_analise` sem ninguém a mover para lá — então a data dela é a da própria
+    criação. Sem isso a linha começaria com um traço em toda sugestão.
+    """
+    marcos = {}
+    for registro in sugestao.historico.values("status_novo", "criado_em"):
+        marcos.setdefault(registro["status_novo"], registro["criado_em"])
+    marcos.setdefault(Sugestao.Status.EM_ANALISE, sugestao.criado_em)
+
+    # `nao_planejado` e `mesclado` não estão na lista: a análise ACONTECEU (é o
+    # que produziu a saída), então a primeira etapa fica feita e as outras não.
+    atual = ETAPAS.index(sugestao.status) if sugestao.status in ETAPAS else 0
+    return [
+        {
+            "rotulo": Sugestao.Status(etapa).label,
+            "data": marcos.get(etapa),
+            "feita": indice <= atual,
+        }
+        for indice, etapa in enumerate(ETAPAS)
+    ]
+
+
+def notas_da_equipe(sugestao):
+    """O que a equipe ESCREVEU ao mudar o status — sem dizer quem escreveu.
+
+    Mesmo recorte de colunas da `linha_do_tempo`, pelo mesmo motivo. O que o
+    aluno tem direito de ver é a decisão e a justificativa; quem moderou é
+    auditoria interna.
+    """
+    return [
+        {
+            "status": Sugestao.Status(registro["status_novo"]).label,
+            "nota": registro["nota"],
+            "quando": registro["criado_em"],
+        }
+        for registro in sugestao.historico.values("status_novo", "nota", "criado_em")
+        if registro["nota"]
+    ]
 
 
 def possiveis_duplicatas(quadro, termo: str):
@@ -193,6 +290,9 @@ def ver_quadro(request, ator):
     escolhida = (request.GET.get("categoria") or "").strip()
     if escolhida and not any(c.slug == escolhida for c in categorias):
         raise Http404("categoria inexistente neste quadro")
+    ordem = (request.GET.get("ordem") or ORDEM_PADRAO).strip()
+    if ordem not in ORDENS:
+        raise Http404("essa aba não existe no quadro")
     return render(
         request,
         PAGINA_QUADRO,
@@ -201,8 +301,13 @@ def ver_quadro(request, ator):
             "quadro": quadro,
             "categorias": categorias,
             "categoria_escolhida": escolhida,
-            "sugestoes": sugestoes_ordenadas(quadro, categoria_slug=escolhida),
+            "abas": [(chave, rotulo) for chave, (rotulo, _) in ORDENS.items()],
+            "ordem_escolhida": ordem,
+            "sugestoes": sugestoes_ordenadas(
+                quadro, categoria_slug=escolhida, ordem=ordem
+            ),
             "votadas": _ids_votados(ator, quadro),
+            "numeros": numeros_do_quadro(quadro),
         },
     )
 
@@ -304,6 +409,8 @@ def _pagina_da_sugestao(request, ator, sugestao, *, erros=(), status=200):
             "total_votos": sugestao.votos.count(),
             "ja_votou": sugestao.votos.filter(autor=ator.identidade).exists(),
             "comentarios": sugestao.comentarios.select_related("autor"),
+            "linha_do_tempo": linha_do_tempo(sugestao),
+            "notas_da_equipe": notas_da_equipe(sugestao),
             "erros": list(erros),
         },
         status=status,

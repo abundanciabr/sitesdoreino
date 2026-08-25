@@ -1,63 +1,113 @@
 {% extends "sugestoes/base_caixa.html" %}
 {% comment %}
-Uma sugestão: o texto de quem escreveu, o voto e a conversa.
+Uma sugestão: o texto de quem escreveu, o voto e a conversa — com o inspector
+do protótipo v2 à direita (a ficha e a linha do tempo do status).
 
-O que esta página NÃO mostra, e nunca vai mostrar: a avaliação interna da
-equipe. Ela não está no contexto porque a view não a busca, e a view não a
-busca porque `apps/core/participacao.py` não conhece o model — a decisão de
-produto sobre a ideia de alguém não passa por uma tela de aluno
-(spec §8, e tests/test_inv_avaliacao_interna_fora_do_alcance.py).
+O que esta página NÃO mostra, e nunca vai mostrar:
+
+* **a avaliação interna da equipe.** Ela não está no contexto porque a view não
+  a busca, e a view não a busca porque `apps/core/participacao.py` não conhece
+  o model — a decisão de produto sobre a ideia de alguém não passa por uma tela
+  de aluno (spec §8, e tests/test_inv_avaliacao_interna_fora_do_alcance.py).
+* **quem moderou.** A linha do tempo e as notas vêm de `HistoricoStatus`, que
+  carrega `alterado_por` — uma `Identidade`, com e-mail dentro. Por isso a view
+  as entrega já recortadas por `.values(...)`: o dado nem foi buscado, então
+  não há o que um `{% templatetag openvariable %} … {% templatetag closevariable %}` distraído alcance. O aluno tem
+  direito à decisão e à justificativa; o nome de quem decidiu é auditoria da
+  equipe (LICOES, "o aviso é da Caixa").
 {% endcomment %}
 {% block titulo %}{{ sugestao.titulo }} — Caixa de Sugestões{% endblock %}
+{% block migalha %}Sugestão{% endblock %}
 {% block conteudo %}
 <p class="meta"><a href="{% url 'quadro' %}">← voltar ao quadro</a></p>
 
 <h1>{{ sugestao.titulo }}</h1>
-<p class="meta">
+<p class="meta" style="margin-bottom:18px">
+  <span class="selo selo-{{ sugestao.status }}">{{ sugestao.get_status_display }}</span>
   {{ sugestao.categoria.nome }} ·
-  {{ sugestao.autor.nome_exibido|default:"Aluno" }} ·
-  {{ sugestao.get_status_display }} ·
-  <span class="votos">{{ total_votos }}</span> voto{{ total_votos|pluralize }}
+  {{ sugestao.autor.nome_exibido|default:"Aluno" }}
 </p>
 
-<h2>O problema</h2>
-<p>{{ sugestao.problema|linebreaksbr }}</p>
+<div class="ficha">
+  <h3>O problema</h3>
+  <p>{{ sugestao.problema|linebreaksbr }}</p>
+</div>
 
-{% if sugestao.solucao_proposta %}
-  <h2>A solução proposta</h2>
-  <p>{{ sugestao.solucao_proposta|linebreaksbr }}</p>
-{% endif %}
+<div class="ficha">
+  <h3>A solução proposta</h3>
+  <p>{% if sugestao.solucao_proposta %}{{ sugestao.solucao_proposta|linebreaksbr }}{% else %}Quem sugeriu não propôs uma solução específica — o que vale aqui é o problema.{% endif %}</p>
+</div>
 
 <form method="post"
       action="{% if ja_votou %}{% url 'desvotar' sugestao.id %}{% else %}{% url 'votar' sugestao.id %}{% endif %}">
   {% csrf_token %}
-  <button type="submit" class="botao">
+  <button type="submit" class="voto voto-grande{% if ja_votou %} dado{% endif %}"><span class="seta">▲</span>
     {% if ja_votou %}Tirar meu voto{% else %}Votar nesta{% endif %}
+    (<span class="votos">{{ total_votos }}</span>)
   </button>
 </form>
 
 <h2>Comentários</h2>
 
 {% if erros %}
-  <div class="recado">
+  <div class="recado recado-atencao">
     <h2>Falta um detalhe</h2>
     <ul>{% for erro in erros %}<li>{{ erro }}</li>{% endfor %}</ul>
   </div>
 {% endif %}
 
-{% for comentario in comentarios %}
-  <div class="cartao">
-    <p class="meta">{{ comentario.autor.nome_exibido|default:"Aluno" }}</p>
-    <p>{{ comentario.texto|linebreaksbr }}</p>
-  </div>
-{% empty %}
-  <p class="meta">Ninguém comentou ainda.</p>
-{% endfor %}
+<div class="conversa">
+  {% for comentario in comentarios %}
+    <div class="fala">
+      <span class="retrato" aria-hidden="true">{{ comentario.autor.nome_exibido|default:"A"|slice:":1" }}</span>
+      <div>
+        <p class="meta">{{ comentario.autor.nome_exibido|default:"Aluno" }} · {{ comentario.criado_em|date:"d/m/Y H:i" }}</p>
+        <p>{{ comentario.texto|linebreaksbr }}</p>
+      </div>
+    </div>
+  {% empty %}
+    <p class="meta">Ninguém comentou ainda.</p>
+  {% endfor %}
+</div>
 
 <form method="post" action="{% url 'comentar' sugestao.id %}">
   {% csrf_token %}
-  <label for="texto">Acrescentar alguma coisa</label>
-  <textarea id="texto" name="texto" required></textarea>
+  <div class="campo" style="margin-top:16px">
+    <label for="texto">Acrescentar alguma coisa</label>
+    <textarea id="texto" name="texto" required></textarea>
+  </div>
   <button type="submit" class="botao">Comentar</button>
 </form>
+{% endblock %}
+
+{% block inspetor %}
+<aside class="inspetor">
+  <p class="identificacao">
+    #{{ sugestao.id }} · {{ sugestao.categoria.nome }}<br>
+    {{ total_votos }} voto{{ total_votos|pluralize }} · aberta em {{ sugestao.criado_em|date:"d/m/Y" }}
+  </p>
+
+  <h2>Por onde ela andou</h2>
+  <div class="etapas">
+    {% for etapa in linha_do_tempo %}
+      <div class="etapa{% if etapa.feita %} feita{% endif %}">
+        <div class="risco"></div>
+        <div class="bola"></div>
+        <span>{{ etapa.rotulo }}<br>{% if etapa.data %}{{ etapa.data|date:"d/m/y" }}{% else %}—{% endif %}</span>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% if notas_da_equipe %}
+    <div class="ficha">
+      <h3>O que a equipe respondeu</h3>
+      {% for registro in notas_da_equipe %}
+        <p style="margin-bottom:10px">
+          <span class="meta">{{ registro.quando|date:"d/m/Y" }} · {{ registro.status }}</span><br>
+          {{ registro.nota|linebreaksbr }}
+        </p>
+      {% endfor %}
+    </div>
+  {% endif %}
+</aside>
 {% endblock %}

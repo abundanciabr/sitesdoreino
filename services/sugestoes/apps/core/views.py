@@ -22,10 +22,12 @@ lugar certo com `?next=` de volta para cá.
 import os
 from urllib.parse import urlencode
 
+from django.conf import settings
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.views.decorators.http import require_GET, require_POST
+from django.views.static import serve as serve_do_django
 
 from . import sessao as ses
 
@@ -35,6 +37,29 @@ PAGINA = "sugestoes/entrar.html"
 @require_GET
 def healthz(request):
     return JsonResponse({"status": "ok"})
+
+
+@require_GET
+def servir_estatico(request, caminho):
+    """A folha de estilo do rosto (EVO-30). Sem esta rota ela é 404 — só em produção.
+
+    Com `DEBUG=0` o Django não serve estático por conta própria, e esta célula
+    está SOZINHA atrás do Traefik: não há nginx, CDN nem router `/static` no
+    gateway. `armadilhas/083` mediu isso ao vivo no `funil` em 24/08/2026, e a
+    solução provada (viva em `checkout` e `funil`) é esta rota — copiada como
+    PADRÃO, nunca como arquivo (Lei 7).
+
+    Serve do diretório-FONTE (`STATICFILES_DIRS[0]`), nunca de `STATIC_ROOT`:
+    o `collectstatic --noinput || true` do Dockerfile falha em TODO build (não
+    há `DJANGO_SECRET_KEY` em tempo de build e o `settings.py` é fail-hard) e o
+    `|| true` engole o erro — a imagem sobe com `STATIC_ROOT` VAZIO. O
+    diretório-fonte está na imagem pelo `COPY . .`.
+
+    É rota PÚBLICA de propósito — folha de estilo não é conteúdo de aluno. A
+    exceção está DECLARADA em `tests/test_inv_sem_sessao_nada.py`, nunca
+    inferida.
+    """
+    return serve_do_django(request, caminho, document_root=settings.STATICFILES_DIRS[0])
 
 
 def url_de_entrada_do_site() -> str:

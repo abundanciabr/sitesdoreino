@@ -1,0 +1,303 @@
+/* =========================================================================
+   O ROSTO DA CAIXA (EVO-30) — folha de estilo desta célula, e de nenhuma outra
+   =========================================================================
+   Referência visual: docs/caixa-de-sugestoes/prototipo-v2.html (somente-leitura).
+   Lei 7 — zonas quentes nascem vazias: não existe CSS compartilhado nesta
+   plataforma; copia-se o PADRÃO, nunca o arquivo.
+
+   Duas divergências deliberadas do protótipo, e as duas são de risco:
+
+   1. **Sem Google Fonts.** O protótipo carrega Space Grotesk / Manrope /
+      JetBrains Mono de `fonts.googleapis.com`. A Caixa é um formulário: uma
+      ida à rede no `<head>` só acrescenta um jeito novo de a página falhar —
+      e a moldura desta célula já nascera com "sem CSS externo, sem JS, sem
+      fonte remota". Os três PAPÉIS (display, corpo, mono) continuam existindo
+      como variáveis, agora sobre pilhas de fontes do sistema.
+   2. **Sem JavaScript.** O protótipo é uma página só, com inspector que troca
+      por clique. Aqui cada coisa tem URL própria e o servidor renderiza: as
+      abas são links (`?ordem=`), o voto é `<form method="post">`, a categoria
+      é `<input type=radio>`. Nada do que o aluno faz depende de script.
+
+   Os nomes das classes são os da casa (PT-BR), não os do protótipo. O mapa:
+   .peca=tile · .grade=grid · .abas=tabs · .trilho=rail · .inspetor=inspector
+   .etapas=timeline · .ficha=detail-block · .marca=chip · .selo=status
+
+   As classes antigas (.cartao .recado .botao .votos .meta .filtros .papel
+   .discreto .sub .topo) continuam vivas e restiladas de propósito: as páginas
+   da equipe (fila, moderar) e a dos avisos as usam, e reescrevê-las seria
+   mexer em arquivo de outro despacho sem nenhum ganho de comportamento.
+   ========================================================================= */
+
+:root {
+  --tinta: #15161c;
+  --tinta-2: #1b1d25;
+  --painel: #1e202b;
+  --painel-claro: #262838;
+  --linha: rgba(255, 255, 255, .08);
+  --linha-forte: rgba(255, 255, 255, .16);
+  --laranja: #ff7a33;
+  --laranja-fraco: rgba(255, 122, 51, .14);
+  --azul: #4c8dff;
+  --azul-fraco: rgba(76, 141, 255, .14);
+  --verde: #34d399;
+  --verde-fraco: rgba(52, 211, 153, .14);
+  --texto: #edeef2;
+  --texto-fraco: #9a9db0;
+  --texto-tenue: #5c5f70;
+  --f-titulo: "Segoe UI Semibold", "Segoe UI", Inter, system-ui, -apple-system, sans-serif;
+  --f-corpo: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --f-mono: ui-monospace, "Cascadia Mono", Consolas, "SF Mono", Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--tinta);
+  color: var(--texto);
+  font-family: var(--f-corpo);
+  line-height: 1.55;
+  /* A grade de fundo do protótipo: duas listras de 1px repetidas. Custa zero
+     requisição e é o que dá à Caixa cara de ferramenta, não de formulário. */
+  background-image:
+    linear-gradient(var(--linha) 1px, transparent 1px),
+    linear-gradient(90deg, var(--linha) 1px, transparent 1px);
+  background-size: 64px 64px;
+  background-position: center -1px;
+  background-attachment: fixed;
+}
+
+a { color: inherit; }
+:focus-visible { outline: 2px solid var(--laranja); outline-offset: 2px; }
+
+.wrap { max-width: 1040px; margin: 0 auto; padding: 24px 20px 72px; }
+main { width: 100%; }
+
+h1 { font-family: var(--f-titulo); font-size: 1.35rem; margin: 0 0 .3rem; }
+h2 { font-family: var(--f-titulo); font-size: 1.05rem; margin: 1.75rem 0 .7rem; }
+h3 { font-family: var(--f-titulo); font-size: 1rem; margin: 0 0 .35rem; }
+.sub { margin: 0 0 1.25rem; color: var(--texto-fraco); font-size: .95rem; }
+.meta { font-size: .85rem; color: var(--texto-tenue); margin: 0; }
+.email { font-family: var(--f-mono); font-size: .9em; color: var(--texto-fraco); }
+
+/* --- topo ---------------------------------------------------------------- */
+
+.topo {
+  display: flex; flex-wrap: wrap; gap: 16px; align-items: center;
+  justify-content: space-between; padding: 10px 0 18px;
+  border-bottom: 1px solid var(--linha); margin-bottom: 24px;
+}
+.topo form { display: inline; }
+.marca-do-topo { display: flex; align-items: center; gap: 12px; }
+.gizmo { width: 30px; height: 30px; flex-shrink: 0; }
+.gizmo-gira { transform-box: view-box; transform-origin: 20px 20px; animation: gira 24s linear infinite; }
+@keyframes gira { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .gizmo-gira { animation: none; } }
+.nome-da-marca { font-family: var(--f-titulo); font-weight: 600; font-size: 17px; }
+.migalha { color: var(--texto-tenue); font-size: 13px; }
+.migalha::before { content: "/"; margin-right: 8px; }
+.quem { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--texto-fraco); }
+
+.numeros { font-family: var(--f-mono); font-size: 12px; color: var(--texto-tenue); display: flex; flex-wrap: wrap; gap: 16px; }
+.numeros b { color: var(--texto-fraco); font-weight: 500; }
+
+.papel {
+  display: inline-block; padding: .15rem .5rem; border-radius: 6px;
+  border: 1px solid var(--linha); background: var(--painel);
+  font-size: .72rem; text-transform: uppercase; letter-spacing: .04em;
+  text-decoration: none; color: var(--texto-fraco);
+}
+.papel:hover { border-color: var(--linha-forte); color: var(--texto); }
+
+/* --- a bancada: trilho + coluna principal + inspetor --------------------- */
+
+.bancada { display: flex; gap: 20px; align-items: flex-start; }
+.trilho { display: flex; flex-direction: column; gap: 8px; width: 52px; flex-shrink: 0; padding: 2px 0; align-items: center; }
+.trilho a {
+  width: 38px; height: 38px; border-radius: 8px; border: 1px solid var(--linha);
+  background: var(--painel); display: flex; align-items: center; justify-content: center;
+  color: var(--texto-fraco); text-decoration: none;
+}
+.trilho a:hover { border-color: var(--linha-forte); color: var(--texto); }
+.trilho a.ativo { border-color: var(--laranja); color: var(--laranja); background: var(--laranja-fraco); }
+.trilho svg { width: 17px; height: 17px; }
+.trilho a { position: relative; }
+/* O sino do EVO-21 finalmente desenhado: a contagem de não-lidos, colada no
+   canto do ícone. O mesmo número vive no nome acessível do link. */
+.contador {
+  position: absolute; top: -6px; right: -6px; min-width: 17px; height: 17px;
+  padding: 0 4px; border-radius: 9px; background: var(--laranja); color: var(--tinta);
+  font-family: var(--f-mono); font-size: 10px; font-weight: 600;
+  display: flex; align-items: center; justify-content: center;
+}
+.coluna { flex: 1; min-width: 0; }
+
+.inspetor {
+  width: 300px; flex-shrink: 0; background: var(--painel);
+  border: 1px solid var(--linha-forte); border-radius: 12px; padding: 20px;
+  position: sticky; top: 20px;
+}
+.inspetor h2 { margin-top: 0; }
+.identificacao { font-family: var(--f-mono); font-size: 11px; color: var(--texto-tenue); margin: 0 0 12px; line-height: 1.5; }
+
+/* --- abas e filtros ------------------------------------------------------ */
+
+.abas { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+.abas a {
+  font-size: 13px; color: var(--texto-fraco); background: var(--painel);
+  border: 1px solid var(--linha); padding: 7px 13px; border-radius: 7px; text-decoration: none;
+}
+.abas a.ativo { color: var(--texto); border-color: var(--linha-forte); background: var(--painel-claro); box-shadow: inset 0 -2px 0 var(--laranja); }
+
+.filtros { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.filtros a {
+  border: 1px solid var(--linha); background: var(--tinta-2); border-radius: 6px;
+  padding: 5px 10px; font-size: 11.5px; text-decoration: none; color: var(--texto-fraco);
+}
+.filtros a.ativo { color: var(--laranja); border-color: var(--laranja); background: var(--laranja-fraco); }
+
+/* --- a grade de peças (o quadro) ---------------------------------------- */
+
+.grade { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.peca {
+  background: var(--painel); border: 1px solid var(--linha); border-radius: 10px;
+  overflow: hidden; display: flex; flex-direction: column;
+}
+.peca:hover { border-color: var(--linha-forte); }
+.peca-topo { padding: 18px 12px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.peca-topo svg { width: 24px; height: 24px; color: var(--texto-tenue); flex-shrink: 0; }
+.peca-corpo { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.peca-titulo { font-family: var(--f-titulo); font-weight: 600; font-size: 13.5px; margin: 0; line-height: 1.35; }
+.peca-titulo a { text-decoration: none; }
+.peca-titulo a:hover { text-decoration: underline; }
+.peca-pe { font-size: 11px; color: var(--texto-tenue); margin: 0; margin-top: auto; }
+.peca form { margin: 0; }
+
+/* Fundos por categoria: o protótipo pinta o topo da peça com a cor da família.
+   Aqui a cor vem do SLUG (`swatch-<slug>`), então categoria nova sem cor cai no
+   fundo neutro — degrada, não quebra. */
+.swatch-ferramentas { background: #2a231e; }
+.swatch-blender     { background: #2b2118; }
+.swatch-roblox      { background: #2a1c1c; }
+.swatch-curso       { background: #1a222b; }
+.swatch-carreira    { background: #182a26; }
+.swatch-plataforma  { background: #221c2b; }
+
+/* --- o selo de status ---------------------------------------------------- */
+
+.selo { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 5px; color: #a9acc0; background: rgba(255, 255, 255, .06); }
+.selo-planejado { color: var(--azul); background: var(--azul-fraco); }
+.selo-em_desenvolvimento { color: var(--laranja); background: var(--laranja-fraco); }
+.selo-implementado { color: var(--verde); background: var(--verde-fraco); }
+
+/* --- o voto -------------------------------------------------------------- */
+
+/* `.votos` é o número puro; `.voto` é o botão que o envolve. Os dois existem
+   porque a contagem também aparece FORA de um botão (na ficha da sugestão e nas
+   páginas da equipe), e porque há guarda medindo o `<span class="votos">`. */
+.votos { font-family: var(--f-mono); font-weight: 600; }
+.voto {
+  display: inline-flex; align-items: center; gap: 4px; background: var(--tinta);
+  border: 1px solid var(--linha); border-radius: 6px; padding: 5px 8px;
+  font-family: var(--f-mono); font-size: 11px; color: var(--texto-fraco);
+  cursor: pointer; font-weight: 500;
+}
+.voto:hover { border-color: var(--linha-forte); color: var(--texto); }
+.voto .seta { font-size: 9px; }
+.voto.dado { border-color: var(--laranja); color: var(--laranja); background: var(--laranja-fraco); }
+.voto-grande { font-size: 13px; padding: 9px 14px; }
+
+/* --- cartões, recados e formulários ------------------------------------- */
+
+.cartao { background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+.recado { background: var(--painel); border: 1px solid var(--linha-forte); border-radius: 10px; padding: 14px 16px; margin-bottom: 18px; }
+.recado h2 { font-size: 1rem; margin: 0 0 .5rem; }
+.recado p, .recado li { margin: 0; font-size: .92rem; color: var(--texto-fraco); }
+.recado ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+.recado-atencao { border-color: var(--laranja); background: var(--laranja-fraco); }
+
+.campo { margin-bottom: 14px; }
+label { display: block; font-size: 12.5px; color: var(--texto-fraco); margin: 0 0 6px; }
+input[type=text], input[type=number], textarea, select {
+  width: 100%; background: var(--tinta-2); border: 1px solid var(--linha);
+  border-radius: 7px; color: var(--texto); font-family: var(--f-corpo);
+  font-size: 13px; padding: 9px 10px;
+}
+textarea { resize: vertical; min-height: 72px; }
+
+.marcas { display: flex; flex-wrap: wrap; gap: 6px; }
+.marca {
+  display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px;
+  color: var(--texto-fraco); background: var(--tinta-2); border: 1px solid var(--linha);
+  border-radius: 6px; padding: 6px 10px; cursor: pointer;
+}
+/* O radio é o estado; a etiqueta é o desenho. Sem JS: quem pinta a marca
+   escolhida é o `:has()` do CSS, e quem guarda a escolha é o próprio
+   formulário — recarregar a página com erro não perde o que foi marcado. */
+.marca input { position: absolute; opacity: 0; width: 0; height: 0; }
+.marca:has(input:checked) { color: var(--laranja); border-color: var(--laranja); background: var(--laranja-fraco); }
+.marca:focus-within { outline: 2px solid var(--laranja); outline-offset: 2px; }
+.marca svg { width: 12px; height: 12px; }
+
+.botao {
+  display: inline-block; font-family: var(--f-corpo); font-weight: 600;
+  font-size: 13.5px; color: var(--texto); background: var(--painel);
+  border: 1px solid var(--linha-forte); border-radius: 7px; padding: 10px 16px;
+  text-align: center; text-decoration: none; cursor: pointer; margin-top: 8px;
+}
+.botao:hover { background: var(--painel-claro); }
+.principal { color: var(--tinta); background: var(--laranja); border-color: var(--laranja); width: 100%; }
+.principal:hover { background: var(--laranja); filter: brightness(1.08); }
+.discreto { border: 0; background: none; font-weight: 400; color: var(--texto-tenue); text-decoration: underline; padding: 0; margin-top: 0; }
+.discreto:hover { background: none; color: var(--texto); }
+
+/* --- a linha do tempo da sugestão (histórico) ---------------------------- */
+
+.etapas { display: flex; align-items: flex-start; margin: 4px 0 18px; }
+.etapa { display: flex; flex-direction: column; align-items: center; gap: 6px; position: relative; flex: 1; }
+.etapa .bola { width: 9px; height: 9px; border-radius: 50%; background: var(--tinta); border: 2px solid var(--texto-tenue); z-index: 1; }
+.etapa.feita .bola { border-color: var(--laranja); background: var(--laranja); }
+.etapa .risco { position: absolute; top: 3.5px; left: 50%; width: 100%; height: 2px; background: var(--linha-forte); }
+.etapa:last-child .risco { display: none; }
+.etapa span { font-family: var(--f-mono); font-size: 10px; color: var(--texto-tenue); text-align: center; line-height: 1.4; }
+
+.ficha { margin-bottom: 16px; }
+.ficha h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--texto-tenue); margin: 0 0 5px; font-weight: 500; }
+.ficha p { font-size: 13px; color: var(--texto-fraco); margin: 0; line-height: 1.55; }
+
+/* --- comentários --------------------------------------------------------- */
+
+.conversa { display: flex; flex-direction: column; gap: 10px; }
+.fala { display: flex; gap: 8px; }
+.retrato {
+  width: 24px; height: 24px; border-radius: 50%; background: var(--tinta-2);
+  border: 1px solid var(--linha); display: flex; align-items: center;
+  justify-content: center; font-family: var(--f-mono); font-size: 10px;
+  color: var(--texto-fraco); flex-shrink: 0;
+}
+.fala p { margin: 0; font-size: 12.5px; color: var(--texto-fraco); line-height: 1.5; }
+.fala .meta { font-size: 11px; }
+
+/* --- tabelas (páginas da equipe) ---------------------------------------- */
+
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--linha); }
+th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+
+/* --- o pé ---------------------------------------------------------------- */
+
+.pe {
+  margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--linha);
+  font-family: var(--f-mono); font-size: 12px; color: var(--texto-tenue);
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+
+@media (max-width: 900px) {
+  .bancada { flex-direction: column; }
+  .trilho { flex-direction: row; width: 100%; }
+  .inspetor { width: 100%; position: static; }
+  .grade { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 520px) {
+  .grade { grid-template-columns: 1fr; }
+}

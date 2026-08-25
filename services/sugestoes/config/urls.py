@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, re_path
 
 from apps.core.avisos import marcar_lido, ver_avisos
 from apps.core.moderacao import avaliar, moderar, mudar_status, ver_fila
@@ -10,7 +10,14 @@ from apps.core.participacao import (
     ver_sugestao,
     votar,
 )
-from apps.core.views import entrar, entrar_google, entrar_google_retorno, healthz, sair
+from apps.core.views import (
+    entrar,
+    entrar_google,
+    entrar_google_retorno,
+    healthz,
+    sair,
+    servir_estatico,
+)
 from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (/forms/sugestoes): quem o
@@ -29,6 +36,17 @@ from config.api import api
 # todo o resto da participação (apps/core/participacao.py).
 urlpatterns = [
     path("healthz", healthz),
+    # O rosto (EVO-30). Rota de MÁQUINA, como o `/healthz`: sem ela o CSS é 404
+    # em produção e SÓ lá (`armadilhas/083` — com DEBUG=0 o Django não serve
+    # estático, e não há nginx nem CDN atrás do Traefik).
+    #
+    # O nome é `estatico`, e não `static`, de propósito: os templates o chamam
+    # por `{% url 'estatico' … %}`, e `{% url 'static' … %}` ao lado do
+    # `{% static %}` do Django seriam duas coisas diferentes com o mesmo nome na
+    # mesma linha. **É `{% url %}` e não `{% static %}` porque só o primeiro
+    # carrega o prefixo público**: `/static/caixa.css` em `meshcraft.top` é
+    # endereço do `funil`, não da Caixa (`armadilhas/029` e `/081`).
+    re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
     # Superfície de MÁQUINA (DECISAO-onde-mora-a-sessao): o `funil` pergunta
     # quem é o dono da sessão. Prefixo `interno/` no nome porque é assim que a
     # fronteira fica legível no urlconf — do mesmo jeito que `moderacao/`
