@@ -1,0 +1,69 @@
+# LINHA DE BASE — guardas de célula ainda SEM invariante declarado
+#
+# Lido por `ci/guarda_dos_guardas.py` (regra 5, o INVERSO). Cada linha é uma
+# DÍVIDA reconhecida: existe um arquivo `test_inv_*` prometendo guardar um
+# invariante que ninguém escreveu em INVARIANTES.md.
+#
+# A CATRACA, em duas frases: guarda de célula que não está no INVARIANTES.md
+# nem nesta lista deixa a CI VERMELHA. Linha que SAI daqui — porque o
+# invariante foi finalmente redigido, ou porque o arquivo sumiu — é sempre
+# permitida. A dívida só encolhe.
+#
+# Esta lista isenta de DECLARAÇÃO, jamais de MORDER: todo arquivo citado aqui
+# continua submetido às regras 2 e 3 do portão (tem `def test_`, não tem
+# skip/xfail, nenhum corpo vazio). Sem isso ela seria um interruptor de
+# desligar guarda, que é o oposto do que ela existe para fazer.
+#
+# COMO PAGAR UMA LINHA (é barato, e é o objetivo):
+#   1. abra o arquivo e descubra o que ele realmente prova;
+#   2. escreva o invariante em INVARIANTES.md — o quê / por quê /
+#      `- **Teste-Guarda:** ` + o caminho entre crases / célula dona;
+#   3. apague a linha daqui e baixe o `# TOTAL:` em 1.
+#   (INVARIANTES.md é caminho CODEOWNERS: precisa de mandato do despacho.)
+#
+# Formato: `caminho :: motivo`. Motivo é obrigatório e tem de dizer algo — o
+# portão reprova carimbo com menos de 15 caracteres. Acrescentar uma linha
+# obriga a mexer também no total abaixo: o `-# TOTAL: n` / `+# TOTAL: n+1` no
+# diff é o que denuncia dívida crescendo em vez de encolhendo.
+#
+# Medido em 25/08/2026 contra a main: 47 guardas em disco, 14 caminhos
+# declarados em 12 linhas `Teste-Guarda:` (10 deles guardas de célula).
+#
+# TOTAL: 37
+services/alunos/tests/test_inv_p5_dedup_atomico.py :: segundo guarda do INV-P5 (dedup atômico); o documento só cita o test_inv_p5_matricula_lock.py
+services/identidade/tests/test_inv_cookie_de_sessao.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
+services/identidade/tests/test_inv_identidade_idempotente.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
+services/identidade/tests/test_inv_next_seguro.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
+services/identidade/tests/test_inv_papel_derivado.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
+services/identidade/tests/test_inv_porta_nao_consulta_ninguem.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
+services/identidade/tests/test_inv_redirect_uri.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
+services/identidade/tests/test_inv_revogacao.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
+services/identidade/tests/test_inv_sessao_completa_so_para_autorizados.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
+services/identidade/tests/test_inv_sessao_nao_vaza_email.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
+services/leads/tests/test_inv_leads_evento_atomico.py :: guardas de outbox/idempotência da leads escritos junto da célula, sem invariante numerado correspondente no documento
+services/leads/tests/test_inv_leads_evento_idempotente.py :: guardas de outbox/idempotência da leads escritos junto da célula, sem invariante numerado correspondente no documento
+services/leads/tests/test_inv_leads_reentrega_pel.py :: guardas de outbox/idempotência da leads escritos junto da célula, sem invariante numerado correspondente no documento
+services/mensageria/tests/test_inv_mensageria_evento_atomico.py :: guarda de outbox atômica da mensageria, escrito sem invariante numerado no documento
+services/quiz/tests/test_inv_pontuacao_servidor_e_outbox.py :: o INV-P6 cita 'padrão replicado em quiz' sem numerar os guardas próprios da célula
+services/quiz/tests/test_inv_relay_outbox.py :: o INV-P6 cita 'padrão replicado em quiz' sem numerar os guardas próprios da célula
+services/sugestoes/tests/test_inv_avaliacao_interna_fora_do_alcance.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_aviso_e_so_do_dono.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_aviso_nasce_com_o_status.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_caixa_nao_assina_sessao.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_entrada_falha_fechada.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_entrada_sem_matricula.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_entrada_staff_sem_matricula.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_envelope_casa_com_contrato.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_historico_append_only.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_identidade_idempotente.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_matricula_reembolsada_entra.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_nao_planejado_exige_justificativa.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_outbox_transacional.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_rate_limit_sugestoes.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_sem_fk_para_fora.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_sem_sessao_nada.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_sessao_nao_vaza_email.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_so_staff_modera.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_status_grava_historico.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_voto_pelo_endpoint.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
+services/sugestoes/tests/test_inv_voto_unico_por_ator.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md

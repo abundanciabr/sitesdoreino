@@ -47,6 +47,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import contract_freeze  # noqa: E402
+import guarda_dos_guardas  # noqa: E402
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
     Estado,
@@ -180,6 +181,17 @@ def rodar_freeze(raiz: Path) -> list[Resultado]:
     return contract_freeze.rodar(raiz=raiz).resultados
 
 
+def rodar_guardas(raiz: Path) -> list[Resultado]:
+    """O portão que prova que os OUTROS guardas continuam existindo e mordendo.
+
+    Ele também roda dentro do `testador` (há um teste em `ci/tests/` que chama
+    a mesma função contra o repositório real), e é por lá que ele chega aos
+    workflows `muralhas` e `alarme-main` sem uma linha de YAML nova. Aqui ele é
+    portão de primeira classe para que a saída local diga o nome dele.
+    """
+    return guarda_dos_guardas.rodar(raiz=raiz).resultados
+
+
 def rodar_testes_do_testador(raiz: Path) -> Resultado:
     """A suíte que prova que o próprio instrumento de medição funciona."""
     proc = subprocess.run(
@@ -289,7 +301,7 @@ def celulas_tocadas(raiz: Path, base: str) -> list[str]:
     return sorted(encontradas)
 
 
-PORTOES = ("freeze", "muralhas", "testador")
+PORTOES = ("freeze", "muralhas", "guardas", "testador")
 
 
 def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relatorio:
@@ -320,6 +332,9 @@ def rodar(apenas: list[str] | None = None, celula: str | None = None) -> Relator
     if "muralhas" in escolhidos:
         for portao in MURALHAS:
             relatorio.registrar(portao.rodar(raiz))
+    if "guardas" in escolhidos:
+        for r in rodar_guardas(raiz):
+            relatorio.registrar(r)
     if "testador" in escolhidos:
         relatorio.registrar(rodar_testes_do_testador(raiz))
     if celula:
@@ -378,6 +393,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         print(
             "  muralhas   — cerca de célula, orçamento de mudança, guarda de segredos"
+        )
+        print(
+            "  guardas    — INVARIANTES.md × disco: todo teste-guarda existe e ainda "
+            "morde (ci/guarda_dos_guardas.py)"
         )
         print(
             "  testador   — a suíte adversarial que prova que o freeze falha quando deve"
