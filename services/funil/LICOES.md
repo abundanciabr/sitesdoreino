@@ -522,3 +522,17 @@ Escrever o nome da tag de rota crua dentro de um **comentário HTML**, para expl
 por que ela não é usada, **reprova o boot da célula**. Aconteceu ao escrever
 `login.html`: a mensagem diz "`{% url %}` cru em template i18n" e o arquivo não tem
 nenhum. Se precisar mencionar a tag numa explicação, descreva-a em palavras.
+
+## A identidade mudou de casa — e custou exatamente o prometido (25/08/2026)
+
+A seção acima ("O site PERGUNTA quem é a pessoa") dizia que no dia da célula
+dedicada a mudança do lado de cá seria reapontar um endereço. O dia chegou
+(`docs/decisoes/DECISAO-celula-de-identidade.md`) e foi isto: `clients.py`
+renomeou o par (`IDENTIDADE_API_URL`/`TOKEN_IDENTIDADE`, contrato
+`contracts/identidade.openapi.yaml` — a MESMA operação `getSession`),
+`enderecos.py` trocou os defaults públicos, e nasceu o vocabulário de recusa:
+a porta de lá não renderiza página, então toda recusa volta para
+`/{idioma}/login?erro=<chave>` e a tradução mora em `traducoes/login.yaml`
+(chaves `erro_*`). As chaves são contrato entre as duas células — mudou lá,
+muda aqui. E o botão de entrar agora leva `?next=/{idioma}/`: quem entra em
+espanhol volta ao espanhol.

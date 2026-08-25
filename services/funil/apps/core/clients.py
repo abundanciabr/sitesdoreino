@@ -1,6 +1,6 @@
 # apps/core/clients.py  # [RECEITA:R2 v1]
 # Fala SÓ o que está nos contratos congelados de catalogo, leads e sugestoes.
-# Em dev, aponte CATALOGO_API_URL/LEADS_API_URL/SUGESTOES_API_URL para os mocks
+# Em dev, aponte CATALOGO_API_URL/LEADS_API_URL/IDENTIDADE_API_URL para os mocks
 # prism (make mocks) — nunca suba a outra célula, nunca leia o banco dela.
 import logging
 import os
@@ -76,7 +76,7 @@ class LeadsClient:
         return r.json()
 
 
-class SugestoesClient:
+class IdentidadeClient:
     """`contracts/sugestoes.openapi.yaml`, operação `getSession` — leitura pura.
 
     Lei do assunto: `docs/decisoes/DECISAO-onde-mora-a-sessao.md`. O site não lê
@@ -98,8 +98,8 @@ class SugestoesClient:
     TIMEOUT = 2.0
 
     def __init__(self) -> None:
-        self.base = os.environ["SUGESTOES_API_URL"].rstrip("/")
-        self.token = os.environ["TOKEN_SUGESTOES"]
+        self.base = os.environ["IDENTIDADE_API_URL"].rstrip("/")
+        self.token = os.environ["TOKEN_IDENTIDADE"]
 
     def obter_sessao(self, cookie: str) -> dict | None:
         """Quem é a pessoa desta requisição, ou `None`.

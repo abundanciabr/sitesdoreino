@@ -149,19 +149,33 @@ def cadastro(request):
     )
 
 
+# O vocabulário de recusa da célula `identidade` (LICOES.md dela: "o
+# vocabulário de recusa é CONTRATO com o funil") — toda recusa da porta volta
+# para esta página com `?erro=<chave>`, e cada chave tem tradução própria em
+# `traducoes/login.yaml`. Chave fora desta lista é ignorada em silêncio: query
+# string é entrada de rede, nunca vira chave de catálogo sem passar na cerca.
+CHAVES_DE_RECUSA = {
+    "interrompida",
+    "nao-confere",
+    "nao-configurada",
+    "google-indisponivel",
+    "email-nao-verificado",
+}
+
+
 @require_GET
 def entrar(request):
-    """`/{idioma}/login` — a porta de entrada do site (DECISAO-onde-mora-a-sessao).
+    """`/{idioma}/login` — a porta de entrada do site.
 
-    Ela leva ao Google; a sessão nasce do outro lado, na célula que hoje cuida
-    dela. **Esta view não abre sessão nenhuma e não lê cookie nenhum** — quem
-    faz isso é a Caixa, que tem a chave e o banco (Lei 2, Lei 3).
+    Leis: DECISAO-onde-mora-a-sessao e, desde 25/08/2026,
+    DECISAO-celula-de-identidade. Ela leva ao Google; a sessão nasce do outro
+    lado, na célula `identidade`. **Esta view não abre sessão nenhuma e não lê
+    cookie nenhum** — quem faz isso é quem tem a chave e o banco (Lei 2, Lei 3).
 
-    Por que existe uma página, se o cabeçalho de sessão já tem "Entrar" em toda
-    página: é aqui que a pessoa lê, **antes** da tela do Google, qual e-mail
-    usar. É a metade barata de evitar a fricção conhecida da `DECISAO-EVO-01`
-    §5 (conta Google ≠ e-mail da compra) — a outra metade é a tela de recusa,
-    que já existe do lado de lá. Também dá um endereço para compartilhar.
+    O `?next=` diz à `identidade` aonde devolver a pessoa depois de entrar —
+    a home do idioma desta página. E o `?erro=` é a volta do vocabulário de
+    recusa: a porta de lá não renderiza página; quem explica a recusa, nos
+    três idiomas, é esta tela.
 
     Fora do sitemap de propósito: página de entrada não é conteúdo que alguém
     procure no Google, e indexá-la só a faria concorrer com a própria marca.
@@ -170,7 +184,14 @@ def entrar(request):
         # Mesmo tratamento do cadastro: site fora do registro i18n não tem esta
         # página — 404, e não uma página em inglês servida por engano.
         raise Http404("login só existe em site registrado no i18n")
-    return render(request, "funil/login.html", {"url_de_entrada": url_de_entrada()})
+    erro = request.GET.get("erro") or ""
+    if erro not in CHAVES_DE_RECUSA:
+        erro = ""
+    destino = f"/{request.idioma}/"
+    entrada = f"{url_de_entrada()}?{urlencode({'next': destino})}"
+    return render(
+        request, "funil/login.html", {"url_de_entrada": entrada, "erro": erro}
+    )
 
 
 @require_GET

@@ -8,7 +8,7 @@ from django.utils import translation
 from django.utils.cache import patch_vary_headers
 
 from apps.core import enderecos
-from apps.core.clients import CatalogoClient, SugestoesClient
+from apps.core.clients import CatalogoClient, IdentidadeClient
 from apps.i18n.idiomas import dados_seo, idiomas_do_site
 
 _CACHE: dict = {}
@@ -38,7 +38,7 @@ def _consultar_sessao(cookie: str) -> "dict | None":
     hit = _CACHE_DE_SESSAO.get(cookie)
     if hit and hit[0] > agora:
         return hit[1]
-    dados = SugestoesClient().obter_sessao(cookie)
+    dados = IdentidadeClient().obter_sessao(cookie)
     if len(_CACHE_DE_SESSAO) >= MAXIMO_DE_SESSOES_EM_CACHE:
         _CACHE_DE_SESSAO.clear()
     # O `None` também é cacheado: visitante com cookie de outra coisa (ou sessão

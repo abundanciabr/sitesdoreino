@@ -3,7 +3,7 @@
 Entrega 3 da `docs/decisoes/DECISAO-onde-mora-a-sessao.md`. O `funil` não lê o
 cookie de sessão (ele é assinado com a chave da outra célula e aponta para o
 banco dela): ele **pergunta**, pelo contrato congelado
-`contracts/sugestoes.openapi.yaml`, operação `getSession`.
+`contracts/identidade.openapi.yaml`, operação `getSession`.
 
 Quatro coisas são guardadas aqui, e cada uma corresponde a uma forma diferente
 de esta entrega dar errado:
@@ -82,7 +82,7 @@ def test_o_cookie_e_repassado_intacto_e_o_par_se_identifica(client, logado):
     assert chamada.headers["cookie"] == COOKIE
     # E o par se identifica — são credenciais diferentes provando coisas
     # diferentes (quem chama × quem é a pessoa).
-    assert chamada.headers["authorization"] == "Bearer token-do-par-funil-sugestoes"
+    assert chamada.headers["authorization"] == "Bearer token-do-par-funil-identidade"
 
 
 # ---------------------------------------------------------------------------
@@ -201,19 +201,21 @@ def test_o_site_nunca_recebe_nem_mostra_email(client, rede):
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("idioma", IDIOMAS)
 def test_a_pagina_de_entrada_leva_ao_google(client, rede, idioma):
+    """O botão vai à porta da `identidade`, dizendo aonde voltar (`next` =
+    a home DO IDIOMA da página — quem entrou em espanhol volta ao espanhol)."""
     conteudo = client.get(f"/{idioma}/login", HTTP_HOST=HOST_MESH).content.decode()
 
-    assert 'href="/forms/sugestoes/entrar/google"' in conteudo
+    assert f'href="/entrar/google?next=%2F{idioma}%2F"' in conteudo
 
 
 def test_o_endereco_de_entrada_vem_do_ambiente(client, rede, monkeypatch):
-    """No dia em que a identidade mudar de casa, é UMA variável — não uma caça
-    a endereços cravados em template."""
-    monkeypatch.setenv("URL_DE_ENTRADA", "/entrar/google")
+    """A mudança de casa da identidade FOI uma variável (25/08/2026) — e o
+    guarda continua provando que a próxima também será."""
+    monkeypatch.setenv("URL_DE_ENTRADA", "/outra/porta")
 
     conteudo = client.get("/pt-br/login", HTTP_HOST=HOST_MESH).content.decode()
 
-    assert 'href="/entrar/google"' in conteudo
+    assert 'href="/outra/porta?next=%2Fpt-br%2F"' in conteudo
 
 
 def test_caminho_nu_leva_ao_idioma_padrao(client, rede):
@@ -236,3 +238,25 @@ def test_a_entrada_fica_fora_do_sitemap(client, rede):
 
     assert "/cadastro" in corpo  # sanidade: o sitemap está sendo gerado
     assert "/login" not in corpo
+
+
+def test_recusa_da_identidade_e_explicada_no_idioma_da_pagina(client, rede):
+    """O vocabulário de recusa (?erro=chave) vem da célula `identidade`, que
+    não renderiza página — quem explica é esta tela, traduzida."""
+    conteudo = client.get(
+        "/pt-br/login", {"erro": "email-nao-verificado"}, HTTP_HOST=HOST_MESH
+    ).content.decode()
+
+    assert 'class="recusa"' in conteudo
+    assert "não confirma esse e-mail como verificado" in conteudo
+
+
+def test_erro_desconhecido_na_query_e_ignorado(client, rede):
+    """Query string é entrada de rede: chave fora da lista não vira catálogo
+    nem eco — a página abre limpa, como se o parâmetro não existisse."""
+    conteudo = client.get(
+        "/pt-br/login", {"erro": "<script>alert(1)</script>"}, HTTP_HOST=HOST_MESH
+    ).content.decode()
+
+    assert 'class="recusa"' not in conteudo
+    assert "alert(1)" not in conteudo
