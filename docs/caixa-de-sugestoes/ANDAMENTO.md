@@ -5,13 +5,13 @@
 > Caixa atualiza esta página **e** o painel no fechamento — se os dois
 > discordarem, avise: é bug de processo.
 >
-> Última atualização: **23/08/2026** — nome e endereço definidos; auditoria feita.
+> Última atualização: **25/08/2026** — EVO-30 entregue: a Caixa ganhou rosto.
 
 **Legenda:** ⬜ na fila · 🔵 em andamento · ✅ entregue (com prova) · 🔴 travado · 🙋 precisa de você
 
 ## Onde estamos
 
-**Fase atual: LOTE 2 FECHADO (24/08/2026) — A CAIXA ESTÁ NO AR** em `meshcraft.top/forms/sugestoes/` (medido da internet: `/entrar` responde 200). O plano mestre existe, a auditoria do
+**Fase atual: LOTE 3 — A CAIXA TEM ROSTO (25/08/2026).** O EVO-30 está no ar: o aluno abre o quadro em grade, alterna entre *Mais votadas* e *Novas*, vota e desvota no card, abre uma ideia e vê o histórico com a resposta da equipe, e manda a dele com a busca de duplicata na frente. Falta o EVO-31 (roadmap público + sininho) para fechar o lote. *(Marco anterior: LOTE 2, 24/08/2026 — a Caixa entrou no ar)* em `meshcraft.top/forms/sugestoes/` (medido da internet: `/entrar` responde 200). O plano mestre existe, a auditoria do
 terreno foi feita, e o nome e o endereço estão decididos: a ferramenta chama-se
 **Caixa de Sugestões** e vai morar em **meshcraft.top/forms/sugestoes/**. Falta
 a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem nenhuma pendência sua.
@@ -53,8 +53,8 @@ a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem ne
 
 | Despacho | O que entrega | Estado | PR | Nota |
 |---|---|---|---|---|
-| EVO-30 | O quadro visual do protótipo v2: ver, votar, sugerir pelo navegador | ⬜ | — | |
-| EVO-31 | O roadmap público + o sininho de notificação | ⬜ | — | |
+| EVO-30 | O quadro visual do protótipo v2: ver, votar, sugerir pelo navegador | ✅ | #166 | **deploy verde 25/08**; coube inteiro em 14 arquivos (sem split 30a/30b); suíte 218 → 233. Achado que vale para a plataforma: `armadilhas/102` — sob prefixo de caminho, `{% static %}` e `{% url %}` leem prefixos DIFERENTES, e a página chega sem estilo **só em produção** |
+| EVO-31 | O roadmap público + o sininho de notificação | ⬜ | — | próximo da fila; o trilho da esquerda do quadro já nasceu com o lugar da faixa de roadmap. A aba "Em alta" e o painel "Meu impacto" ficaram para a V1.2 |
 
 ## Lote 4 — O corredor
 
@@ -64,6 +64,8 @@ a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem ne
 | EVO-41 | MVP declarado pronto, com o checklist da spec conferido item a item | ⬜ | — | fecha o plano |
 
 ## Linha do tempo
+
+- **25/08/2026** — **EVO-30: a Caixa ganhou rosto** (PR #166, deploy verde). Despachado dentro de um lote de 5 frentes paralelas; coube inteiro em 14 arquivos. O guarda morde: quebrar o link do estilo deixa 7 testes vermelhos. Prova de fora, ao vivo: o quadro exige login (302 para `/entrar`) e a folha de estilo responde 200 no endereço com o prefixo da célula. Achado promovido a `armadilhas/102` — `funil` e `checkout` estavam certas por **acidente de endereço**, não por desenho.
 
 - **23/08/2026 (noite)** — **Nome e endereço decididos pelo mantenedor:**
   *Caixa de Sugestões*, em `meshcraft.top/forms/sugestoes/`. A célula passa a
