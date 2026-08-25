@@ -1,0 +1,40 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Visão geral{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft · Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <h1>Visão geral</h1>
+  <p class="subtitulo">A sala de comando da plataforma. Por enquanto, o começo dela.</p>
+
+  <div class="cartoes">
+    <div class="cartao">
+      <div class="rotulo">Quem está aqui</div>
+      <div class="valor">{{ admin.nome }}</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Área administrativa</div>
+      <div class="valor" style="color:var(--verde)">No ar</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Agora</div>
+      <div class="valor">{{ agora|date:"d/m/Y H:i" }}</div>
+    </div>
+  </div>
+
+  {# Estado vazio HONESTO, e ele é deliberado: no dia 1 tudo aqui seria zero, e
+     uma parede de zeros sem explicação é lida como "está tudo quebrado". A
+     cadeira de produto apontou isso na auditoria — todo número desta área
+     nasce com a frase que diz o que ele significa. #}
+  <p style="margin-top:28px" class="aviso">
+    <b>Ainda não há métricas aqui — e isso é o esperado.</b>
+    Esta página é o primeiro degrau: ela existe para provar que a porta funciona
+    (quem não está na lista não chega até aqui). Os painéis de números vêm na
+    próxima fase, um por vez, e cada um só aparece depois que a parte do sistema
+    que fornece aquele dado souber respondê-lo.
+  </p>
+</div>
+{% endblock %}

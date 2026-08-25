@@ -64,6 +64,45 @@ de despacho:
   inclusive de mesma origem. Este erro já foi cometido uma vez, no papel, e
   pego na revisão (`armadilhas/109`).
 
+## A porta (PR 3, 25/08/2026) — o que ela decidiu e o que ficou de fora
+
+**Um ponto de autorização, e só um.** Nenhuma view confere crachá: se ela
+está sendo executada, o middleware já deixou passar. A lista de isentos é
+`frozenset` conferido por **igualdade exata** — rota nova não escapa em
+silêncio. É assim que a omissão vira impossível em vez de improvável, e é o
+contrário de espalhar `if` por view, que é como `armadilhas/024` e `/086`
+nascem.
+
+**Três respostas diferentes para três situações que se parecem de dentro:**
+
+| Situação | Resposta | Por quê |
+|---|---|---|
+| não consegui perguntar | **503** | mandar ao login seria mandar à porta que também caiu — e é aqui que o dono vem olhar quando algo está errado |
+| perguntei, e o e-mail não está na lista | **404** | para quem não é da casa, `/admin` não existe |
+| não há sessão | 302 | a pessoa pode entrar e voltar ao lugar certo |
+
+**O CSS mora no template, embutido.** Não é preguiça: célula sob
+`SCRIPT_NAME` precisa de rota própria de estático para não dar 404 só em
+produção (`armadilhas/083`), e a tag `static` monta endereço do prefixo errado
+nessa situação (`armadilhas/102`). Enquanto a folha couber no `base.html`, ela
+fica lá — zero rota, zero armadilha. Quando crescer, entra como rota **nomeada**
+servida por `url`, nunca por `static`. E a lista de isentos **não** ganha
+prefixo por causa disso sem que a rota exista de verdade.
+
+**O que ficou DE FORA deste PR, de propósito: a auditoria.** A lei (§4) exige
+que toda escrita gere linha de auditoria append-only, e isso continua valendo
+por inteiro. Só que **esta célula ainda não escreve nada** — não há formulário
+nenhum, e a área é toda de leitura até a fase 4. Construir agora a tabela, o
+trigger e os guardas seria entregar mecanismo sem o que ele protege.
+
+**A regra que fica para quem escrever o primeiro formulário:** a auditoria
+entra no MESMO PR que a primeira escrita, ou num PR imediatamente anterior a
+ela — nunca depois. Com trigger no banco, e não só guarda em Python
+(`armadilhas/079`: override de `save()` é contornado por `psql`, por
+`cursor.execute` e por qualquer código que não importe a classe). O mesmo vale
+para a verificação de frescor de sessão (`autenticada_em`), que exige Rito §3
+próprio na `identidade` e só faz falta quando houver escrita.
+
 ## Armadilhas conhecidas deste caminho (o mapa, antes de doer)
 
 A lei tem a tabela completa no §7. As que mordem primeiro, na ordem em que

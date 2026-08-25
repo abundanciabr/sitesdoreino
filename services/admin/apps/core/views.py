@@ -1,30 +1,43 @@
-"""O esqueleto da área administrativa — por enquanto, só a sonda.
+"""As páginas da área administrativa.
 
-A célula `admin` nasce vazia de propósito (`DECISAO-celula-admin.md` §6, a
-escada de entrega): este PR entrega a casa, o `deploy-celula` e o rollback;
-a PORTA (quem entra, e o que acontece quando a `identidade` está fora do ar)
-vem no PR 3, com os testes-guarda dela no mesmo PR.
+Quem decide se alguém chega até aqui é o middleware `apps.core.porta` — e ele
+é o ÚNICO ponto de autorização da célula. Nenhuma view abaixo confere crachá:
+se ela está sendo executada, a porta já deixou passar.
 
-**Nada nesta célula responde a visitante anônimo além do `/healthz`.** Quando a
-porta chegar, ela é fail-CLOSED — o inverso do site público — e a lista de
-caminhos isentos será enumerada e guardada por igualdade exata, para rota nova
-não escapar em silêncio (`DECISAO-celula-admin.md` §3).
+Espalhar a conferência por view é como o `armadilhas/024` e o `/086` nascem —
+a próxima view escrita esquece, e o buraco não aparece em teste nenhum porque
+ninguém escreve teste para a view que esqueceu. Um ponto só, com igualdade
+exata na lista de isentos, é o que torna a omissão impossível em vez de
+improvável.
+
+`request.admin` está garantido em toda view não isenta (o middleware o
+preenche). O `/healthz` é a exceção declarada, e por isso não o usa.
 """
 
 from django.http import JsonResponse
+from django.shortcuts import render
+from django.utils import timezone
 from django.views.decorators.http import require_GET
 
 
 @require_GET
 def healthz(request):
-    """A sonda do container. Rota de MÁQUINA, e a única pública desta célula.
+    """A sonda do container. Rota de MÁQUINA, e a única isenta da porta.
 
-    Quando o middleware da porta nascer (PR 3), a isenção dele compara
-    `request.path_info`, **nunca** `request.path` — pela borda pública o
-    Traefik não remove o prefixo, e `request.path` chega como `/admin/healthz`
-    (`armadilhas/029`, medido ao vivo em duas células). E a isenção precisa
-    valer para as DUAS formas de entrada, porque as duas existem em produção:
+    A isenção é comparada por `request.path_info` (nunca `request.path`) e
+    vale para as DUAS formas de entrada, porque as duas existem em produção:
     `/admin/healthz` pela internet e `/healthz` pelo healthcheck do compose
-    (`tests/test_healthz_script_name.py` trava as duas).
+    (`armadilhas/029`). Guardas: `tests/test_healthz_script_name.py` e
+    `tests/test_inv_porta_fail_closed.py`.
     """
     return JsonResponse({"status": "ok"})
+
+
+@require_GET
+def visao_geral(request):
+    """A home da área. Nasce quase vazia, e o template diz isso em voz alta."""
+    return render(
+        request,
+        "admin/visao_geral.html",
+        {"admin": request.admin, "agora": timezone.localtime()},
+    )

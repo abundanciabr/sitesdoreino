@@ -56,7 +56,28 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    # A PORTA. Vem por ULTIMO de proposito: quando ela roda, o CommonMiddleware
+    # ja normalizou o caminho (APPEND_SLASH) e o CSRF ja rejeitou o que tinha de
+    # rejeitar. E ela e o UNICO ponto de autorizacao da celula — nenhuma view
+    # confere cracha por conta propria (apps/core/views.py explica por que).
+    "apps.core.porta.PortaAdministrativa",
 ]
+
+# ---------------------------------------------------------------------------
+# As duas variaveis que a PORTA le (apps/core/porta.py)
+# ---------------------------------------------------------------------------
+# Lidas com `.get()` e default inofensivo, NUNCA fail-hard no import
+# (`armadilhas/097`): env ausente fecha a area, mas nao derruba o container —
+# o `/healthz` continua respondendo e o deploy nao entra em crashloop.
+#
+# ADMIN_EMAILS e a UNICA fonte de "pode entrar" (DECISAO-celula-admin par.2).
+# Vazia ⇒ ninguem entra. Fail-closed por construcao.
+ADMIN_EMAILS = os.environ.get("ADMIN_EMAILS", "")
+
+# Para onde mandar quem nao tem sessao. E o mesmo endereco publico que o
+# `funil` usa — a tela de login mora la, nos tres idiomas, e esta celula nunca
+# serve caminho com forma de idioma.
+URL_DE_ENTRADA = os.environ.get("URL_DE_ENTRADA", "/entrar/google")
 
 # ---------------------------------------------------------------------------
 # ESTA CÉLULA NÃO ASSINA SESSÃO — e a ausência é a decisão

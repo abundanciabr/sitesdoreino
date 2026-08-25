@@ -670,6 +670,14 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # pagando uma linha da dívida de `ci/guardas-nao-declarados.txt`, que é
         # exatamente o que a catraca existe para provocar.
         "INV-SUG10",
+        # Nasceu com a porta da célula `admin` (25/08/2026): autorização falha
+        # fechada, e é o único ponto de autorização daquela célula.
+        #
+        # A ordem desta lista é a de APARIÇÃO no documento, não a numérica —
+        # foi o que este teste provou em 25/08, quando duas sessões paralelas
+        # inseriram blocos no mesmo arquivo e a lista ficou com um código
+        # repetido. O inventário pegou na hora.
+        "INV-P13",
         "INV-CI01",
     ]
 
