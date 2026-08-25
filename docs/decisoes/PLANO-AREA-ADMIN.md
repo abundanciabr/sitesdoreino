@@ -259,16 +259,17 @@ para o vermelho não assustar.
 
 ## §9 — O que o mantenedor decide agora
 
-**[BANCA] Esta seção foi reescrita.** A versão original pedia aprovação de uma
-ordem que o próprio plano já tinha escolhido, e gastava um dos três itens numa
-questão de nome. As perguntas que importam são as do `PARECER-BANCA-AREA-ADMIN.md`
-§7; as seis, em resumo:
+**[BANCA] Esta seção foi reescrita**, e **[FILOSOFIA-DE-ESCOPO] a pergunta 1
+já foi respondida em 25/08/2026** — `DECISAO-filosofia-de-escopo.md`: este
+projeto é para ser feito completo, não minimalista, mesmo custando mais tempo.
+As perguntas que restam são as do `PARECER-BANCA-AREA-ADMIN.md` §7:
 
-1. **Fazer agora, ou fazer "O Mirante" primeiro?** Três cadeiras aprovam o plano
-   completo; a de produto recomenda a versão reduzida (1–2 PRs, sem célula nova)
-   até existir um curso publicado — e lembra que há um congelamento arquitetural
-   escrito (*"nenhuma célula nova até um piloto pago rodar"*) que isto quebraria
-   pela terceira vez. **Esta é a decisão-mãe; todas as outras dependem dela.**
+1. ~~Fazer agora, ou fazer "O Mirante" primeiro?~~ **RESPONDIDA: plano
+   completo.** A escola só existe quando existir; até lá, a área admin nasce e
+   cresce mesmo assim — inclusive quebrando de novo, deliberadamente, o
+   congelamento arquitetural que dizia "nenhuma célula nova até um piloto
+   pago". Isso não dispensa a disciplina de entrega (PRs pequenos, uma célula
+   por PR, Ritos de Contrato) — só decide que a construção não espera.
 2. **A área admin vai ESCREVER no catálogo, ou só ler?** Decide o tamanho do
    §4.5 e se a área ganha autoridade sobre preço de oferta.
 3. **A métrica pode ser de "há alguns segundos" (evento, barato) ou precisa ser

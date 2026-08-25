@@ -247,6 +247,15 @@ seção de métricas, não a última.
 
 ## §4 — A alternativa da cadeira de produto: "O Mirante"
 
+> ⚠️ **[SUPERSEDIDO em 25/08/2026]** — o mantenedor decidiu, por escrito, que
+> este projeto é para ser feito completo, não minimalista
+> (`docs/decisoes/DECISAO-filosofia-de-escopo.md`). A recomendação de adiar a
+> área admin por um recorte reduzido **não vale mais como recomendação a
+> seguir** — a pergunta 1 do §7 abaixo está fechada: **plano completo.** A
+> análise técnica que segue continua registrada porque descreve fatos reais
+> (custo de oportunidade, o que já existe na fila) — não porque a conclusão
+> dela ("fazer menos") ainda esteja de pé.
+
 Recorte que entrega a dor real (ver os painéis fora do PC) pelo menor custo:
 
 - **1–2 PRs na célula `funil`** — ela já serve páginas, já tem cliente de sessão
@@ -327,10 +336,11 @@ Vale registrar, porque um plano só com críticas não ajuda a decidir:
 
 Nenhuma delas é decisão de agente:
 
-1. **Fazer agora, ou fazer o Mirante e esperar?** Três cadeiras aprovam o plano;
-   a de produto recomenda a versão reduzida até existir um curso publicado e o
-   primeiro aluno pagante — e lembra que há um congelamento arquitetural escrito
-   (§3.5) que isto quebraria pela terceira vez.
+1. ~~Fazer agora, ou fazer o Mirante e esperar?~~ **[RESPONDIDA em 25/08/2026]
+   — plano completo.** O mantenedor decidiu por escrito
+   (`DECISAO-filosofia-de-escopo.md`) que este projeto sempre escolhe a opção
+   completa sobre a reduzida, mesmo custando mais tempo — inclusive quebrando
+   de novo, deliberadamente, o congelamento arquitetural do §3.5.
 2. **A área admin vai ESCREVER no catálogo, ou só ler?** Decide o §2.5 e o
    tamanho da seção de cursos. Se for escrever, a área ganha autoridade sobre
    preço de oferta — o que roça a diretiva "pagamento por último".
