@@ -85,6 +85,31 @@ http:
       service: sugestoes
       tls: {}
 
+    identidade:
+      # O login do site (DECISAO-celula-de-identidade, 25/08/2026): a dança com
+      # o Google e a saída. `/entrar/google/retorno` é o endereço EXATO
+      # cadastrado no console do Google em 24/08/2026 — por isso o prefixo é
+      # `/entrar`, sem SCRIPT_NAME: a célula declara os caminhos por extenso.
+      # A superfície de máquina (`/interno`) NÃO tem rota aqui, de propósito:
+      # quem pergunta "quem é este?" o faz pela rede interna do Docker.
+      # Mesma escala de prioridade do resto: 10 = prefixo de página, contra o
+      # 1 do catch-all do funil.
+      # `Host(...)` explicito, ao contrario das outras rotas de pagina: o
+      # `redirect_uri` que vai ao Google e montado a partir do Host da
+      # REQUISICAO (Lei 9, multissitio) e o Google so aceita o endereco
+      # cadastrado no console — que hoje existe para `meshcraft.top` e mais
+      # nenhum. Sem esta clausula, qualquer dominio apontado para esta VPS
+      # serviria a tela de login da plataforma (o login falharia no Google,
+      # mas a pagina apareceria: materia-prima de golpe). Dominio novo com
+      # login = uma linha aqui + o retorno dele cadastrado no console.
+      # Achado da cadeira de IAM, auditoria de 25/08/2026.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/entrar`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: identidade
+      tls: {}
+
     funil:
       # Catch-all: a raiz e tudo que nenhum prefixo pegou, em QUALQUER domínio.
       rule: "PathPrefix(`/`)"
@@ -131,3 +156,6 @@ http:
     sugestoes:
       loadBalancer:
         servers: [ { url: "http://sugestoes:8000" } ]
+    identidade:
+      loadBalancer:
+        servers: [ { url: "http://identidade:8000" } ]

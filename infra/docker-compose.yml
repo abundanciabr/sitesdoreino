@@ -96,6 +96,14 @@ services:
       redis:
         condition: service_started
 
+  # O login do site (DECISAO-celula-de-identidade, 25/08/2026): Google, cookie
+  # de sessão e a resposta "quem é o dono desta sessão?". Sem auxiliar — não
+  # publica evento e não tem worker.
+  identidade:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
+    env_file: [env/identidade.env]
+
   quiz:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-quiz:${QUIZ_TAG:-main}
