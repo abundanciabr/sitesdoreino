@@ -143,5 +143,6 @@
 | [114](114-o-log-da-ssh-action-ecoa-o-script-inteiro-e-voce.md) | O log da ssh-action ecoa o `script:` inteiro — e você lê o eco como se fosse a saída da execução — um run do `deploy-celula` (ou `deploy-infra`) falha, você filtra o log atrás do erro, e encontra **exatamente a mensagem… | — |
 | [115](115-distinct-num-model-com-meta-ordering-nao-e.md) | `.distinct()` num model com `Meta.ordering` não é distinto pelo que você pediu — e sai certo por acidente — você quer as pessoas distintas que comentaram numa sugestão e escreve o óbvio: | — |
 | [116](116-bulk-create-nao-chama-save-e-o-guarda-que-vigiava.md) | `bulk_create` não chama `save()` — e o guarda que vigiava o `save()` vira decoração sem ficar vermelho — existe um teste-guarda que prova uma regra interceptando `Model.save` — por `monkeypatch`, por sinal `pre_save`… | — |
+| [117](117-painel-novo-por-necessidade-nova-espalha-a.md) | Painel novo a cada necessidade nova espalha a verdade — e o "precisa de você" acaba em três painéis diferentes, onde um pedido do mantenedor pode se perder — o mantenedor abre um painel, não acha o que procura, abre… | — |
 
-**106 entradas.**
+**107 entradas.**
