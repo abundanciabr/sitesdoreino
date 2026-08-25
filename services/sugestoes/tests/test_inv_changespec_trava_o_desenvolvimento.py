@@ -100,6 +100,32 @@ def test_a_recusa_nao_deixa_rastro_nenhum(equipe, planejada):
     assert OutboxEvent.objects.count() == 0
 
 
+def test_a_recusa_nem_chega_a_travar_a_linha(equipe, planejada):
+    """É ESTE teste que dá dente ao degrau 1, e ele nasceu de uma medição.
+
+    A primeira versão deste arquivo não tinha esta asserção — e apagar o
+    degrau 1 inteiro deixava a suíte **verde**, porque o degrau 2 recusava
+    dentro da transação e a view convertia a exceção na mesma página de 400.
+    Um degrau que nenhum guarda distingue é um degrau que ninguém sabe se
+    existe (RETROSPECTIVA §1: garantia sem mecanismo).
+
+    O que o degrau 1 acrescenta, e que só se vê no SQL: a recusa acontece
+    **antes** do `SELECT … FOR UPDATE`. Sem ele, toda tentativa barrada abre
+    transação, trava a linha e desfaz — barato uma vez, e um jeito de segurar
+    a fila de moderação inteira quando alguém insiste no botão.
+    """
+    with CaptureQueriesContext(connection) as consultas:
+        _mudar_pela_tela(equipe, planejada, EM_DESENVOLVIMENTO)
+
+    travas = [
+        c["sql"] for c in consultas.captured_queries if "FOR UPDATE" in c["sql"].upper()
+    ]
+    assert travas == [], (
+        "a recusa travou a linha antes de recusar: "
+        f"{travas[:1]}. O degrau 1 existe para recusar antes da transação."
+    )
+
+
 def test_a_recusa_ensina_o_caminho_em_portugues(equipe, planejada):
     """Erro que não diz o que fazer custa uma rodada de investigação."""
     corpo = _mudar_pela_tela(equipe, planejada, EM_DESENVOLVIMENTO).content.decode()

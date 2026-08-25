@@ -179,10 +179,11 @@ class Sugestao(models.Model):
 
         A `ESPECIFICACAO-CELULA.md` §8 pede a validação "no `save()` ou no
         serializer", e é literalmente aqui. O degrau 1 é o ponto de
-        estrangulamento (`apps/core/changespecs.py`), que recusa com uma frase
-        que ensina o caminho; este degrau existe para o dia em que alguém
-        escrever um SEGUNDO caminho — um comando de `manage.py`, uma correção
-        em massa, um `python manage.py shell` às onze da noite.
+        estrangulamento (`registrar_mudanca_de_status`, em
+        `apps/core/moderacao.py`), que recusa **antes de abrir a transação** e
+        com uma frase que ensina o caminho; este degrau existe para o dia em
+        que alguém escrever um SEGUNDO caminho — um comando de `manage.py`,
+        uma correção em massa, um `python manage.py shell` às onze da noite.
 
         **Custa uma consulta por gravação de linha existente**, para saber o
         status anterior. É a única forma de o guarda não depender de quem
