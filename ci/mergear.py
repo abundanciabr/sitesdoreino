@@ -181,9 +181,70 @@ def checar_mergeabilidade(pr: dict[str, Any]) -> Resultado:
     return Resultado("conflitos", Estado.PASS, f"sem conflitos ({status})")
 
 
+def _mais_recente_por_nome(rollup: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Um veredito por NOME de check — o da execução mais recente.
+
+    POR QUE ISTO EXISTE, medido em 25/08/2026: o mesmo workflow pode rodar mais
+    de uma vez no MESMO commit — basta o evento `labeled` do `muralhas.yml`
+    disparar de novo, que é exatamente o que acontece ao aplicar a label
+    `arquitetural` para abrir a válvula do orçamento. O GitHub mantém as DUAS
+    execuções penduradas no SHA, e o `statusCheckRollup` devolve as duas:
+
+        muralhas  conclusion=FAILURE  startedAt=19:35:07   (antes da label)
+        muralhas  conclusion=SUCCESS  startedAt=19:39:33   (depois da label)
+
+    O portão emitia um `Resultado` por ENTRADA e reprovava para sempre, mesmo
+    com o check verde na cara do GitHub — `gh pr checks` mostrava `muralhas
+    pass` no mesmo instante. Um portão que reprova o que está verde não é
+    conservador: ele é um portão que ensina a ser contornado, e essa é a única
+    maneira de matar uma catraca.
+
+    FAIL-CLOSED NA AMBIGUIDADE. A escolha é pela hora de início; quando ela não
+    dá para decidir — timestamps ausentes, iguais, ou ilegíveis — este código
+    **não escolhe a mais nova por palpite**: fica com a de estado PIOR entre as
+    empatadas. "Não consegui saber qual é a atual" jamais pode virar "então
+    considero a verde" ([INV-CI01]).
+    """
+
+    def _gravidade(check: dict[str, Any]) -> int:
+        """Quanto pior, maior. Serve só para o desempate fail-closed."""
+        status = (check.get("status") or "").upper()
+        conclusao = (check.get("conclusion") or check.get("state") or "").upper()
+        if status not in ("COMPLETED", "") or (status == "" and not conclusao):
+            return 3  # ainda rodando — vira ERROR lá embaixo
+        if conclusao in ("PENDING", "EXPECTED"):
+            return 3
+        if conclusao == "SUCCESS":
+            return 0
+        if conclusao == "SKIPPED":
+            return 1
+        return 2  # falhou
+
+    def _inicio(check: dict[str, Any]) -> str | None:
+        marca = check.get("startedAt") or check.get("completedAt")
+        return marca if isinstance(marca, str) and marca else None
+
+    por_nome: dict[str, dict[str, Any]] = {}
+    for check in rollup:
+        nome = check.get("name") or check.get("context") or "(sem nome)"
+        atual = por_nome.get(nome)
+        if atual is None:
+            por_nome[nome] = check
+            continue
+        quando_novo, quando_atual = _inicio(check), _inicio(atual)
+        if quando_novo and quando_atual and quando_novo != quando_atual:
+            # Os dois se declaram, e em horas diferentes: a mais recente vale.
+            if quando_novo > quando_atual:
+                por_nome[nome] = check
+        elif _gravidade(check) > _gravidade(atual):
+            # Empate ou sem hora ⇒ não dá para saber qual é a atual. Fica a pior.
+            por_nome[nome] = check
+    return list(por_nome.values())
+
+
 def checar_checks(pr: dict[str, Any]) -> list[Resultado]:
     """O coração do portão: todo check precisa ter concluído e passado."""
-    rollup = pr.get("statusCheckRollup") or []
+    rollup = _mais_recente_por_nome(pr.get("statusCheckRollup") or [])
     if not rollup:
         return [
             Resultado(
