@@ -11,6 +11,13 @@
 > planos, usuários, gestão de cursos, vendas, marketing (…) além de formulários
 > de configuração do site, sistema, e outras coisas. (…) acho que será mais uma
 > célula."*
+>
+> ⚠️ **AUDITADO EM 25/08/2026 POR UMA BANCA DE QUATRO CADEIRAS — leia o
+> `PARECER-BANCA-AREA-ADMIN.md` ANTES de agir por este plano.** Três cadeiras
+> aprovaram com ressalvas; a de produto recomenda uma versão reduzida ("O
+> Mirante", parecer §4). As correções de **fato** já entraram neste documento,
+> marcadas com **[BANCA]**; o que depende de decisão do mantenedor está no §7 do
+> parecer e **não** foi alterado aqui.
 
 ---
 
@@ -121,7 +128,8 @@ tem filtro por site — a plataforma é uma, as lojas são N.
 | 4.3 | **Galeria de painéis** | upload de painéis HTML datados (ex.: `painel-retomada.html`), servidos em iframe sandbox; a história do projeto navegável de qualquer lugar | 3 |
 | 4.4 | **Usuários** | lista paginada das contas do site (via operação interna nova na `identidade` — Rito §3) | 4 |
 | 4.5 | **Cursos & conteúdo** | formulários sobre a API do `catalogo` (ofertas, cursos); é o embrião da gestão da Meshcraft Academy — cresce quando a escola nascer | 4 |
-| 4.6 | **Vendas & marketing** | **CONGELADA** — nem métricas de checkout/pagamentos. Só nasce quando o mantenedor disser que o site vai vender | — |
+| 4.6 | **Vendas** | **CONGELADA** — nem métricas de checkout/pagamentos. Só nasce quando o mantenedor disser que o site vai vender | — |
+| 4.6b | **Público & demanda** (marketing) | **[BANCA] separada da anterior: congelar marketing junto com vendas foi erro de categoria.** Visitas, cadastros no `/cadastro`, leads, quizzes completados — por idioma e por site. Existe hoje, é dado real e **não encosta no Mercado Pago**. E é a inversão que importa: métricas de venda seriam zeros; o que produz a ordem "o site vai vender" é ver pessoas deixarem e-mail sem que exista produto | **2** (candidata a primeira seção de métricas) |
 | 4.7 | **Configuração** | o que é **dado** (chave-valor por site no `admin_db`; dados do `catalogo`), com formulário. O que é **código/infra** (`sites.json`, Traefik, envs) continua entrando por PR — a seção mostra somente-leitura e aponta o caminho | 4 |
 | 4.8 | **Roadmap & planos** | página interna editável (markdown no banco). Não confundir com o roadmap PÚBLICO da Caixa (EVO-31): este é o de dentro | 4 |
 
@@ -131,12 +139,36 @@ tem filtro por site — a plataforma é uma, as lojas são N.
   auditoria, painéis enviados, config chave-valor, textos do roadmap. Nada de
   dado de outra célula copiado sem necessidade.
 - **Métricas são federadas por contrato, nunca por banco.** Cada célula
-  provedora ganha `GET /interno/metricas` — leitura, sem rota no Traefik
-  (rede interna, token `TOKENS_ACEITOS_ADMIN` na célula provedora), devolvendo
-  meia dúzia de contadores com `site_id`. Nas células de contrato congelado é
-  Rito §3, **um PR por célula** (muralha). No painel, **fail-open por tile**:
-  célula fora do ar = tile "sem dados", a página abre — é leitura de vitrine
-  interna, não autorização.
+  provedora ganha uma operação de leitura devolvendo meia dúzia de contadores
+  com `site_id`, autenticada por token do par. No painel, **fail-open por
+  tile**: célula fora do ar = tile "sem dados", a página abre — é leitura de
+  vitrine interna, não autorização. **Com orçamento de tempo explícito por tile
+  (2,0s, como o `funil` já faz)**, porque "célula fora do ar" e "célula que
+  pendura" são falhas diferentes. **[BANCA]** três correções de fato:
+  - **O caminho NÃO é uniforme.** `/interno` só existe em `sugestoes` e
+    `identidade`; `leads`, `alunos` e `catalogo` montam em `/api/<celula>/`, e o
+    mount está gravado no `servers:` do contrato congelado. A regra é *"entra na
+    API que a célula JÁ tem"* — **segunda instância `NinjaAPI` é proibida**: o
+    exportador só enxerga `config.api.api`, e o endpoint ficaria fora do contrato
+    com o freeze verde (`armadilhas/041`).
+  - **Não é "sem rota no Traefik".** O Traefik não remove o prefixo, então nas
+    células sob `SCRIPT_NAME` a API de máquina **é alcançável pela internet**.
+    Medido de fora em 25/08/2026: `/forms/sugestoes/interno/sessao` → **401**,
+    `/alunos/api/alunos/matriculas` → **405**, `/interno/sessao` (identidade) →
+    **404**. O token protege, mas o endpoint de métricas nasce exposto — exige o
+    guarda de 401-sem-Bearer no mesmo PR.
+  - **`TOKENS_ACEITOS_ADMIN` sozinho concede ESCRITA.** O conjunto é plano e sem
+    escopo: o mesmo token valeria para `POST /leads` e `POST /matriculas`. O par
+    do admin entra também em `TOKENS_SOMENTE_LEITURA_<PAR>`, conferido no handler
+    — o padrão que a `identidade` já usa para `TOKENS_COMPLETOS` — com
+    teste-guarda no mesmo PR.
+- **[BANCA] A alternativa mais barata para metade disto é evento, não HTTP.**
+  A Caixa já emite `sugestao.criada.v1`, `voto-adicionado`, `voto-removido` e
+  `status-alterado`, todos com `site_id`. Um `admin-consumer` construindo read
+  model no `admin_db` é a Virtude da Lei 3 e faz a primeira provedora da fila
+  custar **zero** rito. Desenho certo: **híbrido** — evento onde já há evento,
+  HTTP onde não há. Qual dos dois depende de uma decisão do mantenedor (parecer
+  §7.3: a métrica pode ser de "há alguns segundos"?).
 - **Cliente HTTP único e reutilizado** (armadilha 082) e **lido em request,
   nunca no `__init__`** (armadilha 097: env no init vira 500 em toda página).
 
@@ -144,24 +176,50 @@ tem filtro por site — a plataforma é uma, as lojas são N.
 
 Copiada do precedente que funcionou (`DECISAO-celula-de-identidade.md` §5),
 com os degraus que as armadilhas 076/088/089 provaram serem obrigatórios.
-Custo honesto, medido no próprio histórico: nascimento de célula = 7–9 merges
-(Lotes 6 e 7). Cada PR respeita o orçamento de 15 arquivos — a divisão abaixo
-já é a conta feita no papel.
+
+**[BANCA] O custo honesto, corrigido.** A versão original desta seção dizia
+"7–9 merges" e "cada PR respeita o orçamento de 15 arquivos". As duas frases
+estavam erradas:
+
+- **7–9 merges abre a PORTA (fase 1). O §4 inteiro é da ordem de 30 merges** —
+  a fase 2 sozinha são 11 PRs. E os "Lotes 6 e 7" citados não eram dois
+  exemplos: eram as duas metades do **mesmo** nascimento (9 + 7 = 16 merges para
+  pôr a `sugestoes` do zero ao ar).
+- **O PR 1 tem ~21 arquivos e NÃO cabe em 15.** O esqueleto Django é
+  indivisível (meia-célula não passa no `make ci`), e os dois precedentes foram
+  **24** (`sugestoes`, #108) e **44** (`identidade`, #142). A saída é a válvula
+  que o próprio portão prevê: **label `arquitetural`** — e atenção à
+  `armadilhas/077`: abrir o PR já com `--label` **não funciona**, é preciso
+  `gh pr close && gh pr reopen` logo depois de criar.
 
 | Passo | Quem | O quê | Notas de mandato |
 |---|---|---|---|
-| PR 1 | agente | **Gênese**: `services/admin` esqueleto (healthz, settings fail-hard, Dockerfile, Makefile, fumaça) + declaração `not-applicable` no `ci/manifesto-de-contratos.json` (motivo: não fornece API; contrato entra pelo Rito §3 se um dia fornecer) + **linha no `rollback.yml`** + promoção deste plano a `DECISAO-celula-admin.md` | `.github/` e `ci/` são CODEOWNERS — o despacho de gênese nasce com esse mandato e anuncia nominalmente (armadilha 076: célula nasce COM rollback) |
-| **H21** | **mantenedor** | UM bloco único, fail-closed, janela rotulada: banco+role `admin` na VPS · `env/admin.env` (SCRIPT_NAME, DATABASE_URL, SECRET_KEY, endereço da `identidade`, token do par, `ADMIN_EMAILS` com o e-mail dele) · acrescentar `TOKENS_ACEITOS_ADMIN`/`TOKENS_COMPLETOS_ADMIN` ao `env/identidade.env` | roteiro `infra/provisionar-admin.sh` entregue no PR 2; registrado em `ARMADILHAS-OPERACAO.md` §1. **Antes do merge do PR 2**, senão crashloop (armadilha 088, lição H18) |
-| PR 2 | agente | **Infra**: serviço no `infra/docker-compose.yml` + router/service no Traefik (Host-bound, §2) + `env/admin.env.exemplo` + `provisionar-admin.sh` + inventário `ci/tests/test_rotas_sem_forma_de_locale.py` | mandato `infra/` + `ci/`; merge SÓ com H21 executado |
-| PR 3 | agente | **A porta** (§3): middleware fail-closed + página Visão geral + auditoria append-only com guardas + registro do par na lei da identidade | testes-guarda das três linhas da tabela do §3 no mesmo PR |
-| PRs 4+ | agente | **Fase 2**: `GET /interno/metricas` numa célula provedora por PR (Rito §3 onde congelado) e a página Métricas no admin | ordem sugerida: `sugestoes` → `identidade` → `leads` → `alunos` → `catalogo` |
-| depois | agente | **Fase 3** (galeria, ~1–2 PRs) → **Fase 4** (usuários, cursos, config, roadmap — 1 despacho por seção) | Fase 4.4 exige Rito §3 na `identidade` |
+| PR 1 | agente | **Gênese**: `services/admin` esqueleto (healthz nas DUAS formas — crua e sob prefixo, settings fail-hard com `TIME_ZONE`, `CSRF_COOKIE_NAME` próprio, `SECURE_PROXY_SSL_HEADER`, Dockerfile, Makefile) + declaração `not-applicable` no `ci/manifesto-de-contratos.json` + **linha no `rollback.yml`** + `constituicoes/AGENTS.admin.md` **[BANCA]** + promoção deste plano a `DECISAO-celula-admin.md` | `.github/` e `ci/` são CODEOWNERS — mandato de gênese, anunciado nominalmente. **Label `arquitetural`** (~21 arquivos) |
+| **PR 2a** | agente | **[BANCA] O provisionamento, SOZINHO e ANTES do passo humano**: `infra/provisionar-admin.sh` + bloco no `infra/provisionamento-postgres.sql` + `infra/env/admin.env.exemplo` + `infra/env/identidade.env.exemplo` (as duas chaves novas) + linha **H21** no `ARMADILHAS-OPERACAO.md` §1 | **Corrige o impasse circular do plano original**: o comando do mantenedor busca o script **da `main`** (`curl .../main/infra/...`). Precedentes: #131 (`sugestoes`) e `a55a179` (`identidade`), ambos com o script separado do compose |
+| **H21** | **mantenedor** | **UMA LINHA**, não um bloco de colar: `curl` do script + `bash`. Idempotente, sem argumentos, sem perguntas, terminando em `PRONTO:` ou `PAROU POR SEGURANÇA:` com o estado DEPOIS conferido. Cria banco+role `admin`, escreve `env/admin.env`, acrescenta as duas chaves ao `env/identidade.env` | Molde: `infra/provisionar-identidade.sh` (H20, deu certo de primeira). **Bloco de colar multi-linha é proibido** — falhou 3× (H18/H19, `RUNBOOK-LOTES.md` §36). **As duas chaves de token precisam ter o MESMO valor**, senão 403 silencioso |
+| **PR 2b** | agente | **Infra**: serviço no `infra/docker-compose.yml` + router/service no Traefik (Host-bound, §2) + cadeia de middleware **própria** do admin **[BANCA]** (o `frameDeny` compartilhado quebraria a galeria do §4.3, e afrouxá-lo enfraqueceria `checkout` e `pagamentos`) + inventário em **três lugares** de `ci/tests/test_rotas_sem_forma_de_locale.py` (`armadilhas/089`) | mandato `infra/` + `ci/`; merge SÓ com H21 conferido — senão o `deploy-infra` reprova **depois** de instalar o compose e devolve o mantenedor ao terminal da VPS |
+| PR 3 | agente | **A porta** (§3): middleware fail-closed + página Visão geral + auditoria append-only (com trigger no banco, não só guarda em Python — `armadilhas/079`) + CSP + lista de caminhos isentos **enumerada e guardada por igualdade exata** **[BANCA]** | testes-guarda das três linhas da tabela do §3 no mesmo PR |
+| PRs 4+ | agente | **Fase 2 — [BANCA] 11 PRs, não 5**: por provedora congelada são **2 PRs** (o Rito §3 proíbe `contracts/` junto com `services/`) **e uma sessão de arquitetura com o mantenedor presente**. Ordem sugerida: `sugestoes` → `identidade` → `leads` → `alunos` → `catalogo`, mais a página Métricas | **Aprovar a fase 2 é aprovar cinco sessões com o mantenedor.** O caminho por evento (§5) reduz isso — decisão dele |
+| depois | agente | **Fase 3** (galeria, 2–3 PRs) → **Fase 4** (usuários, cursos, config, roadmap — 8–12 PRs, 1 despacho por seção, serializados entre si pela muralha "1 PR = 1 célula") | Fase 4.4 exige Rito §3 na `identidade` |
 
-**Aviso de fenômeno esperado:** entre o merge do PR 1 e o fim do PR 2 + H21, o
-`deploy-celula` fica **vermelho em todo merge da célula** com "não tem serviço
-algum em /opt/plataforma/docker-compose.yml" — é ERROR de ambiente, não FAIL de
-código (armadilha 088). O relatório de cada despacho da janela avisa isso ao
-mantenedor de antemão, para o vermelho não assustar.
+**Aviso de fenômeno esperado — [BANCA] são TRÊS, não um:**
+
+1. Entre o merge do PR 1 e o fim do PR 2b, o `deploy-celula` fica **vermelho em
+   todo merge da célula** com "não tem serviço algum em
+   /opt/plataforma/docker-compose.yml" — ERROR de ambiente, não FAIL de código
+   (`armadilhas/088`).
+2. **O `deploy-infra` reprova a plataforma INTEIRA** se o H21 não tiver criado o
+   banco: ele troca os arquivos e só então verifica que todos os serviços estão
+   `running`; o container do admin em crashloop derruba a verificação de todo
+   mundo, **depois** de o compose novo já estar instalado — e a mensagem manda o
+   mantenedor restaurar à mão na VPS. É por isso que o H21 precisa terminar
+   conferindo o estado DEPOIS.
+3. Nessa mesma janela, `admin` **já aparece no menu de rollback** (a linha entrou
+   no PR 1) e **não funciona** — o rollback usa o mesmo `grep` no compose da VPS.
+   Não tente usá-lo antes do PR 2b.
+
+O relatório de cada despacho da janela avisa os três ao mantenedor de antemão,
+para o vermelho não assustar.
 
 ## §7 — Armadilhas já mapeadas deste caminho
 
@@ -192,24 +250,42 @@ mantenedor de antemão, para o vermelho não assustar.
    linha de auditoria não mergeia.
 5. **O `painel-fundacao.html` local continua vivo e obrigatório** — a galeria
    (§4.3) recebe cópias datadas, não o substitui.
-6. **Métricas entram por contrato HTTP interno**, jamais lendo banco alheio —
-   e cada célula provedora é um PR próprio.
+6. **Métricas jamais leem banco alheio** — entram por contrato HTTP **ou por
+   evento** (§5), e **[BANCA]** provedora congelada custa **2 PRs + uma sessão
+   de arquitetura**, não um PR. Token de métrica nunca concede escrita.
 7. **`/admin` é preso a `Host(meshcraft.top)`** — domínio novo com área admin é
    decisão nova, não uma linha a menos no router.
 8. UI só PT-BR, sem rota com forma de idioma, sem página pública.
 
 ## §9 — O que o mantenedor decide agora
 
-1. **Aprovar (ou ajustar) este plano** — nome `admin`, endereço
-   `meshcraft.top/admin/`, o mapa do §4 e a ordem das fases (recomendo: 1 → 2
-   → 3 → 4, porque métricas vivas são o valor que nenhum painel local entrega
-   hoje).
-2. Se preferir **endereço camuflado** (ex.: `/operacao/`), é troca de uma
-   palavra no plano — a proteção real é a porta 404 do §3, não o nome; por
-   isso a recomendação é ficar com `/admin` mesmo.
-3. Ciência de que haverá **um passo manual (H21)**, um bloco único de colar,
-   entre os PRs 1 e 2 — o resto inteiro é dos agentes.
+**[BANCA] Esta seção foi reescrita.** A versão original pedia aprovação de uma
+ordem que o próprio plano já tinha escolhido, e gastava um dos três itens numa
+questão de nome. As perguntas que importam são as do `PARECER-BANCA-AREA-ADMIN.md`
+§7; as seis, em resumo:
+
+1. **Fazer agora, ou fazer "O Mirante" primeiro?** Três cadeiras aprovam o plano
+   completo; a de produto recomenda a versão reduzida (1–2 PRs, sem célula nova)
+   até existir um curso publicado — e lembra que há um congelamento arquitetural
+   escrito (*"nenhuma célula nova até um piloto pago rodar"*) que isto quebraria
+   pela terceira vez. **Esta é a decisão-mãe; todas as outras dependem dela.**
+2. **A área admin vai ESCREVER no catálogo, ou só ler?** Decide o tamanho do
+   §4.5 e se a área ganha autoridade sobre preço de oferta.
+3. **A métrica pode ser de "há alguns segundos" (evento, barato) ou precisa ser
+   "agora" (HTTP, 5 ritos de contrato)?**
+4. **A área que escreve configuração de produção mora na mesma origem e sessão
+   dos visitantes comuns?** (a) mesma origem com CSP + re-autenticação + sessão
+   curta, (b) origem separada, ou (c) mesma origem e **somente leitura**.
+5. **Marketing vira seção própria** (§4.6b), fora do congelamento de vendas?
+6. **O que ele faz às 2h se a porta fechar contra ele?** Se não houver caminho,
+   isso precisa estar escrito antes do PR 1.
+
+Sobre o endereço: se preferir `/operacao/` é troca de uma palavra — a proteção
+real é a porta, não o nome. E o passo manual H21 passa a ser **uma linha**, não
+um bloco de colar (§6).
 
 ## Estado
 
-**Proposta em 25/08/2026 — aguardando a palavra do mantenedor.**
+**Proposta em 25/08/2026 — auditada no mesmo dia por uma banca de quatro
+cadeiras (`PARECER-BANCA-AREA-ADMIN.md`), com as correções de fato já aplicadas.
+Aguardando a palavra do mantenedor sobre as seis perguntas do §9.**
