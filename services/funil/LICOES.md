@@ -536,3 +536,27 @@ a porta de lá não renderiza página, então toda recusa volta para
 (chaves `erro_*`). As chaves são contrato entre as duas células — mudou lá,
 muda aqui. E o botão de entrar agora leva `?next=/{idioma}/`: quem entra em
 espanhol volta ao espanhol.
+
+### Fail-open vale para CONFIGURAÇÃO, não só para rede (25/08/2026)
+
+A auditoria de duas bancas achou, em quatro cadeiras independentes, o buraco
+que a seção acima não cobria: `obter_sessao` tratava `httpx.HTTPError` com
+esmero, mas o endereço e o token eram lidos com `os.environ[...]` **antes**
+disso, no `__init__`. `KeyError` não é `httpx.HTTPError` — ele atravessava o
+`try`, o middleware e o `{% if request.ator %}`, virando **HTTP 500 em toda
+página multilíngue** para qualquer visitante com um cookie qualquer.
+
+Três coisas que valem para o próximo consumidor que copiar este padrão:
+
+- **A falha de configuração é MAIS provável que a de rede** (basta uma linha
+  não colada no servidor) e é invisível para quem testa num navegador limpo —
+  só quem já tem cookie recebe o erro. O `deploy-celula` fica verde.
+- **Ler no ponto de uso, com `.get()`**, e desistir SEM tocar a rede: esperar
+  2s de timeout para descobrir que não há endereço atrasaria toda página.
+- **O guarda vem em PAR**: um teste prova que a página ABRE, outro prova que
+  ela nem tentou a rede. Provados por mutação (voltar o `os.environ[...]`
+  reprova exatamente esses três).
+
+E o `.json()` foi para DENTRO do `try`: `json.JSONDecodeError` é `ValueError`,
+não `httpx.HTTPError` — um `200` com corpo de página de erro de proxy furava o
+fail-open pelo mesmo caminho. É a família do *2xx não é sucesso*.

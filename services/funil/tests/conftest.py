@@ -96,7 +96,7 @@ def ambiente(monkeypatch):
     monkeypatch.setenv("LEADS_API_URL", LEADS)
     monkeypatch.setenv("TOKEN_LEADS", "token-leads-de-teste")
     monkeypatch.setenv("IDENTIDADE_API_URL", IDENTIDADE)
-    monkeypatch.setenv("TOKEN_IDENTIDADE", "token-do-par-funil-identidade")
+    monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-funil-identidade")
     limpar_cache_de_sites()  # o cache do CONV-SITE não pode vazar entre testes
     # O da sessão pelo MESMO motivo, e é mais perigoso que o outro: uma sessão
     # que vaze entre testes faz um guarda de "visitante" passar mostrando o nome

@@ -260,3 +260,59 @@ def test_erro_desconhecido_na_query_e_ignorado(client, rede):
 
     assert 'class="recusa"' not in conteudo
     assert "alert(1)" not in conteudo
+
+
+# ---------------------------------------------------------------------------
+# 7. A vitrine abre mesmo SEM CONFIGURAÇÃO — o buraco que a auditoria achou
+# ---------------------------------------------------------------------------
+# Os guardas acima cobrem a Caixa FORA DO AR (falha de rede). Nenhum cobria a
+# falha mais provável de todas: a variável não colada no servidor. E era a
+# única que derrubava o site — `KeyError` não é `httpx.HTTPError`, então
+# atravessava o `try`, o middleware e o template, virando HTTP 500 para
+# qualquer visitante com um cookie qualquer no navegador.
+#
+# Note o par: o de cima prova que a página ABRE, o de baixo prova que ela nem
+# TENTA a rede (esperar 2s de timeout para descobrir que não há endereço
+# atrasaria toda página do site).
+@pytest.mark.parametrize(
+    "ausente",
+    ["IDENTIDADE_API_URL", "IDENTIDADE_API_TOKEN"],
+    ids=["sem-url", "sem-token"],
+)
+def test_sem_configuracao_a_pagina_abre_como_visitante(
+    client, rede, monkeypatch, ausente
+):
+    monkeypatch.delenv(ausente, raising=False)
+
+    resp = client.get("/pt-br/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
+
+    assert resp.status_code == 200, (
+        "o site caiu porque uma variável de ambiente não estava no servidor — "
+        "fail-open vale para configuração também, não só para rede"
+    )
+    assert 'href="/pt-br/login"' in resp.content.decode()
+
+
+def test_sem_configuracao_nao_custa_salto_de_rede(client, rede, monkeypatch):
+    monkeypatch.delenv("IDENTIDADE_API_URL", raising=False)
+
+    client.get("/pt-br/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
+
+    assert _chamadas_de_sessao(rede) == []
+
+
+def test_resposta_200_que_nao_e_json_nao_derruba_a_vitrine(client, rede):
+    """`json.JSONDecodeError` é `ValueError`, não `httpx.HTTPError`.
+
+    Cenário real: um proxy interposto devolve a própria página de erro com
+    status 200, ou a resposta chega truncada. Fora do `try`, isso furava o
+    fail-open — é a família do bug mais caro da Fase D (*2xx não é sucesso*).
+    """
+    rede["get_session"].mock(
+        return_value=httpx.Response(200, text="<html>erro do proxy</html>")
+    )
+
+    resp = client.get("/pt-br/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
+
+    assert resp.status_code == 200
+    assert 'href="/pt-br/login"' in resp.content.decode()
