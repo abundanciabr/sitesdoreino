@@ -208,6 +208,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "funil",
         "checkout-api",
         "sugestoes",
+        "identidade",
     } <= nomes
     segmentos = {
         primeiro_segmento(prefixo)
@@ -215,12 +216,14 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         for prefixo in prefixos_de_caminho(nome, regra)
     }
     # `forms` entrou com a Caixa de Sugestões (`PathPrefix(/forms/sugestoes)`,
-    # EVO-22). Esta igualdade é um INVENTÁRIO, não uma regra de segurança:
-    # rota nova obriga quem a acrescenta a passar por aqui e olhar as duas
-    # regras acima. As regras que julgam de fato (A: forma de locale; B:
-    # colisão com idioma declarado) continuam medindo a tabela real e nada
-    # nelas foi afrouxado — `forms` tem 5 letras, logo nem casa a FORMA.
-    assert segmentos == {"", "quiz", "checkout", "alunos", "api", "forms"}
+    # EVO-22). `entrar` entrou com a célula de identidade
+    # (`PathPrefix(/entrar)`, DECISAO-celula-de-identidade, 25/08/2026). Esta
+    # igualdade é um INVENTÁRIO, não uma regra de segurança: rota nova obriga
+    # quem a acrescenta a passar por aqui e olhar as duas regras acima. As
+    # regras que julgam de fato (A: forma de locale; B: colisão com idioma
+    # declarado) continuam medindo a tabela real e nada nelas foi afrouxado —
+    # `forms` e `entrar` têm 5 e 6 letras, logo nem casam a FORMA.
+    assert segmentos == {"", "quiz", "checkout", "alunos", "api", "forms", "entrar"}
 
 
 # ---------------------------------------------------------------------------
@@ -280,6 +283,7 @@ def test_regra_b_fecha_a_valvula_dos_reservados_de_maquina():
         "/alunos",
         "/api/checkout",
         "/forms/sugestoes",
+        "/entrar",
         "/",
         "/estatisticas",
     ],
