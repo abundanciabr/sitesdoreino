@@ -3,6 +3,71 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
+## O rosto (EVO-30): as seis decisões de desenho
+
+O comportamento inteiro já existia (EVO-12b/13/20/21) e a Caixa estava **no ar sem
+tela**. Este despacho não escreveu regra de negócio nova: costurou tela sobre
+comportamento provado, seguindo `docs/caixa-de-sugestoes/prototipo-v2.html`.
+
+**1. `{% url 'estatico' %}` e nunca `{% static %}` — vale para toda célula sob
+prefixo.** A lição virou `armadilhas/102` porque não é desta casa só: as duas tags
+leem prefixos diferentes, e sob `SCRIPT_NAME` o `{% static %}` gera
+`/static/sugestoes/caixa.css` — endereço que em `meshcraft.top` pertence ao `funil`,
+não à Caixa. Pagar a `armadilhas/083` (a rota `^static/…` no urlconf) é **necessário
+e não suficiente**: a rota existe, responde 200, e o navegador nunca chega nela.
+Trocar a tag deixa 7 testes vermelhos aqui; tirar a rota, muitos mais.
+
+**2. O protótipo perdeu as fontes remotas e o JavaScript, de propósito.** O
+`prototipo-v2.html` carrega três famílias do Google Fonts e monta a página inteira
+por `innerHTML`. A moldura desta célula nasceu com "sem CSS externo, sem JS, sem
+fonte remota" e continua assim: os três PAPÉIS de fonte viraram variáveis sobre
+pilhas do sistema, as abas viraram links (`?ordem=`), o voto continua
+`<form method="post">` e a categoria virou `<input type=radio>` desenhado por
+`:has()`. O ganho não é ideológico — é que **o estado mora no formulário**: quem
+volta de um POST com erro não reescolhe a categoria do zero.
+
+**3. Aba desconhecida é 404, como categoria desconhecida já era.** `ORDENS` é o
+dicionário que define o que existe, e `?ordem=` fora dele para a página. Servir a
+ordem padrão em silêncio faria a aba **mentir**: a pessoa pediria "novas" e receberia
+"mais votadas" com a aba certa pintada. "Em alta" não está desenhada — é V1.2
+(PLANO-MESTRE §6), porque depende de um peso de recência que ninguém decidiu.
+
+**4. A linha do tempo chega ao template já RECORTADA por `.values(...)`.** O
+`HistoricoStatus` carrega `alterado_por` — uma `Identidade`, com e-mail dentro. Não
+citar o campo no template não é proteção nenhuma (o Django resolve
+`{{ h.alterado_por }}` na hora de renderizar, sem import). Decidir na CONSULTA o que
+existe é: a coluna nem foi buscada, então não há o que um `{{ … }}` distraído
+alcance. É o raciocínio dos três degraus do guarda da `AvaliacaoInterna`, aplicado a
+uma tabela que o aluno tem direito de ler **em parte**.
+
+**5. A primeira etapa da linha do tempo não tem registro de histórico.** Uma
+sugestão nasce `em_analise` sem ninguém a mover para lá, então a data dela é a da
+própria criação (`marcos.setdefault(EM_ANALISE, sugestao.criado_em)`). Sem isso, toda
+sugestão começaria a vida com um traço no primeiro marco. E `nao_planejado`/
+`mesclado` ficam FORA das etapas: não são degraus do caminho, são saídas dele — a
+página as mostra pelo selo de status.
+
+**6. O que o botão de voto DIZ mora no `title`/`aria-label`.** O protótipo tem um
+botão compacto (`▲ 218`), e uma seta sozinha não é rótulo para quem usa leitor de
+tela. As palavras "Votar" e "Tirar meu voto" continuam no HTML — que é também por
+onde os guardas do EVO-12b medem de quem é o voto. Mesma história no sino: a
+contagem sai desenhada no `.contador` **e** no nome acessível `avisos (N)`, em
+minúsculas, porque é assim que `test_o_sino_de_toda_pagina_conta_so_os_meus` a mede.
+Guarda que perde a mordida por uma troca de maiúscula é guarda que ninguém sabe se
+reprova.
+
+**O que NÃO entrou, e tem despacho próprio:** a faixa de roadmap por status (as 4
+zonas do rodapé do protótipo) e "meu impacto" são o **EVO-31** e a V1.2. O trilho da
+esquerda já tem o lugar delas — nasce com quadro, nova ideia, avisos e (para quem
+tem crachá) moderação.
+
+### Detalhe de instrumento que custa uma rodada
+
+Imprimir HTML renderizado no console do Windows estoura em
+`UnicodeEncodeError: 'charmap' codec can't encode character '▲'` — a seta do botão
+de voto. Não é bug da página: é o cp1252 do console. `PYTHONIOENCODING=utf-8` antes
+do `pytest` resolve, e isso é ERROR de ambiente, não FAIL de código.
+
 ## O sininho (EVO-21): o aviso é da Caixa, não do fio
 
 **A decisão do mantenedor, 24/08/2026, e ela não se reabre.** O plano original

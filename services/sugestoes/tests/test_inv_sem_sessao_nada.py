@@ -26,7 +26,21 @@ pytestmark = pytest.mark.django_db
 
 # A porta e a sonda: tudo que existe para quem ainda não entrou (ou nunca
 # entra, no caso do /healthz, que é máquina falando com máquina).
-PUBLICAS = {"entrar", "entrar_google", "entrar_google_retorno", "sair", None}
+#
+# `estatico` (EVO-30) entrou aqui por DECLARAÇÃO, e ela custa a justificativa:
+# a folha de estilo do rosto não é conteúdo de aluno — é a rota de máquina que
+# `armadilhas/083` obriga a existir para o CSS não ser 404 em produção. Como
+# declaração sozinha seria licença para tirar rota da varredura escrevendo um
+# nome nesta lista, `test_a_rota_publica_de_estatico_so_serve_estatico` mede,
+# do lado de fora, o que ela realmente entrega a um anônimo.
+PUBLICAS = {
+    "entrar",
+    "entrar_google",
+    "entrar_google_retorno",
+    "sair",
+    "estatico",
+    None,
+}
 
 # A superfície de MÁQUINA da célula (DECISAO-onde-mora-a-sessao): montada por
 # `include()`, e por isso um `URLResolver` — não um `URLPattern` com callback.
@@ -102,6 +116,30 @@ def test_toda_rota_nao_publica_carrega_o_porteiro():
         f"rotas sem @exige_sessao: {desprotegidas}. Toda participação exige "
         "sessão de aluno (DECISAO-EVO-01 §2)."
     )
+
+
+def test_a_rota_publica_de_estatico_so_serve_estatico(client):
+    """A outra metade da declaração acima: o que a exceção entrega, medido.
+
+    Sem esta metade, `PUBLICAS` viraria uma lista onde qualquer rota pode ser
+    escondida do porteiro — o mesmo erro que `MONTAGENS_DE_MAQUINA` já não
+    comete. As duas afirmações:
+
+    1. o anônimo **recebe** a folha de estilo (é para isso que a rota existe —
+       sem ela o rosto é 404 em produção, `armadilhas/083`);
+    2. e não recebe mais nada: subir da árvore de estáticos não serve arquivo
+       nenhum desta célula.
+    """
+    css = client.get(reverse("estatico", kwargs={"caminho": "sugestoes/caixa.css"}))
+    assert css.status_code == 200, "o rosto não é servido — em produção seria 404"
+    assert b"--laranja" in b"".join(css.streaming_content)
+
+    for fuga in ("../config/settings.py", "sugestoes/../../config/settings.py"):
+        escapou = client.get(f"/static/{fuga}")
+        assert escapou.status_code != 200, (
+            f"/static/{fuga} respondeu 200: a rota pública saiu da árvore de "
+            "estáticos e virou leitor de arquivos da célula."
+        )
 
 
 def test_anonimo_e_mandado_para_a_porta_em_toda_rota_de_participacao(client, sugestao):

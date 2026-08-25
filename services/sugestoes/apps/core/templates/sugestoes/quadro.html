@@ -1,50 +1,89 @@
 {% extends "sugestoes/base_caixa.html" %}
 {% comment %}
-O quadro: o ranking por total de votos (§10), com filtro por categoria.
+O quadro: a grade de peças do protótipo v2, com abas e filtro por categoria.
 
-A ordem vem do SERVIDOR, sempre — `sugestoes_ordenadas()` já entrega a lista
-ordenada e com `total_votos` anotado. Ordenar no cliente daria duas verdades
-sobre a mesma coisa, e a que a pessoa vê seria a que ninguém testa.
+A ordem vem do SERVIDOR, sempre — a aba é um LINK (`?ordem=`), não um botão de
+JavaScript. Ordenar no cliente daria duas verdades sobre a mesma coisa, e a que
+a pessoa vê seria a que ninguém testa. Aba desconhecida é 404 na view, como
+categoria desconhecida já era: aceitar em silêncio faria a aba mentir.
+
+"Em alta" — a terceira aba do protótipo — NÃO está aqui: é V1.2 (PLANO-MESTRE
+§6), porque depende de um peso de recência que ainda não foi decidido.
+
+O voto é um `<form method="post">` com um botão compacto, como no protótipo. O
+que ele diz em palavras vive no `title`/`aria-label` ("Votar" / "Tirar meu
+voto"): a seta sozinha não é rótulo para quem usa leitor de tela — e é por
+essas palavras que os guardas do EVO-12b medem de quem é o voto.
 {% endcomment %}
 {% block titulo %}{{ quadro.nome }} — Caixa de Sugestões{% endblock %}
+{% block migalha %}Quadro{% endblock %}
+
+{% block numeros %}
+<div class="numeros">
+  <span><b>{{ numeros.sugestoes }}</b> sugestões</span>
+  <span><b>{{ numeros.votos }}</b> votos</span>
+  <span><b>{{ numeros.implementadas }}</b> implementadas</span>
+</div>
+{% endblock %}
+
 {% block conteudo %}
-<h1>{{ quadro.nome }}</h1>
-<p class="sub">O que os alunos pediram, do mais votado para o menos.</p>
+<div class="abas">
+  {% for chave, rotulo in abas %}
+    <a href="{% url 'quadro' %}?ordem={{ chave }}{% if categoria_escolhida %}&amp;categoria={{ categoria_escolhida }}{% endif %}"
+       class="{% if chave == ordem_escolhida %}ativo{% endif %}">{{ rotulo }}</a>
+  {% endfor %}
+</div>
 
 <div class="filtros">
-  <a href="{% url 'quadro' %}" class="{% if not categoria_escolhida %}ativo{% endif %}">Todas</a>
+  <a href="{% url 'quadro' %}?ordem={{ ordem_escolhida }}"
+     class="{% if not categoria_escolhida %}ativo{% endif %}">Todas</a>
   {% for categoria in categorias %}
-    <a href="{% url 'quadro' %}?categoria={{ categoria.slug }}"
+    <a href="{% url 'quadro' %}?ordem={{ ordem_escolhida }}&amp;categoria={{ categoria.slug }}"
        class="{% if categoria.slug == categoria_escolhida %}ativo{% endif %}">{{ categoria.nome }}</a>
   {% endfor %}
 </div>
 
-<a class="botao" href="{% url 'nova_sugestao' %}">Sugerir alguma coisa</a>
+<div class="grade">
+  {% for sugestao in sugestoes %}
+    <article class="peca">
+      <div class="peca-topo swatch-{{ sugestao.categoria.slug }}">
+        <svg aria-hidden="true"><use href="#i-{{ sugestao.categoria.slug }}"/></svg>
+        <form method="post"
+              action="{% if sugestao.id in votadas %}{% url 'desvotar' sugestao.id %}{% else %}{% url 'votar' sugestao.id %}{% endif %}">
+          {% csrf_token %}
+          <input type="hidden" name="de" value="quadro">
+          <button type="submit"
+                  class="voto{% if sugestao.id in votadas %} dado{% endif %}"
+                  title="{% if sugestao.id in votadas %}Tirar meu voto{% else %}Votar{% endif %}"
+                  aria-label="{% if sugestao.id in votadas %}Tirar meu voto em {{ sugestao.titulo }}{% else %}Votar em {{ sugestao.titulo }}{% endif %}"><span class="seta">▲</span><span class="votos">{{ sugestao.total_votos }}</span></button>
+        </form>
+      </div>
+      <div class="peca-corpo">
+        <span class="selo selo-{{ sugestao.status }}">{{ sugestao.get_status_display }}</span>
+        <h3 class="peca-titulo"><a href="{% url 'sugestao' sugestao.id %}">{{ sugestao.titulo }}</a></h3>
+        <p class="peca-pe">
+          {{ sugestao.categoria.nome }} ·
+          {{ sugestao.total_comentarios }} comentário{{ sugestao.total_comentarios|pluralize }}
+        </p>
+      </div>
+    </article>
+  {% empty %}
+    <div class="recado">
+      <h2>Ainda não há sugestões aqui</h2>
+      <p>Seja a primeira pessoa a dizer o que está faltando.</p>
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}
 
-{% for sugestao in sugestoes %}
-  <div class="cartao">
-    <h3>
-      <span class="votos">{{ sugestao.total_votos }}</span>
-      <a href="{% url 'sugestao' sugestao.id %}">{{ sugestao.titulo }}</a>
-    </h3>
-    <p class="meta">
-      {{ sugestao.categoria.nome }} ·
-      {{ sugestao.autor.nome_exibido|default:"Aluno" }} ·
-      {{ sugestao.get_status_display }}
-    </p>
-    <form method="post"
-          action="{% if sugestao.id in votadas %}{% url 'desvotar' sugestao.id %}{% else %}{% url 'votar' sugestao.id %}{% endif %}">
-      {% csrf_token %}
-      <input type="hidden" name="de" value="quadro">
-      <button type="submit" class="botao">
-        {% if sugestao.id in votadas %}Tirar meu voto{% else %}Votar{% endif %}
-      </button>
-    </form>
-  </div>
-{% empty %}
-  <div class="recado">
-    <h2>Ainda não há sugestões aqui</h2>
-    <p>Seja a primeira pessoa a dizer o que está faltando.</p>
-  </div>
-{% endfor %}
+{% block inspetor %}
+<aside class="inspetor">
+  <p class="identificacao">Nova ideia</p>
+  <h2>O que está faltando?</h2>
+  <p class="meta" style="margin-bottom:14px">
+    Conte o problema que você vive. Quem sabe o que dói é você — e cada voto
+    que a sua ideia receber empurra ela para cima deste quadro.
+  </p>
+  <a class="botao principal" href="{% url 'nova_sugestao' %}">Sugerir alguma coisa</a>
+</aside>
 {% endblock %}

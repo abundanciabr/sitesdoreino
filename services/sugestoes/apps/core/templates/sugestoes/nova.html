@@ -1,23 +1,30 @@
 {% extends "sugestoes/base_caixa.html" %}
 {% comment %}
-Sugerir — em duas etapas, e a primeira é a busca de duplicatas da §10.
+Nova ideia — o composer do protótipo v2, em duas etapas, e a primeira é a busca
+de duplicatas da §10. É essa ordem que o EVO-30 pede: **a busca vem na frente.**
 
 O botão do formulário em branco é "Conferir se já existe": o POST volta para
 esta mesma página com as sugestões parecidas e SEM ter criado nada. Só depois
-aparece "Publicar assim mesmo". É a diferença entre avisar e bloquear: duas
+aparece "Publicar assim mesmo". É a diferença entre avisar e bloquear — duas
 pessoas descrevem a mesma dor com palavras diferentes o tempo todo, e um portão
 que recusasse por semelhança calaria a segunda.
+
+As categorias são as marcas do protótipo, e elas são `<input type=radio>` com a
+etiqueta desenhada por cima: o estado mora no formulário, não em JavaScript, e
+por isso sobrevive a um POST que volta com erro. Quem pinta a escolhida é o
+`:has()` do CSS.
 {% endcomment %}
-{% block titulo %}Sugerir — Caixa de Sugestões{% endblock %}
+{% block titulo %}Nova ideia — Caixa de Sugestões{% endblock %}
+{% block migalha %}Nova ideia{% endblock %}
 {% block conteudo %}
-<h1>Sugerir alguma coisa</h1>
+<h1>O que está faltando?</h1>
 <p class="sub">
   Conte o problema que você vive. A solução é opcional — quem decide como
   resolver é a equipe, mas quem sabe o que dói é você.
 </p>
 
 {% if erros %}
-  <div class="recado">
+  <div class="recado recado-atencao">
     <h2>Falta um detalhe</h2>
     <ul>{% for erro in erros %}<li>{{ erro }}</li>{% endfor %}</ul>
   </div>
@@ -31,7 +38,7 @@ que recusasse por semelhança calaria a segunda.
       <ul>
         {% for parecida in duplicatas %}
           <li><a href="{% url 'sugestao' parecida.id %}">{{ parecida.titulo }}</a>
-              — {{ parecida.total_votos }} voto{{ parecida.total_votos|pluralize }}</li>
+              — <span class="votos">{{ parecida.total_votos }}</span> voto{{ parecida.total_votos|pluralize }}</li>
         {% endfor %}
       </ul>
     {% else %}
@@ -44,34 +51,46 @@ que recusasse por semelhança calaria a segunda.
 <form method="post" action="{% url 'nova_sugestao' %}">
   {% csrf_token %}
 
-  <label for="titulo">Título</label>
-  <input type="text" id="titulo" name="titulo" maxlength="140"
-         value="{{ rascunho.titulo }}" required>
+  <div class="campo">
+    <label for="titulo">O que você gostaria que existisse?</label>
+    <input type="text" id="titulo" name="titulo" maxlength="140"
+           placeholder="Ex: gerador de portfólio"
+           value="{{ rascunho.titulo }}" required>
+  </div>
 
-  <label for="problema">Qual é o problema?</label>
-  <textarea id="problema" name="problema" required>{{ rascunho.problema }}</textarea>
+  <div class="campo">
+    <label for="problema">Que problema isso resolveria para você?</label>
+    <textarea id="problema" name="problema"
+              placeholder="Conte a situação real, não só a solução." required>{{ rascunho.problema }}</textarea>
+  </div>
 
-  <label for="solucao_proposta">Como você resolveria? (opcional)</label>
-  <textarea id="solucao_proposta" name="solucao_proposta">{{ rascunho.solucao_proposta }}</textarea>
+  <div class="campo">
+    <label for="solucao_proposta">Como você resolveria? (opcional)</label>
+    <textarea id="solucao_proposta" name="solucao_proposta">{{ rascunho.solucao_proposta }}</textarea>
+  </div>
 
-  <label for="categoria">Categoria</label>
-  <select id="categoria" name="categoria" required>
-    <option value="">Escolha uma</option>
-    {% for categoria in categorias %}
-      <option value="{{ categoria.slug }}"
-        {% if categoria.slug == rascunho.categoria %}selected{% endif %}>{{ categoria.nome }}</option>
-    {% endfor %}
-  </select>
+  <div class="campo">
+    <label>Categoria</label>
+    <div class="marcas">
+      {% for categoria in categorias %}
+        <label class="marca">
+          <input type="radio" name="categoria" value="{{ categoria.slug }}"
+                 {% if categoria.slug == rascunho.categoria %}checked{% endif %} required>
+          <svg aria-hidden="true"><use href="#i-{{ categoria.slug }}"/></svg>{{ categoria.nome }}
+        </label>
+      {% endfor %}
+    </div>
+  </div>
 
-  <p class="meta" style="margin-top:1rem">
+  <p class="meta">
     Você pode publicar {{ limite }} sugestões a cada 7 dias.
     {% if restantes > 0 %}Restam {{ restantes }}.{% else %}A sua janela está cheia agora.{% endif %}
   </p>
 
   {% if conferido %}
-    <button type="submit" name="publicar" value="1" class="botao">Publicar assim mesmo</button>
+    <button type="submit" name="publicar" value="1" class="botao principal">Publicar assim mesmo</button>
   {% else %}
-    <button type="submit" name="conferir" value="1" class="botao">Conferir se já existe</button>
+    <button type="submit" name="conferir" value="1" class="botao principal">Conferir se já existe</button>
   {% endif %}
 </form>
 {% endblock %}

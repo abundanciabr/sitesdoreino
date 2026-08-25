@@ -177,6 +177,17 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# O rosto da Caixa (EVO-30) mora aqui — e é DAQUI que ele é servido em
+# produção, nunca de `STATIC_ROOT`, que a imagem sobe VAZIO (`armadilhas/083`;
+# o porquê inteiro está na docstring de `apps/core/views.py::servir_estatico`).
+#
+# `STATIC_URL` continua existindo para o `collectstatic` e para os checks do
+# Django, mas **nenhum template desta célula o usa**: sob `SCRIPT_NAME`,
+# `{% static %}` devolve `/static/…` — endereço que, em `meshcraft.top`, cai no
+# `funil` e não na Caixa. Quem carrega o prefixo público é `{% url %}`, como em
+# todo o resto da célula (`armadilhas/029` e `/081`).
+STATICFILES_DIRS = [BASE_DIR / "static"]
+
 USE_TZ = True
 
 # O fuso em que a Caixa MOSTRA hora — o armazenamento continua em UTC (USE_TZ).
