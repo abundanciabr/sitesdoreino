@@ -1,0 +1,99 @@
+{% extends "sugestoes/base_caixa.html" %}
+{% comment %}
+O corredor do ChangeSpec (EVO-40): registrar a aprovação humana de uma ideia.
+
+Esta é a única página da Caixa com DOIS portões: o crachá da equipe
+(`@exige_staff`) e, em cima dele, o mandato de aprovador
+(`SUGESTOES_APROVADORES`). Quem é da equipe e não aprova recebe **403 na
+rota** — o botão não é escondido, porque esconder botão protege a tela e não o
+endereço. Ver `apps/core/changespecs.py`.
+
+O que se registra aqui é o REGISTRO, não o documento: o ChangeSpec de verdade
+mora em `docs/changespecs/`, e a célula não lê o repositório em runtime. Por
+isso o campo do documento é um endereço, e por isso ele é obrigatório — é o
+que permite a qualquer pessoa conferir depois o que foi autorizado.
+
+Linha nenhuma desta lista tem botão de editar ou apagar: o registro é
+append-only nos três degraus (instância, queryset e trigger no Postgres),
+exatamente como o histórico de status. Escopo que mudou é ChangeSpec NOVO, com
+o sufixo `-v2` (FORMATO-CHANGESPEC.md §4).
+
+Todo endereço sai de `{% templatetag openblock %} url {% templatetag closeblock %}`: sob `SCRIPT_NAME` um caminho escrito à
+mão cai no `funil` e não na Caixa (`armadilhas/029`, `/081` e `/102`).
+{% endcomment %}
+{% block titulo %}ChangeSpec: {{ sugestao.titulo }}{% endblock %}
+{% block migalha %}ChangeSpec{% endblock %}
+{% block conteudo %}
+<p class="meta"><a href="{% url 'moderar' sugestao.id %}">← voltar à moderação</a></p>
+
+<h1>ChangeSpec de “{{ sugestao.titulo }}”</h1>
+<p class="sub">
+  {{ sugestao.categoria.nome }} ·
+  <span class="selo selo-{{ sugestao.status }}">{{ sugestao.get_status_display }}</span>
+</p>
+
+{% if erros %}
+  <div class="recado recado-atencao">
+    <h2>Não deu para registrar</h2>
+    <ul>{% for erro in erros %}<li>{{ erro }}</li>{% endfor %}</ul>
+  </div>
+{% endif %}
+
+<h2>Registrado até agora</h2>
+{% for cs in changespecs %}
+  <div class="cartao">
+    <h3>{{ cs.change_id }}</h3>
+    <p class="meta">
+      Aprovado por {{ cs.aprovado_por }} em {{ cs.aprovado_em|date:"d/m/Y" }} ·
+      registrado por
+      {{ cs.registrado_por.nome_exibido|default:cs.registrado_por.email }}
+      em {{ cs.registrado_em|date:"d/m/Y H:i" }}
+    </p>
+    {% comment %}
+    Link só quando o documento é uma URL. O caminho de repositório
+    (`docs/changespecs/…`) sai como texto de propósito: um `href` relativo seria
+    resolvido a partir de `/forms/sugestoes/moderacao/<id>/`, ou seja levaria a
+    equipe a um 404 com cara de link quebrado da Caixa.
+    {% endcomment %}
+    {% if cs.documento|slice:":4" == "http" %}
+      <p><a href="{{ cs.documento }}">{{ cs.documento }}</a></p>
+    {% else %}
+      <p><code>{{ cs.documento }}</code></p>
+    {% endif %}
+  </div>
+{% empty %}
+  <div class="recado">
+    <h2>Nenhum ChangeSpec registrado</h2>
+    <p>
+      Enquanto esta lista estiver vazia, esta ideia não sai de “Planejado” para
+      “Em desenvolvimento”. É assim de propósito: uma ideia aprovada nunca
+      deveria virar um prompt aberto do tipo “implemente isso”.
+    </p>
+  </div>
+{% endfor %}
+
+<h2>Registrar ChangeSpec aprovado</h2>
+<p class="meta">
+  O documento em si mora em <code>docs/changespecs/</code>, no repositório. Aqui
+  fica só o registro de que ele existe e de que alguém o aprovou — depois de
+  registrado, não é editado: escopo novo é uma versão nova, com o sufixo
+  <code>-v2</code>.
+</p>
+<form method="post" action="{% url 'changespecs' sugestao.id %}">
+  {% csrf_token %}
+  <label for="change_id">CHANGE-ID</label>
+  <input type="text" id="change_id" name="change_id" required
+         placeholder="CS-SUGESTOES-0001" value="{{ rascunho.change_id }}">
+  <label for="documento">Link do documento</label>
+  <input type="text" id="documento" name="documento" required
+         placeholder="docs/changespecs/CS-SUGESTOES-0001.md"
+         value="{{ rascunho.documento }}">
+  <label for="aprovado_por">Aprovado por (nome de quem aprovou)</label>
+  <input type="text" id="aprovado_por" name="aprovado_por" required
+         value="{{ rascunho.aprovado_por }}">
+  <label for="aprovado_em">Data da aprovação</label>
+  <input type="date" id="aprovado_em" name="aprovado_em" required
+         value="{{ rascunho.aprovado_em }}">
+  <button type="submit" class="botao">Registrar ChangeSpec</button>
+</form>
+{% endblock %}

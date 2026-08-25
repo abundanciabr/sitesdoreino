@@ -40,6 +40,27 @@ cima.
   </div>
 {% endif %}
 
+{% comment %}
+[INV-SUG10] A trava do ChangeSpec, dita ANTES de alguém tentar (EVO-40).
+
+A recusa do POST já traz esta mesma frase — ela vem do `SEM_CORREDOR` de
+`apps/core/moderacao.py`, uma só, para que a página e o erro nunca divirjam. O
+que muda aqui é o momento: descobrir o corredor depois de escolher o status e
+clicar é uma ida e volta que não ensina nada; descobrir antes é a página
+dizendo o que fazer em seguida.
+
+O `<option>` de “Em desenvolvimento” continua na lista, e não desabilitado: o
+que barra é a rota (três degraus, o mais fundo dentro do Postgres), e um
+`<select>` mutilado faria a tela prometer uma proteção que não é dela.
+{% endcomment %}
+{% if sem_corredor %}
+  <div class="recado recado-atencao">
+    <h2>“Em desenvolvimento” está barrado</h2>
+    <p>{{ sem_corredor }}</p>
+    <p><a href="{% url 'changespecs' sugestao.id %}">Registrar ChangeSpec aprovado</a></p>
+  </div>
+{% endif %}
+
 <h2>Mudar o status</h2>
 <form method="post" action="{% url 'mudar_status' sugestao.id %}">
   {% csrf_token %}
@@ -57,6 +78,17 @@ cima.
   </p>
   <button type="submit" class="botao">Registrar mudança</button>
 </form>
+
+<h2>Corredor do ChangeSpec</h2>
+<p class="meta">
+  {% for cs in changespecs %}
+    {{ cs.change_id }} — aprovado por {{ cs.aprovado_por }} em
+    {{ cs.aprovado_em|date:"d/m/Y" }}.
+  {% empty %}
+    Nada registrado ainda.
+  {% endfor %}
+  <a href="{% url 'changespecs' sugestao.id %}">Registrar ChangeSpec aprovado</a>
+</p>
 
 <h2>Histórico</h2>
 {% for linha in historico %}

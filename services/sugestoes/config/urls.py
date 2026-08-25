@@ -1,6 +1,7 @@
 from django.urls import path, re_path
 
 from apps.core.avisos import marcar_lido, ver_avisos
+from apps.core.changespecs import changespecs
 from apps.core.moderacao import avaliar, moderar, mudar_status, ver_fila
 from apps.core.participacao import (
     comentar,
@@ -79,4 +80,16 @@ urlpatterns = [
     path("moderacao/<int:sugestao_id>", moderar, name="moderar"),
     path("moderacao/<int:sugestao_id>/status", mudar_status, name="mudar_status"),
     path("moderacao/<int:sugestao_id>/avaliacao", avaliar, name="avaliar"),
+    # O corredor do ChangeSpec (EVO-40). Mora sob `/moderacao` porque é tela da
+    # EQUIPE — e é a única rota da célula com um SEGUNDO portão em cima do
+    # crachá: só quem está em `SUGESTOES_APROVADORES` passa
+    # (`apps/core/changespecs.py`). Uma rota para os dois métodos, de propósito:
+    # o GET é a página, o POST é o formulário dela mesma. Duas rotas seriam
+    # duas entradas a mais em cada varredura de urlconf desta célula para
+    # servir uma tela só.
+    path(
+        "moderacao/<int:sugestao_id>/changespec",
+        changespecs,
+        name="changespecs",
+    ),
 ]

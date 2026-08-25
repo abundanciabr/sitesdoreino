@@ -665,6 +665,11 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # Nasceu na gênese da célula `admin` (25/08/2026): um único assinante
         # do cookie de sessão do site.
         "INV-P12",
+        # EVO-40 (25/08/2026), célula `sugestoes`: nada sai de `planejado` para
+        # `em_desenvolvimento` sem ChangeSpec aprovado registrado. Entrou aqui
+        # pagando uma linha da dívida de `ci/guardas-nao-declarados.txt`, que é
+        # exatamente o que a catraca existe para provocar.
+        "INV-SUG10",
         "INV-CI01",
     ]
 

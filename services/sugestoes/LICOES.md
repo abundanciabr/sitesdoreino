@@ -3,6 +3,79 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
+## A trava do ChangeSpec (EVO-40): o degrau que eu quase deixei sem dente
+
+Fecha a divergência que o EVO-13 registrou logo abaixo ("A spec §8 pede um
+ChangeSpec que esta célula não tem"). A pergunta que aquele despacho deixou
+aberta — *onde o ChangeSpec mora?* — foi respondida: **tabela nesta célula**
+(`ChangeSpecAprovado`), e não um `changespec_id` no `HistoricoStatus`. O motivo
+decide sozinho: um ChangeSpec pode referenciar VÁRIAS sugestões (formato §2), e
+a coluna no histórico só saberia falar de uma; e a pergunta que a trava faz
+("existe corredor para ESTA ideia?") não é sobre a linha do tempo, é sobre a
+ideia.
+
+**1. O degrau 1 não tinha dente, e eu só descobri porque falsifiquei os três
+separadamente.** Apagar o ponto de estrangulamento inteiro
+(`registrar_mudanca_de_status`) deixava a suíte **verde**: o `save()` do model
+recusava dentro da transação, a view convertia a exceção na mesma página de
+400, e a frase que ensina o caminho continuava aparecendo — porque a página de
+moderação também a mostra no aviso preventivo. Três coisas cobrindo umas às
+outras, e nenhum guarda capaz de dizer se a primeira existia.
+
+O que o degrau 1 acrescenta, e que só se vê no SQL, é **recusar antes do
+`SELECT … FOR UPDATE`**. `test_a_recusa_nem_chega_a_travar_a_linha` mede isso
+com `CaptureQueriesContext`, e é ele que fica vermelho quando o degrau some. A
+regra que generaliza: **falsifique cada degrau da escada isoladamente**. Uma
+escada testada só por fora prova o andar de cima e mente sobre os de baixo — é
+a RETROSPECTIVA §1 (garantia sem mecanismo) na sua forma mais discreta, porque
+aqui o mecanismo existe: o que não existia era a prova de que ele fazia
+diferença.
+
+**2. A trava vale para a transição NOMINAL, e a fronteira está medida.** A §8
+diz `planejado → em_desenvolvimento`. `em_analise → em_desenvolvimento`
+continua passando — e não por descuido: fechar toda entrada em
+`em_desenvolvimento` deixaria VERMELHO o `test_inv_historico_append_only.py`,
+que percorre a moderação exatamente por essa transição desde o EVO-13. Guarda
+de célula não reescreve spec de plataforma dentro de um despacho. Fica
+`test_a_fronteira_da_lei_e_a_transicao_NOMINAL`, para que a brecha seja uma
+decisão visível em vez de um esquecimento.
+
+**3. `SUGESTOES_APROVADORES` é um papel NOVO, e não o crachá da equipe.**
+Decisão do mantenedor em 25/08/2026, na forma mais travada: só ele autoriza.
+Moderar (`SUGESTOES_STAFF_EMAILS`) e autorizar desenvolvimento são dois
+portões empilhados, e o segundo é fail-closed — **lista ausente ou vazia ⇒
+ninguém aprova ⇒ nada entra em desenvolvimento**. A suíte inteira roda com a
+variável APAGADA (`conftest.py::ambiente`), que é o único jeito de o guarda de
+fail-closed poder reprovar algum dia.
+
+**4. Portão novo empilhado colide com as três varreduras de urlconf, e a
+colisão é o desenho funcionando.** A rota nova carrega `exige_staff`, então
+`test_inv_so_staff_modera.py::test_a_equipe_alcanca_as_mesmas_rotas` passou a
+exigir que a EQUIPE não leve 403 numa rota que recusa quem não é aprovador. A
+saída **não** foi tirar a rota da varredura (seria esconder rota do guarda
+escrevendo um nome numa lista, o erro que a própria célula já não comete com
+`MONTAGENS_DE_MAQUINA`): foi pôr a pessoa daquele teste também na lista de
+aprovadores, com o motivo escrito ali — aquele guarda mede o PRIMEIRO portão, e
+o segundo tem guarda dedicado. Quem for acrescentar rota de equipe com portão
+extra vai passar por aqui de novo.
+
+**5. Reusar o append-only custou uma linha e evitou uma cópia.** Os degraus 1 e
+2 do `HistoricoStatus` (`save()` + `AppendOnlyQuerySet`) viraram
+`RegistroAppendOnly`, uma base abstrata — e a mensagem do queryset passou a sair
+de `self.model.__name__`, senão a tabela nova acusaria a antiga. O degrau 3
+**não** cabe na classe: cada migração cria o trigger da sua tabela, porque só o
+banco impõe o que o `CASCADE` do collector atropela (`armadilhas/079`).
+
+**6. `BEFORE UPDATE OF status` — o trigger nem é chamado quando a coluna não
+está na lista do `UPDATE`.** É o que faz a trava no banco custar zero para todo
+o resto da célula, e o que a mantém compatível com o
+`save(update_fields=["status"])` que a moderação já usava desde o EVO-13.
+
+**7. O que ficou de fora, e é do elo seguinte:** o `SUBSTITUI` do formato §4
+não virou coluna. Uma v2 é uma LINHA nova, com o `change_id` terminando em
+`-v2`; a corrente entre versões mora no documento, que é a autoridade. Guardar
+a corrente aqui seria a célula modelando o que ela decidiu não ler.
+
 ## O rosto (EVO-30): as seis decisões de desenho
 
 O comportamento inteiro já existia (EVO-12b/13/20/21) e a Caixa estava **no ar sem
@@ -380,7 +453,13 @@ página do ALUNO, e quem pegou foi um guarda que procurava outra coisa
 (`test_o_aluno_nao_ve_esse_link`), pelo texto "moderação" no corpo. Se a
 asserção fosse só pelo `href`, teria passado.
 
-## A spec §8 pede um ChangeSpec que esta célula não tem — divergência registrada
+## A spec §8 pede um ChangeSpec que esta célula não tem — PAGA no EVO-40
+
+> **Resolvida em 25/08/2026.** O que este bloco descreve é o estado até o
+> EVO-13; a decisão que faltava foi tomada (tabela nesta célula) e a trava
+> existe nos três degraus — ver "A trava do ChangeSpec (EVO-40)" no topo deste
+> arquivo. O texto abaixo fica porque a PERGUNTA que ele formulou é o que
+> definiu a resposta.
 
 A `ESPECIFICACAO-CELULA.md` §8 tem um invariante a mais que os outros:
 

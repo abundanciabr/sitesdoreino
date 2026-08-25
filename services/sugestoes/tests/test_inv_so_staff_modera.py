@@ -59,9 +59,16 @@ def _bater(cliente, endereco) -> dict[str, int]:
 
 
 def test_ha_rotas_de_moderacao_para_medir():
-    """Sanidade: um guarda que varre uma lista vazia é um guarda verde à toa."""
+    """Sanidade: um guarda que varre uma lista vazia é um guarda verde à toa.
+
+    `changespecs` entrou no EVO-40, e é a única rota da célula com um SEGUNDO
+    portão em cima do crachá (o mandato de aprovador, `SUGESTOES_APROVADORES`).
+    Ela é rota de moderação como as outras, e a parede que ESTE arquivo mede é
+    a de fora; a de dentro tem guarda próprio em `test_changespecs.py`.
+    """
     assert sorted(_rotas_de_moderacao()) == [
         "avaliar",
+        "changespecs",
         "fila",
         "moderar",
         "mudar_status",
@@ -110,13 +117,23 @@ def test_o_aluno_nao_ve_a_fila_nem_o_texto_da_avaliacao(dentro, sugestao, aluno)
     assert MARCA not in pagina.content.decode()
 
 
-def test_a_equipe_alcanca_as_mesmas_rotas(equipe, sugestao):
+def test_a_equipe_alcanca_as_mesmas_rotas(equipe, sugestao, lista_de_aprovadores):
     """O outro lado da mesma parede — sem isto, um 403 para todos passaria.
 
     `mudar_status` e `avaliar` recebem POST vazio de propósito: o que se mede
     aqui é o crachá, e a resposta 400 ("escolha um status da lista") já prova
     que a requisição atravessou o porteiro e chegou à view.
+
+    **Por que esta pessoa também está na lista de aprovadores (EVO-40).** A
+    rota `changespecs` tem dois portões, e este teste mede o PRIMEIRO. Sem o
+    mandato, o 403 do segundo portão apareceria aqui e o guarda passaria a
+    afirmar que a equipe não alcança uma rota que ela alcança — medindo o
+    portão errado, com a mensagem errada. O segundo portão tem guarda dedicado
+    (`test_changespecs.py::test_staff_que_nao_e_aprovador_leva_403`), e a
+    lista continua nascendo VAZIA para todo o resto da suíte.
     """
+    lista_de_aprovadores(equipe.email)
+
     for nome in _rotas_de_moderacao():
         codigos = _bater(equipe.client, _endereco(nome, sugestao))
         assert 403 not in codigos.values(), f"a equipe levou 403 em '{nome}': {codigos}"

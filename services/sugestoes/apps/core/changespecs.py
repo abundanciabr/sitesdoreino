@@ -1,0 +1,245 @@
+"""O corredor do ChangeSpec: quem registra, o que vale registro, e a trava.
+
+Escopo do EVO-40, e só ele. A lei é a `FORMATO-CHANGESPEC.md` §1/§3/§4/§5 e a
+última linha da §8 da `ESPECIFICACAO-CELULA.md`:
+
+> `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir
+> um ChangeSpec aprovado referenciando aquele `suggestion_id`.
+
+**Por que a célula não lê o repositório.** O ChangeSpec de verdade é um
+documento em `docs/changespecs/`. Fazer a Caixa abrir o repositório em runtime
+daria a ela uma dependência de sistema de arquivos que ela não tem em produção
+(a imagem sobe com o código da célula, não com os `docs/`) e um modo de falha
+novo — "o documento sumiu ⇒ ninguém desenvolve mais nada". O que entra aqui é
+o REGISTRO: quem aprovou, quando, e onde o documento está.
+
+**Dois papéis diferentes, e a diferença é a decisão do mantenedor (25/08/2026).**
+Moderar é da EQUIPE (`SUGESTOES_STAFF_EMAILS`); autorizar desenvolvimento é do
+APROVADOR (`SUGESTOES_APROVADORES`). Ele escolheu a forma mais travada sabendo
+do custo: só ele autoriza. Ser da equipe **não basta**, e há guarda medindo
+isso.
+
+**Fail-closed, e é o ponto principal.** Lista vazia ou ausente ⇒ ninguém
+aprova ⇒ nenhuma sugestão sai de `planejado` para `em_desenvolvimento`. Isso é
+o comportamento CERTO, não um bug: até o e-mail do mantenedor existir no
+servidor, nada anda — e "não sei quem pode aprovar" jamais pode virar "então
+pode qualquer um". A variável é lida NO PONTO DE USO, com default vazio, como
+toda variável desta célula (`config/settings.py`, topo).
+"""
+
+import os
+import re
+from datetime import date
+from functools import wraps
+
+from django.db import IntegrityError, transaction
+from django.http import HttpResponseForbidden, HttpResponseRedirect
+from django.shortcuts import get_object_or_404, render
+from django.urls import reverse
+from django.utils.dateparse import parse_date
+
+from apps.sugestoes.models import ChangeSpecAprovado, Sugestao
+
+from .moderacao import exige_staff
+
+PAGINA = "sugestoes/changespecs.html"
+
+# `CS-{celula}-{sequencial}` (formato §3, ex.: `CS-PORTFOLIO-0001`). O sufixo
+# `-v2` é a imutabilidade do §4 em pessoa: escopo que mudou não edita o
+# documento, nasce outro. A largura canônica do sequencial é 4 dígitos; o
+# padrão aceita mais para não recusar um registro legítimo por zero à esquerda.
+FORMA_DO_CHANGE_ID = re.compile(r"^CS-[A-Z0-9]+-\d+(-v\d+)?$")
+
+# Onde o documento pode estar: no repositório (o caminho que o EVO-41 vai
+# criar) ou numa URL. Conferir a FORMA não prova que o link abre — prova que
+# alguém não colou o título do documento no lugar do endereço dele.
+INICIOS_DE_DOCUMENTO = ("https://", "http://", "docs/changespecs/")
+
+SEM_MANDATO = (
+    "Registrar ChangeSpec é de quem aprova, e o seu e-mail não está na lista "
+    "de aprovadores desta Caixa (SUGESTOES_APROVADORES). Estar na equipe dá o "
+    "crachá de moderação, não o de autorizar desenvolvimento — são dois papéis "
+    "diferentes de propósito."
+)
+
+
+class ChangeSpecInvalido(Exception):
+    """Registro recusado ANTES de qualquer escrita — recusa não precisa de
+    rollback, e a mensagem é em português porque quem lê é gente."""
+
+
+def emails_dos_aprovadores() -> set[str]:
+    """A lista de quem autoriza, lida NO PONTO DE USO.
+
+    Ausente ou vazia ⇒ conjunto vazio ⇒ **ninguém** aprova. A célula sobe
+    normalmente e a Caixa inteira continua funcionando: o que fica fechado é
+    exatamente uma coisa — mover ideia para `em_desenvolvimento`.
+
+    Normalização igual à do staff (`apps/core/sessao.py`): minúsculas e
+    `strip`, porque a variável é digitada à mão num arquivo `.env` e um espaço
+    depois da vírgula não pode custar o mandato de alguém.
+    """
+    crua = os.environ.get("SUGESTOES_APROVADORES", "")
+    return {parte.strip().lower() for parte in crua.split(",") if parte.strip()}
+
+
+def e_aprovador(email: str) -> bool:
+    return email.strip().lower() in emails_dos_aprovadores()
+
+
+def exige_aprovador(view):
+    """Empilha sobre `exige_staff`, que empilha sobre `exige_sessao`.
+
+    A ordem é o que faz cada recusa dizer a verdade: anônimo vai para a porta
+    (302), quem tem sessão e não é da equipe leva 403 do crachá, e quem é da
+    equipe mas não aprova leva 403 **com outro motivo escrito**. Três estados,
+    três respostas — e nenhuma delas é esconder o botão, que protegeria a tela
+    e não a rota.
+
+    O atributo `exige_aprovador` fica no objeto pelo mesmo motivo dos outros
+    dois: é por ele que o guarda varre o urlconf. `functools.wraps` copia o
+    `__dict__`, então os três atributos sobrevivem ao empilhamento.
+    """
+
+    @wraps(view)
+    def mandato(request, ator, *args, **kwargs):
+        if not e_aprovador(ator.identidade.email):
+            return HttpResponseForbidden(SEM_MANDATO, content_type="text/plain")
+        return view(request, ator, *args, **kwargs)
+
+    mandato.exige_aprovador = True
+    return exige_staff(mandato)
+
+
+# ---------------------------------------------------------------------------
+# O registro
+# ---------------------------------------------------------------------------
+
+
+def _conferir(campos: dict) -> dict:
+    """Tudo que precisa ser verdade antes de a linha existir.
+
+    Confere TUDO e devolve os erros juntos — quem está preenchendo formulário
+    não merece descobrir um problema por vez.
+    """
+    erros = []
+
+    change_id = (campos.get("change_id") or "").strip()
+    if not FORMA_DO_CHANGE_ID.match(change_id):
+        erros.append(
+            "O CHANGE-ID tem a forma CS-{CELULA}-{sequencial}, em maiúsculas — "
+            "por exemplo CS-PORTFOLIO-0001 (ou CS-PORTFOLIO-0001-v2, quando o "
+            "escopo mudou e nasceu uma segunda versão)."
+        )
+
+    documento = (campos.get("documento") or "").strip()
+    if not documento.startswith(INICIOS_DE_DOCUMENTO):
+        erros.append(
+            "O link do documento começa por https://, http:// ou "
+            "docs/changespecs/ — é por ele que qualquer pessoa confere depois "
+            "o que foi autorizado."
+        )
+
+    aprovado_por = (campos.get("aprovado_por") or "").strip()
+    if not aprovado_por:
+        erros.append(
+            "Escreva o NOME de quem aprovou: o §1 do formato exige aprovação "
+            "humana e nominal, e “aprovado” sem nome não é aprovação de "
+            "ninguém."
+        )
+    elif "@" in aprovado_por:
+        erros.append(
+            "Aqui vai o NOME de quem aprovou, não o e-mail: nesta célula o "
+            "e-mail vive numa linha só, a da identidade (DECISAO-EVO-01 §3)."
+        )
+
+    aprovado_em = parse_date((campos.get("aprovado_em") or "").strip())
+    if aprovado_em is None:
+        erros.append("A data da aprovação vai no formato AAAA-MM-DD.")
+
+    if erros:
+        raise ChangeSpecInvalido(erros)
+
+    return {
+        "change_id": change_id,
+        "documento": documento,
+        "aprovado_por": aprovado_por,
+        "aprovado_em": aprovado_em or date.today(),
+    }
+
+
+def registrar(*, sugestao, por, **campos) -> ChangeSpecAprovado:
+    """O único caminho de escrita desta tabela.
+
+    Confere fora da transação (recusa não precisa de rollback) e deixa a
+    unicidade para o banco: duas abas abertas com o mesmo CHANGE-ID viram uma
+    linha e uma frase, nunca duas linhas.
+    """
+    limpos = _conferir(campos)
+    try:
+        with transaction.atomic():
+            return ChangeSpecAprovado.objects.create(
+                sugestao=sugestao, registrado_por=por, **limpos
+            )
+    except IntegrityError:
+        raise ChangeSpecInvalido(
+            [
+                f"O ChangeSpec {limpos['change_id']} já está registrado nesta "
+                "ideia. Um ChangeSpec aprovado não é editado (formato §4): "
+                "escopo novo é uma versão nova, com o sufixo -v2."
+            ]
+        )
+
+
+# ---------------------------------------------------------------------------
+# A tela de quem aprova
+# ---------------------------------------------------------------------------
+
+
+def _pagina(request, ator, sugestao, *, erros=(), status=200):
+    return render(
+        request,
+        PAGINA,
+        {
+            "ator": ator,
+            "sugestao": sugestao,
+            "changespecs": sugestao.changespecs.select_related("registrado_por"),
+            "erros": list(erros),
+            "rascunho": {
+                campo: (request.POST.get(campo) or "").strip()
+                for campo in ("change_id", "documento", "aprovado_por", "aprovado_em")
+            },
+        },
+        status=status,
+    )
+
+
+@exige_aprovador
+def changespecs(request, ator, sugestao_id):
+    """Uma rota, dois métodos: a página e o formulário que posta para ela mesma.
+
+    Não há `require_GET`/`require_POST` aqui de propósito — seriam duas rotas
+    para uma tela só, e duas entradas a mais em cada uma das varreduras de
+    urlconf desta célula. O que cada método faz está escrito abaixo, e o
+    guarda mede os dois.
+    """
+    sugestao = get_object_or_404(
+        Sugestao.objects.select_related("categoria", "autor", "quadro"),
+        pk=sugestao_id,
+    )
+    if request.method != "POST":
+        return _pagina(request, ator, sugestao)
+
+    try:
+        registrar(
+            sugestao=sugestao,
+            por=ator.identidade,
+            change_id=request.POST.get("change_id"),
+            documento=request.POST.get("documento"),
+            aprovado_por=request.POST.get("aprovado_por"),
+            aprovado_em=request.POST.get("aprovado_em"),
+        )
+    except ChangeSpecInvalido as erro:
+        return _pagina(request, ator, sugestao, erros=erro.args[0], status=400)
+
+    return HttpResponseRedirect(reverse("changespecs", args=[sugestao.id]))
