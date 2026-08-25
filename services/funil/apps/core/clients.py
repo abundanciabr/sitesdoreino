@@ -9,6 +9,22 @@ import httpx
 
 logger = logging.getLogger("funil.sessao")
 
+_cliente: httpx.Client | None = None
+
+
+def http() -> httpx.Client:
+    """Um `httpx.Client` por processo, em vez de `httpx.get()`/`httpx.post()` a
+    cada chamada. A forma direta constrói um `Client` descartável — e com ele
+    um `ssl.SSLContext` novo, que recarrega os certificados raiz do sistema —
+    a cada chamada de rede interna (armadilhas/082, medido em 0,4s por
+    chamada). `httpx.Client` é seguro entre threads, que é o que o uvicorn
+    precisa.
+    """
+    global _cliente
+    if _cliente is None:
+        _cliente = httpx.Client()
+    return _cliente
+
 
 class CatalogoClient:
     """contracts/catalogo.openapi.yaml (somente-leitura)."""
@@ -22,7 +38,7 @@ class CatalogoClient:
 
     def obter_site_por_host(self, host: str) -> dict | None:
         """[INV-P11] 404 do catálogo é 'site desconhecido', nunca um site padrão."""
-        r = httpx.get(
+        r = http().get(
             f"{self.base}/sites/by-host/{host}",
             headers=self._headers(),
             timeout=5.0,  # timeout SEMPRE explícito
@@ -31,7 +47,7 @@ class CatalogoClient:
 
     def obter_oferta(self, site_id: str, slug: str) -> dict | None:
         """Slugs são únicos POR site — o site_id na rota é o que impede vazamento."""
-        r = httpx.get(
+        r = http().get(
             f"{self.base}/sites/{site_id}/ofertas/{slug}",
             headers=self._headers(),
             timeout=5.0,
@@ -50,7 +66,7 @@ class LeadsClient:
         return {"Authorization": f"Bearer {self.token}"}
 
     def upsert_lead(self, payload: dict) -> dict:
-        r = httpx.post(
+        r = http().post(
             f"{self.base}/leads",
             json=payload,
             headers=self._headers(),
@@ -104,7 +120,7 @@ class SugestoesClient:
         desistir depressa e mostrar "Entrar" — nunca pendurar a página.
         """
         try:
-            r = httpx.get(
+            r = http().get(
                 f"{self.base}/sessao",
                 headers={
                     "Authorization": f"Bearer {self.token}",

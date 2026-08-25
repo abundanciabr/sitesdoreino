@@ -33,10 +33,12 @@ def http() -> httpx.Client:
 timeout explícito** — a receita R2 do `CAMINHO-DOURADO.md` exige, e ele não pode se
 perder na troca.
 
-**Isto é dívida de mais de uma célula, não peculiaridade de uma.** O padrão R2 e o
-`clients.py` do `checkout` usam a forma direta; o `funil` também. O custo está lá,
-só que escondido em suítes menores — a `sugestoes` só o tornou visível porque faz
-**dois** saltos por login (o provedor de identidade e a célula `alunos`).
+**Isto era dívida de mais de uma célula, não peculiaridade de uma.** O `clients.py`
+do `checkout` e do `funil` usavam a forma direta — corrigidos em 25/08/2026 (auditoria
+de arquitetura do login, célula `identidade`) com o mesmo cliente preguiçoso por
+processo. O custo estava lá, só escondido em suítes menores — a `sugestoes` só o
+tornou visível porque faz **dois** saltos por login (o provedor de identidade e a
+célula `alunos`).
 
 **Como confirmar antes de mexer:** cronometre uma chamada dublada isolada. Se der
 centenas de milissegundos com a rede dublada, é isto — não é a rede, é o `SSLContext`.
