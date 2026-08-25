@@ -74,3 +74,10 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 USE_TZ = True
+
+# O fuso em que o quiz MOSTRA hora — o armazenamento continua em UTC (USE_TZ).
+# Sem esta linha vale o default de fábrica do Django, `America/Chicago`: a tela
+# de resultado mostraria a um usuário brasileiro um horário cinco horas atrás,
+# capaz de trocar até o DIA, sem nada indicando a troca. Foi assim que a célula
+# `sugestoes` foi pega em 24/08/2026 (EVO-21). Guarda: tests/test_fuso_horario.py.
+TIME_ZONE = "America/Sao_Paulo"
