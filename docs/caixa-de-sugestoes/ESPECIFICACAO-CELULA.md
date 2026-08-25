@@ -167,7 +167,7 @@ As células de gamificação, notificação e analytics assinam esses eventos e 
 - `HistoricoStatus` é append-only — nenhuma linha é editada ou apagada depois de criada.
 - `AvaliacaoInterna` nunca é lida ou escrita por um endpoint que o aluno acessa.
 - Nenhum model desta célula tem ForeignKey apontando para fora do banco da própria célula.
-- Merge de sugestão é transacional: ator que votou nas duas sugestões não vira dois votos; comentários e histórico da sugestão mesclada são preservados, nunca apagados; a URL da sugestão mesclada continua resolvendo, redirecionando para a canônica.
+- **(V1.1 — vale quando o merge existir)** Merge de sugestão é transacional: ator que votou nas duas sugestões não vira dois votos; comentários e histórico da sugestão mesclada são preservados, nunca apagados; a URL da sugestão mesclada continua resolvendo, redirecionando para a canônica. *A marcação foi acrescentada em 25/08/2026 (EVO-41): o merge é V1.1 pela §10, mas esta linha estava sem ressalva e a DoD do §11 exigia "todas as da §8" — as três afirmações não cabiam juntas, e a DoD ficava impossível de cumprir ao pé da letra. O que existe hoje é o portão que impede FINGIR que mesclou: `status = mesclado` não entra pela tela de status, com teste-guarda.*
 - `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se existir um ChangeSpec aprovado referenciando aquele `suggestion_id` — ver `FORMATO-CHANGESPEC.md`, seção 5.
 
 ## 9. Modos de falha a considerar
@@ -189,11 +189,11 @@ As células de gamificação, notificação e analytics assinam esses eventos e 
 
 ## 11. Definition of Done — MVP
 
-- [ ] Todas as invariantes da seção 8 cobertas por teste automatizado
-- [ ] Nenhuma ForeignKey cruzando banco de célula
-- [ ] Endpoint de avaliação de produto retorna 403 para qualquer ator sem role de staff
-- [ ] Evento de mudança de status é publicado antes do commit da transação de status
-- [ ] Auditoria do estado AS-IS das outras células documentada e anexada a este spec antes da implementação
+- [x] Todas as invariantes da seção 8 **que valem para o escopo entregue** cobertas por teste automatizado — provadas por MUTAÇÃO em 25/08/2026, não por leitura (`AUDITORIA-MVP.md`). Fora do escopo, e declarado: o invariante do **merge**, que é V1.1 pela §10
+- [x] Nenhuma ForeignKey cruzando banco de célula — **PASS sem ressalva** (único dos cinco); auditado em 25/08/2026
+- [x] Endpoint de avaliação de produto retorna **403 para quem tem sessão e não tem crachá**, e **302 para a porta** para quem não tem sessão. *Redação corrigida em 25/08/2026: o "403 para qualquer ator" era largo demais — devolver 403 a quem nem entrou é beco sem saída, e tornaria falso o guarda `test_inv_sem_sessao_nada`, que exige o porteiro de sessão em toda rota não pública. O `exige_staff` empilha sobre o `exige_sessao` de propósito*
+- [x] Evento de mudança de status é **registrado na outbox DENTRO** da transação de status, e **publicado no fio DEPOIS** do commit. *Redação corrigida em 25/08/2026: "publicado antes do commit" descreve literalmente o dual-write que a outbox existe para evitar — publicar antes permitiria o fio anunciar um fato que a transação ainda pode desfazer. A frase fundia dois momentos que o padrão separa de propósito*
+- [x] Auditoria do estado AS-IS das outras células documentada e anexada antes da implementação (`AUDITORIA-AS-IS.md`, 23/08/2026). **Ela envelheceu e ganhou tarja de data em 25/08/2026** — quatro afirmações não valem mais, entre elas o "maior achado" dela ("não existe login de usuário final"), hoje falso. O anexo segue valendo como registro do que se sabia na hora da decisão; não como mapa do presente
 
 ## 12. Da sugestão ao código
 
