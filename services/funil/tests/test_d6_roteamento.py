@@ -274,6 +274,28 @@ def test_a_guarda_de_colisao_reprova_uma_rota_colidente_de_verdade():
     assert colidente.strip("/").partition("/")[0] in _codigos_servivies()
 
 
+# --- HEAD é método SEGURO: toda página pública responde aos dois -------------
+# Descoberto medindo produção em 25/08/2026, logo depois de o inglês passar a
+# ser servido na raiz nua. Enquanto a raiz era um redirecionamento, nenhuma
+# requisição HEAD chegava às views e o 405 ficava escondido — `require_GET` e
+# `require_http_methods(["GET", "POST"])` recusam HEAD, e nenhum dos dois avisa.
+# Quem faz HEAD numa página pública: monitor de uptime, pré-visualizador de link
+# (WhatsApp, Telegram, Slack) e robô de busca. As páginas do sitemap são
+# exatamente as que mais recebem.
+@pytest.mark.parametrize("pagina", ["/", "/cadastro", "/login"])
+@pytest.mark.parametrize("idioma", IDIOMAS)
+def test_head_responde_como_get_em_toda_pagina_publica(client, rede, idioma, pagina):
+    caminho = caminho_mesh(idioma, pagina)
+    get = client.get(caminho, HTTP_HOST=HOST_MESH)
+    head = client.head(caminho, HTTP_HOST=HOST_MESH)
+    assert get.status_code == 200, caminho
+    assert head.status_code == 200, (
+        f"HEAD {caminho} devolveu {head.status_code} — método seguro recusado. "
+        "Use @require_safe nas views de leitura; em @require_http_methods, "
+        'inclua "HEAD" ao lado de "GET" (ele não vem de graça).'
+    )
+
+
 # ===========================================================================
 # GUARDA 3 — link cross-célula não leva prefixo de idioma, e é deliberado.
 # ===========================================================================
