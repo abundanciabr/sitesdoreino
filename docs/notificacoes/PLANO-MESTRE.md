@@ -12,6 +12,11 @@
 > **O que este documento NÃO é:** autorização para construir. A Fase 0 é uma sessão
 > de decisão com o mantenedor (§7), pelo mesmo motivo que a Caixa teve a EVO-01: as
 > escolhas aqui mudam a forma da plataforma, e uma delas cria célula nova.
+>
+> **ATUALIZAÇÃO 25/08/2026 — a Fase 0 está FECHADA.** O mantenedor respondeu as três
+> perguntas da §7 (*"sim, sim e nascer só com a Caixa"*), e as respostas viraram lei em
+> **`docs/decisoes/DECISAO-notificacoes.md`**. A partir daqui este plano é o **mapa de
+> execução**; a lei é aquele documento. **Se os dois divergirem, a lei vence.**
 
 ---
 
@@ -160,10 +165,14 @@ O que o plano exige, e cada um tem teste de volume:
 
 Cada fase é um lote. A ordem não é preferência: cada uma destrava a seguinte.
 
-### FASE 0 — Sessão de decisão (com o mantenedor) · **não é código**
+### FASE 0 — Sessão de decisão (com o mantenedor) · **não é código** · ✅ FECHADA em 25/08/2026
 
 As três perguntas da §7. Sai daqui uma `DECISAO-*.md` que vira lei, como a EVO-01 foi
 para a Caixa. **Nada começa antes.**
+
+**Fechada.** A lei é **`docs/decisoes/DECISAO-notificacoes.md`** — leia-a antes de
+tocar qualquer fase seguinte: ela fixa a gênese da célula, a garantia nova (e o guarda
+que muda junto), o recorte da V1 e as duas irreversibilidades do desenho.
 
 ### FASE 1 — O id que atravessa · células `sugestoes` (+ qualquer outra que cunhe identidade)
 
@@ -223,19 +232,27 @@ ainda é **stub** (`services/mensageria/apps/eventos/tasks.py`: *"Stub: loga o e
 
 ---
 
-## 7. As decisões que são do mantenedor — a Fase 0
+## 7. As decisões que são do mantenedor — a Fase 0 · **RESPONDIDAS em 25/08/2026**
+
+> **As três perguntas abaixo foram respondidas pelo mantenedor em 25/08/2026** — nas
+> palavras dele, *"as respostas são: sim, sim e nascer só com a Caixa. Vou seguir as
+> recomendações integralmente."* As três recomendações foram aceitas integralmente, e
+> viraram lei em **`docs/decisoes/DECISAO-notificacoes.md`**. O texto das perguntas
+> fica preservado aqui como registro do que estava em jogo; **a lei é o documento, não
+> esta seção.**
 
 1. **Criar a célula `notificacoes`?** É abrir o congelamento arquitetural de propósito,
    como foi feito para a Caixa e para a identidade. As alternativas estão na §4, com o
-   preço de cada uma. *Recomendação: sim.*
+   preço de cada uma. *Recomendação: sim.* → **RESPONDIDO: SIM.**
 2. **A garantia pode passar de "no mesmo instante, sempre" para "em segundos, e
    rastreável"?** É a §3, e é a única coisa deste plano que o aluno consegue perceber.
    *Recomendação: sim (saída A), com a promessa reescrita e o guarda mudando junto.*
+   → **RESPONDIDO: SIM (saída A).**
 3. **Quais assuntos entram na primeira versão?** Hoje só a Caixa produz fatos
    notificáveis. O quiz, a matrícula e o pagamento produzem eventos que **poderiam**
    virar notificação — e "serão muitas" sugere que virão. *Recomendação: nascer só com
    a Caixa, com o desenho pronto para os outros; assunto novo vira um PR pequeno, não
-   uma refatoração.*
+   uma refatoração.* → **RESPONDIDO: nascer só com a Caixa.**
 
 ---
 
@@ -275,7 +292,8 @@ qualquer caminho, inclusive o de deixar cada célula com a sua caixa.
 
 ---
 
-*Relacionados: `docs/caixa-de-sugestoes/DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md`
+*Relacionados: **`docs/decisoes/DECISAO-notificacoes.md`** (a LEI — Fase 0 fechada),
+`docs/caixa-de-sugestoes/DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md`
 (§2 — a decisão que originou este plano), `DECISAO-EVO-01-identidade.md` §3 (o e-mail
 numa linha só), `DECISAO-celula-de-identidade.md`, `DECISAO-onde-mora-a-sessao.md` §4
 (falha aberta), `CONSTITUICAO.md` Lei 3, `RITOS.md` §3 (Rito de Contrato),
