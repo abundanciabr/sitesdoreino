@@ -580,8 +580,13 @@ def test_o_varredor_nao_entra_em_worktree_de_agente(repo: Path) -> None:
     """
     intruso = repo / ".claude" / "worktrees" / "sessao-velha" / "ci" / "tests"
     intruso.mkdir(parents=True)
+    # A sentinela é montada em tempo de execução de propósito: escrita literal,
+    # ela viraria uma citação PENDURADA de verdade neste arquivo — e o
+    # `test_toda_referencia_a_uma_armadilha_resolve`, que agora enxerga tudo o
+    # que o git rastreia, reprovaria com razão. Foi ele mesmo quem pegou isto.
+    secao = "§"
     (intruso / "test_indice_de_armadilhas.py").write_text(
-        "# ver ARMADILHAS §99.99 para detalhes\n", encoding="utf-8"
+        f"# ver ARMADILHAS {secao}99.99 para detalhes\n", encoding="utf-8"
     )
     (repo / ".claude" / "worktrees" / "sessao-velha" / ".git").write_text(
         "gitdir: ../../../.git/worktrees/sessao-velha\n", encoding="utf-8"
