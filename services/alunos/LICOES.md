@@ -112,7 +112,7 @@ orçamento.
 
 **Onde:** `reentregar_presas()` e `_mover_para_fila_morta()` em
 `apps/eventos/management/commands/consume_eventos.py`; guarda em
-`tests/test_reentrega_pel.py`. Fecha o buraco medido em `ARMADILHAS.md` §9:
+`tests/test_reentrega_pel.py`. Fecha o buraco medido em `ARMADILHAS-OPERACAO.md` §9:
 `xreadgroup(">")` só entrega mensagem NOVA — o evento que estourava o handler
 ficava em XPENDING para sempre. Convenção do lote (mesma nas 4 células
 consumidoras): `IDLE_MS_REENTREGA = 60_000`, `MAX_ENTREGAS = 5`, DLQ em
