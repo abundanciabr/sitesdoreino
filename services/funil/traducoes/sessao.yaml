@@ -8,10 +8,15 @@
 # chave de uma página ser usada no template de outra, e o validador confere
 # template↔catálogo nos dois sentidos.
 #
-# **Não há "Sair" aqui, e é decisão.** Encerrar a sessão é um POST com CSRF da
-# célula que a emitiu; um link daqui não conseguiria apresentar aquele token, e
-# um botão que falha em silêncio é pior do que botão nenhum. Sair continua onde
-# funciona: dentro da Caixa.
+# **O "Sair" mora aqui desde 25/08/2026.** Até a auditoria daquele dia este
+# comentário dizia o contrário — que encerrar a sessão exigiria um token de
+# CSRF que um link daqui não teria. Isso deixou de ser verdade quando o login
+# virou célula própria: `/entrar/sair` é `csrf_exempt` **por necessidade e por
+# desenho**, justamente para receber o formulário de outras células, e se
+# defende conferindo a ORIGEM da requisição (guarda: `tests/test_sair.py` da
+# `identidade`). Sem o botão aqui, quem entrasse no site e não tivesse
+# matrícula ficava com sessão aberta e NENHUMA forma de fechá-la — em
+# computador compartilhado, a sessão de uma pessoa para a seguinte.
 
 entrar:
   # O rótulo do link para quem ainda não entrou. Curto de propósito: divide
@@ -23,8 +28,12 @@ entrar:
   es: "Entrar"
 
 ola:
-  # `{nome}` é o `nome_exibido` que a Caixa devolve — nunca o e-mail, que não
-  # atravessa a fronteira (contracts/sugestoes.openapi.yaml).
+  # `{nome}` é o `nome_exibido` que a célula `identidade` devolve — nunca o
+  # e-mail, que não atravessa a fronteira (contracts/identidade.openapi.yaml).
+  # NÃO é link desde 25/08/2026: apontava para a Caixa, e quem não tem
+  # matrícula clicava no próprio nome — o gesto universal de "minha conta" — e
+  # recebia uma tela de recusa. Para essa pessoa não era uma regra de negócio,
+  # era um defeito.
   _fonte: "a10bbe"
   en: "Hi, {nome}"
   pt-br: "Olá, {nome}"
@@ -37,3 +46,12 @@ minha_conta:
   en: "My account"
   pt-br: "Minha conta"
   es: "Mi cuenta"
+
+sair:
+  # O par do `entrar`. É um <button> dentro de <form method="post">, não um
+  # link: encerrar sessão muda estado, e um GET seria acionável por qualquer
+  # <img src> de terceiro.
+  _fonte: "48f0d3"
+  en: "Sign out"
+  pt-br: "Sair"
+  es: "Salir"

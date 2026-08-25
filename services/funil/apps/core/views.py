@@ -154,6 +154,22 @@ def cadastro(request):
 # para esta página com `?erro=<chave>`, e cada chave tem tradução própria em
 # `traducoes/login.yaml`. Chave fora desta lista é ignorada em silêncio: query
 # string é entrada de rede, nunca vira chave de catálogo sem passar na cerca.
+def destino_local(cru: str | None, padrao: str) -> str:
+    """Só caminho LOCAL deste site — nunca um endereço de fora.
+
+    O `?next=` chega pela URL, então é entrada de rede. A célula `identidade`
+    sanea de novo do lado dela (`views.destino_seguro`), e é lá que mora a
+    defesa que importa — esta aqui é a segunda camada, para o valor que ESTE
+    site monta no link nunca ser o vetor. `//outro-site` é o clássico: o
+    navegador o lê como endereço absoluto sem esquema.
+    """
+    if not cru or not cru.startswith("/") or cru.startswith("//"):
+        return padrao
+    if "\\" in cru or any(ord(c) < 0x20 for c in cru):
+        return padrao
+    return cru
+
+
 CHAVES_DE_RECUSA = {
     "interrompida",
     "nao-confere",
@@ -187,10 +203,16 @@ def entrar(request):
     erro = request.GET.get("erro") or ""
     if erro not in CHAVES_DE_RECUSA:
         erro = ""
-    destino = f"/{request.idioma}/"
+    # A pessoa volta para ONDE ESTAVA, não para a home. O cabeçalho de sessão
+    # de toda página manda o caminho atual no `?next=`; sem isso, quem clicava
+    # "Entrar" no meio de um cadastro meio preenchido voltava para a home e
+    # perdia o que tinha digitado.
+    destino = destino_local(request.GET.get("next"), f"/{request.idioma}/")
     entrada = f"{url_de_entrada()}?{urlencode({'next': destino})}"
     return render(
-        request, "funil/login.html", {"url_de_entrada": entrada, "erro": erro}
+        request,
+        "funil/login.html",
+        {"url_de_entrada": entrada, "erro": erro, "destino": destino},
     )
 
 

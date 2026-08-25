@@ -62,7 +62,9 @@ def test_visitante_ve_entrar_em_toda_pagina(client, rede, idioma, caminho):
     assert 'class="sessao"' in conteudo
     # O link aponta para a porta DESTE site, com o prefixo de idioma — nunca
     # para um caminho nu, que cairia no redirect da matriz do resolver.
-    assert f'href="/{idioma}/login"' in conteudo
+    # O link carrega o `next` da página atual desde 25/08/2026: quem clica
+    # "Entrar" no meio de um cadastro volta para o cadastro, não para a home.
+    assert f'href="/{idioma}/login?next=' in conteudo
 
 
 @pytest.mark.parametrize("idioma", IDIOMAS)
@@ -71,7 +73,7 @@ def test_quem_entrou_ve_o_proprio_nome_em_toda_pagina(client, logado, idioma):
 
     conteudo = resp.content.decode()
     assert NOME in conteudo
-    assert f'href="/{idioma}/login"' not in conteudo  # já entrou: some o "Entrar"
+    assert f'href="/{idioma}/login?next=' not in conteudo  # já entrou: some o "Entrar"
 
 
 def test_o_cookie_e_repassado_intacto_e_o_par_se_identifica(client, logado):
@@ -103,7 +105,7 @@ def test_caixa_com_problema_a_pagina_abre_como_visitante(client, rede, resposta)
     resp = client.get("/pt-br/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
 
     assert resp.status_code == 200, "a vitrine caiu porque a Caixa tropeçou"
-    assert 'href="/pt-br/login"' in resp.content.decode()
+    assert 'href="/pt-br/login?next=' in resp.content.decode()
 
 
 def test_caixa_fora_do_ar_a_pagina_abre_como_visitante(client, rede):
@@ -112,7 +114,7 @@ def test_caixa_fora_do_ar_a_pagina_abre_como_visitante(client, rede):
     resp = client.get("/pt-br/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
 
     assert resp.status_code == 200
-    assert 'href="/pt-br/login"' in resp.content.decode()
+    assert 'href="/pt-br/login?next=' in resp.content.decode()
 
 
 # ---------------------------------------------------------------------------
@@ -290,7 +292,7 @@ def test_sem_configuracao_a_pagina_abre_como_visitante(
         "o site caiu porque uma variável de ambiente não estava no servidor — "
         "fail-open vale para configuração também, não só para rede"
     )
-    assert 'href="/pt-br/login"' in resp.content.decode()
+    assert 'href="/pt-br/login?next=' in resp.content.decode()
 
 
 def test_sem_configuracao_nao_custa_salto_de_rede(client, rede, monkeypatch):
@@ -315,4 +317,104 @@ def test_resposta_200_que_nao_e_json_nao_derruba_a_vitrine(client, rede):
     resp = client.get("/pt-br/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
 
     assert resp.status_code == 200
-    assert 'href="/pt-br/login"' in resp.content.decode()
+    assert 'href="/pt-br/login?next=' in resp.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# 11. AS TELAS (auditoria de 25/08/2026, cadeira de produto/UX)
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("idioma", IDIOMAS)
+def test_quem_entrou_tem_como_SAIR_em_toda_pagina(client, logado, idioma):
+    """O achado que criava um estado sem saída.
+
+    Antes, o único "Sair" do produto inteiro vivia dentro da Caixa, num ramo
+    que só quem TEM matrícula alcança. Como entrar no site deixou de exigir
+    matrícula, existia gente que entrava e não conseguia sair de lugar nenhum —
+    em computador compartilhado, a sessão de uma pessoa para a seguinte.
+    """
+    conteudo = client.get(
+        f"/{idioma}/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert 'action="/entrar/sair"' in conteudo, "não há como sair do site"
+    assert (
+        'method="post"' in conteudo
+    ), "sair tem de ser POST — GET é acionável por <img>"
+
+
+def test_o_sair_devolve_a_pessoa_para_a_pagina_onde_ela_estava(client, logado):
+    conteudo = client.get(
+        "/pt-br/cadastro", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert 'name="next" value="/pt-br/cadastro"' in conteudo
+
+
+@pytest.mark.parametrize("idioma", IDIOMAS)
+def test_o_nome_de_quem_entrou_NAO_e_link_para_a_caixa(client, logado, idioma):
+    """Clicar no próprio nome é o gesto universal de "minha conta".
+
+    Enquanto ele apontava para a Caixa, quem não tem matrícula clicava e
+    recebia uma tela de recusa — para essa pessoa, isso não é regra de
+    negócio, é defeito. O nome virou texto; o caminho para a Caixa volta a
+    existir quando houver uma página de conta de verdade.
+    """
+    conteudo = client.get(
+        f"/{idioma}/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert NOME in conteudo
+    assert f'<a href="/forms/sugestoes/">{NOME}' not in conteudo
+    assert f">{NOME}</a>" not in conteudo
+
+
+@pytest.mark.parametrize("idioma", IDIOMAS)
+def test_a_porta_nao_exige_mais_matricula_no_texto(client, rede, idioma):
+    """A decisão de 25/08 diz que qualquer conta Google entra. O texto tem de
+    dizer o mesmo — enquanto ele pedia "o e-mail da sua matrícula", ele
+    mandava embora exatamente quem a decisão acabou de deixar entrar."""
+    conteudo = client.get(f"/{idioma}/login", HTTP_HOST=HOST_MESH).content.decode()
+
+    # A frase INCONDICIONAL do subtítulo antigo — a que dizia à pessoa sem
+    # matrícula "este login não é para você". O aviso condicional ("já é
+    # aluno? use o e-mail da matrícula") continua valendo e é desejável: ele
+    # dá o conselho da EVO-01 §5 sem transformá-lo em requisito de entrada.
+    incondicional = {
+        "pt-br": "Use a conta Google com o mesmo e-mail da sua matrícula.",
+        "en": "Use the Google account with the same e-mail as your enrollment.",
+        "es": "Usa la cuenta de Google con el mismo correo de tu matrícula.",
+    }
+    assert (
+        incondicional[idioma] not in conteudo
+    ), "a porta ainda EXIGE matrícula para entrar"
+
+    # E a afirmação positiva: o texto novo diz que qualquer conta entra.
+    abre = {
+        "pt-br": "Qualquer conta pode entrar",
+        "en": "Any Google account can sign in",
+        "es": "Cualquier cuenta puede entrar",
+    }
+    assert abre[idioma] in conteudo, "a porta não diz que qualquer conta entra"
+
+
+def test_entrar_de_uma_pagina_interna_volta_para_ela(client, rede):
+    """O `?next=` da página atual atravessa até a porta central."""
+    conteudo = client.get(
+        "/pt-br/login", {"next": "/pt-br/cadastro"}, HTTP_HOST=HOST_MESH
+    ).content.decode()
+
+    assert "next=%2Fpt-br%2Fcadastro" in conteudo
+
+
+@pytest.mark.parametrize(
+    "malicioso", ["https://golpista.example", "//golpista.example", "/\golpista"]
+)
+def test_next_malicioso_na_tela_de_login_vira_a_home_do_idioma(client, rede, malicioso):
+    """Segunda camada: a `identidade` sanea do lado dela, e este site nunca
+    monta o link com um destino de fora."""
+    conteudo = client.get(
+        "/pt-br/login", {"next": malicioso}, HTTP_HOST=HOST_MESH
+    ).content.decode()
+
+    assert "golpista" not in conteudo
+    assert "next=%2Fpt-br%2F" in conteudo
