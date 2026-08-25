@@ -476,10 +476,8 @@ def test_o_guarda_nao_depende_do_NOME_do_router_da_compra():
     # router `checkout-api` mantém tudo verde, porque o guarda o encontra pela
     # REGRA. É o inverso exato de `test_os_prefixos_de_hoje...`, que fica
     # vermelho só porque um NOME sumiu.
-    documento = _documento_real()
+    documento, antigo = _router_da_compra_real()
     routers = documento["http"]["routers"]
-    alvos = quem_casa(routers, HOST_NAO_CADASTRADO, CAMINHO_DA_COMPRA)
-    antigo = next(n for n in alvos if routers[n].get("service") == SERVICE_DA_COMPRA)
     routers["api-da-compra-com-outro-nome"] = routers.pop(antigo)
     assert problemas(documento) == []
     assert desordens_de_prioridade(documento) == []
@@ -490,14 +488,25 @@ def test_o_guarda_nao_depende_do_NOME_do_router_da_compra():
 # verdes no CI antes deste arquivo existir (ver a tabela do docstring).
 # ---------------------------------------------------------------------------
 def _router_da_compra_real() -> tuple[dict, str]:
+    """O documento real + o nome do router que hoje serve a compra.
+
+    Achado pela REGRA, nunca pelo nome. Se não houver nenhum, a mensagem diz
+    isso em português — em vez do `StopIteration` cru que um `next()` sem
+    rede daria, e que não ensinaria nada a quem abrisse o log.
+    """
     documento = _documento_real()
     routers = documento["http"]["routers"]
-    nome = next(
+    achados = [
         n
         for n in quem_casa(routers, HOST_NAO_CADASTRADO, CAMINHO_DA_COMPRA)
         if routers[n].get("service") == SERVICE_DA_COMPRA
-    )
-    return documento, nome
+    ]
+    if not achados:
+        raise AssertionError(
+            f"router nenhum de {ROTAS} casa `{CAMINHO_DA_COMPRA}` apontando para o "
+            f"service `{SERVICE_DA_COMPRA}` — a rota da compra SUMIU da tabela."
+        )
+    return documento, achados[0]
 
 
 def test_mutacao_1_apagar_a_rota_da_compra_reprova():
@@ -517,6 +526,7 @@ def test_mutacao_3_apontar_a_compra_para_a_celula_errada_reprova():
     documento, nome = _router_da_compra_real()
     documento["http"]["routers"][nome]["service"] = "funil"
     assert problemas(documento) != []
+    assert desordens_de_prioridade(documento) != []
 
 
 # ---------------------------------------------------------------------------
