@@ -84,15 +84,25 @@ de máquina.
 
 ## O resolver decapa o prefixo em `request.path_info`; `request.path` fica intacto
 
-O middleware reescreve `request.path_info` (`/en/cadastro` → `/cadastro`)
+> **Atualização de 25/08/2026 (D1 revisto):** os dois exemplos abaixo usavam
+> `en` porque, até então, TODO idioma — inclusive o padrão — levava prefixo.
+> Desde `docs/decisoes/DECISAO-raiz-sem-prefixo-do-idioma-padrao.md` isso não
+> vale mais para o idioma PADRÃO do site: `/en/cadastro` e `/en` são **404**
+> (o prefixo do padrão não existe), não decapagem nem redirecionamento. O
+> mecanismo descrito aqui — decapar `path_info` e preservar `path` — continua
+> valendo tal e qual, só que agora só para os idiomas NÃO-padrão (ex.: `pt-br`).
+
+O middleware reescreve `request.path_info` (`/pt-br/cadastro` → `/cadastro`)
 ANTES da resolução de URL — o urlconf da célula continua sem nenhum prefixo, e
 toda página futura ganha os idiomas de graça. `request.path` segue completo
-(`/en/cadastro`), e é dele que sai o canonical. Duas consequências:
+(`/pt-br/cadastro`), e é dele que sai o canonical. Duas consequências:
 1. `{% url %}`/links relativos gerados por view NÃO levam prefixo de idioma —
    a fase 2 precisa do helper de URL com idioma antes de linkar entre páginas
-   de site registrado (pendência já registrada no D6 do plano).
-2. `/en` sem barra → 302 `/en/` (decisão desta célula, não estava na matriz:
-   evita duas URLs servindo o mesmo conteúdo).
+   de site registrado (pendência já registrada no D6 do plano; hoje é
+   `{% url_i18n %}` → `apps/i18n/idiomas.py::caminho_publico`).
+2. `/pt-br` sem barra → 302 `/pt-br/` (decisão desta célula, não estava na
+   matriz: evita duas URLs servindo o mesmo conteúdo). O idioma padrão não tem
+   essa forma: `/en` é 404, não 302 (ver armadilha 098).
 **Origem:** despacho funil/i18n-fundacao — `apps/core/middleware.py`.
 
 ## Regressão byte-idêntica do base_mobile: como o template muda sem mudar um byte
