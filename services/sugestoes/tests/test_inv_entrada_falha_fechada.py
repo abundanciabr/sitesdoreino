@@ -98,3 +98,19 @@ def test_participacao_tambem_fecha_quando_nao_da_para_conferir(rede, db, quadro)
     resposta = pessoa.client.get(reverse("quadro"))
     assert resposta.status_code == 302
     assert resposta["Location"] == reverse("entrar")
+
+
+def test_resposta_200_que_nao_e_json_fecha_explicando(rede, db, client):
+    """`json.JSONDecodeError` é `ValueError`, não `httpx.RequestError`.
+
+    Cenário real: um proxy interposto devolve a própria página de erro com
+    status 200, ou a resposta chega truncada. Fora do `try` isso subiria cru
+    até a view e viraria **500** — em vez do 503 que diz "o problema é nosso".
+    A porta continua fechando (autorização é fail-closed), mas fechando com
+    explicação, que é a regra desta célula.
+    """
+    rede.central_responde(httpx.Response(200, text="<html>erro do proxy</html>"))
+    client.cookies["meshcraft_sessao"] = "algum-valor"
+    from tests.conftest import Porta
+
+    _porta_fechada_explicando(Porta(client, rede))

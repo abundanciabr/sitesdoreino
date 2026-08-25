@@ -130,7 +130,20 @@ class IdentidadeClient:
             raise IdentidadeIndisponivel(
                 f"a célula identidade respondeu HTTP {resposta.status_code}"
             )
-        corpo = resposta.json()
+
+        try:
+            corpo = resposta.json()
+        except ValueError as erro:
+            # `200` com corpo que não é JSON — página de erro de um proxy
+            # interposto, resposta truncada, `Content-Length` mentiroso.
+            # `json.JSONDecodeError` é `ValueError`, NÃO é `httpx.RequestError`:
+            # fora deste `try` ela subiria crua até a view e viraria 500, em vez
+            # do 503 que explica. É a família do *2xx não é sucesso*
+            # (RETROSPECTIVA §4), achada pela auditoria de 25/08/2026.
+            raise IdentidadeIndisponivel(
+                f"a célula identidade respondeu fora do contrato: {erro}"
+            ) from erro
+
         if not isinstance(corpo, dict) or "autenticado" not in corpo:
             raise IdentidadeIndisponivel(
                 "a célula identidade respondeu fora do contrato"
