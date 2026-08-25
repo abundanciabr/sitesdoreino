@@ -87,9 +87,10 @@ def entrar(request):
             request,
             titulo="Não encontramos matrícula para esse e-mail",
             texto=(
-                f"Você entrou no site com {resolucao.email}, mas não encontramos "
-                "matrícula para esse endereço. Se você comprou o curso com outro "
-                "e-mail, entre com ele — ou fale com a gente que a gente resolve."
+                f"Você está no site como {resolucao.email}, mas não encontramos "
+                "matrícula para esse endereço. A Caixa de Sugestões é uma área "
+                "de alunos. Se você comprou o curso com outro e-mail, entre com "
+                "ele — ou fale com a gente que a gente resolve."
             ),
             email=resolucao.email,
             status=403,

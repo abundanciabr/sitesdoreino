@@ -92,6 +92,27 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
       <a class="botao" href="{% url 'entrar_google' %}">
         {% if titulo %}Entrar com outra conta Google{% else %}Entrar com Google{% endif %}
       </a>
+      {% comment %}
+      As DUAS saídas desta tela, acrescentadas em 25/08/2026 (auditoria, cadeira
+      de produto/UX). Sem elas, quem chegava aqui vindo do site e levava um
+      "não encontramos matrícula" ficava num beco: a única ação era "Entrar com
+      outra conta Google" — e escolher a MESMA conta devolvia à MESMA tela.
+      Loop, sem link de volta e sem como sair.
+
+      O `sair` aparece só para quem TEM sessão do site (`email`, que a porta
+      preenche em toda recusa nomeada): quem nunca entrou não tem o que
+      encerrar, e um botão morto seria pior que botão nenhum. Ele posta para a
+      célula `identidade`, que é quem assina o cookie — o `csrf_exempt` de lá
+      existe exatamente para receber formulário de outra célula, e se defende
+      pela origem.
+      {% endcomment %}
+      {% if email %}
+        <form method="post" action="/entrar/sair">
+          <input type="hidden" name="next" value="/">
+          <button type="submit" class="botao discreto">Sair do site</button>
+        </form>
+      {% endif %}
+      <a class="botao discreto" href="/">&#8592; Voltar ao site</a>
     {% endif %}
   </main>
 </body>
