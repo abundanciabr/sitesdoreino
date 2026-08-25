@@ -5,16 +5,28 @@
 > Caixa atualiza esta página **e** o painel no fechamento — se os dois
 > discordarem, avise: é bug de processo.
 >
-> Última atualização: **25/08/2026** — EVO-30 entregue: a Caixa ganhou rosto.
+> Última atualização: **25/08/2026** — Lote 4 fechado: a Caixa tem corredor, e o MVP foi auditado.
 
 **Legenda:** ⬜ na fila · 🔵 em andamento · ✅ entregue (com prova) · 🔴 travado · 🙋 precisa de você
 
 ## Onde estamos
 
-**Fase atual: LOTE 3 FECHADO — A CAIXA TEM ROSTO E TEM ROADMAP (25/08/2026).** O EVO-30 e o EVO-31 estão no ar: o aluno abre o quadro em grade, alterna entre *Mais votadas* e *Novas*, vota e desvota no card, abre uma ideia e vê o histórico com a resposta da equipe, manda a dele com a busca de duplicata na frente — e agora vê **por onde as ideias andaram**, nas quatro zonas do roadmap (com as recusadas e as mescladas em "Fora do trilho", nunca escondidas), e a página de avisos ganhou a mesma linguagem visual do quadro. *(Marco anterior: LOTE 2, 24/08/2026 — a Caixa entrou no ar)* em `meshcraft.top/forms/sugestoes/` (medido da internet: `/entrar` responde 200). O plano mestre existe, a auditoria do
-terreno foi feita, e o nome e o endereço estão decididos: a ferramenta chama-se
-**Caixa de Sugestões** e vai morar em **meshcraft.top/forms/sugestoes/**. Falta
-a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem nenhuma pendência sua.
+**Fase atual: LOTE 4 FECHADO — O MVP ESTÁ PRONTO E AUDITADO (25/08/2026).** A
+Caixa deixou de ser só um lugar de escrever ideia: agora tem **corredor**. Nada
+entra "em desenvolvimento" sem um ChangeSpec que **você** assinou (a trava é
+mecânica, em três camadas — não há como contornar por engano), e **todo mundo
+que interagiu com uma ideia** fica sabendo quando ela anda, não só quem a
+escreveu. A pasta `docs/changespecs/` nasceu, com um molde pronto para copiar.
+
+E o checklist do MVP foi **conferido item a item contra o código de verdade**,
+com o método caro: quebrar o programa de propósito para ver se os testes
+reclamam. Os cinco itens fecharam sem nenhum FAIL —
+[`AUDITORIA-MVP.md`](AUDITORIA-MVP.md) tem os vereditos e as evidências. Três
+achados vieram junto, e os três são de **texto do plano**, não de defeito no que
+está no ar (detalhe na linha do tempo abaixo).
+
+*(Marcos anteriores: LOTE 3, 25/08 — a Caixa ganhou rosto e roadmap · LOTE 2,
+24/08 — a Caixa entrou no ar em `meshcraft.top/forms/sugestoes/`.)*
 
 ## 🙋 Precisa de você (tudo que o plano inteiro vai pedir)
 
@@ -22,7 +34,8 @@ a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem ne
 |---|---|---|
 | ~~Antes do Lote 1~~ ✅ | ~~Conversa EVO-01~~ **FEITA em 23/08/2026** — decisão: **Entrar com Google**, e só entra quem tem matrícula. O link mágico foi descartado (a plataforma não manda e-mail). Lei em `DECISAO-EVO-01-identidade.md` | — |
 | No Lote 2 | Criar o banco `sugestoes_db` na VPS + preencher o `sugestoes.env` real — **agora inclui criar o aplicativo OAuth no Google** (ID de cliente + segredo, retorno em `/forms/sugestoes/entrar/google/retorno`) e a lista `SUGESTOES_STAFF_EMAILS` | UM bloco de colar, fail-closed, com a janela rotulada |
-| No Lote 4 | Assinar `APROVADO_POR` no primeiro ChangeSpec real | Um campo para preencher, nada técnico |
+| ~~No Lote 4~~ ✅ | ~~Ligar a lista de quem pode aprovar na VPS~~ **FEITO em 25/08/2026** (H22 no `ARMADILHAS-OPERACAO.md`): `SUGESTOES_APROVADORES` está no ar, e hoje só você está nela | — |
+| **Quando houver uma ideia de gente para virar trabalho** | **Assinar `APROVADO_POR` no primeiro ChangeSpec real.** É um nome e uma data num arquivo de texto (molde pronto em `docs/changespecs/CS-TEMPLATE.md`), nada técnico — e enquanto ninguém assinar, nenhuma ideia sai de "Planejado", que é o lado seguro | Alguém escreve o rascunho e te mostra; você lê e assina |
 
 ## Lote 0 — Alicerce
 
@@ -37,7 +50,7 @@ a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem ne
 |---|---|---|---|---|
 | EVO-10 | A célula `sugestoes` existe, sobe e passa no CI | ✅ | #108 | canário; achou que faltava declarar a célula no `rollback.yml` — a auditoria Q4 estava incompleta |
 | EVO-11 | Os dados: quadros, sugestões, votos, comentários, histórico | ✅ | #113 | IDs opacos (não UUID); histórico append-only em 3 degraus, o 3º é trigger no Postgres |
-| EVO-12a | Entrar com Google (a porta) | ✅ | #116 | dividido do EVO-12 por orçamento; suíte roda com a REDE PROIBIDA, provado |
+| EVO-12a | Entrar com Google (a porta) | ✅ | #116 | dividido do EVO-12 por orçamento; suíte roda com a REDE PROIBIDA, provado |
 | EVO-12b | Aluno sugere, vota, desvota, comenta e vê o quadro | ✅ | #122 | busca de duplicata, limite 3/7 dias, avaliação interna invisível ao aluno (3 degraus) |
 | EVO-13 | Equipe muda status e avalia (só staff) | ✅ | #126 | histórico na MESMA transação; `nao_planejado` exige justificativa; guarda que protege a §4.1 |
 
@@ -60,10 +73,51 @@ a conversa EVO-01 aconteceu em 23/08/2026 e **o Lote 1 já pode partir**, sem ne
 
 | Despacho | O que entrega | Estado | PR | Nota |
 |---|---|---|---|---|
-| EVO-40 | Trava de segurança: nada entra "em desenvolvimento" sem ChangeSpec aprovado por você | ⬜ | — | |
-| EVO-41 | MVP declarado pronto, com o checklist da spec conferido item a item | ⬜ | — | fecha o plano |
+| EVO-40 | Trava de segurança: nada entra "em desenvolvimento" sem ChangeSpec aprovado por você | ✅ | #187 | trava em **três camadas** (a tela, o programa e o próprio banco de dados), cada uma provada separadamente. Quem aprova é só quem está em `SUGESTOES_APROVADORES` — **lista vazia = ninguém aprova**, de propósito. Lei em `DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md` |
+| EVO-42 | O aviso deixa de ser só do autor: quem votou e quem comentou também fica sabendo | ✅ | #193 | um aviso por pessoa distinta, com o motivo escrito ("sua ideia" × "ideia em que você votou"), tudo na mesma transação da mudança de status. O custo em consultas ao banco **não** cresce com o tamanho da plateia — está medido |
+| EVO-41 | MVP declarado pronto, com o checklist da spec conferido item a item | ✅ | *(este)* | fecha o plano. `docs/changespecs/` nasceu (ponteiro para a lei + molde); os 5 itens do checklist auditados por mutação em [`AUDITORIA-MVP.md`](AUDITORIA-MVP.md): **nenhum FAIL**, 3 ressalvas, todas de redação do plano |
 
 ## Linha do tempo
+
+- **25/08/2026 (noite)** — **LOTE 4 FECHADO: o MVP está pronto, e foi auditado
+  de fora.** O EVO-40 pôs a trava (#187), o EVO-42 abriu o leque de avisos
+  (#193) e o EVO-41 fechou o registro: a pasta `docs/changespecs/` existe, com
+  um **ponteiro** para a lei do formato (não uma cópia — duas cópias derivam em
+  silêncio, e isso já custou dois PRs neste mesmo lote) e um molde pronto para
+  copiar, com o campo da sua assinatura **em branco**.
+
+  A auditoria do checklist do MVP foi feita pelo método caro: **quebrar o
+  programa de propósito, 15 vezes, e exigir que os testes reclamem** em cada
+  uma. Todas reclamaram. Resultado: **nenhum item reprovado**, e três achados —
+  os três de *texto do plano*, não de defeito no que está no ar:
+
+  1. o plano exigia, para declarar o MVP pronto, um teste de uma
+     funcionalidade que o **próprio plano** adiou para a versão seguinte
+     (juntar ideias repetidas). As duas exigências não cabiam juntas; o que
+     existe hoje é o portão que impede alguém de *marcar* uma ideia como
+     "juntada" sem que nada tenha sido juntado;
+  2. o plano dizia "a página da equipe responde *proibido* a qualquer um sem
+     crachá". Medido: ela responde *proibido* a quem já entrou e não é da
+     equipe, e manda para a tela de entrada quem nem entrou — que é o certo, e
+     o texto é que estava largo demais;
+  3. o plano pedia que o aviso ao resto da plataforma fosse enviado *antes* de
+     a mudança ser gravada. O código faz o contrário e faz certo: **grava
+     junto, envia depois** — enviar antes é o jeito clássico de anunciar um
+     fato que ainda pode ser desfeito.
+
+  Junto veio um recado de manutenção: a **auditoria do terreno de 23/08**
+  (`AUDITORIA-AS-IS.md`) envelheceu em quatro pontos — o maior deles é a frase
+  *"não existe login de aluno na plataforma"*, que era o achado principal dela
+  e hoje está falsa (a célula de identidade nasceu e está no ar). Ela continua
+  valendo como fotografia datada; a tabela do que mudou está no item 5 da
+  [`AUDITORIA-MVP.md`](AUDITORIA-MVP.md).
+
+  **Fica de fora, e é rito, não esquecimento:** o sininho ao lado do seu nome em
+  **todo** o site (hoje ele só aparece dentro da Caixa). Para isso, o site
+  precisaria perguntar à Caixa quantos avisos a pessoa tem — uma conversa nova
+  entre duas partes do sistema, e essas conversas só se abrem numa sessão
+  dedicada, com você presente. Também de fora: a aba "Em alta" e o painel "Meu
+  impacto", que são V1.2.
 
 - **25/08/2026** — **EVO-30: a Caixa ganhou rosto** (PR #166, deploy verde). Despachado dentro de um lote de 5 frentes paralelas; coube inteiro em 14 arquivos. O guarda morde: quebrar o link do estilo deixa 7 testes vermelhos. Prova de fora, ao vivo: o quadro exige login (302 para `/entrar`) e a folha de estilo responde 200 no endereço com o prefixo da célula. Achado promovido a `armadilhas/102` — `funil` e `checkout` estavam certas por **acidente de endereço**, não por desenho.
 

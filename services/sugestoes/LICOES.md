@@ -1093,3 +1093,99 @@ que não existia. A cura é `git reset` (misto: desfaz o índice, preserva a ár
 antes do `git diff`, ou `git diff HEAD` direto — e **conferir o tamanho do
 patch** (`wc -l`) antes de confiar nele. Isto foi promovido a `armadilhas/108`,
 porque é mecânica de git e não desta casa.
+
+## A auditoria do MVP (EVO-41): o que 15 mutações ensinaram sobre esta célula
+
+Este despacho não escreveu comportamento nenhum — foi **auditor**. O relatório
+inteiro, com os cinco vereditos e a saída crua de cada mutação, está em
+`docs/caixa-de-sugestoes/AUDITORIA-MVP.md`. O que fica aqui é o que serve para
+quem for MEXER neste código depois.
+
+**1. Duas das cinco linhas do Definition of Done estavam ERRADAS — o documento,
+não o código.** É a lição mais cara deste despacho, e é uma lição de método: um
+plano aprovado vira lei para os agentes seguintes, e eles não o questionam.
+
+* A §11 diz *"403 para **qualquer** ator sem role de staff"*. Medido, a célula
+  devolve **403 para um** dos três atores sem crachá e **302 para os outros
+  dois** — e está certa: o anônimo vai para a porta porque 403 a quem nem
+  entrou é um beco, e porque `exige_staff` **empilha** sobre `exige_sessao`, que
+  é o que faz as três varreduras de urlconf somarem o urlconf inteiro. Um agente
+  futuro que leia a §11 ao pé da letra e "conserte" o 302 quebra
+  `test_inv_sem_sessao_nada.py` junto.
+* A §11 diz *"evento **publicado antes do commit**"*. Publicar no barramento
+  antes do commit é o dual-write que a outbox existe para impedir. O código
+  **registra** na outbox dentro da transação e **publica** no `on_commit` — dois
+  momentos, e a frase confunde os dois num só.
+
+**Regra que fica: quando a spec e o código discordam, o achado é a divergência,
+não o "bug".** Diga qual dos dois está errado e por quê; não conserte o lado
+mais fácil de mexer.
+
+**2. A §8 e a §10 da spec se contradizem, e a §11 fica impossível no meio.** A
+§8 lista *"merge de sugestão é transacional"* como invariante sem ressalva; a
+§10 põe merge em **V1.1**; a §11 exige "todas as invariantes da §8" para o
+**MVP**. Não há como cumprir as três. O invariante do merge é o único da §8
+**sem guarda nenhum** — e não pode ter, porque a operação não existe. O que
+existe no lugar é `test_mesclado_nao_entra_pela_porta_do_status`, que impede
+alguém de FINGIR que mesclou; ele reprova quando `MESCLADO` entra na
+`STATUS_QUE_A_EQUIPE_ESCOLHE`. Quem for fechar isto de verdade fecha os dois
+lados: a operação **e** as quatro promessas da frase da §8.
+
+**3. Escrita idempotente engana o degrau do meio do guarda da
+`AvaliacaoInterna`.** A primeira tentativa de provar a metade "nunca é ESCRITA
+por endpoint do aluno" usou `get_or_create` sobre a linha que a fixture já tinha
+criado: `test_a_jornada_do_aluno_nao_escreve_na_avaliacao` **ficou verde**,
+porque ele compara conteúdo antes/depois e nada mudou. Os outros dois degraus (o
+SQL e a AST) pegaram — que é para isso que a escada existe. Mas fica o aviso:
+**guarda que mede resultado não vê escrita que não muda nada**; para falsificá-lo
+é preciso `update_or_create`, não `get_or_create`. Nenhum dos três degraus é
+redundante, e quem "simplificar" o arquivo tirando um vai descobrir isso tarde.
+
+**4. O degrau 1 da trava do ChangeSpec é segurado por UM teste só, e a margem é
+essa.** Apagar o `raise CorredorAusente` do ponto de estrangulamento deixa a
+suíte com **1 failed, 305 passed** — e o único vermelho é
+`test_a_recusa_nem_chega_a_travar_a_linha`, que mede SQL (recusar **antes** do
+`SELECT … FOR UPDATE`). Todo o resto continua verde porque os degraus 2 e 3
+cobrem o buraco e a frase em português continua aparecendo pelo aviso preventivo
+da página. O guarda existe, morde e está no lugar certo — o que este número diz
+é: **não o apague achando que "os testes de moderação cobrem"**. Não cobrem.
+
+**5. O mesmo vale para a unicidade do voto: 1 vermelho em 306.** Tirar a
+`UniqueConstraint` do model **e** da migration deixa só
+`test_segundo_voto_do_mesmo_ator_na_mesma_sugestao_e_recusado` vermelho. Os
+guardas de endpoint continuam verdes porque o `get_or_create` da
+`participacao.py` resolve o caso comum em Python — a constraint do banco é a
+rede de baixo, que só aparece na corrida de dois cliques simultâneos, e corrida
+não acontece em suíte de teste. **A camada mais importante é a que menos testes
+derrubam quando some.**
+
+**6. Mutação em model sem a migration correspondente dá ERROR, não FAIL — e
+ERROR é evidência pior.** Acrescentar `Voto.removido_em` só no `models.py` fez
+os cinco testes do arquivo saírem como `ERROR: column sugestoes_voto.removido_em
+does not exist` (o `db` do pytest-django limpa as tabelas no setup, e o SELECT
+cai antes de qualquer asserção). O guarda que a mutação queria falsificar nem
+chegou a rodar. Com uma migration descartável junto, a saída vira o vermelho
+limpo que serve de prova:
+`AssertionError: Voto ganhou campo de desvoto lógico: {'removido_em'}`.
+**Prova por mutação exige que a mutação seja um estado COERENTE do sistema** —
+senão o que se mede é o ambiente, não o guarda.
+
+**7. Onde o `AUDITORIA-AS-IS.md` envelheceu, e por que isso morde.** Ele é
+citado pela spec (§3 e §11) e pelo plano mestre como o retrato do terreno, e o
+"maior achado" dele — *"não existe login de usuário final em nenhuma célula"* —
+**hoje é falso**: a célula `identidade` nasceu e está no ar. Também envelheceram
+a contagem de bancos (7 → 10), a de células (8 → 11) e a proposta de "link
+mágico", que o mantenedor descartou na EVO-01. Auditoria é fotografia com data;
+o erro não é envelhecer, é envelhecer sem dizer a data. **Não foi corrigido aqui
+de propósito** (auditor não conserta, e o arquivo estava fora dos alvos) — está
+registrado no item 5 do `AUDITORIA-MVP.md`, com a tarja proposta.
+
+**8. `docs/changespecs/` é PONTEIRO, não cópia.** O plano mestre pedia o
+`FORMATO-CHANGESPEC.md` "como lei local" na pasta nova. Copiá-lo seria a
+armadilha §5.11 — duas cópias derivam em silêncio, e neste mesmo lote isso já
+custou dois PRs num script cujo texto embutido divergiu do molde. O `README.md`
+da pasta aponta para onde a lei mora e acrescenta só o que ela não sabia: como
+se nomeia o arquivo e quem assina. E **nenhum ChangeSpec real foi escrito**: a
+regra de autoria do §1 (quem escreve nunca é quem implementa, `APROVADO_POR` é
+sempre o mantenedor) faz de um exemplo assinado por ninguém exatamente a
+formalidade vazia que o documento existe para impedir.
