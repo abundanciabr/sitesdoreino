@@ -121,5 +121,7 @@
 | [092](092-git-diff-do-patch-de-prova-leva-junto-o-que-nao-foi.md) | O patch de prova leva junto o que ainda não foi commitado — e o `-R` apaga — você segue o protocolo vermelho→verde por patch (`armadilhas/084`), a suíte fica verde no fim, tudo parece certo — e **uma correção sua… | — |
 | [093](093-contrabarra-dupla-some-no-caminho-ate-o-bash.md) | `re.error: unterminated character set` num regex que está certo — você roda um script Python pelo Bash — heredoc `<<'PY'` (delimitador entre aspas, que em bash *não* processa nada) ou `python -c` — e um regex correto… | — |
 | [094](094-edicao-de-uma-linha-vira-diff-do-arquivo-inteiro.md) | Edição de UMA linha vira diff do arquivo inteiro (`449 +++---` num arquivo intocado) — você troca uma frase dentro de um arquivo por script Python, roda `git diff --stat` e lê: | — |
+| [095](095-item-novo-do-painel-em-varias-linhas-quebra-o.md) | Item novo do painel escrito em várias linhas quebra o painel INTEIRO — `node --check` acusa `SyntaxError: Invalid or unexpected token` numa linha que só tem `"` — você acrescenta um item a `arquivos/painel-dados.js`… | — |
+| [096](096-celula-que-congela-contrato-em-pr-de-contracts-so.md) | Célula que vira `freeze: required` em PR de `contracts/` só quebra no PRÓXIMO PR dela: `contrato/<celula> ERROR — No module named 'yaml'` — um PR normal da célula — testes verdes no runner, `214 passed` — morre no… | — |
 
-**84 entradas.**
+**86 entradas.**
