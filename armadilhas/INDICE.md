@@ -130,5 +130,6 @@
 | [101](101-clone-local-desatualizado-faz-um-revisor-confirmar.md) | Clone local desatualizado faz um revisor confirmar um bug que já foi corrigido — merge remoto não sincroniza o `main` local sozinho — durante uma auditoria/code-review de uma mudança já mergeada, você lê um arquivo pelo… | — |
 | [102](102-static-sob-script-name-manda-o-navegador-para-a.md) | `{% static %}` sob `SCRIPT_NAME` manda o navegador para a célula ERRADA — e a rota `/static` de `armadilhas/083` não salva — a célula serve sob prefixo (`meshcraft.top/forms/sugestoes/`), você já pagou a… | — |
 | [103](103-api-interna-de-celula-sob-script-name-responde.md) | A API "interna" de uma célula sob `SCRIPT_NAME` responde pela internet — e o plano que diz "rede interna do Docker" está errado — não há erro nenhum. Você escreve — num plano, num despacho, numa constituição de célula… | — |
+| [104](104-inventario-de-nomes-lido-como-guarda-de.md) | Inventário de NOMES lido como guarda de COMPORTAMENTO: o teste fica vermelho quando o nome some, e verde quando a coisa quebra — existe um teste que lê o arquivo perigoso, tem nome de guarda, e fica vermelho quando você… | — |
 
-**93 entradas.**
+**94 entradas.**
