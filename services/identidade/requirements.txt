@@ -15,4 +15,10 @@ pytest-django==4.9.0
 # O dublê de rede dos testes. Sem ele a suíte precisaria de internet, e uma
 # suíte que depende do Google é uma suíte que fica vermelha por motivo alheio.
 respx==0.23.1
+# O freeze de contrato (make contrato-check) LÊ o contrato congelado, que é
+# YAML. A célula virou freeze:required no PR de contrato (#143, que não toca
+# services/), então o ci-celula nunca rodou o freeze dela no runner — a
+# lacuna apareceria no PRÓXIMO PR da célula, como aconteceu com a sugestoes
+# (armadilhas/096). Mesma versão pinada das outras células required.
+PyYAML==6.0.2
 black==24.10.0
