@@ -110,7 +110,12 @@ class FormularioDeCadastro(forms.Form):
     phone = forms.CharField(max_length=40, required=False)
 
 
-@require_http_methods(["GET", "POST"])
+# HEAD junto com GET, sempre: `require_http_methods` NÃO o inclui de graça (o
+# `require_safe` das views de leitura inclui, e foi por isso que esta escapou do
+# conserto de 25/08). Um HEAD nesta página respondia 405 — e ela está no
+# sitemap, então quem a chama assim é justamente robô de busca e
+# pré-visualizador de link. Medido em produção depois do deploy do PR #158.
+@require_http_methods(["GET", "HEAD", "POST"])
 def cadastro(request):
     """PLANO-I18N fase 2: página de cadastro, só no regime prefixado.
 
