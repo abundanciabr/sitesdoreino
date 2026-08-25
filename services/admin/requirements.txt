@@ -8,6 +8,13 @@ Django==5.1.4
 psycopg[binary]==3.2.3
 dj-database-url==2.3.0
 uvicorn==0.32.1
+# A pergunta "quem e esta pessoa?" a celula identidade (R2). Mesma versao
+# das outras celulas de proposito (`armadilhas/071`).
+httpx==0.28.1
 pytest==8.3.4
 pytest-django==4.9.0
 black==24.10.0
+# O duble de rede dos testes da porta: sem ele, a suite precisaria de uma
+# identidade de verdade no ar — e suite que depende de outra celula fica
+# vermelha por motivo alheio.
+respx==0.23.1

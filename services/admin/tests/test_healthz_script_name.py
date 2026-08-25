@@ -72,8 +72,17 @@ def test_healthz_pela_sonda_interna_com_prefixo_configurado(env_de_producao):
 def test_urlconf_nao_conhece_o_prefixo(client):
     """O outro lado da moeda: o prefixo mora no env, nunca no `urls.py`.
 
-    Sem SCRIPT_NAME configurado, o caminho prefixado NÃO existe — se este
-    teste virar 200, alguém embutiu `/admin` numa rota e a célula deixou de
-    ser dona do próprio prefixo por configuração.
+    Sem SCRIPT_NAME configurado, `/admin/healthz` NÃO é a sonda — se este
+    teste virar 200 com o JSON de saúde, alguém embutiu `/admin` numa rota e a
+    célula deixou de ser dona do próprio prefixo por configuração.
+
+    **Por que a asserção não é mais `== 404`:** desde o PR da porta, quem
+    responde primeiro é o middleware, e `/admin/healthz` (que não está em
+    `CAMINHOS_ISENTOS` nessa forma) vira 302 para o login. O que este guarda
+    sempre provou continua valendo, e é isto: aquele caminho **não entrega a
+    sonda**. Afrouxar seria trocar por `!= 404`; aqui a prova ficou mais
+    específica, não menos.
     """
-    assert client.get(f"{PREFIXO}/healthz").status_code == 404
+    resposta = client.get(f"{PREFIXO}/healthz")
+    assert resposta.status_code != 200
+    assert b"status" not in resposta.content

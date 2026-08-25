@@ -1,0 +1,16 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Indisponível no momento{% endblock %}
+{% block corpo %}
+<div class="centro">
+  <h1>A área administrativa está indisponível</h1>
+  <p>
+    Não consegui confirmar quem você é: o sistema de login não respondeu.
+    Por segurança, a área não abre sem essa confirmação.
+  </p>
+  <p style="color:var(--texto-3); font-size:13px">
+    Isso costuma passar sozinho em alguns instantes — tente de novo.
+    Se insistir, o site público continua funcionando normalmente.
+  </p>
+  <p><a href="/">Ir para o site</a></p>
+</div>
+{% endblock %}

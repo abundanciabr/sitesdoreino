@@ -179,6 +179,28 @@ primeira oportunidade de violá-la.
   lista vazia, staff sem mandato) está em `services/sugestoes/tests/test_changespecs.py`.
 - **Célula dona:** sugestoes
 
+### [INV-P13] A Porta da Área Administrativa é Fail-CLOSED
+- **O quê:** a célula `admin` tem UM ponto de autorização (o middleware da
+  porta) e ele nega por padrão. Não conseguir perguntar quem é a pessoa ⇒
+  **503, nunca abre e nunca redireciona**; sessão válida cujo e-mail não está
+  em `ADMIN_EMAILS` ⇒ **404**; sem sessão ⇒ 302 para o login. A resposta da
+  `identidade` — inclusive o campo `papel` — nunca autoriza nada: quem decide
+  é a lista desta célula, na hora.
+- **Por quê:** é a segunda metade de *reconhecer não é autorizar*
+  (`DECISAO-onde-mora-a-sessao.md` §4), e a que faltava ter mecanismo.
+  Reconhecimento falha ABERTO porque não saber o nome de alguém não pode
+  derrubar a vitrine; autorização falha FECHADO porque não saber QUEM é
+  alguém não pode virar permissão. Os três casos se parecem de dentro (nenhum
+  renderiza a página) e são completamente diferentes de fora: trocar o 503 por
+  302 manda o mantenedor a um login que também caiu; trocar o 404 por 200 abre
+  a operação da plataforma para qualquer conta Google.
+- **Teste-Guarda:**
+  `services/admin/tests/test_inv_porta_fail_closed.py` — uma linha da tabela,
+  um teste, com a rede dublada por `respx`. Provado por mutação na entrega da
+  porta: redirecionar em vez de 503 ⇒ 5 vermelhos; deixar passar quem não está
+  na lista ⇒ 3; `frame-ancestors 'none'` ⇒ 1; isentar um caminho a mais ⇒ 15.
+- **Célula dona:** admin
+
 ---
 
 ## Invariantes da própria CI

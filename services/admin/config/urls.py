@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.core.views import healthz
+from apps.core.views import healthz, visao_geral
 
 # O urlconf da célula NÃO conhece o prefixo público (`/admin`): quem o aplica é
 # `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a área
@@ -15,4 +15,5 @@ from apps.core.views import healthz
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
     path("healthz", healthz),
+    path("", visao_geral, name="visao_geral"),
 ]

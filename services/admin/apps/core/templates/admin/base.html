@@ -1,0 +1,60 @@
+{% comment %}
+Layout da área administrativa. O CSS é EMBUTIDO de propósito, e não servido de
+/static: uma célula sob SCRIPT_NAME precisa de rota própria de estático para
+não dar 404 só em produção (armadilhas/083), e a tag `static` do Django monta
+endereço do prefixo ERRADO nessa situação (armadilhas/102, que custou uma
+página sem estilo à Caixa). Enquanto a folha couber aqui, ela mora aqui: zero
+rota, zero armadilha. Quando crescer, entra como rota nomeada servida por
+`url`, nunca pela tag `static`.
+
+E este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087): escrito em várias linhas, a segunda em diante vaza para a
+tela — ou, se contiver uma tag, é EXECUTADA. Foi exatamente o que aconteceu na
+primeira versão deste arquivo, e o teste pegou.
+{% endcomment %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# noindex: higiene, nao protecao — quem protege e a porta. #}
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block titulo %}Administração{% endblock %} · Meshcraft</title>
+  <style>
+    :root {
+      --fundo: #0f1115; --painel: #171a21; --linha: #262b36;
+      --texto: #e6e9ef; --texto-2: #a8b0bf; --texto-3: #6f7889;
+      --azul: #4c8dff; --verde: #3fb950; --amarelo: #d29922; --vermelho: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--fundo); color: var(--texto);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+    }
+    .barra {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
+      padding: 14px 20px; border-bottom: 1px solid var(--linha);
+      background: var(--painel);
+    }
+    .barra b { font-size: 15px; }
+    .barra .quem { color: var(--texto-2); font-size: 13px; }
+    .envolucro { max-width: 980px; margin: 0 auto; padding: 24px 20px 64px; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    .subtitulo { color: var(--texto-2); font-size: 14px; margin: 0 0 24px; }
+    .cartoes { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+    .cartao { background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 14px 16px; }
+    .cartao .rotulo { color: var(--texto-2); font-size: 13px; }
+    .cartao .valor { font-size: 15px; margin-top: 4px; }
+    .aviso { border: 1px dashed var(--linha); border-radius: 10px; padding: 14px 16px; color: var(--texto-2); font-size: 14px; }
+    .centro { max-width: 560px; margin: 12vh auto; padding: 0 20px; text-align: center; }
+    .centro h1 { font-size: 20px; }
+    .centro p { color: var(--texto-2); }
+    a { color: var(--azul); }
+  </style>
+</head>
+<body>
+{% block corpo %}{% endblock %}
+</body>
+</html>
