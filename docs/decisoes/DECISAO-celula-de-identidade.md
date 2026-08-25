@@ -69,10 +69,40 @@ Dois conjuntos de tokens, dois direitos:
 
 | env da `identidade` | prova | quem tem |
 |---|---|---|
-| `TOKENS_ACEITOS_<PAR>` | quem chama (as duas operações) | `funil`, `sugestoes` |
-| `TOKENS_COMPLETOS_<PAR>` | pode ver e-mail (`/completa`; sem ele, 403) | só `sugestoes` |
+| `TOKENS_ACEITOS_<PAR>` | quem chama (as duas operações) | `funil`, `sugestoes`, `admin` |
+| `TOKENS_COMPLETOS_<PAR>` | pode ver e-mail (`/completa`; sem ele, 403) | `sugestoes`, `admin` |
 
 O `funil` não vê e-mail por desenho — ele quer um nome para o canto da página.
+
+### O par `admin` — o registro que o §6.3 exige (25/08/2026)
+
+O §6.3 abaixo proíbe acrescentar par a `TOKENS_COMPLETOS_*` **sem registrar
+aqui o porquê**. Este é o registro do segundo par a receber esse direito:
+
+**Quem:** a célula `admin`, a área administrativa
+(`DECISAO-celula-admin.md`), a partir do H21.
+
+**Por quê o e-mail, e não o id opaco:** a porta administrativa autoriza por
+**lista de e-mails** (`ADMIN_EMAILS`), e o e-mail é o único identificador que o
+mantenedor consegue gerir sozinho num env — ele não tem como descobrir, nem
+conferir, um `Identidade.id` opaco de dentro de uma área em que ainda não
+conseguiu entrar. A alternativa (autorizar por `ADMIN_IDS`) foi levantada pela
+cadeira de IAM na auditoria de 25/08/2026, é melhor em superfície de dado
+pessoal, e foi **descartada por esse custo de bootstrap** — com a ressalva
+registrada lá: se um dia a lista nomear endereço em domínio administrado por
+terceiro, quem administra aquele domínio cunha uma conta naquele endereço e
+entra.
+
+**O que este par NÃO ganha:** nada além de conferir a própria lista. A resposta
+da `identidade` continua não autorizando coisa alguma (§4 da
+`DECISAO-onde-mora-a-sessao`), e a área admin **não escreve** em célula
+nenhuma — o token dela nas provedoras de métrica entra em
+`TOKENS_SOMENTE_LEITURA_*`, que é assunto da fase 2.
+
+**Escopo:** um e-mail por requisição, o da própria sessão do chamador. A
+listagem de TODOS os e-mails da plataforma (a seção "Usuários", fase 4) é
+autorização categoricamente maior, **não coberta por este registro** — ela
+exige operação interna nova, Rito §3 e registro próprio aqui.
 
 ## 5. A escada de entrega (e por que nesta ordem)
 
