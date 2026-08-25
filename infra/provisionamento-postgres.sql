@@ -50,6 +50,15 @@ CREATE ROLE sugestoes_user LOGIN PASSWORD 'TROQUE_sugestoes';
 CREATE DATABASE sugestoes_db OWNER sugestoes_user;
 REVOKE ALL ON DATABASE sugestoes_db FROM PUBLIC;
 
+-- identidade (o login do site) ------------------------------------------------
+-- Guarda O dado pessoal do site (e-mail da Identidade — a linha única que a
+-- EVO-01 §3 exigia, agora nesta célula: DECISAO-celula-de-identidade). O par
+-- isolado vale dobrado: nenhuma célula lê este banco — quem quer saber quem é
+-- a pessoa pergunta por HTTP à API interna, com o token do par.
+CREATE ROLE identidade_user LOGIN PASSWORD 'TROQUE_identidade';
+CREATE DATABASE identidade_db OWNER identidade_user;
+REVOKE ALL ON DATABASE identidade_db FROM PUBLIC;
+
 -- =============================================================================
 -- PROVA DA MURALHA (o red-team repete isto — golpe nº 7):
 --   psql "postgres://quiz_user:SENHA@localhost:5432/pagamentos_db"
