@@ -140,5 +140,6 @@
 | [111](111-variavel-some-do-env-quando-o-provisionamento-da.md) | Variável some do env quando o provisionamento da célula roda de novo — uma variável que já estava funcionando em `/opt/plataforma/env/<celula>.env` simplesmente **não está mais lá** depois que alguém re-executou o… | — |
 | [112](112-o-endereco-raw-do-github-serve-a-versao-antiga-do.md) | O endereço `raw.githubusercontent.com/.../main/...` serve a versão ANTIGA do script — às vezes — você mergeia a correção de um script de provisionamento, entrega ao mantenedor a linha de sempre — | — |
 | [113](113-o-portao-de-merge-reprova-um-check-que-o-github.md) | O portão de merge reprova um check que o GitHub mostra VERDE — dois runs do mesmo workflow no mesmo commit — `python ci/mergear.py <N> --conferir` devolve | — |
+| [114](114-o-log-da-ssh-action-ecoa-o-script-inteiro-e-voce.md) | O log da ssh-action ecoa o `script:` inteiro — e você lê o eco como se fosse a saída da execução — um run do `deploy-celula` (ou `deploy-infra`) falha, você filtra o log atrás do erro, e encontra **exatamente a mensagem… | — |
 
-**103 entradas.**
+**104 entradas.**
