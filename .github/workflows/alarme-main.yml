@@ -14,6 +14,12 @@
 # assim de propósito — chamar isto de proteção seria a mesma mentira que o
 # INV-CI01 existe para eliminar. O modo de falha dele é "não avisou", nunca
 # "aprovou o que não devia".
+#
+# O que ele varre, e o que NÃO varre, está medido no comentário longo do step
+# "Muralha repo-wide" abaixo. Resumo: a guarda de segredos roda aqui (é a única
+# das três muralhas que mede a árvore inteira, sem depender do contexto de um
+# PR); as duas muralhas de diff ficam de fora POR ESCRITO, porque na `main` elas
+# passariam por vacuidade ou reprovariam merges legítimos.
 # =============================================================================
 name: alarme-main
 on:
@@ -34,6 +40,67 @@ jobs:
           python-version: '3.12'
       - name: Dependências dos portões
         run: python -m pip install --quiet pytest pyyaml
+      # -----------------------------------------------------------------------
+      # [INV-CI01] MURALHA REPO-WIDE NA `main` — e por que UMA das três, não as
+      # três. Isto foi MEDIDO em 25/08/2026 contra a `main` do dia; a medição
+      # crua está no corpo do PR que trouxe este step.
+      #
+      # (1) `ci/cerca-de-celula.sh` e `ci/orcamento-de-mudanca.sh` medem
+      #     `git diff --name-only "${BASE_REF:-origin/main}"...HEAD`. Num push
+      #     da `main`, HEAD *é* `origin/main`: o merge-base dos dois lados é o
+      #     próprio HEAD, o diff sai VAZIO, e as duas imprimem
+      #       `✅ Cerca de célula: OK — 0 célula(s) tocada(s)`   (exit 0)
+      #       `Arquivos alterados: 0 … ✅ Orçamento de mudança: OK` (exit 0)
+      #     Verde por VACUIDADE — a classe exata que o INV-CI01 existe para
+      #     eliminar. Pô-las aqui assim trocaria "não rodou" por "rodou e não
+      #     mediu nada", que é PIOR, porque parece proteção.
+      #
+      # (2) Dar-lhes uma base real (`github.event.before`) conserta o diff e não
+      #     conserta o resto: as duas decidem por `PR_LABELS`, que não existe
+      #     fora do evento `pull_request`. Medido no mesmo commit, mudando SÓ a
+      #     variável:
+      #       contracts/ tocado, PR_LABELS=contrato      → OK          (exit 0)
+      #       contracts/ tocado, sem PR_LABELS           → ❌ MURALHA   (exit 1)
+      #       17 arquivos, PR_LABELS=arquitetural        → OK          (exit 0)
+      #       17 arquivos, sem PR_LABELS                 → ❌ ORÇAMENTO (exit 1)
+      #     Ou seja: todo merge de contrato e toda mudança arquitetural
+      #     LEGÍTIMOS — aprovados pelo rito, com a label no PR — abririam uma
+      #     issue "main vermelha". Alarme que grita no caso certo é alarme que
+      #     se aprende a ignorar; e aí ele deixa de servir para o caso errado.
+      #     No fundo as duas são muralhas da FORMA DE UM PR (1 PR = 1 célula;
+      #     orçamento POR PR) — e um push da `main` não é um PR: pode carregar
+      #     vários de uma vez.
+      #
+      # (3) `ci/guarda-de-segredos.sh` não lê `BASE_REF`, não lê `PR_LABELS` e
+      #     não usa `git diff`: varre a ÁRVORE INTEIRA com `git grep` e confere
+      #     os placeholders `TROQUE_` dos modelos no disco. Na `main` ela mede
+      #     exatamente o que mede num PR, e responde à pergunta que importa
+      #     depois do fato — existe segredo alcançável na `main` AGORA? É a
+      #     única das três com semântica idêntica num push, e é a que nunca
+      #     tinha rodado aqui: até hoje a guarda de segredos jamais varreu a
+      #     `main`, e este repositório não tem required check
+      #     (ARMADILHAS-OPERACAO.md §1 H3).
+      #
+      # O SKIP das duas muralhas de diff é DECLARADO, não inferido (INV-CI01:
+      # `SKIP` só existe quando alguém o declarou por escrito) — e é executável:
+      # `ci/tests/test_alarme_main_roda_a_muralha_repo_wide.py` reprova se este
+      # step sumir, reprova se alguém acrescentar aqui uma muralha de diff sem
+      # antes refazer a medição, e reprova se a guarda de segredos deixar de ser
+      # repo-wide (se ela passar a depender de diff, este step vira vácuo).
+      # -----------------------------------------------------------------------
+      - name: Muralha repo-wide — guarda de segredos (INV-P8)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f ci/guarda-de-segredos.sh ]; then
+            echo "❌ ERROR: ci/guarda-de-segredos.sh não existe."
+            echo "   Portão ausente não é portão satisfeito. [INV-CI01]"
+            exit 2
+          fi
+          # O script já separa os três estados: 0 OK · 1 segredo achado (FAIL) ·
+          # 2 `git grep` não conseguiu varrer (ERROR). `set -e` propaga o exit
+          # tal e qual, para o log distinguir "achei" de "não consegui olhar".
+          bash ci/guarda-de-segredos.sh
       # A suíte adversarial cobre as invariantes de repositório que não dependem
       # de célula: coerência do manifesto de contratos, a tabela-verdade do gate
       # terminal, a semântica fail-closed e o normalizador. As invariantes DE
