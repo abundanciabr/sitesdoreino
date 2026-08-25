@@ -161,6 +161,87 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 ## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
 
+**Lote 8 — 25/08/2026** (5 despachos em paralelo — EVO-31 da Caixa, o buraco (a) da AUD1 e as peças B2/B3/C3 do PLANO-10X; PRs #171–#175 mais o #178 de fechamento da maestro; 6 merges, 1 deploy verde, 0 revert; rodou ao lado de OUTRA sessão que mergeou **três** PRs, dois deles no `CLAUDE.md`):
+
+1. **Achado de auditoria é hipótese até alguém rodar a mutação — inclusive quando a
+   auditoria já foi feita POR mutação.** A AUD1 (lição 5 do Lote 4 de 25/08) usou prova
+   por mutação e mesmo assim descreveu o buraco (a) errado: dizia que apagar o router
+   `checkout-api` do Traefik "continua verde no CI". A maestro reproduziu num worktree
+   descartável antes de escrever o brief e mediu o contrário — apagar fica **vermelho**,
+   porque um teste vizinho mantém um inventário de nomes de rota. O buraco real era outro
+   e mais afiado: `priority: 20 → 0` e `service: checkout → funil` **quebram a venda com
+   270 testes verdes**. O despacho inteiro mudou de forma por causa de quinze minutos de
+   medição. **Regra: item de lote que nasce de um achado escrito é REPRODUZIDO pela
+   maestro antes do brief, não depois.** O custo é um worktree; o de não fazer é despachar
+   um agente para consertar o que não está quebrado — e deixar aberto o que está.
+
+2. **A superfície medida vence a fila herdada — "mesma pasta" não é a cerca, a lista de
+   arquivos é.** O painel do PLANO-10X prescrevia B3 → B2 → C3 em **fila interna**, "porque
+   os três moram em `ci/`". Contando arquivo a arquivo no papel (§2.2), as superfícies são
+   **disjuntas**: B3 = `alarme-main.yml` + `esqueleto.sh`; B2 = `ci/ci.py` + arquivos novos;
+   C3 = `Makefile` + arquivos novos. Os cinco rodaram em paralelo e **não houve uma única
+   colisão de código** — só a do arquivo gerado (lição 3). O que tornou isso seguro não foi
+   otimismo: foi cada brief trazer a lista fechada de alvos, os arquivos dos irmãos
+   nomeados como SOMENTE-LEITURA, e a ordem "precisou de outro arquivo? PARE e reporte".
+   Serializar por diretório teria custado três rodadas inteiras de calendário.
+
+3. **Com N despachos que produzem armadilha, quem numera é a MAESTRO na janela — não o
+   agente no push.** A lição 1 do Lote 4 ("escolha o número imediatamente antes do push")
+   não basta quando três PRs terminam juntos: neste lote **três** reivindicaram o `106`, e
+   antes disso dois reivindicaram o `104`. O que funcionou foi atribuir nominalmente depois
+   do primeiro merge — "o 106 ficou com o #173, você fica com o 107, o #175 fica com o 108"
+   — em mensagem a cada agente, junto com a ordem de resolver conflito de índice **só**
+   por `python ci/indice_de_armadilhas.py`. Duas rodadas de renumeração viraram uma.
+   **Corolário:** ao mandar renumerar, mande **conferir em disco depois do rebase** em vez
+   de confiar no número atribuído — foi o que os dois agentes fizeram, e é o que impede a
+   atribuição da maestro de virar mais uma fonte de erro.
+
+4. **O card do plano é o PEDIDO; a medição é a lei — e "mais estreito por medição" não é
+   escopo reduzido.** O card do B3 mandava rodar as três muralhas na `main`. O agente mediu
+   e provou que só uma faz sentido: num push da `main` o diff é vazio, então cerca e
+   orçamento passariam **por vacuidade** (falso-verde), e dar-lhes base real não salva
+   porque as duas julgam por `PR_LABELS`, que não existe fora de um PR — todo merge de
+   contrato e toda mudança arquitetural legítimos abririam issue de "main vermelha".
+   Entregou a guarda de segredos (a única repo-wide), com o SKIP das outras duas
+   **declarado por escrito no YAML e executável por teste**. Isto **não** contradiz a lei
+   de 25/08 ("nunca proponha a versão minimalista"): o que ela proíbe é encolher para
+   poupar esforço. Estreitar porque a medição prova que o mais largo é *nocivo* é a
+   entrega certa — e a diferença entre as duas coisas é sempre a evidência colada.
+
+5. **Vermelho que só existe na máquina do agente é dívida silenciosa — e tem dono.** O
+   varredor de referências entrava em `.claude/worktrees/` (worktrees velhos do harness) e
+   achava lá a sentinela do próprio fixture: `pytest ci/tests` reprovava no clone principal
+   e passava no runner do GitHub. Invisível na CI, barulhento para quem trabalha — e
+   vermelho que todo mundo aprende a ignorar é como um guarda morre. O que fez isso sair
+   barato foi **rotear para o despacho que ia reimplementar o mesmo varredor** (o B2, que
+   precisava andar na árvore atrás de `test_inv_*`): ele consertou na fonte
+   (`git ls-files --cached`), num varredor único, e o consertado **achou uma referência
+   pendurada de verdade** na própria suíte nova dele. Injete o aviso "isto é ambiente, não
+   é seu, não conserte" nos briefs que NÃO são donos, e o conserto no brief de quem é.
+
+6. **Dívida que o agente declara em vez de contornar é trabalho da maestro no mesmo lote —
+   e o registro bem escrito é que a torna barata.** O despacho do C3 topou com um defeito
+   fora do mandato dele (`ci/ci.py` lendo o exit 2 do GNU Make como ERROR, ou seja,
+   reprovação de célula reportada como "não consegui medir"). Ele não tocou no arquivo —
+   estava com outro despacho — e escreveu sintoma, causa e mecanismo em `armadilhas/107`.
+   A maestro fechou no PR de fechamento (#178) no mesmo dia. **E a armadilha estava errada
+   num ponto que só apareceu ao implementar:** ela dizia "a correção é de uma linha", e não
+   é — trocar `1` por `!= 0` consertaria a reprovação e quebraria o outro lado, porque o
+   make devolve 2 **também** para alvo inexistente, que é ERROR de verdade. Foi preciso um
+   ensaio (`make -n`) para separar as duas metades, porque ler a mensagem do make dependeria
+   do locale do runner. **Regra: a estimativa dentro de uma armadilha é palpite de quem não
+   implementou — corrija-a na entrada quando fechar a dívida**, senão o próximo despacho
+   herda o palpite como fato.
+
+7. **A maestro cai nas armadilhas que a própria casa escreveu — e a defesa é hábito, não
+   conhecimento.** Duas vezes neste lote: (a) ao provar a catraca do B2, li `echo $?`
+   depois de um `| tail` e recebi **0** de um portão que devolvera **1** — é a §5.10, escrita
+   neste repositório, e ela pega quem a conhece; (b) escrevi aspas retas dentro de uma
+   string do `painel-dados.js` e quebrei o painel, que é a irmã da lição 3 do Lote 4. As
+   duas foram apanhadas por **procedimento**, não por atenção: exit sempre medido sem pipe,
+   e `node --check` depois de TODA edição de painel. **Saber a armadilha não protege;
+   executar o passo protege.**
+
 **Lote 4 — 25/08/2026** (5 despachos em paralelo + 3 PRs de fechamento da maestro; PRs #160–#163, #166–#167; 7 merges, 4 deploys verdes, 0 revert; rodou ao lado de OUTRA sessão que mexia na célula `funil`):
 
 1. **O arquivo gerado é o ponto de colisão previsível do lote — numere por último.**
