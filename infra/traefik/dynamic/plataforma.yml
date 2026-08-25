@@ -18,6 +18,31 @@ http:
         contentTypeNosniff: true
         frameDeny: true
 
+    # Cadeia PRÓPRIA da área administrativa. Idêntica à `seguranca` em tudo,
+    # menos numa linha — e a cadeia separada existe justamente para que essa
+    # linha não precise mudar na cadeia compartilhada.
+    #
+    # `frameDeny: true` emite `X-Frame-Options: DENY`, que proíbe enquadramento
+    # **inclusive de mesma origem**. A galeria de painéis (DECISAO-celula-admin,
+    # plano §4.3) serve painel histórico em iframe a partir da própria área
+    # admin: sob `DENY` ela não renderiza, e só em produção — em `make dev` não
+    # há Traefik (mesma forma de `armadilhas/083` e `/029`).
+    #
+    # O conserto tentador seria trocar `frameDeny` por `SAMEORIGIN` na cadeia
+    # `seguranca` — que é compartilhada por TODAS as células, `checkout` e
+    # `pagamentos` inclusive. Afrouxar a proteção da plataforma inteira para
+    # atender uma célula é o oposto do raio de explosão de 1 célula (Lei 2).
+    #
+    # A defesa moderna equivalente (CSP `frame-ancestors 'self'`) vem do Django,
+    # na própria célula (PR 3). As duas precisam concordar: `X-Frame-Options`
+    # aqui, CSP lá — se qualquer uma disser DENY/none, o iframe não abre.
+    seguranca-admin:
+      headers:
+        stsSeconds: 31536000
+        stsIncludeSubdomains: true
+        contentTypeNosniff: true
+        customFrameOptionsValue: SAMEORIGIN
+
   routers:
     mp-webhooks:
       # ÚNICA rota amarrada a um host: o MP precisa de um endereço estável.
@@ -110,6 +135,34 @@ http:
       service: identidade
       tls: {}
 
+    admin:
+      # A área administrativa (DECISAO-celula-admin, 25/08/2026): painéis,
+      # métricas e configuração. A célula conhece o prefixo por
+      # `SCRIPT_NAME=/admin` no env dela — o Traefik NÃO o remove.
+      #
+      # `Host(...)` explícito, e aqui a razão é ainda mais direta do que na
+      # `identidade`: sem ele, QUALQUER domínio apontado para esta VPS serviria
+      # a porta administrativa da plataforma. A porta é fail-closed e recusa
+      # quem não está em `ADMIN_EMAILS`, mas oferecer a tela de operação em
+      # domínio alheio é matéria-prima de golpe — e o custo de evitar é uma
+      # cláusula. **Domínio novo com área administrativa é DECISÃO nova** (§8.7
+      # da lei), nunca uma linha a menos aqui.
+      #
+      # Cadeia de middleware PRÓPRIA (`seguranca-admin`, no topo do arquivo):
+      # mesmos cabeçalhos da `seguranca`, com `SAMEORIGIN` no lugar de `DENY`
+      # para o iframe da galeria de painéis. A cadeia é separada para que a
+      # compartilhada — que protege `checkout` e `pagamentos` — não precise
+      # afrouxar por causa desta célula.
+      #
+      # Mesma escala de prioridade do resto: 10 = prefixo de página, contra o
+      # 1 do catch-all do funil.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/admin`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca-admin]
+      service: admin
+      tls: {}
+
     funil:
       # Catch-all: a raiz e tudo que nenhum prefixo pegou, em QUALQUER domínio.
       rule: "PathPrefix(`/`)"
@@ -159,3 +212,6 @@ http:
     identidade:
       loadBalancer:
         servers: [ { url: "http://identidade:8000" } ]
+    admin:
+      loadBalancer:
+        servers: [ { url: "http://admin:8000" } ]
