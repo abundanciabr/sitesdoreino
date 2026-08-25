@@ -137,5 +137,6 @@
 | [108](108-git-checkout-de-um-commit-esvazia-o-git-diff-da.md) | `git checkout <commit> -- <arquivos>` esvazia o `git diff` da prova — e o patch de 0 byte aplica ao contrário sem erro — você está montando a evidência vermelho→verde da Lei 6 pelo caminho que a `armadilhas/084` manda… | — |
 | [109](109-o-documento-auditado-nao-continua-auditado-depois.md) | O documento auditado não continua auditado depois que você aplica as respostas nele — não há erro nenhum, e é esse o problema. Um documento passa por uma auditoria séria — no caso real, **quatro cadeiras… | — |
 | [110](110-portao-verde-local-e-vermelho-no-ci-porque-o.md) | Portão verde local e vermelho no CI porque o arquivo novo ainda não tinha `git add` — você roda o portão local antes de abrir o PR, e ele passa: | — |
+| [111](111-variavel-some-do-env-quando-o-provisionamento-da.md) | Variável some do env quando o provisionamento da célula roda de novo — uma variável que já estava funcionando em `/opt/plataforma/env/<celula>.env` simplesmente **não está mais lá** depois que alguém re-executou o… | — |
 
-**100 entradas.**
+**101 entradas.**
