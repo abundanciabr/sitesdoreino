@@ -32,6 +32,10 @@
     "  rodando a CI (sys.executable) — mesmo venv, mesma versão."
   ],
   "celulas": {
+    "admin": {
+      "freeze": "not-applicable",
+      "reason": "A área administrativa CONSOME (identidade; e as provedoras de métrica a partir da fase 2) e não FORNECE: nenhuma célula chama a admin, e ela não expõe API de máquina. Contrato entra pelo RITOS.md §3 no dia em que alguém precisar consumi-la — o que a lei dela (docs/decisoes/DECISAO-celula-admin.md) não prevê."
+    },
     "alunos": {
       "freeze": "required",
       "frozen": "contracts/alunos.openapi.yaml",
