@@ -13,6 +13,11 @@
 #     make ci       ==  python ci/ci.py
 #     make doctor   ==  python ci/doctor.py
 #     make freeze   ==  python ci/contract_freeze.py
+#     make sessao   ==  python ci/sessao.py --celula <x> --tarefa <y>
+#
+# `sessao` é o ÚNICO alvo daqui que escreve no mundo (worktree, venv, container).
+# Ele é explícito de propósito: nenhum outro alvo o chama, e rodar `make doctor`
+# nunca cria nada.
 #
 # `python`, nunca `python3`: o shim de python3 desta máquina resolve um problema
 # local e não pode virar requisito arquitetural. Sobrescreva com PYTHON=... se o
@@ -20,10 +25,11 @@
 # =============================================================================
 PYTHON ?= python
 
-.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice
+.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao
 
 ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "Alvos da raiz — fachada de ci/ci.py:"
+	@echo "  make sessao CELULA=x TAREFA=y   abre a sessao inteira (RITOS.md §1)"
 	@echo "  make doctor            o ambiente consegue executar o trabalho?"
 	@echo "  make ci                a mudanca respeita as invariantes?"
 	@echo "  make freeze            so o freeze de contrato (todas as celulas)"
@@ -72,3 +78,8 @@ mergear:        ## make mergear PR=22 — recusa merge com check vermelho
 
 esqueleto:      ## sobe o compose de dev do caminho e percorre a transacao inteira via curl
 	bash e2e/esqueleto.sh
+
+sessao:         ## make sessao CELULA=quiz TAREFA=fuso-horario [FRASE="..."]
+	@test -n "$(CELULA)" || { echo "ERROR: informe CELULA=<nome>"; exit 2; }
+	@test -n "$(TAREFA)" || { echo "ERROR: informe TAREFA=<slug>"; exit 2; }
+	$(PYTHON) ci/sessao.py --celula $(CELULA) --tarefa $(TAREFA) --frase "$(FRASE)"
