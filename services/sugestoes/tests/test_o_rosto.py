@@ -323,6 +323,10 @@ def test_o_aviso_leva_para_a_ideia_e_o_lido_some_da_lista_de_nao_lidos(dentro, a
     dentro.client.post(reverse("marcar_aviso_lido", args=[aviso.id]))
     depois = dentro.client.get(reverse("avisos")).content.decode()
 
+    # O cartão continua na página; o que sai dele é a marca de novo. Afirmar só
+    # a AUSÊNCIA de `nao-lido` seria verdade também numa página que não tivesse
+    # cartão nenhum — a asserção positiva é o que impede esse falso-verde.
+    assert 'class="aviso"' in depois, "o aviso lido perdeu o cartão"
     assert 'class="aviso nao-lido"' not in depois
     assert ">novo<" not in depois
     assert "Marcar como lido" not in depois
@@ -336,6 +340,12 @@ def test_o_sino_continua_contando_no_trilho_da_propria_pagina_de_avisos(dentro, 
     mede pelo quadro. Este mede na página nova, que é a que mudou — e afirma o
     nome acessível exatamente como ele é escrito na moldura (`avisos (N)`, em
     minúsculas), porque é assim que o outro guarda o lê.
+
+    **É um guarda de REGRESSÃO, e por isso já era verde antes do EVO-31.** O
+    modo de falha que ele existe para pegar é o mais fácil de cometer ao vestir
+    uma página: reescrevê-la sem o `{% extends %}` da moldura, como a
+    `entrar.html` legitimamente faz. Falsificado antes de entrar — tirando o
+    `{% extends %}` de `avisos.html`, ele reprova com `assert "avisos (1)" in ...`.
     """
     corpo = " ".join(dentro.client.get(reverse("avisos")).content.decode().split())
 
