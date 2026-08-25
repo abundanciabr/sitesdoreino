@@ -28,9 +28,15 @@
 # valores do Google vêm do mantenedor porque só ele tem acesso ao console de lá
 # (DECISAO-EVO-01 §6).
 #
-# IDEMPOTENTE: rodar de novo é seguro. O role ganha senha nova, o banco só
-# nasce se faltar, o env antigo (se houver) vira `.bak-<epoch>` antes de ser
-# reescrito, e a linha do `alunos.env` é atualizada em vez de duplicada.
+# IDEMPOTENTE, COM UMA RESSALVA QUE PRECISA SER LIDA: rodar de novo é seguro
+# ENQUANTO o heredoc lá embaixo souber gerar todas as chaves que o env vivo
+# tem. O role ganha senha nova, o banco só nasce se faltar, o env antigo vira
+# `.bak-<epoch>` antes de ser reescrito, e a linha do `alunos.env` é atualizada
+# em vez de duplicada. **Mas o arquivo é reescrito INTEIRO**: chave que a célula
+# ganhou depois deste script seria apagada em silêncio. Por isso existe a TRAVA
+# DE DERIVA logo abaixo do `cd`, que PARA em vez de escrever por cima. Rodar
+# de novo também ROTACIONA a chave do Django (todo mundo é deslogado) e a senha
+# do banco — seguro, mas não invisível.
 # =============================================================================
 set -u
 
@@ -57,6 +63,56 @@ esac
 cd /opt/plataforma 2>/dev/null || parar "não achei /opt/plataforma — você está na VPS certa?"
 [ -f docker-compose.yml ] || parar "não achei docker-compose.yml em /opt/plataforma."
 [ -f env/alunos.env ]     || parar "não achei env/alunos.env — a plataforma não parece provisionada."
+
+# ---------------------------------------------------------------------------
+# TRAVA DE DERIVA — este script REESCREVE o env inteiro (o `cat >` lá embaixo),
+# e por isso ele só pode rodar enquanto o heredoc souber gerar TODAS as chaves
+# que o arquivo vivo já tem. Se a célula ganhou uma variável depois que este
+# script foi escrito, reescrever apagaria essa variável em silêncio.
+#
+# Não é hipótese: medido em 25/08/2026. O login do site nasceu no dia anterior e
+# pôs `IDENTIDADE_API_URL` e `IDENTIDADE_API_TOKEN` no env vivo; o heredoc daqui
+# nunca soube delas. `apps/core/clients.py` lê as duas com `exigir()` FORA do
+# bloco que traduz falha em tela amigável — sem elas, a porta da Caixa devolve
+# **500 em toda visita**, com o deploy verde (é a família da `armadilhas/097`).
+# O cabeçalho deste arquivo dizia "IDEMPOTENTE: rodar de novo é seguro", e
+# aquilo tinha deixado de ser verdade sem ninguém perceber.
+#
+# A resposta certa NÃO é o script adivinhar os valores que faltam: o token do
+# par `sugestoes↔identidade` é gerado pelo `provisionar-identidade.sh`, que é o
+# dono dele. Aqui a resposta é PARAR — e dizer exatamente qual chave sobrou e
+# quem sabe gerá-la. "Não sei reproduzir este arquivo" nunca pode virar
+# "então escrevo por cima".
+#
+# A lista abaixo tem de acompanhar o heredoc. Ela é conferida de fora, a cada
+# `make ci`, por `ci/tests/test_provisionamento_nao_perde_variavel.py`: se o
+# heredoc ganhar (ou perder) uma chave e esta lista não acompanhar, o teste
+# reprova. Duplicação consciente é aceitável; duplicação sem guarda é armadilha
+# com data marcada.
+# ---------------------------------------------------------------------------
+CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET HUEY_REDIS_URL REDIS_STREAMS_URL SCRIPT_NAME SUGESTOES_STAFF_EMAILS"
+
+if [ -f env/sugestoes.env ]; then
+  SOBRANDO=""
+  # `grep -oE` pega só o nome da chave; comentários e linhas em branco não casam.
+  for CHAVE in $(grep -oE '^[A-Z_][A-Z0-9_]*=' env/sugestoes.env | tr -d '=' | sort -u); do
+    case " $CHAVES_QUE_EU_GERO " in
+      *" $CHAVE "*) : ;;
+      *) SOBRANDO="$SOBRANDO $CHAVE" ;;
+    esac
+  done
+  if [ -n "$SOBRANDO" ]; then
+    echo "PAROU POR SEGURANÇA: o env/sugestoes.env desta máquina tem variável que"
+    echo "eu NÃO sei gerar, e eu reescrevo o arquivo inteiro. Rodar assim apagaria:"
+    for CHAVE in $SOBRANDO; do echo "   - $CHAVE"; done
+    echo
+    echo "NADA foi alterado. O que fazer, conforme o caso:"
+    echo "  · IDENTIDADE_API_*  -> é do infra/provisionar-identidade.sh, rode aquele."
+    echo "  · SUGESTOES_APROVADORES -> é do infra/provisionar-aprovadores.sh."
+    echo "  · outra coisa -> mande esta tela ao agente; o script precisa aprender a chave."
+    exit 1
+  fi
+fi
 
 psql_super() { docker compose exec -T postgres psql -U postgres "$@"; }
 
@@ -134,7 +190,9 @@ docker compose up -d alunos >/dev/null 2>&1 || echo "  (aviso: não consegui rei
 echo "== estado DEPOIS =="
 if psql_super -tAc "SELECT 1 FROM pg_database WHERE datname='sugestoes_db'" 2>/dev/null | grep -q 1
 then echo "  banco sugestoes_db ....... OK"; else echo "  banco sugestoes_db ....... FALTANDO"; fi
-echo "  linhas em sugestoes.env .. $(wc -l < env/sugestoes.env)  (esperado 11)"
+ESPERADAS=$(printf '%s
+' $CHAVES_QUE_EU_GERO | wc -l | tr -d ' ')
+echo "  linhas em sugestoes.env .. $(wc -l < env/sugestoes.env)  (esperado $ESPERADAS)"
 echo "  dono/modo do env ......... $(stat -c '%U:%G %a' env/sugestoes.env) (igual ao alunos.env: $(stat -c '%U:%G %a' env/alunos.env))"
 if grep -q '^TOKENS_ACEITOS_SUGESTOES=' env/alunos.env
 then echo "  linha no alunos.env ...... OK"; else echo "  linha no alunos.env ...... FALTANDO"; fi
