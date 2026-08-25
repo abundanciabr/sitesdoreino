@@ -161,6 +161,96 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 ## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
 
+**Lote 9 — 25/08/2026** (Lote 4 da Caixa: EVO-40 · EVO-42 · EVO-41 em **fila interna** na mesma célula, mais 7 PRs da maestro; PRs #182–#198, 11 merges, 2 deploys verdes, 0 revert, 1 passo do mantenedor executado de primeira — e o lote **descobriu cinco defeitos fora do seu assunto**, um deles no próprio portão de merge):
+
+1. **A pergunta ao mantenedor pode voltar mudando o desenho do lote — e isso é lucro, não
+   ruído.** Perguntei duas coisas de múltipla escolha (CLAUDE.md, formato que ele confirmou).
+   Na primeira ele escolheu a opção **mais travada** das três, sabendo do custo. Na segunda
+   **não escolheu nenhuma**: pediu uma coisa maior — notificar todos os que interagiram com
+   a ideia, com sininho estilo rede social, avisando que *"serão muitas"*. O lote passou de 2
+   para 4 frentes na hora. **Regra: quando a resposta transborda a pergunta, reescreva a
+   composição antes de despachar** — e separe, no mesmo relatório, o que cabe agora do que
+   é rito (aqui, o sininho fora da Caixa exige contrato congelado ⇒ Rito §3 com ele
+   presente, nunca em lote). Dizer isso na hora é o oposto de cortar escopo: é nomear o
+   caminho certo.
+
+2. **Decisão do mantenedor vira PR de lei ANTES do despacho que a implementa — e o PR
+   precisa dizer o que a garantia NÃO é.** A `DECISAO-EVO-40` mergeou antes de uma linha de
+   código (lição 32 do Lote 6, aplicada de propósito). O que ela acrescentou ao padrão:
+   escrever, **com todas as letras, que o fail-closed é o comportamento certo e não um
+   defeito**, para que nenhuma sessão futura o "conserte"; e escrever que a célula **não
+   verifica** o documento do ChangeSpec — a garantia é *"alguém autorizado afirmou, e ficou
+   registrado quem e quando"*. Sem essa frase, o próximo agente supõe uma verificação que
+   não existe.
+
+3. **Teto de despacho: declarar um invariante novo custa DOIS arquivos, não um.** O EVO-40
+   fechou em 16 (teto 15) porque `INVARIANTES.md` + a linha do inventário de códigos em
+   `ci/tests/test_guarda_dos_guardas.py` andam juntas — sem a segunda, `--apenas testador`
+   fica vermelho. **A calibragem errada foi do brief, não do agente**, que fez o certo:
+   declarou o estouro em vez de espremer. A válvula (label `arquitetural`) foi aberta **com
+   o motivo comentado no PR**, porque válvula usada em silêncio vira válvula usada sempre.
+   Injetei o custo no brief do elo seguinte, e ele fechou em 10/15.
+
+4. **Um lote que mexe em provisionamento tem de auditar o provisionamento — e foi ali que
+   estava a mina.** Ao acrescentar UMA variável de ambiente, o agente de infra conferiu se
+   ela precisaria entrar no gerador e achou de brinde que o `provisionar-sugestoes.sh`
+   **reescreve o env inteiro** e não conhece duas chaves que o login pôs lá no dia anterior:
+   re-rodá-lo deixaria a porta da Caixa em **HTTP 500 para todo visitante, com o pipeline
+   verde**. O projeto já sabia do risco — **em comentário dentro do próprio heredoc**, que é
+   garantia sem mecanismo. Virou trava de deriva nos **três** scripts da família (o terceiro
+   pela sessão vizinha, avisada), com guarda que reprova se a lista e o heredoc divergirem.
+
+5. **Sessão vizinha não é ruído a evitar: é par a avisar, e o retorno paga o aviso.** Medi
+   que o PR em voo dela criava o **terceiro** script da mesma família, sem a trava. Mandei
+   uma mensagem com o bloco pronto, dizendo que a decisão era dela. Ela fechou a trava **e**
+   pôs o script na lista do guarda no MESMO PR — e devolveu duas coisas que eu não tinha:
+   (a) uma consequência da minha própria mudança no script da identidade, que eu não tinha
+   enxergado; (b) uma medição do cache do `raw` **oposta à minha**. Custou uma mensagem.
+
+6. **Duas medições opostas do mesmo fenômeno valem mais que dez iguais — e a
+   intermitência é a lição.** O `raw.githubusercontent.com/.../main/...` (o endereço da linha
+   que entregamos ao mantenedor) tem `Cache-Control: max-age=300`. Na minha medição serviu a
+   versão **antiga** por mais de dois minutos; na da sessão vizinha, `Source-Age: 0`, versão
+   nova imediata. **Isso torna a armadilha pior, não melhor:** quem testar uma vez e vir
+   fresco conclui de boa-fé que o problema não existe. Por isso a regra registrada não é
+   "espere 5 minutos" — é **"confira o conteúdo servido, não o relógio"**, com um `curl |
+   grep <marca da versão nova>` antes de entregar a linha. `armadilhas/112`.
+
+7. **O portão de merge pode reprovar o que está verde — e isso é mais grave que reprovar
+   demais.** Aplicar a label `arquitetural` re-dispara o `muralhas` (evento `labeled`), e o
+   GitHub mantém **as duas execuções** penduradas no mesmo SHA. O `mergear.py` emitia um
+   veredito por entrada e reprovava para sempre, enquanto `gh pr checks` dizia `pass` no
+   mesmo instante. **Portão que reprova quem está certo ensina a ser contornado** — e o
+   único caminho que sobra é o botão do site, exatamente o que ele existe para tornar
+   desnecessário. Conserto: desduplicar por nome pela hora, com desempate **fail-closed**
+   (sem hora ou hora igual ⇒ fica a PIOR).
+
+8. **Em teste de "pegue o mais recente", monte um caso com a ordem INVERTIDA — senão o
+   guarda testa a fixture.** Das quatro mutações que fiz no conserto acima, **uma passou**:
+   trocar a comparação de hora por `if True` (= "fica com a última entrada percorrida")
+   deixava a suíte verde, porque todas as minhas fixtures tinham o rerun no fim da lista. A
+   API não promete ordem nenhuma. Fechei com dois casos de ordem trocada. **Quem escreveu o
+   guarda é quem menos enxerga a premissa dele.**
+
+9. **Merge que devolve 502 não é merge que falhou — vá ler o estado.** O GitHub respondeu
+   `502 Bad Gateway` no meio de um merge. O commit **entrou** na `main`; o que falhou foi o
+   passo que fecha o PR, que ficou `OPEN` com diff vazio. **O portão se comportou certo: não
+   declarou sucesso** — morreu ruidosamente em vez de imprimir "mergeado" por otimismo. A
+   maestro confirmou por três vias (`git log origin/main`, `git branch -r --contains`, diff
+   vazio) e fechou o PR à mão com o registro. `ERROR` continua sendo "não medi", nunca
+   "falhou".
+
+10. **Auditoria de fechamento acha defeito no DOCUMENTO, e isso vale tanto quanto bug.** Os
+    cinco vereditos do EVO-41 não tiveram um FAIL de código — e mesmo assim o despacho foi o
+    mais valioso do lote. Ele achou que a spec **se contradiz** (§8 lista o invariante do
+    merge sem ressalva, §10 põe merge em V1.1, §11 exige "todas as da §8" para o MVP: a DoD
+    era impossível de cumprir ao pé da letra); que o §11 pedia um `403` que **quebraria outro
+    guarda** se implementado; e que o AS-IS ainda afirma *"não existe login de usuário final
+    em nenhuma célula"* — hoje falso, com a célula `identidade` no ar. **Documento que mente
+    com autoridade custa mais caro que código errado**, porque o próximo agente não
+    desconfia dele. A cura do AS-IS foi **tarja de data, não reescrita**: ele é o registro do
+    que se sabia na hora da decisão, e é o anexo que a própria DoD exige.
+
 **Lote 8 — 25/08/2026** (5 despachos em paralelo — EVO-31 da Caixa, o buraco (a) da AUD1 e as peças B2/B3/C3 do PLANO-10X; PRs #171–#175 mais o #178 de fechamento da maestro; 6 merges, 1 deploy verde, 0 revert; rodou ao lado de OUTRA sessão que mergeou **três** PRs, dois deles no `CLAUDE.md`):
 
 1. **Achado de auditoria é hipótese até alguém rodar a mutação — inclusive quando a
