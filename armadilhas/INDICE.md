@@ -123,5 +123,6 @@
 | [094](094-edicao-de-uma-linha-vira-diff-do-arquivo-inteiro.md) | Edição de UMA linha vira diff do arquivo inteiro (`449 +++---` num arquivo intocado) — você troca uma frase dentro de um arquivo por script Python, roda `git diff --stat` e lê: | — |
 | [095](095-item-novo-do-painel-em-varias-linhas-quebra-o.md) | Item novo do painel escrito em várias linhas quebra o painel INTEIRO — `node --check` acusa `SyntaxError: Invalid or unexpected token` numa linha que só tem `"` — você acrescenta um item a `arquivos/painel-dados.js`… | — |
 | [096](096-celula-que-congela-contrato-em-pr-de-contracts-so.md) | Célula que vira `freeze: required` em PR de `contracts/` só quebra no PRÓXIMO PR dela: `contrato/<celula> ERROR — No module named 'yaml'` — um PR normal da célula — testes verdes no runner, `214 passed` — morre no… | — |
+| [097](097-cliente-que-le-env-no-init-fura-o-fail-open-e.md) | Cliente que lê env no `__init__` fura o fail-open: `KeyError` vira **HTTP 500 em toda página**, com o deploy verde — a célula promete, por escrito e com testes, que uma dependência fora do ar **não derruba** a página… | — |
 
-**86 entradas.**
+**87 entradas.**
