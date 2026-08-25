@@ -15,7 +15,7 @@ Duas amarras deste arquivo merecem leitura antes de mexer nele:
 * **o CSS é medido sob `SCRIPT_NAME`**, que é o único regime em que a diferença
   entre `{% static %}` e `{% url 'estatico' %}` aparece. Sem o prefixo ligado,
   os dois devolvem `/static/…` e o guarda ficaria verde para sempre
-  (armadilhas/029, /081 e /083; a lição inteira em `armadilhas/099`).
+  (armadilhas/029, /081 e /083; a lição inteira em `armadilhas/102`).
 """
 
 import re

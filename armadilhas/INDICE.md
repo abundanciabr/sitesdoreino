@@ -128,5 +128,6 @@
 | [099](099-use-tz-true-nao-escolhe-fuso-a-celula-mostra.md) | `USE_TZ = True` não escolhe fuso: a célula mostra hora de Chicago e nada acusa — não há erro nenhum. O CI está verde, o deploy sobe, o `/healthz` responde 200 — e a data na tela está cinco horas atrás. Pior: perto da… | — |
 | [100](100-lista-de-locais-numa-divida-mente-o-guarda-nao.md) | A lista de locais dentro de uma dívida mente, e o guarda de referências não pega — você pega carona numa dívida do `ARMADILHAS-OPERACAO.md §9` que enumera os arquivos a corrigir, conserta exatamente os que ela nomeia, o… | — |
 | [101](101-clone-local-desatualizado-faz-um-revisor-confirmar.md) | Clone local desatualizado faz um revisor confirmar um bug que já foi corrigido — merge remoto não sincroniza o `main` local sozinho — durante uma auditoria/code-review de uma mudança já mergeada, você lê um arquivo pelo… | — |
+| [102](102-static-sob-script-name-manda-o-navegador-para-a.md) | `{% static %}` sob `SCRIPT_NAME` manda o navegador para a célula ERRADA — e a rota `/static` de `armadilhas/083` não salva — a célula serve sob prefixo (`meshcraft.top/forms/sugestoes/`), você já pagou a… | — |
 
-**91 entradas.**
+**92 entradas.**
