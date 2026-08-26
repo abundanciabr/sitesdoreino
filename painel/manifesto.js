@@ -46,7 +46,9 @@ var MANIFESTO = [
   "20260826-027-metade-do-rumo-da-comunidade-ja-estava-pronta",
   "20260826-028-o-sininho-espera-uma-conversa-de-arquitetura",
   "20260826-029-duas-celulas-de-dinheiro-ficaram-de-fora-do-fuso",
-  "20260826-030-a-vps-recusou-o-robo-tres-vezes-na-janela"
+  "20260826-030-a-vps-recusou-o-robo-tres-vezes-na-janela",
+  "20260826-031-a-divida-do-fuso-fechou-nas-onze-celulas",
+  "20260826-032-um-guarda-que-parecia-guardar-e-nao-guardava"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
