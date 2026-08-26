@@ -50,6 +50,15 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 USE_TZ = True
 
+# O fuso em que a mensageria MOSTRA hora — o armazenamento continua em UTC
+# (USE_TZ). Sem esta linha vale o default de fábrica do Django,
+# `America/Chicago`: cinco horas atrás, capaz de trocar até o DIA perto da
+# virada, sem nada acusando a troca. Aqui o estrago não é só tela: o corpo de
+# um e-mail renderizado por template converte `datetime` aware em silêncio.
+# Foi assim que a `sugestoes` foi pega em 24/08/2026 (EVO-21).
+# Guarda: tests/test_fuso_horario.py (armadilhas/099).
+TIME_ZONE = "America/Sao_Paulo"
+
 # djhuey lê `settings.HUEY`. Precisa ser a MESMA instância que as tasks decoram
 # (config/huey.py) — uma instância nova aqui criaria uma SEGUNDA fila: o handler
 # enfileira numa, o `run_huey` escuta a outra, e nenhum e-mail sai (ARMADILHAS
