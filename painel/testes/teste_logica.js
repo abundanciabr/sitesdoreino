@@ -69,6 +69,10 @@ caso("incidente vermelho sem resposta está em 'problemas abertos'",
 var apagado = reg({ arquivo: "20260826-004-apagado", tipo: "resposta", responde_a: "20260826-003-incendio" });
 caso("incidente respondido SAI de problemas abertos",
   LOGICA.problemasAbertos([incendio, apagado]).length === 0);
+caso("frente âmbar NÃO vira 'problema aberto' (frente tem bloco próprio — um fato, uma casa)",
+  LOGICA.problemasAbertos([reg({ tipo: "frente", frente: "curso", gravidade: "ambar" })]).length === 0);
+caso("pendência âmbar NÃO vira 'problema aberto' (pendência mora na caixa)",
+  LOGICA.problemasAbertos([reg({ tipo: "pendencia", gravidade: "ambar", precisa_do_dono: true })]).length === 0);
 caso("mudança de 3 dias atrás entra nos '7 dias'",
   LOGICA.mudancasRecentes([reg({ quando: "2026-08-23" })], AGORA, 7).length === 1);
 caso("mudança de 20 dias atrás NÃO entra",

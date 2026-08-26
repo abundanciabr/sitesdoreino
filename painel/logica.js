@@ -108,11 +108,14 @@
   }
 
   // Problemas abertos: vermelho/âmbar sem registro que os responda.
+  // Pendência já mora na caixa; frente já mora no bloco de frentes — repetir
+  // qualquer uma aqui seria alarme aceso permanente (fadiga de alarme) E um
+  // fato morando em dois blocos, que é a doença que este livro cura.
   function problemasAbertos(registros) {
     var resp = respondidos(registros);
     return registros.filter(function (r) {
       return (r.gravidade === "vermelho" || r.gravidade === "ambar") &&
-        !resp[r.arquivo] && r.tipo !== "pendencia"; // pendência já mora na caixa
+        !resp[r.arquivo] && r.tipo !== "pendencia" && r.tipo !== "frente";
     }).sort(function (a, b) { return a.gravidade === "vermelho" ? -1 : 1; });
   }
 
