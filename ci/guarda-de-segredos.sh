@@ -26,8 +26,13 @@ procurar() {
 }
 
 # 02-RED-TEAM.md cita APP_USR-fake123 como EXEMPLO do golpe nº 10, não como segredo real — excluído para não se autoacusar.
+# docs/paineis/fotografias/ são os painéis HISTÓRICOS congelados (reforma de
+# 26/08/2026): eles CITAM os mesmos exemplos fake do red-team dentro dos textos
+# da época (o falso positivo do PR #3, de novo — mesma causa, mesma cura).
+# Fotografia é imutável por regra; a exclusão cobre só o passado congelado,
+# nunca o painel vivo (painel/), que continua varrido.
 procurar "credencial de PRODUÇÃO do Mercado Pago (APP_USR-)" /tmp/seg1 \
-  'APP_USR-[0-9A-Za-z]' -- . ':!ci/guarda-de-segredos.sh' ':!02-RED-TEAM.md'
+  'APP_USR-[0-9A-Za-z]' -- . ':!ci/guarda-de-segredos.sh' ':!02-RED-TEAM.md' ':!docs/paineis/fotografias/'
 
 procurar "chave privada" /tmp/seg2 \
   'BEGIN (RSA|OPENSSH|EC|DSA) PRIVATE KEY' -- .

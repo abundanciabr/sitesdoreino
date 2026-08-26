@@ -19,7 +19,8 @@ var MANIFESTO = [
   "20260825-005-decisao-sininho-3-respostas",
   "20260826-001-reforma-dos-paineis-aprovada",
   "20260826-002-nota-fila-dos-robos",
-  "20260826-003-nota-o-que-a-obra-deixou-de-fora"
+  "20260826-003-nota-o-que-a-obra-deixou-de-fora",
+  "20260826-004-obra-da-reforma-concluida"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {

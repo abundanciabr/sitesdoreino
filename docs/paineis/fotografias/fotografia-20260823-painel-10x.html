@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel 10X — implementação das alavancas — sitesdoreino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A; --grid: rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft: rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --red:#E2705A; --red-dim:#3E2620;
+    --blue:#5B9BD5; --blue-dim:#1E3346;
+    --slate:#5B7A8C; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:32px 20px 80px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; color:var(--text-3); text-transform:uppercase; margin:0 0 6px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:28px; margin:0 0 6px; letter-spacing:-.01em;}
+  .sub{color:var(--text-2); font-size:14px; margin:0 0 8px; line-height:1.6;}
+  .sub code, .box code, .wave-desc code{font-family:'IBM Plex Mono',monospace; color:var(--gold); background:none;}
+
+  .box{border:1px solid var(--line); background:var(--panel); border-radius:var(--radius); padding:16px 20px; margin:18px 0 26px; font-size:13.5px; line-height:1.7; color:var(--text-2);}
+  .box b{color:var(--text);}
+  .box.alert{border-color:var(--gold); background:var(--gold-dim);}
+  .box.alert h2{font-family:'Space Grotesk',sans-serif; font-size:15px; color:var(--gold); margin:0 0 10px;}
+  .box ol,.box ul{margin:8px 0 0; padding-left:22px;} .box li{margin-bottom:7px;}
+
+  /* progress */
+  .progress-row{display:flex; align-items:center; gap:12px; margin:20px 0 28px;}
+  .progress-track{flex:1; height:10px; background:var(--panel); border-radius:20px; border:1px solid var(--line); overflow:hidden;}
+  .progress-fill{height:100%; background:var(--green); border-radius:20px; transition:width .4s ease;}
+  .progress-label{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-2); white-space:nowrap;}
+
+  /* wave */
+  .wave{margin:34px 0 8px;}
+  .wave-head{display:flex; align-items:baseline; gap:12px; border-bottom:2px solid var(--line); padding-bottom:8px; margin-bottom:6px;}
+  .wave-tag{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; color:var(--bg); background:var(--blue); padding:3px 10px; border-radius:20px; text-transform:uppercase; white-space:nowrap;}
+  .wave-head.hoje .wave-tag{background:var(--gold);}
+  .wave-head.audit .wave-tag{background:var(--green);}
+  .wave-head h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; margin:0;}
+  .wave-desc{font-size:13px; color:var(--text-3); margin:2px 0 14px; line-height:1.6;}
+
+  /* card */
+  .card{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); margin-bottom:14px; overflow:hidden;}
+  .card.done{border-color:var(--green); opacity:.75;}
+  .card.audit{border-color:var(--green); border-style:dashed;}
+  .card-head{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 16px; background:var(--panel-2); cursor:pointer; user-select:none;}
+  .card.audit .card-head{background:var(--green-dim);}
+  .card.done .card-head{background:var(--green-dim);}
+  .card-id{display:flex; align-items:center; gap:10px; min-width:0;}
+  .chip{font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700; color:var(--bg); background:var(--gold); border-radius:6px; padding:3px 8px; flex:none;}
+  .card.audit .chip{background:var(--green);}
+  .card.done .chip{background:var(--green);}
+  .card-id h3{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .meta{display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
+  .tag{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-3); border:1px solid var(--line-soft); border-radius:20px; padding:2px 8px; white-space:nowrap;}
+  .tag.human{color:var(--red); border-color:var(--red);}
+  .tag.auto{color:var(--green); border-color:var(--green);}
+  .tag.dep{color:var(--gold); border-color:var(--gold);}
+  .chevron{font-family:'IBM Plex Mono',monospace; color:var(--text-3); font-size:12px; transition:transform .2s; flex:none;}
+  .card.open .chevron{transform:rotate(90deg);}
+  .card-body{max-height:0; overflow:hidden; transition:max-height .3s ease;}
+  .card.open .card-body{max-height:4000px;}
+  .card-body-inner{padding:0 16px 16px;}
+  .copy-btn{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-2); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:5px 11px; cursor:pointer; white-space:nowrap; margin:12px 0 8px;}
+  .copy-btn:hover{border-color:var(--gold); color:var(--gold);}
+  .copy-btn.ok{border-color:var(--green); color:var(--green);}
+  pre{margin:0; padding:14px 16px; background:#0a0e14; border:1px solid var(--line-soft); border-radius:6px; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.6; color:var(--text); white-space:pre-wrap; word-break:break-word; max-height:420px; overflow-y:auto;}
+  .done-badge{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--green); background:var(--green-dim); border:1px solid var(--green); border-radius:6px; padding:4px 9px; white-space:nowrap;}
+  .foot{font-size:12.5px; color:var(--text-3); margin-top:36px; line-height:1.7; border-top:1px solid var(--line-soft); padding-top:16px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Implementação das 5 alavancas de ordem de grandeza</p>
+  <h1>Painel 10X — o plano em prompts prontos</h1>
+  <p class="sub"><code>abundanciabr/sitesdoreino</code> · fonte: <code>docs/decisoes/PLANO-10X.md</code> · cada card abre um despacho pronto para copiar. Ondas em ordem de dependência — faça uma de cada vez, audite, só então avance.</p>
+
+  <div class="progress-row">
+    <span class="progress-label">Progresso</span>
+    <div class="progress-track"><div class="progress-fill" id="fill"></div></div>
+    <span class="progress-label" id="plabel"></span>
+  </div>
+
+  <div class="box" style="border-color:var(--green);">
+    <b style="color:var(--green)">✅ LOTE A EXECUTADO — 23/08/2026, noite</b> — os dois cortes de contexto
+    fecharam na mesma janela. É o lote que barateia todos os próximos:
+    <ul>
+      <li><b>C1 ✅ (PR #100, mergeado pelo portão):</b> o <code>ARMADILHAS.md</code> de 1.522 linhas virou
+        índice + <b>63 entradas</b> em arquivos separados, mais <code>ARMADILHAS-OPERACAO.md</code> (o que é
+        do humano) e <code>docs/historico/RESOLVIDAS.md</code>. <b>Nada se perdeu:</b> conferi por fora que os
+        <b>70 títulos</b> do monólito estão todos presentes na estrutura nova. A leitura obrigatória de todo
+        despacho caiu de <b>110.203 para 22.007 caracteres — 5x menor</b>. Um gerador (<code>make indice</code>)
+        mantém o índice em dia, e há teste-guarda que reprova referência pendurada.</li>
+      <li><b>C2 ✅ (janela raiz, registrado no PR #102):</b> os painéis foram partidos em renderizador + dados.
+        O painel da fundação caiu de <b>203.592 para 23.524 bytes</b>; este painel, de 931 para 255 linhas.
+        Provado carregando os painéis partidos no Node e comparando <b>caractere a caractere</b> com os
+        originais — idênticos.</li>
+      <li><b style="color:var(--red)">⚠️ Incidente da janela, já resolvido:</b> o merge do C1 disparou o
+        <code>deploy-infra</code> e ele saiu <b>VERMELHO</b> — com a plataforma 100% saudável. A sonda
+        pós-deploy exigia 200 na raiz do site, mas desde o i18n (PR #88) a raiz responde <b>302 para
+        /en/ de propósito</b>. Sonda envelhecida, não regressão: consertada e mergeada (<b>PR #101</b>),
+        <code>deploy-infra</code> <b>VERDE</b> em seguida (run 32682890217), com vermelho→verde medido contra a
+        produção real. Lição em <code>armadilhas/073</code>.</li>
+      <li><b>Faltam da fábrica:</b> B3 (metade — o alarme da main ainda roda só um pedaço), B2
+        (guarda-dos-guardas) e C3 (<code>make sessao</code>) — os três em <code>ci/</code>, então vão em
+        <b>fila interna</b>, nunca em paralelo. Mais o AUD1, que carimba a Onda 1.</li>
+      <li><b style="color:var(--gold)">🚦 Continua parado por ordem sua:</b> D1, D2 e B5 — pagamento /
+        checkout / Mercado Pago só voltam quando você disser que o site vai vender.</li>
+    </ul>
+  </div>
+
+  <div class="box" style="border-color:var(--green);">
+    <b style="color:var(--green)">📋 Releitura de 23/08/2026 — este painel estava DESATUALIZADO</b>
+    (conferido card a card contra o código de <code>origin/main</code> hoje, não contra handoff nem contra a caixa
+    do 22/08 abaixo). Entre o dia 22 e hoje rodaram três lotes que este painel não registrou — boa parte do plano
+    já está no ar:
+    <ul>
+      <li><b style="color:var(--green)">Onda 1 — FEITA DE FATO, em produção:</b> A1 (PR #67, <code>pedido.criado</code>
+        publicado), A2 (PR #64, <code>quiz.completado</code> publicado), A3 (PR #66, o webhook não confia mais no corpo
+        não assinado), A5 (PRs #62/#65/#68, a página do checkout ligada na VPS). <b>Falta só carimbar:</b> o card AUD1
+        nunca foi rodado — a onda está feita, não está auditada.</li>
+      <li><b>Onda 2 — parcial:</b> A4a ✅ FEITO em 4 células (PRs #72/#73/#74/#75 — <code>xautoclaim</code> recuperando
+        mensagem presa). B3 está <b>pela METADE</b>: a parte do <code>guarda-de-segredos.sh</code> já está fail-closed
+        (ERRO ≠ "não achei"), mas <code>alarme-main.yml</code> continua rodando só <code>--apenas testador</code> —
+        as muralhas nunca varreram a <code>main</code>. <b>D1 e D2 estão PARADOS por decisão sua</b> (linha abaixo).</li>
+      <li><b>Onda 3 — só o B1:</b> feito e provado (PR #54). <b>Continuam sem começar:</b> B2 (guarda-dos-guardas),
+        C1 (particionar o ARMADILHAS — hoje 1.471 linhas), C2 (separar os dados dos painéis) e C3
+        (<code>make sessao</code>). B5 fica encostado junto com o pagamento (mexe no caminho do Mercado Pago).</li>
+      <li><b style="color:var(--gold)">🚦 PARADO POR ORDEM SUA (22/08, à noite):</b> tudo que é pagamento / checkout /
+        Mercado Pago sai da fila até você dizer que o site vai vender — isso encosta <b>D1</b> (reconciliação),
+        <b>D2</b> (corrida do <code>place_order</code>) e <b>B5</b> (e2e com MP falso). Não é dívida esquecida: é
+        decisão registrada. O que sobra do 10X é <b>fábrica</b> — ferramenta que barateia todo despacho seguinte.</li>
+      <li><b>Como retomar em lote (proposta de 23/08):</b> <b>Lote A — os dois cortes de contexto:</b> C1 sozinho no
+        Git (ele reescreve o ARMADILHAS inteiro; qualquer outro despacho em voo conflita com ele) + C2 na janela raiz
+        (não é PR, <code>arquivos/</code> é fora do Git). <b>Lote B — a fábrica de CI:</b> B3 → B2 → C3 em <b>fila
+        interna</b> (os três moram em <code>ci/</code>: mesma área nunca vai em paralelo) + AUD1 rodando ao lado numa
+        sessão independente, que só lê. Depois disso o painel fecha honesto até a linha do pagamento.</li>
+    </ul>
+  </div>
+
+  <div class="box" style="border-color:var(--green);">
+    <b style="color:var(--green)">📋 Auditoria de 22/08/2026</b> (janela raiz, conferida contra o GitHub e o código real, não contra handoffs):
+    <ul>
+      <li><b>FEITO (2 de 15 despachos):</b> <b>H0.1</b> — PR #50: o pipeline entrega <code>infra/</code> na VPS; <b>a plataforma subiu em produção pela 1ª vez em 22/08</b>, 16 serviços rodando, consumers ativos. <b>B1</b> — PR #54: portão de deploy nos DOIS pipelines (células e infra), com <b>prova viva</b>: um merge vermelho de propósito foi BARRADO antes de virar deploy (PRs #55/#56, runs medidos). B1 foi adiantado da Onda 3 — boa decisão: todo deploy daqui em diante já nasce gateado.</li>
+      <li><b>AINDA NADA FEITO:</b> Ondas 1 e 2 inteiras (A1, A2, A3, A5 · D1, A4a, B3, D2) e, da Onda 3, B2, C1, C2, C3 e B5.</li>
+      <li><b style="color:var(--green)">✅ Atualização 22/08 (mais tarde): H0.2 FEITO (PR #59) e H0.3 FEITO (PR #57)</b> — a regra serial foi aposentada (lotes paralelos liberados) e os docs foram reconciliados com o portão. E uma mudança que este painel não previa: <b>o merge passou ao agente</b> (PR #58, Lei 4 reescrita) — os selos "merge" dos cards foram atualizados; nenhum merge é mais seu.</li>
+      <li><b>Na sua mão agora:</b> <s>(1) mergear o PR #53</s> ✅ mergeado; <s>(2) despachar o H0.2</s> ✅ feito; resta <b>(3) abrir a Onda 1</b> — A1, A2 e A3 são células distintas e agora podem rodar em paralelo DE DIREITO (regra serial aposentada); A5 espera o A1.</li>
+      <li><b>Dívida de registro (achado da auditoria):</b> a sessão que construiu o portão prometeu no handoff a reconciliação dos documentos — INVARIANTES com o degrau "DEPLOY PROTECTED", cabeçalho "EXECUTADO E PROVADO" no PROJETO-PORTAO-DEPLOY, linha H3 citando que a saída (A) existe — e <b>nada disso está no Git</b> (conferido em todos os PRs e branches). Merece 1 despacho pequeno de docs, senão o próximo agente lê o H3 e conclui que o portão ainda não existe. Também fora do Git: <code>DESPACHO-04-deploy-infra.md</code> (os despachos 01–03 estão versionados; o 04 só existe nesta máquina).</li>
+      <li><b>Em voo por outra sessão:</b> red-team golpe 5 (worktree <code>wt-redteam-golpe5</code>) — não faz parte das ondas 10X; só não despache nada que colida com pagamentos/checkout sem conferir antes se ele fechou.</li>
+    </ul>
+  </div>
+
+  <div class="box alert">
+    <h2>⚠️ O anti-teatro: como impedir que um agente diga que fez sem fazer</h2>
+    Este é o coração do painel. Um agente sob pressão tende a relatar sucesso. A defesa
+    não é confiar melhor — é <b>tornar a mentira mecanicamente impossível de sustentar</b>.
+    Três regras valem em TODO card, e estão repetidas no rodapé de cada prompt:
+    <ol>
+      <li><b>Evidência é saída crua colada, nunca descrição.</b> "Rodei os testes e passou"
+        não conta. O que conta é o texto que o comando cuspiu — <code>make ci</code> inteiro,
+        o <code>pytest</code> com a contagem, o <code>git diff --stat</code>. Descrição de
+        resultado é recusada por definição.</li>
+      <li><b>Todo invariante/bug tocado exige vermelho→verde real</b> (Lei 6): a saída do
+        teste-guarda FALHANDO sem o fix e PASSANDO com o fix, as duas coladas. Sem o
+        vermelho, não há prova de que o teste testa algo — um teste que nunca falhou pode
+        estar verificando nada.</li>
+      <li><b>Cada onda termina com um card de AUDITORIA</b> (verde tracejado), executado por
+        uma sessão DIFERENTE da que implementou. O auditor não confia no handoff: ele roda
+        os comandos de novo, contra o repo real, e reporta PASS/FAIL por item de DoD. É o
+        agente que não tem motivo para mentir conferindo o que teve.</li>
+    </ol>
+    <b>Regra de ouro do mantenedor:</b> antes de marcar qualquer card como concluído, o
+    card de auditoria daquela onda tem que estar verde. Confirmação de merge é gatilho para
+    conferir (<code>gh pr view N --json state,mergedBy,mergeCommit</code>), não substituto.
+  </div>
+
+  <div class="box">
+    <b>Como usar, passo a passo (o ritmo é deliberadamente lento):</b>
+    <ol>
+      <li>Abra a onda da vez. Faça primeiro os cards <b>HOJE</b> (são seus, manuais) — eles destravam o resto.</li>
+      <li>Para cada card de despacho: clique no cabeçalho para abrir, <b>copiar prompt</b>, cole para um agente num worktree próprio. Cards da mesma onda com áreas distintas podem rodar EM PARALELO (a cerca de CI garante 1 PR = 1 célula).</li>
+      <li>Agente entrega PR + evidência crua. Você mergeia (cards marcados <span style="color:var(--red)">merge: humano</span> são sempre seu clique).</li>
+      <li>Quando todos os despachos da onda estiverem mergeados, rode o <b>card de AUDITORIA</b> da onda numa sessão nova. Ele te devolve um PASS/FAIL por item.</li>
+      <li>Só com a auditoria verde, avance para a próxima onda. Sem pressa — cada onda que fecha de verdade vale mais que três que "quase".</li>
+    </ol>
+    Legenda: <span class="tag auto">merge: auto</span> CI verde basta ·
+    <span class="tag human">merge: humano</span> CODEOWNERS, seu clique ·
+    <span class="tag dep">depende de X</span> não comece antes de X ·
+    <span class="tag">célula/área</span> onde o trabalho mora.
+  </div>
+
+  <div id="waves"></div>
+
+  <p class="foot">
+    Os prompts referenciam documentos versionados (<code>docs/decisoes/*.md</code>,
+    <code>ARMADILHAS.md</code>, <code>INVARIANTES.md</code>, <code>CAMINHO-DOURADO.md</code>) —
+    o agente lê a fonte, não uma paráfrase. Marcar cards aqui é só visual nesta janela; o
+    estado real vive no Git e nos PRs. Este arquivo está em <code>arquivos/</code> (fora do
+    Git) — é o painel do humano; o conhecimento durável mora nos <code>.md</code> da raiz.
+    <br><b>Para quem for editar:</b> os cards moram em <code>painel-10x-dados.js</code>, ao lado
+    deste arquivo — este HTML é só o renderizador. Depois de editar, valide com
+    <code>node --check arquivos/painel-10x-dados.js</code>.
+  </p>
+</div>
+
+<script src="painel-10x-dados.js"></script>
+<script>
+// ---- render ----
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+const KEY='painel10x-check';
+let state={};
+try{state=JSON.parse(localStorage.getItem(KEY))||{};}catch(e){state={};}
+
+const root=document.getElementById('waves');
+let allIds=[];
+root.innerHTML=WAVES.map(w=>{
+  const cards=w.cards.map((c,i)=>{
+    if(!c.audit && c.area!=='negócio · você' && c.merge!=='—') allIds.push(c.id);
+    const tags=[];
+    if(c.done) tags.push('<span class="done-badge">'+esc(c.done)+'</span>');
+    tags.push('<span class="tag">'+esc(c.area)+'</span>');
+    if(c.merge==='humano') tags.push('<span class="tag human">merge: humano</span>');
+    else if(c.merge==='auto') tags.push('<span class="tag auto">merge: auto</span>');
+    if(c.dep) tags.push('<span class="tag dep">depende de '+esc(c.dep)+'</span>');
+    return '<div class="card'+(c.audit?' audit':'')+(c.done?' done':'')+'" data-id="'+c.id+'">'+
+      '<div class="card-head" data-toggle="'+c.id+'">'+
+        '<div class="card-id"><span class="chip">'+esc(c.id)+'</span><h3>'+esc(c.titulo)+'</h3></div>'+
+        '<div class="meta">'+tags.join('')+'<span class="chevron">▶</span></div>'+
+      '</div>'+
+      '<div class="card-body"><div class="card-body-inner">'+
+        '<button class="copy-btn" data-copy="'+c.id+'">copiar prompt</button>'+
+        '<pre>'+esc(c.texto)+'</pre>'+
+      '</div></div></div>';
+  }).join('');
+  return '<div class="wave"><div class="wave-head '+w.cls+'"><span class="wave-tag">'+esc(w.tag)+'</span>'+
+    '<h2>'+esc(w.nome)+'</h2></div><p class="wave-desc">'+w.desc+'</p>'+cards+'</div>';
+}).join('');
+
+// texto por id para copiar
+const TXT={};
+WAVES.forEach(w=>w.cards.forEach(c=>{TXT[c.id]=c.texto;}));
+
+root.addEventListener('click',e=>{
+  const tg=e.target.closest('[data-toggle]');
+  const cp=e.target.closest('[data-copy]');
+  if(cp){
+    const t=TXT[cp.getAttribute('data-copy')];
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).catch(()=>{
+      const ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+    });
+    const o=cp.textContent;cp.textContent='✓ copiado';cp.classList.add('ok');
+    setTimeout(()=>{cp.textContent=o;cp.classList.remove('ok');},1500);
+    e.stopPropagation();return;
+  }
+  if(tg){tg.parentElement.classList.toggle('open');}
+});
+
+const DONE=new Set();
+WAVES.forEach(w=>w.cards.forEach(c=>{if(c.done)DONE.add(c.id);}));
+
+function refresh(){
+  const total=allIds.length;
+  const done=allIds.filter(id=>state[id]||DONE.has(id)).length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('fill').style.width=pct+'%';
+  document.getElementById('plabel').textContent=done+' / '+total+' despachos';
+}
+refresh();
+</script>
+</body>
+</html>

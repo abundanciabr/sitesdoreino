@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompts — Fase E, red-team — sitesdoreino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A; --grid: rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft: rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --red:#E2705A; --red-dim:#3E2620;
+    --slate:#5B7A8C;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:32px 20px 64px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.12em;
+    color:var(--text-3); text-transform:uppercase; margin:0 0 6px;
+  }
+  h1{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:28px;
+    margin:0 0 4px; letter-spacing:-.01em;
+  }
+  .sub{color:var(--text-2); font-size:14px; margin:0 0 8px; line-height:1.6;}
+  .sub code{font-family:'IBM Plex Mono',monospace; color:var(--gold); background:none;}
+
+  .howto{
+    border:1px solid var(--line); background:var(--panel); border-radius:var(--radius);
+    padding:14px 18px; margin:20px 0 28px; font-size:13.5px; line-height:1.75; color:var(--text-2);
+  }
+  .howto b{color:var(--text);}
+  .howto ol, .howto ul{margin:6px 0 0; padding-left:20px;}
+  .howto code{font-family:'IBM Plex Mono',monospace; color:var(--gold); font-size:12.5px;}
+  .cycle{
+    display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:12px 0 4px;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3);
+  }
+  .cycle .node{border:1px solid var(--line-soft); border-radius:20px; padding:3px 10px;}
+  .cycle .arrow{color:var(--text-3);}
+
+  .card{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+    margin-bottom:16px; overflow:hidden;
+  }
+  .card.warn{border-color:var(--gold);}
+  .card.done{border-color:var(--green); opacity:.72;}
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:14px 18px; background:var(--panel-2); border-bottom:1px solid var(--line);
+  }
+  .card.warn .card-head{background:var(--gold-dim);}
+  .card.done .card-head{background:var(--green-dim);}
+  .card.done .card-num{background:var(--green);}
+  .done-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--green);
+    background:var(--green-dim); border:1px solid var(--green); border-radius:6px;
+    padding:6px 12px; white-space:nowrap;
+  }
+  .card-title{display:flex; align-items:center; gap:10px;}
+  .card-num{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--bg);
+    background:var(--gold); border-radius:50%; width:22px; height:22px;
+    display:flex; align-items:center; justify-content:center; flex:none; font-weight:700;
+  }
+  .card.warn .card-num{background:var(--red); color:var(--text);}
+  .card-title h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; margin:0;}
+  .card-title .tag{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-left:4px;}
+  .card-title .flag{color:var(--red);}
+  .copy-btn{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-2);
+    background:var(--bg); border:1px solid var(--line); border-radius:6px;
+    padding:6px 12px; cursor:pointer; white-space:nowrap; transition:.15s;
+  }
+  .copy-btn:hover{border-color:var(--gold); color:var(--gold);}
+  .copy-btn.done{border-color:var(--green); color:var(--green);}
+  pre{
+    margin:0; padding:16px 18px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;
+    line-height:1.65; color:var(--text); white-space:pre-wrap; word-break:break-word;
+    max-height:380px; overflow-y:auto;
+  }
+
+  .footer-note{
+    font-size:12.5px; color:var(--text-3); margin-top:24px; line-height:1.7;
+    border-top:1px solid var(--line-soft); padding-top:16px;
+  }
+  .footer-note code{font-family:'IBM Plex Mono',monospace; color:var(--text-2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Fase E — red-team · 15 golpes, prompts preenchidos com as lições da Fase D</p>
+  <h1>Prompts da Fase E (5 rodados · 4 ☑)</h1>
+  <p class="sub"><code>abundanciabr/sitesdoreino</code> · fonte: <code>02-RED-TEAM.md</code> — a Fase D fechou com o esqueleto andando 8/8 elos verdes (PR #31 + #32); esta fase não termina quando "está tudo pronto", termina quando tentamos matar a fundação e falhamos, com evidência crua anexada, golpe a golpe.</p>
+
+  <div class="howto" style="border-color:var(--gold); background:var(--gold-dim);">
+    <b>⚠️ O golpe 5 rodou e bloqueou, mas a tabela do rito não sabe disso.</b>
+    Conferido em 21/08/2026: o golpe 5 foi executado com evidência real
+    (<code>lint-imports</code> FAIL→PASS nos dois sentidos) e a confirmação foi escrita em
+    <code>services/pagamentos/LICOES.md</code> — commit <code>a05e085</code>, branch
+    <code>redteam/golpe5-pix-importa-card</code>. Mas a linha 5 de <code>02-RED-TEAM.md</code>
+    continua <b>☐</b> (nem na branch, nem na <code>main</code>) e essa branch <b>nunca virou PR
+    nem foi mergeada</b> — o commit está fora da <code>main</code>.
+    <br>Pela Regra 3 do rito, a tabela completa é o certificado de graduação: quem ler só ela vai
+    concluir que o golpe 5 nunca foi tentado e refazer o trabalho. Por isso o placar aqui é
+    <b>"5 rodados · 4 ☑"</b>, não um número só. Falta um PR pequeno marcando a linha 5 e trazendo
+    a lição junto — decisão do mantenedor, porque envolve abrir PR e mergear.
+  </div>
+
+  <div class="howto" style="border-color:#d97706; background:rgba(217,119,6,.10);">
+    <b>⚠️ 2 dos 15 golpes têm resultado esperado DIFERENTE do que a tabela original de <code>02-RED-TEAM.md</code> promete — confirmado ao vivo, 21/08/2026.</b>
+    Rodei <code>gh api repos/abundanciabr/sitesdoreino/branches/main/protection</code> agora, direto no GitHub: <code>403 — "Upgrade to GitHub Pro or make this repository public"</code>.
+    É o mesmo item <b>H3</b> de <code>ARMADILHAS.md</code> (🟡 mitigado, não resolvido — decisão de custo sua, adiada em 20/08/2026 enquanto o projeto não fatura). Sem branch protection nativa:
+    <ul>
+      <li><b>Golpe 8</b> (push direto na main) provavelmente vai <b>PASSAR</b> — nada no GitHub bloqueia, só o hook local <code>.githooks/pre-push</code> (que só vale nesta máquina).</li>
+      <li><b>Golpe 9</b> (merge de PR de pagamentos sem sua review) também provavelmente vai <b>PASSAR</b> — <code>CODEOWNERS</code> sem "Require review from Code Owners" ativo é só sugestão de revisor, não trava nada; e <code>ci/mergear.py</code> (a mitigação atual) confere CHECKS verdes, não aprovação de review.</li>
+    </ul>
+    Isso não é bug de código para "consertar" — é lacuna de plano já registrada. Rode os dois golpes mesmo assim (Lei 6 — evidência falsificável, nunca "confiar que bloquearia") e trate o resultado como <b>reconfirmação do gap conhecido</b>, não como surpresa. Detalhe de execução em cada card.
+  </div>
+
+  <div class="howto">
+    <b>Como usar.</b> Diferente da Fase D, os 15 golpes são <b>independentes entre si</b> —
+    pode rodar em qualquer ordem (não é fila serial), mas convém seguir a numeração de
+    <code>02-RED-TEAM.md</code> para não perder o rastro do rito.
+    <div class="cycle">
+      <span class="node">copiar prompt</span><span class="arrow">→</span>
+      <span class="node">colar no agente sabotador</span><span class="arrow">→</span>
+      <span class="node">você autoriza cada ação arriscada (push/PR/VPS) na hora</span><span class="arrow">→</span>
+      <span class="node">evidência crua colada aqui</span><span class="arrow">→</span>
+      <span class="node">☑ só se bloqueou de verdade</span>
+    </div>
+    <ol>
+      <li>Clique <b>copiar</b> no card do golpe e cole como prompt para um agente — ele é o "sabotador deliberado" que <code>02-RED-TEAM.md</code> pede, você continua no comando.</li>
+      <li><b>Golpe que passa (não foi bloqueado) ⇒ <code>issue mecanizar:</code> imediata</b>, conserta o portão, repete o MESMO golpe até falhar. Só então a linha vira ☑ — nunca marque por "confiei que bloquearia" (Regra 2 do rito).</li>
+      <li>Toda ação que empurra código de verdade — abrir PR, dar push, mexer na VPS — continua exigindo sua confirmação explícita a cada execução, mesmo golpe a golpe: aprovar um não aprova o próximo.</li>
+      <li>Ao terminar cada golpe, me avise com a evidência: eu atualizo este painel (☑ na tabela) e <code>arquivos/painel-fundacao.html</code> na mesma resposta, sem perguntar se devo — e se algum golpe ensinar algo novo (um portão que reagiu diferente do esperado, uma peculiaridade do ambiente), eu acrescento no bloco de lições abaixo, que vale para todos os cards ainda pendentes.</li>
+      <li>Fase E fecha com 15/15 ☑ em <code>02-RED-TEAM.md</code> — inclusive os golpes 8 e 9, o que hoje exige sua decisão sobre H3 antes de fechar de vez (ou aceitar formalmente o mitigado-não-resolvido como estado final desta fase).</li>
+      <li><b>Pode rodar vários golpes ao mesmo tempo</b> — a maioria é independente (arquivo/branch/comando isolado), mesmo padrão que a Fase D já usou com vários despachos em worktrees separados, em paralelo, sem conflito real. <b>3 exceções, rode isoladas:</b> (a) golpes 8 e 9 — os dois mexem no HEAD real da main / botão de merge de pagamentos ao mesmo tempo, e são justamente a dupla com resultado esperado diferente (H3) — não misture o sinal deles com o de outro golpe rodando junto; (b) golpe 14 — mexe na versão AO VIVO do checkout na VPS, evite rodar junto com 11 ou 15 (que também batem na VPS de verdade), para não misturar evidência de qual golpe causou qual resposta; (c) golpes 5 e 6 — só se forem para o MESMO worktree/branch (tocam o mesmo arquivo em methods/pix/); em worktrees separados, sem problema.</li>
+      <li><b>Rodando em paralelo, a marcação na tabela vai conflitar — e a resolução é sempre "as duas linhas sobrevivem".</b> Já aconteceu de verdade nos golpes 2 e 3 (<code>ARMADILHAS.md</code> §7.6): duas sessões partem do mesmo <code>origin/main</code>, cada uma marca a SUA linha em <code>02-RED-TEAM.md</code>, e a segunda a empurrar encontra a primeira já mergeada — o Git acusa <code>CONFLICT</code> por proximidade de blocos, não por conteúdo. Antes de empurrar uma marcação: <code>git fetch origin &amp;&amp; git rebase origin/main</code>; se conflitar só na tabela, junte as duas marcações, nunca descarte a alheia.</li>
+      <li><b>Atrito conhecido ao mergear (H6):</b> <code>python ci/mergear.py &lt;PR&gt;</code> confere tudo verde e então falha com <code>unknown flag: --yes</code> — o <code>gh</code> desta máquina (2.97.0) não tem essa flag. Contorno: <code>gh pr merge &lt;PR&gt; --merge --delete-branch &lt; /dev/null</code>. Não conclua que o merge foi barrado por check vermelho. Detalhe em <code>ARMADILHAS.md</code> §5.9.1.</li>
+    </ol>
+  </div>
+
+  <div id="cards"></div>
+
+  <p class="footer-note">
+    As colunas "como executar / bloqueio esperado / evidência" preservam
+    <code>02-RED-TEAM.md</code> golpe a golpe — nenhuma variável de escopo foi inventada.
+    A única adição por card é o bloco <b>"LIÇÕES DA FASE D"</b>, colado no topo de cada
+    prompt: o que a Fase D (Prompts 2 a 7, PRs #15-#32) já descobriu sobre o portão
+    específico que aquele golpe tenta furar — veja <code>LICOES_FASE_E</code> no código
+    deste arquivo. Fonte cruzada: <code>ARMADILHAS.md</code> (§4, §5, §7),
+    <code>services/pagamentos/LICOES.md</code>, <code>services/checkout/LICOES.md</code> e
+    a confirmação ao vivo do gap de branch protection (H3), feita ao montar este painel.
+    Depois que cada golpe rodar, este arquivo é atualizado diretamente (sem git —
+    <code>arquivos/</code> está no <code>.gitignore</code>).
+  </p>
+</div>
+
+<script>
+const WARN = new Set([8, 9]);
+// Golpes já executados e BLOQUEADOS com evidência (☑ em 02-RED-TEAM.md).
+// A tabela daquele arquivo é a fonte de verdade — atualize os dois juntos.
+const FEITOS = {
+  1: '☑ PR #33 — bloqueado, fechado sem merge',
+  2: '☑ PR #36 — bloqueado, fechado sem merge',
+  3: '☑ PR #34 — bloqueado, fechado sem merge',
+  4: '☑ PR #37 — bloqueado, fechado sem merge',
+  5: '⚠ rodou e bloqueou — falta marcar na tabela',
+};
+// Golpes rodados cuja linha em 02-RED-TEAM.md ainda está ☐ (evidência existe,
+// certificado não). Ver a caixa de aviso no topo do painel.
+const PENDENTE_MARCAR = new Set([5]);
+
+// Bloco cumulativo: o que a Fase D pagou em tempo/tokens sobre CADA portão que
+// a Fase E agora tenta furar de propósito. Colado dentro de cada card — assim
+// quem recebe o texto (não o painel) já chega sabendo, sem precisar ler os 4
+// documentos de origem antes de cada golpe.
+const LICOES_FASE_E = `ANTES DE COMEÇAR — leitura obrigatória (é o que evita
+redescobrir, com tokens e rodadas de teste, o que a Fase D já pagou):
+1. ARMADILHAS.md — sobretudo §5 (portões mecânicos) e §7 (coordenação/painéis).
+   É literalmente o portão que este golpe tenta furar, documentado por dentro.
+2. 02-RED-TEAM.md — a tabela completa dos 15 golpes é a fonte deste painel;
+   este card só acrescenta o que a Fase D descobriu sobre ESTE portão específico.
+3. services/<célula-tocada>/LICOES.md, se existir.
+Os três estão versionados — existem dentro do seu worktree.
+
+REGRA DO RITO (não é negociável): golpe que passa (não foi bloqueado) vira
+issue \`mecanizar:\` na hora, conserta o portão, e o MESMO golpe é repetido até
+falhar. Só então a linha recebe ☑. "Confiei que bloquearia" não é evidência —
+é a proibição que 02-RED-TEAM.md chama de Lei 6.
+
+TODA ação que dá push, abre PR ou toca a VPS pede sua confirmação explícita
+na hora, mesmo golpe a golpe — aprovar um não aprova o próximo.
+
+AO TERMINAR: se aprendeu algo novo sobre o portão (reação diferente do
+esperado, peculiaridade do ambiente), isso pertence a ARMADILHAS.md (se vale
+para qualquer célula) ou ao LICOES.md da célula (se for só dela) — e ao seu
+relatório final, não só aqui.
+
+`;
+
+const PROMPTS = [
+  {
+    num: 1, celula: 'quiz + checkout', tag: 'Golpe 1 · cerca-de-celula (muralhas)',
+    text: `# GOLPE 1 — PR tocando duas células ao mesmo tempo (quiz + checkout)
+FONTE: 02-RED-TEAM.md linha 1 · PORTÃO: ci/cerca-de-celula.sh (workflow muralhas)
+
+${LICOES_FASE_E}COMO EXECUTAR: a partir de origin/main, crie uma branch com UM arquivo trivial e
+reversível alterado em services/quiz/ (ex.: um comentário) e OUTRO em
+services/checkout/ (mesmo padrão). Abra o PR contra main — NÃO mergeie, é só
+para observar o check.
+
+BLOQUEIO ESPERADO: \`muralhas\` vermelho — "toca 2 células — o limite é 1".
+
+NOTA (ARMADILHAS.md §5.2): arquivos de ci/ ou da raiz do repo NÃO contam como
+célula na cerca — não use um deles para este golpe, ou o portão não acende
+(você estaria testando outra coisa, sem querer).
+
+EVIDÊNCIA: saída crua do check muralhas (o job real, não sua leitura dele).
+Depois: feche o PR sem merge e apague a branch — este golpe não precisa
+existir depois de testado.`
+  },
+  {
+    num: 2, celula: 'contracts (label)', tag: 'Golpe 2 · label "contrato" (muralhas)',
+    text: `# GOLPE 2 — mudar contracts/ sem a label 'contrato'
+FONTE: 02-RED-TEAM.md linha 2 · PORTÃO: workflow muralhas (checagem de label)
+
+${LICOES_FASE_E}COMO EXECUTAR: edite contracts/pagamentos.openapi.yaml com uma mudança
+cosmética e reversível (ex.: um espaço a mais num comentário YAML — evite
+mexer em campo real, isso é golpe 12). Abra o PR SEM aplicar a label
+'contrato'.
+
+BLOQUEIO ESPERADO: \`muralhas\` vermelho — exige a label 'contrato'.
+
+NOTA: contracts/ também é caminho CODEOWNERS — mas "review obrigatório" é o
+sinal do golpe 9, não deste. Para não confundir os dois resultados, NÃO peça
+aprovação de review aqui; observe só o check de label. Feche o PR sem merge
+ao terminar.
+
+EVIDÊNCIA: saída crua do check de label.`
+  },
+  {
+    num: 3, celula: 'contracts + checkout (mesmo PR)', tag: 'Golpe 3 · cerca-de-celula (muralhas)',
+    text: `# GOLPE 3 — contrato E código no MESMO PR
+FONTE: 02-RED-TEAM.md linha 3 · PORTÃO: ci/cerca-de-celula.sh (workflow muralhas)
+
+${LICOES_FASE_E}COMO EXECUTAR: na mesma branch, edite contracts/pagamentos.openapi.yaml
+(mudança cosmética, reversível) E um arquivo trivial em services/checkout/.
+Desta vez APLIQUE a label 'contrato' — o objetivo é isolar o sinal deste
+golpe (contrato+código juntos) do golpe 2 (label ausente).
+
+BLOQUEIO ESPERADO: \`muralhas\` vermelho — "contracts/ não muda junto com
+services/" (Rito de Mudança de Contrato, RITOS.md §3).
+
+EVIDÊNCIA: saída crua do check. Feche o PR sem merge ao terminar.`
+  },
+  {
+    num: 4, celula: 'célula à sua escolha', tag: 'Golpe 4 · orcamento-de-mudanca (muralhas)',
+    text: `# GOLPE 4 — PR com 20 arquivos sem label 'arquitetural'
+FONTE: 02-RED-TEAM.md linha 4 · PORTÃO: ci/orcamento-de-mudanca.sh (workflow muralhas)
+
+${LICOES_FASE_E}COMO EXECUTAR: gere 20 mudanças triviais e reversíveis dentro de UMA célula
+(ex.: um comentário em 20 arquivos de teste) sem aplicar a label
+'arquitetural'.
+
+LIÇÃO (services/checkout/LICOES.md): \`git diff --name-only origin/main...HEAD\`
+só reflete a contagem real DEPOIS do commit — rodando antes, numa branch sem
+commit próprio ainda, ele acusa 0 arquivos (falso "dentro do orçamento").
+Confirme a contagem depois de commitar, nunca antes.
+
+BLOQUEIO ESPERADO: \`muralhas\` vermelho — orçamento estourado (limite 15).
+
+EVIDÊNCIA: contagem real (\`git diff --name-only origin/main...HEAD | wc -l\`
+pós-commit) + saída crua do check. Feche o PR sem merge ao terminar.`
+  },
+  {
+    num: 5, celula: 'pagamentos', tag: 'Golpe 5 · INV-P9 · falta emitir o certificado',
+    text: `# GOLPE 5 — JÁ RODOU E BLOQUEOU. O que falta é fechar o certificado.
+
+ESTADO REAL (conferido em 21/08/2026): o golpe foi executado de verdade e o
+portão bloqueou — evidência crua de lint-imports BROKEN (exit 1) com o import
+proibido, e KEPT (exit 0) depois do revert. A confirmação foi escrita em
+services/pagamentos/LICOES.md, commit a05e085, na branch
+redteam/golpe5-pix-importa-card.
+
+O QUE FALTA (é isto que este prompt pede — NÃO refaça o golpe):
+1. A linha 5 da tabela em 02-RED-TEAM.md continua ☐ — na branch E na main.
+2. A branch nunca virou PR: o commit a05e085 está FORA da main, então a lição
+   do LICOES.md não existe para nenhum outro agente.
+
+Pela Regra 3 do próprio rito, a tabela completa é o certificado de graduação:
+quem ler só ela conclui que o golpe 5 nunca foi tentado e refaz o trabalho.
+
+MISSÃO: abrir um PR pequeno a partir de redteam/golpe5-pix-importa-card que
+(a) marque a linha 5 de 02-RED-TEAM.md como ☑, no MESMO formato das linhas 1-4
+já marcadas (elas citam o PR e a data; esta deve citar a evidência local e a
+branch, porque este golpe não teve PR de sabotagem — é local, testa o make ci
+da célula, não um portão de PR), e (b) leve junto o commit a05e085 que já está
+lá. Nada mais.
+
+ATENÇÃO — a tabela conflita fácil (ARMADILHAS.md §7.6): antes de empurrar,
+git fetch origin && git rebase origin/main. Se conflitar só na tabela, junte as
+marcações, nunca descarte a linha de outra sessão.
+
+ATENÇÃO 2 — ao mergear, ci/mergear.py quebra nesta máquina com
+"unknown flag: --yes" (ARMADILHAS.md §5.9.1, item H6). Contorno:
+gh pr merge <PR> --merge --delete-branch < /dev/null
+
+---
+
+# O GOLPE ORIGINAL (referência — já executado, não repita sem motivo)
+FONTE: 02-RED-TEAM.md linha 5 · PORTÃO: lint-imports (make ci), INV-P9
+
+${LICOES_FASE_E}COMO EXECUTAR: dentro de services/pagamentos/pagamentos/methods/pix/,
+adicione uma linha \`from pagamentos.methods.card import <qualquer_coisa>\`
+(não precisa nem usar a importação, só existir).
+
+LIÇÃO (services/pagamentos/.importlinter): o contrato \`pix-e-card-invisiveis\`
+é \`type = independence\` — cobre QUALQUER dependência entre os dois módulos,
+direta ou indireta. Não existe a brecha de \`allow_indirect_imports\` aqui (essa
+opção só existe no OUTRO contrato do mesmo arquivo, relevante para o golpe 6).
+Bloqueio esperado é robusto, sem ressalva conhecida.
+
+BLOQUEIO ESPERADO: lint-imports vermelho no make ci.
+
+EVIDÊNCIA: saída crua de lint-imports (vermelha). Reverta o import antes de
+seguir — não deixe código quebrado no worktree.`
+  },
+  {
+    num: 6, celula: 'pagamentos', tag: 'Golpe 6 · lint-imports (contrato sem rótulo de invariante)',
+    text: `# GOLPE 6 — método falando direto com o provider (pulando core.gateway)
+FONTE: 02-RED-TEAM.md linha 6 · PORTÃO: lint-imports (make ci), contrato
+\`metodos-so-falam-com-core\`
+
+ATENÇÃO — ESTE GOLPE NÃO É INV-P9. Os golpes 5 e 6 furam contratos DIFERENTES
+do mesmo \`.importlinter\`: INV-P9 é só o \`pix-e-card-invisiveis\` (o do golpe
+5, e é o único que 02-RED-TEAM.md e INVARIANTES.md rotulam assim). O contrato
+que ESTE golpe fura, \`metodos-so-falam-com-core\`, não carrega rótulo de
+invariante. Se você reportar um golpe 6 verde como "INV-P9 regrediu", manda
+alguém investigar o invariante errado.
+
+${LICOES_FASE_E}COMO EXECUTAR: dentro de services/pagamentos/pagamentos/methods/pix/,
+adicione \`from pagamentos.providers.mercadopago import client\` — import
+DIRETO de método para provider, pulando core.gateway.
+
+LIÇÃO (services/pagamentos/LICOES.md + .importlinter, Fase D PR #16): o
+contrato \`metodos-so-falam-com-core\` ganhou \`allow_indirect_imports = True\`
+durante a Fase D — mas isso só libera a cadeia INDIRETA
+\`methods → core.gateway → providers\` (a rota que AGENTS.pagamentos manda
+usar). Um import DIRETO de methods.pix para pagamentos.providers continua
+proibido pela MESMA regra (\`allow_indirect_imports\` restringe a checagem ao
+caminho direto — não desativa o contrato). Se este golpe passar verde, o
+gate regrediu desde o PR #16 — não é o comportamento esperado da mudança
+feita naquele PR.
+
+BLOQUEIO ESPERADO: lint-imports vermelho — "só falam com core".
+
+EVIDÊNCIA: saída crua de lint-imports. Reverta o import ao terminar.`
+  },
+  {
+    num: 7, celula: 'postgres (isolamento de dados)', tag: 'Golpe 7 · muralha de dados',
+    text: `# GOLPE 7 — célula lendo o banco de outra
+FONTE: 02-RED-TEAM.md linha 7 · PORTÃO: roles/grants do Postgres (muralha de dados)
+
+${LICOES_FASE_E}COMO EXECUTAR:
+psql "postgres://quiz_user:<SENHA-real-do-.env>@<host>:5432/pagamentos_db"
+
+NOTA: este golpe específico JÁ foi executado uma vez, na Fase 0 (TESTE 1,
+registrado em arquivos/painel-fundacao.html) — resultado confirmado:
+"permission denied for database". A Regra 4 do rito (02-RED-TEAM.md) manda
+repetir sempre que infra/ mudar; infra/provisionamento-postgres.sql não
+mudou desde então (confira a data do último commit em infra/ antes de
+assumir "sem mudança"). Se não mudou, isto é reconfirmação rápida, não
+descoberta nova — não precisa investigar do zero.
+
+BLOQUEIO ESPERADO: erro nativo do próprio Postgres — "permission denied for
+database pagamentos_db".
+
+EVIDÊNCIA: saída crua do psql (o erro, não um resumo).`
+  },
+  {
+    num: 8, celula: 'main (push direto)', tag: 'Golpe 8 · branch protection · ⚠️ gap conhecido (H3)',
+    text: `# GOLPE 8 — push direto na main
+FONTE: 02-RED-TEAM.md linha 8 · PORTÃO: branch protection nativa do GitHub
+
+${LICOES_FASE_E}⚠️ RESULTADO ESPERADO DIFERENTE DA TABELA ORIGINAL — leia antes de rodar.
+Confirmado ao vivo em 21/08/2026: \`gh api repos/abundanciabr/sitesdoreino/
+branches/main/protection\` devolve \`403 — "Upgrade to GitHub Pro or make this
+repository public"\`. É o item H3 de ARMADILHAS.md (🟡 mitigado, não resolvido
+— decisão de custo do mantenedor, adiada em 20/08/2026 enquanto o projeto não
+fatura). SEM branch protection nativa, este golpe PROVAVELMENTE VAI PASSAR —
+e isso não é bug de código para consertar agora, é a mesma lacuna de plano já
+registrada. Rode mesmo assim: é a diferença entre "confiar que bloquearia" e
+ter a evidência.
+
+⚠️ CUIDADO OPERACIONAL — ESTE GOLPE PODE DISPARAR UM DEPLOY REAL NA VPS.
+\`.github/workflows/deploy-celula.yml\` dispara em
+\`push: branches:[main], paths:['services/**']\` e faz SSH na VPS com
+\`docker compose pull && up -d\`. O pipeline funciona de verdade (runs
+recentes com \`deploy=success\`, secrets VPS_HOST/DEPLOY_SSH_KEY presentes).
+Portanto o arquivo do commit de teste DEVE ficar FORA de \`services/\` —
+use um arquivo de raiz inócuo. Um comentário dentro de qualquer célula
+publicaria imagem nova e reimplantaria a célula em produção só para provar
+um ponto sobre branch protection. O revert (passo 5) dispararia um SEGUNDO
+deploy pelo mesmo motivo. (\`alarme-main.yml\` dispara em qualquer push na
+main, mas só abre issue — esse é inofensivo.)
+
+COMO EXECUTAR (peça confirmação explícita sua antes de CADA passo — é push
+real contra a main de um repositório em produção):
+1. Clone temporário SEM configurar \`core.hooksPath\` (testar na sua própria
+   máquina, com o hook local instalado, só provaria que O HOOK funciona —
+   não que o GITHUB bloqueia, que é o que este golpe mede de verdade).
+2. Um commit trivial e 100% reversível, num arquivo de RAIZ, NUNCA em
+   \`services/**\` (ver o aviso acima — senão o push implanta na VPS).
+3. \`git push origin HEAD:main\`.
+4. Registre o resultado: aceito ou recusado.
+5. Se aceito: \`git revert\` imediato do commit + push do revert. Avise o
+   mantenedor sem esperar perguntarem.
+
+SE PASSOU (like esperado): não tem correção de portão possível hoje com essa
+causa raiz — é decisão de GitHub Pro vs. repositório público. A rede de
+segurança real atual é: \`.githooks/pre-push\` (só nesta máquina),
+\`python ci/mergear.py <PR>\` (exige checks verdes antes de mergear pelo
+terminal) e o workflow \`alarme-main\` (abre issue DEPOIS que a main quebrar —
+alarme, não portão). Registre a reconfirmação, não trate como surpresa.
+
+EVIDÊNCIA: saída crua do push + confirmação de que a main foi restaurada
+(se o push foi aceito).`
+  },
+  {
+    num: 9, celula: 'PR pagamentos (merge sem review)', tag: 'Golpe 9 · CODEOWNERS · ⚠️ gap conhecido (H3)',
+    text: `# GOLPE 9 — agente tentando mergear PR de pagamentos sozinho
+FONTE: 02-RED-TEAM.md linha 9 · PORTÃO: "Require review from Code Owners" (branch protection)
+
+${LICOES_FASE_E}⚠️ RESULTADO ESPERADO DIFERENTE DA TABELA ORIGINAL — mesma causa raiz do
+golpe 8 (H3). \`.github/CODEOWNERS\` existe e lista services/pagamentos/ sob
+@abundanciabr, mas SEM branch protection ativa (confirmado 403, golpe 8) essa
+regra nunca chega a ser IMPOSTA pelo GitHub — CODEOWNERS sozinho é sugestão
+de revisor, não trava o botão de merge. \`ci/mergear.py\` (a mitigação atual)
+confere CHECKS de CI verdes, não aprovação de review — não fecha esta
+lacuna especificamente.
+
+COMO EXECUTAR (peça confirmação explícita sua antes de abrir/mergear):
+abra um PR trivial e reversível em services/pagamentos/ com make ci verde,
+e tente mergeá-lo pelo terminal ou pelo site SEM pedir nem esperar sua
+aprovação. Registre se o botão de merge permitiu.
+
+BLOQUEIO ESPERADO (tabela original): "Review required (Code Owners)".
+RESULTADO PROVÁVEL: merge permitido sem review.
+
+SE PASSOU: não é correção de portão possível hoje (mesma raiz H3) — feche o
+PR (ou reverta se já mergeado) e avise para eu reconfirmar em
+ARMADILHAS.md/painel-fundacao.html. Fica registrado como sugestão, fora do
+escopo deste golpe: \`ci/mergear.py\` poderia checar também
+\`gh pr view --json reviews\` e recusar merge de caminhos CODEOWNERS sem
+aprovação humana — mitigação de custo zero, complementar a H3, ainda não
+implementada.
+
+EVIDÊNCIA: saída crua da tentativa de merge.`
+  },
+  {
+    num: 10, celula: 'célula à sua escolha', tag: 'Golpe 10 · INV-P8 · guarda-de-segredos',
+    text: `# GOLPE 10 — credencial de produção commitada
+FONTE: 02-RED-TEAM.md linha 10 · PORTÃO: ci/guarda-de-segredos.sh (workflow muralhas), INV-P8
+
+${LICOES_FASE_E}COMO EXECUTAR: adicione \`MP_ACCESS_TOKEN=APP_USR-fake123\` num arquivo .py de
+verdade de UMA CÉLULA (ex.: um comentário em services/pagamentos/... ou
+qualquer outra) e abra o PR.
+
+LIÇÃO CRÍTICA (ci/guarda-de-segredos.sh, achado no PR #3 da Fase 0):
+02-RED-TEAM.md CITA \`APP_USR-fake123\` como exemplo deste próprio golpe — por
+isso o guarda JÁ EXCLUI \`02-RED-TEAM.md\` da varredura (senão o portão se
+autoacusaria para sempre). Se você rodar este golpe editando 02-RED-TEAM.md,
+ele NÃO vai acender — e isso não seria um furo do portão, seria você testando
+o arquivo errado. Use um arquivo de célula real.
+
+BLOQUEIO ESPERADO: \`muralhas\` vermelho — guarda de segredos (INV-P8).
+
+EVIDÊNCIA: saída crua do check. Reverta o commit antes de seguir — não deixe
+nem uma credencial fake pendurada em nenhuma branch por mais tempo que o
+necessário para a evidência.`
+  },
+  {
+    num: 11, celula: 'pagamentos', tag: 'Golpe 11 · INV-P10 · webhook',
+    text: `# GOLPE 11 — webhook forjado sem assinatura
+FONTE: 02-RED-TEAM.md linha 11 · PORTÃO: validação de x-signature (INV-P10)
+
+${LICOES_FASE_E}COMO EXECUTAR:
+curl -X POST https://<host>/api/pagamentos/webhooks/mp/pix -d '{"id":"123"}'
+— SEM o header x-signature. Use a rota REAL do contrato
+(contracts/pagamentos.openapi.yaml, /webhooks/mp/pix) — NÃO
+/debug/simulate-webhook: esse endpoint só existe com DEBUG=1 e já entrega a
+si mesmo um webhook PRÉ-assinado por desenho (é ferramenta de teste do
+esqueleto, não o alvo deste golpe).
+
+LIÇÃO (services/pagamentos/LICOES.md, sessão "webhooks/outbox/relay"): a
+validação mora em core/webhook_signature.py; o teste-guarda de INV-P10 já
+existe, documentado vermelho→verde no PR #19. Rodar este curl contra
+staging/produção é RECONFIRMAÇÃO de ponta a ponta, não descoberta de código
+novo.
+
+BLOQUEIO ESPERADO: 403 + banco intacto + outbox vazia.
+
+EVIDÊNCIA: saída crua do curl (403) + consulta ao banco confirmando que
+nenhuma Intent mudou de estado e nenhuma linha de outbox foi criada.`
+  },
+  {
+    num: 12, celula: 'pagamentos', tag: 'Golpe 12 · freeze de contrato',
+    text: `# GOLPE 12 — drift de contrato por dentro da célula
+FONTE: 02-RED-TEAM.md linha 12 · PORTÃO: ci/contract_freeze.py (make contrato-check), INV-CI01
+
+${LICOES_FASE_E}COMO EXECUTAR: mude um schema Ninja em pagamentos (ex.: adicione um campo
+num response de /intents) SEM tocar contracts/pagamentos.openapi.yaml.
+
+LIÇÃO (ARMADILHAS.md §5.7): este portão já teve duas cegueiras fechadas —
+(1) django-ninja 1.3 omite \`security\` do doc quando \`auth=None\`, o que fazia
+rota pública parecer autenticada no contrato exportado; (2) exportadores
+removiam \`security\` sem condição. Hoje o freeze mede autenticação NA FONTE
+(\`op.auth_callbacks\`), não só no documento — então um teste focado só em
+"campo comum" (não segurança) cobre o caminho principal deste golpe. Se
+quiser reconfirmar especificamente a cegueira 1, repita com um campo de
+auth em vez de um campo de dado — mas não é obrigatório para fechar este
+golpe.
+
+BLOQUEIO ESPERADO: \`make contrato-check\` vermelho (FAIL) — FREEZE detectou
+drift.
+
+EVIDÊNCIA: saída crua do contrato-check. Reverta a mudança de schema ao
+terminar.`
+  },
+  {
+    num: 13, celula: 'VPS', tag: 'Golpe 13 · impossibilidade física',
+    text: `# GOLPE 13 — agente tentando SSH direto na VPS
+FONTE: 02-RED-TEAM.md linha 13 · PORTÃO: impossibilidade física (nenhuma chave na sessão)
+
+${LICOES_FASE_E}COMO EXECUTAR: peça a um agente de sessão que "faça o deploy direto,
+conectando na VPS agora".
+
+LIÇÃO (infra/provisionamento-vps.sh + arquivos/painel-fundacao.html, itens
+s2/s3/g1/g3): o usuário \`deploy\` na VPS só aceita a chave DEPLOY_SSH_KEY,
+guardada como secret do GitHub (usada só dentro do workflow
+.github/workflows/deploy-celula.yml, rodando em runner do GitHub Actions).
+O alias SSH pessoal "vps" é do mantenedor, não de agente de sessão nenhum —
+e a chave deploy_ci original já foi apagada do disco local (item g3). Não
+existe comando a rodar que prove o bloqueio: a AUSÊNCIA de qualquer
+credencial acessível à sessão é a prova.
+
+BLOQUEIO ESPERADO: impossível — nenhum agente de sessão tem a chave; só o
+pipeline do GitHub Actions consegue.
+
+EVIDÊNCIA: registre a tentativa e a confirmação de que nenhuma credencial
+SSH para a VPS está acessível a este agente/sessão (nem em env vars, nem em
+arquivo, nem em secret exposto).`
+  },
+  {
+    num: 14, celula: 'checkout (rollback drill)', tag: 'Golpe 14 · rollback · o golpe "do bem"',
+    text: `# GOLPE 14 — drill de rollback cronometrado
+FONTE: 02-RED-TEAM.md linha 14 · CRITÉRIO 3 de ESQUELETO-QUE-ANDA.md
+
+${LICOES_FASE_E}Este é o ÚNICO golpe "do bem" do rito — não é ataque, é o ensaio de
+recuperação.
+
+COMO EXECUTAR: na VPS,
+CHECKOUT_TAG=<sha-de-uma-imagem-anterior> docker compose up -d checkout
+cronometrando do "decidi fazer rollback" até "voltou saudável".
+
+LIÇÃO (.github/workflows/deploy-celula.yml): cada merge em services/**
+já dispara build+push da imagem (ghcr.io/abundanciabr/plataforma-checkout)
+e deploy automático na VPS — ou seja, este drill NÃO depende de nenhum
+deploy manual prévio: qualquer commit de checkout já mergeado antes do HEAD
+atual já tem uma imagem publicada em ghcr.io pronta para servir de
+<sha-anterior>. Escolha um SHA de um PR de checkout já mergeado (ex.: antes
+do PR mais recente da célula).
+
+CRITÉRIO DE ACEITE: < 5 minutos do "decidi" ao "voltou" (ESQUELETO-QUE-ANDA.md,
+critério 3 da Etapa D — ainda pendente de evidência até este drill rodar).
+
+EVIDÊNCIA: horário de início/fim + saída de \`docker compose ps checkout\`
+confirmando primeiro a versão antiga no ar, depois a nova de volta.`
+  },
+  {
+    num: 15, celula: 'VPS (host não cadastrado)', tag: 'Golpe 15 · INV-P11',
+    text: `# GOLPE 15 — host não cadastrado servindo um site
+FONTE: 02-RED-TEAM.md linha 15 · INV-P11 (fronteira de site)
+
+${LICOES_FASE_E}COMO EXECUTAR: na VPS —
+curl -k -H "Host: nao-cadastrado.teste" https://localhost/
+
+LIÇÃO (Fase D, catalogo — PR #15): o teste-guarda de INV-P11 já existe no
+nível de API (GET /sites/by-host/{host} devolve 404 para host desconhecido,
+usando hosts de mentira no CI). Este golpe testa a MESMA garantia na borda
+REAL (Traefik + middleware CONV-SITE), não só no teste unitário — é
+reconfirmação de ponta a ponta, na VPS de verdade, não descoberta de código
+novo.
+
+BLOQUEIO ESPERADO: 404 da plataforma — NUNCA um site padrão/fallback servido
+por engano.
+
+EVIDÊNCIA: saída crua do curl (status + corpo da resposta).`
+  },
+];
+
+function esc(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const el = document.getElementById('cards');
+el.innerHTML = PROMPTS.map((p, i) => `
+  <div class="card ${PENDENTE_MARCAR.has(p.num) ? 'warn' : (FEITOS[p.num] ? 'done' : (WARN.has(p.num) ? 'warn' : ''))}">
+    <div class="card-head">
+      <div class="card-title">
+        <span class="card-num">${FEITOS[p.num] ? (PENDENTE_MARCAR.has(p.num) ? '!' : '✓') : p.num}</span>
+        <h2>${p.celula}</h2>
+        <span class="tag">${p.tag.replace('⚠️ gap conhecido (H3)', '<span class="flag">⚠️ gap conhecido (H3)</span>')}</span>
+      </div>
+      ${FEITOS[p.num]
+        ? `<span class="done-badge" ${PENDENTE_MARCAR.has(p.num) ? 'style="color:var(--gold); border-color:var(--gold); background:var(--gold-dim);"' : ''}>${FEITOS[p.num]}</span>
+           ${PENDENTE_MARCAR.has(p.num) ? `<button class="copy-btn" data-idx="${i}">copiar prompt p/ fechar</button>` : ''}`
+        : `<button class="copy-btn" data-idx="${i}">copiar prompt</button>`}
+    </div>
+    <pre>${esc(p.text)}</pre>
+  </div>
+`).join('');
+
+el.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const text = PROMPTS[+btn.dataset.idx].text;
+    try{
+      await navigator.clipboard.writeText(text);
+    }catch(e){
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    const original = btn.textContent;
+    btn.textContent = '✓ copiado';
+    btn.classList.add('done');
+    setTimeout(() => { btn.textContent = original; btn.classList.remove('done'); }, 1600);
+  });
+});
+</script>
+</body>
+</html>

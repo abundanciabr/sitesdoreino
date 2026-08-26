@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel de Retomada — Meshcraft · sitesdoreino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A; --grid: rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft: rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --red:#E2705A; --red-dim:#3E2620;
+    --blue:#4c8dff; --blue-dim:rgba(76,141,255,.10);
+    --slate:#5B7A8C;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:32px 20px 64px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; color:var(--text-3); text-transform:uppercase; margin:0 0 6px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:32px; margin:0 0 4px; letter-spacing:-.01em;}
+  .sub{color:var(--text-2); font-size:14px; margin:0 0 10px; line-height:1.6;}
+  .sub code, code{font-family:'IBM Plex Mono',monospace; color:var(--gold); background:none; font-size:.95em;}
+  a{color:var(--blue);}
+  h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:20px; margin:44px 0 6px; letter-spacing:-.01em;}
+  h2 .num{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text-3); margin-right:8px;}
+  .lead{color:var(--text-2); font-size:14px; margin:0 0 18px; line-height:1.65; max-width:820px;}
+  b{font-weight:600;}
+
+  .banner{
+    border:1px solid var(--green); background:linear-gradient(180deg, var(--green-dim), var(--panel));
+    border-radius:var(--radius); padding:18px 20px; margin:22px 0 8px; font-size:15px; line-height:1.7;
+  }
+  .banner .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:var(--green); margin-bottom:6px;}
+
+  .toc{display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 8px;}
+  .toc a{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-2); text-decoration:none;
+    border:1px solid var(--line); border-radius:20px; padding:5px 11px; background:var(--panel);
+  }
+  .toc a:hover{border-color:var(--slate); color:var(--text);}
+
+  /* régua de fases */
+  .roadmap{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin:18px 0 6px;}
+  .floor{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+    padding:14px 12px; position:relative; min-height:112px;
+    display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .floor.done{border-color:var(--green); background:linear-gradient(180deg, var(--green-dim), var(--panel));}
+  .floor.now{border-color:var(--gold); background:linear-gradient(180deg, var(--gold-dim), var(--panel)); box-shadow:0 0 0 1px var(--gold) inset;}
+  .floor.future{border-style:dashed; opacity:.6;}
+  .floor .tag{font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.08em; color:var(--text-3); text-transform:uppercase;}
+  .floor.done .tag{color:var(--green);}
+  .floor.now .tag{color:var(--gold);}
+  .floor .name{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; margin-top:6px; line-height:1.3;}
+  .floor .pct{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-3); margin-top:8px; line-height:1.5;}
+  .here{
+    position:absolute; top:-11px; left:50%; transform:translateX(-50%);
+    background:var(--gold); color:#2A1D08; font-family:'IBM Plex Mono',monospace;
+    font-size:9px; font-weight:500; letter-spacing:.06em; padding:2px 7px; border-radius:20px; white-space:nowrap;
+  }
+
+  /* números */
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:10px; margin:16px 0;}
+  .stat{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:14px;}
+  .stat .v{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:26px; color:var(--text);}
+  .stat .v.green{color:var(--green);}
+  .stat .l{font-size:12px; color:var(--text-2); margin-top:4px; line-height:1.45;}
+
+  /* tabela de provas */
+  table{width:100%; border-collapse:collapse; font-size:13.5px; margin:14px 0 6px;}
+  th{font-family:'IBM Plex Mono',monospace; font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--text-3); text-align:left; padding:8px 10px; border-bottom:1px solid var(--line);}
+  td{padding:9px 10px; border-bottom:1px solid var(--line-soft); vertical-align:top; line-height:1.55;}
+  td.url{font-family:'IBM Plex Mono',monospace; font-size:12px; white-space:nowrap; color:var(--text);}
+  .pill{font-family:'IBM Plex Mono',monospace; font-size:11px; padding:2px 8px; border-radius:20px; white-space:nowrap;}
+  .pill.ok{background:var(--green-dim); color:var(--green); border:1px solid var(--green);}
+  .table-scroll{overflow-x:auto;}
+
+  /* linha do tempo */
+  .tl{border-left:2px solid var(--line); margin:16px 0 0 6px; padding-left:22px;}
+  .tl-item{position:relative; margin-bottom:18px;}
+  .tl-item::before{content:''; position:absolute; left:-29px; top:4px; width:12px; height:12px; border-radius:50%; background:var(--green); border:2px solid var(--bg);}
+  .tl-item .d{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold); letter-spacing:.06em;}
+  .tl-item .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; margin:3px 0 4px;}
+  .tl-item .b{font-size:13.5px; color:var(--text-2); line-height:1.65; max-width:800px;}
+
+  /* frentes */
+  .fronts{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin:16px 0;}
+  .front{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:16px 18px;}
+  .front.ar{border-left:3px solid var(--green);}
+  .front.meio{border-left:3px solid var(--gold);}
+  .front.pausa{border-left:3px solid var(--slate);}
+  .front.voce{border-left:3px solid var(--blue);}
+  .front .st{font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3);}
+  .front.ar .st{color:var(--green);}
+  .front.meio .st{color:var(--gold);}
+  .front.voce .st{color:var(--blue);}
+  .front .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; margin:5px 0 7px;}
+  .front .b{font-size:13px; color:var(--text-2); line-height:1.62;}
+  .front .b b{color:var(--text);}
+
+  /* fila */
+  .fila{counter-reset:fila; margin:16px 0; padding:0; list-style:none;}
+  .fila>li{
+    counter-increment:fila; position:relative; border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--panel); padding:14px 18px 14px 56px; margin-bottom:10px; font-size:13.5px; line-height:1.65; color:var(--text-2);
+  }
+  .fila>li::before{
+    content:counter(fila); position:absolute; left:16px; top:14px;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:var(--gold);
+    width:26px; height:26px; border:1.5px solid var(--gold); border-radius:8px; display:flex; align-items:center; justify-content:center;
+  }
+  .fila>li b{color:var(--text);}
+  .chip{font-family:'IBM Plex Mono',monospace; font-size:10.5px; padding:1px 7px; border-radius:20px; border:1px solid var(--line-soft); color:var(--text-3); white-space:nowrap;}
+
+  .colar{
+    border:1px dashed var(--gold); border-radius:var(--radius); background:var(--gold-dim);
+    padding:14px 18px; margin:14px 0; font-size:13.5px; line-height:1.7;
+  }
+  .colar .cmd{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--text);
+    background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin:8px 0 4px;
+  }
+
+  /* precisa de você */
+  .voce-bloco{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:16px 18px; margin-bottom:12px;}
+  .voce-bloco.zero{border-color:var(--green); background:linear-gradient(180deg, var(--green-dim), var(--panel));}
+  .voce-bloco.futuro{border-color:var(--slate);}
+  .voce-bloco.conteudo{border-color:var(--blue); background:var(--blue-dim);}
+  .voce-bloco .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; margin-bottom:8px;}
+  .voce-bloco.zero .t{color:var(--green);}
+  .voce-bloco.conteudo .t{color:var(--blue);}
+  .voce-bloco ul{margin:0; padding-left:20px; font-size:13.5px; line-height:1.7; color:var(--text-2);}
+  .voce-bloco li{margin-bottom:7px;}
+  .voce-bloco li b{color:var(--text);}
+  .voce-bloco p{font-size:13.5px; line-height:1.7; color:var(--text-2); margin:0;}
+
+  /* trilha */
+  .trilha{display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:16px 0;}
+  .passo{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:14px; position:relative;}
+  .passo.agora{border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset;}
+  .passo.horizonte{border-style:dashed; opacity:.65;}
+  .passo .n{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-3); text-transform:uppercase; letter-spacing:.08em;}
+  .passo.agora .n{color:var(--gold);}
+  .passo .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; margin:5px 0 6px; line-height:1.3;}
+  .passo .b{font-size:12px; color:var(--text-2); line-height:1.55;}
+
+  /* avisos */
+  .aviso{border:1px solid var(--red); background:var(--red-dim); border-radius:var(--radius); padding:14px 18px; margin-bottom:10px; font-size:13.5px; line-height:1.65;}
+  .aviso .t{font-family:'Space Grotesk',sans-serif; font-weight:700; color:var(--red); margin-bottom:4px; font-size:14px;}
+
+  .rodape{margin-top:48px; border-top:1px solid var(--line); padding-top:18px; font-size:12px; color:var(--text-3); line-height:1.7;}
+  .rodape code{color:var(--text-2);}
+
+  @media (max-width:720px){
+    .roadmap{grid-template-columns:repeat(2,1fr);}
+    .fronts{grid-template-columns:1fr;}
+    .trilha{grid-template-columns:1fr 1fr;}
+    h1{font-size:25px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Análise completa do projeto · 25/08/2026</p>
+  <h1>🧭 Painel de Retomada</h1>
+  <p class="sub"><code>abundanciabr/sitesdoreino</code> · montado depois de uma varredura de <b>tudo</b>: o código das 10 células, os painéis existentes, os documentos de decisão, o GitHub (PRs, pipelines) e o site <b>ao vivo, medido da internet</b>. Este painel é o retrato de retomada; o checklist vivo do dia a dia continua sendo o <a href="painel-fundacao.html">Painel da Fundação</a>.</p>
+
+  <div class="banner">
+    <div class="t">✅ Resumo em uma frase: nada está quebrado, nada está esperando você — o caminho está livre.</div>
+    Hoje, 25/08/2026: <b>zero PRs abertos</b>, <b>toda a esteira verde</b>, <b>o site respondendo certo em 3 idiomas</b>, a Caixa de Sugestões no ar com rosto, e o login do site funcionando (provado por 17 verificações de fora). Nos últimos 4 dias o projeto saiu de "a plataforma subiu pela primeira vez" para "um site vivo com login próprio, idiomas e uma ferramenta de comunidade". A fila do que vem agora está na <a href="#fila">seção 5</a> — e <b>nenhum item dela depende de você</b>.
+  </div>
+
+  <div class="toc">
+    <a href="#regua">1 · A régua</a>
+    <a href="#foto">2 · A fotografia de hoje</a>
+    <a href="#conquistas">3 · O que os 4 dias entregaram</a>
+    <a href="#frentes">4 · Estado por frente</a>
+    <a href="#fila">5 · A fila dos robôs</a>
+    <a href="#voce">6 · Precisa de você</a>
+    <a href="#trilha">7 · Para onde vamos</a>
+    <a href="#avisos">8 · Avisos de segurança</a>
+  </div>
+
+  <!-- ================================================================ -->
+  <h2 id="regua"><span class="num">1</span>A régua: onde estamos no caminho grande</h2>
+  <p class="lead">O projeto sempre teve um mapa de fases. As três primeiras estão <b>concluídas e provadas</b>. Estamos na quarta — construir por cima da plataforma pronta — e a quinta (vender) espera a sua ordem, pela regra que você mesmo deu: <b>pagamento por último</b>.</p>
+
+  <div class="roadmap">
+    <div class="floor done">
+      <div class="tag">Fases 0 + B</div>
+      <div><div class="name">Fundação e as células</div><div class="pct">✓ 10 células isoladas, cada uma com muralha própria</div></div>
+    </div>
+    <div class="floor done">
+      <div class="tag">Fase D</div>
+      <div><div class="name">O esqueleto anda</div><div class="pct">✓ compra de teste atravessou tudo · 2 critérios pausados junto com o pagamento</div></div>
+    </div>
+    <div class="floor done">
+      <div class="tag">22–23/08</div>
+      <div><div class="name">Plataforma no ar</div><div class="pct">✓ deploy 100% automático · volta-atrás provada em 76s</div></div>
+    </div>
+    <div class="floor now">
+      <div class="here">você está aqui</div>
+      <div class="tag">Agora</div>
+      <div><div class="name">Construir por cima</div><div class="pct">site em 3 idiomas ✓ · login ✓ · Caixa com rosto ✓ · falta: sininho, corredor, conteúdo</div></div>
+    </div>
+    <div class="floor future">
+      <div class="tag">Quando você disser</div>
+      <div><div class="name">Vender</div><div class="pct">pagamento por último — sua ordem de 22/08, respeitada</div></div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <h2 id="foto"><span class="num">2</span>A fotografia de hoje — medida da internet, não prometida</h2>
+  <p class="lead">Uma das 8 lições do projeto é que <b>a prova vem de fora</b>: não vale "o programa diz que está ok", vale o que um visitante de verdade recebe. Então cada endereço abaixo foi visitado <b>hoje, 25/08/2026</b>, desta máquina, e a resposta real está registrada. Todas as 8 vieram exatamente como o desenho manda.</p>
+
+  <div class="table-scroll"><table>
+    <tr><th>Endereço</th><th>Resposta</th><th>O que isso significa</th></tr>
+    <tr><td class="url">meshcraft.top/</td><td><span class="pill ok">200 ✓</span></td><td>A página inicial abre. O inglês mora na raiz, sem prefixo — decisão revista em 25/08.</td></tr>
+    <tr><td class="url">meshcraft.top/pt-br/</td><td><span class="pill ok">200 ✓</span></td><td>O site em português abre.</td></tr>
+    <tr><td class="url">meshcraft.top/es/</td><td><span class="pill ok">200 ✓</span></td><td>O site em espanhol abre (escondido do Google de propósito, até haver demanda).</td></tr>
+    <tr><td class="url">meshcraft.top/en/</td><td><span class="pill ok">404 ✓</span></td><td><b>Este 404 é proposital</b> — o inglês vive na raiz, então <code>/en/</code> não existe. Não é bug; ninguém deve "consertar".</td></tr>
+    <tr><td class="url">meshcraft.top/cadastro</td><td><span class="pill ok">200 ✓</span></td><td>A página de cadastro que você pediu continua no ar.</td></tr>
+    <tr><td class="url">meshcraft.top/login</td><td><span class="pill ok">200 ✓</span></td><td>A tela de entrar no site (nova, de 25/08) abre nos 3 idiomas.</td></tr>
+    <tr><td class="url">meshcraft.top/entrar/google</td><td><span class="pill ok">302 ✓</span></td><td>A porta do Google encaminha para o login do Google — é o comportamento correto.</td></tr>
+    <tr><td class="url">meshcraft.top/forms/sugestoes/</td><td><span class="pill ok">302 ✓</span></td><td>A Caixa de Sugestões manda quem não entrou para o login — exatamente a regra "só aluno matriculado entra".</td></tr>
+  </table></div>
+
+  <div class="stats">
+    <div class="stat"><div class="v">10</div><div class="l">células (serviços independentes) — cada uma com banco e muralha próprios</div></div>
+    <div class="stat"><div class="v">21</div><div class="l">serviços rodando na VPS — eram 16 na estreia de 22/08</div></div>
+    <div class="stat"><div class="v">631</div><div class="l">testes automáticos só nas células, mais os testes da própria esteira</div></div>
+    <div class="stat"><div class="v">92</div><div class="l">lições catalogadas (armadilhas) + 8 padrões que todo robô lê antes de codar</div></div>
+    <div class="stat"><div class="v">76s</div><div class="l">para voltar atrás numa emergência — cronometrado, não estimado</div></div>
+    <div class="stat"><div class="v green">0</div><div class="l">PRs abertos · 0 pipelines vermelhos · 0 alarmes ativos hoje</div></div>
+  </div>
+
+  <!-- ================================================================ -->
+  <h2 id="conquistas"><span class="num">3</span>O que os últimos 4 dias entregaram</h2>
+  <p class="lead">Para retomar com o moral certo, vale ver o tamanho do que já aconteceu. Cada item abaixo tem prova real (pipeline verde, medição de fora, ou os dois).</p>
+
+  <div class="tl">
+    <div class="tl-item">
+      <div class="d">21–22/08</div>
+      <div class="t">🚀 A plataforma subiu — e o deploy virou automático</div>
+      <div class="b">Os 16 serviços entraram no ar na VPS pela primeira vez. Um QR de Pix <b>real</b> (ambiente de teste do Mercado Pago) foi gerado em produção. O merge deixou de esperar por você (era o maior gargalo medido: em média 4 horas por aprovação) e passou a ser trabalho do robô, com uma catraca que recusa qualquer coisa vermelha. Um portão de deploy à prova de ataque foi provado <b>ao vivo</b>: um PR vermelho de propósito tentou passar e a produção ficou intocada.</div>
+    </div>
+    <div class="tl-item">
+      <div class="d">23/08</div>
+      <div class="t">🔓 Repositório público, volta-atrás em 76 segundos, e o projeto ganhou memória de segunda ordem</div>
+      <div class="b">Você tornou o repositório público (com varredura de segredos limpa antes) — o que destravou CI ilimitada. O exercício de emergência foi cronometrado: <b>76 segundos</b> do "decidi voltar" ao "site na versão boa", medido pela internet. O arquivo de lições foi partido em fichário indexado e nasceram os <b>8 padrões</b> — as categorias de erro que todo robô agora lê antes de escrever código. E a escola ganhou nome: <b>Meshcraft Academy</b>.</div>
+    </div>
+    <div class="tl-item">
+      <div class="d">24/08</div>
+      <div class="t">📮 A Caixa de Sugestões entrou no ar</div>
+      <div class="b">Dois lotes inteiros num dia: a célula nasceu, ganhou dados, login com Google, regras (só aluno matriculado entra, 3 sugestões por semana, avaliação interna invisível ao aluno) e subiu para <code>meshcraft.top/forms/sugestoes/</code> — com o passo do servidor virando script de uma linha depois de três tentativas de colagem falharem.</div>
+    </div>
+    <div class="tl-item">
+      <div class="d">25/08 (ontem/hoje)</div>
+      <div class="t">🎭 O site ganhou login próprio, os idiomas assentaram, e a Caixa ganhou rosto</div>
+      <div class="b">O maior dia de produção do projeto: <b>um lote de 5 frentes em paralelo</b> (7 merges, 4 deploys, zero reversão) rodando ao lado de outra sessão sem uma única colisão. Entregas: a célula <b>identidade</b> (login do site inteiro — 17 verificações de fora, 17 aprovadas), o inglês passou a morar na raiz (decisão revista com 3 PRs), as telas de login nos 3 idiomas, o fuso horário corrigido em 3 células (mostrava hora de Chicago!), a auditoria AUD1 fechou a Onda 1 do plano de aceleração <b>provando os guardas por sabotagem proposital</b> — e o EVO-30: o quadro visual da Caixa, com abas, voto no card e envio de ideia com busca de duplicata.</div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <h2 id="frentes"><span class="num">4</span>Estado por frente — o que está no ar, o que está no meio, o que está pausado</h2>
+  <p class="lead">Verde = no ar com prova · Dourado = em andamento, falta pouco · Cinza = pausado de propósito · Azul = depende de você.</p>
+
+  <div class="fronts">
+    <div class="front ar">
+      <div class="st">✅ No ar</div>
+      <div class="t">O site público (meshcraft.top)</div>
+      <div class="b">Páginas em 3 idiomas, cadastro funcionando, botão Entrar/Sair em toda página. O sistema barra sozinho: tradução faltando, texto jurídico sem revisão humana, nome de marca traduzido por engano. <b>O que falta aqui não é técnica — é conteúdo</b>: a vitrine de verdade da escola (seção 7).</div>
+    </div>
+    <div class="front ar">
+      <div class="st">✅ No ar</div>
+      <div class="t">Login do site (célula identidade)</div>
+      <div class="b">Entregue em 25/08 e provado de fora: 17 verificações, 17 aprovadas. Entrar com Google, cookie seguro, sair à prova de truque, e as páginas públicas continuam abrindo para quem não entrou. O passo do servidor rodou <b>de primeira</b> — virou script de uma linha, a lição dos dois tropeços anteriores aplicada.</div>
+    </div>
+    <div class="front meio">
+      <div class="st">🟡 Falta pouco</div>
+      <div class="t">Caixa de Sugestões</div>
+      <div class="b">No ar com rosto: quadro em grade, abas <i>Mais votadas / Novas</i>, voto no card, página de detalhe com histórico, envio com busca de duplicata. <b>Falta:</b> EVO-31 (o sininho de avisos + roadmap público) fecha o Lote 3; depois o Lote 4 — o corredor que transforma sugestão aprovada em código feito por robô, com trava: nada avança sem a sua assinatura no ChangeSpec.</div>
+    </div>
+    <div class="front meio">
+      <div class="st">🟡 Falta pouco</div>
+      <div class="t">A fábrica (plano de aceleração 10X)</div>
+      <div class="b">Onda 1 <b>fechada e auditada</b> (AUD1, com prova por sabotagem). Faltam 3 peças, todas de bastidor: <b>o vigia dos vigias</b> (confere se cada teste-guarda prometido existe de verdade), <b>o alarme completo da linha principal</b> (hoje ele vigia só uma parte; falta ligar o resto, inclusive a busca de segredos — custa 1 linha) e <b>a partida em 1 comando</b> (os 6 primeiros minutos de toda sessão de robô viram um comando só).</div>
+    </div>
+    <div class="front pausa">
+      <div class="st">⏸ Pausado por sua ordem</div>
+      <div class="t">Pagamento e caixa registradora</div>
+      <div class="b"><b>Nada foi mexido, nada se perdeu.</b> O que já está pronto: credenciais de teste funcionando no servidor (o QR Pix real prova), o miolo "aviso de pago → matrícula" provado, e a célula do dinheiro falha <b>fechada</b> (recusa resposta suspeita em vez de fingir sucesso). O que fica para quando você disser "vai vender": o formulário de cartão (obra do robô), o aviso de "pago" no painel do Mercado Pago + a senha no servidor (só você), e a compra de teste com evidência — os critérios 2 e 4 da Fase D fecham juntos aí.</div>
+    </div>
+    <div class="front pausa">
+      <div class="st">⏸ Pausado de propósito</div>
+      <div class="t">Red-team (os 15 golpes) e a fase 5 dos idiomas</div>
+      <div class="b">Dos 15 golpes deliberados contra as muralhas, 6 foram rodados e registrados. Os golpes de dinheiro voltam <b>junto com o pagamento</b> — decisão registrada no plano de aceleração. A fase 5 dos idiomas está congelada com os guardas já escritos: quem a destravar um dia encontra o terreno pronto.</div>
+    </div>
+    <div class="front voce" style="grid-column:1 / -1;">
+      <div class="st">🔵 Depende de você</div>
+      <div class="t">A escola em si — Meshcraft Academy</div>
+      <div class="b">O nome está escolhido (23/08), o site técnico existe — mas <b>o curso, a oferta e a história que convence</b> são trabalho que nenhum robô faz por você. As 4 consultorias externas foram unânimes, e vale repetir: <i>o maior risco deste projeto não é um erro técnico — é a fortaleza perfeita que ninguém visita</i>. A pasta <code>docs/landing-pages/</code> está vazia esperando exatamente isso. O domínio da Academy ainda não foi registrado (decisão sua, quando quiser). A boa notícia: a hora que você investir em conteúdo rende mais que qualquer decisão técnica restante — e os robôs cuidam do resto.</div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <h2 id="fila"><span class="num">5</span>A fila pronta para os robôs — nenhum item depende de você</h2>
+  <p class="lead">Em ordem de proposta. Tudo aqui é trabalho de robô, cabe nas regras da casa, e <b>não toca pagamento</b> (sua ordem continua valendo). Dá para despachar como um lote paralelo — foi assim que ontem saíram 5 frentes de uma vez.</p>
+
+  <ol class="fila">
+    <li><b>EVO-31 — o sininho e o roadmap público da Caixa</b> <span class="chip">célula sugestoes</span><br>
+      O aluno passa a ver o aviso quando a sugestão dele muda de status, e um roadmap público mostra o que foi acolhido. Fecha o Lote 3 — o trilho da tela já nasceu com o lugar reservado.</li>
+    <li><b>O teste que faltou na rota da compra</b> <span class="chip">esteira / infra</span><br>
+      A auditoria AUD1 achou 4 buracos de cobertura; o mais importante: <b>nenhum teste garante que a rota da compra existe</b> no roteador do site — apagar a rota passaria verde. Foi exatamente esse buraco que causou o incidente de 22/08 ("tudo verde e ninguém conseguia comprar"). É proteção da plataforma, não desenvolvimento de pagamento. Os outros 3 buracos tocam a célula do dinheiro e ficam anotados para a era do pagamento.</li>
+    <li><b>As 3 peças da fábrica</b> <span class="chip">bastidores (ci/)</span><br>
+      O vigia dos vigias, o alarme completo da linha principal e a partida em 1 comando (os três descritos na seção 4). Nenhum toca página nem pagamento; os três tornam todo despacho futuro mais rápido e mais seguro.</li>
+    <li><b>Fuso horário das células com página na rua</b> <span class="chip">funil · catalogo</span><br>
+      Três células já foram corrigidas (mostravam hora de Chicago, 5h atrás); das 5 restantes, corrigir primeiro as que têm página voltada ao público. As demais (dinheiro e mensageria) pegam carona quando forem abertas.</li>
+    <li><b>Lote 4 da Caixa — o corredor</b> <span class="chip">célula sugestoes</span><br>
+      EVO-40 (a trava: nada entra em desenvolvimento sem ChangeSpec aprovado) e EVO-41 (MVP declarado pronto, checklist conferido item a item). Único toque seu no plano inteiro: <b>assinar o primeiro ChangeSpec real</b> — um campo para preencher, nada técnico.</li>
+  </ol>
+
+  <div class="colar">
+    <b>▶ Para retomar, é uma frase.</b> Abra uma janela nova do Claude Code no seu PC (prompt <code>PS C:\&gt;</code>) e cole:
+    <span class="cmd">Leia RUNBOOK-LOTES.md e toque um lote com: EVO-31 da Caixa, o buraco (a) da AUD1, e as peças B2, B3 e C3 do PLANO-10X.</span>
+    Quer começar menor? <span class="cmd">Leia RUNBOOK-LOTES.md e toque um lote só com o EVO-31.</span>
+    A sessão monta, dispara, vigia, mergeia e te reporta no fim — como ontem.
+  </div>
+
+  <!-- ================================================================ -->
+  <h2 id="voce"><span class="num">6</span>Precisa de você — a lista honesta</h2>
+  <p class="lead">Auditada hoje contra o <code>ARMADILHAS-OPERACAO.md</code> (a tabela oficial "precisa de você") e podada: itens já resolvidos ficaram de fora. O que sobra cabe em três gavetas.</p>
+
+  <div class="voce-bloco zero">
+    <div class="t">✅ Para a fila da seção 5 andar: NADA. Zero. Nenhum passo seu.</div>
+    <p>Não há banco para criar, senha para colar, nem console para abrir. A frase de colar acima é o único gesto — e ela só dá a partida.</p>
+  </div>
+
+  <div class="voce-bloco">
+    <div class="t">🟡 Decisões sem pressa (quando você quiser, nada quebra enquanto esperam)</div>
+    <ul>
+      <li><b>Ligar a trava de merge nativa do GitHub.</b> Desde que o repositório é público ela é grátis. Hoje quem segura é a catraca do robô (que já recusa vermelho); a trava nativa é o cinto extra.</li>
+      <li><b>Docker Desktop iniciar junto com o Windows.</b> Poupa 1–2 minutos parados no começo de cada sessão de robô (item H4, aberto desde a fundação).</li>
+      <li><b>Fechar a porta lateral do servidor</b> (item H15): o IP da VPS ficou visível quando o repositório abriu. Um firewall resolve — mas com cuidado: <code>meshcraft.top</code> é servido direto, sem Cloudflare, e a regra ingênua o derrubaria. Quando quiser, peça o bloco de colar.</li>
+      <li><b>Segunda conferência automática de tradução</b> (retrotradução): precisa de chave de API paga. Sem ela, a conferência humana continua valendo.</li>
+      <li><b>Guardar o cartão de teste do Mercado Pago no cofre do GitHub</b> (item H8): destravaria um teste diário automático de ponta a ponta. Sem urgência — é da era do pagamento.</li>
+    </ul>
+  </div>
+
+  <div class="voce-bloco futuro">
+    <div class="t">⏳ Só quando você disser "o site vai vender" (pagamento por último — nada disso agora)</div>
+    <ul>
+      <li>Cadastrar o aviso de "pago" no painel do Mercado Pago e colar a senha gerada no servidor (painel e servidor nunca passam pelo robô).</li>
+      <li>Trocar as credenciais de teste pelas reais no servidor — e apagar um arquivo de senhas que sobrou do provisionamento (<code>/home/deploy/provisionamento-postgres.sql</code>).</li>
+      <li>Dar o "vai" para as obras do robô: o formulário de cartão e a compra de teste com evidência (critérios 2 e 4 da Fase D fecham aí, junto com os golpes de dinheiro do red-team).</li>
+    </ul>
+  </div>
+
+  <div class="voce-bloco conteudo">
+    <div class="t">💙 O que nenhum robô faz por você</div>
+    <p><b>O curso e a oferta da Meshcraft Academy.</b> Conteúdo, preço, promessa, os vídeos ou aulas em si — e, quando decidir, o registro do domínio da escola. Se quiser validar a demanda antes de qualquer código novo, o caminho barato já está mapeado: link de pagamento do próprio Mercado Pago + entrega manual — a primeira venda não precisa passar pela plataforma. Enquanto isso, os mínimos legais da primeira venda (direito de arrependimento, LGPD, nota fiscal) merecem uma conversa com advogado — estão anotados no plano de aceleração.</p>
+  </div>
+
+  <!-- ================================================================ -->
+  <h2 id="trilha"><span class="num">7</span>Para onde vamos — a trilha proposta</h2>
+  <p class="lead">Lida de todos os planos do projeto (plano de aceleração, plano da Caixa, decisões registradas), na ordem que respeita as suas regras: primeiro o site, pagamento por último.</p>
+
+  <div class="trilha">
+    <div class="passo agora">
+      <div class="n">Etapa 1 · agora</div>
+      <div class="t">Fechar o que está a um passo</div>
+      <div class="b">A fila da seção 5: Caixa completa (sininho → corredor → MVP declarado) + as 3 peças da fábrica. Resultado: a primeira ferramenta de comunidade inteira, e a esteira ainda mais rápida.</div>
+    </div>
+    <div class="passo">
+      <div class="n">Etapa 2</div>
+      <div class="t">O site de verdade</div>
+      <div class="b">A vitrine da Meshcraft Academy: conteúdo, páginas de curso, a história que convence. Você no volante do conteúdo, os robôs na construção. A Caixa colhendo ideias dos primeiros alunos.</div>
+    </div>
+    <div class="passo">
+      <div class="n">Etapa 3 · quando você disser</div>
+      <div class="t">Vender</div>
+      <div class="b">Destravar o pagamento: formulário de cartão, aviso do Mercado Pago, credenciais reais, compra de teste provada. Receita sugerida pelos planos: começar Pix-first e modo concierge nos ~20 primeiros clientes.</div>
+    </div>
+    <div class="passo horizonte">
+      <div class="n">Horizonte</div>
+      <div class="t">Curso novo por comando</div>
+      <div class="b">O ProdutoSpec guardado em <code>docs/futuro/</code>: "crie o curso X com 10 módulos e preço Y" vira realidade sem tocar código. De propósito, só depois de existir um curso real construído à mão.</div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <h2 id="avisos"><span class="num">8</span>Para não ser pego de surpresa às 2h da manhã</h2>
+  <p class="lead">Três avisos permanentes — nenhum é tarefa, todos são "bom saber antes do aperto".</p>
+
+  <div class="aviso">
+    <div class="t">⚠️ Volta-atrás ativa + publicação de infraestrutura = o site volta sozinho para a versão quebrada</div>
+    Se um dia o robô voltar uma célula para a versão boa (o rollback de 76s) e <b>depois</b> qualquer mudança de infraestrutura for publicada, a versão quebrada volta em silêncio, com tudo verde. Regra prática: enquanto uma volta-atrás estiver ativa, não se publica infraestrutura; se acontecer, é só disparar o rollback de novo. (Lição registrada como <code>armadilhas/051</code>; o conserto definitivo ainda não existe.)
+  </div>
+  <div class="aviso">
+    <div class="t">⚠️ O botão verde de merge do site do GitHub continua funcionando com tudo vermelho</div>
+    A trava nativa ainda não foi ligada (decisão sua, sem pressa — seção 6). Quem segura hoje: a catraca do robô (recusa merge com check vermelho) e o portão de deploy (impede código não-verde de alcançar o servidor — provado sob ataque). O combinado segue: <b>ninguém usa o botão do site</b>.
+  </div>
+  <div class="aviso">
+    <div class="t">⚠️ Este painel é um retrato datado; o vivo é o Painel da Fundação</div>
+    Este arquivo fotografa 25/08/2026. O checklist que os robôs atualizam a cada tarefa continua sendo o <a href="painel-fundacao.html">painel-fundacao.html</a> (cujo conteúdo mora em <code>painel-dados.js</code> — e item novo lá é sempre UMA linha, <code>armadilhas/095</code>). Se este retrato e o painel vivo discordarem um dia, o vivo manda — e a divergência merece ser reportada como bug de processo.
+  </div>
+
+  <div class="rodape">
+    <b>Como este painel foi montado (25/08/2026):</b> leitura de <code>CLAUDE.md</code>, <code>armadilhas/INDICE.md</code> (92 entradas), <code>RETROSPECTIVA-FASE-D.md</code> (os 8 padrões), <code>ARMADILHAS-OPERACAO.md</code> (tabela H1–H20 + dívidas §9), <code>PLANO-10X.md</code>, <code>RUNBOOK-LOTES.md</code> (lições dos 4 lotes), <code>ESQUELETO-QUE-ANDA.md</code>, <code>ANDAMENTO.md</code> da Caixa, <code>docs/futuro/</code>, os painéis existentes e o código real (workflows, compose, células) — mais o estado vivo do GitHub (<code>gh pr list</code>, <code>gh run list</code>: tudo verde, nada aberto) e as 8 medições HTTP do site em produção listadas na seção 2. Montado pelo Claude Code na sessão de análise de 25/08/2026. Este arquivo vive em <code>arquivos/</code> (fora do Git, como todo painel — só o humano o lê).
+  </div>
+
+</div>
+</body>
+</html>
