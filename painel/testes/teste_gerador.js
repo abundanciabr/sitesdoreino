@@ -80,6 +80,13 @@ var r5 = roda(dir5, ["--conferir"]);
 caso("registro novo sem regenerar → --conferir REPROVA (a trava do CI)", r5.code === 1);
 caso("...mandando rodar o gerador", r5.out.indexOf("gerar_manifesto") !== -1);
 
+var dir5b = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") });
+roda(dir5b); // gera
+var mPath = path.join(dir5b, "manifesto.js");
+fs.writeFileSync(mPath, fs.readFileSync(mPath, "utf8").replace(/\n/g, "\r\n"), "utf8");
+caso("manifesto convertido para CRLF pelo checkout do Windows → --conferir ainda PASSA (fim de linha não é conteúdo)",
+  roda(dir5b, ["--conferir"]).code === 0);
+
 console.log("== instrumento quebrado é ERROR (exit 2), nunca verde ==");
 var dir6 = fs.mkdtempSync(path.join(os.tmpdir(), "painel-teste-"));
 fs.copyFileSync(path.join(RAIZ_PAINEL, "logica.js"), path.join(dir6, "logica.js"));
