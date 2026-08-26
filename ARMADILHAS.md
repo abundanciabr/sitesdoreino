@@ -71,14 +71,25 @@ só faz sentido dentro de uma célula, é no `LICOES.md` dela. Se só o humano r
 git -C <raiz> fetch origin
 git -C <raiz> worktree add ../wt-<celula>-<tarefa> -b agent/<celula>/<tarefa> origin/main
 
-# 2. Docker JÁ (se a célula tem banco) — sobe em background enquanto você lê a constituição
+# 2. Docker JÁ — os DOIS instrumentos, em background, enquanto você lê a constituição.
+#    O `ci-celula.yml` declara postgres E redis; célula que fala com o fio (Huey,
+#    Streams) reprova o baseline com "Redis real inacessível" se só o banco subir.
 docker run -d --name <celula>-pg -e POSTGRES_USER=dev -e POSTGRES_PASSWORD=dev \
   -e POSTGRES_DB=<celula>_db -p 55432:5432 postgres:17
+docker run -d --name plataforma-redis -p 6379:6379 redis:7   # um só atende todas
 
-# 3. Ambiente da sessão (as 3 variáveis que todo make ci local precisa)
+# 3. Ambiente da sessão — o CI exporta SETE variáveis (`.github/workflows/ci-celula.yml`,
+#    bloco `env:`); estas são as mesmas, com os endereços locais. Faltar uma é
+#    `ImproperlyConfigured` no import, e isso é ERROR de instrumento, não teste vermelho.
 export PYTHONUTF8=1
 export DJANGO_SECRET_KEY="ci-apenas-nunca-em-producao"
 export DATABASE_URL="postgres://dev:dev@localhost:55432/<celula>_db"
+export REDIS_STREAMS_URL="redis://localhost:6379/0"
+export HUEY_REDIS_URL="redis://localhost:6379/1"
+# Só `pagamentos` LÊ as duas de baixo — mas `mypy` importa config.settings, e o
+# fail-hard do INV-P10 mora lá: ausente, a célula nem chega a rodar teste.
+export MP_ACCESS_TOKEN="TEST-ci-0000000000000000-000000-fake000000000000000000000000000-000000000"
+export MP_WEBHOOK_SECRET="ci-apenas-nunca-em-producao-webhook-secret"
 
 # 4. Baseline VERDE antes de tocar qualquer arquivo (RITOS.md §1)
 cd ../wt-<celula>-<tarefa>/services/<celula>
@@ -87,6 +98,14 @@ make ci
 
 Se o baseline não estiver verde: **pare e reporte**. Consertar main quebrada não é
 escopo de sessão de feature.
+
+**Mas separe FAIL de ERROR antes de parar** ([INV-CI01]): baseline que reprova com
+*"Redis real inacessível"*, `ImproperlyConfigured` ou `connection refused` é
+**instrumento ausente na sua máquina** — suba o que falta no passo 2 e meça de novo.
+"Pare e reporte" existe para `main` quebrada, não para container que você ainda não
+subiu. Em 25/08/2026 a leitura literal desta seção quase abortou oito despachos por
+um Redis que esta partida rápida nunca tinha mandado subir — a lista acima nasceu
+dessa medição (`armadilhas/119`).
 
 **Planeje a divisão ANTES de escrever código.** O orçamento de 15 arquivos é portão
 mecânico (§5.1). Uma célula nova com modelo + migrations + clientes + middleware +
