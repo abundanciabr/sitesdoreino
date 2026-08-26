@@ -163,8 +163,9 @@ ORÇAMENTO: ≤ 15 arquivos (label `arquitetural` se ultrapassar — é scaffold
 EVIDÊNCIA: saída de `make ci` + `git diff --name-only origin/main...HEAD`. Encerre com o
 handoff (RITOS.md §1) — **o link do PR em linha própria, em destaque**, para eu poder
 copiar sem precisar pedir. Depois que eu confirmar o merge (qualquer forma — "feito",
-"mergeado", "ok"), atualize `arquivos/painel-fundacao.html` na hora, sem eu precisar
-perguntar de novo se já foi atualizado.
+"mergeado", "ok"), acrescente o registro em `painel/registros/` na hora (molde em
+`painel/LEIA-ME.md`) + `node painel/gerar_manifesto.js`, sem eu precisar perguntar de
+novo se já foi registrado.
 ```
 
 **Especificidades por célula** (o resto do despacho é idêntico):
@@ -197,9 +198,10 @@ perguntar de novo se já foi atualizado.
   `CAMINHO-DOURADO.md` (técnica `openapi_extra` + corpo `dict`).
 - **Handoff:** sempre feche com o link do PR em linha própria — não deixe para o
   mantenedor pedir. Assim que o merge for confirmado (em qualquer sessão, mesmo que não
-  seja a que abriu o PR), atualize `arquivos/painel-fundacao.html` imediatamente —
-  marque o item como concluído, remova a caixa "Precisa de você agora" correspondente,
-  e avance o contador de células da Fase B.
+  seja a que abriu o PR), acrescente o registro em `painel/registros/` imediatamente
+  (molde em `painel/LEIA-ME.md`) + `node painel/gerar_manifesto.js`. Se o registro
+  fecha um pedido que estava esperando o mantenedor, aponte `responde_a` — é isso que
+  tira o item da caixa "Precisa de você", que é calculada e não se edita à mão.
 
 ---
 

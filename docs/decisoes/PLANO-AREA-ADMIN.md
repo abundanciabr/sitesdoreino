@@ -49,7 +49,10 @@ gestão de cursos/ofertas, formulários de configuração, roadmap interno.
 
 **Não é:**
 
-- **Não substitui o `painel-fundacao.html` local.** O painel vivo é atualizado
+- **Nota de 26/08/2026:** onde este plano diz `painel-fundacao.html`, leia
+  `painel/painel.html` + `painel/registros/` (a reforma dos painéis trocou a fonte;
+  o argumento do plano continua valendo).
+- **Não substitui o painel local.** O painel vivo é atualizado
   pelos agentes várias vezes por sessão, sem deploy — mudá-lo para a web
   custaria um merge+deploy por atualização. Ele continua local e obrigatório
   (lei do `CLAUDE.md`); a área admin ganha uma **galeria** que recebe cópias

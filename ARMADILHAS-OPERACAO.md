@@ -145,50 +145,54 @@ contra o que qualquer sessão pediu para segurar; e antes de editar um arquivo
 compartilhado (painéis, docs de raiz), releia-o do disco — ele pode ter mudado.
 **Origem:** incidentes dos PRs #2 e #5.
 
-### 7.2 Painel HTML "some" / cards desaparecem
+### 7.2 O painel: como registrar (mudou em 26/08/2026 — a reforma)
 
-**ANTES DE EDITAR QUALQUER PAINEL (mudou em 23/08/2026 — card C2 do PLANO-10X):**
-os painéis foram partidos em **renderizador + dados**. O conteúdo que muda NÃO está
-mais no `.html`:
+**O painel do dono agora é `painel/painel.html`** — a porta única, que **não guarda
+dado nenhum próprio**: toda vista é CALCULADA de `painel/registros/` (o livro de
+ocorrências, versionado) e de medições ao vivo. Contrato completo em
+`painel/LEIA-ME.md`; a análise que levou a isto, em
+`docs/paineis/VEREDITO-DAS-CONSULTORIAS.html`.
 
-| Painel | Renderizador (raramente muda) | Onde o conteúdo mora AGORA |
-|---|---|---|
-| Fundação | `arquivos/painel-fundacao.html` (~23 KB) | `arquivos/painel-dados.js` (`DADOS` + `GROUPS`) |
-| 10X | `arquivos/painel-10x.html` (255 linhas) | `arquivos/painel-10x-dados.js` |
-
-Editar o `.html` para acrescentar um item é o erro novo: você vai procurar um texto
-que não está lá. Acrescente uma string na lista certa do `.js`
-(`DADOS.precisaDeVoce`, `DADOS.episodios`, `DADOS.confirmados`) e valide com
-`node --check`. O `.html` só muda quando a APARÊNCIA muda.
-
-Os dois carregam o `.js` por `<script src>` — **nunca** troque por `fetch` de `.json`:
-o painel abre por `file://` e o Chrome bloqueia `fetch` nesse esquema (o painel abre
-em branco). Cópia do painel monolítico antigo, para comparação:
-`arquivos/painel-fundacao_BACKUP-antes-do-corte-23-08.html`.
-
-**Sintoma:** os cards do painel somem; a página renderiza só o cabeçalho.
-**Causa:** o JS quebrou. O caso concreto: uma crase (`` ` ``) usada para formatar
-código **dentro de um template literal** — que também é delimitado por crases — fecha
-a string mais cedo e quebra o parse.
-**Solução:** ao editar os painéis, valide antes de considerar pronto:
+**O gesto, em três passos:**
 
 ```bash
-# 1) o arquivo de dados (é onde você mexeu):
-node --check arquivos/painel-dados.js        # ou painel-10x-dados.js
-
-# 2) o painel inteiro, dados + renderizador, como o Chrome faria:
-node -e "const fs=require('fs');const D='arquivos/painel-dados.js',H='arquivos/painel-fundacao.html';
-const el={};const get=i=>el[i]||(el[i]={innerHTML:'',style:{},textContent:'',addEventListener(){},classList:{add(){},remove(){},toggle(){}}});
-global.document={getElementById:get,createElement:()=>({style:{},appendChild(){},select(){}}),body:{appendChild(){},removeChild(){}},querySelectorAll:()=>[]};
-global.localStorage={getItem:()=>null,setItem(){}};
-const h=fs.readFileSync(H,'utf8');const s=h.split(/<script>
-?
-/)[1].split('</script>')[0];
-eval(fs.readFileSync(D,'utf8')+'
-'+s);console.log('painel OK —',el['progress-label'].textContent);"
+# 1) arquivo NOVO em painel/registros/AAAAMMDD-NNN-slug.js (molde: painel/LEIA-ME.md)
+#    NUNCA edite um registro existente — atualização/resposta é registro novo
+#    (com `responde_a` quando fecha um pedido).
+# 2) regenerar o manifesto (valida TUDO, fail-closed):
+node painel/gerar_manifesto.js
+# 3) conferir como a muralha do CI confere:
+bash ci/muralha-do-painel.sh
 ```
 
-**Origem:** sessão de 18/08/2026, painel da Fase D.
+**Por que não se edita mais um arquivo de dados grande:** era exatamente a doença.
+O `painel-dados.js` chegou a **237 KB** — maior que o monólito que o corte C2 de
+23/08 tinha aposentado — e toda sessão escrevia parágrafos de HTML dentro de strings,
+no mesmo arquivo. Duas sessões paralelas colidiam; a caixa "precisa de você" era
+mantida à mão e mentiu duas vezes (H18 e H21). Agora: um arquivo pequeno por
+acontecimento, e a caixa é uma CONTA (pedido sem resposta), não uma lista.
+
+**As regras que o validador impõe** (reprovam o PR, não são convenção):
+
+- `titulo`/`detalhe` são texto puro — HTML ali é erro.
+- `gravidade: "verde"` exige `evidencia` **e** `verificado_em`. Verde é conquistado.
+- `arquivo` tem de bater com o nome do arquivo; `responde_a` tem de existir.
+- Manifesto desatualizado reprova (é a trava que faz "esquecer o painel" ser
+  impossível).
+
+**Continua valendo:** dados em `.js` carregados por `<script src>`, **nunca** `fetch`
+de `.json` — a página abre por `file://` e o Chrome bloqueia `fetch` nesse esquema
+(o painel abriria em branco). E a página **nunca abre em branco**: se algo não
+carregar ou não validar, a tela inteira vira um aviso vermelho "NÃO acredite em nada
+desta tela" — falhar para o lado de "está tudo bem" é o pior defeito possível num
+painel (foi o achado que originou a guarda).
+
+**Fim de linha não é conteúdo:** o `--conferir` normaliza CRLF (`armadilhas/122`) —
+sem isso ele reprovava no clone Windows e passava no CI Linux.
+
+**Os painéis antigos de `arquivos/`** são **lápides** (redirecionam para a porta) e
+as **fotografias congeladas** vivem em `docs/paineis/fotografias/`. Não se editam,
+não se criam novos — a lei anti-duplicação está no `CLAUDE.md`.
 
 ### 7.3 O despacho colado no chat pode divergir do card do painel
 
@@ -202,14 +206,16 @@ até a retrospectiva, depois do merge.
 os dois antes de começar. Divergência é decisão do humano, não do agente.
 **Origem:** Prompt 2 (catalogo, PR #15) — pendência ainda aberta.
 
-### 7.4 O painel é parte de terminar a tarefa
+### 7.4 Registrar é parte de terminar a tarefa
 
-`arquivos/painel-fundacao.html` + `arquivos/painel-dados.js` são o checklist vivo do
-dono do projeto (leigo em código) — na prática você edita o `.js` (§7.2).
-Atualizá-lo depois de cada mudança de estado é obrigatório e **não se
-pergunta antes** (`CLAUDE.md`). Só marque item como concluído com evidência real —
-confirmação de merge do usuário é **gatilho para conferir** (`gh pr view <N> --json
-state,mergedBy,mergeCommit`), não substituto da conferência.
+`painel/registros/` é o livro de ocorrências do dono do projeto (leigo em código) —
+e `painel/painel.html` é a única porta que ele abre. Acrescentar o registro depois de
+cada mudança de estado é obrigatório e **não se pergunta antes** (`CLAUDE.md`).
+
+Só registre `verde` com evidência real e conferida (`evidencia` + `verificado_em`) —
+o validador reprova verde sem prova. Confirmação de merge do usuário é **gatilho para
+conferir** (`gh pr view <N> --json state,mergedBy,mergeCommit`), nunca substituto da
+conferência.
 
 ---
 
