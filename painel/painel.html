@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel da Escola — a porta única</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* A paleta da casa — a mesma dos painéis desde a fundação. */
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A; --grid:rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft:rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --red:#E2705A; --red-dim:#3E2620;
+    --blue:#4c8dff; --blue-dim:rgba(76,141,255,.10);
+    --cinza:#8296A2; --cinza-dim:rgba(130,150,162,.12);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif; font-size:16px;
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:34px 20px 72px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; color:var(--text-3); text-transform:uppercase; margin:0 0 8px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:30px; margin:0 0 6px; letter-spacing:-.01em;}
+  .sub{color:var(--text-2); font-size:14.5px; line-height:1.65; margin:0 0 18px;}
+  code{font-family:'IBM Plex Mono',monospace; color:var(--gold); background:none; font-size:.92em;}
+  a{color:var(--blue);}
+
+  /* placar (cabine escura: apagado = tudo bem) */
+  #placar{border-radius:var(--radius); padding:16px 20px; margin:0 0 18px; font-size:16px; line-height:1.6; border:1px solid var(--line); background:var(--panel);}
+  #placar.calmo{border-color:var(--green); background:linear-gradient(180deg,var(--green-dim),var(--panel));}
+  #placar.aceso{border-color:var(--gold); background:linear-gradient(180deg,var(--gold-dim),var(--panel));}
+  #placar b{font-family:'Space Grotesk',sans-serif;}
+
+  /* abas — navegação por hash (persiste na URL; nada aqui finge gravar) */
+  .abas{display:flex; gap:8px; margin:0 0 22px; flex-wrap:wrap;}
+  .aba{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;
+    border:1px solid var(--line); border-radius:24px; padding:9px 18px; background:var(--panel);
+    color:var(--text-2); text-decoration:none;
+  }
+  .aba.ativa{border-color:var(--gold); color:var(--gold); background:var(--gold-dim);}
+  .vista{display:none;} .vista.ativa{display:block;}
+
+  h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; margin:26px 0 10px; letter-spacing:-.01em;}
+  .bloco{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:4px 0 6px; margin-bottom:16px; overflow:hidden;}
+  .bloco>.cab{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; padding:12px 18px 8px; display:flex; align-items:center; gap:10px;}
+  .cab .cont{font-family:'IBM Plex Mono',monospace; font-size:11px; border-radius:20px; padding:2px 9px; border:1px solid var(--line-soft); color:var(--text-3);}
+  .bloco.b-caixa{border-color:var(--gold);} .bloco.b-caixa>.cab{color:var(--gold);}
+  .bloco.b-caixa .cont{border-color:var(--gold); color:var(--gold); background:var(--gold-dim);}
+  .bloco.b-problemas{border-color:var(--red);} .bloco.b-problemas>.cab{color:var(--red);}
+  .item{padding:11px 18px; border-top:1px solid var(--line-soft); font-size:14px; line-height:1.6; color:var(--text-2);}
+  .item .t{color:var(--text); font-weight:600;}
+  .item .meta{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-top:4px; line-height:1.7;}
+  .item .det{margin-top:6px; white-space:pre-line;}
+  .item.recolhido .det{display:none;}
+  .grav{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; vertical-align:baseline;}
+  .grav.vermelho{background:var(--red);} .grav.ambar{background:var(--gold);}
+  .grav.verde{background:var(--green);} .grav.info{background:var(--blue);} .grav.cinza{background:var(--cinza);}
+  .selo{font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.05em; border-radius:20px; padding:2px 8px; margin-left:8px; white-space:nowrap;}
+  .selo.naoprov{border:1px solid var(--cinza); color:var(--cinza); background:var(--cinza-dim);}
+  .selo.velho{border:1px solid var(--cinza); color:var(--cinza); background:var(--cinza-dim);}
+  .selo.idade{border:1px solid var(--gold); color:var(--gold); background:var(--gold-dim);}
+
+  /* medições ao vivo */
+  .medicoes{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; margin:14px 0;}
+  .med{border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:13px 15px; font-size:13.5px; line-height:1.55;}
+  .med .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13.5px; margin-bottom:5px; color:var(--text);}
+  .med .v{color:var(--text-2);}
+  .med .quando{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-3); margin-top:6px;}
+  .med.ok{border-left:3px solid var(--green);} .med.mal{border-left:3px solid var(--red);}
+  .med.nao-sei{border-left:3px solid var(--cinza); opacity:.9;}
+
+  #tela-erro{display:none; max-width:760px; margin:40px auto; background:#7f1d1d; color:#fff; padding:28px 30px; border-radius:12px; font:16px/1.65 system-ui,sans-serif;}
+  #tela-erro b{font-size:21px;}
+  #tela-erro pre{white-space:pre-wrap; font-size:13px; background:#00000040; padding:10px 12px; border-radius:8px;}
+
+  .rodape{margin-top:40px; border-top:1px solid var(--line); padding-top:14px; font-size:12.5px; color:var(--text-3); line-height:1.8;}
+  @media (max-width:640px){ h1{font-size:24px;} }
+</style>
+</head>
+<body>
+<div id="tela-erro"></div>
+<div class="wrap" id="app" style="display:none">
+  <p class="eyebrow">A porta única · toda vista é calculada do livro de ocorrências</p>
+  <h1>🗺️ Painel da Escola</h1>
+  <p class="sub">Este painel <b>não guarda nenhum dado próprio</b> — tudo que você vê é calculado, na hora em que a página abre, dos registros em <code>painel/registros/</code> (protegidos pelo Git) e de medições feitas <b>agora, do seu navegador</b>. Se dois números discordarem, é defeito — reporte numa sessão.</p>
+
+  <div id="placar"></div>
+
+  <nav class="abas">
+    <a class="aba" data-vista="capa" href="#capa">🗺️ Capa</a>
+    <a class="aba" data-vista="operacao" href="#operacao">⚙️ Operação</a>
+    <a class="aba" data-vista="memoria" href="#memoria">📚 Memória</a>
+  </nav>
+
+  <section class="vista" id="vista-capa"></section>
+  <section class="vista" id="vista-operacao">
+    <p class="sub">O detalhe para quando algo parece estranho: as medições feitas do seu navegador, e os fatos com evidência.</p>
+    <div class="medicoes" id="medicoes"></div>
+    <div id="op-registros"></div>
+  </section>
+  <section class="vista" id="vista-memoria">
+    <p class="sub">O livro de ocorrências inteiro, do mais recente ao mais antigo. Registro não se edita — história aqui não muda de opinião.</p>
+    <div id="mem-registros"></div>
+  </section>
+
+  <div class="rodape" id="rodape"></div>
+</div>
+
+<!-- A ordem importa: manifesto injeta os registros (síncrono), depois a lógica, depois o app. -->
+<script src="manifesto.js" onerror="window.__falhaCarga='manifesto.js não carregou — o arquivo sumiu ou foi renomeado.'"></script>
+<script src="logica.js" onerror="window.__falhaCarga='logica.js não carregou — o arquivo sumiu ou foi renomeado.'"></script>
+<script>
+"use strict";
+// ===========================================================================
+// A guarda fail-closed: este painel NUNCA abre em branco nem meio-vazio.
+// Ou tudo carregou e validou, ou a tela inteira vira um aviso vermelho.
+// (Nasceu do achado da consultoria de 25/08: o painel antigo abria bonito,
+// com a caixa de pendências VAZIA, quando os dados falhavam — e caixa vazia
+// se lê como "nada esperando você".)
+// ===========================================================================
+function falhaAlta(motivo, detalhes) {
+  var t = document.getElementById("tela-erro");
+  t.style.display = "block";
+  document.getElementById("app").style.display = "none";
+  t.textContent = "";
+  var b = document.createElement("b"); b.textContent = "⚠️ Este painel não pode ser lido.";
+  var p = document.createElement("p"); p.textContent = motivo;
+  var aviso = document.createElement("p");
+  aviso.textContent = "NÃO acredite em nada que esta página mostraria — inclusive no que parecesse verde ou concluído.";
+  var como = document.createElement("p");
+  como.textContent = "O que fazer: abra uma sessão do Claude Code e cole: “o painel da escola está quebrado, conserte”. O conserto costuma ser um registro inválido em painel/registros/ — o comando “node painel/gerar_manifesto.js” aponta qual.";
+  t.appendChild(b); t.appendChild(p); t.appendChild(aviso); t.appendChild(como);
+  if (detalhes && detalhes.length) {
+    var pre = document.createElement("pre");
+    pre.textContent = detalhes.slice(0, 20).join("\n");
+    t.appendChild(pre);
+  }
+}
+
+try {
+  if (window.__falhaCarga) throw { mensagem: window.__falhaCarga };
+  if (typeof MANIFESTO === "undefined") throw { mensagem: "O manifesto não chegou (manifesto.js existe mas não pôde ser lido)." };
+  if (typeof LOGICA === "undefined") throw { mensagem: "A lógica não chegou (logica.js existe mas não pôde ser lida)." };
+  var REGS = (window.REGISTROS || []);
+  if (REGS.length !== MANIFESTO.length) {
+    throw { mensagem: "O manifesto lista " + MANIFESTO.length + " registros, mas só " + REGS.length +
+      " carregaram — algum arquivo de registro sumiu ou está quebrado.", detalhes: MANIFESTO };
+  }
+  var errosVal = LOGICA.validarRegistros(REGS);
+  if (errosVal.length) throw { mensagem: "O livro de ocorrências está inválido (" + errosVal.length + " problema(s)):", detalhes: errosVal };
+
+  // ---------- helpers de render (textContent SEMPRE — dado nunca vira HTML) ----------
+  var AGORA = new Date();
+  function el(tag, cls, texto) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (texto != null) e.textContent = texto;
+    return e;
+  }
+  function fmtData(iso) { return iso ? iso.slice(0, 10).split("-").reverse().join("/") : "—"; }
+  function itemRegistro(r, opts) {
+    opts = opts || {};
+    var it = el("div", "item" + (opts.recolhido ? " recolhido" : ""));
+    var t = el("div", "t");
+    var g = el("span", "grav " + (r.gravidade || "info")); t.appendChild(g);
+    t.appendChild(document.createTextNode(r.titulo));
+    if ((r.tipo === "entrega" || r.tipo === "medicao") && (!r.evidencia || !r.verificado_em)) {
+      t.appendChild(el("span", "selo naoprov", "não comprovado"));
+    }
+    if (opts.idadeDias != null) t.appendChild(el("span", "selo idade", "aguardando há " + opts.idadeDias + " dia" + (opts.idadeDias === 1 ? "" : "s")));
+    it.appendChild(t);
+    var meta = el("div", "meta");
+    // Os DOIS relógios, sempre: o fato e a prova. "Atualizado" não existe aqui.
+    var m = "fato: " + fmtData(r.quando) + " · prova conferida: " + (r.verificado_em ? fmtData(r.verificado_em) : "NÃO CONFERIDA") +
+      " · quem declara: " + r.autoridade + (r.evidencia ? " · evidência: " + r.evidencia : "");
+    meta.textContent = m;
+    it.appendChild(meta);
+    if (r.detalhe && !opts.semDetalhe) it.appendChild(el("div", "det", r.detalhe));
+    return it;
+  }
+  function blocoDe(titulo, classe, itens, montaItem, vazioTexto) {
+    var b = el("div", "bloco " + (classe || ""));
+    var cab = el("div", "cab", titulo);
+    cab.appendChild(el("span", "cont", String(itens.length)));
+    b.appendChild(cab);
+    if (!itens.length && vazioTexto) b.appendChild(el("div", "item", vazioTexto));
+    itens.forEach(function (x) { b.appendChild(montaItem(x)); });
+    return b;
+  }
+
+  // ---------- a capa, calculada ----------
+  var capa = LOGICA.capa(REGS, AGORA);
+  if (capa.erro) throw { mensagem: capa.erro };
+  var vistaCapa = document.getElementById("vista-capa");
+  capa.blocos.forEach(function (bloco) {
+    if (bloco.id === "caixa") {
+      vistaCapa.appendChild(blocoDe("🔔 Precisa de você", "b-caixa", bloco.itens, function (x) {
+        return itemRegistro(x.registro, { idadeDias: x.aguardandoDias });
+      }, "Nada esperando você. (Calculado: nenhum pedido sem resposta no livro.)"));
+    } else if (bloco.id === "problemas") {
+      vistaCapa.appendChild(blocoDe("🚨 Atenção agora", "b-problemas", bloco.itens, function (r) { return itemRegistro(r); }));
+    } else if (bloco.id === "mudancas") {
+      vistaCapa.appendChild(blocoDe("📰 O que mudou (7 dias)", "", bloco.itens, function (r) {
+        return itemRegistro(r, { recolhido: false, semDetalhe: false });
+      }, "Nenhum registro nos últimos 7 dias — e isso em si é informação: o livro está parado."));
+    } else if (bloco.id === "frentes") {
+      var nomes = { site: "🌍 O site aberto ao mundo", comunidade: "📮 A comunidade de alunos", curso: "🎓 O curso (o capítulo que é SEU)", vender: "💳 Vender (pausado por sua ordem)", fabrica: "🏭 A fábrica de robôs" };
+      vistaCapa.appendChild(blocoDe("🧭 As frentes", "", bloco.itens, function (x) {
+        if (!x.registro) {
+          var it = el("div", "item");
+          var t = el("div", "t"); t.appendChild(el("span", "grav cinza")); t.appendChild(document.createTextNode(nomes[x.frente] || x.frente));
+          t.appendChild(el("span", "selo naoprov", "sem registro — não sei"));
+          it.appendChild(t);
+          return it;
+        }
+        var it2 = itemRegistro(x.registro, { recolhido: true });
+        it2.firstChild.insertBefore(el("span", null, (nomes[x.frente] || x.frente) + " — "), it2.firstChild.childNodes[1]);
+        return it2;
+      }));
+    } else if (bloco.id === "frescor") {
+      var b = blocoDe("🕰️ O que está velho", "", bloco.itens, function (r) {
+        var it = itemRegistro(r, { recolhido: true });
+        it.firstChild.appendChild(el("span", "selo velho", "vencido — não sei se ainda vale"));
+        return it;
+      });
+      if (bloco.livroParadoHaDias != null && bloco.livroParadoHaDias > 3) {
+        b.appendChild(el("div", "item", "⚠️ O livro inteiro não recebe registro há " + bloco.livroParadoHaDias + " dias. Painel parado não é painel verde."));
+      }
+      vistaCapa.appendChild(b);
+    } else if (bloco.id === "nao-comprovado") {
+      vistaCapa.appendChild(blocoDe("🌫️ Dito, mas não comprovado", "", bloco.itens, function (r) { return itemRegistro(r, { recolhido: true }); }));
+    }
+  });
+
+  // ---------- o placar (cabine escura) ----------
+  var nCaixa = LOGICA.caixaDeEntrada(REGS, AGORA).length;
+  var nProb = LOGICA.problemasAbertos(REGS).length;
+  var placar = document.getElementById("placar");
+  if (nCaixa === 0 && nProb === 0) {
+    placar.className = "calmo";
+    placar.textContent = "🟢 Nada esperando você e nada quebrado — calculado do livro agora, não prometido.";
+  } else {
+    placar.className = "aceso";
+    var partes = [];
+    if (nCaixa) partes.push(nCaixa + " coisa" + (nCaixa > 1 ? "s" : "") + " esperando VOCÊ");
+    if (nProb) partes.push(nProb + " problema" + (nProb > 1 ? "s" : "") + " aberto" + (nProb > 1 ? "s" : ""));
+    placar.textContent = "🔔 " + partes.join(" · ") + " — os detalhes estão logo abaixo, na capa.";
+  }
+
+  // ---------- operação: registros com evidência ----------
+  var opRegs = REGS.filter(function (r) { return r.tipo === "medicao" || r.tipo === "incidente" || r.tipo === "entrega"; })
+    .sort(function (a, b) { return (b.quando > a.quando) ? 1 : -1; });
+  document.getElementById("op-registros").appendChild(
+    blocoDe("📋 Medições, entregas e incidentes registrados", "", opRegs, function (r) { return itemRegistro(r); },
+      "Ainda não há registros deste tipo no livro."));
+
+  // ---------- memória: o livro inteiro ----------
+  var todos = REGS.slice().sort(function (a, b) { return (b.quando > a.quando) ? 1 : (b.quando < a.quando ? -1 : (b.arquivo > a.arquivo ? 1 : -1)); });
+  document.getElementById("mem-registros").appendChild(
+    blocoDe("📚 Todos os registros (" + todos.length + ")", "", todos, function (r) { return itemRegistro(r); }));
+
+  // ---------- medições ao vivo (a prova vem de fora — do SEU navegador) ----------
+  var medicoes = document.getElementById("medicoes");
+  function cartaoMed(id, titulo) {
+    var c = el("div", "med nao-sei"); c.id = id;
+    c.appendChild(el("div", "t", titulo));
+    c.appendChild(el("div", "v", "medindo agora…"));
+    c.appendChild(el("div", "quando", ""));
+    return c;
+  }
+  function pintaMed(id, classe, valor) {
+    var c = document.getElementById(id);
+    c.className = "med " + classe;
+    c.children[1].textContent = valor;
+    c.children[2].textContent = "medido às " + new Date().toLocaleTimeString("pt-BR") + " de " + new Date().toLocaleDateString("pt-BR") + ", do seu navegador";
+  }
+  medicoes.appendChild(cartaoMed("med-site", "🌍 O site responde?"));
+  medicoes.appendChild(cartaoMed("med-prs", "🔀 Trabalhos abertos no GitHub"));
+  medicoes.appendChild(cartaoMed("med-runs", "✅ As últimas conferências automáticas"));
+
+  // Site: fetch no-cors — prova que o SERVIDOR respondeu ao seu navegador agora.
+  // (Não distingue página boa de página de erro — por isso o rótulo é honesto.)
+  (function () {
+    var deuTempo = false;
+    var t = setTimeout(function () { deuTempo = true; pintaMed("med-site", "nao-sei", "não consegui medir em 10s — sem internet, ou o site fora do ar. NÃO é um verde."); }, 10000);
+    fetch("https://meshcraft.top/", { mode: "no-cors", cache: "no-store" }).then(function () {
+      if (deuTempo) return; clearTimeout(t);
+      pintaMed("med-site", "ok", "o servidor de meshcraft.top respondeu ao seu navegador agora.");
+    }).catch(function () {
+      if (deuTempo) return; clearTimeout(t);
+      pintaMed("med-site", "mal", "o servidor NÃO respondeu (sem internet, ou site fora do ar).");
+    });
+  })();
+  // GitHub: repositório público, medido direto — um agente não consegue fazer o
+  // GitHub confirmar um merge que não houve.
+  fetch("https://api.github.com/repos/abundanciabr/sitesdoreino/pulls?state=open&per_page=10", { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+    .then(function (prs) {
+      pintaMed("med-prs", prs.length === 0 ? "ok" : "nao-sei",
+        prs.length === 0 ? "nenhum PR aberto — nada no meio do caminho." :
+          prs.length + " PR(s) abertos: " + prs.map(function (p) { return "#" + p.number; }).join(", "));
+    })
+    .catch(function () { pintaMed("med-prs", "nao-sei", "não consegui perguntar ao GitHub (sem internet ou limite de consultas). NÃO é um verde."); });
+  fetch("https://api.github.com/repos/abundanciabr/sitesdoreino/actions/runs?per_page=6", { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+    .then(function (d) {
+      var runs = (d.workflow_runs || []);
+      var ruins = runs.filter(function (x) { return x.conclusion && x.conclusion !== "success"; });
+      if (!runs.length) { pintaMed("med-runs", "nao-sei", "o GitHub não devolveu execuções."); return; }
+      pintaMed("med-runs", ruins.length ? "mal" : "ok",
+        ruins.length ? ruins.length + " das últimas " + runs.length + " execuções NÃO fecharam verdes: " + ruins.map(function (x) { return x.name; }).join(" · ")
+          : "as últimas " + runs.length + " execuções fecharam verdes (" + runs[0].name + " é a mais recente).");
+    })
+    .catch(function () { pintaMed("med-runs", "nao-sei", "não consegui perguntar ao GitHub. NÃO é um verde."); });
+
+  // ---------- rodapé ----------
+  var rod = document.getElementById("rodape");
+  rod.appendChild(document.createTextNode("Fonte: painel/registros/ (" + REGS.length + " registros, no Git) · regras: painel/logica.js, com teste-guarda · como registrar: painel/LEIA-ME.md · a história desta reforma: "));
+  var a = el("a", null, "o veredito das 8 consultorias"); a.href = "../docs/paineis/VEREDITO-DAS-CONSULTORIAS.html";
+  rod.appendChild(a);
+  rod.appendChild(document.createTextNode(". Página aberta às " + AGORA.toLocaleTimeString("pt-BR") + " de " + AGORA.toLocaleDateString("pt-BR") + " — todo frescor foi comparado com este relógio."));
+
+  // ---------- abas ----------
+  function mostraVista() {
+    var alvo = (location.hash || "#capa").slice(1);
+    if (["capa", "operacao", "memoria"].indexOf(alvo) === -1) alvo = "capa";
+    ["capa", "operacao", "memoria"].forEach(function (v) {
+      document.getElementById("vista-" + v).className = "vista" + (v === alvo ? " ativa" : "");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".aba"), function (aEl) {
+      aEl.className = "aba" + (aEl.getAttribute("data-vista") === alvo ? " ativa" : "");
+    });
+  }
+  window.addEventListener("hashchange", mostraVista);
+  mostraVista();
+
+  document.getElementById("app").style.display = "block";
+} catch (e) {
+  falhaAlta(e.mensagem || String(e), e.detalhes || null);
+}
+</script>
+</body>
+</html>
