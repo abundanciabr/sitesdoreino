@@ -31,7 +31,8 @@ var MANIFESTO = [
   "20260826-012-rumo-comunidade-sininho-e-apresentacao",
   "20260826-013-rumo-curso-o-capitulo-do-dono",
   "20260826-014-rumo-vender-comeca-do-meio",
-  "20260826-015-resposta-pode-construir-o-meu-mapa"
+  "20260826-015-resposta-pode-construir-o-meu-mapa",
+  "20260826-016-os-consertos-e-o-mapa-entraram"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
