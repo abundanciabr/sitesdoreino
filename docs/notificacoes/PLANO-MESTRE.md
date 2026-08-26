@@ -183,13 +183,21 @@ entrada da pessoa.
 
 **Destrava tudo. É a fase mais barata e a mais importante.**
 
-### FASE 2 — Rito de Contrato: o envelope de evento ganha `ator_id`
+### FASE 2 — Rito de Contrato: o envelope de evento ganha `ator_id` · ✅ FECHADA em 26/08/2026
+
+**Fechada.** Rito cumprido com o mantenedor presente; as três escolhas dele viraram lei em **`docs/decisoes/DECISAO-fase-2-do-sininho.md`** — leia-a antes de tocar a Fase 3, porque ela **muda o tamanho** daquela fase (§3 de lá) e **muda o endereço** do fan-out (§1 de lá). Os contratos entraram no PR #243: `sugestao.status-alterado.v2.json` (o fato, com `ator_id` obrigatório no envelope) e `notificacao.devida.v1.json` (a carta endereçada, uma por pessoa).
+
+Falta só o passo §3.4 do rito: a `sugestoes` migrar para o `v2` em PR próprio, na célula dela. Medido em 26/08: **zero** consumidores externos do `v1`.
 
 Os eventos passam a carregar um id de pessoa que qualquer célula entende. **Rito §3**,
 com o mantenedor presente, PR só de `contracts/` com a label `contrato`. Versão nova do
 schema (`v2`), com os consumidores migrando em PRs seguintes — nunca no mesmo.
 
-### FASE 3 — Gênese da célula `notificacoes`
+### FASE 3 — Gênese da célula `notificacoes` · **e a mudança de casa dos avisos que já existem**
+
+> **Alterada em 26/08/2026** pela §3 da `DECISAO-fase-2-do-sininho.md`: o mantenedor escolheu que os `Aviso` que já existem na `sugestoes` **mudam de casa junto**, no MESMO PR da gênese, e a tela de avisos da Caixa passa a ler da caixa nova. A alternativa (caixa nova começando vazia) foi recusada por criar duas verdades sobre "o que você tem para ler". Esta fase, portanto, não é só "nascer".
+
+> E o fan-out **não acontece aqui**: a célula recebe cartas já endereçadas (uma por pessoa) e escreve uma linha por carta. Ela é burra de propósito — é isso que a mantém barata quando dez células estiverem publicando.
 
 Banco isolado, `Notificacao` (tipo + parâmetros + destinatário + lido), consumidor dos
 eventos do fio, contador O(1), arquivamento. **Sem tela ainda** e sem contrato público
