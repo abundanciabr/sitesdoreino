@@ -69,6 +69,29 @@
   .selo.velho{border:1px solid var(--cinza); color:var(--cinza); background:var(--cinza-dim);}
   .selo.idade{border:1px solid var(--gold); color:var(--gold); background:var(--gold-dim);}
 
+  /* Meu mapa — um capítulo por frente, na ordem da narrativa do Roadmap */
+  #mapa-resumo{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel-2);
+    padding:14px 18px; margin:0 0 18px; font-size:14.5px; line-height:1.65; color:var(--text-2);}
+  #mapa-resumo b{color:var(--text); font-family:'Space Grotesk',sans-serif;}
+  .cap{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); margin-bottom:16px; overflow:hidden;}
+  .cap>.cabcap{padding:14px 18px 10px; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .cap .num{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); border:1px solid var(--line-soft);
+    border-radius:20px; padding:2px 9px;}
+  .cap .nome{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:var(--text);}
+  .cap .agora{padding:0 18px 12px; color:var(--text-2); font-size:14px; line-height:1.6;}
+  .cap .agora .meta{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-top:4px;}
+  .cap .secao{border-top:1px solid var(--line-soft); padding:10px 18px;}
+  .cap .secao>.rot{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--text-3); display:block; margin-bottom:6px;}
+  .cap .linha{font-size:14px; line-height:1.6; color:var(--text-2); margin-bottom:8px;}
+  .cap .linha:last-child{margin-bottom:0;}
+  .cap .linha .t{color:var(--text); font-weight:600;}
+  .cap .linha .det{margin-top:4px; white-space:pre-line;}
+  .cap .linha .meta{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-top:4px;}
+  .cap .vazio{color:var(--text-3); font-style:italic; font-size:13.5px;}
+  .cap.rumo-sim{border-left:3px solid var(--blue);}
+  .cap.rumo-nao{border-left:3px solid var(--cinza);}
+
   /* medições ao vivo */
   .medicoes{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; margin:14px 0;}
   .med{border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:13px 15px; font-size:13.5px; line-height:1.55;}
@@ -96,12 +119,18 @@
   <div id="placar"></div>
 
   <nav class="abas">
-    <a class="aba" data-vista="capa" href="#capa">🗺️ Capa</a>
+    <a class="aba" data-vista="capa" href="#capa">🔔 Capa</a>
+    <a class="aba" data-vista="mapa" href="#mapa">🗺️ Meu mapa</a>
     <a class="aba" data-vista="operacao" href="#operacao">⚙️ Operação</a>
     <a class="aba" data-vista="memoria" href="#memoria">📚 Memória</a>
   </nav>
 
   <section class="vista" id="vista-capa"></section>
+  <section class="vista" id="vista-mapa">
+    <p class="sub">O caminho do projeto em cinco capítulos: <b>onde cada frente está</b> e <b>para onde ela vai</b>. Como tudo aqui, é calculado dos registros — capítulo sem rumo registrado diz que não sabe, em vez de inventar.</p>
+    <div id="mapa-resumo"></div>
+    <div id="mapa-capitulos"></div>
+  </section>
   <section class="vista" id="vista-operacao">
     <p class="sub">O detalhe para quando algo parece estranho: as medições feitas do seu navegador, e os fatos com evidência.</p>
     <div class="medicoes" id="medicoes"></div>
@@ -187,6 +216,12 @@ try {
     if (r.detalhe && !opts.semDetalhe) it.appendChild(el("div", "det", r.detalhe));
     return it;
   }
+  // Os nomes que o dono lê, num lugar só — a capa e o Meu mapa usam os mesmos.
+  var NOMES_FRENTE = {
+    fabrica: "🏭 A fábrica de robôs", site: "🌍 O site aberto ao mundo",
+    comunidade: "📮 A comunidade de alunos", curso: "🎓 O curso (o capítulo que é SEU)",
+    vender: "💳 Vender (pausado por sua ordem)"
+  };
   function blocoDe(titulo, classe, itens, montaItem, vazioTexto) {
     var b = el("div", "bloco " + (classe || ""));
     var cab = el("div", "cab", titulo);
@@ -213,7 +248,7 @@ try {
         return itemRegistro(r, { recolhido: false, semDetalhe: false });
       }, "Nenhum registro nos últimos 7 dias — e isso em si é informação: o livro está parado."));
     } else if (bloco.id === "frentes") {
-      var nomes = { site: "🌍 O site aberto ao mundo", comunidade: "📮 A comunidade de alunos", curso: "🎓 O curso (o capítulo que é SEU)", vender: "💳 Vender (pausado por sua ordem)", fabrica: "🏭 A fábrica de robôs" };
+      var nomes = NOMES_FRENTE;
       vistaCapa.appendChild(blocoDe("🧭 As frentes", "", bloco.itens, function (x) {
         if (!x.registro) {
           var it = el("div", "item");
@@ -239,6 +274,109 @@ try {
     } else if (bloco.id === "nao-comprovado") {
       vistaCapa.appendChild(blocoDe("🌫️ Dito, mas não comprovado", "", bloco.itens, function (r) { return itemRegistro(r, { recolhido: true }); }));
     }
+  });
+
+  // ---------- Meu mapa: cinco capítulos, calculados ----------
+  // O Roadmap antigo era mantido à mão e datava a si mesmo — e foi assim que ele
+  // pôde dizer "25/08" no topo com conteúdo de 26/08 (achado do GPT, rodada 2).
+  // Aqui não há data escrita: cada capítulo mostra o registro mais recente da
+  // frente e o rumo dela, e quem não tem rumo diz que não sabe.
+  var mapa = LOGICA.meuMapa(REGS, AGORA);
+  var resumo = LOGICA.resumoDoMapa(REGS, AGORA);
+  var elResumo = document.getElementById("mapa-resumo");
+  elResumo.appendChild(document.createTextNode("Onde estamos, contado agora: "));
+  var bRes = el("b", null, resumo.comProvaConferida + " de " + resumo.capitulos + " capítulos com prova conferida");
+  elResumo.appendChild(bRes);
+  // O texto diz "NESTES capítulos" de propósito: um pedido só aparece aqui se
+  // tiver etiqueta de frente, e a capa conta TODOS. Sem essa palavra, o mapa
+  // parecia contradizer o placar ("7 esperando você" × "nada esperando você").
+  // Duas contas certas com recortes diferentes se leem como discordância — e
+  // discordância é a única coisa que esta reforma não pode produzir.
+  var nCaixaTotal = LOGICA.caixaDeEntrada(REGS, AGORA).length;
+  elResumo.appendChild(document.createTextNode(
+    (resumo.semRegistro ? " · " + resumo.semRegistro + " sem registro nenhum (não sei como está)" : "") +
+    (resumo.semRumo ? " · " + resumo.semRumo + " sem rumo registrado (não sei para onde vai)" : " · todos com rumo registrado") +
+    " · " + (resumo.esperandoVoce ? resumo.esperandoVoce + " pedido(s) esperando você marcados nestes capítulos"
+      : "nenhum pedido marcado nestes capítulos") +
+    (nCaixaTotal ? ", e " + nCaixaTotal + " no total, na Capa." : ".")));
+
+  var elCaps = document.getElementById("mapa-capitulos");
+  mapa.forEach(function (cap, i) {
+    var box = el("div", "cap " + (cap.rumos.length ? "rumo-sim" : "rumo-nao"));
+    var cab = el("div", "cabcap");
+    cab.appendChild(el("span", "num", "capítulo " + (i + 1)));
+    cab.appendChild(el("span", "nome", NOMES_FRENTE[cap.frente] || cap.frente));
+    box.appendChild(cab);
+
+    // ONDE ESTAMOS — o registro de frente mais recente. Sem ele: cinza honesto.
+    var agora = el("div", "agora");
+    if (cap.estado) {
+      var t = el("div", null);
+      t.appendChild(el("span", "grav " + (cap.estado.gravidade || "info")));
+      t.appendChild(document.createTextNode(cap.estado.titulo));
+      agora.appendChild(t);
+      if (cap.estado.detalhe) agora.appendChild(el("div", "det", cap.estado.detalhe));
+      agora.appendChild(el("div", "meta", "fato: " + fmtData(cap.estado.quando) +
+        " · prova conferida: " + (cap.estado.verificado_em ? fmtData(cap.estado.verificado_em) : "NÃO CONFERIDA") +
+        " · quem declara: " + cap.estado.autoridade));
+    } else {
+      var semT = el("div", null);
+      semT.appendChild(el("span", "grav cinza"));
+      semT.appendChild(document.createTextNode("Sem registro de estado nesta frente — não sei como ela está."));
+      agora.appendChild(semT);
+    }
+    box.appendChild(agora);
+
+    // PARA ONDE VAMOS — os rumos ainda não respondidos.
+    var sRumo = el("div", "secao");
+    sRumo.appendChild(el("span", "rot", "Para onde vamos"));
+    if (cap.rumos.length) {
+      cap.rumos.forEach(function (r) {
+        var l = el("div", "linha");
+        var lt = el("div", "t"); lt.appendChild(el("span", "grav " + (r.gravidade || "info")));
+        lt.appendChild(document.createTextNode(r.titulo));
+        l.appendChild(lt);
+        if (r.detalhe) l.appendChild(el("div", "det", r.detalhe));
+        l.appendChild(el("div", "meta", "registrado em " + fmtData(r.quando) + " · quem declara: " + r.autoridade));
+        sRumo.appendChild(l);
+      });
+    } else {
+      sRumo.appendChild(el("div", "vazio", "Não sei para onde esta frente vai — ninguém registrou um rumo. (Isto não é 'não tem plano': é 'o plano não está escrito aqui'.)"));
+    }
+    box.appendChild(sRumo);
+
+    // ESPERANDO VOCÊ, nesta frente — o mesmo cálculo da caixa, recortado.
+    if (cap.esperando.length) {
+      var sEsp = el("div", "secao");
+      sEsp.appendChild(el("span", "rot", "Esperando você neste capítulo"));
+      cap.esperando.forEach(function (x) {
+        var l2 = el("div", "linha");
+        var l2t = el("div", "t"); l2t.appendChild(el("span", "grav " + (x.registro.gravidade || "info")));
+        l2t.appendChild(document.createTextNode(x.registro.titulo));
+        l2t.appendChild(el("span", "selo idade", "aguardando há " + x.aguardandoDias + " dia" + (x.aguardandoDias === 1 ? "" : "s")));
+        l2.appendChild(l2t);
+        sEsp.appendChild(l2);
+      });
+      box.appendChild(sEsp);
+    }
+
+    // O QUE ANDOU AQUI — os últimos fatos etiquetados com esta frente.
+    if (cap.andou.length) {
+      var sAnd = el("div", "secao");
+      sAnd.appendChild(el("span", "rot", "O que andou aqui"));
+      cap.andou.forEach(function (r) {
+        var l3 = el("div", "linha");
+        var l3t = el("div", "t"); l3t.appendChild(el("span", "grav " + (r.gravidade || "info")));
+        l3t.appendChild(document.createTextNode(r.titulo));
+        l3.appendChild(l3t);
+        l3.appendChild(el("div", "meta", "fato: " + fmtData(r.quando) +
+          " · prova conferida: " + (r.verificado_em ? fmtData(r.verificado_em) : "NÃO CONFERIDA")));
+        sAnd.appendChild(l3);
+      });
+      box.appendChild(sAnd);
+    }
+
+    elCaps.appendChild(box);
   });
 
   // ---------- o placar (cabine escura) ----------
@@ -350,8 +488,8 @@ try {
   // ---------- abas ----------
   function mostraVista() {
     var alvo = (location.hash || "#capa").slice(1);
-    if (["capa", "operacao", "memoria"].indexOf(alvo) === -1) alvo = "capa";
-    ["capa", "operacao", "memoria"].forEach(function (v) {
+    if (["capa", "mapa", "operacao", "memoria"].indexOf(alvo) === -1) alvo = "capa";
+    ["capa", "mapa", "operacao", "memoria"].forEach(function (v) {
       document.getElementById("vista-" + v).className = "vista" + (v === alvo ? " ativa" : "");
     });
     Array.prototype.forEach.call(document.querySelectorAll(".aba"), function (aEl) {

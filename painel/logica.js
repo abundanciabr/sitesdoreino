@@ -15,10 +15,14 @@
 (function (raiz) {
   "use strict";
 
-  var TIPOS = ["decisao", "pendencia", "resposta", "entrega", "incidente", "medicao", "frente", "nota"];
+  var TIPOS = ["decisao", "pendencia", "resposta", "entrega", "incidente", "medicao", "frente", "rumo", "nota"];
   var GRAVIDADES = ["vermelho", "ambar", "info", "verde"];
   var AUTORIDADES = ["mantenedor", "github", "sonda", "rito", "sessao"];
   var FRENTES = ["site", "comunidade", "curso", "vender", "fabrica"];
+  // A ordem do MAPA é a narrativa do Roadmap (fotografia de 26/08): a fundação
+  // primeiro, depois o produto, e vender por último — que é também a ordem em
+  // que o mantenedor lê o projeto. A ordem de FRENTES acima é só a do vocabulário.
+  var ORDEM_DO_MAPA = ["fabrica", "site", "comunidade", "curso", "vender"];
   var TETO_BLOCOS_CAPA = 6; // Opus: "gerador que quebra, segura" — lei escrita não segurou a poda de 24/08.
 
   var OBRIGATORIOS = ["arquivo", "tipo", "quando", "titulo", "detalhe", "autoridade", "gravidade"];
@@ -62,6 +66,19 @@
       if (r.quando && !ehDataValida(r.quando)) erros.push(nome + ": 'quando' não é data válida: " + r.quando);
       if (r.verificado_em != null && !ehDataValida(r.verificado_em)) erros.push(nome + ": 'verificado_em' não é data válida");
       if (r.tipo === "frente" && FRENTES.indexOf(r.frente) === -1) erros.push(nome + ": tipo 'frente' exige frente entre: " + FRENTES.join(", "));
+      // A frente virou ETIQUETA de qualquer registro (vista "Meu mapa"): é ela que
+      // diz em qual capítulo do mapa o fato aparece. Opcional — mas, se vier,
+      // tem de ser uma das cinco, senão o fato cai num capítulo que não existe.
+      if (r.frente != null && FRENTES.indexOf(r.frente) === -1) {
+        erros.push(nome + ": 'frente' desconhecida '" + r.frente + "' — as cinco são: " + FRENTES.join(", "));
+      }
+      // 'rumo' = para onde esta frente vai. Sem frente ele não tem capítulo onde
+      // morar; e rumo NUNCA é verde, porque verde é prova conferida e ninguém
+      // consegue provar o futuro. Plano é plano; entrega é que vira verde.
+      if (r.tipo === "rumo") {
+        if (FRENTES.indexOf(r.frente) === -1) erros.push(nome + ": tipo 'rumo' exige a frente a que ele aponta");
+        if (r.gravidade === "verde") erros.push(nome + ": tipo 'rumo' não pode ser verde — verde é prova conferida, e o futuro não se prova");
+      }
       if (r.arquivo) {
         if (vistos[r.arquivo]) erros.push(nome + ": arquivo duplicado (dois registros com o mesmo nome)");
         vistos[r.arquivo] = true;
@@ -138,11 +155,13 @@
   // Pendência já mora na caixa; frente já mora no bloco de frentes — repetir
   // qualquer uma aqui seria alarme aceso permanente (fadiga de alarme) E um
   // fato morando em dois blocos, que é a doença que este livro cura.
+  // ('rumo' também fica de fora: ele mora no Meu mapa, e um plano ainda não
+  // cumprido não é um problema aberto — seria alarme aceso o tempo todo.)
   function problemasAbertos(registros) {
     var resp = respondidos(registros);
     return registros.filter(function (r) {
       return (r.gravidade === "vermelho" || r.gravidade === "ambar") &&
-        !resp[r.arquivo] && r.tipo !== "pendencia" && r.tipo !== "frente";
+        !resp[r.arquivo] && r.tipo !== "pendencia" && r.tipo !== "frente" && r.tipo !== "rumo";
     }).sort(function (a, b) { return a.gravidade === "vermelho" ? -1 : 1; });
   }
 
@@ -168,6 +187,61 @@
       if (!atual || paraData(r.quando) > paraData(atual.quando)) porFrente[r.frente] = r;
     });
     return FRENTES.map(function (f) { return { frente: f, registro: porFrente[f] || null }; });
+  }
+
+  // ---------------------------------------------------------------------------
+  // MEU MAPA — a vista que responde "para onde estamos indo".
+  //
+  // O veredito das consultorias prometeu preservar a experiência do Roadmap
+  // ("Meu mapa") e a obra de 26/08 não a construiu — a auditoria achou a falta
+  // e o mantenedor mandou construir. A regra da casa vale aqui inteira: esta
+  // vista NÃO guarda nada. Ela é um agrupamento dos mesmos registros por
+  // capítulo, e cada capítulo é uma frente.
+  //
+  // O que o Roadmap tinha e o livro não tinha: o FUTURO. Por isso nasceu o tipo
+  // 'rumo' — para onde uma frente vai. Sem ele, um livro de acontecimentos só
+  // sabe dizer de onde viemos. Frente sem rumo registrado não inventa nada:
+  // aparece como "não sei para onde esta frente vai", que é o 4º estado da casa
+  // aplicado ao futuro.
+  // ---------------------------------------------------------------------------
+  function meuMapa(registros, agora) {
+    var resp = respondidos(registros);
+    var estados = {};
+    estadoDasFrentes(registros).forEach(function (x) { estados[x.frente] = x.registro; });
+
+    return ORDEM_DO_MAPA.map(function (f) {
+      var daFrente = registros.filter(function (r) { return r.frente === f; });
+      var rumos = daFrente
+        .filter(function (r) { return r.tipo === "rumo" && !resp[r.arquivo]; })
+        .sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
+      var esperando = daFrente
+        .filter(function (r) { return r.precisa_do_dono === true && !resp[r.arquivo]; })
+        .map(function (r) { return { registro: r, aguardandoDias: diasEntre(r.quando, agora) }; })
+        .sort(function (a, b) { return b.aguardandoDias - a.aguardandoDias; });
+      var andou = daFrente
+        .filter(function (r) { return ["entrega", "decisao", "incidente", "medicao"].indexOf(r.tipo) !== -1; })
+        .sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
+      return {
+        frente: f,
+        estado: estados[f] || null,   // null = frente sem registro: "não sei"
+        rumos: rumos,
+        esperando: esperando,
+        andou: andou.slice(0, 4)
+      };
+    });
+  }
+
+  // A frase de abertura do mapa — contada, nunca escrita. É o "onde estamos, em
+  // uma frase" do Roadmap antigo, com a diferença de que ninguém a atualiza.
+  function resumoDoMapa(registros, agora) {
+    var capitulos = meuMapa(registros, agora);
+    return {
+      capitulos: capitulos.length,
+      comProvaConferida: capitulos.filter(function (c) { return c.estado && c.estado.gravidade === "verde"; }).length,
+      semRegistro: capitulos.filter(function (c) { return !c.estado; }).length,
+      semRumo: capitulos.filter(function (c) { return c.rumos.length === 0; }).length,
+      esperandoVoce: capitulos.reduce(function (n, c) { return n + c.esperando.length; }, 0)
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -237,12 +311,15 @@
 
   var LOGICA = {
     TIPOS: TIPOS, GRAVIDADES: GRAVIDADES, AUTORIDADES: AUTORIDADES, FRENTES: FRENTES,
+    ORDEM_DO_MAPA: ORDEM_DO_MAPA,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     validarRegistros: validarRegistros,
     caixaDeEntrada: caixaDeEntrada,
     problemasAbertos: problemasAbertos,
     mudancasRecentes: mudancasRecentes,
     estadoDasFrentes: estadoDasFrentes,
+    meuMapa: meuMapa,
+    resumoDoMapa: resumoDoMapa,
     frescor: frescor,
     naoComprovados: naoComprovados,
     capa: capa,
