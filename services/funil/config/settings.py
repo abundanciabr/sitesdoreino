@@ -63,4 +63,15 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
+# Como esta célula GUARDA (aware, em UTC) e que hora ela MOSTRA. As duas
+# perguntas são diferentes e as duas estavam sem resposta escrita aqui: valia o
+# default de fábrica do Django para o fuso de exibição, `America/Chicago` —
+# cinco horas atrás, capaz de trocar até o DIA perto da virada, sem erro nenhum
+# (CI verde, deploy verde, /healthz 200, data errada na tela). `USE_TZ` vem
+# escrito junto de propósito: no Django 5 ele já é `True` por default, e um
+# guarda que depende de default calado é meio guarda.
+# Guarda: tests/test_fuso_horario.py (armadilhas/099).
+USE_TZ = True
+TIME_ZONE = "America/Sao_Paulo"
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
