@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel da Fundação — sitesdoreino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A; --grid: rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft: rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --red:#E2705A; --red-dim:#3E2620;
+    --slate:#5B7A8C;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:32px 20px 64px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.12em;
+    color:var(--text-3); text-transform:uppercase; margin:0 0 6px;
+  }
+  h1{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:30px;
+    margin:0 0 4px; letter-spacing:-.01em;
+  }
+  .sub{color:var(--text-2); font-size:14px; margin:0 0 32px;}
+  .sub code{font-family:'IBM Plex Mono',monospace; color:var(--gold); background:none;}
+
+  /* ---------- ROADMAP TOWER ---------- */
+  .roadmap{
+    display:grid; grid-template-columns:repeat(5,1fr); gap:10px;
+    margin-bottom:28px;
+  }
+  .floor{
+    border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--panel); padding:14px 12px; position:relative;
+    min-height:104px; display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .floor.done{border-color:var(--green); background:linear-gradient(180deg, var(--green-dim), var(--panel));}
+  .floor.now{border-color:var(--gold); background:linear-gradient(180deg, var(--gold-dim), var(--panel)); box-shadow:0 0 0 1px var(--gold) inset;}
+  .floor.future{border-style:dashed; opacity:.55;}
+  .floor .tag{
+    font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.08em;
+    color:var(--text-3); text-transform:uppercase;
+  }
+  .floor.done .tag{color:var(--green);}
+  .floor.now .tag{color:var(--gold);}
+  .floor .name{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; margin-top:6px; line-height:1.25;}
+  .floor .pct{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-top:8px;}
+  .here{
+    position:absolute; top:-11px; left:50%; transform:translateX(-50%);
+    background:var(--gold); color:#2A1D08; font-family:'IBM Plex Mono',monospace;
+    font-size:9px; font-weight:500; letter-spacing:.06em; padding:2px 7px; border-radius:20px;
+    white-space:nowrap;
+  }
+
+  /* ---------- ALERT ---------- */
+  .alert{
+    border:1px solid var(--gold); background:var(--gold-dim); border-radius:var(--radius);
+    padding:16px 18px; margin-bottom:28px;
+  }
+  .alert h2{
+    font-family:'Space Grotesk',sans-serif; font-size:14px; margin:0 0 10px; color:var(--gold);
+    display:flex; align-items:center; gap:8px;
+  }
+  .alert ol{margin:0; padding-left:20px; font-size:14px; line-height:1.7; color:var(--text);}
+  .alert li{margin-bottom:6px;}
+  .alert li:last-child{margin-bottom:0;}
+
+  /* ---------- PROGRESS ---------- */
+  .progress-row{display:flex; align-items:center; gap:12px; margin-bottom:28px;}
+  .progress-track{flex:1; height:8px; background:var(--panel); border-radius:20px; border:1px solid var(--line); overflow:hidden;}
+  .progress-fill{height:100%; background:var(--green); border-radius:20px; transition:width .4s ease;}
+  .progress-label{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--text-2); white-space:nowrap;}
+
+  /* ---------- SECTIONS ---------- */
+  .section{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+    margin-bottom:14px; overflow:hidden;
+  }
+  .section-head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:13px 16px; cursor:pointer; user-select:none;
+  }
+  .section-head:hover{background:var(--panel-2);}
+  .section-title{display:flex; align-items:center; gap:10px;}
+  .section-title .icon{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text-3); width:18px;}
+  .section-title span{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;}
+  .section-count{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3);}
+  .chevron{font-family:'IBM Plex Mono',monospace; color:var(--text-3); font-size:12px; transition:transform .2s;}
+  .section.open .chevron{transform:rotate(90deg);}
+  .section-body{max-height:0; overflow:hidden; transition:max-height .25s ease;}
+  .section.open .section-body{max-height:900px;}
+  .item{
+    display:flex; align-items:flex-start; gap:10px; padding:9px 16px 9px 44px;
+    border-top:1px solid var(--line-soft); font-size:13.5px; line-height:1.5;
+  }
+  .item:first-child{border-top:1px solid var(--line);}
+  .item input[type=checkbox]{
+    appearance:none; width:16px; height:16px; margin-top:1px; flex:none;
+    border:1.5px solid var(--slate); border-radius:4px; cursor:pointer; position:relative;
+    background:var(--bg);
+  }
+  .item input[type=checkbox]:checked{background:var(--green); border-color:var(--green);}
+  .item input[type=checkbox]:checked::after{
+    content:''; position:absolute; left:4px; top:1px; width:4px; height:8px;
+    border:solid #08160F; border-width:0 2px 2px 0; transform:rotate(45deg);
+  }
+  .item label{cursor:pointer; color:var(--text);}
+  .item.pending label{color:var(--gold);}
+  .item.checked label{color:var(--text-2); text-decoration:line-through; text-decoration-color:var(--line);}
+  .item .note{display:block; font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-top:2px; text-decoration:none;}
+
+  /* ---------- INCIDENT LOG ---------- */
+  .incident-log{margin-bottom:28px;}
+  .incident-log h2{font-family:'Space Grotesk',sans-serif; font-size:14px; color:var(--text-2); margin:0 0 12px; text-transform:uppercase; letter-spacing:.06em;}
+  .incident{border:1px solid var(--green); background:var(--green-dim); border-radius:var(--radius); padding:14px 18px; margin-bottom:10px;}
+  .incident:last-child{margin-bottom:0;}
+  .incident.warn{border-color:var(--red); background:var(--red-dim);}
+  .incident-title{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px; color:var(--green); margin-bottom:8px;}
+  .incident.warn .incident-title{color:var(--red);}
+  .incident-body{font-size:13.5px; line-height:1.65; color:var(--text);}
+  .incident-body a{color:inherit;}
+  .incident-meta{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-top:10px;}
+
+  /* ---------- NEXT ---------- */
+  .next{margin-top:32px;}
+  .next h2{font-family:'Space Grotesk',sans-serif; font-size:14px; color:var(--text-2); margin:0 0 12px; text-transform:uppercase; letter-spacing:.06em;}
+  .next-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px;}
+  .next-card{border:1px dashed var(--line); border-radius:var(--radius); padding:12px 14px;}
+  .next-card .n{font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text-3);}
+  .next-card .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13px; margin:4px 0 5px;}
+  .next-card .d{font-size:12px; color:var(--text-2); line-height:1.5;}
+
+  .reset{
+    margin-top:24px; background:none; border:1px solid var(--line); color:var(--text-3);
+    font-family:'IBM Plex Mono',monospace; font-size:11px; padding:7px 12px; border-radius:6px; cursor:pointer;
+  }
+  .reset:hover{border-color:var(--slate); color:var(--text-2);}
+
+  @media (max-width:680px){
+    .roadmap{grid-template-columns:repeat(2,1fr);}
+    h1{font-size:24px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Kit fundador — arquitetura de células isoladas</p>
+  <h1>Painel da fundação</h1>
+  <p class="sub"><code>abundanciabr/sitesdoreino</code> · atualizado pelo Claude Code diretamente nestes arquivos, sem git, sem servidor · <b>desde 23/08 o conteúdo mora em <code>painel-dados.js</code></b> (este HTML virou só o renderizador) — quem for editar, edita o <code>.js</code> e confere com <code>node --check</code></p>
+  <p class="sub" style="font-size:12px;">💡 Clicar nas caixas abaixo é só visual nesta janela — quem grava de verdade é a edição do arquivo (a função <code style="font-family:'IBM Plex Mono',monospace">defaultState()</code> lá embaixo no código).</p>
+  <p class="sub" style="color:var(--green); font-weight:700; font-size:14px;">🟢 22/08/2026 — A PLATAFORMA ESTÁ NO AR: 16 serviços na VPS, deploy 100% automático (células e infra), protegido por um portão fail-closed provado sob ataque real. Ver os dois episódios novos no registro abaixo.</p>
+
+  <div class="roadmap" id="roadmap"></div>
+
+  <div class="progress-row">
+    <span class="progress-label">Fase 0</span>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <span class="progress-label" id="progress-label"></span>
+  </div>
+
+  <div class="alert" style="border-color:#d97706; background:rgba(217,119,6,.10);">
+    <div id="precisa-regiao"></div>
+    <p style="margin:10px 0 0; font-size:13px; opacity:.85;">Esta caixa foi <b>podada em 24/08/2026</b> e lista só o que está <b>realmente aberto</b>. O que já foi feito vive no <b>Registro de episódios</b>, mais abaixo.</p>
+  </div>
+
+  <div class="alert" style="border-color:var(--green); background:var(--green-dim);">
+    <div id="confirmados-regiao"></div>
+  </div>
+
+  <div class="alert" style="border-color:#4c8dff; background:rgba(76,141,255,.08);">
+    <div id="padroes-regiao"></div>
+  </div>
+
+  <div id="sections"></div>
+
+  <div id="episodios-regiao"></div>
+  <div class="next">
+    <h2>Depois da fundação</h2>
+    <div class="next-grid">
+      <div class="next-card"><span class="n">FASE B</span><div class="t">Jaula verde vazia</div><div class="d">Prompt 1 — as 8 células nascem vazias, CI passando antes de existir qualquer código de negócio.</div></div>
+      <div class="next-card"><span class="n">FASE D</span><div class="t">Esqueleto que anda</div><div class="d">Prompts 2–7 — uma transação sandbox atravessa catálogo, checkout, pagamentos e alunos de ponta a ponta.</div></div>
+      <div class="next-card"><span class="n">FASE E</span><div class="t">Red-team</div><div class="d">15 golpes deliberados contra as muralhas. Só grada quando todos forem bloqueados com evidência.</div></div>
+      <div class="next-card"><span class="n">✓</span><div class="t">Produção</div><div class="d">Tag <code style="font-family:'IBM Plex Mono',monospace">fundacao-v1.0</code>. Primeiro site real, primeiro quiz real.</div></div>
+      <div class="next-card" style="border-color:#4c8dff;"><span class="n" style="color:#4c8dff">🧭 PLANEJADO 22/08</span><div class="t">Caixa de Sugestões</div><div class="d">Alunos vão sugerir melhorias, votar e acompanhar cada ideia até a entrega — uma célula nova (<code style="font-family:'IBM Plex Mono',monospace">sugestoes</code>, a 9ª) mais o corredor ChangeSpec que transforma sugestão aprovada em código feito por agente. <b>Endereço definido em 23/08:</b> <code style="font-family:'IBM Plex Mono',monospace">meshcraft.top/forms/sugestoes/</code> (o domínio já está no ar, com cadeado próprio). <b>Plano mestre em 5 lotes pronto</b> em <code style="font-family:'IBM Plex Mono',monospace">docs/caixa-de-sugestoes/PLANO-MESTRE.md</code>; acompanhamento leigo em <code style="font-family:'IBM Plex Mono',monospace">ANDAMENTO.md</code> (mesma pasta). Só 3 coisas do plano inteiro precisam de você: a conversa sobre como o aluno entra, o banco novo na VPS (bloco de colar) e a assinatura do 1º ChangeSpec. <b>23/08: a auditoria EVO-00 já foi feita</b> (não depende de CI) — 5 perguntas respondidas com evidência em <code style="font-family:'IBM Plex Mono',monospace">AUDITORIA-AS-IS.md</code>; o achado maior: <b>não existe login de aluno em nenhuma célula</b>, então a reunião EVO-01 com você decide como o aluno se identifica (proposta: link mágico pelo e-mail da matrícula). <b>Situação 23/08:</b> o PR do plano+auditoria (<a href="https://github.com/abundanciabr/sitesdoreino/pull/78" style="color:#4c8dff">#78</a>) foi <b>MERGEADO</b> (commit 2ee582d) assim que o CI ressuscitou — o plano é lei na main. <b>Próximo passo: a conversa EVO-01 com você</b> — sobrou UMA decisão: como o aluno entra na Caixa (proposta: link mágico pelo e-mail da matrícula, sem senha). Nome, endereço e nomes de evento já foram decididos em 23/08. Depois dela, o Lote 1 parte com um pedido de uma frase.</div></div>
+      <div class="next-card" style="border-color:var(--green);"><span class="n" style="color:var(--green)">🌍 NO AR 23/08</span><div class="t">Meshcraft em vários idiomas (i18n)</div><div class="d"><b>Entregue e funcionando:</b> <a href="https://meshcraft.top/pt-br/cadastro" style="color:var(--green)">meshcraft.top/pt-br/cadastro</a> responde 200 — a página que você pediu, no ar, junto com <code style="font-family:'IBM Plex Mono',monospace">/en/</code> e <code style="font-family:'IBM Plex Mono',monospace">/es/</code> (o espanhol nasce escondido do Google, de propósito, até haver demanda). Caminho: consulta a 4 IAs → análise por uma equipe de revisores → sua revisão (que apanhou 3 correções e 1 falha grave) → <b>plano final</b> (PR <a href="https://github.com/abundanciabr/sitesdoreino/pull/85" style="color:var(--green)">#85</a>) → <b>2 lotes</b> entregando fundação, página, receita para agentes e as duas dívidas pagas (PRs #86–#98). O sistema barra sozinho: tradução faltando, texto que mudou e ficou com tradução velha, nome de marca traduzido por engano, e <b>texto jurídico sem revisão humana declarada</b>. <b>Agora (Fase 4):</b> os idiomas estão virando dado do cadastro central de sites — o contrato já mudou pelo rito (PR <a href="https://github.com/abundanciabr/sitesdoreino/pull/104" style="color:var(--green)">#104</a>) e as duas pontas estão sendo feitas. <b>Falta só você:</b> decidir sobre a segunda conferência automática de tradução (precisa de chave de API paga) e, quando quiser tráfego, enviar o mapa do site ao Google. O cadastro com identidade (entrar sem senha) continua esperando a conversa EVO-01.</div></div>
+      <div class="next-card" style="border-color:var(--line-soft);"><span class="n">📎 GUARDADO</span><div class="t">ProdutoSpec / CourseSpec</div><div class="d">Proposta preservada em <code style="font-family:'IBM Plex Mono',monospace">docs/futuro/PRODUTOSPEC.md</code> — adiada de propósito até a Fase D estar concluída.</div></div>
+      <div class="next-card" style="border-color:var(--green);"><span class="n" style="color:var(--green)">📘 PARA AGENTES</span><div class="t">PLAYBOOK.md + RUNBOOK-FASE-D.md</div><div class="d">Os dois na <b>raiz do repositório</b> (versionados — existem dentro de qualquer worktree e sobrevivem a troca de conta, de PC ou de ferramenta de IA). <code style="font-family:'IBM Plex Mono',monospace">PLAYBOOK.md</code> é o mapa: qual documento ler e quando, estado das fases, as 8 células, os ritos e o checklist dos 5 primeiros minutos. <code style="font-family:'IBM Plex Mono',monospace">RUNBOOK-FASE-D.md</code> é o manual do esqueleto: onde mora cada elo, como rodar e depurar, VPS, rollback e pendências. <b>Ao trocar de conta, aponte a IA nova para o PLAYBOOK primeiro.</b> Criados em 21/08/2026.</div></div>
+      <div class="next-card" style="border-color:var(--red);"><span class="n" style="color:var(--red)">⚠️ NÃO EXISTEM</span><div class="t">Dois arquivos prometidos que sumiram</div><div class="d">Este painel citava <code style="font-family:'IBM Plex Mono',monospace">arquivos/PROMPT-HANDOFF-AGENTE.md</code> (handoff de agente, 19/08) e <code style="font-family:'IBM Plex Mono',monospace">arquivos/SETUP-MAQUINA-NOVA.md</code> (receita de PC novo, 20/08) — <b>nenhum dos dois está no disco</b> (auditoria de 21/08/2026). Como <code style="font-family:'IBM Plex Mono',monospace">arquivos/</code> fica fora do Git, não há histórico para recuperar. O papel do handoff foi assumido pelo <code style="font-family:'IBM Plex Mono',monospace">PLAYBOOK.md</code> ao lado, que é versionado. <b>A receita de máquina nova continua perdida</b> — inclusive o alerta de que um PC novo nasce sem o bloqueio de push direto para a main (falta <code style="font-family:'IBM Plex Mono',monospace">core.hooksPath</code>). Se quiser, recrio.</div></div>
+    </div>
+  </div>
+
+  <button class="reset" id="reset-btn">Redefinir para o estado padrão</button>
+</div>
+
+<script src="painel-dados.js" onerror="window.__dadosFalharam='o arquivo painel-dados.js n&atilde;o carregou (sumiu, foi renomeado ou est&aacute; fora da pasta).'"></script>
+<script>
+
+
+// =============================================================================
+// DADOS — a única parte que muda a cada tarefa. Sem servidor, sem git, sem
+// window.storage (essa API só existe dentro do Claude.ai — não funciona aqui).
+// Para atualizar: edite SÓ o objeto abaixo (true/false por id) e salve o
+// arquivo. Recarregar a página no navegador já mostra o novo estado.
+// =============================================================================
+
+function defaultState(){
+  // Ponto único de verdade. Editar aqui é a ÚNICA ação necessária para
+  // atualizar o painel — true = confirmado, false = pendente.
+  return {
+    r1:true, r2:true, r3:true, r4:true,
+    p1:true, p2:true, p3:true, p4:true,
+    s1:true, s2:true, s3:true, s4:true, s5:true, s6:true, s7:true,
+    g1:true, g2:true, g3:true, g4:true, g5:true,
+    c1:true, c2:true, c3:true, c4:true, c5:true,
+    cat1:true, cat2:true, cat3:true, cat4:true, cat5:true,
+    fun1:true, fun2:true, fun3:true,
+    qz1:true, qz2:true, qz3:true, qz4:true, qz5:true,
+    ld1:true, ld2:true, ld3:true, ld4:true, ld5:true, ld6:true,
+    msg1:true, msg2:true, msg3:true, msg4:true, msg5:true, msg6:true,
+    al1:true, al2:true, al3:true, al4:true, al5:true, al6:true, al7:true,
+    chk1:true, chk2:true, chk3:true, chk4:true, chk5:true, chk6:true,
+    pag1:true, pag2:true, pag3:true, pag4:true, pag5:true, pag6:true, pag7:true, pag8:true,
+    cd1:true, cd2:true, cd3:true, cd4:true, cd5:true, cd6:true, cd7:true,
+    pd1:true, pd2:true, pd3:true, pd4:true, pd5:true, pd6:true, pd7:true, pd8:true, pd9:true, pd10:true,
+    pd11:true, pd12:true, pd13:true, pd14:true, pd15:true, pd16:true, pd17:true, pd18:true,
+    ck1:true, ck2:true, ck3:true, ck4:true, ck5:true, ck6:true, ck7:true, ck8:true, ck9:true, ck10:true, ck11:true,
+    ck12:true, ck13:true, ck14:true, ck15:true, ck16:true, ck17:true, ck18:true,
+    qzd1:true, qzd2:true, qzd3:true, qzd4:true, qzd5:true, qzd6:true, qzd7:true, qzd8:true, qzd9:true,
+    ald1:true, ald2:true, ald3:true, ald4:true, ald5:true, ald6:true, ald7:true,
+    ald8:true, ald9:true, ald10:true,
+    msd1:true, msd2:true, msd3:true, msd4:true, msd5:true, msd6:true,
+    ldd1:true, ldd2:true, ldd3:true, ldd4:true, ldd5:true, ldd6:true, ldd7:true,
+    fnd1:true, fnd2:true, fnd3:true, fnd4:true, fnd5:true, fnd6:true, fnd7:true, fnd8:true,
+  };
+}
+
+let state = defaultState();
+let openSections = null; // inicializado uma vez, depois preservado entre re-renders
+
+function counts(){
+  // Só os grupos da Fase 0 (fundação) — grupos de fase seguinte (ex.: 'catalogo',
+  // Fase B) têm o próprio contador na seção deles, não entram nesta % da Fase 0.
+  let done=0, total=0;
+  const FASE_0 = new Set(['repo','personal','servidor','github','commit']);
+  GROUPS.filter(g => FASE_0.has(g.id)).forEach(g => g.items.forEach(it => { total++; if(state[it.id]) done++; }));
+  return {done, total};
+}
+
+function renderRoadmap(){
+  const {done, total} = counts();
+  const pct = Math.round((done/total)*100);
+  const floors = [
+    {tag:'Fase 0', name:'Fundação', status:'done', pct: (pct===100 ? '✓ 100%' : pct+'%')},
+    {tag:'Fase B', name:'Jaula verde vazia', status:'done', pct:'✓ 8/8 células'},
+    // Fechada em 21/08: 11/11 despachos mergeados + e2e/esqueleto.sh 8/8 elos verdes contra sandbox real do MP (PR #31 + PR #32).
+    {tag:'Fase D', name:'Esqueleto anda', status:'done', pct:'8/8 elos ✓ local · 2 de 4 critérios'},
+    // "now" está aqui desde que a Fase D fechou 100% (PR #31 e2e + PR #32 fecharam o último elo).
+    {tag:'Fase E', name:'Red-team', status:'now', pct:'6 rodados · 5 ☑ na tabela'},
+    {tag:'✓', name:'Produção', status:'future', pct:'fundacao-v1.0'},
+  ];
+  const el = document.getElementById('roadmap');
+  el.innerHTML = floors.map(f => `
+    <div class="floor ${f.status}">
+      ${f.status==='now' ? '<div class="here">você está aqui</div>' : ''}
+      <div class="tag">${f.tag}</div>
+      <div>
+        <div class="name">${f.name}</div>
+        <div class="pct">${f.pct}</div>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('progress-fill').style.width = pct+'%';
+  document.getElementById('progress-label').textContent = `${done}/${total} confirmados`;
+}
+
+function renderSections(){
+  if(openSections === null){
+    // primeira renderização: abre só as seções que ainda têm pendência
+    openSections = {};
+    GROUPS.forEach(g => {
+      const gDone = g.items.filter(it => state[it.id]).length;
+      openSections[g.id] = gDone < g.items.length;
+    });
+  }
+  const el = document.getElementById('sections');
+  el.innerHTML = GROUPS.map(g => {
+    const gDone = g.items.filter(it => state[it.id]).length;
+    return `
+    <div class="section ${openSections[g.id] ? 'open' : ''}" data-group="${g.id}">
+      <div class="section-head" onclick="toggleSection('${g.id}')">
+        <div class="section-title">
+          <span class="icon">${g.icon}</span>
+          <span>${g.title}</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span class="section-count">${gDone}/${g.items.length}</span>
+          <span class="chevron">▸</span>
+        </div>
+      </div>
+      <div class="section-body">
+        ${g.items.map(it => `
+          <div class="item ${state[it.id] ? 'checked' : 'pending'}">
+            <input type="checkbox" id="chk-${it.id}" ${state[it.id] ? 'checked' : ''} onchange="toggleItem('${it.id}')">
+            <label for="chk-${it.id}">${it.label}${it.note ? `<span class="note">${it.note}</span>` : ''}</label>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  }).join('');
+}
+
+function render(){
+  renderRoadmap();
+  renderSections();
+}
+
+function toggleSection(id){
+  openSections[id] = !openSections[id];
+  render();
+}
+
+function toggleItem(id){
+  // Só muda a tela nesta visualização — não é salvo em lugar nenhum. Quem
+  // persiste de verdade é a edição direta do objeto defaultState() no
+  // arquivo, feita pelo Claude Code depois de cada tarefa.
+  state[id] = !state[id];
+  render();
+}
+
+document.getElementById('reset-btn').addEventListener('click', () => {
+  state = defaultState();
+  openSections = null;
+  render();
+});
+
+// ---- conteudo vindo de painel-dados.js (card C2 do PLANO-10X) ----
+function pintar(id, cabecalho, itens){
+  const caixa = document.getElementById(id);
+  if(!caixa){ console.error('painel: container ausente:', id); return; }
+  caixa.innerHTML = cabecalho + itens.join('');
+}
+
+// =============================================================================
+// GUARDA DE LEITURA — acrescentada em 25/08/2026 (achado da consultoria Opus,
+// rodada 2, conferido nesta máquina). MOTIVO, para quem for mexer:
+// sem isto, se painel-dados.js sumir, for renomeado ou tiver uma vírgula
+// sobrando, o JS inteiro morre na primeira linha e o painel abre com a faixa
+// verde "A PLATAFORMA ESTÁ NO AR" (que é HTML fixo) e a caixa "precisa de você"
+// VAZIA. E caixa vazia se lê como "nada esperando você" — o painel falharia
+// para o lado de "está tudo bem", que é o pior lado possível.
+// Regra: é melhor o painel GRITAR que não pode ser lido do que sussurrar uma
+// meia-verdade tranquilizadora.
+// =============================================================================
+function falhaAlta(motivo){
+  document.body.innerHTML =
+    '<div style="max-width:760px;margin:40px auto;background:#7f1d1d;color:#fff;'
+    + 'padding:28px 30px;border-radius:12px;font:16px/1.65 system-ui,sans-serif">'
+    + '<b style="font-size:21px">⚠️ Este painel não pode ser lido.</b><br><br>'
+    + motivo
+    + '<br><br><b>NÃO acredite em nada desta tela</b> — inclusive em qualquer '
+    + 'coisa que pareça estar verde ou concluída.<br><br>'
+    + '<span style="opacity:.85;font-size:14.5px">O que fazer: abra uma sessão do '
+    + 'Claude Code e cole <code style="background:#00000040;padding:2px 6px;border-radius:4px">'
+    + 'o painel da fundação está quebrado, conserte</code> — o conserto costuma ser '
+    + 'uma vírgula em <code style="background:#00000040;padding:2px 6px;border-radius:4px">'
+    + 'arquivos/painel-dados.js</code>.</span></div>';
+}
+try{
+  if(window.__dadosFalharam) throw new Error(window.__dadosFalharam);
+  if(typeof GROUPS === 'undefined' || typeof DADOS === 'undefined')
+    throw new Error('Os dados não chegaram até o painel: o arquivo <b>painel-dados.js</b> '
+      + 'existe mas não pôde ser lido (provavelmente um erro de digitação nele).');
+  render();
+  pintar('precisa-regiao', DADOS.precisaCabecalho, DADOS.precisaDeVoce);
+  pintar('confirmados-regiao', DADOS.confirmadosCabecalho, DADOS.confirmados);
+  pintar('padroes-regiao', DADOS.padroesCabecalho, DADOS.padroes);
+  pintar('episodios-regiao', DADOS.episodiosCabecalho, DADOS.episodios);
+}catch(e){
+  falhaAlta(e.message);
+}
+</script>
+</body>
+</html>

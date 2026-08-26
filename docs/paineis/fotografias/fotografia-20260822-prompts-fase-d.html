@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prompts — Fase D, o esqueleto que anda — sitesdoreino</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A; --grid: rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft: rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --red:#E2705A; --red-dim:#3E2620;
+    --slate:#5B7A8C;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap{max-width:900px; margin:0 auto; padding:32px 20px 64px;}
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; letter-spacing:.12em;
+    color:var(--text-3); text-transform:uppercase; margin:0 0 6px;
+  }
+  h1{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:28px;
+    margin:0 0 4px; letter-spacing:-.01em;
+  }
+  .sub{color:var(--text-2); font-size:14px; margin:0 0 8px; line-height:1.6;}
+  .sub code{font-family:'IBM Plex Mono',monospace; color:var(--gold); background:none;}
+
+  .howto{
+    border:1px solid var(--line); background:var(--panel); border-radius:var(--radius);
+    padding:14px 18px; margin:20px 0 28px; font-size:13.5px; line-height:1.75; color:var(--text-2);
+  }
+  .howto b{color:var(--text);}
+  .howto ol{margin:6px 0 0; padding-left:20px;}
+  .howto code{font-family:'IBM Plex Mono',monospace; color:var(--gold); font-size:12.5px;}
+  .cycle{
+    display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin:12px 0 4px;
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3);
+  }
+  .cycle .node{border:1px solid var(--line-soft); border-radius:20px; padding:3px 10px;}
+  .cycle .arrow{color:var(--text-3);}
+
+  .queue{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:28px;}
+  .queue .step{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-3);
+    border:1px dashed var(--line); border-radius:20px; padding:4px 12px;
+  }
+  .queue .step.now{border-style:solid; border-color:var(--gold); color:var(--gold);}
+  .queue .step.done{border-style:solid; border-color:var(--green); color:var(--green);}
+  .queue .step b{color:var(--gold); font-weight:500;}
+  .queue .step.done b{color:var(--green);}
+  .queue .arrow{color:var(--text-3); align-self:center; font-size:12px;}
+
+  .card{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+    margin-bottom:16px; overflow:hidden;
+  }
+  .card.done{border-color:var(--green); opacity:.72;}
+  .card-head{
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+    padding:14px 18px; background:var(--panel-2); border-bottom:1px solid var(--line);
+  }
+  .card.done .card-head{background:var(--green-dim);}
+  .card-title{display:flex; align-items:center; gap:10px;}
+  .card-num{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--bg);
+    background:var(--gold); border-radius:50%; width:22px; height:22px;
+    display:flex; align-items:center; justify-content:center; flex:none; font-weight:700;
+  }
+  .card.done .card-num{background:var(--green);}
+  .card-title h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; margin:0;}
+  .card-title .tag{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-left:4px;}
+  .card-title .human{color:var(--red);}
+  .done-badge{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--green);
+    background:var(--green-dim); border:1px solid var(--green); border-radius:6px;
+    padding:6px 12px; white-space:nowrap;
+  }
+  .copy-btn{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-2);
+    background:var(--bg); border:1px solid var(--line); border-radius:6px;
+    padding:6px 12px; cursor:pointer; white-space:nowrap; transition:.15s;
+  }
+  .copy-btn:hover{border-color:var(--gold); color:var(--gold);}
+  .copy-btn.done{border-color:var(--green); color:var(--green);}
+  pre{
+    margin:0; padding:16px 18px; font-family:'IBM Plex Mono',monospace; font-size:12.5px;
+    line-height:1.65; color:var(--text); white-space:pre-wrap; word-break:break-word;
+    max-height:340px; overflow-y:auto;
+  }
+
+  .footer-note{
+    font-size:12.5px; color:var(--text-3); margin-top:24px; line-height:1.7;
+    border-top:1px solid var(--line-soft); padding-top:16px;
+  }
+  .footer-note code{font-family:'IBM Plex Mono',monospace; color:var(--text-2);}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">Fase D — o esqueleto que anda · Prompts 2 a 7, preenchidos · arquivo histórico</p>
+  <h1>Prompts da Fase D (11 despachos)</h1>
+  <p class="sub"><code>abundanciabr/sitesdoreino</code> · fonte: <code>PROMPTS-INICIAIS.md</code> (ETAPA D) — cada célula já tem o esqueleto (Fase B, 8/8); agora entra a regra de negócio real, uma transação sandbox de ponta a ponta.</p>
+
+  <div class="queue">
+    <span class="step done">✓ 1. catalogo (P2)</span><span class="arrow">→</span>
+    <span class="step done">✓ 2. pagamentos: intents (P3a)</span><span class="arrow">→</span>
+    <span class="step done">✓ 3. pagamentos: webhooks (P3b)</span><span class="arrow">→</span>
+    <span class="step done">✓ 4. checkout: API/pedido (P4)</span><span class="arrow">→</span>
+    <span class="step done">✓ 5. checkout: páginas — <b>PR #24 mergeado</b> (P4, metade 2)</span><span class="arrow">→</span>
+    <span class="step done">✓ 6. alunos — <b>PR #26+#27 mergeados</b> (P5)</span><span class="arrow">→</span>
+    <span class="step done">✓ 7. leads — <b>PR #29 mergeado</b> (P6)</span><span class="arrow">→</span>
+    <span class="step done">✓ 8. mensageria — <b>PR #25 mergeado</b> (P6)</span><span class="arrow">→</span>
+    <span class="step done">✓ 9. quiz — <b>PR #28 mergeado</b> (P6)</span><span class="arrow">→</span>
+    <span class="step done">✓ 10. funil — <b>PR #30 mergeado</b> (P6)</span><span class="arrow">→</span>
+    <span class="step done">✓ 11. e2e — <b>PR #31 mergeado, esqueleto confirmado verde</b> (P7)</span>
+  </div>
+
+  <div class="howto" style="border-color:var(--green); background:var(--green-dim);">
+    <b>✓ FASE D FECHADA — 11 de 11 despachos em <code>main</code>.</b> Vários despachos
+    (checkout: páginas, alunos, mensageria, quiz, leads, funil) rodaram em paralelo, em
+    worktrees separados, fora da ordem serial prevista — mas todos foram revisados e mergeados
+    sem conflito real. O último elo, <b>e2e (Prompt 7, integração final, PR #31)</b>, foi
+    rodado de ponta a ponta com <code>bash e2e/esqueleto.sh</code> contra um sandbox real do
+    Mercado Pago: seed → sessão → pedido → cobrança → webhook assinado → outbox → relay
+    (Redis Streams) → matrícula — os 8 elos imprimiram ✅, exit 0. Um gap encontrado no caminho
+    (<code>GET /alunos/{email}/matriculas</code> ainda 501) foi fechado em despacho à parte,
+    <a href="https://github.com/abundanciabr/sitesdoreino/pull/32">PR #32</a> — fora da lista
+    original de 11, mas necessário para o esqueleto andar de verdade.
+    <br><b>A Fase E já começou: 5 golpes rodados, 4 marcados na tabela</b> — golpes 1, 2, 3 e 4
+    bloqueados com evidência e ☑ (PRs #33, #36, #34, #37, todos fechados sem merge, 21/08/2026); o
+    golpe 5 também rodou e bloqueou, mas sua linha em <code>02-RED-TEAM.md</code> segue ☐ e a
+    branch <code>redteam/golpe5-pix-importa-card</code> nunca foi mergeada. Prompts e placar
+    detalhado em <code>arquivos/painel-prompts-fase-e.html</code>; a tabela de
+    <code>02-RED-TEAM.md</code> é a fonte de verdade do certificado.
+  </div>
+
+  <div class="howto" style="border-color:var(--gold); background:var(--gold-dim);">
+    <b>⚠️ O que a Fase D deixou EM ABERTO — leia antes de tratá-la como 100% fechada.</b>
+    Os 11 despachos foram mergeados e o esqueleto anda localmente, mas
+    <code>ESQUELETO-QUE-ANDA.md</code> pede <b>quatro</b> critérios de aceite, e só o
+    primeiro tem evidência:
+    <ol>
+      <li>✅ <code>make esqueleto</code> verde localmente (webhook simulado assinado) — feito, 8/8 elos, 21/08/2026.</li>
+      <li>☐ <b>Esqueleto verde NA VPS</b> com cartão sandbox APRO e webhook REAL do MP — nunca rodado.</li>
+      <li>☐ <b>Drill de rollback cronometrado</b> (&lt; 5 min do "decidi" ao "voltou") — nunca rodado. É também o golpe 14 da Fase E.</li>
+      <li>☐ Evidência crua dos dois runs acima anexada ao PR de fechamento da etapa.</li>
+    </ol>
+    Além disso, pendências técnicas herdadas continuam abertas (relay do outbox sem
+    periodic task de segurança; <code>pagamentos</code> não valida o status HTTP da resposta
+    da MP ao criar intent Pix; <code>seed_esqueleto</code> com env em vez de
+    <code>--host</code> obrigatório). Todas listadas com o motivo em
+    <code>RUNBOOK-FASE-D.md</code> §7 e <code>ARMADILHAS.md</code> §9 — nenhuma é bug de
+    sessão, todas são decisões registradas.
+  </div>
+
+  <div class="howto">
+    <b>📘 Documentação permanente para agentes de IA (criada em 21/08/2026).</b> Este painel
+    é para você (humano) e vive fora do Git. Os dois documentos abaixo são versionados — existem
+    dentro de qualquer worktree e sobrevivem a troca de conta, de máquina ou de ferramenta de IA:
+    <ul>
+      <li><code>PLAYBOOK.md</code> (raiz) — o mapa geral: qual documento ler e quando, estado
+        das fases, as 8 células, ritos, leis, invariantes, receitas, os dois <code>make ci</code>
+        diferentes, e o checklist dos primeiros 5 minutos de qualquer sessão.</li>
+      <li><code>RUNBOOK-FASE-D.md</code> (raiz) — o manual operacional do esqueleto: onde mora
+        cada um dos 8 elos, como rodar e depurar elo a elo, a credencial de sandbox, VPS,
+        rollback, pendências herdadas e um índice sintoma→documento de troubleshooting.</li>
+    </ul>
+    Quando trocar de conta ou de agente, aponte a sessão nova para o <code>PLAYBOOK.md</code>
+    primeiro — ele existe justamente para que ninguém precise reconstruir o contexto lendo a
+    conversa inteira ou o histórico do Git.
+  </div>
+
+  <div class="howto">
+    <b>Como usar — um despacho por vez, nesta ordem.</b> A Etapa D é serial de propósito
+    ("integração é o fato do fim da Etapa D, não uma aposta" — frase de
+    PROMPTS-INICIAIS.md §Como operar; uma versão antiga desta página a atribuía
+    erradamente ao RITOS §1, onde a palavra "serial" não existe) — não pule a fila
+    mesmo que pareça independente.
+    <br><b style="color:#5FB98A">Nota de 22/08/2026 — este painel é histórico (a Fase D fechou):</b>
+    a regra serial foi APOSENTADA (PR #59) e o merge passou ao agente (PR #58). O padrão
+    atual é o LOTE paralelo — ver PROMPTS-INICIAIS.md §Como operar e
+    docs/decisoes/DECISAO-merge-pelo-agente.md. O ciclo desenhado abaixo ("eu te passo o
+    link de merge → você mergeia") descreve como ERA.
+    <div class="cycle">
+      <span class="node">copiar prompt</span><span class="arrow">→</span>
+      <span class="node">colar no agente</span><span class="arrow">→</span>
+      <span class="node">PR aberto</span><span class="arrow">→</span>
+      <span class="node">eu te passo o link de merge</span><span class="arrow">→</span>
+      <span class="node">você mergeia</span><span class="arrow">→</span>
+      <span class="node">você confirma ("Pull request successfully merged and closed")</span><span class="arrow">→</span>
+      <span class="node">eu confiro + atualizo os painéis</span><span class="arrow">→</span>
+      <span class="node">próximo card</span>
+    </div>
+    <ol>
+      <li>Clique <b>copiar</b> no card do despacho da vez e cole como prompt para o agente, no worktree que o próprio despacho nomeia.</li>
+      <li>Quando o agente terminar com PR aberto e <code>make ci</code> verde, eu aviso aqui com o link no formato
+        <code>https://github.com/abundanciabr/sitesdoreino/pull/??</code> — sem você precisar pedir.</li>
+      <li><b>Cartões marcados <span style="color:var(--red)">merge: humano</span></b> (pagamentos, checkout) tocam CODEOWNERS —
+        o clique é sempre seu, nunca meu, mesma regra que valeu na Fase B.</li>
+      <li>Assim que você mandar qualquer confirmação de merge — "Pull request successfully merged and closed", "feito",
+        um ✓, ou só o link — eu confiro de verdade com <code>gh pr view</code>, atualizo este painel (avança a fila) e o
+        <code>arquivos/painel-fundacao.html</code> (marca a evidência) na mesma resposta, sem perguntar se devo.</li>
+      <li>Só então libero o próximo card. Depois do 11º (e2e), a Etapa D fecha e abre a Etapa E (red-team, <code>02-RED-TEAM.md</code>).</li>
+      <li>Cada card já vem com o bloco <b>"LIÇÕES DOS DESPACHOS ANTERIORES"</b> colado no topo do prompt — se o handoff do agente citar algo novo que economizaria tempo do próximo (um bug, um gate que pegou de surpresa, uma peculiaridade do ambiente), me avise: eu acrescento nesse bloco (que vale para todos os cards ainda pendentes) e no <code>arquivos/painel-fundacao.html</code>, na mesma resposta.</li>
+    </ol>
+  </div>
+
+  <div id="cards"></div>
+
+  <p class="footer-note">
+    Os prompts 3a/3b/4/5/6/7 preservam o texto de negócio de <code>PROMPTS-INICIAIS.md</code>
+    palavra por palavra — nenhuma variável de missão/escopo/DoD foi inventada. A única adição
+    é o bloco <b>"LIÇÕES DOS DESPACHOS ANTERIORES"</b>, colado no topo de cada prompt ainda
+    pendente: achados operacionais (não de negócio) do Prompt 2, acumulados a cada despacho —
+    veja <code>LICOES_ACUMULADAS</code> no código deste arquivo. Guardas vermelho→verde
+    (INV-P1 a INV-P11) são o critério de pronto de cada um; a saída "vermelho" antes da
+    implementação faz parte da evidência pedida no próprio despacho (Lei 6). Depois que cada PR
+    mergear, este arquivo é atualizado diretamente (sem git — <code>arquivos/</code> está no
+    <code>.gitignore</code>).
+  </p>
+</div>
+
+<script>
+const HUMAN_MERGE = new Set(['pagamentos: intents','pagamentos: webhooks','checkout']);
+
+// Bloco cumulativo: cresce a cada despacho concluído com o que economizaria
+// tempo do próximo agente. Colado dentro de cada prompt ainda pendente — assim
+// quem recebe o texto (não o painel) já chega sabendo. Ao fechar um PR, se você
+// achar algo novo que valha a pena, acrescente aqui (não crie um bloco novo).
+const LICOES_ACUMULADAS = `ANTES DE COMEÇAR — leitura obrigatória (é o que evita
+refazer o que já foi resolvido, e gastar tokens nisso):
+1. ARMADILHAS.md, na raiz do repositório. Memória de campo do projeto: o que já
+   custou tempo aqui, em sintoma -> causa -> solução. Comece pela §1 (PRECISA DE
+   VOCÊ) e §2 (partida rápida), e dê Ctrl+F pela tecnologia que for tocar.
+2. services/<sua-célula>/LICOES.md, se existir — o mesmo, específico da célula.
+Os dois estão versionados, então existem dentro do seu worktree. Este painel NÃO
+existe lá (arquivos/ está no .gitignore) — por isso a lição mora no git, não aqui.
+
+AO TERMINAR: acrescente o que aprendeu, no mesmo formato. Transversal vai em
+ARMADILHAS.md; específico da célula vai no LICOES.md dela. Se a correção
+definitiva não estiver nas suas mãos (instalar algo na máquina, plano pago,
+permissão), registre na tabela §1 do ARMADILHAS.md E diga isso no seu relatório
+final — contornar em silêncio faz o mesmo atrito voltar no próximo despacho.
+
+`;
+
+const PROMPTS = [
+  {
+    celula: 'catalogo', tag: 'Prompt 2 · INV-P11',
+    done: true, doneNote: '✓ PR #15 mergeado (64e5535)',
+    text: `# DESPACHO — catalogo: produto e oferta reais
+CÉLULA: catalogo · WORKTREE: wt-catalogo-seed · RECEITAS: R1, R7, R9, R11
+
+ANTES: leia AGENTS.catalogo, INVARIANTES.md (INV-P11) e CAMINHO-DOURADO
+(R1,R7,R9,R11). Declaração de abertura (RITOS.md §1) antes de tocar qualquer
+arquivo.
+
+MISSÃO: modelos Site/Product/Offer/Bump (R7, expand-only; Offer com site_id,
+slug único POR site) + comando criar_site (R11) + comando de seed idempotente
+que cria um Site e uma oferta "curso-esqueleto" (990 cents) NESSE site +
+handlers REAIS de GET /sites/by-host/{host}, GET /sites/{site_id}/ofertas/{slug}
+e GET /produtos/{id} servindo do banco.
+
+IMPORTANTE — o domínio do site de seed NUNCA é fixo no código nem nos testes:
+- O comando de seed recebe o host como argumento obrigatório de linha de
+  comando (ex.: manage.py seed_esqueleto --host=exemplo.com), nunca um valor
+  hardcoded. Eu (humano) informo o domínio real quando rodar de verdade contra
+  o servidor — isso NÃO acontece nesta sessão.
+- Testes automatizados (make ci) usam hosts de mentira, inventados só para o
+  teste (ex.: "teste-a.exemplo.com", "teste-b.exemplo.com") — nunca meu
+  domínio de operações real, que não existe em lugar nenhum acessível ao CI.
+
+ALVOS: services/catalogo/apps/sites/**, .../apps/produtos/**, .../apps/ofertas/**,
+  .../apps/core/management/commands/seed_esqueleto.py, services/catalogo/tests/**
+SOMENTE-LEITURA: contracts/catalogo.openapi.yaml, CAMINHO-DOURADO.md,
+  INVARIANTES.md
+FORA DE ESCOPO: qualquer outra célula (nem leia); admin; versionamento de
+  oferta além do mínimo do contrato; e, importante — NÃO toque em
+  arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+
+INVARIANTES: preço amount_cents inteiro; oferta publicada não editada
+destrutivamente; INV-P11 — fronteira de site, com teste-guarda
+services/catalogo/tests/test_inv_p11_fronteira_site.py (vermelho→verde
+obrigatório, usando os hosts de mentira citados acima).
+
+DoD:
+- Migrations aplicam, estilo expand (nada de campo obrigatório sem default
+  numa tabela que ainda não existia antes desta sessão — tudo bem aqui, é
+  tabela nova; expand-only importa a partir da PRÓXIMA mudança nelas).
+- Seed idempotente: rodar o comando 2× com o MESMO --host não duplica nada —
+  coberto por teste real, não só afirmado.
+- GET /sites/by-host/{host} resolve um host cadastrado E devolve 404 para
+  host desconhecido (INV-P11, os dois casos testados).
+- GET /sites/{site_id}/ofertas/curso-esqueleto → 990 cents.
+- make contrato-check VERDE.
+- make ci VERDE — cole a saída completa, sem resumir.
+
+ORÇAMENTO: ≤ 15 arquivos. Se passar bastante disso, pare e avise antes de
+continuar.
+
+EVIDÊNCIA: saída completa de make ci + saída do seed rodado 2× (com um host
+de teste, ex. --host=teste.exemplo.com) mostrando que a segunda vez não criou
+nada novo. Handoff completo ao final (RITOS.md §1): branch, arquivos,
+resultado do make ci, pendências, pronto para PR ou não.`
+  },
+  {
+    celula: 'pagamentos: intents', tag: 'Prompt 3a · INV-P4 · merge: humano',
+    done: true, doneNote: '✓ PR #16 mergeado (13b43a7)',
+    text: `# DESPACHO — pagamentos: intents
+CÉLULA: pagamentos · WORKTREE: wt-pagamentos-intents · RECEITAS: R1, R5, R8
+ANTES: leia AGENTS.pagamentos + INVARIANTES (P4,P8,P9) + CAMINHO-DOURADO (R1,R5,R8). Declaração.
+
+${LICOES_ACUMULADAS}MISSÃO: core.gateway + providers/mercadopago (fala com o MP só com TEST-) + POST /intents
+(idempotente por X-Idempotency-Key; o payload traz site_id OPACO — armazenar e ecoar,
+nunca interpretar) + GET /intents/{id}. Pix gera QR/expiração; card cria a
+intent pendente aguardando confirmação (POST /intents/{id}/card com card_token do Brick).
+
+ALVOS: services/pagamentos/pagamentos/core/**, .../providers/mercadopago/**,
+  .../methods/pix/** (criação), .../methods/card/** (criação/confirmação), .../api/** (intents),
+  services/pagamentos/tests/**
+SOMENTE-LEITURA: contracts/pagamentos.openapi.yaml
+FORA DE ESCOPO: webhooks, outbox e eventos (vêm no 3b); credencial APP_USR-; matrícula; e,
+  importante — NÃO toque em arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+INVARIANTES TOCADOS: INV-P4 (guarda vermelho→verde). INV-P9 já é vigiado por import-linter.
+
+DoD: methods/pix e methods/card independentes (lint-imports verde); mypy --strict verde;
+test_inv_p4_intent_idempotente VERDE com evidência vermelho→verde; TODA escrita ao MP leva
+X-Idempotency-Key própria; amount_cents inteiro; contrato-check VERDE; make ci + cross-smoke
+VERDE — cole a saída completa, sem resumir.
+ORÇAMENTO: ≤ 15 arquivos. Se passar bastante disso, pare e avise antes de continuar.
+EVIDÊNCIA: saída completa de make ci + cross-smoke + P4 vermelho→verde. Handoff completo ao
+final (RITOS.md §1): branch, arquivos, resultado do make ci, pendências, pronto para PR ou não.`
+  },
+  {
+    celula: 'pagamentos: webhooks', tag: 'Prompt 3b · INV-P3/P6/P10 · merge: humano',
+    done: true, doneNote: '✓ PR #19 mergeado (3319191)',
+    text: `# DESPACHO — pagamentos: webhooks, outbox e eventos
+CÉLULA: pagamentos · WORKTREE: wt-pagamentos-webhooks · RECEITAS: R3, R5, R8
+ANTES: leia AGENTS.pagamentos + INVARIANTES (P3,P6,P10) + CAMINHO-DOURADO (R3,R5,R8). Declaração.
+
+${LICOES_ACUMULADAS}MISSÃO: handlers de /webhooks/mp/pix e /webhooks/mp/card na sequência: valida x-signature →
+dedup por mp_payment_id → transição de estado → emitir na outbox NA MESMA transação → relay
+para o Redis Streams. Endpoint DEBUG /debug/simulate-webhook (SÓ com DEBUG=1) que constrói e
+entrega a si mesmo um webhook assinado (ver ESQUELETO-QUE-ANDA.md). Emitir pagamento.aprovado,
+pagamento.recusado e pix.expirado conforme os schemas congelados (ecoando o
+site_id da intent).
+
+ALVOS: services/pagamentos/pagamentos/methods/pix/webhook*, .../methods/card/webhook*,
+  .../apps/eventos/** (outbox + emitir + relay — R3), .../api/webhooks*, services/pagamentos/tests/**
+SOMENTE-LEITURA: contracts/pagamentos.openapi.yaml, contracts/eventos/*.v1.json
+FORA DE ESCOPO: consumo dos eventos (é de alunos/leads/mensageria); credencial APP_USR-; e,
+  importante — NÃO toque em arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+INVARIANTES TOCADOS: INV-P3, INV-P6, INV-P10 (os três com guarda vermelho→verde).
+
+DoD: webhook sem assinatura válida ⇒ 403 + banco intacto + outbox vazia (P10); mesmo webhook
+3× ⇒ 1 transição + 1 linha de outbox (P3); aprovação grava outbox na MESMA transação e o relay
+publica no stream (P6); com DEBUG=0 o endpoint de simulação NÃO existe (404); contrato-check VERDE;
+make ci + cross-smoke VERDE — cole a saída completa, sem resumir.
+ORÇAMENTO: ≤ 15 arquivos. Se passar bastante disso, pare e avise antes de continuar.
+EVIDÊNCIA: P3/P6/P10 vermelho→verde + saída completa do simulate-webhook local. Handoff
+completo ao final (RITOS.md §1): branch, arquivos, resultado do make ci, pendências, pronto
+para PR ou não.`
+  },
+  {
+    celula: 'checkout: API/pedido', tag: 'Prompt 4 · metade 1 · INV-P1/P2/P11 · merge: humano',
+    done: true, doneNote: '✓ PR #17 mergeado (e4d7438)',
+    text: `# DESPACHO — checkout: sessão, snapshot e pedido
+CÉLULA: checkout · WORKTREE: wt-checkout-pedido · RECEITAS: CONV-SITE, R1, R2, R3, R4, R5, R6
+ANTES: leia AGENTS.checkout + INVARIANTES (P1,P2,P7) + CAMINHO-DOURADO (R1,R2,R3,R4,R5,R6). Declaração.
+
+${LICOES_ACUMULADAS}MISSÃO: middleware CONV-SITE (site do Host; desconhecido = 404); POST /sessoes
+(lê a oferta DO SITE no catalogo via R2); POST /sessoes/{id}/pedido (RECALCULA
+dinheiro do catálogo — INV-P2 —, CONGELA o snapshot — INV-P1 —, cria a intent em pagamentos via
+R2 e emite pedido.criado via R3); GET /pedidos/{id}. Páginas dados/pix/cartao como ilhas Alpine
+(R6) com status derivado do servidor (INV-P7). Consumer de pagamento.aprovado/recusado/pix.expirado
+(R4) atualiza o status do pedido.
+
+ALVOS: services/checkout/apps/**, services/checkout/templates/checkout/**,
+  services/checkout/static/checkout/**, services/checkout/tests/**
+SOMENTE-LEITURA: contracts/checkout.openapi.yaml, contracts/catalogo.openapi.yaml,
+  contracts/pagamentos.openapi.yaml, contracts/eventos/**, CAMINHO-DOURADO.md
+FORA DE ESCOPO: catalogo, pagamentos, alunos; order bump além de somar itens do catálogo;
+  design final das páginas (esqueleto funcional basta); e, importante — NÃO toque em
+  arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+INVARIANTES TOCADOS: INV-P1, INV-P2, INV-P7, INV-P11 (guardas vermelho→verde).
+DEV: consuma catalogo e pagamentos via mock prism (make mocks), nunca subindo as células.
+
+DoD: payload adulterado com total/price falsos ⇒ snapshot com valores do catálogo (P2);
+snapshot imutável por todos os caminhos públicos (P1); pix.js/cartao.js SEM transição local
+para "pago" (status por GET /pedidos/{id} — P7); a página do Pix não carrega o SDK do MP;
+contrato-check VERDE; make ci VERDE — cole a saída completa, sem resumir.
+ORÇAMENTO: ≤ 15 arquivos. Se páginas + API ultrapassarem, DIVIDA em dois PRs (API/pedido primeiro,
+depois páginas) — nunca use label para inchar o escopo.
+EVIDÊNCIA: P1/P2/P7 vermelho→verde. Handoff completo ao final (RITOS.md §1): branch, arquivos,
+resultado do make ci, pendências, pronto para PR ou não.`
+  },
+  {
+    celula: 'checkout: páginas', tag: 'Prompt 4 · metade 2 · INV-P7 · merge: humano',
+    done: true, doneNote: '✓ PR #24 mergeado (065d576)',
+    text: `# DESPACHO — checkout: páginas dados/pix/cartão
+CÉLULA: checkout · WORKTREE: wt-checkout-paginas · RECEITAS: R4, R6
+ANTES: leia AGENTS.checkout + INVARIANTES (P7) + CAMINHO-DOURADO (R4,R6). Declaração.
+
+JÁ ESTÁ EM MAIN (PR #17 — não refaça, não reabra): middleware CONV-SITE, clientes R2
+de catalogo e pagamentos, modelos Session/Order/OutboxEvent, os 3 handlers do contrato
+servindo do banco, guardas INV-P1/INV-P2/INV-P11 e a emissão de pedido.criado na outbox.
+Leia services/checkout/apps/ antes de começar — a metade servidor do INV-P7 já existe:
+GET /pedidos/{id} é a única fonte de status.
+
+${LICOES_ACUMULADAS}MISSÃO: páginas dados/pix/cartao como ilhas Alpine (R6) com status derivado do
+servidor (INV-P7). Consumer de pagamento.aprovado/recusado/pix.expirado (R4)
+atualiza o status do pedido.
+
+ALVOS: services/checkout/templates/checkout/**, services/checkout/static/checkout/**,
+  services/checkout/apps/** (só o consumer R4 e o que as páginas exigirem),
+  services/checkout/tests/**
+SOMENTE-LEITURA: contracts/checkout.openapi.yaml, contracts/eventos/**, CAMINHO-DOURADO.md
+FORA DE ESCOPO: catalogo, pagamentos, alunos; mexer nos handlers já mergeados (a forma
+  exportada tem que continuar idêntica — o freeze compara); design final das páginas
+  (esqueleto funcional basta); e, importante — NÃO toque em
+  arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+INVARIANTES TOCADOS: INV-P7 (guarda vermelho→verde).
+
+DoD: pix.js/cartao.js SEM transição local para "pago" (status por GET /pedidos/{id} — P7);
+a página do Pix NÃO carrega o SDK do MP; zero estado compartilhado entre dados/pix/cartao
+(cada página é uma ilha; só api.js em comum); test_mobile_first_contract.py verde;
+consumer R4 idempotente por event_id move o status do pedido; contrato-check VERDE
+(nada deve mudar nele); make ci VERDE — cole a saída completa, sem resumir.
+ORÇAMENTO: ≤ 15 arquivos.
+EVIDÊNCIA: P7 vermelho→verde. Handoff completo ao final (RITOS.md §1): branch, arquivos,
+resultado do make ci, pendências, pronto para PR ou não.
+
+PENDÊNCIA HERDADA (decida e reporte, não resolva por conta): o relay do outbox
+(Huey → Redis Streams, R3) ainda não existe no checkout — pedido.criado é gravado
+transacionalmente, mas ninguém publica. Precisa de config/huey.py + tasks.py + deps.
+Se couber no orçamento junto com as páginas, faça; se não, avise.`
+  },
+  {
+    celula: 'alunos', tag: 'Prompt 5 · INV-P5',
+    done: true, doneNote: '✓ PR #26 (e5c2161) + PR #27 (b468d4b) mergeados',
+    text: `# DESPACHO — alunos: matrícula por evento
+CÉLULA: alunos · WORKTREE: wt-alunos-matricula · RECEITAS: R4, R5
+ANTES: leia AGENTS.alunos + INVARIANTES (P5) + CAMINHO-DOURADO (R4,R5). Declaração.
+
+${LICOES_ACUMULADAS}MISSÃO: consumer de pagamento.aprovado.v1 (R4) que matricula sob select_for_update() +
+transaction.atomic(), idempotente por order_id (INV-P5). A matrícula guarda o
+site_id do evento. POST /matriculas para reprocesso
+manual, com a MESMA idempotência. Mensageria offline NÃO impede matrícula. A ponte fica
+DESLIGADA (apps/bridge intacto, flag off).
+
+ALVOS: services/alunos/apps/matriculas/**, .../apps/eventos/** (consumer — R4),
+  services/alunos/api/**, services/alunos/tests/**
+SOMENTE-LEITURA: contracts/alunos.openapi.yaml, contracts/eventos/pagamento.aprovado.v1.json
+FORA DE ESCOPO: apps/bridge (nenhuma integração externa na Fase 0); login/área do aluno final;
+  e, importante — NÃO toque em arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+INVARIANTES TOCADOS: INV-P5 (guarda vermelho→verde).
+
+DoD: dois consumers processando o mesmo evento em threads ⇒ 1 matrícula (P5); evento
+reentregue (mesmo event_id) ⇒ 1 matrícula (dedup — R4); contrato-check VERDE; make ci VERDE —
+cole a saída completa, sem resumir.
+ORÇAMENTO: ≤ 15 arquivos. Se passar bastante disso, pare e avise antes de continuar.
+EVIDÊNCIA: P5 vermelho→verde. Handoff completo ao final (RITOS.md §1): branch, arquivos,
+resultado do make ci, pendências, pronto para PR ou não.`
+  },
+  {
+    celula: 'leads', tag: 'Prompt 6/4',
+    done: true, doneNote: '✓ PR #29 mergeado (621b5be)',
+    text: `# DESPACHO — leads: pessoa e timeline por evento
+CÉLULA: leads · WORKTREE: wt-leads-timeline · RECEITAS: R1, R4
+
+${LICOES_ACUMULADAS}MISSÃO: POST /leads (upsert por site_id+email — R1) + consumer dos eventos quiz.completado,
+pedido.criado, pagamento.aprovado/recusado e pix.expirado (R4), montando timeline idempotente
+por event_id. Nunca lê o banco de ninguém.
+ALVOS: services/leads/apps/**, services/leads/tests/**
+SOMENTE-LEITURA: contracts/leads.openapi.yaml, contracts/eventos/**
+FORA DE ESCOPO: qualquer outra célula; e, importante — NÃO toque em
+  arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+INVARIANTES: consumo idempotente (event_id); merge de pessoa preserva timeline.
+DoD: evento duplicado ⇒ 1 entrada; upsert por email não duplica lead; contrato-check + make ci
+VERDE — cole a saída completa, sem resumir.
+ORÇAMENTO: ≤ 15 arquivos. Se passar bastante disso, pare e avise antes de continuar.
+EVIDÊNCIA: saída completa de make ci. Handoff completo ao final (RITOS.md §1): branch,
+arquivos, resultado do make ci, pendências, pronto para PR ou não.`
+  },
+  {
+    celula: 'mensageria', tag: 'Prompt 6/4',
+    done: true, doneNote: '✓ PR #25 mergeado (4f4cf4b)',
+    text: `# DESPACHO — mensageria: envios por evento
+CÉLULA: mensageria · WORKTREE: wt-mensageria-envios · RECEITAS: R4, R8
+
+${LICOES_ACUMULADAS}MISSÃO: consumer (R4) que envia boas-vindas em pagamento.aprovado e recuperação em pix.expirado
+e pagamento.recusado. Provedores como stubs que LOGAM (SMTP/WhatsApp reais ficam para depois).
+Falha de provedor ⇒ retry Huey (R8); nunca propaga erro a quem emitiu.
+ALVOS: services/mensageria/apps/**, services/mensageria/tests/**
+SOMENTE-LEITURA: contracts/eventos/**
+FORA DE ESCOPO: qualquer outra célula; e, importante — NÃO toque em
+  arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+INVARIANTES: idempotência por event_id (1 envio por evento); mensageria nunca bloqueia dinheiro.
+DoD: reentrega do mesmo evento ⇒ 1 envio; make ci VERDE (célula sem contrato REST) — cole a
+saída completa, sem resumir.
+ORÇAMENTO: ≤ 15 arquivos. Se passar bastante disso, pare e avise antes de continuar.
+EVIDÊNCIA: saída completa de make ci. Handoff completo ao final (RITOS.md §1): branch,
+arquivos, resultado do make ci, pendências, pronto para PR ou não.`
+  },
+  {
+    celula: 'quiz', tag: 'Prompt 6/4',
+    done: true, doneNote: '✓ PR #28 mergeado (6d8c8db) — resolução local de site aceita como está',
+    text: `⚠️ DECISÃO DE ARQUITETURA PENDENTE (leia antes de mergear) — o middleware
+CONV-SITE deste PR resolve Host→Site por um cadastro LOCAL na própria célula
+quiz (seedado à mão com o site_id do catálogo), em vez de chamar a API do
+catálogo como checkout/funil fazem. Motivo: constituicoes/AGENTS.quiz.md diz
+"Consome: nada" e não autoriza ler o contrato do catalogo — diferente de
+checkout/funil, que autorizam isso explicitamente. Funciona, mas nada
+verifica automaticamente se o site_id do seed bate com o do catálogo. Se a
+intenção real era o quiz consumir o catálogo via CatalogoClient (R2), é
+mudança de arquitetura de verdade (Lei 2) — decisão sua antes do merge.
+Raciocínio completo: services/quiz/LICOES.md e ARMADILHAS.md §7.5.
+
+---
+
+# DESPACHO — quiz: resultado e evento
+CÉLULA: quiz · WORKTREE: wt-quiz-resultado · RECEITAS: CONV-SITE, R3, R9
+
+${LICOES_ACUMULADAS}MISSÃO: middleware CONV-SITE + fluxo mínimo do Crivo (o quiz pertence ao site) — perguntas fixas via seed (R9), pontuação SÓ no servidor,
+tela de resultado — emitindo quiz.completado.v1 pela outbox (R3) e redirecionando com ?lead=.
+Páginas em /quiz/*.
+ALVOS: services/quiz/apps/**, services/quiz/templates/quiz/**, services/quiz/static/quiz/**,
+  services/quiz/tests/**
+SOMENTE-LEITURA: contracts/eventos/quiz.completado.v1.json
+FORA DE ESCOPO: qualquer outra célula; e, importante — NÃO toque em
+  arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+INVARIANTES: pontuação calculada só no servidor; emissão transacional (outbox).
+DoD: schema do evento validado contra o contrato; make ci VERDE (célula sem contrato REST) —
+cole a saída completa, sem resumir.
+ORÇAMENTO: ≤ 15 arquivos. Se passar bastante disso, pare e avise antes de continuar.
+EVIDÊNCIA: saída completa de make ci. Handoff completo ao final (RITOS.md §1): branch,
+arquivos, resultado do make ci, pendências, pronto para PR ou não.`
+  },
+  {
+    celula: 'funil', tag: 'Prompt 6/4',
+    done: true, doneNote: '✓ PR #30 mergeado (13c65dc)',
+    text: `# DESPACHO — funil: a vitrine mínima
+CÉLULA: funil · WORKTREE: wt-funil-vitrine · RECEITAS: CONV-SITE, R2, R6
+
+${LICOES_ACUMULADAS}MISSÃO: middleware CONV-SITE + landing mínima DO SITE (R6, mobile-first, estende
+base_mobile.html) que lê a default_offer do site no catalogo via R2 (server-side) e tem botão que redireciona para /checkout/<oferta> PRESERVANDO UTM.
+Formulário de captura posta em leads via R2. Sem banco (célula stateless).
+ALVOS: services/funil/**, services/funil/tests/**
+SOMENTE-LEITURA: contracts/catalogo.openapi.yaml, contracts/leads.openapi.yaml
+FORA DE ESCOPO: qualquer outra célula; e, importante — NÃO toque em
+  arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+INVARIANTES: mobile-first por contrato (teste-guarda); UTM preservada até o checkout.
+DEV: catalogo e leads via mock prism.
+DoD: test_mobile_first_contract verde; UTM chega intacta ao link do checkout; make ci VERDE —
+cole a saída completa, sem resumir.
+ORÇAMENTO: ≤ 15 arquivos. Se passar bastante disso, pare e avise antes de continuar.
+EVIDÊNCIA: saída completa de make ci. Handoff completo ao final (RITOS.md §1): branch,
+arquivos, resultado do make ci, pendências, pronto para PR ou não.`
+  },
+  {
+    celula: 'e2e (raiz)', tag: 'Prompt 7 · integração final',
+    done: true, doneNote: '✓ PR #31 mergeado (bc6a510) — 8/8 elos verdes contra sandbox real do MP · gap fechado por PR #32',
+    text: `# DESPACHO — e2e: o esqueleto que anda
+WORKTREE: wt-e2e-esqueleto · RECEITAS: R9 (referência)
+ANTES: leia ESQUELETO-QUE-ANDA.md INTEIRO. Declaração de abertura.
+
+${LICOES_ACUMULADAS}MISSÃO: e2e/esqueleto.sh que sobe o compose de dev do caminho, seeda e percorre via curl a
+transação inteira — sessão → pedido → intent → (DEBUG simulate-webhook assinado) → outbox →
+relay → matrícula — imprimindo cada elo com ✅/❌ e FALHANDO se qualquer elo falhar. Alvo
+esqueleto: no Makefile da raiz.
+
+ALVOS: e2e/**, Makefile (raiz)
+SOMENTE-LEITURA: todas as constituições e contratos (referência), ESQUELETO-QUE-ANDA.md
+FORA DE ESCOPO: alterar qualquer célula; usar APP_USR-; o caminho real de cartão (esse é o
+run manual na VPS, não o e2e local); e, importante — NÃO toque em
+arquivos/painel-fundacao.html (isso é sempre da janela raiz).
+
+DoD: make esqueleto VERDE localmente (webhook simulado assinado). No corpo do PR, deixe as
+instruções para o run manual na VPS (cartão sandbox APRO + webhook real do MP) e para o drill
+de rollback cronometrado (< 5 min), conforme os 4 critérios do ESQUELETO-QUE-ANDA.md.
+ORÇAMENTO: ≤ 10 arquivos. Se passar bastante disso, pare e avise antes de continuar.
+EVIDÊNCIA: saída completa de make esqueleto, sem resumir. Handoff completo ao final
+(RITOS.md §1): branch, arquivos, resultado do make esqueleto, pendências, pronto para PR ou não.`
+  },
+];
+
+function esc(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const el = document.getElementById('cards');
+el.innerHTML = PROMPTS.map((p, i) => `
+  <div class="card ${p.done ? 'done' : ''}">
+    <div class="card-head">
+      <div class="card-title">
+        <span class="card-num">${p.done ? '✓' : i+1}</span>
+        <h2>${p.celula}</h2>
+        <span class="tag">${p.tag.replace('merge: humano', '<span class="human">merge: humano</span>')}</span>
+      </div>
+      ${p.done
+        ? `<span class="done-badge">${p.doneNote}</span>`
+        : p.prOpen
+          ? `<a class="done-badge" href="${p.prUrl}" target="_blank" rel="noopener" style="border-color:var(--gold); color:var(--gold); background:var(--gold-dim); text-decoration:none;">${p.prNote}</a>`
+          : `<button class="copy-btn" data-idx="${i}">copiar prompt</button>`}
+    </div>
+    <pre>${esc(p.text)}</pre>
+  </div>
+`).join('');
+
+el.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', async () => {
+    const text = PROMPTS[+btn.dataset.idx].text;
+    try{
+      await navigator.clipboard.writeText(text);
+    }catch(e){
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    const original = btn.textContent;
+    btn.textContent = '✓ copiado';
+    btn.classList.add('done');
+    setTimeout(() => { btn.textContent = original; btn.classList.remove('done'); }, 1600);
+  });
+});
+</script>
+</body>
+</html>

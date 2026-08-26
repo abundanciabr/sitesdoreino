@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Roadmap da Escola — o mapa do dono</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A;
+    --grid: rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft: rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --blue:#4c8dff;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif; font-size:16px;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:40px 20px 72px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; color:var(--text-3); text-transform:uppercase; margin:0 0 8px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:34px; margin:0 0 10px; letter-spacing:-.01em; line-height:1.15;}
+  .sub{color:var(--text-2); font-size:16px; line-height:1.7; margin:0 0 24px;}
+
+  /* selos de status no topo */
+  .selos{display:flex; flex-wrap:wrap; gap:10px; margin:0 0 34px;}
+  .selo{
+    border:1px solid var(--green); background:var(--green-dim); color:var(--green);
+    border-radius:30px; padding:9px 16px; font-size:14px; font-weight:600;
+  }
+
+  /* resumo do progresso */
+  .placar{
+    border:1px solid var(--line); background:var(--panel); border-radius:var(--radius);
+    padding:20px 22px; margin-bottom:36px; font-size:16px; line-height:1.7;
+  }
+  .placar b{color:var(--text);}
+  .placar .titulo{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; margin-bottom:6px;}
+
+  /* capítulos */
+  .cap{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+    margin-bottom:22px; overflow:hidden;
+  }
+  .cap.feito{border-color:var(--green);}
+  .cap.agora{border-color:var(--gold); box-shadow:0 0 0 1px var(--gold) inset;}
+  .cap.espera{opacity:.92;}
+  .cap-head{padding:20px 22px 14px; display:flex; gap:16px; align-items:flex-start;}
+  .cap-num{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:26px; flex:none;
+    width:52px; height:52px; border-radius:14px; display:flex; align-items:center; justify-content:center;
+    border:2px solid var(--line); color:var(--text-2); background:var(--bg);
+  }
+  .cap.feito .cap-num{border-color:var(--green); color:var(--green);}
+  .cap.agora .cap-num{border-color:var(--gold); color:var(--gold);}
+  .cap-tit{flex:1;}
+  .cap-etq{font-family:'IBM Plex Mono',monospace; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--text-3);}
+  .cap.feito .cap-etq{color:var(--green);}
+  .cap.agora .cap-etq{color:var(--gold);}
+  .cap-tit h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:21px; margin:4px 0 6px; line-height:1.25;}
+  .cap-tit .porque{font-size:14.5px; color:var(--text-2); line-height:1.65; margin:0;}
+
+  .barra{height:10px; background:var(--bg); border-top:1px solid var(--line-soft); position:relative;}
+  .barra .cheio{height:100%; background:var(--green);}
+  .cap.agora .barra .cheio{background:linear-gradient(90deg, var(--green) 75%, var(--gold));}
+
+  .itens{padding:8px 22px 18px; margin:0; list-style:none;}
+  .itens li{
+    display:flex; gap:14px; align-items:flex-start; padding:11px 0;
+    border-bottom:1px solid var(--line-soft); font-size:15.5px; line-height:1.6;
+  }
+  .itens li:last-child{border-bottom:none;}
+  .ic{flex:none; font-size:19px; width:26px; text-align:center; margin-top:1px;}
+  .itens .ok{color:var(--text);}
+  .itens .ok .ic{color:var(--green);}
+  .itens .prox{color:var(--text);}
+  .itens .falta{color:var(--text-2);}
+  .itens li b{color:var(--text); font-weight:600;}
+  .itens .mini{display:block; font-size:13px; color:var(--text-3); margin-top:3px;}
+  .tag-prox{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; background:var(--gold); color:#2A1D08;
+    border-radius:20px; padding:2px 9px; font-weight:500; white-space:nowrap; margin-left:6px;
+  }
+
+  .cap-nota{
+    margin:0 22px 20px; border:1px dashed var(--line-soft); border-radius:10px;
+    padding:12px 16px; font-size:14px; color:var(--text-2); line-height:1.65;
+  }
+  .cap-nota b{color:var(--text);}
+  .cap-nota.boa{border-color:var(--green); color:var(--text-2);}
+  .cap-nota.importante{border-color:var(--blue);}
+
+  /* pergunta final */
+  .tres{display:flex; flex-direction:column; gap:12px; margin:20px 0 18px;}
+  .esc{
+    display:flex; gap:14px; align-items:flex-start;
+    background:var(--panel-2); border:1px solid var(--line);
+    border-left:3px solid var(--gold); border-radius:10px; padding:14px 16px;
+  }
+  .esc-n{
+    flex:0 0 28px; height:28px; border-radius:50%;
+    background:var(--gold-dim); color:var(--gold); border:1px solid var(--gold);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;
+  }
+  .esc b{display:block; margin-bottom:6px; line-height:1.4;}
+  .depois{
+    border-top:1px solid var(--line-soft); padding-top:14px; margin-top:4px;
+    color:var(--text-2);
+  }
+  .final{
+    border:1px solid var(--green); background:linear-gradient(180deg, var(--green-dim), var(--panel));
+    border-radius:var(--radius); padding:24px; margin-top:36px;
+  }
+  .final .perg{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:20px; margin-bottom:4px;}
+  .final .resp{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:34px; color:var(--green); margin-bottom:10px;}
+  .final p{font-size:15.5px; line-height:1.75; color:var(--text-2); margin:0 0 10px;}
+  .final p:last-child{margin-bottom:0;}
+  .final b{color:var(--text);}
+
+  .como-pedir{
+    margin-top:22px; border:1px dashed var(--gold); background:var(--gold-dim);
+    border-radius:var(--radius); padding:18px 20px; font-size:14.5px; line-height:1.7;
+  }
+  .como-pedir .cmd{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--text);
+    background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 13px; margin-top:8px;
+  }
+
+  .rodape{margin-top:40px; border-top:1px solid var(--line); padding-top:16px; font-size:13px; color:var(--text-3); line-height:1.8;}
+  .rodape a{color:var(--text-2);}
+  .rodape code{font-family:'IBM Plex Mono',monospace;}
+
+  @media (max-width:560px){
+    h1{font-size:27px;}
+    .cap-num{width:44px; height:44px; font-size:21px; border-radius:11px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">O mapa do dono · sem tecniquês · 25/08/2026</p>
+  <h1>🗺️ Roadmap da Escola Meshcraft</h1>
+  <p class="sub">O caminho inteiro do projeto em <b>5 capítulos</b>: o que já está pronto, o que está sendo feito agora e o que ainda falta para a escola abrir as portas e vender. Cada ✅ daqui tem prova real por trás — nada está marcado por promessa.</p>
+
+  <div class="selos">
+    <span class="selo">✅ Nada quebrado</span>
+    <span class="selo">🤖 Robôs com trabalho encaminhado</span>
+    <span class="selo" style="border-color:var(--gold); background:var(--gold-dim); color:var(--gold);">🔔 3 escolhas esperando você</span>
+  </div>
+
+  <div class="placar">
+    <div class="titulo">Onde estamos, em uma frase</div>
+    Dos 5 capítulos, <b>os três primeiros estão prontos</b> — a comunidade de alunos fechou hoje —, e os dois últimos são o futuro: <b>o capítulo 4 é o seu</b> (o curso em si) e o capítulo 5 (vender) espera a sua ordem — "pagamento por último", como você mandou.
+  </div>
+
+  <!-- CAPÍTULO 1 -->
+  <div class="cap feito">
+    <div class="cap-head">
+      <div class="cap-num">1</div>
+      <div class="cap-tit">
+        <div class="cap-etq">✅ Pronto e provado</div>
+        <h2>A fábrica de robôs</h2>
+        <p class="porque">Antes de construir a casa, construímos a fábrica: robôs que trabalham sozinhos <b>com segurança</b> — é o que permite você tocar um projeto deste tamanho sem saber programar.</p>
+      </div>
+    </div>
+    <div class="barra"><div class="cheio" style="width:100%"></div></div>
+    <ul class="itens">
+      <li class="ok"><span class="ic">✅</span><span>O site é feito de <b>11 peças independentes</b> — se uma der problema, as outras continuam de pé.</span></li>
+      <li class="ok"><span class="ic">✅</span><span>Os robôs constroem e <b>publicam sozinhos</b> — e um portão automático barra qualquer coisa quebrada antes de chegar ao ar.</span></li>
+      <li class="ok"><span class="ic">✅</span><span><b>Botão de emergência testado:</b> se algo der errado no ar, voltar para a versão boa leva 76 segundos.</span></li>
+      <li class="ok"><span class="ic">✅</span><span>Um <b>caderno de lições</b> com 106 erros já catalogados — os robôs não tropeçam duas vezes na mesma pedra.</span></li>
+      <li class="ok"><span class="ic">✅</span><span><b>Mais de 1.000 verificações automáticas</b> conferem tudo a cada mudança, todos os dias.</span></li>
+      <li class="ok"><span class="ic">✅</span><span><b>Sua sala de controle já existe:</b> <code>meshcraft.top/admin</code> é a área administrativa, com porta fechada — só você entra.<span class="mini">Conferido hoje, pela internet: a porta responde e manda para o login, como deve.</span></span></li>
+    </ul>
+  </div>
+
+  <!-- CAPÍTULO 2 -->
+  <div class="cap feito">
+    <div class="cap-head">
+      <div class="cap-num">2</div>
+      <div class="cap-tit">
+        <div class="cap-etq">✅ Pronto e no ar</div>
+        <h2>O site aberto ao mundo</h2>
+        <p class="porque">A vitrine existe e responde — conferida hoje, pela internet, como qualquer visitante veria.</p>
+      </div>
+    </div>
+    <div class="barra"><div class="cheio" style="width:100%"></div></div>
+    <ul class="itens">
+      <li class="ok"><span class="ic">✅</span><span><b>meshcraft.top</b> está no ar, com o cadeado de segurança no navegador.</span></li>
+      <li class="ok"><span class="ic">✅</span><span>Fala <b>três línguas</b>: inglês, português e espanhol.</span></li>
+      <li class="ok"><span class="ic">✅</span><span>A <b>página de cadastro</b> recebe interessados.</span></li>
+      <li class="ok"><span class="ic">✅</span><span>Dá para <b>entrar e sair com a conta do Google</b> em qualquer página do site.</span></li>
+    </ul>
+  </div>
+
+  <!-- CAPÍTULO 3 -->
+  <div class="cap feito">
+    <div class="cap-head">
+      <div class="cap-num">3</div>
+      <div class="cap-tit">
+        <div class="cap-etq">✅ Pronto e no ar</div>
+        <h2>A comunidade de alunos</h2>
+        <p class="porque">A Caixa de Sugestões: os alunos pedem, votam e acompanham cada ideia — e <b>você</b> decide o que vira realidade.</p>
+      </div>
+    </div>
+    <div class="barra"><div class="cheio" style="width:100%"></div></div>
+    <ul class="itens">
+      <li class="ok"><span class="ic">✅</span><span><b>Só aluno matriculado entra</b>, usando a conta do Google.</span></li>
+      <li class="ok"><span class="ic">✅</span><span>O <b>quadro de ideias</b> funciona: ver, votar e sugerir — o sistema até avisa se a ideia já existe.</span></li>
+      <li class="ok"><span class="ic">✅</span><span>A <b>equipe responde</b> e cada ideia tem seu histórico ("recebida", "em análise", "aprovada"…).</span></li>
+      <li class="ok"><span class="ic">✅</span><span><b>O sininho de avisos e o mural "o que vem por aí"</b> estão no ar. E foi além do combinado: <b>não é só quem criou a ideia que fica sabendo</b> — quem votou e quem comentou também recebem o aviso, cada um com a etiqueta de por que está recebendo.<span class="mini">Você pediu assim, e é assim que está funcionando.</span></span></li>
+      <li class="ok"><span class="ic">✅</span><span><b>O corredor final está pronto, e a trava é sua:</b> nenhuma ideia sai de “Planejado” para “Em desenvolvimento” sem uma autorização registrada no seu nome — <b>nem quem modera consegue</b>. Você já ligou sua lista de aprovadores no servidor em 25/08.<span class="mini">Falta só, e sem prazo: quando aparecer uma ideia de aluno que valha virar trabalho, alguém escreve o rascunho e você assina nome e data. Um arquivo de texto com molde pronto.</span></span></li>
+      <li class="falta"><span class="ic">⬜</span><span><b>O próximo passo, e ele espera VOCÊ:</b> levar o sininho para <i>todo</i> o site, ao lado do seu nome — não só dentro da Caixa. O plano está pronto e achou um problema de fundo que precisa ser resolvido antes.<span class="tag-prox">3 decisões suas</span><span class="mini">Está logo abaixo, em “Você precisa fazer alguma coisa agora?”.</span></span></li>
+    </ul>
+  </div>
+
+  <!-- CAPÍTULO 4 -->
+  <div class="cap espera">
+    <div class="cap-head">
+      <div class="cap-num">4</div>
+      <div class="cap-tit">
+        <div class="cap-etq">⬜ A fazer — o capítulo que é SEU</div>
+        <h2>O curso e a vitrine de vendas</h2>
+        <p class="porque">Aqui o volante passa para as suas mãos: robô nenhum escreve o seu curso nem conta a sua história.</p>
+      </div>
+    </div>
+    <div class="barra"><div class="cheio" style="width:4%"></div></div>
+    <ul class="itens">
+      <li class="falta"><span class="ic">⬜</span><span><b>O conteúdo do curso</b> — as aulas da escola de criação 3D para Roblox.</span></li>
+      <li class="falta"><span class="ic">⬜</span><span><b>A página de vendas:</b> a promessa, o preço, a história que convence. Você dá a direção; os robôs constroem as páginas.</span></li>
+      <li class="falta"><span class="ic">⬜</span><span><b>O endereço definitivo da escola</b> (registrar o domínio) — quando você quiser; os nomes seguem livres.</span></li>
+    </ul>
+    <div class="cap-nota importante">💡 <b>Este é o capítulo mais importante do projeto inteiro.</b> Os 4 conselheiros externos consultados foram unânimes: o maior risco não é um erro técnico — é uma fortaleza perfeita que ninguém visita. Uma hora sua investida aqui vale mais que qualquer melhoria técnica.</div>
+  </div>
+
+  <!-- CAPÍTULO 5 -->
+  <div class="cap espera">
+    <div class="cap-head">
+      <div class="cap-num">5</div>
+      <div class="cap-tit">
+        <div class="cap-etq">⏸ Esperando a sua ordem</div>
+        <h2>Vender</h2>
+        <p class="porque">"Pagamento por último" — a sua regra, sendo cumprida. Nada deste capítulo se move até você dizer <b>"o site vai vender"</b>.</p>
+      </div>
+    </div>
+    <div class="barra"><div class="cheio" style="width:30%"></div></div>
+    <ul class="itens">
+      <li class="falta"><span class="ic">⏸</span><span><b>A tela de pagar com cartão</b> (trabalho de robô, quando você liberar).</span></li>
+      <li class="falta"><span class="ic">⏸</span><span><b>Ligar o aviso oficial de "pagou"</b> do Mercado Pago (um passo seu, no painel deles, com a nossa ajuda passo a passo).</span></li>
+      <li class="falta"><span class="ic">⏸</span><span><b>Trocar as chaves de teste pelas de verdade</b> no servidor (passo seu, com bloco pronto para colar).</span></li>
+      <li class="falta"><span class="ic">⏸</span><span><b>A primeira compra de teste completa</b>, comprovada de ponta a ponta.</span></li>
+    </ul>
+    <div class="cap-nota boa">🎁 <b>Adiantado que não se perde:</b> o coração do pagamento já foi provado em ambiente de teste — um QR de Pix de verdade foi gerado no servidor, e o caminho "pagou → virou matrícula do aluno" funciona. Quando você der a ordem, o capítulo começa do meio, não do zero.</div>
+  </div>
+
+  <!-- PERGUNTA FINAL -->
+  <div class="final">
+    <div class="perg">Você precisa fazer alguma coisa agora?</div>
+    <div class="resp">Sim — três escolhas, e nenhuma é técnica. 🔔</div>
+    <p><b>Nada está quebrado e nada está parado por culpa disso.</b> É que os robôs terminaram o capítulo 3 e o próximo passo grande — <b>levar o sininho para todo o site, ao lado do seu nome</b> — muda a forma do sistema. O plano está pronto, e ele <b>não começa</b> antes da sua palavra. Foi essa mesma trava que evitou retrabalho na Caixa.</p>
+
+    <p><b>O que o plano descobriu, e ninguém tinha visto:</b> hoje a plataforma não tem um jeito de dizer <i>“esta pessoa”</i> que valha em todo lugar. O site e a Caixa guardam a mesma pessoa em <b>duas fichas diferentes</b>, ligadas só pelo e-mail — que, por decisão sua, não circula. Sem consertar isso, uma central de avisos não saberia para quem mandar nada. O conserto é pequeno: o número que falta <b>já passa na mão todo dia e é jogado fora na porta</b>.</p>
+
+    <div class="tres">
+      <div class="esc">
+        <div class="esc-n">1</div>
+        <div>
+          <b>Criar uma peça nova só para notificações?</b>
+          <span class="mini">Hoje são 11 peças. Uma peça só para isso custa mais para nascer, e faz o sino custar <b>uma</b> pergunta barata em toda página — mesmo quando houver dez assuntos avisando. Sem ela, o site teria que perguntar a cada peça, uma por uma, e isso piora a cada peça nova. <b>Recomendo: sim.</b></span>
+        </div>
+      </div>
+      <div class="esc">
+        <div class="esc-n">2</div>
+        <div>
+          <b>O aviso pode chegar “em segundos” em vez de “no mesmo instante”?</b>
+          <span class="mini">Hoje, dentro da Caixa, o aviso nasce grudado na mudança — se uma falha, a outra desfaz. Uma central troca isso por “o fato fica guardado em segurança e o aviso chega logo depois”. <b>Não é menos seguro contra perda</b>: é uma janelinha em que o aluno ainda não sabe. É a única coisa deste plano que alguém consegue perceber. <b>Recomendo: sim.</b></span>
+        </div>
+      </div>
+      <div class="esc">
+        <div class="esc-n">3</div>
+        <div>
+          <b>A primeira versão avisa só sobre a Caixa, ou já sobre tudo?</b>
+          <span class="mini">Quiz, matrícula e pagamento também produzem fatos que <i>poderiam</i> virar aviso — e você disse que “serão muitas”. <b>Recomendo: nascer só com a Caixa</b>, com o desenho já pronto para os outros. Assim, assunto novo depois é um pedacinho de trabalho, não uma reforma.</span>
+        </div>
+      </div>
+    </div>
+
+    <p class="depois">Respondendo essas três, os robôs seguem sozinhos. <b>O plano inteiro está em</b> <code>docs/notificacoes/PLANO-MESTRE.md</code> — mas você não precisa lê-lo para decidir: as três perguntas acima são o resumo fiel dele.</p>
+
+    <p>E continuam valendo as duas coisas que são <b>só suas</b>, sem prazo e no seu ritmo: <b>o conteúdo do curso</b> (capítulo 4) e <b>decidir a hora de vender</b> (capítulo 5).</p>
+  </div>
+
+  <div class="como-pedir">
+    <b>🤖 Como colocar os robôs para trabalhar</b> — abra uma janela nova do Claude Code no seu PC (a que mostra <code style="font-family:'IBM Plex Mono',monospace">PS C:\&gt;</code>) e cole uma frase só:
+    <span class="cmd">Respondi as 3 escolhas do sistema de notificações: [suas respostas]. Toque o plano.</span>
+    Ou, se quiser que os robôs escolham outra frente: <span class="cmd">Leia RUNBOOK-LOTES.md e me diga o que ainda falta, com o que você recomenda tocar.</span>
+    A sessão monta o trabalho, executa, confere e te conta o resultado no fim — você não precisa acompanhar nada no meio.
+  </div>
+
+  <div class="rodape">
+    Este é o <b>seu</b> mapa — simples de propósito, atualizado em <b>25/08/2026</b> com base em medições reais (site visitado pela internet, esteira conferida no GitHub). Os painéis com detalhe técnico continuam existindo para as sessões de robô: <a href="painel-retomada.html">Painel de Retomada</a> (o raio-X completo) e <a href="painel-fundacao.html">Painel da Fundação</a> (o checklist vivo do dia a dia). Se este mapa e os técnicos discordarem, avise numa sessão — é sinal de que algo precisa de acerto.
+  </div>
+
+</div>
+</body>
+</html>

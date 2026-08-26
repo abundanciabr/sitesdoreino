@@ -327,6 +327,9 @@ try {
   rod.appendChild(document.createTextNode("Fonte: painel/registros/ (" + REGS.length + " registros, no Git) · regras: painel/logica.js, com teste-guarda · como registrar: painel/LEIA-ME.md · a história desta reforma: "));
   var a = el("a", null, "o veredito das 8 consultorias"); a.href = "../docs/paineis/VEREDITO-DAS-CONSULTORIAS.html";
   rod.appendChild(a);
+  rod.appendChild(document.createTextNode(" · a prateleira de fotografias (os painéis das eras passadas, congelados): "));
+  var af = el("a", null, "docs/paineis/fotografias/"); af.href = "../docs/paineis/fotografias/";
+  rod.appendChild(af);
   rod.appendChild(document.createTextNode(". Página aberta às " + AGORA.toLocaleTimeString("pt-BR") + " de " + AGORA.toLocaleDateString("pt-BR") + " — todo frescor foi comparado com este relógio."));
 
   // ---------- abas ----------

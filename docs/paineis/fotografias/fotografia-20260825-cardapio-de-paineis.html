@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O Cardápio de Painéis — padrão-ouro da indústria, traduzido</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A;
+    --grid: rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft: rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --red:#E2705A; --red-dim:#3E2620;
+    --blue:#4c8dff; --blue-dim:rgba(76,141,255,.10);
+    --slate:#5B7A8C;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif; font-size:16px;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap{max-width:820px; margin:0 auto; padding:40px 20px 72px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; color:var(--text-3); text-transform:uppercase; margin:0 0 8px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:33px; margin:0 0 10px; letter-spacing:-.01em; line-height:1.15;}
+  .sub{color:var(--text-2); font-size:16px; line-height:1.7; margin:0 0 22px;}
+  .sub b, p b, li b{color:var(--text); font-weight:600;}
+  code{font-family:'IBM Plex Mono',monospace; color:var(--gold); background:none; font-size:.92em;}
+  a{color:var(--blue);}
+
+  h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:22px; margin:52px 0 6px; letter-spacing:-.01em;}
+  h2 .num{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text-3); margin-right:8px;}
+  .lead{color:var(--text-2); font-size:15px; margin:0 0 20px; line-height:1.7; max-width:780px;}
+
+  .toc{display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 8px;}
+  .toc a{
+    font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-2); text-decoration:none;
+    border:1px solid var(--line); border-radius:20px; padding:6px 12px; background:var(--panel);
+  }
+  .toc a:hover{border-color:var(--slate); color:var(--text);}
+
+  /* diagnóstico */
+  .diag{
+    border:1px solid var(--gold); background:linear-gradient(180deg, var(--gold-dim), var(--panel));
+    border-radius:var(--radius); padding:22px 24px; margin:26px 0; font-size:15.5px; line-height:1.75;
+  }
+  .diag .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; color:var(--gold); margin-bottom:10px;}
+  .diag p{margin:0 0 12px; color:var(--text-2);}
+  .diag p:last-child{margin-bottom:0;}
+
+  .cura{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:18px 0;}
+  .cura-item{border:1px solid var(--line); border-radius:10px; background:var(--panel); padding:14px 15px;}
+  .cura-item .n{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:20px; color:var(--gold);}
+  .cura-item .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14.5px; margin:4px 0 6px; line-height:1.3;}
+  .cura-item .d{font-size:13px; color:var(--text-2); line-height:1.6;}
+
+  .ja-acertou{
+    border:1px solid var(--green); background:var(--green-dim); border-radius:var(--radius);
+    padding:16px 20px; margin:18px 0 0; font-size:14.5px; line-height:1.7; color:var(--text-2);
+  }
+  .ja-acertou .t{font-family:'Space Grotesk',sans-serif; font-weight:700; color:var(--green); font-size:15px; margin-bottom:6px;}
+
+  /* cards de ideia */
+  .ideia{
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+    margin-bottom:18px; overflow:hidden;
+  }
+  .ideia.adotar{border-left:4px solid var(--green);}
+  .ideia.adaptar{border-left:4px solid var(--gold);}
+  .ideia.nao{border-left:4px solid var(--slate); opacity:.9;}
+  .ideia-head{padding:16px 20px 12px;}
+  .ideia-topo{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:6px;}
+  .veredito{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; font-weight:500; letter-spacing:.07em;
+    text-transform:uppercase; border-radius:20px; padding:3px 10px; white-space:nowrap;
+  }
+  .veredito.v-adotar{background:var(--green-dim); color:var(--green); border:1px solid var(--green);}
+  .veredito.v-adaptar{background:var(--gold-dim); color:var(--gold); border:1px solid var(--gold);}
+  .veredito.v-nao{background:none; color:var(--text-3); border:1px solid var(--line);}
+  .quem{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-3); border:1px solid var(--line-soft); border-radius:20px; padding:3px 10px; white-space:nowrap;}
+  .ideia-head h3{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18.5px; margin:2px 0 3px; line-height:1.3;}
+  .ideia-head .alias{font-size:13px; color:var(--text-3); font-style:italic;}
+  .ideia-body{padding:4px 20px 18px; font-size:14.5px; line-height:1.7; color:var(--text-2);}
+  .campo{margin:10px 0 0;}
+  .campo .rot{
+    font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--text-3); display:block; margin-bottom:2px;
+  }
+  .campo.temos .rot{color:var(--blue);}
+  .campo.aqui .rot{color:var(--green);}
+
+  /* mini-figuras */
+  .fig{margin:14px 0 4px; border:1px dashed var(--line-soft); border-radius:10px; padding:12px 14px 8px; background:var(--bg);}
+  .fig svg{display:block; max-width:100%; height:auto; margin:0 auto;}
+  .fig .leg{font-size:12px; color:var(--text-3); text-align:center; margin:6px 0 2px; line-height:1.5;}
+
+  /* proposta */
+  .andares{display:flex; flex-direction:column; gap:10px; margin:18px 0;}
+  .andar{border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:16px 20px; display:flex; gap:16px; align-items:flex-start;}
+  .andar .ico{font-size:24px; flex:none; margin-top:2px;}
+  .andar .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; margin-bottom:5px;}
+  .andar .d{font-size:14px; color:var(--text-2); line-height:1.65;}
+  .andar.capa{border-color:var(--gold); background:linear-gradient(180deg, var(--gold-dim), var(--panel));}
+  .andar.capa .t{color:var(--gold);}
+  .andar.maq{border-color:var(--line);}
+  .andar.mem{border-color:var(--line); opacity:.95;}
+
+  .movimentos{margin:16px 0; padding:0; list-style:none; counter-reset:mov;}
+  .movimentos li{
+    counter-increment:mov; position:relative; border:1px solid var(--line); border-radius:12px;
+    background:var(--panel); padding:14px 18px 14px 58px; margin-bottom:10px; font-size:14.5px; line-height:1.68; color:var(--text-2);
+  }
+  .movimentos li::before{
+    content:counter(mov); position:absolute; left:16px; top:14px;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:var(--gold);
+    width:28px; height:28px; border:1.5px solid var(--gold); border-radius:9px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  .nota{
+    margin:16px 0; border:1px dashed var(--line-soft); border-radius:10px;
+    padding:13px 16px; font-size:13.5px; color:var(--text-2); line-height:1.65;
+  }
+  .nota.verde{border-color:var(--green);}
+  .nota.azul{border-color:var(--blue);}
+
+  .como-pedir{
+    margin-top:26px; border:1px dashed var(--gold); background:var(--gold-dim);
+    border-radius:var(--radius); padding:18px 20px; font-size:14.5px; line-height:1.7;
+  }
+  .como-pedir .cmd{
+    display:block; font-family:'IBM Plex Mono',monospace; font-size:12.5px; color:var(--text);
+    background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px 13px; margin-top:8px;
+  }
+
+  .rodape{margin-top:44px; border-top:1px solid var(--line); padding-top:16px; font-size:13px; color:var(--text-3); line-height:1.8;}
+
+  @media (max-width:640px){
+    h1{font-size:26px;}
+    .cura{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Estudo encomendado por você · 25/08/2026</p>
+  <h1>📖 O Cardápio de Painéis</h1>
+  <p class="sub">Você pediu: <i>"as melhores ideias do que existe de painel no padrão-ouro da indústria de software, com base no que já criamos aqui"</i>. Este é o resultado: <b>13 ideias comprovadas</b>, cada uma explicada sem tecniquês e comparada com o que já temos — mais <b>3 que a indústria adora e eu NÃO recomendo</b> para nós (curadoria de verdade descarta) — e, no fim, <b>a proposta concreta de reforma</b> para você nunca mais se perder entre painéis.</p>
+
+  <div class="toc">
+    <a href="#diagnostico">O diagnóstico</a>
+    <a href="#dono">Para você</a>
+    <a href="#maquinas">Sala de máquinas</a>
+    <a href="#memoria">Memória</a>
+    <a href="#nao">Não recomendo</a>
+    <a href="#reforma">A proposta de reforma</a>
+    <a href="#pedir">Como pedir a obra</a>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="diagnostico"><span class="num">0</span>Primeiro, a boa notícia: o seu problema tem nome — e tem cura</h2>
+
+  <div class="diag">
+    <div class="t">⚕️ "Criei vários painéis para não me perder… e me perdi nos painéis"</div>
+    <p>Isso que aconteceu aqui é tão comum que a indústria tem um nome para a doença: <b>proliferação de painéis</b> (<i>dashboard sprawl</i>). Acontece nas maiores empresas do mundo, do mesmo jeito que aconteceu aqui: cada necessidade nova gera um painel novo, cada painel novo espalha a verdade em mais um lugar — e em pouco tempo ninguém sabe <b>qual abrir primeiro</b> nem <b>qual está dizendo a verdade</b>. Foi exatamente o nosso caso: o painel do plano 10X envelheceu e chegou a "mentir"; a lista "precisa de você" hoje existe em <b>três</b> painéis diferentes.</p>
+    <p style="margin-bottom:0"><b>Não foi falta de capricho — foi falta de uma regra.</b> Nenhum painel nosso é ruim; o que nunca existiu foi uma lei sobre <b>onde cada coisa mora</b>. A cura padrão-ouro cabe em três regras:</p>
+  </div>
+
+  <div class="cura">
+    <div class="cura-item">
+      <div class="n">1</div>
+      <div class="t">Uma fonte de verdade</div>
+      <div class="d">Os fatos moram num lugar só. Painel nenhum tem fato "próprio" — todo painel só <b>mostra</b> o que a fonte diz. Se dois painéis discordam, é bug, não opinião.</div>
+    </div>
+    <div class="cura-item">
+      <div class="n">2</div>
+      <div class="t">Várias vistas, por público</div>
+      <div class="d">Os <b>mesmos fatos</b>, com roupas diferentes: uma capa simples para o dono, uma sala de máquinas para os robôs, um arquivo para a história.</div>
+    </div>
+    <div class="cura-item">
+      <div class="n">3</div>
+      <div class="t">Um endereço só de entrada</div>
+      <div class="d">Na dúvida, abre-se sempre a <b>mesma porta</b> — e ela leva ao resto. A indústria chama de <i>"single pane of glass"</i>: um vidro só para olhar tudo.</div>
+    </div>
+  </div>
+
+  <div class="ja-acertou">
+    <div class="t">🏅 E o que você já acertou sozinho (sem saber o nome)</div>
+    O projeto já pratica, por conta própria, várias coisas que a indústria considera padrão-ouro: <b>✅ só com prova real</b> (nada marcado por promessa — a indústria chama de <i>definição de pronto com evidência</i>); a <b>caixa "precisa de você"</b>; a <b>linha do tempo de incidentes</b>; e a separação entre <b>os dados e o desenho do painel</b> (o <code>painel-dados.js</code>) — que é literalmente a regra nº 1 da cura, já meio construída. A reforma proposta no fim não joga nada fora: ela <b>organiza o que já existe</b> sob as três regras.
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="dono"><span class="num">A</span>Para você — as ideias da capa do dono</h2>
+  <p class="lead">Cinco ideias para a vista que VOCÊ abre. Critério do grupo: dá para entender em segundos, sem sigla, e responde as três perguntas de todo dono — <i>como estamos? o que mudou? precisam de mim?</i></p>
+
+  <div class="ideia adotar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adotar">✅ adotar</span>
+        <span class="quem">quem usa: ProdPad, Linear, times de produto no mundo todo</span>
+      </div>
+      <h3>Agora · Em seguida · Depois</h3>
+      <div class="alias">nome na indústria: roadmap "Now / Next / Later"</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Um mapa do caminho <b>sem datas</b>: três colunas — o que está sendo feito <b>agora</b>, o que vem <b>em seguida</b>, e o que fica para <b>depois</b>. Ordem e intenção, em vez de promessas de calendário.</div>
+      <div class="campo"><span class="rot">O que resolve</span>Data prometida é a primeira mentira de todo painel — e no nosso projeto ela é ainda mais sem sentido: os robôs fazem em horas o que cronograma de equipe humana mede em semanas (num único dia saíram 5 frentes e 7 merges). O que importa aqui nunca foi "quando", é <b>"em que ordem, e por quê"</b>.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>Os 5 capítulos do seu Roadmap e a torre de fases do Painel da Fundação — os dois já são "quase isso", cada um do seu jeito.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>Os capítulos organizados nas três colunas: <b>Agora</b> (fechar a Caixa, o sininho), <b>Em seguida</b> (o conteúdo do curso — o capítulo que é seu), <b>Depois</b> (vender — só quando você der a ordem). Uma coluna "Depois" explícita também protege as suas regras: "pagamento por último" ganha um lugar visível em vez de viver só na memória das sessões.</div>
+    </div>
+  </div>
+
+  <div class="ideia adotar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adotar">✅ adotar</span>
+        <span class="quem">quem usa: Basecamp (método Shape Up)</span>
+      </div>
+      <h3>O gráfico da colina</h3>
+      <div class="alias">nome na indústria: Hill Chart</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Cada frente de trabalho é uma bolinha numa colina. <b>Subindo</b> = ainda estamos descobrindo como fazer (tem incerteza pela frente). <b>No topo</b> = já sabemos exatamente o que falta. <b>Descendo</b> = é só executar, sem surpresa possível.</div>
+      <div class="fig">
+        <svg viewBox="0 0 560 150" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Uma colina com três bolinhas: uma subindo, uma no topo, uma descendo">
+          <path d="M 20 130 Q 280 -60 540 130" fill="none" stroke="#2A5872" stroke-width="2.5"/>
+          <line x1="280" y1="18" x2="280" y2="136" stroke="#2A5872" stroke-width="1" stroke-dasharray="4 5"/>
+          <circle cx="150" cy="85" r="9" fill="#E8A33D"/>
+          <text x="150" y="112" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="#9BB8C7">descobrindo</text>
+          <circle cx="280" cy="35" r="9" fill="#4c8dff"/>
+          <text x="280" y="14" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="#9BB8C7">já sabemos tudo</text>
+          <circle cx="425" cy="72" r="9" fill="#5FB98A"/>
+          <text x="425" y="99" text-anchor="middle" font-family="IBM Plex Sans, sans-serif" font-size="12.5" fill="#9BB8C7">só executando</text>
+        </svg>
+        <div class="leg">O mesmo "70% pronto" pode estar em três lugares muito diferentes da colina.</div>
+      </div>
+      <div class="campo"><span class="rot">O que resolve</span>A mentira do <b>"80% pronto"</b>. Uma barra de progresso em 80% pode significar "falta só o fácil" ou "falta exatamente a parte que ninguém sabe fazer" — a barra não distingue, a colina sim. É a melhor resposta já inventada, para leigos, à pergunta <i>"quão pronto está DE VERDADE?"</i>.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>As barras de % dos capítulos do Roadmap — que sofrem exatamente dessa cegueira: o capítulo 5 mostra "30%" sem dizer que o que falta é o mais delicado.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>Uma colina na sua capa com uma bolinha por frente viva. Você bate o olho e sabe: o sininho está <i>descendo</i> (plano pronto, só executar), o conteúdo do curso está <i>no sopé</i> (nem começou a subir — e é seu). Barra continua existindo; a colina conta a parte que a barra esconde.</div>
+    </div>
+  </div>
+
+  <div class="ideia adaptar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adaptar">🔧 adaptar o que temos</span>
+        <span class="quem">quem usa: relatórios executivos de gestão de projetos (padrão mundial)</span>
+      </div>
+      <h3>Farol por frente, com seta de tendência</h3>
+      <div class="alias">nome na indústria: RAG status (Red / Amber / Green)</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Cada frente do projeto com um farol — 🟢 bem, 🟡 atenção, 🔴 problema — e, ao lado, uma <b>seta de tendência</b>: melhorou, piorou ou está igual desde a última olhada.</div>
+      <div class="campo"><span class="rot">O que resolve</span>A pergunta <i>"onde eu olho primeiro?"</i>, respondida em 3 segundos. E a regra de ouro que separa o padrão-ouro da decoração: <b>farol sem critério escrito não vale</b> — "verde" tem que ter definição ("no ar, com prova de fora"), nunca opinião de quem preencheu. Sem critério, todo painel do mundo vira um mar de verde mentiroso.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>As "frentes" do Painel de Retomada (verde / dourado / cinza / azul) — já é meio caminho andado, e com uma cor a mais que a indústria não tem e nós precisamos: o azul, "depende de você".</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>A mesma grade de frentes, permanente, com duas adições: a <b>seta de tendência</b> (para você ver movimento sem ler texto) e o <b>critério de cada cor escrito no próprio painel</b> — casando com a nossa lei de que ✅ só existe com evidência.</div>
+    </div>
+  </div>
+
+  <div class="ideia adaptar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adaptar">🔧 adaptar o que temos</span>
+        <span class="quem">quem usa: GitHub (notificações), Linear (Inbox), Superhuman</span>
+      </div>
+      <h3>A caixa de entrada única</h3>
+      <div class="alias">nome na indústria: action inbox / triagem</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span><b>Tudo</b> que espera uma decisão ou gesto seu, numa caixa só, com um contador no topo ("🔔 3 esperando você"). Cada item diz: o que é, <b>o que acontece se você decidir</b> (e se não decidir), e o gesto de resposta — de preferência uma frase pronta de colar.</div>
+      <div class="campo"><span class="rot">O que resolve</span>O risco mais caro do nosso arranjo atual: hoje o "precisa de você" existe no Painel da Fundação, no Roadmap ("3 escolhas") <b>e</b> na Retomada (seção 6) — três lugares. Se um esquece de atualizar, ou você olha o painel errado, um pedido seu se perde. A regra da indústria é dura e certa: <b>o que espera uma pessoa mora num lugar SÓ</b> — senão não dá para confiar em nenhum deles.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>As três caixas citadas — todas boas, e justamente por isso perigosas em trio.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>UMA caixa, no topo da sua capa, com contador. Qualquer outro lugar que precise falar de pendência sua apenas <b>aponta para ela</b>. A tabela oficial "§1 PRECISA DE VOCÊ" do <code>ARMADILHAS-OPERACAO.md</code> vira a fonte; a caixa, a vitrine.</div>
+    </div>
+  </div>
+
+  <div class="ideia adaptar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adaptar">🔧 adaptar o que temos</span>
+        <span class="quem">quem usa: todo software sério (padrão "Keep a Changelog"; as "novidades" de app)</span>
+      </div>
+      <h3>"O que mudou desde a sua última visita"</h3>
+      <div class="alias">nome na indústria: changelog / release notes em linguagem de usuário</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Uma lista curta e datada, <b>mais recente primeiro</b>, do que mudou — escrita para gente, não para programador: <i>"agora dá para entrar com a conta do Google"</i>, e nunca <i>"merge do PR #155"</i>.</div>
+      <div class="campo"><span class="rot">O que resolve</span>Você ficar dias sem abrir o projeto e, em 1 minuto, saber o que aconteceu — sem reler conversa, sem histórico do Git. É a diferença entre <i>registro</i> (completo, denso, para consulta) e <i>novidade</i> (curto, para orientação).</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>O Registro de Episódios do Painel da Fundação — excelente como <b>registro</b>, mas ele mistura as duas funções: a novidade da semana mora no meio de meses de história densa.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>A sua capa mostra só <b>"o que mudou nos últimos 7 dias"</b> — três a cinco linhas, linguagem de resultado. O registro completo continua existindo, intacto, no andar da memória. Mesma fonte, duas vitrines.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="maquinas"><span class="num">B</span>Para a sala de máquinas — as ideias da vista dos robôs</h2>
+  <p class="lead">Cinco ideias para a vista técnica — a que as sessões de robô atualizam e você só visita quando quer ver a engrenagem girando.</p>
+
+  <div class="ideia adaptar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adaptar">🔧 adaptar o que temos</span>
+        <span class="quem">quem usa: nasceu na Toyota; Trello, Jira e Linear o levaram ao mundo</span>
+      </div>
+      <h3>O quadro de colunas</h3>
+      <div class="alias">nome na indústria: Kanban</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>O trabalho em colunas — <b>A fazer → Fazendo → Em prova → Feito</b> — e cada tarefa é um cartão que só anda para a direita. Com a regra que é o segredo do método: <b>limite de cartões em "Fazendo"</b> ao mesmo tempo. Pouca coisa andando = tudo anda mais rápido.</div>
+      <div class="campo"><span class="rot">O que resolve</span>Enxergar <b>gargalo</b>: quando os cartões se acumulam numa coluna, o problema está nela — visível de longe, sem ler nada.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>A "fila dos robôs" da Retomada (lista numerada) e as regras de lote do <code>RUNBOOK-LOTES.md</code> — que já são, em texto, exatamente um limite de trabalho simultâneo (quantos despachos por lote, o que nunca roda em paralelo).</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>A fila vira quadro na sala de máquinas. Quem move os cartões é a sessão regente do lote, ao fechar cada despacho — e os painéis de prompts das fases D/E, que foram nossos "quadros" improvisados de outras eras, ganham aposentadoria honrosa (a ideia deles sobrevive; os arquivos viram história).</div>
+    </div>
+  </div>
+
+  <div class="ideia adotar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adotar">✅ adotar</span>
+        <span class="quem">quem usa: a pesquisa DORA do Google (livro "Accelerate"), milhares de empresas</span>
+      </div>
+      <h3>Os 4 números que medem uma fábrica de software</h3>
+      <div class="alias">nome na indústria: métricas DORA</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Uma pesquisa de anos, com milhares de empresas, procurou quais números separam as fábricas de software boas das ruins. Sobraram <b>quatro</b>: <b>(1)</b> quantas entregas chegam ao ar por semana; <b>(2)</b> quanto tempo uma mudança leva da ideia ao ar; <b>(3)</b> que fração das entregas quebra algo; <b>(4)</b> quanto tempo leva para consertar quando quebra.</div>
+      <div class="campo"><span class="rot">O que resolve</span>A diferença entre medir <b>tamanho</b> e medir <b>saúde</b>. Os números que mostramos hoje (10 células, 631 testes, 106 lições) são de tamanho — e tamanho só cresce. Os quatro acima são de saúde: podem piorar, e é justamente por isso que servem de alarme.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>O projeto já VIVE esses números sem exibi-los: 7 merges num único dia (nº 1), a volta-atrás <b>cronometrada em 76 segundos</b> (nº 4 — um número que empresas grandes invejariam), e o incidente de 22/08 ("tudo verde e ninguém conseguia comprar") foi exatamente o nº 3 se apresentando.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>Uma régua de 4 números na sala de máquinas, em português claro ("entregas esta semana: 7 · tempo até o ar: horas · quebraram: 1, consertada · conserto de emergência: 76s"), atualizável pelo robô direto do GitHub — sem trabalho seu.</div>
+    </div>
+  </div>
+
+  <div class="ideia adotar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adotar">✅ adotar</span>
+        <span class="quem">quem usa: toda empresa séria de internet (as páginas "status.empresa.com")</span>
+      </div>
+      <h3>A faixa de sondas reais, com carimbo de hora</h3>
+      <div class="alias">nome na indústria: status page (Statuspage, UptimeRobot)</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Uma faixa com cada endereço importante do site e a resposta <b>real</b> que ele deu — verde/vermelho — sempre com <b>data e hora da medição</b> escritas do lado.</div>
+      <div class="campo"><span class="rot">O que resolve</span>A diferença entre <i>"deveria estar no ar"</i> e <i>"está no ar, medido de fora"</i> — que é uma das 8 lições de casa (a prova vem de fora). E a regra de ouro do padrão: <b>sonda sem data é pior que sonda nenhuma</b> — porque parece verdade e pode ser passado.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>A "fotografia de hoje" da Retomada — 8 endereços medidos de verdade. Perfeita no dia em que nasceu; no dia seguinte já era uma foto velha com cara de atual. E o <code>e2e/esqueleto.sh</code>, que já sabe fazer essas medições sozinho.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>A mesma tabela como faixa permanente do painel, carimbada com "medido em 25/08 às 14h32" — e refeita pelo robô a cada sessão (ou a cada lote). O carimbo é a honestidade: se a faixa estiver velha, ela mesma confessa.</div>
+    </div>
+  </div>
+
+  <div class="ideia adotar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adotar">✅ adotar</span>
+        <span class="quem">quem usa: times ágeis no mundo inteiro</span>
+      </div>
+      <h3>O gráfico de subida</h3>
+      <div class="alias">nome na indústria: burn-up chart</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Uma linha que <b>sobe a cada entrega</b>, desenhada contra a linha do total planejado. Mostra o progresso <b>no tempo</b> — não só a foto do % de hoje, mas o filme do ritmo.</div>
+      <div class="fig">
+        <svg viewBox="0 0 560 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gráfico de subida: linha verde de entregas subindo em degraus, linha tracejada do total planejado acima">
+          <line x1="40" y1="140" x2="530" y2="140" stroke="#2A5872" stroke-width="1.5"/>
+          <line x1="40" y1="140" x2="40" y2="18" stroke="#2A5872" stroke-width="1.5"/>
+          <path d="M 40 62 L 340 62 L 340 44 L 530 44" fill="none" stroke="#6C8A9A" stroke-width="2" stroke-dasharray="6 5"/>
+          <text x="452" y="34" font-family="IBM Plex Sans, sans-serif" font-size="12" fill="#6C8A9A">o combinado</text>
+          <path d="M 40 140 L 105 140 L 105 122 L 170 122 L 170 96 L 250 96 L 250 90 L 320 90 L 320 66 L 420 66 L 420 58 L 530 58" fill="none" stroke="#5FB98A" stroke-width="3"/>
+          <text x="435" y="82" font-family="IBM Plex Sans, sans-serif" font-size="12" fill="#5FB98A">o entregue</text>
+          <text x="70" y="158" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="#6C8A9A">21/08</text>
+          <text x="475" y="158" font-family="IBM Plex Sans, sans-serif" font-size="11.5" fill="#6C8A9A">hoje</text>
+        </svg>
+        <div class="leg">Quando a linha de cima dá um degrau, o combinado cresceu — e isso é informação, não vergonha.</div>
+      </div>
+      <div class="campo"><span class="rot">O que resolve</span>Duas coisas. Primeiro: % parado não conta história — a subida mostra <b>ritmo</b>, e num projeto onde o seu ânimo é oficialmente parte da infraestrutura (está no CLAUDE.md!), ver a linha subir é combustível. Segundo: quando o combinado cresce (a linha de cima sobe), o gráfico mostra <b>por que</b> "ainda não acabou" sem ninguém precisar se justificar.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>Nada assim — os episódios contam a história em texto, e as datas de cada entrega já estão todas registradas neles (a matéria-prima do gráfico já existe).</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>Um gráfico de subida na sua capa, alimentado pelas datas que os episódios já guardam. Os últimos 4 dias virariam uma escada bonita de se ver.</div>
+    </div>
+  </div>
+
+  <div class="ideia adotar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adotar">✅ adotar</span>
+        <span class="quem">quem usa: painéis de BI corporativos (Looker, Tableau), páginas de status</span>
+      </div>
+      <h3>O selo de frescor</h3>
+      <div class="alias">nome na indústria: staleness indicator (indicador de dado velho)</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Cada seção do painel carimba sozinha <b>"atualizado há N dias"</b> — e se N passar de um limite que a própria seção define (uma frente que deveria mudar toda semana, por exemplo), o carimbo muda de cor sozinho, sem ninguém precisar lembrar de avisar.</div>
+      <div class="campo"><span class="rot">O que resolve</span>Exatamente a doença que fez o <code>painel-10x</code> "mentir" — nenhuma frase nele ficou falsa da noite para o dia; simplesmente pararam de escrever, e o painel continuou com <b>cara de atual</b>. Isso é diferente das sondas ao vivo (ideia da seção B, que confirmam fatos do <i>site</i>): este selo mede se o <b>próprio painel</b> está sendo cuidado. A lição da indústria, aprendida do jeito caro: <b>painel silencioso é mais perigoso que painel ausente</b> — ausência é óbvia, desatualização silenciosa não é.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>Nada automático — a data "25/08/2026" no topo de cada painel é escrita à mão, e foi só a leitura manual desta sessão que descobriu que o <code>painel-10x</code> estava desatualizado. Hoje a detecção depende de alguém abrir e comparar; o padrão-ouro é o painel se auto-denunciar.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>Cada bloco do <code>painel-dados.js</code> já teria a data da última vez que uma sessão o tocou. Passou muito tempo sem toque numa seção que devia mudar toda semana? Ela ganha uma faixa cinza discreta — <i>"sem novidade há N dias — pode estar desatualizado"</i> — não escondendo nada, só recusando fingir que está fresco. É o parceiro direto da armadilha 117 (painel novo espalha a verdade): aqui a doença é o painel <b>único</b> ficar velho em silêncio.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="memoria"><span class="num">C</span>Para a memória — as ideias do arquivo</h2>
+  <p class="lead">Três ideias para o andar da história — onde mora o que já aconteceu, sem atrapalhar a vista do presente.</p>
+
+  <div class="ideia adaptar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adaptar">🔧 adaptar o que temos</span>
+        <span class="quem">quem usa: as equipes de confiabilidade do Google (SRE)</span>
+      </div>
+      <h3>Incidente sempre de mãos dadas com a lição</h3>
+      <div class="alias">nome na indústria: blameless postmortem (autópsia sem culpado)</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Cada incidente registrado com quatro perguntas: o que aconteceu, como foi percebido, como foi consertado — e, a parte de ouro, <b>que regra nova nasceu dele</b> para nunca se repetir. E o "sem culpado" é sério: o erro é sempre do sistema que permitiu, nunca da pessoa (ou robô) que tropeçou — porque quem tem medo de registrar, esconde, e o que se esconde se repete.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>As duas metades, já excelentes — e separadas: a Linha do Tempo de Incidentes num painel, e o fichário de <b>106 armadilhas</b> no repositório. O elo entre um tombo e a lição que ele gerou existe às vezes, por acaso.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>Regra simples no andar da memória: <b>incidente registrado aponta a armadilha que gerou</b> ("este tombo virou a lição 073"). Fecha o ciclo tombo → lição → regra — que é exatamente a mecânica que os 8 padrões da Fase D pediram, aplicada ao painel.</div>
+    </div>
+  </div>
+
+  <div class="ideia adaptar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adaptar">🔧 adaptar o que temos</span>
+        <span class="quem">quem usa: engenharia de software séria em geral (padrão ADR)</span>
+      </div>
+      <h3>As decisões à vista</h3>
+      <div class="alias">nome na indústria: decision log / ADR (registro de decisões)</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>Toda decisão importante registrada com data, contexto e porquê — e <b>as últimas sempre visíveis</b> no painel principal, uma linha cada.</div>
+      <div class="campo"><span class="rot">O que resolve</span>Duas coisas: a pergunta <i>"por que mesmo isso é assim?"</i> respondida sem arqueologia; e a proteção contra <b>reabrir decisão fechada</b> — que para nós vale dobrado, porque cada sessão de robô nasce sem memória, e uma decisão invisível é uma decisão que alguma sessão um dia vai contrariar sem querer (o nome da escola, o inglês na raiz, o pagamento por último…).</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>A pasta <code>docs/decisoes/</code> — já é um registro de decisões de verdade, e dos bons. O problema é só visibilidade: hoje, só robô a lê.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>O andar da memória mostra as últimas decisões em uma linha cada ("25/08 — o inglês mora na raiz; /en/ não existe de propósito"), com link para o documento completo. O que já existe, posto na vitrine.</div>
+    </div>
+  </div>
+
+  <div class="ideia adaptar">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-adaptar">🔧 adaptar o que temos</span>
+        <span class="quem">quem usa: conselhos de empresa (board reports), relatórios trimestrais</span>
+      </div>
+      <h3>A prateleira de fotografias</h3>
+      <div class="alias">nome na indústria: relatórios datados imutáveis</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">O que é</span>De tempos em tempos — num marco, numa retomada — tira-se um <b>retrato completo e datado</b> do projeto. A regra que faz o padrão funcionar: <b>fotografia não se edita, nunca</b>. Mudou a realidade? O lugar dela é o painel vivo; se o marco merecer, tira-se uma fotografia NOVA.</div>
+      <div class="campo"><span class="rot">O que resolve</span>O destino que já conhecemos por experiência própria: retrato que aceita edição vira painel concorrente do vivo — e depois vira mentira (foi a biografia exata do painel do plano 10X). Imutável + datado + numa prateleira = história em que se pode confiar.</div>
+      <div class="campo temos"><span class="rot">O que já temos parecido</span>O Painel de Retomada é uma ótima fotografia (25/08). E temos cinco painéis de eras passadas soltos na pasta, sem prateleira — que é exatamente como fotografia boa vira bagunça.</div>
+      <div class="campo aqui"><span class="rot">Como ficaria aqui</span>Uma seção "📷 Fotografias" no andar da memória: a Retomada de 25/08, os painéis das fases D/E e do 10X como registros de suas eras, e cada grande marco futuro ganhando a sua. Todas congeladas, todas datadas, nenhuma competindo com o vivo.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="nao"><span class="num">D</span>O que a indústria adora — e eu NÃO recomendo para nós</h2>
+  <p class="lead">Curadoria de verdade também descarta. Três clássicos que ficam de fora, e o porquê de cada um.</p>
+
+  <div class="ideia nao">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-nao">❌ não para nós</span>
+        <span class="quem">quem usa: Microsoft Project, construção civil, grandes obras</span>
+      </div>
+      <h3>O gráfico de barras com datas</h3>
+      <div class="alias">nome na indústria: gráfico de Gantt</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">Por que não</span>É o painel mais bonito do mundo <b>no dia em que nasce</b> — e uma mentira crescente a partir do dia seguinte, porque projeto vivo muda e as barras não. Para uma obra com concreto e prazo de alvará, faz sentido. Aqui, onde robôs entregam 5 frentes num dia e a sua regra é "completo, no ritmo certo, sem cronograma de equipe humana", cada data desenhada seria uma promessa falsa. O Agora/Em seguida/Depois dá a mesma orientação sem mentir.</div>
+    </div>
+  </div>
+
+  <div class="ideia nao">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-nao">❌ não para nós</span>
+        <span class="quem">quem usa: times de Scrum (sprints, story points)</span>
+      </div>
+      <h3>Velocidade do time e pontos de história</h3>
+      <div class="alias">nome na indústria: velocity / story points</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">Por que não</span>Serve para prever quanto um <b>time humano estável</b> entrega por quinzena — a régua só funciona se o time for sempre o mesmo. O nosso "time" é montado a cada despacho e o ritmo é o do lote, não o da quinzena: o número não preveria nada. Os 4 números da fábrica (ideia B) medem a nossa saúde de verdade; este mediria uma ficção.</div>
+    </div>
+  </div>
+
+  <div class="ideia nao">
+    <div class="ideia-head">
+      <div class="ideia-topo">
+        <span class="veredito v-nao">❌ não para nós</span>
+        <span class="quem">quem usa: Google, Intel — empresas com centenas de pessoas para alinhar</span>
+      </div>
+      <h3>Objetivos e resultados-chave formais</h3>
+      <div class="alias">nome na indústria: OKRs</div>
+    </div>
+    <div class="ideia-body">
+      <div class="campo"><span class="rot">Por que não</span>OKR existe para <b>alinhar muita gente</b> que não se fala todo dia — trimestres, notas, cerimônias de revisão. Para um dono solo com robôs, vira burocracia sem cliente: o alinhamento aqui já é feito pelos 5 capítulos, pelas suas leis registradas ("completo, nunca a versão reduzida"; "pagamento por último") e pela caixa de entrada única. Adotar OKR aqui seria vestir terno para trabalhar de casa.</div>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="reforma"><span class="num">E</span>A proposta de reforma: "Um endereço só"</h2>
+  <p class="lead">Juntando as três regras da cura com as 12 ideias: <b>um painel único</b>, com três andares — cada andar para um público, todos bebendo da mesma fonte. Nada do que existe é jogado fora; tudo encontra o seu andar.</p>
+
+  <div class="andares">
+    <div class="andar capa">
+      <div class="ico">🗺️</div>
+      <div>
+        <div class="t">Andar 1 — A capa (a SUA vista; é a que abre)</div>
+        <div class="d">O Roadmap do dono, evoluído: o placar de uma frase · a <b>caixa de entrada única</b> "precisa de você" com contador · os capítulos em <b>Agora / Em seguida / Depois</b> com o <b>gráfico da colina</b> · <b>"o que mudou"</b> nos últimos 7 dias · o <b>gráfico de subida</b>. Zero sigla, como você pediu em 25/08.</div>
+      </div>
+    </div>
+    <div class="andar maq">
+      <div class="ico">⚙️</div>
+      <div>
+        <div class="t">Andar 2 — A sala de máquinas (a vista dos robôs)</div>
+        <div class="d">Faróis por frente com seta de tendência e critério escrito · o <b>quadro de colunas</b> da fila dos robôs · a <b>faixa de sondas reais</b> com carimbo de data/hora · os <b>4 números da fábrica</b>. É o que hoje está espalhado entre a Fundação e a Retomada, num lugar só.</div>
+      </div>
+    </div>
+    <div class="andar mem">
+      <div class="ico">📚</div>
+      <div>
+        <div class="t">Andar 3 — A memória (a história)</div>
+        <div class="d">O registro completo de episódios · incidentes <b>de mãos dadas com as lições</b> · as últimas decisões em uma linha · a <b>prateleira de fotografias</b> (a Retomada de 25/08, os painéis das eras passadas — congelados e datados).</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="lead" style="margin-top:24px;"><b>A obra, em quatro movimentos</b> — tudo trabalho de robô, numa sessão:</p>
+
+  <ol class="movimentos">
+    <li><b>Nasce o hub</b> (<code>arquivos/painel.html</code>) com os três andares. O conteúdo é <b>migrado</b> dos painéis atuais, não reescrito do zero — o que já está bom muda de endereço, não de natureza.</li>
+    <li><b>Uma fonte de dados só:</b> o <code>painel-dados.js</code> (o padrão que o projeto já provou) evolui para alimentar os três andares. A regra de edição continua a mesma que já é lei: item novo é UMA linha (lição 095), validada com <code>node --check</code>. Cada bloco ganha o <b>selo de frescor</b> (a ideia nova desta seção) — a data em que uma sessão o tocou pela última vez, para que o hub nunca repita o erro do <code>painel-10x</code>.</li>
+    <li><b>Aposentadoria com faixa:</b> cada painel antigo ganha um aviso no topo — <i>"este painel virou parte do hub, clique aqui"</i> — e as fotografias vão congeladas para a prateleira. <b>Nada é apagado.</b> Você pode continuar abrindo qualquer atalho antigo: todos levam à mesma porta.</li>
+    <li><b>A lei anti-proliferação entra nas regras da casa:</b> <i>"painel novo é proibido por padrão — sessão que precisar de superfície nova cria uma SEÇÃO no hub"</i>. É a cura da <b>causa</b>: foi a falta desta regra que criou os seis painéis. Honestidade sobre o alcance: este movimento toca o <code>CLAUDE.md</code> (arquivo-lei, versionado) — então é um PR pequeno, com mandato declarado no despacho da obra e anunciado nominalmente no relatório, como manda a regra da casa.</li>
+  </ol>
+
+  <div class="nota verde">✅ <b>O que a obra NÃO muda:</b> o seu jeito de usar continua idêntico — abrir um arquivo no navegador, sem servidor, sem senha, sem internet. E o pagamento continua intocado, como você mandou: esta reforma é só sobre <i>como você enxerga o projeto</i>, não sobre o que ele faz.</div>
+
+  <div class="nota azul">💡 <b>De onde vem cada peça:</b> capa = ideias do grupo A · sala de máquinas = grupo B · memória = grupo C. Se você cortar qualquer ideia individual (a colina, o gráfico de subida…), a reforma continua de pé — os quatro movimentos não dependem de nenhuma peça sozinha.</div>
+
+  <!-- ============================================================ -->
+  <h2 id="pedir"><span class="num">▶</span>Como pedir a obra</h2>
+  <div class="como-pedir">
+    <b>Quando tiver lido e decidido</b>, abra uma janela do Claude Code no seu PC (a que mostra <code style="color:var(--text)">PS C:\&gt;</code>) e cole uma frase só:
+    <span class="cmd">Li o cardápio de painéis (arquivos/cardapio-de-paineis.html). Aprovo a reforma inteira. Toque a obra.</span>
+    Ou, se quiser mudar algo:
+    <span class="cmd">Li o cardápio de painéis. Aprovo a reforma, mas: [o que você quer diferente]. Toque a obra.</span>
+    A sessão executa os quatro movimentos, confere e te reporta no fim. Se preferir conversar antes de decidir, é só perguntar — qualquer sessão sabe chegar até este documento.
+  </div>
+
+  <div class="rodape">
+    <b>Como este cardápio foi montado (25/08/2026):</b> leitura completa dos 6 painéis existentes (<code>painel-fundacao</code> + dados, <code>painel-roadmap</code>, <code>painel-retomada</code>, <code>painel-10x</code> + dados, <code>painel-prompts-fase-d</code>, <code>painel-prompts-fase-e</code>), das regras da casa (<code>CLAUDE.md</code>) e das suas decisões registradas — cruzada com os métodos publicados de Basecamp (Shape Up), da pesquisa DORA do Google (livro <i>Accelerate</i>), do Google SRE (postmortems), do padrão Keep a Changelog, dos ADRs, da prática de Kanban/roadmaps sem data e dos indicadores de frescor de dado (staleness) usados em ferramentas de BI corporativo. Este arquivo vive em <code>arquivos/</code> (fora do Git) e é um <b>documento de decisão</b>: depois que a reforma for feita, ele vira fotografia na prateleira. O painel vivo continua sendo o <a href="painel-fundacao.html">Painel da Fundação</a> até a obra acontecer.
+  </div>
+
+</div>
+</body>
+</html>
