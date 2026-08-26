@@ -5,13 +5,13 @@
 > Caixa atualiza esta página **e** o painel no fechamento — se os dois
 > discordarem, avise: é bug de processo.
 >
-> Última atualização: **25/08/2026** — Lote 4 fechado: a Caixa tem corredor, e o MVP foi auditado.
+> Última atualização: **26/08/2026** — a V1.2 entrou: a Caixa tem "Em alta" e "Meu impacto".
 
 **Legenda:** ⬜ na fila · 🔵 em andamento · ✅ entregue (com prova) · 🔴 travado · 🙋 precisa de você
 
 ## Onde estamos
 
-**Fase atual: LOTE 4 FECHADO — O MVP ESTÁ PRONTO E AUDITADO (25/08/2026).** A
+**Fase atual: A V1.2 ENTROU (26/08/2026) — a Caixa mostra o que está "Em alta" e o que a participação de cada aluno produziu ("Meu impacto"). No mesmo lote entrou a primeira peça do sistema de notificações: o identificador de pessoa que atravessa a plataforma.** *(Marco anterior: LOTE 4 FECHADO — o MVP pronto e auditado, 25/08/2026.)* A
 Caixa deixou de ser só um lugar de escrever ideia: agora tem **corredor**. Nada
 entra "em desenvolvimento" sem um ChangeSpec que **você** assinou (a trava é
 mecânica, em três camadas — não há como contornar por engano), e **todo mundo
@@ -67,7 +67,7 @@ está no ar (detalhe na linha do tempo abaixo).
 | Despacho | O que entrega | Estado | PR | Nota |
 |---|---|---|---|---|
 | EVO-30 | O quadro visual do protótipo v2: ver, votar, sugerir pelo navegador | ✅ | #166 | **deploy verde 25/08**; coube inteiro em 14 arquivos (sem split 30a/30b); suíte 218 → 233. Achado que vale para a plataforma: `armadilhas/102` — sob prefixo de caminho, `{% static %}` e `{% url %}` leem prefixos DIFERENTES, e a página chega sem estilo **só em produção** |
-| EVO-31 | O roadmap público + o sininho de notificação | ✅ | #175 | fecha o Lote 3; coube em 12 arquivos, suíte 233 → 252. A faixa vive DENTRO do quadro (âncora `#roadmap`, sem rota nova) e obedece ao filtro de categoria — quem decidiu isso foi um guarda do EVO-12b, vermelho. `nao_planejado`/`mesclado` ficam em "Fora do trilho", com guarda aritmético: zonas + saídas == quadro. A aba "Em alta" e o "Meu impacto" continuam na V1.2 |
+| EVO-31 | O roadmap público + o sininho de notificação | ✅ | #175 | fecha o Lote 3; coube em 12 arquivos, suíte 233 → 252. A faixa vive DENTRO do quadro (âncora `#roadmap`, sem rota nova) e obedece ao filtro de categoria — quem decidiu isso foi um guarda do EVO-12b, vermelho. `nao_planejado`/`mesclado` ficam em "Fora do trilho", com guarda aritmético: zonas + saídas == quadro. A aba "Em alta" e o "Meu impacto" ficaram para a V1.2 — **entregues em 26/08, PR #215** |
 
 ## Lote 4 — O corredor
 
@@ -76,6 +76,19 @@ está no ar (detalhe na linha do tempo abaixo).
 | EVO-40 | Trava de segurança: nada entra "em desenvolvimento" sem ChangeSpec aprovado por você | ✅ | #187 | trava em **três camadas** (a tela, o programa e o próprio banco de dados), cada uma provada separadamente. Quem aprova é só quem está em `SUGESTOES_APROVADORES` — **lista vazia = ninguém aprova**, de propósito. Lei em `DECISAO-EVO-40-quem-aprova-e-quem-e-avisado.md` |
 | EVO-42 | O aviso deixa de ser só do autor: quem votou e quem comentou também fica sabendo | ✅ | #193 | um aviso por pessoa distinta, com o motivo escrito ("sua ideia" × "ideia em que você votou"), tudo na mesma transação da mudança de status. O custo em consultas ao banco **não** cresce com o tamanho da plateia — está medido |
 | EVO-41 | MVP declarado pronto, com o checklist da spec conferido item a item | ✅ | *(este)* | fecha o plano. `docs/changespecs/` nasceu (ponteiro para a lei + molde); os 5 itens do checklist auditados por mutação em [`AUDITORIA-MVP.md`](AUDITORIA-MVP.md): **nenhum FAIL**, 3 ressalvas, todas de redação do plano |
+
+## Lote 5 — a V1.2 (26/08/2026)
+
+| Despacho | O que entrega | Estado | PR | Nota |
+|---|---|---|---|---|
+| V1.2-a | A aba **"Em alta"** (o que a turma está apoiando AGORA) e o painel **"Meu impacto"** | ✅ | #215 | deploy verde. O calor de uma ideia é a soma dos votos **com peso de recência** — voto da última semana vale 3, do último mês vale 1, mais velho não conta; o peso é do VOTO, não da idade da ideia, para que uma ideia antiga redescoberta pela turma apareça. "Em alta" é a primeira aba mas **não** a padrão: a spec crava o MVP em "ranking por total de votos", e trocar isso é decisão do mantenedor. Suíte 321 → 339 |
+| Fase 1 (notificações) | O **id da plataforma** guardado ao lado da identidade local da Caixa | ✅ | #212 | primeira peça do plano de notificações (`docs/decisoes/DECISAO-notificacoes.md`). A porta parou de descartar o id que a resposta do contrato já entregava; contrato **não** mudou. Invariante novo declarado: `INV-SUG11` |
+
+**"Meu impacto" não mostra a avaliação interna da equipe** — ele conta o que a
+participação da própria pessoa produziu (ideias escritas, apoiadas, quantas
+saíram da análise, votos recebidos). A trava disso é mecânica e foi provada por
+mutação: fazer a nota interna vazar deixa **dois** guardas vermelhos.
+
 
 ## Linha do tempo
 
