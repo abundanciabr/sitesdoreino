@@ -201,6 +201,38 @@ primeira oportunidade de violá-la.
   na lista ⇒ 3; `frame-ancestors 'none'` ⇒ 1; isentar um caminho a mais ⇒ 15.
 - **Célula dona:** admin
 
+### [INV-SUG11] Identidade Cunhada Guarda o Id da Plataforma
+- **O quê:** toda `Identidade` cunhada pela célula `sugestoes` depois da migration
+  `0006` guarda, ao lado do id opaco que ela mesma cunha, o **id da identidade da
+  plataforma** que a resposta do contrato entregou (`SessionFull.id` de
+  `getSessionFull`, `contracts/identidade.openapi.yaml`). A linha que já existia
+  sem ele o ganha **na reentrada** da pessoa; uma linha que já tem um id **não é
+  sobrescrita** por outro. Nada disto autoriza nem recusa ninguém: id ausente,
+  nulo ou colidindo com outra linha local não fecha a porta — quem autoriza
+  continua sendo e-mail + (staff | matrícula). E o casamento por **e-mail**
+  continua sendo a chave de recuperação: o id novo é dado a mais, não substituto.
+- **Por quê:** hoje não existe um identificador de pessoa que atravesse a
+  plataforma — `identidade` e `sugestoes` cunham dois ids opacos diferentes para a
+  mesma pessoa, e o único elo entre eles é o e-mail, que por decisão do mantenedor
+  (`DECISAO-EVO-01-identidade.md` §3) vive numa linha só e não circula. Sem este
+  invariante, todo evento que a Caixa publica carrega um id que **não significa
+  nada fora dela**, e uma caixa central de notificações receberia o fato sem
+  conseguir endereçar ninguém (`docs/notificacoes/PLANO-MESTRE.md` §2). O elo que
+  faltava já passava na mão a cada entrada e era descartado na porta; é a Fase 1
+  do plano, e sem ela nenhuma das outras funciona.
+- **Teste-Guarda:**
+  `services/sugestoes/tests/test_inv_id_da_plataforma.py` — cunhagem, reentrada,
+  não-sobrescrita, a porta abrindo com id ausente/nulo/em branco, a colisão de
+  unicidade não derrubando nem a cunhagem nem a reentrada, e a varredura de AST
+  que mantém **um único** caminho de cunhagem no código de produção (um segundo
+  nasceria sem o campo). A forma da coluna (`null=True, unique=True` +
+  `CheckConstraint` contra `''`) tem guarda próprio no mesmo arquivo: é ela que
+  decide se a migration sobe sobre uma tabela cheia. O antídoto operacional que a
+  §9 do plano exige é `manage.py relatorio_id_da_plataforma`, com guarda em
+  `services/sugestoes/tests/test_relatorio_id_da_plataforma.py`.
+- **Célula dona:** sugestoes (obrigação herdada por qualquer célula que cunhe
+  identidade local a partir da resposta da `identidade`)
+
 ---
 
 ## Invariantes da própria CI
