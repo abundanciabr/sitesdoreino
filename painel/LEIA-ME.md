@@ -28,7 +28,7 @@
 ```js
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
   arquivo: "20260826-001-exemplo",      // = nome do arquivo sem .js (o gerador confere)
-  tipo: "entrega",                      // decisao | pendencia | resposta | entrega | incidente | medicao | frente | nota
+  tipo: "entrega",                      // decisao | pendencia | resposta | entrega | incidente | medicao | frente | rumo | nota
   quando: "2026-08-26",                 // quando o FATO aconteceu (não quando você escreveu)
   titulo: "Uma linha, para leigo, sem sigla",
   detalhe: "Texto simples, sem HTML. Parágrafos separados por \\n\\n.",
@@ -38,7 +38,8 @@
   precisa_do_dono: false,               // true = entra na caixa de entrada até existir resposta
   responde_a: null,                     // arquivo de outro registro que este fecha — ou null
   gravidade: "info",                    // vermelho | ambar | info | verde
-  frente: null,                         // só p/ tipo "frente": site | comunidade | curso | vender | fabrica
+  frente: null,                         // etiqueta do capítulo do "Meu mapa": site | comunidade | curso | vender | fabrica
+                                        // (obrigatória em "frente" e em "rumo"; opcional e recomendada no resto)
   vence_em_dias: null                   // depois de N dias sem registro novo, isto conta como velho — ou null (não vence)
 });})();
 ```
@@ -64,6 +65,12 @@
   de crescer, ela quebra visivelmente e diz o que precisa sair.
 - **Autoridade:** cada tipo de fato tem quem pode declará-lo. Painel nenhum é
   origem de fato — todo painel é espelho.
+- **O mapa não inventa futuro:** a vista "Meu mapa" mostra os cinco capítulos
+  sempre, cada um com o rumo registrado daquela frente. Frente sem `rumo` diz
+  *"não sei para onde esta frente vai"* — nunca uma tela vazia, que se leria
+  como "nada planejado". E **`rumo` nunca é verde**: verde é prova conferida, e
+  o futuro não se prova. Quando um rumo vira realidade, quem o fecha é um
+  registro novo com `responde_a` apontando para ele — a mesma mecânica da caixa.
 
 ## O que NÃO fazer
 

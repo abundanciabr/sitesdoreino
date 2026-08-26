@@ -25,7 +25,12 @@ var MANIFESTO = [
   "20260826-006-auditoria-da-obra-veredito",
   "20260826-007-evidencias-que-apontavam-para-a-lapide",
   "20260826-008-auditoria-de-fora-quatro-consertos",
-  "20260826-009-decisao-a-vista-meu-mapa-nao-foi-construida"
+  "20260826-009-decisao-a-vista-meu-mapa-nao-foi-construida",
+  "20260826-010-rumo-fabrica-tres-pecas",
+  "20260826-011-rumo-site-fuso-horario",
+  "20260826-012-rumo-comunidade-sininho-e-apresentacao",
+  "20260826-013-rumo-curso-o-capitulo-do-dono",
+  "20260826-014-rumo-vender-comeca-do-meio"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {

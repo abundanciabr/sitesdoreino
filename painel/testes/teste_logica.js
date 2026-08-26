@@ -116,6 +116,40 @@ caso("frente sem registro aparece como nula (não some)",
 caso("tipo 'frente' sem frente válida REPROVA",
   LOGICA.validarRegistros([reg({ tipo: "frente", frente: "outra" })]).length > 0);
 
+console.log("== Meu mapa: cinco capítulos, e o futuro que não se prova ==");
+var rumoSite = reg({ arquivo: "20260826-910-rumo", tipo: "rumo", frente: "site", quando: "2026-08-26", titulo: "para onde o site vai" });
+var frenteSite = reg({ arquivo: "20260825-910-f", tipo: "frente", frente: "site", quando: "2026-08-25", titulo: "site no ar", gravidade: "verde", evidencia: "curl 200", verificado_em: "2026-08-25" });
+caso("o mapa tem sempre os 5 capítulos, mesmo sem registro nenhum",
+  LOGICA.meuMapa([], AGORA).length === 5);
+caso("a ordem do mapa é a do Roadmap (a fábrica primeiro, vender por último)",
+  LOGICA.meuMapa([], AGORA)[0].frente === "fabrica" && LOGICA.meuMapa([], AGORA)[4].frente === "vender");
+var capSite = LOGICA.meuMapa([rumoSite, frenteSite], AGORA).filter(function (c) { return c.frente === "site"; })[0];
+caso("o capítulo mostra o estado da frente", capSite.estado.titulo === "site no ar");
+caso("...e o rumo dela", capSite.rumos.length === 1);
+caso("capítulo sem rumo fica SEM rumo (não inventa um)",
+  LOGICA.meuMapa([frenteSite], AGORA).filter(function (c) { return c.frente === "site"; })[0].rumos.length === 0);
+caso("frente sem registro nenhum aparece com estado nulo — 'não sei', nunca vazio silencioso",
+  LOGICA.meuMapa([], AGORA)[0].estado === null);
+caso("rumo RESPONDIDO some do mapa — sem ninguém apagar nada",
+  LOGICA.meuMapa([rumoSite, reg({ arquivo: "20260827-910-r", tipo: "resposta", responde_a: "20260826-910-rumo" })], AGORA)
+    .filter(function (c) { return c.frente === "site"; })[0].rumos.length === 0);
+caso("rumo VERDE REPROVA — o futuro não se prova",
+  LOGICA.validarRegistros([reg({ tipo: "rumo", frente: "site", gravidade: "verde", evidencia: "x", verificado_em: "2026-08-26" })]).length > 0);
+caso("rumo SEM frente REPROVA (rumo sem capítulo não tem onde morar)",
+  LOGICA.validarRegistros([reg({ tipo: "rumo" })]).length > 0);
+caso("frente inventada REPROVA em qualquer registro, não só nos de tipo 'frente'",
+  LOGICA.validarRegistros([reg({ tipo: "nota", frente: "marketing" })]).length > 0);
+caso("etiqueta de frente válida numa nota comum passa",
+  LOGICA.validarRegistros([reg({ tipo: "nota", frente: "curso" })]).length === 0);
+caso("rumo NÃO vira 'problema aberto' (ele mora no mapa — um fato, uma casa)",
+  LOGICA.problemasAbertos([reg({ tipo: "rumo", frente: "curso", gravidade: "ambar" })]).length === 0);
+caso("o pedido do dono aparece no capítulo da frente dele",
+  LOGICA.meuMapa([reg({ arquivo: "20260820-910-p", tipo: "pendencia", frente: "vender", quando: "2026-08-20", precisa_do_dono: true })], AGORA)
+    .filter(function (c) { return c.frente === "vender"; })[0].esperando.length === 1);
+caso("o resumo do mapa é contado, nunca escrito",
+  LOGICA.resumoDoMapa([rumoSite, frenteSite], AGORA).comProvaConferida === 1 &&
+  LOGICA.resumoDoMapa([rumoSite, frenteSite], AGORA).semRumo === 4);
+
 console.log("== frescor computado ==");
 var vencido = reg({ arquivo: "20260810-001-v", quando: "2026-08-10", vence_em_dias: 7 });
 caso("registro vencido é DENUNCIADO", LOGICA.frescor([vencido], AGORA).vencidos.length === 1);
