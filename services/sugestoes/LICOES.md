@@ -3,6 +3,99 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
+## A V1.2 ("Em alta" e "Meu impacto"): o que estas duas peças ensinaram
+
+Fecha as duas linhas que a `ESPECIFICACAO-CELULA.md` §10 deixou escritas como
+V1.2. Nenhuma tabela nasceu, nenhuma rota nasceu: as duas são recortes novos de
+dados que existem desde o EVO-11, servidos dentro do quadro. Oito coisas:
+
+**1. A fórmula do "em alta" pesa o VOTO, e não a idade da ideia — e a diferença
+decide o que a aba significa.** A fórmula clássica de trending (votos ÷ idade)
+só sabe destacar ideia NOVA: uma ideia de seis meses que a turma inteira
+redescobre nesta semana continuaria no fundo, exatamente quando está em alta de
+verdade. O que ficou, numa frase: **o calor é a soma dos votos com peso de
+recência — voto dos últimos 7 dias vale 3, do último mês vale 1, mais velho que
+um mês não conta.** Degraus inteiros e não `exp()`, porque aritmética de inteiro
+sai igual no Postgres e no Python, ordena sem `float` e **cabe na frase**; zero
+depois de 30 dias e não um piso pequeno, porque um piso faria o calor virar o
+total de votos com outro nome — e a aba do lado já é essa.
+
+**2. Um `Sum` ao lado de dois `Count(distinct=True)` sai multiplicado, e o
+`distinct` do vizinho é o que faz ninguém desconfiar.** A grade já juntava
+`votos` E `comentarios`: com dois `JOIN`, uma ideia com 2 votos e 3 comentários
+vira 6 linhas antes do `GROUP BY`. Os `Count(distinct=True)` sobrevivem — e é
+essa sobrevivência que engana, porque `Sum(distinct=True)` soma valores
+distintos, que é outra pergunta. Não existe versão do `Sum` que sobreviva à
+junção dupla: a saída é a subconsulta correlacionada (`calor_de_recencia`), que
+continua custando **uma** consulta. Medido: com o `Sum` de volta na junção,
+**1 teste vermelho de 8** no arquivo — os outros sete tinham fixtures sem
+comentário nenhum e aprovariam a versão errada inteira. Virou `armadilhas/121`,
+porque não é desta casa só.
+
+**3. `Coalesce(..., 0)` não é zelo — sem ele a aba abre ao contrário.** A
+subconsulta não produz linha para quem não tem voto, e no Postgres
+`ORDER BY … DESC` põe `NULL` **na frente** de qualquer número: "Em alta" abriria
+mostrando exatamente as ideias em que ninguém votou. Há guarda
+(`test_ideia_sem_voto_nenhum_fica_atras_de_quem_tem_calor`).
+
+**4. `agora` virou PARÂMETRO, e é isso que torna o ranking falsificável.** Um
+`timezone.now()` dentro da função obrigaria todo guarda a medir contra o relógio
+da máquina — teste que diz uma coisa na segunda e outra no domingo, e que
+apodrece sozinho. A view lê `timezone.now()` na borda e desce o instante; o
+guarda passa um `datetime` escrito à mão e carimba os votos à mão. **E
+`Voto.criado_em` é `auto_now_add`: `criado_em=` no `create()`/`bulk_create()` é
+ignorado em silêncio** — a data só se escreve por `update()` DEPOIS do fato,
+senão todo voto nasce "de hoje" e o guarda fica verde sem nunca ter medido um
+degrau.
+
+**5. "Em alta" é a PRIMEIRA aba e não a PADRÃO — e as duas coisas foram
+decididas.** No protótipo ela é a aba acesa. Aqui o padrão continua
+`mais-votadas`, porque a §10 crava o MVP em *"ranking por total de votos"*, e
+trocar em silêncio o que todo aluno vê ao chegar seria reescrever spec de
+plataforma dentro de um despacho de célula — é a mesma linha do item 2 do bloco
+do EVO-40 abaixo. O guarda mede as duas juntas
+(`test_as_abas_sao_tres_e_a_acesa_continua_sendo_mais_votadas`): a ordem da fila
+E qual delas está com `class="ativo"`. Mudar isso é decisão do mantenedor, e de
+uma linha.
+
+**6. "Meu impacto" NÃO é a avaliação interna, e a coincidência da palavra é do
+protótipo.** `impacto_educacional`/`impacto_comercial`/`esforco_tecnico`/`notas`/
+`decisao_produto` são o que a EQUIPE achou, invisíveis ao aluno por desenho em
+três degraus (spec §8). O painel novo é o que a PESSOA fez. Provado por mutação:
+acrescentar `"avaliacao__decisao_produto"` ao `.values(...)` do painel e imprimi-
+lo no template deixa **dois** guardas vermelhos — o degrau 1 do antigo (o SQL da
+jornada tocou `sugestoes_avaliacaointerna`) e o novo
+`test_nenhuma_nota_interna_da_equipe_chega_ao_painel`. **O degrau 2 do guarda
+antigo NÃO pegou**, e o motivo vale guardar: a fixture `avaliacao` dele semeia a
+nota numa sugestão de OUTRA identidade (a fixture `sugestao`, autoria de
+`aluno`), e o painel só lista as ideias de quem está olhando. Guarda de vazamento
+por corpo renderizado só morde se a marca estiver num dado que a página em questão
+**tem motivo de mostrar**.
+
+**7. O painel obedece ao filtro de categoria — e quem decidiu foi um guarda de
+quatro despachos atrás, de novo.** A pergunta ("os números são do quadro inteiro
+ou do recorte?") tinha resposta boa dos dois lados. Tirar o filtro deixa
+`test_o_quadro_filtra_por_categoria` (EVO-12b) **vermelho**, exatamente como já
+tinha acontecido com a faixa no EVO-31: ele afirma sobre o CORPO da página, e a
+lista "as suas ideias" devolvia no rodapé os títulos que a pessoa acabou de tirar
+da grade. Como os números passaram a ser do recorte, o painel **diz em qual
+recorte eles estão** — sem essa linha, "1 ideia" pareceria desmentir as 2 que a
+pessoa escreveu.
+
+**8. `Q(autor=eu) | Q(votos__autor=eu)` precisa de `.distinct()`, e o caso não é
+exótico: é quem vota na própria ideia.** Ela casa nos dois lados do `Q` e sairia
+contada duas vezes, premiando quem vota em si mesmo. `.order_by()` antes do
+`.distinct()` pela `armadilhas/115` — `Sugestao` não tem `Meta.ordering` hoje, e
+no dia em que tiver o `DISTINCT` passaria a ser pelo par sem ninguém notar.
+
+**O que ficou de fora, e é decisão e não esquecimento:** "Meu impacto" não tem
+rota nem página própria — é seção com `id` dentro do quadro, alcançada por âncora
+pelo botão do trilho, como a faixa do EVO-31. Rota própria seria uma segunda
+porta a proteger e a acrescentar às **três** varreduras de urlconf desta célula,
+para mostrar um recorte do que o quadro já tem em mãos. E, pelo mesmo motivo do
+roadmap, **o botão dele não se pinta de `ativo`**: âncora não muda
+`request.resolver_match`, e pintá-lo por adivinhação faria o trilho mentir.
+
 ## O id que atravessa (Fase 1 das notificações): guardar o que já passava na mão
 
 `docs/notificacoes/PLANO-MESTRE.md` §2 mediu o nó: `identidade` e `sugestoes`

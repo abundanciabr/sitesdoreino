@@ -103,7 +103,16 @@ def _jornada_completa(cliente, sugestao, aviso) -> dict[str, list]:
         "categoria": "curso",
     }
     return {
-        "quadro": [cliente.get(quadro), cliente.get(f"{quadro}?categoria=curso")],
+        # As TRÊS abas, e não só a padrão: "Em alta" (V1.2) monta um ranking
+        # próprio, com uma subconsulta que as outras não têm — medir só o
+        # caminho de sempre deixaria o SQL da aba nova fora do degrau 1. O
+        # painel "Meu impacto", que estreou no mesmo despacho, vive dentro desta
+        # mesma página e entra em cada linha desta lista de graça.
+        "quadro": [
+            cliente.get(quadro),
+            cliente.get(f"{quadro}?categoria=curso"),
+            cliente.get(f"{quadro}?ordem=em-alta"),
+        ],
         "nova_sugestao": [
             cliente.get(nova),
             cliente.post(nova, {**base, "conferir": "1"}),

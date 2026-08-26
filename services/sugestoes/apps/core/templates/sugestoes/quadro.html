@@ -7,8 +7,13 @@ JavaScript. Ordenar no cliente daria duas verdades sobre a mesma coisa, e a que
 a pessoa vê seria a que ninguém testa. Aba desconhecida é 404 na view, como
 categoria desconhecida já era: aceitar em silêncio faria a aba mentir.
 
-"Em alta" — a terceira aba do protótipo — NÃO está aqui: é V1.2 (PLANO-MESTRE
-§6), porque depende de um peso de recência que ainda não foi decidido.
+"Em alta" — a terceira aba do protótipo — entrou na V1.2, com a fórmula que
+faltava: o calor é a soma dos votos com peso de recência (voto da última semana
+vale 3, do último mês vale 1, mais velho que um mês não conta). A fórmula
+inteira, e o porquê de cada degrau, está em
+`apps/core/participacao.py::PESOS_DE_RECENCIA`. Ela é a PRIMEIRA aba e não a
+padrão: o padrão continua "Mais votadas", que é o que a spec §10 crava para o
+MVP — trocar isso é decisão do mantenedor, não de template.
 
 O voto é um `<form method="post">` com um botão compacto, como no protótipo. O
 que ele diz em palavras vive no `title`/`aria-label` ("Votar" / "Tirar meu
@@ -155,6 +160,90 @@ nome para quem usa leitor de tela — a mesma regra do botão de voto (LICOES §
       </ul>
     </div>
   {% endif %}
+</section>
+
+{% comment %}
+MEU IMPACTO (V1.2) — o que a participação da PESSOA produziu.
+
+Mora aqui pelo mesmo motivo da faixa: é seção com `id` dentro do quadro, que o
+botão do trilho alcança por âncora (`#meu-impacto`). Rota própria seria uma
+segunda porta a proteger e a acrescentar às três varreduras de urlconf desta
+célula, para mostrar um recorte do que esta página já tem em mãos.
+
+**O que este painel NÃO é, e o desenho depende disso:** ele não é a avaliação
+interna da equipe. `impacto_educacional`, `impacto_comercial`, `esforco_tecnico`,
+`notas` e `decisao_produto` são invisíveis ao aluno por desenho (spec §8) e
+continuam invisíveis — nada aqui os nomeia, e o guarda de três degraus
+(`tests/test_inv_avaliacao_interna_fora_do_alcance.py`) percorre esta página
+inclusive na aba nova. A palavra "impacto" aparecer nos dois assuntos é herança
+do protótipo: um é o que a PESSOA fez, o outro é o que a EQUIPE achou.
+
+Os números saem em `<b class="impacto-numero">` e NÃO em `<span class="votos">`:
+a segunda classe é a que `test_o_rosto.py` lê por regex para medir a contagem do
+botão de voto da grade, e reaproveitá-la aqui faria aquele guarda somar o painel
+achando que contava votos (é a lição 2 do EVO-31 — nesta célula, classe de CSS é
+interface de teste). Mesma razão para `.impacto-titulo` em vez de `.peca-titulo`.
+
+O painel OBEDECE ao filtro de categoria, como a faixa — e por isso o subtítulo
+diz em qual recorte os números estão. Sem essa linha, "2 ideias" pareceria
+desmentir as 12 que a pessoa escreveu no quadro inteiro.
+{% endcomment %}
+<section id="meu-impacto" class="impacto" aria-labelledby="meu-impacto-titulo">
+  <p class="rotulo-de-secao" id="meu-impacto-titulo">Meu impacto</p>
+  <p class="impacto-recorte">
+    O que a sua participação produziu
+    {% if categoria_do_recorte %}em {{ categoria_do_recorte }}{% else %}neste quadro{% endif %}.
+  </p>
+
+  <div class="impacto-grade">
+    <div class="impacto-caixa">
+      <b class="impacto-numero">{{ impacto.ideias }}</b>
+      <span>ideia{{ impacto.ideias|pluralize }} sugerida{{ impacto.ideias|pluralize }}</span>
+    </div>
+    <div class="impacto-caixa">
+      <b class="impacto-numero">{{ impacto.apoiadas }}</b>
+      <span>ideia{{ impacto.apoiadas|pluralize }} que você apoiou</span>
+    </div>
+    <div class="impacto-caixa">
+      <b class="impacto-numero">{{ impacto.avancaram }}</b>
+      <span>saíram da análise com você junto</span>
+    </div>
+    <div class="impacto-caixa">
+      <b class="impacto-numero">{{ impacto.votos_recebidos }}</b>
+      <span>voto{{ impacto.votos_recebidos|pluralize }} nas suas ideias</span>
+    </div>
+  </div>
+
+  {% comment %}
+  Quatro números sozinhos não dizem QUAL ideia andou. A lista é o que transforma
+  "2 saíram da análise" numa frase acionável — e ela sai da mesma consulta
+  recortada por `.values(...)`, sem a coluna do autor (que é uma `Identidade`,
+  com e-mail dentro).
+  {% endcomment %}
+  <div class="minhas-ideias">
+    <h2>As suas ideias, e onde elas estão</h2>
+    {% if impacto.minhas_ideias %}
+      <ul class="saidas">
+        {% for ideia in impacto.minhas_ideias %}
+          <li>
+            <span class="selo selo-{{ ideia.status }}">{{ ideia.rotulo }}</span>
+            <a class="impacto-titulo" href="{% url 'sugestao' ideia.id %}">{{ ideia.titulo }}</a>
+            <span class="impacto-votos">{{ ideia.total_votos }} voto{{ ideia.total_votos|pluralize }}</span>
+          </li>
+        {% endfor %}
+      </ul>
+      {% if impacto.escondidas %}
+        <p class="meta">e mais {{ impacto.escondidas }} que você escreveu antes destas.</p>
+      {% endif %}
+    {% else %}
+      <p class="meta">
+        Você ainda não publicou nenhuma ideia
+        {% if categoria_do_recorte %}em {{ categoria_do_recorte }}{% else %}aqui{% endif %}.
+        <a href="{% url 'nova_sugestao' %}">Conte o que está faltando</a> — é assim
+        que este painel começa a encher.
+      </p>
+    {% endif %}
+  </div>
 </section>
 {% endblock %}
 
