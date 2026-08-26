@@ -45,41 +45,39 @@ dívidas abertas) **e diga isso ao usuário no relatório final, em texto claro*
 não lê o documento a cada sessão; se você contornar em silêncio, o mesmo atrito volta
 no próximo despacho, e no seguinte.
 
-## O painel vivo é obrigatório, não opcional
+## O livro de ocorrências é obrigatório, não opcional (desde 26/08/2026)
 
-`arquivos/painel-fundacao.html` é o checklist vivo deste projeto — feito para o
-dono do projeto (leigo em código) acompanhar o que está acontecendo sem
-precisar ler a conversa inteira ou o histórico do Git.
+O painel do dono é **`painel/painel.html`** — a porta única, que **não guarda
+nenhum dado próprio**: toda vista é calculada de **`painel/registros/`** (o
+livro de ocorrências, versionado) e de medições ao vivo. Decisão do mantenedor
+em 26/08/2026, após 8 rodadas de consultoria externa; análise em
+`docs/paineis/VEREDITO-DAS-CONSULTORIAS.html`, contrato em `painel/LEIA-ME.md`.
 
-**Regra permanente:** depois de CADA tarefa relevante — iniciada, concluída,
-falhou, ficou bloqueada, ou mudou de estado — atualize
-`arquivos/painel-fundacao.html` refletindo a realidade, **sem perguntar se
-deve fazer isso**. Atualizar o painel é parte de terminar a tarefa, não um
-passo extra opcional. Isso inclui:
+**Regra permanente:** depois de CADA tarefa relevante — concluída, falhou,
+ficou bloqueada, mudou de estado, incidente, decisão pedida ou respondida —
+**acrescente UM REGISTRO NOVO** em `painel/registros/` (molde no
+`painel/LEIA-ME.md`) e rode `node painel/gerar_manifesto.js`, **sem perguntar
+se deve**. Registrar é parte de terminar a tarefa; a muralha-do-painel do CI
+recusa PR com o livro inconsistente. As regras que importam:
 
-- Marcar itens do checklist como concluídos assim que houver evidência real
-  (nunca por promessa ou intenção).
-- Atualizar notas nos itens quando o resultado mudar.
-- Registrar incidentes relevantes (merge inesperado, CI vermelho, revert,
-  qualquer coisa que quebrou e foi consertada) na seção "Linha do tempo de
-  incidentes".
-- Manter a caixa "Precisa de você agora" honesta: só o que está *realmente*
-  em aberto, nem mais, nem menos.
-- **Merge é gatilho de painel, não pergunta.** Desde 22/08/2026 quem mergeia é
-  o agente (seção "Mergear é trabalho do agente" abaixo): mergeou, atualize o
-  painel na MESMA resposta. E se um merge acontecer fora da sessão (o usuário
-  clicou no site, outra sessão mergeou) e alguém o confirmar — em qualquer
-  forma ("feito", "ok", um link, um "✓", mesmo em sessão diferente da que
-  abriu o PR) — vale o mesmo gatilho: confira o merge de verdade
-  (`gh pr view <N> --json state,mergedBy,mergeCommit`) e atualize o painel sem
-  esperar a pergunta. A confirmação é o gatilho para checar, não um substituto
-  para checar.
-
-Não pergunte "quer que eu atualize o painel?". Atualize, e diga o que mudou.
-Perguntar antes de agir continua valendo para a AÇÃO em si quando ela for
-arriscada (push direto na `main`, apagar algo irrecuperável, agir fora do
-mandato do despacho) — não para manter o painel em dia, que é sempre de baixo
-risco e reversível.
+- **Nunca edite um registro existente.** Atualização, correção ou resposta é
+  um registro NOVO — se ele fecha um pedido, aponte `responde_a`. A caixa
+  "precisa de você" é CALCULADA (pedido sem resposta): ela não esquece, e
+  ninguém a mantém à mão.
+- **Verde exige prova conferida** (`evidencia` + `verificado_em`). Sem prova,
+  registre como está — o painel mostra "não comprovado", e isso é honesto.
+- **Merge é gatilho de registro, não pergunta.** Mergeou (ou confirmou um
+  merge de fora — "feito", "ok", um link, um "✓"): confira de verdade
+  (`gh pr view <N> --json state,mergedBy,mergeCommit`) e registre na MESMA
+  resposta.
+- **A LEI ANTI-DUPLICAÇÃO: nenhum fato do projeto mora em dois lugares.**
+  Superfície nova de acompanhamento se calcula do livro; superfície que
+  mantém lista própria é proibida — inclusive dentro do próprio painel, e
+  inclusive "só um HTML rapidinho em `arquivos/`". Se o painel não mostra algo
+  que deveria, a mudança é na regra de cálculo (`painel/logica.js`, por PR,
+  com teste-guarda) — nunca uma lista paralela.
+- Os painéis antigos de `arquivos/painel-*.html` são **lápides e fotografias**
+  (história congelada). Não os atualize; não crie novos.
 
 ## Mergear é trabalho do agente (desde 22/08/2026)
 
@@ -91,8 +89,9 @@ rito: `RITOS.md` §2 peça 4. O fluxo, sem perguntar "posso mergear?":
 2. `python ci/mergear.py <N> --conferir` — tudo verde?
 3. `python ci/mergear.py <N> --confirmo <N>` — mergeia e já confere no GitHub
    que o PR virou `MERGED`.
-4. Painel; e, se o merge toca `services/` ou `infra/`, o veredito do run de
-   deploy (seção "Depois de todo merge que dispara deploy").
+4. O registro no livro (`painel/registros/` + `node painel/gerar_manifesto.js`);
+   e, se o merge toca `services/` ou `infra/`, o veredito do run de deploy
+   (seção "Depois de todo merge que dispara deploy").
 
 Vermelho, pendente, ausente ou ERROR **nunca** se mergeia — conserte ou
 reporte. O botão de merge do site não é caminho para ninguém. Merge em caminho
@@ -105,9 +104,11 @@ nominalmente no relatório final**.
 merge serial e fechamento. Se o mantenedor pedir "toque um lote", é esse
 documento que define o como.
 
-Se o painel ainda não tiver uma seção adequada para o que aconteceu, crie uma
-(ex.: a "Linha do tempo de incidentes" foi criada assim, sob demanda) — o
-painel deve crescer para caber a realidade do projeto, não o contrário.
+Se o livro não tiver um `tipo` adequado para o que aconteceu, registre com o
+tipo mais próximo (`nota` serve para quase tudo) e anote no detalhe — mudar o
+vocabulário de tipos é mudança em `painel/logica.js`, por PR, com teste-guarda.
+A capa do painel tem teto de blocos e se RECUSA a crescer: realidade nova entra
+como registro, não como seção nova.
 
 ## Como trabalhar com o mantenedor (vale para TODA sessão)
 
