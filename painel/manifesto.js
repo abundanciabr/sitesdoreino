@@ -35,7 +35,12 @@ var MANIFESTO = [
   "20260826-016-os-consertos-e-o-mapa-entraram",
   "20260826-017-trava-de-merge-nativa-ligada",
   "20260826-018-a-trava-entrou-na-main",
-  "20260826-019-a-lista-dupla-do-precisa-de-voce"
+  "20260826-019-a-lista-dupla-do-precisa-de-voce",
+  "20260826-020-h11-prova-do-primeiro-deploy-de-infra",
+  "20260826-021-h16-criterio-de-pagamento-parado-por-ordem-sua",
+  "20260826-022-h17-celula-nova-nasce-com-o-portao-vermelho",
+  "20260826-023-a-lista-dupla-foi-desfeita",
+  "20260826-024-a-secao-9-e-o-mesmo-problema-de-novo"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {

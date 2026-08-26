@@ -39,11 +39,23 @@ nem edite a entrada de outro agente para encaixar a sua** — arquivo novo por e
 é exatamente o que faz duas sessões paralelas pararem de colidir no mesmo hunk.
 
 **Se a correção definitiva não estiver nas suas mãos** — depende de instalar algo na
-máquina, de plano pago, de permissão — registre na tabela `§1 — PRECISA DE VOCÊ` do
-**`ARMADILHAS-OPERACAO.md`** (o arquivo do humano: §1, como se mergeia, painéis, §9
-dívidas abertas) **e diga isso ao usuário no relatório final, em texto claro**. Ele
-não lê o documento a cada sessão; se você contornar em silêncio, o mesmo atrito volta
-no próximo despacho, e no seguinte.
+máquina, de plano pago, de permissão — **abra um registro** em `painel/registros/`
+(tipo `pendencia`, com `precisa_do_dono: true`) **e diga isso ao usuário no relatório
+final, em texto claro**. Ele não lê documento a cada sessão; se você contornar em
+silêncio, o mesmo atrito volta no próximo despacho, e no seguinte.
+
+**O que espera por ele mora num lugar só — e esse lugar é o livro.** A caixa
+"Precisa de você" do painel é CALCULADA (pedido sem resposta), então ela não
+consegue esquecer nem inventar. A `§1` do `ARMADILHAS-OPERACAO.md` **deixou de ser
+lista de pendências em 26/08/2026**: ela guarda o histórico de cada atrito e as
+instruções técnicas dos passos manuais, e **nada de estado**. Não acrescente linha
+nova lá, e não devolva marcador 🔴/🟡 às que existem —
+`ci/tests/test_uma_casa_para_o_precisa_de_voce.py` reprova as duas coisas.
+
+Por que a regra é dura: até 26/08 as duas listas coexistiam e **já discordavam** —
+7 itens "abertos" na tabela contra 6 no painel, com um deles invisível para o
+mantenedor. Foi a doença do H18 voltando por dentro da própria lei que a curou
+(a auditoria que achou isso está no registro `20260826-019`).
 
 ## O livro de ocorrências é obrigatório, não opcional (desde 26/08/2026)
 
