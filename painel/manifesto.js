@@ -34,7 +34,8 @@ var MANIFESTO = [
   "20260826-015-resposta-pode-construir-o-meu-mapa",
   "20260826-016-os-consertos-e-o-mapa-entraram",
   "20260826-017-trava-de-merge-nativa-ligada",
-  "20260826-018-a-trava-entrou-na-main"
+  "20260826-018-a-trava-entrou-na-main",
+  "20260826-019-a-lista-dupla-do-precisa-de-voce"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
