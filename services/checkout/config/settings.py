@@ -73,3 +73,12 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 
 USE_TZ = True
+
+# O fuso em que o checkout MOSTRA hora — o armazenamento continua em UTC
+# (USE_TZ). Sem esta linha vale o default de fábrica do Django,
+# `America/Chicago`: cinco horas atrás, capaz de trocar até o DIA perto da
+# virada, sem nada acusando a troca. Aqui o estrago tem nome próprio: prazo de
+# Pix e horário de pedido são hora que o CLIENTE lê para decidir se ainda dá
+# tempo de pagar. Foi assim que a `sugestoes` foi pega em 24/08/2026 (EVO-21).
+# Guarda: tests/test_fuso_horario.py (armadilhas/099).
+TIME_ZONE = "America/Sao_Paulo"
