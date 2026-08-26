@@ -578,7 +578,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"PR #{args.pr} mergeado de verdade (por {quem}, commit {sha[:12]}).")
     print(
         "Agora: se o merge toca services/ ou infra/, confira o run de deploy "
-        "(CLAUDE.md); e atualize arquivos/painel-fundacao.html."
+        "(CLAUDE.md); e acrescente o registro do que aconteceu em "
+        "painel/registros/ (molde em painel/LEIA-ME.md) + node painel/gerar_manifesto.js."
     )
     return 0
 

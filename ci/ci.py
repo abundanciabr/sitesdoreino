@@ -173,6 +173,11 @@ MURALHAS = [
         "ci/guarda-de-segredos.sh",
         "segredo de produção alcançável do repositório (INV-P8)",
     ),
+    PortaoDeShell(
+        "muralha-do-painel",
+        "ci/muralha-do-painel.sh",
+        "o livro de ocorrências (painel/) inválido ou com manifesto desatualizado",
+    ),
 ]
 
 
