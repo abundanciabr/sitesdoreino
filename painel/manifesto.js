@@ -32,7 +32,8 @@ var MANIFESTO = [
   "20260826-013-rumo-curso-o-capitulo-do-dono",
   "20260826-014-rumo-vender-comeca-do-meio",
   "20260826-015-resposta-pode-construir-o-meu-mapa",
-  "20260826-016-os-consertos-e-o-mapa-entraram"
+  "20260826-016-os-consertos-e-o-mapa-entraram",
+  "20260826-017-trava-de-merge-nativa-ligada"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {

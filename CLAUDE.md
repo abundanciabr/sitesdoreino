@@ -183,5 +183,6 @@ nunca do exit de um comando com `| tail`/`| head` pendurado (ARMADILHAS §5.10:
 já houve falso-verde assim, e os greens históricos do deploy-celula mentiram
 até 21/08/2026 — H13). Run vermelho: `gh run view <id> --log-failed` mostra
 onde parou; repete-se sem novo merge com `gh run rerun <id> --failed`. Reporte
-o veredito ao mantenedor em texto claro — não há required check (H3), ninguém
-mais vai olhar por você.
+o veredito ao mantenedor em texto claro — desde 26/08/2026 a `main` tem sim
+required checks (`muralhas` e `ci-celula-gate`, H3), mas **nenhum deles olha o
+deploy**: ele roda DEPOIS do merge, e ninguém mais vai olhar por você.
