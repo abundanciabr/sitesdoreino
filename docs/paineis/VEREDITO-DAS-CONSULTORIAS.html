@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>O Veredito das 5 Consultorias — painéis</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A;
+    --grid: rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft: rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --red:#E2705A; --red-dim:#3E2620;
+    --blue:#4c8dff; --blue-dim:rgba(76,141,255,.10);
+    --slate:#5B7A8C;
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif; font-size:16px;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
+  .wrap{max-width:840px; margin:0 auto; padding:40px 20px 72px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; color:var(--text-3); text-transform:uppercase; margin:0 0 8px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:33px; margin:0 0 10px; letter-spacing:-.01em; line-height:1.15;}
+  .sub{color:var(--text-2); font-size:16px; line-height:1.7; margin:0 0 22px;}
+  .sub b, p b, li b, td b{color:var(--text); font-weight:600;}
+  code{font-family:'IBM Plex Mono',monospace; color:var(--gold); background:none; font-size:.92em;}
+  a{color:var(--blue);}
+  h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:23px; margin:52px 0 8px; letter-spacing:-.01em; line-height:1.25;}
+  h2 .num{font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--text-3); margin-right:8px;}
+  .lead{color:var(--text-2); font-size:15px; margin:0 0 20px; line-height:1.7;}
+
+  .toc{display:flex; flex-wrap:wrap; gap:8px; margin:18px 0 8px;}
+  .toc a{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-2); text-decoration:none;
+    border:1px solid var(--line); border-radius:20px; padding:6px 12px; background:var(--panel);}
+  .toc a:hover{border-color:var(--slate); color:var(--text);}
+
+  .veredito{
+    border:1px solid var(--gold); background:linear-gradient(180deg, var(--gold-dim), var(--panel));
+    border-radius:var(--radius); padding:24px 26px; margin:26px 0; font-size:16px; line-height:1.75;
+  }
+  .veredito .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:19px; color:var(--gold); margin-bottom:12px;}
+  .veredito p{margin:0 0 12px; color:var(--text-2);} .veredito p:last-child{margin-bottom:0;}
+  .frase{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:19px; color:var(--text);
+    border-left:3px solid var(--gold); padding:4px 0 4px 16px; margin:16px 0; line-height:1.45;
+  }
+
+  .prova{border:1px solid var(--red); background:var(--red-dim); border-radius:var(--radius); padding:20px 22px; margin:22px 0; font-size:15px; line-height:1.72;}
+  .prova .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16.5px; color:var(--red); margin-bottom:8px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:16px 0;}
+  th{font-family:'IBM Plex Mono',monospace; font-size:10.5px; text-transform:uppercase; letter-spacing:.07em;
+     color:var(--text-3); text-align:left; padding:9px 10px; border-bottom:1px solid var(--line);}
+  td{padding:11px 10px; border-bottom:1px solid var(--line-soft); vertical-align:top; line-height:1.6; color:var(--text-2);}
+  .tscroll{overflow-x:auto;}
+  .un{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--green); white-space:nowrap;}
+
+  .corr{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); margin-bottom:16px; overflow:hidden; border-left:4px solid var(--blue);}
+  .corr-head{padding:16px 20px 10px;}
+  .corr-topo{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:5px;}
+  .selo{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.07em; text-transform:uppercase;
+    border-radius:20px; padding:3px 10px; white-space:nowrap; background:var(--blue-dim); color:var(--blue); border:1px solid var(--blue);}
+  .selo.forte{background:var(--gold-dim); color:var(--gold); border-color:var(--gold);}
+  .quem{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-3); border:1px solid var(--line-soft); border-radius:20px; padding:3px 10px;}
+  .corr-head h3{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; margin:2px 0 0; line-height:1.3;}
+  .corr-body{padding:2px 20px 18px; font-size:14.5px; line-height:1.72; color:var(--text-2);}
+  .corr-body p{margin:10px 0 0;}
+  .rot{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-3); display:block; margin-bottom:2px;}
+  .antes-depois{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin:12px 0 0;}
+  .ad{border:1px solid var(--line-soft); border-radius:9px; padding:11px 13px; font-size:13.5px; line-height:1.6;}
+  .ad.a{border-color:var(--red); background:var(--red-dim);}
+  .ad.d{border-color:var(--green); background:var(--green-dim);}
+  .ad .h{font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:4px;}
+  .ad.a .h{color:var(--red);} .ad.d .h{color:var(--green);}
+
+  .joia{border:1px solid var(--line); border-radius:11px; background:var(--panel); padding:14px 17px; margin-bottom:10px; font-size:14px; line-height:1.68; color:var(--text-2);}
+  .joia .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:var(--text); margin-bottom:3px;}
+  .joia .fonte{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-3); float:right; margin-left:10px;}
+
+  .nota{margin:16px 0; border:1px dashed var(--line-soft); border-radius:10px; padding:14px 17px; font-size:14px; color:var(--text-2); line-height:1.68;}
+  .nota.verde{border-color:var(--green);} .nota.azul{border-color:var(--blue);} .nota.ouro{border-color:var(--gold); background:var(--gold-dim);}
+
+  .decisao{border:1px solid var(--gold); border-radius:var(--radius); background:var(--panel); padding:18px 20px; margin-bottom:12px; border-left:4px solid var(--gold);}
+  .decisao .n{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:var(--gold); margin-bottom:6px;}
+  .decisao .b{font-size:14.5px; line-height:1.7; color:var(--text-2);}
+
+  ol.ordem{margin:16px 0; padding:0; list-style:none; counter-reset:o;}
+  ol.ordem li{counter-increment:o; position:relative; border:1px solid var(--line); border-radius:11px;
+    background:var(--panel); padding:13px 17px 13px 56px; margin-bottom:9px; font-size:14.5px; line-height:1.68; color:var(--text-2);}
+  ol.ordem li::before{content:counter(o); position:absolute; left:15px; top:13px;
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; color:var(--gold);
+    width:27px; height:27px; border:1.5px solid var(--gold); border-radius:9px; display:flex; align-items:center; justify-content:center;}
+
+  .rodape{margin-top:44px; border-top:1px solid var(--line); padding-top:16px; font-size:13px; color:var(--text-3); line-height:1.8;}
+  @media (max-width:640px){ h1{font-size:26px;} .antes-depois{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="eyebrow">Análise das consultorias pagas · 25/08/2026</p>
+  <h1>⚖️ O Veredito das 5 Consultorias</h1>
+  <p class="sub">Você mandou analisar com calma porque cada recomendação foi paga. Analisei as cinco, uma a uma, e <b>conferi no nosso próprio repositório</b> as afirmações que elas fizeram sobre nós — porque a regra da casa é que prova vem de fora, e isso vale também para consultor.</p>
+  <p class="sub" style="font-size:14.5px;"><b>Nota:</b> eram 6 arquivos, mas dois são o mesmo documento salvo duas vezes (a resposta da Fable). São <b>5 consultorias distintas</b>: Gemini, GPT, e três Claude (Opus, Sonnet e Fable). Nenhuma recomendação foi descartada sem justificativa registrada aqui.</p>
+
+  <div class="toc">
+    <a href="#veredito">O veredito</a>
+    <a href="#prova">A prova de que elas têm razão</a>
+    <a href="#correcoes">As 6 correções</a>
+    <a href="#joias">As joias individuais</a>
+    <a href="#divergencia">A única divergência</a>
+    <a href="#ordem">A nova ordem da obra</a>
+    <a href="#suas">As decisões que são suas</a>
+    <a href="#rodada2" style="border-color:var(--gold); color:var(--gold);">★ Rodada 2 — GPT</a>
+    <a href="#auditoria" style="border-color:var(--red); color:var(--red);">★★ A auditoria do Opus</a>
+    <a href="#gemini2">Rodada 2 — Gemini</a>
+    <a href="#fable2" style="border-color:var(--red); color:var(--red);">★★★ O experimento natural</a>
+    <a href="#final" style="border-color:var(--green); color:var(--green);">🏁 A arquitetura final</a>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="veredito"><span class="num">1</span>O veredito: as cinco disseram a mesma coisa</h2>
+
+  <div class="veredito">
+    <div class="t">🎯 A reforma está certa na direção e errada de um grau no alvo</div>
+    <p>As cinco consultorias, trabalhando separadamente e sem saber uma da outra, chegaram <b>à mesma conclusão</b> — e não é a que eu tinha escrito no cardápio. Cada uma disse com palavras diferentes:</p>
+    <div class="frase">"O problema não é ter seis painéis. É ter três verdades."</div>
+    <p>Ou, na versão mais afiada (Opus): <i>"Se amanhã você tivesse um painel só e a caixa 'precisa de você' aparecesse duas vezes dentro dele, você teria exatamente o mesmo problema com um arquivo a menos."</i></p>
+    <p style="margin-bottom:0">Traduzindo: <b>juntar os painéis num só não cura nada por si</b>. O que cura é os fatos existirem <b>uma vez só</b>, num lugar só, e toda tela ser apenas uma <b>vista calculada</b> daquilo — nunca uma lista que alguém mantém à mão. Se fizermos o painel único sem essa fundação, em três meses teremos um painel-10X maior e mais central.</p>
+  </div>
+
+  <p class="lead">O que foi <b>unânime</b> entre as cinco — e portanto não é opinião, é diagnóstico convergente:</p>
+
+  <div class="tscroll"><table>
+    <tr><th>Ponto</th><th>O que as cinco disseram</th><th>Placar</th></tr>
+    <tr><td><b>O alvo da reforma</b></td><td>Fonte única de <i>escrita</i> é a cura; superfície única de <i>leitura</i> é conveniência, não remédio.</td><td class="un">5 de 5</td></tr>
+    <tr><td><b>Verde é conclusão, não dado</b></td><td>O agente registra <i>fatos</i> (o teste passou, a sonda respondeu 200); <b>quem pinta a cor é a página</b>, por regra. Relato de agente nunca pinta nada.</td><td class="un">5 de 5</td></tr>
+    <tr><td><b>Falta um quarto estado</b></td><td>Além de verde/âmbar/vermelho, precisa existir <b>⚪ "não sei"</b>. Ausência de falha detectada não é prova de funcionamento.</td><td class="un">4 de 5</td></tr>
+    <tr><td><b>Selo de frescor calculado</b></td><td>A data tem que ser <b>computada pela página</b> ao abrir, nunca um texto que um agente escreve.</td><td class="un">4 de 5</td></tr>
+    <tr><td><b>Nossas defesas atuais não bastam</b></td><td>Evidência crua + auditoria por outra sessão são boas <b>e insuficientes</b> — é a mesma espécie conferindo a si mesma.</td><td class="un">5 de 5</td></tr>
+    <tr><td><b>A capa é triagem, não resumo</b></td><td>Uma tela sem rolagem. Saúde se comprime numa linha; só problema ocupa espaço. <b>Vermelho sobe sozinho</b>, por regra, não por decisão de quem escreve.</td><td class="un">5 de 5</td></tr>
+    <tr><td><b>O eixo dono/máquinas/memória</b></td><td>Errado ou insuficiente como eixo principal. Organize pela <b>pergunta</b> que você está fazendo, na ordem da urgência.</td><td class="un">4 de 5</td></tr>
+    <tr><td><b>Os dados fora do Git</b></td><td>Três consultorias atacaram essa restrição <i>que é minha, não do mundo</i> — e nenhuma a defendeu.</td><td class="un">3 de 5</td></tr>
+  </table></div>
+
+  <!-- ============================================================ -->
+  <h2 id="prova"><span class="num">2</span>A prova de que elas têm razão — está nos nossos próprios arquivos</h2>
+  <p class="lead">Uma das consultorias (Sonnet) foi checar o repositório em vez de teorizar, e achou um precedente exato. Eu fui conferir a afirmação dela agora, e <b>o caso é pior do que ela relatou</b>.</p>
+
+  <div class="prova">
+    <div class="t">🔴 A nossa caixa "precisa de você" já mentiu duas vezes — em dois dias</div>
+    <p style="margin:0 0 10px"><b>Caso 1 (item H18):</b> uma linha pedia três passos no servidor que <b>você já tinha executado</b>. Ela sobreviveu a <b>cinco merges seguidos</b> (PRs #108, #113, #116, #122, #126) e só foi corrigida quando alguém percebeu por acaso. Ninguém "esqueceu de atualizar" a tabela — ela estava sendo editada o tempo todo, só que sempre em <i>outras</i> linhas.</p>
+    <p style="margin:0 0 10px"><b>Caso 2 (item H21), no dia seguinte:</b> o próprio registro admite — <i>"esta linha ficou 🟡 aguardando você por horas DEPOIS de resolvida"</i>.</p>
+    <p style="margin:0"><b>E o diagnóstico já estava escrito por nós mesmos, no H18:</b> <i>"uma caixa 'precisa de você' que pede o que já foi feito treina o leitor a não confiar nela"</i>. Ou seja: as consultorias previram um apodrecimento que os nossos registros <b>já documentaram acontecendo</b>. Isso não é risco teórico — é o padrão de falha da casa.</p>
+  </div>
+
+  <div class="nota">🔍 <b>Também conferi, e confirma:</b> nenhum arquivo em <code>.github/workflows/</code> toca a pasta <code>arquivos/</code> — ou seja, <b>nada no robô de conferência valida os painéis hoje</b>. O <code>node --check</code> que o painel manda rodar é um comentário dentro do arquivo, não uma trava automática. E <code>arquivos/</code> é a <b>linha 1</b> do <code>.gitignore</code>. As três coisas juntas explicam por que o painel-10X pôde apodrecer sem ninguém notar: não havia mecanismo nenhum vigiando, só boa vontade.</div>
+
+  <!-- ============================================================ -->
+  <h2 id="correcoes"><span class="num">3</span>As 6 correções que mudam a reforma</h2>
+  <p class="lead">Isto é o que muda no plano que estava no cardápio. As 13 ideias continuam válidas — o que muda é a <b>fundação</b> sobre a qual elas se apoiam.</p>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo forte">a mais importante</span><span class="quem">Fable · Opus · GPT</span></div>
+      <h3>1. O livro de ocorrências — e a caixa que não consegue esquecer</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">O que é</span>Em vez de agentes <b>editarem</b> o painel, cada acontecimento do projeto vira <b>um registro pequeno, escrito uma vez, que ninguém edita depois</b> — tarefa concluída, incidente, decisão pedida, decisão respondida, merge, publicação. O painel inteiro passa a ser <b>calculado</b> desses registros. É o mesmo padrão que já adotamos nas armadilhas (um arquivo por lição), pelo mesmo motivo.</p>
+      <p><span class="rot">Por que isto cura o seu sintoma nº 1</span>A caixa "precisa de você" deixa de ser uma lista que alguém mantém e passa a ser uma <b>conta</b>: "todo pedido que ainda não tem registro de resposta". Nas palavras da Fable — <b>"uma lista mantida esquece; uma lista calculada não consegue esquecer"</b>. As três listas divergentes viram impossíveis <i>por construção</i>, não por disciplina. E os casos H18/H21 acima não poderiam ter acontecido.</p>
+      <div class="antes-depois">
+        <div class="ad a"><div class="h">Hoje</div>Um agente edita a lista à mão. Se ele não apagar a linha resolvida, ela mente — e mentiu, duas vezes.</div>
+        <div class="ad d"><div class="h">Depois</div>O pedido só sai da caixa quando existir o registro da resposta. Ninguém precisa lembrar de nada.</div>
+      </div>
+      <p><span class="rot">Bônus que sai de graça</span>Várias das 13 ideias deixam de ser seções mantidas à mão e viram contas: o "o que mudou" são os registros dos últimos 7 dias; a linha de incidentes são os registros do tipo incidente; as 4 métricas e o gráfico de subida são contas sobre os registros de merge e publicação. <b>Ninguém "atualiza" nada disso.</b></p>
+      <p><span class="rot">Nome técnico, que você não precisa usar</span><i>Event sourcing</i>. A regra em português: <b>acontecimento se acrescenta; estado se calcula.</b> É o princípio do livro-caixa da contabilidade e do diário de bordo da aviação — e do próprio Git que já sustenta o projeto.</p>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo forte">inverte a economia do medo</span><span class="quem">Opus · GPT · Gemini · Sonnet</span></div>
+      <h3>2. Verde deixa de ser escrito e passa a ser conquistado</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">A regra</span>Cor de farol e percentual só podem vir de <b>medição</b> (um comando rodou, com saída crua guardada) ou de <b>verificação de fora</b> (uma sonda bateu no site de verdade). <b>Prosa de agente nunca pinta nada.</b> Sem medição, a cor é <b>cinza "não medido"</b> — nunca verde.</p>
+      <p><span class="rot">Por que isso é tão forte</span>Repare no que muda: <b>hoje, um agente que não faz nada produz verde velho</b> — que você lê como "está tudo bem". Com a inversão, <b>um agente que não faz nada produz cinza</b>. Verde passa a ser conquistado, e a omissão se denuncia sozinha em vez de se disfarçar de boa notícia. Nas palavras do Opus: <i>"metade do seu problema morre aqui"</i>.</p>
+      <p><span class="rot">O quarto estado</span>Por isso o cinza ⚪ "não sei" precisa existir ao lado de verde/âmbar/vermelho. O GPT foi direto: <b>"ausência de falha detectada não é evidência de funcionamento"</b>. E o Opus deu a imagem certa: é a <b>bandeira OFF do instrumento de avião</b> — um número velho continua sendo lido como verdade; as palavras "não sei desde 12/08" não.</p>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo">mecanismo, não promessa</span><span class="quem">Fable · GPT · Gemini · Opus</span></div>
+      <h3>3. O selo de frescor calculado — e os dois relógios</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">A correção</span>O selo de frescor que eu já tinha proposto <b>só funciona se for computado pela página</b> no momento em que você a abre, jamais um texto que alguém escreve. A Fable explicou por que o detalhe é decisivo: assim, <b>mentir passa a exigir fraude ativa</b> (forjar uma data) em vez de <b>esquecimento passivo</b> (não escrever). Esquecimento é o modo de falha natural de um agente com pressa; fraude ativa é rara e a auditoria pega.</p>
+      <p><span class="rot">O detalhe que eu não tinha visto (GPT)</span>Precisa haver <b>dois relógios diferentes</b>, e o segundo importa mais: <b>"atualizado há 2 minutos"</b> (alguém mexeu no texto) não é a mesma coisa que <b>"última prova que sustenta isso: há 4 dias"</b>. Um agente pode reescrever uma frase às 21h03 e o painel parecer fresquíssimo, enquanto a sonda que justifica o verde é de quatro dias atrás.</p>
+      <p><span class="rot">O reforço do Gemini</span>Se o selo for só uma data que o agente atualiza, ele vai atualizar a data sem conferir o dado. Defesa: a página compara também <b>o conteúdo</b> — se a data mudou mas o conteúdo é idêntico ao de três dias atrás, acende um alerta: <i>"estão atualizando a data, não o trabalho"</i>.</p>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo forte">desafia uma regra sua</span><span class="quem">Opus · Fable · Sonnet</span></div>
+      <h3>4. Os dados devem entrar no Git — a restrição 4 é sua, não do mundo</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">O que elas atacaram</span>No prompt eu escrevi como restrição dura que "os painéis ficam fora do controle de versão". <b>Três consultorias atacaram isso, e nenhuma o defendeu.</b> O Opus foi o mais duro: <i>"manter o diário fora do versionamento é jogar fora, de graça, o único auditor que você já tem instalado"</i>.</p>
+      <p><span class="rot">O argumento, em três partes</span><b>(a)</b> Se os registros moram no repositório, cada afirmação ganha <b>autor, data e commit que o agente não escolheu</b> — que é exatamente a evidência independente que a minha pergunta nº 4 procurava. <b>(b)</b> O registro viaja <b>dentro do próprio PR</b> que fez o trabalho, então o robô de conferência pode <b>exigi-lo</b>: fora do Git, nenhuma trava alcança os dados. <b>(c)</b> Quando duas sessões paralelas mexem no mesmo painel — e nós rodamos 5 frentes num dia —, hoje é "o último que salva ganha", em silêncio; com Git, o desempate é feito pela mesma máquina de merge que já operamos todo dia.</p>
+      <p><span class="rot">O que muda para você</span><b>Nada.</b> O painel continua abrindo com duplo clique, offline, sem servidor — o repositório está no seu disco e a página lê os registros dali mesmo. O HTML continua podendo ficar fora do Git (ele é descartável e regenerável). <b>Muda só quem protege os dados.</b></p>
+      <div class="nota ouro" style="margin-top:14px;">⚖️ <b>Esta é uma decisão sua</b>, porque contraria uma regra que você mesmo deu — está na seção 7, no fim desta página.</div>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo">corrige meu erro de desenho</span><span class="quem">Opus · GPT · Gemini · Sonnet</span></div>
+      <h3>5. O eixo vira "pergunta", e nenhuma seção existe sem leitor</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">O erro que eu cometi</span>Dividi o painel em três andares por <b>público</b>: dono, máquinas, memória. O Opus mostrou por que isso é perigoso e não só imperfeito: <b>você tem um leitor humano só</b>. Agentes não leem painel — leem repositório, constituição, invariantes. Então <i>"andar dos agentes" não é um público: é um nível de detalhe usando fantasia de público</i>. E o perigo é concreto: uma seção rotulada "para os agentes" autoriza jargão, autoriza desleixo, e <b>vira a primeira a apodrecer, porque não tem leitor</b>. Foi exatamente assim que o painel-10X morreu.</p>
+      <p><span class="rot">A lei que substitui</span><b>Nenhuma seção sem leitor.</b> Se você não vai ler aquilo, não é seção — é <b>verificação automática que dispara alarme</b> para a seção que você lê.</p>
+      <p><span class="rot">A nova ordem da capa</span>Organizada pela <b>pergunta</b>, na ordem da urgência de decisão: <b>(1)</b> preciso decidir alguma coisa? <b>(2)</b> alguma coisa quebrou? <b>(3)</b> andou, e onde estamos? <b>(4)</b> por que chegamos aqui? É a ordem da sala de controle. O GPT acrescentou uma quinta pergunta que eu achei a melhor da consultoria inteira: <b>"posso confiar nisto?"</b> — frescor, evidências e cobertura das verificações, mostrados como parte do painel.</p>
+      <p><span class="rot">Boa notícia</span>Os três andares <b>sobrevivem quase intactos na aparência</b>. O que muda é o <i>critério</i> do que entra em cada um — e some o convite ao desleixo.</p>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo">a lei estava mirando errado</span><span class="quem">Fable · GPT · Opus</span></div>
+      <h3>6. A lei anti-proliferação deve mirar duplicação, não superfície</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">O furo</span>Eu escrevi "painel novo é proibido; crie uma seção no hub". A Fable mostrou o furo: isso mira <b>superfícies</b>, mas a doença é <b>duplicação de fatos</b>. Uma segunda tela lendo o mesmo livro de ocorrências é inofensiva — ela <i>não pode</i> divergir, é só outra lente. Já uma lista mantida à parte é o câncer voltando, <b>mesmo morando dentro do painel único</b>. E o GPT completou: do jeito que estava, em dois anos você teria "um painel único com 74 seções".</p>
+      <p><span class="rot">A lei reescrita</span><i>"Nenhum fato do projeto mora em dois lugares. Toda superfície nova se calcula do livro de ocorrências; superfície que mantém lista própria é proibida — e toda superfície precisa responder a uma pergunta que nenhuma outra responde."</i></p>
+      <p><span class="rot">A trava que faz a lei valer</span>O Opus foi implacável quanto a isto: <b>"lei escrita não segura nada — você já tem a prova disso na pasta. Gerador que quebra, segura."</b> Ou seja: se a capa passar de 6 blocos, o programa que a monta <b>se recusa a construir</b> e escreve na tela qual bloco precisa sair.</p>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="joias"><span class="num">4</span>As joias individuais — o que só uma consultoria viu</h2>
+  <p class="lead">Cada uma trouxe algo que as outras não trouxeram. Estas valeram o dinheiro sozinhas.</p>
+
+  <div class="joia"><span class="fonte">OPUS</span><div class="t">🎯 Placar de calibração: promessa × entrega</div>Antes de cada ciclo, registra-se o que os agentes dizem que estará pronto; depois, marca-se acertou/errou. Em semanas você tem: <i>"quando os agentes dizem 'sai hoje', sai em 6 de 10 vezes"</i>. <b>Por que é a peça que faltava:</b> todas as 13 ideias medem o <i>projeto</i>; <b>nenhuma mede a confiabilidade da fonte</b>. Você não consegue julgar código — mas consegue julgar, sem nenhum conhecimento técnico, se promessa bate com resultado. E este instrumento continua funcionando <b>mesmo se todo o resto do painel estiver mentindo</b>. Cuidado registrado: pontue <i>calibração</i>, nunca <i>ambição</i> — senão os agentes prometem menos para acertar sempre.</div>
+
+  <div class="joia"><span class="fonte">GPT</span><div class="t">🕳️ O painel não vai ficar desatualizado — vai ficar "atualizado e errado"</div>A previsão mais fina das cinco. Mês 2: aparecem trabalhos que não cabem no esquema. Um agente entende "concluído" como <i>mergeado</i>; outro como <i>publicado</i>; outro como <i>verificado de fora</i>. Todos escrevem a mesma palavra. Mês 3, você lê 🟢 Concluído e aquilo significa cinco coisas diferentes. <b>Antídoto:</b> uma lista fechada de estados com significado inequívoco (implementado → testado → revisado → mergeado → publicado → verificado de fora → aceito). Você continua vendo só "✅ Pronto" na capa — mas <b>o sistema precisa saber a diferença</b>.</div>
+
+  <div class="joia"><span class="fonte">FABLE</span><div class="t">🔎 O painel pode conferir sozinho, do seu navegador, sem servidor</div>Como o repositório é público, a página pode <b>perguntar direto ao GitHub</b> se o PR foi mesmo mergeado e se o teste ficou mesmo verde — e mostrar a afirmação do agente e a realidade <b>lado a lado</b>. E pode carregar o ícone do próprio site para provar que ele está no ar, medido do <i>seu</i> Chrome, agora. A frase que resume: <b>"um agente pode escrever 'mergeei o PR 214'; ele não pode fazer o GitHub confirmar um merge que não houve."</b></div>
+
+  <div class="joia"><span class="fonte">GEMINI</span><div class="t">🔥 O teste de fogo</div>Uma vez por mês, <b>sem avisar os agentes</b>, quebre algo de propósito. Se o painel continuar verde, você descobriu que ele não mede nada. É a única forma de testar o <i>instrumento</i> em vez de confiar nele — a mesma lógica do vermelho→verde que a casa já exige para todo teste-guarda, aplicada ao painel.</div>
+
+  <div class="joia"><span class="fonte">GEMINI</span><div class="t">🔗 O mapa das juntas entre as 11 peças</div>Com 11 serviços isolados em alta velocidade, <b>o ponto de quebra quase nunca é uma peça — é a junta entre duas</b>. Um agente muda o login (farol verde), e a peça que esperava o formato antigo quebra. As duas relatam sucesso; o sistema está quebrado. Proposta: uma tabela de quem depende de quem, e mudança de contrato coloca automaticamente os vizinhos em âmbar até prova de que ainda se falam.</div>
+
+  <div class="joia"><span class="fonte">GPT</span><div class="t">⚠️ O gráfico da colina tem um defeito no nosso caso específico</div>Achado importante, porque a colina é uma das 13 que eu já tinha contratado: o próprio Basecamp diz que a posição na colina é <b>julgamento humano subjetivo</b> de quem faz o trabalho. No nosso caso, <b>quem julga é a IA avaliando a própria incerteza</b>. Veredito: mantemos a colina — ela é boa —, mas <b>nunca como evidência objetiva</b>, e separada visualmente do progresso medido.</div>
+
+  <div class="joia"><span class="fonte">GPT</span><div class="t">📥 A sua caixa de entrada deve virar uma fila de decisão</div>Com 5 frentes e 7 merges num dia, existe um problema de fila: <b>o sistema pode produzir decisões mais rápido do que você consegue consumi-las</b> — e aí o gargalo passa a ser você. Cada pedido deveria trazer: o que decidir · por quê · <b>o que acontece se eu não decidir</b> · a recomendação · as alternativas · <b>é reversível?</b> · impacto. A Fable acrescentou: mostrar a <b>idade</b> do pedido, para que pedido velho grite mais alto.</div>
+
+  <div class="joia"><span class="fonte">OPUS</span><div class="t">📊 A auditoria deve reportar cobertura, não veredito</div>Auditoria que "não achou nada" não vale nada; e auditoria premiada por achar algo produz teatro. Em vez de veredito, ela responde: <b>quantas afirmações do painel foram reproduzidas por comando, e quantas não puderam ser</b>. A capa mostra então <b>"confiabilidade do painel: 18 de 24 afirmações reproduzidas"</b> — um número sobre o painel, dentro do painel.</div>
+
+  <div class="joia"><span class="fonte">SONNET</span><div class="t">👥 O quadro de presença — quem está mexendo em quê agora</div>Ataca uma falha que o próprio projeto já nomeou como sistêmica ("sessões paralelas" é uma das 8 categorias da retrospectiva). Hoje, com 5 frentes no mesmo dia, <b>nada responde "quem está tocando a peça X agora"</b> — só se descobre por colisão. Cada sessão grava uma linha ao abrir; entradas velhas somem sozinhas.</div>
+
+  <div class="joia"><span class="fonte">GEMINI</span><div class="t">🧹 A taxa de limpeza</div>Agentes de IA são construtores incansáveis e <b>péssimos faxineiros</b> — não sentem a dor de manter código complexo. Se o volume só cresce e nunca diminui, o projeto tem prazo de validade oculto: chega um ponto em que os agentes falham por não conseguir ler o contexto. Proposta: acompanhar código adicionado × removido por semana.</div>
+
+  <div class="joia"><span class="fonte">FABLE</span><div class="t">🪦 Faixa não aposenta painel — lápide com redirecionamento aposenta</div>Detalhe prático que eu tinha errado: se o painel velho continuar mostrando o conteúdo velho abaixo de um aviso, o hábito vence e você lerá o conteúdo velho. O arquivo antigo deve passar a conter <b>só</b> a lápide e <b>redirecionar sozinho</b> para o hub. E é preciso trocar <b>o seu atalho e os seus favoritos</b> — o ponto de entrada real é o atalho, não o arquivo. Isso é escopo da obra, não acabamento.</div>
+
+  <div class="joia"><span class="fonte">FABLE + SONNET</span><div class="t">☁️ Um risco silencioso debaixo de tudo: o OneDrive</div>O repositório inteiro vive dentro da pasta sincronizada do OneDrive. <b>Duas sessões paralelas escrevendo + um sincronizador de nuvem = risco real de "cópia em conflito"</b> criada em silêncio. Registros no Git dão o desempate. Fica anotado como <b>conversa separada</b>, fora desta reforma — mas ninguém deve te dizer que esse risco não existe.</div>
+
+  <!-- ============================================================ -->
+  <h2 id="divergencia"><span class="num">5</span>A única divergência real entre elas — e o meu desempate</h2>
+
+  <p class="lead">Num único ponto as cinco não concordaram: <b>um arquivo só, ou vários?</b></p>
+
+  <div class="tscroll"><table>
+    <tr><th>Consultoria</th><th>Posição</th><th>Argumento</th></tr>
+    <tr><td><b>Gemini</b></td><td>Vários arquivos</td><td>Um arquivo é um "Frankenstein". Se um agente errar a sintaxe atualizando a sala de máquinas, ele quebra a exibição da <b>sua</b> caixa de entrada no andar de cima.</td></tr>
+    <tr><td><b>Sonnet</b></td><td>Um arquivo, com abas</td><td>Um arquivo está certo, mas <b>abas de verdade, nunca rolagem contínua</b> — senão a capa vira só o primeiro trecho de uma rolagem enorme, que é o "painel gigante" que você teme.</td></tr>
+    <tr><td><b>Opus</b></td><td>Indiferente</td><td>Resolvida a fonte única, "um arquivo ou três" vira conveniência. Vota no arquivo único <b>por causa do atalho na área de trabalho</b>, não por arquitetura.</td></tr>
+    <tr><td><b>GPT</b></td><td>Uma porta, não um monolito</td><td>"Uma porta de entrada ≠ um painel monolítico ≠ um arquivo que contém toda a verdade."</td></tr>
+    <tr><td><b>Fable</b></td><td>Um painel, como consequência</td><td>O painel único deixa de poder divergir de si mesmo quando é só o renderizador da fonte única.</td></tr>
+  </table></div>
+
+  <div class="nota verde"><b>Meu desempate:</b> a divergência é menor do que parece — as cinco concordam que <b>a porta é uma só</b> e que <b>a fonte é uma só</b>. O medo específico do Gemini (um erro de sintaxe apaga a página inteira) é real, e tem resposta mecânica que o próprio Opus deu: <b>o painel nunca abre em branco</b> — ele valida ao carregar e, se o dado estiver corrompido, mostra uma página vermelha dizendo <i>"dados corrompidos a partir da linha X; última leitura boa: dd/mm"</i>. Somando isso ao formato de um arquivo pequeno por registro (onde uma corrupção custa <b>uma linha</b>, não o painel), o risco do arquivo único deixa de ser estrutural. <b>Recomendo: uma porta só, com abas de verdade (não rolagem), e o andar da memória carregado só quando clicado.</b></div>
+
+  <!-- ============================================================ -->
+  <h2 id="ordem"><span class="num">6</span>A nova ordem da obra</h2>
+  <p class="lead">A ordem mudou, e o motivo é uma frase só: <b>cada andar nasce já ligado ao mecanismo que o impede de mentir.</b> Construir as telas primeiro e "depois a gente põe as travas" foi exatamente como o painel-10X nasceu.</p>
+
+  <ol class="ordem">
+    <li><b>O formato do registro + a pasta de registros + o script do manifesto.</b> A fundação de tudo, ainda sem tela nenhuma. Aproveita o molde que já funciona nas armadilhas: um arquivo por entrada, índice gerado por script.</li>
+    <li><b>A capa calculada</b>, lendo os registros — já com o selo de frescor computado, os dois relógios, o cinza "não sei" e a <b>caixa de entrada calculada desde o primeiro dia</b>. A capa nasce junto com o mecanismo que a mantém honesta, nunca antes.</li>
+    <li><b>Migração dos fatos vivos dos 6 painéis</b> para registros; o conteúdo histórico vira fotografias datadas. Nada se perde.</li>
+    <li><b>Os outros dois andares</b>, pelo critério novo (nenhuma seção sem leitor).</li>
+    <li><b>As travas:</b> exigir o registro no rito de merge · registros escritos pela máquina para merge e publicação · testes-guarda da lógica que calcula as vistas · as verificações ao vivo (site no ar, GitHub).</li>
+    <li><b>As lápides com redirecionamento + a troca dos seus atalhos + a lei reescrita</b> (mirando duplicação, não superfície).</li>
+  </ol>
+
+  <div class="nota azul">💡 <b>Uma peça que ninguém está vigiando</b> (achado da Fable): você perguntou como manter honestos os <i>dados</i>, mas não quem confere a <b>lógica que calcula as vistas</b>. Um erro nela esconde problema <i>sem ninguém ter mentido</i> — e é o único componente novo desta reforma sem vigia. Antídoto, no padrão que a casa já domina: a lógica mora no repositório com <b>testes-guarda</b> (registro de pedido sem resposta <b>obrigatoriamente</b> acende a caixa), quebrados de propósito para ver ficar vermelho.</div>
+
+  <!-- ============================================================ -->
+  <h2 id="suas"><span class="num">7</span>As decisões que são suas — e uma que eu preciso te contar</h2>
+
+  <div class="decisao">
+    <div class="n">1 · Os registros do painel entram no controle de versão?</div>
+    <div class="b">Três consultorias atacaram a sua restrição, nenhuma a defendeu, e o argumento é de mecanismo: <b>fora do Git, nenhuma trava alcança os dados</b> — e foi exatamente por isso que o H18 pôde mentir por cinco merges. <b>Para você não muda nada</b> (duplo clique, offline, sem servidor); muda quem protege os dados. <b>Recomendo: sim</b> — registros no Git, HTML continua fora.</div>
+  </div>
+
+  <div class="decisao">
+    <div class="n">2 · A obra cresceu. Fazemos a reforma completa, com a fundação nova?</div>
+    <div class="b">O que estava no cardápio era "juntar os painéis". O que as cinco consultorias mostraram é que juntar sem a fundação nova <b>não cura</b> — e produz um painel-10X maior. A obra completa é maior, mas é a que resolve o problema de verdade, e a regra da casa é fazer completo. <b>Recomendo: sim, a reforma completa na ordem da seção 6.</b></div>
+  </div>
+
+  <div class="decisao" style="border-color:var(--blue); border-left-color:var(--blue);">
+    <div class="n" style="color:var(--blue);">3 · O aviso honesto que eu tenho obrigação de te dar</div>
+    <div class="b">Foi o Opus quem levantou, e seria desonesto eu esconder porque é inconveniente: <i>"o risco mais fundo não é o painel apodrecer — é a instrumentação virar o trabalho"</i>. Nós temos constituição, invariantes, ritos, testes-guarda, 107 lições, 6 painéis — e as consultorias acabaram de recomendar <b>mais mecanismos</b> (e eu concordei com quase todos). Cada peça se defende sozinha; <b>a soma consome uma fração crescente dos despachos, e nada mede essa fração</b>.
+    <br><br>O número que ele sugere pôr na capa, e que eu acho o mais honesto desta consultoria inteira: <b>"dos últimos 20 despachos, quantos foram sobre o produto e quantos sobre o aparato?"</b>
+    <br><br>Isso conversa direto com o que o seu próprio Roadmap já diz no capítulo 4: <b>o maior risco do projeto não é um erro técnico — é uma fortaleza perfeita que ninguém visita.</b> Não estou recomendando cortar a reforma; ela resolve um problema real e você merece um instrumento em que possa confiar. Estou dizendo que <b>essa é uma escolha sua, com informação completa</b>, e que o capítulo do conteúdo do curso continua sendo o único que nenhum robô faz por você.</div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="rodada2"><span class="num">8</span>Rodada 2 — o GPT leu os painéis de verdade, e mudou de ideia</h2>
+  <p class="lead">Você mandou os arquivos dos painéis para o GPT e pediu uma segunda rodada. Ele voltou com a análise mais útil até agora — porque parou de teorizar sobre painéis e passou a examinar <b>os nossos</b>. E, honestamente, <b>ele corrigiu duas coisas na minha síntese acima</b>. Faltam ainda 2 consultorias; quando chegarem, consolido tudo.</p>
+
+  <div class="prova" style="border-color:var(--gold); background:var(--gold-dim);">
+    <div class="t" style="color:var(--gold)">🔬 Ele achou um erro real no seu Roadmap — e eu confirmei</div>
+    <p style="margin:0 0 10px">O GPT reparou que <code>painel-roadmap.html</code> se declara de <b>25/08/2026</b> no topo e no rodapé, mas contém, no meio, um item que começa com <b>"Novo em 26/08"</b>. <b>Fui conferir e é verdade:</b> linha 152 e linha 311 dizem 25/08; a linha 224 diz 26/08.</p>
+    <p style="margin:0 0 10px"><b>A explicação mais provável</b> (isto é inferência minha, não medição): o registro de episódios documenta um <i>"LOTE DE 5 FRENTES"</i> que atravessou <b>25-26/08</b>. Então o conteúdo novo é legítimo e <b>os carimbos de data do topo e do rodapé é que ficaram velhos</b> — alguém atualizou o corpo e não o carimbo. Vale lembrar que este projeto já teve bug de fuso horário documentado (três células mostravam hora de Chicago, 5h atrás), então divergência de data perto da meia-noite não é surpresa aqui.</p>
+    <p style="margin:0"><b>Por que isso é ouro para a decisão:</b> não importa qual das duas datas está certa. O que importa é que <b>um painel cuidadosamente mantido não pode ser tratado como verdade só porque diz "atualizado hoje"</b>. É a tese inteira sendo provada no seu arquivo favorito, encontrada por um consultor de fora — exatamente como o H18 e o H21.</p>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo forte">muda o desenho da obra</span><span class="quem">GPT · rodada 2</span></div>
+      <h3>1. Nós não temos seis painéis. Temos seis coisas <i>diferentes</i> chamadas de painel</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">O achado</span>Todas as consultorias — e a minha síntese — trataram os 6 como seis exemplares da mesma coisa, a serem fundidos. <b>Estávamos errados.</b> Eles têm funções completamente diferentes: o <b>Roadmap</b> é o mapa executivo do dono; a <b>Fundação</b> é o estado operacional vivo; o <b>10X</b> é um console de campanha; a <b>Retomada</b> é uma fotografia; <b>Fase D</b> e <b>Fase E</b> são consoles de missão de fases já encerradas.</p>
+      <p><span class="rot">A pergunta certa</span>Deixa de ser <i>"como juntar seis painéis?"</i> e passa a ser: <b>"quais funções continuam vivas, quais viram vistas do cockpit, e quais são congeladas como documento histórico?"</b></p>
+      <p><span class="rot">Por que isso é uma boa notícia</span>A obra <b>encolhe</b> sem perder nada: só a Fundação precisa mesmo ser absorvida e o Roadmap preservado. Os outros quatro <b>não se migram — se arquivam ou se congelam</b>, e param de competir visualmente com o presente.</p>
+      <div class="tscroll"><table style="margin-top:6px;">
+        <tr><th>Artefato</th><th>O que ele realmente é</th><th>Destino recomendado</th></tr>
+        <tr><td><b>Roadmap</b></td><td>visão executiva do dono</td><td><b>preservar quase intacto</b>, como a vista "Meu mapa"</td></tr>
+        <tr><td><b>Fundação</b></td><td>estado operacional vivo</td><td><b>absorver no cockpit</b></td></tr>
+        <tr><td><b>Retomada</b></td><td>fotografia auditada</td><td><b>congelar</b> como fotografia imutável</td></tr>
+        <tr><td><b>10X</b></td><td>campanha de execução</td><td>arquivar, depois de extrair a fila e as regras de auditoria</td></tr>
+        <tr><td><b>Fase D</b></td><td>console de missão encerrada</td><td>arquivo histórico</td></tr>
+        <tr><td><b>Fase E</b></td><td>red-team / certificação</td><td>arquivo histórico</td></tr>
+      </table></div>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo">corrige a minha recomendação</span><span class="quem">GPT · rodada 2</span></div>
+      <h3>2. Ele mudou de ideia sobre o painel único — e me corrigiu junto</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">O que mudou</span>Na primeira rodada, sem ver os arquivos, ele falou em "uma porta, não um monolito". Depois de ler os painéis, foi mais longe: <b>"eu NÃO juntaria todo o conteúdo deles num HTML gigantesco"</b> — porque isso destruiria a melhor coisa que já existe aqui, que ele chamou de <b>separação cognitiva</b>.</p>
+      <p><span class="rot">A frase que me fez rever</span><i>"O Roadmap é muito bom <b>porque não tenta ser</b> o Painel da Fundação. Ele conta a história em cinco capítulos, usa a linguagem do dono e esconde deliberadamente o maquinário."</i></p>
+      <p><span class="rot">A correção</span>Eu tinha recomendado "uma porta só, com abas de verdade". Continua valendo — mas com uma diferença importante: <b>a experiência do Roadmap é preservada quase intacta</b> como uma vista chamada "🗺️ Meu mapa". Ele não é dissolvido num hub genérico. O que ele perde é <b>só</b> a responsabilidade de guardar a verdade por conta própria: passa a ser projeção da fonte única, como todas as outras telas.</p>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo forte">a peça conceitual que faltava</span><span class="quem">GPT · rodada 2</span></div>
+      <h3>3. AUTORIDADE — quem tem o direito de declarar isto verdadeiro?</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">O que ele acrescentou</span>Na rodada 1 a fórmula era <i>Alegação → Evidência → Verificação → Frescor → Confiança</i>. Agora ela ganhou uma dimensão no meio: <b>Alegação → Evidência → Verificação → Tempo → AUTORIDADE → Confiança.</b></p>
+      <p><span class="rot">Por que isso importa</span>"Status derivado, não declarado" (a correção nº 2 da seção 3) diz que a cor tem que ser <i>calculada</i> — mas não dizia <b>calculada a partir de quem</b>. Autoridade responde exatamente isso: cada tipo de fato tem <b>uma fonte, e só uma</b>, com direito de declará-lo. PR mergeado → o GitHub. Sonda pública → o resultado da sonda. Decisão sua → o registro da decisão. Teste passou → a execução do teste. Fase graduou → o rito de certificação. Item esperando você → a fila canônica de decisões.</p>
+      <p><span class="rot">E a linha mais afiada da consultoria inteira</span><b>"Roadmap diz 'pronto' → NÃO é autoridade. É apenas projeção dessas fontes."</b> Ou seja: nenhum painel — nem o seu mapa favorito — tem o direito de ser a origem de um fato. Todos são espelhos.</p>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo">refina a correção nº 3</span><span class="quem">GPT · rodada 2</span></div>
+      <h3>4. São quatro relógios, não dois</h3>
+    </div>
+    <div class="corr-body">
+      <p>Na rodada 1 ele tinha apontado dois relógios ("atualizado" ≠ "verificado"). Depois de achar a anomalia do Roadmap, subiu para <b>quatro tempos que o sistema precisa distinguir</b>: <b>(1)</b> quando o fato aconteceu · <b>(2)</b> quando ele foi verificado · <b>(3)</b> quando entrou na fonte de dados · <b>(4)</b> quando o painel foi renderizado ou alterado. A anomalia "25/08 no carimbo, 26/08 no conteúdo" é precisamente a confusão entre o (3) e o (4).</p>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo forte">antídoto direto ao H18</span><span class="quem">GPT · rodada 2</span></div>
+      <h3>5. "Precisa de você" deve deixar de ser conteúdo e virar uma peça do sistema</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">A proposta</span>Cada pendência vira uma ficha com identidade própria (ele chamou de <code>DEC-047</code>), com campos fixos: a pergunta · por que precisa da sua decisão · a recomendação · <b>o que acontece se você não decidir</b> · urgência · <b>é reversível?</b> · quando nasceu · de onde veio · e o campo decisivo: <b>"ainda válido? — verificado em tal data"</b>.</p>
+      <p><span class="rot">Por que este campo é o antídoto exato</span>É literalmente o que faltou no H18 e no H21. Os dois <b>continuaram válidos na tela depois de resolvidos</b> porque ninguém tinha a obrigação de reconferir se ainda faziam sentido. Com "ainda válido?" carimbado, uma pendência que ninguém reconfere <b>desbota sozinha</b> em vez de seguir pedindo o que já foi feito.</p>
+      <p><span class="rot">A consequência</span>Deixam de existir três listas "precisa de você". Existe <b>uma fila canônica de decisões</b>, mostrada em quantos lugares for útil — porque todas leem a mesma ficha.</p>
+    </div>
+  </div>
+
+  <div class="joia" style="border-left:4px solid var(--blue);"><span class="fonte">GPT · R2</span><div class="t">🪞 A ironia do 10X: o mecanismo tinha epistemologia melhor que o painel que o representava</div>Justamente o painel que envelheceu contém as <b>melhores regras de prova</b> do projeto: evidência é saída crua e nunca descrição, vermelho→verde obrigatório, auditoria por sessão diferente que não confia no handoff. Só que ele <b>exigia isso dos agentes e não tinha mecanismo equivalente para provar que ele próprio ainda correspondia à realidade</b> — e registrou o próprio desastre com todas as letras ("este painel estava DESATUALIZADO"). O GPT chama isso de "experimento natural validando a tese". A lição em uma frase: <b>o painel também precisa provar as alegações dele.</b></div>
+
+  <div class="joia" style="border-left:4px solid var(--green);"><span class="fonte">GPT · R2</span><div class="t">🏅 Uma coisa que nós fazemos e ele mandou preservar</div>Na Fase E existe uma distinção que ele elogiou como <b>governança excelente</b>: a diferença entre <i>"o golpe realmente foi bloqueado"</i> e <i>"o certificado oficial registrou que foi bloqueado"</i>. O golpe 5 bloqueou de verdade, mas a tabela canônica ainda dizia ☐ — e o sistema <b>se recusou a fingir que o rito estava completo</b>. É o mesmo princípio de autoridade, já praticado aqui por instinto: realidade e registro da realidade são coisas diferentes, e o registro não se fecha sozinho.</div>
+
+  <div class="nota ouro">📎 <b>Ele pediu dois arquivos que faltaram</b> para fechar a análise: <code>painel-dados.js</code> e <code>painel-10x-dados.js</code> (os painéis foram partidos em renderizador + dados, e só os HTML foram enviados). <b>Atenção prática:</b> o <code>painel-dados.js</code> tem <b>236 KB</b> — grande demais para colar numa conversa. O <code>painel-10x-dados.js</code> tem 46 KB e passa. Se quiser fechar a lacuna, o caminho é anexar os arquivos, não colar o conteúdo.</div>
+
+  <!-- ============================================================ -->
+  <h2 id="auditoria"><span class="num">9</span>A auditoria do Opus — ele parou de opinar e foi conferir</h2>
+  <p class="lead">Esta é a consultoria mais dura das sete rodadas, e a mais valiosa. Ela não discute como <i>deveria</i> ser um painel: ela abre os nossos e mostra onde a doença <b>já cobrou o preço</b>. <b>Conferi cada acusação nesta máquina.</b> Quase todas procedem — e uma delas eu consertei hoje.</p>
+
+  <div class="nota verde" style="margin-bottom:20px;">🏅 <b>Ele começou elogiando duas coisas, e vale registrar:</b> o <b>Roadmap do Dono</b> é, nas palavras dele, <i>"o melhor texto técnico-para-leigo que eu li em muito tempo"</i> — e citou <i>"voltar para a versão boa leva 76 segundos"</i> como o registro exato certo. E a seção <b>anti-teatro</b> do 10X (evidência crua, vermelho→verde, auditoria por sessão diferente) é <i>"mais rigorosa que a de quase todo time humano"</i>.</div>
+
+  <div class="tscroll"><table>
+    <tr><th>O que ele acusou</th><th>O que eu medi nesta máquina</th><th>Veredito</th></tr>
+    <tr><td><b>Um pedido seu se perdeu.</b> A Retomada lista 5 decisões esperando você (inclusive o <b>H15 — a porta lateral do servidor</b>, item de segurança); o Roadmap, do mesmo dia, responde "precisa fazer algo agora? <b>Não</b>".</td><td>O Roadmap hoje responde literalmente: <i>"Não. As três escolhas foram respondidas e já viraram lei. ✅"</i> A Retomada tem a seção "Decisões sem pressa" e cita o H15.</td><td><b style="color:var(--red)">PROCEDE</b></td></tr>
+    <tr><td><b>A capa da Retomada contradiz o corpo dela</b>, no mesmo arquivo: abre com "nada está esperando você" e cinco parágrafos abaixo lista cinco coisas esperando você.</td><td>As duas frases estão no mesmo arquivo. Confirmado.</td><td><b style="color:var(--red)">PROCEDE</b></td></tr>
+    <tr><td><b>Os painéis não concordam de quantas peças o sistema é feito.</b></td><td>Roadmap diz <b>11</b>; Retomada diz <b>10</b>; Fundação diz <b>8</b>. No mesmo dia. Lições: Roadmap <b>106</b>, o meu próprio prompt disse <b>107</b>.</td><td><b style="color:var(--red)">PROCEDE</b></td></tr>
+    <tr><td><b>O painel falha para o lado de "está tudo bem".</b> Sem <code>painel-dados.js</code>, tudo morre e a faixa verde continua bonita.</td><td>Não havia <b>nenhuma</b> guarda: zero <code>try</code>, zero <code>typeof</code>, zero <code>onerror</code>. E a faixa verde é HTML fixo. <b>Reproduzi o defeito.</b></td><td><b style="color:var(--red)">PROCEDIA — CONSERTADO HOJE</b></td></tr>
+    <tr><td><b>O checklist é enfeite:</b> todos os marcadores são <code>true</code>, a barra marca 100% para sempre.</td><td>São <b>154 marcadores, 154 verdadeiros, zero falsos</b>. A barra marca 25/25. É pior do que ele estimou (~140).</td><td><b style="color:var(--red)">PROCEDE</b></td></tr>
+    <tr><td><b>A separação "renderizador + dados" é cosmética</b> — o arquivo de dados guarda frases de HTML prontas, então nada é calculável.</td><td>O <code>painel-dados.js</code> guarda HTML cru e <b>nenhum campo estruturado</b> (sem data, sem tipo, sem evidência). Confirmado.</td><td><b style="color:var(--red)">PROCEDE</b></td></tr>
+    <tr><td><b>O 10X se contradiz dentro de si.</b> Um bloco diz "Onda 1 FEITA DE FATO, em produção"; outro, acima, diz "AINDA NADA FEITO" — os mesmos itens.</td><td>Os dois blocos estão lá, os dois em negrito, nenhum marcado como superado.</td><td><b style="color:var(--red)">PROCEDE</b></td></tr>
+    <tr><td><b>O raciocínio de uma decisão sua foi apagado</b> — as 3 perguntas do sininho viraram uma linha de resultado.</td><td>Comparei com o backup: as <b>3 perguntas inteiras sumiram</b>, e os "Recomendo: sim" também. Sobrou o resultado.</td><td><b style="color:var(--red)">PROCEDE</b></td></tr>
+  </table></div>
+
+  <div class="nota azul">⚖️ <b>Onde ele errou, e eu não vou esconder:</b> ele disse que a observação <i>"o que a garantia nova NÃO é"</i> estava no backup e foi deletada. Conferi: essa frase está na versão <b>atual</b> e <b>não</b> está no backup — ou seja, ela foi <i>acrescentada</i> depois, não apagada. A acusação central (o raciocínio das 3 perguntas foi substituído por uma linha de resultado) está certa; esse detalhe de apoio está invertido. Registro isso porque é exatamente a disciplina que estamos contratando: <b>nem consultor pago passa sem conferência</b>.</div>
+
+  <div class="prova" style="border-color:var(--green); background:var(--green-dim);">
+    <div class="t" style="color:var(--green)">✅ Consertado hoje, com prova: o painel agora grita em vez de sussurrar</div>
+    <p style="margin:0 0 10px">Era o achado mais perigoso e o mais barato de resolver, então não esperei a reforma. <b>O defeito:</b> se o <code>painel-dados.js</code> sumisse, fosse renomeado ou ganhasse uma vírgula sobrando, o painel abriria com a caixa <b>"precisa de você" vazia</b> e a faixa verde <i>"🟢 A PLATAFORMA ESTÁ NO AR"</i> — que é HTML fixo — continuando bonita. E <b>caixa vazia se lê como "nada esperando você"</b>. O painel falharia para o lado de "está tudo bem", que é o pior lado possível.</p>
+    <p style="margin:0 0 10px"><b>A correção:</b> uma guarda de leitura. Se os dados não chegarem, a tela inteira vira um aviso vermelho: <i>"Este painel não pode ser lido — NÃO acredite em nada desta tela"</i>, com a frase pronta para você colar numa sessão.</p>
+    <p style="margin:0"><b>A prova (vermelho→verde, como a Lei 6 exige):</b> <b>(1)</b> com tudo normal, o painel renderiza igual — caixa preenchida, barra 25/25, nenhum aviso. <b>(2)</b> apagando o arquivo de dados, o aviso toma a tela e a faixa verde <b>some</b>. <b>(3)</b> com uma vírgula sobrando, idem. <b>(4)</b> e rodei o código <i>antigo</i> sem os dados para confirmar o defeito: ele morre em silêncio, exatamente como relatado.</p>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo forte">a frase que resume a rodada</span><span class="quem">Opus · rodada 2</span></div>
+      <h3>A Lei 6 precisa valer para o painel também</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">O achado mais fino</span>A nossa disciplina anti-teatro é excelente — e <b>para exatamente na porta da prosa do próprio painel</b>. As três regras (evidência crua, vermelho→verde, auditoria independente) governam os <i>cards</i> e os despachos. <b>Ninguém audita os blocos de texto.</b> E é neles que a contradição mora — por isso o 10X consegue afirmar as duas coisas opostas sobre a Onda 1 sem que nada reprove.</p>
+      <p><span class="rot">O mecanismo por trás do defeito</span>O painel <b>corrige o passado empilhando parágrafo novo</b>, nunca corrigindo o registro. Cada bloco era verdade no minuto em que foi escrito; nenhum foi marcado como superado quando deixou de ser.</p>
+      <p><span class="rot">A lei que ele propõe, e que eu adoto na recomendação</span><b>"Afirmação que não vem do livro-razão não tem direito de virar prosa."</b></p>
+    </div>
+  </div>
+
+  <div class="joia" style="border-left:4px solid var(--gold);"><span class="fonte">OPUS · R2</span><div class="t">🎯 A sonda mede a realidade e compara com uma expectativa digitada à mão</div>Sutil e caro. O 10X registra: o <code>deploy-infra</code> saiu <b>vermelho com a plataforma 100% saudável</b>, porque a sonda exigia 200 na raiz e a raiz virara 302 <i>de propósito</i>. Diagnosticamos certo na época ("sonda envelhecida, não regressão"). Mas veja o padrão: em três dias o valor esperado da raiz foi <b>200 → 302 → 200</b>, e cada painel congelou um deles como "por desenho", <b>com uma ordem anexada de não mexer</b> ("este 404 é proposital, ninguém deve consertar"). O erro não é medir — a medição é o melhor que temos. O erro é que <b>o valor esperado mora em prosa, num arquivo fora do Git, ao lado de uma instrução para não corrigi-lo</b>. É assim que uma sonda deixa de ser sensor e vira mentira com autoridade.</div>
+
+  <div class="joia" style="border-left:4px solid var(--gold);"><span class="fonte">OPUS · R2</span><div class="t">📌 Três painéis carregam cláusula de desempate — e isso é o diagnóstico, escrito por nós</div>O Roadmap diz "se este mapa e os técnicos discordarem, avise". A Retomada diz "se discordarem, o vivo manda". A Fase E diz "o golpe 5 rodou e bloqueou, mas a tabela do rito não sabe disso". <b>Um sistema que precisa de cláusula de desempate é um sistema com mais de um autor por fato.</b> Escrevemos o diagnóstico três vezes e tratamos como documentação, em vez de tratar como defeito. Pior: a regra de desempate aponta para o <b>arquivo mais velho</b> — o "checklist vivo" era, na hora da auditoria, o segundo mais desatualizado do conjunto.</div>
+
+  <div class="nota ouro">📋 <b>A ordem que ele propõe para começar</b>, e que se encaixa na seção 6: <b>(1)</b> o livro de ocorrências só de acréscimo, dentro do Git; <b>(2)</b> a guarda que faz o painel gritar — <b>✅ feita hoje</b>; <b>(3)</b> "precisa de você" vira campo do livro-razão, e <b>os 5 itens da Retomada entram nele já — começando pelo H15, o único com cara de segurança</b>; <b>(4)</b> frescor por campo, com a capa mostrando o <i>mais velho</i>; <b>(5)</b> expectativa de sonda vira dado amarrado a uma decisão, nunca prosa com "não mexa"; <b>(6)</b> faixa de aposentadoria na Fase E (a Fase D já se declara histórica; a Fase E não se declara nada e ainda erra a própria contagem).</div>
+
+  <!-- ============================================================ -->
+  <h2 id="gemini2"><span class="num">10</span>Rodada 2 do Gemini — a arquitetura mais concreta das sete</h2>
+  <p class="lead">A mais curta, e a que entregou o desenho mais <b>construível</b>. Ela reforçou a posição da rodada 1 (não juntar tudo num arquivo) com um argumento novo e específico do nosso projeto — e errou numa afirmação, de um jeito que aponta para um problema maior.</p>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo forte">o desenho que eu adoto</span><span class="quem">Gemini · rodada 2</span></div>
+      <h3>O Cubo de Triagem: uma porta que não tem dados próprios</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">A frase</span><b>"Você não precisa de um painel único. Você precisa de um cubo de triagem."</b></p>
+      <p><span class="rot">A mecânica, em quatro linhas</span><b>(1)</b> os arquivos de dados continuam <b>separados por assunto</b> — cada agente atualiza só o escopo em que está mexendo, e o risco de um deles quebrar o painel inteiro cai para quase zero. <b>(2)</b> Nasce um arquivo <code>painel.html</code> que é a sua porta — e ele <b>não tem dado nenhum próprio</b>. <b>(3)</b> O programa dele varre todos os arquivos de dados e, onde encontrar algo marcado como <i>"precisa do dono"</i> ou <i>"vermelho"</i>, <b>puxa aquele cartão para a sua tela</b>. <b>(4)</b> Você abre um arquivo só; ele lê todos os painéis em silêncio e joga na sua cara <b>apenas o que está pegando fogo ou travando a fila</b>.</p>
+      <p><span class="rot">Por que isto é a peça que faltava</span>Porque resolve a tensão entre as consultorias sem sacrificar nenhuma: <b>uma porta só</b> (como todas queriam), <b>sem monolito</b> (Gemini e GPT), <b>sem lista própria</b> — e é isso que cumpre a lei da Fable: <i>"superfície que mantém lista própria é proibida"</i>. <b>Uma porta que não guarda nada não tem como divergir de nada.</b> As três caixas "precisa de você" viram impossíveis por construção.</p>
+      <p><span class="rot">O argumento novo, específico daqui</span>Ela leu os nossos arquivos e viu o tamanho do registro de episódios: <i>"se um agente precisar ler e reescrever esse arquivo inteiro só para mudar o farol de um serviço, o risco de truncar o histórico ou se perder no contexto é altíssimo."</i> <b>Isso não é teoria neste projeto</b> — é a Alavanca 2 do PLANO-10X, a mesma lição que fez o <code>ARMADILHAS.md</code> de 1.490 linhas virar um arquivo por entrada.</p>
+      <div class="antes-depois">
+        <div class="ad a"><div class="h">O que eu tinha recomendado</div>Um arquivo único, com abas. Um agente que mexe no painel manipula <b>236 KB</b> para mudar uma linha.</div>
+        <div class="ad d"><div class="h">O que passo a recomendar</div>Uma porta sem dados + arquivos pequenos por assunto. O agente toca só o seu pedaço.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="prova" style="border-color:var(--gold); background:var(--gold-dim);">
+    <div class="t" style="color:var(--gold)">⚖️ Ela errou o alvo — e o erro revelou algo pior</div>
+    <p style="margin:0 0 10px"><b>A acusação:</b> os prompts das Fases D e E estariam ficando imensos por causa do bloco cumulativo de "lições dos despachos anteriores", e logo o custo de contexto estouraria.</p>
+    <p style="margin:0 0 10px"><b>Medi, e não procede:</b> esses blocos têm <b>975 e 1.232 caracteres</b> — cerca de 1 KB. São minúsculos, e aqueles painéis são históricos de qualquer forma.</p>
+    <p style="margin:0"><b>Mas o mecanismo que ela descreveu é real — só mora em outro lugar, e é maior do que ela imaginou.</b> Medi o que <i>toda</i> sessão é obrigada a ler antes de começar qualquer trabalho: <code>CLAUDE.md</code> (11 KB) + <code>ARMADILHAS.md</code> (7 KB) + o índice de lições (<b>31 KB</b>) + a retrospectiva (10 KB) = <b>~59 KB em toda sessão, antes da primeira linha de trabalho</b>. E o índice é o que cresce sem limite: são <b>110 lições</b> hoje, 255 KB no total. A previsão dela está certa; a localização, não.</p>
+  </div>
+
+  <div class="joia" style="border-left:4px solid var(--red);"><span class="fonte">MEDIÇÃO MINHA</span><div class="t">📈 O dado que fecha o argumento: a poda durou menos de dois dias</div>Enquanto conferia, medi os backups do <code>painel-dados.js</code>. Antes da poda de 24/08: <b>206 KB</b>. Hoje: <b>236 KB</b>. Ou seja, <b>o painel que foi podado há dois dias já está 15% maior do que era antes da poda</b>. Isso confirma, com número, o modo de apodrecimento que o Opus previu na rodada 1 ("as seções se multiplicam por dentro") e a razão de ele exigir <b>teto no gerador</b>: se a capa passar de 6 blocos, o programa <b>se recusa a construir</b>. Lei escrita não segurou — a poda foi feita à mão e o arquivo voltou maior. <b>Gerador que quebra, segura.</b></div>
+
+  <!-- ============================================================ -->
+  <h2 id="fable2"><span class="num">11</span>O adendo da Fable — o experimento natural que fecha o caso</h2>
+  <p class="lead">A consultoria mais cara, e vou responder direto à sua pergunta implícita: <b>valeu.</b> Não por ser mais bonita — as outras também foram fortes. Valeu porque ela foi a única que encontrou um <b>experimento controlado</b> dentro dos nossos arquivos: um caso em que <i>tudo</i> é igual (mesmo painel, mesmas sessões, mesmos dias) menos <b>uma</b> variável. Isso é a diferença entre "acho que vai apodrecer" e "eis a causa, isolada".</p>
+
+  <div class="prova" style="border-color:var(--red);">
+    <div class="t">🔬 A linha de fratura: o mesmo painel se contradiz, exatamente na fronteira</div>
+    <p style="margin:0 0 12px">O Painel da Fundação está hoje <b>meio reformado</b>. Parte do conteúdo mora no arquivo de dados; parte ficou cravada no HTML. E o resultado, que eu medi agora, é impossível de ignorar:</p>
+    <div class="antes-depois" style="margin:0 0 12px;">
+      <div class="ad d"><div class="h">A parte COM arquivo de dados</div>A caixa "precisa de você" e os episódios contam a história de 25/08 <b>corretamente</b>. Foram atualizados.</div>
+      <div class="ad a"><div class="h">A parte CRAVADA no HTML</div><b>Apodreceu no lugar.</b> Três mentiras, medidas hoje ↓</div>
+    </div>
+    <div class="tscroll"><table style="margin:0;">
+      <tr><th>O que o HTML fixo ainda diz</th><th>O que é verdade</th></tr>
+      <tr><td>Faixa verde: <b>"16 serviços na VPS"</b> (número de 22/08)</td><td>A Retomada mediu <b>21</b> em 25/08</td></tr>
+      <tr><td>Régua de fases: <b>"Fase E · 6 rodados · 5 ☑"</b></td><td>O título do próprio painel da Fase E diz <b>"5 rodados · 4 ☑"</b></td></tr>
+      <tr><td>Cartão: Caixa de Sugestões <b>"PLANEJADO 22/08, esperando a conversa EVO-01"</b></td><td>Os episódios <b>do mesmo arquivo</b> dão o plano como concluído</td></tr>
+    </table></div>
+    <p style="margin:12px 0 0"><b>A conclusão que só um experimento controlado permite:</b> não é que "agentes esquecem". Os mesmos agentes, nas mesmas sessões, atualizaram religiosamente a metade que tinha arquivo de dados e deixaram a outra metade apodrecer. <b>A variável não é a disciplina — é a arquitetura.</b> Onde o fato tinha dono, ele foi mantido; onde era HTML órfão, morreu no lugar.</p>
+  </div>
+
+  <div class="tscroll"><table>
+    <tr><th>O mesmo fato, valores diferentes</th><th>O que eu medi agora</th></tr>
+    <tr><td><b>Quantas lições o projeto tem</b></td><td>Retomada: <b>92</b> · Roadmap: <b>106</b> · o meu prompt de consultoria: <b>107</b> · (a pasta hoje: <b>110</b>)</td></tr>
+    <tr><td><b>Quantas peças/células</b></td><td>Retomada: <b>10</b> · Roadmap: <b>11</b> — no mesmo dia</td></tr>
+    <tr><td><b>Quantos serviços na VPS</b></td><td>Fundação: <b>16</b> · Retomada: <b>21</b></td></tr>
+    <tr><td><b>Golpes do red-team</b></td><td>Painel da Fase E: <b>5 rodados/4 ☑</b> · Fundação: <b>6 rodados/5 ☑</b></td></tr>
+  </table></div>
+  <div class="nota">💡 <b>Ninguém mentiu.</b> Cada cópia era verdade no minuto em que foi escrita. É o custo estrutural de <b>um fato ter várias casas</b>. No livro de ocorrências, "quantas lições" deixa de ser um texto que alguém digita e vira <b>a contagem dos registros</b> — certa por construção, e igual nos três andares.</div>
+
+  <div class="prova" style="border-color:var(--gold); background:var(--gold-dim);">
+    <div class="t" style="color:var(--gold)">📈 O corte de 23/08 moveu o problema — não o resolveu</div>
+    <p style="margin:0"><b>Medi agora:</b> o corte C2 tirou os dados do HTML e o painel caiu de <b>199 KB para 26 KB</b> — vitória real. Mas o <code>painel-dados.js</code> de hoje tem <b>237 KB</b>: <b>já é maior que o monólito que o corte aposentou</b>. É a mesma anatomia do <code>ARMADILHAS.md</code> de 1.490 linhas antes de ser partido — <b>o problema que esta casa já resolveu uma vez</b>, com exatamente a receita que as consultorias recomendam: um arquivo pequeno por registro + índice gerado por script. E os três <code>painel-dados_BACKUP-*.js</code> na pasta são controle de versão feito à mão, que funciona só quando alguém lembra.</p>
+  </div>
+
+  <div class="corr" style="border-left-color:var(--red);">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo" style="background:var(--red-dim);color:var(--red);border-color:var(--red);">ela me pegou fazendo</span><span class="quem">Fable · adendo</span></div>
+      <h3>O anti-padrão flagrado ao vivo — e o culpado fui eu</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">O que ela apontou</span>Que o item do cardápio, na caixa "precisa de você", é um parágrafo que <b>acumula "Atualização 25/08…" dentro de si mesmo</b> — cada novidade editada para dentro de uma string que só cresce, em vez de virar um registro novo.</p>
+      <p><span class="rot">Confirmo, e a autoria é minha</span>Fui medir: aquele item é <b>uma única string de 5.253 caracteres</b>, com quatro atualizações costuradas para dentro dela — e <b>três delas eu escrevi hoje, nesta sessão</b>, enquanto analisava consultorias que diziam para não fazer isso. Não é constrangimento: é a prova mais barata de que <b>regra escrita não segura comportamento</b>. Eu conhecia a regra, tinha acabado de escrevê-la, e o formato do arquivo me empurrou para o caminho errado mesmo assim.</p>
+      <p><span class="rot">A correção, aplicada agora</span>Ao registrar esta rodada no painel, <b>não acrescentei uma quinta atualização àquela string</b>. Acrescentei um <b>registro novo e curto</b> na lista, apontando para o pedido — que é exatamente como o livro de ocorrências funciona: <b>atualização é um fato novo, nunca uma edição do passado</b>. É a primeira aplicação prática da reforma, feita dentro do formato velho.</p>
+    </div>
+  </div>
+
+  <div class="corr">
+    <div class="corr-head">
+      <div class="corr-topo"><span class="selo">resolve uma briga entre consultorias</span><span class="quem">Fable · adendo</span></div>
+      <h3>O corte por público não é hipótese — você já o validou na prática</h3>
+    </div>
+    <div class="corr-body">
+      <p><span class="rot">A tensão</span>Na seção 3 eu registrei que 4 das 5 consultorias atacaram o corte "dono / máquinas / memória". A Fable defende o oposto — e traz um argumento que as outras não tinham: <b>o Roadmap já É o andar 1 em espírito, e foi refeito a seu pedido quando a primeira versão saiu técnica demais</b>. Ou seja: o corte por público <b>já foi testado com você e aprovado por você</b>. Não é teoria.</p>
+      <p><span class="rot">Meu desempate — os dois estão certos, sobre andares diferentes</span><b>O andar 1 por público está validado</b> (a Fable tem razão: é o seu mapa, e funcionou). <b>O andar 2 é que era o problema</b> (o Opus tem razão: uma seção rotulada "para os agentes" não tem leitor humano e por isso apodrece primeiro). A correção fica assim: o andar 2 <b>não é "para os robôs"</b> — é <b>o detalhe que VOCÊ abre quando algo parece estranho</b>. Todo andar tem leitor humano; o que muda entre eles é a profundidade, não o público.</p>
+      <p><span class="rot">A consequência prática</span>A reforma <b>não inventa telas</b>: pega o Roadmap como molde da capa e <b>troca o combustível</b> — de edição manual datada para registros calculados.</p>
+    </div>
+  </div>
+
+  <div class="joia" style="border-left:4px solid var(--blue);"><span class="fonte">FABLE</span><div class="t">🖱️ Nenhum controle que finge gravar</div>Achado pequeno e certeiro: as ~154 caixinhas do checklist são clicáveis e <b>não gravam nada</b> — o painel avisa numa nota, mas, nas palavras dela, "o dedo chega antes da nota". Para um dono leigo, um controle que finge salvar é ruído que corrói a confiança na tela inteira. Regra para a capa nova: <b>nada interativo que não persista</b>.</div>
+
+  <div class="joia" style="border-left:4px solid var(--green);"><span class="fonte">FABLE</span><div class="t">🏅 Metade da reforma esta casa já inventou sozinha</div>A guarda que grita (feita ontem à noite), o rodapé da Retomada que se auto-rebaixa ("sou um retrato datado; o vivo manda"), a caixa anti-teatro do 10X, a Fase D já marcada como "arquivo histórico". <b>A reforma não traz nada estranho ao projeto</b> — ela promove a lei o que já se pratica por instinto, e acrescenta a única metade que nenhum painel atual tem: <b>a fonte única em registros pequenos, versionados e guardados por trava</b>.</div>
+
+  <!-- ============================================================ -->
+  <h2 id="final"><span class="num">🏁</span>A arquitetura final — as 8 rodadas convergidas</h2>
+  <p class="lead">Com as oito respostas na mesa, a divergência que parecia grande desapareceu. <b>Oito de oito concordam</b> que os dados devem ser fatiados em unidades pequenas; a discussão era só sobre a <i>superfície de leitura</i> — e ali a maioria é clara: <b>uma porta, várias vistas</b>. Este é o desenho que eu recomendo, e ele não é de nenhuma consultoria isolada: é o que sobra quando todas passam pelo crivo, com cada afirmação conferida nesta máquina.</p>
+
+  <div class="nota verde">🔑 <b>A frase que resume as oito rodadas</b>, e que o experimento natural da seção 11 provou dentro de um arquivo só: <b>onde o fato tem dono, ele se mantém; onde é órfão, apodrece no lugar.</b> A reforma inteira é dar dono a cada fato.</div>
+
+  <div class="veredito" style="border-color:var(--green); background:linear-gradient(180deg,var(--green-dim),var(--panel));">
+    <div class="t" style="color:var(--green)">🏗️ Uma porta sem dados · arquivos pequenos por assunto · tudo calculado</div>
+<pre style="font-family:'IBM Plex Mono',monospace; font-size:12.5px; line-height:1.75; color:var(--text-2); background:var(--bg); border:1px solid var(--line); border-radius:10px; padding:16px 18px; overflow-x:auto; margin:8px 0 14px;">
+        VOCÊ ABRE UM ARQUIVO SÓ  →   <b style="color:var(--gold)">painel.html</b>  (a porta)
+                                      • não guarda NENHUM dado próprio
+                                      • varre tudo e mostra só o que
+                                        pega fogo ou espera você
+                                              │
+             ┌────────────────────────────────┼────────────────────────────────┐
+             │                                │                                │
+        🗺️ <b>Meu mapa</b>                  ⚙️ <b>Operação</b>                    📚 <b>Memória</b>
+        (o Roadmap, quase                (faróis, fila,                  (episódios, decisões,
+         intacto — GPT R2)                sondas, números)                incidentes→lições)
+             │                                │                                │
+             └────────────────────────────────┼────────────────────────────────┘
+                                              │
+                                  <b style="color:var(--green)">LIVRO DE OCORRÊNCIAS</b>
+                        arquivos pequenos, um por acontecimento, só se acrescenta
+                        campos: o quê · quando aconteceu · quando foi verificado
+                                · quem é a autoridade · evidência · vence em
+                                              │
+                                     dentro do <b>Git</b> (decisão 1)
+</pre>
+    <p style="margin:0"><b>Congelados, fora da navegação:</b> a Retomada vira fotografia datada; o 10X, a Fase D e a Fase E viram arquivo de operações encerradas. Não competem mais com o presente — e nada é apagado.</p>
+  </div>
+
+  <p class="lead" style="margin-top:26px;"><b>As cinco regras que fazem isso funcionar</b> — cada uma é mecanismo, não promessa:</p>
+
+  <ol class="ordem">
+    <li><b>A porta não tem dados próprios.</b> Ela só calcula do livro de ocorrências. Uma porta que não guarda nada <b>não tem como divergir de nada</b> — é isto que mata as três caixas "precisa de você" de uma vez, por construção.</li>
+    <li><b>Fato tem dono único (autoridade).</b> PR mergeado → o GitHub. Sonda → o resultado da sonda. Decisão sua → o registro dela. <b>Nenhum painel tem direito de ser a origem de um fato</b> — todos são espelhos.</li>
+    <li><b>Verde é conquistado, nunca escrito.</b> Cor vem de medição ou de verificação de fora. Sem medição, é <b>cinza "não sei"</b>. Quem não faz nada produz cinza, não verde velho.</li>
+    <li><b>O que está velho se denuncia sozinho.</b> Frescor calculado pela página, por campo, mostrando o <b>mais velho</b> — e com os dois relógios separados: quando alguém mexeu no texto ≠ quando a prova foi feita.</li>
+    <li><b>O gerador se recusa a construir</b> se a capa passar do teto de blocos. A poda de 24/08 durou dois dias porque foi feita à mão; lei escrita não segura, gerador que quebra segura.</li>
+    <li><b>Todo andar tem leitor humano, e nada finge gravar.</b> O andar 2 não é "para os robôs" — é o detalhe que <b>você</b> abre quando algo parece estranho (seção sem leitor apodrece primeiro). E nenhum controle clicável que não salve de verdade.</li>
+  </ol>
+
+  <div class="nota verde">✅ <b>Já feito, sem esperar a obra:</b> a guarda de leitura do Painel da Fundação (seção 9) — hoje, se os dados não chegarem, o painel <b>grita</b> em vez de mostrar uma caixa vazia com a faixa verde ligada. Provado vermelho→verde.</div>
+
+  <div class="nota ouro"><b>O que continua esperando você:</b> as <b>duas decisões da seção 7</b> (os registros entram no Git? · fazemos a reforma completa?) — agora com as sete consultorias por trás delas. E, da lista do Opus, uma coisa que não é sobre painel e merece atenção separada: o <b>item H15</b>, a porta lateral do servidor, que está na gaveta "sem pressa" há dias e é o único dos cinco pendentes com cara de segurança.</div>
+
+  <div class="rodape">
+    <b>Como esta análise foi feita (25/08/2026):</b> leitura integral das 5 consultorias distintas em <code>docs/paineis/</code> (dois dos 6 arquivos são o mesmo documento da Fable, salvo duas vezes), mapeamento de convergências e divergências, e <b>conferência no repositório real</b> das afirmações que elas fizeram sobre nós — o item H18 e o H21 em <code>ARMADILHAS-OPERACAO.md</code>, a ausência de qualquer workflow tocando <code>arquivos/</code>, e a primeira linha do <code>.gitignore</code>. As três conferiram. Nenhuma recomendação foi descartada em silêncio: as que não entraram nas 6 correções estão na seção 4 ou registradas como conversa separada (OneDrive).
+    <br><br>Este documento mora em <code>docs/paineis/</code>, e não em <code>arquivos/</code>, de propósito — é a primeira aplicação prática do conselho que as próprias consultorias deram: <b>o que precisa sobreviver mora onde as travas do projeto alcançam.</b>
+  </div>
+
+</div>
+</body>
+</html>
