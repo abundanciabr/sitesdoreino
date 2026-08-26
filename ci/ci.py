@@ -489,7 +489,8 @@ def main(argv: list[str] | None = None) -> int:
             "  freeze     — contrato vivo × contrato congelado (ci/contract_freeze.py)"
         )
         print(
-            "  muralhas   — cerca de célula, orçamento de mudança, guarda de segredos"
+            "  muralhas   — cerca de célula, orçamento de mudança, guarda de "
+            "segredos, muralha do painel"
         )
         print(
             "  guardas    — INVARIANTES.md × disco: todo teste-guarda existe e ainda "

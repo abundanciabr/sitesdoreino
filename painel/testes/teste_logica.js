@@ -62,6 +62,27 @@ var pedidoNovo = reg({ arquivo: "20260825-001-novo", tipo: "pendencia", quando: 
 caso("pedido mais VELHO grita primeiro",
   LOGICA.caixaDeEntrada([pedidoNovo, pedido], AGORA)[0].registro.arquivo === "20260820-001-pedido");
 
+// -----------------------------------------------------------------------------
+// ...E OS JEITOS DE ELA ESQUECER MESMO ASSIM (auditoria de 26/08/2026).
+// A promessa é "uma lista calculada não consegue esquecer". Antes destes casos
+// ela conseguia: bastava o campo que alimenta a caixa vir como texto, faltar, ou
+// o registro responder a si mesmo — e o gerador aprovava tudo em silêncio.
+// Todos REPROVAM na validação: o gerador barra o registro na ENTRADA, em vez de
+// a caixa perder o pedido depois, quando ninguém mais está olhando.
+// -----------------------------------------------------------------------------
+caso("precisa_do_dono como TEXTO 'true' REPROVA (senão o pedido some da caixa)",
+  LOGICA.validarRegistros([reg({ precisa_do_dono: "true" })]).length > 0);
+caso("precisa_do_dono ESQUECIDO REPROVA",
+  LOGICA.validarRegistros([reg({ precisa_do_dono: undefined })]).length > 0);
+caso("precisa_do_dono false continua válido (obrigatório é o CAMPO, não o pedido)",
+  LOGICA.validarRegistros([reg({ precisa_do_dono: false })]).length === 0);
+caso("registro que responde a SI MESMO REPROVA (pedido não se responde sozinho)",
+  LOGICA.validarRegistros([reg({ arquivo: "20260826-905-eu", responde_a: "20260826-905-eu", precisa_do_dono: true })]).length > 0);
+caso("vence_em_dias como TEXTO '10' REPROVA",
+  LOGICA.validarRegistros([reg({ vence_em_dias: "10" })]).length > 0);
+caso("evidencia em branco REPROVA (evidência vazia não é evidência)",
+  LOGICA.validarRegistros([reg({ evidencia: "   " })]).length > 0);
+
 console.log("== problemas e mudanças ==");
 var incendio = reg({ arquivo: "20260826-003-incendio", tipo: "incidente", gravidade: "vermelho" });
 caso("incidente vermelho sem resposta está em 'problemas abertos'",
@@ -77,6 +98,13 @@ caso("mudança de 3 dias atrás entra nos '7 dias'",
   LOGICA.mudancasRecentes([reg({ quando: "2026-08-23" })], AGORA, 7).length === 1);
 caso("mudança de 20 dias atrás NÃO entra",
   LOGICA.mudancasRecentes([reg({ quando: "2026-08-06" })], AGORA, 7).length === 0);
+// Data no futuro (typo, ou o bug de fuso que a casa já teve) não pode SUMIR da
+// capa: fato invisível é pior que fato com data estranha.
+caso("registro com data no FUTURO aparece na capa em vez de sumir",
+  LOGICA.mudancasRecentes([reg({ quando: "2026-08-28" })], AGORA, 7).length === 1);
+caso("...e ele vem em PRIMEIRO, por ser o mais recente",
+  LOGICA.mudancasRecentes([reg({ arquivo: "20260823-901-a", quando: "2026-08-23" }),
+    reg({ arquivo: "20260828-902-b", quando: "2026-08-28" })], AGORA, 7)[0].arquivo === "20260828-902-b");
 
 console.log("== frentes: o mais recente vence, nada é mantido ==");
 var f1 = reg({ arquivo: "20260820-002-f", tipo: "frente", frente: "site", quando: "2026-08-20", titulo: "antigo" });
