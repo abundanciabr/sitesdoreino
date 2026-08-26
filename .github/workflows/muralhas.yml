@@ -29,7 +29,11 @@ jobs:
       # e a lista podia divergir da que o agente roda localmente sem ninguém
       # perceber. `python ci/ci.py --apenas muralhas` é literalmente o mesmo
       # comando dos dois lados.
-      - name: Muralhas (cerca de célula · orçamento · guarda de segredos)
+      # O rótulo lista as muralhas que ci.py roda HOJE. Ele ficou para trás
+      # quando a muralha do painel entrou (26/08/2026) e anunciava três de
+      # quatro: nome de step que mente sobre o que rodou foi exatamente o
+      # buraco do "lint + import-linter + type + testes" (guarda_dos_guardas).
+      - name: Muralhas (cerca de célula · orçamento · guarda de segredos · painel)
         run: python ci/ci.py --apenas muralhas
       # [INV-CI01] Testar o testador: a suíte adversarial prova que os portões
       # REPROVAM quando devem — inclusive quando a ferramenta de medição é

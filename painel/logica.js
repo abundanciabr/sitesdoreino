@@ -40,7 +40,7 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Validação — o mesmo contrato do gerar_manifesto.py, imposto dos dois lados.
+  // Validação — o mesmo contrato do gerar_manifesto.js, imposto dos dois lados.
   // Devolve lista de erros (vazia = válido). ERROR nunca vira PASS: quem chamar
   // com erros não-vazios NÃO pode renderizar como se estivesse tudo bem.
   // ---------------------------------------------------------------------------
@@ -76,11 +76,38 @@
           erros.push(nome + ": '" + campo + "' contém '<' — os campos são texto puro, sem HTML");
         }
       });
+      // -----------------------------------------------------------------------
+      // O TIPO dos campos que MOVEM o registro entre as vistas (auditoria de
+      // 26/08/2026). Aqui não é preciosismo de tipo: `precisa_do_dono` é o campo
+      // que põe um pedido na caixa "Precisa de você", e a caixa só se compara
+      // com `=== true`. Escrito como TEXTO ("true", entre aspas) ou esquecido, o
+      // registro passava por válido e o pedido SUMIA da caixa em silêncio — que
+      // é exatamente a doença do H18 que este livro existe para curar. Uma lista
+      // calculada não pode esquecer; para isso, o campo que a alimenta tem de
+      // ser obrigatório e do tipo certo.
+      // -----------------------------------------------------------------------
+      if (typeof r.precisa_do_dono !== "boolean") {
+        erros.push(nome + ": 'precisa_do_dono' precisa ser true ou false SEM aspas (veio: " +
+          JSON.stringify(r.precisa_do_dono) + ") — é ele que põe o pedido na caixa 'Precisa de você'");
+      }
+      if (r.vence_em_dias != null && (typeof r.vence_em_dias !== "number" || !isFinite(r.vence_em_dias))) {
+        erros.push(nome + ": 'vence_em_dias' precisa ser um número sem aspas, ou null");
+      }
+      if (r.evidencia != null && (typeof r.evidencia !== "string" || r.evidencia.trim() === "")) {
+        erros.push(nome + ": 'evidencia' precisa ser texto com conteúdo, ou null — evidência vazia não é evidência");
+      }
     });
-    // responde_a precisa apontar para registro que exista.
+    // responde_a precisa apontar para OUTRO registro, que exista.
     registros.forEach(function (r) {
-      if (r && r.responde_a && !vistos[r.responde_a]) {
+      if (!r || !r.responde_a) return;
+      if (!vistos[r.responde_a]) {
         erros.push((r.arquivo || "?") + ": responde_a aponta para registro inexistente: " + r.responde_a);
+      }
+      // Um registro que responde a SI MESMO fecha o próprio pedido: ele entra e
+      // sai da caixa no mesmo instante, sem ninguém responder nada. A caixa não
+      // pode ter uma porta que se fecha por dentro.
+      if (r.responde_a === r.arquivo) {
+        erros.push((r.arquivo || "?") + ": responde_a aponta para o PRÓPRIO registro — um pedido não se responde sozinho");
       }
     });
     return erros;
@@ -120,10 +147,16 @@
   }
 
   // "O que mudou": registros dos últimos N dias, mais recentes primeiro.
+  // Data no FUTURO também entra (auditoria de 26/08/2026): antes o filtro exigia
+  // `>= 0` e um registro datado à frente do relógio — erro de digitação, ou o bug
+  // de fuso que esta casa já teve (células mostrando hora de Chicago) — SUMIA da
+  // capa em silêncio. Sumir é o pior destino possível para um fato: ele fica
+  // fresco demais para o painel e invisível para o dono. Aparecer com data
+  // estranha é feio e honesto; não aparecer é bonito e mentiroso.
   function mudancasRecentes(registros, agora, dias) {
     dias = dias || 7;
     return registros
-      .filter(function (r) { return diasEntre(r.quando, agora) <= dias && diasEntre(r.quando, agora) >= 0; })
+      .filter(function (r) { return diasEntre(r.quando, agora) <= dias; })
       .sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
   }
 

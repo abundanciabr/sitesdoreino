@@ -149,5 +149,7 @@
 | [121](121-sum-ao-lado-de-count-distinct-no-mesmo-annotate.md) | Um `Sum` ao lado de `Count(distinct=True)` no mesmo `annotate` sai multiplicado — e é o `distinct` do vizinho que faz você não desconfiar — uma consulta que já agrega DUAS relações resolve tudo certo há meses. Você… | — |
 | [122](122-conferir-de-arquivo-gerado-reprova-por-crlf.md) | `--conferir` de arquivo gerado reprova com tudo em dia — `manifesto.js está DESATUALIZADO` num checkout que acabou de dar `git pull` — `node painel/gerar_manifesto.js --conferir` (ou qualquer verificador do padrão "gera… | — |
 | [123](123-portao-encadeado-com-pipe-perde-o-veredito.md) | Portão encadeado com `\| tail` e `&&` mergeia mesmo depois de dizer "MERGE RECUSADO" — o `&&` obedece ao `tail`, não ao portão — numa linha só do tipo | — |
+| [124](124-codigo-de-saida-lido-depois-de-if-nao-e-sempre-0.md) | `codigo=$?` dentro de um `if ! cmd; then` é SEMPRE 0 — o veredito se perde na negação, e o script imprime "(exit 0)" ao reprovar — um portão de shell escrito assim | — |
+| [125](125-pane-de-actions-deixa-execucoes-zumbis-e-o-pr-bloqueado.md) | Pane do GitHub Actions: as execuções viram zumbis, os gatilhos normais somem, e o PR fica `BLOCKED` sem nenhum check no `head` — durante uma pane declarada de Actions (`githubstatus.com` → *Actions: major_outage*), um… | — |
 
-**112 entradas.**
+**114 entradas.**

@@ -39,13 +39,24 @@ for passo in \
   "painel/gerar_manifesto.js --conferir" \
   "painel/testes/teste_logica.js" \
   "painel/testes/teste_gerador.js"; do
+  # O código do passo é capturado ANTES de qualquer teste. Antes isto era
+  # `if ! saida="$(node $passo)"; then codigo=$?`, e ali o `$?` já era o
+  # resultado do `!` — sempre 0. Efeito medido em 26/08/2026: a muralha
+  # imprimia "(exit 0)" ao reprovar, e o `exit 2` do instrumento quebrado
+  # virava FAIL de conteúdo. Mesma família da armadilha 123 (veredito perdido
+  # no cano): aqui ele se perdia na negação. Veredito se lê da fonte, nunca de
+  # algo que passou por outro operador.
   # shellcheck disable=SC2086
-  if ! saida="$(node $passo 2>&1)"; then
-    codigo=$?
+  saida="$(node $passo 2>&1)"
+  codigo=$?
+  if [[ $codigo -ne 0 ]]; then
     echo "❌ MURALHA DO PAINEL — reprovou em: node $passo (exit $codigo)"
     echo "$saida" | tail -n 25 | sed 's/^/   /'
     # ERROR do passo (exit 2) é ERROR da muralha — instrumento quebrado não é FAIL de conteúdo.
-    if [[ $codigo -eq 2 ]]; then exit 2; fi
+    if [[ $codigo -eq 2 ]]; then
+      echo "   ⚠️ exit 2 = ERROR: a muralha NÃO conseguiu inspecionar o painel. Isto NÃO é um OK."
+      exit 2
+    fi
     falhou=1
   fi
 done

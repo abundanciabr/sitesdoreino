@@ -314,11 +314,26 @@ try {
     .then(function (r) { if (!r.ok) throw 0; return r.json(); })
     .then(function (d) {
       var runs = (d.workflow_runs || []);
-      var ruins = runs.filter(function (x) { return x.conclusion && x.conclusion !== "success"; });
       if (!runs.length) { pintaMed("med-runs", "nao-sei", "o GitHub não devolveu execuções."); return; }
-      pintaMed("med-runs", ruins.length ? "mal" : "ok",
-        ruins.length ? ruins.length + " das últimas " + runs.length + " execuções NÃO fecharam verdes: " + ruins.map(function (x) { return x.name; }).join(" · ")
-          : "as últimas " + runs.length + " execuções fecharam verdes (" + runs[0].name + " é a mais recente).");
+      // O veredito de uma execução tem DOIS campos, e ler só um foi o falso-verde
+      // nº 1 da casa (RETROSPECTIVA §1 · ARMADILHAS §5.10 · H13): `conclusion`
+      // só existe depois que `status` vira "completed". Quem ainda está na fila
+      // ou correndo não tem veredito nenhum — contá-la como verde é afirmar que
+      // fechou verde uma execução que nem começou. Medido em 26/08/2026: 2 das 6
+      // estavam `queued` e o cartão dizia "as últimas 6 execuções fecharam verdes".
+      var terminadas = runs.filter(function (x) { return x.status === "completed"; });
+      var correndo = runs.length - terminadas.length;
+      var ruins = terminadas.filter(function (x) { return x.conclusion !== "success"; });
+      if (ruins.length) {
+        pintaMed("med-runs", "mal", ruins.length + " das " + terminadas.length + " execuções que terminaram NÃO fecharam verdes: " +
+          ruins.map(function (x) { return x.name; }).join(" · "));
+      } else if (correndo) {
+        // Cinza, nunca verde: parte da resposta ainda não existe (o 4º estado).
+        pintaMed("med-runs", "nao-sei", terminadas.length + " execuções fecharam verdes, mas " + correndo +
+          " ainda está" + (correndo > 1 ? "ão" : "") + " rodando — sem veredito. NÃO é um verde completo.");
+      } else {
+        pintaMed("med-runs", "ok", "as últimas " + terminadas.length + " execuções fecharam verdes (" + runs[0].name + " é a mais recente).");
+      }
     })
     .catch(function () { pintaMed("med-runs", "nao-sei", "não consegui perguntar ao GitHub. NÃO é um verde."); });
 

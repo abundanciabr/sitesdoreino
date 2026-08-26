@@ -12,7 +12,7 @@
 |---|---|---|
 | `painel.html` | **A porta.** O painel que o mantenedor abre (duplo clique). Não guarda NENHUM dado próprio — toda vista é calculada dos registros. | Muda raramente, por PR, como código. |
 | `registros/*.js` | **O livro de ocorrências.** Um arquivo pequeno por acontecimento. Só se ACRESCENTA — nunca se edita nem se apaga um registro existente. | Toda sessão, ao terminar trabalho relevante. |
-| `manifesto.js` | **GERADO** por `gerar_manifesto.py`. Lista os registros para a página (em `file://` o Chrome não deixa a página descobrir arquivos sozinha). | Só o gerador. Nunca à mão. |
+| `manifesto.js` | **GERADO** por `gerar_manifesto.js`. Lista os registros para a página (em `file://` o Chrome não deixa a página descobrir arquivos sozinha). | Só o gerador. Nunca à mão. |
 | `logica.js` | As regras que calculam as vistas (caixa de entrada, frescor, capa). Pura, roda em Node e no navegador. | Por PR, com teste-guarda. |
 | `gerar_manifesto.js` | Valida TODOS os registros (fail-closed, com a MESMA `logica.js` da página — um validador só) e regenera o manifesto. `--conferir` só confere (para CI). | Por PR. |
 | `testes/` | Testes-guarda da lógica e do gerador — incluindo os casos em que devem REPROVAR. | Por PR. |
