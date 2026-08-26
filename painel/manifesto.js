@@ -40,7 +40,13 @@ var MANIFESTO = [
   "20260826-021-h16-criterio-de-pagamento-parado-por-ordem-sua",
   "20260826-022-h17-celula-nova-nasce-com-o-portao-vermelho",
   "20260826-023-a-lista-dupla-foi-desfeita",
-  "20260826-024-a-secao-9-e-o-mesmo-problema-de-novo"
+  "20260826-024-a-secao-9-e-o-mesmo-problema-de-novo",
+  "20260826-025-tres-celulas-passaram-a-mostrar-hora-do-brasil",
+  "20260826-026-o-rumo-da-fabrica-descrevia-trabalho-ja-feito",
+  "20260826-027-metade-do-rumo-da-comunidade-ja-estava-pronta",
+  "20260826-028-o-sininho-espera-uma-conversa-de-arquitetura",
+  "20260826-029-duas-celulas-de-dinheiro-ficaram-de-fora-do-fuso",
+  "20260826-030-a-vps-recusou-o-robo-tres-vezes-na-janela"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
