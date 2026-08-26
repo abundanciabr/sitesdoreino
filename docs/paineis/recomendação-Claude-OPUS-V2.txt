@@ -1,0 +1,108 @@
+Li os oito. Antes da crítica, duas coisas que são realmente boas e eu não vou fingir que não vi: o **Roadmap do Dono** é o melhor texto técnico-para-leigo que eu li em muito tempo ("voltar para a versão boa leva 76 segundos" é exatamente o registro certo), e a seção **anti-teatro** do 10X — evidência crua, vermelho→verde da Lei 6, auditoria por sessão diferente — é mais rigorosa que a de quase todo time humano.
+
+Agora o resto. Estes arquivos não *ilustram* o problema que você descreveu. Eles **provam que ele já cobrou o preço**, e eu consigo apontar onde.
+
+---
+
+## 1. O pedido perdido não é um risco futuro. Já aconteceu — e eu sei quais
+
+O Painel de Retomada, seção 6, datado 25/08, lista cinco decisões suas em espera: ligar a trava de merge nativa do GitHub · Docker Desktop subir com o Windows (H4) · **fechar a porta lateral do servidor, item H15 — o IP da VPS ficou exposto quando o repositório virou público** · a chave de API paga da retrotradução · o cartão de teste do Mercado Pago no cofre (H8).
+
+O Roadmap do Dono, **do mesmo dia**, responde: *"Você precisa fazer alguma coisa agora? Não."* Nenhum dos cinco aparece lá.
+
+E o próprio Retomada abre com *"nada está esperando você — o caminho está livre"* — cinco parágrafos acima da seção onde lista as cinco. **A capa contradiz o corpo dentro do mesmo arquivo.**
+
+Isso não é filosofia de painel. É um item de segurança de servidor guardado numa gaveta chamada "sem pressa", dentro do painel que você não abre todo dia, e ausente do painel que você abre. Você previu esse modo de falha na sua pergunta 4. Ele já rodou.
+
+## 2. A regra de desempate aponta para o arquivo mais velho
+
+O Retomada escreve: *"Se este retrato e o painel vivo discordarem um dia, o vivo manda."* O "vivo" é o Painel da Fundação.
+
+Data mais recente dentro do Fundação: **24/08**, com o grosso do conteúdo em 23/08. Retomada: 25/08. Roadmap: 25/08. O "checklist vivo, atualizado a cada tarefa" é o segundo mais desatualizado do conjunto — e a lei do projeto manda um agente preferir ele.
+
+E o 10X: data mais recente **23/08**. O painel que "envelheceu e passou a mentir" está desatualizado de novo, dois dias, **nos arquivos que você acabou de me mandar**. Não foi um episódio. É o estado atual.
+
+## 3. Seus painéis não concordam sobre de quantas peças o sistema é feito
+
+No mesmo 25/08: Roadmap diz **11 peças independentes**. Retomada diz **10 células** e **21 serviços na VPS**. O Fundação diz **8 células** e traz faixa verde com **16 serviços**. Seu prompt de consultoria diz **11 serviços isolados**.
+
+Catálogo de lições, mesma coisa: Retomada **92** · Roadmap **106** · seu prompt **107** · 10X **63 entradas** — e o 10X cita o ARMADILHAS com **1.522 linhas** num bloco e **1.471** em outro, no mesmo arquivo.
+
+Você não consegue responder "de quantas peças meu sistema é feito?" lendo seus próprios painéis. Todos esses números foram digitados à mão, cada um numa janela diferente, cada um verdadeiro no minuto em que foi escrito.
+
+## 4. Os painéis falham para o lado de "está tudo bem" — o pior lado possível
+
+O `painel-fundacao.html` usa duas variáveis, `GROUPS` e `DADOS`, e **nenhuma das duas está nele** — moram no `painel-dados.js`. Não há `try`, não há `typeof`, não há guarda nenhuma. Se esse arquivo faltar, for renomeado, ou tiver uma vírgula sobrando, o `render()` estoura na primeira linha e **o checklist, a barra de fases, a caixa "precisa de você" e o registro de episódios ficam vazios** — enquanto a faixa verde *"🟢 A PLATAFORMA ESTÁ NO AR"*, que é HTML fixo, continua aparecendo bonita.
+
+Não é hipótese: você me mandou o `painel-fundacao.html` **sem** o `painel-dados.js`. O arquivo, como chegou aqui, abre exatamente assim.
+
+Uma caixa de entrada vazia é lida como "não tem nada esperando você". É o mesmo desastre do item 1, agora por defeito mecânico em vez de esquecimento.
+
+Some-se a isso: no `defaultState()` há cerca de 140 marcadores e **todos são `true`**. O `counts()` só conta os grupos da Fase 0 — todos verdadeiros — então a barra marca **100% para sempre**. E o `renderSections()` só abre sozinha a seção que tem pendência: como não há nenhuma, o painel abre **inteiro fechado, com a barra cheia**. Uma lista onde tudo está marcado não é uma lista; é um enfeite com formato de instrumento. E as caixinhas continuam clicáveis sem gravar nada — o painel avisa numa nota, mas o dedo chega antes da nota.
+
+## 5. A decisão não foi registrada. Foi apagada
+
+Comparei `painel-roadmap.html` com o seu backup de 25/08. No backup, a caixa "precisa de você" tinha as **três perguntas inteiras**, cada uma com o que custava, o que se perdia e a recomendação — inclusive a observação preciosa sobre "o que a garantia nova NÃO é".
+
+Na versão atual, as três perguntas **sumiram**, substituídas por uma linha: *"sim · sim · nascer só com a Caixa"*.
+
+O resultado sobreviveu. **O raciocínio que produziu o resultado foi deletado.** Ele só existe hoje porque você, por instinto, copiou o arquivo à mão antes do lote. Isso é o ADR da sua lista de 13 explicando por que existe — e mostrando que ainda não está em vigor.
+
+## 6. Três painéis carregam cláusula de desempate. Isso é o diagnóstico, escrito por vocês
+
+- Roadmap: *"Se este mapa e os técnicos discordarem, avise numa sessão."*
+- Retomada: *"Se este retrato e o painel vivo discordarem, o vivo manda — e a divergência merece ser reportada como bug de processo."*
+- Fase E: *"O golpe 5 rodou e bloqueou, mas a tabela do rito não sabe disso."*
+
+Um sistema que precisa de cláusula de desempate é um sistema com mais de um autor por fato. Vocês escreveram o diagnóstico três vezes e o trataram como documentação em vez de tratá-lo como defeito. E o Fase E ainda erra a própria contagem: o título diz "5 rodados · 4 ☑", o 10X diz 6 e 5, o Retomada diz 6.
+
+## 7. As sondas medem a realidade e comparam com uma expectativa digitada à mão
+
+Isto merece atenção porque é sutil e caro. O 10X registra o incidente: o `deploy-infra` saiu **vermelho com a plataforma 100% saudável**, porque a sonda exigia 200 na raiz e a raiz virara 302 de propósito. Vocês diagnosticaram certo: *"sonda envelhecida, não regressão"*.
+
+Agora olhe o Retomada de 25/08: raiz = **200 ✓**, `/en/` = **404 ✓ "proposital — ninguém deve consertar"**. Em três dias o valor esperado da raiz foi 200 → 302 → 200, e cada painel congelou um deles como "por desenho", com uma ordem anexada de não mexer.
+
+O erro não está em medir — a medição é real e é o melhor que vocês têm. O erro é que **o valor esperado mora em prosa, num arquivo fora do Git, ao lado de uma instrução para não corrigi-lo**. É assim que uma sonda deixa de ser sensor e vira mentira com autoridade.
+
+---
+
+## O que muda no que eu te recomendei
+
+**A recomendação (a) já está meio feita — e feita de um jeito que preserva a doença.** Vocês já partiram renderizador e dados, já descobriram sozinhos que `fetch` e `window.storage` não funcionam ali. Mas o `painel-dados.js` guarda **pedaços de HTML prontos** (`innerHTML = cabecalho + itens.join('')`), e o estado ficou dentro do HTML que vocês declararam ser "só o renderizador". Resultado: nada é calculável a partir do arquivo de dados — nem frescor, nem contagem, nem severidade, nem cruzamento. O livro-razão tem que guardar **fato com campos** (o quê, quando, quem, evidência, vence em), e o HTML monta a frase. Guardar frase pronta é guardar a opinião de ontem.
+
+**A recomendação (c), o Git, deixou de ser conselho.** O próprio Painel da Fundação registra dois arquivos prometidos que sumiram e admite: *"como `arquivos/` fica fora do Git, não há histórico para recuperar"*. A conta já foi paga. E os seus `BACKUP-antes-do-corte-23-08` e `BACKUP-antes-do-lote-25-08` são controle de versão feito à mão, que funciona só quando alguém lembra.
+
+**E a correção mais importante, sobre a sua pergunta 4:** a disciplina anti-teatro do 10X é excelente e **para exatamente na porta da prosa do próprio painel**. As três regras governam os *cards*. Ninguém audita os *blocos narrativos*. E é neles que a contradição mora: no mesmo painel 10X, um bloco diz *"AINDA NADA FEITO: A1, A2, A3, A5"* e, poucos centímetros acima, outro diz *"Onda 1 — FEITA DE FATO, em produção: A1, A2, A3, A5"*. Os dois em negrito, os dois renderizados como atuais, sem nenhuma marca de qual foi superado. O painel corrige o passado **empilhando parágrafo novo**, nunca corrigindo o registro.
+
+A Lei 6 precisa valer para o painel: **afirmação que não vem do livro-razão não tem direito de virar prosa.**
+
+---
+
+## Na ordem, começando agora
+
+1. **`eventos.js` só de acréscimo, dentro do Git.** Uma linha por acontecimento, agentes só somam ao fim. O HTML gerado continua em `arquivos/`, ignorado — ele é descartável.
+2. **A guarda que faz o painel gritar em vez de sussurrar.** Isto é de hoje, são catorze linhas, e resolve o item 4:
+
+```html
+<script src="painel-dados.js" onerror="falhaAlta('painel-dados.js não carregou')"></script>
+<script>
+function falhaAlta(motivo){
+  document.body.innerHTML =
+    '<div style="background:#7f1d1d;color:#fff;padding:24px;font:16px system-ui">'
+    + '<b>Este painel não pode ser lido.</b><br>' + motivo
+    + '<br>Não acredite em nada desta tela.</div>';
+}
+try{
+  if (typeof GROUPS === 'undefined' || typeof DADOS === 'undefined')
+    throw new Error('os dados não chegaram até o painel');
+  render();
+}catch(e){ falhaAlta(e.message); }
+</script>
+```
+
+3. **"Precisa de você" vira um campo só no livro-razão**, e os cinco itens da seção 6 do Retomada entram nele hoje — começando pelo H15, que é o único com cara de segurança.
+4. **Frescor por campo, calculado, e a capa mostrando o mais velho** — não o mais novo. Dado vencido vira "não sei desde dd/mm", nunca número.
+5. **Expectativa de sonda vira dado**, amarrada a um número de decisão. Sonda nenhuma deve carregar "ninguém deve consertar" em prosa.
+6. **Faixa de aposentadoria no Fase E** (o Fase D já se declara "arquivo histórico" no subtítulo — o Fase E não se declara nada, e ainda erra a contagem).
+
+Se quiser, eu escrevo o formato do `eventos.js` — os campos, um exemplo real com três dos seus episódios e a regra de escrita para o agente — já num arquivo pronto para você despachar.

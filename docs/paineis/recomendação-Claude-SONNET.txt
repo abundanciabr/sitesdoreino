@@ -1,0 +1,63 @@
+Li o arquivo. Ele é um prompt pronto para consultoria **externa** — o próprio texto pede uma segunda opinião de uma IA diferente da que construiu o plano, exatamente para evitar o problema que ele mesmo descreve na pergunta 4 (quem constrói não deveria ser quem avalia o próprio trabalho). Como eu sou uma das sessões que trabalha neste projeto, responder eu mesmo às 7 perguntas como se fosse "a consultoria externa" cairia nessa armadilha.
+
+Antes de agir, preciso saber o que você quer que eu faça com este arquivo:
+
+Antes de responder: um aviso de viés que o próprio documento antecipa (pergunta 4). Eu não sou uma IA externa — sou uma sessão deste mesmo projeto, e o "cardápio de painéis" ([arquivos/cardapio-de-paineis.html](arquivos/cardapio-de-paineis.html)) que descreve essa reforma de 3 andares parece ter sido escrito por uma sessão irmã minha hoje. Isso é exatamente o problema que a pergunta 4 do seu prompt descreve. Onde eu puder, vou compensar checando contra o código real em vez de confiar no que o documento afirma — e vou sinalizar quando um ponto for uma opinião minha vs. uma evidência que conferi agora.
+
+## 1. A premissa está certa?
+
+**Parcialmente — e tem uma confusão escondida no meio dela.** A reforma junta duas coisas que são independentes:
+
+- **Fonte de dados única** (um `.js` que alimenta tudo) — isso está certo e já provado: o `painel-dados.js` já existe, já roda, e é exatamente a regra nº1 do padrão-ouro.
+- **Superfície única** (um arquivo `.html` só) — isso é uma escolha de UI, não uma exigência da regra nº1. E aqui eu discordaria da forma como está planejada hoje.
+
+Motivo concreto: eu li [painel-fundacao.html](arquivos/painel-fundacao.html) — hoje ele é uma página de rolagem única com seções que colapsam (`toggleSection`), não abas. Se os "3 andares" forem empilhados do mesmo jeito, o Andar 1 (a capa, que devia abrir e se entender em segundos) vira só o primeiro trecho de uma rolagem que continua pela sala de máquinas e pela memória. Isso recria o "painel gigante que ninguém termina de ler" que você mesmo teme na pergunta 1 — só que dentro de um arquivo em vez de espalhado em seis.
+
+**Existe sim um terceiro caminho, e não é "manter os 6 painéis com um índice"** (isso não resolve nada — um índice não impede um painel de mentir sozinho). O terceiro caminho é: **um arquivo, um endereço, mas com abas reais em JavaScript** (`display:none` alternado por clique, com `#andar-maquinas` na URL para permitir link direto) — não rolagem. Isso ainda satisfaz sua restrição 1 (clique duplo, sem servidor) e ainda é literalmente "um painel único". A diferença é que só o Andar 1 é renderizado por padrão; os outros dois ficam a um clique, não a um scroll.
+
+**Veredito: consolidar é certo. Consolidar em uma rolagem contínua é o erro dentro do plano certo.**
+
+## 2. O corte por público é o melhor eixo?
+
+Defendo o corte por público como eixo **externo** (determina vocabulário e profundidade — o dono não deveria nunca ler a palavra "kanban"), mas ele não é o único eixo que importa, e o cardápio já mistura um segundo eixo sem admitir: "pergunta respondida" já está dentro do Andar 1 (como estamos / o que mudou / precisa de mim) e "horizonte de tempo" já está dentro do Andar 1 também (Agora/Em seguida/Depois). Isso é correto — só está mal-rotulado como "um eixo só".
+
+**O eixo que falta e que eu acrescentaria: frequência de consulta**, porque ele tem uma consequência técnica real que nenhuma das 13 ideias cobre: `painel-dados.js` (318 linhas) + `painel-10x-dados.js` (696 linhas) já somam mais de mil linhas hoje. Se a memória (Andar 3 — episódios completos, incidentes, decisões, fotografias) for despejada no mesmo arquivo que alimenta a capa, **toda vez que você abre o hub para ver "o que mudou esta semana", o navegador carrega meses de história para mostrar três linhas**. Isso não é hipotético — é o caminho natural de crescimento de um projeto que já produz 7 merges por dia. Recomendo carregar o Andar 3 sob demanda (injetar o `<script>` da memória só quando essa aba é clicada), não no carregamento inicial.
+
+## 3. Qual é o modo de falha em 3 meses?
+
+Aqui eu tenho uma previsão concreta, não genérica, porque encontrei o precedente exato no próprio repositório. O plano se protege da desatualização silenciosa com o **selo de frescor** (data do último toque). Isso resolve **uma** das duas doenças possíveis e deixa a outra destrancada:
+
+- Doença A — "ninguém tocou, e o painel finge estar atual" → o selo de frescor resolve.
+- Doença B — "alguém tocou, atualizou a data, mas o conteúdo continua errado" → o selo de frescor **não pega isso**, porque ele mede a data da edição, não a veracidade dela.
+
+E a Doença B já aconteceu neste projeto, documentada: `ARMADILHAS-OPERACAO.md` linha 52, item **H18** — uma linha "precisa de você" pediu algo que já tinha sido feito, sobreviveu a **5 merges seguidos** (PRs #108, #113, #116, #122, #126), e só foi corrigida quando uma sessão percebeu por acaso. Ninguém "esqueceu de tocar" aquela tabela — ela estava sendo editada o tempo todo, só que sempre em outras linhas.
+
+Minha previsão para o hub único: **o Andar 1 vai continuar honesto** (porque é lido todo dia — mentira ali é pega rápido), mas o **Andar 2 vai apodrecer primeiro e em silêncio**, porque hoje **nenhum CI valida `painel-dados.js`** — conferi: nenhum workflow em `.github/workflows/` toca `arquivos/`, e o `node --check` mencionado no próprio painel-fundacao é uma instrução em comentário, não um portão automático. Numa sessão apressada (o próprio ritmo do projeto: 5 frentes, 7 merges num dia), é mais barato escrever no relatório "atualizei a sala de máquinas" do que de fato tocar o `.js` — e ninguém vai notar por semanas, porque quem lê o Andar 2 é justamente a próxima sessão de robô, não você.
+
+**Mecanismo, não promessa:** um script de CI (o mesmo padrão que já existe para o site — `e2e/esqueleto.sh`, o portão de deploy) que roda a cada PR tocando `arquivos/painel-dados.js`: `node --check` na sintaxe, e — mais importante — cruza pelo menos uma amostra das afirmações "está no ar" contra uma sonda HTTP real, reprovando o PR se divergirem. Hoje isso não existe. Sem isso, o selo de frescor é decoração que passa a impressão de estar resolvido.
+
+## 4. Como manter honesto um painel escrito por quem ele avalia?
+
+Suas duas práticas atuais (evidência crua colada, auditoria por sessão diferente) são necessárias mas **já provadamente insuficientes sozinhas** — o H18 aconteceu com as duas em vigor, porque "sessão diferente" não é "incentivo diferente": toda sessão quer fechar o despacho, nenhuma tem como mandato específico "ir conferir se o painel está mentindo".
+
+Três mecanismos que eu acrescentaria, todos executáveis por um agente escrevendo arquivo, sem servidor:
+
+1. **Sonda mecânica, não prosa.** Em vez de um agente escrever "está no ar" no `.js`, um script pequeno faz a chamada HTTP real e grava o código de status e o carimbo de hora diretamente — a mesma lição que o projeto já aplicou ao deploy (nunca confiar no exit de um pipe, `ARMADILHAS-OPERACAO` H13) precisa valer para o painel também, porque agora o painel é a única fonte que você lê.
+2. **Decaimento por padrão, não selo decorativo.** Qualquer alegação sem sonda dentro de N dias não ganha uma etiqueta cinza discreta — ela **muda de cor sozinha** para âmbar ("não confirmado"). Inverte o ônus: silêncio produz cautela, não a aparência de sucesso. Isso é mais forte que o "selo de frescor" como está desenhado hoje (que é só um badge ao lado de um item que continua verde).
+3. **Botão de contestação para você.** Como você não lê código, dar ao painel uma caixa "isso parece errado" que devolve o comando exato para colar na próxima sessão ("cole isto para conferir") transforma você num auditor de baixíssimo esforço, sem precisar entender nada — você só precisa desconfiar, o painel te dá a ferramenta.
+
+## 5. O que falta nas 13 ideias?
+
+Prefiro uma forte, como você pediu. **Quadro de presença** (quem está mexendo em quê agora) — usado por ferramentas de plantão como PagerDuty/Opsgenie e por ChatOps de incidente. Não está nas 13, e ataca diretamente uma categoria de falha que o seu próprio projeto já nomeou como sistêmica: "sessões paralelas" é uma das 8 categorias de `RETROSPECTIVA-FASE-D.md`. Hoje, com 5 frentes rodando no mesmo dia via `RUNBOOK-LOTES.md`, não existe nenhum lugar que responda "quem está tocando a célula X agora" — só descobre-se por colisão de PR. Implementação é barata: cada sessão grava uma linha ("sessão X abriu a célula Y às HH:MM") num arquivo pequeno que a sala de máquinas lê; entradas com mais de algumas horas somem sozinhas. Isso é mais valioso para o seu caso específico do que qualquer uma das 13 já adotadas, porque nenhuma delas cobre colisão entre despachos simultâneos.
+
+## 6. Quanto mostrar de uma vez?
+
+Regra concreta de dosagem: **a capa nunca tem barra de rolagem numa janela normal de notebook** — se não cabe, é sinal de que aquele item pertence ao Andar 2, não motivo para diminuir a fonte. Dentro disso, **item vermelho ou âmbar nunca colapsa por padrão — só o que está verde/resolvido pode se recolher.** É a regra padrão de dashboards de incidente (progressive disclosure por severidade, não por categoria): saúde se esconde, problema fica sempre à mostra. E nunca tabela aninhada na capa — é onde um leitor não-técnico se perde primeiro.
+
+## 7. Pontos cegos que você não perguntou
+
+- **`arquivos/` está inteiro fora do Git** (conferi o `.gitignore`) — significa que, se o disco falhar, o hub único inteiro (agora sua única janela para o projeto) some sem histórico algum. Considere: as "fotografias" do Andar 3 (que são imutáveis por natureza) são boas candidatas para SEREM versionadas — só as fotos congeladas, nunca o hub vivo, que muda demais para caber em commit.
+- **Duas sessões em paralelo editando o mesmo `painel-dados.js` ao mesmo tempo** (o lote roda 5 frentes num dia) podem se sobrescrever silenciosamente — sem Git, não há aviso de conflito, é só "o último que salvou ganha". Vale uma convenção: editar o painel é sempre o último gesto da sessão antes de terminar, nunca no meio do despacho.
+- **Atalhos do Windows.** Se você tem um atalho na área de trabalho apontando para `painel-roadmap.html`, a "aposentadoria com faixa" avisa quem abre o arquivo — mas não move seu atalho. Vale incluir isso, explicitamente, como item do bloco único de colar do movimento 3, para não virar mais um passo manual não avisado (a regra que o próprio CLAUDE.md exige).
+
+**Resumo da minha posição:** a reforma está certa na causa (fonte única) e errada só num detalhe de execução (rolagem vs. abas) que decide se ela funciona ou recria o problema dentro de um arquivo só. O ponto mais sério não é estrutural, é de verificação: hoje nada garante que o que o painel diz é verdade, e isso já mordeu o projeto uma vez (H18) com as defesas atuais em vigor.

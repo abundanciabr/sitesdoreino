@@ -1,0 +1,126 @@
+Vou responder como a segunda opinião que você pediu. Aviso de saída: **concordo com o seu diagnóstico e discordo do seu alvo.** O problema que você achou é real; a reforma que você desenhou mira num lugar próximo, mas não nele — e tem três defeitos técnicos que quebram dentro do seu próprio ambiente.
+
+---
+
+## 1. A premissa está meio certa — o alvo está errado
+
+Seu bug não é "seis painéis". É **um campo existindo em três lugares graváveis**. Se amanhã você tivesse um painel só e a caixa "precisa de você" aparecesse duas vezes dentro dele (uma na capa, outra na sala de máquinas), você teria exatamente o mesmo problema com um arquivo a menos.
+
+Separe duas coisas que você fundiu:
+
+- **Superfície única de escrita** — obrigatória, é a cura de verdade.
+- **Superfície única de leitura** — preferência barata, reversível em vinte minutos.
+
+O terceiro caminho que você não enxergou não é "índice com dono claro". É: **um livro-razão, muitas vistas.** Cada fato existe em exatamente um campo do livro-razão. Toda tela é projeção, nunca fonte. Com isso resolvido, "um arquivo ou três?" vira decisão de conveniência — e aí eu voto no arquivo único, mas pelo motivo certo: um atalho na área de trabalho, não uma arquitetura.
+
+E três correções duras, senão a reforma morre na primeira tentativa:
+
+**a) `fetch()` de arquivo local não funciona em `file://` no Chrome.** Seus agentes vão desenhar `dados.json` + `fetch('./dados.json')` e descobrir por tentativa e erro que o Chrome bloqueia (origem opaca). `<script type="module">` também é bloqueado. O que funciona é banal: um arquivo `dados.js` contendo `var DADOS = {...}` carregado por `<script src="dados.js"></script>` clássico. Diga isso no despacho, antes que percam meio dia.
+
+**b) Arquivo de dados único + cinco frentes em paralelo = sobrescrita.** Você mesmo deu o número: 5 frentes, 7 merges num dia. Cinco agentes reescrevendo o mesmo arquivo é corrida, e o perdedor apaga o vizinho em silêncio — o pior tipo de falha para você, porque não deixa marca. A correção é **acréscimo apenas**: `eventos.js`, uma linha por acontecimento, agentes só acrescentam ao fim, nunca reescrevem. O estado atual é calculado no navegador ao abrir. Isso resolve concorrência, dá histórico de graça e transforma corrupção em "perdi uma linha" em vez de "perdi o painel".
+
+**c) A restrição 4 é sua, não do mundo — e é a que mais te machuca.** Coloque o `eventos.js` **dentro** do controle de versão; deixe só o HTML gerado na pasta ignorada. O HTML é derivado, descartável, regenerável. O diário é o patrimônio. Ganho imediato e grátis: toda afirmação passa a ter autor, data e commit que o agente não escolheu — que é precisamente a evidência independente que sua pergunta 4 está procurando. Manter o diário fora do versionamento é jogar fora, de graça, o único auditor que você já tem instalado.
+
+---
+
+## 2. O corte por público é o eixo errado — e o erro é perigoso
+
+Você tem **um leitor humano**. Os agentes não leem painel: leem repositório, constituição, invariantes. "Andar dos agentes" não é um público, é um nível de detalhe usando fantasia de público. E "memória" não é público nenhum — é tempo. Você misturou três eixos e chamou de um.
+
+O perigo é concreto: uma seção rotulada "para os agentes" autoriza jargão, autoriza desleixo, e vira **a primeira a apodrecer — porque não tem leitor**. Foi assim que o 10X morreu.
+
+Lei que eu escreveria: **nenhuma seção sem leitor.** Se você não vai ler, aquilo não é seção — é verificação automática que dispara alarme para a seção que você lê.
+
+O eixo que eu usaria é **por pergunta, ordenado por urgência de decisão**:
+
+1. Preciso decidir alguma coisa agora?
+2. Alguma coisa quebrou?
+3. Andou, e onde estamos?
+4. Por que chegamos aqui? (decisões, incidentes, lições)
+
+É a ordem de sala de controle — em SRE o corte é "acorda alguém / abre chamado / é informativo". O custo de errar isso: se a ordem seguir elegância em vez de urgência, a coisa urgente cai em terceiro lugar e você a lê tarde. Seus três andares sobrevivem quase intactos visualmente; o que muda é o critério de o que entra em cada um — e some o convite ao desleixo.
+
+---
+
+## 3. Como isso apodrece em três meses (e o mecanismo, não a promessa)
+
+**Apodrecimento A — o frescor médio esconde a seção velha.** A capa se atualiza todo dia, o hub inteiro parece vivo, e uma seção está parada há três semanas. É o 10X de novo, um nível abaixo.
+*Mecanismo:* carimbo por campo, não por arquivo; a capa mostra o **mais velho**, nunca o mais novo. E o essencial: **dado vencido não é exibido como número.** Ele é substituído por "não sei desde 12/08" em cinza. Um número velho continua sendo lido como verdade; a palavra "não sei" não. Isso é a bandeira OFF do instrumento de avião, e é a razão de o monitoramento sério distinguir DESCONHECIDO de OK. *Custo quando aplicado errado:* janela curta demais deixa tudo cinza, você aprende a ignorar cinza, e voltamos ao começo. Calibre por tipo: sonda vence em horas, roadmap em dias, ADR nunca vence.
+
+**Apodrecimento B — as seções se multiplicam por dentro.** Sua lei anti-proliferação proíbe painel novo e libera seção nova. Em três meses o hub tem quarenta seções e é o mesmo problema com endereço único.
+*Mecanismo:* teto no gerador. A capa tem N blocos (eu diria seis); se passar, **o gerador se recusa a construir** e escreve uma página de erro dizendo qual bloco precisa sair. Lei escrita não segura nada — você já tem a prova disso na pasta. Gerador que quebra, segura.
+
+**Apodrecimento C — atualizar o diário não é obrigatório.** Enquanto for cortesia, morre sob pressão.
+*Mecanismo:* use o aparato que você já tem. **Teste-guarda: merge que toca código e não acrescenta linha ao diário, reprova.** "Não existe merge sem linha no diário." É a mesma cultura fail-closed que você já roda no resto do projeto.
+
+**Apodrecimento D — uma linha malformada apaga a página.** Uma vírgula sobrando e o painel abre em branco. Você não vai saber depurar, e o painel vira "aquilo que às vezes não abre".
+*Mecanismo:* o painel **nunca abre em branco**. Validação no carregamento e página vermelha: "dados corrompidos a partir da linha X; última leitura boa: dd/mm".
+
+---
+
+## 4. Honestidade — a sua melhor pergunta, e a resposta não é "mais auditoria"
+
+O princípio que resolve isso: **prefira evidência de efeito colateral a testemunho.**
+
+Commit, saída de teste, log de publicação, resposta HTTP — são coisas que o agente produziu **trabalhando**. Prosa de painel é coisa que ele produziu **para te contar**. Falsificar a primeira exige agir; falsificar a segunda exige só escrever. Sua exigência de "saída de comando colada, nunca descrição" já mira nisso — mas ela ainda depende de o agente escolher colar.
+
+Três selos, exibidos visualmente diferentes:
+
+- **Medido** — comando, saída crua e código de saída, guardados.
+- **Verificado de fora** — sonda disparada por outro processo, contra o site no ar.
+- **Relato** — prosa de agente, sempre em itálico, sempre marcada como versão dele.
+
+E então a regra dura, que é onde está o ganho real: **cor de farol e percentual só podem vir de medido ou verificado. Relato nunca pinta nada.** Sem medição, a cor é cinza "não medido" — nunca verde.
+
+Isto inverte a economia inteira do seu medo. Hoje, agente que não faz nada produz **verde velho**. Com a inversão, agente que não faz nada produz **cinza**. Verde passa a ser conquistado, e a omissão passa a se denunciar sozinha em vez de se disfarçar de bom. Metade do seu problema morre aqui.
+
+Mais três mecanismos, em ordem de retorno:
+
+- **Cruzamento com o histórico do Git.** Item marcado como concluído precisa apontar pelo menos um commit; o painel lê a data **do commit**, não da prosa. Item concluído sem commit é renderizado em vermelho: *"alegado, sem evidência"*. Quase grátis, e usa um dado que o agente gerou trabalhando.
+- **A auditoria reporta cobertura, não veredito.** Auditoria que "não achou nada" não vale nada — e auditoria premiada por achar algo produz teatro (acha vírgula). Faça a sessão auditora responder: quantas afirmações do painel foram reproduzidas por comando e quantas não puderam ser. Aí a capa mostra **"confiabilidade do painel: 18 de 24 afirmações reproduzidas"**. Um número sobre o painel, dentro do painel. É a coisa mais valiosa que eu te entrego nesta resposta depois da inversão do verde.
+- **Placar de desmentidos.** Toda vez que a realidade contradisse o painel, uma linha permanente. Lista vazia por um mês não é elogio, é suspeita — e você deve tratá-la assim em voz alta.
+- **Seu sensor próprio.** Um bloco "verifique você mesmo": três links e o que você deve ver em trinta segundos no celular. É o único sensor que nenhum agente controla. É a caminhada de chão de fábrica da Toyota, na versão de bolso.
+
+---
+
+## 5. O que falta nas 13 — uma recomendação forte
+
+**Placar de calibração: promessa × entrega.**
+
+Antes de cada ciclo, o painel registra o que os agentes dizem que estará pronto no próximo. No próximo, marca acertou/errou. Em algumas semanas você tem uma curva: *"quando os agentes dizem 'sai hoje', sai em 6 de 10 vezes."*
+
+Por que é exatamente a peça que falta no seu caso: **todos os seus 13 padrões medem o projeto. Nenhum mede a confiabilidade da fonte.** Você não consegue julgar a qualidade do código — mas consegue julgar, sem nenhum conhecimento técnico, se promessa bate com resultado. Calibração é o melhor instrumento disponível para um dono não-técnico avaliar executores técnicos, e é o único que continua funcionando mesmo se todo o resto do painel estiver mentindo.
+
+*Quem usa:* a versão séria vem da previsão calibrada (Tetlock, Good Judgment Project); a versão fraca e conhecida é a nota de 0 a 1 dos OKRs do Google. *Custo quando aplicado errado:* se virar cobrança, os agentes prometem menos para acertar sempre — foi assim que a nota de OKR virou ficção em metade das empresas que a adotaram. Antídoto: pontue **calibração, não ambição**; nunca penalize errar a previsão; penalize **não ter registrado a previsão**.
+
+Se quiser só mais uma, e nenhuma outra: **idade do que está em curso.** As quatro DORA só medem o que terminou — o que emperrou nunca aparece nelas. Seu histórico de fracasso é literalmente coisa parada em silêncio. Um item que entrou na fila há 11 dias tem que gritar sozinho, sem ninguém perguntar (é o argumento central do trabalho de Daniel Vacanti sobre fluxo).
+
+---
+
+## 6. Quanto mostrar
+
+Reenquadre a capa: **ela não é resumo, é triagem.** Ela responde só "preciso agir?" — e nunca tenta responder "como está o projeto?". Resumo é o que fica um andar abaixo. Isso mata os dois extremos de uma vez, porque a pergunta "estou escondendo problema?" deixa de valer para uma tela que só existe para mostrar problema.
+
+Orçamento duro: **uma tela, sem rolagem, no máximo seis blocos**, e todo número clicável até a evidência crua.
+
+E a regra que resolve seu dilema: **esconder é permitido; esconder vermelho não é.** A capa é **calculada** a partir da severidade dos itens, não escrita. Se um agente redige a capa, ele pode omitir. Se o gerador a monta por severidade, ele não pode — o problema se promove sozinho, de qualquer andar, sem passar por decisão editorial de quem tem interesse no resultado.
+
+O modelo mental que eu te daria é a **cabine escura** da Airbus: nada aceso significa nada exigindo você. Luz significa atenção. Você não lê a cabine — você olha se tem luz. *Custo quando aplicado errado:* limiar baixo demais promove tudo e você volta à sobrecarga. Mecanismo de calibração: todo vermelho que se revelou irrelevante gera uma linha, e alarme ignorado três vezes ou muda de limiar ou sai do painel.
+
+---
+
+## 7. O que você não perguntou
+
+**a) O catálogo de 107 lições é o seu próximo Painel 10X.** Lista que só cresce, que ninguém relê, que vira cerimônia. Regra que eu escreveria: **lição sem teste-guarda é intenção, não aprendizado.** Toda lição ou vira verificação mecânica, ou vai para arquivo morto com data. E o painel deve mostrar "lições com guarda: 31 de 107" — esse número diz mais sobre o projeto do que o total, que hoje só mede quanto vocês escreveram.
+
+**b) O painel pode medir o próprio uso, offline.** `localStorage` funciona em `file://` no Chrome. Grave quando você abriu e quais seções expandiu. Em três semanas o painel te diz: *"você não abre esta seção há 24 dias — ela ainda serve?"* É poda automática sem servidor, e é o único mecanismo que ataca a proliferação **por dentro**, em vez de proibi-la por fora. Ressalva honesta: em `file://` a origem é compartilhada e limpar dados do Chrome zera tudo — trate como sinal, não como registro.
+
+**c) Você é ponto único de leitura.** Uma semana sua fora e nenhuma mentira é detectada por ninguém. Compense fazendo o relatório datado ser **commitado**, não só gerado — assim a ausência aparece no histórico e não some com a pasta ignorada.
+
+**d) O risco mais fundo não é o painel apodrecer. É a instrumentação virar o trabalho.** Constituição, invariantes, ritos, testes-guarda, 107 lições, 6 painéis, e agora um hub de três andares com selo de frescor, calibração e auditoria de cobertura. Cada peça é defensável isoladamente — eu acabei de te recomendar mais algumas. A soma consome uma fração crescente dos seus despachos, e nada no seu sistema mede essa fração.
+
+Um número honesto que eu colocaria na capa: **dos últimos 20 despachos, quantos foram sobre o produto e quantos sobre o aparato?** Se essa razão estiver piorando mês a mês, é o dado mais importante do seu painel — e nenhuma das 13 ideias, nem nenhuma das minhas, o mostra.
+
+---
+
+Se quiser, eu transformo isto num `.md` para você despachar direto aos agentes, já quebrado em ordem de execução — o diário `eventos.js` versionado e o teste-guarda primeiro, porque tudo o mais depende deles.
