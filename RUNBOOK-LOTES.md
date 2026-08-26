@@ -161,6 +161,76 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 ## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
 
+**Lote 10 — 25-26/08/2026** (o lote que a resposta do mantenedor reescreveu no meio: a lei
+das notificações + a Fase 1 dela + o canário da constituição + o falso-verde do `contrato-check`
+em 9 PRs; PRs #201, #210, #202–#209, #211, #212 — **12 merges, 9 deploys verdes, 0 revert**, com
+dois reruns por blip de SSH e uma renumeração de armadilha causada por sessão vizinha):
+
+1. **A decisão do mantenedor pode chegar com o lote JÁ EM VOO — e a lei ainda assim entra
+   primeiro.** As três respostas sobre o sininho chegaram depois de os agentes estarem
+   despachados. A regra do Lote 9 (decisão vira lei ANTES do despacho que a implementa) não se
+   cumpre esperando o lote seguinte: **abre-se uma frente NOVA de lei dentro do lote corrente e
+   ela vai para a frente da janela de merge** — aqui, o PR #201 foi o primeiro merge, antes de
+   qualquer implementação. Corolário: a Fase 1 do plano já estava despachada e continuou válida
+   porque o brief dela não dependia das respostas; brief que não pressupõe a decisão pendente é
+   o que permite despachar antes dela.
+
+2. **Item de fila que oferece duas opções pode ter só uma — meça a muralha antes do brief.** O
+   H12 dizia, havia semanas, "decidir se a correção entra de uma vez (8 arquivos) ou por
+   célula". Quinze minutos lendo `ci/cerca-de-celula.sh` mostraram que a cerca conta
+   `services/<x>/` no diff e reprova acima de 1 célula **sem válvula nenhuma** — a label
+   `arquitetural` relaxa o ORÇAMENTO (>15 arquivos), jamais a cerca. "De uma vez" nunca existiu.
+   O despacho nasceu **9 PRs em ordem obrigatória** e as 8 células saíram na primeira tentativa.
+   Escrever o brief pela opção inexistente teria custado um agente descobrindo isso no vermelho.
+
+3. **O instrumento da própria maestro caiu na lição 25 — e a defesa teve de virar código.**
+   Escrevi um script de janela serial que tratava todo exit≠0 do `mergear.py` como "pare". No
+   segundo merge veio `ERROR: mergeable=UNKNOWN` — o GitHub recalculando, que é "não consegui
+   medir", nunca "reprovado" — e a janela parou por rotina. **Saber a armadilha não protege;
+   executar o passo protege**, e quando o passo é automático, a distinção FAIL×ERROR tem de
+   estar DENTRO do automatismo: o script agora remede até 6 vezes em ERROR e só então pausa.
+   Todo automatismo de janela precisa distinguir as duas coisas do mesmo jeito que o portão.
+
+4. **Guarda que nasce vermelho de propósito é a melhor prova de fora que existe — se a ordem de
+   merge for respeitada.** O #211 (o guarda do `contrato-check`) foi aberto reprovando com
+   `6 célula(s) com contrato-check fora da lei` e **ficou verde sozinho** quando a oitava célula
+   mergeou. Nada além da realidade mudou de cor: o próprio pipeline contou o defeito encolher de
+   6 para 0. Quando um lote conserta N lugares iguais, **peça o guarda no mesmo lote e mergeie-o
+   por último** — ele deixa de ser promessa e passa a ser medição.
+
+5. **A tabela §1 do humano mentiu por horas, e foi encontrada assim por quem montava lote PELA
+   tabela.** O H21 (o passo do mantenedor para a área administrativa) continuava 🟡 "aguardando
+   você" muito depois de ele ter rodado a linha e a área estar no ar — medido de fora nesta
+   sessão: `/admin/healthz` 200, `/admin/` 302 para o login. É a lição 10 do Lote 9 acontecendo
+   no documento que existe justamente para não mentir. **A linha do §1 se fecha na MESMA resposta
+   em que o passo humano é confirmado, com a evidência de fora colada** — nunca "depois".
+
+6. **O pré-voo do lote seguinte é a última rede do lote anterior.** O último `deploy-celula` da
+   `main` estava VERMELHO desde a noite anterior (`dial tcp :22: i/o timeout`, o runner sem
+   alcançar a VPS) e ninguém tinha lido o veredito. Um rerun bastou. O mesmo blip voltou no
+   oitavo merge deste lote — e a resposta certa continuou sendo **medir antes de diagnosticar**
+   (três sites em 200 e a porta 22 devolvendo o banner SSH do PC), e só então repetir. Dois
+   episódios em 24h ainda são blip; três em uma semana viram estrutura, e aí vale reabrir o
+   §3.17.
+
+7. **Documentação de partida que diverge do CI custa o baseline de TODO despacho — e o agente
+   certo é quem topa com ela.** O `ARMADILHAS.md` §2 mandava subir só o Postgres e exportar 3
+   variáveis; o `ci-celula.yml` declara postgres **e** redis e **7** variáveis. O agente das 8
+   células bateu em `Redis real inacessível` logo no primeiro baseline — e a leitura literal do
+   rito ("baseline não verde ⇒ pare e reporte") mandaria abortar oito despachos por instrumento
+   ausente na máquina, que é ERROR e não FAIL. Ele **registrou em vez de contornar**
+   (`armadilhas/119`); a maestro corrigiu a fonte no mesmo lote, e o §2 agora traz a lista
+   completa e diz, com todas as letras, que "pare e reporte" existe para `main` quebrada e não
+   para container que você ainda não subiu.
+
+8. **Sessão vizinha rouba número de armadilha mesmo com a maestro numerando.** Atribuí 117 a um
+   despacho (a correção do Lote 8, lição 3). Enquanto o lote rodava, **outra sessão mergeou o PR
+   #213 e levou o 117**. O rebase acusou conflito só em `armadilhas/INDICE.md`, e a resolução foi
+   a de sempre: renomear o arquivo para o primeiro número acima de todos (120, pulando o 118 e o
+   119 já reivindicados), regenerar com `python ci/indice_de_armadilhas.py` e **caçar as citações
+   internas** — havia uma no `LICOES.md` da célula, que o rebase não veria. A atribuição da
+   maestro reduz a colisão dentro do lote; ela não alcança quem está fora dele.
+
 **Lote 9 — 25/08/2026** (Lote 4 da Caixa: EVO-40 · EVO-42 · EVO-41 em **fila interna** na mesma célula, mais 7 PRs da maestro; PRs #182–#198, 11 merges, 2 deploys verdes, 0 revert, 1 passo do mantenedor executado de primeira — e o lote **descobriu cinco defeitos fora do seu assunto**, um deles no próprio portão de merge):
 
 1. **A pergunta ao mantenedor pode voltar mudando o desenho do lote — e isso é lucro, não
