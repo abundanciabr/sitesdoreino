@@ -47,8 +47,9 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
 
 ## §2 — Montagem (antes de disparar qualquer agente)
 
-1. **Fonte da fila:** o pedido do mantenedor > painel (`arquivos/painel-fundacao.html`,
-   caixa "Precisa de você agora") > PLANO-10X (ondas). O pedido dele é o **mandato** —
+1. **Fonte da fila:** o pedido do mantenedor > painel (`painel/painel.html`, a caixa
+   "Precisa de você" — que é CALCULADA dos registros, não uma lista mantida) >
+   PLANO-10X (ondas). O pedido dele é o **mandato** —
    inclusive para os caminhos CODEOWNERS que o lote tocar (Lei 4).
 2. **Recorte pela cerca:** 1 PR = 1 célula. Conte os arquivos de cada despacho NO
    PAPEL antes de escrever o brief (orçamento de 15 é portão mecânico — ARMADILHAS §5.1).
@@ -122,8 +123,10 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 ## §6 — Fechamento (é parte do lote, não epílogo)
 
-1. **Painel** (`arquivos/painel-fundacao.html`): cada PR, cada deploy, incidentes da
-   janela — sem perguntar antes (CLAUDE.md).
+1. **Livro de ocorrências** (`painel/registros/`, molde em `painel/LEIA-ME.md`): um
+   registro NOVO por PR, por deploy e por incidente da janela — sem perguntar antes
+   (CLAUDE.md), seguido de `node painel/gerar_manifesto.js`. Registro nunca se edita:
+   correção ou resposta é outro registro, com `responde_a`.
 2. **Lições:** cada agente registrou as dele no próprio PR (só a própria linha);
    a maestro registra as lições **de regência** (o que o lote ensinou sobre lotes).
 3. **Relatório único, em linguagem de resultado** ("os leads invisíveis agora

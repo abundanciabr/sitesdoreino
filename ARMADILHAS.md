@@ -50,17 +50,21 @@ Ler a pasta inteira desfaz o motivo de ela existir.
 | `ARMADILHAS-OPERACAO.md` | **maestro de lote, quem mergeia, o humano** | §1 precisa-de-você · como se mergeia · painéis · §9 dívidas abertas |
 | `docs/historico/RESOLVIDAS.md` | quem precisar do histórico | armadilhas já resolvidas — fora da dieta do despacho |
 | `services/<celula>/LICOES.md` | agente **daquela** célula | decisões e armadilhas **só** daquela célula |
-| `arquivos/painel-*.html` | **o humano** | status, fila, roadmap, incidentes |
+| **`painel/registros/NNN.js`** | **o humano** (via `painel/painel.html`) | o que ACONTECEU — um registro por acontecimento, só se acrescenta |
 
 Regra de bolso: **se serve para qualquer célula, é uma entrada em `armadilhas/`. Se
 só faz sentido dentro de uma célula, é no `LICOES.md` dela. Se só o humano resolve,
-é o `ARMADILHAS-OPERACAO.md`.**
+é o `ARMADILHAS-OPERACAO.md`. Se é um FATO do projeto (entreguei, quebrou, decidi,
+preciso de você), é um registro em `painel/registros/`.**
 
-> **Por que estes documentos são versionados e os painéis não:** um agente trabalha
-> dentro de um `git worktree`, e worktree só contém arquivo rastreado. A pasta
-> `arquivos/` está no `.gitignore` — ela **não existe** dentro do worktree, o agente
-> não consegue abrir os painéis nem se quiser. Conhecimento destinado a agente
-> precisa estar no git; painel é para o humano, e por isso fica de fora.
+> **Por que tudo isto é versionado, painel incluído (mudou em 26/08/2026):** um
+> agente trabalha dentro de um `git worktree`, e worktree só contém arquivo
+> rastreado. Até 25/08 os painéis viviam em `arquivos/` (gitignored) e o agente não
+> os enxergava — o que também significava que **nenhuma trava alcançava os dados**, e
+> foi assim que o painel-10X pôde apodrecer em silêncio. Desde a reforma, o livro de
+> ocorrências mora em `painel/registros/`, **dentro do Git**: existe no seu worktree,
+> viaja no seu PR, e a `muralha-do-painel` o valida em todo PR. O que ficou em
+> `arquivos/` são lápides e não se edita.
 
 ---
 

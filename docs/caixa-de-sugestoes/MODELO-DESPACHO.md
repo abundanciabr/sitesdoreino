@@ -77,7 +77,9 @@ pare e avise a maestro, nunca esprema arquivos (RUNBOOK §3.7).*
 
 - *Lista explícita — inclusive o que parece adjacente e tentador.*
 - Pagamentos/checkout/Mercado Pago: **sempre fora**, em todo despacho desta iniciativa.
-- **NÃO toque em `arquivos/painel-*.html`** (sempre da janela raiz).
+- **NÃO toque em `arquivos/painel-*.html`** — são lápides desde a reforma de
+  26/08/2026. O que você DEVE fazer ao terminar é acrescentar um registro novo
+  em `painel/registros/` (molde em `painel/LEIA-ME.md`) + `node painel/gerar_manifesto.js`.
 
 ## REGRAS ANTICOLISÃO (se o lote tiver despachos em paralelo)
 

@@ -276,12 +276,16 @@ próprio bug que `ci/contract_freeze.py` foi reescrito para eliminar
   plano pago, decisão de arquitetura): registre na tabela `§1` de
   `ARMADILHAS.md` **e diga isso no relatório final em texto claro** — contornar
   em silêncio faz o mesmo atrito voltar no próximo despacho.
-- **Você provavelmente não consegue editar `arquivos/painel-fundacao.html`**
-  (worktree de célula não o enxerga — está no `.gitignore`). Isso é
-  deliberado: os despachos de célula dizem explicitamente "NÃO toque no
-  painel, isso é sempre da janela raiz". Se você É a janela raiz (viu este
-  arquivo pelo clone principal, não por um worktree), atualizar o painel após
-  cada mudança de estado é obrigatório, sem perguntar — ver `CLAUDE.md`.
+- **Acrescente um registro ao livro de ocorrências** — arquivo novo em
+  `painel/registros/` (molde em `painel/LEIA-ME.md`), depois
+  `node painel/gerar_manifesto.js`. **Mudou em 26/08/2026:** o livro é
+  versionado, então ele EXISTE dentro do seu worktree e o gesto é seu, em
+  qualquer sessão — não mais "só da janela raiz". Registro é sempre arquivo
+  NOVO, nunca edição de um existente (é o que faz sessões paralelas pararem de
+  colidir, igual às armadilhas); atualização ou resposta a um pedido é outro
+  registro, com `responde_a`. A `muralha-do-painel` reprova o PR se o
+  manifesto ficar para trás. Os painéis antigos de `arquivos/` são lápides —
+  não os edite. Ver `CLAUDE.md`.
 
 ## 11. O que este documento NÃO substitui
 
