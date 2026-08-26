@@ -48,7 +48,9 @@ var MANIFESTO = [
   "20260826-029-duas-celulas-de-dinheiro-ficaram-de-fora-do-fuso",
   "20260826-030-a-vps-recusou-o-robo-tres-vezes-na-janela",
   "20260826-031-a-divida-do-fuso-fechou-nas-onze-celulas",
-  "20260826-032-um-guarda-que-parecia-guardar-e-nao-guardava"
+  "20260826-032-um-guarda-que-parecia-guardar-e-nao-guardava",
+  "20260826-033-a-conversa-do-sininho-aconteceu",
+  "20260826-034-rumo-comunidade-os-proximos-degraus-do-sininho"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {

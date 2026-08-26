@@ -177,6 +177,8 @@ isso é lei e não recomendação.
 
 ### 5.2 O contador é O(1), com arquivamento, e isso se prova
 
+> **EMENDADA em 26/08/2026** pela §1 da `DECISAO-fase-2-do-sininho.md`, no Rito de Contrato da Fase 2. O **fan-out em lote** exigido abaixo continua valendo e **muda de endereço**: sai da célula que RECEBE e vai para a que PUBLICA. O mantenedor escolheu "uma carta por pessoa" — a célula de origem faz o leque e publica N eventos endereçados, em lote, na mesma transação; a caixa central escreve uma linha por carta e não faz leque nenhum. Tudo o mais nesta seção — contador O(1), arquivamento, o teste de volume com 2 e 200 — continua exatamente como está.
+
 O sino aparece em **toda página**. Um `COUNT(*)` numa tabela que cresce para sempre
 fica lento exatamente quando o produto der certo.
 
