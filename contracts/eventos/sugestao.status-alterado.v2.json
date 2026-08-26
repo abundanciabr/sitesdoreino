@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/sugestao.status-alterado.v2.json",
+  "title": "sugestao.status-alterado.v2",
+  "description": "A equipe mudou o status de uma sugestao. E o FATO — um por mudanca, nunca um por pessoa avisada. Quem avisa quem e assunto do evento 'notificacao.devida', que nasce ao lado deste. Diferenca para o v1: o envelope ganha 'ator_id', o id de PLATAFORMA de quem causou o fato — o unico identificador de pessoa que atravessa as celulas (PLANO-MESTRE das notificacoes, §2). Rito de Contrato de 26/08/2026, com o mantenedor presente.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "sugestao.status-alterado"
+    },
+    "version": {
+      "const": 2
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de quem causou o fato — a pessoa como a celula 'identidade' a conhece, nao o id local de nenhuma celula. E o elo que faltava: ate o v1, um consumidor recebia o fato e ids que so significam algo dentro da 'sugestoes' (PLANO-MESTRE §2). Fica no ENVELOPE, e nao dentro de 'data', de proposito: qualquer celula sabe ler 'quem fez isto' sem conhecer o formato do assunto. NUNCA e o e-mail (DECISAO-EVO-01 §3)."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "suggestion_id",
+        "autor_da_sugestao_id",
+        "status_anterior",
+        "status_novo"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) a que o quadro pertence — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "suggestion_id": {
+          "type": "string",
+          "description": "Id opaco da sugestão."
+        },
+        "autor_da_sugestao_id": {
+          "type": "string",
+          "description": "Id OPACO da identidade dentro da celula sugestoes — inalterado desde o v1, e continua sendo local de proposito. Serve a quem estuda o FATO (analise, gamificacao) dentro do mundo da Caixa. Quem precisa FALAR com a pessoa nao usa este campo: usa o 'destinatario_id' do evento 'notificacao.devida', que ja vem no id da plataforma. NUNCA e o e-mail (DECISAO-EVO-01 §3)."
+        },
+        "status_anterior": {
+          "type": "string",
+          "enum": [
+            "em_analise",
+            "planejado",
+            "em_desenvolvimento",
+            "implementado",
+            "nao_planejado",
+            "mesclado"
+          ]
+        },
+        "status_novo": {
+          "type": "string",
+          "enum": [
+            "em_analise",
+            "planejado",
+            "em_desenvolvimento",
+            "implementado",
+            "nao_planejado",
+            "mesclado"
+          ]
+        },
+        "nota": {
+          "type": "string",
+          "description": "Justificativa da equipe. OPCIONAL no contrato, mas OBRIGATÓRIA na origem quando status_novo = nao_planejado (ESPECIFICACAO §10)."
+        }
+      }
+    }
+  }
+}
