@@ -289,24 +289,50 @@ do que foi medido.
 | merge guardado (`ci/mergear.py`) | terminal, antes do merge | **sim** — recusa check vermelho, ausente ou pulado sem declaração |
 | **portão de deploy** (`ci/portao_de_deploy.py`) | workflows `deploy-celula` e `deploy-infra`, ANTES de build/SSH | **sim** — 25 testes adversariais (tabela de estados completa) em `muralhas` e `alarme-main`; **provado ao vivo em 22/08/2026**: commit vermelho mergeado de propósito ⇒ `portao: failure`, `deploy: skipped` (run 32567765127); revert verde ⇒ deploy executado (run 32567900961) |
 | alarme da `main` (`alarme-main.yml`) | GitHub, após push na main | **não é portão** — avisa depois; modo de falha é "não avisou" |
-| **branch protection** | GitHub | **não existe** — ver abaixo |
+| **branch protection** | GitHub | **sim, desde 26/08/2026** — ruleset `main protegida` (id 21570247): PR obrigatório, sem deleção, sem force-push, required checks `muralhas` + `ci-celula-gate`, `bypass_actors` vazio (`current_user_can_bypass: "never"`). Ver abaixo |
 
-#### A cadeia de merge não está fechada
+#### A cadeia de merge FECHOU em 26/08/2026
 
-Um portão fail-closed só protege se algo exigir que ele passe. Consultado em
-2026-08-19, o GitHub responde à API de branch protection deste repositório:
+Um portão fail-closed só protege se algo exigir que ele passe. De 19/08 a
+26/08/2026 nada exigia: o GitHub respondia à API de branch protection deste
+repositório `Upgrade to GitHub Pro or make this repository public to enable this
+feature. (HTTP 403)`, e o estado honesto era "o merge não é barrável; o deploy
+é — e está barrado desde 22/08/2026".
 
-```
-Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)
-```
+**Deixou de ser.** Com o repositório público (23/08/2026), a proteção nativa
+ficou disponível de graça e foi ligada em 26/08/2026 pelo agente, via API:
+ruleset `main protegida` (id 21570247) — PR obrigatório na `main`, sem deleção,
+sem force-push, e **required status checks `muralhas` + `ci-celula-gate`**,
+ambos pinados ao app do GitHub Actions (`integration_id: 15368`).
 
-Ou seja: **não há required check algum**. Todo portão descrito aqui pode estar
-vermelho e o merge pelo site continua permitido. O único obstáculo é
-`.githooks/pre-push`, que bloqueia push direto para `main` a partir desta
-máquina — e não bloqueia merge de PR pela interface do GitHub.
+Três escolhas de desenho que são parte do invariante, não detalhe:
 
-Enquanto isso não mudar, o estado honesto é: **o merge não é barrável; o deploy
-é — e está barrado desde 22/08/2026** (ver o terceiro degrau abaixo).
+- `required_approving_review_count: 0` e `require_code_owner_review: false` —
+  obrigatórios num repositório de UM colaborador, que não pode aprovar o
+  próprio PR (§1 H9): qualquer valor acima trancaria todo PR para sempre.
+  A força aqui vem dos required checks, não de aprovação humana (Lei 4).
+- **`ci-celula` NÃO é required check; `ci-celula-gate` é.** O primeiro fica
+  `skipped` em PR que não toca célula, e required check `skipped` conta como
+  satisfeito — seria [INV-CI01] violado pela porta da frente. O gate é o job
+  terminal `if: always()` que consolida a tabela-verdade.
+- `bypass_actors` vazio: `current_user_can_bypass: "never"`, inclusive para o
+  dono da conta e para o agente que usa o token dele. Rulesets, ao contrário
+  da branch protection clássica, não isentam administrador por padrão — foi
+  por isso que se escolheu o ruleset. A saída de emergência é **desligar** o
+  ruleset (`-f enforcement=disabled`), ato visível e auditável, nunca um
+  bypass silencioso.
+
+Prova de fora, medida no dia: escrita direta na `main` pela API — que ignora o
+`.githooks/pre-push` local — recusada com **HTTP 409** `Repository rule
+violations found / Changes must be made through a pull request. / 2 of 2
+required status checks are expected.` Nada foi gravado. As regras que o GitHub
+considera ativas se consultam em `repos/<owner>/<repo>/rules/branches/main`,
+nunca na tela de settings.
+
+O que isto **não** fecha: o run de deploy continua rodando depois do merge e
+não é required check de nada — quem o barra é o portão de deploy (terceiro
+degrau abaixo), e quem confere o veredito é o agente (CLAUDE.md). Armadilhas de
+quem for mexer no ruleset: `armadilhas/126-ruleset-de-main-que-trava-todo-merge.md`.
 
 (Correção de registro, 21/08/2026: o parágrafo anterior desta seção dizia
 "decisão de custo consciente enquanto o projeto não fatura". Está incorreto —

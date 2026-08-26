@@ -77,9 +77,11 @@ jobs:
       #     exatamente o que mede num PR, e responde à pergunta que importa
       #     depois do fato — existe segredo alcançável na `main` AGORA? É a
       #     única das três com semântica idêntica num push, e é a que nunca
-      #     tinha rodado aqui: até hoje a guarda de segredos jamais varreu a
-      #     `main`, e este repositório não tem required check
-      #     (ARMADILHAS-OPERACAO.md §1 H3).
+      #     tinha rodado aqui: até então a guarda de segredos jamais varreu a
+      #     `main`. (Desde 26/08/2026 a `main` TEM required checks — `muralhas`
+      #     e `ci-celula-gate`, ARMADILHAS-OPERACAO.md §1 H3 — o que reduz, mas
+      #     não elimina, o valor deste alarme: ele mede a árvore inteira depois
+      #     do fato, coisa que nenhum check de PR faz.)
       #
       # O SKIP das duas muralhas de diff é DECLARADO, não inferido (INV-CI01:
       # `SKIP` só existe quando alguém o declarou por escrito) — e é executável:
@@ -139,9 +141,10 @@ jobs:
           coerência do manifesto de contratos, a tabela-verdade do portão terminal,
           ou a própria semântica fail-closed ([INV-CI01]).
 
-          Isto é um **alarme**, não um portão: ele avisa depois do fato. O motivo de
-          ele existir está no \`ARMADILHAS-OPERACAO.md §1 H3\` — este repositório não tem
-          required check, então o merge não pode ser impedido pelo GitHub.
+          Isto é um **alarme**, não um portão: ele avisa depois do fato. Ele nasceu
+          quando a \`main\` não tinha required check nenhum (\`ARMADILHAS-OPERACAO.md §1 H3\`);
+          desde 26/08/2026 ela tem, mas o alarme continua: os checks de PR olham o
+          diff, e este aqui varre a árvore inteira JÁ na \`main\`.
 
           ## O que fazer
 

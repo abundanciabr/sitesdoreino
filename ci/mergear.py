@@ -1,13 +1,16 @@
-"""MERGE GUARDADO — o degrau grátis da Escada da Imposição (RITOS.md §2).
+"""MERGE GUARDADO — a catraca do agente na Escada da Imposição (RITOS.md §2).
 
-Este repositório é privado numa conta pessoal, e o GitHub **não** oferece
-required checks nesse plano (medido: `Upgrade to GitHub Pro or make this
-repository public`, HTTP 403). Ou seja: todo portão pode estar vermelho e o
-botão de merge do site continua funcionando.
+Este script nasceu como substituto de uma proteção que não existia: até
+26/08/2026 o GitHub não oferecia required checks aqui (repositório privado em
+conta pessoal — `Upgrade to GitHub Pro or make this repository public`, HTTP
+403), e o botão de merge do site funcionava com tudo vermelho.
 
-Este comando é o substituto possível — a mesma família do `.githooks/pre-push`,
-que o RITOS.md §2 já documenta como "um degrau abaixo da proteção nativa".
-Ele não impede o clique no site; impede o merge feito por aqui.
+Desde 26/08/2026 a proteção nativa ESTÁ ligada (ruleset `main protegida`;
+ARMADILHAS-OPERACAO.md §1 H3): `muralhas` e `ci-celula-gate` são required
+checks e ninguém — nem o dono — mergeia com eles vermelhos. Este comando não
+virou redundante: ele confere ANTES de disparar (em vez de deixar o GitHub
+recusar depois), exige repetir o número do PR, distingue FAIL de ERROR, e é o
+caminho que o rito registra. O cinto é o ruleset; a catraca é este script.
 
     python ci/mergear.py 22               # confere e pergunta antes de mergear
     python ci/mergear.py 22 --conferir    # só confere, nunca mergeia
