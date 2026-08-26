@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/notificacao.devida.v1.json",
+  "title": "notificacao.devida.v1",
+  "description": "UMA CARTA ENDERECADA A UMA PESSOA. Uma pessoa a avisar, um evento — a celula de origem faz o leque (fan-out na ORIGEM), e a caixa central so escreve o que chega. Decisao do mantenedor no Rito de Contrato de 26/08/2026, escolhendo 'uma carta por pessoa' contra 'uma lista com todos os nomes': a lista de quem votou numa ideia nunca circula pela plataforma, e o tamanho do evento nao cresce com a plateia. Este evento e GENERICO de proposito — matricula, pagamento e quiz publicam o mesmo formato quando chegar a vez deles, sem contrato novo. NAO e o fato: o fato tem evento proprio (ex.: sugestao.status-alterado.v2), um por acontecimento.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "notificacao.devida"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTA carta. E a chave de idempotencia da caixa central: a mesma carta reentregue pelo relay escreve uma linha so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "null" }
+      ],
+      "description": "Id da PLATAFORMA de quem causou o fato, ou null quando nao houve gente (ex.: um pagamento aprovado pelo provedor). Decisao do mantenedor em 26/08/2026: GUARDAR sim, MOSTRAR nao — o dado existe para reconstruir o que aconteceu se alguem questionar uma decisao; a tela do aluno diz 'a equipe'. Mostrar o nome depois e reversivel; nao ter guardado, nao. NUNCA e o e-mail (DECISAO-EVO-01 §3).",
+      "$comment": "Nulavel aqui, e nao no evento de fato: um fato de negocio sabe se tem ator; a carta e generica e serve a fatos de maquina tambem."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "destinatario_id",
+        "assunto",
+        "parametros",
+        "origem_event_id"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "destinatario_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA de quem deve receber o aviso — a pessoa como a celula 'identidade' a conhece. E o campo que torna possivel uma caixa central: sem ele, ela recebe o fato e um id que nao significa nada fora de quem publicou (PLANO-MESTRE §2). NUNCA e o e-mail (DECISAO-EVO-01 §3)."
+        },
+        "assunto": {
+          "type": "string",
+          "enum": [
+            "sugestao.status-alterado"
+          ],
+          "description": "O que aconteceu, do ponto de vista de quem le. Comeca com um so porque a V1 nasce so com a Caixa (DECISAO-notificacoes §3) — assunto novo entra aqui e ganha um ramo em 'parametros' logo abaixo, num PR PEQUENO. Se acrescentar um assunto exigir mexer na FORMA deste evento, o desenho esta errado e se conserta antes, nao depois."
+        },
+        "parametros": {
+          "type": "object",
+          "description": "Os dados da frase — NUNCA a frase pronta. O site serve tres idiomas: gravar 'Sua ideia mudou para Em desenvolvimento' congela o idioma de quem gravou, e quem le em espanhol recebe portugues para sempre. Texto ja gravado nao se traduz depois — por isso e irreversibilidade, nao preferencia (DECISAO-notificacoes §5.1). A frase nasce na LEITURA, no idioma de quem le."
+        },
+        "origem_event_id": {
+          "type": "string",
+          "format": "uuid",
+          "description": "O event_id do FATO que gerou esta carta. E o que torna a promessa nova rastreavel ('a entrega do aviso e em segundos, e e RASTREAVEL' — DECISAO-notificacoes §2): de qualquer aviso na tela se chega ao acontecimento que o causou, e as N cartas de uma mesma mudanca compartilham este valor."
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "$comment": "Cada assunto declara a FORMA dos seus parametros. Nada de objeto livre: parametro livre e por onde um e-mail entraria de carona, e a muralha que hoje recusa campo a mais no 'data' (test_inv_envelope_casa_com_contrato) ficaria cega justamente aqui.",
+      "if": {
+        "properties": {
+          "data": {
+            "properties": { "assunto": { "const": "sugestao.status-alterado" } },
+            "required": ["assunto"]
+          }
+        },
+        "required": ["data"]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "parametros": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "suggestion_id",
+                  "status_anterior",
+                  "status_novo"
+                ],
+                "properties": {
+                  "suggestion_id": {
+                    "type": "string",
+                    "description": "Id opaco da sugestao — e por ele que a tela busca o titulo NA HORA DE LER. O titulo NAO viaja aqui de proposito: uma ideia renomeada deixaria avisos antigos mostrando o nome velho para sempre."
+                  },
+                  "status_anterior": {
+                    "type": "string",
+                    "enum": [
+                      "em_analise",
+                      "planejado",
+                      "em_desenvolvimento",
+                      "implementado",
+                      "nao_planejado",
+                      "mesclado"
+                    ]
+                  },
+                  "status_novo": {
+                    "type": "string",
+                    "enum": [
+                      "em_analise",
+                      "planejado",
+                      "em_desenvolvimento",
+                      "implementado",
+                      "nao_planejado",
+                      "mesclado"
+                    ]
+                  },
+                  "nota": {
+                    "type": "string",
+                    "description": "Justificativa da equipe. OPCIONAL no contrato, mas OBRIGATORIA na origem quando status_novo = nao_planejado (ESPECIFICACAO §10)."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
