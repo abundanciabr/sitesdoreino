@@ -15,14 +15,20 @@
 # banco, para o webhook e para o Mercado Pago é UTC, e tem de continuar sendo. Se
 # alguém "consertar" o fuso mexendo em `USE_TZ`, o remédio vira o bug — e este
 # guarda reprova.
+#
+# Nota de forma: esta celula e a unica com `mypy --strict` (mypy.ini), entao
+# o segundo teste le `django.conf.settings` direto em vez da fixture
+# `settings` do pytest-django — a fixture chegaria sem anotacao e o portao
+# `type` reprovaria. Aqui nao ha diferenca de comportamento: o teste so LE.
 from datetime import datetime, timedelta, timezone as fuso_padrao
 
+from django.conf import settings
 from django.utils import timezone
 
 INSTANTE_UTC = datetime(2026, 8, 25, 4, 0, tzinfo=fuso_padrao.utc)
 
 
-def test_a_data_que_se_le_no_caso_e_a_do_dia_no_brasil():
+def test_a_data_que_se_le_no_caso_e_a_do_dia_no_brasil() -> None:
     """04:00 UTC é 25/08 01:00 no Brasil e 24/08 23:00 em Chicago — o instante é
     escolhido para trocar de DIA, que é o estrago real."""
     local = timezone.localtime(INSTANTE_UTC)
@@ -36,7 +42,7 @@ def test_a_data_que_se_le_no_caso_e_a_do_dia_no_brasil():
     ), f"04:00 UTC é 25/08 01:00 no Brasil, saiu {local:%d/%m/%Y %H:%M}"
 
 
-def test_o_que_vai_para_o_banco_e_para_o_mp_continua_em_utc(settings):
+def test_o_que_vai_para_o_banco_e_para_o_mp_continua_em_utc() -> None:
     """O fuso é só de EXIBIÇÃO. Se `USE_TZ` cair, o armazenamento sai do lugar e
     o estrago passa a ser em dado, não em tela."""
     assert settings.USE_TZ is True
