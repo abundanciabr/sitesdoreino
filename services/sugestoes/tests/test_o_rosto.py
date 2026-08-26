@@ -40,6 +40,16 @@ ROTULO_DO_VOTO = re.compile(r'class="voto[^"]*"\s+title="([^"]*)"')
 CONTAGEM = re.compile(r'<span class="votos">(\d+)</span>')
 TITULO_DE_PECA = re.compile(r'<h3 class="peca-titulo"><a href="[^"]*">([^<]+)</a>')
 
+# A aba, como ela chega ao navegador: a chave que vai na URL, se está acesa, e o
+# que a pessoa lê. Medir as três juntas é o que faz este guarda pegar a troca
+# silenciosa da aba PADRÃO — só o rótulo não distingue "existe" de "está acesa".
+ABA = re.compile(r'\?ordem=([a-z-]+)"\s+class="([^"]*)">([^<]+)</a>')
+
+
+def _abas(corpo: str) -> str:
+    """Só a fila de abas — o `.ativo` dos filtros de categoria mora ao lado."""
+    return corpo.split('<div class="abas">', 1)[1].split("</div>", 1)[0]
+
 
 def _quadro(pessoa, **query) -> str:
     endereco = reverse("quadro")
@@ -51,7 +61,7 @@ def _quadro(pessoa, **query) -> str:
 
 
 # ---------------------------------------------------------------------------
-# O quadro: a grade, as duas abas, e o que NÃO está aqui
+# O quadro: a grade, as três abas, e o que NÃO está aqui
 # ---------------------------------------------------------------------------
 
 
@@ -66,14 +76,21 @@ def test_o_quadro_abre_para_o_aluno_logado_e_desenha_a_grade(caixa):
     assert 'rel="stylesheet"' in corpo
 
 
-def test_as_abas_sao_duas_e_em_alta_nao_e_uma_delas(caixa):
-    """ "Em alta" é V1.2 (PLANO-MESTRE §6) — desenhá-la agora seria prometer
-    uma ordenação por recência que ninguém decidiu como calcular."""
+def test_as_abas_sao_tres_e_a_acesa_continua_sendo_mais_votadas(caixa):
+    """As três do protótipo, na ordem dele — "Em alta" entrou na V1.2.
+
+    A ORDEM da fila é a do protótipo; a aba ACESA continua sendo "Mais
+    votadas", que é o ranking que a spec §10 crava para o MVP. As duas coisas
+    são medidas juntas de propósito: quem trocar a aba padrão sem levar isso ao
+    mantenedor encontra este guarda antes do CI.
+    """
     corpo = _quadro(caixa.aluno)
 
-    assert "Mais votadas" in corpo
-    assert "Novas" in corpo
-    assert "Em alta" not in corpo
+    assert ABA.findall(_abas(corpo)) == [
+        ("em-alta", "", "Em alta"),
+        ("mais-votadas", "ativo", "Mais votadas"),
+        ("novas", "", "Novas"),
+    ]
 
 
 def test_a_aba_novas_ordena_pela_chegada_e_a_padrao_pelos_votos(caixa, entrar_como):
@@ -92,9 +109,15 @@ def test_a_aba_novas_ordena_pela_chegada_e_a_padrao_pelos_votos(caixa, entrar_co
 
 def test_uma_aba_inventada_para_a_pagina_em_vez_de_escolher_por_conta(caixa):
     """Fail-closed, como a categoria inexistente já era: servir a ordem padrão
-    faria a aba mentir — a pessoa pediria uma coisa e receberia outra."""
+    faria a aba mentir — a pessoa pediria uma coisa e receberia outra.
+
+    O exemplo era `?ordem=em-alta` até a V1.2, quando essa aba passou a existir.
+    Trocá-lo por uma chave que continua não existindo é o que mantém o guarda
+    medindo o fail-closed em vez de medir o catálogo de abas de ontem.
+    """
     assert (
-        caixa.aluno.client.get(f"{reverse('quadro')}?ordem=em-alta").status_code == 404
+        caixa.aluno.client.get(f"{reverse('quadro')}?ordem=quentinhas").status_code
+        == 404
     )
 
 

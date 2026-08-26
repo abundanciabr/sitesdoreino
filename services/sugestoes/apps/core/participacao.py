@@ -31,7 +31,18 @@ from datetime import timedelta
 from functools import wraps
 
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q
+from django.db.models import (
+    Case,
+    Count,
+    IntegerField,
+    OuterRef,
+    Q,
+    Subquery,
+    Sum,
+    Value,
+    When,
+)
+from django.db.models.functions import Coalesce
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -60,23 +71,64 @@ PAGINA_QUADRO = "sugestoes/quadro.html"
 PAGINA_NOVA = "sugestoes/nova.html"
 PAGINA_SUGESTAO = "sugestoes/sugestao.html"
 
-# As abas do quadro (EVO-30, protótipo v2). São DUAS: "Em alta" — a terceira do
-# protótipo — é V1.2 na §6 do PLANO-MESTRE, porque exige peso de recência, que é
-# uma fórmula a decidir e não um `order_by`.
+# As abas do quadro (EVO-30, protótipo v2). São TRÊS desde a V1.2: "Em alta"
+# nasceu aqui, e com ela a fórmula que faltava (ver `PESOS_DE_RECENCIA`).
 #
 # A ordem vem sempre do SERVIDOR, e a chave da URL é validada contra este
 # dicionário: `?ordem=` desconhecido é 404, como `?categoria=` desconhecida já
 # era. Aceitar em silêncio faria a aba mentir — a pessoa pediria "novas" e
 # receberia "mais votadas" sem nada dizendo isso.
 #
-# O desempate por `criado_em`/`id` não é enfeite em nenhuma das duas: sem um
+# O desempate por `criado_em`/`id` não é enfeite em nenhuma das três: sem um
 # critério determinístico o Postgres devolve empate em ordem arbitrária, e o
-# quadro "muda sozinho" entre dois carregamentos.
+# quadro "muda sozinho" entre dois carregamentos. Em "Em alta" o desempate é o
+# ranking inteiro de "Mais votadas" — quadro novo, em que ninguém votou ainda,
+# tem calor zero em tudo, e sem essa cauda a primeira aba seria aleatória.
+ORDEM_EM_ALTA = "em-alta"
 ORDENS = {
+    ORDEM_EM_ALTA: ("Em alta", ("-calor", "-total_votos", "criado_em", "id")),
     "mais-votadas": ("Mais votadas", ("-total_votos", "criado_em", "id")),
     "novas": ("Novas", ("-criado_em", "-id")),
 }
+
+# **A aba padrão continua sendo "Mais votadas", e isso é decisão, não sobra.**
+# No protótipo "Em alta" é a aba acesa; aqui ela é a PRIMEIRA da fila, e não a
+# padrão, porque a §10 da spec crava o MVP em *"ranking por total de votos"* —
+# trocar em silêncio o que todo aluno vê ao chegar seria reescrever spec de
+# plataforma dentro de um despacho de célula (é a lição 2 do bloco do EVO-40
+# neste `LICOES.md`). Mudar isso é decisão do mantenedor, e de uma linha.
 ORDEM_PADRAO = "mais-votadas"
+
+# ---------------------------------------------------------------------------
+# "Em alta" (V1.2, spec §10) — a fórmula, numa frase
+# ---------------------------------------------------------------------------
+# **O calor de uma ideia é a soma dos votos dela com peso de recência: voto dos
+# últimos 7 dias vale 3, voto do último mês vale 1, e voto mais velho que um mês
+# não conta.**
+#
+# Três decisões dentro dessa frase, e as três têm guarda:
+#
+# 1. **O peso é do VOTO, não da idade da ideia.** A fórmula clássica de
+#    "trending" (votos ÷ idade) só sabe destacar ideia NOVA — uma ideia de seis
+#    meses que a turma inteira redescobre nesta semana continuaria no fundo,
+#    exatamente quando ela está em alta de verdade. Pesando o voto, "em alta"
+#    responde à pergunta que a aba faz: *no que as pessoas estão votando AGORA?*
+# 2. **Degraus inteiros, e não decaimento exponencial.** Aritmética de inteiro
+#    sai idêntica no Postgres e no Python, é ordenável sem `float`, e — o que
+#    decide — cabe na frase acima. Um `exp()` seria mais suave e ninguém
+#    conseguiria explicá-lo a um aluno.
+# 3. **Zero depois de 30 dias, e não um piso pequeno.** Um piso faria o calor
+#    virar uma segunda cópia do total de votos com outro nome; a aba ao lado já
+#    é essa. Ideia sem voto recente sai do topo — e reaparece no instante em que
+#    alguém volta a votar nela.
+#
+# A ordem dos degraus importa: `Case` para no primeiro `When` que casar, e a
+# janela de 7 dias é subconjunto da de 30. Inverter os dois pares daria peso 1 a
+# tudo dentro do mês.
+PESOS_DE_RECENCIA = (
+    (timedelta(days=7), 3),
+    (timedelta(days=30), 1),
+)
 
 # As quatro zonas da faixa do protótipo, na ordem em que uma ideia as percorre.
 # `nao_planejado` e `mesclado` ficam de fora porque não são etapas do caminho:
@@ -106,6 +158,40 @@ SAIDAS = (
 # consulta (ver `_marcos`), então cortar não custa consulta nenhuma — e o número
 # total da zona continua saindo inteiro, ao lado do rótulo.
 MARCOS_POR_ZONA = 8
+
+# ---------------------------------------------------------------------------
+# "Meu impacto" (V1.2, spec §10) — e o que ele NÃO é
+# ---------------------------------------------------------------------------
+# O painel conta **o que a participação da própria pessoa produziu**, com dados
+# que ela já enxerga em qualquer página da Caixa: as ideias que ela escreveu, os
+# votos que ela deu, os votos que as ideias dela receberam e quantas das ideias
+# em que ela pôs a mão saíram da análise.
+#
+# **Ele NÃO é a avaliação interna da equipe** (`impacto_educacional`,
+# `impacto_comercial`, `esforco_tecnico`, `notas`, `decisao_produto`), que é
+# invisível ao aluno por desenho e tem guarda de três degraus
+# (`tests/test_inv_avaliacao_interna_fora_do_alcance.py`). A coincidência da
+# palavra "impacto" nos dois lugares é do protótipo, não do modelo de dados: uma
+# é o que a PESSOA fez, a outra é o que a EQUIPE achou. Este módulo continua sem
+# nomear a segunda — nem o model, nem o `related_name` —, e é a AST daquele
+# guarda que impõe isso.
+#
+# "Avançou" é ter passado de `em_analise` para qualquer degrau seguinte do
+# trilho. `nao_planejado` fica de fora porque não é avanço, e `mesclado` também:
+# a ideia não andou, ela virou outra — contá-la aqui faria o número subir por um
+# fato que não é vitória de ninguém.
+AVANCARAM = (
+    Sugestao.Status.PLANEJADO,
+    Sugestao.Status.EM_DESENVOLVIMENTO,
+    Sugestao.Status.IMPLEMENTADO,
+)
+
+# Quantas das ideias da pessoa o painel lista antes de virar "+ N" — mesmo
+# raciocínio (e mesmo custo zero) do `MARCOS_POR_ZONA`: o corte é feito em
+# Python sobre a MESMA consulta, e o total continua saindo inteiro no número de
+# cima. A lista existe porque quatro números sozinhos não dizem *qual* ideia
+# andou; é o que transforma "3 entraram no roadmap" em uma frase acionável.
+IDEIAS_NO_IMPACTO = 6
 
 
 def exige_sessao(view):
@@ -161,13 +247,81 @@ def quadro_atual():
     return quadros[0]
 
 
-def sugestoes_ordenadas(quadro, *, categoria_slug: str = "", ordem: str = ORDEM_PADRAO):
-    """O ranking da §10 (mais votadas) ou a fila do que chegou por último.
+def calor_de_recencia(agora):
+    """A soma dos votos de cada sugestão com peso de recência (`PESOS_DE_RECENCIA`).
+
+    **Por que isto é uma SUBCONSULTA e não um `Sum(Case(...))` ao lado dos
+    outros `annotate` — e por que o jeito ingênuo sai errado em silêncio.** O
+    `sugestoes_ordenadas` já junta DUAS tabelas na mesma consulta (`votos` e
+    `comentarios`). Com dois `JOIN`, o banco devolve o produto cartesiano das
+    duas pernas: uma ideia com 2 votos e 3 comentários vira **6 linhas**. Os
+    `Count(..., distinct=True)` que já estavam ali sobrevivem a isso porque
+    contam valores distintos — e é justamente essa sobrevivência que faz a
+    armadilha: quem lê o código conclui que `distinct=True` "resolve a junção", e
+    escreve o `Sum` do lado, onde ele **não** resolve. `Sum(distinct=True)` soma
+    valores distintos, que é outra pergunta; o calor sairia multiplicado pelo
+    número de comentários da ideia, e a aba passaria a premiar quem tem thread
+    comprido. Nada reprova: o número continua plausível.
+
+    A subconjunta correlacionada faz a soma numa perna só, sem tocar a junção de
+    fora: continua UMA consulta ao banco (o `assertNumQueries` da aba não muda),
+    e o resultado não depende de mais nada que a grade venha a juntar depois.
+
+    O `.order_by()` vazio antes do `.values("sugestao")` é obrigatório:
+    `Meta.ordering` entra no `GROUP BY` sem ninguém escrever `order_by` nenhum, e
+    aí a subconsulta devolveria uma linha por voto em vez de uma por sugestão
+    (`armadilhas/115`). `Voto` hoje não tem `Meta.ordering` — a linha está aqui
+    para o dia em que tiver.
+
+    Sugestão sem voto nenhum não produz linha na subconsulta: o `Coalesce` faz
+    disso um **zero**, e não um `NULL`, senão o `ORDER BY -calor` colocaria as
+    ideias sem voto no topo (no Postgres, `NULL` é o maior valor em ordem
+    decrescente).
+    """
+    degraus = Case(
+        *[
+            When(criado_em__gte=agora - janela, then=Value(peso))
+            for janela, peso in PESOS_DE_RECENCIA
+        ],
+        default=Value(0),
+        output_field=IntegerField(),
+    )
+    return Coalesce(
+        Subquery(
+            Voto.objects.filter(sugestao=OuterRef("pk"))
+            .order_by()
+            .values("sugestao")
+            .annotate(calor=Sum(degraus))
+            .values("calor")[:1],
+            output_field=IntegerField(),
+        ),
+        Value(0),
+        output_field=IntegerField(),
+    )
+
+
+def sugestoes_ordenadas(
+    quadro,
+    *,
+    categoria_slug: str = "",
+    ordem: str = ORDEM_PADRAO,
+    agora=None,
+):
+    """O ranking da §10 (mais votadas), a fila do que chegou ou o que está em alta.
 
     A contagem de comentários entra aqui e não numa consulta por linha: o card
     do protótipo mostra "N comentários", e um `sugestao.comentarios.count()` no
     template daria uma consulta por peça da grade — o N+1 clássico, invisível
     até o quadro encher.
+
+    **`agora` é parâmetro, e não `timezone.now()` lá dentro.** Só a aba "Em
+    alta" o usa, e é ele que torna o ranking falsificável: um teste que
+    dependesse do relógio da máquina mediria uma coisa diferente a cada dia, e
+    apodreceria sozinho no primeiro fim de semana. A view passa
+    `timezone.now()`; o guarda passa um instante escrito à mão.
+
+    O calor só é anotado na aba que ordena por ele: as outras duas não pagam a
+    subconsulta para jogar o resultado fora.
     """
     consulta = (
         Sugestao.objects.filter(quadro=quadro)
@@ -177,6 +331,8 @@ def sugestoes_ordenadas(quadro, *, categoria_slug: str = "", ordem: str = ORDEM_
         )
         .select_related("categoria", "autor")
     )
+    if ordem == ORDEM_EM_ALTA:
+        consulta = consulta.annotate(calor=calor_de_recencia(agora or timezone.now()))
     if categoria_slug:
         consulta = consulta.filter(categoria__slug=categoria_slug)
     return consulta.order_by(*ORDENS[ordem][1])
@@ -279,6 +435,81 @@ def fora_do_trilho(quadro, *, categoria_slug: str = ""):
         dict(marco, rotulo=Sugestao.Status(marco["status"]).label)
         for marco in _marcos(quadro, SAIDAS, categoria_slug=categoria_slug)
     ]
+
+
+def meu_impacto(ator, quadro, *, categoria_slug: str = ""):
+    """O que a participação DESTA pessoa produziu neste quadro (V1.2, §10).
+
+    Quatro números e uma lista, em quatro consultas — e **nenhuma delas cresce
+    com o quadro nem com a plateia**: são agregações que o banco resolve, não
+    laços em Python sobre linhas trazidas para cá. Há guarda medindo isso com 2
+    e com 20 ideias e exigindo o mesmo número de consultas
+    (`tests/test_meu_impacto.py`), na forma que o EVO-42 fixou: compara-se dois
+    números medidos, nunca se crava um.
+
+    **Só entram dados que a pessoa já alcança em qualquer página da Caixa.**
+    Nada aqui lê a `AvaliacaoInterna` — a decisão da equipe sobre a ideia dela é
+    da equipe, e continua sendo (spec §8). Ver o bloco `AVANCARAM` no topo deste
+    arquivo: a palavra "impacto" aparece nos dois assuntos e eles não têm nada em
+    comum.
+
+    **O painel OBEDECE ao filtro de categoria, como a faixa de roadmap.** Não é
+    gosto: a página inteira é um recorte, e um painel que ignorasse o filtro
+    devolveria no rodapé os títulos que a pessoa acabou de tirar da grade — foi
+    exatamente isso que o `test_o_quadro_filtra_por_categoria` (EVO-12b) já
+    reprovou uma vez, no EVO-31, quando a faixa tentou mostrar o quadro inteiro.
+    Quando há filtro, o cabeçalho do painel diz em qual categoria os números
+    estão, senão "2 ideias" pareceria contradizer as 12 que a pessoa escreveu.
+
+    Os dois primeiros números saem da MESMA consulta: `Count("id", distinct=True)`
+    conta as ideias e `Count("votos")` conta as linhas de voto penduradas nelas —
+    uma junção só, então não há produto cartesiano a desfazer (é o caso oposto ao
+    de `calor_de_recencia`, e vale ler o porquê lá).
+    """
+    minhas = Sugestao.objects.filter(quadro=quadro, autor=ator.identidade)
+    apoiadas = Voto.objects.filter(autor=ator.identidade, sugestao__quadro=quadro)
+    # "Participei" é autoria OU voto — e é por isso que precisa de `distinct()`:
+    # quem votou na própria ideia casa nos dois lados do `Q` e sairia contado
+    # duas vezes. `.order_by()` antes do `.distinct()` pela `armadilhas/115`:
+    # `Sugestao` não tem `Meta.ordering` hoje, e no dia em que tiver o `DISTINCT`
+    # passaria a ser pelo par (id, coluna de ordenação) sem ninguém notar.
+    participei = Sugestao.objects.filter(quadro=quadro).filter(
+        Q(autor=ator.identidade) | Q(votos__autor=ator.identidade)
+    )
+    if categoria_slug:
+        minhas = minhas.filter(categoria__slug=categoria_slug)
+        apoiadas = apoiadas.filter(sugestao__categoria__slug=categoria_slug)
+        participei = participei.filter(categoria__slug=categoria_slug)
+
+    escrevi = minhas.aggregate(
+        ideias=Count("id", distinct=True),
+        votos_recebidos=Count("votos"),
+    )
+    # O recorte de colunas é a proteção, não o cuidado do template (é a mesma
+    # regra de `_marcos` e `linha_do_tempo`): `Sugestao` carrega `autor`, uma
+    # `Identidade` cujo `__str__` devolve o E-MAIL de quem não tem nome de
+    # exibição. Aqui o autor é a própria pessoa que está lendo — mas o dia em que
+    # este bloco for copiado para uma página de perfil alheio, a coluna já não
+    # terá sido buscada.
+    ideias = (
+        minhas.annotate(total_votos=Count("votos"))
+        .values("id", "titulo", "status", "criado_em", "total_votos")
+        .order_by("-criado_em", "-id")[:IDEIAS_NO_IMPACTO]
+    )
+    return {
+        "ideias": escrevi["ideias"],
+        "apoiadas": apoiadas.count(),
+        "avancaram": participei.filter(status__in=AVANCARAM)
+        .order_by()
+        .distinct()
+        .count(),
+        "votos_recebidos": escrevi["votos_recebidos"],
+        "minhas_ideias": [
+            dict(ideia, rotulo=Sugestao.Status(ideia["status"]).label)
+            for ideia in ideias
+        ],
+        "escondidas": max(0, escrevi["ideias"] - IDEIAS_NO_IMPACTO),
+    }
 
 
 def linha_do_tempo(sugestao):
@@ -405,8 +636,14 @@ def ver_quadro(request, ator):
             "categoria_escolhida": escolhida,
             "abas": [(chave, rotulo) for chave, (rotulo, _) in ORDENS.items()],
             "ordem_escolhida": ordem,
+            # `timezone.now()` é lido AQUI, na borda, e desce como parâmetro —
+            # ver `sugestoes_ordenadas`. É o que permite ao guarda do ranking
+            # cravar um instante e medir uma fórmula em vez de um relógio.
             "sugestoes": sugestoes_ordenadas(
-                quadro, categoria_slug=escolhida, ordem=ordem
+                quadro,
+                categoria_slug=escolhida,
+                ordem=ordem,
+                agora=timezone.now(),
             ),
             "votadas": _ids_votados(ator, quadro),
             "numeros": numeros_do_quadro(quadro),
@@ -419,6 +656,17 @@ def ver_quadro(request, ator):
             # recebem a categoria escolhida: a faixa encolhe junto com a grade.
             "faixa": faixa_de_roadmap(quadro, categoria_slug=escolhida),
             "fora_do_trilho": fora_do_trilho(quadro, categoria_slug=escolhida),
+            # "Meu impacto" (V1.2) mora DENTRO do quadro pelo mesmo motivo da
+            # faixa: é uma seção com `id`, que o botão do trilho alcança por
+            # âncora. Rota própria seria uma segunda porta a proteger, a nomear
+            # no urlconf e a acrescentar às três varreduras desta célula — para
+            # mostrar um recorte do que esta página já tem em mãos.
+            "impacto": meu_impacto(ator, quadro, categoria_slug=escolhida),
+            # O nome da categoria escolhida, e não só o slug: o painel precisa
+            # dizer em português em que recorte os números dele estão.
+            "categoria_do_recorte": next(
+                (c.nome for c in categorias if c.slug == escolhida), ""
+            ),
         },
     )
 

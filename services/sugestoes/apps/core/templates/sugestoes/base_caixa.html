@@ -55,6 +55,12 @@ renderiza vazio, não quebra.
   marcos em cima.
   {% endcomment %}
   <symbol id="i-trilha" viewBox="0 0 20 20"><line x1="2" y1="10" x2="18" y2="10" stroke="currentColor" stroke-width="1.3"/><g fill="currentColor"><rect x="2.6" y="8.6" width="2.8" height="2.8" transform="rotate(45 4 10)"/><rect x="8.6" y="8.6" width="2.8" height="2.8" transform="rotate(45 10 10)"/><rect x="14.6" y="8.6" width="2.8" height="2.8" transform="rotate(45 16 10)"/></g></symbol>
+  {% comment %}
+  O ícone de "Meu impacto" (V1.2). É o `#i-user` do protótipo, redesenhado com o
+  traço desta folha e batizado em PT-BR como todos os outros daqui (`i-grade`,
+  `i-mais`, `i-sino`, `i-barras`, `i-trilha`).
+  {% endcomment %}
+  <symbol id="i-pessoa" viewBox="0 0 20 20"><circle cx="10" cy="7" r="3.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 16.6c0-3.1 2.7-4.8 6-4.8s6 1.7 6 4.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
 </svg>
 
 <div class="wrap">
@@ -118,6 +124,18 @@ renderiza vazio, não quebra.
         {% with nao_lidos=avisos_nao_lidos %}
           <a href="{% url 'avisos' %}" title="avisos{% if nao_lidos %} ({{ nao_lidos }}){% endif %}" aria-label="avisos{% if nao_lidos %} ({{ nao_lidos }}){% endif %}" class="{% if request.resolver_match.url_name == 'avisos' %}ativo{% endif %}"><svg aria-hidden="true"><use href="#i-sino"/></svg>{% if nao_lidos %}<span class="contador" aria-hidden="true">{{ nao_lidos }}</span>{% endif %}</a>
         {% endwith %}
+        {% comment %}
+        "Meu impacto" (V1.2) — o lugar que o protótipo reservou no pé do trilho
+        (`#nav-perfil`). Como o botão do roadmap, ele é uma ÂNCORA para uma seção
+        do quadro, e não uma rota: `{% templatetag openblock %} url 'quadro' {% templatetag closeblock %}` + `#meu-impacto`, com o
+        prefixo público vindo do `{% templatetag openblock %} url {% templatetag closeblock %}` como todo endereço desta casa.
+
+        Ele também NÃO se pinta de `ativo`, pelo mesmo motivo do roadmap: âncora
+        não muda `request.resolver_match`, então adivinhar onde a pessoa está
+        seria o trilho mentindo. Quem fica aceso é o botão do quadro, que é a
+        verdade.
+        {% endcomment %}
+        <a href="{% url 'quadro' %}#meu-impacto" title="Meu impacto" aria-label="Meu impacto"><svg aria-hidden="true"><use href="#i-pessoa"/></svg></a>
         {% comment %}
         O crachá vira o caminho: sem este link a fila de moderação seria uma URL
         que só quem leu o urlconf conhece. Ele só existe para quem tem o papel
