@@ -65,3 +65,13 @@ STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
 USE_TZ = True
+
+# O fuso em que a célula MOSTRA hora — o armazenamento continua em UTC (USE_TZ),
+# e é o UTC que vai para o banco, para o webhook e para o Mercado Pago. Sem esta
+# linha vale o default de fábrica do Django, `America/Chicago`: cinco horas
+# atrás, capaz de trocar até o DIA perto da virada, sem nada acusando a troca.
+# Aqui isso morde na hora de LER um caso: expiração de Pix e horário de webhook
+# num relatório ou numa investigação de suporte saindo em Chicago fazem duas
+# pessoas conferindo o mesmo pagamento chegarem a conclusões diferentes.
+# Guarda: tests/test_fuso_horario.py (armadilhas/099).
+TIME_ZONE = "America/Sao_Paulo"
