@@ -95,7 +95,12 @@ if (modoConferir) {
   var atual;
   try { atual = fs.readFileSync(SAIDA, "utf8"); }
   catch (e) { console.error("❌ FAIL: manifesto.js não existe. Rode: node painel/gerar_manifesto.js"); process.exit(1); }
-  if (atual !== conteudo) {
+  // Fins de linha não são conteúdo: num checkout Windows o git converte o
+  // manifesto para CRLF e a comparação byte a byte reprovava com o livro
+  // perfeitamente em dia (descoberto em 26/08/2026, no clone do mantenedor —
+  // no CI Linux passava). Normalizar os DOIS lados compara o que importa.
+  var nrm = function (s) { return s.replace(/\r\n/g, "\n"); };
+  if (nrm(atual) !== nrm(conteudo)) {
     console.error("❌ FAIL: manifesto.js está DESATUALIZADO em relação a registros/.");
     console.error("   Rode: node painel/gerar_manifesto.js  (e commite o resultado)");
     process.exit(1);

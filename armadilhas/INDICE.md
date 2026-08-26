@@ -147,5 +147,6 @@
 | [119](119-o-make-ci-da-celula-fica-vermelho-porque-a-partida.md) | `Failed: Redis real inacessível em redis://localhost:6379/0` — a partida rápida sobe o Postgres e esquece o Redis, e o baseline nasce vermelho sem culpa sua — você seguiu a partida rápida (`ARMADILHAS.md` §2) à risca… | — |
 | [120](120-campo-unique-novo-que-pode-ficar-vazio-string.md) | Campo `unique` novo que pode ficar vazio: `default=""` colide, `NULL` não — e a colisão precisa de savepoint — você acrescenta a um model uma coluna `unique=True` cujo valor vem de fora (o id da pessoa em outra célula… | — |
 | [121](121-sum-ao-lado-de-count-distinct-no-mesmo-annotate.md) | Um `Sum` ao lado de `Count(distinct=True)` no mesmo `annotate` sai multiplicado — e é o `distinct` do vizinho que faz você não desconfiar — uma consulta que já agrega DUAS relações resolve tudo certo há meses. Você… | — |
+| [122](122-conferir-de-arquivo-gerado-reprova-por-crlf.md) | `--conferir` de arquivo gerado reprova com tudo em dia — `manifesto.js está DESATUALIZADO` num checkout que acabou de dar `git pull` — `node painel/gerar_manifesto.js --conferir` (ou qualquer verificador do padrão "gera… | — |
 
-**110 entradas.**
+**111 entradas.**
