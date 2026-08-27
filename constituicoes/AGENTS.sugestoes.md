@@ -12,21 +12,32 @@ Especificação viva: `docs/caixa-de-sugestoes/ESPECIFICACAO-CELULA.md`.
 ## Fronteiras
 - **PERMITIDO ESCREVER:** `services/sugestoes/**`
 - **SOMENTE LEITURA:** `contracts/alunos.openapi.yaml` (é por ele que a identidade
-  pergunta se a pessoa tem matrícula — `DECISAO-EVO-01-identidade.md`)
+  pergunta se a pessoa tem matrícula — `DECISAO-EVO-01-identidade.md`);
+  `contracts/notificacoes.openapi.yaml` e `contracts/eventos/notificacao.devida.v1.json`
+  (a caixa central de avisos — `DECISAO-fase-2-do-sininho.md`,
+  `DECISAO-fase-4-do-sininho.md`)
 - **PROIBIDO (nem ler):** as demais células, `infra/`, qualquer segredo de pagamento
 
 ## Comunicação
 - **Expõe:** páginas públicas em `/forms/sugestoes/*` (prefixo do gateway via
   `SCRIPT_NAME`; a superfície HTTP é consumida pelo front-end da própria célula)
 - **Consome:** `alunos` — `GET /alunos/{email}/matriculas` (`listEnrollments`),
-  server-side, com timeout explícito. Nunca lê o banco de `alunos` (Lei 3)
-- **Auth:** Bearer dedicado (`TOKEN_ALUNOS`) para a chamada acima. Para o aluno,
-  sessão emitida pela PRÓPRIA célula depois do Google (EVO-01) — a `sugestoes`
-  não recebe ator pronto de ninguém
+  server-side, com timeout explícito. Nunca lê o banco de `alunos` (Lei 3).
+  Desde a Fase 3/4 do sininho, também `notificacoes` — `GET /resumo`,
+  `GET /avisos`, `POST /marcar-lida`, `POST /marcar-lidas`
+  (`contracts/notificacoes.openapi.yaml`): o sino no trilho (fail ABERTA) e a
+  tela `/avisos` (fail VISÍVEL) leem de lá, não mais do `Aviso` local —
+  `docs/decisoes/DECISAO-fase-2-do-sininho.md` §3
+- **Auth:** Bearer dedicado (`TOKEN_ALUNOS`, `NOTIFICACOES_API_TOKEN`) para as
+  chamadas acima. Para o aluno, sessão emitida pela PRÓPRIA célula depois do
+  Google (EVO-01) — a `sugestoes` não recebe ator pronto de ninguém
 - **Emite:** `sugestao.criada.v1`, `sugestao.voto-adicionado.v1`,
-  `sugestao.voto-removido.v1`, `sugestao.status-alterado.v1`,
-  `sugestao.mesclada.v1` (via outbox → relay Redis Streams)
-- **Banco:** `sugestoes_db` (role `sugestoes_user` — não enxerga nenhum outro database)
+  `sugestao.voto-removido.v1`, `sugestao.status-alterado.v2`,
+  `notificacao.devida.v1` (via outbox → relay Redis Streams)
+- **Banco:** `sugestoes_db` (role `sugestoes_user` — não enxerga nenhum outro
+  database). O `Aviso` local continua sendo escrito em paralelo à carta —
+  rede de segurança da transição, não mais lido por nenhuma página (Fase 6
+  decide se ele se aposenta)
 
 ## Invariantes desta célula
 - **Multissítio (INV-P11):** toda sugestão pertence a um quadro, e o quadro a um

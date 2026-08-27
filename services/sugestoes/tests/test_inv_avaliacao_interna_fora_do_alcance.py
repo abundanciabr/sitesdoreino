@@ -128,6 +128,12 @@ def _jornada_completa(cliente, sugestao, aviso) -> dict[str, list]:
         "marcar_aviso_lido": [
             cliente.post(reverse("marcar_aviso_lido", args=[aviso.id]))
         ],
+        # Escolha 3, `DECISAO-fase-4-do-sininho.md` (Fase 3/4 do sininho) —
+        # entrou pelo mesmo mecanismo que as duas rotas acima: exige sessão,
+        # não exige crachá, `_rotas_de_participacao()` passou a listá-la.
+        "marcar_todos_avisos_lidos": [
+            cliente.post(reverse("marcar_todos_avisos_lidos"))
+        ],
     }
 
 

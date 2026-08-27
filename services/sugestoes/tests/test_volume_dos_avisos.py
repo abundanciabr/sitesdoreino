@@ -35,7 +35,7 @@ from django.test.utils import CaptureQueriesContext
 from django.db import connection
 from django.urls import reverse
 
-from apps.core.avisos import avisar_os_interessados
+from apps.core.avisos import avisar_os_interessados, limpar_cache_de_resumo
 from apps.sugestoes.models import Aviso, Sugestao
 
 pytestmark = pytest.mark.django_db
@@ -193,8 +193,19 @@ def test_ler_a_pagina_de_avisos_nao_paga_consulta_pelo_vinculo(
     def _abrir():
         assert dentro.client.get(reverse("avisos")).status_code == 200
 
+    # O sino no trilho (`apps/core/avisos.py::sino`) também aparece nesta
+    # página e tem CACHE PRÓPRIO (`_CACHE_DE_RESUMO`, TTL de 30s) — de
+    # propósito, para uma rajada de páginas da mesma pessoa não pagar uma
+    # chamada por clique. Sem limpar entre as duas medições, a SEGUNDA
+    # visita pegaria o resumo do cache e pagaria consultas A MENOS por
+    # isso — um efeito real, só que de OUTRO invariante (o do sino, já
+    # coberto em `tests/test_sino_le_a_notificacoes.py`). Limpando antes de
+    # cada medição, as duas pagam o mesmo custo de sino, e o que sobra na
+    # diferença é só o que este teste quer medir: o custo do `vinculo`.
+    limpar_cache_de_resumo()
     com_um, _ = _contar(_abrir)
     _mexer(muitos)
+    limpar_cache_de_resumo()
     com_onze, sql = _contar(_abrir)
 
     assert Aviso.objects.count() == 11

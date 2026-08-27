@@ -21,10 +21,13 @@ Em dev e no CI **nada disto chega à rede**: `tests/conftest.py` dubla as duas
 URLs com `respx`.
 """
 
+import logging
 import os
 from urllib.parse import quote
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 # Timeout SEMPRE explícito (R2). Curto de propósito: estes saltos estão no
 # caminho de uma pessoa esperando uma página abrir, e a resposta certa para
@@ -265,3 +268,249 @@ class AlunosClient:
         raise AlunosIndisponivel(
             f"a célula alunos respondeu HTTP {resposta.status_code} ao pedido de entrada"
         )
+
+
+class NotificacoesClient:
+    """`contracts/notificacoes.openapi.yaml` — a caixa central de avisos.
+
+    Lei do assunto: `docs/decisoes/DECISAO-fase-4-do-sininho.md` (Escolha 2) e
+    `docs/decisoes/DECISAO-fase-2-do-sininho.md` §3 — a tela de avisos da Caixa
+    passa a ler daqui. Cópia peça por peça do padrão de
+    `services/funil/apps/core/clients.py::NotificacoesClient` (Lei 3: copia-se
+    o PADRÃO, nunca o arquivo por import cruzado entre células): `.get()` no
+    ponto de uso (nunca `os.environ[...]`, nunca `exigir()` — ver abaixo o
+    porquê), timeout curto e explícito, `httpx.HTTPError` separado de
+    `ValueError` no `.json()`.
+
+    **Por que este cliente NUNCA levanta exceção — ao contrário de
+    `AlunosClient`/`IdentidadeClient`, os dois vizinhos acima.** Aqueles dois
+    alimentam AUTORIZAÇÃO (fail-CLOSED: quem não consegue perguntar fecha a
+    porta — `exigir()` propositalmente falha alto). Este cliente alimenta DUAS
+    telas com regras OPOSTAS (`DECISAO-fase-4-do-sininho.md` Escolha 2): o sino
+    (`avisos.sino`, fail ABERTA, em toda página) e a tela de avisos
+    (`avisos.ver_avisos`, fail VISÍVEL, só naquela página). Nenhuma exceção
+    única poderia servir às duas ao mesmo tempo — por isso todo método aqui
+    devolve `None` em qualquer tropeço (config ausente, rede, HTTP fora de
+    200, JSON fora do contrato), e quem chama decide o que `None` significa
+    PARA A TELA DELE: o sino traduz como "não mostra número"; `ver_avisos`
+    traduz como "mostra a frase de falha". `None` nunca se confunde com uma
+    resposta real vazia (`nao_lidas: 0`, `itens: []`) — são estados
+    DIFERENTES, exatamente como a Escolha 2 exige.
+
+    A ÚNICA exceção a "sempre `None`" é `marcar_uma_como_lida`, que distingue
+    um terceiro caso (`False`) — ver a docstring dela.
+
+    Auth: Bearer estático do par `sugestoes→notificacoes`
+    (`services/notificacoes/apps/core/auth.py`, `TOKENS_ACEITOS_SUGESTOES` do
+    lado de lá).
+    """
+
+    TIMEOUT = 2.0
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        """Ver o comentário gêmeo em `IdentidadeClient._configuracao` do
+        `funil` — mesma razão, mesma forma: `.get()`, nunca
+        `os.environ[...]`, lido NO PONTO DE USO. Falta de config é MAIS
+        provável que falha de rede (basta uma variável não colada no
+        servidor), e não pode furar nem o fail-open do sino nem o
+        fail-visible da tela — as duas precisam continuar respondendo.
+        """
+        base = (os.environ.get("NOTIFICACOES_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("NOTIFICACOES_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def obter_resumo(self, *, destinatario_id: str, site_id: str) -> "int | None":
+        """Quantos avisos não lidos esta pessoa tem NESTE site, ou `None`.
+
+        `None` é "não sei" (config ausente, rede, HTTP≠200, JSON fora do
+        contrato) — quem chama (o sino) não desenha número nenhum. É
+        DIFERENTE de `0`, que é "perguntei e a resposta é zero".
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "notificacoes: NOTIFICACOES_API_URL/NOTIFICACOES_API_TOKEN "
+                "ausentes no env desta célula — resumo indisponível"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/resumo",
+                params={"destinatario_id": destinatario_id, "site_id": site_id},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("resumo: não deu para perguntar à notificacoes: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            logger.error("resumo: a notificacoes respondeu HTTP %s", r.status_code)
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("resumo: a notificacoes respondeu fora do contrato: %s", erro)
+            return None
+
+        if not isinstance(corpo, dict):
+            return None
+        valor = corpo.get("nao_lidas")
+        # `bool` é subclasse de `int` em Python — excluí-lo explicitamente
+        # evita que um `true`/`false` fora do contrato vire "1 aviso"/"0
+        # avisos" por acidente de tipagem.
+        if isinstance(valor, bool) or not isinstance(valor, int) or valor < 0:
+            return None
+        return valor
+
+    def listar_avisos(
+        self, *, destinatario_id: str, site_id: str, cursor: str = ""
+    ) -> "dict | None":
+        """Uma página de `{"itens": [...], "proximo_cursor": ...}`, ou `None`.
+
+        `None` é "não sei" — nunca confundido com `{"itens": [], ...}`
+        (página real, zero avisos DE VERDADE). É essa distinção que permite a
+        `ver_avisos` mostrar a frase de falha em vez de uma lista vazia
+        disfarçada (Escolha 2, `DECISAO-fase-4-do-sininho.md`).
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "notificacoes: NOTIFICACOES_API_URL/NOTIFICACOES_API_TOKEN "
+                "ausentes no env desta célula — avisos indisponíveis"
+            )
+            return None
+        base, token = config
+        params = {"destinatario_id": destinatario_id, "site_id": site_id}
+        if cursor:
+            params["cursor"] = cursor
+        try:
+            r = http().get(
+                f"{base}/avisos",
+                params=params,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("avisos: não deu para perguntar à notificacoes: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            logger.error("avisos: a notificacoes respondeu HTTP %s", r.status_code)
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("avisos: a notificacoes respondeu fora do contrato: %s", erro)
+            return None
+
+        if not isinstance(corpo, dict) or not isinstance(corpo.get("itens"), list):
+            logger.error(
+                "avisos: a notificacoes respondeu fora do contrato (sem 'itens')"
+            )
+            return None
+        return corpo
+
+    def marcar_uma_como_lida(
+        self, *, destinatario_id: str, site_id: str, id: str
+    ) -> "bool | None":
+        """Marca UM aviso como lido — três respostas, e as três importam.
+
+        `True`: marcado agora, ou já estava lido (o contrato é idempotente).
+        `False`: a notificacoes respondeu **404** — `id` não existe ou não é
+        deste `destinatario_id`/`site_id`. Isto NÃO é "não sei": é uma
+        resposta definitiva, e quem chama (`avisos.marcar_lido`) precisa
+        devolver 404 — nunca 403, para não confirmar a existência do aviso
+        alheio a quem chutou um valor (o mesmo cuidado que a leitura local já
+        tinha, agora do lado da notificacoes).
+        `None`: não sei — config ausente, rede, qualquer outro HTTP≠200,
+        JSON fora do contrato.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "marcar-lida: NOTIFICACOES_API_URL/NOTIFICACOES_API_TOKEN "
+                "ausentes no env desta célula"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().post(
+                f"{base}/marcar-lida",
+                json={
+                    "destinatario_id": destinatario_id,
+                    "site_id": site_id,
+                    "id": id,
+                },
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("marcar-lida: não deu para chamar a notificacoes: %s", erro)
+            return None
+
+        if r.status_code == 404:
+            return False
+        if r.status_code != 200:
+            logger.error("marcar-lida: a notificacoes respondeu HTTP %s", r.status_code)
+            return None
+
+        try:
+            r.json()
+        except ValueError as erro:
+            logger.error(
+                "marcar-lida: a notificacoes respondeu fora do contrato: %s", erro
+            )
+            return None
+        return True
+
+    def marcar_todas_como_lidas(
+        self, *, destinatario_id: str, site_id: str
+    ) -> "int | None":
+        """Quantos avisos foram marcados agora, ou `None` (não sei).
+
+        `0` é resposta válida (ninguém tinha aviso pendente) — DIFERENTE de
+        `None` (não consegui perguntar), pela mesma razão de sempre.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "marcar-lidas: NOTIFICACOES_API_URL/NOTIFICACOES_API_TOKEN "
+                "ausentes no env desta célula"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().post(
+                f"{base}/marcar-lidas",
+                json={"destinatario_id": destinatario_id, "site_id": site_id},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("marcar-lidas: não deu para chamar a notificacoes: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            logger.error(
+                "marcar-lidas: a notificacoes respondeu HTTP %s", r.status_code
+            )
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error(
+                "marcar-lidas: a notificacoes respondeu fora do contrato: %s", erro
+            )
+            return None
+
+        if not isinstance(corpo, dict):
+            return None
+        valor = corpo.get("marcados")
+        if isinstance(valor, bool) or not isinstance(valor, int) or valor < 0:
+            return None
+        return valor

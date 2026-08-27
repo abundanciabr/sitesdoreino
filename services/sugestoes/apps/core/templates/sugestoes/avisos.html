@@ -1,120 +1,173 @@
 {% extends "sugestoes/base_caixa.html" %}
 {% comment %}
-Os avisos DESTA pessoa — o dado é do EVO-21, o rosto é do EVO-31.
+Os avisos DESTA pessoa — o dado nasceu no EVO-21, o rosto é do EVO-31.
 
 Esta é a página onde a justificativa de um "não planejado" finalmente alcança
 quem sugeriu: a equipe é obrigada a escrevê-la desde o EVO-13 *porque quem
 sugeriu vai ler*, e até o EVO-21 não havia tela nenhuma do aluno que a mostrasse.
 
-O que esta página NÃO mostra, e por desenho de tabela e não de template: **quem**
-moderou. Esse dado mora no `HistoricoStatus`, que é a auditoria da equipe; o
-`Aviso` é a cópia do aluno e não tem a coluna. É a mesma separação que manteve a
-`AvaliacaoInterna` fora do alcance dele (spec §8).
+**Desde a Fase 3/4 do sininho (27/08/2026) esta página passou a ler da caixa
+central de avisos** (`NotificacoesClient`, `contracts/notificacoes.openapi.yaml`)
+em vez do `Aviso` local — `docs/decisoes/DECISAO-fase-2-do-sininho.md` §3. O
+`Aviso` local CONTINUA sendo escrito (`apps/core/avisos.py::avisar_os_interessados`),
+como rede de segurança da transição; só a LEITURA mudou de casa.
 
-**O EVO-31 vestiu esta página; não reescreveu nada da lógica.** Os avisos, a
-contagem de não-lidos e o "marcar como lido" continuam exatamente os de
-`apps/core/avisos.py`. O que mudou é que cada aviso virou um cartão com a
+**A regra de falha desta página é a OPOSTA do sino no trilho.** O sino
+(`base_caixa.html`) fica em silêncio se a caixa central cair — decoração em
+toda página, não pode derrubar nenhuma. Esta página **É** a função dela:
+se `ver_avisos()` não conseguiu buscar os dados, `falha` chega `True` no
+contexto e a página abre com uma frase clara em vez de fingir "zero avisos"
+— os dois estados nunca compartilham o mesmo visual
+(`docs/decisoes/DECISAO-fase-4-do-sininho.md`, Escolha 2).
+
+O que esta página NÃO mostra, e por desenho de contrato e não de template:
+**quem** moderou. A carta (`notificacao.devida.v1`) guarda `ator_id` só para
+reconstrução de histórico; a tela do aluno sempre diz "a equipe" — é a mesma
+separação que manteve a `AvaliacaoInterna` fora do alcance dele (spec §8).
+
+**O EVO-31 vestiu esta página; não reescreveu nada da lógica, e a migração da
+Fase 3/4 não reescreveu a vestimenta.** Cada aviso continua um cartão com a
 linguagem do quadro — o selo de status do card da grade, a mudança desenhada
-como `de → para`, e a nota da equipe dentro de uma `.ficha`, que é a mesma peça
-que a página da sugestão usa para o texto da equipe.
+como `de → para`, e a nota da equipe dentro de uma `.ficha`, a mesma peça que
+a página da sugestão usa para o texto da equipe. O que mudou é só a FONTE dos
+campos: antes atributos de um `Aviso` (model), agora chaves de um dicionário
+que `apps/core/avisos.py::_item_para_o_template` monta a partir da resposta
+da API — os NOMES dos campos foram escolhidos de propósito para bater com os
+de antes (`status_novo`, `vinculo`, `nota`, `criado_em`, `lido_em`, `id`).
 
-Três amarras que não podem cair na vestimenta:
+Três amarras que não podem cair na vestimenta, e continuam valendo
+byte-a-byte com a fonte de dado nova:
 
-* **o número do sino continua sendo o do trilho** (`base_caixa.html`), com o nome
-  acessível `avisos (N)` em minúsculas — `test_o_sino_de_toda_pagina_conta_so_os_meus`
+* **o número do sino continua sendo o do trilho** (`base_caixa.html`), com o
+  nome acessível `avisos (N)` em minúsculas — `test_o_sino_de_toda_pagina_conta_so_os_meus`
   o mede assim, e ele NÃO se afrouxa para caber em HTML novo;
 * **a data sai `d/m/Y H:i`**, formato cravado, nunca o `{{ … }}` nu: o padrão do
   Django sai no locale do processo (`en-us`) e a hora vem do `TIME_ZONE` de
-  `config/settings.py` (armadilhas/099);
+  `config/settings.py` (armadilhas/099) — `criado_em`/`lido_em` chegam da API
+  como texto ISO 8601 e são convertidos para `datetime` ciente de fuso em
+  `apps/core/avisos.py` antes de chegar aqui, então o filtro `|date:` continua
+  localizando exatamente como localizava um `DateTimeField`;
 * **todo endereço sai de `{% templatetag openblock %} url {% templatetag closeblock %}`**, senão o prefixo público
   (/forms/sugestoes) some em produção e só lá (armadilhas/081). Sem CSS externo,
   sem JS, sem fonte remota — como o resto da moldura.
 
 `{{ avisos|length }}` no topo em vez de um número novo no contexto: a lista já
-vai ser percorrida logo abaixo, e o queryset guarda o resultado da primeira
-avaliação — o número custa zero consulta a mais e não obriga a view a mudar.
+vai ser percorrida logo abaixo, e é uma lista Python comum (não mais um
+queryset) — o custo é o mesmo, zero consultas a mais.
 {% endcomment %}
 {% block titulo %}Seus avisos — Caixa de Sugestões{% endblock %}
 {% block migalha %}Avisos{% endblock %}
 
 {% block numeros %}
 <div class="numeros">
-  <span><b>{{ avisos|length }}</b> aviso{{ avisos|length|pluralize }}</span>
-  <span><b>{{ nao_lidos }}</b> não lido{{ nao_lidos|pluralize }}</span>
+  {% if falha %}
+    <span>—</span>
+  {% else %}
+    <span><b>{{ avisos|length }}</b> aviso{{ avisos|length|pluralize }}</span>
+    <span><b>{{ nao_lidos }}</b> não lido{{ nao_lidos|pluralize }}</span>
+  {% endif %}
 </div>
 {% endblock %}
 
 {% block conteudo %}
 <h1>Seus avisos</h1>
-<p class="sub">
+
+{% if falha %}
+  <p class="sub">
+    Não consegui buscar seus avisos agora. Tente de novo em instantes.
+  </p>
+  <div class="recado">
+    <h2>Algo deu errado do nosso lado</h2>
+    <p>
+      A lista de avisos está temporariamente indisponível — não significa que
+      você não tenha nenhum. Atualize a página em alguns instantes; se
+      continuar assim, avise a equipe técnica.
+    </p>
+  </div>
+{% else %}
+  <p class="sub">
+    {% if nao_lidos %}
+      Você tem {{ nao_lidos }} aviso{{ nao_lidos|pluralize }} não lido{{ nao_lidos|pluralize }}.
+    {% else %}
+      Nada de novo por aqui — todos os seus avisos já foram lidos.
+    {% endif %}
+  </p>
+
   {% if nao_lidos %}
-    Você tem {{ nao_lidos }} aviso{{ nao_lidos|pluralize }} não lido{{ nao_lidos|pluralize }}.
-  {% else %}
-    Nada de novo por aqui — todos os seus avisos já foram lidos.
+    <form method="post" action="{% url 'marcar_todos_avisos_lidos' %}" class="marcar-tudo">
+      {% csrf_token %}
+      <button type="submit" class="botao discreto">Marcar tudo como lido</button>
+    </form>
   {% endif %}
-</p>
 
-<div class="avisos">
-  {% for aviso in avisos %}
-    <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
-      <div class="aviso-topo">
-        <span class="selo selo-{{ aviso.status_novo }}">{{ aviso.get_status_novo_display }}</span>
-        {% comment %}
-        [EVO-42] POR QUE este recado chegou a esta pessoa. Sem esta linha, quem
-        votou numa ideia em março recebe em agosto um aviso sobre algo que não
-        lembra ter tocado — e a Caixa passa a parecer barulhenta em vez de
-        atenta. O texto sai de `get_vinculo_display`, ou seja das `TextChoices`
-        do model: uma frase escrita aqui à mão seria uma segunda verdade sobre o
-        mesmo dado, e a que ninguém testa é a que fica errada.
+  <div class="avisos">
+    {% for aviso in avisos %}
+      <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
+        <div class="aviso-topo">
+          <span class="selo selo-{{ aviso.status_novo }}">{{ aviso.status_novo_label }}</span>
+          {% comment %}
+          [EVO-42] POR QUE este recado chegou a esta pessoa. Sem esta linha, quem
+          votou numa ideia em março recebe em agosto um aviso sobre algo que não
+          lembra ter tocado — e a Caixa passa a parecer barulhenta em vez de
+          atenta. O rótulo sai do MESMO vocabulário do model (`Aviso.Vinculo`,
+          via `apps/core/avisos.py::VINCULO_ROTULOS`): uma frase escrita aqui à
+          mão seria uma segunda verdade sobre o mesmo dado.
 
-        O valor é SNAPSHOT, não espelho: quem tirar o voto amanhã continua vendo
-        "Ideia em que você votou" neste aviso, porque na hora em que ele nasceu
-        era verdade. O docstring de `Aviso.vinculo` pesa a alternativa (derivar
-        na leitura) e diz por que ela perdeu.
-        {% endcomment %}
-        <span class="aviso-vinculo vinculo-{{ aviso.vinculo }}">{{ aviso.get_vinculo_display }}</span>
-        {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
-        <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
-      </div>
+          O valor é SNAPSHOT, não espelho: quem tirar o voto amanhã continua
+          vendo "Ideia em que você votou" neste aviso, porque na hora em que
+          ele nasceu era verdade.
 
-      <h3 class="aviso-titulo">
-        <a href="{% url 'sugestao' aviso.sugestao.id %}">{{ aviso.sugestao.titulo }}</a>
-      </h3>
-
-      <p class="aviso-mudanca">
-        {% if aviso.status_anterior %}
-          <span class="de">{{ aviso.get_status_anterior_display }}</span>
-          <span class="seta-mudanca" aria-hidden="true">→</span>
-          <span class="para">{{ aviso.get_status_novo_display }}</span>
-        {% else %}
-          Agora está em <span class="para">{{ aviso.get_status_novo_display }}</span>
-        {% endif %}
-      </p>
-
-      {% if aviso.nota %}
-        <div class="ficha">
-          <h3>O que a equipe escreveu</h3>
-          <p>{{ aviso.nota|linebreaksbr }}</p>
+          **Ausente** (carta emitida antes de 27/08/2026, quando o campo
+          `vinculo` nasceu no contrato) **→ o selo simplesmente não aparece.**
+          Nunca um erro, nunca uma chave chutada — é a lei do próprio campo
+          opcional (`contracts/eventos/notificacao.devida.v1.json`).
+          {% endcomment %}
+          {% if aviso.vinculo_label %}
+            <span class="aviso-vinculo vinculo-{{ aviso.vinculo }}">{{ aviso.vinculo_label }}</span>
+          {% endif %}
+          {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
+          <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
         </div>
-      {% endif %}
 
-      {% if not aviso.lido_em %}
-        <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
-          {% csrf_token %}
-          <button type="submit" class="botao discreto">Marcar como lido</button>
-        </form>
-      {% endif %}
-    </article>
-  {% empty %}
-    <div class="recado">
-      <h2>Nenhum aviso ainda</h2>
-      <p>
-        Quando a equipe mexer no status de uma ideia sua — ou de uma em que você
-        votou ou comentou — o recado aparece aqui, com o motivo que ela escreveu.
-      </p>
-    </div>
-  {% endfor %}
-</div>
+        <h3 class="aviso-titulo">
+          <a href="{% url 'sugestao' aviso.sugestao_id %}">{{ aviso.sugestao_titulo }}</a>
+        </h3>
+
+        <p class="aviso-mudanca">
+          {% if aviso.status_anterior %}
+            <span class="de">{{ aviso.status_anterior_label }}</span>
+            <span class="seta-mudanca" aria-hidden="true">→</span>
+            <span class="para">{{ aviso.status_novo_label }}</span>
+          {% else %}
+            Agora está em <span class="para">{{ aviso.status_novo_label }}</span>
+          {% endif %}
+        </p>
+
+        {% if aviso.nota %}
+          <div class="ficha">
+            <h3>O que a equipe escreveu</h3>
+            <p>{{ aviso.nota|linebreaksbr }}</p>
+          </div>
+        {% endif %}
+
+        {% if not aviso.lido_em %}
+          <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+            {% csrf_token %}
+            <button type="submit" class="botao discreto">Marcar como lido</button>
+          </form>
+        {% endif %}
+      </article>
+    {% empty %}
+      <div class="recado">
+        <h2>Nenhum aviso ainda</h2>
+        <p>
+          Quando a equipe mexer no status de uma ideia sua — ou de uma em que você
+          votou ou comentou — o recado aparece aqui, com o motivo que ela escreveu.
+        </p>
+      </div>
+    {% endfor %}
+  </div>
+{% endif %}
 {% endblock %}
 
 {% block inspetor %}
