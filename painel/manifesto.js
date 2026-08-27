@@ -86,7 +86,8 @@ var MANIFESTO = [
   "20260827-019-a-fila-de-espera-existe-por-dentro",
   "20260827-020-endereco-com-barra-no-final-parou-de-dar-erro",
   "20260827-021-a-caixa-foi-inaugurada-no-meshcraft",
-  "20260827-022-agora-da-para-pedir-entrada-na-caixa"
+  "20260827-022-agora-da-para-pedir-entrada-na-caixa",
+  "20260827-023-a-home-do-site-virou-porta"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
