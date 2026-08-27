@@ -448,15 +448,33 @@ def test_declaracao_incoerente_reprova_o_deploy_e_nao_grava(
 
 def test_sites_json_do_repositorio_converge_como_declarado(monkeypatch):
     """O arquivo REAL que o deploy-infra manda para a produção. Idioma torto lá
-    deixa isto vermelho antes de o merge acontecer."""
+    deixa isto vermelho antes de o merge acontecer.
+
+    **O valor esperado acompanha a decisão do mantenedor, e mudar os dois juntos
+    é o procedimento certo — não uma burla do guarda.** Ele existe para pegar
+    idioma MALFORMADO no arquivo real (`ptbr`, `pt_BR`, um padrão fora da lista
+    de `languages`), não para congelar qual idioma é o padrão: isso é decisão de
+    produto, registrada em
+    `docs/decisoes/DECISAO-raiz-sem-prefixo-do-idioma-padrao.md`.
+
+    Trocado de `en` para `pt-br` em 27/08/2026 pela emenda daquele documento —
+    o público do meshcraft.top é brasileiro, e a raiz nua passa a servir
+    português. O mecanismo (padrão na raiz, os outros com prefixo) não mudou.
+    """
     catalogo = montar_catalogo(monkeypatch, no_modelo=True, no_banco=True)
     bruto = (RAIZ / "infra" / "sites.json").read_text(encoding="utf-8")
     monkeypatch.setenv("SITES_JSON", bruto)
     exec(compile(SCRIPT.read_text(encoding="utf-8"), str(SCRIPT), "exec"), {})
 
     site = catalogo.site("meshcraft.top")
-    assert site.default_language == "en"
+    assert site.default_language == "pt-br"
     assert site.languages == CANONICO
+    # O padrão TEM de estar entre os idiomas servidos — é o que separa "mudei a
+    # decisão" de "escrevi um código que não existe". Sem esta linha, trocar o
+    # padrão por `ptbr` passaria por aqui e só quebraria na produção.
+    assert site.default_language in [
+        idioma["code"] for idioma in site.languages
+    ], "o default_language precisa estar entre os `languages` do site"
 
 
 # ---------------------------------------------------------------------------
