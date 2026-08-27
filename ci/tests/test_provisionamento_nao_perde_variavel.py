@@ -74,6 +74,17 @@ SCRIPTS = [
         "env/admin.env",
         "infra/env/admin.env.exemplo",
     ),
+    # A quarta da família (26/08/2026, gênese da caixa central de avisos).
+    # Entrou aqui no MESMO PR do script, pelo motivo escrito acima: script que
+    # reescreve env inteiro e não está nesta lista é a `armadilhas/111` com data
+    # marcada. E aqui a data é PREVISÍVEL — a Fase 4 do PLANO-MESTRE vai
+    # acrescentar um `TOKENS_ACEITOS_FUNIL` a este env, e é exatamente aí que a
+    # trava precisa já existir.
+    (
+        "infra/provisionar-notificacoes.sh",
+        "env/notificacoes.env",
+        "infra/env/notificacoes.env.exemplo",
+    ),
 ]
 
 RE_LISTA = re.compile(r'^CHAVES_QUE_EU_GERO="([^"]*)"', re.MULTILINE)
