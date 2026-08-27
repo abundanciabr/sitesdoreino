@@ -171,16 +171,39 @@ def test_pseudo_locale_cadastro_sem_texto_hardcoded(catalogo_pseudo):
     assert texto_hardcoded(html) == []
 
 
-def test_pseudo_locale_landing_i18n_sem_texto_hardcoded(catalogo_pseudo):
+class _AtorFalso:
+    """Alguém entrou — o mínimo que a home e o cabeçalho de sessão leem.
+
+    `nome` em dígitos pela mesma convenção do resto deste bloco: o detector
+    procura LETRAS visíveis fora do catálogo, e nome de pessoa é DADO, não
+    copy. `avisos_nao_lidos = None` é o "não sei" que apaga o sino — o sino
+    tem os guardas dele em tests/test_sino.py.
+    """
+
+    nome = "123"
+    avisos_nao_lidos = None
+
+
+def test_pseudo_locale_home_de_visitante_sem_texto_hardcoded(catalogo_pseudo):
     html = get_template("funil/landing_i18n.html").render(
-        {
-            "site": {"name": "123"},
-            "oferta": {"product": {"name": "456"}},
-            "preco_formatado": "9,90",
-            "url_checkout": "/checkout/x/",
-            "utm": {},
-            "i18n_js": cat.js_da_pagina("landing", "qps"),
-        },
-        request=_request_pseudo("/qps/"),
+        {}, request=_request_pseudo("/qps/")
     )
+    assert texto_hardcoded(html) == []
+
+
+def test_pseudo_locale_home_de_quem_entrou_sem_texto_hardcoded(catalogo_pseudo):
+    """O OUTRO ramo da home — o que a versão anterior deste teste não tinha.
+
+    Enquanto a raiz era vitrine, ela mostrava a mesma página para todo mundo e
+    um render só a cobria inteira. Desde 27/08/2026 ela tem dois ramos, e o de
+    quem entrou é justamente o que ganhou texto novo (o aviso de novidade, o
+    rótulo da Caixa). Um pseudo-locale que só varresse o ramo do visitante
+    ficaria verde com uma string cravada no ramo de dentro.
+    """
+    pedido = _request_pseudo("/qps/")
+    pedido.ator = _AtorFalso()
+    pedido.url_da_caixa = "/forms/sugestoes/"
+
+    html = get_template("funil/landing_i18n.html").render({}, request=pedido)
+
     assert texto_hardcoded(html) == []

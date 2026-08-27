@@ -20,7 +20,7 @@ from apps.core.middleware import SiteResolutionMiddleware
 from apps.i18n import catalogo as catalogo_mod
 from apps.i18n.validador import pseudo_do_catalogo, texto_hardcoded
 from apps.i18n.idiomas import caminho_publico, idiomas_do_site
-from tests.conftest import CATALOGO, HOST_A, OFERTA_A, SITE_A
+from tests.conftest import CATALOGO, HOST_A, SITE_A
 
 HOST_PREVIEW = "preview.exemplo.com"  # resolve para o MESMO Site A (host canônico)
 
@@ -74,11 +74,33 @@ def test_raiz_serve_o_idioma_padrao_em_uma_requisicao(client, rede, com_i18n):
 
 
 def test_raiz_com_query_nao_perde_a_query_nem_redireciona(client, rede, com_i18n):
-    # A query de campanha chega inteira à página, sem salto no meio — antes ela
-    # sobrevivia a um 302, agora não há 302 nenhum no caminho de maior volume.
+    """A query de campanha chega inteira à página, sem salto no meio — antes
+    ela sobrevivia a um 302, agora não há 302 nenhum no caminho de maior
+    volume de um funil de tráfego pago.
+
+    O INSTRUMENTO mudou em 27/08/2026, o sentido não. Até então a prova era o
+    eco da UTM no HTML (`{{ utm|json_script }}`), que a home nova não imprime:
+    a raiz do site multilíngue deixou de ser vitrine e não monta mais link de
+    checkout nenhum. Medir pelo eco amarrava um teste de ROTEAMENTO ao que a
+    página escolhe mostrar; o espião abaixo mede a mesma coisa uma camada
+    antes, e continua valendo no dia em que a home mudar de novo.
+    """
     resp = client.get("/?utm_source=ig&utm_medium=cpc", HTTP_HOST=HOST_A)
     assert resp.status_code == 200
-    assert b'"utm_source": "ig"' in resp.content
+
+    chegou = {}
+
+    def espiao(request):
+        chegou["query"] = request.META.get("QUERY_STRING")
+        chegou["path_info"] = request.path_info
+        return HttpResponse("ok")
+
+    pedido = RequestFactory().get(
+        "/", {"utm_source": "ig", "utm_medium": "cpc"}, HTTP_HOST=HOST_A
+    )
+    SiteResolutionMiddleware(espiao)(pedido)
+
+    assert chegou == {"query": "utm_source=ig&utm_medium=cpc", "path_info": "/"}
 
 
 def test_raiz_head_serve(client, rede, com_i18n):
@@ -141,7 +163,13 @@ def test_prefixo_de_idioma_nao_habilitado_e_404(client, rede, com_i18n, caminho)
 def test_cada_idioma_serve_a_pagina_no_seu_caminho(client, rede, com_i18n, idioma):
     resp = client.get(caminho_de(idioma), HTTP_HOST=HOST_A)
     assert resp.status_code == 200
-    assert OFERTA_A["product"]["name"].encode() in resp.content
+    conteudo = resp.content.decode()
+    # A prova de que chegou a página CERTA NO IDIOMA certo. Era o nome do
+    # produto (dado, igual nos três idiomas); desde 27/08/2026 a raiz é a home
+    # e o que ela mostra a quem não entrou é o convite — que é copy, e portanto
+    # DIFERE por idioma. Instrumento melhor que o antigo: um resolver que
+    # servisse sempre o inglês passaria pelo nome do produto e reprova aqui.
+    assert catalogo_mod.t("landing.entrar", idioma) in conteudo
 
 
 def test_prefixo_sem_barra_redireciona_para_a_forma_canonica(client, rede, com_i18n):
