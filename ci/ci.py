@@ -407,12 +407,17 @@ def celulas_tocadas(raiz: Path, base: str) -> list[str]:
             # veria o projeto parado no passado — exatamente a doença que o
             # painel existe para curar, e que originou este trabalho.
             #
-            # O efeito colateral é deliberado e vale dizer em voz alta: um PR
-            # que toque `painel/` E uma célula passa a contar como DUAS células,
-            # e a muralha "1 PR = 1 célula" o barra. Na prática as sessões já
-            # separam as duas coisas (o registro do livro sempre foi PR
-            # próprio), e a muralha barrando é melhor do que um deploy de duas
-            # células ao mesmo tempo.
+            # ATENÇÃO — são DOIS detectores no projeto, e este NÃO é o da
+            # muralha. Quem responde por "1 PR = 1 célula" é
+            # `ci/cerca-de-celula.sh`, que casa apenas `services/*` e portanto
+            # ignora `painel/`. Consequência, medida e não suposta: um PR que
+            # toque `painel/` E uma célula continua contando como UMA célula
+            # para a muralha — ela não barra, e não há nada a contornar.
+            #
+            # Esta função é a que monta a matriz do `deploy-celula` e o escopo
+            # do `ci-celula`. O efeito que importa é esse: PR só de livro passa
+            # a RODAR a suíte da `admin` no `ci-celula` (é o que dá evidência ao
+            # portão de deploy) e a disparar o deploy dela no merge.
             encontradas.add("admin")
     return sorted(encontradas)
 
