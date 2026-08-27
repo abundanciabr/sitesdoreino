@@ -104,6 +104,22 @@ services:
     image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
     env_file: [env/identidade.env]
 
+  # ORDEM DE ENTREGA — a lição que este bloco custou, escrita onde o próximo
+  # agente vai olhar. Uma célula NOVA cujo PR traz o código E este compose
+  # juntos entra num impasse dos dois portões, e os dois estão certos:
+  #   1. o merge dispara `deploy-celula` e `deploy-infra` no MESMO commit;
+  #   2. o `deploy-celula` corre primeiro, procura os serviços da célula no
+  #      compose que está NA VPS — que ainda é o antigo — e aborta de propósito
+  #      ("não tem serviço algum… 'up -d' sem argumento subiria a plataforma
+  #      inteira");
+  #   3. e aí o portão do `deploy-infra` vê um workflow vermelho no mesmo SHA e
+  #      recusa entregar o compose novo — que era exatamente o que destravaria
+  #      o passo 2.
+  # Nenhum rerun sai disso: o vermelho e a cura estão no mesmo commit.
+  # A REGRA: o compose de uma célula nova entra em PR PRÓPRIO, sozinho.
+  # `deploy-infra` sozinho fica verde, entrega o arquivo, e só então o
+  # `deploy-celula` tem onde subir. Caminho de volta: armadilhas/133.
+  #
   # A caixa central de avisos (DECISAO-notificacoes, 25/08/2026; gênese em
   # 26/08/2026). NÃO tem rota pública: não aparece no Traefik e nasce sem tela e
   # sem superfície de máquina — quem vai perguntar "quantos avisos eu tenho" é o
