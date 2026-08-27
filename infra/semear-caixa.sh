@@ -25,7 +25,12 @@
 # site errado em silêncio — o erro exato que o fail-closed existe para impedir.
 #
 # COMO O MANTENEDOR RODA (DENTRO da VPS, uma linha só):
-#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/semear-caixa.sh -o /tmp/s.sh && bash /tmp/s.sh
+#   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/semear-caixa.sh -o /tmp/s.sh && bash /tmp/s.sh meshcraft.top
+#
+# O HOST É ARGUMENTO porque a plataforma é multissítio (Lei 9): em 27/08/2026 a
+# produção já servia meshcraft.top E basileiatoutheou.org. Sem o argumento, o
+# script só segue se houver exatamente UM site ativo; com dois ou mais ele lista
+# e PARA, em vez de amarrar a Caixa ao site errado em silêncio.
 #
 # A linha começa com `curl`, e o prompt tem de estar como `deploy@srv…` ou
 # `root@srv…` — se o seu prompt começa com `PS C:\>`, você está no PC e este
@@ -67,14 +72,43 @@ for s in Site.objects.filter(active=True).order_by('host'):
 QUANTOS=$(printf '%s\n' "$SITES" | grep -c . || true)
 [ "${QUANTOS:-0}" -ge 1 ] || parar "o catálogo não tem NENHUM site ativo. Sem site não há a quem amarrar o quadro."
 
-if [ "$QUANTOS" -gt 1 ]; then
+listar_sites() {
+  printf '%s\n' "$SITES" | while IFS="$(printf '\t')" read -r ID HOST; do
+    echo "     - $HOST  ($ID)"
+  done
+}
+
+# HOST COMO ARGUMENTO — a plataforma é multissítio (Lei 9) e em 27/08/2026 a
+# produção já tinha DOIS sites ativos: meshcraft.top e basileiatoutheou.org. A
+# primeira versão deste script parou aqui, corretamente, em vez de escolher.
+#
+# Com argumento: usa o que foi pedido, e PARA se ele não existir (nunca cai no
+# "primeiro da lista" como consolo — seria o chute que o fail-closed evita).
+# Sem argumento: só segue se houver exatamente UM site ativo, que é a mesma
+# regra do `quadro_atual()` da célula.
+HOST_PEDIDO="${1:-}"
+
+if [ -n "$HOST_PEDIDO" ]; then
+  LINHA=$(printf '%s\n' "$SITES" | awk -F"\t" -v h="$HOST_PEDIDO" '$2==h {print; exit}')
+  if [ -z "$LINHA" ]; then
+    echo "  O site '$HOST_PEDIDO' não está entre os ativos do catálogo. Os que estão:"
+    listar_sites
+    parar "host pedido não encontrado. Confira a grafia (sem https://, sem barra no fim)."
+  fi
+  SITE_ID=$(printf '%s' "$LINHA" | cut -f1)
+  SITE_HOST=$(printf '%s' "$LINHA" | cut -f2)
+elif [ "$QUANTOS" -gt 1 ]; then
   echo "  Achei mais de um site ativo:"
-  printf '%s\n' "$SITES" | while IFS=$'\t' read -r ID HOST; do echo "     - $HOST  ($ID)"; done
-  parar "há $QUANTOS sites ativos e eu não escolho por você. Mande esta tela ao agente para ele preparar a versão que recebe o host como argumento."
+  listar_sites
+  echo
+  echo "  Rode de novo dizendo QUAL, por exemplo:"
+  echo "     bash /tmp/s.sh meshcraft.top"
+  parar "há $QUANTOS sites ativos e eu não escolho por você."
+else
+  SITE_ID=$(printf '%s\n' "$SITES" | head -n1 | cut -f1)
+  SITE_HOST=$(printf '%s\n' "$SITES" | head -n1 | cut -f2)
 fi
 
-SITE_ID=$(printf '%s\n' "$SITES" | head -n1 | cut -f1)
-SITE_HOST=$(printf '%s\n' "$SITES" | head -n1 | cut -f2)
 [ -n "$SITE_ID" ] || parar "li a resposta do catálogo mas não consegui extrair o número do site."
 echo "  site ...... $SITE_HOST"
 echo "  número .... $SITE_ID"
