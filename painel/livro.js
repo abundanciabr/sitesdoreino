@@ -2,7 +2,7 @@
 // GERADO por painel/gerar_manifesto.js — NÃO EDITE À MÃO.
 // Para regenerar: node painel/gerar_manifesto.js
 // =============================================================================
-// O livro INTEIRO num arquivo só: 87 registros, um pedido.
+// O livro INTEIRO num arquivo só: 88 registros, um pedido.
 // A fonte de verdade continua em painel/registros/, um arquivo por ocorrência;
 // isto aqui é só o empacotamento que a página carrega.
 
@@ -1396,5 +1396,21 @@
   responde_a: null,
   gravidade: "ambar",
   frente: "comunidade",
+  vence_em_dias: null
+});})();
+// ---- 20260827-028-o-painel-quebrava-por-excesso-de-pedidos ----
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260827-028-o-painel-quebrava-por-excesso-de-pedidos",
+  tipo: "entrega",
+  quando: "2026-08-27",
+  titulo: "Achei por que o painel quebrava 4 vezes por dia — o livro estava intacto; quem falhava era a entrega",
+  detalhe: "Você colou o aviso vermelho pela QUARTA vez hoje, e desta vez com a informação que faltava: era o SITE, não o arquivo do seu PC. Isso mudou onde eu procurei — e o defeito apareceu.\n\nO LIVRO NUNCA ESTEVE QUEBRADO. Rodei os 87 registros juntos, do jeito que o navegador os executa: 87 de 87, zero erro. O validador também vinha limpo todas as vezes. Por isso a sessão de manhã não achou nada — ela auditou os arquivos, que era exatamente o lugar onde não havia defeito. O problema estava na ENTREGA: no caminho entre o servidor e a sua tela.\n\nO QUE ACONTECIA, em português simples: o painel era montado pedindo ao servidor UM ARQUIVO PARA CADA REGISTRO. Com 86 registros, abrir a página disparava 86 pedidos de uma vez. E a área administrativa confere o seu crachá em CADA pedido — o que significa perguntar a outro programa do servidor quem é você, com 2 segundos de paciência. Quando 86 perguntas chegam juntas, ele não responde todas a tempo; as que estouram recebem “serviço indisponível” no lugar do registro. Esses registros sumiam, e a trava do painel gritava — corretamente, porque painel pela metade é pior do que painel que se recusa a abrir.\n\nISSO EXPLICA AS TRÊS COISAS QUE NÃO FAZIAM SENTIDO. O número mudava a cada vez (2, depois 29) porque depende de quantas perguntas o servidor conseguiu responder naquele segundo. Piorava com o tempo porque o número de pedidos ERA o tamanho do livro — cada tarefa registrada aumentava a chance de quebrar no dia seguinte. E no seu PC funcionava, porque ali não existe porta nem crachá.\n\nO CONSERTO: o livro inteiro passou a viajar num arquivo só. UM pedido no lugar de 86. Não existe mais “carregou pela metade” — ou o livro chega inteiro, ou a falta aparece na tela. E o custo de abrir o painel parou de crescer com o tamanho do livro: registrar mais nunca mais vai deixar o painel mais frágil.\n\nA TRAVA PARA NÃO VOLTAR: um teste que abre a página de fora e reprova se ela voltar a pedir registro por registro. Ele fica VERMELHO no código antigo e VERDE neste — não é promessa, é medida.\n\nO QUE EU AINDA NÃO PUDE PROVAR: não consegui abrir o painel num navegador de verdade nesta sessão (a ponte do Chrome está fora do ar de novo). Todo o resto está medido, mas quem confirma que a sua tela voltou é você — reabra meshcraft.top/admin/painel/ e me diga. Se algum dia voltar a quebrar, o texto do aviso agora pede que você diga se foi o site ou o seu PC: foi essa informação que resolveu hoje.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/323 — o teste de fora test_o_livro_chega_em_UM_pedido_e_nao_um_por_registro fica VERMELHO no código antigo (assert 'livro.js' in ['manifesto.js', 'logica.js']) e VERDE neste; 13/13 em tests/test_painel_vivo.py; muralha do painel verde; os 87 registros executados juntos num contexto compartilhado dão 87/87. Falta a confirmação do mantenedor abrindo a página.",
+  verificado_em: "2026-08-27",
+  precisa_do_dono: true,
+  responde_a: "20260827-002-o-aviso-de-painel-quebrado-nao-se-repete-agora",
+  gravidade: "verde",
+  frente: "fabrica",
   vence_em_dias: null
 });})();
