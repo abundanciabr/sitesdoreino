@@ -166,5 +166,6 @@
 | [138](138-bom-no-stdin-vira-jsondecodeerror-no-windows-local.md) | `test_stdin_com_bom_utf8_nao_vira_recusa` reprova local no Windows, mesmo sem nenhuma mudança sua — RESOLVIDO em 27/08/2026 — rodando `python ci/ci.py --apenas testador` (ou `pytest… | — |
 | [139](139-bulk-create-tambem-dispara-pre-save-e-sobrescreve.md) | `bulk_create` também dispara `pre_save()` — e sobrescreve `auto_now_add` em silêncio, mesmo atribuído no construtor — você monta uma lista de objetos com um campo `auto_now_add=True` deliberadamente atribuído a um valor… | — |
 | [140](140-dividadolivro-mente-com-checkout-atrasado.md) | `mergear.py --conferir` acusa dívida do livro já paga — quando o checkout está atrasado — `python ci/mergear.py <N> --conferir` reprova em "dívida do livro", listando um PR que você tem certeza de já ter sido contado… | — |
+| [141](141-o-cwd-do-bash-nao-persiste-entre-chamadas-separadas.md) | O `cwd` do shell pode resetar entre duas chamadas SEPARADAS da ferramenta Bash — mesmo com worktree fresco — igual ao da `armadilhas/140` (`mergear.py --conferir` acusa dívida do livro já paga, ou qualquer outro comando… | — |
 
-**129 entradas.**
+**130 entradas.**
