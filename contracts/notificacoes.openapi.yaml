@@ -117,6 +117,48 @@ paths:
                     anyOf: [{ type: string }, { type: "null" }]
                     description: null quando não há próxima página.
         '422': { description: destinatario_id ou site_id ausente ou inválido }
+  /marcar-lida:
+    post:
+      operationId: marcarUmaComoLida
+      summary: Marca UM aviso específico como lido — idempotente (marcar duas vezes é marcar uma)
+      description: |
+        A tela de origem (a Caixa) já tinha esta granularidade — marcar como
+        lido ao abrir o detalhe de UM aviso, sem tocar nos outros. A porta de
+        consulta não pode perder isso na migração. `id` é o valor opaco
+        devolvido por `GET /avisos` (nunca um número puro — ver a descrição
+        do campo `id` lá).
+
+        404, nunca 403, quando `id` não existe ou não pertence a este
+        `destinatario_id`/`site_id`: confirmar que um id pertence a outra
+        pessoa vazaria a existência do aviso alheio a quem só chutou um
+        valor.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [destinatario_id, site_id, id]
+              properties:
+                destinatario_id: { type: string }
+                site_id: { type: string }
+                id:
+                  type: string
+                  description: O valor opaco de `GET /avisos` (campo `id` de um item da lista).
+      responses:
+        '200':
+          description: Marcado agora, ou já estava lido — os dois casos devolvem 200 (idempotente)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ja_estava_lido]
+                properties:
+                  ja_estava_lido: { type: boolean }
+        '404': { description: id inexistente, ou não pertence a este destinatario_id/site_id }
+        '422': { description: campo obrigatório ausente ou inválido }
   /marcar-lidas:
     post:
       operationId: marcarTodasComoLidas
