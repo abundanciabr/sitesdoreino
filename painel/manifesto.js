@@ -73,7 +73,8 @@ var MANIFESTO = [
   "20260827-006-a-conversa-da-fase-4-do-sininho-aconteceu",
   "20260827-007-rumo-comunidade-a-porta-de-avisos-ganha-corpo",
   "20260827-008-um-mapa-do-projeto-escrito-para-robos-auditarem",
-  "20260827-009-o-site-agora-abre-em-portugues"
+  "20260827-009-o-site-agora-abre-em-portugues",
+  "20260827-010-os-avisos-vao-respeitar-de-qual-site-vieram"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
