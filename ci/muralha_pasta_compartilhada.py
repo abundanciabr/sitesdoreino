@@ -269,8 +269,13 @@ def decidir(dados: dict) -> str | None:
 
 
 def _ler_json_do_stdin() -> dict:
-    # tolera BOM UTF-8 (chr(0xFEFF)): o PowerShell 5.1 o poe ao canalizar texto
-    return json.loads(sys.stdin.read().lstrip(chr(0xFEFF)))
+    # le bytes crus (sys.stdin.buffer) e decodifica via utf-8-sig, que descarta
+    # o BOM na propria decodificacao — armadilhas/138: sys.stdin.read() com
+    # .lstrip(chr(0xFEFF)) so funciona se o modo texto ja tiver decodificado o
+    # BOM (EF BB BF) como 1 unico chr(0xFEFF); em Windows local, sys.stdin as
+    # vezes decodifica pela codepage do console (nao UTF-8) por padrao, o BOM
+    # vira 3 caracteres de lixo, e json.loads reprova.
+    return json.loads(sys.stdin.buffer.read().decode("utf-8-sig"))
 
 
 def _hook_pre_tool_use() -> int:
