@@ -76,7 +76,8 @@ var MANIFESTO = [
   "20260827-009-o-site-agora-abre-em-portugues",
   "20260827-010-os-avisos-vao-respeitar-de-qual-site-vieram",
   "20260827-011-a-porta-de-avisos-ganhou-corpo",
-  "20260827-012-achei-uma-funcionalidade-que-ia-se-perder-na-mudanca"
+  "20260827-012-achei-uma-funcionalidade-que-ia-se-perder-na-mudanca",
+  "20260827-013-uma-licao-nova-para-os-robos-sobre-respostas-de-api"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
