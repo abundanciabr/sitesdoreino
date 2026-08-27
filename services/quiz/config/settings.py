@@ -50,6 +50,13 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     # [RECEITA:CONV-SITE v1] logo após os middlewares de segurança do Django.
     "apps.core.middleware.SiteResolutionMiddleware",
+    # Espelho do APPEND_SLASH: `/quiz/<slug>/resultado/` deixa de ser 404 e leva
+    # a `/quiz/<slug>/resultado`. Vai por ÚLTIMO — ele só age sobre resposta que
+    # JÁ saiu 404. Nesta célula o urlconf MISTURA as convenções (o formulário é
+    # canônico COM barra, o resultado SEM), e é a regra 1 do middleware ("não age
+    # se a forma com barra resolve") que impede um laço com o APPEND_SLASH do
+    # Django. Regra e guardas na docstring do módulo.
+    "apps.core.barra_no_final.BarraNoFinal",
 ]
 
 TEMPLATES = [
