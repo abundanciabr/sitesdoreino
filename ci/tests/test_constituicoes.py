@@ -178,16 +178,23 @@ def test_toda_celula_tem_constituicao_e_nenhuma_e_orfa() -> None:
 def test_o_varredor_enxerga_o_repositorio_e_ignora_worktree_de_agente() -> None:
     """Duas afirmações, porque uma sem a outra é armadilha (`armadilhas/106`).
 
-    (a) nada de `.claude/` entra; (b) o que importa continua entrando — um
-    varredor que devolvesse lista vazia também passaria em (a), e este portão
-    aprovaria o repositório inteiro sem medir nada.
+    (a) nada de `.claude/worktrees/` entra — nem por `git add -A` acidental;
+    (b) o que importa continua entrando — um varredor que devolvesse lista
+    vazia também passaria em (a), e este portão aprovaria o repositório
+    inteiro sem medir nada.
 
     Ele mede o VARREDOR, não o estado do repositório: a divergência entre as
     duas listas é assunto do teste acima, e dois vermelhos pelo mesmo defeito
     só ensinariam a ler menos.
+
+    Até 26/08/2026 o (a) barrava `.claude/` inteiro, porque nada ali era
+    rastreado. A muralha da pasta compartilhada versionou de propósito o
+    `.claude/settings.json` (armadilhas/135), e ele DEVE ser visto pelo
+    varredor: é repositório, não lixo de máquina — a asserção nova fixa isso.
     """
     versionados = arquivos_versionados(RAIZ)
-    assert not [p for p in versionados if p.startswith(".claude/")]
+    assert not [p for p in versionados if p.startswith(".claude/worktrees/")]
+    assert ".claude/settings.json" in versionados
     celulas = celulas_no_repositorio(versionados)
     assert "identidade" in celulas
     assert len(celulas) >= 10

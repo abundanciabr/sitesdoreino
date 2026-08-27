@@ -375,11 +375,18 @@ def test_o_varredor_enxerga_o_repositorio_e_ignora_worktree_de_agente() -> None:
     """Prova de que o conserto acima é o conserto — e continua varrendo de verdade.
 
     Duas afirmações, porque uma sem a outra é armadilha: (a) nada de
-    `.claude/` entra; (b) os arquivos que importam continuam entrando — um
-    varredor que devolvesse lista vazia também passaria em (a).
+    `.claude/worktrees/` entra — nem por `git add -A` acidental; (b) os
+    arquivos que importam continuam entrando — um varredor que devolvesse
+    lista vazia também passaria em (a).
+
+    Até 26/08/2026 o (a) barrava `.claude/` inteiro, porque nada ali era
+    rastreado. A muralha da pasta compartilhada versionou de propósito o
+    `.claude/settings.json` (armadilhas/135), e ele DEVE entrar no varredor:
+    é repositório, não lixo de máquina — a terceira asserção fixa isso.
     """
     varridos = {p.relative_to(RAIZ).as_posix() for p in _arquivos_do_repo()}
-    assert not [p for p in varridos if p.startswith(".claude/")]
+    assert not [p for p in varridos if p.startswith(".claude/worktrees/")]
+    assert ".claude/settings.json" in varridos
     assert "CLAUDE.md" in varridos
     assert "INVARIANTES.md" in varridos
     assert any(p.startswith("services/") for p in varridos)
