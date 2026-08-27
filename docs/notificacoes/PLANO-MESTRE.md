@@ -193,9 +193,13 @@ Os eventos passam a carregar um id de pessoa que qualquer célula entende. **Rit
 com o mantenedor presente, PR só de `contracts/` com a label `contrato`. Versão nova do
 schema (`v2`), com os consumidores migrando em PRs seguintes — nunca no mesmo.
 
-### FASE 3 — Gênese da célula `notificacoes` · **e a mudança de casa dos avisos que já existem**
+### FASE 3 — Gênese da célula `notificacoes` · **e a mudança de casa dos avisos que já existem** · ✅ CÉLULA NO AR em 26/08/2026
 
 > **Alterada em 26/08/2026** pela §3 da `DECISAO-fase-2-do-sininho.md`: o mantenedor escolheu que os `Aviso` que já existem na `sugestoes` **mudam de casa junto**, no MESMO PR da gênese, e a tela de avisos da Caixa passa a ler da caixa nova. A alternativa (caixa nova começando vazia) foi recusada por criar duas verdades sobre "o que você tem para ler". Esta fase, portanto, não é só "nascer".
+
+**A célula nasceu em 26/08/2026** (PRs #247 script, #248 célula, #252 compose): banco isolado, contador O(1), arquivamento, consumidor do fio, rollback no mesmo PR e `freeze: not-applicable`. Constituição em `constituicoes/AGENTS.notificacoes.md`; invariantes INV-NOT1 e INV-NOT2.
+
+**FALTA A SEGUNDA METADE DESTA FASE:** os `Aviso` que já existem na `sugestoes` ainda NÃO mudaram de casa, e a tela da Caixa ainda lê da tabela local. É PR próprio, na célula `sugestoes` (1 PR = 1 célula), e o caminho é reemitir as cartas dos avisos existentes — o dado atravessa pelo fio, sem ninguém ler o banco alheio (Lei 2).
 
 > E o fan-out **não acontece aqui**: a célula recebe cartas já endereçadas (uma por pessoa) e escreve uma linha por carta. Ela é burra de propósito — é isso que a mantém barata quando dez células estiverem publicando.
 
