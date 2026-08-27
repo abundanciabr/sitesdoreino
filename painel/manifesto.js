@@ -69,7 +69,9 @@ var MANIFESTO = [
   "20260827-002-o-aviso-de-painel-quebrado-nao-se-repete-agora",
   "20260827-003-os-avisos-antigos-da-caixa-tambem-mudaram-de-casa",
   "20260827-004-um-alarme-de-seguranca-interno-falhava-so-neste-pc",
-  "20260827-005-a-caixa-de-pergunta-virou-regra-permanente"
+  "20260827-005-a-caixa-de-pergunta-virou-regra-permanente",
+  "20260827-006-a-conversa-da-fase-4-do-sininho-aconteceu",
+  "20260827-007-rumo-comunidade-a-porta-de-avisos-ganha-corpo"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
