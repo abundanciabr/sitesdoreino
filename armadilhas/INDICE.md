@@ -169,5 +169,6 @@
 | [141](141-o-cwd-do-bash-nao-persiste-entre-chamadas-separadas.md) | O `cwd` do shell pode resetar entre duas chamadas SEPARADAS da ferramenta Bash — mesmo com worktree fresco — igual ao da `armadilhas/140` (`mergear.py --conferir` acusa dívida do livro já paga, ou qualquer outro comando… | — |
 | [142](142-virgula-num-flow-mapping-yaml-sem-aspas-vira-chave.md) | Vírgula dentro de `{ chave: valor }` YAML sem aspas cria uma CHAVE fantasma — e o freeze de contrato cobra dela — o `make contrato-check` da célula reprova com um diff que ninguém escreveu — o congelado tem uma chave a… | — |
 | [143](143-escrever-em-request-session-desloga-do-site-inteiro.md) | Uma linha em `request.session` desloga a pessoa do site INTEIRO — quando a célula compartilha o nome do cookie — você guarda uma bobagem qualquer na sessão do Django — uma lembrança de tela, um "já vi este aviso" — e o… | — |
+| [144](144-teste-de-rota-que-mede-o-conteudo-da-pagina-quebra.md) | Teste de ROTA que prova a rota pelo CONTEÚDO da página quebra quando a página muda — e a rota não mudou — você mexe numa página (troca o que ela mostra) e ficam vermelhos testes que não têm nada a ver com ela — a matriz… | — |
 
-**132 entradas.**
+**133 entradas.**

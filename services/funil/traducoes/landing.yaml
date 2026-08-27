@@ -1,68 +1,50 @@
-# traducoes/landing.yaml — landing de site REGISTRADO no i18n (PLANO-I18N
-# fase 2; template funil/landing_i18n.html). O conteúdo é o placeholder de
-# teste da landing atual, traduzido fiel — en é a fonte, pt-br espelha o copy
-# PT-BR que a landing monolíngue já serve hoje.
-# A subárvore js.* alimenta a ilha Alpine via json_script (D2.6).
+# traducoes/landing.yaml — a HOME do site multilíngue (template
+# funil/landing_i18n.html). Formato key-major (D2): todas as línguas da
+# página lado a lado; `_fonte` é sha256[:6] do valor `en` no momento da
+# tradução (D4 — anti-obsolescência). en é a FONTE; Meshcraft nunca se
+# traduz (glossário, D8.1).
+#
+# REESCRITO em 27/08/2026, por decisão do mantenedor: a raiz do site deixou
+# de ser vitrine de oferta e virou porta. Saíram daqui as chaves do preço, do
+# "Quero comprar" e do formulário de captura (`preco`, `cta_comprar`,
+# `novidades_titulo`, `campo_*`, `sucesso` e a subárvore `js.*` da ilha
+# Alpine) — a página que as usava não existe mais nesta forma, e chave
+# definida e não usada REPROVA no validador. O formulário de lead continua
+# inteiro em `/cadastro`, com catálogo próprio (`cadastro.yaml`).
 
-preco:
-  # Moeda é DADO (BRL da oferta), não copy — igual nas três línguas até a
-  # fase que separar idioma de moeda (D9: es não implica EUR).
-  _fonte: "bd992a"
-  en: "R$ {preco}"
-  pt-br: "R$ {preco}"
-  es: "R$ {preco}"
+titulo:
+  # Serve ao <title> E ao <h1> da página — a mesma chave nos dois lugares, de
+  # propósito: a home é a porta da marca, e duas chaves com o mesmo valor
+  # seriam duas coisas para manter em sincronia à mão. Nome protegido pelo
+  # glossário (D8.1): idêntico nas três línguas por definição.
+  _fonte: "00057d"
+  en: "Meshcraft"
+  pt-br: "Meshcraft"
+  es: "Meshcraft"
 
-cta_comprar:
-  _fonte: "ddac15"
-  en: "I want to buy"
-  pt-br: "Quero comprar"
-  es: "Quiero comprar"
+novidades:
+  # O aviso que quem já entrou vê. As palavras do pt-br são as do mantenedor,
+  # ao pedir a mudança em 27/08/2026 — não as reescreva sem ele.
+  _fonte: "bc56fc"
+  en: "Lots of news coming soon."
+  pt-br: "Em breve teremos muitas novidades."
+  es: "Pronto tendremos muchas novedades."
 
-novidades_titulo:
-  _fonte: "aa2139"
-  en: "Receive news"
-  pt-br: "Receba novidades"
-  es: "Recibe novedades"
+ir_para_a_caixa:
+  # O rótulo do caminho para a Caixa de Sugestões — a única área logada do
+  # site até a escola nascer. O DESTINO (`/forms/sugestoes/`) não mora aqui:
+  # é endereço, não copy, e vive em apps/core/enderecos.py.
+  _fonte: "e19e69"
+  en: "Go to the Suggestion Box"
+  pt-br: "Acessar a Caixa de Sugestões"
+  es: "Ir al Buzón de Sugerencias"
 
-campo_nome:
-  _fonte: "dcd1d5"
-  en: "Name"
-  pt-br: "Nome"
-  es: "Nombre"
-
-campo_email:
-  _fonte: "2550d9"
-  en: "E-mail"
-  pt-br: "E-mail"
-  es: "Correo electrónico"
-
-campo_whatsapp:
-  _fonte: "1e9e69"
-  en: "WhatsApp (optional)"
-  pt-br: "WhatsApp (opcional)"
-  es: "WhatsApp (opcional)"
-
-sucesso:
-  _fonte: "03642b"
-  en: "Received! We will be in touch soon."
-  pt-br: "Recebido! Em breve entramos em contato."
-  es: "¡Recibido! Pronto entraremos en contacto."
-
-js:
-  # Strings que a ilha Alpine troca em runtime (estado enviando/erro) —
-  # emitidas com |json_script; proibido catálogo de tradução em JS (D2.6).
-  enviando:
-    _fonte: "b8ed52"
-    en: "Sending…"
-    pt-br: "Enviando…"
-    es: "Enviando…"
-  cta_receber:
-    _fonte: "2f3f4a"
-    en: "I want to receive"
-    pt-br: "Quero receber"
-    es: "Quiero recibir"
-  erro:
-    _fonte: "764ed9"
-    en: "Could not send. Try again."
-    pt-br: "Não foi possível enviar. Tente de novo."
-    es: "No se pudo enviar. Inténtalo de nuevo."
+entrar:
+  # O convite de quem ainda não entrou — botão largo, no corpo da página. Não
+  # é o mesmo texto de `sessao.entrar`, e não deve ser: aquele é o link curto
+  # do cabeçalho, que divide a linha com o seletor de idiomas; este é a única
+  # coisa que a home oferece a quem chega, e pode dizer aonde leva.
+  _fonte: "9c729e"
+  en: "Sign in to Meshcraft"
+  pt-br: "Entrar no Meshcraft"
+  es: "Entrar en Meshcraft"

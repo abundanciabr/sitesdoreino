@@ -662,3 +662,43 @@ a chave tem uma posição por resposta.
 **Origem:** despacho funil/sino-notificacoes — `apps/core/clients.py`
 (`NotificacoesClient`), `apps/core/middleware.py` (`_consultar_avisos`,
 `AtorDaRequisicao.avisos_nao_lidos`).
+
+## Tirar texto de um template obriga a tirar a chave do catálogo — menos a subárvore `js.*`, que some em silêncio (27/08/2026)
+
+**Sintoma:** ao simplificar uma página, o portão de i18n reprova com uma lista
+de chaves que você não tocou:
+
+```
+landing.preco: definida e não usada em nenhum template
+landing.cta_comprar: definida e não usada em nenhum template
+```
+
+**Causa (e é desenho, não defeito):** o `_checar_templates` do
+`apps/i18n/validador.py` confere template ↔ catálogo nos **dois** sentidos
+(D4). Chave usada e não definida reprova — e chave definida e não usada também,
+para o catálogo não virar depósito de copy morta que ninguém sabe se ainda vai
+ao ar.
+
+**A parte que morde:** a regra tem UMA exceção declarada, e ela é justamente a
+que nenhum `{% t %}` cita —
+
+```python
+js = {chave for chave in chaves if ".js." in chave}
+for chave in sorted(set(chaves) - usadas - js):   # a subárvore js.* fica de fora
+```
+
+As chaves `js.*` alimentam a ilha Alpine por `|json_script` (D2.6), então o
+validador não tem como vê-las num template e as ISENTA. Consequência: ao
+remover a ilha, as chaves visíveis reprovam na hora e te avisam, e a subárvore
+`js.*` inteira sobrevive muda — copy morta que passa no portão para sempre.
+Ao apagar uma ilha Alpine, **apague a subárvore `js.*` dela na mesma mão**: o
+CI não vai lembrar por você.
+
+**De brinde, o que NÃO acontece:** remover chave não acorda a anti-burla do
+`_fonte` — ela percorre as chaves NOVAS (`for chave, spec in planas.items()`) e
+compara com a versão-base; chave que sumiu não tem nada a comparar. Só reescrever
+o `en` de uma chave que continua existindo exige recalcular o hash.
+
+**Origem:** despacho funil/home-nova — `traducoes/landing.yaml` perdeu 9 chaves
+(preço, botão de compra e o formulário inteiro) quando a raiz do site
+multilíngue deixou de ser vitrine e virou porta.
