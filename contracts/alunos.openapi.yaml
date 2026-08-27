@@ -182,7 +182,7 @@ paths:
         '200': { description: Decidido }
         '404': { description: Nao ha linha na fila com este id }
         '409': { description: Esta linha ja foi decidida — decisao nao se refaz }
-        '422': { description: Payload invalido, ou recusa sem motivo }
+        '422': { description: "Payload invalido, ou recusa sem motivo" }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
