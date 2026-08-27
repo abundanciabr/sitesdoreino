@@ -1,0 +1,15 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260827-013-a-fila-de-liberacao-virou-lei-e-contrato",
+  tipo: "decisao",
+  quando: "2026-08-27",
+  titulo: "Quem não tem matrícula vai deixar de bater num beco — a fila de espera virou lei e contrato hoje",
+  detalhe: "Você entrou na Caixa com a sua conta e recebeu 'Não encontramos matrícula para esse e-mail'. Pediu que isso virasse uma fila de espera, com formulário e liberação por você no painel. Hoje entraram as duas primeiras peças: a LEI (o que fica decidido) e o CONTRATO (o combinado entre as peças). O código vem a seguir.\n\nO QUE FICOU DECIDIDO, e vale você saber:\n\n· A fila É a própria lista de alunos, num estado novo ('aguardando'). Não nasce uma segunda lista. Quando você liberar, o estado vira 'ativo' e a pessoa entra na Caixa SEM eu mexer em mais nada — a Caixa já pergunta 'essa pessoa é aluna?', e a resposta é que muda.\n\n· O WhatsApp aparece SÓ no seu painel. Nenhuma outra peça do sistema recebe esse número, e ele nunca viaja em mensagem interna. Você escolheu isso quando eu perguntei.\n\n· O formulário será de UMA tela, não de três. Eu recomendei e você aceitou: são quatro campos (dois opcionais) e a pessoa acabou de fazer login — cada passo a mais é gente desistindo no meio.\n\n· Recusar exige motivo. Sem isso você nunca distingue 'ninguém olhou ainda' de 'foi negado', e a pessoa espera para sempre.\n\nA ARMADILHA QUE EU ACHEI ANTES DE CONSTRUIR, e que é o achado mais importante do dia: hoje o sistema pergunta 'essa pessoa tem matrícula?' e aceita QUALQUER resposta — sem olhar se está ativa, suspensa ou reembolsada. Se eu criasse a fila do jeito óbvio, quem entrasse nela entraria na Caixa NA MESMA HORA, que é o contrário do que você pediu. Isso não é defeito do que existe (até hoje todos os estados significavam 'comprou'); o defeito nasceria junto com a fila. Por isso ficou escrito na lei que o estado novo só pode existir depois que a pergunta de acesso aprender a excluí-lo, no mesmo pacote, com um teste que tenta burlar e precisa falhar.\n\nUMA COISA QUE VAI PEDIR UM PASSO SEU MAIS ADIANTE: o seu painel hoje só sabe conversar com a peça de login. Para ele mostrar a fila, vai precisar de uma credencial nova no servidor. Ainda não é agora — eu aviso quando chegar, com a linha pronta.",
+  autoridade: "mantenedor",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/290 (a lei — DECISAO-fila-de-liberacao.md) e https://github.com/abundanciabr/sitesdoreino/pull/291 (o contrato, com a label 'contrato') — os dois MERGED; Rito de Contrato do RITOS §3 cumprido com o mantenedor presente, com as duas autorizações (abrir o contrato congelado; privacidade do WhatsApp) perguntadas e respondidas nominalmente nesta sessão; conferido por assertiva que o enum de status da porta que decide acesso continua [ativa, suspensa, reembolsada]",
+  verificado_em: "2026-08-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "comunidade",
+  vence_em_dias: null
+});})();
