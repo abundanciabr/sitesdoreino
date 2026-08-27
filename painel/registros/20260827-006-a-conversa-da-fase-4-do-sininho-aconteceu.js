@@ -1,0 +1,15 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260827-006-a-conversa-da-fase-4-do-sininho-aconteceu",
+  tipo: "decisao",
+  quando: "2026-08-27",
+  titulo: "A conversa da Fase 4 do sininho aconteceu — você decidiu quatro coisas, e a porta de consulta já é lei",
+  detalhe: "Você pediu um plano faseado para terminar o sininho, e quando chegou na etapa que precisava de você — a Fase 4, o site perguntando 'quantos avisos você tem' — escolheu fazer a conversa ali mesmo, na hora, em vez de esperar. Quatro escolhas, todas já viradas em lei e em código:\n\n1) O SINO MOSTRA O NÚMERO EXATO, estilo Facebook (com \"99+\" na exibição quando passar de 99 — o dado guardado continua exato).\n\n2) SE A CAIXA DE AVISOS CAIR, A TELA DE AVISOS DA CAIXA AVISA — uma frase simples, nunca uma lista vazia disfarçando a falha. O sino, em qualquer outra página, continua escondendo-se em silêncio quando isso acontece (são papéis diferentes: uma página inteira não pode esperar por um sino; a tela de avisos É a função daquela página).\n\n3) \"MARCAR TUDO COMO LIDO\" ENTRA JÁ — é barato e útil assim que a lista existir. \"SILENCIAR UM ASSUNTO\" ESPERA — hoje só existe um assunto de aviso (a Caixa), e silenciar o único que existe não muda nada na prática. Fica no mapa, não descartado.\n\n4) O E-MAIL CONTINUA FORA — sem decisão nova, a porta que vocês fecharam em 23/08 (o e-mail do aluno numa linha só, sem circular) segue fechada. Isso não é corte: o sino e a Caixa funcionam completos sem e-mail nenhum.\n\nO QUE JÁ ESTÁ NO AR: a porta de consulta da caixa central de avisos — três rotas (contagem, lista paginada, marcar tudo como lido), servindo tanto o futuro sino do site quanto a própria tela de avisos da Caixa.\n\nUM ACHADO NO CAMINHO: o próprio portão de qualidade do projeto me ensinou, ao vivo, que — diferente do que a documentação de contratos sugeria — um contrato novo deste tipo (HTTP, não evento) não é só o arquivo do contrato: o manifesto que declara a célula como 'com contrato' tem de mudar no MESMO PR, ou o portão reprova a divergência entre o que está declarado e o que existe. Corrigido e documentado para a próxima vez.\n\nO QUE VEM AGORA, tudo trabalho de robô: construir a porta de verdade dentro da caixa central (hoje ela só tem o desenho, ainda não responde nada), e depois os dois consumidores — a tela de avisos da Caixa e o sino ao lado do seu nome em qualquer página.",
+  autoridade: "mantenedor",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/274 — MERGED, contrato + manifesto, label 'contrato'; https://github.com/abundanciabr/sitesdoreino/pull/275 — MERGED, a lei em docs/decisoes/DECISAO-fase-4-do-sininho.md e o mapa-mestre atualizado; as quatro escolhas respondidas por você nesta conversa via pergunta estruturada, com recomendação marcada em cada uma",
+  verificado_em: "2026-08-27",
+  precisa_do_dono: false,
+  responde_a: "20260826-034-rumo-comunidade-os-proximos-degraus-do-sininho",
+  gravidade: "verde",
+  frente: "comunidade",
+  vence_em_dias: null
+});})();
