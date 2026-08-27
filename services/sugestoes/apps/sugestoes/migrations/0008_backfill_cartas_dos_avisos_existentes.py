@@ -27,8 +27,11 @@ continuar válidas mesmo depois que o código "de verdade" mudar de forma;
 importar uma função viva de dentro de uma migration quebraria essa garantia
 no dia em que `eventos.py` mudasse de assinatura. A duplicação de forma
 entre os dois é consciente e aceita — é o preço de a migration ser uma
-fotografia congelada (o mesmo raciocínio de `armadilhas/056` para duplicação
-deliberada).
+fotografia congelada. Não há guarda de paridade comparando os dois formatos
+(despacho permitiu deixar de fora se o orçamento de arquivos apertasse, e
+apertou): se `eventos.py` mudar a forma do payload de `notificacao.devida`,
+esta migration não acompanha sozinha — é revisão manual de quem mudar aquele
+arquivo, e vale um comentário aqui para quem for fazer isso.
 
 **Idempotência — obrigatória, e é o que permite esta migration rodar de novo
 sem medo.** `event_id` é a chave de dedup de quem recebe (contrato

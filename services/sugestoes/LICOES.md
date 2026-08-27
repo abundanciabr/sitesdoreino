@@ -39,8 +39,11 @@ exatamente esses. Importar a função "de verdade" pouparia duplicação de form
 hoje e quebraria uma garantia que migrations existem para dar: continuar
 válidas mesmo depois que o código vivo mudar de assinatura. A duplicação
 entre a migration e `eventos.py` é consciente — é o preço de a migration ser
-uma fotografia congelada (mesmo raciocínio da `armadilhas/056` para
-duplicação deliberada).
+uma fotografia congelada. Não ganhou guarda de paridade comparando os dois
+formatos (o despacho permitia deixar de fora sob aperto de orçamento, e
+apertou): quem mudar a forma do payload de `notificacao.devida` em
+`eventos.py` precisa lembrar, por revisão manual, que esta migration não
+acompanha sozinha.
 
 **3. `ator_id` nasce `None` SEMPRE, e não é aproximação — é o que o dado
 permite.** O `Aviso` desta célula é a "cópia do aluno" (ver a docstring do
