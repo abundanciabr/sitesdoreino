@@ -262,6 +262,50 @@ primeira oportunidade de violá-la.
   10 consultas para 5 destinatários viram 46 para 41).
 - **Célula dona:** sugestoes
 
+### [INV-NOT1] A Caixa Central Escreve UMA Linha por Carta, e o Contador Anda Junto
+- **O quê:** cada `notificacao.devida` que chega ao fio vira **uma** linha em
+  `Notificacao` — a mesma carta reentregue não vira duas — e o
+  `ContadorDeNaoLidos` da pessoa é somado na **mesma transação** da linha. Ler o
+  contador custa o mesmo com 1 e com 50 avisos.
+- **Por quê:** o fio entrega **pelo menos uma vez** por desenho, então sem dedup
+  a pessoa veria o mesmo aviso duas, três vezes e o número no sino subiria
+  sozinho — o defeito mais visível que uma caixa de notificações pode ter, e o
+  que nunca vira chamado de suporte: só corrói a confiança de quem lê. E o
+  contador é uma **cópia**: existe porque o sino aparece em TODA página e um
+  `COUNT(*)` numa tabela que só cresce fica lento exatamente quando o produto
+  der certo (`DECISAO-notificacoes` §5.2) — mas toda cópia pode divergir, e uma
+  atualizada fora da transação diverge no primeiro erro de rede e nunca mais
+  volta sozinha ao lugar.
+- **Teste-Guarda:**
+  `services/notificacoes/tests/test_inv_contador_bate_com_a_tabela.py` (a
+  igualdade contra o `COUNT(*)` que ele substitui, o isolamento entre pessoas, o
+  custo O(1) medido com 1 e com 50, e a transação única provada sabotando o
+  contador) e
+  `services/notificacoes/tests/test_inv_carta_entregue_duas_vezes_vira_uma_linha.py`
+  (a reentrega escreve uma linha só e soma uma vez; duas cartas DIFERENTES da
+  mesma mudança viram dois avisos — a contraprova de um dedup errado por fato; e
+  o handler que falha no meio não deixa a carta marcada como vista).
+- **Célula dona:** notificacoes
+
+### [INV-NOT2] O Que a Caixa Consome é Exatamente o Que o Contrato Promete
+- **O quê:** o envelope que a célula aceita do fio valida contra
+  `contracts/eventos/notificacao.devida.v1.json`, o schema **lido do arquivo**;
+  todo campo que o contrato promete é guardado; `ator_id` ausente vira `NULL`
+  (uma só forma de "não sei"); e e-mail não entra — nem no `data`, nem de carona
+  nos `parametros`.
+- **Por quê:** a `sugestoes` já prova que o que ela PUBLICA casa com o contrato.
+  Um contrato provado só na origem garante que a mensagem sai certa e **não diz
+  nada** sobre o consumidor ter entendido os campos que ela traz — é a lição do
+  elo EVO-40: escada testada só por fora prova o andar de cima e mente sobre os
+  de baixo. Campo prometido e ignorado é campo que some sem ninguém notar. E o
+  e-mail vive numa linha só, dentro da Caixa (`DECISAO-EVO-01` §3): a trava é do
+  contrato, e este guarda prova que ela morde do lado de cá também.
+- **Teste-Guarda:**
+  `services/notificacoes/tests/test_inv_carta_casa_com_o_contrato.py` — inclusive
+  o guarda de que o arquivo do contrato EXISTE, sem o qual a suíte inteira
+  passaria no vazio [INV-CI01].
+- **Célula dona:** notificacoes
+
 ---
 
 ## Invariantes da própria CI

@@ -1,0 +1,31 @@
+# =============================================================================
+# DEV DA CÉLULA, ISOLADA: só ela, seu banco, seu redis e os MOCKS das dependências.
+# O agente sobe ISTO — nunca a plataforma inteira. As outras células nem existem aqui.
+# =============================================================================
+name: dev-celula
+services:
+  app:
+    build: .
+    env_file: .env.dev
+    ports: ["8000:8000"]
+    volumes: [".:/app"]
+    depends_on: [db, redis]
+    command: sh -c "python manage.py migrate --noinput && uvicorn config.asgi:application --host 0.0.0.0 --port 8000 --reload"
+
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: dev_db
+    ports: ["5432:5432"]
+
+  redis:
+    image: redis:7
+    ports: ["6379:6379"]
+
+  # A `notificacoes` consome `notificacao.devida.v1` do fio e NÃO chama a API de
+  # ninguém — nem para saber quem é a pessoa: a carta já chega endereçada pelo id
+  # da plataforma. Por isso não há mock de dependência aqui, e a ausência é o
+  # desenho, não uma pendência: uma célula que precisasse perguntar algo no meio
+  # do caminho do aviso seria a Saída C recusada na DECISAO-notificacoes §2.

@@ -45,6 +45,7 @@ on:
           - identidade
           - leads
           - mensageria
+          - notificacoes
           - pagamentos
           - quiz
           - sugestoes
