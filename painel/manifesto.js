@@ -74,7 +74,8 @@ var MANIFESTO = [
   "20260827-007-rumo-comunidade-a-porta-de-avisos-ganha-corpo",
   "20260827-008-um-mapa-do-projeto-escrito-para-robos-auditarem",
   "20260827-009-o-site-agora-abre-em-portugues",
-  "20260827-010-os-avisos-vao-respeitar-de-qual-site-vieram"
+  "20260827-010-os-avisos-vao-respeitar-de-qual-site-vieram",
+  "20260827-011-a-porta-de-avisos-ganhou-corpo"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
