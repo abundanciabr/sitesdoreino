@@ -56,6 +56,12 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    # Espelho do APPEND_SLASH: `/entrar/google/` deixa de ser 404 e leva a
+    # `/entrar/google`. Vai por ÚLTIMO de propósito — ele só age sobre resposta
+    # que JÁ saiu 404, e daqui enxerga o 404 de qualquer um acima dele. Como o
+    # CSRF recusa com 403 (não 404), os dois não se cruzam. Regra e restrições
+    # na docstring do módulo.
+    "apps.core.barra_no_final.BarraNoFinal",
 ]
 
 # ---------------------------------------------------------------------------
