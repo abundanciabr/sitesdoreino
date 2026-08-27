@@ -64,6 +64,11 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    # Espelho do APPEND_SLASH: `/avisos/` deixa de ser 404 e leva a `/avisos`.
+    # Vai por ÚLTIMO de propósito — ele só age sobre resposta que JÁ saiu 404, e
+    # daqui enxerga o 404 de qualquer um acima dele. Regra e restrições (302 e
+    # não 301, só GET/HEAD, nunca rouba rota existente) na docstring do módulo.
+    "apps.core.barra_no_final.BarraNoFinal",
 ]
 
 # ---------------------------------------------------------------------------
