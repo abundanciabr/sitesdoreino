@@ -96,5 +96,6 @@ var MANIFESTO = [
   "20260827-029-a-trava-de-numero-repetido-ja-existia",
   "20260827-030-uma-virgula-num-contrato-criava-uma-regra-fantasma",
   "20260827-031-o-painel-quebrava-por-excesso-de-pedidos",
-  "20260827-032-o-sininho-esta-no-ar-de-ponta-a-ponta-confirmado-por-voce"
+  "20260827-032-o-sininho-esta-no-ar-de-ponta-a-ponta-confirmado-por-voce",
+  "20260827-033-o-dono-confirmou-o-painel-abriu-normal"
 ];
