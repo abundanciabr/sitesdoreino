@@ -14,8 +14,14 @@ A IA pode reescrever a vitrine 100 vezes sem encostar em dinheiro.
 
 ## Comunicação
 - **Expõe:** páginas públicas (rota `/` no gateway)
-- **Consome:** catalogo (dados de oferta, server-side), leads (POST de captura) — via mock `prism` em dev
-- **Auth:** Bearer dedicado (`TOKEN_CATALOGO`, `TOKEN_LEADS`)
+- **Consome:** catalogo (dados de oferta, server-side) e leads (POST de
+  captura) — via mock `prism` em dev. Também identidade (`GET /interno/sessao`,
+  `getSession`) para reconhecer o visitante, e notificacoes (`GET /resumo`,
+  `obterResumo`) para o contador do sino — as duas fail-open por desenho: fora
+  do ar, a página abre normal sem sessão/sem sino, nunca cai
+  (`DECISAO-onde-mora-a-sessao.md`, `DECISAO-fase-4-do-sininho.md`)
+- **Auth:** Bearer dedicado (`TOKEN_CATALOGO`, `TOKEN_LEADS`,
+  `IDENTIDADE_API_TOKEN`, `NOTIFICACOES_API_TOKEN`)
 
 ## Invariantes desta célula
 - **Multissítio (INV-P11):** o site vem do Host (middleware CONV-SITE, cache 60s);
