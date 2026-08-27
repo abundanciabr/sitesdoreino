@@ -100,7 +100,11 @@ def raiz_do_checkout(caminho: Path) -> tuple[Path, bool] | None:
 
 
 def _resolver(caminho_cru: str, cwd: str) -> Path:
-    p = Path(caminho_cru)
+    # Contrabarra vira barra ANTES do pathlib: em POSIX ela não é separador, e
+    # um `..\wt-celula` vindo de comando PowerShell ficaria grudado num único
+    # componente — o caminho nunca sairia da pasta e a decisão sairia errada
+    # (pego no runner Linux do CI, com a suíte verde no Windows).
+    p = Path(caminho_cru.replace("\\", "/"))
     return p if p.is_absolute() else Path(cwd) / p
 
 
