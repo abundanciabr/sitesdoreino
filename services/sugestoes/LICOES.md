@@ -61,7 +61,7 @@ tentasse AGRUPAR por ele (nenhum existe hoje) leria "cada carta é um evento
 isolado", o que é falso para o passado mas inofensivo, porque nada consome
 esse agrupamento ainda.
 
-**4. `occurred_at` quase saiu errado, e a pegadinha virou `armadilhas/138`
+**4. `occurred_at` quase saiu errado, e a pegadinha virou `armadilhas/139`
 porque não é só desta célula.** A missão pedia para preservar o `criado_em`
 do `Aviso` no `occurred_at` da carta — mas os dois campos são
 `auto_now_add=True`, e `bulk_create` NÃO os deixa incólumes só porque pula
