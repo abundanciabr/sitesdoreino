@@ -59,6 +59,11 @@ from _nucleo import (  # noqa: E402
     raiz_do_repo,
     recortar,
 )
+from divida_do_livro import (  # noqa: E402
+    como_pagar,
+    divida,
+    so_toca_o_livro,
+)
 
 # Checks que PODEM aparecer como "skipped" sem que isso seja um problema — e o
 # porquê de cada um. Lista fechada e declarada: qualquer outro check pulado é
@@ -423,6 +428,47 @@ def checar_labels(pr: dict[str, Any]) -> list[Resultado]:
     return resultados
 
 
+def checar_divida_do_livro(raiz: Path, pr: dict[str, Any]) -> Resultado:
+    """A porta do merge cobra o livro — a regra e o porquê em `ci/divida_do_livro.py`.
+
+    Esta catraca existia com um buraco no meio: ela conferia tudo sobre o PR e,
+    no fim, **imprimia um lembrete** pedindo o registro. Lembrete não é
+    mecanismo — ninguém falha por ignorá-lo, e o painel do dono ficava mostrando
+    um projeto parado sem nada indicando que faltava informação.
+
+    Agora o lembrete tem dentes: com dívida no livro, o próximo merge não sai.
+    Note ONDE ela morde — no merge SEGUINTE, não no que gerou a dívida. É a
+    única forma que respeita a ordem real dos fatos: a evidência de um registro
+    é o PR MERGEADO, então o registro só pode nascer depois do merge. Cobrar
+    antes seria exigir prova de algo que ainda não aconteceu, que é exatamente o
+    falso-verde que este repositório inteiro combate.
+    """
+    arquivos = [f["path"] for f in pr.get("files") or []]
+    if so_toca_o_livro(arquivos):
+        return Resultado(
+            "dívida do livro",
+            Estado.PASS,
+            "isento: este PR é o registro",
+        )
+    try:
+        devedores = divida(raiz)
+    except Exception as erro:  # rede, gh ausente, JSON estranho
+        return Resultado(
+            "dívida do livro",
+            Estado.ERROR,
+            "não consegui medir a dívida do livro",
+            f"{erro}\n\nNão consegui medir NÃO é 'está em dia' (INV-CI01).",
+        )
+    if not devedores:
+        return Resultado("dívida do livro", Estado.PASS, "livro em dia")
+    return Resultado(
+        "dívida do livro",
+        Estado.FAIL,
+        f"{len(devedores)} merge(s) sem registro",
+        como_pagar(devedores),
+    )
+
+
 def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str, Any]]:
     relatorio = Relatorio(f"MERGE GUARDADO — PR #{numero}")
     try:
@@ -438,6 +484,7 @@ def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str
         relatorio.registrar(r)
     for r in checar_labels(pr):
         relatorio.registrar(r)
+    relatorio.registrar(checar_divida_do_livro(raiz_real, pr))
     return relatorio, pr
 
 
