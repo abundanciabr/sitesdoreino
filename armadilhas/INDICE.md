@@ -156,5 +156,7 @@
 | [128](128-rumo-escrito-a-partir-do-painel-velho-manda-refazer.md) | Rumo escrito a partir do painel velho manda refazer o que já está pronto — o livro de ocorrências tem registros de tipo `rumo` — "o próximo passo desta frente é X" — e, ao despachar X, o agente descobre no código que… | — |
 | [129](129-guarda-que-usa-o-objeto-medido-como-regua-nao-mede.md) | Guarda que usa o objeto medido como régua não mede nada — existe um teste-guarda, ele passa, o documento diz que a garantia está "corrigida com guarda que morde" — e sabotar a coisa guardada **não deixa nada vermelho**.… | — |
 | [130](130-mergeable-unknown-depois-de-um-merge-o-portao.md) | `mergeable=UNKNOWN` depois de um merge: o portão recusa, e ele está certo — numa janela de merge serial, `python ci/mergear.py <N> --confirmo <N>` devolve **ERROR** logo depois do merge anterior: | — |
+| [131](131-duble-com-forma-diferente-da-real-responde-a-outra.md) | Dublê com forma diferente da real responde a outra pergunta — e vira alarme falso — um guarda correto acusa uma violação que **não existe no código de produção**. Em 26/08/2026 foi o guarda de privacidade da Caixa… | — |
+| [132](132-o-guarda-de-fail-closed-que-nasceu-verde-sem-encenar.md) | O guarda de fail-closed que nasceu verde sem encenar falha nenhuma — você escreve o guarda de um caminho de recusa, ele passa de primeira, e você segue em frente satisfeito. Ele nunca provou nada: a falha que ele… | — |
 
-**119 entradas.**
+**121 entradas.**
