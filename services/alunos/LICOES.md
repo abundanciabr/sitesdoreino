@@ -194,3 +194,92 @@ Paulo, dia 24 em Chicago): offset de `timezone.localtime()`, dia renderizado por
 agosto (o Brasil não tem horário de verão desde 2019 — um fuso com DST reprova mesmo
 acertando um mês). O `Engine()` avulso existe porque a célula não tem `TEMPLATES`: dá
 para exercitar a conversão do template sem inventar tela nem mexer no settings.
+
+## A fila de liberação: por que ela é a própria `Matricula`, e o que isso obriga
+
+**Onde:** `apps/matriculas/models.py` (status `aguardando`/`recusada` + campos da
+fila), `apps/matriculas/services.py` (`matriculas_que_valem`, `entrar_na_fila`,
+`decidir_na_fila`), `apps/core/api.py` (as três portas `/pre-matriculas`).
+**Lei:** `docs/decisoes/DECISAO-fila-de-liberacao.md` (27/08/2026).
+
+**A armadilha que a decisão criou, e que se fechou no mesmo PR.** Até este PR,
+`GET /alunos/{email}/matriculas` fazia `Matricula.objects.filter(email=email)` —
+**sem filtro de status** — e a Caixa de Sugestões faz `bool(...)` de qualquer
+linha devolvida. Com três status que significavam todos "comprou", devolver tudo
+estava certo; o defeito nasceria junto com `aguardando`. Uma linha na fila daria
+acesso à Caixa **na hora**, que é o oposto exato do que a fila quer. Guarda:
+`tests/test_fila_de_liberacao.py::test_matricula_aguardando_nao_abre_a_caixa` —
+com a consulta antiga ele acusa `assert 200 == 404`.
+
+**Lista de PERMISSÃO, não de exclusão.** O despacho pedia "excluir `aguardando` e
+`recusada`". A consulta faz o contrário: `status__in=STATUS_QUE_VALEM`. A
+diferença só aparece no futuro — com exclusão, todo status inventado depois nasce
+**dando** acesso; com permissão, nasce sem, e alguém precisa decidir. O mecanismo
+que obriga a decisão é `test_status_novo_nasce_sem_acesso`: os dois baldes
+precisam cobrir exatamente `STATUS_CHOICES`, então um sexto status reprova a
+suíte até ser classificado.
+
+**`STATUS_*` são globais do módulo, com apelidos na classe.** O corpo de
+`class Meta` não enxerga os atributos da classe que o contém (escopo de classe
+não é herdado por classe aninhada), e a `UniqueConstraint` precisa da tupla na
+`condition`. Sem as globais, a condição repetiria as strings — duas fontes para
+o mesmo fato, exatamente o que a constraint existe para evitar.
+
+**`pre:<uuid>` marca a proveniência para sempre.** Quem entra na fila não pagou,
+então não há pedido. O prefixo sobrevive à liberação (a linha vira `ativa` e
+continua `pre:`), e é por ele que `POST /pre-matriculas/{id}/decisao` sabe que
+está decidindo sobre a fila: uma matrícula **paga** responde 404 ali, de
+propósito — aquela porta não é caminho para mexer no status de quem comprou. A
+guarda de que pedido real não pode começar com `pre:` mora em `matricular()`,
+que é a única porta por onde entra `order_id` de fora (evento + reprocesso).
+
+**O que a guarda do prefixo NÃO alcança:** ela protege a borda, não a tabela. Um
+`Matricula.objects.create(order_id="pre:...")` escrito dentro da célula passa —
+não há como expressar "esta linha nasceu na fila" como constraint de linha, já
+que após a liberação um `pre:` legítimo é `ativa`. Se algum dia isso importar, o
+caminho é um campo `origem` explícito, não uma constraint mais esperta.
+
+**Idempotência com mecanismo:** `UniqueConstraint(site_id, email)` parcial (só
+nos status da fila). O "já existe?" do serviço sozinho é atravessável por duas
+requisições simultâneas da mesma pessoa; a constraint é quem decide, e o
+`except IntegrityError` (sob savepoint — `armadilhas/027`) atualiza a linha do
+vencedor. Parcial porque a mesma pessoa PODE ter várias matrículas pagas no
+mesmo site — um curso cada.
+
+**O 409 da fila usa a MESMA consulta do acesso.** `entrar_na_fila` recusa quem
+já tem matrícula que vale chamando `matriculas_que_valem()`, não uma regra
+paralela. Se as duas divergissem, existiria gente recusada na fila por "você já
+tem acesso" que a Caixa não deixa entrar — o pior desfecho possível.
+
+**O e-mail é normalizado (`strip().lower()`) ao entrar na fila.** A Caixa
+pergunta por `email.strip().lower()`; uma linha gravada com maiúsculas seria
+liberada pelo mantenedor e continuaria invisível para ela.
+**Consequência sabida, fora do escopo deste PR:** o caminho de **pagamento** não
+normaliza — `matricular()` grava o e-mail como o evento mandou. Uma matrícula
+paga com maiúsculas já hoje é invisível para a Caixa. É bug pré-existente e vale
+um despacho próprio (backfill + normalização nas duas pontas).
+
+**`criada_em` da fila é o `enrolled_at` que já existia.** Um segundo carimbo de
+"quando esta linha nasceu" seriam dois lugares para o mesmo fato. Os opcionais
+(`turma`, `motivo_recusa`) moram como `""` no banco (convenção do Django para
+CharField) e viram `null` na borda, que é o que o contrato declara.
+
+**`status` fora do enum cai no padrão, em vez de erro ou lista vazia.** A direção
+importa: esconder a fila faria o painel dizer "ninguém esperando" para um
+mantenedor que tem gente esperando há uma semana. Mostrar demais para quem já
+está autenticado no admin não custa nada; mostrar de menos custa a pessoa que
+desistiu de esperar.
+
+## O `openapi_extra` das portas novas foi GERADO do contrato, não digitado
+
+Três operações com descrições longas em bloco (`|` do YAML) não sobrevivem a
+transcrição à mão: um espaço ou uma quebra de linha a menos e o freeze acusa
+divergência num texto que o olho lê como igual. O caminho que funcionou foi um
+script de uso único que lê `contracts/alunos.openapi.yaml` e imprime os dicts
+como literais Python — colados no arquivo e versionados como código estático.
+O freeze continua sendo prova independente: ele compara o documento **exportado
+pelo django-ninja** com o congelado, e o exportador não lê o contrato.
+
+**Não use `pprint` para isso:** ele quebra string longa em pedaços concatenados
+(`"OPCIONAL " "— " "pista " ...`) e o resultado é ilegível. Um serializador de
+seis linhas que emite `repr()` por nó e nunca parte string resolve.
