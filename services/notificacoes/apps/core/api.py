@@ -293,6 +293,107 @@ def listar_avisos(request):
 
 
 # ---------------------------------------------------------------------------
+# POST /marcar-lida (uma só — distinta de /marcar-lidas, todas)
+# ---------------------------------------------------------------------------
+
+_MARCAR_LIDA_OPENAPI = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["destinatario_id", "site_id", "id"],
+                    "properties": {
+                        "destinatario_id": {"type": "string"},
+                        "site_id": {"type": "string"},
+                        "id": {
+                            "type": "string",
+                            "description": (
+                                "O valor opaco de `GET /avisos` (campo `id` "
+                                "de um item da lista)."
+                            ),
+                        },
+                    },
+                }
+            }
+        },
+    },
+    "responses": {
+        200: {
+            "description": (
+                "Marcado agora, ou já estava lido — os dois casos devolvem "
+                "200 (idempotente)"
+            ),
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["ja_estava_lido"],
+                        "properties": {"ja_estava_lido": {"type": "boolean"}},
+                    }
+                }
+            },
+        },
+        404: {
+            "description": "id inexistente, ou não pertence a este destinatario_id/site_id"
+        },
+        422: {"description": "campo obrigatório ausente ou inválido"},
+    },
+}
+
+
+@router.post(
+    "/marcar-lida",
+    operation_id="marcarUmaComoLida",
+    summary=(
+        "Marca UM aviso específico como lido — idempotente (marcar duas "
+        "vezes é marcar uma)"
+    ),
+    description=(
+        "A tela de origem (a Caixa) já tinha esta granularidade — marcar como\n"
+        "lido ao abrir o detalhe de UM aviso, sem tocar nos outros. A porta de\n"
+        "consulta não pode perder isso na migração. `id` é o valor opaco\n"
+        "devolvido por `GET /avisos` (nunca um número puro — ver a descrição\n"
+        "do campo `id` lá).\n"
+        "\n"
+        "404, nunca 403, quando `id` não existe ou não pertence a este\n"
+        "`destinatario_id`/`site_id`: confirmar que um id pertence a outra\n"
+        "pessoa vazaria a existência do aviso alheio a quem só chutou um\n"
+        "valor.\n"
+    ),
+    openapi_extra=_MARCAR_LIDA_OPENAPI,
+)
+def marcar_lida(request):
+    try:
+        payload = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        raise HttpError(422, "corpo inválido: não é JSON")
+    if not isinstance(payload, dict):
+        payload = {}
+    destinatario_id = (payload.get("destinatario_id") or "").strip()
+    site_id = (payload.get("site_id") or "").strip()
+    id_bruto = (payload.get("id") or "").strip()
+    if not destinatario_id:
+        raise HttpError(422, "destinatario_id ausente ou inválido")
+    if not site_id:
+        raise HttpError(422, "site_id ausente ou inválido")
+    if not id_bruto:
+        raise HttpError(422, "id ausente ou inválido")
+    try:
+        ja_estava_lido = services.marcar_uma_como_lida(
+            site_id=site_id, destinatario_id=destinatario_id, id_bruto=id_bruto
+        )
+    except services.AvisoNaoEncontrado:
+        raise HttpError(
+            404, "id inexistente, ou não pertence a este destinatario_id/site_id"
+        )
+    return JsonResponse({"ja_estava_lido": ja_estava_lido}, status=200)
+
+
+# ---------------------------------------------------------------------------
 # POST /marcar-lidas
 # ---------------------------------------------------------------------------
 

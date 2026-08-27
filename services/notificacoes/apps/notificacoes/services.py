@@ -1,12 +1,15 @@
 """As operações que ESCREVEM nesta célula: guardar uma carta, arquivar o que já
-foi lido, e (desde a Fase 4 do sininho) marcar tudo como lido de uma vez.
+foi lido, marcar tudo como lido de uma vez, e (desde `POST /marcar-lida`)
+marcar UM aviso específico como lido.
 
 O consumidor do fio traduz o envelope e chama `guardar()`; a porta HTTP
-(`apps/core/api.py`) chama `marcar_todas_como_lidas()`. Uma porta de escrita
-só é o que torna a igualdade "contador = linhas não lidas" verificável num
-lugar em vez de em cinco. As LEITURAS (`/resumo`, `/avisos`) moram em
-`consultas.py` — não carregam o mesmo risco de invariante transacional, e
-misturá-las aqui alargaria o que este arquivo precisa provar.
+(`apps/core/api.py`) chama `marcar_todas_como_lidas()`/`marcar_uma_como_lida()`.
+Uma porta de escrita só é o que torna a igualdade "contador = linhas não
+lidas" verificável num lugar em vez de em cinco. As LEITURAS (`/resumo`,
+`/avisos`) moram em `consultas.py` — não carregam o mesmo risco de invariante
+transacional, e misturá-las aqui alargaria o que este arquivo precisa provar.
+`consultas.py::resolver_id` também é usado aqui (achar a linha a partir do
+`id` opaco é leitura; marcá-la como lida é escrita — a fronteira de sempre).
 """
 
 from django.conf import settings
@@ -15,6 +18,7 @@ from django.db.models import F
 from django.db.models.functions import Greatest
 from django.utils import timezone
 
+from .consultas import resolver_id
 from .models import ContadorDeNaoLidos, Notificacao, NotificacaoArquivada
 
 
@@ -142,3 +146,77 @@ def marcar_todas_como_lidas(*, site_id: str, destinatario_id: str) -> int:
         ).update(nao_lidos=Greatest(F("nao_lidos") - marcados, 0))
 
     return marcados
+
+
+class AvisoNaoEncontrado(Exception):
+    """O `id` não existe, ou não pertence a este `(site_id, destinatario_id)`.
+
+    As duas causas viram a MESMA exceção de propósito: `apps/core/api.py`
+    traduz isto para 404 sem olhar qual dos dois motivos foi. Confirmar que
+    um `id` existe mas é de outra pessoa seria 403 — e 403 é a fuga de
+    informação que o contrato (`POST /marcar-lida`) recusa nominalmente:
+    "confirmar que um id pertence a outra pessoa vazaria a existência do
+    aviso alheio a quem só chutou um valor".
+    """
+
+
+@transaction.atomic
+def marcar_uma_como_lida(*, site_id: str, destinatario_id: str, id_bruto: str) -> bool:
+    """`POST /marcar-lida` (a tela de origem já tinha esta granularidade):
+    marca UM aviso como lido. Devolve `ja_estava_lido` — `True` quando a
+    chamada não mudou nada (idempotente).
+
+    Espelha `services/sugestoes/apps/core/avisos.py::marcar_lido`, que é a
+    funcionalidade que a migração da tela para esta porta não pode perder:
+    marcar como lido ao abrir o detalhe de UM aviso, sem tocar nos outros.
+
+    **Atualização condicional, não "ler depois decidir depois gravar".** Um
+    `.filter(..., lido_em__isnull=True).update(...)` é UMA instrução SQL
+    atômica que só afeta a linha se ela ainda estava não lida — o Postgres
+    serializa. A alternativa óbvia (`get()`, checar `if lido_em is None` em
+    Python, `save()`) tem uma janela de corrida: dois cliques na mesma linha,
+    quase simultâneos, poderiam os dois ler `lido_em is None`, os dois
+    marcarem, e os dois descontarem o contador — descontando 2 de uma
+    transição que só aconteceu 1 vez. `UPDATE ... WHERE lido_em IS NULL`
+    devolve **quantas linhas mudou** (0 ou 1, já que o filtro é por `pk`), e
+    só quem realmente mudou a linha desconta o contador.
+
+    Quando `marcado_agora` vem 0, uma segunda consulta (barata: filtra por
+    `pk` + `site_id` + `destinatario_id`, o mesmo recorte de posse) decide
+    entre "já estava lido" (`exists()` verdadeiro) e "não existe/não é seu"
+    (`exists()` falso) — as únicas informações que o contrato permite
+    devolver, e é por isso que as duas causas de "não existe" se fundem numa
+    exceção só.
+
+    **`NotificacaoArquivada` também é um alvo válido** — mas `lido_em` é
+    `NOT NULL` nesse model (`models.py`): só chega lá via `arquivar_lidas()`,
+    que só arquiva o que JÁ tem `lido_em` preenchido. Por isso, marcar como
+    lida uma linha arquivada é sempre `ja_estava_lido=True` — o `UPDATE ...
+    WHERE lido_em IS NULL` nunca afeta uma linha arquivada, não porque o
+    código tenha um `if` a mais aqui, mas porque a COLUNA não aceita `NULL`
+    nesse model. `tests/test_api.py` chama esta função com o `id` de uma
+    arquivada para provar que isso continua verdade.
+    """
+    resolvido = resolver_id(id_bruto)
+    if resolvido is None:
+        raise AvisoNaoEncontrado(id_bruto)
+    modelo, pk = resolvido
+
+    agora = timezone.now()
+    marcado_agora = modelo.objects.filter(
+        pk=pk, site_id=site_id, destinatario_id=destinatario_id, lido_em__isnull=True
+    ).update(lido_em=agora)
+
+    if marcado_agora:
+        if modelo is Notificacao:
+            ContadorDeNaoLidos.objects.filter(
+                site_id=site_id, destinatario_id=destinatario_id
+            ).update(nao_lidos=Greatest(F("nao_lidos") - 1, 0))
+        return False
+
+    existe = modelo.objects.filter(
+        pk=pk, site_id=site_id, destinatario_id=destinatario_id
+    ).exists()
+    if not existe:
+        raise AvisoNaoEncontrado(id_bruto)
+    return True
