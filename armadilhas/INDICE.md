@@ -165,5 +165,6 @@
 | [137](137-limpar-os-proprios-orfaos-depois-do-merge-apaga.md) | Limpar os próprios "órfãos" depois do merge apaga arquivo RASTREADO e suja o espelho — você migrou para worktree no meio do trabalho (`armadilhas/135`) e deixou arquivos não rastreados para trás no clone principal.… | — |
 | [138](138-bom-no-stdin-vira-jsondecodeerror-no-windows-local.md) | `test_stdin_com_bom_utf8_nao_vira_recusa` reprova local no Windows, mesmo sem nenhuma mudança sua — rodando `python ci/ci.py --apenas testador` (ou `pytest ci/tests/test_muralha_pasta_compartilhada.py`) numa máquina… | — |
 | [139](139-bulk-create-tambem-dispara-pre-save-e-sobrescreve.md) | `bulk_create` também dispara `pre_save()` — e sobrescreve `auto_now_add` em silêncio, mesmo atribuído no construtor — você monta uma lista de objetos com um campo `auto_now_add=True` deliberadamente atribuído a um valor… | — |
+| [140](140-dividadolivro-mente-com-checkout-atrasado.md) | `mergear.py --conferir` acusa dívida do livro já paga — quando o checkout está atrasado — `python ci/mergear.py <N> --conferir` reprova em "dívida do livro", listando um PR que você tem certeza de já ter sido contado… | — |
 
-**128 entradas.**
+**129 entradas.**
