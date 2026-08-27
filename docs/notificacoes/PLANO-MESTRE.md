@@ -17,6 +17,14 @@
 > perguntas da §7 (*"sim, sim e nascer só com a Caixa"*), e as respostas viraram lei em
 > **`docs/decisoes/DECISAO-notificacoes.md`**. A partir daqui este plano é o **mapa de
 > execução**; a lei é aquele documento. **Se os dois divergirem, a lei vence.**
+>
+> **ATUALIZAÇÃO 27/08/2026 — o pedido original está no ar, medido pelo mantenedor em
+> produção (print de tela: "Olá, Arameu 🔔 Sair").** Fases 0 a 6 fechadas — a última,
+> a Fase 4, num Rito conduzido em sessão de perguntas estruturadas que também
+> resolveu as duas primeiras perguntas da Fase 7 (`DECISAO-fase-4-do-sininho.md`).
+> Só a Fase 7 permanece deliberadamente aberta (silenciar assunto — sem um segundo
+> assunto para silenciar ainda; e-mail — porta fechada, sem decisão nova). §6 abaixo
+> tem o detalhe de cada fase; §10 tem o resumo.
 
 ---
 
@@ -276,7 +284,7 @@ pode cair porque a Caixa está reiniciando"*), e vale igual aqui.
 > resolver agora se você está lendo isto fora da Fase 5; é dívida
 > documentada, não esquecimento.
 
-### FASE 6 — A Caixa passa a publicar o leque inteiro
+### FASE 6 — A Caixa passa a publicar o leque inteiro · ✅ leque resolvido em 26/08/2026 (sem despacho próprio); aposentar o `Aviso` local segue em aberto
 
 Hoje o `sugestao.status-alterado` carrega só o autor — os votantes ficaram de fora **de
 propósito** ("lista sem teto num evento"). Para a caixa central avisar quem votou, ou o
@@ -284,8 +292,24 @@ evento cresce, ou a `sugestoes` publica um evento por interessado. **Decidir med
 não por gosto: um evento com 200 destinatários e 200 eventos de um destinatário têm
 custos diferentes no Redis e no consumidor.
 
-E aqui a Caixa **aposenta** o `Aviso` local em favor da caixa central (saída A da §3),
-com migração dos avisos existentes.
+**Achado na auditoria de fechamento (27/08/2026): a primeira metade já estava
+resolvida, de graça, por uma decisão de OUTRA fase.** A Escolha 1 do Rito de 26/08
+(`DECISAO-fase-2-do-sininho.md` §1 — "uma carta por pessoa, e o leque acontece na
+origem") já manda `emitir_cartas_de_notificacao()` publicar **uma carta por
+interessado**, reaproveitando o MESMO leque que `avisar_os_interessados()` (EVO-42)
+já calculava para o `Aviso` local — autor, quem votou e quem comentou, sem ressalva.
+Confirmado lendo `services/sugestoes/apps/core/moderacao.py`: os `destinatarios` de
+`emitir_cartas_de_notificacao()` vêm dos `Aviso` que ACABARAM de nascer na mesma
+transação, não só do autor. Este documento nunca foi atualizado para dizer isso — a
+pergunta "autor só, ou leque inteiro" desta Fase 6 já tinha resposta antes mesmo dela
+ser lida por um despacho.
+
+**O que continua em aberto: aposentar o `Aviso` local.** A Caixa hoje mantém as DUAS
+escritas (o `Aviso` local, transacional, E a carta para a caixa central) — de propósito,
+como rede de segurança durante a transição (`services/sugestoes/apps/core/avisos.py`,
+docstring de `_meus()`). Retirar a escrita local é uma mudança de invariante
+(`AvisoForaDaTransacao`, a garantia transacional do EVO-21/42) e merece despacho
+próprio, deliberado, não uma limpeza de passagem dentro de outra fase.
 
 ### FASE 7 — Preferências, e só então outros canais · **parcialmente respondida em 27/08/2026**
 
@@ -361,6 +385,22 @@ agente e cabem no ritmo dos lotes anteriores.
 A Fase 1 é pequena e destrava o resto — **e vale ser feita mesmo que ele decida contra a
 célula nova**, porque um id de pessoa que atravessa a plataforma é infraestrutura de
 qualquer caminho, inclusive o de deixar cada célula com a sua caixa.
+
+**Fechamento, 27/08/2026:** Fases 0–6 concluídas — o passo dele na VPS foi
+`infra/provisionar-porta-de-avisos.sh` (PR #318), medido por ele em produção (§ da
+atualização no topo). A Fase 7 fica deliberadamente aberta, sem prazo — ver a seção
+dela em §6.
+
+| Fase | O que é | Estado |
+|---|---|---|
+| 0 | Sessão de decisão | ✅ 25/08 |
+| 1 | O id que atravessa | ✅ 25/08 |
+| 2 | Rito: `ator_id` no envelope | ✅ 26/08 |
+| 3 | Gênese da `notificacoes` + avisos antigos | ✅ 26–27/08 |
+| 4 | Rito: o site pergunta | ✅ 27/08 |
+| 5 | O sino ao lado do nome | ✅ 27/08 |
+| 6 | Leque inteiro + aposentar o `Aviso` local | leque ✅ · aposentar em aberto |
+| 7 | Preferências e outros canais | aberta, sem prazo (por decisão) |
 
 ---
 
