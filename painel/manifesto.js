@@ -61,7 +61,8 @@ var MANIFESTO = [
   "20260826-040-a-licao-da-crase-que-corrompeu-uma-mensagem",
   "20260826-041-o-livro-passou-a-recusar-numero-repetido",
   "20260826-042-a-vps-recusou-o-robo-pela-quarta-vez-hoje",
-  "20260826-043-apaguei-tres-arquivos-do-projeto-por-engano"
+  "20260826-043-apaguei-tres-arquivos-do-projeto-por-engano",
+  "20260826-044-a-medicao-que-faltou-no-registro-anterior"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
