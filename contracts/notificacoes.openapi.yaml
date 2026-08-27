@@ -157,7 +157,7 @@ paths:
                 required: [ja_estava_lido]
                 properties:
                   ja_estava_lido: { type: boolean }
-        '404': { description: id inexistente, ou não pertence a este destinatario_id/site_id }
+        '404': { description: "id inexistente, ou não pertence a este destinatario_id/site_id" }
         '422': { description: campo obrigatório ausente ou inválido }
   /marcar-lidas:
     post:
