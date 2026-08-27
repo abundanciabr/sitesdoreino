@@ -38,6 +38,12 @@
   #placar.calmo{border-color:var(--green); background:linear-gradient(180deg,var(--green-dim),var(--panel));}
   #placar.aceso{border-color:var(--gold); background:linear-gradient(180deg,var(--gold-dim),var(--panel));}
   #placar b{font-family:'Space Grotesk',sans-serif;}
+  /* dívida do livro: some quando não há o que dizer (a ausência é a boa notícia) */
+  #divida{display:none; border-radius:var(--radius); padding:14px 20px; margin:-8px 0 18px; font-size:15px; line-height:1.6; border:1px solid var(--line); background:var(--panel);}
+  #divida.alerta{display:block; border-color:var(--red); background:linear-gradient(180deg,var(--red-dim),var(--panel));}
+  #divida.cego{display:block; border-color:var(--cinza); background:var(--cinza-dim); color:var(--text-2);}
+  #divida ul{margin:8px 0 0; padding-left:20px;}
+  #divida li{color:var(--text-2); font-size:14px;}
 
   /* abas — navegação por hash (persiste na URL; nada aqui finge gravar) */
   .abas{display:flex; gap:8px; margin:0 0 22px; flex-wrap:wrap;}
@@ -117,6 +123,7 @@
   <p class="sub">Este painel <b>não guarda nenhum dado próprio</b> — tudo que você vê é calculado, na hora em que a página abre, dos registros em <code>painel/registros/</code> (protegidos pelo Git) e de medições feitas <b>agora, do seu navegador</b>. Se dois números discordarem, é defeito — reporte numa sessão.</p>
 
   <div id="placar"></div>
+  <div id="divida"></div>
 
   <nav class="abas">
     <a class="aba" data-vista="capa" href="#capa">🔔 Capa</a>
@@ -393,6 +400,58 @@ try {
     if (nProb) partes.push(nProb + " problema" + (nProb > 1 ? "s" : "") + " aberto" + (nProb > 1 ? "s" : ""));
     placar.textContent = "🔔 " + partes.join(" · ") + " — os detalhes estão logo abaixo, na capa.";
   }
+
+  // ---------- a dívida do livro (medida ao vivo, quando há quem meça) ----------
+  // O painel só sabe o que está ESCRITO no livro. Se um robô terminou uma
+  // tarefa e não registrou, esta página mostraria um projeto parado — sem nada
+  // indicando que falta informação. Esta faixa é a testemunha independente:
+  // pergunta ao GitHub quais merges ainda não viraram registro.
+  //
+  // Ela é servida pela área administrativa (`/admin/painel/divida.json`). Aberto
+  // como arquivo no PC não há servidor, o pedido falha, e a faixa DIZ isso — em
+  // vez de sumir, que se leria como "está tudo contado".
+  (function medirDivida() {
+    var faixa = document.getElementById("divida");
+    if (!faixa || !window.fetch) return;
+
+    function cego(motivo) {
+      faixa.className = "cego";
+      faixa.textContent = "⚪ Não consigo conferir se algum trabalho ficou sem registro aqui — " + motivo;
+    }
+
+    fetch("divida.json", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        if (d.erro) { cego(d.erro + "."); return; }
+        var n = (d.devedores || []).length;
+        if (n === 0) {
+          // Silêncio deliberado: "0 pendências" competiria com o placar por
+          // atenção e treinaria o olho a pular a faixa — e aí ela não seria
+          // vista no dia em que tivesse algo.
+          return;
+        }
+        faixa.className = "alerta";
+        var titulo = document.createElement("b");
+        titulo.textContent = "🔴 " + n + " trabalho" + (n > 1 ? "s" : "") + " concluído" +
+          (n > 1 ? "s" : "") + " que ninguém te contou";
+        var explica = document.createElement("div");
+        explica.textContent = "Entraram no projeto e não viraram registro — então não aparecem em lugar nenhum deste painel. Peça numa sessão: “registre os merges que estão devendo”.";
+        explica.style.color = "var(--text-2)";
+        explica.style.fontSize = "14px";
+        var lista = document.createElement("ul");
+        d.devedores.forEach(function (p) {
+          var li = document.createElement("li");
+          li.textContent = "#" + p.numero + " · " + p.quando + " · " + p.titulo;
+          lista.appendChild(li);
+        });
+        faixa.appendChild(titulo);
+        faixa.appendChild(explica);
+        faixa.appendChild(lista);
+      })
+      .catch(function () {
+        cego("esta é a cópia aberta no seu computador, e ela não tem como perguntar ao GitHub. O painel online (meshcraft.top/admin/painel/) confere.");
+      });
+  })();
 
   // ---------- operação: registros com evidência ----------
   var opRegs = REGS.filter(function (r) { return r.tipo === "medicao" || r.tipo === "incidente" || r.tipo === "entrega"; })

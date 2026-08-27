@@ -73,6 +73,26 @@ def test_as_duas_formas_de_citar_valem(livro):
     assert numeros_citados(livro) == {100, 101, 102}
 
 
+def test_um_registro_pode_contar_varios_prs(livro):
+    """O fechamento de um LOTE é um acontecimento só, com vários PRs.
+
+    Caso levantado por outra sessão em 26/08/2026, que escreve assim: o registro
+    036 dela cita #248 e #252 na mesma evidência. Se a regra exigisse um
+    registro POR PR, o jeito honesto de fechar um lote colidiria com a catraca
+    na primeira janela — e o incentivo passaria a ser picotar o livro para
+    agradar o guarda, em vez de contar o que aconteceu.
+    """
+    registrar(
+        livro,
+        "fechamento-do-lote",
+        'evidencia: "https://github.com/o/r/pull/248 e '
+        'https://github.com/o/r/pull/252 — os dois MERGED"',
+    )
+    velho = AGORA - timedelta(hours=5)
+    prs = [merge(248, velho, ["services/x/a.py"]), merge(252, velho, ["infra/y.yml"])]
+    assert divida(livro, AGORA, prs) == []
+
+
 def test_pr_citado_nao_e_divida(livro):
     registrar(livro, "a", 'evidencia: "https://github.com/o/r/pull/100 — MERGED"')
     velho = AGORA - timedelta(hours=5)

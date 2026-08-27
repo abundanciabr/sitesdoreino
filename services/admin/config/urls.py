@@ -1,5 +1,6 @@
 from django.urls import path, re_path
 
+from apps.core.divida import divida_json
 from apps.core.painel import painel, painel_arquivo
 from apps.core.views import healthz, visao_geral
 
@@ -23,6 +24,11 @@ urlpatterns = [
     # `/painel` para `/painel/` é o APPEND_SLASH do CommonMiddleware, que já
     # está na cadeia.
     path("painel/", painel, name="painel"),
+    # ANTES da rota genérica de arquivo, e a ordem é o que faz funcionar: esta
+    # medição não é um arquivo em disco, e a rota de baixo responderia 404 por
+    # ela. É a dívida do livro — merges que ninguém contou ao dono —, medida ao
+    # vivo (`apps/core/divida.py`).
+    path("painel/divida.json", divida_json, name="painel_divida"),
     re_path(r"^painel/(?P<path>.+)$", painel_arquivo, name="painel_arquivo"),
     path("", visao_geral, name="visao_geral"),
 ]
