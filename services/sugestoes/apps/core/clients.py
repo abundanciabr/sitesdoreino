@@ -196,3 +196,72 @@ class AlunosClient:
                 "a célula alunos respondeu fora do contrato (esperava uma lista)"
             )
         return corpo
+
+    # -- a fila de liberação (DECISAO-fila-de-liberacao.md, 27/08/2026) -------
+
+    NA_FILA = "na-fila"
+    JA_TEM_MATRICULA = "ja-tem-matricula"
+
+    def pedir_entrada_na_fila(
+        self,
+        *,
+        site_id: str,
+        email: str,
+        nome_completo: str,
+        whatsapp: str,
+        comprou_em: str = "",
+        turma: str = "",
+    ) -> str:
+        """`createPreEnrollment` — a pessoa pede entrada e fica AGUARDANDO.
+
+        Devolve `NA_FILA` (o contrato responde 201 na primeira vez e 200 no
+        reenvio — para quem está do lado de cá os dois significam a mesma coisa:
+        *seu pedido está registrado*) ou `JA_TEM_MATRICULA` (409: quem já entra
+        não precisa de fila). Qualquer outra resposta FECHA, pelo mesmo motivo
+        de `matriculas_de`: "não consegui registrar" não pode virar "registrei".
+
+        **Escreve**, ao contrário de tudo o mais que esta célula pede à
+        `alunos` — e é por isso que a idempotência importa: o par (site_id,
+        email) é a chave do outro lado, então o duplo-clique de uma pessoa
+        ansiosa não vira duas linhas na fila do mantenedor.
+
+        Os opcionais só viajam quando têm valor: o contrato declara
+        `additionalProperties: false`, e mandar `null` onde a pessoa não
+        escreveu nada seria pedir para depender de um detalhe de aceitação que
+        não precisamos exercitar.
+        """
+        base = exigir("ALUNOS_API_URL").rstrip("/")
+        token = exigir("ALUNOS_API_TOKEN")
+        corpo = {
+            "site_id": site_id,
+            "email": email,
+            "nome_completo": nome_completo,
+            "whatsapp": whatsapp,
+        }
+        if comprou_em:
+            corpo["comprou_em"] = comprou_em
+        if turma:
+            corpo["turma"] = turma
+
+        try:
+            resposta = http().post(
+                f"{base}/pre-matriculas",
+                json=corpo,
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        except httpx.RequestError as erro:
+            raise AlunosIndisponivel(
+                f"não deu para falar com a célula alunos: {erro}"
+            ) from erro
+
+        if resposta.status_code in (200, 201):
+            return self.NA_FILA
+        if resposta.status_code == 409:
+            return self.JA_TEM_MATRICULA
+        # 422 incluído aqui de propósito: a tela valida antes de mandar, então
+        # um payload recusado é desacordo NOSSO com o contrato — problema de
+        # quem escreveu o código, não da pessoa. A tela diz "é problema nosso",
+        # que é a verdade, e nada é dado como registrado.
+        raise AlunosIndisponivel(
+            f"a célula alunos respondeu HTTP {resposta.status_code} ao pedido de entrada"
+        )

@@ -168,6 +168,8 @@ class Rede:
         # A identidade de mentira: um dicionário cookie→pessoa. O default é
         # "visitante" para qualquer cookie desconhecido — o estado normal.
         self.sessoes: dict[str, dict] = {}
+        # O que a Caixa MANDOU para a fila da `alunos` — na ordem em que saiu.
+        self.pedidos: list[dict] = []
         self._central_fora = False
         self.completa = mock.get(f"{IDENTIDADE}/sessao/completa").mock(
             side_effect=self._quem_e
@@ -229,6 +231,45 @@ class Rede:
         return self.mock.get(self._url(email)).mock(
             side_effect=httpx.ReadTimeout("timed out")
         )
+
+    # -- a fila de liberação (DECISAO-fila-de-liberacao.md) ------------------
+    #
+    # A ÚNICA escrita que esta célula faz na `alunos`. O dublê GUARDA o que foi
+    # enviado, porque é isso que os guardas de privacidade e de `site_id`
+    # precisam medir: não basta a tela responder bonito — o que importa é o que
+    # atravessou o fio.
+
+    def alunos_aceita_o_pedido(self, *, status: int = 201):
+        """A `alunos` recebe quem pediu entrada. 201 = entrou; 200 = reenvio."""
+        return self._fila().mock(
+            side_effect=lambda pedido: self._anotar(pedido, status)
+        )
+
+    def alunos_ja_tem_matricula(self):
+        """409 do contrato: quem já entra não precisa de fila."""
+        return self._fila().mock(side_effect=lambda pedido: self._anotar(pedido, 409))
+
+    def alunos_recusa_o_pedido(self, status: int = 500):
+        return self._fila().mock(
+            side_effect=lambda pedido: self._anotar(pedido, status)
+        )
+
+    def alunos_fora_do_ar_no_pedido(self):
+        return self._fila().mock(side_effect=httpx.ConnectError("connection refused"))
+
+    def _anotar(self, pedido, status: int) -> httpx.Response:
+        self.pedidos.append(json.loads(pedido.content))
+        return httpx.Response(status, json={"id": "1", "status": "aguardando"})
+
+    def _fila(self):
+        return self.mock.post(f"{ALUNOS}/pre-matriculas")
+
+    @property
+    def um_pedido(self) -> dict:
+        assert (
+            len(self.pedidos) == 1
+        ), f"esperava UM pedido de entrada no fio, vieram {len(self.pedidos)}"
+        return self.pedidos[0]
 
     @staticmethod
     def _url(email: str) -> str:

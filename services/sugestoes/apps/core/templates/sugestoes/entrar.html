@@ -1,9 +1,10 @@
 {% comment %}
-A porta da Caixa de Sugestões — uma página só, três estados.
+A porta da Caixa de Sugestões — uma página só, quatro estados.
 
-  1. de fora            → o botão "Entrar com Google"
+  1. de fora             → o botão "Entrar com Google"
   2. de fora, com recado → a explicação (§5 da DECISAO-EVO-01) + o MESMO botão
-  3. de dentro          → quem é você aqui + sair
+  3. de fora, sem matrícula → o formulário da FILA (ou o recibo de quem já pediu)
+  4. de dentro           → quem é você aqui + sair
 
 O estado 2 usar a mesma página que o 1 é a decisão que importa: quem levou um
 "não encontramos matrícula para esse e-mail" precisa do botão logo abaixo para
@@ -55,6 +56,25 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
       border: 1px solid currentColor; font-size: .75rem; text-transform: uppercase;
       letter-spacing: .04em; vertical-align: middle;
     }
+    /* O formulario da fila de liberacao. Mesma linguagem visual do resto: sem
+       CSS externo, sem JS, sem fonte remota — uma pagina de porta nao pode
+       depender da rede para ser preenchida. */
+    .campo { display: block; margin-bottom: .9rem; }
+    .campo > span { display: block; font-size: .9rem; margin-bottom: .3rem; }
+    .campo input {
+      width: 100%; padding: .7rem .75rem; border-radius: .5rem; font: inherit;
+      border: 1px solid color-mix(in srgb, CanvasText 45%, Canvas);
+      background: Canvas; color: CanvasText;
+    }
+    .opcionais {
+      margin: 1.25rem 0 .9rem; padding-top: .9rem; font-size: .9rem; opacity: .75;
+      border-top: 1px solid color-mix(in srgb, CanvasText 20%, Canvas);
+    }
+    .erros {
+      margin: 0 0 1rem; padding: .75rem 1rem .75rem 2rem; border-radius: .6rem;
+      border: 1px solid currentColor; font-size: .95rem;
+    }
+    .erros li { margin: .15rem 0; }
   </style>
 </head>
 <body>
@@ -82,7 +102,74 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
         <button type="submit" class="botao discreto">Sair</button>
       </form>
     {% else %}
-      {% if titulo %}
+      {% comment %}
+      A FILA DE LIBERACAO (DECISAO-fila-de-liberacao.md, 27/08/2026).
+
+      Ate esta data, quem chegava sem matricula lia "Nao encontramos matricula
+      para esse e-mail" e acabava ali: nao existia, em lugar nenhum da
+      plataforma, um lugar onde esperar. O beco virou destino — e continua
+      sendo a MESMA pagina da porta, porque a resposta mais rapida para muita
+      gente segue sendo "entrei com o e-mail errado", e o botao de trocar de
+      conta precisa estar logo abaixo.
+
+      UMA tela, nao tres (lei §6): a pessoa acabou de fazer login, esta no pico
+      da motivacao, e sao quatro campos. Formulario em etapas paga a si mesmo
+      em cadastros longos, nao aqui.
+      {% endcomment %}
+      {% if fila %}
+        {% if ja_pediu %}
+          <div class="recado">
+            <h2>Seu pedido já está com a gente</h2>
+            <p>
+              Alguém da equipe vai conferir e liberar o seu acesso. Não precisa
+              pedir de novo — quando estiver liberado, esta página abre a Caixa.
+            </p>
+            <span class="email">{{ email }}</span>
+          </div>
+        {% else %}
+          <div class="recado">
+            <h2>Não encontramos matrícula para esse e-mail</h2>
+            <p>
+              Você está no site como <strong>{{ email }}</strong>. A Caixa de
+              Sugestões é uma área de alunos — se você já comprou o curso,
+              preencha abaixo que a gente confere e libera o seu acesso.
+            </p>
+          </div>
+          {% if erros %}
+            <ul class="erros">
+              {% for erro in erros %}<li>{{ erro }}</li>{% endfor %}
+            </ul>
+          {% endif %}
+          <form method="post" action="{% url 'pedir_entrada' %}">
+            {% csrf_token %}
+            <label class="campo">
+              <span>Seu nome completo</span>
+              <input name="nome_completo" required autocomplete="name"
+                     value="{{ rascunho.nome_completo|default:'' }}">
+            </label>
+            <label class="campo">
+              <span>Seu WhatsApp, com DDD</span>
+              <input name="whatsapp" required inputmode="tel" autocomplete="tel"
+                     placeholder="(96) 99999-0000"
+                     value="{{ rascunho.whatsapp|default:'' }}">
+            </label>
+            <p class="opcionais">
+              Os dois de baixo são opcionais — servem só para te acharmos mais
+              rápido na lista. Não sabe? Deixe em branco, sem problema.
+            </p>
+            <label class="campo">
+              <span>Quando você comprou</span>
+              <input type="date" name="comprou_em"
+                     value="{{ rascunho.comprou_em|default:'' }}">
+            </label>
+            <label class="campo">
+              <span>Sua turma</span>
+              <input name="turma" value="{{ rascunho.turma|default:'' }}">
+            </label>
+            <button type="submit" class="botao">Pedir liberação</button>
+          </form>
+        {% endif %}
+      {% elif titulo %}
         <div class="recado">
           <h2>{{ titulo }}</h2>
           <p>{{ texto }}</p>
@@ -90,7 +177,7 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
         </div>
       {% endif %}
       <a class="botao" href="{% url 'entrar_google' %}">
-        {% if titulo %}Entrar com outra conta Google{% else %}Entrar com Google{% endif %}
+        {% if titulo or fila %}Entrar com outra conta Google{% else %}Entrar com Google{% endif %}
       </a>
       {% comment %}
       As DUAS saídas desta tela, acrescentadas em 25/08/2026 (auditoria, cadeira
