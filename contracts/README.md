@@ -7,6 +7,15 @@ Os arquivos desta pasta são **a fronteira oficial entre células**. Depois de r
    (RITOS.md §3): PR contendo SÓ `contracts/`, label `contrato`, aprovação do mantenedor
    (CODEOWNERS), provedor implementa primeiro com retrocompatibilidade, consumidores em
    PRs seguintes.
+
+   **Exceção medida, não teórica (Fase 4 do sininho, 27/08/2026):** um contrato HTTP
+   NOVO (uma célula saindo de `freeze: not-applicable` para `freeze: required`) não é
+   "só `contracts/`" — `ci/contract_freeze.py::auditar_manifesto` exige que
+   `ci/manifesto-de-contratos.json` mude no MESMO PR, ou reprova a divergência entre o
+   que está declarado e o que existe em disco. O PR do Rito, nesse caso, é
+   `contracts/` **+** essa uma linha do manifesto — não um PR à parte. Eventos
+   (`contracts/eventos/*.json`) não têm essa exigência: o manifesto só existe para os
+   `*.openapi.yaml`.
 2. **O CI compara o schema vivo com o congelado** (`ci/freeze-de-contrato.sh`) e reprova
    drift — mudar o código não muda o contrato "por acidente".
 3. **Consumidor desenvolve contra o mock, nunca contra o provedor:**
