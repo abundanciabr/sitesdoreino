@@ -174,7 +174,7 @@ para a Caixa. **Nada começa antes.**
 tocar qualquer fase seguinte: ela fixa a gênese da célula, a garantia nova (e o guarda
 que muda junto), o recorte da V1 e as duas irreversibilidades do desenho.
 
-### FASE 1 — O id que atravessa · células `sugestoes` (+ qualquer outra que cunhe identidade)
+### FASE 1 — O id que atravessa · células `sugestoes` (+ qualquer outra que cunhe identidade) · ✅ FECHADA em 25/08/2026
 
 Guardar o id da plataforma ao lado da identidade local, **sem apagar** o casamento por
 e-mail que já existe (ele preserva a autoria de tudo que foi criado antes do login
@@ -182,6 +182,11 @@ mudar de casa). Migração que preenche o que dá, e caminho para o que faltar n
 entrada da pessoa.
 
 **Destrava tudo. É a fase mais barata e a mais importante.**
+
+**Fechada.** `services/sugestoes/apps/sugestoes/models.py` guarda `id_da_plataforma`
+com `CheckConstraint`, entregue em 25/08/2026 — é o dado que as Fases 2 e 3 já usam.
+Esta marca fecha uma lacuna do próprio documento: a fase estava pronta desde 25/08, só
+nunca tinha sido riscada aqui.
 
 ### FASE 2 — Rito de Contrato: o envelope de evento ganha `ator_id` · ✅ FECHADA em 26/08/2026
 
@@ -224,10 +229,30 @@ quando alguém for consumi-la (é a correção nº 1 da auditoria da Caixa).
 Inclui **passo do mantenedor** na VPS (banco + env), entregue como script versionado de
 uma linha — o padrão que funcionou no H20 e no H22.
 
-### FASE 4 — Rito de Contrato: o site pergunta
+### FASE 4 — Rito de Contrato: o site pergunta · ✅ FECHADA em 27/08/2026
 
 `notificacoes` expõe a superfície de máquina que o `funil` consome: contagem de
 não-lidos e lista paginada. **Rito §3** de novo.
+
+**Fechada.** Rito cumprido com o mantenedor presente (sessão de perguntas
+estruturadas, o formato confirmado em 25/08); as quatro escolhas viraram lei em
+**`docs/decisoes/DECISAO-fase-4-do-sininho.md`** — leia-a antes de tocar a Fase 5,
+porque ela fixa o formato do contador (exato, com teto só na exibição) e a regra de
+falha da TELA de avisos (avisa, não some — diferente do sino, que continua falhando
+aberto). O contrato entrou no PR
+[#274](https://github.com/abundanciabr/sitesdoreino/pull/274):
+`contracts/notificacoes.openapi.yaml` (`GET /resumo`, `GET /avisos`,
+`POST /marcar-lidas`) **e** o flip de `notificacoes` para `freeze: required` em
+`ci/manifesto-de-contratos.json` — os dois no mesmo PR, porque
+`ci/contract_freeze.py::auditar_manifesto` exige que andem juntos (achado deste
+rito: ao contrário do que `contracts/README.md` §1 sugere, um contrato HTTP novo
+NÃO é "só `contracts/`" — o manifesto do freeze é parte inseparável do mesmo ato).
+
+A implementação em `notificacoes` (o provedor, inclusive o management command
+`export_openapi`) é o próximo lote — nada disto autoriza código ainda. O
+`ci-celula` da `notificacoes` vai nascer VERMELHO na primeira mudança em
+`services/notificacoes/**` até esse lote implementar as três rotas — esperado,
+mesmo padrão do `deploy-celula` da Caixa nascendo vermelho até o Lote 2 dela.
 
 ### FASE 5 — O sininho ao lado do nome
 
@@ -262,13 +287,20 @@ custos diferentes no Redis e no consumidor.
 E aqui a Caixa **aposenta** o `Aviso` local em favor da caixa central (saída A da §3),
 com migração dos avisos existentes.
 
-### FASE 7 — Preferências, e só então outros canais
+### FASE 7 — Preferências, e só então outros canais · **parcialmente respondida em 27/08/2026**
 
 Silenciar um assunto, marcar todas como lidas, e a decisão sobre **e-mail**. Esta última
 reabre uma porta fechada: a `mensageria` precisa de um destinatário, e o e-mail vive
-numa linha só. **Não entra sem decisão nova.** Vale saber que o envio da `mensageria`
-ainda é **stub** (`services/mensageria/apps/eventos/tasks.py`: *"Stub: loga o envio"*) —
-"ligar o e-mail" é construir o envio, não plugar um fio.
+numa linha só. Vale saber que o envio da `mensageria` ainda é **stub**
+(`services/mensageria/apps/eventos/tasks.py`: *"Stub: loga o envio"*) — "ligar o
+e-mail" é construir o envio, não plugar um fio.
+
+**Respondido em 27/08/2026** (`DECISAO-fase-4-do-sininho.md`, Escolhas 3 e 4, na
+mesma sessão que fechou a Fase 4): **"marcar todas como lidas" entra no contrato da
+Fase 4** (`POST /marcar-lidas`) — deixa de ser Fase 7, já migrou para lá. **"Silenciar
+um assunto" espera** um segundo assunto de aviso existir (hoje só a Caixa produz um)
+— não descartado, só sequenciado. **O e-mail continua fora, sem decisão nova** — a
+porta segue fechada, e nenhuma sessão futura deve reabri-la por conta própria.
 
 ---
 
