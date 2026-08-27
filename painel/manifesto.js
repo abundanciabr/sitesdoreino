@@ -64,7 +64,9 @@ var MANIFESTO = [
   "20260826-043-apaguei-tres-arquivos-do-projeto-por-engano",
   "20260826-044-a-medicao-que-faltou-no-registro-anterior",
   "20260826-045-o-docker-ja-inicia-sozinho-medido-no-seu-pc",
-  "20260826-046-medi-os-cinco-da-caixa-quatro-continuam-abertos"
+  "20260826-046-medi-os-cinco-da-caixa-quatro-continuam-abertos",
+  "20260827-001-a-vps-recusou-o-robo-de-novo-e-resolveu-sozinho",
+  "20260827-002-o-aviso-de-painel-quebrado-nao-se-repete-agora"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
