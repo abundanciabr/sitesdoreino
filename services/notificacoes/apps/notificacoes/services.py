@@ -1,14 +1,18 @@
-"""As duas operações da caixa: guardar uma carta e arquivar o que já foi lido.
+"""As operações que ESCREVEM nesta célula: guardar uma carta, arquivar o que já
+foi lido, e (desde a Fase 4 do sininho) marcar tudo como lido de uma vez.
 
-Tudo o que escreve nesta célula passa por aqui — a view não existe ainda (a
-célula nasce sem tela) e o consumidor do fio só traduz o envelope e chama
-`guardar()`. Uma porta de escrita só é o que torna a igualdade
-"contador = linhas não lidas" verificável num lugar em vez de em cinco.
+O consumidor do fio traduz o envelope e chama `guardar()`; a porta HTTP
+(`apps/core/api.py`) chama `marcar_todas_como_lidas()`. Uma porta de escrita
+só é o que torna a igualdade "contador = linhas não lidas" verificável num
+lugar em vez de em cinco. As LEITURAS (`/resumo`, `/avisos`) moram em
+`consultas.py` — não carregam o mesmo risco de invariante transacional, e
+misturá-las aqui alargaria o que este arquivo precisa provar.
 """
 
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F
+from django.db.models.functions import Greatest
 from django.utils import timezone
 
 from .models import ContadorDeNaoLidos, Notificacao, NotificacaoArquivada
@@ -93,3 +97,48 @@ def arquivar_lidas(*, agora=None, dias: int | None = None) -> int:
         )
         Notificacao.objects.filter(pk__in=[n.pk for n in velhas]).delete()
     return len(velhas)
+
+
+@transaction.atomic
+def marcar_todas_como_lidas(*, site_id: str, destinatario_id: str) -> int:
+    """`POST /marcar-lidas` (Fase 4): marca TODOS os não lidos desta pessoa
+    NESTE SITE como lidos, num único `UPDATE`, e devolve quantos foram
+    afetados.
+
+    **Em lote, nunca um `save()` por linha** — mesma disciplina de custo do
+    `arquivar_lidas` e do fan-out de origem: o `.update()` do Django emite UMA
+    instrução SQL, e o número de avisos afetados não muda o número de
+    consultas (`tests/test_api.py`, seção CUSTO).
+
+    **`site_id` no filtro não é só fidelidade ao contrato — simplifica esta
+    função.** `(site_id, destinatario_id)` é a chave ÚNICA de
+    `ContadorDeNaoLidos` (`UniqueConstraint contador_um_por_pessoa`): com as
+    duas colunas no `WHERE`, no máximo UMA linha do contador pode casar, então
+    não há mais "por site" para agrupar (a versão anterior desta função, de
+    quando o contrato só recebia `destinatario_id`, tinha um `GROUP BY
+    site_id` aqui — deixou de fazer sentido).
+
+    **O contador se ajusta por `F()`, nunca por um `.update(nao_lidos=0)`
+    direto.** A tentação óbvia — "todos os não lidos viraram lidos, então o
+    contador da pessoa É zero" — é verdadeira no instante em que a consulta
+    acima rodou, mas esta função não seria a única escritora: o CONSUMIDOR do
+    fio pode gravar uma carta NOVA (e somar 1 ao contador) entre o `UPDATE`
+    que marca como lido e o `UPDATE` que desconta o contador. Um
+    `.update(nao_lidos=0)` incondicional apagaria essa carta nova do número —
+    a pessoa veria "zero" com um aviso genuinamente não lido esperando por
+    ela. Por isso o decremento é sempre RELATIVO (`F("nao_lidos") - marcados`),
+    a mesma lei do `+1` em `guardar()`. `Greatest(..., 0)` é o cinto de
+    segurança contra qualquer drift histórico virar contador negativo — nunca
+    deveria disparar, e não custa nada quando não dispara.
+    """
+    agora = timezone.now()
+    marcados = Notificacao.objects.filter(
+        site_id=site_id, destinatario_id=destinatario_id, lido_em__isnull=True
+    ).update(lido_em=agora)
+
+    if marcados:
+        ContadorDeNaoLidos.objects.filter(
+            site_id=site_id, destinatario_id=destinatario_id
+        ).update(nao_lidos=Greatest(F("nao_lidos") - marcados, 0))
+
+    return marcados

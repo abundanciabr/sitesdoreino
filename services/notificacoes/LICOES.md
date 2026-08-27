@@ -16,13 +16,121 @@ de 26/08/2026 (`docs/decisoes/DECISAO-fase-2-do-sininho.md` §1).
 O ganho não é elegância: é que o custo por carta não muda quando dez células
 estiverem publicando.
 
-## A célula nasceu sem tela e sem contrato — e isso é lei, não pendência
+## A célula nasceu sem tela e sem contrato — e isso foi lei, não pendência
 
-`freeze: not-applicable` no `ci/manifesto-de-contratos.json`, e `config/urls.py`
-com uma rota só. Quem for consumir esta célula passa pela **Fase 4** do
-`docs/notificacoes/PLANO-MESTRE.md`, que é Rito de Contrato (RITOS §3, com o
-mantenedor presente). Publicar uma rota antes disso é fabricar a fronteira
-dentro de um despacho — e o guarda `tests/test_healthz.py` reprova.
+Até a Fase 4 (27/08/2026), `freeze: not-applicable` no
+`ci/manifesto-de-contratos.json` e `config/urls.py` com uma rota só:
+`tests/test_healthz.py` reprovava qualquer rota nova como fronteira fabricada
+dentro de um despacho, porque consumir esta célula era Rito de Contrato
+(RITOS §3), e o Rito ainda não tinha acontecido.
+
+**Isso mudou no PR que trouxe este arquivo até aqui.** `freeze` virou
+`required`, `contracts/notificacoes.openapi.yaml` existe, e a célula publica
+`GET /resumo`, `GET /avisos` e `POST /marcar-lidas` sob `api/notificacoes/`
+— ver as seções abaixo. O guarda de `test_healthz.py` **mudou junto** (mesmo
+espírito da nota em `DECISAO-notificacoes` §2 sobre o guarda do `Aviso`
+transacional): ele agora prova que a célula publica EXATAMENTE o que o Rito
+autorizou, nem uma rota a mais — o princípio (não fabricar fronteira fora do
+Rito) sobreviveu; só o que ele mede mudou.
+
+## A porta de consulta (Fase 4): `openapi_extra` à mão, nunca `response=Schema`
+
+`apps/core/api.py` declara as três rotas com handlers que recebem `request`
+puro e devolvem `JsonResponse` — nenhuma delas usa `ninja.Schema` tipado com
+`response=`. Não é estilo, é o formato do CONTRATO: `contracts/notificacoes.openapi.yaml`
+não tem `components.schemas` — toda forma é inline nos paths (padrão de
+`alunos`/`leads`). `response=MinhaSchema` faz o django-ninja criar um
+componente NOMEADO com `$ref` — a primeira tentativa desta célula usou isso e
+o `contrato-check` reprovou na hora (`$ref: '#/components/schemas/...'` onde o
+congelado tem o objeto inline). `catalogo` é o contra-exemplo: o contrato DELE
+tem `components.schemas` (`Site`/`Offer`/`Product`), então lá `response=Schema`
+é o padrão certo. **Antes de copiar o padrão de outra célula, confira se o
+contrato dela tem `components.schemas` ou tudo inline** — as duas formas
+convivem na plataforma, e usar a errada só aparece rodando `contrato-check`.
+
+## `/avisos` lê DUAS tabelas — `Notificacao` E `NotificacaoArquivada`
+
+O arquivamento move o lido-e-velho para fora do caminho quente, mas
+`NotificacaoArquivada` existe (em vez de simplesmente apagar a linha)
+justamente para que "nada se perde: o histórico continua consultável"
+(`DECISAO-notificacoes` §5.2, docstring do model). `/avisos` é a ÚNICA porta
+de consulta que a Fase 4 abriu — se ela lesse só a tabela quente, um aviso
+lido sumiria da vida da pessoa 30 dias depois de ela o ter lido. O merge das
+duas fontes (cursor opaco que codifica tabela+id, para não colidir PKs de
+sequências independentes) está em `apps/notificacoes/consultas.py`, com o
+raciocínio completo no docstring do módulo. Continua O(1): sempre duas
+consultas com `LIMIT`, nunca uma por tabela extra que nascer.
+
+## `site_id` é obrigatório em toda rota — decisão do mantenedor, 27/08/2026
+
+A Fase 4 nasceu (Rito de Contrato de 27/08/2026, PR #274) com as três rotas
+recebendo só `destinatario_id` — nenhuma tinha `site_id`. Isso durou poucas
+horas: ao ver a implementação em andamento, o mantenedor decidiu (pergunta
+estruturada, opção recomendada) que **"cada site mostra só os avisos que
+vieram dele"** — nunca um apanhado de todo site que a pessoa já tiver
+tocado. É a Lei 9 da CONSTITUICAO ("`site_id` acompanha toda entidade
+pública") aplicada também à LEITURA, não só à escrita — que já cumpria a Lei
+9 desde a gênese (toda `Notificacao`/`ContadorDeNaoLidos` sempre gravou o
+site de origem). O contrato foi emendado por Rito próprio (PR #282, só
+`contracts/`, label `contrato`) ANTES da implementação da Fase 4 mergear:
+`site_id` virou parâmetro obrigatório em `/resumo`/`/avisos` e campo
+obrigatório no corpo de `/marcar-lidas`.
+
+**Consequência prática:** toda função de `consultas.py`/`services.py` recebe
+`site_id` E `destinatario_id`, e filtra pelas duas — nunca só uma.
+`marcar_todas_como_lidas` até SIMPLIFICOU com a mudança: como `(site_id,
+destinatario_id)` é a chave única de `ContadorDeNaoLidos`, no máximo UMA
+linha do contador pode casar por chamada, então o `GROUP BY site_id` que essa
+função teve por poucas horas (de quando só existia `destinatario_id`) deixou
+de fazer sentido e foi removido. Os índices tiveram que mudar junto — ver a
+seção seguinte.
+
+## Índice "óbvio" pode estar errado — meça com EXPLAIN, não suponha
+
+**A história completa, porque o resultado final (nenhuma migração de índice
+neste PR) esconde o caminho.** No meio deste PR, uma versão do contrato sem
+`site_id` levou a trocar os índices de `Notificacao`/`NotificacaoArquivada`
+para liderar só por `destinatario_id` — apostando (certo, NA HORA) que a
+Fase 4 não filtraria por site. A aposta durou até o mantenedor decidir
+"cada site mostra só os avisos que vieram dele" (seção acima) — e a partir
+dali o índice trocado deixou de casar com a consulta real, **sem que nenhum
+teste existente notasse**: com o volume de dados de teste de costume (poucas
+dezenas de linhas), o Postgres troca de plano sem custo perceptível, e
+`assertNumQueries` (`tests/test_api.py`, seção CUSTO) mede QUANTAS consultas,
+não QUANTAS LINHAS cada uma lê por dentro.
+
+A prova que pegou isso foi `EXPLAIN ANALYZE` com dado SEMEADO DE PROPÓSITO
+para expor a diferença — uma pessoa com linhas em 5 sites (1.500 linhas, 300
+no site pedido) mais 500 pessoas de ruído no site pedido. Sem esse volume E
+essa distribuição, os índices (o trocado e o certo) têm o MESMO plano, porque
+tabela pequena não sente a diferença — é fácil "confirmar" um índice rodando
+`make ci` e ele parecer certo mesmo estando errado. Com o índice trocado, o
+plano mostrava `Rows Removed by Filter: 1200` — a consulta lia TODA linha da
+pessoa em qualquer site e só depois descartava as de fora.
+
+**A correção foi voltar para a forma que já estava na GÊNESE** (`site_id` +
+`destinatario_id` liderando juntos, PR #247) — é por isso que este PR não tem
+uma migração de índice: o `makemigrations --check` não acusa nada pendente,
+porque o formato final é idêntico ao que `0001_initial` já criava. A
+exploração aconteceu (trocar, medir, constatar que a gênese estava certa, e
+voltar) mas não deixou rastro em `migrations/` de propósito — duas
+migrações que se cancelam não têm razão de existir num PR ainda não
+mergeado. `tests/test_indices_da_porta_de_consulta.py` é o que mantém a
+medição viva daqui para frente — falha se o plano voltar a descartar linha
+depois do índice.
+
+**A mesma investigação também provou o oposto para outra tabela — e vale
+saber os dois lados.** Durante a mesma janela, um índice extra chegou a ser
+acrescentado em `ContadorDeNaoLidos` (`contador_por_pessoa`, só
+`destinatario_id`) — e nunca foi necessário: o `UniqueConstraint
+contador_um_por_pessoa` **da gênese** (`site_id`, `destinatario_id`, PR #248)
+já era, sozinho, o índice ideal para a pergunta que `/resumo` faz — o
+Postgres o escolhe direto, sem descartar linha nenhuma. "Adicionar um índice
+para garantir" também é uma suposição, e também precisa ser medida: às vezes
+a resposta é "não, o que já existe serve", e um índice a mais que o
+planejador nunca escolhe só custa em todo `INSERT`, para sempre, sem
+benefício nenhum. Esse índice extra também não sobrou em `models.py` nem em
+`migrations/` pelo mesmo motivo.
 
 ## O contador é uma CÓPIA, e cópia diverge
 
