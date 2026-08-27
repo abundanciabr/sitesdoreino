@@ -16,6 +16,7 @@
 | `logica.js` | As regras que calculam as vistas (caixa de entrada, frescor, capa). Pura, roda em Node e no navegador. | Por PR, com teste-guarda. |
 | `gerar_manifesto.js` | Valida TODOS os registros (fail-closed, com a MESMA `logica.js` da página — um validador só) e regenera o manifesto. `--conferir` só confere (para CI). | Por PR. |
 | `testes/` | Testes-guarda da lógica e do gerador — incluindo os casos em que devem REPROVAR. | Por PR. |
+| `ia/` | **Mapa técnico do projeto para IA** (`ia/INDICE.md` é a porta) — infraestrutura, arquitetura de células, CI/CD, decisões de produto, escrito para uma IA sem contexto prévio auditar o sistema e sugerir melhorias. Segue a mesma lei deste diretório: não guarda veredito próprio sobre o estado do projeto, só mapeia mecanismo — quem quiser saber "o que está pendente" continua lendo `registros/`, nunca `ia/`. | Por PR, junto com a mudança que descreve. |
 
 ## Como registrar um acontecimento (o gesto de toda sessão)
 
