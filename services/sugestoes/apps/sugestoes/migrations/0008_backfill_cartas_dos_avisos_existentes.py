@@ -231,19 +231,16 @@ def publicar_cartas_retroativas(apps, schema_editor) -> None:
     )
 
 
-def reverter_nao_e_suportado(apps, schema_editor) -> None:
-    """Sem `noop`: apagar cartas já publicadas poderia apagar cartas que o
-    relay já entregou ao fio (`published_at` preenchido), e a caixa central
-    já as tem — desfazer aqui não desfaz lá (Lei 2). `migrations.RunPython.noop`
-    é usado no lugar desta função — ela existe só para o caso de alguém
-    pesquisar "por que não há reversão"."""
-
-
 class Migration(migrations.Migration):
     dependencies = [
         ("sugestoes", "0007_envelope_extra"),
     ]
 
     operations = [
+        # Reverso é `RunPython.noop`, de propósito — sem desfazer de verdade:
+        # apagar as cartas já publicadas poderia apagar cartas que o relay já
+        # entregou ao fio (`published_at` preenchido), e a caixa central já
+        # as tem. Desfazer aqui não desfaz lá (Lei 2), então o reverso mais
+        # honesto é não mexer em nada.
         migrations.RunPython(publicar_cartas_retroativas, migrations.RunPython.noop),
     ]
