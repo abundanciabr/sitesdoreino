@@ -57,7 +57,8 @@ var MANIFESTO = [
   "20260826-037-o-dono-abriu-o-painel-online-e-ele-apareceu",
   "20260826-037-o-impasse-dos-dois-portoes-na-subida",
   "20260826-038-a-muralha-que-impede-um-robo-de-pisar-no-outro",
-  "20260826-039-o-livro-deixou-de-depender-da-memoria-dos-robos"
+  "20260826-039-o-livro-deixou-de-depender-da-memoria-dos-robos",
+  "20260826-040-a-licao-da-crase-que-corrompeu-uma-mensagem"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {

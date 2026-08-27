@@ -161,5 +161,6 @@
 | [133](133-a-suite-de-ci-reprova-quando-rodada-de-dentro-de.md) | A suíte de `ci/tests` reprova quando rodada de DENTRO de um worktree do harness — `python -m pytest ci/tests -q` a partir de um worktree criado pelo Claude Code (`.claude/worktrees/<nome>/`) devolve **1 falha** que não… | — |
 | [134](134-celula-nova-com-o-compose-no-mesmo-pr-trava-os-dois.md) | Célula nova com o compose no MESMO PR trava os dois deploys, e nenhum rerun sai — o PR de gênese de uma célula (código + `infra/docker-compose.yml` juntos) é mergeado com tudo verde, e os DOIS deploys ficam vermelhos: | — |
 | [135](135-suas-edicoes-sumiram-outra-sessao-trocou-o-ramo.md) | Suas edições sumiram e o `git status` mostra um ramo que você não criou — duas sessões na MESMA pasta — no meio do trabalho, `git status` mostra um ramo que você nunca criou (`agent/<outra-area>/...`) e as modificações… | — |
+| [136](136-crase-em-git-commit-m-executa-comando-e-corrompe.md) | Crase em `git commit -m "…"` EXECUTA comando, corrompe a mensagem e cria arquivos-lixo — você escreve uma mensagem de commit rica, citando arquivos entre crases como no resto do projeto, e o terminal despeja dezenas de… | — |
 
-**124 entradas.**
+**125 entradas.**
