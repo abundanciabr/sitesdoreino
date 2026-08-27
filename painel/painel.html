@@ -151,8 +151,16 @@
   <div class="rodape" id="rodape"></div>
 </div>
 
-<!-- A ordem importa: manifesto injeta os registros (síncrono), depois a lógica, depois o app. -->
+<!-- A ordem importa: a lista, o livro, a lógica, o app.
+     TRÊS pedidos ao servidor, e nunca "um por registro": até 27/08/2026 o
+     manifesto fazia document.write de um <script> por registro, e abrir o
+     painel disparava 86 pedidos de uma vez. Na área administrativa cada pedido
+     atravessa a porta, que pergunta à identidade quem é você com 2s de
+     paciência; sob a rajada parte estourava o tempo, voltava página de erro no
+     lugar do registro, e esta tela — corretamente — se recusava a abrir. O
+     conserto é estrutural: o livro chega inteiro num arquivo só. -->
 <script src="manifesto.js" onerror="window.__falhaCarga='manifesto.js não carregou — o arquivo sumiu ou foi renomeado.'"></script>
+<script src="livro.js" onerror="window.__falhaCarga='livro.js não carregou — o livro de ocorrências não chegou (servidor recusou ou o arquivo sumiu).'"></script>
 <script src="logica.js" onerror="window.__falhaCarga='logica.js não carregou — o arquivo sumiu ou foi renomeado.'"></script>
 <script>
 "use strict";
@@ -173,7 +181,7 @@ function falhaAlta(motivo, detalhes) {
   var aviso = document.createElement("p");
   aviso.textContent = "NÃO acredite em nada que esta página mostraria — inclusive no que parecesse verde ou concluído.";
   var como = document.createElement("p");
-  como.textContent = "O que fazer: abra uma sessão do Claude Code e cole: “o painel da escola está quebrado, conserte”. O conserto costuma ser um registro inválido em painel/registros/ — o comando “node painel/gerar_manifesto.js” aponta qual.";
+  como.textContent = "O que fazer: abra uma sessão do Claude Code e cole: “o painel da escola está quebrado, conserte” — e diga se foi no site ou no arquivo do seu PC, porque isso muda onde o robô procura. O comando “node painel/gerar_manifesto.js” aponta um registro inválido; se ele vier limpo, o problema está na entrega, não no livro.";
   t.appendChild(b); t.appendChild(p); t.appendChild(aviso); t.appendChild(como);
   if (detalhes && detalhes.length) {
     var pre = document.createElement("pre");
@@ -189,7 +197,7 @@ try {
   var REGS = (window.REGISTROS || []);
   if (REGS.length !== MANIFESTO.length) {
     throw { mensagem: "O manifesto lista " + MANIFESTO.length + " registros, mas só " + REGS.length +
-      " carregaram — algum arquivo de registro sumiu ou está quebrado.", detalhes: MANIFESTO };
+      " carregaram — o livro chegou incompleto (livro.js truncado, fora de dia, ou recusado pelo servidor).", detalhes: MANIFESTO };
   }
   var errosVal = LOGICA.validarRegistros(REGS);
   if (errosVal.length) throw { mensagem: "O livro de ocorrências está inválido (" + errosVal.length + " problema(s)):", detalhes: errosVal };

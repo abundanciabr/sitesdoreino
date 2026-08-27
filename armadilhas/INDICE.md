@@ -170,5 +170,6 @@
 | [142](142-virgula-num-flow-mapping-yaml-sem-aspas-vira-chave.md) | Vírgula dentro de `{ chave: valor }` YAML sem aspas cria uma CHAVE fantasma — e o freeze de contrato cobra dela — o `make contrato-check` da célula reprova com um diff que ninguém escreveu — o congelado tem uma chave a… | — |
 | [143](143-escrever-em-request-session-desloga-do-site-inteiro.md) | Uma linha em `request.session` desloga a pessoa do site INTEIRO — quando a célula compartilha o nome do cookie — você guarda uma bobagem qualquer na sessão do Django — uma lembrança de tela, um "já vi este aviso" — e o… | — |
 | [144](144-teste-de-rota-que-mede-o-conteudo-da-pagina-quebra.md) | Teste de ROTA que prova a rota pelo CONTEÚDO da página quebra quando a página muda — e a rota não mudou — você mexe numa página (troca o que ela mostra) e ficam vermelhos testes que não têm nada a ver com ela — a matriz… | — |
+| [145](145-pagina-que-pede-um-arquivo-por-item-quebra-quando.md) | Página que pede UM arquivo por item quebra sozinha quando a lista cresce — e o erro acusa os dados, não a entrega — uma página que monta uma lista a partir de arquivos versionados abre com a própria trava fail-closed… | — |
 
-**133 entradas.**
+**134 entradas.**
