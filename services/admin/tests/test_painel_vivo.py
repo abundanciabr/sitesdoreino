@@ -153,9 +153,9 @@ def test_o_livro_chega_em_UM_pedido_e_nao_um_por_registro():
 
     pedidos = re.findall(r'src="([^"]+)"', html)
     assert "livro.js" in pedidos, "a página não pede o livro empacotado"
-    assert not [a for a in pedidos if a.startswith("registros/")], (
-        "a página voltou a pedir registro por registro"
-    )
+    assert not [
+        a for a in pedidos if a.startswith("registros/")
+    ], "a página voltou a pedir registro por registro"
     assert "document.write" not in (PAINEL_NO_REPO / "manifesto.js").read_text(
         encoding="utf-8"
     ), "o manifesto voltou a injetar um <script> por registro"
