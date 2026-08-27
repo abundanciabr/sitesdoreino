@@ -129,6 +129,11 @@
                   "nota": {
                     "type": "string",
                     "description": "Justificativa da equipe. OPCIONAL no contrato, mas OBRIGATORIA na origem quando status_novo = nao_planejado (ESPECIFICACAO §10)."
+                  },
+                  "vinculo": {
+                    "type": "string",
+                    "enum": ["autor", "comentario", "voto"],
+                    "description": "POR QUE esta pessoa recebe este aviso — o vinculo mais forte quando ela acumula papeis (autor > comentario > voto). OPCIONAL de proposito: cartas emitidas antes deste campo existir (26-27/08/2026) nao o tem, e a tela que le trata ausencia como 'motivo nao registrado', nunca como erro. Adicionado em 27/08/2026 para a tela de avisos da Caixa nao perder, na migracao para esta porta, a explicacao de origem que ja mostra hoje (Aviso.vinculo) — sem isto, quem votou numa ideia em marco veria em agosto um aviso sobre algo que nao lembra ter tocado."
                   }
                 }
               }
