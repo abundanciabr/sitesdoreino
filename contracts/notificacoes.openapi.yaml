@@ -1,0 +1,135 @@
+openapi: 3.1.0
+info:
+  title: Notificações API
+  version: 1.0.0
+  description: |
+    A porta de consulta da caixa central de avisos. Fase 4 do sininho (Rito de
+    Contrato de 27/08/2026, docs/decisoes/DECISAO-fase-4-do-sininho.md). Serve
+    dois consumidores: o `funil` (o sininho ao lado do nome, em toda página) e
+    a própria `sugestoes` (a tela de avisos da Caixa, que aposenta a leitura
+    local — DECISAO-fase-2-do-sininho.md §3).
+
+    A notificação é DADO, nunca frase pronta (DECISAO-notificacoes §5.1): esta
+    API devolve tipo + parâmetros, e quem lê monta a frase no idioma de quem
+    está lendo. Nenhuma rota aqui devolve e-mail — o destinatário é sempre o id
+    da PLATAFORMA (DECISAO-EVO-01 §3).
+servers:
+  - url: http://notificacoes:8000/api/notificacoes
+security:
+  - bearerAuth: []
+paths:
+  /resumo:
+    get:
+      operationId: obterResumo
+      summary: Contagem de avisos não lidos de uma pessoa — o número do sininho
+      description: |
+        Contador O(1) (DECISAO-notificacoes §5.2) — nunca um COUNT(*) que
+        cresce com o tempo. Devolve a contagem REAL, sem teto: um teto de
+        exibição (ex.: "99+") é decisão da tela que consome, não do dado
+        (Escolha 1, DECISAO-fase-4-do-sininho.md).
+      parameters:
+        - name: destinatario_id
+          in: query
+          required: true
+          schema: { type: string }
+          description: Id da PLATAFORMA da pessoa. Nunca e-mail (DECISAO-EVO-01 §3).
+      responses:
+        '200':
+          description: Resumo calculado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [nao_lidas]
+                properties:
+                  nao_lidas: { type: integer, minimum: 0 }
+        '422': { description: destinatario_id ausente ou inválido }
+  /avisos:
+    get:
+      operationId: listarAvisos
+      summary: Lista paginada dos avisos de uma pessoa, mais novo primeiro
+      description: |
+        `parametros` guarda os dados da frase, não a frase pronta — quem lê
+        monta o texto no idioma da leitura (DECISAO-notificacoes §5.1).
+        `lido_em` distingue lido de não-lido; ausência de item não é o mesmo
+        que falha em buscar — a chamada que falhar deve devolver erro HTTP,
+        nunca uma lista vazia disfarçada de "zero avisos" (Escolha 2,
+        DECISAO-fase-4-do-sininho.md).
+      parameters:
+        - name: destinatario_id
+          in: query
+          required: true
+          schema: { type: string }
+        - name: cursor
+          in: query
+          required: false
+          schema: { type: string }
+          description: Cursor devolvido pela página anterior. Ausente pede a primeira página.
+        - name: limite
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Uma página de avisos
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [itens, proximo_cursor]
+                properties:
+                  itens:
+                    type: array
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [id, assunto, parametros, ator_id, lido_em, criado_em]
+                      properties:
+                        id: { type: string }
+                        assunto: { type: string }
+                        parametros: { type: object }
+                        ator_id:
+                          anyOf: [{ type: string }, { type: "null" }]
+                          description: Guardado sim, mostrado não — a tela sempre lê "a equipe" (DECISAO-fase-2-do-sininho.md §2).
+                        lido_em:
+                          anyOf: [{ type: string, format: date-time }, { type: "null" }]
+                        criado_em: { type: string, format: date-time }
+                  proximo_cursor:
+                    anyOf: [{ type: string }, { type: "null" }]
+                    description: null quando não há próxima página.
+        '422': { description: destinatario_id ausente ou inválido }
+  /marcar-lidas:
+    post:
+      operationId: marcarTodasComoLidas
+      summary: Marca todos os avisos não lidos de uma pessoa como lidos, de uma vez
+      description: |
+        Escolha 3 da DECISAO-fase-4-do-sininho.md — entra na V1 por ser barato
+        e imediatamente útil. "Silenciar um assunto" NÃO tem contrato ainda:
+        fica para quando existir mais de um assunto de aviso.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [destinatario_id]
+              properties:
+                destinatario_id: { type: string }
+      responses:
+        '200':
+          description: Marcados — devolve quantos avisos foram afetados (0 é uma resposta válida)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [marcados]
+                properties:
+                  marcados: { type: integer, minimum: 0 }
+        '422': { description: destinatario_id ausente ou inválido }
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer }
