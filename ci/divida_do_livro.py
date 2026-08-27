@@ -86,10 +86,19 @@ JANELA_DE_PRS = 60
 _CITACAO = re.compile(r"/pull/(\d+)|#(\d+)\b")
 
 
-def numeros_citados(raiz: Path) -> set[int]:
-    """Todo número de PR que o livro menciona, em qualquer campo."""
+def numeros_citados(raiz: Path, registros: Path | None = None) -> set[int]:
+    """Todo número de PR que o livro menciona, em qualquer campo.
+
+    `registros` existe porque este módulo roda em DOIS lugares: aqui, num
+    checkout (o livro está em `painel/registros/`), e dentro da imagem da célula
+    `admin`, que serve o painel vivo e recebe a mesma pasta em
+    `painel_embutido/registros/`. A alternativa seria reimplementar a regra lá —
+    e duas definições de "contado" divergiriam no primeiro dia em que alguém
+    mexesse numa só.
+    """
+    pasta = registros or (raiz / "painel" / "registros")
     citados: set[int] = set()
-    for arquivo in (raiz / "painel" / "registros").glob("*.js"):
+    for arquivo in pasta.glob("*.js"):
         for url, curto in _CITACAO.findall(arquivo.read_text(encoding="utf-8")):
             citados.add(int(url or curto))
     return citados
@@ -131,6 +140,7 @@ def divida(
     raiz: Path,
     agora: datetime | None = None,
     prs: list[dict[str, Any]] | None = None,
+    registros: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Os merges que ninguém contou, do mais recente para o mais antigo.
 
@@ -141,7 +151,7 @@ def divida(
     """
     agora = agora or datetime.now(timezone.utc)
     prs = prs if prs is not None else listar_prs_mergeados(raiz)
-    citados = numeros_citados(raiz)
+    citados = numeros_citados(raiz, registros)
     limite = agora - timedelta(minutes=GRACA_EM_MINUTOS)
 
     devedores = []

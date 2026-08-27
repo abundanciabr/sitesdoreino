@@ -9,3 +9,8 @@ staticfiles/
 # dentro do repositório seria exatamente a duplicação que o CLAUDE.md proíbe —
 # a célula SERVE o painel, não guarda uma cópia dele.
 painel_embutido/
+
+# A regra da dívida do livro (`ci/divida_do_livro.py`), embutida pelo mesmo
+# passo do deploy. Também não se commita: a fonte é `ci/`, e uma cópia
+# versionada aqui viraria a segunda definição de "contado".
+regra_do_livro/
