@@ -57,6 +57,20 @@ Por que a regra é dura: até 26/08 as duas listas coexistiam e **já discordava
 mantenedor. Foi a doença do H18 voltando por dentro da própria lei que a curou
 (a auditoria que achou isso está no registro `20260826-019`).
 
+## Mapa do projeto para IA (desde 27/08/2026)
+
+Existe um mapa técnico do projeto inteiro — leis, células, contratos,
+infraestrutura, CI/CD, decisões de produto — escrito especificamente para
+uma IA sem contexto prévio auditar o sistema de ponta a ponta e sugerir
+melhorias: **`painel/ia/INDICE.md`**. Não é leitura obrigatória de todo
+despacho (é mais longo que a dieta normal de contexto, e a maioria das
+tarefas cabe na leitura de armadilhas + a constituição da célula) — abra
+quando a tarefa for uma auditoria ampla, uma segunda opinião externa sobre
+arquitetura, ou quando faltar a visão geral do sistema inteiro. Como os
+outros mapas deste projeto, ele é um resumo curado: se divergir do
+documento original, o original vence, e quem perceber a divergência corrige
+o mapa no mesmo PR.
+
 ## O livro de ocorrências é obrigatório, não opcional (desde 26/08/2026)
 
 O painel do dono é **`painel/painel.html`** — a porta única, que **não guarda
@@ -202,9 +216,11 @@ Na prática:
 
 ## Depois de todo merge que dispara deploy
 
-Merge tocando `services/**` dispara o `deploy-celula`; tocando
-`infra/docker-compose.yml`, `infra/traefik/**` ou o próprio workflow, dispara o
-`deploy-infra`. **Merge confirmado ⇒ conferir o run disparado**, na mesma
+Merge tocando `services/**` **ou `painel/**`** dispara o `deploy-celula` (a
+célula `admin` embute `painel/` no build — registro novo no livro também
+conta); tocando `infra/docker-compose.yml`, `infra/traefik/**` ou o próprio
+workflow, dispara o `deploy-infra`. **Merge confirmado ⇒ conferir o run
+disparado**, na mesma
 resposta — o veredito REAL vem de `gh run view <id> --json status,conclusion`,
 nunca do exit de um comando com `| tail`/`| head` pendurado (ARMADILHAS §5.10:
 já houve falso-verde assim, e os greens históricos do deploy-celula mentiram
