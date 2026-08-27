@@ -40,6 +40,29 @@ caso("arquivo duplicado REPROVA",
   LOGICA.validarRegistros([reg({}), reg({})]).length > 0);
 caso("responde_a inexistente REPROVA",
   LOGICA.validarRegistros([reg({ responde_a: "20990101-001-fantasma" })]).length > 0);
+// Número repetido no mesmo dia: a corrida entre sessões paralelas (26/08/2026,
+// quatro colisões em um dia, entre três sessões). O nome completo continua
+// único — o que se perde é o número como referência.
+caso("mesmo NÚMERO no mesmo dia, slugs diferentes, REPROVA",
+  LOGICA.validarRegistros([
+    reg({ arquivo: "20260826-900-um" }), reg({ arquivo: "20260826-900-outro" })
+  ]).length > 0);
+caso("mesmo número em DIAS diferentes passa (a sequência é por dia)",
+  LOGICA.validarRegistros([
+    reg({ arquivo: "20260826-900-um" }), reg({ arquivo: "20260827-900-outro", quando: "2026-08-27" })
+  ]).length === 0);
+caso("as duas colisões HERDADAS de 26/08 continuam passando (não se reescreve registro mergeado)",
+  LOGICA.validarRegistros([
+    reg({ arquivo: "20260826-036-um" }), reg({ arquivo: "20260826-036-outro" }),
+    reg({ arquivo: "20260826-037-um" }), reg({ arquivo: "20260826-037-outro" })
+  ]).length === 0);
+// A tolerância guarda o TAMANHO do par herdado, não uma licença permanente
+// naquele número — senão congelar um par abriria 036 para sempre.
+caso("um TERCEIRO registro num par herdado REPROVA (colisão nova, não história)",
+  LOGICA.validarRegistros([
+    reg({ arquivo: "20260826-036-um" }), reg({ arquivo: "20260826-036-outro" }),
+    reg({ arquivo: "20260826-036-terceiro" })
+  ]).length > 0);
 caso("não-lista vira erro, nunca silêncio", LOGICA.validarRegistros(null).length > 0);
 
 console.log("== verde é conquistado, nunca escrito ==");

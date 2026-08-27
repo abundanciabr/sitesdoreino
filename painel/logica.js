@@ -127,6 +127,52 @@
         erros.push((r.arquivo || "?") + ": responde_a aponta para o PRÓPRIO registro — um pedido não se responde sozinho");
       }
     });
+    // -------------------------------------------------------------------------
+    // NÚMERO REPETIDO NO MESMO DIA — o defeito que só nasce com sessões paralelas.
+    //
+    // O nome de um registro é AAAAMMDD-NNN-slug, e o LEIA-ME manda escolher "a
+    // sequência livre do dia". Duas sessões que escolhem ao mesmo tempo escolhem
+    // o MESMO número: as duas leem a pasta, as duas veem que 036 está livre. Não
+    // é descuido de ninguém — é corrida, e corrida se resolve com trava.
+    //
+    // Aconteceu QUATRO vezes em 26/08/2026, entre três sessões. Nada se perdeu
+    // (o nome completo continua único, e é ele que `responde_a` usa), mas o
+    // número deixou de identificar um registro sozinho: "o 037" passou a ser
+    // pergunta, não referência. É o mesmo defeito que o
+    // `ci/indice_de_armadilhas.py` já recusa nas armadilhas — aqui só se aplica
+    // a mesma cura onde ela ainda não estava.
+    //
+    // As DUAS colisões abaixo ficam congeladas porque já estão na main. Renomear
+    // registro mergeado seria editar registro existente, que é a coisa que este
+    // livro proíbe acima de tudo (e quebraria os `responde_a` que apontam para o
+    // nome completo). O passado fica como está; a regra vale daqui para a frente
+    // — o mesmo desenho do marco zero da dívida do livro.
+    // -------------------------------------------------------------------------
+    // Guarda o TAMANHO tolerado, não um "pode repetir": os pares herdados são
+    // dois, e um TERCEIRO registro em 036 seria colisão nova — reprova. Sem
+    // isso, congelar um par abriria aquele número para sempre. (Refinamento
+    // apontado por outra sessão em 26/08/2026, que desenhou a mesma trava em
+    // paralelo.)
+    var COLISOES_HERDADAS = { "20260826-036": 2, "20260826-037": 2 };
+    var numeros = {};
+    registros.forEach(function (r) {
+      if (!r || !r.arquivo) return;
+      var m = /^(\d{8})-(\d{3})-/.exec(r.arquivo);
+      if (!m) return;
+      var chave = m[1] + "-" + m[2];
+      if (!numeros[chave]) numeros[chave] = [];
+      numeros[chave].push(r.arquivo);
+    });
+    Object.keys(numeros).sort().forEach(function (chave) {
+      if (numeros[chave].length <= (COLISOES_HERDADAS[chave] || 1)) return;
+      erros.push(
+        "número repetido no mesmo dia: " + chave + " foi usado por " +
+        numeros[chave].length + " registros (" + numeros[chave].join(", ") +
+        "). Outra sessão provavelmente pegou este número enquanto você escrevia. " +
+        "Escolha o próximo número LIVRE, renomeie o arquivo E o campo 'arquivo' " +
+        "dentro dele (os dois têm de bater), e rode node painel/gerar_manifesto.js de novo."
+      );
+    });
     return erros;
   }
 
