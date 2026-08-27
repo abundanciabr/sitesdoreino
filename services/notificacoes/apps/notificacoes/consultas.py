@@ -55,6 +55,37 @@ class CursorInvalido(Exception):
     """O cursor recebido não é um que esta célula tenha devolvido."""
 
 
+def resolver_id(id_bruto: str) -> tuple[type, int] | None:
+    """O par `(Modelo, pk)` que um `id` opaco de `GET /avisos` aponta — o
+    INVERSO exato de `f"{fonte}{pk}"`, montado em `pagina_de_avisos` logo
+    abaixo. MESMO prefixo (`_FONTE_ATIVA`/`_FONTE_ARQUIVADA`), nunca um
+    segundo esquema — é o que `apps/notificacoes/services.py::
+    marcar_uma_como_lida` (`POST /marcar-lida`) usa para achar a linha certa
+    sem precisar conhecer o formato do `id`.
+
+    `None` quando a forma não bate (vazio, sem prefixo reconhecido, resto que
+    não é um inteiro positivo) — esta função nunca levanta. Um `id`
+    malformado e um `id` bem-formado que não existe são a MESMA resposta para
+    quem chama (404): distinguir os dois vazaria formato interno a quem só
+    chutou um valor, a mesma razão pela qual o endpoint responde 404 e nunca
+    403 para o aviso de outra pessoa.
+    """
+    if len(id_bruto) < 2:
+        return None
+    fonte, resto = id_bruto[0], id_bruto[1:]
+    try:
+        pk = int(resto)
+    except ValueError:
+        return None
+    if pk < 1:
+        return None
+    if fonte == _FONTE_ATIVA:
+        return Notificacao, pk
+    if fonte == _FONTE_ARQUIVADA:
+        return NotificacaoArquivada, pk
+    return None
+
+
 def resumo_de_nao_lidos(*, site_id: str, destinatario_id: str) -> int:
     """Quantos avisos não lidos — lê o `ContadorDeNaoLidos` (O(1) desde a gênese).
 

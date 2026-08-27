@@ -640,6 +640,239 @@ def test_marcar_lidas_bate_com_o_schema_do_contrato_congelado(client, par_autori
 
 
 # =============================================================================
+# POST /marcar-lida — UM aviso específico, idempotente (a granularidade que a
+# tela ATUAL da Caixa já tem — services/sugestoes/apps/core/avisos.py::marcar_lido
+# — e que a migração para esta porta não pode perder)
+# =============================================================================
+
+CAMINHO_MARCAR_LIDA = "/api/notificacoes/marcar-lida"
+
+
+def _marcar_uma(
+    client,
+    destinatario_id="__omitir__",
+    site_id=SITE,
+    id="__omitir__",  # noqa: A002 - nome do campo do contrato, não a builtin
+    token="__default__",
+    corpo_cru=None,
+):
+    cabecalhos = (
+        cabecalho_bearer() if token == "__default__" else cabecalho_bearer(token)
+    )
+    if corpo_cru is not None:
+        return client.post(
+            CAMINHO_MARCAR_LIDA,
+            data=corpo_cru,
+            content_type="text/plain",
+            headers=cabecalhos,
+        )
+    payload = {}
+    if destinatario_id != "__omitir__":
+        payload["destinatario_id"] = destinatario_id
+    if site_id != "__omitir__":
+        payload["site_id"] = site_id
+    if id != "__omitir__":
+        payload["id"] = id
+    return client.post(
+        CAMINHO_MARCAR_LIDA,
+        data=json.dumps(payload),
+        content_type="application/json",
+        headers=cabecalhos,
+    )
+
+
+def test_marcar_lida_sem_token_e_401(client, par_autorizado):
+    resposta = _marcar_uma(client, destinatario_id=ALGUEM, id="n1", token=None)
+    assert resposta.status_code == 401
+
+
+def test_marcar_lida_token_errado_e_401(client, par_autorizado):
+    resposta = _marcar_uma(
+        client, destinatario_id=ALGUEM, id="n1", token="token-de-outro-par"
+    )
+    assert resposta.status_code == 401
+
+
+def test_marcar_lida_sem_destinatario_id_e_422(client, par_autorizado):
+    resposta = _marcar_uma(client, id="n1")
+    assert resposta.status_code == 422
+
+
+def test_marcar_lida_sem_site_id_e_422(client, par_autorizado):
+    resposta = _marcar_uma(
+        client, destinatario_id=ALGUEM, site_id="__omitir__", id="n1"
+    )
+    assert resposta.status_code == 422
+
+
+def test_marcar_lida_sem_id_e_422(client, par_autorizado):
+    resposta = _marcar_uma(client, destinatario_id=ALGUEM)
+    assert resposta.status_code == 422
+
+
+def test_marcar_lida_id_vazio_e_422(client, par_autorizado):
+    resposta = _marcar_uma(client, destinatario_id=ALGUEM, id="   ")
+    assert resposta.status_code == 422
+
+
+def test_marcar_lida_corpo_nao_e_json_e_422(client, par_autorizado):
+    resposta = _marcar_uma(client, corpo_cru="isto nao e json")
+    assert resposta.status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# 404, nunca 403 — e os dois motivos de 404 são indistinguíveis por fora
+# ---------------------------------------------------------------------------
+
+
+def test_marcar_lida_id_que_nunca_existiu_e_404(client, par_autorizado):
+    resposta = _marcar_uma(client, destinatario_id=ALGUEM, id="n999999")
+    assert resposta.status_code == 404
+
+
+def test_marcar_lida_id_com_formato_estranho_e_404_nunca_500(client, par_autorizado):
+    """Prefixo desconhecido, resto não numérico, id vazio-de-conteúdo depois do
+    prefixo — nada disso pode estourar: `consultas.resolver_id` devolve
+    `None` para qualquer forma estranha, e vira 404 como qualquer "não achei".
+    """
+    for id_estranho in ["z1", "n", "nabc", "n-5", "n0", "123", "🙂"]:
+        resposta = _marcar_uma(client, destinatario_id=ALGUEM, id=id_estranho)
+        assert resposta.status_code == 404, f"id={id_estranho!r}: {resposta.content}"
+
+
+def test_marcar_lida_id_de_outra_pessoa_e_404_nunca_403(client, par_autorizado):
+    da_outra = _guardar(destinatario_id=OUTRA)
+
+    resposta = _marcar_uma(client, destinatario_id=ALGUEM, id=f"n{da_outra.pk}")
+
+    assert resposta.status_code == 404
+    da_outra.refresh_from_db()
+    assert da_outra.lido_em is None, "não pode marcar o aviso de outra pessoa"
+
+
+def test_marcar_lida_404_nao_distingue_inexistente_de_outra_pessoa(
+    client, par_autorizado
+):
+    """A prova de que o 404 não vaza informação: chutar um id que nunca
+    existiu e acertar o id de OUTRA pessoa devolvem exatamente a mesma coisa.
+    """
+    da_outra = _guardar(destinatario_id=OUTRA)
+
+    resposta_inexistente = _marcar_uma(client, destinatario_id=ALGUEM, id="n999999")
+    resposta_de_outra_pessoa = _marcar_uma(
+        client, destinatario_id=ALGUEM, id=f"n{da_outra.pk}"
+    )
+
+    assert (
+        resposta_inexistente.status_code == resposta_de_outra_pessoa.status_code == 404
+    )
+    assert resposta_inexistente.content == resposta_de_outra_pessoa.content
+
+
+def test_marcar_lida_e_isolado_por_site(client, par_autorizado):
+    """A mesma pessoa, dois sites — o id de um site é 404 pedido pelo outro."""
+    outro_site = "outro-site-de-teste"
+    do_outro_site = _guardar(destinatario_id=ALGUEM, site_id=outro_site)
+
+    resposta = _marcar_uma(
+        client, destinatario_id=ALGUEM, site_id=SITE, id=f"n{do_outro_site.pk}"
+    )
+
+    assert resposta.status_code == 404
+    do_outro_site.refresh_from_db()
+    assert do_outro_site.lido_em is None
+
+
+# ---------------------------------------------------------------------------
+# O comportamento: marca UMA, idempotente, o carimbo da primeira não se mexe
+# ---------------------------------------------------------------------------
+
+
+def test_marcar_lida_marca_e_devolve_ja_estava_lido_falso(client, par_autorizado):
+    aviso = _guardar()
+    contador_antes = _contador()
+
+    resposta = _marcar_uma(client, destinatario_id=ALGUEM, id=f"n{aviso.pk}")
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {"ja_estava_lido": False}
+    aviso.refresh_from_db()
+    assert aviso.lido_em is not None
+    assert _contador() == contador_antes - 1
+
+
+def test_marcar_lida_chamada_de_novo_e_idempotente_e_carimbo_nao_muda(
+    client, par_autorizado
+):
+    aviso = _guardar()
+
+    primeira = _marcar_uma(client, destinatario_id=ALGUEM, id=f"n{aviso.pk}")
+    aviso.refresh_from_db()
+    carimbo_da_primeira = aviso.lido_em
+    contador_depois_da_primeira = _contador()
+
+    segunda = _marcar_uma(client, destinatario_id=ALGUEM, id=f"n{aviso.pk}")
+    aviso.refresh_from_db()
+
+    assert primeira.json() == {"ja_estava_lido": False}
+    assert segunda.json() == {"ja_estava_lido": True}
+    assert aviso.lido_em == carimbo_da_primeira, (
+        "o carimbo da primeira leitura se mexeu na segunda chamada — a "
+        "idempotência prometida pelo contrato quebrou"
+    )
+    assert _contador() == contador_depois_da_primeira, (
+        "a segunda chamada (idempotente, não deveria mudar nada) mexeu no " "contador"
+    )
+
+
+def test_marcar_lida_nao_toca_os_outros_avisos_da_mesma_pessoa(client, par_autorizado):
+    alvo = _guardar()
+    irmao = _guardar()
+
+    _marcar_uma(client, destinatario_id=ALGUEM, id=f"n{alvo.pk}")
+
+    alvo.refresh_from_db()
+    irmao.refresh_from_db()
+    assert alvo.lido_em is not None
+    assert irmao.lido_em is None
+    assert _contador() == 1
+
+
+def test_marcar_lida_numa_arquivada_e_sempre_ja_estava_lido(client, par_autorizado):
+    """`NotificacaoArquivada.lido_em` é `NOT NULL` — só chega lá via
+    `arquivar_lidas()`, que só arquiva o que já tem `lido_em`. Não tem como
+    existir uma arquivada não lida; esta é a prova de que marcar uma
+    arquivada é sempre um no-op idempotente, nunca um erro.
+    """
+    arquivada = NotificacaoArquivada.objects.create(
+        site_id=SITE,
+        destinatario_id=ALGUEM,
+        ator_id=EQUIPE,
+        assunto="sugestao.status-alterado",
+        parametros={"suggestion_id": "arquivada"},
+        origem_event_id=uuid.uuid4(),
+        criado_em=timezone.now(),
+        lido_em=timezone.now(),
+    )
+    carimbo_original = arquivada.lido_em
+
+    resposta = _marcar_uma(client, destinatario_id=ALGUEM, id=f"a{arquivada.pk}")
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {"ja_estava_lido": True}
+    arquivada.refresh_from_db()
+    assert arquivada.lido_em == carimbo_original
+
+
+def test_marcar_lida_bate_com_o_schema_do_contrato_congelado(client, par_autorizado):
+    aviso = _guardar()
+    resposta = _marcar_uma(client, destinatario_id=ALGUEM, id=f"n{aviso.pk}")
+    schema = schema_da_resposta("/marcar-lida", "post", "200")
+
+    Draft202012Validator(schema).validate(resposta.json())
+
+
+# =============================================================================
 # CUSTO — as três rotas custam o MESMO com 2 e com 200 avisos
 # =============================================================================
 #
