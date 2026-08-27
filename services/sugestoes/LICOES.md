@@ -3,6 +3,127 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
+## A tela de avisos passa a ler da caixa central (Fase 3/4 do sininho): a double fiel, o `id` que deixou de ser inteiro, e um cache que confundiu um guarda antigo
+
+Fecha `docs/decisoes/DECISAO-fase-2-do-sininho.md` §3 (*"a tela de avisos da
+Caixa passa a ler da caixa nova"*) e o item 1 do Lote C de
+`docs/notificacoes/PLANO-MESTRE.md`. `sino()` e `ver_avisos()`
+(`apps/core/avisos.py`) trocaram de fonte — `NotificacoesClient`
+(`apps/core/clients.py`), não mais `Aviso.objects`. `avisar_os_interessados()`
+continua escrevendo o `Aviso` local exatamente como antes: é rede de segurança
+da transição, e aposentá-lo é Fase 6, despacho próprio.
+
+**1. As duas telas do MESMO dado têm regra de falha OPOSTA, e a diferença é o
+ponto do despacho, não um detalhe.** `docs/decisoes/DECISAO-fase-4-do-sininho.md`
+Escolha 2: o sino (em toda página) fail ABERTA, cópia peça por peça do padrão
+do `funil` (`NotificacoesClient.obter_resumo`); a tela `/avisos` fail VISÍVEL —
+mensagem clara, nunca lista vazia disfarçada. A saída de desenho que faz as
+duas convivEREM no MESMO cliente sem duas classes de exceção: **todo método do
+`NotificacoesClient` devolve `None` em qualquer tropeço** (config ausente,
+rede, HTTP≠200, JSON fora do contrato) — nunca levanta. `None` é "não sei"; `0`
+ou `{"itens": []}` são respostas REAIS. Quem chama decide o que `None`
+significa para a TELA dele: `sino()` traduz como "sem número" (`or 0`);
+`ver_avisos()` traduz como "mostra a frase de falha". A única exceção a "sempre
+`None`" é `marcar_uma_como_lida`, que precisa de um TERCEIRO estado (`False` =
+a notificacoes respondeu 404 de verdade, não "não sei") para preservar
+404-nunca-403 no aviso de outra pessoa — ver o item 3.
+
+**2. O `id` de um aviso deixou de ser o pk local, e isso muda o conversor da
+URL, não só o código.** `GET /avisos` devolve um `id` OPACO (`type: string` no
+contrato — nunca prometido numérico). `path("avisos/<int:aviso_id>/lido", …)`
+viraria uma mentira estrutural: `<str:aviso_id>` é o conversor certo. A troca
+é retrocompatível por acidente feliz — `reverse(..., args=[7])` com o
+conversor `str` ainda produz `/avisos/7/lido` (o converter faz `str(valor)`),
+então nenhum teste que já chamava `reverse` com um inteiro precisou mudar.
+
+**3. `marcar_uma_como_lida` devolve `bool | None`, e o terceiro estado
+(`False`) existe só por causa de UM invariante antigo que quase se perdeu na
+migração.** A tela sempre respondeu 404 (nunca 403) ao chute de um aviso
+alheio — confirmar "existe, mas não é seu" vazaria a existência a quem só
+adivinhou um número. Se o cliente colapsasse 404 no mesmo `None` genérico de
+"rede caiu", a view não teria como diferenciar os dois casos, e o invariante
+de privacidade silenciosamente viraria "falha visível também no botão de
+marcar como lido" — o que É aceitável para "não sei", mas não é a mesma coisa
+que confirmar-ou-não a existência. `False` = definitivo (notificacoes
+respondeu 404); `None` = não sei (config, rede, 5xx, JSON fora do contrato).
+Só o primeiro vira `Http404` na view.
+
+**4. `vinculo` entra na carta pelo CALL SITE (`moderacao.py`), não por
+`avisos.py` reimportar `eventos.py`.** A tentação óbvia era fazer
+`avisar_os_interessados()` chamar `emitir_cartas_de_notificacao()` direto —
+mas quem já chama as duas, em sequência, com o resultado da primeira
+alimentando a segunda, é `registrar_mudanca_de_status()`
+(`apps/core/moderacao.py`). Cada `Aviso` que `avisar_os_interessados()`
+acabou de gravar já carrega `.vinculo`; `moderacao.py` só precisou cruzá-lo
+com o mapa `id local → id da plataforma` que já calculava (`ids_de_plataforma`)
+para montar `{id da plataforma: vinculo}` e passar como novo parâmetro
+OPCIONAL de `emitir_cartas_de_notificacao`. Aditivo de propósito — `vinculos`
+tem default `None`, e `parametros` só ganha a chave quando o destinatário
+está no mapa — então `tests/test_volume_das_cartas.py`, que chama a função
+direto sem `vinculos`, não precisou de UMA linha alterada. Regra que
+generaliza: quando um campo novo de contrato nasce OPCIONAL, o jeito certo de
+adicioná-lo a uma função já testada é um parâmetro com default que preserva o
+comportamento de quem não sabe que ele existe — nunca uma mudança de
+assinatura obrigatória que exige atualizar cada chamador.
+
+**5. A double de teste ESPELHA o `Aviso` local em vez de reconstruir um mundo
+próprio — e essa decisão sozinha evitou reescrever ~10 arquivos de teste
+existentes.** A primeira ideia (errada) foi: já que `/avisos` agora lê de um
+serviço de fora, todo teste que hoje monta um `Aviso` pelo ORM e confere o
+HTML precisaria ganhar uma segunda montagem, desta vez mockando a resposta
+HTTP à mão. Medido: são MAIS de trinta guardas espalhados em
+`test_inv_aviso_e_so_do_dono.py`, `test_inv_aviso_nasce_com_o_status.py`,
+`test_o_rosto.py`, `test_avisos_script_name.py`. A saída que funcionou: os
+quatro handlers novos de `tests/conftest.py::Rede` (`_notificacoes_resumo`,
+`_notificacoes_avisos`, `_notificacoes_marcar_lida(s)`) leem e ESCREVEM direto
+na tabela `Aviso` local — é o comportamento OBSERVÁVEL que a caixa central
+teria depois de a carta chegar e ser lida de volta, sem reimplementar o relay
+inteiro dentro do dublê (a carta em si já tem guarda próprio,
+`tests/test_volume_das_cartas.py` e
+`tests/test_inv_carta_endereca_pelo_id_da_plataforma.py`). Resultado medido: dos 366 testes que já existiam antes deste despacho,
+**364 passaram sem tocar UMA linha** — só dois precisaram de um ajuste
+pequeno, e nenhum dos dois por estarem ERRADOS (um ganhou uma rota nova na
+lista que já percorria, o outro é o item 6 logo abaixo).
+O `id` opaco da double é `str(aviso.pk)`: uma implementação válida do
+contrato (que só promete "opaco", nunca "não numérico"), e a que deixa
+`aviso.id` de fixtures antigas funcionar sem tradução.
+
+**6. O cache do sino (`_CACHE_DE_RESUMO`, TTL 30s) é uma feature real — e
+confundiu de verdade um guarda de custo que não tinha nada a ver com ele.**
+`tests/test_volume_dos_avisos.py::test_ler_a_pagina_de_avisos_nao_paga_consulta_pelo_vinculo`
+abre `/avisos` duas vezes na MESMA sessão de teste para comparar consultas com
+1 e com 11 avisos — e toda página desta célula também renderiza o sino
+(context processor em toda página). Sem limpar o cache entre as duas
+medições, a SEGUNDA visita reaproveitava o `/resumo` da primeira e pagava DUAS
+consultas a menos só por isso — o teste comparou 13 com 11 e acusou "cresceu",
+quando na verdade tinha DIMINUÍDO por um motivo alheio ao que ele mede. A
+cura: `limpar_cache_de_resumo()` (nova função pública de `avisos.py`, a MESMA
+receita de `apps/core/sessao.py::limpar_caches` para a `armadilhas/026`) antes
+de cada medição naquele teste — nunca desligar o cache, que é comportamento de
+produção correto. **A lição que generaliza: qualquer cache novo que atravessa
+uma página já coberta por um guarda de CONTAGEM DE CONSULTAS precisa de um
+jeito de ser zerado por fora — e o teste que mede "duas visitas seguidas"
+precisa saber que ele existe**, mesmo sendo de um assunto (o sino) que não é
+o que aquele teste está medindo (o vínculo).
+
+**7. `test_a_jornada_cobre_TODAS_as_rotas_de_participacao`
+(`test_inv_avaliacao_interna_fora_do_alcance.py`) é o guarda que pegou a rota
+nova (`marcar_todos_avisos_lidos`, Escolha 3 de
+`DECISAO-fase-4-do-sininho.md`) na hora — e é exatamente o comportamento que
+ele existe para ter.** A lista de rotas é derivada do urlconf
+(`exige_sessao` e não `exige_staff`), então a rota nova entrou sozinha na
+exigência; a jornada simulada é que precisou ganhar uma chamada a mais. Sem
+este guarda, uma rota de participação nova nasceria fora de TODOS os testes
+que percorrem "tudo que o aluno alcança" (inclusive o guarda de privacidade da
+`AvaliacaoInterna`) sem ninguém notar.
+
+**O que ficou de fora, e é decisão e não esquecimento:** paginação de verdade
+na tela (`ver_avisos()` segue `proximo_cursor` em loop, até 50 páginas, mas
+não há "carregar mais" na UI — a Caixa nunca teve isso, e ninguém pediu
+agora); "silenciar assunto" (Escolha 3, fora até existir um segundo assunto
+de aviso); e qualquer coisa em `services/notificacoes/` ou
+`services/funil/` — 1 PR = 1 célula, Lei 2 e Lei 3.
+
 ## Reemitir os avisos existentes (Fase 3, segunda metade): a migration e as três decisões que ela carrega
 
 Fecha o "FALTA A SEGUNDA METADE DESTA FASE" que o

@@ -265,18 +265,28 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
         # com o `Aviso` local (`ids_de_plataforma`). Quem MODEROU sem id é outra
         # história: aquilo é fail-closed e já parou a transação uma linha acima.
         na_plataforma = ids_de_plataforma(a.destinatario_id for a in avisos)
+        # [Rito de Contrato de 27/08/2026] destinatario_id da PLATAFORMA →
+        # vínculo, para a carta poder dizer POR QUE esta pessoa recebeu este
+        # aviso (`contracts/eventos/notificacao.devida.v1.json`,
+        # `parametros.vinculo`). O `vinculo` já está em mãos: cada `Aviso` que
+        # `avisar_os_interessados()` acabou de gravar carrega o dele — não é
+        # preciso perguntar de novo a `interessados_em()`, que seria uma
+        # segunda leitura correndo o risco de divergir da primeira se alguém
+        # votasse no meio desta mesma transação.
+        vinculos_por_plataforma = {
+            na_plataforma[a.destinatario_id]: a.vinculo
+            for a in avisos
+            if a.destinatario_id in na_plataforma
+        }
         eventos.emitir_cartas_de_notificacao(
             sugestao=travada,
-            destinatarios=[
-                na_plataforma[a.destinatario_id]
-                for a in avisos
-                if a.destinatario_id in na_plataforma
-            ],
+            destinatarios=list(vinculos_por_plataforma.keys()),
             status_anterior=status_anterior,
             status_novo=status_novo,
             nota=nota,
             ator_id=por.id_da_plataforma,
             origem_event_id=str(fato.event_id),
+            vinculos=vinculos_por_plataforma,
         )
     # E o publish, esse sim, é DEPOIS do commit: no fio nunca aparece um fato
     # que a transação ainda pode desfazer.

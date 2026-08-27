@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 
-from apps.core.avisos import marcar_lido, ver_avisos
+from apps.core.avisos import marcar_lido, marcar_tudo_lido, ver_avisos
 from apps.core.changespecs import changespecs
 from apps.core.moderacao import avaliar, moderar, mudar_status, ver_fila
 from apps.core.participacao import (
@@ -70,8 +70,15 @@ urlpatterns = [
     # está na sessão (apps/core/avisos.py). Marcar como lido é POST, e não GET,
     # porque muda estado: um GET seria marcado como lido por qualquer
     # pré-carregamento de link do navegador.
+    #
+    # `<str:aviso_id>`, não `<int:...>` — desde a Fase 3/4 do sininho o `id` de
+    # um aviso é o valor OPACO que `GET /avisos` devolve (a caixa central,
+    # `contracts/notificacoes.openapi.yaml`), não mais o pk local desta célula.
+    # Tratá-lo como inteiro seria a Caixa inventando uma forma que a porta de
+    # fora não promete.
     path("avisos", ver_avisos, name="avisos"),
-    path("avisos/<int:aviso_id>/lido", marcar_lido, name="marcar_aviso_lido"),
+    path("avisos/marcar-tudo", marcar_tudo_lido, name="marcar_todos_avisos_lidos"),
+    path("avisos/<str:aviso_id>/lido", marcar_lido, name="marcar_aviso_lido"),
     # A moderação (EVO-13) mora sob um prefixo próprio, `/moderacao`, e não
     # espalhada por `/sugestoes/<id>/...`: assim a fronteira do crachá é legível
     # no urlconf, e não só no decorador. Toda rota daqui responde **403** a quem

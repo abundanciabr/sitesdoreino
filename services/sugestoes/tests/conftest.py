@@ -1,14 +1,16 @@
 """Fixtures compartilhadas pelos testes-guarda da célula.
 
 Duas metades: o quadro mínimo do modelo de dados (EVO-11) e o **dublê do mundo
-lá fora** da porta — que desde a `DECISAO-celula-de-identidade` (25/08/2026)
-são DUAS células: a `identidade` (quem é — `getSessionFull`, com e-mail) e a
-`alunos` (se pode). O Google saiu daqui junto com o login.
+lá fora** da porta — três células desde a Fase 3/4 do sininho: a `identidade`
+(quem é — `getSessionFull`, com e-mail), a `alunos` (se pode) e a
+`notificacoes` (a caixa central de avisos, `DECISAO-fase-2-do-sininho.md` §3 —
+`apps/core/avisos.py::sino`/`ver_avisos`/`marcar_lido` leem de lá desde
+27/08/2026). O Google saiu daqui junto com o login.
 
 --------------------------------------------------------------------------
 NADA AQUI TOCA A REDE — e é isto que torna a suíte executável sem internet
 --------------------------------------------------------------------------
-As duas conversas são dubladas com `respx`, que troca o transporte do `httpx`
+As três conversas são dubladas com `respx`, que troca o transporte do `httpx`
 por um roteador em memória. A prova é mecânica, não promessa: `respx.mock` sem
 `assert_all_called` levanta `AllMockedAssertionError` para QUALQUER requisição
 que não tenha sido registrada (armadilhas/054). Se alguém acrescentar amanhã
@@ -17,10 +19,13 @@ um salto de rede novo, a suíte estoura em vez de sair para a internet.
 O dublê da `identidade` responde POR COOKIE: cada pessoa "logada no site" é um
 valor de `meshcraft_sessao` registrado em `Rede.site_reconhece` — o mesmo
 mecanismo de produção (a Caixa repassa o cabeçalho `Cookie` opaco; quem o
-entende é a outra célula).
+entende é a outra célula). O dublê da `notificacoes` responde ESPELHANDO o
+`Aviso` local — ver o comentário de `_notificacoes_avisos` mais abaixo para o
+porquê.
 """
 
 import hashlib
+import json
 import re
 import secrets
 
@@ -28,7 +33,9 @@ import httpx
 import pytest
 import respx
 from django.urls import reverse
+from django.utils import timezone
 
+from apps.core import avisos as avisos_mod
 from apps.core import sessao as ses
 from apps.sugestoes.models import (
     Aviso,
@@ -108,6 +115,7 @@ def sugestao(quadro, categoria, aluno):
 
 IDENTIDADE = "http://identidade.teste/interno"
 ALUNOS = "http://alunos.teste/api/alunos"
+NOTIFICACOES = "http://notificacoes.teste/api/notificacoes"
 
 MATRICULA_ATIVA = {
     "site_id": "site-de-teste",
@@ -143,6 +151,18 @@ def ambiente(monkeypatch):
     monkeypatch.setenv("IDENTIDADE_API_TOKEN", "token-do-par-sugestoes-identidade")
     monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
     monkeypatch.setenv("ALUNOS_API_TOKEN", "token-do-par-sugestoes-alunos")
+    # A caixa central de avisos (Fase 3/4 do sininho) — CONFIGURADA por padrão
+    # aqui, ao contrário do `funil` (`services/funil/tests/test_sino.py`, que
+    # a deixa ausente por padrão porque lá o sino é decoração). Nesta célula
+    # `/avisos` É o assunto de boa parte da suíte (test_inv_aviso_e_so_do_dono,
+    # test_o_rosto, test_avisos_script_name...), então o padrão que serve à
+    # maioria dos testes é "respondendo" — os poucos testes de falha (fail
+    # aberta no sino, fail visível na tela) sobrescrevem a rota mockada
+    # correspondente (`rede.notificacoes_resumo`/`notificacoes_avisos`
+    # `.mock(...)` de novo, mesmo padrão de `Rede.central_responde`) ou tiram
+    # a variável com `monkeypatch.delenv`.
+    monkeypatch.setenv("NOTIFICACOES_API_URL", NOTIFICACOES)
+    monkeypatch.setenv("NOTIFICACOES_API_TOKEN", "token-do-par-sugestoes-notificacoes")
     monkeypatch.delenv("SUGESTOES_STAFF_EMAILS", raising=False)
     # [INV-SUG10] A lista de APROVADORES começa ausente pelo mesmo motivo — e
     # aqui ele é ainda mais duro: sem ela ninguém autoriza desenvolvimento, e é
@@ -151,12 +171,14 @@ def ambiente(monkeypatch):
     # a produção não tem, e o guarda de fail-closed nunca reprovaria.
     monkeypatch.delenv("SUGESTOES_APROVADORES", raising=False)
     ses.limpar_caches()
+    avisos_mod.limpar_cache_de_resumo()
     yield
     ses.limpar_caches()
+    avisos_mod.limpar_cache_de_resumo()
 
 
 class Rede:
-    """As duas conversas de fora, sob controle do teste.
+    """As três conversas de fora, sob controle do teste.
 
     Cada método diz o que o mundo VAI responder; o teste declara só o que
     importa para o invariante que está provando. O que não for declarado
@@ -171,6 +193,21 @@ class Rede:
         self._central_fora = False
         self.completa = mock.get(f"{IDENTIDADE}/sessao/completa").mock(
             side_effect=self._quem_e
+        )
+        # A caixa central de avisos, de mentira — ver as quatro rotas e o
+        # comentário de `_notificacoes_avisos` logo abaixo para o porquê de
+        # ela ESPELHAR o `Aviso` local em vez de guardar estado próprio.
+        self.notificacoes_resumo = mock.get(f"{NOTIFICACOES}/resumo").mock(
+            side_effect=self._notificacoes_resumo
+        )
+        self.notificacoes_avisos = mock.get(f"{NOTIFICACOES}/avisos").mock(
+            side_effect=self._notificacoes_avisos
+        )
+        self.notificacoes_marcar_lida = mock.post(f"{NOTIFICACOES}/marcar-lida").mock(
+            side_effect=self._notificacoes_marcar_lida
+        )
+        self.notificacoes_marcar_lidas = mock.post(f"{NOTIFICACOES}/marcar-lidas").mock(
+            side_effect=self._notificacoes_marcar_lidas
         )
 
     # -- identidade ---------------------------------------------------------
@@ -233,6 +270,115 @@ class Rede:
     @staticmethod
     def _url(email: str) -> str:
         return f"{ALUNOS}/alunos/{email}/matriculas"
+
+    # -- notificacoes ---------------------------------------------------------
+    # **Por que este dublê ESPELHA o `Aviso` local em vez de guardar um mundo
+    # próprio.** A caixa central de verdade recebe cópia do `Aviso` via a
+    # carta `notificacao.devida.v1` (emitida por
+    # `apps/sugestoes/eventos.py::emitir_cartas_de_notificacao`, já testado
+    # em `tests/test_volume_das_cartas.py` e
+    # `tests/test_inv_carta_endereca_pelo_id_da_plataforma.py`) — encenar essa
+    # rede inteira de novo aqui só para reconstruir o que o `Aviso` já tem em
+    # mãos seria duplicar verdade, o pecado que a Lei 3 proíbe. Em vez disso,
+    # o dublê lê e escreve DIRETO na tabela local: é o comportamento
+    # OBSERVÁVEL da caixa central (o que `GET /avisos` devolveria depois de
+    # a carta chegar e ser lida de volta), sem reimplementar o relay.
+    #
+    # O `id` opaco do contrato é `str(aviso.pk)` — uma implementação válida
+    # do contrato (que só promete "opaco", nunca "não numérico"), e a que
+    # deixa os testes existentes (`aviso.id`) funcionarem sem tradução. Os
+    # testes NOVOS de fail-open/fail-visível não dependem deste detalhe.
+    #
+    # `POST /marcar-lida` e `/marcar-lidas` gravam em `Aviso.lido_em` — o
+    # MESMO campo que a leitura local usava. Isto é só a forma de o dublê
+    # guardar estado; em produção, desde esta migração, `marcar_lido()` NUNCA
+    # mais escreve nessa coluna (só a caixa central grava "lido" agora) — ver
+    # o comentário de `_meus()` em `apps/core/avisos.py`.
+    def _identidade_da_plataforma(self, destinatario_id) -> "Identidade | None":
+        if not destinatario_id:
+            return None
+        return Identidade.objects.filter(id_da_plataforma=destinatario_id).first()
+
+    def _notificacoes_resumo(self, request):
+        identidade = self._identidade_da_plataforma(
+            request.url.params.get("destinatario_id")
+        )
+        nao_lidas = (
+            Aviso.objects.filter(destinatario=identidade, lido_em__isnull=True).count()
+            if identidade
+            else 0
+        )
+        return httpx.Response(200, json={"nao_lidas": nao_lidas})
+
+    def _carta_de(self, aviso: Aviso) -> dict:
+        parametros = {
+            "suggestion_id": str(aviso.sugestao_id),
+            "status_anterior": aviso.status_anterior,
+            "status_novo": aviso.status_novo,
+        }
+        if aviso.nota:
+            parametros["nota"] = aviso.nota
+        if aviso.vinculo:
+            parametros["vinculo"] = aviso.vinculo
+        return {
+            "id": str(aviso.pk),
+            "assunto": "sugestao.status-alterado",
+            "parametros": parametros,
+            "ator_id": None,
+            "lido_em": aviso.lido_em.isoformat() if aviso.lido_em else None,
+            "criado_em": aviso.criado_em.isoformat(),
+        }
+
+    def _notificacoes_avisos(self, request):
+        identidade = self._identidade_da_plataforma(
+            request.url.params.get("destinatario_id")
+        )
+        if identidade is None:
+            return httpx.Response(200, json={"itens": [], "proximo_cursor": None})
+        avisos = Aviso.objects.filter(destinatario=identidade).order_by(
+            "-criado_em", "-id"
+        )
+        return httpx.Response(
+            200,
+            json={
+                "itens": [self._carta_de(a) for a in avisos],
+                "proximo_cursor": None,
+            },
+        )
+
+    def _notificacoes_marcar_lida(self, request):
+        corpo = json.loads(request.content)
+        identidade = self._identidade_da_plataforma(corpo.get("destinatario_id"))
+        id_bruto = corpo.get("id")
+        aviso = (
+            Aviso.objects.filter(pk=id_bruto).first()
+            if str(id_bruto).isdigit()
+            else None
+        )
+        if (
+            aviso is None
+            or identidade is None
+            or aviso.destinatario_id != identidade.pk
+        ):
+            # 404, nunca 403 — o mesmo cuidado que a leitura local sempre teve
+            # (`apps/core/avisos.py::marcar_lido`): confirmar "existe, mas não
+            # é seu" vazaria a existência do aviso alheio a quem chutou um id.
+            return httpx.Response(404, json={"detail": "nao encontrado"})
+        ja_estava_lido = aviso.lido_em is not None
+        if not ja_estava_lido:
+            aviso.lido_em = timezone.now()
+            aviso.save(update_fields=["lido_em"])
+        return httpx.Response(200, json={"ja_estava_lido": ja_estava_lido})
+
+    def _notificacoes_marcar_lidas(self, request):
+        corpo = json.loads(request.content)
+        identidade = self._identidade_da_plataforma(corpo.get("destinatario_id"))
+        if identidade is None:
+            return httpx.Response(200, json={"marcados": 0})
+        pendentes = Aviso.objects.filter(destinatario=identidade, lido_em__isnull=True)
+        marcados = pendentes.count()
+        pendentes.update(lido_em=timezone.now())
+        return httpx.Response(200, json={"marcados": marcados})
 
 
 @pytest.fixture
@@ -432,8 +578,7 @@ def changespec(aprovador, sugestao):
 # Os eventos (EVO-20) — o fio e os quatro fatos, provocados pela jornada REAL
 # ---------------------------------------------------------------------------
 
-import json  # noqa: E402  (usado só pelo Fio abaixo)
-from unittest import mock as unittest_mock  # noqa: E402
+from unittest import mock as unittest_mock  # noqa: E402  (usado só pelo Fio abaixo)
 
 
 class Fio:

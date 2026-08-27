@@ -236,6 +236,7 @@ def emitir_cartas_de_notificacao(
     nota: str = "",
     ator_id: str | None,
     origem_event_id: str,
+    vinculos: dict[str, str] | None = None,
 ) -> list[OutboxEvent]:
     """`notificacao.devida.v1` — UMA CARTA POR PESSOA, escritas em UM insert.
 
@@ -259,6 +260,19 @@ def emitir_cartas_de_notificacao(
     `destinatarios` já chega filtrado: quem não tem id de plataforma não recebe
     carta (e continua recebendo o `Aviso` local, como sempre). O porquê da
     assimetria com o ator está em `AtorSemIdDaPlataforma`.
+
+    **`vinculos` (Rito de Contrato de 27/08/2026, `contracts/eventos/
+    notificacao.devida.v1.json`, campo `parametros.vinculo`): mapa opcional
+    `destinatario_id da PLATAFORMA → vínculo`.** POR QUE cada pessoa recebeu
+    ESTE aviso ("autor" / "comentario" / "voto") — a mesma explicação que
+    `Aviso.vinculo` já guarda localmente (EVO-42), agora também na carta, para
+    a tela de avisos da Caixa não perder, na migração para a porta nova, o
+    motivo que ela já mostra hoje. Parâmetro OPCIONAL e aditivo de propósito:
+    quem não passar `vinculos` (ou não tiver o destinatário no mapa) continua
+    publicando a carta exatamente como antes — `parametros` simplesmente não
+    ganha a chave, e o campo é opcional no contrato. É por isso que
+    `tests/test_volume_das_cartas.py` não precisou mudar uma linha para
+    continuar válido.
     """
     if not transaction.get_connection().in_atomic_block:
         raise EventoForaDaTransacao(
@@ -275,6 +289,7 @@ def emitir_cartas_de_notificacao(
     if nota:
         parametros["nota"] = nota
     site_id = _site_de(sugestao)
+    vinculos = vinculos or {}
     # O título da ideia NÃO viaja: uma ideia renomeada deixaria avisos antigos
     # mostrando o nome velho para sempre. A tela busca pelo `suggestion_id`.
     return OutboxEvent.objects.bulk_create(
@@ -289,7 +304,11 @@ def emitir_cartas_de_notificacao(
                     "assunto": ASSUNTO_STATUS_ALTERADO,
                     # cópia por carta: um dicionário compartilhado entre N linhas
                     # é uma referência só, e quem mexer numa mexe em todas.
-                    "parametros": dict(parametros),
+                    "parametros": (
+                        {**parametros, "vinculo": vinculos[destinatario_id]}
+                        if destinatario_id in vinculos
+                        else dict(parametros)
+                    ),
                     "origem_event_id": origem_event_id,
                 },
             )

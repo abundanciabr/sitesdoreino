@@ -53,19 +53,33 @@ Um sistema de notificações que vai crescer merece plano próprio, não uma ext
 improvisada desta tela.
 """
 
+import logging
+import time
+
 from django.db import transaction
-from django.http import HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
+from django.http import Http404, HttpResponseRedirect
+from django.shortcuts import render
 from django.urls import reverse
-from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.sugestoes.models import Aviso, Comentario, Identidade, Voto
+from apps.sugestoes.models import Aviso, Comentario, Identidade, Sugestao, Voto
 
 from . import sessao as ses
-from .participacao import exige_sessao
+from .clients import NotificacoesClient
+from .participacao import exige_sessao, quadro_atual
+
+logger = logging.getLogger(__name__)
 
 PAGINA_AVISOS = "sugestoes/avisos.html"
+
+# Os mesmos dicionários de rótulo que o resto da célula já usa — nunca um
+# segundo vocabulário. `ver_avisos()` os usa para traduzir
+# `parametros.status_anterior`/`status_novo`/`vinculo` (texto cru vindo da
+# API) para o mesmo português que `get_..._display()` já produzia quando a
+# leitura era local.
+STATUS_ROTULOS = dict(Sugestao.Status.choices)
+VINCULO_ROTULOS = dict(Aviso.Vinculo.choices)
 
 
 class AvisoForaDaTransacao(Exception):
@@ -201,17 +215,57 @@ def avisar_os_interessados(
 
 
 def _meus(ator):
-    """[INVARIANTE 2] O recorte por dono, num lugar só.
+    """[INVARIANTE 2, histórico] O recorte por dono, num lugar só.
 
-    Toda leitura e toda escrita de aviso passa por aqui. Um filtro por
-    `destinatario` repetido em cada view é como um dos lugares esquece — e
-    esquecer, aqui, é mostrar a alguém o aviso de outra pessoa.
+    **Desde a Fase 3/4 do sininho, NENHUMA view lê mais por aqui** — `sino()`
+    e `ver_avisos()` passaram a ler de `NotificacoesClient` (a caixa central,
+    `contracts/notificacoes.openapi.yaml`; `DECISAO-fase-2-do-sininho.md`
+    §3). A função continua existindo porque `avisar_os_interessados()` acima
+    continua escrevendo o `Aviso` LOCAL — rollback de segurança durante a
+    transição (aposentar a tabela é a Fase 6, despacho próprio) — e porque
+    ler o estado dessa cópia local segue útil para depuração/operação.
+    `contar_nao_lidos()` abaixo é o mesmo caso.
     """
     return Aviso.objects.filter(destinatario=ator.identidade)
 
 
 def contar_nao_lidos(ator) -> int:
     return _meus(ator).filter(lido_em__isnull=True).count()
+
+
+# ---------------------------------------------------------------------------
+# O sino: fail ABERTA — a MESMA regra do sino do `funil` (Escolha 2,
+# `docs/decisoes/DECISAO-fase-4-do-sininho.md`). `notificacoes` fora do ar ⇒
+# sem número, página abre normal, nunca 500. É a ponta OPOSTA de
+# `ver_avisos()`, logo abaixo, que fail VISÍVEL — mesmo dado, duas telas,
+# regras deliberadamente diferentes.
+# ---------------------------------------------------------------------------
+
+TTL_DO_RESUMO = 30
+MAXIMO_EM_CACHE = 500
+_CACHE_DE_RESUMO: dict = {}
+
+
+def limpar_cache_de_resumo() -> None:
+    """`tests/conftest.py::ambiente` chama isto a cada teste — o mesmo
+    cuidado de `apps/core/sessao.py::limpar_caches` (armadilhas/026: cache de
+    módulo vaza entre testes)."""
+    _CACHE_DE_RESUMO.clear()
+
+
+def _site_id_da_requisicao() -> "str | None":
+    """O `site_id` desta requisição, pelo MESMO mecanismo que o resto da
+    célula já usa para resolver o site dela (`participacao.quadro_atual()`)
+    — nunca um segundo jeito de descobrir o site. `None` só quando o próprio
+    `quadro_atual()` não consegue decidir (zero ou dois quadros no banco):
+    problema de CADASTRO, não de rede — e o resto da célula já responde a
+    isso com `Http404` (`ver_quadro`, `nova_sugestao`); aqui, dentro do sino
+    fail-aberto, vira "sem número" em vez de derrubar a página.
+    """
+    try:
+        return quadro_atual().site_id
+    except Http404:
+        return None
 
 
 def sino(request):
@@ -224,52 +278,239 @@ def sino(request):
     que não mostra o sino não paga consulta nenhuma; a `entrar.html`, que nem
     estende a moldura, não paga nada.
 
-    O sino desenhado é do EVO-31 (Lote 3). O que nasce aqui é o dado.
+    O sino desenhado é do EVO-31 (Lote 3). **Desde a Fase 4 do sininho, o
+    dado vem de `GET /resumo`** (a caixa central), fail ABERTA: qualquer
+    tropeço (config ausente, rede, HTTP≠200, JSON fora do contrato — tudo
+    isso é `None` para `NotificacoesClient.obter_resumo`) vira "sem número",
+    nunca uma página quebrada. Cache curto por `(destinatario_id, site_id)`,
+    mesma ideia do `_CACHE_DE_AVISOS` do `funil` (PR #296): evita uma chamada
+    HTTP por página vista pela mesma pessoa numa rajada de cliques — e o
+    `None` (falha) também é cacheado, para uma `notificacoes` fora do ar não
+    virar uma tentativa de rede por página durante todo o TTL.
     """
 
     def contagem() -> int:
         ator = ses.ator_atual(request)
-        return contar_nao_lidos(ator) if ator else 0
+        if ator is None:
+            return 0
+        destinatario_id = ator.identidade.id_da_plataforma
+        if not destinatario_id:
+            # Ainda não "casou" com a plataforma (INV-SUG11): não há por
+            # quem perguntar à notificacoes. Mesma resposta do fail-open —
+            # sem número, nunca erro.
+            return 0
+        site_id = _site_id_da_requisicao()
+        if site_id is None:
+            return 0
+
+        agora = time.time()
+        chave = (destinatario_id, site_id)
+        hit = _CACHE_DE_RESUMO.get(chave)
+        if hit and hit[0] > agora:
+            return hit[1] or 0
+
+        valor = NotificacoesClient().obter_resumo(
+            destinatario_id=destinatario_id, site_id=site_id
+        )
+        if len(_CACHE_DE_RESUMO) >= MAXIMO_EM_CACHE:
+            _CACHE_DE_RESUMO.clear()
+        _CACHE_DE_RESUMO[chave] = (agora + TTL_DO_RESUMO, valor)
+        return valor or 0
 
     return {"avisos_nao_lidos": contagem}
+
+
+# ---------------------------------------------------------------------------
+# A tela de avisos: fail VISÍVEL — a regra OPOSTA do sino (Escolha 2,
+# `DECISAO-fase-4-do-sininho.md`). Esta página É a função dela: esconder uma
+# falha em silêncio faria a pessoa achar que não tem avisos quando a caixa
+# central é que está fora do ar. Vazio de verdade e falha são estados
+# DIFERENTES, nunca o mesmo visual.
+# ---------------------------------------------------------------------------
+
+MENSAGEM_DE_FALHA = "Não consegui buscar seus avisos agora. Tente de novo em instantes."
+
+# Teto de páginas ao seguir `proximo_cursor` — nunca esperado em uso normal
+# desta Caixa; existe só para um laço não correr sem fim se a notificacoes
+# devolver um cursor que nunca esvazia.
+MAXIMO_DE_PAGINAS = 50
+
+
+def _buscar_todos_os_avisos(
+    *, destinatario_id: str, site_id: str
+) -> "list[dict] | None":
+    """Todas as páginas de `GET /avisos`, concatenadas — `None` se QUALQUER
+    página falhar. Uma página só não pode virar metade da verdade: exibir as
+    primeiras 20 e calar-se sobre o resto seria a mesma mentira que a
+    Escolha 2 proíbe, só que disfarçada de paginação.
+    """
+    cliente = NotificacoesClient()
+    itens: list[dict] = []
+    cursor = ""
+    for _ in range(MAXIMO_DE_PAGINAS):
+        pagina = cliente.listar_avisos(
+            destinatario_id=destinatario_id, site_id=site_id, cursor=cursor
+        )
+        if pagina is None:
+            return None
+        itens.extend(pagina["itens"])
+        cursor = pagina.get("proximo_cursor") or ""
+        if not cursor:
+            break
+    return itens
+
+
+def _titulos_das_sugestoes(itens: list[dict]) -> dict[str, str]:
+    """`suggestion_id` (de `parametros`) → título — UMA consulta para a
+    plateia inteira de avisos, nunca uma por linha (o mesmo cuidado de N+1
+    que `select_related("sugestao")` já tinha antes desta migração).
+
+    O título NÃO viaja na carta de propósito
+    (`DECISAO-fase-2-do-sininho.md` §4: uma ideia renomeada deixaria avisos
+    antigos mostrando o nome velho para sempre) — por isso a tela busca aqui,
+    NA HORA DE LER, pelo `suggestion_id` opaco.
+    """
+    ids = {(item.get("parametros") or {}).get("suggestion_id") for item in itens}
+    ids_numericos = [i for i in ids if i and str(i).isdigit()]
+    if not ids_numericos:
+        return {}
+    return {
+        str(pk): titulo
+        for pk, titulo in Sugestao.objects.filter(pk__in=ids_numericos).values_list(
+            "id", "titulo"
+        )
+    }
+
+
+def _item_para_o_template(item: dict, titulos: dict[str, str]) -> dict:
+    """Um item de `GET /avisos` (a forma da API) → o dicionário que o
+    template usa. Mesmos NOMES de campo que o `Aviso` (model) já expunha —
+    `status_novo`, `vinculo`, `nota`, `criado_em`, `lido_em`, `id` — para a
+    vestimenta do EVO-31 (`avisos.html`) precisar de troca mínima.
+
+    **`vinculo` ausente (carta de antes de 27/08/2026, ou de um `Aviso` sem
+    carta ainda) → rótulo genérico, NUNCA uma exceção por chave ausente** —
+    é a lei do próprio campo (`contracts/eventos/notificacao.devida.v1.json`,
+    descrição de `parametros.vinculo`: "a tela que lê trata ausência como
+    'motivo não registrado'"). Aqui isso vira `vinculo_label=""`, e o
+    template simplesmente não desenha o selo quando não há rótulo.
+    """
+    parametros = item.get("parametros") or {}
+    suggestion_id = str(parametros.get("suggestion_id") or "")
+    status_novo = parametros.get("status_novo") or ""
+    status_anterior = parametros.get("status_anterior") or ""
+    vinculo = parametros.get("vinculo") or ""
+    lido_em = item.get("lido_em")
+    return {
+        "id": item["id"],
+        "sugestao_id": suggestion_id,
+        "sugestao_titulo": titulos.get(suggestion_id, "(sugestão não encontrada)"),
+        "status_novo": status_novo,
+        "status_novo_label": STATUS_ROTULOS.get(status_novo, status_novo),
+        "status_anterior": status_anterior,
+        "status_anterior_label": STATUS_ROTULOS.get(status_anterior, status_anterior),
+        "vinculo": vinculo,
+        "vinculo_label": VINCULO_ROTULOS.get(vinculo, ""),
+        "nota": parametros.get("nota") or "",
+        "lido_em": parse_datetime(lido_em) if lido_em else None,
+        "criado_em": parse_datetime(item["criado_em"]),
+    }
 
 
 @require_GET
 @exige_sessao
 def ver_avisos(request, ator):
-    """A lista dos avisos DESTA pessoa — nunca uma lista de avisos.
-
-    `select_related("sugestao")` porque cada linha mostra o título da sugestão:
-    sem ele, uma caixa com trinta avisos faria trinta consultas.
+    """A lista dos avisos DESTA pessoa — lida da caixa central desde a Fase
+    3/4 do sininho (`DECISAO-fase-2-do-sininho.md` §3), não mais do `Aviso`
+    local. Ver o bloco acima: fail VISÍVEL, a regra oposta do sino.
     """
+    destinatario_id = ator.identidade.id_da_plataforma
+    site_id = quadro_atual().site_id
+    itens = (
+        _buscar_todos_os_avisos(destinatario_id=destinatario_id, site_id=site_id)
+        if destinatario_id
+        # Sem id de plataforma (INV-SUG11), não há por quem perguntar — a
+        # pessoa nunca teve carta nenhuma endereçada a ela. Mesmo tratamento
+        # da falha de rede: a tela avisa, nunca finge lista vazia.
+        else None
+    )
+
+    if itens is None:
+        logger.error(
+            "ver_avisos: não deu para buscar os avisos de %s na notificacoes",
+            ator.identidade.id,
+        )
+        return render(
+            request,
+            PAGINA_AVISOS,
+            {"ator": ator, "falha": True, "avisos": [], "nao_lidos": 0},
+            status=503,
+        )
+
+    titulos = _titulos_das_sugestoes(itens)
+    avisos = [_item_para_o_template(item, titulos) for item in itens]
+    nao_lidos = sum(1 for item in itens if not item.get("lido_em"))
+
     return render(
         request,
         PAGINA_AVISOS,
-        {
-            "ator": ator,
-            "avisos": _meus(ator).select_related("sugestao"),
-            "nao_lidos": contar_nao_lidos(ator),
-        },
+        {"ator": ator, "falha": False, "avisos": avisos, "nao_lidos": nao_lidos},
     )
 
 
 @require_POST
 @exige_sessao
 def marcar_lido(request, ator, aviso_id):
-    """[INVARIANTES 2 e 3] Só o dono marca, e marcar duas vezes é marcar uma.
+    """[INVARIANTES 2 e 3] Só o dono marca, e marcar duas vezes é marcar uma
+    — ambos garantidos agora pela notificacoes (`POST /marcar-lida`), não
+    mais por `_meus()` local.
 
-    **404 e não 403 para o aviso de outra pessoa**, e a diferença importa: 403
-    diria "existe, mas não é seu", que é confirmar a existência de um aviso
-    alheio a quem chutou um número. O recorte por dono está no próprio `get`, e
-    não numa comparação depois da busca — assim não há nenhum instante do código
-    em que a linha de outra pessoa esteja carregada na memória desta requisição.
-
-    A idempotência é a guarda `if ... is None`: o carimbo da primeira leitura não
-    se mexe. Sem ela, um duplo clique — ou o refresh de um POST — reescreveria o
-    instante, e "quando eu vi isto" viraria "quando eu cliquei pela última vez".
+    **404 e não 403** continua a resposta ao chute de um `aviso_id` alheio.
+    `NotificacoesClient.marcar_uma_como_lida` devolve `False` exatamente
+    para esse caso (a notificacoes respondeu 404 — id inexistente ou de
+    outra pessoa/site), distinto de `None` ("não sei": rede, config, 5xx).
+    Só o primeiro vira 404 aqui; o segundo é logado e a pessoa volta para a
+    lista normalmente — se a falha persistir, é a PRÓXIMA leitura de
+    `ver_avisos()` que avisa (fail visível é da tela de listar, não deste
+    botão).
     """
-    aviso = get_object_or_404(_meus(ator), pk=aviso_id)
-    if aviso.lido_em is None:
-        aviso.lido_em = timezone.now()
-        aviso.save(update_fields=["lido_em"])
+    destinatario_id = ator.identidade.id_da_plataforma
+    if destinatario_id:
+        site_id = quadro_atual().site_id
+        resultado = NotificacoesClient().marcar_uma_como_lida(
+            destinatario_id=destinatario_id, site_id=site_id, id=aviso_id
+        )
+        if resultado is False:
+            raise Http404("aviso inexistente, ou de outra pessoa")
+        if resultado is None:
+            logger.error(
+                "marcar_lido: não deu para marcar %s como lido (destinatário %s)",
+                aviso_id,
+                ator.identidade.id,
+            )
+    return HttpResponseRedirect(reverse("avisos"))
+
+
+@require_POST
+@exige_sessao
+def marcar_tudo_lido(request, ator):
+    """Escolha 3, `DECISAO-fase-4-do-sininho.md`: marcar TODOS os avisos não
+    lidos de uma vez — funcionalidade NOVA (a leitura local nunca teve isto).
+
+    Best-effort e silenciosa na falha, de propósito: perder este clique é
+    baixo risco (o botão continua ali para tentar de novo), e é a tela de
+    listar — não este botão — quem carrega a responsabilidade de AVISAR
+    quando a notificacoes está fora do ar.
+    """
+    destinatario_id = ator.identidade.id_da_plataforma
+    if destinatario_id:
+        site_id = quadro_atual().site_id
+        resultado = NotificacoesClient().marcar_todas_como_lidas(
+            destinatario_id=destinatario_id, site_id=site_id
+        )
+        if resultado is None:
+            logger.error(
+                "marcar_tudo_lido: não deu para marcar tudo como lido (destinatário %s)",
+                ator.identidade.id,
+            )
     return HttpResponseRedirect(reverse("avisos"))
