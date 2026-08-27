@@ -17,7 +17,13 @@ name: deploy-celula
 on:
   push:
     branches: [main]
-    paths: ['services/**']
+    # `painel/**` está aqui porque a célula `admin` SERVE o painel do dono
+    # atrás do login, e a pasta entra na imagem no build (passo "Embutir o
+    # painel" abaixo). Registro novo no livro ⇒ imagem nova da `admin` ⇒ o
+    # painel online acompanha. Sem esta linha o workflow nem começaria, e o
+    # painel congelaria em silêncio. Quem mapeia `painel/` ⇒ `admin` é
+    # `ci/ci.py::celulas_tocadas`; guarda: `ci/tests/test_painel_vivo_no_deploy.py`.
+    paths: ['services/**', 'painel/**']
 permissions:
   contents: read
 concurrency:
@@ -114,6 +120,24 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Embutir o painel do dono no contexto do build (só a célula admin)
+        if: matrix.celula == 'admin'
+        run: |
+          set -eu
+          # O contexto do build é `services/admin`, que não alcança `painel/`
+          # na raiz. A cópia entra aqui, e o `COPY . .` do Dockerfile a leva
+          # para a imagem; `services/admin/.gitignore` garante que ela nunca
+          # seja commitada (seriam dois livros no repositório).
+          #
+          # Fail-CLOSED de propósito: sem `set -eu` e sem esta conferência, uma
+          # pasta ausente viraria uma imagem publicada em que o painel
+          # simplesmente não existe — e o deploy ficaria VERDE. É a forma exata
+          # do falso-verde que a RETROSPECTIVA-FASE-D lista como padrão 1.
+          test -f painel/painel.html || { echo "PAROU: painel/painel.html nao existe"; exit 1; }
+          test -d painel/registros || { echo "PAROU: painel/registros/ nao existe"; exit 1; }
+          rm -rf services/admin/painel_embutido
+          cp -R painel services/admin/painel_embutido
+          echo "painel embutido: $(ls services/admin/painel_embutido/registros | wc -l) registros"
       - name: Build & push da imagem da célula
         run: |
           IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}

@@ -3,3 +3,9 @@ __pycache__/
 .pytest_cache/
 staticfiles/
 .env.dev
+
+# A cópia do painel do dono que o deploy embute no contexto do build
+# (`apps/core/painel.py`). NÃO se commita: duas pastas com os mesmos registros
+# dentro do repositório seria exatamente a duplicação que o CLAUDE.md proíbe —
+# a célula SERVE o painel, não guarda uma cópia dele.
+painel_embutido/
