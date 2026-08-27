@@ -193,13 +193,26 @@ Os eventos passam a carregar um id de pessoa que qualquer célula entende. **Rit
 com o mantenedor presente, PR só de `contracts/` com a label `contrato`. Versão nova do
 schema (`v2`), com os consumidores migrando em PRs seguintes — nunca no mesmo.
 
-### FASE 3 — Gênese da célula `notificacoes` · **e a mudança de casa dos avisos que já existem** · ✅ CÉLULA NO AR em 26/08/2026
+### FASE 3 — Gênese da célula `notificacoes` · **e a mudança de casa dos avisos que já existem** · ✅ FECHADA (célula no ar 26/08/2026, avisos retroativos publicados 27/08/2026)
 
 > **Alterada em 26/08/2026** pela §3 da `DECISAO-fase-2-do-sininho.md`: o mantenedor escolheu que os `Aviso` que já existem na `sugestoes` **mudam de casa junto**, no MESMO PR da gênese, e a tela de avisos da Caixa passa a ler da caixa nova. A alternativa (caixa nova começando vazia) foi recusada por criar duas verdades sobre "o que você tem para ler". Esta fase, portanto, não é só "nascer".
 
 **A célula nasceu em 26/08/2026** (PRs #247 script, #248 célula, #252 compose): banco isolado, contador O(1), arquivamento, consumidor do fio, rollback no mesmo PR e `freeze: not-applicable`. Constituição em `constituicoes/AGENTS.notificacoes.md`; invariantes INV-NOT1 e INV-NOT2.
 
-**FALTA A SEGUNDA METADE DESTA FASE:** os `Aviso` que já existem na `sugestoes` ainda NÃO mudaram de casa, e a tela da Caixa ainda lê da tabela local. É PR próprio, na célula `sugestoes` (1 PR = 1 célula), e o caminho é reemitir as cartas dos avisos existentes — o dado atravessa pelo fio, sem ninguém ler o banco alheio (Lei 2).
+**✅ SEGUNDA METADE FECHADA em 27/08/2026 (PR #268), na célula `sugestoes`.**
+Os `Aviso` que já existiam antes de 26/08/2026 foram reemitidos como cartas
+`notificacao.devida.v1` por uma migration de dados
+(`0008_backfill_cartas_dos_avisos_existentes.py`) — o dado atravessou pelo
+fio, sem ninguém ler o banco alheio (Lei 2), exatamente como planejado
+acima. Decisões que ficaram registradas no PR e em
+`services/sugestoes/LICOES.md`: `ator_id` nasce `null` em toda carta
+retroativa (o `Aviso` não guarda quem moderou); `origem_event_id` é
+sintético e PRÓPRIO de cada `Aviso` (não agrupado por mudança de status,
+diferente do caminho ao vivo — o `Aviso` não preserva o `event_id` do fato
+original); `occurred_at` preserva o `criado_em` real do `Aviso`, não a hora
+do backfill. **A tela da Caixa continua lendo a tabela local `Aviso`** — não
+mudou aqui, e não muda até a Fase 6 (abaixo): esta fase fechou só a
+publicação retroativa, não a leitura.
 
 > E o fan-out **não acontece aqui**: a célula recebe cartas já endereçadas (uma por pessoa) e escreve uma linha por carta. Ela é burra de propósito — é isso que a mantém barata quando dez células estiverem publicando.
 
@@ -222,6 +235,21 @@ não-lidos e lista paginada. **Rito §3** de novo.
 nome da pessoa. **Falha ABERTO, sem exceção:** notificações fora do ar ⇒ o site mostra
 o nome sem sino e a página abre normal. Já é a lei do `obter_sessao` (*"a vitrine não
 pode cair porque a Caixa está reiniciando"*), e vale igual aqui.
+
+> **Dívida anotada em 27/08/2026, para não virar palpite herdado quando esta
+> fase for construída** (mesmo padrão de "escrever a dívida onde ela vai ser
+> lida" que `armadilhas/107` documenta para outro caso): o backfill da Fase 3
+> (PR #268) publicou como carta todo `Aviso` que já existia antes de
+> 26/08/2026, e a caixa central (`notificacoes`) já os tem gravados como
+> NÃO LIDOS — porque nenhuma tela lia de lá ainda quando eles chegaram. Se o
+> rollout desta fase simplesmente ligar o sino, todo mundo que participou da
+> Caixa antes disso vê uma enchente de "não lidas" de coisas que já leu há
+> semanas na tela de avisos da própria Caixa. **O rollout desta fase precisa
+> marcar essas notificações como LIDAS antes (ou no mesmo passo) de expor o
+> sino** — dentro do PRÓPRIO banco da `notificacoes`, sem esta ou qualquer
+> outra célula tocar naquele banco por fora (Lei 2). Isto não é seu para
+> resolver agora se você está lendo isto fora da Fase 5; é dívida
+> documentada, não esquecimento.
 
 ### FASE 6 — A Caixa passa a publicar o leque inteiro
 
