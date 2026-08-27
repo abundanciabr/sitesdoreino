@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260827-029-o-painel-quebrava-por-excesso-de-pedidos",
+  arquivo: "20260827-031-o-painel-quebrava-por-excesso-de-pedidos",
   tipo: "entrega",
   quando: "2026-08-27",
   titulo: "Achei por que o painel quebrava 4 vezes por dia — o livro estava intacto; quem falhava era a entrega",

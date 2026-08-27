@@ -93,10 +93,7 @@ var MANIFESTO = [
   "20260827-026-a-barra-no-final-parou-de-dar-erro-no-site-inteiro",
   "20260827-027-falta-uma-linha-sua-para-o-sino-acender",
   "20260827-028-o-guia-do-funil-ganhou-duas-pecas-que-faltavam",
-<<<<<<< HEAD
-  "20260827-029-o-painel-quebrava-por-excesso-de-pedidos",
-  "20260827-030-uma-virgula-num-contrato-criava-uma-regra-fantasma"
-=======
-  "20260827-029-a-trava-de-numero-repetido-ja-existia"
->>>>>>> origin/main
+  "20260827-029-a-trava-de-numero-repetido-ja-existia",
+  "20260827-030-uma-virgula-num-contrato-criava-uma-regra-fantasma",
+  "20260827-031-o-painel-quebrava-por-excesso-de-pedidos"
 ];
