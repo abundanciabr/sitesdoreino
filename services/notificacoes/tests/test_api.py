@@ -7,12 +7,14 @@ Um arquivo só para as três (`GET /resumo`, `GET /avisos`,
 perguntas — quem CHAMA (Bearer do par, `apps/core/auth.py`) e qual PESSOA
 (`destinatario_id`) — e o orçamento de arquivos do PR (`armadilhas/035`)
 soma o que já é grande com o consumer, o modelo e a migração. Cada seção
-abaixo tem seu próprio bloco de fixtures locais e é independente das outras.
+abaixo (RESUMO, AVISOS, MARCAR-LIDAS, CUSTO) tem seu próprio bloco de
+fixtures locais e é independente das outras.
 
-O teste de CUSTO (2 vs 200 avisos, `assertNumQueries`) mora à parte, em
-`tests/test_volume_da_api.py` — é outra pergunta ("o custo cresce com o
-tamanho da caixa?"), não "a rota está correta?", e merece o contraste que só
-um arquivo próprio dá (mesma separação de `sugestoes/tests/test_volume_dos_avisos.py`).
+A seção CUSTO, ao final, mede uma pergunta DIFERENTE das outras três ("o
+custo cresce com o tamanho da caixa?", não "a rota está correta?") — mesmo
+espírito de `sugestoes/tests/test_volume_dos_avisos.py` (EVO-42): comparar
+dois números MEDIDOS (2 vs 200 avisos) é melhor que cravar um, porque cravar
+transformaria qualquer índice novo em vermelho falso.
 """
 
 import base64
@@ -20,6 +22,8 @@ import json
 import uuid
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from jsonschema import Draft202012Validator
 
@@ -513,3 +517,109 @@ def test_marcar_lidas_bate_com_o_schema_do_contrato_congelado(client, par_autori
     schema = schema_da_resposta("/marcar-lidas", "post", "200")
 
     Draft202012Validator(schema).validate(resposta.json())
+
+
+# =============================================================================
+# CUSTO — as três rotas custam o MESMO com 2 e com 200 avisos
+# =============================================================================
+#
+# O que esta seção prova não é uma regra de correção — um `/avisos` que
+# fizesse um `SELECT` por item da lista devolveria exatamente os mesmos
+# avisos, na mesma ordem, e passaria em cada teste das três seções acima. O
+# que ela prova é DESENHO: que o custo de responder "quantos" ou "quais" não
+# cresce com o tamanho da caixa (`DECISAO-notificacoes` §5.2 — "o sino
+# aparece em TODA página" — agora medido do lado de fora, pela porta HTTP).
+
+POUCOS = 2
+MUITOS = 200
+
+
+def _semear(destinatario_id: str, quantidade: int) -> None:
+    for _ in range(quantidade):
+        _guardar(destinatario_id=destinatario_id)
+
+
+def _contar_consultas(fazer) -> tuple[int, list[str]]:
+    with CaptureQueriesContext(connection) as consultas:
+        fazer()
+    return len(consultas), [c["sql"] for c in consultas]
+
+
+def _sem_savepoint(sql: list[str]) -> list[str]:
+    """Só o que consulta o banco de verdade — `SAVEPOINT`/`RELEASE` são o
+    `atomic` que o `django_db` da suíte já abre, constantes nas duas medições
+    e sem nada a dizer sobre o desenho (mesmo filtro de
+    `test_volume_dos_avisos.py` da `sugestoes`)."""
+    return [
+        linha
+        for linha in sql
+        if not linha.startswith(("SAVEPOINT", "RELEASE SAVEPOINT", "ROLLBACK TO"))
+    ]
+
+
+def test_resumo_custa_o_mesmo_com_2_e_com_200_avisos(client, par_autorizado):
+    _semear("pessoa-resumo-poucos", POUCOS)
+    _semear("pessoa-resumo-muitos", MUITOS)
+
+    def _pedir(destinatario_id):
+        def _fazer():
+            resposta = _perguntar_resumo(client, destinatario_id=destinatario_id)
+            assert resposta.status_code == 200, resposta.content
+
+        return _fazer
+
+    poucas, sql_poucas = _contar_consultas(_pedir("pessoa-resumo-poucos"))
+    muitas, _ = _contar_consultas(_pedir("pessoa-resumo-muitos"))
+
+    assert poucas == muitas, (
+        f"/resumo custou {poucas} consulta(s) com {POUCOS} avisos e {muitas} "
+        f"com {MUITOS} — deixou de ser O(1).\n" + "\n".join(sql_poucas)
+    )
+
+
+def test_avisos_custa_o_mesmo_com_2_e_com_200_avisos(client, par_autorizado):
+    _semear("pessoa-avisos-poucos", POUCOS)
+    _semear("pessoa-avisos-muitos", MUITOS)
+
+    def _pedir(destinatario_id):
+        def _fazer():
+            # limite MÁXIMO de propósito: até pedindo a página mais cara que o
+            # contrato permite, o custo não pode depender do total.
+            resposta = _pedir_avisos(
+                client, destinatario_id=destinatario_id, limite=100
+            )
+            assert resposta.status_code == 200, resposta.content
+
+        return _fazer
+
+    poucas, sql_poucas = _contar_consultas(_pedir("pessoa-avisos-poucos"))
+    muitas, _ = _contar_consultas(_pedir("pessoa-avisos-muitos"))
+
+    assert poucas == muitas, (
+        f"/avisos custou {poucas} consulta(s) com {POUCOS} avisos e {muitas} "
+        f"com {MUITOS} — deixou de ser O(1).\n" + "\n".join(sql_poucas)
+    )
+    # E ele não é só constante: é DUAS — uma por tabela (Notificacao +
+    # NotificacaoArquivada), nunca uma por item da página.
+    idas = _sem_savepoint(sql_poucas)
+    assert len(idas) == 2, idas
+
+
+def test_marcar_lidas_custa_o_mesmo_com_2_e_com_200_avisos(client, par_autorizado):
+    _semear("pessoa-marcar-poucos", POUCOS)
+    _semear("pessoa-marcar-muitos", MUITOS)
+
+    def _fazer_marcar(destinatario_id):
+        def _fazer():
+            resposta = _marcar(client, destinatario_id=destinatario_id)
+            assert resposta.status_code == 200, resposta.content
+
+        return _fazer
+
+    poucas, sql_poucas = _contar_consultas(_fazer_marcar("pessoa-marcar-poucos"))
+    muitas, _ = _contar_consultas(_fazer_marcar("pessoa-marcar-muitos"))
+
+    assert poucas == muitas, (
+        f"/marcar-lidas custou {poucas} consulta(s) marcando {POUCOS} avisos "
+        f"e {muitas} marcando {MUITOS} — deixou de ser O(1).\n" + "\n".join(sql_poucas)
+    )

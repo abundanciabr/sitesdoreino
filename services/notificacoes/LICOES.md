@@ -16,13 +16,72 @@ de 26/08/2026 (`docs/decisoes/DECISAO-fase-2-do-sininho.md` §1).
 O ganho não é elegância: é que o custo por carta não muda quando dez células
 estiverem publicando.
 
-## A célula nasceu sem tela e sem contrato — e isso é lei, não pendência
+## A célula nasceu sem tela e sem contrato — e isso foi lei, não pendência
 
-`freeze: not-applicable` no `ci/manifesto-de-contratos.json`, e `config/urls.py`
-com uma rota só. Quem for consumir esta célula passa pela **Fase 4** do
-`docs/notificacoes/PLANO-MESTRE.md`, que é Rito de Contrato (RITOS §3, com o
-mantenedor presente). Publicar uma rota antes disso é fabricar a fronteira
-dentro de um despacho — e o guarda `tests/test_healthz.py` reprova.
+Até a Fase 4 (27/08/2026), `freeze: not-applicable` no
+`ci/manifesto-de-contratos.json` e `config/urls.py` com uma rota só:
+`tests/test_healthz.py` reprovava qualquer rota nova como fronteira fabricada
+dentro de um despacho, porque consumir esta célula era Rito de Contrato
+(RITOS §3), e o Rito ainda não tinha acontecido.
+
+**Isso mudou no PR que trouxe este arquivo até aqui.** `freeze` virou
+`required`, `contracts/notificacoes.openapi.yaml` existe, e a célula publica
+`GET /resumo`, `GET /avisos` e `POST /marcar-lidas` sob `api/notificacoes/`
+— ver as seções abaixo. O guarda de `test_healthz.py` **mudou junto** (mesmo
+espírito da nota em `DECISAO-notificacoes` §2 sobre o guarda do `Aviso`
+transacional): ele agora prova que a célula publica EXATAMENTE o que o Rito
+autorizou, nem uma rota a mais — o princípio (não fabricar fronteira fora do
+Rito) sobreviveu; só o que ele mede mudou.
+
+## A porta de consulta (Fase 4): `openapi_extra` à mão, nunca `response=Schema`
+
+`apps/core/api.py` declara as três rotas com handlers que recebem `request`
+puro e devolvem `JsonResponse` — nenhuma delas usa `ninja.Schema` tipado com
+`response=`. Não é estilo, é o formato do CONTRATO: `contracts/notificacoes.openapi.yaml`
+não tem `components.schemas` — toda forma é inline nos paths (padrão de
+`alunos`/`leads`). `response=MinhaSchema` faz o django-ninja criar um
+componente NOMEADO com `$ref` — a primeira tentativa desta célula usou isso e
+o `contrato-check` reprovou na hora (`$ref: '#/components/schemas/...'` onde o
+congelado tem o objeto inline). `catalogo` é o contra-exemplo: o contrato DELE
+tem `components.schemas` (`Site`/`Offer`/`Product`), então lá `response=Schema`
+é o padrão certo. **Antes de copiar o padrão de outra célula, confira se o
+contrato dela tem `components.schemas` ou tudo inline** — as duas formas
+convivem na plataforma, e usar a errada só aparece rodando `contrato-check`.
+
+## `/avisos` lê DUAS tabelas — `Notificacao` E `NotificacaoArquivada`
+
+O arquivamento move o lido-e-velho para fora do caminho quente, mas
+`NotificacaoArquivada` existe (em vez de simplesmente apagar a linha)
+justamente para que "nada se perde: o histórico continua consultável"
+(`DECISAO-notificacoes` §5.2, docstring do model). `/avisos` é a ÚNICA porta
+de consulta que a Fase 4 abriu — se ela lesse só a tabela quente, um aviso
+lido sumiria da vida da pessoa 30 dias depois de ela o ter lido. O merge das
+duas fontes (cursor opaco que codifica tabela+id, para não colidir PKs de
+sequências independentes) está em `apps/notificacoes/consultas.py`, com o
+raciocínio completo no docstring do módulo. Continua O(1): sempre duas
+consultas com `LIMIT`, nunca uma por tabela extra que nascer.
+
+## `site_id` no contrato de leitura — dívida anotada, não bug
+
+`contracts/notificacoes.openapi.yaml` **não tem `site_id` em rota nenhuma** —
+as três operações só recebem `destinatario_id`, sempre descrito como "Id da
+PLATAFORMA da pessoa" (nunca "do site"). Isso tensiona com a Lei 9 da
+`CONSTITUICAO.md` ("`site_id` acompanha toda entidade pública"), que continua
+cumprida do lado da ESCRITA — toda `Notificacao`/`ContadorDeNaoLidos` grava o
+site de origem — mas não tem como ser respeitada do lado da LEITURA sem um
+parâmetro que o contrato congelado simplesmente não desenhou.
+
+A implementação escolhida (Fase 4, PR desta entrada) é a única compatível com
+o contrato como está: `resumo_de_nao_lidos`/`pagina_de_avisos`/
+`marcar_todas_como_lidas` filtram só por `destinatario_id`, somando/percorrendo
+qualquer `site_id` que a pessoa já tiver tocado (hoje, sempre um só — um site
+em produção). **Isto não é uma correção que uma sessão futura deve aplicar por
+conta própria**: mudar o formato de `/resumo`/`/avisos`/`/marcar-lidas` para
+exigir `site_id` é mudança de CONTRATO (RITOS §3, sessão com o mantenedor) —
+o mesmo caminho que abriu a Fase 4. Fica registrado aqui para não virar
+"esqueceram do site_id" na leitura de alguém que não viu esta conversa.
+
+## Rodar os testes desta célula, do zero
 
 ## O contador é uma CÓPIA, e cópia diverge
 
