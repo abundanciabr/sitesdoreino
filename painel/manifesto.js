@@ -51,7 +51,8 @@ var MANIFESTO = [
   "20260826-032-um-guarda-que-parecia-guardar-e-nao-guardava",
   "20260826-033-a-conversa-do-sininho-aconteceu",
   "20260826-034-rumo-comunidade-os-proximos-degraus-do-sininho",
-  "20260826-035-a-caixa-adotou-o-formato-novo"
+  "20260826-035-a-caixa-adotou-o-formato-novo",
+  "20260826-036-o-painel-agora-tem-endereco-na-internet"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {

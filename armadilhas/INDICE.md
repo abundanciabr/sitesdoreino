@@ -158,5 +158,6 @@
 | [130](130-mergeable-unknown-depois-de-um-merge-o-portao.md) | `mergeable=UNKNOWN` depois de um merge: o portão recusa, e ele está certo — numa janela de merge serial, `python ci/mergear.py <N> --confirmo <N>` devolve **ERROR** logo depois do merge anterior: | — |
 | [131](131-duble-com-forma-diferente-da-real-responde-a-outra.md) | Dublê com forma diferente da real responde a outra pergunta — e vira alarme falso — um guarda correto acusa uma violação que **não existe no código de produção**. Em 26/08/2026 foi o guarda de privacidade da Caixa… | — |
 | [132](132-o-guarda-de-fail-closed-que-nasceu-verde-sem-encenar.md) | O guarda de fail-closed que nasceu verde sem encenar falha nenhuma — você escreve o guarda de um caminho de recusa, ele passa de primeira, e você segue em frente satisfeito. Ele nunca provou nada: a falha que ele… | — |
+| [133](133-a-suite-de-ci-reprova-quando-rodada-de-dentro-de.md) | A suíte de `ci/tests` reprova quando rodada de DENTRO de um worktree do harness — `python -m pytest ci/tests -q` a partir de um worktree criado pelo Claude Code (`.claude/worktrees/<nome>/`) devolve **1 falha** que não… | — |
 
-**121 entradas.**
+**122 entradas.**
