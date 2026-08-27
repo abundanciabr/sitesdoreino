@@ -36,6 +36,13 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     # [RECEITA:CONV-SITE v1] logo após os middlewares de segurança do Django.
     "apps.core.middleware.SiteResolutionMiddleware",
+    # Espelho do APPEND_SLASH: `/cadastro/` deixa de ser 404 e leva a
+    # `/cadastro`. DEPOIS do CONV-SITE, e a ordem é a regra, não estilo: ele
+    # precisa que o `path_info` já esteja sem o prefixo de idioma para resolver
+    # a rota, e do `request.path` completo para devolver o destino COM idioma.
+    # A matriz do PLANO-I18N D1 fica intacta porque ele não age quando a forma
+    # com barra já resolve — que é o caso de todo prefixo de idioma.
+    "apps.core.barra_no_final.BarraNoFinal",
 ]
 
 ROOT_URLCONF = "config.urls"
