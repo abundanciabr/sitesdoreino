@@ -104,6 +104,32 @@ services:
     image: ghcr.io/abundanciabr/plataforma-identidade:${IDENTIDADE_TAG:-main}
     env_file: [env/identidade.env]
 
+  # A caixa central de avisos (DECISAO-notificacoes, 25/08/2026; gênese em
+  # 26/08/2026). NÃO tem rota pública: não aparece no Traefik e nasce sem tela e
+  # sem superfície de máquina — quem vai perguntar "quantos avisos eu tenho" é o
+  # `funil`, na Fase 4, que é Rito de Contrato. O que ela expõe hoje, e só na
+  # rede interna, é o `/healthz` que o healthcheck do `x-celula` bate.
+  notificacoes:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-notificacoes:${NOTIFICACOES_TAG:-main}
+    env_file: [env/notificacoes.env]
+
+  # Consome as CARTAS do fio (`eventos.notificacao.devida`) e escreve uma linha
+  # por carta. É o único jeito de entrar dado nesta célula — ela não tem porta de
+  # escrita pública, e é isso que a mantém impossível de corromper de fora.
+  notificacoes-consumer:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-notificacoes:${NOTIFICACOES_TAG:-main}
+    env_file: [env/notificacoes.env]
+    command: ["python", "manage.py", "consume_eventos"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      notificacoes:
+        condition: service_healthy
+
   # A área administrativa (DECISAO-celula-admin, 25/08/2026): painéis, métricas
   # e configuração, atrás do login do site e de uma lista própria de e-mails.
   # Sem auxiliar — não publica evento e não consome fila: ela pergunta e mostra.
