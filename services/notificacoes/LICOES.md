@@ -87,38 +87,50 @@ seção seguinte.
 
 ## Índice "óbvio" pode estar errado — meça com EXPLAIN, não suponha
 
-A migração `0002_indices_da_porta_de_consulta` liderou os índices de
-`Notificacao`/`NotificacaoArquivada` só por `destinatario_id`, apostando
-(certo, NA HORA) que a Fase 4 não filtraria por `site_id`. A aposta durou até
-a emenda da seção acima — e a partir dali o índice deixou de casar com a
-consulta real, **sem que nenhum teste existente notasse**: com o volume de
-dados de teste de costume (poucas dezenas de linhas), o Postgres troca de
-plano sem custo perceptível, e `assertNumQueries` (`tests/test_api.py`, seção
-CUSTO) mede QUANTAS consultas, não QUANTAS LINHAS cada uma lê por dentro.
+**A história completa, porque o resultado final (nenhuma migração de índice
+neste PR) esconde o caminho.** No meio deste PR, uma versão do contrato sem
+`site_id` levou a trocar os índices de `Notificacao`/`NotificacaoArquivada`
+para liderar só por `destinatario_id` — apostando (certo, NA HORA) que a
+Fase 4 não filtraria por site. A aposta durou até o mantenedor decidir
+"cada site mostra só os avisos que vieram dele" (seção acima) — e a partir
+dali o índice trocado deixou de casar com a consulta real, **sem que nenhum
+teste existente notasse**: com o volume de dados de teste de costume (poucas
+dezenas de linhas), o Postgres troca de plano sem custo perceptível, e
+`assertNumQueries` (`tests/test_api.py`, seção CUSTO) mede QUANTAS consultas,
+não QUANTAS LINHAS cada uma lê por dentro.
 
 A prova que pegou isso foi `EXPLAIN ANALYZE` com dado SEMEADO DE PROPÓSITO
 para expor a diferença — uma pessoa com linhas em 5 sites (1.500 linhas, 300
 no site pedido) mais 500 pessoas de ruído no site pedido. Sem esse volume E
-essa distribuição, os dois índices (o errado e o certo) têm o MESMO plano,
-porque tabela pequena não sente a diferença — é fácil "confirmar" um índice
-rodando `make ci` e ele parecer certo mesmo estando errado. A migração
-`0003_indices_corrigidos_para_site_id_obrigatorio` tem a medição completa
-(os números de `Rows Removed by Filter`, antes e depois) no comentário de
-topo; `tests/test_indices_da_porta_de_consulta.py` mantém essa medição viva
-como guarda automático — falha se o plano voltar a descartar linha depois do
-índice.
+essa distribuição, os índices (o trocado e o certo) têm o MESMO plano, porque
+tabela pequena não sente a diferença — é fácil "confirmar" um índice rodando
+`make ci` e ele parecer certo mesmo estando errado. Com o índice trocado, o
+plano mostrava `Rows Removed by Filter: 1200` — a consulta lia TODA linha da
+pessoa em qualquer site e só depois descartava as de fora.
+
+**A correção foi voltar para a forma que já estava na GÊNESE** (`site_id` +
+`destinatario_id` liderando juntos, PR #247) — é por isso que este PR não tem
+uma migração de índice: o `makemigrations --check` não acusa nada pendente,
+porque o formato final é idêntico ao que `0001_initial` já criava. A
+exploração aconteceu (trocar, medir, constatar que a gênese estava certa, e
+voltar) mas não deixou rastro em `migrations/` de propósito — duas
+migrações que se cancelam não têm razão de existir num PR ainda não
+mergeado. `tests/test_indices_da_porta_de_consulta.py` é o que mantém a
+medição viva daqui para frente — falha se o plano voltar a descartar linha
+depois do índice.
 
 **A mesma investigação também provou o oposto para outra tabela — e vale
-saber os dois lados.** O índice extra que a 0002 tinha acrescentado em
-`ContadorDeNaoLidos` (`contador_por_pessoa`, só `destinatario_id`) nunca foi
-necessário: o `UniqueConstraint contador_um_por_pessoa` **da gênese**
-(`site_id`, `destinatario_id`, PR #248) já era, sozinho, o índice ideal para
-a pergunta que `/resumo` faz — o Postgres o escolhe direto, sem descartar
-linha nenhuma. "Adicionar um índice para garantir" também é uma suposição, e
-também precisa ser medida: às vezes a resposta é "não, o que já existe
-serve", e um índice a mais que o planejador nunca escolhe só custa em todo
-`INSERT`, para sempre, sem benefício nenhum. O índice extra foi removido na
-`0003`.
+saber os dois lados.** Durante a mesma janela, um índice extra chegou a ser
+acrescentado em `ContadorDeNaoLidos` (`contador_por_pessoa`, só
+`destinatario_id`) — e nunca foi necessário: o `UniqueConstraint
+contador_um_por_pessoa` **da gênese** (`site_id`, `destinatario_id`, PR #248)
+já era, sozinho, o índice ideal para a pergunta que `/resumo` faz — o
+Postgres o escolhe direto, sem descartar linha nenhuma. "Adicionar um índice
+para garantir" também é uma suposição, e também precisa ser medida: às vezes
+a resposta é "não, o que já existe serve", e um índice a mais que o
+planejador nunca escolhe só custa em todo `INSERT`, para sempre, sem
+benefício nenhum. Esse índice extra também não sobrou em `models.py` nem em
+`migrations/` pelo mesmo motivo.
 
 ## O contador é uma CÓPIA, e cópia diverge
 

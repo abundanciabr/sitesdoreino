@@ -3,23 +3,26 @@
 MEDIDO com `EXPLAIN ANALYZE`, não suposto (CONSTITUICAO.md Lei 6: "qualquer
 alegação arquitetural vem com o comando que a falsificaria").
 
-**Por que este arquivo existe.** A migração `0002_indices_da_porta_de_consulta`
-apostou que a leitura filtraria só por `destinatario_id` — apostou ANTES da
-emenda de 27/08/2026 que tornou `site_id` obrigatório também (decisão do
-mantenedor, CONSTITUICAO.md Lei 9: "cada site mostra só os avisos que vieram
-dele"). A aposta perdeu, e não dava para ver isso sem medir: com poucas
-linhas (o caso comum de dev/CI), o Postgres nem usa índice — SEMPRE faz
-sentido escolher um plano ruim quando ele é rápido de qualquer jeito. O
-sintoma só aparece com uma pessoa que tenha linhas espalhadas por vários
-sites, e é exatamente esse cenário que este arquivo semeia.
+**Por que este arquivo existe.** No meio deste PR, uma versão do contrato sem
+`site_id` levou a trocar os índices de `Notificacao`/`NotificacaoArquivada`
+para liderar só por `destinatario_id` — apostando (certo, NA HORA) que a
+leitura não filtraria por site. A emenda de 27/08/2026 que tornou `site_id`
+obrigatório também (decisão do mantenedor, CONSTITUICAO.md Lei 9: "cada site
+mostra só os avisos que vieram dele") mudou isso, e a aposta perdeu — sem que
+nenhum teste existente notasse: com poucas linhas (o caso comum de dev/CI), o
+Postgres troca de plano sem custo perceptível, e nada mais neste repositório
+mede o FORMATO do plano. O sintoma só aparece com uma pessoa que tenha linhas
+espalhadas por vários sites, e é exatamente esse cenário que este arquivo
+semeia.
 
-**A medição, em prosa** (a `0003_indices_corrigidos_para_site_id_obrigatorio`
-tem os números exatos no comentário de topo): com uma pessoa em 5 sites
-(1.500 linhas, 300 no site pedido) e 500 pessoas de ruído no site pedido, o
-índice ANTIGO (`destinatario_id` sozinho) lia as 1.500 linhas da pessoa em
-QUALQUER site e só depois descartava 1.200 com um `Filter` pós-índice. O
-índice NOVO (`site_id` + `destinatario_id` liderando juntos) usa `Index Cond`
-para as duas colunas e não descarta nenhuma linha.
+**A medição, em prosa** (`LICOES.md` desta célula tem a história completa,
+incluindo por que não sobrou migração nenhuma dessa exploração — o formato
+final é idêntico ao da gênese): com uma pessoa em 5 sites (1.500 linhas, 300
+no site pedido) e 500 pessoas de ruído no site pedido, o índice liderado só
+por `destinatario_id` lia as 1.500 linhas da pessoa em QUALQUER site e só
+depois descartava 1.200 com um `Filter` pós-índice. O índice que lidera por
+`site_id` + `destinatario_id` juntos (a forma atual, e a forma que a gênese
+já tinha) usa `Index Cond` para as duas colunas e não descarta nenhuma linha.
 
 Este teste NÃO cravou o custo em consultas (`assertNumQueries`, que já mora
 em `tests/test_api.py` — seção CUSTO): uma consulta ENGANOSAMENTE eficiente
