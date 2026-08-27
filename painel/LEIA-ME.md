@@ -24,7 +24,10 @@
 1. Crie **um arquivo novo** em `registros/`, nome
    `AAAAMMDD-NNN-slug.js` (data de hoje · sequência livre do dia · slug curto).
    **Nunca edite um registro existente** — atualização é um registro NOVO
-   (se ele fecha um pedido, aponte `responde_a`).
+   (se ele fecha um pedido, aponte `responde_a`). Se outra sessão pegou o
+   mesmo `NNN` ao mesmo tempo (é corrida, não erro seu), não precisa checar a
+   pasta à mão antes de gravar — o passo 3 abaixo reprova e já diz para qual
+   número renomear.
 2. Conteúdo — exatamente este molde (copie de um registro existente):
 
 ```js
@@ -59,6 +62,19 @@
 - **Verde é conquistado:** `gravidade: "verde"` exige `evidencia` E
   `verificado_em`. Sem prova conferida, o gerador reprova. Relato sem evidência
   aparece como "não comprovado", nunca como verde.
+- **Número do dia é único — a trava é mecânica, não combinado:** duas sessões
+  podem ler a pasta no mesmo minuto e escolher o mesmo `NNN` — aconteceu de
+  verdade em 26/08/2026, quatro vezes num único dia (registro
+  `20260826-041-o-livro-passou-a-recusar-numero-repetido`). `validarRegistros`
+  (`painel/logica.js`) reprova (FAIL) qualquer `AAAAMMDD-NNN` usado por mais de
+  um registro — a mesma família de trava que `ci/indice_de_armadilhas.py` já
+  tem para `armadilhas/` (`armadilhas/085`), rodando em todo PR pela
+  `muralhas`. Colidiu? A mensagem de erro já traz o próximo número livre:
+  renomeie o arquivo E o campo `arquivo` (os dois têm de bater) e rode
+  `node painel/gerar_manifesto.js` de novo. As duas colisões de 26/08 ficam
+  congeladas de propósito (registro mergeado não se edita); um terceiro
+  registro *nesses* números, porém, ainda reprova — a tolerância guarda o
+  tamanho do par herdado, não uma licença permanente.
 - **Dois relógios:** `quando` (o fato) ≠ `verificado_em` (a prova). A página
   mostra os dois; o segundo é o que importa.
 - **Frescor computado:** a página compara as datas com o relógio dela ao abrir.
