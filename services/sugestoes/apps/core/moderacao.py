@@ -38,6 +38,8 @@ quem já está com a sessão aberta. Há guarda para isso.
 
 from functools import wraps
 
+import logging
+
 from django.db import transaction
 from django.db.models import Exists, OuterRef
 from django.http import HttpResponseForbidden, HttpResponseRedirect
@@ -54,8 +56,10 @@ from apps.sugestoes.models import (
 )
 from apps.sugestoes.tasks import relay_apos_commit
 
-from .avisos import avisar_os_interessados
+from .avisos import avisar_os_interessados, ids_de_plataforma
 from .participacao import exige_sessao, quadro_atual, sugestoes_ordenadas
+
+logger = logging.getLogger(__name__)
 
 PAGINA_FILA = "sugestoes/fila.html"
 PAGINA_MODERAR = "sugestoes/moderar.html"
@@ -229,7 +233,7 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
         # nem lá dentro. A trava `select_for_update` acima está aberta neste
         # ponto: alongá-la proporcionalmente ao número de votantes seria fazer a
         # moderação ficar mais lenta exatamente nas ideias mais populares.
-        avisar_os_interessados(
+        avisos = avisar_os_interessados(
             sugestao=travada,
             status_anterior=status_anterior,
             status_novo=status_novo,
@@ -240,11 +244,39 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
         # antes do commit da transação de status". Uma linha depois do `with`
         # já seria outro desenho: o status mudaria e o aviso do aluno poderia
         # nunca existir, sem nada indicando a falta.
-        eventos.emitir_status_alterado(
+        fato = eventos.emitir_status_alterado(
             sugestao=travada,
             status_anterior=status_anterior,
             status_novo=status_novo,
             nota=nota,
+            ator_id=por.id_da_plataforma,
+        )
+        # [Rito de Contrato de 26/08/2026] E as CARTAS ENDEREÇADAS, uma por
+        # pessoa, no mesmo `atomic` e no mesmo insert único. Decisão dele contra
+        # "uma lista com todos os nomes": a lista de quem votou nunca circula, e
+        # o evento não cresce com a plateia (DECISAO-fase-2-do-sininho §1).
+        #
+        # Os destinatários saem dos avisos que ACABARAM de nascer, e não de uma
+        # segunda chamada a `interessados_em()`: seriam duas consultas a mais
+        # para reconstruir uma lista que já está na mão — e, pior, duas listas
+        # que poderiam divergir se alguém votasse no meio da transação.
+        #
+        # Quem ainda não tem id de plataforma fica de fora da carta e continua
+        # com o `Aviso` local (`ids_de_plataforma`). Quem MODEROU sem id é outra
+        # história: aquilo é fail-closed e já parou a transação uma linha acima.
+        na_plataforma = ids_de_plataforma(a.destinatario_id for a in avisos)
+        eventos.emitir_cartas_de_notificacao(
+            sugestao=travada,
+            destinatarios=[
+                na_plataforma[a.destinatario_id]
+                for a in avisos
+                if a.destinatario_id in na_plataforma
+            ],
+            status_anterior=status_anterior,
+            status_novo=status_novo,
+            nota=nota,
+            ator_id=por.id_da_plataforma,
+            origem_event_id=str(fato.event_id),
         )
     # E o publish, esse sim, é DEPOIS do commit: no fio nunca aparece um fato
     # que a transação ainda pode desfazer.
@@ -367,6 +399,32 @@ def mudar_status(request, ator, sugestao_id):
         # que garante que nem o caminho de corrida vire erro de servidor.
         return _pagina_de_moderacao(
             request, ator, sugestao, erros=[str(erro)], status=400
+        )
+    except eventos.AtorSemIdDaPlataforma:
+        # Esta recusa é DIFERENTE das de cima: ela sobe de DENTRO do `atomic`, e
+        # o rollback é o ponto — nada foi escrito, e é isso que a torna segura
+        # (INV-P6: estado sem evento é impossível, então recusar os dois juntos é
+        # a única saída correta quando o evento não pode ser afirmado).
+        #
+        # Cai aqui, e não em 500, porque a pessoa da equipe consegue resolver
+        # sozinha: sair e entrar de novo pelo site faz a porta gravar o id
+        # (INV-SUG11). Uma tela de erro do servidor não diria isso a ninguém.
+        logger.warning(
+            "moderacao recusada: identidade local %s sem id_da_plataforma "
+            "(INV-SUG11); sugestao %s ficou intacta",
+            ator.identidade.id,
+            sugestao.id,
+        )
+        return _pagina_de_moderacao(
+            request,
+            ator,
+            sugestao,
+            erros=[
+                "Não conseguimos confirmar sua identidade na plataforma, então "
+                "nada foi alterado. Saia e entre de novo pelo site, e tente "
+                "outra vez — se continuar, avise a equipe técnica."
+            ],
+            status=409,
         )
 
     return HttpResponseRedirect(reverse("moderar", args=[sugestao.id]))

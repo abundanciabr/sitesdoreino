@@ -640,6 +640,23 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
     payload = models.JSONField()  # SÓ o campo `data` do envelope
     occurred_at = models.DateTimeField(auto_now_add=True)
     published_at = models.DateTimeField(null=True, blank=True)
+    # As chaves que este evento acrescenta ao ENVELOPE (o nível de cima), e não
+    # ao `data`. Nasceu com o `ator_id` do Rito de Contrato de 26/08/2026, que
+    # de propósito mora no envelope: qualquer célula lê "quem fez isto" sem
+    # conhecer o formato do assunto (DECISAO-fase-2-do-sininho §4).
+    #
+    # POR QUE UM CAMPO GENÉRICO E NÃO UMA COLUNA `ator_id`. O relay monta o
+    # envelope para TODOS os eventos, e os contratos são `additionalProperties:
+    # false` no topo. Uma coluna `ator_id` obrigaria o relay a decidir, evento a
+    # evento, se inclui a chave — e essa decisão seria uma SEGUNDA verdade sobre
+    # os contratos, morando em código. Com este campo, quem emite (que conhece o
+    # próprio contrato) declara o que vai no envelope, e o relay continua burro.
+    #
+    # `{}` nos eventos antigos ⇒ envelope byte-idêntico ao de antes. E note que
+    # `{"ator_id": None}` é DIFERENTE de `{}`: a carta declara `ator_id` nulável
+    # (fato de máquina não tem gente), então a chave presente com valor nulo é
+    # informação, não ausência.
+    envelope_extra = models.JSONField(default=dict, blank=True)
 
     class Meta:
         indexes = [models.Index(fields=["published_at"])]

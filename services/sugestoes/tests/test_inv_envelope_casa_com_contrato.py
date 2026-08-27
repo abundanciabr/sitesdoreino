@@ -37,8 +37,19 @@ pytestmark = pytest.mark.django_db
 CONTRATOS = Path(__file__).resolve().parents[3] / "contracts" / "eventos"
 
 
-def _validador(evento: str) -> Draft202012Validator:
-    schema = json.loads((CONTRATOS / f"{evento}.v1.json").read_text(encoding="utf-8"))
+def _validador(evento: str, versao: int) -> Draft202012Validator:
+    """O contrato do PAR evento+versão — a versão sai do envelope, nunca daqui.
+
+    Ate 26/08/2026 esta funcao assumia `v1` no nome do arquivo. Assumir a versao
+    faria o guarda conferir o `status-alterado.v2` contra o contrato do `v1`:
+    ele passaria (o v1 e mais permissivo no topo? nao — e `additionalProperties:
+    false`, entao reprovaria por `ator_id`), e em outros casos o inverso, um
+    envelope novo validando contra um contrato velho, seria um verde mentiroso.
+    Ler a versao do proprio envelope elimina a suposicao.
+    """
+    schema = json.loads(
+        (CONTRATOS / f"{evento}.v{versao}.json").read_text(encoding="utf-8")
+    )
     # `FormatChecker` é o que faz `format: uuid` deixar de ser anotação e passar
     # a recusar valor. Sem ele o jsonschema ignora `format` inteiro — um teste
     # que valida sem ele diria "casa com o contrato" para um `event_id` que é a
@@ -47,7 +58,7 @@ def _validador(evento: str) -> Draft202012Validator:
 
 
 def _conferir(envelope: dict) -> None:
-    _validador(envelope["event"]).validate(envelope)
+    _validador(envelope["event"], envelope["version"]).validate(envelope)
     # `date-time` não está entre os checkers que o jsonschema traz sem
     # dependência extra (só `uuid`, `email`, `date`…). Em vez de arrastar o
     # `rfc3339-validator` para o requirements por um campo, o guarda o confere
@@ -55,11 +66,20 @@ def _conferir(envelope: dict) -> None:
     datetime.fromisoformat(envelope["occurred_at"])
 
 
+# Os quatro fatos + a CARTA do autor. Desde o Rito de Contrato de 26/08/2026 a
+# mudança de status publica também um `notificacao.devida` por interessado, e
+# nesta fixture o único interessado é o próprio autor (ele vota e desvota, então
+# não sobra voto de mais ninguém). O número está escrito, e não calculado, de
+# propósito: se um dia sair evento a mais ou a menos, este é o primeiro guarda
+# que acusa.
+FATOS_E_CARTAS_DA_FIXTURE = 5
+
+
 @pytest.fixture
 def no_fio(caixa, fio):
     """Provoca os quatro fatos e devolve o que o relay REALMENTE publicou."""
     caixa.os_quatro_fatos()
-    assert relay_outbox() == 4
+    assert relay_outbox() == FATOS_E_CARTAS_DA_FIXTURE
     return fio
 
 
@@ -71,13 +91,23 @@ def no_fio(caixa, fio):
 def test_os_quatro_contratos_existem_e_sao_os_que_a_celula_emite():
     """Sem isto, um `glob` que não achasse nada deixaria tudo abaixo verde por
     não ter o que conferir — e um contrato renomeado passaria despercebido."""
-    congelados = {arquivo.name for arquivo in CONTRATOS.glob("sugestao.*.json")}
+    congelados = {
+        arquivo.name
+        for arquivo in CONTRATOS.iterdir()
+        if arquivo.name.startswith(("sugestao.", "notificacao."))
+    }
 
     assert congelados == {
         "sugestao.criada.v1.json",
         "sugestao.voto-adicionado.v1.json",
         "sugestao.voto-removido.v1.json",
+        # O v1 do status-alterado CONTINUA no disco de propósito: ele só sai
+        # quando nada mais o emitir (RITOS §3.3). Hoje nada mais o emite — a
+        # Caixa migrou para o v2 — e apagá-lo mesmo assim seria decisão de
+        # despacho sobre um contrato, que é exatamente o que o rito proíbe.
         "sugestao.status-alterado.v1.json",
+        "sugestao.status-alterado.v2.json",
+        "notificacao.devida.v1.json",
     }, "os contratos da Caixa mudaram — isso é RITOS §3, não decisão de despacho"
 
 
@@ -100,7 +130,7 @@ def test_sugestao_mesclada_continua_sem_contrato_e_sem_emissao():
 
 
 def test_os_quatro_envelopes_validam_contra_o_contrato_congelado(no_fio):
-    assert len(no_fio.mensagens) == 4
+    assert len(no_fio.mensagens) == FATOS_E_CARTAS_DA_FIXTURE
     for _, envelope in no_fio.mensagens:
         _conferir(envelope)
 
@@ -113,13 +143,24 @@ def test_o_nome_do_stream_e_eventos_ponto_evento_e_a_versao_vai_no_envelope(no_f
     consumidor migrar (RITOS §3), e seriam dois streams para o mesmo fato.
     """
     assert sorted(no_fio.streams) == [
+        "eventos.notificacao.devida",
         "eventos.sugestao.criada",
         "eventos.sugestao.status-alterado",
         "eventos.sugestao.voto-adicionado",
         "eventos.sugestao.voto-removido",
     ]
-    for _, envelope in no_fio.mensagens:
-        assert envelope["version"] == 1
+    # E a prova de que a versão viaja DENTRO: o `status-alterado` foi para o v2
+    # no Rito de Contrato de 26/08/2026 e continua no MESMO stream, sem `v2` no
+    # nome. Se a versão morasse no nome, esta migração teria sido uma mudança de
+    # infraestrutura.
+    versoes = {(evento["event"], evento["version"]) for _, evento in no_fio.mensagens}
+    assert versoes == {
+        ("sugestao.criada", 1),
+        ("sugestao.voto-adicionado", 1),
+        ("sugestao.voto-removido", 1),
+        ("sugestao.status-alterado", 2),
+        ("notificacao.devida", 1),
+    }
 
 
 def test_o_data_da_sugestao_criada_e_o_que_o_contrato_descreve(caixa, fio):

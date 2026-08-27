@@ -60,7 +60,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
-from apps.sugestoes.models import Aviso, Comentario, Voto
+from apps.sugestoes.models import Aviso, Comentario, Identidade, Voto
 
 from . import sessao as ses
 from .participacao import exige_sessao
@@ -121,6 +121,35 @@ def interessados_em(sugestao) -> dict[str, str]:
     ):
         vinculos.setdefault(identidade_id, Aviso.Vinculo.VOTO)
     return vinculos
+
+
+def ids_de_plataforma(locais) -> dict[str, str]:
+    """Id local → id da PLATAFORMA, para quem tiver. UMA consulta, sempre.
+
+    O elo da Fase 1 (INV-SUG11) sendo usado pela primeira vez para falar com o
+    resto da plataforma: a carta `notificacao.devida` endereça pelo id que
+    qualquer célula entende, nunca pelo id local, que não significa nada fora
+    daqui (PLANO-MESTRE §2).
+
+    **Uma consulta para a plateia inteira, e não uma por pessoa.** É a mesma lei
+    do `interessados_em` e do `bulk_create` dos avisos: esta função roda dentro
+    da transação que segura o `SELECT … FOR UPDATE` da sugestão, e um `.get()`
+    por votante alongaria a trava exatamente nas ideias que deram certo.
+    `values_list` de duas colunas — a `Identidade` inteira NÃO sobe para a
+    memória, porque ela carrega e-mail (`DECISAO-EVO-01` §3).
+
+    **Quem não tem o id fica de fora do dicionário, e isso é a resposta certa.**
+    São pessoas que não voltaram ao site desde a Fase 1 (25/08/2026): a linha
+    delas ainda não foi casada. Elas continuam recebendo o `Aviso` local, que é
+    o que a tela mostra hoje — o que não recebem é a carta, que ainda não tem
+    consumidor. Na reentrada delas a porta grava o id, e a partir daí recebem.
+    """
+    return {
+        local: plataforma
+        for local, plataforma in Identidade.objects.filter(
+            pk__in=list(locais), id_da_plataforma__isnull=False
+        ).values_list("pk", "id_da_plataforma")
+    }
 
 
 def avisar_os_interessados(

@@ -20,6 +20,7 @@ mecanismo de produção (a Caixa repassa o cabeçalho `Cookie` opaco; quem o
 entende é a outra célula).
 """
 
+import hashlib
 import re
 import secrets
 
@@ -42,6 +43,28 @@ from apps.sugestoes.models import (
 # ---------------------------------------------------------------------------
 # O quadro mínimo do modelo de dados (EVO-11)
 # ---------------------------------------------------------------------------
+
+
+def id_da_plataforma_de(email: str) -> str:
+    """O dublê do `SessionFull.id` — OPACO, como o de verdade.
+
+    Até 26/08/2026 este dublê era `f"idt-{email}"`. No primeiro envelope que
+    passou a carregar `ator_id` (Rito de Contrato do sininho), o guarda de
+    privacidade `test_nenhum_envelope_carrega_dado_pessoal` acusou um `@`
+    vazando no fio — e o vazamento era **do dublê**, não do código: a célula
+    `identidade` cunha `secrets.token_urlsafe(16)`, sem nada da pessoa dentro.
+
+    A lição vale mais que o conserto: um dublê com FORMA diferente da real
+    responde a outra pergunta. Aqui ele quase transformou um guarda correto num
+    alarme falso — e num dia menos atento teria sido "consertado" abrindo uma
+    exceção no guarda, que é justamente como se deixa entrar o vazamento
+    verdadeiro.
+
+    Determinístico de propósito: a mesma pessoa recebe sempre o mesmo id — é o
+    que a `identidade` faz (uma linha por pessoa) e é do que os testes de
+    reentrada dependem.
+    """
+    return "idt-" + hashlib.sha256(email.encode("utf-8")).hexdigest()[:22]
 
 
 @pytest.fixture
@@ -158,11 +181,22 @@ class Rede:
         corpo = self.sessoes.get(achado.group(1)) if achado else None
         return httpx.Response(200, json=corpo or {"autenticado": False})
 
-    def site_reconhece(self, valor: str, *, email: str, nome: str = "João") -> None:
-        """Registra: quem carregar `meshcraft_sessao=<valor>` é esta pessoa."""
+    def site_reconhece(
+        self, valor: str, *, email: str, nome: str = "João", com_id: bool = True
+    ) -> None:
+        """Registra: quem carregar `meshcraft_sessao=<valor>` é esta pessoa.
+
+        `com_id=False` faz o site responder **sem** o `id` — que o contrato
+        declara opcional e nulável (`anyOf: [string, null]`). É o único jeito
+        honesto de encenar "a porta não soube dizer quem é": mexer na coluna
+        local direto não serve, porque toda requisição passa pela porta e a
+        porta REGRAVA o id na reentrada (INV-SUG11). Foi assim que o guarda do
+        fail-closed do ator nasceu verde por engano, em 26/08/2026, antes de
+        alguém notar que ele não estava encenando falha nenhuma.
+        """
         self.sessoes[valor] = {
             "autenticado": True,
-            "id": f"idt-{email}",
+            "id": id_da_plataforma_de(email) if com_id else None,
             "nome_exibido": nome,
             "email": email,
         }
@@ -243,7 +277,7 @@ def porta(client, rede, db):
     return Porta(client, rede)
 
 
-def sessao_do_site(rede: Rede, *, email: str, nome: str = "João"):
+def sessao_do_site(rede: Rede, *, email: str, nome: str = "João", com_id: bool = True):
     """Um `Client` novo já carregando uma sessão VÁLIDA do site.
 
     O cookie é opaco e registrado no dublê da identidade — exatamente o
@@ -252,7 +286,7 @@ def sessao_do_site(rede: Rede, *, email: str, nome: str = "João"):
     from django.test import Client
 
     valor = secrets.token_urlsafe(12)
-    rede.site_reconhece(valor, email=email, nome=nome)
+    rede.site_reconhece(valor, email=email, nome=nome, com_id=com_id)
     cliente = Client()
     cliente.cookies["meshcraft_sessao"] = valor
     return Porta(cliente, rede, email=email)
@@ -314,9 +348,14 @@ def entrar_como_staff(rede, lista_da_staff, db):
     `AllMockedAssertionError`, não com um teste verde de mentira.
     """
 
-    def _entrar(email: str = "equipe@meshcraft.test", nome: str = "Equipe") -> Porta:
+    def _entrar(
+        email: str = "equipe@meshcraft.test",
+        nome: str = "Equipe",
+        *,
+        com_id: bool = True,
+    ) -> Porta:
         lista_da_staff(email)
-        pessoa = sessao_do_site(rede, email=email, nome=nome)
+        pessoa = sessao_do_site(rede, email=email, nome=nome, com_id=com_id)
         assert pessoa.esta_dentro
         return pessoa
 
@@ -560,14 +599,31 @@ def plateia(db):
     """
 
     def _montar(
-        sugestao, *, votantes: int = 0, comentaristas: int = 0, marca: str = "p"
+        sugestao,
+        *,
+        votantes: int = 0,
+        comentaristas: int = 0,
+        marca: str = "p",
+        na_plataforma: bool = True,
     ):
+        """`na_plataforma=False` monta gente COMO ERA ANTES da Fase 1: linha
+        local sem o id que atravessa a plataforma. É o estado real de quem não
+        voltou ao site desde 25/08/2026, e o que o guarda do pulo das cartas
+        precisa para existir. O padrão é `True` porque quem entra hoje ganha o
+        id na porta (INV-SUG11), e uma fixture que não reflete o presente faz
+        guardas medirem um mundo que não existe mais."""
+
         def _gente(papel: str, quantos: int) -> list[Identidade]:
             return Identidade.objects.bulk_create(
                 [
                     Identidade(
                         email=f"{marca}-{papel}-{n}@exemplo.test",
                         nome_exibido=f"{papel} {n}",
+                        id_da_plataforma=(
+                            id_da_plataforma_de(f"{marca}-{papel}-{n}@exemplo.test")
+                            if na_plataforma
+                            else None
+                        ),
                     )
                     for n in range(quantos)
                 ]

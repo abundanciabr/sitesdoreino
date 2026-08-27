@@ -190,11 +190,19 @@ def test_event_id_e_unico_no_banco(caixa):
 
 
 def test_cada_fato_gera_um_evento_e_nenhum_a_mais(caixa):
-    """A jornada inteira: quatro fatos, quatro linhas na outbox — não cinco.
+    """A jornada inteira: quatro fatos, quatro linhas — mais UMA carta, e só uma.
 
     Comentar, conferir duplicatas e olhar a fila NÃO são fatos que a Caixa
     afirma (nenhum deles tem contrato congelado), e este guarda é o que impede
     um evento de nascer por engano junto com um deles.
+
+    **A carta é o quinto item e a lista está escrita na ordem.** Desde o Rito de
+    Contrato de 26/08/2026, a mudança de status publica também um
+    `notificacao.devida` POR INTERESSADO. Aqui o interessado é um só — o autor,
+    que votou e desvotou — então a carta é uma. Se alguém trocar o desenho por
+    "uma carta com a lista de todo mundo", ou fizer a carta nascer também no
+    voto ou no comentário, este guarda acusa na hora: a igualdade é por lista
+    exata, nunca por contagem.
     """
     sugestao = caixa.os_quatro_fatos()
     caixa.aluno.client.post(
@@ -206,4 +214,5 @@ def test_cada_fato_gera_um_evento_e_nenhum_a_mais(caixa):
         eventos.VOTO_ADICIONADO,
         eventos.VOTO_REMOVIDO,
         eventos.STATUS_ALTERADO,
+        eventos.NOTIFICACAO_DEVIDA,
     ]

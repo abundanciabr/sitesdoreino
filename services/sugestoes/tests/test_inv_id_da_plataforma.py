@@ -31,11 +31,12 @@ from pathlib import Path
 
 import httpx
 import pytest
+
 from django.db import IntegrityError, transaction
 from django.test import Client
 
 from apps.sugestoes.models import Identidade
-from tests.conftest import Porta
+from tests.conftest import Porta, id_da_plataforma_de
 
 RAIZ = Path(__file__).resolve().parents[1]
 APPS = RAIZ / "apps"
@@ -71,7 +72,9 @@ def _pessoa_com_resposta(rede, matricula, corpo: dict, *, email: str) -> Porta:
 def test_quem_entra_pela_primeira_vez_nasce_com_o_id_da_plataforma(entrar_como):
     pessoa = entrar_como(email="novata@exemplo.test")
 
-    assert pessoa.identidade.id_da_plataforma == "idt-novata@exemplo.test"
+    assert pessoa.identidade.id_da_plataforma == id_da_plataforma_de(
+        "novata@exemplo.test"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +93,9 @@ def test_a_linha_antiga_ganha_o_id_na_reentrada(rede, db, matricula, entrar_como
     pessoa = entrar_como(email="veterana@exemplo.test")
 
     assert pessoa.identidade.id == veterana.id, "cunhou uma segunda pessoa"
-    assert pessoa.identidade.id_da_plataforma == "idt-veterana@exemplo.test"
+    assert pessoa.identidade.id_da_plataforma == id_da_plataforma_de(
+        "veterana@exemplo.test"
+    )
     assert Identidade.objects.count() == 1
 
 
@@ -126,7 +131,9 @@ def test_linha_ja_casada_nao_e_sobrescrita_por_outro_id(
     dos dois ids é o certo seria pior que ficar com o que já estava lá.
     """
     pessoa = entrar_como(email="fulana@exemplo.test")
-    assert pessoa.identidade.id_da_plataforma == "idt-fulana@exemplo.test"
+    assert pessoa.identidade.id_da_plataforma == id_da_plataforma_de(
+        "fulana@exemplo.test"
+    )
 
     de_novo = _pessoa_com_resposta(
         rede,
@@ -141,7 +148,9 @@ def test_linha_ja_casada_nao_e_sobrescrita_por_outro_id(
     )
 
     assert de_novo.esta_dentro, "a anomalia derrubou a porta"
-    assert de_novo.identidade.id_da_plataforma == "idt-fulana@exemplo.test"
+    assert de_novo.identidade.id_da_plataforma == id_da_plataforma_de(
+        "fulana@exemplo.test"
+    )
     assert Identidade.objects.count() == 1
 
 
