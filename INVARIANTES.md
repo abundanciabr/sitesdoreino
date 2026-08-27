@@ -233,6 +233,35 @@ primeira oportunidade de violá-la.
 - **Célula dona:** sugestoes (obrigação herdada por qualquer célula que cunhe
   identidade local a partir da resposta da `identidade`)
 
+### [INV-SUG12] A Carta Endereça pelo Id da Plataforma, ou Não Sai
+- **O quê:** todo evento `notificacao.devida` que a `sugestoes` publica endereça
+  pelo **id da plataforma** (`destinatario_id`), nunca pelo id local. Interessado
+  que ainda não tem esse id **não recebe carta** — e continua recebendo o `Aviso`
+  local, sem que a moderação seja interrompida. Já **quem modera** sem id de
+  plataforma interrompe tudo: nada é escrito, a transação inteira volta atrás e a
+  pessoa recebe uma tela em português dizendo para entrar de novo.
+- **Por quê:** os dois ids são strings opacas parecidas e o contrato aceita as
+  duas formas, então trocar um pelo outro **não faz barulho nenhum** — a falha só
+  apareceria na Fase 3, com a caixa central cheia de cartas para ninguém. A
+  assimetria entre as duas ausências é decisão de desenho, não descuido: um
+  votante pode ter entrado pela última vez meses atrás, e travar a moderação de
+  uma ideia popular por causa dele seria absurdo — a carta é aditiva. Quem modera,
+  ao contrário, está autenticado NESTA requisição; chegar sem id significa que
+  algo quebrou agora, e o contrato `sugestao.status-alterado.v2` exige `ator_id`.
+  Como o INV-P6 não admite estado sem evento, recusar os dois juntos é a única
+  saída correta. Lei: `docs/decisoes/DECISAO-fase-2-do-sininho.md` (Rito de
+  Contrato de 26/08/2026, com o mantenedor presente).
+- **Teste-Guarda:**
+  `services/sugestoes/tests/test_inv_carta_endereca_pelo_id_da_plataforma.py` — o
+  id da carta é o da plataforma e é DIFERENTE do local; quem não tem id é pulado
+  e ainda assim avisado; o ator sem id reverte tudo (status intacto, zero eventos,
+  zero avisos, 409 com instrução em português); a carta aponta para o fato que a
+  gerou; e nada de e-mail, título ou texto do aluno viaja nela. O custo do leque
+  não crescer com a plateia tem guarda próprio, provado por sabotagem:
+  `services/sugestoes/tests/test_volume_das_cartas.py` (com `create()` por pessoa,
+  10 consultas para 5 destinatários viram 46 para 41).
+- **Célula dona:** sugestoes
+
 ---
 
 ## Invariantes da própria CI

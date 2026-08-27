@@ -66,6 +66,24 @@ def relay_outbox() -> int:
             "occurred_at": evento.occurred_at.isoformat(),
             "data": evento.payload,
         }
+        # As chaves que ESTE evento declara no nível de cima — hoje o `ator_id`
+        # do Rito de Contrato de 26/08/2026. Vêm de quem emitiu, que é quem
+        # conhece o próprio contrato; o relay não decide nada. Evento antigo tem
+        # `{}` e sai byte-idêntico ao de sempre.
+        #
+        # O `if colisao` NÃO é zelo teatral: um `**extra` solto num dicionário
+        # literal sobrescreve o que veio antes, então um `envelope_extra` com a
+        # chave `event` ou `version` trocaria a IDENTIDADE do evento no fio, em
+        # silêncio, e o consumidor errado o receberia. Aqui isso é ERROR e para
+        # a publicação — nunca um evento com identidade trocada.
+        colisao = set(evento.envelope_extra) & set(envelope)
+        if colisao:
+            raise ValueError(
+                f"envelope_extra do evento {evento.event_id} tentou sobrescrever "
+                f"{sorted(colisao)} — o nível de cima do envelope é do relay. "
+                "Campo novo de contrato entra com nome próprio, nunca por cima."
+            )
+        envelope.update(evento.envelope_extra)
         cliente.xadd(
             f"eventos.{evento.event}",
             {"json": json.dumps(envelope, ensure_ascii=False)},

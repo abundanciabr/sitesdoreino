@@ -683,6 +683,10 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # resposta do contrato já entregava e a porta descartava. Sem ele nenhum
         # evento da Caixa consegue endereçar uma pessoa fora dela.
         "INV-SUG11",
+        # Nasceu no Rito de Contrato do sininho (26/08/2026): a carta endereça
+        # pelo id da plataforma, quem não tem um é pulado, e quem MODERA sem um
+        # reverte a transação inteira.
+        "INV-SUG12",
         "INV-CI01",
     ]
 

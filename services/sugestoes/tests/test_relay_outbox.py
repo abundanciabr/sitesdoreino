@@ -64,10 +64,13 @@ def test_a_segunda_passada_nao_republica_o_que_ja_foi(caixa, fio):
     """
     caixa.os_quatro_fatos()
 
-    assert relay_outbox() == 4
+    # 4 fatos + a carta do autor (Rito de Contrato de 26/08/2026: a mudança de
+    # status publica um `notificacao.devida` por interessado, e aqui o único
+    # interessado é o autor).
+    assert relay_outbox() == 5
     assert relay_outbox() == 0
 
-    assert len(fio.mensagens) == 4
+    assert len(fio.mensagens) == 5
     assert not OutboxEvent.objects.filter(published_at__isnull=True).exists()
 
 
@@ -89,6 +92,7 @@ def test_os_quatro_fatos_chegam_ao_fio_sozinhos_apos_o_commit(caixa, fio):
     caixa.os_quatro_fatos()
 
     assert sorted(envelope["event"] for _, envelope in fio.mensagens) == [
+        eventos.NOTIFICACAO_DEVIDA,
         eventos.CRIADA,
         eventos.STATUS_ALTERADO,
         eventos.VOTO_ADICIONADO,
