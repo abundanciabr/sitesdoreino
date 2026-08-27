@@ -33,10 +33,18 @@ pytestmark = pytest.mark.django_db
 # declaração sozinha seria licença para tirar rota da varredura escrevendo um
 # nome nesta lista, `test_a_rota_publica_de_estatico_so_serve_estatico` mede,
 # do lado de fora, o que ela realmente entrega a um anônimo.
+#
+# `pedir_entrada` (a fila de liberação, 27/08/2026) entrou pelo mesmo caminho, e
+# a justificativa é a natureza da rota: ela existe EXATAMENTE para quem não tem
+# sessão de aluno. Pôr `@exige_sessao` nela seria exigir o crachá para pedir o
+# crachá. Quem faz o porteiro ali é a própria view, que reabre `ses.resolver` e
+# só age no estado SEM_MATRICULA — e isso é medido de fora, para um anônimo, em
+# `test_a_rota_publica_de_pedido_de_entrada_nao_deixa_anonimo_entrar_na_fila`.
 PUBLICAS = {
     "entrar",
     "entrar_google",
     "entrar_google_retorno",
+    "pedir_entrada",
     "sair",
     "estatico",
     None,
@@ -140,6 +148,30 @@ def test_a_rota_publica_de_estatico_so_serve_estatico(client):
             f"/static/{fuga} respondeu 200: a rota pública saiu da árvore de "
             "estáticos e virou leitor de arquivos da célula."
         )
+
+
+def test_a_rota_publica_de_pedido_de_entrada_nao_deixa_anonimo_entrar_na_fila(
+    client, rede
+):
+    """A outra metade da declaração de `pedir_entrada` em `PUBLICAS`.
+
+    A rota é pública porque serve quem ainda não é aluno — mas "público" não
+    pode virar "qualquer robô põe linha na fila do mantenedor". Um anônimo sem
+    sessão do site não tem e-mail nenhum a registrar, e a view precisa devolvê-lo
+    à porta ANTES de falar com a `alunos`.
+
+    A prova de que nada saiu para a rede é mecânica, não uma leitura do código:
+    a fixture `rede` é um `respx.mock` e QUALQUER requisição não registrada
+    levanta `AllMockedAssertionError` (armadilhas/054). Se um dia esta view
+    passar a chamar a `alunos` antes de conferir a sessão, este teste cai.
+    """
+    resposta = client.post(
+        reverse("pedir_entrada"),
+        {"nome_completo": "Robô Anônimo", "whatsapp": "(96) 99999-0000"},
+    )
+
+    assert resposta.status_code == 302
+    assert resposta["Location"] == reverse("entrar")
 
 
 def test_anonimo_e_mandado_para_a_porta_em_toda_rota_de_participacao(client, sugestao):

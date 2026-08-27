@@ -1446,3 +1446,56 @@ se nomeia o arquivo e quem assina. E **nenhum ChangeSpec real foi escrito**: a
 regra de autoria do §1 (quem escreve nunca é quem implementa, `APROVADO_POR` é
 sempre o mantenedor) faz de um exemplo assinado por ninguém exatamente a
 formalidade vazia que o documento existe para impedir.
+
+## O formulário da fila de liberação — o beco virou destino (27/08/2026)
+
+**Onde:** `apps/core/views.py` (`_tela_da_fila`, `pedir_entrada`),
+`apps/core/clients.py` (`AlunosClient.pedir_entrada_na_fila`),
+`apps/core/templates/sugestoes/entrar.html`.
+**Lei:** `docs/decisoes/DECISAO-fila-de-liberacao.md`. **Provedor:** PR #304.
+
+**O guarda antigo não precisou de UMA linha alterada — e isso foi escolha, não
+sorte.** `tests/test_inv_entrada_sem_matricula.py` afirma que a recusa é 403,
+que NOMEIA o e-mail, que oferece "Entrar com outra conta Google" e que tem as
+três saídas. A primeira versão da tela reescrevia o texto inteiro e derrubava
+dois desses guardas; a leitura certa é que **o beco nunca foi o diagnóstico, foi
+a falta de destino**. Mantendo "Não encontramos matrícula para esse e-mail" como
+título e pondo o formulário logo abaixo, a lei é cumprida e os invariantes
+seguem com os dentes que tinham. Afrouxar um teste-guarda para caber uma feature
+quase sempre significa que a feature está desenhada errado.
+
+**`request.session` está PROIBIDO nesta célula.** `SESSION_COOKIE_NAME` aqui é
+`meshcraft_sessao` — o mesmo cookie que a `identidade` assina para o site
+inteiro — e o engine é `signed_cookies`. Uma única escrita reserializa aquele
+cookie com uma sessão DESTA célula e **desloga a pessoa da plataforma toda**. A
+primeira versão guardava a lembrança do pedido ali; quem pegou foi o teste de
+recarregar a página, com a porta respondendo "visitante". Lembrança de tela mora
+em cookie próprio (`caixa_pedido_na_fila`), com marca opaca em vez do e-mail.
+Classe catalogada em `armadilhas/143`; guarda:
+`test_pedir_entrada_nao_reescreve_o_cookie_do_site`.
+
+**O `site_id` é DESCOBERTO, não configurado:** `quadro_atual().site_id`. Uma
+variável de ambiente a mais seria um segundo lugar guardando o mesmo fato, e o
+dia em que os dois discordassem a pessoa entraria na fila de outro site.
+
+**`pedir_entrada` é rota pública, e isso custou uma declaração.** Ela existe
+exatamente para quem NÃO tem sessão de aluno — pôr `@exige_sessao` seria exigir
+o crachá para pedir o crachá. Entrou em `PUBLICAS` de
+`test_inv_sem_sessao_nada.py` acompanhada da medição de fora que aquele arquivo
+exige de toda exceção (`test_a_rota_publica_de_pedido_de_entrada_...`): um
+anônimo é devolvido à porta **antes** de qualquer salto para a `alunos`, e quem
+prova isso é o `respx` estourando em requisição não registrada.
+
+**A regra das respostas da `alunos`:** 201 e 200 são a mesma notícia para quem
+está deste lado (*seu pedido está registrado*) — o reenvio idempotente é
+desenho, não erro. 409 vira redirecionamento para a porta: a pessoa TEM
+matrícula e o que a barrou foi o cache curto de `_tem_matricula`, que expira
+sozinho. Todo o resto — inclusive **422** — fecha com "não foi registrado".
+O 422 merece o destaque: como a tela valida antes de mandar, ele significa
+desacordo NOSSO com o contrato, e a única coisa inaceitável seria a pessoa sair
+achando que está na fila.
+
+**A conferência do WhatsApp é frouxa de propósito** (10 a 15 dígitos): existe
+para pegar "não tenho" e dedo escorregado, nunca para recusar um número real
+escrito de um jeito inesperado. Um formulário que recusa telefone válido é um
+aluno perdido, e o mantenedor confere tudo à mão de qualquer jeito.
