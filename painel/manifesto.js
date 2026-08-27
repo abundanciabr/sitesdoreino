@@ -92,7 +92,8 @@ var MANIFESTO = [
   "20260827-025-a-tela-de-avisos-da-caixa-agora-le-da-caixa-central",
   "20260827-026-a-barra-no-final-parou-de-dar-erro-no-site-inteiro",
   "20260827-027-falta-uma-linha-sua-para-o-sino-acender",
-  "20260827-028-o-guia-do-funil-ganhou-duas-pecas-que-faltavam"
+  "20260827-028-o-guia-do-funil-ganhou-duas-pecas-que-faltavam",
+  "20260827-029-a-trava-de-numero-repetido-ja-existia"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
