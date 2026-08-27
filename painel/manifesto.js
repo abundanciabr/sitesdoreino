@@ -71,7 +71,8 @@ var MANIFESTO = [
   "20260827-004-um-alarme-de-seguranca-interno-falhava-so-neste-pc",
   "20260827-005-a-caixa-de-pergunta-virou-regra-permanente",
   "20260827-006-a-conversa-da-fase-4-do-sininho-aconteceu",
-  "20260827-007-rumo-comunidade-a-porta-de-avisos-ganha-corpo"
+  "20260827-007-rumo-comunidade-a-porta-de-avisos-ganha-corpo",
+  "20260827-008-um-mapa-do-projeto-escrito-para-robos-auditarem"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
