@@ -91,6 +91,21 @@ recusa PR com o livro inconsistente. As regras que importam:
 - Os painéis antigos de `arquivos/painel-*.html` são **lápides e fotografias**
   (história congelada). Não os atualize; não crie novos.
 
+## O clone principal é espelho, não bancada (desde 26/08/2026)
+
+Duas sessões dividindo a pasta principal já apagaram o trabalho uma da outra
+(26/08/2026 — uma trocou o ramo, as edições da outra sumiram). Desde então a
+regra do RITOS §1 (worktree por agente) tem muralha mecânica: os hooks de
+`.claude/settings.json` chamam `ci/muralha_pasta_compartilhada.py`, que RECUSA
+no clone principal qualquer edição e qualquer git que mude estado
+(switch/checkout/reset/commit/stash/...). Se a recusa 🧱 aparecer, não é
+defeito e não se contorna: crie seu worktree —
+`git fetch origin && git worktree add ../wt-<area>-<tarefa> -b
+agent/<area>/<tarefa> origin/main` — e trabalhe lá. No principal ficam livres
+leituras, `git fetch`, `git worktree` e `gh`; com a árvore limpa, também
+`git switch main` e `git pull` (para manter o espelho fresco). Detalhes e
+fronteiras: `armadilhas/135`.
+
 ## Mergear é trabalho do agente (desde 22/08/2026)
 
 Decisão do mantenedor — motivos e mecânica em

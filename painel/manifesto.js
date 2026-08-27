@@ -55,7 +55,8 @@ var MANIFESTO = [
   "20260826-036-a-caixa-central-de-avisos-nasceu",
   "20260826-036-o-painel-agora-tem-endereco-na-internet",
   "20260826-037-o-dono-abriu-o-painel-online-e-ele-apareceu",
-  "20260826-037-o-impasse-dos-dois-portoes-na-subida"
+  "20260826-037-o-impasse-dos-dois-portoes-na-subida",
+  "20260826-038-a-muralha-que-impede-um-robo-de-pisar-no-outro"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {

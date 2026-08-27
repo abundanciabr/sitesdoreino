@@ -26,6 +26,13 @@ cd ../wt-<celula>-<tarefa>/services/<celula>    # ⟵ a sessão do agente ABRE A
 Se o baseline NÃO estiver verde antes de tocar qualquer arquivo: **parar e reportar**
 — consertar main quebrada não é escopo de sessão de feature.
 
+> **Desde 26/08/2026 este rito é imposto por mecanismo, não por disciplina:** a
+> muralha da pasta compartilhada (`ci/muralha_pasta_compartilhada.py`, ligada
+> pelos hooks de `.claude/settings.json`) RECUSA edição e git de estado no
+> clone principal — ele é espelho, worktree é onde se trabalha. A recusa 🧱
+> não é defeito e não se contorna: crie o worktree acima e siga.
+> História e fronteiras: `armadilhas/135`.
+
 **Dieta de contexto (lei de despacho):** todo brief nomeia arquivos-alvo, o que é
 somente-leitura e a fronteira congelada. Nunca se cola a célula inteira no contexto
 quando o alvo é um componente. O despacho segue o template do `CAMINHO-DOURADO.md`
