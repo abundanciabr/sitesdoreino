@@ -1,14 +1,21 @@
 # tests/test_api.py  # [RECEITA:R1 v1]
 """As três rotas da porta de consulta — Fase 4 do sininho
-(`contracts/notificacoes.openapi.yaml`, Rito de Contrato de 27/08/2026).
+(`contracts/notificacoes.openapi.yaml`, Rito de Contrato de 27/08/2026,
+emendado no mesmo dia para exigir `site_id` — CONSTITUICAO.md Lei 9).
 
 Um arquivo só para as três (`GET /resumo`, `GET /avisos`,
 `POST /marcar-lidas`), em vez de um por rota: as três dividem o mesmo par de
-perguntas — quem CHAMA (Bearer do par, `apps/core/auth.py`) e qual PESSOA
-(`destinatario_id`) — e o orçamento de arquivos do PR (`armadilhas/035`)
-soma o que já é grande com o consumer, o modelo e a migração. Cada seção
-abaixo (RESUMO, AVISOS, MARCAR-LIDAS, CUSTO) tem seu próprio bloco de
-fixtures locais e é independente das outras.
+perguntas — quem CHAMA (Bearer do par, `apps/core/auth.py`) e QUAL PESSOA EM
+QUAL SITE (`destinatario_id` + `site_id`) — e o orçamento de arquivos do PR
+(`armadilhas/035`) soma o que já é grande com o consumer, o modelo e a
+migração. Cada seção abaixo (RESUMO, AVISOS, MARCAR-LIDAS, CUSTO) tem seu
+próprio bloco de fixtures locais e é independente das outras.
+
+Cada seção tem pelo menos um teste `..._e_isolado_por_site`: a MESMA
+`destinatario_id`, dois `site_id` diferentes, dois resultados independentes.
+É a prova direta da decisão do mantenedor (27/08/2026, mesma sessão da Fase
+4): "cada site mostra só os avisos que vieram dele" — nunca um apanhado de
+todo site que a pessoa já tiver tocado.
 
 A seção CUSTO, ao final, mede uma pergunta DIFERENTE das outras três ("o
 custo cresce com o tamanho da caixa?", não "a rota está correta?") — mesmo
@@ -63,8 +70,12 @@ def _guardar(destinatario_id=ALGUEM, site_id=SITE, ator_id=EQUIPE, **parametros)
 CAMINHO_RESUMO = "/api/notificacoes/resumo"
 
 
-def _perguntar_resumo(client, destinatario_id="", token="__default__"):
-    params = {"destinatario_id": destinatario_id} if destinatario_id else {}
+def _perguntar_resumo(client, destinatario_id="", site_id=SITE, token="__default__"):
+    params = {}
+    if destinatario_id:
+        params["destinatario_id"] = destinatario_id
+    if site_id:
+        params["site_id"] = site_id
     cabecalhos = (
         cabecalho_bearer() if token == "__default__" else cabecalho_bearer(token)
     )
@@ -98,6 +109,20 @@ def test_resumo_destinatario_id_vazio_e_422(client, par_autorizado):
 def test_resumo_destinatario_id_so_espacos_e_422(client, par_autorizado):
     resposta = client.get(
         CAMINHO_RESUMO, {"destinatario_id": "   "}, headers=cabecalho_bearer()
+    )
+    assert resposta.status_code == 422
+
+
+def test_resumo_sem_site_id_e_422(client, par_autorizado):
+    resposta = _perguntar_resumo(client, destinatario_id=ALGUEM, site_id="")
+    assert resposta.status_code == 422
+
+
+def test_resumo_site_id_vazio_e_422(client, par_autorizado):
+    resposta = client.get(
+        CAMINHO_RESUMO,
+        {"destinatario_id": ALGUEM, "site_id": "   "},
+        headers=cabecalho_bearer(),
     )
     assert resposta.status_code == 422
 
@@ -141,6 +166,28 @@ def test_resumo_a_conta_e_por_pessoa_nao_global(client, par_autorizado):
     assert resposta_outra.json() == {"nao_lidas": 1}
 
 
+def test_resumo_e_isolado_por_site(client, par_autorizado):
+    """A mesma pessoa, dois sites — cada `/resumo` só conta o que é DELE.
+
+    Decisão do mantenedor (27/08/2026): "cada site mostra só os avisos que
+    vieram dele". Sem isto, `destinatario_id` sozinho somaria os dois sites
+    e a Lei 9 (CONSTITUICAO.md — "site_id acompanha toda entidade pública")
+    estaria escrita e não cumprida.
+    """
+    outro_site = "outro-site-de-teste"
+    _guardar(destinatario_id=ALGUEM, site_id=SITE)
+    _guardar(destinatario_id=ALGUEM, site_id=SITE)
+    _guardar(destinatario_id=ALGUEM, site_id=outro_site)
+
+    resposta_site = _perguntar_resumo(client, destinatario_id=ALGUEM, site_id=SITE)
+    resposta_outro_site = _perguntar_resumo(
+        client, destinatario_id=ALGUEM, site_id=outro_site
+    )
+
+    assert resposta_site.json() == {"nao_lidas": 2}
+    assert resposta_outro_site.json() == {"nao_lidas": 1}
+
+
 def test_resumo_bate_com_o_schema_do_contrato_congelado(client, par_autorizado):
     _guardar()
     resposta = _perguntar_resumo(client, destinatario_id=ALGUEM)
@@ -156,19 +203,23 @@ def test_resumo_bate_com_o_schema_do_contrato_congelado(client, par_autorizado):
 CAMINHO_AVISOS = "/api/notificacoes/avisos"
 
 
-def _viva(destinatario_id=ALGUEM, minutos_atras=0, ator_id=EQUIPE, **parametros):
+def _viva(
+    destinatario_id=ALGUEM, site_id=SITE, minutos_atras=0, ator_id=EQUIPE, **parametros
+):
     notificacao = _guardar(
-        destinatario_id=destinatario_id, ator_id=ator_id, **parametros
+        destinatario_id=destinatario_id, site_id=site_id, ator_id=ator_id, **parametros
     )
     quando = timezone.now() - timezone.timedelta(minutes=minutos_atras)
     Notificacao.objects.filter(pk=notificacao.pk).update(criado_em=quando)
     return notificacao
 
 
-def _arquivada(destinatario_id=ALGUEM, minutos_atras=0, lida_minutos_atras=None):
+def _arquivada(
+    destinatario_id=ALGUEM, site_id=SITE, minutos_atras=0, lida_minutos_atras=None
+):
     agora = timezone.now()
     return NotificacaoArquivada.objects.create(
-        site_id=SITE,
+        site_id=site_id,
         destinatario_id=destinatario_id,
         ator_id=EQUIPE,
         assunto="sugestao.status-alterado",
@@ -180,11 +231,18 @@ def _arquivada(destinatario_id=ALGUEM, minutos_atras=0, lida_minutos_atras=None)
 
 
 def _pedir_avisos(
-    client, destinatario_id="", cursor=None, limite=None, token="__default__"
+    client,
+    destinatario_id="",
+    site_id=SITE,
+    cursor=None,
+    limite=None,
+    token="__default__",
 ):
     params = {}
     if destinatario_id:
         params["destinatario_id"] = destinatario_id
+    if site_id:
+        params["site_id"] = site_id
     if cursor is not None:
         params["cursor"] = cursor
     if limite is not None:
@@ -210,6 +268,20 @@ def test_avisos_sem_destinatario_id_e_422(client, par_autorizado):
 
 def test_avisos_destinatario_id_vazio_e_422(client, par_autorizado):
     assert _pedir_avisos(client, destinatario_id="   ").status_code == 422
+
+
+def test_avisos_sem_site_id_e_422(client, par_autorizado):
+    resposta = _pedir_avisos(client, destinatario_id=ALGUEM, site_id="")
+    assert resposta.status_code == 422
+
+
+def test_avisos_site_id_vazio_e_422(client, par_autorizado):
+    resposta = client.get(
+        CAMINHO_AVISOS,
+        {"destinatario_id": ALGUEM, "site_id": "   "},
+        headers=cabecalho_bearer(),
+    )
+    assert resposta.status_code == 422
 
 
 def test_avisos_limite_nao_numerico_e_422(client, par_autorizado):
@@ -263,6 +335,17 @@ def test_avisos_so_devolve_avisos_do_destinatario_pedido(client, par_autorizado)
 
     itens = resposta.json()["itens"]
     assert len(itens) == 1
+
+
+def test_avisos_e_isolado_por_site(client, par_autorizado):
+    """A mesma pessoa, dois sites — `/avisos` de um nunca mostra o do outro."""
+    outro_site = "outro-site-de-teste"
+    do_site = _viva(destinatario_id=ALGUEM, site_id=SITE, minutos_atras=1)
+    _viva(destinatario_id=ALGUEM, site_id=outro_site, minutos_atras=2)
+
+    itens = _pedir_avisos(client, destinatario_id=ALGUEM, site_id=SITE).json()["itens"]
+
+    assert [item["id"] for item in itens] == [f"n{do_site.pk}"]
 
 
 def test_avisos_ator_id_nulo_vira_null_no_json(client, par_autorizado):
@@ -372,16 +455,24 @@ def test_avisos_bate_com_o_schema_do_contrato_congelado(client, par_autorizado):
 CAMINHO_MARCAR_LIDAS = "/api/notificacoes/marcar-lidas"
 
 
-def _contador(destinatario_id=ALGUEM) -> int:
+def _contador(destinatario_id=ALGUEM, site_id=SITE) -> int:
     return (
-        ContadorDeNaoLidos.objects.filter(site_id=SITE, destinatario_id=destinatario_id)
+        ContadorDeNaoLidos.objects.filter(
+            site_id=site_id, destinatario_id=destinatario_id
+        )
         .values_list("nao_lidos", flat=True)
         .first()
         or 0
     )
 
 
-def _marcar(client, destinatario_id="__omitir__", token="__default__", corpo_cru=None):
+def _marcar(
+    client,
+    destinatario_id="__omitir__",
+    site_id=SITE,
+    token="__default__",
+    corpo_cru=None,
+):
     cabecalhos = (
         cabecalho_bearer() if token == "__default__" else cabecalho_bearer(token)
     )
@@ -392,9 +483,11 @@ def _marcar(client, destinatario_id="__omitir__", token="__default__", corpo_cru
             content_type="text/plain",
             headers=cabecalhos,
         )
-    payload = (
-        {} if destinatario_id == "__omitir__" else {"destinatario_id": destinatario_id}
-    )
+    payload = {}
+    if destinatario_id != "__omitir__":
+        payload["destinatario_id"] = destinatario_id
+    if site_id != "__omitir__":
+        payload["site_id"] = site_id
     return client.post(
         CAMINHO_MARCAR_LIDAS,
         data=json.dumps(payload),
@@ -419,6 +512,16 @@ def test_marcar_lidas_sem_destinatario_id_e_422(client, par_autorizado):
 
 def test_marcar_lidas_destinatario_id_vazio_e_422(client, par_autorizado):
     assert _marcar(client, destinatario_id="   ").status_code == 422
+
+
+def test_marcar_lidas_sem_site_id_e_422(client, par_autorizado):
+    resposta = _marcar(client, destinatario_id=ALGUEM, site_id="__omitir__")
+    assert resposta.status_code == 422
+
+
+def test_marcar_lidas_site_id_vazio_e_422(client, par_autorizado):
+    resposta = _marcar(client, destinatario_id=ALGUEM, site_id="   ")
+    assert resposta.status_code == 422
 
 
 def test_marcar_lidas_corpo_nao_e_json_e_422(client, par_autorizado):
@@ -479,6 +582,23 @@ def test_marcar_lidas_nao_toca_avisos_de_outra_pessoa(client, par_autorizado):
     da_outra.refresh_from_db()
     assert da_outra.lido_em is None
     assert _contador(OUTRA) == 1
+
+
+def test_marcar_lidas_e_isolado_por_site(client, par_autorizado):
+    """A mesma pessoa, dois sites — marcar como lido num não toca o outro."""
+    outro_site = "outro-site-de-teste"
+    do_site = _guardar(destinatario_id=ALGUEM, site_id=SITE)
+    do_outro_site = _guardar(destinatario_id=ALGUEM, site_id=outro_site)
+
+    resposta = _marcar(client, destinatario_id=ALGUEM, site_id=SITE)
+
+    assert resposta.json() == {"marcados": 1}
+    do_site.refresh_from_db()
+    do_outro_site.refresh_from_db()
+    assert do_site.lido_em is not None
+    assert do_outro_site.lido_em is None
+    assert _contador(ALGUEM, site_id=SITE) == 0
+    assert _contador(ALGUEM, site_id=outro_site) == 1
 
 
 def test_marcar_lidas_chamar_duas_vezes_seguidas_a_segunda_marca_zero_e_nao_fica_negativo(

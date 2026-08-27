@@ -46,25 +46,25 @@ class Notificacao(models.Model):
 
     class Meta:
         indexes = [
-            # O caminho quente é sempre o mesmo: "os avisos DESTA pessoa, os
-            # mais novos primeiro" — e o `-criado_em` faz a página 1 sair sem
-            # ordenar nada em memória.
+            # O caminho quente é sempre o mesmo: "os avisos DESTA pessoa NESTE
+            # site, os mais novos primeiro" — e o `-criado_em` faz a página 1
+            # sair sem ordenar nada em memória.
             #
-            # **`destinatario_id` lidera, e `site_id` nem aparece** — mudou de
-            # forma na Fase 4 (`contracts/notificacoes.openapi.yaml`, Rito de
-            # 27/08/2026). O índice original da gênese (PR #247) liderava com
-            # `site_id`, apostando em como a Fase 4 ainda não escrita iria
-            # consultar. Saiu diferente: as três rotas da porta de consulta só
-            # recebem `destinatario_id` — "Id da PLATAFORMA da pessoa", nunca
-            # site. Um índice liderado por `site_id` obrigaria o Postgres a
-            # varrer entradas de todo site para achar as de uma pessoa — hoje
-            # inofensivo (um site só em produção), mas o tipo de custo que some
-            # do query plan e só aparece quando o segundo site nascer. Dívida
-            # anotada, não bug: `LICOES.md` desta célula, seção "site_id no
-            # contrato de leitura" (a Lei 9 da CONSTITUICAO continua cumprida
-            # do lado da ESCRITA — `site_id` continua gravado em toda linha).
+            # **`site_id` E `destinatario_id` lideram JUNTOS.** Decisão do
+            # mantenedor de 27/08/2026 (mesmo dia da Fase 4, CONSTITUICAO.md
+            # Lei 9): "cada site mostra só os avisos que vieram dele" — as três
+            # rotas da porta de consulta passaram a exigir os dois. Medido com
+            # `EXPLAIN ANALYZE` (não suposto — 500 pessoas de ruído + 1 pessoa
+            # com 1.500 linhas em 5 sites, 300 no site pedido): o índice
+            # anterior, liderado só por `destinatario_id`, lia as 1.500 linhas
+            # da pessoa em TODO site e só depois descartava 1.200 com um
+            # `Filter` pós-índice ("Rows Removed by Filter: 1200") — o índice
+            # não ajudava em nada a encontrar as 300 do site certo. Com as
+            # duas colunas liderando, o Postgres usa `Index Cond` para as duas
+            # e não descarta nenhuma linha depois. A prova mora em
+            # `services/notificacoes/tests/test_indices_da_porta_de_consulta.py`.
             models.Index(
-                fields=["destinatario_id", "-criado_em"],
+                fields=["site_id", "destinatario_id", "-criado_em"],
                 name="notif_caixa_da_pessoa",
             ),
         ]
@@ -97,16 +97,18 @@ class ContadorDeNaoLidos(models.Model):
                 fields=["site_id", "destinatario_id"], name="contador_um_por_pessoa"
             )
         ]
-        indexes = [
-            # `GET /resumo` (Fase 4) soma `nao_lidos` por `destinatario_id`
-            # SEM `site_id` — mesmo motivo do índice de `Notificacao` acima.
-            # Índice à parte, e não reordenar o UniqueConstraint: a restrição
-            # de unicidade não muda de significado com a ordem das colunas,
-            # mas o índice que o Postgres usa para RESPONDER "quanto essa
-            # pessoa tem, em qualquer site" precisa liderar por
-            # `destinatario_id` para não virar varredura.
-            models.Index(fields=["destinatario_id"], name="contador_por_pessoa"),
-        ]
+        # SEM índice extra de propósito. `GET /resumo` (Fase 4) lê por
+        # `(site_id, destinatario_id)` — exatamente a chave do
+        # `UniqueConstraint` acima, que JÁ é um índice único nessas duas
+        # colunas, nessa ordem. Um índice às-pressas liderado só por
+        # `destinatario_id` chegou a existir aqui (entre a Fase 4 sem site_id
+        # e a emenda que passou a exigi-lo) — `EXPLAIN ANALYZE` mostrou o
+        # Postgres preferindo `contador_um_por_pessoa` (`Index Cond` nas DUAS
+        # colunas, zero linha descartada) no instante em que a query passou a
+        # filtrar as duas, tornando o índice extra dead weight: nunca mais
+        # escolhido para leitura, e ainda assim custando em todo `INSERT`.
+        # Removido na migração que trouxe este comentário. Prova em
+        # `tests/test_indices_da_porta_de_consulta.py`.
 
     def __str__(self) -> str:  # pragma: no cover
         return f"{self.destinatario_id}={self.nao_lidos}"
@@ -138,10 +140,12 @@ class NotificacaoArquivada(models.Model):
 
     class Meta:
         indexes = [
-            # Mesma correção e mesmo motivo do índice de `Notificacao`: a
-            # porta de consulta da Fase 4 nunca filtra por `site_id`.
+            # Mesma correção e mesmo motivo do índice de `Notificacao`: as
+            # três rotas da porta de consulta filtram por `site_id` E
+            # `destinatario_id` juntos (decisão do mantenedor, 27/08/2026,
+            # CONSTITUICAO.md Lei 9) — os dois lideram o índice.
             models.Index(
-                fields=["destinatario_id", "-criado_em"],
+                fields=["site_id", "destinatario_id", "-criado_em"],
                 name="notif_arquivo_da_pessoa",
             ),
         ]

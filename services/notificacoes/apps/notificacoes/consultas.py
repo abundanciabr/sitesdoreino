@@ -5,8 +5,9 @@ até esta fase) porque leitura não carrega o mesmo risco de invariante
 transacional — não há `F()`, não há `atomic()`, só consulta.
 
 Lei do desenho: `contracts/notificacoes.openapi.yaml` (congelado, Rito de
-Contrato de 27/08/2026) e `docs/decisoes/DECISAO-fase-4-do-sininho.md`. A
-tradução HTTP mora em `apps/core/api.py` — aqui é só a pergunta ao banco.
+Contrato de 27/08/2026, emendado no mesmo dia para exigir `site_id` — Lei 9 da
+CONSTITUICAO) e `docs/decisoes/DECISAO-fase-4-do-sininho.md`. A tradução HTTP
+mora em `apps/core/api.py` — aqui é só a pergunta ao banco.
 
 **Por que `pagina_de_avisos` lê DUAS tabelas.** O arquivamento
 (`DECISAO-notificacoes` §5.2) move o lido-e-velho para fora do caminho quente
@@ -20,10 +21,12 @@ independente de quantas linhas existirem em qualquer uma das tabelas (LIMIT
 fixo + os índices de `models.py`): é a mesma exigência de O(1) do `/resumo`,
 aplicada à lista.
 
-**Por que nenhuma consulta aqui filtra por `site_id`.** O contrato congelado
-não tem parâmetro `site_id` em rota nenhuma — só `destinatario_id`, sempre
-descrito como "Id da PLATAFORMA da pessoa" (nunca "do site"). Ver a nota no
-índice de `Notificacao.Meta` em `models.py` e `LICOES.md` desta célula.
+**Toda consulta aqui filtra por `site_id` E `destinatario_id` juntos.** Os
+avisos de uma pessoa são sempre os do site de onde a chamada vem — nunca um
+apanhado de todo site que ela já tiver tocado (decisão do mantenedor,
+confirmada em 27/08/2026, mesmo dia da Fase 4; `CONSTITUICAO.md` Lei 9). Os
+índices de `models.py` lideram pelas DUAS colunas de propósito — ver a nota
+lá.
 """
 
 from __future__ import annotations
@@ -31,8 +34,6 @@ from __future__ import annotations
 import base64
 import json
 from datetime import datetime
-
-from django.db.models import Sum
 
 from .models import ContadorDeNaoLidos, Notificacao, NotificacaoArquivada
 
@@ -54,20 +55,23 @@ class CursorInvalido(Exception):
     """O cursor recebido não é um que esta célula tenha devolvido."""
 
 
-def resumo_de_nao_lidos(*, destinatario_id: str) -> int:
-    """Quantos avisos não lidos — soma do `ContadorDeNaoLidos` (O(1) desde a gênese).
+def resumo_de_nao_lidos(*, site_id: str, destinatario_id: str) -> int:
+    """Quantos avisos não lidos — lê o `ContadorDeNaoLidos` (O(1) desde a gênese).
 
     Não existe `COUNT(*)` aqui: o contador já é mantido, por carta, na mesma
-    transação de `apps/notificacoes/services.py::guardar`. `Sum` (e não um
-    laço somando em Python) porque `destinatario_id` sozinho pode um dia casar
-    com mais de uma linha — uma por `site_id` que a pessoa já tiver tocado
-    (ver o porquê no docstring do módulo) — e a soma continua sendo UMA
-    consulta, independente de quantos sites ou quantos avisos existirem.
+    transação de `apps/notificacoes/services.py::guardar`. `(site_id,
+    destinatario_id)` é a chave ÚNICA da tabela (`UniqueConstraint
+    contador_um_por_pessoa`) — no máximo uma linha pode casar, e `.first()`
+    lê exatamente essa linha ou nenhuma, sempre em UMA consulta.
     """
-    total = ContadorDeNaoLidos.objects.filter(
-        destinatario_id=destinatario_id
-    ).aggregate(total=Sum("nao_lidos"))["total"]
-    return total or 0
+    valor = (
+        ContadorDeNaoLidos.objects.filter(
+            site_id=site_id, destinatario_id=destinatario_id
+        )
+        .values_list("nao_lidos", flat=True)
+        .first()
+    )
+    return valor or 0
 
 
 def _codificar_cursor(*, criado_em: datetime, fonte: str, pk: int) -> str:
@@ -75,6 +79,11 @@ def _codificar_cursor(*, criado_em: datetime, fonte: str, pk: int) -> str:
     anterior", nunca um formato. Base64 de um JSON pequeno: sobra espaço para
     crescer (um dia a chave pode precisar de mais um campo) sem quebrar cursor
     já distribuído por aí, porque ninguém além desta função o decodifica.
+
+    Não carrega `site_id`/`destinatario_id`: o cursor só faz sentido dentro da
+    MESMA chamada que o pediu (mesmo par), então repeti-los aqui seria estado
+    redundante — e pior, um convite para alguém um dia usar o cursor de uma
+    pessoa/site como se fosse de outra.
     """
     bruto = json.dumps([criado_em.isoformat(), fonte, pk])
     return base64.urlsafe_b64encode(bruto.encode("utf-8")).decode("ascii")
@@ -99,6 +108,9 @@ def _decodificar_cursor(cursor: str) -> tuple[datetime, str, int]:
 def _candidatos(queryset, *, fonte: str, cursor_dt: datetime | None, limite: int):
     """Até `limite + 1` linhas de UMA tabela, mais novas primeiro.
 
+    `queryset` já chega filtrado por `site_id` e `destinatario_id` — esta
+    função só cuida do cursor, do corte e da ordenação.
+
     O `+1` é o que permite responder "existe próxima página?" sem uma segunda
     consulta: se sobrar mais que `limite` depois do merge das duas fontes, a
     (limite+1)-ésima prova que há mais.
@@ -119,17 +131,17 @@ def _candidatos(queryset, *, fonte: str, cursor_dt: datetime | None, limite: int
 
 
 def pagina_de_avisos(
-    *, destinatario_id: str, cursor: str | None, limite: int
+    *, site_id: str, destinatario_id: str, cursor: str | None, limite: int
 ) -> tuple[list[dict], str | None]:
-    """Uma página de avisos desta pessoa, mais novo primeiro.
+    """Uma página de avisos desta pessoa NESTE site, mais novo primeiro.
 
     Busca até `limite + 1` linhas de CADA tabela (Notificacao +
     NotificacaoArquivada — sempre as duas, nunca uma sozinha: ver o porquê no
     docstring do módulo), junta as duas listas (já ordenadas) num merge em
     Python, corta no `limite` e decide o próximo cursor pelo item que sobrou.
     Sempre EXATAMENTE duas consultas SQL, com `LIMIT` fixo — o custo não
-    cresce com o total de avisos que existirem em qualquer uma das tabelas
-    (`tests/test_volume_da_api.py` mede).
+    cresce com o total de avisos que existirem em qualquer uma das tabelas,
+    de nenhum site (`tests/test_api.py`, seção CUSTO, mede).
 
     `limite` já chega validado e dentro de [`LIMITE_MINIMO`, `LIMITE_MAXIMO`]
     — quem valida é `apps/core/api.py`, que também é quem transforma
@@ -142,13 +154,15 @@ def pagina_de_avisos(
         chave_cursor = (cursor_dt, cursor_fonte, cursor_pk)
 
     candidatos = _candidatos(
-        Notificacao.objects.filter(destinatario_id=destinatario_id),
+        Notificacao.objects.filter(site_id=site_id, destinatario_id=destinatario_id),
         fonte=_FONTE_ATIVA,
         cursor_dt=cursor_dt,
         limite=limite,
     )
     candidatos += _candidatos(
-        NotificacaoArquivada.objects.filter(destinatario_id=destinatario_id),
+        NotificacaoArquivada.objects.filter(
+            site_id=site_id, destinatario_id=destinatario_id
+        ),
         fonte=_FONTE_ARQUIVADA,
         cursor_dt=cursor_dt,
         limite=limite,

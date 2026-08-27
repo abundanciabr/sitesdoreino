@@ -61,27 +61,64 @@ sequências independentes) está em `apps/notificacoes/consultas.py`, com o
 raciocínio completo no docstring do módulo. Continua O(1): sempre duas
 consultas com `LIMIT`, nunca uma por tabela extra que nascer.
 
-## `site_id` no contrato de leitura — dívida anotada, não bug
+## `site_id` é obrigatório em toda rota — decisão do mantenedor, 27/08/2026
 
-`contracts/notificacoes.openapi.yaml` **não tem `site_id` em rota nenhuma** —
-as três operações só recebem `destinatario_id`, sempre descrito como "Id da
-PLATAFORMA da pessoa" (nunca "do site"). Isso tensiona com a Lei 9 da
-`CONSTITUICAO.md` ("`site_id` acompanha toda entidade pública"), que continua
-cumprida do lado da ESCRITA — toda `Notificacao`/`ContadorDeNaoLidos` grava o
-site de origem — mas não tem como ser respeitada do lado da LEITURA sem um
-parâmetro que o contrato congelado simplesmente não desenhou.
+A Fase 4 nasceu (Rito de Contrato de 27/08/2026, PR #274) com as três rotas
+recebendo só `destinatario_id` — nenhuma tinha `site_id`. Isso durou poucas
+horas: ao ver a implementação em andamento, o mantenedor decidiu (pergunta
+estruturada, opção recomendada) que **"cada site mostra só os avisos que
+vieram dele"** — nunca um apanhado de todo site que a pessoa já tiver
+tocado. É a Lei 9 da CONSTITUICAO ("`site_id` acompanha toda entidade
+pública") aplicada também à LEITURA, não só à escrita — que já cumpria a Lei
+9 desde a gênese (toda `Notificacao`/`ContadorDeNaoLidos` sempre gravou o
+site de origem). O contrato foi emendado por Rito próprio (PR #282, só
+`contracts/`, label `contrato`) ANTES da implementação da Fase 4 mergear:
+`site_id` virou parâmetro obrigatório em `/resumo`/`/avisos` e campo
+obrigatório no corpo de `/marcar-lidas`.
 
-A implementação escolhida (Fase 4, PR desta entrada) é a única compatível com
-o contrato como está: `resumo_de_nao_lidos`/`pagina_de_avisos`/
-`marcar_todas_como_lidas` filtram só por `destinatario_id`, somando/percorrendo
-qualquer `site_id` que a pessoa já tiver tocado (hoje, sempre um só — um site
-em produção). **Isto não é uma correção que uma sessão futura deve aplicar por
-conta própria**: mudar o formato de `/resumo`/`/avisos`/`/marcar-lidas` para
-exigir `site_id` é mudança de CONTRATO (RITOS §3, sessão com o mantenedor) —
-o mesmo caminho que abriu a Fase 4. Fica registrado aqui para não virar
-"esqueceram do site_id" na leitura de alguém que não viu esta conversa.
+**Consequência prática:** toda função de `consultas.py`/`services.py` recebe
+`site_id` E `destinatario_id`, e filtra pelas duas — nunca só uma.
+`marcar_todas_como_lidas` até SIMPLIFICOU com a mudança: como `(site_id,
+destinatario_id)` é a chave única de `ContadorDeNaoLidos`, no máximo UMA
+linha do contador pode casar por chamada, então o `GROUP BY site_id` que essa
+função teve por poucas horas (de quando só existia `destinatario_id`) deixou
+de fazer sentido e foi removido. Os índices tiveram que mudar junto — ver a
+seção seguinte.
 
-## Rodar os testes desta célula, do zero
+## Índice "óbvio" pode estar errado — meça com EXPLAIN, não suponha
+
+A migração `0002_indices_da_porta_de_consulta` liderou os índices de
+`Notificacao`/`NotificacaoArquivada` só por `destinatario_id`, apostando
+(certo, NA HORA) que a Fase 4 não filtraria por `site_id`. A aposta durou até
+a emenda da seção acima — e a partir dali o índice deixou de casar com a
+consulta real, **sem que nenhum teste existente notasse**: com o volume de
+dados de teste de costume (poucas dezenas de linhas), o Postgres troca de
+plano sem custo perceptível, e `assertNumQueries` (`tests/test_api.py`, seção
+CUSTO) mede QUANTAS consultas, não QUANTAS LINHAS cada uma lê por dentro.
+
+A prova que pegou isso foi `EXPLAIN ANALYZE` com dado SEMEADO DE PROPÓSITO
+para expor a diferença — uma pessoa com linhas em 5 sites (1.500 linhas, 300
+no site pedido) mais 500 pessoas de ruído no site pedido. Sem esse volume E
+essa distribuição, os dois índices (o errado e o certo) têm o MESMO plano,
+porque tabela pequena não sente a diferença — é fácil "confirmar" um índice
+rodando `make ci` e ele parecer certo mesmo estando errado. A migração
+`0003_indices_corrigidos_para_site_id_obrigatorio` tem a medição completa
+(os números de `Rows Removed by Filter`, antes e depois) no comentário de
+topo; `tests/test_indices_da_porta_de_consulta.py` mantém essa medição viva
+como guarda automático — falha se o plano voltar a descartar linha depois do
+índice.
+
+**A mesma investigação também provou o oposto para outra tabela — e vale
+saber os dois lados.** O índice extra que a 0002 tinha acrescentado em
+`ContadorDeNaoLidos` (`contador_por_pessoa`, só `destinatario_id`) nunca foi
+necessário: o `UniqueConstraint contador_um_por_pessoa` **da gênese**
+(`site_id`, `destinatario_id`, PR #248) já era, sozinho, o índice ideal para
+a pergunta que `/resumo` faz — o Postgres o escolhe direto, sem descartar
+linha nenhuma. "Adicionar um índice para garantir" também é uma suposição, e
+também precisa ser medida: às vezes a resposta é "não, o que já existe
+serve", e um índice a mais que o planejador nunca escolhe só custa em todo
+`INSERT`, para sempre, sem benefício nenhum. O índice extra foi removido na
+`0003`.
 
 ## O contador é uma CÓPIA, e cópia diverge
 

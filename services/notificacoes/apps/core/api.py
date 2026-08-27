@@ -2,9 +2,11 @@
 """A porta de consulta da caixa central de avisos — Fase 4 do sininho.
 
 Espelha `contracts/notificacoes.openapi.yaml` (congelado, Rito de Contrato de
-27/08/2026). `make contrato-check` (via `apps/core/management/commands/
-export_openapi.py`) compara byte a byte — o que muda aqui só entra depois de
-mudar lá, e mudar lá é Rito à parte (RITOS.md §3).
+27/08/2026, emendado no mesmo dia para exigir `site_id` — decisão do
+mantenedor, CONSTITUICAO.md Lei 9: "site_id acompanha toda entidade pública").
+`make contrato-check` (via `apps/core/management/commands/export_openapi.py`)
+compara byte a byte — o que muda aqui só entra depois de mudar lá, e mudar lá
+é Rito à parte (RITOS.md §3).
 
 **Handlers recebem `request` puro e devolvem `JsonResponse`, nunca
 `ninja.Schema` tipado nem parâmetro `Query`/`Path`.** Não é estilo: o
@@ -20,6 +22,12 @@ Este arquivo só traduz querystring/corpo em argumentos e o resultado de volta
 em dict JSON-seguro (datas viram string ISO aqui, não em `consultas.py` — lá
 elas continuam `datetime`, para quem mais um dia consumir aquele módulo sem
 passar por HTTP).
+
+**`destinatario_id` E `site_id` são exigidos juntos nas três rotas**, cada um
+com o seu próprio 422 (mensagens específicas — o corpo do 422 não é parte do
+contrato, só a descrição prosa "destinatario_id ou site_id ausente ou
+inválido"; mensagens separadas ajudam quem está depurando uma chamada, e
+continuam batendo com essa descrição).
 """
 
 import json
@@ -40,11 +48,32 @@ from apps.notificacoes.consultas import (
 
 router = Router()
 
+_DESCRICAO_SITE_ID_RESUMO = (
+    "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). Escopa a "
+    "contagem — não soma avisos de outros sites."
+)
+_DESCRICAO_SITE_ID_AVISOS = (
+    "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). Escopa a "
+    "lista — não mistura avisos de outros sites."
+)
+_DESCRICAO_SITE_ID_MARCAR_LIDAS = (
+    "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). Marca como "
+    "lido só o que é daquele site."
+)
+_DESCRICAO_422 = "destinatario_id ou site_id ausente ou inválido"
+
 
 def _destinatario_id_da_query(request) -> str:
     valor = (request.GET.get("destinatario_id") or "").strip()
     if not valor:
         raise HttpError(422, "destinatario_id ausente ou inválido")
+    return valor
+
+
+def _site_id_da_query(request) -> str:
+    valor = (request.GET.get("site_id") or "").strip()
+    if not valor:
+        raise HttpError(422, "site_id ausente ou inválido")
     return valor
 
 
@@ -87,6 +116,13 @@ _RESUMO_OPENAPI = {
             "schema": {"type": "string"},
             "description": "Id da PLATAFORMA da pessoa. Nunca e-mail (DECISAO-EVO-01 §3).",
         },
+        {
+            "name": "site_id",
+            "in": "query",
+            "required": True,
+            "schema": {"type": "string"},
+            "description": _DESCRICAO_SITE_ID_RESUMO,
+        },
     ],
     "responses": {
         200: {
@@ -102,7 +138,7 @@ _RESUMO_OPENAPI = {
                 }
             },
         },
-        422: {"description": "destinatario_id ausente ou inválido"},
+        422: {"description": _DESCRICAO_422},
     },
 }
 
@@ -121,7 +157,12 @@ _RESUMO_OPENAPI = {
 )
 def obter_resumo(request):
     destinatario_id = _destinatario_id_da_query(request)
-    corpo = {"nao_lidas": resumo_de_nao_lidos(destinatario_id=destinatario_id)}
+    site_id = _site_id_da_query(request)
+    corpo = {
+        "nao_lidas": resumo_de_nao_lidos(
+            site_id=site_id, destinatario_id=destinatario_id
+        )
+    }
     return JsonResponse(corpo, status=200)
 
 
@@ -158,6 +199,13 @@ _AVISOS_OPENAPI = {
             "in": "query",
             "required": True,
             "schema": {"type": "string"},
+        },
+        {
+            "name": "site_id",
+            "in": "query",
+            "required": True,
+            "schema": {"type": "string"},
+            "description": _DESCRICAO_SITE_ID_AVISOS,
         },
         {
             "name": "cursor",
@@ -204,7 +252,7 @@ _AVISOS_OPENAPI = {
                 }
             },
         },
-        422: {"description": "destinatario_id ausente ou inválido"},
+        422: {"description": _DESCRICAO_422},
     },
 }
 
@@ -225,11 +273,15 @@ _AVISOS_OPENAPI = {
 )
 def listar_avisos(request):
     destinatario_id = _destinatario_id_da_query(request)
+    site_id = _site_id_da_query(request)
     cursor = request.GET.get("cursor") or None
     limite = _limite_da_query(request)
     try:
         itens, proximo_cursor = pagina_de_avisos(
-            destinatario_id=destinatario_id, cursor=cursor, limite=limite
+            site_id=site_id,
+            destinatario_id=destinatario_id,
+            cursor=cursor,
+            limite=limite,
         )
     except CursorInvalido as exc:
         raise HttpError(422, f"cursor inválido: {exc}") from exc
@@ -252,8 +304,14 @@ _MARCAR_LIDAS_OPENAPI = {
                 "schema": {
                     "type": "object",
                     "additionalProperties": False,
-                    "required": ["destinatario_id"],
-                    "properties": {"destinatario_id": {"type": "string"}},
+                    "required": ["destinatario_id", "site_id"],
+                    "properties": {
+                        "destinatario_id": {"type": "string"},
+                        "site_id": {
+                            "type": "string",
+                            "description": _DESCRICAO_SITE_ID_MARCAR_LIDAS,
+                        },
+                    },
                 }
             }
         },
@@ -275,7 +333,7 @@ _MARCAR_LIDAS_OPENAPI = {
                 }
             },
         },
-        422: {"description": "destinatario_id ausente ou inválido"},
+        422: {"description": _DESCRICAO_422},
     },
 }
 
@@ -296,12 +354,15 @@ def marcar_lidas(request):
         payload = json.loads(request.body or b"{}")
     except json.JSONDecodeError:
         raise HttpError(422, "corpo inválido: não é JSON")
-    destinatario_id = (
-        (payload.get("destinatario_id") or "").strip()
-        if isinstance(payload, dict)
-        else ""
-    )
+    if not isinstance(payload, dict):
+        payload = {}
+    destinatario_id = (payload.get("destinatario_id") or "").strip()
+    site_id = (payload.get("site_id") or "").strip()
     if not destinatario_id:
         raise HttpError(422, "destinatario_id ausente ou inválido")
-    marcados = services.marcar_todas_como_lidas(destinatario_id=destinatario_id)
+    if not site_id:
+        raise HttpError(422, "site_id ausente ou inválido")
+    marcados = services.marcar_todas_como_lidas(
+        site_id=site_id, destinatario_id=destinatario_id
+    )
     return JsonResponse({"marcados": marcados}, status=200)
