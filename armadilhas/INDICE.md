@@ -162,5 +162,6 @@
 | [134](134-celula-nova-com-o-compose-no-mesmo-pr-trava-os-dois.md) | Célula nova com o compose no MESMO PR trava os dois deploys, e nenhum rerun sai — o PR de gênese de uma célula (código + `infra/docker-compose.yml` juntos) é mergeado com tudo verde, e os DOIS deploys ficam vermelhos: | — |
 | [135](135-suas-edicoes-sumiram-outra-sessao-trocou-o-ramo.md) | Suas edições sumiram e o `git status` mostra um ramo que você não criou — duas sessões na MESMA pasta — no meio do trabalho, `git status` mostra um ramo que você nunca criou (`agent/<outra-area>/...`) e as modificações… | — |
 | [136](136-crase-em-git-commit-m-executa-comando-e-corrompe.md) | Crase em `git commit -m "…"` EXECUTA comando, corrompe a mensagem e cria arquivos-lixo — você escreve uma mensagem de commit rica, citando arquivos entre crases como no resto do projeto, e o terminal despeja dezenas de… | — |
+| [137](137-limpar-os-proprios-orfaos-depois-do-merge-apaga.md) | Limpar os próprios "órfãos" depois do merge apaga arquivo RASTREADO e suja o espelho — você migrou para worktree no meio do trabalho (`armadilhas/135`) e deixou arquivos não rastreados para trás no clone principal.… | — |
 
-**125 entradas.**
+**126 entradas.**
