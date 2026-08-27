@@ -52,7 +52,8 @@ var MANIFESTO = [
   "20260826-033-a-conversa-do-sininho-aconteceu",
   "20260826-034-rumo-comunidade-os-proximos-degraus-do-sininho",
   "20260826-035-a-caixa-adotou-o-formato-novo",
-  "20260826-036-o-painel-agora-tem-endereco-na-internet"
+  "20260826-036-o-painel-agora-tem-endereco-na-internet",
+  "20260826-037-o-dono-abriu-o-painel-online-e-ele-apareceu"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
