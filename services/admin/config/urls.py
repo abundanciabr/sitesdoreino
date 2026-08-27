@@ -1,5 +1,6 @@
-from django.urls import path
+from django.urls import path, re_path
 
+from apps.core.painel import painel, painel_arquivo
 from apps.core.views import healthz, visao_geral
 
 # O urlconf da célula NÃO conhece o prefixo público (`/admin`): quem o aplica é
@@ -15,5 +16,13 @@ from apps.core.views import healthz, visao_geral
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
     path("healthz", healthz),
+    # O PAINEL DO DONO, vivo (`apps/core/painel.py`). A barra final é
+    # ESTRUTURAL, não estilo: o HTML pede `manifesto.js` e `registros/*.js` por
+    # caminho RELATIVO, e sem ela o navegador os buscaria um nível acima, na
+    # raiz da área — a página abriria vazia, sem erro nenhum. Quem manda
+    # `/painel` para `/painel/` é o APPEND_SLASH do CommonMiddleware, que já
+    # está na cadeia.
+    path("painel/", painel, name="painel"),
+    re_path(r"^painel/(?P<path>.+)$", painel_arquivo, name="painel_arquivo"),
     path("", visao_geral, name="visao_geral"),
 ]

@@ -1,0 +1,20 @@
+{% extends "admin/base.html" %}
+{% block titulo %}O painel não veio nesta versão{% endblock %}
+{% block corpo %}
+<div class="centro">
+  <h1>O painel não veio nesta versão do sistema</h1>
+  <p>
+    A área administrativa está no ar, mas os arquivos do painel não chegaram
+    junto com ela. Isso é falha da nossa esteira de publicação — não é você que
+    fez algo errado, e nenhum dado do projeto se perdeu: o livro de ocorrências
+    continua inteiro no repositório.
+  </p>
+  <p style="color:var(--texto-3); font-size:13px">
+    O que fazer: abra uma sessão do Claude Code e cole
+    <strong>“o painel online está dizendo que não veio nesta versão”</strong>.
+    O conserto é na etapa que copia a pasta do painel para dentro da imagem.
+    Enquanto isso, o painel do seu computador continua funcionando normalmente.
+  </p>
+  <p><a href="{% url 'visao_geral' %}">Voltar</a></p>
+</div>
+{% endblock %}

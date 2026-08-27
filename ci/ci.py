@@ -395,6 +395,25 @@ def celulas_tocadas(raiz: Path, base: str) -> list[str]:
         partes = linha.strip().replace("\\", "/").split("/")
         if len(partes) >= 2 and partes[0] == "services" and partes[1]:
             encontradas.add(partes[1])
+        elif len(partes) >= 2 and partes[0] == "painel":
+            # `painel/` é INSUMO da célula `admin`, e por isso conta como
+            # tocá-la: desde o PR do painel vivo, a área administrativa SERVE
+            # `painel/painel.html` + `painel/registros/` atrás do login
+            # (`services/admin/apps/core/painel.py`), e a pasta entra na imagem
+            # no build.
+            #
+            # Sem esta linha o painel online congelaria em silêncio: um registro
+            # novo no livro mergearia sem disparar deploy nenhum, e o mantenedor
+            # veria o projeto parado no passado — exatamente a doença que o
+            # painel existe para curar, e que originou este trabalho.
+            #
+            # O efeito colateral é deliberado e vale dizer em voz alta: um PR
+            # que toque `painel/` E uma célula passa a contar como DUAS células,
+            # e a muralha "1 PR = 1 célula" o barra. Na prática as sessões já
+            # separam as duas coisas (o registro do livro sempre foi PR
+            # próprio), e a muralha barrando é melhor do que um deploy de duas
+            # células ao mesmo tempo.
+            encontradas.add("admin")
     return sorted(encontradas)
 
 
