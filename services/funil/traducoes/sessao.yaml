@@ -55,3 +55,13 @@ sair:
   en: "Sign out"
   pt-br: "Sair"
   es: "Salir"
+
+avisos:
+  # aria-label do sino (Fase 5, docs/notificacoes/PLANO-MESTRE.md). Só existe
+  # para leitor de tela: o número em si já aparece como texto visível ao lado
+  # do ícone (_sessao.html), então este rótulo não precisa repeti-lo — só dizer
+  # O QUE é o link, do mesmo jeito que "Sair"/"Entrar" dizem o que são os deles.
+  _fonte: "788011"
+  en: "Notifications"
+  pt-br: "Avisos"
+  es: "Avisos"

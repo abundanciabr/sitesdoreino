@@ -9,7 +9,11 @@ import httpx
 import pytest
 import respx
 
-from apps.core.middleware import limpar_cache_de_sessao, limpar_cache_de_sites
+from apps.core.middleware import (
+    limpar_cache_de_avisos,
+    limpar_cache_de_sessao,
+    limpar_cache_de_sites,
+)
 from apps.i18n.idiomas import caminho_publico, idiomas_do_site
 
 CATALOGO = "http://catalogo.teste/api/catalogo"
@@ -18,6 +22,15 @@ LEADS = "http://leads.teste/api/leads"
 # (contracts/sugestoes.openapi.yaml, operação getSession). Endereço de mentira,
 # como os outros: esta suíte nunca fala com célula de verdade.
 IDENTIDADE = "http://identidade.teste/interno"
+# A caixa central de avisos (contracts/notificacoes.openapi.yaml, Fase 5 do
+# sininho). Ao contrário de CATALOGO/LEADS/IDENTIDADE, NENHUM teste a
+# configura por padrão aqui: NOTIFICACOES_API_URL/TOKEN ficam ausentes na
+# `ambiente`, de propósito — é o estado real de hoje (a VPS ainda não foi
+# provisionada para este par) e é o que faz a suíte inteira exercitar o
+# fail-open por omissão, sem precisar de um teste dedicado por página. Quem
+# quiser o caminho "configurado e respondendo" (tests/test_sino.py) liga as
+# duas variáveis e registra o mock de `/resumo` explicitamente.
+NOTIFICACOES = "http://notificacoes.teste/api/notificacoes"
 
 HOST_A = "teste-a.exemplo.com"
 HOST_B = "teste-b.exemplo.com"
@@ -118,9 +131,14 @@ def ambiente(monkeypatch):
     # que vaze entre testes faz um guarda de "visitante" passar mostrando o nome
     # de alguém que outro teste logou.
     limpar_cache_de_sessao()
+    # E o dos avisos do sino, pelo mesmo motivo dos dois: sem isto, a contagem
+    # que um teste ensinou (ou o `None` que um teste de falha ensinou) vazaria
+    # para o próximo teste que perguntar pela MESMA pessoa+site.
+    limpar_cache_de_avisos()
     yield
     limpar_cache_de_sites()
     limpar_cache_de_sessao()
+    limpar_cache_de_avisos()
 
 
 @pytest.fixture

@@ -185,3 +185,89 @@ class IdentidadeClient:
         if not isinstance(corpo, dict) or not corpo.get("autenticado"):
             return None
         return corpo
+
+
+class NotificacoesClient:
+    """`contracts/notificacoes.openapi.yaml`, operação `obterResumo` — leitura pura.
+
+    Lei do assunto: `docs/decisoes/DECISAO-fase-4-do-sininho.md` (Escolha 1) e a
+    Fase 5 de `docs/notificacoes/PLANO-MESTRE.md` — **falha ABERTA, sem
+    exceção**: *"notificações fora do ar ⇒ o site mostra o nome sem sino e a
+    página abre normal"*. Cópia peça por peça do padrão de
+    `IdentidadeClient.obter_sessao` (Lei 7 — copia-se o PADRÃO, nunca o
+    arquivo): mesma forma de ler config, mesmo timeout curto, mesma separação
+    entre `httpx.HTTPError` e `ValueError` no `.json()`.
+
+    Auth: Bearer estático do par `funil→notificacoes`
+    (`services/notificacoes/apps/core/auth.py`, `TOKENS_ACEITOS_FUNIL` do lado
+    de lá) — o MESMO mecanismo de par que `IdentidadeClient` já usa.
+    """
+
+    TIMEOUT = 2.0
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        """Ver o comentário gêmeo em `IdentidadeClient._configuracao` — a mesma
+        razão de ser, a mesma forma: `.get()`, nunca `os.environ[...]`, lido NO
+        PONTO DE USO. Falta de config é MAIS provável que falha de rede (basta
+        uma variável não colada no servidor) e não pode furar o fail-open
+        (RETROSPECTIVA-FASE-D §1/§4)."""
+        base = (os.environ.get("NOTIFICACOES_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("NOTIFICACOES_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def obter_resumo(self, destinatario_id: str, site_id: str) -> "int | None":
+        """Quantos avisos não lidos esta pessoa tem NESTE site, ou `None`.
+
+        `None` é o sinal de "não sei" — quem chama (o sino) não desenha nada.
+        É DIFERENTE de `0`, que é "perguntei e a resposta é zero". Confundir
+        os dois transformaria uma `notificacoes` fora do ar num "sem avisos"
+        mentiroso — a mesma família do bug mais caro da Fase D (*2xx não é
+        sucesso*: o corpo tem de descrever o que foi pedido, ou é erro).
+        """
+        config = self._configuracao()
+        if config is None:
+            # Nem tenta a rede — mesmo raciocínio de `IdentidadeClient`: sem
+            # endereço ou token não há pergunta a fazer, e esperar 2s de
+            # timeout para descobrir isso atrasaria toda página do site.
+            logger.error(
+                "resumo: NOTIFICACOES_API_URL/NOTIFICACOES_API_TOKEN ausentes "
+                "no env desta célula — sino não aparece"
+            )
+            return None
+        base, token = config
+
+        try:
+            r = http().get(
+                f"{base}/resumo",
+                params={"destinatario_id": destinatario_id, "site_id": site_id},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("resumo: não deu para perguntar à notificacoes: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            logger.error("resumo: a notificacoes respondeu HTTP %s", r.status_code)
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # `json.JSONDecodeError` é `ValueError`, NÃO `httpx.HTTPError` — a
+            # mesma distinção que furou o fail-open na Fase D se ficasse fora
+            # deste `try`.
+            logger.error("resumo: a notificacoes respondeu fora do contrato: %s", erro)
+            return None
+
+        if not isinstance(corpo, dict):
+            return None
+        valor = corpo.get("nao_lidas")
+        # O contrato promete inteiro ≥0 (`nao_lidas: {type: integer, minimum:
+        # 0}`). `bool` é subclasse de `int` em Python — excluí-lo explicitamente
+        # evita que um `true`/`false` fora do contrato vire "1 aviso"/"0 avisos"
+        # por acidente de tipagem. Fora do contrato é tratado como "não sei",
+        # nunca como um número adivinhado.
+        if isinstance(valor, bool) or not isinstance(valor, int) or valor < 0:
+            return None
+        return valor

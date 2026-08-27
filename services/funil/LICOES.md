@@ -634,3 +634,31 @@ mesmo para página nova.
 (`/en/` é 404, `/PT-BR/` é 404, `/pt-br` redireciona para `/pt-br/`). Ali a URL
 literal **é** o objeto do teste — derivá-la de `caminho_publico` faria o teste
 concordar com o código por construção e nunca reprovar nada.
+
+## O padrão fail-open de `IdentidadeClient` generaliza sem ajuste — mas a chave do cache precisa virar tupla (27/08/2026)
+
+O sino (Fase 5 do sininho, `docs/notificacoes/PLANO-MESTRE.md`) foi o SEGUNDO
+cliente externo desta célula a seguir o padrão descrito na seção "Fail-open
+vale para CONFIGURAÇÃO, não só para rede" acima: `.get()` no `_configuracao()`
+(nunca `os.environ[...]` fail-hard), timeout curto, `except httpx.HTTPError`
+separado de `except ValueError` no `.json()`. As três regras seguraram sem
+nenhum ajuste — o guarda descrito lá (config ausente não pode custar timeout,
+nem furar o fail-open por `KeyError`) protegeu de primeira, sem precisar
+descobrir nada por tentativa e erro. Vale como confirmação de que o padrão é
+realmente copiável, não um acidente que só funcionou uma vez.
+
+**A única generalização real, e que vale nomear para o TERCEIRO cliente que
+vier:** o cache de sessão (`_CACHE_DE_SESSAO`) é chaveado pelo cabeçalho
+`Cookie` inteiro — uma string, porque só existe UMA dimensão de variação (quem
+é a pessoa). O cache do sino (`_CACHE_DE_AVISOS`) precisa de DUAS dimensões —
+quem é a pessoa **e** de qual site a pergunta parte (`GET /resumo` exige os
+dois; a mesma pessoa pode ter contagens diferentes em sites diferentes) — então
+a chave é a tupla `(destinatario_id, site_id)`, não uma string. Copiar a forma
+do cache de sessão ao pé da letra (chave de uma dimensão só) teria misturado a
+contagem de um site na resposta de outro. A pergunta de bolso antes de copiar
+um cache deste tipo: *"a resposta varia por quantas coisas independentes?"* —
+a chave tem uma posição por resposta.
+
+**Origem:** despacho funil/sino-notificacoes — `apps/core/clients.py`
+(`NotificacoesClient`), `apps/core/middleware.py` (`_consultar_avisos`,
+`AtorDaRequisicao.avisos_nao_lidos`).

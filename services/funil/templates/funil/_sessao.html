@@ -13,4 +13,16 @@ Login existe no site multilíngue; os domínios antigos seguem intocados.
 `request.ator` é preguiçoso e `{% if %}` só o resolve se houver cookie
 (apps/core/middleware.py). E se a Caixa estiver fora do ar, ele é falso — a
 página abre mostrando "Entrar", nunca um erro.
-{% endcomment %}<nav class="sessao">{% if request.ator %}<span class="eu">{% if request.ator.nome %}{% t "sessao.ola" nome=request.ator.nome %}{% else %}{% t "sessao.minha_conta" %}{% endif %}</span> <form method="post" action="/entrar/sair" class="sair"><input type="hidden" name="next" value="{{ request.path }}"><button type="submit">{% t "sessao.sair" %}</button></form>{% else %}<a href="{% url_i18n 'entrar' %}?next={{ request.path|urlencode }}">{% t "sessao.entrar" %}</a>{% endif %}</nav>
+
+**O sino (Fase 5 de docs/notificacoes/PLANO-MESTRE.md)** segue a MESMA regra,
+ao pé da letra: "notificações fora do ar ⇒ o site mostra o nome sem sino e a
+página abre normal". `request.ator.avisos_nao_lidos` só vira uma pergunta de
+rede (a `notificacoes`, nunca a `identidade`) quando esta linha É lida — e só
+lê quando `request.ator` já é verdadeiro. `None` (não sei) não desenha nada;
+só um número conhecido (inclusive 0) desenha o sino, sem contagem visível
+quando for 0. O número em si é sempre EXATO — o teto "99+" é só da EXIBIÇÃO
+(Escolha 1, DECISAO-fase-4-do-sininho.md), decidido aqui na tela, nunca no
+dado. O nome da pessoa continua sem ser link (ver
+tests/test_sessao_no_site.py::test_o_nome_de_quem_entrou_NAO_e_link_para_a_caixa)
+— o sino é um elemento NOVO ao lado dele, não um wrapper em cima do nome.
+{% endcomment %}<nav class="sessao">{% if request.ator %}<span class="eu">{% if request.ator.nome %}{% t "sessao.ola" nome=request.ator.nome %}{% else %}{% t "sessao.minha_conta" %}{% endif %}</span> {% with avisos=request.ator.avisos_nao_lidos %}{% if avisos is not None %}<a class="sino" href="{{ request.url_dos_avisos }}" aria-label="{% t 'sessao.avisos' %}"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg>{% if avisos > 0 %}<span class="contagem">{% if avisos > 99 %}99+{% else %}{{ avisos }}{% endif %}</span>{% endif %}</a>{% endif %}{% endwith %} <form method="post" action="/entrar/sair" class="sair"><input type="hidden" name="next" value="{{ request.path }}"><button type="submit">{% t "sessao.sair" %}</button></form>{% else %}<a href="{% url_i18n 'entrar' %}?next={{ request.path|urlencode }}">{% t "sessao.entrar" %}</a>{% endif %}</nav>
