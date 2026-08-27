@@ -14,7 +14,7 @@
       "name": "Meshcraft (site de testes)",
       "active": true,
       "default_offer_slug": "curso-teste",
-      "default_language": "en",
+      "default_language": "pt-br",
       "languages": [
         { "code": "en" },
         { "code": "pt-br" },

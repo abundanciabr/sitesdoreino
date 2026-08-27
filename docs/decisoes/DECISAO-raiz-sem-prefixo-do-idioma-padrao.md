@@ -1,5 +1,43 @@
 # DECISÃO — o idioma padrão mora na raiz, sem prefixo
 
+> ## ⚠️ EMENDA DE 27/08/2026 — o padrão do meshcraft.top virou `pt-br`
+>
+> **O MECANISMO DESTE DOCUMENTO CONTINUA INTEIRO.** O que mudou foi o **dado**:
+> `infra/sites.json` passou de `default_language: "en"` para `"pt-br"`, por
+> decisão do mantenedor nesta data. A regra — *o idioma padrão mora na raiz nua,
+> os outros levam prefixo* — é exatamente a mesma; só trocou **qual** idioma
+> ocupa a raiz. Não há nada a "consertar" aqui.
+>
+> | endereço | até 27/08 | a partir de 27/08 |
+> |---|---|---|
+> | `/`, `/cadastro` | 200, em **inglês** | 200, em **português** |
+> | `/pt-br/`, `/pt-br/cadastro` | 200 | **404** (o padrão não tem prefixo) |
+> | `/en/`, `/en/cadastro` | 404 | **200, em inglês** |
+> | `/es/…` | 200 | 200 — nada muda |
+>
+> **O custo que a seção "O custo aceito" previa foi cobrado — e saiu barato, pelo
+> mesmo argumento que sustentou o 404 do `/en/` em 25/08:** *"não há nada
+> indexado a proteger, o meshcraft.top é site de testes"*. Continuava verdade em
+> 27/08. Por isso não houve migração de 301 em massa: `/pt-br/*` passa a ser 404,
+> simétrico ao que `/en/*` era antes, e toda URL pública do site se regenera
+> sozinha porque sai de um lugar só (`caminho_publico()`).
+>
+> **A premissa que caiu, e é ela que justifica a emenda:** a decisão de 25/08 se
+> apoiava em *"o público que esse site quer chega em inglês, de anúncio"*. O
+> mantenedor revisou isso em 27/08 — o público é brasileiro, e o endereço mais
+> público do produto precisa abrir na língua dele.
+>
+> **Efeito colateral bem-vindo:** a Caixa de Sugestões (`/forms/sugestoes/`) é
+> escrita só em português. Com o inglês na raiz ela era uma ilha incoerente, e
+> chegou-se a cogitar movê-la para `/pt-br/forms/sugestoes/` (o que exigiria
+> mudar `SCRIPT_NAME` no servidor, ou seja, um passo manual do mantenedor). Com
+> o português na raiz, **`/forms/sugestoes/` já É o endereço português** — a
+> incoerência some sem tocar na célula e sem passo manual nenhum.
+>
+> Medido antes de virar a chave (27/08/2026): `/pt-br/` e `/pt-br/cadastro`
+> respondiam 200 com `lang="pt-BR"` e conteúdo completo — a raiz não herdou
+> página quebrada.
+
 > **Decidida pelo mantenedor em 25/08/2026**, em sessão, com estas palavras
 > (resumo fiel): *"quero que o site seja todo feito em inglês, mas que ele
 > funcione sem o `en` ao lado do nome — não `meshcraft.top/en/`, e sim
