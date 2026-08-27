@@ -1,5 +1,5 @@
 # apps/core/enderecos.py
-"""Os dois endereços de sessão que este site precisa conhecer — e só eles.
+"""Os endereços de sessão que este site precisa conhecer — e só eles.
 
 Leis do assunto: `docs/decisoes/DECISAO-onde-mora-a-sessao.md` e, desde
 25/08/2026, `docs/decisoes/DECISAO-celula-de-identidade.md`. O dia previsto
@@ -13,9 +13,9 @@ link, não credencial: faltar a variável não pode derrubar a vitrine do site n
 fechar a página. O default é o endereço real de hoje, então em dev e no CI tudo
 funciona sem env nenhum.
 
-Não confundir com `IDENTIDADE_API_URL` (em `clients.py`): aquele é a rede interna
-do Docker, por onde o SERVIDOR pergunta. Estes dois são endereços públicos, por
-onde o NAVEGADOR da pessoa caminha.
+Não confundir com `IDENTIDADE_API_URL`/`NOTIFICACOES_API_URL` (em
+`clients.py`): aqueles são a rede interna do Docker, por onde o SERVIDOR
+pergunta. Estes são endereços públicos, por onde o NAVEGADOR da pessoa caminha.
 """
 
 import os
@@ -23,6 +23,13 @@ import os
 # Onde a pessoa que já entrou vai ao clicar no próprio nome. Continua sendo a
 # Caixa: é a única área logada do site até a escola nascer.
 CAIXA_PADRAO = "/forms/sugestoes/"
+
+# A tela de avisos da Caixa — destino do sino (Fase 5 do sininho,
+# docs/notificacoes/PLANO-MESTRE.md). Mesma célula de CAIXA_PADRAO (o prefixo
+# público sai da MESMA FORCE_SCRIPT_NAME, services/sugestoes/config/
+# settings.py), rota nomeada `avisos` em services/sugestoes/config/urls.py —
+# lida ali, nunca adivinhada, porque só ela sabe se um dia esse prefixo muda.
+AVISOS_PADRAO = "/forms/sugestoes/avisos"
 
 # A rota que manda direto ao Google — da célula `identidade`, dona do login do
 # site inteiro: quem clica no botão do site já decidiu entrar, e uma segunda
@@ -36,6 +43,10 @@ def _ler(nome: str, padrao: str) -> str:
 
 def url_da_caixa() -> str:
     return _ler("URL_DA_CAIXA", CAIXA_PADRAO)
+
+
+def url_dos_avisos() -> str:
+    return _ler("URL_DOS_AVISOS", AVISOS_PADRAO)
 
 
 def url_de_entrada() -> str:

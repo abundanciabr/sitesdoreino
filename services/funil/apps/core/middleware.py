@@ -10,7 +10,7 @@ from django.utils import translation
 from django.utils.cache import patch_vary_headers
 
 from apps.core import enderecos
-from apps.core.clients import CatalogoClient, IdentidadeClient
+from apps.core.clients import CatalogoClient, IdentidadeClient, NotificacoesClient
 from apps.i18n.idiomas import dados_seo, idiomas_do_site
 
 _CACHE: dict = {}
@@ -49,6 +49,43 @@ def _consultar_sessao(cookie: str) -> "dict | None":
     return dados
 
 
+# ---------------------------------------------------------------------------
+# O sino (Fase 5 de docs/notificacoes/PLANO-MESTRE.md): quantos avisos não
+# lidos a pessoa tem. Falha ABERTA, sem exceção — a mesma lei do bloco acima.
+# ---------------------------------------------------------------------------
+# Cache por (destinatario_id, site_id) — um sino em TODA página não pode custar
+# uma consulta HTTP por página vista pela mesma pessoa numa rajada. TTL mais
+# curto que o da sessão de propósito: a contagem muda por AÇÃO DE OUTRA pessoa
+# (alguém comentou na ideia dela), então servir stale por um minuto inteiro
+# custa mais aqui do que custa na sessão (que só muda quando a própria pessoa
+# entra ou sai).
+_CACHE_DE_AVISOS: dict = {}
+TTL_DOS_AVISOS = 30
+# Mesmo teto de segurança do cache de sessão, e pelo mesmo motivo (§ acima):
+# estourou, esvazia — perder cache custa um salto de rede, vazar memória custa
+# a célula.
+MAXIMO_DE_AVISOS_EM_CACHE = 500
+
+
+def limpar_cache_de_avisos() -> None:
+    _CACHE_DE_AVISOS.clear()
+
+
+def _consultar_avisos(destinatario_id: str, site_id: str) -> "int | None":
+    chave = (destinatario_id, site_id)
+    agora = time.time()
+    hit = _CACHE_DE_AVISOS.get(chave)
+    if hit and hit[0] > agora:
+        return hit[1]
+    contagem = NotificacoesClient().obter_resumo(destinatario_id, site_id)
+    if len(_CACHE_DE_AVISOS) >= MAXIMO_DE_AVISOS_EM_CACHE:
+        _CACHE_DE_AVISOS.clear()
+    # `None` (= "não sei") também é cacheado: uma `notificacoes` fora do ar não
+    # pode custar uma tentativa de rede por página vista, na mesma rajada.
+    _CACHE_DE_AVISOS[chave] = (agora + TTL_DOS_AVISOS, contagem)
+    return contagem
+
+
 class AtorDaRequisicao:
     """Quem está vendo esta página — resolvido na PRIMEIRA leitura, nunca antes.
 
@@ -65,10 +102,13 @@ class AtorDaRequisicao:
     identifica ninguém, e marcar as duas iguais tiraria o cache do site inteiro.
     """
 
-    def __init__(self, cookie: str) -> None:
+    def __init__(self, cookie: str, site_id: str) -> None:
         self._cookie = cookie
+        self._site_id = site_id
         self._resolvido = False
         self._dados: "dict | None" = None
+        self._avisos_resolvido = False
+        self._avisos: "int | None" = None
 
     @property
     def identificado(self) -> bool:
@@ -103,11 +143,46 @@ class AtorDaRequisicao:
         return (self._resolver() or {}).get("nome_exibido") or ""
 
     @property
+    def id(self) -> "str | None":
+        """O id da PLATAFORMA desta pessoa (`contracts/identidade.openapi.yaml`,
+        schema `Session` — o campo sempre esteve lá; esta célula só nunca tinha
+        lido). É o `destinatario_id` que a Fase 5 do sininho passa à
+        `notificacoes` (ver `avisos_nao_lidos` abaixo) — nunca o e-mail, que
+        não atravessa esta fronteira."""
+        return (self._resolver() or {}).get("id") or None
+
+    @property
     def papel(self) -> str:
         """Para EXIBIÇÃO apenas (mostrar ou não um atalho). Nunca para liberar
         coisa alguma: autorização é fail-closed, na célula dona do recurso
         (DECISAO-onde-mora-a-sessao §4)."""
         return (self._resolver() or {}).get("papel") or ""
+
+    @property
+    def avisos_nao_lidos(self) -> "int | None":
+        """Quantos avisos não lidos esta pessoa tem — o número do sino (Fase 5,
+        `docs/notificacoes/PLANO-MESTRE.md`). `None` = "não sei" (config
+        ausente, rede fora, corpo fora do contrato): o `_sessao.html` NÃO
+        desenha o sino nesse caso — é o fail-open virando "o site mostra o
+        nome sem sino". Um `int` — inclusive `0` — é "sei a resposta": os dois
+        são estados DIFERENTES, nunca o mesmo caminho de template.
+
+        Preguiçosa como o resto desta classe, e em DOIS níveis: só chega aqui
+        se ALGUÉM foi reconhecido (`bool(self)`), e só consulta a rede na
+        PRIMEIRA leitura. Visitante anônimo — a esmagadora maioria do tráfego
+        — nunca avalia esta property (o template só a lê dentro do
+        `{% if request.ator %}`), e mesmo quem entrou não paga a consulta em
+        página que não desenha o sino.
+        """
+        if not self:
+            return None
+        if not self._avisos_resolvido:
+            self._avisos_resolvido = True
+            id_da_pessoa = self.id
+            self._avisos = (
+                _consultar_avisos(id_da_pessoa, self._site_id) if id_da_pessoa else None
+            )
+        return self._avisos
 
 
 # /healthz é sonda do container e do gateway — chega sem Host de site e não pode
@@ -267,12 +342,16 @@ class SiteResolutionMiddleware:
         # nada, e só a leitura no template dispara a pergunta à Caixa. Fica
         # SÓ no regime multilíngue, que é onde o login existe — site
         # monolíngue (os domínios antigos) segue byte-idêntico ao de antes.
-        request.ator = AtorDaRequisicao(request.META.get("HTTP_COOKIE", ""))
-        # O destino do link de quem já entrou. Fica no request (e não no
-        # contexto de cada view) porque a peça `_sessao.html` aparece em
-        # TODA página multilíngue: passá-lo view a view seria a mesma linha
+        # `site["id"]` já está resolvido nesta altura ([INV-P11], `__call__`
+        # acima) — é o `site_id` que a Fase 5 do sino precisa para perguntar à
+        # `notificacoes` (ela escopa por site: CONSTITUICAO.md Lei 9).
+        request.ator = AtorDaRequisicao(request.META.get("HTTP_COOKIE", ""), site["id"])
+        # Os dois destinos de link de quem já entrou. Ficam no request (e não
+        # no contexto de cada view) porque a peça `_sessao.html` aparece em
+        # TODA página multilíngue: passá-los view a view seria a mesma linha
         # repetida em cada uma, e a próxima view nasceria sem ela.
         request.url_da_caixa = enderecos.url_da_caixa()
+        request.url_dos_avisos = enderecos.url_dos_avisos()
         translation.activate(cfg["idiomas"][codigo]["tag"])  # D2.4: runtime LIGADO
         try:
             resposta = self.get_response(request)
