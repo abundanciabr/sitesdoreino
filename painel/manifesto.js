@@ -80,7 +80,8 @@ var MANIFESTO = [
   "20260827-013-a-fila-de-liberacao-virou-lei-e-contrato",
   "20260827-014-o-quadro-da-caixa-respondia-nao-encontrado-em-producao",
   "20260827-015-a-caixa-central-agora-marca-um-aviso-so-como-lido",
-  "20260827-016-o-sininho-existe-em-qualquer-pagina-do-site"
+  "20260827-016-o-sininho-existe-em-qualquer-pagina-do-site",
+  "20260827-017-achei-um-jeito-de-me-enganar-sozinho-com-o-terminal"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
