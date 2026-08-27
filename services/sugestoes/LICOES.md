@@ -3,6 +3,102 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
+## Reemitir os avisos existentes (Fase 3, segunda metade): a migration e as três decisões que ela carrega
+
+Fecha o "FALTA A SEGUNDA METADE DESTA FASE" que o
+`docs/notificacoes/PLANO-MESTRE.md` §6 deixou escrito quando a célula
+`notificacoes` nasceu (26/08/2026, PRs #247/#248/#252): os `Aviso` que já
+existiam nesta célula ANTES daquele dia nunca tinham passado pelo fio como
+`notificacao.devida.v1` — a caixa central não tinha cópia deles. O mandato é
+`docs/decisoes/DECISAO-fase-2-do-sininho.md` §3: *"os avisos que já existem
+mudam de casa junto"*, pelo fio, sem ninguém ler o banco alheio (Lei 2).
+
+**1. MIGRATION, não management command — e o motivo é o `Dockerfile`, não
+preferência.** `services/sugestoes/Dockerfile` roda
+`python manage.py migrate --noinput` no boot do container, ANTES do servidor
+subir. Uma migration corre automaticamente em TODO deploy, exatamente uma vez
+(Django registra em `django_migrations`), sem exigir SSH nem passo manual do
+mantenedor na VPS — o agente não tem acesso SSH (Lei 5), e todo passo manual
+é atrito e risco a mais. Um management command exigiria alguém rodar
+`docker exec` na VPS para uma operação que só precisa acontecer uma vez.
+Verificado com o executor de VERDADE (não só chamando a função do teste): um
+banco descartável, migrado até `0007`, com dois `Aviso` semeados (um com
+`id_da_plataforma` no destinatário, outro sem) — `python manage.py migrate
+sugestoes 0008` publicou exatamente 1 carta e imprimiu o 1 que ficou de fora;
+`migrate sugestoes 0007` (o `noop` de volta) não apagou a carta; `migrate
+sugestoes 0008` de novo publicou **0** cartas novas. É o cenário de rollback
++ reapply que a idempotência abaixo existe para cobrir, provado pelo caminho
+real que a VPS usa, não só pela chamada direta da função nos testes.
+
+**2. `event_id` determinístico é o que torna a migration segura de rodar de
+novo — e o payload é montado À MÃO, nunca importando `emitir_cartas_de_notificacao()`
+de `eventos.py`.** `event_id = uuid.uuid5(NAMESPACE_FIXO,
+f"aviso-backfill-{aviso.pk}")`, nunca `uuid4()`: antes de escrever, a
+migration confere quais desses ids já existem em `OutboxEvent` e pula
+exatamente esses. Importar a função "de verdade" pouparia duplicação de forma
+hoje e quebraria uma garantia que migrations existem para dar: continuar
+válidas mesmo depois que o código vivo mudar de assinatura. A duplicação
+entre a migration e `eventos.py` é consciente — é o preço de a migration ser
+uma fotografia congelada. Não ganhou guarda de paridade comparando os dois
+formatos (o despacho permitia deixar de fora sob aperto de orçamento, e
+apertou): quem mudar a forma do payload de `notificacao.devida` em
+`eventos.py` precisa lembrar, por revisão manual, que esta migration não
+acompanha sozinha.
+
+**3. `ator_id` nasce `None` SEMPRE, e não é aproximação — é o que o dado
+permite.** O `Aviso` desta célula é a "cópia do aluno" (ver a docstring do
+model): ele não guarda quem moderou, de propósito, desde o EVO-21. Cruzar com
+`HistoricoStatus` por (sugestão, status_anterior, status_novo, janela de
+tempo) para ADIVINHAR o ator seria frágil — uma sugestão pode repetir a
+mesma transição mais de uma vez — e o contrato permite `ator_id: null`
+exatamente para isto: "fatos de máquina" sem gente atrás. Pelo mesmo motivo,
+`origem_event_id` (obrigatório no contrato) é sintético e **PRÓPRIO de cada
+`Aviso`** — diferente do caminho ao vivo, onde as N cartas de uma mesma
+mudança de status compartilham o `origem_event_id` do fato que as originou
+(`test_a_carta_aponta_para_o_fato_que_a_gerou`), as cartas retroativas de um
+mesmo backfill NÃO compartilham nada entre si: não há como saber, a partir só
+do `Aviso`, quais linhas vieram da mesma chamada de
+`avisar_os_interessados()`. É um marcador de backfill, documentado como tal —
+um consumidor que usa o campo para RASTREAR a origem não é afetado; um que
+tentasse AGRUPAR por ele (nenhum existe hoje) leria "cada carta é um evento
+isolado", o que é falso para o passado mas inofensivo, porque nada consome
+esse agrupamento ainda.
+
+**4. `occurred_at` quase saiu errado, e a pegadinha virou `armadilhas/139`
+porque não é só desta célula.** A missão pedia para preservar o `criado_em`
+do `Aviso` no `occurred_at` da carta — mas os dois campos são
+`auto_now_add=True`, e `bulk_create` NÃO os deixa incólumes só porque pula
+`Model.save()` e os sinais (`armadilhas/116`): o compilador SQL do INSERT
+chama `field.pre_save()` para cada objeto de qualquer forma — é dali que
+`auto_now_add` funciona no caminho comum —, e isso sobrescreve em memória
+qualquer valor atribuído no construtor. A saída: `bulk_create()` primeiro
+(aceitando que o campo nasce com "agora"), guardar os valores reais numa
+lista PARALELA, e depois `bulk_update(objetos, ["occurred_at"])` — que passa
+por `QuerySet.update()`, o único caminho comum que nunca chama `pre_save()`.
+`tests/test_backfill_cartas_dos_avisos_existentes.py::test_occurred_at_preserva_o_criado_em_do_aviso_e_nao_a_hora_do_backfill`
+é o guarda: empurra um `Aviso` 30 dias para trás (pela mesma técnica —
+`.update()` depois do `create()`) e prova que a carta herda a data certa, não
+"agora".
+
+**5. Volume: `TAMANHO_DO_LOTE = 500`, e não um `bulk_create` sem teto.** A
+troca de destinatário e o cálculo de quem já foi publicado rodam para a lista
+inteira em consultas fixas (um `IN (...)` só, nunca um por `Aviso`); a
+escrita é fatiada para não segurar uma transação gigante se a tabela crescer
+para milhares de linhas. `test_o_backfill_custa_o_mesmo_com_poucos_e_com_muitos_avisos`
+mede 2 e 202 candidatos (o segundo número é cumulativo — a função não é
+parametrizada por sugestão, processa a tabela inteira a cada chamada) e exige
+o mesmo total de consultas, no molde de `test_volume_das_cartas.py`.
+
+**O que ficou de fora, e é dívida documentada, não esquecimento:** quando a
+Fase 5 (o sininho fora da Caixa) for ao ar, o rollout dela precisa marcar
+como LIDAS — dentro do banco da `notificacoes`, sem esta célula tocar
+naquele banco — todas as notificações criadas antes do lançamento, senão todo
+mundo vê uma enchente de "não lidas" de coisas já lidas há semanas na Caixa.
+Está anotado no `PLANO-MESTRE.md` §6, dentro da descrição da Fase 5, para não
+virar palpite herdado por quem for construir aquela fase
+(`armadilhas/107` documenta o mesmo padrão de "escrever a dívida onde ela vai
+ser lida", para outro caso).
+
 ## A V1.2 ("Em alta" e "Meu impacto"): o que estas duas peças ensinaram
 
 Fecha as duas linhas que a `ESPECIFICACAO-CELULA.md` §10 deixou escritas como
