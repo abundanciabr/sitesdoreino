@@ -19,7 +19,9 @@ botão em cache e template antigo não podem virar 404 — e o nome de rota
 lugar certo com `?next=` de volta para cá.
 """
 
+import hashlib
 import os
+from datetime import date
 from urllib.parse import urlencode
 
 from django.conf import settings
@@ -30,8 +32,39 @@ from django.views.decorators.http import require_GET, require_POST
 from django.views.static import serve as serve_do_django
 
 from . import sessao as ses
+from .clients import AlunosClient, AlunosIndisponivel, ConfiguracaoAusente
+from .participacao import quadro_atual
 
 PAGINA = "sugestoes/entrar.html"
+
+# A lembrança, neste navegador, de que a pessoa já pediu entrada — para que
+# recarregar a página não mostre o formulário vazio como se o pedido não
+# tivesse chegado. Quem guarda a fila de verdade é a célula `alunos`; isto é
+# conforto de tela, e some sem dano (o reenvio é idempotente do outro lado).
+#
+# **Cookie PRÓPRIO, e nunca `request.session`.** Esta célula compartilha o nome
+# `meshcraft_sessao` com a `identidade`, que é quem ASSINA a sessão do site
+# (`config/settings.py`, e é disso que o `sair` daqui depende para deslogar do
+# site inteiro). Com `SESSION_ENGINE = signed_cookies`, uma única escrita em
+# `request.session` reescreveria aquele cookie com uma sessão desta célula — e
+# a pessoa sairia do site ao clicar em "Pedir liberação". Medido em 27/08/2026;
+# guarda: `test_pedir_entrada_nao_reescreve_o_cookie_do_site`.
+PEDIU_ENTRADA = "caixa_pedido_na_fila"
+DIAS_DE_LEMBRANCA = 30
+
+
+def _marca_do_pedido(email: str) -> str:
+    """Uma marca OPACA de "esta pessoa já pediu" — sem o e-mail dentro.
+
+    Precisa distinguir quem pediu (trocar de conta no mesmo navegador não pode
+    mostrar o recibo alheio) sem escrever um endereço de e-mail no navegador de
+    ninguém. Um hash com a chave da instalação faz as duas coisas. Forjar a
+    marca não dá acesso a nada: o efeito é ver uma tela dizendo "seu pedido está
+    com a gente" — nenhuma porta abre por causa dela.
+    """
+    return hashlib.sha256(f"{settings.SECRET_KEY}:{email}".encode("utf-8")).hexdigest()[
+        :32
+    ]
 
 
 @require_GET
@@ -98,6 +131,157 @@ def _recado(request, *, titulo: str, texto: str, email: str = "", status: int = 
     )
 
 
+def _tela_da_fila(
+    request,
+    *,
+    email: str,
+    rascunho: dict | None = None,
+    erros: list[str] | None = None,
+    ja_pediu: bool | None = None,
+    status: int = 403,
+):
+    """A MESMA página da porta, com o formulário da fila em cima.
+
+    Continua 403 de propósito: a pessoa não entrou. O que mudou em 27/08/2026 é
+    que o "não" passou a ter para onde ir — e as três saídas de sempre (trocar
+    de conta, voltar ao site, sair) seguem embaixo do formulário, porque a
+    resposta mais rápida para muita gente continua sendo *"entrei com o e-mail
+    errado"*.
+
+    `ja_pediu` é uma LEMBRANÇA deste navegador, não um fato do projeto: quem
+    guarda quem está na fila é a célula `alunos`. Ela só evita que a pessoa
+    recarregue a página e veja o formulário vazio de novo, como se o pedido não
+    tivesse chegado. Se a lembrança se perder, o reenvio é idempotente do outro
+    lado — nada duplica, e a lei §7 até PREVÊ o reenvio como o jeito de corrigir
+    um telefone errado.
+    """
+    return render(
+        request,
+        PAGINA,
+        {
+            "ator": None,
+            "email": email,
+            "fila": True,
+            "ja_pediu": (
+                ja_pediu
+                if ja_pediu is not None
+                else request.COOKIES.get(PEDIU_ENTRADA) == _marca_do_pedido(email)
+            ),
+            "rascunho": rascunho or {},
+            "erros": erros or [],
+        },
+        status=status,
+    )
+
+
+def _so_digitos(texto: str) -> str:
+    return "".join(c for c in texto if c.isdigit())
+
+
+@require_POST
+def pedir_entrada(request):
+    """A pessoa se apresenta e entra na fila de liberação.
+
+    Reabre a resolução da porta em vez de confiar no formulário: entre carregar
+    a página e clicar, a pessoa pode ter sido liberada, ter perdido a sessão ou
+    a `alunos` pode ter caído. Quem decide o estado continua sendo `resolver`.
+    """
+    resolucao = ses.resolver(request)
+
+    if resolucao.estado == ses.DENTRO:
+        # Foi liberada enquanto preenchia — a porta já abre.
+        return HttpResponseRedirect(reverse("entrar"))
+    if resolucao.estado == ses.INDISPONIVEL:
+        return _recado(
+            request,
+            titulo="Não conseguimos conferir sua entrada agora",
+            texto=(
+                "Uma das peças que conferem quem pode participar não respondeu. "
+                "Isso é problema nosso, não seu: seu pedido NÃO foi registrado. "
+                "Tente de novo em alguns minutos."
+            ),
+            email=resolucao.email,
+            status=503,
+        )
+    if resolucao.estado != ses.SEM_MATRICULA:
+        # Visitante sem sessão do site: não há e-mail para pôr na fila.
+        return HttpResponseRedirect(reverse("entrar"))
+
+    rascunho = {
+        "nome_completo": (request.POST.get("nome_completo") or "").strip(),
+        "whatsapp": (request.POST.get("whatsapp") or "").strip(),
+        "comprou_em": (request.POST.get("comprou_em") or "").strip(),
+        "turma": (request.POST.get("turma") or "").strip(),
+    }
+    erros: list[str] = []
+
+    if not rascunho["nome_completo"]:
+        erros.append("Escreva seu nome completo, como está na sua compra.")
+    digitos = _so_digitos(rascunho["whatsapp"])
+    if not digitos:
+        erros.append("Escreva seu WhatsApp com DDD.")
+    elif not 10 <= len(digitos) <= 15:
+        # DDD + número dá 10 (fixo) ou 11 (celular); 15 é o teto do padrão
+        # internacional, para caber quem escreve o +55. A conferência é frouxa
+        # de propósito: o que ela precisa pegar é "não tenho" e o dedo escorregado,
+        # nunca recusar um número de verdade escrito de um jeito inesperado.
+        erros.append("Esse WhatsApp não parece completo — confira o DDD e o número.")
+    if rascunho["comprou_em"]:
+        try:
+            date.fromisoformat(rascunho["comprou_em"])
+        except ValueError:
+            erros.append("A data da compra precisa estar no formato dia/mês/ano.")
+
+    if erros:
+        return _tela_da_fila(
+            request, email=resolucao.email, rascunho=rascunho, erros=erros, status=400
+        )
+
+    try:
+        # O `site_id` é DESCOBERTO, nunca configurado: o quadro desta requisição
+        # já sabe de que site ele é. Uma variável de ambiente a mais aqui seria
+        # um segundo lugar guardando o mesmo fato — e o dia em que os dois
+        # discordassem, a pessoa entraria na fila de outro site.
+        site_id = quadro_atual().site_id
+        resultado = AlunosClient().pedir_entrada_na_fila(
+            site_id=site_id,
+            email=resolucao.email,
+            nome_completo=rascunho["nome_completo"],
+            whatsapp=rascunho["whatsapp"],
+            comprou_em=rascunho["comprou_em"],
+            turma=rascunho["turma"],
+        )
+    except (AlunosIndisponivel, ConfiguracaoAusente):
+        return _recado(
+            request,
+            titulo="Não conseguimos registrar seu pedido agora",
+            texto=(
+                "A peça que guarda a lista de alunos não respondeu. Isso é "
+                "problema nosso, não seu: seu pedido NÃO foi registrado, então "
+                "vale a pena tentar de novo em alguns minutos."
+            ),
+            email=resolucao.email,
+            status=503,
+        )
+
+    if resultado == AlunosClient.JA_TEM_MATRICULA:
+        # Tem matrícula que vale mas a porta disse que não: é o cache curto de
+        # `_tem_matricula` ainda mostrando a resposta velha. Mandar para a porta
+        # é o certo — em no máximo um TTL ela abre sozinha.
+        return HttpResponseRedirect(reverse("entrar"))
+
+    resposta = _tela_da_fila(request, email=resolucao.email, ja_pediu=True, status=200)
+    resposta.set_cookie(
+        PEDIU_ENTRADA,
+        _marca_do_pedido(resolucao.email),
+        max_age=DIAS_DE_LEMBRANCA * 24 * 60 * 60,
+        httponly=True,
+        samesite="Lax",
+        secure=settings.SESSION_COOKIE_SECURE,
+    )
+    return resposta
+
+
 @require_GET
 def entrar(request):
     """A porta. Aberta a qualquer um — o que está atrás dela é que não é."""
@@ -108,18 +292,10 @@ def entrar(request):
 
     if resolucao.estado == ses.SEM_MATRICULA:
         # [INVARIANTE] Sem matrícula não participa — e a tela NOMEIA o e-mail.
-        return _recado(
-            request,
-            titulo="Não encontramos matrícula para esse e-mail",
-            texto=(
-                f"Você está no site como {resolucao.email}, mas não encontramos "
-                "matrícula para esse endereço. A Caixa de Sugestões é uma área "
-                "de alunos. Se você comprou o curso com outro e-mail, entre com "
-                "ele — ou fale com a gente que a gente resolve."
-            ),
-            email=resolucao.email,
-            status=403,
-        )
+        # Desde 27/08/2026 a recusa tem DESTINO: o formulário da fila de
+        # liberação (`DECISAO-fila-de-liberacao.md`). Continua **403** — quem
+        # está aqui não entrou —, mas a página deixou de ser um beco.
+        return _tela_da_fila(request, email=resolucao.email)
 
     if resolucao.estado == ses.INDISPONIVEL:
         # [INVARIANTE] Falha FECHADA. "Não consegui conferir" nunca vira

@@ -16,6 +16,7 @@ from apps.core.views import (
     entrar_google,
     entrar_google_retorno,
     healthz,
+    pedir_entrada,
     sair,
     servir_estatico,
 )
@@ -57,6 +58,12 @@ urlpatterns = [
     path("interno/", api.urls),
     path("", ver_quadro, name="quadro"),
     path("entrar", entrar, name="entrar"),
+    # A fila de liberacao (DECISAO-fila-de-liberacao.md). POST, e nao GET,
+    # porque cria uma linha na fila do mantenedor: um GET seria disparado por
+    # qualquer pre-carregamento de link do navegador. A TELA do formulario nao
+    # tem rota propria — ela e a propria porta, no estado SEM_MATRICULA, que e
+    # a decisao de "uma tela so" da lei §6.
+    path("entrar/pedido", pedir_entrada, name="pedir_entrada"),
     path("entrar/google", entrar_google, name="entrar_google"),
     path("entrar/google/retorno", entrar_google_retorno, name="entrar_google_retorno"),
     path("sair", sair, name="sair"),

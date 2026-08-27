@@ -82,7 +82,12 @@ var MANIFESTO = [
   "20260827-015-a-caixa-central-agora-marca-um-aviso-so-como-lido",
   "20260827-016-o-sininho-existe-em-qualquer-pagina-do-site",
   "20260827-017-achei-um-jeito-de-me-enganar-sozinho-com-o-terminal",
-  "20260827-018-mais-uma-peca-que-ia-se-perder-o-motivo-do-aviso"
+  "20260827-018-mais-uma-peca-que-ia-se-perder-o-motivo-do-aviso",
+  "20260827-019-a-fila-de-espera-existe-por-dentro",
+  "20260827-020-endereco-com-barra-no-final-parou-de-dar-erro",
+  "20260827-021-a-caixa-foi-inaugurada-no-meshcraft",
+  "20260827-022-agora-da-para-pedir-entrada-na-caixa",
+  "20260827-023-a-home-do-site-virou-porta"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {

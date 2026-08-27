@@ -15,7 +15,6 @@ from django.views.static import serve as serve_do_django
 
 from apps.core.clients import CatalogoClient, LeadsClient
 from apps.core.enderecos import url_de_entrada
-from apps.i18n.catalogo import js_da_pagina
 from apps.i18n.idiomas import caminho_publico
 
 # Ordem fixa: é também a ordem em que a query string do link do checkout é
@@ -70,8 +69,26 @@ def servir_estatico(request, path):
 
 @require_safe
 def landing(request):
-    """[RECEITA:R6 v1] Vitrine mínima: lê a default_offer do site (R2, server-side)
-    e monta o link do checkout preservando UTM na query string."""
+    """A raiz do site — duas páginas diferentes, escolhidas pelo regime do site.
+
+    **Site registrado no i18n (meshcraft.top): a HOME.** Decisão do mantenedor
+    em 27/08/2026 — a raiz deixou de ser vitrine de oferta e virou porta: quem
+    entrou vê o aviso de novidade e o caminho para a Caixa; quem não entrou vê
+    o convite para entrar. O conteúdo inteiro sai do catálogo de tradução e da
+    sessão, então **esta página não pergunta oferta nenhuma ao catálogo** — e
+    é isso que a faz abrir num site sem `default_offer_slug`, onde ela
+    respondia 404 até hoje. Um 404 na raiz por causa de um campo que a página
+    não usa mais seria uma falha invisível para quem a abre.
+
+    **Site NÃO registrado (os domínios monolíngues): a vitrine de sempre**
+    ([RECEITA:R6 v1]) — lê a default_offer do site (R2, server-side) e monta o
+    link do checkout preservando UTM na query string. Intocada, byte a byte
+    (golden da fase 1): dois templates e dois caminhos, nunca um `if` dentro
+    de um só.
+    """
+    if getattr(request, "idioma", None):
+        return render(request, "funil/landing_i18n.html")
+
     site = request.site
     slug = site.get("default_offer_slug")
     if not slug:
@@ -85,20 +102,17 @@ def landing(request):
     query = urlencode(utm)
     url_checkout = f"/checkout/{slug}/" + (f"?{query}" if query else "")
 
-    contexto = {
-        "site": site,
-        "oferta": oferta,
-        "preco_formatado": f"{oferta['price_cents'] / 100:.2f}".replace(".", ","),
-        "url_checkout": url_checkout,
-        "utm": utm,
-    }
-    if getattr(request, "idioma", None):
-        # Site registrado no i18n: template PRÓPRIO (Lei 7 — cópia do padrão).
-        # O caminho do site NÃO registrado fica intocado, byte a byte (golden
-        # da fase 1) — por isso dois templates, nunca um `if` dentro de um só.
-        contexto["i18n_js"] = js_da_pagina("landing", request.idioma)
-        return render(request, "funil/landing_i18n.html", contexto)
-    return render(request, "funil/landing.html", contexto)
+    return render(
+        request,
+        "funil/landing.html",
+        {
+            "site": site,
+            "oferta": oferta,
+            "preco_formatado": f"{oferta['price_cents'] / 100:.2f}".replace(".", ","),
+            "url_checkout": url_checkout,
+            "utm": utm,
+        },
+    )
 
 
 class FormularioDeCadastro(forms.Form):

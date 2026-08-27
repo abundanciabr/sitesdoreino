@@ -80,37 +80,50 @@ def test_o_api_js_da_landing_responde_200_com_o_conteudo_EXATO_do_arquivo(client
     assert resposta["Content-Type"] == mimetypes.guess_type("api.js")[0]
 
 
-@pytest.mark.parametrize(
-    "caminho,host",
-    [
-        ("/", HOST_A),  # landing de site monolíngue
-        ("/pt-br/", HOST_MESH),  # landing i18n
-    ],
-)
-def test_todo_estatico_que_a_pagina_PEDE_e_realmente_servido(
-    client, rede, caminho, host
-):
+# Toda página pública das duas famílias de site. Nem toda uma pede estático —
+# desde 27/08/2026 a home multilíngue não pede nenhum (a ilha Alpine saiu com
+# a vitrine) — e é por isso que a instrumentação anti-cegueira mudou de lugar:
+# ela agora exige que a VARREDURA ache alguma coisa, não que CADA página ache.
+# Exigir por página transformaria "esta página deixou de carregar script" em
+# vermelho, que é uma mudança legítima; não exigir nada deixaria a prova virar
+# carimbo no dia em que o scanner parasse de enxergar HTML.
+PAGINAS_VARRIDAS = [
+    ("/", HOST_A),  # vitrine de site monolíngue (carrega a ilha Alpine)
+    ("/pt-br/", HOST_MESH),  # home multilíngue
+    ("/pt-br/cadastro", HOST_MESH),  # o formulário de lead, server-side
+    ("/pt-br/login", HOST_MESH),  # a porta de entrada
+]
+
+
+def test_todo_estatico_que_a_pagina_PEDE_e_realmente_servido(client, rede):
     """A prova que não envelhece: varre o HTML servido e busca cada estático.
 
     Um teste que citasse `api.js` pelo nome ficaria verde no dia em que uma
     página passasse a carregar um `.css` ou um segundo `.js` que ninguém serve
     — o mesmo buraco, com outro arquivo dentro.
     """
-    html = client.get(caminho, HTTP_HOST=host).content.decode()
-    pedidos = RE_ESTATICO_PEDIDO.findall(html)
+    achados = 0
+    for caminho, host in PAGINAS_VARRIDAS:
+        html = client.get(caminho, HTTP_HOST=host).content.decode()
+        pedidos = RE_ESTATICO_PEDIDO.findall(html)
+        achados += len(pedidos)
+
+        for url in pedidos:
+            resposta = client.get(url, HTTP_HOST=host)
+            assert resposta.status_code == 200, (
+                f"{caminho} carrega {url}, e {url} respondeu "
+                f"{resposta.status_code} em produção (DEBUG=0)."
+            )
+            relativo = url[len(settings.STATIC_URL) :]
+            assert corpo(resposta) == (ORIGEM / relativo).read_bytes()
 
     # Instrumentação (INV-CI01 na escala de um teste): scanner que não acha
-    # nada passaria como "página limpa" e a prova viraria carimbo.
-    assert pedidos, f"{caminho} não pediu nenhum estático — o scanner cegou"
-
-    for url in pedidos:
-        resposta = client.get(url, HTTP_HOST=host)
-        assert resposta.status_code == 200, (
-            f"{caminho} carrega {url}, e {url} respondeu "
-            f"{resposta.status_code} em produção (DEBUG=0)."
-        )
-        relativo = url[len(settings.STATIC_URL) :]
-        assert corpo(resposta) == (ORIGEM / relativo).read_bytes()
+    # nada em página NENHUMA passaria como "site limpo" e a prova viraria
+    # carimbo.
+    assert achados, (
+        "nenhuma das páginas varridas pediu estático — o scanner cegou "
+        f"({len(PAGINAS_VARRIDAS)} páginas visitadas)"
+    )
 
 
 def test_servir_estatico_NAO_depende_do_collectstatic_ter_rodado():

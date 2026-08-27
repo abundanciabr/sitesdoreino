@@ -32,13 +32,20 @@ from apps.core.middleware import (
     ROTAS_DE_MAQUINA,
     SiteResolutionMiddleware,
 )
+from apps.core.enderecos import AVISOS_PADRAO, CAIXA_PADRAO as CAIXA
 from apps.i18n import catalogo as cat
 from config.urls import urlpatterns
+
+# `logado` e `COOKIE` moram no arquivo que os define — mesma importação que
+# tests/test_sino.py já faz. O guarda 3 mede a página de QUEM ENTROU desde
+# 27/08/2026: é ela que carrega os links para fora do funil (a Caixa, o sino,
+# o "Sair"). A home de visitante não linka célula nenhuma, e varrê-la deixaria
+# o scanner sem nada para julgar.
+from test_sessao_no_site import COOKIE, logado  # noqa: F401  (fixture)
 from tests.conftest import (
     CATALOGO,
     HOST_MESH,
     IDIOMAS_MESH,
-    OFERTA_MESH,
     caminho_mesh,
 )
 
@@ -343,8 +350,10 @@ def links_cross_celula_com_prefixo(html: str, host: str) -> list[str]:
 
 
 @pytest.mark.parametrize("idioma", IDIOMAS)
-def test_nenhum_link_cross_celula_leva_prefixo_de_idioma(client, rede, idioma):
-    conteudo = client.get(f"/{idioma}/", HTTP_HOST=HOST_MESH).content.decode()
+def test_nenhum_link_cross_celula_leva_prefixo_de_idioma(client, logado, idioma):
+    conteudo = client.get(
+        caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
     fora = links_cross_celula_com_prefixo(conteudo, HOST_MESH)
     assert fora == [], (
         f"Link com prefixo de idioma apontando para fora do funil: {fora}.\n"
@@ -357,25 +366,37 @@ def test_nenhum_link_cross_celula_leva_prefixo_de_idioma(client, rede, idioma):
 
 
 @pytest.mark.parametrize("idioma", IDIOMAS)
-def test_o_link_do_checkout_e_exatamente_o_caminho_nu(client, rede, idioma):
-    # Metade "não é vazio" do teste acima: se a landing deixasse de linkar para
+def test_o_link_da_caixa_e_exatamente_o_caminho_nu(client, logado, idioma):
+    # Metade "não é vazio" do teste acima: se a home deixasse de linkar para
     # outra célula, o scanner ficaria verde por não ter o que varrer.
-    conteudo = client.get(caminho_mesh(idioma), HTTP_HOST=HOST_MESH).content.decode()
-    assert f'href="/checkout/{OFERTA_MESH["slug"]}/"' in conteudo
-    assert f'href="/{idioma}/checkout/' not in conteudo
+    #
+    # Era o link do checkout que segurava esta ponta até 27/08/2026, quando a
+    # raiz do site virou porta e parou de vender. Quem a segura agora é a
+    # Caixa — e a troca não afrouxou nada: o link continua sendo para OUTRA
+    # célula, continua tendo de sair nu, e continua morrendo 404 se alguém o
+    # "consertar" com prefixo (prova logo abaixo).
+    conteudo = client.get(
+        caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+    assert f'href="{CAIXA}"' in conteudo
+    assert f'href="/{idioma}/forms/' not in conteudo
 
 
-def test_url_de_outra_celula_com_prefixo_morre_404(client, rede):
+@pytest.mark.parametrize("nu", [CAIXA, AVISOS_PADRAO])
+def test_url_de_outra_celula_com_prefixo_morre_404(client, rede, nu):
     """Os DENTES do guarda 3: por que o link nu é contrato, não desleixo.
 
-    No gateway real, `PathPrefix('/checkout')` casa prefixo de string CRU a
-    partir da posição 0 — `/pt-br/checkout/...` NÃO casa, nem a rota da célula
-    checkout (priority 10) nem a `/api/checkout` (priority 20). Sobra o
-    catch-all do funil (priority 1), que é o que este teste exercita: 404 na
-    cara de quem clicou. Prefixar o link cross-célula hoje quebra a compra.
+    No gateway real, `PathPrefix('/forms/sugestoes')` casa prefixo de string
+    CRU a partir da posição 0 — `/pt-br/forms/sugestoes/` NÃO casa a rota da
+    Caixa (priority 10). Sobra o catch-all do funil (priority 1), que é o que
+    este teste exercita: 404 na cara de quem clicou. Prefixar o link
+    cross-célula hoje tira do ar o único caminho para a área logada.
+
+    Os dois destinos da Caixa entram: a porta (`/forms/sugestoes/`) e a tela
+    de avisos do sino — mesmo prefixo público, mesma armadilha, e o dia em que
+    um deles regredir o outro não avisa.
     """
-    prefixada = f"/pt-br/checkout/{OFERTA_MESH['slug']}/"
-    assert client.get(prefixada, HTTP_HOST=HOST_MESH).status_code == 404
+    assert client.get(f"/pt-br{nu}", HTTP_HOST=HOST_MESH).status_code == 404
 
 
 # --- prova adversarial do próprio scanner (guarda que não fica vermelho quando
@@ -407,13 +428,18 @@ def test_o_scanner_aprova_o_contrato_de_hoje():
     assert links_cross_celula_com_prefixo(html, HOST_MESH) == []
 
 
-def test_o_scanner_enxerga_a_pagina_de_verdade(client, rede):
+def test_o_scanner_enxerga_a_pagina_de_verdade(client, logado):
     # Instrumentação: sem isto, um scanner que devolvesse [] por não achar
     # NADA passaria como "página limpa" (INV-CI01 na escala de um teste).
-    conteudo = client.get("/pt-br/", HTTP_HOST=HOST_MESH).content.decode()
+    conteudo = client.get(
+        "/pt-br/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
     caminhos = caminhos_internos(conteudo, HOST_MESH)
-    assert f"/checkout/{OFERTA_MESH['slug']}/" in caminhos  # link cross-célula
-    assert "/pt-br/leads" in caminhos  # rota do funil, prefixada
+    assert CAIXA in caminhos  # link cross-célula
+    assert "/entrar/sair" in caminhos  # outra célula ainda: a `identidade`
+    # Rota do funil, prefixada: o seletor de idioma da própria página — a
+    # prova de que o scanner não está cego para o lado que ele PODE reprovar.
+    assert caminho_mesh("pt-br") in caminhos
     # Seletor de idioma (absoluto). No idioma PADRÃO ele aponta para a raiz
     # nua — é a mesma regra do canonical, e vem do mesmo caminho_publico.
     assert caminho_mesh(IDIOMAS[0]) in caminhos

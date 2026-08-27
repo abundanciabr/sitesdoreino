@@ -12,14 +12,19 @@ from django.http import HttpResponse
 from django.test import RequestFactory
 from django.utils.html import escape
 
+from apps.core.enderecos import CAIXA_PADRAO as CAIXA
 from apps.core.middleware import SiteResolutionMiddleware
 from apps.i18n.catalogo import t
+
+# `logado` e `COOKIE` moram no arquivo que os define — mesma importação que
+# tests/test_sino.py faz, pelo mesmo motivo: a fixture de "alguém entrou" é
+# uma só, e duplicá-la aqui seria duas verdades sobre o que a sessão devolve.
+from test_sessao_no_site import COOKIE, logado  # noqa: F401  (fixture)
 from tests.conftest import (
     CATALOGO,
     HOST_A,
     HOST_DESCONHECIDO,
     HOST_MESH,
-    OFERTA_MESH,
     SITE_MESH_SEM_IDIOMAS,
     caminho_mesh,
 )
@@ -112,28 +117,60 @@ def test_endereco_curto_em_ingles_chega_ao_urlconf(rede, curto):
 
 
 # ---------------------------------------------------------------------------
-# Landing prefixada nos 3 idiomas (template landing_i18n.html).
+# A HOME prefixada nos 3 idiomas (template landing_i18n.html).
+#
+# REESCRITA em 27/08/2026 com a página: a raiz do site deixou de ser vitrine
+# de oferta (preço, "Quero comprar", formulário de captura) e virou porta —
+# quem não entrou vê o convite para entrar; quem entrou vê o aviso de novidade
+# e o caminho para a Caixa. O que estes testes mediam antes (a oferta no
+# idioma, a ilha Alpine) não existe mais NA RAIZ; a captura de lead segue
+# inteira em `/cadastro`, medida em test_cadastro.py.
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("idioma", IDIOMAS)
-def test_landing_serve_a_oferta_no_idioma(client, rede, idioma):
+def test_home_de_visitante_convida_a_entrar_no_idioma(client, rede, idioma):
     resp = client.get(caminho_mesh(idioma), HTTP_HOST=HOST_MESH)
     assert resp.status_code == 200
     conteudo = resp.content.decode()
-    assert OFERTA_MESH["product"]["name"] in conteudo  # nome de produto é DADO
-    assert "9,90" in conteudo  # price_cents 990
-    assert escape(t("landing.cta_comprar", idioma)) in conteudo
-    assert escape(t("landing.novidades_titulo", idioma)) in conteudo
+    assert escape(t("landing.titulo", idioma)) in conteudo
+    assert escape(t("landing.entrar", idioma)) in conteudo
+    # Quem não entrou não vê nem o aviso de novidade nem o caminho da Caixa:
+    # a página de quem chegou agora não anuncia uma área que ela não alcança.
+    assert escape(t("landing.novidades", idioma)) not in conteudo
+    assert CAIXA not in conteudo
 
 
-def test_landing_i18n_ilha_posta_na_url_prefixada_com_idioma_no_source(client, rede):
-    conteudo = client.get("/pt-br/", HTTP_HOST=HOST_MESH).content.decode()
-    # {% url_i18n 'capturar_lead' %}: o /leads NU é 404 pela matriz — o action
-    # da ilha TEM de sair prefixado (pendência 2 do PR #87).
-    assert '"/pt-br/leads"' in conteudo
-    assert "lp-funil-pt-br" in conteudo  # D9: idioma do lead é dado de negócio
+@pytest.mark.parametrize("idioma", IDIOMAS)
+def test_home_de_quem_entrou_avisa_a_novidade_e_leva_a_caixa(client, logado, idioma):
+    conteudo = client.get(
+        caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    assert escape(t("landing.novidades", idioma)) in conteudo
+    assert f'href="{CAIXA}"' in conteudo
+    assert escape(t("landing.ir_para_a_caixa", idioma)) in conteudo
+    # E o convite para entrar some — quem já entrou não é convidado de novo.
+    assert escape(t("landing.entrar", idioma)) not in conteudo
 
 
-def test_post_leads_prefixado_da_ilha_funciona(client, rede):
+def test_a_home_nao_pergunta_oferta_nenhuma_ao_catalogo(client, rede):
+    """A dependência que caiu junto com a vitrine, e por que ela vale um teste.
+
+    Enquanto a raiz mostrava preço, ela pedia a `default_offer` ao catálogo a
+    cada visita — e respondia **404** ao site que não tivesse uma. A home nova
+    não mostra oferta nenhuma: manter a consulta seria pagar um salto de rede
+    por visita e, pior, deixar a porta do site fechada por causa de um campo
+    que a página não usa mais. Site monolíngue segue como sempre (a vitrine
+    ainda é vitrine): `test_landing.py::test_site_sem_oferta_padrao_e_404`.
+    """
+    resp = client.get(caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH)
+
+    assert resp.status_code == 200
+    assert [c for c in rede.calls if "/ofertas/" in str(c.request.url)] == []
+
+
+def test_post_leads_prefixado_funciona(client, rede):
+    # A rota /leads segue pública e prefixável (a vitrine monolíngue posta
+    # nela); o que saiu foi a ilha Alpine DA RAIZ multilíngue, não a rota.
     resp = client.post(
         "/pt-br/leads",
         '{"email": "aluno@exemplo.com"}',
@@ -144,11 +181,16 @@ def test_post_leads_prefixado_da_ilha_funciona(client, rede):
     assert resp.json()["created"] is True
 
 
-def test_checkout_segue_sem_prefixo_de_idioma(client, rede):
-    # D6 fora desta fase: checkout é outra célula, monolíngue — o link NÃO
-    # ganha prefixo (prefixado, cairia no funil e morreria 404 no gateway real).
-    conteudo = client.get(caminho_mesh("en"), HTTP_HOST=HOST_MESH).content.decode()
-    assert f'href="/checkout/{OFERTA_MESH["slug"]}/"' in conteudo
+def test_a_caixa_segue_sem_prefixo_de_idioma(client, logado):
+    # D6, guarda 3: a Caixa é outra célula, monolíngue — o link NÃO ganha
+    # prefixo (prefixado, cairia no funil e morreria 404 no gateway real).
+    # Era o link do checkout que provava isto até 27/08/2026; a home nova não
+    # linka checkout nenhum, e quem carrega a prova agora é a Caixa.
+    conteudo = client.get(
+        caminho_mesh("en"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+    assert f'href="{CAIXA}"' in conteudo
+    assert 'href="/en/forms/' not in conteudo
 
 
 # ---------------------------------------------------------------------------
