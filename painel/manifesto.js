@@ -62,7 +62,9 @@ var MANIFESTO = [
   "20260826-041-o-livro-passou-a-recusar-numero-repetido",
   "20260826-042-a-vps-recusou-o-robo-pela-quarta-vez-hoje",
   "20260826-043-apaguei-tres-arquivos-do-projeto-por-engano",
-  "20260826-044-a-medicao-que-faltou-no-registro-anterior"
+  "20260826-044-a-medicao-que-faltou-no-registro-anterior",
+  "20260826-045-o-docker-ja-inicia-sozinho-medido-no-seu-pc",
+  "20260826-046-medi-os-cinco-da-caixa-quatro-continuam-abertos"
 ];
 if (typeof document !== "undefined") {
   MANIFESTO.forEach(function (n) {
