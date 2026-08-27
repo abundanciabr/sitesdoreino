@@ -175,15 +175,30 @@ no meio dos passos manuais):
 - **Reporte em linguagem de resultado** ("a plataforma está no ar"), não de
   processo — e marcos merecem ser celebrados. O ânimo do mantenedor é parte da
   infraestrutura do projeto.
-- **Decisão que só ele pode tomar → pergunta estruturada de múltipla escolha,
-  nunca prosa técnica esperando que ele extraia a resposta sozinho.** Use
-  `AskUserQuestion` (ou equivalente) com cada opção traduzida para português
-  simples — o porquê e a consequência prática de cada lado, sem jargão cru
-  ("evento ou HTTP" vira "os números podem demorar alguns segundos, ou
-  precisam ser sempre exatos?") — e marque a opção recomendada quando houver
-  uma. **Confirmado por ele em 25/08/2026** como o formato certo, ao responder
-  as 5 perguntas pendentes da área administrativa desse jeito: use sempre que
-  uma bifurcação real do projeto depender da palavra dele.
+- **Qualquer coisa pendente nele ao fechar uma tarefa ou uma conversa vira
+  pergunta estruturada ali mesmo — nunca uma frase solta esperando que ele
+  digite uma resposta livre.** Use `AskUserQuestion` (ou equivalente) com cada
+  opção traduzida para português simples — o porquê e a consequência prática
+  de cada lado, sem jargão cru ("evento ou HTTP" vira "os números podem
+  demorar alguns segundos, ou precisam ser sempre exatos?") — e marque a
+  opção recomendada quando houver uma. Vale para decisão técnica real E para
+  algo tão simples quanto agendar uma conversa futura ("quer que eu explique
+  agora, prefere um resumo primeiro, ou fica para depois") — a régua não é
+  "isto é grande o bastante para virar pergunta", é "isto ia deixar ele
+  compondo uma resposta livre". Se ele fechar a pergunta sem responder, é
+  "não agora": pare e espere, não repita a mesma pergunta.
+  **Confirmado com força por ele em 25/08 e reforçado em 27/08/2026** — na
+  segunda vez, depois de eu fechar um relatório com "isso vai precisar de uma
+  conversa sua quando puder" em vez de abrir a caixa ali mesmo; ele reagiu
+  pedindo por essa "caixa que aparece pedindo a resposta" em vez do texto
+  cair na caixa de digitar dele. A regra virou instrução permanente dele
+  também em `~/.claude/CLAUDE.md` (todo projeto, toda conversa) — este
+  parágrafo é a camada específica do sitesdoreino, que soma à de lá.
+  **Em lote (RUNBOOK-LOTES.md):** quem fala com ele é a sessão-maestro, nunca
+  os despachos individuais — um despacho que topa com algo do mantenedor
+  registra e devolve à maestro (RUNBOOK-LOTES.md §7, Lote 3 lição 11), e é a
+  maestro quem consolida numa única pergunta estruturada. Sem essa regra, um
+  lote de 5 despachos em paralelo viraria 5 caixas de pergunta simultâneas.
 
 ## Este projeto é para ser feito completo — nunca proponha a versão minimalista
 
