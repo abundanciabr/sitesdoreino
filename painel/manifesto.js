@@ -1,9 +1,9 @@
 // =============================================================================
 // GERADO por painel/gerar_manifesto.js — NÃO EDITE À MÃO.
 // Para regenerar: node painel/gerar_manifesto.js
-// A página confere REGISTROS.length === MANIFESTO.length ao abrir: registro
-// que não carregar é detectado, nunca ignorado (fail-closed).
 // =============================================================================
+// A lista do que DEVE ter carregado. A página confere
+// REGISTROS.length === MANIFESTO.length ao abrir.
 var MANIFESTO = [
   "20260819-001-h3-trava-de-merge-nativa",
   "20260819-002-h4-docker-junto-com-windows",
@@ -93,8 +93,3 @@ var MANIFESTO = [
   "20260827-026-a-barra-no-final-parou-de-dar-erro-no-site-inteiro",
   "20260827-027-falta-uma-linha-sua-para-o-sino-acender"
 ];
-if (typeof document !== "undefined") {
-  MANIFESTO.forEach(function (n) {
-    document.write('<script src="registros/' + n + '.js"><\/script>');
-  });
-}

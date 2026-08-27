@@ -12,7 +12,8 @@
 |---|---|---|
 | `painel.html` | **A porta.** O painel que o mantenedor abre (duplo clique). Não guarda NENHUM dado próprio — toda vista é calculada dos registros. | Muda raramente, por PR, como código. |
 | `registros/*.js` | **O livro de ocorrências.** Um arquivo pequeno por acontecimento. Só se ACRESCENTA — nunca se edita nem se apaga um registro existente. | Toda sessão, ao terminar trabalho relevante. |
-| `manifesto.js` | **GERADO** por `gerar_manifesto.js`. Lista os registros para a página (em `file://` o Chrome não deixa a página descobrir arquivos sozinha). | Só o gerador. Nunca à mão. |
+| `manifesto.js` | **GERADO** por `gerar_manifesto.js`. A LISTA dos registros que devem existir (em `file://` o Chrome não deixa a página descobrir arquivos sozinha). | Só o gerador. Nunca à mão. |
+| `livro.js` | **GERADO** por `gerar_manifesto.js`. O CONTEÚDO de todos os registros num arquivo só — a página carrega o livro inteiro em UM pedido. Comparar a contagem dele com a do manifesto é o que detecta livro incompleto. | Só o gerador. Nunca à mão. |
 | `logica.js` | As regras que calculam as vistas (caixa de entrada, frescor, capa). Pura, roda em Node e no navegador. | Por PR, com teste-guarda. |
 | `gerar_manifesto.js` | Valida TODOS os registros (fail-closed, com a MESMA `logica.js` da página — um validador só) e regenera o manifesto. `--conferir` só confere (para CI). | Por PR. |
 | `testes/` | Testes-guarda da lógica e do gerador — incluindo os casos em que devem REPROVAR. | Por PR. |
@@ -46,7 +47,7 @@
 ```
 
 3. Rode `node painel/gerar_manifesto.js` (da raiz). Ele valida tudo e
-   regenera `manifesto.js`. **Se ele reprovar, o registro está errado — conserte;
+   regenera `manifesto.js` e `livro.js`. **Se ele reprovar, o registro está errado — conserte;
    não contorne.**
 4. Confira abrindo `painel/painel.html` (ou o teste: `node painel/testes/teste_logica.js`).
 
@@ -77,7 +78,8 @@
 
 - ❌ Editar um registro existente (nem "só para corrigir um typo" — registro
   novo com `responde_a`).
-- ❌ Editar `manifesto.js` à mão.
+- ❌ Editar `manifesto.js` ou `livro.js` à mão (os dois são gerados).
+- ❌ Fazer a página pedir um arquivo POR registro. Foi assim até 27/08/2026, e a rajada de dezenas de pedidos batia na porta da área administrativa até parte deles voltar como erro — o painel se recusava a abrir, com número diferente a cada vez. O custo de abrir o painel não pode crescer com o tamanho do livro (guarda: `services/admin/tests/test_painel_vivo.py::test_o_livro_chega_em_UM_pedido_e_nao_um_por_registro`).
 - ❌ Escrever HTML dentro de `titulo`/`detalhe` (a página insere como texto).
 - ❌ Criar lista/estado em qualquer outro lugar e "sincronizar depois" — é
   exatamente a doença que este diretório existe para curar.

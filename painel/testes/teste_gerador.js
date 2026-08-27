@@ -54,6 +54,21 @@ caso("manifesto.js existe e lista o registro",
   fs.existsSync(path.join(dir1, "manifesto.js")) &&
   fs.readFileSync(path.join(dir1, "manifesto.js"), "utf8").indexOf("20260826-001-a") !== -1);
 caso("--conferir com manifesto em dia passa (exit 0)", roda(dir1, ["--conferir"]).code === 0);
+caso("livro.js existe e traz o CONTEUDO do registro (o livro num arquivo so)",
+  fs.existsSync(path.join(dir1, "livro.js")) &&
+  fs.readFileSync(path.join(dir1, "livro.js"), "utf8").indexOf("window.REGISTROS") !== -1);
+caso("manifesto.js NAO injeta mais um <script> por registro (o defeito de 27/08 nao volta)",
+  fs.readFileSync(path.join(dir1, "manifesto.js"), "utf8").indexOf("document.write") === -1);
+
+// A trava que mantem o livro honesto: se o empacotado for mexido a mao ou ficar
+// para tras, o --conferir reprova. Sem isto, livro.js seria uma segunda verdade
+// capaz de divergir de registros/ em silencio.
+var dir1b = montarCenario({ "20260826-001-a.js": registroBom("20260826-001-a") });
+roda(dir1b);
+fs.writeFileSync(path.join(dir1b, "livro.js"), "// alguem editou a mao", "utf8");
+var r1b = roda(dir1b, ["--conferir"]);
+caso("livro.js adulterado/desatualizado REPROVA no --conferir (exit 1)", r1b.code === 1);
+caso("...e diz que foi o livro", r1b.out.indexOf("livro.js") !== -1);
 
 console.log("== a recusa (FAIL, exit 1) ==");
 var dir2 = montarCenario({
@@ -64,6 +79,7 @@ var r2 = roda(dir2);
 caso("registro com sintaxe quebrada REPROVA (exit 1)", r2.code === 1);
 caso("...e diz QUAL arquivo", r2.out.indexOf("20260826-002-quebrado") !== -1);
 caso("...e NÃO escreve manifesto", !fs.existsSync(path.join(dir2, "manifesto.js")));
+caso("...e NÃO escreve livro", !fs.existsSync(path.join(dir2, "livro.js")));
 
 var dir3 = montarCenario({
   "20260826-001-a.js": registroBom("20260826-001-b") // campo 'arquivo' difere do nome

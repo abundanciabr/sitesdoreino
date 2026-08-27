@@ -131,6 +131,41 @@ def test_todo_arquivo_que_a_pagina_pede_responde_200():
 
 
 @respx.mock
+def test_o_livro_chega_em_UM_pedido_e_nao_um_por_registro():
+    """A prova do conserto de 27/08/2026 — e a trava para ele não ser desfeito.
+
+    A página carregava o livro com um `<script>` POR REGISTRO, escritos por
+    `document.write` no manifesto. Abrir o painel virava uma rajada de dezenas
+    de pedidos, e cada um atravessa a PORTA desta célula — que pergunta à
+    identidade quem é a pessoa, com 2s de paciência. Sob a rajada parte das
+    perguntas estourava o tempo, o registro voltava como página de erro no
+    lugar do JS, e o painel se recusava a abrir: "o manifesto lista 86, mas só
+    29 carregaram". Aconteceu quatro vezes num só dia, com número diferente a
+    cada vez, e piorava a cada registro novo — o número de pedidos ERA o
+    tamanho do livro.
+
+    O que esta guarda fixa não é uma implementação, é a propriedade que
+    importa: **o custo de abrir o painel não cresce com o tamanho do livro.**
+    """
+    html = _dentro().get("/painel/").content.decode("utf-8")
+    quantos_registros = len(list((PAINEL_NO_REPO / "registros").glob("*.js")))
+    assert quantos_registros > 10, "o livro está pequeno demais para esta prova valer"
+
+    pedidos = re.findall(r'src="([^"]+)"', html)
+    assert "livro.js" in pedidos, "a página não pede o livro empacotado"
+    assert not [a for a in pedidos if a.startswith("registros/")], (
+        "a página voltou a pedir registro por registro"
+    )
+    assert "document.write" not in (PAINEL_NO_REPO / "manifesto.js").read_text(
+        encoding="utf-8"
+    ), "o manifesto voltou a injetar um <script> por registro"
+    assert len(pedidos) < 10, (
+        f"a página faz {len(pedidos)} pedidos com {quantos_registros} registros — "
+        "o custo de abrir o painel voltou a crescer com o tamanho do livro"
+    )
+
+
+@respx.mock
 def test_todo_registro_do_livro_e_alcancavel():
     """O manifesto lista N registros; os N precisam responder.
 
@@ -180,6 +215,7 @@ def test_o_painel_nunca_e_guardado_em_cache():
     cliente = _dentro()
     assert cliente.get("/painel/")["Cache-Control"] == "no-store"
     assert cliente.get("/painel/manifesto.js")["Cache-Control"] == "no-store"
+    assert cliente.get("/painel/livro.js")["Cache-Control"] == "no-store"
 
 
 # ------------------------------------------------------------------- a porta
