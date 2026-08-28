@@ -309,3 +309,20 @@ vezes antes de acusar a sua mudança**, e repita também o cenário de controle
 **Regra prática:** se este teste ficar vermelho na sua máquina, rode-o isolado
 e repita. O veredito dele é com Postgres, no CI. Rodada local com SQLite serve
 para o resto da suíte.
+
+## Sabotagem que não foi aplicada parece guarda sem dentes (28/08/2026)
+
+Ao provar por mutação o filtro de escola da lista de alunos, a primeira
+sabotagem "passou": 24 verdes, e por um instante pareceu que o guarda não
+mordia. **A mutação nunca tinha sido aplicada** — o `sed` com `\n` no padrão não
+casa (o `sed` trabalha linha a linha), e o `str.replace` que veio depois não
+tinha `assert`. Aplicada de verdade, ela derruba **6** testes.
+
+**A regra: toda sabotagem afirma que foi aplicada antes de rodar o teste.** Um
+`assert` sobre o texto do arquivo, ou um `git diff --stat` não vazio — qualquer
+coisa que falhe alto se a edição não pegou. Sem isso, "o guarda não mordeu" e "a
+sabotagem não aconteceu" são indistinguíveis, e os dois se parecem com um verde.
+
+É irmã da lição acima (uma rodada só não distingue causa de coincidência): as
+duas dizem que **o resultado de uma medição não vale sem a prova de que a
+medição mediu o que você acha que ela mediu.**

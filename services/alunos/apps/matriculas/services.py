@@ -262,3 +262,124 @@ def situacao_de(email: str) -> dict:
             "motivo_recusa": None if aguardando else (linha.motivo_recusa or None),
         },
     }
+
+
+# ------------------------------------------------------------------- [GESTAO]
+# A gestão de quem JÁ é aluno (`docs/decisoes/DECISAO-gestao-de-alunos.md`).
+# Até 28/08/2026 não existia, em lugar nenhum, como listar quem é aluno — a
+# célula só sabia responder sobre um e-mail por vez.
+
+
+def alunos_do_painel(*, site_id: str = None, status: str = None):
+    """Quem já passou da fila — a lista que o painel administrativo mostra.
+
+    NUNCA devolve quem está na fila, e o filtro é por lista de PERMISSÃO
+    (`STATUS_DE_GESTAO`), não por exclusão dos status da fila: estado novo
+    inventado amanhã nasce FORA desta lista, e alguém precisa decidir
+    explicitamente incluí-lo. Com exclusão, ele apareceria sozinho na tela do
+    mantenedor sem ninguém ter escolhido isso.
+    """
+    consulta = Matricula.objects.filter(status__in=Matricula.STATUS_DE_GESTAO)
+    if site_id:
+        # Aplicado só quando VEIO: `.filter(site_id=None)` casaria com
+        # `site_id IS NULL` e devolveria lista vazia — "nenhum aluno" para quem
+        # tem alunos. É o mesmo erro que a fila já recusou.
+        consulta = consulta.filter(site_id=site_id)
+    if status:
+        consulta = consulta.filter(status=status)
+    return consulta.order_by("-enrolled_at")
+
+
+def como_o_painel_ve(matricula: Matricula) -> dict:
+    """A forma que as duas portas do painel devolvem — uma função só.
+
+    Duas montagens à mão da mesma forma divergem no primeiro campo novo, e o
+    contrato declara as duas idênticas de propósito.
+    """
+    return {
+        "id": str(matricula.pk),
+        "site_id": matricula.site_id,
+        "email": matricula.email,
+        "nome_completo": matricula.name,
+        "whatsapp": matricula.whatsapp,
+        "turma": matricula.turma or None,
+        "comprou_em": (
+            matricula.comprou_em.isoformat() if matricula.comprou_em else None
+        ),
+        "status": matricula.status,
+        # DERIVADO do prefixo, nunca de um campo próprio: um campo "origem"
+        # gravado seria um segundo lugar guardando o que o `order_id` já diz, e
+        # os dois discordariam no primeiro backfill.
+        "origem": (
+            "liberado"
+            if matricula.order_id.startswith(Matricula.PREFIXO_DA_FILA)
+            else "comprou"
+        ),
+        "criada_em": matricula.enrolled_at.isoformat(),
+    }
+
+
+#: Os campos que o formulário do painel pode corrigir — e SÓ eles.
+#: `email` fica de fora porque é a IDENTIDADE da linha: trocá-lo moveria a
+#: matrícula, em silêncio, para outra pessoa. `site_id`/`order_id`/`product_id`
+#: vêm do fato que criou a linha, e editá-los seria reescrever o que aconteceu.
+CAMPOS_CORRIGIVEIS = {
+    "nome_completo": "name",
+    "whatsapp": "whatsapp",
+    "turma": "turma",
+    "comprou_em": "comprou_em",
+}
+
+
+def atualizar_matricula(
+    *, id_da_linha: str, mudancas: dict, decidido_por: str
+) -> "tuple[Matricula | None, str]":
+    """Muda o estado de um aluno, ou corrige os dados dele.
+
+    Devolve `(linha, "ok")`, `(None, "nao-encontrada")`, `(None, "na-fila")` ou
+    `(None, "nada-a-mudar")`.
+
+    **Linha da FILA responde `na-fila`, e a recusa é o desenho.** Aquelas se
+    decidem por `POST /pre-matriculas/{id}/decisao`, que confere se a decisão
+    já foi tomada e grava o motivo da recusa. Deixar esta porta mexer nelas
+    daria dois caminhos para o mesmo fato, com regras diferentes — e o segundo
+    caminho não saberia nada sobre motivo nem sobre "já decidida".
+    """
+    with transaction.atomic():
+        try:
+            linha = Matricula.objects.select_for_update().get(pk=id_da_linha)
+        except (Matricula.DoesNotExist, ValueError, TypeError):
+            # ValueError/TypeError: id que nem número é — "não existe linha com
+            # este id" é a resposta honesta, não um 500.
+            return None, "nao-encontrada"
+
+        if linha.status in Matricula.STATUS_DA_FILA:
+            return None, "na-fila"
+
+        campos = []
+        novo_status = mudancas.get("status")
+        if novo_status and novo_status != linha.status:
+            linha.status = novo_status
+            campos.append("status")
+
+        for nome_no_contrato, nome_no_modelo in CAMPOS_CORRIGIVEIS.items():
+            if nome_no_contrato not in mudancas:
+                continue
+            valor = mudancas[nome_no_contrato]
+            if nome_no_modelo in ("turma", "whatsapp", "name"):
+                valor = (valor or "").strip()
+            if getattr(linha, nome_no_modelo) == valor:
+                continue
+            setattr(linha, nome_no_modelo, valor)
+            campos.append(nome_no_modelo)
+
+        if not campos:
+            # 422 e não 200: um formulário que não mudou nada quase sempre é um
+            # formulário que não chegou como a pessoa achou que chegou.
+            return None, "nada-a-mudar"
+
+        linha.decidido_em = timezone.now()
+        linha.decidido_por = decidido_por
+        campos += ["decidido_em", "decidido_por"]
+        linha.save(update_fields=campos)
+        return linha, "ok"

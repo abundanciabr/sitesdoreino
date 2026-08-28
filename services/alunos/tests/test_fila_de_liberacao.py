@@ -127,19 +127,35 @@ def test_liberar_abre_a_caixa_sem_mais_nenhuma_mudanca(client, auth):
 
 @pytest.mark.django_db
 def test_status_novo_nasce_sem_acesso(client, auth):
-    """O MECANISMO, não a promessa: todo status declarado precisa estar em
-    exatamente um dos dois baldes. Quem inventar um sexto status e não decidir
-    de que lado ele fica reprova aqui — em vez de descobrir em produção que a
-    lista de exclusão deixou passar."""
+    """O MECANISMO, não a promessa: todo status declarado precisa dizer se DÁ
+    ACESSO ou não. Quem inventar um status novo e não decidir de que lado ele
+    fica reprova aqui — em vez de descobrir em produção que uma lista de
+    exclusão o deixou passar.
+
+    **Os baldes mudaram de nome em 28/08/2026, e o guarda ficou mais forte, não
+    mais fraco.** Até então eram `STATUS_QUE_VALEM` e `STATUS_DA_FILA`, e os
+    dois cobriam o vocabulário inteiro por coincidência: tudo que não dava
+    acesso estava na fila. Com `suspensa` deixando de dar acesso sem entrar na
+    fila (`DECISAO-gestao-de-alunos` §2), apareceu um terceiro caso — e a
+    pergunta que importa nunca foi "está na fila?", e sim "dá acesso?".
+    `STATUS_SEM_ACESSO` responde exatamente essa.
+    """
     declarados = {valor for valor, _ in Matricula.STATUS_CHOICES}
     valem = set(Matricula.STATUS_QUE_VALEM)
-    fila = set(Matricula.STATUS_DA_FILA)
+    sem_acesso = set(Matricula.STATUS_SEM_ACESSO)
 
-    assert valem | fila == declarados, (
-        "status declarado fora dos dois baldes: decida se ele DÁ acesso "
-        f"(STATUS_QUE_VALEM) ou não (STATUS_DA_FILA) — sobrando: {declarados - valem - fila}"
+    assert valem | sem_acesso == declarados, (
+        "status declarado sem resposta para 'dá acesso?': ponha-o em "
+        "STATUS_QUE_VALEM ou em STATUS_SEM_ACESSO — sobrando: "
+        f"{declarados - valem - sem_acesso}"
     )
-    assert not (valem & fila), "um status não pode dar e negar acesso ao mesmo tempo"
+    assert not (
+        valem & sem_acesso
+    ), "um status não pode dar e negar acesso ao mesmo tempo"
+    # E a fila continua sendo um subconjunto de quem não tem acesso — nunca o
+    # contrário. Se alguém puser um status da fila em QUE_VALEM, o de cima já
+    # reprova; este nomeia o erro.
+    assert set(Matricula.STATUS_DA_FILA) <= sem_acesso
 
 
 @pytest.mark.django_db
