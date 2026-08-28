@@ -46,7 +46,15 @@
   gravidade: "info",                    // vermelho | ambar | info | verde
   frente: null,                         // etiqueta do capítulo do "Meu mapa": site | comunidade | curso | vender | fabrica
                                         // (obrigatória em "frente" e em "rumo"; opcional e recomendada no resto)
-  vence_em_dias: null                   // depois de N dias sem registro novo, isto conta como velho — ou null (não vence)
+  vence_em_dias: null,                  // depois de N dias sem registro novo, isto conta como velho — ou null (não vence)
+
+  // OS QUATRO DA DECISÃO — só fazem sentido com `precisa_do_dono: true`, e são
+  // OPCIONAIS. Sem eles a ficha na tela diz "não sei", que é honesto e cobra
+  // quem escreveu o pedido. Com eles, o dono decide sem reconstruir o contexto.
+  se_eu_nao_decidir: null,              // o que acontece se isto ficar parado — ou null
+  recomendacao: null,                   // o que você sugere, e por quê — ou null
+  reversivel: null,                     // true/false SEM aspas ("false" seria verdadeiro em JS) — ou null
+  impacto: null                         // alto | medio | baixo — ou null
 });})();
 ```
 
@@ -76,6 +84,12 @@
   congeladas de propósito (registro mergeado não se edita); um terceiro
   registro *nesses* números, porém, ainda reprova — a tolerância guarda o
   tamanho do par herdado, não uma licença permanente.
+- **Pedido chega decidível, ou diz que não sabe:** a caixa "Precisa de você"
+  mostra, para cada pedido, o que acontece se ele ficar parado, a recomendação,
+  se dá para voltar atrás e o peso. Campo ausente aparece como "não sei" —
+  nunca some da tela, porque sumir faria um pedido incompleto parecer completo.
+  A ordem continua sendo por IDADE (pedido velho grita mais); o peso é para você
+  ver, não para reordenar a fila pelas suas costas.
 - **Dois relógios:** `quando` (o fato) ≠ `verificado_em` (a prova). A página
   mostra os dois; o segundo é o que importa.
 - **Frescor computado:** a página compara as datas com o relógio dela ao abrir.
