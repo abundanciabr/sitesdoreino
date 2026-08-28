@@ -56,6 +56,7 @@ from _nucleo import (  # noqa: E402
     executar,
     raiz_do_repo,
 )
+from reservar import NS_RESERVA, refs_existentes  # noqa: E402
 
 # Os arquivos que mudam o que um agente PODE fazer. Lei nova desde a base da
 # sessão é a diferença entre trabalhar certo e trabalhar contra uma regra que
@@ -89,6 +90,7 @@ class Dados:
     prs_abertos: list[dict]
     pousos: list[dict]
     leis_mudadas: list[str]
+    reservas: list[str]
     proximo_registro: str
     proxima_armadilha: str
 
@@ -251,6 +253,8 @@ def coletar(raiz: Path, agora: datetime | None = None) -> Dados:
         }
     )
 
+    reservas = [ref.rsplit("/", 1)[-1] for ref in refs_existentes(raiz, NS_RESERVA)]
+
     registros = raiz / "painel" / "registros"
     armadilhas = raiz / "armadilhas"
     if not registros.is_dir() or not armadilhas.is_dir():
@@ -265,6 +269,7 @@ def coletar(raiz: Path, agora: datetime | None = None) -> Dados:
         prs_abertos=abertos,
         pousos=pousos,
         leis_mudadas=mudadas,
+        reservas=sorted(reservas),
         proximo_registro=proximo_numero_livre(
             [p.name for p in registros.glob(f"{hoje}-*.js")], f"{hoje}-", 3
         ),
@@ -286,6 +291,7 @@ def montar(dados: Dados) -> str:
             "prs_abertos",
             "pousos",
             "leis_mudadas",
+            "reservas",
             "proximo_registro",
             "proxima_armadilha",
         )
@@ -340,6 +346,16 @@ def montar(dados: Dados) -> str:
     if len(dados.pousos) > 15:
         linhas.append(f"  ... e mais {len(dados.pousos) - 15}.")
     linhas.append("")
+
+    linhas.append(f"INTENÇÕES RESERVADAS AGORA  ({len(dados.reservas)})")
+    if not dados.reservas:
+        linhas.append("  nenhuma — ninguém anunciou no que está pegando.")
+    for chave in dados.reservas:
+        linhas.append(f"  {chave}")
+    linhas += [
+        '  Antes de começar: python ci/reservar.py intencao <chave> --objetivo "..."',
+        "",
+    ]
 
     if dados.leis_mudadas:
         linhas += [

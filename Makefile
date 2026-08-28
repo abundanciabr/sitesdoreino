@@ -25,12 +25,13 @@
 # =============================================================================
 PYTHON ?= python
 
-.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim
+.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim reservar reservas
 
 ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "Alvos da raiz — fachada de ci/ci.py:"
 	@echo "  make sessao CELULA=x TAREFA=y   abre a sessao inteira (RITOS.md §1)"
 	@echo "  make boletim                    o que o mundo e AGORA (antes de decidir)"
+	@echo "  make reservar SUP=registro      o servidor DA o numero (nao adivinhe)"
 	@echo "  make doctor            o ambiente consegue executar o trabalho?"
 	@echo "  make ci                a mudanca respeita as invariantes?"
 	@echo "  make freeze            so o freeze de contrato (todas as celulas)"
@@ -68,6 +69,13 @@ testador:       ## a suite que prova que o freeze reprova quando deve
 
 boletim:        ## o que o mundo e AGORA (PRs abertos, o que pousou, lei que mudou)
 	$(PYTHON) ci/boletim.py
+
+reservar:       ## make reservar SUP=registro — o servidor DA o numero (nao adivinhe)
+	@test -n "$(SUP)" || { echo "ERROR: informe SUP=registro|armadilha"; exit 2; }
+	$(PYTHON) ci/reservar.py numero $(SUP)
+
+reservas:       ## o que esta reservado agora, lido do servidor
+	$(PYTHON) ci/reservar.py listar
 
 indice:         ## regenera armadilhas/INDICE.md (rode ao criar uma entrada nova)
 	$(PYTHON) ci/indice_de_armadilhas.py
