@@ -52,23 +52,36 @@ def visao_geral(request):
 
 
 class FonteAusente:
-    """Por que um número de aluno ainda não existe. São dois motivos, e a
-    diferença entre eles é a diferença entre um PR e um rito de contrato.
+    """Por que um número de aluno ainda não aparece nesta tela.
 
-    Escrito como constante nomeada, e não como texto solto no template, porque
-    é essa distinção que a `PLANO-AREA-ADMIN.md` §4.6b cobra em voz alta: lá,
-    uma seção nasceu prometendo "visitas" porque alguém supôs que o dado
-    estava em algum lugar — e não estava. Aqui cada tipo de aluno declara qual
-    dos dois casos ele é, e a tela diz isso ao mantenedor com todas as letras.
+    São dois motivos, e a diferença entre eles é a diferença entre um passo de
+    uma linha e um rito de contrato. Escrito como constante nomeada, e não como
+    texto solto no template, porque é essa distinção que a
+    `PLANO-AREA-ADMIN.md` §4.6b cobra em voz alta: lá, uma seção nasceu
+    prometendo "visitas" porque alguém supôs que o dado estava em algum lugar —
+    e não estava.
+
+    **Correção de 28/08/2026, e ela é a razão de este texto existir:** a
+    primeira versão desta tela declarou que a fila de espera "não existe em
+    lugar nenhum". Estava errado, e o erro tem nome — foi lido num clone
+    desatualizado da `main`, 75 merges atrás. A fila existe desde 27/08/2026
+    (`docs/decisoes/DECISAO-fila-de-liberacao.md`, PRs #290/#291/#304/#306), o
+    formulário que enche essa fila já está no ar, e o contrato da `alunos`
+    chama `GET /pre-matriculas` de *"a porta do painel administrativo"* — esta
+    área é que ainda não a abriu.
     """
 
-    #: O dado EXISTE numa célula, mas ninguém sabe pedi-lo: falta a operação
-    #: de leitura no contrato congelado dela (Rito §3 + PR na célula dona).
-    SEM_OPERACAO = "sem-operacao"
+    #: A célula `alunos` JÁ entrega esta lista, por porta que já está no
+    #: contrato congelado. O que falta é desta área conseguir bater nela: o par
+    #: de tokens `admin→alunos` (um passo do mantenedor na VPS) e a página que
+    #: lê e mostra. Nenhuma decisão nova, nenhum rito.
+    PORTA_PRONTA = "porta-pronta"
 
-    #: O dado NÃO EXISTE em lugar nenhum da plataforma — ninguém o grava.
-    #: Antes de haver o que ler, é preciso decidir e construir o que grava.
-    SEM_DADO = "sem-dado"
+    #: O dado existe guardado, mas NENHUMA porta o entrega em lista — hoje a
+    #: `alunos` só responde sobre um aluno de cada vez, pelo e-mail. Somar
+    #: exige operação nova no contrato congelado dela: Rito §3 + PR na célula
+    #: dona.
+    SEM_OPERACAO = "sem-operacao"
 
 
 # Os tipos de aluno da escola. A lista mora AQUI, e não no template, para que o
@@ -80,33 +93,36 @@ class FonteAusente:
 # (`RETROSPECTIVA-FASE-D.md` §1) — o mantenedor leria "ninguém está esperando
 # aprovação" quando a verdade é "ninguém está contando". Guarda:
 # `tests/test_painel_da_escola.py`.
+#
+# `fonte` nomeia a porta REAL da `contracts/alunos.openapi.yaml`, e não é
+# enfeite: é o que impede a próxima sessão de repetir o erro de 28/08 e
+# declarar inexistente uma operação que está no contrato congelado há um dia.
 TIPOS_DE_ALUNO = (
     {
         "slug": "aguardando-aprovacao",
         "nome": "Aguardando aprovação",
-        "quem": (
-            "Quem se cadastrou no site e ainda não foi aprovado por você para "
-            "entrar na escola."
-        ),
+        "quem": ("Quem se cadastrou no site, pediu entrada e espera você liberar."),
         "quantidade": None,
-        "fonte_ausente": FonteAusente.SEM_DADO,
+        "fonte": "GET /pre-matriculas?status=aguardando",
+        "fonte_ausente": FonteAusente.PORTA_PRONTA,
         "falta": (
-            "Hoje entrar no site com a conta Google só cria o cadastro da "
-            "pessoa — não existe fila de espera, nem o gesto de aprovar. É a "
-            "parte que ainda precisa ser construída, e ela começa por uma "
-            "decisão sua: o que a aprovação libera."
+            "A fila já existe e já está recebendo gente: o formulário que a "
+            "enche está no ar desde 27/08. O que falta é esta área conseguir "
+            "perguntar — a senha do par entre as duas partes do sistema, que "
+            "só você pode escrever no servidor, e a tela de liberar."
         ),
     },
     {
         "slug": "ativos",
         "nome": "Alunos ativos",
-        "quem": "Quem já foi aprovado e tem acesso liberado.",
+        "quem": "Quem foi liberado e tem acesso à área de alunos.",
         "quantidade": None,
+        "fonte": None,
         "fonte_ausente": FonteAusente.SEM_OPERACAO,
         "falta": (
             "A parte do sistema que cuida de matrículas já guarda estes "
-            "alunos, mas só sabe responder sobre um aluno de cada vez, pelo "
-            "e-mail — ela ainda não sabe entregar a lista inteira."
+            "alunos, mas só sabe responder sobre um de cada vez, pelo e-mail — "
+            "ela ainda não sabe entregar a lista inteira."
         ),
     },
     {
@@ -114,6 +130,7 @@ TIPOS_DE_ALUNO = (
         "nome": "Acesso pausado",
         "quem": "Alunos que continuam matriculados, com o acesso suspenso.",
         "quantidade": None,
+        "fonte": None,
         "fonte_ausente": FonteAusente.SEM_OPERACAO,
         "falta": (
             "Mesma parte do sistema, mesma falta: o estado existe guardado, "
@@ -125,10 +142,23 @@ TIPOS_DE_ALUNO = (
         "nome": "Encerrados",
         "quem": "Quem saiu da escola — matrícula desfeita ou reembolsada.",
         "quantidade": None,
+        "fonte": None,
         "fonte_ausente": FonteAusente.SEM_OPERACAO,
         "falta": (
             "Mesma parte do sistema, mesma falta: o estado existe guardado, "
             "só não há como pedir a lista."
+        ),
+    },
+    {
+        "slug": "recusados",
+        "nome": "Recusados",
+        "quem": "Quem pediu entrada e você decidiu não liberar.",
+        "quantidade": None,
+        "fonte": "GET /pre-matriculas?status=recusada",
+        "fonte_ausente": FonteAusente.PORTA_PRONTA,
+        "falta": (
+            "Mesma porta da fila, mesma falta: ela já sabe responder, esta "
+            "área é que ainda não pergunta."
         ),
     },
 )
@@ -155,6 +185,8 @@ def escola_alunos(request):
         {
             "admin": request.admin,
             "tipos": TIPOS_DE_ALUNO,
-            "SEM_DADO": FonteAusente.SEM_DADO,
+            "ha_porta_pronta": any(
+                t["fonte_ausente"] == FonteAusente.PORTA_PRONTA for t in TIPOS_DE_ALUNO
+            ),
         },
     )
