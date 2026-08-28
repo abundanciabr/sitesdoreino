@@ -99,5 +99,7 @@ var MANIFESTO = [
   "20260827-032-o-sininho-esta-no-ar-de-ponta-a-ponta-confirmado-por-voce",
   "20260827-033-o-dono-confirmou-o-painel-abriu-normal",
   "20260827-034-auditoria-de-fechamento-o-mapa-do-sininho-esta-em-dia",
-  "20260827-035-a-divida-dos-avisos-antigos-foi-paga"
+  "20260827-035-a-divida-dos-avisos-antigos-foi-paga",
+  "20260827-036-o-servidor-abre-uma-linha-nova-a-cada-visita",
+  "20260827-037-o-painel-vai-ser-refeito-e-voce-decidiu-como"
 ];
