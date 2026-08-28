@@ -139,7 +139,40 @@ class IdeiaEmGestao(Schema):
     avaliacao: "AvaliacaoDaEquipe | None" = None
 
 
+class LinhaDoHistorico(Schema):
+    """Uma mudança de fase, como ela ficou registrada — append-only na origem.
+
+    `por` é o nome exibido de quem moderou, nunca o e-mail: a regra do e-mail
+    vale para QUALQUER pessoa que apareça na resposta, não só para o aluno que
+    sugeriu.
+    """
+
+    quando: str
+    de: str
+    para: str
+    nota: str
+    por: str
+
+
+class IdeiaComHistorico(IdeiaEmGestao):
+    """A ideia inteira, com a história dela.
+
+    Existe separada de `IdeiaEmGestao` porque o histórico só faz sentido quando
+    se olha UMA ideia: carregá-lo na lista multiplicaria a resposta por algo que
+    nenhuma tela de lista mostra — e cresceria com o uso, que é o pior tipo de
+    custo, o que só aparece quando a Caixa dá certo.
+
+    Ela nasce agora porque a gestão saiu da Caixa: sem esta operação, a história
+    de cada ideia ficaria inalcançável no dia em que as telas antigas forem
+    aposentadas. Descobrir isso ANTES de aposentá-las é a razão de esta emenda
+    existir.
+    """
+
+    historico: "list[LinhaDoHistorico]"
+
+
 class QuadroEmGestao(Schema):
+
     quadro: str
     ideias: "list[IdeiaEmGestao]"
     # Quem AGE não é quem lê: este campo responde "a pessoa que o Admin informou
@@ -239,7 +272,7 @@ def _ideias_do_quadro(quadro):
                 HistoricoStatus.objects.filter(sugestao_id=OuterRef("pk"))
             ),
         )
-        .prefetch_related("historico", "avaliacao")
+        .prefetch_related("historico__alterado_por", "avaliacao")
     )
 
 
@@ -328,6 +361,38 @@ def listar_ideias(request, por_email: str = ""):
         "pessoas_em_silencio_demais": len(caladas),
         "ideias": [_como_fato(ideia, plateias) for ideia in ideias],
     }
+
+
+@router.get(
+    "/gestao/ideias/{sugestao_id}",
+    response=IdeiaComHistorico,
+    operation_id="getManagementIdea",
+    summary="Uma ideia, com a história dela",
+    description=(
+        "A mesma ideia da lista, mais o histórico de mudanças de fase — cada "
+        "linha com quando, de onde para onde, a nota escrita e o nome de quem "
+        "moderou. O histórico é append-only na origem: uma correção é uma linha "
+        "nova, nunca uma linha reescrita. Nenhum e-mail viaja."
+    ),
+)
+def uma_ideia(request, sugestao_id: int):
+    ideia = _ideias_do_quadro(quadro_atual()).filter(pk=sugestao_id).first()
+    if ideia is None:
+        raise Http404("ideia inexistente")
+    corpo = _como_fato(ideia, plateia_de([ideia]))
+    corpo["historico"] = [
+        {
+            "quando": linha.criado_em.isoformat(),
+            "de": linha.status_anterior,
+            "para": linha.status_novo,
+            "nota": linha.nota,
+            # Nome exibido, nunca o e-mail — a regra vale para quem moderou
+            # tanto quanto para quem sugeriu.
+            "por": linha.alterado_por.nome_exibido,
+        }
+        for linha in sorted(ideia.historico.all(), key=lambda l: l.criado_em)
+    ]
+    return corpo
 
 
 # ---------------------------------------------------------------------------
