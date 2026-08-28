@@ -359,3 +359,45 @@ def test_quem_nao_esta_na_lista_nao_salva_nada():
     r = _salvar(_dentro("estranho@exemplo.com"), status="encerrada")
     assert r.status_code == 404
     assert Registro.objects.count() == 0
+
+
+# ------------------------------------------- ex-aluno x apagar, na tela
+#
+# O mantenedor clicou em APAGAR querendo "ex-aluno"
+# (`DECISAO-ex-aluno-e-a-porta-que-explica`). Os dois botões existiam lado a
+# lado e a tela não dizia que faziam coisas diferentes — a ficha sumiu, e ela
+# não volta.
+
+
+@respx.mock
+def test_o_estado_se_chama_ex_aluno_na_tela():
+    """A palavra que o mantenedor usa é "ex-aluno", não "encerrado".
+
+    O valor guardado continua `encerrada` — trocar o vocabulário do banco por
+    causa de um rótulo seria migração sem ganho. O que muda é o que ele lê.
+    """
+    _tela_responde([_aluno()])
+    html = _dentro().get("/escola/alunos/").content.decode()
+
+    assert "Ex-aluno" in html
+    assert 'value="encerrada"' in html, "o valor do sistema não muda"
+
+
+@respx.mock
+def test_a_tela_diz_que_apagar_NAO_e_a_mesma_coisa():
+    """O aviso que faltava quando o mantenedor clicou.
+
+    Sem ele, os dois caminhos parecem sinônimos — e um deles não tem desfazer.
+    """
+    _tela_responde([_aluno()])
+    html = _dentro().get("/escola/alunos/").content.decode()
+
+    assert "Apagar NÃO é o mesmo" in html
+    assert "pedir entrada do zero" in html
+
+
+@respx.mock
+def test_o_cartao_de_ex_alunos_conta_quem_saiu():
+    _tela_responde([_aluno(status="encerrada"), _aluno(id="2", status="ativa")])
+    html = _dentro().get("/escola/alunos/").content.decode()
+    assert "Ex-alunos" in html

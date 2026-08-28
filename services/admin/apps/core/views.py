@@ -147,8 +147,11 @@ TIPOS_DE_ALUNO = (
     },
     {
         "slug": "encerrados",
-        "nome": "Encerrados",
-        "quem": "Saíram da escola. A ficha continua guardada, para poder voltar.",
+        "nome": "Ex-alunos",
+        "quem": (
+            "Saíram da escola: não entram mais, e veem uma tela dizendo isso. "
+            "A ficha continua aqui, e voltar é um clique."
+        ),
         "fonte": "GET /matriculas?status=encerrada",
         "fonte_ausente": FonteAusente.PORTA_PRONTA,
         "falta": (
@@ -400,7 +403,7 @@ def escola_decidir(request):
 ESTADOS_NA_TELA = [
     ("ativa", "Ativo — entra normalmente"),
     ("suspensa", "Pausado — não entra, volta com um clique"),
-    ("encerrada", "Encerrado — saiu da escola"),
+    ("encerrada", "Ex-aluno — perde o acesso, e a ficha continua aqui"),
     ("reembolsada", "Reembolsado — devolveu o dinheiro e mantém o acesso"),
 ]
 

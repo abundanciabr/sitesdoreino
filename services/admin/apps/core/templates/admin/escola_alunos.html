@@ -183,7 +183,12 @@
         {% csrf_token %}
         <input type="hidden" name="alvo" value="{{ pessoa.id }}">
         <label class="rotulo" for="apagar-{{ pessoa.id }}">
-          Apagar de vez — não há desfazer. Escreva APAGAR para liberar o botão:
+          <b>Apagar NÃO é o mesmo que "Ex-aluno".</b>
+          Ex-aluno tira o acesso e a ficha continua aqui, com tudo o que a
+          pessoa preencheu — e voltar é um clique. Apagar some com a ficha,
+          e não há desfazer: para voltar,
+          a pessoa precisa pedir entrada do zero.
+          Escreva APAGAR para liberar o botão:
         </label>
         <input id="apagar-{{ pessoa.id }}" type="text" name="confirmacao"
                autocomplete="off" placeholder="APAGAR">
