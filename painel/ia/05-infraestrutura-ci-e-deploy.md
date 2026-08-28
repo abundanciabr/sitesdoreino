@@ -44,12 +44,14 @@ administrativa não podem responder em domínio de terceiro apontado para a
 VPS — seria matéria-prima de phishing).
 
 Prioridades explícitas: `1` catch-all do `funil` · `10` prefixo de página de
-célula · `20` API · `100` webhook amarrado a host. TLS em dois modos: a
-maioria dos domínios usa Cloudflare na frente (SSL "Full"); só `meshcraft.top`
-usa Let's Encrypt direto via `httpChallenge`. Duas cadeias de headers de
-segurança coexistem (`seguranca` padrão `DENY`; `seguranca-admin` com
-`SAMEORIGIN` só em `/admin`, porque a galeria de painéis históricos embute
-HTML em iframe de mesma origem).
+célula (inclui `/mapa-ia`, desde 28/08/2026 — mesmo backend do `admin`, mas
+público: ver [INV-P14](01-leis-ritos-e-invariantes.md) e a nota de segurança
+no topo deste documento) · `20` API · `100` webhook amarrado a host. TLS em
+dois modos: a maioria dos domínios usa Cloudflare na frente (SSL "Full"); só
+`meshcraft.top` usa Let's Encrypt direto via `httpChallenge`. Duas cadeias de
+headers de segurança coexistem (`seguranca` padrão `DENY`; `seguranca-admin`
+com `SAMEORIGIN` em `/admin` e `/mapa-ia`, porque a galeria de painéis
+históricos embute HTML em iframe de mesma origem).
 
 Dois testes em `ci/tests/` prova mecanicamente esta tabela a cada PR — sem
 eles, uma mudança em `infra/traefik/` não tocaria `services/` e não

@@ -202,21 +202,36 @@ def test_a_comparacao_de_email_normaliza_caixa_e_espaco():
 # --------------------------------------------------------------- os isentos
 
 
-def test_healthz_e_o_unico_caminho_isento():
+def test_os_caminhos_isentos_sao_exatamente_estes_e_so_estes():
     """Inventário por igualdade EXATA: rota nova não escapa em silêncio.
 
     Este conjunto é o que separa "a porta protege tudo" de "a porta protege o
     que alguém lembrou de proteger". Acrescentar caminho aqui é decisão
-    visível no diff — que é o ponto.
+    visível no diff — que é o ponto. [INV-P14] fez a lista crescer de 1 para
+    10 em 28/08/2026: `/healthz` (máquina) mais os 9 arquivos exatos de
+    `/mapa-ia/` (o mapa técnico do projeto, pedido público pelo mantenedor).
 
-    **O que NUNCA fazer:** trocar por `<=`, ou pôr um prefixo (`/static/…`)
-    sem uma rota nomeada correspondente. A `sugestoes` tem uma rota pública de
-    estático declarada; esta célula não tem estático servido — o CSS é
-    embutido no template, justamente para não abrir essa porta agora.
+    **O que NUNCA fazer:** trocar por `<=`, ou pôr um prefixo (`/mapa-ia/…`
+    sem listar cada arquivo) — um prefixo isentaria qualquer coisa que algum
+    dia nascer sob esse caminho, não só o que existe hoje. A `sugestoes` tem
+    uma rota pública de estático declarada; esta célula não tem estático
+    servido — o CSS é embutido no template, justamente para não abrir essa
+    porta agora.
     """
     from apps.core.porta import CAMINHOS_ISENTOS
 
-    assert CAMINHOS_ISENTOS == {"/healthz"}
+    assert CAMINHOS_ISENTOS == {
+        "/healthz",
+        "/mapa-ia/",
+        "/mapa-ia/INDICE.md",
+        "/mapa-ia/01-leis-ritos-e-invariantes.md",
+        "/mapa-ia/02-armadilhas-e-padroes-recorrentes.md",
+        "/mapa-ia/03-sistema-do-painel-e-livro.md",
+        "/mapa-ia/04-arquitetura-de-celulas-e-contratos.md",
+        "/mapa-ia/05-infraestrutura-ci-e-deploy.md",
+        "/mapa-ia/06-produto-decisoes-e-roadmap.md",
+        "/mapa-ia/07-oportunidades-e-fronteiras.md",
+    }
 
 
 def test_healthz_responde_sem_cookie_nenhum():

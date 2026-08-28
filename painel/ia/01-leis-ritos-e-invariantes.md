@@ -99,6 +99,7 @@ Money-path (célula dona entre parênteses):
 - **INV-P11** Fronteira de site — host HTTP desconhecido é 404, nunca cai no site padrão.
 - **INV-P12** Um único assinante do cookie de sessão (célula `identidade`) — nenhuma outra célula pode instalar `SessionMiddleware` próprio.
 - **INV-P13** A porta da área admin é fail-closed: 503 se não conseguir autenticar, 404 para não-autorizado, 302 para sem sessão.
+- **INV-P14** `/mapa-ia/` (este mapa, os 8 documentos) é a única exceção pública à porta além de `/healthz` — por igualdade exata de caminho, nunca por prefixo. Nasceu em 28/08/2026 para o mantenedor poder mandar o link a IAs de fora sem exigir login.
 - **INV-SUG10/11/12** protegem a Caixa de Sugestões (corredor do ChangeSpec).
 - **INV-NOT1/2** protegem o sistema de notificações ("sininho") — id de plataforma, dedup de cartas.
 
