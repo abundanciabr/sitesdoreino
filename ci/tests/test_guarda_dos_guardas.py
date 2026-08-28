@@ -687,6 +687,7 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # pelo id da plataforma, quem não tem um é pulado, e quem MODERA sem um
         # reverte a transação inteira.
         "INV-SUG12",
+        "INV-SUG13",
         # Nasceram na gênese da célula `notificacoes` (26/08/2026, Fase 3 do
         # plano do sininho): a caixa escreve uma linha por carta com o contador
         # andando junto, e o que ela consome casa com o contrato congelado.
