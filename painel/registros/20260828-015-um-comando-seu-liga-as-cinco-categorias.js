@@ -1,0 +1,15 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260828-015-um-comando-seu-liga-as-cinco-categorias",
+  tipo: "pendencia",
+  quando: "2026-08-28",
+  titulo: "Preciso de UM comando seu na VPS — sem ele o site nao tem permissao de perguntar quem e aluno",
+  detalhe: "E o unico passo do lote que nao esta nas minhas maos, e ele e curto: uma linha, sem argumento nenhum, sem perguntas.\n\nPOR QUE SO VOCE PODE: para a home e a area administrativa PERGUNTAREM em que categoria uma pessoa esta, as partes do sistema precisam de uma senha de par entre elas. Senha nao viaja pela esteira de entrega — e regra da casa desde o comeco, e e o que impede que um vazamento no GitHub vire um vazamento no servidor. Ela so existe se for escrita dentro do servidor, e o servidor e seu.\n\nONDE COLAR: DENTRO DA VPS. Regra de bolso: se a linha do seu terminal comeca com 'deploy@srv...' ou 'root@srv...', voce JA esta dentro dela e e ali. Se comeca com 'PS C:\\>', voce esta no seu PC e nao e ali.\n\nO COMANDO (uma linha so, copie inteira):\n\ncurl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pares-de-categorias.sh -o /tmp/p.sh && bash /tmp/p.sh\n\nO QUE ESPERAR NA TELA: ele mostra 'estado ANTES', o que fez, 'estado DEPOIS' com a conferencia de cada par, e termina em 'PRONTO: as cinco categorias de usuario estao ligadas.' Se algo estiver estranho ele para sozinho com 'PAROU POR SEGURANCA' e nao escreve nada — nesse caso me mande a tela inteira. Nenhuma senha aparece na tela: elas sao geradas dentro do servidor e gravadas direto nos arquivos.\n\nRODAR DE NOVO E SEGURO. Se voce ficar na duvida se rodou, rode outra vez: senha que ja existe e REUSADA, nunca trocada. Ele foi feito assim de proposito, porque trocar uma senha em uso derruba as chamadas ate os dois lados reiniciarem.\n\nENQUANTO VOCE NAO RODAR, nada quebra: o site continua exatamente como esta hoje. A area administrativa abre normal e a tela de alunos diz, com todas as letras, que ainda nao consegue perguntar. E fail-open de propriedade — a vitrine nunca cai porque uma peca de dentro nao respondeu.",
+  autoridade: "mantenedor",
+  evidencia: "O script e infra/provisionar-pares-de-categorias.sh, mergeado no PR https://github.com/abundanciabr/sitesdoreino/pull/349 (o comando busca a versao da main, entao ele precisa estar la ANTES de voce rodar — por isso este PR veio primeiro). Ele foi TESTADO EXECUTANDO, nao lido: ci/tests/test_provisionar_pares_de_categorias.py roda o script de verdade contra uma plataforma de mentira, 15 casos verdes, incluindo idempotencia (rodar 3x nao rotaciona e nao duplica chave), fail-closed (pasta errada, env faltando, identidade sem o token do funil — para sem escrever em ninguem) e a promessa de que nenhum segredo chega a tela. Provado por mutacao em 28/08/2026: fazer o script ecoar o token = vermelho; fazer o script rotacionar sempre = vermelho.",
+  verificado_em: "2026-08-28",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "curso",
+  vence_em_dias: null
+});})();
