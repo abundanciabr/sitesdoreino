@@ -194,3 +194,71 @@ def decidir_na_fila(
             update_fields=["status", "decidido_em", "decidido_por", "motivo_recusa"]
         )
         return linha, "ok"
+
+
+# ---------------------------------------------------------------- [CATEGORIAS]
+# As cinco categorias de usuário (`docs/decisoes/DECISAO-categorias-de-usuario.md`)
+# — mas só TRÊS delas são calculáveis aqui, e a ausência das outras duas é a
+# decisão, não esquecimento:
+#
+# · `visitante` não chega até esta função — não há e-mail para perguntar;
+# · `administrador` mora na lista da célula `admin`, conferida na hora, na
+#   porta. Se esta célula pudesse respondê-lo, a autorização da área
+#   administrativa passaria a depender de uma célula de produto — o inverso do
+#   invariante *reconhecer não é autorizar*.
+CATEGORIA_CADASTRADO = "cadastrado"
+CATEGORIA_NA_FILA = "na_fila"
+CATEGORIA_ALUNO = "aluno"
+
+
+def situacao_de(email: str) -> dict:
+    """[CATEGORIAS] Em que categoria esta pessoa está — a resposta ÚNICA.
+
+    Existe para que a home, a Caixa e o painel parem de adivinhar cada um do
+    seu jeito: até 28/08/2026 eram quatro respostas para a mesma pergunta, e
+    três erravam em pelo menos um caso.
+
+    **`aluno` é conferido PRIMEIRO, e a ordem é a decisão.** Quem já é aluno
+    não fica "na fila" para efeito de tela, mesmo que exista uma linha antiga
+    de espera — o que ele precisa ver é o que a matrícula dele abre. A pergunta
+    "é aluno?" é delegada a `matriculas_que_valem`, e nunca reescrita aqui: uma
+    segunda lista de status seriam duas verdades sobre quem é aluno, e elas
+    divergiriam no primeiro status novo.
+
+    **Sem `site_id`, deliberadamente.** A fila é única por `(site_id, email)`,
+    mas quem decide acesso hoje — `matriculas_que_valem`, a consulta que a
+    Caixa enxerga — é por e-mail só. Esta função casa com ELA: duas noções
+    diferentes de "quem é aluno" na mesma plataforma é exatamente a divergência
+    que a lei da fila §2 recusou. No dia em que houver duas escolas de verdade,
+    esta porta ganha o parâmetro — e isso é mudança de contrato, com rito.
+    """
+    if matriculas_que_valem(email).exists():
+        return {"categoria": CATEGORIA_ALUNO, "na_fila": None}
+
+    # A MAIS RECENTE, e não a primeira: quem foi recusado e pediu de novo tem
+    # duas linhas na história, e o que importa para a tela é onde a pessoa está
+    # agora. (A constraint parcial impede duas linhas ABERTAS no mesmo site,
+    # não duas ao longo do tempo em sites diferentes.)
+    linha = (
+        Matricula.objects.filter(email=email, status__in=Matricula.STATUS_DA_FILA)
+        .order_by("-enrolled_at")
+        .first()
+    )
+    if linha is None:
+        return {"categoria": CATEGORIA_CADASTRADO, "na_fila": None}
+
+    aguardando = linha.status == Matricula.STATUS_AGUARDANDO
+    return {
+        "categoria": CATEGORIA_NA_FILA,
+        "na_fila": {
+            "estado": linha.status,
+            # `null` depois de decidida: ninguém espera mais, e um número que
+            # continuasse subindo seria lido como "meu pedido está parado".
+            "esperando_ha_dias": (
+                max((timezone.now() - linha.enrolled_at).days, 0)
+                if aguardando
+                else None
+            ),
+            "motivo_recusa": None if aguardando else (linha.motivo_recusa or None),
+        },
+    }
