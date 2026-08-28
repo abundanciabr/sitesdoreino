@@ -122,3 +122,27 @@ aparecem:
 - **`armadilhas/097`** — cliente que lê env no `__init__` transforma env
   ausente em 500 em toda página, com o deploy verde. Por isso toda variável
   desta célula é lida no ponto de uso.
+
+## O painel da escola (28/08/2026) — duas lições que custaram tempo aqui
+
+**1. `armadilhas/081` mordeu de verdade nesta célula, e do jeito silencioso.**
+O mapa acima já a citava como "família conhecida"; conhecer o caso não impediu
+de cair nele. O teste que prova que os links levam o prefixo público começou
+escrito como `settings.FORCE_SCRIPT_NAME = "/admin"` — e ficou **vermelho por
+não medir nada**: `reverse()` não lê essa variável, lê um prefixo de THREAD que
+o servidor preenche (`ASGIHandler.__call__` chama `set_script_prefix()`), e os
+handlers de teste do Django não chamam. A cura é a da armadilha:
+`set_script_prefix("/admin/")` com restauração no `finally` — o prefixo vaza
+entre testes. Sorte: o teste falhou. Escrito na ordem inversa (asserção fraca
+primeiro), teria ficado verde para sempre guardando o nada.
+
+**2. "Não sei quantos" e "não há nenhum" são telas diferentes — e o template
+tem de saber disso.** A página de alunos mostra `—`, nunca `0`, enquanto não
+houver de onde ler o número: um `0` diria ao mantenedor *"ninguém está
+esperando aprovação"*, quando a verdade é *"ninguém está contando"*. Isso é
+falso-verde de produto (`RETROSPECTIVA-FASE-D.md` §1). A mecânica: `{% if
+tipo.quantidade is None %}`, **nunca** `{% if tipo.quantidade %}` — zero é
+falso em template, e o dia em que a contagem existir um zero legítimo cairia
+no ramo do "não sei", mentindo para o outro lado. O guarda
+(`tests/test_painel_da_escola.py`) renderiza a mesma página com `0` e exige
+que a tela mude — sem isso ele estaria só confirmando que o traço aparece.

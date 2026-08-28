@@ -25,12 +25,31 @@
     </div>
   </div>
 
-  <p style="margin-top:24px">
-    <a href="{% url 'painel' %}"><b>Abrir o painel da escola &rarr;</b></a><br>
-    <span style="color:var(--texto-3); font-size:13px">
-      O mesmo painel que você abre no computador, sempre atualizado, aqui dentro.
-    </span>
-  </p>
+  {% comment %}
+  Os DOIS painéis, e o nome de cada um é o que os separa. Até 28/08/2026 o
+  link de cima se chamava "Abrir o painel da escola" e levava ao painel do
+  SISTEMA — o livro de ocorrências da construção da plataforma. O mantenedor
+  clicava esperando ver alunos e via merges. Renomear resolveu metade; a outra
+  metade foi a escola ganhar painel próprio, ao lado.
+  {% endcomment %}
+  <h2 style="font-size:16px; margin:30px 0 10px">Os painéis</h2>
+  <div class="cartoes">
+    <a class="cartao porta" href="{% url 'painel' %}">
+      <div class="rotulo">Abrir o painel do sistema &rarr;</div>
+      <div class="nota">
+        Como a plataforma está sendo construída: o que ficou pronto, o que
+        falhou e o que espera por você. O mesmo painel que você abre no
+        computador, sempre atualizado, aqui dentro.
+      </div>
+    </a>
+    <a class="cartao porta" href="{% url 'escola' %}">
+      <div class="rotulo">Abrir o painel da escola &rarr;</div>
+      <div class="nota">
+        A escola funcionando: os alunos, começando por quem está esperando
+        aprovação.
+      </div>
+    </a>
+  </div>
 
   {% comment %}
   Estado vazio HONESTO, e ele e deliberado: no dia 1 tudo aqui seria zero, e

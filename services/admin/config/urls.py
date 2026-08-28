@@ -3,7 +3,7 @@ from django.urls import path, re_path
 from apps.core.diagnostico import diag_json
 from apps.core.divida import divida_json
 from apps.core.painel import painel, painel_arquivo
-from apps.core.views import healthz, visao_geral
+from apps.core.views import escola, escola_alunos, healthz, visao_geral
 
 # O urlconf da célula NÃO conhece o prefixo público (`/admin`): quem o aplica é
 # `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a área
@@ -18,7 +18,7 @@ from apps.core.views import healthz, visao_geral
 # contrato com o healthcheck do compose, não por `reverse()`.
 urlpatterns = [
     path("healthz", healthz),
-    # O PAINEL DO DONO, vivo (`apps/core/painel.py`). A barra final é
+    # O PAINEL DO SISTEMA, vivo (`apps/core/painel.py`). A barra final é
     # ESTRUTURAL, não estilo: o HTML pede `manifesto.js` e `registros/*.js` por
     # caminho RELATIVO, e sem ela o navegador os buscaria um nível acima, na
     # raiz da área — a página abriria vazia, sem erro nenhum. Quem manda
@@ -37,5 +37,17 @@ urlpatterns = [
     # Sem esta rota, saber isso exige entrar na VPS — e ninguém entra (Lei 5).
     path("painel/diag.json", diag_json, name="painel_diag"),
     re_path(r"^painel/(?P<path>.+)$", painel_arquivo, name="painel_arquivo"),
+    # A ESCOLA — o painel do NEGÓCIO, vizinho e separado do painel do SISTEMA
+    # acima. Os dois são "painéis" e é por isso que a separação precisa estar
+    # no endereço, e não só no texto do link: `/painel/` mostra como a
+    # plataforma está sendo construída (o livro de ocorrências); `/escola/`
+    # mostra a escola funcionando — alunos, e o que vier depois deles.
+    #
+    # Barra final nas duas, e aqui ela é só convenção (nenhuma delas pede
+    # arquivo por caminho relativo) — mas convenção MISTURADA é o que produz
+    # link quebrado quando alguém copia a linha de cima. O APPEND_SLASH já
+    # cuida de quem digitar sem a barra.
+    path("escola/", escola, name="escola"),
+    path("escola/alunos/", escola_alunos, name="escola_alunos"),
     path("", visao_geral, name="visao_geral"),
 ]
