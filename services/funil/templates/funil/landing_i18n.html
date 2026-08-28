@@ -11,6 +11,8 @@
 
            aluno      → o caminho para a Caixa de Sugestões
            na fila    → o andamento do pedido (dias, ou o motivo da recusa)
+           ex-aluno   → que o acesso acabou (28/08, lei do ex-aluno)
+           pausado    → que é temporário e volta sozinho
            cadastrado → nada sobre a escola
 
      A última linha é decisão do mantenedor entre três opções, e a ausência é
@@ -62,6 +64,10 @@
   <p class="novidades">{% t "landing.novidades" %}</p>
   {% if request.ator.categoria == "aluno" %}
   <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.ir_para_a_caixa" %}</a>
+  {% elif request.ator.categoria == "ex_aluno" %}
+  <p class="andamento">{% t "landing.acesso_encerrado" %}</p>
+  {% elif request.ator.categoria == "pausado" %}
+  <p class="andamento">{% t "landing.acesso_pausado" %}</p>
   {% elif request.ator.na_fila %}
   {% if request.ator.na_fila.estado == "recusada" %}
   <p class="andamento">{% t "landing.pedido_recusado" %}</p>

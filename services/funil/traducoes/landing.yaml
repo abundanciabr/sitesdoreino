@@ -112,3 +112,25 @@ pedido_recusado_motivo:
   en: "Reason given:"
   pt-br: "Motivo:"
   es: "Motivo:"
+
+# ---------------------------------------------------------------------------
+# Quem PERDEU o acesso (DECISAO-ex-aluno-e-a-porta-que-explica, 28/08/2026).
+# Duas frases e não uma: "acabou" e "está pausado" são respostas opostas para
+# quem lê, e a diferença é a única coisa que a pessoa quer saber.
+# ---------------------------------------------------------------------------
+acesso_encerrado:
+  # Diz o fim E o caminho de volta, como a de recusa faz. Sem "peça de novo":
+  # quem saiu não está numa fila, está numa decisão da escola — convidar a
+  # insistir contra uma decisão que a pessoa não conhece é pior que o silêncio.
+  _fonte: "42b7b7"
+  en: "Your access to the school has ended. Talk to the school if you think this is a mistake."
+  pt-br: "Seu acesso à escola foi encerrado. Fale com a escola se você acha que houve engano."
+  es: "Tu acceso a la escuela terminó. Habla con la escuela si crees que hubo un error."
+
+acesso_pausado:
+  # A palavra que importa aqui é "volta": a pessoa precisa saber que não
+  # precisa fazer nada.
+  _fonte: "76afac"
+  en: "Your access is paused right now. It comes back as soon as the team turns it on again."
+  pt-br: "Seu acesso está pausado no momento. Ele volta assim que a equipe religar."
+  es: "Tu acceso está pausado por ahora. Vuelve en cuanto el equipo lo reactive."
