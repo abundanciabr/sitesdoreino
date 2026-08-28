@@ -51,6 +51,7 @@ from datetime import date
 from django.db.models import Exists, Max, OuterRef
 from django.db.models.functions import Coalesce
 from django.http import Http404
+from django.utils import timezone
 from ninja import Router, Schema
 
 from apps.sugestoes.eventos import AtorSemIdDaPlataforma
@@ -65,7 +66,12 @@ from apps.sugestoes.models import (
 from . import sessao as ses
 from .changespecs import ChangeSpecInvalido, e_aprovador
 from .changespecs import registrar as registrar_changespec
-from .gestao import plateia_de
+from .gestao import (
+    DIAS_DE_SILENCIO_DEMAIS,
+    JA_RESPONDIDAS,
+    plateia_de,
+    silencio_por_pessoa,
+)
 
 # `registrar_mudanca_de_status` carrega consigo as regras que esta superfície
 # NÃO reimplementa: a justificativa obrigatória do "não vamos fazer"
@@ -141,6 +147,21 @@ class QuadroEmGestao(Schema):
     # Admin não desenhar um botão que a Caixa vai recusar; a recusa de verdade
     # continua acontecendo aqui, na escrita.
     pode_assinar: bool
+    # Os três números que SÓ esta célula consegue produzir, e por isso viajam
+    # prontos: eles contam PESSOAS DISTINTAS entre várias ideias, e quem tem
+    # apenas a contagem por ideia não consegue deduplicar quem está atrás de
+    # duas — contaria a mesma pessoa duas vezes.
+    #
+    # São fatos do domínio ("quantas pessoas aguardam resposta"), não recortes de
+    # tela: nenhum deles muda se o layout do consumidor mudar. A alternativa
+    # honesta seria mandar a lista de ids de cada plateia para o consumidor
+    # deduplicar — dezenas de milhares de ids atravessando a rede para produzir
+    # três inteiros.
+    pessoas_esperando: int
+    # `None` quando não há ninguém esperando — e é diferente de zero, que se
+    # leria como "todo mundo ouviu hoje".
+    silencio_medio_em_dias: "int | None" = None
+    pessoas_em_silencio_demais: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -286,11 +307,25 @@ def _como_fato(ideia, plateias) -> dict:
 )
 def listar_ideias(request, por_email: str = ""):
     quadro = quadro_atual()
+    agora = timezone.now()
     ideias = list(_ideias_do_quadro(quadro))
     plateias = plateia_de(ideias)
+
+    # Quem ainda espera: as ideias que NÃO receberam resposta. Recusada com
+    # justificativa e juntada a outra contam como respondidas — o aviso saiu, e
+    # cobrar para sempre uma dívida paga ensinaria a equipe a evitar recusar.
+    em_aberto = [ideia for ideia in ideias if ideia.status not in JA_RESPONDIDAS]
+    silencio = silencio_por_pessoa(em_aberto, agora)
+    caladas = [dias for dias in silencio.values() if dias > DIAS_DE_SILENCIO_DEMAIS]
+
     return {
         "quadro": quadro.nome,
         "pode_assinar": bool(por_email) and e_aprovador(por_email),
+        "pessoas_esperando": len(silencio),
+        "silencio_medio_em_dias": (
+            round(sum(silencio.values()) / len(silencio)) if silencio else None
+        ),
+        "pessoas_em_silencio_demais": len(caladas),
         "ideias": [_como_fato(ideia, plateias) for ideia in ideias],
     }
 
