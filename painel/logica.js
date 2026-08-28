@@ -19,6 +19,10 @@
   var GRAVIDADES = ["vermelho", "ambar", "info", "verde"];
   var AUTORIDADES = ["mantenedor", "github", "sonda", "rito", "sessao"];
   var FRENTES = ["site", "comunidade", "curso", "vender", "fabrica"];
+  // O peso de uma decisão, em três degraus e não em texto livre: vocabulário
+  // fechado é o que permite a tela ordenar e colorir sem adivinhar, e o que
+  // impede "médio-alto" e "bem grande" de virarem categorias novas em silêncio.
+  var IMPACTOS = ["alto", "medio", "baixo"];
   // A ordem do MAPA é a narrativa do Roadmap (fotografia de 26/08): a fundação
   // primeiro, depois o produto, e vender por último — que é também a ordem em
   // que o mantenedor lê o projeto. A ordem de FRENTES acima é só a do vocabulário.
@@ -112,6 +116,47 @@
       }
       if (r.evidencia != null && (typeof r.evidencia !== "string" || r.evidencia.trim() === "")) {
         erros.push(nome + ": 'evidencia' precisa ser texto com conteúdo, ou null — evidência vazia não é evidência");
+      }
+      // ---------------------------------------------------------------------
+      // OS CAMPOS DA DECISÃO — o que um pedido precisa dizer para ser decidível.
+      //
+      // Achado do GPT e da Fable, na consultoria de 27/08/2026: com cinco
+      // frentes e sete merges num dia, o sistema produz decisões mais rápido do
+      // que o dono consegue consumi-las — e aí o gargalo passa a ser ELE. A cura
+      // não é reduzir o ritmo: é fazer cada pedido chegar decidível, em vez de
+      // chegar como uma pergunta que exige reconstruir o contexto inteiro.
+      //
+      // Os quatro são OPCIONAIS de propósito. Torná-los obrigatórios reprovaria
+      // todo pedido antigo e obrigaria a reescrever o passado — que é a única
+      // coisa que este livro proíbe acima de tudo. Quem não os traz aparece na
+      // tela dizendo "não sei", que é honesto e visível.
+      //
+      // Mas quando vierem, vêm CERTOS: `reversivel` escrito como texto ("true")
+      // passaria por verdadeiro em JavaScript e mentiria na cara do dono sobre
+      // a coisa que mais importa numa decisão — se dá para voltar atrás. É a
+      // mesma família do `precisa_do_dono` escrito com aspas, que fazia um
+      // pedido sumir da caixa em silêncio (auditoria de 26/08/2026).
+      // ---------------------------------------------------------------------
+      if (r.se_eu_nao_decidir != null && (typeof r.se_eu_nao_decidir !== "string" || r.se_eu_nao_decidir.trim() === "")) {
+        erros.push(nome + ": 'se_eu_nao_decidir' precisa ser texto com conteúdo, ou null");
+      }
+      if (r.recomendacao != null && (typeof r.recomendacao !== "string" || r.recomendacao.trim() === "")) {
+        erros.push(nome + ": 'recomendacao' precisa ser texto com conteúdo, ou null");
+      }
+      if (r.reversivel != null && typeof r.reversivel !== "boolean") {
+        erros.push(nome + ": 'reversivel' precisa ser true ou false SEM aspas (veio: " +
+          JSON.stringify(r.reversivel) + ") — texto entre aspas passaria por verdadeiro e mentiria " +
+          "sobre a única coisa que decide se um erro custa caro");
+      }
+      if (r.impacto != null && IMPACTOS.indexOf(r.impacto) === -1) {
+        erros.push(nome + ": 'impacto' desconhecido '" + r.impacto + "' — os três são: " + IMPACTOS.join(", "));
+      }
+      // Um pedido que descreve o custo de não decidir e NÃO é para o dono é
+      // contradição: ou o texto está no registro errado, ou o `precisa_do_dono`
+      // ficou false por engano — e um pedido com false não entra na caixa.
+      if (r.precisa_do_dono !== true && (r.se_eu_nao_decidir != null || r.recomendacao != null)) {
+        erros.push(nome + ": tem campo de decisão ('se_eu_nao_decidir'/'recomendacao') " +
+          "mas 'precisa_do_dono' é false — ele nunca apareceria na caixa, e o texto se perderia");
       }
     });
     // responde_a precisa apontar para OUTRO registro, que exista.
@@ -408,7 +453,11 @@
   // texto inteiro abre a Memória, e aí o mês carrega.
   var CAMPOS_DO_TITULO = ["arquivo", "tipo", "quando", "titulo", "autoridade",
     "evidencia", "verificado_em", "precisa_do_dono", "responde_a", "gravidade",
-    "frente", "vence_em_dias"];
+    "frente", "vence_em_dias",
+    // Os campos da decisão vêm mesmo no corte: um pedido da caixa que viajasse
+    // sem eles apareceria como "não sei o que acontece" tendo a resposta
+    // escrita no livro — pior do que não ter a resposta.
+    "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto"];
 
   function soTitulo(r) {
     var o = {};
@@ -486,6 +535,7 @@
   var LOGICA = {
     TIPOS: TIPOS, GRAVIDADES: GRAVIDADES, AUTORIDADES: AUTORIDADES, FRENTES: FRENTES,
     ORDEM_DO_MAPA: ORDEM_DO_MAPA,
+    IMPACTOS: IMPACTOS,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,

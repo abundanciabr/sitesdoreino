@@ -303,6 +303,73 @@ caso("...e nenhum campo obrigatório se perdeu no corte",
 caso("...e o texto que ficou no lugar diz ONDE ler o original",
   soTitulo.every(function (r) { return r.detalhe.indexOf("Memória") !== -1; }));
 caso("...e é possível saber que o texto ficou para trás", soTitulo.every(function (r) { return r._so_titulo === true; }));
+
+console.log("== a fila de decisão: o que um pedido precisa dizer ==");
+// Os quatro campos são OPCIONAIS — torná-los obrigatórios reprovaria todo
+// pedido antigo e obrigaria a reescrever o passado, a única coisa que este
+// livro proíbe acima de tudo. Mas quando vierem, vêm certos.
+var pedidoCompleto = reg({
+  arquivo: "20260826-100-pedido-completo", precisa_do_dono: true,
+  se_eu_nao_decidir: "a frente fica parada", recomendacao: "escolha a primeira",
+  reversivel: true, impacto: "alto"
+});
+caso("pedido com os quatro campos da decisão é válido",
+  LOGICA.validarRegistros([pedidoCompleto]).length === 0);
+caso("pedido SEM eles continua válido (o passado não é reescrito)",
+  LOGICA.validarRegistros([reg({ arquivo: "20260826-101-sem", precisa_do_dono: true })]).length === 0);
+
+// O caso que motiva o tipo estrito, e não é preciosismo: em JavaScript a string
+// "false" é VERDADEIRA. Um `reversivel: "false"` escrito com aspas diria ao dono
+// que dá para voltar atrás numa decisão que não desfaz — a mentira mais cara que
+// esta ficha pode contar. Mesma família do `precisa_do_dono` com aspas, que fazia
+// um pedido sumir da caixa em silêncio (auditoria de 26/08/2026).
+var comAspas = LOGICA.validarRegistros([reg({
+  arquivo: "20260826-102-aspas", precisa_do_dono: true, reversivel: "false"
+})]);
+caso("'reversivel' escrito como TEXTO reprova", comAspas.length === 1);
+caso("...e a mensagem explica por que isso importa",
+  comAspas[0].indexOf("aspas") !== -1);
+
+caso("'impacto' fora do vocabulário reprova",
+  LOGICA.validarRegistros([reg({
+    arquivo: "20260826-103-impacto", precisa_do_dono: true, impacto: "medio-alto"
+  })]).length === 1);
+caso("...e os três degraus válidos passam",
+  LOGICA.IMPACTOS.every(function (i) {
+    return LOGICA.validarRegistros([reg({
+      arquivo: "20260826-104-i", precisa_do_dono: true, impacto: i
+    })]).length === 0;
+  }));
+
+// A contradição que faria o texto se perder: um pedido descreve o custo de não
+// decidir e não é para o dono. Ou o texto está no registro errado, ou o
+// `precisa_do_dono` ficou false por engano — e com false ele nunca aparece na
+// caixa. Nos dois casos, o trabalho de escrever a decisão vai para o lixo.
+var contradicao = LOGICA.validarRegistros([reg({
+  arquivo: "20260826-105-contradicao", precisa_do_dono: false,
+  se_eu_nao_decidir: "nada acontece"
+})]);
+caso("campo de decisão com precisa_do_dono FALSE reprova", contradicao.length === 1);
+caso("...dizendo que o texto se perderia", contradicao[0].indexOf("perderia") !== -1);
+
+// Os campos precisam SOBREVIVER ao corte do resumo. Um pedido da caixa que
+// viajasse sem eles apareceria como "não sei o que acontece" tendo a resposta
+// escrita no livro — pior do que não ter resposta nenhuma.
+var livroComPedido = [];
+for (var d = 1; d <= 40; d++) {
+  livroComPedido.push(reg({ arquivo: "20260801-" + ("00" + d).slice(-3) + "-enche", quando: "2026-08-01" }));
+}
+livroComPedido.push(pedidoCompleto);
+livroComPedido.push(f1);
+var resumoComPedido = LOGICA.montarResumo(livroComPedido);
+var naCaixa = LOGICA.caixaDeEntrada(resumoComPedido.registros, AGORA, resumoComPedido.respondidos);
+caso("o pedido chega à caixa pelo resumo", naCaixa.length === 1);
+caso("...com os quatro campos da decisão intactos",
+  naCaixa[0].registro.se_eu_nao_decidir === "a frente fica parada" &&
+  naCaixa[0].registro.recomendacao === "escolha a primeira" &&
+  naCaixa[0].registro.reversivel === true &&
+  naCaixa[0].registro.impacto === "alto");
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");

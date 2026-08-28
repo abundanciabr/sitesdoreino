@@ -132,6 +132,14 @@
   #tela-erro b{font-size:21px;}
   #tela-erro pre{white-space:pre-wrap; font-size:13px; background:#00000040; padding:10px 12px; border-radius:8px;}
 
+  /* a ficha de decisão — o que um pedido precisa dizer para ser decidível */
+  .decisao{margin-top:10px; border-top:1px solid var(--line-soft); padding-top:8px;}
+  .decisao-linha{display:flex; gap:10px; flex-wrap:wrap; padding:3px 0; font-size:13.5px; line-height:1.55;}
+  .decisao-rot{flex:0 0 170px; color:var(--gold); font-weight:600;}
+  .decisao-val{flex:1 1 240px; color:var(--text);}
+  .decisao-linha.vazia .decisao-rot{color:var(--text-3); font-weight:400;}
+  .decisao-linha.vazia .decisao-val{color:var(--text-3); font-style:italic;}
+
   /* o que o SERVIDOR diz sobre si mesmo */
   .diag-servidor{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
     padding:14px 18px; margin:14px 0; font-size:14px; line-height:1.6;}
@@ -251,6 +259,10 @@
   var GRAVIDADES = ["vermelho", "ambar", "info", "verde"];
   var AUTORIDADES = ["mantenedor", "github", "sonda", "rito", "sessao"];
   var FRENTES = ["site", "comunidade", "curso", "vender", "fabrica"];
+  // O peso de uma decisão, em três degraus e não em texto livre: vocabulário
+  // fechado é o que permite a tela ordenar e colorir sem adivinhar, e o que
+  // impede "médio-alto" e "bem grande" de virarem categorias novas em silêncio.
+  var IMPACTOS = ["alto", "medio", "baixo"];
   // A ordem do MAPA é a narrativa do Roadmap (fotografia de 26/08): a fundação
   // primeiro, depois o produto, e vender por último — que é também a ordem em
   // que o mantenedor lê o projeto. A ordem de FRENTES acima é só a do vocabulário.
@@ -344,6 +356,47 @@
       }
       if (r.evidencia != null && (typeof r.evidencia !== "string" || r.evidencia.trim() === "")) {
         erros.push(nome + ": 'evidencia' precisa ser texto com conteúdo, ou null — evidência vazia não é evidência");
+      }
+      // ---------------------------------------------------------------------
+      // OS CAMPOS DA DECISÃO — o que um pedido precisa dizer para ser decidível.
+      //
+      // Achado do GPT e da Fable, na consultoria de 27/08/2026: com cinco
+      // frentes e sete merges num dia, o sistema produz decisões mais rápido do
+      // que o dono consegue consumi-las — e aí o gargalo passa a ser ELE. A cura
+      // não é reduzir o ritmo: é fazer cada pedido chegar decidível, em vez de
+      // chegar como uma pergunta que exige reconstruir o contexto inteiro.
+      //
+      // Os quatro são OPCIONAIS de propósito. Torná-los obrigatórios reprovaria
+      // todo pedido antigo e obrigaria a reescrever o passado — que é a única
+      // coisa que este livro proíbe acima de tudo. Quem não os traz aparece na
+      // tela dizendo "não sei", que é honesto e visível.
+      //
+      // Mas quando vierem, vêm CERTOS: `reversivel` escrito como texto ("true")
+      // passaria por verdadeiro em JavaScript e mentiria na cara do dono sobre
+      // a coisa que mais importa numa decisão — se dá para voltar atrás. É a
+      // mesma família do `precisa_do_dono` escrito com aspas, que fazia um
+      // pedido sumir da caixa em silêncio (auditoria de 26/08/2026).
+      // ---------------------------------------------------------------------
+      if (r.se_eu_nao_decidir != null && (typeof r.se_eu_nao_decidir !== "string" || r.se_eu_nao_decidir.trim() === "")) {
+        erros.push(nome + ": 'se_eu_nao_decidir' precisa ser texto com conteúdo, ou null");
+      }
+      if (r.recomendacao != null && (typeof r.recomendacao !== "string" || r.recomendacao.trim() === "")) {
+        erros.push(nome + ": 'recomendacao' precisa ser texto com conteúdo, ou null");
+      }
+      if (r.reversivel != null && typeof r.reversivel !== "boolean") {
+        erros.push(nome + ": 'reversivel' precisa ser true ou false SEM aspas (veio: " +
+          JSON.stringify(r.reversivel) + ") — texto entre aspas passaria por verdadeiro e mentiria " +
+          "sobre a única coisa que decide se um erro custa caro");
+      }
+      if (r.impacto != null && IMPACTOS.indexOf(r.impacto) === -1) {
+        erros.push(nome + ": 'impacto' desconhecido '" + r.impacto + "' — os três são: " + IMPACTOS.join(", "));
+      }
+      // Um pedido que descreve o custo de não decidir e NÃO é para o dono é
+      // contradição: ou o texto está no registro errado, ou o `precisa_do_dono`
+      // ficou false por engano — e um pedido com false não entra na caixa.
+      if (r.precisa_do_dono !== true && (r.se_eu_nao_decidir != null || r.recomendacao != null)) {
+        erros.push(nome + ": tem campo de decisão ('se_eu_nao_decidir'/'recomendacao') " +
+          "mas 'precisa_do_dono' é false — ele nunca apareceria na caixa, e o texto se perderia");
       }
     });
     // responde_a precisa apontar para OUTRO registro, que exista.
@@ -640,7 +693,11 @@
   // texto inteiro abre a Memória, e aí o mês carrega.
   var CAMPOS_DO_TITULO = ["arquivo", "tipo", "quando", "titulo", "autoridade",
     "evidencia", "verificado_em", "precisa_do_dono", "responde_a", "gravidade",
-    "frente", "vence_em_dias"];
+    "frente", "vence_em_dias",
+    // Os campos da decisão vêm mesmo no corte: um pedido da caixa que viajasse
+    // sem eles apareceria como "não sei o que acontece" tendo a resposta
+    // escrita no livro — pior do que não ter a resposta.
+    "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto"];
 
   function soTitulo(r) {
     var o = {};
@@ -718,6 +775,7 @@
   var LOGICA = {
     TIPOS: TIPOS, GRAVIDADES: GRAVIDADES, AUTORIDADES: AUTORIDADES, FRENTES: FRENTES,
     ORDEM_DO_MAPA: ORDEM_DO_MAPA,
+    IMPACTOS: IMPACTOS,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,
@@ -968,6 +1026,40 @@ try {
     return b;
   }
 
+  // A FILA DE DECISÃO — o que um pedido precisa dizer para ser decidível.
+  //
+  // Achado do GPT e da Fable: com cinco frentes num dia, o sistema produz
+  // decisões mais rápido do que o dono consegue consumi-las, e o gargalo passa
+  // a ser ele. A cura não é diminuir o ritmo — é cada pedido chegar com o que
+  // se precisa para responder, em vez de obrigar a reconstruir o contexto.
+  //
+  // As quatro linhas abaixo sempre aparecem, mesmo vazias. Omitir a linha
+  // quando falta a informação faria um pedido incompleto parecer completo; o
+  // "não sei" visível é o que cobra o robô que escreveu o pedido.
+  function fichaDaDecisao(r) {
+    var ficha = el("div", "decisao");
+    function linha(rotulo, valor, ausente) {
+      var l = el("div", "decisao-linha" + (valor ? "" : " vazia"));
+      l.appendChild(el("span", "decisao-rot", rotulo));
+      l.appendChild(el("span", "decisao-val", valor || ausente));
+      ficha.appendChild(l);
+    }
+    linha("Se você não decidir", r.se_eu_nao_decidir,
+      "não sei — o pedido não diz o que acontece se ficar parado");
+    linha("Minha recomendação", r.recomendacao,
+      "nenhuma recomendação registrada — decida sem sugestão minha");
+    linha("Dá para voltar atrás?",
+      r.reversivel === true ? "Sim — se der errado, desfaz."
+        : r.reversivel === false ? "NÃO. Depois de feito, não desfaz." : null,
+      "não sei se dá para desfazer — trate como se não desse");
+    linha("Peso desta decisão",
+      r.impacto === "alto" ? "Alto — muda o rumo de uma frente."
+        : r.impacto === "medio" ? "Médio — muda como uma parte funciona."
+          : r.impacto === "baixo" ? "Baixo — dá para mudar de ideia depois sem custo." : null,
+      "não sei o peso — o pedido não diz");
+    return ficha;
+  }
+
   // ---------- a capa, calculada ----------
   var capa = LOGICA.capa(REGS, AGORA, PRONTOS);
   if (capa.erro) throw { classe: "C", mensagem: capa.erro };
@@ -975,7 +1067,13 @@ try {
   capa.blocos.forEach(function (bloco) {
     if (bloco.id === "caixa") {
       vistaCapa.appendChild(blocoDe("🔔 Precisa de você", "b-caixa", bloco.itens, function (x) {
-        return itemRegistro(x.registro, { idadeDias: x.aguardandoDias });
+        // A ordem continua sendo por IDADE, e não por peso: pedido velho grita
+        // mais foi decisão da reforma, e trocá-la aqui seria mudar em silêncio
+        // uma regra contratada. O peso aparece na ficha, para você ver — não
+        // para reordenar a fila pelas suas costas.
+        var item = itemRegistro(x.registro, { idadeDias: x.aguardandoDias });
+        item.appendChild(fichaDaDecisao(x.registro));
+        return item;
       }, "Nada esperando você. (Calculado: nenhum pedido sem resposta no livro.)"));
     } else if (bloco.id === "problemas") {
       vistaCapa.appendChild(blocoDe("🚨 Atenção agora", "b-problemas", bloco.itens, function (r) { return itemRegistro(r); }));

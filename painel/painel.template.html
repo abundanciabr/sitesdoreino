@@ -132,6 +132,14 @@
   #tela-erro b{font-size:21px;}
   #tela-erro pre{white-space:pre-wrap; font-size:13px; background:#00000040; padding:10px 12px; border-radius:8px;}
 
+  /* a ficha de decisão — o que um pedido precisa dizer para ser decidível */
+  .decisao{margin-top:10px; border-top:1px solid var(--line-soft); padding-top:8px;}
+  .decisao-linha{display:flex; gap:10px; flex-wrap:wrap; padding:3px 0; font-size:13.5px; line-height:1.55;}
+  .decisao-rot{flex:0 0 170px; color:var(--gold); font-weight:600;}
+  .decisao-val{flex:1 1 240px; color:var(--text);}
+  .decisao-linha.vazia .decisao-rot{color:var(--text-3); font-weight:400;}
+  .decisao-linha.vazia .decisao-val{color:var(--text-3); font-style:italic;}
+
   /* o que o SERVIDOR diz sobre si mesmo */
   .diag-servidor{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
     padding:14px 18px; margin:14px 0; font-size:14px; line-height:1.6;}
@@ -445,6 +453,40 @@ try {
     return b;
   }
 
+  // A FILA DE DECISÃO — o que um pedido precisa dizer para ser decidível.
+  //
+  // Achado do GPT e da Fable: com cinco frentes num dia, o sistema produz
+  // decisões mais rápido do que o dono consegue consumi-las, e o gargalo passa
+  // a ser ele. A cura não é diminuir o ritmo — é cada pedido chegar com o que
+  // se precisa para responder, em vez de obrigar a reconstruir o contexto.
+  //
+  // As quatro linhas abaixo sempre aparecem, mesmo vazias. Omitir a linha
+  // quando falta a informação faria um pedido incompleto parecer completo; o
+  // "não sei" visível é o que cobra o robô que escreveu o pedido.
+  function fichaDaDecisao(r) {
+    var ficha = el("div", "decisao");
+    function linha(rotulo, valor, ausente) {
+      var l = el("div", "decisao-linha" + (valor ? "" : " vazia"));
+      l.appendChild(el("span", "decisao-rot", rotulo));
+      l.appendChild(el("span", "decisao-val", valor || ausente));
+      ficha.appendChild(l);
+    }
+    linha("Se você não decidir", r.se_eu_nao_decidir,
+      "não sei — o pedido não diz o que acontece se ficar parado");
+    linha("Minha recomendação", r.recomendacao,
+      "nenhuma recomendação registrada — decida sem sugestão minha");
+    linha("Dá para voltar atrás?",
+      r.reversivel === true ? "Sim — se der errado, desfaz."
+        : r.reversivel === false ? "NÃO. Depois de feito, não desfaz." : null,
+      "não sei se dá para desfazer — trate como se não desse");
+    linha("Peso desta decisão",
+      r.impacto === "alto" ? "Alto — muda o rumo de uma frente."
+        : r.impacto === "medio" ? "Médio — muda como uma parte funciona."
+          : r.impacto === "baixo" ? "Baixo — dá para mudar de ideia depois sem custo." : null,
+      "não sei o peso — o pedido não diz");
+    return ficha;
+  }
+
   // ---------- a capa, calculada ----------
   var capa = LOGICA.capa(REGS, AGORA, PRONTOS);
   if (capa.erro) throw { classe: "C", mensagem: capa.erro };
@@ -452,7 +494,13 @@ try {
   capa.blocos.forEach(function (bloco) {
     if (bloco.id === "caixa") {
       vistaCapa.appendChild(blocoDe("🔔 Precisa de você", "b-caixa", bloco.itens, function (x) {
-        return itemRegistro(x.registro, { idadeDias: x.aguardandoDias });
+        // A ordem continua sendo por IDADE, e não por peso: pedido velho grita
+        // mais foi decisão da reforma, e trocá-la aqui seria mudar em silêncio
+        // uma regra contratada. O peso aparece na ficha, para você ver — não
+        // para reordenar a fila pelas suas costas.
+        var item = itemRegistro(x.registro, { idadeDias: x.aguardandoDias });
+        item.appendChild(fichaDaDecisao(x.registro));
+        return item;
       }, "Nada esperando você. (Calculado: nenhum pedido sem resposta no livro.)"));
     } else if (bloco.id === "problemas") {
       vistaCapa.appendChild(blocoDe("🚨 Atenção agora", "b-problemas", bloco.itens, function (r) { return itemRegistro(r); }));
