@@ -298,44 +298,49 @@ primeira oportunidade de violá-la.
   10 consultas para 5 destinatários viram 46 para 41).
 - **Célula dona:** sugestoes
 
-### [INV-SUG13] A Mesa é Espelho: Ela Calcula, Não Guarda e Não Escreve
+### [INV-SUG13] A Caixa Conta, Não Guarda e Não Escreve pelo Caminho de Leitura
 
-- **O quê:** o painel de gestão da Caixa (`/gestao`, a Mesa) **não tem estado
-  próprio**. Toda linha que ele mostra é derivada do que a célula já registrou —
-  `Sugestao.status`, a existência (ou não) de `AvaliacaoInterna`, a existência (ou
-  não) de `ChangeSpecAprovado`, e as datas de `HistoricoStatus`. Não existe coluna
-  de "pendente", "visto" ou "resolvido": *esperando assinatura* **é**
-  `PLANEJADO` sem ChangeSpec registrado, e o item sai da mesa no instante em que o
-  corredor passa a existir, sem ninguém marcar nada. E a página **não escreve**:
-  um GET nela não cria, altera nem apaga uma linha sequer.
+- **O quê:** a superfície de gestão da Caixa **não tem estado próprio**, e ler por
+  ela **não escreve nada**. Tudo que ela responde é derivado do que a célula já
+  registrou — `Sugestao.status`, a existência (ou não) de `AvaliacaoInterna`, a
+  existência (ou não) de `ChangeSpecAprovado`, e as datas de `HistoricoStatus`.
+  Não existe coluna de "pendente", "visto" ou "resolvido": *esperando assinatura*
+  **é** `PLANEJADO` sem ChangeSpec registrado, e a ideia sai dessa condição no
+  instante em que o corredor passa a existir, sem ninguém marcar nada.
   Duas metades, e a segunda é a que costuma escapar: o número de pessoas que a
-  Mesa mostra atrás de cada ideia (`gestao.plateia_de`) é **exatamente** o
+  resposta carrega atrás de cada ideia (`gestao.plateia_de`) é **exatamente** o
   conjunto que receberá o aviso quando ela andar (`avisos.interessados_em`) —
   autor, quem comentou e quem votou, cada pessoa contada uma vez.
 - **Por quê:** uma superfície de acompanhamento que mantém lista própria é a
   doença que a reforma dos painéis de 26/08/2026 curou no livro do dono, e ela
-  volta pela porta de qualquer tela nova que ache mais simples gravar um
+  volta pela porta de qualquer código novo que ache mais simples gravar um
   sinalizador do que recalcular. Uma coluna `pendente=True` pareceria mais barata
   no primeiro dia e seria a primeira coisa a divergir da realidade no segundo — e
   divergir em silêncio, porque ninguém confere um marcador contra o fato que ele
   deveria refletir. As duas implementações da plateia existem separadas por custo
   (duas consultas para a lista inteira, contra duas *por sugestão*, que seria N+1
-  numa tela de lista); sem um guarda que as case, elas divergem no primeiro ajuste
-  que só uma delas receber — e a Mesa passaria a prometer uma audiência que o
-  sininho não entrega.
+  numa tela de lista); sem um guarda que as case, elas divergem no primeiro
+  ajuste que só uma delas receber — e a gestão passaria a prometer uma audiência
+  que o sininho não entrega.
+- **Onde isso vive desde 28/08/2026:** as TELAS mudaram de casa para
+  `/admin/caixa/` (`docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`), e
+  o agrupamento — colunas, baldes, o que é pendência — foi com elas. **O
+  invariante não foi junto**: ele é sobre o DADO, e o dado ficou. Quem lê agora é
+  a superfície de máquina (`apps/core/api_gestao.py`), e é dela que se exige não
+  escrever.
 - **Teste-Guarda:**
   `services/sugestoes/tests/test_inv_a_mesa_nao_inventa_espera.py` — a igualdade
   entre as duas contas de plateia (com sobreposição de papéis: quem vota **e**
   comenta, e o autor votando na própria ideia; sem a sobreposição as duas
-  passariam erradas), o autor contando como uma pessoa em ideia sem voto nenhum, e
-  o retrato de oito contagens do banco antes e depois de abrir a página duas
-  vezes. Que o item **sai sozinho** quando o corredor é assinado, e que a página
-  recusa POST/PUT/DELETE, têm guarda em
-  `services/sugestoes/tests/test_a_mesa.py`
-  (`test_ideia_planejada_com_changespec_sai_da_mesa` e
-  `test_a_mesa_e_somente_leitura`).
-- **Célula dona:** sugestoes (obrigação herdada por qualquer aba nova do mesmo
-  painel — as três que faltam nascem sob este invariante)
+  passariam erradas), o autor contando como uma pessoa em ideia sem voto nenhum,
+  e o retrato de oito contagens do banco antes e depois de ler o quadro pelo
+  contrato duas vezes. Que a plateia atravessa a fronteira igual à do sininho, e
+  que a ideia sai da condição de pendente sozinha quando o corredor é assinado,
+  têm guarda em `services/sugestoes/tests/test_api_gestao.py`.
+- **Célula dona:** sugestoes (o dado). O consumidor que agrupa —
+  `services/admin/apps/core/caixa.py` — herda a obrigação de não recalcular a
+  plateia: somar as contagens por ideia contaria duas vezes quem está atrás de
+  duas, e há guarda disso em `services/admin/tests/test_caixa_no_admin.py`.
 
 ### [INV-NOT1] A Caixa Central Escreve UMA Linha por Carta, e o Contador Anda Junto
 - **O quê:** cada `notificacao.devida` que chega ao fio vira **uma** linha em
