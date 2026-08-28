@@ -318,6 +318,15 @@ Esvaziar o `painel.html`; um registro por linha; geração com escritor único;
 gancho e CI recusando gerado dentro de PR. Fecha a Classe 4 e paga a dor
 diária.
 
+**Dívida conhecida que entra de carona nesta onda** (decidido pelo mantenedor em
+28/08/2026, para não gastar um ciclo de entrega só nisso): o `ci/boletim.py`
+anuncia *"o que pousou nas últimas 24h (40)"* quando **40 é o teto da busca, não
+a contagem** — no dia em que foi medido houve **98** merges em 24h. É um número
+que parece exato e está errado, que é pior que número ausente. O conserto: dizer
+a contagem verdadeira e, quando a lista não couber, *"mostrando 15 de 98"* —
+com teste que reprove quem voltar a confundir teto com contagem.
+Registro no livro: `20260828-062-o-boletim-mostrava-o-teto-como-se-fosse-o-total`.
+
 ### Onda 4 — a pista de pouso (Controlador)
 
 A peça central. Junção testada, publicação ordenada, reversão automática,
