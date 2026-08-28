@@ -202,6 +202,7 @@ def _moderacao_completa(cliente, sugestao) -> dict[str, list]:
         # escrever qualquer coisa.
         "mesa": [cliente.get(reverse("mesa"))],
         "travessia": [cliente.get(reverse("travessia"))],
+        "quem_espera": [cliente.get(reverse("quem_espera"))],
     }
 
 

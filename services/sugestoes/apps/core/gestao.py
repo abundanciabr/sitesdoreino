@@ -53,6 +53,7 @@ from apps.sugestoes.models import (
     AvaliacaoInterna,
     ChangeSpecAprovado,
     Comentario,
+    HistoricoStatus,
     Sugestao,
     Voto,
 )
@@ -63,6 +64,7 @@ from .participacao import quadro_atual, sugestoes_ordenadas
 
 PAGINA_MESA = "sugestoes/gestao_mesa.html"
 PAGINA_TRAVESSIA = "sugestoes/gestao_travessia.html"
+PAGINA_ESPERANDO = "sugestoes/gestao_esperando.html"
 
 # Quantos dias uma ideia pode ficar em "Em análise" sem ninguém da equipe
 # escrever nada antes de ela subir para a mesa.
@@ -77,6 +79,26 @@ DIAS_ATE_A_ANALISE_ENVELHECER = 7
 # Quantas entregas recentes a coluna "andando sozinho" mostra. Ela existe para
 # a mesa não ensinar que só há problema — não para ser um relatório.
 ENTREGAS_RECENTES = 3
+
+# A partir de quantos dias sem notícia o silêncio deixa de ser normal e vira
+# alarme na aba "Quem está esperando".
+#
+# Trinta, e o número tem uma âncora: é o mês. Uma pessoa que escreveu, votou ou
+# comentou e passou um mês inteiro sem ouvir NADA aprendeu, na prática, que
+# sugerir não adianta — que é exatamente o que a §5 da DECISAO-EVO-01 proíbe a
+# Caixa de ensinar. Abaixo disso é fila; acima, é abandono.
+DIAS_DE_SILENCIO_DEMAIS = 30
+
+# Os três estados em que a pessoa JÁ recebeu a resposta dela. Uma ideia aqui não
+# tem ninguém esperando: implementada, recusada com justificativa ou juntada a
+# outra — nos três casos o aviso saiu. "Recusada" conta como respondida de
+# propósito: um não explicado é resposta, e tratá-lo como silêncio faria a tela
+# cobrar para sempre uma dívida que já foi paga.
+JA_RESPONDIDAS = (
+    Sugestao.Status.IMPLEMENTADO,
+    Sugestao.Status.NAO_PLANEJADO,
+    Sugestao.Status.MESCLADO,
+)
 
 MOTIVO_ASSINATURA = "assinatura"
 MOTIVO_TRIAGEM = "triagem"
@@ -122,6 +144,63 @@ def plateia_de(sugestoes) -> dict[int, int]:
     ):
         gente[sugestao_id].add(autor_id)
     return {sugestao_id: len(pessoas) for sugestao_id, pessoas in gente.items()}
+
+
+def noticia_mais_recente(sugestoes, agora) -> dict[str, tuple[int, int]]:
+    """Por PESSOA: há quantos dias foi a última notícia, e de qual ideia ela veio.
+
+    Uma travessia só, e dela saem as duas contas que a aba 3 precisa — o silêncio
+    (quantos dias) e o motivo (de qual ideia). Duas travessias separadas
+    responderiam a mesma pergunta duas vezes e divergiriam no primeiro ajuste
+    que só uma recebesse. Foi exatamente o que aconteceu em 28/08/2026: a versão
+    anterior calculava o silêncio de cada balde isoladamente, e quem estava atrás
+    de ideias em baldes diferentes era contado DUAS vezes — a soma dos motivos
+    dava mais gente do que existe. Quem pegou foi o guarda da soma.
+
+    O mínimo, e não o máximo: quem está atrás de três ideias não está em silêncio
+    desde a mais parada — está em silêncio desde a última vez que ouviu qualquer
+    coisa. E o desempate por id menor não é capricho: sem ele, duas ideias com o
+    mesmo número de dias poriam a pessoa num balde ou noutro conforme a ordem em
+    que o banco devolvesse as linhas.
+
+    Usa a mesma definição de plateia de `plateia_de()`/`avisos.interessados_em()`
+    — autor, quem comentou, quem votou —, e o guarda que casa as três é
+    `test_inv_a_mesa_nao_inventa_espera.py`.
+    """
+    if not sugestoes:
+        return {}
+    dias = {sugestao.id: (agora - sugestao.parada_desde).days for sugestao in sugestoes}
+    ids = list(dias)
+    recente: dict[str, tuple[int, int]] = {}
+
+    def anotar(identidade_id, sugestao_id):
+        candidato = (dias[sugestao_id], sugestao_id)
+        atual = recente.get(identidade_id)
+        if atual is None or candidato < atual:
+            recente[identidade_id] = candidato
+
+    for sugestao in sugestoes:
+        anotar(sugestao.autor_id, sugestao.id)
+    for sugestao_id, autor_id in Voto.objects.filter(sugestao_id__in=ids).values_list(
+        "sugestao_id", "autor_id"
+    ):
+        anotar(autor_id, sugestao_id)
+    for sugestao_id, autor_id in (
+        Comentario.objects.filter(sugestao_id__in=ids)
+        .order_by()
+        .values_list("sugestao_id", "autor_id")
+        .distinct()
+    ):
+        anotar(autor_id, sugestao_id)
+    return recente
+
+
+def silencio_por_pessoa(sugestoes, agora) -> dict[str, int]:
+    """Há quantos dias cada PESSOA não ouve nada. Derivado, nunca recalculado."""
+    return {
+        pessoa: dias
+        for pessoa, (dias, _) in noticia_mais_recente(sugestoes, agora).items()
+    }
 
 
 def _parada_desde(consulta):
@@ -355,6 +434,148 @@ def travessia(request, ator):
                 key=lambda c: c["parada_media"],
                 default=None,
             ),
+            "na_mesa": len(esperando(quadro, agora)),
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# A aba 3: QUEM ESTÁ ESPERANDO — a unidade da tela é a pessoa, não a tarefa
+# ---------------------------------------------------------------------------
+
+
+def em_aberto(quadro):
+    """As ideias cuja plateia ainda não recebeu a resposta dela.
+
+    `tem_historico` vem ANOTADO, e não por `sugestao.historico.exists()` no laço:
+    o segundo custa uma consulta por linha da tela — o N+1 clássico, invisível
+    enquanto o quadro é pequeno e caro no dia em que a Caixa der certo. É a mesma
+    razão pela qual `sugestoes_ordenadas` já anota a contagem de comentários.
+    """
+    return _parada_desde(
+        sugestoes_ordenadas(quadro).exclude(status__in=JA_RESPONDIDAS)
+    ).annotate(
+        tem_historico=Exists(HistoricoStatus.objects.filter(sugestao_id=OuterRef("pk")))
+    )
+
+
+def respondidas_recentemente(quadro, agora):
+    """O que a turma ouviu nos últimos sete dias — a metade boa da conta.
+
+    Ela existe pelo mesmo motivo do "andando sozinho" da Mesa: uma tela que só
+    mostra dívida ensina medo. E o número de avisados NÃO é contado à parte —
+    é a plateia, que por `[INV-SUG13]` é exatamente quem recebeu o aviso quando
+    a ideia andou. Uma segunda contagem seria uma segunda verdade.
+    """
+    limite = agora - timedelta(days=7)
+    recentes = [
+        sugestao
+        for sugestao in _parada_desde(
+            sugestoes_ordenadas(quadro).filter(status__in=JA_RESPONDIDAS)
+        )
+        if sugestao.parada_desde >= limite
+    ]
+    plateias = plateia_de(recentes)
+    for sugestao in recentes:
+        sugestao.avisadas = plateias.get(sugestao.id, 1)
+    return sorted(recentes, key=lambda s: s.parada_desde, reverse=True)
+
+
+def filas_do_silencio(abertas, agora):
+    """De onde vem a espera: quantas PESSOAS por motivo, cada uma contada UMA vez.
+
+    Quatro baldes que não se sobrepõem — esperando assinatura · ninguém da equipe
+    olhou · robô construindo · na fila, normal — e a pessoa entra no balde da
+    ideia que lhe deu a notícia MAIS RECENTE. Somar os baldes tem de dar
+    exatamente o total de quem espera, e há guarda para isso.
+
+    A versão anterior calculava cada balde isoladamente e contava duas vezes quem
+    estava atrás de ideias em baldes diferentes. O conserto não foi somar melhor:
+    foi fazer a pessoa ter UM balde, o que só é possível partindo da mesma
+    travessia que decide o silêncio dela.
+    """
+    com_changespec = set(
+        ChangeSpecAprovado.objects.filter(sugestao__in=abertas).values_list(
+            "sugestao_id", flat=True
+        )
+    )
+    com_avaliacao = set(
+        AvaliacaoInterna.objects.filter(sugestao__in=abertas).values_list(
+            "sugestao_id", flat=True
+        )
+    )
+
+    def balde(sugestao):
+        if sugestao.status == Sugestao.Status.EM_DESENVOLVIMENTO:
+            return "construindo"
+        if sugestao.status == Sugestao.Status.PLANEJADO:
+            return "assinar" if sugestao.id not in com_changespec else "fila"
+        if sugestao.id not in com_avaliacao:
+            return "ninguem-olhou"
+        return "fila"
+
+    de_qual_balde = {sugestao.id: balde(sugestao) for sugestao in abertas}
+    rotulos = (
+        ("assinar", "esperando você assinar"),
+        ("ninguem-olhou", "ninguém da equipe olhou ainda"),
+        ("construindo", "robô construindo"),
+        ("fila", "na fila, andando normal"),
+    )
+    contagem = {chave: 0 for chave, _ in rotulos}
+    for _, sugestao_id in noticia_mais_recente(abertas, agora).values():
+        contagem[de_qual_balde[sugestao_id]] += 1
+    return [
+        {"chave": chave, "rotulo": rotulo, "pessoas": contagem[chave]}
+        for chave, rotulo in rotulos
+    ]
+
+
+@require_GET
+@exige_staff
+def quem_espera(request, ator):
+    """A aba 3: cada linha é gente sem resposta, e a ordem é o tamanho da plateia.
+
+    O que esta tela mede e nenhuma outra mede: **o silêncio**. Não é o tempo que
+    a tarefa levou — é o tempo que a PESSOA passou sem ouvir nada. Uma ideia que
+    andou três vezes numa semana tem plateia bem servida mesmo estando longe do
+    ar; uma que ninguém tocou há dois meses tem gente desistindo de sugerir.
+    """
+    quadro = quadro_atual()
+    agora = timezone.now()
+    abertas = list(em_aberto(quadro))
+    plateias = plateia_de(abertas)
+    silencio = silencio_por_pessoa(abertas, agora)
+
+    linhas = [
+        {
+            "sugestao": sugestao,
+            "pessoas": plateias.get(sugestao.id, 1),
+            "silencio": (agora - sugestao.parada_desde).days,
+            # Sem histórico, ninguém ouviu NADA: a ideia foi escrita e nunca
+            # mudou de fase. É diferente de "ouviu há muito tempo", e a tela
+            # escreve as duas coisas com frases diferentes.
+            "nunca_ouviram": not sugestao.tem_historico,
+        }
+        for sugestao in abertas
+    ]
+    linhas.sort(key=lambda linha: (-linha["pessoas"], -linha["silencio"]))
+    caladas = [dias for dias in silencio.values() if dias > DIAS_DE_SILENCIO_DEMAIS]
+
+    return render(
+        request,
+        PAGINA_ESPERANDO,
+        {
+            "ator": ator,
+            "quadro": quadro,
+            "linhas": linhas,
+            "gente_esperando": len(silencio),
+            "silencio_medio": (
+                round(sum(silencio.values()) / len(silencio)) if silencio else None
+            ),
+            "em_silencio_demais": len(caladas),
+            "limiar": DIAS_DE_SILENCIO_DEMAIS,
+            "respondidas": respondidas_recentemente(quadro, agora),
+            "filas": filas_do_silencio(abertas, agora),
             "na_mesa": len(esperando(quadro, agora)),
         },
     )
