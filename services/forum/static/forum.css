@@ -1,0 +1,64 @@
+/* O estilo do fórum. Serviço por rota própria (`armadilhas/083`) — com
+   DEBUG=0 o Django não serve estático e não há nginx atrás do Traefik. */
+:root {
+  --tinta: #1b1b1f;
+  --tinta-fraca: #5c5c66;
+  --papel: #ffffff;
+  --fundo: #f6f6f8;
+  --linha: #e3e3e8;
+  --destaque: #4f46e5;
+  --aviso: #b45309;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--fundo);
+  color: var(--tinta);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+.faixa {
+  background: var(--papel);
+  border-bottom: 1px solid var(--linha);
+  padding: 14px 20px;
+}
+.faixa a { color: inherit; text-decoration: none; font-weight: 600; }
+.quem { float: right; color: var(--tinta-fraca); font-size: 14px; font-weight: 400; }
+main { max-width: 780px; margin: 0 auto; padding: 24px 20px 60px; }
+h1 { font-size: 24px; margin: 0 0 4px; }
+h2 { font-size: 18px; margin: 0 0 4px; }
+.sub { color: var(--tinta-fraca); margin: 0 0 24px; }
+.cartao {
+  background: var(--papel);
+  border: 1px solid var(--linha);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+}
+.cartao a { color: var(--tinta); text-decoration: none; }
+.cartao a:hover { color: var(--destaque); }
+.etiqueta {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--tinta-fraca);
+  border: 1px solid var(--linha);
+  border-radius: 999px;
+  padding: 1px 9px;
+  margin-left: 6px;
+}
+.mensagem { border-left: 3px solid var(--linha); }
+.mensagem .autor { font-weight: 600; font-size: 14px; }
+.mensagem .quando { color: var(--tinta-fraca); font-size: 13px; }
+.mensagem .texto { margin-top: 8px; white-space: pre-wrap; }
+.vazio {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: var(--aviso);
+  border-radius: 12px;
+  padding: 18px;
+}
+.migalha { font-size: 14px; margin-bottom: 12px; }
+.migalha a { color: var(--tinta-fraca); }
+@media (max-width: 520px) {
+  main { padding: 16px 14px 40px; }
+  .quem { float: none; display: block; margin-top: 4px; }
+}

@@ -1,0 +1,21 @@
+{% extends "forum/base.html" %}
+{% block titulo %}{{ topico.titulo }}{% endblock %}
+{% block conteudo %}
+<p class="migalha"><a href="{% url 'area' area.slug %}">← {{ area.nome }}</a></p>
+<h1>{{ topico.titulo }}</h1>
+<p class="sub">
+  aberto por {{ topico.autor.nome_exibido|default:"alguém" }} em {{ topico.criado_em|date:"d/m/Y" }}
+  {% if topico.trancado %}<span class="etiqueta">trancado</span>{% endif %}
+</p>
+
+{% for mensagem in mensagens %}
+  <div class="cartao mensagem">
+    <span class="autor">{{ mensagem.autor.nome_exibido|default:"alguém" }}</span>
+    <span class="quando">· {{ mensagem.criado_em|date:"d/m/Y H:i" }}</span>
+    {% if topico.resposta_aceita_id == mensagem.pk %}<span class="etiqueta">resposta aceita</span>{% endif %}
+    <div class="texto">{{ mensagem.texto }}</div>
+  </div>
+{% empty %}
+  <div class="vazio"><strong>Este tópico ainda não tem mensagens.</strong></div>
+{% endfor %}
+{% endblock %}

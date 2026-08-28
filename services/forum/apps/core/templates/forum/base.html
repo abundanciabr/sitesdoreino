@@ -1,0 +1,21 @@
+{% comment %}
+O molde do fórum. Todo endereço sai de `{% url %}` — nunca escrito à mão:
+é o `{% url %}` que carrega o prefixo público `/forum` para dentro do
+caminho, e caminho cravado em string quebra em produção e SÓ lá
+(`armadilhas/029` e `/081`).
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Fórum{% endblock %} · Meshcraft Academy</title>
+<link rel="stylesheet" href="{% url 'estatico' 'forum.css' %}">
+</head>
+<body>
+<div class="faixa">
+  <a href="{% url 'home' %}">Fórum da Meshcraft Academy</a>
+  <span class="quem">{% if ator.autenticado %}{{ ator.pessoa.nome_exibido|default:"você" }}{% else %}visitante{% endif %}</span>
+</div>
+<main>{% block conteudo %}{% endblock %}</main>
+</body>
+</html>
