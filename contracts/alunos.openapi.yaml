@@ -310,11 +310,23 @@ paths:
                 properties:
                   categoria:
                     type: string
-                    enum: [cadastrado, na_fila, aluno]
+                    enum: [cadastrado, na_fila, pausado, ex_aluno, aluno]
                     description: |
                       `aluno` sai da MESMA lista de status que decide acesso
                       (`STATUS_QUE_VALEM`) — uma segunda lista seriam duas verdades
                       sobre quem e aluno, e elas divergiriam no primeiro status novo.
+
+                      `pausado` (ficha `suspensa`) e `ex_aluno` (ficha `encerrada`)
+                      entraram em 28/08/2026
+                      (`DECISAO-ex-aluno-e-a-porta-que-explica.md`). Ate entao os
+                      dois voltavam como `cadastrado` — mentira sobre a pessoa, e a
+                      causa de quem saiu da escola ver o formulario de pedir
+                      entrada, como se nunca tivesse pedido nada.
+
+                      Os dois NAO dao acesso, e a diferenca entre eles e a unica
+                      coisa que a pessoa quer saber: pausado e temporario, ex-aluno
+                      e o fim. Quem consome isto mostra telas diferentes; quem
+                      autoriza continua olhando so `aluno`.
                   na_fila:
                     type: [object, 'null']
                     additionalProperties: false
