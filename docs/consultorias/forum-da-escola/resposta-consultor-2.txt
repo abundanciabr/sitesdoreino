@@ -1,0 +1,328 @@
+RESPOSTA DO CONSULTOR 2 — rodada "fórum da escola", 28/08/2026
+Colada pelo mantenedor na sessão do Claude Code. A IA de origem não foi
+registrada. Texto reproduzido como recebido (formatação de marcação simplificada).
+
+================================================================================
+
+Esse mapa está bem construído, mas eu não deixaria o veredito "Família B =
+django-machina" passar ainda. Ao conferir o estado atual dos projetos e a
+documentação de 2026, encontrei dois fatos que enfraquecem justamente os dois
+argumentos centrais usados para chegar à conclusão — um contra o Discourse e
+outro a favor do django-machina.
+
+Minha conclusão provisória mudaria de:
+  "Escolha django-machina; se não der, construa."
+para:
+  "Não escolha o motor ainda. Primeiro resolva a fronteira de identidade; depois
+  faça uma prova curta entre Misago, Discourse e uma implementação nativa mínima."
+
+E há uma razão arquitetural importante para isso.
+
+1. O maior problema do texto: ele provavelmente coroou o django-machina cedo
+demais
+
+O django-machina é exatamente o tipo de software que parece perfeito olhando a
+arquitetura: Python ✔ -> Django ✔ -> PostgreSQL ✔ -> embutível ✔ -> permissões ✔
+-> moderação ✔. E ele foi explicitamente desenhado para ser integrado a
+aplicações Django existentes, não como um fórum standalone.
+
+Até aí, perfeito. O problema aparece quando olhamos a saúde da dependência.
+
+A versão publicada no PyPI continua sendo 1.3.1, de 17 de outubro de 2023. O
+repositório está em 1.3.2.dev, ou seja, o desenvolvimento continuou no main, mas
+há quase três anos não existe uma release estável nova no PyPI.
+
+Mais importante: a documentação publicada continua declarando explicitamente
+Python até 3.10 e Django até 4.1.
+
+Há uma nuance importante: o pyproject.toml atual não bloqueia Django 5; ele
+declara: django = "^3.2 || >=4.0". Portanto, o pip pode aceitá-lo numa aplicação
+Django 5.x.
+
+Mas: "o dependency resolver permite instalar" != "o projeto testa, suporta e
+garante Django 5.x".
+
+Como pelo contexto que você já me passou sua plataforma está em Django 5.x, isso
+vira um gate arquitetural obrigatório.
+
+Eu não aceitaria: "django-machina é o caminho B".
+Aceitaria: "django-machina é um candidato B que precisa passar por um
+compatibility spike em Django 5.x."
+
+Isso é uma diferença enorme.
+
+2. Pior: o django-machina pode resolver o fórum de 2018, mas não necessariamente
+o fórum que vocês querem em 2026
+
+O texto enumera: fóruns; tópicos; respostas; permissões; anexos; moderação;
+busca. Tudo verdadeiro.
+
+Mas o projeto que você descreveu não é simplesmente "preciso de tópicos e
+respostas". É muito mais próximo de uma plataforma de comunidade educacional.
+
+Mostre seu trabalho -> imagem/arquivo -> feedback estruturado -> talvez resposta
+aceita -> professor destacado -> progresso/reputação.
+Discussões por curso/turma -> ACL baseada em matrícula.
+Professor -> autoridade visual e funcional diferente.
+Conhecimento permanente -> boa pesquisa, descoberta e SEO.
+Internacionalização -> PT/EN/ES.
+Notificações -> integração com o sininho.
+Experiência moderna mobile -> não apenas templates Bootstrap.
+
+É possível fazer isso sobre Machina. Mas aí surge a pergunta adversarial: quanto
+Machina sobrará depois de vocês substituírem templates, busca, editor, identidade,
+UX, notificações, reputação, Q&A e regras educacionais?
+
+Existe um ponto em que você deixa de "usar um motor pronto" e passa a manter um
+fork conceitual dele. E esse é exatamente o tipo de dívida técnica que parece
+econômica no ano 1 e fica caríssima no ano 3.
+
+3. Em contrapartida, encontrei um erro factual importante na crítica ao Discourse
+
+Esta afirmação eu corrigiria: "A forma canônica de atualizar o Discourse é rodar o
+instalador dentro do servidor. Manter o Discourse seria tarefa recorrente sua, no
+terminal, para sempre."
+
+Está forte demais.
+
+A documentação oficial atual do Discourse diz explicitamente que a configuração
+Docker possui uma GUI web para upgrades, inclusive descrevendo atualização como
+algo tão simples quanto clicar em um botão.
+
+E uma discussão de janeiro de 2026 confirma os dois caminhos: atualização pela
+interface administrativa; ./launcher rebuild app. Segundo mantenedores/comunidade,
+ambos funcionam normalmente; o terminal torna-se necessário ocasionalmente,
+sobretudo em mudanças infraestruturais como upgrade do PostgreSQL.
+
+Portanto, o diagnóstico correto é: Discourse não exige que o dono entre no
+terminal para cada atualização. Mas também não é "nunca precisará entrar no
+terminal". É: a operação cotidiana pode ser feita pela UI, mas self-hosting
+continua exigindo capacidade de SSH como escape hatch e para upgrades
+infraestruturais excepcionais.
+
+Isso ainda pode violar uma das leis operacionais de vocês. Mas é um problema
+muito menor do que o documento afirma.
+
+4. E outro argumento contra o Discourse ficou ainda mais fraco
+
+A documentação oficial atual informa: CPU moderna de 1 núcleo: mínimo; 2 núcleos:
+recomendado; 1 GB RAM mínimo com swap; 10 GB de disco.
+
+Logo, no KVM 1 atual (1 CPU, 4 GB RAM) não é uma máquina em que o Discourse "não
+roda". Ele pode rodar. O problema é outro: sua CPU já está aproximadamente 50%
+sustentada. Então instalar Rails + Sidekiq + Redis + PostgreSQL/integrações no
+mesmo host transforma o problema em contenda de CPU e ausência de margem
+operacional.
+
+Isso eu considero motivo suficiente para não colocar Discourse no KVM 1 atual.
+
+Mas veja a diferença:
+conclusão anterior: Discourse não serve para a arquitetura.
+conclusão correta: Discourse não deve compartilhar o KVM 1 atual.
+São coisas completamente diferentes.
+
+5. E existe uma opção que o documento subestimou seriamente: Misago
+
+O documento descreve Misago como "comunidade pequena e passou por uma reescrita
+longa". Isso não é falso historicamente. Mas olhando agosto de 2026, a situação é
+muito mais interessante.
+
+O projeto está recebendo atividade em 2026, inclusive issues abertas em
+junho/julho relacionadas a: autenticação; extensões; backend; acessibilidade;
+versão 0.40.
+
+E o produto atual já oferece: categorias/subcategorias; permissões por roles;
+moderação completa; attachments; read tracking; private threads; polls;
+histórico/reversão de edições; best answer/Q&A; moderation queue; OAuth; JSON API;
+sistema de plugins/extensões.
+
+E continua sendo Python + Django. Isso muda bastante a matriz.
+
+Além disso, o próprio projeto documenta integração com sistemas externos por meio
+de OAuth2 client + JSON API.
+
+Portanto, eu promoveria Misago da posição de figurante para semifinalista.
+
+6. Mas isso revela o problema verdadeiro — e ele não é o fórum
+
+Aqui está, para mim, o insight arquitetural 10x. Hoje vocês estão fazendo esta
+pergunta: "Qual fórum conversa melhor com nossa autenticação caseira?"
+
+Eu mudaria para: "Por que nossa identidade obriga qualquer software futuro a
+aprender um protocolo proprietário?"
+
+Hoje a identidade tem API interna própria, e Sugestões cria adaptador, Fórum
+criará adaptador, Comunidade criará adaptador, App móvel criará adaptador,
+ferramenta externa criará adaptador, qualquer coisa futura criará adaptador.
+
+Isso é um integration tax. E ele cresce com o ecossistema.
+
+7. Eu criaria uma fachada padrão de identidade
+
+Sem desmontar nada que vocês já têm. A identidade interna continuaria funcionando
+exatamente como hoje. Mas acrescentaria uma fronteira: aplicações internas usam o
+contrato interno; um adaptador padrão expõe OIDC / OAuth2 para fórum, ferramentas
+e o futuro.
+
+Não estou propondo substituir sua autenticação por Auth0, Keycloak etc. Estou
+propondo: ensinar a identidade existente a falar um idioma padrão na fronteira
+externa.
+
+Hoje cada integração custa N pontes para N aplicações. Com a fachada: 1 ponte
+identidade->OIDC + N integrações padronizadas.
+
+8. E tem um detalhe ainda melhor: as cinco categorias podem virar claims
+
+Vocês já possuem uma autoridade central que sabe: quem é aluno; quem é professor;
+quem é administrador; etc. Em OIDC/OAuth2, isso pode aparecer como claims/roles.
+Conceitualmente: sub: user_7821; roles: [aluno]; courses: [modelador_roblox_3d];
+locale: pt-BR.
+
+O fórum não precisa entender a API caseira. Ele pergunta quem é você, a identidade
+responde; o que você pode fazer, a identidade responde. Isso também reduz risco de
+divergência de autorização entre células.
+
+[NOTA DA SESSÃO — este ponto 8 está ERRADO para este projeto. A lei escrita da
+célula de identidade diz "reconhecer não é autorizar" e "não use papel como
+autorização". Quem sabe se alguém é aluno é a célula alunos; quem sabe se é
+administrador é a célula admin. A identidade NÃO é autoridade de permissão, por
+decisão registrada. O prompt não informou isso ao consultor.]
+
+9. Agora a matriz fica muito diferente
+
+Critério / Machina / Misago / Discourse / Nativo:
+Encaixe Python-Django: 5 / 5 / 1 / 5
+Saúde-ecossistema: 2 / 4 / 5 / —
+Produto pronto: 3 / 4 / 5 / 1
+UX moderna: 2 / 4 / 5 / depende
+Moderação: 4 / 5 / 5 / precisa fazer
+Search: 3 / 4 / 5 / precisa fazer
+Q&A: limitado / 4 / 5 / precisa fazer
+Comunidade educacional: customização / boa base / excelente base / total
+Integração profunda: 5 / 4 / 3 / 5
+Dívida de dependência: alta dúvida / média / baixa produto-alta infra / alta código
+Custo computacional: baixo / médio / alto / baixo
+Maturidade: média / média-alta / excepcional / —
+
+10. Eu também separaria duas decisões que o documento mistura
+
+Hoje ele tenta escolher simultaneamente a arquitetura (decisão A) e o produto de
+fórum (decisão B). Eu congelaria primeiro a arquitetura: services/forum com
+contrato próprio e banco próprio, contendo IdentityAdapter, NotificationAdapter,
+EnrollmentAdapter e ForumEngine — e o ForumEngine pode ser Machina, Misago ou
+Native.
+
+O restante da plataforma não deveria saber qual motor está abaixo. A interface
+pública pertence à célula. O motor vira implementação.
+
+11. Isso cria uma propriedade arquitetural muito poderosa
+
+Imagine que vocês escolham Machina e dois anos depois ele morra. Hoje o risco
+seria SITE -> MACHINA. Eu faria SITE -> CONTRATO FORUM -> CÉLULA FORUM -> MACHINA.
+Amanhã trocaria só a última camada por MISAGO ou NATIVE.
+
+Esse pequeno detalhe transforma uma decisão tecnológica potencialmente
+irreversível numa decisão reversível. E isso combina perfeitamente com a filosofia
+que vocês já adotaram nas células.
+
+12. Meu ranking hoje seria diferente do documento
+
+Eu não escolheria ainda. Faria três spikes extremamente pequenos.
+
+Spike A — Misago. Testar login, aluno, professor, categoria privada, tópico,
+resposta, anexo, best answer, busca, notificação. Pergunta principal: quanto
+precisamos lutar contra o Misago para fazê-lo parecer parte do nosso produto?
+
+Spike B — Discourse. Não no servidor de produção; contêiner isolado. Testar SSO,
+roles, curso privado, show your work, professor, Q&A, multilíngue, API,
+notificações. Pergunta principal: quanto custa operacionalmente possuí-lo sem
+violar nossas leis de deploy?
+
+Spike C — Native. Não construir fórum. Construir somente Category, Topic, Post,
+Attachment, Subscription, Moderation, reutilizando sessão, abuse protection,
+notifications, audit/history e permissions da Caixa de Sugestões. Pergunta
+principal: quanto do nosso "super fórum" já existe de fato? Pode haver uma
+surpresa aqui. Talvez vocês não estejam a 100% de um fórum. Talvez estejam a
+30-40%.
+
+13. Eu colocaria o django-machina dentro do Spike C/B híbrido
+
+Antes de qualquer decisão: pip install django-machina num clone da célula usando
+exatamente a versão Python de produção, versão Django de produção, PostgreSQL de
+produção e middleware de produção. E rodaria migrations, system checks, test
+suite, create forum, create topic, reply, attachment, permissions, search.
+
+Se aparecer incompatibilidade Django 5.x, acabou a discussão. Não façam fork para
+"salvar" a escolha. Eliminem. Esse seria um kill criterion explícito.
+
+14. E eu criaria kill criteria para todos
+
+Machina morre se: exigir fork permanente; testes falharem no Django usado pela
+plataforma; UX exigir substituição maciça; search exigir infraestrutura
+desproporcional.
+Misago morre se: integração exigir mutilar o core; theming para integrar ao site
+for caro demais; atualização exigir manter fork.
+Discourse morre se: deploy seguro não couber na esteira; manutenção exigir acesso
+humano frequente; consumo impedir isolamento econômico aceitável.
+Native morre se o MVP começar a recriar search engine, editor sofisticado,
+anti-spam complexo, email threading, moderation framework ou reputação. A partir
+daí vocês estarão reinventando Discourse.
+
+15. Minha aposta sobre o resultado
+
+Para melhor produto: Discourse. É muito difícil competir com mais de uma década de
+refinamento de produto, moderação, search e comunidade.
+Para melhor alinhamento arquitetural: Misago. Django + Python + produto de fórum
+bastante completo + desenvolvimento ativo + API.
+Para menor custo incremental: Native reaproveitando Sugestões. Sobretudo se o
+fórum inicialmente tiver centenas ou poucos milhares de membros, e não milhões.
+Para maior risco escondido: django-machina. Ironicamente, exatamente o favorito do
+documento. Não porque seja ruim. Porque existe a possibilidade de vocês escolherem
+uma dependência de 2023 para economizar engenharia em 2026 e acabarem herdando
+engenharia alheia abandonada. Isso é pior do que construir deliberadamente uma
+pequena camada própria.
+
+16. Portanto, eu mudaria o VEREDITO.md
+
+Não escreveria "Família B vencedora — django-machina". Escreveria algo parecido
+com:
+
+  VEREDITO PROVISÓRIO — arquitetura antes do motor
+  A nova capacidade será criada como célula independente services/forum, com
+  banco, contrato e fronteiras próprias. O restante da plataforma não dependerá
+  diretamente de nenhum motor de fórum.
+  Antes da escolha do motor, a identidade ganhará uma fachada de integração
+  padronizada — preferencialmente OIDC/OAuth2 — preservando internamente o
+  mecanismo atual de sessão.
+  Três candidatos passarão por provas isoladas:
+  Misago: candidato principal de integração.
+  Discourse: candidato principal de produto.
+  Nativo/reuso da Caixa de Sugestões: candidato principal de simplicidade.
+  django-machina permanece candidato somente se provar compatibilidade integral
+  com a versão atual de Django sem fork permanente.
+  A escolha será feita pelo menor custo total de propriedade em cinco anos, e não
+  pelo menor número de linhas necessárias para instalar o primeiro fórum.
+
+Para mim, essa é a correção mais importante da análise toda. O problema escondido
+não é "qual fórum instalar". É: qual arquitetura permite trocar o fórum daqui a
+três anos sem reconstruir o restante da escola?
+
+E há um segundo problema ainda mais profundo: a identidade proprietária hoje está
+fazendo o ecossistema girar ao redor dela; transformá-la numa plataforma de
+identidade compatível com padrões reduz não apenas o custo do fórum, mas o custo
+de quase toda integração futura. Isso é uma decisão com efeitos de segunda e
+terceira ordem muito maiores que a escolha entre Discourse, Misago e Machina.
+
+Se essa camada de identidade for bem resolvida, paradoxalmente, a decisão sobre o
+fórum fica muito menos perigosa — porque deixa de ser um casamento e passa a ser
+um componente substituível.
+
+Fontes citadas pelo consultor:
+[1] https://github.com/ellmetha/django-machina
+[2] https://pypi.org/project/django-machina/1.3.1/
+[3] https://django-machina.readthedocs.io/en/latest/getting_started.html
+[4] https://github.com/ellmetha/django-machina/blob/main/pyproject.toml
+[5] https://github.com/discourse/discourse/blob/main/docs/INSTALL.md
+[6] https://meta.discourse.org/t/discourse/392972
+[7] https://github.com/rafalp/misago/issues
+[8] https://github.com/rafalp/Misago
