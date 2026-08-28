@@ -50,6 +50,11 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
+    # A auditoria append-only (DECISAO-celula-admin §3). Entrou junto com a
+    # PRIMEIRA escrita desta área — liberar e recusar quem está na fila —, e
+    # nunca depois: um botão que muda a vida de alguém sem deixar rastro é o
+    # tipo de coisa que ninguém consegue reconstruir mais tarde.
+    "apps.auditoria",
 ]
 
 MIDDLEWARE = [

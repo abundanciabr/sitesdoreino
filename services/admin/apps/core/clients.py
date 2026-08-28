@@ -246,3 +246,65 @@ class AlunosClient:
             logger.error("fila: a alunos respondeu um corpo que não é lista")
             return None
         return corpo
+
+    # ------------------------------------------------------------------ escrita
+    #
+    # A ÚNICA escrita que esta célula faz em outra (`DECISAO-fila-de-liberacao`
+    # §8, fase 2). Ela não é fail-open como as leituras acima, e não é
+    # fail-closed como a porta: ela é **fail-CONTADO**. Uma decisão que não
+    # chegou não pode ser mostrada como feita, e também não pode sumir — quem
+    # chama grava o desfecho na auditoria, seja qual for.
+
+    #: A decisão chegou e a `alunos` a aplicou.
+    OK = "ok"
+    #: A `alunos` respondeu e RECUSOU — 404 (linha não existe), 409 (já
+    #: decidida) ou 422 (payload inválido). É resposta, não falha: a decisão
+    #: não valeu, e o motivo é conhecido.
+    RECUSADO = "recusado"
+    #: Não deu para saber. Rede, configuração ausente, 5xx, corpo fora do
+    #: contrato. **Pode ter sido aplicada do outro lado** — é por isso que este
+    #: desfecho tem nome próprio em vez de virar "recusado": dizer ao
+    #: mantenedor "não deu certo" quando pode ter dado é como ele acaba
+    #: decidindo duas vezes sobre a mesma pessoa.
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def decidir(
+        self, alvo: str, decisao: str, decidido_por: str, motivo: str = ""
+    ) -> "tuple[str, str]":
+        """Libera ou recusa quem está na fila. Devolve `(desfecho, detalhe)`.
+
+        `detalhe` é curto e para HUMANO — vai para a auditoria e para a tela.
+        **Nunca levanta**: quem chama precisa gravar a linha de auditoria
+        aconteça o que acontecer.
+        """
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com a alunos não está ligado"
+        base, token = config
+
+        corpo = {"decisao": decisao, "decidido_por": decidido_por}
+        if motivo:
+            corpo["motivo"] = motivo
+
+        try:
+            r = http().post(
+                f"{base}/pre-matriculas/{alvo}/decisao",
+                json=corpo,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("decisao: não deu para falar com a alunos: %s", erro)
+            return self.NAO_RESPONDEU, "a parte que guarda os alunos não respondeu"
+
+        if r.status_code == 200:
+            return self.OK, ""
+        if r.status_code == 404:
+            return self.RECUSADO, "este pedido não existe mais"
+        if r.status_code == 409:
+            # O caso REAL de duas abas abertas, e o mais provável dos três.
+            return self.RECUSADO, "este pedido já tinha sido decidido"
+        if r.status_code == 422:
+            return self.RECUSADO, "faltou o motivo da recusa"
+        logger.error("decisao: a alunos respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"

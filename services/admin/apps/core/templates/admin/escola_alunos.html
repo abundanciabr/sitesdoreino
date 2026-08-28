@@ -11,6 +11,8 @@
   <h1>Alunos</h1>
   <p class="subtitulo">Os tipos de aluno da escola, e quem está esperando você.</p>
 
+  {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
+
   {% comment %}
   `is None` e NÃO `{% if tipo.quantidade %}`: zero é falso em template, e um
   zero LEGÍTIMO — que agora existe, porque a fila é consultada de verdade —
@@ -68,17 +70,24 @@
         {% if pessoa.turma %} &middot; turma: {{ pessoa.turma }}{% endif %}
       </div>
       {% if mostrar_escola %}<div class="nota">Escola: {{ pessoa.site_id }}</div>{% endif %}
+      {% comment %}
+      UM formulário com DOIS botões, e não dois formulários: o campo do motivo
+      é o mesmo dos dois lados, e duplicá-lo deixaria a pessoa escrevendo no
+      campo errado. Quem decide o que aconteceu é o `name="decisao"` do botão
+      clicado. POST com CSRF — decisão que se aplica por GET é decisão que um
+      pré-carregador de link toma sozinho.
+      {% endcomment %}
+      <form class="decidir" method="post" action="{% url 'escola_decidir' %}">
+        {% csrf_token %}
+        <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+        <input type="text" name="motivo" maxlength="500"
+               placeholder="Motivo — obrigatório só para recusar">
+        <button class="sim" name="decisao" value="liberar" type="submit">Liberar</button>
+        <button class="nao" name="decisao" value="recusar" type="submit">Recusar</button>
+      </form>
     </div>
     {% endfor %}
   </div>
-  <p style="margin-top:16px" class="aviso">
-    <b>Liberar e recusar ainda não está aqui — é o próximo passo.</b>
-    Por enquanto esta tela mostra quem espera e há quanto tempo, que é o que
-    impede alguém de ser esquecido. Os botões de decidir entram junto com o
-    registro de quem decidiu o quê, e não antes: um botão que muda a vida de
-    alguém sem deixar rastro é o tipo de coisa que ninguém consegue auditar
-    depois.
-  </p>
   {% endif %}
 
   <p style="margin-top:28px" class="aviso">

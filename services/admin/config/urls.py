@@ -3,7 +3,13 @@ from django.urls import path, re_path
 from apps.core.diagnostico import diag_json
 from apps.core.divida import divida_json
 from apps.core.painel import painel, painel_arquivo
-from apps.core.views import escola, escola_alunos, healthz, visao_geral
+from apps.core.views import (
+    escola,
+    escola_alunos,
+    escola_decidir,
+    healthz,
+    visao_geral,
+)
 
 # O urlconf da célula NÃO conhece o prefixo público (`/admin`): quem o aplica é
 # `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a área
@@ -49,5 +55,11 @@ urlpatterns = [
     # cuida de quem digitar sem a barra.
     path("escola/", escola, name="escola"),
     path("escola/alunos/", escola_alunos, name="escola_alunos"),
+    # A ÚNICA rota de escrita desta célula. POST-only (`require_POST` na view):
+    # decisão que se aplica por GET é decisão que um pré-carregador de link, um
+    # antivírus corporativo ou um crawler autenticado tomam sozinhos — e aqui
+    # ela muda a vida de uma pessoa. Sem barra final e sem id no caminho: o
+    # alvo vem no corpo do formulário, junto do CSRF que o protege.
+    path("escola/alunos/decidir", escola_decidir, name="escola_decidir"),
     path("", visao_geral, name="visao_geral"),
 ]

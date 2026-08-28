@@ -14,10 +14,13 @@ improvável.
 preenche). O `/healthz` é a exceção declarada, e por isso não o usa.
 """
 
-from django.http import JsonResponse
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
+from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_GET, require_POST
+
+from apps.auditoria.models import Registro
 
 from .clients import AlunosClient
 
@@ -240,5 +243,97 @@ def escola_alunos(request):
             # sozinho não distingue lista vazia de ausência.
             "nao_consigo_perguntar": esperando is None,
             "mostrar_escola": len(escolas) > 1,
+            # O recado da decisão anterior, buscado num conjunto FECHADO: o que
+            # vem do navegador é só uma CHAVE, e o texto sai daqui. Ecoar a
+            # querystring na tela seria XSS refletido numa área de operação.
+            "recado": RECADOS.get(request.GET.get("resultado", "")),
         },
     )
+
+
+# ------------------------------------------------- liberar e recusar (escrita)
+#
+# A PRIMEIRA escrita desta área (`DECISAO-fila-de-liberacao` §8, fase 2), e por
+# isso o PR que a traz é o mesmo que traz a auditoria — a regra que o
+# `LICOES.md` desta célula fixou depois de a auditoria ter sido adiada uma vez.
+
+#: O que a tela pode dizer depois de uma decisão. Conjunto FECHADO, e é ele que
+#: torna seguro o recado viajar por `?resultado=` na URL: o template só desenha
+#: chaves desta lista, então nada que venha do navegador chega à tela. Recado em
+#: querystring, e não em `messages`, porque `django.contrib.messages` precisa de
+#: sessão — e esta célula não assina sessão nenhuma, de propósito
+#: (`config/settings.py`, INV-P12).
+RECADOS = {
+    "liberado": "Pronto: a pessoa foi liberada e já entra na área de alunos.",
+    "recusado": "Pedido recusado. A pessoa vê o motivo que você escreveu e pode pedir de novo.",
+    "sem-motivo": "Para recusar é preciso escrever o motivo — sem ele a pessoa fica esperando sem saber.",
+    "nao-deu": (
+        "Não consegui falar com a parte que guarda os alunos. A decisão PODE ter "
+        "sido aplicada mesmo assim — recarregue a lista antes de decidir de novo."
+    ),
+    "nao-valeu": "A decisão não valeu.",
+}
+
+
+@require_POST
+def escola_decidir(request):
+    """Libera ou recusa uma pessoa da fila — e grava a auditoria SEMPRE.
+
+    A ordem é a decisão: a linha de auditoria é gravada DEPOIS de saber o
+    desfecho e ANTES de responder, inclusive quando deu errado. Auditoria que
+    só registra sucesso responde "quem liberou?" e não responde "o que foi
+    tentado aqui?" — e é a segunda pergunta que alguém faz quando um aluno diz
+    "eu fui liberado e continuo sem acesso".
+
+    Nenhuma conferência de crachá aqui: quem decide se alguém chega até esta
+    view é a porta (`apps/core/porta.py`), e ela é o ÚNICO ponto de autorização
+    da célula. O CSRF já rodou antes dela.
+    """
+    alvo = (request.POST.get("alvo") or "").strip()
+    decisao = (request.POST.get("decisao") or "").strip()
+    motivo = (request.POST.get("motivo") or "").strip()
+
+    if not alvo or decisao not in (Registro.LIBERAR, Registro.RECUSAR):
+        # Sem linha de auditoria: não houve decisão sobre pessoa nenhuma, e
+        # gravar ruído de formulário quebrado só enche o registro que alguém
+        # vai precisar ler um dia.
+        return HttpResponseRedirect(reverse("escola_alunos"))
+
+    if decisao == Registro.RECUSAR and not motivo:
+        # Conferido AQUI e não só na `alunos`: a mensagem que o mantenedor
+        # precisa ler é sobre o formulário dele, e uma ida à rede para
+        # descobrir isso seria lentidão sem informação nova.
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=sem-motivo")
+
+    desfecho, detalhe = AlunosClient().decidir(
+        alvo=alvo,
+        decisao=decisao,
+        # A auditoria de quem liberou quem, do lado da `alunos`, é por id de
+        # plataforma — o mesmo que a `identidade` devolve. E-mail muda de dono;
+        # o id, não.
+        decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
+        motivo=motivo,
+    )
+
+    Registro.objects.create(
+        quem_email=request.admin.get("email") or "",
+        quem_id=request.admin.get("id") or "",
+        acao=decisao,
+        alvo=alvo,
+        desfecho={
+            AlunosClient.OK: Registro.OK,
+            AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
+            AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
+        }[desfecho],
+        # O motivo é parte do que foi feito: sem ele a linha diz "recusou" e
+        # não diz o que a pessoa recusada leu.
+        detalhe=detalhe or motivo,
+    )
+
+    if desfecho == AlunosClient.OK:
+        recado = "liberado" if decisao == Registro.LIBERAR else "recusado"
+    elif desfecho == AlunosClient.RECUSADO:
+        recado = "nao-valeu"
+    else:
+        recado = "nao-deu"
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
