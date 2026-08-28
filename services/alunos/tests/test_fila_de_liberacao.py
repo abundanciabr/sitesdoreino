@@ -337,6 +337,7 @@ def test_a_fila_devolve_whatsapp_e_dias_de_espera(client, auth):
     assert corpo[0]["motivo_recusa"] is None
     assert set(corpo[0]) == {
         "id",
+        "site_id",
         "email",
         "nome_completo",
         "whatsapp",
@@ -423,8 +424,23 @@ def test_a_fila_nao_mostra_matricula_paga(client, auth):
 
 
 @pytest.mark.django_db
-def test_a_fila_exige_site_id(client, auth):
-    assert client.get(PRE_MATRICULAS, **auth).status_code == 422
+def test_a_fila_SEM_site_id_deixou_de_ser_erro_por_decisao(client, auth):
+    """Este teste afirmava 422 até 28/08/2026, e a mudança é DELIBERADA.
+
+    A `DECISAO-categorias-de-usuario` (Rito de Contrato, mantenedor presente)
+    tornou `site_id` opcional: o painel do dono é plataforma-inteira (Lei 9), e
+    exigir dele o código interno de uma escola para ver quem espera seria pedir
+    que ele guardasse um identificador opaco.
+
+    O teste não foi apagado — foi reapontado para a regra nova, e continua
+    tendo dentes: se alguém devolver 422 de novo, ou devolver 200 com lista
+    vazia (o que `.filter(site_id=None)` faria), ele fica vermelho. Vazio e
+    "todas" são as duas respostas possíveis aqui, e só uma está certa.
+    """
+    pedir_entrada(client, auth, site_id="escola-a", email="a@example.com")
+    resposta = client.get(PRE_MATRICULAS, **auth)
+    assert resposta.status_code == 200, resposta.content
+    assert len(resposta.json()) == 1, "sem site_id a fila voltou vazia"
 
 
 # ---------------------------------------------------------------------------
@@ -611,3 +627,74 @@ def test_as_portas_da_fila_exigem_token(client, metodo, url):
     else:
         resposta = client.post(url, data="{}", content_type="application/json")
     assert resposta.status_code == 401
+
+
+# ------------------------------------------------- a fila de TODAS as escolas
+#
+# `DECISAO-categorias-de-usuario` (28/08/2026): o painel do dono é
+# plataforma-inteira (Lei 9), então `site_id` na query virou OPCIONAL — ausente
+# = todas — e passou a vir em toda linha da resposta.
+
+
+@pytest.mark.django_db
+def test_sem_site_id_a_fila_e_de_todas_as_escolas(client, auth):
+    """O caso que a mudança existe para atender.
+
+    A direção do erro importa e é a mesma do comentário do handler: uma busca
+    sem filtro que devolvesse vazio faria o painel dizer "ninguém esperando"
+    para um mantenedor que tem gente esperando. É exatamente o que
+    `.filter(site_id=None)` faria — ele casa com `site_id IS NULL`.
+    """
+    pedir_entrada(client, auth, site_id="escola-a", email="a@example.com")
+    pedir_entrada(client, auth, site_id="escola-b", email="b@example.com")
+
+    todas = client.get(PRE_MATRICULAS, **auth).json()
+    assert {linha["email"] for linha in todas} == {"a@example.com", "b@example.com"}
+    assert {linha["site_id"] for linha in todas} == {"escola-a", "escola-b"}
+
+
+@pytest.mark.django_db
+def test_com_site_id_continua_filtrando_como_antes(client, auth):
+    """Retrocompatibilidade medida: quem já passava o parâmetro não muda."""
+    pedir_entrada(client, auth, site_id="escola-a", email="a@example.com")
+    pedir_entrada(client, auth, site_id="escola-b", email="b@example.com")
+
+    so_a = client.get(f"{PRE_MATRICULAS}?site_id=escola-a", **auth).json()
+    assert [linha["email"] for linha in so_a] == ["a@example.com"]
+    assert [linha["site_id"] for linha in so_a] == ["escola-a"]
+
+
+@pytest.mark.django_db
+def test_o_site_id_vem_em_toda_linha_nas_duas_formas_de_busca(client, auth):
+    """Forma da resposta é UMA, com filtro ou sem.
+
+    Resposta que muda de forma conforme o parâmetro obriga cada consumidor a
+    tratar dois casos — e o que esquecer trata o campo como ausente em
+    silêncio, mostrando linhas sem dono na tela.
+    """
+    pedir_entrada(client, auth, site_id="escola-a", email="a@example.com")
+    for url in (PRE_MATRICULAS, f"{PRE_MATRICULAS}?site_id=escola-a"):
+        for linha in client.get(url, **auth).json():
+            assert linha["site_id"] == "escola-a", url
+
+
+@pytest.mark.django_db
+def test_sem_site_id_o_filtro_de_status_continua_valendo(client, auth):
+    """Os dois filtros são independentes — e o padrão continua `aguardando`."""
+    pedir_entrada(client, auth, site_id="escola-a", email="a@example.com")
+    pedir_entrada(client, auth, site_id="escola-b", email="b@example.com")
+    fila = client.get(PRE_MATRICULAS, **auth).json()
+    alvo = [linha for linha in fila if linha["email"] == "b@example.com"][0]
+    post(
+        client,
+        f"{PRE_MATRICULAS}/{alvo['id']}/decisao",
+        {"decisao": "recusar", "decidido_por": "eu", "motivo": "não achei"},
+        auth,
+    )
+
+    aguardando = client.get(PRE_MATRICULAS, **auth).json()
+    assert [linha["email"] for linha in aguardando] == ["a@example.com"]
+
+    recusadas = client.get(f"{PRE_MATRICULAS}?status=recusada", **auth).json()
+    assert [linha["email"] for linha in recusadas] == ["b@example.com"]
+    assert recusadas[0]["site_id"] == "escola-b"

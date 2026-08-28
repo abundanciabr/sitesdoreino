@@ -251,7 +251,8 @@ _LIST_PRE_ENROLLMENTS_OPENAPI = {
         {
             "name": "site_id",
             "in": "query",
-            "required": True,
+            "required": False,
+            "description": "OPCIONAL desde 28/08/2026 (DECISAO-categorias-de-usuario). Ausente\n= a fila de TODAS as escolas, e cada linha diz de qual veio.\nA plataforma e uma, as lojas sao N (Lei 9): o painel do dono e\nplataforma-inteira, e exigir que ele soubesse o codigo interno de\numa escola para ver quem espera seria pedir que ele guardasse um\nidentificador opaco. Passando o parametro, filtra — o comportamento\nde quem ja chamava assim nao muda.\n",
             "schema": {
                 "type": "string",
             },
@@ -281,6 +282,7 @@ _LIST_PRE_ENROLLMENTS_OPENAPI = {
                             "type": "object",
                             "required": [
                                 "id",
+                                "site_id",
                                 "email",
                                 "nome_completo",
                                 "whatsapp",
@@ -291,6 +293,10 @@ _LIST_PRE_ENROLLMENTS_OPENAPI = {
                             "properties": {
                                 "id": {
                                     "type": "string",
+                                },
+                                "site_id": {
+                                    "type": "string",
+                                    "description": "De qual escola veio este pedido. Passa a vir SEMPRE, e nao\nso quando a busca e de todas: uma resposta com forma\ndiferente conforme o filtro obriga cada consumidor a\ntratar dois casos, e o que esquecer trata o campo como\nausente em silencio.\n",
                                 },
                                 "email": {
                                     "type": "string",
@@ -498,7 +504,7 @@ def create_pre_enrollment(request):
     description=DESCRICAO_LISTAR_PRE_MATRICULAS,
     openapi_extra=_LIST_PRE_ENROLLMENTS_OPENAPI,
 )
-def list_pre_enrollments(request, site_id: str, status: str = None):
+def list_pre_enrollments(request, site_id: str = None, status: str = None):
     # Status fora do enum do contrato cai no padrão em vez de virar erro ou
     # lista vazia — e a direção importa: esconder a fila faria o painel dizer
     # "ninguém esperando" para um mantenedor que tem gente esperando há uma
@@ -512,14 +518,29 @@ def list_pre_enrollments(request, site_id: str, status: str = None):
     # está aqui como cinto: esta porta devolve WhatsApp, e nenhuma linha que
     # não nasceu na fila deve poder aparecer nela.
     fila = Matricula.objects.filter(
-        site_id=site_id,
         status=status,
         order_id__startswith=Matricula.PREFIXO_DA_FILA,
     ).order_by("enrolled_at")
+    # [CATEGORIAS] `site_id` ausente = TODAS as escolas
+    # (`DECISAO-categorias-de-usuario`, 28/08/2026). O painel do dono é
+    # plataforma-inteira (Lei 9), e exigir dele o código interno de uma escola
+    # para ver quem espera seria pedir que ele guardasse um identificador opaco.
+    #
+    # O filtro é aplicado DEPOIS, e só quando veio: escrever
+    # `.filter(site_id=site_id)` com `None` casaria com `site_id IS NULL` e
+    # devolveria lista vazia — "ninguém esperando" para um mantenedor que tem
+    # gente esperando há uma semana, que é exatamente a direção de erro que o
+    # comentário acima recusa.
+    if site_id:
+        fila = fila.filter(site_id=site_id)
 
     corpo = [
         {
             "id": str(m.pk),
+            # Vem SEMPRE, e não só quando a busca é de todas: resposta com forma
+            # diferente conforme o filtro obriga cada consumidor a tratar dois
+            # casos, e o que esquecer trata o campo como ausente em silêncio.
+            "site_id": m.site_id,
             "email": m.email,
             "nome_completo": m.name,
             "whatsapp": m.whatsapp,
