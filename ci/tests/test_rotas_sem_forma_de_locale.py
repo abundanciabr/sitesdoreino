@@ -220,18 +220,21 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # EVO-22). `entrar` entrou com a célula de identidade
     # (`PathPrefix(/entrar)`, DECISAO-celula-de-identidade, 25/08/2026).
     # `admin` entrou com a área administrativa (`PathPrefix(/admin)`,
-    # DECISAO-celula-admin, 25/08/2026). Esta igualdade é um INVENTÁRIO, não
+    # DECISAO-celula-admin, 25/08/2026). `mapa-ia` entrou com o mapa técnico
+    # público (`PathPrefix(/mapa-ia)`, INV-P14, 28/08/2026), mesmo backend da
+    # `admin`. Esta igualdade é um INVENTÁRIO, não
     # uma regra de segurança: rota nova obriga quem a acrescenta a passar por
     # aqui e olhar as duas regras acima. As regras que julgam de fato (A: forma
     # de locale; B: colisão com idioma declarado) continuam medindo a tabela
-    # real e nada nelas foi afrouxado — `forms`, `entrar` e `admin` têm 5, 6 e
-    # 5 letras, logo nem casam a FORMA.
+    # real e nada nelas foi afrouxado — `forms`, `entrar`, `admin` e `mapa-ia`
+    # têm 5, 6, 5 e 7 letras, logo nem casam a FORMA.
     assert segmentos == {
         "",
         "quiz",
         "checkout",
         "alunos",
         "api",
+        "mapa-ia",
         "forms",
         "entrar",
         "admin",
