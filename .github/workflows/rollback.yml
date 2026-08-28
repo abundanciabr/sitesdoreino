@@ -41,6 +41,7 @@ on:
           - alunos
           - catalogo
           - checkout
+          - forum
           - funil
           - identidade
           - leads
