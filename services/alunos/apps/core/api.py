@@ -12,7 +12,7 @@ from datetime import date
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
@@ -24,6 +24,7 @@ from apps.matriculas.services import (
     entrar_na_fila,
     CAMPOS_CORRIGIVEIS,
     alunos_do_painel,
+    apagar_matricula,
     atualizar_matricula,
     como_o_painel_ve,
     matricular,
@@ -966,3 +967,46 @@ def update_enrollment(request, id: str):
     if resultado == "nada-a-mudar":
         return JsonResponse({"detail": "nada para mudar"}, status=422)
     return JsonResponse(como_o_painel_ve(linha), status=200)
+
+
+DESCRICAO_APAGAR = 'O direito da pessoa de sumir do sistema\n(`docs/decisoes/DECISAO-administradores-e-apagar.md` §4). Decidido pelo\nmantenedor em 28/08/2026, contra a recomendacao do agente de esperar o\nprimeiro pedido real — com o preco apresentado antes da escolha.\n\nAPAGA A LINHA, e nao troca o estado. Nao ha desfazer, e nao ha versao\n"apagada" para consultar depois: e isso que separa esta porta do\n`PATCH` com `status: encerrada`, que existe ao lado para o caso comum\nde tirar o acesso podendo voltar atras.\n\nO QUE SOBRA depois: nada aqui. Do lado de quem chamou, uma linha de\nauditoria dizendo que a ficha X foi apagada, em tal dia, por tal pessoa\n— sem nome, sem telefone, sem e-mail. A auditoria da area administrativa\ne append-only por trigger no banco, entao ela NUNCA pode ter guardado\ndado que a pessoa forneceu; se tivesse, esta porta seria impossivel de\ncumprir.\n\nNAO apaga quem esta na FILA: linha `aguardando`/`recusada` responde 409,\npela mesma razao do `PATCH` — a fila tem porta propria, que sabe\nconferir "ja decidida" e guardar o motivo.\n'
+
+_DELETE_ENROLLMENT_OPENAPI = {
+    "parameters": [
+        {"name": "id", "in": "path", "required": True, "schema": {"type": "string"}}
+    ],
+    "responses": {
+        "204": {
+            "description": "Apagada. Sem corpo — nao ha o que devolver "
+            "sobre uma ficha que nao existe mais"
+        },
+        "404": {"description": "Nao ha matricula com este id"},
+        "409": {
+            "description": "Esta linha esta na FILA — decida por POST "
+            "/pre-matriculas/{id}/decisao"
+        },
+    },
+}
+
+
+@router.delete(
+    "/matriculas/{id}",
+    operation_id="deleteEnrollment",
+    summary="Apagar a matricula DE VEZ — irreversivel",
+    description=DESCRICAO_APAGAR,
+    # `response={204: None}` NÃO é decoração: sem ele o django-ninja declara um
+    # `200: OK` de fábrica na exportação, e o freeze reprova contra um contrato
+    # que só prevê 204/404/409. É a forma de dizer "esta operação não devolve
+    # corpo" para o exportador, não só para quem lê.
+    response={204: None},
+    openapi_extra=_DELETE_ENROLLMENT_OPENAPI,
+)
+def delete_enrollment(request, id: str):
+    """[GESTAO] Apaga de vez. Ver `apagar_matricula`."""
+    resultado = apagar_matricula(id_da_linha=id)
+    if resultado == "nao-encontrada":
+        raise HttpError(404, "matrícula inexistente")
+    if resultado == "na-fila":
+        raise HttpError(409, "esta linha está na fila — decida por /pre-matriculas")
+    # 204 sem corpo: não há o que devolver sobre uma ficha que não existe mais.
+    return HttpResponse(status=204)
