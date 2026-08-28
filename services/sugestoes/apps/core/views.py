@@ -37,6 +37,30 @@ from .participacao import quadro_atual
 
 PAGINA = "sugestoes/entrar.html"
 
+# [FILA] O recibo de quem já pediu se RECARREGA sozinho, e quando a liberação
+# chega ele manda a pessoa para o site (`?esperando=1` diz a `entrar` que a
+# chegada veio dali).
+#
+# `<meta http-equiv="refresh">` e não JavaScript, e não é preguiça: esta página
+# declara no topo, desde que nasceu, que não tem CSS externo, JS nem fonte
+# remota — "uma dependência de rede numa página de LOGIN é o tipo de coisa que
+# quebra exatamente quando não deveria". Um relógio de espera que só funciona
+# com JS ligado quebraria a promessa da tela justamente para quem tem o
+# navegador mais travado.
+#
+# Dez segundos: rápido o bastante para a pessoa não sentir, devagar o bastante
+# para não virar rajada. O par com `TTL_SEM_MATRICULA` (5s, em `sessao.py`) é
+# que fecha a conta — sem ele, a página recarregaria lendo a mesma resposta
+# velha e o relógio não adiantaria nada.
+SEGUNDOS_ATE_RECARREGAR = 10
+MARCA_DE_ESPERA = "esperando"
+
+# Para onde vai quem foi liberado enquanto esperava. Caminho relativo de
+# propósito: a Caixa serve sob o MESMO host do site (`PathPrefix(/forms/sugestoes)`),
+# e uma URL absoluta aqui seria um segundo lugar guardando o endereço do site —
+# ele mudaria no dia em que houvesse outro domínio e ninguém lembraria daqui.
+DEPOIS_DE_LIBERADO = "/"
+
 # A lembrança, neste navegador, de que a pessoa já pediu entrada — para que
 # recarregar a página não mostre o formulário vazio como se o pedido não
 # tivesse chegado. Quem guarda a fila de verdade é a célula `alunos`; isto é
@@ -155,6 +179,11 @@ def _tela_da_fila(
     lado — nada duplica, e a lei §7 até PREVÊ o reenvio como o jeito de corrigir
     um telefone errado.
     """
+    recibo = (
+        ja_pediu
+        if ja_pediu is not None
+        else request.COOKIES.get(PEDIU_ENTRADA) == _marca_do_pedido(email)
+    )
     return render(
         request,
         PAGINA,
@@ -162,6 +191,11 @@ def _tela_da_fila(
             "ator": None,
             "email": email,
             "fila": True,
+            # SÓ o recibo se recarrega. No formulário, um refresh apagaria o
+            # que a pessoa está digitando — e ela ainda não tem nada para
+            # esperar.
+            "recarregar_em": SEGUNDOS_ATE_RECARREGAR if recibo else None,
+            "url_da_espera": f"{reverse('entrar')}?{MARCA_DE_ESPERA}=1",
             "ja_pediu": (
                 ja_pediu
                 if ja_pediu is not None
@@ -288,6 +322,20 @@ def entrar(request):
     resolucao = ses.resolver(request)
 
     if resolucao.estado == ses.DENTRO:
+        if request.GET.get(MARCA_DE_ESPERA):
+            # [FILA] Chegou aqui pelo relógio do recibo, e a liberação saiu:
+            # a pessoa vai para o SITE, não para esta porta.
+            #
+            # Decisão do mantenedor em 28/08/2026, e o destino é o certo: a
+            # home é onde ela vê que virou aluna (o caminho da Caixa aparece
+            # lá, pelas cinco categorias) e onde o site se apresenta. Cair na
+            # porta da Caixa dizendo "você está dentro" seria terminar a espera
+            # numa tela de serviço.
+            #
+            # Só com a marca: sem ela, quem acabou de fazer login pela Caixa
+            # (o `_abrir` volta para cá) seria jogado para a home e teria de
+            # clicar de novo para entrar onde já estava indo.
+            return HttpResponseRedirect(DEPOIS_DE_LIBERADO)
         return render(request, PAGINA, {"ator": resolucao.ator})
 
     if resolucao.estado == ses.SEM_MATRICULA:

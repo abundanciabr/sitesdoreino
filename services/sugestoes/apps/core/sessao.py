@@ -81,7 +81,28 @@ INDISPONIVEL = "indisponivel"
 # memória, e SÓ RESPOSTAS entram — erro de rede nunca é cacheado.
 # ---------------------------------------------------------------------------
 TTL_DO_RECONHECIMENTO = 60
+# A resposta "esta pessoa É aluna" pode envelhecer à vontade: o custo de um
+# "sim" velho é alguém manter acesso por mais alguns minutos depois de perdê-lo
+# — situação rara e nada urgente.
 TTL_DA_MATRICULA = 600
+# A resposta "NÃO é aluna" NÃO pode. Ela custa uma pessoa BARRADA depois de já
+# ter sido liberada — e desde 27/08/2026 existe alguém do outro lado esperando
+# na frente da tela, com a promessa escrita de que "quando estiver liberado,
+# esta página leva você para o site".
+#
+# Medido em 28/08/2026, com o mantenedor: ele liberou a própria conta pelo
+# painel, a pessoa saiu da fila na hora, e a Caixa continuou recusando. O TTL
+# era o mesmo dos dois lados (10 min), escrito quando a única forma de virar
+# aluno era COMPRAR — um caminho assíncrono, sem ninguém olhando. A fila mudou
+# o cenário e o número não acompanhou.
+#
+# Cinco segundos, e não zero: o valor não é para o humano (ninguém percebe
+# cinco segundos), é para não perder a proteção contra rajada — várias
+# requisições da MESMA pessoa no mesmo instante continuam custando uma consulta
+# só. E o tráfego que passa por aqui é pequeno por construção: desde as cinco
+# categorias, a home só oferece a Caixa a quem JÁ é aluno, então quem cai no
+# ramo negativo é quem está esperando na fila.
+TTL_SEM_MATRICULA = 5
 MAXIMO_EM_CACHE = 500
 _CACHE_DE_RECONHECIMENTO: dict = {}
 _CACHE_DE_MATRICULA: dict = {}
@@ -274,11 +295,14 @@ def _sessao_central(cookie: str) -> dict:
 
 
 def _tem_matricula(email: str) -> bool:
-    """A decisão da `alunos`, com cache — positivo E negativo.
+    """A decisão da `alunos`, com cache — e com TTL ASSIMÉTRICO.
 
-    O negativo também é cacheado (TTL igual, 10 min): quem acabou de comprar
-    espera no máximo esse tempo para a Caixa enxergar — e sem ele, uma pessoa
-    sem matrícula clicando pelo site custaria um salto à `alunos` por página.
+    Os dois TTLs são diferentes de propósito, e a assimetria é a correção de
+    um defeito medido em 28/08/2026 (ver `TTL_SEM_MATRICULA` acima): um "sim"
+    velho custa acesso a mais por alguns minutos; um "não" velho custa uma
+    pessoa BARRADA depois de já ter sido liberada, olhando para uma tela que
+    lhe promete o contrário.
+
     QUALQUER matrícula conta (EVO-01 §4.1: quem já foi aluno mantém a voz —
     reembolsada inclusive; mudar isso é decisão do mantenedor).
     """
@@ -290,7 +314,8 @@ def _tem_matricula(email: str) -> bool:
     tem = bool(AlunosClient().matriculas_de(chave))
     if len(_CACHE_DE_MATRICULA) >= MAXIMO_EM_CACHE:
         _CACHE_DE_MATRICULA.clear()
-    _CACHE_DE_MATRICULA[chave] = (agora + TTL_DA_MATRICULA, tem)
+    validade = TTL_DA_MATRICULA if tem else TTL_SEM_MATRICULA
+    _CACHE_DE_MATRICULA[chave] = (agora + validade, tem)
     return tem
 
 
