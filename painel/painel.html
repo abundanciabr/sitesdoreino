@@ -132,6 +132,21 @@
   #tela-erro b{font-size:21px;}
   #tela-erro pre{white-space:pre-wrap; font-size:13px; background:#00000040; padding:10px 12px; border-radius:8px;}
 
+  /* o que o SERVIDOR diz sobre si mesmo */
+  .diag-servidor{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+    padding:14px 18px; margin:14px 0; font-size:14px; line-height:1.6;}
+  .diag-servidor.cego{border-color:var(--cinza); background:var(--cinza-dim); color:var(--text-2);}
+  .diag-placar{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px;
+    padding-bottom:10px; margin-bottom:4px; border-bottom:1px solid var(--line-soft);}
+  .diag-placar.ok{color:var(--green);} .diag-placar.mal{color:var(--red);}
+  .diag-linha{display:flex; gap:12px; flex-wrap:wrap; padding:7px 0; border-bottom:1px solid var(--line-soft);}
+  .diag-linha:last-of-type{border-bottom:none;}
+  .diag-rot{flex:0 0 240px; color:var(--text);}
+  .diag-val{flex:1 1 260px; color:var(--text-2);}
+  .diag-linha.ok .diag-val{color:var(--green);}
+  .diag-linha.mal .diag-val{color:var(--red);}
+  .diag-nota{margin-top:10px; font-size:13px; color:var(--text-3); line-height:1.6;}
+
   /* a caixa-preta: o bloco que o dono copia e cola numa sessão */
   .diag{margin-top:14px;}
   .diag-copiar{font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer;
@@ -177,6 +192,7 @@
   <section class="vista" id="vista-operacao">
     <p class="sub">O detalhe para quando algo parece estranho: as medições feitas <b>agora, do seu navegador</b>, e os fatos com evidência — estes últimos por mês, carregados quando você pedir.</p>
     <div class="medicoes" id="medicoes"></div>
+    <div class="diag-servidor cego" id="diag-servidor">medindo…</div>
     <div id="op-registros"></div>
   </section>
   <section class="vista" id="vista-memoria">
@@ -1376,6 +1392,80 @@ try {
       }
     })
     .catch(function () { pintaMed("med-runs", "nao-sei", "não consegui perguntar ao GitHub. NÃO é um verde."); });
+
+
+  // ---------- o que o SERVIDOR diz sobre si mesmo ----------
+  // As medições acima vêm do seu navegador. Estas vêm de dentro do servidor, e
+  // são a única forma de saber o que acontece na porta da área administrativa:
+  // ninguém entra na máquina (Lei 5) e ninguém vê o seu navegador. Até
+  // 28/08/2026 o diagnóstico das quatro telas vermelhas de 27/08 era dedução
+  // lida no código; a partir daqui é medição.
+  (function contarDoServidor() {
+    var caixa = document.getElementById("diag-servidor");
+    if (!caixa) return;
+
+    function cego(motivo) {
+      caixa.className = "diag-servidor cego";
+      caixa.textContent = "⚪ Não consigo perguntar ao servidor daqui — " + motivo;
+    }
+    if (CONTEXTO.local) {
+      cego("esta é a cópia aberta no seu computador, e não existe servidor nela. O painel online (meshcraft.top/admin/painel/) mostra estes números.");
+      return;
+    }
+    if (!window.fetch) { cego("este navegador não sabe fazer o pedido."); return; }
+
+    fetch("diag.json", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        if (d.erro) { cego(d.erro); return; }
+        caixa.className = "diag-servidor";
+        caixa.textContent = "";
+
+        var d503 = (d.respostas_da_porta || {}).indisponivel_503 || 0;
+        var lat = d.latencia_ms || {};
+        var regua = d.regua_ms || {};
+        var des = d.desfechos || {};
+
+        // O número que fecha o caso de agosto vem primeiro, e sozinho: se ele
+        // não for zero, nada mais nesta caixa importa tanto.
+        var placar = el("div", "diag-placar" + (d503 ? " mal" : " ok"));
+        placar.textContent = d503
+          ? "🔴 " + d503 + " vez(es) a área administrativa respondeu 'indisponível' desde que o servidor subiu."
+          : "🟢 Nenhuma vez a área administrativa respondeu 'indisponível' desde que o servidor subiu.";
+        caixa.appendChild(placar);
+
+        var saude = (lat.p95 == null) ? "nao-sei"
+          : (lat.p95 <= regua.saudavel_ate ? "ok" : "mal");
+        var linhas = [
+          ["Quanto demora perguntar quem é você",
+            lat.p95 == null
+              ? "ainda não houve medição neste processo"
+              : "metade das vezes até " + lat.p50 + " ms; 95% até " + lat.p95 +
+                " ms (o saudável é abaixo de " + regua.saudavel_ate +
+                " ms, e a porta desiste em " + regua.teto_da_porta + " ms)",
+            saude],
+          ["Perguntas que estouraram o tempo", (des.estourou_o_tempo || 0) + " de " + (d.perguntas_a_identidade || 0),
+            (des.estourou_o_tempo ? "mal" : "ok")],
+          ["Perguntas que o login recusou", (des.recusou || 0) + " (isto é configuração, não capacidade)",
+            (des.recusou ? "mal" : "ok")],
+          ["O servidor está de pé há", Math.floor((d.de_pe_ha_segundos || 0) / 60) +
+            " minuto(s) — número pequeno depois de um deploy é normal; do nada, é reinício silencioso", "nao-sei"]
+        ];
+        linhas.forEach(function (x) {
+          var linha = el("div", "diag-linha " + x[2]);
+          linha.appendChild(el("span", "diag-rot", x[0]));
+          linha.appendChild(el("span", "diag-val", x[1]));
+          caixa.appendChild(linha);
+        });
+
+        var nota = el("div", "diag-nota",
+          "Estes números vivem na memória do servidor e voltam a zero quando ele reinicia — por isso o tempo de pé está aí em cima. Eles não são o histórico do projeto; são o retrato deste processo, agora.");
+        caixa.appendChild(nota);
+      })
+      .catch(function (e) {
+        cego("o servidor não respondeu a medição (" + e + "). Isso em si já é um sinal.");
+      });
+  })();
 
   // ---------- rodapé ----------
   var rod = document.getElementById("rodape");

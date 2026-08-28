@@ -33,6 +33,7 @@ from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.urls import reverse
 
+from . import medidor
 from .clients import IdentidadeClient, IdentidadeIndisponivel
 
 logger = logging.getLogger("admin.porta")
@@ -69,6 +70,26 @@ def _emails_autorizados() -> frozenset[str]:
     """
     cru = getattr(settings, "ADMIN_EMAILS", "") or ""
     return frozenset(p.strip().lower() for p in cru.split(",") if p.strip())
+
+
+def _anota(registrar, *args) -> None:
+    """Medir JAMAIS derruba a porta. Nem por defeito, nem por assinatura.
+
+    O `try` de dentro do medidor cobre um erro no corpo dele. Não cobre a
+    chamada em si: se um dia alguém acrescentar um parâmetro obrigatório lá, a
+    chamada estoura ANTES de entrar na função, e um TypeError sobe pelo
+    middleware — transformando um 302 para o login num 500. Numa área
+    fail-closed isso é o mantenedor trancado para fora das próprias ferramentas
+    por causa de um contador.
+
+    Por isso a fronteira é guardada AQUI, no lado que sofre a consequência.
+    Provado em `tests/test_medidor.py::test_medidor_quebrado_nao_muda_a_porta`,
+    que substitui o medidor por um que explode e exige a mesma resposta.
+    """
+    try:
+        registrar(*args)
+    except Exception:  # noqa: BLE001 — observar não pode derrubar quem decide
+        logger.warning("porta: a medição falhou e foi ignorada", exc_info=True)
 
 
 class PortaAdministrativa:
@@ -118,20 +139,28 @@ class PortaAdministrativa:
             "nome": sessao.get("nome_exibido") or email,
             "email": email,
         }
+        _anota(medidor.registrar_resposta, "entrou")
         return self._com_seguranca(self.get_response(request))
 
     # ---------------------------------------------------------------- respostas
 
     def _para_o_login(self, request):
+        _anota(medidor.registrar_resposta, "mandou_para_o_login")
         destino = f"{settings.URL_DE_ENTRADA}?next={request.path}"
         return self._com_seguranca(HttpResponseRedirect(destino))
 
     def _nao_existe(self):
+        _anota(medidor.registrar_resposta, "nao_existe_para_voce")
         return self._com_seguranca(
             HttpResponseNotFound(render_to_string("admin/404.html"))
         )
 
     def _indisponivel(self):
+        # O contador que fecha o caso de 27/08: durante um incidente, 503 por
+        # minuto deveria bater com quantos registros o painel deixou de
+        # carregar. Depois do conserto, zero — e se sobrarem 503 com o painel
+        # pedindo pouco, a identidade está doente por conta própria.
+        _anota(medidor.registrar_resposta, "indisponivel_503")
         resposta = HttpResponse(render_to_string("admin/503.html"), status=503)
         # Diz ao navegador (e a qualquer cache no caminho) que isto é
         # temporário e não deve ser guardado — 503 sem isto pode ser cacheado.
