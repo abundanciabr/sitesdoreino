@@ -61,6 +61,10 @@
       "frozen": "contracts/pagamentos.openapi.yaml",
       "exportador": ["python", "manage.py", "export_openapi"]
     },
+    "forum": {
+      "freeze": "not-applicable",
+      "reason": "Célula recém-nascida (28/08/2026), ainda em esqueleto: config/urls.py expõe só /healthz e não há config/api.py. O contrato entra no PR 3 da escada de docs/decisoes/DECISAO-forum-da-escola.md §7, pelo RITOS.md §3 — e aí esta linha vira freeze: required. Declará-la agora é o que impede a célula de nascer sem veredito."
+    },
     "funil": {
       "freeze": "not-applicable",
       "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."

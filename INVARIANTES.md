@@ -146,14 +146,23 @@ primeira oportunidade de violá-la.
   registra o episódio em que isso quase entrou em produção, e a §6.4 o proíbe
   por escrito; este invariante é o mecanismo que faltava à proibição.
 - **Teste-Guarda:**
-  `services/admin/tests/test_inv_admin_nao_assina_sessao.py` — mede a
+  `services/admin/tests/test_inv_admin_nao_assina_sessao.py` e
+  `services/forum/tests/test_inv_forum_nao_assina_sessao.py` — medem a
   CONFIGURAÇÃO da célula (sem SessionMiddleware, sem django.contrib.sessions
   e sem SESSION_ENGINE no settings dela), porque sem essas três
-  `request.session` nem existe. Provado por mutação na gênese da célula:
-  instalar o SessionMiddleware deixa o guarda vermelho.
+  `request.session` nem existe. Provados por mutação na gênese de cada uma:
+  instalar o SessionMiddleware deixa o guarda vermelho. O do `forum`
+  (28/08/2026) acrescenta um quarto caso, o do cookie de CSRF com nome
+  próprio — não é sessão, mas é o mesmo problema de vizinhança: quatro células
+  no mesmo host gravando `csrftoken` é uma invalidando o formulário da outra.
 - **Célula dona:** identidade (única emissora) — guarda plantado em `admin`,
-  a primeira célula a nascer **depois** da regra; toda célula futura que
-  consuma sessão herda a mesma obrigação.
+  a primeira célula a nascer **depois** da regra, e replicado em `forum`;
+  toda célula futura que consuma sessão herda a mesma obrigação. **No `forum`
+  a obrigação pesa mais que o normal:** foi um requisito de login que criou a
+  célula (`DECISAO-forum-da-escola.md` §2 — *"logado uma única vez, o site
+  todo"*), e foi ele que eliminou os motores de fórum de prateleira. Uma
+  segunda assinatura de cookie ali quebraria exatamente a coisa que justificou
+  construir em vez de instalar.
 
 ### [INV-SUG10] Corredor do ChangeSpec (nada entra em desenvolvimento sem ele)
 - **O quê:** `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se
