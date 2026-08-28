@@ -126,10 +126,22 @@ argumentar contra uma restrição, mas argumente — não a ignore.
    (já falhou três vezes seguidas num passo só) e não pode ser rotina. **Se a sua
    recomendação exige que alguém entre no servidor toda vez que o fórum precisar
    ser atualizado, diga isso em voz alta — é provavelmente fatal aqui.**
-2. **A VPS tem 2 GB de memória no total, e já roda 24 contêineres**: as 12
-   células, o roteador de tráfego, o PostgreSQL, o Redis e 9 processos
-   auxiliares. **Ninguém nunca mediu quanto sobra livre.** Trate os 2 GB como o
-   teto do prédio inteiro, não como espaço disponível.
+2. **A máquina é pequena, já está ocupada — mas eu topo trocá-la.** É uma VPS
+   Hostinger do plano KVM 1: **1 núcleo de processador, 4 GB de memória**, 50 GB
+   de disco e 4 TB de franquia de tráfego. Nela já rodam **24 contêineres**: as
+   12 células, o roteador de tráfego, o PostgreSQL, o Redis e 9 processos
+   auxiliares. Medido no painel do provedor em 28/08/2026: **processador em 50%**
+   de forma sustentada, **memória em 35%**, disco em 12 dos 50 GB, tráfego
+   praticamente zerado.
+   **Leia esses dois números com atenção, porque eles apontam para lados
+   diferentes:** sobra memória (65% livre), e **falta processador** — 50% de um
+   único núcleo, com o fórum ainda nem instalado.
+   E o mais importante para a sua recomendação: **quando for necessário, eu subo
+   para o plano KVM 2** (2 núcleos, 8 GB de memória, 100 GB de disco). Ou seja,
+   **o tamanho da máquina não é um teto rígido — é uma questão de custo mensal.**
+   Não descarte uma boa solução só porque ela não cabe na máquina de hoje: diga
+   que ela exige a máquina maior, e diga se vale a pena. O que **não** se resolve
+   trocando de plano é a restrição 1, que é sobre acesso, não sobre tamanho.
 3. **Nada de serviço pago, nada de SaaS, nada de mensalidade.** O repositório é
    privado num plano gratuito. Fóruns hospedados (Circle, Mighty Networks,
    Discourse hospedado) estão fora. Se você acha essa decisão errada, argumente —
@@ -155,23 +167,31 @@ argumentar contra uma restrição, mas argumente — não a ignore.
 ## A pergunta do Discourse — quero ela respondida de frente
 
 Eu li que o **Discourse** cabe em pouca memória quando há poucos usuários, e
-gostei dele. Um agente me contestou com estes fatos, e eu quero o seu veredito,
+gostei dele. Um agente me contestou. **Na discussão, ele errou um número a meu
+favor e acertou um ponto que nenhum de nós tinha visto** — quero o seu veredito,
 não uma diplomacia entre os dois:
 
-- O piso de memória do Discourse é do conjunto que fica **residente** (servidor
-  web em Ruby + fila de tarefas), *independente* de haver 5 ou 500 usuários. Os
-  "1 a 2 GB" que se lê na documentação são para uma **máquina dedicada só a ele**
-  — a minha hospeda 24 contêineres.
-- A forma canônica de instalar e **atualizar** o Discourse é rodar o instalador
-  dele **dentro do servidor**. Isso colide de frente com a restrição 1.
-- Em compensação, o Discourse é o único fórum de prateleira cujo mecanismo de
+- **O que o agente errou:** ele calculou com 2 GB de memória, porque foi o número
+  que eu passei. **São 4 GB, e só 35% estão em uso.** Existe folga de memória
+  real. O argumento "não cabe por falta de memória" ficou bem mais fraco do que
+  ele apresentou — e some de vez se eu trocar de plano.
+- **O que ele acertou, e que eu não tinha olhado:** o gargalo aqui não é memória,
+  é **processador**. É **um único núcleo**, já em **50% de uso sustentado** sem
+  fórum nenhum instalado. O Discourse traz servidor web em Ruby mais uma fila de
+  tarefas em segundo plano, e os dois disputam processador.
+- **O que continua de pé, e não se resolve com dinheiro:** a forma canônica de
+  instalar e **atualizar** o Discourse é rodar o instalador dele **dentro do
+  servidor** — colisão frontal com a restrição 1. Trocar de plano não muda isso.
+- **A favor dele:** o Discourse é o único fórum de prateleira cujo mecanismo de
   login externo (DiscourseConnect) é simples o bastante para a minha célula de
   identidade implementar sem virar um provedor OAuth2 inteiro.
 
-**Responda diretamente: o Discourse entra ou não entra aqui?** Se entra, mostre
-a conta de memória e diga como ele se atualiza numa casa onde ninguém entra no
-servidor pela porta de trás. Se não entra, diga o que morre junto com ele — o
-que eu perco de concreto ao construir em vez de instalar.
+**Responda diretamente: o Discourse entra ou não entra aqui?** E responda a
+versão difícil da pergunta, não a fácil: **se eu subir para 2 núcleos e 8 GB, o
+Discourse passa a valer a pena?** Quero a comparação honesta entre "pagar mais
+por mês e ganhar um produto maduro" e "rodar no que já existe com uma solução
+que se atualiza sozinha". Se ele não entra nem assim, diga o que morre junto —
+o que eu perco de concreto ao construir em vez de instalar.
 
 ## O leque que eu enxergo — critique, corte e acrescente
 

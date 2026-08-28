@@ -1,13 +1,29 @@
-# Medir a memória do servidor — o comando que encerra a dúvida do Discourse
+# Medir o fôlego do servidor — o que o painel da Hostinger ainda não conta
 
-**Por que isto existe:** você leu que o Discourse cabe em pouca memória, e a
-leitura não é absurda. Só que ninguém neste projeto **nunca mediu** quanta
-memória sobra livre na VPS — sabemos que o total é 2 GB e que já há 24
-contêineres rodando, e só. Enquanto o número não existir, "cabe Discourse?" é
-opinião, minha e sua. Com o número, vira fato.
+> **Atualizado em 28/08/2026.** O painel do provedor já respondeu a maior parte
+> da pergunta original, e a resposta corrigiu o projeto: **a máquina é o plano
+> KVM 1 — 1 núcleo de processador, 4 GB de memória, 50 GB de disco, 4 TB de
+> tráfego.** Não são 2 GB, como estava escrito aqui. Estado medido no painel:
+> **processador 50%**, **memória 35%**, disco 12 de 50 GB, tráfego quase zerado.
+>
+> Isso já mudou a conclusão sobre o Discourse: **memória sobra; processador é
+> que é escasso** — 50% de um único núcleo, sem fórum nenhum instalado.
 
-O resultado serve para esta decisão e para todas as próximas: é a primeira
-medição de fôlego da máquina que este projeto terá.
+**Então por que este arquivo continua aqui?** Porque o painel mostra o retrato de
+fora, e três coisas só se veem por dentro:
+
+1. **Quanto cada um dos 24 contêineres consome.** "35% de memória" não diz se são
+   24 programas comportados ou um devorando tudo. Se um estiver fora da curva,
+   isso é achado de manutenção, não de fórum.
+2. **Se existe memória de emergência em disco (swap) configurada.** Muda
+   completamente o que acontece quando a máquina aperta: com ela, fica lenta;
+   sem ela, o sistema mata um programa no meio.
+3. **A memória realmente disponível**, que não é a mesma coisa que "não usada" —
+   o Linux empresta memória ociosa para acelerar disco e devolve quando alguém
+   precisa. O painel não separa as duas.
+
+Continua valendo a pena, e continua sendo uma colada só. Mas **não é mais
+urgente**: já dá para consultar as outras IAs sem ele.
 
 ---
 
@@ -65,12 +81,16 @@ medir_folego_da_maquina() {
   docker ps -q | wc -l
   echo
   echo "-- 3. Quanto cada contêiner está usando (leva uns 15 segundos) --"
-  docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}'
+  docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}'
   echo
-  echo "-- 4. Espaço em disco --"
+  echo "-- 4. Carga do processador (a fila de quem espera vez no núcleo) --"
+  echo "núcleos disponíveis: $(nproc)"
+  uptime
+  echo
+  echo "-- 5. Espaço em disco --"
   df -h / | tail -n 2
   echo
-  echo "-- 5. Resumo em uma linha --"
+  echo "-- 6. Resumo em uma linha --"
   free -m | awk '/^Mem:/ {printf "Total: %s MB | Em uso: %s MB | Disponível de verdade: %s MB\n", $2, $3, $7}'
   free -m | awk '/^Swap:/ {printf "Swap (memória de emergência em disco): total %s MB, em uso %s MB\n", $2, $3}'
   echo
@@ -81,18 +101,19 @@ medir_folego_da_maquina
 
 ## Como o robô vai ler isso
 
-O número que decide é o **"Disponível de verdade"** da linha 5 (a coluna
-`available` do Linux — memória que o sistema consegue entregar a um programa
-novo agora, já descontando o que dá para liberar de cache).
+Agora que já sabemos o tamanho da máquina pelo painel, o que o robô procura na
+saída é outra coisa — são três perguntas:
 
-Régua honesta, para você acompanhar o raciocínio:
-
-| Disponível de verdade | O que significa para o fórum |
+| O que olhar | O que ela responde |
 |---|---|
-| Menos de 300 MB | Apertado até para uma célula Django nova. Qualquer fórum de prateleira está fora, e vale conversar sobre aumentar a VPS |
-| 300 a 700 MB | Cabe confortavelmente uma célula nossa. Discourse continua fora |
-| Acima de 700 MB, com swap | Aí sim vale reabrir o Discourse como opção real, com a ressalva da atualização sem acesso ao servidor, que continua valendo |
+| A **"Disponível de verdade"** do resumo (a coluna `available` do Linux) | Memória que o sistema entrega a um programa novo **agora**, já descontando o que dá para liberar. É diferente de "não usada": o Linux empresta memória ociosa para acelerar o disco e devolve quando alguém precisa |
+| A linha do **swap** | Se existe memória de emergência em disco. **Com ela**, a máquina apertada fica lenta; **sem ela**, o sistema mata um programa no meio, sem avisar. Se vier `0`, isso vira uma tarefa própria — vale ligar mesmo sem fórum nenhum |
+| A **carga** do item 4, comparada com o número de núcleos | É a fila de quem espera vez no processador. Com **1 núcleo**, carga acima de `1,00` significa que já tem programa esperando. É o número que decide se o Discourse precisa da máquina maior |
 
-O item 4 (disco) entra de brinde porque o "mostre seu trabalho" do fórum — aluno
+E a lista do item 3, ordenada de olho: se um contêiner sozinho estiver muito
+fora da curva dos outros, isso é achado de manutenção — vale consertar
+independente de fórum.
+
+O disco (item 5) entra de brinde porque o "mostre seu trabalho" do fórum — aluno
 postando print, modelo e vídeo — é a coisa mais capaz de encher disco neste
 projeto, e é melhor saber a folga antes de prometer anexos.

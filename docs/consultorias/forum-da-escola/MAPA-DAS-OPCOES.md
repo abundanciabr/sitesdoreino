@@ -51,8 +51,9 @@ que todo o resto do site.
 
 O que isso significa na prática:
 
-- **Memória:** custa o mesmo que qualquer outra célula do site. O problema dos
-  2 GB simplesmente não aparece.
+- **Peso na máquina:** custa o mesmo que qualquer outra célula do site — nem
+  memória nem processador a mais do que já é rotina aqui. **Não exige trocar de
+  plano**, e essa é a diferença prática mais concreta para o seu bolso.
 - **Atualizar:** pela esteira automática, como tudo aqui. Ninguém entra no
   servidor.
 - **Login único:** é a menor ponte das três famílias. A célula precisa de um
@@ -91,21 +92,35 @@ OAuth2 inteiro).
 
 ## Sobre o Discourse, com franqueza
 
-Você leu que ele cabe em pouca memória com poucos usuários, e não é uma leitura
-absurda — a documentação dele fala em 1 a 2 GB. **A diferença é que esse número
-é para uma máquina dedicada só a ele.** A nossa VPS tem 2 GB no total e já roda
-24 contêineres: as 12 células, o roteador, o PostgreSQL, o Redis e 9 processos
-auxiliares. Os 2 GB são o teto do prédio, não a sala vazia.
+**Corrigido em 28/08/2026 — e a correção é a seu favor.** Eu escrevi aqui que a
+máquina tinha 2 GB no total. **Tem 4 GB**, e o painel da Hostinger confirmou:
+plano KVM 1 — 1 núcleo de processador, 4 GB de memória, 50 GB de disco, 4 TB de
+tráfego. Mais importante: **a memória está em 35% de uso**, ou seja, sobra folga
+de verdade.
 
-E há um segundo problema, independente da memória: **a forma canônica de
-atualizar o Discourse é rodar o instalador dele dentro do servidor.** Aqui,
-nenhum robô entra lá — a única via é a esteira automática. Manter o Discourse
-seria uma tarefa recorrente **sua**, no terminal, para sempre.
+Então o argumento que eu usei contra o Discourse — *"não cabe por falta de
+memória"* — **ficou bem mais fraco. Nessa parte você estava mais certo do que
+eu**, e o registro fica.
 
-Nada disso é chute meu contra leitura sua: **é mensurável.** O arquivo
-`MEDIR-A-MEMORIA.md`, ao lado deste, tem o comando que mostra quanta memória
-sobra de verdade hoje. E a pergunta foi para os consultores nominalmente, com
-estes fatos na mesa e a instrução de defender o Discourse se ele for defensável.
+**Mas a mesma tela mostrou um gargalo que nenhum de nós dois tinha olhado: o
+processador.** O KVM 1 tem **um único núcleo**, e ele já está em **50% de uso
+sustentado**, sem nenhum fórum instalado. O Discourse traz servidor web em Ruby
+mais uma fila de tarefas em segundo plano, e os dois disputam processador — que
+é justamente o recurso escasso aqui, não a memória.
+
+E como você já disse que **sobe para o KVM 2 quando for necessário** (2 núcleos,
+8 GB, 100 GB de disco), a pergunta deixou de ser *"cabe?"* e virou outra, melhor:
+**"vale a pena pagar mais por mês para rodar o Discourse, comparado com uma
+solução que roda no que já existe?"** É essa a pergunta que foi para a banca.
+
+**O que dinheiro nenhum resolve:** a forma canônica de atualizar o Discourse é
+rodar o instalador dele **dentro do servidor**. Nenhum robô entra lá — a única
+via é a esteira automática. Trocar de plano não muda isso: manter o Discourse
+seria tarefa recorrente **sua**, no terminal, para sempre. Este continua sendo o
+argumento mais forte contra ele, e agora é o único que sobrou de pé.
+
+O disco, esse, está tranquilo: 12 GB usados de 50. Boa notícia para o "mostre seu
+trabalho" do fórum, que é a parte mais capaz de encher disco.
 
 ## A minha recomendação, hoje
 
