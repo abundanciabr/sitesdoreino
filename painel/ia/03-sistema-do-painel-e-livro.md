@@ -21,6 +21,7 @@ em `painel/` guarda estado — toda vista é `f(registros[], agora)`.
 | `painel/painel.template.html` | A FONTE da página — é este que se edita. Tem o marcador `__DADOS_DO_PAINEL__` onde o gerador injeta regras e resumo. | PR |
 | `painel/painel.html` | **GERADO.** A página que o mantenedor abre — HTML+CSS+JS+dados num arquivo só, fail-closed total. **Abrir custa UM pedido**, com 90 registros ou com 90 mil. | Só o gerador, nunca à mão |
 | `painel/livro-AAAAMM.js` | **GERADO**, um por mês: o conteúdo daquele mês, buscado só quando a Memória é aberta. Mês fechado nunca mais é reescrito. | Só o gerador, nunca à mão |
+| `ci/verificar_painel.py` | O verificador INDEPENDENTE: confere os gerados contra `git ls-files`, em Python, sem reusar código do gerador, comparando conjuntos de ids. Fecha o ponto cego do `--conferir` (o gerador conferindo a si mesmo). Roda como passo 4 da muralha do painel. | PR |
 | `painel/testes/` | `teste_logica.js` (~50 casos, cada regra provada nos dois sentidos) e `teste_gerador.js` (roda o gerador como subprocesso real, prova os 3 estados de saída) | PR |
 | `ci/muralha-do-painel.sh` | Roda os testes acima em todo PR (exit 0/1/2 — ERROR nunca vira PASS) | — |
 | `ci/divida_do_livro.py` | Segunda trava, na porta de merge: PR mergeado sem nenhum registro citando seu número vira "dívida" que bloqueia o **próximo** merge | — |

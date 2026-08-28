@@ -8,3 +8,21 @@
 # garantido no blob, pela mesma razão dos .sh.
 infra/sincronizar_sites.py text eol=lf
 infra/sites.json text eol=lf
+
+# ARQUIVOS GERADOS DO PAINEL — o Git NÃO tenta juntá-los sozinho.
+#
+# `painel/registros/` é imune a conflito por construção (arquivo novo por
+# ocorrência, nunca reescrito). Os gerados destroem essa vantagem: duas sessões
+# que registram no mesmo dia reescrevem os mesmos arquivos, e o motor de merge
+# de texto produziria uma junção PLAUSÍVEL e semanticamente errada — um registro
+# a mais, um a menos — sem conflito e sem ninguém notar. Com `-merge` o Git para
+# e entrega o conflito na cara.
+#
+# `-merge` e NUNCA `merge=ours`: este último resolve em silêncio mantendo um
+# lado desatualizado, que é o desfecho pior que o problema.
+#
+# A regra ao ver o conflito: NÃO edite o arquivo. Apague, rode
+# `node painel/gerar_manifesto.js` e `git add`. A pasta de registros é a
+# verdade; o gerado é sombra. Quem cobra é ci/verificar_painel.py.
+painel/painel.html   -merge
+painel/livro-*.js    -merge

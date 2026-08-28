@@ -196,6 +196,35 @@ var r9 = roda(dir9);
 caso("template sem o marcador é ERROR (exit 2) — a página nasceria sem dados e sem regras", r9.code === 2);
 caso("...e diz qual marcador falta", r9.out.indexOf("__DADOS_DO_PAINEL__") !== -1);
 
+
+console.log("== mesmo livro, MESMOS BYTES, em qualquer checkout ==");
+// O Git entrega o template em CRLF num clone Windows e em LF num runner Linux.
+// Sem normalizar, o mesmo livro produzia dois painel.html diferentes — e o
+// `--conferir` não acusava, porque normaliza os dois lados antes de comparar.
+// A divergência viajava em silêncio; aqui os bytes são comparados crus.
+//
+// Os dois cenários escrevem o template EXPLICITAMENTE, um em LF e outro em
+// CRLF, em vez de confiar no que o checkout deu — senão o teste mediria o
+// `core.autocrlf` da máquina em vez do gerador.
+var regsIguais = { "20260826-001-a.js": registroBom("20260826-001-a") };
+var tplLF = fs.readFileSync(path.join(RAIZ_PAINEL, "painel.template.html"), "utf8")
+  .split("\r\n").join("\n");
+var dirLF = montarCenario(regsIguais);
+var dirCRLF = montarCenario(regsIguais);
+fs.writeFileSync(path.join(dirLF, "painel.template.html"), tplLF, "utf8");
+fs.writeFileSync(path.join(dirCRLF, "painel.template.html"),
+  tplLF.split("\n").join("\r\n"), "utf8");
+caso("os dois cenários são mesmo diferentes no disco (senão isto não prova nada)",
+  fs.readFileSync(path.join(dirLF, "painel.template.html"), "utf8").indexOf("\r\n") === -1 &&
+  fs.readFileSync(path.join(dirCRLF, "painel.template.html"), "utf8").indexOf("\r\n") !== -1);
+roda(dirLF);
+roda(dirCRLF);
+caso("template em LF e em CRLF geram painel.html byte a byte IDÊNTICO",
+  Buffer.compare(fs.readFileSync(path.join(dirLF, "painel.html")),
+                 fs.readFileSync(path.join(dirCRLF, "painel.html"))) === 0);
+caso("...e o gerado não carrega CRLF nenhum",
+  fs.readFileSync(path.join(dirCRLF, "painel.html"), "utf8").indexOf("\r\n") === -1);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. O gerador NÃO está confiável.");

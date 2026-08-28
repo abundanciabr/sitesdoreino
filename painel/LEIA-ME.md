@@ -17,6 +17,7 @@
 | `logica.js` | As regras que calculam as vistas (caixa de entrada, frescor, capa). Pura, roda em Node e no navegador. | Por PR, com teste-guarda. |
 | `gerar_manifesto.js` | Valida TODOS os registros (fail-closed, com a MESMA `logica.js` da página) e monta `painel.html` + os meses. `--conferir` só confere (para CI). O nome ficou do tempo em que ele só escrevia um manifesto. | Por PR. |
 | `testes/` | Testes-guarda da lógica e do gerador — incluindo os casos em que devem REPROVAR. | Por PR. |
+| `../ci/verificar_painel.py` | **O verificador de FORA.** Confere os gerados contra o índice do Git (`git ls-files`), em Python, sem reusar uma linha do gerador. É ele que pega o que o `--conferir` não tem como pegar: um bug do próprio gerador. Roda na muralha. | Por PR. |
 | `ia/` | **Mapa técnico do projeto para IA** (`ia/INDICE.md` é a porta) — infraestrutura, arquitetura de células, CI/CD, decisões de produto, escrito para uma IA sem contexto prévio auditar o sistema e sugerir melhorias. Segue a mesma lei deste diretório: não guarda veredito próprio sobre o estado do projeto, só mapeia mecanismo — quem quiser saber "o que está pendente" continua lendo `registros/`, nunca `ia/`. | Por PR, junto com a mudança que descreve. |
 
 ## Como registrar um acontecimento (o gesto de toda sessão)
@@ -80,7 +81,17 @@
 - **Frescor computado:** a página compara as datas com o relógio dela ao abrir.
   Seção velha se desbota sozinha e diz há quantos dias. Ninguém escreve "atualizado".
 - **Teto da capa:** a capa recusa construir com mais blocos que o teto — em vez
-  de crescer, ela quebra visivelmente e diz o que precisa sair.
+  de crescer, ela quebra visivelmente e diz o que precisa sair. O mesmo vale para
+  o TAMANHO: se o resumo passar do orçamento, o gerador se recusa a construir.
+- **Quem confere não é quem constrói:** o `--conferir` do gerador compara a saída
+  dele com a recomputação dele — cego para um bug do próprio gerador. Por isso
+  existe `ci/verificar_painel.py`, em Python, partindo de `git ls-files` e
+  comparando CONJUNTOS de ids em vez de contagens. Cardinalidade não é
+  integridade: `A B C C` passa por `A B C D` numa contagem, e não passa por ele.
+- **Conflito em arquivo gerado não se resolve à mão:** `painel.html` e
+  `livro-*.js` estão marcados com `-merge` no `.gitattributes`, então o Git para
+  em vez de produzir uma junção plausível e errada. Apague, rode o gerador,
+  `git add`.
 - **Autoridade:** cada tipo de fato tem quem pode declará-lo. Painel nenhum é
   origem de fato — todo painel é espelho.
 - **O mapa não inventa futuro:** a vista "Meu mapa" mostra os cinco capítulos

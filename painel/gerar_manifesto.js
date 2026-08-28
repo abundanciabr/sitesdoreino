@@ -167,7 +167,14 @@ var declaracaoDosMeses = meses.map(function (m) {
 // A PÁGINA: o template + as regras + o resumo, tudo num arquivo só.
 // -----------------------------------------------------------------------------
 var template, logicaFonte;
-try { template = fs.readFileSync(TEMPLATE, "utf8"); }
+// Normaliza os fins de linha do template ANTES de injetar. Sem isto, o
+// painel.html gerado herda o que o checkout deu: num clone Windows o Git
+// entrega o template em CRLF, num runner Linux em LF — e o mesmo livro
+// produzia dois arquivos diferentes. O `--conferir` normaliza os dois lados e
+// não acusava, então a divergência viajava em silêncio até alguém comparar
+// bytes (foi um teste-guarda de CRLF que a expôs, em 27/08/2026).
+// Determinismo é a promessa deste gerador: mesmo livro, mesmos bytes.
+try { template = semBOM(fs.readFileSync(TEMPLATE, "utf8")); }
 catch (e) { erro("não consegui ler " + TEMPLATE + ": " + e.message); }
 try { logicaFonte = fs.readFileSync(ARQUIVO_LOGICA, "utf8"); }
 catch (e) { erro("não consegui ler " + ARQUIVO_LOGICA + ": " + e.message); }
@@ -183,7 +190,7 @@ var dados = [
   ABRE,
   "/* GERADO — as regras do painel (painel/logica.js), embutidas para que abrir",
   "   custe UM pedido. Edite painel/logica.js, nunca este bloco. */",
-  logicaFonte.replace(/^﻿/, "").replace(/\r\n/g, "\n").replace(/\s+$/, ""),
+  semBOM(logicaFonte).trimEnd(),
   FECHA,
   ABRE,
   "/* GERADO — o resumo: só o que a capa e o mapa desenham. O passado fica nos",
@@ -240,6 +247,18 @@ var fantasmas = fs.readdirSync(AQUI).filter(function (n) {
 // para CRLF e a comparação byte a byte reprovava com o livro perfeitamente em
 // dia (armadilhas/122). Normalizar os DOIS lados compara o que importa.
 function normalizar(texto) { return texto.replace(/\r\n/g, "\n"); }
+
+// Tira a marca de codificação do começo e normaliza os fins de linha. As duas
+// coisas juntas porque servem à MESMA promessa: mesmo livro, mesmos bytes, em
+// qualquer checkout. Sem isto o Git entrega o template em CRLF num clone
+// Windows e em LF num runner Linux, e o painel.html gerado saía diferente nos
+// dois — sem ninguém acusar, porque o `--conferir` normaliza os dois lados
+// antes de comparar. Quem expôs foi um teste-guarda de CRLF, em 27/08/2026.
+// A comparação por `charCodeAt` evita escrever aqui, literalmente, o caractere
+// que esta função existe para remover.
+function semBOM(texto) {
+  return normalizar(texto.charCodeAt(0) === 0xFEFF ? texto.slice(1) : texto);
+}
 
 var modoConferir = process.argv.indexOf("--conferir") !== -1;
 if (modoConferir) {

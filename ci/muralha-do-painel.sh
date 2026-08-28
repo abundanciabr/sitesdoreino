@@ -2,13 +2,23 @@
 # =============================================================================
 # MURALHA DO PAINEL — o livro de ocorrências não mente e não fica para trás.
 #
-# Roda em todo PR (via ci/ci.py --apenas muralhas). Três garantias:
-#   1. manifesto.js está EM DIA com painel/registros/ (gerar_manifesto --conferir
-#      — inclui a validação completa de cada registro, com a mesma logica.js
-#      que a página usa);
+# Roda em todo PR (via ci/ci.py --apenas muralhas). Quatro garantias:
+#   1. os artefatos estão EM DIA com painel/registros/ (gerar_manifesto
+#      --conferir — inclui a validação completa de cada registro, com a mesma
+#      logica.js que a página usa);
 #   2. a lógica que calcula as vistas continua passando no teste-guarda
 #      (quem vigia o vigia da tela);
-#   3. o gerador continua reprovando sabotagem (suíte adversarial dele).
+#   3. o gerador continua reprovando sabotagem (suíte adversarial dele);
+#   4. um verificador ESCRITO DE FORA confere o resultado do gerador contra o
+#      índice do Git (ci/verificar_painel.py).
+#
+# Por que o passo 4 existe, sendo que o 1 já confere: os passos 1 a 3 saem todos
+# do mesmo programa. O `--conferir` compara a saída do gerador com a
+# recomputação do gerador — um bug que pule registros gera os dois lados errados
+# do mesmo jeito e fica verde. O passo 4 parte de `git ls-files`, em Python, sem
+# reusar uma linha de código do gerador, e compara CONJUNTOS de ids em vez de
+# contagens. É a resposta ao achado que três consultorias fizeram em 27/08/2026
+# (correlated failure) — e o único passo capaz de dizer que o gerador mentiu.
 #
 # Nasceu da reforma dos painéis (26/08/2026): o painel antigo apodreceu porque
 # NENHUMA trava alcançava os dados — arquivos/ era gitignored e nenhum workflow
@@ -61,5 +71,29 @@ for passo in \
   fi
 done
 
+# O verificador independente. Python, e não node, de propósito — ver o cabeçalho.
+# Ele fala o mesmo dialeto: 0 PASS, 1 FAIL, 2 ERROR.
+if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
+  echo "❌ ERROR muralha-do-painel: 'python' não está disponível nesta máquina."
+  echo "   O verificador independente NÃO rodou. Este resultado NÃO é um OK."
+  exit 2
+fi
+PY_BIN="$(command -v python3 || command -v python)"
+saida="$("$PY_BIN" ci/verificar_painel.py 2>&1)"
+codigo=$?
+if [[ $codigo -ne 0 ]]; then
+  echo "❌ MURALHA DO PAINEL — reprovou em: verificar_painel.py (exit $codigo)"
+  echo "$saida" | tail -n 25 | sed 's/^/   /'
+  # ERROR aqui só vira ERROR da muralha se NADA tiver reprovado antes. Se um
+  # passo anterior já achou defeito de conteúdo, o veredito é FAIL: dizer "não
+  # consegui medir" quando já se mediu e está quebrado é rebaixar uma certeza a
+  # uma dúvida — e mandar quem lê investigar o instrumento em vez do defeito.
+  if [[ $codigo -eq 2 && $falhou -eq 0 ]]; then
+    echo "   ⚠️ exit 2 = ERROR: a muralha NÃO conseguiu inspecionar o painel. Isto NÃO é um OK."
+    exit 2
+  fi
+  falhou=1
+fi
+
 if [[ $falhou -eq 1 ]]; then exit 1; fi
-echo "✅ Muralha do painel: manifesto em dia, lógica e gerador com os guardas verdes."
+echo "✅ Muralha do painel: artefatos em dia, guardas verdes, e o verificador de fora confirmou."
