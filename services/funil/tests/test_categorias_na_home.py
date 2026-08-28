@@ -297,3 +297,63 @@ def test_sem_o_par_ligado_a_celula_nem_pede_o_email(client, logado):  # noqa: F8
     """
     client.get(HOME, HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
     assert [c for c in logado.calls if "/sessao/completa" in str(c.request.url)] == []
+
+
+# ------------------------------------- 4. o "ainda não" não pode envelhecer
+#
+# Acrescentado em 28/08/2026, junto com a correção gêmea na Caixa. O mantenedor
+# liberou a própria conta, a pessoa saiu da fila na hora, e a Caixa continuou
+# recusando por causa de um cache que guardava o "não" pelo mesmo tempo que o
+# "sim". Aqui o sintoma seria outro e no pior instante possível: a Caixa manda a
+# pessoa recém-liberada para a home, e a home diz "seu pedido está em análise".
+
+
+def _validade_guardada(id_da_pessoa: str = "idt-de-teste") -> float:
+    import time
+
+    from apps.core.middleware import _CACHE_DE_CATEGORIA
+
+    expira, _ = _CACHE_DE_CATEGORIA[id_da_pessoa]
+    return expira - time.time()
+
+
+def test_o_ainda_nao_vale_pouco_e_o_aluno_vale_muito(client, com_email):
+    """A assimetria, medida nos dois lados na mesma prova.
+
+    Um TTL só teria de ser curto (e cada página de aluno custaria duas idas à
+    rede) ou longo (e a home diria "em análise" para quem acabou de ser
+    liberado). São dois erros de custo muito diferente.
+    """
+    from apps.core.middleware import limpar_cache_de_categoria
+
+    _situacao(
+        com_email,
+        "na_fila",
+        {"estado": "aguardando", "esperando_ha_dias": 1, "motivo_recusa": None},
+    )
+    _abrir(client)
+    validade_do_ainda_nao = _validade_guardada()
+
+    limpar_cache_de_categoria()
+    _situacao(com_email, "aluno")
+    _abrir(client)
+    validade_do_aluno = _validade_guardada()
+
+    assert validade_do_ainda_nao <= 10, (
+        "o 'ainda não é aluno' voltou a durar — é isso que faz a home dizer "
+        "'em análise' para quem a Caixa acabou de liberar"
+    )
+    assert validade_do_aluno > validade_do_ainda_nao * 2
+
+
+def test_nao_consegui_perguntar_tambem_vale_pouco(client, com_email):
+    """`None` é "ainda não sei", e sabe-se depressa.
+
+    Um "não consegui" guardado por muito tempo mantém a pessoa sem o atalho
+    dela bem depois de a outra célula ter voltado.
+    """
+    com_email.get(
+        f"{ALUNOS}/alunos/{EMAIL_DE_QUEM_ENTROU}/situacao", name="situacao"
+    ).mock(side_effect=httpx.ConnectError("recusou"))
+    _abrir(client)
+    assert _validade_guardada() <= 10
