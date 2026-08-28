@@ -10,12 +10,12 @@
 
 | Arquivo | O que é | Quem mexe |
 |---|---|---|
-| `painel.html` | **A porta.** O painel que o mantenedor abre (duplo clique). Não guarda NENHUM dado próprio — toda vista é calculada dos registros. | Muda raramente, por PR, como código. |
+| `painel.template.html` | **A FONTE da porta.** É este que se edita. Ele não tem dados — o gerador injeta o resumo e as regras nele. | Por PR, como código. |
+| `painel.html` | **GERADO** por `gerar_manifesto.js`: o template + as regras + o resumo, num arquivo só. Abrir o painel é **UM pedido**. Não guarda dado próprio: tudo é calculado dos registros. | Só o gerador. Nunca à mão. |
 | `registros/*.js` | **O livro de ocorrências.** Um arquivo pequeno por acontecimento. Só se ACRESCENTA — nunca se edita nem se apaga um registro existente. | Toda sessão, ao terminar trabalho relevante. |
-| `manifesto.js` | **GERADO** por `gerar_manifesto.js`. A LISTA dos registros que devem existir (em `file://` o Chrome não deixa a página descobrir arquivos sozinha). | Só o gerador. Nunca à mão. |
-| `livro.js` | **GERADO** por `gerar_manifesto.js`. O CONTEÚDO de todos os registros num arquivo só — a página carrega o livro inteiro em UM pedido. Comparar a contagem dele com a do manifesto é o que detecta livro incompleto. | Só o gerador. Nunca à mão. |
+| `livro-AAAAMM.js` | **GERADO**, um por mês. O conteúdo dos registros daquele mês, buscado só quando você abre a Memória. Mês fechado nunca mais é reescrito — é isso que faz o Git parar de crescer com o livro. | Só o gerador. Nunca à mão. |
 | `logica.js` | As regras que calculam as vistas (caixa de entrada, frescor, capa). Pura, roda em Node e no navegador. | Por PR, com teste-guarda. |
-| `gerar_manifesto.js` | Valida TODOS os registros (fail-closed, com a MESMA `logica.js` da página — um validador só) e regenera o manifesto. `--conferir` só confere (para CI). | Por PR. |
+| `gerar_manifesto.js` | Valida TODOS os registros (fail-closed, com a MESMA `logica.js` da página) e monta `painel.html` + os meses. `--conferir` só confere (para CI). O nome ficou do tempo em que ele só escrevia um manifesto. | Por PR. |
 | `testes/` | Testes-guarda da lógica e do gerador — incluindo os casos em que devem REPROVAR. | Por PR. |
 | `ia/` | **Mapa técnico do projeto para IA** (`ia/INDICE.md` é a porta) — infraestrutura, arquitetura de células, CI/CD, decisões de produto, escrito para uma IA sem contexto prévio auditar o sistema e sugerir melhorias. Segue a mesma lei deste diretório: não guarda veredito próprio sobre o estado do projeto, só mapeia mecanismo — quem quiser saber "o que está pendente" continua lendo `registros/`, nunca `ia/`. | Por PR, junto com a mudança que descreve. |
 
@@ -50,7 +50,7 @@
 ```
 
 3. Rode `node painel/gerar_manifesto.js` (da raiz). Ele valida tudo e
-   regenera `manifesto.js` e `livro.js`. **Se ele reprovar, o registro está errado — conserte;
+   regenera `painel.html` e o arquivo do mês. **Se ele reprovar, o registro está errado — conserte;
    não contorne.**
 4. Confira abrindo `painel/painel.html` (ou o teste: `node painel/testes/teste_logica.js`).
 
@@ -94,8 +94,12 @@
 
 - ❌ Editar um registro existente (nem "só para corrigir um typo" — registro
   novo com `responde_a`).
-- ❌ Editar `manifesto.js` ou `livro.js` à mão (os dois são gerados).
-- ❌ Fazer a página pedir um arquivo POR registro. Foi assim até 27/08/2026, e a rajada de dezenas de pedidos batia na porta da área administrativa até parte deles voltar como erro — o painel se recusava a abrir, com número diferente a cada vez. O custo de abrir o painel não pode crescer com o tamanho do livro (guarda: `services/admin/tests/test_painel_vivo.py::test_o_livro_chega_em_UM_pedido_e_nao_um_por_registro`).
+- ❌ Editar `painel.html` ou `livro-AAAAMM.js` à mão (os dois são gerados —
+  mexa em `painel.template.html` e em `painel/registros/`).
+- ❌ Resolver conflito de Git num arquivo gerado editando o arquivo. Apague,
+  rode o gerador, `git add`. A pasta de registros é a verdade; o gerado é sombra.
+- ❌ Fazer o custo de ABRIR o painel crescer com o tamanho do livro. Até 27/08/2026 a página pedia um arquivo por registro, e a rajada de dezenas de pedidos batia na porta da área administrativa até parte deles voltar como erro — o painel se recusava a abrir, com número diferente a cada vez, quatro vezes num dia. Hoje abrir é **um pedido**, sempre (guardas: `teste_gerador.js` mede com 1, 100 e 1.000 registros; `test_painel_vivo.py::test_o_livro_chega_em_UM_pedido_e_nao_um_por_registro` mede pelo servidor real).
+- ❌ Pôr no resumo qualquer conta que dependa do relógio. Idade de pedido, vencimento e "o que mudou em 7 dias" são contados NO NAVEGADOR, ao abrir. Congelá-los no build fossilizaria o frescor — a doença que este painel existe para não ter.
 - ❌ Escrever HTML dentro de `titulo`/`detalhe` (a página insere como texto).
 - ❌ Criar lista/estado em qualquer outro lugar e "sincronizar depois" — é
   exatamente a doença que este diretório existe para curar.

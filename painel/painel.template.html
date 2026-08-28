@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel da Escola — a porta única</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* A paleta da casa — a mesma dos painéis desde a fundação. */
+  :root{
+    --bg:#0D2436; --panel:#123449; --panel-2:#16405A; --grid:rgba(207,232,240,.055);
+    --line:#2A5872; --line-soft:rgba(143,173,189,.28);
+    --text:#E8F4F8; --text-2:#9BB8C7; --text-3:#6C8A9A;
+    --gold:#E8A33D; --gold-dim:#4A3A20;
+    --green:#5FB98A; --green-dim:#1E3A2E;
+    --red:#E2705A; --red-dim:#3E2620;
+    --blue:#4c8dff; --blue-dim:rgba(76,141,255,.10);
+    --cinza:#8296A2; --cinza-dim:rgba(130,150,162,.12);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'IBM Plex Sans',sans-serif; font-size:16px;
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:34px 20px 72px;}
+  .eyebrow{font-family:'IBM Plex Mono',monospace; font-size:12px; letter-spacing:.12em; color:var(--text-3); text-transform:uppercase; margin:0 0 8px;}
+  h1{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:30px; margin:0 0 6px; letter-spacing:-.01em;}
+  .sub{color:var(--text-2); font-size:14.5px; line-height:1.65; margin:0 0 18px;}
+  code{font-family:'IBM Plex Mono',monospace; color:var(--gold); background:none; font-size:.92em;}
+  a{color:var(--blue);}
+
+  /* placar (cabine escura: apagado = tudo bem) */
+  #placar{border-radius:var(--radius); padding:16px 20px; margin:0 0 18px; font-size:16px; line-height:1.6; border:1px solid var(--line); background:var(--panel);}
+  #placar.calmo{border-color:var(--green); background:linear-gradient(180deg,var(--green-dim),var(--panel));}
+  #placar.aceso{border-color:var(--gold); background:linear-gradient(180deg,var(--gold-dim),var(--panel));}
+  #placar b{font-family:'Space Grotesk',sans-serif;}
+  /* dívida do livro: some quando não há o que dizer (a ausência é a boa notícia) */
+  #divida{display:none; border-radius:var(--radius); padding:14px 20px; margin:-8px 0 18px; font-size:15px; line-height:1.6; border:1px solid var(--line); background:var(--panel);}
+  #divida.alerta{display:block; border-color:var(--red); background:linear-gradient(180deg,var(--red-dim),var(--panel));}
+  #divida.cego{display:block; border-color:var(--cinza); background:var(--cinza-dim); color:var(--text-2);}
+  #divida ul{margin:8px 0 0; padding-left:20px;}
+  #divida li{color:var(--text-2); font-size:14px;}
+
+  /* abas — navegação por hash (persiste na URL; nada aqui finge gravar) */
+  .abas{display:flex; gap:8px; margin:0 0 22px; flex-wrap:wrap;}
+  .aba{
+    font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:14px;
+    border:1px solid var(--line); border-radius:24px; padding:9px 18px; background:var(--panel);
+    color:var(--text-2); text-decoration:none;
+  }
+  .aba.ativa{border-color:var(--gold); color:var(--gold); background:var(--gold-dim);}
+  .vista{display:none;} .vista.ativa{display:block;}
+
+  h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; margin:26px 0 10px; letter-spacing:-.01em;}
+  .bloco{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:4px 0 6px; margin-bottom:16px; overflow:hidden;}
+  .bloco>.cab{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15px; padding:12px 18px 8px; display:flex; align-items:center; gap:10px;}
+  .cab .cont{font-family:'IBM Plex Mono',monospace; font-size:11px; border-radius:20px; padding:2px 9px; border:1px solid var(--line-soft); color:var(--text-3);}
+  .bloco.b-caixa{border-color:var(--gold);} .bloco.b-caixa>.cab{color:var(--gold);}
+  .bloco.b-caixa .cont{border-color:var(--gold); color:var(--gold); background:var(--gold-dim);}
+  .bloco.b-problemas{border-color:var(--red);} .bloco.b-problemas>.cab{color:var(--red);}
+  .item{padding:11px 18px; border-top:1px solid var(--line-soft); font-size:14px; line-height:1.6; color:var(--text-2);}
+  .item .t{color:var(--text); font-weight:600;}
+  .item .meta{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-top:4px; line-height:1.7;}
+  .item .det{margin-top:6px; white-space:pre-line;}
+  .item.recolhido .det{display:none;}
+  .grav{display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:8px; vertical-align:baseline;}
+  .grav.vermelho{background:var(--red);} .grav.ambar{background:var(--gold);}
+  .grav.verde{background:var(--green);} .grav.info{background:var(--blue);} .grav.cinza{background:var(--cinza);}
+  .selo{font-family:'IBM Plex Mono',monospace; font-size:10px; letter-spacing:.05em; border-radius:20px; padding:2px 8px; margin-left:8px; white-space:nowrap;}
+  .selo.naoprov{border:1px solid var(--cinza); color:var(--cinza); background:var(--cinza-dim);}
+  .selo.velho{border:1px solid var(--cinza); color:var(--cinza); background:var(--cinza-dim);}
+  .selo.idade{border:1px solid var(--gold); color:var(--gold); background:var(--gold-dim);}
+
+  /* Meu mapa — um capítulo por frente, na ordem da narrativa do Roadmap */
+  #mapa-resumo{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel-2);
+    padding:14px 18px; margin:0 0 18px; font-size:14.5px; line-height:1.65; color:var(--text-2);}
+  #mapa-resumo b{color:var(--text); font-family:'Space Grotesk',sans-serif;}
+  .cap{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); margin-bottom:16px; overflow:hidden;}
+  .cap>.cabcap{padding:14px 18px 10px; display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .cap .num{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); border:1px solid var(--line-soft);
+    border-radius:20px; padding:2px 9px;}
+  .cap .nome{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:16px; color:var(--text);}
+  .cap .agora{padding:0 18px 12px; color:var(--text-2); font-size:14px; line-height:1.6;}
+  .cap .agora .meta{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-top:4px;}
+  .cap .secao{border-top:1px solid var(--line-soft); padding:10px 18px;}
+  .cap .secao>.rot{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--text-3); display:block; margin-bottom:6px;}
+  .cap .linha{font-size:14px; line-height:1.6; color:var(--text-2); margin-bottom:8px;}
+  .cap .linha:last-child{margin-bottom:0;}
+  .cap .linha .t{color:var(--text); font-weight:600;}
+  .cap .linha .det{margin-top:4px; white-space:pre-line;}
+  .cap .linha .meta{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--text-3); margin-top:4px;}
+  .cap .vazio{color:var(--text-3); font-style:italic; font-size:13.5px;}
+  .cap.rumo-sim{border-left:3px solid var(--blue);}
+  .cap.rumo-nao{border-left:3px solid var(--cinza);}
+
+  /* medições ao vivo */
+  .medicoes{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; margin:14px 0;}
+  .med{border:1px solid var(--line); border-radius:12px; background:var(--panel); padding:13px 15px; font-size:13.5px; line-height:1.55;}
+  .med .t{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:13.5px; margin-bottom:5px; color:var(--text);}
+  .med .v{color:var(--text-2);}
+  .med .quando{font-family:'IBM Plex Mono',monospace; font-size:10.5px; color:var(--text-3); margin-top:6px;}
+  .med.ok{border-left:3px solid var(--green);} .med.mal{border-left:3px solid var(--red);}
+  .med.nao-sei{border-left:3px solid var(--cinza); opacity:.9;}
+
+  /* o histórico por mês — nada disto carrega sozinho */
+  .meses{display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 14px;}
+  .mes{font-family:'IBM Plex Mono',monospace; font-size:12.5px; cursor:pointer;
+    border:1px solid var(--line); border-radius:20px; padding:7px 14px;
+    background:var(--panel); color:var(--text-2);}
+  .mes:hover{border-color:var(--gold); color:var(--gold);}
+  .mes[disabled]{cursor:default; opacity:.7;}
+  .mes.carregado{border-color:var(--green); color:var(--green); background:var(--green-dim);}
+  .mes.ruim{border-color:var(--red); color:var(--red); background:var(--red-dim);}
+  .aviso-historico{border:1px dashed var(--line-soft); border-radius:10px; padding:12px 15px;
+    font-size:14px; color:var(--text-3); line-height:1.65; margin-bottom:14px;}
+  .aviso-historico.ruim{border-style:solid; border-color:var(--red); color:var(--text-2); background:var(--red-dim);}
+  .selo.sotitulo{border:1px solid var(--line-soft); color:var(--text-3);}
+
+  #tela-erro{display:none; max-width:760px; margin:40px auto; background:#7f1d1d; color:#fff; padding:28px 30px; border-radius:12px; font:16px/1.65 system-ui,sans-serif;}
+  #tela-erro b{font-size:21px;}
+  #tela-erro pre{white-space:pre-wrap; font-size:13px; background:#00000040; padding:10px 12px; border-radius:8px;}
+
+  .rodape{margin-top:40px; border-top:1px solid var(--line); padding-top:14px; font-size:12.5px; color:var(--text-3); line-height:1.8;}
+  @media (max-width:640px){ h1{font-size:24px;} }
+</style>
+</head>
+<body>
+<div id="tela-erro"></div>
+<div class="wrap" id="app" style="display:none">
+  <p class="eyebrow">A porta única · toda vista é calculada do livro de ocorrências</p>
+  <h1>🗺️ Painel da Escola</h1>
+  <p class="sub">Este painel <b>não guarda nenhum dado próprio</b> — tudo que você vê é calculado, na hora em que a página abre, dos registros em <code>painel/registros/</code> (protegidos pelo Git) e de medições feitas <b>agora, do seu navegador</b>. Se dois números discordarem, é defeito — reporte numa sessão.</p>
+
+  <div id="placar"></div>
+  <div id="divida"></div>
+
+  <nav class="abas">
+    <a class="aba" data-vista="capa" href="#capa">🔔 Capa</a>
+    <a class="aba" data-vista="mapa" href="#mapa">🗺️ Meu mapa</a>
+    <a class="aba" data-vista="operacao" href="#operacao">⚙️ Operação</a>
+    <a class="aba" data-vista="memoria" href="#memoria">📚 Memória</a>
+  </nav>
+
+  <section class="vista" id="vista-capa"></section>
+  <section class="vista" id="vista-mapa">
+    <p class="sub">O caminho do projeto em cinco capítulos: <b>onde cada frente está</b> e <b>para onde ela vai</b>. Como tudo aqui, é calculado dos registros — capítulo sem rumo registrado diz que não sabe, em vez de inventar.</p>
+    <div id="mapa-resumo"></div>
+    <div id="mapa-capitulos"></div>
+  </section>
+  <section class="vista" id="vista-operacao">
+    <p class="sub">O detalhe para quando algo parece estranho: as medições feitas <b>agora, do seu navegador</b>, e os fatos com evidência — estes últimos por mês, carregados quando você pedir.</p>
+    <div class="medicoes" id="medicoes"></div>
+    <div id="op-registros"></div>
+  </section>
+  <section class="vista" id="vista-memoria">
+    <p class="sub">O livro de ocorrências inteiro, um mês por vez. Ele <b>não vem junto</b> com a página: abrir o painel custa o mesmo com 90 registros ou com 90 mil. Escolha o mês que quer ler. Registro não se edita — história aqui não muda de opinião.</p>
+    <div id="mem-registros"></div>
+  </section>
+
+  <div class="rodape" id="rodape"></div>
+</div>
+
+<!-- ABRIR O PAINEL É UM PEDIDO SÓ, e isso é estrutural.
+
+     Até 27/08/2026 o manifesto fazia document.write de uma tag de script por registro:
+     abrir o painel disparava 86 pedidos de uma vez, cada um atravessava a porta
+     da área administrativa, e a porta pergunta à identidade quem é você com 2s
+     de paciência. Sob a rajada parte estourava o tempo, voltava página de erro
+     no lugar do JS, e esta tela — corretamente — se recusava a abrir. Quatro
+     vezes num dia. O conserto seguinte trouxe o livro inteiro num arquivo só (3
+     pedidos), o que resolveu a rajada e deixou o custo de abrir crescendo com
+     todo o histórico do projeto — num livro que recebeu 48 registros num dia.
+
+     Agora o RESUMO e as REGRAS viajam dentro deste arquivo, escritos pelo
+     gerador. Um pedido. Uma requisição não tem como fazer rajada: o problema de
+     autorização em massa deixa de ser defendido e passa a ser impossível.
+
+     O histórico antigo NÃO vem aqui — ele é buscado por mês, uma tag de script com src
+     injetado, só quando você abre a Memória. Injetado, e nunca fetch: fetch
+     contra arquivo local é bloqueado pelo navegador, e o duplo clique continua
+     sendo requisito.
+
+     O que NÃO foi embutido de propósito: as contas que dependem do relógio (há
+     quantos dias um pedido espera, o que venceu, o que mudou nos últimos 7
+     dias). Essas continuam sendo feitas aqui embaixo, contra o relógio DESTE
+     navegador, ao abrir. Congelá-las no build seria fossilizar o frescor. -->
+__DADOS_DO_PAINEL__
+<script>
+"use strict";
+// ===========================================================================
+// A guarda fail-closed: este painel NUNCA abre em branco nem meio-vazio.
+// Ou tudo carregou e validou, ou a tela inteira vira um aviso vermelho.
+// (Nasceu do achado da consultoria de 25/08: o painel antigo abria bonito,
+// com a caixa de pendências VAZIA, quando os dados falhavam — e caixa vazia
+// se lê como "nada esperando você".)
+// ===========================================================================
+function falhaAlta(motivo, detalhes) {
+  var t = document.getElementById("tela-erro");
+  t.style.display = "block";
+  document.getElementById("app").style.display = "none";
+  t.textContent = "";
+  var b = document.createElement("b"); b.textContent = "⚠️ Este painel não pode ser lido.";
+  var p = document.createElement("p"); p.textContent = motivo;
+  var aviso = document.createElement("p");
+  aviso.textContent = "NÃO acredite em nada que esta página mostraria — inclusive no que parecesse verde ou concluído.";
+  var como = document.createElement("p");
+  como.textContent = "O que fazer: abra uma sessão do Claude Code e cole: “o painel da escola está quebrado, conserte” — e diga se foi no site ou no arquivo do seu PC, porque isso muda onde o robô procura. O comando “node painel/gerar_manifesto.js” aponta um registro inválido; se ele vier limpo, o problema está na entrega, não no livro.";
+  t.appendChild(b); t.appendChild(p); t.appendChild(aviso); t.appendChild(como);
+  if (detalhes && detalhes.length) {
+    var pre = document.createElement("pre");
+    pre.textContent = detalhes.slice(0, 20).join("\n");
+    t.appendChild(pre);
+  }
+}
+
+try {
+  // Com UM pedido não existe mais "carregou pela metade": ou este arquivo
+  // chegou e executou, ou nada disto roda. O que a guarda ainda pega é o bloco
+  // embutido não ter executado (erro de sintaxe no gerado) e o resumo vir vazio.
+  if (typeof LOGICA === "undefined") throw { mensagem: "As regras do painel não carregaram — o bloco embutido não executou." };
+  if (typeof PAINEL === "undefined") throw { mensagem: "Os dados do painel não carregaram — o bloco embutido não executou." };
+  var REGS = (PAINEL.resumo && PAINEL.resumo.registros) || [];
+  var PRONTOS = (PAINEL.resumo && PAINEL.resumo.respondidos) || {};
+  if (!REGS.length) {
+    throw { mensagem: "O resumo chegou vazio. Um painel sem nenhum registro é sinal de build errado, não de projeto parado." };
+  }
+  // A VALIDAÇÃO de cada registro é do gerador e do verificador do CI, que rodam
+  // sobre o livro INTEIRO e reprovam antes de qualquer merge. Repeti-la aqui
+  // sobre um SUBCONJUNTO acusaria falso: um "responde_a" cujo alvo ficou fora do
+  // resumo pareceria apontar para registro inexistente.
+
+  // ---------- helpers de render (textContent SEMPRE — dado nunca vira HTML) ----------
+  var AGORA = new Date();
+  function el(tag, cls, texto) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (texto != null) e.textContent = texto;
+    return e;
+  }
+  function fmtData(iso) { return iso ? iso.slice(0, 10).split("-").reverse().join("/") : "—"; }
+  function itemRegistro(r, opts) {
+    opts = opts || {};
+    var it = el("div", "item" + (opts.recolhido ? " recolhido" : ""));
+    var t = el("div", "t");
+    var g = el("span", "grav " + (r.gravidade || "info")); t.appendChild(g);
+    t.appendChild(document.createTextNode(r.titulo));
+    if ((r.tipo === "entrega" || r.tipo === "medicao") && (!r.evidencia || !r.verificado_em)) {
+      t.appendChild(el("span", "selo naoprov", "não comprovado"));
+    }
+    if (opts.idadeDias != null) t.appendChild(el("span", "selo idade", "aguardando há " + opts.idadeDias + " dia" + (opts.idadeDias === 1 ? "" : "s")));
+    it.appendChild(t);
+    var meta = el("div", "meta");
+    // Os DOIS relógios, sempre: o fato e a prova. "Atualizado" não existe aqui.
+    var m = "fato: " + fmtData(r.quando) + " · prova conferida: " + (r.verificado_em ? fmtData(r.verificado_em) : "NÃO CONFERIDA") +
+      " · quem declara: " + r.autoridade + (r.evidencia ? " · evidência: " + r.evidencia : "");
+    meta.textContent = m;
+    it.appendChild(meta);
+    // Registro que viajou só como título: o selo avisa, e o `detalhe` dele já
+    // diz onde o texto está. Um branco silencioso se leria como "não havia nada
+    // a dizer", que é falso.
+    if (r._so_titulo) t.appendChild(el("span", "selo sotitulo", "texto na Memória"));
+    if (r.detalhe && !opts.semDetalhe) it.appendChild(el("div", "det", r.detalhe));
+    return it;
+  }
+  // Os nomes que o dono lê, num lugar só — a capa e o Meu mapa usam os mesmos.
+  var NOMES_FRENTE = {
+    fabrica: "🏭 A fábrica de robôs", site: "🌍 O site aberto ao mundo",
+    comunidade: "📮 A comunidade de alunos", curso: "🎓 O curso (o capítulo que é SEU)",
+    vender: "💳 Vender (pausado por sua ordem)"
+  };
+  function blocoDe(titulo, classe, itens, montaItem, vazioTexto) {
+    var b = el("div", "bloco " + (classe || ""));
+    var cab = el("div", "cab", titulo);
+    cab.appendChild(el("span", "cont", String(itens.length)));
+    b.appendChild(cab);
+    if (!itens.length && vazioTexto) b.appendChild(el("div", "item", vazioTexto));
+    itens.forEach(function (x) { b.appendChild(montaItem(x)); });
+    return b;
+  }
+
+  // ---------- a capa, calculada ----------
+  var capa = LOGICA.capa(REGS, AGORA, PRONTOS);
+  if (capa.erro) throw { mensagem: capa.erro };
+  var vistaCapa = document.getElementById("vista-capa");
+  capa.blocos.forEach(function (bloco) {
+    if (bloco.id === "caixa") {
+      vistaCapa.appendChild(blocoDe("🔔 Precisa de você", "b-caixa", bloco.itens, function (x) {
+        return itemRegistro(x.registro, { idadeDias: x.aguardandoDias });
+      }, "Nada esperando você. (Calculado: nenhum pedido sem resposta no livro.)"));
+    } else if (bloco.id === "problemas") {
+      vistaCapa.appendChild(blocoDe("🚨 Atenção agora", "b-problemas", bloco.itens, function (r) { return itemRegistro(r); }));
+    } else if (bloco.id === "mudancas") {
+      vistaCapa.appendChild(blocoDe("📰 O que mudou (7 dias)", "", bloco.itens, function (r) {
+        return itemRegistro(r, { recolhido: false, semDetalhe: false });
+      }, "Nenhum registro nos últimos 7 dias — e isso em si é informação: o livro está parado."));
+    } else if (bloco.id === "frentes") {
+      var nomes = NOMES_FRENTE;
+      vistaCapa.appendChild(blocoDe("🧭 As frentes", "", bloco.itens, function (x) {
+        if (!x.registro) {
+          var it = el("div", "item");
+          var t = el("div", "t"); t.appendChild(el("span", "grav cinza")); t.appendChild(document.createTextNode(nomes[x.frente] || x.frente));
+          t.appendChild(el("span", "selo naoprov", "sem registro — não sei"));
+          it.appendChild(t);
+          return it;
+        }
+        var it2 = itemRegistro(x.registro, { recolhido: true });
+        it2.firstChild.insertBefore(el("span", null, (nomes[x.frente] || x.frente) + " — "), it2.firstChild.childNodes[1]);
+        return it2;
+      }));
+    } else if (bloco.id === "frescor") {
+      var b = blocoDe("🕰️ O que está velho", "", bloco.itens, function (r) {
+        var it = itemRegistro(r, { recolhido: true });
+        it.firstChild.appendChild(el("span", "selo velho", "vencido — não sei se ainda vale"));
+        return it;
+      });
+      if (bloco.livroParadoHaDias != null && bloco.livroParadoHaDias > 3) {
+        b.appendChild(el("div", "item", "⚠️ O livro inteiro não recebe registro há " + bloco.livroParadoHaDias + " dias. Painel parado não é painel verde."));
+      }
+      vistaCapa.appendChild(b);
+    } else if (bloco.id === "nao-comprovado") {
+      vistaCapa.appendChild(blocoDe("🌫️ Dito, mas não comprovado", "", bloco.itens, function (r) { return itemRegistro(r, { recolhido: true }); }));
+    }
+  });
+
+  // ---------- Meu mapa: cinco capítulos, calculados ----------
+  // O Roadmap antigo era mantido à mão e datava a si mesmo — e foi assim que ele
+  // pôde dizer "25/08" no topo com conteúdo de 26/08 (achado do GPT, rodada 2).
+  // Aqui não há data escrita: cada capítulo mostra o registro mais recente da
+  // frente e o rumo dela, e quem não tem rumo diz que não sabe.
+  var mapa = LOGICA.meuMapa(REGS, AGORA, PRONTOS);
+  var resumo = LOGICA.resumoDoMapa(REGS, AGORA, PRONTOS);
+  var elResumo = document.getElementById("mapa-resumo");
+  elResumo.appendChild(document.createTextNode("Onde estamos, contado agora: "));
+  var bRes = el("b", null, resumo.comProvaConferida + " de " + resumo.capitulos + " capítulos com prova conferida");
+  elResumo.appendChild(bRes);
+  // O texto diz "NESTES capítulos" de propósito: um pedido só aparece aqui se
+  // tiver etiqueta de frente, e a capa conta TODOS. Sem essa palavra, o mapa
+  // parecia contradizer o placar ("7 esperando você" × "nada esperando você").
+  // Duas contas certas com recortes diferentes se leem como discordância — e
+  // discordância é a única coisa que esta reforma não pode produzir.
+  var nCaixaTotal = LOGICA.caixaDeEntrada(REGS, AGORA, PRONTOS).length;
+  elResumo.appendChild(document.createTextNode(
+    (resumo.semRegistro ? " · " + resumo.semRegistro + " sem registro nenhum (não sei como está)" : "") +
+    (resumo.semRumo ? " · " + resumo.semRumo + " sem rumo registrado (não sei para onde vai)" : " · todos com rumo registrado") +
+    " · " + (resumo.esperandoVoce ? resumo.esperandoVoce + " pedido(s) esperando você marcados nestes capítulos"
+      : "nenhum pedido marcado nestes capítulos") +
+    (nCaixaTotal ? ", e " + nCaixaTotal + " no total, na Capa." : ".")));
+
+  var elCaps = document.getElementById("mapa-capitulos");
+  mapa.forEach(function (cap, i) {
+    var box = el("div", "cap " + (cap.rumos.length ? "rumo-sim" : "rumo-nao"));
+    var cab = el("div", "cabcap");
+    cab.appendChild(el("span", "num", "capítulo " + (i + 1)));
+    cab.appendChild(el("span", "nome", NOMES_FRENTE[cap.frente] || cap.frente));
+    box.appendChild(cab);
+
+    // ONDE ESTAMOS — o registro de frente mais recente. Sem ele: cinza honesto.
+    var agora = el("div", "agora");
+    if (cap.estado) {
+      var t = el("div", null);
+      t.appendChild(el("span", "grav " + (cap.estado.gravidade || "info")));
+      t.appendChild(document.createTextNode(cap.estado.titulo));
+      agora.appendChild(t);
+      if (cap.estado.detalhe) agora.appendChild(el("div", "det", cap.estado.detalhe));
+      agora.appendChild(el("div", "meta", "fato: " + fmtData(cap.estado.quando) +
+        " · prova conferida: " + (cap.estado.verificado_em ? fmtData(cap.estado.verificado_em) : "NÃO CONFERIDA") +
+        " · quem declara: " + cap.estado.autoridade));
+    } else {
+      var semT = el("div", null);
+      semT.appendChild(el("span", "grav cinza"));
+      semT.appendChild(document.createTextNode("Sem registro de estado nesta frente — não sei como ela está."));
+      agora.appendChild(semT);
+    }
+    box.appendChild(agora);
+
+    // PARA ONDE VAMOS — os rumos ainda não respondidos.
+    var sRumo = el("div", "secao");
+    sRumo.appendChild(el("span", "rot", "Para onde vamos"));
+    if (cap.rumos.length) {
+      cap.rumos.forEach(function (r) {
+        var l = el("div", "linha");
+        var lt = el("div", "t"); lt.appendChild(el("span", "grav " + (r.gravidade || "info")));
+        lt.appendChild(document.createTextNode(r.titulo));
+        l.appendChild(lt);
+        if (r.detalhe) l.appendChild(el("div", "det", r.detalhe));
+        l.appendChild(el("div", "meta", "registrado em " + fmtData(r.quando) + " · quem declara: " + r.autoridade));
+        sRumo.appendChild(l);
+      });
+    } else {
+      sRumo.appendChild(el("div", "vazio", "Não sei para onde esta frente vai — ninguém registrou um rumo. (Isto não é 'não tem plano': é 'o plano não está escrito aqui'.)"));
+    }
+    box.appendChild(sRumo);
+
+    // ESPERANDO VOCÊ, nesta frente — o mesmo cálculo da caixa, recortado.
+    if (cap.esperando.length) {
+      var sEsp = el("div", "secao");
+      sEsp.appendChild(el("span", "rot", "Esperando você neste capítulo"));
+      cap.esperando.forEach(function (x) {
+        var l2 = el("div", "linha");
+        var l2t = el("div", "t"); l2t.appendChild(el("span", "grav " + (x.registro.gravidade || "info")));
+        l2t.appendChild(document.createTextNode(x.registro.titulo));
+        l2t.appendChild(el("span", "selo idade", "aguardando há " + x.aguardandoDias + " dia" + (x.aguardandoDias === 1 ? "" : "s")));
+        l2.appendChild(l2t);
+        sEsp.appendChild(l2);
+      });
+      box.appendChild(sEsp);
+    }
+
+    // O QUE ANDOU AQUI — os últimos fatos etiquetados com esta frente.
+    if (cap.andou.length) {
+      var sAnd = el("div", "secao");
+      sAnd.appendChild(el("span", "rot", "O que andou aqui"));
+      cap.andou.forEach(function (r) {
+        var l3 = el("div", "linha");
+        var l3t = el("div", "t"); l3t.appendChild(el("span", "grav " + (r.gravidade || "info")));
+        l3t.appendChild(document.createTextNode(r.titulo));
+        l3.appendChild(l3t);
+        l3.appendChild(el("div", "meta", "fato: " + fmtData(r.quando) +
+          " · prova conferida: " + (r.verificado_em ? fmtData(r.verificado_em) : "NÃO CONFERIDA")));
+        sAnd.appendChild(l3);
+      });
+      box.appendChild(sAnd);
+    }
+
+    elCaps.appendChild(box);
+  });
+
+  // ---------- o placar (cabine escura) ----------
+  var nCaixa = LOGICA.caixaDeEntrada(REGS, AGORA, PRONTOS).length;
+  var nProb = LOGICA.problemasAbertos(REGS, PRONTOS).length;
+  var placar = document.getElementById("placar");
+  if (nCaixa === 0 && nProb === 0) {
+    placar.className = "calmo";
+    placar.textContent = "🟢 Nada esperando você e nada quebrado — calculado do livro agora, não prometido.";
+  } else {
+    placar.className = "aceso";
+    var partes = [];
+    if (nCaixa) partes.push(nCaixa + " coisa" + (nCaixa > 1 ? "s" : "") + " esperando VOCÊ");
+    if (nProb) partes.push(nProb + " problema" + (nProb > 1 ? "s" : "") + " aberto" + (nProb > 1 ? "s" : ""));
+    placar.textContent = "🔔 " + partes.join(" · ") + " — os detalhes estão logo abaixo, na capa.";
+  }
+
+  // ---------- a dívida do livro (medida ao vivo, quando há quem meça) ----------
+  // O painel só sabe o que está ESCRITO no livro. Se um robô terminou uma
+  // tarefa e não registrou, esta página mostraria um projeto parado — sem nada
+  // indicando que falta informação. Esta faixa é a testemunha independente:
+  // pergunta ao GitHub quais merges ainda não viraram registro.
+  //
+  // Ela é servida pela área administrativa (`/admin/painel/divida.json`). Aberto
+  // como arquivo no PC não há servidor, o pedido falha, e a faixa DIZ isso — em
+  // vez de sumir, que se leria como "está tudo contado".
+  (function medirDivida() {
+    var faixa = document.getElementById("divida");
+    if (!faixa || !window.fetch) return;
+
+    function cego(motivo) {
+      faixa.className = "cego";
+      faixa.textContent = "⚪ Não consigo conferir se algum trabalho ficou sem registro aqui — " + motivo;
+    }
+
+    fetch("divida.json", { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (d) {
+        if (d.erro) { cego(d.erro + "."); return; }
+        var n = (d.devedores || []).length;
+        if (n === 0) {
+          // Silêncio deliberado: "0 pendências" competiria com o placar por
+          // atenção e treinaria o olho a pular a faixa — e aí ela não seria
+          // vista no dia em que tivesse algo.
+          return;
+        }
+        faixa.className = "alerta";
+        var titulo = document.createElement("b");
+        titulo.textContent = "🔴 " + n + " trabalho" + (n > 1 ? "s" : "") + " concluído" +
+          (n > 1 ? "s" : "") + " que ninguém te contou";
+        var explica = document.createElement("div");
+        explica.textContent = "Entraram no projeto e não viraram registro — então não aparecem em lugar nenhum deste painel. Peça numa sessão: “registre os merges que estão devendo”.";
+        explica.style.color = "var(--text-2)";
+        explica.style.fontSize = "14px";
+        var lista = document.createElement("ul");
+        d.devedores.forEach(function (p) {
+          var li = document.createElement("li");
+          li.textContent = "#" + p.numero + " · " + p.quando + " · " + p.titulo;
+          lista.appendChild(li);
+        });
+        faixa.appendChild(titulo);
+        faixa.appendChild(explica);
+        faixa.appendChild(lista);
+      })
+      .catch(function () {
+        cego("esta é a cópia aberta no seu computador, e ela não tem como perguntar ao GitHub. O painel online (meshcraft.top/admin/painel/) confere.");
+      });
+  })();
+
+  // ---------- o histórico, buscado por mês, só quando pedido ----------
+  // O resumo acima é de tamanho limitado. O passado inteiro mora em arquivos
+  // por mês, e mês fechado nunca mais é reescrito — é isso que faz o custo de
+  // ABRIR o painel parar de crescer com a idade do projeto. Nada aqui roda até
+  // você clicar, e nenhum temporizador busca nada sozinho: um relógio que
+  // recarrega multiplicaria por N o defeito que este desenho acabou de matar.
+  var MESES = (PAINEL.livro && PAINEL.livro.meses) || [];
+  var carregados = {};
+
+  function carregarMes(mes, ok, falhou) {
+    if (carregados[mes]) { ok(carregados[mes]); return; }
+    var declarado = null;
+    MESES.forEach(function (m) { if (m.mes === mes) declarado = m; });
+    if (!declarado) { falhou("o mês " + mes + " não está declarado neste painel."); return; }
+    var s = document.createElement("script");
+    // Caminho RELATIVO, e tag de script em vez de fetch: é o que funciona quando
+    // o painel é aberto por duplo clique (file://), onde fetch é bloqueado.
+    s.src = declarado.arquivo;
+    s.onload = function () {
+      var d = (window.LIVRO || {})[mes];
+      if (!d || !d.registros) { falhou("o arquivo de " + mes + " carregou, mas não trouxe registros."); return; }
+      // Integridade por IDENTIDADE, não por tamanho de download: conferimos a
+      // contagem declarada no painel contra a que chegou, e recusamos id
+      // repetido. Contagem sozinha deixaria passar "um sumiu e outro veio em
+      // dobro" — o caso A B C C que passa por A B C D.
+      var vistos = {}, repetidos = [];
+      d.registros.forEach(function (r) {
+        if (vistos[r.arquivo]) repetidos.push(r.arquivo);
+        vistos[r.arquivo] = true;
+      });
+      if (repetidos.length) { falhou("o arquivo de " + mes + " trouxe registro repetido: " + repetidos.join(", ")); return; }
+      if (d.registros.length !== declarado.count) {
+        falhou("o painel esperava " + declarado.count + " registros em " + mes +
+               ", mas o arquivo trouxe " + d.registros.length + " — ele chegou incompleto.");
+        return;
+      }
+      carregados[mes] = d.registros;
+      ok(d.registros);
+    };
+    s.onerror = function () { falhou("não consegui buscar o arquivo de " + mes + " (o servidor recusou, ou o arquivo sumiu)."); };
+    document.head.appendChild(s);
+  }
+
+  function painelDeMeses(destino, filtro, tituloDoBloco) {
+    var alvo = el("div", null);
+    var barra = el("div", "meses");
+    // Nunca uma caixa vazia: caixa vazia se lê como "não aconteceu nada", que é
+    // a mentira mais cara que este painel pode contar.
+    var aviso = el("div", "aviso-historico",
+      "O histórico não está carregado — ele não vem junto com a página, de propósito. Escolha um mês.");
+    MESES.slice().reverse().forEach(function (m) {
+      var b = el("button", "mes", m.mes.split("-").reverse().join("/") + " · " + m.count);
+      b.type = "button";
+      b.onclick = function () {
+        b.disabled = true; b.textContent = b.textContent + " …";
+        carregarMes(m.mes, function (regs) {
+          b.className = "mes carregado";
+          b.textContent = m.mes.split("-").reverse().join("/") + " · " + m.count + " ✓";
+          if (aviso.parentNode) aviso.parentNode.removeChild(aviso);
+          var lista = regs.filter(filtro).sort(function (a, b2) { return (b2.quando > a.quando) ? 1 : -1; });
+          alvo.appendChild(blocoDe(tituloDoBloco + " — " + m.mes.split("-").reverse().join("/"),
+            "", lista, function (r) { return itemRegistro(r); },
+            "Nenhum registro deste tipo neste mês."));
+        }, function (motivo) {
+          b.disabled = false;
+          b.className = "mes ruim";
+          b.textContent = m.mes.split("-").reverse().join("/") + " · não carregou";
+          alvo.appendChild(el("div", "aviso-historico ruim", "⚠️ " + motivo +
+            " O que você vê acima continua valendo — foi calculado antes, e não depende deste arquivo."));
+        });
+      };
+      barra.appendChild(b);
+    });
+    destino.appendChild(barra);
+    destino.appendChild(aviso);
+    destino.appendChild(alvo);
+  }
+
+  painelDeMeses(document.getElementById("op-registros"),
+    function (r) { return r.tipo === "medicao" || r.tipo === "incidente" || r.tipo === "entrega"; },
+    "📋 Medições, entregas e incidentes");
+
+  painelDeMeses(document.getElementById("mem-registros"),
+    function () { return true; },
+    "📚 Todos os registros");
+
+  // ---------- medições ao vivo (a prova vem de fora — do SEU navegador) ----------
+  var medicoes = document.getElementById("medicoes");
+  function cartaoMed(id, titulo) {
+    var c = el("div", "med nao-sei"); c.id = id;
+    c.appendChild(el("div", "t", titulo));
+    c.appendChild(el("div", "v", "medindo agora…"));
+    c.appendChild(el("div", "quando", ""));
+    return c;
+  }
+  function pintaMed(id, classe, valor) {
+    var c = document.getElementById(id);
+    c.className = "med " + classe;
+    c.children[1].textContent = valor;
+    c.children[2].textContent = "medido às " + new Date().toLocaleTimeString("pt-BR") + " de " + new Date().toLocaleDateString("pt-BR") + ", do seu navegador";
+  }
+  medicoes.appendChild(cartaoMed("med-site", "🌍 O site responde?"));
+  medicoes.appendChild(cartaoMed("med-prs", "🔀 Trabalhos abertos no GitHub"));
+  medicoes.appendChild(cartaoMed("med-runs", "✅ As últimas conferências automáticas"));
+
+  // Site: fetch no-cors — prova que o SERVIDOR respondeu ao seu navegador agora.
+  // (Não distingue página boa de página de erro — por isso o rótulo é honesto.)
+  (function () {
+    var deuTempo = false;
+    var t = setTimeout(function () { deuTempo = true; pintaMed("med-site", "nao-sei", "não consegui medir em 10s — sem internet, ou o site fora do ar. NÃO é um verde."); }, 10000);
+    fetch("https://meshcraft.top/", { mode: "no-cors", cache: "no-store" }).then(function () {
+      if (deuTempo) return; clearTimeout(t);
+      pintaMed("med-site", "ok", "o servidor de meshcraft.top respondeu ao seu navegador agora.");
+    }).catch(function () {
+      if (deuTempo) return; clearTimeout(t);
+      pintaMed("med-site", "mal", "o servidor NÃO respondeu (sem internet, ou site fora do ar).");
+    });
+  })();
+  // GitHub: repositório público, medido direto — um agente não consegue fazer o
+  // GitHub confirmar um merge que não houve.
+  fetch("https://api.github.com/repos/abundanciabr/sitesdoreino/pulls?state=open&per_page=10", { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+    .then(function (prs) {
+      pintaMed("med-prs", prs.length === 0 ? "ok" : "nao-sei",
+        prs.length === 0 ? "nenhum PR aberto — nada no meio do caminho." :
+          prs.length + " PR(s) abertos: " + prs.map(function (p) { return "#" + p.number; }).join(", "));
+    })
+    .catch(function () { pintaMed("med-prs", "nao-sei", "não consegui perguntar ao GitHub (sem internet ou limite de consultas). NÃO é um verde."); });
+  fetch("https://api.github.com/repos/abundanciabr/sitesdoreino/actions/runs?per_page=6", { cache: "no-store" })
+    .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+    .then(function (d) {
+      var runs = (d.workflow_runs || []);
+      if (!runs.length) { pintaMed("med-runs", "nao-sei", "o GitHub não devolveu execuções."); return; }
+      // O veredito de uma execução tem DOIS campos, e ler só um foi o falso-verde
+      // nº 1 da casa (RETROSPECTIVA §1 · ARMADILHAS §5.10 · H13): `conclusion`
+      // só existe depois que `status` vira "completed". Quem ainda está na fila
+      // ou correndo não tem veredito nenhum — contá-la como verde é afirmar que
+      // fechou verde uma execução que nem começou. Medido em 26/08/2026: 2 das 6
+      // estavam `queued` e o cartão dizia "as últimas 6 execuções fecharam verdes".
+      var terminadas = runs.filter(function (x) { return x.status === "completed"; });
+      var correndo = runs.length - terminadas.length;
+      var ruins = terminadas.filter(function (x) { return x.conclusion !== "success"; });
+      if (ruins.length) {
+        pintaMed("med-runs", "mal", ruins.length + " das " + terminadas.length + " execuções que terminaram NÃO fecharam verdes: " +
+          ruins.map(function (x) { return x.name; }).join(" · "));
+      } else if (correndo) {
+        // Cinza, nunca verde: parte da resposta ainda não existe (o 4º estado).
+        pintaMed("med-runs", "nao-sei", terminadas.length + " execuções fecharam verdes, mas " + correndo +
+          " ainda está" + (correndo > 1 ? "ão" : "") + " rodando — sem veredito. NÃO é um verde completo.");
+      } else {
+        pintaMed("med-runs", "ok", "as últimas " + terminadas.length + " execuções fecharam verdes (" + runs[0].name + " é a mais recente).");
+      }
+    })
+    .catch(function () { pintaMed("med-runs", "nao-sei", "não consegui perguntar ao GitHub. NÃO é um verde."); });
+
+  // ---------- rodapé ----------
+  var rod = document.getElementById("rodape");
+  rod.appendChild(document.createTextNode("Fonte: painel/registros/ (" + (PAINEL.resumo.totalNoLivro || REGS.length) + " registros, no Git; " + REGS.length + " neste resumo, o resto por mês, sob demanda) · regras: painel/logica.js, com teste-guarda · como registrar: painel/LEIA-ME.md · a história desta reforma: "));
+  var a = el("a", null, "o veredito das 8 consultorias"); a.href = "../docs/paineis/VEREDITO-DAS-CONSULTORIAS.html";
+  rod.appendChild(a);
+  rod.appendChild(document.createTextNode(" · a prateleira de fotografias (os painéis das eras passadas, congelados): "));
+  var af = el("a", null, "docs/paineis/fotografias/"); af.href = "../docs/paineis/fotografias/";
+  rod.appendChild(af);
+  rod.appendChild(document.createTextNode(". Página aberta às " + AGORA.toLocaleTimeString("pt-BR") + " de " + AGORA.toLocaleDateString("pt-BR") + " — todo frescor foi comparado com este relógio."));
+
+  // ---------- abas ----------
+  function mostraVista() {
+    var alvo = (location.hash || "#capa").slice(1);
+    if (["capa", "mapa", "operacao", "memoria"].indexOf(alvo) === -1) alvo = "capa";
+    ["capa", "mapa", "operacao", "memoria"].forEach(function (v) {
+      document.getElementById("vista-" + v).className = "vista" + (v === alvo ? " ativa" : "");
+    });
+    Array.prototype.forEach.call(document.querySelectorAll(".aba"), function (aEl) {
+      aEl.className = "aba" + (aEl.getAttribute("data-vista") === alvo ? " ativa" : "");
+    });
+  }
+  window.addEventListener("hashchange", mostraVista);
+  mostraVista();
+
+  document.getElementById("app").style.display = "block";
+} catch (e) {
+  falhaAlta(e.mensagem || String(e), e.detalhes || null);
+}
+</script>
+</body>
+</html>

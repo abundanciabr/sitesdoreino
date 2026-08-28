@@ -203,6 +203,106 @@ var capaRecusada = LOGICA._capaComTeto(regsCheios, AGORA, 2);
 caso("acima do teto a capa se RECUSA a construir e diz o porquê",
   capaRecusada.erro !== null && capaRecusada.blocos === null && capaRecusada.erro.indexOf("teto") !== -1);
 
+
+// =============================================================================
+// O RESUMO — a peça que faz abrir o painel custar UM pedido (27/08/2026).
+//
+// A propriedade que precisa ser verdade, e que estes casos medem: **a capa e o
+// mapa calculados do RESUMO são idênticos aos calculados do livro INTEIRO.**
+// Se algum dia deixarem de ser, o painel passa a mostrar menos do que existe —
+// e mostrar menos, sem avisar, é a única coisa que este painel não pode fazer.
+// =============================================================================
+console.log("== o resumo: um pedido, sem perder nada da capa ==");
+
+// Um livro grande o bastante para o resumo ser mesmo um recorte, com todas as
+// formas que a capa e o mapa conhecem.
+var livroGrande = [];
+for (var i = 1; i <= 60; i++) {
+  var num = ("00" + i).slice(-3);
+  livroGrande.push(reg({
+    arquivo: "20260801-" + num + "-antigo" + i,
+    quando: "2026-08-01",
+    tipo: (i % 3 === 0) ? "entrega" : "nota",
+    evidencia: (i % 2 === 0) ? "prova" : null,
+    verificado_em: (i % 2 === 0) ? "2026-08-01" : null
+  }));
+}
+livroGrande.push(pedido);                                   // precisa_do_dono, sem resposta
+livroGrande.push(incendio);                                 // vermelho aberto
+livroGrande.push(f1);                                       // estado de frente
+livroGrande.push(reg({ arquivo: "20260826-090-rumo", tipo: "rumo", frente: "site", gravidade: "info" }));
+// Um pedido ANTIGO cuja resposta é recente: é o caso que decide se o mapa de
+// respostas precisa viajar calculado sobre o livro inteiro.
+livroGrande.push(reg({ arquivo: "20260801-900-pedido-velho", quando: "2026-08-01", precisa_do_dono: true }));
+livroGrande.push(reg({ arquivo: "20260826-091-resposta", responde_a: "20260801-900-pedido-velho" }));
+
+var resumo = LOGICA.montarResumo(livroGrande);
+caso("montarResumo constrói sem erro", resumo.erro === null);
+caso("o resumo é MENOR que o livro (é um recorte de verdade)",
+  resumo.registros.length > 0 && resumo.registros.length < livroGrande.length);
+caso("o total do livro viaja junto (o rodapé conta o livro, não o recorte)",
+  resumo.totalNoLivro === livroGrande.length);
+
+// A PROVA CENTRAL. Mesmo relógio, mesmas regras, fontes diferentes.
+var capaCheia2 = LOGICA.capa(livroGrande, AGORA);
+var capaResumo = LOGICA.capa(resumo.registros, AGORA, resumo.respondidos);
+caso("a capa do resumo tem os MESMOS blocos que a do livro inteiro",
+  capaResumo.erro === null && capaCheia2.erro === null &&
+  capaResumo.blocos.map(function (b) { return b.id; }).join(",") ===
+  capaCheia2.blocos.map(function (b) { return b.id; }).join(","));
+caso("...com a MESMA contagem em cada bloco",
+  capaResumo.blocos.every(function (b, k) { return b.itens.length === capaCheia2.blocos[k].itens.length; }));
+caso("...e exatamente os MESMOS registros na caixa 'Precisa de você'",
+  JSON.stringify(LOGICA.caixaDeEntrada(resumo.registros, AGORA, resumo.respondidos)
+    .map(function (x) { return x.registro.arquivo; })) ===
+  JSON.stringify(LOGICA.caixaDeEntrada(livroGrande, AGORA).map(function (x) { return x.registro.arquivo; })));
+
+var mapaCheio = LOGICA.meuMapa(livroGrande, AGORA);
+var mapaResumo = LOGICA.meuMapa(resumo.registros, AGORA, resumo.respondidos);
+caso("o mapa do resumo tem o mesmo estado e os mesmos rumos por capítulo",
+  mapaResumo.every(function (c, k) {
+    var o = mapaCheio[k];
+    return c.frente === o.frente &&
+      ((c.estado && o.estado) ? c.estado.arquivo === o.estado.arquivo : c.estado === o.estado) &&
+      c.rumos.length === o.rumos.length;
+  }));
+
+// O caso que o mapa de respostas existe para cobrir: sem ele, um pedido cuja
+// resposta ficou fora do recorte voltaria a aparecer como aberto — a caixa
+// "Precisa de você" mentiria de novo, que é a doença do H18 por dentro da cura.
+var semMapa = LOGICA.caixaDeEntrada(resumo.registros, AGORA).length;
+var comMapa = LOGICA.caixaDeEntrada(resumo.registros, AGORA, resumo.respondidos).length;
+caso("pedido já respondido NÃO reaparece na caixa (o mapa de respostas viaja junto)",
+  comMapa === LOGICA.caixaDeEntrada(livroGrande, AGORA).length && comMapa <= semMapa);
+
+// O relógio NÃO pode ter entrado no resumo: ele é montado uma vez, no build, e
+// lido meses depois. Congelar idade ou vencimento ali fossilizaria o frescor.
+var resumoA = LOGICA.montarResumo(livroGrande);
+var resumoB = LOGICA.montarResumo(livroGrande);
+caso("montarResumo é determinístico (mesmo livro → mesmo resumo, sem relógio dentro)",
+  JSON.stringify(resumoA) === JSON.stringify(resumoB));
+caso("nenhum campo de idade/vencimento foi congelado no resumo",
+  JSON.stringify(resumoA.registros).indexOf("aguardandoDias") === -1);
+
+// Os que viajam só como título continuam sendo registros VÁLIDOS: a página os
+// desenha com as mesmas regras, e um campo obrigatório faltando derrubaria a
+// validação de quem tem o livro todo em mãos.
+var soTitulo = resumo.registros.filter(function (r) { return r._so_titulo; });
+caso("há registros que viajam só como título (é isso que segura o orçamento)", soTitulo.length > 0);
+// A validação inteira não roda sobre um recorte de propósito (um `responde_a`
+// cujo alvo ficou de fora acusaria falso). O que importa aqui é que o corte não
+// tenha comido nenhum campo OBRIGATÓRIO — inclusive o `detalhe`, que continua
+// não-vazio porque passa a dizer onde o texto está.
+var OBRIGATORIOS_NA_PAGINA = ["arquivo", "tipo", "quando", "titulo", "detalhe", "autoridade", "gravidade"];
+caso("...e nenhum campo obrigatório se perdeu no corte",
+  soTitulo.every(function (r) {
+    return OBRIGATORIOS_NA_PAGINA.every(function (c) {
+      return typeof r[c] === "string" && r[c].trim() !== "";
+    }) && typeof r.precisa_do_dono === "boolean";
+  }));
+caso("...e o texto que ficou no lugar diz ONDE ler o original",
+  soTitulo.every(function (r) { return r.detalhe.indexOf("Memória") !== -1; }));
+caso("...e é possível saber que o texto ficou para trás", soTitulo.every(function (r) { return r._so_titulo === true; }));
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");

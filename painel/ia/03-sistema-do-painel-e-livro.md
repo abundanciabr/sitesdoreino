@@ -17,8 +17,10 @@ em `painel/` guarda estado — toda vista é `f(registros[], agora)`.
 |---|---|---|
 | `painel/registros/*.js` | O livro. Um arquivo por acontecimento, cada um empurra **exatamente 1** objeto para `window.REGISTROS`. Nunca editado depois de criado. | Toda sessão relevante, ao terminar trabalho |
 | `painel/logica.js` | Regras de cálculo puras (sem DOM/rede/relógio — quem chama passa `agora`). Roda idêntica em Node (gerador) e no navegador (página). | PR + teste-guarda |
-| `painel/gerar_manifesto.js` | Valida TODOS os registros com a mesma `logica.js` e gera `manifesto.js` (lista de `<script src=...>` — necessário porque `file://` no Chrome não deixa a página descobrir arquivos sozinha). `--conferir` só audita (usado pela CI). | Só o gerador, nunca à mão |
-| `painel/painel.html` | A página que o mantenedor abre — HTML+CSS+JS embutido, fail-closed total | PR |
+| `painel/gerar_manifesto.js` | Valida TODOS os registros com a mesma `logica.js` e MONTA a página: injeta as regras e o resumo em `painel.template.html`, e empacota o passado em um `livro-AAAAMM.js` por mês. `--conferir` só audita (usado pela CI). O nome é herança de quando ele só escrevia um manifesto. | Só o gerador, nunca à mão |
+| `painel/painel.template.html` | A FONTE da página — é este que se edita. Tem o marcador `__DADOS_DO_PAINEL__` onde o gerador injeta regras e resumo. | PR |
+| `painel/painel.html` | **GERADO.** A página que o mantenedor abre — HTML+CSS+JS+dados num arquivo só, fail-closed total. **Abrir custa UM pedido**, com 90 registros ou com 90 mil. | Só o gerador, nunca à mão |
+| `painel/livro-AAAAMM.js` | **GERADO**, um por mês: o conteúdo daquele mês, buscado só quando a Memória é aberta. Mês fechado nunca mais é reescrito. | Só o gerador, nunca à mão |
 | `painel/testes/` | `teste_logica.js` (~50 casos, cada regra provada nos dois sentidos) e `teste_gerador.js` (roda o gerador como subprocesso real, prova os 3 estados de saída) | PR |
 | `ci/muralha-do-painel.sh` | Roda os testes acima em todo PR (exit 0/1/2 — ERROR nunca vira PASS) | — |
 | `ci/divida_do_livro.py` | Segunda trava, na porta de merge: PR mergeado sem nenhum registro citando seu número vira "dívida" que bloqueia o **próximo** merge | — |
@@ -138,7 +140,7 @@ explícito e a tela mostra "não consegui medir".
    o mesmo `NNN` livre, colidem. A validação hoje reprova um 3º registro no
    mesmo número; o nome completo do arquivo (não o número) é o identificador
    estável para `responde_a`.
-2. **CRLF no Windows produz um "modificado" falso em `manifesto.js`** —
+2. **CRLF no Windows produz um "modificado" falso nos gerados** —
    é só normalização de fim de linha do checkout, `gerar_manifesto.js
    --conferir` já normaliza os dois lados antes de comparar.
 3. **`precisa_do_dono` e `vence_em_dias` têm que ser literais, não texto** —
