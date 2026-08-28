@@ -274,10 +274,20 @@ components:
           type: array
         pode_assinar:
           type: boolean
+        pessoas_esperando:
+          type: integer
+        silencio_medio_em_dias:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        pessoas_em_silencio_demais:
+          default: 0
+          type: integer
       required:
       - quadro
       - ideias
       - pode_assinar
+      - pessoas_esperando
       type: object
     Recusa:
       description: Uma recusa que ENSINA o caminho — a frase é a mesma que a tela dizia.
