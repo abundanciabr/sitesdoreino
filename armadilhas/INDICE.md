@@ -174,5 +174,6 @@
 | [146](146-a-palavra-script-num-comentario-html-quebra-o-csp.md) | A palavra `script` entre `<>` num COMENTÁRIO HTML quebra o CSP — e só em produção — a página abre perfeita por `file://` e no `make dev`, e **em produção não renderiza nada**. O console do navegador mostra algo como: | — |
 | [147](147-o-caminho-do-script-escolhe-qual-repo-e-medido.md) | O `../` no comando escolhe QUAL cópia do repositório o portão vai medir — você acabou de criar o worktree a partir de `origin/main`, o livro está em dia, e o portão acusa um absurdo: | — |
 | [148](148-o-reconhecimento-acontece-no-espelho-velho-e-a.md) | O reconhecimento acontece no espelho velho, e a bancada nasce nova — você projeta para um sistema que não existe mais — você entrega uma tela, uma decisão ou uma pergunta ao mantenedor declarando que alguma coisa **não… | — |
+| [149](149-parametro-errado-numa-github-action-nao-reprova.md) | Parâmetro com nome errado numa GitHub Action não reprova — ela avisa e IGNORA — o deploy fecha **verde** e a imagem nova **não sobe**. O site continua no ar servindo a versão anterior, sem erro em lugar nenhum: o… | — |
 
-**137 entradas.**
+**138 entradas.**

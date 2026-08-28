@@ -50,3 +50,13 @@ docker compose pull $SERVICOS
 # container em crash-loop (ARMADILHAS §3.13).
 docker compose up -d --wait --wait-timeout 180 $SERVICOS
 docker compose ps $SERVICOS
+
+# A PROVA DE QUE ESTE SCRIPT RODOU ATE O FIM. Sem ela, um passo que nao executa
+# nada devolve 0 e o deploy fica VERDE sem ter subido imagem nenhuma — foi
+# exatamente o que aconteceu em 28/08/2026, quando o parametro do workflow
+# estava com o nome errado (script_file em vez de script_path): a acao avisou
+# "Unexpected input", ignorou o script, conectou, nao rodou nada e saiu com
+# sucesso. O workflow EXIGE esta linha na saida; sem ela, reprova.
+# ASCII de proposito: acento numa sentinela e um jeito barato de o grep falhar
+# por codificacao e a trava virar decoracao.
+echo "ENTREGA-CONCLUIDA: $CELULA"

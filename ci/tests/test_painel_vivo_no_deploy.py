@@ -208,6 +208,71 @@ def _passos_de_ativacao() -> list[dict]:
     ]
 
 
+# Os parâmetros que `appleboy/ssh-action@v1` ACEITA. A lista não foi inventada:
+# é a que a própria ação imprimiu ao recusar um nome errado, no run 33184186489
+# de 28/08/2026. Está aqui porque um nome inválido NÃO derruba a ação — ela
+# emite um `##[warning]`, ignora o parâmetro e segue. Foi assim que o deploy
+# ficou verde sem executar nada: `script_file` não existe; o certo é
+# `script_path`.
+INPUTS_DA_ACAO_SSH = {
+    "host",
+    "port",
+    "passphrase",
+    "username",
+    "password",
+    "protocol",
+    "sync",
+    "use_insecure_cipher",
+    "cipher",
+    "timeout",
+    "command_timeout",
+    "key",
+    "key_path",
+    "fingerprint",
+    "proxy_host",
+    "proxy_port",
+    "proxy_username",
+    "proxy_password",
+    "proxy_protocol",
+    "proxy_passphrase",
+    "proxy_timeout",
+    "proxy_key",
+    "proxy_key_path",
+    "proxy_fingerprint",
+    "proxy_cipher",
+    "proxy_use_insecure_cipher",
+    "script",
+    "script_path",
+    "envs",
+    "envs_format",
+    "debug",
+    "allenvs",
+    "request_pty",
+    "curl_insecure",
+    "capture_stdout",
+    "version",
+}
+
+
+def test_nenhum_parametro_inventado_na_acao_de_ssh() -> None:
+    """O guarda que faltava, e que custou um deploy verde sem entrega.
+
+    Parâmetro com nome errado não reprova a ação: ela avisa e IGNORA. O
+    resultado é uma conexão que abre, não executa nada e sai com sucesso — o
+    falso-verde mais caro deste projeto, porque o site continua servindo a
+    imagem velha com todos os sinais normais.
+
+    Nenhum outro teste pegaria: o YAML era válido, o script existia, o caminho
+    estava certo. O defeito morava só na conversa entre o workflow e a ação.
+    """
+    for passo in _passos_de_ativacao():
+        invalidos = set(passo["with"]) - INPUTS_DA_ACAO_SSH
+        assert not invalidos, (
+            f"{passo.get('name')}: parâmetro(s) que a ação NÃO conhece: {sorted(invalidos)}. "
+            "Ela avisa e ignora — o deploy ficaria verde sem executar nada."
+        )
+
+
 def test_o_script_que_a_entrega_roda_existe_de_verdade() -> None:
     """O caminho apontado no workflow tem de existir no repositório.
 
@@ -218,9 +283,32 @@ def test_o_script_que_a_entrega_roda_existe_de_verdade() -> None:
     passos = _passos_de_ativacao()
     assert passos, "nenhum passo de ativação na VPS — a varredura está cega"
     for passo in passos:
-        caminho = passo["with"].get("script_file")
-        assert caminho, f"{passo.get('name')}: sem script_file"
+        caminho = passo["with"].get("script_path")
+        assert caminho, f"{passo.get('name')}: sem script_path"
         assert (RAIZ / caminho).is_file(), f"{passo.get('name')}: {caminho} não existe"
+
+
+def test_a_entrega_prova_que_rodou_ate_o_fim() -> None:
+    """Conectar não é entregar, e o workflow tem de saber a diferença.
+
+    O script imprime uma sentinela na última linha; um passo do workflow EXIGE
+    vê-la. Sem essa dupla, uma conexão que abre e não executa nada volta a
+    contar como sucesso.
+    """
+    script = (RAIZ / "infra" / "deploy-celula-na-vps.sh").read_text(encoding="utf-8")
+    assert "ENTREGA-CONCLUIDA:" in script, "o script não imprime a marca de conclusão"
+
+    fluxo = (RAIZ / ".github" / "workflows" / "deploy-celula.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "ENTREGA-CONCLUIDA:" in fluxo, (
+        "nenhum passo exige a marca de conclusão — conectar sem executar voltaria "
+        "a ser tratado como deploy bem-sucedido"
+    )
+    for passo in _passos_de_ativacao():
+        assert (
+            passo["with"].get("capture_stdout") is True
+        ), f"{passo.get('name')}: sem capture_stdout, a marca não chega ao passo que a exige"
 
 
 def test_a_entrega_tenta_mais_de_uma_vez() -> None:
