@@ -304,3 +304,82 @@ def test_email_malformado_e_422_e_nao_cadastrado(client, auth):
     """
     resposta = perguntar(client, auth, email="isto-nao-e-email")
     assert resposta.status_code == 422, resposta.content
+
+
+# ------------------------------------------------- pausado e ex-aluno
+#
+# `DECISAO-ex-aluno-e-a-porta-que-explica` (28/08/2026). Os dois ESTADOS já
+# existiam e já bloqueavam; o que faltava era o sistema saber DIZÊ-LOS. Até
+# esta mudança os dois voltavam como `cadastrado` — e foi por isso que o
+# mantenedor, ao apagar um aluno, viu a tela de quem nunca pediu nada.
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status,categoria",
+    [
+        (Matricula.STATUS_SUSPENSA, "pausado"),
+        (Matricula.STATUS_ENCERRADA, "ex_aluno"),
+    ],
+)
+def test_quem_tem_ficha_parada_nao_e_cadastrado(client, auth, status, categoria):
+    """O conserto, medido no ponto exato onde a mentira acontecia.
+
+    `cadastrado` significa "nunca pediu nada". Dizer isso de quem foi pausado
+    ou saiu da escola faz a Caixa oferecer o formulário de pedir entrada — e a
+    pessoa não está entrando, está saindo.
+    """
+    linha(status=status, order_id=f"pedido-{status}")
+    corpo = perguntar(client, auth).json()
+    assert corpo["categoria"] == categoria
+    assert corpo["na_fila"] is None, "pausado e ex-aluno não estão em fila nenhuma"
+
+
+@pytest.mark.django_db
+def test_pausado_e_ex_aluno_sao_categorias_DIFERENTES():
+    """A diferença é a única coisa que a pessoa quer saber.
+
+    Um é temporário e volta com um clique; o outro é o fim. Colapsá-los num
+    "sem acesso" genérico devolveria o problema que esta mudança conserta, com
+    outro nome.
+    """
+    linha(status=Matricula.STATUS_SUSPENSA, order_id="p-1")
+    pausado = situacao_de(ALGUEM)["categoria"]
+    Matricula.objects.all().delete()
+    linha(status=Matricula.STATUS_ENCERRADA, order_id="e-1")
+    ex = situacao_de(ALGUEM)["categoria"]
+
+    assert pausado != ex
+    assert "aluno" != pausado and "aluno" != ex
+
+
+@pytest.mark.django_db
+def test_a_fila_vem_antes_de_pausado_e_de_ex_aluno():
+    """A ordem é "o mais acionável primeiro".
+
+    Quem está esperando uma decisão do mantenedor vem antes de quem já recebeu
+    uma: na fila há algo acontecendo do outro lado; nos outros dois, não.
+    """
+    linha(status=Matricula.STATUS_ENCERRADA, site_id="escola-a", order_id="e-2")
+    linha(status=Matricula.STATUS_AGUARDANDO, site_id="escola-b", order_id="pre:z")
+    assert situacao_de(ALGUEM)["categoria"] == "na_fila"
+
+
+@pytest.mark.django_db
+def test_ser_aluno_vence_uma_ficha_parada():
+    """Quem voltou a ser aluno não é ex-aluno de nada, para efeito de tela."""
+    linha(status=Matricula.STATUS_ENCERRADA, site_id="escola-a", order_id="e-3")
+    linha(status=Matricula.STATUS_ATIVA, site_id="escola-b", order_id="ativo-1")
+    assert situacao_de(ALGUEM)["categoria"] == "aluno"
+
+
+@pytest.mark.django_db
+def test_nenhum_dos_dois_da_acesso(client, auth):
+    """O outro lado: dizer o nome certo não pode ter aberto porta nenhuma."""
+    for status in (Matricula.STATUS_SUSPENSA, Matricula.STATUS_ENCERRADA):
+        Matricula.objects.all().delete()
+        linha(status=status, order_id=f"acesso-{status}")
+        assert (
+            client.get(f"/api/alunos/alunos/{ALGUEM}/matriculas", **auth).status_code
+            == 404
+        ), status
