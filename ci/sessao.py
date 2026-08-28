@@ -1266,6 +1266,38 @@ def main(argv: list[str] | None = None) -> int:
         print("--conferir: nada foi criado. Tire a flag para executar o plano acima.")
         return 0
 
+    # O ARAUTO — Onda 1 do PLANO-MESTRE-ROBOS-SEM-COLISAO.md, contra a Classe 8
+    # (mapa velho). Vem ANTES de qualquer trabalho e é fail-closed: sem saber
+    # quem está mexendo em quê agora, o que pousou nas últimas 24h e se alguma
+    # LEI mudou, a sessão decide sobre um mundo que pode não existir mais — foi
+    # assim que este projeto entregou, em 28/08/2026, uma premissa falsa a cinco
+    # consultorias externas (`armadilhas/148`).
+    #
+    # Mora AQUI, e não dentro de `Sessao.rodar()`, de propósito: `rodar()` é
+    # bootstrap de ambiente LOCAL, provado sem rede por injeção de dependências
+    # (`correr`, `existe`, `localizar`). Enfiar uma leitura de rede lá dentro
+    # furava essa costura e deixava 22 guardas do próprio bootstrap vermelhos —
+    # a suíte reclamou, e ela estava certa.
+    try:
+        from boletim import coletar, montar
+
+        print(montar(coletar(raiz)))
+    except ErroDeInstrumentacao as erro:
+        print(
+            ErroDeSessao(
+                "boletim: o que o mundo é agora",
+                f"não consegui ler o estado real do projeto: {erro.resumo}",
+                comando="python ci/boletim.py",
+                detalhe=(
+                    (erro.detalhe + "\n\n" if erro.detalhe else "")
+                    + "A sessão PAROU de propósito, ANTES de criar qualquer coisa.\n"
+                    "Boletim que não sai não é 'então está tudo bem': é não saber.\n"
+                    "Quase sempre é o `gh` sem credencial nesta máquina, ou sem rede."
+                ),
+            ).render()
+        )
+        return 2
+
     try:
         texto = Sessao(plano).rodar()
     except ErroDeSessao as erro:
