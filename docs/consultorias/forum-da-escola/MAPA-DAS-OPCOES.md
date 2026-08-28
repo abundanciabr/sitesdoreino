@@ -1,12 +1,31 @@
 # Mapa das opções — como um fórum entraria neste site
 
-> **Para que serve este arquivo:** você perguntou "existe fórum pronto de
-> instalar ou temos que criar do zero?". Esta é a resposta que eu tenho **hoje**,
-> antes das outras IAs responderem — para você não ficar esperando, e para os
-> consultores terem algo concreto de que discordar.
+> # ⚠️ ESTE ARQUIVO FOI SUPERADO — leia o `VEREDITO.md`
 >
-> Escrito em 28/08/2026. O veredito da rodada (`VEREDITO.md`, quando existir)
-> vale mais que este arquivo, porque terá as respostas de fora.
+> **A recomendação deste mapa estava ERRADA, e a rodada de consultoria a
+> derrubou em 28/08/2026.** Ele recomendava a Família B (`django-machina`)
+> anotando que *"é preciso conferir se o projeto está vivo"* — **e recomendou
+> antes de conferir.** Ao conferir: última versão estável de **outubro de 2023**,
+> sem nenhuma declaração de suporte a Django 5, numa plataforma que roda Django
+> 5.1.4. **Os dois consultores externos recusaram esse motor.**
+>
+> **O que ficou decidido está no [`VEREDITO.md`](VEREDITO.md): construir na casa,
+> como célula `services/forum`, em `meshcraft.top/forum`.**
+>
+> Este arquivo fica como está — não se apaga o erro, registra-se. Ele continua
+> útil pelo levantamento das opções e pelos descartes justificados; **só a
+> recomendação final não vale.** Duas outras coisas nele também foram corrigidas
+> pela rodada: o Misago está **vivo** (0.39.6, agosto de 2026) e foi subestimado
+> aqui; e o argumento contra o Discourse estava mal calibrado — ele não cai por
+> memória, cai por processador e por operação.
+>
+> ---
+>
+> **Para que serve este arquivo:** você perguntou "existe fórum pronto de
+> instalar ou temos que criar do zero?". Esta era a resposta que a sessão tinha
+> **antes** de as outras IAs responderem — para você não ficar esperando, e para
+> os consultores terem algo concreto de que discordar. Nessa segunda função ele
+> funcionou: os dois atacaram justamente a tese fraca dele.
 
 ## A pergunta por trás da pergunta
 
@@ -119,10 +138,37 @@ via é a esteira automática. Trocar de plano não muda isso: manter o Discourse
 seria tarefa recorrente **sua**, no terminal, para sempre. Este continua sendo o
 argumento mais forte contra ele, e agora é o único que sobrou de pé.
 
+> **Correção da rodada (28/08/2026):** este parágrafo está forte demais. O
+> Discourse **tem** uma tela de atualização pelo navegador, e o dia a dia se
+> resolve por ela. O que continua verdade — e é o que importa — é que o terminal
+> segue necessário como **saída de emergência** e em atualizações de
+> infraestrutura: quando a atualização pelo navegador falha, o fórum cai, e
+> levantar de volta só se faz de dentro da máquina. Os dois consultores
+> convergiram nisso. Detalhe em [`VEREDITO.md`](VEREDITO.md).
+
 O disco, esse, está tranquilo: 12 GB usados de 50. Boa notícia para o "mostre seu
 trabalho" do fórum, que é a parte mais capaz de encher disco.
 
-## A minha recomendação, hoje
+## A minha recomendação, hoje — ❌ DERRUBADA PELA RODADA
+
+> **Esta recomendação está ERRADA. Ela foi mantida aqui de propósito, para o erro
+> ficar registrado em vez de apagado.** O que vale é o
+> [`VEREDITO.md`](VEREDITO.md): **construir na casa (Família C)**, como célula
+> `services/forum` em `meshcraft.top/forum`.
+>
+> **Por que caiu:** o `django-machina` não tem versão estável desde **outubro de
+> 2023** e não declara suporte a Django 5 em lugar nenhum — e a plataforma roda
+> Django 5.1.4. Os dois consultores externos o recusaram. Pior: a "busca
+> inclusa" que era o principal argumento a favor dele **nem é dele** — vem do
+> `django-haystack`, e teria que ser resolvida de qualquer jeito.
+>
+> **A lição, que é a parte cara:** este texto anotou *"é preciso conferir se o
+> projeto está vivo"* — **e recomendou antes de conferir.** Marcar uma dúvida não
+> substitui responder a dúvida.
+>
+> **E o fator que decidiu de verdade nem estava nesta análise:** o mantenedor quer
+> um login só para o site inteiro, e uma célula da casa herda isso de graça —
+> qualquer fórum de fora pediria um segundo login.
 
 **Família B, dentro de uma célula nova `services/forum`** — motor pronto onde ele
 resolve (fóruns, permissões, anexos, moderação), colado no que já temos (login,

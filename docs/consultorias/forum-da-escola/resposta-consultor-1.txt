@@ -1,0 +1,178 @@
+RESPOSTA DO CONSULTOR 1 — rodada "fórum da escola", 28/08/2026
+Colada pelo mantenedor na sessão do Claude Code. A IA de origem não foi
+registrada. Texto reproduzido como recebido.
+
+================================================================================
+
+Parecer
+
+O fato que derruba a recomendação do documento
+
+O documento deixa uma pergunta em aberto — "é preciso conferir se o
+django-machina está sendo mantido" — e recomenda a Família B antes de ter a
+resposta. Fui conferir. A resposta é ruim.
+
+A última versão do django-machina é a 1.3.0, de 27 de maio de 2023, e ela declara
+compatibilidade com Django 3.2, 4.0, 4.1 e 4.2, e Python até o 3.11. Três anos e
+três meses parado. Um serviço que audita saúde de pacotes classificou o projeto
+como inativo, sem nenhuma versão nova publicada em doze meses e sem movimento no
+repositório.
+
+O site de vocês roda Django 5.x. O motor que o documento recomenda nunca foi
+testado contra a versão do Django que vocês usam. Isso não é um risco futuro — é
+o estado de hoje.
+
+E tem o resto do pacote: instalar o machina traz junto django-haystack,
+django-mptt, django-widget-tweaks, markdown2 e pillow. A busca dele não é dele:
+ele delega ao django-haystack, e o mecanismo básico sugerido é o "simple", que é
+uma consulta ingênua ao banco; para busca de verdade a documentação manda plugar
+Solr ou Whoosh — mais uma peça girando no seu único núcleo. Ou seja: a "busca
+inclusa" que justificava a Família B não existe. Vocês teriam que resolver a
+busca de qualquer jeito.
+
+A Família B está morta. Não por preferência minha — por data de calendário.
+
+Três correções no documento
+
+1. O argumento contra o Discourse está exagerado, mas a versão correta dele é
+mais forte.
+Não é verdade que a forma normal de atualizar o Discourse seja entrar no
+servidor. Existe uma tela de atualização no painel, no navegador. Mas: de tempos
+em tempos é preciso rodar a atualização manual pela linha de comando para pegar
+as correções de segurança e as bibliotecas novas — essas não aparecem na tela do
+painel, e o próprio Discourse desativa o botão do navegador até você entrar no
+servidor e reconstruir a imagem.
+O que o documento não viu é pior: quando a atualização pelo navegador falha, o
+fórum cai, e a forma de levantar de novo é entrar no servidor e rodar o comando
+de reconstrução. Não é "digitar comandos de vez em quando". É ser dono de um
+procedimento de resgate que só funciona de dentro da máquina, num dia em que o
+fórum está fora do ar e alunos estão reclamando. Esse é o argumento verdadeiro, e
+ele continua matando o Discourse para vocês.
+
+2. O documento se contradiz sobre o custo. Na seção da Família B ele diz que o
+motor roda "no mesmo processo, no mesmo banco" e por isso não custa memória a
+mais. Na recomendação ele diz "célula nova services/forum", e no fim lista "criar
+o banco" como um passo. As duas coisas não podem ser verdade. Se é célula de
+verdade — processo próprio, banco próprio, contêiner próprio, como manda a
+arquitetura de vocês — então custa sim mais um processo Python com seus
+trabalhadores. Longe do Discourse, mas não zero, e num núcleo único que já está em
+50% isso precisa ser dito antes da decisão, não depois.
+
+3. O dinheiro foi enterrado, e ele é pequeno. A diferença entre os dois planos da
+Hostinger é de alguns dólares por mês. Isso não decide nada para quem tem a regra
+de escolher a opção completa. As moedas reais dessa decisão são outras duas: uma
+segunda linguagem dentro de casa (alguém tem que saber Ruby quando quebrar) e a
+dependência de resgate manual. O plano do servidor é ruído.
+
+Sobre o Misago, o documento errou na direção contrária
+
+Ele foi descartado como projeto de comunidade pequena em reescrita longa. Mas o
+Misago está na versão 0.39.6, atualizada em 18 de agosto de 2026 — dez dias atrás.
+É o único da lista que está vivo e em Python.
+
+Só que ele é o formato errado para vocês: é um projeto inteiro, com painel
+administrativo próprio, modelo de usuário próprio e sistema de permissões próprio.
+Adotá-lo significa a escola ter dois painéis de administração e duas noções de
+quem é aluno. E para ligar ao login de vocês, ele espera um provedor de login de
+mercado — o que exigiria transformar a identidade caseira num provedor OAuth2
+inteiro, exatamente a maior ponte da lista, a mesma que condenou o NodeBB. É
+licença GPL também: um fork de vocês nasce GPL.
+
+Vivo, mas errado.
+
+O que o documento supervaloriza e o que ele esqueceu
+
+O preço da Família C está inflado. Vamos item por item:
+
+* Busca. O PostgreSQL que vocês já rodam tem busca por texto completo nativa, com
+  configuração de português inclusa. É uma coluna calculada com índice e uma
+  consulta ordenada por relevância. Isso não é reinventar o que o mundo resolveu —
+  é usar o que já está pago. Quem usa assim: o GitLab busca as issues dele desse
+  jeito. O que custa se aplicado errado: se você calcular o vetor de busca na hora
+  da consulta em vez de guardá-lo numa coluna indexada, funciona lindamente com
+  500 mensagens e trava com 50 mil — e você só descobre em produção.
+* Editor de texto. Marcação simples com limpeza do que o aluno colar. Cabe nas
+  ilhas Alpine que vocês já usam, sem etapa de build.
+* Anti-spam. Fórum fechado, só entra aluno matriculado, identificado, com cinco
+  categorias de pessoa. Spam não é ameaça aqui. Esse custo é imaginário.
+* Resposta por e-mail. Esse é caro de verdade — receber e-mail de volta, casar com
+  o tópico certo, limpar as citações, impedir que alguém finja ser outro. É o
+  único item da lista onde um motor pronto ganharia de longe. É também o item de
+  menor valor numa escola que já tem sininho funcionando.
+
+E aqui está o que o documento não listou — que é justamente onde as pessoas se
+arrependem de construir fórum:
+
+1. Marcar o que cada pessoa já leu. É o item mais subestimado que existe. O jeito
+   certo é guardar uma marca d'água por pessoa por área ("li até aqui") mais uma
+   pequena tabela de exceções — que é exatamente o que o Discourse faz. O que
+   custa errado: guardar uma linha por pessoa por mensagem lida. Com 200 alunos e
+   20 mil mensagens você fabrica milhões de linhas para responder uma pergunta
+   boba, e a lista de tópicos fica lenta.
+2. Moderação em volume: fila de aprovação, mover tópico de área, juntar
+   duplicatas, dividir uma conversa que descarrilou, trancar, fixar, apagar sem
+   perder o histórico.
+3. Anexos com segurança — limite de tamanho, lista branca de tipos, servir o
+   arquivo sem deixar ninguém subir coisa executável. Isso importa muito no
+   "mostre seu trabalho", que é a parte mais exposta.
+4. Acompanhar tópico sem virar barulho no sininho.
+
+Essa é a conta honesta da Família C. É finita e é conhecida — mas tem que estar na
+mesa antes da sua palavra, não descoberta no meio.
+
+Meu voto
+
+Família C — construir services/forum. Mesmo destino do documento, raciocínio
+invertido: não como plano B se o motor estiver doente. Como primeira escolha,
+porque:
+
+* O motor está doente (fato de hoje, verificado).
+* O único vivo em Python é o formato errado e cobra a maior ponte da lista.
+* O que "teria que ser reconstruído" já está construído (moderação, limite contra
+  abuso, histórico, sininho, o molde de discussão), ou vem de graça no banco
+  (busca), ou é pequeno na pilha que vocês já têm (editor).
+* E o argumento que ninguém levantou: vocês acabaram de consolidar um desenho de
+  três idiomas com quatro pareceres externos — todos os idiomas com prefixo na
+  URL, sem corte de idioma no Traefik, catálogo validado no boot. Nem o machina
+  nem o Misago nem o Discourse sabem disso. Cada um traz a própria convenção de
+  endereço e de template, e teria que ser ensinado do zero a respeitar a sua. Um
+  fórum de fora não entra no seu i18n — ele briga com ele.
+
+Não estou recomendando menos. A Família C é mais trabalho que instalar um motor, e
+comporta o escopo inteiro do super fórum.
+
+A ordem
+
+1. Sua palavra reabrindo o congelamento — o documento está certo, é célula nova.
+2. Resolver a contradição primeiro: decidir por escrito que é célula de verdade,
+   com banco próprio e processo próprio, e assumir o custo de processador que isso
+   traz. Sem hedge.
+3. Modelo de dados e contrato de API antes de qualquer tela — áreas, tópicos,
+   mensagens, mais a marca d'água de leitura, mais os estados de moderação. É essa
+   peça que decide se um dia dá para migrar para o Discourse.
+4. Adaptador de sessão reaproveitado do sessao.py, não reescrito.
+5. As 5 categorias de pessoa viram permissões por área como dado, não como código
+   — é isso que compra área mista e professor com autoridade sem gambiarra.
+6. Busca do PostgreSQL em português desde o primeiro dia, com uma coluna de busca
+   por idioma. Esse é o único item que é caro de instalar depois: vira migração na
+   maior tabela do sistema.
+7. Sininho, depois anexos com lista branca, depois "mostre seu trabalho".
+
+O contraponto contra mim mesmo
+
+Se a Academy crescer para milhares de alunos ativos e o fórum virar a superfície
+principal do produto, vocês vão querer coisas que o Discourse levou treze anos
+construindo: níveis de confiança, denúncia com moderação distribuída, resumo por
+e-mail, heurística de abuso. A hora de reconsiderar não é agora — é quando um
+moderador estiver se afogando.
+
+E o seguro contra isso é barato: se o modelo de dados nascer no formato normal de
+fórum (área -> tópico -> mensagem), migrar para o Discourse depois é caminho
+batido, com estrutura de importação própria usada por centenas de fóruns. Escolher
+construir só vira porta de mão única se vocês inventarem um formato de dados
+esquisito. Não inventem.
+
+Uma última: "um passo seu no servidor" já apareceu quatro vezes e vai aparecer a
+quinta. Cinco vezes não é exceção, é rotina não automatizada. Vale mais
+transformar "criar o banco de uma célula nova" em algo que a esteira faz sozinha
+do que continuar contando como se fosse pontual.
