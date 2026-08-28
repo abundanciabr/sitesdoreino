@@ -434,3 +434,118 @@ th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transfo
 @media (max-width: 520px) {
   .grade { grid-template-columns: 1fr; }
 }
+
+/* --- o painel de gestao: a MESA (28/08/2026) -----------------------------
+   Planta: docs/paineis/painel-da-caixa-de-sugestoes/. Nenhuma cor nova: a
+   mesa usa o mesmo laranja que ja significa "sua vez" no resto da Caixa, e o
+   mesmo verde de "conquistado". A unica variavel nova e a --ambar, para
+   "envelhecendo" — o vermelho ja tem dono aqui (o "nao vamos fazer" da faixa
+   de roadmap), e reusa-lo faria uma ideia atrasada parecer uma ideia recusada.
+   ------------------------------------------------------------------------ */
+
+:root { --ambar: #f2b234; --ambar-fraco: rgba(242, 178, 52, .14); }
+
+.painel-abas {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px;
+  border-bottom: 1px solid var(--linha); margin: 0 0 22px;
+}
+.painel-abas .aba {
+  padding: 9px 16px; font-size: 13px; color: var(--texto-fraco);
+  display: inline-flex; align-items: center; gap: 8px; text-decoration: none;
+}
+.painel-abas .aba.ativa {
+  color: var(--texto); font-family: var(--f-titulo); font-weight: 600;
+  background: var(--painel); border: 1px solid var(--linha-forte);
+  border-bottom-color: var(--tinta); border-radius: 8px 8px 0 0; margin-bottom: -1px;
+}
+/* A aba que ainda nao existe aparece apagada e NAO e link. Escondê-la faria a
+   planta sumir da vista de quem a escolheu; linká-la seria mentira. */
+.painel-abas .aba.futura { color: var(--texto-tenue); cursor: default; }
+.painel-abas .aba.futura::after { content: " · em construcao"; font-size: 11px; }
+.aba-conta {
+  background: var(--laranja); color: var(--tinta); border-radius: 8px;
+  padding: 0 6px; font-family: var(--f-mono); font-size: 10px; font-weight: 600;
+}
+
+.mesa-cabecalho { margin-bottom: 18px; }
+.mesa-cabecalho h1 { font-size: 1.7rem; margin: 0 0 .25rem; }
+.mesa-cabecalho .sub { margin: 0; }
+
+.mesa-bancada { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+
+.mesa { background: var(--painel); border: 1px solid var(--laranja); border-radius: 12px; overflow: hidden; }
+.mesa-vazia { border-color: var(--verde); }
+.mesa-topo {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between;
+  align-items: center; padding: 10px 22px; border-bottom: 1px solid var(--linha-forte);
+  background: var(--tinta-2);
+}
+.mesa-topo-sua { background: var(--laranja-fraco); border-bottom-color: var(--laranja); }
+.mesa-vez { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--laranja); }
+.mesa-topo:not(.mesa-topo-sua) .mesa-vez { color: var(--texto-fraco); }
+.mesa-relogio { font-family: var(--f-mono); font-size: 11px; color: var(--ambar); }
+
+.mesa-corpo { padding: 22px 22px 24px; }
+.mesa-titulo { font-family: var(--f-titulo); font-size: 1.5rem; line-height: 1.25; margin: 0 0 12px; }
+.mesa-plateia {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 18px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--linha);
+  font-size: 13px; color: var(--texto-fraco);
+}
+.mesa-plateia .votos { color: var(--texto); font-size: 15px; }
+
+.mesa-metades { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 22px; margin-bottom: 18px; }
+.citacao { border-left: 2px solid var(--linha-forte); padding-left: 12px; font-style: italic; }
+/* "Ninguem escreveu isto ainda" nao e um erro — e um vazio honesto, e por isso
+   ele nao e vermelho. Vermelho aqui treinaria a equipe a preencher o campo para
+   apagar o alarme, que e o contrario do que a frase precisa ser. */
+.ausente { color: var(--texto-tenue); }
+
+.mesa-notas {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+  padding: 14px 0; border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha);
+  margin-bottom: 18px;
+}
+.nota { display: flex; flex-direction: column; gap: 3px; }
+.nota-rotulo { font-size: 12px; color: var(--texto-fraco); }
+.nota-valor { font-family: var(--f-mono); font-size: 13px; color: var(--texto); }
+
+.mesa-acoes { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 16px; }
+.botao-grande {
+  font-size: 15px; padding: 13px 22px;
+  background: var(--laranja); color: var(--tinta); border-color: var(--laranja);
+}
+.botao-grande:hover { background: #ff9257; }
+
+.mesa-lei {
+  margin: 0; font-size: 12px; line-height: 1.6; color: var(--texto-tenue);
+  background: var(--tinta-2); border: 1px solid var(--linha); border-radius: 8px; padding: 11px 14px;
+}
+.mesa-lei strong { color: var(--texto-fraco); }
+.vazia-frase { margin: 0 0 10px; font-size: 15px; color: var(--texto); }
+.vazia-nota { margin: 0; font-size: 12.5px; color: var(--texto-tenue); line-height: 1.6; }
+
+.mesa-lado { display: flex; flex-direction: column; gap: 14px; }
+.mesa-lado .cartao { margin-bottom: 0; }
+.lado-titulo {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  font-size: 13px; margin: 0 0 12px;
+}
+.lado-conta { font-family: var(--f-mono); font-size: 11px; color: var(--texto-tenue); font-weight: 400; }
+.lado-item { padding: 10px 0; border-top: 1px solid var(--linha); }
+.lado-item:first-of-type { border-top: 0; padding-top: 0; }
+.lado-item a { font-size: 13px; text-decoration: none; }
+.lado-item a:hover { text-decoration: underline; }
+.lado-item .meta { margin-top: 3px; }
+.lado-item .bolinha { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; }
+.bolinha-obra { background: var(--azul); }
+.bolinha-no-ar { background: var(--verde); }
+.lado-rodape { margin: 12px 0 0; padding-top: 11px; border-top: 1px solid var(--linha); font-size: 11.5px; color: var(--texto-tenue); line-height: 1.55; }
+
+@media (max-width: 900px) {
+  .mesa-bancada { grid-template-columns: 1fr; }
+  .mesa-metades { grid-template-columns: 1fr; }
+  /* Tres notas de um digito lado a lado num celular quebram o rotulo em tres
+     linhas cada — a mesma correcao que a `.impacto-grade` ja carrega. */
+  .mesa-notas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

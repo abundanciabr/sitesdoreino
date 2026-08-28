@@ -2,6 +2,7 @@ from django.urls import path, re_path
 
 from apps.core.avisos import marcar_lido, marcar_tudo_lido, ver_avisos
 from apps.core.changespecs import changespecs
+from apps.core.gestao import mesa
 from apps.core.moderacao import avaliar, moderar, mudar_status, ver_fila
 from apps.core.participacao import (
     comentar,
@@ -86,6 +87,15 @@ urlpatterns = [
     path("avisos", ver_avisos, name="avisos"),
     path("avisos/marcar-tudo", marcar_tudo_lido, name="marcar_todos_avisos_lidos"),
     path("avisos/<str:aviso_id>/lido", marcar_lido, name="marcar_aviso_lido"),
+    # O painel de gestão (28/08/2026) — a MESA, porta de entrada de quem conduz
+    # a Caixa. Prefixo próprio, `/gestao`, pelo mesmo motivo do `/moderacao`: a
+    # fronteira do crachá fica legível no urlconf, e não só no decorador.
+    #
+    # Ela NÃO substitui `/moderacao` neste PR. A aba que faz esse trabalho ("A
+    # travessia") é o PR seguinte, e é quando a fila antiga vira redirecionamento
+    # — trocar as duas coisas de uma vez daria um PR que ninguém consegue
+    # reverter em pedaço.
+    path("gestao", mesa, name="mesa"),
     # A moderação (EVO-13) mora sob um prefixo próprio, `/moderacao`, e não
     # espalhada por `/sugestoes/<id>/...`: assim a fronteira do crachá é legível
     # no urlconf, e não só no decorador. Toda rota daqui responde **403** a quem

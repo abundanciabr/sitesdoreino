@@ -65,11 +65,16 @@ def test_ha_rotas_de_moderacao_para_medir():
     portão em cima do crachá (o mandato de aprovador, `SUGESTOES_APROVADORES`).
     Ela é rota de moderação como as outras, e a parede que ESTE arquivo mede é
     a de fora; a de dentro tem guarda próprio em `test_changespecs.py`.
+
+    `mesa` entrou em 28/08/2026: a porta do painel de gestão. Ela não escreve
+    nada e não tem segundo portão — o botão de assinar dela some para quem não
+    aprova, mas quem guarda a AÇÃO continua sendo a rota `changespecs`.
     """
     assert sorted(_rotas_de_moderacao()) == [
         "avaliar",
         "changespecs",
         "fila",
+        "mesa",
         "moderar",
         "mudar_status",
     ]
