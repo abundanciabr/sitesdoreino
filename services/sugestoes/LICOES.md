@@ -1620,3 +1620,34 @@ achando que está na fila.
 para pegar "não tenho" e dedo escorregado, nunca para recusar um número real
 escrito de um jeito inesperado. Um formulário que recusa telefone válido é um
 aluno perdido, e o mantenedor confere tudo à mão de qualquer jeito.
+
+## Cache com TTL igual para "sim" e "não" barra quem acabou de ser liberado (28/08/2026)
+
+`_tem_matricula` guardava as duas respostas por **10 minutos**. O mantenedor
+liberou a própria conta pelo painel, a pessoa saiu da fila na hora, e a Caixa
+continuou recusando — com a tela dela prometendo, com todas as letras, que
+*"quando estiver liberado, esta página abre a Caixa"*.
+
+**O número não estava errado quando foi escrito.** Ele nasceu quando a única
+forma de virar aluno era COMPRAR: um caminho assíncrono, sem ninguém olhando a
+tela. A fila de liberação (27/08) mudou o cenário — passou a existir alguém
+esperando na frente do navegador enquanto outra pessoa aperta o botão — e o TTL
+não acompanhou. **Toda constante de cache carrega uma suposição sobre quem está
+esperando do outro lado; quando o fluxo muda, ela vira dívida silenciosa.**
+
+**A regra que fica: TTL de cache que decide ACESSO é assimétrico.** Os dois
+erros têm custos muito diferentes, e tratá-los como iguais é o defeito:
+
+| Resposta velha | Custo | TTL |
+|---|---|---|
+| "é aluno" (e não é mais) | acesso a mais por alguns minutos — raro, sem urgência | longo (600s) |
+| "não é aluno" (e já é) | **pessoa barrada depois de liberada, olhando a tela** | curto (5s) |
+
+**Por que 5s e não 0:** o valor não é para o humano — ninguém percebe cinco
+segundos. É para não perder a proteção contra rajada: várias requisições da
+mesma pessoa no mesmo instante continuam custando uma consulta só.
+
+**E a tela é metade do conserto.** Ela prometia algo que o cache impedia.
+Trocar o texto sem trocar o comportamento seria maquiagem; trocar o
+comportamento sem trocar o texto deixaria a tela mentindo para o outro lado. O
+guarda `test_a_tela_nao_promete_mais_o_que_nao_acontece` cobra os dois.

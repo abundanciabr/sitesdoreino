@@ -11,7 +11,12 @@ O estado 2 usar a mesma página que o 1 é a decisão que importa: quem levou um
 tentar com a outra conta. Tela de erro sem saída é o "acesso negado" seco que a
 decisão proibiu, com outro nome.
 
-Sem CSS externo, sem JS, sem fonte remota: a Caixa ainda não tem base_mobile.html
+Sem CSS externo, sem JS, sem fonte remota — e o relógio de espera do estado 3
+respeita isso: é `<meta http-equiv="refresh">`, não script. Um relógio que só
+funciona com JS ligado quebraria a promessa da tela justamente para quem tem o
+navegador mais travado.
+
+A Caixa ainda não tem base_mobile.html
 (R6), e uma dependência de rede numa página de LOGIN é o tipo de coisa que
 quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
 {% endcomment %}<!DOCTYPE html>
@@ -19,6 +24,7 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  {% if recarregar_em %}<meta http-equiv="refresh" content="{{ recarregar_em }};url={{ url_da_espera }}">{% endif %}
   <title>Caixa de Sugestões</title>
   <style>
     :root { color-scheme: light dark; }
@@ -118,11 +124,21 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
       {% endcomment %}
       {% if fila %}
         {% if ja_pediu %}
+          {% comment %}
+          A frase mudou em 28/08/2026, e a mudança é o conserto de uma promessa
+          quebrada. Ela dizia "quando estiver liberado, esta página abre a
+          Caixa" — e não abria: a resposta "não é aluno" ficava guardada por 10
+          minutos, então quem tinha acabado de ser liberado continuava batendo
+          na mesma porta. Agora a página se recarrega sozinha (o `<meta>` lá em
+          cima) e leva a pessoa para o site, e o texto diz isso.
+          {% endcomment %}
           <div class="recado">
             <h2>Seu pedido já está com a gente</h2>
             <p>
-              Alguém da equipe vai conferir e liberar o seu acesso. Não precisa
-              pedir de novo — quando estiver liberado, esta página abre a Caixa.
+              Alguém da equipe vai conferir e liberar o seu acesso. Não
+              precisa pedir de novo, nem ficar atualizando:
+              <strong>esta página se atualiza sozinha</strong>
+              e leva você para o site assim que a liberação sair.
             </p>
             <span class="email">{{ email }}</span>
           </div>
