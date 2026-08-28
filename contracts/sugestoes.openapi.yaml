@@ -2,28 +2,43 @@ openapi: 3.1.0
 info:
   title: Caixa de Sugestoes — API interna
   version: 1.0.0
-  description: |
-    Superfície de MÁQUINA da Caixa. Existe por uma razão só: o site
-    (`funil`) precisa saber quem é a pessoa em qualquer página, e o cookie
-    de sessão é assinado e resolvido AQUI (Lei 2, Lei 3 — o banco e o
-    segredo não saem desta célula).
+  description: 'Superfície de MÁQUINA da Caixa, com duas metades.
 
-    Lei do assunto: docs/decisoes/DECISAO-onde-mora-a-sessao.md. A resposta
-    desta API RECONHECE uma pessoa; ela nunca AUTORIZA nada — autorização
-    é fail-closed na célula dona do recurso.
-servers:
-  - url: http://sugestoes:8000/interno
-security:
-  - bearerAuth: []
+
+    A primeira existe por uma razão só: o site (`funil`) precisa saber
+
+    quem é a pessoa em qualquer página, e o cookie de sessão é assinado e
+
+    resolvido AQUI (Lei 2, Lei 3 — o banco e o segredo não saem desta
+
+    célula). Lei do assunto: docs/decisoes/DECISAO-onde-mora-a-sessao.md.
+
+
+    A segunda é a GESTÃO das ideias, que desde 28/08/2026 mora em
+
+    `/admin/caixa/` e não mais nas telas desta célula (decisão do
+
+    mantenedor: uma porta só). O Admin pergunta e escreve por aqui porque
+
+    pela Lei 3 nenhuma célula lê o banco de outra. A resposta carrega os
+
+    FATOS de cada ideia — nunca colunas nem ordenação, que são da tela — e
+
+    nunca o e-mail de quem sugeriu. Lei do assunto:
+
+    docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md.
+
+
+    Nenhuma resposta desta API AUTORIZA nada: autorização é fail-closed na
+
+    célula dona do recurso — e a assinatura de obra continua sendo desta.
+
+    '
 paths:
   /sessao:
     get:
       operationId: getSession
       summary: Quem é o dono da sessão desta requisição
-      description: >-
-        Resolve o cookie de sessão repassado pelo chamador. Responde 200 sempre que o chamador
-        estiver autorizado: `autenticado: false` significa que não há sessão (visitante), e NÃO é um erro.
-        O e-mail nunca é devolvido.
       responses:
         '200':
           description: OK
@@ -31,27 +46,325 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Session'
+      description: 'Resolve o cookie de sessão repassado pelo chamador. Responde 200 sempre que o chamador
+        estiver autorizado: `autenticado: false` significa que não há sessão (visitante), e NÃO é um erro.
+        O e-mail nunca é devolvido.'
+  /gestao/ideias:
+    get:
+      operationId: listManagementIdeas
+      summary: Os fatos de cada ideia do quadro, para quem conduz
+      parameters:
+      - in: query
+        name: por_email
+        schema:
+          default: ''
+          type: string
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuadroEmGestao'
+      description: 'Devolve o quadro inteiro com os fatos de cada ideia — votos, plateia, estado, datas,
+        se tem avaliação interna e se tem ChangeSpec aprovado. NÃO devolve colunas, baldes nem ordenação:
+        agrupar é do consumidor. O e-mail de quem sugeriu nunca viaja.'
+  /gestao/ideias/{sugestao_id}/status:
+    post:
+      operationId: setIdeaStatus
+      summary: Move a ideia de fase, com histórico e avisos
+      parameters:
+      - in: path
+        name: sugestao_id
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeiaEmGestao'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+      description: 'Passa pelo mesmo caminho da tela antiga: o histórico nasce na MESMA transação, a plateia
+        inteira recebe aviso, ''não planejado'' exige justificativa e ''planejado → em desenvolvimento''
+        exige ChangeSpec aprovado registrado. Recusa 422 com a frase que ensina o caminho.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MudancaDeStatus'
+        required: true
+  /gestao/ideias/{sugestao_id}/avaliacao:
+    post:
+      operationId: setIdeaReview
+      summary: Escreve a avaliação interna da equipe
+      parameters:
+      - in: path
+        name: sugestao_id
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeiaEmGestao'
+      description: Impacto educacional, impacto comercial, esforço técnico, anotações e a decisão de produto.
+        Nada disto é visível ao aluno (spec §8).
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AvaliacaoEscrita'
+        required: true
+  /gestao/ideias/{sugestao_id}/changespec:
+    post:
+      operationId: registerApprovedChangeSpec
+      summary: Registra o ChangeSpec aprovado que destrava a obra
+      parameters:
+      - in: path
+        name: sugestao_id
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeiaEmGestao'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+      description: 'O SEGUNDO portão da Caixa, e ele NÃO mudou de dono: só quem está em SUGESTOES_APROVADORES
+        registra, e a lista vazia recusa todo mundo. Estar autorizado no Admin não basta — moderar e autorizar
+        desenvolvimento são papéis diferentes.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeSpecEscrito'
+        required: true
 components:
   schemas:
     Session:
       description: 'Quem é o dono da sessão; sem sessão, só `autenticado: false`.'
-      type: object
-      required: [autenticado]
       properties:
-        autenticado: { type: boolean }
+        autenticado:
+          type: boolean
         id:
           anyOf:
-            - type: string
-            - type: 'null'
+          - type: string
+          - type: 'null'
         nome_exibido:
           anyOf:
-            - type: string
-            - type: 'null'
+          - type: string
+          - type: 'null'
         papel:
           anyOf:
-            - type: string
-            - type: 'null'
+          - type: string
+          - type: 'null'
+      required:
+      - autenticado
+      type: object
+    AvaliacaoDaEquipe:
+      description: As notas internas. Só o Admin as vê; o aluno nunca (spec §8).
+      properties:
+        impacto_educacional:
+          type: integer
+        impacto_comercial:
+          type: integer
+        esforco_tecnico:
+          type: integer
+        notas:
+          type: string
+        decisao_produto:
+          type: string
+      required:
+      - impacto_educacional
+      - impacto_comercial
+      - esforco_tecnico
+      - notas
+      - decisao_produto
+      type: object
+    IdeiaEmGestao:
+      description: Os FATOS de uma ideia. Nenhuma coluna, nenhum balde, nenhuma ordem.
+      properties:
+        id:
+          type: integer
+        titulo:
+          type: string
+        problema:
+          type: string
+        solucao_proposta:
+          type: string
+        categoria:
+          type: string
+        status:
+          type: string
+        votos:
+          type: integer
+        comentarios:
+          type: integer
+        pessoas:
+          type: integer
+        autor:
+          type: string
+        criada_em:
+          type: string
+        parada_desde:
+          type: string
+        ja_ouviram:
+          type: boolean
+        tem_avaliacao:
+          type: boolean
+        tem_changespec:
+          type: boolean
+        motivo_da_saida:
+          type: string
+        avaliacao:
+          anyOf:
+          - $ref: '#/components/schemas/AvaliacaoDaEquipe'
+          - type: 'null'
+      required:
+      - id
+      - titulo
+      - problema
+      - solucao_proposta
+      - categoria
+      - status
+      - votos
+      - comentarios
+      - pessoas
+      - autor
+      - criada_em
+      - parada_desde
+      - ja_ouviram
+      - tem_avaliacao
+      - tem_changespec
+      - motivo_da_saida
+      type: object
+    QuadroEmGestao:
+      properties:
+        quadro:
+          type: string
+        ideias:
+          items:
+            $ref: '#/components/schemas/IdeiaEmGestao'
+          type: array
+        pode_assinar:
+          type: boolean
+      required:
+      - quadro
+      - ideias
+      - pode_assinar
+      type: object
+    Recusa:
+      description: Uma recusa que ENSINA o caminho — a frase é a mesma que a tela dizia.
+      properties:
+        erro:
+          type: string
+      required:
+      - erro
+      type: object
+    MudancaDeStatus:
+      properties:
+        por_email:
+          type: string
+        por_nome:
+          default: ''
+          type: string
+        por_id_da_plataforma:
+          default: ''
+          type: string
+        status:
+          type: string
+        nota:
+          default: ''
+          type: string
+      required:
+      - por_email
+      - status
+      type: object
+    AvaliacaoEscrita:
+      properties:
+        por_email:
+          type: string
+        por_nome:
+          default: ''
+          type: string
+        por_id_da_plataforma:
+          default: ''
+          type: string
+        impacto_educacional:
+          default: 0
+          type: integer
+        impacto_comercial:
+          default: 0
+          type: integer
+        esforco_tecnico:
+          default: 0
+          type: integer
+        notas:
+          default: ''
+          type: string
+        decisao_produto:
+          default: ''
+          type: string
+      required:
+      - por_email
+      type: object
+    ChangeSpecEscrito:
+      properties:
+        por_email:
+          type: string
+        por_nome:
+          default: ''
+          type: string
+        por_id_da_plataforma:
+          default: ''
+          type: string
+        change_id:
+          type: string
+        documento:
+          type: string
+        aprovado_por:
+          type: string
+        aprovado_em:
+          format: date
+          type: string
+      required:
+      - por_email
+      - change_id
+      - documento
+      - aprovado_por
+      - aprovado_em
+      type: object
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
+servers:
+- url: http://sugestoes:8000/interno
+security:
+- bearerAuth: []
