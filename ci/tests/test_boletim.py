@@ -41,6 +41,7 @@ def dados(**mudancas) -> Dados:
         prs_abertos=[],
         pousos=[],
         leis_mudadas=[],
+        reservas=[],
         proximo_registro="001",
         proxima_armadilha="001",
     )
@@ -59,6 +60,7 @@ def dados(**mudancas) -> Dados:
         "prs_abertos",
         "pousos",
         "leis_mudadas",
+        "reservas",
         "proximo_registro",
         "proxima_armadilha",
     ],
@@ -119,6 +121,7 @@ def test_pastas_ausentes_param_o_boletim(tmp_path, monkeypatch):
 
     monkeypatch.setattr(boletim, "executar", lambda *a, **k: Falsa())
     monkeypatch.setattr(boletim, "_gh_json", lambda *a, **k: [])
+    monkeypatch.setattr(boletim, "refs_existentes", lambda *a, **k: [])
     with pytest.raises(ErroDeInstrumentacao) as erro:
         coletar(tmp_path, agora=AGORA)
     assert "registros" in erro.value.resumo
@@ -151,6 +154,17 @@ def test_lei_mudada_aparece_em_destaque():
 
 def test_sem_lei_mudada_a_secao_nao_aparece():
     assert "LEI MUDOU" not in montar(dados())
+
+
+def test_intencao_reservada_aparece_para_os_outros():
+    """Sem leitor, a reserva de intenção não ataca a Classe 5 — só enfeita."""
+    texto = montar(dados(reservas=["onda2-reservar"]))
+    assert "onda2-reservar" in texto
+    assert "INTENÇÕES RESERVADAS" in texto
+
+
+def test_ninguem_reservou_e_dito_explicitamente():
+    assert "ninguém anunciou" in montar(dados(reservas=[]))
 
 
 def test_o_numero_livre_se_declara_nao_reserva():
@@ -256,6 +270,7 @@ def test_pouso_velho_fica_de_fora(tmp_path, monkeypatch):
     (tmp_path / "armadilhas").mkdir()
 
     monkeypatch.setattr(boletim, "executar", lambda *a, **k: Falsa())
+    monkeypatch.setattr(boletim, "refs_existentes", lambda *a, **k: [])
     monkeypatch.setattr(
         boletim,
         "_gh_json",
