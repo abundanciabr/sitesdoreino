@@ -2,6 +2,7 @@ from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
 from apps.core.divida import divida_json
+from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.painel import painel, painel_arquivo
 from apps.core.views import (
     escola,
@@ -44,6 +45,14 @@ urlpatterns = [
     # Sem esta rota, saber isso exige entrar na VPS — e ninguém entra (Lei 5).
     path("painel/diag.json", diag_json, name="painel_diag"),
     re_path(r"^painel/(?P<path>.+)$", painel_arquivo, name="painel_arquivo"),
+    # O MAPA PARA IA (`apps/core/mapa_ia.py`) — a ÚNICA área desta célula que
+    # responde SEM sessão, além de `/healthz` (INV-P14, `CAMINHOS_ISENTOS` em
+    # `apps/core/porta.py`). Nasce fora do prefixo `painel/` de propósito: um
+    # nome de rota que começa com `painel/` sinaliza "atrás da porta" em todo
+    # o resto deste arquivo, e misturar os dois seria o tipo de detalhe que
+    # engana quem lê o diff rápido demais.
+    path("mapa-ia/", mapa_ia_indice, name="mapa_ia_indice"),
+    re_path(r"^mapa-ia/(?P<nome>[\w.-]+)$", mapa_ia_arquivo, name="mapa_ia_arquivo"),
     # A ESCOLA — o painel do NEGÓCIO, vizinho e separado do painel do SISTEMA
     # acima. Os dois são "painéis" e é por isso que a separação precisa estar
     # no endereço, e não só no texto do link: `/painel/` mostra como a

@@ -163,6 +163,27 @@ http:
       service: admin
       tls: {}
 
+    mapa-ia:
+      # O mapa técnico do projeto para IA (`painel/ia/`), pedido do
+      # mantenedor em 28/08/2026 para poder mandar o link a IAs externas sem
+      # exigir login. MESMO backend da área administrativa — a pasta
+      # `painel/ia/` já vem embutida na imagem dela (é filha de `painel/`,
+      # que o passo "Embutir o painel do dono" copia inteira) — mas os
+      # caminhos exatos que respondem sem sessão são só os de
+      # `CAMINHOS_ISENTOS` em `apps/core/porta.py` (INV-P14): a porta
+      # continua fail-closed para todo o resto de `/mapa-ia` que não estiver
+      # nomeado lá, e para toda a área administrativa de sempre.
+      #
+      # Prefixo PRÓPRIO (fora de `/admin`) de propósito: nada sob `/admin`
+      # neste arquivo é público hoje, e misturar os dois criaria a
+      # expectativa errada para quem só ler as regras de roteamento.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/mapa-ia`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca-admin]
+      service: admin
+      tls: {}
+
     funil:
       # Catch-all: a raiz e tudo que nenhum prefixo pegou, em QUALQUER domínio.
       rule: "PathPrefix(`/`)"
