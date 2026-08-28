@@ -2,6 +2,12 @@ arquivos/
 deploy_ci
 infra/env/*.env
 e2e/.env.e2e
+# O navegador de verdade do CI (e2e/painel_no_navegador.js) precisa do
+# playwright. Ele é instalado com --no-save, no CI e localmente, e nunca entra
+# no repositório — este projeto não tem package.json e não vai ganhar um por
+# causa de um teste.
+node_modules/
+
 __pycache__/
 .pytest_cache/
 

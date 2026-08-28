@@ -42,3 +42,42 @@ jobs:
       # conseguir medir, exatamente como já aconteceu.
       - name: Testar o testador (suíte adversarial dos portões)
         run: python ci/ci.py --apenas testador
+
+  # ===========================================================================
+  # O PAINEL NUM NAVEGADOR DE VERDADE.
+  #
+  # Job SEPARADO, e de propósito: ele instala um Chromium e leva minutos, então
+  # não pode pendurar o `muralhas`, que é rápido e roda em todo PR. Correndo em
+  # paralelo, os dois fecham juntos — e `ci/mergear.py` avalia TODOS os checks
+  # do rollup, não uma lista fixa, então este aqui bloqueia o merge do mesmo
+  # jeito. (O botão de merge do site não é caminho para ninguém — CLAUDE.md.)
+  #
+  # POR QUE UM NAVEGADOR, e não mais um teste em Python: o test client do Django
+  # NÃO executa JavaScript. Desde 27/08/2026 o painel busca o histórico por mês
+  # injetando a tag de script em tempo de execução — algo que nasce e morre
+  # dentro do navegador. O guarda que protege "abrir o painel não cresce com o
+  # livro" era CEGO justamente para a regressão que ele existe para impedir.
+  #
+  # Provado que morde, em 28/08/2026: com a página voltando a carregar todos os
+  # meses ao abrir, este job devolve exit 1 com 18 casos vermelhos, nomeando o
+  # arquivo que não deveria ter sido buscado. Nenhum outro guarda do repositório
+  # o via.
+  # ===========================================================================
+  painel-no-navegador:
+    name: painel-no-navegador
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      # Versão PINADA, como toda dependência desta casa (`armadilhas/071`):
+      # quatro versões da mesma biblioteca para o mesmo padrão são quatro
+      # comportamentos a depurar. `--no-save` porque o repositório não tem
+      # package.json e não vai ganhar um por causa de um teste.
+      - name: Instalar o navegador
+        run: |
+          npm install --no-save playwright@1.62.1
+          npx playwright install --with-deps chromium
+      - name: O painel num navegador de verdade (orçamento de amplificação)
+        run: node e2e/painel_no_navegador.js
