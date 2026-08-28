@@ -161,3 +161,88 @@ class IdentidadeClient:
 
         _anota(medidor.registrar_chamada, "respondeu", decorrido_ms)
         return corpo
+
+
+class AlunosClient:
+    """`contracts/alunos.openapi.yaml` — a fila de liberação (somente leitura).
+
+    **Fail-OPEN, e é o inverso do `IdentidadeClient` deste mesmo arquivo.** A
+    diferença não é gosto: aquele decide ACESSO (quem entra na área), e por
+    isso qualquer dúvida fecha. Este decide o que UMA TELA mostra, dentro de
+    uma área em que a pessoa já entrou — e uma tela que não abre porque uma
+    célula vizinha caiu é o oposto do que a área administrativa serve para
+    fazer (`PLANO-AREA-ADMIN.md` §5: fail-open por tile, com orçamento de
+    tempo).
+
+    Por isso os métodos aqui devolvem `None` em vez de levantar: `None` é
+    *"não consegui perguntar"*, e a tela diz isso com todas as letras — nunca
+    lista vazia, que se leria como *"não há ninguém esperando"*.
+    """
+
+    # Mesmo orçamento do `IdentidadeClient`, e pelo mesmo motivo: alguém está
+    # esperando uma página abrir. A diferença é o que acontece ao estourar —
+    # lá, 503; aqui, um aviso no lugar da lista.
+    TIMEOUT = 2.0
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        """Endereço e token do par, ou `None` se o env não os tiver.
+
+        Lido NO PONTO DE USO, com `.get()` — `armadilhas/097`. Enquanto o
+        mantenedor não rodar `infra/provisionar-pares-de-categorias.sh`, estas
+        duas variáveis simplesmente não existem, e este é o caminho normal por
+        onde a célula passa: sem elas a área abre igual, e só a lista da fila
+        diz que ainda não consegue perguntar.
+        """
+        base = (os.environ.get("ALUNOS_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("ALUNOS_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def fila(self, status: str) -> "list[dict] | None":
+        """Quem está na fila, de TODAS as escolas (`site_id` omitido de propósito).
+
+        Devolve a lista, ou `None` quando não deu para perguntar. **Nunca
+        levanta** — quem chama é uma view, e a página tem de abrir.
+
+        `site_id` fica de fora porque o painel do dono é plataforma-inteira
+        (Lei 9), e cada linha já diz de qual escola veio
+        (`DECISAO-categorias-de-usuario`).
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.info(
+                "fila: ALUNOS_API_URL/ALUNOS_API_TOKEN ainda não estão no env "
+                "desta célula — a tela da fila vai dizer que não consegue "
+                "perguntar. Rode infra/provisionar-pares-de-categorias.sh."
+            )
+            return None
+        base, token = config
+
+        try:
+            r = http().get(
+                f"{base}/pre-matriculas",
+                params={"status": status},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("fila: não deu para perguntar à alunos: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            # 401 aqui significa que o par não está em `TOKENS_ACEITOS_ADMIN` do
+            # lado da `alunos` — de fora, indistinguível de "não há fila".
+            logger.error("fila: a alunos respondeu HTTP %s", r.status_code)
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # 200 com corpo que não é JSON: proxy interposto, resposta
+            # truncada. *Status 2xx não é sucesso* (RETROSPECTIVA §4).
+            logger.error("fila: a alunos respondeu fora do contrato: %s", erro)
+            return None
+
+        if not isinstance(corpo, list):
+            logger.error("fila: a alunos respondeu um corpo que não é lista")
+            return None
+        return corpo

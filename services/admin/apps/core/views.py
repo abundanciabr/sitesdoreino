@@ -19,6 +19,8 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
+from .clients import AlunosClient
+
 
 @require_GET
 def healthz(request):
@@ -84,14 +86,17 @@ class FonteAusente:
     SEM_OPERACAO = "sem-operacao"
 
 
-# Os tipos de aluno da escola. A lista mora AQUI, e não no template, para que o
-# teste-guarda possa medi-la — e porque é ela que um PR futuro preenche com
-# números, trocando `quantidade: None` por uma leitura de verdade.
+# Os tipos de aluno da escola. O CATÁLOGO mora aqui, e não no template, para
+# que o teste-guarda possa medi-lo.
 #
-# `quantidade` nasce `None`, e `None` NÃO é zero. A distinção é o invariante
-# desta tela: "não sei quantos" mostrado como "0" é falso-verde
-# (`RETROSPECTIVA-FASE-D.md` §1) — o mantenedor leria "ninguém está esperando
-# aprovação" quando a verdade é "ninguém está contando". Guarda:
+# Ele não tem `quantidade`: contagem é de REQUISIÇÃO, e quem a monta é
+# `tipos_com_contagem()`, mais abaixo. Um número guardado neste dicionário de
+# módulo seria estado compartilhado entre pedidos de pessoas diferentes.
+#
+# E a contagem nasce `None` quando não deu para perguntar — `None` NÃO é zero.
+# A distinção é o invariante desta tela: "não sei quantos" mostrado como "0" é
+# falso-verde (`RETROSPECTIVA-FASE-D.md` §1) — o mantenedor leria "ninguém está
+# esperando aprovação" quando a verdade é "não consegui perguntar". Guarda:
 # `tests/test_painel_da_escola.py`.
 #
 # `fonte` nomeia a porta REAL da `contracts/alunos.openapi.yaml`, e não é
@@ -102,7 +107,6 @@ TIPOS_DE_ALUNO = (
         "slug": "aguardando-aprovacao",
         "nome": "Aguardando aprovação",
         "quem": ("Quem se cadastrou no site, pediu entrada e espera você liberar."),
-        "quantidade": None,
         "fonte": "GET /pre-matriculas?status=aguardando",
         "fonte_ausente": FonteAusente.PORTA_PRONTA,
         "falta": (
@@ -116,7 +120,6 @@ TIPOS_DE_ALUNO = (
         "slug": "ativos",
         "nome": "Alunos ativos",
         "quem": "Quem foi liberado e tem acesso à área de alunos.",
-        "quantidade": None,
         "fonte": None,
         "fonte_ausente": FonteAusente.SEM_OPERACAO,
         "falta": (
@@ -129,7 +132,6 @@ TIPOS_DE_ALUNO = (
         "slug": "pausados",
         "nome": "Acesso pausado",
         "quem": "Alunos que continuam matriculados, com o acesso suspenso.",
-        "quantidade": None,
         "fonte": None,
         "fonte_ausente": FonteAusente.SEM_OPERACAO,
         "falta": (
@@ -141,7 +143,6 @@ TIPOS_DE_ALUNO = (
         "slug": "encerrados",
         "nome": "Encerrados",
         "quem": "Quem saiu da escola — matrícula desfeita ou reembolsada.",
-        "quantidade": None,
         "fonte": None,
         "fonte_ausente": FonteAusente.SEM_OPERACAO,
         "falta": (
@@ -153,7 +154,6 @@ TIPOS_DE_ALUNO = (
         "slug": "recusados",
         "nome": "Recusados",
         "quem": "Quem pediu entrada e você decidiu não liberar.",
-        "quantidade": None,
         "fonte": "GET /pre-matriculas?status=recusada",
         "fonte_ausente": FonteAusente.PORTA_PRONTA,
         "falta": (
@@ -170,23 +170,75 @@ def escola(request):
     return render(request, "admin/escola.html", {"admin": request.admin})
 
 
+#: De qual porta da `alunos` sai a contagem de cada tipo. Fora daqui, `None` —
+#: e `None` continua significando "não sei", nunca zero.
+_CONTAGEM_POR_SLUG = {
+    "aguardando-aprovacao": "aguardando",
+    "recusados": "recusada",
+}
+
+
+def tipos_com_contagem(filas: dict) -> list[dict]:
+    """O catálogo + o que a `alunos` respondeu NESTA requisição.
+
+    `filas` mapeia o status da fila para a lista devolvida — ou para `None`,
+    que é *"não consegui perguntar"*. A diferença entre `None` e `[]` é o
+    invariante desta tela inteira, e ela atravessa até aqui: `len([])` é zero,
+    e zero é um fato ("ninguém está esperando"); `None` não vira número nenhum.
+
+    A contagem NÃO mora no catálogo do módulo, e isso não é estilo: um dicionário
+    de módulo mutado por requisição é estado compartilhado entre pedidos de
+    pessoas diferentes — o número de uma abriria na tela da outra.
+    """
+    tipos = []
+    for tipo in TIPOS_DE_ALUNO:
+        copia = dict(tipo)
+        lista = filas.get(_CONTAGEM_POR_SLUG.get(tipo["slug"]))
+        copia["quantidade"] = None if lista is None else len(lista)
+        tipos.append(copia)
+    return tipos
+
+
 @require_GET
 def escola_alunos(request):
-    """Os alunos, por tipo — e, por enquanto, por que cada número falta.
+    """Os alunos, por tipo — e quem está esperando, com nome e telefone.
 
-    Nenhuma rede aqui, de propósito: esta página ainda não consulta célula
-    nenhuma. Quando consultar, será com orçamento de tempo por tile e
-    fail-OPEN por tile (`PLANO-AREA-ADMIN.md` §5) — célula fora do ar deixa o
-    tile sem dado, nunca derruba a página.
+    Fail-OPEN por tile (`PLANO-AREA-ADMIN.md` §5): a `alunos` fora do ar, ou o
+    par de tokens ainda não provisionado, deixa a lista com um aviso honesto e
+    a página abre igual. Célula de produto caindo não pode derrubar a
+    ferramenta que o mantenedor usa justamente quando algo está errado.
+
+    **Esta tela é a ÚNICA do projeto que mostra o WhatsApp de alguém**, e isso
+    é decisão escrita (`DECISAO-fila-de-liberacao.md` §5): o número sai por uma
+    porta só, a do painel. Quem estiver lendo isto pensando em reusar estes
+    dados em outra tela está prestes a quebrar aquela promessa.
     """
+    cliente = AlunosClient()
+    filas = {
+        "aguardando": cliente.fila("aguardando"),
+        "recusada": cliente.fila("recusada"),
+    }
+    esperando = filas["aguardando"]
+
+    # A coluna da escola só aparece quando há MAIS DE UMA — com uma só, o
+    # identificador interno seria ruído numa tela feita para leigo. Contada
+    # sobre TODAS as filas, e não só a exibida: a segunda escola pode aparecer
+    # primeiro entre as recusadas.
+    escolas = {
+        linha.get("site_id") for lista in filas.values() if lista for linha in lista
+    }
+
     return render(
         request,
         "admin/escola_alunos.html",
         {
             "admin": request.admin,
-            "tipos": TIPOS_DE_ALUNO,
-            "ha_porta_pronta": any(
-                t["fonte_ausente"] == FonteAusente.PORTA_PRONTA for t in TIPOS_DE_ALUNO
-            ),
+            "tipos": tipos_com_contagem(filas),
+            "esperando": esperando,
+            # `None` (não consegui perguntar) e `[]` (não há ninguém) são telas
+            # DIFERENTES, e o template precisa dos dois separados: `{% if %}`
+            # sozinho não distingue lista vazia de ausência.
+            "nao_consigo_perguntar": esperando is None,
+            "mostrar_escola": len(escolas) > 1,
         },
     )
