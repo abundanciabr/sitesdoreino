@@ -1850,3 +1850,29 @@ nasce medida, sem depender de alguém lembrar de escrever o guarda dela. E
 `test_o_email_do_aluno_nao_atravessa` varre o CORPO INTEIRO em texto, não os
 campos que o autor lembrou de conferir — um campo novo que carregue e-mail por
 descuido cai ali sem ter sido previsto.
+
+## Porta que responde sim/não não consegue explicar por que não abriu (28/08/2026)
+
+A porta desta célula perguntava **"tem matrícula?"** e recebia um booleano. Com
+um `não`, ela mostrava sempre a mesma tela: o formulário de pedir entrada.
+
+Isso esteve **certo por meses** — enquanto só existiam dois mundos (é aluno /
+nunca foi). Na manhã de 28/08 nasceram estados novos (pausado, encerrado) e o
+booleano continuou dando conta de responder, mas parou de dar conta de
+EXPLICAR. O mantenedor apagou um aluno e a pessoa viu *"seu pedido já está com
+a gente"* — o recibo de quem está numa fila que ela nunca entrou.
+
+**A lição não é "use enum em vez de bool".** É que **um tipo de retorno é uma
+aposta sobre quantas respostas existem**, e a aposta envelhece em silêncio: o
+código continua compilando, os testes continuam verdes, e o que quebra é a
+frase que a pessoa lê. Quando um domínio ganha estados, todo `bool` que
+atravessa aquele domínio vira dívida — e ele não avisa.
+
+**O sinal de alerta, para a próxima vez:** um `if not x:` seguido de UMA tela,
+num lugar onde o domínio acabou de ganhar um terceiro caso.
+
+**E a cura tem duas metades, não uma.** Trocar o bool pela categoria conserta o
+caso de hoje; o mapa `ESTADO_POR_CATEGORIA` conserta o de amanhã. Sem ele, uma
+categoria nova inventada do outro lado cairia no `else` — e o `else` é o
+formulário, que é exatamente o defeito de volta com outro nome. O que não está
+no mapa FECHA, e há teste para isso.
