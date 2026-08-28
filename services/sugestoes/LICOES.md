@@ -1705,3 +1705,55 @@ construção*, e não são links. A aba "Os robôs" em particular depende de uma
 de dados que **não existe em lugar nenhum** — qual agente está com qual tarefa,
 desde quando, em que etapa. Inventá-la por suposição seria o falso-verde do §1 da
 `RETROSPECTIVA-FASE-D`; ela espera uma fonte de verdade, não uma tela.
+
+
+## A travessia (aba 2): o que a mutação ensinou sobre cenário fraco
+
+A segunda aba do painel (`/gestao/travessia`) põe as ideias em seis colunas. As
+colunas **não são os seis status**: dois deles partem em dois, e é a partição que
+responde "de quem é a vez" — `em_analise` parte por ter avaliação interna,
+`planejado` parte por ter ChangeSpec. A mesma partição que a Mesa usa para
+decidir o que sobe, escrita uma vez (`_sem_avaliacao`, `_sem_changespec`) e não
+copiada por tela.
+
+**A lição cara deste elo não está no código — está nos testes, e foi a mutação
+que a mostrou.** Duas das cinco sabotagens passaram verdes na primeira rodada, e
+nas duas o código estava certo e o CENÁRIO estava fraco:
+
+1. **Esvaziar a coluna "No ar" não derrubou o guarda aritmético.** Porque o
+   cenário não tinha nenhuma ideia entregue: apagar uma coluna vazia mantém a
+   soma batendo. Um guarda de soma só morde se o cenário encher **todas** as
+   parcelas — hoje `cenario_das_seis_colunas` põe uma ideia em cada uma, e existe
+   um segundo guarda que nomeia qual ideia caiu em qual coluna (a soma sozinha
+   bateria com as ideias trocadas de lugar).
+2. **Trocar `max` por `min` na escolha do gargalo não derrubou nada.** Porque só
+   uma coluna tinha gente: com um elemento, o maior e o menor são o mesmo. O
+   cenário passou a ter duas, com esperas diferentes.
+
+A generalização vale para qualquer guarda futuro desta casa: **um teste verde
+prova que o código passa no cenário — a mutação prova que o cenário mede alguma
+coisa.** Os dois casos acima teriam sobrevivido a uma revisão humana sem
+levantar suspeita.
+
+**Um esbarrão que também virou lição: não dá para envelhecer o `HistoricoStatus`
+nem num teste, e isso está certo.** A primeira versão do guarda do gargalo tentou
+`HistoricoStatus.objects.filter(...).update(criado_em=...)` e levou
+`RegistroImutavel` — o append-only morde nos três degraus, inclusive contra o
+teste. A saída não é abrir exceção: `colunas_da_travessia` recebe `agora` de fora,
+como `sugestoes_ordenadas` já fazia para a aba "Em alta", e o teste move o
+relógio em vez de reescrever a história. Para a medição pela PÁGINA — que lê o
+relógio de verdade — envelhece-se o `criado_em` de uma ideia que nunca mudou de
+fase, que é o único caminho honesto.
+
+**E uma armadilha de fixture que custou duas rodadas:** cenário com mais de três
+ideias precisa de mais de um aluno. O freio de 3 sugestões a cada 7 dias é por
+PESSOA, e a quarta publicação do mesmo aluno responde **429** — o que é o
+comportamento certo. `publicar_por_gente_diferente` existe para isso; escrever
+pelo ORM para fugir do freio tiraria da suíte a prova de que a jornada de verdade
+alimenta estas colunas.
+
+**A faixa de abas virou `_abas.html`.** Com duas telas desenhando a mesma faixa,
+duas cópias envelheceriam separadas; ela descobre sozinha onde a pessoa está por
+`request.resolver_match.url_name`, como o trilho da `base_caixa.html`. E o número
+na primeira aba sai de `gestao.esperando()` — a MESMA função que a Mesa usa para
+montar a lista, nunca uma contagem escrita à parte.

@@ -189,10 +189,15 @@ def test_a_mesa_vazia_nao_e_uma_tela_em_branco(equipe, quadro):
 
 
 def test_a_aba_que_nao_existe_diz_que_nao_existe(equipe, quadro):
-    """Aba futura aparece apagada e sem link — nem escondida, nem mentindo."""
+    """Aba futura aparece apagada e sem link — nem escondida, nem mentindo.
+
+    Mede "Os robôs", que segue sem tela: quando "A travessia" nasceu (aba 2), a
+    medição antiga passou a olhar para um link de verdade e teria continuado verde
+    sem provar nada.
+    """
     pagina = abrir(equipe)
 
-    assert "A travessia" in pagina
+    assert "Os robôs" in pagina
     assert "aba futura" in pagina
 
 

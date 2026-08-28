@@ -201,6 +201,7 @@ def _moderacao_completa(cliente, sugestao) -> dict[str, list]:
         # tela que só conta, e cuja própria razão de existir some se ela
         # escrever qualquer coisa.
         "mesa": [cliente.get(reverse("mesa"))],
+        "travessia": [cliente.get(reverse("travessia"))],
     }
 
 

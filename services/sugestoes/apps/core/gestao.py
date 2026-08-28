@@ -62,6 +62,7 @@ from .moderacao import exige_staff
 from .participacao import quadro_atual, sugestoes_ordenadas
 
 PAGINA_MESA = "sugestoes/gestao_mesa.html"
+PAGINA_TRAVESSIA = "sugestoes/gestao_travessia.html"
 
 # Quantos dias uma ideia pode ficar em "Em análise" sem ninguém da equipe
 # escrever nada antes de ela subir para a mesa.
@@ -144,36 +145,49 @@ def _sem_avaliacao():
     return ~Exists(AvaliacaoInterna.objects.filter(sugestao_id=OuterRef("pk")))
 
 
+def esperando(quadro, agora):
+    """O que está parado esperando uma PESSOA — a definição, num lugar só.
+
+    Devolve pares `(sugestao, motivo)`, sem enfeite. Existe separada de
+    `decisoes_da_mesa()` porque desde a segunda aba do painel duas telas precisam
+    dela por motivos diferentes: a Mesa quer a lista inteira, com plateia e
+    ordenada; qualquer outra aba quer só **quantas são**, para o número na etiqueta
+    da aba. Uma segunda contagem escrita à parte seria uma segunda definição de
+    "o que espera por você" — e a que ninguém olha é a que fica errada.
+
+    Fora daqui não existe filtro de pendência nenhum: quem quiser saber o que
+    espera, pergunta a esta função.
+    """
+    velha = agora - timedelta(days=DIAS_ATE_A_ANALISE_ENVELHECER)
+
+    assinatura = [
+        (sugestao, MOTIVO_ASSINATURA)
+        for sugestao in _parada_desde(
+            sugestoes_ordenadas(quadro).filter(status=Sugestao.Status.PLANEJADO)
+        ).filter(_sem_changespec())
+    ]
+    triagem = [
+        (sugestao, MOTIVO_TRIAGEM)
+        for sugestao in _parada_desde(
+            sugestoes_ordenadas(quadro).filter(status=Sugestao.Status.EM_ANALISE)
+        ).filter(_sem_avaliacao())
+        if sugestao.parada_desde <= velha
+    ]
+    return assinatura + triagem
+
+
 def decisoes_da_mesa(quadro, agora):
-    """As duas coisas que só uma pessoa destrava, numa lista só e ordenada.
+    """A lista da Mesa: o que espera, com plateia e na ordem que ela usa.
 
     A ordem é **gente esperando, depois tempo parado** — nesta ordem, e não a
     inversa. Uma ideia com 200 pessoas atrás dela parada há três dias custa mais
     silêncio à turma do que uma com 4 pessoas parada há um mês; ordenar pelo
     relógio primeiro poria a segunda no topo todo dia.
     """
-    velha = agora - timedelta(days=DIAS_ATE_A_ANALISE_ENVELHECER)
-
-    esperando_assinatura = list(
-        _parada_desde(
-            sugestoes_ordenadas(quadro).filter(status=Sugestao.Status.PLANEJADO)
-        ).filter(_sem_changespec())
-    )
-    esperando_triagem = [
-        sugestao
-        for sugestao in _parada_desde(
-            sugestoes_ordenadas(quadro).filter(status=Sugestao.Status.EM_ANALISE)
-        ).filter(_sem_avaliacao())
-        if sugestao.parada_desde <= velha
-    ]
-
-    plateias = plateia_de(esperando_assinatura + esperando_triagem)
+    pendentes = esperando(quadro, agora)
+    plateias = plateia_de([sugestao for sugestao, _ in pendentes])
     decisoes = [
-        _decisao(sugestao, MOTIVO_ASSINATURA, plateias, agora)
-        for sugestao in esperando_assinatura
-    ] + [
-        _decisao(sugestao, MOTIVO_TRIAGEM, plateias, agora)
-        for sugestao in esperando_triagem
+        _decisao(sugestao, motivo, plateias, agora) for sugestao, motivo in pendentes
     ]
     decisoes.sort(key=lambda decisao: (-decisao["pessoas"], -decisao["parada_ha"]))
     return decisoes
@@ -208,6 +222,142 @@ def andando_sozinho(quadro):
         ).order_by("-parada_desde")[:ENTREGAS_RECENTES]
     )
     return em_obra, no_ar
+
+
+# ---------------------------------------------------------------------------
+# A aba 2: A TRAVESSIA — as ideias em colunas, do pedido ao ar
+# ---------------------------------------------------------------------------
+
+# As seis colunas do trilho, na ordem em que uma ideia as atravessa. Elas NÃO são
+# os seis status do modelo: dois status viram duas colunas cada, porque a
+# pergunta "de quem é a vez" só se responde partindo-os.
+#
+#   em_analise  →  "Chegando" (ninguém leu) | "A equipe está lendo" (tem avaliação)
+#   planejado   →  "Esperando você assinar" (sem ChangeSpec) | "Pode começar" (com)
+#
+# É a mesma partição que a Mesa usa para decidir o que sobe — e ela mora aqui uma
+# vez só (`_sem_avaliacao`, `_sem_changespec`), não copiada em cada tela.
+#
+# `nao_planejado` e `mesclado` ficam FORA das colunas, na faixa de baixo: são
+# saídas do trilho, não etapas dele. Some-las às colunas faria a conta bater por
+# acidente e esconderia a justificativa que a equipe é obrigada a escrever.
+COLUNAS = (
+    ("chegando", "Chegando", "Ninguém da equipe leu ainda."),
+    ("lendo", "A equipe está lendo", "Já tem avaliação interna escrita."),
+    ("assinar", "Esperando você assinar", "Aprovada, sem documento de obra assinado."),
+    ("pode-comecar", "Pode começar", "Assinada. Esperando um robô pegar."),
+    ("construindo", "Robô construindo", "Alguém está com a mão nisto agora."),
+    ("no-ar", "No ar", "Entregue."),
+)
+
+
+def _consulta_da_coluna(quadro, chave):
+    base = sugestoes_ordenadas(quadro)
+    if chave == "chegando":
+        return base.filter(status=Sugestao.Status.EM_ANALISE).filter(_sem_avaliacao())
+    if chave == "lendo":
+        return base.filter(status=Sugestao.Status.EM_ANALISE).exclude(_sem_avaliacao())
+    if chave == "assinar":
+        return base.filter(status=Sugestao.Status.PLANEJADO).filter(_sem_changespec())
+    if chave == "pode-comecar":
+        return base.filter(status=Sugestao.Status.PLANEJADO).exclude(_sem_changespec())
+    if chave == "construindo":
+        return base.filter(status=Sugestao.Status.EM_DESENVOLVIMENTO)
+    return base.filter(status=Sugestao.Status.IMPLEMENTADO)
+
+
+def colunas_da_travessia(quadro, agora):
+    """As seis colunas, cada uma com quanto tempo o que está nela está parado.
+
+    **A média é do que está parado AGORA, e não do que já passou por ali** — e o
+    rótulo na tela diz isso com todas as letras. Tempo histórico de travessia
+    exigiria caminhar o `HistoricoStatus` inteiro de cada ideia; o que se mede
+    aqui é mais barato e responde a pergunta que a tela faz ("onde está entupido
+    hoje?"). Chamar isto de "tempo médio de etapa" seria um número que parece uma
+    coisa e é outra — o falso-verde do §1 da `RETROSPECTIVA-FASE-D` em forma de
+    métrica.
+
+    As sugestões vêm inteiras, e não em fatia: a média precisa de todas, e o
+    quadro desta escola tem dezenas de ideias, não milhões. É a mesma escolha que
+    `moderacao.ver_fila` já fazia.
+    """
+    colunas = []
+    for chave, titulo, explicacao in COLUNAS:
+        itens = list(_parada_desde(_consulta_da_coluna(quadro, chave)))
+        dias = [(agora - item.parada_desde).days for item in itens]
+        colunas.append(
+            {
+                "chave": chave,
+                "titulo": titulo,
+                "explicacao": explicacao,
+                "sugestoes": itens,
+                "total": len(itens),
+                "parada_media": round(sum(dias) / len(dias)) if dias else None,
+                "mais_velha": max(dias) if dias else None,
+            }
+        )
+    return colunas
+
+
+def fora_do_trilho(quadro):
+    """As duas saídas — recusada e juntada a outra — com o motivo escrito.
+
+    Elas aparecem, e não somem: esconder faria a soma das colunas discordar do
+    total do quadro sem explicação, e tiraria da vista a justificativa que a
+    equipe é obrigada a escrever ao recusar (spec §10). É a mesma decisão que o
+    EVO-31 tomou para a faixa que o ALUNO vê, aplicada à tela da equipe.
+
+    O motivo sai da última linha de `HistoricoStatus` — a mesma nota que foi
+    entregue a quem estava esperando. Duas frases diferentes para o aluno e para
+    a equipe seriam duas verdades sobre a mesma recusa.
+    """
+    saidas = list(
+        _parada_desde(
+            sugestoes_ordenadas(quadro).filter(
+                status__in=(Sugestao.Status.NAO_PLANEJADO, Sugestao.Status.MESCLADO)
+            )
+        ).prefetch_related("historico")
+    )
+    for sugestao in saidas:
+        ultima = max(
+            sugestao.historico.all(), key=lambda linha: linha.criado_em, default=None
+        )
+        sugestao.motivo_da_saida = ultima.nota if ultima else ""
+    return saidas
+
+
+@require_GET
+@exige_staff
+def travessia(request, ator):
+    """A aba 2: onde cada ideia está, e onde o trilho está entupido.
+
+    O guarda aritmético desta tela vive no teste, não aqui: **colunas + fora do
+    trilho == o quadro inteiro**. Ele existe porque a partição acima é a parte
+    fácil de errar — basta um filtro novo que esqueça um caso para um punhado de
+    ideias sumir da tela sem ninguém notar.
+    """
+    quadro = quadro_atual()
+    agora = timezone.now()
+    colunas = colunas_da_travessia(quadro, agora)
+    saidas = fora_do_trilho(quadro)
+
+    return render(
+        request,
+        PAGINA_TRAVESSIA,
+        {
+            "ator": ator,
+            "quadro": quadro,
+            "colunas": colunas,
+            "saidas": saidas,
+            "no_trilho": sum(coluna["total"] for coluna in colunas),
+            "gargalo": max(
+                (c for c in colunas if c["parada_media"] is not None),
+                key=lambda c: c["parada_media"],
+                default=None,
+            ),
+            "na_mesa": len(esperando(quadro, agora)),
+        },
+    )
 
 
 @require_GET
@@ -254,5 +404,6 @@ def mesa(request, ator):
             "no_ar": no_ar,
             "pode_assinar": e_aprovador(ator.identidade.email),
             "dias_ate_envelhecer": DIAS_ATE_A_ANALISE_ENVELHECER,
+            "na_mesa": len(decisoes),
         },
     )
