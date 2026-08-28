@@ -678,6 +678,9 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # inseriram blocos no mesmo arquivo e a lista ficou com um código
         # repetido. O inventário pegou na hora.
         "INV-P13",
+        # Pedido do mantenedor (28/08/2026): um link público do mapa técnico
+        # do projeto (`painel/ia/`), para mandar a IAs externas sem login.
+        "INV-P14",
         # Fase 1 do plano de notificações (25/08/2026), célula `sugestoes`: a
         # identidade cunhada aqui guarda o id da identidade da PLATAFORMA, que a
         # resposta do contrato já entregava e a porta descartava. Sem ele nenhum

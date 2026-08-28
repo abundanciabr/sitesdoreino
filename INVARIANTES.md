@@ -219,12 +219,13 @@ primeira oportunidade de violá-la.
   eles, atende ao pedido sem abrir mão do resto do invariante [INV-P13] — a
   porta continua fail-closed para tudo que não está nomeado aqui, um a um.
 - **Teste-Guarda:**
-  `services/admin/tests/test_inv_porta_fail_closed.py::test_os_caminhos_isentos_sao_exatamente_estes_e_so_estes`
-  (o conjunto exato) e `services/admin/tests/test_mapa_ia_publico.py` (cada
-  arquivo responde 200 sem cookie e é byte-a-byte o do repositório; qualquer
-  caminho não listado fica atrás da porta como antes; a view recusa sozinha,
-  chamada direto, mesmo sem a porta — extensão errada e travessia de
-  diretório, provado com um arquivo real de fora da pasta).
+  `services/admin/tests/test_inv_porta_fail_closed.py` (o conjunto exato de
+  `CAMINHOS_ISENTOS`, teste `test_os_caminhos_isentos_sao_exatamente_estes_e_so_estes`)
+  e `services/admin/tests/test_mapa_ia_publico.py` (cada arquivo responde 200
+  sem cookie e é byte-a-byte o do repositório; qualquer caminho não listado
+  fica atrás da porta como antes; a view recusa sozinha, chamada direto, mesmo
+  sem a porta — extensão errada e travessia de diretório, provado com um
+  arquivo real de fora da pasta).
 - **Célula dona:** admin
 
 ### [INV-SUG11] Identidade Cunhada Guarda o Id da Plataforma
