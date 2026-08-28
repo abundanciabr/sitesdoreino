@@ -3,8 +3,11 @@
 # (`contracts/identidade.openapi.yaml`). Nunca lê o banco dela (Lei 3).
 import logging
 import os
+import time
 
 import httpx
+
+from . import medidor
 
 logger = logging.getLogger("admin.porta")
 
@@ -24,6 +27,26 @@ def http() -> httpx.Client:
     if _cliente is None:
         _cliente = httpx.Client()
     return _cliente
+
+
+def _anota(registrar, *args) -> None:
+    """Medir JAMAIS derruba esta chamada. Nem por defeito, nem por assinatura.
+
+    O `try` de dentro do medidor cobre um erro no corpo dele. Não cobre a
+    chamada em si: se um dia alguém acrescentar um parâmetro obrigatório lá, a
+    chamada estoura ANTES de entrar na função, e um TypeError sobe pelo
+    middleware — transformando um 302 para o login num 500. Numa área
+    fail-closed isso é o mantenedor trancado para fora das próprias ferramentas
+    por causa de um contador.
+
+    Por isso a fronteira é guardada AQUI, no lado que sofre a consequência.
+    Provado em `tests/test_medidor.py::test_medidor_quebrado_nao_muda_a_porta`,
+    que substitui o medidor por um que explode e exige a mesma resposta.
+    """
+    try:
+        registrar(*args)
+    except Exception:  # noqa: BLE001 — observar não pode derrubar quem decide
+        logger.warning("porta: a medição falhou e foi ignorada", exc_info=True)
 
 
 class IdentidadeIndisponivel(Exception):
@@ -85,9 +108,16 @@ class IdentidadeClient:
                 "porta: IDENTIDADE_API_URL/IDENTIDADE_API_TOKEN ausentes no env "
                 "desta célula — a área administrativa está fechada para todos"
             )
+            _anota(medidor.registrar_chamada, "sem_configuracao", 0.0)
             raise IdentidadeIndisponivel("configuração ausente")
         base, token = config
 
+        # A partir daqui, cada saída ANOTA o próprio desfecho. Os cinco são
+        # contadores diferentes de propósito: "estourou o tempo" e "a identidade
+        # recusou" chegam idênticos na tela (503 nos dois casos), e foi essa
+        # indistinção que fez o diagnóstico de 27/08/2026 levar um dia inteiro.
+        # Anotar é tudo o que acontece aqui — nenhuma decisão muda.
+        comeco = time.perf_counter()
         try:
             r = http().get(
                 f"{base}/sessao/completa",
@@ -95,14 +125,22 @@ class IdentidadeClient:
                 timeout=self.TIMEOUT,
             )
         except httpx.HTTPError as erro:
+            _anota(
+                medidor.registrar_chamada,
+                "estourou_o_tempo",
+                (time.perf_counter() - comeco) * 1000,
+            )
             logger.error("porta: não deu para perguntar à identidade: %s", erro)
             raise IdentidadeIndisponivel(str(erro)) from erro
+
+        decorrido_ms = (time.perf_counter() - comeco) * 1000
 
         if r.status_code != 200:
             # 403 aqui significa que o par não está em TOKENS_COMPLETOS_ADMIN —
             # o modo de falha que o script de provisionamento confere, porque
             # de dentro ele é indistinguível de "você não está na lista".
             logger.error("porta: a identidade respondeu HTTP %s", r.status_code)
+            _anota(medidor.registrar_chamada, "recusou", decorrido_ms)
             raise IdentidadeIndisponivel(f"HTTP {r.status_code}")
 
         try:
@@ -113,9 +151,13 @@ class IdentidadeClient:
             # `httpx.HTTPError` — sem este `except` ela viraria 500.
             # *Status 2xx não é sucesso* (RETROSPECTIVA §4).
             logger.error("porta: a identidade respondeu fora do contrato: %s", erro)
+            _anota(medidor.registrar_chamada, "fora_do_contrato", decorrido_ms)
             raise IdentidadeIndisponivel("corpo fora do contrato") from erro
 
         if not isinstance(corpo, dict):
             logger.error("porta: a identidade respondeu um corpo que não é objeto")
+            _anota(medidor.registrar_chamada, "fora_do_contrato", decorrido_ms)
             raise IdentidadeIndisponivel("corpo fora do contrato")
+
+        _anota(medidor.registrar_chamada, "respondeu", decorrido_ms)
         return corpo

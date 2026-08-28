@@ -1,5 +1,6 @@
 from django.urls import path, re_path
 
+from apps.core.diagnostico import diag_json
 from apps.core.divida import divida_json
 from apps.core.painel import painel, painel_arquivo
 from apps.core.views import healthz, visao_geral
@@ -29,6 +30,12 @@ urlpatterns = [
     # ela. É a dívida do livro — merges que ninguém contou ao dono —, medida ao
     # vivo (`apps/core/divida.py`).
     path("painel/divida.json", divida_json, name="painel_divida"),
+    # Pelo mesmo motivo da linha acima: medição, não arquivo em disco — a rota
+    # genérica abaixo responderia 404 por ela. Aqui o SERVIDOR conta o que
+    # aconteceu com ele (apps/core/medidor.py): quantas vezes perguntou à
+    # identidade, quantas estourou o tempo, quantas ela recusou, e a latência.
+    # Sem esta rota, saber isso exige entrar na VPS — e ninguém entra (Lei 5).
+    path("painel/diag.json", diag_json, name="painel_diag"),
     re_path(r"^painel/(?P<path>.+)$", painel_arquivo, name="painel_arquivo"),
     path("", visao_geral, name="visao_geral"),
 ]

@@ -20,8 +20,9 @@
 //
 //   sub-pedidos ao abrir    = CONJUNTO NOMINAL, não contagem:
 //                               file://  nenhum
-//                               http     divida.json, e só (medição ao vivo,
-//                                        custo FIXO — não cresce com o livro)
+//                               http     divida.json e diag.json, e só (as
+//                                        medições ao vivo — custo FIXO, não
+//                                        cresce com o livro)
 //   erros de console        = 0
 //   erros de página         = 0
 //   a capa RENDERIZOU       (não é a tela vermelha)
@@ -140,9 +141,18 @@ function servidor(dir) {
     // deste teste a serve também: sem isso o modo http mediria uma página
     // diferente da real, e um 404 inventado pelo teste apareceria como erro de
     // console — medindo o dublê em vez do original (armadilhas/131).
-    if (url.parse(req.url).pathname === "/divida.json") {
+    var caminho = url.parse(req.url).pathname;
+    if (caminho === "/divida.json" || caminho === "/diag.json") {
       res.writeHead(200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
-      res.end(JSON.stringify({ devedores: [] }));
+      res.end(JSON.stringify(caminho === "/divida.json"
+        ? { devedores: [] }
+        : { de_pe_ha_segundos: 42, perguntas_a_identidade: 3,
+            desfechos: { respondeu: 3, estourou_o_tempo: 0, recusou: 0,
+                         fora_do_contrato: 0, sem_configuracao: 0 },
+            respostas_da_porta: { entrou: 3, mandou_para_o_login: 0,
+                                  nao_existe_para_voce: 0, indisponivel_503: 0 },
+            latencia_ms: { amostras: 3, p50: 4.2, p95: 7.1, maior: 7.1 },
+            regua_ms: { saudavel_ate: 50, teto_da_porta: 2000 } }));
       return;
     }
     fs.readFile(alvo, function (e, dados) {
@@ -303,7 +313,13 @@ async function principal() {
     // Pelo site: a página mais a medição ao vivo da dívida do livro. Um pedido
     // FIXO — ele não cresce com o tamanho do livro, que é a propriedade que
     // este teste existe para proteger.
-    var estadoHttp = await medir(navegador, endereco, baseHttp, "http · " + n, ["divida.json"]);
+    // Pelo site: a página mais DUAS medições ao vivo — a dívida do livro e o
+    // que o servidor diz sobre si mesmo. Pedidos FIXOS: não crescem com o
+    // tamanho do livro, que é a propriedade que este teste existe para
+    // proteger. O conjunto é nominal justamente para um pedido novo ter de
+    // passar por uma decisão consciente, em vez de entrar de carona.
+    var estadoHttp = await medir(navegador, endereco, baseHttp, "http · " + n,
+      ["divida.json", "diag.json"]);
     await medirMemoria(estadoHttp, endereco, baseHttp, "http · " + n);
     await estadoHttp.pagina.close();
     s.servidor.close();
@@ -318,7 +334,7 @@ async function principal() {
     process.exit(1);
   }
   console.log("✅ painel_no_navegador: com 10, 1.000 e 5.000 registros, abrir o painel busca");
-  console.log("   NADA por file:// e só a medição da dívida pelo site — nos dois modos, sem");
+  console.log("   NADA por file:// e só as duas medições ao vivo pelo site — nos dois modos, sem");
   console.log("   erro de console e sem erro de página. O custo de abrir não cresce com o livro.");
   process.exit(0);
 }
