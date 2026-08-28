@@ -193,7 +193,8 @@ jobs:
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: CELULA
-          script_file: infra/deploy-celula-na-vps.sh
+          capture_stdout: true
+          script_path: infra/deploy-celula-na-vps.sh
         env:
           CELULA: ${{ matrix.celula }}
 
@@ -216,7 +217,8 @@ jobs:
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: CELULA
-          script_file: infra/deploy-celula-na-vps.sh
+          capture_stdout: true
+          script_path: infra/deploy-celula-na-vps.sh
         env:
           CELULA: ${{ matrix.celula }}
 
@@ -229,6 +231,7 @@ jobs:
       # A que vale. Sem `continue-on-error`: se esta falhar, o deploy é vermelho
       # — e aí não é mais blip, é para investigar (armadilhas/017 é a suspeita).
       - name: Ativar na VPS (tentativa 3 de 3 — esta decide)
+        id: subir3
         if: steps.subir1.outcome == 'failure' && steps.subir2.outcome == 'failure'
         uses: appleboy/ssh-action@v1
         with:
@@ -236,25 +239,66 @@ jobs:
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           envs: CELULA
-          script_file: infra/deploy-celula-na-vps.sh
+          capture_stdout: true
+          script_path: infra/deploy-celula-na-vps.sh
         env:
           CELULA: ${{ matrix.celula }}
 
-      # O log tem de DIZER quantas tentativas foram precisas. Sem esta linha, um
-      # run verde na segunda tentativa é indistinguível de um verde na primeira,
-      # e o padrão volta a ficar invisível — que é metade do problema que este
-      # bloco existe para resolver.
-      - name: Quantas tentativas foram precisas
-        if: always() && steps.subir1.outcome != ''
+      # =====================================================================
+      # A ENTREGA RODOU MESMO? — a trava que faltava, escrita a custo.
+      #
+      # Em 28/08/2026 este workflow ficou VERDE sem ter subido imagem nenhuma.
+      # O parâmetro estava com o nome errado (`script_file` em vez de
+      # `script_path`); a ação avisou "Unexpected input", IGNOROU o script,
+      # abriu a conexão, não executou nada e saiu com sucesso. O passo seguinte
+      # anunciou "✅ A VPS atendeu de primeira" — e era verdade: ela atendeu.
+      # Só que não foi pedido nada a ela.
+      #
+      # Nenhum teste de CI pegaria: o YAML era válido, o script existia, o
+      # caminho estava certo. O defeito só existia na conversa entre o workflow
+      # e a ação, e só aparecia em produção — com o site servindo a imagem
+      # velha e todos os sinais verdes.
+      #
+      # A CURA: o script termina imprimindo uma sentinela, e este passo EXIGE
+      # ver essa sentinela na saída capturada. Conectar sem executar deixa de
+      # ser sucesso. É a diferença entre "a porta abriu" e "o trabalho foi
+      # feito" — e este projeto já pagou caro por confundir as duas
+      # (RETROSPECTIVA-FASE-D §1: status 2xx não é sucesso).
+      #
+      # As saídas entram por `env:` e não por interpolação direta no shell:
+      # texto vindo de fora dentro de um `run:` é injeção esperando acontecer.
+      # =====================================================================
+      - name: A entrega rodou mesmo? (verde sem ter subido nada é o pior verde)
+        env:
+          SAIDA_1: ${{ steps.subir1.outputs.stdout }}
+          SAIDA_2: ${{ steps.subir2.outputs.stdout }}
+          SAIDA_3: ${{ steps.subir3.outputs.stdout }}
+          R1: ${{ steps.subir1.outcome }}
+          R2: ${{ steps.subir2.outcome }}
+          R3: ${{ steps.subir3.outcome }}
         run: |
-          if [ "${{ steps.subir1.outcome }}" = "success" ]; then
-            echo "✅ A VPS atendeu de primeira."
-          elif [ "${{ steps.subir2.outcome }}" = "success" ]; then
-            echo "⚠️ A VPS RECUSOU a 1ª tentativa e atendeu na 2ª."
-            echo "   Isto é a armadilha 127. O deploy está verde e correto —"
-            echo "   mas a ocorrência conta: registre em painel/registros/."
+          set -eu
+          if printf '%s\n%s\n%s' "$SAIDA_1" "$SAIDA_2" "$SAIDA_3" | grep -q 'ENTREGA-CONCLUIDA:'; then
+            echo "✅ O script da entrega rodou até o fim na VPS."
           else
-            echo "⚠️ A VPS recusou as duas primeiras tentativas."
-            echo "   Se a 3ª passou, o deploy está correto. Registre a ocorrência."
-            echo "   Se a 3ª também falhou, NÃO é mais blip: veja armadilhas/017."
+            echo "❌ PAROU: nenhuma tentativa produziu a marca de conclusão."
+            echo "   A conexão pode ter aberto sem que nada fosse executado —"
+            echo "   foi o que aconteceu em 28/08/2026 com o parâmetro errado."
+            echo "   O deploy NÃO subiu imagem nenhuma. Não trate como verde."
+            exit 1
           fi
+
+          # Quantas tentativas foram precisas, dito em português. Sem esta
+          # linha, um verde na segunda tentativa é indistinguível de um verde na
+          # primeira — e o padrão da VPS recusando volta a ficar invisível, que
+          # é metade do problema que o retry existe para resolver.
+          if [ "$R1" = "success" ]; then
+            echo "✅ A VPS atendeu de primeira."
+          elif [ "$R2" = "success" ]; then
+            echo "⚠️ A VPS RECUSOU a 1ª tentativa e atendeu na 2ª (armadilhas/127)."
+            echo "   O deploy está correto — mas a ocorrência conta: registre em painel/registros/."
+          else
+            echo "⚠️ A VPS recusou as duas primeiras tentativas e atendeu na 3ª."
+            echo "   Registre a ocorrência; se isso virar rotina, veja armadilhas/017."
+          fi
+
