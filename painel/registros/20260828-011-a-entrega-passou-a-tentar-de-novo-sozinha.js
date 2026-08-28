@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260828-006-a-entrega-passou-a-tentar-de-novo-sozinha",
+  arquivo: "20260828-011-a-entrega-passou-a-tentar-de-novo-sozinha",
   tipo: "entrega",
   quando: "2026-08-28",
   titulo: "A entrega para o servidor passou a tentar de novo sozinha — voce decidiu consertar agora",
