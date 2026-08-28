@@ -1,0 +1,290 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --tinta:#15161c; --tinta-2:#1b1d25; --painel:#1e202b; --painel-claro:#262838;
+      --linha:rgba(255,255,255,.08); --linha-forte:rgba(255,255,255,.16);
+      --laranja:#ff7a33; --laranja-fraco:rgba(255,122,51,.14);
+      --azul:#4c8dff; --azul-fraco:rgba(76,141,255,.14);
+      --verde:#34d399; --verde-fraco:rgba(52,211,153,.14);
+      --vermelho:#ff5c5c; --vermelho-fraco:rgba(255,92,92,.14);
+      --ambar:#f2b234; --ambar-fraco:rgba(242,178,52,.14);
+      --texto:#edeef2; --texto-fraco:#9a9db0; --texto-tenue:#5c5f70;
+      --f-titulo:"Segoe UI Semibold","Segoe UI",system-ui,-apple-system,sans-serif;
+      --f-corpo:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+      --f-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--tinta);color:var(--texto);font-family:var(--f-corpo);line-height:1.5;
+      background-image:linear-gradient(var(--linha) 1px,transparent 1px),linear-gradient(90deg,var(--linha) 1px,transparent 1px);
+      background-size:64px 64px;background-position:center -1px;}
+    a{color:var(--laranja);} a:hover{color:#ffa06b;}
+  </style>
+</helmet>
+
+<div style="padding:22px 28px 24px;">
+
+  <!-- topo -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--linha);">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <svg width="26" height="26" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="3.5" y="3.5" width="33" height="33" rx="9" stroke="#ff7a33" stroke-width="1.6"/>
+        <rect x="12" y="12" width="16" height="16" rx="4" transform="rotate(45 20 20)" stroke="#4c8dff" stroke-width="1.6"/>
+        <circle cx="20" cy="20" r="2.6" fill="#ff7a33"/>
+      </svg>
+      <div style="font-family:var(--f-titulo);font-weight:600;font-size:16px;">Caixa de Sugestões</div>
+      <div style="color:var(--texto-tenue);font-size:13px;">/ A travessia</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:18px;font-family:var(--f-mono);font-size:11.5px;color:var(--texto-tenue);">
+      <span><b style="color:var(--texto-fraco);font-weight:500;">24</b> ideias em movimento</span>
+      <span><b style="color:var(--texto-fraco);font-weight:500;">1.248</b> alunos aguardando</span>
+      <span style="border:1px solid var(--linha);background:var(--painel);border-radius:6px;padding:4px 9px;">Todas as categorias</span>
+    </div>
+  </div>
+
+  <!-- abas do painel -->
+  <div style="display:flex;align-items:flex-end;gap:4px;margin-top:14px;border-bottom:1px solid var(--linha);">
+    <div style="padding:9px 17px;font-size:13px;color:var(--texto-fraco);display:flex;align-items:center;gap:8px;">A sua mesa <span style="background:var(--laranja);color:#15161c;font-family:var(--f-mono);font-size:10px;font-weight:600;border-radius:8px;padding:0 6px;line-height:16px;">3</span></div>
+    <div style="padding:9px 17px;border:1px solid var(--linha-forte);border-bottom:1px solid var(--tinta);background:var(--painel);border-radius:8px 8px 0 0;font-family:var(--f-titulo);font-size:13px;color:var(--texto);margin-bottom:-1px;display:flex;align-items:center;gap:8px;">A travessia</div>
+    <div style="padding:9px 17px;font-size:13px;color:var(--texto-fraco);display:flex;align-items:center;gap:8px;">Quem está esperando</div>
+    <div style="padding:9px 17px;font-size:13px;color:var(--texto-fraco);display:flex;align-items:center;gap:8px;">Os robôs</div>
+  </div>
+
+  <!-- faixa: precisa de você -->
+  <div style="margin-top:16px;display:flex;align-items:center;gap:18px;background:var(--laranja-fraco);border:1px solid var(--laranja);border-radius:10px;padding:13px 18px;">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
+    <div style="flex:1;min-width:0;">
+      <div style="font-family:var(--f-titulo);font-size:14px;color:var(--laranja);">2 ideias pararam esperando a sua assinatura</div>
+      <div style="font-size:12.5px;color:var(--texto-fraco);margin-top:1px;">394 alunos estão atrás delas. A mais antiga espera há 14 dias — nada anda até você assinar.</div>
+    </div>
+    <div style="border:1px solid var(--laranja);background:var(--laranja);color:#15161c;border-radius:7px;padding:8px 15px;font-size:13px;font-weight:600;font-family:var(--f-titulo);">Ver as duas</div>
+  </div>
+
+  <!-- a esteira -->
+  <div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:16px;align-items:start;">
+
+    <!-- col 1 -->
+    <div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;padding:0 2px 8px;">
+        <div style="font-family:var(--f-titulo);font-size:12.5px;color:var(--texto-fraco);">Chegando</div>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">9</div>
+      </div>
+      <div style="border-top:2px solid var(--linha-forte);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Exercício de programação corrigido na hora</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 143 <span style="color:var(--texto-tenue);">&middot; 121 pessoas</span></div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--texto-tenue);">chegou há 3 dias</p>
+        </div>
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Certificado para colocar no LinkedIn</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 84 <span style="color:var(--texto-tenue);">&middot; 80 pessoas</span></div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--ambar);">parada há 27 dias sem ninguém olhar</p>
+        </div>
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;opacity:.72;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Trilha para quem já sabe programar</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 44 <span style="color:var(--texto-tenue);">&middot; 41 pessoas</span></div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--texto-tenue);">chegou há 9 dias</p>
+        </div>
+        <div style="text-align:center;font-size:11px;color:var(--texto-tenue);padding:4px;">+ 6 mais</div>
+      </div>
+    </div>
+
+    <!-- col 2 -->
+    <div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;padding:0 2px 8px;">
+        <div style="font-family:var(--f-titulo);font-size:12.5px;color:var(--texto-fraco);">A equipe está lendo</div>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">4</div>
+      </div>
+      <div style="border-top:2px solid var(--linha-forte);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Baixar todos os arquivos da aula de uma vez</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 61 <span style="color:var(--texto-tenue);">&middot; 55 pessoas</span></div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--texto-tenue);">notas de impacto já dadas</p>
+        </div>
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Aula ao vivo de tira-dúvidas todo mês</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 38 <span style="color:var(--texto-tenue);">&middot; 36 pessoas</span></div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--texto-tenue);">falta escrever a decisão</p>
+        </div>
+        <div style="text-align:center;font-size:11px;color:var(--texto-tenue);padding:4px;">+ 2 mais</div>
+      </div>
+    </div>
+
+    <!-- col 3 -->
+    <div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;padding:0 2px 8px;">
+        <div style="font-family:var(--f-titulo);font-size:12.5px;color:var(--texto-fraco);">Decisão escrita</div>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">3</div>
+      </div>
+      <div style="border-top:2px solid var(--linha-forte);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Modo escuro na área de aulas</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 97 <span style="color:var(--texto-tenue);">&middot; 89 pessoas</span></div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--texto-tenue);">falta o documento de obra</p>
+        </div>
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;opacity:.72;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Fórum de dúvidas dentro da plataforma</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 52 <span style="color:var(--texto-tenue);">&middot; 48 pessoas</span></div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--texto-tenue);">rascunho sendo escrito por um robô</p>
+        </div>
+        <div style="text-align:center;font-size:11px;color:var(--texto-tenue);padding:4px;">+ 1 mais</div>
+      </div>
+    </div>
+
+    <!-- col 4 — SUA ASSINATURA -->
+    <div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;padding:0 2px 8px;">
+        <div style="font-family:var(--f-titulo);font-size:12.5px;color:var(--laranja);">Esperando você assinar</div>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--laranja);">2</div>
+      </div>
+      <div style="border-top:2px solid var(--laranja);padding-top:10px;display:flex;flex-direction:column;gap:8px;background:var(--laranja-fraco);border-radius:0 0 10px 10px;margin:0 -4px;padding-left:4px;padding-right:4px;padding-bottom:10px;">
+        <div style="background:var(--painel);border:1px solid var(--laranja);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Página pública com os meus projetos</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 218 <span style="color:var(--texto-tenue);">&middot; 176 pessoas</span></div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--ambar);">esperando há 14 dias</p>
+          <div style="margin-top:9px;background:var(--laranja);color:#15161c;border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:600;text-align:center;font-family:var(--f-titulo);">Ler e assinar</div>
+        </div>
+        <div style="background:var(--painel);border:1px solid var(--laranja);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Salvar o progresso da aula no celular</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 176 <span style="color:var(--texto-tenue);">&middot; 149 pessoas</span></div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--texto-tenue);">esperando há 4 dias</p>
+          <div style="margin-top:9px;border:1px solid var(--linha-forte);color:var(--texto-fraco);border-radius:6px;padding:6px 10px;font-size:11.5px;font-weight:600;text-align:center;font-family:var(--f-titulo);">Ler e assinar</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- col 5 -->
+    <div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;padding:0 2px 8px;">
+        <div style="font-family:var(--f-titulo);font-size:12.5px;color:var(--texto-fraco);">Robô construindo</div>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">3</div>
+      </div>
+      <div style="border-top:2px solid var(--azul);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Legenda automática nos vídeos das aulas</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 112 <span style="color:var(--texto-tenue);">&middot; 98 pessoas</span></div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--azul);">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--azul);flex-shrink:0;"></span> robô 2 &middot; escrevendo os testes
+          </div>
+          <p style="margin:5px 0 0;font-size:10.5px;color:var(--texto-tenue);">começou hoje, 09:12</p>
+        </div>
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Busca dentro das transcrições</p>
+          <div style="display:flex;align-items:center;gap:8px;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-fraco);"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="m5 15 7-7 7 7"/></svg> 69 <span style="color:var(--texto-tenue);">&middot; 63 pessoas</span></div>
+          <div style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--ambar);">
+            <span style="width:6px;height:6px;border-radius:50%;background:var(--ambar);flex-shrink:0;"></span> em revisão &middot; 1 ponto a corrigir
+          </div>
+          <p style="margin:5px 0 0;font-size:10.5px;color:var(--texto-tenue);">nesta etapa há 2 dias</p>
+        </div>
+        <div style="text-align:center;font-size:11px;color:var(--texto-tenue);padding:4px;">+ 1 mais</div>
+      </div>
+    </div>
+
+    <!-- col 6 -->
+    <div>
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;padding:0 2px 8px;">
+        <div style="font-family:var(--f-titulo);font-size:12.5px;color:var(--texto-fraco);">No ar</div>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">3 este mês</div>
+      </div>
+      <div style="border-top:2px solid var(--verde);padding-top:10px;display:flex;flex-direction:column;gap:8px;">
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Aula ao vivo de tira-dúvidas</p>
+          <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--verde);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M20 6 9 17l-5-5"/></svg>
+            no ar &middot; conferido 26/08
+          </div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--texto-tenue);">36 pessoas avisadas</p>
+        </div>
+        <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:11px 12px;">
+          <p style="font-family:var(--f-titulo);font-size:12.5px;margin:0 0 8px;line-height:1.35;">Filtro por categoria no quadro</p>
+          <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--texto-tenue);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#5c5f70" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+            não comprovado &middot; falta conferir
+          </div>
+          <p style="margin:7px 0 0;font-size:10.5px;color:var(--texto-tenue);">ninguém foi avisado ainda</p>
+        </div>
+        <div style="text-align:center;font-size:11px;color:var(--texto-tenue);padding:4px;">+ 1 mais</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- rodapé: onde entope + fora do trilho -->
+  <div style="display:grid;grid-template-columns:minmax(0,1.45fr) minmax(0,1fr);gap:16px;margin-top:18px;">
+
+    <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:15px 18px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-family:var(--f-titulo);font-size:13px;">Onde entope</div>
+        <div style="font-size:11px;color:var(--texto-tenue);">quanto tempo uma ideia fica parada, em média, em cada degrau</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:150px;flex-shrink:0;font-size:11.5px;color:var(--texto-fraco);text-align:right;">Chegando</div>
+          <div style="flex:1;height:14px;background:var(--tinta-2);border-radius:4px;overflow:hidden;"><div style="width:22%;height:100%;background:rgba(255,255,255,.18);"></div></div>
+          <div style="width:56px;font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">6 dias</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:150px;flex-shrink:0;font-size:11.5px;color:var(--texto-fraco);text-align:right;">A equipe está lendo</div>
+          <div style="flex:1;height:14px;background:var(--tinta-2);border-radius:4px;overflow:hidden;"><div style="width:30%;height:100%;background:rgba(255,255,255,.18);"></div></div>
+          <div style="width:56px;font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">8 dias</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:150px;flex-shrink:0;font-size:11.5px;color:var(--texto-fraco);text-align:right;">Decisão escrita</div>
+          <div style="flex:1;height:14px;background:var(--tinta-2);border-radius:4px;overflow:hidden;"><div style="width:15%;height:100%;background:rgba(255,255,255,.18);"></div></div>
+          <div style="width:56px;font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">4 dias</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:150px;flex-shrink:0;font-size:11.5px;color:var(--laranja);text-align:right;font-weight:600;">Esperando você assinar</div>
+          <div style="flex:1;height:14px;background:var(--tinta-2);border-radius:4px;overflow:hidden;"><div style="width:100%;height:100%;background:var(--laranja);"></div></div>
+          <div style="width:56px;font-family:var(--f-mono);font-size:11px;color:var(--laranja);font-weight:600;">27 dias</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:150px;flex-shrink:0;font-size:11.5px;color:var(--texto-fraco);text-align:right;">Robô construindo</div>
+          <div style="flex:1;height:14px;background:var(--tinta-2);border-radius:4px;overflow:hidden;"><div style="width:7%;height:100%;background:var(--azul);"></div></div>
+          <div style="width:56px;font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">2 dias</div>
+        </div>
+      </div>
+      <p style="margin:12px 0 0;font-size:12px;color:var(--texto-fraco);border-top:1px solid var(--linha);padding-top:10px;">
+        O degrau mais lento da travessia é <strong style="color:var(--laranja);font-weight:600;">você</strong> — o robô constrói em 2 dias o que espera 27 por uma assinatura.
+      </p>
+    </div>
+
+    <div style="background:var(--painel);border:1px solid var(--linha);border-radius:10px;padding:15px 18px;">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-family:var(--f-titulo);font-size:13px;">Fora do trilho</div>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">2</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;gap:11px;align-items:flex-start;">
+          <div style="border:1px solid var(--vermelho);background:var(--vermelho-fraco);color:var(--vermelho);border-radius:5px;padding:2px 7px;font-size:10px;flex-shrink:0;margin-top:1px;">recusada</div>
+          <div style="min-width:0;">
+            <p style="margin:0;font-size:12.5px;font-family:var(--f-titulo);line-height:1.35;">Baixar os arquivos das aulas de uma vez</p>
+            <p style="margin:3px 0 0;font-size:11.5px;color:var(--texto-fraco);line-height:1.45;">&ldquo;O material é licenciado por aluno; o download em bloco quebraria o acordo com os autores.&rdquo;</p>
+          </div>
+        </div>
+        <div style="display:flex;gap:11px;align-items:flex-start;">
+          <div style="border:1px solid var(--linha-forte);background:var(--tinta-2);color:var(--texto-fraco);border-radius:5px;padding:2px 7px;font-size:10px;flex-shrink:0;margin-top:1px;">juntada</div>
+          <div style="min-width:0;">
+            <p style="margin:0;font-size:12.5px;font-family:var(--f-titulo);line-height:1.35;">Fórum de dúvidas dentro da plataforma</p>
+            <p style="margin:3px 0 0;font-size:11.5px;color:var(--texto-fraco);line-height:1.45;">virou parte de <strong style="color:var(--texto);font-weight:600;">&ldquo;Espaço de comunidade&rdquo;</strong> — os 52 votos foram junto.</p>
+          </div>
+        </div>
+      </div>
+      <p style="margin:12px 0 0;font-size:11.5px;color:var(--texto-tenue);border-top:1px solid var(--linha);padding-top:10px;">
+        Elas não somem da tela de propósito: sem elas a conta não fecha, e a justificativa que a equipe escreveu ficaria escondida do aluno.
+      </p>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

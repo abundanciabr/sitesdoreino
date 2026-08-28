@@ -1,0 +1,9 @@
+# O que mora aqui é a PLANTA do painel de gestão da Caixa: um arquivo por tela
+# (`*.dc.html`), o mapa que as posiciona (`canvas.json`) e o texto que descreve o
+# problema para quem for desenhar (`PROMPT-CLAUDE-DESIGN.md`).
+#
+# O que NÃO mora aqui é a página publicada — 2,7 MB de editor embutido, gerada a
+# partir dos arquivos acima. Ela é saída de build, não fonte: versioná-la poria
+# no repositório um arquivo que muda inteiro a cada ajuste de vírgula, e que
+# ninguém consegue revisar num diff.
+painel-da-caixa-de-sugestoes.html

@@ -1,0 +1,132 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --tinta:#15161c; --tinta-2:#1b1d25; --painel:#1e202b;
+      --linha:rgba(255,255,255,.08); --linha-forte:rgba(255,255,255,.16);
+      --laranja:#ff7a33; --laranja-fraco:rgba(255,122,51,.14);
+      --azul:#4c8dff; --verde:#34d399; --verde-fraco:rgba(52,211,153,.14);
+      --vermelho:#ff5c5c; --ambar:#f2b234;
+      --texto:#edeef2; --texto-fraco:#9a9db0; --texto-tenue:#5c5f70;
+      --f-titulo:"Segoe UI Semibold","Segoe UI",system-ui,-apple-system,sans-serif;
+      --f-corpo:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+      --f-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--tinta);color:var(--texto);font-family:var(--f-corpo);line-height:1.5;
+      background-image:linear-gradient(var(--linha) 1px,transparent 1px),linear-gradient(90deg,var(--linha) 1px,transparent 1px);
+      background-size:64px 64px;background-position:center -1px;}
+    a{color:var(--laranja);} a:hover{color:#ffa06b;}
+    .chapeu{font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--texto-tenue);margin:0 0 10px;}
+    .caixa{background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:18px 19px;flex:1;display:flex;flex-direction:column;}
+    .nota{margin:14px 0 0;font-size:11.5px;color:var(--texto-tenue);line-height:1.55;border-top:1px solid var(--linha);padding-top:11px;}
+  </style>
+</helmet>
+
+<div style="padding:24px 28px 26px;">
+
+  <div style="display:flex;align-items:baseline;gap:18px;padding-bottom:16px;border-bottom:1px solid var(--linha);margin-bottom:20px;">
+    <h1 style="font-family:var(--f-titulo);font-size:21px;margin:0;">Como cada modelo fica quando nada espera você</h1>
+    <p style="margin:0;font-size:13px;color:var(--texto-fraco);">
+      Um painel que só fica bonito cheio de problema ensina medo. Estes são os quatro estados de &ldquo;tudo em dia&rdquo; — e nenhum deles é uma tela vazia.
+    </p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;align-items:stretch;">
+
+    <!-- A -->
+    <div style="display:flex;flex-direction:column;">
+      <p class="chapeu">Modelo A &middot; A Esteira</p>
+      <div class="caixa">
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-bottom:16px;">
+          <div><div style="height:3px;background:var(--linha-forte);border-radius:2px;margin-bottom:6px;"></div><div style="height:26px;background:var(--tinta-2);border:1px solid var(--linha);border-radius:5px;margin-bottom:4px;"></div><div style="height:26px;background:var(--tinta-2);border:1px solid var(--linha);border-radius:5px;"></div></div>
+          <div><div style="height:3px;background:var(--linha-forte);border-radius:2px;margin-bottom:6px;"></div><div style="height:26px;background:var(--tinta-2);border:1px solid var(--linha);border-radius:5px;"></div></div>
+          <div><div style="height:3px;background:var(--verde);border-radius:2px;margin-bottom:6px;"></div><div style="height:56px;border:1px dashed var(--verde);border-radius:5px;display:flex;align-items:center;justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+          </div></div>
+          <div><div style="height:3px;background:var(--azul);border-radius:2px;margin-bottom:6px;"></div><div style="height:26px;background:var(--tinta-2);border:1px solid var(--linha);border-radius:5px;margin-bottom:4px;"></div><div style="height:26px;background:var(--tinta-2);border:1px solid var(--linha);border-radius:5px;"></div></div>
+        </div>
+        <p style="margin:0 0 6px;font-family:var(--f-titulo);font-size:15px;color:var(--verde);">A coluna que costuma entupir está vazia.</p>
+        <p style="margin:0;font-size:12.5px;color:var(--texto-fraco);line-height:1.6;">
+          Nenhuma ideia está parada esperando você. As outras colunas seguem cheias — e é assim que tem que ser: a
+          esteira andando é sinal de saúde, não de sobrecarga.
+        </p>
+        <p class="nota">Se a esteira inteira esvaziasse, aí sim a tela diria outra coisa: <em>&ldquo;ninguém está sugerindo nada há 3 semanas&rdquo;</em>.</p>
+      </div>
+    </div>
+
+    <!-- B -->
+    <div style="display:flex;flex-direction:column;">
+      <p class="chapeu">Modelo B &middot; A Mesa</p>
+      <div class="caixa">
+        <div style="border:1px solid var(--verde);background:var(--verde-fraco);border-radius:10px;padding:22px 18px;text-align:center;margin-bottom:16px;">
+          <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:10px;"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>
+          <p style="margin:0;font-family:var(--f-titulo);font-size:16px;color:var(--verde);line-height:1.3;">A mesa está limpa.</p>
+          <p style="margin:6px 0 0;font-size:12px;color:var(--texto-fraco);">Você respondeu tudo. Pode fechar.</p>
+        </div>
+        <p style="margin:0 0 8px;font-size:12.5px;color:var(--texto-fraco);line-height:1.6;">
+          Três obras seguem andando sem você. A próxima decisão chega quando a equipe terminar de ler duas ideias novas
+          — <strong style="color:var(--texto);font-weight:600;">provavelmente quinta</strong>.
+        </p>
+        <div style="display:flex;flex-direction:column;gap:7px;margin-top:6px;">
+          <div style="display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--texto-tenue);"><span style="width:6px;height:6px;border-radius:50%;background:var(--azul);"></span> Legenda automática &middot; robô 2</div>
+          <div style="display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--texto-tenue);"><span style="width:6px;height:6px;border-radius:50%;background:var(--azul);"></span> Espaço de comunidade &middot; robô 7</div>
+          <div style="display:flex;align-items:center;gap:9px;font-size:11.5px;color:var(--texto-tenue);"><span style="width:6px;height:6px;border-radius:50%;background:var(--verde);"></span> Certificado &middot; entrou no ar hoje</div>
+        </div>
+        <p class="nota">O vazio aqui é o objetivo do modelo, não uma falha dele. A tela diz explicitamente <em>quando</em> volta a ter trabalho.</p>
+      </div>
+    </div>
+
+    <!-- C -->
+    <div style="display:flex;flex-direction:column;">
+      <p class="chapeu">Modelo C &middot; A Sala de Controle</p>
+      <div class="caixa">
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px;">
+          <div style="display:flex;align-items:center;gap:9px;background:var(--tinta-2);border:1px solid var(--linha);border-radius:7px;padding:8px 11px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--azul);flex-shrink:0;"></span><span style="font-size:11.5px;color:var(--texto-fraco);flex:1;">robô 2</span><span style="font-family:var(--f-mono);font-size:10px;color:var(--texto-tenue);">construindo</span></div>
+          <div style="display:flex;align-items:center;gap:9px;background:var(--tinta-2);border:1px solid var(--linha);border-radius:7px;padding:8px 11px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--azul);flex-shrink:0;"></span><span style="font-size:11.5px;color:var(--texto-fraco);flex:1;">robô 7</span><span style="font-family:var(--f-mono);font-size:10px;color:var(--texto-tenue);">construindo</span></div>
+          <div style="display:flex;align-items:center;gap:9px;background:var(--tinta-2);border:1px solid var(--linha);border-radius:7px;padding:8px 11px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--azul);flex-shrink:0;"></span><span style="font-size:11.5px;color:var(--texto-fraco);flex:1;">robô 8</span><span style="font-family:var(--f-mono);font-size:10px;color:var(--texto-tenue);">construindo</span></div>
+          <div style="display:flex;align-items:center;gap:9px;border:1px dashed var(--linha-forte);border-radius:7px;padding:8px 11px;"><span style="width:6px;height:6px;border-radius:50%;background:var(--texto-tenue);flex-shrink:0;"></span><span style="font-size:11.5px;color:var(--texto-tenue);flex:1;">robô 9</span><span style="font-family:var(--f-mono);font-size:10px;color:var(--texto-tenue);">livre, sem fila</span></div>
+        </div>
+        <p style="margin:0 0 6px;font-family:var(--f-titulo);font-size:15px;color:var(--verde);">Tudo o que estava pronto já saiu.</p>
+        <p style="margin:0;font-size:12.5px;color:var(--texto-fraco);line-height:1.6;">
+          A fila de espera está vazia e um robô está ocioso. Não é desperdício: significa que a decisão vai na frente
+          da construção — o lado certo de estar.
+        </p>
+        <p class="nota">Robô livre com fila cheia seria alarme. Robô livre com fila vazia é folga — e a tela distingue os dois casos.</p>
+      </div>
+    </div>
+
+    <!-- D -->
+    <div style="display:flex;flex-direction:column;">
+      <p class="chapeu">Modelo D &middot; A Plateia</p>
+      <div class="caixa">
+        <div style="margin-bottom:16px;">
+          <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px;">
+            <span style="font-family:var(--f-mono);font-size:38px;color:var(--verde);line-height:1;">4</span>
+            <span style="font-size:12.5px;color:var(--texto-fraco);">dias de silêncio médio</span>
+          </div>
+          <div style="height:8px;background:var(--tinta-2);border-radius:4px;overflow:hidden;margin-bottom:8px;"><div style="width:16%;height:100%;background:var(--verde);"></div></div>
+          <div style="display:flex;justify-content:space-between;font-family:var(--f-mono);font-size:10px;color:var(--texto-tenue);"><span>há 30 dias: 18</span><span>melhor marca do ano</span></div>
+        </div>
+        <p style="margin:0 0 6px;font-family:var(--f-titulo);font-size:15px;color:var(--verde);">Ninguém está sem resposta.</p>
+        <p style="margin:0;font-size:12.5px;color:var(--texto-fraco);line-height:1.6;">
+          Nenhum aluno passou de 7 dias sem notícia. <strong style="color:var(--texto);font-weight:600;">612 pessoas</strong> foram
+          avisadas neste mês — 55 delas com um não explicado, que conta igual.
+        </p>
+        <p class="nota">Este é o único dos quatro em que &ldquo;tudo em dia&rdquo; é um número que sobe e desce sozinho: ele piora se você parar, sem ninguém precisar reclamar.</p>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
