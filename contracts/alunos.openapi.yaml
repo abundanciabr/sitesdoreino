@@ -119,7 +119,15 @@ paths:
       parameters:
         - name: site_id
           in: query
-          required: true
+          required: false
+          description: |
+            OPCIONAL desde 28/08/2026 (DECISAO-categorias-de-usuario). Ausente
+            = a fila de TODAS as escolas, e cada linha diz de qual veio.
+            A plataforma e uma, as lojas sao N (Lei 9): o painel do dono e
+            plataforma-inteira, e exigir que ele soubesse o codigo interno de
+            uma escola para ver quem espera seria pedir que ele guardasse um
+            identificador opaco. Passando o parametro, filtra — o comportamento
+            de quem ja chamava assim nao muda.
           schema: { type: string }
         - name: status
           in: query
@@ -134,9 +142,17 @@ paths:
                 type: array
                 items:
                   type: object
-                  required: [id, email, nome_completo, whatsapp, status, criada_em, esperando_ha_dias]
+                  required: [id, site_id, email, nome_completo, whatsapp, status, criada_em, esperando_ha_dias]
                   properties:
                     id: { type: string }
+                    site_id:
+                      type: string
+                      description: |
+                        De qual escola veio este pedido. Passa a vir SEMPRE, e nao
+                        so quando a busca e de todas: uma resposta com forma
+                        diferente conforme o filtro obriga cada consumidor a
+                        tratar dois casos, e o que esquecer trata o campo como
+                        ausente em silencio.
                     email: { type: string, format: email }
                     nome_completo: { type: string }
                     whatsapp: { type: string }
