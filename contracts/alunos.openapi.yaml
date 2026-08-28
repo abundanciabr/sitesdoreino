@@ -12,6 +12,65 @@ security:
   - bearerAuth: []
 paths:
   /matriculas:
+    get:
+      operationId: listAllEnrollments
+      summary: Quem ja e aluno — a lista, para o painel administrativo
+      description: |
+        A porta da GESTAO DE ALUNOS (`docs/decisoes/DECISAO-gestao-de-alunos.md`).
+        Ate 28/08/2026 nao existia, em lugar nenhum, como listar quem e aluno: a
+        celula so sabia responder sobre UM e-mail por vez. Era por isso que os
+        contadores de alunos do painel mostravam traco.
+
+        NAO devolve quem esta na fila (`aguardando`/`recusada`) — para esses
+        existe `GET /pre-matriculas`. Duas perguntas diferentes, duas portas.
+
+        `site_id` opcional: ausente = todas as escolas, e cada linha diz de qual
+        veio. O painel do dono e plataforma-inteira (Lei 9).
+
+        PII: devolve o WhatsApp, e continua sendo PORTA DE PAINEL — a mesma
+        familia de `GET /pre-matriculas`. A lei da fila §5 diz que o numero sai
+        "por uma porta so, a do painel administrativo"; estas duas SAO essa
+        porta. Segue proibido em `GET /alunos/{email}/matriculas` e em evento.
+      parameters:
+        - name: site_id
+          in: query
+          required: false
+          schema: { type: string }
+        - name: status
+          in: query
+          required: false
+          description: Ausente = todos os estados de gestao (nao os da fila).
+          schema: { type: string, enum: [ativa, suspensa, encerrada, reembolsada] }
+      responses:
+        '200':
+          description: Os alunos, do mais recente para o mais antigo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [id, site_id, email, nome_completo, whatsapp, turma, comprou_em, status, origem, criada_em]
+                  properties:
+                    id: { type: string }
+                    site_id: { type: string }
+                    email: { type: string, format: email }
+                    nome_completo: { type: string }
+                    whatsapp: { type: string }
+                    turma: { type: [string, 'null'] }
+                    comprou_em: { type: [string, 'null'], format: date }
+                    status: { type: string, enum: [ativa, suspensa, encerrada, reembolsada] }
+                    origem:
+                      type: string
+                      enum: [comprou, liberado]
+                      description: |
+                        DERIVADO da proveniencia da linha, nunca de um campo proprio:
+                        `liberado` e quem entrou pela fila (o pedido sintetico `pre:`),
+                        `comprou` e o resto. Sai como palavra e nao como o numero do
+                        pedido — o numero e do provedor de pagamento e nao diz nada a
+                        quem le a tela.
+                    criada_em: { type: string, format: date-time }
     post:
       operationId: createEnrollment
       summary: Matrícula manual/reprocesso — idempotente por order_id (INV-P5)
@@ -60,7 +119,16 @@ paths:
                     site_id: { type: string }
                     order_id: { type: string }
                     product_id: { type: string }
-                    status: { type: string, enum: [ativa, suspensa, reembolsada] }
+                    status:
+                      type: string
+                      enum: [ativa, reembolsada]
+                      description: |
+                        SO os status que VALEM como acesso. `suspensa` saiu desta
+                        lista em 28/08/2026 (DECISAO-gestao-de-alunos §2): passou a
+                        significar "acesso pausado pelo mantenedor" e deixou de dar
+                        acesso. `reembolsada` continua — e isso e a decisao de
+                        24/08/2026, "quem ja foi aluno mantem a voz", que foi tomada
+                        sobre REEMBOLSO e segue intacta.
                     enrolled_at: { type: string, format: date-time }
         '404': { description: Aluno inexistente }
   /pre-matriculas:
@@ -269,6 +337,79 @@ paths:
                           ve-lo para poder pedir de novo: reenviar e o jeito previsto
                           de corrigir um dado errado (lei da fila, §7).
         '422': { description: E-mail invalido }
+  /matriculas/{id}:
+    patch:
+      operationId: updateEnrollment
+      summary: Mudar o estado de um aluno, ou corrigir os dados dele
+      description: |
+        O formulario de gestao (`DECISAO-gestao-de-alunos.md` §3). Todo campo de
+        dado e OPCIONAL: manda-se so o que muda.
+
+        O QUE ESTA PORTA NAO DEIXA MUDAR, e a ausencia e a decisao:
+
+        - `email` — e a IDENTIDADE da linha. Troca-lo moveria a matricula, em
+          silencio, para outra pessoa, e e por e-mail que todo o resto do
+          sistema pergunta quem e aluno.
+        - `site_id`, `order_id`, `product_id` — vem do fato que criou a linha
+          (uma compra, um pedido de entrada). Edita-los seria reescrever o que
+          aconteceu.
+
+        NAO decide sobre quem esta na FILA: linha `aguardando`/`recusada` responde
+        409 aqui. Para essas existe `POST /pre-matriculas/{id}/decisao` — uma
+        porta decide ENTRADA, a outra administra quem ja entrou.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decidido_por]
+              properties:
+                decidido_por:
+                  type: string
+                  description: Id de plataforma de quem mudou — a auditoria do lado de ca.
+                status: { type: string, enum: [ativa, suspensa, encerrada, reembolsada] }
+                nome_completo: { type: string, minLength: 1 }
+                whatsapp: { type: string }
+                turma: { type: [string, 'null'] }
+                comprou_em: { type: [string, 'null'], format: date }
+      responses:
+        '200':
+          description: Como a matricula ficou
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [id, site_id, email, nome_completo, whatsapp, turma, comprou_em, status, origem, criada_em]
+                properties:
+                  id: { type: string }
+                  site_id: { type: string }
+                  email: { type: string, format: email }
+                  nome_completo: { type: string }
+                  whatsapp: { type: string }
+                  turma: { type: [string, 'null'] }
+                  comprou_em: { type: [string, 'null'], format: date }
+                  status: { type: string, enum: [ativa, suspensa, encerrada, reembolsada] }
+                  origem:
+                    type: string
+                    enum: [comprou, liberado]
+                    description: |
+                      DERIVADO da proveniencia da linha, nunca de um campo proprio:
+                      `liberado` e quem entrou pela fila (o pedido sintetico `pre:`),
+                      `comprou` e o resto. Sai como palavra e nao como o numero do
+                      pedido — o numero e do provedor de pagamento e nao diz nada a
+                      quem le a tela.
+                  criada_em: { type: string, format: date-time }
+        '404': { description: Nao ha matricula com este id }
+        '409': { description: "Esta linha esta na FILA — decida por POST /pre-matriculas/{id}/decisao" }
+        '422': { description: "Payload invalido, ou nada para mudar" }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
