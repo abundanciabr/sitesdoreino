@@ -225,6 +225,88 @@ caso("template em LF e em CRLF geram painel.html byte a byte IDÊNTICO",
 caso("...e o gerado não carrega CRLF nenhum",
   fs.readFileSync(path.join(dirCRLF, "painel.html"), "utf8").indexOf("\r\n") === -1);
 
+
+console.log("== o carimbo da geração ==");
+// A página e cada arquivo de mês carregam a impressão digital do livro que os
+// produziu. É ela que separa "o arquivo não chegou" de "os arquivos são de
+// gerações diferentes" — o caso que o mantenedor tem de sobra, porque o
+// repositório mora dentro do OneDrive e uma sincronização pela metade entrega
+// alguns arquivos novos e outros velhos, cada um íntegro por si.
+function carimboDe(texto) {
+  var m = /carimbo: "([a-f0-9]+)"/.exec(texto);
+  return m ? m[1] : null;
+}
+var dirC = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a"),
+  "20260826-002-b.js": registroBom("20260826-002-b")
+});
+roda(dirC);
+var carimboPagina = carimboDe(leia(dirC, "painel.html"));
+var carimboMes = carimboDe(leia(dirC, "livro-202608.js"));
+caso("a página carrega um carimbo", !!carimboPagina);
+caso("o arquivo do mês carrega o MESMO carimbo", carimboMes === carimboPagina);
+
+// Determinismo: sem isto, dois checkouts do mesmo commit gerariam carimbos
+// diferentes e a comparação viraria alarme falso permanente.
+var dirC2 = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a"),
+  "20260826-002-b.js": registroBom("20260826-002-b")
+});
+roda(dirC2);
+caso("mesmo livro → MESMO carimbo (sem relógio, sem número de build)",
+  carimboDe(leia(dirC2, "painel.html")) === carimboPagina);
+
+// E o contrário, que é o que faz o carimbo valer alguma coisa: livro diferente
+// tem de dar carimbo diferente. Um carimbo que nunca muda é decoração.
+var dirC3 = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a", { titulo: "outro titulo" }),
+  "20260826-002-b.js": registroBom("20260826-002-b")
+});
+roda(dirC3);
+caso("livro diferente → carimbo DIFERENTE (senão ele não detecta nada)",
+  carimboDe(leia(dirC3, "painel.html")) !== carimboPagina);
+
+// Fim de linha não é conteúdo: um checkout Windows e um runner Linux têm de
+// produzir o mesmo carimbo, senão o painel acusaria "gerações diferentes"
+// toda vez que o dono abrisse o arquivo do PC dele.
+var dirC4 = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a").split("\n").join("\r\n"),
+  "20260826-002-b.js": registroBom("20260826-002-b").split("\n").join("\r\n")
+});
+roda(dirC4);
+caso("registro em CRLF → MESMO carimbo (fim de linha não é conteúdo)",
+  carimboDe(leia(dirC4, "painel.html")) === carimboPagina);
+
+console.log("== as três ilhas de script da página compilam ==");
+// O mais perto que dá para chegar de "a página vai rodar" sem um navegador: as
+// ilhas são extraídas com a MESMA regex que o Django usa para calcular o CSP
+// (services/admin/apps/core/painel.py) e compiladas. Um erro de sintaxe no
+// template passaria por todos os outros testes e só apareceria na tela do dono.
+// Quem executa de verdade, com DOM, é o teste de navegador do CI.
+var vm = require("vm");
+var htmlGerado = leia(dirC, "painel.html");
+var reIlha = /<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g;
+var ilhas = [], achou;
+while ((achou = reIlha.exec(htmlGerado))) ilhas.push(achou[1]);
+caso("a página tem exatamente 3 ilhas (regras, dados, aplicação)", ilhas.length === 3);
+ilhas.forEach(function (codigo, i) {
+  var ok = true;
+  try { new vm.Script(codigo); } catch (e) { ok = false; console.error("      " + e.message); }
+  caso("a ilha " + (i + 1) + " compila como JavaScript válido", ok);
+});
+// As duas primeiras não dependem de DOM: executam de verdade.
+var sandbox = { window: {} };
+sandbox.window.window = sandbox.window;
+vm.createContext(sandbox);
+var executou = true;
+try {
+  vm.runInContext(ilhas[0], sandbox, { timeout: 5000 });
+  vm.runInContext(ilhas[1], sandbox, { timeout: 5000 });
+} catch (e) { executou = false; console.error("      " + e.message); }
+caso("as ilhas de regras e de dados EXECUTAM", executou);
+caso("...e deixam LOGICA e PAINEL de pé",
+  executou && typeof sandbox.window.LOGICA === "object" && typeof sandbox.PAINEL === "object");
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. O gerador NÃO está confiável.");

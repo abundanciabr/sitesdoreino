@@ -8,7 +8,7 @@ mesma engrenagem que o teste existe para vigiar.*
 
 Este arquivo é o par disso para `ci/verificar_painel.py`. Cada sabotagem monta um
 repositório de mentira, quebra UMA coisa, e exige o vermelho — porque é
-exatamente contra essas sete formas de mentira que o verificador existe:
+exatamente contra essas nove formas de mentira que o verificador existe:
 
   1. registro no Git e fora dos artefatos  → sumiu da tela
   2. registro nos artefatos e fora do Git  → o painel inventou
@@ -17,6 +17,8 @@ exatamente contra essas sete formas de mentira que o verificador existe:
   5. contagem declarada mentindo           → a página promete o que não entrega
   6. mês fantasma no disco                 → servido sem ninguém reivindicar
   7. `livro.js` de volta                   → o desenho antigo voltando em silêncio
+  8. carimbos divergentes entre artefatos  → a Memória quebrada para sempre
+  9. página sem carimbo                    → o diagnóstico perde uma distinção
 
 O que NÃO é testado aqui: a validação de cada registro (essa é do gerador, e tem
 suíte adversarial própria em `painel/testes/teste_gerador.js`). Este verificador
@@ -454,3 +456,48 @@ def test_o_livro_de_registros_NAO_esta_marcado(tmp_path: Path) -> None:
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert proc.stdout.strip().endswith(": merge: unspecified"), proc.stdout
+
+
+# ------------------------------------------- o carimbo, que separa duas falhas
+
+
+def test_carimbos_divergentes_entre_artefatos_reprovam(tmp_path: Path) -> None:
+    """Página e mês do MESMO build têm de carregar o mesmo carimbo.
+
+    O carimbo existe para a página conseguir dizer ao dono "estes arquivos são
+    de gerações diferentes" em vez de "faltam registros" — são causas distintas
+    e mandam procurar em lugares distintos. Mas isso só vale se, num build são,
+    eles baterem. Um gerador que carimbasse diferente deixaria a Memória
+    permanentemente quebrada, e a tela do dono seria o primeiro lugar a
+    descobrir. Aqui não é.
+    """
+    raiz = _repo_falso(tmp_path)
+    caminho = _mes(raiz)
+    texto = caminho.read_text(encoding="utf-8")
+    caminho.write_text(
+        re.sub(r'carimbo: "[a-f0-9]+"', 'carimbo: "000000000000"', texto),
+        encoding="utf-8",
+    )
+
+    proc = _roda(raiz)
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "carimbo" in proc.stdout
+    assert "000000000000" in proc.stdout
+
+
+def test_pagina_sem_carimbo_reprova(tmp_path: Path) -> None:
+    """Sem carimbo a página perde a capacidade de distinguir as duas falhas.
+
+    Ela continuaria abrindo e funcionando — por isso nenhum teste de tela
+    pegaria. É uma regressão de diagnóstico, silenciosa por natureza.
+    """
+    raiz = _repo_falso(tmp_path)
+    pagina = raiz / "painel" / "painel.html"
+    texto = pagina.read_text(encoding="utf-8")
+    pagina.write_text(
+        texto.replace('carimbo: "', 'carimboAntigo: "', 1), encoding="utf-8"
+    )
+
+    proc = _roda(raiz)
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "não carrega carimbo" in proc.stdout

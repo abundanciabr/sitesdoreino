@@ -88,6 +88,18 @@
   existe `ci/verificar_painel.py`, em Python, partindo de `git ls-files` e
   comparando CONJUNTOS de ids em vez de contagens. Cardinalidade não é
   integridade: `A B C C` passa por `A B C D` numa contagem, e não passa por ele.
+- **A página depõe sobre si mesma:** quando algo falha, a tela nomeia a CLASSE
+  (A não montou · B resumo vazio · C capa não calculou · D mês não chegou ·
+  E mês incompleto · F gerações diferentes), descobre sozinha se foi aberta por
+  `file://` ou pelo site, e entrega um bloco copiável para colar numa sessão.
+  Ninguém entra no servidor e ninguém vê o navegador do dono — então o sistema
+  produz a própria evidência.
+- **Falha de um mês NÃO apaga a capa:** a faixa vermelha fica sobre a seção
+  afetada, barulhenta e local. A capa veio embutida nesta mesma página e não
+  depende do histórico. Apagar tudo seria o painel mentindo na outra direção.
+- **O carimbo da geração** viaja na página e em cada mês. Se diferirem, os
+  arquivos são de gerações diferentes — quase sempre OneDrive sincronizando
+  pela metade — e a tela diz isso, em vez de acusar registro faltando.
 - **Conflito em arquivo gerado não se resolve à mão:** `painel.html` e
   `livro-*.js` estão marcados com `-merge` no `.gitattributes`, então o Git para
   em vez de produzir uma junção plausível e errada. Apague, rode o gerador,
