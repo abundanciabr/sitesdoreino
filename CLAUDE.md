@@ -140,6 +140,15 @@ CODEOWNERS (`contracts/`, `pagamentos`, `checkout`, `infra/`, `ci/`,
 `.github/`, arquivos-lei da raiz) só com mandato do despacho, e **anunciado
 nominalmente no relatório final**.
 
+**Se a janela não fechar, peça pouso em vez de insistir** (desde 28/08/2026):
+`gh pr edit <N> --add-label pousar` e siga a vida. A pista atualiza, confere
+pelo mesmo `mergear.py` e mergeia — um PR por vez, com paciência que você não
+tem. Use quando o PR ficar `BEHIND` mais de uma vez, ou quando tocar `painel/`
+num dia movimentado: ali a `main` anda mais rápido que o seu ciclo de checks, e
+insistir é gastar franquia contra um relógio que você não controla
+(`armadilhas/156`; medido: oito voltas num PR de 4 arquivos). Detalhes e os três
+desfechos: `RITOS.md` §2 peça 5.
+
 **Vários despachos em paralelo (lote):** a sessão raiz rege pelo
 `RUNBOOK-LOTES.md` — composição, as sete regras de inteligência, janela de
 merge serial e fechamento. Se o mantenedor pedir "toque um lote", é esse
