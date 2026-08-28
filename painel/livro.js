@@ -2,7 +2,7 @@
 // GERADO por painel/gerar_manifesto.js — NÃO EDITE À MÃO.
 // Para regenerar: node painel/gerar_manifesto.js
 // =============================================================================
-// O livro INTEIRO num arquivo só: 95 registros, um pedido.
+// O livro INTEIRO num arquivo só: 97 registros, um pedido.
 // A fonte de verdade continua em painel/registros/, um arquivo por ocorrência;
 // isto aqui é só o empacotamento que a página carrega.
 
@@ -1524,5 +1524,37 @@
   responde_a: null,
   gravidade: "verde",
   frente: "comunidade",
+  vence_em_dias: null
+});})();
+// ---- 20260827-036-o-servidor-abre-uma-linha-nova-a-cada-visita ----
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260827-036-o-servidor-abre-uma-linha-nova-a-cada-visita",
+  tipo: "pendencia",
+  quando: "2026-08-27",
+  titulo: "Achei a causa de fundo das 4 telas vermelhas — e ela nao e do painel, e do servidor inteiro",
+  detalhe: "A auditoria das 5 consultorias me obrigou a ir ler o codigo de verdade, e apareceu uma coisa que nenhuma das cinco tinha previsto. Ela nao muda nada hoje, mas voce precisa saber que existe.\n\nEM PORTUGUES SIMPLES: cada vez que alguem abre uma pagina, o servidor abre uma LINHA TELEFONICA nova com o banco de dados — e nao desliga. Ela fica ocupada por mais um minuto e depois e abandonada em aberto. So existem 100 linhas no total, divididas entre as 11 partes do sistema (o site, o login, a caixa de sugestoes, a area administrativa, e por ai vai).\n\nO PAINEL FOI SO O PRIMEIRO A ESTOURAR ESSE LIMITE. Ele pedia 86 arquivos de uma vez, cada pedido virava uma pergunta ao login, cada pergunta abria uma linha. As que nao acharam linha livre voltaram como erro — e a tela vermelha apareceu. O conserto de hoje (um pedido no lugar de 86) tirou o painel da frente do problema, mas NAO consertou o problema: qualquer pagina movimentada faz a mesma coisa. Uma aula com 30 audios, por exemplo. So que ai serao alunos de verdade vendo o erro, e nao um painel de uma pessoa so.\n\nPOR QUE EU NAO CONSERTEI AGORA: voce decidiu, hoje, que esta obra e so do painel — e eu concordo com a ordem. Mexer nisso e cirurgia no portao de entrada de todas as celulas, e merece uma conversa propria, com medida antes e depois. Este registro existe para o assunto nao sumir.\n\nO QUE EU AINDA NAO SEI, E QUE MUDA O TAMANHO DO CONSERTO: eu nunca vi o log do servidor no dia do incidente — nao tenho acesso a maquina (Lei 5), e ninguem guardou. Entao isto continua sendo deducao lida no codigo, nao prova. O primeiro passo do plano aprovado hoje inclui uma pagina que faz o proprio servidor contar o que acontece com ele. Depois dela, isto para de ser palpite.\n\nO QUE PRECISO DE VOCE: nada agora. Quando o painel novo estiver de pe e a pagina de medicao existir, eu volto com os numeros reais e uma pergunta de multipla escolha sobre o que fazer. Se antes disso alguma pagina do site der erro estranho sob movimento, e provavelmente isto.",
+  autoridade: "sessao",
+  evidencia: "Leitura do codigo de producao em 27/08/2026, nas versoes exatas instaladas (Django 5.1.4, asgiref 3.12.1): services/admin/Dockerfile linha 11 e services/identidade/Dockerfile linha 11 sobem uvicorn SEM --workers (1 processo); django/core/handlers/asgi.py linha 161 abre um ThreadSensitiveContext POR REQUISICAO e asgiref/sync.py linha 476 cria um ThreadPoolExecutor(max_workers=1) para cada um (thread nova por requisicao, sem teto); django/db/utils.py linha 145 marca thread_critical=True e o proprio comentario do Django admite \"There's no cleanup after async contexts\" (conexao de banco e por thread e nao e fechada); services/identidade/config/settings.py linha 45 usa conn_max_age=60 (nao fecha ao fim da requisicao); infra/docker-compose.yml sobe postgres:17 sem arquivo de configuracao e sem command, portanto com max_connections=100 default, para 11 celulas — conferido com 'git grep max_connections' em infra/ e services/, que nao devolve nada.",
+  verificado_em: "2026-08-27",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "fabrica",
+  vence_em_dias: null
+});})();
+// ---- 20260827-037-o-painel-vai-ser-refeito-e-voce-decidiu-como ----
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260827-037-o-painel-vai-ser-refeito-e-voce-decidiu-como",
+  tipo: "decisao",
+  quando: "2026-08-27",
+  titulo: "Voce mandou refazer o painel, e escolheu as tres coisas que decidem o desenho",
+  detalhe: "Voce juntou 15 documentos de analise — cinco robos diferentes, cada um respondendo tres perguntas, dando um parecer individual e depois um parecer como se fosse uma equipe senior — e mandou analisar tudo antes de qualquer plano. Analisei os 15, e conferi no codigo real cada afirmacao que eles fizeram sobre nos.\n\nO QUE OS CINCO DISSERAM JUNTOS: o conserto de hoje curou o sintoma e deixou a doenca. O painel continua custando, para abrir, proporcionalmente a TODA a historia do projeto — hoje sao 95 registros, e num unico dia foram escritos 48. E a trava que protege o painel virou parcialmente circular: quem confere e o mesmo programa que escreve.\n\nO QUE A CONFERENCIA DESMENTIU: quatro suspeitas fortes deles caem quando se le o codigo. Nao e conexao nova a cada chamada (ja foi consertado antes), nao e banco lento (e Postgres, e a consulta e uma so), nao existe porteiro no Traefik derrubando pedido, e nao existe risco de o painel misturar versoes — ele e assado dentro da imagem, inteiro, de uma vez. Registrar isso importa: sao quatro caminhos que ninguem precisa mais investigar.\n\nAS TRES ESCOLHAS QUE VOCE FEZ, E O QUE CADA UMA MUDA:\n\n1. SO O PAINEL AGORA. O defeito de fundo do servidor (registro 036) fica registrado e espera. Voce depois abriu uma excecao nomeada: pode construir a pagina que faz o servidor contar o que acontece com ele, porque sem ela o assunto nunca sai de deducao.\n\n2. RESUMO PRONTO, HISTORICO SO QUANDO PEDIR. O painel passa a abrir com a capa ja calculada e nada mais; o historico antigo so carrega se voce clicar. Isso faz o custo de abrir parar de crescer para sempre — e foi o que permitiu ir alem do que eu tinha planejado: abrir o painel vai passar a ser UM pedido, nao tres.\n\n3. OS DOIS JEITOS CONTINUAM. Duplo clique no arquivo do seu PC e pelo site. Isso descartou tres recomendacoes fortes (tirar os arquivos do Git, usar banco de dados, gerar tudo so no servidor) — todas quebrariam o duplo clique.\n\nUMA COISA QUE UM DELES RECOMENDOU E QUE EU RECUSEI EM SEU NOME: um dos pareceres disse para congelar o painel e priorizar o caminho de venda. Nao da: a frente de vender esta pausada por ordem sua desde 22/08, e o proprio painel diz isso na tela. A recomendacao supunha um trabalho alternativo que nao existe.\n\nADIADO POR VOCE: organizar a pasta de registros em subpastas por mes. E ergonomia dos robos, nao da sua tela — 95 arquivos hoje, cerca de 18 mil num ano no ritmo atual. Fica esperando incomodar.",
+  autoridade: "mantenedor",
+  evidencia: "Analise dos 15 documentos em docs/paineis/melhorias-e-otimizacoes/ (5 de perguntas, 5 de recomendacao, 5 de equipe) cruzada com o codigo em origin/main eaae6d7, em 27/08/2026. Decisoes tomadas pelo mantenedor por pergunta estruturada na mesma sessao. Plano aprovado por ele antes de qualquer linha de codigo.",
+  verificado_em: "2026-08-27",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
   vence_em_dias: null
 });})();
