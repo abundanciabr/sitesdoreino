@@ -105,7 +105,19 @@ def _consultar_avisos(destinatario_id: str, site_id: str) -> "int | None":
 # pessoa — o mantenedor liberando alguém —, e quem acabou de ser aprovado não
 # pode esperar um minuto inteiro para ver a porta abrir.
 _CACHE_DE_CATEGORIA: dict = {}
+# TTL ASSIMÉTRICO, e a assimetria é a lição de 28/08/2026 — a mesma que a Caixa
+# aprendeu no mesmo dia (`services/sugestoes/LICOES.md`), aplicada aqui pelo
+# mesmo motivo e com o mesmo número, de propósito: é uma regra só.
+#
+# `aluno` pode envelhecer: um "sim" velho custa o atalho aparecer por mais
+# alguns segundos para quem deixou de ser aluno — irrelevante.
 TTL_DA_CATEGORIA = 30
+# Tudo que NÃO é aluno — inclusive o `None` de "não consegui perguntar" — vale
+# por pouco. Um "ainda não" velho é a home dizendo "seu pedido está em análise"
+# para quem ACABOU de ser liberado, e a Caixa acabou de mandar a pessoa para cá
+# justamente para ela ver que entrou. Errar aqui é errar no instante da
+# comemoração.
+TTL_AINDA_NAO_E_ALUNO = 5
 MAXIMO_DE_CATEGORIAS_EM_CACHE = 500
 
 
@@ -143,8 +155,11 @@ def _consultar_categoria(cookie: str, id_da_pessoa: str) -> "dict | None":
     if len(_CACHE_DE_CATEGORIA) >= MAXIMO_DE_CATEGORIAS_EM_CACHE:
         _CACHE_DE_CATEGORIA.clear()
     # `None` também é cacheado: uma `alunos` fora do ar não pode custar duas
-    # tentativas de rede por página vista na mesma rajada.
-    _CACHE_DE_CATEGORIA[id_da_pessoa] = (agora + TTL_DA_CATEGORIA, situacao)
+    # tentativas de rede por página vista na mesma rajada. Mas ele vale POUCO,
+    # como todo "ainda não" — ver os dois TTLs acima.
+    e_aluno = bool(situacao) and situacao.get("categoria") == "aluno"
+    validade = TTL_DA_CATEGORIA if e_aluno else TTL_AINDA_NAO_E_ALUNO
+    _CACHE_DE_CATEGORIA[id_da_pessoa] = (agora + validade, situacao)
     return situacao
 
 
