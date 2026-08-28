@@ -9,13 +9,13 @@
 <div class="envolucro">
   <a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a>
   <h1>Alunos</h1>
-  <p class="subtitulo">Os tipos de aluno da escola, e quantos há em cada um.</p>
+  <p class="subtitulo">Os tipos de aluno da escola, e quem está esperando você.</p>
 
   {% comment %}
-  `is None` e NÃO `{% if tipo.quantidade %}`: zero é falso em template, e o dia
-  em que o número existir de verdade um "0" legítimo cairia no ramo do "não
-  sei". Os dois estados precisam ser distinguíveis na tela, porque são
-  respostas opostas à pergunta do mantenedor. Guarda:
+  `is None` e NÃO `{% if tipo.quantidade %}`: zero é falso em template, e um
+  zero LEGÍTIMO — que agora existe, porque a fila é consultada de verdade —
+  cairia no ramo do "não sei". Os dois estados precisam ser distinguíveis na
+  tela, porque são respostas opostas à pergunta do mantenedor. Guarda:
   tests/test_painel_da_escola.py.
   {% endcomment %}
   <div class="cartoes">
@@ -35,32 +35,57 @@
     {% endfor %}
   </div>
 
-  <p style="margin-top:28px" class="aviso">
-    <b>O traço no lugar do número é proposital.</b>
-    Um <b>0</b> aqui seria mentira: ele diz <i>"não há ninguém"</i>, quando a
-    verdade de hoje é <i>"ninguém está contando ainda"</i>. Enquanto a conta não
-    existir, cada tipo mostra o traço e diz o que falta para o número nascer.
-  </p>
+  <h2 style="font-size:16px; margin:30px 0 10px">Quem está esperando</h2>
 
+  {% if nao_consigo_perguntar %}
+  <p class="aviso">
+    <b>Ainda não consigo perguntar quem está esperando.</b>
+    A fila existe e está recebendo gente — o que falta é a senha de par entre
+    esta área e a parte do sistema que guarda os alunos. Ela só pode ser
+    escrita dentro do servidor, por você, com um comando de uma linha. Ele está
+    no painel do sistema, na caixa <b>Precisa de você</b>.
+  </p>
+  {% elif not esperando %}
+  <p class="aviso">
+    <b>Ninguém está esperando agora.</b>
+    Este zero é medido, não suposto: eu perguntei e a fila voltou vazia. Quando
+    alguém pedir entrada pelo site, aparece aqui.
+  </p>
+  {% else %}
   {% comment %}
-  Um booleano CALCULADO NA VIEW, e nao um laco com condicao aqui: dois tipos
-  sao PORTA_PRONTA (a fila e os recusados), e a versao com `{% for %}` ou
-  repetia o paragrafo duas vezes ou dependia de a fila ser o primeiro item da
-  tupla — que e ordem de produto, nao invariante. Logica de apresentacao que
-  depende da ORDEM de uma lista quebra no dia em que alguem reordena a lista
-  por um motivo legitimo, e quebra em silencio.
+  Cartão por pessoa, e não tabela: esta área é usada no celular, e uma tabela
+  de cinco colunas rola para o lado ou aperta o nome até virar sopa de letras.
   {% endcomment %}
-  {% if ha_porta_pronta %}
+  <div class="cartoes">
+    {% for pessoa in esperando %}
+    <div class="cartao">
+      <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
+      <div class="nota">{{ pessoa.email }}</div>
+      <div class="nota">WhatsApp: {{ pessoa.whatsapp }}</div>
+      <div class="nota">
+        {% if pessoa.esperando_ha_dias == 0 %}Pediu hoje{% else %}Espera há {{ pessoa.esperando_ha_dias }} dia{{ pessoa.esperando_ha_dias|pluralize }}{% endif %}
+        {% if pessoa.comprou_em %} &middot; diz ter comprado em {{ pessoa.comprou_em }}{% endif %}
+        {% if pessoa.turma %} &middot; turma: {{ pessoa.turma }}{% endif %}
+      </div>
+      {% if mostrar_escola %}<div class="nota">Escola: {{ pessoa.site_id }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  </div>
   <p style="margin-top:16px" class="aviso">
-    <b>A fila de espera já existe — e já está recebendo gente.</b>
-    Desde 27 de agosto, quem entra no site e ainda não é aluno encontra um
-    formulário de pedido de liberação em vez de uma porta fechada, e cada
-    pedido vira uma linha guardada. Quem ainda não sabe perguntar por essa
-    lista é <i>esta área aqui</i>. Faltam duas coisas, nesta ordem: uma
-    <b>senha de par</b> entre esta área e a parte do sistema que guarda os
-    alunos — um comando de uma linha, no servidor, que só você pode rodar — e
-    depois a <b>tela de liberar</b>, que é trabalho meu.
+    <b>Liberar e recusar ainda não está aqui — é o próximo passo.</b>
+    Por enquanto esta tela mostra quem espera e há quanto tempo, que é o que
+    impede alguém de ser esquecido. Os botões de decidir entram junto com o
+    registro de quem decidiu o quê, e não antes: um botão que muda a vida de
+    alguém sem deixar rastro é o tipo de coisa que ninguém consegue auditar
+    depois.
   </p>
   {% endif %}
+
+  <p style="margin-top:28px" class="aviso">
+    <b>Onde aparece um traço, o número não foi medido.</b>
+    Um <b>0</b> no lugar dele seria mentira: diria <i>"não há ninguém"</i>
+    quando a verdade é <i>"não consegui contar"</i>. Onde há número, ele foi
+    perguntado agora — inclusive quando é zero.
+  </p>
 </div>
 {% endblock %}

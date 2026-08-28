@@ -45,7 +45,7 @@ from django.template.loader import render_to_string
 from django.test import Client
 from django.urls import get_script_prefix, reverse, set_script_prefix
 
-from apps.core.views import TIPOS_DE_ALUNO, FonteAusente
+from apps.core.views import TIPOS_DE_ALUNO, FonteAusente, tipos_com_contagem
 
 BASE = "http://identidade:8000/interno"
 SESSAO = f"{BASE}/sessao/completa"
@@ -215,14 +215,19 @@ def _renderiza(tipos) -> str:
         {
             "admin": {"nome": "Fulano", "email": DONO, "id": "x"},
             "tipos": tipos,
-            "ha_porta_pronta": any(
-                x["fonte_ausente"] == FonteAusente.PORTA_PRONTA for x in tipos
-            ),
+            "esperando": None,
+            "nao_consigo_perguntar": True,
+            "mostrar_escola": False,
         },
     )
 
 
 def _um_tipo(quantidade):
+    """Um tipo já CONTADO — a forma que `tipos_com_contagem()` devolve.
+
+    O catálogo do módulo não tem `quantidade`; ela é acrescentada por
+    requisição. Este ajudante monta a forma que chega ao template.
+    """
     return [
         {
             "slug": "teste",
@@ -265,10 +270,42 @@ def test_o_guarda_morde_zero_de_verdade_muda_a_tela():
     assert "Ainda não dá para contar." not in html
 
 
-def test_hoje_nenhum_tipo_tem_numero_e_isso_e_declarado():
-    """Enquanto não houver de onde ler, `None` — nunca um número plantado."""
-    quantidades = [t["quantidade"] for t in TIPOS_DE_ALUNO]
-    assert quantidades == [None] * len(TIPOS_DE_ALUNO)
+def test_o_catalogo_do_modulo_nao_guarda_contagem():
+    """Contagem é de REQUISIÇÃO, e guardá-la no módulo seria vazamento entre pessoas.
+
+    `TIPOS_DE_ALUNO` é um dicionário de módulo: escrever um número nele numa
+    requisição faria esse número aparecer na tela da requisição seguinte, de
+    outra pessoa. O teste trava a ausência do campo — que é o que impede
+    alguém de "otimizar" a contagem para dentro do catálogo.
+    """
+    for tipo in TIPOS_DE_ALUNO:
+        assert "quantidade" not in tipo, tipo["slug"]
+
+
+def test_a_contagem_distingue_nao_sei_de_nenhum():
+    """`None` e `[]` produzem números diferentes — é o invariante da tela.
+
+    Medido na função, e não só na tela: `len([])` é zero, e zero é um FATO
+    ("perguntei, não há ninguém"); `None` é "não consegui perguntar" e não
+    pode virar número nenhum.
+    """
+    por_slug = {
+        t["slug"]: t for t in tipos_com_contagem({"aguardando": [], "recusada": None})
+    }
+    assert por_slug["aguardando-aprovacao"]["quantidade"] == 0
+    assert por_slug["recusados"]["quantidade"] is None
+    # Os tipos sem porta continuam sem número, aconteça o que acontecer.
+    assert por_slug["ativos"]["quantidade"] is None
+
+
+def test_a_contagem_e_o_tamanho_da_fila_devolvida():
+    filas = {
+        "aguardando": [{"id": "1"}, {"id": "2"}, {"id": "3"}],
+        "recusada": [{"id": "4"}],
+    }
+    por_slug = {t["slug"]: t for t in tipos_com_contagem(filas)}
+    assert por_slug["aguardando-aprovacao"]["quantidade"] == 3
+    assert por_slug["recusados"]["quantidade"] == 1
 
 
 def test_todo_tipo_declara_por_que_o_numero_falta():
@@ -280,15 +317,7 @@ def test_todo_tipo_declara_por_que_o_numero_falta():
     valor inventado deixaria a tela sem a frase correspondente, em silêncio.
     """
     validos = {FonteAusente.PORTA_PRONTA, FonteAusente.SEM_OPERACAO}
-    campos = {
-        "slug",
-        "nome",
-        "quem",
-        "quantidade",
-        "fonte",
-        "fonte_ausente",
-        "falta",
-    }
+    campos = {"slug", "nome", "quem", "fonte", "fonte_ausente", "falta"}
     for tipo in TIPOS_DE_ALUNO:
         assert set(tipo) == campos, tipo["slug"]
         assert tipo["fonte_ausente"] in validos, tipo["slug"]
@@ -364,7 +393,11 @@ def test_a_tela_nao_diz_que_a_fila_nao_existe():
     """
     html = _texto(_dentro().get("/escola/alunos/"))
     assert "não existe fila de espera" not in html
-    assert "A fila de espera já existe" in html
+    # Sem o par de tokens (o estado desta suíte), a tela diz que não CONSEGUE
+    # perguntar — nunca que a fila não existe. As duas frases se parecem para
+    # quem lê rápido e são opostas para quem decide o que fazer.
+    assert "Ainda não consigo perguntar" in html
+    assert "A fila existe e está recebendo gente" in html
 
 
 # ------------------------------------------------------ higiene das telas novas
@@ -382,3 +415,184 @@ def test_nenhuma_marca_de_template_vaza_nas_telas(caminho):
     html = _texto(_dentro().get(caminho))
     assert "{#" not in html
     assert "{%" not in html
+
+
+# ---------------------------------------------------- 5. a fila, com dado real
+#
+# Acrescentado em 28/08/2026, quando a tela deixou de listar o que falta e
+# passou a PERGUNTAR (`DECISAO-categorias-de-usuario`, fase 2 da lei da fila).
+#
+# O par de tokens `admin→alunos` é ligado por
+# `infra/provisionar-pares-de-categorias.sh`, na VPS. Enquanto ele não roda, as
+# variáveis não existem — e é por isso que TODOS os testes acima continuam
+# valendo sem tocar em rede nenhuma: `_configuracao()` devolve `None` e a
+# célula nem tenta sair.
+
+ALUNOS = "http://alunos:8000/api/alunos"
+FILA = f"{ALUNOS}/pre-matriculas"
+
+
+@pytest.fixture
+def par_com_a_alunos(monkeypatch):
+    monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
+    monkeypatch.setenv("ALUNOS_API_TOKEN", "token-do-par-admin-alunos")
+
+
+def _pessoa_na_fila(**campos) -> dict:
+    corpo = {
+        "id": "1",
+        "site_id": "escola-a",
+        "email": "quem-espera@exemplo.com",
+        "nome_completo": "Quem Espera",
+        "whatsapp": "(96) 99999-0000",
+        "comprou_em": None,
+        "turma": None,
+        "status": "aguardando",
+        "criada_em": "2026-08-21T10:00:00Z",
+        "esperando_ha_dias": 7,
+        "motivo_recusa": None,
+    }
+    corpo.update(campos)
+    return corpo
+
+
+def _fila_responde(aguardando=None, recusada=None):
+    respx.get(FILA, params={"status": "aguardando"}).mock(
+        return_value=httpx.Response(
+            200, json=aguardando if aguardando is not None else []
+        )
+    )
+    respx.get(FILA, params={"status": "recusada"}).mock(
+        return_value=httpx.Response(200, json=recusada if recusada is not None else [])
+    )
+
+
+@respx.mock
+def test_a_fila_com_gente_mostra_nome_email_whatsapp_e_dias(par_com_a_alunos):
+    _fila_responde(aguardando=[_pessoa_na_fila()])
+    html = _texto(_dentro().get("/escola/alunos/"))
+    assert "Quem Espera" in html
+    assert "quem-espera@exemplo.com" in html
+    assert "(96) 99999-0000" in html
+    assert "Espera há 7 dias" in html
+
+
+@respx.mock
+def test_esta_e_a_unica_tela_que_mostra_o_whatsapp_e_ela_mostra(par_com_a_alunos):
+    """A §5 da lei da fila tem duas metades, e esta é a que costuma faltar.
+
+    A metade guardada por outros testes é "o telefone NÃO sai por mais
+    nenhuma porta". Esta é a outra: ele TEM de sair por esta, senão o
+    mantenedor não consegue conferir quem é a pessoa antes de liberar — e a
+    lei inteira perde o objeto.
+    """
+    _fila_responde(aguardando=[_pessoa_na_fila(whatsapp="(11) 91234-5678")])
+    assert "(11) 91234-5678" in _texto(_dentro().get("/escola/alunos/"))
+
+
+@respx.mock
+def test_fila_vazia_medida_mostra_zero_e_nao_traco(par_com_a_alunos):
+    """O zero LEGÍTIMO nasce aqui — e agora ele existe de verdade.
+
+    Até esta mudança nenhum tipo tinha número, e o `—` cobria tudo. Com a
+    pergunta feita, "perguntei e não há ninguém" é um fato, e mostrá-lo como
+    traço seria esconder uma resposta boa.
+    """
+    _fila_responde(aguardando=[], recusada=[])
+    html = _texto(_dentro().get("/escola/alunos/"))
+    assert "Ninguém está esperando agora" in html
+    assert 'class="valor">0<' in html
+    assert 'class="valor vazio">&mdash;<' in html, "os tipos sem porta perderam o traço"
+
+
+@respx.mock
+@pytest.mark.parametrize(
+    "resposta,motivo",
+    [
+        (httpx.Response(401), "o par não está em TOKENS_ACEITOS_ADMIN"),
+        (httpx.Response(500), "a alunos quebrou"),
+        (httpx.Response(200, text="<html>proxy</html>"), "corpo que não é JSON"),
+        (httpx.Response(200, json={"detail": "oi"}), "corpo que não é lista"),
+    ],
+)
+def test_a_alunos_respondendo_mal_nao_derruba_a_pagina(
+    par_com_a_alunos, resposta, motivo
+):
+    """Fail-OPEN por tile: a página abre, o número some, e a tela DIZ por quê.
+
+    É o inverso deliberado da porta desta mesma célula (`clients.py` explica):
+    lá a dúvida fecha, porque decide acesso; aqui a dúvida não pode derrubar a
+    ferramenta que o mantenedor abre justamente quando algo está errado.
+    """
+    respx.get(FILA).mock(return_value=resposta)
+    r = _dentro().get("/escola/alunos/")
+    assert r.status_code == 200, f"{motivo}: {r.content}"
+    html = _texto(r)
+    assert "Ainda não consigo perguntar" in html
+    assert 'class="valor">0<' not in html, f"{motivo}: virou zero, que é mentira"
+
+
+@respx.mock
+def test_a_alunos_fora_do_ar_nao_derruba_a_pagina(par_com_a_alunos):
+    respx.get(FILA).mock(side_effect=httpx.ConnectError("recusou"))
+    r = _dentro().get("/escola/alunos/")
+    assert r.status_code == 200, r.content
+    assert "Ainda não consigo perguntar" in _texto(r)
+
+
+@respx.mock
+def test_com_uma_escola_so_o_codigo_interno_dela_nao_aparece(par_com_a_alunos):
+    """Identificador opaco numa tela de leigo é ruído, e ruído esconde sinal."""
+    _fila_responde(aguardando=[_pessoa_na_fila(site_id="escola-a")])
+    assert "escola-a" not in _texto(_dentro().get("/escola/alunos/"))
+
+
+@respx.mock
+def test_com_duas_escolas_cada_linha_diz_de_qual_veio(par_com_a_alunos):
+    _fila_responde(
+        aguardando=[
+            _pessoa_na_fila(id="1", site_id="escola-a", email="a@exemplo.com"),
+            _pessoa_na_fila(id="2", site_id="escola-b", email="b@exemplo.com"),
+        ]
+    )
+    html = _texto(_dentro().get("/escola/alunos/"))
+    assert "escola-a" in html and "escola-b" in html
+
+
+@respx.mock
+def test_a_segunda_escola_aparece_mesmo_vindo_so_das_recusadas(par_com_a_alunos):
+    """A conta das escolas olha TODAS as filas, não só a que está na tela.
+
+    Sem isto, uma escola cuja única presença é uma recusa deixaria a coluna
+    escondida — e a lista de espera diria "escola" nenhuma justamente no dia
+    em que passou a haver duas.
+    """
+    _fila_responde(
+        aguardando=[_pessoa_na_fila(site_id="escola-a")],
+        recusada=[_pessoa_na_fila(id="9", site_id="escola-b", status="recusada")],
+    )
+    assert "escola-a" in _texto(_dentro().get("/escola/alunos/"))
+
+
+def test_sem_o_par_de_tokens_a_celula_nem_tenta_sair_para_a_rede():
+    """O estado de HOJE, e ele é o caminho normal — não uma falha.
+
+    `respx.mock` sem rota registrada estoura em qualquer chamada inesperada;
+    este teste roda SEM ele de propósito, e o que prova é o outro lado: com o
+    env vazio, `_configuracao()` devolve `None` antes de qualquer rede.
+    """
+    from apps.core.clients import AlunosClient
+
+    assert AlunosClient()._configuracao() is None
+    assert AlunosClient().fila("aguardando") is None
+
+
+def test_o_orcamento_de_tempo_da_fila_e_explicito():
+    """Célula fora do ar e célula que PENDURA são falhas diferentes.
+
+    Sem orçamento, a segunda vira a página do mantenedor travando — e ele não
+    tem como saber que o problema é de outra peça.
+    """
+    from apps.core.clients import AlunosClient
+
+    assert AlunosClient.TIMEOUT == 2.0
