@@ -201,6 +201,32 @@ primeira oportunidade de violá-la.
   na lista ⇒ 3; `frame-ancestors 'none'` ⇒ 1; isentar um caminho a mais ⇒ 15.
 - **Célula dona:** admin
 
+### [INV-P14] `/mapa-ia/` é a Única Fresta Pública na Porta, e Só Ela
+- **O quê:** além de `/healthz` (rota de máquina), a célula `admin` responde
+  **sem sessão** a exatamente 9 caminhos — `/mapa-ia/` e os 8 documentos de
+  `painel/ia/*.md` — servidos como `text/plain`, nunca HTML. `CAMINHOS_ISENTOS`
+  (`apps/core/porta.py`) lista cada um por igualdade EXATA, não por prefixo:
+  qualquer outro caminho sob `/mapa-ia/*` continua atrás da porta, com a
+  mesma resposta de sempre (302 sem sessão, 404 para quem não está
+  autorizado). A view (`apps/core/mapa_ia.py`) tem uma segunda checagem
+  independente — extensão `.md` e a pasta resolvida continuando ancestral do
+  arquivo — que protegeria mesmo se a primeira um dia virasse prefixo por
+  engano.
+- **Por quê:** o mantenedor pediu (28/08/2026) um link público do mapa
+  técnico do projeto para poder mandar a IAs externas sem exigir login.
+  `painel/ia/` já foi escrito para não conter segredo nenhum (varredura
+  dedicada antes de existir); tornar exatamente esses arquivos públicos, e só
+  eles, atende ao pedido sem abrir mão do resto do invariante [INV-P13] — a
+  porta continua fail-closed para tudo que não está nomeado aqui, um a um.
+- **Teste-Guarda:**
+  `services/admin/tests/test_inv_porta_fail_closed.py::test_os_caminhos_isentos_sao_exatamente_estes_e_so_estes`
+  (o conjunto exato) e `services/admin/tests/test_mapa_ia_publico.py` (cada
+  arquivo responde 200 sem cookie e é byte-a-byte o do repositório; qualquer
+  caminho não listado fica atrás da porta como antes; a view recusa sozinha,
+  chamada direto, mesmo sem a porta — extensão errada e travessia de
+  diretório, provado com um arquivo real de fora da pasta).
+- **Célula dona:** admin
+
 ### [INV-SUG11] Identidade Cunhada Guarda o Id da Plataforma
 - **O quê:** toda `Identidade` cunhada pela célula `sugestoes` depois da migration
   `0006` guarda, ao lado do id opaco que ela mesma cunha, o **id da identidade da
