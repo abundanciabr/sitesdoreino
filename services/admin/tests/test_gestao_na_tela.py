@@ -153,17 +153,19 @@ def test_o_aluno_que_tambem_e_administrador_aparece_marcado():
 
 
 @respx.mock
-def test_a_tela_explica_por_que_nao_ha_campo_de_administrador():
-    """O único item do pedido que ficou de fora — e a tela diz isso.
+def test_a_tela_conta_o_que_o_botao_de_administrador_custou():
+    """O texto mudou junto com a lei, e o guarda mudou junto com o texto.
 
-    Sem esta explicação, o mantenedor procuraria o campo, não acharia, e
-    concluiria que faltou fazer. A tela também mostra quem é administrador
-    hoje, para a resposta ser útil e não só uma negativa.
+    Até 28/08 ele explicava por que o botão NÃO existia. O mantenedor decidiu
+    que passasse a existir, com o preço na mesa — e agora a tela conta qual é
+    esse preço, em vez de o aviso sumir junto com a limitação. Uma tela que
+    ganha poder e perde a explicação deixa a próxima pessoa sem saber o que
+    foi trocado.
     """
     _tela_responde([_aluno()])
     html = _dentro().get("/escola/alunos/").content.decode()
-    assert "tornar administrador" in html
-    assert "acesso ao servidor" in html
+    assert "Quem é administrador desta área" in html
+    assert "chaves do servidor" in html
     assert DONO in html
 
 
@@ -282,14 +284,32 @@ def test_a_auditoria_registra_ate_o_que_nao_deu_certo(resposta, desfecho, recado
 
 @pytest.mark.django_db
 @respx.mock
-def test_a_auditoria_diz_O_QUE_foi_pedido():
-    """ "editar" sem o que mudou responde metade da pergunta."""
+def test_a_auditoria_diz_QUAIS_campos_mudaram_e_nunca_os_valores():
+    """A regra que torna "apagar de vez" possível — e ela mudou hoje.
+
+    Esta tabela é append-only por TRIGGER: nem eu nem um comando direto no
+    banco editam ou apagam uma linha dela. Enquanto o detalhe guardava
+    `nome_completo=Fulano` e `whatsapp=...`, apagar a pessoa era impossível sem
+    furar a própria trava (`DECISAO-administradores-e-apagar` §4).
+
+    Agora ele guarda os NOMES dos campos tocados. O `status` sai com o valor
+    porque não é dado da pessoa: é a decisão do mantenedor, e sem ela a linha
+    não diz o que ele fez.
+    """
     _salvar_responde()
-    _salvar(_dentro(), status="suspensa", turma="Turma C")
+    _salvar(
+        _dentro(),
+        status="suspensa",
+        turma="Turma Secreta",
+        nome_completo="Fulano de Tal",
+        whatsapp="(96) 98888-7777",
+    )
 
     detalhe = Registro.objects.get().detalhe
     assert "status=suspensa" in detalhe
-    assert "turma=Turma C" in detalhe
+    assert "turma" in detalhe and "nome_completo" in detalhe
+    for valor in ("Turma Secreta", "Fulano de Tal", "98888-7777"):
+        assert valor not in detalhe, f"dado da pessoa vazou para a auditoria: {valor}"
 
 
 @pytest.mark.django_db

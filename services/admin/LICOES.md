@@ -208,3 +208,39 @@ passou a declarar `ERRCODE = '23000'` (para os dois bancos falharem IGUAL, que
 passou a aceitar a classe-pai `DatabaseError` conferindo a mensagem. Afrouxar a
 asserção sem corrigir o trigger teria escondido uma diferença real entre dev e
 produção.
+
+## Auditoria append-only e "apagar de vez" brigam — e a briga tem lado certo (28/08/2026)
+
+Na mesma tarde, esta célula ganhou (a) uma auditoria append-only por trigger no
+banco e (b) um botão que apaga uma pessoa de vez. **As duas coisas são
+incompatíveis se a auditoria guardar dado que a PESSOA forneceu**: apagar
+alguém exigiria editar linhas que o próprio banco recusa editar.
+
+O conflito nasceu de código escrito horas antes: o formulário de gestão gravava
+`nome_completo=Fulano`, `whatsapp=...` no detalhe da auditoria.
+
+**A regra, e ela vale para toda escrita desta área:** a auditoria guarda o que
+o OPERADOR fez e escreveu — os NOMES dos campos tocados, a decisão, o motivo
+que ele digitou. Nunca os valores que a pessoa preencheu. O guarda está em
+`tests/test_gestao_na_tela.py::test_a_auditoria_diz_QUAIS_campos_mudaram_e_nunca_os_valores`,
+e ele procura os valores no texto — não confia na leitura do código.
+
+**A lição geral, e é ela que vale além deste caso:** append-only e direito ao
+esquecimento não se resolvem no dia do conflito. Ou a tabela nasce sem dado
+pessoal, ou um dos dois vai ter de ser furado depois — e o que se fura, na
+pressa, é sempre o guarda.
+
+## A porta passou a tocar o banco a cada requisição (28/08/2026)
+
+Com a lista de administradores meio no env e meio no banco
+(`DECISAO-administradores-e-apagar` §3.1), `_emails_autorizados()` consulta o
+banco em TODA requisição autorizada. Consequência imediata na suíte: 60 testes
+que nunca precisaram de banco passaram a reprovar com `Database access not
+allowed` — e a leitura errada seria "a mudança quebrou a porta".
+
+Não quebrou: mudou de quanto a porta precisa para responder. `tests/conftest.py`
+libera `db` para toda a suíte, que é o que produção faz.
+
+**O que NÃO mudou, e é o que sustenta o resto:** `/healthz` continua sem tocar
+no banco (é caminho isento, e a porta devolve antes da lista), e falha de banco
+vale só o env — **erro nunca AMPLIA quem entra**. As duas coisas têm teste.

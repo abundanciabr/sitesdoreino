@@ -37,7 +37,20 @@ class Registro(models.Model):
     # Verbo próprio, e não um `liberar` reaproveitado: quem for ler esta tabela
     # daqui a meses precisa distinguir "deixei entrar" de "mexi no cadastro".
     EDITAR = "editar"
-    ACOES = [(LIBERAR, "liberar"), (RECUSAR, "recusar"), (EDITAR, "editar")]
+    # [ADMINS/APAGAR] Verbos próprios, 28/08/2026. Cada gesto que muda a vida de
+    # alguém tem o seu: quem ler esta tabela em meses precisa distinguir
+    # "mexi no cadastro" de "dei poder de administrador" e de "apaguei a ficha".
+    PROMOVER = "promover"
+    DESPROMOVER = "despromover"
+    APAGAR = "apagar"
+    ACOES = [
+        (LIBERAR, "liberar"),
+        (RECUSAR, "recusar"),
+        (EDITAR, "editar"),
+        (PROMOVER, "promover a administrador"),
+        (DESPROMOVER, "remover de administrador"),
+        (APAGAR, "apagar de vez"),
+    ]
 
     OK = "ok"
     RECUSADO_PELA_CELULA = "recusado"
@@ -70,8 +83,18 @@ class Registro(models.Model):
     # quem decide quem pode vê-lo (lei da fila §5).
 
     desfecho = models.CharField(max_length=20, choices=DESFECHOS)
-    # O motivo da recusa é TEXTO DE PESSOA e faz parte do que foi feito: sem
-    # ele, a linha diz "recusou" e não diz o que a pessoa recusada leu.
+    # O que o OPERADOR fez e escreveu — nunca o que a PESSOA forneceu.
+    #
+    # **A regra vale daqui em diante e tem motivo mecânico**
+    # (`DECISAO-administradores-e-apagar` §4): esta tabela é append-only por
+    # trigger, e o painel ganhou um botão que apaga uma pessoa de vez. Se o
+    # detalhe guardasse nome ou telefone, apagar seria impossível sem furar a
+    # própria trava. Então ele guarda os NOMES dos campos tocados, não os
+    # valores.
+    #
+    # O motivo de uma recusa CONTINUA aqui: é texto que o mantenedor escreveu,
+    # não dado da pessoa — e sem ele a linha diz "recusou" sem dizer o que a
+    # pessoa recusada leu.
     detalhe = models.TextField(blank=True, default="")
 
     class Meta:

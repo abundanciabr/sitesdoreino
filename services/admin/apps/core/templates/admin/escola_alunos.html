@@ -144,6 +144,51 @@
                value="{{ pessoa.comprou_em|default_if_none:'' }}">
         <button class="sim" type="submit">Salvar</button>
       </form>
+
+      {% comment %}
+      Os poderes que a DECISAO-administradores-e-apagar autorizou. Formulários
+      SEPARADOS do de cima de propósito: um clique em "apagar" não pode carregar
+      junto o que a pessoa estava digitando no campo do nome.
+      {% endcomment %}
+      <div class="decidir">
+        {% if pessoa.email in administradores %}
+          {% if pessoa.email in admins_do_servidor %}
+          <p class="nota">
+            É administrador pela lista do servidor — o botão não mexe nessa
+            metade, e é isso que impede você de se trancar para fora.
+          </p>
+          {% else %}
+          <form method="post" action="{% url 'escola_admin_remover' %}">
+            {% csrf_token %}
+            <input type="hidden" name="email" value="{{ pessoa.email }}">
+            <button class="nao" type="submit">Remover de administrador</button>
+          </form>
+          {% endif %}
+        {% else %}
+        <form method="post" action="{% url 'escola_admin_promover' %}">
+          {% csrf_token %}
+          <input type="hidden" name="email" value="{{ pessoa.email }}">
+          <button type="submit">Tornar administrador</button>
+        </form>
+        {% endif %}
+      </div>
+
+      {% comment %}
+      APAGAR pede a palavra digitada, e não uma caixa de confirmação: esta área
+      não tem JavaScript nenhum (o CSP dela bloqueia script inline), e um
+      `confirm()` simplesmente não apareceria. Digitar é mais chato de propósito
+      — é a única ação da tela que não tem desfazer.
+      {% endcomment %}
+      <form class="decidir" method="post" action="{% url 'escola_aluno_apagar' %}">
+        {% csrf_token %}
+        <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+        <label class="rotulo" for="apagar-{{ pessoa.id }}">
+          Apagar de vez — não há desfazer. Escreva APAGAR para liberar o botão:
+        </label>
+        <input id="apagar-{{ pessoa.id }}" type="text" name="confirmacao"
+               autocomplete="off" placeholder="APAGAR">
+        <button class="nao" type="submit">Apagar esta ficha para sempre</button>
+      </form>
     </div>
     {% endfor %}
   </div>
@@ -153,17 +198,22 @@
   O campo que NAO existe, e a tela diz por que — em vez de deixar o mantenedor
   procurando. `DECISAO-gestao-de-alunos` §4.
   {% endcomment %}
+  {% comment %}
+  O texto mudou em 28/08/2026, junto com a lei: até então ele explicava por que
+  o botão NÃO existia. O mantenedor decidiu que ele passasse a existir, com o
+  preço na mesa — e agora o aviso conta o que esse preço é, em vez de sumir.
+  {% endcomment %}
   <p style="margin-top:16px" class="aviso">
-    <b>Por que não há um campo "tornar administrador".</b>
-    Quem é administrador é decidido por uma lista que mora no servidor e é lida
-    na hora, na porta desta área — nunca gravada junto com o aluno. Um campo
-    aqui abriria um caminho perigoso: um defeito na parte de alunos viraria
-    acesso de administrador na plataforma inteira. Hoje, para virar
-    administrador, é preciso ter acesso ao servidor — isso é uma proteção.
+    <b>Quem é administrador desta área:</b> {{ administradores|join:", " }}.
     <br><br>
-    Hoje são administradores: <b>{{ administradores|join:", " }}</b>.
-    Para mudar, é uma linha colada <i>dentro do servidor</i> — me peça e eu
-    escrevo o comando pronto para você.
+    Os botões acima promovem e removem — menos quem vem da lista do servidor,
+    que o botão não alcança. Isso é de propósito: é o que garante que sempre
+    sobre alguém capaz de entrar aqui, mesmo que tudo dê errado.
+    <br><br>
+    <b>O que você trocou ao ganhar esse botão:</b> antes, para alguém virar
+    administrador da plataforma, era preciso ter as chaves do servidor. Agora
+    não é mais — e por isso toda promoção e toda remoção ficam registradas, num
+    registro que ninguém consegue editar nem apagar.
   </p>
 
   <p style="margin-top:28px" class="aviso">

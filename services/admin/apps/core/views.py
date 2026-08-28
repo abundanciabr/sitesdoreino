@@ -20,9 +20,12 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from django.conf import settings
+
 from apps.auditoria.models import Registro
 
 from .clients import AlunosClient
+from .models import Administrador
 from .porta import _emails_autorizados
 
 
@@ -272,6 +275,9 @@ def escola_alunos(request):
             # célula, lida na hora (`DECISAO-gestao-de-alunos` §4). A tela
             # MOSTRA; quem muda é o mantenedor, no servidor.
             "administradores": sorted(_emails_autorizados()),
+            # Separados porque o botao de remover so alcanca uma das metades —
+            # e a tela precisa dizer isso ANTES do clique, nao depois.
+            "admins_do_servidor": sorted(_do_servidor()),
             "recado": RECADOS.get(request.GET.get("resultado", "")),
         },
     )
@@ -299,6 +305,22 @@ RECADOS = {
     ),
     "nao-valeu": "A decisão não valeu.",
     "salvo": "Pronto: as mudanças foram salvas.",
+    "apagado": "Pronto: a ficha foi apagada de vez. Não há como desfazer.",
+    "promovido": "Pronto: essa pessoa agora é administradora desta área.",
+    "despromovido": "Pronto: essa pessoa deixou de ser administradora.",
+    "so-no-servidor": (
+        "Essa pessoa é administradora pela lista do servidor, e o botão não "
+        "mexe nela — é isso que impede você de se trancar para fora. Para "
+        "removê-la, é no servidor."
+    ),
+    "confirme": (
+        "Para apagar de vez, escreva APAGAR no campo ao lado do botão. É a "
+        "única ação desta tela que não tem desfazer."
+    ),
+    "voce-mesmo": (
+        "Você não pode remover a si mesmo. Se fosse possível e você fosse o "
+        "único, a casa ficaria sem dono."
+    ),
 }
 
 
@@ -427,10 +449,20 @@ def escola_aluno_salvar(request):
             AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
             AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
         }[desfecho],
-        # O QUE foi pedido, campo a campo. Sem os valores antigos aqui de
-        # propósito: eles estão na `alunos`, e copiá-los para cá seria guardar
-        # dado pessoal num segundo lugar só para tê-lo à mão.
-        detalhe=detalhe or ", ".join(f"{k}={v}" for k, v in sorted(mudancas.items())),
+        # QUAIS campos foram tocados — nunca os VALORES.
+        #
+        # Isto mudou em 28/08/2026, no mesmo dia em que foi escrito
+        # (`DECISAO-administradores-e-apagar` §4): esta tabela é append-only
+        # por trigger, e o painel ganhou um botão que apaga uma pessoa de vez.
+        # Guardando `nome_completo=Fulano` e `whatsapp=...`, apagar a pessoa
+        # seria impossível sem furar a própria trava.
+        #
+        # O `status` sai com o valor porque não é dado da pessoa: é a decisão
+        # do mantenedor, e sem ela a linha não diz o que ele fez.
+        detalhe=detalhe
+        or ", ".join(
+            (f"status={v}" if k == "status" else k) for k, v in sorted(mudancas.items())
+        ),
     )
 
     if desfecho == AlunosClient.OK:
@@ -440,3 +472,114 @@ def escola_aluno_salvar(request):
     else:
         recado = "nao-deu"
     return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
+
+
+# ------------------------------------------- administrador por botão, e apagar
+#
+# `DECISAO-administradores-e-apagar.md`, decidida pelo mantenedor em 28/08/2026
+# contra a recomendação do agente, com o preço na mesa. As travas do §3 são
+# implementadas aqui e medidas em `tests/test_poderes.py`.
+
+
+def _do_servidor() -> set:
+    """A metade da lista que mora no env — o CHÃO que o botão não alcança.
+
+    Lida aqui e não importada da porta porque lá ela já vem SOMADA com a do
+    banco, e a diferença entre as duas metades é justamente o que decide se o
+    botão de remover pode agir.
+    """
+    cru = getattr(settings, "ADMIN_EMAILS", "") or ""
+    return {p.strip().lower() for p in cru.split(",") if p.strip()}
+
+
+def _auditar(request, acao, alvo, desfecho, detalhe=""):
+    """Uma linha de auditoria — o gesto comum das três escritas desta área."""
+    Registro.objects.create(
+        quem_email=request.admin.get("email") or "",
+        quem_id=request.admin.get("id") or "",
+        acao=acao,
+        alvo=alvo,
+        desfecho=desfecho,
+        detalhe=detalhe,
+    )
+
+
+@require_POST
+def escola_aluno_apagar(request):
+    """Apaga a ficha DE VEZ. Irreversível, e a tela avisa antes.
+
+    Existe ao lado de "encerrar", não no lugar dele: encerrar tira o acesso e
+    guarda a ficha, para o caso comum de poder voltar atrás.
+    """
+    alvo = (request.POST.get("alvo") or "").strip()
+    if not alvo:
+        return HttpResponseRedirect(reverse("escola_alunos"))
+
+    # A palavra digitada, e não uma caixa de confirmação: esta área não tem
+    # JavaScript (o CSP dela bloqueia script inline), então um `confirm()` não
+    # apareceria — e um botão sem confirmação nenhuma, na única ação sem
+    # desfazer, é um clique errado esperando acontecer.
+    if (request.POST.get("confirmacao") or "").strip().upper() != "APAGAR":
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=confirme")
+
+    desfecho, detalhe = AlunosClient().apagar_aluno(alvo)
+    _auditar(
+        request,
+        Registro.APAGAR,
+        alvo,
+        {
+            AlunosClient.OK: Registro.OK,
+            AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
+            AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
+        }[desfecho],
+        # Sem nada da pessoa: a linha diz que a ficha X foi apagada, e é tudo
+        # o que pode sobrar de alguém que pediu para sumir do sistema.
+        detalhe,
+    )
+
+    recado = {
+        AlunosClient.OK: "apagado",
+        AlunosClient.RECUSADO: "nao-valeu",
+        AlunosClient.NAO_RESPONDEU: "nao-deu",
+    }[desfecho]
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
+
+
+@require_POST
+def escola_admin_promover(request):
+    """Torna alguém administrador desta área — a reversão do §2 em ação."""
+    email = (request.POST.get("email") or "").strip().lower()
+    if not email:
+        return HttpResponseRedirect(reverse("escola_alunos"))
+
+    Administrador.objects.update_or_create(email=email, defaults={"ativo": True})
+    _auditar(request, Registro.PROMOVER, email, Registro.OK)
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=promovido")
+
+
+@require_POST
+def escola_admin_remover(request):
+    """Tira o crachá de administrador — com as duas recusas do §3.
+
+    As duas existem para o mesmo fim: garantir que sempre sobre alguém capaz
+    de entrar aqui.
+    """
+    email = (request.POST.get("email") or "").strip().lower()
+    if not email:
+        return HttpResponseRedirect(reverse("escola_alunos"))
+
+    if email in _do_servidor():
+        # §3.1: o env é o CHÃO. Se o botão pudesse removê-lo, existiria uma
+        # sequência de cliques que tranca todo mundo para fora — e a única
+        # saída seria o servidor, que é justamente o que o botão veio evitar.
+        return HttpResponseRedirect(
+            f"{reverse('escola_alunos')}?resultado=so-no-servidor"
+        )
+    if email == (request.admin.get("email") or "").strip().lower():
+        # §3.4: ninguém se remove sozinho. Um clique errado do único
+        # administrador deixaria a casa sem dono.
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=voce-mesmo")
+
+    Administrador.objects.filter(email=email).update(ativo=False)
+    _auditar(request, Registro.DESPROMOVER, email, Registro.OK)
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=despromovido")
