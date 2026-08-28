@@ -366,7 +366,7 @@ def test_nenhum_link_cross_celula_leva_prefixo_de_idioma(client, logado, idioma)
 
 
 @pytest.mark.parametrize("idioma", IDIOMAS)
-def test_o_link_da_caixa_e_exatamente_o_caminho_nu(client, logado, idioma):
+def test_o_link_da_caixa_e_exatamente_o_caminho_nu(client, aluno, idioma):
     # Metade "não é vazio" do teste acima: se a home deixasse de linkar para
     # outra célula, o scanner ficaria verde por não ter o que varrer.
     #
@@ -428,7 +428,7 @@ def test_o_scanner_aprova_o_contrato_de_hoje():
     assert links_cross_celula_com_prefixo(html, HOST_MESH) == []
 
 
-def test_o_scanner_enxerga_a_pagina_de_verdade(client, logado):
+def test_o_scanner_enxerga_a_pagina_de_verdade(client, aluno):
     # Instrumentação: sem isto, um scanner que devolvesse [] por não achar
     # NADA passaria como "página limpa" (INV-CI01 na escala de um teste).
     conteudo = client.get(

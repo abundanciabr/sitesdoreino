@@ -11,6 +11,7 @@ import respx
 
 from apps.core.middleware import (
     limpar_cache_de_avisos,
+    limpar_cache_de_categoria,
     limpar_cache_de_sessao,
     limpar_cache_de_sites,
 )
@@ -31,6 +32,14 @@ IDENTIDADE = "http://identidade.teste/interno"
 # quiser o caminho "configurado e respondendo" (tests/test_sino.py) liga as
 # duas variáveis e registra o mock de `/resumo` explicitamente.
 NOTIFICACOES = "http://notificacoes.teste/api/notificacoes"
+# A célula que sabe em que categoria uma pessoa está
+# (`contracts/alunos.openapi.yaml`, getStudentStanding). Como a NOTIFICACOES e
+# pelo mesmo motivo, `ALUNOS_API_URL/TOKEN` NÃO são ligadas na `ambiente`: sem
+# elas a home trata todo mundo como `cadastrado`, que é o estado real enquanto
+# a VPS não for provisionada — e é assim que a suíte inteira exercita o
+# fail-open por omissão. Quem quiser o caminho "configurado e respondendo"
+# (a fixture `aluno`) liga as duas e registra o mock.
+ALUNOS = "http://alunos.teste/api/alunos"
 
 HOST_A = "teste-a.exemplo.com"
 HOST_B = "teste-b.exemplo.com"
@@ -135,10 +144,16 @@ def ambiente(monkeypatch):
     # que um teste ensinou (ou o `None` que um teste de falha ensinou) vazaria
     # para o próximo teste que perguntar pela MESMA pessoa+site.
     limpar_cache_de_avisos()
+    # E o da CATEGORIA, pelo mesmo motivo — e este é o mais perigoso dos
+    # quatro: um `aluno` que vazasse entre testes faria o guarda de "o botão
+    # da Caixa não aparece para quem não é aluno" passar VERDE com o botão na
+    # tela, que é exatamente o defeito que a mudança de 28/08 conserta.
+    limpar_cache_de_categoria()
     yield
     limpar_cache_de_sites()
     limpar_cache_de_sessao()
     limpar_cache_de_avisos()
+    limpar_cache_de_categoria()
 
 
 @pytest.fixture
@@ -181,4 +196,56 @@ def rede():
         mock.get(f"{IDENTIDADE}/sessao", name="get_session").mock(
             return_value=httpx.Response(200, json={"autenticado": False})
         )
+        # `getSessionFull` — o degrau de e-mail (TOKENS_COMPLETOS_FUNIL), usado
+        # SÓ para descobrir a categoria de quem entrou. Default visitante, pelo
+        # mesmo motivo do de cima. Nomeado porque a fixture `aluno` o troca.
+        mock.get(f"{IDENTIDADE}/sessao/completa", name="get_session_full").mock(
+            return_value=httpx.Response(200, json={"autenticado": False})
+        )
         yield mock
+
+
+EMAIL_DE_QUEM_ENTROU = "quem-entrou@exemplo.com"
+
+
+@pytest.fixture
+def aluno(rede, monkeypatch):
+    """Alguém entrou E é aluno — a única categoria que vê o caminho da Caixa.
+
+    Existe em `conftest.py`, e não ao lado de um teste, porque desde 28/08/2026
+    ("as cinco categorias de usuário") *entrar* e *ser aluno* deixaram de ser a
+    mesma coisa — e três arquivos de teste diferentes precisam do segundo.
+
+    Liga as duas variáveis do par `funil→alunos` de propósito: sem elas a home
+    trata todo mundo como `cadastrado`, e um teste que esquecesse de ligá-las
+    ficaria vermelho por motivo alheio ao que ele mede.
+    """
+    monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
+    monkeypatch.setenv("ALUNOS_API_TOKEN", "token-do-par-funil-alunos")
+    rede["get_session"].mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "autenticado": True,
+                "id": "idt-de-teste",
+                "nome_exibido": "Fulano",
+                "papel": "aluno",
+            },
+        )
+    )
+    rede["get_session_full"].mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "autenticado": True,
+                "id": "idt-de-teste",
+                "nome_exibido": "Fulano",
+                "papel": "aluno",
+                "email": EMAIL_DE_QUEM_ENTROU,
+            },
+        )
+    )
+    rede.get(f"{ALUNOS}/alunos/{EMAIL_DE_QUEM_ENTROU}/situacao", name="situacao").mock(
+        return_value=httpx.Response(200, json={"categoria": "aluno", "na_fila": None})
+    )
+    return rede

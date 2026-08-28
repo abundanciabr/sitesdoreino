@@ -186,6 +186,60 @@ class IdentidadeClient:
             return None
         return corpo
 
+    def obter_email(self, cookie: str) -> "str | None":
+        """O e-mail da sessão — e SÓ ele, para uma pergunta só.
+
+        Existe porque a categoria de uma pessoa é calculada por e-mail: é por
+        e-mail que a `alunos` guarda matrícula, e não há outro identificador
+        comum entre as duas células (`DECISAO-categorias-de-usuario` §4).
+
+        **Este é o degrau a mais que a `identidade` cobra por escrito**
+        (`DECISAO-celula-de-identidade` §6.3): além de `TOKENS_ACEITOS_FUNIL`,
+        o par precisa estar em `TOKENS_COMPLETOS_FUNIL`. Sem o segundo, esta
+        chamada volta 403 — e o efeito é a home tratar todo mundo como
+        cadastrado, nunca um erro na tela.
+
+        **O e-mail NÃO é guardado em lugar nenhum desta célula**: não vai para
+        o template, não entra no cache, não entra em log. Ele existe dentro da
+        requisição, o tempo de fazer uma pergunta. Guarda:
+        `tests/test_categorias_na_home.py`.
+        """
+        config = self._configuracao()
+        if config is None:
+            return None
+        base, token = config
+
+        try:
+            r = http().get(
+                f"{base}/sessao/completa",
+                headers={"Authorization": f"Bearer {token}", "Cookie": cookie},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("sessao completa: não deu para perguntar: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            # 403 aqui = o par não está em TOKENS_COMPLETOS_FUNIL. De fora é
+            # indistinguível de "não há sessão", e por isso o log nomeia a
+            # variável: quem vai ler é o mantenedor.
+            logger.error(
+                "sessao completa: a identidade respondeu HTTP %s "
+                "(403 = falta TOKENS_COMPLETOS_FUNIL do lado dela)",
+                r.status_code,
+            )
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("sessao completa: resposta fora do contrato: %s", erro)
+            return None
+
+        if not isinstance(corpo, dict) or not corpo.get("autenticado"):
+            return None
+        return (corpo.get("email") or "").strip() or None
+
 
 class NotificacoesClient:
     """`contracts/notificacoes.openapi.yaml`, operação `obterResumo` — leitura pura.
@@ -271,3 +325,72 @@ class NotificacoesClient:
         if isinstance(valor, bool) or not isinstance(valor, int) or valor < 0:
             return None
         return valor
+
+
+class AlunosClient:
+    """`contracts/alunos.openapi.yaml` — em que categoria a pessoa está.
+
+    Somente leitura, e **fail-OPEN**: qualquer falha devolve `None`, que o
+    chamador trata como `cadastrado`. É a mesma lei do `IdentidadeClient` acima
+    e pelo mesmo motivo — esta resposta decide o que a HOME mostra, nunca o que
+    alguém pode fazer. A Caixa continua conferindo matrícula na entrada dela;
+    esconder um botão nunca protegeu nada, e mostrá-lo nunca liberou nada
+    (`DECISAO-categorias-de-usuario` §6).
+    """
+
+    # Mesmo orçamento da sessão, e pelo mesmo motivo: isto está no caminho de
+    # alguém esperando a home abrir. Estourou ⇒ a pessoa vê a home de quem
+    # ainda não pediu nada, que é o pior caso aceitável.
+    TIMEOUT = 2.0
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        """Endereço e token do par, lidos NO PONTO DE USO (`armadilhas/097`).
+
+        Enquanto `infra/provisionar-pares-de-categorias.sh` não rodar na VPS,
+        estas variáveis não existem — e este é um caminho NORMAL, não um erro:
+        a home volta a se comportar como antes desta mudança.
+        """
+        base = (os.environ.get("ALUNOS_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("ALUNOS_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def situacao_de(self, email: str) -> "dict | None":
+        """Em que categoria esta pessoa está, ou `None` se não deu para saber.
+
+        **Nunca levanta.** Quem chama está montando a home de alguém.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.info(
+                "categoria: ALUNOS_API_URL/ALUNOS_API_TOKEN ausentes no env "
+                "desta célula — a home trata todo mundo como cadastrado"
+            )
+            return None
+        base, token = config
+
+        try:
+            r = http().get(
+                f"{base}/alunos/{email}/situacao",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("categoria: não deu para perguntar à alunos: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            logger.error("categoria: a alunos respondeu HTTP %s", r.status_code)
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # *Status 2xx não é sucesso* (RETROSPECTIVA §4). Fora deste `try`,
+            # `json.JSONDecodeError` furaria o fail-open e derrubaria a home.
+            logger.error("categoria: a alunos respondeu fora do contrato: %s", erro)
+            return None
+
+        if not isinstance(corpo, dict) or not corpo.get("categoria"):
+            logger.error("categoria: a alunos respondeu um corpo fora do contrato")
+            return None
+        return corpo

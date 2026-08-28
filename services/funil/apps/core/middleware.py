@@ -10,7 +10,12 @@ from django.utils import translation
 from django.utils.cache import patch_vary_headers
 
 from apps.core import enderecos
-from apps.core.clients import CatalogoClient, IdentidadeClient, NotificacoesClient
+from apps.core.clients import (
+    AlunosClient,
+    CatalogoClient,
+    IdentidadeClient,
+    NotificacoesClient,
+)
 from apps.i18n.idiomas import dados_seo, idiomas_do_site
 
 _CACHE: dict = {}
@@ -86,6 +91,63 @@ def _consultar_avisos(destinatario_id: str, site_id: str) -> "int | None":
     return contagem
 
 
+# ---------------------------------------------------------------------------
+# A CATEGORIA da pessoa (DECISAO-categorias-de-usuario, 28/08/2026): visitante,
+# cadastrado, na fila ou aluno. Falha ABERTA — a mesma lei dos dois blocos
+# acima: não saber a categoria mostra a home de quem ainda não pediu nada, e a
+# vitrine nunca cai porque uma célula de produto caiu.
+# ---------------------------------------------------------------------------
+# Cache por `id` DA PLATAFORMA, e nunca pelo e-mail. São duas razões, e as duas
+# importam: o e-mail é dado pessoal e não fica guardado nesta célula (§4 da
+# decisão), e o `id` é o mesmo identificador que o cache do sino já usa.
+#
+# TTL curto pelo mesmo motivo do sino: a categoria muda por AÇÃO DE OUTRA
+# pessoa — o mantenedor liberando alguém —, e quem acabou de ser aprovado não
+# pode esperar um minuto inteiro para ver a porta abrir.
+_CACHE_DE_CATEGORIA: dict = {}
+TTL_DA_CATEGORIA = 30
+MAXIMO_DE_CATEGORIAS_EM_CACHE = 500
+
+
+def limpar_cache_de_categoria() -> None:
+    _CACHE_DE_CATEGORIA.clear()
+
+
+def _consultar_categoria(cookie: str, id_da_pessoa: str) -> "dict | None":
+    """A situação desta pessoa, pela `alunos`. `None` = não deu para saber.
+
+    Duas idas à rede na primeira leitura (o e-mail na `identidade`, a situação
+    na `alunos`) e nenhuma nas seguintes, dentro do TTL. A home de quem entrou
+    é UMA página por sessão na esmagadora maioria das visitas — e visitante
+    anônimo nunca chega aqui, porque quem chama já conferiu `bool(ator)`.
+    """
+    agora = time.time()
+    hit = _CACHE_DE_CATEGORIA.get(id_da_pessoa)
+    if hit and hit[0] > agora:
+        return hit[1]
+
+    alunos = AlunosClient()
+    # A ORDEM importa, e por dois motivos. Desempenho: sem o par `funil→alunos`
+    # ligado não há a quem perguntar a categoria, e buscar o e-mail primeiro
+    # seria um salto de rede jogado fora em TODA página de quem entrou.
+    # Privacidade: o e-mail é o dado mais sensível que atravessa esta célula, e
+    # não se pede o que não se vai usar (§4 da decisão).
+    if alunos._configuracao() is None:
+        situacao = None
+    else:
+        email = IdentidadeClient().obter_email(cookie)
+        # O e-mail morre nesta variável local: não entra no cache, não vai para
+        # o template e não entra em log.
+        situacao = alunos.situacao_de(email) if email else None
+
+    if len(_CACHE_DE_CATEGORIA) >= MAXIMO_DE_CATEGORIAS_EM_CACHE:
+        _CACHE_DE_CATEGORIA.clear()
+    # `None` também é cacheado: uma `alunos` fora do ar não pode custar duas
+    # tentativas de rede por página vista na mesma rajada.
+    _CACHE_DE_CATEGORIA[id_da_pessoa] = (agora + TTL_DA_CATEGORIA, situacao)
+    return situacao
+
+
 class AtorDaRequisicao:
     """Quem está vendo esta página — resolvido na PRIMEIRA leitura, nunca antes.
 
@@ -109,6 +171,8 @@ class AtorDaRequisicao:
         self._dados: "dict | None" = None
         self._avisos_resolvido = False
         self._avisos: "int | None" = None
+        self._categoria_resolvida = False
+        self._situacao: "dict | None" = None
 
     @property
     def identificado(self) -> bool:
@@ -183,6 +247,61 @@ class AtorDaRequisicao:
                 _consultar_avisos(id_da_pessoa, self._site_id) if id_da_pessoa else None
             )
         return self._avisos
+
+    def _resolver_categoria(self) -> "dict | None":
+        """A situação desta pessoa, resolvida na PRIMEIRA leitura.
+
+        Preguiçosa em dois níveis, como `avisos_nao_lidos`: só chega à rede se
+        alguém foi reconhecido, e só na primeira leitura. Página que não
+        pergunta a categoria não paga nada — e nenhuma página de visitante
+        anônimo pergunta.
+        """
+        if not self:
+            return None
+        if not self._categoria_resolvida:
+            self._categoria_resolvida = True
+            id_da_pessoa = self.id
+            self._situacao = (
+                _consultar_categoria(self._cookie, id_da_pessoa)
+                if id_da_pessoa
+                else None
+            )
+        return self._situacao
+
+    @property
+    def categoria(self) -> str:
+        """`visitante` · `cadastrado` · `na_fila` · `aluno`.
+
+        NUNCA `administrador`: esse crachá não está nesta escada e é calculado
+        pela lista da célula `admin`, na hora, na porta dela
+        (`DECISAO-categorias-de-usuario` §2.1). Se esta property pudesse
+        respondê-lo, a autorização da área administrativa passaria a depender
+        da vitrine.
+
+        **Não saber vira `cadastrado`, nunca `aluno`.** A direção do fail-open
+        é a decisão: o pior caso é alguém não ver o próprio atalho por alguns
+        segundos. O inverso — mostrar o atalho de aluno para quem não é —
+        seria a home fazendo promessa que a Caixa vai desmentir na cara da
+        pessoa, que é o defeito que esta mudança existe para consertar.
+        """
+        if not self:
+            return "visitante"
+        situacao = self._resolver_categoria()
+        if not situacao:
+            return "cadastrado"
+        return situacao.get("categoria") or "cadastrado"
+
+    @property
+    def na_fila(self) -> "dict | None":
+        """O andamento do pedido — `estado`, `esperando_ha_dias`, `motivo_recusa`.
+
+        `None` para quem não está na fila. Vem da `alunos` já calculado: quem
+        tem o relógio e a linha é ela, e um consumidor que subtraísse datas
+        erraria de um jeito diferente em cada célula.
+        """
+        if self.categoria != "na_fila":
+            return None
+        return (self._resolver_categoria() or {}).get("na_fila")
 
 
 # /healthz é sonda do container e do gateway — chega sem Host de site e não pode

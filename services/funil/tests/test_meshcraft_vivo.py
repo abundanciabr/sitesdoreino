@@ -140,7 +140,7 @@ def test_home_de_visitante_convida_a_entrar_no_idioma(client, rede, idioma):
 
 
 @pytest.mark.parametrize("idioma", IDIOMAS)
-def test_home_de_quem_entrou_avisa_a_novidade_e_leva_a_caixa(client, logado, idioma):
+def test_home_de_quem_entrou_avisa_a_novidade_e_leva_a_caixa(client, aluno, idioma):
     conteudo = client.get(
         caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
     ).content.decode()
@@ -181,7 +181,7 @@ def test_post_leads_prefixado_funciona(client, rede):
     assert resp.json()["created"] is True
 
 
-def test_a_caixa_segue_sem_prefixo_de_idioma(client, logado):
+def test_a_caixa_segue_sem_prefixo_de_idioma(client, aluno):
     # D6, guarda 3: a Caixa é outra célula, monolíngue — o link NÃO ganha
     # prefixo (prefixado, cairia no funil e morreria 404 no gateway real).
     # Era o link do checkout que provava isto até 27/08/2026; a home nova não
