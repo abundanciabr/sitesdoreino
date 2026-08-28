@@ -31,6 +31,7 @@ _WEBHOOK_PIX_OPENAPI = {
             )
         },
         403: {"description": "Assinatura ausente/ inválida — ZERO efeito colateral"},
+        502: {"$ref": "#/components/responses/FalhaDoProvedor"},
     },
 }
 
@@ -60,6 +61,7 @@ _WEBHOOK_CARD_OPENAPI = {
     "responses": {
         200: {"description": "Recebido e enfileirado"},
         403: {"description": "Assinatura ausente/ inválida — ZERO efeito colateral"},
+        502: {"$ref": "#/components/responses/FalhaDoProvedor"},
     },
 }
 

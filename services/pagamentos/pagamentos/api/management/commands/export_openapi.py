@@ -143,6 +143,22 @@ _COMPONENT_RESPONSES = {
             }
         },
     },
+    "FalhaDoProvedor": {
+        "description": (
+            "Falha do provedor de pagamento (Mercado Pago): não respondeu, ou "
+            "respondeu algo que não descreve a cobrança pedida. A plataforma "
+            "nunca devolve 2xx nesse caso. Ação do consumidor: repetir a "
+            "requisição com a MESMA X-Idempotency-Key — nunca gerar chave nova."
+        ),
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "properties": {"detail": {"type": "string"}},
+                }
+            }
+        },
+    },
 }
 
 
