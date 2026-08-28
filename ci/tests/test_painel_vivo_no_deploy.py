@@ -32,6 +32,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 RAIZ = Path(__file__).resolve().parents[2]
 DEPLOY = RAIZ / ".github" / "workflows" / "deploy-celula.yml"
@@ -132,9 +133,9 @@ def test_o_build_da_admin_embute_o_painel():
     falhou. Falso-verde é o padrão 1 da retrospectiva.
     """
     texto = DEPLOY.read_text(encoding="utf-8")
-    assert "cp -R painel services/admin/painel_embutido" in texto, (
-        "o build da `admin` precisa copiar `painel/` para o contexto"
-    )
+    assert (
+        "cp -R painel services/admin/painel_embutido" in texto
+    ), "o build da `admin` precisa copiar `painel/` para o contexto"
     assert "test -f painel/painel.html" in texto, (
         "a cópia precisa ser fail-closed: pasta ausente tem de PARAR o build, "
         "nunca publicar uma imagem sem painel"
@@ -174,6 +175,100 @@ def test_a_celula_admin_serve_o_painel_da_raiz():
     fonte = (RAIZ / "services" / "admin" / "apps" / "core" / "painel.py").read_text(
         encoding="utf-8"
     )
-    assert 'RAIZ_DA_CELULA / "painel_embutido"' in fonte, (
-        "o nome da pasta precisa bater com o `cp` do deploy-celula"
+    assert (
+        'RAIZ_DA_CELULA / "painel_embutido"' in fonte
+    ), "o nome da pasta precisa bater com o `cp` do deploy-celula"
+
+
+# ---------------------------------------------------------------------------
+# A ENTREGA TENTA DE NOVO — e o script que ela roda tem de existir.
+# ---------------------------------------------------------------------------
+# Desde 28/08/2026 a ativação na VPS é tentada até três vezes: a VPS recusou a
+# conexão do runner cinco vezes em três dias (`armadilhas/127`), e com a entrega
+# vermelha o site continua servindo a imagem ANTIGA — quem não estivesse olhando
+# naquele minuto acharia, no dia seguinte, que a versão nova estava no ar.
+#
+# O corpo da entrega saiu do YAML para `infra/deploy-celula-na-vps.sh`, porque
+# repeti-lo três vezes seria a duplicação que esta casa proíbe. Isso cria uma
+# dependência NOVA e silenciosa: o workflow aponta para um caminho, e se esse
+# arquivo for renomeado ou movido, o deploy quebra **em produção**, no primeiro
+# merge depois — sem nenhum sinal antes.
+
+
+def _passos_de_ativacao() -> list[dict]:
+    fluxo = yaml.safe_load(
+        (RAIZ / ".github" / "workflows" / "deploy-celula.yml").read_text(
+            encoding="utf-8"
+        )
     )
+    return [
+        passo
+        for passo in fluxo["jobs"]["deploy"]["steps"]
+        if "ssh-action" in str(passo.get("uses", ""))
+    ]
+
+
+def test_o_script_que_a_entrega_roda_existe_de_verdade() -> None:
+    """O caminho apontado no workflow tem de existir no repositório.
+
+    Renomear o script deixaria o workflow verde no lint e vermelho no primeiro
+    deploy — em produção, com o site servindo a imagem velha. Isto é barato de
+    conferir e caro de descobrir do outro jeito.
+    """
+    passos = _passos_de_ativacao()
+    assert passos, "nenhum passo de ativação na VPS — a varredura está cega"
+    for passo in passos:
+        caminho = passo["with"].get("script_file")
+        assert caminho, f"{passo.get('name')}: sem script_file"
+        assert (RAIZ / caminho).is_file(), f"{passo.get('name')}: {caminho} não existe"
+
+
+def test_a_entrega_tenta_mais_de_uma_vez() -> None:
+    """Uma tentativa só é o desenho que custou cinco reruns manuais."""
+    assert len(_passos_de_ativacao()) >= 2, (
+        "a ativação na VPS voltou a ter uma tentativa só — a VPS recusa a conexão "
+        "de forma intermitente (armadilhas/127), e sem retry o deploy fica "
+        "vermelho dependendo de alguém estar olhando para pedir de novo"
+    )
+
+
+def test_so_a_ultima_tentativa_decide_o_veredito() -> None:
+    """As primeiras não podem derrubar o job; a última não pode ser tolerada.
+
+    Sem `continue-on-error` nas primeiras, o retry não existiria. COM ele na
+    última, o deploy ficaria VERDE mesmo sem nunca ter subido a imagem — um
+    falso-verde na peça mais cara de todas.
+    """
+    passos = _passos_de_ativacao()
+    assert all(
+        p.get("continue-on-error") is True for p in passos[:-1]
+    ), "alguma tentativa intermediária não tolera falha — o retry não funciona"
+    assert not passos[-1].get("continue-on-error"), (
+        "a ÚLTIMA tentativa tolera falha: o deploy ficaria verde sem ter subido "
+        "a imagem. É o falso-verde mais caro que este projeto pode ter."
+    )
+
+
+def test_todas_as_tentativas_rodam_o_MESMO_script() -> None:
+    """Três caminhos diferentes seriam três entregas diferentes.
+
+    É o motivo de o script ter saído do YAML: uma definição só do que a entrega
+    faz, chamada N vezes.
+    """
+    caminhos = {p["with"].get("script_file") for p in _passos_de_ativacao()}
+    assert len(caminhos) == 1, f"tentativas rodando scripts diferentes: {caminhos}"
+
+
+def test_a_celula_chega_ao_script_por_variavel() -> None:
+    """O script aborta com CELULA vazia; o workflow precisa mesmo passá-la.
+
+    Sem isto, `docker compose up -d` sem argumento subiria a plataforma
+    inteira — e é justamente contra isso que o script tem a trava de parada.
+    """
+    for passo in _passos_de_ativacao():
+        assert "CELULA" in str(
+            passo["with"].get("envs", "")
+        ), f"{passo.get('name')}: não repassa CELULA"
+        assert "CELULA" in (
+            passo.get("env") or {}
+        ), f"{passo.get('name')}: não define CELULA"
