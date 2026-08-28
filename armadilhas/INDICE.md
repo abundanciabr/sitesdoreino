@@ -173,5 +173,6 @@
 | [145](145-pagina-que-pede-um-arquivo-por-item-quebra-quando.md) | Página que pede UM arquivo por item quebra sozinha quando a lista cresce — e o erro acusa os dados, não a entrega — uma página que monta uma lista a partir de arquivos versionados abre com a própria trava fail-closed… | — |
 | [146](146-a-palavra-script-num-comentario-html-quebra-o-csp.md) | A palavra `script` entre `<>` num COMENTÁRIO HTML quebra o CSP — e só em produção — a página abre perfeita por `file://` e no `make dev`, e **em produção não renderiza nada**. O console do navegador mostra algo como: | — |
 | [147](147-o-caminho-do-script-escolhe-qual-repo-e-medido.md) | O `../` no comando escolhe QUAL cópia do repositório o portão vai medir — você acabou de criar o worktree a partir de `origin/main`, o livro está em dia, e o portão acusa um absurdo: | — |
+| [148](148-o-reconhecimento-acontece-no-espelho-velho-e-a.md) | O reconhecimento acontece no espelho velho, e a bancada nasce nova — você projeta para um sistema que não existe mais — você entrega uma tela, uma decisão ou uma pergunta ao mantenedor declarando que alguma coisa **não… | — |
 
-**136 entradas.**
+**137 entradas.**

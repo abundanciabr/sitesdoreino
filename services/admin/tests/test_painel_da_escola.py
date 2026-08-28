@@ -22,10 +22,21 @@ teste que só perguntasse "a página abriu?":
    abaixo não se contenta em ver o traço: ele renderiza a MESMA página com
    `quantidade: 0` e exige que a tela mude.
 
+4. **A tela não pode declarar inexistente o que está no contrato congelado.**
+   Acrescentado em 28/08/2026 depois de a primeira versão desta tela afirmar
+   que a fila de espera "não existe em lugar nenhum do sistema" — e ela existia
+   desde a véspera, com porta que o contrato da `alunos` chama de *"a porta do
+   painel administrativo"*. A causa foi ler um clone da `main` 75 merges
+   atrasado; os três guardas acima não podiam pegar isso, porque todos mediam
+   o que a tela DIZ e nenhum media o que o contrato TEM. Os três testes do fim
+   deste arquivo medem.
+
 A rede é dublada com `respx`, como nos irmãos desta pasta: além de isolar, é
 isso que prova que as páginas novas não saem para a rede por conta própria —
 `respx.mock` sem rota registrada estoura em qualquer chamada inesperada.
 """
+
+from pathlib import Path
 
 import httpx
 import pytest
@@ -204,7 +215,9 @@ def _renderiza(tipos) -> str:
         {
             "admin": {"nome": "Fulano", "email": DONO, "id": "x"},
             "tipos": tipos,
-            "SEM_DADO": FonteAusente.SEM_DADO,
+            "ha_porta_pronta": any(
+                x["fonte_ausente"] == FonteAusente.PORTA_PRONTA for x in tipos
+            ),
         },
     )
 
@@ -216,6 +229,7 @@ def _um_tipo(quantidade):
             "nome": "Tipo de mentira",
             "quem": "Quem cai neste tipo.",
             "quantidade": quantidade,
+            "fonte": None,
             "fonte_ausente": FonteAusente.SEM_OPERACAO,
             "falta": "O motivo de faltar.",
         }
@@ -265,28 +279,92 @@ def test_todo_tipo_declara_por_que_o_numero_falta():
     casos ele é, e o valor tem de ser um dos DOIS conhecidos: um terceiro
     valor inventado deixaria a tela sem a frase correspondente, em silêncio.
     """
-    validos = {FonteAusente.SEM_DADO, FonteAusente.SEM_OPERACAO}
-    campos = {"slug", "nome", "quem", "quantidade", "fonte_ausente", "falta"}
+    validos = {FonteAusente.PORTA_PRONTA, FonteAusente.SEM_OPERACAO}
+    campos = {
+        "slug",
+        "nome",
+        "quem",
+        "quantidade",
+        "fonte",
+        "fonte_ausente",
+        "falta",
+    }
     for tipo in TIPOS_DE_ALUNO:
         assert set(tipo) == campos, tipo["slug"]
         assert tipo["fonte_ausente"] in validos, tipo["slug"]
         assert tipo["falta"].strip(), tipo["slug"]
 
 
-@respx.mock
-def test_a_fila_de_aprovacao_diz_que_espera_por_uma_decisao_do_dono():
-    """O único tipo SEM_DADO carrega o pedido — e a tela o mostra.
+CONTRATO_DA_ALUNOS = (
+    Path(__file__).resolve().parents[3] / "contracts" / "alunos.openapi.yaml"
+)
 
-    Sem isto, a página diria "ainda não dá para contar" para os quatro tipos
-    igualmente, e o mantenedor não teria como saber que três são trabalho de
-    robô e um é decisão dele.
+
+def test_o_contrato_da_alunos_esta_onde_este_arquivo_pensa():
+    """Sem isto, os dois testes abaixo passariam lendo string vazia.
+
+    *Ausência de evidência nunca é evidência de sucesso* ([INV-CI01]): um
+    guarda que mede um arquivo que não existe devolve verde por nada.
     """
-    sem_dado = [
-        t["slug"] for t in TIPOS_DE_ALUNO if t["fonte_ausente"] == FonteAusente.SEM_DADO
-    ]
-    assert sem_dado == ["aguardando-aprovacao"]
+    assert CONTRATO_DA_ALUNOS.is_file(), CONTRATO_DA_ALUNOS
+    assert "openapi:" in CONTRATO_DA_ALUNOS.read_text(encoding="utf-8")
+
+
+def test_toda_porta_declarada_existe_mesmo_no_contrato_congelado():
+    """`fonte` não pode nomear operação que a `alunos` não tem.
+
+    A conferência é por TEXTO, e não por `yaml.safe_load`, de propósito: ler
+    YAML aqui custaria uma dependência nova à célula só para este guarda, e o
+    que precisa ser verdade é grosseiro — o caminho e o status aparecem, ou
+    não aparecem, no contrato congelado.
+    """
+    contrato = CONTRATO_DA_ALUNOS.read_text(encoding="utf-8")
+    declaradas = [t for t in TIPOS_DE_ALUNO if t["fonte"]]
+    assert declaradas, "nenhum tipo declara fonte — o guarda abaixo mediria nada"
+    for tipo in declaradas:
+        caminho = tipo["fonte"].split()[1].split("?")[0]
+        assert caminho in contrato, f"{tipo['slug']}: {caminho} não está no contrato"
+        if "status=" in tipo["fonte"]:
+            status = tipo["fonte"].split("status=")[1]
+            assert status in contrato, f"{tipo['slug']}: status {status} não existe"
+
+
+def test_a_fila_que_o_contrato_tem_nao_pode_ficar_sem_dono_nesta_tela():
+    """O guarda do erro REAL de 28/08/2026, na direção em que ele aconteceu.
+
+    A primeira versão desta tela declarou que a fila de espera "não existe em
+    lugar nenhum do sistema" — e ela existia desde 27/08, com porta que o
+    próprio contrato chama de *"a porta do painel administrativo"*. O erro veio
+    de ler um clone da `main` 75 merges atrasado, e nenhum teste desta suíte
+    poderia tê-lo pego: todos mediam o que a tela DIZ, nenhum media o que o
+    contrato TEM.
+
+    Este mede. Se a `alunos` sabe listar um estado de aluno, algum tipo desta
+    tela tem de apontar para essa porta — nem que seja para dizer que ainda
+    não a abrimos. Declarar inexistente o que está no contrato congelado passa
+    a ser vermelho.
+    """
+    contrato = CONTRATO_DA_ALUNOS.read_text(encoding="utf-8")
+    if "/pre-matriculas" not in contrato:  # pragma: no cover - a fila saiu?
+        pytest.skip("o contrato não tem mais a fila; este guarda perdeu o objeto")
+    fontes = " ".join(t["fonte"] or "" for t in TIPOS_DE_ALUNO)
+    assert "/pre-matriculas" in fontes, (
+        "o contrato da `alunos` lista a fila de liberação, mas nenhum tipo "
+        "desta tela aponta para ela. Foi exatamente o erro de 28/08/2026."
+    )
+
+
+@respx.mock
+def test_a_tela_nao_diz_que_a_fila_nao_existe():
+    """O texto errado, travado pela frase — porque foi a frase que enganou.
+
+    O mantenedor leu esta tela e teria concluído que precisava decidir de novo
+    algo que ele já decidiu em 27/08 (`DECISAO-fila-de-liberacao.md`). Custo de
+    um texto errado numa área de operação: uma decisão retomada do zero.
+    """
     html = _texto(_dentro().get("/escola/alunos/"))
-    assert "Precisa de você" in html
+    assert "não existe fila de espera" not in html
+    assert "A fila de espera já existe" in html
 
 
 # ------------------------------------------------------ higiene das telas novas

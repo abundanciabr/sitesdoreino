@@ -42,16 +42,25 @@
     existir, cada tipo mostra o traço e diz o que falta para o número nascer.
   </p>
 
-  {% for tipo in tipos %}{% if tipo.fonte_ausente == SEM_DADO %}
+  {% comment %}
+  Um booleano CALCULADO NA VIEW, e nao um laco com condicao aqui: dois tipos
+  sao PORTA_PRONTA (a fila e os recusados), e a versao com `{% for %}` ou
+  repetia o paragrafo duas vezes ou dependia de a fila ser o primeiro item da
+  tupla — que e ordem de produto, nao invariante. Logica de apresentacao que
+  depende da ORDEM de uma lista quebra no dia em que alguem reordena a lista
+  por um motivo legitimo, e quebra em silencio.
+  {% endcomment %}
+  {% if ha_porta_pronta %}
   <p style="margin-top:16px" class="aviso">
-    <b>&ldquo;{{ tipo.nome }}&rdquo; é o que depende de você.</b>
-    Os outros tipos já existem guardados no sistema e é só questão de ensiná-lo
-    a entregar a lista — trabalho de robô. Este não: hoje entrar no site com a
-    conta Google apenas cria o cadastro da pessoa, e não existe fila de espera
-    nem o gesto de aprovar. Construir isso começa por uma decisão sua sobre o
-    que a aprovação libera para o aluno. O pedido está registrado no painel do
-    sistema, na caixa <b>Precisa de você</b>.
+    <b>A fila de espera já existe — e já está recebendo gente.</b>
+    Desde 27 de agosto, quem entra no site e ainda não é aluno encontra um
+    formulário de pedido de liberação em vez de uma porta fechada, e cada
+    pedido vira uma linha guardada. Quem ainda não sabe perguntar por essa
+    lista é <i>esta área aqui</i>. Faltam duas coisas, nesta ordem: uma
+    <b>senha de par</b> entre esta área e a parte do sistema que guarda os
+    alunos — um comando de uma linha, no servidor, que só você pode rodar — e
+    depois a <b>tela de liberar</b>, que é trabalho meu.
   </p>
-  {% endif %}{% endfor %}
+  {% endif %}
 </div>
 {% endblock %}

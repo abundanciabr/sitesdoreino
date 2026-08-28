@@ -146,3 +146,22 @@ falso em template, e o dia em que a contagem existir um zero legítimo cairia
 no ramo do "não sei", mentindo para o outro lado. O guarda
 (`tests/test_painel_da_escola.py`) renderiza a mesma página com `0` e exige
 que a tela mude — sem isso ele estaria só confirmando que o traço aparece.
+
+**3. E uma lição cara do mesmo dia: esta célula publicou, na tela do
+mantenedor, que a fila de espera de alunos "não existe em lugar nenhum".**
+Existia desde a véspera — lei (`docs/decisoes/DECISAO-fila-de-liberacao.md`),
+três portas no contrato congelado da `alunos` e o formulário no ar. A causa
+está em `armadilhas/148`, e é estrutural: o reconhecimento da sessão aconteceu
+no clone principal, que estava **75 merges** atrás do `origin/main`, enquanto o
+worktree onde ela trabalhou nasceu fresco. Bancada nova, mapa velho.
+
+**A regra que fica para quem escrever a próxima tela desta célula:** a área
+administrativa é, por natureza, a que mais fala sobre as OUTRAS células — e é a
+única do projeto onde uma frase errada sobre outra célula chega direto aos
+olhos do dono, sem passar por nenhum teste. Antes de afirmar que algo não
+existe, leia `contracts/<celula>.openapi.yaml` do `origin/main`
+(`git show origin/main:contracts/alunos.openapi.yaml`), nunca o arquivo do
+disco de um clone de longa duração. O guarda que mecaniza a parte que dá para
+mecanizar está em `tests/test_painel_da_escola.py`: porta declarada tem de
+existir no contrato, e porta que o contrato tem não pode ficar sem dono nesta
+tela.
