@@ -18,7 +18,7 @@ plataforma inteira), `.env.dev` (gitignored), `config/{settings,urls,asgi}.py`
 e `static/` próprios (não existe `base.html` compartilhado entre células —
 Lei 7 da Constituição), `tests/`, `pytest.ini`.
 
-Convenções mecânicas que atravessam as 12 células:
+Convenções mecânicas que atravessam as 13 células:
 - **Fail-hard de settings** — `SECRET_KEY`/`DATABASE_URL` ausentes ⇒
   `ImproperlyConfigured`, nunca fallback silencioso.
 - **`SCRIPT_NAME`/`FORCE_SCRIPT_NAME`** lido do env — o urlconf nunca conhece
@@ -37,7 +37,7 @@ Convenções mecânicas que atravessam as 12 células:
 - Módulo extra opcional (`celula-template/pagamentos-extra/`) para células
   que precisam do isolamento reforçado que hoje só `pagamentos` usa.
 
-## As 12 células
+## As 13 células
 
 | Célula | Domínio (por `apps/`) | LICOES.md | Constituição | Contrato OpenAPI |
 |---|---|---|---|---|
@@ -45,6 +45,7 @@ Convenções mecânicas que atravessam as 12 células:
 | `alunos` | `bridge`, `core`, `eventos`, `matriculas` | ✓ | ✓ | ✓ |
 | `catalogo` | `core`, `ofertas`, `produtos`, `sites` | ✓ | ✓ | ✓ |
 | `checkout` | `core`, `pedidos` | ✓ | ✓ | ✓ |
+| `forum` | `core` apenas — nasce em esqueleto (modelo de dados no PR 2) | — (ainda não) | ✓ | — (nasce sem contrato, por lei de gênese; vira `required` no PR 3) |
 | `funil` | `core`, `i18n` | ✓ | ✓ | — (páginas HTML, sem API JSON) |
 | `identidade` | `core`, `identidade` | ✓ | ✓ | ✓ |
 | `leads` | `core` apenas | ✓ | ✓ | ✓ |
@@ -54,7 +55,7 @@ Convenções mecânicas que atravessam as 12 células:
 | `quiz` | `core`, `quiz` | ✓ | ✓ | — (só páginas HTML) |
 | `sugestoes` | `core`, `sugestoes` | ✓ | ✓ | ✓ (1 operação) |
 
-**Todas as 12 células têm `LICOES.md` e constituição própria** — não é um
+**Todas as 13 células têm `LICOES.md` e constituição própria** — não é um
 subconjunto (um levantamento anterior a este mapa presumia só 8; foi
 corrigido nesta pesquisa). 7 células têm contrato OpenAPI `required`
 (alunos, catalogo, checkout, leads, pagamentos, identidade, sugestoes); as

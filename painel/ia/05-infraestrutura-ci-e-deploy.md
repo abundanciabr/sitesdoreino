@@ -22,7 +22,7 @@ containers** em duas redes Docker — `edge` (Traefik ↔ mundo ↔ células) e
   broker do Huey (filas assíncronas); cada célula usa um índice de DB Redis
   próprio (`/0` a `/8`).
 
-**12 células** rodam como servidor HTTP (porta 8000 interna) em imagem
+**13 células** rodam como servidor HTTP (porta 8000 interna) em imagem
 própria (`ghcr.io/.../plataforma-<celula>:<TAG>`), com healthcheck comum em
 `/healthz`. **9 processos auxiliares** (consumers de evento, relays, workers
 Huey) usam a MESMA imagem da célula-mãe com `command:` sobrescrito, ficam só
