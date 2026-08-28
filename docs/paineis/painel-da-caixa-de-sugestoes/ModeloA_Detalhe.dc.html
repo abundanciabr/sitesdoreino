@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --tinta:#15161c; --tinta-2:#1b1d25; --painel:#1e202b;
+      --linha:rgba(255,255,255,.08); --linha-forte:rgba(255,255,255,.16);
+      --laranja:#ff7a33; --laranja-fraco:rgba(255,122,51,.14);
+      --azul:#4c8dff; --verde:#34d399; --verde-fraco:rgba(52,211,153,.14);
+      --vermelho:#ff5c5c; --ambar:#f2b234; --ambar-fraco:rgba(242,178,52,.14);
+      --texto:#edeef2; --texto-fraco:#9a9db0; --texto-tenue:#5c5f70;
+      --f-titulo:"Segoe UI Semibold","Segoe UI",system-ui,-apple-system,sans-serif;
+      --f-corpo:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+      --f-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--tinta);color:var(--texto);font-family:var(--f-corpo);line-height:1.5;
+      background-image:linear-gradient(var(--linha) 1px,transparent 1px),linear-gradient(90deg,var(--linha) 1px,transparent 1px);
+      background-size:64px 64px;background-position:center -1px;}
+    a{color:var(--laranja);} a:hover{color:#ffa06b;}
+  </style>
+</helmet>
+
+<div style="padding:24px 30px 28px;">
+
+  <div style="display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--linha);">
+    <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">Modelo A</div>
+    <div style="color:var(--texto-tenue);">&middot;</div>
+    <div style="font-size:13px;color:var(--texto-fraco);">tela de profundidade: <strong style="color:var(--texto);font-weight:600;">a travessia de uma ideia</strong></div>
+  </div>
+
+  <h1 style="font-family:var(--f-titulo);font-size:24px;margin:20px 0 8px;line-height:1.25;">Página pública com os meus projetos</h1>
+  <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;font-size:12.5px;color:var(--texto-fraco);margin-bottom:22px;">
+    <span style="font-family:var(--f-mono);color:var(--texto);">218 votos</span><span style="color:var(--texto-tenue);">&middot;</span>
+    <span>176 pessoas</span><span style="color:var(--texto-tenue);">&middot;</span>
+    <span>31 comentários</span><span style="color:var(--texto-tenue);">&middot;</span>
+    <span style="border:1px solid var(--linha);background:var(--painel);border-radius:5px;padding:2px 8px;font-size:11px;">Plataforma</span>
+    <span style="margin-left:auto;font-family:var(--f-mono);font-size:11.5px;color:var(--ambar);">47 dias de vida &middot; 14 parados agora</span>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:24px;align-items:start;">
+
+    <!-- linha do tempo -->
+    <div style="border-left:2px solid var(--linha);padding-left:0;margin-left:8px;">
+
+      <!-- passo -->
+      <div style="position:relative;padding:0 0 22px 26px;">
+        <span style="position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--tinta);border:2px solid var(--texto-tenue);"></span>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);margin-bottom:3px;">12 de julho</div>
+        <p style="margin:0;font-size:13.5px;"><strong style="font-family:var(--f-titulo);font-weight:600;">Larissa M. escreveu a ideia.</strong></p>
+        <p style="margin:5px 0 0;font-size:12.5px;color:var(--texto-fraco);line-height:1.6;font-style:italic;">&ldquo;Eu termino os projetos do curso e eles ficam parados no meu computador...&rdquo;</p>
+      </div>
+
+      <div style="position:relative;padding:0 0 22px 26px;">
+        <span style="position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--tinta);border:2px solid var(--laranja);"></span>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);margin-bottom:3px;">12 de julho &rarr; 14 de agosto</div>
+        <p style="margin:0;font-size:13.5px;"><strong style="font-family:var(--f-titulo);font-weight:600;">A turma foi chegando junto.</strong></p>
+        <div style="margin-top:9px;display:flex;align-items:flex-end;gap:3px;height:38px;">
+          <div style="flex:1;background:rgba(255,122,51,.30);height:14%;border-radius:2px 2px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,122,51,.30);height:22%;border-radius:2px 2px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,122,51,.30);height:19%;border-radius:2px 2px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,122,51,.45);height:41%;border-radius:2px 2px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,122,51,.45);height:58%;border-radius:2px 2px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,122,51,.6);height:86%;border-radius:2px 2px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,122,51,.6);height:100%;border-radius:2px 2px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,122,51,.45);height:64%;border-radius:2px 2px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,122,51,.30);height:36%;border-radius:2px 2px 0 0;"></div>
+          <div style="flex:1;background:rgba(255,122,51,.30);height:24%;border-radius:2px 2px 0 0;"></div>
+        </div>
+        <p style="margin:6px 0 0;font-size:11.5px;color:var(--texto-tenue);">218 votos de 176 pessoas &middot; a semana mais forte foi a de 05 a 11 de agosto</p>
+      </div>
+
+      <div style="position:relative;padding:0 0 22px 26px;">
+        <span style="position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--tinta);border:2px solid var(--texto-tenue);"></span>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);margin-bottom:3px;">28 de julho</div>
+        <p style="margin:0;font-size:13.5px;"><strong style="font-family:var(--f-titulo);font-weight:600;">Quatro ideias repetidas foram juntadas nesta.</strong></p>
+        <p style="margin:5px 0 0;font-size:12.5px;color:var(--texto-fraco);line-height:1.55;">&ldquo;Portfólio&rdquo;, &ldquo;vitrine dos meus jogos&rdquo;, &ldquo;link pra mostrar meu trabalho&rdquo; e &ldquo;galeria do aluno&rdquo; — os votos vieram junto, e as 39 pessoas delas foram avisadas.</p>
+      </div>
+
+      <div style="position:relative;padding:0 0 22px 26px;">
+        <span style="position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--tinta);border:2px solid var(--texto-tenue);"></span>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);margin-bottom:3px;">09 de agosto &middot; esperou 12 dias por isto</div>
+        <p style="margin:0;font-size:13.5px;"><strong style="font-family:var(--f-titulo);font-weight:600;">A equipe leu e deu as notas.</strong></p>
+        <p style="margin:5px 0 0;font-size:12.5px;color:var(--texto-fraco);">ajuda a aprender 4/5 &middot; ajuda a vender 5/5 &middot; trabalho que dá 3/5</p>
+      </div>
+
+      <div style="position:relative;padding:0 0 22px 26px;">
+        <span style="position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--tinta);border:2px solid var(--texto-tenue);"></span>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);margin-bottom:3px;">14 de agosto</div>
+        <p style="margin:0;font-size:13.5px;"><strong style="font-family:var(--f-titulo);font-weight:600;">Você escreveu o que vamos fazer</strong>, e as 176 pessoas foram avisadas.</p>
+        <p style="margin:5px 0 0;font-size:12.5px;color:var(--texto-fraco);line-height:1.55;">&ldquo;Uma página pública, com endereço próprio, reunindo os projetos que o aluno marcar como publicáveis. Modelo fixo.&rdquo;</p>
+      </div>
+
+      <div style="position:relative;padding:0 0 22px 26px;">
+        <span style="position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--tinta);border:2px solid var(--texto-tenue);"></span>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);margin-bottom:3px;">14 de agosto</div>
+        <p style="margin:0;font-size:13.5px;"><strong style="font-family:var(--f-titulo);font-weight:600;">Um robô rascunhou o documento de obra</strong> — e não é o mesmo que vai construir.</p>
+        <p style="margin:5px 0 0;font-size:12.5px;color:var(--texto-fraco);line-height:1.55;">Quem desenha o próprio serviço não pode ser quem o executa: é essa separação que impede o escopo de crescer sozinho.</p>
+      </div>
+
+      <!-- AGORA -->
+      <div style="position:relative;padding:0 0 22px 26px;">
+        <span style="position:absolute;left:-9px;top:2px;width:16px;height:16px;border-radius:50%;background:var(--laranja);border:3px solid var(--tinta);"></span>
+        <div style="background:var(--laranja-fraco);border:1px solid var(--laranja);border-radius:10px;padding:14px 16px;">
+          <div style="font-family:var(--f-mono);font-size:11px;color:var(--laranja);margin-bottom:4px;">agora &middot; parado aqui há 14 dias</div>
+          <p style="margin:0 0 8px;font-family:var(--f-titulo);font-size:15px;color:var(--laranja);">Esperando a sua assinatura.</p>
+          <p style="margin:0;font-size:12.5px;color:var(--texto-fraco);line-height:1.6;">
+            Este é o único degrau da travessia que nenhum robô pode passar por você. Enquanto ele não passar,
+            176 pessoas continuam sabendo apenas que &ldquo;vamos fazer&rdquo;.
+          </p>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:10px;">
+            <div style="background:var(--laranja);color:#15161c;border-radius:7px;padding:9px 16px;font-size:13px;font-weight:600;font-family:var(--f-titulo);">Ler o documento e assinar</div>
+            <div style="font-size:12px;color:var(--texto-tenue);">leva 4 minutos</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- futuro, apagado -->
+      <div style="position:relative;padding:0 0 16px 26px;opacity:.45;">
+        <span style="position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--tinta);border:2px dashed var(--texto-tenue);"></span>
+        <p style="margin:0;font-size:13px;color:var(--texto-fraco);">Um robô livre pega a obra &middot; <span style="font-family:var(--f-mono);font-size:11px;">estimado: mesmo dia</span></p>
+      </div>
+      <div style="position:relative;padding:0 0 16px 26px;opacity:.45;">
+        <span style="position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--tinta);border:2px dashed var(--texto-tenue);"></span>
+        <p style="margin:0;font-size:13px;color:var(--texto-fraco);">Constrói, testa, passa pela revisão &middot; <span style="font-family:var(--f-mono);font-size:11px;">estimado: 2 dias</span></p>
+      </div>
+      <div style="position:relative;padding:0 0 0 26px;opacity:.45;">
+        <span style="position:absolute;left:-7px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--tinta);border:2px dashed var(--verde);"></span>
+        <p style="margin:0;font-size:13px;color:var(--texto-fraco);">Entra no ar e <strong style="color:var(--verde);font-weight:600;">176 pessoas recebem a notícia</strong></p>
+      </div>
+
+    </div>
+
+    <!-- coluna direita -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <div style="background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:16px 18px;">
+        <div style="font-family:var(--f-titulo);font-size:13.5px;margin-bottom:12px;">O que falta para entrar no ar</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+            <span style="font-size:12.5px;color:var(--texto-tenue);text-decoration:line-through;">decisão de produto escrita</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><path d="M20 6 9 17l-5-5"/></svg>
+            <span style="font-size:12.5px;color:var(--texto-tenue);text-decoration:line-through;">documento de obra rascunhado</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <span style="width:15px;height:15px;flex-shrink:0;margin-top:2px;border:2px solid var(--laranja);border-radius:4px;"></span>
+            <span style="font-size:12.5px;color:var(--laranja);font-weight:600;">a sua assinatura</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;opacity:.5;">
+            <span style="width:15px;height:15px;flex-shrink:0;margin-top:2px;border:2px solid var(--texto-tenue);border-radius:4px;"></span>
+            <span style="font-size:12.5px;color:var(--texto-fraco);">construção e testes</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;opacity:.5;">
+            <span style="width:15px;height:15px;flex-shrink:0;margin-top:2px;border:2px solid var(--texto-tenue);border-radius:4px;"></span>
+            <span style="font-size:12.5px;color:var(--texto-fraco);">publicação conferida</span>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;opacity:.5;">
+            <span style="width:15px;height:15px;flex-shrink:0;margin-top:2px;border:2px solid var(--texto-tenue);border-radius:4px;"></span>
+            <span style="font-size:12.5px;color:var(--texto-fraco);">176 pessoas avisadas</span>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:16px 18px;">
+        <div style="font-family:var(--f-titulo);font-size:13.5px;margin-bottom:10px;">Quem tocou nesta ideia</div>
+        <div style="display:flex;flex-direction:column;gap:9px;font-size:12.5px;color:var(--texto-fraco);">
+          <div style="display:flex;justify-content:space-between;gap:10px;"><span>Larissa M.</span><span style="color:var(--texto-tenue);font-family:var(--f-mono);font-size:11px;">escreveu</span></div>
+          <div style="display:flex;justify-content:space-between;gap:10px;"><span>175 outros alunos</span><span style="color:var(--texto-tenue);font-family:var(--f-mono);font-size:11px;">votaram</span></div>
+          <div style="display:flex;justify-content:space-between;gap:10px;"><span>Você</span><span style="color:var(--texto-tenue);font-family:var(--f-mono);font-size:11px;">juntou, avaliou, decidiu</span></div>
+          <div style="display:flex;justify-content:space-between;gap:10px;"><span>robô 4</span><span style="color:var(--texto-tenue);font-family:var(--f-mono);font-size:11px;">rascunhou a obra</span></div>
+        </div>
+        <p style="margin:12px 0 0;font-size:11px;color:var(--texto-tenue);border-top:1px solid var(--linha);padding-top:10px;line-height:1.55;">
+          Este histórico nunca é editado nem apagado. Uma correção vira uma linha nova — inclusive as suas.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

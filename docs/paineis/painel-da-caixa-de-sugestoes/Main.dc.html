@@ -1,0 +1,225 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --tinta:#15161c; --tinta-2:#1b1d25; --painel:#1e202b; --painel-claro:#262838;
+      --linha:rgba(255,255,255,.08); --linha-forte:rgba(255,255,255,.16);
+      --laranja:#ff7a33; --laranja-fraco:rgba(255,122,51,.14);
+      --azul:#4c8dff; --azul-fraco:rgba(76,141,255,.14);
+      --verde:#34d399; --verde-fraco:rgba(52,211,153,.14);
+      --vermelho:#ff5c5c; --vermelho-fraco:rgba(255,92,92,.14);
+      --ambar:#f2b234; --ambar-fraco:rgba(242,178,52,.14);
+      --texto:#edeef2; --texto-fraco:#9a9db0; --texto-tenue:#5c5f70;
+      --f-titulo:"Segoe UI Semibold","Segoe UI",system-ui,-apple-system,sans-serif;
+      --f-corpo:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+      --f-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--tinta);color:var(--texto);font-family:var(--f-corpo);line-height:1.5;
+      background-image:linear-gradient(var(--linha) 1px,transparent 1px),linear-gradient(90deg,var(--linha) 1px,transparent 1px);
+      background-size:64px 64px;background-position:center -1px;}
+    a{color:var(--laranja);} a:hover{color:#ffa06b;}
+  </style>
+</helmet>
+
+<div style="padding:22px 26px 24px;">
+
+  <!-- topo -->
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:14px;border-bottom:1px solid var(--linha);">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <svg width="26" height="26" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+        <rect x="3.5" y="3.5" width="33" height="33" rx="9" stroke="#ff7a33" stroke-width="1.6"/>
+        <rect x="12" y="12" width="16" height="16" rx="4" transform="rotate(45 20 20)" stroke="#4c8dff" stroke-width="1.6"/>
+        <circle cx="20" cy="20" r="2.6" fill="#ff7a33"/>
+      </svg>
+      <div style="font-family:var(--f-titulo);font-weight:600;font-size:16px;">Caixa de Sugestões</div>
+      <div style="color:var(--texto-tenue);font-size:13px;">/ A sua mesa</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:18px;font-family:var(--f-mono);font-size:11.5px;color:var(--texto-tenue);">
+      <span>quinta, 28 de agosto</span>
+      <span style="border:1px solid var(--linha);background:var(--painel);border-radius:6px;padding:4px 9px;">Ver tudo &rarr;</span>
+    </div>
+  </div>
+
+  <!-- abas do painel -->
+  <div style="display:flex;align-items:flex-end;gap:4px;margin-top:14px;border-bottom:1px solid var(--linha);">
+    <div style="padding:9px 17px;border:1px solid var(--linha-forte);border-bottom:1px solid var(--tinta);background:var(--painel);border-radius:8px 8px 0 0;font-family:var(--f-titulo);font-size:13px;color:var(--texto);margin-bottom:-1px;display:flex;align-items:center;gap:8px;">A sua mesa <span style="background:var(--laranja);color:#15161c;font-family:var(--f-mono);font-size:10px;font-weight:600;border-radius:8px;padding:0 6px;line-height:16px;">3</span></div>
+    <div style="padding:9px 17px;font-size:13px;color:var(--texto-fraco);display:flex;align-items:center;gap:8px;">A travessia</div>
+    <div style="padding:9px 17px;font-size:13px;color:var(--texto-fraco);display:flex;align-items:center;gap:8px;">Quem está esperando</div>
+    <div style="padding:9px 17px;font-size:13px;color:var(--texto-fraco);display:flex;align-items:center;gap:8px;">Os robôs</div>
+  </div>
+
+  <!-- cabeçalho -->
+  <div style="display:flex;align-items:baseline;gap:16px;margin:22px 0 16px;">
+    <h1 style="font-family:var(--f-titulo);font-size:26px;margin:0;line-height:1.2;">Três coisas esperam você.</h1>
+    <p style="margin:0;color:var(--texto-fraco);font-size:14px;">O resto está andando sozinho — você não precisa olhar.</p>
+  </div>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1.62fr) minmax(0,1fr);gap:20px;align-items:start;">
+
+    <!-- A MESA -->
+    <div style="background:var(--painel);border:1px solid var(--laranja);border-radius:12px;overflow:hidden;">
+
+      <div style="background:var(--laranja-fraco);border-bottom:1px solid var(--laranja);padding:11px 26px;display:flex;align-items:center;justify-content:space-between;gap:14px;">
+        <div style="font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--laranja);">Decisão 1 de 3 &middot; só você pode tomar esta</div>
+        <div style="font-family:var(--f-mono);font-size:11px;color:var(--ambar);">esperando há 14 dias</div>
+      </div>
+
+      <div style="padding:24px 26px 26px;">
+
+        <h2 style="font-family:var(--f-titulo);font-size:25px;margin:0 0 12px;line-height:1.25;">Página pública com os meus projetos</h2>
+
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-bottom:18px;border-bottom:1px solid var(--linha);">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ff7a33" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 15 7-7 7 7"/></svg>
+            <span style="font-family:var(--f-mono);font-size:15px;font-weight:600;color:var(--texto);">218</span>
+            <span style="font-size:12.5px;color:var(--texto-fraco);">votos</span>
+          </div>
+          <span style="color:var(--texto-tenue);">&middot;</span>
+          <div style="font-size:12.5px;color:var(--texto-fraco);"><strong style="color:var(--texto);font-weight:600;font-family:var(--f-mono);">176</strong> alunos diferentes pediram</div>
+          <span style="color:var(--texto-tenue);">&middot;</span>
+          <div style="font-size:12.5px;color:var(--texto-fraco);"><strong style="color:var(--texto);font-weight:600;font-family:var(--f-mono);">31</strong> comentários</div>
+          <span style="color:var(--texto-tenue);">&middot;</span>
+          <div style="border:1px solid var(--linha);background:var(--tinta-2);border-radius:5px;padding:2px 8px;font-size:11px;color:var(--texto-fraco);">Plataforma</div>
+          <div style="border:1px solid var(--linha);background:var(--tinta-2);border-radius:5px;padding:2px 8px;font-size:11px;color:var(--texto-fraco);">juntou 4 ideias repetidas</div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px;padding:18px 0;">
+          <div>
+            <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--texto-tenue);margin-bottom:7px;">O que os alunos escreveram</div>
+            <div style="border-left:2px solid var(--linha-forte);padding-left:13px;">
+              <p style="margin:0;font-size:13.5px;color:var(--texto-fraco);line-height:1.6;font-style:italic;">
+                &ldquo;Eu termino os projetos do curso e eles ficam parados no meu computador. Queria um lugar pra mandar o link
+                pra quem quer me contratar, sem ter que montar um site do zero.&rdquo;
+              </p>
+              <p style="margin:8px 0 0;font-size:11px;color:var(--texto-tenue);">Larissa M. e mais 175 pessoas, desde 12 de julho</p>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--texto-tenue);margin-bottom:7px;">O que a equipe decidiu fazer</div>
+            <p style="margin:0;font-size:13.5px;color:var(--texto);line-height:1.6;">
+              Dar ao aluno uma página pública, com endereço próprio, reunindo os projetos que ele marcar como
+              publicáveis. Modelo fixo — nada de editor de layout.
+            </p>
+            <p style="margin:9px 0 0;font-size:11.5px;color:var(--texto-tenue);">escrito por você em 21/08</p>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;padding:16px 0 18px;border-top:1px solid var(--linha);border-bottom:1px solid var(--linha);">
+          <div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:12px;color:var(--texto-fraco);">Ajuda o aluno a aprender</span>
+              <span style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">4 de 5</span>
+            </div>
+            <div style="height:6px;background:var(--tinta-2);border-radius:3px;overflow:hidden;"><div style="width:80%;height:100%;background:var(--azul);"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:12px;color:var(--texto-fraco);">Ajuda a escola a vender</span>
+              <span style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">5 de 5</span>
+            </div>
+            <div style="height:6px;background:var(--tinta-2);border-radius:3px;overflow:hidden;"><div style="width:100%;height:100%;background:var(--azul);"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;">
+              <span style="font-size:12px;color:var(--texto-fraco);">Trabalho que dá</span>
+              <span style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">3 de 5</span>
+            </div>
+            <div style="height:6px;background:var(--tinta-2);border-radius:3px;overflow:hidden;"><div style="width:60%;height:100%;background:var(--texto-tenue);"></div></div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;margin-top:20px;flex-wrap:wrap;">
+          <div style="background:var(--laranja);color:#15161c;border-radius:8px;padding:14px 26px;font-size:15px;font-weight:600;font-family:var(--f-titulo);display:flex;align-items:center;gap:10px;">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#15161c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            Ler o documento e assinar
+          </div>
+          <div style="border:1px solid var(--linha-forte);background:var(--tinta-2);color:var(--texto-fraco);border-radius:8px;padding:14px 22px;font-size:14px;font-weight:600;font-family:var(--f-titulo);">Ainda não — volta amanhã</div>
+          <div style="font-size:13px;color:var(--texto-tenue);text-decoration:underline;">Recusar, escrevendo o porquê</div>
+        </div>
+
+        <p style="margin:16px 0 0;font-size:12px;color:var(--texto-tenue);line-height:1.6;background:var(--tinta-2);border:1px solid var(--linha);border-radius:8px;padding:11px 14px;">
+          <strong style="color:var(--texto-fraco);font-weight:600;">Assinar é o que libera a obra.</strong>
+          Nenhum robô começa a construir isto enquanto o seu nome não estiver aqui — e ninguém além de você pode pôr.
+          Isso é uma trava de propósito, não um problema a resolver.
+        </p>
+
+      </div>
+    </div>
+
+    <!-- COLUNA DIREITA -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <div style="background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:17px 19px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-family:var(--f-titulo);font-size:13.5px;">Depois desta</div>
+          <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">2</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;padding-bottom:12px;border-bottom:1px solid var(--linha);">
+            <div style="width:26px;height:26px;flex-shrink:0;border-radius:7px;border:1px solid var(--linha-forte);background:var(--tinta-2);display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">2</div>
+            <div style="min-width:0;">
+              <p style="margin:0;font-size:13px;font-family:var(--f-titulo);line-height:1.35;">Salvar o progresso da aula no celular</p>
+              <p style="margin:4px 0 0;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-tenue);">176 votos &middot; 149 pessoas &middot; espera há 4 dias</p>
+              <p style="margin:4px 0 0;font-size:11.5px;color:var(--texto-fraco);">também espera a sua assinatura</p>
+            </div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <div style="width:26px;height:26px;flex-shrink:0;border-radius:7px;border:1px solid var(--linha-forte);background:var(--tinta-2);display:flex;align-items:center;justify-content:center;font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">3</div>
+            <div style="min-width:0;">
+              <p style="margin:0;font-size:13px;font-family:var(--f-titulo);line-height:1.35;">Certificado para colocar no LinkedIn</p>
+              <p style="margin:4px 0 0;font-family:var(--f-mono);font-size:10.5px;color:var(--texto-tenue);">84 votos &middot; 80 pessoas &middot; parada há 27 dias</p>
+              <p style="margin:4px 0 0;font-size:11.5px;color:var(--ambar);">ninguém da equipe olhou ainda — decida se vale seguir</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:17px 19px;">
+        <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-family:var(--f-titulo);font-size:13.5px;">Andando sozinho, sem você</div>
+          <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">3</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:11px;">
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--azul);flex-shrink:0;margin-top:6px;"></span>
+            <div style="min-width:0;">
+              <p style="margin:0;font-size:12.5px;line-height:1.4;">Legenda automática nos vídeos</p>
+              <p style="margin:2px 0 0;font-size:11px;color:var(--texto-tenue);">robô 2 está escrevendo os testes &middot; começou hoje</p>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--ambar);flex-shrink:0;margin-top:6px;"></span>
+            <div style="min-width:0;">
+              <p style="margin:0;font-size:12.5px;line-height:1.4;">Busca dentro das transcrições</p>
+              <p style="margin:2px 0 0;font-size:11px;color:var(--texto-tenue);">em revisão, 1 ponto a corrigir &middot; há 2 dias</p>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-start;">
+            <span style="width:7px;height:7px;border-radius:50%;background:var(--verde);flex-shrink:0;margin-top:6px;"></span>
+            <div style="min-width:0;">
+              <p style="margin:0;font-size:12.5px;line-height:1.4;">Aula ao vivo de tira-dúvidas</p>
+              <p style="margin:2px 0 0;font-size:11px;color:var(--verde);">no ar, conferido em 26/08 &middot; 36 pessoas avisadas</p>
+            </div>
+          </div>
+        </div>
+        <p style="margin:14px 0 0;font-size:11.5px;color:var(--texto-tenue);border-top:1px solid var(--linha);padding-top:11px;line-height:1.55;">
+          Esta caixa existe para você <em>não</em> precisar olhar. Se algo aqui travar esperando você, ele sobe para a mesa.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "pages": [
+    { "id": "page-1", "name": "O painel" },
+    { "id": "page-2", "name": "Como escolhemos" }
+  ],
+  "artboards": [
+    { "file": "Main.dc.html", "x": 0, "y": 0, "w": 1440, "h": 870, "page": "page-1", "title": "Aba 1 · A sua mesa (porta de entrada)" },
+    { "file": "ModeloA_Esteira.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 950, "page": "page-1", "title": "Aba 2 · A travessia" },
+    { "file": "ModeloD_Plateia.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 930, "page": "page-1", "title": "Aba 3 · Quem está esperando" },
+    { "file": "ModeloC_SalaDeControle.dc.html", "x": 4680, "y": 0, "w": 1440, "h": 950, "page": "page-1", "title": "Aba 4 · Os robôs" },
+
+    { "file": "ModeloB_Assinatura.dc.html", "x": 0, "y": 1090, "w": 1000, "h": 1270, "page": "page-1", "title": "A assinatura (abre da aba 1)" },
+    { "file": "ModeloA_Detalhe.dc.html", "x": 1120, "y": 1090, "w": 1000, "h": 990, "page": "page-1", "title": "A travessia de uma ideia (abre da aba 2)" },
+    { "file": "ModeloD_Aviso.dc.html", "x": 2240, "y": 1090, "w": 780, "h": 990, "page": "page-1", "title": "O que o aluno recebe (abre da aba 3)" },
+    { "file": "ModeloC_Onda.dc.html", "x": 3140, "y": 1090, "w": 1120, "h": 720, "page": "page-1", "title": "O que pode ir junto (abre da aba 4)" },
+
+    { "file": "TudoEmDia.dc.html", "x": 0, "y": 2500, "w": 1440, "h": 580, "page": "page-1", "title": "As quatro abas num dia em que nada espera você" },
+
+    { "file": "ComoEscolhemos.dc.html", "x": 0, "y": 0, "w": 1440, "h": 1240, "page": "page-2", "title": "A escolha de 28/08/2026" }
+  ],
+  "annotations": [
+    { "id": "nota-porta", "x": -330, "y": 40, "w": 270, "page": "page-1", "text": "A porta de entrada.\n\nÉ esta que abre quando você entra: uma decisão sua por vez, do tamanho de uma mesa. As outras três são abas dela, na faixa do topo." },
+    { "id": "nota-fundo", "x": -330, "y": 1130, "w": 270, "page": "page-1", "text": "As telas de dentro.\n\nCada aba abre uma destas quando você clica num item. A assinatura é a mais importante: é o único passo que nenhum robô faz por você." },
+    { "id": "nota-emdia", "x": -330, "y": 2540, "w": 270, "page": "page-1", "text": "O dia bom.\n\nComo cada aba fica quando não há nada esperando por você — porque um painel que só funciona cheio de problema ensina medo." },
+    { "id": "nota-arquivo", "x": -330, "y": 40, "w": 270, "page": "page-2", "text": "Guardado como registro.\n\nOs quatro modelos como foram apresentados, com o escolhido marcado e o motivo. Não é mais uma escolha em aberto." }
+  ],
+  "launch": { "view": "canvas", "page": "page-1" }
+}

@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    :root{
+      --tinta:#15161c; --tinta-2:#1b1d25; --painel:#1e202b;
+      --linha:rgba(255,255,255,.08); --linha-forte:rgba(255,255,255,.16);
+      --laranja:#ff7a33; --laranja-fraco:rgba(255,122,51,.14);
+      --azul:#4c8dff; --verde:#34d399; --verde-fraco:rgba(52,211,153,.14);
+      --vermelho:#ff5c5c; --vermelho-fraco:rgba(255,92,92,.14);
+      --ambar:#f2b234; --ambar-fraco:rgba(242,178,52,.14);
+      --texto:#edeef2; --texto-fraco:#9a9db0; --texto-tenue:#5c5f70;
+      --f-titulo:"Segoe UI Semibold","Segoe UI",system-ui,-apple-system,sans-serif;
+      --f-corpo:system-ui,-apple-system,"Segoe UI",Helvetica,Arial,sans-serif;
+      --f-mono:ui-monospace,"Cascadia Mono",Consolas,"SF Mono",Menlo,monospace;
+    }
+    *{box-sizing:border-box;}
+    body{margin:0;background:var(--tinta);color:var(--texto);font-family:var(--f-corpo);line-height:1.5;
+      background-image:linear-gradient(var(--linha) 1px,transparent 1px),linear-gradient(90deg,var(--linha) 1px,transparent 1px);
+      background-size:64px 64px;background-position:center -1px;}
+    a{color:var(--laranja);} a:hover{color:#ffa06b;}
+    .rot{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--texto-tenue);margin:0 0 6px;}
+  </style>
+</helmet>
+
+<div style="padding:24px 30px 28px;">
+
+  <div style="display:flex;align-items:center;gap:10px;padding-bottom:14px;border-bottom:1px solid var(--linha);">
+    <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">Modelo B</div>
+    <div style="color:var(--texto-tenue);">&middot;</div>
+    <div style="font-size:13px;color:var(--texto-fraco);">tela de profundidade: <strong style="color:var(--texto);font-weight:600;">a assinatura</strong></div>
+  </div>
+
+  <div style="margin:22px 0 18px;">
+    <p style="margin:0 0 6px;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--laranja);">Você está prestes a autorizar uma obra</p>
+    <h1 style="font-family:var(--f-titulo);font-size:25px;margin:0 0 8px;line-height:1.25;">Página pública com os meus projetos</h1>
+    <p style="margin:0;font-size:13px;color:var(--texto-fraco);">218 votos &middot; 176 pessoas &middot; nasceu de 5 ideias que a equipe juntou numa só</p>
+  </div>
+
+  <div style="background:var(--painel);border:1px solid var(--linha-forte);border-radius:12px;padding:24px 26px;">
+
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding-bottom:16px;border-bottom:1px solid var(--linha);margin-bottom:20px;">
+      <div style="font-family:var(--f-titulo);font-size:15px;">O documento de obra, por extenso</div>
+      <div style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);">rascunhado pelo robô 4 &middot; 14/08</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px 30px;">
+
+      <div>
+        <p class="rot">Qual problema estamos resolvendo</p>
+        <p style="margin:0;font-size:13.5px;color:var(--texto-fraco);line-height:1.65;">
+          Alunos concluem projetos no curso e não têm como reuni-los numa página pública que sirva para mostrar
+          a clientes ou a quem contrata.
+        </p>
+      </div>
+
+      <div>
+        <p class="rot">O que muda para o aluno</p>
+        <p style="margin:0;font-size:13.5px;color:var(--texto-fraco);line-height:1.65;">
+          Ele gera um endereço público reunindo os projetos que marcar como publicáveis, e pode mandar esse link
+          para qualquer pessoa.
+        </p>
+      </div>
+
+      <div style="grid-column:1 / -1;border-top:1px solid var(--linha);padding-top:20px;">
+        <p class="rot" style="color:var(--ambar);">O que NÃO vai ser feito — e é obrigatório dizer</p>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 30px;">
+          <div style="display:flex;gap:9px;align-items:flex-start;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5c5f70" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:3px;"><path d="M18 6 6 18M6 6l12 12"/></svg><span style="font-size:13px;color:var(--texto-fraco);">loja para vender os projetos</span></div>
+          <div style="display:flex;gap:9px;align-items:flex-start;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5c5f70" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:3px;"><path d="M18 6 6 18M6 6l12 12"/></svg><span style="font-size:13px;color:var(--texto-fraco);">qualquer coisa de pagamento ou cobrança</span></div>
+          <div style="display:flex;gap:9px;align-items:flex-start;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5c5f70" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:3px;"><path d="M18 6 6 18M6 6l12 12"/></svg><span style="font-size:13px;color:var(--texto-fraco);">conversa direta entre visitante e aluno</span></div>
+          <div style="display:flex;gap:9px;align-items:flex-start;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5c5f70" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:3px;"><path d="M18 6 6 18M6 6l12 12"/></svg><span style="font-size:13px;color:var(--texto-fraco);">editor de layout — o modelo é fixo</span></div>
+        </div>
+        <p style="margin:11px 0 0;font-size:11.5px;color:var(--texto-tenue);line-height:1.55;">
+          Esta lista não pode ficar vazia. Se não dá para dizer o que fica de fora, não houve escopo de verdade — e o robô
+          preencheria o vazio sozinho.
+        </p>
+      </div>
+
+      <div style="grid-column:1 / -1;border-top:1px solid var(--linha);padding-top:20px;">
+        <p class="rot" style="color:var(--verde);">Como saberemos que ficou pronto</p>
+        <div style="display:flex;flex-direction:column;gap:9px;">
+          <div style="display:flex;gap:11px;align-items:flex-start;">
+            <span style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);flex-shrink:0;margin-top:2px;">1</span>
+            <span style="font-size:13.5px;color:var(--texto-fraco);line-height:1.55;">um aluno matriculado marca um projeto como publicável e recebe o endereço público em até 3 cliques</span>
+          </div>
+          <div style="display:flex;gap:11px;align-items:flex-start;">
+            <span style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);flex-shrink:0;margin-top:2px;">2</span>
+            <span style="font-size:13.5px;color:var(--texto-fraco);line-height:1.55;">a página pública não mostra e-mail, telefone nem nada além do que foi marcado como público</span>
+          </div>
+          <div style="display:flex;gap:11px;align-items:flex-start;">
+            <span style="font-family:var(--f-mono);font-size:11px;color:var(--texto-tenue);flex-shrink:0;margin-top:2px;">3</span>
+            <span style="font-size:13.5px;color:var(--texto-fraco);line-height:1.55;">o aluno consegue tornar a página privada de novo a qualquer momento, e o endereço para de funcionar na hora</span>
+          </div>
+        </div>
+        <p style="margin:11px 0 0;font-size:11.5px;color:var(--texto-tenue);line-height:1.55;">
+          Cada uma dessas frases vira um teste automático. &ldquo;Melhorar a experiência&rdquo; não serviria: não dá para conferir.
+        </p>
+      </div>
+
+      <div style="grid-column:1 / -1;border-top:1px solid var(--linha);padding-top:20px;">
+        <p class="rot">Se der errado depois de no ar</p>
+        <p style="margin:0;font-size:13.5px;color:var(--texto-fraco);line-height:1.65;">
+          Existe um interruptor: desligá-lo esconde todas as páginas públicas na hora, <strong style="color:var(--texto);font-weight:600;">sem apagar
+          nada</strong> do que os alunos montaram. Religar devolve tudo como estava.
+        </p>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ASSINATURA -->
+  <div style="margin-top:18px;background:var(--laranja-fraco);border:1px solid var(--laranja);border-radius:12px;padding:22px 26px;">
+    <div style="display:flex;align-items:flex-start;gap:26px;">
+      <div style="flex:1;min-width:0;">
+        <p style="margin:0 0 10px;font-family:var(--f-titulo);font-size:17px;color:var(--laranja);">A sua assinatura</p>
+        <p style="margin:0 0 16px;font-size:13px;color:var(--texto-fraco);line-height:1.65;max-width:520px;">
+          Assinando, você afirma que leu este documento e autoriza um robô a construir exatamente isto — nada além.
+          Fica registrado o seu nome e a data, e o registro nunca é apagado.
+        </p>
+        <div style="display:flex;align-items:flex-end;gap:22px;">
+          <div>
+            <p style="margin:0 0 6px;font-size:11px;color:var(--texto-tenue);">assinado por</p>
+            <div style="border-bottom:1px solid var(--laranja);padding:0 40px 7px 2px;font-family:var(--f-titulo);font-size:17px;">Davi A.</div>
+          </div>
+          <div>
+            <p style="margin:0 0 6px;font-size:11px;color:var(--texto-tenue);">em</p>
+            <div style="border-bottom:1px solid var(--linha-forte);padding:0 20px 7px 2px;font-family:var(--f-mono);font-size:15px;color:var(--texto-fraco);">28/08/2026</div>
+          </div>
+        </div>
+      </div>
+      <div style="width:250px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;">
+        <div style="background:var(--laranja);color:#15161c;border-radius:8px;padding:15px 20px;font-size:15px;font-weight:600;font-family:var(--f-titulo);text-align:center;display:flex;align-items:center;justify-content:center;gap:10px;">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#15161c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          Assinar e liberar a obra
+        </div>
+        <div style="border:1px solid var(--linha-forte);background:var(--tinta-2);color:var(--texto-fraco);border-radius:8px;padding:12px 20px;font-size:13.5px;font-weight:600;font-family:var(--f-titulo);text-align:center;">Ainda não</div>
+        <p style="margin:2px 0 0;font-size:11px;color:var(--texto-tenue);text-align:center;line-height:1.5;">176 pessoas recebem um aviso assim que você assinar</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAIL-CLOSED -->
+  <div style="margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;">
+    <div style="background:var(--painel);border:1px solid var(--linha);border-radius:12px;padding:16px 18px;">
+      <p style="margin:0 0 8px;font-family:var(--f-titulo);font-size:13px;">Por que só você vê este botão</p>
+      <p style="margin:0;font-size:12.5px;color:var(--texto-fraco);line-height:1.6;">
+        Quem modera a Caixa (muda status, escreve avaliação) e quem <em>autoriza uma obra</em> são papéis diferentes.
+        Um moderador que abra esta tela recebe uma recusa — não um botão desabilitado, uma recusa de verdade, no
+        programa e no banco de dados.
+      </p>
+    </div>
+    <div style="background:var(--tinta-2);border:1px dashed var(--linha-forte);border-radius:12px;padding:16px 18px;">
+      <p style="margin:0 0 8px;font-family:var(--f-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--texto-tenue);">como a tela fica se a lista de assinantes estiver vazia</p>
+      <div style="background:var(--painel);border:1px solid var(--linha);border-radius:9px;padding:13px 15px;">
+        <div style="display:flex;gap:10px;align-items:flex-start;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9a9db0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:2px;"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <div>
+            <p style="margin:0;font-size:12.5px;color:var(--texto-fraco);line-height:1.55;"><strong style="color:var(--texto);font-weight:600;">Ninguém pode assinar esta obra ainda.</strong></p>
+            <p style="margin:5px 0 0;font-size:11.5px;color:var(--texto-tenue);line-height:1.55;">
+              Nenhum nome está cadastrado como autorizado. Até que haja um, nada entra em construção — a trava está
+              <strong style="color:var(--texto-fraco);font-weight:600;">funcionando</strong>, não quebrada.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+</body>
+</html>
