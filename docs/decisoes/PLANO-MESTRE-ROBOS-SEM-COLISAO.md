@@ -288,7 +288,7 @@ não por calendário. Onda 0 é hoje; as outras são tarefas de robô.
 | 0.1 | Ligar `strict_required_status_checks_policy` no conjunto de regras | **Classe 6, hoje** | um parâmetro |
 | 0.2 | Ligar rastreamento de segredos + proteção de push (grátis em repo público) | risco novo | um parâmetro |
 | 0.3 | Corrigir `RITOS.md` §2 peça 0 — a frase que diz que a proteção é inalcançável | a causa do erro da Parte 0 | 1 linha |
-| 0.4 | Decidir o que fazer com o repositório público e com o OneDrive | 2 riscos reais | decisão do dono |
+| 0.4 | Decidir o que fazer com o repositório público ~~e com o OneDrive~~ | 1 risco real | **respondido em 28/08** — ver correção 1 |
 
 **Aviso honesto sobre 0.1:** com a política estrita ligada, todo merge
 invalida o verde dos outros PRs abertos, que precisam se atualizar e rodar de
@@ -392,7 +392,7 @@ distinta dos cinco pareceres, com veredito e motivo. Vocabulário:
 | O10 | Classe 5 não tem cura mecânica; encurtar a descoberta | ACEITA | 2 | Honestidade que os outros não tiveram |
 | O11 | Reprovar PR que reduza testes ou adicione "pular" | ACEITA | 6 | Convergiu com B15 |
 | O12 | Minutos de CI são recurso escasso; rodar em Linux | PREJUDICADA | — | Repositório **público**: executor padrão não consome franquia. O teto temido não existe |
-| O13 | Repositório dentro do OneDrive corrompe | ACEITA | 0.4 | Confirmado: o repositório está em `OneDrive\Documentos\` |
+| O13 | Repositório dentro do OneDrive corrompe | ~~ACEITA~~ → **PREJUDICADA** (28/08, ver correção 1) | — | O caminho tem `OneDrive` no nome, mas **não há sincronização**: programa não roda, nenhuma conta configurada, pasta sem ponto de sincronização. O conselho está certo em geral e não se aplica aqui |
 | O14 | O fluxo do PR se auto-neutraliza | ACEITA | 4 | O portão de verdade tem de disparar na `main` |
 | O15 | Cópia de segurança antes de migração | ACEITA | 4 | — |
 | O16 | Credencial do banco só dentro da publicação | ACEITA | 4 | "Não roda porque não tem a senha", não porque leu que não deve |
@@ -447,7 +447,7 @@ distinta dos cinco pareceres, com veredito e motivo. Vocabulário:
 | B9 | Conta-máquina + fork como jaula de verdade | ADIADA | — | O conjunto de regras já bloqueia o push direto. E o repositório é público, o que muda as premissas. Reavaliar depois da Onda 4 |
 | B10 | **Cada lei declara quem a faz valer; leis sem mecanismo aparecem em vermelho** | ACEITA | 6 | A melhor ideia estrutural da rodada: mede a doença-mãe do projeto. A Parte 0 é a prova de que faltava |
 | B11 | Revisor-robô no pouso, com contexto fresco | ACEITA | 6 | O substituto mais próximo do revisor humano ausente |
-| B12 | OneDrive e Git não convivem | ACEITA | 0.4 | Segunda voz independente sobre o mesmo risco |
+| B12 | OneDrive e Git não convivem | ~~ACEITA~~ → **PREJUDICADA** (28/08, ver correção 1) | — | Mesma medição do O13. Duas vozes independentes, e ambas partiam de uma premissa que a máquina desmente |
 | B13 | Verificador de maiúsculas e fim de linha | ACEITA | 6 | Cobrou nesta própria sessão: um arquivo divergindo só no fim de linha travou a atualização do espelho (`armadilhas/152`) |
 | B14 | Medir perguntas por frente — o dono é recurso único | ACEITA | 6 | — |
 | B15 | Catraca de cobertura por célula | ACEITA | 6 | Convergiu com O11 |
@@ -456,12 +456,51 @@ distinta dos cinco pareceres, com veredito e motivo. Vocabulário:
 
 | Veredito | Quantidade |
 |---|---|
-| ACEITA | 38 |
+| ACEITA | 36 |
 | ACEITA COM MUDANÇA | 6 |
 | RECUSADA (ou em parte) | 5 |
-| PREJUDICADA por fato medido | 4 |
+| PREJUDICADA por fato medido | 6 |
 | DO DONO | 1 |
 | ADIADA | 2 |
+
+> Placar atualizado em 28/08/2026 pela **correção 1** (O13 e B12 saíram de
+> ACEITA para PREJUDICADA). O número aqui sempre reflete a Parte 4 **mais** as
+> correções da Parte 4.1 — se um dia divergir, a Parte 4.1 manda.
+
+---
+
+## PARTE 4.1 — Correções ao registro (o que mudou DEPOIS de escrito)
+
+Esta seção existe para a auditoria ser honesta. Um veredito da Parte 4 só muda
+aqui, **com data, motivo e prova** — nunca reescrevendo a linha original em
+silêncio, que é como um registro de decisões perde o valor.
+
+### Correção 1 — 28/08/2026 · O13 e B12 (OneDrive) · ACEITA → PREJUDICADA
+
+Dois consultores apontaram, de forma independente, que guardar o repositório
+dentro do OneDrive corrompe o Git em silêncio com sessões simultâneas. O plano
+aceitou e mandou para a decisão do dono (item 0.4).
+
+**O mantenedor informou que o OneDrive está apenas instalado, sem conta, e não é
+usado.** A medição confirmou, por três sinais independentes nesta máquina:
+
+| Sinal | Resultado |
+|---|---|
+| `Get-Process OneDrive` | não está em execução |
+| `HKCU:\Software\Microsoft\OneDrive\Accounts\Personal` | nenhuma conta configurada |
+| Atributos da pasta do projeto | `Directory` apenas — **sem** `ReparsePoint`, isto é, sem ponto de sincronização |
+
+O caminho tem `OneDrive` no nome e é uma pasta local comum. **Nada a mover.** O
+conselho continua correto em geral; a premissa é que não vale aqui — e os
+consultores não tinham como saber.
+
+Registro no livro: `20260828-041-o-risco-do-onedrive-nao-existe-nesta-maquina`.
+
+**A lição de método, que vale mais que o item:** é a terceira vez no mesmo dia
+que medir venceu supor — a proteção que eu disse não existir já estava ligada; o
+comando que disse ter ligado a trava não tinha ligado; e um risco apontado por
+dois consultores não existe nesta máquina. Nenhuma das três foi descoberta
+pensando com mais cuidado. As três foram descobertas rodando um comando.
 
 ---
 
