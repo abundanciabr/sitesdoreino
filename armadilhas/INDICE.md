@@ -175,5 +175,7 @@
 | [147](147-o-caminho-do-script-escolhe-qual-repo-e-medido.md) | O `../` no comando escolhe QUAL cópia do repositório o portão vai medir — você acabou de criar o worktree a partir de `origin/main`, o livro está em dia, e o portão acusa um absurdo: | — |
 | [148](148-o-reconhecimento-acontece-no-espelho-velho-e-a.md) | O reconhecimento acontece no espelho velho, e a bancada nasce nova — você projeta para um sistema que não existe mais — você entrega uma tela, uma decisão ou uma pergunta ao mantenedor declarando que alguma coisa **não… | — |
 | [149](149-parametro-errado-numa-github-action-nao-reprova.md) | Parâmetro com nome errado numa GitHub Action não reprova — ela avisa e IGNORA — o deploy fecha **verde** e a imagem nova **não sobe**. O site continua no ar servindo a versão anterior, sem erro em lugar nenhum: o… | — |
+| [150](150-os-checks-do-pr-param-de-rodar-e-nao-ha-erro.md) | Os checks do PR param de rodar e não há erro nenhum — o PR está em conflito com a `main` — você faz `git push`, tudo dá certo, e **nenhum check aparece**. `gh pr checks <N>` responde `no checks reported on the… | — |
+| [151](151-o-registro-do-livro-nao-viaja-no-pr-de-outra.md) | O registro do livro não pode viajar no PR de outra célula — `painel/` conta como a célula `admin` — você fez o gesto de sempre — código da célula + registro em `painel/registros/` + `node painel/gerar_manifesto.js` — e… | — |
 
-**138 entradas.**
+**140 entradas.**
