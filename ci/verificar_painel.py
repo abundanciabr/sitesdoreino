@@ -237,6 +237,19 @@ def ids_do_resumo(p: Painel) -> set[str]:
     }
 
 
+def carimbo_de(texto: str) -> str | None:
+    """A impressão digital da geração que produziu o arquivo.
+
+    A página e cada arquivo de mês carregam a mesma. É ela que permite ao painel
+    distinguir, na tela do dono, "o arquivo não chegou" de "os arquivos são de
+    gerações diferentes" — o caso do OneDrive sincronizando pela metade. Um
+    carimbo divergente entre artefatos do MESMO build é bug do gerador, e a tela
+    do dono não pode ser o primeiro lugar a descobrir.
+    """
+    achado = re.search(r'carimbo: "([a-f0-9]+)"', texto)
+    return achado.group(1) if achado else None
+
+
 def canonico(obj: dict) -> str:
     return json.dumps(obj, sort_keys=True, ensure_ascii=False)
 
@@ -284,12 +297,25 @@ def conferir(p: Painel) -> list[str]:
             f"{nome}: está no disco e nenhum mês o reivindica (sobrou de uma geração antiga)"
         )
 
+    carimbo_da_pagina = carimbo_de(p.pagina.read_text(encoding="utf-8"))
+    if not carimbo_da_pagina:
+        problemas.append(
+            "painel.html não carrega carimbo de geração — sem ele a página não "
+            "consegue distinguir arquivo faltando de arquivo de outra geração"
+        )
+
     nos_meses: dict[str, int] = {}
     conteudo: dict[str, dict] = {}
     for mes in meses_declarados:
         caminho = p.pasta / mes["arquivo"]
         if not caminho.is_file():
             continue
+        carimbo_do_mes = carimbo_de(caminho.read_text(encoding="utf-8"))
+        if carimbo_do_mes != carimbo_da_pagina:
+            problemas.append(
+                f"{mes['arquivo']}: carimbo {carimbo_do_mes} contra {carimbo_da_pagina} "
+                "em painel.html — os dois saíram do mesmo build e têm de bater"
+            )
         lista = registros_do_mes(caminho)
         if len(lista) != mes["count"]:
             problemas.append(

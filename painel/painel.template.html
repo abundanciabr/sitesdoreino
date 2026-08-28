@@ -125,6 +125,21 @@
   #tela-erro b{font-size:21px;}
   #tela-erro pre{white-space:pre-wrap; font-size:13px; background:#00000040; padding:10px 12px; border-radius:8px;}
 
+  /* a caixa-preta: o bloco que o dono copia e cola numa sessão */
+  .diag{margin-top:14px;}
+  .diag-copiar{font-family:'IBM Plex Sans',sans-serif; font-size:14px; font-weight:600; cursor:pointer;
+    border:1px solid currentColor; border-radius:8px; padding:8px 16px; margin-bottom:8px;
+    background:transparent; color:inherit;}
+  .diag-copiar:hover{background:#ffffff1a;}
+  .diag-texto{width:100%; font-family:'IBM Plex Mono',monospace; font-size:12px; line-height:1.5;
+    background:#00000040; color:inherit; border:1px solid #ffffff33; border-radius:8px;
+    padding:10px 12px; resize:vertical;}
+  .diag-explica{font-size:13px; opacity:.85; margin-top:6px; line-height:1.6;}
+  .aviso-historico .diag-copiar{color:var(--red);}
+  .aviso-historico .diag-texto{background:#0000002e; color:var(--text-2); border-color:var(--line);}
+  .aviso-titulo{font-family:'Space Grotesk',sans-serif; font-weight:700; color:var(--red); margin-bottom:4px;}
+  .aviso-salvo{margin-top:8px; color:var(--text-2); font-size:13.5px;}
+
   .rodape{margin-top:40px; border-top:1px solid var(--line); padding-top:14px; font-size:12.5px; color:var(--text-3); line-height:1.8;}
   @media (max-width:640px){ h1{font-size:24px;} }
 </style>
@@ -193,41 +208,165 @@ __DADOS_DO_PAINEL__
 <script>
 "use strict";
 // ===========================================================================
-// A guarda fail-closed: este painel NUNCA abre em branco nem meio-vazio.
-// Ou tudo carregou e validou, ou a tela inteira vira um aviso vermelho.
-// (Nasceu do achado da consultoria de 25/08: o painel antigo abria bonito,
-// com a caixa de pendências VAZIA, quando os dados falhavam — e caixa vazia
-// se lê como "nada esperando você".)
+// A CAIXA-PRETA — o painel depõe sobre si mesmo.
+//
+// Ninguém entra no servidor (Lei 5) e ninguém vê o navegador do mantenedor. A
+// consequência prática apareceu em 27/08/2026: o painel quebrou quatro vezes
+// num dia, e o diagnóstico só saiu na quarta — porque só então ele disse que
+// tinha sido o SITE, e não o arquivo do PC dele. A tela pedia essa informação
+// em texto, e ele não tinha por que saber que ela importava.
+//
+// Uma tela de erro que só diz "não deu" transforma o dono em instrumento de
+// medição. Esta aqui responde sozinha o que dá para responder — por onde a
+// página foi aberta, de qual geração são os arquivos, o que exatamente faltou —
+// e entrega tudo num bloco que ele copia e cola numa sessão. O relato deixa de
+// ser relato e vira evidência.
 // ===========================================================================
-function falhaAlta(motivo, detalhes) {
+
+// Quebra de linha sem escape: este arquivo passa por geradores e ferramentas
+// que já colapsaram sequências de escape antes. Uma constante não colapsa.
+var NL = String.fromCharCode(10);
+
+// A página descobre sozinha por onde foi aberta. É a pergunta cuja resposta
+// custou três tentativas em 27/08 — e ela nunca precisou ter sido feita.
+var CONTEXTO = (location.protocol === "file:")
+  ? { onde: "o arquivo no seu PC (duplo clique)", curto: "file://", local: true }
+  : { onde: "o site (" + location.host + ")", curto: location.protocol + "//" + location.host, local: false };
+
+// As classes de falha. Nomear a classe é o que separa "o painel quebrou" de
+// "o painel sabe o que houve" — e cada uma manda procurar num lugar diferente.
+var CLASSES = {
+  A: "o painel não montou (o bloco embutido não executou)",
+  B: "o resumo chegou vazio",
+  C: "a capa não pôde ser calculada",
+  D: "o histórico de um mês não chegou",
+  E: "o histórico de um mês chegou incompleto",
+  F: "arquivos de GERAÇÕES DIFERENTES"
+};
+
+function linhaDoCarimbo() {
+  try { return PAINEL.carimbo || "(sem carimbo)"; } catch (e) { return "(não cheguei a ler)"; }
+}
+
+function linhaDoLivro() {
+  try {
+    return PAINEL.livro.total + " registros, " + PAINEL.livro.meses.length + " mês(es); " +
+      PAINEL.resumo.registros.length + " no resumo desta página";
+  } catch (e) { return "(não cheguei a ler)"; }
+}
+
+function linhaDosMeses() {
+  try {
+    return PAINEL.livro.meses.map(function (m) {
+      return m.mes + " -> " + m.arquivo + " (" + m.count + ")";
+    }).join("; ");
+  } catch (e) { return "(não cheguei a ler)"; }
+}
+
+/** O bloco copiável. Texto puro, sem jargão inventado, pronto para colar. */
+function textoDoDiagnostico(classe, motivo, detalhes) {
+  var agora = new Date();
+  var linhas = [
+    "PAINEL DA ESCOLA — DIAGNOSTICO",
+    "classe      : " + classe + " — " + (CLASSES[classe] || "?"),
+    "o que houve : " + motivo,
+    "aberto por  : " + CONTEXTO.onde + "  [" + CONTEXTO.curto + "]",
+    "carimbo     : " + linhaDoCarimbo(),
+    "livro       : " + linhaDoLivro(),
+    "meses       : " + linhaDosMeses(),
+    "hora        : " + agora.toLocaleString("pt-BR")
+  ];
+  if (detalhes && detalhes.length) {
+    linhas.push("detalhes    :");
+    detalhes.slice(0, 20).forEach(function (d) { linhas.push("  - " + d); });
+    if (detalhes.length > 20) linhas.push("  ... e mais " + (detalhes.length - 20) + ".");
+  }
+  return linhas.join(NL);
+}
+
+/** Caixa com o diagnóstico e o botão de copiar. Serve à tela vermelha e às
+ *  faixas de falha parcial — o mesmo bloco, o mesmo gesto. */
+function caixaDeDiagnostico(classe, motivo, detalhes) {
+  var texto = textoDoDiagnostico(classe, motivo, detalhes);
+  var caixa = document.createElement("div");
+  caixa.className = "diag";
+
+  var area = document.createElement("textarea");
+  area.className = "diag-texto";
+  area.readOnly = true;
+  area.rows = Math.min(16, texto.split(NL).length + 1);
+  area.value = texto;
+
+  var botao = document.createElement("button");
+  botao.type = "button";
+  botao.className = "diag-copiar";
+  botao.textContent = "📋 copiar diagnóstico";
+  botao.onclick = function () {
+    function selecionar() {
+      // Sem área de transferência (é o caso comum em file://, que não conta
+      // como contexto seguro): seleciona o texto e diz o atalho. Fingir que
+      // copiou seria pior do que não ter botão.
+      area.focus();
+      area.select();
+      botao.textContent = "selecionado — aperte Ctrl+C para copiar";
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(texto).then(function () {
+        botao.textContent = "✓ copiado — cole numa sessão do Claude Code";
+      }, selecionar);
+    } else {
+      selecionar();
+    }
+  };
+
+  var explica = document.createElement("div");
+  explica.className = "diag-explica";
+  explica.textContent = "Cole isto numa sessão do Claude Code. Já vem com tudo que o robô precisa — inclusive por onde você abriu a página, que é a informação que mais faltou da última vez.";
+
+  caixa.appendChild(botao);
+  caixa.appendChild(area);
+  caixa.appendChild(explica);
+  return caixa;
+}
+
+function falhaAlta(classe, motivo, detalhes) {
   var t = document.getElementById("tela-erro");
   t.style.display = "block";
-  document.getElementById("app").style.display = "none";
+  var app = document.getElementById("app");
+  if (app) app.style.display = "none";
   t.textContent = "";
-  var b = document.createElement("b"); b.textContent = "⚠️ Este painel não pode ser lido.";
-  var p = document.createElement("p"); p.textContent = motivo;
+
+  var b = document.createElement("b");
+  b.textContent = "⚠️ Este painel não pode ser lido.";
+  var p = document.createElement("p");
+  p.textContent = motivo;
+  var onde = document.createElement("p");
+  onde.textContent = "Isto aconteceu em: " + CONTEXTO.onde + ".";
   var aviso = document.createElement("p");
   aviso.textContent = "NÃO acredite em nada que esta página mostraria — inclusive no que parecesse verde ou concluído.";
   var como = document.createElement("p");
-  como.textContent = "O que fazer: abra uma sessão do Claude Code e cole: “o painel da escola está quebrado, conserte” — e diga se foi no site ou no arquivo do seu PC, porque isso muda onde o robô procura. O comando “node painel/gerar_manifesto.js” aponta um registro inválido; se ele vier limpo, o problema está na entrega, não no livro.";
-  t.appendChild(b); t.appendChild(p); t.appendChild(aviso); t.appendChild(como);
-  if (detalhes && detalhes.length) {
-    var pre = document.createElement("pre");
-    pre.textContent = detalhes.slice(0, 20).join("\n");
-    t.appendChild(pre);
-  }
+  como.textContent = CONTEXTO.local
+    ? "O que fazer: se o arquivo estiver dentro do OneDrive, espere a sincronização terminar e recarregue (F5) — é a causa mais comum aqui. Se continuar, copie o diagnóstico abaixo."
+    : "O que fazer: recarregue a página (F5). Se continuar, copie o diagnóstico abaixo e cole numa sessão do Claude Code.";
+
+  t.appendChild(b);
+  t.appendChild(p);
+  t.appendChild(onde);
+  t.appendChild(aviso);
+  t.appendChild(como);
+  t.appendChild(caixaDeDiagnostico(classe, motivo, detalhes));
 }
 
 try {
   // Com UM pedido não existe mais "carregou pela metade": ou este arquivo
   // chegou e executou, ou nada disto roda. O que a guarda ainda pega é o bloco
   // embutido não ter executado (erro de sintaxe no gerado) e o resumo vir vazio.
-  if (typeof LOGICA === "undefined") throw { mensagem: "As regras do painel não carregaram — o bloco embutido não executou." };
-  if (typeof PAINEL === "undefined") throw { mensagem: "Os dados do painel não carregaram — o bloco embutido não executou." };
+  if (typeof LOGICA === "undefined") throw { classe: "A", mensagem: "As regras do painel não carregaram — o bloco embutido não executou." };
+  if (typeof PAINEL === "undefined") throw { classe: "A", mensagem: "Os dados do painel não carregaram — o bloco embutido não executou." };
   var REGS = (PAINEL.resumo && PAINEL.resumo.registros) || [];
   var PRONTOS = (PAINEL.resumo && PAINEL.resumo.respondidos) || {};
   if (!REGS.length) {
-    throw { mensagem: "O resumo chegou vazio. Um painel sem nenhum registro é sinal de build errado, não de projeto parado." };
+    throw { classe: "B", mensagem: "O resumo chegou vazio. Um painel sem nenhum registro é sinal de build errado, não de projeto parado." };
   }
   // A VALIDAÇÃO de cada registro é do gerador e do verificador do CI, que rodam
   // sobre o livro INTEIRO e reprovam antes de qualquer merge. Repeti-la aqui
@@ -285,7 +424,7 @@ try {
 
   // ---------- a capa, calculada ----------
   var capa = LOGICA.capa(REGS, AGORA, PRONTOS);
-  if (capa.erro) throw { mensagem: capa.erro };
+  if (capa.erro) throw { classe: "C", mensagem: capa.erro };
   var vistaCapa = document.getElementById("vista-capa");
   capa.blocos.forEach(function (bloco) {
     if (bloco.id === "caixa") {
@@ -510,14 +649,33 @@ try {
     if (carregados[mes]) { ok(carregados[mes]); return; }
     var declarado = null;
     MESES.forEach(function (m) { if (m.mes === mes) declarado = m; });
-    if (!declarado) { falhou("o mês " + mes + " não está declarado neste painel."); return; }
+    if (!declarado) { falhou("D", "o mês " + mes + " não está declarado neste painel.", null); return; }
     var s = document.createElement("script");
     // Caminho RELATIVO, e tag de script em vez de fetch: é o que funciona quando
     // o painel é aberto por duplo clique (file://), onde fetch é bloqueado.
     s.src = declarado.arquivo;
     s.onload = function () {
       var d = (window.LIVRO || {})[mes];
-      if (!d || !d.registros) { falhou("o arquivo de " + mes + " carregou, mas não trouxe registros."); return; }
+      if (!d || !d.registros) {
+        falhou("E", "o arquivo de " + mes + " carregou, mas não trouxe registros.", null);
+        return;
+      }
+      // O CARIMBO PRIMEIRO. Se os arquivos são de gerações diferentes, tudo o
+      // que vem depois — contagem, ids — vai divergir por consequência, e
+      // acusar "registro faltando" mandaria procurar defeito onde não há. Este
+      // é o caso que o mantenedor tem de sobra: o repositório mora dentro do
+      // OneDrive, e uma sincronização pela metade entrega alguns arquivos novos
+      // e outros velhos, cada um íntegro por si.
+      if (d.carimbo && PAINEL.carimbo && d.carimbo !== PAINEL.carimbo) {
+        falhou("F",
+          "esta página e o arquivo de " + mes + " vieram de gerações diferentes do projeto.",
+          ["a página foi gerada com o livro " + PAINEL.carimbo,
+           "o arquivo de " + mes + " foi gerado com o livro " + d.carimbo,
+           CONTEXTO.local
+             ? "aberto do seu PC: quase sempre é sincronização do OneDrive pela metade — espere terminar e recarregue"
+             : "aberto do site: pode ser um deploy em curso — recarregue em alguns segundos"]);
+        return;
+      }
       // Integridade por IDENTIDADE, não por tamanho de download: conferimos a
       // contagem declarada no painel contra a que chegou, e recusamos id
       // repetido. Contagem sozinha deixaria passar "um sumiu e outro veio em
@@ -527,16 +685,25 @@ try {
         if (vistos[r.arquivo]) repetidos.push(r.arquivo);
         vistos[r.arquivo] = true;
       });
-      if (repetidos.length) { falhou("o arquivo de " + mes + " trouxe registro repetido: " + repetidos.join(", ")); return; }
+      if (repetidos.length) {
+        falhou("E", "o arquivo de " + mes + " trouxe registro repetido.", repetidos);
+        return;
+      }
       if (d.registros.length !== declarado.count) {
-        falhou("o painel esperava " + declarado.count + " registros em " + mes +
-               ", mas o arquivo trouxe " + d.registros.length + " — ele chegou incompleto.");
+        falhou("E", "o arquivo de " + mes + " chegou incompleto.",
+          ["a página esperava " + declarado.count + " registros",
+           "o arquivo trouxe " + d.registros.length]);
         return;
       }
       carregados[mes] = d.registros;
       ok(d.registros);
     };
-    s.onerror = function () { falhou("não consegui buscar o arquivo de " + mes + " (o servidor recusou, ou o arquivo sumiu)."); };
+    s.onerror = function () {
+      falhou("D", "não consegui buscar o arquivo de " + mes + ".",
+        [CONTEXTO.local
+          ? "aberto do seu PC: o arquivo " + declarado.arquivo + " pode não ter sincronizado ainda"
+          : "aberto do site: o servidor recusou o pedido, ou o arquivo não está na imagem"]);
+    };
     document.head.appendChild(s);
   }
 
@@ -560,12 +727,27 @@ try {
           alvo.appendChild(blocoDe(tituloDoBloco + " — " + m.mes.split("-").reverse().join("/"),
             "", lista, function (r) { return itemRegistro(r); },
             "Nenhum registro deste tipo neste mês."));
-        }, function (motivo) {
+        }, function (classe, motivo, detalhes) {
+          // DEGRADAÇÃO GRANULAR, e é uma decisão: a falha fica SOBRE a seção
+          // afetada, barulhenta e local, e a capa continua de pé — ela veio do
+          // resumo embutido nesta mesma página e não depende deste arquivo.
+          //
+          // Apagar a página inteira porque um mês do passado não abriu seria o
+          // painel mentindo na outra direção: dizer "não há nada acontecendo"
+          // quando a verdade era "está tudo bem, o arquivo morto não veio". O
+          // custo das quatro telas vermelhas de 27/08 não foi o tempo perdido —
+          // foi treinar o dono a desconfiar do instrumento.
           b.disabled = false;
           b.className = "mes ruim";
           b.textContent = m.mes.split("-").reverse().join("/") + " · não carregou";
-          alvo.appendChild(el("div", "aviso-historico ruim", "⚠️ " + motivo +
-            " O que você vê acima continua valendo — foi calculado antes, e não depende deste arquivo."));
+          var faixa = el("div", "aviso-historico ruim");
+          faixa.appendChild(el("div", "aviso-titulo",
+            "⚠️ " + CLASSES[classe] + " — " + m.mes.split("-").reverse().join("/")));
+          faixa.appendChild(el("div", null, motivo));
+          faixa.appendChild(el("div", "aviso-salvo",
+            "A capa e o mapa acima continuam valendo: eles vieram com esta página e não dependem deste arquivo. O que falta é só o histórico deste mês."));
+          faixa.appendChild(caixaDeDiagnostico(classe, motivo, detalhes));
+          alvo.appendChild(faixa);
         });
       };
       barra.appendChild(b);
@@ -678,7 +860,9 @@ try {
 
   document.getElementById("app").style.display = "block";
 } catch (e) {
-  falhaAlta(e.mensagem || String(e), e.detalhes || null);
+  // Erro sem classe é erro que ninguém previu — e "A" é a resposta honesta:
+  // alguma coisa do bloco embutido não rodou como devia.
+  falhaAlta(e.classe || "A", e.mensagem || String(e), e.detalhes || null);
 }
 </script>
 </body>

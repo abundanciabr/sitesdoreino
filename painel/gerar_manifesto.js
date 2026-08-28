@@ -45,6 +45,7 @@
 var fs = require("fs");
 var path = require("path");
 var vm = require("vm");
+var crypto = require("crypto");
 
 var AQUI = __dirname;
 var PASTA = path.join(AQUI, "registros");
@@ -73,6 +74,7 @@ if (nomes.length === 0) erro("zero registros em " + PASTA + " — um livro sem n
 // Carrega cada registro num sandbox — exatamente como o navegador o carregaria.
 var problemas = [];
 var registros = [];
+var impressoes = [];
 nomes.forEach(function (nome) {
   var base = nome.slice(0, -3);
   if (!PADRAO_NOME.test(base)) {
@@ -84,6 +86,11 @@ nomes.forEach(function (nome) {
   var sandbox = { window: {} };
   try { vm.runInNewContext(codigo, sandbox, { timeout: 1000 }); }
   catch (e) { problemas.push(nome + ": erro de sintaxe/execução — " + e.message); return; }
+  // A impressão digital de cada fonte, para o CARIMBO da geração (abaixo).
+  // Sobre o conteúdo normalizado: fim de linha não é conteúdo, e um checkout
+  // Windows não pode produzir um carimbo diferente do de um runner Linux.
+  impressoes.push(base + "|" + crypto.createHash("sha256")
+    .update(semBOM(codigo), "utf8").digest("hex"));
   var lista = sandbox.window.REGISTROS || [];
   if (lista.length !== 1) { problemas.push(nome + ": deve empurrar EXATAMENTE 1 registro (empurrou " + lista.length + ")"); return; }
   var r = lista[0];
@@ -94,6 +101,27 @@ nomes.forEach(function (nome) {
 // A MESMA validação da página. Um contrato, dois guardiões, zero divergência.
 problemas = problemas.concat(LOGICA.validarRegistros(registros));
 if (problemas.length) falha(problemas);
+
+// -----------------------------------------------------------------------------
+// O CARIMBO DA GERAÇÃO — a impressão digital do livro que produziu estes
+// arquivos. Determinístico de propósito: mesmo livro, mesmo carimbo, em
+// qualquer máquina. Sem relógio e sem número de build, senão dois checkouts do
+// mesmo commit gerariam carimbos diferentes e a comparação abaixo viraria ruído.
+//
+// PARA QUE SERVE: a página carrega o carimbo, e cada arquivo de mês carrega o
+// mesmo. Quando um mês é aberto, os dois são comparados. Se diferirem, os
+// arquivos vieram de GERAÇÕES DIFERENTES — e isso é uma falha distinta de
+// "o arquivo não chegou" ou "o arquivo veio quebrado". É o caso que o
+// mantenedor tem de sobra: o repositório mora dentro do OneDrive, e uma
+// sincronização pela metade entrega alguns arquivos novos e outros velhos, cada
+// um íntegro por si. Sem o carimbo, isso se apresenta como registro faltando —
+// e manda procurar defeito onde não há.
+// -----------------------------------------------------------------------------
+var CARIMBO = crypto
+  .createHash("sha256")
+  .update(impressoes.join(String.fromCharCode(10)), "utf8")
+  .digest("hex")
+  .slice(0, 12);
 
 // -----------------------------------------------------------------------------
 // O RESUMO: o que a página precisa para desenhar capa e mapa, e nada mais.
@@ -150,6 +178,7 @@ var declaracaoDosMeses = meses.map(function (m) {
       "  window.LIVRO = window.LIVRO || {};",
       "  window.LIVRO[" + JSON.stringify(m) + "] = {",
       "    mes: " + JSON.stringify(m) + ",",
+      "    carimbo: " + JSON.stringify(CARIMBO) + ",",
       "    registros: JSON.parse(" + comoTextoJS(lista) + ")",
       "  };",
       "})();",
@@ -198,6 +227,7 @@ var dados = [
   "   vencimento e o que mudou em 7 dias são contados no SEU navegador, ao",
   "   abrir. Congelar essas contas aqui fossilizaria o frescor. */",
   "var PAINEL = {",
+  "  carimbo: " + JSON.stringify(CARIMBO) + ",",
   "  livro: { total: " + registros.length + ", meses: " + JSON.stringify(declaracaoDosMeses) + " },",
   "  resumo: JSON.parse(" + comoTextoJS({
     respondidos: resumo.respondidos,
