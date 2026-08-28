@@ -48,3 +48,67 @@ entrar:
   en: "Sign in to Meshcraft"
   pt-br: "Entrar no Meshcraft"
   es: "Entrar en Meshcraft"
+
+# ---------------------------------------------------------------------------
+# O ANDAMENTO do pedido de entrada (DECISAO-categorias-de-usuario, 28/08/2026).
+# O mantenedor escolheu, entre três opções, "só o andamento, sem convite":
+# quem nunca pediu nada não vê NADA sobre a escola na home, e quem pediu
+# acompanha aqui. Por isso não existe chave de convite — a ausência é a
+# decisão, e não uma tradução esquecida.
+# ---------------------------------------------------------------------------
+pedido_em_analise:
+  # Plural de verdade (CLDR, via babel): "há 1 dia" e "há 2 dias" são frases
+  # diferentes em todas as três línguas, e concatenar número com texto fixo
+  # produz "há 1 dias" — o tipo de erro que só o falante nativo vê e que
+  # ninguém volta para consertar.
+  #
+  # Zero cai em `other` nas três línguas ("há 0 dias"), e é por isso que quem
+  # pediu HOJE vê `pedido_de_hoje` — o template escolhe entre as duas chaves.
+  #
+  # A forma `many` de pt-br e es existe porque o CLDR a exige nessas línguas
+  # (é a de "1 milhão DE dias"), e o validador cobra as categorias EXATAS do
+  # idioma — não as que o autor achou que bastavam. Ninguém vai ver esta
+  # frase; ela está certa mesmo assim, porque uma forma inventada só para
+  # calar o validador seria pior que a ausência: passaria a existir, errada,
+  # esperando o dia de aparecer.
+  _fonte: "048f41"
+  en:
+    one: "Your request to join has been under review for {dias} day."
+    other: "Your request to join has been under review for {dias} days."
+  pt-br:
+    one: "Seu pedido de entrada está em análise há {dias} dia."
+    many: "Seu pedido de entrada está em análise há {dias} de dias."
+    other: "Seu pedido de entrada está em análise há {dias} dias."
+  es:
+    one: "Tu solicitud de acceso está en revisión desde hace {dias} día."
+    many: "Tu solicitud de acceso está en revisión desde hace {dias} de días."
+    other: "Tu solicitud de acceso está en revisión desde hace {dias} días."
+
+pedido_de_hoje:
+  # Quem acabou de pedir NÃO vê um contador. "Em análise há 0 dias" é o que a
+  # forma plural produziria (zero cai em `other` nas três línguas), e soa a
+  # descaso justamente com quem está no pico da expectativa. Chave própria em
+  # vez de um `if` no meio da frase: frase montada por pedaço não sobrevive à
+  # tradução — a ordem das palavras muda entre idiomas.
+  _fonte: "e693b2"
+  en: "Your request to join is under review. You asked today."
+  pt-br: "Seu pedido de entrada está em análise. Você pediu hoje."
+  es: "Tu solicitud de acceso está en revisión. La enviaste hoy."
+
+pedido_recusado:
+  # Diz o "não" E o caminho de volta na mesma frase. A lei da fila §7 define o
+  # reenvio como a forma de corrigir um dado errado — sem esta segunda metade,
+  # quem errou o próprio telefone fica sem saber que pode consertar.
+  _fonte: "cc8916"
+  en: "Your request to join was not approved. You can ask again."
+  pt-br: "Seu pedido de entrada não foi aprovado. Você pode pedir de novo."
+  es: "Tu solicitud de acceso no fue aprobada. Puedes pedirla de nuevo."
+
+pedido_recusado_motivo:
+  # Rótulo do motivo escrito por quem recusou. Fica em chave própria porque o
+  # motivo em si é texto de pessoa, não de catálogo — e texto de pessoa nunca
+  # entra em arquivo de tradução.
+  _fonte: "738015"
+  en: "Reason given:"
+  pt-br: "Motivo:"
+  es: "Motivo:"

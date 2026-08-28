@@ -5,9 +5,23 @@
      (meshcraft.top). Decisão do mantenedor em 27/08/2026: a raiz do site
      deixou de ser vitrine de oferta e passou a ser porta.
 
-       · quem já entrou vê o aviso de que vem novidade e o caminho para a
-         Caixa de Sugestões — a única área logada que existe hoje;
-       · quem não entrou vê o convite para entrar, e nada mais.
+       · quem não entrou vê o convite para entrar, e nada mais;
+       · quem já entrou vê o aviso de que vem novidade — e, DEPOIS DELE, o que
+         a CATEGORIA dela permite (DECISAO-categorias-de-usuario, 28/08/2026):
+
+           aluno      → o caminho para a Caixa de Sugestões
+           na fila    → o andamento do pedido (dias, ou o motivo da recusa)
+           cadastrado → nada sobre a escola
+
+     A última linha é decisão do mantenedor entre três opções, e a ausência é
+     deliberada: ele recusou nominalmente convidar para a fila quem nunca
+     pediu. Até 28/08 o caminho da Caixa aparecia para TODO MUNDO que entrava,
+     e quem não era aluno clicava para receber um "não" — foi ele quem
+     encontrou isso, com a própria conta.
+
+     E o que decide aqui NÃO autoriza nada: a Caixa continua conferindo
+     matrícula na entrada dela. Esconder um botão nunca protegeu, e mostrá-lo
+     nunca liberou.
 
      O que SAIU daqui, e por quê está registrado: o preço/“Quero comprar” da
      oferta padrão e a ilha Alpine de captura de lead. Ninguém perdeu o
@@ -37,6 +51,8 @@
     .sessao .eu { opacity: .8; }
     .sessao .sair { display: inline; margin-left: .5rem; }
     .sessao .sair button { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; opacity: .7; }
+    .andamento { font-size: 1rem; padding: .75rem 1rem; border: 1px solid #d4d4d8; border-radius: .5rem; }
+    .andamento.motivo { margin-top: .5rem; opacity: .85; }
 {% endblock %}
 {% block conteudo %}
 {% include "funil/_sessao.html" %}
@@ -44,7 +60,20 @@
   <h1>{% t "landing.titulo" %}</h1>
   {% if request.ator %}
   <p class="novidades">{% t "landing.novidades" %}</p>
+  {% if request.ator.categoria == "aluno" %}
   <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.ir_para_a_caixa" %}</a>
+  {% elif request.ator.na_fila %}
+  {% if request.ator.na_fila.estado == "recusada" %}
+  <p class="andamento">{% t "landing.pedido_recusado" %}</p>
+  {% if request.ator.na_fila.motivo_recusa %}
+  <p class="andamento motivo"><b>{% t "landing.pedido_recusado_motivo" %}</b> {{ request.ator.na_fila.motivo_recusa }}</p>
+  {% endif %}
+  {% elif request.ator.na_fila.esperando_ha_dias %}
+  <p class="andamento">{% t "landing.pedido_em_analise" quantidade=request.ator.na_fila.esperando_ha_dias dias=request.ator.na_fila.esperando_ha_dias %}</p>
+  {% else %}
+  <p class="andamento">{% t "landing.pedido_de_hoje" %}</p>
+  {% endif %}
+  {% endif %}
   {% else %}
   <a class="cta" href="{% url_i18n 'entrar' %}?next={{ request.path|urlencode }}">{% t "landing.entrar" %}</a>
   {% endif %}
