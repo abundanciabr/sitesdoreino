@@ -18,7 +18,7 @@ segunda definição de "o que espera por você".
   {% with atual=request.resolver_match.url_name %}
     <a href="{% url 'mesa' %}" class="aba{% if atual == 'mesa' %} ativa{% endif %}"{% if atual == 'mesa' %} aria-current="page"{% endif %}>A sua mesa{% if na_mesa %} <span class="aba-conta">{{ na_mesa }}</span>{% endif %}</a>
     <a href="{% url 'travessia' %}" class="aba{% if atual == 'travessia' %} ativa{% endif %}"{% if atual == 'travessia' %} aria-current="page"{% endif %}>A travessia</a>
-    <span class="aba futura" title="Ainda não construída">Quem está esperando</span>
+    <a href="{% url 'quem_espera' %}" class="aba{% if atual == 'quem_espera' %} ativa{% endif %}"{% if atual == 'quem_espera' %} aria-current="page"{% endif %}>Quem está esperando</a>
     <span class="aba futura" title="Ainda não construída">Os robôs</span>
   {% endwith %}
 </nav>

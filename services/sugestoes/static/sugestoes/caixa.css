@@ -609,3 +609,67 @@ th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transfo
   .trilha-colunas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .coluna-gargalo { margin: 0; padding: 0 0 10px; }
 }
+
+/* --- a aba 3: QUEM ESTA ESPERANDO (28/08/2026) ---------------------------
+   A unidade desta tela e a pessoa. A barra de gente e decorativa em largura,
+   mas o NUMERO esta sempre escrito ao lado: quem nao enxerga a barra le a conta
+   — e o estado nunca depende so de cor (a linha calada ganha borda E texto).
+   ------------------------------------------------------------------------ */
+
+.espera-hero { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-end; margin-bottom: 18px; }
+.espera-numero { font-family: var(--f-mono); font-size: 46px; line-height: 1; color: var(--texto); }
+.espera-frase { font-size: 1.15rem; margin: 8px 0 0; line-height: 1.35; max-width: 320px; }
+.espera-nota {
+  margin: 0 0 4px; font-size: 13px; color: var(--texto-fraco); line-height: 1.6;
+  max-width: 460px; border-left: 1px solid var(--linha); padding-left: 22px;
+}
+.espera-nota strong { color: var(--ambar); }
+
+.recado-silencio { border-color: var(--vermelho); }
+.recado-silencio h2 { color: var(--vermelho); }
+
+.espera-bancada { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.espera-lista { display: flex; flex-direction: column; gap: 6px; }
+
+.espera-linha {
+  display: grid; grid-template-columns: 190px minmax(0, 1fr) 90px;
+  gap: 18px; align-items: center;
+  background: var(--painel); border: 1px solid var(--linha);
+  border-radius: 10px; padding: 12px 15px;
+}
+.espera-linha-calada { border-color: var(--vermelho); }
+
+.espera-gente { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.espera-barra {
+  height: 9px; border-radius: 5px; background: var(--laranja);
+  min-width: 4px; max-width: 96px; flex-shrink: 0;
+}
+.espera-linha-calada .espera-barra { background: var(--vermelho); }
+.espera-conta { font-family: var(--f-mono); font-size: 17px; color: var(--texto); }
+.espera-rotulo { font-size: 10.5px; color: var(--texto-tenue); }
+
+.espera-ideia { min-width: 0; }
+.espera-ideia a { font-family: var(--f-titulo); font-size: 13.5px; text-decoration: none; line-height: 1.35; }
+.espera-ideia a:hover { text-decoration: underline; }
+.espera-ideia .meta { margin-top: 4px; }
+
+.espera-relogio { text-align: right; }
+.espera-dias { display: block; font-family: var(--f-mono); font-size: 15px; color: var(--texto-fraco); }
+.espera-linha-calada .espera-dias { color: var(--vermelho); }
+.espera-linha-calada .espera-relogio .espera-rotulo { color: var(--vermelho); }
+
+.fila-linha { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+.fila-marca { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; background: var(--texto-tenue); }
+.fila-assinar { background: var(--laranja); }
+.fila-ninguem-olhou { background: var(--vermelho); }
+.fila-construindo { background: var(--azul); }
+.fila-rotulo { flex: 1; font-size: 12.5px; color: var(--texto-fraco); }
+.fila-conta { font-family: var(--f-mono); font-size: 12.5px; color: var(--texto); }
+
+@media (max-width: 900px) {
+  .espera-bancada { grid-template-columns: 1fr; }
+  /* No celular a barra sai e sobra a conta: 190px de coluna so para a barra
+     espremeriam o titulo da ideia em duas palavras por linha. */
+  .espera-linha { grid-template-columns: 84px minmax(0, 1fr) 70px; gap: 12px; }
+  .espera-barra { display: none; }
+}

@@ -1757,3 +1757,50 @@ duas cópias envelheceriam separadas; ela descobre sozinha onde a pessoa está p
 `request.resolver_match.url_name`, como o trilho da `base_caixa.html`. E o número
 na primeira aba sai de `gestao.esperando()` — a MESMA função que a Mesa usa para
 montar a lista, nunca uma contagem escrita à parte.
+
+
+## A aba 3: contar GENTE não é contar tarefas — e o bug que provou isso
+
+`/gestao/esperando` mede o que nenhuma outra tela mede: **o silêncio**. Não o
+tempo que a tarefa levou, mas quantos dias uma pessoa que escreveu, votou ou
+comentou passou sem ouvir nada. A unidade da tela é a pessoa.
+
+**O bug que este elo produziu, e que o guarda pegou antes do merge:** a primeira
+versão de `filas_do_silencio` calculava o silêncio de cada balde isoladamente.
+Quem estava atrás de duas ideias em baldes diferentes — uma esperando assinatura
+e outra em obra, por exemplo — era contado **duas vezes**, e a soma dos motivos
+dava mais gente do que existe. A tela teria mostrado, com toda a confiança, um
+número maior que a realidade; e o texto ao lado dela já prometia o contrário
+("nunca duas vezes"), o que é a marca do bug que sobrevive à revisão: **o
+comentário estava certo e o código não**.
+
+O conserto não foi somar melhor. Foi **fazer a pessoa ter um balde só**, o que
+exige partir da mesma travessia que decide o silêncio dela — daí
+`noticia_mais_recente()`, que devolve por pessoa o par *(dias, de qual ideia)*, e
+da qual `silencio_por_pessoa()` passou a ser derivada. Uma travessia, duas
+respostas; duas travessias seriam duas verdades sobre a mesma pergunta.
+
+Três decisões de produto que ficaram escritas no código porque cada uma já foi
+tomada errado em algum lugar:
+
+* **Recusada conta como RESPONDIDA.** Um "não vamos fazer" explicado é resposta.
+  Tratá-lo como silêncio faria a tela cobrar para sempre uma dívida já paga — e
+  ensinaria a equipe a evitar recusar, que é o oposto do que a spec §10 quer.
+* **"Nunca ouviram nada" ≠ "ouviram há muito tempo".** São frases diferentes na
+  tela. Juntar os dois esconderia o caso pior: a ideia escrita há dois meses que
+  nunca mudou de fase, cuja plateia nunca recebeu sequer um "estamos olhando".
+* **O silêncio de uma pessoa é o da notícia MAIS RECENTE dela**, nunca o da ideia
+  mais parada. Quem votou numa ideia de 40 dias e noutra que andou ontem não está
+  há 40 dias sem notícia — e o `min` (com desempate por id, para a ordem do banco
+  não decidir nada) é o que diz isso.
+
+**E a armadilha do cenário fraco apareceu pela terceira vez no mesmo dia.** O
+guarda da soma dos baldes passou verde com um dos quatro baldes vazio: apagar um
+balde vazio do código não muda soma nenhuma. Hoje o teste **cobra que nenhum
+balde esteja vazio antes de somar** — e essa asserção é o que faz a mutação
+morder. A regra geral, agora escrita em três lugares desta célula: *um guarda de
+soma só mede alguma coisa se o cenário encher todas as parcelas.*
+
+O número de avisados na coluna da direita **não é contado à parte**: é a plateia,
+que por `[INV-SUG13]` é exatamente quem recebeu o aviso. Uma segunda contagem
+seria uma segunda verdade sobre quantas pessoas foram avisadas.
