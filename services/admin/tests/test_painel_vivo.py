@@ -111,9 +111,14 @@ def test_e_o_arquivo_do_repositorio_byte_a_byte():
 def test_todo_arquivo_que_a_pagina_pede_responde_200():
     """A prova que pega o painel em branco.
 
-    Varre o HTML servido atrás de `src=`/`href=` relativos e busca cada um pelo
-    urlconf real. Assim, o dia em que o painel carregar um arquivo novo, ele
-    entra nesta prova sem ninguém lembrar de atualizar o teste.
+    Desde 27/08/2026 a página não busca NADA ao abrir — resumo e regras vêm
+    embutidos. O que ela pode buscar depois é um mês do histórico, e quais meses
+    existem está declarado dentro dela mesma, em `PAINEL.livro.meses`. Esta
+    prova lê essa declaração e cobra que cada mês declarado responda 200: um mês
+    prometido e não servido derrubaria a Memória em produção, com a suíte verde.
+
+    Continua varrendo `src=`/`href=` também, para o dia em que a página voltar a
+    carregar um arquivo — ele entra nesta prova sem ninguém lembrar do teste.
     """
     cliente = _dentro()
     html = cliente.get("/painel/").content.decode("utf-8")
@@ -123,9 +128,14 @@ def test_todo_arquivo_que_a_pagina_pede_responde_200():
         for alvo in re.findall(r'(?:src|href)="([^"]+)"', html)
         if not alvo.startswith(("http://", "https://", "//", "#", "data:", "mailto:"))
     }
-    assert pedidos, "o HTML não pede arquivo nenhum — a varredura está cega"
+    # Os meses que a própria página promete servir.
+    declarados = set(re.findall(r'"arquivo":"(livro-\d{6}\.js)"', html))
+    assert declarados, (
+        "a página não declara nenhum mês do histórico — ou a varredura está cega, "
+        "ou a Memória ficou sem o que carregar"
+    )
 
-    for alvo in sorted(pedidos):
+    for alvo in sorted(pedidos | declarados):
         resposta = cliente.get(f"/painel/{alvo}")
         assert resposta.status_code == 200, f"{alvo} respondeu {resposta.status_code}"
 
@@ -144,24 +154,45 @@ def test_o_livro_chega_em_UM_pedido_e_nao_um_por_registro():
     cada vez, e piorava a cada registro novo — o número de pedidos ERA o
     tamanho do livro.
 
+    O conserto seguinte trouxe o livro num arquivo só (3 pedidos): matou a
+    rajada e deixou o custo de ABRIR crescendo com todo o histórico — num livro
+    que recebeu 48 registros num único dia. Desde 27/08/2026 o resumo e as
+    regras viajam DENTRO do painel.html, escritos pelo gerador, e o passado fica
+    em arquivos por mês, buscados só quando a Memória é aberta.
+
     O que esta guarda fixa não é uma implementação, é a propriedade que
-    importa: **o custo de abrir o painel não cresce com o tamanho do livro.**
+    importa: **abrir o painel é UM pedido, e esse custo não cresce com o
+    tamanho do livro.**
     """
     html = _dentro().get("/painel/").content.decode("utf-8")
     quantos_registros = len(list((PAINEL_NO_REPO / "registros").glob("*.js")))
     assert quantos_registros > 10, "o livro está pequeno demais para esta prova valer"
 
     pedidos = re.findall(r'src="([^"]+)"', html)
-    assert "livro.js" in pedidos, "a página não pede o livro empacotado"
-    assert not [
-        a for a in pedidos if a.startswith("registros/")
-    ], "a página voltou a pedir registro por registro"
-    assert "document.write" not in (PAINEL_NO_REPO / "manifesto.js").read_text(
-        encoding="utf-8"
-    ), "o manifesto voltou a injetar um <script> por registro"
-    assert len(pedidos) < 10, (
-        f"a página faz {len(pedidos)} pedidos com {quantos_registros} registros — "
-        "o custo de abrir o painel voltou a crescer com o tamanho do livro"
+    assert not pedidos, (
+        f"abrir o painel busca {len(pedidos)} sub-arquivo(s) ({pedidos}) — deveria "
+        "ser UM pedido só, com o resumo e as regras embutidos"
+    )
+    assert "var PAINEL = {" in html, "o resumo não está embutido na página"
+    assert "LOGICA" in html, "as regras não estão embutidas na página"
+    # A CHAMADA, não a palavra: o comentário no topo da página conta a história
+    # do incidente e cita `document.write` de propósito. Proibir a palavra faria
+    # este guarda reprovar a própria documentação do defeito que ele protege.
+    assert (
+        "document.write(" not in html
+    ), "a página voltou a injetar script por registro"
+    # O passado existe, e existe FORA da página: é isso que faz o custo de abrir
+    # parar de crescer. Se ele voltasse para dentro, este teste seguiria verde e
+    # a propriedade estaria perdida — por isso o tamanho também é medido.
+    meses = sorted(PAINEL_NO_REPO.glob("livro-*.js"))
+    assert meses, "nenhum arquivo de mês foi gerado — o passado sumiu"
+    assert not (
+        PAINEL_NO_REPO / "livro.js"
+    ).exists(), "livro.js voltou: o livro inteiro está sendo carregado de novo ao abrir"
+    peso_do_passado = sum(m.stat().st_size for m in meses)
+    assert len(html) < peso_do_passado * 2, (
+        f"painel.html tem {len(html)} bytes contra {peso_do_passado} de histórico — "
+        "o passado voltou para dentro da página"
     )
 
 
@@ -214,8 +245,8 @@ def test_o_painel_nunca_e_guardado_em_cache():
     """O atrito que originou este trabalho: o mantenedor vendo painel velho."""
     cliente = _dentro()
     assert cliente.get("/painel/")["Cache-Control"] == "no-store"
-    assert cliente.get("/painel/manifesto.js")["Cache-Control"] == "no-store"
-    assert cliente.get("/painel/livro.js")["Cache-Control"] == "no-store"
+    mes = sorted(PAINEL_NO_REPO.glob("livro-*.js"))[0].name
+    assert cliente.get(f"/painel/{mes}")["Cache-Control"] == "no-store"
 
 
 # ------------------------------------------------------------------- a porta
@@ -223,7 +254,7 @@ def test_o_painel_nunca_e_guardado_em_cache():
 
 def test_sem_sessao_o_painel_nao_abre():
     """Ele não está em `CAMINHOS_ISENTOS`, e isso é medido de fora."""
-    for caminho in ("/painel/", "/painel/manifesto.js", "/painel/registros/x.js"):
+    for caminho in ("/painel/", "/painel/livro-202608.js", "/painel/registros/x.js"):
         resposta = Client().get(caminho)
         assert resposta.status_code == 302, caminho
         assert "/entrar/google" in resposta["Location"]

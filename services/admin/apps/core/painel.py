@@ -114,10 +114,14 @@ def painel(request):
     """A página do painel, servida com os bytes do repositório.
 
     A rota TERMINA EM BARRA (`/admin/painel/`) e isso é estrutural, não estilo:
-    o HTML pede `manifesto.js` e `registros/*.js` por caminho RELATIVO. Sem a
-    barra, o navegador resolveria `/admin/manifesto.js` e a página carregaria
-    vazia. Quem redireciona `/admin/painel` para a forma com barra é o
-    `CommonMiddleware` (APPEND_SLASH), que já está na cadeia.
+    a página busca os meses do histórico (`livro-AAAAMM.js`) por caminho
+    RELATIVO. Sem a barra, o navegador resolveria `/admin/livro-202608.js` e a
+    Memória abriria vazia. Quem redireciona `/admin/painel` para a forma com
+    barra é o `CommonMiddleware` (APPEND_SLASH), que já está na cadeia.
+
+    Desde 27/08/2026 ABRIR a página é um pedido só: o resumo e as regras vêm
+    embutidos, escritos pelo gerador. O passado só é buscado se o mantenedor
+    abrir a Memória.
     """
     pasta = diretorio_do_painel()
     if pasta is None:
@@ -132,7 +136,7 @@ def painel(request):
 
 @require_safe
 def painel_arquivo(request, path):
-    """Os arquivos que a página pede: `manifesto.js`, `logica.js`, `registros/*.js`.
+    """Os arquivos que a página pede DEPOIS de aberta: `livro-AAAAMM.js`.
 
     Serve do diretório-FONTE, nunca de `STATIC_ROOT` — `armadilhas/083`: o
     `collectstatic` do Dockerfile falha em todo build e o `|| true` engole, de

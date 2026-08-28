@@ -176,7 +176,15 @@
     return erros;
   }
 
-  function respondidos(registros) {
+  // O mapa "quem já foi respondido". `prontos` existe porque a página passou a
+  // abrir com um RESUMO (um subconjunto do livro) em vez do livro inteiro: um
+  // pedido cuja RESPOSTA ficou fora do subconjunto pareceria eternamente aberto,
+  // e a caixa "Precisa de você" voltaria a mentir — a doença do H18, por dentro
+  // da própria cura. O gerador calcula este mapa sobre o livro INTEIRO e o
+  // embute no resumo; quem tem o livro todo em mãos não passa nada e o cálculo
+  // é o de sempre. Uma função só, dois chamadores, zero divergência.
+  function respondidos(registros, prontos) {
+    if (prontos) return prontos;
     var resp = {};
     registros.forEach(function (r) { if (r.responde_a) resp[r.responde_a] = r; });
     return resp;
@@ -187,8 +195,8 @@
   // sem resposta. "Uma lista mantida esquece; uma lista calculada não consegue
   // esquecer." Ordenada da mais velha para a mais nova (pedido velho grita mais).
   // ---------------------------------------------------------------------------
-  function caixaDeEntrada(registros, agora) {
-    var resp = respondidos(registros);
+  function caixaDeEntrada(registros, agora, prontos) {
+    var resp = respondidos(registros, prontos);
     return registros
       .filter(function (r) { return r.precisa_do_dono === true && !resp[r.arquivo]; })
       .map(function (r) {
@@ -203,8 +211,8 @@
   // fato morando em dois blocos, que é a doença que este livro cura.
   // ('rumo' também fica de fora: ele mora no Meu mapa, e um plano ainda não
   // cumprido não é um problema aberto — seria alarme aceso o tempo todo.)
-  function problemasAbertos(registros) {
-    var resp = respondidos(registros);
+  function problemasAbertos(registros, prontos) {
+    var resp = respondidos(registros, prontos);
     return registros.filter(function (r) {
       return (r.gravidade === "vermelho" || r.gravidade === "ambar") &&
         !resp[r.arquivo] && r.tipo !== "pendencia" && r.tipo !== "frente" && r.tipo !== "rumo";
@@ -250,8 +258,8 @@
   // aparece como "não sei para onde esta frente vai", que é o 4º estado da casa
   // aplicado ao futuro.
   // ---------------------------------------------------------------------------
-  function meuMapa(registros, agora) {
-    var resp = respondidos(registros);
+  function meuMapa(registros, agora, prontos) {
+    var resp = respondidos(registros, prontos);
     var estados = {};
     estadoDasFrentes(registros).forEach(function (x) { estados[x.frente] = x.registro; });
 
@@ -279,8 +287,8 @@
 
   // A frase de abertura do mapa — contada, nunca escrita. É o "onde estamos, em
   // uma frase" do Roadmap antigo, com a diferença de que ninguém a atualiza.
-  function resumoDoMapa(registros, agora) {
-    var capitulos = meuMapa(registros, agora);
+  function resumoDoMapa(registros, agora, prontos) {
+    var capitulos = meuMapa(registros, agora, prontos);
     return {
       capitulos: capitulos.length,
       comProvaConferida: capitulos.filter(function (c) { return c.estado && c.estado.gravidade === "verde"; }).length,
@@ -322,16 +330,16 @@
   // 4 como estamos?). Se passar do teto: devolve erro — o gerador se RECUSA,
   // em vez de crescer (foi assim que a poda de 24/08 durou dois dias).
   // ---------------------------------------------------------------------------
-  function capa(registros, agora) {
-    return capaComTeto(registros, agora, TETO_BLOCOS_CAPA);
+  function capa(registros, agora, prontos) {
+    return capaComTeto(registros, agora, TETO_BLOCOS_CAPA, prontos);
   }
 
   // Separada para o teste-guarda poder PROVAR que a recusa dispara (um teto
   // que nunca reprovou é um teto que ninguém sabe se reprova — §1).
-  function capaComTeto(registros, agora, teto) {
+  function capaComTeto(registros, agora, teto, prontos) {
     var blocos = [];
-    var caixa = caixaDeEntrada(registros, agora);
-    var problemas = problemasAbertos(registros);
+    var caixa = caixaDeEntrada(registros, agora, prontos);
+    var problemas = problemasAbertos(registros, prontos);
     var mudancas = mudancasRecentes(registros, agora, 7);
     var fresc = frescor(registros, agora);
     var semProva = naoComprovados(registros);
@@ -355,10 +363,133 @@
     return { erro: null, blocos: blocos };
   }
 
+  // ---------------------------------------------------------------------------
+  // O RESUMO — o que a página precisa para desenhar a capa e o mapa, e nada mais.
+  //
+  // POR QUE ISTO EXISTE: até 27/08/2026 abrir o painel custava o livro INTEIRO —
+  // primeiro um pedido por registro (86 numa rajada, o incidente das quatro telas
+  // vermelhas), depois um arquivo só de 182 KB que crescia para sempre. Nos dois
+  // desenhos o custo de abrir era proporcional a toda a história do projeto, num
+  // livro que recebeu 48 registros num único dia.
+  //
+  // A REGRA DE OURO DESTA FUNÇÃO: ela não tem relógio. Só decide PERTENCIMENTO —
+  // quem entra na caixa, quais são os problemas abertos, o que cada capítulo do
+  // mapa mostra —, e isso não depende de que horas são. Tudo que depende do
+  // relógio (há quantos dias espera, o que venceu, o que mudou nos últimos 7
+  // dias) continua sendo contado NO NAVEGADOR, ao abrir, contra o relógio dele.
+  // Congelar essas contas no build seria fossilizar o frescor, que é exatamente
+  // a doença que o painel existe para não ter (correção 3 do veredito das
+  // consultorias, 4 de 5).
+  //
+  // Por isso ela chama as MESMAS funções da capa e do mapa, com uma data
+  // sentinela: o que ela lê do resultado é só quem entrou, nunca quantos dias.
+  // Uma regra só, dois momentos de execução, zero divergência.
+  // ---------------------------------------------------------------------------
+
+  // Quanto o resumo pode pesar antes de o gerador RECUSAR construir. Não é um
+  // número mágico: é ~3x o tamanho medido em 27/08/2026 (52 KB com 95
+  // registros). Estourar não é defeito do painel — é sinal de que algo real está
+  // se acumulando (pedidos sem resposta, entregas sem prova), e a resposta certa
+  // é olhar o acúmulo, não subir o teto. Mesma lei do TETO_BLOCOS_CAPA.
+  var ORCAMENTO_RESUMO_BYTES = 150 * 1024;
+  var ORCAMENTO_PAINEL_BYTES = 300 * 1024;
+
+  // Quantos registros recentes viajam no resumo. A capa mostra no máximo 8 dos
+  // últimos 7 dias, mas quem decide QUAIS 8 é o relógio do navegador — então o
+  // resumo carrega uma folga e deixa o corte para lá.
+  var RECENTES_NO_RESUMO = 30;
+  // Destes, os que viajam com o texto completo (a capa os desenha abertos).
+  var RECENTES_COM_DETALHE = 10;
+
+  // Os campos que sobrevivem quando um registro viaja só como título. O `detalhe`
+  // fica de fora de propósito: nos blocos recolhidos a página NUNCA o mostra
+  // (`.item.recolhido .det{display:none}`, e não há nenhum clique que o abra) —
+  // até hoje ele viajava para dentro do DOM para nunca ser lido. Quem quiser o
+  // texto inteiro abre a Memória, e aí o mês carrega.
+  var CAMPOS_DO_TITULO = ["arquivo", "tipo", "quando", "titulo", "autoridade",
+    "evidencia", "verificado_em", "precisa_do_dono", "responde_a", "gravidade",
+    "frente", "vence_em_dias"];
+
+  function soTitulo(r) {
+    var o = {};
+    CAMPOS_DO_TITULO.forEach(function (c) { if (r[c] !== undefined) o[c] = r[c]; });
+    // `detalhe` é campo OBRIGATÓRIO e não-vazio (a validação acima cobra isso).
+    // Em vez de burlar com string vazia, ele carrega a única coisa verdadeira
+    // que se pode dizer aqui: onde o texto está. Assim o registro continua
+    // válido pelo mesmo contrato, e a página não mostra um branco que se leria
+    // como "não havia nada a dizer".
+    o.detalhe = "O texto deste registro não veio junto com a página — ele está na aba Memória, no mês " +
+      (r.arquivo || "").slice(0, 4) + "-" + (r.arquivo || "").slice(4, 6) + ".";
+    o._so_titulo = true;
+    return o;
+  }
+
+  function montarResumo(registros) {
+    // Data sentinela: só o PERTENCIMENTO destes resultados é usado.
+    var sentinela = new Date("2000-01-01T12:00:00");
+    var prontos = respondidos(registros);
+    var capaS = capaComTeto(registros, sentinela, TETO_BLOCOS_CAPA, prontos);
+    if (capaS.erro) return { erro: capaS.erro };
+    var mapaS = meuMapa(registros, sentinela, prontos);
+
+    var porData = registros.slice().sort(function (a, b) { return paraData(b.quando) - paraData(a.quando); });
+    var recentes = porData.slice(0, RECENTES_NO_RESUMO);
+
+    var completo = {}, apenasTitulo = {};
+    function marcar(alvo, lista) {
+      (lista || []).forEach(function (x) {
+        var r = (x && x.registro !== undefined) ? x.registro : x;
+        if (r && r.arquivo) alvo[r.arquivo] = true;
+      });
+    }
+    var blocos = {};
+    capaS.blocos.forEach(function (b) { blocos[b.id] = b.itens; });
+
+    // COM texto: o que a página desenha aberto.
+    marcar(completo, blocos.caixa);
+    marcar(completo, blocos.problemas);
+    marcar(completo, recentes.slice(0, RECENTES_COM_DETALHE));
+    mapaS.forEach(function (c) {
+      if (c.estado) completo[c.estado.arquivo] = true;
+      marcar(completo, c.rumos);
+    });
+
+    // SÓ título: o que a página desenha recolhido, ou como uma linha.
+    marcar(apenasTitulo, blocos.frentes);
+    marcar(apenasTitulo, blocos["nao-comprovado"]);
+    marcar(apenasTitulo, blocos.frescor);
+    marcar(apenasTitulo, recentes);
+    marcar(apenasTitulo, registros.filter(function (r) { return r.vence_em_dias != null; }));
+    mapaS.forEach(function (c) { marcar(apenasTitulo, c.andou); marcar(apenasTitulo, c.esperando); });
+    Object.keys(completo).forEach(function (id) { delete apenasTitulo[id]; });
+
+    var selecionados = registros.filter(function (r) {
+      return completo[r.arquivo] || apenasTitulo[r.arquivo];
+    }).map(function (r) { return completo[r.arquivo] ? r : soTitulo(r); });
+
+    // O mapa de respostas viaja calculado sobre o livro INTEIRO: sem ele, um
+    // pedido cuja resposta ficou fora do resumo voltaria a aparecer como aberto.
+    var respondidosIds = {};
+    Object.keys(prontos).forEach(function (k) { respondidosIds[k] = true; });
+
+    return {
+      erro: null,
+      respondidos: respondidosIds,
+      registros: selecionados,
+      // O registro mais recente do livro TODO — é dele que sai "o livro está
+      // parado há N dias", e ele precisa ser o do livro, não o do resumo.
+      maisRecenteQuando: porData.length ? porData[0].quando : null,
+      totalNoLivro: registros.length
+    };
+  }
+
   var LOGICA = {
     TIPOS: TIPOS, GRAVIDADES: GRAVIDADES, AUTORIDADES: AUTORIDADES, FRENTES: FRENTES,
     ORDEM_DO_MAPA: ORDEM_DO_MAPA,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
+    ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
+    ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,
+    montarResumo: montarResumo,
     validarRegistros: validarRegistros,
     caixaDeEntrada: caixaDeEntrada,
     problemasAbertos: problemasAbertos,
