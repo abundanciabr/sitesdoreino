@@ -383,3 +383,25 @@ def atualizar_matricula(
         campos += ["decidido_em", "decidido_por"]
         linha.save(update_fields=campos)
         return linha, "ok"
+
+
+def apagar_matricula(*, id_da_linha: str) -> str:
+    """[GESTAO] Apaga a matrícula DE VEZ. Devolve `"ok"`, `"nao-encontrada"` ou `"na-fila"`.
+
+    **Apaga a linha**, e não troca o estado — é isso que separa esta operação
+    de `atualizar_matricula(status="encerrada")`, que existe ao lado para o
+    caso comum de tirar o acesso podendo voltar atrás
+    (`DECISAO-administradores-e-apagar` §4).
+
+    A recusa para linha da FILA é a mesma do `PATCH`, e pelo mesmo motivo: a
+    fila tem porta própria, que sabe conferir "já decidida" e guardar o motivo.
+    """
+    with transaction.atomic():
+        try:
+            linha = Matricula.objects.select_for_update().get(pk=id_da_linha)
+        except (Matricula.DoesNotExist, ValueError, TypeError):
+            return "nao-encontrada"
+        if linha.status in Matricula.STATUS_DA_FILA:
+            return "na-fila"
+        linha.delete()
+        return "ok"

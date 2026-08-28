@@ -361,3 +361,61 @@ def test_as_duas_portas_recusam_sem_bearer():
         ).status_code
         == 401
     )
+
+
+# ------------------------------------------------------------ apagar de vez
+#
+# `DECISAO-administradores-e-apagar` §4. O mantenedor escolheu construir agora,
+# contra a recomendação do agente, com o preço apresentado antes.
+
+
+def apagar(client, auth, linha):
+    return client.delete(f"{MATRICULAS}/{linha.pk}", **auth)
+
+
+@pytest.mark.django_db
+def test_apagar_some_com_a_linha_e_nao_troca_o_estado(client, auth):
+    """A diferença que separa esta porta do `PATCH status=encerrada`.
+
+    Encerrar guarda a ficha para poder desfazer; apagar não guarda nada. Um
+    teste que só olhasse "sumiu da lista" não distinguiria as duas.
+    """
+    alvo = criar()
+    resposta = apagar(client, auth, alvo)
+
+    assert resposta.status_code == 204
+    assert resposta.content == b"", "204 não devolve corpo"
+    assert not Matricula.objects.filter(pk=alvo.pk).exists()
+
+
+@pytest.mark.django_db
+def test_apagar_tira_o_acesso_junto(client, auth):
+    alvo = criar()
+    porta_da_caixa = f"/api/alunos/alunos/{ALGUEM}/matriculas"
+    assert client.get(porta_da_caixa, **auth).status_code == 200
+
+    apagar(client, auth, alvo)
+    assert client.get(porta_da_caixa, **auth).status_code == 404
+
+
+@pytest.mark.django_db
+def test_apagar_quem_esta_na_fila_e_recusado(client, auth):
+    """Mesma recusa do `PATCH`, e pelo mesmo motivo: a fila tem porta própria."""
+    alvo = criar(order_id="pre:5", status=Matricula.STATUS_AGUARDANDO)
+    assert apagar(client, auth, alvo).status_code == 409
+    assert Matricula.objects.filter(pk=alvo.pk).exists()
+
+
+@pytest.mark.django_db
+def test_apagar_o_que_ja_nao_existe_e_404_e_nao_500(client, auth):
+    alvo = criar()
+    alvo.delete()
+    assert apagar(client, auth, alvo).status_code == 404
+
+
+@pytest.mark.django_db
+def test_apagar_sem_bearer_e_recusado():
+    """A porta mais destrutiva da célula, e a que mais precisa do guarda."""
+    from django.test import Client
+
+    assert Client().delete(f"{MATRICULAS}/1").status_code == 401
