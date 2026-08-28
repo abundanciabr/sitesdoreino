@@ -35,14 +35,45 @@ ALLOWED_HOSTS = ["*"]
 # `redirect_uri_mismatch` em produção, e SÓ em produção.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
-# `conn_max_age=60`: a conexão de banco é REAPROVEITADA por até 60s em vez
-# de aberta e fechada a cada requisição (o default 0 do Django). Medido pela
-# auditoria de 25/08/2026 contra o Postgres real: conexão nova + SELECT custa
-# ~24ms; o MESMO SELECT numa conexão reaproveitada custa ~0,2ms — o handshake
-# TCP + a autenticação SCRAM-SHA-256 dominam, e nenhum dos dois fica barato
-# só porque a rede é rápida. Esta célula responde "quem é você" no caminho de
-# toda página logada do site, então é onde esse custo mais aparece.
-DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"), conn_max_age=60)}
+# POOL DE CONEXÕES (28/08/2026) — o reaproveitamento que o `conn_max_age=60`
+# buscava, sem o vazamento que ele causava.
+#
+# O que o `conn_max_age=60` acertava, e continua valendo: medido pela auditoria
+# de 25/08/2026 contra o Postgres real, conexão nova + SELECT custa ~24ms e o
+# MESMO SELECT numa conexão reaproveitada custa ~0,2ms — o handshake TCP e a
+# autenticação SCRAM-SHA-256 dominam. Esta célula responde "quem é você" no
+# caminho de toda página logada do site, então é onde esse custo mais aparece.
+#
+# O que ele ERRAVA, e ninguém tinha medido: sob ASGI, o Django abre um
+# `ThreadSensitiveContext` POR REQUISIÇÃO (django/core/handlers/asgi.py,
+# `ASGIHandler.__call__`), e o asgiref cria um executor de UMA thread para cada
+# um. A conexão de banco do Django é THREAD-LOCAL. No fim da requisição o
+# `request_finished` chama `close_old_connections`, que só fecha a conexão se
+# ela estiver obsoleta — com `conn_max_age=60` ela NÃO está, então a conexão
+# fica aberta e a thread dona dela é descartada. Ninguém mais tem como fechá-la.
+# Nas outras células o `conn_max_age` é o default 0 do `dj_database_url`, então
+# a conexão fecha ao fim da requisição e o vazamento não existe: esta célula era
+# a única. Foi o que estourou o limite do Postgres (100 conexões para a
+# plataforma inteira) no incidente do painel em 27/08/2026, quando 86 pedidos
+# quase simultâneos passaram todos por aqui.
+#
+# A saída que preserva as DUAS coisas é o pool nativo do Django 5.1
+# (`OPTIONS["pool"]`, exige `psycopg[pool]`): as conexões são reaproveitadas
+# como antes, mas vivem num pool de PROCESSO — `_connection_pools` é atributo de
+# CLASSE do DatabaseWrapper, não thread-local — então thread descartada devolve
+# a conexão em vez de abandoná-la. E `max_size` põe um TETO: esta célula nunca
+# passa de 8 conexões, aconteça o que acontecer do lado de fora. O Django exige
+# `CONN_MAX_AGE == 0` junto com o pool (levanta ImproperlyConfigured caso
+# contrário) — é por isso que o argumento sumiu daqui, e não por descuido.
+DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
+DATABASES["default"]["OPTIONS"] = {
+    **DATABASES["default"].get("OPTIONS", {}),
+    # min_size=1: uma conexão quente desde o primeiro pedido — é o que devolve
+    # os ~0,2ms. max_size=8: o teto. timeout=10: em vez de esperar para sempre
+    # por uma vaga, a requisição falha em 10s com erro nomeado (fail-closed na
+    # borda, RETROSPECTIVA-FASE-D §4) — silêncio indefinido seria pior.
+    "pool": {"min_size": 1, "max_size": 8, "timeout": 10},
+}
 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",

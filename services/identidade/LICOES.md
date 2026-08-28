@@ -86,3 +86,33 @@ de outro domínio falharia no Google com `redirect_uri_mismatch`. Hoje isso é
 teórico (o login só é oferecido pelo site multilíngue, que é o meshcraft);
 no dia em que outro domínio quiser login, o passo é cadastrar o retorno DELE
 no console — uma linha no aplicativo OAuth, nenhum código aqui.
+
+## `conn_max_age` > 0 sob ASGI VAZA uma conexão por requisição — o pool é a saída
+
+Esta célula foi a única da plataforma com `conn_max_age=60` (25/08/2026, por
+uma medição legítima: conexão nova + SELECT custa ~24ms, o mesmo SELECT
+reaproveitando a conexão custa ~0,2ms, e a `identidade` responde "quem é você"
+no caminho de toda página logada).
+
+O que a medição não viu: **sob ASGI o Django abre um `ThreadSensitiveContext`
+por REQUISIÇÃO** (`django/core/handlers/asgi.py`, `ASGIHandler.__call__`), e o
+asgiref cria um executor de uma thread para cada um. A conexão de banco do
+Django é **thread-local**. No fim da requisição, `request_finished` chama
+`close_old_connections`, que só fecha a conexão se ela estiver **obsoleta** —
+com `conn_max_age=60` ela não está. A thread morre, a conexão fica aberta, e
+não sobra ninguém com uma referência para fechá-la.
+
+Nas outras 12 células o valor é o default `0` do `dj_database_url`, então a
+conexão fecha ao fim da requisição e o vazamento não existe — **esta era a
+única**. Foi por aqui que os 86 pedidos quase simultâneos do painel, em
+27/08/2026, estouraram o limite de 100 conexões do Postgres da plataforma
+inteira: cada pedido do painel passa pelo login.
+
+**A saída não é voltar para `conn_max_age=0`** — isso devolveria os 24ms. É o
+pool nativo do Django 5.1 (`OPTIONS["pool"]`, extra `psycopg[pool]`): o pool
+vive em `_connection_pools`, atributo de **classe** do `DatabaseWrapper`, logo
+é do PROCESSO e não da thread. Thread descartada devolve a conexão em vez de
+abandoná-la, e `max_size` põe um teto que não existia. O Django exige
+`CONN_MAX_AGE == 0` junto com o pool, e levanta `ImproperlyConfigured` se você
+esquecer — o guarda de `tests/test_pool_de_conexoes.py` encena essa recusa de
+propósito, para não nascer verde por acidente (`armadilhas/132`).
