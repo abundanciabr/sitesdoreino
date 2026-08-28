@@ -476,6 +476,46 @@ class CaixaClient:
             return None
         return corpo
 
+    def uma_ideia(self, ideia_id: int) -> "dict | None":
+        """Uma ideia com a história dela, ou `None` — fail-OPEN como a lista.
+
+        A história só vem por aqui, e nunca na listagem: ela cresce com o uso, e
+        na lista multiplicaria a resposta por algo que nenhuma tela de lista
+        mostra (é a decisão escrita no contrato, e há guarda dos dois lados).
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.info(
+                "caixa: SUGESTOES_API_URL/SUGESTOES_API_TOKEN ainda não estão no "
+                "env desta célula — a tela vai dizer que não consegue perguntar."
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/gestao/ideias/{ideia_id}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("caixa: não deu para perguntar pela ideia: %s", erro)
+            return None
+        if r.status_code != 200:
+            # 404 é resposta legítima ("essa ideia não existe") e não erro de
+            # rede, mas para a TELA os dois viram a mesma coisa: não há o que
+            # mostrar. Quem distingue é o log, que registra o código.
+            logger.error("caixa: a Caixa respondeu HTTP %s pela ideia", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("caixa: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, dict) or "id" not in corpo:
+            logger.error("caixa: resposta com forma inesperada")
+            return None
+        return corpo
+
     # -- escrita: diz o que aconteceu ----------------------------------------
 
     def _escrever(self, caminho: str, corpo: dict) -> "tuple[str, str]":

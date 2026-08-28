@@ -197,6 +197,32 @@ primeira versão deste arquivo, e o teste pegou.
       .espera { grid-template-columns: 80px minmax(0, 1fr) 70px; gap: 10px; }
       .barra-gente { display: none; }
     }
+
+    /* --- uma ideia por dentro, e as tres acoes ---------------------------- */
+    .secao { font-size: 17px; margin: 28px 0 4px; padding-top: 20px; border-top: 1px solid var(--linha); }
+    .historia { padding: 10px 0; border-bottom: 1px solid var(--linha); }
+    .historia:last-of-type { border-bottom: 0; }
+    .historia b { font-size: 13px; font-weight: 600; }
+    .forma { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px 16px; align-items: end; margin-top: 12px; }
+    .forma label { display: block; }
+    .forma label.largo { grid-column: 1 / -1; }
+    .forma input, .forma select, .forma textarea {
+      width: 100%; background: var(--fundo); color: var(--texto);
+      border: 1px solid var(--linha); border-radius: 8px; padding: 9px 10px;
+      font-family: inherit; font-size: 14px;
+    }
+    .forma textarea { resize: vertical; }
+    .forma input:focus, .forma select:focus, .forma textarea:focus { outline: 2px solid var(--azul); outline-offset: 1px; }
+    .forma button { grid-column: 1 / -1; justify-self: start; cursor: pointer; }
+    /* O gesto que autoriza uma obra tem peso proprio: e o unico botao desta
+       area que libera trabalho de verdade, e nao deve parecer igual a "guardar
+       a avaliacao". */
+    .forma button.assinar { background: var(--amarelo); color: #0f1115; border-color: var(--amarelo); }
+    .aviso.feito { border-style: solid; border-color: var(--verde); color: var(--texto-2); margin-bottom: 16px; }
+
+    @media (max-width: 900px) {
+      .forma { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>

@@ -52,7 +52,7 @@ esqueceu. Misturá-las numa etiqueta só faria a mesa mentir sobre de quem é a 
           </div>
 
           <div class="mesa-corpo">
-            <h2>{{ primeira.titulo }}</h2>
+            <h2><a href="{% url 'caixa_ideia' primeira.id %}">{{ primeira.titulo }}</a></h2>
             <p class="plateia">
               <b>{{ primeira.votos }}</b> votos ·
               <b>{{ primeira.pessoas }}</b> pessoa{{ primeira.pessoas|pluralize:"s" }} atrás desta ideia ·
@@ -105,7 +105,7 @@ esqueceu. Misturá-las numa etiqueta só faria a mesa mentir sobre de quem é a 
               <div class="lado-titulo">Depois desta <span class="lado-conta">{{ depois|length }}</span></div>
               {% for d in depois %}
                 <div class="lado-item">
-                  <b>{{ d.titulo }}</b>
+                  <a href="{% url 'caixa_ideia' d.id %}">{{ d.titulo }}</a>
                   <p class="nota">{{ d.votos }} votos · {{ d.pessoas }} pessoa{{ d.pessoas|pluralize:"s" }} · parada há {{ d.parada_ha }} dia{{ d.parada_ha|pluralize:"s" }}</p>
                   <p class="nota">{% if d.motivo == 'assinatura' %}espera assinatura{% else %}ninguém da equipe leu ainda{% endif %}</p>
                 </div>

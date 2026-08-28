@@ -63,7 +63,7 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
               <span class="nota">pessoa{{ i.pessoas|pluralize:"s" }}</span>
             </div>
             <div class="espera-ideia">
-              <b>{{ i.titulo }}</b>
+              <a href="{% url 'caixa_ideia' i.id %}">{{ i.titulo }}</a>
               <p class="nota">
                 {% if not i.ja_ouviram %}
                   ainda não ouviram nada — a ideia chegou faz {{ i.parada_ha }} dia{{ i.parada_ha|pluralize:"s" }}
@@ -88,7 +88,7 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
             <div class="lado-titulo">Respondidas por último</div>
             {% for i in respondidas %}
               <div class="lado-item">
-                <b>{{ i.titulo }}</b>
+                <a href="{% url 'caixa_ideia' i.id %}">{{ i.titulo }}</a>
                 <p class="nota">{{ i.pessoas }} pessoa{{ i.pessoas|pluralize:"s" }} avisada{{ i.pessoas|pluralize:"s" }}</p>
               </div>
             {% endfor %}

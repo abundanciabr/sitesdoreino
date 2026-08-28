@@ -1,0 +1,153 @@
+{% extends "admin/base.html" %}
+{% comment %}
+UMA IDEIA POR DENTRO — e as três coisas que se fazem com ela.
+
+Esta tela substitui a de moderação que morava na Caixa. O que ela mostra e o que
+ela aceita é o mesmo; o que muda é a casa (decisão do mantenedor, 28/08/2026:
+uma porta só) e o caminho — daqui as ações vão pelo contrato, e as travas
+continuam todas do outro lado.
+
+Três coisas ditas de propósito na tela:
+
+1. **"Não vamos fazer" exige o porquê**, e o campo diz isso. Quem sugeriu vai
+   ler a frase — a recusa sem explicação é a forma mais rápida de ensinar ao
+   aluno que sugerir não adianta.
+2. **A assinatura só aparece para quem assina.** Quem não pode vê a frase que
+   explica por quê, e não um botão desabilitado — botão desabilitado protege a
+   tela, não a regra. Quem recusa de verdade é a Caixa.
+3. **O histórico nunca é editado.** Uma correção é uma linha nova, e a tela diz
+   isso embaixo dele.
+{% endcomment %}
+{% block titulo %}{% if ideia %}{{ ideia.titulo }}{% else %}Ideia{% endif %} · Caixa{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro largo">
+  <a class="volta" href="{% url 'caixa' %}">&larr; Caixa de Sugestões</a>
+
+  {% if nao_respondeu %}
+    <h1>Ideia</h1>
+    <p class="aviso" style="margin-top:16px">Não consegui perguntar à parte que guarda as ideias — ou esta ideia não existe. Nada aqui seria confiável agora, então não mostro nada.</p>
+  {% else %}
+
+    {% if recado %}<div class="aviso feito">{{ recado }}</div>{% endif %}
+    {% if erro %}<div class="aviso calado">{{ erro }}</div>{% endif %}
+
+    <h1>{{ ideia.titulo }}</h1>
+    <p class="plateia">
+      <b>{{ ideia.votos }}</b> votos ·
+      <b>{{ ideia.pessoas }}</b> pessoa{{ ideia.pessoas|pluralize:"s" }} atrás desta ideia ·
+      <b>{{ ideia.comentarios }}</b> comentário{{ ideia.comentarios|pluralize:"s" }} ·
+      <span class="selo">{{ ideia.categoria }}</span>
+      <span class="selo">{{ ideia.status }}</span>
+    </p>
+
+    <div class="metades">
+      <div>
+        <span class="rotulo">O que o aluno escreveu</span>
+        <p class="citacao">{{ ideia.problema }}</p>
+        {% if ideia.solucao_proposta %}<p class="citacao">{{ ideia.solucao_proposta }}</p>{% endif %}
+        <p class="nota">{{ ideia.autor|default:"Aluno" }} · há {{ ideia.parada_ha }} dia{{ ideia.parada_ha|pluralize:"s" }} nesta fase</p>
+      </div>
+      <div>
+        <span class="rotulo">A história desta ideia</span>
+        {% for linha in ideia.historico %}
+          <div class="historia">
+            <b>{{ linha.de|default:"nasceu" }} &rarr; {{ linha.para }}</b>
+            <p class="nota">{{ linha.quando|slice:":10" }} · {{ linha.por|default:"equipe" }}</p>
+            {% if linha.nota %}<p class="citacao">{{ linha.nota }}</p>{% endif %}
+          </div>
+        {% empty %}
+          <p class="nota">Ela nunca mudou de fase — ninguém que interagiu recebeu aviso nenhum ainda.</p>
+        {% endfor %}
+        <p class="nota">Este histórico nunca é editado nem apagado. Uma correção é uma linha nova, inclusive as suas.</p>
+      </div>
+    </div>
+
+    <h2 class="secao">Mover de fase</h2>
+    <form method="post" action="{% url 'caixa_mover' ideia.id %}" class="forma">
+      {% csrf_token %}
+      <label>
+        <span class="rotulo">Para qual fase</span>
+        <select name="fase">
+          {% for valor, rotulo in fases %}
+            <option value="{{ valor }}"{% if valor == ideia.status %} selected{% endif %}>{{ rotulo }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="largo">
+        <span class="rotulo">O que dizer a quem está esperando</span>
+        <textarea name="nota" rows="2" placeholder="Obrigatório em “Não vamos fazer” — quem sugeriu vai ler esta frase."></textarea>
+      </label>
+      <button type="submit" class="botao">Mover a ideia</button>
+    </form>
+
+    <h2 class="secao">A avaliação da equipe</h2>
+    <p class="subtitulo">O aluno nunca vê nada disto.</p>
+    <form method="post" action="{% url 'caixa_avaliar' ideia.id %}" class="forma">
+      {% csrf_token %}
+      <label>
+        <span class="rotulo">Ajuda o aluno a aprender (0 a 5)</span>
+        <input type="number" name="impacto_educacional" min="0" max="5" value="{{ ideia.avaliacao.impacto_educacional|default:0 }}">
+      </label>
+      <label>
+        <span class="rotulo">Ajuda a escola a vender (0 a 5)</span>
+        <input type="number" name="impacto_comercial" min="0" max="5" value="{{ ideia.avaliacao.impacto_comercial|default:0 }}">
+      </label>
+      <label>
+        <span class="rotulo">Trabalho que dá (0 a 5)</span>
+        <input type="number" name="esforco_tecnico" min="0" max="5" value="{{ ideia.avaliacao.esforco_tecnico|default:0 }}">
+      </label>
+      <label class="largo">
+        <span class="rotulo">O que vamos fazer (a decisão de produto)</span>
+        <textarea name="decisao_produto" rows="2" placeholder="Sem esta frase, quem for construir tem que adivinhar.">{{ ideia.avaliacao.decisao_produto|default:"" }}</textarea>
+      </label>
+      <label class="largo">
+        <span class="rotulo">Anotações internas</span>
+        <textarea name="notas" rows="2">{{ ideia.avaliacao.notas|default:"" }}</textarea>
+      </label>
+      <button type="submit" class="botao">Guardar a avaliação</button>
+    </form>
+
+    <h2 class="secao">A assinatura que libera a obra</h2>
+    {% if ideia.tem_changespec %}
+      <p class="aviso feito">Esta ideia já está assinada — pode entrar em construção.</p>
+    {% elif pode_assinar %}
+      <p class="subtitulo">
+        Assinando, você afirma que leu o documento de obra e autoriza um robô a construir exatamente
+        o que está nele. Fica registrado o seu nome e a data, e o registro nunca é apagado.
+      </p>
+      <form method="post" action="{% url 'caixa_assinar' ideia.id %}" class="forma">
+        {% csrf_token %}
+        <label>
+          <span class="rotulo">Número do documento</span>
+          <input type="text" name="change_id" placeholder="CS-PORTFOLIO-0001">
+        </label>
+        <label>
+          <span class="rotulo">Onde ele está</span>
+          <input type="text" name="documento" placeholder="docs/changespecs/CS-PORTFOLIO-0001.md">
+        </label>
+        <label>
+          <span class="rotulo">Quem aprovou (nome, não e-mail)</span>
+          <input type="text" name="aprovado_por" value="{{ admin.nome }}">
+        </label>
+        <label>
+          <span class="rotulo">Quando</span>
+          <input type="date" name="aprovado_em">
+        </label>
+        <button type="submit" class="botao assinar">Assinar e liberar a obra</button>
+      </form>
+    {% else %}
+      <p class="aviso">
+        <b>Só quem está na lista de aprovadores da Caixa assina.</b>
+        O seu acesso ao Admin permite moderar as ideias; autorizar uma obra a começar é outro papel,
+        e ele não vem junto. Isso é uma trava de propósito, não um defeito — e quem recusa de
+        verdade é a Caixa, não esta tela.
+      </p>
+    {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
