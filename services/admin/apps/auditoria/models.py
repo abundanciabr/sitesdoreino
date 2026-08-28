@@ -43,6 +43,18 @@ class Registro(models.Model):
     PROMOVER = "promover"
     DESPROMOVER = "despromover"
     APAGAR = "apagar"
+    # [CAIXA] A gestao das ideias dos alunos mudou de casa para esta area em
+    # 28/08/2026 (DECISAO-a-gestao-da-caixa-mora-no-admin). Verbos proprios pelo
+    # mesmo motivo dos de cima — e um deles nao muda a vida de um aluno, muda a
+    # de um projeto inteiro: ASSINAR autoriza uma obra a comecar.
+    #
+    # A Caixa ja guarda o que MUDOU (historico append-only). O que esta tabela
+    # acrescenta, e que nenhuma outra guarda, e a tentativa RECUSADA: quando a
+    # Caixa diz nao, nada e escrito la, e sem esta linha o gesto nao teria
+    # deixado rastro em lugar nenhum.
+    MOVER_IDEIA = "mover_ideia"
+    AVALIAR_IDEIA = "avaliar_ideia"
+    ASSINAR_OBRA = "assinar_obra"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -50,6 +62,9 @@ class Registro(models.Model):
         (PROMOVER, "promover a administrador"),
         (DESPROMOVER, "remover de administrador"),
         (APAGAR, "apagar de vez"),
+        (MOVER_IDEIA, "mover a ideia de fase"),
+        (AVALIAR_IDEIA, "escrever a avaliacao da ideia"),
+        (ASSINAR_OBRA, "assinar a obra de uma ideia"),
     ]
 
     OK = "ok"

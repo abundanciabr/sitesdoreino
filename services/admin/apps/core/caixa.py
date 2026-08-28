@@ -28,10 +28,17 @@ tela de operação que não abre é inútil justamente quando você precisa dela
 
 from datetime import datetime, timezone as tz
 
+from urllib.parse import urlencode
+
+from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.views.decorators.http import require_GET
+from django.urls import reverse
+from django.views.decorators.http import require_GET, require_POST
+
+from apps.auditoria.models import Registro
 
 from .clients import CaixaClient
+from .views import _auditar
 
 # As seis colunas da travessia, na ordem em que uma ideia as atravessa. Elas NÃO
 # são os seis estados: dois deles partem em dois, porque é a partição que
@@ -281,6 +288,165 @@ def quem_espera(request):
             "maior_plateia": em_aberto[0]["pessoas"] if em_aberto else 1,
             "na_mesa": len(esperando(ideias)),
         },
+    )
+
+
+# ---------------------------------------------------------------------------
+# A ideia por dentro — e as três ações que mudam alguma coisa
+# ---------------------------------------------------------------------------
+#
+# As cinco fases que a equipe escolhe. `mesclado` fica FORA, e a razão é da
+# Caixa, não desta tela: mesclar é uma operação transacional inteira (mover
+# votos sem duplicar ator, preservar comentários, manter a URL antiga
+# resolvendo), e oferecê-la aqui daria um jeito de marcar "mesclado" sem que
+# nada tivesse sido mesclado. A Caixa recusa de qualquer forma; a tela não
+# oferece para a recusa não ser a primeira notícia.
+FASES = (
+    ("em_analise", "Em análise"),
+    ("planejado", "Planejado"),
+    ("em_desenvolvimento", "Em desenvolvimento"),
+    ("implementado", "Implementado"),
+    ("nao_planejado", "Não vamos fazer"),
+)
+
+
+def _quem(request) -> dict:
+    """Quem está agindo, na forma que o contrato da Caixa pede.
+
+    Os três campos vêm da porta, que já resolveu a pessoa pela `identidade`. O
+    `id` é o que atravessa a plataforma, e a Caixa precisa dele para poder
+    AFIRMAR quem moderou ([INV-SUG12]) — sem ele a escrita é recusada com
+    instrução, e não com erro.
+    """
+    admin = getattr(request, "admin", None) or {}
+    return {
+        "por_email": admin.get("email") or "",
+        "por_nome": admin.get("nome") or "",
+        "por_id_da_plataforma": admin.get("id") or "",
+    }
+
+
+@require_GET
+def ideia(request, ideia_id: int):
+    """Uma ideia por dentro: o que o aluno escreveu, a avaliação e a história."""
+    corpo = CaixaClient().uma_ideia(ideia_id)
+    if corpo is None:
+        return render(request, "admin/caixa_ideia.html", {"nao_respondeu": True})
+
+    agora = datetime.now(tz.utc)
+    (enriquecida,) = _enriquecer([corpo], agora)
+    quadro = CaixaClient().ideias(por_email=_email(request)) or {}
+
+    return render(
+        request,
+        "admin/caixa_ideia.html",
+        {
+            "ideia": enriquecida,
+            "fases": FASES,
+            "pode_assinar": quadro.get("pode_assinar", False),
+            # O número da etiqueta da aba: a MESMA função das outras telas.
+            "na_mesa": len(esperando(_enriquecer(quadro.get("ideias", []), agora))),
+            "recado": request.GET.get("recado", ""),
+            "erro": request.GET.get("erro", ""),
+        },
+    )
+
+
+def _voltar(ideia_id: int, desfecho: str, recado: str):
+    """Volta para a ideia dizendo o que aconteceu — sempre pela mesma porta.
+
+    Redirecionar depois de um POST é o que impede o F5 de repetir a ação; e o
+    recado viaja na URL porque esta célula não tem sessão de mensagens e não vai
+    ganhar uma para isto.
+    """
+    campo = "recado" if desfecho == CaixaClient.OK else "erro"
+    return HttpResponseRedirect(
+        f"{reverse('caixa_ideia', args=[ideia_id])}?{urlencode({campo: recado})}"
+    )
+
+
+def _agir(request, ideia_id, acao, chamada, ok, alvo_extra=""):
+    """O gesto comum das três ações: chamar, auditar e voltar dizendo.
+
+    A auditoria acontece nos TRÊS desfechos, e o recusado é o que justifica ela
+    existir: quando a Caixa diz não, nada é escrito lá — sem esta linha, o gesto
+    não teria deixado rastro em lugar nenhum.
+    """
+    desfecho, recado = chamada()
+    _auditar(
+        request,
+        acao,
+        f"ideia:{ideia_id}{alvo_extra}",
+        {
+            CaixaClient.OK: Registro.OK,
+            CaixaClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
+        }.get(desfecho, Registro.NAO_RESPONDEU),
+        detalhe=recado,
+    )
+    return _voltar(ideia_id, desfecho, ok if desfecho == CaixaClient.OK else recado)
+
+
+@require_POST
+def mover_ideia(request, ideia_id: int):
+    fase = (request.POST.get("fase") or "").strip()
+    nota = (request.POST.get("nota") or "").strip()
+    if fase not in {valor for valor, _ in FASES}:
+        return _voltar(
+            ideia_id, CaixaClient.RECUSADO, "Escolha uma das fases da lista."
+        )
+    return _agir(
+        request,
+        ideia_id,
+        Registro.MOVER_IDEIA,
+        lambda: CaixaClient().mudar_status(
+            ideia_id, status=fase, nota=nota, quem=_quem(request)
+        ),
+        "Pronto: a ideia mudou de fase, e todo mundo que interagiu com ela foi avisado.",
+        alvo_extra=f":{fase}",
+    )
+
+
+@require_POST
+def avaliar_ideia(request, ideia_id: int):
+    def numero(campo):
+        try:
+            return max(0, min(5, int(request.POST.get(campo) or 0)))
+        except (TypeError, ValueError):
+            return 0
+
+    campos = {
+        "impacto_educacional": numero("impacto_educacional"),
+        "impacto_comercial": numero("impacto_comercial"),
+        "esforco_tecnico": numero("esforco_tecnico"),
+        "notas": (request.POST.get("notas") or "").strip(),
+        "decisao_produto": (request.POST.get("decisao_produto") or "").strip(),
+    }
+    return _agir(
+        request,
+        ideia_id,
+        Registro.AVALIAR_IDEIA,
+        lambda: CaixaClient().avaliar(ideia_id, campos=campos, quem=_quem(request)),
+        "Avaliação guardada. O aluno não vê nada disto.",
+    )
+
+
+@require_POST
+def assinar_obra(request, ideia_id: int):
+    campos = {
+        "change_id": (request.POST.get("change_id") or "").strip(),
+        "documento": (request.POST.get("documento") or "").strip(),
+        "aprovado_por": (request.POST.get("aprovado_por") or "").strip(),
+        "aprovado_em": (request.POST.get("aprovado_em") or "").strip(),
+    }
+    return _agir(
+        request,
+        ideia_id,
+        Registro.ASSINAR_OBRA,
+        lambda: CaixaClient().registrar_changespec(
+            ideia_id, campos=campos, quem=_quem(request)
+        ),
+        "Assinado. A ideia já pode entrar em construção.",
+        alvo_extra=f":{campos['change_id']}",
     )
 
 

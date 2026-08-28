@@ -44,7 +44,7 @@ que toca sempre não é alarme.
             {% else %}parada{{ coluna.total|pluralize:"s" }} há {{ coluna.parada_media }} dia{{ coluna.parada_media|pluralize:"s" }}, em média{% endif %}
           </p>
           {% for i in coluna.ideias %}
-            <div class="peca"><b>{{ i.titulo }}</b><p class="nota">{{ i.votos }} votos · {{ i.categoria }}</p></div>
+            <div class="peca"><a href="{% url 'caixa_ideia' i.id %}">{{ i.titulo }}</a><p class="nota">{{ i.votos }} votos · {{ i.categoria }}</p></div>
           {% empty %}
             <p class="nota" style="padding:8px 2px">Ninguém aqui.</p>
           {% endfor %}

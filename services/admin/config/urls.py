@@ -1,7 +1,15 @@
 from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
-from apps.core.caixa import mesa, quem_espera, travessia
+from apps.core.caixa import (
+    assinar_obra,
+    avaliar_ideia,
+    ideia,
+    mesa,
+    mover_ideia,
+    quem_espera,
+    travessia,
+)
 from apps.core.divida import divida_json
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.painel import painel, painel_arquivo
@@ -81,6 +89,14 @@ urlpatterns = [
     path("caixa/", mesa, name="caixa"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
     path("caixa/esperando/", quem_espera, name="caixa_esperando"),
+    # A ideia por dentro, e as tres acoes. Elas sao POST de propósito: mudam
+    # coisa, e um GET seria disparado por qualquer pre-carregamento de link do
+    # navegador. Depois de agir, tudo redireciona de volta para a ideia — e o
+    # redirecionamento e o que impede o F5 de repetir a acao.
+    path("caixa/ideia/<int:ideia_id>/", ideia, name="caixa_ideia"),
+    path("caixa/ideia/<int:ideia_id>/fase", mover_ideia, name="caixa_mover"),
+    path("caixa/ideia/<int:ideia_id>/avaliacao", avaliar_ideia, name="caixa_avaliar"),
+    path("caixa/ideia/<int:ideia_id>/assinatura", assinar_obra, name="caixa_assinar"),
     path("escola/", escola, name="escola"),
     path("escola/alunos/", escola_alunos, name="escola_alunos"),
     # A ÚNICA rota de escrita desta célula. POST-only (`require_POST` na view):
