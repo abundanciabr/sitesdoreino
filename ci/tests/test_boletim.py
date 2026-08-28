@@ -25,6 +25,7 @@ sys.path.insert(0, str(RAIZ / "ci"))
 from _nucleo import ErroDeInstrumentacao  # noqa: E402
 from boletim import (  # noqa: E402
     JANELA_HORAS,
+    POUSOS_NA_TELA,
     Dados,
     area_do_ramo,
     coletar,
@@ -40,6 +41,7 @@ def dados(**mudancas) -> Dados:
         atraso_do_espelho=0,
         prs_abertos=[],
         pousos=[],
+        pousos_total=0,
         leis_mudadas=[],
         reservas=[],
         proximo_registro="001",
@@ -58,6 +60,7 @@ def dados(**mudancas) -> Dados:
     [
         "atraso_do_espelho",
         "prs_abertos",
+        "pousos_total",
         "pousos",
         "leis_mudadas",
         "reservas",
@@ -285,3 +288,95 @@ def test_pouso_velho_fica_de_fora(tmp_path, monkeypatch):
     )
     resultado = coletar(tmp_path, agora=AGORA)
     assert [pr["number"] for pr in resultado.pousos] == [2]
+
+
+# --------------------------------------------------------------------------
+# TETO DE AMOSTRA NÃO É CONTAGEM (registro 20260828-062)
+#
+# O defeito original: o boletim pedia 40 merges ao GitHub e imprimia o tamanho
+# da lista como se fosse o total. No dia em que foi medido houve 98 pousos, e a
+# tela dizia 40 — com a cara de quem contou. Estes três testes existem para que
+# a volta desse raciocínio fique vermelha, não para checar formatação.
+# --------------------------------------------------------------------------
+
+
+def test_a_contagem_nunca_sai_do_tamanho_da_lista():
+    amostra = [{"number": n, "title": f"pr {n}"} for n in range(1, 41)]
+    texto = montar(dados(pousos=amostra, pousos_total=98))
+    assert f"ÚLTIMAS {JANELA_HORAS}H  (98)" in texto
+    assert "(40)" not in texto
+
+
+def test_quando_a_lista_nao_cabe_ele_diz_quantos_esta_mostrando():
+    amostra = [{"number": n, "title": f"pr {n}"} for n in range(1, 41)]
+    texto = montar(dados(pousos=amostra, pousos_total=98))
+    assert f"mostrando {POUSOS_NA_TELA} de 98." in texto
+    assert texto.count("#") == POUSOS_NA_TELA
+
+
+def test_lista_completa_nao_inventa_aviso_de_corte():
+    amostra = [{"number": 7, "title": "único"}]
+    texto = montar(dados(pousos=amostra, pousos_total=1))
+    assert "mostrando" not in texto
+    assert "#7" in texto
+
+
+def test_a_contagem_vem_do_git_e_nao_do_github(tmp_path, monkeypatch):
+    """A prova de independência: o GitHub devolve 2, o Git conta 98 — vale 98.
+
+    Se alguém voltar a derivar o total da resposta do `gh`, este teste fica
+    vermelho, porque as duas fontes discordam de propósito.
+    """
+    import boletim
+
+    novo = (AGORA - timedelta(hours=1)).isoformat().replace("+00:00", "Z")
+
+    class Falsa:
+        def __init__(self, stdout):
+            self.stdout = stdout
+
+    def git(args, *a, **k):
+        if "--first-parent" in args:
+            return Falsa("98")
+        return Falsa("0")
+
+    (tmp_path / "painel" / "registros").mkdir(parents=True)
+    (tmp_path / "armadilhas").mkdir()
+    monkeypatch.setattr(boletim, "executar", git)
+    monkeypatch.setattr(boletim, "refs_existentes", lambda *a, **k: [])
+    monkeypatch.setattr(
+        boletim,
+        "_gh_json",
+        lambda args, *a, **k: (
+            []
+            if "open" in args
+            else [
+                {"number": 1, "title": "a", "mergedAt": novo},
+                {"number": 2, "title": "b", "mergedAt": novo},
+            ]
+        ),
+    )
+    resultado = coletar(tmp_path, agora=AGORA)
+    assert resultado.pousos_total == 98
+    assert len(resultado.pousos) == 2
+
+
+def test_contagem_ilegivel_para_o_boletim_em_vez_de_virar_zero(tmp_path, monkeypatch):
+    import boletim
+
+    class Falsa:
+        def __init__(self, stdout):
+            self.stdout = stdout
+
+    def git(args, *a, **k):
+        if "--first-parent" in args:
+            return Falsa("sei lá")
+        return Falsa("0")
+
+    (tmp_path / "painel" / "registros").mkdir(parents=True)
+    (tmp_path / "armadilhas").mkdir()
+    monkeypatch.setattr(boletim, "executar", git)
+    monkeypatch.setattr(boletim, "refs_existentes", lambda *a, **k: [])
+    monkeypatch.setattr(boletim, "_gh_json", lambda *a, **k: [])
+    with pytest.raises(ErroDeInstrumentacao):
+        coletar(tmp_path, agora=AGORA)

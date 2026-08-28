@@ -32,6 +32,15 @@ atrás de uma falsa sensação de segurança, que foi o aviso explícito de uma 
 cinco consultorias. Por isso `montar()` recusa qualquer campo ausente: a
 estrutura não permite meia-verdade, em vez de confiar em quem chama.
 
+**E teto de amostra nunca é contagem.** Onde este boletim mostra uma lista
+limitada — os pousos das últimas 24h — o número entre parênteses vem de uma
+medição sem teto (o Git), nunca do tamanho da lista que ele mesmo cortou. Até
+28/08/2026 ele anunciava "(40)" num dia de 98 pousos, porque somava a própria
+amostra: um número que parece exato e está errado é pior que número ausente,
+porque ninguém vai conferir o que não parece suspeito. Quando a lista não cabe,
+ele diz "mostrando 15 de 98" — e `test_a_contagem_nunca_sai_do_tamanho_da_lista`
+reprova quem voltar a confundir as duas coisas.
+
 Exit codes, na mesma semântica do resto da CI:
 
     0  boletim impresso, inteiro
@@ -73,7 +82,16 @@ LEIS = (
 )
 
 JANELA_HORAS = 24
-LIMITE_DE_POUSOS = 40
+
+# O TETO DA AMOSTRA — quantos merges recentes o GitHub devolve para MOSTRAR.
+# Ele nunca é a contagem: em 28/08/2026 o boletim anunciava "o que pousou nas
+# ultimas 24h (40)" num dia de 98 merges, porque somava o tamanho da lista que
+# ele mesmo tinha limitado. Numero que parece exato e esta errado e pior que
+# numero ausente (registro 20260828-062). Quem conta e o Git, abaixo.
+TETO_DA_AMOSTRA_DE_POUSOS = 40
+
+# Quantos pousos cabem na tela. O resto vira "mostrando N de TOTAL".
+POUSOS_NA_TELA = 15
 
 
 @dataclass(frozen=True)
@@ -89,6 +107,7 @@ class Dados:
     atraso_do_espelho: int
     prs_abertos: list[dict]
     pousos: list[dict]
+    pousos_total: int
     leis_mudadas: list[str]
     reservas: list[str]
     proximo_registro: str
@@ -213,6 +232,33 @@ def coletar(raiz: Path, agora: datetime | None = None) -> Dados:
         "listar os PRs abertos",
     )
 
+    # A CONTAGEM VEM DO GIT, NAO DA LISTA. Todo pouso na `main` e exatamente um
+    # commit de primeiro pai — seja merge de verdade, seja esmagado. Contar
+    # assim nao tem teto, nao gasta consulta ao GitHub e nao depende do indice
+    # de busca ficar pronto. A lista do `gh` abaixo serve so para DIZER QUAIS,
+    # e por isso ela pode ser uma amostra sem que o numero deixe de ser exato.
+    contagem = executar(
+        [
+            "git",
+            "rev-list",
+            "--count",
+            "--first-parent",
+            f"--since={JANELA_HORAS} hours ago",
+            "origin/main",
+        ],
+        cwd=raiz,
+        descricao="contar quantas entregas pousaram na main na janela",
+        exigir_stdout=True,
+    ).stdout.strip()
+    if not contagem.isdigit():
+        raise ErroDeInstrumentacao(
+            "não consegui contar os pousos da janela",
+            "`git rev-list --count --first-parent` devolveu: "
+            f"{contagem!r} — sem contagem confiável o boletim não sai. Foi um "
+            "número inventado com cara de exato que criou esta regra.",
+        )
+    pousos_total = int(contagem)
+
     mergeados = _gh_json(
         [
             "pr",
@@ -220,7 +266,7 @@ def coletar(raiz: Path, agora: datetime | None = None) -> Dados:
             "--state",
             "merged",
             "--limit",
-            str(LIMITE_DE_POUSOS),
+            str(TETO_DA_AMOSTRA_DE_POUSOS),
             "--json",
             "number,title,mergedAt",
         ],
@@ -268,6 +314,7 @@ def coletar(raiz: Path, agora: datetime | None = None) -> Dados:
         atraso_do_espelho=int(atraso),
         prs_abertos=abertos,
         pousos=pousos,
+        pousos_total=pousos_total,
         leis_mudadas=mudadas,
         reservas=sorted(reservas),
         proximo_registro=proximo_numero_livre(
@@ -290,6 +337,7 @@ def montar(dados: Dados) -> str:
             "atraso_do_espelho",
             "prs_abertos",
             "pousos",
+            "pousos_total",
             "leis_mudadas",
             "reservas",
             "proximo_registro",
@@ -338,13 +386,21 @@ def montar(dados: Dados) -> str:
         )
     linhas.append("")
 
-    linhas.append(f"O QUE POUSOU NAS ÚLTIMAS {JANELA_HORAS}H  ({len(dados.pousos)})")
-    if not dados.pousos:
+    # `pousos_total` e nunca `len(dados.pousos)`: a lista e amostra por
+    # construcao, e somar amostra e o defeito que este bloco existe para nao
+    # repetir. `test_a_contagem_nunca_sai_do_tamanho_da_lista` reprova a volta.
+    linhas.append(f"O QUE POUSOU NAS ÚLTIMAS {JANELA_HORAS}H  ({dados.pousos_total})")
+    if dados.pousos_total == 0:
         linhas.append("  nada.")
-    for pr in dados.pousos[:15]:
+    elif not dados.pousos:
+        linhas.append(
+            "  (o GitHub não devolveu nenhum na amostra — o número acima é do Git)"
+        )
+    na_tela = dados.pousos[:POUSOS_NA_TELA]
+    for pr in na_tela:
         linhas.append(f"  #{pr['number']:<5} {pr['title'][:62]}")
-    if len(dados.pousos) > 15:
-        linhas.append(f"  ... e mais {len(dados.pousos) - 15}.")
+    if na_tela and len(na_tela) < dados.pousos_total:
+        linhas.append(f"  mostrando {len(na_tela)} de {dados.pousos_total}.")
     linhas.append("")
 
     linhas.append(f"INTENÇÕES RESERVADAS AGORA  ({len(dados.reservas)})")
