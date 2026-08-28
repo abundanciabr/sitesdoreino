@@ -213,6 +213,10 @@ if (template.indexOf("__DADOS_DO_PAINEL__") === -1) {
 
 // Montadas por concatenação para que este arquivo-fonte não contenha, ele
 // próprio, uma tag de fechamento solta.
+// Medido ANTES de montar o bloco de dados: é ele que a página carimba para
+// poder mostrar quanto do orçamento já foi usado.
+var bytesResumo = Buffer.byteLength(JSON.stringify(resumo.registros), "utf8");
+
 var ABRE = "<" + "script>";
 var FECHA = "<" + "/script>";
 var dados = [
@@ -228,6 +232,14 @@ var dados = [
   "   abrir. Congelar essas contas aqui fossilizaria o frescor. */",
   "var PAINEL = {",
   "  carimbo: " + JSON.stringify(CARIMBO) + ",",
+  // Quanto do orçamento já foi usado, para a página poder MOSTRAR o tanque
+  // enchendo. Sem isto o teto só se manifesta no dia em que o gerador se
+  // recusa a construir — e aí o dono descobre pela porta que não abre, em vez
+  // de ver a coisa chegando. `paginaBytes` entra como marcador de LARGURA FIXA
+  // e é trocado depois de a página ser medida: se ele mudasse de tamanho ao ser
+  // preenchido, o número que ele carrega deixaria de ser o tamanho real.
+  "  orcamento: { resumoBytes: " + bytesResumo + ", resumoTeto: " + LOGICA.ORCAMENTO_RESUMO_BYTES +
+    ", paginaBytes: __TAMANHO__, paginaTeto: " + LOGICA.ORCAMENTO_PAINEL_BYTES + " },",
   "  livro: { total: " + registros.length + ", meses: " + JSON.stringify(declaracaoDosMeses) + " },",
   "  resumo: JSON.parse(" + comoTextoJS({
     respondidos: resumo.respondidos,
@@ -250,8 +262,17 @@ var pagina = template.replace("__DADOS_DO_PAINEL__", function () { return dados;
 // de que algo real se acumulou (pedidos sem resposta, entregas sem prova), e a
 // resposta certa é olhar o acúmulo, nunca subir o teto.
 // -----------------------------------------------------------------------------
-var bytesResumo = Buffer.byteLength(JSON.stringify(resumo.registros), "utf8");
+// O marcador tem 11 caracteres ("__TAMANHO__"); o número que o substitui é
+// preenchido com zeros até 11. Assim o tamanho medido continua sendo o tamanho
+// final, byte a byte — um marcador de largura variável faria a página declarar
+// um tamanho que ela não tem.
 var bytesPagina = Buffer.byteLength(pagina, "utf8");
+var tamanhoEmOnze = String(bytesPagina);
+while (tamanhoEmOnze.length < 11) tamanhoEmOnze = "0" + tamanhoEmOnze;
+if (tamanhoEmOnze.length !== 11) {
+  erro("o painel passou de 99.999.999.999 bytes — o marcador de tamanho não cabe mais.");
+}
+pagina = pagina.replace("__TAMANHO__", tamanhoEmOnze);
 var estouros = [];
 if (bytesResumo > LOGICA.ORCAMENTO_RESUMO_BYTES) {
   estouros.push("o resumo pesa " + bytesResumo + " bytes e o orçamento é " +

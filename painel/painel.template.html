@@ -132,6 +132,15 @@
   #tela-erro b{font-size:21px;}
   #tela-erro pre{white-space:pre-wrap; font-size:13px; background:#00000040; padding:10px 12px; border-radius:8px;}
 
+  /* quanto do orçamento já foi usado */
+  .orc-linha{margin:10px 0 14px;}
+  .orc-rot{color:var(--text); font-weight:600; font-size:14px; margin-bottom:5px;}
+  .orc-trilho{height:9px; border-radius:6px; background:var(--panel-2); border:1px solid var(--line-soft); overflow:hidden;}
+  .orc-cheio{height:100%; background:var(--green);}
+  .orc-linha.atencao .orc-cheio{background:var(--gold);}
+  .orc-linha.mal .orc-cheio{background:var(--red);}
+  .orc-num{font-family:'IBM Plex Mono',monospace; font-size:11.5px; color:var(--text-3); margin-top:4px;}
+
   /* posso confiar nisto? · quem está mexendo em quê */
   .confianca{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
     padding:14px 18px; margin:0 0 14px; font-size:14px; line-height:1.65;}
@@ -214,6 +223,7 @@
   </section>
   <section class="vista" id="vista-operacao">
     <p class="sub">O detalhe para quando algo parece estranho: as medições feitas <b>agora, do seu navegador</b>, e os fatos com evidência — estes últimos por mês, carregados quando você pedir.</p>
+    <div class="confianca" id="orcamento"></div>
     <div class="confianca" id="confianca"></div>
     <div class="confianca" id="quem-mexe"></div>
     <div class="medicoes" id="medicoes"></div>
@@ -866,6 +876,51 @@ try {
     function () { return true; },
     "📚 Todos os registros");
 
+
+
+  // ---------- quanto do orçamento já foi usado ----------
+  // O teto do painel é fail-closed: passou, o gerador se RECUSA a construir. Isso
+  // impede o desastre, mas só se manifesta no dia em que a porta não abre — e aí
+  // o dono descobre pelo tranco, sem nunca ter visto a coisa chegando.
+  //
+  // Esta faixa é a metade que faltava: o tanque enchendo, à vista. Era o objetivo
+  // da "métrica versionada" que o Opus propôs (uma linha por build num arquivo do
+  // repositório). Não fiz assim, e o motivo é medido: dois robôs gerando o painel
+  // no mesmo dia colidiriam nesse arquivo a cada vez — aconteceu duas vezes só
+  // hoje, nos gerados. Um número no lugar de uma série responde a pergunta que
+  // importa ("estou perto do teto?") sem criar um atrito diário.
+  (function mostrarOrcamento() {
+    var alvo = document.getElementById("orcamento");
+    var o = PAINEL.orcamento;
+    if (!alvo || !o) return;
+    alvo.appendChild(el("div", "conf-rot", "Quanto o painel já ocupa do que pode ocupar"));
+
+    function barra(rotulo, usado, teto, explica) {
+      var pct = Math.min(100, Math.round((usado / teto) * 100));
+      var estado = pct >= 90 ? "mal" : (pct >= 70 ? "atencao" : "ok");
+      var linha = el("div", "orc-linha " + estado);
+      linha.appendChild(el("div", "orc-rot", rotulo));
+      var trilho = el("div", "orc-trilho");
+      var cheio = el("div", "orc-cheio");
+      cheio.style.width = pct + "%";
+      trilho.appendChild(cheio);
+      linha.appendChild(trilho);
+      linha.appendChild(el("div", "orc-num",
+        Math.round(usado / 1024) + " KB de " + Math.round(teto / 1024) + " KB  ·  " + pct + "%"));
+      linha.appendChild(el("div", "conf-nota", explica));
+      alvo.appendChild(linha);
+    }
+
+    barra("A página que abre", o.paginaBytes, o.paginaTeto,
+      "É isto que chega ao seu navegador quando você abre o painel. Não cresce com o tamanho do livro — só com o que a capa e o mapa precisam mostrar.");
+    barra("O resumo embutido", o.resumoBytes, o.resumoTeto,
+      "Os registros que a capa e o mapa desenham. Se ele encher, é sinal de que algo REAL está se acumulando — pedidos sem resposta, entregas sem prova. A resposta certa é olhar o acúmulo, nunca subir o teto.");
+
+    var pior = Math.max(o.paginaBytes / o.paginaTeto, o.resumoBytes / o.resumoTeto);
+    alvo.appendChild(el("div", "conf-nota", pior >= 0.9
+      ? "⚠️ Perto do teto. Quando passar, o gerador PARA e diz o que precisa sair — o painel não cresce em silêncio."
+      : "Quando qualquer uma das barras encher, o gerador PARA de construir e diz o que precisa sair. O painel não tem como crescer em silêncio."));
+  })();
 
   // ---------- posso confiar nisto? (a quinta pergunta) ----------
   // As quatro perguntas da capa olham para o PROJETO. Esta olha para o PAINEL —

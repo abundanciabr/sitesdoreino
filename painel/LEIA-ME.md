@@ -90,6 +90,12 @@
   nunca some da tela, porque sumir faria um pedido incompleto parecer completo.
   A ordem continua sendo por IDADE (pedido velho grita mais); o peso é para você
   ver, não para reordenar a fila pelas suas costas.
+- **O tanque à vista:** a aba Operação mostra quanto o painel já ocupa dos tetos
+  (página e resumo), em barra e em porcentagem. O teto sozinho só se manifesta no
+  dia em que o gerador se recusa a construir — e aí o dono descobre pelo tranco.
+  A página carimba o próprio tamanho com um marcador de largura FIXA, trocado
+  depois de medir: largura variável faria a página declarar um tamanho que não
+  tem, e a barra mentiria sobre o teto que a protege.
 - **A quinta pergunta — "posso confiar nisto?":** a aba Operação conta quantas
   afirmações do painel têm prova conferida, e NOMEIA as que não têm. Mais o
   placar de promessa × entrega (rumos cumpridos, e em quantos dias). Ele mede a

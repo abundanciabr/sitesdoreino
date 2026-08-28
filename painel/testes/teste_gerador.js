@@ -307,6 +307,30 @@ caso("as ilhas de regras e de dados EXECUTAM", executou);
 caso("...e deixam LOGICA e PAINEL de pé",
   executou && typeof sandbox.window.LOGICA === "object" && typeof sandbox.PAINEL === "object");
 
+
+console.log("== o painel declara quanto do orçamento ja ocupa ==");
+// A faixa que mostra o tanque enchendo só vale se o número for o TAMANHO REAL.
+// O gerador carimba um marcador de largura fixa e o troca depois de medir; se
+// o número trocado tivesse outra largura, a página declararia um tamanho que
+// ela não tem — e a barra mentiria justamente sobre o teto que a protege.
+var dirO = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a"),
+  "20260826-002-b.js": registroBom("20260826-002-b")
+});
+roda(dirO);
+var htmlO = leia(dirO, "painel.html");
+var mO = /paginaBytes: (\d+)/.exec(htmlO);
+caso("a página declara o próprio tamanho", !!mO);
+caso("...e o número declarado É o tamanho real, byte a byte",
+  !!mO && parseInt(mO[1], 10) === Buffer.byteLength(htmlO, "utf8"));
+var mR = /resumoBytes: (\d+)/.exec(htmlO);
+caso("declara também o tamanho do resumo", !!mR && parseInt(mR[1], 10) > 0);
+var mT = /resumoTeto: (\d+)[^}]*paginaTeto: (\d+)/.exec(htmlO);
+caso("...e os dois tetos, para a barra ter denominador",
+  !!mT && parseInt(mT[1], 10) > 0 && parseInt(mT[2], 10) > 0);
+caso("o marcador de largura fixa nao sobrou na pagina",
+  htmlO.indexOf("__TAMANHO__") === -1);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. O gerador NÃO está confiável.");
