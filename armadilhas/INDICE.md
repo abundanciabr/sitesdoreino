@@ -179,5 +179,6 @@
 | [151](151-o-registro-do-livro-nao-viaja-no-pr-de-outra.md) | O registro do livro não pode viajar no PR de outra célula — `painel/` conta como a célula `admin` — você fez o gesto de sempre — código da célula + registro em `painel/registros/` + `node painel/gerar_manifesto.js` — e… | — |
 | [152](152-o-espelho-recusa-atualizar-e-a-sujeira-e-invisivel.md) | O espelho recusa atualizar, a sujeira é invisível (`status` acusa, `diff` vem vazio) — e a ferramenta de limpar está trancada de propósito — você faz o que a `armadilhas/148` manda — atualizar o clone principal para… | — |
 | [153](153-patch-num-ruleset-devolve-404-e-nada-muda.md) | `PATCH` num ruleset do GitHub devolve 404 e **nada muda** — a leitura seguinte é a única testemunha — você muda uma regra de proteção da `main` pela API e o comando "passa" sem estardalhaço. A conferência seguinte… | — |
+| [154](154-busca-em-portugues-do-postgres-nao-une-plural-em.md) | Busca em português do PostgreSQL: o plural em `-ens` não é unido, e acento importa — a busca do site "não acha" um texto que existe. O aluno escreve `modelagens` e não encontra a mensagem que diz `modelagem`; escreve… | — |
 
-**142 entradas.**
+**143 entradas.**

@@ -55,10 +55,15 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    # A busca do PostgreSQL (lei §4.4). Entra junto com o modelo de dados, e
+    # não depois, porque `SearchVectorField` numa tabela que já cresceu é
+    # migração na maior tabela do sistema.
+    "django.contrib.postgres",
     "apps.core",
-    # O modelo de dados do fórum (área → tópico → mensagem) entra no PR 2, em
-    # `apps.forum`. A ordem é a da lei §7: fundação antes de tela — é essa peça
-    # que decide se um dia dá para trocar de motor sem refazer a escola.
+    # O modelo de dados do fórum: área → tópico → mensagem, mais a marca de
+    # leitura. A forma é deliberadamente comum — é o que mantém aberta a porta
+    # de migrar para o Discourse um dia (lei §4.2).
+    "apps.forum",
 ]
 
 MIDDLEWARE = [
