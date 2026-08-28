@@ -50,17 +50,19 @@ def _falha_de_provedor(exc: FalhaNoProvedor) -> JsonResponse:
     request dele. E por que não deixar estourar 500: 500 é "bug aqui"; isto é uma
     condição prevista, com ação conhecida do outro lado (repetir a mesma chave).
 
-    [ARMADILHAS §4.2] O status novo NÃO entra como `response={...}` no decorator
+    [ARMADILHAS §4.2] O status NÃO entra como `response={...}` no decorator
     (qualquer valor não-`None` ali vira `ninja.Schema` dinâmico e pode vazar para
-    `components.schemas`, quebrando o freeze) e também NÃO entra no
-    `openapi_extra`: mudar o documento exportado é Rito de Contrato (RITOS §3),
-    fora do escopo deste despacho. `JsonResponse` direto atravessa
-    `_result_to_response` intacto, sem tocar em `response_models`.
+    `components.schemas`, quebrando o freeze). Ele entra pelo `openapi_extra` das
+    operações — dict cru, que o exportador copia sem inventar schema nenhum.
+    `JsonResponse` direto atravessa `_result_to_response` intacto, sem tocar em
+    `response_models`.
 
-    Consequência conhecida e deliberada: o 502 fica, por ora, INDOCUMENTADO no
-    contrato congelado. Está registrado no handoff como pendência de Rito de
-    Contrato — antes deste fix o mesmo caminho devolvia 201 mentiroso, o que é
-    estritamente pior do que um erro honesto ainda não documentado."""
+    DOCUMENTADO no contrato congelado desde 28/08/2026 (Rito de Contrato, RITOS
+    §3, com o mantenedor presente — PR do contrato #417, este PR é o lado do
+    provedor). O componente `FalhaDoProvedor` descreve o corpo e a ação do
+    consumidor. Quem tirar o 502 daqui deixa o `contrato/pagamentos` VERMELHO no
+    `make ci` da célula: o freeze compara este export com o congelado, e é esse
+    o mecanismo que impede a promessa de apodrecer (RETROSPECTIVA-FASE-D §2)."""
     logger.warning("falha do provedor de pagamento: %s", exc)
     return JsonResponse({"detail": _ERRO_PROVEDOR}, status=502)
 
@@ -99,6 +101,7 @@ _CREATE_INTENT_OPENAPI = {
         },
         401: {"$ref": "#/components/responses/NaoAutorizado"},
         422: {"$ref": "#/components/responses/ErroValidacao"},
+        502: {"$ref": "#/components/responses/FalhaDoProvedor"},
     },
 }
 
@@ -314,6 +317,7 @@ _CONFIRM_CARD_OPENAPI = {
             )
         },
         422: {"$ref": "#/components/responses/ErroValidacao"},
+        502: {"$ref": "#/components/responses/FalhaDoProvedor"},
     },
 }
 
