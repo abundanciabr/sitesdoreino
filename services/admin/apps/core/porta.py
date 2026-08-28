@@ -41,17 +41,39 @@ from .models import Administrador
 logger = logging.getLogger("admin.porta")
 
 # Os únicos caminhos que respondem sem crachá. É `frozenset` e é conferido por
-# igualdade EXATA em `tests/test_caminhos_isentos.py`: rota nova não escapa em
-# silêncio — ou ela está aqui de propósito, ou a porta a protege.
+# igualdade EXATA em `tests/test_inv_porta_fail_closed.py`: rota nova não
+# escapa em silêncio — ou ela está aqui de propósito, ou a porta a protege.
 #
 # Compara-se `request.path_info`, NUNCA `request.path`: pela borda pública o
 # Traefik não remove o prefixo, e `request.path` chega como `/admin/healthz`
 # (`armadilhas/029`, medido ao vivo em duas células). `path_info` é `/healthz`
 # nos dois caminhos de entrada.
 #
-# `/healthz` é o único, e por um motivo estrutural: é rota de MÁQUINA, exigida
-# pelo healthcheck do compose, que não tem cookie nenhum para apresentar.
-CAMINHOS_ISENTOS = frozenset({"/healthz"})
+# `/healthz` é rota de MÁQUINA, exigida pelo healthcheck do compose, que não
+# tem cookie nenhum para apresentar.
+#
+# [INV-P14] Os `/mapa-ia/*` são a segunda exceção, e a única pensada para
+# gente de fora: o mantenedor pediu (28/08/2026) um link público do mapa
+# técnico do projeto (`painel/ia/`, escrito para IA auditar o projeto) para
+# poder mandar a IAs externas sem exigir login. Cada caminho aqui é um
+# arquivo `.md` exato de `painel/ia/` — nenhum outro caminho desta célula
+# muda de comportamento. `apps/core/mapa_ia.py` serve como texto puro, nunca
+# HTML, e confere de novo (por disco) que o arquivo pedido existe dentro da
+# pasta antes de ler — esta lista NÃO é a única trava, é a primeira.
+CAMINHOS_ISENTOS = frozenset(
+    {
+        "/healthz",
+        "/mapa-ia/",
+        "/mapa-ia/INDICE.md",
+        "/mapa-ia/01-leis-ritos-e-invariantes.md",
+        "/mapa-ia/02-armadilhas-e-padroes-recorrentes.md",
+        "/mapa-ia/03-sistema-do-painel-e-livro.md",
+        "/mapa-ia/04-arquitetura-de-celulas-e-contratos.md",
+        "/mapa-ia/05-infraestrutura-ci-e-deploy.md",
+        "/mapa-ia/06-produto-decisoes-e-roadmap.md",
+        "/mapa-ia/07-oportunidades-e-fronteiras.md",
+    }
+)
 
 
 def _emails_autorizados() -> frozenset[str]:
