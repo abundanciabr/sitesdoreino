@@ -29,12 +29,14 @@ casa, `/admin` não existe. É decisão registrada na lei (§2), não improviso.
 import logging
 
 from django.conf import settings
+from django.db import DatabaseError
 from django.http import HttpResponse, HttpResponseNotFound, HttpResponseRedirect
 from django.template.loader import render_to_string
 from django.urls import reverse
 
 from . import medidor
 from .clients import IdentidadeClient, IdentidadeIndisponivel
+from .models import Administrador
 
 logger = logging.getLogger("admin.porta")
 
@@ -55,9 +57,13 @@ CAMINHOS_ISENTOS = frozenset({"/healthz"})
 def _emails_autorizados() -> frozenset[str]:
     """A lista de quem entra, lida NO PONTO DE USO e normalizada.
 
-    `ADMIN_EMAILS` é a ÚNICA fonte de "pode entrar" (`DECISAO-celula-admin`
-    §2). A resposta da identidade — inclusive o campo `papel` — nunca
-    autoriza nada aqui.
+    **Duas fontes desde 28/08/2026**, e a ordem entre elas é lei:
+    `ADMIN_EMAILS` (servidor) ∪ os ativos da tabela `Administrador` (promovidos
+    pela tela). Ver `apps/core/models.py` e
+    `docs/decisoes/DECISAO-administradores-e-apagar.md` §3.
+
+    A resposta da identidade — inclusive o campo `papel` — continua não
+    autorizando nada aqui.
 
     Normaliza com `strip().lower()` dos dois lados (aqui e na comparação),
     copiando o que a `identidade` já faz ao cunhar a pessoa: sem isso, um
@@ -69,7 +75,29 @@ def _emails_autorizados() -> frozenset[str]:
     área fica fechada até a variável existir.
     """
     cru = getattr(settings, "ADMIN_EMAILS", "") or ""
-    return frozenset(p.strip().lower() for p in cru.split(",") if p.strip())
+    do_servidor = frozenset(p.strip().lower() for p in cru.split(",") if p.strip())
+
+    # [ADMINS] A metade que a TELA promove (`DECISAO-administradores-e-apagar`
+    # §3.1). O env é o CHÃO: quem está nele entra sempre, e o botão de remover
+    # se recusa a mexer nele — é isso que torna impossível se trancar para
+    # fora, e o que faz um banco vazio ou restaurado de backup não fechar a
+    # porta.
+    try:
+        do_banco = frozenset(
+            Administrador.objects.filter(ativo=True).values_list("email", flat=True)
+        )
+    except DatabaseError:
+        # [ADMINS] §3.2 — falha de banco vale SÓ o env. Erro nunca AMPLIA quem
+        # entra: a direção do fail é o que separa uma indisponibilidade de uma
+        # brecha. ERROR e não silêncio: quem vai ler é o mantenedor, e ele
+        # precisa saber por que um administrador promovido pela tela sumiu.
+        logger.error(
+            "porta: não deu para ler a lista de administradores do banco — "
+            "vale só ADMIN_EMAILS do servidor até o banco voltar"
+        )
+        do_banco = frozenset()
+
+    return do_servidor | do_banco
 
 
 def _anota(registrar, *args) -> None:

@@ -366,3 +366,35 @@ class AlunosClient:
             return self.RECUSADO, "não havia nada para mudar, ou um campo veio errado"
         logger.error("gestao: a alunos respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
+
+    def apagar_aluno(self, alvo: str) -> "tuple[str, str]":
+        """[APAGAR] Apaga a ficha DE VEZ. Mesmos três desfechos das outras escritas.
+
+        Irreversível do outro lado — e por isso o `NAO_RESPONDEU` importa ainda
+        mais aqui: uma exclusão que talvez tenha acontecido não pode ser
+        mostrada como "não deu certo", ou o mantenedor tenta de novo achando
+        que a primeira não valeu.
+        """
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com a alunos não está ligado"
+        base, token = config
+
+        try:
+            r = http().delete(
+                f"{base}/matriculas/{alvo}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("apagar: não deu para falar com a alunos: %s", erro)
+            return self.NAO_RESPONDEU, "a parte que guarda os alunos não respondeu"
+
+        if r.status_code == 204:
+            return self.OK, ""
+        if r.status_code == 404:
+            return self.RECUSADO, "esta ficha já não existe"
+        if r.status_code == 409:
+            return self.RECUSADO, "esta pessoa ainda está na fila — decida por lá"
+        logger.error("apagar: a alunos respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
