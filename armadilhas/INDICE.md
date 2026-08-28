@@ -177,5 +177,6 @@
 | [149](149-parametro-errado-numa-github-action-nao-reprova.md) | Parâmetro com nome errado numa GitHub Action não reprova — ela avisa e IGNORA — o deploy fecha **verde** e a imagem nova **não sobe**. O site continua no ar servindo a versão anterior, sem erro em lugar nenhum: o… | — |
 | [150](150-os-checks-do-pr-param-de-rodar-e-nao-ha-erro.md) | Os checks do PR param de rodar e não há erro nenhum — o PR está em conflito com a `main` — você faz `git push`, tudo dá certo, e **nenhum check aparece**. `gh pr checks <N>` responde `no checks reported on the… | — |
 | [151](151-o-registro-do-livro-nao-viaja-no-pr-de-outra.md) | O registro do livro não pode viajar no PR de outra célula — `painel/` conta como a célula `admin` — você fez o gesto de sempre — código da célula + registro em `painel/registros/` + `node painel/gerar_manifesto.js` — e… | — |
+| [152](152-o-espelho-recusa-atualizar-e-a-sujeira-e-invisivel.md) | O espelho recusa atualizar, a sujeira é invisível (`status` acusa, `diff` vem vazio) — e a ferramenta de limpar está trancada de propósito — você faz o que a `armadilhas/148` manda — atualizar o clone principal para… | — |
 
-**140 entradas.**
+**141 entradas.**
