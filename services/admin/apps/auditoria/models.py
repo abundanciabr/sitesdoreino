@@ -33,7 +33,11 @@ class Registro(models.Model):
 
     LIBERAR = "liberar"
     RECUSAR = "recusar"
-    ACOES = [(LIBERAR, "liberar"), (RECUSAR, "recusar")]
+    # [GESTAO] Mudar o estado de quem JÁ é aluno, ou corrigir os dados dele.
+    # Verbo próprio, e não um `liberar` reaproveitado: quem for ler esta tabela
+    # daqui a meses precisa distinguir "deixei entrar" de "mexi no cadastro".
+    EDITAR = "editar"
+    ACOES = [(LIBERAR, "liberar"), (RECUSAR, "recusar"), (EDITAR, "editar")]
 
     OK = "ok"
     RECUSADO_PELA_CELULA = "recusado"

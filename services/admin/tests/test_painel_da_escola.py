@@ -290,22 +290,22 @@ def test_a_contagem_distingue_nao_sei_de_nenhum():
     pode virar número nenhum.
     """
     por_slug = {
-        t["slug"]: t for t in tipos_com_contagem({"aguardando": [], "recusada": None})
+        t["slug"]: t
+        for t in tipos_com_contagem({"aguardando-aprovacao": 0, "recusados": None})
     }
     assert por_slug["aguardando-aprovacao"]["quantidade"] == 0
     assert por_slug["recusados"]["quantidade"] is None
-    # Os tipos sem porta continuam sem número, aconteça o que acontecer.
+    # Tipo que nem aparece no dicionário nasce sem número — honesto por
+    # omissão, em vez de nascer mostrando zero.
     assert por_slug["ativos"]["quantidade"] is None
 
 
-def test_a_contagem_e_o_tamanho_da_fila_devolvida():
-    filas = {
-        "aguardando": [{"id": "1"}, {"id": "2"}, {"id": "3"}],
-        "recusada": [{"id": "4"}],
-    }
-    por_slug = {t["slug"]: t for t in tipos_com_contagem(filas)}
+def test_a_contagem_vem_do_dicionario_que_a_view_monta():
+    contagens = {"aguardando-aprovacao": 3, "recusados": 1, "ativos": 7}
+    por_slug = {t["slug"]: t for t in tipos_com_contagem(contagens)}
     assert por_slug["aguardando-aprovacao"]["quantidade"] == 3
     assert por_slug["recusados"]["quantidade"] == 1
+    assert por_slug["ativos"]["quantidade"] == 7
 
 
 def test_todo_tipo_declara_por_que_o_numero_falta():
@@ -456,7 +456,17 @@ def _pessoa_na_fila(**campos) -> dict:
     return corpo
 
 
-def _fila_responde(aguardando=None, recusada=None):
+ALUNOS_LISTA = f"{ALUNOS}/matriculas"
+
+
+def _fila_responde(aguardando=None, recusada=None, alunos=None):
+    """As TRÊS perguntas que a tela faz — a fila, os recusados e os alunos.
+
+    Desde a gestão de alunos (28/08/2026) a página consulta as três, e
+    `respx.mock` sem rota registrada estoura em qualquer chamada inesperada. É
+    justamente o que se quer dele: nenhuma ida à rede desta célula passa sem
+    alguém ter dito o que ela responde.
+    """
     respx.get(FILA, params={"status": "aguardando"}).mock(
         return_value=httpx.Response(
             200, json=aguardando if aguardando is not None else []
@@ -464,6 +474,9 @@ def _fila_responde(aguardando=None, recusada=None):
     )
     respx.get(FILA, params={"status": "recusada"}).mock(
         return_value=httpx.Response(200, json=recusada if recusada is not None else [])
+    )
+    respx.get(ALUNOS_LISTA).mock(
+        return_value=httpx.Response(200, json=alunos if alunos is not None else [])
     )
 
 
@@ -498,11 +511,15 @@ def test_fila_vazia_medida_mostra_zero_e_nao_traco(par_com_a_alunos):
     pergunta feita, "perguntei e não há ninguém" é um fato, e mostrá-lo como
     traço seria esconder uma resposta boa.
     """
-    _fila_responde(aguardando=[], recusada=[])
+    _fila_responde(aguardando=[], recusada=[], alunos=[])
     html = _texto(_dentro().get("/escola/alunos/"))
     assert "Ninguém está esperando agora" in html
     assert 'class="valor">0<' in html
-    assert 'class="valor vazio">&mdash;<' in html, "os tipos sem porta perderam o traço"
+    # E, desde a gestão de alunos (28/08/2026), NENHUM traço sobra quando as
+    # três perguntas são respondidas: todo tipo desta tela passou a ter porta.
+    # A tela deixou de ter um canto que ela não sabe medir — e é este teste que
+    # impede alguém de acrescentar um tipo sem fonte sem perceber.
+    assert 'class="valor vazio">&mdash;<' not in html
 
 
 @respx.mock
@@ -525,6 +542,7 @@ def test_a_alunos_respondendo_mal_nao_derruba_a_pagina(
     ferramenta que o mantenedor abre justamente quando algo está errado.
     """
     respx.get(FILA).mock(return_value=resposta)
+    respx.get(ALUNOS_LISTA).mock(return_value=resposta)
     r = _dentro().get("/escola/alunos/")
     assert r.status_code == 200, f"{motivo}: {r.content}"
     html = _texto(r)
@@ -535,6 +553,7 @@ def test_a_alunos_respondendo_mal_nao_derruba_a_pagina(
 @respx.mock
 def test_a_alunos_fora_do_ar_nao_derruba_a_pagina(par_com_a_alunos):
     respx.get(FILA).mock(side_effect=httpx.ConnectError("recusou"))
+    respx.get(ALUNOS_LISTA).mock(side_effect=httpx.ConnectError("recusou"))
     r = _dentro().get("/escola/alunos/")
     assert r.status_code == 200, r.content
     assert "Ainda não consigo perguntar" in _texto(r)
