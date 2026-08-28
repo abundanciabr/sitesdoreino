@@ -165,3 +165,34 @@ disco de um clone de longa duração. O guarda que mecaniza a parte que dá para
 mecanizar está em `tests/test_painel_da_escola.py`: porta declarada tem de
 existir no contrato, e porta que o contrato tem não pode ficar sem dono nesta
 tela.
+
+## A auditoria append-only e o `TRUNCATE` que ninguém lembra (28/08/2026)
+
+A primeira escrita desta área — liberar e recusar quem está na fila — trouxe a
+auditoria junto, como a regra acima manda. Três coisas que quem mexer nela
+precisa saber:
+
+**1. O trigger tem TRÊS metades, e a terceira é a esquecida.** `UPDATE` e
+`DELETE` são as óbvias; `TRUNCATE` não dispara trigger de linha nenhum e
+apagaria a tabela inteira sem acusar nada. No Postgres ele exige um trigger
+`FOR EACH STATEMENT` próprio, e ele está lá.
+
+**2. Os dois dialetos são escritos de propósito.** Produção é Postgres, a suíte
+local é SQLite. Um trigger só de Postgres deixaria o guarda inexistente
+justamente onde o agente o exercita todo dia — e guarda que ninguém consegue
+ver morder é indistinguível de nenhum guarda. Provado por mutação: comentar o
+`RunPython` da migration deixa `test_a_auditoria_e_append_only_no_BANCO`
+vermelho.
+
+**3. A armadilha que ainda não doeu, escrita antes de doer:** no Postgres, um
+teste `django_db(transaction=True)` limpa as tabelas com `TRUNCATE` — e o
+trigger o recusa. Esta célula não tem nenhum teste assim hoje. Quem escrever o
+primeiro vai bater nisto, e a saída certa é **o teste não tocar nesta tabela**,
+nunca afrouxar o trigger.
+
+**E a decisão de desenho que evita duplicação:** esta tabela NÃO é uma segunda
+fonte de "quem é aluno" — esse fato mora na `alunos`, que já carimba
+`decidido_em`/`decidido_por` na matrícula. O que ela guarda é o que foi feito
+ATRAVÉS desta área, **inclusive o que falhou** — e é justamente o caso que não
+deixa rastro em lugar nenhum: uma decisão que a `alunos` não recebeu não tem
+linha para carimbar lá.

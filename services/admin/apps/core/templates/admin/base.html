@@ -70,6 +70,21 @@ primeira versão deste arquivo, e o teste pegou.
     /* "Não sei quantos" — e NUNCA "0". Ver TIPOS_DE_ALUNO em apps/core/views.py:
        um número inventado aqui seria lido como fato pelo mantenedor. */
     .valor.vazio { color: var(--texto-3); }
+    /* A decisão: dois botões e um campo, dentro do cartão da pessoa. */
+    .decidir { margin-top: 12px; border-top: 1px solid var(--linha); padding-top: 12px; }
+    .decidir input[type=text] {
+      width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 8px 10px;
+      background: var(--fundo); color: var(--texto);
+      border: 1px solid var(--linha); border-radius: 8px; font: inherit;
+    }
+    .decidir button {
+      font: inherit; font-weight: 600; cursor: pointer;
+      padding: 9px 14px; margin-right: 8px;
+      border-radius: 8px; border: 1px solid var(--linha); background: var(--fundo);
+    }
+    .decidir button.sim { color: var(--verde); border-color: var(--verde); }
+    .decidir button.nao { color: var(--vermelho); border-color: var(--vermelho); }
+    .recado { border: 1px solid var(--azul); border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; }
   </style>
 </head>
 <body>
