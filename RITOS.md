@@ -98,6 +98,34 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
 objetivo era Pix e o diff mostra `methods/card/` ou 42 arquivos — é o alarme dele,
 antes de ser o alarme do CI.
 
+5. **Quando a janela não fecha, PEÇA POUSO — não insista (desde 28/08/2026):**
+
+   ```bash
+   gh pr edit <N> --add-label pousar
+   ```
+
+   E vá embora. A pista (`.github/workflows/pouso.yml`, Onda 4 do
+   `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`) atende **um PR por vez**:
+   atualiza a base, confere pelo MESMO `ci/mergear.py` e mergeia. Ela não é mais
+   permissiva que a catraca — é a catraca com paciência.
+
+   **Quando usar:** o PR ficou `BEHIND` mais de uma vez, ou toca `painel/` num
+   dia movimentado. Sintoma de que você está na corrida errada:
+   atualizar → esperar 90s de checks → a `main` andou → repetir
+   (`armadilhas/156`; medido: oito voltas num PR de 4 arquivos). **Insistir não
+   é persistência, é gastar franquia contra um relógio que você não controla.**
+
+   **O que a pista faz com o seu PR:** verde ⇒ mergeia; vermelho de verdade ⇒
+   devolve com o veredito cru e TIRA a etiqueta (para não entupir a fila atrás
+   dele); checks ainda rodando ⇒ **espera quieto** e volta na passagem seguinte,
+   sem punir um PR são. Ela se rechama ao terminar e tem um agendamento de rede
+   a cada 15 min.
+
+   **O merge continua sendo do agente (Lei 4)** — a pista é um caminho, não uma
+   troca de dono. A mudança de dono está decidida (registro
+   `20260828-033`) e entra numa fatia futura, junto com a construção: lei que
+   promete o que ainda não existe é a doença que este plano cura.
+
 ---
 
 ## §3 — Rito de Mudança de Contrato
