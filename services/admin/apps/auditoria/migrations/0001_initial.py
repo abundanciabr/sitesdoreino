@@ -27,7 +27,14 @@ POSTGRES = [
     f"""
     CREATE OR REPLACE FUNCTION auditoria_append_only() RETURNS trigger AS $func$
     BEGIN
-      RAISE EXCEPTION '{MENSAGEM} (%)', TG_OP;
+      -- ERRCODE 23000 (integrity_constraint_violation) NÃO é decoração: sem
+      -- ele o Postgres levanta com o código genérico P0001, que o Django
+      -- traduz em `ProgrammingError` — enquanto o SQLite, com RAISE(ABORT),
+      -- levanta `IntegrityError`. Medido no CI em 28/08/2026: o guarda passava
+      -- local e reprovava em produção pela CLASSE da exceção, não pelo
+      -- comportamento. Com o código explícito, os dois bancos falham igual, e
+      -- quem escrever um `except` daqui a meses acerta nos dois.
+      RAISE EXCEPTION '{MENSAGEM} (%)', TG_OP USING ERRCODE = '23000';
     END;
     $func$ LANGUAGE plpgsql;
     """,

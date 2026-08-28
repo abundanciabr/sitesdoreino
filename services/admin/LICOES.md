@@ -196,3 +196,15 @@ fonte de "quem é aluno" — esse fato mora na `alunos`, que já carimba
 ATRAVÉS desta área, **inclusive o que falhou** — e é justamente o caso que não
 deixa rastro em lugar nenhum: uma decisão que a `alunos` não recebeu não tem
 linha para carimbar lá.
+
+**Um detalhe que o CI pegou e a máquina local não podia pegar:** a primeira
+versão do teste exigia `IntegrityError`. No SQLite o `RAISE(ABORT)` produz
+exatamente isso; no Postgres, um `RAISE EXCEPTION` sem `ERRCODE` sai com o
+código genérico `P0001`, que o Django traduz em **`ProgrammingError`**. O
+guarda passava aqui e reprovava lá — **pela classe da exceção, não pelo
+comportamento**. A correção foi nos dois lados, e a ordem importa: o trigger
+passou a declarar `ERRCODE = '23000'` (para os dois bancos falharem IGUAL, que
+é o que quem escrever um `except` daqui a meses precisa), e só então a asserção
+passou a aceitar a classe-pai `DatabaseError` conferindo a mensagem. Afrouxar a
+asserção sem corrigir o trigger teria escondido uma diferença real entre dev e
+produção.

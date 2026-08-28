@@ -33,7 +33,7 @@ import json
 import httpx
 import pytest
 import respx
-from django.db import IntegrityError, transaction
+from django.db import DatabaseError, IntegrityError, transaction
 from django.test import Client
 from django.urls import reverse
 
@@ -230,11 +230,24 @@ def test_a_auditoria_e_append_only_no_BANCO():
     _decidir(_dentro())
     linha = Registro.objects.get()
 
-    with pytest.raises(IntegrityError), transaction.atomic():
-        Registro.objects.filter(pk=linha.pk).update(desfecho=Registro.OK)
-
-    with pytest.raises(IntegrityError), transaction.atomic():
-        Registro.objects.filter(pk=linha.pk).delete()
+    # `DatabaseError` (o pai) e a MENSAGEM, em vez da classe exata: é o que
+    # torna este guarda honesto nos dois bancos. A primeira versão exigia
+    # `IntegrityError` e reprovou no CI — o Postgres levantava `ProgrammingError`
+    # porque o `RAISE EXCEPTION` não dizia o código do erro. O trigger foi
+    # corrigido (ERRCODE 23000, os dois viram `IntegrityError`) E a asserção
+    # afrouxou para a classe-pai: travar a classe exata é travar um detalhe do
+    # driver, não a promessa.
+    for operacao in (
+        lambda: Registro.objects.filter(pk=linha.pk).update(desfecho=Registro.OK),
+        lambda: Registro.objects.filter(pk=linha.pk).delete(),
+    ):
+        with pytest.raises(DatabaseError) as erro, transaction.atomic():
+            operacao()
+        assert "append-only" in str(erro.value)
+        assert isinstance(erro.value, IntegrityError), (
+            "o banco recusou, mas com a classe errada — quem escrever um "
+            "`except IntegrityError` daqui a meses não vai pegar isto"
+        )
 
     assert Registro.objects.count() == 1
 
