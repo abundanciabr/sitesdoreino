@@ -357,3 +357,56 @@ def test_nao_consegui_perguntar_tambem_vale_pouco(client, com_email):
     ).mock(side_effect=httpx.ConnectError("recusou"))
     _abrir(client)
     assert _validade_guardada() <= 10
+
+
+# --------------------------------------- 5. ex-aluno e pausado na home
+#
+# `DECISAO-ex-aluno-e-a-porta-que-explica` (28/08/2026). Até então os dois
+# voltavam da `alunos` como `cadastrado` e a home não tinha o que dizer — a
+# pessoa saía da escola e a home fingia que ela nunca tinha entrado.
+
+
+def test_ex_aluno_ve_que_o_acesso_acabou(client, com_email):
+    _situacao(com_email, "ex_aluno")
+    conteudo = _abrir(client)
+    assert "acesso à escola foi encerrado" in conteudo
+    assert CAIXA not in conteudo
+
+
+def test_pausado_ve_que_volta_sozinho(client, com_email):
+    """A palavra que importa é "volta": ela não precisa fazer nada."""
+    _situacao(com_email, "pausado")
+    conteudo = _abrir(client)
+    assert "está pausado" in conteudo
+    assert "volta assim que" in conteudo
+    assert CAIXA not in conteudo
+
+
+def test_as_duas_frases_sao_diferentes(client, com_email):
+    """Um é o fim, o outro é temporário — e a home não pode colapsá-los."""
+    _situacao(com_email, "ex_aluno")
+    encerrado = _abrir(client)
+    from apps.core.middleware import limpar_cache_de_categoria
+
+    limpar_cache_de_categoria()
+    _situacao(com_email, "pausado")
+    pausado = _abrir(client)
+
+    assert "encerrado" in encerrado and "encerrado" not in pausado
+    assert "pausado" in pausado
+
+
+def test_nenhum_dos_dois_ganha_convite_para_pedir_de_novo(client, com_email):
+    """Quem saiu ou foi pausado não está numa fila — está numa decisão da escola.
+
+    Um "pedir de novo" aqui convidaria a pessoa a insistir contra uma decisão
+    que ela não conhece (lei §3).
+    """
+    for categoria in ("ex_aluno", "pausado"):
+        from apps.core.middleware import limpar_cache_de_categoria
+
+        limpar_cache_de_categoria()
+        _situacao(com_email, categoria)
+        conteudo = _abrir(client)
+        assert "em análise" not in conteudo, categoria
+        assert CAIXA not in conteudo, categoria
