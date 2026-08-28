@@ -1,0 +1,209 @@
+# =============================================================================
+# A PISTA DE POUSO — Onda 4, fatia 1 do PLANO-MESTRE-ROBOS-SEM-COLISAO.md
+#
+# O PROBLEMA, medido em 28/08/2026: um PR de 4 arquivos e nenhuma linha de
+# código levou OITO tentativas para entrar. Três coisas verdadeiras ao mesmo
+# tempo (armadilhas/156): PR que toca `painel/` regenera arquivos de linha
+# única e colide sempre; a política estrita exige estar em dia com a `main` no
+# INSTANTE do merge; e a `main` anda ~98 vezes por dia. O agente perde a corrida
+# contra o relógio dos checks, e não adianta ser mais rápido.
+#
+# A CURA: tirar o merge da corrida. O agente para de tentar; ele PEDE POUSO
+# (etiqueta `pousar`) e vai embora. Esta pista atende um PR por vez — o
+# `concurrency` garante isso — atualiza, confere e mergeia. Se a `main` andar no
+# meio, o problema é da pista, que tem paciência e não tem franquia para gastar.
+#
+# É OPT-IN, DE PROPÓSITO. Sem a etiqueta, nada acontece e o fluxo de hoje
+# continua idêntico. Se esta pista tiver um defeito, ninguém é atingido: quem
+# não pediu pouso mergeia como sempre. Fatias seguintes (publicação em ordem,
+# reversão automática, fim do merge pelo agente) só entram depois desta provar
+# que funciona no mundo real.
+#
+# ---------------------------------------------------------------------------
+# TRÊS DECISÕES QUE NÃO SÃO ÓBVIAS, E O PORQUÊ DE CADA UMA
+#
+# 1. USA `PISTA_TOKEN`, NÃO O `GITHUB_TOKEN`.
+#    Documentação oficial: "Events triggered by the GITHUB_TOKEN will not create
+#    a new workflow run" (exceções: workflow_dispatch e repository_dispatch).
+#    Um merge feito com o token padrão NÃO dispararia o `deploy-celula` — e a
+#    plataforma congelaria em silêncio, sem ninguém perceber até abrir o site e
+#    ver conteúdo velho. O `deploy-celula.yml` recusa `workflow_dispatch` por
+#    decisão escrita nele mesmo, então não há atalho por ali. A chave é do
+#    mantenedor, criada em 28/08/2026 exatamente para isto.
+#
+# 2. O JUIZ É A DEFINIÇÃO DA `main`, NUNCA A DO PR.
+#    Em `pull_request`, os workflows rodam a partir do código DO PR — ou seja,
+#    um PR que altere `.github/workflows/` altera o juiz que vai julgá-lo. Aqui
+#    o gatilho é `workflow_dispatch`/`schedule`, que sempre roda a definição da
+#    `main`, e o checkout é da `main`. Buraco apontado por uma das cinco
+#    consultorias e fechado por construção.
+#
+# 3. NÃO ESPERA OS CHECKS DENTRO DA EXECUÇÃO — devolve e volta depois.
+#    Ficar em laço esperando check gastaria minuto de runner e travaria a fila
+#    atrás de um PR lento. Quando o PR está atrasado, a pista atualiza e SAI; a
+#    execução seguinte (encadeada ou agendada) encontra os checks prontos. É
+#    mais lento por PR e muito mais barato no total.
+#
+# E O ENCADEAMENTO NO FIM É OBRIGATÓRIO, não zelo: `concurrency` do Actions NÃO
+# é fila FIFO — quando um trabalho está pendente e chega um terceiro, o pendente
+# anterior é CANCELADO. Uma das consultorias afirmou que dava para usar como
+# fila; outra provou pela documentação que não. Sem o encadeamento do fim, um
+# pedido de pouso se perderia em silêncio.
+# =============================================================================
+name: pouso
+on:
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: 'Número do PR (vazio = o mais antigo com a etiqueta pousar)'
+        required: false
+        type: string
+  schedule:
+    # Rede de segurança: se um encadeamento se perder, a pista se rechama.
+    - cron: '*/15 * * * *'
+
+# Um pouso por vez. `cancel-in-progress: false` porque cancelar um pouso no meio
+# deixaria um PR atualizado e não mergeado — estado pior que não ter começado.
+concurrency:
+  group: pouso
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  pousar:
+    name: pousar
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A `main`, sempre. Ver decisão 2 no cabeçalho.
+          ref: main
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Dependências dos portões
+        run: python -m pip install --quiet pytest pyyaml
+
+      - name: Escolher o PR que vai pousar
+        id: alvo
+        env:
+          GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
+          PEDIDO: ${{ inputs.pr }}
+        run: |
+          set -euo pipefail
+          if [ -n "${PEDIDO:-}" ]; then
+            alvo="$PEDIDO"
+          else
+            # O mais antigo primeiro: quem pediu antes pousa antes.
+            alvo=$(gh pr list --state open --label pousar \
+                     --json number,createdAt \
+                     --jq 'sort_by(.createdAt) | .[0].number // empty')
+          fi
+          if [ -z "${alvo:-}" ]; then
+            echo "Nenhum PR pedindo pouso. Nada a fazer."
+            echo "vazio=1" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "PR escolhido: #$alvo"
+          echo "pr=$alvo" >> "$GITHUB_OUTPUT"
+
+      - name: Conferir o portão
+        id: portao
+        if: steps.alvo.outputs.vazio != '1'
+        env:
+          GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
+        run: |
+          set -euo pipefail
+          # `if` em vez de `set +e`: dentro da condição o shell não aborta, e o
+          # código continua sendo lido e ROTEADO (0 mergeia, 1 devolve, 2
+          # espera). Isto é o oposto de esconder o erro — e é por isso que passa
+          # no guarda que proíbe `set +e` em workflow.
+          if python ci/mergear.py "${{ steps.alvo.outputs.pr }}" --conferir > veredito.txt 2>&1; then
+            codigo=0
+          else
+            codigo=$?
+          fi
+          cat veredito.txt
+          echo "codigo=$codigo" >> "$GITHUB_OUTPUT"
+          if grep -q "ATRÁS da main (BEHIND)" veredito.txt; then
+            echo "atrasado=1" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Atrasado não é reprovado: é só velho. Atualiza e devolve para a próxima
+      # execução, que encontrará os checks já rodados contra o mundo novo.
+      - name: Atualizar o PR atrasado e devolver para a fila
+        if: steps.portao.outputs.atrasado == '1'
+        env:
+          GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh pr update-branch "${{ steps.alvo.outputs.pr }}"
+          gh pr comment "${{ steps.alvo.outputs.pr }}" --body \
+            "🛬 **pista de pouso** — a base tinha envelhecido; atualizei este PR e devolvi para a fila. A próxima passagem da pista tenta de novo, com os checks já medidos contra a \`main\` de agora. Você não precisa fazer nada."
+
+      # AINDA NÃO DÁ PARA SABER (exit 2 = ERROR): checks rodando, ou o GitHub
+      # ainda calculando. Isto NÃO é reprovação — tratar como reprovação tiraria
+      # a etiqueta de um PR são só porque ele chegou cedo demais. Sai quieto; a
+      # passagem agendada tenta de novo.
+      - name: Esperar — ainda não dá para medir
+        if: steps.portao.outputs.atrasado != '1' && steps.portao.outputs.codigo == '2' && steps.alvo.outputs.vazio != '1'
+        run: echo "Checks ainda em andamento. A pista volta na próxima passagem."
+
+      # Reprovado de verdade (exit 1 = FAIL): devolve ao autor, com o veredito
+      # cru, e TIRA a etiqueta — senão a pista tentaria o mesmo PR para sempre e
+      # a fila entupiria atrás dele (bloqueio de cabeça de fila).
+      - name: Devolver o PR reprovado
+        if: steps.portao.outputs.atrasado != '1' && steps.portao.outputs.codigo == '1' && steps.alvo.outputs.vazio != '1'
+        env:
+          GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh pr edit "${{ steps.alvo.outputs.pr }}" --remove-label pousar
+          {
+            echo "🛬 **pista de pouso** — não pousei, e tirei a etiqueta \`pousar\` para não travar a fila atrás deste PR."
+            echo
+            echo "Conserte e peça pouso de novo com \`gh pr edit <N> --add-label pousar\`."
+            echo
+            echo '```'
+            cat veredito.txt
+            echo '```'
+          } > recado.md
+          gh pr comment "${{ steps.alvo.outputs.pr }}" --body-file recado.md
+
+      - name: Pousar
+        if: steps.portao.outputs.codigo == '0' && steps.alvo.outputs.vazio != '1'
+        env:
+          GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
+        run: |
+          set -euo pipefail
+          # O MESMO portão que o agente usa: a pista não pode ser mais
+          # permissiva que a catraca. `--confirmo` repete o número de propósito.
+          python ci/mergear.py "${{ steps.alvo.outputs.pr }}" \
+            --confirmo "${{ steps.alvo.outputs.pr }}"
+
+      # Sem isto um pedido de pouso se perde: `concurrency` cancela o pendente
+      # anterior em vez de enfileirar. Ver o cabeçalho.
+      #
+      # Encadeia SÓ quando a fila andou de verdade — pousou, ou o PR saiu dela.
+      # Encadear depois de "atualizei" ou "ainda estou esperando" faria a pista
+      # se rechamar em laço enquanto a `main` andasse, queimando execução sem
+      # progresso. Nesses casos quem retoma é o `schedule`, no máximo 15 min
+      # depois: mais lento, e limitado por construção.
+      - name: Chamar o próximo pouso
+        if: always() && steps.alvo.outputs.vazio != '1' && (steps.portao.outputs.codigo == '0' || (steps.portao.outputs.codigo == '1' && steps.portao.outputs.atrasado != '1'))
+        env:
+          GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
+        run: |
+          set -euo pipefail
+          restam=$(gh pr list --state open --label pousar --json number --jq 'length')
+          if [ "$restam" -gt 0 ]; then
+            echo "Ainda há $restam PR(s) na fila — chamando a pista de novo."
+            gh workflow run pouso.yml
+          else
+            echo "Fila vazia."
+          fi
