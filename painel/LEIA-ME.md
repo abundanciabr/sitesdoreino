@@ -90,6 +90,15 @@
   nunca some da tela, porque sumir faria um pedido incompleto parecer completo.
   A ordem continua sendo por IDADE (pedido velho grita mais); o peso é para você
   ver, não para reordenar a fila pelas suas costas.
+- **A quinta pergunta — "posso confiar nisto?":** a aba Operação conta quantas
+  afirmações do painel têm prova conferida, e NOMEIA as que não têm. Mais o
+  placar de promessa × entrega (rumos cumpridos, e em quantos dias). Ele mede a
+  FONTE, não o projeto — e continua funcionando mesmo se todo o resto estiver
+  mentindo. Pontua calibração, nunca ambição: premiar rumo cumprido rápido
+  ensinaria a prometer menos.
+- **Quem está mexendo em quê agora:** sai dos PRs abertos que a página já busca
+  — zero pedido a mais. Os ramos são `agent/<área>/<tarefa>`, e é a área que
+  responde "em quê". Ramo fora do padrão é dito como tal, nunca adivinhado.
 - **Dois relógios:** `quando` (o fato) ≠ `verificado_em` (a prova). A página
   mostra os dois; o segundo é o que importa.
 - **Frescor computado:** a página compara as datas com o relógio dela ao abrir.

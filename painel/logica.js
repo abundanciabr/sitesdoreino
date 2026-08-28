@@ -409,6 +409,83 @@
   }
 
   // ---------------------------------------------------------------------------
+  // POSSO CONFIAR NISTO? — a quinta pergunta, e a melhor da consultoria inteira.
+  //
+  // As quatro perguntas da capa olham para o PROJETO (preciso decidir? algo
+  // quebrou? o que mudou? como estamos?). O GPT acrescentou uma que olha para o
+  // PAINEL, e o veredito das consultorias a chamou de "a melhor da consultoria
+  // inteira": *posso confiar no que estou lendo aqui?*
+  //
+  // Todas as outras vistas medem o projeto. Nenhuma media a confiabilidade da
+  // fonte. E o instrumento continua funcionando mesmo se todo o resto do painel
+  // estiver mentindo — porque ele conta a própria falta de prova.
+  //
+  // Estas contas são feitas sobre o livro INTEIRO, no build, e viajam prontas:
+  // calculá-las no navegador sobre o resumo daria um número errado com cara de
+  // certo, já que o resumo é um recorte. São clock-independentes por
+  // construção — presença de evidência não muda com a hora.
+  // ---------------------------------------------------------------------------
+
+  // Os tipos que AFIRMAM alguma coisa sobre o mundo, e portanto podem ser
+  // cobrados por prova. Uma `nota` ou uma `decisao` não afirmam que algo
+  // funciona; uma `entrega` e uma `medicao`, sim.
+  var TIPOS_QUE_AFIRMAM = ["entrega", "medicao"];
+
+  function confianca(registros) {
+    var afirmacoes = registros.filter(function (r) {
+      return TIPOS_QUE_AFIRMAM.indexOf(r.tipo) !== -1;
+    });
+    var comProva = afirmacoes.filter(function (r) { return r.evidencia && r.verificado_em; });
+
+    // O PLACAR DE CALIBRAÇÃO (joia do Opus, que ele chamou de "a peça que
+    // faltava"): todas as 13 ideias da reforma medem o PROJETO; nenhuma media a
+    // confiabilidade de quem reporta. Aqui a conta é promessa × entrega — para
+    // cada rumo que foi cumprido, quantos dias entre prometer e cumprir.
+    //
+    // O cuidado que ele mesmo registrou: pontue CALIBRAÇÃO, nunca ambição.
+    // Premiar rumo cumprido rápido ensinaria a prometer menos. Por isso o que
+    // sai daqui é a contagem e a mediana — nunca uma nota.
+    var resp = respondidos(registros);
+    var cumpridos = [];
+    registros.forEach(function (r) {
+      if (r.tipo !== "rumo") return;
+      var fecha = resp[r.arquivo];
+      if (!fecha) return;
+      cumpridos.push({
+        rumo: r.arquivo,
+        titulo: r.titulo,
+        prometido: r.quando,
+        cumprido: fecha.quando,
+        dias: Math.max(0, diasEntre(r.quando, paraData(fecha.quando)))
+      });
+    });
+    cumpridos.sort(function (a, b) { return a.dias - b.dias; });
+    var mediana = cumpridos.length
+      ? cumpridos[Math.floor((cumpridos.length - 1) / 2)].dias
+      : null;
+
+    var abertos = registros.filter(function (r) {
+      return r.tipo === "rumo" && !resp[r.arquivo];
+    }).length;
+
+    return {
+      afirmacoes: afirmacoes.length,
+      comProvaConferida: comProva.length,
+      // Nomes, e não só a contagem: "6 de 24 sem prova" manda procurar, e não
+      // adianta se não disser QUAIS. Limitado, porque a lista é para agir.
+      semProva: afirmacoes.filter(function (r) { return !(r.evidencia && r.verificado_em); })
+        .slice(0, 8).map(function (r) { return { arquivo: r.arquivo, titulo: r.titulo }; }),
+      rumosCumpridos: cumpridos.length,
+      rumosAbertos: abertos,
+      medianaDeDias: mediana,
+      // O mais devagar e o mais rápido, para o dono ver a DISPERSÃO em vez de
+      // uma média que esconde tudo.
+      maisRapido: cumpridos.length ? cumpridos[0] : null,
+      maisDevagar: cumpridos.length ? cumpridos[cumpridos.length - 1] : null
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // O RESUMO — o que a página precisa para desenhar a capa e o mapa, e nada mais.
   //
   // POR QUE ISTO EXISTE: até 27/08/2026 abrir o painel custava o livro INTEIRO —
@@ -524,6 +601,9 @@
     return {
       erro: null,
       respondidos: respondidosIds,
+      // Contado sobre o livro INTEIRO, aqui, e não no navegador: lá só existe o
+      // recorte, e "6 de 24" viraria um número errado com cara de certo.
+      confianca: confianca(registros),
       registros: selecionados,
       // O registro mais recente do livro TODO — é dele que sai "o livro está
       // parado há N dias", e ele precisa ser o do livro, não o do resumo.
@@ -540,6 +620,7 @@
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,
     montarResumo: montarResumo,
+    confianca: confianca,
     validarRegistros: validarRegistros,
     caixaDeEntrada: caixaDeEntrada,
     problemasAbertos: problemasAbertos,

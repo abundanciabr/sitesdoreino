@@ -370,6 +370,60 @@ caso("...com os quatro campos da decisão intactos",
   naCaixa[0].registro.reversivel === true &&
   naCaixa[0].registro.impacto === "alto");
 
+
+console.log("== posso confiar nisto? (a quinta pergunta) ==");
+// Só `entrega` e `medicao` AFIRMAM algo sobre o mundo e podem ser cobradas por
+// prova. Uma `nota` ou uma `decisao` não afirmam que algo funciona — contá-las
+// aqui inventaria um denominador maior e faria a cobertura parecer pior do que é.
+var livroDeConfianca = [
+  reg({ arquivo: "20260826-200-e1", tipo: "entrega", evidencia: "url", verificado_em: "2026-08-26" }),
+  reg({ arquivo: "20260826-201-e2", tipo: "entrega", evidencia: "url", verificado_em: "2026-08-26" }),
+  reg({ arquivo: "20260826-202-e3", tipo: "entrega", evidencia: null, verificado_em: null }),
+  reg({ arquivo: "20260826-203-m1", tipo: "medicao", evidencia: "cmd", verificado_em: "2026-08-26" }),
+  reg({ arquivo: "20260826-204-nota", tipo: "nota" }),
+  reg({ arquivo: "20260826-205-dec", tipo: "decisao" })
+];
+var c = LOGICA.confianca(livroDeConfianca);
+caso("conta só o que AFIRMA (entrega e medicao), não o livro inteiro", c.afirmacoes === 4);
+caso("...e separa quem tem prova conferida", c.comProvaConferida === 3);
+caso("...nomeando quem não tem (contagem sozinha não manda procurar)",
+  c.semProva.length === 1 && c.semProva[0].arquivo === "20260826-202-e3");
+
+// O PLACAR DE CALIBRAÇÃO: promessa × entrega. Rumo cumprido é rumo com uma
+// resposta apontando para ele — a MESMA mecânica da caixa, e não uma segunda
+// definição de "cumprido" que pudesse divergir.
+var comRumos = [
+  reg({ arquivo: "20260801-300-rumo-a", tipo: "rumo", frente: "site", quando: "2026-08-01", gravidade: "info" }),
+  reg({ arquivo: "20260804-301-fecha-a", responde_a: "20260801-300-rumo-a", quando: "2026-08-04" }),
+  reg({ arquivo: "20260801-302-rumo-b", tipo: "rumo", frente: "curso", quando: "2026-08-01", gravidade: "info" }),
+  reg({ arquivo: "20260802-303-fecha-b", responde_a: "20260801-302-rumo-b", quando: "2026-08-02" }),
+  reg({ arquivo: "20260801-304-rumo-aberto", tipo: "rumo", frente: "vender", quando: "2026-08-01", gravidade: "info" })
+];
+var cal = LOGICA.confianca(comRumos);
+caso("conta os rumos cumpridos e os abertos", cal.rumosCumpridos === 2 && cal.rumosAbertos === 1);
+caso("mede quantos dias do prometer ao cumprir",
+  cal.maisRapido.dias === 1 && cal.maisDevagar.dias === 3);
+caso("...e devolve a mediana", cal.medianaDeDias === 1);
+
+// A dispersão importa: uma média sozinha esconderia um rumo cumprido em 1 dia e
+// outro em 90. O dono precisa ver os dois extremos para julgar.
+caso("o mais rápido e o mais devagar vêm nomeados",
+  cal.maisRapido.rumo === "20260801-302-rumo-b" && cal.maisDevagar.rumo === "20260801-300-rumo-a");
+
+// Livro sem rumo cumprido não pode inventar um placar. "Não dá para dizer nada"
+// é resposta; zero seria afirmar que ninguém entrega.
+var semCal = LOGICA.confianca([reg({ arquivo: "20260826-400-x", tipo: "nota" })]);
+caso("sem rumo cumprido, a mediana é NULA e não zero",
+  semCal.rumosCumpridos === 0 && semCal.medianaDeDias === null && semCal.maisRapido === null);
+
+// E ela precisa VIAJAR no resumo já calculada: refeita no navegador sobre o
+// recorte, daria um número errado com cara de certo.
+var resumoConf = LOGICA.montarResumo(livroDeConfianca.concat([f1]));
+caso("a confiança viaja no resumo, contada sobre o livro inteiro",
+  resumoConf.confianca.afirmacoes === 4 && resumoConf.confianca.comProvaConferida === 3);
+caso("...e o resumo é MENOR que o livro (então recontá-la lá daria errado)",
+  resumoConf.registros.length <= livroDeConfianca.length + 1);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");
