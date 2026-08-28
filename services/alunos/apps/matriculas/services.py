@@ -209,6 +209,23 @@ def decidir_na_fila(
 CATEGORIA_CADASTRADO = "cadastrado"
 CATEGORIA_NA_FILA = "na_fila"
 CATEGORIA_ALUNO = "aluno"
+# [EX-ALUNO] Acrescentadas em 28/08/2026
+# (`docs/decisoes/DECISAO-ex-aluno-e-a-porta-que-explica.md`). Os ESTADOS já
+# existiam e já bloqueavam desde a manhã; o que faltava era o sistema saber
+# DIZÊ-LOS. Até então os dois voltavam como `cadastrado` — mentira sobre a
+# pessoa, e a causa de quem saiu da escola ver o formulário de pedir entrada
+# como se nunca tivesse pedido nada.
+CATEGORIA_PAUSADO = "pausado"
+CATEGORIA_EX_ALUNO = "ex_aluno"
+
+#: Ficha que não dá acesso ⇒ a categoria que a tela precisa mostrar. Não é o
+#: mesmo que `STATUS_SEM_ACESSO`: aquele responde "pode entrar?", este responde
+#: "o que eu digo para a pessoa?". A fila fica de fora porque tem resposta
+#: própria (com dias de espera e motivo).
+_CATEGORIA_POR_STATUS_SEM_ACESSO = {
+    Matricula.STATUS_SUSPENSA: CATEGORIA_PAUSADO,
+    Matricula.STATUS_ENCERRADA: CATEGORIA_EX_ALUNO,
+}
 
 
 def situacao_de(email: str) -> dict:
@@ -217,6 +234,11 @@ def situacao_de(email: str) -> dict:
     Existe para que a home, a Caixa e o painel parem de adivinhar cada um do
     seu jeito: até 28/08/2026 eram quatro respostas para a mesma pergunta, e
     três erravam em pelo menos um caso.
+
+    **A ordem é a decisão, e ela é "o mais acionável primeiro":** aluno, fila,
+    pausado, ex-aluno, cadastrado. Quem está esperando uma decisão do
+    mantenedor vem antes de quem já recebeu uma — na fila há algo acontecendo
+    do outro lado; em "pausado" e "ex-aluno", não.
 
     **`aluno` é conferido PRIMEIRO, e a ordem é a decisão.** Quem já é aluno
     não fica "na fila" para efeito de tela, mesmo que exista uma linha antiga
@@ -245,6 +267,22 @@ def situacao_de(email: str) -> dict:
         .first()
     )
     if linha is None:
+        # [EX-ALUNO] Ninguém na fila — mas pode haver uma ficha que existe e
+        # não dá acesso. A ORDEM é "o mais acionável primeiro": quem está
+        # esperando uma decisão sua vem antes de quem já recebeu uma, porque é
+        # a fila que tem algo acontecendo do outro lado.
+        parada = (
+            Matricula.objects.filter(
+                email=email, status__in=list(_CATEGORIA_POR_STATUS_SEM_ACESSO)
+            )
+            .order_by("-enrolled_at")
+            .first()
+        )
+        if parada is not None:
+            return {
+                "categoria": _CATEGORIA_POR_STATUS_SEM_ACESSO[parada.status],
+                "na_fila": None,
+            }
         return {"categoria": CATEGORIA_CADASTRADO, "na_fila": None}
 
     aguardando = linha.status == Matricula.STATUS_AGUARDANDO

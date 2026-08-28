@@ -614,7 +614,7 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
 # inline, pelo mesmo motivo das irmãs deste arquivo — o dicionário fica legível.
 DESCRICAO_SITUACAO = 'A porta das CINCO CATEGORIAS (`docs/decisoes/DECISAO-categorias-de-usuario.md`).\nExiste para que a home, a Caixa e o painel parem de adivinhar cada um do seu\njeito o que uma pessoa e — hoje sao quatro respostas para a mesma pergunta, e\ntres delas erram em pelo menos um caso.\n\nRESPONDE 200 COM `cadastrado` PARA QUEM ELA NAO CONHECE — NUNCA 404. "Nao\ntenho linha para esta pessoa" E a resposta, nao um erro. A porta vizinha\n(`GET /alunos/{email}/matriculas`) devolve 404 nesse caso e esta certa no\ncontexto dela; aqui um 404 obrigaria cada consumidor a traduzir "erro" em\n"cadastrado" por conta propria, e o primeiro que tratasse 404 como falha de\nrede mostraria a tela errada — fail-OPEN — para todo visitante novo do site.\n\nNAO DEVOLVE PII: sem WhatsApp, sem nome, sem eco do e-mail. E a §5 da\n`DECISAO-fila-de-liberacao.md` aplicada — o telefone sai por UMA porta so,\n`GET /pre-matriculas`, a do painel administrativo. Guarda de conjunto EXATO\nde chaves na resposta.\n\n`administrador` NAO E uma categoria possivel aqui, e a ausencia e a decisao:\nquem decide isso e a lista da celula `admin`, na hora. Se esta porta pudesse\nresponder isso, a autorizacao da area administrativa passaria a depender de\numa celula de produto (`DECISAO-onde-mora-a-sessao.md` §4).\n'
 
-_D_CATEGORIA = "`aluno` sai da MESMA lista de status que decide acesso\n(`STATUS_QUE_VALEM`) — uma segunda lista seriam duas verdades\nsobre quem e aluno, e elas divergiriam no primeiro status novo.\n"
+_D_CATEGORIA = "`aluno` sai da MESMA lista de status que decide acesso\n(`STATUS_QUE_VALEM`) — uma segunda lista seriam duas verdades\nsobre quem e aluno, e elas divergiriam no primeiro status novo.\n\n`pausado` (ficha `suspensa`) e `ex_aluno` (ficha `encerrada`)\nentraram em 28/08/2026\n(`DECISAO-ex-aluno-e-a-porta-que-explica.md`). Ate entao os\ndois voltavam como `cadastrado` — mentira sobre a pessoa, e a\ncausa de quem saiu da escola ver o formulario de pedir\nentrada, como se nunca tivesse pedido nada.\n\nOs dois NAO dao acesso, e a diferenca entre eles e a unica\ncoisa que a pessoa quer saber: pausado e temporario, ex-aluno\ne o fim. Quem consome isto mostra telas diferentes; quem\nautoriza continua olhando so `aluno`.\n"
 
 _D_NA_FILA = "Preenchido SO quando `categoria` = `na_fila`; `null` nos outros casos."
 
@@ -645,7 +645,13 @@ _GET_STUDENT_STANDING_OPENAPI = {
                         "properties": {
                             "categoria": {
                                 "type": "string",
-                                "enum": ["cadastrado", "na_fila", "aluno"],
+                                "enum": [
+                                    "cadastrado",
+                                    "na_fila",
+                                    "pausado",
+                                    "ex_aluno",
+                                    "aluno",
+                                ],
                                 "description": _D_CATEGORIA,
                             },
                             "na_fila": {
