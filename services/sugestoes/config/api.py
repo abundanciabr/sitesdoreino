@@ -2,6 +2,7 @@
 from ninja import NinjaAPI
 
 from apps.core.api import router as sessao_router
+from apps.core.api_gestao import router as gestao_router
 from apps.core.auth import bearerAuth
 
 # `servers` aponta para a REDE INTERNA do Docker, nunca para a borda pública —
@@ -20,17 +21,30 @@ api = NinjaAPI(
     title="Caixa de Sugestoes — API interna",
     version="1.0.0",
     description=(
-        "Superfície de MÁQUINA da Caixa. Existe por uma razão só: o site\n"
-        "(`funil`) precisa saber quem é a pessoa em qualquer página, e o cookie\n"
-        "de sessão é assinado e resolvido AQUI (Lei 2, Lei 3 — o banco e o\n"
-        "segredo não saem desta célula).\n"
+        "Superfície de MÁQUINA da Caixa, com duas metades.\n"
         "\n"
-        "Lei do assunto: docs/decisoes/DECISAO-onde-mora-a-sessao.md. A resposta\n"
-        "desta API RECONHECE uma pessoa; ela nunca AUTORIZA nada — autorização\n"
-        "é fail-closed na célula dona do recurso.\n"
+        "A primeira existe por uma razão só: o site (`funil`) precisa saber\n"
+        "quem é a pessoa em qualquer página, e o cookie de sessão é assinado e\n"
+        "resolvido AQUI (Lei 2, Lei 3 — o banco e o segredo não saem desta\n"
+        "célula). Lei do assunto: docs/decisoes/DECISAO-onde-mora-a-sessao.md.\n"
+        "\n"
+        "A segunda é a GESTÃO das ideias, que desde 28/08/2026 mora em\n"
+        "`/admin/caixa/` e não mais nas telas desta célula (decisão do\n"
+        "mantenedor: uma porta só). O Admin pergunta e escreve por aqui porque\n"
+        "pela Lei 3 nenhuma célula lê o banco de outra. A resposta carrega os\n"
+        "FATOS de cada ideia — nunca colunas nem ordenação, que são da tela — e\n"
+        "nunca o e-mail de quem sugeriu. Lei do assunto:\n"
+        "docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md.\n"
+        "\n"
+        "Nenhuma resposta desta API AUTORIZA nada: autorização é fail-closed na\n"
+        "célula dona do recurso — e a assinatura de obra continua sendo desta.\n"
     ),
     servers=[{"url": "http://sugestoes:8000/interno"}],
     auth=bearerAuth(),
     openapi_extra={"security": [{"bearerAuth": []}]},
 )
 api.add_router("", sessao_router)
+# A gestão entra no MESMO documento e sob o MESMO Bearer: é a mesma fronteira de
+# máquina desta célula, e um segundo `NinjaAPI` daria um segundo contrato para
+# congelar, com um segundo jeito de as duas metades divergirem.
+api.add_router("", gestao_router)

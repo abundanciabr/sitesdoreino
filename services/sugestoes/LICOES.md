@@ -1804,3 +1804,49 @@ soma só mede alguma coisa se o cenário encher todas as parcelas.*
 O número de avisados na coluna da direita **não é contado à parte**: é a plateia,
 que por `[INV-SUG13]` é exatamente quem recebeu o aviso. Uma segunda contagem
 seria uma segunda verdade sobre quantas pessoas foram avisadas.
+
+
+## A gestão saiu de casa: o que o Rito de Contrato de 28/08 ensinou
+
+A gestão das ideias deixou as telas desta célula e foi para `/admin/caixa/`
+(lei: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`). O que ficou
+aqui é a superfície de máquina — `apps/core/api_gestao.py` — pela qual o Admin
+pergunta e escreve, porque pela Lei 3 ele não pode ler este banco.
+
+**A forma do contrato foi a decisão de projeto mais cara, e ela é de DOMÍNIO.**
+`listManagementIdeas` devolve os fatos de cada ideia e **não** as colunas, os
+baldes nem a ordem. A tentação de devolver a tela pronta é grande — o consumidor
+ficaria com um template burro — e é uma armadilha de manutenção com nome: cada
+ajuste de layout viraria mudança de contrato, e mudança de contrato aqui custa
+**um Rito, ou seja, uma conversa com o mantenedor**. Com forma de domínio, a tela
+do Admin evolui de graça.
+
+A única conta que viaja PRONTA é a plateia, e a exceção tem motivo: ela é
+definição desta célula (`[INV-SUG13]`) e é a mesma gente que o sininho avisa.
+Recalculá-la do outro lado da fronteira criaria uma segunda verdade sobre quantas
+pessoas esperam — exatamente o que o guarda entre `plateia_de` e
+`interessados_em` existe para impedir, agora atravessando uma célula.
+
+**As três escritas NÃO reimplementam nada.** Elas chamam
+`registrar_mudanca_de_status` e `changespecs.registrar`, os mesmos caminhos que
+as telas usavam. É o que mantém de pé, de graça, o histórico na mesma transação,
+o leque de avisos, a justificativa obrigatória e o corredor do ChangeSpec nos
+três degraus. Uma segunda implementação "só para a API" seria uma segunda porta
+para o mesmo cofre — e a que ninguém testa é a que fica aberta.
+
+**O invariante que a mudança de casa revelou, e que ninguém tinha previsto:**
+`[INV-SUG12]` exige que quem moderou tenha `id_da_plataforma`, porque a mudança
+de status vira carta endereçada. Vindo pela tela, isso era de graça — a porta
+gravava o id na entrada. Vindo pelo contrato, o Admin precisa ENVIAR o id
+(`por_id_da_plataforma`); ele o tem, é o mesmo `SessionFull.id` com que abriu a
+própria porta. A primeira rodada de testes estourou com `AtorSemIdDaPlataforma`
+em duas escritas, e o conserto certo não foi afrouxar o invariante: foi
+acrescentar o campo ao contrato e **traduzir a falta numa recusa que ensina o
+caminho** (422 em português), em vez de deixar chegar ao Admin como erro 500.
+
+**Um guarda que vale copiar:** `test_nenhuma_operacao_responde_sem_o_token_do_par`
+deriva a lista de operações da própria `NinjaAPI` e exige 401 em todas. Rota nova
+nasce medida, sem depender de alguém lembrar de escrever o guarda dela. E
+`test_o_email_do_aluno_nao_atravessa` varre o CORPO INTEIRO em texto, não os
+campos que o autor lembrou de conferir — um campo novo que carregue e-mail por
+descuido cai ali sem ter sido previsto.
