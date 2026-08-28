@@ -549,3 +549,63 @@ th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transfo
      linhas cada — a mesma correcao que a `.impacto-grade` ja carrega. */
   .mesa-notas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+
+/* --- a aba 2: A TRAVESSIA (28/08/2026) ----------------------------------- */
+
+.painel-abas a.aba:hover { color: var(--texto); }
+.painel-abas a.aba.ativa:hover { color: var(--texto); }
+
+.trilha-colunas {
+  display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px; align-items: start; margin-bottom: 24px;
+}
+.coluna { min-width: 0; }
+/* A cor do topo diz o TIPO de espera, e nao a importancia: cinza = fila normal,
+   laranja = so uma pessoa destrava, azul = obra em andamento, verde = feito.
+   E a mesma gramatica de cor que a faixa de roadmap ja usa para o aluno. */
+.coluna-topo {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 6px;
+  padding: 0 2px 8px; border-bottom: 2px solid var(--linha-forte);
+}
+.coluna-assinar .coluna-topo { border-bottom-color: var(--laranja); }
+.coluna-assinar .coluna-nome { color: var(--laranja); }
+.coluna-pode-comecar .coluna-topo { border-bottom-color: var(--ambar); }
+.coluna-construindo .coluna-topo { border-bottom-color: var(--azul); }
+.coluna-no-ar .coluna-topo { border-bottom-color: var(--verde); }
+.coluna-nome { font-family: var(--f-titulo); font-size: 12.5px; color: var(--texto-fraco); }
+.coluna-total { font-family: var(--f-mono); font-size: 11px; color: var(--texto-tenue); }
+.coluna-tempo { margin: 8px 2px 10px; font-size: 10.5px; color: var(--texto-tenue); line-height: 1.4; }
+.coluna-corpo { display: flex; flex-direction: column; gap: 8px; }
+.coluna-vazia { margin: 0; padding: 10px 2px; font-size: 11px; color: var(--texto-tenue); }
+
+/* A coluna do gargalo ganha a moldura — e ela e CALCULADA (a maior espera
+   media), nunca cravada. Nenhuma coluna e "a importante" por decreto. */
+.coluna-gargalo {
+  background: var(--laranja-fraco); border-radius: 0 0 10px 10px;
+  margin: 0 -6px; padding: 0 6px 10px;
+}
+
+.peca-fila {
+  background: var(--painel); border: 1px solid var(--linha);
+  border-radius: 10px; padding: 10px 11px;
+}
+.peca-fila-titulo {
+  font-family: var(--f-titulo); font-size: 12.5px; line-height: 1.35;
+  text-decoration: none; display: block;
+}
+.peca-fila-titulo:hover { text-decoration: underline; }
+.peca-fila .meta { margin-top: 6px; font-size: 10.5px; }
+
+.recado-gargalo { border-color: var(--laranja); }
+.recado-gargalo h2 { color: var(--laranja); }
+
+.selo-nao_planejado { color: var(--vermelho); background: var(--vermelho-fraco); }
+.selo-mesclado { color: var(--texto-fraco); }
+
+@media (max-width: 900px) {
+  /* Seis colunas num celular dariam colunas de dois dedos com o titulo quebrando
+     em cinco linhas. Em duas, a ORDEM das etapas — que e a informacao — continua
+     legivel de cima para baixo. */
+  .trilha-colunas { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .coluna-gargalo { margin: 0; padding: 0 0 10px; }
+}

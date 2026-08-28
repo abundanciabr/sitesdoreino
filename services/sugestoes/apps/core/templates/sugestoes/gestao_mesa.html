@@ -8,9 +8,10 @@ vez, do tamanho de uma mesa, e o resto do mundo pequeno e à direita.
 
 Três coisas que esta página faz de propósito, e que não se "arrumam" depois:
 
-1. **As abas que ainda não existem aparecem, e dizem que não existem.** Um link
-   morto seria mentira; escondê-las faria a planta sumir da vista de quem a
-   escolheu. Elas viram links quando os PRs delas entrarem.
+1. **A faixa de abas mora em `_abas.html`**, e não aqui: desde a aba 2 são duas
+   telas desenhando a mesma faixa, e duas cópias envelhecem separadas. As abas
+   que ainda não existem aparecem lá apagadas e sem link — escondê-las faria a
+   planta sumir da vista de quem a escolheu.
 2. **O botão de assinar só existe para quem assina.** A regra não é copiada
    daqui: `pode_assinar` vem de `e_aprovador()`, o mesmo portão que a rota usa.
    Quem não assina continua vendo o item — a fila é da equipe inteira — com a
@@ -27,12 +28,7 @@ público `/forms/sugestoes/` um caminho escrito à mão quebra só em produção
 {% block migalha %}Gestão{% endblock %}
 {% block conteudo %}
 
-<nav class="painel-abas" aria-label="Seções do painel de gestão">
-  <span class="aba ativa" aria-current="page">A sua mesa{% if total %} <span class="aba-conta">{{ total }}</span>{% endif %}</span>
-  <span class="aba futura" title="Ainda não construída">A travessia</span>
-  <span class="aba futura" title="Ainda não construída">Quem está esperando</span>
-  <span class="aba futura" title="Ainda não construída">Os robôs</span>
-</nav>
+{% include "sugestoes/_abas.html" %}
 
 {% if primeira %}
 

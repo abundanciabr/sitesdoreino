@@ -77,6 +77,7 @@ def test_ha_rotas_de_moderacao_para_medir():
         "mesa",
         "moderar",
         "mudar_status",
+        "travessia",
     ]
 
 

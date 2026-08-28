@@ -1,0 +1,103 @@
+{% extends "sugestoes/base_caixa.html" %}
+{% comment %}
+A TRAVESSIA — aba 2 do painel de gestão (28/08/2026).
+
+Seis colunas, na ordem em que uma ideia as atravessa, e uma faixa embaixo com
+quem saiu do trilho. A tese desta aba: o entupimento se denuncia sozinho quando
+as colunas ficam lado a lado.
+
+Três coisas ditas de propósito, e que não se "arrumam" depois:
+
+1. **A média é do que está parado AGORA**, não do que já passou por ali. O rótulo
+   escreve isso. Chamar de "tempo médio de etapa" seria um número que parece uma
+   coisa e é outra.
+2. **Fora do trilho aparece com o motivo escrito.** Esconder faria a soma das
+   colunas discordar do total do quadro sem explicação, e tiraria da vista a
+   justificativa que a equipe é obrigada a escrever ao recusar.
+3. **A coluna do gargalo se destaca sozinha** — quem tiver a maior espera média
+   ganha a moldura. Nenhuma coluna é "a importante" por decreto.
+{% endcomment %}
+{% block titulo %}A travessia — {{ quadro.nome }}{% endblock %}
+{% block migalha %}Gestão{% endblock %}
+{% block conteudo %}
+
+{% include "sugestoes/_abas.html" %}
+
+<div class="mesa-cabecalho">
+  <h1>A travessia</h1>
+  <p class="sub">
+    {{ no_trilho }} ideia{{ no_trilho|pluralize:"s" }} no trilho{% if saidas %}, {{ saidas|length }} fora dele{% endif %}.
+    Da esquerda para a direita é o caminho que uma ideia faz, do pedido do aluno até o ar.
+  </p>
+</div>
+
+<div class="trilha-colunas">
+  {% for coluna in colunas %}
+    <div class="coluna coluna-{{ coluna.chave }}{% if gargalo and coluna.chave == gargalo.chave %} coluna-gargalo{% endif %}">
+      <div class="coluna-topo">
+        <span class="coluna-nome">{{ coluna.titulo }}</span>
+        <span class="coluna-total">{{ coluna.total }}</span>
+      </div>
+      <p class="coluna-tempo">
+        {% if coluna.parada_media is None %}
+          vazia
+        {% elif coluna.parada_media == 0 %}
+          entraram hoje
+        {% else %}
+          parad{{ coluna.total|pluralize:"a,as" }} há {{ coluna.parada_media }} dia{{ coluna.parada_media|pluralize:"s" }}, em média
+        {% endif %}
+      </p>
+      <div class="coluna-corpo">
+        {% for sugestao in coluna.sugestoes %}
+          <div class="peca-fila">
+            <a href="{% url 'moderar' sugestao.id %}" class="peca-fila-titulo">{{ sugestao.titulo }}</a>
+            <p class="meta"><span class="votos">{{ sugestao.total_votos }}</span> votos · {{ sugestao.categoria.nome }}</p>
+          </div>
+        {% empty %}
+          <p class="coluna-vazia">Ninguém aqui.</p>
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+{% if gargalo and gargalo.parada_media %}
+  <div class="recado recado-gargalo">
+    <h2>Onde está entupido hoje</h2>
+    <p>
+      A coluna <strong>{{ gargalo.titulo }}</strong> é a que segura mais tempo: o que está lá está parado
+      há {{ gargalo.parada_media }} dia{{ gargalo.parada_media|pluralize:"s" }} em média{% if gargalo.mais_velha %}, e a mais antiga há {{ gargalo.mais_velha }}{% endif %}.
+      {% if gargalo.chave == 'assinar' %}Nada nessa coluna anda sem uma assinatura — é o único degrau que nenhum robô passa por ninguém.{% else %}{{ gargalo.explicacao }}{% endif %}
+    </p>
+  </div>
+{% endif %}
+
+<h2 id="fora-do-trilho">Fora do trilho</h2>
+<p class="sub">Ideias que não seguem — cada uma com o motivo que foi entregue a quem estava esperando.</p>
+{% for sugestao in saidas %}
+  <div class="cartao">
+    <h3>
+      <span class="selo selo-{{ sugestao.status }}">{% if sugestao.status == 'nao_planejado' %}recusada{% else %}juntada a outra{% endif %}</span>
+      <a href="{% url 'moderar' sugestao.id %}">{{ sugestao.titulo }}</a>
+    </h3>
+    <p class="meta"><span class="votos">{{ sugestao.total_votos }}</span> votos · {{ sugestao.categoria.nome }}</p>
+    {% if sugestao.motivo_da_saida %}
+      <p class="citacao">{{ sugestao.motivo_da_saida }}</p>
+    {% else %}
+      <p class="ausente">Sem motivo escrito — quem estava esperando ficou sem explicação.</p>
+    {% endif %}
+  </div>
+{% empty %}
+  <div class="recado">
+    <p>Nenhuma ideia saiu do trilho ainda.</p>
+  </div>
+{% endfor %}
+
+<p class="mesa-lei">
+  <strong>A conta fecha, e há teste para isso.</strong>
+  As seis colunas mais o que está fora do trilho somam exatamente o quadro inteiro.
+  Se um dia um filtro novo esquecer um caso, um punhado de ideias sumiria daqui sem ninguém notar —
+  e é isso que o guarda aritmético impede.
+</p>
+
+{% endblock %}
