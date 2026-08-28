@@ -197,6 +197,56 @@ class AlunosClient:
         token = (os.environ.get("ALUNOS_API_TOKEN") or "").strip()
         return (base, token) if base and token else None
 
+    def _buscar(self, caminho: str, params: dict) -> "list[dict] | None":
+        """Uma leitura de lista, com o mesmo fail-OPEN das duas que a usam.
+
+        Existe porque `fila()` e `alunos()` diferem em UMA linha (o caminho), e
+        duas cópias do mesmo tratamento de erro divergem no primeiro caso de
+        borda que alguém corrige só de um lado.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.info(
+                "leitura: ALUNOS_API_URL/ALUNOS_API_TOKEN ainda não estão no env "
+                "desta célula — a tela vai dizer que não consegue perguntar. "
+                "Rode infra/provisionar-pares-de-categorias.sh."
+            )
+            return None
+        base, token = config
+
+        try:
+            r = http().get(
+                f"{base}{caminho}",
+                params=params,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("leitura %s: não deu para perguntar: %s", caminho, erro)
+            return None
+
+        if r.status_code != 200:
+            # 401 aqui significa que o par não está em `TOKENS_ACEITOS_ADMIN` do
+            # lado da `alunos` — de fora, indistinguível de "não há ninguém".
+            logger.error(
+                "leitura %s: a alunos respondeu HTTP %s", caminho, r.status_code
+            )
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # *Status 2xx não é sucesso* (RETROSPECTIVA §4).
+            logger.error("leitura %s: resposta fora do contrato: %s", caminho, erro)
+            return None
+
+        if not isinstance(corpo, list):
+            logger.error(
+                "leitura %s: a alunos respondeu um corpo que não é lista", caminho
+            )
+            return None
+        return corpo
+
     def fila(self, status: str) -> "list[dict] | None":
         """Quem está na fila, de TODAS as escolas (`site_id` omitido de propósito).
 
@@ -207,45 +257,7 @@ class AlunosClient:
         (Lei 9), e cada linha já diz de qual escola veio
         (`DECISAO-categorias-de-usuario`).
         """
-        config = self._configuracao()
-        if config is None:
-            logger.info(
-                "fila: ALUNOS_API_URL/ALUNOS_API_TOKEN ainda não estão no env "
-                "desta célula — a tela da fila vai dizer que não consegue "
-                "perguntar. Rode infra/provisionar-pares-de-categorias.sh."
-            )
-            return None
-        base, token = config
-
-        try:
-            r = http().get(
-                f"{base}/pre-matriculas",
-                params={"status": status},
-                headers={"Authorization": f"Bearer {token}"},
-                timeout=self.TIMEOUT,
-            )
-        except httpx.HTTPError as erro:
-            logger.error("fila: não deu para perguntar à alunos: %s", erro)
-            return None
-
-        if r.status_code != 200:
-            # 401 aqui significa que o par não está em `TOKENS_ACEITOS_ADMIN` do
-            # lado da `alunos` — de fora, indistinguível de "não há fila".
-            logger.error("fila: a alunos respondeu HTTP %s", r.status_code)
-            return None
-
-        try:
-            corpo = r.json()
-        except ValueError as erro:
-            # 200 com corpo que não é JSON: proxy interposto, resposta
-            # truncada. *Status 2xx não é sucesso* (RETROSPECTIVA §4).
-            logger.error("fila: a alunos respondeu fora do contrato: %s", erro)
-            return None
-
-        if not isinstance(corpo, list):
-            logger.error("fila: a alunos respondeu um corpo que não é lista")
-            return None
-        return corpo
+        return self._buscar("/pre-matriculas", {"status": status})
 
     # ------------------------------------------------------------------ escrita
     #
@@ -307,4 +319,50 @@ class AlunosClient:
         if r.status_code == 422:
             return self.RECUSADO, "faltou o motivo da recusa"
         logger.error("decisao: a alunos respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
+
+    def alunos(self, status: str = None) -> "list[dict] | None":
+        """[GESTAO] Quem já é aluno, de TODAS as escolas. `None` = não perguntei.
+
+        Mesma disciplina da `fila()` acima: fail-OPEN, nunca levanta, e `None`
+        é *"não consegui perguntar"* — jamais lista vazia, que a tela leria
+        como "não há nenhum aluno".
+        """
+        return self._buscar("/matriculas", {"status": status} if status else {})
+
+    def atualizar_aluno(
+        self, alvo: str, mudancas: dict, decidido_por: str
+    ) -> "tuple[str, str]":
+        """[GESTAO] Muda o estado de um aluno, ou corrige os dados dele.
+
+        Devolve `(desfecho, detalhe)`, com os MESMOS três desfechos da decisão
+        da fila — e pelo mesmo motivo: quem chama grava a linha de auditoria
+        aconteça o que acontecer, e "não respondeu" não pode virar "recusado"
+        (a mudança pode ter sido aplicada do outro lado).
+        """
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com a alunos não está ligado"
+        base, token = config
+
+        try:
+            r = http().patch(
+                f"{base}/matriculas/{alvo}",
+                json={**mudancas, "decidido_por": decidido_por},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("gestao: não deu para falar com a alunos: %s", erro)
+            return self.NAO_RESPONDEU, "a parte que guarda os alunos não respondeu"
+
+        if r.status_code == 200:
+            return self.OK, ""
+        if r.status_code == 404:
+            return self.RECUSADO, "este aluno não existe mais"
+        if r.status_code == 409:
+            return self.RECUSADO, "esta pessoa ainda está na fila — decida por lá"
+        if r.status_code == 422:
+            return self.RECUSADO, "não havia nada para mudar, ou um campo veio errado"
+        logger.error("gestao: a alunos respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"

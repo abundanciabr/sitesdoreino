@@ -90,6 +90,82 @@
   </div>
   {% endif %}
 
+  <h2 style="font-size:16px; margin:34px 0 10px">Os alunos</h2>
+
+  {% if nao_consigo_ver_alunos %}
+  <p class="aviso">
+    <b>Ainda não consigo ver a lista de alunos.</b>
+    Falta a senha de par entre esta área e a parte do sistema que guarda os
+    alunos — um comando de uma linha, no servidor, que está no painel do
+    sistema, na caixa <b>Precisa de você</b>.
+  </p>
+  {% elif not alunos %}
+  <p class="aviso">
+    <b>Ainda não há nenhum aluno.</b>
+    Este zero é medido, não suposto: eu perguntei e a lista voltou vazia.
+    Quem você liberar ali em cima aparece aqui.
+  </p>
+  {% else %}
+  {% comment %}
+  Um formulário por pessoa, com TODOS os campos que a lei §3 deixa mudar. O
+  `<select>` do estado usa as palavras do mantenedor; a palavra do sistema fica
+  no `value`, onde ele nunca precisa vê-la.
+  {% endcomment %}
+  <div class="cartoes">
+    {% for pessoa in alunos %}
+    <div class="cartao">
+      <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
+      <div class="nota">{{ pessoa.email }}</div>
+      <div class="nota">
+        {% if pessoa.origem == "liberado" %}Você liberou{% else %}Comprou pelo site{% endif %}
+        {% if pessoa.email in administradores %} &middot; <b>também é administrador</b>{% endif %}
+        {% if mostrar_escola %} &middot; escola: {{ pessoa.site_id }}{% endif %}
+      </div>
+      <form class="decidir" method="post" action="{% url 'escola_aluno_salvar' %}">
+        {% csrf_token %}
+        <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+        <label class="rotulo" for="estado-{{ pessoa.id }}">Situação</label>
+        <select id="estado-{{ pessoa.id }}" name="status">
+          {% for valor, texto in estados %}
+          <option value="{{ valor }}" {% if valor == pessoa.status %}selected{% endif %}>{{ texto }}</option>
+          {% endfor %}
+        </select>
+        <label class="rotulo" for="nome-{{ pessoa.id }}">Nome</label>
+        <input id="nome-{{ pessoa.id }}" type="text" name="nome_completo"
+               maxlength="255" value="{{ pessoa.nome_completo }}">
+        <label class="rotulo" for="zap-{{ pessoa.id }}">WhatsApp</label>
+        <input id="zap-{{ pessoa.id }}" type="text" name="whatsapp"
+               maxlength="32" value="{{ pessoa.whatsapp }}">
+        <label class="rotulo" for="turma-{{ pessoa.id }}">Turma</label>
+        <input id="turma-{{ pessoa.id }}" type="text" name="turma"
+               maxlength="120" value="{{ pessoa.turma|default_if_none:'' }}">
+        <label class="rotulo" for="compra-{{ pessoa.id }}">Quando comprou</label>
+        <input id="compra-{{ pessoa.id }}" type="date" name="comprou_em"
+               value="{{ pessoa.comprou_em|default_if_none:'' }}">
+        <button class="sim" type="submit">Salvar</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  {% comment %}
+  O campo que NAO existe, e a tela diz por que — em vez de deixar o mantenedor
+  procurando. `DECISAO-gestao-de-alunos` §4.
+  {% endcomment %}
+  <p style="margin-top:16px" class="aviso">
+    <b>Por que não há um campo "tornar administrador".</b>
+    Quem é administrador é decidido por uma lista que mora no servidor e é lida
+    na hora, na porta desta área — nunca gravada junto com o aluno. Um campo
+    aqui abriria um caminho perigoso: um defeito na parte de alunos viraria
+    acesso de administrador na plataforma inteira. Hoje, para virar
+    administrador, é preciso ter acesso ao servidor — isso é uma proteção.
+    <br><br>
+    Hoje são administradores: <b>{{ administradores|join:", " }}</b>.
+    Para mudar, é uma linha colada <i>dentro do servidor</i> — me peça e eu
+    escrevo o comando pronto para você.
+  </p>
+
   <p style="margin-top:28px" class="aviso">
     <b>Onde aparece um traço, o número não foi medido.</b>
     Um <b>0</b> no lugar dele seria mentira: diria <i>"não há ninguém"</i>

@@ -5,6 +5,7 @@ from apps.core.divida import divida_json
 from apps.core.painel import painel, painel_arquivo
 from apps.core.views import (
     escola,
+    escola_aluno_salvar,
     escola_alunos,
     escola_decidir,
     healthz,
@@ -61,5 +62,8 @@ urlpatterns = [
     # ela muda a vida de uma pessoa. Sem barra final e sem id no caminho: o
     # alvo vem no corpo do formulário, junto do CSRF que o protege.
     path("escola/alunos/decidir", escola_decidir, name="escola_decidir"),
+    # A segunda rota de escrita: o formulario de gestao de quem JA e aluno.
+    # POST-only pelo mesmo motivo da de cima.
+    path("escola/alunos/salvar", escola_aluno_salvar, name="escola_aluno_salvar"),
     path("", visao_geral, name="visao_geral"),
 ]

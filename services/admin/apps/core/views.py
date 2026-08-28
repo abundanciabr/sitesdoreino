@@ -23,6 +23,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.auditoria.models import Registro
 
 from .clients import AlunosClient
+from .porta import _emails_autorizados
 
 
 @require_GET
@@ -122,35 +123,48 @@ TIPOS_DE_ALUNO = (
     {
         "slug": "ativos",
         "nome": "Alunos ativos",
-        "quem": "Quem foi liberado e tem acesso à área de alunos.",
-        "fonte": None,
-        "fonte_ausente": FonteAusente.SEM_OPERACAO,
+        "quem": "Quem tem acesso à área de alunos agora.",
+        "fonte": "GET /matriculas?status=ativa",
+        "fonte_ausente": FonteAusente.PORTA_PRONTA,
         "falta": (
-            "A parte do sistema que cuida de matrículas já guarda estes "
-            "alunos, mas só sabe responder sobre um de cada vez, pelo e-mail — "
-            "ela ainda não sabe entregar a lista inteira."
+            "Falta a senha de par entre esta área e a parte do sistema que "
+            "guarda os alunos — um comando de uma linha, no servidor."
         ),
     },
     {
         "slug": "pausados",
         "nome": "Acesso pausado",
-        "quem": "Alunos que continuam matriculados, com o acesso suspenso.",
-        "fonte": None,
-        "fonte_ausente": FonteAusente.SEM_OPERACAO,
+        "quem": "Você pausou; volta com um clique, e enquanto isso não entra.",
+        "fonte": "GET /matriculas?status=suspensa",
+        "fonte_ausente": FonteAusente.PORTA_PRONTA,
         "falta": (
-            "Mesma parte do sistema, mesma falta: o estado existe guardado, "
-            "só não há como pedir a lista."
+            "Falta a senha de par entre esta área e a parte do sistema que "
+            "guarda os alunos — um comando de uma linha, no servidor."
         ),
     },
     {
         "slug": "encerrados",
         "nome": "Encerrados",
-        "quem": "Quem saiu da escola — matrícula desfeita ou reembolsada.",
-        "fonte": None,
-        "fonte_ausente": FonteAusente.SEM_OPERACAO,
+        "quem": "Saíram da escola. A ficha continua guardada, para poder voltar.",
+        "fonte": "GET /matriculas?status=encerrada",
+        "fonte_ausente": FonteAusente.PORTA_PRONTA,
         "falta": (
-            "Mesma parte do sistema, mesma falta: o estado existe guardado, "
-            "só não há como pedir a lista."
+            "Falta a senha de par entre esta área e a parte do sistema que "
+            "guarda os alunos — um comando de uma linha, no servidor."
+        ),
+    },
+    {
+        "slug": "reembolsados",
+        "nome": "Reembolsados",
+        "quem": (
+            "Devolveram o dinheiro e CONTINUAM com acesso — foi o que você "
+            "decidiu em 24/08: quem já foi aluno mantém a voz."
+        ),
+        "fonte": "GET /matriculas?status=reembolsada",
+        "fonte_ausente": FonteAusente.PORTA_PRONTA,
+        "falta": (
+            "Falta a senha de par entre esta área e a parte do sistema que "
+            "guarda os alunos — um comando de uma linha, no servidor."
         ),
     },
     {
@@ -173,21 +187,16 @@ def escola(request):
     return render(request, "admin/escola.html", {"admin": request.admin})
 
 
-#: De qual porta da `alunos` sai a contagem de cada tipo. Fora daqui, `None` —
-#: e `None` continua significando "não sei", nunca zero.
-_CONTAGEM_POR_SLUG = {
-    "aguardando-aprovacao": "aguardando",
-    "recusados": "recusada",
-}
-
-
-def tipos_com_contagem(filas: dict) -> list[dict]:
+def tipos_com_contagem(contagens: dict) -> list[dict]:
     """O catálogo + o que a `alunos` respondeu NESTA requisição.
 
-    `filas` mapeia o status da fila para a lista devolvida — ou para `None`,
-    que é *"não consegui perguntar"*. A diferença entre `None` e `[]` é o
-    invariante desta tela inteira, e ela atravessa até aqui: `len([])` é zero,
-    e zero é um fato ("ninguém está esperando"); `None` não vira número nenhum.
+    `contagens` mapeia o slug do tipo para um número — ou para `None`, que é
+    *"não consegui perguntar"*. A diferença entre `None` e `0` é o invariante
+    desta tela inteira, e ela atravessa até aqui: zero é um FATO ("perguntei,
+    não há ninguém"); `None` não vira número nenhum.
+
+    Tipo que não aparece em `contagens` fica `None` — é o que faz um tipo novo
+    nascer honesto, em vez de nascer mostrando zero.
 
     A contagem NÃO mora no catálogo do módulo, e isso não é estilo: um dicionário
     de módulo mutado por requisição é estado compartilhado entre pedidos de
@@ -196,20 +205,18 @@ def tipos_com_contagem(filas: dict) -> list[dict]:
     tipos = []
     for tipo in TIPOS_DE_ALUNO:
         copia = dict(tipo)
-        lista = filas.get(_CONTAGEM_POR_SLUG.get(tipo["slug"]))
-        copia["quantidade"] = None if lista is None else len(lista)
+        copia["quantidade"] = contagens.get(tipo["slug"])
         tipos.append(copia)
     return tipos
 
 
 @require_GET
 def escola_alunos(request):
-    """Os alunos, por tipo — e quem está esperando, com nome e telefone.
+    """A tela da escola: quem espera, e quem já é aluno.
 
     Fail-OPEN por tile (`PLANO-AREA-ADMIN.md` §5): a `alunos` fora do ar, ou o
-    par de tokens ainda não provisionado, deixa a lista com um aviso honesto e
-    a página abre igual. Célula de produto caindo não pode derrubar a
-    ferramenta que o mantenedor usa justamente quando algo está errado.
+    par de tokens ainda não provisionado, deixa cada lista com um aviso honesto
+    e a página abre igual.
 
     **Esta tela é a ÚNICA do projeto que mostra o WhatsApp de alguém**, e isso
     é decisão escrita (`DECISAO-fila-de-liberacao.md` §5): o número sai por uma
@@ -222,30 +229,49 @@ def escola_alunos(request):
         "recusada": cliente.fila("recusada"),
     }
     esperando = filas["aguardando"]
+    # UMA chamada para os quatro estados de gestão, contados aqui — quatro
+    # chamadas filtradas custariam quatro idas à rede para montar a mesma tela.
+    alunos = cliente.alunos()
+
+    def _quantos(status):
+        if alunos is None:
+            return None
+        return sum(1 for a in alunos if a.get("status") == status)
+
+    contagens = {
+        "aguardando-aprovacao": None if esperando is None else len(esperando),
+        "recusados": (None if filas["recusada"] is None else len(filas["recusada"])),
+        "ativos": _quantos("ativa"),
+        "pausados": _quantos("suspensa"),
+        "encerrados": _quantos("encerrada"),
+        "reembolsados": _quantos("reembolsada"),
+    }
 
     # A coluna da escola só aparece quando há MAIS DE UMA — com uma só, o
     # identificador interno seria ruído numa tela feita para leigo. Contada
-    # sobre TODAS as filas, e não só a exibida: a segunda escola pode aparecer
-    # primeiro entre as recusadas.
-    escolas = {
-        linha.get("site_id") for lista in filas.values() if lista for linha in lista
-    }
+    # sobre TUDO que está na tela, e não só sobre uma lista.
+    de_todas = [l for lista in filas.values() if lista for l in lista] + (alunos or [])
+    escolas = {linha.get("site_id") for linha in de_todas}
 
     return render(
         request,
         "admin/escola_alunos.html",
         {
             "admin": request.admin,
-            "tipos": tipos_com_contagem(filas),
+            "tipos": tipos_com_contagem(contagens),
             "esperando": esperando,
+            "alunos": alunos,
             # `None` (não consegui perguntar) e `[]` (não há ninguém) são telas
             # DIFERENTES, e o template precisa dos dois separados: `{% if %}`
             # sozinho não distingue lista vazia de ausência.
             "nao_consigo_perguntar": esperando is None,
+            "nao_consigo_ver_alunos": alunos is None,
             "mostrar_escola": len(escolas) > 1,
-            # O recado da decisão anterior, buscado num conjunto FECHADO: o que
-            # vem do navegador é só uma CHAVE, e o texto sai daqui. Ecoar a
-            # querystring na tela seria XSS refletido numa área de operação.
+            "estados": ESTADOS_NA_TELA,
+            # Quem é administrador NÃO vem da `alunos` — vem da lista desta
+            # célula, lida na hora (`DECISAO-gestao-de-alunos` §4). A tela
+            # MOSTRA; quem muda é o mantenedor, no servidor.
+            "administradores": sorted(_emails_autorizados()),
             "recado": RECADOS.get(request.GET.get("resultado", "")),
         },
     )
@@ -272,6 +298,7 @@ RECADOS = {
         "sido aplicada mesmo assim — recarregue a lista antes de decidir de novo."
     ),
     "nao-valeu": "A decisão não valeu.",
+    "salvo": "Pronto: as mudanças foram salvas.",
 }
 
 
@@ -332,6 +359,82 @@ def escola_decidir(request):
 
     if desfecho == AlunosClient.OK:
         recado = "liberado" if decisao == Registro.LIBERAR else "recusado"
+    elif desfecho == AlunosClient.RECUSADO:
+        recado = "nao-valeu"
+    else:
+        recado = "nao-deu"
+    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
+
+
+# --------------------------------------------------- o formulário de gestão
+#
+# Pedido do mantenedor em 28/08/2026: *"um formulário completo com vários
+# campos para alterar o status, a situação, tipo, e etc; excluir, remover"*.
+# A lei que decide o que entra e o que não entra é a
+# `docs/decisoes/DECISAO-gestao-de-alunos.md`.
+
+#: Os estados como o mantenedor os lê, na ordem em que fazem sentido para ele.
+#: A palavra da tela é dele; a palavra do sistema fica escondida no `value`.
+ESTADOS_NA_TELA = [
+    ("ativa", "Ativo — entra normalmente"),
+    ("suspensa", "Pausado — não entra, volta com um clique"),
+    ("encerrada", "Encerrado — saiu da escola"),
+    ("reembolsada", "Reembolsado — devolveu o dinheiro e mantém o acesso"),
+]
+
+#: Os campos do formulário que viajam para a `alunos`. Lista de PERMISSÃO: um
+#: `<input name="email">` que alguém acrescente ao template não passa daqui —
+#: e o e-mail é justamente o que não pode mudar (é a identidade da linha).
+CAMPOS_DO_FORMULARIO = ("status", "nome_completo", "whatsapp", "turma", "comprou_em")
+
+
+@require_POST
+def escola_aluno_salvar(request):
+    """Salva o formulário de um aluno — e grava a auditoria SEMPRE.
+
+    Mesma disciplina de `escola_decidir`: a linha de auditoria é gravada depois
+    de saber o desfecho e antes de responder, inclusive quando deu errado.
+    """
+    alvo = (request.POST.get("alvo") or "").strip()
+    if not alvo:
+        return HttpResponseRedirect(reverse("escola_alunos"))
+
+    mudancas = {
+        campo: (request.POST.get(campo) or "").strip()
+        for campo in CAMPOS_DO_FORMULARIO
+        if campo in request.POST
+    }
+    # Campo de data em branco significa "não sei", e o contrato aceita `null` —
+    # mandar `""` seria pedir para o outro lado gravar uma data vazia.
+    if mudancas.get("comprou_em") == "":
+        mudancas["comprou_em"] = None
+    if not mudancas:
+        return HttpResponseRedirect(reverse("escola_alunos"))
+
+    desfecho, detalhe = AlunosClient().atualizar_aluno(
+        alvo=alvo,
+        mudancas=mudancas,
+        decidido_por=request.admin.get("id") or request.admin.get("email") or "?",
+    )
+
+    Registro.objects.create(
+        quem_email=request.admin.get("email") or "",
+        quem_id=request.admin.get("id") or "",
+        acao=Registro.EDITAR,
+        alvo=alvo,
+        desfecho={
+            AlunosClient.OK: Registro.OK,
+            AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
+            AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
+        }[desfecho],
+        # O QUE foi pedido, campo a campo. Sem os valores antigos aqui de
+        # propósito: eles estão na `alunos`, e copiá-los para cá seria guardar
+        # dado pessoal num segundo lugar só para tê-lo à mão.
+        detalhe=detalhe or ", ".join(f"{k}={v}" for k, v in sorted(mudancas.items())),
+    )
+
+    if desfecho == AlunosClient.OK:
+        recado = "salvo"
     elif desfecho == AlunosClient.RECUSADO:
         recado = "nao-valeu"
     else:

@@ -92,6 +92,7 @@ def _fila_vazia():
     respx.get(f"{ALUNOS}/pre-matriculas").mock(
         return_value=httpx.Response(200, json=[])
     )
+    respx.get(f"{ALUNOS}/matriculas").mock(return_value=httpx.Response(200, json=[]))
 
 
 def _decidir(client, **campos):

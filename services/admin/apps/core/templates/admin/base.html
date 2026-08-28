@@ -85,6 +85,14 @@ primeira versão deste arquivo, e o teste pegou.
     .decidir button.sim { color: var(--verde); border-color: var(--verde); }
     .decidir button.nao { color: var(--vermelho); border-color: var(--vermelho); }
     .recado { border: 1px solid var(--azul); border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; }
+    /* O formulário de gestão: rótulo em cima do campo, sempre — em tela de
+       celular, rótulo ao lado vira uma coluna de duas letras. */
+    .rotulo { display: block; font-size: 12px; color: var(--texto-2); margin: 8px 0 3px; }
+    .decidir select {
+      width: 100%; box-sizing: border-box; padding: 8px 10px; font: inherit;
+      background: var(--fundo); color: var(--texto);
+      border: 1px solid var(--linha); border-radius: 8px;
+    }
   </style>
 </head>
 <body>
