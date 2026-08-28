@@ -186,6 +186,31 @@ def checar_mergeabilidade(pr: dict[str, Any]) -> Resultado:
             "espere alguns segundos e rode de novo. Estado desconhecido não é "
             "estado bom.",
         )
+    if status == "BEHIND":
+        # Desde 28/08/2026 a `main` exige `strict_required_status_checks_policy`
+        # (Onda 0 do PLANO-MESTRE-ROBOS-SEM-COLISAO.md): PR cuja base envelheceu
+        # NÃO mergeia, porque o verde dele foi medido contra um mundo que já não
+        # existe — é a trava da Classe 6 (colisão semântica).
+        #
+        # Até este conserto o portão dizia `PASS sem conflitos (BEHIND)` e o
+        # `gh pr merge` seguinte falhava com "the head branch is not up to date".
+        # Verde na tela e recusa na hora de agir é a pior combinação possível:
+        # o agente acredita no portão, não no GitHub. Medido no PR #414.
+        return Resultado(
+            "conflitos",
+            Estado.FAIL,
+            "a base envelheceu — este PR está ATRÁS da main (BEHIND)",
+            "Sem conflito de texto, mas o verde deste PR foi medido contra uma\n"
+            "`main` que já não existe, e a política estrita recusa o merge.\n\n"
+            "  gh pr update-branch <N>     # traz a main para dentro do PR\n"
+            "  (espere os checks rodarem de novo — eles medem o mundo novo)\n"
+            "  python ci/mergear.py <N> --conferir\n\n"
+            "ATENÇÃO ao atualizar: o `update-branch` mistura a main SEM regerar\n"
+            "nada. Se o seu PR mexe em `painel/`, os arquivos gerados ficam\n"
+            "velhos em relação aos registros que vieram junto, e o check\n"
+            "`painel-no-navegador` reprova. Rode `node painel/gerar_manifesto.js`\n"
+            "e commite antes de esperar o verde.",
+        )
     return Resultado("conflitos", Estado.PASS, f"sem conflitos ({status})")
 
 
@@ -575,7 +600,9 @@ def main(argv: list[str] | None = None) -> int:
             resposta = input("  número do PR: ").strip()
         except (EOFError, KeyboardInterrupt):
             print("\nCancelado — nada foi mergeado. (Sessão sem teclado? O caminho")
-            print(f" não-interativo é: python ci/mergear.py {args.pr} --confirmo {args.pr})")
+            print(
+                f" não-interativo é: python ci/mergear.py {args.pr} --confirmo {args.pr})"
+            )
             return 1
 
         if resposta != str(args.pr):

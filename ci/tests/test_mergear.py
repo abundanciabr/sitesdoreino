@@ -179,6 +179,38 @@ def test_conflito_reprova() -> None:
     )
 
 
+def test_base_velha_reprova_em_vez_de_dizer_verde() -> None:
+    """BEHIND é recusa do GitHub, não detalhe — o portão não pode dizer PASS.
+
+    Medido no PR #414: o portão dizia `PASS sem conflitos (BEHIND)` e o
+    `gh pr merge` seguinte falhava com "the head branch is not up to date".
+    A trava estrita entrou em 28/08 (Onda 0) e o portão não sabia dela.
+    Verde na tela e recusa na hora de agir é o pior par possível.
+    """
+    resultado = mergear.checar_mergeabilidade(_pr(mergeStateStatus="BEHIND"))
+    assert resultado.estado is Estado.FAIL
+    assert "update-branch" in resultado.detalhe
+
+
+def test_base_velha_avisa_do_painel_gerado() -> None:
+    """Quem atualiza precisa saber que o gerado do painel fica para trás.
+
+    Também medido no PR #414: o `update-branch` mistura a main sem regerar, e o
+    check do painel reprova por artefato velho. Custou uma rodada inteira.
+    """
+    detalhe = mergear.checar_mergeabilidade(_pr(mergeStateStatus="BEHIND")).detalhe
+    assert "gerar_manifesto" in detalhe
+
+
+@pytest.mark.parametrize("status", ["CLEAN", "UNSTABLE", "BLOCKED"])
+def test_base_em_dia_continua_passando(status: str) -> None:
+    """A recusa é SÓ do BEHIND — não pode virar um portão que trava tudo."""
+    assert (
+        mergear.checar_mergeabilidade(_pr(mergeStateStatus=status)).estado
+        is Estado.PASS
+    )
+
+
 def test_mergeabilidade_desconhecida_e_error() -> None:
     """O GitHub calcula isso de forma assíncrona; 'não sei' não é 'pode'."""
     assert (
@@ -377,7 +409,8 @@ def test_skips_permitidos_tem_motivo_escrito() -> None:
 def test_comando_de_merge_nao_usa_yes() -> None:
     """H6: o `gh` 2.97.0 não tem `--yes` em `pr merge` — o portão conferia tudo
     verde e quebrava exatamente na hora de agir. Se a flag voltar, este teste
-    acusa antes de o próximo merge real quebrar (docs/historico/RESOLVIDAS.md §5.9.1)."""
+    acusa antes de o próximo merge real quebrar (docs/historico/RESOLVIDAS.md §5.9.1).
+    """
     for metodo in ("merge", "squash", "rebase"):
         cmd = mergear.comando_de_merge(99, metodo)
         assert "--yes" not in cmd
@@ -522,7 +555,9 @@ def test_rerun_que_ainda_roda_nao_e_aprovado_pela_execucao_velha() -> None:
     pr = _pr(
         statusCheckRollup=[
             _check_datado("muralhas", "SUCCESS", "2026-08-25T19:35:07Z"),
-            _check_datado("muralhas", None, "2026-08-25T19:39:33Z", status="IN_PROGRESS"),
+            _check_datado(
+                "muralhas", None, "2026-08-25T19:39:33Z", status="IN_PROGRESS"
+            ),
             _check_datado("detectar", "SUCCESS", "2026-08-25T19:35:08Z"),
             _check_datado("ci-celula-gate", "SUCCESS", "2026-08-25T19:36:04Z"),
         ]
