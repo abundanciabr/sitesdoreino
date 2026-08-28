@@ -183,6 +183,76 @@ paths:
         '404': { description: Nao ha linha na fila com este id }
         '409': { description: Esta linha ja foi decidida — decisao nao se refaz }
         '422': { description: "Payload invalido, ou recusa sem motivo" }
+  /alunos/{email}/situacao:
+    get:
+      operationId: getStudentStanding
+      summary: Em que categoria esta pessoa esta — a resposta unica sobre "quem e aluno"
+      description: |
+        A porta das CINCO CATEGORIAS (`docs/decisoes/DECISAO-categorias-de-usuario.md`).
+        Existe para que a home, a Caixa e o painel parem de adivinhar cada um do seu
+        jeito o que uma pessoa e — hoje sao quatro respostas para a mesma pergunta, e
+        tres delas erram em pelo menos um caso.
+
+        RESPONDE 200 COM `cadastrado` PARA QUEM ELA NAO CONHECE — NUNCA 404. "Nao
+        tenho linha para esta pessoa" E a resposta, nao um erro. A porta vizinha
+        (`GET /alunos/{email}/matriculas`) devolve 404 nesse caso e esta certa no
+        contexto dela; aqui um 404 obrigaria cada consumidor a traduzir "erro" em
+        "cadastrado" por conta propria, e o primeiro que tratasse 404 como falha de
+        rede mostraria a tela errada — fail-OPEN — para todo visitante novo do site.
+
+        NAO DEVOLVE PII: sem WhatsApp, sem nome, sem eco do e-mail. E a §5 da
+        `DECISAO-fila-de-liberacao.md` aplicada — o telefone sai por UMA porta so,
+        `GET /pre-matriculas`, a do painel administrativo. Guarda de conjunto EXATO
+        de chaves na resposta.
+
+        `administrador` NAO E uma categoria possivel aqui, e a ausencia e a decisao:
+        quem decide isso e a lista da celula `admin`, na hora. Se esta porta pudesse
+        responder isso, a autorizacao da area administrativa passaria a depender de
+        uma celula de produto (`DECISAO-onde-mora-a-sessao.md` §4).
+      parameters:
+        - name: email
+          in: path
+          required: true
+          schema: { type: string, format: email }
+      responses:
+        '200':
+          description: A situacao da pessoa. Nao ha 404 — quem a celula nao conhece e `cadastrado`.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [categoria, na_fila]
+                properties:
+                  categoria:
+                    type: string
+                    enum: [cadastrado, na_fila, aluno]
+                    description: |
+                      `aluno` sai da MESMA lista de status que decide acesso
+                      (`STATUS_QUE_VALEM`) — uma segunda lista seriam duas verdades
+                      sobre quem e aluno, e elas divergiriam no primeiro status novo.
+                  na_fila:
+                    type: [object, 'null']
+                    additionalProperties: false
+                    description: Preenchido SO quando `categoria` = `na_fila`; `null` nos outros casos.
+                    required: [estado, esperando_ha_dias, motivo_recusa]
+                    properties:
+                      estado: { type: string, enum: [aguardando, recusada] }
+                      esperando_ha_dias:
+                        type: [integer, 'null']
+                        minimum: 0
+                        description: |
+                          Calculado PELA CELULA, nao a data crua: e ela que tem o
+                          relogio e a linha. Consumidor que subtraisse datas erraria
+                          de um jeito diferente em cada celula. `null` depois de
+                          decidida — ninguem espera mais.
+                      motivo_recusa:
+                        type: [string, 'null']
+                        description: |
+                          Preenchido so quando `estado` = `recusada`. A pessoa precisa
+                          ve-lo para poder pedir de novo: reenviar e o jeito previsto
+                          de corrigir um dado errado (lei da fila, §7).
+        '422': { description: E-mail invalido }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
