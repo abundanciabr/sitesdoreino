@@ -87,23 +87,32 @@ def _retrato():
     }
 
 
-def test_abrir_a_mesa_nao_muda_nada_no_banco(caixa, equipe, sugestao, plateia):
-    """Ela é a porta do painel, não uma ação — e o banco prova isso.
+def test_a_leitura_do_contrato_nao_muda_nada_no_banco(
+    caixa, equipe, sugestao, plateia, settings, client
+):
+    """Ela CONTA; não decide, não marca, não arruma.
+
+    Até 28/08/2026 este guarda media a tela da Mesa, que morava nesta célula.
+    A tela mudou de casa (DECISAO-a-gestao-da-caixa-mora-no-admin), e a
+    propriedade seguiu o dado: quem lê agora é a superfície de máquina, e é ela
+    que não pode escrever.
 
     O cenário é montado cheio de propósito: uma ideia com plateia, outra parada
-    esperando assinatura. Uma tela que "arrumasse" algo ao abrir — marcar como
-    vista, criar a avaliação vazia, gravar um histórico — mudaria um destes
-    números.
+    esperando assinatura. Uma leitura que "arrumasse" algo — marcar como vista,
+    criar a avaliação vazia, gravar um histórico — mudaria um destes números.
     """
-    from django.urls import reverse
-
+    settings.TOKENS_ACEITOS = {"token-do-par-admin-sugestoes"}
     outra = caixa.publicar("Outra ideia qualquer")
     plateia(sugestao, votantes=5, comentaristas=2, marca="retrato")
     caixa.mudar_status(outra, Sugestao.Status.PLANEJADO, nota="Vai entrar.")
 
     antes = _retrato()
-    assert equipe.client.get(reverse("mesa")).status_code == 200
-    assert equipe.client.get(reverse("mesa")).status_code == 200
+    for _ in range(2):
+        resposta = client.get(
+            "/interno/gestao/ideias",
+            headers={"authorization": "Bearer token-do-par-admin-sugestoes"},
+        )
+        assert resposta.status_code == 200, resposta.content
     depois = _retrato()
 
     assert antes == depois

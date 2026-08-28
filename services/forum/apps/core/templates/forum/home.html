@@ -1,0 +1,32 @@
+{% extends "forum/base.html" %}
+{% block titulo %}Fórum{% endblock %}
+{% block conteudo %}
+<h1>Fórum da escola</h1>
+<p class="sub">Onde a dúvida de um vira a resposta de todos.</p>
+
+{% if vazio %}
+  {% comment %}
+  O "salão vazio" é problema declarado da lei (§6.1): o fórum nasce sem
+  comunidade nenhuma. A tela diz isso em voz alta em vez de fingir movimento —
+  fórum que simula atividade que não existe perde a confiança na primeira
+  visita.
+  {% endcomment %}
+  <div class="vazio">
+    <strong>Ainda não há nenhuma área aberta para você.</strong>
+    <p style="margin:8px 0 0">
+      Se você é aluno e acha que deveria ver algo aqui, fale com a escola.
+      Se ainda não é, o fórum abre junto com a sua matrícula.
+    </p>
+  </div>
+{% else %}
+  {% for area in areas %}
+    <div class="cartao">
+      <h2><a href="{% url 'area' area.slug %}">{{ area.nome }}</a>
+        {% if area.visibilidade == "publica" %}<span class="etiqueta">aberta</span>{% endif %}
+        {% if area.visibilidade == "turma" %}<span class="etiqueta">turma</span>{% endif %}
+      </h2>
+      {% if area.descricao %}<p class="sub" style="margin:4px 0 0">{{ area.descricao }}</p>{% endif %}
+    </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}
