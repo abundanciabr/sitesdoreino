@@ -93,6 +93,110 @@ primeira versão deste arquivo, e o teste pegou.
       background: var(--fundo); color: var(--texto);
       border: 1px solid var(--linha); border-radius: 8px;
     }
+
+    /* --- a Caixa de Sugestões dentro do Admin (28/08/2026) ----------------
+       Nenhuma cor nova: o laranja seria uma quarta cor de estado numa área que
+       já tem três, então "sua vez" usa o AMARELO que esta casa já reserva para
+       atenção, e o azul continua sendo obra em andamento. A folha mora aqui
+       pelo mesmo motivo do resto: célula sob SCRIPT_NAME precisa de rota
+       própria de estático, e enquanto couber embutida não há rota nem
+       armadilha (armadilhas/083 e /102).
+       -------------------------------------------------------------------- */
+    .envolucro.largo { max-width: 1180px; }
+
+    .abas { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 4px; border-bottom: 1px solid var(--linha); margin: 0 0 20px; }
+    .abas .aba { padding: 9px 16px; font-size: 14px; color: var(--texto-2); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+    .abas .aba:hover { color: var(--texto); }
+    .abas .aba.ativa { color: var(--texto); font-weight: 600; background: var(--painel); border: 1px solid var(--linha); border-bottom-color: var(--painel); border-radius: 10px 10px 0 0; margin-bottom: -1px; }
+    /* A aba que ainda não existe: apagada e SEM link. Escondê-la apagaria a
+       planta da vista de quem a escolheu; linkar seria mentira. */
+    .abas .aba.futura { color: var(--texto-3); cursor: default; }
+    .abas .aba.futura::after { content: " · em construção"; font-size: 12px; }
+    .aba-conta { background: var(--amarelo); color: #0f1115; border-radius: 8px; padding: 0 7px; font-size: 12px; font-weight: 700; }
+
+    .bancada { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+    .mesa { background: var(--painel); border: 1px solid var(--amarelo); border-radius: 12px; overflow: hidden; }
+    .mesa.vazia { border-color: var(--verde); }
+    .mesa-topo { display: flex; flex-wrap: wrap; gap: 10px; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--linha); }
+    .mesa-topo.sua { background: rgba(210, 153, 34, .12); border-bottom-color: var(--amarelo); }
+    .mesa-vez { font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--amarelo); }
+    .mesa-relogio { font-size: 12px; color: var(--texto-2); }
+    .mesa-corpo { padding: 20px; }
+    .mesa-corpo h2 { font-size: 22px; margin: 0 0 10px; line-height: 1.25; }
+    .plateia { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 16px; padding-bottom: 14px; border-bottom: 1px solid var(--linha); color: var(--texto-2); font-size: 13px; }
+    .plateia b { color: var(--texto); font-size: 15px; }
+    .selo { border: 1px solid var(--linha); border-radius: 6px; padding: 2px 8px; font-size: 12px; color: var(--texto-2); font-weight: 400; }
+    .selo.recusada { color: var(--vermelho); border-color: var(--vermelho); }
+    .metades { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 16px; }
+    .citacao { border-left: 2px solid var(--linha); padding-left: 12px; font-style: italic; color: var(--texto-2); margin: 0 0 8px; }
+    /* "Ninguém escreveu isto ainda" não é erro — é um vazio honesto, e por isso
+       não é vermelho: vermelho treinaria a equipe a preencher o campo para
+       apagar o alarme, que é o contrário do que a frase precisa ser. */
+    .ausente { color: var(--texto-3); margin: 0; }
+    .notas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; padding: 14px 0; border-top: 1px solid var(--linha); border-bottom: 1px solid var(--linha); margin-bottom: 16px; }
+    .lei { margin: 0; font-size: 13px; color: var(--texto-2); background: var(--fundo); border: 1px solid var(--linha); border-radius: 8px; padding: 12px 14px; }
+
+    .lado { display: flex; flex-direction: column; gap: 14px; }
+    .lado-titulo { display: flex; align-items: center; justify-content: space-between; font-weight: 600; font-size: 14px; margin-bottom: 10px; }
+    .lado-conta { color: var(--texto-3); font-weight: 400; font-size: 13px; }
+    .lado-item { padding: 10px 0; border-top: 1px solid var(--linha); font-size: 14px; }
+    .lado-item:first-of-type { border-top: 0; padding-top: 0; }
+    .lado-rodape { margin: 12px 0 0; padding-top: 10px; border-top: 1px solid var(--linha); font-size: 12px; color: var(--texto-3); }
+    .bolinha { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; }
+    .bolinha.obra { background: var(--azul); }
+    .bolinha.no-ar { background: var(--verde); }
+
+    .trilha { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; align-items: start; margin-bottom: 20px; }
+    .coluna-topo { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; padding: 0 2px 7px; border-bottom: 2px solid var(--linha); }
+    .col-assinar .coluna-topo { border-bottom-color: var(--amarelo); }
+    .col-assinar .coluna-nome { color: var(--amarelo); }
+    .col-construindo .coluna-topo { border-bottom-color: var(--azul); }
+    .col-no-ar .coluna-topo { border-bottom-color: var(--verde); }
+    .coluna-nome { font-size: 13px; font-weight: 600; color: var(--texto-2); }
+    .coluna-total { font-size: 12px; color: var(--texto-3); }
+    .coluna-tempo { margin: 7px 2px 9px; font-size: 11px; color: var(--texto-3); }
+    /* A coluna do gargalo é CALCULADA (a maior espera média), nunca cravada. */
+    .coluna.entupida { background: rgba(210, 153, 34, .09); border-radius: 0 0 10px 10px; margin: 0 -6px; padding: 0 6px 8px; }
+    .peca { background: var(--fundo); border: 1px solid var(--linha); border-radius: 9px; padding: 9px 10px; margin-bottom: 7px; font-size: 13px; }
+    .peca b { font-weight: 600; line-height: 1.3; display: block; }
+    .nota { color: var(--texto-3); font-size: 12px; margin: 5px 0 0; }
+    .aviso.entupimento { border-style: solid; border-color: var(--amarelo); color: var(--texto-2); }
+    .aviso.calado { border-style: solid; border-color: var(--vermelho); color: var(--texto-2); margin-bottom: 18px; }
+
+    .hero { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-end; margin-bottom: 16px; }
+    .hero-numero { font-size: 44px; line-height: 1; font-weight: 700; }
+    .hero-nota { margin: 0 0 4px; font-size: 14px; color: var(--texto-2); max-width: 440px; border-left: 1px solid var(--linha); padding-left: 20px; }
+    /* A barra é decorativa em largura, mas o NÚMERO está sempre escrito ao
+       lado: quem não enxerga a barra lê a conta, e o estado nunca depende só
+       de cor (a linha calada ganha borda E texto). */
+    .espera { display: grid; grid-template-columns: 180px minmax(0, 1fr) 90px; gap: 16px; align-items: center; background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 11px 14px; margin-bottom: 6px; }
+    .espera.calada { border-color: var(--vermelho); }
+    .espera-gente { display: flex; align-items: center; gap: 8px; }
+    .barra-gente { height: 9px; border-radius: 5px; background: var(--amarelo); min-width: 4px; max-width: 90px; }
+    .espera.calada .barra-gente { background: var(--vermelho); }
+    .espera-gente b { font-size: 17px; }
+    .espera-ideia b { font-weight: 600; font-size: 14px; }
+    .espera-relogio { text-align: right; }
+    .espera-relogio b { display: block; font-size: 15px; color: var(--texto-2); }
+    .espera.calada .espera-relogio b, .espera.calada .espera-relogio .nota { color: var(--vermelho); }
+    .fila { display: flex; align-items: center; gap: 10px; padding: 6px 0; font-size: 13px; }
+    .fila-rotulo { flex: 1; color: var(--texto-2); }
+    .marca { width: 9px; height: 9px; border-radius: 2px; background: var(--texto-3); }
+    .marca.m-assinar { background: var(--amarelo); }
+    .marca.m-chegando { background: var(--vermelho); }
+    .marca.m-construindo { background: var(--azul); }
+
+    @media (max-width: 900px) {
+      .bancada, .metades { grid-template-columns: 1fr; }
+      /* Seis colunas num celular dariam colunas de dois dedos com o título
+         quebrando em cinco linhas. Em duas, a ORDEM das etapas — que é a
+         informação — continua legível de cima para baixo. */
+      .trilha { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+      .coluna.entupida { margin: 0; padding: 0 0 8px; }
+      .notas { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .espera { grid-template-columns: 80px minmax(0, 1fr) 70px; gap: 10px; }
+      .barra-gente { display: none; }
+    }
   </style>
 </head>
 <body>

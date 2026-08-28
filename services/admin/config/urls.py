@@ -1,6 +1,7 @@
 from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
+from apps.core.caixa import mesa, quem_espera, travessia
 from apps.core.divida import divida_json
 from apps.core.painel import painel, painel_arquivo
 from apps.core.views import (
@@ -57,6 +58,20 @@ urlpatterns = [
     # arquivo por caminho relativo) — mas convenção MISTURADA é o que produz
     # link quebrado quando alguém copia a linha de cima. O APPEND_SLASH já
     # cuida de quem digitar sem a barra.
+    # A CAIXA DE SUGESTOES — a gestao das ideias dos alunos, que ate 28/08/2026
+    # morava nas telas da celula sugestoes. Decisao do mantenedor, na frase
+    # dele: "nao vamos espalhar paineis ou gestao por ai, tudo sera em /admin".
+    # Lei: docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md.
+    #
+    # NAO fica sob /painel/: aquele prefixo ja tem dono (o livro do projeto, e a
+    # rota generica de arquivo acima engoliria qualquer irmao). Fica ao lado de
+    # /escola/, na mesma gramatica — e com barra final, pela mesma convencao.
+    #
+    # Pela Lei 3 esta celula nao le o banco da Caixa: ela pergunta, pelo
+    # contrato congelado (contracts/sugestoes.openapi.yaml).
+    path("caixa/", mesa, name="caixa"),
+    path("caixa/travessia/", travessia, name="caixa_travessia"),
+    path("caixa/esperando/", quem_espera, name="caixa_esperando"),
     path("escola/", escola, name="escola"),
     path("escola/alunos/", escola_alunos, name="escola_alunos"),
     # A ÚNICA rota de escrita desta célula. POST-only (`require_POST` na view):
