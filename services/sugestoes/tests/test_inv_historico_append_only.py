@@ -195,6 +195,12 @@ def _moderacao_completa(cliente, sugestao) -> dict[str, list]:
         # se conta são as consultas emitidas, e uma recusa que não escreve nada
         # é justamente o caso mais fácil de estar certo.
         "changespecs": [cliente.get(reverse("changespecs", args=[sugestao.id]))],
+        # [28/08/2026] A Mesa — a porta do painel de gestão. Ela entra aqui
+        # pelo mesmo motivo da `changespecs`: a varredura exige o urlconf
+        # INTEIRO. E ela é o caso mais puro do que este arquivo mede — uma
+        # tela que só conta, e cuja própria razão de existir some se ela
+        # escrever qualquer coisa.
+        "mesa": [cliente.get(reverse("mesa"))],
     }
 
 

@@ -1651,3 +1651,57 @@ mesma pessoa no mesmo instante continuam custando uma consulta só.
 Trocar o texto sem trocar o comportamento seria maquiagem; trocar o
 comportamento sem trocar o texto deixaria a tela mentindo para o outro lado. O
 guarda `test_a_tela_nao_promete_mais_o_que_nao_acontece` cobra os dois.
+## A Mesa (28/08/2026): a primeira tela desta célula que é só uma CONTA
+
+O painel de gestão nasceu aqui — `apps/core/gestao.py`, rota `/gestao`. O
+desenho foi escolhido pelo mantenedor entre quatro modelos
+(`docs/paineis/painel-da-caixa-de-sugestoes/`, registro `20260828-002` do
+livro), e a escolha veio de um número que o próprio desenho produziu: **o degrau
+mais lento da travessia é a assinatura** — o robô constrói em dois dias o que
+espera semanas por um nome num documento. Daí a forma: uma decisão por vez,
+grande, e o resto pequeno e à direita.
+
+Quatro coisas que este elo aprendeu, e que valem para a próxima aba:
+
+**1. A tela nova não precisou de coluna nova — e isso não foi sorte.** Tudo que a
+Mesa mostra já existia no banco desde o EVO-11/EVO-13/EVO-40: o estado da
+sugestão, a existência (ou não) de `AvaliacaoInterna`, a existência (ou não) de
+`ChangeSpecAprovado`, e as datas do `HistoricoStatus`. "Esperando você" não é um
+sinalizador que alguém liga: é `planejado` sem ChangeSpec. Quando o corredor é
+assinado, o item some da mesa **sozinho** — ninguém o marca como resolvido, e há
+guarda para isso (`test_ideia_planejada_com_changespec_sai_da_mesa`). Uma coluna
+`pendente=True` teria parecido mais simples no primeiro dia e seria a primeira
+coisa a divergir da realidade no segundo.
+
+**2. Duas rotas novas custaram DUAS listas de sanidade — e é assim que se quer.**
+`test_inv_so_staff_modera.py` e `test_inv_historico_append_only.py` varrem o
+urlconf e cravam a lista esperada à mão. A rota `mesa` entrou nos dois guardas
+como VERMELHO antes de entrar como linha — o guarda avisou que existia rota de
+equipe nova antes de qualquer pessoa lembrar de contá-la. Quem acrescentar a aba
+seguinte vai ver os mesmos dois vermelhos: eles não são atrito, são a lista se
+recusando a envelhecer em silêncio.
+
+**3. A mesma definição em dois lugares precisa de um guarda que os case.**
+"Quantas pessoas estão atrás desta ideia" existe duas vezes de propósito:
+`avisos.interessados_em()` (duas consultas POR sugestão, e devolve o vínculo de
+cada um) e `gestao.plateia_de()` (duas consultas para a LISTA inteira, e devolve
+só o número). A segunda não podia chamar a primeira num laço — seria N+1 numa
+tela de lista —, e duas implementações da mesma definição divergem no primeiro
+ajuste que só uma recebe. O que as segura juntas é
+`test_a_plateia_da_mesa_e_a_mesma_do_sininho`, que monta a plateia com
+sobreposição (quem vota E comenta, e o autor votando na própria ideia) e compara
+os dois números. Sem sobreposição o guarda passaria com as duas contas erradas.
+
+**4. Tela de leitura merece um guarda de que ela não escreve.** `test_abrir_a_mesa
+_nao_muda_nada_no_banco` tira um retrato de oito contagens, abre a página duas
+vezes e compara. Parece exagero para uma view com `@require_GET` — e não é: a
+tentação de "aproveitar que a tela já carregou" para criar a avaliação vazia, ou
+marcar como vista, é exatamente como um relatório vira, tarde, algo que altera o
+que relata.
+
+**Uma ausência deliberada, para ninguém a "consertar":** a planta tem quatro
+abas e esta entrega tem uma. As outras aparecem apagadas, escritas como *em
+construção*, e não são links. A aba "Os robôs" em particular depende de uma fonte
+de dados que **não existe em lugar nenhum** — qual agente está com qual tarefa,
+desde quando, em que etapa. Inventá-la por suposição seria o falso-verde do §1 da
+`RETROSPECTIVA-FASE-D`; ela espera uma fonte de verdade, não uma tela.

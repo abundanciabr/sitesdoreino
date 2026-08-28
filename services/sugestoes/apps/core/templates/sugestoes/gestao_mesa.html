@@ -1,0 +1,221 @@
+{% extends "sugestoes/base_caixa.html" %}
+{% comment %}
+A MESA — a porta do painel de gestão (28/08/2026).
+
+Planta e motivo da escolha: `docs/paineis/painel-da-caixa-de-sugestoes/` e o
+registro `20260828-002` do livro. O desenho é o do modelo B: uma decisão por
+vez, do tamanho de uma mesa, e o resto do mundo pequeno e à direita.
+
+Três coisas que esta página faz de propósito, e que não se "arrumam" depois:
+
+1. **As abas que ainda não existem aparecem, e dizem que não existem.** Um link
+   morto seria mentira; escondê-las faria a planta sumir da vista de quem a
+   escolheu. Elas viram links quando os PRs delas entrarem.
+2. **O botão de assinar só existe para quem assina.** A regra não é copiada
+   daqui: `pode_assinar` vem de `e_aprovador()`, o mesmo portão que a rota usa.
+   Quem não assina continua vendo o item — a fila é da equipe inteira — com a
+   frase que diz de quem é a vez.
+3. **Nenhum número desta página é digitado.** Votos, pessoas, dias parados: tudo
+   sai do que a Caixa já registrou. Se um dia algum deles parecer errado, o
+   conserto é na conta (`apps/core/gestao.py`), nunca numa lista à parte.
+
+Endereços saem de `{% templatetag openblock %} url … {% templatetag closeblock %}`, como em toda esta casa: sob o prefixo
+público `/forms/sugestoes/` um caminho escrito à mão quebra só em produção
+(armadilhas/029 e /081).
+{% endcomment %}
+{% block titulo %}A sua mesa — {{ quadro.nome }}{% endblock %}
+{% block migalha %}Gestão{% endblock %}
+{% block conteudo %}
+
+<nav class="painel-abas" aria-label="Seções do painel de gestão">
+  <span class="aba ativa" aria-current="page">A sua mesa{% if total %} <span class="aba-conta">{{ total }}</span>{% endif %}</span>
+  <span class="aba futura" title="Ainda não construída">A travessia</span>
+  <span class="aba futura" title="Ainda não construída">Quem está esperando</span>
+  <span class="aba futura" title="Ainda não construída">Os robôs</span>
+</nav>
+
+{% if primeira %}
+
+  <div class="mesa-cabecalho">
+    <h1>{% if total == 1 %}Uma coisa espera você.{% else %}{{ total }} coisas esperam você.{% endif %}</h1>
+    <p class="sub">O resto está andando sozinho — você não precisa olhar.</p>
+  </div>
+
+  <div class="mesa-bancada">
+
+    <div class="mesa">
+      <div class="mesa-topo{% if primeira.motivo == 'assinatura' %} mesa-topo-sua{% endif %}">
+        <span class="mesa-vez">
+          Decisão 1 de {{ total }} ·
+          {% if primeira.motivo == 'assinatura' %}
+            {% if pode_assinar %}só você pode tomar esta{% else %}espera a assinatura de quem aprova{% endif %}
+          {% else %}
+            ninguém da equipe leu esta ainda
+          {% endif %}
+        </span>
+        <span class="mesa-relogio">
+          {% if primeira.parada_ha == 0 %}parada desde hoje{% elif primeira.parada_ha == 1 %}parada há 1 dia{% else %}parada há {{ primeira.parada_ha }} dias{% endif %}
+        </span>
+      </div>
+
+      <div class="mesa-corpo">
+        <h2 class="mesa-titulo">{{ primeira.sugestao.titulo }}</h2>
+
+        <p class="mesa-plateia">
+          <strong class="votos">{{ primeira.sugestao.total_votos }}</strong> votos ·
+          <strong class="votos">{{ primeira.pessoas }}</strong> pessoa{{ primeira.pessoas|pluralize:"s" }} atrás desta ideia ·
+          <strong class="votos">{{ primeira.sugestao.total_comentarios }}</strong> comentário{{ primeira.sugestao.total_comentarios|pluralize:"s" }} ·
+          <span class="selo">{{ primeira.sugestao.categoria.nome }}</span>
+        </p>
+
+        <div class="mesa-metades">
+          <div class="ficha">
+            <h3>O que o aluno escreveu</h3>
+            <p class="citacao">{{ primeira.sugestao.problema }}</p>
+            {% if primeira.sugestao.solucao_proposta %}
+              <p class="citacao">{{ primeira.sugestao.solucao_proposta }}</p>
+            {% endif %}
+          </div>
+          <div class="ficha">
+            <h3>O que a equipe decidiu fazer</h3>
+            {% if primeira.avaliacao.decisao_produto %}
+              <p>{{ primeira.avaliacao.decisao_produto }}</p>
+            {% else %}
+              <p class="ausente">Ninguém escreveu isto ainda. Sem essa frase, quem for construir tem que adivinhar o que você quis dizer — e é exatamente isso que o corredor existe para impedir.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if primeira.avaliacao %}
+          <div class="mesa-notas">
+            <div class="nota">
+              <span class="nota-rotulo">Ajuda o aluno a aprender</span>
+              <span class="nota-valor">{{ primeira.avaliacao.impacto_educacional }} de 5</span>
+            </div>
+            <div class="nota">
+              <span class="nota-rotulo">Ajuda a escola a vender</span>
+              <span class="nota-valor">{{ primeira.avaliacao.impacto_comercial }} de 5</span>
+            </div>
+            <div class="nota">
+              <span class="nota-rotulo">Trabalho que dá</span>
+              <span class="nota-valor">{{ primeira.avaliacao.esforco_tecnico }} de 5</span>
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="mesa-acoes">
+          {% if primeira.motivo == 'assinatura' %}
+            {% if pode_assinar %}
+              <a class="botao botao-grande" href="{% url 'changespecs' primeira.sugestao.id %}">Ler o documento e assinar</a>
+              <a class="botao" href="{% url 'moderar' primeira.sugestao.id %}">Abrir a ideia inteira</a>
+            {% else %}
+              <a class="botao" href="{% url 'moderar' primeira.sugestao.id %}">Abrir a ideia inteira</a>
+            {% endif %}
+          {% else %}
+            <a class="botao botao-grande" href="{% url 'moderar' primeira.sugestao.id %}">Ler e responder</a>
+          {% endif %}
+        </div>
+
+        <p class="mesa-lei">
+          {% if primeira.motivo == 'assinatura' %}
+            <strong>Assinar é o que libera a obra.</strong>
+            Enquanto ninguém autorizado assinar, nada entra em construção — e isso é uma trava
+            de propósito, não um defeito. {% if not pode_assinar %}O seu crachá modera a Caixa; autorizar
+            desenvolvimento é outro papel, e ele não vem junto.{% endif %}
+          {% else %}
+            <strong>Esta subiu para a mesa pelo relógio.</strong>
+            Ela está em “Em análise” há mais de {{ dias_ate_envelhecer }} dias sem ninguém da equipe escrever
+            nada — e as {{ primeira.pessoas }} pessoas atrás dela não receberam notícia nenhuma nesse tempo.
+          {% endif %}
+        </p>
+      </div>
+    </div>
+
+    <aside class="mesa-lado">
+
+      {% if depois %}
+        <div class="cartao">
+          <h3 class="lado-titulo">Depois desta <span class="lado-conta">{{ depois|length }}</span></h3>
+          {% for decisao in depois %}
+            <div class="lado-item">
+              <a href="{% url 'moderar' decisao.sugestao.id %}">{{ decisao.sugestao.titulo }}</a>
+              <p class="meta">
+                {{ decisao.sugestao.total_votos }} votos · {{ decisao.pessoas }} pessoa{{ decisao.pessoas|pluralize:"s" }} ·
+                {% if decisao.parada_ha == 1 %}parada há 1 dia{% else %}parada há {{ decisao.parada_ha }} dias{% endif %}
+              </p>
+              <p class="meta">
+                {% if decisao.motivo == 'assinatura' %}espera assinatura{% else %}ninguém da equipe leu ainda{% endif %}
+              </p>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+
+      <div class="cartao">
+        <h3 class="lado-titulo">Andando sozinho</h3>
+        {% for sugestao in em_obra %}
+          <div class="lado-item">
+            <span class="bolinha bolinha-obra" aria-hidden="true"></span>
+            <a href="{% url 'moderar' sugestao.id %}">{{ sugestao.titulo }}</a>
+            <p class="meta">em construção · {{ sugestao.total_votos }} votos</p>
+          </div>
+        {% endfor %}
+        {% for sugestao in no_ar %}
+          <div class="lado-item">
+            <span class="bolinha bolinha-no-ar" aria-hidden="true"></span>
+            <a href="{% url 'moderar' sugestao.id %}">{{ sugestao.titulo }}</a>
+            <p class="meta">no ar · {{ sugestao.total_votos }} votos</p>
+          </div>
+        {% endfor %}
+        {% if not em_obra and not no_ar %}
+          <p class="meta">Nada em obra e nada entregue ainda.</p>
+        {% endif %}
+        <p class="lado-rodape">Esta caixa existe para você <em>não</em> precisar olhar. Se algo aqui travar esperando alguém, ele sobe para a mesa.</p>
+      </div>
+
+    </aside>
+
+  </div>
+
+{% else %}
+
+  <div class="mesa-cabecalho">
+    <h1>A mesa está limpa.</h1>
+    <p class="sub">Nada espera por você agora. Pode fechar.</p>
+  </div>
+
+  <div class="mesa-bancada">
+    <div class="mesa mesa-vazia">
+      <div class="mesa-corpo">
+        <p class="vazia-frase">Nenhuma ideia está parada esperando assinatura, e nenhuma está em “Em análise” há mais de {{ dias_ate_envelhecer }} dias sem alguém da equipe escrever nada.</p>
+        <p class="vazia-nota">Isto é uma conta, não um relato: se aparecer uma ideia nessas condições, ela sobe para cá sozinha. Ninguém precisa lembrar de te avisar.</p>
+      </div>
+    </div>
+
+    <aside class="mesa-lado">
+      <div class="cartao">
+        <h3 class="lado-titulo">Andando sozinho</h3>
+        {% for sugestao in em_obra %}
+          <div class="lado-item">
+            <span class="bolinha bolinha-obra" aria-hidden="true"></span>
+            <a href="{% url 'moderar' sugestao.id %}">{{ sugestao.titulo }}</a>
+            <p class="meta">em construção · {{ sugestao.total_votos }} votos</p>
+          </div>
+        {% endfor %}
+        {% for sugestao in no_ar %}
+          <div class="lado-item">
+            <span class="bolinha bolinha-no-ar" aria-hidden="true"></span>
+            <a href="{% url 'moderar' sugestao.id %}">{{ sugestao.titulo }}</a>
+            <p class="meta">no ar · {{ sugestao.total_votos }} votos</p>
+          </div>
+        {% endfor %}
+        {% if not em_obra and not no_ar %}
+          <p class="meta">Nada em obra e nada entregue ainda.</p>
+        {% endif %}
+      </div>
+    </aside>
+  </div>
+
+{% endif %}
+
+{% endblock %}

@@ -60,6 +60,12 @@ renderiza vazio, não quebra.
   traço desta folha e batizado em PT-BR como todos os outros daqui (`i-grade`,
   `i-mais`, `i-sino`, `i-barras`, `i-trilha`).
   {% endcomment %}
+  {% comment %}
+  O icone do painel de gestao (28/08/2026): o proprio desenho da Mesa — um
+  bloco grande a esquerda (a decisao em cima da mesa) e dois pequenos a
+  direita (o que anda sozinho). Batizado em PT-BR como todos os daqui.
+  {% endcomment %}
+  <symbol id="i-mesa" viewBox="0 0 20 20"><rect x="3" y="4" width="8" height="12" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="13" y="4" width="4" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><rect x="13" y="11" width="4" height="5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/></symbol>
   <symbol id="i-pessoa" viewBox="0 0 20 20"><circle cx="10" cy="7" r="3.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 16.6c0-3.1 2.7-4.8 6-4.8s6 1.7 6 4.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
 </svg>
 
@@ -150,6 +156,15 @@ renderiza vazio, não quebra.
         linhas escrito assim vai INTEIRO para o HTML (armadilhas/087), e foi
         aqui mesmo que isso já vazou uma vez.
         {% endcomment %}
+        {% comment %}
+        O painel de gestao (28/08/2026) — a MESA. Fica ANTES da fila antiga no
+        trilho porque e a porta: quem conduz a Caixa comeca por "o que espera
+        por mim", nao por "a lista inteira". As duas convivem ate a aba "A
+        travessia" entrar e a fila virar redirecionamento.
+        {% endcomment %}
+        {% if ator.e_staff %}
+          <a href="{% url 'mesa' %}" title="A sua mesa" aria-label="Painel de gestao" class="{% if request.resolver_match.url_name == 'mesa' %}ativo{% endif %}"><svg aria-hidden="true"><use href="#i-mesa"/></svg></a>
+        {% endif %}
         {% if ator.e_staff %}
           <a href="{% url 'fila' %}" title="Moderação" aria-label="Fila de moderação" class="{% if request.resolver_match.url_name == 'fila' or request.resolver_match.url_name == 'moderar' %}ativo{% endif %}"><svg aria-hidden="true"><use href="#i-barras"/></svg></a>
         {% endif %}
