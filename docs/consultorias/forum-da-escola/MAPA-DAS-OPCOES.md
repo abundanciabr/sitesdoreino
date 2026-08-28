@@ -1,0 +1,134 @@
+# Mapa das opções — como um fórum entraria neste site
+
+> **Para que serve este arquivo:** você perguntou "existe fórum pronto de
+> instalar ou temos que criar do zero?". Esta é a resposta que eu tenho **hoje**,
+> antes das outras IAs responderem — para você não ficar esperando, e para os
+> consultores terem algo concreto de que discordar.
+>
+> Escrito em 28/08/2026. O veredito da rodada (`VEREDITO.md`, quando existir)
+> vale mais que este arquivo, porque terá as respostas de fora.
+
+## A pergunta por trás da pergunta
+
+"Instalar pronto" e "criar do zero" parecem as duas únicas opções. Não são —
+existe uma terceira, e é provavelmente a certa: **instalar um motor de fórum
+pronto DENTRO de uma das nossas células**. Nem programa separado, nem código
+escrito do nada.
+
+E "do zero", aqui, é uma palavra enganosa: a Caixa de Sugestões já está no ar com
+tópicos, votos, **comentários**, moderação, limite contra abuso, histórico
+inviolável e avisos no sininho. Boa parte de um fórum já foi construída e
+testada nesta casa.
+
+## As três famílias
+
+### Família A — fórum pronto, rodando ao lado, como programa separado
+
+| Candidato | Tecnologia | Banco | O problema aqui |
+|---|---|---|---|
+| **Discourse** | Ruby on Rails | PostgreSQL ✔ | O melhor produto da lista. Mas a memória residente é grande **mesmo com 5 usuários**, e a forma normal de atualizá-lo é rodar o instalador dele **dentro do servidor** — e nenhum robô entra lá (Lei 5) |
+| **NodeBB** | Node.js | PostgreSQL ✔ | Moderno e em tempo real. Login único exigiria transformar a nossa identidade num provedor OAuth2 inteiro — a maior ponte da lista |
+| **Flarum** | PHP | **MySQL** ✘ | Leve e bonito, mas PostgreSQL não é suportado oficialmente. Quebra "um banco por célula, tudo em PostgreSQL" |
+| **Misago** | **Python/Django** ✔ | PostgreSQL ✔ | Mesma tecnologia da casa — e por isso o mais simpático da família. Mas é um projeto inteiro (não uma peça encaixável), a comunidade é pequena e ele passou por uma reescrita longa |
+
+**Descartados sem hesitar:** phpBB (visual e código datados), Vanilla (mesmo
+problema do Flarum), XenForo (licença paga), Lemmy (federado — ótimo para rede
+social aberta, sem sentido para uma escola com turmas fechadas), Zulip e
+Mattermost (são **bate-papo**, não fórum: a conversa rola e some, que é
+exatamente o que queremos evitar), Circle e Mighty Networks (mensalidade).
+
+**O preço comum da família A**, em uma frase: você ganha um produto maduro de
+graça e paga em **memória**, numa **segunda tecnologia dentro de casa** (alguém
+precisa saber Ruby ou Node para consertar) e numa **ponte de login construída à
+mão**, porque nenhum deles sabe conversar com o nosso login sozinho.
+
+### Família B — motor de fórum instalado DENTRO de uma célula Django
+
+O **`django-machina`** é uma biblioteca que se instala com um comando e já traz
+fóruns, tópicos, respostas, permissões por grupo, moderação, anexos e busca.
+Ela roda **no mesmo processo, no mesmo banco e na mesma esteira de publicação**
+que todo o resto do site.
+
+O que isso significa na prática:
+
+- **Memória:** custa o mesmo que qualquer outra célula do site. O problema dos
+  2 GB simplesmente não aparece.
+- **Atualizar:** pela esteira automática, como tudo aqui. Ninguém entra no
+  servidor.
+- **Login único:** é a menor ponte das três famílias. A célula precisa de um
+  adaptador que pega o cookie, pergunta à identidade quem é a pessoa e espelha
+  ela numa linha local. **Esse adaptador já existe e está em produção** — é o
+  que a Caixa de Sugestões faz, em `services/sugestoes/apps/core/sessao.py`.
+- **A ressalva honesta:** é preciso conferir se o projeto está sendo mantido
+  ativamente antes de apostar nele. É a pergunta que eu mandei para os
+  consultores.
+
+### Família C — construir a célula `services/forum` na casa
+
+Copiando o molde da Caixa de Sugestões. Controle total, encaixe perfeito com o
+login, com as 5 categorias de pessoa e com o sininho. O preço é reconstruir
+coisas que o mundo já resolveu bem: busca de qualidade, editor de texto,
+anti-spam, resposta por e-mail.
+
+## O que já está pronto e serve a qualquer caminho
+
+Isto é o ativo do projeto, e vale mencionar porque muda a conta:
+
+- **O login único do site já funciona** — cookie que vale no site inteiro, mais
+  uma API interna contratada que responde "quem é o dono desta sessão", com
+  e-mail para quem tem permissão extra.
+- **As 5 categorias de pessoa são lei**, com uma porta única que responde se
+  alguém é aluno.
+- **O sininho de avisos** já existe e qualquer célula pode usar.
+- **O molde de discussão** da Caixa de Sugestões, testado em produção.
+
+E a armadilha que nenhum fórum de prateleira sabe: **a nossa identidade não é um
+provedor de login padrão de mercado.** Não é OIDC, não é OAuth2, não é SAML. É
+uma API interna caseira. Todo fórum de fora precisa de uma ponte feita à mão — e
+o tamanho dessa ponte é o que separa o Discourse (ponte pequena, o mecanismo
+DiscourseConnect é simples) do NodeBB (ponte grande, exigiria virar provedor
+OAuth2 inteiro).
+
+## Sobre o Discourse, com franqueza
+
+Você leu que ele cabe em pouca memória com poucos usuários, e não é uma leitura
+absurda — a documentação dele fala em 1 a 2 GB. **A diferença é que esse número
+é para uma máquina dedicada só a ele.** A nossa VPS tem 2 GB no total e já roda
+24 contêineres: as 12 células, o roteador, o PostgreSQL, o Redis e 9 processos
+auxiliares. Os 2 GB são o teto do prédio, não a sala vazia.
+
+E há um segundo problema, independente da memória: **a forma canônica de
+atualizar o Discourse é rodar o instalador dele dentro do servidor.** Aqui,
+nenhum robô entra lá — a única via é a esteira automática. Manter o Discourse
+seria uma tarefa recorrente **sua**, no terminal, para sempre.
+
+Nada disso é chute meu contra leitura sua: **é mensurável.** O arquivo
+`MEDIR-A-MEMORIA.md`, ao lado deste, tem o comando que mostra quanta memória
+sobra de verdade hoje. E a pergunta foi para os consultores nominalmente, com
+estes fatos na mesa e a instrução de defender o Discourse se ele for defensável.
+
+## A minha recomendação, hoje
+
+**Família B, dentro de uma célula nova `services/forum`** — motor pronto onde ele
+resolve (fóruns, permissões, anexos, moderação), colado no que já temos (login,
+categorias de pessoa, sininho), com a Família C como plano B se o motor não
+estiver saudável. É o único caminho que entrega um fórum completo **sem** gastar
+memória que não temos, **sem** trazer uma segunda tecnologia para dentro de casa
+e **sem** depender de você entrar no servidor para atualizar.
+
+Não é a versão reduzida de nada: é o caminho que sobra depois de respeitar as
+leis do projeto, e ele comporta o escopo inteiro do "super fórum" — áreas mistas,
+professor com autoridade, "mostre seu trabalho", busca, SEO, celular, três
+idiomas.
+
+**Esta recomendação está explicitamente aberta a ser derrubada pela rodada de
+consultoria.** É para isso que ela existe.
+
+## O que vem depois do veredito
+
+Um fórum é **célula nova**, e célula nova neste projeto exige que você reabra
+nominalmente o congelamento arquitetural — foi assim nas quatro anteriores
+(sugestões, identidade, notificações, admin). Depois da sua palavra, a escada já
+é conhecida e tem 5 degraus: nascimento da célula já com botão de desfazer →
+contrato de API → **um passo seu no servidor** (criar o banco, uma linha só) →
+a configuração de rede sozinha numa entrega própria → o site linkando o fórum.
