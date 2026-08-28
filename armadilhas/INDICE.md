@@ -180,5 +180,7 @@
 | [152](152-o-espelho-recusa-atualizar-e-a-sujeira-e-invisivel.md) | O espelho recusa atualizar, a sujeira é invisível (`status` acusa, `diff` vem vazio) — e a ferramenta de limpar está trancada de propósito — você faz o que a `armadilhas/148` manda — atualizar o clone principal para… | — |
 | [153](153-patch-num-ruleset-devolve-404-e-nada-muda.md) | `PATCH` num ruleset do GitHub devolve 404 e **nada muda** — a leitura seguinte é a única testemunha — você muda uma regra de proteção da `main` pela API e o comando "passa" sem estardalhaço. A conferência seguinte… | — |
 | [154](154-busca-em-portugues-do-postgres-nao-une-plural-em.md) | Busca em português do PostgreSQL: o plural em `-ens` não é unido, e acento importa — a busca do site "não acha" um texto que existe. O aluno escreve `modelagens` e não encontra a mensagem que diz `modelagem`; escreve… | — |
+| [155](155-sabotagem-que-passa-nem-sempre-e-guarda-forte.md) | Sabotagem que "passa" nem sempre é guarda forte — às vezes a sabotagem não aplicou — você faz a prova por mutação (estraga o código de propósito para ver o guarda ficar vermelho), a suíte fica **verde**, e você conclui… | — |
+| [156](156-pr-que-toca-painel-nao-fecha-a-janela-de-merge.md) | PR que toca `painel/` não fecha a janela de merge — separe o PR em vez de tentar de novo — você tenta mergear e entra num laço que não termina. A cada volta o motivo muda, e cada um parece um problema isolado: | — |
 
-**143 entradas.**
+**145 entradas.**

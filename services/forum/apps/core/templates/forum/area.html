@@ -1,0 +1,24 @@
+{% extends "forum/base.html" %}
+{% block titulo %}{{ area.nome }}{% endblock %}
+{% block conteudo %}
+<p class="migalha"><a href="{% url 'home' %}">← todas as áreas</a></p>
+<h1>{{ area.nome }}</h1>
+{% if area.descricao %}<p class="sub">{{ area.descricao }}</p>{% endif %}
+
+{% for topico in topicos %}
+  <div class="cartao">
+    <h2><a href="{% url 'topico' topico.pk %}">{{ topico.titulo }}</a>
+      {% if topico.fixado %}<span class="etiqueta">fixado</span>{% endif %}
+      {% if topico.resposta_aceita_id %}<span class="etiqueta">resolvido</span>{% endif %}
+    </h2>
+    <p class="sub" style="margin:4px 0 0">
+      por {{ topico.autor.nome_exibido|default:"alguém" }} · {{ topico.ultima_atividade_em|date:"d/m/Y H:i" }}
+    </p>
+  </div>
+{% empty %}
+  <div class="vazio">
+    <strong>Nenhuma conversa por aqui ainda.</strong>
+    <p style="margin:8px 0 0">Esta área acabou de nascer.</p>
+  </div>
+{% endfor %}
+{% endblock %}
