@@ -105,15 +105,37 @@ def test_a_porta_vizinha_continua_dando_404_e_a_diferenca_e_deliberada(client, a
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "status",
-    [Matricula.STATUS_ATIVA, Matricula.STATUS_SUSPENSA, Matricula.STATUS_REEMBOLSADA],
-)
+@pytest.mark.parametrize("status", list(Matricula.STATUS_QUE_VALEM))
 def test_todo_status_que_vale_responde_aluno(client, auth, status):
-    """Os três valem, e `reembolsada` é decisão de 24/08/2026, não descuido:
-    quem já foi aluno mantém a voz na Caixa."""
+    """Derivado da constante, e não de uma lista escrita à mão.
+
+    Até 28/08/2026 esta lista era `[ativa, suspensa, reembolsada]`, escrita à
+    mão — e quando `suspensa` deixou de dar acesso
+    (`DECISAO-gestao-de-alunos` §2) o teste reprovou por estar REPETINDO a
+    regra em vez de a consultar. Derivando, ele mede a regra verdadeira, seja
+    qual for ela amanhã.
+
+    `reembolsada` continuar valendo é decisão de 24/08/2026, não descuido:
+    quem já foi aluno mantém a voz na Caixa.
+    """
     linha(status=status)
     assert perguntar(client, auth).json() == {"categoria": "aluno", "na_fila": None}
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status", [Matricula.STATUS_SUSPENSA, Matricula.STATUS_ENCERRADA]
+)
+def test_pausado_e_encerrado_nao_sao_aluno(client, auth, status):
+    """O outro lado da mudança de 28/08, e o que a torna real.
+
+    Sem este teste, tirar `suspensa` de `STATUS_QUE_VALEM` teria como única
+    prova um teste que *não a menciona mais* — e ausência de asserção não é
+    asserção. Aqui está dito com todas as letras: pausado e encerrado NÃO são
+    aluno, e é isso que faz o botão "pausar" valer alguma coisa.
+    """
+    linha(status=status, order_id=f"pedido-{status}")
+    assert perguntar(client, auth).json()["categoria"] != "aluno"
 
 
 @pytest.mark.django_db

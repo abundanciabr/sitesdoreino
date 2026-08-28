@@ -22,6 +22,10 @@ from apps.matriculas.services import (
     OrderIdReservado,
     decidir_na_fila,
     entrar_na_fila,
+    CAMPOS_CORRIGIVEIS,
+    alunos_do_painel,
+    atualizar_matricula,
+    como_o_painel_ve,
     matricular,
     matriculas_que_valem,
     situacao_de,
@@ -134,7 +138,8 @@ _LIST_ENROLLMENTS_OPENAPI = {
                                 "product_id": {"type": "string"},
                                 "status": {
                                     "type": "string",
-                                    "enum": ["ativa", "suspensa", "reembolsada"],
+                                    "enum": ["ativa", "reembolsada"],
+                                    "description": 'SO os status que VALEM como acesso. `suspensa` saiu desta\nlista em 28/08/2026 (DECISAO-gestao-de-alunos §2): passou a\nsignificar "acesso pausado pelo mantenedor" e deixou de dar\nacesso. `reembolsada` continua — e isso e a decisao de\n24/08/2026, "quem ja foi aluno mantem a voz", que foi tomada\nsobre REEMBOLSO e segue intacta.\n',
                                 },
                                 "enrolled_at": {
                                     "type": "string",
@@ -698,3 +703,266 @@ def get_student_standing(request, email: str):
         # bug como "esta pessoa é cadastrada".
         return JsonResponse({"detail": "e-mail inválido"}, status=422)
     return JsonResponse(situacao_de(email), status=200)
+
+
+# [GESTAO] Espelhos EXATOS do contrato congelado — GERADOS a partir dele, e as
+# descricoes longas viram constantes: elas tem quebras de linha significativas, e
+# uma so diferente reprova o freeze com um diff ilegivel.
+_D1 = "DERIVADO da proveniencia da linha, nunca de um campo proprio:\n`liberado` e quem entrou pela fila (o pedido sintetico `pre:`),\n`comprou` e o resto. Sai como palavra e nao como o numero do\npedido — o numero e do provedor de pagamento e nao diz nada a\nquem le a tela.\n"
+
+_D2 = "DERIVADO da proveniencia da linha, nunca de um campo proprio:\n`liberado` e quem entrou pela fila (o pedido sintetico `pre:`),\n`comprou` e o resto. Sai como palavra e nao como o numero do\npedido — o numero e do provedor de pagamento e nao diz nada a\nquem le a tela.\n"
+
+_D3 = "Esta linha esta na FILA — decida por POST /pre-matriculas/{id}/decisao"
+
+DESCRICAO_LISTA_DE_ALUNOS = 'A porta da GESTAO DE ALUNOS (`docs/decisoes/DECISAO-gestao-de-alunos.md`).\nAte 28/08/2026 nao existia, em lugar nenhum, como listar quem e aluno: a\ncelula so sabia responder sobre UM e-mail por vez. Era por isso que os\ncontadores de alunos do painel mostravam traco.\n\nNAO devolve quem esta na fila (`aguardando`/`recusada`) — para esses\nexiste `GET /pre-matriculas`. Duas perguntas diferentes, duas portas.\n\n`site_id` opcional: ausente = todas as escolas, e cada linha diz de qual\nveio. O painel do dono e plataforma-inteira (Lei 9).\n\nPII: devolve o WhatsApp, e continua sendo PORTA DE PAINEL — a mesma\nfamilia de `GET /pre-matriculas`. A lei da fila §5 diz que o numero sai\n"por uma porta so, a do painel administrativo"; estas duas SAO essa\nporta. Segue proibido em `GET /alunos/{email}/matriculas` e em evento.\n'
+
+DESCRICAO_ATUALIZAR = "O formulario de gestao (`DECISAO-gestao-de-alunos.md` §3). Todo campo de\ndado e OPCIONAL: manda-se so o que muda.\n\nO QUE ESTA PORTA NAO DEIXA MUDAR, e a ausencia e a decisao:\n\n- `email` — e a IDENTIDADE da linha. Troca-lo moveria a matricula, em\n  silencio, para outra pessoa, e e por e-mail que todo o resto do\n  sistema pergunta quem e aluno.\n- `site_id`, `order_id`, `product_id` — vem do fato que criou a linha\n  (uma compra, um pedido de entrada). Edita-los seria reescrever o que\n  aconteceu.\n\nNAO decide sobre quem esta na FILA: linha `aguardando`/`recusada` responde\n409 aqui. Para essas existe `POST /pre-matriculas/{id}/decisao` — uma\nporta decide ENTRADA, a outra administra quem ja entrou.\n"
+
+_LIST_ALL_ENROLLMENTS_OPENAPI = {
+    "parameters": [
+        {
+            "name": "site_id",
+            "in": "query",
+            "required": False,
+            "schema": {"type": "string"},
+        },
+        {
+            "name": "status",
+            "in": "query",
+            "required": False,
+            "description": "Ausente = todos os estados de gestao (nao os da " "fila).",
+            "schema": {
+                "type": "string",
+                "enum": ["ativa", "suspensa", "encerrada", "reembolsada"],
+            },
+        },
+    ],
+    "responses": {
+        "200": {
+            "description": "Os alunos, do mais recente para o mais " "antigo",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "required": [
+                                "id",
+                                "site_id",
+                                "email",
+                                "nome_completo",
+                                "whatsapp",
+                                "turma",
+                                "comprou_em",
+                                "status",
+                                "origem",
+                                "criada_em",
+                            ],
+                            "properties": {
+                                "id": {"type": "string"},
+                                "site_id": {"type": "string"},
+                                "email": {"type": "string", "format": "email"},
+                                "nome_completo": {"type": "string"},
+                                "whatsapp": {"type": "string"},
+                                "turma": {"type": ["string", "null"]},
+                                "comprou_em": {
+                                    "type": ["string", "null"],
+                                    "format": "date",
+                                },
+                                "status": {
+                                    "type": "string",
+                                    "enum": [
+                                        "ativa",
+                                        "suspensa",
+                                        "encerrada",
+                                        "reembolsada",
+                                    ],
+                                },
+                                "origem": {
+                                    "type": "string",
+                                    "enum": ["comprou", "liberado"],
+                                    "description": _D1,
+                                },
+                                "criada_em": {"type": "string", "format": "date-time"},
+                            },
+                        },
+                    }
+                }
+            },
+        }
+    },
+}
+
+_UPDATE_ENROLLMENT_OPENAPI = {
+    "parameters": [
+        {"name": "id", "in": "path", "required": True, "schema": {"type": "string"}}
+    ],
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["decidido_por"],
+                    "properties": {
+                        "decidido_por": {
+                            "type": "string",
+                            "description": "Id "
+                            "de "
+                            "plataforma "
+                            "de "
+                            "quem "
+                            "mudou "
+                            "— "
+                            "a "
+                            "auditoria "
+                            "do "
+                            "lado "
+                            "de "
+                            "ca.",
+                        },
+                        "status": {
+                            "type": "string",
+                            "enum": ["ativa", "suspensa", "encerrada", "reembolsada"],
+                        },
+                        "nome_completo": {"type": "string", "minLength": 1},
+                        "whatsapp": {"type": "string"},
+                        "turma": {"type": ["string", "null"]},
+                        "comprou_em": {"type": ["string", "null"], "format": "date"},
+                    },
+                }
+            }
+        },
+    },
+    "responses": {
+        "200": {
+            "description": "Como a matricula ficou",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "id",
+                            "site_id",
+                            "email",
+                            "nome_completo",
+                            "whatsapp",
+                            "turma",
+                            "comprou_em",
+                            "status",
+                            "origem",
+                            "criada_em",
+                        ],
+                        "properties": {
+                            "id": {"type": "string"},
+                            "site_id": {"type": "string"},
+                            "email": {"type": "string", "format": "email"},
+                            "nome_completo": {"type": "string"},
+                            "whatsapp": {"type": "string"},
+                            "turma": {"type": ["string", "null"]},
+                            "comprou_em": {
+                                "type": ["string", "null"],
+                                "format": "date",
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "ativa",
+                                    "suspensa",
+                                    "encerrada",
+                                    "reembolsada",
+                                ],
+                            },
+                            "origem": {
+                                "type": "string",
+                                "enum": ["comprou", "liberado"],
+                                "description": _D2,
+                            },
+                            "criada_em": {"type": "string", "format": "date-time"},
+                        },
+                    }
+                }
+            },
+        },
+        "404": {"description": "Nao ha matricula com este id"},
+        "409": {"description": _D3},
+        "422": {"description": "Payload invalido, ou nada para mudar"},
+    },
+}
+
+
+@router.get(
+    "/matriculas",
+    operation_id="listAllEnrollments",
+    summary="Quem ja e aluno — a lista, para o painel administrativo",
+    description=DESCRICAO_LISTA_DE_ALUNOS,
+    openapi_extra=_LIST_ALL_ENROLLMENTS_OPENAPI,
+)
+def list_all_enrollments(request, site_id: str = None, status: str = None):
+    """[GESTAO] A lista do painel. Leitura pura; devolve PII (é porta de painel)."""
+    if status is not None and status not in Matricula.STATUS_DE_GESTAO:
+        # Estado fora do vocabulário de gestão cai no "todos", em vez de virar
+        # erro ou lista vazia — e a direção importa, como no filtro da fila:
+        # esconder alunos faria o painel dizer "não há ninguém" para quem tem
+        # gente. Mostrar demais para quem já está autenticado não custa nada.
+        status = None
+    corpo = [
+        como_o_painel_ve(m) for m in alunos_do_painel(site_id=site_id, status=status)
+    ]
+    return JsonResponse(corpo, safe=False, status=200)
+
+
+@router.patch(
+    "/matriculas/{id}",
+    operation_id="updateEnrollment",
+    summary="Mudar o estado de um aluno, ou corrigir os dados dele",
+    description=DESCRICAO_ATUALIZAR,
+    openapi_extra=_UPDATE_ENROLLMENT_OPENAPI,
+)
+def update_enrollment(request, id: str):
+    """[GESTAO] O formulário do painel. Ver `atualizar_matricula`."""
+    payload, erro = _payload_valido(
+        request.body,
+        obrigatorias={"decidido_por"},
+        opcionais=set(CAMPOS_CORRIGIVEIS) | {"status"},
+    )
+    if erro is not None:
+        return erro
+
+    novo_status = payload.get("status")
+    if novo_status is not None and novo_status not in Matricula.STATUS_DE_GESTAO:
+        # Lista de PERMISSÃO: estado da FILA não entra por aqui (a porta de lá
+        # confere "já decidida" e grava motivo), e estado inventado não entra
+        # de jeito nenhum.
+        return JsonResponse({"detail": "status fora do vocabulário"}, status=422)
+
+    comprou_em = payload.get("comprou_em")
+    if comprou_em:
+        try:
+            payload["comprou_em"] = date.fromisoformat(str(comprou_em))
+        except ValueError:
+            return JsonResponse({"detail": "comprou_em inválido"}, status=422)
+
+    nome = payload.get("nome_completo")
+    if nome is not None and not str(nome).strip():
+        # Nome em branco apagaria a única forma de o mantenedor reconhecer a
+        # pessoa na lista. O contrato já diz `minLength: 1`; aqui é o mecanismo.
+        return JsonResponse(
+            {"detail": "nome_completo não pode ficar vazio"}, status=422
+        )
+
+    linha, resultado = atualizar_matricula(
+        id_da_linha=id,
+        mudancas=payload,
+        decidido_por=str(payload["decidido_por"]),
+    )
+    if resultado == "nao-encontrada":
+        raise HttpError(404, "matrícula inexistente")
+    if resultado == "na-fila":
+        raise HttpError(409, "esta linha está na fila — decida por /pre-matriculas")
+    if resultado == "nada-a-mudar":
+        return JsonResponse({"detail": "nada para mudar"}, status=422)
+    return JsonResponse(como_o_painel_ve(linha), status=200)
