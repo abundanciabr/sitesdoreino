@@ -154,33 +154,107 @@ jobs:
           docker build -t "$IMG:${{ github.sha }}" -t "$IMG:main" "services/${{ matrix.celula }}"
           docker push "$IMG:${{ github.sha }}"
           docker push "$IMG:main"
-      - name: Ativar na VPS (pull + up da célula E dos processos auxiliares dela)
+      # =====================================================================
+      # ATIVAR NA VPS — em até três tentativas, e por que isso não é preguiça.
+      #
+      # A VPS recusou a conexão do runner CINCO vezes em três dias (registros
+      # 20260826-030, 20260826-042, 20260827-001, 20260828-005; diagnóstico em
+      # `armadilhas/127`). O padrão é intermitente: a porta 22 responde na hora
+      # quando medida do PC do mantenedor, e o site fica em 200 o tempo todo —
+      # o engasgo é entre o runner do GitHub e a VPS.
+      #
+      # O QUE ISSO CUSTAVA, e é pior do que o tempo perdido: com a entrega
+      # vermelha, o site continua no ar servindo a imagem ANTIGA. Quem não
+      # estivesse olhando naquele minuto acharia, no dia seguinte, que a versão
+      # nova estava em produção — com todos os sinais parecendo normais. Só um
+      # agente atento pedindo `gh run rerun` salvava, e depender de alguém estar
+      # olhando é exatamente o que esta casa chama de garantia sem mecanismo.
+      #
+      # E HÁ UM AGRAVANTE MEDIDO EM 28/08/2026: quando o rerun manual passa, o
+      # GitHub SOBRESCREVE a conclusão anterior. `gh run list --limit 40`
+      # devolvia ZERO falhas — o histórico automático apagava a evidência do
+      # próprio padrão. Com as tentativas dentro do MESMO run, o log preserva
+      # cada uma: o run fecha verde e ainda assim mostra, no passo, que a
+      # primeira tentativa falhou. O padrão para de ser invisível.
+      #
+      # REPETIR É SEGURO porque `infra/deploy-celula-na-vps.sh` é idempotente
+      # por construção: `pull` e `up -d` sobre o estado já correto não fazem
+      # nada. Se ele deixasse de ser, este retry viraria uma arma.
+      #
+      # Só a ÚLTIMA tentativa decide o veredito. As duas primeiras usam
+      # `continue-on-error`, que registra a falha sem derrubar o job.
+      # =====================================================================
+      - name: Ativar na VPS (tentativa 1 de 3)
+        id: subir1
+        continue-on-error: true
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -eu
-            cd /opt/plataforma
-            CELULA='${{ matrix.celula }}'
-            # A célula não é mais UM container: os consumers de evento e o worker
-            # Huey vivem em serviços "<celula>-<papel>" (infra/docker-compose.yml).
-            # Subir só "<celula>" deixaria o auxiliar rodando a IMAGEM ANTIGA, em
-            # silêncio — duas versões do mesmo código no ar, sem alarme nenhum.
-            # A lista sai do PRÓPRIO compose, não de uma lista fixa aqui: a célula
-            # que ganhar um auxiliar amanhã já entra sozinha, sem editar este arquivo.
-            SERVICOS=$(docker compose config --services | grep -E "^${CELULA}(-|\$)" || true)
-            if [ -z "$SERVICOS" ]; then
-              echo "ERRO: '$CELULA' não tem serviço algum em /opt/plataforma/docker-compose.yml."
-              echo "Abortado de propósito: 'up -d' sem argumento subiria a plataforma inteira."
-              exit 1
-            fi
-            echo "Serviços desta célula: $SERVICOS"
-            docker compose pull $SERVICOS
-            # --wait reprova o deploy se algum container não ficar de pé (ou não
-            # ficar HEALTHY — os healthchecks do compose, entregues pelo PR #45,
-            # são a sonda pós-deploy F5 do PROJETO-PORTAO-DEPLOY). Sem ele, 'ps'
-            # devolve sucesso com container em crash-loop (ARMADILHAS §3.13).
-            docker compose up -d --wait --wait-timeout 180 $SERVICOS
-            docker compose ps $SERVICOS
+          envs: CELULA
+          script_file: infra/deploy-celula-na-vps.sh
+        env:
+          CELULA: ${{ matrix.celula }}
+
+      # A espera entre tentativas é conselho medido, não superstição: em
+      # 26/08/2026 duas tentativas emendadas falharam e a terceira, depois de
+      # ~1 minuto, passou (`armadilhas/127`).
+      - name: Esperar antes de tentar de novo
+        if: steps.subir1.outcome == 'failure'
+        run: |
+          echo "A VPS não atendeu na 1ª tentativa. Esperando 45s — ver armadilhas/127."
+          sleep 45
+
+      - name: Ativar na VPS (tentativa 2 de 3)
+        id: subir2
+        if: steps.subir1.outcome == 'failure'
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: CELULA
+          script_file: infra/deploy-celula-na-vps.sh
+        env:
+          CELULA: ${{ matrix.celula }}
+
+      - name: Esperar antes da última tentativa
+        if: steps.subir1.outcome == 'failure' && steps.subir2.outcome == 'failure'
+        run: |
+          echo "A VPS não atendeu na 2ª tentativa. Esperando 60s antes da última."
+          sleep 60
+
+      # A que vale. Sem `continue-on-error`: se esta falhar, o deploy é vermelho
+      # — e aí não é mais blip, é para investigar (armadilhas/017 é a suspeita).
+      - name: Ativar na VPS (tentativa 3 de 3 — esta decide)
+        if: steps.subir1.outcome == 'failure' && steps.subir2.outcome == 'failure'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: CELULA
+          script_file: infra/deploy-celula-na-vps.sh
+        env:
+          CELULA: ${{ matrix.celula }}
+
+      # O log tem de DIZER quantas tentativas foram precisas. Sem esta linha, um
+      # run verde na segunda tentativa é indistinguível de um verde na primeira,
+      # e o padrão volta a ficar invisível — que é metade do problema que este
+      # bloco existe para resolver.
+      - name: Quantas tentativas foram precisas
+        if: always() && steps.subir1.outcome != ''
+        run: |
+          if [ "${{ steps.subir1.outcome }}" = "success" ]; then
+            echo "✅ A VPS atendeu de primeira."
+          elif [ "${{ steps.subir2.outcome }}" = "success" ]; then
+            echo "⚠️ A VPS RECUSOU a 1ª tentativa e atendeu na 2ª."
+            echo "   Isto é a armadilha 127. O deploy está verde e correto —"
+            echo "   mas a ocorrência conta: registre em painel/registros/."
+          else
+            echo "⚠️ A VPS recusou as duas primeiras tentativas."
+            echo "   Se a 3ª passou, o deploy está correto. Registre a ocorrência."
+            echo "   Se a 3ª também falhou, NÃO é mais blip: veja armadilhas/017."
+          fi
