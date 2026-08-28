@@ -49,6 +49,18 @@
         aprovação.
       </div>
     </a>
+    {% comment %}
+    A terceira porta (28/08/2026). Ela entra aqui, e não como link solto noutro
+    lugar, porque foi essa a decisão: uma porta só para tudo que é gestão.
+    Lei: docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'caixa' %}">
+      <div class="rotulo">Abrir a Caixa de Sugestões &rarr;</div>
+      <div class="nota">
+        O que os alunos pediram, e o que está esperando por você para andar —
+        uma decisão por vez.
+      </div>
+    </a>
   </div>
 
   {% comment %}

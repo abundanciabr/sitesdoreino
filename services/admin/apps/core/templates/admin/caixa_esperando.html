@@ -1,0 +1,114 @@
+{% extends "admin/base.html" %}
+{% comment %}
+QUEM ESTÁ ESPERANDO — aba 3 da gestão da Caixa dentro do Admin.
+
+A unidade desta tela é a PESSOA, não a tarefa: ela mede o silêncio — quantos
+dias alguém que escreveu, votou ou comentou passou sem ouvir nada.
+
+Os três números do topo vêm PRONTOS da Caixa, e é a única coisa nesta tela que
+não é calculada aqui: eles contam pessoas DISTINTAS entre várias ideias, e deste
+lado só existe a contagem por ideia — somá-las contaria duas vezes quem está
+atrás de duas.
+
+Por isso "de onde vem a espera" conta IDEIAS, e o rótulo diz isso: contar pessoas
+por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
+{% endcomment %}
+{% block titulo %}Quem está esperando · Caixa de Sugestões{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro largo">
+  <a class="volta" href="{% url 'visao_geral' %}">&larr; Visão geral</a>
+
+  {% if nao_respondeu %}
+    <h1>Quem está esperando</h1>
+    <p class="aviso" style="margin-top:16px">Não consegui perguntar à parte que guarda as ideias. Nenhum número aqui seria confiável agora, então não mostro nenhum.</p>
+  {% else %}
+    {% include "admin/_caixa_abas.html" %}
+
+    {% if gente_esperando %}
+      <div class="hero">
+        <div>
+          <div class="hero-numero">{{ gente_esperando }}</div>
+          <h1 style="font-size:18px;margin:6px 0 0">aluno{{ gente_esperando|pluralize:"s" }} esperando notícia de alguma ideia</h1>
+        </div>
+        <p class="hero-nota">
+          Cada um escreveu, votou ou comentou — e desde então não recebeu nenhum aviso.
+          {% if silencio_medio %}Em média, o silêncio dura <b>{{ silencio_medio }} dia{{ silencio_medio|pluralize:"s" }}</b>.{% else %}Todo mundo ouviu alguma coisa hoje.{% endif %}
+        </p>
+      </div>
+
+      {% if em_silencio_demais %}
+        <div class="aviso calado">
+          <b>{{ em_silencio_demais }} pessoa{{ em_silencio_demais|pluralize:"s" }} não ouve nada há mais de {{ limiar }} dias.</b>
+          Abaixo de um mês é fila; acima, a pessoa aprende que sugerir não adianta — e é justamente
+          isso que a Caixa existe para não ensinar.
+        </div>
+      {% endif %}
+    {% else %}
+      <h1>Ninguém está esperando.</h1>
+      <p class="subtitulo">Toda ideia em aberto já recebeu notícia, ou não há ideia em aberto.</p>
+    {% endif %}
+
+    <div class="bancada">
+      <div>
+        {% for i in ideias %}
+          <div class="espera{% if i.parada_ha > limiar %} calada{% endif %}">
+            <div class="espera-gente">
+              <span class="barra-gente" style="width:{% widthratio i.pessoas maior_plateia 100 %}%"></span>
+              <b>{{ i.pessoas }}</b>
+              <span class="nota">pessoa{{ i.pessoas|pluralize:"s" }}</span>
+            </div>
+            <div class="espera-ideia">
+              <b>{{ i.titulo }}</b>
+              <p class="nota">
+                {% if not i.ja_ouviram %}
+                  ainda não ouviram nada — a ideia chegou faz {{ i.parada_ha }} dia{{ i.parada_ha|pluralize:"s" }}
+                {% else %}
+                  última notícia há {{ i.parada_ha }} dia{{ i.parada_ha|pluralize:"s" }}
+                {% endif %}
+              </p>
+            </div>
+            <div class="espera-relogio">
+              <b>{{ i.parada_ha }}</b>
+              <span class="nota">{% if i.parada_ha > limiar %}dias em silêncio{% else %}dias{% endif %}</span>
+            </div>
+          </div>
+        {% empty %}
+          <p class="aviso">Nenhuma ideia em aberto — tudo que os alunos pediram já recebeu uma resposta.</p>
+        {% endfor %}
+      </div>
+
+      <aside class="lado">
+        {% if respondidas %}
+          <div class="cartao">
+            <div class="lado-titulo">Respondidas por último</div>
+            {% for i in respondidas %}
+              <div class="lado-item">
+                <b>{{ i.titulo }}</b>
+                <p class="nota">{{ i.pessoas }} pessoa{{ i.pessoas|pluralize:"s" }} avisada{{ i.pessoas|pluralize:"s" }}</p>
+              </div>
+            {% endfor %}
+            <p class="lado-rodape">Um “não vamos fazer” explicado conta aqui igual a uma entrega: os dois são resposta.</p>
+          </div>
+        {% endif %}
+
+        <div class="cartao">
+          <div class="lado-titulo">De onde vem a espera</div>
+          {% for f in filas %}
+            <div class="fila"><span class="marca m-{{ f.chave }}"></span><span class="fila-rotulo">{{ f.rotulo }}</span><b>{{ f.ideias }}</b></div>
+          {% endfor %}
+          <p class="lado-rodape">
+            Estes números contam <b>ideias</b>, não pessoas — contar pessoas por motivo exigiria deduplicar
+            quem está atrás de duas, e só a Caixa consegue fazer essa conta. É por isso que os três números
+            lá de cima vêm prontos de lá.
+          </p>
+        </div>
+      </aside>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

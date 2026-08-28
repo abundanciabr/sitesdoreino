@@ -1,0 +1,81 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A TRAVESSIA — aba 2 da gestão da Caixa dentro do Admin.
+
+Seis colunas na ordem em que uma ideia as atravessa, e embaixo quem saiu do
+trilho, com o motivo que foi entregue a quem esperava.
+
+Duas honestidades ditas na tela: a média é do que está parado AGORA (não do que
+já passou por ali), e sem nada parado a tela NÃO aponta gargalo nenhum — alarme
+que toca sempre não é alarme.
+{% endcomment %}
+{% block titulo %}A travessia · Caixa de Sugestões{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro largo">
+  <a class="volta" href="{% url 'visao_geral' %}">&larr; Visão geral</a>
+
+  {% if nao_respondeu %}
+    <h1>A travessia</h1>
+    <p class="aviso" style="margin-top:16px">Não consegui perguntar à parte que guarda as ideias. A página abre, mas não mostro número nenhum — número inventado é pior que número ausente.</p>
+  {% else %}
+    {% include "admin/_caixa_abas.html" %}
+
+    <h1>A travessia</h1>
+    <p class="subtitulo">
+      {{ no_trilho }} ideia{{ no_trilho|pluralize:"s" }} no trilho{% if saidas %}, {{ saidas|length }} fora dele{% endif %}.
+      Da esquerda para a direita é o caminho que uma ideia faz, do pedido do aluno até o ar.
+    </p>
+
+    <div class="trilha">
+      {% for coluna in colunas %}
+        <div class="coluna col-{{ coluna.chave }}{% if gargalo and coluna.chave == gargalo.chave %} entupida{% endif %}">
+          <div class="coluna-topo">
+            <span class="coluna-nome">{{ coluna.titulo }}</span>
+            <span class="coluna-total">{{ coluna.total }}</span>
+          </div>
+          <p class="coluna-tempo">
+            {% if coluna.parada_media is None %}vazia
+            {% elif coluna.parada_media == 0 %}entraram hoje
+            {% else %}parada{{ coluna.total|pluralize:"s" }} há {{ coluna.parada_media }} dia{{ coluna.parada_media|pluralize:"s" }}, em média{% endif %}
+          </p>
+          {% for i in coluna.ideias %}
+            <div class="peca"><b>{{ i.titulo }}</b><p class="nota">{{ i.votos }} votos · {{ i.categoria }}</p></div>
+          {% empty %}
+            <p class="nota" style="padding:8px 2px">Ninguém aqui.</p>
+          {% endfor %}
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if gargalo %}
+      <div class="aviso entupimento">
+        <b>Onde está entupido hoje.</b>
+        A coluna <b>{{ gargalo.titulo }}</b> é a que segura mais tempo: o que está lá está parado há
+        {{ gargalo.parada_media }} dia{{ gargalo.parada_media|pluralize:"s" }} em média{% if gargalo.mais_velha %}, e a mais antiga há {{ gargalo.mais_velha }}{% endif %}.
+        {% if gargalo.chave == 'assinar' %}Nada nessa coluna anda sem uma assinatura — é o único degrau que nenhum robô passa por ninguém.{% else %}{{ gargalo.explicacao }}{% endif %}
+      </div>
+    {% endif %}
+
+    <h2 style="font-size:17px;margin:28px 0 4px">Fora do trilho</h2>
+    <p class="subtitulo">Ideias que não seguem — cada uma com o motivo que foi entregue a quem estava esperando.</p>
+    {% for i in saidas %}
+      <div class="cartao" style="margin-bottom:10px">
+        <b>{% if i.status == 'nao_planejado' %}<span class="selo recusada">recusada</span>{% else %}<span class="selo">juntada a outra</span>{% endif %} {{ i.titulo }}</b>
+        <p class="nota">{{ i.votos }} votos · {{ i.categoria }}</p>
+        {% if i.motivo_da_saida %}
+          <p class="citacao">{{ i.motivo_da_saida }}</p>
+        {% else %}
+          <p class="ausente">Sem motivo escrito — quem estava esperando ficou sem explicação.</p>
+        {% endif %}
+      </div>
+    {% empty %}
+      <p class="aviso">Nenhuma ideia saiu do trilho ainda.</p>
+    {% endfor %}
+  {% endif %}
+</div>
+{% endblock %}

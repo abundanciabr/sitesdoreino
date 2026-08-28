@@ -398,3 +398,133 @@ class AlunosClient:
             return self.RECUSADO, "esta pessoa ainda está na fila — decida por lá"
         logger.error("apagar: a alunos respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
+
+
+class CaixaClient:
+    """`contracts/sugestoes.openapi.yaml` — a gestão das ideias dos alunos.
+
+    Lei: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`. A gestão
+    mudou de casa para `/admin/caixa/` em 28/08/2026 (*"tudo será em /admin"*), e
+    pela Lei 3 esta célula não lê o banco da Caixa: ela pergunta.
+
+    **Fail-OPEN na leitura, como a `AlunosClient` — e pelo mesmo motivo.** A
+    Caixa fora do ar deixa a tela com um aviso honesto e a página abre igual;
+    `None` é *"não consegui perguntar"*, nunca lista vazia, que se leria como
+    *"não há ideia nenhuma"*.
+
+    **Na ESCRITA é diferente, e a diferença é deliberada:** ali `None` seria
+    mentira perigosa — a pessoa clicou em algo que muda a vida de um aluno. As
+    escritas devolvem o par `(desfecho, recado)` como a `AlunosClient.decidir`,
+    para a tela poder dizer *o que* aconteceu.
+    """
+
+    TIMEOUT = 2.0
+
+    OK = "ok"
+    RECUSADO = "recusado"
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        """Endereço e token do par, ou `None` — lido NO PONTO DE USO
+        (`armadilhas/097`). Enquanto o par não estiver no env, a área abre e só
+        a tela da Caixa diz que ainda não consegue perguntar."""
+        base = (os.environ.get("SUGESTOES_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("SUGESTOES_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    # -- leitura: fail-OPEN --------------------------------------------------
+
+    def ideias(self, por_email: str = "") -> "dict | None":
+        """O quadro inteiro com os FATOS de cada ideia, ou `None`.
+
+        `por_email` não filtra nada: ele responde uma pergunta só — *esta pessoa
+        pode assinar?* — e a resposta vem no campo `pode_assinar`. Quem recusa de
+        verdade é a Caixa, na escrita; isto serve para a tela não desenhar um
+        botão que já se sabe que vai ser recusado.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.info(
+                "caixa: SUGESTOES_API_URL/SUGESTOES_API_TOKEN ainda não estão no "
+                "env desta célula — a tela vai dizer que não consegue perguntar."
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/gestao/ideias",
+                params={"por_email": por_email} if por_email else {},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("caixa: não deu para perguntar: %s", erro)
+            return None
+        if r.status_code != 200:
+            logger.error("caixa: a Caixa respondeu HTTP %s", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # 200 com corpo que não é JSON. *Status 2xx não é sucesso*
+            # (RETROSPECTIVA §4) — e `JSONDecodeError` não é `httpx.HTTPError`,
+            # então sem este `except` viraria 500 na cara de quem abriu a tela.
+            logger.error("caixa: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, dict) or not isinstance(corpo.get("ideias"), list):
+            logger.error("caixa: resposta com forma inesperada")
+            return None
+        return corpo
+
+    # -- escrita: diz o que aconteceu ----------------------------------------
+
+    def _escrever(self, caminho: str, corpo: dict) -> "tuple[str, str]":
+        """Uma escrita, com o tratamento que as três compartilham.
+
+        As três diferem no caminho e no corpo; o que fazer com cada código de
+        resposta é idêntico, e duas cópias divergiriam no primeiro caso de borda
+        corrigido de um lado só.
+        """
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com a Caixa não está ligado"
+        base, token = config
+        try:
+            r = http().post(
+                f"{base}{caminho}",
+                json=corpo,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("caixa: não deu para escrever em %s: %s", caminho, erro)
+            return self.NAO_RESPONDEU, "a Caixa não respondeu"
+
+        if r.status_code == 200:
+            return self.OK, ""
+        if r.status_code in (403, 422):
+            # A Caixa recusou com uma frase que ENSINA o caminho. Repassá-la
+            # inteira é o ponto: reescrevê-la aqui daria duas redações para a
+            # mesma recusa, e a que ninguém testa é a que fica errada.
+            try:
+                return self.RECUSADO, str(r.json().get("erro", "")).strip()
+            except ValueError:
+                return self.RECUSADO, "a Caixa recusou, sem dizer o motivo"
+        logger.error("caixa: escrita em %s respondeu HTTP %s", caminho, r.status_code)
+        return self.NAO_RESPONDEU, "a Caixa respondeu com erro"
+
+    def mudar_status(self, ideia_id: int, *, status: str, nota: str, quem: dict):
+        return self._escrever(
+            f"/gestao/ideias/{ideia_id}/status",
+            {"status": status, "nota": nota, **quem},
+        )
+
+    def avaliar(self, ideia_id: int, *, campos: dict, quem: dict):
+        return self._escrever(
+            f"/gestao/ideias/{ideia_id}/avaliacao", {**campos, **quem}
+        )
+
+    def registrar_changespec(self, ideia_id: int, *, campos: dict, quem: dict):
+        return self._escrever(
+            f"/gestao/ideias/{ideia_id}/changespec", {**campos, **quem}
+        )
