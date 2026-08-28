@@ -132,6 +132,21 @@
   #tela-erro b{font-size:21px;}
   #tela-erro pre{white-space:pre-wrap; font-size:13px; background:#00000040; padding:10px 12px; border-radius:8px;}
 
+  /* posso confiar nisto? · quem está mexendo em quê */
+  .confianca{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+    padding:14px 18px; margin:0 0 14px; font-size:14px; line-height:1.65;}
+  .conf-placar{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:15.5px;
+    padding-bottom:8px; margin-bottom:6px; border-bottom:1px solid var(--line-soft);}
+  .conf-placar.ok{color:var(--green);} .conf-placar.mal{color:var(--gold);}
+  .conf-rot{font-family:'IBM Plex Mono',monospace; font-size:10.5px; letter-spacing:.09em;
+    text-transform:uppercase; color:var(--text-3); display:block; margin:10px 0 5px;}
+  .conf-item{color:var(--text-2); padding:2px 0;}
+  .conf-nota{color:var(--text-3); font-size:13px; line-height:1.6; margin-top:6px;}
+  .conf-lista{margin-top:4px;} .conf-cal{margin-top:4px;}
+  .quem-area{font-family:'IBM Plex Mono',monospace; font-size:11px; color:var(--gold);
+    border:1px solid var(--gold-dim); background:var(--gold-dim); border-radius:20px;
+    padding:2px 9px; margin-right:8px;}
+
   /* a ficha de decisão — o que um pedido precisa dizer para ser decidível */
   .decisao{margin-top:10px; border-top:1px solid var(--line-soft); padding-top:8px;}
   .decisao-linha{display:flex; gap:10px; flex-wrap:wrap; padding:3px 0; font-size:13.5px; line-height:1.55;}
@@ -199,6 +214,8 @@
   </section>
   <section class="vista" id="vista-operacao">
     <p class="sub">O detalhe para quando algo parece estranho: as medições feitas <b>agora, do seu navegador</b>, e os fatos com evidência — estes últimos por mês, carregados quando você pedir.</p>
+    <div class="confianca" id="confianca"></div>
+    <div class="confianca" id="quem-mexe"></div>
     <div class="medicoes" id="medicoes"></div>
     <div class="diag-servidor cego" id="diag-servidor">medindo…</div>
     <div id="op-registros"></div>
@@ -649,6 +666,83 @@
   }
 
   // ---------------------------------------------------------------------------
+  // POSSO CONFIAR NISTO? — a quinta pergunta, e a melhor da consultoria inteira.
+  //
+  // As quatro perguntas da capa olham para o PROJETO (preciso decidir? algo
+  // quebrou? o que mudou? como estamos?). O GPT acrescentou uma que olha para o
+  // PAINEL, e o veredito das consultorias a chamou de "a melhor da consultoria
+  // inteira": *posso confiar no que estou lendo aqui?*
+  //
+  // Todas as outras vistas medem o projeto. Nenhuma media a confiabilidade da
+  // fonte. E o instrumento continua funcionando mesmo se todo o resto do painel
+  // estiver mentindo — porque ele conta a própria falta de prova.
+  //
+  // Estas contas são feitas sobre o livro INTEIRO, no build, e viajam prontas:
+  // calculá-las no navegador sobre o resumo daria um número errado com cara de
+  // certo, já que o resumo é um recorte. São clock-independentes por
+  // construção — presença de evidência não muda com a hora.
+  // ---------------------------------------------------------------------------
+
+  // Os tipos que AFIRMAM alguma coisa sobre o mundo, e portanto podem ser
+  // cobrados por prova. Uma `nota` ou uma `decisao` não afirmam que algo
+  // funciona; uma `entrega` e uma `medicao`, sim.
+  var TIPOS_QUE_AFIRMAM = ["entrega", "medicao"];
+
+  function confianca(registros) {
+    var afirmacoes = registros.filter(function (r) {
+      return TIPOS_QUE_AFIRMAM.indexOf(r.tipo) !== -1;
+    });
+    var comProva = afirmacoes.filter(function (r) { return r.evidencia && r.verificado_em; });
+
+    // O PLACAR DE CALIBRAÇÃO (joia do Opus, que ele chamou de "a peça que
+    // faltava"): todas as 13 ideias da reforma medem o PROJETO; nenhuma media a
+    // confiabilidade de quem reporta. Aqui a conta é promessa × entrega — para
+    // cada rumo que foi cumprido, quantos dias entre prometer e cumprir.
+    //
+    // O cuidado que ele mesmo registrou: pontue CALIBRAÇÃO, nunca ambição.
+    // Premiar rumo cumprido rápido ensinaria a prometer menos. Por isso o que
+    // sai daqui é a contagem e a mediana — nunca uma nota.
+    var resp = respondidos(registros);
+    var cumpridos = [];
+    registros.forEach(function (r) {
+      if (r.tipo !== "rumo") return;
+      var fecha = resp[r.arquivo];
+      if (!fecha) return;
+      cumpridos.push({
+        rumo: r.arquivo,
+        titulo: r.titulo,
+        prometido: r.quando,
+        cumprido: fecha.quando,
+        dias: Math.max(0, diasEntre(r.quando, paraData(fecha.quando)))
+      });
+    });
+    cumpridos.sort(function (a, b) { return a.dias - b.dias; });
+    var mediana = cumpridos.length
+      ? cumpridos[Math.floor((cumpridos.length - 1) / 2)].dias
+      : null;
+
+    var abertos = registros.filter(function (r) {
+      return r.tipo === "rumo" && !resp[r.arquivo];
+    }).length;
+
+    return {
+      afirmacoes: afirmacoes.length,
+      comProvaConferida: comProva.length,
+      // Nomes, e não só a contagem: "6 de 24 sem prova" manda procurar, e não
+      // adianta se não disser QUAIS. Limitado, porque a lista é para agir.
+      semProva: afirmacoes.filter(function (r) { return !(r.evidencia && r.verificado_em); })
+        .slice(0, 8).map(function (r) { return { arquivo: r.arquivo, titulo: r.titulo }; }),
+      rumosCumpridos: cumpridos.length,
+      rumosAbertos: abertos,
+      medianaDeDias: mediana,
+      // O mais devagar e o mais rápido, para o dono ver a DISPERSÃO em vez de
+      // uma média que esconde tudo.
+      maisRapido: cumpridos.length ? cumpridos[0] : null,
+      maisDevagar: cumpridos.length ? cumpridos[cumpridos.length - 1] : null
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // O RESUMO — o que a página precisa para desenhar a capa e o mapa, e nada mais.
   //
   // POR QUE ISTO EXISTE: até 27/08/2026 abrir o painel custava o livro INTEIRO —
@@ -764,6 +858,9 @@
     return {
       erro: null,
       respondidos: respondidosIds,
+      // Contado sobre o livro INTEIRO, aqui, e não no navegador: lá só existe o
+      // recorte, e "6 de 24" viraria um número errado com cara de certo.
+      confianca: confianca(registros),
       registros: selecionados,
       // O registro mais recente do livro TODO — é dele que sai "o livro está
       // parado há N dias", e ele precisa ser o do livro, não o do resumo.
@@ -780,6 +877,7 @@
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,
     montarResumo: montarResumo,
+    confianca: confianca,
     validarRegistros: validarRegistros,
     caixaDeEntrada: caixaDeEntrada,
     problemasAbertos: problemasAbertos,
@@ -1422,6 +1520,98 @@ try {
     function () { return true; },
     "📚 Todos os registros");
 
+
+  // ---------- posso confiar nisto? (a quinta pergunta) ----------
+  // As quatro perguntas da capa olham para o PROJETO. Esta olha para o PAINEL —
+  // e é a única que continua funcionando mesmo se todo o resto estiver mentindo,
+  // porque ela conta a própria falta de prova.
+  (function medirConfianca() {
+    var alvo = document.getElementById("confianca");
+    var c = PAINEL.resumo.confianca;
+    if (!alvo || !c) return;
+
+    var semProva = c.afirmacoes - c.comProvaConferida;
+    var placar = el("div", "conf-placar " + (semProva ? "mal" : "ok"));
+    placar.textContent = semProva
+      ? "🟠 " + c.comProvaConferida + " de " + c.afirmacoes +
+        " afirmações deste painel têm prova conferida. " + semProva + " não têm."
+      : "🟢 Todas as " + c.afirmacoes + " afirmações deste painel têm prova conferida.";
+    alvo.appendChild(placar);
+
+    var explica = el("div", "conf-nota",
+      "Afirmação aqui é um registro que diz que algo foi feito ou medido. " +
+      "Ter prova conferida significa que existe um link ou um comando " +
+      "apontado, e uma data em que alguém foi olhar. Sem isso o painel mostra " +
+      "“não comprovado” — nunca verde.");
+    alvo.appendChild(explica);
+
+    if (c.semProva && c.semProva.length) {
+      var lista = el("div", "conf-lista");
+      lista.appendChild(el("div", "conf-rot", "Sem prova conferida:"));
+      c.semProva.forEach(function (r) {
+        lista.appendChild(el("div", "conf-item", "• " + r.titulo));
+      });
+      alvo.appendChild(lista);
+    }
+
+    // O PLACAR DE CALIBRAÇÃO. Todas as outras contas medem o projeto; esta mede
+    // quem reporta. E ela pontua CALIBRAÇÃO, nunca ambição — premiar rumo
+    // cumprido rápido ensinaria os robôs a prometerem menos para acertar sempre.
+    var cal = el("div", "conf-cal");
+    cal.appendChild(el("div", "conf-rot", "Promessa × entrega"));
+    if (!c.rumosCumpridos) {
+      cal.appendChild(el("div", "conf-item",
+        "Nenhum rumo registrado foi cumprido ainda — não dá para dizer nada sobre o ritmo." +
+        (c.rumosAbertos ? " Há " + c.rumosAbertos + " rumo(s) em aberto." : "")));
+    } else {
+      cal.appendChild(el("div", "conf-item",
+        c.rumosCumpridos + " rumo(s) prometido(s) e cumprido(s); " + c.rumosAbertos +
+        " ainda em aberto. Do prometer ao cumprir: metade em até " + c.medianaDeDias +
+        " dia(s); o mais rápido em " + c.maisRapido.dias +
+        ", o mais devagar em " + c.maisDevagar.dias + "."));
+      cal.appendChild(el("div", "conf-nota",
+        "Isto não é nota de desempenho, e de propósito: contar só os cumpridos " +
+        "premiaria prometer pouco. O que ele mede é se a palavra bate com o " +
+        "resultado — e continua valendo mesmo que o resto deste painel esteja errado."));
+    }
+    alvo.appendChild(cal);
+  })();
+
+  // ---------- quem está mexendo em quê agora ----------
+  // Joia do Sonnet: com cinco frentes no mesmo dia, nada responde "quem está
+  // tocando a peça X agora" — só se descobre por colisão. E o próprio projeto já
+  // nomeou "sessões paralelas" como uma das 8 categorias da retrospectiva.
+  //
+  // Sem mecanismo novo e sem estado próprio: sai dos PRs abertos que a página JÁ
+  // busca para o cartão de medições. Zero pedido a mais — o orçamento de
+  // amplificação não se mexe. E é medição de FORA: um agente não consegue fazer
+  // o GitHub confirmar um trabalho que não existe.
+  function mostrarQuemMexe(prs) {
+    var alvo = document.getElementById("quem-mexe");
+    if (!alvo) return;
+    alvo.textContent = "";
+    alvo.appendChild(el("div", "conf-rot", "Quem está mexendo em quê agora"));
+    if (!prs.length) {
+      alvo.appendChild(el("div", "conf-item",
+        "Nenhum trabalho aberto no GitHub neste momento — nada no meio do caminho."));
+      return;
+    }
+    prs.forEach(function (p) {
+      // Os ramos seguem `agent/<área>/<tarefa>` (RITOS §1). A área é o que
+      // responde "em quê"; quando o ramo não segue o padrão, dizemos isso em
+      // vez de inventar uma área.
+      var partes = (p.ramo || "").split("/");
+      var area = (partes[0] === "agent" && partes.length >= 3) ? partes[1] : null;
+      var linha = el("div", "conf-item");
+      linha.appendChild(el("span", "quem-area", area || "(fora do padrão de ramo)"));
+      linha.appendChild(document.createTextNode(" #" + p.numero + " · " + p.titulo));
+      alvo.appendChild(linha);
+    });
+    alvo.appendChild(el("div", "conf-nota",
+      "Medido agora, do seu navegador, direto no GitHub. Se dois robôs estiverem " +
+      "na mesma área, é aqui que você vê antes de eles colidirem."));
+  }
+
   // ---------- medições ao vivo (a prova vem de fora — do SEU navegador) ----------
   var medicoes = document.getElementById("medicoes");
   function cartaoMed(id, titulo) {
@@ -1462,8 +1652,23 @@ try {
       pintaMed("med-prs", prs.length === 0 ? "ok" : "nao-sei",
         prs.length === 0 ? "nenhum PR aberto — nada no meio do caminho." :
           prs.length + " PR(s) abertos: " + prs.map(function (p) { return "#" + p.number; }).join(", "));
+      // A MESMA resposta alimenta "quem está mexendo em quê": o nome do ramo já
+      // vem aqui. Um segundo pedido para a mesma informação seria furar o
+      // orçamento de amplificação por preguiça.
+      mostrarQuemMexe(prs.map(function (p) {
+        return { numero: p.number, titulo: p.title, ramo: (p.head && p.head.ref) || "" };
+      }));
     })
-    .catch(function () { pintaMed("med-prs", "nao-sei", "não consegui perguntar ao GitHub (sem internet ou limite de consultas). NÃO é um verde."); });
+    .catch(function () {
+      pintaMed("med-prs", "nao-sei", "não consegui perguntar ao GitHub (sem internet ou limite de consultas). NÃO é um verde.");
+      var q = document.getElementById("quem-mexe");
+      if (q) {
+        q.textContent = "";
+        q.appendChild(el("div", "conf-rot", "Quem está mexendo em quê agora"));
+        q.appendChild(el("div", "conf-item",
+          "⚪ Não consegui perguntar ao GitHub. Isto NÃO quer dizer que ninguém está mexendo em nada."));
+      }
+    });
   fetch("https://api.github.com/repos/abundanciabr/sitesdoreino/actions/runs?per_page=6", { cache: "no-store" })
     .then(function (r) { if (!r.ok) throw 0; return r.json(); })
     .then(function (d) {
