@@ -22,11 +22,18 @@ Aberta em 28/08/2026, a pedido do mantenedor.
 Não precisa ler as respostas antes. O trabalho de comparar, achar onde elas
 discordam e transformar isso em decisão é do robô.
 
-**Enquanto isso, há uma coisa só sua nesta pasta:** o `MEDIR-A-MEMORIA.md`. É um
-bloco único para colar **dentro do servidor** que mostra quanta memória sobra de
-verdade hoje. É o número que resolve a discussão do Discourse — sem ele, tanto a
-sua leitura quanto a minha objeção são opinião. Pode fazer antes, durante ou
-depois das consultas; quanto antes, melhor a síntese.
+**O tamanho da máquina já foi resolvido — pelo painel da Hostinger, em
+28/08/2026.** Plano KVM 1: 1 núcleo de processador, 4 GB de memória, 50 GB de
+disco. **Não são 2 GB, como o mapa dizia antes.** A memória está em 35% (sobra
+folga), e o **processador em 50% de um único núcleo** — que virou o gargalo real.
+O mantenedor também declarou que **sobe para o KVM 2** (2 núcleos, 8 GB) quando
+for necessário, então o tamanho da máquina deixou de ser teto e virou custo.
+Tudo isso já está dentro do prompt.
+
+Continua havendo uma coisa só sua nesta pasta, mas ela **não é mais urgente**: o
+`MEDIR-A-MEMORIA.md`, que mostra o que o painel não conta — quanto cada
+contêiner consome, se existe memória de emergência em disco, e a fila do
+processador. Dá para consultar as IAs sem isso.
 
 ## Já existe uma resposta nesta pasta
 
