@@ -1,0 +1,445 @@
+# apps/core/api_gestao.py — a superfície de MÁQUINA da gestão da Caixa
+"""O que a Caixa responde ao Admin sobre as ideias, e o que ela aceita dele.
+
+Lei do assunto: `docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`
+(28/08/2026, decisão do mantenedor). A gestão das ideias deixa de morar na
+Caixa e passa a morar em `/admin/caixa/` — porta única, decisão dele: *"não
+vamos espalhar painéis ou gestão por aí, tudo será em /admin"*.
+
+**Por que isto existe em vez de o Admin ler o banco:** Lei 3 — nenhuma célula lê
+o banco de outra. O Admin pergunta, a Caixa responde. É o mesmo desenho que a
+tela de alunos do Admin já usa com a célula `alunos`.
+
+O que esta superfície é, e o que ela não é:
+
+* **É de DOMÍNIO, não de tela.** Ela devolve os fatos de cada ideia — votos,
+  plateia, estado, datas, se tem avaliação, se tem ChangeSpec — e **não** as
+  colunas, os baldes ou a ordem. Quem agrupa é o Admin. Um contrato com forma de
+  tela precisaria de um Rito de Contrato (uma conversa com o mantenedor) a cada
+  ajuste de layout; um contrato com forma de domínio deixa a tela evoluir de
+  graça. A conta que NÃO sai daqui é a plateia: ela é definição desta célula
+  ([INV-SUG13]) e viaja pronta, porque é a mesma gente que o sininho vai avisar.
+* **Ela não afrouxa trava nenhuma.** As três escritas passam pelos MESMOS
+  caminhos que as telas usavam (`moderacao.registrar_mudanca_de_status`,
+  `changespecs.registrar`) — histórico na mesma transação, avisos para a plateia
+  inteira, justificativa obrigatória no "não vamos fazer", e o corredor do
+  ChangeSpec nos três degraus. Reimplementar aqui seria abrir uma segunda porta
+  para o mesmo cofre.
+
+**Os dois papéis, e por que só um mudou de dono** (as duas decisões do
+mantenedor em 28/08/2026, e a primeira foi tomada contra a recomendação desta
+sessão, sabendo do custo — ver a lei):
+
+| Papel | Quem decide, depois desta mudança |
+|---|---|
+| **moderar** (mudar fase, escrever avaliação) | o Admin. Quem entra em `ADMIN_EMAILS` modera — lista ÚNICA, e a `sugestoes` confia no Bearer do par. `SUGESTOES_STAFF_EMAILS` deixa de governar estas rotas. |
+| **assinar** (autorizar obra) | continua a `sugestoes`, por `SUGESTOES_APROVADORES`, fail-closed. Não mudou, e mudar de casa a tela não muda isto. |
+
+A consequência aceita da lista única está escrita na lei, por extenso, para
+nenhuma sessão futura "consertar" isto achando que foi descuido: **dar acesso ao
+Admin a alguém passa a dar, no mesmo gesto, o poder de mexer nas ideias dos
+alunos.**
+
+**O e-mail do aluno não sai daqui** (decisão do mantenedor no mesmo dia,
+mantendo a `DECISAO-EVO-01` §3): a resposta carrega o nome exibido de quem
+sugeriu, nunca o endereço. O único e-mail que ATRAVESSA é o de quem AGE — vindo
+do Admin, que já o resolveu pela `identidade` para abrir a própria porta.
+"""
+
+from datetime import date
+
+from django.db.models import Exists, Max, OuterRef
+from django.db.models.functions import Coalesce
+from django.http import Http404
+from ninja import Router, Schema
+
+from apps.sugestoes.eventos import AtorSemIdDaPlataforma
+from apps.sugestoes.models import (
+    AvaliacaoInterna,
+    ChangeSpecAprovado,
+    CorredorAusente,
+    HistoricoStatus,
+    Sugestao,
+)
+
+from . import sessao as ses
+from .changespecs import ChangeSpecInvalido, e_aprovador
+from .changespecs import registrar as registrar_changespec
+from .gestao import plateia_de
+
+# `registrar_mudanca_de_status` carrega consigo as regras que esta superfície
+# NÃO reimplementa: a justificativa obrigatória do "não vamos fazer"
+# (`EXIGEM_JUSTIFICATIVA`), o histórico na mesma transação e o leque de avisos.
+from .moderacao import (
+    JustificativaObrigatoria,
+    STATUS_QUE_A_EQUIPE_ESCOLHE,
+    registrar_mudanca_de_status,
+)
+from .participacao import quadro_atual, sugestoes_ordenadas
+
+router = Router()
+
+
+# ---------------------------------------------------------------------------
+# O que a Caixa conta
+# ---------------------------------------------------------------------------
+#
+# [armadilhas/020] Os nomes daqui NÃO repetem nomes de model: `Sugestao` e
+# `AvaliacaoInterna` estão importados neste módulo, e um `ninja.Schema` com o
+# mesmo nome sombrearia o import em SILÊNCIO — sem erro de import, sem aviso do
+# lint, estourando só dentro do pydantic na hora do teste. Daí o sufixo.
+
+
+class AvaliacaoDaEquipe(Schema):
+    """As notas internas. Só o Admin as vê; o aluno nunca (spec §8)."""
+
+    impacto_educacional: int
+    impacto_comercial: int
+    esforco_tecnico: int
+    notas: str
+    decisao_produto: str
+
+
+class IdeiaEmGestao(Schema):
+    """Os FATOS de uma ideia. Nenhuma coluna, nenhum balde, nenhuma ordem."""
+
+    id: int
+    titulo: str
+    problema: str
+    solucao_proposta: str
+    categoria: str
+    status: str
+    votos: int
+    comentarios: int
+    # A plateia: quantas pessoas DISTINTAS estão atrás desta ideia — autor, quem
+    # votou e quem comentou, cada uma contada uma vez. Viaja pronta porque é a
+    # mesma gente que receberá o aviso quando a ideia andar ([INV-SUG13]); uma
+    # segunda contagem do outro lado seria uma segunda verdade.
+    pessoas: int
+    autor: str
+    criada_em: str
+    # Quando a ideia entrou no estado em que está AGORA — a última linha do
+    # histórico, ou a criação quando ela nunca mudou de fase. Não é a idade dela.
+    parada_desde: str
+    # `false` = ninguém que interagiu recebeu aviso nenhum ainda. É diferente de
+    # "recebeu há muito tempo", e quem mostra precisa poder dizer as duas coisas.
+    ja_ouviram: bool
+    tem_avaliacao: bool
+    tem_changespec: bool
+    # A última nota do histórico, quando a ideia saiu do trilho (recusada ou
+    # juntada a outra). É a MESMA frase que foi entregue a quem esperava — duas
+    # redações para o aluno e para a equipe seriam duas verdades sobre a recusa.
+    motivo_da_saida: str
+    avaliacao: "AvaliacaoDaEquipe | None" = None
+
+
+class QuadroEmGestao(Schema):
+    quadro: str
+    ideias: "list[IdeiaEmGestao]"
+    # Quem AGE não é quem lê: este campo responde "a pessoa que o Admin informou
+    # pode assinar?" — e é só um espelho de `SUGESTOES_APROVADORES`. Serve para o
+    # Admin não desenhar um botão que a Caixa vai recusar; a recusa de verdade
+    # continua acontecendo aqui, na escrita.
+    pode_assinar: bool
+
+
+# ---------------------------------------------------------------------------
+# O que a Caixa aceita
+# ---------------------------------------------------------------------------
+
+
+class QuemAge(Schema):
+    """Quem está agindo, vindo do Admin.
+
+    O e-mail é o de quem abriu o Admin — resolvido lá pela `identidade`, que é
+    quem tem esse direito. A Caixa o usa para duas coisas e nada mais: achar (ou
+    cunhar) a linha local que o histórico exige como autor da mudança, e conferir
+    a lista de aprovadores. Não é o e-mail de nenhum ALUNO: esse continua sem
+    sair daqui.
+
+    **`por_id_da_plataforma` não é enfeite, e não é opcional na prática.** Toda
+    mudança de status vira uma carta endereçada, e [INV-SUG12] exige que quem
+    moderou tenha o id que atravessa a plataforma — sem ele o fato não pode ser
+    afirmado e a escrita é recusada com instrução (não com erro 500). O Admin já
+    tem esse id: é o mesmo `SessionFull.id` que ele leu da `identidade` para
+    abrir a própria porta. Ele entra como texto vazio-permitido só porque o
+    contrato da `identidade` declara o campo nulável — e é justamente esse caso
+    que a recusa legível existe para cobrir.
+    """
+
+    por_email: str
+    por_nome: str = ""
+    por_id_da_plataforma: str = ""
+
+
+class MudancaDeStatus(QuemAge):
+    status: str
+    nota: str = ""
+
+
+class AvaliacaoEscrita(QuemAge):
+    impacto_educacional: int = 0
+    impacto_comercial: int = 0
+    esforco_tecnico: int = 0
+    notas: str = ""
+    decisao_produto: str = ""
+
+
+class ChangeSpecEscrito(QuemAge):
+    change_id: str
+    documento: str
+    aprovado_por: str
+    aprovado_em: date
+
+
+class Recusa(Schema):
+    """Uma recusa que ENSINA o caminho — a frase é a mesma que a tela dizia."""
+
+    erro: str
+
+
+# ---------------------------------------------------------------------------
+# Leitura
+# ---------------------------------------------------------------------------
+
+
+def _ideias_do_quadro(quadro):
+    return (
+        sugestoes_ordenadas(quadro)
+        .annotate(
+            parada_desde=Coalesce(Max("historico__criado_em"), "criado_em"),
+            tem_avaliacao=Exists(
+                AvaliacaoInterna.objects.filter(sugestao_id=OuterRef("pk"))
+            ),
+            tem_changespec=Exists(
+                ChangeSpecAprovado.objects.filter(sugestao_id=OuterRef("pk"))
+            ),
+            ja_ouviram=Exists(
+                HistoricoStatus.objects.filter(sugestao_id=OuterRef("pk"))
+            ),
+        )
+        .prefetch_related("historico", "avaliacao")
+    )
+
+
+def _motivo_da_saida(sugestao) -> str:
+    """A última nota do histórico — só faz sentido para quem saiu do trilho."""
+    if sugestao.status not in (
+        Sugestao.Status.NAO_PLANEJADO,
+        Sugestao.Status.MESCLADO,
+    ):
+        return ""
+    ultima = max(
+        sugestao.historico.all(), key=lambda linha: linha.criado_em, default=None
+    )
+    return ultima.nota if ultima else ""
+
+
+def _como_fato(ideia, plateias) -> dict:
+    """Uma ideia, na forma que atravessa a fronteira."""
+    return {
+        "id": ideia.id,
+        "titulo": ideia.titulo,
+        "problema": ideia.problema,
+        "solucao_proposta": ideia.solucao_proposta,
+        "categoria": ideia.categoria.nome,
+        "status": ideia.status,
+        "votos": ideia.total_votos,
+        "comentarios": ideia.total_comentarios,
+        "pessoas": plateias.get(ideia.id, 1),
+        # Nome exibido, nunca o e-mail — e vazio é resposta legítima: quem exibe
+        # decide o que escrever no lugar, como já faz o `getSession`. Inventar um
+        # apelido aqui seria esta célula decidindo o texto de uma tela que não é
+        # dela.
+        "autor": ideia.autor.nome_exibido,
+        "criada_em": ideia.criado_em.isoformat(),
+        "parada_desde": ideia.parada_desde.isoformat(),
+        "ja_ouviram": ideia.ja_ouviram,
+        "tem_avaliacao": ideia.tem_avaliacao,
+        "tem_changespec": ideia.tem_changespec,
+        "motivo_da_saida": _motivo_da_saida(ideia),
+        "avaliacao": (
+            {
+                "impacto_educacional": ideia.avaliacao.impacto_educacional,
+                "impacto_comercial": ideia.avaliacao.impacto_comercial,
+                "esforco_tecnico": ideia.avaliacao.esforco_tecnico,
+                "notas": ideia.avaliacao.notas,
+                "decisao_produto": ideia.avaliacao.decisao_produto,
+            }
+            if ideia.tem_avaliacao
+            else None
+        ),
+    }
+
+
+@router.get(
+    "/gestao/ideias",
+    response=QuadroEmGestao,
+    operation_id="listManagementIdeas",
+    summary="Os fatos de cada ideia do quadro, para quem conduz",
+    description=(
+        "Devolve o quadro inteiro com os fatos de cada ideia — votos, plateia, "
+        "estado, datas, se tem avaliação interna e se tem ChangeSpec aprovado. "
+        "NÃO devolve colunas, baldes nem ordenação: agrupar é do consumidor. O "
+        "e-mail de quem sugeriu nunca viaja."
+    ),
+)
+def listar_ideias(request, por_email: str = ""):
+    quadro = quadro_atual()
+    ideias = list(_ideias_do_quadro(quadro))
+    plateias = plateia_de(ideias)
+    return {
+        "quadro": quadro.nome,
+        "pode_assinar": bool(por_email) and e_aprovador(por_email),
+        "ideias": [_como_fato(ideia, plateias) for ideia in ideias],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Escrita — pelos MESMOS caminhos das telas, nunca por uma porta nova
+# ---------------------------------------------------------------------------
+
+
+def _ideia(sugestao_id: int) -> Sugestao:
+    sugestao = Sugestao.objects.filter(pk=sugestao_id).first()
+    if sugestao is None:
+        raise Http404("ideia inexistente")
+    return sugestao
+
+
+def _quem(payload: QuemAge):
+    """A linha local de quem está agindo — o histórico a exige como autor.
+
+    `cunhar_ou_recuperar` e não `get`: quem entra no Admin pode nunca ter aberto
+    a Caixa, e recusar a moderação por isso seria uma porta fechada por um
+    detalhe de cadastro. A cunhagem é a mesma de sempre — uma linha por pessoa,
+    casada por e-mail.
+    """
+    return ses.cunhar_ou_recuperar(
+        email=payload.por_email,
+        nome=payload.por_nome or payload.por_email,
+        id_da_plataforma=payload.por_id_da_plataforma or None,
+    )
+
+
+@router.post(
+    "/gestao/ideias/{sugestao_id}/status",
+    response={200: IdeiaEmGestao, 422: Recusa},
+    operation_id="setIdeaStatus",
+    summary="Move a ideia de fase, com histórico e avisos",
+    description=(
+        "Passa pelo mesmo caminho da tela antiga: o histórico nasce na MESMA "
+        "transação, a plateia inteira recebe aviso, 'não planejado' exige "
+        "justificativa e 'planejado → em desenvolvimento' exige ChangeSpec "
+        "aprovado registrado. Recusa 422 com a frase que ensina o caminho."
+    ),
+)
+def mudar_status(request, sugestao_id: int, payload: MudancaDeStatus):
+    sugestao = _ideia(sugestao_id)
+    if payload.status not in {status.value for status in STATUS_QUE_A_EQUIPE_ESCOLHE}:
+        return 422, {"erro": "Esta fase não é uma das que a equipe escolhe."}
+    try:
+        registrar_mudanca_de_status(
+            sugestao=sugestao,
+            status_novo=payload.status,
+            nota=payload.nota,
+            por=_quem(payload),
+        )
+    except JustificativaObrigatoria:
+        return 422, {
+            "erro": (
+                "Para dizer que a ideia não será feita, escreva o porquê: quem "
+                "sugeriu vai ler essa frase."
+            )
+        }
+    except CorredorAusente as recusa:
+        return 422, {"erro": str(recusa)}
+    except AtorSemIdDaPlataforma:
+        # [INV-SUG12] O fato não pode ser afirmado sem quem o afirmou. Recusa
+        # legível em vez de 500: o caminho existe e é curto — a pessoa entra uma
+        # vez pelo site e a porta grava o id na reentrada.
+        return 422, {
+            "erro": (
+                "Não consegui registrar quem fez esta mudança: falta o "
+                "identificador que atravessa a plataforma. Entre uma vez em "
+                "meshcraft.top com a sua conta e tente de novo — a porta grava "
+                "esse dado na entrada."
+            )
+        }
+    return _uma_ideia(sugestao_id)
+
+
+@router.post(
+    "/gestao/ideias/{sugestao_id}/avaliacao",
+    response=IdeiaEmGestao,
+    operation_id="setIdeaReview",
+    summary="Escreve a avaliação interna da equipe",
+    description=(
+        "Impacto educacional, impacto comercial, esforço técnico, anotações e a "
+        "decisão de produto. Nada disto é visível ao aluno (spec §8)."
+    ),
+)
+def avaliar(request, sugestao_id: int, payload: AvaliacaoEscrita):
+    sugestao = _ideia(sugestao_id)
+    AvaliacaoInterna.objects.update_or_create(
+        sugestao=sugestao,
+        defaults={
+            "impacto_educacional": payload.impacto_educacional,
+            "impacto_comercial": payload.impacto_comercial,
+            "esforco_tecnico": payload.esforco_tecnico,
+            "notas": payload.notas,
+            "decisao_produto": payload.decisao_produto,
+            "avaliado_por": _quem(payload),
+        },
+    )
+    return _uma_ideia(sugestao_id)
+
+
+@router.post(
+    "/gestao/ideias/{sugestao_id}/changespec",
+    response={200: IdeiaEmGestao, 403: Recusa, 422: Recusa},
+    operation_id="registerApprovedChangeSpec",
+    summary="Registra o ChangeSpec aprovado que destrava a obra",
+    description=(
+        "O SEGUNDO portão da Caixa, e ele NÃO mudou de dono: só quem está em "
+        "SUGESTOES_APROVADORES registra, e a lista vazia recusa todo mundo. "
+        "Estar autorizado no Admin não basta — moderar e autorizar "
+        "desenvolvimento são papéis diferentes."
+    ),
+)
+def registrar_o_changespec(request, sugestao_id: int, payload: ChangeSpecEscrito):
+    if not e_aprovador(payload.por_email):
+        return 403, {
+            "erro": (
+                "Só quem está na lista de aprovadores da Caixa autoriza uma "
+                "ideia a entrar em desenvolvimento. Estar no Admin dá o direito "
+                "de moderar, não o de assinar obra."
+            )
+        }
+    sugestao = _ideia(sugestao_id)
+    try:
+        registrar_changespec(
+            sugestao=sugestao,
+            por=_quem(payload),
+            change_id=payload.change_id,
+            documento=payload.documento,
+            aprovado_por=payload.aprovado_por,
+            aprovado_em=payload.aprovado_em.isoformat(),
+        )
+    except ChangeSpecInvalido as recusa:
+        return 422, {"erro": " ".join(recusa.args[0])}
+    return _uma_ideia(sugestao_id)
+
+
+def _uma_ideia(sugestao_id: int) -> dict:
+    """A ideia recém-escrita, relida pela MESMA consulta da leitura.
+
+    Devolver o objeto que acabou de ser gravado seria devolver o que o
+    consumidor já sabia; relê-la pela consulta pública é o que faz a resposta
+    valer como confirmação — inclusive dos campos derivados (a plateia, o estado
+    do corredor) que a escrita não toca diretamente.
+    """
+    ideia = _ideias_do_quadro(quadro_atual()).filter(pk=sugestao_id).first()
+    if ideia is None:
+        raise Http404("ideia inexistente")
+    return _como_fato(ideia, plateia_de([ideia]))
