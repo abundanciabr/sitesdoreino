@@ -4,6 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Painel da Escola — a porta única</title>
+<!-- Ícone vazio de propósito: sem esta linha o navegador pede /favicon.ico
+     sozinho, e a rota do painel só serve .js, .css e .html — então a
+     resposta é 404, e o console do dono nasce com um erro vermelho que não
+     é sobre nada. `data:` já está liberado no CSP (img-src). Achado pelo
+     teste de navegador; nenhum outro guarda via este pedido, porque quem o
+     faz é o navegador e não a página. -->
+<link rel="icon" href="data:,">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -600,6 +607,19 @@ try {
     function cego(motivo) {
       faixa.className = "cego";
       faixa.textContent = "⚪ Não consigo conferir se algum trabalho ficou sem registro aqui — " + motivo;
+    }
+
+    // Aberto por duplo clique não há servidor a quem perguntar, e o pedido
+    // está condenado antes de sair: o navegador o recusa por política de
+    // origem. Até 28/08/2026 a página tentava mesmo assim, colhia o erro e
+    // mostrava a mensagem honesta — mas deixava um erro vermelho no console e
+    // um pedido morto na conta do orçamento. Agora ela pergunta primeiro onde
+    // está. Quem achou isto foi o teste de navegador, na primeira execução:
+    // nenhum outro guarda enxergava esse pedido, porque ele nasce em tempo de
+    // execução.
+    if (CONTEXTO.local) {
+      cego("esta é a cópia aberta no seu computador, e ela não tem como perguntar ao GitHub. O painel online (meshcraft.top/admin/painel/) confere.");
+      return;
     }
 
     fetch("divida.json", { cache: "no-store" })
