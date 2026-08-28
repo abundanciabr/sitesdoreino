@@ -79,7 +79,7 @@ def operacoes_da_api():
 
 def test_ha_operacoes_para_medir():
     """Guarda que varre lista vazia é guarda verde à toa."""
-    assert len(operacoes_da_api()) == 5
+    assert len(operacoes_da_api()) == 6
 
 
 def test_nenhuma_operacao_responde_sem_o_token_do_par(client, db, par_autorizado):
@@ -426,3 +426,72 @@ def test_o_silencio_longo_e_contado_a_parte(client, db, par_autorizado, sugestao
     corpo = ler(client)
     assert corpo["pessoas_em_silencio_demais"] == 1
     assert corpo["silencio_medio_em_dias"] == 45
+
+
+# ---------------------------------------------------------------------------
+# 5. A historia de uma ideia — a operacao que nasceu com a mudanca de casa
+# ---------------------------------------------------------------------------
+
+
+def ler_uma(client, sugestao_id):
+    resposta = client.get(
+        f"{IDEIAS}/{sugestao_id}",
+        headers={"authorization": f"Bearer {TOKEN}"},
+    )
+    assert resposta.status_code == 200, resposta.content
+    return resposta.json()
+
+
+def test_a_historia_da_ideia_atravessa_inteira(
+    client, db, par_autorizado, caixa, sugestao
+):
+    """Sem esta operacao, a historia ficaria inalcancavel ao aposentar as telas."""
+    caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="vai entrar")
+    caixa.mudar_status(sugestao, Sugestao.Status.EM_ANALISE, nota="voltou: me enganei")
+
+    corpo = ler_uma(client, sugestao.id)
+
+    assert [(l["de"], l["para"]) for l in corpo["historico"]] == [
+        ("em_analise", "planejado"),
+        ("planejado", "em_analise"),
+    ]
+    assert corpo["historico"][0]["nota"] == "vai entrar"
+    assert corpo["historico"][1]["nota"] == "voltou: me enganei"
+
+
+def test_a_historia_vem_na_ordem_em_que_aconteceu(
+    client, db, par_autorizado, caixa, sugestao
+):
+    """Ordem invertida contaria a mesma historia ao contrario, sem erro nenhum."""
+    caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="primeira")
+    caixa.mudar_status(sugestao, Sugestao.Status.EM_ANALISE, nota="segunda")
+
+    quando = [l["quando"] for l in ler_uma(client, sugestao.id)["historico"]]
+
+    assert quando == sorted(quando)
+
+
+def test_nem_o_email_de_quem_moderou_atravessa(
+    client, db, par_autorizado, caixa, sugestao, equipe
+):
+    """A regra do e-mail vale para QUALQUER pessoa na resposta, nao so o aluno."""
+    caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="vai")
+
+    cru = json.dumps(ler_uma(client, sugestao.id))
+
+    assert "@" not in cru, "algum e-mail atravessou a fronteira da Caixa"
+
+
+def test_ideia_inexistente_e_404(client, db, par_autorizado, quadro):
+    resposta = client.get(
+        f"{IDEIAS}/99999", headers={"authorization": f"Bearer {TOKEN}"}
+    )
+
+    assert resposta.status_code == 404
+
+
+def test_a_lista_nao_carrega_historico(client, db, par_autorizado, caixa, sugestao):
+    """Ele cresce com o uso; na lista, multiplicaria a resposta por nada."""
+    caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="vai")
+
+    assert "historico" not in uma(ler(client), sugestao)
