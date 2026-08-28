@@ -2,7 +2,7 @@ from django.urls import path, re_path
 
 from apps.core.avisos import marcar_lido, marcar_tudo_lido, ver_avisos
 from apps.core.changespecs import changespecs
-from apps.core.gestao import mesa, quem_espera, travessia
+from apps.core.mudou_de_casa import mudou_de_casa
 from apps.core.moderacao import avaliar, moderar, mudar_status, ver_fila
 from apps.core.participacao import (
     comentar,
@@ -87,24 +87,19 @@ urlpatterns = [
     path("avisos", ver_avisos, name="avisos"),
     path("avisos/marcar-tudo", marcar_tudo_lido, name="marcar_todos_avisos_lidos"),
     path("avisos/<str:aviso_id>/lido", marcar_lido, name="marcar_aviso_lido"),
-    # O painel de gestão (28/08/2026) — a MESA, porta de entrada de quem conduz
-    # a Caixa. Prefixo próprio, `/gestao`, pelo mesmo motivo do `/moderacao`: a
-    # fronteira do crachá fica legível no urlconf, e não só no decorador.
+    # A GESTÃO MUDOU DE CASA (28/08/2026, no mesmo dia em que nasceu aqui).
+    # Ela mora em /admin/caixa/ por decisão do mantenedor — uma porta só. Lei:
+    # docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md.
     #
-    # Ela NÃO substitui `/moderacao`. A aba "A travessia" (abaixo) faz o trabalho
-    # da fila antiga com mais informação, mas aposentar a fila é mudança de outra
-    # natureza — apaga uma rota que gente pode ter salvo — e vai em PR próprio,
-    # com redirecionamento, para ser reversível em pedaço.
-    path("gestao", mesa, name="mesa"),
-    # A aba 2 (28/08/2026): as ideias em colunas, do pedido ao ar. Rota
-    # própria e não `?aba=`: cada coisa tem endereço nesta célula, e a faixa
-    # de abas descobre onde a pessoa está pelo nome da rota.
-    path("gestao/travessia", travessia, name="travessia"),
-    # A aba 3 (28/08/2026): a unidade da tela e a PESSOA sem resposta, nao a
-    # tarefa. O nome da rota e `quem_espera` e nao `esperando` para nao colidir
-    # com `gestao.esperando()`, que e a conta do que espera por VOCE — duas
-    # coisas diferentes que um nome so faria parecer a mesma.
-    path("gestao/esperando", quem_espera, name="quem_espera"),
+    # Os endereços continuam vivos e redirecionam (301). Apagá-los puniria quem
+    # salvou o endereço — e quem salvou foi justamente quem mais usava a tela.
+    #
+    # Eles continuam ATRÁS DO CRACHÁ: quem não é da equipe leva 403 antes de
+    # saber para onde a gestão foi. O redirecionamento é uma cortesia para quem
+    # já tinha acesso, nunca um mapa para quem não tem.
+    path("gestao", mudou_de_casa, name="mesa"),
+    path("gestao/travessia", mudou_de_casa, name="travessia"),
+    path("gestao/esperando", mudou_de_casa, name="quem_espera"),
     # A moderação (EVO-13) mora sob um prefixo próprio, `/moderacao`, e não
     # espalhada por `/sugestoes/<id>/...`: assim a fronteira do crachá é legível
     # no urlconf, e não só no decorador. Toda rota daqui responde **403** a quem
