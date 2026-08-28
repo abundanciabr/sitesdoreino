@@ -345,6 +345,40 @@ def entrar(request):
         # está aqui não entrou —, mas a página deixou de ser um beco.
         return _tela_da_fila(request, email=resolucao.email)
 
+    if resolucao.estado == ses.EX_ALUNO:
+        # [EX-ALUNO] Sem formulário e sem relógio de espera: não há nada
+        # acontecendo do outro lado, e um relógio girando seria promessa falsa.
+        # O botão de trocar de conta continua embaixo — a resposta mais rápida
+        # para muita gente segue sendo "entrei com o e-mail errado".
+        return _recado(
+            request,
+            titulo="Seu acesso à escola foi encerrado",
+            texto=(
+                "Este cadastro não está mais ativo na escola, e por isso a "
+                "Caixa de Sugestões não abre. Se você acha que houve engano, "
+                "fale com a escola — quem pode reativar é a equipe, e do lado "
+                "de lá é um clique."
+            ),
+            email=resolucao.email,
+            status=403,
+        )
+
+    if resolucao.estado == ses.PAUSADO:
+        # [EX-ALUNO] Texto diferente do de cima DE PROPÓSITO: a diferença entre
+        # "pausado" e "encerrado" é a única coisa que a pessoa quer saber.
+        return _recado(
+            request,
+            titulo="Seu acesso está pausado",
+            texto=(
+                "Seu cadastro continua na escola, mas o acesso está pausado no "
+                "momento — por isso a Caixa de Sugestões não abre. Quando a "
+                "equipe religar, ele volta na hora, sem você precisar pedir "
+                "nada."
+            ),
+            email=resolucao.email,
+            status=403,
+        )
+
     if resolucao.estado == ses.INDISPONIVEL:
         # [INVARIANTE] Falha FECHADA. "Não consegui conferir" nunca vira
         # "deixa entrar". E a tela diz que o problema é nosso, não da pessoa.

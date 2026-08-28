@@ -248,16 +248,33 @@ class Rede:
         self.completa.mock(return_value=resposta)
 
     # -- alunos -------------------------------------------------------------
+    #
+    # A porta pergunta a SITUAÇÃO desde 28/08/2026 — antes perguntava "tem
+    # matrícula?", sim ou não (`DECISAO-ex-aluno-e-a-porta-que-explica`). Os
+    # nomes dos ajudantes ficaram, porque o que eles significam para quem lê um
+    # teste não mudou: `alunos_diz(email, [matricula])` continua sendo "esta
+    # pessoa é aluna". O que mudou é a pergunta feita na rede.
     def alunos_responde(self, email: str, resposta: httpx.Response):
         return self.mock.get(self._url(email)).mock(return_value=resposta)
 
+    def alunos_situacao(self, email: str, categoria: str):
+        """A resposta crua da porta da situação."""
+        return self.alunos_responde(
+            email, httpx.Response(200, json={"categoria": categoria, "na_fila": None})
+        )
+
     def alunos_diz(self, email: str, matriculas: list[dict]):
-        return self.alunos_responde(email, httpx.Response(200, json=matriculas))
+        """Compatível com o que os testes já escreviam: lista não-vazia = aluno."""
+        return self.alunos_situacao(email, "aluno" if matriculas else "cadastrado")
 
     def alunos_nao_conhece(self, email: str):
-        return self.alunos_responde(
-            email, httpx.Response(404, json={"detail": "aluno inexistente"})
-        )
+        return self.alunos_situacao(email, "cadastrado")
+
+    def alunos_diz_ex_aluno(self, email: str):
+        return self.alunos_situacao(email, "ex_aluno")
+
+    def alunos_diz_pausado(self, email: str):
+        return self.alunos_situacao(email, "pausado")
 
     def alunos_fora_do_ar(self, email: str):
         return self.mock.get(self._url(email)).mock(
@@ -310,7 +327,7 @@ class Rede:
 
     @staticmethod
     def _url(email: str) -> str:
-        return f"{ALUNOS}/alunos/{email}/matriculas"
+        return f"{ALUNOS}/alunos/{email}/situacao"
 
     # -- notificacoes ---------------------------------------------------------
     # **Por que este dublê ESPELHA o `Aviso` local em vez de guardar um mundo

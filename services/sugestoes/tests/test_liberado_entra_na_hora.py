@@ -61,17 +61,21 @@ def _validade_guardada(email: str) -> float:
 def test_o_nao_e_esquecido_depressa_e_o_sim_nao(rede, db, matricula):
     """A correção, medida nos dois lados na mesma prova.
 
+    Desde 28/08/2026 a porta guarda a CATEGORIA em vez de um sim/não
+    (`DECISAO-ex-aluno-e-a-porta-que-explica`), e a assimetria continua a
+    mesma: só "aluno" pode envelhecer.
+
     Sem a assimetria, este teste é impossível de satisfazer: um TTL só teria de
     ser curto (e o "sim" custaria um salto de rede por página) ou longo (e o
     "não" barraria quem acabou de ser liberado).
     """
     rede.alunos_nao_conhece(PESSOA)
-    assert ses._tem_matricula(PESSOA) is False
+    assert ses._situacao(PESSOA) == "cadastrado"
     validade_do_nao = _validade_guardada(PESSOA)
 
     ses.limpar_caches()
     rede.alunos_diz(PESSOA, [matricula])
-    assert ses._tem_matricula(PESSOA) is True
+    assert ses._situacao(PESSOA) == "aluno"
     validade_do_sim = _validade_guardada(PESSOA)
 
     assert validade_do_nao <= 15, (
@@ -93,19 +97,19 @@ def test_liberado_entra_assim_que_o_nao_envelhece(rede, db, matricula):
     expiração, não o relógio do sistema.
     """
     rede.alunos_nao_conhece(PESSOA)
-    assert ses._tem_matricula(PESSOA) is False
+    assert ses._situacao(PESSOA) == "cadastrado"
 
     # O mantenedor libera: a `alunos` passa a responder que há matrícula.
     rede.alunos_diz(PESSOA, [matricula])
     # Ainda dentro da janela curta, a resposta guardada continua valendo — e
     # isso É o desenho: a janela existe para segurar rajada.
-    assert ses._tem_matricula(PESSOA) is False
+    assert ses._situacao(PESSOA) == "cadastrado"
 
     chave = PESSOA.lower()
     expira, valor = ses._CACHE_DE_MATRICULA[chave]
     ses._CACHE_DE_MATRICULA[chave] = (expira - ses.TTL_SEM_MATRICULA - 1, valor)
 
-    assert ses._tem_matricula(PESSOA) is True, (
+    assert ses._situacao(PESSOA) == "aluno", (
         "passada a janela curta, a Caixa continuou recusando quem já foi "
         "liberado — é o defeito de 28/08/2026 de volta"
     )

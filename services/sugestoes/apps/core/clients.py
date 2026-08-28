@@ -164,6 +164,47 @@ class AlunosClient:
     sem uma linha de código lá.
     """
 
+    def situacao_de(self, email: str) -> str:
+        """Em que categoria esta pessoa está — a pergunta que decide a TELA.
+
+        Substitui `matriculas_de` na porta desde 28/08/2026
+        (`DECISAO-ex-aluno-e-a-porta-que-explica`). A anterior respondia sim ou
+        não, e com um "não" a Caixa mostrava sempre a mesma tela: o formulário
+        de pedir entrada. Só que há QUATRO jeitos de não ter acesso, e mandar
+        quem saiu da escola preencher o formulário de entrada é dizer a ela que
+        nunca pediu nada.
+
+        **Erro FECHA**, como a anterior: `AlunosIndisponivel` sobe, e a porta
+        traduz em "não conseguimos conferir agora" — nunca em "deixa entrar" e
+        nunca em "você não é aluno".
+        """
+        base = exigir("ALUNOS_API_URL").rstrip("/")
+        token = exigir("ALUNOS_API_TOKEN")
+        try:
+            resposta = http().get(
+                f"{base}/alunos/{quote(email, safe='@')}/situacao",
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        except httpx.RequestError as erro:
+            raise AlunosIndisponivel(
+                f"não deu para falar com a célula alunos: {erro}"
+            ) from erro
+
+        # Sem 404 aqui, e é decisão do contrato: quem a célula não conhece é
+        # `cadastrado`, com 200. Um 404 traduzido em "cadastrado" pelo
+        # consumidor seria cada célula reinventando essa regra.
+        if resposta.status_code != 200:
+            raise AlunosIndisponivel(
+                f"a célula alunos respondeu HTTP {resposta.status_code}"
+            )
+
+        corpo = resposta.json()
+        if not isinstance(corpo, dict) or not corpo.get("categoria"):
+            raise AlunosIndisponivel(
+                "a célula alunos respondeu fora do contrato (esperava a situação)"
+            )
+        return corpo["categoria"]
+
     def matriculas_de(self, email: str) -> list[dict]:
         """As matrículas deste e-mail. Lista vazia = não tem. Erro = FECHA.
 

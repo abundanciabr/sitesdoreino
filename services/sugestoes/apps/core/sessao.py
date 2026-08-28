@@ -72,6 +72,24 @@ VISITANTE = "visitante"
 DENTRO = "dentro"
 SEM_MATRICULA = "sem-matricula"
 INDISPONIVEL = "indisponivel"
+# [EX-ALUNO] Dois jeitos de NÃO ter acesso que não são "nunca pediu nada"
+# (`DECISAO-ex-aluno-e-a-porta-que-explica`). Até 28/08/2026 os dois caíam em
+# `SEM_MATRICULA` e recebiam o formulário da fila — mandar quem saiu da escola
+# preencher o pedido de entrada é dizer a ela que nunca pediu nada.
+PAUSADO = "pausado"
+EX_ALUNO = "ex-aluno"
+
+#: O que a `alunos` responde ⇒ o estado desta porta. Mapa explícito, e não um
+#: `if` por categoria: categoria nova que apareça amanhã cai no `else` de quem
+#: chama, e o `else` é o formulário — o mesmo erro, com outro nome. Aqui ela
+#: fica de fora do mapa e é tratada como desconhecida, de propósito visível.
+ESTADO_POR_CATEGORIA = {
+    "aluno": DENTRO,
+    "pausado": PAUSADO,
+    "ex_aluno": EX_ALUNO,
+    "cadastrado": SEM_MATRICULA,
+    "na_fila": SEM_MATRICULA,
+}
 
 # ---------------------------------------------------------------------------
 # Caches por processo (armadilhas/026: módulo vaza entre testes — o conftest
@@ -294,8 +312,11 @@ def _sessao_central(cookie: str) -> dict:
     return dados
 
 
-def _tem_matricula(email: str) -> bool:
-    """A decisão da `alunos`, com cache — e com TTL ASSIMÉTRICO.
+def _situacao(email: str) -> str:
+    """A CATEGORIA da pessoa, com cache — e com TTL ASSIMÉTRICO.
+
+    Trocou `_tem_matricula` em 28/08/2026: aquela devolvia sim ou não, e com um
+    "não" a porta mostrava sempre a mesma tela. Ver `ESTADO_POR_CATEGORIA`.
 
     Os dois TTLs são diferentes de propósito, e a assimetria é a correção de
     um defeito medido em 28/08/2026 (ver `TTL_SEM_MATRICULA` acima): um "sim"
@@ -311,12 +332,15 @@ def _tem_matricula(email: str) -> bool:
     hit = _CACHE_DE_MATRICULA.get(chave)
     if hit and hit[0] > agora:
         return hit[1]
-    tem = bool(AlunosClient().matriculas_de(chave))
+    categoria = AlunosClient().situacao_de(chave)
     if len(_CACHE_DE_MATRICULA) >= MAXIMO_EM_CACHE:
         _CACHE_DE_MATRICULA.clear()
-    validade = TTL_DA_MATRICULA if tem else TTL_SEM_MATRICULA
-    _CACHE_DE_MATRICULA[chave] = (agora + validade, tem)
-    return tem
+    # A assimetria continua valendo, e agora com a categoria no lugar do bool:
+    # só "aluno" pode envelhecer. Todo o resto é um "ainda não" que pode virar
+    # "sim" a qualquer clique do mantenedor.
+    validade = TTL_DA_MATRICULA if categoria == "aluno" else TTL_SEM_MATRICULA
+    _CACHE_DE_MATRICULA[chave] = (agora + validade, categoria)
+    return categoria
 
 
 def resolver(request) -> Resolucao:
@@ -361,14 +385,20 @@ def resolver(request) -> Resolucao:
         return Resolucao(DENTRO, Ator(identidade, PAPEL_STAFF), email)
 
     try:
-        tem = _tem_matricula(email)
+        categoria = _situacao(email)
     except (AlunosIndisponivel, ConfiguracaoAusente):
         # Falha FECHADA, com a tela dizendo que o problema é nosso — a pessoa
         # não pode sair daqui achando que perdeu a matrícula.
         return Resolucao(INDISPONIVEL, email=email)
 
-    if not tem:
-        return Resolucao(SEM_MATRICULA, email=email)
+    estado = ESTADO_POR_CATEGORIA.get(categoria)
+    if estado is None:
+        # Categoria que esta porta não conhece. FECHA dizendo que o problema é
+        # nosso, em vez de cair no formulário: um vocabulário novo do outro
+        # lado não pode fazer esta tela inventar uma história sobre a pessoa.
+        return Resolucao(INDISPONIVEL, email=email)
+    if estado != DENTRO:
+        return Resolucao(estado, email=email)
 
     identidade = cunhar_ou_recuperar(
         email=email, nome=nome, id_da_plataforma=da_plataforma
