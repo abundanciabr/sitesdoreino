@@ -50,13 +50,30 @@ A gênese de todo labirinto, nomeada: erro → muda A → outro erro → muda B 
 validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto tem quatro peças:
 
 0. **Muralha de branch:** todo trabalho nasce em branch (RITOS.md §1) e chega a
-   `main` só por PR com portão verde (peça 4). Proteção nativa do GitHub exige
-   plano pago em repositório privado pessoal e está **fora de alcance** (H3 —
-   não há forma de pagamento aceita; não sugira "assine o Pro"). Os degraus
-   reais: `.githooks/pre-push` (bloqueia push direto para `main` nesta máquina),
-   o merge guardado da peça 4, o `alarme-main` (issue se a main quebrar) e o
-   portão de deploy (commit não-verde não alcança a VPS — provado ao vivo em
-   22/08/2026).
+   `main` só por PR com portão verde (peça 4). **A proteção nativa do GitHub está
+   LIGADA desde 26/08/2026** — o repositório é público, e em repositório público
+   regras de proteção e Actions são gratuitos. O conjunto de regras `main
+   protegida` (ativo, `bypass_actors` vazio — ninguém escapa, nem o dono) impõe:
+   PR obrigatório, proibido apagar a `main`, proibido reescrever história, e os
+   checks `muralhas` e `ci-celula-gate` obrigatórios. **Desde 28/08/2026 também
+   a política estrita:** PR com base velha não mergeia — é a trava da colisão
+   semântica (`docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`, Classe 6).
+
+   > **Esta peça já mentiu, e custou caro.** Até 28/08/2026 ela afirmava que a
+   > proteção nativa exigia plano pago e estava "fora de alcance" (H3). A frase
+   > foi verdadeira por semanas e depois envelheceu sem que nada avisasse — e em
+   > 28/08 foi lida com sinceridade e entregue como premissa a **cinco
+   > consultorias externas**, que projetaram substitutos para uma proteção que já
+   > existia. Nenhum teste pega isto: ler nunca dá erro. É a Classe 8 (mapa
+   > velho) aplicada à própria lei. Se você está lendo esta peça para decidir
+   > alguma coisa, **confira o estado real antes**:
+   > `gh api repos/abundanciabr/sitesdoreino/rulesets`.
+
+   Os degraus locais continuam, como cerca rápida (falham em segundos, sem
+   esperar o GitHub): `.githooks/pre-push` (bloqueia push direto para `main`
+   nesta máquina), o merge guardado da peça 4, o `alarme-main` (issue se a main
+   quebrar) e o portão de deploy (commit não-verde não alcança a VPS — provado
+   ao vivo em 22/08/2026).
 1. **Catraca:** todo estado verde vira commit IMEDIATAMENTE (Conventional Commits,
    descrição em PT: `fix(pix): corrigir parsing do webhook`). Nenhum trabalho novo
    começa sobre estado não commitado. `git add` por arquivo — **nunca `git add -A`**;
