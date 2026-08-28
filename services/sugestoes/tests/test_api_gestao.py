@@ -368,3 +368,61 @@ def test_moderar_sem_o_id_da_plataforma_recusa_com_instrucao(
     assert resposta.status_code == 422
     assert "entre uma vez em meshcraft.top" in resposta.json()["erro"].lower()
     assert Sugestao.objects.get(pk=sugestao.pk).status == Sugestao.Status.EM_ANALISE
+
+
+# ---------------------------------------------------------------------------
+# 4. Os números de GENTE — a conta que só esta célula consegue fazer
+# ---------------------------------------------------------------------------
+
+
+def test_quem_esta_atras_de_duas_ideias_conta_uma_vez_so(
+    client, db, par_autorizado, caixa, dentro, sugestao
+):
+    """É por isto que estes três números viajam prontos.
+
+    O consumidor tem a contagem POR IDEIA; somá-las contaria duas vezes quem
+    está atrás de duas. A dedução por pessoa só existe deste lado da fronteira,
+    onde as plateias são conjuntos e não números.
+    """
+    outra = caixa.publicar("Outra ideia")
+    caixa.votar(outra)
+    caixa.votar(sugestao)
+
+    corpo = ler(client)
+    soma_das_plateias = sum(i["pessoas"] for i in corpo["ideias"])
+
+    assert corpo["pessoas_esperando"] < soma_das_plateias, (
+        "a mesma pessoa está atrás das duas ideias e teria sido contada duas "
+        "vezes numa soma ingênua"
+    )
+
+
+def test_ideia_ja_respondida_nao_deixa_ninguem_esperando(
+    client, db, par_autorizado, caixa, sugestao
+):
+    """Recusar com explicação é responder — e a conta para de cobrar."""
+    assert ler(client)["pessoas_esperando"] == 1
+
+    caixa.mudar_status(
+        sugestao, Sugestao.Status.NAO_PLANEJADO, nota="o material é licenciado"
+    )
+
+    assert ler(client)["pessoas_esperando"] == 0
+    assert ler(client)["silencio_medio_em_dias"] is None
+
+
+def test_o_silencio_longo_e_contado_a_parte(client, db, par_autorizado, sugestao):
+    """Um mês sem notícia deixa de ser fila e vira abandono — e o número diz."""
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    assert ler(client)["pessoas_em_silencio_demais"] == 0
+
+    Sugestao.objects.filter(pk=sugestao.pk).update(
+        criado_em=timezone.now() - timedelta(days=45)
+    )
+
+    corpo = ler(client)
+    assert corpo["pessoas_em_silencio_demais"] == 1
+    assert corpo["silencio_medio_em_dias"] == 45
