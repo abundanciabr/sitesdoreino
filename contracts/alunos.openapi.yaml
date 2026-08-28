@@ -338,6 +338,39 @@ paths:
                           de corrigir um dado errado (lei da fila, §7).
         '422': { description: E-mail invalido }
   /matriculas/{id}:
+    delete:
+      operationId: deleteEnrollment
+      summary: Apagar a matricula DE VEZ — irreversivel
+      description: |
+        O direito da pessoa de sumir do sistema
+        (`docs/decisoes/DECISAO-administradores-e-apagar.md` §4). Decidido pelo
+        mantenedor em 28/08/2026, contra a recomendacao do agente de esperar o
+        primeiro pedido real — com o preco apresentado antes da escolha.
+
+        APAGA A LINHA, e nao troca o estado. Nao ha desfazer, e nao ha versao
+        "apagada" para consultar depois: e isso que separa esta porta do
+        `PATCH` com `status: encerrada`, que existe ao lado para o caso comum
+        de tirar o acesso podendo voltar atras.
+
+        O QUE SOBRA depois: nada aqui. Do lado de quem chamou, uma linha de
+        auditoria dizendo que a ficha X foi apagada, em tal dia, por tal pessoa
+        — sem nome, sem telefone, sem e-mail. A auditoria da area administrativa
+        e append-only por trigger no banco, entao ela NUNCA pode ter guardado
+        dado que a pessoa forneceu; se tivesse, esta porta seria impossivel de
+        cumprir.
+
+        NAO apaga quem esta na FILA: linha `aguardando`/`recusada` responde 409,
+        pela mesma razao do `PATCH` — a fila tem porta propria, que sabe
+        conferir "ja decidida" e guardar o motivo.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '204': { description: "Apagada. Sem corpo — nao ha o que devolver sobre uma ficha que nao existe mais" }
+        '404': { description: Nao ha matricula com este id }
+        '409': { description: "Esta linha esta na FILA — decida por POST /pre-matriculas/{id}/decisao" }
     patch:
       operationId: updateEnrollment
       summary: Mudar o estado de um aluno, ou corrigir os dados dele
