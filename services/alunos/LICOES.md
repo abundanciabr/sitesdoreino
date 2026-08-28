@@ -283,3 +283,29 @@ pelo django-ninja** com o congelado, e o exportador não lê o contrato.
 **Não use `pprint` para isso:** ele quebra string longa em pedaços concatenados
 (`"OPCIONAL " "— " "pista " ...`) e o resultado é ilegível. Um serializador de
 seis linhas que emite `repr()` por nó e nunca parte string resolve.
+
+## O teste do lock oscila quando a suíte roda em SQLite (28/08/2026)
+
+`test_inv_p5_matricula_lock.py::test_dois_consumers_mesmo_evento_em_threads_geram_uma_matricula`
+falha de forma **intermitente** — `OperationalError: database table is locked:
+matriculas_matricula` — quando a suíte é rodada localmente com
+`DATABASE_URL=sqlite:///...`. Medido: 2 falhas em 3 rodadas do par
+`test_smoke.py + test_inv_p5_matricula_lock.py`, **sem mudança nenhuma no
+código**.
+
+**Não é defeito do teste nem do código que ele protege.** Ele exercita
+`select_for_update` com duas threads reais, e o SQLite implementa isso como
+trava de tabela inteira, com corrida contra o timeout de lock. O Postgres — que
+é o que o `ci-celula` fornece e o que roda em produção — implementa lock de
+linha, e lá ele é determinístico.
+
+**Por que isto merece estar escrito:** a primeira medição que eu fiz foi UMA
+rodada, e ela dizia que os testes novos daquele PR estavam "envenenando" o
+teste do lock. Passei a bisseccionar um culpado que não existia. Uma rodada só
+não distingue causa de coincidência num teste com concorrência — **repita três
+vezes antes de acusar a sua mudança**, e repita também o cenário de controle
+(um teste antigo qualquer + o do lock).
+
+**Regra prática:** se este teste ficar vermelho na sua máquina, rode-o isolado
+e repita. O veredito dele é com Postgres, no CI. Rodada local com SQLite serve
+para o resto da suíte.

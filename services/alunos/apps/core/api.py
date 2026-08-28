@@ -10,6 +10,8 @@
 import json
 from datetime import date
 
+from django.core.exceptions import ValidationError
+from django.core.validators import validate_email
 from django.http import JsonResponse
 from django.utils import timezone
 from ninja import Router
@@ -22,6 +24,7 @@ from apps.matriculas.services import (
     entrar_na_fila,
     matricular,
     matriculas_que_valem,
+    situacao_de,
 )
 
 router = Router()
@@ -575,3 +578,102 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
     if resultado == "ja-decidida":
         return JsonResponse({"detail": "esta linha já foi decidida"}, status=409)
     return JsonResponse({"id": str(linha.pk), "status": linha.status}, status=200)
+
+
+# [CATEGORIAS] Espelho EXATO do contrato congelado — `make contrato-check` compara
+# o que o django-ninja exporta com `contracts/alunos.openapi.yaml`. As descrições
+# abaixo foram COPIADAS de lá, com as quebras de linha que elas têm: uma só
+# diferente reprova o freeze com um diff ilegível. Elas moram em constantes, e não
+# inline, pelo mesmo motivo das irmãs deste arquivo — o dicionário fica legível.
+DESCRICAO_SITUACAO = 'A porta das CINCO CATEGORIAS (`docs/decisoes/DECISAO-categorias-de-usuario.md`).\nExiste para que a home, a Caixa e o painel parem de adivinhar cada um do seu\njeito o que uma pessoa e — hoje sao quatro respostas para a mesma pergunta, e\ntres delas erram em pelo menos um caso.\n\nRESPONDE 200 COM `cadastrado` PARA QUEM ELA NAO CONHECE — NUNCA 404. "Nao\ntenho linha para esta pessoa" E a resposta, nao um erro. A porta vizinha\n(`GET /alunos/{email}/matriculas`) devolve 404 nesse caso e esta certa no\ncontexto dela; aqui um 404 obrigaria cada consumidor a traduzir "erro" em\n"cadastrado" por conta propria, e o primeiro que tratasse 404 como falha de\nrede mostraria a tela errada — fail-OPEN — para todo visitante novo do site.\n\nNAO DEVOLVE PII: sem WhatsApp, sem nome, sem eco do e-mail. E a §5 da\n`DECISAO-fila-de-liberacao.md` aplicada — o telefone sai por UMA porta so,\n`GET /pre-matriculas`, a do painel administrativo. Guarda de conjunto EXATO\nde chaves na resposta.\n\n`administrador` NAO E uma categoria possivel aqui, e a ausencia e a decisao:\nquem decide isso e a lista da celula `admin`, na hora. Se esta porta pudesse\nresponder isso, a autorizacao da area administrativa passaria a depender de\numa celula de produto (`DECISAO-onde-mora-a-sessao.md` §4).\n'
+
+_D_CATEGORIA = "`aluno` sai da MESMA lista de status que decide acesso\n(`STATUS_QUE_VALEM`) — uma segunda lista seriam duas verdades\nsobre quem e aluno, e elas divergiriam no primeiro status novo.\n"
+
+_D_NA_FILA = "Preenchido SO quando `categoria` = `na_fila`; `null` nos outros casos."
+
+_D_ESPERANDO = "Calculado PELA CELULA, nao a data crua: e ela que tem o\nrelogio e a linha. Consumidor que subtraisse datas erraria\nde um jeito diferente em cada celula. `null` depois de\ndecidida — ninguem espera mais.\n"
+
+_D_MOTIVO = "Preenchido so quando `estado` = `recusada`. A pessoa precisa\nve-lo para poder pedir de novo: reenviar e o jeito previsto\nde corrigir um dado errado (lei da fila, §7).\n"
+
+_D_200 = "A situacao da pessoa. Nao ha 404 — quem a celula nao conhece e `cadastrado`."
+
+_GET_STUDENT_STANDING_OPENAPI = {
+    "parameters": [
+        {
+            "name": "email",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "string", "format": "email"},
+        }
+    ],
+    "responses": {
+        "200": {
+            "description": _D_200,
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["categoria", "na_fila"],
+                        "properties": {
+                            "categoria": {
+                                "type": "string",
+                                "enum": ["cadastrado", "na_fila", "aluno"],
+                                "description": _D_CATEGORIA,
+                            },
+                            "na_fila": {
+                                "type": ["object", "null"],
+                                "additionalProperties": False,
+                                "description": _D_NA_FILA,
+                                "required": [
+                                    "estado",
+                                    "esperando_ha_dias",
+                                    "motivo_recusa",
+                                ],
+                                "properties": {
+                                    "estado": {
+                                        "type": "string",
+                                        "enum": ["aguardando", "recusada"],
+                                    },
+                                    "esperando_ha_dias": {
+                                        "type": ["integer", "null"],
+                                        "minimum": 0,
+                                        "description": _D_ESPERANDO,
+                                    },
+                                    "motivo_recusa": {
+                                        "type": ["string", "null"],
+                                        "description": _D_MOTIVO,
+                                    },
+                                },
+                            },
+                        },
+                    }
+                }
+            },
+        },
+        "422": {"description": "E-mail invalido"},
+    },
+}
+
+
+@router.get(
+    "/alunos/{email}/situacao",
+    operation_id="getStudentStanding",
+    summary='Em que categoria esta pessoa esta — a resposta unica sobre "quem e aluno"',
+    description=DESCRICAO_SITUACAO,
+    openapi_extra=_GET_STUDENT_STANDING_OPENAPI,
+)
+def get_student_standing(request, email: str):
+    """[CATEGORIAS] Em que categoria esta pessoa está. Leitura pura, sem PII.
+
+    Nenhum 404 aqui, e é a decisão mais importante desta porta: quem a célula
+    não conhece é `cadastrado`, com 200. Ver o `description` acima.
+    """
+    try:
+        validate_email(email)
+    except ValidationError:
+        # 422 e não 404: um endereço malformado é pedido inválido, não pessoa
+        # inexistente — e confundir os dois faria o consumidor tratar o próprio
+        # bug como "esta pessoa é cadastrada".
+        return JsonResponse({"detail": "e-mail inválido"}, status=422)
+    return JsonResponse(situacao_de(email), status=200)
