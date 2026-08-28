@@ -52,6 +52,24 @@ primeira versão deste arquivo, e o teste pegou.
     .centro h1 { font-size: 20px; }
     .centro p { color: var(--texto-2); }
     a { color: var(--azul); }
+
+    /* Um link com cara de botão: o gesto principal de uma página. */
+    .botao {
+      display: inline-block; text-decoration: none; font-weight: 600;
+      background: var(--painel); border: 1px solid var(--linha);
+      border-radius: 10px; padding: 12px 18px;
+    }
+    .botao:hover { border-color: var(--azul); }
+    /* A volta para a página de cima. Toda página que não é a home tem uma. */
+    .volta { display: inline-block; margin-bottom: 10px; font-size: 13px; }
+    /* O cartão que É um link — a grade de painéis da visão geral. */
+    .cartao.porta { display: block; text-decoration: none; color: inherit; }
+    .cartao.porta:hover { border-color: var(--azul); }
+    .cartao.porta .rotulo { color: var(--azul); font-weight: 600; }
+    .cartao .nota { color: var(--texto-3); font-size: 13px; margin-top: 6px; }
+    /* "Não sei quantos" — e NUNCA "0". Ver TIPOS_DE_ALUNO em apps/core/views.py:
+       um número inventado aqui seria lido como fato pelo mantenedor. */
+    .valor.vazio { color: var(--texto-3); }
   </style>
 </head>
 <body>

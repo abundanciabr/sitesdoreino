@@ -1,0 +1,57 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Alunos{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a>
+  <h1>Alunos</h1>
+  <p class="subtitulo">Os tipos de aluno da escola, e quantos há em cada um.</p>
+
+  {% comment %}
+  `is None` e NÃO `{% if tipo.quantidade %}`: zero é falso em template, e o dia
+  em que o número existir de verdade um "0" legítimo cairia no ramo do "não
+  sei". Os dois estados precisam ser distinguíveis na tela, porque são
+  respostas opostas à pergunta do mantenedor. Guarda:
+  tests/test_painel_da_escola.py.
+  {% endcomment %}
+  <div class="cartoes">
+    {% for tipo in tipos %}
+    <div class="cartao">
+      <div class="rotulo">{{ tipo.nome }}</div>
+      {% if tipo.quantidade is None %}
+      <div class="valor vazio">&mdash;</div>
+      {% else %}
+      <div class="valor">{{ tipo.quantidade }}</div>
+      {% endif %}
+      <div class="nota">{{ tipo.quem }}</div>
+      {% if tipo.quantidade is None %}
+      <div class="nota"><b>Ainda não dá para contar.</b> {{ tipo.falta }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <p style="margin-top:28px" class="aviso">
+    <b>O traço no lugar do número é proposital.</b>
+    Um <b>0</b> aqui seria mentira: ele diz <i>"não há ninguém"</i>, quando a
+    verdade de hoje é <i>"ninguém está contando ainda"</i>. Enquanto a conta não
+    existir, cada tipo mostra o traço e diz o que falta para o número nascer.
+  </p>
+
+  {% for tipo in tipos %}{% if tipo.fonte_ausente == SEM_DADO %}
+  <p style="margin-top:16px" class="aviso">
+    <b>&ldquo;{{ tipo.nome }}&rdquo; é o que depende de você.</b>
+    Os outros tipos já existem guardados no sistema e é só questão de ensiná-lo
+    a entregar a lista — trabalho de robô. Este não: hoje entrar no site com a
+    conta Google apenas cria o cadastro da pessoa, e não existe fila de espera
+    nem o gesto de aprovar. Construir isso começa por uma decisão sua sobre o
+    que a aprovação libera para o aluno. O pedido está registrado no painel do
+    sistema, na caixa <b>Precisa de você</b>.
+  </p>
+  {% endif %}{% endfor %}
+</div>
+{% endblock %}
