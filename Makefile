@@ -25,11 +25,12 @@
 # =============================================================================
 PYTHON ?= python
 
-.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao
+.PHONY: ajuda ci doctor freeze muralhas testador celula mergear esqueleto indice sessao boletim
 
 ajuda:          ## lista os alvos (é o alvo padrão)
 	@echo "Alvos da raiz — fachada de ci/ci.py:"
 	@echo "  make sessao CELULA=x TAREFA=y   abre a sessao inteira (RITOS.md §1)"
+	@echo "  make boletim                    o que o mundo e AGORA (antes de decidir)"
 	@echo "  make doctor            o ambiente consegue executar o trabalho?"
 	@echo "  make ci                a mudanca respeita as invariantes?"
 	@echo "  make freeze            so o freeze de contrato (todas as celulas)"
@@ -64,6 +65,9 @@ muralhas:       ## cerca de celula + orcamento de mudanca + guarda de segredos
 
 testador:       ## a suite que prova que o freeze reprova quando deve
 	$(PYTHON) ci/ci.py --apenas testador
+
+boletim:        ## o que o mundo e AGORA (PRs abertos, o que pousou, lei que mudou)
+	$(PYTHON) ci/boletim.py
 
 indice:         ## regenera armadilhas/INDICE.md (rode ao criar uma entrada nova)
 	$(PYTHON) ci/indice_de_armadilhas.py
