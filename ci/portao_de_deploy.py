@@ -76,6 +76,26 @@ REPROVA = {"failure", "timed_out", "startup_failure", "action_required", "neutra
 CI_CELULA = ".github/workflows/ci-celula.yml"
 ALARME_MAIN = ".github/workflows/alarme-main.yml"
 MURALHAS = ".github/workflows/muralhas.yml"
+# DECLARADO POR ESCRITO, como o `vermelhos_nao_previstos` exige de todo check
+# novo. O vigia do cadeado é ALARME, não portão, e por isso entra em
+# `conhecidos` sem entrar em `exigidos`:
+#
+#   - Ele não mede este commit. Ele mede o CERTIFICADO dos sites, que vence
+#     pelo calendário. "O cadeado vence em 12 dias" não diz nada sobre se este
+#     código pode ir para produção — barrar a entrega por isso seria acoplar
+#     duas coisas que não se tocam.
+#   - E seria pior que inútil: o conserto de um cadeado vermelho É UMA
+#     PUBLICAÇÃO (qualquer diff em `infra/traefik/**` recria o container e
+#     re-tenta o ACME — armadilhas/018). Se o vigia vermelho barrasse deploys,
+#     ele trancaria a porta por dentro, justamente no dia em que o conserto
+#     precisa passar.
+#   - Não exigi-lo também é decisão: ele roda no relógio, uma vez por dia, e o
+#     head_sha dele quase nunca é o de um deploy. Exigi-lo faria todo deploy
+#     esperar por um run que na maioria das vezes não existe para aquele SHA.
+#
+# Quem grita quando ele fica vermelho é a issue do próprio workflow, não este
+# portão.
+VIGIA_DO_CADEADO = ".github/workflows/vigia-do-cadeado.yml"
 
 
 @dataclass
@@ -513,7 +533,7 @@ def main() -> int:
             )
         )
 
-        conhecidos = set(exigidos) | {MURALHAS}
+        conhecidos = set(exigidos) | {MURALHAS, VIGIA_DO_CADEADO}
         relatorio.registrar(vermelhos_nao_previstos(runs_do_commit, conhecidos))
 
     except ErroDeInstrumentacao as erro:

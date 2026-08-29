@@ -205,5 +205,6 @@
 | [177](177-o-www-serve-o-cert-de-fabrica-e-chega-como-site-sem-cadeado.md) | O `www.` serve o cert de fábrica — e chega até você como "o site está sem cadeado" — o mantenedor manda foto do aviso vermelho "Não seguro" no navegador e pergunta se o site está com problema de cadeado. Você mede o… | — sem guarda | — |
 | [178](178-curar-o-deploy-infra-deixa-o-deploy-celula-do-mesmo-merge-vermelho.md) | Curar o `deploy-infra` deixa o `deploy-celula` do MESMO merge vermelho — e ele não se cura pelo mesmo caminho — um merge que toca `infra/` **e** `painel/` (ou `services/`) dispara os DOIS deploys. O `deploy-infra` falha… | — sem guarda | — |
 | [179](179-numero-do-registro-escolhido-cedo-colide-e-so-o-ci-conta.md) | Número do registro escolhido cedo colide — e quem conta é o CI, 15 minutos depois — O PR fica verde na sua máquina, você pede pouso, e ele volta com | — sem guarda | — |
+| [180](180-alarme-que-barra-deploy-tranca-a-porta-por-dentro.md) | Alarme cujo CONSERTO é um deploy tranca a porta por dentro se ele barrar deploys — você acrescenta um workflow novo que mede produção e grita quando algo está errado — um vigia de certificado, uma sonda de… | — sem guarda | — |
 
-**160 entradas** — 5 com guarda declarada, 155 ainda sem.
+**161 entradas** — 5 com guarda declarada, 156 ainda sem.
