@@ -91,7 +91,9 @@ def _resumo_de_esperas(pasta: Path):
 
 def _csp(html: bytes) -> str:
     hashes = " ".join(
-        "'sha256-" + base64.b64encode(hashlib.sha256(m.group(1)).digest()).decode() + "'"
+        "'sha256-"
+        + base64.b64encode(hashlib.sha256(m.group(1)).digest()).decode()
+        + "'"
         for m in _SCRIPT_EMBUTIDO.finditer(html)
     )
     return (
@@ -110,7 +112,9 @@ def robos(request):
     if pasta is None:
         # Mesma lei do painel ausente: a página DIZ que a fila não veio (500),
         # nunca finge fila vazia — "não há trabalho" seria mentira.
-        resposta = render(request, "admin/caixa_robos.html", {"fila_ausente": True}, status=500)
+        resposta = render(
+            request, "admin/caixa_robos.html", {"fila_ausente": True}, status=500
+        )
         resposta["Content-Security-Policy"] = _csp(resposta.content)
         return resposta
 

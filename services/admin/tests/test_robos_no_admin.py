@@ -95,8 +95,18 @@ def fila_de_mentira(tmp_path, monkeypatch, com_esperas=True):
             {
                 "medido_em": "2026-08-29",
                 "esperas": {
-                    "checks": {"rotulo": "os testes de um PR", "p50_s": 90, "p90_s": 180, "amostra": 62},
-                    "pouso": {"rotulo": "o pouso pela pista", "p50_s": 420, "p90_s": 900, "amostra": 5},
+                    "checks": {
+                        "rotulo": "os testes de um PR",
+                        "p50_s": 90,
+                        "p90_s": 180,
+                        "amostra": 62,
+                    },
+                    "pouso": {
+                        "rotulo": "o pouso pela pista",
+                        "p50_s": 420,
+                        "p90_s": 900,
+                        "amostra": 5,
+                    },
                 },
             }
         ),
