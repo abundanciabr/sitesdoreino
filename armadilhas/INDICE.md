@@ -188,5 +188,7 @@
 | [160](160-job-que-vira-matriz-muda-de-nome-e-cega-quem-o-procura.md) | Job que vira matriz muda de nome, e cega todo mundo que o procura pelo nome — você transforma um job em matriz (`strategy: matrix`), tudo fica verde no PR — e o que depende daquele job pelo NOME começa a reprovar em… | — |
 | [161](161-espera-sem-teto-parece-trabalho.md) | Espera sem teto parece trabalho — o mantenedor olha a janela e ela mente por omissão — a janela do Claude Code mostra o robô "trabalhando, executando, fazendo algo". Passam horas. No fim o robô confessa: *"eu estava… | — |
 | [170](170-conn-max-age-maior-que-zero-sob-asgi-vaza-uma.md) | `conn_max_age` > 0 sob ASGI vaza UMA conexão de banco por requisição — e o teste não vê nada — o Postgres da plataforma bate no teto de conexões (`FATAL: sorry, too many clients already`, ou requisições que voltam como… | — |
+| [171](171-mais-em-querystring-vira-espaco-e-o-vazio-parece.md) | `+` em querystring vira ESPAÇO — e o vazio resultante parece uma resposta legítima — Uma tela que busca por e-mail (ou por qualquer texto que possa conter `+`) mostra "não encontramos nada" para alguém que **existe**.… | — |
+| [172](172-cortar-bloco-por-dois-indices-duplica-quando-a.md) | Cortar um bloco com `s[:i] + s[j:]` DUPLICA o arquivo quando `j < i` — Um script de edição "remove" um bloco de código e o arquivo **cresce**. Funções aparecem duas vezes; o `grep` acha dois `def` iguais; o Python nem… | — |
 
-**151 entradas.**
+**153 entradas.**
