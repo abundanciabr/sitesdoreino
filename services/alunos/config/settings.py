@@ -33,10 +33,21 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    # A fila intra-célula. Está aqui pelo entrypoint que ela dá
+    # (`manage.py run_huey`), o único que faz `django.setup()` + autodiscover de
+    # `tasks.py` — sem ele o worker sobe com o registro VAZIO, não executa nada
+    # e não reclama de nada (`armadilhas/030`).
+    "huey.contrib.djhuey",
     "apps.core",
     "apps.eventos",
     "apps.matriculas",
 ]
+
+# A instância do Huey — importada, não nomeada por string: o djhuey lê
+# `settings.HUEY` esperando o OBJETO. `config/huey.py` NÃO faz fail-hard no
+# import, e é isso que impede o container web de morrer no boot por causa de uma
+# variável da fila.
+from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

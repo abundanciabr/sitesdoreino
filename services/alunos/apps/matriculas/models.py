@@ -1,4 +1,6 @@
 # apps/matriculas/models.py
+import uuid
+
 from django.db import models
 
 STATUS_ATIVA = "ativa"
@@ -167,3 +169,54 @@ class Matricula(models.Model):
                 name="matricula_unica_na_fila_por_site_e_email",
             )
         ]
+
+
+class OutboxEvent(models.Model):
+    """Uma linha por fato que esta célula afirma ao resto da plataforma.
+
+    Nasceu em 29/08/2026, junto com a voz da célula: até então ela só ESCUTAVA
+    (o consumer de pagamento). O padrão é copiado da `sugestoes` — nunca o
+    arquivo, e nunca por import cruzado (Lei 7): um relay diferente por célula
+    significaria N modos de falha diferentes para o mesmo problema.
+
+    Mora AQUI, e não num app novo, pela mesma decisão de orçamento da vizinha:
+    `apps/matriculas` já tem `models.py` + `migrations/`, e um app à parte
+    custaria outro `__init__.py` sem ganho arquitetural nenhum.
+
+    `payload` guarda **só o campo `data`** do envelope. O envelope inteiro é
+    montado pelo relay, no instante da publicação — guardar o envelope pronto
+    duplicaria em JSON o que já são colunas, e as duas cópias envelheceriam
+    separadas.
+
+    `event_id` é `UUIDField` porque o contrato pede `"format": "uuid"` neste
+    campo, como TODO evento desta plataforma.
+    """
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    event = models.CharField(max_length=100)  # ex.: "notificacao.devida"
+    version = models.PositiveSmallIntegerField(default=1)
+    payload = models.JSONField()  # SÓ o campo `data` do envelope
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    # As chaves que este evento acrescenta ao ENVELOPE (o nível de cima), e não
+    # ao `data`. Hoje só o `ator_id`, que de propósito mora no envelope:
+    # qualquer célula lê "quem fez isto" sem conhecer o formato do assunto.
+    #
+    # Campo genérico e não uma coluna `ator_id`: o relay monta o envelope para
+    # TODOS os eventos, e os contratos são `additionalProperties: false` no
+    # topo. Uma coluna obrigaria o relay a decidir, evento a evento, se inclui a
+    # chave — e essa decisão seria uma SEGUNDA verdade sobre os contratos,
+    # morando em código. Com este campo, quem emite (que conhece o próprio
+    # contrato) declara o que vai no envelope, e o relay continua burro.
+    envelope_extra = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        indexes = [
+            # O relay pergunta sempre a mesma coisa: "o que ainda não publiquei,
+            # na ordem em que aconteceu?". Sem este índice, a pergunta vira um
+            # scan da tabela inteira — e ela só cresce.
+            models.Index(fields=["published_at", "id"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.event} {self.event_id}"

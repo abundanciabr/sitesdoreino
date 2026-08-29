@@ -17,6 +17,7 @@ from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
 
+from apps.core.clients import IdentidadeClient
 from apps.matriculas.models import Matricula
 from apps.matriculas.services import (
     OrderIdReservado,
@@ -790,6 +791,34 @@ def list_pre_enrollments(request, site_id: str = None, status: str = None):
     return JsonResponse(corpo, safe=False, status=200)
 
 
+def _para_quem_avisar(id_da_linha: str) -> str:
+    """[AVISO] O id de plataforma de quem vai receber a carta, ou `""`.
+
+    **Resolvido ANTES da transação, de propósito.** Isto é um salto de rede, e
+    um salto de rede dentro de `transaction.atomic()` segura um lock de linha
+    pelo tempo da resposta do vizinho. A leitura aqui é sem lock; quem decide o
+    que acontece de verdade continua sendo a transação lá dentro, que reconfere
+    o estado.
+
+    Custa uma consulta a mais no caminho de um gesto humano (alguém clicou em
+    "Liberar"), e a compensação é que a carta nasce DENTRO da transação do fato
+    — que é a única forma de nunca existir aviso para algo que não aconteceu.
+
+    Devolve `""` em todos os casos de "não sei": linha inexistente, pessoa que
+    nunca entrou com o Google, `identidade` fora do ar, par não provisionado.
+    Quem chama trata isso como "não há carta a enviar" — nunca como motivo para
+    a decisão falhar.
+    """
+    email = (
+        Matricula.objects.filter(pk=id_da_linha).values_list("email", flat=True).first()
+        if str(id_da_linha).isdigit()
+        else None
+    )
+    if not email:
+        return ""
+    return IdentidadeClient().id_por_email(email) or ""
+
+
 @router.post(
     "/pre-matriculas/{id}/decisao",
     operation_id="decidePreEnrollment",
@@ -823,7 +852,11 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
         return JsonResponse({"detail": "recusar exige motivo"}, status=422)
 
     linha, resultado = decidir_na_fila(
-        id_da_linha=id, decisao=decisao, decidido_por=decidido_por, motivo=motivo
+        id_da_linha=id,
+        decisao=decisao,
+        decidido_por=decidido_por,
+        motivo=motivo,
+        destinatario_id=_para_quem_avisar(id),
     )
     if resultado == "nao-encontrada":
         return JsonResponse({"detail": "não há linha na fila com este id"}, status=404)
@@ -1538,6 +1571,7 @@ def update_enrollment(request, id: str):
         id_da_linha=id,
         mudancas=payload,
         decidido_por=str(payload["decidido_por"]),
+        destinatario_id=_para_quem_avisar(id),
     )
     if resultado == "nao-encontrada":
         raise HttpError(404, "matrícula inexistente")
