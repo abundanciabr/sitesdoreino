@@ -291,5 +291,11 @@ o veredito ao mantenedor em texto claro — desde 26/08/2026 a `main` tem sim
 required checks (`muralhas` e `ci-celula-gate`, H3), mas **nenhum deles olha o
 deploy**: ele roda DEPOIS do merge, e ninguém mais vai olhar por você.
 
-**Quem faz valer:** `ci/portao_de_deploy.py` (nenhuma imagem sobe sem evidência verde) · `.github/workflows/alarme-main.yml` (abre issue se a `main` fica vermelha).
+**E essa conferência NUNCA se espera em silêncio** (desde 29/08/2026): rode
+`python ci/esperar.py --run <id> --teto 20 --dizendo "o deploy da <célula>"`
+pela ferramenta `Monitor` — a espera fala sozinha na janela do mantenedor e
+morre no teto. Toda espera tem voz e tem teto: RITOS.md §2 peça 6
+(`armadilhas/161`).
+
+**Quem faz valer:** `ci/portao_de_deploy.py` (nenhuma imagem sobe sem evidência verde) · `.github/workflows/alarme-main.yml` (abre issue se a `main` fica vermelha) · `ci/muralha_da_espera.py` (espera muda e sem teto é comando recusado).
 
