@@ -46,6 +46,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      # O mapa das células (`celulas.yml`, Onda 5) é YAML: sem o leitor, a
+      # detecção não conclui — e ela falha alto, em vez de dizer "nenhuma
+      # célula" e publicar nada em verde.
+      - name: Leitor do mapa das células
+        run: python -m pip install --quiet pyyaml
       - id: d
         name: Detectar células tocadas (runner canônico, base = event.before)
         shell: bash

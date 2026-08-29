@@ -97,8 +97,13 @@ def carregar(raiz: Path | None = None) -> dict[str, Celula]:
     """Lê `celulas.yml`. Qualquer defeito de forma é ERROR, nunca mapa vazio."""
     raiz = raiz or raiz_do_repo()
     caminho = raiz / ARQUIVO
+    # FORA do try: "o leitor de YAML não existe" e "o YAML está torto" são
+    # fatos diferentes, e embrulhar o primeiro no segundo manda quem lê
+    # procurar defeito no arquivo — que está impecável. É a mesma inversão de
+    # categoria de `armadilhas/159`, e ela reapareceu aqui em menos de um dia.
+    leitor = _yaml()
     try:
-        bruto = _yaml().safe_load(caminho.read_text(encoding="utf-8"))
+        bruto = leitor.safe_load(caminho.read_text(encoding="utf-8"))
     except OSError as exc:
         raise ErroDeInstrumentacao(
             f"{ARQUIVO} ilegível",

@@ -242,3 +242,31 @@ def test_a_muralha_do_mapa_reprova_de_verdade(tmp_path: Path):
     )
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert "PAGAMENTOS_API_URL" in proc.stdout
+
+
+def test_todo_workflow_que_le_o_mapa_instala_o_leitor():
+    """O mapa é YAML: sem PyYAML, quem o lê não conclui — e falha alto.
+
+    Falhar alto é o certo, mas falhar SEMPRE não serve a ninguém. Este guarda
+    existe porque o defeito apareceu dez minutos depois de o mapa nascer (run
+    33251639130): o `detectar` do ci-celula não instalava o leitor, e o PR
+    inteiro ficou vermelho por dependência ausente.
+    """
+    import yaml as _yaml
+
+    pasta = RAIZ / ".github" / "workflows"
+    for arquivo in sorted(pasta.glob("*.yml")):
+        texto = arquivo.read_text(encoding="utf-8")
+        if "ci.py --detectar-celulas" not in texto and "mapa_de_celulas" not in texto:
+            continue
+        fluxo = _yaml.safe_load(texto)
+        instala = [
+            passo
+            for job in fluxo["jobs"].values()
+            for passo in job.get("steps", [])
+            if "pyyaml" in str(passo.get("run", "")).lower()
+        ]
+        assert instala, (
+            f"{arquivo.name} lê o mapa das células e não instala o PyYAML — "
+            "a detecção vai falhar alto em TODO PR"
+        )
