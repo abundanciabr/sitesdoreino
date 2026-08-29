@@ -306,6 +306,53 @@ def test_votar_numa_sugestao_que_nao_existe_e_404(dentro, categoria):
 
 
 # ---------------------------------------------------------------------------
+# O arquivamento (`DECISAO-arquivar-ideia.md`, 29/08/2026) — some do aluno
+# ---------------------------------------------------------------------------
+#
+# A escrita mora do lado da gestão (`api_gestao.arquivar`); aqui só se confere
+# o efeito do lado do aluno, gravando o carimbo direto — como esta célula é
+# dona do dado, não há Rede/API a dublar para chegar a este estado.
+
+
+def _arquivar(sugestao):
+    from django.utils import timezone
+
+    Sugestao.objects.filter(pk=sugestao.pk).update(arquivada_em=timezone.now())
+
+
+def test_ideia_arquivada_some_do_quadro(dentro, sugestao):
+    _arquivar(sugestao)
+
+    corpo = dentro.client.get(reverse("quadro")).content.decode()
+
+    assert sugestao.titulo not in corpo
+
+
+def test_ideia_arquivada_e_404_por_id_direto(dentro, sugestao):
+    _arquivar(sugestao)
+
+    assert dentro.client.get(reverse("sugestao", args=[sugestao.id])).status_code == 404
+    assert dentro.client.post(reverse("votar", args=[sugestao.id])).status_code == 404
+    assert (
+        dentro.client.post(
+            reverse("comentar", args=[sugestao.id]), {"texto": "oi"}
+        ).status_code
+        == 404
+    )
+
+
+def test_ideia_arquivada_nao_entra_em_possiveis_duplicatas(dentro, categoria, sugestao):
+    """O título aparece de qualquer jeito, ecoado no campo do rascunho — quem
+    prova a ausência é a seção de duplicatas, que fica vazia."""
+    _arquivar(sugestao)
+
+    corpo = _conferir(dentro.client, sugestao.titulo).content.decode()
+
+    assert "Nada parecido no quadro" in corpo
+    assert "Isto já foi sugerido?" not in corpo
+
+
+# ---------------------------------------------------------------------------
 # O quadro, enquanto não existe CONV-SITE
 # ---------------------------------------------------------------------------
 
