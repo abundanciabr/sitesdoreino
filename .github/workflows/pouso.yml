@@ -66,8 +66,30 @@ on:
         description: 'Número do PR (vazio = o mais antigo com a etiqueta pousar)'
         required: false
         type: string
+  # A PISTA ACORDA NO EVENTO, não no relógio (29/08/2026 — pergunta do
+  # mantenedor: "esse agendamento resolve algum problema concreto ou causa
+  # mais demora desnecessária?"). Resposta medida: as duas coisas. Ele resolve
+  # o problema real de ninguém ficar esquecido — mas, como ÚNICO despertador,
+  # cobrava até ~13 min de espera num PR cujos checks terminam em ~2. O gesto
+  # da casa é "peça pouso e vá embora": a espera cheia caía justamente em quem
+  # seguia a regra.
+  #
+  # Agora a pista acorda quando os checks de QUALQUER PR concluem. O evento
+  # `workflow_run` roda sempre a definição da `main` (a decisão 2 continua de
+  # pé) e dispara também para conclusão em falha — de propósito: acordar num
+  # PR vermelho faz a pista DEVOLVÊ-LO na hora, com o veredito, em vez de
+  # deixá-lo iludido na fila por um quarto de hora.
+  #
+  # Passagens com fila vazia saem em segundos, e o repositório é público
+  # (executor não consome franquia). O `concurrency` abaixo colapsa acordadas
+  # simultâneas numa só.
+  workflow_run:
+    workflows: [ci-celula, muralhas]
+    types: [completed]
   schedule:
-    # Rede de segurança: nenhum pedido de pouso espera mais que isto.
+    # De despertador único a REDE: pega o que o evento perder (um workflow
+    # renomeado, uma etiqueta posta à mão num PR já verde, uma acordada
+    # colapsada pelo concurrency com a fila ainda cheia).
     - cron: '*/15 * * * *'
 
 # Um pouso por vez. `cancel-in-progress: false` porque cancelar um pouso no meio
