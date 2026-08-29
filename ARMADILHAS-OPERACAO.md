@@ -185,7 +185,8 @@ ocorrências, versionado) e de medições ao vivo. Contrato completo em
 # 1) arquivo NOVO em painel/registros/AAAAMMDD-NNN-slug.js (molde: painel/LEIA-ME.md)
 #    NUNCA edite um registro existente — atualização/resposta é registro novo
 #    (com `responde_a` quando fecha um pedido).
-# 2) regenerar o manifesto (valida TUDO, fail-closed):
+# 2) montar o painel na sua máquina (valida TUDO, fail-closed). O resultado
+#    NÃO entra no commit desde 28/08/2026 — quem materializa é a integração:
 node painel/gerar_manifesto.js
 # 3) conferir como a muralha do CI confere:
 bash ci/muralha-do-painel.sh

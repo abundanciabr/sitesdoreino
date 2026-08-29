@@ -182,5 +182,7 @@
 | [154](154-busca-em-portugues-do-postgres-nao-une-plural-em.md) | Busca em português do PostgreSQL: o plural em `-ens` não é unido, e acento importa — a busca do site "não acha" um texto que existe. O aluno escreve `modelagens` e não encontra a mensagem que diz `modelagem`; escreve… | — |
 | [155](155-sabotagem-que-passa-nem-sempre-e-guarda-forte.md) | Sabotagem que "passa" nem sempre é guarda forte — às vezes a sabotagem não aplicou — você faz a prova por mutação (estraga o código de propósito para ver o guarda ficar vermelho), a suíte fica **verde**, e você conclui… | — |
 | [156](156-pr-que-toca-painel-nao-fecha-a-janela-de-merge.md) | PR que toca `painel/` não fecha a janela de merge — separe o PR em vez de tentar de novo — você tenta mergear e entra num laço que não termina. A cada volta o motivo muda, e cada um parece um problema isolado: | — |
+| [157](157-arquivo-gerado-que-sai-do-git-quebra-quem-o-lia.md) | Arquivo gerado que sai do Git quebra, em silêncio, tudo que o lia do checkout — você tira um artefato gerado do versionamento (o certo a fazer — ele era colisão diária entre sessões), a muralha do painel fica verde, e o… | — |
+| [158](158-numero-do-servidor-vem-em-utc-e-o-registro-e-nomeado-em-local.md) | O número do servidor vem no dia UTC, e você nomeia o arquivo no dia daqui — você pede o número atômico do próximo registro, ele devolve `001` num dia em que já existem dezenas de registros, e o arquivo que você cria | — |
 
-**145 entradas.**
+**147 entradas.**

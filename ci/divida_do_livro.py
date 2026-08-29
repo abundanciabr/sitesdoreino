@@ -182,9 +182,10 @@ def como_pagar(devedores: list[dict[str, Any]]) -> str:
     linhas += [
         "",
         "Para pagar: um registro NOVO por acontecimento em painel/registros/",
-        "(molde em painel/LEIA-ME.md), citando o número do PR na evidência, e",
-        "depois `node painel/gerar_manifesto.js`. Um registro pode contar mais",
-        "de um PR quando eles são o mesmo acontecimento — cite todos os números.",
+        "(molde em painel/LEIA-ME.md), citando o número do PR na evidência.",
+        "Commite SÓ o registro — o painel gerado é da integração desde a Onda 3.",
+        "Um registro pode contar mais de um PR quando eles são o mesmo",
+        "acontecimento — cite todos os números.",
         "",
         "PR que só toca painel/ é isento: ele É o registro, e mergeia normalmente.",
     ]

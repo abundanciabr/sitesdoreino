@@ -240,16 +240,38 @@ def declaracao_da_pagina(p: Painel) -> tuple[int, list[dict]]:
     return int(achado.group(1)), meses
 
 
+# Cada registro do arquivo de mês ocupa UMA LINHA, no formato `JSON.parse("…")`
+# (desde 28/08/2026 — Onda 3). Uma linha por registro é o que faz a diferença
+# entre duas gerações ser legível: um registro novo aparece como uma linha a
+# mais, e não como um bloco inteiro trocado.
+LINHA_DE_REGISTRO = re.compile(r"^JSON\.parse\((\".*\")\),?$", re.M)
+
+
 def registros_do_mes(caminho: Path) -> list[dict]:
     """Os registros dentro de um `livro-AAAAMM.js`, sem executar JavaScript."""
-    lista = _json_embutido(
-        caminho.read_text(encoding="utf-8"),
-        r"registros:\s*JSON\.parse\((\".*\")\)",
-        caminho.name,
-    )
-    if not isinstance(lista, list):
+    texto = caminho.read_text(encoding="utf-8")
+    if "registros: [" not in texto:
         raise ErroDeInstrumentacao(
-            f"{caminho.name} não traz uma lista de registros", ""
+            f"{caminho.name} não traz o bloco `registros: [`",
+            "Ou o arquivo não foi gerado, ou foi editado à mão, ou o formato "
+            "mudou sem este verificador saber. Rode: node painel/gerar_manifesto.js",
+        )
+    lista: list[dict] = []
+    for numero, achado in enumerate(LINHA_DE_REGISTRO.finditer(texto), start=1):
+        try:
+            obj = json.loads(json.loads(achado.group(1)))
+        except ValueError as erro:
+            raise ErroDeInstrumentacao(
+                f"{caminho.name}: o registro nº {numero} do arquivo não decodifica",
+                str(erro),
+            ) from erro
+        lista.append(obj)
+    if not lista:
+        raise ErroDeInstrumentacao(
+            f"{caminho.name} não traz nenhum registro em linha própria",
+            "Um mês declarado e vazio não é 'nada aconteceu': é sinal de "
+            "formato trocado ou de geração pela metade. "
+            "Rode: node painel/gerar_manifesto.js",
         )
     return lista
 
