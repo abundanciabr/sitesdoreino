@@ -23,13 +23,28 @@
 
 ## Como registrar um acontecimento (o gesto de toda sessão)
 
-1. Crie **um arquivo novo** em `registros/`, nome
-   `AAAAMMDD-NNN-slug.js` (data de hoje · sequência livre do dia · slug curto).
+1. Crie **um arquivo novo** em `registros/`, nome `AAAAMMDD-NNN-slug.js`. O
+   `NNN` **se pede ao almoxarife — não se escolhe:**
+
+   ```bash
+   git fetch origin
+   N=$(python ci/reservar.py numero registro)
+   DIA=$(python -c "import datetime;print(datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d'))")
+   # arquivo: painel/registros/$DIA-$N-slug.js  (e o campo `arquivo:` idêntico)
+   ```
+
+   `ci/reservar.py` cria uma referência no servidor do GitHub — comparar-e-trocar,
+   a mesma trava que impede dois `push` simultâneos de se atropelarem. Duas
+   sessões no mesmo segundo: uma ganha, a outra é recusada **pelo servidor** e
+   recebe o próximo número. Escolher à mão não tem trava nenhuma — as duas leem
+   a pasta, as duas veem o mesmo livre, e o Git junta os dois arquivos sem ter o
+   que reclamar (nomes diferentes, hunks diferentes). Medido em 29/08/2026: 82
+   números gastos no livro, só 39 pedidos ao almoxarife, três colisões no dia.
+   O `DIA` sai em **UTC de propósito** (`armadilhas/158`); o fallback para
+   quando não houver rede está em `armadilhas/179`.
+
    **Nunca edite um registro existente** — atualização é um registro NOVO
-   (se ele fecha um pedido, aponte `responde_a`). Se outra sessão pegou o
-   mesmo `NNN` ao mesmo tempo (é corrida, não erro seu), não precisa checar a
-   pasta à mão antes de gravar — o passo 3 abaixo reprova e já diz para qual
-   número renomear.
+   (se ele fecha um pedido, aponte `responde_a`).
 2. Conteúdo — exatamente este molde (copie de um registro existente):
 
 ```js
