@@ -676,3 +676,7 @@ class CaixaClient:
 
     def desarquivar(self, ideia_id: int, *, quem: dict):
         return self._escrever(f"/gestao/ideias/{ideia_id}/desarquivar", quem)
+
+    def apagar(self, ideia_id: int, *, quem: dict):
+        """`DECISAO-apagar-ideia.md`: sem volta, nem para quem criou."""
+        return self._escrever(f"/gestao/ideias/{ideia_id}/apagar", quem)

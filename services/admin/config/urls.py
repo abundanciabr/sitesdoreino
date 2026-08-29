@@ -2,6 +2,7 @@ from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
 from apps.core.caixa import (
+    apagar_ideia,
     arquivar_ideia,
     assinar_obra,
     avaliar_ideia,
@@ -115,6 +116,9 @@ urlpatterns = [
         desarquivar_ideia,
         name="caixa_desarquivar",
     ),
+    # [APAGAR] `DECISAO-apagar-ideia.md` (29/08/2026): sem volta, nem para
+    # quem criou. Mesma gramática das outras — POST, redireciona de volta.
+    path("caixa/ideia/<int:ideia_id>/apagar", apagar_ideia, name="caixa_apagar"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro
