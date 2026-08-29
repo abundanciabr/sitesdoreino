@@ -1876,3 +1876,38 @@ caso de hoje; o mapa `ESTADO_POR_CATEGORIA` conserta o de amanhã. Sem ele, uma
 categoria nova inventada do outro lado cairia no `else` — e o `else` é o
 formulário, que é exatamente o defeito de volta com outro nome. O que não está
 no mapa FECHA, e há teste para isso.
+
+## Arquivar não é status, e o filtro tem que morar num lugar só (29/08/2026)
+
+O mantenedor pediu uma forma de apagar uma ideia; a decisão dele (por pergunta
+estruturada, `docs/decisoes/DECISAO-arquivar-ideia.md`) foi arquivar —
+reversível, nada se perde — e não apagar de vez. A tentação óbvia era um
+sétimo valor em `Sugestao.Status`, e ela é a errada: `status` é a opinião da
+equipe sobre o MÉRITO da ideia (planejado, não planejado...), e arquivar é
+outra pergunta — a equipe tirando algo de vista por um motivo operacional
+(spam, duplicata, engano) que não diz nada sobre se a ideia é boa. Uma ideia
+pode estar arquivada em QUALQUER fase do trilho, e desarquivar precisa devolver
+exatamente essa fase. Por isso viraram dois campos ortogonais
+(`arquivada_em`/`arquivada_por`), não um status a mais — e todo lugar que
+já fazia `if status == ...` continuou funcionando sem tocar.
+
+**O perigo real não era o modelo, era esquecer um dos MUITOS lugares que o
+aluno alcança.** `sugestoes_ordenadas` sozinha é usada por três consumidores
+(`ver_quadro`, `moderacao.ver_fila` e a gestão do Admin) — filtrar arquivadas
+DENTRO dela sem pensar nos três quebraria a gestão (que precisa achar a ideia
+arquivada para desarquivar). A solução foi um parâmetro
+`incluir_arquivadas: bool = False`: o padrão fica do lado SEGURO (some), e só
+quem realmente precisa ver tudo (a gestão) pede explicitamente. Continuaram
+precisando de filtro manual, um por um: `numeros_do_quadro`, `_marcos`
+(faixa de roadmap e fora do trilho), `meu_impacto`, `possiveis_duplicatas` e os
+quatro `get_object_or_404` de acesso direto (`ver_sugestao`, `votar`,
+`desvotar`, `comentar`) — nove pontos de leitura ao todo, e um método de
+queryset (`SugestaoQuerySet.visiveis()`) para não escrever
+`arquivada_em__isnull=True` nove vezes com nove chances de errar o nome do
+campo.
+
+**A armadilha que quase passou:** o primeiro teste de "arquivada não entra em
+duplicatas" checava se o TÍTULO sumia da página — e ele não some, porque o
+campo do formulário ECOA o que a pessoa acabou de digitar. Quem prova ausência
+de duplicata é a seção de resultado ("Nada parecido no quadro" vs. "Isto já
+foi sugerido?"), nunca o texto da página inteira.

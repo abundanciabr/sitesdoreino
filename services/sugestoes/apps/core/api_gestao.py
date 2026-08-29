@@ -137,6 +137,13 @@ class IdeiaEmGestao(Schema):
     # redações para o aluno e para a equipe seriam duas verdades sobre a recusa.
     motivo_da_saida: str
     avaliacao: "AvaliacaoDaEquipe | None" = None
+    # O arquivamento (`DECISAO-arquivar-ideia.md`, 29/08/2026). NÃO é status: uma
+    # ideia arquivada pode estar em qualquer fase do trilho — arquivar é a
+    # equipe tirando algo de vista (spam, duplicata, engano), não uma decisão de
+    # produto sobre ela. `arquivada_em` vazio é "nunca foi".
+    arquivada: bool = False
+    arquivada_em: str = ""
+    motivo_do_arquivamento: str = ""
 
 
 class LinhaDoHistorico(Schema):
@@ -246,6 +253,10 @@ class ChangeSpecEscrito(QuemAge):
     aprovado_em: date
 
 
+class ArquivamentoEscrito(QuemAge):
+    motivo: str = ""
+
+
 class Recusa(Schema):
     """Uma recusa que ENSINA o caminho — a frase é a mesma que a tela dizia."""
 
@@ -258,8 +269,14 @@ class Recusa(Schema):
 
 
 def _ideias_do_quadro(quadro):
+    """Sempre COM as arquivadas — `incluir_arquivadas=True` de propósito.
+
+    Quem decide se elas aparecem é `listar_ideias`, olhando o parâmetro do
+    Admin; e `uma_ideia`/as escritas de arquivar precisam achar a ideia
+    independente do estado dela, ou desarquivar ficaria impossível.
+    """
     return (
-        sugestoes_ordenadas(quadro)
+        sugestoes_ordenadas(quadro, incluir_arquivadas=True)
         .annotate(
             parada_desde=Coalesce(Max("historico__criado_em"), "criado_em"),
             tem_avaliacao=Exists(
@@ -312,6 +329,9 @@ def _como_fato(ideia, plateias) -> dict:
         "tem_avaliacao": ideia.tem_avaliacao,
         "tem_changespec": ideia.tem_changespec,
         "motivo_da_saida": _motivo_da_saida(ideia),
+        "arquivada": ideia.arquivada_em is not None,
+        "arquivada_em": ideia.arquivada_em.isoformat() if ideia.arquivada_em else "",
+        "motivo_do_arquivamento": ideia.motivo_do_arquivamento,
         "avaliacao": (
             {
                 "impacto_educacional": ideia.avaliacao.impacto_educacional,
@@ -335,13 +355,16 @@ def _como_fato(ideia, plateias) -> dict:
         "Devolve o quadro inteiro com os fatos de cada ideia — votos, plateia, "
         "estado, datas, se tem avaliação interna e se tem ChangeSpec aprovado. "
         "NÃO devolve colunas, baldes nem ordenação: agrupar é do consumidor. O "
-        "e-mail de quem sugeriu nunca viaja."
+        "e-mail de quem sugeriu nunca viaja. Por padrão as arquivadas ficam de "
+        "fora — `incluir_arquivadas=true` as traz de volta, para quem precisa "
+        "achar uma ideia arquivada para desarquivar."
     ),
 )
-def listar_ideias(request, por_email: str = ""):
+def listar_ideias(request, por_email: str = "", incluir_arquivadas: bool = False):
     quadro = quadro_atual()
     agora = timezone.now()
-    ideias = list(_ideias_do_quadro(quadro))
+    todas = list(_ideias_do_quadro(quadro))
+    ideias = todas if incluir_arquivadas else [i for i in todas if not i.arquivada_em]
     plateias = plateia_de(ideias)
 
     # Quem ainda espera: as ideias que NÃO receberam resposta. Recusada com
@@ -528,6 +551,56 @@ def registrar_o_changespec(request, sugestao_id: int, payload: ChangeSpecEscrito
         )
     except ChangeSpecInvalido as recusa:
         return 422, {"erro": " ".join(recusa.args[0])}
+    return _uma_ideia(sugestao_id)
+
+
+@router.post(
+    "/gestao/ideias/{sugestao_id}/arquivar",
+    response={200: IdeiaEmGestao, 422: Recusa},
+    operation_id="archiveIdea",
+    summary="Arquiva a ideia — some do quadro do aluno, nada se perde",
+    description=(
+        "`DECISAO-arquivar-ideia.md` (29/08/2026): não é um apagar de vez. A "
+        "ideia, os votos, os comentários e o histórico continuam intactos no "
+        "banco; ela só deixa de aparecer no quadro, na busca de duplicatas e em "
+        "qualquer página que o aluno alcance. Desarquivar traz tudo de volta "
+        "exatamente como estava. Recusa 422 se já estiver arquivada."
+    ),
+)
+def arquivar(request, sugestao_id: int, payload: ArquivamentoEscrito):
+    sugestao = _ideia(sugestao_id)
+    if sugestao.arquivada_em is not None:
+        return 422, {"erro": "Esta ideia já está arquivada."}
+    sugestao.arquivada_em = timezone.now()
+    sugestao.arquivada_por = _quem(payload)
+    sugestao.motivo_do_arquivamento = payload.motivo
+    sugestao.save(
+        update_fields=["arquivada_em", "arquivada_por", "motivo_do_arquivamento"]
+    )
+    return _uma_ideia(sugestao_id)
+
+
+@router.post(
+    "/gestao/ideias/{sugestao_id}/desarquivar",
+    response={200: IdeiaEmGestao, 422: Recusa},
+    operation_id="unarchiveIdea",
+    summary="Desarquiva a ideia — volta a aparecer para o aluno",
+    description=(
+        "O inverso de arquivar, e simétrico: a ideia volta ao quadro exatamente "
+        "como estava (mesmo status, mesmos votos, mesmo histórico). Recusa 422 "
+        "se ela não estiver arquivada."
+    ),
+)
+def desarquivar(request, sugestao_id: int, payload: QuemAge):
+    sugestao = _ideia(sugestao_id)
+    if sugestao.arquivada_em is None:
+        return 422, {"erro": "Esta ideia não está arquivada."}
+    sugestao.arquivada_em = None
+    sugestao.arquivada_por = None
+    sugestao.motivo_do_arquivamento = ""
+    sugestao.save(
+        update_fields=["arquivada_em", "arquivada_por", "motivo_do_arquivamento"]
+    )
     return _uma_ideia(sugestao_id)
 
 
