@@ -46,8 +46,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionFull'
+  /pessoas/por-email:
+    post:
+      operationId: findPersonByEmail
+      summary: Qual o id de plataforma de quem tem este e-mail
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PessoaPorEmail'
+      description: 'Traduz um e-mail no id OPACO da pessoa — o mesmo `id` que getSession devolve.
+        Existe por uma razão só: uma célula que conhece as pessoas por E-MAIL precisa endereçar
+        uma carta para a caixa de avisos, que entrega por ID DE PLATAFORMA. POST e não GET com o
+        e-mail no caminho: caminho de URL entra em log de servidor, em histórico de proxy e em rastro
+        de erro; corpo, não. Entra e-mail, sai id — esta porta nunca devolve e-mail nem nome. Exige
+        TOKENS_COMPLETOS_*, o mesmo degrau de getSessionFull, porque quem manda um e-mail para ela
+        descobre se ele existe. `id: null` é RESPOSTA, não erro.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailPedido'
+        required: true
 components:
   schemas:
+    EmailPedido:
+      description: O e-mail de quem se procura. Comparado em minúsculas, sem espaços.
+      properties:
+        email:
+          type: string
+      required:
+      - email
+      type: object
+    PessoaPorEmail:
+      description: O id opaco de quem tem aquele e-mail, ou `null` — nunca o e-mail de volta.
+      properties:
+        id:
+          anyOf:
+          - type: string
+          - type: 'null'
+      type: object
     Session:
       description: 'Quem é o dono da sessão; sem sessão, só `autenticado: false`.'
       type: object
