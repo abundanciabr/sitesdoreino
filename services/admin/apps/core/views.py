@@ -14,6 +14,7 @@ improvável.
 preenche). O `/healthz` é a exceção declarada, e por isso não o usa.
 """
 
+import unicodedata
 from datetime import datetime
 
 from django.http import HttpResponseRedirect, JsonResponse
@@ -218,6 +219,93 @@ def tipos_com_contagem(contagens: dict) -> list[dict]:
     return tipos
 
 
+# ------------------------------------------------------- a busca e o filtro
+#
+# Pedido do mantenedor em 29/08/2026, depois do mapa da jornada do aluno: *"no
+# melhor padrão ouro da indústria, quero poder gerenciar os alunos facilmente"*.
+# A tela mostrava TODA a escola de uma vez, na ordem de entrada — confortável
+# com dois alunos, rolagem cega com duzentos.
+#
+# **A peneira roda AQUI, sobre a lista que a view já buscou, e não na `alunos`.**
+# Dois motivos, e o segundo é o que importa:
+#
+# 1. A view já pede a lista inteira UMA vez para contar os cartões. Filtrar do
+#    outro lado seria uma segunda ida à rede para responder o que já está na
+#    memória.
+# 2. **Os cartões contam a ESCOLA INTEIRA, sempre — o filtro só afeta a
+#    LISTA.** Se a contagem seguisse a peneira, procurar por "ana" faria o
+#    cartão dizer "1 aluno ativo", e o mantenedor leria o número da busca dele
+#    como o número da escola. É falso-verde de manual
+#    (`RETROSPECTIVA-FASE-D.md` §1): a tela responderia com confiança uma
+#    pergunta que ninguém fez.
+
+
+#: Os estados que o `<select>` do filtro aceita — lista de PERMISSÃO derivada
+#: de `ESTADOS_NA_TELA`, e não uma segunda lista escrita à mão. Estado novo que
+#: nascer lá aparece aqui no mesmo commit; um vocabulário próprio aqui
+#: divergiria do formulário de gestão na primeira mudança.
+def _estados_filtraveis() -> "set[str]":
+    return {valor for valor, _ in ESTADOS_NA_TELA}
+
+
+def _sem_acento(texto: str) -> str:
+    """Minúsculas e sem acento — a forma em que duas grafias se encontram.
+
+    Procurar por "acaite" tem de achar "Açainite", e procurar por "JOAO" tem de
+    achar "João". Sem isto a busca funciona para quem digita o nome exatamente
+    como ele foi cadastrado — ou seja, para quem já sabe onde a pessoa está, que
+    é justamente quem não precisa procurar.
+
+    NFKD separa a letra do acento; o `combining` descarta o acento e preserva a
+    letra. É a mesma normalização em cima do que se digita e do que está
+    gravado, o que é a única forma de as duas se encontrarem.
+    """
+    decomposto = unicodedata.normalize("NFKD", texto or "")
+    return "".join(c for c in decomposto if not unicodedata.combining(c)).casefold()
+
+
+#: Os campos em que a busca procura. Lista de PERMISSÃO, e o WhatsApp está FORA
+#: de propósito: ele é o dado mais sensível desta tela
+#: (`DECISAO-fila-de-liberacao.md` §5), e um campo de busca que casa com ele
+#: convida a colar números de telefone numa query string — que vai para
+#: histórico de navegador e log de servidor. Nome, e-mail e turma respondem à
+#: pergunta real ("onde está esta pessoa?") sem esse preço.
+CAMPOS_DA_BUSCA = ("nome_completo", "email", "turma")
+
+
+def peneirar(linhas, procurado: str = "", estado: str = ""):
+    """A lista filtrada — ou `None` intacto quando não houve lista.
+
+    **`None` nunca vira `[]`.** *"Não consegui perguntar"* e *"perguntei e não
+    há ninguém"* são respostas opostas, e a tela inteira depende de saber qual
+    das duas ela está mostrando. Uma peneira que devolvesse lista vazia para
+    `None` transformaria a primeira na segunda em silêncio — que é exatamente o
+    falso-verde que os cartões desta página existem para não cometer.
+
+    `estado` é aplicado só quando está na lista de permissão; quem chama decide
+    o que dizer sobre um valor que não reconhece (a view avisa na tela, em vez
+    de devolver lista vazia como se ninguém casasse).
+    """
+    if linhas is None:
+        return None
+
+    resultado = list(linhas)
+    if estado in _estados_filtraveis():
+        resultado = [l for l in resultado if l.get("status") == estado]
+
+    alvo = _sem_acento(procurado).strip()
+    if alvo:
+        resultado = [
+            l
+            for l in resultado
+            if any(
+                alvo in _sem_acento(str(l.get(campo) or ""))
+                for campo in CAMPOS_DA_BUSCA
+            )
+        ]
+    return resultado
+
+
 @require_GET
 def escola_alunos(request):
     """A tela da escola: quem espera, e quem já é aluno.
@@ -261,14 +349,45 @@ def escola_alunos(request):
     de_todas = [l for lista in filas.values() if lista for l in lista] + (alunos or [])
     escolas = {linha.get("site_id") for linha in de_todas}
 
+    # [BUSCA] A peneira entra DEPOIS das contagens, e a ordem é a decisão: os
+    # cartões contam a escola inteira, a lista mostra o que casou. Invertê-las
+    # faria o cartão responder a busca do mantenedor como se fosse o tamanho da
+    # escola. Guarda: `tests/test_busca_e_filtro.py`.
+    procurado = (request.GET.get("q") or "").strip()[:120]
+    estado_pedido = (request.GET.get("estado") or "").strip()
+    estado = estado_pedido if estado_pedido in _estados_filtraveis() else ""
+    alunos_na_tela = peneirar(alunos, procurado, estado)
+    # A busca vale para as DUAS listas: quem o mantenedor procura pode estar na
+    # fila, e uma busca que só olhasse metade da tela deixaria ele concluindo
+    # "essa pessoa não existe aqui". O FILTRO de situação não vale para a fila —
+    # o vocabulário dela é outro (aguardando/recusada), e um `<select>` de
+    # gestão aplicado ali esvaziaria a fila sempre.
+    esperando_na_tela = peneirar(esperando, procurado)
+
     return render(
         request,
         "admin/escola_alunos.html",
         {
             "admin": request.admin,
             "tipos": tipos_com_contagem(contagens),
-            "esperando": esperando,
-            "alunos": alunos,
+            "esperando": esperando_na_tela,
+            "alunos": alunos_na_tela,
+            # [BUSCA] O que a pessoa pediu, devolvido para os campos do
+            # formulário: um filtro que se apaga ao recarregar a página faz o
+            # mantenedor achar que a lista inteira é o resultado da busca dele.
+            "procurado": procurado,
+            "estado_escolhido": estado,
+            # O aviso honesto de um `?estado=` que esta tela não conhece — link
+            # velho, ou alguém editando a barra de endereço. Sem ele, o valor
+            # seria ignorado em silêncio e a lista completa passaria por
+            # "resultado do filtro".
+            "estado_desconhecido": bool(estado_pedido) and not estado,
+            "peneirando": bool(procurado or estado),
+            # Os totais ANTES da peneira, para a tela poder dizer "mostrando 3
+            # de 47" — sem isso, uma busca com um resultado só é
+            # indistinguível de uma escola com um aluno só.
+            "total_de_alunos": None if alunos is None else len(alunos),
+            "total_esperando": None if esperando is None else len(esperando),
             # `None` (não consegui perguntar) e `[]` (não há ninguém) são telas
             # DIFERENTES, e o template precisa dos dois separados: `{% if %}`
             # sozinho não distingue lista vazia de ausência.
