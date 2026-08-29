@@ -13,13 +13,20 @@
            na fila    → o andamento do pedido (dias, ou o motivo da recusa)
            ex-aluno   → que o acesso acabou (28/08, lei do ex-aluno)
            pausado    → que é temporário e volta sozinho
-           cadastrado → nada sobre a escola
+           cadastrado → o convite para pedir entrada
 
-     A última linha é decisão do mantenedor entre três opções, e a ausência é
-     deliberada: ele recusou nominalmente convidar para a fila quem nunca
-     pediu. Até 28/08 o caminho da Caixa aparecia para TODO MUNDO que entrava,
-     e quem não era aluno clicava para receber um "não" — foi ele quem
-     encontrou isso, com a própria conta.
+     A última linha MUDOU em 29/08/2026, e a mudança é uma reversão declarada:
+     até então ela dizia "nada sobre a escola", porque em 28/08 o mantenedor
+     recusou nominalmente convidar para a fila quem nunca pediu. No dia
+     seguinte ele caiu no próprio beco — entrou com a conta dele, leu o aviso
+     de novidade e não tinha para onde ir — e revogou a recusa. A lei nova é
+     `DECISAO-o-beco-de-quem-entrou-e-nunca-pediu.md`.
+
+     O que NÃO voltou foi o defeito que a recusa curava: até 28/08 o caminho da
+     Caixa aparecia para TODO MUNDO que entrava, e quem não era aluno clicava
+     para receber um "não". Agora quem não é aluno recebe um convite HONESTO —
+     leva ao formulário de pedir entrada, que é o que ele pode de fato fazer —,
+     e só quando a `alunos` confirmou que é isso que ele é.
 
      E o que decide aqui NÃO autoriza nada: a Caixa continua conferindo
      matrícula na entrada dela. Esconder um botão nunca protegeu, e mostrá-lo
@@ -89,6 +96,26 @@
   {% else %}
   <p class="andamento">{% t "landing.pedido_de_hoje" %}</p>
   {% endif %}
+  {% elif request.ator.categoria == "cadastrado" and request.ator.categoria_conferida %}
+  {% comment %}
+  [BECO] 29/08/2026, `DECISAO-o-beco-de-quem-entrou-e-nunca-pediu.md`. Reverte
+  nominalmente a escolha de 28/08 anotada no topo deste arquivo — quem nunca
+  pediu nada via a home e não tinha para onde ir. O formulário existia o tempo
+  todo na Caixa; faltava a tela dizer que ele existe.
+
+  Duas condições, e a segunda é a que impede o erro simétrico: só entra aqui
+  quem a `alunos` CONFIRMOU ser `cadastrado`. Com ela fora do ar, `categoria`
+  devolve `cadastrado` por fail-open — e convidar um ALUNO a pedir a entrada
+  que ele já tem seria a home prometendo o contrário do que a Caixa responde,
+  que é o defeito de 28/08 de cabeça para baixo.
+
+  `{% elif %}` explícito e não `{% else %}`: categoria nova que a `alunos`
+  invente amanhã cai FORA de todos os ramos e não mostra nada — que é o que
+  esta tela deve fazer com o que ela não conhece. Um `else` a adotaria em
+  silêncio.
+  {% endcomment %}
+  <p class="andamento">{% t "landing.quer_estudar_aqui" %}</p>
+  <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.pedir_entrada" %}</a>
   {% endif %}
   {% else %}
   <a class="cta" href="{% url_i18n 'entrar' %}?next={{ request.path|urlencode }}">{% t "landing.entrar" %}</a>
