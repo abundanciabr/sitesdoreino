@@ -194,6 +194,11 @@ MURALHAS = [
         "ci/leis-sem-mecanismo.sh",
         "lei sem quem a faça valer e fora da dívida declarada (Onda 6, B10)",
     ),
+    PortaoDeShell(
+        "catraca-de-testes",
+        "ci/catraca-de-testes.sh",
+        "teste apagado, reduzido ou desligado sem a etiqueta 'remove-teste'",
+    ),
 ]
 
 
