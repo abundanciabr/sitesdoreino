@@ -69,14 +69,21 @@ def _rodar(script: str, **estado: str) -> subprocess.CompletedProcess:
 def _estado(
     d_result: str = "success",
     d_status: str = "ok",
-    celula: str = "catalogo",
+    celulas: str = '["catalogo"]',
     n: str = "1",
     r: str = "success",
 ) -> dict[str, str]:
+    """O estado que o gate enxerga.
+
+    Desde a Onda 5 o job da célula é uma MATRIZ e o detectar publica a LISTA em
+    json (`celulas`), não mais a primeira célula (`celula`). O gate confere que
+    a lista e a contagem concordam — duas medidas da mesma coisa que discordam
+    é instrumento quebrado.
+    """
     return {
         "D_RESULT": d_result,
         "D_STATUS": d_status,
-        "CELULA": celula,
+        "CELULAS": celulas,
         "N": n,
         "R": r,
     }
@@ -101,37 +108,47 @@ TABELA = [
     ),
     (
         "detecção concluiu e não há célula ⇒ SKIP permitido",
-        _estado(celula="", n="0", r="skipped"),
+        _estado(celulas="[]", n="0", r="skipped"),
         VERDE,
     ),
     (
         "sem célula mas o job rodou ⇒ ERROR (estado incoerente)",
-        _estado(celula="", n="0", r="success"),
+        _estado(celulas="[]", n="0", r="success"),
         VERMELHO,
     ),
     (
         "O BYPASS: detecção falhou ⇒ ERROR, nunca verde",
-        _estado(d_result="failure", d_status="", celula="", n="", r="skipped"),
+        _estado(d_result="failure", d_status="", celulas="", n="", r="skipped"),
         VERMELHO,
     ),
     (
         "detecção cancelada ⇒ ERROR",
-        _estado(d_result="cancelled", d_status="", celula="", n="", r="skipped"),
+        _estado(d_result="cancelled", d_status="", celulas="", n="", r="skipped"),
         VERMELHO,
     ),
     (
         "detecção pulada ⇒ ERROR",
-        _estado(d_result="skipped", d_status="", celula="", n="", r="skipped"),
+        _estado(d_result="skipped", d_status="", celulas="", n="", r="skipped"),
         VERMELHO,
     ),
     (
         "detecção 'passou' sem carimbar que mediu ⇒ ERROR",
-        _estado(d_status="", celula="", n="0", r="skipped"),
+        _estado(d_status="", celulas="[]", n="0", r="skipped"),
         VERMELHO,
     ),
     (
-        "diff toca 2 células e só uma foi testada ⇒ ERROR (escopo incompleto)",
-        _estado(celula="checkout", n="2", r="success"),
+        "DUAS células tocadas e as DUAS verdes ⇒ PASS (Onda 5)",
+        _estado(celulas='["checkout", "pagamentos"]', n="2", r="success"),
+        VERDE,
+    ),
+    (
+        "duas células e uma reprovou ⇒ FAIL",
+        _estado(celulas='["checkout", "pagamentos"]', n="2", r="failure"),
+        VERMELHO,
+    ),
+    (
+        "a lista e a contagem discordam ⇒ ERROR (instrumento quebrado)",
+        _estado(celulas='["checkout"]', n="2", r="success"),
         VERMELHO,
     ),
     (
@@ -173,8 +190,12 @@ def test_o_bypass_existia_de_verdade_no_gate_antigo() -> None:
     exato do bypass roda contra os dois scripts: o antigo aprova, o novo reprova.
     """
     estado_do_bypass = _estado(
-        d_result="failure", d_status="", celula="", n="", r="skipped"
+        d_result="failure", d_status="", celulas="", n="", r="skipped"
     )
+    # O gate ANTIGO lia `CELULA` (singular); o novo lê `CELULAS` (a lista). O
+    # estado precisa falar as duas línguas para que a comparação seja honesta:
+    # o antigo tem de receber exatamente o que ele receberia no dia do bypass.
+    estado_do_bypass = {**estado_do_bypass, "CELULA": ""}
     antigo = _rodar(GATE_ANTIGO, **estado_do_bypass)
     novo = _rodar(_script_do_gate(), **estado_do_bypass)
 

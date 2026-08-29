@@ -1,6 +1,16 @@
 # =============================================================================
-# CI DA CÉLULA — detecta a célula tocada e roda o `make ci` DELA.
-# Required check na branch protection de main.
+# CI DAS CÉLULAS — deriva do diff QUAIS células o PR toca e roda o `make ci` de
+# CADA UMA. Required check na branch protection de main.
+#
+# Até 29/08/2026 este workflow testava UMA célula (`head -1` da lista): dava
+# certo porque a cerca "1 PR = 1 célula" proibia o resto. A Onda 5 do
+# `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md` inverte a moeda — em vez de
+# RECUSAR um PR por largura, o CI DERIVA do diff o que precisa rodar. É esta
+# peça que precisa estar verde e medida ANTES de a cerca cair; enquanto ela não
+# cai, este job simplesmente nunca vê mais de uma célula.
+#
+# Quem responde "este arquivo é de quem" é `celulas.yml` (o mapa), verificado
+# contra o código pelo varredor em toda muralha.
 # =============================================================================
 name: ci-celula
 on:
@@ -13,7 +23,9 @@ jobs:
   detectar:
     runs-on: ubuntu-latest
     outputs:
-      celula: ${{ steps.d.outputs.celula }}
+      # A LISTA, em JSON — é ela que vira a matriz. `celula` (singular) saiu:
+      # ele era o `head -1` que fazia o escopo caber numa célula só.
+      celulas: ${{ steps.d.outputs.celulas }}
       n: ${{ steps.d.outputs.n }}
       # [INV-CI01] Carimbo de que a detecção CONCLUIU. Sem ele, o `gate` não
       # sabe distinguir "nenhuma célula tocada" de "não consegui descobrir".
@@ -62,12 +74,19 @@ jobs:
   rodar:
     name: ci-celula
     needs: detectar
-    # Defesa em profundidade: além de a célula existir, a detecção precisa
-    # ter carimbado sucesso. (Se `detectar` falha, o GitHub já pula este job.)
-    if: needs.detectar.outputs.celula != '' && needs.detectar.outputs.deteccao == 'ok'
+    # Defesa em profundidade: além de haver célula, a detecção precisa ter
+    # carimbado sucesso. (Se `detectar` falha, o GitHub já pula este job.)
+    if: needs.detectar.outputs.celulas != '[]' && needs.detectar.outputs.deteccao == 'ok'
     runs-on: ubuntu-latest
+    strategy:
+      # `fail-fast: false` de propósito: com duas células tocadas, quero ver o
+      # veredito das DUAS. Parar na primeira falha esconderia a segunda e
+      # transformaria uma rodada de conserto em duas.
+      fail-fast: false
+      matrix:
+        celula: ${{ fromJSON(needs.detectar.outputs.celulas) }}
     env:
-      CELULA: ${{ needs.detectar.outputs.celula }}
+      CELULA: ${{ matrix.celula }}
       DATABASE_URL: postgres://ci:ci@localhost:5432/ci_db
       REDIS_STREAMS_URL: redis://localhost:6379/0
       HUEY_REDIS_URL: redis://localhost:6379/1
@@ -105,19 +124,25 @@ jobs:
       - name: CI da célula (lint + import-linter + type + testes + freeze de contrato)
         run: make -C "services/$CELULA" ci
       - name: Cross-smoke Pix↔Cartão (só na fortaleza)
-        if: needs.detectar.outputs.celula == 'pagamentos'
+        if: matrix.celula == 'pagamentos'
         env:
           BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD^' }}
         run: bash ci/cross-smoke.sh
 
-  # Job terminal que SEMPRE conclui — é ele que a branch protection deve exigir
-  # como required check. Um PR que não toca célula alguma (ex.: um PR só de ci/)
+  # Job terminal que SEMPRE conclui — é ele que a branch protection exige como
+  # required check. Um PR que não toca célula alguma (ex.: um PR só de `ci/`)
   # não trava a proteção com um check "skipped".
   #
-  # [INV-CI01] A versão anterior deste job aceitava QUALQUER `skipped` como
-  # verde. Isso abria um bypass completo: git falha -> célula vazia -> `rodar`
-  # pulado -> gate verde -> merge liberado sem um único teste ter rodado. Agora
-  # `skipped` só é verde quando a detecção CONCLUIU e concluiu que não há célula.
+  # [INV-CI01] Uma versão antiga aceitava QUALQUER `skipped` como verde. Isso
+  # abria um bypass completo: git falha -> lista vazia -> `rodar` pulado -> gate
+  # verde -> merge liberado sem um único teste ter rodado. Aqui `skipped` só é
+  # verde quando a detecção CONCLUIU e concluiu que não há célula.
+  #
+  # MUDOU NA ONDA 5: o `rodar` virou MATRIZ, e o gate deixou de reprovar o PR
+  # que toca mais de uma célula. Ele não precisa mais: com a matriz, todas as
+  # células tocadas rodam, e `needs.rodar.result` é o pior veredito entre elas —
+  # o escopo COMPLETO passou a ser verificado, que era exatamente o que a
+  # antiga regra "n > 1 reprova" comprava por proibição.
   gate:
     name: ci-celula-gate
     needs: [detectar, rodar]
@@ -129,17 +154,17 @@ jobs:
         env:
           D_RESULT: ${{ needs.detectar.result }}
           D_STATUS: ${{ needs.detectar.outputs.deteccao }}
-          CELULA: ${{ needs.detectar.outputs.celula }}
+          CELULAS: ${{ needs.detectar.outputs.celulas }}
           N: ${{ needs.detectar.outputs.n }}
           R: ${{ needs.rodar.result }}
         run: |
           set -uo pipefail
-          echo "detectar=$D_RESULT deteccao='${D_STATUS:-}' celula='${CELULA:-}' n='${N:-}' rodar=$R"
+          echo "detectar=$D_RESULT deteccao='${D_STATUS:-}' celulas='${CELULAS:-}' n='${N:-}' rodar=$R"
 
           # 1. A detecção precisa ter concluído. Sem escopo conhecido não há
           #    veredito possível — nem PASS, nem SKIP.
           if [ "$D_RESULT" != "success" ]; then
-            echo "::error::ERROR — a detecção de célula não concluiu (detectar=$D_RESULT)."
+            echo "::error::ERROR — a detecção de células não concluiu (detectar=$D_RESULT)."
             echo "A CI não soube o que deveria testar. Este resultado NÃO é um PASS."
             exit 1
           fi
@@ -149,37 +174,54 @@ jobs:
             exit 1
           fi
 
-          # 2. Escopo COMPLETO: o job `rodar` testa uma célula só. Mais de uma
-          #    célula no diff significa que parte do escopo não seria verificada.
-          #    (A cerca de célula em `muralhas` também reprova isso; aqui é
-          #    defesa em profundidade, porque este é o check terminal.)
+          # 2. A contagem precisa ser um número, e precisa BATER com a lista.
+          #    Duas medidas da mesma coisa que discordam é instrumento quebrado
+          #    — e aqui elas alimentam decisões diferentes (a matriz sai da
+          #    lista; a leitura humana, da contagem).
           case "${N:-}" in
             ''|*[!0-9]*)
               echo "::error::ERROR — contagem de células ausente ou inválida (n='${N:-}')."
               echo "Sem saber quantas células o diff toca, não há como afirmar escopo completo."
               exit 1 ;;
           esac
-          if [ "$N" -gt 1 ]; then
-            echo "::error::ERROR — o diff toca $N células e este job testa uma só."
-            echo "O escopo completo não seria verificado. 1 PR = 1 célula (RITOS.md §1)."
+          # Contagem em bash puro, sem `jq`: este é o check TERMINAL, o que a
+          # proteção da branch exige. Quanto menos ferramenta ele precisa, menos
+          # jeito ele tem de falhar por motivo que não é o dele — e o teste da
+          # tabela-verdade roda com um PATH mínimo justamente para provar isso.
+          # Nome de célula nunca tem vírgula (o mapa valida), então contar
+          # vírgulas + 1 é exato.
+          SEM_BORDAS="${CELULAS:-[]}"
+          SEM_BORDAS="${SEM_BORDAS#[}"
+          SEM_BORDAS="${SEM_BORDAS%]}"
+          SEM_BORDAS="$(printf '%s' "$SEM_BORDAS" | tr -d ' \"')"
+          if [ -z "$SEM_BORDAS" ]; then
+            DA_LISTA=0
+          else
+            DA_LISTA=$(( $(printf '%s' "$SEM_BORDAS" | tr -cd ',' | wc -c) + 1 ))
+          fi
+          if [ "$DA_LISTA" != "$N" ]; then
+            echo "::error::ERROR — a lista traz $DA_LISTA célula(s) e a contagem diz $N."
+            echo "Duas medidas da mesma coisa discordando é instrumento quebrado."
             exit 1
           fi
 
-          # 3. Veredito da célula.
+          # 3. Veredito das células. Com a matriz, `success` significa que TODAS
+          #    passaram e `failure` que ao menos uma reprovou — o escopo inteiro,
+          #    e não mais "a primeira da lista".
           case "$R" in
             failure)
-              echo "::error::FAIL — a célula '$CELULA' reprovou."; exit 1 ;;
+              echo "::error::FAIL — ao menos uma célula reprovou (tocadas: $CELULAS)."; exit 1 ;;
             cancelled)
-              echo "::error::ERROR — o job da célula foi cancelado; nada foi provado."; exit 1 ;;
+              echo "::error::ERROR — a matriz foi cancelada; nada foi provado."; exit 1 ;;
             success)
-              if [ -z "${CELULA:-}" ]; then
+              if [ "$N" -eq 0 ]; then
                 echo "::error::ERROR — 'rodar' concluiu sem célula detectada (estado incoerente)."
                 exit 1
               fi
-              echo "PASS — célula '$CELULA' verde." ;;
+              echo "PASS — $N célula(s) verde(s): $CELULAS" ;;
             skipped)
-              if [ -n "${CELULA:-}" ]; then
-                echo "::error::ERROR — célula '$CELULA' foi detectada mas o job não rodou."
+              if [ "$N" -ne 0 ]; then
+                echo "::error::ERROR — $N célula(s) detectada(s) e a matriz não rodou."
                 echo "Skip por falha de instrumentação NÃO é skip permitido."
                 exit 1
               fi
