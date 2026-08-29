@@ -33,7 +33,7 @@
     "quadro de sugestões'. Eu não tenho o seu crachá, então a tela renderizada " +
     "com a sua sessão é a única parte que continua sem prova minha.",
   autoridade: "sonda",
-  evidencia: "Run 33267630644 do workflow semear-caixa (completed/success, conferido com gh run view --json status,conclusion). Saída crua do script na VPS: 'estado ANTES: quadros 1, categorias 6' e 'estado DEPOIS: quadros 1, categorias 6', site cc06b8c3-043b-4c06-92c5-5ea624e00586, encerrando com a linha PRONTO (que o script só imprime depois de contar 1 quadro). Medido de fora em 29/08/2026 15:13: https://meshcraft.top/forms/sugestoes/ -> 302 para /entrar (exige sessão, não 404), /entrar -> 200, /healthz -> 200, https://meshcraft.top/ -> 200. O caminho: PRs 474 (o workflow) e 482 (o conserto da fila que fazia o run ser cancelado antes de começar).",
+  evidencia: "Run 33267630644 do workflow semear-caixa (completed/success, conferido com gh run view --json status,conclusion). Saída crua do script na VPS: 'estado ANTES: quadros 1, categorias 6' e 'estado DEPOIS: quadros 1, categorias 6', site cc06b8c3-043b-4c06-92c5-5ea624e00586, encerrando com a linha PRONTO (que o script só imprime depois de contar 1 quadro). Medido de fora em 29/08/2026 15:13: https://meshcraft.top/forms/sugestoes/ -> 302 para /entrar (exige sessão, não 404), /entrar -> 200, /healthz -> 200, https://meshcraft.top/ -> 200. Este registro viaja no PR 489. O caminho: PRs 474 (o workflow) e 482 (o conserto da fila que fazia o run ser cancelado antes de começar).",
   verificado_em: "2026-08-29",
   precisa_do_dono: false,
   responde_a: "20260827-014-o-quadro-da-caixa-respondia-nao-encontrado-em-producao",
