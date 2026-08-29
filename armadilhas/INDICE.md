@@ -203,5 +203,6 @@
 | [175](175-compare-lido-ao-contrario-faz-voce-anunciar-que-a-main-regrediu.md) | `compare/A...B` lido ao contrário faz você anunciar que a `main` REGREDIU — e quase alarmar o mantenedor — você confere a `main` depois de mergear, e o commit do topo tem um título de um PR **muito antigo**: | — sem guarda | — |
 | [176](176-hook-fail-open-esconde-o-proprio-defeito-e-cala.md) | Hook fail-open esconde o PRÓPRIO defeito: ele cala, e silêncio parece "nada a dizer" — um hook que aconselha (não bloqueia) é escrito fail-open — toda exceção vira `return 0` —, os testes de unidade das funções internas… | teste+sino | — |
 | [177](177-o-www-serve-o-cert-de-fabrica-e-chega-como-site-sem-cadeado.md) | O `www.` serve o cert de fábrica — e chega até você como "o site está sem cadeado" — o mantenedor manda foto do aviso vermelho "Não seguro" no navegador e pergunta se o site está com problema de cadeado. Você mede o… | — sem guarda | — |
+| [178](178-curar-o-deploy-infra-deixa-o-deploy-celula-do-mesmo-merge-vermelho.md) | Curar o `deploy-infra` deixa o `deploy-celula` do MESMO merge vermelho — e ele não se cura pelo mesmo caminho — um merge que toca `infra/` **e** `painel/` (ou `services/`) dispara os DOIS deploys. O `deploy-infra` falha… | — sem guarda | — |
 
-**158 entradas** — 5 com guarda declarada, 153 ainda sem.
+**159 entradas** — 5 com guarda declarada, 154 ainda sem.
