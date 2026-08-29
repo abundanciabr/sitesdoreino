@@ -1,12 +1,12 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260829-112-arquivar-ideia-e-esconder-a-recusada",
+  arquivo: "20260829-116-arquivar-ideia-e-esconder-a-recusada",
   tipo: "entrega",
   quando: "2026-08-29",
   titulo: "A Caixa de Sugestões ganhou o botão de arquivar, e ideias recusadas somem do quadro",
   detalhe:
-    "Você pediu duas coisas na tela de gestão das ideias " +
-    "(/admin/caixa/ideia/<id>/): uma forma de tirar uma ideia de vista, e " +
-    "que as recusadas ('Não planejado') parassem de aparecer na Caixa de " +
+    "Você pediu duas coisas na tela de gestão de cada ideia (dentro de " +
+    "/admin/caixa/): uma forma de tirar uma ideia de vista, e que as " +
+    "recusadas ('Não planejado') parassem de aparecer na Caixa de " +
     "Sugestões que o aluno vê.\n\n" +
     "PRIMEIRA PERGUNTA — apagar de vez ou arquivar (reversível)? Você " +
     "escolheu arquivar. Agora a tela da ideia tem um botão 'Arquivar', com " +
