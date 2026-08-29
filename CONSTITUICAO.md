@@ -55,6 +55,19 @@ ali o que o despacho pediu, e anuncia cada merge desses caminhos nominalmente no
 relatório final e no painel. O Rito de Contrato (RITOS.md §3) continua valendo por
 inteiro — mudou quem executa o merge, não a liturgia antes dele.
 
+**Emenda de 29/08/2026 — o merge saiu da mão do agente e passou para a pista**
+(decisão do mantenedor; registro `20260829-006`, Onda 4 fatia 3 do
+`docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`). O agente **pede pouso**
+(`python ci/mergear.py <N> --pousar`) e vai embora; quem mergeia é
+`.github/workflows/pouso.yml`, pelo MESMO portão. Motivo medido: o agente
+mergeia com base em checks que rodaram ANTES de a fila andar, e a `main` recebe
+~100 entregas por dia — ele perdia a corrida contra o próprio relógio, oito
+voltas num PR de quatro arquivos (`armadilhas/156`). **O que NÃO mudou, e é o
+essencial: ninguém espera pelo mantenedor.** Quem mergeia continua sendo
+máquina; mudou qual máquina, e ela tem paciência. A trava no `ci/mergear.py` é
+disciplina (o agente tem o mesmo `gh`); a muralha de verdade contra merge com
+base velha é o `strict` do conjunto de regras da `main`, que roda no servidor.
+
 ## Lei 5 — A Lei das 2h da Manhã
 
 O caminho seguro deve ser o mais rápido. A resposta canônica a qualquer emergência é

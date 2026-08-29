@@ -41,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import sys
@@ -535,6 +536,71 @@ def cabecalho(pr: dict[str, Any]) -> str:
     return "\n".join(linhas)
 
 
+# =============================================================================
+# QUEM PODE MERGEAR — Onda 4, fatia 3 (decisão do mantenedor em 29/08/2026)
+#
+# Até 22/08/2026 o merge esperava o mantenedor, e ele virava o gargalo. A Lei 4
+# resolveu isso passando o merge para o agente. Uma semana e ~100 merges por dia
+# depois, o gargalo mudou de lugar: o agente mergeia com base em checks que
+# rodaram ANTES de a fila andar, e gasta a rodada inteira se atualizando
+# (`armadilhas/156`: oito voltas num PR de 4 arquivos e nenhuma linha de código).
+#
+# A decisão dele, registrada em `20260829-006`: o agente PEDE POUSO e vai
+# embora; quem mergeia é a pista (`.github/workflows/pouso.yml`), que testa a
+# junção do momento, atende um PR por vez e tem a paciência que o agente não tem.
+#
+# O QUE **NÃO** MUDA, e é o ponto: ninguém espera pelo mantenedor. Quem mergeia
+# continua sendo máquina.
+#
+# ESTA TRAVA É DISCIPLINA, NÃO MURALHA — e dizer isso aqui é obrigatório. O
+# agente tem o mesmo `gh` autenticado que a pista; se quiser mergear à mão,
+# consegue. O que a recusa faz é tirar o caminho fácil e apontar o certo, como a
+# muralha da pasta compartilhada. A muralha DE VERDADE contra merge com base
+# velha é o `strict` do conjunto de regras da `main`: roda no servidor e não
+# depende de ninguém se comportar.
+# =============================================================================
+VARIAVEL_DA_PISTA = "MERGEAR_SOU_A_PISTA"
+ETIQUETA_DE_POUSO = "pousar"
+
+
+def sou_a_pista() -> bool:
+    """Só a pista de pouso mergeia. Ela se identifica pelo ambiente do workflow."""
+    return os.environ.get(VARIAVEL_DA_PISTA, "").strip().lower() in {
+        "sim",
+        "1",
+        "true",
+    }
+
+
+def pedir_pouso(numero: int) -> int:
+    """Põe a etiqueta e explica o que vem depois. É o novo gesto normal."""
+    try:
+        raiz = raiz_do_repo()
+        _gh(
+            ["pr", "edit", str(numero), "--add-label", ETIQUETA_DE_POUSO],
+            raiz,
+            f"pedir pouso do PR #{numero}",
+            exigir_stdout=False,
+        )
+    except ErroDeInstrumentacao as erro:
+        print(f"\nERROR ao pedir pouso: {erro.resumo}\n{erro.detalhe}")
+        return 2
+    print(
+        f"\n🛬 POUSO PEDIDO — o PR #{numero} está na fila da pista.\n"
+        "\n"
+        "   A pista atende um PR por vez: atualiza com a `main` de agora,\n"
+        "   confere pelo MESMO portão que você acabou de rodar, e mergeia. Se a\n"
+        "   base envelhecer no meio, o problema é dela — ela tem paciência.\n"
+        "\n"
+        "   Você NÃO precisa esperar. Siga para a próxima tarefa: a pista\n"
+        "   comenta no PR o que aconteceu (pousou, devolveu, ou está esperando).\n"
+        "\n"
+        f"   Acompanhar: gh pr view {numero} --json state,labels\n"
+        f"   Desistir:   gh pr edit {numero} --remove-label {ETIQUETA_DE_POUSO}"
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     parser = argparse.ArgumentParser(
@@ -557,8 +623,14 @@ def main(argv: list[str] | None = None) -> int:
         type=int,
         metavar="N",
         help="confirma o merge sem prompt: N PRECISA repetir o número do PR "
-        "(mesma defesa de identidade da pergunta interativa). É o caminho "
-        "normal dos agentes (Lei 4).",
+        "(mesma defesa de identidade da pergunta interativa). Desde 29/08/2026 "
+        "só a PISTA mergeia — o agente usa --pousar.",
+    )
+    parser.add_argument(
+        "--pousar",
+        action="store_true",
+        help="confere e, se estiver tudo verde, PEDE POUSO (põe a etiqueta). É "
+        "o gesto normal do agente desde 29/08/2026: quem mergeia é a pista.",
     )
     args = parser.parse_args(argv)
 
@@ -582,6 +654,28 @@ def main(argv: list[str] | None = None) -> int:
     if args.conferir:
         print("\nTudo verde. (--conferir: nada foi mergeado.)")
         return 0
+
+    if args.pousar:
+        return pedir_pouso(args.pr)
+
+    # A RECUSA (Onda 4, fatia 3). Só a pista mergeia — ver o bloco lá em cima.
+    if not sou_a_pista():
+        print(
+            "\n🛬 MERGE NÃO É MAIS DO ROBÔ — e isto não é um erro seu.\n"
+            "\n"
+            f"   Tudo verde no PR #{args.pr}. O que mudou em 29/08/2026 (decisão\n"
+            "   do mantenedor, registro 20260829-006): quem mergeia é a PISTA DE\n"
+            "   POUSO, não o agente. Ela testa a junção com a `main` do momento,\n"
+            "   atende um PR por vez, e não perde a corrida contra o relógio dos\n"
+            "   checks — que era o que custava oito voltas num PR de 4 arquivos.\n"
+            "\n"
+            "   O que NÃO mudou: ninguém espera pelo mantenedor. Quem mergeia\n"
+            "   continua sendo máquina.\n"
+            "\n"
+            "   Faça isto, e siga a vida:\n"
+            f"       python ci/mergear.py {args.pr} --pousar\n"
+        )
+        return 1
 
     if args.confirmo is not None:
         if args.confirmo != args.pr:

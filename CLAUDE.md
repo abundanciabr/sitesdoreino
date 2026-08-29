@@ -135,35 +135,38 @@ leituras, `git fetch`, `git worktree` e `gh`; com a árvore limpa, também
 `git switch main` e `git pull` (para manter o espelho fresco). Detalhes e
 fronteiras: `armadilhas/135`.
 
-## Mergear é trabalho do agente (desde 22/08/2026)
+## O agente pede pouso; quem mergeia é a pista (desde 29/08/2026)
 
-Decisão do mantenedor — motivos e mecânica em
-`docs/decisoes/DECISAO-merge-pelo-agente.md`; lei: `CONSTITUICAO.md` Lei 4;
-rito: `RITOS.md` §2 peça 4. O fluxo, sem perguntar "posso mergear?":
+Decisão do mantenedor em 22/08/2026 tirou o merge das mãos dele (motivos em
+`docs/decisoes/DECISAO-merge-pelo-agente.md`); decisão dele em 29/08/2026
+(registro `20260829-006`) tirou o merge das mãos do AGENTE e o entregou à pista.
+Lei: `CONSTITUICAO.md` Lei 4 (com a emenda); rito: `RITOS.md` §2 peças 4 e 5.
+**O que não mudou: ninguém espera por ele.** Quem mergeia continua sendo
+máquina — mudou qual, e a nova tem paciência.
+
+O fluxo, sem perguntar nada:
 
 1. PR aberto dentro do escopo de um despacho → espere os checks concluírem.
 2. `python ci/mergear.py <N> --conferir` — tudo verde?
-3. `python ci/mergear.py <N> --confirmo <N>` — mergeia e já confere no GitHub
-   que o PR virou `MERGED`.
-4. O registro no livro (`painel/registros/` — só o registro; o gerado é da
-   integração desde a Onda 3);
-   e, se o merge toca `services/` ou `infra/`, o veredito do run de deploy
-   (seção "Depois de todo merge que dispara deploy").
+3. `python ci/mergear.py <N> --pousar` — pede pouso e **vá embora**. A pista
+   atualiza com a `main` de agora, confere pelo MESMO portão e mergeia; ela
+   comenta no PR o que aconteceu (pousou, devolveu, ou está esperando).
+4. O registro no livro (`painel/registros/` — só o registro); e, se o merge
+   toca `services/` ou `infra/`, o veredito do run de deploy (seção "Depois de
+   todo merge que dispara deploy").
 
-Vermelho, pendente, ausente ou ERROR **nunca** se mergeia — conserte ou
-reporte. O botão de merge do site não é caminho para ninguém. Merge em caminho
-CODEOWNERS (`contracts/`, `pagamentos`, `checkout`, `infra/`, `ci/`,
+`--confirmo` **recusa** para quem não é a pista, e a recusa ensina o caminho.
+Vermelho, pendente, ausente ou ERROR **nunca** vira pedido de pouso — conserte
+ou reporte. O botão de merge do site não é caminho para ninguém. Merge em
+caminho CODEOWNERS (`contracts/`, `pagamentos`, `checkout`, `infra/`, `ci/`,
 `.github/`, arquivos-lei da raiz) só com mandato do despacho, e **anunciado
 nominalmente no relatório final**.
 
-**Se a janela não fechar, peça pouso em vez de insistir** (desde 28/08/2026):
-`gh pr edit <N> --add-label pousar` e siga a vida. A pista atualiza, confere
-pelo mesmo `mergear.py` e mergeia — um PR por vez, com paciência que você não
-tem. Use quando o PR ficar `BEHIND` mais de uma vez, ou quando tocar `painel/`
-num dia movimentado: ali a `main` anda mais rápido que o seu ciclo de checks, e
-insistir é gastar franquia contra um relógio que você não controla
-(`armadilhas/156`; medido: oito voltas num PR de 4 arquivos). Detalhes e os três
-desfechos: `RITOS.md` §2 peça 5.
+**A pista é a única porta, e é opt-out só para emergência** (desde 29/08/2026):
+antes dela o agente insistia — atualizar, esperar 90s de checks, a `main` andar,
+repetir. Medido: oito voltas num PR de 4 arquivos (`armadilhas/156`). Hoje esse
+laço não existe mais, porque o agente não fica na corrida: ele pede pouso e sai.
+Os três desfechos possíveis e a mecânica da pista: `RITOS.md` §2 peça 5.
 
 **Vários despachos em paralelo (lote):** a sessão raiz rege pelo
 `RUNBOOK-LOTES.md` — composição, as sete regras de inteligência, janela de

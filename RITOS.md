@@ -85,23 +85,37 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    teste para passar. Correção em invariante apresenta evidência falsificável:
    saída crua do guarda **vermelho sem o fix, verde com o fix**. "Eu arrumei" não
    é aceito.
-4. **Fecho da catraca — o merge é do agente (desde 22/08/2026):** aberto o PR, o
-   próprio agente conclui, sem pedir nem esperar o humano: espera os checks
-   terminarem, confere com `python ci/mergear.py <PR> --conferir` e mergeia com
-   `python ci/mergear.py <PR> --confirmo <PR>` — o `--confirmo` repete o número
-   do PR de propósito (o erro real da história foi mergear o PR errado, não
-   mergear sem querer). Vermelho, pendente, ausente ou ERROR ⇒ **não se mergeia**:
-   conserta-se ou reporta-se. O botão do site não é caminho. Depois do merge, o
-   script já confere `state=MERGED`; ao agente restam o painel e, se o merge
-   dispara deploy, o veredito do run (CLAUDE.md). Merge em caminho CODEOWNERS
-   exige mandato do despacho e anúncio nominal no relatório (Lei 4). Se o
-objetivo era Pix e o diff mostra `methods/card/` ou 42 arquivos — é o alarme dele,
-antes de ser o alarme do CI.
-
-5. **Quando a janela não fecha, PEÇA POUSO — não insista (desde 28/08/2026):**
+4. **Fecho da catraca — o agente PEDE POUSO; quem mergeia é a pista (desde
+   29/08/2026):** aberto o PR, o próprio agente conclui, sem pedir nem esperar o
+   humano — mas o gesto final mudou de mão:
 
    ```bash
-   gh pr edit <N> --add-label pousar
+   python ci/mergear.py <PR> --conferir   # o portão, como sempre
+   python ci/mergear.py <PR> --pousar     # tudo verde ⇒ pede pouso e SIGA
+   ```
+
+   `--confirmo` **recusa** para quem não é a pista, e a recusa diz isto aqui.
+   Vermelho, pendente, ausente ou ERROR ⇒ **não se pede pouso**: conserta-se ou
+   reporta-se (o `--pousar` só age com o portão verde, e reprova antes de pôr a
+   etiqueta). O botão do site não é caminho para ninguém.
+
+   **Por que mudou** (decisão do mantenedor, registro `20260829-006`): o agente
+   mergeava com base em checks que rodaram ANTES de a fila andar, e a `main`
+   recebe ~100 entregas por dia — ele perdia a corrida contra o próprio relógio.
+   **O que NÃO mudou:** ninguém espera pelo mantenedor; quem mergeia continua
+   sendo máquina.
+
+   Depois do pouso, ao agente restam o registro no livro e, se o merge dispara
+   deploy, o veredito do run (CLAUDE.md) — a pista comenta no PR o que
+   aconteceu. Merge em caminho CODEOWNERS exige mandato do despacho e anúncio
+   nominal no relatório (Lei 4). Se o objetivo era Pix e o diff mostra
+`methods/card/` ou 42 arquivos — é o alarme dele, antes de ser o alarme do CI.
+
+5. **A pista, por dentro — o que acontece depois que você pede pouso:**
+
+   ```bash
+   python ci/mergear.py <N> --pousar      # o caminho normal (peça 4)
+   gh pr edit <N> --add-label pousar      # o mesmo gesto, na mão
    ```
 
    E vá embora. A pista (`.github/workflows/pouso.yml`, Onda 4 do
@@ -121,10 +135,11 @@ antes de ser o alarme do CI.
    sem punir um PR são. Ela se rechama ao terminar e tem um agendamento de rede
    a cada 15 min.
 
-   **O merge continua sendo do agente (Lei 4)** — a pista é um caminho, não uma
-   troca de dono. A mudança de dono está decidida (registro
-   `20260828-033`) e entra numa fatia futura, junto com a construção: lei que
-   promete o que ainda não existe é a doença que este plano cura.
+   **A troca de dono ACONTECEU em 29/08/2026** (registro `20260829-006`,
+   respondendo ao pedido `20260828-033`): a pista deixou de ser um atalho para
+   dias movimentados e passou a ser O caminho. `ci/mergear.py --confirmo` recusa
+   para quem não é ela, e a Lei 4 da `CONSTITUICAO.md` traz a emenda. A lei
+   mudou junto com o mecanismo, nunca antes dele.
 
 ---
 

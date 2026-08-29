@@ -103,3 +103,40 @@ ele que define onde o anúncio é obrigatório), não como trava.
 **Primeira prova viva:** o próprio PR desta decisão foi mergeado pelo agente,
 pelo fluxo novo (`--conferir` → `--confirmo`), com o número registrado no painel
 — nenhum clique humano envolvido.
+
+---
+
+## Emenda de 29/08/2026 — o merge passou do agente para a pista
+
+Esta decisão continua de pé no que ela resolveu: **o mantenedor saiu do caminho
+crítico do merge, e não volta.** O que mudou é qual máquina executa o gesto.
+
+**O que a realidade mostrou em sete dias.** A `main` passou a receber ~100
+entregas por dia, e desde 28/08 ela exige que o PR esteja em dia com a base no
+INSTANTE do merge (`strict_required_status_checks_policy`). O agente mergeia com
+o resultado de checks que rodaram ANTES de a fila andar — e, num dia movimentado,
+ele perde a corrida contra o próprio relógio: atualiza, espera 90s de checks, a
+`main` anda, repete. Medido: **oito voltas num PR de quatro arquivos e nenhuma
+linha de código** (`armadilhas/156`). Não é falta de disciplina; é um desenho em
+que o agente disputa com um relógio que não controla.
+
+**A decisão do mantenedor** (29/08/2026, registro `20260829-006`, respondendo ao
+pedido `20260828-033`): o agente **pede pouso** e vai embora; quem mergeia é a
+pista (`.github/workflows/pouso.yml`), que atende um PR por vez, atualiza com a
+`main` do momento, confere pelo MESMO `ci/mergear.py` e mergeia. Ela tem a
+paciência que o agente não tem, e não gasta franquia esperando.
+
+**O que NÃO muda, e é o coração desta decisão:** ninguém espera pelo mantenedor.
+Quem mergeia continua sendo máquina. As jurisdições CODEOWNERS, o mandato e o
+anúncio nominal seguem idênticos.
+
+**A honestidade sobre a trava:** a recusa dentro do `ci/mergear.py` é
+**disciplina, não muralha** — o agente tem o mesmo `gh` autenticado que a pista.
+Ela tira o caminho fácil e aponta o certo, como a muralha da pasta compartilhada.
+A muralha de verdade contra merge com base velha é o `strict` do conjunto de
+regras da `main`, que roda no servidor e não depende de ninguém se comportar.
+
+Onde a emenda foi escrita: `CONSTITUICAO.md` Lei 4 · `RITOS.md` §2 peças 4 e 5 ·
+`CLAUDE.md` · `ci/mergear.py` (`--pousar`, e a recusa do `--confirmo`) ·
+`ci/tests/test_mergear.py` (a recusa, a etiqueta, e o guarda de que só o
+`pouso.yml` declara a identificação da pista).
