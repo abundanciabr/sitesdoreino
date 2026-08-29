@@ -52,8 +52,16 @@ def test_um_arquivo_do_painel_conta_como_a_celula_admin(tmp_path):
     `painel/registros/`, e pergunta ao código o que ele detectou. Ler o
     `ci.py` atrás da string "painel" não provaria nada: o mapeamento poderia
     estar num ramo morto.
+
+    Desde a Onda 5 quem responde "este arquivo é de quem" é o `celulas.yml`
+    REAL — por isso ele é copiado para o cenário em vez de recriado. Um mapa
+    inventado aqui mediria o teste, não o projeto.
     """
+    import shutil
+
     from ci import celulas_tocadas  # noqa: E402  (depende do sys.path acima)
+
+    shutil.copy(RAIZ / "celulas.yml", tmp_path / "celulas.yml")
 
     def git(*args):
         subprocess.run(

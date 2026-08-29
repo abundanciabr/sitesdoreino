@@ -1,0 +1,102 @@
+# =============================================================================
+# O MAPA DAS CÉLULAS — quem é quem, o que é de quem, e quem consome quem.
+#
+# Onda 5 do `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md` (o Cartógrafo).
+# É este arquivo que substitui a cerca "1 PR = 1 célula": em vez de RECUSAR um
+# PR por largura, o CI passa a DERIVAR do diff o que precisa rodar. Restringir
+# largura para comprar exclusividade cobra o pedágio na moeda errada — e a
+# cerca não teria evitado o pior incidente já medido aqui (Opus-2, P1 e P2).
+#
+# ---------------------------------------------------------------------------
+# DUAS COISAS MORAM AQUI, E SÓ ESTAS DUAS
+#
+#   caminhos:  que pedaços do repositório PERTENCEM a esta célula. É o mapa que
+#              responde "o que este PR toca?" — e existia em DOIS lugares
+#              (`ci/ci.py::celulas_tocadas` e `ci/cerca-de-celula.sh`), que já
+#              discordavam sobre `painel/`. Fato do projeto não mora em dois
+#              lugares (CLAUDE.md); agora mora aqui.
+#
+#   consome:   de quais OUTRAS células esta lê API. É o que decide a ordem de
+#              publicação (provedor antes de consumidor) e o que torna visível
+#              uma dependência nova.
+#
+# ---------------------------------------------------------------------------
+# O QUE IMPEDE ESTE MAPA DE MENTIR
+#
+# Um mapa mantido à mão envelhece em silêncio — é a Classe 8 (mapa velho), a
+# doença que este plano inteiro existe para curar, e que já cobrou caro aqui.
+# Por isso ele tem um VARREDOR: `ci/mapa_de_celulas.py --verificar` compara o
+# que está escrito com o que o código faz, nos DOIS sentidos:
+#
+#   consumo no código e não declarado aqui  -> FAIL (dependência escondida)
+#   declarado aqui e ausente do código      -> FAIL (declaração órfã)
+#   célula no manifesto e ausente daqui     -> FAIL (e vice-versa)
+#
+# Ele roda na muralha de todo PR. Declarar é barato; declarar errado, não passa.
+#
+# A medição do consumo é a convenção que as 13 células já seguem: quem consome
+# a `alunos` lê `ALUNOS_API_URL`. Trocar essa convenção sem ensinar o varredor
+# deixa o mapa cego — e é por isso que o teste-guarda mede contra o código real.
+# =============================================================================
+celulas:
+
+  admin:
+    # `painel/` entra na imagem da `admin` no build (deploy-celula.yml embute a
+    # pasta), então mexer no livro de ocorrências É mexer nesta célula: sem esta
+    # linha, um registro novo mergearia sem disparar deploy e o painel online
+    # congelaria em silêncio.
+    caminhos: [services/admin, painel]
+    consome: [alunos, identidade, sugestoes]
+
+  alunos:
+    caminhos: [services/alunos]
+    consome: []
+
+  catalogo:
+    caminhos: [services/catalogo]
+    consome: []
+
+  checkout:
+    caminhos: [services/checkout]
+    consome: [catalogo, pagamentos]
+
+  forum:
+    caminhos: [services/forum]
+    consome: [alunos, identidade]
+
+  funil:
+    caminhos: [services/funil]
+    consome: [alunos, catalogo, identidade, leads, notificacoes]
+
+  identidade:
+    caminhos: [services/identidade]
+    consome: []
+
+  leads:
+    caminhos: [services/leads]
+    consome: []
+
+  mensageria:
+    caminhos: [services/mensageria]
+    consome: []
+
+  notificacoes:
+    caminhos: [services/notificacoes]
+    consome: []
+
+  pagamentos:
+    caminhos: [services/pagamentos]
+    consome: []
+
+  quiz:
+    # `services/quiz/LICOES.md` MENCIONA `CATALOGO_API_URL`, mas o código não a
+    # lê — o varredor não olha `.md` de propósito: documento não é dependência,
+    # e tratar prosa como consumo inventaria uma ordem de publicação que o
+    # mundo real não pede. (Este mapa nasceu declarando o consumo, e foi o
+    # próprio varredor que corrigiu a mão que o escreveu.)
+    caminhos: [services/quiz]
+    consome: []
+
+  sugestoes:
+    caminhos: [services/sugestoes]
+    consome: [alunos, identidade, notificacoes]
