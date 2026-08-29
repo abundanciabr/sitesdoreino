@@ -312,8 +312,18 @@ def veredito_do_run(
         )
     por_nome = {str(j.get("name")): j for j in jobs}
     for nome_job in jobs_exigidos:
-        job = por_nome.get(nome_job)
-        if job is None:
+        # O nome de um job de MATRIZ ganha o valor entre parênteses:
+        # `ci-celula` virou `ci-celula (admin)` quando o escopo passou a ser
+        # derivado do diff (Onda 5). Procurar só o nome exato deixou o portão
+        # cego no primeiro deploy depois da mudança — ele disse ERROR e não
+        # publicou, que é o certo, mas o motivo era o nome, não a evidência.
+        #
+        # TODAS as instâncias precisam ter concluído bem: um `success` numa
+        # célula não fala pelas outras. Por isso `instancias` é uma lista, e a
+        # verificação abaixo roda por instância.
+        instancias = [job for nome, job in sorted(por_nome.items())
+                      if nome == nome_job or nome.startswith(nome_job + " (")]
+        if not instancias:
             return Resultado(
                 nome=rotulo,
                 estado=Estado.ERROR,
@@ -324,22 +334,26 @@ def veredito_do_run(
                     "portão a procura — corrija o nome, não o portão."
                 ),
             )
-        jc = job.get("conclusion")
-        if jc == "success":
-            continue
-        if jc in REPROVA:
+        for job in instancias:
+            jc = job.get("conclusion")
+            if jc == "success":
+                continue
+            if jc in REPROVA:
+                return Resultado(
+                    nome=rotulo,
+                    estado=Estado.FAIL,
+                    resumo=f"job '{job.get('name')}' concluiu '{jc}'",
+                    detalhe=f"Run: {url}",
+                )
             return Resultado(
                 nome=rotulo,
-                estado=Estado.FAIL,
-                resumo=f"job '{nome_job}' concluiu '{jc}'",
+                estado=Estado.ERROR,
+                resumo=(
+                    f"job '{job.get('name')}' concluiu '{jc}' — pulo aqui é "
+                    "instrumentação quebrada, não pulo declarado"
+                ),
                 detalhe=f"Run: {url}",
             )
-        return Resultado(
-            nome=rotulo,
-            estado=Estado.ERROR,
-            resumo=f"job '{nome_job}' concluiu '{jc}' — pulo aqui é instrumentação quebrada, não pulo declarado",
-            detalhe=f"Run: {url}",
-        )
     return Resultado(
         nome=rotulo, estado=Estado.PASS, resumo=f"verde ({url or 'run success'})"
     )
