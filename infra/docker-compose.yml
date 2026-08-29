@@ -251,6 +251,34 @@ services:
       alunos:
         condition: service_healthy
 
+  # A REDE DE SEGURANÇA da caixa de saída da `alunos` (29/08/2026, o aviso de
+  # liberação). Ela ganhou voz nesse dia: a carta é publicada na hora, pelo
+  # `on_commit` do próprio processo web, e é ele que dá a latência de segundos.
+  # ESTE processo é o que republica o que aquele não conseguiu — Redis fora do
+  # ar no instante exato da liberação, por exemplo. Sem ele, essa carta ficaria
+  # pendente para sempre, e a promessa "você é avisado quando eu te liberar"
+  # falharia em silêncio, no caso raro em que mais importa.
+  #
+  # Irmão idêntico do `sugestoes-relay` logo abaixo, e de propósito: um relay
+  # por célula com desenho próprio seriam N modos de falha para o mesmo
+  # problema.
+  #
+  # `condition: service_healthy` em `alunos` é o que impede este processo de
+  # migrar em paralelo com o CMD do servidor HTTP contra o mesmo banco — um dos
+  # dois morreria com IntegrityError (`armadilhas/013`).
+  alunos-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-alunos:${ALUNOS_TAG:-main}
+    env_file: [env/alunos.env]
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      alunos:
+        condition: service_healthy
+
   mensageria:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-mensageria:${MENSAGERIA_TAG:-main}
