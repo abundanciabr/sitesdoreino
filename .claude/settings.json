@@ -20,6 +20,16 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_das_armadilhas.py\"",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "SessionStart": [
