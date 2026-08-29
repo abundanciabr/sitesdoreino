@@ -248,6 +248,41 @@ def test_run_cancelled_e_error_nao_fail(tmp_path):
     assert "não é uma medição" in proc.stdout
 
 
+def test_job_de_matriz_conta_pelo_nome_com_sufixo(tmp_path):
+    """`ci-celula (admin)` É o job `ci-celula` — com a matriz da Onda 5.
+
+    O portão procurava o nome EXATO e ficou cego no primeiro deploy depois de o
+    escopo passar a ser derivado do diff: disse ERROR e não publicou (o certo),
+    mas o motivo era o nome do job, não a evidência. `armadilhas/160`.
+    """
+    cen = cenario_verde()
+    cen["respostas"]["runs/11/jobs"] = jobs_(
+        ("ci-celula (admin)", "success"),
+        ("ci-celula (quiz)", "success"),
+        ("ci-celula-gate", "success"),
+    )
+    proc = rodar_portao(tmp_path, cen)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+def test_uma_celula_verde_nao_fala_pelas_outras(tmp_path):
+    """Com matriz, TODAS as instâncias precisam ter passado.
+
+    Se o portão aceitasse a primeira `success` e parasse, um deploy sairia com
+    uma célula reprovada — e o `--fail-fast: false` do CI existe justamente para
+    a segunda ser medida.
+    """
+    cen = cenario_verde()
+    cen["respostas"]["runs/11/jobs"] = jobs_(
+        ("ci-celula (admin)", "success"),
+        ("ci-celula (quiz)", "failure"),
+        ("ci-celula-gate", "success"),
+    )
+    proc = rodar_portao(tmp_path, cen)
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "quiz" in proc.stdout
+
+
 def test_job_exigido_ausente_e_error_com_lista_dos_vistos(tmp_path):
     cen = cenario_verde()
     cen["respostas"]["runs/11/jobs"] = jobs_(("outro-nome", "success"))
