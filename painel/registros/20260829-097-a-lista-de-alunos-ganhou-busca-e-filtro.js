@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260829-094-a-lista-de-alunos-ganhou-busca-e-filtro",
+  arquivo: "20260829-097-a-lista-de-alunos-ganhou-busca-e-filtro",
   tipo: "entrega",
   quando: "2026-08-29",
   titulo: "A lista de alunos ganhou busca por nome, e-mail e turma — e um filtro de situacao",
