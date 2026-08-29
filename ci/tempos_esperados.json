@@ -34,7 +34,7 @@
       "p50_s": 420,
       "p90_s": 900,
       "amostra": 5,
-      "nota": "a fila anda pelo cron de 15 min enquanto o encadeamento da pista estiver quebrado (PISTA_TOKEN sem actions:write)"
+      "nota": "desde o PR #451 uma passagem da pista atende até 5 PRs em sequência; o cron de 15 min segue como rede — medido ao vivo: PR #452 pousou em 2min35s"
     },
     "docker-frio": {
       "rotulo": "o Docker Desktop acordar frio",
