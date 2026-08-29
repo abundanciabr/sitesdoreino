@@ -38,6 +38,27 @@ STATUS_SEM_ACESSO = (
     STATUS_ENCERRADA,
 )
 
+# [PRONTUARIO] Os estados que provam que esta pessoa JA TEVE ACESSO alguma vez
+# (29/08/2026, `DECISAO-a-ficha-nao-se-apaga.md`). E o que responde "esta pessoa
+# ja foi aluna?" quando ela aparece de novo na fila.
+#
+# HOJE ele tem exatamente os mesmos quatro nomes de `STATUS_DE_GESTAO`, e a
+# duplicacao e DELIBERADA: as duas listas respondem perguntas diferentes ("o
+# painel administra?" e "ja teve acesso?") e nada garante que continuem
+# coincidindo. No dia em que nascer um estado administravel que nunca deu acesso
+# — um "pre-matriculado pago", por exemplo —, quem reusou a lista do vizinho
+# passa a mentir sobre a historia de uma pessoa, em silencio. Lista propria custa
+# quatro linhas; a mentira custa uma decisao errada do mantenedor.
+#
+# Lista de PERMISSAO, como as outras: estado novo nasce FORA, e alguem precisa
+# decidir se ele conta como "ja foi aluno".
+STATUS_QUE_JA_DERAM_ACESSO = (
+    STATUS_ATIVA,
+    STATUS_REEMBOLSADA,
+    STATUS_SUSPENSA,
+    STATUS_ENCERRADA,
+)
+
 # [GESTAO] Os estados que o painel administra — tudo que ja passou da fila. Eixo
 # DIFERENTE do acesso: `ativa` da acesso e e administravel; `aguardando` nao da
 # acesso e nao e administravel por aqui. Lista de PERMISSAO: estado novo nasce
@@ -84,6 +105,8 @@ class Matricula(models.Model):
     # [GESTAO] Quem nao tem acesso, e o que o painel administra.
     STATUS_SEM_ACESSO = STATUS_SEM_ACESSO
     STATUS_DE_GESTAO = STATUS_DE_GESTAO
+    # [PRONTUARIO] "esta pessoa ja teve acesso alguma vez?"
+    STATUS_QUE_JA_DERAM_ACESSO = STATUS_QUE_JA_DERAM_ACESSO
 
     STATUS_CHOICES = [
         (STATUS_ATIVA, "ativa"),
