@@ -1,0 +1,17 @@
+{
+  "arquivo": "002-construir-a-aba-os-robos-no-admin",
+  "id": "TAR-002",
+  "titulo": "Construir a aba \"Os robôs\" no painel de gestão do Admin, calculada da fila",
+  "toca": [
+    "admin",
+    "fila",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-001"
+  ],
+  "evidencia_exigida": "A aba respondendo em meshcraft.top/admin/caixa/ (prova de fora, na internet pública), deploy conferido por gh run view --json status,conclusion, e o teste-guarda test_a_aba_dos_robos_aparece_sem_link atualizado para o estado novo.",
+  "despacho": "Fase 3 do plano da lista de tarefas (veredito: docs/consultorias/central-de-orquestracao/VEREDITO.md, seção \"O desenho decidido\").\n\n1. Reivindique: python ci/fila.py pegar TAR-002 --quem \"sessao-<sua>\". Depende de TAR-001 — se ela não estiver concluída, o balcão recusa, e isso é o mecanismo funcionando.\n2. A aba vira link real em services/admin (hoje é <span class=\"aba futura\"> em _caixa_abas.html; o teste-guarda test_a_aba_dos_robos_aparece_sem_link guarda o estado apagado e MUDA JUNTO).\n3. Três blocos, todos calculados: (a) o quadro da fila, da materialização de fila/ embutida no build do admin (escritor único, como painel.html — deploy-celula precisa passar a embutir fila/); (b) quem está com o quê AGORA: PRs abertos e reservas refs/reservas/tarefa-* lidos da API pública do GitHub, do navegador, zero backend novo; (c) as esperas: a régua viva ci/tempos_esperados.json + resumo curado dos estouros (a mesma redação de segredos da telemetria; o diário cru fica fora do GitHub por desenho).\n4. Cores: borda = AÇÃO EXIGIDA, nunca prioridade (desenho-kanban-cores-Gemini.html); a frase é \"SUA DECISÃO\", nunca jargão.\n5. Atualize services/sugestoes/LICOES.md (que documenta a ausência da aba). Conclua com a evidência exigida, registre no livro, confira o deploy.\n\nCaminhos CODEOWNERS (deploy-celula.yml) exigem mandato do despacho e anúncio nominal no relatório final.",
+  "origem": "fase 3 do plano aprovado pelo mantenedor em 29/08/2026 (registro 20260829-032); gatilho combinado no registro 20260829-026",
+  "criada_em": "2026-08-29"
+}

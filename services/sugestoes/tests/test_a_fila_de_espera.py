@@ -14,6 +14,7 @@ beco saiu.
 import pytest
 from django.urls import reverse
 
+from apps.core.sessao import limpar_caches
 from apps.sugestoes.models import Identidade
 from tests.conftest import sessao_do_site
 
@@ -160,13 +161,70 @@ def test_depois_de_pedir_a_pessoa_ve_o_recibo(na_porta):
 
 
 def test_recarregar_a_porta_nao_devolve_o_formulario_vazio(na_porta):
+    """O recibo sobrevive ao recarregar — porque a `alunos` o CONFIRMA.
+
+    Até 29/08/2026 quem afirmava isso era um cookie do navegador. O teste
+    passava do mesmo jeito, e o defeito ficou invisível: cookie e fila são
+    coisas diferentes, e a partir do instante em que a linha some (decidida,
+    recusada, apagada) o cookie continua dizendo que o pedido está com a equipe
+    — por 30 dias.
+    """
     na_porta.rede.alunos_aceita_o_pedido()
     pedir(na_porta)
+    # A fila agora TEM a linha desta pessoa: é o que a `alunos` passa a
+    # responder, e é de lá que o recibo vem.
+    na_porta.rede.alunos_diz_na_fila(PESSOA)
+    # O cache de 5s da porta guardou o "cadastrado" de um instante atrás. Em
+    # produção ele expira sozinho antes de qualquer pessoa perceber; aqui,
+    # dentro do mesmo milissegundo, é preciso dizer ao relógio que o tempo
+    # passou.
+    limpar_caches()
 
     conteudo = na_porta.abrir().content.decode()
 
     assert "Seu pedido já está com a gente" in conteudo
     assert "Pedir liberação" not in conteudo
+
+
+def test_sem_linha_na_fila_a_porta_devolve_o_FORMULARIO_e_nao_o_recibo(na_porta):
+    """O DEFEITO de 29/08/2026, travado — e ele foi encontrado pelo mantenedor
+    com a própria conta.
+
+    A tela dizia *"Seu pedido já está com a gente. Alguém da equipe vai conferir
+    e liberar o seu acesso"*, e o painel dele dizia, medindo, que a fila estava
+    vazia. Ele esperou mais de uma hora por um pedido que não existia. A causa
+    era um cookie de 30 dias afirmando um fato que ninguém tinha conferido.
+
+    Agora, quando a `alunos` diz `cadastrado` — não há linha nenhuma —, a porta
+    mostra o FORMULÁRIO. Custa um reenvio, que é idempotente do outro lado e que
+    a lei §7 já prevê; a alternativa custava uma pessoa esperando para sempre.
+    """
+    na_porta.rede.alunos_aceita_o_pedido()
+    pedir(na_porta)
+    # A linha sumiu (decidida, recusada, ou apagada quando apagar existia).
+    na_porta.rede.alunos_nao_conhece(PESSOA)
+    limpar_caches()
+
+    conteudo = na_porta.abrir().content.decode()
+
+    assert "Seu pedido já está com a gente" not in conteudo
+    assert "Pedir liberação" in conteudo
+
+
+def test_quem_esta_na_fila_pode_reenviar_e_corrigir_os_dados(na_porta):
+    """A lei §7: o reenvio é o jeito de corrigir um telefone errado.
+
+    O estado `NA_FILA` nasceu em 29/08/2026 e precisou entrar na lista de
+    PERMISSÃO de quem pode enfileirar — sem isso, quem já está na fila cairia
+    num redirecionamento mudo ao tentar corrigir um dado.
+    """
+    na_porta.rede.alunos_diz_na_fila(PESSOA)
+    aceite = na_porta.rede.alunos_aceita_o_pedido(status=200)
+
+    resposta = pedir(na_porta, whatsapp="(96) 98888-1111")
+
+    assert aceite.called, "quem está na fila não conseguiu reenviar"
+    assert resposta.status_code == 200
 
 
 def test_pedir_entrada_nao_reescreve_o_cookie_do_site(na_porta):

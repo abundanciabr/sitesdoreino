@@ -276,3 +276,32 @@ Depois do fogo apagado:
 
 **Quem faz valer:** `ci/rollback.py` · `.github/workflows/rollback.yml` · `ci/tests/test_rollback.py`.
 
+
+## §5 — Rito da Fila de Trabalho (tarefa se pega no balcão, nunca de memória)
+
+Desde 29/08/2026 (fase 2 do plano da lista de tarefas; desenho em
+`docs/consultorias/central-de-orquestracao/VEREDITO.md`), o trabalho em aberto
+do projeto mora em **`fila/`** — um arquivo por tarefa, um por acontecimento,
+estado sempre CALCULADO (não existe campo de status). O rito:
+
+1. **Antes de começar trabalho que já está na fila, reivindique:**
+   `python ci/fila.py pegar TAR-NNN --quem "sessao-<area>-<data>"`. Quem chega
+   segundo recebe recusa DO SERVIDOR na hora — isso não é erro, é a trava
+   funcionando: escolha outra tarefa. A reserva expira sozinha em 3h se a
+   sessão morrer.
+2. **Trabalho novo que um despacho descobre vira tarefa registrada**
+   (`python ci/fila.py criar ...`, número do almoxarife) — nunca item de
+   memória de sessão, nunca lista paralela num documento. A fila é a única
+   casa do "o que está por fazer"; o livro continua sendo a única casa do
+   "o que aconteceu".
+3. **Concluir exige evidência** (`concluir --evidencia <URL>`) — sem prova o
+   balcão recusa, a mesma lei do verde do livro. Travou em algo que só o
+   mantenedor decide? Evento `bloqueada` com o motivo e devolva à maestro:
+   abrir exceção é o resultado esperado, não falha.
+4. **O evento viaja no PR do trabalho.** A referência no servidor vale AGORA;
+   o evento em `fila/eventos/` vale para sempre.
+
+**Quem faz valer:** `ci/muralha-da-fila.sh` → `ci/fila.py validar` (roda em
+todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · o servidor do GitHub
+via `ci/reservar.py` (a trava atômica com prazo) · `ci/tests/test_fila.py`
+(inclui a corrida: segunda sessão recusada) · `ci/tests/test_reservar.py`.

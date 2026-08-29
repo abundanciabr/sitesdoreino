@@ -1,0 +1,3603 @@
+Sim. E eu faria uma mudança conceitual importante: não construiria “uma aba Kanban”. Construiria uma Central de Orquestração de Trabalho, e usaria o Kanban apenas como uma das visualizações.
+
+Hoje seu painel já sabe muito sobre o sistema: fases, pendências, alertas, decisões, roadmap, incidentes e o que falta fazer. O que está faltando é transformar essas informações em uma fila operacional executável, capaz de coordenar vários agentes sem colisão.
+
+A ideia central: PAINEL → CONTROL PLANE
+
+Eu chamaria provisoriamente essa nova área de:
+
+Mission Control — Orquestração de Tarefas
+
+Ela teria três funções simultâneas:
+
+Gerente de projeto: sabe tudo que precisa ser feito.
+Scheduler: decide o que pode ser feito agora, em paralelo ou em sequência.
+Despachante de agentes: entrega uma tarefa para um robô, trava essa tarefa e gera o prompt correto.
+
+O fluxo seria mais ou menos:
+
+Problema detectado → tarefa criada → dependências analisadas → lote/onda definido → agente reserva → prompt é gerado → execução → testes → revisão → merge → concluído.
+
+E isso muda bastante a qualidade da arquitetura.
+
+1. O Kanban que você imaginou continuaria existindo
+
+Visualmente você teria algo como:
+
+Backlog	Bloqueada	Pronta	Reservada	Em execução	Verificação	Revisão	Merge	Concluída
+
+Mas cada cartão seria muito mais inteligente que um cartão Trello.
+
+Por exemplo:
+
+FND-042 — Corrigir contrato CourseSpec
+
+Célula: Catálogo
+Prioridade: Alta
+Risco: Médio
+Dependências: FND-037 ✅
+Bloqueia: 4 tarefas
+Paralelizável: 🟢 SIM
+Pode executar junto com: FND-043, FND-051
+Não executar junto com: FND-045
+Motivo: ambas alteram migrations da célula Catálogo
+Lote: WAVE-17
+Agente: livre
+Prompt: disponível
+Critério de conclusão: 6 checks
+Estado Git: nenhum branch aberto
+
+Isso já seria muito melhor que simplesmente:
+
+"Corrigir CourseSpec — pendente."
+
+2. Mas eu acrescentaria algo ainda mais importante: WAVES
+
+Em vez de você olhar 40 tarefas e tentar decidir o que mandar para cada robô, o sistema calcula:
+
+WAVE 17 — pode começar agora
+
+Agente A
+Tarefa FND-042 — Catálogo
+
+Agente B
+Tarefa CHK-018 — Checkout
+
+Agente C
+Tarefa FUN-031 — Funil
+
+Agente D
+Tarefa OBS-007 — Observabilidade
+
+🟢 Todas independentes.
+
+Enquanto isso:
+
+FND-045
+🔴 Esperando FND-042.
+
+CHK-021
+🟡 Pode executar, mas conflita com CHK-018.
+
+INF-009
+🔴 Mudança estrutural compartilhada — aguardar integração da Wave 17.
+
+Assim você não terá apenas:
+
+"o que está pendente?"
+
+Você terá:
+
+"Qual é a combinação ótima de trabalhos que podemos executar simultaneamente agora?"
+
+Isso é muito mais poderoso.
+
+3. O sistema precisa conhecer DEPENDÊNCIAS e CONFLITOS
+
+Existem duas perguntas diferentes:
+
+Dependência
+
+B depende de A?
+
+Exemplo:
+
+Criar endpoint
+↓
+Criar frontend usando endpoint
+
+A segunda tarefa simplesmente não está pronta.
+
+Conflito
+
+Duas tarefas podem ser independentes conceitualmente, mas não deveriam ser executadas simultaneamente.
+
+Exemplo:
+
+Agente A:
+
+alterar models.py da célula catálogo
+
+Agente B:
+
+criar migration da célula catálogo
+
+Tecnicamente independentes no roadmap.
+
+Operacionalmente perigosas em paralelo.
+
+Por isso cada tarefa teria algo como:
+
+depends_on
+
+FND-037
+
+lock_scope
+
+cell:catalogo
+db:catalogo
+path:catalogo/models/*
+
+O orquestrador consegue concluir:
+
+FND-042 e CHK-018 não têm conflito.
+
+mas:
+
+FND-042 e FND-045 compartilham cell:catalogo.
+
+Logo ficam em waves diferentes.
+
+Isso inclusive formaliza uma regra que vocês já vinham utilizando: mesma célula não trabalha em paralelo; células independentes podem trabalhar paralelamente e o rito de integração/merge continua controlado.
+
+4. Aqui entra a parte crítica: LOCK DA TAREFA
+
+Esse é provavelmente o ponto mais importante de toda a solução.
+
+Imagine três Claude Code:
+
+Claude A
+consulta a tarefa FND-042.
+
+Claude B
+consulta a tarefa FND-042.
+
+Os dois veem:
+
+READY
+
+Se simplesmente atualizarem o HTML, ambos podem começar.
+
+Isso é uma race condition clássica.
+
+Portanto, quando Claude A diz:
+
+quero FND-042
+
+o backend executa atomicamente algo equivalente a:
+
+Se FND-042 ainda estiver READY, atribua ao Claude A e transforme em CLAIMED.
+
+Tudo em uma única transação.
+
+Claude A recebe:
+
+✅ CLAIM SUCCESS
+Task: FND-042
+Lease: L-82931
+
+Claude B recebe:
+
+❌ CLAIM FAILED
+FND-042 já pertence ao Agent-A.
+Próxima tarefa disponível: FND-043.
+
+Assim dois robôs não conseguem trabalhar na mesma tarefa, mesmo que façam a solicitação praticamente no mesmo milissegundo.
+
+5. Eu não usaria um "lock eterno"
+
+Usaria algo chamado lease.
+
+É como alugar temporariamente a tarefa.
+
+Por exemplo:
+
+FND-042
+Owner: Claude-A
+Lease: ativo
+Último heartbeat: 10:51:43
+
+Enquanto trabalha, o agente manda pequenos heartbeats:
+
+ainda estou trabalhando em FND-042.
+
+Se o agente morrer, computador desligar, Claude fechar etc., o sistema detecta.
+
+Mas atenção a um detalhe sofisticado:
+
+eu não devolveria automaticamente a tarefa para READY.
+
+Porque o agente anterior talvez tenha feito modificações.
+
+Ela iria para:
+
+⚠️ RECOVERY REQUIRED
+
+O painel verifica:
+
+branch criada?
+arquivos modificados?
+commit existente?
+PR?
+testes?
+último heartbeat?
+worktree?
+
+Depois decide se pode devolver ao pool.
+
+Isso evita o terrível cenário:
+
+Agent A aparentemente morreu → Agent B pega a tarefa → Agent A volta → dois agentes alterando a mesma coisa.
+
+6. Cada execução teria identidade própria
+
+Algo como:
+
+Task
+
+FND-042
+
+Execution
+
+EXE-20260828-0042
+
+Agent
+
+Claude-Code-03
+
+Lease
+
+LEASE-b72c...
+
+Branch
+
+agent/FND-042/b72c
+
+Worktree
+
+próprio
+
+Isso permite saber exatamente:
+
+Quem fez o quê?
+
+Quando começou?
+
+Que prompt recebeu?
+
+Qual versão do contexto recebeu?
+
+Que arquivos alterou?
+
+Que testes executou?
+
+Qual commit produziu?
+
+Isso vira uma espécie de caixa-preta do desenvolvimento.
+
+7. E o PROMPT seria gerado automaticamente
+
+Aqui sua ideia fica especialmente interessante.
+
+Você entra na tarefa:
+
+FND-042
+
+e aperta:
+
+GERAR PROMPT DE EXECUÇÃO
+
+Mas o sistema não gera apenas:
+
+"Resolva FND-042."
+
+Ele monta um Execution Pack.
+
+Algo conceitualmente assim:
+
+IDENTIDADE
+Você é Agent-03 executando FND-042.
+
+MISSÃO
+Corrigir o contrato CourseSpec...
+
+CONTEXTO DO SISTEMA
+Arquitetura relevante...
+Estado atual...
+Decisões arquitetônicas válidas...
+
+DEPENDÊNCIAS
+FND-037 concluída.
+Commit: xxx
+
+ESCOPO PERMITIDO
+catalogo/...
+contracts/...
+
+NÃO ALTERAR
+checkout/
+funil/
+infra compartilhada/
+
+CONFLITOS
+Agent-02 está trabalhando em CHK-018.
+Nenhum conflito conhecido.
+
+CRITÉRIOS DE ACEITAÇÃO
+1...
+2...
+3...
+
+TESTES OBRIGATÓRIOS
+...
+
+PROTOCOLO
+1. Confirme lease.
+2. Inspecione repo.
+3. Execute tarefa.
+4. Rode testes.
+5. Registre evidências.
+6. Commit.
+7. Informe conclusão.
+
+LEASE
+b72c...
+
+TASK
+FND-042
+
+A grande diferença é:
+
+o prompt deixa de ser artesanal.
+
+Ele é compilado a partir do estado real do projeto.
+
+8. Eu criaria um "Prompt Compiler"
+
+Isso é um upgrade importante.
+
+Em vez de armazenar prompts prontos nas tarefas, armazenamos informações estruturadas.
+
+O Prompt Compiler combina:
+
+Prompt Base
++
+PLAYBOOK
++
+RUNBOOK
++
+TaskSpec
++
+estado atual
++
+dependências
++
+decisões arquitetônicas
++
+arquivos relevantes
++
+locks
++
+critérios de aceitação
++
+protocolo do agente
+
+e produz:
+
+Prompt de execução v37
+
+Consequentemente, se o PLAYBOOK mudar amanhã, não precisamos reescrever 70 prompts.
+
+Eles são recompilados.
+
+9. Isso conversa muito bem com algo que vocês já têm
+
+Hoje vocês já usam uma lógica parecida com:
+
+agente lê PLAYBOOK → RUNBOOK → pega primeira tarefa "A Fazer" → executa → roda agent_check_task → informa próxima tarefa.
+
+A nova arquitetura seria a evolução natural disso.
+
+Em vez de:
+
+"pegue a primeira tarefa A Fazer"
+
+passaria a ser:
+
+"peça ao Orchestrator a próxima tarefa elegível para você."
+
+O Orchestrator responde.
+
+Por exemplo:
+
+TASK ASSIGNED
+
+CHK-018
+Wave: 17
+Cell: checkout
+Risk: medium
+Dependencies: satisfied
+Conflicts: none
+Lease: 5ba92...
+
+Isso é um salto enorme em segurança operacional.
+
+10. Eu criaria 3 formas diferentes de executar
+
+No cartão:
+
+EXECUTAR SOZINHA
+
+Quando a tarefa exige cuidado especial.
+
+EXECUTAR EM PARALELO
+
+O sistema mostra:
+
+Esta tarefa pertence à Wave 17.
+
+E lista outras seis que podem rodar simultaneamente.
+
+Você poderia clicar:
+
+🚀 INICIAR WAVE 17
+
+Então teria:
+
+Agent 1 → FND-042
+Agent 2 → CHK-018
+Agent 3 → FUN-031
+Agent 4 → OBS-007
+EXECUTAR COMO LOTE
+
+Isso é ligeiramente diferente.
+
+Um lote pode ser:
+
+BATCH-DOCS-04
+
+com:
+
+atualizar README catálogo
+atualizar README checkout
+atualizar README alunos
+atualizar README funil
+
+As tarefas são semelhantes e compartilham contexto.
+
+O sistema pode criar:
+
+Batch Execution Pack
+
+Mas ainda controla cada TaskSpec separadamente.
+
+11. E eu faria uma distinção poderosa entre BATCH e WAVE
+
+Porque eles não são a mesma coisa.
+
+Batch significa:
+
+tarefas relacionadas.
+
+Wave significa:
+
+tarefas que podem executar simultaneamente.
+
+Exemplo:
+
+Batch
+
+BATCH-PAGAMENTOS
+
+contém 12 tarefas.
+
+Mas o sistema descobre:
+
+Wave 1
+
+TASK-01
+TASK-04
+TASK-09
+
+Wave 2
+
+TASK-02
+TASK-05
+
+Wave 3
+
+TASK-03
+TASK-06
+TASK-07
+
+Portanto:
+
+Batch = agrupamento semântico.
+
+Wave = agrupamento operacional.
+
+Essa distinção vai evitar muita confusão no projeto.
+
+12. Eu adicionaria um DEPENDENCY GRAPH
+
+Além do Kanban.
+
+Imagine:
+
+             ┌─ F042 ─ F045 ─ F052
+F037 ────────┤
+             └─ F043 ─────── F053
+
+C018 ─ C021 ─ C027
+
+O007 ─────────────── O012
+
+Visualmente:
+
+🟢 concluído
+🔵 executando
+⚪ pronto
+🟡 bloqueado
+🔴 falhou
+
+A vantagem é identificar o que gerenciamento de projetos chama de critical path.
+
+Porque nem toda tarefa importante deve ser feita primeiro.
+
+Às vezes uma tarefa aparentemente pequena desbloqueia outras quinze.
+
+Então o painel poderia dizer:
+
+Melhor próxima tarefa: FND-037
+
+Motivo:
+
+Sua conclusão desbloqueia 7 tarefas e duas Waves.
+
+Isso é muito mais inteligente do que simplesmente ordenar por prioridade "Alta/Média/Baixa".
+
+13. O próprio sistema poderia calcular o "valor operacional" da tarefa
+
+Por exemplo:
+
+FND-037
+
+Prioridade do negócio: 7/10
+Urgência: 5/10
+Risco: 3/10
+Desbloqueia: 8 tarefas
+Critical Path: SIM
+Custo estimado: baixo
+
+Resultado:
+
+🔥 EXECUTAR AGORA
+
+Enquanto outra:
+
+FND-099
+
+Prioridade: 9/10
+Urgência: 7/10
+Desbloqueia: 0
+Dependência externa pendente
+
+Resultado:
+
+⏸ AGUARDAR
+
+É uma forma muito melhor de definir "próxima tarefa".
+
+14. A aba poderia ter esta estrutura
+
+Eu faria o topo assim:
+
+MISSION CONTROL
+
+Sistema: 🟢 operacional
+Agentes ativos: 4
+Executando: 4
+Ready: 17
+Bloqueadas: 8
+Em revisão: 3
+Falhas: 1
+
+WAVE ATUAL: #17
+████████░░ 74%
+
+[ INICIAR PRÓXIMA WAVE ]
+
+Logo abaixo:
+
+🔥 AGORA
+
+O que deveria ser feito agora.
+
+⚡ PARALELO
+
+O que pode ser distribuído entre agentes.
+
+📦 LOTES
+
+Trabalho agrupado.
+
+🚧 BLOQUEADAS
+
+E, principalmente:
+
+por quê estão bloqueadas.
+
+🔀 DEPENDÊNCIAS
+
+Graph.
+
+🤖 AGENTES
+
+Quem está fazendo o quê.
+
+🧪 VERIFICAÇÃO
+
+Tarefas terminadas aguardando validação.
+
+🚦 MERGE QUEUE
+
+Integração serializada.
+
+📜 HISTÓRICO
+
+Tudo que aconteceu.
+
+15. E o painel poderia finalmente responder algo que hoje é difícil responder
+
+Você abre o sistema e vê:
+
+Existem 43 tarefas pendentes.
+
+Mas imediatamente abaixo:
+
+18 estão bloqueadas.
+25 estão disponíveis.
+Das 25 disponíveis, apenas 11 são mutuamente independentes.
+A melhor Wave agora contém 6 tarefas.
+4 agentes estão disponíveis.
+Portanto recomendamos executar F042 + C018 + O007 + F031.
+
+Isso é praticamente um scheduler de projeto.
+
+16. Uma mudança arquitetônica será necessária
+
+Aqui está a parte em que eu seria firme.
+
+Hoje o painel-dados.js funciona muito bem como representação do estado do painel.
+
+Mas não pode ser a autoridade transacional dessa nova funcionalidade.
+
+Eu criaria uma pequena célula nova:
+
+orquestrador
+
+ou:
+
+control-plane
+
+Com banco próprio.
+
+Ela não administra checkout, alunos, catálogo etc.
+
+Administra exclusivamente:
+
+o trabalho sobre o sistema.
+
+Algo assim:
+
+                    PAINEL
+                      │
+                      ▼
+                CONTROL PLANE
+                      │
+     ┌────────────────┼────────────────┐
+     │                │                │
+   Tasks         Scheduler          Agents
+     │                │                │
+     ├─ DAG           ├─ Waves         ├─ Lease
+     ├─ Locks         ├─ Batches       ├─ Heartbeat
+     ├─ Status        ├─ Priority      ├─ Execution
+     └─ Evidence      └─ Conflicts     └─ Results
+
+O painel-dados.js poderia continuar existindo para informações editoriais/estáticas e talvez como snapshot/export.
+
+Mas:
+
+estado operacional de tarefas → PostgreSQL.
+
+17. Eu modelaria cada tarefa como um TaskSpec
+
+Essa seria outra evolução importante.
+
+TASKSPEC
+
+identity
+title
+description
+
+source
+phase
+cell
+
+priority
+risk
+urgency
+
+dependencies[]
+blocks[]
+
+conflict_scopes[]
+allowed_paths[]
+forbidden_paths[]
+
+batch
+wave
+
+acceptance_criteria[]
+verification_commands[]
+
+status
+
+assigned_agent
+lease
+heartbeat
+
+branch
+worktree
+commit
+PR
+
+prompt_version
+
+result
+evidence
+
+created_at
+started_at
+completed_at
+
+Isso transforma "uma anotação no painel" em uma unidade formal de trabalho executável.
+
+18. E aqui aparece uma possibilidade ainda maior
+
+Hoje existem pendências espalhadas pelo painel.
+
+Eu não faria você cadastrar tudo manualmente.
+
+Cada parte do painel poderia emitir:
+
+Create Task
+
+Por exemplo, o painel detecta:
+
+⚠️ compra com cartão ainda pendente.
+
+Você clica:
+
+Transformar em tarefa
+
+O Orchestrator cria:
+
+PAY-037
+
+Outro problema aparece na auditoria:
+
+documentação divergente do comportamento real.
+
+Transformar em tarefa
+
+DOC-018.
+
+Um incidente gera:
+
+INC-021.
+
+A Central de Evolução aprova uma sugestão e gera um ChangeSpec.
+
+Esse ChangeSpec pode gerar várias TasksSpecs.
+
+Teríamos portanto:
+
+IDEIA
+  ↓
+ChangeSpec
+  ↓
+Tasks
+  ↓
+Dependencies
+  ↓
+Batch
+  ↓
+Waves
+  ↓
+Agents
+  ↓
+Code
+  ↓
+Verification
+  ↓
+Merge
+  ↓
+Deploy
+
+Aqui o sistema começa a ficar realmente interessante.
+
+19. Eu adicionaria ainda uma "fila de integração"
+
+Porque executar paralelamente é relativamente fácil.
+
+Integrar paralelamente é onde nasce o caos.
+
+Então poderíamos ter:
+
+EXECUTION
+
+paralelo.
+
+A ─────┐
+B ─────┤
+C ─────┤
+D ─────┘
+INTEGRATION
+
+serial/controlada.
+
+A → verify → merge
+             ↓
+B → rebase → verify → merge
+                        ↓
+C → rebase → verify → merge
+
+E sempre:
+
+canário antes de ampliação, quando aplicável.
+
+Isso preserva a filosofia de execução paralela que vocês já começaram a adotar sem transformar o Git em uma arena de gladiadores.
+
+20. O estado da tarefa deveria ser uma máquina de estados
+
+Eu evitaria permitir que alguém simplesmente mudasse:
+
+TODO → DONE.
+
+O fluxo correto seria:
+
+DISCOVERED
+     ↓
+TRIAGED
+     ↓
+READY
+     ↓
+CLAIMED
+     ↓
+RUNNING
+     ↓
+VERIFYING
+     ↓
+REVIEW
+     ↓
+INTEGRATION
+     ↓
+DONE
+
+Com saídas laterais:
+
+BLOCKED
+FAILED
+RECOVERY
+CANCELLED
+
+E existem regras.
+
+Por exemplo:
+
+RUNNING → DONE
+
+🚫 proibido.
+
+Tem que passar por:
+
+VERIFYING.
+
+Isso previne um agente de declarar:
+
+"feito!"
+
+sem demonstrar que realmente está feito.
+
+21. O status visual mudaria automaticamente
+
+Você falou exatamente isso:
+
+"ao começarem a executar uma tarefa ela logo mude de status ou posição."
+
+Perfeito.
+
+Mas o evento não seria:
+
+usuário arrastou cartão.
+
+Seria:
+
+Agent claims task
+        ↓
+Backend transaction
+        ↓
+READY → CLAIMED
+        ↓
+WebSocket/SSE
+        ↓
+Painel recebe evento
+        ↓
+cartão se move
+
+Então você está olhando o painel e literalmente vê:
+
+FND-042
+
+sair de:
+
+PRONTA
+
+e entrar em:
+
+CLAUDE-03 — EXECUTANDO
+
+sem atualizar a página.
+
+22. Poderíamos inclusive mostrar uma "sala de máquinas"
+
+Algo parecido:
+
+🤖 CLAUDE-01
+FND-042
+████████░░
+Executando testes
+Heartbeat: 4s
+
+🤖 CLAUDE-02
+CHK-018
+██████░░░░
+Implementando
+Heartbeat: 7s
+
+🤖 CODEX-01
+OBS-007
+█████████░
+Verificação
+Heartbeat: 3s
+
+🤖 CLAUDE-04
+IDLE
+Próxima tarefa recomendada: FUN-031
+
+Para alguém que não programa, isso seria extraordinariamente útil.
+
+Você finalmente enxergaria os robôs como uma equipe trabalhando.
+
+23. Há ainda uma melhoria 10× que eu colocaria desde o desenho
+
+Eu separaria quatro entidades que normalmente as pessoas misturam:
+
+1. Task
+O que precisa ser feito.
+
+2. Execution
+Uma tentativa de realizar a tarefa.
+
+3. Agent
+Quem está executando.
+
+4. Change
+O que realmente foi produzido.
+
+Assim:
+
+TASK FND-042
+
+Execution #1
+Claude-02
+FAILED
+
+Execution #2
+Claude-04
+SUCCESS
+
+Change
+commit 82ab47e
+PR #37
+
+Isso preserva o histórico correto.
+
+Uma tarefa não "falhou".
+
+Uma execução dela falhou.
+
+Parece detalhe semântico; arquiteturalmente é uma diferença enorme.
+
+Minha arquitetura recomendada
+
+Eu chegaria neste modelo:
+
+┌─────────────────────────────────────────┐
+│              MISSION CONTROL            │
+│                                         │
+│ Overview | Tasks | Waves | Agents | DAG │
+└───────────────────┬─────────────────────┘
+                    │
+              CONTROL PLANE
+                    │
+ ┌──────────────────┼──────────────────────┐
+ │                  │                      │
+ ▼                  ▼                      ▼
+TASK ENGINE      SCHEDULER             EXECUTION
+ │                  │                      │
+TaskSpec          DAG                   Agent
+States            Conflicts             Lease
+Dependencies      Waves                 Heartbeat
+Locks             Batches               Prompt
+Evidence          Critical Path         Result
+ │                  │                      │
+ └──────────────────┴──────────────────────┘
+                    │
+               POSTGRESQL
+                    │
+           ┌────────┴─────────┐
+           ▼                  ▼
+       Claude Code           Codex
+
+E ainda uma quarta peça:
+
+               INTEGRATION QUEUE
+                     │
+               tests / rebase
+                     │
+                   merge
+                     │
+                  canary
+                     │
+                  deploy
+O salto conceitual
+
+A diferença é enorme.
+
+Um Kanban responde:
+
+"Onde estão minhas tarefas?"
+
+O que estou propondo responde:
+
+O que precisa ser feito?
+
+O que pode ser feito agora?
+
+O que depende de quê?
+
+O que pode rodar simultaneamente?
+
+Qual combinação maximiza o avanço do projeto?
+
+Que agente está fazendo cada coisa?
+
+Como impedir dois agentes de pegarem a mesma tarefa?
+
+Qual prompt cada agente precisa receber?
+
+Que arquivos ele pode alterar?
+
+Como sabemos que terminou de verdade?
+
+Em que ordem as mudanças devem ser integradas?
+
+Ou seja: o seu painel deixaria de ser apenas o painel de acompanhamento do sistema e começaria a se tornar o sistema operacional do desenvolvimento do próprio sistema.
+
+Essa, para mim, é a direção certa — e é consideravelmente mais poderosa do que simplesmente adicionar uma coluna de “A Fazer / Fazendo / Feito”.
+
+
+
+Como podemos estruturar os dados (o JSON ou banco de dados) desse cartão de tarefas para que os robôs consigam ler e atualizar os status corretamente? algo assim
+
+
+Sim. E eu faria uma separação que considero fundamental: o cartão visual não deve ser o dado primário. O cartão é apenas uma representação de uma estrutura formal chamada, por exemplo, TaskSpec.
+
+E eu não colocaria tudo em um JSON que qualquer robô pode sobrescrever. Separaria claramente o que é definição da tarefa, o que é estado operacional e o que é histórico imutável.
+
+A arquitetura seria:
+
+Task
+├── spec            ← o que deve ser feito
+├── scheduling      ← dependências, conflitos, wave, batch
+├── runtime         ← estado atual / lock / agente
+├── execution       ← execução atual
+├── verification    ← como provar que terminou
+├── integration     ← branch / commit / PR / merge
+└── history         ← eventos imutáveis
+1. Exemplo de um cartão completo
+
+Algo nessa linha:
+
+{
+  "schema_version": "1.0",
+
+  "task": {
+    "id": "CAT-042",
+    "title": "Corrigir validação do CourseSpec",
+    "description": "Garantir que CourseSpec rejeite configurações inválidas antes da persistência.",
+
+    "type": "bugfix",
+    "cell": "catalogo",
+    "phase": "fundacao",
+
+    "priority": "high",
+    "risk": "medium",
+
+    "created_at": "2026-08-28T10:30:00-03:00",
+    "created_by": "painel"
+  },
+
+  "spec": {
+    "objective": "Corrigir a validação do CourseSpec sem alterar o contrato público existente.",
+
+    "scope": {
+      "allowed_paths": [
+        "catalogo/",
+        "contracts/course_spec/"
+      ],
+
+      "forbidden_paths": [
+        "checkout/",
+        "funil/",
+        "infra/"
+      ]
+    },
+
+    "acceptance_criteria": [
+      {
+        "id": "AC-1",
+        "text": "CourseSpec inválido deve ser rejeitado antes da persistência."
+      },
+      {
+        "id": "AC-2",
+        "text": "Nenhum teste existente pode regredir."
+      },
+      {
+        "id": "AC-3",
+        "text": "Adicionar teste cobrindo o caso encontrado."
+      }
+    ]
+  },
+
+  "scheduling": {
+    "depends_on": [
+      "CAT-037"
+    ],
+
+    "blocks": [
+      "CAT-045",
+      "CAT-052"
+    ],
+
+    "conflict_scopes": [
+      "cell:catalogo",
+      "path:catalogo/models",
+      "db:catalogo"
+    ],
+
+    "batch_id": "BATCH-CATALOGO-04",
+    "wave_id": "WAVE-017",
+
+    "parallelizable": true
+  },
+
+  "runtime": {
+    "status": "ready",
+
+    "assigned_agent": null,
+
+    "lease": {
+      "lease_id": null,
+      "acquired_at": null,
+      "expires_at": null,
+      "heartbeat_at": null
+    },
+
+    "attempt": 0
+  },
+
+  "execution": {
+    "execution_id": null,
+
+    "started_at": null,
+    "finished_at": null,
+
+    "worktree": null,
+    "branch": null,
+
+    "prompt_version": null,
+
+    "progress": {
+      "phase": null,
+      "message": null,
+      "percent": null
+    }
+  },
+
+  "verification": {
+    "commands": [
+      "pytest catalogo/tests/",
+      "python manage.py check"
+    ],
+
+    "required_checks": [
+      "tests_pass",
+      "acceptance_criteria_pass",
+      "scope_respected"
+    ],
+
+    "results": []
+  },
+
+  "integration": {
+    "commit_sha": null,
+    "pull_request": null,
+
+    "merge_status": "not_ready",
+
+    "merged_at": null
+  }
+}
+
+O cartão mostrado na tela seria apenas uma versão condensada desses dados.
+
+2. Mas eu faria uma melhoria importante: separar TaskSpec de TaskRuntime
+
+Essa separação é extremamente útil porque são dois tipos de informação completamente diferentes.
+
+TaskSpec
+
+É basicamente o contrato da tarefa.
+
+Depois que o robô começa a trabalhar, idealmente quase nada aqui deveria mudar.
+
+{
+  "id": "CAT-042",
+  "title": "Corrigir validação do CourseSpec",
+
+  "objective": "...",
+
+  "cell": "catalogo",
+
+  "priority": "high",
+  "risk": "medium",
+
+  "depends_on": ["CAT-037"],
+
+  "conflict_scopes": [
+    "cell:catalogo",
+    "db:catalogo"
+  ],
+
+  "allowed_paths": [
+    "catalogo/"
+  ],
+
+  "acceptance_criteria": [
+    "...",
+    "..."
+  ]
+}
+TaskRuntime
+
+É o que muda enquanto os robôs trabalham:
+
+{
+  "task_id": "CAT-042",
+
+  "status": "running",
+
+  "assigned_agent": "claude-code-03",
+
+  "lease_id": "lease_7cf238",
+
+  "execution_id": "exec_CAT042_003",
+
+  "started_at": "2026-08-28T10:47:03-03:00",
+
+  "heartbeat_at": "2026-08-28T10:53:21-03:00",
+
+  "progress": {
+    "phase": "testing",
+    "message": "Executando testes da célula catálogo",
+    "percent": 70
+  }
+}
+
+Essa separação ajuda a evitar um problema perigoso:
+
+o agente deveria poder informar que começou a tarefa, mas não deveria poder mudar a própria tarefa para tornar o trabalho mais fácil.
+
+Por exemplo, ele não deveria livremente remover:
+
+acceptance_criteria
+dependencies
+forbidden_paths
+verification
+
+Isso seria uma vulnerabilidade arquitetônica.
+
+3. Eu usaria uma máquina de estados explícita
+
+Não deixaria o agente gravar qualquer texto em status.
+
+Nada de:
+
+"status": "quase pronto eu acho"
+
+😄
+
+Usaria uma enumeração fechada:
+
+discovered
+triaged
+blocked
+ready
+claimed
+running
+verifying
+review
+integration
+done
+
+failed
+recovery
+cancelled
+
+E, mais importante, existiriam transições válidas.
+
+Por exemplo:
+
+DISCOVERED
+   ↓
+TRIAGED
+   ↓
+READY
+   ↓
+CLAIMED
+   ↓
+RUNNING
+   ↓
+VERIFYING
+   ↓
+REVIEW
+   ↓
+INTEGRATION
+   ↓
+DONE
+
+Não permitir:
+
+READY → DONE
+
+Nem:
+
+RUNNING → DONE
+
+O backend rejeitaria.
+
+4. O robô não deveria fazer UPDATE task SET status='running'
+
+Esse é outro ponto importante.
+
+Eu evitaria dar aos agentes acesso direto ao banco.
+
+Em vez disso, eles chamariam operações específicas.
+
+Por exemplo:
+
+claim_task()
+start_task()
+heartbeat()
+report_progress()
+submit_for_verification()
+report_failure()
+release_task()
+
+Isso permite o backend aplicar regras.
+
+Exemplo:
+
+POST /tasks/CAT-042/claim
+
+Com:
+
+{
+  "agent_id": "claude-code-03"
+}
+
+O servidor verifica atomicamente:
+
+status == READY?
+dependencies concluídas?
+nenhum conflict_scope travado?
+agente autorizado?
+
+Se tudo estiver certo:
+
+{
+  "success": true,
+
+  "task_id": "CAT-042",
+  "execution_id": "exec_CAT042_003",
+
+  "lease": {
+    "lease_id": "lease_7cf238",
+    "expires_at": "2026-08-28T11:15:00-03:00"
+  },
+
+  "status": "claimed"
+}
+
+E a tarefa deixa de estar disponível para os outros agentes.
+
+5. O lease_id deveria ser obrigatório nas alterações seguintes
+
+Isso é excelente para evitar concorrência.
+
+Por exemplo, Claude-03 tenta atualizar:
+
+{
+  "task_id": "CAT-042",
+  "lease_id": "lease_7cf238",
+
+  "progress": {
+    "phase": "implementation",
+    "message": "Validação implementada"
+  }
+}
+
+O backend pergunta:
+
+Esse lease ainda pertence ao agente?
+
+Se não:
+
+403 / 409
+LEASE_INVALID
+
+Portanto, um agente antigo ou um agente diferente não consegue alterar aquela execução.
+
+6. Eu acrescentaria revision
+
+Para proteção contra atualizações concorrentes.
+
+Exemplo:
+
+{
+  "task_id": "CAT-042",
+  "revision": 27
+}
+
+O agente manda:
+
+expected_revision = 27
+
+Se entretanto outra operação mudou a tarefa para revision 28:
+
+409 CONFLICT
+
+O robô é obrigado a reler a situação.
+
+Isso se chama optimistic concurrency control.
+
+É muito útil aqui.
+
+7. As dependências deveriam ser mais ricas que uma lista de IDs
+
+Inicialmente poderia ser:
+
+"depends_on": [
+  "CAT-037"
+]
+
+Mas eu evoluiria rapidamente para:
+
+"dependencies": [
+  {
+    "task_id": "CAT-037",
+    "type": "hard",
+    "condition": "done"
+  },
+
+  {
+    "task_id": "INF-012",
+    "type": "soft",
+    "condition": "review"
+  }
+]
+
+Porque dependências diferentes significam coisas diferentes.
+
+Hard dependency
+
+Não pode começar sem ela.
+
+Soft dependency
+
+Pode começar, mas talvez seja melhor esperar.
+
+Informational dependency
+
+Precisa apenas considerar o resultado.
+
+8. Para paralelização, conflict_scopes é uma das partes mais importantes
+
+Exemplo:
+
+"conflict_scopes": [
+  {
+    "type": "cell",
+    "value": "catalogo",
+    "mode": "write"
+  },
+
+  {
+    "type": "database",
+    "value": "catalogo",
+    "mode": "write"
+  },
+
+  {
+    "type": "path",
+    "value": "catalogo/models/",
+    "mode": "write"
+  }
+]
+
+Outra tarefa pode ter:
+
+{
+  "type": "cell",
+  "value": "checkout",
+  "mode": "write"
+}
+
+→ podem rodar em paralelo.
+
+Mas outra possui:
+
+{
+  "type": "path",
+  "value": "catalogo/models/",
+  "mode": "write"
+}
+
+→ conflito.
+
+Você começa a criar algo semelhante a um sistema de locks semânticos sobre o código.
+
+9. Poderíamos diferenciar READ e WRITE
+
+Isso melhora ainda mais o paralelismo.
+
+Por exemplo:
+
+Agent A:
+
+{
+  "type": "path",
+  "value": "contracts/",
+  "mode": "read"
+}
+
+Agent B:
+
+{
+  "type": "path",
+  "value": "contracts/",
+  "mode": "read"
+}
+
+Pode.
+
+Mas:
+
+READ + WRITE
+
+pode exigir bloqueio.
+
+E:
+
+WRITE + WRITE
+
+quase certamente deve bloquear.
+
+É a mesma lógica de concorrência usada em bancos de dados, aplicada ao desenvolvimento.
+
+10. Eu faria o histórico usando EVENTOS, não sobrescrita
+
+Em vez de sabermos apenas:
+
+status = running
+
+guardaríamos:
+
+[
+  {
+    "event": "task_created",
+    "at": "2026-08-28T09:10:00-03:00"
+  },
+
+  {
+    "event": "task_ready",
+    "at": "2026-08-28T09:42:00-03:00"
+  },
+
+  {
+    "event": "task_claimed",
+    "agent": "claude-code-03",
+    "execution_id": "exec_CAT042_003",
+    "at": "2026-08-28T10:47:03-03:00"
+  },
+
+  {
+    "event": "task_started",
+    "at": "2026-08-28T10:47:18-03:00"
+  },
+
+  {
+    "event": "progress_reported",
+    "phase": "testing",
+    "at": "2026-08-28T10:53:21-03:00"
+  }
+]
+
+Isso gera um audit log completo.
+
+Então, se algo der errado, vocês conseguem reconstruir exatamente o que aconteceu.
+
+11. Eu separaria a "Execution" da tarefa
+
+Isso resolve muitos problemas futuros.
+
+Exemplo:
+
+{
+  "execution_id": "exec_CAT042_003",
+
+  "task_id": "CAT-042",
+
+  "attempt": 3,
+
+  "agent": {
+    "id": "claude-code-03",
+    "type": "claude-code",
+    "model": "..."
+  },
+
+  "lease_id": "lease_7cf238",
+
+  "started_at": "...",
+  "finished_at": null,
+
+  "branch": "agent/CAT-042/exec-003",
+
+  "result": null
+}
+
+Se falhar:
+
+{
+  "execution_id": "exec_CAT042_003",
+  "result": "failed"
+}
+
+Depois:
+
+{
+  "execution_id": "exec_CAT042_004",
+  "attempt": 4,
+  "agent": "codex-02"
+}
+
+A tarefa continua sendo CAT-042.
+
+Isso preserva toda a história.
+
+12. Verification também deveria ser estruturada
+
+Não apenas:
+
+"rode os testes"
+
+Eu faria:
+
+"verification": {
+  "checks": [
+    {
+      "id": "V-01",
+      "type": "command",
+      "command": "pytest catalogo/tests/",
+      "required": true
+    },
+
+    {
+      "id": "V-02",
+      "type": "command",
+      "command": "python manage.py check",
+      "required": true
+    },
+
+    {
+      "id": "V-03",
+      "type": "acceptance_criteria",
+      "criterion": "AC-1",
+      "required": true
+    }
+  ]
+}
+
+Resultado:
+
+{
+  "check_id": "V-01",
+  "status": "passed",
+  "exit_code": 0,
+  "execution_id": "exec_CAT042_003"
+}
+
+Assim DONE pode ser calculado.
+
+Não declarado arbitrariamente.
+
+13. O prompt não precisa estar inteiro no banco
+
+Eu armazenaria algo assim:
+
+"prompt": {
+  "template": "software_task_execution_v3",
+
+  "context_profile": "django_cell_standard",
+
+  "instructions_version": "2026.08.28",
+
+  "generated_prompt_hash": "sha256:ab283...",
+
+  "generated_at": null
+}
+
+Quando o agente pega a tarefa:
+
+TaskSpec
++
+estado atual
++
+PLAYBOOK
++
+RUNBOOK
++
+arquitetura
++
+contexto da célula
++
+locks ativos
++
+dependências
+
+↓
+
+Prompt Compiler
+
+↓
+
+prompt final.
+
+Isso reduz muito a possibilidade de o prompt ficar desatualizado.
+
+14. No banco eu não colocaria tudo numa única coluna JSON
+
+PostgreSQL JSONB é ótimo, mas eu faria um modelo híbrido.
+
+Campos usados constantemente para busca e concorrência devem ser colunas normais:
+
+tasks
+────────────────────────────
+id
+title
+status
+priority
+risk
+cell
+batch_id
+wave_id
+created_at
+updated_at
+revision
+
+Informações mais flexíveis:
+
+spec JSONB
+metadata JSONB
+
+Outra tabela:
+
+task_dependencies
+────────────────────────────
+task_id
+depends_on_task_id
+dependency_type
+
+Outra:
+
+task_locks
+────────────────────────────
+task_id
+scope_type
+scope_value
+mode
+lease_id
+
+Outra:
+
+executions
+────────────────────────────
+id
+task_id
+agent_id
+attempt
+status
+lease_id
+started_at
+finished_at
+branch
+commit_sha
+
+Outra:
+
+task_events
+────────────────────────────
+id
+task_id
+execution_id
+event_type
+payload JSONB
+created_at
+
+Isso será muito mais robusto que:
+
+tasks.json
+15. O cartão que aparece para você poderia ser minúsculo
+
+Mesmo existindo toda essa estrutura por trás.
+
+Por exemplo:
+
+┌────────────────────────────────────────────┐
+│ CAT-042                         🔥 HIGH    │
+│ Corrigir validação CourseSpec              │
+│                                            │
+│ Catálogo · Bug · Risk: Medium              │
+│                                            │
+│ ✅ dependências satisfeitas                │
+│ ⚡ paralelizável                           │
+│ 📦 Batch CAT-04                            │
+│ 🌊 Wave 17                                 │
+│                                            │
+│ Estado: READY                              │
+│                                            │
+│ [ VER ] [ PROMPT ] [ EXECUTAR ]            │
+└────────────────────────────────────────────┘
+
+Quando um agente pega:
+
+┌────────────────────────────────────────────┐
+│ CAT-042                                    │
+│ Corrigir validação CourseSpec              │
+│                                            │
+│ 🤖 Claude-03                               │
+│ 🔵 EXECUTANDO                              │
+│                                            │
+│ Etapa: testes                              │
+│ ███████░░░ 71%                             │
+│                                            │
+│ Heartbeat: 4s atrás                        │
+│ Branch: agent/CAT-042/003                  │
+│                                            │
+│ [ ACOMPANHAR ]                             │
+└────────────────────────────────────────────┘
+16. Eu acrescentaria uma propriedade que pode se tornar muito valiosa: source
+
+Porque vocês já têm pendências surgindo em várias partes do painel.
+
+"source": {
+  "type": "panel_finding",
+
+  "panel": "fundacao",
+
+  "section": "contratos",
+
+  "finding_id": "FIND-288",
+
+  "created_automatically": true
+}
+
+Ou:
+
+"source": {
+  "type": "incident",
+  "incident_id": "INC-032"
+}
+
+Ou:
+
+"source": {
+  "type": "roadmap",
+  "roadmap_item": "ROAD-089"
+}
+
+Assim você sabe por que aquela tarefa existe.
+
+17. Uma tarefa poderia ter "reasoning de scheduling"
+
+Isso seria ótimo para você, que não é programador.
+
+Por exemplo:
+
+"scheduling_analysis": {
+  "recommended_action": "run_now",
+
+  "parallel_with": [
+    "CHK-018",
+    "OBS-007"
+  ],
+
+  "cannot_parallel_with": [
+    "CAT-045"
+  ],
+
+  "reason": [
+    "Dependências concluídas.",
+    "Nenhum agente possui lock sobre catalogo.",
+    "CAT-045 altera o mesmo escopo de banco.",
+    "A conclusão desta tarefa desbloqueia quatro tarefas."
+  ],
+
+  "unlock_count": 4,
+
+  "critical_path": true
+}
+
+Então o painel poderia explicar:
+
+Por que devo executar isso agora?
+
+E não apenas dizer:
+
+prioridade alta.
+
+18. Minha versão mínima do TaskSpec
+
+Se quisermos evitar overengineering no começo, eu começaria com estes campos:
+
+{
+  "id": "CAT-042",
+
+  "title": "...",
+  "description": "...",
+
+  "cell": "catalogo",
+  "type": "bugfix",
+
+  "priority": "high",
+  "risk": "medium",
+
+  "status": "ready",
+
+  "depends_on": [],
+  "blocks": [],
+
+  "conflict_scopes": [],
+
+  "batch_id": null,
+  "wave_id": null,
+
+  "allowed_paths": [],
+  "forbidden_paths": [],
+
+  "acceptance_criteria": [],
+
+  "verification_commands": [],
+
+  "assigned_agent": null,
+
+  "execution_id": null,
+  "lease_id": null,
+  "heartbeat_at": null,
+
+  "branch": null,
+  "commit_sha": null,
+
+  "revision": 1
+}
+
+Isso já seria suficiente para fazer uma v1 funcional e segura.
+
+Mas a regra de ouro seria esta
+
+Eu estabeleceria desde já:
+
+Os agentes não "editam cartões". Eles enviam eventos e solicitações de transição de estado.
+
+Ou seja, Claude não recebe permissão para dizer:
+
+status = done
+
+Ele diz:
+
+submit_for_verification(CAT-042, lease_xyz)
+
+O sistema verifica o que precisa verificar e decide:
+
+RUNNING → VERIFYING
+
+Depois:
+
+verification_passed
+
+e somente o orquestrador pode fazer:
+
+VERIFYING → REVIEW
+
+Esse detalhe aparentemente pequeno é o que transforma o sistema de um Trello com IA em um verdadeiro control plane para agentes de software.
+
+E eu provavelmente iria um passo além: desenharia já o schema pensando em TaskSpec + ExecutionSpec + EventLog + Lock/Lease, porque essas quatro entidades são o núcleo que permitirá depois adicionar Waves, batches, scheduler inteligente, agentes diferentes, retries, recovery, prompts automáticos e integração com Git sem ter que reconstruir tudo.
+
+
+
+Como deve ser estruturada a tela e os dados para a coluna de 'Revisão / Exceção', onde eu precisarei aprovar ou consertar o que o robô não conseguiu resolver?
+
+
+
+Eu estruturaria essa coluna como uma fila de decisão humana, não como simples “tarefas problemáticas”.
+
+Porque ali chegarão dois tipos muito diferentes de situação:
+
+Revisão: o robô acredita que terminou e precisa da sua aprovação.
+Exceção: o robô não conseguiu concluir com segurança e precisa que você decida o próximo passo.
+
+Misturar os dois sem distinção vai rapidamente virar confusão.
+
+1. A coluna deveria se chamar algo como “Revisão / Exceções”
+
+Visualmente, eu faria a coluna com dois subgrupos:
+
+┌───────────────────────────────────────────┐
+│ 🧑‍⚖️ REVISÃO / EXCEÇÕES              7   │
+├───────────────────────────────────────────┤
+
+  AGUARDANDO APROVAÇÃO                  3
+
+  ┌─────────────────────────────────────┐
+  │ CAT-042                     🟢 LOW  │
+  │ Corrigir validação CourseSpec       │
+  │                                     │
+  │ 🤖 Claude-03 concluiu               │
+  │ ✅ 18/18 testes                     │
+  │ ✅ Critérios: 4/4                   │
+  │ ⚠ Alterou 7 arquivos                │
+  │                                     │
+  │ [ REVISAR ]                         │
+  └─────────────────────────────────────┘
+
+
+  EXCEÇÕES / DECISÃO NECESSÁRIA         4
+
+  ┌─────────────────────────────────────┐
+  │ CHK-018                    🔴 HIGH  │
+  │ Corrigir callback pagamento         │
+  │                                     │
+  │ ⛔ BLOQUEIO                         │
+  │ Robô encontrou decisão arquitetural │
+  │ não prevista no TaskSpec.           │
+  │                                     │
+  │ [ DECIDIR ]                         │
+  └─────────────────────────────────────┘
+
+A diferença visual precisa ser óbvia.
+
+2. Eu criaria um objeto específico chamado ReviewPacket
+
+O agente não deveria simplesmente mudar:
+
+status = review
+
+Ele deveria entregar ao sistema um pacote de revisão.
+
+Exemplo:
+
+{
+  "review_id": "REV-CAT042-003",
+
+  "task_id": "CAT-042",
+  "execution_id": "exec_CAT042_003",
+
+  "review_type": "completion",
+
+  "submitted_by": "claude-code-03",
+  "submitted_at": "2026-08-28T11:42:18-03:00",
+
+  "summary": {
+    "result": "success",
+    "confidence": "high",
+
+    "what_was_done": [
+      "Adicionada validação antes da persistência.",
+      "Criados três testes de regressão.",
+      "Mantido contrato público existente."
+    ]
+  },
+
+  "verification": {
+    "acceptance_criteria": {
+      "passed": 4,
+      "total": 4
+    },
+
+    "tests": {
+      "passed": 18,
+      "failed": 0
+    }
+  },
+
+  "changes": {
+    "files_changed": 7,
+    "lines_added": 86,
+    "lines_removed": 24,
+
+    "branch": "agent/CAT-042/003",
+    "commit_sha": "82ab47e"
+  },
+
+  "risks": [],
+
+  "questions": [],
+
+  "recommended_action": "approve"
+}
+
+Esse objeto é o que alimentaria sua tela.
+
+3. A tela de revisão precisa responder seis perguntas imediatamente
+
+Quando você abrir uma tarefa, não deveria precisar entender código para descobrir:
+
+1. O que o robô deveria fazer?
+
+Mostrar a missão original:
+
+Corrigir a validação do CourseSpec sem alterar o contrato público.
+
+2. O que ele afirma ter feito?
+
+Alterou validação, criou testes e preservou compatibilidade.
+
+3. Como ele provou?
+
+18 testes passaram, 4/4 critérios satisfeitos.
+
+4. O que mudou?
+
+7 arquivos, 86 linhas adicionadas, 24 removidas.
+
+5. Existe algum risco?
+
+Nenhum detectado.
+
+ou:
+
+⚠️ Houve mudança em migration.
+
+6. O que você precisa decidir?
+
+Aprovar.
+
+Essa última é fundamental.
+
+O painel deve reduzir uma situação técnica complexa a uma decisão explícita.
+
+4. Eu faria a tela detalhada em cinco blocos
+A. CABEÇALHO EXECUTIVO
+
+Algo assim:
+
+CAT-042 · Corrigir validação CourseSpec
+
+Status: 🧑‍⚖️ AGUARDANDO REVISÃO
+Resultado do agente: ✅ CONCLUÍDO
+Risco: 🟡 MÉDIO
+Confiança do agente: 92%
+
+Claude-03
+Execução #003
+42 minutos
+Commit: 82ab47e
+
+RECOMENDAÇÃO DO SISTEMA:
+✅ Aprovar
+
+[ APROVAR ] [ PEDIR CORREÇÃO ] [ REJEITAR ]
+
+Você já consegue tomar uma decisão rápida.
+
+5. Segundo bloco: “O que estava pedido × O que foi entregue”
+
+Isso seria especialmente importante para você.
+
+Eu faria uma comparação lado a lado:
+
+Requisito	Resultado
+CourseSpec inválido deve ser rejeitado	✅ Atendido
+Não alterar contrato público	✅ Atendido
+Adicionar teste de regressão	✅ Atendido
+Todos os testes devem passar	✅ 18/18
+
+E, se houver discrepância:
+
+Requisito	Resultado
+Não alterar API pública	⚠️ Possível alteração detectada
+
+Assim você consegue identificar rapidamente:
+
+“Ele fez o que pedi ou simplesmente resolveu outra coisa?”
+
+6. Terceiro bloco: “Mudanças realizadas”
+
+Eu não mostraria apenas diff bruto.
+
+Para você, eu criaria três níveis:
+
+Nível 1 — Resumo para decisão
+
+Alterou validação da célula Catálogo.
+Criou 3 testes.
+Não alterou banco de dados.
+Não alterou outras células.
+
+Nível 2 — Arquivos
+catalogo/models/course.py
+catalogo/services/course_spec.py
+catalogo/tests/test_course_spec.py
+Nível 3 — Diff técnico
+
+Para quando você ou outro agente quiser investigar:
+
+[ VER DIFF COMPLETO ]
+
+Ou seja, progressive disclosure.
+
+Não jogaria 800 linhas de código na sua cara logo de início.
+
+7. Quarto bloco: “Evidências”
+
+Essa área é crítica.
+
+O robô deveria ser obrigado a anexar evidências estruturadas.
+
+{
+  "evidence": [
+    {
+      "type": "test",
+      "name": "pytest catalogo/tests",
+      "status": "passed",
+      "exit_code": 0
+    },
+
+    {
+      "type": "acceptance_criterion",
+      "criterion_id": "AC-1",
+      "status": "passed",
+      "evidence": "Teste test_invalid_course_spec criado."
+    }
+  ]
+}
+
+Na tela:
+
+EVIDÊNCIAS
+
+✅ pytest catalogo/tests/
+   18 passed
+
+✅ python manage.py check
+   0 issues
+
+✅ AC-1
+   CourseSpec inválido rejeitado
+
+✅ AC-2
+   Nenhuma regressão detectada
+
+A aprovação não deve depender de:
+
+“Claude disse que está bom.”
+
+Mas de:
+
+Claude apresentou evidências de que está bom.
+
+8. Quinto bloco: “Riscos / Desvios / Surpresas”
+
+Essa talvez seja a área mais importante.
+
+O agente deveria declarar explicitamente:
+
+{
+  "deviations": [
+    {
+      "severity": "medium",
+      "type": "scope_expansion",
+
+      "description":
+        "Foi necessário alterar também validation.py, que não estava listado explicitamente no escopo.",
+
+      "reason":
+        "A validação original era delegada para este arquivo."
+    }
+  ]
+}
+
+Na interface:
+
+⚠️ DESVIO DE ESCOPO
+
+O agente alterou validation.py, que não constava originalmente em allowed_paths.
+
+Motivo declarado: necessário para corrigir a causa raiz.
+
+Então:
+
+[ ACEITAR DESVIO ]
+[ PEDIR CORREÇÃO ]
+
+Isso evita que o agente esconda uma mudança importante no meio de um “sucesso”.
+
+9. Para EXCEÇÕES, eu usaria outro objeto: ExceptionPacket
+
+Exemplo:
+
+{
+  "exception_id": "EXC-CHK018-002",
+
+  "task_id": "CHK-018",
+  "execution_id": "exec_CHK018_002",
+
+  "exception_type": "decision_required",
+
+  "severity": "high",
+
+  "reported_by": "claude-code-02",
+
+  "summary":
+    "A documentação e o código atual divergem sobre qual callback deve ser considerado canônico.",
+
+  "why_agent_stopped":
+    "Continuar exigiria assumir uma decisão arquitetural não especificada.",
+
+  "completed_work": [
+    "Mapeado fluxo atual.",
+    "Identificados dois callbacks concorrentes.",
+    "Criado teste reproduzindo o problema."
+  ],
+
+  "blocked_on": {
+    "type": "human_decision",
+    "question":
+      "Qual endpoint deve ser considerado canônico?"
+  },
+
+  "options": [
+    {
+      "id": "A",
+      "title": "Manter callback atual",
+      "pros": [
+        "Menor alteração"
+      ],
+      "cons": [
+        "Mantém inconsistência com documentação"
+      ]
+    },
+
+    {
+      "id": "B",
+      "title": "Migrar para callback documentado",
+      "pros": [
+        "Alinha implementação e contrato"
+      ],
+      "cons": [
+        "Maior risco de regressão"
+      ]
+    }
+  ],
+
+  "recommended_option": "B",
+
+  "confidence": 0.76
+}
+
+Veja o princípio:
+
+O agente não simplesmente diz “não consegui”.
+
+Ele precisa dizer:
+
+onde parou, por que parou, o que descobriu e quais decisões são possíveis.
+
+10. Eu criaria uma taxonomia formal de exceções
+
+Não usaria apenas:
+
+error
+
+Eu criaria categorias:
+
+missing_information
+ambiguous_requirement
+architectural_decision
+dependency_failure
+test_failure
+unexpected_behavior
+scope_violation
+security_risk
+data_risk
+migration_risk
+external_service_failure
+merge_conflict
+environment_failure
+permission_required
+human_judgment_required
+agent_uncertain
+
+Isso permite o painel entender diferentes tipos de exceção.
+
+Por exemplo:
+
+missing_information
+
+Talvez outro agente consiga resolver.
+
+architectural_decision
+
+Vai para você.
+
+test_failure
+
+Talvez possa ser automaticamente reencaminhada ao mesmo agente.
+
+security_risk
+
+Talvez exija revisão especializada.
+
+11. Nem toda exceção precisa chegar até você
+
+Esse é um upgrade importante.
+
+A Central deveria possuir níveis de escalonamento:
+
+LEVEL 0
+Agente resolve sozinho
+
+LEVEL 1
+Retry automático
+
+LEVEL 2
+Outro agente revisor
+
+LEVEL 3
+Agente especialista
+
+LEVEL 4
+Humano necessário
+
+Assim você não vira o gargalo do sistema.
+
+Por exemplo:
+
+Claude A falhou porque um teste quebrou.
+
+Não precisa chamar Anderson imediatamente.
+
+O scheduler pode dizer:
+
+Tente corrigir.
+
+Ou:
+
+Envie para Agent Reviewer.
+
+Somente quando a questão for:
+
+“Qual decisão de produto devemos tomar?”
+
+chega à sua coluna.
+
+12. A coluna deveria priorizar por “necessidade humana”, não apenas prioridade da tarefa
+
+Eu criaria um review_priority_score.
+
+Porque pode haver 20 tarefas em revisão.
+
+A mais importante não é necessariamente a tarefa de prioridade mais alta.
+
+Pode ser aquela que bloqueia 12 outras.
+
+Exemplo:
+
+{
+  "review_priority": {
+    "score": 94,
+
+    "factors": {
+      "task_priority": 20,
+      "tasks_blocked": 35,
+      "critical_path": 25,
+      "age": 4,
+      "risk": 10
+    }
+  }
+}
+
+Então a interface mostra:
+
+🔥 DECIDIR AGORA
+
+Esta decisão desbloqueia 8 tarefas e a próxima Wave.
+
+Isso é extremamente valioso.
+
+13. Eu criaria quatro ações principais
+
+Na revisão comum:
+
+✅ APROVAR
+
+Isso dispara:
+
+REVIEW → INTEGRATION
+
+Não diretamente DONE.
+
+Ainda há integração.
+
+🔧 PEDIR CORREÇÃO
+
+Você escreve:
+
+Não quero alterar a API pública.
+
+O sistema cria:
+
+review_decision = changes_requested
+
+E gera automaticamente um novo prompt:
+
+Execução anterior: #003
+
+Resultado da revisão:
+CHANGES REQUESTED
+
+Correção exigida:
+"Não alterar API pública..."
+
+Preserve:
+- testes aprovados
+- solução de validação
+
+Corrija apenas:
+...
+
+E cria:
+
+Execution #004.
+
+Muito importante: não cria outra tarefa.
+
+Continua sendo CAT-042.
+
+❌ REJEITAR SOLUÇÃO
+
+Significa:
+
+essa abordagem não serve.
+
+Mas a tarefa continua válida.
+
+Pode gerar nova tentativa a partir de outra estratégia.
+
+🛑 CANCELAR TAREFA
+
+Isso é diferente.
+
+Significa:
+
+não queremos mais realizar CAT-042.
+
+Tem que ficar bem separado de rejeitar uma implementação.
+
+14. Para exceções, os botões são diferentes
+
+Por exemplo:
+
+DECISÃO NECESSÁRIA
+
+Claude encontrou duas alternativas:
+
+(A) manter comportamento atual
+(B) alterar contrato
+
+Recomendação: B
+Confiança: 76%
+
+[ ESCOLHER A ]
+[ ESCOLHER B ]
+[ PEDIR MAIS ANÁLISE ]
+[ ENVIAR PARA OUTRO AGENTE ]
+[ EU DEFINIREI OUTRA SOLUÇÃO ]
+
+Ao escolher B:
+
+o sistema cria automaticamente a decisão:
+
+{
+  "decision_id": "DEC-028",
+
+  "task_id": "CHK-018",
+
+  "choice": "B",
+
+  "decided_by": "human",
+
+  "reason":
+    "Contrato documentado deve ser canônico.",
+
+  "created_at": "..."
+}
+
+E recompila o prompt para o agente.
+
+15. Isso cria uma coisa muito poderosa: DecisionLog
+
+Toda vez que você resolve uma exceção, aquilo deixa de ser apenas uma resposta isolada.
+
+Pode virar memória arquitetônica formal.
+
+Por exemplo:
+
+{
+  "decision_id": "ADR-041",
+
+  "type": "architecture",
+
+  "title":
+    "Callback documentado é a fonte canônica",
+
+  "context":
+    "CHK-018 encontrou divergência entre código e documentação.",
+
+  "decision":
+    "O endpoint /payment/callback será considerado canônico.",
+
+  "consequences": [
+    "Implementação antiga deverá ser migrada.",
+    "Novas tarefas devem respeitar esta decisão."
+  ]
+}
+
+Então futuros agentes recebem isso no contexto.
+
+Ou seja:
+
+você resolve o problema uma vez.
+
+Não cinco vezes com cinco agentes diferentes.
+
+16. Eu também criaria “Aprovação Condicional”
+
+Isso seria muito útil.
+
+Por exemplo:
+
+Aprovo, desde que os testes de checkout continuem passando.
+
+Você escolhe:
+
+APROVAR COM CONDIÇÃO
+
+{
+  "decision": "conditional_approval",
+
+  "conditions": [
+    {
+      "type": "test_suite",
+      "command": "pytest checkout/tests/",
+      "must_pass": true
+    }
+  ]
+}
+
+Se passar:
+
+automaticamente → INTEGRATION
+
+Se falhar:
+
+→ EXCEPTION
+
+Você não precisa voltar ao cartão.
+
+17. Eu colocaria um botão que considero obrigatório: “Perguntar a outro agente”
+
+Especialmente porque seu desenvolvimento é feito por agentes de IA.
+
+Você abre:
+
+Claude-03 quer mudar arquitetura.
+
+Em vez de você ter que decidir tecnicamente:
+
+[ SOLICITAR SEGUNDA OPINIÃO ]
+
+O sistema gera automaticamente:
+
+Você é um agente revisor independente.
+
+Não implemente nada.
+
+Revise:
+TaskSpec CAT-042
+Execução #003
+Mudanças propostas
+Exceção levantada
+Alternativas apresentadas
+
+Procure:
+- premissas erradas
+- risco de regressão
+- solução mais simples
+- violação arquitetônica
+- alternativas melhores
+
+Produza recomendação estruturada.
+
+E o cartão passa a mostrar:
+
+Claude-03 recomenda: B
+Claude-Reviewer-01 recomenda: A
+
+ou:
+
+2/2 agentes recomendam B
+
+Isso reduz bastante a dependência de você dominar cada detalhe técnico.
+
+18. A tela poderia ter um “modo leigo” e um “modo técnico”
+
+Isso combina muito com sua situação.
+
+VISÃO EXECUTIVA
+O QUE ACONTECEU
+Claude terminou a tarefa.
+
+DEU CERTO?
+Provavelmente sim.
+
+PROVAS
+18/18 testes passaram.
+
+RISCO
+Médio.
+
+O QUE PRECISO FAZER
+Aprovar ou pedir correção.
+
+RECOMENDAÇÃO
+Aprovar.
+VISÃO TÉCNICA
+
+Abre:
+
+TaskSpec
+diff
+comandos
+logs
+stack traces
+commits
+dependências
+conflitos
+token/contexto
+revisão cruzada.
+
+Mesmo sistema, duas profundidades.
+
+19. Eu acrescentaria “Impacto da minha decisão”
+
+Antes de clicar:
+
+Aprovar
+
+o painel pode mostrar:
+
+SE APROVAR
+
+→ CAT-042 entra na Merge Queue
+→ CAT-045 é desbloqueada
+→ CAT-052 é desbloqueada
+→ Wave 18 ganha +2 tarefas disponíveis
+→ risco estimado: médio
+
+E se escolher:
+
+Pedir correção
+
+→ CAT-042 continua bloqueando 4 tarefas
+→ nova Execution será criada
+→ Agent-03 recomendado
+
+Isso transforma sua aprovação em uma decisão informada sobre o sistema inteiro.
+
+20. Estrutura de banco que eu usaria
+
+Além de tasks e executions, criaria:
+
+reviews
+──────────────────────────────
+id
+task_id
+execution_id
+type
+status
+risk
+recommended_action
+submitted_at
+resolved_at
+resolved_by
+review_findings
+──────────────────────────────
+id
+review_id
+severity
+category
+description
+evidence
+exceptions
+──────────────────────────────
+id
+task_id
+execution_id
+type
+severity
+summary
+blocked_on
+status
+created_at
+resolved_at
+decisions
+──────────────────────────────
+id
+task_id
+exception_id
+decision_type
+choice
+reason
+created_by
+created_at
+review_events
+──────────────────────────────
+id
+review_id
+event_type
+payload JSONB
+created_at
+21. Eu faria o cartão resumido carregar pouquíssimos dados
+
+Algo assim:
+
+{
+  "task_id": "CHK-018",
+
+  "title": "Corrigir callback pagamento",
+
+  "queue": "exception",
+
+  "severity": "high",
+
+  "agent": "claude-code-02",
+
+  "reason": "architectural_decision",
+
+  "summary":
+    "Dois callbacks concorrentes encontrados.",
+
+  "recommended_action":
+    "choose_option_b",
+
+  "blocking_tasks": 8,
+
+  "critical_path": true,
+
+  "waiting_since":
+    "2026-08-28T10:52:00-03:00"
+}
+
+Esse JSON alimenta o cartão.
+
+Quando abre o cartão, busca todo o ExceptionPacket.
+
+Isso deixa a interface rápida.
+
+22. Eu criaria ainda um conceito chamado “Review Contract”
+
+Cada tipo de tarefa poderia exigir uma revisão diferente.
+
+Exemplo:
+
+Documentação
+automated_review
+CSS
+visual_review
+Backend
+tests + code review
+Migration
+human_approval_required
+Autenticação
+security_review_required
+Infra
+human + rollback_plan
+
+Assim nem tudo cai na sua aprovação manual.
+
+23. O estado ficaria mais preciso assim
+
+Eu refinaria nossa máquina anterior para:
+
+RUNNING
+   │
+   ├──→ AGENT_BLOCKED
+   │        ↓
+   │     EXCEPTION
+   │        ↓
+   │     DECISION
+   │        ↓
+   │      RETRY
+   │
+   ↓
+VERIFYING
+   ↓
+REVIEW_PENDING
+   │
+   ├── APPROVED
+   │       ↓
+   │   INTEGRATION
+   │
+   ├── CHANGES_REQUESTED
+   │       ↓
+   │     RETRY
+   │
+   └── REJECTED
+
+Isso é muito mais preciso que apenas:
+
+Revisão
+A configuração que eu adotaria para o seu painel
+
+A coluna seria visualmente única:
+
+🧑‍⚖️ REVISÃO / EXCEÇÕES
+
+Mas internamente conteria quatro filas:
+
+1. 🔥 PRECISA DA SUA DECISÃO
+2. ✅ AGUARDANDO APROVAÇÃO
+3. 🤖 EM SEGUNDA OPINIÃO
+4. 🔧 CORREÇÃO SOLICITADA
+
+E cada cartão responderia rapidamente:
+
+O que aconteceu?
+Por que chegou até mim?
+O que o robô fez?
+O que ele não conseguiu fazer?
+Que evidências existem?
+Qual o risco?
+O que ele recomenda?
+Que outras opções existem?
+O que acontece se eu escolher cada uma?
+
+Esse último ponto é especialmente importante: a função dessa tela não é mostrar problemas técnicos; é converter problemas técnicos em decisões compreensíveis e auditáveis.
+
+E eu iria ainda um nível além: toda exceção resolvida deveria poder gerar automaticamente uma Decision/ADR reutilizável, para que o sistema e os próximos agentes aprendam aquela regra e diminuam progressivamente a quantidade de coisas que precisam voltar para você. Esse é o caminho para a Central ficar cada vez mais autônoma em vez de transformar você no gargalo humano dela.
+
+
+
+Como devem ser os indicadores visuais e as cores nos cartões do Kanban para eu bater o olho e saber exatamente o que está acontecendo sem precisar clicar?
+
+
+Eu faria os cartões como um sistema de leitura em camadas, porque se cada informação disputar atenção com a mesma força, o Kanban vira uma árvore de Natal e você perde justamente o “bater o olho”.
+
+A regra seria:
+
+cor mostra estado e gravidade; ícones mostram tipo de situação; números mostram impacto; pequenos chips mostram contexto operacional.
+
+E eu nunca dependeria só da cor, porque você precisa conseguir entender o cartão mesmo em tela pequena, impressão, daltonismo ou brilho ruim.
+
+A anatomia visual do cartão
+
+Eu usaria sempre a mesma estrutura:
+
+┌──────────────────────────────────────────┐
+│ 🔴  CAT-042                  P1 · RISCO  │
+│ Corrigir validação do CourseSpec        │
+│                                          │
+│ 🧱 Catálogo   🐞 Bug                     │
+│                                          │
+│ ⚡ Paralelo   🌊 W17   📦 B04            │
+│ ⛓ 2 deps     🔓 desbloqueia 6           │
+│                                          │
+│ 🤖 Claude-03 · TESTANDO                  │
+│ ████████░░ 82%                           │
+│                                          │
+│ ⏱ 14m      ♥ 5s                         │
+└──────────────────────────────────────────┘
+
+Sem clicar, você já sabe:
+
+o que é, onde está, gravidade, se pode rodar em paralelo, wave/lote, dependências, impacto, quem está trabalhando, etapa atual, progresso e se o agente está vivo.
+
+1. A cor principal deve representar STATUS, não prioridade
+
+Isso é importante.
+
+Eu não faria cartão vermelho porque a tarefa é “prioridade alta”. Vermelho deve significar:
+
+há algo que exige atenção ou ação.
+
+Usaria algo assim:
+
+Cor	Significado
+Cinza	backlog / ainda não preparada
+Azul	pronta ou em execução normal
+Roxo	revisão / decisão humana
+Verde	validada / concluída
+Amarelo/âmbar	atenção / bloqueio recuperável
+Vermelho	exceção crítica / falha / intervenção
+Preto/cinza escuro	cancelada / descartada
+
+Isso produz leitura intuitiva.
+
+2. Prioridade deve ser um pequeno indicador independente
+
+No canto superior direito:
+
+P0
+P1
+P2
+P3
+
+Eu usaria:
+
+P0 — emergência / interrompe o fluxo
+P1 — alta
+P2 — normal
+P3 — baixa
+
+Visualmente:
+
+P0  🔥
+P1  ↑
+P2  —
+P3  ↓
+
+A prioridade não pinta o cartão inteiro.
+
+Ela é uma propriedade da tarefa, não do estado.
+
+3. Eu separaria “prioridade” de “risco”
+
+Porque são coisas completamente diferentes.
+
+Você pode ter:
+
+tarefa de prioridade baixa, mas risco altíssimo.
+
+Exemplo:
+
+P3 · RISK HIGH
+
+Então, no cabeçalho:
+
+CAT-042          P1 · ⚠ R3
+
+Com uma escala simples:
+
+R1 = baixo
+R2 = moderado
+R3 = alto
+R4 = crítico
+
+Ou visualmente:
+
+○
+◐
+●
+⚠
+4. A borda esquerda do cartão seria o sinal mais forte
+
+Eu usaria uma faixa vertical de 4–6 px.
+
+Exemplo:
+
+┃ CAT-042
+┃ ...
+
+Cor da faixa:
+
+Azul: execução normal
+Amarelo: bloqueada
+Roxo: revisão humana
+Vermelho: exceção
+Verde: aprovada
+
+Isso funciona melhor do que pintar o cartão inteiro.
+
+O fundo continua limpo e legível.
+
+5. O segundo maior indicador seria o “estado operacional”
+
+No corpo:
+
+🤖 EXECUTANDO
+
+ou:
+
+🧪 TESTANDO
+
+ou:
+
+🧑‍⚖️ AGUARDANDO VOCÊ
+
+ou:
+
+⛔ BLOQUEADA
+
+ou:
+
+🔀 AGUARDANDO MERGE
+
+Isso deve ser extremamente legível.
+
+Não usaria apenas:
+
+RUNNING
+
+Para você, o estado humano precisa dizer o que está acontecendo agora.
+
+6. Eu criaria poucos ícones universais
+
+Eles se repetem em todo o painel.
+
+Indicador	Significado
+🤖	agente trabalhando
+🧑‍⚖️	precisa de decisão humana
+⚡	pode executar em paralelo
+🔒	lock ativo
+⛓	dependências
+🔓	desbloqueia outras tarefas
+🌊	wave
+📦	batch
+🧪	verificação/testes
+🔀	integração/merge
+⚠️	atenção
+⛔	bloqueio
+🔴	exceção crítica
+↻	retry
+👁	revisão por outro agente
+
+Mas eu evitaria mais do que isso. Se tivermos 35 ícones diferentes, ninguém aprende a linguagem visual.
+
+7. Um indicador muito importante: “pode rodar agora?”
+
+Eu colocaria um pequeno semáforo operacional.
+
+🟢 READY
+
+Pode executar imediatamente.
+
+🟡 WAIT
+
+Poderia executar, mas há alguma condição.
+
+🔴 BLOCKED
+
+Não pode executar.
+
+Isso responde em 0,5 segundo:
+
+posso mandar um robô fazer isso agora?
+
+8. Paralelismo deveria ser visualmente explícito
+
+Eu colocaria:
+
+⚡ PAR
+
+quando pode rodar paralelamente.
+
+E:
+
+🚫 SOLO
+
+quando deve rodar sozinho.
+
+Ou:
+
+⚡ ×4
+
+significando:
+
+esta wave comporta quatro tarefas simultâneas.
+
+Isso é particularmente importante no seu caso porque uma das principais funções dessa aba será coordenar os agentes.
+
+9. Dependência deveria mostrar quantidade e gravidade
+
+Por exemplo:
+
+⛓ 3
+
+Três dependências.
+
+Mas se uma está bloqueando:
+
+⛓ 3 · 1 BLOQ.
+
+E se todas estão satisfeitas:
+
+✅ deps
+
+Mais útil do que simplesmente listar IDs no cartão.
+
+10. Eu mostraria “quantas tarefas esta tarefa desbloqueia”
+
+Isso é um dos indicadores mais poderosos.
+
+Por exemplo:
+
+🔓 8
+
+significa:
+
+terminar esta tarefa libera oito outras.
+
+E uma tarefa em critical path poderia mostrar:
+
+🔥 PATH
+
+Então mesmo uma tarefa P2 pode chamar sua atenção:
+
+P2 · 🔓 11 · 🔥 PATH
+
+Você imediatamente sabe:
+
+esta aparentemente não é urgente, mas está travando meio projeto.
+
+11. Agente e heartbeat precisam estar visíveis
+
+Quando estiver em execução:
+
+🤖 Claude-03
+♥ 4s
+
+O coração significa:
+
+último heartbeat há 4 segundos.
+
+Normal:
+
+♥ 4s
+
+Atenção:
+
+♥ 45s ⚠
+
+Possível agente morto:
+
+♥ 4m 🔴
+
+Isso evita você ficar se perguntando:
+
+“Esse robô ainda está trabalhando ou travou?”
+
+12. O progresso não deveria ser uma porcentagem inventada
+
+Esse é um detalhe importante.
+
+LLMs são péssimos em estimar:
+
+“estou 72% pronto”.
+
+Eu preferiria mostrar etapa real.
+
+Por exemplo:
+
+[✓] análise
+[✓] implementação
+[→] testes
+[ ] revisão
+
+No cartão compacto:
+
+ANALISAR ✓
+CODAR ✓
+TESTAR ●
+REVISAR ○
+
+Ou:
+
+■■■□  3/4
+
+Isso é muito mais confiável que um percentual subjetivo.
+
+Se o sistema tiver etapas objetivas, aí sim pode calcular:
+
+75%
+13. Para tarefas em revisão eu mudaria totalmente a linguagem visual
+
+Exemplo:
+
+┌─────────────────────────────────────────┐
+┃ 🟣 CHK-018                     P1 R3    │
+┃ Corrigir callback de pagamento          │
+┃                                         │
+┃ 🧑‍⚖️ SUA DECISÃO                       │
+┃                                         │
+┃ Motivo: decisão arquitetural            │
+┃ 🤖 recomenda: opção B                   │
+┃                                         │
+┃ 🔓 desbloqueia 8                        │
+┃ ⏱ aguardando 27 min                     │
+┃                                         │
+┃ [ DECIDIR ]                             │
+└─────────────────────────────────────────┘
+
+A frase mais importante é:
+
+SUA DECISÃO
+
+Não “exception_pending”.
+
+14. Para exceção crítica, o cartão precisa ser impossível de ignorar
+
+Exemplo:
+
+┌─────────────────────────────────────────┐
+┃ 🔴 PAY-027                     P0 R4    │
+┃ Falha na migration de pagamentos        │
+┃                                         │
+┃ ⛔ EXECUÇÃO INTERROMPIDA                 │
+┃                                         │
+┃ Possível risco de dados                 │
+┃ 3 tarefas bloqueadas                    │
+┃                                         │
+┃ 🤖 Claude-02 parou com segurança        │
+┃                                         │
+┃ [ INVESTIGAR ]                          │
+└─────────────────────────────────────────┘
+
+A borda vermelha + símbolo + texto explícito fazem a leitura funcionar sem depender da cor.
+
+15. Eu criaria um pequeno indicador de “confiança”
+
+Mas com muito cuidado.
+
+Algo como:
+
+AI CONF: alta
+
+Não:
+
+92.8%
+
+porque esse número dá uma falsa precisão.
+
+Eu usaria:
+
+Confiança: Alta
+Confiança: Média
+Confiança: Baixa
+
+E só quando fizer sentido, principalmente em revisão/exceção.
+
+16. Eu adicionaria um selo de “mudança sensível”
+
+Exemplo:
+
+🗄 DB
+
+migration/banco.
+
+🔐 AUTH
+
+autenticação.
+
+💳 PAY
+
+pagamento.
+
+🌐 INFRA
+
+infraestrutura.
+
+📜 CONTRACT
+
+contrato público.
+
+Isso é excelente para bater o olho e saber:
+
+essa tarefa merece mais cautela.
+
+17. Eu usaria idade visual da tarefa
+
+Uma tarefa parada há muito tempo deveria ganhar um pequeno indicador:
+
+⏱ 2h
+
+Depois:
+
+⏱ 1d ⚠
+
+Depois:
+
+⏱ 3d 🔴
+
+Mas só para filas em que espera é relevante:
+
+bloqueadas
+revisão
+exceção
+integration queue.
+
+Não para backlog geral.
+
+18. Eu criaria três densidades de cartão
+
+Isso melhora muito a usabilidade.
+
+Compacto
+
+Para olhar 40 tarefas:
+
+CAT-042 · CourseSpec
+🟢 READY · ⚡ · 🔓6
+Normal
+
+Padrão do Kanban:
+
+CAT-042
+Corrigir CourseSpec
+
+🧱 Catálogo · P1 R2
+⚡ W17 · 🔓6
+Expandido
+
+Quando passa o mouse ou seleciona:
+
+deps
+agente
+heartbeat
+testes
+branch
+última ação
+
+Assim você consegue escolher entre visão estratégica e operacional sem precisar abrir modal toda hora.
+
+19. Eu faria a coluna também ter um “estado agregado”
+
+Isso é muito útil.
+
+No cabeçalho:
+
+EXECUTANDO             8
+████████░░
+
+🤖 8 agentes
+⚠ 1 lento
+🔴 0 falhas
+
+Na revisão:
+
+REVISÃO / EXCEÇÃO       6
+
+🧑‍⚖️ precisa de você: 2
+👁 revisão IA: 3
+🔴 crítico: 1
+
+Na bloqueada:
+
+BLOQUEADAS              9
+
+⛓ dependência: 5
+🔒 conflito: 2
+🌐 externo: 2
+
+Assim você entende até a saúde da coluna sem ler cartão por cartão.
+
+20. A minha linguagem visual completa ficaria assim
+
+Eu usaria esta hierarquia:
+
+COR DA BORDA
+→ estado operacional
+
+BADGE P0/P1/P2/P3
+→ prioridade
+
+R1/R2/R3/R4
+→ risco
+
+ÍCONE
+→ tipo de situação
+
+CHIP
+→ célula / wave / batch / tipo
+
+SELO
+→ sensibilidade
+
+NÚMERO 🔓
+→ impacto/desbloqueio
+
+AGENTE + HEARTBEAT
+→ atividade real
+
+ETAPA
+→ progresso
+
+IDADE
+→ tempo parado
+
+Cada coisa responde a uma pergunta diferente.
+
+Um exemplo de leitura em 2 segundos
+
+Você vê:
+
+┃ 🟣 CHK-018              P1 · R3
+┃ Callback Mercado Pago
+┃
+┃ 🧑‍⚖️ SUA DECISÃO
+┃ 💳 PAY · 📜 CONTRACT
+┃ 🔓 8 · 🔥 PATH
+┃
+┃ 🤖 Claude-02 recomenda B
+┃ ⏱ 31m
+
+Seu cérebro deveria conseguir traduzir imediatamente:
+
+“Tarefa importante de checkout/pagamento, risco alto, chegou numa decisão humana, está no caminho crítico, está bloqueando oito outras, Claude recomenda uma opção e está esperando há meia hora.”
+
+Sem abrir nada.
+
+Esse é o padrão que eu usaria para julgar se o desenho visual ficou bom: se você precisar abrir o cartão para descobrir o que está acontecendo, o cartão falhou. Você só deveria precisar abrir para descobrir os detalhes, evidências e tomar a decisão.

@@ -1,0 +1,14 @@
+{
+  "arquivo": "006-um-robo-revisor-com-contexto-fresco-conferindo-cada-pouso",
+  "id": "TAR-006",
+  "titulo": "Um robô revisor com contexto fresco conferindo cada pouso",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "A pista chamando o revisor e o veredito dele aparecendo no PR, com um caso real.",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendação B11 do PLANO-MESTRE: revisor-robô no pouso — o substituto mais próximo do revisor humano ausente.",
+  "origem": "plano robôs-sem-colisão, B11 — aceita e não construída (registro 20260829-024)",
+  "criada_em": "2026-08-29"
+}

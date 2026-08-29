@@ -19,7 +19,6 @@ botão em cache e template antigo não podem virar 404 — e o nome de rota
 lugar certo com `?next=` de volta para cá.
 """
 
-import hashlib
 import os
 from datetime import date
 from urllib.parse import urlencode
@@ -61,34 +60,23 @@ MARCA_DE_ESPERA = "esperando"
 # ele mudaria no dia em que houvesse outro domínio e ninguém lembraria daqui.
 DEPOIS_DE_LIBERADO = "/"
 
-# A lembrança, neste navegador, de que a pessoa já pediu entrada — para que
-# recarregar a página não mostre o formulário vazio como se o pedido não
-# tivesse chegado. Quem guarda a fila de verdade é a célula `alunos`; isto é
-# conforto de tela, e some sem dano (o reenvio é idempotente do outro lado).
+# [RECIBO] O COOKIE `caixa_pedido_na_fila` MORREU AQUI EM 29/08/2026, junto com
+# a marca opaca que o preenchia (`DECISAO-o-recibo-e-conferido.md`).
 #
-# **Cookie PRÓPRIO, e nunca `request.session`.** Esta célula compartilha o nome
-# `meshcraft_sessao` com a `identidade`, que é quem ASSINA a sessão do site
-# (`config/settings.py`, e é disso que o `sair` daqui depende para deslogar do
-# site inteiro). Com `SESSION_ENGINE = signed_cookies`, uma única escrita em
-# `request.session` reescreveria aquele cookie com uma sessão desta célula — e
-# a pessoa sairia do site ao clicar em "Pedir liberação". Medido em 27/08/2026;
-# guarda: `test_pedir_entrada_nao_reescreve_o_cookie_do_site`.
-PEDIU_ENTRADA = "caixa_pedido_na_fila"
-DIAS_DE_LEMBRANCA = 30
-
-
-def _marca_do_pedido(email: str) -> str:
-    """Uma marca OPACA de "esta pessoa já pediu" — sem o e-mail dentro.
-
-    Precisa distinguir quem pediu (trocar de conta no mesmo navegador não pode
-    mostrar o recibo alheio) sem escrever um endereço de e-mail no navegador de
-    ninguém. Um hash com a chave da instalação faz as duas coisas. Forjar a
-    marca não dá acesso a nada: o efeito é ver uma tela dizendo "seu pedido está
-    com a gente" — nenhuma porta abre por causa dela.
-    """
-    return hashlib.sha256(f"{settings.SECRET_KEY}:{email}".encode("utf-8")).hexdigest()[
-        :32
-    ]
+# Ele existia para que recarregar a página não mostrasse o formulário vazio como
+# se o pedido não tivesse chegado — um conforto de tela, escrito quando esta
+# porta não sabia distinguir "nunca pediu" de "está na fila". Só que ele era a
+# ÚNICA fonte do recibo, e um cookie não sabe nada sobre a fila: ele continuava
+# afirmando "seu pedido já está com a gente" por 30 dias, mesmo depois de a
+# linha ter sido decidida, recusada ou apagada.
+#
+# **O mantenedor caiu nisso com a própria conta**, em 29/08/2026: a tela dizia
+# que o pedido estava com a equipe e o painel dizia, medindo, que a fila estava
+# vazia. Ele esperou mais de uma hora por um pedido que não existia.
+#
+# Agora o recibo vem do estado `NA_FILA`, que é a `alunos` respondendo — e a
+# `alunos` já sabia disso desde 28/08. Um cookie a menos, uma verdade a menos, e
+# a tela deixa de poder mentir.
 
 
 @require_GET
@@ -161,7 +149,7 @@ def _tela_da_fila(
     email: str,
     rascunho: dict | None = None,
     erros: list[str] | None = None,
-    ja_pediu: bool | None = None,
+    ja_pediu: bool = False,
     voltando: bool = False,
     status: int = 403,
 ):
@@ -173,18 +161,18 @@ def _tela_da_fila(
     resposta mais rápida para muita gente continua sendo *"entrei com o e-mail
     errado"*.
 
-    `ja_pediu` é uma LEMBRANÇA deste navegador, não um fato do projeto: quem
-    guarda quem está na fila é a célula `alunos`. Ela só evita que a pessoa
-    recarregue a página e veja o formulário vazio de novo, como se o pedido não
-    tivesse chegado. Se a lembrança se perder, o reenvio é idempotente do outro
-    lado — nada duplica, e a lei §7 até PREVÊ o reenvio como o jeito de corrigir
-    um telefone errado.
+    `ja_pediu` é um FATO CONFERIDO, e desde 29/08/2026 só isso
+    (`DECISAO-o-recibo-e-conferido.md`). Ele chega `True` de um único lugar: o
+    estado `NA_FILA`, que é a `alunos` dizendo que existe uma linha esperando
+    para esta pessoa. Até essa data ele vinha de um cookie do navegador, que não
+    sabe nada sobre a fila e continuava afirmando "seu pedido está com a gente"
+    depois de a linha ter sido decidida ou apagada.
+
+    O padrão é `False` — e a direção importa: mostrar o formulário para quem já
+    pediu custa um reenvio idempotente, que a lei §7 já prevê como o jeito de
+    corrigir um telefone errado. Mostrar o recibo para quem NÃO pediu custa uma
+    pessoa esperando indefinidamente por algo que nunca vai chegar.
     """
-    recibo = (
-        ja_pediu
-        if ja_pediu is not None
-        else request.COOKIES.get(PEDIU_ENTRADA) == _marca_do_pedido(email)
-    )
     return render(
         request,
         PAGINA,
@@ -202,13 +190,9 @@ def _tela_da_fila(
             # SÓ o recibo se recarrega. No formulário, um refresh apagaria o
             # que a pessoa está digitando — e ela ainda não tem nada para
             # esperar.
-            "recarregar_em": SEGUNDOS_ATE_RECARREGAR if recibo else None,
+            "recarregar_em": SEGUNDOS_ATE_RECARREGAR if ja_pediu else None,
             "url_da_espera": f"{reverse('entrar')}?{MARCA_DE_ESPERA}=1",
-            "ja_pediu": (
-                ja_pediu
-                if ja_pediu is not None
-                else request.COOKIES.get(PEDIU_ENTRADA) == _marca_do_pedido(email)
-            ),
+            "ja_pediu": ja_pediu,
             "rascunho": rascunho or {},
             "erros": erros or [],
         },
@@ -256,7 +240,7 @@ def pedir_entrada(request):
     # Lista de permissão porque estado novo que apareça amanhã precisa de uma
     # decisão explícita para poder enfileirar — com a comparação antiga, ele
     # nasceria podendo.
-    if resolucao.estado not in (ses.SEM_MATRICULA, ses.EX_ALUNO):
+    if resolucao.estado not in (ses.SEM_MATRICULA, ses.NA_FILA, ses.EX_ALUNO):
         # Visitante sem sessão do site: não há e-mail para pôr na fila.
         return HttpResponseRedirect(reverse("entrar"))
 
@@ -330,16 +314,11 @@ def pedir_entrada(request):
         # é o certo — em no máximo um TTL ela abre sozinha.
         return HttpResponseRedirect(reverse("entrar"))
 
-    resposta = _tela_da_fila(request, email=resolucao.email, ja_pediu=True, status=200)
-    resposta.set_cookie(
-        PEDIU_ENTRADA,
-        _marca_do_pedido(resolucao.email),
-        max_age=DIAS_DE_LEMBRANCA * 24 * 60 * 60,
-        httponly=True,
-        samesite="Lax",
-        secure=settings.SESSION_COOKIE_SECURE,
-    )
-    return resposta
+    # `ja_pediu=True` aqui é o único lugar em que ele não vem de `NA_FILA` — e é
+    # legítimo: a `alunos` acabou de responder 200/201 a ESTE pedido, nesta
+    # requisição. É a resposta dela, não uma lembrança do navegador. Da próxima
+    # vez que a pessoa abrir a página, quem afirma o recibo é `resolver()`.
+    return _tela_da_fila(request, email=resolucao.email, ja_pediu=True, status=200)
 
 
 @require_GET
@@ -363,6 +342,13 @@ def entrar(request):
             # clicar de novo para entrar onde já estava indo.
             return HttpResponseRedirect(DEPOIS_DE_LIBERADO)
         return render(request, PAGINA, {"ator": resolucao.ator})
+
+    if resolucao.estado == ses.NA_FILA:
+        # [RECIBO] O pedido EXISTE — a `alunos` acabou de dizer isso. Esta é a
+        # tela que a pessoa fica olhando enquanto espera, e desde 29/08/2026 ela
+        # é a única forma de o recibo aparecer: antes bastava um cookie de 30
+        # dias, que continuava afirmando o pedido depois de a linha sumir.
+        return _tela_da_fila(request, email=resolucao.email, ja_pediu=True)
 
     if resolucao.estado == ses.SEM_MATRICULA:
         # [INVARIANTE] Sem matrícula não participa — e a tela NOMEIA o e-mail.

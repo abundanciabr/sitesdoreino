@@ -1,0 +1,15 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260829-108-o-sino-da-matricula-voce-decidiu-e-falta-construir",
+  tipo: "decisao",
+  quando: "2026-08-29",
+  titulo: "Voce decidiu como o aviso de matricula vai funcionar — e por que 'avisei que pausei' nao vai dar do jeito pedido",
+  detalhe: "VOCE DECIDIU DUAS COISAS, em 29/08/2026, depois do mapa da jornada do aluno:\n\n1. COMO O SISTEMA SABE PARA QUEM ENTREGAR: a parte da entrada com o Google ganha uma pergunta nova — 'qual o numero de quem tem este e-mail?'. Voce escolheu isso contra a alternativa de gravar o numero na ficha do aluno, e a razao e que a copia so resolveria as fichas novas: as antigas e as que voce cadastra a mao ficariam para sempre sem aviso.\n\n2. O QUE MERECE AVISO: 'liberei voce' e 'pausei o seu acesso'. Voce deixou de fora 'recusei' e 'encerrei'.\n\nO PROBLEMA QUE APARECEU DEPOIS DA SUA ESCOLHA, e voce precisa saber: A PAGINA DE AVISOS MORA DENTRO DA CAIXA, E A CAIXA SO ABRE PARA ALUNO. Quem esta pausado nao tem matricula que vale, entao o porteiro da Caixa o manda embora. Um aviso de 'pausei o seu acesso' seria escrito e a pessoa NUNCA conseguiria abrir. (Ela ja e avisada de outro jeito: a home dela diz 'Seu acesso esta pausado. Ele volta assim que a equipe religar.')\n\n'Liberei voce' nao tem esse problema — a pessoa vira aluna e a Caixa abre. E era a que voce marcou como mais importante.\n\nENTAO: o aviso de liberacao vai ser construido; o de pausa depende de a pagina de avisos sair de dentro da Caixa, que e um trabalho proprio e com decisao sua.\n\nO QUE JA ESTA ESCRITO E ESPERANDO: o contrato das duas pecas (a pergunta nova na entrada, e o tipo de aviso 'mudei a situacao de uma matricula') esta pronto num ramo, junto com um conserto no proprio CI — o portao que confere mudanca de contrato NAO SABIA MEDIR contrato de evento e recusava qualquer edicao neles, fechado. Ninguem tinha notado porque, ate hoje, todo evento novo nasceu como arquivo novo.\n\nFALTA CONSTRUIR: a pergunta nova na entrada; a parte que guarda os alunos ganhar voz (ela hoje so escuta eventos, nunca publicou nenhum) e um processo auxiliar no servidor para entregar as cartas; e a tela da Caixa aprender a mostrar a frase do aviso novo.",
+  autoridade: "mantenedor",
+  evidencia: "As duas escolhas foram feitas por ele em caixa de pergunta estruturada, em 29/08/2026. O impedimento do 'pausei' foi MEDIDO no codigo de origin/main: services/sugestoes/apps/core/avisos.py::ver_avisos usa @exige_sessao, que chama ses.ator_atual(), que devolve None para quem nao tem matricula que vale (docstring da propria funcao: 'None cobre visitante, sem-matricula e indisponivel'). A lacuna do CI tambem foi medida: ci/contrato_aditivo.py exige a chave `paths` (forma de OpenAPI) e levanta ErroDeInstrumentacao em qualquer arquivo de contracts/ que nao a tenha — inclusive contracts/eventos/*.json.",
+  verificado_em: "2026-08-29",
+  precisa_do_dono: false,
+  responde_a: "20260829-102-a-jornada-do-aluno-quatro-de-cinco-e-o-que-falta",
+  gravidade: "info",
+  frente: "curso",
+  vence_em_dias: null
+});})();
