@@ -1,0 +1,18 @@
+{
+  "versao": 1,
+  "gerado_por": "python ci/indice_de_armadilhas.py",
+  "sinais": [
+    {
+      "armadilha": "021",
+      "arquivo": "armadilhas/021-configerror-schema-for-status-201-is-not-set-in.md",
+      "titulo": "`ConfigError: Schema for status 201 is not set in response`",
+      "regex": "ConfigError: Schema for status \\d+ is not set"
+    },
+    {
+      "armadilha": "176",
+      "arquivo": "armadilhas/176-hook-fail-open-esconde-o-proprio-defeito-e-cala.md",
+      "titulo": "Hook fail-open esconde o PRÓPRIO defeito: ele cala, e silêncio parece \"nada a dizer\"",
+      "regex": "UnicodeEncodeError: 'charmap' codec can't encode character"
+    }
+  ]
+}

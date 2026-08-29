@@ -1,3 +1,17 @@
+---
+schema_version: 2
+armadilha: 21
+estado: guardada
+degrau: 4
+confianca: alta
+custo_por_queda: medio
+guarda:
+  tipo: sino
+  dono: ci/sino_das_armadilhas.py
+sinal:
+  - `ConfigError: Schema for status \d+ is not set`
+---
+
 <!-- Entrada extraida de ARMADILHAS.md (o monolito) em 23/08/2026.
      Categoria de origem: §4 — Django e django-ninja
      ID historico: §4.2  ·  referencias antigas "ARMADILHAS §4.2" apontam para este arquivo.
