@@ -1706,6 +1706,13 @@ de dados que **não existe em lugar nenhum** — qual agente está com qual tare
 desde quando, em que etapa. Inventá-la por suposição seria o falso-verde do §1 da
 `RETROSPECTIVA-FASE-D`; ela espera uma fonte de verdade, não uma tela.
 
+> **Fechado em 29/08/2026:** a espera acabou do jeito certo — a fonte nasceu
+> primeiro (a fila de trabalho, `fila/LEIA-ME.md`, fase 2 do plano da lista de
+> tarefas), e só então a aba virou link, já na casa nova da gestão
+> (`/admin/caixa/robos/`, `services/admin/apps/core/robos.py`). A lição acima
+> fica como estava: recusar a tela sem fonte foi o que garantiu que ela
+> nascesse cheia, um dia depois — e não vazia, um dia antes.
+
 
 ## A travessia (aba 2): o que a mutação ensinou sobre cenário fraco
 
