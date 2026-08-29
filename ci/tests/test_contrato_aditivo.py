@@ -275,6 +275,164 @@ def test_pr_que_nao_toca_contratos_e_SKIP(tmp_path: Path, monkeypatch):
     assert relatorio.estado is Estado.SKIP, relatorio.render()
 
 
+# --------------------------------------------------------------------------
+# CONTRATOS DE EVENTO (29/08/2026)
+#
+# Até esta data o portão pegava `contracts/eventos/*.json` no diff — são `.json`
+# dentro de `contracts/` — e ERRAVA com *"não tem forma de OpenAPI"*.
+# Fail-closed, o que está certo; mas o efeito prático era que **editar um evento
+# existente era impossível**. Ninguém tinha notado porque todo evento novo, até
+# então, nasceu como arquivo NOVO (`*.v2.json`), que é adição pura e nem chega à
+# comparação. A lei "acrescentar é livre" só valia para OpenAPI, por acidente —
+# e o dia em que ela precisou valer para um evento foi o dia em que o buraco
+# apareceu.
+#
+# O que se mede aqui é a mesma propriedade dos testes de cima, no vocabulário
+# de JSON Schema: acrescentar passa, tirar trava.
+# --------------------------------------------------------------------------
+
+
+def _evento(propriedades=None, exigidos=None, extra=None):
+    doc = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "carta.v1",
+        "type": "object",
+        "properties": propriedades if propriedades is not None else {"event": {}},
+    }
+    if exigidos is not None:
+        doc["required"] = exigidos
+    if extra:
+        doc.update(extra)
+    return doc
+
+
+def test_evento_e_reconhecido_pelo_caminho_e_nao_pelo_conteudo():
+    """Farejar o conteúdo acertaria hoje e erraria no primeiro documento de
+    forma inesperada — e "não sei que forma é esta" tem de virar ERROR."""
+    assert ca.e_evento("contracts/eventos/carta.v1.json")
+    assert ca.e_evento("contracts\\eventos\\carta.v1.json")
+    assert not ca.e_evento("contracts/identidade.openapi.yaml")
+
+
+def test_evento_sem_forma_conhecida_e_ERROR_e_nunca_PASS():
+    """O falso-verde que este portão inteiro existe para não cometer."""
+    with pytest.raises(ErroDeInstrumentacao):
+        ca._doc("titulo: sem properties\n", "e.json", evento=True)
+
+
+def test_assunto_novo_no_enum_do_evento_PASSA():
+    """O caso real que descobriu o buraco: `matricula.situacao-alterada`
+    entrando no enum de `assunto` de `notificacao.devida.v1`."""
+    antes = _evento({"assunto": {"enum": ["sugestao.status-alterado"]}})
+    depois = _evento(
+        {"assunto": {"enum": ["sugestao.status-alterado", "matricula.situacao-alterada"]}}
+    )
+    assert ca.quebras_de_evento(antes, depois, "e.json") == []
+
+
+def test_propriedade_nova_e_opcional_no_evento_PASSA():
+    antes = _evento({"data": {"properties": {"a": {}}, "required": ["a"]}})
+    depois = _evento({"data": {"properties": {"a": {}, "b": {}}, "required": ["a"]}})
+    assert ca.quebras_de_evento(antes, depois, "e.json") == []
+
+
+def test_ramo_condicional_novo_no_evento_PASSA():
+    """Assunto novo ganha um `if/then` próprio — é o desenho que a carta
+    prometia, e ele não pode ser lido como quebra."""
+    antes = _evento(extra={"allOf": [{"if": {}, "then": {}}]})
+    depois = _evento(extra={"allOf": [{"if": {}, "then": {}}, {"if": {}, "then": {}}]})
+    assert ca.quebras_de_evento(antes, depois, "e.json") == []
+
+
+def test_propriedade_removida_do_evento_TRAVA():
+    antes = _evento({"data": {"properties": {"a": {}, "b": {}}}})
+    depois = _evento({"data": {"properties": {"a": {}}}})
+    achados = ca.quebras_de_evento(antes, depois, "e.json")
+    assert any("data.b" in a and "REMOVIDO" in a for a in achados), achados
+
+
+def test_valor_de_enum_removido_do_evento_TRAVA():
+    """A quebra mais cara das três: ela só aparece em produção, na primeira
+    carta do tipo antigo que o publicador ainda emite."""
+    antes = _evento({"assunto": {"enum": ["a", "b"]}})
+    depois = _evento({"assunto": {"enum": ["a"]}})
+    achados = ca.quebras_de_evento(antes, depois, "e.json")
+    assert any("`b`" in a for a in achados), achados
+
+
+def test_const_trocado_no_evento_TRAVA():
+    """`const: x` é `enum: [x]` escrito curto. Trocar o `const` de `event` é a
+    quebra mais total que uma carta pode sofrer."""
+    antes = _evento({"event": {"const": "notificacao.devida"}})
+    depois = _evento({"event": {"const": "notificacao.necessaria"}})
+    achados = ca.quebras_de_evento(antes, depois, "e.json")
+    assert any("notificacao.devida" in a for a in achados), achados
+
+
+def test_campo_que_VIRA_obrigatorio_no_evento_TRAVA():
+    """Quebra quem PUBLICA sem aquele campo — o caso que passa despercebido
+    porque soa a "só acrescentei"."""
+    antes = _evento({"data": {"properties": {"a": {}, "b": {}}}, "b": {}}, exigidos=["data"])
+    depois = _evento(
+        {"data": {"properties": {"a": {}, "b": {}}}, "b": {}}, exigidos=["data", "b"]
+    )
+    achados = ca.quebras_de_evento(antes, depois, "e.json")
+    assert any("b" in a and "OBRIGATÓRIO" in a for a in achados), achados
+
+
+def test_quebra_dentro_de_um_ramo_then_TRAVA():
+    """Os ramos condicionais entram na varredura como qualquer outro pedaço —
+    é lá que moram os parâmetros de cada assunto."""
+    ramo = lambda props: {  # noqa: E731
+        "allOf": [{"if": {}, "then": {"properties": {"data": {"properties": props}}}}]
+    }
+    antes = _evento(extra=ramo({"x": {}, "y": {}}))
+    depois = _evento(extra=ramo({"x": {}}))
+    achados = ca.quebras_de_evento(antes, depois, "e.json")
+    assert any(".y" in a and "REMOVIDO" in a for a in achados), achados
+
+
+def test_evento_editado_no_repo_passa_pelo_portao_de_ponta_a_ponta(
+    tmp_path: Path, monkeypatch
+):
+    """A prova de que o caminho INTEIRO funciona — e não só o comparador.
+
+    Antes de 29/08/2026 este cenário terminava em ERROR, e era o bloqueio real:
+    o portão nem chegava a comparar.
+    """
+    raiz = _repo(tmp_path)
+    eventos = raiz / "contracts" / "eventos"
+    eventos.mkdir()
+    carta = eventos / "carta.v1.json"
+    carta.write_text(
+        '{"$schema": "x", "type": "object", "properties": '
+        '{"assunto": {"enum": ["um"]}}}',
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "-A"], cwd=str(raiz), check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "carta"], cwd=str(raiz), check=True, capture_output=True
+    )
+    carta.write_text(
+        '{"$schema": "x", "type": "object", "properties": '
+        '{"assunto": {"enum": ["um", "dois"]}}}',
+        encoding="utf-8",
+    )
+    subprocess.run(["git", "add", "-A"], cwd=str(raiz), check=True, capture_output=True)
+    subprocess.run(
+        ["git", "commit", "-qm", "assunto novo"],
+        cwd=str(raiz),
+        check=True,
+        capture_output=True,
+    )
+    monkeypatch.setenv("BASE_REF", "HEAD~1")
+    monkeypatch.delenv("PR_LABELS", raising=False)
+
+    relatorio = ca.rodar(raiz)
+
+    assert relatorio.estado is Estado.PASS, relatorio.render()
+
+
 def test_o_portao_esta_na_muralha():
     fonte = (RAIZ / "ci" / "ci.py").read_text(encoding="utf-8")
     assert "ci/contrato-aditivo.sh" in fonte
