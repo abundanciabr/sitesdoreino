@@ -1,0 +1,15 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260829-080-a-porta-lateral-esta-fechada-conferido-de-fora",
+  tipo: "entrega",
+  quando: "2026-08-29",
+  titulo: "A porta lateral do servidor está fechada — e eu conferi de fora, não acreditei no 'PRONTO'",
+  detalhe: "Você colou a linha e o script respondeu PRONTO. Mas a palavra do próprio script não é prova: quem mede não pode ser quem é medido. Fui conferir da internet pública, como um visitante qualquer.\n\nO QUE CONTINUA DE PÉ (tudo respondendo certo):\no site, a sonda de saúde, a Caixa de Sugestões, a área administrativa, a entrada pelo Google, e o outro domínio. Nenhum deles piscou.\n\nO QUE NÃO RESPONDE MAIS DE FORA (e é o ponto do conserto):\no banco de dados, o Redis, a porta interna das células e a porta de comando do Docker. Bati nas quatro do meu computador: silêncio nas quatro. Essa é a garantia nova — não é que elas estivessem abertas ontem, é que agora existe uma regra na máquina que IMPEDE qualquer porta nova de aparecer sem ninguém notar.\n\nUM SUSTO NO MEIO, QUE NÃO ERA O FIREWALL: às 18:03 uma entrega falhou com 'a porta 22 não respondeu'. Se fosse o firewall, seria grave — cortaria o canal por onde os robôs publicam. Fui medir: a porta 22 respondeu na hora, com o nome e a versão do programa que atende ali. E a entrega seguinte fechou verde. Era a intermitência de rede já catalogada do projeto, não o seu conserto. Não te avisei antes de medir de propósito: susto sem medição só faz barulho.\n\nO QUE ESTE CONSERTO NÃO FAZ, e você já sabia ao escolher: não esconde o endereço do servidor. Isso exigiria pôr o meshcraft.top atrás do Cloudflare, e você decidiu servi-lo direto em 23/08. A decisão está registrada, com a medição junto, dentro do próprio script — para nenhum robô futuro propor de novo a regra que derrubaria o site.",
+  autoridade: "sonda",
+  evidencia: "Medido da internet publica em 29/08/2026, depois de o mantenedor rodar infra/fechar-porta-lateral.sh (entregue no PR https://github.com/abundanciabr/sitesdoreino/pull/469). RESPONDEM: https://meshcraft.top/ 200, /healthz 200, /forms/sugestoes/ 302 (login), /admin/painel/ 302 (fail-closed), /entrar/google 302 (Google), https://basileiatoutheou.org/ 200. NAO RESPONDEM de fora: 5432 (Postgres), 6379 (Redis), 8000 (porta interna de celula), 2375 (daemon do Docker) — quatro tentativas de conexao TCP direta ao IP, todas sem resposta. Canal de entrega intacto: a medicao da armadilhas/127 ('exec 3<>/dev/tcp/217.196.62.220/22') devolveu 'SSH-2.0-OpenSSH_9.6p1 Ubuntu-3ubuntu13.1', e o deploy-celula run 33267281415 fechou completed/success conferido por 'gh run view --json status,conclusion'. O run 33267007247, que falhou com 'dial tcp :22 i/o timeout' as 18:03, e a intermitencia da armadilhas/127 — descartada pela mesma medicao, e pelos runs verdes antes e depois.",
+  verificado_em: "2026-08-29",
+  precisa_do_dono: false,
+  responde_a: "20260829-062-a-porta-lateral-voce-escolheu-o-caminho-sem-risco",
+  gravidade: "verde",
+  frente: "fabrica",
+  vence_em_dias: null
+});})();
