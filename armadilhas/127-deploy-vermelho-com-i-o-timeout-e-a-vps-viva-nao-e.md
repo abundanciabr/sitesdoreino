@@ -1,13 +1,14 @@
 ---
 schema_version: 2
 armadilha: 127
-estado: recorrente
-degrau: 6
+estado: guardada
+degrau: 2
 confianca: alta
 custo_por_queda: alto
 guarda:
-  tipo: nenhum
-  motivo: `a vacina (medir a porta 22, repetir com pausa, parar na terceira e registrar) ainda nao foi construida — e este e o maior sangramento medido do catalogo: 6 quedas em 3 dias, mais a de 29/08/2026 durante a propria auditoria. Buraco assumido, com o conserto ja desenhado.`
+  tipo: vacina
+  detector: rerun_de_deploy
+  dono: ci/rerun_de_deploy.py
 sinal:
   - `dial tcp [^\n]*:22: i/o timeout`
 ---
@@ -27,6 +28,21 @@ Cloudflare, que não repassa a porta 22): depois que ela começa, nenhum deploy 
 mais. Tratar o caso intermitente como se fosse a 017 leva a mexer em segredo de
 repositório — que é território do mantenedor — para consertar algo que não está
 quebrado.
+
+**Desde 29/08/2026 isto NÃO se faz mais à mão — rode a vacina:**
+
+```bash
+python ci/rerun_de_deploy.py --run <id>      # ou --ultimo
+```
+
+Ela executa exatamente o procedimento descrito abaixo: colhe o veredito por
+`--json` (nunca por pipe), confirma que a falha é o timeout de SSH, mede a porta
+22, separa o blip da [017](017-cloudflare-na-frente-do-dominio-deploy-morre-em.md),
+repete com a pausa entre tentativas, para na terceira e escreve o texto da
+pendência para o livro. `--so-diagnosticar` decide e explica sem repetir nada.
+
+O texto abaixo continua valendo — é o raciocínio que a vacina automatiza, e é o
+que você lê quando ela PARA e devolve a decisão para um humano.
 
 **A medição que separa os dois casos, em uma linha, do PC:**
 
