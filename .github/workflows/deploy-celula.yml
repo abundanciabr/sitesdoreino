@@ -130,7 +130,15 @@ jobs:
       matrix:
         celula: ${{ fromJSON(needs.detectar.outputs.celulas) }}
     steps:
+      # `fetch-depth: 0` NÃO é zelo: a reversão automática (Onda 4, fatia 2)
+      # anda para trás no histórico desta célula para achar a última imagem
+      # publicada. Com o clone raso que o checkout traz por padrão, esse
+      # histórico não existe — e a reversão anuncia "não há entrega anterior"
+      # sobre uma célula com dezenas delas. Medido em produção no run
+      # 33226662838 (29/08/2026): `armadilhas/159`.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io

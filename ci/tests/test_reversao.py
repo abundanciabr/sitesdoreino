@@ -51,6 +51,10 @@ def _repo_falso(tmp_path: Path, entregas: int = 3) -> tuple[Path, list[str]]:
     (raiz / "ci").mkdir(parents=True)
     (raiz / "services" / "quiz").mkdir(parents=True)
     (raiz / "contracts").mkdir()
+    # Um arquivo dentro: o Git não versiona diretório vazio, e um clone deste
+    # cenário chegaria SEM `contracts/` — que é uma das marcas da raiz. O teste
+    # do clone raso reprovaria pelo motivo errado.
+    (raiz / "contracts" / "LEIA-ME.md").write_text("cenario", encoding="utf-8")
     for marca in MARCAS_DA_RAIZ:
         alvo = raiz / marca
         if not alvo.exists() and marca.endswith(".md"):
@@ -341,3 +345,57 @@ def test_a_reversao_e_o_rollback_usam_o_MESMO_script_na_vps():
         f"apontar para o mesmo {caminho}"
     )
     assert (RAIZ / caminho).is_file(), f"{caminho} não existe"
+
+
+# --------------------------------------------------------------------------
+# O CLONE RASO — a lição que a produção deu de graça em 29/08/2026
+#
+# Na primeira vez que a reversão automática entrou em cena de verdade (run
+# 33226662838), ela anunciou "não há entrega anterior de 'admin' no histórico"
+# sobre uma célula com dezenas delas: o job de deploy fazia `actions/checkout`
+# sem `fetch-depth: 0`, e num clone raso o histórico não está lá.
+#
+# O erro estava na CATEGORIA, que é o pior tipo desta casa: FAIL ("medi, e não
+# há para onde voltar") no lugar de ERROR ("não consegui medir"). Quem lesse o
+# log iria investigar o registry — o lugar errado.
+# --------------------------------------------------------------------------
+
+
+def test_clone_raso_e_ERROR_e_nunca_um_FAIL_de_conteudo(tmp_path: Path) -> None:
+    raiz, shas = _repo_falso(tmp_path)
+    raso = tmp_path / "raso"
+    subprocess.run(
+        ["git", "clone", "--depth", "1", "--no-local", raiz.as_uri(), str(raso)],
+        check=True,
+        capture_output=True,
+        timeout=300,
+    )
+    proc = _roda(
+        raso,
+        REVERSAO_CELULA="quiz",
+        REVERSAO_ATUAL=shas[-1],
+        REVERSAO_DOCKER=_docker_de_mentira(tmp_path, shas),
+    )
+    assert proc.returncode == 2, (
+        "histórico ausente é 'não consegui medir', nunca 'não há para onde "
+        "voltar' — a segunda frase manda investigar o registry, que está são:"
+        + chr(10)
+        + proc.stdout
+    )
+    assert "RASO" in proc.stdout
+
+
+def test_o_deploy_baixa_o_historico_inteiro():
+    """Sem `fetch-depth: 0` a reversão fica cega — e mente com confiança.
+
+    Este é o par do teste acima, do lado do workflow: um conserta a mensagem,
+    o outro conserta a causa. Guardar só um dos dois deixaria a porta aberta.
+    """
+    fluxo = yaml.safe_load(DEPLOY.read_text(encoding="utf-8"))
+    checkout = fluxo["jobs"]["deploy"]["steps"][0]
+    assert "checkout" in checkout.get("uses", ""), "o primeiro passo mudou de natureza"
+    assert (checkout.get("with") or {}).get("fetch-depth") == 0, (
+        "o job de deploy voltou ao clone raso — a reversão automática perde o "
+        "histórico e passa a anunciar 'não há entrega anterior' sobre células "
+        "com dezenas delas (armadilhas/159)"
+    )

@@ -184,5 +184,6 @@
 | [156](156-pr-que-toca-painel-nao-fecha-a-janela-de-merge.md) | PR que toca `painel/` não fecha a janela de merge — separe o PR em vez de tentar de novo — você tenta mergear e entra num laço que não termina. A cada volta o motivo muda, e cada um parece um problema isolado: | — |
 | [157](157-arquivo-gerado-que-sai-do-git-quebra-quem-o-lia.md) | Arquivo gerado que sai do Git quebra, em silêncio, tudo que o lia do checkout — você tira um artefato gerado do versionamento (o certo a fazer — ele era colisão diária entre sessões), a muralha do painel fica verde, e o… | — |
 | [158](158-numero-do-servidor-vem-em-utc-e-o-registro-e-nomeado-em-local.md) | O número do servidor vem no dia UTC, e você nomeia o arquivo no dia daqui — você pede o número atômico do próximo registro, ele devolve `001` num dia em que já existem dezenas de registros, e o arquivo que você cria | — |
+| [159](159-clone-raso-faz-o-portao-dizer-nao-existe-em-vez-de-nao-medi.md) | Clone raso faz o portão dizer "não existe" quando a verdade é "não medi" — um portão que anda no histórico do Git afirma, com toda a confiança, que não há nada lá — sobre uma coisa que tem dezenas de entregas: | — |
 
-**147 entradas.**
+**148 entradas.**

@@ -231,6 +231,37 @@ def checar_atual(ctx: Contexto) -> Resultado:
     return Resultado("atual", Estado.PASS, f"{ctx.atual[:12]} (a entrega que falhou)")
 
 
+def _historico_completo(ctx: Contexto) -> None:
+    """Recusa medir num clone RASO — a lição que a produção deu de graça.
+
+    Em 29/08/2026, na primeira vez que a reversão automática entrou em cena de
+    verdade (run 33226662838), ela anunciou *"não há entrega anterior de 'admin'
+    no histórico"* sobre uma célula com dezenas delas. O motivo: o job de deploy
+    fazia `actions/checkout` sem `fetch-depth: 0`, e num clone raso o histórico
+    simplesmente não está lá.
+
+    O veredito estava errado na CATEGORIA, que é o pior tipo de erro desta casa:
+    ele disse FAIL ("medi, e não há para onde voltar") quando a verdade era
+    ERROR ("não consegui medir"). Quem lesse o log iria investigar o registry —
+    o lugar errado. Aqui a diferença passa a ser mecânica.
+    """
+    raso = executar(
+        [*ctx.git, "rev-parse", "--is-shallow-repository"],
+        cwd=ctx.raiz,
+        descricao="conferir se este checkout tem o histórico completo",
+        exigir_stdout=True,
+    ).stdout.strip()
+    if raso == "true":
+        raise ErroDeInstrumentacao(
+            "este checkout é RASO — não dá para procurar a entrega anterior",
+            "O histórico não veio junto, então 'não achei imagem anterior' aqui "
+            "significaria 'não procurei'. "
+            "Quem chama precisa fazer o checkout com `fetch-depth: 0` "
+            "(`.github/workflows/deploy-celula.yml`, job deploy). "
+            "Ver `armadilhas/159`.",
+        )
+
+
 def candidatos(ctx: Contexto) -> list[str]:
     """As entregas anteriores DESTA célula, da mais nova para a mais velha.
 
@@ -239,6 +270,7 @@ def candidatos(ctx: Contexto) -> list[str]:
     dos ramos de trabalho, cujos commits nunca viraram imagem, e gastaria a
     janela inteira perguntando ao registry por tags que jamais existiram.
     """
+    _historico_completo(ctx)
     saida = executar(
         [
             *ctx.git,
