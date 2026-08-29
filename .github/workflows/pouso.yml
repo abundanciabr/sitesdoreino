@@ -227,7 +227,14 @@ jobs:
             # movimentado (a `main` anda ~100 vezes por dia) o mesmo PR podia
             # envelhecer a cada passagem e segurar a fila indefinidamente, sem
             # nada ficar vermelho para avisar.
-            if grep -q "ATRÁS da main (BEHIND)" veredito.txt; then
+            # Roteia por CÓDIGO, nunca pela frase em português: `ci/mergear.py`
+            # imprime `MOTIVO-DA-RECUSA: BASE-VELHA`, em ASCII, e é isso que se
+            # lê aqui. Até 29/08/2026 este `grep` procurava a prosa acentuada —
+            # e uma reescrita da mensagem, ou um acento perdido em trânsito,
+            # faria a pista tratar "só precisa atualizar" como "reprovou": ela
+            # TIRARIA a etiqueta e comentaria "não pousei" num PR são. Guarda
+            # que amarra as duas pontas: ci/tests/test_mergear.py.
+            if grep -q "MOTIVO-DA-RECUSA:.*BASE-VELHA" veredito.txt; then
               # A atualização pode falhar (conflito que apareceu agora, por
               # exemplo). Isso não pode derrubar a passagem: seria um PR
               # travando os outros por outro caminho. Fica registrado, o PR
