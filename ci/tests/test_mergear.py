@@ -836,3 +836,64 @@ def test_sem_declaracao_nao_ha_checagem(monkeypatch) -> None:
 
     monkeypatch.setattr(mergear, "_gh", nunca)
     assert mergear.checar_dependencias(RAIZ, _pr_com_corpo("")) == []
+
+
+# ---------------------------------------------------------------------------
+# A PISTA NÃO DEPENDE DE PERMISSÃO QUE ELA NÃO TEM (conserto de 29/08/2026)
+#
+# A pista terminava chamando a si mesma (`gh workflow run pouso.yml`) para
+# atender o próximo da fila. Isso exige `actions: write` no token, e a
+# `PISTA_TOKEN` não tem: o merge acontecia e o run terminava VERMELHO, toda vez
+# — `HTTP 403: Resource not accessible by personal access token`.
+#
+# Quem viu foi o mantenedor, olhando a lista de execuções e perguntando "o pouso
+# vai ficar assim?". Um vermelho permanente é pior que um defeito visível: ele
+# ensina a ignorar vermelho, e esta casa inteira depende de vermelho significar
+# alguma coisa.
+# ---------------------------------------------------------------------------
+
+
+def _pouso_yml() -> str:
+    return (RAIZ / ".github" / "workflows" / "pouso.yml").read_text(encoding="utf-8")
+
+
+def test_a_pista_nao_chama_a_si_mesma_por_dispatch():
+    """`gh workflow run` aqui volta a exigir uma permissão que o token não tem."""
+    import yaml as _yaml
+
+    fluxo = _yaml.safe_load(_pouso_yml())
+    script = "".join(
+        str(passo.get("run", "")) for passo in fluxo["jobs"]["pousar"]["steps"]
+    )
+    linhas = [
+        ln
+        for ln in script.splitlines()
+        if "gh workflow run" in ln and not ln.strip().startswith("#")
+    ]
+    assert not linhas, (
+        "a pista voltou a se auto-chamar: isso exige `actions: write`, que a "
+        "PISTA_TOKEN não tem, e faz TODA passagem que mergeia terminar "
+        "vermelha: " + ", ".join(linhas)
+    )
+
+
+def test_a_fila_anda_dentro_da_mesma_execucao():
+    """Sem o laço, cada passagem atenderia UM PR e o resto esperaria 15 min."""
+    script = _pouso_yml()
+    assert "MAX_POUSOS" in script, "sumiu o laço que faz a fila andar"
+    assert "for volta in" in script
+
+
+def test_a_pista_continua_com_um_pouso_por_vez():
+    """Ordem serial é o ponto da pista: `concurrency` sem cancelamento."""
+    import yaml as _yaml
+
+    fluxo = _yaml.safe_load(_pouso_yml())
+    assert fluxo["concurrency"]["group"] == "pouso"
+    assert fluxo["concurrency"]["cancel-in-progress"] is False
+
+
+def test_a_pista_continua_atendendo_o_mais_antigo_primeiro():
+    assert "sort_by(.createdAt)" in _pouso_yml(), (
+        "quem pediu antes pousa antes — sem isso a fila vira sorteio"
+    )
