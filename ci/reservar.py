@@ -2,6 +2,7 @@
 
     python ci/reservar.py numero registro      # aloca e imprime: 040
     python ci/reservar.py numero armadilha     # aloca e imprime: 154
+    python ci/reservar.py numero tarefa        # aloca e imprime: 003 (fila/)
     python ci/reservar.py intencao <chave> --objetivo "..."
     python ci/reservar.py listar
     python ci/reservar.py soltar <chave>
@@ -207,6 +208,18 @@ def numeros_em_uso(raiz: Path, superficie: str, chave_do_dia: str) -> set[int]:
             f"{chave_do_dia}-*.js",
             len(chave_do_dia) + 1,
         )
+    elif superficie == "tarefa":
+        # A fila de trabalho (fila/tarefas/NNN-slug.json). A pasta pode ainda
+        # não existir no dia em que a fila nasce — aí os números em uso são só
+        # os das reservas no servidor, e isso é correto, não é falha.
+        pasta, padrao, corte = (raiz / "fila" / "tarefas"), "*.json", 0
+        if not pasta.is_dir():
+            prefixo = f"{NS_NUMERO}/{superficie}"
+            for ref in refs_existentes(raiz, prefixo):
+                cauda = ref.rsplit("/", 1)[-1]
+                if cauda.isdigit():
+                    usados.add(int(cauda))
+            return usados
     else:
         pasta, padrao, corte = (raiz / "armadilhas"), "*.md", 0
     if not pasta.is_dir():
@@ -235,19 +248,21 @@ def numeros_em_uso(raiz: Path, superficie: str, chave_do_dia: str) -> set[int]:
 
 def alocar_numero(raiz: Path, superficie: str, agora: datetime | None = None) -> str:
     """Ganha um número no servidor e devolve ele. Nunca devolve um palpite."""
-    if superficie not in ("registro", "armadilha"):
+    if superficie not in ("registro", "armadilha", "tarefa"):
         raise ErroDeInstrumentacao(
             f"superfície desconhecida: {superficie!r}",
-            "Use 'registro' ou 'armadilha'. Chutar a política de numeração daria\n"
-            "uma dica errada com cara de certa (ver ci/boletim.py).",
+            "Use 'registro', 'armadilha' ou 'tarefa'. Chutar a política de\n"
+            "numeração daria uma dica errada com cara de certa (ver ci/boletim.py).",
         )
     agora = agora or datetime.now(timezone.utc)
     chave_do_dia = agora.strftime("%Y%m%d")
     usados = numeros_em_uso(raiz, superficie, chave_do_dia)
 
-    if superficie == "armadilha":
+    if superficie in ("armadilha", "tarefa"):
         # Números vagos no meio estão APOSENTADOS e ainda são citados
-        # (`armadilhas/085`): nunca se reusa, sempre acima de todos.
+        # (`armadilhas/085`): nunca se reusa, sempre acima de todos. A tarefa
+        # segue a mesma política: TAR-007 concluída continua citada em eventos
+        # e registros para sempre — reusar o número contaria outra história.
         candidato = (max(usados) + 1) if usados else 1
         passo = lambda n: n + 1  # noqa: E731
     else:
@@ -341,7 +356,7 @@ def construir_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="acao", required=True)
 
     p_num = sub.add_parser("numero", help="aloca o próximo número de uma superfície")
-    p_num.add_argument("superficie", choices=["registro", "armadilha"])
+    p_num.add_argument("superficie", choices=["registro", "armadilha", "tarefa"])
 
     p_int = sub.add_parser("intencao", help="anuncia que você vai fazer algo")
     p_int.add_argument("chave", help="slug curto e estável, ex.: onda2-reservar")

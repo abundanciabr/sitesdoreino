@@ -199,6 +199,11 @@ MURALHAS = [
         "ci/catraca-de-testes.sh",
         "teste apagado, reduzido ou desligado sem a etiqueta 'remove-teste'",
     ),
+    PortaoDeShell(
+        "muralha-da-fila",
+        "ci/muralha-da-fila.sh",
+        "a fila de trabalho (fila/) inválida — tarefa/evento fora do molde",
+    ),
 ]
 
 
