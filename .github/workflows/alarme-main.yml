@@ -179,3 +179,129 @@ jobs:
               --label main-vermelha \
               --body "$CORPO"
           fi
+
+  # ===========================================================================
+  # A MAIN VERMELHA SE CURA PELO MESMO CAMINHO DE TODO MUNDO (Onda 6, P11)
+  #
+  # O alarme acima AVISA. Este job propõe a cura: abre um PR de reversão do
+  # merge que quebrou, e pede pouso. Quem mergeia continua sendo a pista, com
+  # todos os checks — inclusive os do próprio revert.
+  #
+  # POR QUE UM PR, E NÃO UM PUSH: a `main` tem conjunto de regras ativo (PR
+  # obrigatório, sem force-push, dois checks obrigatórios) e ninguém escapa —
+  # nem esta automação. Empurrar direto seria pedir 409 e ficar sem cura. Além
+  # disso, um revert que quebra outra coisa precisa ser reprovado como qualquer
+  # mudança: é o que os checks do PR fazem.
+  #
+  # AS QUATRO RECUSAS, todas fail-closed (nenhuma abre PR "por via das dúvidas"):
+  #
+  #   1. o commit não é merge      -> não reverte. `-m 1` num commit comum é
+  #                                   erro, e adivinhar o pai é pior que parar.
+  #   2. o commit JÁ é um revert   -> não reverte. Sem isto, um revert que
+  #                                   também falhe geraria revert do revert, em
+  #                                   laço, cada volta com um PR novo.
+  #   3. já existe PR de reversão  -> não abre outro. Um PR por incidente.
+  #      para este mesmo commit
+  #   4. o revert dá conflito      -> não força. Conflito significa que a `main`
+  #                                   andou por cima; resolver sozinho aqui é
+  #                                   inventar código sem ninguém olhando.
+  #
+  # Em qualquer das quatro, o job termina VERDE e diz o motivo no log — o
+  # alarme (a issue) já registrou o incidente, e este job é a tentativa de cura,
+  # não o detector. Ficar vermelho aqui só duplicaria o vermelho de cima.
+  #
+  # USA `PISTA_TOKEN` pelo mesmo motivo da pista: PR aberto com o `GITHUB_TOKEN`
+  # NÃO dispara os workflows de check, e um PR de reversão sem checks não
+  # pousaria nunca.
+  # ===========================================================================
+  reverter:
+    name: propor reversão da main vermelha
+    needs: guardas-do-repositorio
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Propor a reversão (ou dizer por que não dá)
+        env:
+          GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
+          SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "PAROU: sem PISTA_TOKEN não dá para abrir um PR que rode checks."
+            echo "A issue do alarme continua valendo; a reversão fica manual."
+            exit 0
+          fi
+
+          PAIS="$(git rev-list --parents -n 1 "$SHA" | wc -w)"
+          if [ "$PAIS" -lt 3 ]; then
+            echo "O commit $SHA não é um merge (pais: $((PAIS - 1)))."
+            echo 'Nao reverto: "-m 1" num commit comum e erro, e adivinhar o pai'
+            echo "seria inventar. Conserte por PR, como sempre."
+            exit 0
+          fi
+
+          TITULO="$(git log -1 --pretty=%s "$SHA")"
+          case "$TITULO" in
+            Revert*|reverter:*)
+              echo "O commit $SHA JÁ é uma reversão ($TITULO)."
+              echo "Não reverto de novo: seria um laço, cada volta com um PR novo."
+              exit 0 ;;
+          esac
+
+          RAMO="reverter/${SHA:0:12}"
+          if gh pr list --state open --head "$RAMO" --json number --jq '.[0].number // empty' | grep -q .; then
+            echo "Já existe PR de reversão aberto para $SHA. Um por incidente."
+            exit 0
+          fi
+
+          git config user.name "pista de pouso"
+          git config user.email "pista@sitesdoreino.invalid"
+          git switch -c "$RAMO"
+          if ! git revert -m 1 --no-edit "$SHA"; then
+            # `|| true` aqui seria a preguiça que o INV-CI01 combate: ele
+            # esconderia 'não havia o que abortar' junto com 'o abort
+            # falhou'. A pergunta é feita, e a resposta é dita.
+            if ! git revert --abort; then
+              echo '(não havia revert em andamento para abortar — seguindo)'
+            fi
+            echo "O revert de $SHA deu CONFLITO — a main andou por cima."
+            echo "Não forço: resolver conflito sozinho aqui é inventar código"
+            echo "sem ninguém olhando. A issue do alarme pede a mão humana."
+            exit 0
+          fi
+          git push origin "$RAMO"
+
+          CORPO="$(cat <<EOF
+          🔴 **A \`main\` ficou vermelha depois deste merge, e esta é a proposta de cura.**
+
+          - commit revertido: \`$SHA\` — $TITULO
+          - execução que acusou: $RUN_URL
+
+          Reverter é a resposta canônica do \`RITOS.md\` §4: **primeiro apaga o fogo,
+          depois investiga**. Este PR não conserta o defeito — ele devolve a \`main\`
+          ao último estado verde conhecido, para que ninguém trabalhe em cima de
+          uma base quebrada enquanto o conserto é escrito.
+
+          A etiqueta \`pousar\` já está posta: **quem mergeia é a pista**, com todos os
+          checks — inclusive os deste revert. Se o próprio revert reprovar, ele fica
+          aqui parado, e aí é caso para mão humana.
+
+          Se a correção de verdade for mais rápida que a reversão, feche este PR e
+          mande a correção — a decisão é de quem estiver olhando.
+          EOF
+          )"
+          gh pr create \
+            --base main --head "$RAMO" \
+            --title "reverter: $TITULO" \
+            --body "$CORPO"
+          gh pr edit "$RAMO" --add-label pousar --add-label main-vermelha
+          echo "PR de reversão aberto e com pedido de pouso."
