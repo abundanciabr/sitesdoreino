@@ -307,6 +307,26 @@ class AtorDaRequisicao:
         return situacao.get("categoria") or "cadastrado"
 
     @property
+    def categoria_conferida(self) -> bool:
+        """A `alunos` RESPONDEU sobre esta pessoa? — a diferença entre "sei que
+        ela nunca pediu nada" e "não consegui saber".
+
+        Existe porque `categoria` colapsa as duas em `cadastrado` (fail-open,
+        e a direção continua certa), e desde 29/08/2026 a home OFERECE algo a
+        quem é `cadastrado`: o convite para pedir entrada
+        (`DECISAO-o-beco-de-quem-entrou-e-nunca-pediu.md`). Sem esta property,
+        a `alunos` fora do ar faria a home convidar um aluno a pedir a entrada
+        que ele já tem — o mesmo defeito de 28/08 de cabeça para baixo: uma
+        tela prometendo o que a outra célula desmente.
+
+        Nunca dispara consulta por conta própria além da que `categoria` já
+        faz: quem lê as duas paga uma rodada, não duas.
+        """
+        if not self:
+            return False
+        return self._resolver_categoria() is not None
+
+    @property
     def na_fila(self) -> "dict | None":
         """O andamento do pedido — `estado`, `esperando_ha_dias`, `motivo_recusa`.
 

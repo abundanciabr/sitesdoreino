@@ -149,3 +149,38 @@ acesso_pausado:
   en: "Your access is paused right now. It comes back as soon as the team turns it on again."
   pt-br: "Seu acesso está pausado no momento. Ele volta assim que a equipe religar."
   es: "Tu acceso está pausado por ahora. Vuelve en cuanto el equipo lo reactive."
+
+# ---------------------------------------------------------------------------
+# O CONVITE de quem entrou e nunca pediu nada
+# (DECISAO-o-beco-de-quem-entrou-e-nunca-pediu.md, 29/08/2026).
+#
+# ESTA SEÇÃO REVERTE, NOMINALMENTE, A DECISÃO DE 28/08/2026 registrada mais
+# acima — a de que "quem nunca pediu nada não vê NADA sobre a escola na home".
+# Quem a revogou foi o mesmo mantenedor que a tomou, no dia em que caiu no
+# próprio beco: entrou com a conta dele, leu "em breve teremos novidades" e
+# não tinha para onde ir. O formulário de pedir entrada existia o tempo todo,
+# na Caixa — só que ninguém chega a um endereço que a tela não mostra.
+#
+# O convite só aparece para quem a `alunos` CONFIRMOU ser `cadastrado`. Quando
+# ela não responde, a home continua exatamente como era: sem convite e sem
+# atalho. A regra antiga não morreu, ela encolheu para o caso em que ainda é
+# verdadeira — não saber não é motivo para oferecer nada a ninguém.
+# ---------------------------------------------------------------------------
+quer_estudar_aqui:
+  # Diz o que a escola é E quem decide, na mesma frase. A segunda metade não é
+  # enfeite: sem ela, quem pede fica esperando uma porta automática que não
+  # existe — e a fila de liberação é humana de propósito.
+  _fonte: "2fd764"
+  en: "Want to study at Meshcraft? Ask to join — the team decides who comes in."
+  pt-br: "Quer estudar no Meshcraft? Peça sua entrada — a equipe decide quem entra."
+  es: "¿Quieres estudiar en Meshcraft? Pide tu acceso — el equipo decide quién entra."
+
+pedir_entrada:
+  # NÃO é o mesmo rótulo de `pedir_para_voltar`, e não deve ser: um é a
+  # primeira vez, o outro é o retorno de quem já esteve aqui. O botão leva ao
+  # mesmo lugar — a Caixa, onde mora o formulário —, e o destino continua fora
+  # do catálogo (é endereço, não copy: apps/core/enderecos.py).
+  _fonte: "461bd7"
+  en: "Ask to join"
+  pt-br: "Pedir entrada"
+  es: "Pedir acceso"
