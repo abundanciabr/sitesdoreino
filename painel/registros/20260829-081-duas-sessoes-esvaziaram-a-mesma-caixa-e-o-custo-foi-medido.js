@@ -35,7 +35,7 @@
     "para que a segunda vez encontre a primeira já medida, em vez de " +
     "parecer novidade.",
   autoridade: "sessao",
-  evidencia: "Sessão de 29/08/2026. Trabalho descartado: PR 480 (fechado como duplicata do 469, que mergeou às 17:43 — antes de o 480 existir). Colisões de número resolvidas pelas travas: 20260829-028 no livro (o gerador reprovou e disse o próximo livre) e armadilhas/171 no catálogo (renumerada para 173). Metade entregue em separado: PR 472 (INV-P15), depois de o pedido 20260821-001 ter sido fechado pelo registro 20260828-090. Este registro viaja no PR 490. Caixa ao fim: 0 pedidos abertos em 220 registros.",
+  evidencia: "Sessão de 29/08/2026. Trabalho descartado: PR 480 (fechado como duplicata do 469, que mergeou às 17:43 — antes de o 480 existir). Colisões de número resolvidas pelas travas: 20260829-028 no livro (o gerador reprovou e disse o próximo livre) e armadilhas/171 no catálogo (renumerada para 173). Metade entregue em separado: PR 472 (INV-P15), depois de o pedido 20260821-001 ter sido fechado pelo registro 20260828-090. Este registro viaja no PR 491. Caixa ao fim: 0 pedidos abertos em 220 registros.",
   verificado_em: "2026-08-29",
   precisa_do_dono: false,
   responde_a: null,
