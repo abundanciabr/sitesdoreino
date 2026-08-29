@@ -248,7 +248,7 @@ Na prática:
   esse vocabulário sugere levar semanas — não avalie por cronograma de equipe
   humana.
 - **Isto não é desculpa para descuido.** PRs pequenos, orçamento de 15
-  arquivos, uma célula por PR, Ritos de Contrato, evidência vermelho→verde —
+  arquivos, Ritos de Contrato, evidência vermelho→verde —
   nada disso muda. Fatiar em fases seguras não é reduzir escopo, é a forma
   responsável de construir algo grande. "Completo" é o destino; a escada de
   PRs é o caminho.

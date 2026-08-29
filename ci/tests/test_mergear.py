@@ -24,6 +24,7 @@ import mergear
 from _nucleo import Estado
 
 RAIZ = Path(__file__).resolve().parents[2]
+NL = chr(10)
 
 
 def _check(nome: str, conclusao: str = "SUCCESS", status: str = "COMPLETED") -> dict:
@@ -751,3 +752,87 @@ def test_skip_de_check_desconhecido_continua_reprovando(monkeypatch):
     ]
     resultados = mergear.checar_checks(pr)
     assert any(r.estado is Estado.FAIL for r in resultados)
+
+
+# ---------------------------------------------------------------------------
+# `Depende-de: #N` — a ordem entre PRs, cobrada por máquina (Onda 5)
+#
+# Com a cerca derrubada, trabalho grande sai em PRs encadeados. A pista de
+# pouso atende por ANTIGUIDADE e não conhece essa ordem — sem esta checagem,
+# dois PRs dependentes podem pousar trocados e a `main` fica com o consumidor
+# falando com uma API que ainda não existe.
+# ---------------------------------------------------------------------------
+
+
+def _pr_com_corpo(corpo: str) -> dict:
+    pr = _pr()
+    pr["body"] = corpo
+    return pr
+
+
+@pytest.mark.parametrize(
+    "corpo,esperado",
+    [
+        ("Depende-de: #12", [12]),
+        ("depende de: #12 e #34", [12, 34]),
+        (NL.join(["bla", "", "Depende-De:  #7", "", "mais texto"]), [7]),
+        ("nada aqui", []),
+        ("uma menção solta a #99 no meio do texto", []),
+    ],
+)
+def test_le_a_declaracao_de_dependencia(corpo: str, esperado: list) -> None:
+    assert mergear.dependencias_declaradas(_pr_com_corpo(corpo)) == esperado
+
+
+def test_dependencia_ainda_aberta_reprova(monkeypatch) -> None:
+    import json as _json
+
+    def gh(argumentos, raiz, descricao, **kwargs):
+        if argumentos[:2] == ["pr", "view"]:
+            return _json.dumps({"state": "OPEN", "title": "o provedor"})
+        return ""
+
+    monkeypatch.setattr(mergear, "_gh", gh)
+    resultados = mergear.checar_dependencias(RAIZ, _pr_com_corpo("Depende-de: #12"))
+    assert resultados and resultados[0].estado is Estado.FAIL
+    assert "ainda não entrou" in resultados[0].resumo
+
+
+def test_dependencia_ja_mergeada_passa(monkeypatch) -> None:
+    import json as _json
+
+    monkeypatch.setattr(
+        mergear,
+        "_gh",
+        lambda *a, **k: _json.dumps({"state": "MERGED", "title": "o provedor"}),
+    )
+    resultados = mergear.checar_dependencias(RAIZ, _pr_com_corpo("Depende-de: #12"))
+    assert resultados and resultados[0].estado is Estado.PASS
+
+
+def test_dependencia_que_nao_da_para_conferir_e_ERROR(monkeypatch) -> None:
+    """"Não sei se a dependência entrou" nunca vira "pode entrar"."""
+
+    def gh_quebrado(*a, **k):
+        raise mergear.ErroDeInstrumentacao("gh fora do ar", "")
+
+    monkeypatch.setattr(mergear, "_gh", gh_quebrado)
+    resultados = mergear.checar_dependencias(RAIZ, _pr_com_corpo("Depende-de: #12"))
+    assert resultados and resultados[0].estado is Estado.ERROR
+
+
+def test_pr_que_depende_de_si_mesmo_reprova(monkeypatch) -> None:
+    monkeypatch.setattr(mergear, "_gh", lambda *a, **k: "{}")
+    resultados = mergear.checar_dependencias(RAIZ, _pr_com_corpo("Depende-de: #99"))
+    assert resultados and resultados[0].estado is Estado.FAIL
+    assert "si mesmo" in resultados[0].resumo
+
+
+def test_sem_declaracao_nao_ha_checagem(monkeypatch) -> None:
+    """Declarar é opcional. Declarado, é cobrado — mas o silêncio não custa."""
+
+    def nunca(*a, **k):
+        raise AssertionError("não pode consultar o GitHub sem declaração")
+
+    monkeypatch.setattr(mergear, "_gh", nunca)
+    assert mergear.checar_dependencias(RAIZ, _pr_com_corpo("")) == []

@@ -25,8 +25,14 @@ Documento não impõe nada a um agente sob pressão de erro; portão impõe.
    pública — só o que precisa da internet passa pelo gateway.
 2. **Dados:** um database e um role Postgres por célula. Acesso cruzado não é proibido —
    é `permission denied`. A connection string do quiz não *consegue* ler pagamentos.
-3. **Código:** uma sessão de agente = uma célula = um worktree (RITOS.md §1). A cerca de
-   CI (`ci/cerca-de-celula.sh`) reprova qualquer PR que toque mais de uma célula.
+3. **Código:** uma sessão de agente = um worktree (RITOS.md §1). **A cerca "1 PR = 1
+   célula" caiu em 29/08/2026** (Onda 5 do `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`,
+   decisão do mantenedor): ela restringia LARGURA para comprar EXCLUSIVIDADE, que é
+   outro eixo — e não teria evitado o pior incidente já medido aqui. No lugar dela,
+   prova em vez de proibição: `celulas.yml` diz de quem é cada arquivo (com varredor
+   que o impede de mentir), o `ci-celula` roda em MATRIZ a suíte de cada célula
+   tocada, contrato cresce por adição e só encolhe com autorização declarada, e
+   `Depende-de: #N` é cobrado por máquina. O orçamento de 15 arquivos fica.
 4. **Contrato:** células conversam apenas por HTTP conforme `contracts/*.openapi.yaml`
    (congelados; drift reprova no CI) e por eventos versionados (`contracts/eventos/`).
    Consumidores desenvolvem contra mocks (`prism`), nunca contra o código do provedor.

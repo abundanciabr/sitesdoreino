@@ -1,7 +1,30 @@
 #!/usr/bin/env bash
 # =============================================================================
-# MURALHA DE CÓDIGO — 1 PR = 1 célula. Contratos mudam sozinhos e com rito.
-# Roda em todo PR (workflow muralhas.yml). Sem exceções, sem "só dessa vez".
+# MURALHA DE CÓDIGO — contratos mudam sozinhos e com rito.
+#
+# A CERCA "1 PR = 1 CÉLULA" CAIU EM 29/08/2026 (Onda 5 do
+# `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`). Ela existia para comprar
+# uma coisa que não era largura: restringir QUANTO do sistema um PR toca não
+# compra exclusividade, e o argumento que encerrou a discussão é medido — a
+# cerca **não teria evitado** o pior incidente já registrado aqui (o serviço
+# novo e a configuração no mesmo commit passaram por dentro dela sem encostar).
+#
+# O que ficou no lugar dela, e por que só agora ela pôde cair:
+#
+#   celulas.yml + varredor    o mapa de quem é dono do quê, verificado contra
+#                             o código em toda muralha (PR #442)
+#   ci-celula em MATRIZ       o CI deriva do diff e roda a suíte de CADA célula
+#                             tocada, em vez de recusar por largura (PR #443)
+#   contrato aditivo          crescer é livre, remover exige autorização
+#                             explícita (PR #445)
+#   Depende-de: #N            ordem entre PRs, cobrada por máquina
+#
+# Proibição virou prova. O orçamento de 15 arquivos FICA: ele é barato, mede
+# outra coisa (tamanho de uma mudança revisável) e continua útil.
+#
+# O que este script ainda faz: o Rito de Contrato (RITOS.md §3) — contrato não
+# muda junto com código de célula, e mudança em `contracts/` exige a etiqueta.
+# Roda em todo PR (workflow muralhas.yml).
 # =============================================================================
 set -euo pipefail
 BASE="${BASE_REF:-origin/main}"
@@ -35,13 +58,6 @@ UNICAS=$(printf '%s\n' "${CELULAS[@]:-}" | sed '/^$/d' | sort -u)
 # Contagem em bash puro: `grep -c . || true` mascarava tanto "zero linhas"
 # (saída 1, legítima) quanto erro real do grep (saída 2) no mesmo resultado.
 if [[ -z "$UNICAS" ]]; then N=0; else N=$(printf '%s\n' "$UNICAS" | wc -l); fi
-
-if (( N > 1 )); then
-  echo "❌ MURALHA: este PR toca $N células — o limite é 1."
-  echo "$UNICAS" | sed 's/^/   - /'
-  echo "   Abra um PR por célula, em worktrees separados (RITOS.md §1)."
-  exit 1
-fi
 
 if (( TEM_CONTRATO == 1 )); then
   if (( N > 0 )); then

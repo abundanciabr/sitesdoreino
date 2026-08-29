@@ -6,9 +6,16 @@ Quatro ritos. Cada um fecha um modo de falha conhecido — com nome, mecânica e
 
 ## §1 — Rito de Abertura de Sessão (worktree por agente)
 
-Cada sessão de agente nasce dentro de um worktree, dentro de UMA célula. O agente só
-enxerga a árvore onde nasceu — quebrar outra célula deixa de ser proibido e passa a
-ser fisicamente estranho ao seu mundo.
+Cada sessão de agente nasce dentro de um worktree próprio. O agente só enxerga a
+árvore onde nasceu — atropelar o trabalho de outra sessão deixa de ser proibido e
+passa a ser fisicamente estranho ao seu mundo.
+
+**Um PR pode tocar mais de uma célula desde 29/08/2026** (Onda 5): a cerca de largura
+caiu porque o CI passou a RODAR a suíte de cada célula tocada, em vez de recusar por
+tamanho. Continue preferindo PRs de uma célula — eles são mais fáceis de revisar, de
+reverter e de pousar —, mas quando o trabalho é genuinamente de duas, ele cabe num PR
+só, com as duas suítes verdes. Se ele sair em PRs encadeados, declare a ordem com
+`Depende-de: #N` na descrição: o portão cobra.
 
 ```bash
 # Na raiz do clone principal (você, ou o script de despacho):
