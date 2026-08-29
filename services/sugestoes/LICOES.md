@@ -1918,3 +1918,39 @@ duplicatas" checava se o TÍTULO sumia da página — e ele não some, porque o
 campo do formulário ECOA o que a pessoa acabou de digitar. Quem prova ausência
 de duplicata é a seção de resultado ("Nada parecido no quadro" vs. "Isto já
 foi sugerido?"), nunca o texto da página inteira.
+
+## Um guarda de aritmética pode ser a prova de que a mudança pedida é maior do que parece (29/08/2026)
+
+No mesmo dia do arquivamento, o mantenedor pediu mais uma coisa: ideias
+"Não planejado" também deveriam sumir do quadro e da faixa "Fora do trilho" —
+mas continuar abrindo pelo link direto (diferente de arquivar, que fecha até
+o link). Parecia um filtro de uma linha a mais em `sugestoes_ordenadas` e em
+`fora_do_trilho`.
+
+**`tests/test_faixa_de_roadmap.py` já tinha um guarda para exatamente esta
+tentação**, escrito no EVO-31: `nas_zonas + len(fora_do_trilho(quadro)) ==
+Sugestao.objects.count()`, com o nome
+`test_nenhuma_ideia_do_quadro_fica_de_fora_da_conta` e um docstring que diz,
+por extenso, *"é este guarda que impede alguém de 'limpar' a faixa escondendo
+um status"*. Um agente que só olhasse o pedido do mantenedor e não rodasse a
+suíte inteira teria dois caminhos ruins: ignorar o teste vermelho (a reação
+errada de sempre) ou "consertar" apagando a asserção (pior — apaga a memória
+do porquê ela existia).
+
+**O terceiro caminho, que é o certo:** o guarda não estava errado, estava
+medindo a pergunta antiga — *"a faixa mostra TUDO que existe?"*. A pergunta
+nova, depois da decisão do mantenedor, é outra — *"a faixa mostra tudo que ELA
+PROMETE mostrar?"*. A solução foi mudar o que "o total" significa em todo
+lugar de uma vez: `numeros_do_quadro()["sugestoes"]` (o número que o aluno lê)
+passou a excluir `nao_planejado`, do mesmo jeito que já excluía arquivadas — e
+o teste, reescrito, comparou a soma contra ESSE número, não mais contra
+`Sugestao.objects.count()`. A ideia recusada continua existindo (6 linhas no
+banco), só que 5 são "mostradas em algum lugar do quadro" — e a aritmética
+volta a bater, porque agora ela é honesta sobre a pergunta certa.
+
+**A lição:** quando um pedido do mantenedor colide de frente com um teste que
+tem docstring explicando por que ele existe, o teste não é obstáculo — é o
+mapa de qual OUTRA coisa a mudança também precisa tocar para não virar mentira
+silenciosa. Lei: `docs/decisoes/DECISAO-ocultar-nao-planejado.md` — que cita a
+decisão irmã (mesma sessão, mesmo dia) sobre a mesma pergunta, "isto sai de
+vista, mas de que jeito?", para um caso diferente (arquivar em vez de recusar).
