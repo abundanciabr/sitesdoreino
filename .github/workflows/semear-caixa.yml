@@ -46,11 +46,21 @@ on:
         default: meshcraft.top
 permissions:
   contents: read
-# MESMO grupo dos deploys e do rollback: este script fala com o `docker compose`
-# da VPS, e intercalar isso com um deploy em curso seria pedir dois donos para o
-# mesmo comando. Enfileira sem cancelar — cancelar pela metade é pior que esperar.
+# GRUPO PRÓPRIO, e isto foi aprendido caro (armadilhas/173). A primeira versão
+# usava `group: deploy`, como o rollback — o raciocínio era "não intercalar com um
+# deploy em curso". Só que `cancel-in-progress: false` NÃO significa "faz fila de
+# tamanho ilimitado": o GitHub guarda UM run pendente por grupo, e o próximo que
+# chega CANCELA o pendente anterior. Num repositório que recebe ~100 entregas por
+# dia, um disparo manual no grupo `deploy` é cancelado antes de começar — foi o que
+# aconteceu na primeira execução real, `cancelled` em 31s, sem uma linha de log.
+#
+# O grupo próprio impede o que precisava ser impedido (dois semeadores ao mesmo
+# tempo) sem entregar o run à fila mais movimentada do projeto. Intercalar com um
+# deploy é inofensivo aqui: o script não faz `up -d` nem toca imagem — ele roda um
+# `docker compose exec` de leitura e um `manage.py` idempotente. No pior caso o
+# container reinicia no meio e basta disparar de novo.
 concurrency:
-  group: deploy
+  group: semear-caixa
   cancel-in-progress: false
 jobs:
   semear:
