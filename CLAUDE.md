@@ -82,9 +82,24 @@ em 26/08/2026, após 8 rodadas de consultoria externa; análise em
 **Regra permanente:** depois de CADA tarefa relevante — concluída, falhou,
 ficou bloqueada, mudou de estado, incidente, decisão pedida ou respondida —
 **acrescente UM REGISTRO NOVO** em `painel/registros/` (molde no
-`painel/LEIA-ME.md`) e rode `node painel/gerar_manifesto.js`, **sem perguntar
-se deve**. Registrar é parte de terminar a tarefa; a muralha-do-painel do CI
-recusa PR com o livro inconsistente. As regras que importam:
+`painel/LEIA-ME.md`), **sem perguntar se deve**. Registrar é parte de terminar a
+tarefa; a muralha-do-painel do CI recusa PR com o livro inconsistente.
+
+**O que você commita é o registro, e SÓ o registro** (desde 28/08/2026, Onda 3
+do `docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`). `painel/painel.html` e
+`painel/livro-AAAAMM.js` são **gerados**, estão no `.gitignore` e quem os
+constrói é a integração — a muralha em todo PR e o deploy antes de montar a
+imagem. Rodar `node painel/gerar_manifesto.js` na sua máquina continua sendo
+bom (ele valida o registro e você vê o painel), mas o resultado **não entra no
+commit**: `.githooks/pre-commit` barra aqui e `ci/verificar_painel.py` reprova
+no CI. Motivo medido: enquanto os dois viajavam no Git, todo registro reescrevia
+os arquivos inteiros e dois robôs no mesmo dia colidiam sem ter escrito uma
+linha em comum — um PR de 4 arquivos levou oito tentativas para entrar
+(`armadilhas/156`). Para VER o painel na sua máquina: dois cliques em
+`painel/abrir-o-painel.cmd`. O painel de verdade é
+<https://meshcraft.top/admin/painel/>.
+
+As regras que importam:
 
 - **Nunca edite um registro existente.** Atualização, correção ou resposta é
   um registro NOVO — se ele fecha um pedido, aponte `responde_a`. A caixa
@@ -130,7 +145,8 @@ rito: `RITOS.md` §2 peça 4. O fluxo, sem perguntar "posso mergear?":
 2. `python ci/mergear.py <N> --conferir` — tudo verde?
 3. `python ci/mergear.py <N> --confirmo <N>` — mergeia e já confere no GitHub
    que o PR virou `MERGED`.
-4. O registro no livro (`painel/registros/` + `node painel/gerar_manifesto.js`);
+4. O registro no livro (`painel/registros/` — só o registro; o gerado é da
+   integração desde a Onda 3);
    e, se o merge toca `services/` ou `infra/`, o veredito do run de deploy
    (seção "Depois de todo merge que dispara deploy").
 

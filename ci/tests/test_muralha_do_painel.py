@@ -56,25 +56,94 @@ def _copia_painel(tmp_path: Path) -> Path:
     return raiz_falsa
 
 
+MARCAS_DA_RAIZ = ("CONSTITUICAO.md", "INVARIANTES.md", "ci", "contracts", "services")
+
+
+def _copia_com_git(tmp_path: Path) -> Path:
+    """A raiz falsa completa: painel/, ci/ e um repositório Git de verdade.
+
+    O último passo da muralha (`ci/verificar_painel.py`) parte de `git ls-files`
+    — sem repositório ele não tem como medir, e o cenário mediria outra coisa.
+    """
+    raiz = _copia_painel(tmp_path)
+    shutil.copy(RAIZ / ".gitignore", raiz / ".gitignore")
+    (raiz / "ci").mkdir(exist_ok=True)
+    for arquivo in ("verificar_painel.py", "_nucleo.py"):
+        shutil.copy(RAIZ / "ci" / arquivo, raiz / "ci" / arquivo)
+    for marca in MARCAS_DA_RAIZ:
+        alvo = raiz / marca
+        if not alvo.exists():
+            if marca.endswith(".md"):
+                alvo.write_text("cenário de teste" + chr(10), encoding="utf-8")
+            else:
+                alvo.mkdir(exist_ok=True)
+    for comando in (
+        ["git", "init", "-q"],
+        ["git", "config", "user.email", "teste@exemplo"],
+        ["git", "config", "user.name", "teste"],
+        ["git", "add", "-A"],
+        ["git", "commit", "-q", "-m", "cenário"],
+    ):
+        subprocess.run(comando, cwd=str(raiz), check=True, capture_output=True, timeout=120)
+    return raiz
+
+
 def test_passa_no_repositorio_real() -> None:
     proc = _roda(RAIZ)
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
-def test_reprova_com_manifesto_desatualizado(tmp_path: Path) -> None:
-    raiz_falsa = _copia_painel(tmp_path)
-    registro_novo = raiz_falsa / "painel" / "registros" / "20260826-999-sabotagem-do-teste.js"
+def test_registro_novo_e_MATERIALIZADO_e_nao_reprovado(tmp_path: Path) -> None:
+    """A lei mudou em 28/08/2026, e este teste é onde ela se lê.
+
+    ANTES: registro novo sem regenerar o manifesto REPROVAVA — e é por isso que
+    todo PR carregava dois arquivos gerados, que colidiam entre si a cada dia
+    movimentado (`armadilhas/156`).
+
+    AGORA: os artefatos não moram mais no Git. A muralha os CONSTRÓI, e um
+    registro novo é simplesmente materializado. O que continua reprovando é
+    registro INVÁLIDO (teste abaixo) e artefato gerado de volta no índice.
+    """
+    raiz_falsa = _copia_com_git(tmp_path)
+    registro_novo = raiz_falsa / "painel" / "registros" / "20260826-999-registro-do-teste.js"
     registro_novo.write_text(
         '(function(){ (window.REGISTROS = window.REGISTROS || []).push({'
-        'arquivo: "20260826-999-sabotagem-do-teste", tipo: "nota", quando: "2026-08-26",'
+        'arquivo: "20260826-999-registro-do-teste", tipo: "nota", quando: "2026-08-26",'
         'titulo: "t", detalhe: "d", autoridade: "sessao", evidencia: null,'
         'verificado_em: null, precisa_do_dono: false, responde_a: null,'
-        'gravidade: "info", frente: null, vence_em_dias: null});})();\n',
+        'gravidade: "info", frente: null, vence_em_dias: null});})();' + chr(10),
         encoding="utf-8",
     )
+    subprocess.run(
+        ["git", "add", "-A"], cwd=str(raiz_falsa), check=True, capture_output=True, timeout=120
+    )
     proc = _roda(raiz_falsa)
-    assert proc.returncode == 1, "registro novo sem regenerar o manifesto TEM de reprovar"
-    assert "gerar_manifesto" in (proc.stdout + proc.stderr)
+    assert proc.returncode == 0, (
+        "registro novo tem de ser MATERIALIZADO pela muralha, não reprovado:"
+        + chr(10) + proc.stdout + proc.stderr
+    )
+    assert (raiz_falsa / "painel" / "painel.html").is_file()
+
+
+def test_reprova_com_gerado_de_volta_no_indice_do_git(tmp_path: Path) -> None:
+    """O escritor único, medido: artefato commitado tem de ficar vermelho.
+
+    É a única divergência do painel que não se conserta regenerando — e é a que
+    reabriria, em silêncio, a colisão diária que a Onda 3 fechou.
+    """
+    raiz_falsa = _copia_com_git(tmp_path)
+    subprocess.run(
+        ["node", "painel/gerar_manifesto.js"],
+        cwd=str(raiz_falsa), check=True, capture_output=True, timeout=300,
+    )
+    subprocess.run(
+        ["git", "add", "-f", "painel/painel.html"],
+        cwd=str(raiz_falsa), check=True, capture_output=True, timeout=120,
+    )
+    proc = _roda(raiz_falsa)
+    saida = proc.stdout + proc.stderr
+    assert proc.returncode == 1, "gerado no índice do Git TEM de reprovar:" + chr(10) + saida
+    assert "painel/painel.html" in saida and "git rm --cached" in saida
 
 
 def test_reprova_com_registro_invalido(tmp_path: Path) -> None:

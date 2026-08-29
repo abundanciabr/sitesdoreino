@@ -13,3 +13,29 @@ __pycache__/
 
 # Documentos pessoais do mantenedor (podem conter credenciais) — NUNCA versionar
 docs/documentos/
+
+# =============================================================================
+# OS ARTEFATOS DO PAINEL — MATERIALIZAÇÃO DE ESCRITOR ÚNICO (Onda 3, 28/08/2026)
+#
+# `painel/painel.html` e `painel/livro-AAAAMM.js` são GERADOS de
+# `painel/registros/`. Até 28/08/2026 eles viajavam no Git, e por isso TODO PR
+# que registrasse qualquer coisa reescrevia os dois — dois robôs trabalhando no
+# mesmo dia colidiam por construção, num arquivo que ninguém escreveu à mão.
+# Medido: um PR de 4 arquivos levou OITO tentativas para entrar (armadilhas/156).
+#
+# A lei que nasce aqui (PLANO-MESTRE-ROBOS-SEM-COLISAO.md, Onda 3, F1):
+#   fonte multiescritor (registros/, um arquivo por ocorrência, só se acrescenta)
+#   + materialização de ESCRITOR ÚNICO (a integração gera, ninguém commita)
+#   + validação independente (ci/verificar_painel.py, de fora, em outra língua).
+#
+# Quem materializa: a muralha (em todo PR) e o deploy (antes de embutir o painel
+# na imagem da célula `admin`). Quem impede a volta: `ci/verificar_painel.py`
+# reprova se um destes voltar ao índice do Git, e `.githooks/pre-commit` barra
+# antes, aqui na máquina.
+#
+# Para VER o painel na sua máquina: dê dois cliques em `painel/abrir-o-painel.cmd`
+# (ou rode `node painel/gerar_manifesto.js` e abra `painel/painel.html`).
+# O painel de verdade, sempre no ar, é https://meshcraft.top/admin/painel/.
+# =============================================================================
+painel/painel.html
+painel/livro-*.js

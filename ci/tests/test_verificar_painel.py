@@ -75,6 +75,11 @@ def _repo_falso(tmp_path: Path) -> Path:
     raiz = tmp_path / "repo"
     raiz.mkdir()
     shutil.copytree(RAIZ / "painel", raiz / "painel")
+    # Os artefatos são MATERIALIZADOS aqui, e nunca commitados — é o desenho de
+    # escritor único da Onda 3, e o cenário precisa reproduzi-lo para medir o
+    # verificador de verdade. Gerar em vez de confiar na cópia também torna o
+    # cenário independente do que existe no disco de quem roda os testes.
+    shutil.copy(RAIZ / ".gitignore", raiz / ".gitignore")
     (raiz / "ci").mkdir()
     for arquivo in ("verificar_painel.py", "_nucleo.py"):
         shutil.copy(RAIZ / "ci" / arquivo, raiz / "ci" / arquivo)
@@ -88,6 +93,7 @@ def _repo_falso(tmp_path: Path) -> Path:
                 alvo.mkdir(exist_ok=True)
 
     for comando in (
+        ["node", "painel/gerar_manifesto.js"],
         ["git", "init", "-q"],
         ["git", "config", "user.email", "teste@exemplo"],
         ["git", "config", "user.name", "teste"],

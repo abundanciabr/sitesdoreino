@@ -10,8 +10,13 @@ acompanhe o livro, três peças precisam concordar:
    (é ele quem monta a matriz do `deploy-celula` e o escopo do `ci-celula`);
 2. o `deploy-celula` escuta `painel/**` no `paths:`
    (sem isso o workflow nem começa, e a peça 1 nunca é consultada);
-3. o build da `admin` COPIA `painel/` para dentro do contexto
+3. o build da `admin` MONTA o painel e COPIA `painel/` para dentro do contexto
    (sem isso a imagem sobe sem painel — e o deploy fica verde).
+
+Desde 28/08/2026 (Onda 3 — escritor único) a peça 3 ganhou uma metade nova: os
+artefatos do painel não moram mais no Git, então o build precisa CONSTRUÍ-LOS
+antes de copiar. Se alguém tirar essa linha, a cópia leva uma pasta sem
+`painel.html` — e o deploy fica verde do mesmo jeito.
 
 POR QUE UM TESTE, E NÃO UM COMENTÁRIO
 --------------------------------------
@@ -139,6 +144,51 @@ def test_o_build_da_admin_embute_o_painel():
     assert "test -f painel/painel.html" in texto, (
         "a cópia precisa ser fail-closed: pasta ausente tem de PARAR o build, "
         "nunca publicar uma imagem sem painel"
+    )
+
+
+def test_o_build_MONTA_o_painel_antes_de_copiar():
+    """A metade nova da peça 3: o deploy é o escritor único dos artefatos.
+
+    `painel.html` e `livro-AAAAMM.js` deixaram de morar no Git em 28/08/2026 —
+    eles eram a colisão diária entre robôs. Quem os constrói é a integração. Se
+    a linha do gerador sumir daqui, o `cp` copia uma pasta sem página, a rota do
+    painel responde "não veio nesta versão" e o deploy fica VERDE: exatamente o
+    falso-verde que esta suíte inteira existe para impedir.
+
+    A ORDEM importa e é medida: gerar depois de copiar não teria efeito nenhum
+    sobre a imagem, e passaria por uma verificação que só procurasse a linha.
+    """
+    texto = DEPLOY.read_text(encoding="utf-8")
+    assert "node painel/gerar_manifesto.js" in texto, (
+        "o build da `admin` precisa MONTAR o painel — os artefatos não são "
+        "mais commitados (Onda 3, escritor único)"
+    )
+    assert texto.index("node painel/gerar_manifesto.js") < texto.index(
+        "cp -R painel services/admin/painel_embutido"
+    ), "montar o painel DEPOIS de copiar não põe nada dentro da imagem"
+
+
+def test_os_artefatos_do_painel_nao_estao_no_indice_do_git():
+    """A lei do escritor único, medida no Git — não no `.gitignore` escrito.
+
+    O `.gitignore` só impede o descuido; `git add -f` passa por cima dele. Quem
+    responde "eles estão fora do índice?" é o índice. Um artefato de volta ao
+    Git devolveria a colisão de 28/08/2026 em silêncio: todo registro novo
+    reescrevendo o arquivo inteiro, dois robôs conflitando sem terem escrito uma
+    linha em comum (`armadilhas/156`).
+
+    O par deste teste, do lado do CI de todo PR, é `ci/verificar_painel.py`.
+    """
+    rastreados = subprocess.run(
+        ["git", "ls-files", "--", "painel/painel.html", "painel/livro-*.js"],
+        cwd=RAIZ,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert not rastreados, (
+        "artefato gerado do painel de volta no índice do Git: "
+        f"{rastreados} — tire com: git rm --cached <arquivo>"
     )
 
 

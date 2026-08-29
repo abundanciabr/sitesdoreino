@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# =============================================================================
+# GANCHO LOCAL — arquivo GERADO do painel não entra em commit (Onda 3).
+#
+# Desde 28/08/2026 `painel/painel.html` e `painel/livro-AAAAMM.js` são
+# materializados pela integração e não moram mais no Git: eles eram a colisão
+# diária entre robôs, porque todo registro novo reescrevia os dois arquivos
+# inteiros. O `.gitignore` já os mantém fora — este gancho pega o caso que o
+# `.gitignore` não pega: `git add -f`, deliberado ou por hábito.
+#
+# É o degrau LOCAL da escada (vale só nesta máquina e neste clone). O degrau que
+# vale para todo mundo é `ci/verificar_painel.py`, que reprova na muralha se um
+# gerado voltar ao índice — este aqui só evita a viagem inútil até o CI.
+#
+# Escapatória deliberada e visível, para o dia em que o desenho mudar:
+#   PERMITIR_GERADO_DO_PAINEL=sim git commit ...
+# =============================================================================
+gerados="$(git diff --cached --name-only --diff-filter=AM \
+  | grep -E '^painel/(painel\.html|livro-[0-9]{6}\.js)$' || true)"
+
+if [[ -n "$gerados" ]]; then
+  if [[ "${PERMITIR_GERADO_DO_PAINEL:-}" == "sim" ]]; then
+    echo "⚠️  Arquivo gerado do painel commitado com permissão explícita."
+    exit 0
+  fi
+  echo "❌ BLOQUEADO: arquivo GERADO do painel no commit."
+  echo "$gerados" | sed 's/^/     /'
+  echo
+  echo "   Estes arquivos são materializados pela integração desde 28/08/2026"
+  echo "   (Onda 3 — escritor único). Commitá-los devolve a colisão diária:"
+  echo "   todo registro novo reescreve o arquivo inteiro, e dois robôs no"
+  echo "   mesmo dia conflitam sem ter escrito uma linha em comum."
+  echo
+  echo "   O que fazer: git restore --staged $(echo "$gerados" | tr '\n' ' ')"
+  echo "   A fonte é painel/registros/ — é ELA que viaja no PR."
+  exit 1
+fi
+exit 0
