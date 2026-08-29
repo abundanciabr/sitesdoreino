@@ -65,7 +65,17 @@
   {% if request.ator.categoria == "aluno" %}
   <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.ir_para_a_caixa" %}</a>
   {% elif request.ator.categoria == "ex_aluno" %}
+  {% comment %}
+  [VOLTAR] Desde 29/08/2026 (`DECISAO-a-ficha-nao-se-apaga.md` §3) esta pessoa
+  PODE pedir para voltar, e a frase deixou de ser um beco. O botão leva ao mesmo
+  lugar de sempre — a Caixa, onde mora o formulário da fila. Um caminho novo só
+  para quem volta seriam duas portas para o mesmo pedido.
+
+  `pausado`, logo abaixo, continua SEM botão: aquele volta sozinho, e oferecer
+  um pedido para o que já vai acontecer é ansiedade sem destino.
+  {% endcomment %}
   <p class="andamento">{% t "landing.acesso_encerrado" %}</p>
+  <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.pedir_para_voltar" %}</a>
   {% elif request.ator.categoria == "pausado" %}
   <p class="andamento">{% t "landing.acesso_pausado" %}</p>
   {% elif request.ator.na_fila %}
