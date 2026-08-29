@@ -36,6 +36,19 @@ Três coisas ditas de propósito na tela:
     {% if recado %}<div class="aviso feito">{{ recado }}</div>{% endif %}
     {% if erro %}<div class="aviso calado">{{ erro }}</div>{% endif %}
 
+    {% if ideia.arquivada %}
+      <div class="aviso calado">
+        <b>Esta ideia está arquivada</b> — ela não aparece mais para o aluno, em lugar nenhum da Caixa.
+        Nada foi apagado: votos, comentários e histórico continuam intactos, e desarquivar traz tudo
+        de volta exatamente como estava.
+        {% if ideia.motivo_do_arquivamento %}<p class="citacao">{{ ideia.motivo_do_arquivamento }}</p>{% endif %}
+        <form method="post" action="{% url 'caixa_desarquivar' ideia.id %}" style="margin-top:8px">
+          {% csrf_token %}
+          <button type="submit" class="botao">Restaurar — voltar a mostrar ao aluno</button>
+        </form>
+      </div>
+    {% endif %}
+
     <h1>{{ ideia.titulo }}</h1>
     <p class="plateia">
       <b>{{ ideia.votos }}</b> votos ·
@@ -147,6 +160,22 @@ Três coisas ditas de propósito na tela:
         e ele não vem junto. Isso é uma trava de propósito, não um defeito — e quem recusa de
         verdade é a Caixa, não esta tela.
       </p>
+    {% endif %}
+
+    {% if not ideia.arquivada %}
+      <h2 class="secao">Arquivar</h2>
+      <p class="subtitulo">
+        Para spam, duplicata ou pedido enviado por engano. A ideia some do quadro do aluno, mas nada
+        se perde — votos, comentários e histórico continuam intactos, e dá para desarquivar quando quiser.
+      </p>
+      <form method="post" action="{% url 'caixa_arquivar' ideia.id %}" class="forma">
+        {% csrf_token %}
+        <label class="largo">
+          <span class="rotulo">Por que arquivar (opcional — só a equipe vê)</span>
+          <textarea name="motivo" rows="2" placeholder="Ex.: duplicata da #12"></textarea>
+        </label>
+        <button type="submit" class="botao calado">Arquivar esta ideia</button>
+      </form>
     {% endif %}
   {% endif %}
 </div>
