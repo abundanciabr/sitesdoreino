@@ -140,17 +140,25 @@ ETAPAS = (
     Sugestao.Status.IMPLEMENTADO,
 )
 
-# ...e as duas que NÃO são zona da faixa. Elas não somem da tela por isso: a
-# faixa do EVO-31 as lista logo abaixo do trilho, em "Fora do trilho". Escondê-las
-# faria a aritmética do quadro mentir — a soma das quatro zonas deixaria de dar o
-# total de sugestões do quadro, sem nada na tela explicando a diferença — e
-# enterraria a justificativa que a equipe é OBRIGADA a escrever desde o EVO-13
-# (`EXIGEM_JUSTIFICATIVA` em `moderacao.py`) justamente porque quem sugeriu vai
-# ler. Há guarda para a soma em `tests/test_faixa_de_roadmap.py`.
-SAIDAS = (
-    Sugestao.Status.NAO_PLANEJADO,
-    Sugestao.Status.MESCLADO,
-)
+# ...e as duas que NÃO são zona da faixa — mas só uma delas continua aparecendo
+# aqui embaixo, em "Fora do trilho" (`fora_do_trilho()`, ver o filtro lá).
+#
+# **`nao_planejado` saiu da faixa em 29/08/2026, decisão do mantenedor**, e é a
+# reversão de um design anterior: até então ela ficava, de propósito, porque a
+# equipe é OBRIGADA a escrever a justificativa desde o EVO-13
+# (`EXIGEM_JUSTIFICATIVA` em `moderacao.py`) e "quem sugeriu vai ler" era lido
+# como "vai ler NA PÁGINA". A garantia continua de pé — só que por outro canal:
+# o `Aviso` (o sininho) já entrega essa nota a quem interagiu, ANTES desta
+# mudança e independente dela (`avisos.py`). A página deixa de ser o único
+# lugar que carrega essa promessa, então ela pode parar de mostrar ideia
+# recusada sem quebrar a garantia. O link direto continua abrindo — só sumiu
+# da listagem (spec do pedido: `docs/decisoes/DECISAO-arquivar-ideia.md`,
+# que trata o mesmo tema para o arquivamento).
+#
+# `numeros_do_quadro()` exclui `nao_planejado` do total pela mesma razão que já
+# excluía as arquivadas: a aritmética honesta é sobre o que a página MOSTRA, não
+# sobre o que existe no banco (`tests/test_faixa_de_roadmap.py` mede isso).
+SAIDAS = (Sugestao.Status.MESCLADO,)
 
 # Quantos marcos uma zona desenha antes de virar "+ N". A zona é uma faixa
 # horizontal estreita: cem losangos ali não informam nada e ainda empurram as
@@ -358,10 +366,14 @@ def numeros_do_quadro(quadro) -> dict:
     mostram.
     """
     return {
-        "sugestoes": Sugestao.objects.visiveis().filter(quadro=quadro).count(),
-        "votos": Voto.objects.filter(
-            sugestao__quadro=quadro, sugestao__arquivada_em__isnull=True
-        ).count(),
+        "sugestoes": Sugestao.objects.visiveis()
+        .filter(quadro=quadro)
+        .exclude(status=Sugestao.Status.NAO_PLANEJADO)
+        .count(),
+        "votos": Voto.objects.filter(sugestao__quadro=quadro)
+        .exclude(sugestao__arquivada_em__isnull=False)
+        .exclude(sugestao__status=Sugestao.Status.NAO_PLANEJADO)
+        .count(),
         "implementadas": Sugestao.objects.visiveis()
         .filter(quadro=quadro, status=Sugestao.Status.IMPLEMENTADO)
         .count(),
@@ -438,7 +450,11 @@ def faixa_de_roadmap(quadro, *, categoria_slug: str = ""):
 
 
 def fora_do_trilho(quadro, *, categoria_slug: str = ""):
-    """As ideias que saíram do caminho: `nao_planejado` e `mesclado` (ver `SAIDAS`).
+    """As ideias que saíram do caminho por terem virado outra (`mesclado`, ver `SAIDAS`).
+
+    `nao_planejado` NÃO entra mais aqui (decisão do mantenedor, 29/08/2026): a
+    ideia recusada continua existindo e continua abrindo pelo link direto — só
+    parou de aparecer nas listas do quadro. Ver o comentário de `SAIDAS`, acima.
 
     Uma consulta, a mesma de cima, com outros estados — e o mesmo respeito ao
     filtro de categoria, pelo mesmo motivo. O `rotulo` é resolvido aqui porque o
@@ -660,12 +676,20 @@ def ver_quadro(request, ator):
             # `timezone.now()` é lido AQUI, na borda, e desce como parâmetro —
             # ver `sugestoes_ordenadas`. É o que permite ao guarda do ranking
             # cravar um instante e medir uma fórmula em vez de um relógio.
+            #
+            # `.exclude(nao_planejado)`: decisão do mantenedor (29/08/2026) — a
+            # ideia recusada sai da grade (ela já não fica em "Fora do trilho",
+            # ver `SAIDAS`), mas continua abrindo pelo link direto. Só aqui,
+            # porque só o quadro do aluno é alcançado por este pedido — a fila
+            # da equipe (`moderacao.ver_fila`) e a gestão do Admin continuam
+            # vendo tudo, e por isso não chamam `sugestoes_ordenadas` com este
+            # filtro.
             "sugestoes": sugestoes_ordenadas(
                 quadro,
                 categoria_slug=escolhida,
                 ordem=ordem,
                 agora=timezone.now(),
-            ),
+            ).exclude(status=Sugestao.Status.NAO_PLANEJADO),
             "votadas": _ids_votados(ator, quadro),
             "numeros": numeros_do_quadro(quadro),
             # A faixa de roadmap (EVO-31) mora DENTRO do quadro, como no
