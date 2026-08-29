@@ -102,6 +102,73 @@ queryset) — o custo é o mesmo, zero consultas a mais.
 
   <div class="avisos">
     {% for aviso in avisos %}
+      {% comment %}
+      [ASSUNTOS] Um cartão por ASSUNTO de carta, e a escolha é explícita
+      (29/08/2026). Até aqui havia um só, e o cartão assumia isso em silêncio:
+      o título dele monta `{% templatetag openblock %} url 'sugestao'
+      aviso.sugestao_id {% templatetag closeblock %}`, que estoura em
+      NoReverseMatch para qualquer carta sem `suggestion_id` — a PÁGINA INTEIRA
+      viraria 500 na primeira carta de matrícula. Por isso esta tela aprendeu o
+      assunto novo ANTES de alguém começar a publicá-lo.
+
+      O terceiro ramo — assunto que esta tela não conhece — é fail-VISÍVEL, a
+      mesma regra da página (Escolha 2 da DECISAO-fase-4-do-sininho): a pessoa
+      fica sabendo que existe um recado para ela e que somos nós que ainda não
+      sabemos mostrá-lo. O contrário seria desenhar um cartão de sugestão vazio,
+      com "(sugestão não encontrada)" e um link para lugar nenhum.
+      {% endcomment %}
+      {% if aviso.desconhecido %}
+      <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
+        <div class="aviso-topo">
+          {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
+          <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
+        </div>
+        <h3 class="aviso-titulo">Um aviso para você</h3>
+        <p class="aviso-mudanca">
+          Este recado é de um tipo que esta tela ainda não sabe mostrar. O
+          problema é nosso, não seu — a equipe já consegue vê-lo.
+        </p>
+        {% if not aviso.lido_em %}
+          <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+            {% csrf_token %}
+            <button type="submit" class="botao discreto">Marcar como lido</button>
+          </form>
+        {% endif %}
+      </article>
+      {% elif aviso.assunto == "matricula.situacao-alterada" %}
+      <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
+        <div class="aviso-topo">
+          <span class="selo selo-matricula-{{ aviso.situacao_nova }}">{{ aviso.situacao_nova_label }}</span>
+          {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
+          <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
+        </div>
+
+        {% comment %}
+        SEM LINK, de propósito: não há para onde levar. A ficha mora na célula
+        `alunos` e a tela dela é a do MANTENEDOR — mandar a pessoa para lá seria
+        oferecer uma porta que bate na cara, o defeito que a home já cometeu uma
+        vez (DECISAO-categorias-de-usuario).
+        {% endcomment %}
+        <h3 class="aviso-titulo">Sua situação na escola mudou</h3>
+
+        <p class="aviso-mudanca">
+          {% if aviso.situacao_anterior %}
+            <span class="de">{{ aviso.situacao_anterior_label }}</span>
+            <span class="seta-mudanca" aria-hidden="true">&rarr;</span>
+            <span class="para">{{ aviso.situacao_nova_label }}</span>
+          {% else %}
+            Agora: <span class="para">{{ aviso.situacao_nova_label }}</span>
+          {% endif %}
+        </p>
+
+        {% if not aviso.lido_em %}
+          <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+            {% csrf_token %}
+            <button type="submit" class="botao discreto">Marcar como lido</button>
+          </form>
+        {% endif %}
+      </article>
+      {% else %}
       <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
         <div class="aviso-topo">
           <span class="selo selo-{{ aviso.status_novo }}">{{ aviso.status_novo_label }}</span>
@@ -157,6 +224,7 @@ queryset) — o custo é o mesmo, zero consultas a mais.
           </form>
         {% endif %}
       </article>
+      {% endif %}
     {% empty %}
       <div class="recado">
         <h2>Nenhum aviso ainda</h2>
