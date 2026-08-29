@@ -403,6 +403,16 @@ jobs:
           TAG: ${{ steps.alvo_da_reversao.outputs.tag }}
           SAIDA: ${{ steps.reverter.outputs.stdout }}
           RESULTADO: ${{ steps.reverter.outcome }}
+          # As saídas das TENTATIVAS DE ATIVAÇÃO — é por elas que este passo
+          # distingue "a VPS nunca atendeu" de "algo chegou a rodar e parou no
+          # meio". Auditoria de 29/08/2026 (run 33260367237): a VPS recusou a
+          # conexão, NADA foi publicado, a reversão falhou pelo MESMO motivo —
+          # e a mensagem antiga mandava tratar a célula como QUEBRADA. Ela não
+          # estava: continuava servindo a versão anterior, 200 no ar. Mensagem
+          # alarmante errada gasta a confiança que a mensagem certa precisa.
+          ATIVACAO_1: ${{ steps.subir1.outputs.stdout }}
+          ATIVACAO_2: ${{ steps.subir2.outputs.stdout }}
+          ATIVACAO_3: ${{ steps.subir3.outputs.stdout }}
         run: |
           set -eu
           if [ -z "${TAG:-}" ]; then
@@ -416,9 +426,18 @@ jobs:
             echo "   O site está no ar com a versão ANTERIOR. Este run continua"
             echo "   vermelho de propósito: reverter apaga o fogo, não conserta"
             echo "   o defeito. Registre a ocorrência em painel/registros/."
+          elif [ -z "${ATIVACAO_1:-}${ATIVACAO_2:-}${ATIVACAO_3:-}" ]; then
+            # A VPS nunca atendeu: as três tentativas de ativação morreram ANTES
+            # de executar qualquer coisa (nenhuma produziu uma linha de saída).
+            # Logo NADA foi publicado — o site segue na versão anterior, e não
+            # há o que reverter. É a intermitência conhecida (armadilhas/127).
+            echo "⏸️  NADA FOI PUBLICADO: a VPS não atendeu nenhuma das tentativas"
+            echo "   (e por isso a reversão também não a alcançou — mesmo motivo)."
+            echo "   O site continua na versão ANTERIOR, são. Não há emergência:"
+            echo "   quando a VPS voltar, rode:  gh run rerun <este-run> --failed"
           else
             echo "❌ A reversão foi TENTADA e não se completou (resultado: $RESULTADO)."
-            echo "   Sem a marca REVERSAO-CONCLUIDA, a conexão pode ter aberto sem"
-            echo "   executar nada — foi o que aconteceu em 28/08/2026. Trate a"
-            echo "   célula como QUEBRADA e dispare o rollback manual."
+            echo "   A ativação chegou a EXECUTAR algo na VPS e parou no meio, e a"
+            echo "   volta não se confirmou (sem a marca REVERSAO-CONCLUIDA)."
+            echo "   Trate a célula como QUEBRADA e dispare o rollback manual."
           fi
