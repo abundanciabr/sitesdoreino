@@ -52,6 +52,11 @@ class Registro(models.Model):
     # acrescenta, e que nenhuma outra guarda, e a tentativa RECUSADA: quando a
     # Caixa diz nao, nada e escrito la, e sem esta linha o gesto nao teria
     # deixado rastro em lugar nenhum.
+    # [A MAO] 29/08/2026: o mantenedor pode pôr alguém na escola sem esperar a
+    # pessoa pedir. Verbo próprio pelo mesmo motivo dos de cima — "liberei quem
+    # pediu" e "cadastrei alguém que não pediu" são gestos diferentes, e quem
+    # ler esta tabela em meses precisa saber qual dos dois aconteceu.
+    CADASTRAR = "cadastrar"
     MOVER_IDEIA = "mover_ideia"
     AVALIAR_IDEIA = "avaliar_ideia"
     ASSINAR_OBRA = "assinar_obra"
@@ -62,6 +67,7 @@ class Registro(models.Model):
         (PROMOVER, "promover a administrador"),
         (DESPROMOVER, "remover de administrador"),
         (APAGAR, "apagar de vez"),
+        (CADASTRAR, "cadastrar alguem a mao"),
         (MOVER_IDEIA, "mover a ideia de fase"),
         (AVALIAR_IDEIA, "escrever a avaliacao da ideia"),
         (ASSINAR_OBRA, "assinar a obra de uma ideia"),

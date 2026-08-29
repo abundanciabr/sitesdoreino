@@ -173,6 +173,71 @@
   </div>
   {% endif %}
 
+  {% comment %}
+  [A MAO] O formulario de por alguem na escola sem esperar que ela peca
+  (`DECISAO-cadastrar-alguem-a-mao.md`, 29/08/2026).
+
+  DENTRO de um `<details>` fechado, e nao aberto no meio da pagina: cadastrar a
+  mao e a excecao, nao a rotina — quase todo mundo entra pelo formulario do
+  site. Um formulario grande e sempre aberto entre a fila e a lista empurraria
+  as duas coisas que o mantenedor de fato abre esta tela para fazer.
+
+  O campo da ESCOLA vem com `list=`: as opcoes sao as escolas que APARECEM nos
+  dados de hoje, nunca uma lista configurada — uma lista propria aqui seria uma
+  segunda verdade sobre quais escolas existem. Continua digitavel, porque no dia
+  em que a escola nao tiver nenhuma ficha (o primeiro aluno de todos) nao havera
+  de onde derivar.
+  {% endcomment %}
+  <details class="cadastrar">
+    <summary>Cadastrar alguem a mao</summary>
+    <p class="nota">
+      Use quando a pessoa nao consegue usar o formulario do site. Ela entra na
+      fila e e liberada na sequencia — o mesmo caminho de todo mundo, so que
+      depressa. Se a liberacao falhar, ela fica esperando aqui em cima, com o
+      botao Liberar do lado; nada se perde.
+    </p>
+    <form class="decidir" method="post" action="{% url 'escola_cadastrar' %}">
+      {% csrf_token %}
+      <label class="rotulo" for="novo-nome">Nome completo</label>
+      <input id="novo-nome" type="text" name="nome_completo" maxlength="255" required>
+      <label class="rotulo" for="novo-email">E-mail</label>
+      <input id="novo-email" type="email" name="email" maxlength="254" required>
+      <p class="nota">
+        E por este e-mail que a pessoa entra — precisa ser o mesmo da conta
+        Google dela, ou ela nao vai se reconhecer no site.
+      </p>
+      <label class="rotulo" for="novo-zap">WhatsApp com DDD</label>
+      <input id="novo-zap" type="text" name="whatsapp" maxlength="32" required>
+      <label class="rotulo" for="nova-turma">Turma (opcional)</label>
+      <input id="nova-turma" type="text" name="turma" maxlength="120">
+      <label class="rotulo" for="nova-compra">Quando comprou (opcional)</label>
+      <input id="nova-compra" type="date" name="comprou_em">
+      {% comment %}
+      O campo da escola so aparece quando ha MAIS DE UMA — ou quando nao ha
+      nenhuma ficha de onde tira-la. Com uma escola so, quem a descobre e o
+      servidor no envio: o identificador interno e ruido numa tela de leigo, e
+      ha um teste-guarda de 28/08 que o proibe de aparecer aqui
+      (`test_com_uma_escola_so_o_codigo_interno_dela_nao_aparece`).
+      {% endcomment %}
+      {% if mostrar_escola %}
+      <label class="rotulo" for="nova-escola">Escola</label>
+      <input id="nova-escola" type="text" name="site_id" maxlength="64" list="escolas" required>
+      <datalist id="escolas">
+        {% for escola in escolas_conhecidas %}<option value="{{ escola }}"></option>{% endfor %}
+      </datalist>
+      {% elif not escolas_conhecidas %}
+      <label class="rotulo" for="nova-escola">Escola</label>
+      <input id="nova-escola" type="text" name="site_id" maxlength="64" required>
+      <p class="nota">
+        Ainda nao ha nenhuma ficha aqui, entao nao tenho de onde tirar o nome da
+        escola. Escreva o mesmo identificador que aparece ao lado dos alunos nas
+        outras telas.
+      </p>
+      {% endif %}
+      <button class="sim" type="submit">Cadastrar e liberar</button>
+    </form>
+  </details>
+
   <h2 style="font-size:16px; margin:34px 0 10px">Os alunos</h2>
 
   {% if peneirando and alunos %}
