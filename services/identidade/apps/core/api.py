@@ -40,6 +40,7 @@ from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from apps.core import sessao as ses
+from apps.identidade.models import Identidade
 
 router = Router()
 
@@ -79,6 +80,23 @@ class SessionFull(Schema):
     nome_exibido: "str | None" = None
     papel: "str | None" = None
     email: "str | None" = None
+
+
+# [POR-EMAIL] O corpo e a resposta de `POST /pessoas/por-email` (29/08/2026,
+# `DECISAO-cadastrar-alguem-a-mao` não; a lei aqui é o Rito de Contrato do
+# aviso de liberação). Schemas próprios, e não reuso de `Session`: a pergunta é
+# outra — não há sessão nenhuma envolvida —, e um schema compartilhado faria o
+# contrato sugerir um parentesco que não existe.
+class EmailPedido(Schema):
+    """O e-mail de quem se procura. Comparado em minúsculas, sem espaços."""
+
+    email: str
+
+
+class PessoaPorEmail(Schema):
+    """O id opaco de quem tem aquele e-mail, ou `null` — nunca o e-mail de volta."""
+
+    id: "str | None" = None
 
 
 def _quem_e(request) -> "tuple[dict, object | None]":
@@ -152,3 +170,56 @@ def sessao_completa(request):
         # O MESMO objeto que `_quem_e` já resolveu — nunca um SELECT novo.
         resposta["email"] = ator.identidade.email
     return resposta
+
+
+@router.post(
+    "/pessoas/por-email",
+    response=PessoaPorEmail,
+    operation_id="findPersonByEmail",
+    summary="Qual o id de plataforma de quem tem este e-mail",
+    description=(
+        "Traduz um e-mail no id OPACO da pessoa — o mesmo `id` que getSession "
+        "devolve. Existe por uma razão só: uma célula que conhece as pessoas "
+        "por E-MAIL precisa endereçar uma carta para a caixa de avisos, que "
+        "entrega por ID DE PLATAFORMA. POST e não GET com o e-mail no caminho: "
+        "caminho de URL entra em log de servidor, em histórico de proxy e em "
+        "rastro de erro; corpo, não. Entra e-mail, sai id — esta porta nunca "
+        "devolve e-mail nem nome. Exige TOKENS_COMPLETOS_*, o mesmo degrau de "
+        "getSessionFull, porque quem manda um e-mail para ela descobre se ele "
+        "existe. `id: null` é RESPOSTA, não erro."
+    ),
+)
+def pessoa_por_email(request, corpo: EmailPedido):
+    """O id de quem tem este e-mail, ou `None` — a tradução que faltava.
+
+    **O mesmo degrau de `/sessao/completa`, e pelo mesmo motivo.** Aquele
+    DEVOLVE um e-mail; este RECEBE um e diz se ele existe. As duas coisas são
+    informação sobre uma pessoa, e a segunda permite enumerar: um par com
+    Bearer válido, mas sem o degrau, poderia varrer endereços e descobrir quem
+    tem conta. Conjunto vazio ⇒ 403 para todo mundo — fail-closed por
+    construção, igual ao vizinho.
+
+    **A normalização mora AQUI, e não em quem chama.** O e-mail é gravado como
+    o Google o entrega, e cada célula que precisasse procurar por ele teria de
+    repetir a mesma regra — a primeira que esquecesse devolveria `null` para
+    uma pessoa que existe, e o efeito seria um aviso que nunca chega, sem erro
+    nenhum no caminho. Quem é dono do dado é dono da forma canônica dele.
+
+    **Nunca 404.** "Não conheço esta pessoa" é uma resposta legítima e comum —
+    quem foi cadastrado à mão pelo painel e ainda não entrou com o Google não
+    tem identidade nenhuma aqui. Um 404 obrigaria quem chama a traduzir uma
+    exceção de rede em "não existe", que é exatamente onde um erro de verdade
+    passaria despercebido.
+    """
+    if request.auth not in settings.TOKENS_COMPLETOS:
+        raise HttpError(403, "este par não está autorizado a procurar por e-mail")
+
+    email = (corpo.email or "").strip().lower()
+    if not email:
+        # 422 e não `id: null`: pedido sem e-mail é desacordo de quem chama com
+        # o contrato, e responder "não conheço" a uma pergunta que não foi feita
+        # esconderia o defeito de quem escreveu o código.
+        raise HttpError(422, "email é obrigatório")
+
+    achada = Identidade.objects.filter(email=email).values_list("id", flat=True).first()
+    return {"id": achada}
