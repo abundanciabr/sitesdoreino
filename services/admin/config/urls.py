@@ -15,6 +15,7 @@ from apps.core.caixa import (
 from apps.core.divida import divida_json
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.painel import painel, painel_arquivo
+from apps.core.robos import robos
 from apps.core.views import (
     escola,
     escola_admin_promover,
@@ -93,6 +94,10 @@ urlpatterns = [
     path("caixa/", mesa, name="caixa"),
     path("caixa/travessia/", travessia, name="caixa_travessia"),
     path("caixa/esperando/", quem_espera, name="caixa_esperando"),
+    # A aba 4 — "Os robôs": o quadro da fila de trabalho (fila/ na raiz),
+    # embutida no build como o painel. Esperada desde 28/08/2026; a fonte
+    # nasceu em 29/08 e a aba nasceu junto (apps/core/robos.py).
+    path("caixa/robos/", robos, name="caixa_robos"),
     # A ideia por dentro, e as tres acoes. Elas sao POST de propósito: mudam
     # coisa, e um GET seria disparado por qualquer pre-carregamento de link do
     # navegador. Depois de agir, tudo redireciona de volta para a ideia — e o

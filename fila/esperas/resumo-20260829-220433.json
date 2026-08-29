@@ -1,0 +1,146 @@
+{
+  "gerado_em": "2026-08-29T22:04:33+00:00",
+  "total": 122,
+  "verdes": 110,
+  "por_classe": {
+    "checks": {
+      "vezes": 38,
+      "verdes": 37,
+      "estouros": 1,
+      "mediana_s": 71,
+      "maior_s": 172
+    },
+    "pouso": {
+      "vezes": 51,
+      "verdes": 44,
+      "estouros": 7,
+      "mediana_s": 94,
+      "maior_s": 1912
+    },
+    "deploy": {
+      "vezes": 7,
+      "verdes": 7,
+      "estouros": 0,
+      "mediana_s": 125,
+      "maior_s": 494
+    },
+    "run": {
+      "vezes": 26,
+      "verdes": 22,
+      "estouros": 4,
+      "mediana_s": 139,
+      "maior_s": 356
+    }
+  },
+  "estouros": [
+    {
+      "quando_utc": "2026-08-29T17:19:29+00:00",
+      "alvo": "checks:467",
+      "dizendo": "os checks do registro da auditoria (PR 467)",
+      "teto_s": 480,
+      "decorrido_s": 32,
+      "desfecho": "vermelho",
+      "detalhe": "checks REPROVADOS: muralhas"
+    },
+    {
+      "quando_utc": "2026-08-29T17:56:49+00:00",
+      "alvo": "run:33266900749",
+      "dizendo": "o conserto do quadro da Caixa rodando na producao",
+      "teto_s": 720,
+      "decorrido_s": 31,
+      "desfecho": "vermelho",
+      "detalhe": "semear-caixa terminou 'cancelled'"
+    },
+    {
+      "quando_utc": "2026-08-29T18:03:57+00:00",
+      "alvo": "pouso:482",
+      "dizendo": "o conserto da fila do semear pousar na linha principal",
+      "teto_s": 1500,
+      "decorrido_s": 78,
+      "desfecho": "vermelho",
+      "detalhe": "a pista TIROU o PR 482 da fila sem mergear — ela comentou o motivo no próprio PR; leia lá"
+    },
+    {
+      "quando_utc": "2026-08-29T19:40:08+00:00",
+      "alvo": "pouso:496",
+      "dizendo": "o pouso do PR 496 (guarda no indice + sino)",
+      "teto_s": 1500,
+      "decorrido_s": 1,
+      "desfecho": "vermelho",
+      "detalhe": "a pista TIROU o PR 496 da fila sem mergear — ela comentou o motivo no próprio PR; leia lá"
+    },
+    {
+      "quando_utc": "2026-08-29T19:52:09+00:00",
+      "alvo": "run:33271740839",
+      "dizendo": "o deploy disparado pelos merges do livro",
+      "teto_s": 900,
+      "decorrido_s": 171,
+      "desfecho": "vermelho",
+      "detalhe": "deploy-celula terminou 'failure'"
+    },
+    {
+      "quando_utc": "2026-08-29T20:47:55+00:00",
+      "alvo": "run:33274286218",
+      "dizendo": "a publicacao do conserto do www terminar no servidor",
+      "teto_s": 900,
+      "decorrido_s": 139,
+      "desfecho": "vermelho",
+      "detalhe": "deploy-infra terminou 'failure'"
+    },
+    {
+      "quando_utc": "2026-08-29T20:51:28+00:00",
+      "alvo": "pouso:504",
+      "dizendo": "o registro da prova pousar na main",
+      "teto_s": 1500,
+      "decorrido_s": 0,
+      "desfecho": "vermelho",
+      "detalhe": "a pista TIROU o PR 504 da fila sem mergear — ela comentou o motivo no próprio PR; leia lá"
+    },
+    {
+      "quando_utc": "2026-08-29T20:55:39+00:00",
+      "alvo": "pouso:505",
+      "dizendo": "o PR 505 (busca e filtro) pousar na main",
+      "teto_s": 1800,
+      "decorrido_s": 62,
+      "desfecho": "vermelho",
+      "detalhe": "a pista TIROU o PR 505 da fila sem mergear — ela comentou o motivo no próprio PR; leia lá"
+    },
+    {
+      "quando_utc": "2026-08-29T21:27:53+00:00",
+      "alvo": "pouso:511",
+      "dizendo": "PR 511 (veredito) pousar na main pela pista",
+      "teto_s": 5400,
+      "decorrido_s": 63,
+      "desfecho": "vermelho",
+      "detalhe": "a pista TIROU o PR 511 da fila sem mergear — ela comentou o motivo no próprio PR; leia lá"
+    },
+    {
+      "quando_utc": "2026-08-29T21:32:18+00:00",
+      "alvo": "pouso:510",
+      "dizendo": "o vigia do cadeado pousar na main",
+      "teto_s": 1500,
+      "decorrido_s": 94,
+      "desfecho": "vermelho",
+      "detalhe": "a pista TIROU o PR 510 da fila sem mergear — ela comentou o motivo no próprio PR; leia lá"
+    },
+    {
+      "quando_utc": "2026-08-29T21:36:08+00:00",
+      "alvo": "pouso:511",
+      "dizendo": "PR 511 (veredito da consultoria) pousar pela pista",
+      "teto_s": 3600,
+      "decorrido_s": 32,
+      "desfecho": "vermelho",
+      "detalhe": "a pista TIROU o PR 511 da fila sem mergear — ela comentou o motivo no próprio PR; leia lá"
+    },
+    {
+      "quando_utc": "2026-08-29T21:50:43+00:00",
+      "alvo": "run:33276845529",
+      "dizendo": "o deploy do conserto do recibo",
+      "teto_s": 1200,
+      "decorrido_s": 356,
+      "desfecho": "vermelho",
+      "detalhe": "deploy-celula terminou 'failure'"
+    }
+  ],
+  "arquivo": "resumo-20260829-220433"
+}
