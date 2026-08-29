@@ -1,0 +1,90 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Prontuário{% endblock %}
+{% block corpo %}
+{% comment %}
+[PRONTUARIO] `DECISAO-a-ficha-nao-se-apaga.md` §5 (29/08/2026).
+
+Esta tela existe por causa de uma escolha do mantenedor no mesmo dia: quem sai da
+escola e volta ganha uma FICHA NOVA a cada passagem, em vez de reaproveitar a
+antiga. Isso guarda a data e o motivo de cada saída — e o preço é que a mesma
+pessoa passa a ter mais de uma linha na lista de alunos. Aqui as linhas voltam a
+ser UMA pessoa.
+
+A ordem das passagens é a que a `alunos` manda: da mais antiga para a mais nova.
+Não reordene aqui — isto é uma história, e história se lê na ordem em que
+aconteceu.
+{% endcomment %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'escola_alunos' %}">&larr; Alunos</a>
+  <h1>Prontuário</h1>
+  <p class="subtitulo">Tudo o que a escola sabe sobre esta pessoa, em ordem.</p>
+
+  <div class="cartao">
+    <div class="valor"><b>{% if ficha.nome_completo %}{{ ficha.nome_completo }}{% else %}{{ email }}{% endif %}</b></div>
+    <div class="nota">{{ email }}</div>
+    {% if situacao_na_tela %}<div class="nota"><b>Hoje:</b> {{ situacao_na_tela }}</div>{% endif %}
+    {% if ficha.whatsapp %}<div class="nota">WhatsApp: {{ ficha.whatsapp }}</div>{% endif %}
+    {% if ficha.turma %}<div class="nota">Turma: {{ ficha.turma }}</div>{% endif %}
+    {% if ficha.comprou_em %}<div class="nota">Diz ter comprado em {{ ficha.comprou_em }}</div>{% endif %}
+  </div>
+
+  {% if nao_consigo_perguntar %}
+  <p class="aviso">
+    <b>Não consegui perguntar sobre esta pessoa agora.</b>
+    Isso é problema meu, não dela: a parte do sistema que guarda os alunos não
+    respondeu, ou a senha de par entre esta área e ela ainda não foi ligada.
+    <b>Isto não quer dizer que a pessoa não existe</b> — quer dizer que eu não
+    consegui olhar. Tente de novo em alguns minutos.
+  </p>
+  {% elif not passagens %}
+  <p class="aviso">
+    <b>Esta pessoa nunca teve ficha na escola.</b>
+    Ela entrou no site com este e-mail, e nada mais — nunca comprou e nunca
+    pediu entrada. Este vazio foi medido: eu perguntei, e a resposta foi
+    "ninguém com este e-mail".
+  </p>
+  {% else %}
+  <h2 style="font-size:16px; margin:30px 0 10px">A história, do começo</h2>
+  <p class="aviso">
+    Cada bloco abaixo é uma <b>passagem</b> pela escola. Quem sai e volta ganha
+    uma ficha nova — é assim que a data e o motivo da saída não se perdem.
+  </p>
+
+  <div class="cartoes">
+    {% for p in passagens %}
+    <div class="cartao">
+      <div class="rotulo">{{ p.estado_na_tela }}</div>
+      <div class="nota">
+        {% if p.origem == "liberado" %}Você liberou{% else %}Comprou pelo site{% endif %}
+        &middot; escola: {{ p.site_id }}
+      </div>
+      <div class="nota">
+        Ficha aberta em {{ p.criada_em_dia|date:"d/m/Y" }}
+        {% if p.decidida_em_dia %} &middot; última decisão sua em {{ p.decidida_em_dia|date:"d/m/Y" }}{% endif %}
+      </div>
+      {% if p.nome_completo != ficha.nome_completo %}
+      <div class="nota">Nesta passagem, o nome era: {{ p.nome_completo }}</div>
+      {% endif %}
+      {% if p.turma %}<div class="nota">Turma: {{ p.turma }}</div>{% endif %}
+      {% if p.motivo_recusa %}
+      <div class="nota"><b>Motivo que você escreveu:</b> {{ p.motivo_recusa }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <p style="margin-top:28px" class="aviso">
+    <b>Por que existe esta tela.</b>
+    Você decidiu em 29/08/2026 que nenhum cadastro é apagado: quem sai vira
+    <b>ex-aluno</b> e a ficha continua aqui. Quem quiser voltar pede entrada de
+    novo, e o pedido cai na fila com a marca de ex-aluno e o link para esta
+    página — para você decidir sabendo de tudo, inclusive dizer não de novo.
+  </p>
+</div>
+{% endblock %}

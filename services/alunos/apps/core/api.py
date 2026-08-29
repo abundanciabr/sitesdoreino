@@ -24,11 +24,12 @@ from apps.matriculas.services import (
     entrar_na_fila,
     CAMPOS_CORRIGIVEIS,
     alunos_do_painel,
-    apagar_matricula,
     atualizar_matricula,
     como_o_painel_ve,
     matricular,
     matriculas_que_valem,
+    passado_de_quem_espera,
+    prontuario_de,
     situacao_de,
 )
 
@@ -258,10 +259,20 @@ _LIST_PRE_ENROLLMENTS_OPENAPI = {
             "name": "site_id",
             "in": "query",
             "required": False,
-            "description": "OPCIONAL desde 28/08/2026 (DECISAO-categorias-de-usuario). Ausente\n= a fila de TODAS as escolas, e cada linha diz de qual veio.\nA plataforma e uma, as lojas sao N (Lei 9): o painel do dono e\nplataforma-inteira, e exigir que ele soubesse o codigo interno de\numa escola para ver quem espera seria pedir que ele guardasse um\nidentificador opaco. Passando o parametro, filtra — o comportamento\nde quem ja chamava assim nao muda.\n",
-            "schema": {
-                "type": "string",
-            },
+            "description": "OPCIONAL desde 28/08/2026 "
+            "(DECISAO-categorias-de-usuario). Ausente\n"
+            "= a fila de TODAS as escolas, e cada linha "
+            "diz de qual veio.\n"
+            "A plataforma e uma, as lojas sao N (Lei 9): "
+            "o painel do dono e\n"
+            "plataforma-inteira, e exigir que ele "
+            "soubesse o codigo interno de\n"
+            "uma escola para ver quem espera seria pedir "
+            "que ele guardasse um\n"
+            "identificador opaco. Passando o parametro, "
+            "filtra — o comportamento\n"
+            "de quem ja chamava assim nao muda.\n",
+            "schema": {"type": "string"},
         },
         {
             "name": "status",
@@ -269,10 +280,7 @@ _LIST_PRE_ENROLLMENTS_OPENAPI = {
             "required": False,
             "schema": {
                 "type": "string",
-                "enum": [
-                    "aguardando",
-                    "recusada",
-                ],
+                "enum": ["aguardando", "recusada"],
                 "default": "aguardando",
             },
         },
@@ -295,65 +303,270 @@ _LIST_PRE_ENROLLMENTS_OPENAPI = {
                                 "status",
                                 "criada_em",
                                 "esperando_ha_dias",
+                                "ja_foi_aluno",
+                                "passagens_anteriores",
+                                "saiu_em",
                             ],
                             "properties": {
-                                "id": {
-                                    "type": "string",
-                                },
+                                "id": {"type": "string"},
                                 "site_id": {
                                     "type": "string",
-                                    "description": "De qual escola veio este pedido. Passa a vir SEMPRE, e nao\nso quando a busca e de todas: uma resposta com forma\ndiferente conforme o filtro obriga cada consumidor a\ntratar dois casos, e o que esquecer trata o campo como\nausente em silencio.\n",
+                                    "description": "De "
+                                    "qual "
+                                    "escola "
+                                    "veio "
+                                    "este "
+                                    "pedido. "
+                                    "Passa "
+                                    "a "
+                                    "vir "
+                                    "SEMPRE, "
+                                    "e "
+                                    "nao\n"
+                                    "so "
+                                    "quando "
+                                    "a "
+                                    "busca "
+                                    "e "
+                                    "de "
+                                    "todas: "
+                                    "uma "
+                                    "resposta "
+                                    "com "
+                                    "forma\n"
+                                    "diferente "
+                                    "conforme "
+                                    "o "
+                                    "filtro "
+                                    "obriga "
+                                    "cada "
+                                    "consumidor "
+                                    "a\n"
+                                    "tratar "
+                                    "dois "
+                                    "casos, "
+                                    "e "
+                                    "o "
+                                    "que "
+                                    "esquecer "
+                                    "trata "
+                                    "o "
+                                    "campo "
+                                    "como\n"
+                                    "ausente "
+                                    "em "
+                                    "silencio.\n",
                                 },
-                                "email": {
-                                    "type": "string",
-                                    "format": "email",
-                                },
-                                "nome_completo": {
-                                    "type": "string",
-                                },
-                                "whatsapp": {
-                                    "type": "string",
-                                },
+                                "email": {"type": "string", "format": "email"},
+                                "nome_completo": {"type": "string"},
+                                "whatsapp": {"type": "string"},
                                 "comprou_em": {
-                                    "type": [
-                                        "string",
-                                        "null",
-                                    ],
+                                    "type": ["string", "null"],
                                     "format": "date",
                                 },
-                                "turma": {
-                                    "type": [
-                                        "string",
-                                        "null",
-                                    ],
-                                },
+                                "turma": {"type": ["string", "null"]},
                                 "status": {
                                     "type": "string",
-                                    "enum": [
-                                        "aguardando",
-                                        "recusada",
-                                    ],
+                                    "enum": ["aguardando", "recusada"],
                                 },
-                                "criada_em": {
-                                    "type": "string",
-                                    "format": "date-time",
+                                "criada_em": {"type": "string", "format": "date-time"},
+                                "esperando_ha_dias": {"type": "integer", "minimum": 0},
+                                "motivo_recusa": {"type": ["string", "null"]},
+                                "ja_foi_aluno": {
+                                    "type": "boolean",
+                                    "description": "A "
+                                    "pessoa "
+                                    "JA "
+                                    "TEVE "
+                                    "ficha "
+                                    "nesta "
+                                    "plataforma "
+                                    "antes "
+                                    "deste "
+                                    "pedido\n"
+                                    "(`DECISAO-a-ficha-nao-se-apaga.md` "
+                                    "§3). "
+                                    "Nasce "
+                                    "em "
+                                    "29/08/2026,\n"
+                                    "no "
+                                    "dia "
+                                    "em "
+                                    "que "
+                                    "ex-aluno "
+                                    "voltou "
+                                    "a "
+                                    "poder "
+                                    "pedir "
+                                    "entrada.\n"
+                                    "\n"
+                                    "CALCULADO "
+                                    "pela "
+                                    "celula, "
+                                    "e "
+                                    "nunca "
+                                    "gravado: "
+                                    "e "
+                                    "a "
+                                    "existencia "
+                                    "de\n"
+                                    "outra "
+                                    "ficha "
+                                    "com "
+                                    "o "
+                                    "mesmo "
+                                    "e-mail, "
+                                    "olhada "
+                                    "na "
+                                    "hora. "
+                                    "Um "
+                                    "campo\n"
+                                    "gravado "
+                                    "seria "
+                                    "um "
+                                    "segundo "
+                                    "lugar "
+                                    "guardando "
+                                    "o "
+                                    "que "
+                                    "as "
+                                    "fichas "
+                                    "ja\n"
+                                    "dizem, "
+                                    "e "
+                                    "os "
+                                    "dois "
+                                    "discordariam "
+                                    "no "
+                                    "primeiro "
+                                    "backfill.\n"
+                                    "\n"
+                                    "Para "
+                                    "que "
+                                    "serve, "
+                                    "em "
+                                    "uma "
+                                    "frase: "
+                                    "sem "
+                                    "ele, "
+                                    "o "
+                                    "mantenedor "
+                                    "decide\n"
+                                    "sobre "
+                                    "um "
+                                    "ex-aluno "
+                                    "achando "
+                                    "que "
+                                    "e "
+                                    "gente "
+                                    "nova "
+                                    "— "
+                                    "que "
+                                    "e\n"
+                                    "exatamente "
+                                    "o "
+                                    "erro "
+                                    "que "
+                                    "a "
+                                    "fila "
+                                    "existe "
+                                    "para "
+                                    "nao "
+                                    "cometer.\n",
                                 },
-                                "esperando_ha_dias": {
+                                "passagens_anteriores": {
                                     "type": "integer",
                                     "minimum": 0,
+                                    "description": "Quantas "
+                                    "fichas "
+                                    "anteriores "
+                                    "esta "
+                                    "pessoa "
+                                    "tem "
+                                    "(0 "
+                                    "quando "
+                                    "e "
+                                    "a\n"
+                                    "primeira "
+                                    "vez). "
+                                    "Nao "
+                                    "e "
+                                    "o "
+                                    "mesmo "
+                                    "que "
+                                    "`ja_foi_aluno`: "
+                                    "alguem\n"
+                                    "recusado "
+                                    "tres "
+                                    "vezes "
+                                    "tem "
+                                    "passagens "
+                                    "e "
+                                    "nunca "
+                                    "foi "
+                                    "aluno.\n",
                                 },
-                                "motivo_recusa": {
-                                    "type": [
-                                        "string",
-                                        "null",
-                                    ],
+                                "saiu_em": {
+                                    "type": ["string", "null"],
+                                    "format": "date-time",
+                                    "description": "Quando "
+                                    "a "
+                                    "ficha "
+                                    "anterior "
+                                    "mais "
+                                    "recente "
+                                    "foi "
+                                    "encerrada "
+                                    "— "
+                                    "`null`\n"
+                                    "se "
+                                    "nao "
+                                    "ha "
+                                    "ficha "
+                                    "anterior, "
+                                    "ou "
+                                    "se "
+                                    "nenhuma "
+                                    "foi "
+                                    "encerrada. "
+                                    "E "
+                                    "a\n"
+                                    "pista "
+                                    "que "
+                                    "a "
+                                    "tarja "
+                                    "da "
+                                    "tela "
+                                    "mostra "
+                                    '("saiu '
+                                    "em "
+                                    '..."), '
+                                    "e "
+                                    "ela "
+                                    "vem\n"
+                                    "pronta "
+                                    "pelo "
+                                    "mesmo "
+                                    "motivo "
+                                    "de "
+                                    "`esperando_ha_dias`: "
+                                    "quem "
+                                    "tem "
+                                    "o\n"
+                                    "relogio "
+                                    "e "
+                                    "a "
+                                    "linha "
+                                    "e "
+                                    "a "
+                                    "celula.\n",
                                 },
                             },
                         },
-                    },
-                },
+                    }
+                }
             },
-        },
+        }
     },
 }
 
@@ -540,6 +753,12 @@ def list_pre_enrollments(request, site_id: str = None, status: str = None):
     if site_id:
         fila = fila.filter(site_id=site_id)
 
+    # UMA consulta para a fila inteira, antes do laço: perguntar o passado
+    # dentro do `for` seria um N+1 que só aparece quando a fila cresce — ou
+    # seja, exatamente quando ela importa.
+    fila = list(fila)
+    passado = passado_de_quem_espera(fila)
+
     corpo = [
         {
             "id": str(m.pk),
@@ -559,6 +778,12 @@ def list_pre_enrollments(request, site_id: str = None, status: str = None):
             "criada_em": m.enrolled_at.isoformat(),
             "esperando_ha_dias": max((agora - m.enrolled_at).days, 0),
             "motivo_recusa": m.motivo_recusa or None,
+            # [VOLTAR] O passado desta pessoa nesta plataforma, calculado na hora
+            # (`DECISAO-a-ficha-nao-se-apaga.md`, 29/08/2026). Sem isto o
+            # mantenedor decide sobre um ex-aluno achando que e gente nova — e
+            # desde essa lei quem saiu PODE pedir para voltar, entao o caso
+            # deixou de ser hipotetico.
+            **passado[m.pk],
         }
         for m in fila
     ]
@@ -710,6 +935,354 @@ def get_student_standing(request, email: str):
         # bug como "esta pessoa é cadastrada".
         return JsonResponse({"detail": "e-mail inválido"}, status=422)
     return JsonResponse(situacao_de(email), status=200)
+
+
+DESCRICAO_PRONTUARIO = 'A porta do PRONTUARIO (`docs/decisoes/DECISAO-a-ficha-nao-se-apaga.md` §5).\nNasce em 29/08/2026, no mesmo dia em que o apagar morreu e em que ex-aluno\nvoltou a poder pedir entrada — e as tres coisas sao a mesma decisao.\n\nPOR QUE ELA PRECISA EXISTIR: desde essa lei, quem sai e volta ganha uma\nFICHA NOVA a cada passagem (a antiga fica `encerrada`, com a data e o motivo\nda saida intactos). Isso preserva a historia, e o preco e que a mesma pessoa\npassa a ter mais de uma linha. Esta porta e a resposta a esse preco: ela\nagrupa por e-mail e devolve a trajetoria em ordem.\n\nDERIVADA DAS FICHAS, nunca de uma tabela de historico. Um historico gravado\na parte discordaria das fichas no primeiro caso de borda, e as duas telas\nmostrariam pessoas diferentes — e a lei anti-duplicacao do `CLAUDE.md` existe\npara isso.\n\nNAO E `GET /alunos/{email}/situacao`, e as duas continuam. Aquela responde\n"esta pessoa pode entrar?" — sem PII, para o site inteiro consumir. Esta\nresponde "quem e esta pessoa para a escola?" — com PII, para UMA tela. Fundir\nas duas obrigaria a porta publica a carregar telefone, que e o oposto da §5\nda lei da fila.\n\n200 COM LISTA VAZIA para quem a celula nao conhece — NUNCA 404, pela mesma\nrazao da porta da situacao: um 404 obrigaria o consumidor a traduzir "erro"\nem "pessoa nova", e o primeiro que o tratasse como falha de rede mostraria a\ntela errada.\n\nPII: devolve o WhatsApp, e por isso e PORTA DE PAINEL — a mesma familia de\n`GET /pre-matriculas` e `GET /matriculas`, e sujeita a mesma regra: o\ntelefone sai por essas portas e por nenhuma outra, nunca em evento.\n'
+
+SUMMARY_PRONTUARIO = "O prontuario — a historia inteira de uma pessoa nesta escola"
+
+_GET_STUDENT_RECORD_OPENAPI = {
+    "parameters": [
+        {
+            "name": "email",
+            "in": "path",
+            "required": True,
+            "schema": {"type": "string", "format": "email"},
+        }
+    ],
+    "responses": {
+        "200": {
+            "description": "O prontuario. Sem ficha nenhuma, " "`passagens` vem vazio.",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [
+                            "email",
+                            "categoria",
+                            "nome_completo",
+                            "whatsapp",
+                            "turma",
+                            "comprou_em",
+                            "passagens",
+                        ],
+                        "properties": {
+                            "email": {"type": "string", "format": "email"},
+                            "categoria": {
+                                "type": "string",
+                                "enum": [
+                                    "cadastrado",
+                                    "na_fila",
+                                    "pausado",
+                                    "ex_aluno",
+                                    "aluno",
+                                ],
+                                "description": "A "
+                                "situacao "
+                                "de "
+                                "AGORA, "
+                                "e "
+                                "ela "
+                                "vem "
+                                "da "
+                                "MESMA "
+                                "funcao "
+                                "que "
+                                "responde\n"
+                                "`GET "
+                                "/alunos/{email}/situacao`. "
+                                "Duas "
+                                "contas "
+                                "para "
+                                "a "
+                                "mesma\n"
+                                "pergunta "
+                                "divergiriam "
+                                "no "
+                                "primeiro "
+                                "status "
+                                "novo "
+                                "— "
+                                "e "
+                                "a "
+                                "tela "
+                                "do\n"
+                                "prontuario "
+                                "mostraria "
+                                "uma "
+                                "coisa "
+                                "enquanto "
+                                "a "
+                                "porta "
+                                "da "
+                                "Caixa\n"
+                                "mostra "
+                                "outra "
+                                "para "
+                                "a "
+                                "mesma "
+                                "pessoa.\n",
+                            },
+                            "nome_completo": {
+                                "type": "string",
+                                "description": "Da "
+                                "passagem "
+                                "MAIS "
+                                "RECENTE "
+                                "— "
+                                "e "
+                                "nao "
+                                "da "
+                                "primeira. "
+                                "Quem "
+                                "volta "
+                                "anos\n"
+                                "depois "
+                                "pode "
+                                "ter "
+                                "mudado "
+                                "de "
+                                "nome, "
+                                "e "
+                                "o "
+                                "que "
+                                "o "
+                                "mantenedor "
+                                "precisa\n"
+                                "ler "
+                                "e "
+                                "como "
+                                "a "
+                                "pessoa "
+                                "se "
+                                "chama "
+                                "hoje. "
+                                "String "
+                                "vazia "
+                                "quando "
+                                "nao "
+                                "ha\n"
+                                "ficha "
+                                "nenhuma.\n",
+                            },
+                            "whatsapp": {"type": "string"},
+                            "turma": {"type": ["string", "null"]},
+                            "comprou_em": {
+                                "type": ["string", "null"],
+                                "format": "date",
+                            },
+                            "passagens": {
+                                "type": "array",
+                                "description": "Uma "
+                                "entrada "
+                                "por "
+                                "ficha, "
+                                "da "
+                                "MAIS "
+                                "ANTIGA "
+                                "para "
+                                "a "
+                                "mais "
+                                "nova "
+                                "— "
+                                "o\n"
+                                "contrario "
+                                "das "
+                                "outras "
+                                "listas "
+                                "desta "
+                                "API, "
+                                "e "
+                                "de "
+                                "proposito: "
+                                "aqui "
+                                "o\n"
+                                "que "
+                                "se "
+                                "le "
+                                "e "
+                                "uma "
+                                "historia, "
+                                "e "
+                                "historia "
+                                "se "
+                                "conta "
+                                "na "
+                                "ordem "
+                                "em "
+                                "que\n"
+                                "aconteceu.\n",
+                                "items": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": [
+                                        "id",
+                                        "site_id",
+                                        "status",
+                                        "origem",
+                                        "nome_completo",
+                                        "whatsapp",
+                                        "turma",
+                                        "comprou_em",
+                                        "criada_em",
+                                        "decidido_em",
+                                        "decidido_por",
+                                        "motivo_recusa",
+                                    ],
+                                    "properties": {
+                                        "id": {"type": "string"},
+                                        "site_id": {"type": "string"},
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "ativa",
+                                                "suspensa",
+                                                "encerrada",
+                                                "reembolsada",
+                                                "aguardando",
+                                                "recusada",
+                                            ],
+                                            "description": "TODOS "
+                                            "os "
+                                            "estados, "
+                                            "inclusive "
+                                            "os "
+                                            "da "
+                                            "fila "
+                                            "— "
+                                            "este "
+                                            "e "
+                                            "o "
+                                            "unico\n"
+                                            "lugar "
+                                            "da "
+                                            "API "
+                                            "onde "
+                                            "as "
+                                            "duas "
+                                            "familias "
+                                            "aparecem "
+                                            "juntas. "
+                                            "As\n"
+                                            "outras "
+                                            "portas "
+                                            "separam "
+                                            "de "
+                                            "proposito "
+                                            "(uma "
+                                            "decide "
+                                            "entrada,\n"
+                                            "a "
+                                            "outra "
+                                            "administra "
+                                            "quem "
+                                            "entrou); "
+                                            "um "
+                                            "prontuario "
+                                            "que\n"
+                                            "escondesse "
+                                            "as "
+                                            "passagens "
+                                            "recusadas "
+                                            "contaria "
+                                            "a "
+                                            "historia\n"
+                                            "pela "
+                                            "metade.\n",
+                                        },
+                                        "origem": {
+                                            "type": "string",
+                                            "enum": ["comprou", "liberado"],
+                                        },
+                                        "nome_completo": {"type": "string"},
+                                        "whatsapp": {"type": "string"},
+                                        "turma": {"type": ["string", "null"]},
+                                        "comprou_em": {
+                                            "type": ["string", "null"],
+                                            "format": "date",
+                                        },
+                                        "criada_em": {
+                                            "type": "string",
+                                            "format": "date-time",
+                                        },
+                                        "decidido_em": {
+                                            "type": ["string", "null"],
+                                            "format": "date-time",
+                                            "description": "Quando "
+                                            "esta "
+                                            "ficha "
+                                            "foi "
+                                            "decidida "
+                                            "pela "
+                                            "ultima "
+                                            "vez "
+                                            "—\n"
+                                            "liberada, "
+                                            "recusada, "
+                                            "pausada "
+                                            "ou "
+                                            "encerrada. "
+                                            "`null` "
+                                            "enquanto\n"
+                                            "ninguem "
+                                            "decidiu "
+                                            "nada.\n",
+                                        },
+                                        "decidido_por": {
+                                            "type": "string",
+                                            "description": "Id "
+                                            "de "
+                                            "plataforma "
+                                            "de "
+                                            "quem "
+                                            "decidiu "
+                                            "— "
+                                            "nunca "
+                                            "o "
+                                            "e-mail "
+                                            "dele.\n"
+                                            "E-mail "
+                                            "muda "
+                                            "de "
+                                            "dono; "
+                                            "o "
+                                            "id, "
+                                            "nao.\n",
+                                        },
+                                        "motivo_recusa": {"type": "string"},
+                                    },
+                                },
+                            },
+                        },
+                    }
+                }
+            },
+        },
+        "422": {"description": "E-mail invalido"},
+    },
+}
+
+
+@router.get(
+    "/alunos/{email}/prontuario",
+    operation_id="getStudentRecord",
+    summary=SUMMARY_PRONTUARIO,
+    description=DESCRICAO_PRONTUARIO,
+    openapi_extra=_GET_STUDENT_RECORD_OPENAPI,
+)
+def get_student_record(request, email: str):
+    """[PRONTUARIO] A historia inteira de uma pessoa. Ver `prontuario_de`.
+
+    Nenhum 404, pela mesma razão da porta da situação ao lado: quem a célula
+    não conhece volta com `passagens: []`. "Não conheço esta pessoa" é uma
+    resposta, e um erro obrigaria cada consumidor a traduzi-lo em tela.
+    """
+    try:
+        validate_email(email)
+    except ValidationError:
+        return JsonResponse({"detail": "e-mail inválido"}, status=422)
+    return JsonResponse(prontuario_de(email), status=200)
 
 
 # [GESTAO] Espelhos EXATOS do contrato congelado — GERADOS a partir dele, e as
@@ -975,44 +1548,11 @@ def update_enrollment(request, id: str):
     return JsonResponse(como_o_painel_ve(linha), status=200)
 
 
-DESCRICAO_APAGAR = 'O direito da pessoa de sumir do sistema\n(`docs/decisoes/DECISAO-administradores-e-apagar.md` §4). Decidido pelo\nmantenedor em 28/08/2026, contra a recomendacao do agente de esperar o\nprimeiro pedido real — com o preco apresentado antes da escolha.\n\nAPAGA A LINHA, e nao troca o estado. Nao ha desfazer, e nao ha versao\n"apagada" para consultar depois: e isso que separa esta porta do\n`PATCH` com `status: encerrada`, que existe ao lado para o caso comum\nde tirar o acesso podendo voltar atras.\n\nO QUE SOBRA depois: nada aqui. Do lado de quem chamou, uma linha de\nauditoria dizendo que a ficha X foi apagada, em tal dia, por tal pessoa\n— sem nome, sem telefone, sem e-mail. A auditoria da area administrativa\ne append-only por trigger no banco, entao ela NUNCA pode ter guardado\ndado que a pessoa forneceu; se tivesse, esta porta seria impossivel de\ncumprir.\n\nNAO apaga quem esta na FILA: linha `aguardando`/`recusada` responde 409,\npela mesma razao do `PATCH` — a fila tem porta propria, que sabe\nconferir "ja decidida" e guardar o motivo.\n'
-
-_DELETE_ENROLLMENT_OPENAPI = {
-    "parameters": [
-        {"name": "id", "in": "path", "required": True, "schema": {"type": "string"}}
-    ],
-    "responses": {
-        "204": {
-            "description": "Apagada. Sem corpo — nao ha o que devolver "
-            "sobre uma ficha que nao existe mais"
-        },
-        "404": {"description": "Nao ha matricula com este id"},
-        "409": {
-            "description": "Esta linha esta na FILA — decida por POST "
-            "/pre-matriculas/{id}/decisao"
-        },
-    },
-}
-
-
-@router.delete(
-    "/matriculas/{id}",
-    operation_id="deleteEnrollment",
-    summary="Apagar a matricula DE VEZ — irreversivel",
-    description=DESCRICAO_APAGAR,
-    # `response={204: None}` NÃO é decoração: sem ele o django-ninja declara um
-    # `200: OK` de fábrica na exportação, e o freeze reprova contra um contrato
-    # que só prevê 204/404/409. É a forma de dizer "esta operação não devolve
-    # corpo" para o exportador, não só para quem lê.
-    response={204: None},
-    openapi_extra=_DELETE_ENROLLMENT_OPENAPI,
-)
-def delete_enrollment(request, id: str):
-    """[GESTAO] Apaga de vez. Ver `apagar_matricula`."""
-    resultado = apagar_matricula(id_da_linha=id)
-    if resultado == "nao-encontrada":
-        raise HttpError(404, "matrícula inexistente")
-    if resultado == "na-fila":
-        raise HttpError(409, "esta linha está na fila — decida por /pre-matriculas")
-    # 204 sem corpo: não há o que devolver sobre uma ficha que não existe mais.
-    return HttpResponse(status=204)
+# A operacao `deleteEnrollment` MORREU AQUI em 29/08/2026, junto com o
+# `apagar_matricula` que ela chamava e com a propria operacao no contrato
+# (`DECISAO-a-ficha-nao-se-apaga.md`). O mantenedor decidiu que o cadastro de um
+# aluno NUNCA e apagado: quem sai vira ex-aluno pelo `PATCH` acima, a ficha fica,
+# e quem quiser voltar pede entrada de novo pela fila.
+#
+# A ausencia esta escrita aqui porque uma porta que some sem explicacao e um
+# convite a recria-la. Guarda: `tests/test_a_ficha_nao_se_apaga.py`.

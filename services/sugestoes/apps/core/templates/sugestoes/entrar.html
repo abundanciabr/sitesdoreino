@@ -142,6 +142,29 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
             </p>
             <span class="email">{{ email }}</span>
           </div>
+        {% elif voltando %}
+          {% comment %}
+          [VOLTAR] A tela de quem JA FOI aluno e quer voltar
+          (`DECISAO-a-ficha-nao-se-apaga.md` §3, 29/08/2026). Ate a vespera esta
+          pessoa via um recado sem formulario — "fale com a escola" —, e o
+          mantenedor decidiu que a escola e um lugar de onde se sai e para onde
+          se volta.
+
+          O FORMULARIO ABAIXO E O MESMO, e isso e de proposito: mesma rota,
+          mesmos campos, mesma fila. O que muda e o TEXTO — porque dizer "nao
+          encontramos matricula para esse e-mail" a quem estudou aqui um ano e
+          apagar a historia dela na cara dela.
+          {% endcomment %}
+          <div class="recado">
+            <h2>Seu acesso à escola foi encerrado</h2>
+            <p>
+              Você está no site como <strong>{{ email }}</strong>, e este
+              cadastro não está mais ativo — por isso a Caixa de Sugestões não
+              abre. <strong>Se você quer voltar a estudar aqui, é só pedir
+              abaixo.</strong> Seu pedido entra na fila e a equipe decide; ela
+              já sabe que você foi aluno, e vê o seu histórico.
+            </p>
+          </div>
         {% else %}
           <div class="recado">
             <h2>Não encontramos matrícula para esse e-mail</h2>
@@ -151,6 +174,8 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
               preencha abaixo que a gente confere e libera o seu acesso.
             </p>
           </div>
+        {% endif %}
+        {% if not ja_pediu %}
           {% if erros %}
             <ul class="erros">
               {% for erro in erros %}<li>{{ erro }}</li>{% endfor %}
@@ -182,7 +207,9 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
               <span>Sua turma</span>
               <input name="turma" value="{{ rascunho.turma|default:'' }}">
             </label>
-            <button type="submit" class="botao">Pedir liberação</button>
+            <button type="submit" class="botao">
+              {% if voltando %}Pedir para voltar{% else %}Pedir liberação{% endif %}
+            </button>
           </form>
         {% endif %}
       {% elif titulo %}

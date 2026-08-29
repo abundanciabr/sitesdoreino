@@ -423,23 +423,121 @@ def atualizar_matricula(
         return linha, "ok"
 
 
-def apagar_matricula(*, id_da_linha: str) -> str:
-    """[GESTAO] Apaga a matrícula DE VEZ. Devolve `"ok"`, `"nao-encontrada"` ou `"na-fila"`.
+# --------------------------------------------------------------- [PRONTUARIO]
+# `docs/decisoes/DECISAO-a-ficha-nao-se-apaga.md`, 29/08/2026. A lei que tirou do
+# sistema a capacidade de apagar uma ficha decidiu, na mesma frase, que quem sai e
+# volta ganha uma ficha NOVA a cada passagem — a antiga fica `encerrada`, com a
+# data e o motivo da saida intactos.
+#
+# O ganho e a historia. O preco e que a mesma pessoa passa a ter mais de uma
+# linha, e estas funcoes sao a resposta a esse preco: elas juntam por e-mail o
+# que as fichas contam separadas.
+#
+# `apagar_matricula` MORREU AQUI no mesmo dia. Nao ha caminho, em lugar nenhum
+# desta celula, que apague uma Matricula — e a porta `DELETE /matriculas/{id}`
+# saiu do contrato junto. Guarda: `tests/test_a_ficha_nao_se_apaga.py`.
 
-    **Apaga a linha**, e não troca o estado — é isso que separa esta operação
-    de `atualizar_matricula(status="encerrada")`, que existe ao lado para o
-    caso comum de tirar o acesso podendo voltar atrás
-    (`DECISAO-administradores-e-apagar` §4).
 
-    A recusa para linha da FILA é a mesma do `PATCH`, e pelo mesmo motivo: a
-    fila tem porta própria, que sabe conferir "já decidida" e guardar o motivo.
+def como_o_prontuario_ve(matricula: Matricula) -> dict:
+    """Uma PASSAGEM pela escola, como o prontuario a mostra.
+
+    Reusa `como_o_painel_ve` em vez de remontar a forma: os campos comuns tem
+    uma fonte so, e o dia em que um deles mudar de nome nao deixa duas telas
+    discordando sobre a mesma ficha.
+
+    O `email` sai da passagem de proposito: ele e da PESSOA, e no prontuario
+    aparece uma vez, no topo. Repeti-lo em cada linha sugeriria que ele poderia
+    ser diferente entre elas — e a porta que edita ficha recusa mexer nele
+    exatamente porque ele e a identidade.
     """
-    with transaction.atomic():
-        try:
-            linha = Matricula.objects.select_for_update().get(pk=id_da_linha)
-        except (Matricula.DoesNotExist, ValueError, TypeError):
-            return "nao-encontrada"
-        if linha.status in Matricula.STATUS_DA_FILA:
-            return "na-fila"
-        linha.delete()
-        return "ok"
+    forma = como_o_painel_ve(matricula)
+    forma.pop("email")
+    forma.update(
+        {
+            "decidido_em": (
+                matricula.decidido_em.isoformat() if matricula.decidido_em else None
+            ),
+            "decidido_por": matricula.decidido_por,
+            "motivo_recusa": matricula.motivo_recusa,
+        }
+    )
+    return forma
+
+
+def prontuario_de(email: str) -> dict:
+    """A historia inteira de uma pessoa nesta escola — a resposta agrupada.
+
+    Ordem CRESCENTE, ao contrario das outras listas desta celula: aqui se le uma
+    historia, e historia se conta na ordem em que aconteceu.
+
+    A `categoria` NAO e recalculada aqui: e a mesma `situacao_de` que responde
+    `GET /alunos/{email}/situacao` para a plataforma inteira. Uma segunda conta
+    divergiria no primeiro status novo, e o prontuario passaria a dizer uma coisa
+    enquanto a porta da Caixa diz outra sobre a MESMA pessoa.
+
+    Sem ficha nenhuma devolve `passagens: []` e os campos vazios — nunca um erro.
+    "Nao conheco esta pessoa" e uma resposta, e quem chama precisa poder mostra-la
+    sem traduzir exceçao em tela.
+    """
+    email = email.strip().lower()
+    # A MESMA string normalizada vai para as duas consultas. Se uma normalizasse
+    # e a outra nao, existiria o caso de um prontuario com fichas listadas e
+    # `categoria: cadastrado` — a tela diria "nunca esteve aqui" logo acima da
+    # historia dela.
+    fichas = list(Matricula.objects.filter(email=email).order_by("enrolled_at"))
+    recente = fichas[-1] if fichas else None
+    return {
+        "email": email,
+        "categoria": situacao_de(email)["categoria"],
+        # Da passagem MAIS RECENTE, e nao da primeira: quem volta anos depois
+        # pode ter mudado de nome ou de telefone, e o que o mantenedor precisa
+        # para falar com a pessoa e o dado de hoje.
+        "nome_completo": recente.name if recente else "",
+        "whatsapp": recente.whatsapp if recente else "",
+        "turma": (recente.turma or None) if recente else None,
+        "comprou_em": (
+            recente.comprou_em.isoformat() if recente and recente.comprou_em else None
+        ),
+        "passagens": [como_o_prontuario_ve(m) for m in fichas],
+    }
+
+
+def passado_de_quem_espera(linhas) -> dict:
+    """Para cada linha da fila, o que a pessoa JA VIVEU aqui antes dela.
+
+    Devolve `{pk_da_linha: {ja_foi_aluno, passagens_anteriores, saiu_em}}`.
+
+    UMA consulta para a fila inteira, e nao uma por linha: a fila e uma tela que
+    o mantenedor abre o dia todo, e um N+1 aqui e o tipo de lentidao que so
+    aparece quando a fila cresce — ou seja, exatamente quando ela importa.
+
+    "Ja foi aluno" NAO e "tem outra ficha": quem foi recusado tres vezes tem tres
+    fichas e nunca entrou. A pergunta e respondida por
+    `STATUS_QUE_JA_DERAM_ACESSO`, uma lista de permissao.
+    """
+    linhas = list(linhas)
+    if not linhas:
+        return {}
+
+    emails = {m.email for m in linhas}
+    ids_agora = {m.pk for m in linhas}
+    anteriores = Matricula.objects.filter(email__in=emails).exclude(pk__in=ids_agora)
+
+    por_email: dict[str, dict] = {}
+    for m in anteriores:
+        resumo = por_email.setdefault(
+            m.email,
+            {"ja_foi_aluno": False, "passagens_anteriores": 0, "saiu_em": None},
+        )
+        resumo["passagens_anteriores"] += 1
+        if m.status in Matricula.STATUS_QUE_JA_DERAM_ACESSO:
+            resumo["ja_foi_aluno"] = True
+        if m.status == Matricula.STATUS_ENCERRADA and m.decidido_em:
+            # A MAIS RECENTE das saidas: quem entrou e saiu tres vezes precisa
+            # aparecer com a ultima, nao com a primeira.
+            anterior = resumo["saiu_em"]
+            if anterior is None or m.decidido_em.isoformat() > anterior:
+                resumo["saiu_em"] = m.decidido_em.isoformat()
+
+    vazio = {"ja_foi_aluno": False, "passagens_anteriores": 0, "saiu_em": None}
+    return {m.pk: dict(por_email.get(m.email, vazio)) for m in linhas}
