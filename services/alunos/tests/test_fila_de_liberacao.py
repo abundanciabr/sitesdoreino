@@ -363,6 +363,14 @@ def test_a_fila_devolve_whatsapp_e_dias_de_espera(client, auth):
         "criada_em",
         "esperando_ha_dias",
         "motivo_recusa",
+        # [VOLTAR] Os tres de 29/08/2026 (`DECISAO-a-ficha-nao-se-apaga.md`):
+        # o passado da pessoa nesta plataforma, para o painel nao decidir sobre
+        # um ex-aluno achando que e gente nova. O conjunto e EXATO de proposito
+        # — campo novo nesta porta e PII a mais viajando, e precisa passar por
+        # alguem que decida isso.
+        "ja_foi_aluno",
+        "passagens_anteriores",
+        "saiu_em",
     }
 
 
