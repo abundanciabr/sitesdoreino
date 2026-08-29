@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260829-093-a-home-de-quem-nunca-pediu-deixou-de-ser-um-beco",
+  arquivo: "20260829-095-a-home-de-quem-nunca-pediu-deixou-de-ser-um-beco",
   tipo: "entrega",
   quando: "2026-08-29",
   titulo: "A home de quem nunca pediu deixou de ser um beco — agora ela convida a pedir entrada",
