@@ -523,6 +523,11 @@ def passado_de_quem_espera(linhas) -> dict:
     ids_agora = {m.pk for m in linhas}
     anteriores = Matricula.objects.filter(email__in=emails).exclude(pk__in=ids_agora)
 
+    # `saiu_em` viaja como DATETIME por dentro e vira texto so na saida.
+    # Comparar as datas em ISO funcionaria hoje — todas vem do banco em UTC, com
+    # o mesmo formato — e e o tipo de coisa que a proxima sessao copia para um
+    # lugar onde os formatos NAO sao iguais. Ordenar tempo comparando texto e
+    # correto por acidente; comparar datetime e correto por construcao.
     por_email: dict[str, dict] = {}
     for m in anteriores:
         resumo = por_email.setdefault(
@@ -536,8 +541,12 @@ def passado_de_quem_espera(linhas) -> dict:
             # A MAIS RECENTE das saidas: quem entrou e saiu tres vezes precisa
             # aparecer com a ultima, nao com a primeira.
             anterior = resumo["saiu_em"]
-            if anterior is None or m.decidido_em.isoformat() > anterior:
-                resumo["saiu_em"] = m.decidido_em.isoformat()
+            if anterior is None or m.decidido_em > anterior:
+                resumo["saiu_em"] = m.decidido_em
 
     vazio = {"ja_foi_aluno": False, "passagens_anteriores": 0, "saiu_em": None}
-    return {m.pk: dict(por_email.get(m.email, vazio)) for m in linhas}
+    resumos = {m.pk: dict(por_email.get(m.email, vazio)) for m in linhas}
+    for resumo in resumos.values():
+        if resumo["saiu_em"] is not None:
+            resumo["saiu_em"] = resumo["saiu_em"].isoformat()
+    return resumos
