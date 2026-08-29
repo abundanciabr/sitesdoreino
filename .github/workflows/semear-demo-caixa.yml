@@ -1,0 +1,123 @@
+# =============================================================================
+# VITRINE DA CAIXA — enche (ou esvazia) o quadro de ideias com dado de
+# demonstração, pelo pipeline, sem o mantenedor colar nada em terminal nenhum.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# Um quadro vazio não se avalia. Em 29/08/2026, dois dias antes da inauguração
+# de 31/08, o mantenedor pediu para ver a Caixa cheia — ideias em todos os seis
+# estados, com voto e comentário — antes de mandar a turma entrar. O agente não
+# tem SSH (Lei 5) e segredo não passa por ele: o canal é este.
+#
+# É o irmão do `semear-caixa.yml`, e de propósito na mesma forma. A diferença é
+# que este tem DUAS ações, e a segunda é a que importa: `remover`.
+#
+# POR QUE workflow_dispatch É SEGURO AQUI
+# ---------------------------------------
+# Não entrega código: roda um script versionado que só sabe fazer duas coisas,
+# as duas idempotentes. `criar` recusa semear em cima de uma demo que já existe;
+# `remover` some com tudo que a demo criou e nada mais.
+#
+# A cerca que faz isso valer é o domínio `@demo.invalid` (RFC 2606: reservado,
+# nunca resolve, não é de ninguém). Toda pessoa fictícia nasce nele, e é por ele
+# que o `remover` acha o que apagar. Ideia de aluno de verdade não tem como
+# entrar nesse filtro — e o script confere, nas duas ações, que a contagem de
+# ideias reais não mudou. Se mudou, ele reprova em vez de imprimir "PRONTO.".
+#
+# O HOST E A AÇÃO VIAJAM POR `envs:`, NUNCA COSTURADOS NO SCRIPT:
+# `${{ inputs.* }}` dentro de `script:` é injeção de comando na VPS
+# (armadilhas/047). O script lê ACAO_DEMO e HOST_CAIXA do ambiente.
+#
+# NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
+# =============================================================================
+name: semear-demo-caixa
+on:
+  workflow_dispatch:
+    inputs:
+      acao:
+        description: 'criar = enche o quadro de exemplo · remover = tira tudo que a demo criou'
+        required: true
+        type: choice
+        options: [criar, remover]
+        default: criar
+      host:
+        description: 'Host do site (ex.: meshcraft.top). Precisa estar ATIVO no catálogo.'
+        required: true
+        type: string
+        default: meshcraft.top
+permissions:
+  contents: read
+# Grupo PRÓPRIO, e não `deploy` — a lição da `armadilhas/173`, que o
+# `semear-caixa.yml` pagou primeiro: o GitHub guarda UM run pendente por grupo e
+# o próximo CANCELA o anterior. Num repositório com ~100 entregas por dia, um
+# disparo manual no grupo `deploy` morre antes de começar.
+concurrency:
+  group: semear-demo-caixa
+  cancel-in-progress: false
+jobs:
+  semear-demo:
+    name: pôr ou tirar a vitrine
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Se o script sumir ou for renomeado, PARAMOS AQUI: a ssh-action com
+      # `script_path` apontando para arquivo inexistente é caminho conhecido de
+      # falso-verde (armadilhas/149 — parâmetro que a ação avisa e IGNORA,
+      # saindo com sucesso).
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/semear-demo-caixa.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/semear-demo-caixa.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/semear-demo-caixa.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Rodar na VPS
+        id: vitrine
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: ACAO_DEMO,HOST_CAIXA
+          capture_stdout: true
+          command_timeout: 10m
+          script_path: infra/semear-demo-caixa.sh
+        env:
+          ACAO_DEMO: ${{ inputs.acao }}
+          HOST_CAIXA: ${{ inputs.host }}
+
+      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o
+      # script inteiro, e ler o eco como se fosse a execução já enganou este
+      # projeto. A linha "PRONTO." só existe no caminho feliz, depois de o
+      # script contar as ideias no banco E conferir que as reais não mudaram.
+      - name: Provar pelo banco (não basta a conexão ter aberto)
+        env:
+          SAIDA: ${{ steps.vitrine.outputs.stdout }}
+          ACAO: ${{ inputs.acao }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO\.'; then
+            echo "::error::Não encontrei a linha 'PRONTO.' na saída do script."
+            echo "Ela só é impressa depois de o script contar as ideias no banco e conferir"
+            echo "que as de gente de verdade continuam as mesmas."
+            echo "Sem ela, nada está provado — e ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          if [ "$ACAO" = "criar" ]; then
+            echo "✅ vitrine no ar. LEMBRE: rode de novo com 'remover' antes de a turma entrar."
+          else
+            echo "✅ vitrine retirada — o quadro voltou a ter só ideia de gente de verdade."
+          fi

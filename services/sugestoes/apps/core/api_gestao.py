@@ -58,9 +58,11 @@ from apps.sugestoes.eventos import AtorSemIdDaPlataforma
 from apps.sugestoes.models import (
     AvaliacaoInterna,
     ChangeSpecAprovado,
+    Comentario,
     CorredorAusente,
     HistoricoStatus,
     Sugestao,
+    Voto,
 )
 
 from . import sessao as ses
@@ -144,6 +146,11 @@ class IdeiaEmGestao(Schema):
     arquivada: bool = False
     arquivada_em: str = ""
     motivo_do_arquivamento: str = ""
+    # O apagamento definitivo (`DECISAO-apagar-ideia.md`, 29/08/2026). Uma
+    # ideia apagada também é `arquivada` (mesmo carimbo) — `apagada` é o
+    # campo que diz à tela que não há mais nada para restaurar: o botão
+    # "Restaurar" não aparece, e o conteúdo que viaja aqui já está vazio.
+    apagada: bool = False
 
 
 class LinhaDoHistorico(Schema):
@@ -332,6 +339,7 @@ def _como_fato(ideia, plateias) -> dict:
         "arquivada": ideia.arquivada_em is not None,
         "arquivada_em": ideia.arquivada_em.isoformat() if ideia.arquivada_em else "",
         "motivo_do_arquivamento": ideia.motivo_do_arquivamento,
+        "apagada": ideia.apagada_em is not None,
         "avaliacao": (
             {
                 "impacto_educacional": ideia.avaliacao.impacto_educacional,
@@ -364,6 +372,10 @@ def listar_ideias(request, por_email: str = "", incluir_arquivadas: bool = False
     quadro = quadro_atual()
     agora = timezone.now()
     todas = list(_ideias_do_quadro(quadro))
+    # Apagada nunca reaparece, nem com `incluir_arquivadas=True`: não sobrou
+    # nada nela para alguém "achar de novo" — é diferente de arquivada, que
+    # `incluir_arquivadas` existe justamente para reencontrar.
+    todas = [i for i in todas if not i.apagada_em]
     ideias = todas if incluir_arquivadas else [i for i in todas if not i.arquivada_em]
     plateias = plateia_de(ideias)
 
@@ -569,6 +581,8 @@ def registrar_o_changespec(request, sugestao_id: int, payload: ChangeSpecEscrito
 )
 def arquivar(request, sugestao_id: int, payload: ArquivamentoEscrito):
     sugestao = _ideia(sugestao_id)
+    if sugestao.apagada_em is not None:
+        return 422, {"erro": "Esta ideia foi apagada definitivamente."}
     if sugestao.arquivada_em is not None:
         return 422, {"erro": "Esta ideia já está arquivada."}
     sugestao.arquivada_em = timezone.now()
@@ -593,6 +607,10 @@ def arquivar(request, sugestao_id: int, payload: ArquivamentoEscrito):
 )
 def desarquivar(request, sugestao_id: int, payload: QuemAge):
     sugestao = _ideia(sugestao_id)
+    if sugestao.apagada_em is not None:
+        return 422, {
+            "erro": "Esta ideia foi apagada definitivamente e não pode ser restaurada."
+        }
     if sugestao.arquivada_em is None:
         return 422, {"erro": "Esta ideia não está arquivada."}
     sugestao.arquivada_em = None
@@ -600,6 +618,55 @@ def desarquivar(request, sugestao_id: int, payload: QuemAge):
     sugestao.motivo_do_arquivamento = ""
     sugestao.save(
         update_fields=["arquivada_em", "arquivada_por", "motivo_do_arquivamento"]
+    )
+    return _uma_ideia(sugestao_id)
+
+
+@router.post(
+    "/gestao/ideias/{sugestao_id}/apagar",
+    response={200: IdeiaEmGestao, 422: Recusa},
+    operation_id="deleteIdeaForever",
+    summary="Apaga a ideia definitivamente — sem volta, nem para quem criou",
+    description=(
+        "`DECISAO-apagar-ideia.md` (29/08/2026). Título, texto e solução ficam "
+        "vazios, votos e comentários são removidos — para sempre, de qualquer "
+        "pessoa que tenha participado, não só do autor. NINGUÉM alcança este "
+        "conteúdo de novo, nem pelo link direto, nem esta API. A LINHA "
+        "continua existindo no banco (uma ideia apagada também vira "
+        "arquivada), porque `HistoricoStatus`/`ChangeSpecAprovado`/`Aviso` são "
+        "append-only e apontam para ela — apagar a linha quebraria essa "
+        "trava. Recusa 422 se já tiver sido apagada."
+    ),
+)
+def apagar(request, sugestao_id: int, payload: QuemAge):
+    sugestao = _ideia(sugestao_id)
+    if sugestao.apagada_em is not None:
+        return 422, {"erro": "Esta ideia já foi apagada."}
+    agora = timezone.now()
+    quem = _quem(payload)
+    Voto.objects.filter(sugestao=sugestao).delete()
+    Comentario.objects.filter(sugestao=sugestao).delete()
+    sugestao.titulo = ""
+    sugestao.problema = ""
+    sugestao.solucao_proposta = ""
+    sugestao.apagada_em = agora
+    sugestao.apagada_por = quem
+    # Apagada é sempre arquivada: nenhuma superfície do aluno ou da gestão
+    # precisa aprender um segundo carimbo para saber que isto sumiu — a
+    # exclusiva NOVIDADE que `apagada` acrescenta é "não há mais nada para
+    # restaurar".
+    sugestao.arquivada_em = sugestao.arquivada_em or agora
+    sugestao.arquivada_por = sugestao.arquivada_por or quem
+    sugestao.save(
+        update_fields=[
+            "titulo",
+            "problema",
+            "solucao_proposta",
+            "apagada_em",
+            "apagada_por",
+            "arquivada_em",
+            "arquivada_por",
+        ]
     )
     return _uma_ideia(sugestao_id)
 
