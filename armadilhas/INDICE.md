@@ -209,5 +209,6 @@
 | [181](181-consultoria-aberta-fora-do-livro-e-invisivel-e-ninguem-cobra.md) | Consultoria aberta fora do livro é invisível — e ninguém cobra o veredito — uma rodada de consultoria externa foi aberta, as respostas chegaram no mesmo dia (três pareceres completos, um até com desenho de tela)… e… | — sem guarda | — |
 | [182](182-execucao-cancelada-da-pista-de-pouso-e-normal-nao-e-falha.md) | Execução `cancelled` da pista de pouso é o desenho funcionando, não falha — a aba Actions do repositório aparece com uma parede de execuções `pouso` cinzas seguidas, uma atrás da outra, todas com duração de 3–8 s, e uma… | — sem guarda | — |
 | [183](183-deploy-cancelado-nao-e-deploy-adiado-a-celula-fica-para-tras.md) | `deploy-celula` cancelado NÃO é deploy adiado — aquela célula fica para trás, em silêncio — O PR pousou, todos os checks verdes, a `main` tem o código. Mas o comportamento novo **não aparece no site**. Nenhum run… | — sem guarda | — |
+| [184](184-dado-de-demonstracao-com-linha-append-only-nasce-imortal.md) | Dado de demonstração que toca tabela append-only nasce imortal — e a "vitrine" vira produção para sempre — você semeia dado de vitrine numa célula para o dono ver a tela cheia, ele aprova, e na hora de limpar o… | — sem guarda | — |
 
-**164 entradas** — 5 com guarda declarada, 159 ainda sem.
+**165 entradas** — 5 com guarda declarada, 160 ainda sem.
