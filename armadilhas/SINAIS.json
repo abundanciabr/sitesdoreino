@@ -9,6 +9,12 @@
       "regex": "ConfigError: Schema for status \\d+ is not set"
     },
     {
+      "armadilha": "127",
+      "arquivo": "armadilhas/127-deploy-vermelho-com-i-o-timeout-e-a-vps-viva-nao-e.md",
+      "titulo": "Deploy vermelho com `i/o timeout` e a VPS viva: nem todo timeout é a armadilha 017",
+      "regex": "dial tcp [^\\n]*:22: i/o timeout"
+    },
+    {
       "armadilha": "176",
       "arquivo": "armadilhas/176-hook-fail-open-esconde-o-proprio-defeito-e-cala.md",
       "titulo": "Hook fail-open esconde o PRÓPRIO defeito: ele cala, e silêncio parece \"nada a dizer\"",
