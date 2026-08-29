@@ -119,13 +119,28 @@ pedido_recusado_motivo:
 # quem lê, e a diferença é a única coisa que a pessoa quer saber.
 # ---------------------------------------------------------------------------
 acesso_encerrado:
-  # Diz o fim E o caminho de volta, como a de recusa faz. Sem "peça de novo":
-  # quem saiu não está numa fila, está numa decisão da escola — convidar a
-  # insistir contra uma decisão que a pessoa não conhece é pior que o silêncio.
-  _fonte: "42b7b7"
-  en: "Your access to the school has ended. Talk to the school if you think this is a mistake."
-  pt-br: "Seu acesso à escola foi encerrado. Fale com a escola se você acha que houve engano."
-  es: "Tu acceso a la escuela terminó. Habla con la escuela si crees que hubo un error."
+  # MUDOU EM 29/08/2026 (DECISAO-a-ficha-nao-se-apaga.md §3), e a mudança é uma
+  # reversão: a versão anterior dizia "fale com a escola" e evitava de propósito
+  # convidar a pessoa a pedir de novo. O mantenedor decidiu o contrário — a
+  # escola é um lugar de onde se sai e para onde se volta, e quem quer o curso
+  # do semestre seguinte não está insistindo contra nada.
+  #
+  # A frase precisou mudar aqui TAMBÉM porque a Caixa já mudou: lá o ex-aluno vê
+  # o formulário e o botão "Pedir para voltar". Uma home que continuasse dizendo
+  # "fale com a escola" mandaria a mesma pessoa para dois lugares diferentes.
+  _fonte: "161565"
+  en: "Your access to the school has ended. If you want to come back, ask again on the Suggestion Box page — the team decides."
+  pt-br: "Seu acesso à escola foi encerrado. Se você quiser voltar, é só pedir de novo — a equipe decide."
+  es: "Tu acceso a la escuela terminó. Si quieres volver, solo pídelo de nuevo — el equipo decide."
+
+pedir_para_voltar:
+  # O botão que acompanha `acesso_encerrado` desde 29/08/2026. Ele leva à Caixa,
+  # onde já mora o formulário da fila — nenhum caminho novo, porque duas portas
+  # para o mesmo pedido discordariam na primeira mudança de regra.
+  _fonte: "4410a6"
+  en: "Ask to come back"
+  pt-br: "Pedir para voltar"
+  es: "Pedir volver"
 
 acesso_pausado:
   # A palavra que importa aqui é "volta": a pessoa precisa saber que não

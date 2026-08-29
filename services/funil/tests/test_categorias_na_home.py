@@ -364,13 +364,25 @@ def test_nao_consegui_perguntar_tambem_vale_pouco(client, com_email):
 # `DECISAO-ex-aluno-e-a-porta-que-explica` (28/08/2026). Até então os dois
 # voltavam da `alunos` como `cadastrado` e a home não tinha o que dizer — a
 # pessoa saía da escola e a home fingia que ela nunca tinha entrado.
+#
+# EM 29/08/2026 OS DOIS DEIXARAM DE SER IGUAIS AQUI
+# (`DECISAO-a-ficha-nao-se-apaga.md` §3): o ex-aluno ganhou o botão de pedir para
+# voltar, o pausado não. A assimetria é a decisão — pausado volta sozinho, e
+# oferecer um pedido para o que já vai acontecer é ansiedade sem destino.
 
 
-def test_ex_aluno_ve_que_o_acesso_acabou(client, com_email):
+def test_ex_aluno_ve_que_o_acesso_acabou_e_como_voltar(client, com_email):
+    """A frase mudou em 29/08/2026, e ela mudou porque a Caixa mudou primeiro.
+
+    Lá o ex-aluno já vê o formulário e o botão "Pedir para voltar". Uma home que
+    continuasse dizendo "fale com a escola" mandaria a MESMA pessoa para dois
+    lugares diferentes — e o que ela leria primeiro seria o beco.
+    """
     _situacao(com_email, "ex_aluno")
     conteudo = _abrir(client)
     assert "acesso à escola foi encerrado" in conteudo
-    assert CAIXA not in conteudo
+    assert "Pedir para voltar" in conteudo
+    assert CAIXA in conteudo, "o botão leva à Caixa, onde mora o formulário"
 
 
 def test_pausado_ve_que_volta_sozinho(client, com_email):
@@ -396,17 +408,20 @@ def test_as_duas_frases_sao_diferentes(client, com_email):
     assert "pausado" in pausado
 
 
-def test_nenhum_dos_dois_ganha_convite_para_pedir_de_novo(client, com_email):
-    """Quem saiu ou foi pausado não está numa fila — está numa decisão da escola.
+def test_o_pausado_continua_sem_convite_para_pedir_nada(client, com_email):
+    """A metade que SOBREVIVEU da regra antiga, e é a que ainda faz sentido.
 
-    Um "pedir de novo" aqui convidaria a pessoa a insistir contra uma decisão
-    que ela não conhece (lei §3).
+    Este teste travava os dois; desde 29/08/2026 ele trava só o pausado. Quem
+    está pausado volta sozinho — um botão de "pedir" ali faria a pessoa achar
+    que precisa fazer algo, e depois esperar por uma resposta a um pedido que
+    nunca precisou existir.
     """
-    for categoria in ("ex_aluno", "pausado"):
-        from apps.core.middleware import limpar_cache_de_categoria
+    from apps.core.middleware import limpar_cache_de_categoria
 
-        limpar_cache_de_categoria()
-        _situacao(com_email, categoria)
-        conteudo = _abrir(client)
-        assert "em análise" not in conteudo, categoria
-        assert CAIXA not in conteudo, categoria
+    limpar_cache_de_categoria()
+    _situacao(com_email, "pausado")
+    conteudo = _abrir(client)
+
+    assert "em análise" not in conteudo
+    assert "Pedir para voltar" not in conteudo
+    assert CAIXA not in conteudo
