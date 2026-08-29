@@ -25,7 +25,7 @@
     "parecem no papel, e é essa confusão que já custou dois dias a este " +
     "mesmo pedido.",
   autoridade: "mantenedor",
-  evidencia: "Confirmação direta do mantenedor em 29/08/2026, na sessão de esvaziamento da caixa: 'o quadro apareceu certinho'. Completa as duas provas de máquina do registro 20260829-063 — a contagem no banco (run 33267630644, completed/success) e a medição de fora (302 para /entrar, /entrar 200, /healthz 200). Este registro viaja no PR 493.",
+  evidencia: "Confirmação direta do mantenedor em 29/08/2026, na sessão de esvaziamento da caixa: 'o quadro apareceu certinho'. Completa as duas provas de máquina do registro 20260829-063 — a contagem no banco (run 33267630644, completed/success) e a medição de fora (302 para /entrar, /entrar 200, /healthz 200). Este registro viaja no PR 492.",
   verificado_em: "2026-08-29",
   precisa_do_dono: false,
   responde_a: "20260829-063-o-quadro-da-caixa-existe-conferido-por-dentro",
