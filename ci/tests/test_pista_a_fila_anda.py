@@ -69,6 +69,7 @@ _mergear() {
   if [ "${2:-}" = "--conferir" ]; then
     if [ "$alvo" = "100" ]; then
       echo "  conflitos  FAIL   a base envelheceu — este PR está ATRÁS da main (BEHIND)"
+      echo "MOTIVO-DA-RECUSA: BASE-VELHA"
       return 1
     fi
     echo "  tudo  PASS  verde"

@@ -1047,3 +1047,73 @@ def test_a_lei_e_o_codigo_dizem_a_mesma_coisa_sobre_pousar_com_base_velha():
         "o RITOS precisa dizer, em algum lugar, o que acontece ao pedir pouso "
         "com a base envelhecida"
     )
+
+
+# --------------------------------------------------------------------------
+# O MOTIVO EM CÓDIGO — quem roteia não pode depender de prosa
+#
+# A pista decidia o destino de um PR procurando a frase em português
+# "ATRÁS da main (BEHIND)" no relatório do portão. Achado por acidente na
+# auditoria das Ondas 3 a 6: um dublê de teste escreveu a frase sem acento e o
+# roteamento errou — tratou "só precisa atualizar" como "reprovou", que na
+# pista significa TIRAR a etiqueta e comentar "não pousei" num PR são.
+#
+# Agora o portão imprime `MOTIVO-DA-RECUSA: BASE-VELHA` e a pista lê isso. Os
+# testes abaixo existem para que as duas pontas não possam se soltar em
+# silêncio: se o token mudar num arquivo e não no outro, aqui fica vermelho.
+# --------------------------------------------------------------------------
+
+
+def test_a_base_velha_vira_codigo_de_motivo():
+    relatorio = mergear.Relatorio("teste")
+    relatorio.registrar(mergear.Resultado("check/x", Estado.PASS, "verde"))
+    relatorio.registrar(_BEHIND)
+    assert mergear.motivos_da_recusa(relatorio) == [mergear.MOTIVO_BASE_VELHA]
+
+
+def test_relatorio_sem_base_velha_nao_inventa_motivo():
+    """Código emitido à toa faria a pista atualizar um PR que não precisa."""
+    relatorio = mergear.Relatorio("teste")
+    relatorio.registrar(_VERMELHO)
+    relatorio.registrar(_ERRO)
+    assert mergear.motivos_da_recusa(relatorio) == []
+
+
+def test_a_linha_do_motivo_e_ASCII_PURO():
+    """O ponto inteiro do conserto: nada de acento no que atravessa shell/YAML.
+
+    A frase em português continua no relatório, para gente ler. O que ROTEIA
+    tem de sobreviver a locale, codificação e a um `grep` de shell.
+    """
+    linha = f"{mergear.MARCA_DE_MOTIVO} {mergear.MOTIVO_BASE_VELHA}"
+    assert linha.isascii(), f"o motivo saiu com caractere não-ASCII: {linha!r}"
+
+
+def test_a_pista_procura_EXATAMENTE_o_codigo_que_o_portao_imprime():
+    """As duas pontas, amarradas. Sem isto, elas se soltam sem nada avisar."""
+    pouso = (RAIZ / ".github" / "workflows" / "pouso.yml").read_text(
+        encoding="utf-8"
+    )
+    assert mergear.MARCA_DE_MOTIVO in pouso, (
+        f"a pista não procura mais a marca '{mergear.MARCA_DE_MOTIVO}' que "
+        "ci/mergear.py imprime — o roteamento do pouso está solto"
+    )
+    assert mergear.MOTIVO_BASE_VELHA in pouso, (
+        f"a pista não procura mais o código '{mergear.MOTIVO_BASE_VELHA}'"
+    )
+
+
+def test_a_pista_NAO_roteia_mais_pela_frase_em_portugues():
+    """A frase pode voltar ao relatório; ela não pode voltar a DECIDIR."""
+    pouso = (RAIZ / ".github" / "workflows" / "pouso.yml").read_text(
+        encoding="utf-8"
+    )
+    for linha in pouso.splitlines():
+        alvo = linha.strip()
+        if not alvo.startswith("if grep") and not alvo.startswith("grep"):
+            continue
+        assert "ATRÁS da main" not in alvo, (
+            "a pista voltou a decidir pela frase em português:\n  "
+            + alvo
+            + "\nRotear por prosa é o defeito que o MOTIVO-DA-RECUSA fechou."
+        )

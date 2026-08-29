@@ -665,6 +665,56 @@ def sou_a_pista() -> bool:
     }
 
 
+# ---------------------------------------------------------------------------
+# O MOTIVO EM CÓDIGO — porque roteador não pode depender de prosa
+#
+# Até 29/08/2026 a pista de pouso decidia o destino de um PR procurando, no
+# relatório deste portão, a frase em português `"ATRÁS da main (BEHIND)"` —
+# com acento, dentro de um `grep -q` de shell. Funcionava, e era frágil por
+# três motivos que não se anunciam:
+#
+#   1. a frase é TEXTO PARA HUMANO. Melhorar a redação numa manhã qualquer
+#      quebraria o roteamento à tarde, sem nada ficar vermelho;
+#   2. o acento atravessa YAML, shell, locale do executor e a codificação da
+#      saída do Python. Foram medidos, nesta casa, dois casos de mojibake em
+#      trânsito por caminhos parecidos (`armadilhas/136`, `armadilhas/152`);
+#   3. o desfecho do erro é o pior possível — a pista trataria "só precisa
+#      atualizar" como "reprovou", TIRARIA a etiqueta e comentaria "não
+#      pousei" num PR são. Comentário mentiroso no PR vira a memória do
+#      projeto.
+#
+# Achado por acidente na auditoria das Ondas 3 a 6: um dublê de teste escreveu
+# a frase sem acento e o roteamento errou exatamente assim.
+#
+# A cura é a de sempre: quem decide lê um CÓDIGO estável e ASCII; a frase em
+# português continua no relatório, para gente. `ci/tests/test_mergear.py` amarra
+# as duas pontas — se este token mudar sem o `pouso.yml` mudar junto, reprova.
+# ---------------------------------------------------------------------------
+
+MARCA_DE_MOTIVO = "MOTIVO-DA-RECUSA:"
+MOTIVO_BASE_VELHA = "BASE-VELHA"
+
+# O que identifica o resultado da base envelhecida DENTRO deste arquivo. Aqui a
+# prosa ainda serve: é o mesmo módulo que a escreve, três funções acima.
+_RESUMO_DA_BASE_VELHA = "a base envelheceu"
+
+
+def motivos_da_recusa(relatorio: Relatorio) -> list[str]:
+    """Os códigos estáveis do que reprovou — para quem AGE sobre o veredito.
+
+    Hoje só existe um código, e de propósito: cada um é um contrato com quem
+    lê de fora, e contrato que ninguém usa é peso morto. Nascem quando um
+    consumidor precisar.
+    """
+    codigos: list[str] = []
+    if any(
+        r.estado is Estado.FAIL and r.resumo.startswith(_RESUMO_DA_BASE_VELHA)
+        for r in relatorio.resultados
+    ):
+        codigos.append(MOTIVO_BASE_VELHA)
+    return codigos
+
+
 def so_falta_atualizar_a_base(relatorio: Relatorio) -> bool:
     """A ÚNICA reprovação é `BEHIND` — que é o serviço da pista, não um defeito.
 
@@ -762,6 +812,12 @@ def main(argv: list[str] | None = None) -> int:
     if pr:
         print(cabecalho(pr))
     print(relatorio.render())
+
+    # A linha que a pista lê. Sempre depois do relatório, sempre ASCII, e só
+    # quando há motivo — uma linha vazia de código não é informação.
+    codigos = motivos_da_recusa(relatorio)
+    if codigos:
+        print(f"{MARCA_DE_MOTIVO} {' '.join(codigos)}")
 
     # `--pousar` com a base envelhecida é o caso que a pista existe para
     # resolver — ver `so_falta_atualizar_a_base`. Qualquer outra reprovação,
