@@ -43,6 +43,21 @@ http:
         contentTypeNosniff: true
         customFrameOptionsValue: SAMEORIGIN
 
+    # Desvio do `www.` para o domínio nu. Existe por um motivo de CADEADO, não
+    # de estética: sem router próprio, `www.<dominio>` cai no default do
+    # Traefik e o visitante recebe `TRAEFIK DEFAULT CERT` — a tela vermelha
+    # NET::ERR_CERT_AUTHORITY_INVALID, que é o pior primeiro contato possível
+    # com um site. E, passando por cima do aviso, ainda pegava o 404 do
+    # CONV-SITE (host não cadastrado), porque `www.` não está — e não deve
+    # estar — no `infra/sites.json`: o smoke do deploy-infra exige 200 na raiz
+    # de todo host listado, e a raiz do `www.` responde 301 de propósito.
+    # Medido em produção em 29/08/2026, antes do conserto.
+    www-para-nu:
+      redirectRegex:
+        regex: '^https?://www\.meshcraft\.top/(.*)'
+        replacement: 'https://meshcraft.top/${1}'
+        permanent: true
+
   routers:
     mp-webhooks:
       # ÚNICA rota amarrada a um host: o MP precisa de um endereço estável.
@@ -184,6 +199,34 @@ http:
       service: admin
       tls: {}
 
+    www-meshcraft:
+      # No host `www.` nenhuma PÁGINA é servida: tudo é desviado para o
+      # endereço canônico. Dois endereços servindo o mesmo conteúdo rendem
+      # sessão perdida na troca e conteúdo duplicado para busca.
+      #
+      # A priority 15 é a única faixa correta, e as duas bordas doem:
+      #   > 10 (prefixos de página) — sem isso, /checkout, /entrar, /admin,
+      #     /quiz e /forms/sugestoes seriam SERVIDOS no `www.` em vez de
+      #     desviados, que é o problema que este router existe para fechar.
+      #   < 20 (checkout-api) — a compra NUNCA pode ser desviada: 301 num POST
+      #     faz o navegador reemitir como GET e o pedido morre no caminho. É a
+      #     escala "curinga < página < API" que `ci/tests/
+      #     test_rota_da_compra_existe.py` exige, escrita depois do incidente
+      #     de 22/08/2026 ("tudo mergeado e ninguém conseguia comprar"). O
+      #     guarda pegou este router com priority 200 antes do merge.
+      # O `!PathPrefix(/api)` é o cinto além do suspensório: mesmo que alguém
+      # um dia mexa nesses números, caminho de máquina não se desvia.
+      #
+      # O `service` é exigido pelo Traefik mesmo quando o middleware responde
+      # antes: o redirectRegex encerra a requisição com 301 e o funil nunca é
+      # chamado.
+      rule: "Host(`www.meshcraft.top`) && !PathPrefix(`/api`)"
+      priority: 15
+      entryPoints: [websecure]
+      middlewares: [seguranca, www-para-nu]
+      service: funil
+      tls: {}
+
     funil:
       # Catch-all: a raiz e tudo que nenhum prefixo pegou, em QUALQUER domínio.
       rule: "PathPrefix(`/`)"
@@ -210,6 +253,19 @@ http:
         certResolver: le
         domains:
           - main: meshcraft.top
+            # O `www.` entra como SAN do MESMO certificado (não como entrada
+            # nova): é um endereço do mesmo site, e o desvio acima só consegue
+            # responder 301 depois de o TLS fechar — desviar exige cadeado
+            # válido ANTES. O DNS do `www.` já aponta para a VPS (CNAME),
+            # então o httpChallenge fecha na primeira tentativa.
+            # Mudar esta lista muda o CONJUNTO de domínios do certificado ⇒ o
+            # ACME pede um certificado NOVO ao recarregar a config. Vale a
+            # armadilha 018 inteira: a emissão acontece na RECARGA, nunca por
+            # acesso — se falhar, o `TRAEFIK DEFAULT CERT` fica servindo por
+            # ~24h. Como todo diff em `infra/traefik/**` faz o deploy-infra
+            # recriar o container, o merge deste PR já é o empurrão.
+            sans:
+              - www.meshcraft.top
 
   services:
     funil:
