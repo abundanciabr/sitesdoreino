@@ -86,7 +86,12 @@ listar_sites() {
 # "primeiro da lista" como consolo — seria o chute que o fail-closed evita).
 # Sem argumento: só segue se houver exatamente UM site ativo, que é a mesma
 # regra do `quadro_atual()` da célula.
-HOST_PEDIDO="${1:-}"
+# Duas portas para o mesmo argumento, e nenhuma delas interpola texto de fora
+# dentro do script: o $1 e a linha de colar do mantenedor; a HOST_CAIXA e o
+# pipeline (.github/workflows/semear-caixa.yml), que a entrega pelo `envs:` da
+# ssh-action em vez de costura-la no corpo do script — `${{ inputs.* }}` dentro
+# de `script:` e injecao de comando na VPS (armadilhas/047).
+HOST_PEDIDO="${1:-${HOST_CAIXA:-}}"
 
 if [ -n "$HOST_PEDIDO" ]; then
   LINHA=$(printf '%s\n' "$SITES" | awk -F"\t" -v h="$HOST_PEDIDO" '$2==h {print; exit}')

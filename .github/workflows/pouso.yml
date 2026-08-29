@@ -147,6 +147,9 @@ jobs:
           # próxima passagem, no máximo 15 minutos depois.
           MAX_POUSOS=5
           pousados=0
+          # Merges que a passagem TENTOU e não completou. Ela segue atendendo os
+          # outros da fila e termina vermelha no fim — ver o `exit` lá embaixo.
+          falhas=0
           # Quem esta passagem já atendeu. Existe porque o GitHub continua
           # listando um PR como aberto por alguns segundos DEPOIS do merge:
           # medido em 29/08/2026, a volta seguinte pegou o mesmo PR que acabara
@@ -160,22 +163,42 @@ jobs:
             if [ "$volta" = "1" ] && [ -n "${PEDIDO:-}" ]; then
               alvo="$PEDIDO"
             else
-              # O mais antigo primeiro: quem pediu antes pousa antes.
-              alvo=$(gh pr list --state open --label pousar \
-                       --json number,createdAt \
-                       --jq 'sort_by(.createdAt) | .[0].number // empty')
+              # O mais antigo primeiro — mas PULANDO quem esta passagem já
+              # atendeu. Até 29/08/2026 a escolha era só `.[0]`, e com ela a
+              # fila não andava: quem estava na frente e precisava esperar era
+              # reescolhido na volta seguinte, e a passagem morria ali.
+              # Auditoria das Ondas 3 a 6, simulado com dois PRs na fila: o
+              # segundo, verde e pronto, não foi nem examinado.
+              alvo=""
+              for candidato in $(gh pr list --state open --label pousar \
+                                   --json number,createdAt \
+                                   --jq 'sort_by(.createdAt) | .[].number'); do
+                case " $ja_vistos " in
+                  *" $candidato "*) continue ;;
+                esac
+                alvo="$candidato"
+                break
+              done
             fi
 
             if [ -z "${alvo:-}" ]; then
-              echo "Fila vazia. Pousos nesta passagem: $pousados."
+              echo "Fila vazia (ou só com PRs já atendidos nesta passagem)."
+              echo "Pousos nesta passagem: $pousados."
               break
             fi
 
+            # Cinto e suspensório: a seleção acima já pula os atendidos, e este
+            # `case` cobre o caminho do PEDIDO manual, que não passa por ela.
+            # O GitHub continua listando um PR como aberto por alguns segundos
+            # DEPOIS do merge — medido em 29/08/2026, quando a volta seguinte
+            # pegou o mesmo PR que acabara de pousar. Naquele run o portão
+            # respondeu ERROR e a pista saiu quieta; se tivesse respondido FAIL,
+            # ela teria tirado a etiqueta e comentado "não pousei" num PR que
+            # ENTROU. Comentário mentiroso no PR é pior que volta perdida: ele
+            # vira a memória do projeto.
             case " $ja_vistos " in
               *" $alvo "*)
-                echo "O PR #$alvo já foi atendido nesta passagem — o GitHub"
-                echo "ainda não atualizou a lista. Encerrando; o que sobrar"
-                echo "entra na próxima passagem."
+                echo "O PR #$alvo já foi atendido nesta passagem. Encerrando."
                 break ;;
             esac
             ja_vistos="$ja_vistos $alvo"
@@ -193,24 +216,44 @@ jobs:
             fi
             cat veredito.txt
 
-            # ATRASADO não é reprovado: é só velho. Atualiza e SAI da fila desta
-            # passagem — os checks precisam rodar de novo contra o mundo novo, e
-            # esperar por eles aqui travaria a fila atrás dele.
+            # ATRASADO não é reprovado: é só velho. Atualiza, devolve à fila e
+            # SEGUE PARA O PRÓXIMO — os checks dele precisam rodar de novo
+            # contra o mundo novo, e esperar por eles aqui travaria a fila.
+            #
+            # `continue`, não `break`: este era o entupimento. Encerrar a
+            # passagem inteira porque o PRIMEIRO da fila envelheceu deixava
+            # todos os outros sem atendimento — e, como a fila é sempre "o mais
+            # antigo primeiro", a passagem seguinte reescolhia o mesmo. Num dia
+            # movimentado (a `main` anda ~100 vezes por dia) o mesmo PR podia
+            # envelhecer a cada passagem e segurar a fila indefinidamente, sem
+            # nada ficar vermelho para avisar.
             if grep -q "ATRÁS da main (BEHIND)" veredito.txt; then
-              gh pr update-branch "$alvo"
-              gh pr comment "$alvo" --body \
-                "🛬 **pista de pouso** — a base tinha envelhecido; atualizei este PR e devolvi para a fila. A próxima passagem tenta de novo, com os checks já medidos contra a \`main\` de agora. Você não precisa fazer nada."
-              echo "PR #$alvo estava atrasado: atualizado e devolvido à fila."
-              break
+              # A atualização pode falhar (conflito que apareceu agora, por
+              # exemplo). Isso não pode derrubar a passagem: seria um PR
+              # travando os outros por outro caminho. Fica registrado, o PR
+              # mantém a etiqueta, e a próxima passagem tenta de novo.
+              if gh pr update-branch "$alvo"; then
+                gh pr comment "$alvo" --body \
+                  "🛬 **pista de pouso** — a base tinha envelhecido; atualizei este PR e devolvi para a fila. A próxima passagem tenta de novo, com os checks já medidos contra a \`main\` de agora. Você não precisa fazer nada."
+                echo "PR #$alvo estava atrasado: atualizado e devolvido à fila."
+              else
+                echo "PR #$alvo está atrasado e NÃO consegui atualizá-lo (conflito?)."
+                echo "Ele fica na fila com a etiqueta; seguindo para o próximo."
+              fi
+              continue
             fi
 
             # AINDA NÃO DÁ PARA SABER (exit 2 = ERROR): checks rodando, ou o
             # GitHub ainda calculando. Isto NÃO é reprovação — tratar como
             # reprovação tiraria a etiqueta de um PR são só porque ele chegou
             # cedo demais.
+            # `continue` pelo mesmo motivo do BEHIND: um PR cujos checks ainda
+            # não concluíram (ou cujo estado o GitHub ainda calcula) não pode
+            # impedir que os outros da fila sejam atendidos.
             if [ "$codigo" = "2" ]; then
-              echo "PR #$alvo ainda está sendo medido. A pista volta na próxima passagem."
-              break
+              echo "PR #$alvo ainda está sendo medido. Seguindo para o próximo;"
+              echo "ele continua na fila e a pista volta nele depois."
+              continue
             fi
 
             # REPROVADO DE VERDADE (exit 1 = FAIL): devolve ao autor com o
@@ -236,9 +279,20 @@ jobs:
             # pode ser mais permissiva que a catraca. `--confirmo` repete o
             # número de propósito (a defesa de identidade: o erro real da
             # história foi mergear o PR errado, não mergear sem querer).
-            python ci/mergear.py "$alvo" --confirmo "$alvo"
-            pousados=$((pousados + 1))
-            echo "PR #$alvo POUSOU."
+            #
+            # O `if` existe para que UM merge que falha não derrube a passagem
+            # inteira e deixe a fila parada atrás dele. Mas a falha NÃO some: ela
+            # é contada e a passagem termina VERMELHA lá embaixo. Engolir aqui
+            # seria trocar um entupimento por um falso-verde, que nesta casa é
+            # pior (RETROSPECTIVA-FASE-D, padrão 1).
+            if python ci/mergear.py "$alvo" --confirmo "$alvo"; then
+              pousados=$((pousados + 1))
+              echo "PR #$alvo POUSOU."
+            else
+              falhas=$((falhas + 1))
+              echo "PR #$alvo: o merge NÃO se completou. Seguindo para o próximo;"
+              echo "esta passagem vai terminar vermelha por causa disto."
+            fi
           done
 
           echo "Passagem encerrada: $pousados PR(s) pousado(s)."
@@ -246,4 +300,10 @@ jobs:
           if [ "$restam" -gt 0 ]; then
             echo "Ainda há $restam PR(s) pedindo pouso — a passagem agendada"
             echo "(a cada 15 min) pega o resto. Ninguém precisa fazer nada."
+          fi
+
+          if [ "$falhas" -gt 0 ]; then
+            echo "::error::$falhas merge(s) foram tentados e não se completaram."
+            echo "A passagem atendeu o resto da fila de propósito, mas isto NÃO é verde."
+            exit 1
           fi
