@@ -1,0 +1,14 @@
+{
+  "arquivo": "015-conferir-o-toca-declarado-da-tarefa-contra-o-diff-real-do-pr",
+  "id": "TAR-015",
+  "titulo": "Conferir o 'toca' declarado da tarefa contra o diff real do PR",
+  "toca": [
+    "ci",
+    "fila"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "Divergência entre toca declarado e diff real virando alerta no PR, com teste vermelho→verde.",
+  "despacho": "Evolução da fila apontada no veredito (docs/consultorias/central-de-orquestracao/VEREDITO.md, ideia do GPT): declaração otimista de 'toca' libera paralelo que colide de verdade — conferir contra o diff, mesmo princípio do --conferir. Candidata natural à primeira evolução da fila.",
+  "origem": "veredito da consultoria de orquestração (PR 511) — primeira evolução da fila",
+  "criada_em": "2026-08-29"
+}
