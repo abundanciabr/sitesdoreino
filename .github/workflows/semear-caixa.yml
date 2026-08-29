@@ -46,7 +46,7 @@ on:
         default: meshcraft.top
 permissions:
   contents: read
-# GRUPO PRÓPRIO, e isto foi aprendido caro (armadilhas/171). A primeira versão
+# GRUPO PRÓPRIO, e isto foi aprendido caro (armadilhas/173). A primeira versão
 # usava `group: deploy`, como o rollback — o raciocínio era "não intercalar com um
 # deploy em curso". Só que `cancel-in-progress: false` NÃO significa "faz fila de
 # tamanho ilimitado": o GitHub guarda UM run pendente por grupo, e o próximo que
