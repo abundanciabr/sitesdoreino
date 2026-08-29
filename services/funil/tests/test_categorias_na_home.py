@@ -10,8 +10,12 @@ quem aceitasse o convite.
 Três coisas são travadas aqui, e nenhuma delas seria pega por um teste que só
 perguntasse "a home abriu?":
 
-1. **Só `aluno` vê o caminho da Caixa.** Cadastrado, na fila e recusado não —
-   cada um vê o que a categoria dele permite.
+1. **Cada categoria vê o que ela permite, e nada além.** Só o `aluno` vê o
+   ATALHO da Caixa; quem está na fila vê o andamento do próprio pedido; e
+   desde 29/08/2026 o `cadastrado` vê o CONVITE para pedir entrada — que leva
+   ao mesmo endereço e é outra coisa: um é a porta de quem já entrou, o outro
+   é o formulário de quem quer entrar. Quem está na fila e quem foi recusado
+   continuam sem os dois: já pediram.
 
 2. **Não saber vira `cadastrado`, NUNCA `aluno`.** A direção do fail-open é a
    decisão inteira: o pior caso aceitável é alguém não ver o próprio atalho por
@@ -98,19 +102,41 @@ def test_o_aluno_ve_o_caminho_da_caixa(client, com_email):
     assert CAIXA in _abrir(client)
 
 
-def test_o_cadastrado_nao_ve_o_caminho_da_caixa(client, com_email):
-    """O defeito de 28/08 em pessoa, travado.
+def test_o_cadastrado_ve_o_convite_para_pedir_entrada(client, com_email):
+    """O beco de 29/08, travado — e a reversão declarada da regra de 28/08.
 
-    Quem entrou com o Google e nunca pediu nada não vê NADA sobre a escola —
-    nem o caminho da Caixa, nem convite para a fila. Foi a opção que o
-    mantenedor escolheu entre três, e a ausência do convite é deliberada (§5
-    da decisão), não uma tela por terminar.
+    Este teste SUBSTITUIU `test_o_cadastrado_nao_ve_o_caminho_da_caixa`, que
+    media o contrário: até 29/08/2026 quem entrava e nunca tinha pedido nada
+    não via nada sobre a escola. Aquilo era decisão do mantenedor, tomada entre
+    três opções; a substituição é decisão do MESMO mantenedor, no dia em que
+    ele caiu no próprio beco com a conta dele
+    (`DECISAO-o-beco-de-quem-entrou-e-nunca-pediu.md`).
+
+    O que sobreviveu inteiro da regra antiga está logo abaixo, em
+    `test_nao_saber_nao_convida_ninguem`: o convite é para quem a `alunos`
+    CONFIRMOU ser cadastrado, nunca para o silêncio dela.
+
+    O andamento de fila continua ausente — quem nunca pediu não tem pedido
+    nenhum em análise, e uma tela que dissesse isso estaria inventando.
     """
     _situacao(com_email, "cadastrado")
     conteudo = _abrir(client)
-    assert CAIXA not in conteudo
+    assert "Quer estudar no Meshcraft?" in conteudo
+    assert "Pedir entrada" in conteudo
+    assert CAIXA in conteudo, "o botão leva à Caixa, onde mora o formulário"
     assert "análise" not in conteudo
     assert "não foi aprovado" not in conteudo
+
+
+def test_o_convite_nao_e_o_rotulo_de_quem_volta(client, com_email):
+    """Primeira vez e retorno são frases diferentes, e a home não as colapsa.
+
+    "Pedir para voltar" dito a quem nunca esteve aqui é a tela afirmando uma
+    passagem que não existiu — e é o tipo de erro que ninguém reporta: a pessoa
+    só acha que o site a confundiu com outra.
+    """
+    _situacao(com_email, "cadastrado")
+    assert "Pedir para voltar" not in _abrir(client)
 
 
 def test_quem_esta_na_fila_ve_o_andamento_e_nao_o_caminho_da_caixa(client, com_email):
@@ -182,10 +208,17 @@ def test_recusa_sem_motivo_nao_mostra_rotulo_orfao(client, com_email):
 
 
 def test_o_visitante_continua_vendo_so_o_convite_de_entrar(client, rede):
+    """Quem não entrou vê UMA porta só: a de entrar.
+
+    O convite de pedir entrada acrescentado em 29/08 não pode vazar para cá —
+    sem sessão não há e-mail, então não há pedido possível, e um botão que
+    levasse à Caixa devolveria a pessoa para a tela de login de onde ela veio.
+    """
     conteudo = client.get(HOME, HTTP_HOST=HOST_MESH).content.decode()
     assert "Entrar no Meshcraft" in conteudo
     assert CAIXA not in conteudo
     assert "análise" not in conteudo
+    assert "Pedir entrada" not in conteudo
 
 
 # ------------------------------------- 2. não saber vira cadastrado, nunca aluno
@@ -236,6 +269,27 @@ def test_sem_o_degrau_de_email_a_home_abre_e_trata_como_cadastrado(client, com_e
     r = client.get(HOME, HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE)
     assert r.status_code == 200
     assert CAIXA not in r.content.decode()
+
+
+def test_nao_saber_nao_convida_ninguem(client, com_email):
+    """A metade da regra de 28/08 que NÃO foi revogada, e é a que ainda protege.
+
+    `categoria` devolve `cadastrado` quando a `alunos` não respondeu — o
+    fail-open, cuja direção continua certa. Mas convidar a PEDIR ENTRADA quem
+    talvez já seja aluno é o defeito de 28/08 de cabeça para baixo: a home
+    afirmando algo que a Caixa desmente. Por isso o convite exige resposta
+    conferida, e não a categoria calculada.
+
+    Os cinco modos de falha são os mesmos exercitados logo acima — aqui se mede
+    a consequência NOVA de cada um deles.
+    """
+    com_email.get(
+        f"{ALUNOS}/alunos/{EMAIL_DE_QUEM_ENTROU}/situacao", name="situacao"
+    ).mock(side_effect=httpx.ConnectError("recusou"))
+    conteudo = _abrir(client)
+    assert "Quer estudar no Meshcraft?" not in conteudo
+    assert "Pedir entrada" not in conteudo
+    assert CAIXA not in conteudo
 
 
 def test_a_categoria_nunca_e_administrador(client, com_email):
