@@ -175,26 +175,87 @@ function servidor(dir) {
 
 // ------------------------------------------------------------------ a medição
 
-/** Só contam os pedidos à NOSSA origem: as fontes do Google são externas e não
- *  atravessam a porta da área administrativa — misturá-las inflaria o
+/** Os endereços que o painel busca DE PROPÓSITO fora da nossa origem.
+ *
+ *  Lista FECHADA, pelo mesmo motivo do orçamento de sub-pedidos ser nominal:
+ *  um destino externo novo tem de passar por uma decisão consciente, não
+ *  entrar de carona. Hoje são três, todos declarados no painel.template.html:
+ *
+ *    fonts.googleapis / gstatic   a tipografia da página
+ *    api.github.com               as duas medições ao vivo (PRs abertos e
+ *                                 execuções recentes)
+ *    meshcraft.top                o `fetch` no-cors que prova que o site
+ *                                 respondeu ao navegador agora
+ */
+var DESTINOS_EXTERNOS = [
+  "fonts.googleapis.com",
+  "fonts.gstatic.com",
+  "api.github.com",
+  "meshcraft.top",
+];
+
+function ehExterno(url) {
+  for (var i = 0; i < DESTINOS_EXTERNOS.length; i++) {
+    if (url.indexOf(DESTINOS_EXTERNOS[i]) !== -1) return true;
+  }
+  return false;
+}
+
+/** Só contam os pedidos à NOSSA origem: os destinos externos acima não
+ *  atravessam a porta da área administrativa — misturá-los inflaria o
  *  orçamento com algo que ele não governa. */
 function nossoPedido(pedidoUrl, base) {
-  if (pedidoUrl.indexOf("fonts.googleapis.com") !== -1) return false;
-  if (pedidoUrl.indexOf("fonts.gstatic.com") !== -1) return false;
+  if (ehExterno(pedidoUrl)) return false;
   if (pedidoUrl.indexOf("favicon") !== -1) return false;
   return pedidoUrl.indexOf(base) === 0;
+}
+
+/** O MESMO CORTE, APLICADO AO ERRO DE CONSOLE — e é aqui que estava o defeito.
+ *
+ *  Achado pela auditoria interna de 29/08/2026. O orçamento de pedidos
+ *  EXCLUÍA os destinos externos ("algo que ele não governa") e a contagem de
+ *  erro de console os INCLUÍA. Resultado medido: num executor do GitHub, as
+ *  duas chamadas do painel à `api.github.com` bateram no limite de consultas
+ *  por IP e voltaram 403; o navegador registrou dois
+ *  `Failed to load resource: 403`; e o guarda reprovou com
+ *  "O painel NÃO cumpre o orçamento de amplificação".
+ *
+ *  O painel foi DESENHADO para sobreviver a isso — ele mesmo pinta
+ *  "não consegui perguntar ao GitHub (sem internet ou limite de consultas).
+ *  NÃO é um verde." Ou seja: o guarda chamava de defeito do painel um estado
+ *  que o painel trata como esperado, e a mesma execução, repetida sem uma
+ *  linha de diferença, passava. Guarda que pisca por causa da rede alheia
+ *  ensina a ignorar vermelho — e nesta casa o merge depende de todo check
+ *  estar verde (`ci/mergear.py`), então a piscada custava a etiqueta de pouso
+ *  do PR e um comentário errado para o autor.
+ *
+ *  A distinção é FAIL contra ERROR (RETROSPECTIVA-FASE-D §1): "o painel está
+ *  quebrado" e "não consegui medir o painel porque a rede lá fora falhou" são
+ *  fatos diferentes. Os externos continuam SAINDO NO LOG — o que some é o
+ *  poder de reprovar o painel por culpa de terceiro.
+ */
+function erroDaNossaPagina(mensagem) {
+  var loc = mensagem.location && mensagem.location();
+  var origem = (loc && loc.url) || "";
+  if (!origem) return true;   // sem origem declarada, o dono é nosso
+  return !ehExterno(origem);
 }
 
 async function medir(navegador, endereco, base, rotulo, esperados) {
   var pagina = await navegador.newPage();
   var pedidos = [];
   var errosConsole = [];
+  var errosExternos = [];
   var errosPagina = [];
   pagina.on("request", function (r) {
     if (nossoPedido(r.url(), base)) pedidos.push(r.url());
   });
   pagina.on("console", function (m) {
-    if (m.type() === "error") errosConsole.push(m.text());
+    if (m.type() !== "error") return;
+    var loc = m.location && m.location();
+    var onde = (loc && loc.url) || "(sem origem)";
+    if (erroDaNossaPagina(m)) errosConsole.push(m.text());
+    else errosExternos.push(m.text() + "  [" + onde + "]");
   });
   pagina.on("pageerror", function (e) {
     errosPagina.push(String(e && e.message ? e.message : e));
@@ -224,7 +285,16 @@ async function medir(navegador, endereco, base, rotulo, esperados) {
   caso(rotulo + ": a capa RENDERIZOU (não é a tela vermelha)", capaVisivel && !telaErroVisivel,
     "tela-erro=" + telaErroVisivel + " app=" + capaVisivel + " erros=" + JSON.stringify(errosPagina.slice(0, 2)));
   caso(rotulo + ": ZERO erro de página", errosPagina.length === 0, errosPagina.slice(0, 3).join(" | "));
-  caso(rotulo + ": ZERO erro de console", errosConsole.length === 0, errosConsole.slice(0, 3).join(" | "));
+  caso(rotulo + ": ZERO erro de console (da NOSSA página)", errosConsole.length === 0,
+    errosConsole.slice(0, 3).join(" | "));
+  // Os externos não reprovam, e por isso mesmo precisam APARECER: um destino
+  // externo que passa a falhar sempre é notícia, e silêncio total aqui seria
+  // trocar um alarme falso por uma cegueira.
+  if (errosExternos.length) {
+    console.log("  nota " + rotulo + ": " + errosExternos.length +
+      " erro(s) de console vindos de destino EXTERNO (não reprovam; ver DESTINOS_EXTERNOS): " +
+      errosExternos.slice(0, 3).join(" | "));
+  }
   // O ORÇAMENTO É UM CONJUNTO, e não um número. Contagem deixaria passar
   // "sumiu um e apareceu outro" — a mesma cegueira que a trava antiga do painel
   // tinha. O que se afirma aqui é NOMINAL: exatamente estes sub-pedidos, e mais
@@ -273,6 +343,32 @@ async function medirMemoria(estado, endereco, base, rotulo) {
     estado.errosPagina.slice(0, 3).join(" | "));
 }
 
+// ------------------------------------------------------ a prova do próprio corte
+
+/** O corte "nosso × externo" tem de MORDER nos dois sentidos, e ser visto.
+ *
+ *  Sem isto, o conserto de 29/08/2026 seria uma regra escrita que ninguém
+ *  encenou falhar (`armadilhas/132`): bastaria alguém trocar `!ehExterno` por
+ *  `ehExterno` — ou esvaziar DESTINOS_EXTERNOS — para o guarda parar de olhar
+ *  a própria página, e nada ficaria vermelho. Roda antes do navegador porque
+ *  não precisa dele: é a classificação que está sob teste, não a rede.
+ */
+function provaDoCorteExterno() {
+  function msg(origemUrl) {
+    return { location: function () { return { url: origemUrl }; } };
+  }
+  caso("corte externo: 403 da api.github.com NÃO reprova o painel",
+    erroDaNossaPagina(msg("https://api.github.com/repos/x/y/pulls")) === false);
+  caso("corte externo: falha das fontes do Google NÃO reprova o painel",
+    erroDaNossaPagina(msg("https://fonts.googleapis.com/css2?family=X")) === false);
+  caso("corte externo: erro na NOSSA página reprova",
+    erroDaNossaPagina(msg("http://127.0.0.1:8123/painel.html")) === true);
+  caso("corte externo: erro sem origem declarada reprova (o dono é nosso)",
+    erroDaNossaPagina(msg("")) === true);
+  caso("corte externo: destino externo NOVO reprova (a lista é fechada)",
+    erroDaNossaPagina(msg("https://cdn.exemplo-que-ninguem-declarou.com/x.js")) === true);
+}
+
 // --------------------------------------------------------------------- o rito
 
 async function principal() {
@@ -291,6 +387,8 @@ async function principal() {
   console.log(
     "PAINEL NO NAVEGADOR — " + (canal ? "canal " + canal : "chromium do playwright")
   );
+
+  provaDoCorteExterno();
 
   for (var k = 0; k < TAMANHOS.length; k++) {
     var n = TAMANHOS[k];
