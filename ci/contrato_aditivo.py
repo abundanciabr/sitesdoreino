@@ -69,6 +69,17 @@ from _nucleo import (  # noqa: E402
 )
 
 PASTA = "contracts"
+#: Os contratos de EVENTO. Não são OpenAPI — são JSON Schema, e a forma deles é
+#: outra: não há `paths`, e o que quebra um consumidor é uma propriedade que
+#: some, um `required` que cresce ou um valor de `enum` que desaparece.
+#:
+#: Até 29/08/2026 este portão os pegava no diff (são `.json` dentro de
+#: `contracts/`) e ERRAVA com *"não tem forma de OpenAPI"* — fail-closed, o que
+#: está certo, mas o efeito prático era que **editar um evento existente era
+#: impossível**. Ninguém tinha notado porque, até aquele dia, todo evento novo
+#: nasceu como arquivo novo (`*.v2.json`), que é adição pura e nem chega à
+#: comparação. A lei "acrescentar é livre" só valia para OpenAPI, por acidente.
+PASTA_DE_EVENTOS = "contracts/eventos/"
 ETIQUETA_DE_QUEBRA = "contrato-remocao"
 METODOS = (
     "get",
@@ -143,11 +154,33 @@ def versao_da_base(raiz: Path, base: str, caminho: str) -> str | None:
     )
 
 
-def _doc(texto: str, origem: str) -> dict[str, Any]:
+def e_evento(arquivo: str) -> bool:
+    """Este contrato é de EVENTO (JSON Schema) e não de API (OpenAPI)?
+
+    Decidido pelo CAMINHO, e não por farejar o conteúdo. Farejar acertaria hoje
+    e erraria no primeiro documento de forma inesperada — e "não sei que forma é
+    esta" tem de virar ERROR, que é o que a conferência de forma abaixo faz.
+    """
+    return arquivo.replace("\\", "/").startswith(PASTA_DE_EVENTOS)
+
+
+def _doc(texto: str, origem: str, evento: bool = False) -> dict[str, Any]:
     try:
         doc = _yaml().safe_load(texto)
     except Exception as exc:  # noqa: BLE001
         raise ErroDeInstrumentacao(f"{origem} não é YAML válido", str(exc)) from exc
+    if evento:
+        # JSON Schema: o que prova a forma é ter `properties` (um schema de
+        # objeto). Sem isso não há o que comparar campo a campo, e dizer "nada
+        # removido" sobre um documento de forma desconhecida é o falso-verde que
+        # este portão inteiro existe para não cometer.
+        if not isinstance(doc, dict) or "properties" not in doc:
+            raise ErroDeInstrumentacao(
+                f"{origem} não tem forma de contrato de evento",
+                "Faltou a chave `properties`. Comparar dois documentos sem "
+                "forma conhecida diria 'nada removido' sobre qualquer coisa.",
+            )
+        return doc
     if not isinstance(doc, dict) or "paths" not in doc:
         raise ErroDeInstrumentacao(
             f"{origem} não tem forma de OpenAPI",
@@ -166,6 +199,98 @@ def _exigidos(schema: Any) -> set[str]:
         return set()
     req = schema.get("required")
     return set(req) if isinstance(req, list) else set()
+
+
+def _valores_de_enum(schema: Any) -> "list[Any]":
+    if not isinstance(schema, dict):
+        return []
+    valores = schema.get("enum")
+    if isinstance(valores, list):
+        return valores
+    if "const" in schema:
+        # `const: x` é `enum: [x]` escrito curto. Tratá-los igual é o que
+        # impede a troca silenciosa de um `const` de passar como "nada
+        # removido" — e trocar o `const` de `event` é a quebra mais total que
+        # um contrato de evento pode sofrer.
+        return [schema["const"]]
+    return []
+
+
+def quebras_de_evento(
+    antes: dict[str, Any], depois: dict[str, Any], arquivo: str
+) -> list[str]:
+    """A lista de quebras de um contrato de EVENTO. Vazia = a mudança é aditiva.
+
+    Três coisas quebram quem já consome uma carta, e são as três que se medem
+    aqui, recursivamente por todo o schema:
+
+    1. **uma propriedade que some** — o consumidor que a lê acha `None` onde
+       havia dado, e quase sempre em silêncio;
+    2. **um `required` que cresce** — quebra quem PUBLICA sem aquele campo, e é
+       o caso que passa despercebido porque soa a "só acrescentei";
+    3. **um valor de `enum` (ou um `const`) que desaparece** — a carta que o
+       publicador ainda emite passa a ser recusada pelo validador do
+       consumidor. É a quebra mais cara das três: ela só aparece em produção,
+       na primeira carta do tipo antigo.
+
+    O que ele NÃO pega, dito na cara, igual ao lado OpenAPI: mudança de tipo,
+    aperto de `format`, e semântica que muda sem o documento mudar. É lint de
+    compatibilidade, não prova.
+
+    Os ramos condicionais (`allOf`/`if`/`then`) entram na varredura como
+    qualquer outro pedaço: um `then` que perde uma propriedade quebra do mesmo
+    jeito que uma propriedade de primeiro nível.
+    """
+    achados: list[str] = []
+
+    def caminhar(a: Any, d: Any, onde: str) -> None:
+        if not isinstance(a, dict) or not isinstance(d, dict):
+            return
+
+        props_a, props_d = _propriedades(a), _propriedades(d)
+        for nome in sorted(props_a):
+            rotulo = f"{onde}.{nome}" if onde else nome
+            if nome not in props_d:
+                achados.append(f"{arquivo}: `{rotulo}` foi REMOVIDO do evento")
+                continue
+            caminhar(props_a[nome], props_d[nome], rotulo)
+
+        novos_exigidos = _exigidos(d) - _exigidos(a)
+        for nome in sorted(novos_exigidos):
+            rotulo = f"{onde}.{nome}" if onde else nome
+            achados.append(
+                f"{arquivo}: `{rotulo}` passou a ser OBRIGATÓRIO no evento "
+                "(quebra quem já publica sem ele)"
+            )
+
+        sumidos = [v for v in _valores_de_enum(a) if v not in _valores_de_enum(d)]
+        for valor in sumidos:
+            achados.append(
+                f"{arquivo}: `{onde or 'raiz'}` deixou de aceitar o valor "
+                f"`{valor}` (quebra a carta que já está no fio)"
+            )
+
+        # Os ramos condicionais e as composições. Comparados POR POSIÇÃO, que é
+        # o que existe: uma lista de schemas não tem nome. Encurtar a lista é
+        # tratado como remoção — um `allOf` com menos ramos afrouxa o contrato
+        # em vez de quebrá-lo, mas quem o encurtou precisa dizer isso em voz
+        # alta, e é o que a etiqueta de quebra serve para fazer.
+        for chave in ("allOf", "anyOf", "oneOf"):
+            lista_a = a.get(chave) if isinstance(a.get(chave), list) else []
+            lista_d = d.get(chave) if isinstance(d.get(chave), list) else []
+            if len(lista_d) < len(lista_a):
+                achados.append(
+                    f"{arquivo}: `{onde or 'raiz'}` perdeu {len(lista_a) - len(lista_d)} "
+                    f"ramo(s) de `{chave}`"
+                )
+            for i, (ramo_a, ramo_d) in enumerate(zip(lista_a, lista_d)):
+                caminhar(ramo_a, ramo_d, f"{onde or 'raiz'}.{chave}[{i}]")
+        for chave in ("then", "else", "items"):
+            if isinstance(a.get(chave), dict):
+                caminhar(a[chave], d.get(chave), f"{onde or 'raiz'}.{chave}")
+
+    caminhar(antes, depois, "")
+    return achados
 
 
 def quebras(antes: dict[str, Any], depois: dict[str, Any], arquivo: str) -> list[str]:
@@ -283,10 +408,12 @@ def rodar(raiz: Path | None = None) -> Relatorio:
         if not atual.is_file():
             todas.append(f"{caminho}: o arquivo INTEIRO foi removido")
             continue
+        evento = e_evento(caminho)
+        comparar = quebras_de_evento if evento else quebras
         try:
-            achados = quebras(
-                _doc(antes_texto, f"{caminho}@{base}"),
-                _doc(atual.read_text(encoding="utf-8"), caminho),
+            achados = comparar(
+                _doc(antes_texto, f"{caminho}@{base}", evento),
+                _doc(atual.read_text(encoding="utf-8"), caminho, evento),
                 caminho,
             )
         except ErroDeInstrumentacao as erro:
