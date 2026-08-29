@@ -6,6 +6,7 @@ Quatro ritos. Cada um fecha um modo de falha conhecido — com nome, mecânica e
 
 ## §1 — Rito de Abertura de Sessão (worktree por agente)
 
+
 Cada sessão de agente nasce dentro de um worktree próprio. O agente só enxerga a
 árvore onde nasceu — atropelar o trabalho de outra sessão deixa de ser proibido e
 passa a ser fisicamente estranho ao seu mundo.
@@ -51,7 +52,10 @@ para o próximo agente: commite ou descarte explicitamente.
 
 ---
 
+**Quem faz valer:** `ci/muralha_pasta_compartilhada.py` (recusa edição e troca de ramo no clone principal, por hook) · `ci/sessao.py` (cria o worktree) · `ci/tests/test_muralha_pasta_compartilhada.py`.
+
 ## §2 — Catraca Verde + Anti-Thrashing
+
 
 A gênese de todo labirinto, nomeada: erro → muda A → outro erro → muda B → remove
 validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto tem quatro peças:
@@ -150,7 +154,10 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
 
 ---
 
+**Quem faz valer:** `ci/mergear.py` (o portão) · `.github/workflows/pouso.yml` (a pista) · `ci/ci.py` (as muralhas) · `ci/tests/test_mergear.py`.
+
 ## §3 — Rito de Mudança de Contrato
+
 
 Contratos congelados são o que impede o pronto-e-funcionando de virar labirinto.
 Mudá-los é legítimo — mas é um RITO, nunca uma decisão de sessão:
@@ -166,7 +173,10 @@ Mudá-los é legítimo — mas é um RITO, nunca uma decisão de sessão:
 
 ---
 
+**Quem faz valer:** `ci/cerca-de-celula.sh` (contrato não muda junto com código; exige a etiqueta) · `ci/contract_freeze.py` (o congelado) · `ci/contrato_aditivo.py` (crescer sim, encolher só autorizado).
+
 ## §4 — Rito de Emergência (a Lei das 2h da Manhã)
+
 
 Numa emergência real, o caminho seguro precisa ser o MAIS RÁPIDO — ou às 2h da manhã
 o atalho vence, e atalho aplicado direto em produção vira estado que ninguém sabe
@@ -216,3 +226,6 @@ Depois do fogo apagado:
 3. Se a intervenção manual mínima foi inevitável (site fora do ar), ela é revertida
    assim que o deploy normal aplicar a correção — estado manual jamais persiste como
    fonte de verdade.
+
+**Quem faz valer:** `ci/rollback.py` · `.github/workflows/rollback.yml` · `ci/tests/test_rollback.py`.
+
