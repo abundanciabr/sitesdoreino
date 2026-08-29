@@ -207,5 +207,6 @@
 | [179](179-numero-do-registro-escolhido-cedo-colide-e-so-o-ci-conta.md) | Número do registro escolhido cedo colide — e quem conta é o CI, 15 minutos depois — O PR fica verde na sua máquina, você pede pouso, e ele volta com | — sem guarda | — |
 | [180](180-alarme-que-barra-deploy-tranca-a-porta-por-dentro.md) | Alarme cujo CONSERTO é um deploy tranca a porta por dentro se ele barrar deploys — você acrescenta um workflow novo que mede produção e grita quando algo está errado — um vigia de certificado, uma sonda de… | — sem guarda | — |
 | [181](181-consultoria-aberta-fora-do-livro-e-invisivel-e-ninguem-cobra.md) | Consultoria aberta fora do livro é invisível — e ninguém cobra o veredito — uma rodada de consultoria externa foi aberta, as respostas chegaram no mesmo dia (três pareceres completos, um até com desenho de tela)… e… | — sem guarda | — |
+| [182](182-execucao-cancelada-da-pista-de-pouso-e-normal-nao-e-falha.md) | Execução `cancelled` da pista de pouso é o desenho funcionando, não falha — a aba Actions do repositório aparece com uma parede de execuções `pouso` cinzas seguidas, uma atrás da outra, todas com duração de 3–8 s, e uma… | — sem guarda | — |
 
-**162 entradas** — 5 com guarda declarada, 157 ainda sem.
+**163 entradas** — 5 com guarda declarada, 158 ainda sem.
