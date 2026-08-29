@@ -20,7 +20,7 @@
     "banco novo e servidor novo dos consultores foram recusados com o " +
     "motivo escrito: os robôs desta casa falam com o mundo por arquivos, " +
     "referências e PRs — e fato do projeto não pode ter segunda casa.\n\n" +
-    "A LIÇÃO VIROU A ARMADILHA 180: trabalho de várias etapas cujo próximo " +
+    "A LIÇÃO VIROU A ARMADILHA 181: trabalho de várias etapas cujo próximo " +
     "passo pertence a uma sessão futura precisa deixar o estado no livro — " +
     "o que não está registrado, o painel não cobra, e o passo morre. Foi " +
     "exatamente o que aconteceu com esta rodada.",

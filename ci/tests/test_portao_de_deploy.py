@@ -37,6 +37,7 @@ CI_CELULA = ".github/workflows/ci-celula.yml"
 ALARME = ".github/workflows/alarme-main.yml"
 MURALHAS = ".github/workflows/muralhas.yml"
 DEPLOY_CELULA = ".github/workflows/deploy-celula.yml"
+VIGIA = ".github/workflows/vigia-do-cadeado.yml"
 
 GH_FALSO = """\
 import json, os, sys
@@ -486,3 +487,41 @@ def test_workflow_de_deploy_exige_o_portao():
     needs = jobs_i["sincronizar"]["needs"]
     assert needs == "portao" or "portao" in needs
     assert "needs.portao.result == 'success'" in jobs_i["sincronizar"]["if"]
+
+
+# ---------------------------------------------------------------------------
+# O VIGIA DO CADEADO é ALARME, não portão: vermelho nele não pode travar
+# entrega. A declaração dele vive em `conhecidos` (nunca em `exigidos`) e o
+# raciocínio está por escrito ao lado da constante em ci/portao_de_deploy.py.
+#
+# Estes dois testes são um par: o primeiro prova que a isenção EXISTE, o
+# segundo prova que ela é ESTREITA. Sozinho, o primeiro passaria também se
+# alguém tivesse desligado a regra inteira — que é o modo clássico de uma
+# isenção legítima virar buraco.
+# ---------------------------------------------------------------------------
+def test_vigia_do_cadeado_vermelho_nao_barra_o_deploy():
+    # O conserto de um cadeado vermelho É uma publicação (armadilhas/018): se
+    # o vigia barrasse deploys, ele trancaria a porta por dentro.
+    import portao_de_deploy as pd
+
+    runs = [run_(1, VIGIA, conclusao="failure")]
+    conhecidos = {CI_CELULA, ALARME, MURALHAS, pd.VIGIA_DO_CADEADO}
+    assert pd.vermelhos_nao_previstos(runs, conhecidos).estado is not pd.Estado.FAIL
+
+
+def test_workflow_desconhecido_vermelho_continua_barrando_o_deploy():
+    import portao_de_deploy as pd
+
+    runs = [run_(1, ".github/workflows/inventado.yml", conclusao="failure")]
+    conhecidos = {CI_CELULA, ALARME, MURALHAS, pd.VIGIA_DO_CADEADO}
+    resultado = pd.vermelhos_nao_previstos(runs, conhecidos)
+    assert resultado.estado is pd.Estado.FAIL
+    assert "inventado.yml" in resultado.detalhe
+
+
+def test_o_vigia_esta_em_conhecidos_e_NAO_em_exigidos():
+    # Se alguém um dia o promover a exigido, todo deploy passaria a esperar um
+    # run que, na maioria dos SHAs, nem existe — o vigia roda no relógio.
+    fonte = (RAIZ / "ci" / "portao_de_deploy.py").read_text(encoding="utf-8")
+    assert "MURALHAS, VIGIA_DO_CADEADO}" in fonte
+    assert "VIGIA_DO_CADEADO: (" not in fonte
