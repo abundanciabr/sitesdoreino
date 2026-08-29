@@ -124,3 +124,5 @@ bugado o middleware consulta o `Site` local — sem a marca, o vermelho seria
 erro de acesso a banco em vez do 404 genuíno; e o teste de `/static/` afirma
 `django_assert_num_queries(0)` (aqui a resolução é query local, não chamada
 ao catálogo — o equivalente do `assert not rota.called` do checkout).
+
+<!-- Linha de teste da auditoria das Ondas 3-6 (29/08/2026): este PR toca DUAS celulas de proposito, para medir se a matriz do ci-celula roda as DUAS suites. Sera fechado sem merge. -->

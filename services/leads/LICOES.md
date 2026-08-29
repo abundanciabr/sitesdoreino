@@ -134,3 +134,5 @@ do loop de produção.
 **Origem:** despacho leads/reentrega-pel (lote 2, 22/08/2026) — a pendência era
 a linha "evento que faz o handler estourar fica pendente para sempre" do
 ARMADILHAS-OPERACAO.md §9.
+
+<!-- Linha de teste da auditoria das Ondas 3-6 (29/08/2026): este PR toca DUAS celulas de proposito, para medir se a matriz do ci-celula roda as DUAS suites. Sera fechado sem merge. -->
