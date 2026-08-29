@@ -61,6 +61,18 @@
       "detector": null,
       "dono": "ci/tests/test_guarda_declarada_e_sino.py",
       "tem_sinal": true
+    },
+    {
+      "armadilha": "179",
+      "arquivo": "armadilhas/179-numero-do-registro-escolhido-cedo-colide-e-so-o-ci-conta.md",
+      "estado": "guardada",
+      "degrau": 3,
+      "confianca": "alta",
+      "custo_por_queda": "medio",
+      "tipo": "CI",
+      "detector": null,
+      "dono": "ci/tests/test_livro_manda_ao_almoxarife.py",
+      "tem_sinal": true
     }
   ]
 }

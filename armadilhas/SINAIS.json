@@ -19,6 +19,12 @@
       "arquivo": "armadilhas/176-hook-fail-open-esconde-o-proprio-defeito-e-cala.md",
       "titulo": "Hook fail-open esconde o PRÓPRIO defeito: ele cala, e silêncio parece \"nada a dizer\"",
       "regex": "UnicodeEncodeError: 'charmap' codec can't encode character"
+    },
+    {
+      "armadilha": "179",
+      "arquivo": "armadilhas/179-numero-do-registro-escolhido-cedo-colide-e-so-o-ci-conta.md",
+      "titulo": "Número do registro escolhido cedo colide — e quem conta é o CI, 15 minutos depois",
+      "regex": "n[úu]mero repetido no mesmo dia"
     }
   ]
 }
