@@ -31,8 +31,12 @@
     },
     "ator_id": {
       "anyOf": [
-        { "type": "string" },
-        { "type": "null" }
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
       "description": "Id da PLATAFORMA de quem causou o fato, ou null quando nao houve gente (ex.: um pagamento aprovado pelo provedor). Decisao do mantenedor em 26/08/2026: GUARDAR sim, MOSTRAR nao — o dado existe para reconstruir o que aconteceu se alguem questionar uma decisao; a tela do aluno diz 'a equipe'. Mostrar o nome depois e reversivel; nao ter guardado, nao. NUNCA e o e-mail (DECISAO-EVO-01 §3).",
       "$comment": "Nulavel aqui, e nao no evento de fato: um fato de negocio sabe se tem ator; a carta e generica e serve a fatos de maquina tambem."
@@ -59,9 +63,10 @@
         "assunto": {
           "type": "string",
           "enum": [
-            "sugestao.status-alterado"
+            "sugestao.status-alterado",
+            "matricula.situacao-alterada"
           ],
-          "description": "O que aconteceu, do ponto de vista de quem le. Comeca com um so porque a V1 nasce so com a Caixa (DECISAO-notificacoes §3) — assunto novo entra aqui e ganha um ramo em 'parametros' logo abaixo, num PR PEQUENO. Se acrescentar um assunto exigir mexer na FORMA deste evento, o desenho esta errado e se conserta antes, nao depois."
+          "description": "O que aconteceu, do ponto de vista de quem le. Comecou com um so porque a V1 nasceu so com a Caixa (DECISAO-notificacoes §3); `matricula.situacao-alterada` entrou em 29/08/2026, decidido pelo mantenedor, para que quem espera na fila descubra que foi liberado sem precisar reabrir o site. Assunto novo entra aqui e ganha um ramo em 'parametros' logo abaixo, num PR PEQUENO — foi exatamente o que aconteceu, e a FORMA do evento nao precisou mudar: e o sinal de que o desenho de 26/08 estava certo. E a regra de sempre continua valendo: se acrescentar um assunto exigir mexer na FORMA deste evento, o desenho esta errado e se conserta antes, nao depois."
         },
         "parametros": {
           "type": "object",
@@ -81,11 +86,19 @@
       "if": {
         "properties": {
           "data": {
-            "properties": { "assunto": { "const": "sugestao.status-alterado" } },
-            "required": ["assunto"]
+            "properties": {
+              "assunto": {
+                "const": "sugestao.status-alterado"
+              }
+            },
+            "required": [
+              "assunto"
+            ]
           }
         },
-        "required": ["data"]
+        "required": [
+          "data"
+        ]
       },
       "then": {
         "properties": {
@@ -132,8 +145,78 @@
                   },
                   "vinculo": {
                     "type": "string",
-                    "enum": ["autor", "comentario", "voto"],
+                    "enum": [
+                      "autor",
+                      "comentario",
+                      "voto"
+                    ],
                     "description": "POR QUE esta pessoa recebe este aviso — o vinculo mais forte quando ela acumula papeis (autor > comentario > voto). OPCIONAL de proposito: cartas emitidas antes deste campo existir (26-27/08/2026) nao o tem, e a tela que le trata ausencia como 'motivo nao registrado', nunca como erro. Adicionado em 27/08/2026 para a tela de avisos da Caixa nao perder, na migracao para esta porta, a explicacao de origem que ja mostra hoje (Aviso.vinculo) — sem isto, quem votou numa ideia em marco veria em agosto um aviso sobre algo que nao lembra ter tocado."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "O aviso de MATRICULA (29/08/2026). Mesma disciplina do ramo de cima: so ids opacos e estados — nenhum nome, nenhum e-mail, nenhum telefone. Quem precisa falar com a pessoa pergunta a `alunos`, que e onde esse dado mora e quem decide quem pode ve-lo (lei da fila §5).",
+      "if": {
+        "properties": {
+          "data": {
+            "properties": {
+              "assunto": {
+                "const": "matricula.situacao-alterada"
+              }
+            },
+            "required": [
+              "assunto"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "parametros": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "matricula_id",
+                  "situacao_nova"
+                ],
+                "properties": {
+                  "matricula_id": {
+                    "type": "string",
+                    "description": "Id opaco da matricula na celula `alunos`. E o que liga o aviso a ficha, para quem for reconstruir o historico depois. A tela do aluno NAO o mostra."
+                  },
+                  "situacao_anterior": {
+                    "type": "string",
+                    "enum": [
+                      "ativa",
+                      "suspensa",
+                      "reembolsada",
+                      "aguardando",
+                      "recusada",
+                      "encerrada"
+                    ],
+                    "description": "OPCIONAL: nem toda mudanca tem um estado anterior conhecido por quem publica. Ausencia e 'nao registrado', nunca erro — mesma regra que `vinculo` ja segue no ramo de cima."
+                  },
+                  "situacao_nova": {
+                    "type": "string",
+                    "enum": [
+                      "ativa",
+                      "suspensa",
+                      "reembolsada",
+                      "aguardando",
+                      "recusada",
+                      "encerrada"
+                    ],
+                    "description": "O vocabulario INTEIRO de status da `alunos`, e nao so os dois que hoje geram aviso. O contrato descreve o que PODE ser dito; QUEM decide o que merece carta e a celula que publica, e essa decisao muda sem rito de contrato. Amarrar as duas coisas faria toda mudanca de politica de aviso virar uma sessao de arquitetura."
                   }
                 }
               }
