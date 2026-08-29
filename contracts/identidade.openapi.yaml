@@ -46,8 +46,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionFull'
+  /pessoas/por-email:
+    post:
+      operationId: findPersonByEmail
+      summary: Qual o id de plataforma de quem tem este e-mail
+      description: |-
+        Traduz um e-mail no id OPACO da pessoa — o mesmo `id` que `getSession`
+        devolve. Existe por uma razao so, e ela e o aviso: uma celula que
+        conhece as pessoas por E-MAIL (a `alunos`) precisa enderecar uma carta
+        para uma caixa de avisos que entrega por ID DE PLATAFORMA. Ninguem, ate
+        29/08/2026, sabia traduzir um no outro — e sem essa traducao a promessa
+        "voce e avisado quando a sua situacao muda" nao tem como existir.
+
+        Decisao do mantenedor em 29/08/2026, escolhida entre duas opcoes: a
+        traducao mora AQUI, em quem sabe, e nao numa copia do id gravada na
+        ficha do aluno. A copia resolveria so as fichas novas — as antigas e as
+        que o painel cria a mao ficariam para sempre sem aviso.
+
+        POST e nao GET com o e-mail no caminho, e a escolha e de privacidade:
+        caminho de URL entra em log de servidor, em historico de proxy e em
+        rastro de erro. O corpo, nao. Nenhuma resposta desta porta devolve o
+        e-mail de volta (DECISAO-EVO-01 §3): entra e-mail, sai id opaco.
+
+        Exige o token do par em TOKENS_COMPLETOS_*, o mesmo degrau de
+        `getSessionFull` — e pelo mesmo motivo: quem manda um e-mail para esta
+        porta descobre se ele existe, e existencia e informacao sobre uma
+        pessoa.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  description: >-
+                    Comparado em minusculas e sem espacos nas pontas, do lado de
+                    ca. Quem chama nao precisa saber a forma canonica.
+      responses:
+        '200':
+          description: >-
+            Respondi. `id: null` significa "nao conheco esta pessoa" — ela nunca
+            entrou com o Google — e e uma RESPOSTA, nao um erro: quem chama
+            precisa poder tratar isso sem traduzir excecao em tela.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PessoaPorEmail'
+        '403':
+          description: O token do par nao esta em TOKENS_COMPLETOS_*
+        '422':
+          description: Corpo invalido (sem `email`, ou campo a mais)
 components:
   schemas:
+    PessoaPorEmail:
+      description: >-
+        O id opaco de quem tem aquele e-mail, ou `null`. NUNCA devolve o e-mail
+        nem o nome — entra e-mail, sai id.
+      type: object
+      required: [id]
+      properties:
+        id:
+          anyOf:
+            - type: string
+            - type: 'null'
     Session:
       description: 'Quem é o dono da sessão; sem sessão, só `autenticado: false`.'
       type: object
