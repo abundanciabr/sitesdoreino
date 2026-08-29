@@ -113,6 +113,14 @@ jobs:
           # próxima passagem, no máximo 15 minutos depois.
           MAX_POUSOS=5
           pousados=0
+          # Quem esta passagem já atendeu. Existe porque o GitHub continua
+          # listando um PR como aberto por alguns segundos DEPOIS do merge:
+          # medido em 29/08/2026, a volta seguinte pegou o mesmo PR que acabara
+          # de pousar. Naquele run o portão respondeu ERROR e a pista saiu
+          # quieta — mas se tivesse respondido FAIL, ela teria tirado a etiqueta
+          # e comentado "não pousei" num PR que ENTROU. Comentário mentiroso no
+          # PR é pior que volta perdida: ele vira a memória do projeto.
+          ja_vistos=""
 
           for volta in $(seq 1 "$MAX_POUSOS"); do
             if [ "$volta" = "1" ] && [ -n "${PEDIDO:-}" ]; then
@@ -128,6 +136,15 @@ jobs:
               echo "Fila vazia. Pousos nesta passagem: $pousados."
               break
             fi
+
+            case " $ja_vistos " in
+              *" $alvo "*)
+                echo "O PR #$alvo já foi atendido nesta passagem — o GitHub"
+                echo "ainda não atualizou a lista. Encerrando; o que sobrar"
+                echo "entra na próxima passagem."
+                break ;;
+            esac
+            ja_vistos="$ja_vistos $alvo"
 
             echo "--- PR #$alvo (volta $volta de $MAX_POUSOS) ---"
 
