@@ -270,6 +270,29 @@ class Rede:
     def alunos_nao_conhece(self, email: str):
         return self.alunos_situacao(email, "cadastrado")
 
+    def alunos_diz_na_fila(self, email: str, estado: str = "aguardando"):
+        """[RECIBO] A `alunos` confirma que existe uma linha esperando.
+
+        Desde 29/08/2026 é a ÚNICA forma de a porta mostrar o recibo do pedido
+        (`DECISAO-o-recibo-e-conferido.md`) — antes bastava um cookie no
+        navegador, que continuava afirmando o pedido depois de a linha ter sido
+        decidida ou apagada.
+        """
+        return self.alunos_responde(
+            email,
+            httpx.Response(
+                200,
+                json={
+                    "categoria": "na_fila",
+                    "na_fila": {
+                        "estado": estado,
+                        "esperando_ha_dias": 0 if estado == "aguardando" else None,
+                        "motivo_recusa": None,
+                    },
+                },
+            ),
+        )
+
     def alunos_diz_ex_aluno(self, email: str):
         return self.alunos_situacao(email, "ex_aluno")
 

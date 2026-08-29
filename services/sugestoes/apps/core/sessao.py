@@ -78,6 +78,15 @@ INDISPONIVEL = "indisponivel"
 # preencher o pedido de entrada é dizer a ela que nunca pediu nada.
 PAUSADO = "pausado"
 EX_ALUNO = "ex-aluno"
+# [RECIBO] 29/08/2026: "nunca pediu nada" e "está esperando decisão" deixaram de
+# ser o mesmo estado aqui — e a fusão dos dois era um DEFEITO, não uma
+# simplificação. A `alunos` sempre soube a diferença (`GET
+# /alunos/{email}/situacao` devolve `na_fila` desde 28/08); esta porta jogava a
+# resposta fora e reconstruía uma versão pior dela a partir de um cookie no
+# navegador. O mantenedor encontrou o resultado com a própria conta: a tela
+# dizia "seu pedido já está com a gente" enquanto a fila do painel estava
+# vazia, medida. `DECISAO-o-recibo-e-conferido.md`.
+NA_FILA = "na-fila"
 
 #: O que a `alunos` responde ⇒ o estado desta porta. Mapa explícito, e não um
 #: `if` por categoria: categoria nova que apareça amanhã cai no `else` de quem
@@ -88,7 +97,7 @@ ESTADO_POR_CATEGORIA = {
     "pausado": PAUSADO,
     "ex_aluno": EX_ALUNO,
     "cadastrado": SEM_MATRICULA,
-    "na_fila": SEM_MATRICULA,
+    "na_fila": NA_FILA,
 }
 
 # ---------------------------------------------------------------------------
