@@ -81,6 +81,37 @@ PAGINA_AVISOS = "sugestoes/avisos.html"
 STATUS_ROTULOS = dict(Sugestao.Status.choices)
 VINCULO_ROTULOS = dict(Aviso.Vinculo.choices)
 
+# ---------------------------------------------------------------------------
+# [ASSUNTOS] Uma carta diz DE QUE ela fala (`assunto`), e esta tela precisa
+# saber desenhar cada um. Até 29/08/2026 existia um só — a Caixa era a única
+# coisa que gerava aviso — e o desenho do cartão assumia isso em silêncio: ele
+# monta o título com `{% url 'sugestao' aviso.sugestao_id %}`, que **estoura em
+# NoReverseMatch** para qualquer carta sem `suggestion_id`.
+#
+# Ou seja: no dia em que a primeira carta de matrícula chegasse, esta página
+# devolveria 500 — não um cartão feio, a página inteira. É por isso que este PR
+# vem ANTES do que publica a carta.
+# ---------------------------------------------------------------------------
+ASSUNTO_SUGESTAO = "sugestao.status-alterado"
+ASSUNTO_MATRICULA = "matricula.situacao-alterada"
+
+#: As situações de matrícula NA PALAVRA DE QUEM LÊ — o aluno, não o mantenedor.
+#: O painel dele tem o próprio vocabulário ("Ativo — entra normalmente"), e a
+#: duplicação aqui é deliberada: são duas plateias, e a frase que serve a uma
+#: soa errada para a outra. O que NÃO pode divergir é a chave, que vem do
+#: contrato do evento.
+#:
+#: Situação que não estiver aqui cai no rótulo cru, nunca numa chave chutada —
+#: a mesma regra do `vinculo` ausente logo acima.
+SITUACAO_ROTULOS = {
+    "ativa": "Você é aluno",
+    "reembolsada": "Reembolsado — o acesso continua",
+    "suspensa": "Acesso pausado",
+    "encerrada": "Acesso encerrado",
+    "aguardando": "Na fila, esperando decisão",
+    "recusada": "Pedido não aprovado",
+}
+
 
 class AvisoForaDaTransacao(Exception):
     """`avisar_os_interessados()` chamada sem transação aberta.
@@ -382,6 +413,28 @@ def _titulos_das_sugestoes(itens: list[dict]) -> dict[str, str]:
     }
 
 
+def _matricula_para_o_template(item: dict, parametros: dict) -> dict:
+    """[ASSUNTOS] O cartão de uma mudança de situação na escola.
+
+    Sem link, de propósito: não há para onde levar. A ficha do aluno mora na
+    célula `alunos` e a tela dela é a do MANTENEDOR — mandar a pessoa para lá
+    seria oferecer uma porta que bate na cara, o defeito que a home já cometeu
+    uma vez (`DECISAO-categorias-de-usuario`).
+
+    O `matricula_id` chega na carta e **não vai para a tela**: ele existe para
+    quem for reconstruir o histórico, e um identificador opaco no cartão de um
+    aluno é ruído sobre um dado que ele não pode usar para nada.
+    """
+    nova = parametros.get("situacao_nova") or ""
+    anterior = parametros.get("situacao_anterior") or ""
+    return {
+        "situacao_nova": nova,
+        "situacao_nova_label": SITUACAO_ROTULOS.get(nova, nova),
+        "situacao_anterior": anterior,
+        "situacao_anterior_label": SITUACAO_ROTULOS.get(anterior, anterior),
+    }
+
+
 def _item_para_o_template(item: dict, titulos: dict[str, str]) -> dict:
     """Um item de `GET /avisos` (a forma da API) → o dicionário que o
     template usa. Mesmos NOMES de campo que o `Aviso` (model) já expunha —
@@ -396,13 +449,36 @@ def _item_para_o_template(item: dict, titulos: dict[str, str]) -> dict:
     template simplesmente não desenha o selo quando não há rótulo.
     """
     parametros = item.get("parametros") or {}
+    assunto = item.get("assunto") or ""
+    comum = {
+        "id": item["id"],
+        # [ASSUNTOS] É por ele que o template escolhe o cartão. Vem do contrato
+        # da carta, e chega vazio nas cartas antigas — que são todas de sugestão
+        # e caem no ramo padrão, como sempre caíram.
+        "assunto": assunto or ASSUNTO_SUGESTAO,
+        "lido_em": parse_datetime(item["lido_em"]) if item.get("lido_em") else None,
+        "criado_em": parse_datetime(item["criado_em"]),
+    }
+
+    if assunto == ASSUNTO_MATRICULA:
+        return {**comum, **_matricula_para_o_template(item, parametros)}
+
+    if assunto and assunto != ASSUNTO_SUGESTAO:
+        # [ASSUNTOS] Assunto que esta tela NÃO conhece. O cartão diz isso, em vez
+        # de desenhar um de sugestão vazio — que é o que aconteceria por
+        # omissão, com "(sugestão não encontrada)" e um link para lugar nenhum.
+        #
+        # Fail-VISÍVEL, a mesma regra desta página inteira (Escolha 2 da
+        # `DECISAO-fase-4-do-sininho`): a pessoa fica sabendo que existe um
+        # recado para ela, e que somos nós que ainda não sabemos mostrá-lo.
+        return {**comum, "assunto": assunto, "desconhecido": True}
+
     suggestion_id = str(parametros.get("suggestion_id") or "")
     status_novo = parametros.get("status_novo") or ""
     status_anterior = parametros.get("status_anterior") or ""
     vinculo = parametros.get("vinculo") or ""
-    lido_em = item.get("lido_em")
     return {
-        "id": item["id"],
+        **comum,
         "sugestao_id": suggestion_id,
         "sugestao_titulo": titulos.get(suggestion_id, "(sugestão não encontrada)"),
         "status_novo": status_novo,
@@ -412,8 +488,6 @@ def _item_para_o_template(item: dict, titulos: dict[str, str]) -> dict:
         "vinculo": vinculo,
         "vinculo_label": VINCULO_ROTULOS.get(vinculo, ""),
         "nota": parametros.get("nota") or "",
-        "lido_em": parse_datetime(lido_em) if lido_em else None,
-        "criado_em": parse_datetime(item["criado_em"]),
     }
 
 
