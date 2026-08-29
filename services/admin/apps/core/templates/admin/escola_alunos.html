@@ -37,7 +37,53 @@
     {% endfor %}
   </div>
 
+  {% comment %}
+  [BUSCA] O formulário de procurar e filtrar (29/08/2026, pedido do mantenedor
+  depois do mapa da jornada do aluno).
+
+  **GET e não POST**, ao contrário de todo o resto desta tela: um filtro é uma
+  LEITURA, e a query string é o que torna o resultado recarregável, marcável e
+  colável num recado. Os POSTs daqui mudam a vida de alguém; este não muda nada.
+
+  Os cartões de contagem ficam ACIMA e não se mexem com o filtro — eles contam a
+  escola inteira, sempre. É a diferença entre "quantos alunos eu tenho" e
+  "quantos casaram com o que eu digitei", e colapsar as duas faria o número da
+  busca passar por número da escola.
+  {% endcomment %}
+  <form class="peneira" method="get" action="{% url 'escola_alunos' %}">
+    <div class="campo">
+      <label class="rotulo" for="busca">Procurar por nome, e-mail ou turma</label>
+      <input id="busca" type="search" name="q" maxlength="120" value="{{ procurado }}"
+             placeholder="ex.: ana &middot; ana@ &middot; turma de agosto">
+    </div>
+    <div class="campo">
+      <label class="rotulo" for="filtro-estado">Situação</label>
+      <select id="filtro-estado" name="estado">
+        <option value="">Todas as situações</option>
+        {% for valor, texto in estados %}
+        <option value="{{ valor }}" {% if valor == estado_escolhido %}selected{% endif %}>{{ texto }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <button class="sim" type="submit">Procurar</button>
+    {% if peneirando %}<a class="volta" href="{% url 'escola_alunos' %}">Limpar</a>{% endif %}
+  </form>
+
+  {% if estado_desconhecido %}
+  <p class="aviso">
+    <b>Não conheço essa situação.</b>
+    O endereço pediu uma situação que esta tela não tem — link antigo, ou algo
+    editado na barra de endereço. Estou mostrando <b>todas</b>, e não uma lista
+    vazia: sumir com as pessoas seria a pior resposta possível a um filtro que
+    não existe.
+  </p>
+  {% endif %}
+
   <h2 style="font-size:16px; margin:30px 0 10px">Quem está esperando</h2>
+
+  {% if peneirando and esperando %}
+  <p class="nota">Mostrando {{ esperando|length }} de {{ total_esperando }} na fila.</p>
+  {% endif %}
 
   {% if nao_consigo_perguntar %}
   <p class="aviso">
@@ -46,6 +92,18 @@
     esta área e a parte do sistema que guarda os alunos. Ela só pode ser
     escrita dentro do servidor, por você, com um comando de uma linha. Ele está
     no painel do sistema, na caixa <b>Precisa de você</b>.
+  </p>
+  {% elif not esperando and peneirando %}
+  {% comment %}
+  [BUSCA] Vazio por PENEIRA e vazio por AUSÊNCIA são frases diferentes, e
+  confundi-las é a forma mais fácil de esta tela mentir: "ninguém está
+  esperando" dito a quem tem cinco pessoas na fila e digitou um nome errado
+  faria o mantenedor fechar a página tranquilo.
+  {% endcomment %}
+  <p class="aviso">
+    <b>Nenhum dos {{ total_esperando }} da fila casou com a sua procura.</b>
+    A fila não está vazia — a sua busca é que não achou ninguém nela.
+    <a href="{% url 'escola_alunos' %}">Ver todos</a>.
   </p>
   {% elif not esperando %}
   <p class="aviso">
@@ -117,12 +175,22 @@
 
   <h2 style="font-size:16px; margin:34px 0 10px">Os alunos</h2>
 
+  {% if peneirando and alunos %}
+  <p class="nota">Mostrando {{ alunos|length }} de {{ total_de_alunos }} alunos.</p>
+  {% endif %}
+
   {% if nao_consigo_ver_alunos %}
   <p class="aviso">
     <b>Ainda não consigo ver a lista de alunos.</b>
     Falta a senha de par entre esta área e a parte do sistema que guarda os
     alunos — um comando de uma linha, no servidor, que está no painel do
     sistema, na caixa <b>Precisa de você</b>.
+  </p>
+  {% elif not alunos and peneirando %}
+  <p class="aviso">
+    <b>Nenhum dos {{ total_de_alunos }} alunos casou com a sua procura.</b>
+    A escola não está vazia — a sua busca é que não achou ninguém nela.
+    <a href="{% url 'escola_alunos' %}">Ver todos</a>.
   </p>
   {% elif not alunos %}
   <p class="aviso">
