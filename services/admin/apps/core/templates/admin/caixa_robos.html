@@ -1,0 +1,187 @@
+{% extends "admin/base.html" %}
+{% comment %}
+OS ROBÔS — aba 4 da gestão da Caixa, esperada desde 28/08/2026 e construída
+quando a fonte nasceu (a fila de trabalho, fila/LEIA-ME.md).
+
+Três blocos, três relógios — e a página diz qual é qual:
+1. O QUADRO: retrato do último deploy (materializado no build, escritor único).
+2. AGORA: o navegador pergunta ao GitHub ao vivo (reservas e PRs abertos).
+3. AS ESPERAS: resumo curado exportado do diário local + a régua viva.
+
+A cor da borda diz AÇÃO EXIGIDA, nunca prioridade (consultoria de 28/08,
+desenho-kanban-cores-Gemini): âmbar = parada esperando alguém decidir;
+roxo = robô com ela agora; azul = fila andando; verde = terminou com prova.
+{% endcomment %}
+{% block titulo %}Os robôs · Caixa de Sugestões{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro largo">
+  <a class="volta" href="{% url 'visao_geral' %}">&larr; Visão geral</a>
+
+  {% if fila_ausente %}
+    <h1>Os robôs</h1>
+    <p class="aviso" style="margin-top:16px">
+      A fila de trabalho não veio nesta imagem. Isso não significa que não há
+      trabalho — significa que esta parte quebrou. O quadro vivo mora no
+      repositório (<code>fila/</code>); avise um robô com estas palavras:
+      "a fila embutida não chegou na imagem da admin".
+    </p>
+  {% else %}
+    {% include "admin/_caixa_abas.html" %}
+
+    <style>
+      .quadro { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:12px; margin-top:14px; }
+      .coluna h2 { font-size:13px; text-transform:uppercase; letter-spacing:.04em; margin:0 0 2px; }
+      .coluna .explica { font-size:12px; color:var(--texto-2); margin:0 0 8px; }
+      .cartao-robo { border-left:5px solid var(--borda); border-radius:8px; padding:10px 12px; margin-bottom:8px; background:var(--cartao, #fff); box-shadow:0 1px 2px rgba(0,0,0,.06); }
+      .cartao-robo b { display:block; font-size:13px; line-height:1.35; }
+      .cartao-robo .id { font-size:11px; color:var(--texto-2); letter-spacing:.03em; }
+      .cartao-robo .motivo { font-size:12px; color:var(--texto-2); margin-top:4px; }
+      .cartao-robo .agora { display:none; font-size:11px; font-weight:700; margin-top:6px; }
+      .borda-azul { border-left-color:#2f6fd0; }
+      .borda-roxo { border-left-color:#7a4fc0; }
+      .borda-ambar { border-left-color:#d09a2f; }
+      .borda-verde { border-left-color:#2f9a57; }
+      .borda-cinza { border-left-color:#9aa0a6; }
+      .selo-acao { font-size:11px; font-weight:700; color:#8a6100; }
+      .ao-vivo li, .estouros li { margin:4px 0; font-size:13px; }
+      .carimbo { font-size:12px; color:var(--texto-2); }
+      table.regua { border-collapse:collapse; margin-top:8px; font-size:13px; }
+      table.regua td, table.regua th { padding:4px 10px 4px 0; text-align:left; }
+    </style>
+
+    <h1>Os robôs</h1>
+    <p class="carimbo">
+      O quadro abaixo é o retrato do último deploy — {{ total }} tarefa{{ total|pluralize }}
+      registrada{{ total|pluralize }} na fila. O bloco "agora" é ao vivo, perguntado ao GitHub
+      pelo seu navegador.
+    </p>
+
+    <div class="quadro">
+      {% for coluna in colunas %}
+        {% if coluna.cartoes %}
+          <div class="coluna">
+            <h2>{{ coluna.nome }} <span class="aba-conta">{{ coluna.cartoes|length }}</span></h2>
+            <p class="explica">{{ coluna.explicacao }}</p>
+            {% for cartao in coluna.cartoes %}
+              <div class="cartao-robo borda-{{ coluna.cor }}" data-tarefa="{{ cartao.id }}">
+                <span class="id">{{ cartao.id }}{% if cartao.toca %} · toca: {{ cartao.toca|join:", " }}{% endif %}</span>
+                <b>{{ cartao.titulo }}</b>
+                {% if coluna.nome == "bloqueada" %}<span class="selo-acao">PAROU ESPERANDO ALGUÉM — motivo abaixo</span>{% endif %}
+                {% if cartao.motivo %}<div class="motivo">{{ cartao.motivo }}</div>{% endif %}
+                {% if cartao.quem %}<div class="motivo">quem: {{ cartao.quem }}</div>{% endif %}
+                <span class="agora">🔒 reservada AGORA no servidor</span>
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <h2 style="margin-top:26px">Agora, ao vivo</h2>
+    <p class="carimbo" id="ao-vivo-estado">Perguntando ao GitHub o que está acontecendo neste minuto…</p>
+    <ul class="ao-vivo" id="ao-vivo-lista"></ul>
+
+    <h2 style="margin-top:26px">As esperas dos robôs</h2>
+    {% if esperas %}
+      <p class="carimbo">
+        Resumo do diário de esperas, exportado em {{ esperas.gerado_em }} —
+        {{ esperas.total }} espera{{ esperas.total|pluralize }} anotada{{ esperas.total|pluralize }},
+        {{ esperas.verdes }} dentro do prazo.
+        O diário vivo fica na máquina onde os robôs trabalham; este é o retrato mais recente que ela mandou.
+      </p>
+      {% if esperas.estouros %}
+        <p><b>O que estourou o prazo enquanto você não olhava:</b></p>
+        <ul class="estouros">
+          {% for e in esperas.estouros %}
+            <li>
+              <b>{{ e.dizendo|default:e.alvo }}</b> — levou {{ e.decorrido_s }}s de um teto
+              de {{ e.teto_s }}s ({{ e.quando_utc }}). {{ e.detalhe|default:"" }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Nenhuma espera estourou o prazo até a última exportação. 🎉</p>
+      {% endif %}
+    {% else %}
+      <p class="aviso">Nenhum resumo de esperas veio nesta imagem — o diário vivo mora na
+      máquina dos robôs e ainda não foi exportado. A régua abaixo continua valendo.</p>
+    {% endif %}
+
+    {% if regua %}
+      <p style="margin-top:14px"><b>Quanto cada espera costuma levar</b>
+        <span class="carimbo">(medido em {{ regua_medida_em }}, nunca chutado)</span></p>
+      <table class="regua">
+        <tr><th>espera</th><th>normalmente</th><th>quase sempre até</th><th>amostra</th></tr>
+        {% for linha in regua %}
+          <tr>
+            <td>{{ linha.rotulo }}</td>
+            <td>{{ linha.p50_s }}s</td>
+            <td>{{ linha.p90_s }}s</td>
+            <td>{{ linha.amostra }}{% if linha.pouca_amostra %} ⚠ pouca amostra, desconfie{% endif %}</td>
+          </tr>
+        {% endfor %}
+      </table>
+    {% endif %}
+
+    <script>
+      (function () {
+        "use strict";
+        var REPO = "abundanciabr/sitesdoreino";
+        var estado = document.getElementById("ao-vivo-estado");
+        var lista = document.getElementById("ao-vivo-lista");
+
+        function falhou() {
+          estado.textContent = "Não consegui perguntar ao GitHub agora (sem internet, ou ele " +
+            "limitou as perguntas desta hora). O quadro acima continua valendo: é o retrato " +
+            "do último deploy.";
+        }
+
+        function item(texto, forte) {
+          var li = document.createElement("li");
+          if (forte) { var b = document.createElement("b"); b.textContent = texto; li.appendChild(b); }
+          else { li.textContent = texto; }
+          lista.appendChild(li);
+        }
+
+        Promise.all([
+          fetch("https://api.github.com/repos/" + REPO + "/git/matching-refs/reservas%2Ftarefa-").then(function (r) {
+            if (!r.ok) { throw new Error(r.status); } return r.json();
+          }),
+          fetch("https://api.github.com/repos/" + REPO + "/pulls?state=open&per_page=100").then(function (r) {
+            if (!r.ok) { throw new Error(r.status); } return r.json();
+          })
+        ]).then(function (respostas) {
+          var reservas = respostas[0] || [];
+          var prs = respostas[1] || [];
+          var vivos = 0;
+
+          reservas.forEach(function (ref) {
+            var id = (ref.ref || "").split("tarefa-").pop();
+            if (!id) { return; }
+            vivos++;
+            item("🔒 " + id + " está reservada neste minuto no servidor (a trava do almoxarife).", true);
+            var cartao = document.querySelector('[data-tarefa="' + id + '"] .agora');
+            if (cartao) { cartao.style.display = "block"; }
+          });
+
+          prs.forEach(function (pr) {
+            var texto = (pr.title || "") + " " + ((pr.head && pr.head.ref) || "");
+            var casado = texto.match(/TAR-\d{3,}/);
+            vivos++;
+            item((casado ? "⚙ " + casado[0] + " — " : "⚙ ") + "PR #" + pr.number + " aberto: " + (pr.title || ""));
+          });
+
+          estado.textContent = vivos
+            ? "O que o GitHub respondeu neste minuto:"
+            : "Neste minuto não há reserva viva nem PR aberto — nenhum robô está com a mão na massa agora.";
+        }).catch(falhou);
+      })();
+    </script>
+  {% endif %}
+</div>
+{% endblock %}

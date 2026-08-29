@@ -14,3 +14,8 @@ painel_embutido/
 # passo do deploy. Também não se commita: a fonte é `ci/`, e uma cópia
 # versionada aqui viraria a segunda definição de "contado".
 regra_do_livro/
+
+# A fila de trabalho (`fila/`) + estados materializados, embutidos pelo deploy
+# para a aba "Os robôs" (`apps/core/robos.py`). Mesma lei das duas de cima: a
+# fonte é `fila/` na raiz; cópia versionada aqui seria a segunda casa do fato.
+fila_embutida/
