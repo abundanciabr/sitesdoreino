@@ -55,7 +55,11 @@ def painel_materializado():
     if not gerador.is_file() or node is None:
         return
     subprocess.run(
-        [node, str(gerador)], cwd=str(painel), check=True, capture_output=True, timeout=300
+        [node, str(gerador)],
+        cwd=str(painel),
+        check=True,
+        capture_output=True,
+        timeout=300,
     )
 
 
