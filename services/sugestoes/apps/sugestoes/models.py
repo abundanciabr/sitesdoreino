@@ -161,6 +161,24 @@ class Categoria(models.Model):
         return self.nome
 
 
+class SugestaoQuerySet(models.QuerySet):
+    def visiveis(self):
+        """Sem as arquivadas — o recorte que toda superfície voltada para o
+        aluno usa (`DECISAO-arquivar-ideia.md`).
+
+        **Não é status, e por isso não é `Status`.** Arquivar não é uma decisão
+        de produto sobre a ideia (isso é o trilho: planejado, não planejado...);
+        é a equipe tirando algo de vista — spam, duplicata, pedido enviado por
+        engano. A mesma lição de `DECISAO-a-ficha-nao-se-apaga.md` (a ficha do
+        aluno nunca é apagada, só deixa de aparecer): a linha continua inteira,
+        com voto, comentário e histórico, e só some do que o ALUNO alcança.
+
+        A gestão (Admin) usa o manager padrão, sem este filtro: quem arquivou
+        precisa conseguir achar a ideia de novo para desarquivar.
+        """
+        return self.filter(arquivada_em__isnull=True)
+
+
 class Sugestao(models.Model):
     class Status(models.TextChoices):
         EM_ANALISE = "em_analise", "Em análise"
@@ -198,6 +216,24 @@ class Sugestao(models.Model):
         on_delete=models.SET_NULL,
     )
     criado_em = models.DateTimeField(auto_now_add=True)
+    # O arquivamento (`DECISAO-arquivar-ideia.md`, 29/08/2026). `NULL` = ativa —
+    # e é o `NULL`, não um booleano ao lado, que decide `visiveis()` acima; um
+    # booleano redundante poderia discordar do carimbo no primeiro `update()`
+    # que tocasse um campo e esquecesse o outro.
+    arquivada_em = models.DateTimeField(null=True, blank=True)
+    arquivada_por = models.ForeignKey(
+        "Identidade",
+        null=True,
+        blank=True,
+        related_name="ideias_arquivadas",
+        on_delete=models.PROTECT,
+    )
+    # Por que a equipe tirou isto de vista — texto livre, como a nota do
+    # histórico de status. Vazio é o normal (nem toda arquivada precisa de
+    # explicação escrita); a tela só a oferece como campo opcional.
+    motivo_do_arquivamento = models.TextField(blank=True, default="")
+
+    objects = SugestaoQuerySet.as_manager()
 
     class Meta:
         indexes = [models.Index(fields=["quadro", "status"])]

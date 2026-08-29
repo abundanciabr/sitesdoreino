@@ -306,6 +306,7 @@ def sugestoes_ordenadas(
     categoria_slug: str = "",
     ordem: str = ORDEM_PADRAO,
     agora=None,
+    incluir_arquivadas: bool = False,
 ):
     """O ranking da §10 (mais votadas), a fila do que chegou ou o que está em alta.
 
@@ -322,6 +323,15 @@ def sugestoes_ordenadas(
 
     O calor só é anotado na aba que ordena por ele: as outras duas não pagam a
     subconsulta para jogar o resultado fora.
+
+    **`incluir_arquivadas` nasce `False` de propósito** (`DECISAO-arquivar-ideia.md`):
+    esta função serve tanto o quadro do aluno quanto a fila da equipe
+    (`moderacao.ver_fila`), e as duas precisam que uma ideia arquivada suma por
+    padrão — o perigo de um parâmetro assim é justamente o call site novo que
+    esquece de marcá-lo, e esquecer tem de vazar para o lado seguro (ideia some),
+    nunca para o lado que reabriria a vitrine para o aluno. Só a gestão
+    (`apps/core/api_gestao.py`) passa `True`: quem arquivou precisa achar a
+    ideia de novo para desarquivar.
     """
     consulta = (
         Sugestao.objects.filter(quadro=quadro)
@@ -331,6 +341,8 @@ def sugestoes_ordenadas(
         )
         .select_related("categoria", "autor")
     )
+    if not incluir_arquivadas:
+        consulta = consulta.visiveis()
     if ordem == ORDEM_EM_ALTA:
         consulta = consulta.annotate(calor=calor_de_recencia(agora or timezone.now()))
     if categoria_slug:
@@ -346,11 +358,13 @@ def numeros_do_quadro(quadro) -> dict:
     mostram.
     """
     return {
-        "sugestoes": Sugestao.objects.filter(quadro=quadro).count(),
-        "votos": Voto.objects.filter(sugestao__quadro=quadro).count(),
-        "implementadas": Sugestao.objects.filter(
-            quadro=quadro, status=Sugestao.Status.IMPLEMENTADO
+        "sugestoes": Sugestao.objects.visiveis().filter(quadro=quadro).count(),
+        "votos": Voto.objects.filter(
+            sugestao__quadro=quadro, sugestao__arquivada_em__isnull=True
         ).count(),
+        "implementadas": Sugestao.objects.visiveis()
+        .filter(quadro=quadro, status=Sugestao.Status.IMPLEMENTADO)
+        .count(),
     }
 
 
@@ -375,7 +389,7 @@ def _marcos(quadro, estados, *, categoria_slug: str = ""):
     de propósito: duas ideias empatadas em votos aparecem na mesma ordem na
     grade e na faixa.
     """
-    consulta = Sugestao.objects.filter(quadro=quadro, status__in=estados)
+    consulta = Sugestao.objects.visiveis().filter(quadro=quadro, status__in=estados)
     if categoria_slug:
         consulta = consulta.filter(categoria__slug=categoria_slug)
     return (
@@ -466,15 +480,21 @@ def meu_impacto(ator, quadro, *, categoria_slug: str = ""):
     uma junção só, então não há produto cartesiano a desfazer (é o caso oposto ao
     de `calor_de_recencia`, e vale ler o porquê lá).
     """
-    minhas = Sugestao.objects.filter(quadro=quadro, autor=ator.identidade)
-    apoiadas = Voto.objects.filter(autor=ator.identidade, sugestao__quadro=quadro)
+    minhas = Sugestao.objects.visiveis().filter(quadro=quadro, autor=ator.identidade)
+    apoiadas = Voto.objects.filter(
+        autor=ator.identidade,
+        sugestao__quadro=quadro,
+        sugestao__arquivada_em__isnull=True,
+    )
     # "Participei" é autoria OU voto — e é por isso que precisa de `distinct()`:
     # quem votou na própria ideia casa nos dois lados do `Q` e sairia contado
     # duas vezes. `.order_by()` antes do `.distinct()` pela `armadilhas/115`:
     # `Sugestao` não tem `Meta.ordering` hoje, e no dia em que tiver o `DISTINCT`
     # passaria a ser pelo par (id, coluna de ordenação) sem ninguém notar.
-    participei = Sugestao.objects.filter(quadro=quadro).filter(
-        Q(autor=ator.identidade) | Q(votos__autor=ator.identidade)
+    participei = (
+        Sugestao.objects.visiveis()
+        .filter(quadro=quadro)
+        .filter(Q(autor=ator.identidade) | Q(votos__autor=ator.identidade))
     )
     if categoria_slug:
         minhas = minhas.filter(categoria__slug=categoria_slug)
@@ -581,7 +601,8 @@ def possiveis_duplicatas(quadro, termo: str):
     for palavra in palavras:
         filtro |= Q(titulo__icontains=palavra) | Q(problema__icontains=palavra)
     return list(
-        Sugestao.objects.filter(quadro=quadro)
+        Sugestao.objects.visiveis()
+        .filter(quadro=quadro)
         .filter(filtro)
         .annotate(total_votos=Count("votos", distinct=True))
         .order_by("-total_votos", "criado_em", "id")[:MAXIMO_DE_DUPLICATAS]
@@ -780,7 +801,8 @@ def _pagina_da_sugestao(request, ator, sugestao, *, erros=(), status=200):
 @exige_sessao
 def ver_sugestao(request, ator, sugestao_id):
     sugestao = get_object_or_404(
-        Sugestao.objects.select_related("categoria", "autor", "quadro"), pk=sugestao_id
+        Sugestao.objects.visiveis().select_related("categoria", "autor", "quadro"),
+        pk=sugestao_id,
     )
     return _pagina_da_sugestao(request, ator, sugestao)
 
@@ -805,7 +827,7 @@ def votar(request, ator, sugestao_id):
     voto").
     """
     sugestao = get_object_or_404(
-        Sugestao.objects.select_related("quadro"), pk=sugestao_id
+        Sugestao.objects.visiveis().select_related("quadro"), pk=sugestao_id
     )
     criado = False
     try:
@@ -840,7 +862,7 @@ def desvotar(request, ator, sugestao_id):
     voto que já não existia.
     """
     sugestao = get_object_or_404(
-        Sugestao.objects.select_related("quadro"), pk=sugestao_id
+        Sugestao.objects.visiveis().select_related("quadro"), pk=sugestao_id
     )
     with transaction.atomic():
         apagados, _ = Voto.objects.filter(
@@ -857,7 +879,8 @@ def desvotar(request, ator, sugestao_id):
 @exige_sessao
 def comentar(request, ator, sugestao_id):
     sugestao = get_object_or_404(
-        Sugestao.objects.select_related("categoria", "autor", "quadro"), pk=sugestao_id
+        Sugestao.objects.visiveis().select_related("categoria", "autor", "quadro"),
+        pk=sugestao_id,
     )
     texto = (request.POST.get("texto") or "").strip()
     if not texto:
