@@ -64,6 +64,22 @@ jobs:
           # jq -R lê linha a linha; entrada vazia => [] (push em services/ sem
           # célula, ex.: services/README) — SKIP legítimo do portão, não erro.
           JSON="$(printf '%s' "$CEL" | jq -R . | jq -sc 'map(select(length>0))')"
+          # A ORDEM DE PUBLICAÇÃO (Onda 4, fatia 2). A matriz publica uma célula
+          # por vez, e até 29/08/2026 na ordem em que a detecção devolveu — que é
+          # alfabética, ou seja, arbitrária. Num push que toca `checkout` e
+          # `pagamentos`, o `checkout` subia PRIMEIRO e passava minutos falando
+          # com uma versão da `pagamentos` que ainda não existia: site no ar
+          # respondendo errado, sem nada ficar vermelho.
+          #
+          # `ci/ordem_de_publicacao.py` põe provedor antes de consumidor,
+          # derivando o grafo do próprio código (quem lê `<OUTRA>_API_URL`). A
+          # explicação sai em stderr e aparece no log; só o JSON vai para o
+          # stdout, senão o `$(...)` engoliria texto junto com o dado.
+          #
+          # Sem `|| true` e sem `2>/dev/null`: se ele não conseguir medir, o
+          # deploy PARA. Publicar numa ordem que ninguém escolheu foi
+          # exatamente o defeito que esta linha existe para fechar.
+          JSON="$(python ci/ordem_de_publicacao.py "$JSON")"
           echo "celulas=$JSON" >> "$GITHUB_OUTPUT"
           echo "n=$(jq -n --argjson c "$JSON" '$c|length')" >> "$GITHUB_OUTPUT"
           echo "deteccao=ok" >> "$GITHUB_OUTPUT"
