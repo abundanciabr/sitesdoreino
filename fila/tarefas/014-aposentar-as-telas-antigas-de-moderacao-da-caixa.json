@@ -1,0 +1,13 @@
+{
+  "arquivo": "014-aposentar-as-telas-antigas-de-moderacao-da-caixa",
+  "id": "TAR-014",
+  "titulo": "Aposentar as telas antigas de moderação da Caixa",
+  "toca": [
+    "sugestoes"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "As telas de /forms/sugestoes/moderacao respondendo redirecionamento (302) para o Admin, conferido de fora, sem perder função.",
+  "despacho": "Promessa registrada: 'elas fazem o mesmo que a tela nova de detalhe, e seguem o mesmo caminho num próximo passo' (registro 20260828-074, o mesmo que aposentou as três telas de gestão). Mesmo molde: redirecionar atrás do crachá, nunca apagar endereço.",
+  "origem": "promessa no registro 20260828-074 (a gestão da Caixa mora num lugar só)",
+  "criada_em": "2026-08-29"
+}

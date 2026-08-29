@@ -1,0 +1,13 @@
+{
+  "arquivo": "009-trava-de-cobertura-de-teste-por-celula",
+  "id": "TAR-009",
+  "titulo": "Trava de cobertura de teste por célula",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "PR que reduza cobertura de uma célula ficando vermelho, com prova vermelho→verde.",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendações B15/O11 do PLANO-MESTRE: catraca de cobertura por célula — o próprio código admite que hoje não existe.",
+  "origem": "plano robôs-sem-colisão, B15/O11 — aceitas e não construídas (registro 20260829-028)",
+  "criada_em": "2026-08-29"
+}

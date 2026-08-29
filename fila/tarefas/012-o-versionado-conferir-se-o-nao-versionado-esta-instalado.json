@@ -1,0 +1,13 @@
+{
+  "arquivo": "012-o-versionado-conferir-se-o-nao-versionado-esta-instalado",
+  "id": "TAR-012",
+  "titulo": "O versionado conferir se o não-versionado está instalado",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "Guarda versionado reprovando quando uma peça local necessária (hook, ferramenta) está ausente, com teste.",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendação O4 do PLANO-MESTRE, aceita como LEI: princípio forte que ainda não virou portão.",
+  "origem": "plano robôs-sem-colisão, O4 — aceita e não construída (registro 20260829-028)",
+  "criada_em": "2026-08-29"
+}

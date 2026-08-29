@@ -1,0 +1,14 @@
+{
+  "arquivo": "003-backup-automatico-do-banco-antes-de-toda-migracao",
+  "id": "TAR-003",
+  "titulo": "Backup automático do banco antes de toda migração",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "Um deploy com migração mostrando o backup feito ANTES, no log do run.",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendação O15 do PLANO-MESTRE-ROBOS-SEM-COLISAO.md (Parte 4): cópia de segurança antes de migração, dentro do fluxo de publicação.",
+  "origem": "plano robôs-sem-colisão, O15 — aceita e não construída (auditoria interna, registro 20260829-024)",
+  "criada_em": "2026-08-29"
+}

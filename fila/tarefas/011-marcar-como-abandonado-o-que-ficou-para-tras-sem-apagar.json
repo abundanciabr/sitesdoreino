@@ -1,0 +1,13 @@
+{
+  "arquivo": "011-marcar-como-abandonado-o-que-ficou-para-tras-sem-apagar",
+  "id": "TAR-011",
+  "titulo": "Marcar como abandonado o que ficou para trás, sem apagar",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "Rotina de rotular órfão (ramo/PR/reserva vencida) rodando e um caso rotulado como prova.",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendações B8/P10 do PLANO-MESTRE: nunca apagar ramo nem PR; limpeza preguiçosa embutida na aquisição.",
+  "origem": "plano robôs-sem-colisão, B8/P10 — aceitas e não construídas (registro 20260829-028)",
+  "criada_em": "2026-08-29"
+}

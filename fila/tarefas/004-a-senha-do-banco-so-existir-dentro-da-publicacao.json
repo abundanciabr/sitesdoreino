@@ -1,0 +1,13 @@
+{
+  "arquivo": "004-a-senha-do-banco-so-existir-dentro-da-publicacao",
+  "id": "TAR-004",
+  "titulo": "A senha do banco só existir dentro da publicação",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "Prova de que a credencial não é alcançável fora do passo de publicar (teste ou inspeção reproduzível no PR).",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendação O16 do PLANO-MESTRE: 'não roda porque não tem a senha', não porque leu que não deve.",
+  "origem": "plano robôs-sem-colisão, O16 — aceita e não construída (registro 20260829-024)",
+  "criada_em": "2026-08-29"
+}

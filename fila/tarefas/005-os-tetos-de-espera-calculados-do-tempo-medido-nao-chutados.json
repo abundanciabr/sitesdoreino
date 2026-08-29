@@ -1,0 +1,13 @@
+{
+  "arquivo": "005-os-tetos-de-espera-calculados-do-tempo-medido-nao-chutados",
+  "id": "TAR-005",
+  "titulo": "Os tetos de espera calculados do tempo medido, não chutados",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "Teto derivado de ci/tempos_esperados.json em vez de constante, com teste-guarda.",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendação G8 do PLANO-MESTRE: teto em função da duração real do CI. A régua viva já existe (ci/medir_tempos.py); falta ligar os tetos a ela.",
+  "origem": "plano robôs-sem-colisão, G8 — aceita e não construída (registro 20260829-024)",
+  "criada_em": "2026-08-29"
+}

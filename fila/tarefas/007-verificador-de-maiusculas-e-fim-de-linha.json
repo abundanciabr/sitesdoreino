@@ -1,0 +1,13 @@
+{
+  "arquivo": "007-verificador-de-maiusculas-e-fim-de-linha",
+  "id": "TAR-007",
+  "titulo": "Verificador de maiúsculas e fim de linha",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "Muralha reprovando arquivo que diverge só em caixa/fim de linha (o caso da armadilha 152), com teste vermelho→verde.",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendação B13 do PLANO-MESTRE. Já cobrou uma vez: um arquivo divergindo só no fim de linha travou a atualização do espelho.",
+  "origem": "plano robôs-sem-colisão, B13 — aceita e não construída (registro 20260829-024)",
+  "criada_em": "2026-08-29"
+}
