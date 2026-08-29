@@ -257,6 +257,41 @@ paths:
             schema:
               $ref: '#/components/schemas/QuemAge'
         required: true
+  /gestao/ideias/{sugestao_id}/apagar:
+    post:
+      operationId: deleteIdeaForever
+      summary: Apaga a ideia definitivamente — sem volta, nem para quem criou
+      parameters:
+      - in: path
+        name: sugestao_id
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeiaEmGestao'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+      description: '`DECISAO-apagar-ideia.md` (29/08/2026). Título, texto e solução ficam vazios, votos
+        e comentários são removidos — para sempre, de qualquer pessoa que tenha participado, não só do
+        autor. NINGUÉM alcança este conteúdo de novo, nem pelo link direto, nem esta API. A LINHA continua
+        existindo no banco (uma ideia apagada também vira arquivada), porque `HistoricoStatus`/`ChangeSpecAprovado`/`Aviso`
+        são append-only e apontam para ela — apagar a linha quebraria essa trava. Recusa 422 se já tiver
+        sido apagada.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuemAge'
+        required: true
 components:
   schemas:
     Session:
@@ -347,6 +382,9 @@ components:
         motivo_do_arquivamento:
           default: ''
           type: string
+        apagada:
+          default: false
+          type: boolean
       required:
       - id
       - titulo
@@ -456,6 +494,9 @@ components:
         motivo_do_arquivamento:
           default: ''
           type: string
+        apagada:
+          default: false
+          type: boolean
         historico:
           items:
             $ref: '#/components/schemas/LinhaDoHistorico'
