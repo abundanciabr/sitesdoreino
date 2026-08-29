@@ -202,5 +202,6 @@
 | [174](174-git-diff-name-only-esconde-a-origem-do-rename.md) | `git diff --name-only` mostra só o DESTINO de um rename — e o portão que lê o diff fica cego — não há erro nenhum, e é esse o problema. Um portão que deriva o escopo do diff (a catraca de testes, a cerca de célula, o… | — sem guarda | — |
 | [175](175-compare-lido-ao-contrario-faz-voce-anunciar-que-a-main-regrediu.md) | `compare/A...B` lido ao contrário faz você anunciar que a `main` REGREDIU — e quase alarmar o mantenedor — você confere a `main` depois de mergear, e o commit do topo tem um título de um PR **muito antigo**: | — sem guarda | — |
 | [176](176-hook-fail-open-esconde-o-proprio-defeito-e-cala.md) | Hook fail-open esconde o PRÓPRIO defeito: ele cala, e silêncio parece "nada a dizer" — um hook que aconselha (não bloqueia) é escrito fail-open — toda exceção vira `return 0` —, os testes de unidade das funções internas… | teste+sino | — |
+| [177](177-o-www-serve-o-cert-de-fabrica-e-chega-como-site-sem-cadeado.md) | O `www.` serve o cert de fábrica — e chega até você como "o site está sem cadeado" — o mantenedor manda foto do aviso vermelho "Não seguro" no navegador e pergunta se o site está com problema de cadeado. Você mede o… | — sem guarda | — |
 
-**157 entradas** — 5 com guarda declarada, 152 ainda sem.
+**158 entradas** — 5 com guarda declarada, 153 ainda sem.
