@@ -52,7 +52,11 @@ celulas:
 
   alunos:
     caminhos: [services/alunos]
-    consome: []
+    # Ganhou a primeira em 29/08/2026, e ela existe por uma razão só: para
+    # endereçar a carta de liberação é preciso o id de plataforma de quem vai
+    # recebê-la, e só a `identidade` sabe traduzir e-mail em id. Fail-ABERTO —
+    # a `identidade` fora do ar custa o aviso, nunca a liberação.
+    consome: [identidade]
 
   catalogo:
     caminhos: [services/catalogo]

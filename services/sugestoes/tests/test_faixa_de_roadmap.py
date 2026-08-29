@@ -2,8 +2,10 @@
 
 O que este arquivo prova é o que o aluno passa a CONSEGUIR VER: por onde as
 ideias do quadro andaram, em quatro zonas na ordem do caminho, com as sugestões
-de verdade em cada uma — e, logo abaixo, as que saíram do trilho, que é onde a
-resposta "não vamos fazer, e por quê" continua alcançável.
+de verdade em cada uma — e, logo abaixo, "Fora do trilho", com as que viraram
+outra ideia (`mesclado`). `nao_planejado` não mora mais aqui (decisão do
+mantenedor, 29/08/2026): a ideia recusada continua abrindo pelo link direto,
+com a justificativa escrita nela, mas parou de aparecer nas listas do quadro.
 
 Quase toda asserção olha o HTML que o navegador receberia. As duas exceções são
 deliberadas e estão marcadas: a que conta consultas (não há como medir N+1 pelo
@@ -23,7 +25,12 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 
-from apps.core.participacao import MARCOS_POR_ZONA, faixa_de_roadmap, fora_do_trilho
+from apps.core.participacao import (
+    MARCOS_POR_ZONA,
+    faixa_de_roadmap,
+    fora_do_trilho,
+    numeros_do_quadro,
+)
 from apps.sugestoes.models import Quadro, Sugestao
 
 pytestmark = pytest.mark.django_db
@@ -184,12 +191,14 @@ def test_a_zona_corta_a_lista_mas_nunca_o_numero(povoar, caixa):
 # ---------------------------------------------------------------------------
 
 
-def test_a_ideia_recusada_continua_na_tela_com_o_caminho_para_o_motivo(povoar, caixa):
-    """O aluno recusado precisa continuar achando a resposta.
-
-    A equipe é OBRIGADA a escrever a justificativa desde o EVO-13 justamente
-    porque quem sugeriu vai ler. Se `nao_planejado` sumisse da faixa, a ideia
-    dele desapareceria do roadmap sem nada dizendo para onde ela foi.
+def test_a_recusada_some_das_listas_mas_o_link_direto_continua_com_o_motivo(
+    povoar, caixa
+):
+    """Decisão do mantenedor (29/08/2026): `nao_planejado` some da grade e da
+    faixa — mas quem tem o link (o autor, por exemplo) ainda abre a página e lê
+    o porquê. A garantia de "quem sugeriu vai ler" (EVO-13) segue de pé: quem
+    interagiu já recebeu a nota pelo sininho (`avisos.py`), antes desta mudança
+    e independente dela — a página deixar de listar a ideia não desfaz isso.
     """
     recusada = povoar(
         "Aula ao vivo todo dia",
@@ -201,25 +210,29 @@ def test_a_ideia_recusada_continua_na_tela_com_o_caminho_para_o_motivo(povoar, c
     corpo = _corpo(caixa.aluno)
     saidas = _saidas(corpo)
 
-    assert "Fora do trilho" in corpo
-    assert f'href="{reverse("sugestao", args=[recusada.id])}"' in saidas
+    assert recusada.titulo not in corpo
     assert f'href="{reverse("sugestao", args=[mesclada.id])}"' in saidas
-    assert 'class="selo selo-nao_planejado">Não planejado' in saidas
     assert 'class="selo selo-mesclado">Mesclado' in saidas
+    assert "selo-nao_planejado" not in corpo
 
-    # E o motivo está escrito por inteiro do outro lado do link.
-    detalhe = caixa.aluno.client.get(
-        reverse("sugestao", args=[recusada.id])
-    ).content.decode()
-    assert "Não temos equipe para diário" in detalhe
+    # O link direto continua abrindo, com o motivo escrito por inteiro.
+    resposta = caixa.aluno.client.get(reverse("sugestao", args=[recusada.id]))
+    assert resposta.status_code == 200
+    assert "Não temos equipe para diário" in resposta.content.decode()
 
 
-def test_nenhuma_ideia_do_quadro_fica_de_fora_da_conta(povoar):
-    """A aritmética honesta: as quatro zonas MAIS as saídas dão o quadro inteiro.
+def test_nenhuma_ideia_visivel_fica_de_fora_da_conta(povoar):
+    """A aritmética honesta: as quatro zonas MAIS as saídas dão o total MOSTRADO.
 
-    É este guarda que impede alguém de "limpar" a faixa escondendo um status:
-    a soma passaria a discordar do total de sugestões do quadro, e a página
-    estaria mentindo sem nada na tela indicando a diferença.
+    É este guarda que impede alguém de "limpar" a faixa escondendo um status
+    sem também tirá-lo da conta: a soma passaria a discordar do número que a
+    página exibe, e ela estaria mentindo sem nada na tela indicando a diferença.
+
+    Desde 29/08/2026 "o total mostrado" e "o total no banco" podem divergir de
+    propósito — `nao_planejado` continua existindo (6 linhas), mas só 5 são
+    MOSTRADAS em algum lugar do quadro; a sexta só abre pelo link direto. A
+    honestidade agora é sobre `numeros_do_quadro()["sugestoes"]`, que é o
+    número que o aluno lê — não sobre `Sugestao.objects.count()`.
     """
     for numero, status in enumerate(
         [
@@ -236,7 +249,12 @@ def test_nenhuma_ideia_do_quadro_fica_de_fora_da_conta(povoar):
     quadro = Sugestao.objects.first().quadro
     nas_zonas = sum(zona["total"] for zona in faixa_de_roadmap(quadro))
 
-    assert nas_zonas + len(fora_do_trilho(quadro)) == Sugestao.objects.count() == 6
+    assert Sugestao.objects.count() == 6, "as seis ideias existem de verdade no banco"
+    assert (
+        nas_zonas + len(fora_do_trilho(quadro))
+        == numeros_do_quadro(quadro)["sugestoes"]
+        == 5
+    )
 
 
 # ---------------------------------------------------------------------------

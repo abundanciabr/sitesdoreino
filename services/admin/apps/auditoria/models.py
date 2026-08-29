@@ -60,6 +60,12 @@ class Registro(models.Model):
     MOVER_IDEIA = "mover_ideia"
     AVALIAR_IDEIA = "avaliar_ideia"
     ASSINAR_OBRA = "assinar_obra"
+    # [ARQUIVAR] 29/08/2026 (`DECISAO-arquivar-ideia.md`). Verbo próprio, e não
+    # `APAGAR` reaproveitado: aquele é irreversível (a ficha do aluno, nunca uma
+    # ideia — esta célula não apaga ideia de vez); arquivar é reversível, e quem
+    # ler esta tabela em meses precisa distinguir os dois gestos.
+    ARQUIVAR_IDEIA = "arquivar_ideia"
+    DESARQUIVAR_IDEIA = "desarquivar_ideia"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -71,6 +77,8 @@ class Registro(models.Model):
         (MOVER_IDEIA, "mover a ideia de fase"),
         (AVALIAR_IDEIA, "escrever a avaliacao da ideia"),
         (ASSINAR_OBRA, "assinar a obra de uma ideia"),
+        (ARQUIVAR_IDEIA, "arquivar a ideia"),
+        (DESARQUIVAR_IDEIA, "desarquivar a ideia"),
     ]
 
     OK = "ok"
