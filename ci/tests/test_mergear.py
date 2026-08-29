@@ -897,3 +897,19 @@ def test_a_pista_continua_atendendo_o_mais_antigo_primeiro():
     assert "sort_by(.createdAt)" in _pouso_yml(), (
         "quem pediu antes pousa antes — sem isso a fila vira sorteio"
     )
+
+
+def test_a_pista_nao_atende_o_mesmo_PR_duas_vezes_na_mesma_passagem():
+    """O GitHub lista um PR como aberto por alguns segundos DEPOIS do merge.
+
+    Medido em 29/08/2026, na primeira passagem do laço novo: a volta seguinte
+    pegou o mesmo PR que acabara de pousar. Naquele run o portão respondeu ERROR
+    e a pista saiu quieta — mas com FAIL ela teria tirado a etiqueta e comentado
+    "não pousei" num PR que ENTROU. Comentário mentiroso no PR é pior que volta
+    perdida: ele vira a memória do projeto.
+    """
+    script = _pouso_yml()
+    assert "ja_vistos" in script, (
+        "sumiu a lista de PRs já atendidos na passagem — a pista pode voltar a "
+        "comentar 'não pousei' num PR que pousou"
+    )
