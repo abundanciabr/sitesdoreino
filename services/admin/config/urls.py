@@ -17,7 +17,6 @@ from apps.core.views import (
     escola,
     escola_admin_promover,
     escola_admin_remover,
-    escola_aluno_apagar,
     escola_aluno_salvar,
     escola_alunos,
     escola_decidir,
@@ -108,10 +107,13 @@ urlpatterns = [
     # A segunda rota de escrita: o formulario de gestao de quem JA e aluno.
     # POST-only pelo mesmo motivo da de cima.
     path("escola/alunos/salvar", escola_aluno_salvar, name="escola_aluno_salvar"),
-    # As tres escritas que a DECISAO-administradores-e-apagar autorizou. Todas
-    # POST-only, pelo mesmo motivo das outras — e a de apagar e a mais
-    # destrutiva da celula.
-    path("escola/alunos/apagar", escola_aluno_apagar, name="escola_aluno_apagar"),
+    # As escritas de PODER da DECISAO-administradores-e-apagar. POST-only,
+    # pelo mesmo motivo das outras.
+    #
+    # A rota `escola/alunos/apagar` NAO existe mais, e a ausencia e a lei:
+    # `DECISAO-a-ficha-nao-se-apaga.md` (29/08/2026) tirou do sistema a
+    # capacidade de apagar uma ficha — aqui, e na porta da `alunos` que ela
+    # chamava. Tirar o acesso e o estado `Ex-aluno`, no formulario de gestao.
     path("escola/admin/promover", escola_admin_promover, name="escola_admin_promover"),
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),
