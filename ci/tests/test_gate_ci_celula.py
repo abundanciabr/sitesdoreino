@@ -256,3 +256,42 @@ def test_muralhas_usa_o_runner_canonico() -> None:
             f"o workflow voltou a chamar {portao} direto — a semântica dos "
             "portões precisa vir de ci/ci.py, não de uma lista paralela no YAML"
         )
+
+
+def test_o_detectar_publica_a_LISTA_e_nao_a_primeira_celula():
+    """A matriz sai de `celulas`; publicar `celula` (singular) a deixaria vazia.
+
+    Este teste existe porque o defeito aconteceu: no primeiro PR da matriz, o
+    passo de detecção continuava escrevendo `celula=` e a matriz nasceu sem
+    nada. O gate pegou (lista 0 contra contagem 1) — mas um guarda que lê o
+    WORKFLOW pega antes de gastar uma rodada de CI.
+    """
+    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    detectar = doc["jobs"]["detectar"]
+    assert "celulas" in detectar["outputs"], "o job precisa publicar a LISTA"
+    assert "celula" not in detectar["outputs"], (
+        "`celula` (singular) era o `head -1` que fazia o escopo caber numa "
+        "célula só — ele não pode voltar"
+    )
+    # Comentários fora: eles CITAM o `head -1` para explicar por que ele saiu, e
+    # um guarda que confundisse a explicação com o código proibiria escrever a
+    # história — que é metade do valor destes arquivos.
+    linhas = [
+        ln
+        for passo in detectar["steps"]
+        for ln in str(passo.get("run", "")).splitlines()
+        if not ln.strip().startswith("#")
+    ]
+    script = chr(10).join(linhas)
+    assert "celulas=" in script, "nada escreve `celulas=` no GITHUB_OUTPUT"
+    assert "head -1" not in script, "o `head -1` do escopo estreito voltou"
+
+
+def test_a_matriz_sai_da_lista_detectada():
+    doc = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    rodar = doc["jobs"]["rodar"]
+    matriz = str(rodar["strategy"]["matrix"]["celula"])
+    assert "needs.detectar.outputs.celulas" in matriz
+    assert rodar["strategy"]["fail-fast"] is False, (
+        "com duas células tocadas, parar na primeira falha esconde a segunda"
+    )

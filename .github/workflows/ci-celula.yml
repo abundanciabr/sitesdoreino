@@ -63,9 +63,16 @@ jobs:
             exit 1
           fi
           if [[ -z "$CELULAS" ]]; then N=0; else N=$(printf '%s\n' "$CELULAS" | wc -l); fi
-          C="$(printf '%s\n' "$CELULAS" | head -1)"
+          # A LISTA em json — é ela que vira a matriz do job seguinte. O
+          # `head -1` que morava aqui era o que fazia o escopo caber numa célula
+          # só, e ele existia porque a cerca proibia o resto (Onda 5).
+          #
+          # `jq -R | jq -sc` transforma linha a linha em array; entrada vazia
+          # vira `[]`, que é resposta legítima ("o PR não toca célula nenhuma") e
+          # NÃO se confunde com falha — a falha já saiu no `if` acima.
+          JSON="$(printf '%s' "$CELULAS" | jq -R . | jq -sc 'map(select(length>0))')"
           {
-            echo "celula=$C"
+            echo "celulas=$JSON"
             echo "n=$N"
             echo "deteccao=ok"
           } >> "$GITHUB_OUTPUT"
