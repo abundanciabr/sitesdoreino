@@ -87,6 +87,7 @@ def uma_ideia(**campos) -> dict:
         "arquivada": False,
         "arquivada_em": "",
         "motivo_do_arquivamento": "",
+        "apagada": False,
         "historico": [
             {
                 "quando": "2026-08-14T09:00:00+00:00",
@@ -404,6 +405,7 @@ def test_a_caixa_fora_do_ar_tambem_deixa_rastro():
         "caixa_assinar",
         "caixa_arquivar",
         "caixa_desarquivar",
+        "caixa_apagar",
     ],
 )
 def test_as_acoes_recusam_GET(rota):
@@ -427,6 +429,7 @@ def _dentro_sem_rede() -> Client:
         "caixa_assinar",
         "caixa_arquivar",
         "caixa_desarquivar",
+        "caixa_apagar",
     ],
 )
 def test_sem_sessao_nenhuma_rota_nova_responde(rota):
@@ -526,5 +529,83 @@ def test_arquivar_deixa_rastro_na_auditoria():
 
     linha = Registro.objects.get()
     assert linha.acao == Registro.ARQUIVAR_IDEIA
+    assert linha.desfecho == Registro.OK
+    assert linha.alvo == "ideia:7"
+
+
+# ---------------------------------------------------------------------------
+# Apagar definitivamente — `DECISAO-apagar-ideia.md` (29/08/2026)
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+def test_apagar_manda_quem_agiu():
+    cliente = _dentro()
+    a_caixa_conta()
+    escrita = respx.post(f"{IDEIAS}/7/apagar").mock(
+        return_value=httpx.Response(
+            200, json=uma_ideia(apagada=True, arquivada=True, titulo="", problema="")
+        )
+    )
+
+    resposta = cliente.post(reverse("caixa_apagar", args=[7]), {})
+
+    assert resposta.status_code == 302
+    enviado = json.loads(escrita.calls.last.request.content)
+    assert enviado["por_email"] == DONO
+    assert enviado["por_id_da_plataforma"] == ID_DA_PLATAFORMA
+
+
+@respx.mock
+def test_apagar_ja_apagada_mostra_a_recusa_da_caixa():
+    cliente = _dentro()
+    a_caixa_conta()
+    respx.post(f"{IDEIAS}/7/apagar").mock(
+        return_value=httpx.Response(422, json={"erro": "Esta ideia já foi apagada."})
+    )
+
+    resposta = cliente.post(reverse("caixa_apagar", args=[7]), {})
+
+    assert "erro=" in resposta["Location"]
+    assert "j%C3%A1+foi+apagada" in resposta["Location"]
+
+
+@respx.mock
+def test_a_tela_mostra_o_aviso_definitivo_e_esconde_tudo_quando_apagada():
+    cliente = _dentro()
+    a_caixa_conta(uma_ideia(apagada=True, arquivada=True, titulo="", problema=""))
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert "apagada definitivamente" in pagina
+    assert "Não há como restaurar" in pagina
+    assert reverse("caixa_desarquivar", args=[7]) not in pagina
+    assert reverse("caixa_arquivar", args=[7]) not in pagina
+    assert reverse("caixa_apagar", args=[7]) not in pagina
+    assert "Mover de fase" not in pagina
+
+
+@respx.mock
+def test_a_tela_oferece_apagar_quando_nao_esta_apagada():
+    cliente = _dentro()
+    a_caixa_conta()
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert reverse("caixa_apagar", args=[7]) in pagina
+
+
+@respx.mock
+def test_apagar_deixa_rastro_na_auditoria():
+    cliente = _dentro()
+    a_caixa_conta()
+    respx.post(f"{IDEIAS}/7/apagar").mock(
+        return_value=httpx.Response(200, json=uma_ideia(apagada=True, arquivada=True))
+    )
+
+    cliente.post(reverse("caixa_apagar", args=[7]), {})
+
+    linha = Registro.objects.get()
+    assert linha.acao == Registro.APAGAR_IDEIA
     assert linha.desfecho == Registro.OK
     assert linha.alvo == "ideia:7"

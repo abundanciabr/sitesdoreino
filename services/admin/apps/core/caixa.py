@@ -475,6 +475,25 @@ def desarquivar_ideia(request, ideia_id: int):
     )
 
 
+@require_POST
+def apagar_ideia(request, ideia_id: int):
+    """`DECISAO-apagar-ideia.md`: sem volta, nem para quem criou.
+
+    A confirmação ("tem certeza?") é só do lado do cliente (JavaScript no
+    template) — decisão do mantenedor, pela fricção mínima. O servidor não
+    tem como saber se a pessoa confirmou; o que ele garante é o resto: quem
+    agiu, e a auditoria nos três desfechos, como as demais ações.
+    """
+    return _agir(
+        request,
+        ideia_id,
+        Registro.APAGAR_IDEIA,
+        lambda: CaixaClient().apagar(ideia_id, quem=_quem(request)),
+        "Apagada para sempre. Título, texto, votos e comentários não existem "
+        "mais em lugar nenhum — nem eu consigo trazer de volta.",
+    )
+
+
 def _email(request) -> str:
     """O e-mail de quem está olhando — a porta já o resolveu pela `identidade`.
 
