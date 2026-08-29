@@ -186,5 +186,6 @@
 | [158](158-numero-do-servidor-vem-em-utc-e-o-registro-e-nomeado-em-local.md) | O número do servidor vem no dia UTC, e você nomeia o arquivo no dia daqui — você pede o número atômico do próximo registro, ele devolve `001` num dia em que já existem dezenas de registros, e o arquivo que você cria | — |
 | [159](159-clone-raso-faz-o-portao-dizer-nao-existe-em-vez-de-nao-medi.md) | Clone raso faz o portão dizer "não existe" quando a verdade é "não medi" — um portão que anda no histórico do Git afirma, com toda a confiança, que não há nada lá — sobre uma coisa que tem dezenas de entregas: | — |
 | [160](160-job-que-vira-matriz-muda-de-nome-e-cega-quem-o-procura.md) | Job que vira matriz muda de nome, e cega todo mundo que o procura pelo nome — você transforma um job em matriz (`strategy: matrix`), tudo fica verde no PR — e o que depende daquele job pelo NOME começa a reprovar em… | — |
+| [161](161-espera-sem-teto-parece-trabalho.md) | Espera sem teto parece trabalho — o mantenedor olha a janela e ela mente por omissão — a janela do Claude Code mostra o robô "trabalhando, executando, fazendo algo". Passam horas. No fim o robô confessa: *"eu estava… | — |
 
-**149 entradas.**
+**150 entradas.**
