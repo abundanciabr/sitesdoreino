@@ -32,6 +32,18 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/sino_das_armadilhas.py\"",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [

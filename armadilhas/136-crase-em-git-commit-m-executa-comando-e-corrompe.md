@@ -1,3 +1,17 @@
+---
+schema_version: 2
+armadilha: 136
+estado: sombra
+degrau: 3
+confianca: alta
+custo_por_queda: alto
+guarda:
+  tipo: muralha
+  detector: crase_em_mensagem
+  dono: ci/muralha_das_armadilhas.py
+sinal: null
+---
+
 # Crase em `git commit -m "…"` EXECUTA comando, corrompe a mensagem e cria arquivos-lixo
 
 **Sintoma:** você escreve uma mensagem de commit rica, citando arquivos entre

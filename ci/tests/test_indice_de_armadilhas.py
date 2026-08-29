@@ -82,7 +82,7 @@ def test_toda_entrada_vira_uma_linha_do_indice(repo_falso: Path) -> None:
     )
     assert "001-primeira.md" in texto
     assert "002-segunda.md" in texto
-    assert "**2 entradas.**" in texto
+    assert "**2 entradas**" in texto
 
 
 def test_o_indice_nao_indexa_a_si_mesmo(repo_falso: Path) -> None:
@@ -91,7 +91,7 @@ def test_o_indice_nao_indexa_a_si_mesmo(repo_falso: Path) -> None:
     texto = (repo_falso / indice.PASTA / indice.NOME_DO_INDICE).read_text(
         encoding="utf-8"
     )
-    assert "**2 entradas.**" in texto
+    assert "**2 entradas**" in texto
 
 
 def test_o_id_historico_do_titulo_vira_a_coluna_de_de_para(repo_falso: Path) -> None:

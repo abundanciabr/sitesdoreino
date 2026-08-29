@@ -1,3 +1,16 @@
+---
+schema_version: 2
+armadilha: 72
+estado: documentada
+degrau: 6
+confianca: baixa
+custo_por_queda: medio
+guarda:
+  tipo: nenhum
+  motivo: `corrompe em silencio — nao ha erro na saida para o sino reconhecer, e um sed sem ancora e indistinguivel de um sed legitimo antes de rodar, entao a muralha so produziria falso positivo. Buraco assumido, nao esquecido.`
+sinal: null
+---
+
 # Substituição em massa de `§3.1` também casa dentro de `§3.13`, `§3.16`, `§3.19`
 
 **Sintoma:** um `sed`/`re.sub` que renomeia referências a seções numeradas

@@ -62,6 +62,7 @@ SEMÂNTICA DE SAÍDA ([INV-CI01], igual ao resto da CI)
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -76,6 +77,8 @@ from _nucleo import (  # noqa: E402
 
 PASTA = "armadilhas"
 NOME_DO_INDICE = "INDICE.md"
+NOME_DAS_GUARDAS = "GUARDAS.json"
+NOME_DOS_SINAIS = "SINAIS.json"
 
 RE_TITULO = re.compile(r"^#\s+(.*\S)\s*$")
 RE_ID_NO_TITULO = re.compile(r"^([0-9]+(?:\.[0-9]+)+)\s+(.*)$")
@@ -117,13 +120,221 @@ CABECALHO = """<!-- GERADO por `python ci/indice_de_armadilhas.py`. NÃO EDITE �
 > 23/08/2026 — é por ele que as referências antigas (`ARMADILHAS §5.3`) ainda
 > resolvem. Entrada nova não precisa de um.
 >
+> **`Guarda` diz QUEM faz a lição valer** (desde 29/08/2026). `— sem guarda` não
+> é acusação: é o vermelho honesto do B10 — enquanto ninguém a impõe, ela só
+> vale se você a tiver lido. `muralha` recusa o comando antes de ele rodar;
+> `sino` reconhece a assinatura do erro na saída e aponta a entrada; `CI` é
+> portão de PR; `vacina` é o procedimento automatizado que mata a armadilha na
+> raiz; `nenhum` é uma escolha DECLARADA, com motivo. Quem mede se isso está
+> funcionando é `python ci/termometro.py`.
+>
 > Resolvidas (histórico, fora da dieta do agente): `docs/historico/RESOLVIDAS.md`.
 > O que é do humano (§1 precisa-de-você, como mergear, painéis, dívidas abertas):
 > `ARMADILHAS-OPERACAO.md`.
 
-| # | Sintoma / mensagem de erro (chave de busca) | § antigo |
-|---|---|---|
+| # | Sintoma / mensagem de erro (chave de busca) | Guarda | § antigo |
+|---|---|---|---|
 """
+
+
+ESTADOS = (
+    "observada", "documentada", "recorrente", "candidata",
+    "sombra", "guardada", "extinta", "aposentada",
+)
+CONFIANCAS = ("estrutural", "alta", "media", "baixa")
+TIPOS_DE_GUARDA = ("muralha", "sino", "CI", "teste", "vacina", "nenhum")
+CUSTOS = ("alto", "medio", "baixo")
+CHAVES_DO_SCHEMA = {
+    "schema_version", "armadilha", "estado", "degrau", "confianca",
+    "guarda", "sinal", "custo_por_queda",
+}
+CHAVES_DA_GUARDA = {"tipo", "detector", "dono", "motivo"}
+SINAL_MINIMO = 8
+
+# Saídas benignas do dia a dia desta casa. Um sinal que casa QUALQUER uma delas
+# tocaria o sino em trabalho normal — vira ERROR na geração, não ruído no
+# terminal de quem trabalha. Sabote um sinal com `.*` e a suíte fica vermelha.
+CORPUS_FELIZ = (
+    "PASS indice-de-armadilhas: em dia (153 entradas)",
+    "929 passed in 239.63s (0:03:59)",
+    "On branch main\nnothing to commit, working tree clean",
+    "Merge pull request #494 from abundanciabr/agent/painel/registro",
+    '{"state":"MERGED","mergedBy":{"login":"abundanciabr"}}',
+    "✅ os checks do PR 495: todos os 5 checks verdes · levou 1min02s.",
+    "RESULTADO  PASS\n\nTudo verde. (--conferir: nada foi mergeado.)",
+    "Everything up-to-date",
+    "total 48\ndrwxr-xr-x 1 davia 197121 0 Aug 29 16:11 ci",
+    "Successfully installed huey-2.5.1 redis-5.0.1",
+)
+
+
+class ErroDeFrontmatter(ErroDeInstrumentacao):
+    pass
+
+
+def ler_frontmatter(linhas: list[str], nome: str) -> dict | None:
+    """O bloco `---` do topo, num parser MÍNIMO e estrito.
+
+    Deliberadamente sem `import yaml`: este arquivo roda em portão de CI, e a
+    ausência do pyyaml já derrubou um portão inteiro desta casa
+    (armadilhas/096). O preço é um dialeto pequeno — `chave: valor`, um nível de
+    aninhamento por indentação, e listas de itens `- \\`entre crases\\`` (crase
+    para que um regex com `:` e aspas passe intacto). Chave fora do schema é
+    ERROR: dialeto que aceita o que não entende cria campo que ninguém lê.
+    """
+    if not linhas or linhas[0].strip() != "---":
+        return None
+    try:
+        fim = next(i for i, l in enumerate(linhas[1:], start=1) if l.strip() == "---")
+    except StopIteration:
+        raise ErroDeFrontmatter(
+            f"frontmatter sem fechamento em {nome}",
+            "O bloco começa com '---' e precisa de outro '---' para fechar.",
+        ) from None
+
+    dados: dict = {}
+    atual: str | None = None
+    for numero, linha in enumerate(linhas[1:fim], start=2):
+        if not linha.strip() or linha.lstrip().startswith("#"):
+            continue
+        indentado = linha[:1].isspace()
+        texto = linha.strip()
+        if indentado and atual:
+            if texto.startswith("- "):
+                if dados.get(atual) is None:
+                    dados[atual] = []
+                if not isinstance(dados[atual], list):
+                    raise ErroDeFrontmatter(
+                        f"{nome}: '{atual}' mistura lista e chaves (linha {numero})", ""
+                    )
+                dados[atual].append(_valor(texto[2:].strip()))
+                continue
+            chave, sep, valor = texto.partition(":")
+            if not sep:
+                raise ErroDeFrontmatter(
+                    f"{nome}: linha {numero} não é 'chave: valor' nem '- item'", ""
+                )
+            if dados.get(atual) is None:
+                dados[atual] = {}
+            if not isinstance(dados[atual], dict):
+                raise ErroDeFrontmatter(
+                    f"{nome}: '{atual}' mistura lista e chaves (linha {numero})", ""
+                )
+            dados[atual][chave.strip()] = _valor(valor.strip())
+            continue
+        chave, sep, valor = texto.partition(":")
+        if not sep:
+            raise ErroDeFrontmatter(
+                f"{nome}: linha {numero} não é 'chave: valor'", ""
+            )
+        chave = chave.strip()
+        atual = chave
+        if valor.strip():
+            dados[chave] = _valor(valor.strip())
+        else:
+            dados[chave] = None
+    return dados
+
+
+def _valor(cru: str):
+    if cru.startswith("`") and cru.endswith("`") and len(cru) > 1:
+        return cru[1:-1]  # regex vai entre crases: passa intacto, sem escapes
+    if cru in ("null", "~", ""):
+        return None
+    if cru == "true":
+        return True
+    if cru == "false":
+        return False
+    if re.fullmatch(r"-?\d+", cru):
+        return int(cru)
+    return cru.strip("\"'")
+
+
+def validar_frontmatter(dados: dict, nome: str, numero: str) -> None:
+    sobrando = set(dados) - CHAVES_DO_SCHEMA
+    if sobrando:
+        raise ErroDeFrontmatter(
+            f"{nome}: chave(s) fora do schema: {', '.join(sorted(sobrando))}",
+            f"Chaves aceitas: {', '.join(sorted(CHAVES_DO_SCHEMA))}.\n"
+            "Campo que ninguém lê é campo que mente — por isso isto é ERROR.",
+        )
+    if dados.get("schema_version") != 2:
+        raise ErroDeFrontmatter(
+            f"{nome}: schema_version deve ser 2 (veio {dados.get('schema_version')!r})",
+            "Entrada com frontmatter declara schema_version: 2. Entrada SEM\n"
+            "frontmatter é legado (schema 1) e continua válida.",
+        )
+    declarado = str(dados.get("armadilha") or "")
+    if declarado.zfill(3) != numero.zfill(3):
+        raise ErroDeFrontmatter(
+            f"{nome}: frontmatter diz armadilha {declarado}, o arquivo é {numero}",
+            "Número que discorda do nome faz o índice apontar para a entrada errada.",
+        )
+    if dados.get("estado") not in ESTADOS:
+        raise ErroDeFrontmatter(
+            f"{nome}: estado {dados.get('estado')!r} desconhecido",
+            f"Aceitos: {', '.join(ESTADOS)}.",
+        )
+    if dados.get("confianca") not in CONFIANCAS:
+        raise ErroDeFrontmatter(
+            f"{nome}: confianca {dados.get('confianca')!r} desconhecida",
+            f"Aceitas: {', '.join(CONFIANCAS)}.",
+        )
+    guarda = dados.get("guarda")
+    if not isinstance(guarda, dict) or guarda.get("tipo") not in TIPOS_DE_GUARDA:
+        raise ErroDeFrontmatter(
+            f"{nome}: guarda.tipo ausente ou desconhecido",
+            f"Aceitos: {', '.join(TIPOS_DE_GUARDA)}.\n"
+            "'nenhum' é uma escolha legítima — com motivo declarado.",
+        )
+    sobrando = set(guarda) - CHAVES_DA_GUARDA
+    if sobrando:
+        raise ErroDeFrontmatter(
+            f"{nome}: guarda tem chave(s) fora do schema: {', '.join(sorted(sobrando))}",
+            f"Aceitas: {', '.join(sorted(CHAVES_DA_GUARDA))}.",
+        )
+    if guarda.get("tipo") == "nenhum" and not guarda.get("motivo"):
+        raise ErroDeFrontmatter(
+            f"{nome}: guarda 'nenhum' sem motivo",
+            "Buraco assumido é gerenciável; buraco silencioso não\n"
+            "(RETROSPECTIVA-FASE-D §2). Declare por que não dá para mecanizar.",
+        )
+    custo = dados.get("custo_por_queda")
+    if custo is not None and custo not in CUSTOS:
+        raise ErroDeFrontmatter(
+            f"{nome}: custo_por_queda {custo!r} desconhecido",
+            f"Aceitos: {', '.join(CUSTOS)}.",
+        )
+
+
+def validar_sinais(sinais: list, nome: str) -> None:
+    for cru in sinais:
+        if not isinstance(cru, str):
+            raise ErroDeFrontmatter(f"{nome}: sinal não textual: {cru!r}", "")
+        if len(cru) < SINAL_MINIMO:
+            raise ErroDeFrontmatter(
+                f"{nome}: sinal curto demais ({len(cru)} caracteres): {cru!r}",
+                f"Mínimo {SINAL_MINIMO}. Assinatura curta casa saída inocente,\n"
+                "e sino que toca à toa é ruído que ninguém mais lê.",
+            )
+        try:
+            compilado = re.compile(cru)
+        except re.error as erro:
+            raise ErroDeFrontmatter(
+                f"{nome}: sinal não compila como regex: {cru!r}", str(erro)
+            ) from erro
+        if compilado.search(""):
+            raise ErroDeFrontmatter(
+                f"{nome}: o sinal {cru!r} casa a string vazia",
+                "Sinal que casa vazio casa TUDO — o sino tocaria a cada comando.",
+            )
+        for benigno in CORPUS_FELIZ:
+            if compilado.search(benigno):
+                raise ErroDeFrontmatter(
+                    f"{nome}: o sinal {cru!r} casa saída BENIGNA do dia a dia",
+                    f"Casou: {benigno[:70]!r}\n"
+                    "Aperte a assinatura até ela só reconhecer a falha de verdade.",
+                )
 
 
 class Entrada:
@@ -174,6 +385,38 @@ class Entrada:
                 partes.append(seguinte.strip())
             self.sintoma = " ".join(p for p in partes if p)
             break
+
+        # Metadata CONTROLA, Markdown EXPLICA (29/08/2026). Entrada sem
+        # frontmatter é legado (schema 1) e continua válida para sempre — o que
+        # separa novo de antigo é a declaração, nunca um número mágico de
+        # arquivo, que só vira arqueologia para quem vier depois.
+        self.frontmatter = ler_frontmatter(linhas, self.nome)
+        self.sinais: list[str] = []
+        if self.frontmatter is not None:
+            validar_frontmatter(self.frontmatter, self.nome, self.numero)
+            sinal = self.frontmatter.get("sinal")
+            if isinstance(sinal, str):
+                self.sinais = [sinal]
+            elif isinstance(sinal, list):
+                self.sinais = [s for s in sinal if s is not None]
+            validar_sinais(self.sinais, self.nome)
+
+    @property
+    def guarda(self) -> dict:
+        return (self.frontmatter or {}).get("guarda") or {}
+
+    @property
+    def guarda_curta(self) -> str:
+        """A célula da coluna — curta de propósito: o índice é dieta de contexto."""
+        if self.frontmatter is None:
+            return "— sem guarda"
+        tipo = self.guarda.get("tipo")
+        partes = [tipo] if tipo and tipo != "nenhum" else []
+        if self.sinais and "sino" not in partes:
+            partes.append("sino")
+        if not partes:
+            return "nenhum (declarado)"
+        return "+".join(partes)
 
     @property
     def chave(self) -> str:
@@ -290,46 +533,136 @@ def coletar(raiz: Path) -> list[Entrada]:
         )
     entradas = [Entrada(p) for p in arquivos]
     conferir_numeracao(entradas)
+    conferir_guardas_vivas(entradas, raiz)
     return entradas
+
+
+def conferir_guardas_vivas(entradas: list[Entrada], raiz: Path) -> None:
+    """Guarda que aponta arquivo inexistente é pior que guarda nenhuma.
+
+    Ela faz o índice dizer 'esta lição é imposta por X' quando X não existe —
+    e ler nunca dá erro, então ninguém percebe (armadilhas/148). Referência
+    morta é ERROR, não FAIL: regenerar não conserta, alguém precisa decidir.
+    """
+    for entrada in entradas:
+        dono = entrada.guarda.get("dono")
+        if not dono:
+            continue
+        if not (raiz / str(dono)).exists():
+            raise ErroDeInstrumentacao(
+                f"{entrada.nome}: a guarda aponta '{dono}', que não existe",
+                "Ou o caminho está errado, ou o mecanismo foi removido sem\n"
+                "atualizar a entrada. Corrija o caminho, ou declare\n"
+                "'guarda: {tipo: nenhum, motivo: ...}' e assuma o buraco.",
+            )
 
 
 def montar(entradas: list[Entrada]) -> str:
     linhas = [CABECALHO]
     for e in entradas:
         antigo = f"§{e.id_antigo}" if e.id_antigo else "—"
-        linhas.append(f"| [{e.numero}]({e.nome}) | {e.chave} | {antigo} |\n")
-    linhas.append(f"\n**{len(entradas)} entradas.**\n")
+        linhas.append(
+            f"| [{e.numero}]({e.nome}) | {e.chave} | {e.guarda_curta} | {antigo} |\n"
+        )
+    sem_guarda = sum(1 for e in entradas if e.frontmatter is None)
+    linhas.append(
+        f"\n**{len(entradas)} entradas** — {len(entradas) - sem_guarda} com guarda "
+        f"declarada, {sem_guarda} ainda sem.\n"
+    )
     return "".join(linhas)
+
+
+def montar_guardas(entradas: list[Entrada]) -> str:
+    """O registro NEUTRO: dados, lidos por quem quiser, sem importar hook nenhum.
+
+    O índice é para humano; este arquivo é para programa (o termômetro, um
+    painel futuro). Nenhum dos dois importa `ci/muralha_das_armadilhas.py` — um
+    gerador de relatório não pode depender de código de execução. A coerência
+    entre esta declaração e a tabela real da muralha é provada por teste-guarda.
+    """
+    corpo = {
+        "versao": 1,
+        "gerado_por": "python ci/indice_de_armadilhas.py",
+        "guardas": [
+            {
+                "armadilha": e.numero,
+                "arquivo": f"{PASTA}/{e.nome}",
+                "estado": (e.frontmatter or {}).get("estado"),
+                "degrau": (e.frontmatter or {}).get("degrau"),
+                "confianca": (e.frontmatter or {}).get("confianca"),
+                "custo_por_queda": (e.frontmatter or {}).get("custo_por_queda"),
+                "tipo": e.guarda.get("tipo"),
+                "detector": e.guarda.get("detector"),
+                "dono": e.guarda.get("dono"),
+                "tem_sinal": bool(e.sinais),
+            }
+            for e in entradas
+            if e.frontmatter is not None
+        ],
+    }
+    return json.dumps(corpo, ensure_ascii=False, indent=2) + "\n"
+
+
+def montar_sinais(entradas: list[Entrada]) -> str:
+    """As assinaturas que o sino compara com a saída dos comandos."""
+    corpo = {
+        "versao": 1,
+        "gerado_por": "python ci/indice_de_armadilhas.py",
+        "sinais": [
+            {
+                "armadilha": e.numero,
+                "arquivo": f"{PASTA}/{e.nome}",
+                "titulo": e.titulo,
+                "regex": regex,
+            }
+            for e in entradas
+            for regex in e.sinais
+        ],
+    }
+    return json.dumps(corpo, ensure_ascii=False, indent=2) + "\n"
 
 
 def rodar(raiz: Path, conferir: bool) -> int:
     entradas = coletar(raiz)
-    esperado = montar(entradas)
-    destino = raiz / PASTA / NOME_DO_INDICE
+    artefatos = [
+        (raiz / PASTA / NOME_DO_INDICE, montar(entradas)),
+        (raiz / PASTA / NOME_DAS_GUARDAS, montar_guardas(entradas)),
+        (raiz / PASTA / NOME_DOS_SINAIS, montar_sinais(entradas)),
+    ]
 
-    atual = destino.read_text(encoding="utf-8") if destino.is_file() else None
     if conferir:
-        if atual == esperado:
+        divergentes = [
+            destino for destino, esperado in artefatos
+            if (destino.read_text(encoding="utf-8") if destino.is_file() else None)
+            != esperado
+        ]
+        if not divergentes:
             print(f"PASS indice-de-armadilhas: em dia ({len(entradas)} entradas)")
             return 0
-        print(
-            f"FAIL indice-de-armadilhas: {destino.relative_to(raiz)} "
-            f"diverge das {len(entradas)} entradas de {PASTA}/.",
-            file=sys.stderr,
-        )
+        for destino in divergentes:
+            print(
+                f"FAIL indice-de-armadilhas: {destino.relative_to(raiz)} "
+                f"diverge das {len(entradas)} entradas de {PASTA}/.",
+                file=sys.stderr,
+            )
         print(
             "Regenere com:\n  python ci/indice_de_armadilhas.py\n"
-            "(o índice é gerado — editá-lo à mão é o que faz ele divergir)",
+            "(são gerados — editá-los à mão é o que faz eles divergirem)",
             file=sys.stderr,
         )
         return 1
 
-    if atual == esperado:
+    escritos = []
+    for destino, esperado in artefatos:
+        atual = destino.read_text(encoding="utf-8") if destino.is_file() else None
+        if atual != esperado:
+            destino.write_text(esperado, encoding="utf-8", newline="\n")
+            escritos.append(destino.name)
+    if not escritos:
         print(f"PASS indice-de-armadilhas: já estava em dia ({len(entradas)} entradas)")
         return 0
-    destino.write_text(esperado, encoding="utf-8", newline="\n")
     print(
-        f"PASS indice-de-armadilhas: {destino.relative_to(raiz)} regenerado "
+        f"PASS indice-de-armadilhas: {', '.join(escritos)} regenerado(s) "
         f"({len(entradas)} entradas)"
     )
     return 0
