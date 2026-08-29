@@ -152,9 +152,46 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    para quem não é ela, e a Lei 4 da `CONSTITUICAO.md` traz a emenda. A lei
    mudou junto com o mecanismo, nunca antes dele.
 
+6. **Toda espera tem voz e tem teto (desde 29/08/2026):** o mantenedor perdeu
+   dias olhando uma janela que dizia "trabalhando" enquanto o robô pendia numa
+   espera muda — espera sem fim é visualmente idêntica a trabalho, e a janela
+   mentia por omissão (`armadilhas/161`). As regras, na ordem em que se aplicam:
+
+   - **Antes de esperar, pergunte se a espera precisa existir.** A melhor
+     espera é a que não acontece: checks de PR não se esperam (peça 4 —
+     `--pousar` e siga; a pista tem a paciência que você não tem). A espera
+     que a lei manda ter é o veredito do run de deploy (`CLAUDE.md`).
+   - **A espera autorizada é a que fala sozinha e morre no prazo:**
+
+     ```bash
+     python ci/esperar.py --run <id> --teto 20 --dizendo "o deploy da admin"
+     ```
+
+     rodada pela ferramenta `Monitor` do harness com `timeout_ms` MAIOR que o
+     teto — cada linha do stdout vira mensagem na conversa, ao vivo. O
+     contrato são três linhas: **partida** (o que espero · teto · plano Z),
+     **batimento** com o estado OBSERVADO lá fora (relógio nu é silêncio com
+     batimento bonito), **desfecho sempre barulhento**. O plano Z nunca é
+     "continuar esperando" — `--ao-estourar pousar` o executa em vez de só
+     anunciá-lo. Alvos: `--run` · `--deploy` · `--checks` · `--pouso` ·
+     `--sonda` (Docker frio, Postgres). A régua de "quanto costuma levar" vem
+     de `ci/tempos_esperados.json`; sem régua a voz diz "não sei" — nunca
+     inventa número.
+   - **Segundo plano sem teto interno não existe.** Medido em 29/08/2026: o
+     `timeout` do Bash NÃO se aplica a `run_in_background` — um comando de
+     fundo que pendura fica pendurado PARA SEMPRE, mudo. Prefixe
+     `timeout <segundos>` ou espere pelo `esperar.py`. A muralha da espera
+     recusa o resto (`gh run watch`, laços `until`/`while true` abertos,
+     sonecas de 2+ minutos) e ensina o caminho certo no stderr da recusa.
+   - **Nos três momentos que alcançam o mantenedor** — teto estourado com
+     mudança de plano · decisão que só ele pode tomar · tarefa concluída —
+     mande também o aviso de desktop (`PushNotification`), quando o harness o
+     oferecer. Nunca para progresso de rotina: aviso que não valia a pena
+     estraga os que valiam.
+
 ---
 
-**Quem faz valer:** `ci/mergear.py` (o portão) · `.github/workflows/pouso.yml` (a pista) · `ci/ci.py` (as muralhas) · `ci/tests/test_mergear.py`.
+**Quem faz valer:** `ci/mergear.py` (o portão) · `.github/workflows/pouso.yml` (a pista) · `ci/ci.py` (as muralhas) · `ci/tests/test_mergear.py` · `ci/muralha_da_espera.py` (o hook que recusa espera muda e sem teto) · `ci/esperar.py` (a espera que fala) · `ci/tests/test_muralha_da_espera.py` · `ci/tests/test_espera.py`.
 
 ## §3 — Rito de Mudança de Contrato
 
