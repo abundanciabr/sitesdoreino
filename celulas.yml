@@ -45,7 +45,9 @@ celulas:
     # pasta), então mexer no livro de ocorrências É mexer nesta célula: sem esta
     # linha, um registro novo mergearia sem disparar deploy e o painel online
     # congelaria em silêncio.
-    caminhos: [services/admin, painel]
+    # `fila/` idem, desde 29/08/2026: a aba "Os robôs" da gestão da Caixa é
+    # calculada da fila embutida — evento novo na fila É quadro novo na admin.
+    caminhos: [services/admin, painel, fila]
     consome: [alunos, identidade, sugestoes]
 
   alunos:

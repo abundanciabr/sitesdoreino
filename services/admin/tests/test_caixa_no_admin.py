@@ -112,7 +112,9 @@ def texto(resposta) -> str:
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("rota", ["caixa", "caixa_travessia", "caixa_esperando"])
+@pytest.mark.parametrize(
+    "rota", ["caixa", "caixa_travessia", "caixa_esperando", "caixa_robos"]
+)
 def test_sem_sessao_vai_para_o_login(rota):
     """As rotas novas nascem atrás da mesma porta do resto da área."""
     resposta = Client().get(reverse(rota))
@@ -344,15 +346,19 @@ def test_a_faixa_de_abas_marca_onde_a_pessoa_esta():
 
 
 @respx.mock
-def test_a_aba_dos_robos_aparece_sem_link():
-    """Falta a FONTE de dados, não a tela — e a aba diz isso sem mentir."""
+def test_a_aba_dos_robos_virou_link_de_verdade():
+    """De 28/08 a 29/08/2026 este guarda exigia a aba APAGADA ("falta a fonte
+    de dados, não a tela"). A fonte nasceu — a fila de trabalho, fila/LEIA-ME.md
+    — e o guarda mudou junto, no MESMO PR que ligou a aba: agora ele exige o
+    link de verdade, e exige que o estado "apagada" tenha ido embora."""
     cliente = _dentro()
     a_caixa_responde([ideia()])
 
     pagina = texto(cliente.get(reverse("caixa")))
 
     assert "Os robôs" in pagina
-    assert "aba futura" in pagina
+    assert "aba futura" not in pagina
+    assert reverse("caixa_robos") in pagina
 
 
 @respx.mock

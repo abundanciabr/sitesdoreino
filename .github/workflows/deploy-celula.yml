@@ -23,7 +23,10 @@ on:
     # painel online acompanha. Sem esta linha o workflow nem começaria, e o
     # painel congelaria em silêncio. Quem mapeia `painel/` ⇒ `admin` é
     # `ci/ci.py::celulas_tocadas`; guarda: `ci/tests/test_painel_vivo_no_deploy.py`.
-    paths: ['services/**', 'painel/**']
+    # `fila/**` desde 29/08/2026: a aba "Os robôs" (/admin/caixa/robos/) é
+    # calculada da fila embutida no build — tarefa ou evento novo É quadro
+    # novo. Mapa: `celulas.yml` (fila ⇒ admin); mesmo desenho do painel.
+    paths: ['services/**', 'painel/**', 'fila/**']
 permissions:
   contents: read
 concurrency:
@@ -193,6 +196,28 @@ jobs:
           mkdir -p services/admin/regra_do_livro
           cp ci/divida_do_livro.py services/admin/regra_do_livro/
           echo "regra da divida embutida"
+      - name: Embutir a fila de trabalho no contexto do build (só a célula admin)
+        if: matrix.celula == 'admin'
+        run: |
+          set -eu
+          # A aba "Os robôs" é calculada da fila (fila/LEIA-ME.md). O quadro é
+          # MATERIALIZADO aqui — escritor único, o mesmo desenho do painel: a
+          # célula serve estados prontos, nunca recalcula (recalcular seria uma
+          # segunda definição de "em que pé está", e as duas divergiriam).
+          #
+          # Fail-CLOSED: `ci/fila.py listar` valida a fila inteira antes de
+          # escrever (sai 2 se inválida, e o `set -e` para o job). Fila ausente
+          # numa imagem publicada seria o falso-verde padrão 1 da retrospectiva.
+          test -d fila/tarefas || { echo "PAROU: fila/tarefas/ nao existe"; exit 1; }
+          rm -rf services/admin/fila_embutida
+          mkdir -p services/admin/fila_embutida
+          cp -R fila/. services/admin/fila_embutida/
+          python ci/fila.py listar --json > services/admin/fila_embutida/estados.json
+          test -s services/admin/fila_embutida/estados.json || { echo "PAROU: estados.json saiu vazio"; exit 1; }
+          # A régua viva das esperas viaja junto — a aba a mostra ao lado do
+          # resumo curado dos estouros (fila/esperas/, exportado do diário).
+          cp ci/tempos_esperados.json services/admin/fila_embutida/regua.json
+          echo "fila embutida: $(ls services/admin/fila_embutida/tarefas | wc -l) tarefas"
       - name: Build & push da imagem da célula
         run: |
           IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}
