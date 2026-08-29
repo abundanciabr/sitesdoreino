@@ -27,6 +27,18 @@
       "tem_sinal": false
     },
     {
+      "armadilha": "127",
+      "arquivo": "armadilhas/127-deploy-vermelho-com-i-o-timeout-e-a-vps-viva-nao-e.md",
+      "estado": "recorrente",
+      "degrau": 6,
+      "confianca": "alta",
+      "custo_por_queda": "alto",
+      "tipo": "nenhum",
+      "detector": null,
+      "dono": null,
+      "tem_sinal": true
+    },
+    {
       "armadilha": "136",
       "arquivo": "armadilhas/136-crase-em-git-commit-m-executa-comando-e-corrompe.md",
       "estado": "sombra",

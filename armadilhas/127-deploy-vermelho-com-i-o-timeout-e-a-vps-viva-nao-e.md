@@ -1,3 +1,17 @@
+---
+schema_version: 2
+armadilha: 127
+estado: recorrente
+degrau: 6
+confianca: alta
+custo_por_queda: alto
+guarda:
+  tipo: nenhum
+  motivo: `a vacina (medir a porta 22, repetir com pausa, parar na terceira e registrar) ainda nao foi construida — e este e o maior sangramento medido do catalogo: 6 quedas em 3 dias, mais a de 29/08/2026 durante a propria auditoria. Buraco assumido, com o conserto ja desenhado.`
+sinal:
+  - `dial tcp [^\n]*:22: i/o timeout`
+---
+
 # Deploy vermelho com `i/o timeout` e a VPS viva: nem todo timeout é a armadilha 017
 
 **Sintoma:** `deploy-celula` falha em `dial tcp ***:22: i/o timeout` — e o padrão é
