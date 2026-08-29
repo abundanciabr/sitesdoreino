@@ -78,8 +78,12 @@ def operacoes_da_api():
 
 
 def test_ha_operacoes_para_medir():
-    """Guarda que varre lista vazia é guarda verde à toa."""
-    assert len(operacoes_da_api()) == 6
+    """Guarda que varre lista vazia é guarda verde à toa.
+
+    8 desde `arquivar`/`desarquivar` (`DECISAO-arquivar-ideia.md`, 29/08/2026),
+    que somaram-se às 6 de `DECISAO-a-gestao-da-caixa-mora-no-admin.md`.
+    """
+    assert len(operacoes_da_api()) == 8
 
 
 def test_nenhuma_operacao_responde_sem_o_token_do_par(client, db, par_autorizado):
@@ -495,3 +499,120 @@ def test_a_lista_nao_carrega_historico(client, db, par_autorizado, caixa, sugest
     caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="vai")
 
     assert "historico" not in uma(ler(client), sugestao)
+
+
+# ---------------------------------------------------------------------------
+# 6. Arquivar — `DECISAO-arquivar-ideia.md` (29/08/2026), nada se perde
+# ---------------------------------------------------------------------------
+
+
+def test_arquivar_some_da_listagem_padrao_mas_nada_se_perde(
+    client, db, par_autorizado, sugestao
+):
+    """Some da lista que o Admin abre por padrão; continua achável por id."""
+    resposta = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/arquivar",
+        {
+            "por_email": MANTENEDOR,
+            "por_id_da_plataforma": ID_DA_PLATAFORMA,
+            "motivo": "duplicata da #12",
+        },
+    )
+
+    assert resposta.status_code == 200, resposta.content
+    assert resposta.json()["arquivada"] is True
+    assert resposta.json()["motivo_do_arquivamento"] == "duplicata da #12"
+
+    assert sugestao.id not in {i["id"] for i in ler(client)["ideias"]}
+    assert ler_uma(client, sugestao.id)["arquivada"] is True
+
+
+def test_incluir_arquivadas_traz_de_volta_para_quem_pede(
+    client, db, par_autorizado, sugestao
+):
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/arquivar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    resposta = client.get(
+        IDEIAS + "?incluir_arquivadas=true",
+        headers={"authorization": f"Bearer {TOKEN}"},
+    )
+
+    assert sugestao.id in {i["id"] for i in resposta.json()["ideias"]}
+
+
+def test_arquivar_duas_vezes_e_recusado(client, db, par_autorizado, sugestao):
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/arquivar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    de_novo = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/arquivar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert de_novo.status_code == 422
+    assert "já está arquivada" in de_novo.json()["erro"]
+
+
+def test_desarquivar_devolve_a_ideia_exatamente_como_estava(
+    client, db, par_autorizado, caixa, sugestao
+):
+    """Nem status, nem votos, nem historico mudam com o ciclo arquivar/desarquivar."""
+    caixa.votar(sugestao)
+    caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="vai entrar")
+
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/arquivar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+    resposta = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/desarquivar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert resposta.status_code == 200, resposta.content
+    corpo = resposta.json()
+    assert corpo["arquivada"] is False
+    assert corpo["motivo_do_arquivamento"] == ""
+    assert corpo["status"] == Sugestao.Status.PLANEJADO
+    assert corpo["votos"] == 1
+    assert sugestao.id in {i["id"] for i in ler(client)["ideias"]}
+    assert len(ler_uma(client, sugestao.id)["historico"]) == 1
+
+
+def test_desarquivar_sem_estar_arquivada_e_recusado(
+    client, db, par_autorizado, sugestao
+):
+    resposta = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/desarquivar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert resposta.status_code == 422
+    assert "não está arquivada" in resposta.json()["erro"]
+
+
+def test_ideia_arquivada_nao_conta_em_quem_esta_esperando(
+    client, db, par_autorizado, sugestao
+):
+    """Arquivada não é mais uma dívida de silêncio — ela saiu de vista de vez."""
+    assert ler(client)["pessoas_esperando"] == 1
+
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/arquivar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert ler(client)["pessoas_esperando"] == 0
