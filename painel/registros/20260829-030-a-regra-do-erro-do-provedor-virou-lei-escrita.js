@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260829-028-a-regra-do-erro-do-provedor-virou-lei-escrita",
+  arquivo: "20260829-030-a-regra-do-erro-do-provedor-virou-lei-escrita",
   tipo: "entrega",
   quando: "2026-08-29",
   titulo: "Fechado: a regra do erro do Mercado Pago agora está escrita no livro de leis do projeto",
