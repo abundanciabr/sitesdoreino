@@ -94,35 +94,30 @@ def test_um_arquivo_do_painel_conta_como_a_celula_admin(tmp_path):
     )
 
 
-def test_a_muralha_de_celula_continua_ignorando_o_painel():
-    """A ASSIMETRIA entre os dois detectores é deliberada — e frágil.
+def test_a_cerca_de_largura_nao_volta():
+    """A cerca "1 PR = 1 célula" caiu na Onda 5 — e não pode voltar por hábito.
 
-    São dois, e fazem coisas diferentes:
+    Ela existia para comprar exclusividade restringindo largura, que são eixos
+    diferentes: a cerca **não teria evitado** o pior incidente já medido aqui.
+    O que ficou no lugar é prova — `celulas.yml` com varredor, o `ci-celula` em
+    matriz, contrato aditivo, `Depende-de: #N` — e cada uma dessas peças foi
+    provada ANTES de a cerca cair.
 
-    - `ci/ci.py::celulas_tocadas` (Python) monta a matriz do `deploy-celula` e
-      o escopo do `ci-celula`. **Mapeia** `painel/` ⇒ `admin`.
-    - `ci/cerca-de-celula.sh` responde por "1 PR = 1 célula". Casa apenas
-      `services/*`, e portanto **ignora** `painel/`.
-
-    O efeito é bom e é o que se quer preservar: um PR que toque `painel/` e uma
-    célula continua contando como UMA célula para a muralha, então o gesto do
-    `CLAUDE.md` ("ao terminar, registre") nunca esbarra nela.
-
-    O risco é um agente ver o mapeamento no Python, achar que o shell "esqueceu"
-    e acrescentar `painel/*` lá — passando a barrar PRs que hoje passam, por
-    uniformidade aparente. Este guarda transforma a assimetria em decisão
-    escrita: mexer nela é ficar vermelho aqui e ter de justificar.
+    O risco que este guarda cobre é humano: alguém lê `ci/cerca-de-celula.sh`,
+    vê que ele conta células e "conserta" a contagem para voltar a reprovar.
+    Mexer nisso é ficar vermelho aqui e ter de justificar.
     """
     cerca = (RAIZ / "ci" / "cerca-de-celula.sh").read_text(encoding="utf-8")
-    linhas_de_casamento = [
+    linhas = [
         linha
         for linha in cerca.splitlines()
-        if "painel" in linha and "CELULAS+=" in linha
+        if "N > 1" in linha.replace("(", "").replace(")", "")
+        and not linha.strip().startswith("#")
     ]
-    assert not linhas_de_casamento, (
-        "a cerca passou a contar `painel/` como célula — isso faz a muralha "
-        "'1 PR = 1 célula' barrar PRs que juntam trabalho e registro do livro:\n  "
-        + "\n  ".join(linhas_de_casamento)
+    assert not linhas, (
+        "a cerca de largura voltou — um PR passaria a ser recusado por tocar "
+        "mais de uma célula, sem que ninguém tivesse medido nada: "
+        + ", ".join(linhas)
     )
 
 

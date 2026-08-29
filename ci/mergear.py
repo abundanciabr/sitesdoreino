@@ -129,7 +129,7 @@ def _gh(
 
 def carregar_pr(raiz: Path, numero: int) -> dict[str, Any]:
     campos = (
-        "number,title,state,isDraft,mergeable,mergeStateStatus,baseRefName,"
+        "number,title,body,state,isDraft,mergeable,mergeStateStatus,baseRefName,"
         "headRefName,labels,files,commits,author,url,statusCheckRollup"
     )
     saida = _gh(
@@ -502,6 +502,90 @@ def checar_divida_do_livro(raiz: Path, pr: dict[str, Any]) -> Resultado:
     )
 
 
+# `Depende-de: #123` na descrição do PR. Aceita a linha em qualquer lugar do
+# texto e mais de um número — é declaração de ordem, não de formato.
+DEPENDE_DE = re.compile(r"^\s*depende[- ]de\s*:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
+NUMERO_DE_PR = re.compile(r"#(\d+)")
+
+
+def dependencias_declaradas(pr: dict[str, Any]) -> list[int]:
+    """Os PRs que este declara precisar antes — lidos da descrição."""
+    numeros: list[int] = []
+    for linha in DEPENDE_DE.findall(pr.get("body") or ""):
+        numeros.extend(int(n) for n in NUMERO_DE_PR.findall(linha))
+    return sorted(set(numeros))
+
+
+def checar_dependencias(raiz: Path, pr: dict[str, Any]) -> list[Resultado]:
+    """`Depende-de: #N` cobrado por máquina (Onda 5, B7 da consultoria).
+
+    Com a cerca "1 PR = 1 célula" derrubada, o trabalho grande passa a sair em
+    PRs que dependem uns dos outros — provedor primeiro, consumidor depois. Essa
+    ordem existia só na cabeça de quem abriu os PRs, e a pista de pouso não a
+    conhece: ela atende por ANTIGUIDADE, então dois PRs encadeados podem pousar
+    na ordem errada e a `main` fica alguns minutos com o consumidor falando com
+    uma API que ainda não existe.
+
+    Declarar é opcional; declarado, é cobrado. E a checagem é fail-closed: se
+    não der para saber o estado do PR citado, o veredito é ERROR — "não sei se
+    a dependência entrou" nunca vira "pode entrar".
+    """
+    numeros = dependencias_declaradas(pr)
+    if not numeros:
+        return []
+    resultados: list[Resultado] = []
+    for numero in numeros:
+        if numero == pr.get("number"):
+            resultados.append(
+                Resultado(
+                    f"Depende-de #{numero}",
+                    Estado.FAIL,
+                    "o PR declara depender de si mesmo",
+                )
+            )
+            continue
+        try:
+            estado = json.loads(
+                _gh(
+                    ["pr", "view", str(numero), "--json", "state,title"],
+                    raiz,
+                    f"conferir a dependência declarada (PR #{numero})",
+                )
+            )
+        except (ErroDeInstrumentacao, json.JSONDecodeError) as erro:
+            resultados.append(
+                Resultado(
+                    f"Depende-de #{numero}",
+                    Estado.ERROR,
+                    "não consegui conferir o PR declarado como dependência",
+                    f"{erro} — sem saber se ele entrou, não dá para dizer que "
+                    "a ordem foi respeitada.",
+                )
+            )
+            continue
+        situacao = estado.get("state")
+        titulo = (estado.get("title") or "")[:60]
+        if situacao == "MERGED":
+            resultados.append(
+                Resultado(
+                    f"Depende-de #{numero}", Estado.PASS, f"já entrou — {titulo}"
+                )
+            )
+        else:
+            resultados.append(
+                Resultado(
+                    f"Depende-de #{numero}",
+                    Estado.FAIL,
+                    f"ainda não entrou (state={situacao}) — {titulo}",
+                    "Este PR declarou precisar daquele antes. Espere o pouso "
+                    "dele; se a ordem não importa mais, tire a linha "
+                    "`Depende-de:` da descrição — ela é uma promessa, e "
+                    "promessa que ninguém cumpre é pior que promessa nenhuma.",
+                )
+            )
+    return resultados
+
+
 def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str, Any]]:
     relatorio = Relatorio(f"MERGE GUARDADO — PR #{numero}")
     try:
@@ -516,6 +600,8 @@ def conferir(numero: int, raiz: Path | None = None) -> tuple[Relatorio, dict[str
     for r in checar_checks(pr):
         relatorio.registrar(r)
     for r in checar_labels(pr):
+        relatorio.registrar(r)
+    for r in checar_dependencias(raiz_real, pr):
         relatorio.registrar(r)
     relatorio.registrar(checar_divida_do_livro(raiz_real, pr))
     return relatorio, pr

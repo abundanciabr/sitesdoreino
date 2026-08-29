@@ -370,10 +370,35 @@ def test_o_proprio_run_e_excluido_da_medicao(tmp_path):
     assert proc.returncode == 2, proc.stdout + proc.stderr
 
 
-def test_duas_celulas_no_push_reprova(tmp_path):
-    proc = rodar_portao(tmp_path, cenario_verde(), CELULAS='["quiz", "leads"]')
+def test_duas_celulas_num_push_PASSAM_desde_que_ambas_tenham_evidencia(tmp_path):
+    """A cerca de largura caiu na Onda 5 — o portão acompanhou.
+
+    Até 29/08/2026 duas células num push reprovavam aqui, porque o CI só
+    testava uma. Agora o CI roda a suíte de CADA uma (matriz), e o que o portão
+    exige é EVIDÊNCIA VERDE de todas — que é o que ele confere instância por
+    instância. Recusar por largura passou a proibir sem medir.
+    """
+    cen = cenario_verde()
+    cen["respostas"]["runs/11/jobs"] = jobs_(
+        ("ci-celula (quiz)", "success"),
+        ("ci-celula (leads)", "success"),
+        ("ci-celula-gate", "success"),
+    )
+    proc = rodar_portao(tmp_path, cen, CELULAS='["quiz", "leads"]')
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+def test_duas_celulas_com_UMA_sem_evidencia_reprova(tmp_path):
+    """O que substituiu a proibição: prova. Faltando prova de uma, reprova."""
+    cen = cenario_verde()
+    cen["respostas"]["runs/11/jobs"] = jobs_(
+        ("ci-celula (quiz)", "success"),
+        ("ci-celula (leads)", "failure"),
+        ("ci-celula-gate", "success"),
+    )
+    proc = rodar_portao(tmp_path, cen, CELULAS='["quiz", "leads"]')
     assert proc.returncode == 1, proc.stdout + proc.stderr
-    assert "1 PR = 1 célula" in proc.stdout
+    assert "leads" in proc.stdout
 
 
 def test_evento_que_nao_e_push_e_error(tmp_path):

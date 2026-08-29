@@ -162,7 +162,7 @@ MURALHAS = [
     PortaoDeShell(
         "cerca-de-celula",
         "ci/cerca-de-celula.sh",
-        "1 PR = 1 célula; contrato só muda com rito (RITOS.md §1 e §3)",
+        "contrato só muda com rito (RITOS.md §3) — a cerca de largura caiu na Onda 5",
     ),
     PortaoDeShell(
         "orcamento-de-mudanca",

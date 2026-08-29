@@ -451,19 +451,17 @@ def main() -> int:
                 )
                 print(relatorio.render())
                 return relatorio.exit_code
-            if len(ctx.celulas) > 1:
-                relatorio.registrar(
-                    Resultado(
-                        nome="escopo",
-                        estado=Estado.FAIL,
-                        resumo=f"{len(ctx.celulas)} células num push: {ctx.celulas}",
-                        detalhe="1 PR = 1 célula (cerca). Divida o trabalho.",
-                    )
-                )
-                print(relatorio.render())
-                return relatorio.exit_code
+            # A cerca "1 PR = 1 célula" caiu na Onda 5 (29/08/2026): o CI passou
+            # a RODAR a suíte de cada célula tocada, em vez de recusar por
+            # largura. O portão acompanha — o que ele exige é que TODA célula
+            # publicada tenha evidência verde, e isso ele confere logo abaixo,
+            # instância por instância da matriz.
             relatorio.registrar(
-                Resultado("escopo", Estado.PASS, f"1 célula: {ctx.celulas[0]}")
+                Resultado(
+                    "escopo",
+                    Estado.PASS,
+                    f"{len(ctx.celulas)} célula(s): {', '.join(ctx.celulas)}",
+                )
             )
             # services/** mudou por definição: o job `ci-celula` (o rodar) tem
             # de ter RODADO verde — skipped aqui é instrumentação quebrada (F3).
