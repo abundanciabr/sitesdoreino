@@ -20,6 +20,7 @@ from apps.core.views import (
     escola_aluno_salvar,
     escola_alunos,
     escola_decidir,
+    escola_prontuario,
     healthz,
     visao_geral,
 )
@@ -98,6 +99,11 @@ urlpatterns = [
     path("caixa/ideia/<int:ideia_id>/assinatura", assinar_obra, name="caixa_assinar"),
     path("escola/", escola, name="escola"),
     path("escola/alunos/", escola_alunos, name="escola_alunos"),
+    # [PRONTUARIO] A historia de UMA pessoa (`DECISAO-a-ficha-nao-se-apaga` §5).
+    # GET, e o e-mail vem por querystring: esta tela so PERGUNTA, nao decide
+    # nada — e um e-mail no caminho da URL exigiria escapar barra e ponto para
+    # nada, ja que quem autoriza e a porta, na entrada.
+    path("escola/alunos/prontuario", escola_prontuario, name="escola_prontuario"),
     # A ÚNICA rota de escrita desta célula. POST-only (`require_POST` na view):
     # decisão que se aplica por GET é decisão que um pré-carregador de link, um
     # antivírus corporativo ou um crawler autenticado tomam sozinhos — e aqui
