@@ -361,12 +361,17 @@ def test_quem_nao_esta_na_lista_nao_salva_nada():
     assert Registro.objects.count() == 0
 
 
-# ------------------------------------------- ex-aluno x apagar, na tela
+# ------------------------------------------------------- ex-aluno, na tela
 #
 # O mantenedor clicou em APAGAR querendo "ex-aluno"
 # (`DECISAO-ex-aluno-e-a-porta-que-explica`). Os dois botões existiam lado a
 # lado e a tela não dizia que faziam coisas diferentes — a ficha sumiu, e ela
 # não volta.
+#
+# Em 29/08/2026 ele resolveu isso pela raiz: o apagar deixou de existir
+# (`DECISAO-a-ficha-nao-se-apaga.md`). O aviso de "apagar NÃO é o mesmo que
+# ex-aluno" saiu junto — não há mais dois caminhos para confundir —, e o que
+# ficou tem guarda em `test_poderes.py::test_nao_existe_caminho_para_apagar`.
 
 
 @respx.mock
@@ -384,16 +389,19 @@ def test_o_estado_se_chama_ex_aluno_na_tela():
 
 
 @respx.mock
-def test_a_tela_diz_que_apagar_NAO_e_a_mesma_coisa():
-    """O aviso que faltava quando o mantenedor clicou.
+def test_ex_aluno_e_o_unico_caminho_para_tirar_o_acesso():
+    """O que substituiu o aviso de "apagar NÃO é o mesmo que ex-aluno".
 
-    Sem ele, os dois caminhos parecem sinônimos — e um deles não tem desfazer.
+    Enquanto os dois existiam, a tela precisava explicar a diferença. Agora ela
+    precisa provar o contrário: que sobrou UM caminho, e que ele é o do
+    seletor. Um botão de apagar que voltasse por engano cairia aqui e no
+    `test_nao_existe_caminho_para_apagar`.
     """
     _tela_responde([_aluno()])
     html = _dentro().get("/escola/alunos/").content.decode()
 
-    assert "Apagar NÃO é o mesmo" in html
-    assert "pedir entrada do zero" in html
+    assert "Ex-aluno — perde o acesso, e a ficha continua aqui" in html
+    assert "Apagar" not in html.split("Nenhuma ficha se apaga por aqui")[0]
 
 
 @respx.mock

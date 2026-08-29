@@ -308,17 +308,12 @@ RECADOS = {
     ),
     "nao-valeu": "A decisão não valeu.",
     "salvo": "Pronto: as mudanças foram salvas.",
-    "apagado": "Pronto: a ficha foi apagada de vez. Não há como desfazer.",
     "promovido": "Pronto: essa pessoa agora é administradora desta área.",
     "despromovido": "Pronto: essa pessoa deixou de ser administradora.",
     "so-no-servidor": (
         "Essa pessoa é administradora pela lista do servidor, e o botão não "
         "mexe nela — é isso que impede você de se trancar para fora. Para "
         "removê-la, é no servidor."
-    ),
-    "confirme": (
-        "Para apagar de vez, escreva APAGAR no campo ao lado do botão. É a "
-        "única ação desta tela que não tem desfazer."
     ),
     "voce-mesmo": (
         "Você não pode remover a si mesmo. Se fosse possível e você fosse o "
@@ -477,11 +472,17 @@ def escola_aluno_salvar(request):
     return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
 
 
-# ------------------------------------------- administrador por botão, e apagar
+# ------------------------------------------------- administrador por botão
 #
 # `DECISAO-administradores-e-apagar.md`, decidida pelo mantenedor em 28/08/2026
 # contra a recomendação do agente, com o preço na mesa. As travas do §3 são
 # implementadas aqui e medidas em `tests/test_poderes.py`.
+#
+# A OUTRA METADE daquela lei — o botão que apagava a ficha de vez — foi
+# revertida em 29/08/2026 pela `DECISAO-a-ficha-nao-se-apaga.md`: nenhum
+# caminho desta área apaga ficha, e a porta que apagava saiu do contrato da
+# `alunos` junto. Tirar o acesso tem uma forma só, e ela é o `<select>` de
+# situação lá em cima: *Ex-aluno*. Guarda: `test_nao_existe_caminho_para_apagar`.
 
 
 def _do_servidor() -> set:
@@ -505,47 +506,6 @@ def _auditar(request, acao, alvo, desfecho, detalhe=""):
         desfecho=desfecho,
         detalhe=detalhe,
     )
-
-
-@require_POST
-def escola_aluno_apagar(request):
-    """Apaga a ficha DE VEZ. Irreversível, e a tela avisa antes.
-
-    Existe ao lado de "encerrar", não no lugar dele: encerrar tira o acesso e
-    guarda a ficha, para o caso comum de poder voltar atrás.
-    """
-    alvo = (request.POST.get("alvo") or "").strip()
-    if not alvo:
-        return HttpResponseRedirect(reverse("escola_alunos"))
-
-    # A palavra digitada, e não uma caixa de confirmação: esta área não tem
-    # JavaScript (o CSP dela bloqueia script inline), então um `confirm()` não
-    # apareceria — e um botão sem confirmação nenhuma, na única ação sem
-    # desfazer, é um clique errado esperando acontecer.
-    if (request.POST.get("confirmacao") or "").strip().upper() != "APAGAR":
-        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=confirme")
-
-    desfecho, detalhe = AlunosClient().apagar_aluno(alvo)
-    _auditar(
-        request,
-        Registro.APAGAR,
-        alvo,
-        {
-            AlunosClient.OK: Registro.OK,
-            AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
-            AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
-        }[desfecho],
-        # Sem nada da pessoa: a linha diz que a ficha X foi apagada, e é tudo
-        # o que pode sobrar de alguém que pediu para sumir do sistema.
-        detalhe,
-    )
-
-    recado = {
-        AlunosClient.OK: "apagado",
-        AlunosClient.RECUSADO: "nao-valeu",
-        AlunosClient.NAO_RESPONDEU: "nao-deu",
-    }[desfecho]
-    return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
 
 
 @require_POST
