@@ -318,3 +318,78 @@ jobs:
             echo "   Registre a ocorrência; se isso virar rotina, veja armadilhas/017."
           fi
 
+      # =====================================================================
+      # A REVERSÃO AUTOMÁTICA — Onda 4, fatia 2 do PLANO-MESTRE-ROBOS-SEM-COLISAO.
+      #
+      # Até 29/08/2026, um deploy que subisse imagem quebrada deixava a célula
+      # doente no ar até alguém perceber e disparar o rollback à mão. O RITOS §4
+      # manda voltar em segundos; a realidade dependia de um humano estar
+      # olhando o run naquele minuto — garantia sem mecanismo (padrão 2 da
+      # RETROSPECTIVA-FASE-D).
+      #
+      # TRÊS DECISÕES QUE NÃO SÃO ÓBVIAS:
+      #
+      # 1. `if: failure()`, NUNCA `always()`. Em `always()` isto desfaria todo
+      #    deploy que deu certo. Guarda: test_reversao.py.
+      # 2. QUEM ESCOLHE O ALVO É PYTHON, não o YAML. `ci/reversao.py` prova que
+      #    o alvo é célula do manifesto, commit anterior da linha principal e
+      #    imagem que EXISTE no registry — os mesmos critérios do rollback
+      #    manual. Sem alvo provado, ninguém toca na VPS: FAIL e ERROR levam ao
+      #    mesmo lugar (nada acontece), e o run continua vermelho.
+      # 3. O RUN CONTINUA VERMELHO DEPOIS DE REVERTER. Reverter não conserta o
+      #    defeito: ele apaga o fogo. Pintar de verde faria a próxima sessão
+      #    achar que a entrega entrou.
+      # =====================================================================
+      - name: Escolher para qual imagem voltar (só se a entrega falhou)
+        id: alvo_da_reversao
+        if: failure()
+        continue-on-error: true
+        env:
+          REVERSAO_CELULA: ${{ matrix.celula }}
+          REVERSAO_ATUAL: ${{ github.sha }}
+        run: python ci/reversao.py
+
+      - name: Voltar a célula na VPS (reversão automática)
+        id: reverter
+        if: failure() && steps.alvo_da_reversao.outputs.tag != ''
+        continue-on-error: true
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: CELULA,VAR_TAG,TAG
+          capture_stdout: true
+          script_path: infra/reverter-celula-na-vps.sh
+        env:
+          CELULA: ${{ steps.alvo_da_reversao.outputs.celula }}
+          VAR_TAG: ${{ steps.alvo_da_reversao.outputs.var_tag }}
+          TAG: ${{ steps.alvo_da_reversao.outputs.tag }}
+
+      # Dizer o que aconteceu, em português, sem pintar nada de verde. As três
+      # saídas possíveis são fatos diferentes e precisam ser lidas como tais.
+      - name: O que a reversão conseguiu fazer
+        if: failure()
+        env:
+          TAG: ${{ steps.alvo_da_reversao.outputs.tag }}
+          SAIDA: ${{ steps.reverter.outputs.stdout }}
+          RESULTADO: ${{ steps.reverter.outcome }}
+        run: |
+          set -eu
+          if [ -z "${TAG:-}" ]; then
+            echo "❌ A entrega falhou e NÃO houve reversão: não há imagem anterior"
+            echo "   provada desta célula (ver o passo acima). A célula está como"
+            echo "   o deploy a deixou — investigue AGORA."
+            exit 0
+          fi
+          if printf '%s' "$SAIDA" | grep -q 'REVERSAO-CONCLUIDA:'; then
+            echo "↩️  REVERTIDO: a célula voltou para a imagem $TAG."
+            echo "   O site está no ar com a versão ANTERIOR. Este run continua"
+            echo "   vermelho de propósito: reverter apaga o fogo, não conserta"
+            echo "   o defeito. Registre a ocorrência em painel/registros/."
+          else
+            echo "❌ A reversão foi TENTADA e não se completou (resultado: $RESULTADO)."
+            echo "   Sem a marca REVERSAO-CONCLUIDA, a conexão pode ter aberto sem"
+            echo "   executar nada — foi o que aconteceu em 28/08/2026. Trate a"
+            echo "   célula como QUEBRADA e dispare o rollback manual."
+          fi

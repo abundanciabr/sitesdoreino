@@ -144,44 +144,46 @@ jobs:
           MOTIVO: ${{ inputs.motivo }}
         run: |
           printf 'MOTIVO: %s\n' "$MOTIVO"
+      # O CORPO DA REVERSÃO MORA NUM ARQUIVO, e não aqui dentro: desde
+      # 29/08/2026 a reversão AUTOMÁTICA do `deploy-celula` usa exatamente o
+      # mesmo script (`infra/reverter-celula-na-vps.sh`). Duas cópias
+      # divergiriam no primeiro dia em que alguém mexesse numa delas, e a que
+      # rodaria às 2h da manhã seria a que ficou para trás. Guarda:
+      # `ci/tests/test_reversao.py`.
+      #
+      # Por `envs:` e não por interpolação: os valores já foram provados por
+      # `ci/rollback.py`, mas passá-los como DADOS (e não como texto costurado
+      # dentro do script) é o que mantém a porta fechada por construção.
       - name: Voltar a célula na VPS (pull + up dela E dos auxiliares dela)
+        id: voltar
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: deploy
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          script: |
-            set -eu
-            cd /opt/plataforma
-            CELULA='${{ needs.validar.outputs.celula }}'
-            VAR_TAG='${{ needs.validar.outputs.var_tag }}'
-            TAG='${{ needs.validar.outputs.tag }}'
-            # A célula não é UM container: consumers de evento e worker Huey
-            # vivem em "<celula>-<papel>". Voltar só "<celula>" deixaria o
-            # auxiliar na imagem nova, em silêncio — duas versões do mesmo
-            # código no ar durante uma emergência. A lista sai do PRÓPRIO
-            # compose da VPS, como no deploy-celula.
-            SERVICOS=$(docker compose config --services | grep -E "^${CELULA}(-|\$)" || true)
-            if [ -z "$SERVICOS" ]; then
-              echo "ERRO: '$CELULA' não tem serviço algum em /opt/plataforma/docker-compose.yml."
-              echo "Abortado de propósito: 'up -d' sem argumento subiria a plataforma inteira."
-              exit 1
-            fi
-            echo "Serviços desta célula: $SERVICOS"
-            echo "Imagens ANTES:"
-            docker compose images $SERVICOS
-            # export com name=value: o nome da variável é indireto, e
-            # `$VAR_TAG=$TAG` sem as aspas não é atribuição em sh nenhum.
-            export "${VAR_TAG}=${TAG}"
-            echo "Aplicando ${VAR_TAG}=${TAG}"
-            INICIO=$(date +%s)
-            docker compose pull $SERVICOS
-            # --wait reprova se algum container não ficar de pé/healthy. Num
-            # rollback isso importa mais que num deploy: voltar para uma imagem
-            # que não sobe é ficar sem serviço nenhum, e em silêncio.
-            docker compose up -d --wait --wait-timeout 180 $SERVICOS
-            FIM=$(date +%s)
-            echo "Imagens DEPOIS:"
-            docker compose images $SERVICOS
-            docker compose ps $SERVICOS
-            echo "SEGUNDOS_NA_VPS=$((FIM - INICIO))"
+          envs: CELULA,VAR_TAG,TAG
+          capture_stdout: true
+          script_path: infra/reverter-celula-na-vps.sh
+        env:
+          CELULA: ${{ needs.validar.outputs.celula }}
+          VAR_TAG: ${{ needs.validar.outputs.var_tag }}
+          TAG: ${{ needs.validar.outputs.tag }}
+
+      # A MESMA trava do deploy, e aqui ela vale ainda mais: um rollback que
+      # anuncia sucesso sem ter rodado deixa a emergência de pé com todos os
+      # sinais verdes. Em 28/08/2026 a ação de SSH conectou, ignorou o script e
+      # saiu com sucesso — o script termina imprimindo esta marca justamente
+      # para "a porta abriu" nunca mais ser lido como "o trabalho foi feito".
+      - name: O rollback rodou mesmo na VPS?
+        env:
+          SAIDA: ${{ steps.voltar.outputs.stdout }}
+        run: |
+          set -eu
+          if printf '%s' "$SAIDA" | grep -q 'REVERSAO-CONCLUIDA:'; then
+            echo "✅ A célula voltou para a imagem pedida, e o script rodou até o fim."
+          else
+            echo "❌ PAROU: a saída da VPS não traz a marca REVERSAO-CONCLUIDA."
+            echo "   A conexão pode ter aberto sem que nada fosse executado."
+            echo "   NÃO trate a emergência como resolvida."
+            exit 1
+          fi

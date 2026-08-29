@@ -251,10 +251,18 @@ def _passos_de_ativacao() -> list[dict]:
             encoding="utf-8"
         )
     )
+    # SÓ as tentativas de ENTREGA. Desde 29/08/2026 o mesmo job tem outro passo
+    # de SSH — a reversão automática (Onda 4, fatia 2), que roda outro script e
+    # tem outras regras: ela TOLERA falha de propósito, porque o veredito do run
+    # já é vermelho quando ela entra em cena. Selecionar por "usa ssh-action"
+    # misturaria as duas coisas e faria os guardas abaixo medirem a peça errada.
     return [
         passo
         for passo in fluxo["jobs"]["deploy"]["steps"]
         if "ssh-action" in str(passo.get("uses", ""))
+        and (passo.get("with") or {}).get("script_path", "").endswith(
+            "deploy-celula-na-vps.sh"
+        )
     ]
 
 
