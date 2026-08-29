@@ -60,6 +60,12 @@ paths:
           default: ''
           type: string
         required: false
+      - in: query
+        name: incluir_arquivadas
+        schema:
+          default: false
+          type: boolean
+        required: false
       responses:
         '200':
           description: OK
@@ -69,7 +75,9 @@ paths:
                 $ref: '#/components/schemas/QuadroEmGestao'
       description: 'Devolve o quadro inteiro com os fatos de cada ideia — votos, plateia, estado, datas,
         se tem avaliação interna e se tem ChangeSpec aprovado. NÃO devolve colunas, baldes nem ordenação:
-        agrupar é do consumidor. O e-mail de quem sugeriu nunca viaja.'
+        agrupar é do consumidor. O e-mail de quem sugeriu nunca viaja. Por padrão as arquivadas ficam de
+        fora — `incluir_arquivadas=true` as traz de volta, para quem precisa achar uma ideia arquivada
+        para desarquivar.'
   /gestao/ideias/{sugestao_id}:
     get:
       operationId: getManagementIdea
@@ -185,6 +193,70 @@ paths:
             schema:
               $ref: '#/components/schemas/ChangeSpecEscrito'
         required: true
+  /gestao/ideias/{sugestao_id}/arquivar:
+    post:
+      operationId: archiveIdea
+      summary: Arquiva a ideia — some do quadro do aluno, nada se perde
+      parameters:
+      - in: path
+        name: sugestao_id
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeiaEmGestao'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+      description: '`DECISAO-arquivar-ideia.md` (29/08/2026): não é um apagar de vez. A ideia, os votos,
+        os comentários e o histórico continuam intactos no banco; ela só deixa de aparecer no quadro,
+        na busca de duplicatas e em qualquer página que o aluno alcance. Desarquivar traz tudo de volta
+        exatamente como estava. Recusa 422 se já estiver arquivada.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArquivamentoEscrito'
+        required: true
+  /gestao/ideias/{sugestao_id}/desarquivar:
+    post:
+      operationId: unarchiveIdea
+      summary: Desarquiva a ideia — volta a aparecer para o aluno
+      parameters:
+      - in: path
+        name: sugestao_id
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeiaEmGestao'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+      description: 'O inverso de arquivar, e simétrico: a ideia volta ao quadro exatamente como estava
+        (mesmo status, mesmos votos, mesmo histórico). Recusa 422 se ela não estiver arquivada.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuemAge'
+        required: true
 components:
   schemas:
     Session:
@@ -266,6 +338,15 @@ components:
           anyOf:
           - $ref: '#/components/schemas/AvaliacaoDaEquipe'
           - type: 'null'
+        arquivada:
+          default: false
+          type: boolean
+        arquivada_em:
+          default: ''
+          type: string
+        motivo_do_arquivamento:
+          default: ''
+          type: string
       required:
       - id
       - titulo
@@ -366,6 +447,15 @@ components:
           anyOf:
           - $ref: '#/components/schemas/AvaliacaoDaEquipe'
           - type: 'null'
+        arquivada:
+          default: false
+          type: boolean
+        arquivada_em:
+          default: ''
+          type: string
+        motivo_do_arquivamento:
+          default: ''
+          type: string
         historico:
           items:
             $ref: '#/components/schemas/LinhaDoHistorico'
@@ -496,6 +586,64 @@ components:
       - documento
       - aprovado_por
       - aprovado_em
+      type: object
+    ArquivamentoEscrito:
+      properties:
+        por_email:
+          type: string
+        por_nome:
+          default: ''
+          type: string
+        por_id_da_plataforma:
+          default: ''
+          type: string
+        motivo:
+          default: ''
+          type: string
+      required:
+      - por_email
+      type: object
+    QuemAge:
+      description: 'Quem está agindo, vindo do Admin.
+
+
+        O e-mail é o de quem abriu o Admin — resolvido lá pela `identidade`, que é
+
+        quem tem esse direito. A Caixa o usa para duas coisas e nada mais: achar (ou
+
+        cunhar) a linha local que o histórico exige como autor da mudança, e conferir
+
+        a lista de aprovadores. Não é o e-mail de nenhum ALUNO: esse continua sem
+
+        sair daqui.
+
+
+        **`por_id_da_plataforma` não é enfeite, e não é opcional na prática.** Toda
+
+        mudança de status vira uma carta endereçada, e [INV-SUG12] exige que quem
+
+        moderou tenha o id que atravessa a plataforma — sem ele o fato não pode ser
+
+        afirmado e a escrita é recusada com instrução (não com erro 500). O Admin já
+
+        tem esse id: é o mesmo `SessionFull.id` que ele leu da `identidade` para
+
+        abrir a própria porta. Ele entra como texto vazio-permitido só porque o
+
+        contrato da `identidade` declara o campo nulável — e é justamente esse caso
+
+        que a recusa legível existe para cobrir.'
+      properties:
+        por_email:
+          type: string
+        por_nome:
+          default: ''
+          type: string
+        por_id_da_plataforma:
+          default: ''
+          type: string
+      required:
+      - por_email
       type: object
   securitySchemes:
     bearerAuth:
