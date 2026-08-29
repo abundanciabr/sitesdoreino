@@ -372,6 +372,80 @@ class AlunosClient:
         logger.error("decisao: a alunos respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
 
+    def criar_na_fila(self, dados: dict) -> "tuple[str, str, str]":
+        """[A MAO] Poe uma pessoa na fila em nome do mantenedor.
+
+        Devolve `(desfecho, detalhe, id_da_linha)` — o id e `""` quando nao
+        houve linha. Mesma disciplina de `decidir`: **nunca levanta**, e
+        `NAO_RESPONDEU` continua significando *"pode ter sido aplicado do outro
+        lado"*.
+
+        E a MESMA porta que o formulario do site usa (`POST /pre-matriculas`),
+        de proposito. Uma porta so para o mantenedor criar matricula direto
+        seria uma segunda forma de virar aluno, com outras regras — e as duas
+        discordariam na primeira mudanca (`DECISAO-cadastrar-alguem-a-mao.md`
+        §2). Aqui ele faz o mesmo caminho de todo mundo, so que depressa.
+
+        O `200` (ja estava na fila, dados atualizados) e desfecho de SUCESSO:
+        significa que a pessoa esta na fila com os dados de agora, que e
+        exatamente o que quem preencheu o formulario queria.
+        """
+        config = self._configuracao()
+        if config is None:
+            return (
+                self.NAO_RESPONDEU,
+                "o par de tokens com a alunos não está ligado",
+                "",
+            )
+        base, token = config
+
+        try:
+            r = http().post(
+                f"{base}/pre-matriculas",
+                json=dados,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("cadastrar: não deu para falar com a alunos: %s", erro)
+            return self.NAO_RESPONDEU, "a parte que guarda os alunos não respondeu", ""
+
+        if r.status_code in (200, 201):
+            try:
+                corpo = r.json()
+            except ValueError as erro:
+                # *Status 2xx não é sucesso* (RETROSPECTIVA §4). Sem o id não há
+                # como liberar — e chamar isto de OK deixaria a pessoa parada na
+                # fila com a tela dizendo que ela já é aluna.
+                logger.error("cadastrar: a alunos respondeu fora do contrato: %s", erro)
+                return (
+                    self.NAO_RESPONDEU,
+                    "a parte que guarda os alunos respondeu de um jeito estranho",
+                    "",
+                )
+            id_da_linha = str((corpo or {}).get("id") or "")
+            if not id_da_linha:
+                return (
+                    self.NAO_RESPONDEU,
+                    "a parte que guarda os alunos não disse qual linha criou",
+                    "",
+                )
+            return self.OK, "", id_da_linha
+        if r.status_code == 409:
+            return (
+                self.RECUSADO,
+                "esta pessoa já é aluna — procure por ela na lista",
+                "",
+            )
+        if r.status_code == 422:
+            return (
+                self.RECUSADO,
+                "algum campo veio errado para a parte que guarda os alunos",
+                "",
+            )
+        logger.error("cadastrar: a alunos respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro", ""
+
     def alunos(self, status: str = None) -> "list[dict] | None":
         """[GESTAO] Quem já é aluno, de TODAS as escolas. `None` = não perguntei.
 

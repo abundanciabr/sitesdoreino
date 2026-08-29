@@ -19,6 +19,7 @@ from apps.core.views import (
     escola_admin_remover,
     escola_aluno_salvar,
     escola_alunos,
+    escola_cadastrar,
     escola_jornada,
     escola_decidir,
     escola_prontuario,
@@ -119,6 +120,11 @@ urlpatterns = [
     # A segunda rota de escrita: o formulario de gestao de quem JA e aluno.
     # POST-only pelo mesmo motivo da de cima.
     path("escola/alunos/salvar", escola_aluno_salvar, name="escola_aluno_salvar"),
+    # [A MAO] Por uma pessoa na escola sem esperar que ela peca
+    # (`DECISAO-cadastrar-alguem-a-mao.md`). POST, como todo gesto que muda a
+    # vida de alguem — decisao que se aplica por GET e decisao que um
+    # pre-carregador de link toma sozinho.
+    path("escola/alunos/cadastrar", escola_cadastrar, name="escola_cadastrar"),
     # As escritas de PODER da DECISAO-administradores-e-apagar. POST-only,
     # pelo mesmo motivo das outras.
     #

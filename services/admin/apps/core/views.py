@@ -15,7 +15,7 @@ preenche). O `/healthz` é a exceção declarada, e por isso não o usa.
 """
 
 import unicodedata
-from datetime import datetime
+from datetime import date, datetime
 
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
@@ -428,6 +428,20 @@ FAIXAS_DA_JORNADA = (
 )
 
 
+def escolas_na_tela(filas: dict, alunos) -> "list[str]":
+    """As escolas que APARECEM nos dados de hoje — nunca uma lista configurada.
+
+    Uma lista própria aqui seria uma segunda verdade sobre quais escolas
+    existem, e ela envelheceria em silêncio no dia em que nascesse a segunda.
+
+    Serve a duas perguntas com a mesma resposta: se a coluna "escola" aparece
+    nas listas (só faz sentido com mais de uma) e o que o formulário de
+    cadastrar oferece.
+    """
+    de_todas = [l for lista in filas.values() if lista for l in lista] + (alunos or [])
+    return sorted({linha.get("site_id") for linha in de_todas} - {None, ""})
+
+
 def contar_a_escola(cliente):
     """Uma leitura da escola: as contagens, as filas e os alunos.
 
@@ -536,8 +550,7 @@ def escola_alunos(request):
     # A coluna da escola só aparece quando há MAIS DE UMA — com uma só, o
     # identificador interno seria ruído numa tela feita para leigo. Contada
     # sobre TUDO que está na tela, e não só sobre uma lista.
-    de_todas = [l for lista in filas.values() if lista for l in lista] + (alunos or [])
-    escolas = {linha.get("site_id") for linha in de_todas}
+    escolas = escolas_na_tela(filas, alunos)
 
     # [BUSCA] A peneira entra DEPOIS das contagens, e a ordem é a decisão: os
     # cartões contam a escola inteira, a lista mostra o que casou. Invertê-las
@@ -573,6 +586,12 @@ def escola_alunos(request):
             # "resultado do filtro".
             "estado_desconhecido": bool(estado_pedido) and not estado,
             "peneirando": bool(procurado or estado),
+            # [A MAO] As escolas que APARECEM nos dados de hoje — nunca uma
+            # lista configurada. O formulário de cadastrar precisa de uma, e
+            # derivá-la do que já está na tela é o que impede este painel de
+            # ganhar uma segunda verdade sobre quais escolas existem. Vazio é
+            # um estado previsto: o campo continua editável, e a tela explica.
+            "escolas_conhecidas": escolas,
             # Os totais ANTES da peneira, para a tela poder dizer "mostrando 3
             # de 47" — sem isso, uma busca com um resultado só é
             # indistinguível de uma escola com um aluno só.
@@ -688,6 +707,31 @@ def escola_prontuario(request):
 #: (`config/settings.py`, INV-P12).
 RECADOS = {
     "liberado": "Pronto: a pessoa foi liberada e já entra na área de alunos.",
+    # [A MAO] Os quatro desfechos do cadastro à mão. O terceiro é o que importa:
+    # quando a liberação falha, a tela diz ONDE a pessoa ficou, em vez de um
+    # "não deu certo" que mandaria o mantenedor cadastrar de novo.
+    "cadastrado": ("Pronto: a pessoa foi cadastrada e já entra na área de alunos."),
+    "cadastrado-na-fila": (
+        "Cadastrei a pessoa, mas não consegui liberar o acesso dela agora. "
+        "Ela está aqui em cima, na fila, esperando — é só clicar em Liberar. "
+        "Não cadastre de novo."
+    ),
+    "cadastro-sem-escola": (
+        "Não cadastrei: não consegui saber de qual escola é esta pessoa. "
+        "Escreva o nome da escola no campo do formulário e envie de novo."
+    ),
+    "cadastro-invalido": (
+        "Faltou alguma coisa no formulário de cadastrar: confira o nome, o "
+        "e-mail, o WhatsApp com DDD e a escola."
+    ),
+    "cadastro-nao-valeu": (
+        "Não cadastrei. Ou esta pessoa já é aluna (procure por ela na lista "
+        "aqui embaixo), ou algum campo veio errado."
+    ),
+    "cadastro-nao-deu": (
+        "Não consegui falar com a parte que guarda os alunos. O cadastro PODE "
+        "ter sido feito. Procure a pessoa na lista antes de tentar de novo."
+    ),
     "recusado": "Pedido recusado. A pessoa vê o motivo que você escreveu e pode pedir de novo.",
     "sem-motivo": "Para recusar é preciso escrever o motivo — sem ele a pessoa fica esperando sem saber.",
     "nao-deu": (
@@ -755,11 +799,7 @@ def escola_decidir(request):
         quem_id=request.admin.get("id") or "",
         acao=decisao,
         alvo=alvo,
-        desfecho={
-            AlunosClient.OK: Registro.OK,
-            AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
-            AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
-        }[desfecho],
+        desfecho=DESFECHO_NA_AUDITORIA[desfecho],
         # O motivo é parte do que foi feito: sem ele a linha diz "recusou" e
         # não diz o que a pessoa recusada leu.
         detalhe=detalhe or motivo,
@@ -824,6 +864,16 @@ ESTADO_DA_PASSAGEM = {
 CAMPOS_DO_FORMULARIO = ("status", "nome_completo", "whatsapp", "turma", "comprou_em")
 
 
+#: Como o desfecho do cliente vira o desfecho da auditoria. Uma fonte só: o
+#: mapa estava escrito à mão dentro de `escola_aluno_salvar`, e a terceira
+#: escrita dele (o cadastro à mão) é onde uma cópia começaria a divergir.
+DESFECHO_NA_AUDITORIA = {
+    AlunosClient.OK: Registro.OK,
+    AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
+    AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
+}
+
+
 @require_POST
 def escola_aluno_salvar(request):
     """Salva o formulário de um aluno — e grava a auditoria SEMPRE.
@@ -858,11 +908,7 @@ def escola_aluno_salvar(request):
         quem_id=request.admin.get("id") or "",
         acao=Registro.EDITAR,
         alvo=alvo,
-        desfecho={
-            AlunosClient.OK: Registro.OK,
-            AlunosClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
-            AlunosClient.NAO_RESPONDEU: Registro.NAO_RESPONDEU,
-        }[desfecho],
+        desfecho=DESFECHO_NA_AUDITORIA[desfecho],
         # QUAIS campos foram tocados — nunca os VALORES.
         #
         # Isto mudou em 28/08/2026, no mesmo dia em que foi escrito
@@ -886,6 +932,169 @@ def escola_aluno_salvar(request):
     else:
         recado = "nao-deu"
     return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
+
+
+# ------------------------------------------------- cadastrar alguém à mão
+#
+# `docs/decisoes/DECISAO-cadastrar-alguem-a-mao.md` (29/08/2026). Até aqui, toda
+# ficha nascia de um pedido da pessoa ou de uma compra — e um aluno que não
+# conseguisse usar o formulário do site simplesmente não tinha como entrar.
+#
+# **O caminho é o MESMO de todo mundo, só que depressa:** a pessoa entra na fila
+# (`POST /pre-matriculas`, a porta que o formulário do site usa) e é liberada na
+# sequência (`POST /pre-matriculas/{id}/decisao`). Uma porta nova, capaz de criar
+# matrícula direto, seria uma segunda forma de virar aluno com outras regras — e
+# as duas discordariam na primeira mudança de lei.
+#
+# **A falha do meio é SEGURA e VISÍVEL.** Se a liberação não acontecer, a pessoa
+# fica na fila — aparecendo na mesma tela, com o botão Liberar do lado. Não há
+# estado escondido: o pior desfecho é um clique a mais, numa lista que o
+# mantenedor já abre todo dia.
+
+
+def _digitos(texto: str) -> str:
+    return "".join(c for c in texto if c.isdigit())
+
+
+def conferir_cadastro(campos: dict) -> "list[str]":
+    """O que está errado no formulário — em português, para quem vai corrigir.
+
+    As MESMAS regras do formulário do site (`services/sugestoes`), e não regras
+    próprias: duas conferências diferentes para a mesma fila deixariam passar
+    por uma porta o que a outra recusa, e a pessoa cadastrada à mão apareceria
+    na lista com um telefone que o site nunca teria aceitado.
+
+    Devolve a lista inteira, nunca só o primeiro erro: corrigir um campo por
+    envio é a forma mais rápida de alguém desistir do formulário.
+    """
+    erros = []
+    if not campos["nome_completo"]:
+        erros.append("Escreva o nome completo da pessoa.")
+    if "@" not in campos["email"] or campos["email"].startswith("@"):
+        erros.append("O e-mail não parece um e-mail — é por ele que a pessoa entra.")
+    digitos = _digitos(campos["whatsapp"])
+    if not digitos:
+        erros.append("Escreva o WhatsApp com DDD.")
+    elif not 10 <= len(digitos) <= 15:
+        # DDD + número dá 10 (fixo) ou 11 (celular); 15 é o teto internacional,
+        # para caber quem escreve o +55. Frouxa de propósito: o que ela precisa
+        # pegar é "não tenho" e o dedo escorregado, nunca recusar um número de
+        # verdade escrito de um jeito inesperado.
+        erros.append("Esse WhatsApp não parece completo — confira o DDD e o número.")
+    if campos["comprou_em"]:
+        try:
+            date.fromisoformat(campos["comprou_em"])
+        except ValueError:
+            erros.append("A data da compra precisa estar no formato dia/mês/ano.")
+    return erros
+
+
+@require_POST
+def escola_cadastrar(request):
+    """Põe uma pessoa na escola sem esperar que ela peça.
+
+    Dois passos, e a auditoria grava o que aconteceu em CADA um — inclusive
+    quando o segundo falha. Mesma disciplina de `escola_decidir` e
+    `escola_aluno_salvar`: a linha é escrita depois de saber o desfecho e antes
+    de responder, porque uma tentativa que não chegou não pode sumir.
+    """
+    campos = {
+        nome: (request.POST.get(nome) or "").strip()
+        for nome in (
+            "nome_completo",
+            "email",
+            "whatsapp",
+            "turma",
+            "comprou_em",
+            "site_id",
+        )
+    }
+    campos["email"] = campos["email"].lower()
+
+    erros = conferir_cadastro(campos)
+    if erros:
+        # Volta com o primeiro erro na tela. Não grava auditoria: nada foi
+        # tentado do outro lado, e uma linha aqui contaria uma ação que não
+        # existiu.
+        return HttpResponseRedirect(
+            f"{reverse('escola_alunos')}?resultado=cadastro-invalido"
+        )
+
+    quem = request.admin.get("id") or request.admin.get("email") or "?"
+    cliente = AlunosClient()
+
+    # [A MAO] A escola, quando o formulário não a pediu.
+    #
+    # Com UMA escola só, o campo não aparece na tela: o identificador interno é
+    # ruído numa tela de leigo, e há um teste-guarda de 28/08 que o proíbe de
+    # aparecer (`test_com_uma_escola_so_o_codigo_interno_dela_nao_aparece`).
+    # Então quem descobre qual é ela é o servidor, no envio — e não o navegador.
+    #
+    # Custa uma leitura a mais, e só neste caminho. É o preço de não pedir ao
+    # mantenedor um dado que o sistema já sabe.
+    if not campos["site_id"]:
+        _contagens, filas, alunos = contar_a_escola(cliente)
+        conhecidas = escolas_na_tela(filas, alunos)
+        if len(conhecidas) == 1:
+            campos["site_id"] = conhecidas[0]
+        else:
+            # Zero (escola vazia) e duas ou mais caem aqui, e o recado é o
+            # mesmo: eu não tenho como adivinhar. Com duas o campo ESTAVA na
+            # tela, então quem chega aqui apagou o valor; com zero, a tela já
+            # explicou que precisa ser escrito.
+            return HttpResponseRedirect(
+                f"{reverse('escola_alunos')}?resultado=cadastro-sem-escola"
+            )
+
+    dados = {
+        "site_id": campos["site_id"],
+        "email": campos["email"],
+        "nome_completo": campos["nome_completo"],
+        "whatsapp": campos["whatsapp"],
+    }
+    if campos["turma"]:
+        dados["turma"] = campos["turma"]
+    if campos["comprou_em"]:
+        dados["comprou_em"] = campos["comprou_em"]
+
+    desfecho, detalhe, id_da_linha = cliente.criar_na_fila(dados)
+
+    if desfecho != AlunosClient.OK:
+        Registro.objects.create(
+            quem_email=request.admin.get("email") or "",
+            quem_id=request.admin.get("id") or "",
+            acao=Registro.CADASTRAR,
+            alvo=campos["email"],
+            desfecho=DESFECHO_NA_AUDITORIA[desfecho],
+            detalhe=detalhe,
+        )
+        recado = (
+            "cadastro-nao-valeu"
+            if desfecho == AlunosClient.RECUSADO
+            else "cadastro-nao-deu"
+        )
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado={recado}")
+
+    # Entrou na fila. A liberação é o segundo passo — e se ela falhar, a pessoa
+    # NÃO some: fica esperando na mesma tela, com o botão Liberar do lado.
+    liberou, detalhe_da_liberacao = cliente.decidir(
+        alvo=id_da_linha, decisao="liberar", decidido_por=quem
+    )
+
+    Registro.objects.create(
+        quem_email=request.admin.get("email") or "",
+        quem_id=request.admin.get("id") or "",
+        acao=Registro.CADASTRAR,
+        alvo=id_da_linha,
+        desfecho=DESFECHO_NA_AUDITORIA[liberou],
+        detalhe=detalhe_da_liberacao or "entrou na fila e foi liberada",
+    )
+
+    if liberou == AlunosClient.OK:
+        return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=cadastrado")
+    return HttpResponseRedirect(
+        f"{reverse('escola_alunos')}?resultado=cadastrado-na-fila"
+    )
 
 
 # ------------------------------------------------- administrador por botão
