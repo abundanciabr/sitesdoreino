@@ -111,10 +111,11 @@ def _mes(raiz: Path) -> Path:
 
 
 def _registros_do_mes(caminho: Path) -> list[dict]:
+    """Lê o arquivo de mês no formato de UMA LINHA POR REGISTRO (Onda 3)."""
     texto = caminho.read_text(encoding="utf-8")
-    achado = re.search(r"registros:\s*JSON\.parse\((\".*\")\)", texto, re.S)
-    assert achado, "o cenário não tem o bundle no formato esperado"
-    return json.loads(json.loads(achado.group(1)))
+    linhas = re.findall(r'^JSON\.parse\((".*")\),?$', texto, re.M)
+    assert linhas, "o cenário não tem os registros em linha própria"
+    return [json.loads(json.loads(linha)) for linha in linhas]
 
 
 def _reescreve_mes(caminho: Path, registros: list[dict]) -> None:
@@ -125,15 +126,17 @@ def _reescreve_mes(caminho: Path, registros: list[dict]) -> None:
     independência que este verificador existe para ter iria embora no teste.
     """
     texto = caminho.read_text(encoding="utf-8")
-    novo = json.dumps(json.dumps(registros, ensure_ascii=False)).replace("<", "\\u003c")
+    linhas = [
+        "JSON.parse("
+        + json.dumps(json.dumps(r, ensure_ascii=False)).replace("<", "\u003c")
+        + ")"
+        + ("" if i == len(registros) - 1 else ",")
+        for i, r in enumerate(registros)
+    ]
+    antes = texto[: texto.index("    registros: [") + len("    registros: [")]
+    depois = texto[texto.index("    ]" + chr(10) + "  };") :]
     caminho.write_text(
-        re.sub(
-            r"(registros:\s*JSON\.parse\()\".*\"(\))",
-            lambda m: m.group(1) + novo + m.group(2),
-            texto,
-            flags=re.S,
-        ),
-        encoding="utf-8",
+        antes + chr(10) + chr(10).join(linhas) + chr(10) + depois, encoding="utf-8"
     )
 
 

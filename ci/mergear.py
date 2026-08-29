@@ -656,7 +656,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         "Agora: se o merge toca services/ ou infra/, confira o run de deploy "
         "(CLAUDE.md); e acrescente o registro do que aconteceu em "
-        "painel/registros/ (molde em painel/LEIA-ME.md) + node painel/gerar_manifesto.js."
+        "painel/registros/ (molde em painel/LEIA-ME.md). Só o registro: os "
+        "arquivos gerados do painel são da integração desde a Onda 3."
     )
     return 0
 

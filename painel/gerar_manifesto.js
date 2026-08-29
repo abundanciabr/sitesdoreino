@@ -174,16 +174,30 @@ var declaracaoDosMeses = meses.map(function (m) {
       "// código-fonte dos registros. A diferença não é estilo: concatenando, uma",
       "// aspa errada num registro derruba TODOS os deste mês, porque erro de",
       "// sintaxe não se pega com try/catch. Aqui o escape é por construção.",
+      "// UM REGISTRO POR LINHA. Não é estética: é a forma que faz a diferença",
+      "// entre duas gerações ser LEGÍVEL — um registro novo aparece como UMA",
+      "// linha a mais, e não como um bloco inteiro trocado. Quando este arquivo",
+      "// ainda viajava no Git (até 28/08/2026) era essa forma que faltava para o",
+      "// conflito ser resolvível; hoje ele é materializado pela integração, e a",
+      "// mesma forma é o que deixa uma pessoa conferir o que mudou sem",
+      "// ferramenta nenhuma. (P15/O18 da consultoria; Onda 3.)",
       "(function () {",
       "  window.LIVRO = window.LIVRO || {};",
       "  window.LIVRO[" + JSON.stringify(m) + "] = {",
       "    mes: " + JSON.stringify(m) + ",",
       "    carimbo: " + JSON.stringify(CARIMBO) + ",",
-      "    registros: JSON.parse(" + comoTextoJS(lista) + ")",
+      "    registros: ["
+    ].concat(lista.map(function (r, i) {
+      // Cada registro é um JSON.parse próprio: o escape continua sendo por
+      // construção (nunca concatenação de código-fonte), e cada um ocupa uma
+      // linha só. A vírgula fica no fim de todas menos a última.
+      return "JSON.parse(" + comoTextoJS(r) + ")" + (i === lista.length - 1 ? "" : ",");
+    })).concat([
+      "    ]",
       "  };",
       "})();",
       ""
-    ]).join("\n")
+    ])).join("\n")
   });
   // A página confere a CONTAGEM declarada aqui contra a que chegar, e recusa id
   // repetido. Os ids e o hash de cada registro ficam para o verificador do CI

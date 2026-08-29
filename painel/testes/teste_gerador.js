@@ -83,6 +83,28 @@ caso("o passado vira um arquivo POR MÊS, com o conteúdo",
 caso("o mês empacotado usa JSON.parse, e não concatenação do fonte (uma aspa errada não derruba o mês inteiro)",
   leia(dir1, "livro-202608.js").indexOf("JSON.parse(") !== -1);
 
+// UMA LINHA POR REGISTRO (Onda 3, P15/O18). A propriedade é de FORMA, e por
+// isso precisa de guarda: nada quebra visivelmente se ela se perder — o painel
+// continua abrindo igual, e só quem for comparar duas gerações descobre que
+// passou a ler um bloco inteiro trocado no lugar de uma linha a mais. Medido
+// contando as linhas, nunca procurando uma quebra de linha no texto: um
+// arquivo com tudo numa linha só também contém "JSON.parse(".
+var dirLinhas = montarCenario({
+  "20260826-001-a.js": registroBom("20260826-001-a"),
+  "20260826-002-b.js": registroBom("20260826-002-b"),
+  "20260826-003-c.js": registroBom("20260826-003-c")
+});
+roda(dirLinhas);
+var linhasDoMes = leia(dirLinhas, "livro-202608.js")
+  .split(String.fromCharCode(10))
+  .filter(function (ln) { return ln.indexOf("JSON.parse(") === 0; });
+caso("cada registro do mês ocupa UMA linha própria (3 registros = 3 linhas)",
+  linhasDoMes.length === 3);
+caso("...as linhas do meio levam vírgula",
+  linhasDoMes[0].slice(-2) === "),");
+caso("...e a última não leva vírgula pendurada",
+  linhasDoMes[2].slice(-1) === ")");
+
 // -----------------------------------------------------------------------------
 // A PROPRIEDADE QUE IMPORTA, e a única que vale travar: abrir o painel é UM
 // pedido, com 1 registro ou com 1.000. O incidente de 27/08/2026 nasceu de o
