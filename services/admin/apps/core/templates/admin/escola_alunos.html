@@ -71,6 +71,31 @@
       </div>
       {% if mostrar_escola %}<div class="nota">Escola: {{ pessoa.site_id }}</div>{% endif %}
       {% comment %}
+      [PRONTUARIO] A TARJA de quem ja esteve aqui
+      (`DECISAO-a-ficha-nao-se-apaga.md`, 29/08/2026). Desde essa lei, quem saiu
+      da escola PODE pedir para voltar — entao esta linha pode ser de alguem que
+      o mantenedor ja conhece, e decidir sem saber disso e o erro que a fila
+      existe para nao cometer.
+
+      `ja_foi_aluno` NAO e "tem outra ficha": quem foi recusado tem ficha e nunca
+      entrou. Por isso a contagem de passagens aparece nos DOIS casos, e a tarja
+      so no primeiro. A conta e feita na `alunos` (uma consulta para a fila
+      inteira), nunca aqui.
+      {% endcomment %}
+      {% if pessoa.ja_foi_aluno %}
+      <div class="nota">
+        <b>JÁ FOI ALUNO DA ESCOLA.</b>
+        {% if pessoa.saiu_em %}Saiu em {{ pessoa.saiu_em|slice:":10" }}.{% endif %}
+        Esta é a {{ pessoa.passagens_anteriores|add:1 }}ª vez que ela entra na sua lista.
+        <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">Ver o prontuário &rarr;</a>
+      </div>
+      {% elif pessoa.passagens_anteriores %}
+      <div class="nota">
+        Já pediu entrada antes ({{ pessoa.passagens_anteriores }}x) e nunca chegou a ser aluno.
+        <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">Ver o prontuário &rarr;</a>
+      </div>
+      {% endif %}
+      {% comment %}
       UM formulário com DOIS botões, e não dois formulários: o campo do motivo
       é o mesmo dos dois lados, e duplicá-lo deixaria a pessoa escrevendo no
       campo errado. Quem decide o que aconteceu é o `name="decisao"` do botão
@@ -120,6 +145,7 @@
         {% if pessoa.origem == "liberado" %}Você liberou{% else %}Comprou pelo site{% endif %}
         {% if pessoa.email in administradores %} &middot; <b>também é administrador</b>{% endif %}
         {% if mostrar_escola %} &middot; escola: {{ pessoa.site_id }}{% endif %}
+        &middot; <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">prontuário</a>
       </div>
       <form class="decidir" method="post" action="{% url 'escola_aluno_salvar' %}">
         {% csrf_token %}
