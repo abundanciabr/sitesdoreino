@@ -2,8 +2,10 @@ from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
 from apps.core.caixa import (
+    arquivar_ideia,
     assinar_obra,
     avaliar_ideia,
+    desarquivar_ideia,
     ideia,
     mesa,
     mover_ideia,
@@ -99,6 +101,15 @@ urlpatterns = [
     path("caixa/ideia/<int:ideia_id>/fase", mover_ideia, name="caixa_mover"),
     path("caixa/ideia/<int:ideia_id>/avaliacao", avaliar_ideia, name="caixa_avaliar"),
     path("caixa/ideia/<int:ideia_id>/assinatura", assinar_obra, name="caixa_assinar"),
+    # [ARQUIVAR] `DECISAO-arquivar-ideia.md` (29/08/2026): some do quadro do
+    # aluno, nada se perde no banco. Mesma gramática das três de cima — POST,
+    # redireciona de volta para a ideia dizendo o que aconteceu.
+    path("caixa/ideia/<int:ideia_id>/arquivar", arquivar_ideia, name="caixa_arquivar"),
+    path(
+        "caixa/ideia/<int:ideia_id>/desarquivar",
+        desarquivar_ideia,
+        name="caixa_desarquivar",
+    ),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro
