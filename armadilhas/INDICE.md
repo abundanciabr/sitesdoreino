@@ -187,5 +187,6 @@
 | [159](159-clone-raso-faz-o-portao-dizer-nao-existe-em-vez-de-nao-medi.md) | Clone raso faz o portão dizer "não existe" quando a verdade é "não medi" — um portão que anda no histórico do Git afirma, com toda a confiança, que não há nada lá — sobre uma coisa que tem dezenas de entregas: | — |
 | [160](160-job-que-vira-matriz-muda-de-nome-e-cega-quem-o-procura.md) | Job que vira matriz muda de nome, e cega todo mundo que o procura pelo nome — você transforma um job em matriz (`strategy: matrix`), tudo fica verde no PR — e o que depende daquele job pelo NOME começa a reprovar em… | — |
 | [161](161-espera-sem-teto-parece-trabalho.md) | Espera sem teto parece trabalho — o mantenedor olha a janela e ela mente por omissão — a janela do Claude Code mostra o robô "trabalhando, executando, fazendo algo". Passam horas. No fim o robô confessa: *"eu estava… | — |
+| [170](170-conn-max-age-maior-que-zero-sob-asgi-vaza-uma.md) | `conn_max_age` > 0 sob ASGI vaza UMA conexão de banco por requisição — e o teste não vê nada — o Postgres da plataforma bate no teto de conexões (`FATAL: sorry, too many clients already`, ou requisições que voltam como… | — |
 
-**150 entradas.**
+**151 entradas.**

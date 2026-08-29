@@ -30,12 +30,41 @@ A contagem é grosseira e é honesta: ela não diz que os testes são bons, diz 
 cabe num portão que roda em todo PR. A catraca de cobertura fica declarada como
 o que é: ainda não existe.
 
-O QUE ELE NÃO PEGA, dito na cara
---------------------------------
+O TERCEIRO BURACO, FECHADO PELA AUDITORIA DE 29/08/2026
+-------------------------------------------------------
+A catraca nasceu declarando dois furos (abaixo). A auditoria interna das Ondas
+3 a 6 achou um TERCEIRO, e este não era teórico — era uma porta aberta:
+
+    git mv ci/tests/test_reversao.py ci/tests/reversao_helpers.py
+
+17 testes coletados viraram 0, a suíte inteira continuou verde, e a catraca
+imprimiu `PASS — nenhum teste apagado, reduzido ou desligado neste PR`, com
+`0 antes · 0 depois`. O motivo: `git diff --name-only` devolve só o DESTINO de
+um rename, e o destino não é nome de teste — então o arquivo de origem, com os
+17 testes dentro, simplesmente não entrava na conta.
+
+Pior que os dois furos declarados: naqueles o teste continua sendo COLETADO
+(fraco, mas presente). Aqui ele sai da suíte inteira, em silêncio, e sem a
+etiqueta que autoriza. A cura é ler o diff com `--name-status -M`, que nomeia
+as DUAS pontas do rename, e julgar o par:
+
+    teste  ->  teste       conta antes e depois; cair é perda
+    teste  ->  não-teste   saiu da vista da catraca = perda do arquivo inteiro
+    -M também traz `D` (apagado), que já era pego, e agora sem depender de o
+    nome do destino ser de teste
+
+E a mesma auditoria achou um QUARTO caminho, fechado junto: `conftest.py` e
+`pytest.ini` não são "arquivos de teste" (não começam com `test_`), então um
+`collect_ignore = ["test_reversao.py", ...]` acrescentado ao `conftest.py`
+desligava arquivos inteiros com a catraca em PASS e `0 antes · 0 depois`.
+Desligar por configuração é desligar. Ver DESLIGADORES_DE_CONFIG.
+
+O QUE ELE CONTINUA NÃO PEGANDO, dito na cara
+--------------------------------------------
 Teste que continua existindo e passa a não afirmar nada (`assert True`), teste
-renomeado para outro arquivo (a contagem cai aqui e sobe lá — o total do PR é
-que conta), e teste fraco desde o nascimento. Quem cobra a MORDIDA dos guardas
-de invariante é o `ci/guarda_dos_guardas.py`.
+movido de um arquivo para outro dentro do mesmo PR (a contagem cai aqui e sobe
+lá — o total do PR é que conta), e teste fraco desde o nascimento. Quem cobra a
+MORDIDA dos guardas de invariante é o `ci/guarda_dos_guardas.py`.
 
 Uso (o wrapper da muralha passa BASE_REF e PR_LABELS):
 
@@ -89,6 +118,27 @@ DESLIGADORES = re.compile(
     r"@pytest\.mark\.(?:skip|skipif|xfail)|^\s*pytestmark\s*=", re.M
 )
 
+# Desligar por CONFIGURAÇÃO é desligar. `conftest.py` e `pytest.ini` não são
+# arquivos de teste (não contêm `def test_`), então nunca entraram na conta —
+# e é exatamente por isso que davam um caminho limpo para sumir com arquivos
+# inteiros:  collect_ignore = ["test_reversao.py"]  deixava a catraca em PASS
+# com `0 antes · 0 depois`. Medido pela auditoria de 29/08/2026.
+#
+# Aqui não se conta teste: conta-se APARIÇÃO NOVA de um desligador. Uma linha
+# que já existia na base continua valendo; uma linha nova precisa da etiqueta.
+CONFIGS_DE_COLETA = ("conftest.py", "pytest.ini", "pyproject.toml", "tox.ini")
+
+DESLIGADORES_DE_CONFIG = re.compile(
+    r"^\s*collect_ignore(?:_glob)?\s*=|--ignore[=\s]|^\s*norecursedirs\s*=|"
+    r"^\s*addopts\s*=.*(?:--ignore|-k\s|-m\s|--deselect)",
+    re.M,
+)
+
+
+def e_config_de_coleta(caminho: str) -> bool:
+    """`conftest.py`/`pytest.ini` decidem o que a suíte SEQUER coleta."""
+    return Path(caminho.replace("\\", "/")).name in CONFIGS_DE_COLETA
+
 
 def conta_testes(texto: str) -> int:
     return sum(len(padrao.findall(texto)) for padrao in CONTADORES)
@@ -98,18 +148,58 @@ def conta_desligados(texto: str) -> int:
     return len(DESLIGADORES.findall(texto))
 
 
-def arquivos_no_diff(raiz: Path, base: str) -> list[str]:
+def mudancas_no_diff(raiz: Path, base: str) -> list[tuple[str | None, str | None]]:
+    """Os pares (caminho NA BASE, caminho AGORA) que interessam à catraca.
+
+    `--name-status -M` em vez de `--name-only` porque `--name-only` devolve
+    APENAS o destino de um rename — e foi por essa fresta que 17 testes saíram
+    da suíte com a catraca em PASS (auditoria de 29/08/2026, ver o cabeçalho).
+    Com `-M`, um rename chega como `R100<TAB>origem<TAB>destino`, e as duas
+    pontas ficam visíveis.
+
+    `None` na primeira posição = nasceu neste PR. `None` na segunda = sumiu da
+    vista da catraca (apagado, ou renomeado para um nome que não é de teste).
+    """
     saida = executar(
-        ["git", "diff", "--name-only", f"{base}...HEAD"],
+        ["git", "diff", "--name-status", "-M", f"{base}...HEAD"],
         cwd=raiz,
         descricao=f"listar os arquivos tocados contra '{base}'",
         exigir_stdout=False,
     ).stdout
-    return sorted(
-        linha.strip().replace("\\", "/")
-        for linha in saida.splitlines()
-        if linha.strip() and e_arquivo_de_teste(linha.strip())
-    )
+
+    pares: list[tuple[str | None, str | None]] = []
+    for linha in saida.splitlines():
+        if not linha.strip():
+            continue
+        campos = linha.rstrip("\n").split("\t")
+        marca = campos[0].strip()
+        caminhos = [c.strip().replace("\\", "/") for c in campos[1:] if c.strip()]
+        if not caminhos:
+            # Marca sem caminho é diff que não dá para interpretar — e "não
+            # entendi esta linha" nunca pode virar "nada mudou aqui".
+            raise ErroDeInstrumentacao(
+                "linha de diff sem caminho",
+                f"Linha recebida:\n  {linha!r}\n\nA catraca não sabe o que foi "
+                "tocado, e sem isso não há como afirmar que nenhum teste sumiu.",
+            )
+        if marca.startswith(("R", "C")) and len(caminhos) >= 2:
+            # Rename/copy: origem e destino. Numa CÓPIA a origem continua lá, e
+            # `versao_da_base` + o arquivo em disco contam a verdade sozinhos.
+            pares.append((caminhos[0], caminhos[1]))
+        elif marca.startswith("A"):
+            pares.append((None, caminhos[0]))
+        elif marca.startswith("D"):
+            pares.append((caminhos[0], None))
+        else:  # M, T, U...
+            pares.append((caminhos[0], caminhos[0]))
+
+    interessam = [
+        (origem, destino)
+        for origem, destino in pares
+        if (origem and (e_arquivo_de_teste(origem) or e_config_de_coleta(origem)))
+        or (destino and (e_arquivo_de_teste(destino) or e_config_de_coleta(destino)))
+    ]
+    return sorted(interessam, key=lambda par: (par[0] or "", par[1] or ""))
 
 
 def versao_da_base(raiz: Path, base: str, caminho: str) -> str | None:
@@ -145,29 +235,86 @@ def perdas(raiz: Path, base: str) -> tuple[list[str], int, int]:
     """As perdas do diff, mais os totais (antes, depois) — para o log."""
     achados: list[str] = []
     total_antes = total_depois = 0
-    for caminho in arquivos_no_diff(raiz, base):
-        antes = versao_da_base(raiz, base, caminho)
-        atual = raiz / caminho
-        texto_atual = atual.read_text(encoding="utf-8") if atual.is_file() else None
 
-        if antes is None:
-            # Arquivo novo: só soma. Não há como perder o que não existia.
-            if texto_atual is not None:
-                total_depois += conta_testes(texto_atual)
+    def _no_disco(caminho: str) -> str | None:
+        alvo = raiz / caminho
+        return alvo.read_text(encoding="utf-8") if alvo.is_file() else None
+
+    for origem, destino in mudancas_no_diff(raiz, base):
+        # ---- config de coleta: aparição NOVA de desligador ---------------
+        if (origem and e_config_de_coleta(origem)) or (
+            destino and e_config_de_coleta(destino)
+        ):
+            antes_txt = versao_da_base(raiz, base, origem) if origem else None
+            depois_txt = _no_disco(destino) if destino else None
+            n_antes_cfg = len(DESLIGADORES_DE_CONFIG.findall(antes_txt or ""))
+            n_depois_cfg = len(DESLIGADORES_DE_CONFIG.findall(depois_txt or ""))
+            if n_depois_cfg > n_antes_cfg:
+                achados.append(
+                    f"{destino or origem}: {n_depois_cfg - n_antes_cfg} "
+                    "desligador(es) de COLETA novo(s) "
+                    "(collect_ignore/--ignore/norecursedirs/addopts) — "
+                    "arquivo de teste desligado por configuração continua "
+                    "desligado"
+                )
             continue
+
+        # ---- arquivo de teste --------------------------------------------
+        if origem is None:
+            # Nasceu neste PR: só soma. Não há como perder o que não existia.
+            if destino and e_arquivo_de_teste(destino):
+                texto = _no_disco(destino)
+                if texto is not None:
+                    total_depois += conta_testes(texto)
+            continue
+
+        if not e_arquivo_de_teste(origem):
+            # Não era teste na base; virou teste agora. Só soma.
+            if destino and e_arquivo_de_teste(destino):
+                texto = _no_disco(destino)
+                if texto is not None:
+                    total_depois += conta_testes(texto)
+            continue
+
+        antes = versao_da_base(raiz, base, origem)
+        if antes is None:
+            # O git disse que existia na base e o git diz que não existe. Isso
+            # é instrumento discordando de si mesmo, nunca "não havia teste".
+            raise ErroDeInstrumentacao(
+                f"{origem}: o diff diz que o arquivo existia em {base}, e ele "
+                "não está lá",
+                "Duas leituras do mesmo Git discordando é instrumento quebrado "
+                "— e um instrumento quebrado não pode dizer que nada sumiu.",
+            )
 
         n_antes = conta_testes(antes)
         total_antes += n_antes
 
+        # O destino só conta como "o mesmo teste, noutro lugar" se ele TAMBÉM
+        # for um arquivo de teste. Renomear para um nome que a suíte não coleta
+        # é tirar o teste da suíte — mesmo efeito de apagar.
+        texto_atual = (
+            _no_disco(destino) if destino and e_arquivo_de_teste(destino) else None
+        )
+
         if texto_atual is None:
-            achados.append(f"{caminho}: arquivo de teste APAGADO ({n_antes} teste(s))")
+            if destino is None:
+                achados.append(
+                    f"{origem}: arquivo de teste APAGADO ({n_antes} teste(s))"
+                )
+            else:
+                achados.append(
+                    f"{origem}: RENOMEADO para '{destino}', que a suíte não "
+                    f"coleta — {n_antes} teste(s) saíram da suíte"
+                )
             continue
 
         n_depois = conta_testes(texto_atual)
         total_depois += n_depois
+        rotulo = origem if origem == destino else f"{origem} → {destino}"
         if n_depois < n_antes:
             achados.append(
-                f"{caminho}: {n_antes} → {n_depois} teste(s) — "
+                f"{rotulo}: {n_antes} → {n_depois} teste(s) — "
                 f"{n_antes - n_depois} sumiu(ram)"
             )
 
@@ -175,7 +322,7 @@ def perdas(raiz: Path, base: str) -> tuple[list[str], int, int]:
         desligados_depois = conta_desligados(texto_atual)
         if desligados_depois > desligados_antes:
             achados.append(
-                f"{caminho}: {desligados_depois - desligados_antes} teste(s) "
+                f"{rotulo}: {desligados_depois - desligados_antes} teste(s) "
                 "DESLIGADO(S) (skip/skipif/xfail/pytestmark)"
             )
     return achados, total_antes, total_depois
