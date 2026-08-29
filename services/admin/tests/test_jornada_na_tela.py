@@ -178,9 +178,7 @@ def test_todo_slug_do_mapa_existe_no_catalogo_de_contagem():
     erro é de digitação.
     """
     conhecidos = {t["slug"] for t in TIPOS_DE_ALUNO}
-    do_mapa = {
-        p["slug"] for f in FAIXAS_DA_JORNADA for p in f["paradas"] if p["slug"]
-    }
+    do_mapa = {p["slug"] for f in FAIXAS_DA_JORNADA for p in f["paradas"] if p["slug"]}
     assert do_mapa <= conhecidos, do_mapa - conhecidos
 
 
