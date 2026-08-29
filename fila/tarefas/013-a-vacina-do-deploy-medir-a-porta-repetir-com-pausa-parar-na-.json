@@ -1,0 +1,14 @@
+{
+  "arquivo": "013-a-vacina-do-deploy-medir-a-porta-repetir-com-pausa-parar-na-",
+  "id": "TAR-013",
+  "titulo": "A vacina do deploy: medir a porta, repetir com pausa, parar na terceira",
+  "toca": [
+    ".github",
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "O deploy sobrevivendo a um soluço de rede sem intervenção (rerun automático com pausa), com run real como prova.",
+  "despacho": "A campeã de reincidência do catálogo (armadilha 127: 6 quedas em 3 dias). O sinal já existe (PR 499); a vacina — o deploy medir a porta 22, repetir com pausa e só parar na terceira tentativa, registrando — é a entrega desenhada e anunciada. Ver armadilhas/127 e o registro 20260829-035.",
+  "origem": "Sistema Imunológico — próxima entrega anunciada no PR 499 (registro 20260829-035)",
+  "criada_em": "2026-08-29"
+}

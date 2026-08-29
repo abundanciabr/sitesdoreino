@@ -1,0 +1,14 @@
+{
+  "arquivo": "010-abrir-o-pr-em-rascunho-no-primeiro-minuto-como-anuncio",
+  "id": "TAR-010",
+  "titulo": "Abrir o PR em rascunho no primeiro minuto, como anúncio",
+  "toca": [
+    "ci",
+    "RITOS.md"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "O rito de abertura criando o PR rascunho no minuto 1, documentado e com mecanismo que o faça valer.",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendação B2 do PLANO-MESTRE: ataca a Classe 5 (trabalho duplicado invisível) pelo lado barato. Conversa com a reserva de intenção do almoxarife.",
+  "origem": "plano robôs-sem-colisão, B2 — aceita e não construída (registro 20260829-028)",
+  "criada_em": "2026-08-29"
+}

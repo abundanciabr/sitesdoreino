@@ -1,0 +1,14 @@
+{
+  "arquivo": "008-dividir-por-assunto-a-medicao-de-perguntas-ao-mantenedor",
+  "id": "TAR-008",
+  "titulo": "Dividir por assunto a medição de perguntas ao mantenedor",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "A métrica existente ganhando a divisão por frente, calculada do livro, com teste.",
+  "despacho": "SÓ COM DESPACHO DO MANTENEDOR — em 29/08/2026 ele decidiu que as recomendações aceitas-e-não-construídas do plano robôs-sem-colisão ficam para depois (registro 20260829-029). Esta tarefa nasce BLOQUEADA por evento; registrá-la não é reabri-la. Quando ele despachar: evento devolvida (desbloqueia), depois pegar normalmente.\n\nRecomendação B14 do PLANO-MESTRE: o dono é recurso único; existe o total de perguntas, falta a divisão por assunto.",
+  "origem": "plano robôs-sem-colisão, B14 — aceita e não construída (auditoria externa, registro 20260829-028)",
+  "criada_em": "2026-08-29"
+}
