@@ -1,0 +1,54 @@
+{
+  "_leia_me": [
+    "A RÉGUA DAS ESPERAS — quanto cada espera costuma levar, medido, nunca chutado.",
+    "Quem lê: ci/esperar.py (a voz diz 'normalmente isso leva ~X' e 'ACIMA do esperado').",
+    "Quem escreve: por enquanto, medição manual por PR (a semente abaixo foi medida em",
+    "29/08/2026 com gh run list/gh pr list); o recalculo automático a partir de",
+    "~/.sitesdoreino/esperas.jsonl e do histórico do GitHub é a fatia seguinte.",
+    "REGRAS DE HONESTIDADE: amostra < 20 => a voz diz 'pouca amostra, desconfie' e o",
+    "p90 não sustenta veredito; medido_em com mais de 30 dias => a voz manda desconfiar;",
+    "regime diferente do atual => os números NÃO se comparam (a pista de pouso mudou o",
+    "jogo em 29/08/2026 — tempos de merge de antes não dizem nada sobre os de agora).",
+    "Régua ausente ou quebrada NUNCA vira número: a voz diz 'não sei quanto isto",
+    "costuma levar'. História: armadilhas/161."
+  ],
+  "medido_em": "2026-08-29",
+  "regime": "pista-de-pouso",
+  "esperas": {
+    "checks": {
+      "rotulo": "os testes de um PR (muralhas + ci-celula)",
+      "p50_s": 90,
+      "p90_s": 180,
+      "amostra": 62,
+      "nota": "uma volta completa; muralhas p50 59s (n=62), ci-celula p50 53s (n=52)"
+    },
+    "deploy-celula": {
+      "rotulo": "o deploy de uma célula chegar na VPS",
+      "p50_s": 147,
+      "p90_s": 213,
+      "amostra": 23,
+      "nota": "outliers de ~444s = as 3 tentativas de SSH do workflow"
+    },
+    "pouso": {
+      "rotulo": "a pista de pouso mergear um PR da fila",
+      "p50_s": 420,
+      "p90_s": 900,
+      "amostra": 5,
+      "nota": "a fila anda pelo cron de 15 min enquanto o encadeamento da pista estiver quebrado (PISTA_TOKEN sem actions:write)"
+    },
+    "docker-frio": {
+      "rotulo": "o Docker Desktop acordar frio",
+      "p50_s": 90,
+      "p90_s": 120,
+      "amostra": 3,
+      "nota": "armadilhas/004"
+    },
+    "sonda": {
+      "rotulo": null,
+      "p50_s": null,
+      "p90_s": null,
+      "amostra": 0,
+      "nota": "sonda é genérica — sem régua até existir histórico da espera específica"
+    }
+  }
+}
