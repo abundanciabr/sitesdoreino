@@ -237,6 +237,37 @@ primeira oportunidade de violá-la.
   arquivo real de fora da pasta).
 - **Célula dona:** admin
 
+### [INV-P15] Falha do Provedor ⇒ 502 no Contrato, Nunca 2xx
+- **O quê:** quando o Mercado Pago não responde, responde erro, ou responde 2xx com
+  um corpo que **não descreve** a cobrança pedida (`id` ausente ou vazio, Pix sem
+  `qr_code`, cartão sem `status`), as quatro operações que atravessam o provedor —
+  `createIntent`, `confirmCard`, `webhookMpPix`, `webhookMpCard` — respondem **502**
+  (`FalhaDoProvedor`, `contracts/pagamentos.openapi.yaml`) e nenhuma intent nasce
+  incompleta. Nunca 2xx; nunca 422 (o payload do checkout estava correto — quem
+  falhou foi o provedor); e nunca um `qr_code` vazio numa releitura da mesma intent.
+  A ação prescrita ao consumidor viaja no próprio contrato: repetir com a **MESMA**
+  `X-Idempotency-Key`, jamais uma chave nova. `getIntent` fica de fora por ler só o
+  banco.
+- **Por quê:** foi o bug mais caro da Fase D — o cliente traduzia um corpo de erro em
+  `201 Created` com QR vazio (`str(resposta.get("id", ""))` → string vazia → seguiu
+  adiante como sucesso), e o comprador via uma tela de pagamento que não pagava
+  (`RETROSPECTIVA-FASE-D` §4: em borda externa, 2xx não é sucesso). Corrigir o código
+  sem escrever a regra deixou uma meia-verdade de uma semana: até 28/08/2026 o
+  sistema já respondia certo e **nenhum documento** dizia ao checkout que aquele
+  status existia nem o que fazer com ele — e a saída intuitiva, chave nova a cada
+  tentativa, é exatamente a dupla cobrança que [INV-P4] existe para impedir.
+  A trava que mantém os dois lados batendo é o freeze de contrato
+  (ci/contract_freeze.py): quem tirar o 502 do código deixa o check
+  contrato/pagamentos VERMELHO — foi essa a evidência vermelho→verde do par de
+  PRs 417/420.
+- **Teste-Guarda:** `services/pagamentos/tests/test_transporte_mp_fail_closed.py` —
+  o mock desce até o HTTP (respx), então o transporte roda de verdade em vez de ser
+  substituído por um MagicMock, que é o furo da armadilha 061: status de erro,
+  timeout, corpo não JSON, 200 sem id, Pix 200 sem qr_code e cartão 200 sem status —
+  nenhum vira intent criada; e o replay com o provedor ainda quebrado não devolve QR
+  vazio.
+- **Célula dona:** pagamentos
+
 ### [INV-SUG11] Identidade Cunhada Guarda o Id da Plataforma
 - **O quê:** toda `Identidade` cunhada pela célula `sugestoes` depois da migration
   `0006` guarda, ao lado do id opaco que ela mesma cunha, o **id da identidade da

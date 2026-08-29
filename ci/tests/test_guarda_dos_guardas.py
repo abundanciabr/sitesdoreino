@@ -681,6 +681,11 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # Pedido do mantenedor (28/08/2026): um link público do mapa técnico
         # do projeto (`painel/ia/`), para mandar a IAs externas sem login.
         "INV-P14",
+        # Fecha a metade que faltava do rito de contrato do 502 (29/08/2026):
+        # o contrato passou a declarar a falha do provedor nos PRs 417/420, e
+        # esta é a regra que aquele status protege — falha do Mercado Pago
+        # responde 502, nunca 2xx, e o consumidor repete com a MESMA chave.
+        "INV-P15",
         # Fase 1 do plano de notificações (25/08/2026), célula `sugestoes`: a
         # identidade cunhada aqui guarda o id da identidade da PLATAFORMA, que a
         # resposta do contrato já entregava e a porta descartava. Sem ele nenhum
