@@ -210,15 +210,20 @@ IDEIAS = [
 # das identidades existe só para dar peso aos contadores de voto.
 COMENTARIOS = {
     "Calculadora de preço para modelos 3D": [
-        (0, "Isso aqui salvaria minha vida. Semana passada cobrei R$ 40 num "
-            "trabalho que levou 11 horas."),
-        (3, "Se der pra separar preço de UGC e preço de encomenda, melhor "
-            "ainda — são mercados bem diferentes."),
+        (
+            0,
+            "Isso aqui salvaria minha vida. Semana passada cobrei R$ 40 num "
+            "trabalho que levou 11 horas.",
+        ),
+        (
+            3,
+            "Se der pra separar preço de UGC e preço de encomenda, melhor "
+            "ainda — são mercados bem diferentes.",
+        ),
     ],
     "Gerador de portfólio automático": [
         (1, "Perdi um freela porque mandei link do Drive e o cara nem abriu."),
-        (5, "Queria que desse pra escolher a ordem dos trabalhos, não só a "
-            "data."),
+        (5, "Queria que desse pra escolher a ordem dos trabalhos, não só a " "data."),
         (2, "+1. E se der pra ter um domínio meu depois, fecha."),
     ],
     "Aula: do zero ao primeiro UGC aprovado": [
@@ -230,8 +235,22 @@ COMENTARIOS = {
 }
 
 NOMES = [
-    "Ana", "Bruno", "Caio", "Duda", "Enzo", "Fê", "Gabi", "Heitor",
-    "Isa", "João", "Kau", "Lele", "Miguel", "Nina", "Otto", "Pedro",
+    "Ana",
+    "Bruno",
+    "Caio",
+    "Duda",
+    "Enzo",
+    "Fê",
+    "Gabi",
+    "Heitor",
+    "Isa",
+    "João",
+    "Kau",
+    "Lele",
+    "Miguel",
+    "Nina",
+    "Otto",
+    "Pedro",
 ]
 
 
@@ -254,9 +273,7 @@ class Command(BaseCommand):
     # ---------------------------------------------------------------- criar --
 
     def _criar(self, site_id: str):
-        quadro = Quadro.objects.filter(
-            site_id=site_id, produto_id__isnull=True
-        ).first()
+        quadro = Quadro.objects.filter(site_id=site_id, produto_id__isnull=True).first()
         if quadro is None:
             raise CommandError(
                 f"PAROU POR SEGURANÇA: não existe quadro para o site {site_id}. "
@@ -285,7 +302,9 @@ class Command(BaseCommand):
         with transaction.atomic():
             pessoas = self._pessoas(quantos_votantes)
             criadas = {}
-            for n, (titulo, slug, status, votos, problema, solucao) in enumerate(IDEIAS):
+            for n, (titulo, slug, status, votos, problema, solucao) in enumerate(
+                IDEIAS
+            ):
                 ideia = Sugestao.objects.create(
                     quadro=quadro,
                     categoria=categorias[slug],
@@ -297,19 +316,14 @@ class Command(BaseCommand):
                 )
                 criadas[titulo] = ideia
                 Voto.objects.bulk_create(
-                    [
-                        Voto(sugestao=ideia, autor=pessoa)
-                        for pessoa in pessoas[:votos]
-                    ]
+                    [Voto(sugestao=ideia, autor=pessoa) for pessoa in pessoas[:votos]]
                 )
 
             # A mesclada aponta para a canônica — é o que a tela usa para dizer
             # "esta ideia virou aquela ali". Sem o ponteiro, `mesclado` aparece
             # como um beco sem saída.
             mesclada = criadas["Ferramenta que calcula quanto cobrar"]
-            mesclada.sugestao_canonica = criadas[
-                "Calculadora de preço para modelos 3D"
-            ]
+            mesclada.sugestao_canonica = criadas["Calculadora de preço para modelos 3D"]
             mesclada.save(update_fields=["sugestao_canonica"])
 
             Comentario.objects.bulk_create(
@@ -398,9 +412,7 @@ class Command(BaseCommand):
                         "Ideia de demonstração, retirada do quadro. Não pôde "
                         "ser apagada porque já tinha histórico append-only."
                     )
-                    ideia.save(
-                        update_fields=["arquivada_em", "motivo_do_arquivamento"]
-                    )
+                    ideia.save(update_fields=["arquivada_em", "motivo_do_arquivamento"])
                 arquivadas += 1
 
         # Só as identidades que não sobraram amarradas a nada arquivado.
