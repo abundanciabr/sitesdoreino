@@ -162,6 +162,7 @@ def _tela_da_fila(
     rascunho: dict | None = None,
     erros: list[str] | None = None,
     ja_pediu: bool | None = None,
+    voltando: bool = False,
     status: int = 403,
 ):
     """A MESMA página da porta, com o formulário da fila em cima.
@@ -191,6 +192,13 @@ def _tela_da_fila(
             "ator": None,
             "email": email,
             "fila": True,
+            # [VOLTAR] Quem está pedindo é um EX-ALUNO, e a tela diz isso em vez
+            # de tratá-lo como gente nova (`DECISAO-a-ficha-nao-se-apaga.md` §3).
+            # Muda o texto e a palavra do botão; NÃO muda o formulário nem para
+            # onde ele posta — é o mesmo pedido, na mesma fila, decidido pela
+            # mesma pessoa. Uma segunda rota de "voltar" seria um segundo
+            # caminho para o mesmo fato, e os dois discordariam.
+            "voltando": voltando,
             # SÓ o recibo se recarrega. No formulário, um refresh apagaria o
             # que a pessoa está digitando — e ela ainda não tem nada para
             # esperar.
@@ -237,7 +245,18 @@ def pedir_entrada(request):
             email=resolucao.email,
             status=503,
         )
-    if resolucao.estado != ses.SEM_MATRICULA:
+    # [VOLTAR] Lista de PERMISSÃO dos estados que podem enfileirar, e não um
+    # `!= SEM_MATRICULA`. `EX_ALUNO` entrou em 29/08/2026
+    # (`DECISAO-a-ficha-nao-se-apaga.md` §3), no dia em que a tela dele ganhou o
+    # formulário de volta — sem isto, o botão "Pedir para voltar" existiria na
+    # tela e o clique cairia num redirecionamento mudo, que é a pior forma de
+    # não funcionar. `PAUSADO` fica FORA de propósito: quem está pausado volta
+    # sozinho, e a tela dele não oferece formulário nenhum.
+    #
+    # Lista de permissão porque estado novo que apareça amanhã precisa de uma
+    # decisão explícita para poder enfileirar — com a comparação antiga, ele
+    # nasceria podendo.
+    if resolucao.estado not in (ses.SEM_MATRICULA, ses.EX_ALUNO):
         # Visitante sem sessão do site: não há e-mail para pôr na fila.
         return HttpResponseRedirect(reverse("entrar"))
 
@@ -267,8 +286,15 @@ def pedir_entrada(request):
             erros.append("A data da compra precisa estar no formato dia/mês/ano.")
 
     if erros:
+        # `voltando` viaja junto: um erro de digitação não pode transformar a
+        # tela de quem volta na tela de quem nunca teve matrícula.
         return _tela_da_fila(
-            request, email=resolucao.email, rascunho=rascunho, erros=erros, status=400
+            request,
+            email=resolucao.email,
+            rascunho=rascunho,
+            erros=erros,
+            voltando=resolucao.estado == ses.EX_ALUNO,
+            status=400,
         )
 
     try:
@@ -346,22 +372,22 @@ def entrar(request):
         return _tela_da_fila(request, email=resolucao.email)
 
     if resolucao.estado == ses.EX_ALUNO:
-        # [EX-ALUNO] Sem formulário e sem relógio de espera: não há nada
-        # acontecendo do outro lado, e um relógio girando seria promessa falsa.
-        # O botão de trocar de conta continua embaixo — a resposta mais rápida
-        # para muita gente segue sendo "entrei com o e-mail errado".
-        return _recado(
-            request,
-            titulo="Seu acesso à escola foi encerrado",
-            texto=(
-                "Este cadastro não está mais ativo na escola, e por isso a "
-                "Caixa de Sugestões não abre. Se você acha que houve engano, "
-                "fale com a escola — quem pode reativar é a equipe, e do lado "
-                "de lá é um clique."
-            ),
-            email=resolucao.email,
-            status=403,
-        )
+        # [VOLTAR] O formulário VOLTOU para o ex-aluno em 29/08/2026
+        # (`DECISAO-a-ficha-nao-se-apaga.md` §3), revertendo a decisão da
+        # véspera de não o oferecer. O argumento do mantenedor é mais forte que
+        # o receio original: a escola é um lugar de onde se sai e para onde se
+        # volta, e quem terminou um curso e quer o do semestre seguinte não está
+        # "insistindo contra uma decisão" — está se matriculando de novo.
+        #
+        # O que impede o abuso que a lei de ontem temia: o pedido NÃO devolve
+        # acesso nenhum. Ele entra na fila como o de qualquer pessoa, e do outro
+        # lado a tarja de ex-aluno e o prontuário deixam o mantenedor decidir
+        # sabendo de tudo — inclusive recusar de novo, em dois cliques.
+        #
+        # `pausado` continua SEM formulário logo abaixo, e a diferença é a
+        # decisão: pausado volta sozinho, e pedir o que já vai acontecer é
+        # ansiedade sem destino.
+        return _tela_da_fila(request, email=resolucao.email, voltando=True)
 
     if resolucao.estado == ses.PAUSADO:
         # [EX-ALUNO] Texto diferente do de cima DE PROPÓSITO: a diferença entre

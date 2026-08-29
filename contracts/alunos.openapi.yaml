@@ -210,7 +210,7 @@ paths:
                 type: array
                 items:
                   type: object
-                  required: [id, site_id, email, nome_completo, whatsapp, status, criada_em, esperando_ha_dias]
+                  required: [id, site_id, email, nome_completo, whatsapp, status, criada_em, esperando_ha_dias, ja_foi_aluno, passagens_anteriores, saiu_em]
                   properties:
                     id: { type: string }
                     site_id:
@@ -230,6 +230,37 @@ paths:
                     criada_em: { type: string, format: date-time }
                     esperando_ha_dias: { type: integer, minimum: 0 }
                     motivo_recusa: { type: [string, 'null'] }
+                    ja_foi_aluno:
+                      type: boolean
+                      description: |
+                        A pessoa JA TEVE ficha nesta plataforma antes deste pedido
+                        (`DECISAO-a-ficha-nao-se-apaga.md` §3). Nasce em 29/08/2026,
+                        no dia em que ex-aluno voltou a poder pedir entrada.
+
+                        CALCULADO pela celula, e nunca gravado: e a existencia de
+                        outra ficha com o mesmo e-mail, olhada na hora. Um campo
+                        gravado seria um segundo lugar guardando o que as fichas ja
+                        dizem, e os dois discordariam no primeiro backfill.
+
+                        Para que serve, em uma frase: sem ele, o mantenedor decide
+                        sobre um ex-aluno achando que e gente nova — que e
+                        exatamente o erro que a fila existe para nao cometer.
+                    passagens_anteriores:
+                      type: integer
+                      minimum: 0
+                      description: |
+                        Quantas fichas anteriores esta pessoa tem (0 quando e a
+                        primeira vez). Nao e o mesmo que `ja_foi_aluno`: alguem
+                        recusado tres vezes tem passagens e nunca foi aluno.
+                    saiu_em:
+                      type: [string, 'null']
+                      format: date-time
+                      description: |
+                        Quando a ficha anterior mais recente foi encerrada — `null`
+                        se nao ha ficha anterior, ou se nenhuma foi encerrada. E a
+                        pista que a tarja da tela mostra ("saiu em ..."), e ela vem
+                        pronta pelo mesmo motivo de `esperando_ha_dias`: quem tem o
+                        relogio e a linha e a celula.
   /pre-matriculas/{id}/decisao:
     post:
       operationId: decidePreEnrollment
@@ -349,40 +380,137 @@ paths:
                           ve-lo para poder pedir de novo: reenviar e o jeito previsto
                           de corrigir um dado errado (lei da fila, §7).
         '422': { description: E-mail invalido }
-  /matriculas/{id}:
-    delete:
-      operationId: deleteEnrollment
-      summary: Apagar a matricula DE VEZ — irreversivel
+  /alunos/{email}/prontuario:
+    get:
+      operationId: getStudentRecord
+      summary: O prontuario — a historia inteira de uma pessoa nesta escola
       description: |
-        O direito da pessoa de sumir do sistema
-        (`docs/decisoes/DECISAO-administradores-e-apagar.md` §4). Decidido pelo
-        mantenedor em 28/08/2026, contra a recomendacao do agente de esperar o
-        primeiro pedido real — com o preco apresentado antes da escolha.
+        A porta do PRONTUARIO (`docs/decisoes/DECISAO-a-ficha-nao-se-apaga.md` §5).
+        Nasce em 29/08/2026, no mesmo dia em que o apagar morreu e em que ex-aluno
+        voltou a poder pedir entrada — e as tres coisas sao a mesma decisao.
 
-        APAGA A LINHA, e nao troca o estado. Nao ha desfazer, e nao ha versao
-        "apagada" para consultar depois: e isso que separa esta porta do
-        `PATCH` com `status: encerrada`, que existe ao lado para o caso comum
-        de tirar o acesso podendo voltar atras.
+        POR QUE ELA PRECISA EXISTIR: desde essa lei, quem sai e volta ganha uma
+        FICHA NOVA a cada passagem (a antiga fica `encerrada`, com a data e o motivo
+        da saida intactos). Isso preserva a historia, e o preco e que a mesma pessoa
+        passa a ter mais de uma linha. Esta porta e a resposta a esse preco: ela
+        agrupa por e-mail e devolve a trajetoria em ordem.
 
-        O QUE SOBRA depois: nada aqui. Do lado de quem chamou, uma linha de
-        auditoria dizendo que a ficha X foi apagada, em tal dia, por tal pessoa
-        — sem nome, sem telefone, sem e-mail. A auditoria da area administrativa
-        e append-only por trigger no banco, entao ela NUNCA pode ter guardado
-        dado que a pessoa forneceu; se tivesse, esta porta seria impossivel de
-        cumprir.
+        DERIVADA DAS FICHAS, nunca de uma tabela de historico. Um historico gravado
+        a parte discordaria das fichas no primeiro caso de borda, e as duas telas
+        mostrariam pessoas diferentes — e a lei anti-duplicacao do `CLAUDE.md` existe
+        para isso.
 
-        NAO apaga quem esta na FILA: linha `aguardando`/`recusada` responde 409,
-        pela mesma razao do `PATCH` — a fila tem porta propria, que sabe
-        conferir "ja decidida" e guardar o motivo.
+        NAO E `GET /alunos/{email}/situacao`, e as duas continuam. Aquela responde
+        "esta pessoa pode entrar?" — sem PII, para o site inteiro consumir. Esta
+        responde "quem e esta pessoa para a escola?" — com PII, para UMA tela. Fundir
+        as duas obrigaria a porta publica a carregar telefone, que e o oposto da §5
+        da lei da fila.
+
+        200 COM LISTA VAZIA para quem a celula nao conhece — NUNCA 404, pela mesma
+        razao da porta da situacao: um 404 obrigaria o consumidor a traduzir "erro"
+        em "pessoa nova", e o primeiro que o tratasse como falha de rede mostraria a
+        tela errada.
+
+        PII: devolve o WhatsApp, e por isso e PORTA DE PAINEL — a mesma familia de
+        `GET /pre-matriculas` e `GET /matriculas`, e sujeita a mesma regra: o
+        telefone sai por essas portas e por nenhuma outra, nunca em evento.
       parameters:
-        - name: id
+        - name: email
           in: path
           required: true
-          schema: { type: string }
+          schema: { type: string, format: email }
       responses:
-        '204': { description: "Apagada. Sem corpo — nao ha o que devolver sobre uma ficha que nao existe mais" }
-        '404': { description: Nao ha matricula com este id }
-        '409': { description: "Esta linha esta na FILA — decida por POST /pre-matriculas/{id}/decisao" }
+        '200':
+          description: O prontuario. Sem ficha nenhuma, `passagens` vem vazio.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [email, categoria, nome_completo, whatsapp, turma, comprou_em, passagens]
+                properties:
+                  email: { type: string, format: email }
+                  categoria:
+                    type: string
+                    enum: [cadastrado, na_fila, pausado, ex_aluno, aluno]
+                    description: |
+                      A situacao de AGORA, e ela vem da MESMA funcao que responde
+                      `GET /alunos/{email}/situacao`. Duas contas para a mesma
+                      pergunta divergiriam no primeiro status novo — e a tela do
+                      prontuario mostraria uma coisa enquanto a porta da Caixa
+                      mostra outra para a mesma pessoa.
+                  nome_completo:
+                    type: string
+                    description: |
+                      Da passagem MAIS RECENTE — e nao da primeira. Quem volta anos
+                      depois pode ter mudado de nome, e o que o mantenedor precisa
+                      ler e como a pessoa se chama hoje. String vazia quando nao ha
+                      ficha nenhuma.
+                  whatsapp: { type: string }
+                  turma: { type: [string, 'null'] }
+                  comprou_em: { type: [string, 'null'], format: date }
+                  passagens:
+                    type: array
+                    description: |
+                      Uma entrada por ficha, da MAIS ANTIGA para a mais nova — o
+                      contrario das outras listas desta API, e de proposito: aqui o
+                      que se le e uma historia, e historia se conta na ordem em que
+                      aconteceu.
+                    items:
+                      type: object
+                      additionalProperties: false
+                      required: [id, site_id, status, origem, nome_completo, whatsapp, turma, comprou_em, criada_em, decidido_em, decidido_por, motivo_recusa]
+                      properties:
+                        id: { type: string }
+                        site_id: { type: string }
+                        status:
+                          type: string
+                          enum: [ativa, suspensa, encerrada, reembolsada, aguardando, recusada]
+                          description: |
+                            TODOS os estados, inclusive os da fila — este e o unico
+                            lugar da API onde as duas familias aparecem juntas. As
+                            outras portas separam de proposito (uma decide entrada,
+                            a outra administra quem entrou); um prontuario que
+                            escondesse as passagens recusadas contaria a historia
+                            pela metade.
+                        origem: { type: string, enum: [comprou, liberado] }
+                        nome_completo: { type: string }
+                        whatsapp: { type: string }
+                        turma: { type: [string, 'null'] }
+                        comprou_em: { type: [string, 'null'], format: date }
+                        criada_em: { type: string, format: date-time }
+                        decidido_em:
+                          type: [string, 'null']
+                          format: date-time
+                          description: |
+                            Quando esta ficha foi decidida pela ultima vez —
+                            liberada, recusada, pausada ou encerrada. `null` enquanto
+                            ninguem decidiu nada.
+                        decidido_por:
+                          type: string
+                          description: |
+                            Id de plataforma de quem decidiu — nunca o e-mail dele.
+                            E-mail muda de dono; o id, nao.
+                        motivo_recusa: { type: string }
+        '422': { description: E-mail invalido }
+  /matriculas/{id}:
+    # A operacao `delete` (deleteEnrollment) MORREU AQUI em 29/08/2026, e a
+    # ausencia dela e a lei: `docs/decisoes/DECISAO-a-ficha-nao-se-apaga.md`.
+    #
+    # O mantenedor decidiu que o cadastro de um aluno NUNCA e apagado — quem sai
+    # vira ex-aluno (`PATCH` com `status: encerrada`), a ficha fica, e quem quiser
+    # voltar pede entrada de novo pela fila. A porta que apagava saiu junto com o
+    # botao porque um botao removido volta com uma linha de template; uma porta
+    # removida do contrato exige o Rito §3 e a etiqueta `contrato-remocao`.
+    #
+    # ISTO REVERTE a `DECISAO-administradores-e-apagar.md` §4, de 28/08/2026, que
+    # criou a porta como "o direito da pessoa de sumir do sistema". Esse direito
+    # continua existindo em lei (LGPD); o que deixa de existir e o caminho de UM
+    # CLIQUE para exerce-lo. Pedido formal de exclusao passa a ser raro, manual e
+    # com rito — e a lei nova escreve isso em vez de deixar a ausencia muda.
+    #
+    # Consumidor: so a celula `admin` chamava, e ela parou de chamar ANTES desta
+    # remocao (PR #468) — consumidor primeiro, como manda o Rito §3.
     patch:
       operationId: updateEnrollment
       summary: Mudar o estado de um aluno, ou corrigir os dados dele

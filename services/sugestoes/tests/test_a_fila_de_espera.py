@@ -352,3 +352,68 @@ def test_a_identidade_fora_do_ar_nao_registra_pedido(na_porta):
 
     assert resposta.status_code == 503
     assert na_porta.rede.pedidos == []
+
+
+# ---------------------------------------------------------------------------
+# O ex-aluno que volta — `DECISAO-a-ficha-nao-se-apaga.md` §3 (29/08/2026)
+#
+# A tela dele mudou (`test_a_porta_explica_por_que_nao_abriu.py`); o CAMINHO,
+# não. Estes dois testes existem para provar isso: se um dia alguém der ao
+# "pedir para voltar" uma rota própria, os dois reprovam — e é bom que reprovem,
+# porque duas portas para o mesmo fato discordam no primeiro caso de borda.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def ex_aluno_na_porta(rede, db, quadro):
+    """Quem JÁ FOI aluno, diante da porta, querendo voltar."""
+    rede.alunos_diz_ex_aluno(PESSOA)
+    return sessao_do_site(rede, email=PESSOA)
+
+
+def test_o_ex_aluno_que_pede_para_voltar_entra_na_mesma_fila(ex_aluno_na_porta):
+    """Mesma rota, mesmo corpo, mesma fila — só o texto da tela é outro."""
+    ex_aluno_na_porta.rede.alunos_aceita_o_pedido()
+
+    resposta = pedir(ex_aluno_na_porta)
+
+    pedido = ex_aluno_na_porta.rede.um_pedido
+    assert pedido["email"] == PESSOA
+    assert pedido["nome_completo"] == PEDIDO["nome_completo"]
+    assert "Seu pedido já está com a gente" in resposta.content.decode()
+
+
+def test_pedir_para_voltar_nao_devolve_acesso_por_si(ex_aluno_na_porta):
+    """O guarda que responde ao receio da lei de ontem.
+
+    A `DECISAO-ex-aluno-e-a-porta-que-explica` §3 tinha recusado o formulário
+    temendo que ele virasse um jeito de insistir contra uma decisão. A resposta
+    da lei nova é que o pedido NÃO decide nada: ele espera decisão humana, como
+    o de qualquer pessoa. Depois de pedir, a pessoa continua fora — 403 e
+    recibo, nunca o quadro.
+    """
+    ex_aluno_na_porta.rede.alunos_aceita_o_pedido()
+
+    pedir(ex_aluno_na_porta)
+    depois = ex_aluno_na_porta.abrir()
+
+    assert depois.status_code == 403
+    assert not ex_aluno_na_porta.esta_dentro
+
+
+def test_um_erro_de_digitacao_nao_troca_a_tela_do_ex_aluno(ex_aluno_na_porta):
+    """A tela errada volta pela porta dos fundos se o `voltando` não viajar.
+
+    Sem ele, quem errou o WhatsApp voltaria para "não encontramos matrícula
+    para esse e-mail" — a tela de quem nunca entrou — e leria, no meio de um
+    erro de digitação, que a escola nunca o conheceu.
+    """
+    resposta = ex_aluno_na_porta.client.post(
+        reverse("pedir_entrada"), {"nome_completo": "", "whatsapp": ""}
+    )
+    conteudo = resposta.content.decode()
+
+    assert resposta.status_code == 400
+    assert "acesso à escola foi encerrado" in conteudo
+    assert "Não encontramos matrícula" not in conteudo
+    assert "Pedir para voltar" in conteudo
