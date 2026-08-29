@@ -86,10 +86,22 @@ on:
   workflow_run:
     workflows: [ci-celula, muralhas]
     types: [completed]
+  # E acorda também QUANDO A ETIQUETA É POSTA (29/08/2026, mesma tarde). O
+  # buraco que sobrava era exatamente o fluxo padrão da casa: `mergear.py
+  # --pousar` etiqueta DEPOIS dos checks verdes — então nenhum `workflow_run`
+  # vem depois, e quem seguia a regra esperava a rede de 15 min. É
+  # `pull_request_target`, não `pull_request`, de propósito: o _target roda a
+  # definição da MAIN (a decisão 2 do cabeçalho continua de pé — um PR não
+  # consegue alterar o juiz que vai julgá-lo), e o job nunca faz checkout do
+  # código do PR (o checkout é `ref: main`, logo abaixo). Etiquetar exige
+  # permissão de triagem no repositório — o evento não pode ser forjado por
+  # um fork.
+  pull_request_target:
+    types: [labeled]
   schedule:
-    # De despertador único a REDE: pega o que o evento perder (um workflow
-    # renomeado, uma etiqueta posta à mão num PR já verde, uma acordada
-    # colapsada pelo concurrency com a fila ainda cheia).
+    # De despertador único a REDE: pega o que os eventos perderem (um workflow
+    # renomeado, uma acordada colapsada pelo concurrency com a fila ainda
+    # cheia, uma etiqueta posta por caminho que não emite evento).
     - cron: '*/15 * * * *'
 
 # Um pouso por vez. `cancel-in-progress: false` porque cancelar um pouso no meio

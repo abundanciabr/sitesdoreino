@@ -936,3 +936,33 @@ def test_a_pista_acorda_quando_os_checks_concluem():
         "a rede de segurança saiu — o evento perde acordadas (workflow "
         "renomeado, etiqueta posta num PR já verde), e aí alguém espera para sempre"
     )
+
+
+def test_a_pista_acorda_quando_a_etiqueta_e_posta():
+    """O buraco que o `workflow_run` não cobre é o fluxo PADRÃO da casa.
+
+    `mergear.py --pousar` etiqueta DEPOIS dos checks verdes — nenhum
+    `workflow_run` vem depois disso, e quem seguia a regra ("peça pouso e vá
+    embora") esperava a rede de 15 min. O gatilho tem de ser
+    `pull_request_target` (roda a definição da MAIN — decisão 2: um PR não
+    altera o juiz que o julga), nunca `pull_request`.
+    """
+    import yaml as _yaml
+
+    fluxo = _yaml.safe_load(_pouso_yml())
+    gatilhos = fluxo.get(True) or fluxo.get("on")
+    assert "pull_request_target" in gatilhos, (
+        "a etiqueta parou de acordar a pista — o fluxo padrão do --pousar "
+        "volta a esperar até 15 min parado"
+    )
+    assert "labeled" in gatilhos["pull_request_target"]["types"]
+    assert "pull_request" not in gatilhos, (
+        "pull_request (sem _target) roda a definição DO PR — o PR passa a "
+        "poder alterar o juiz que vai julgá-lo (decisão 2 do cabeçalho)"
+    )
+    # A decisão 2 só sobrevive se o job continuar julgando com o código da main.
+    passos = fluxo["jobs"]["pousar"]["steps"]
+    checkouts = [p for p in passos if "checkout" in str(p.get("uses", ""))]
+    assert checkouts and all(
+        p.get("with", {}).get("ref") == "main" for p in checkouts
+    ), "o checkout da pista deixou de ser ref: main — o juiz virou o réu"
