@@ -1,0 +1,285 @@
+Essa é uma evolução fantástica para o seu sistema. O que você está descrevendo deixou de ser apenas um painel de visualização (Dashboard) e passou a ser um **Orquestrador de Agentes** (ou Centro de Comando).
+
+Para resolver o gerenciamento, a geração de prompts e o bloqueio contra trabalho duplicado, podemos desenhar essa aba como um **"Super Kanban"**. Ele não apenas organiza visualmente, mas atua como um despachante de tarefas para os seus robôs.
+
+Veja como podemos estruturar essa solução:
+
+## 1. A Estrutura do Super Kanban
+
+Em vez das colunas tradicionais (Fazer, Fazendo, Feito), seu Kanban precisa refletir o ciclo de vida da inteligência artificial operando no sistema:
+
+* **Fila de Espera (Backlog):** Onde as anomalias e demandas apontadas no painel principal caem automaticamente.
+* **Triagem & Prompt (Pronto para Despacho):** Onde a tarefa já foi classificada (paralelo, lote, etc.) e o prompt para o robô já está gerado e visível para você aprovar ou soltar.
+* **Em Execução (🔒 Bloqueado):** A "zona de segurança". Assim que um robô assume a tarefa, ela vem para cá e recebe um "cadeado" lógico.
+* **Revisão / Exceção:** Tarefas que o robô não conseguiu terminar ou que precisam da sua validação humana.
+* **Concluído:** Histórico de sucesso.
+
+---
+
+## 2. Classificação de Execução (A Inteligência do Cartão)
+
+Cada cartão de tarefa nesse Kanban terá etiquetas inteligentes que dizem aos robôs *como* o trabalho deve ser atacado.
+
+* **Em Paralelo (Concorrência):** Tarefas independentes (ex: *Verificar logs de segurança* e *Atualizar base de dados*). Vários robôs podem pegar diferentes tarefas "Paralelas" ao mesmo tempo.
+* **Em Lote (Batch):** Tarefas pequenas e repetitivas que são agrupadas. O painel junta 10 tarefas similares em 1 único cartão para 1 único robô resolver de uma vez, economizando tempo e processamento.
+* **Sequencial (Dependência):** O cartão só é liberado para a coluna "Pronto para Despacho" quando uma tarefa pai for concluída na coluna "Concluído".
+
+---
+
+## 3. A Fábrica de Prompts Automáticos
+
+Você não precisa escrever o que o robô vai fazer. O próprio cartão no painel consolida os dados do sistema e gera o comando.
+
+Dentro de cada cartão, haverá um campo de **"Prompt Gerado"**, montado a partir da seguinte fórmula:
+`[Contexto da Tarefa] + [Dados do Painel] + [Regra de Execução] = Comando para o Robô`
+
+**Exemplo de como o painel monta o cartão:**
+
+| Elemento do Cartão | Como o Sistema Preenche Automaticamente |
+| --- | --- |
+| **Origem** | Erro de sincronização no Módulo de Vendas (Apontado pelo Painel). |
+| **Tipo de Execução** | `[Paralelo]` (Não interfere em outras áreas). |
+| **Prompt Gerado** | *"Atue como Engenheiro de Dados. Acesse o Módulo de Vendas. O erro reportado é X. Leia os últimos 50 logs, identifique a falha, proponha a correção e aplique. Retorne o status de sucesso."* |
+| **Botão de Ação** | `[ 🤖 Despachar para o Robô ]` |
+
+---
+
+## 4. O Sistema de Bloqueio (Evitando Colisão de Robôs)
+
+A sua maior preocupação é perfeitamente válida: se dois robôs virem a mesma tarefa, eles farão o trabalho duas vezes e criarão um caos. Para resolver isso, usamos um conceito de programação chamado **Mutual Exclusion (Mutex) ou Bloqueio Otimista**.
+
+Funciona assim na prática:
+
+1. **A Regra da Fila:** Os robôs não "olham" para o painel de forma passiva. Eles mandam um pedido ativo para o painel: *"Me dê a próxima tarefa disponível na coluna 'Pronto para Despacho'"*.
+2. **O "Check-out" Atômico:** Quando o painel entrega a Tarefa A para o Robô 1, no exato milissegundo dessa entrega, o sistema muda o status da tarefa de `Pendente` para `Em Execução`.
+3. **A Trava de Propriedade:** O cartão recebe uma etiqueta interna invisível: `Assigned_to: Robot_01`.
+4. **Rejeição Automática:** Se o Robô 2 tentar, por algum atraso de rede, pedir a Tarefa A, o painel responde: *"Acesso negado, status atual é Em Execução. Aqui está a Tarefa B"*.
+
+Dessa forma, a mudança de status não depende da boa vontade do robô avisar que começou; é o próprio painel que tranca a porta da tarefa no momento em que a entrega para o agente.
+
+
+
+
+Como podemos estruturar os dados (o JSON ou banco de dados) desse cartão de tarefas para que os robôs consigam ler e atualizar os status corretamente?
+
+
+
+Para que o sistema funcione perfeitamente e os robôs operem de forma autônoma sem atropelar uns aos outros, o "coração" desse cartão precisa ser um **JSON estruturado (que será o esquema do seu Banco de Dados)**.
+
+Esse JSON deve ser dividido em quatro grandes blocos: **Metadados, Execução, Orquestração (O Bloqueio) e Resultado**.
+
+Aqui está a estrutura ideal de como o banco de dados enxergará cada cartão de tarefa:
+
+```json
+{
+  "tarefa_id": "tsk_987654321",
+  "titulo": "Corrigir falha de sincronização de Vendas",
+  "origem": "painel_vendas",
+  "status": "READY_FOR_DISPATCH", 
+  
+  "configuracao_execucao": {
+    "estrategia": "PARALLEL", 
+    "dependencias": [], 
+    "lote_id": null
+  },
+
+  "carga_trabalho": {
+    "contexto_json": {
+      "tabela": "vendas_fechadas",
+      "erro_log": "Timeout connection at 10:42 AM",
+      "registros_afetados": 14
+    },
+    "prompt_gerado": "Atue como Engenheiro de Banco de Dados. Analise o erro 'Timeout connection' na tabela 'vendas_fechadas'. Aplique um retry nos 14 registros afetados listados no contexto_json. Retorne um JSON com 'sucesso': true ou false."
+  },
+
+  "controle_concorrencia": {
+    "versao_documento": 1,
+    "agente_atribuido": null,
+    "bloqueado_em": null,
+    "timeout_segundos": 300
+  },
+
+  "resultado_execucao": {
+    "concluido_em": null,
+    "resposta_agente": null,
+    "logs_erro": null
+  }
+}
+
+```
+
+---
+
+## O Segredo da Engrenagem: Como os campos funcionam
+
+Para que os robôs interajam com esse JSON sem causar problemas, os campos acima possuem papéis específicos:
+
+### 1. O Bloco `controle_concorrencia` (O Cadeado Otimista)
+
+Este é o bloco mais importante para evitar que dois robôs façam a mesma coisa.
+
+* **`versao_documento`**: Usamos uma técnica chamada *Optimistic Locking* (Bloqueio Otimista). Quando um robô pede uma tarefa, o sistema tenta atualizar a tarefa no banco de dados com uma regra estrita: *"Atualize o status para IN_PROGRESS e o agente_atribuido para Robô_01,* **SOMENTE SE** *a versao_documento ainda for 1"*. Se o Robô_02 tentar fazer o mesmo um milissegundo depois, a versão já será 2, a atualização falha, e o Robô_02 recebe um aviso para buscar outra tarefa.
+* **`bloqueado_em` e `timeout_segundos**`: O que acontece se o Robô_01 pegar a tarefa, travar (crash) ou perder a conexão com a internet? A tarefa ficaria presa para sempre. O sistema usa o timestamp de `bloqueado_em` somado ao `timeout`. Se passar de 300 segundos, o painel percebe que o robô "morreu", remove o bloqueio e devolve a tarefa para a fila (`READY_FOR_DISPATCH`).
+
+### 2. O Bloco `configuracao_execucao` (A Inteligência de Roteamento)
+
+Aqui o painel dita as regras do jogo antes do robô ler o prompt.
+
+* **`estrategia`**: Se for `PARALLEL`, qualquer robô livre pode pegar. Se for `BATCH`, o painel pode juntar 5 JSONs de tarefas com o mesmo `lote_id` e entregar como um array gigante para um único robô resolver de uma tacada só (muito útil para categorização massiva ou disparo de e-mails).
+* **`dependencias`**: Se esta for a tarefa "Publicar Relatório", ela pode ter no array de dependências o ID da tarefa "Gerar Gráficos". O painel só muda o status dessa tarefa de `BACKLOG` para `READY_FOR_DISPATCH` quando a tarefa pai estiver como `DONE`.
+
+### 3. O Bloco `carga_trabalho` (A Separação entre Dados e Instrução)
+
+* **`contexto_json`**: Os dados puros (logs, números, textos do sistema).
+* **`prompt_gerado`**: A instrução textual.
+Separar os dois é vital. Os robôs de hoje (especialmente usando chamadas de API nativas) funcionam muito melhor se você passar o *System Prompt* (a instrução) separado dos *User Data* (o contexto_json). Isso evita que o robô confunda um dado do sistema com um comando que ele deva obedecer (evitando injeções de prompt acidentais).
+
+
+
+
+Como deve ser estruturada a tela e os dados para a coluna de 'Revisão / Exceção', onde eu precisarei aprovar ou consertar o que o robô não conseguiu resolver?
+
+A coluna de **Revisão / Exceção** é o que chamamos em IA de **Human-in-the-Loop (HITL)** — o momento em que o sistema reconhece suas limitações e chama o "chefe" para resolver.
+
+Se essa tela for mal desenhada, você vai gastar mais tempo tentando entender o que o robô fez do que se tivesse feito a tarefa do zero.
+
+Para que essa etapa seja ultrarrápida, a tela e o banco de dados precisam focar em três perguntas: *O que era pra fazer? O que deu errado? Como eu resolvo agora?*
+
+Veja como estruturar a Interface (Tela) e os Dados (JSON) para isso:
+
+---
+
+## 1. A Estrutura Visual da Tela (O Modal de Revisão)
+
+Quando você clica em um cartão que caiu na coluna de "Exceção", ele não deve abrir apenas um formulário, mas sim um **Painel de Diagnóstico em Tela Dividida**:
+
+### 🔴 Lado Esquerdo: O Passado (O que foi pedido)
+
+* **Cabeçalho Vermelho/Amarelo:** Indicando o motivo claro da parada (ex: *Erro de API* ou *Incerteza de Decisão*).
+* **O Contexto Original:** O `contexto_json` formatado visualmente (os dados que o robô recebeu).
+* **O Prompt Original:** Exatamente a instrução que foi passada ao robô.
+
+### 🟡 Lado Direito: O Presente (O que o robô conseguiu fazer)
+
+* **O Log de Pensamento (Chain of Thought):** Se o robô usa raciocínio passo a passo, a tela deve mostrar até onde ele foi antes de travar. (Ex: *"1. Acessei o banco... 2. Li os 14 registros... 3. 💥 Travei ao tentar salvar."*)
+* **Dados Parciais/Rascunho:** O que o robô conseguiu gerar. Se era para escrever um e-mail e ele não sabia como terminar, o texto incompleto aparece aqui para você editar.
+
+### 🟢 Rodapé: Ações do "Comandante" (Botões de Resolução)
+
+1. **[ ✏️ Editar Prompt e Retentar ]**: Você percebe que a instrução estava confusa. Você altera o texto e devolve o cartão para a fila de `READY_FOR_DISPATCH`.
+2. **[ ✅ Corrigir e Aprovar ]**: O robô quase acertou. Você mesmo faz o pequeno ajuste no resultado, clica aqui, e o cartão vai direto para `DONE`.
+3. **[ 🗑️ Descartar/Ignorar ]**: A tarefa perdeu a validade ou era um falso positivo do sistema.
+4. **[ 👨‍💻 Assumir Manualmente ]**: O sistema tira o cartão do circuito dos robôs e registra que um humano vai resolver o problema fora do painel.
+
+---
+
+## 2. A Evolução do JSON (Estrutura de Dados)
+
+Para que a tela acima consiga renderizar essas informações, precisamos adicionar um bloco de dados específico para lidar com exceções no nosso cartão. O JSON ganha as seguintes propriedades dentro de `resultado_execucao` e um novo bloco `intervencao_humana`:
+
+```json
+{
+  "tarefa_id": "tsk_987654321",
+  "status": "REQUIRES_HUMAN_REVIEW", 
+  
+  "resultado_execucao": {
+    "tentativas_realizadas": 2,
+    "motivo_falha": "TIMEOUT_API_EXTERNA",
+    "mensagem_erro_robo": "Tentei conectar ao módulo de Vendas, mas não obtive resposta após 30s. Não posso confirmar se o dado foi salvo.",
+    "dados_parciais": {
+      "registros_corrigidos": 8,
+      "registros_pendentes": 6
+    },
+    "log_pensamento": [
+      "[10:42:01] Iniciando leitura do contexto",
+      "[10:42:05] Sucesso ao identificar 14 erros",
+      "[10:42:35] FALHA: Conexão recusada ao tentar aplicar retry"
+    ]
+  },
+
+  "intervencao_humana": {
+    "necessaria": true,
+    "tipo_revisao": "ERROR_RECOVERY", 
+    "historico_ajustes": [
+      {
+        "modificado_por": "usuario_admin",
+        "data_modificacao": "2026-08-28T10:48:00Z",
+        "acao_tomada": null
+      }
+    ]
+  }
+}
+
+```
+
+---
+
+## 3. Os Dois Tipos de "Exceção"
+
+É importante que o seu painel saiba diferenciar no campo `"tipo_revisao"` **por que** a tarefa está ali, pois as abordagens mudam:
+
+1. **`ERROR_RECOVERY` (Deu Ruim):** O robô tentou fazer e um erro técnico aconteceu (banco caiu, credencial falhou, API fora do ar). *Ação principal: Geralmente você só aperta "Retentar" quando o sistema voltar.*
+2. **`VALIDATION` (Dúvida / Insegurança):** O robô fez o trabalho, mas a configuração da tarefa exigia que um humano olhasse antes de efetivar (ex: aprovar o envio de um e-mail em massa para clientes cobrando faturas). O robô não falhou, ele está apenas esperando sua "assinatura". *Ação principal: Você lê o e-mail gerado e clica em "Aprovar".*
+
+Com essa estrutura, seu painel deixa de ser um "buraco negro" onde tarefas somem quando dão erro, e passa a ser uma verdadeira mesa de trabalho colaborativa entre você e as inteligências artificiais.
+
+
+
+Como devem ser os indicadores visuais e as cores nos cartões do Kanban para eu bater o olho e saber exatamente o que está acontecendo sem precisar clicar?
+
+
+O segredo de um bom painel de controle é reduzir a sua "carga cognitiva". Você precisa bater o olho e o seu cérebro deve processar o estado do sistema em milissegundos, como um semáforo.
+
+Para esse Super Kanban, a identidade visual do cartão não deve focar apenas no progresso, mas no **comportamento da Inteligência Artificial**.
+
+Aqui está a proposta de design visual para os cartões:
+
+## 1. O Código de Cores (A Borda Esquerda do Cartão)
+
+Em vez de pintar o cartão inteiro (o que cansa a vista), use uma barra lateral espessa na borda esquerda de cada cartão. As cores devem focar na **ação exigida**:
+
+| Cor | Significado (Status) | Ação Esperada |
+| --- | --- | --- |
+| ⚪ **Cinza** | **Fila de Espera (Backlog):** Tarefa criada, mas dependente de outra. | Nenhuma. O sistema cuidará disso. |
+| 🔵 **Azul** | **Pronto (Ready):** Prompt gerado, aguardando um robô livre. | Nenhuma. Fila normal. |
+| 🟣 **Roxo** | **Em Execução:** Robô trabalhando. A cor roxa dá um tom cibernético/IA. | Nenhuma. Apenas observe. |
+| 🟡 **Amarelo** | **Validação:** O robô terminou, mas precisa da sua aprovação humana. | **Sua ação é necessária.** |
+| 🔴 **Vermelho** | **Erro Técnico:** A API caiu, o robô travou ou deu timeout. | **Sua ação é necessária.** |
+| 🟢 **Verde** | **Concluído:** Ação finalizada com sucesso. | Nenhuma (some da tela em X horas). |
+
+---
+
+## 2. Ícones de Estratégia de Execução (O Cabeçalho)
+
+No canto superior direito de cada cartão, um selo (badge) minimalista deve indicar **como** a tarefa está estruturada para os robôs:
+
+* ⚡ **Raio (Paralelo):** Tarefa rápida e independente.
+* 📦 **Caixa (Lote/Batch):** Ao lado do ícone, um número (ex: `📦 x15`). Mostra que este cartão agrupou 15 tarefas pequenas (como categorizar 15 e-mails de uma vez).
+* 🔗 **Corrente (Sequencial):** Indica que a tarefa possui dependências.
+
+---
+
+## 3. O Feedback Visual do "Bloqueio Otimista" (Mutex)
+
+Quando a tarefa entra na coluna "Em Execução", o cartão precisa sofrer uma mutação visual instantânea para você ter certeza de que o sistema de segurança funcionou:
+
+* **O Cadeado:** Um ícone de 🔒 aparece no centro do cartão.
+* **O Avatar do Agente:** A foto ou ícone do robô que pegou a tarefa (ex: 🤖 *Robô_DB_01* ou 📧 *Robô_Email*).
+* **A Barra de Pulso (Timeout):** Lembra dos 300 segundos de timeout que definimos no banco de dados? O cartão pode ter uma fina barra de progresso animada na parte inferior que vai secando. Se ela chegar ao fim, o cartão fica vermelho (Timeout).
+
+---
+
+## 4. O Wireframe (Anatomia do Cartão)
+
+Visualmente, o cartão na sua tela ficaria distribuído assim:
+
+> ▍ [Painel de Vendas] .................................. ⚡ [Paralelo]
+> ▍ **Corrigir falha de sincronização**
+> ▍ *Erro: Timeout connection at 10:42 AM*
+> ▍
+> ▍ 🤖 Atribuído a: DB_Bot_02 (Há 45 seg) ................... 🔒
+> ▍ ▰▰▰▰▰▰▱▱▱▱ (Barra de tempo de execução)
+
+Dessa forma, ao olhar para a tela inteira, se você vir um "mar" de bordas azuis e roxas, sabe que o sistema está fluindo. Se vir uma mancha amarela ou vermelha, seus olhos vão direto para o problema, sabendo exatamente quem estava com a tarefa e por que parou.
+
+Para fechar o escopo dessa arquitetura, você quer desenhar como o painel agrupa as tarefas em Lote (Batch), ou prefere focar em como as tarefas "Pai e Filha" (Sequenciais) conversam entre si?
