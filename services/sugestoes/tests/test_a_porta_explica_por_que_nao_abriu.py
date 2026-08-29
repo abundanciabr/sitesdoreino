@@ -17,10 +17,13 @@ preencher o pedido de ENTRADA é dizer a ela que nunca pediu nada.
    as duas telas novas, com textos DIFERENTES. A diferença entre "acabou" e
    "está pausado" é a única coisa que a pessoa realmente quer saber.
 
-2. `test_ex_aluno_nao_ve_o_formulario_nem_o_relogio` — o defeito original, pelo
-   nome. Sem formulário porque ela não está entrando; sem relógio de espera
-   porque não há nada acontecendo do outro lado, e um relógio girando seria
-   promessa falsa.
+2. `test_ex_aluno_pode_pedir_para_voltar` — **este item MUDOU DE LADO em
+   29/08/2026** (`DECISAO-a-ficha-nao-se-apaga.md` §3). Até a véspera o teste
+   se chamava `test_ex_aluno_nao_ve_o_formulario_nem_o_relogio` e travava o
+   contrário: nada de formulário para quem saiu. O mantenedor decidiu que a
+   escola é um lugar de onde se sai e para onde se volta, e o formulário
+   voltou — com texto próprio, e sem o relógio de espera, que só faz sentido
+   depois de haver um pedido do outro lado.
 
 3. `test_categoria_desconhecida_fecha_dizendo_que_o_problema_e_nosso` — o
    guarda que impede o mesmo erro de voltar com outro nome. Uma categoria nova
@@ -91,31 +94,66 @@ def test_as_duas_telas_dizem_coisas_diferentes(rede, db, quadro):
 # ------------------------------------------------- o defeito original, pelo nome
 
 
-def test_ex_aluno_nao_ve_o_formulario_nem_o_relogio(rede, db, quadro):
-    """A tela que o mantenedor viu, e que não pode voltar.
+def test_ex_aluno_pode_pedir_para_voltar(rede, db, quadro):
+    """O formulário VOLTOU para quem saiu — e a palavra do botão é outra.
 
-    Sem o formulário de pedir entrada — ela não está entrando, está saindo. E
-    sem o `<meta refresh>` do recibo: não há nada acontecendo do outro lado, e
-    um relógio girando prometeria uma liberação que ninguém vai dar.
+    Este teste mudou de lado em 29/08/2026: até a véspera ele travava a
+    ausência do formulário. A lei nova (`DECISAO-a-ficha-nao-se-apaga` §3)
+    inverteu a decisão — quem terminou um curso e quer o do semestre seguinte
+    não está insistindo contra nada, está se matriculando de novo.
+
+    "Pedir para voltar", e não "Pedir liberação": a palavra é a única coisa que
+    diz a essa pessoa que o sistema sabe quem ela é.
     """
     rede.alunos_diz_ex_aluno(PESSOA)
     conteudo = _abrir(sessao_do_site(rede, email=PESSOA)).content.decode()
 
+    assert "Pedir para voltar" in conteudo
+    assert 'name="nome_completo"' in conteudo
+    assert 'name="whatsapp"' in conteudo
+
+
+def test_o_ex_aluno_que_volta_nao_le_que_nunca_teve_matricula(rede, db, quadro):
+    """O texto é a metade da decisão, e a errada apaga a história da pessoa.
+
+    Oferecer o formulário com o texto de quem nunca entrou — *"não encontramos
+    matrícula para esse e-mail"* — seria dizer a quem estudou aqui um ano que
+    ela nunca existiu. A tela reconhece a passagem ANTES de pedir os dados.
+    """
+    rede.alunos_diz_ex_aluno(PESSOA)
+    conteudo = _abrir(sessao_do_site(rede, email=PESSOA)).content.decode()
+
+    assert "acesso à escola foi encerrado" in conteudo
+    assert "Não encontramos matrícula" not in conteudo
     assert "Pedir liberação" not in conteudo
-    assert 'name="nome_completo"' not in conteudo
+
+
+def test_o_ex_aluno_nao_ganha_o_relogio_antes_de_pedir(rede, db, quadro):
+    """A metade do teste antigo que SOBREVIVE, e ela é a que evita a promessa falsa.
+
+    O `<meta refresh>` e o recibo pertencem a quem tem um pedido em pé. Antes
+    do clique não há nada acontecendo do outro lado, e um relógio girando
+    prometeria uma decisão que ninguém está tomando.
+    """
+    rede.alunos_diz_ex_aluno(PESSOA)
+    conteudo = _abrir(sessao_do_site(rede, email=PESSOA)).content.decode()
+
     assert 'http-equiv="refresh"' not in conteudo
     assert "Seu pedido já está com a gente" not in conteudo
 
 
-def test_pausado_tambem_nao_ganha_o_formulario_de_volta(rede, db, quadro):
-    """Quem foi pausado não está numa fila — está numa decisão do mantenedor.
+def test_pausado_continua_sem_formulario(rede, db, quadro):
+    """A assimetria é a decisão, e ela sobreviveu à lei de 29/08.
 
-    Um "pedir de novo" aqui convidaria a pessoa a insistir contra uma decisão
-    que ela não conhece (lei §3).
+    Ex-aluno ganhou o formulário de volta; pausado não. Pausado é temporário e
+    volta SOZINHO — pedir o que já vai acontecer é ansiedade sem destino. Se um
+    dia alguém "uniformizar" as duas telas, este teste reprova.
     """
     rede.alunos_diz_pausado(PESSOA)
     conteudo = _abrir(sessao_do_site(rede, email=PESSOA)).content.decode()
     assert "Pedir liberação" not in conteudo
+    assert "Pedir para voltar" not in conteudo
+    assert 'name="nome_completo"' not in conteudo
 
 
 def test_quem_nunca_pediu_continua_vendo_o_formulario(rede, db, quadro):
