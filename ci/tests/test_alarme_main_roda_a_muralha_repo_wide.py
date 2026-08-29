@@ -220,3 +220,79 @@ def test_alarme_abre_issue_quando_as_guardas_falham():
         "sem `issues: write` o alarme falha ao abrir a issue e o vermelho fica "
         "só na aba Actions, onde ninguém olha"
     )
+
+
+# ---------------------------------------------------------------------------
+# A MAIN VERMELHA SE CURA PELO MESMO CAMINHO DE TODO MUNDO (Onda 6, P11)
+#
+# O alarme AVISA; o job `reverter` propõe a cura — abre o PR de reversão e pede
+# pouso. O que estes guardas protegem não é "ele reverte": é que ele **sabe
+# quando NÃO reverter**. Uma automação que reverte demais é pior que nenhuma,
+# porque ninguém confia nela e todo mundo desliga.
+# ---------------------------------------------------------------------------
+
+
+def _job_reverter() -> dict:
+    fluxo = yaml.safe_load((WORKFLOWS / ALARME).read_text(encoding="utf-8"))
+    assert "reverter" in fluxo["jobs"], (
+        "sumiu o job que propõe a reversão da main vermelha — a `main` volta a "
+        "depender de alguém estar olhando o alarme"
+    )
+    return fluxo["jobs"]["reverter"]
+
+
+def _script_do_reverter() -> str:
+    return "".join(
+        str(passo.get("run", "")) for passo in _job_reverter().get("steps", [])
+    )
+
+
+def test_a_reversao_so_roda_quando_a_main_esta_vermelha():
+    """Em `always()`, isto abriria PR de reversão a cada merge verde."""
+    assert _job_reverter()["if"] == "failure()"
+    assert _job_reverter()["needs"] == "guardas-do-repositorio"
+
+
+def test_a_reversao_vai_por_PR_e_nunca_por_push():
+    """A `main` exige PR (conjunto de regras ativo) — e ninguém escapa.
+
+    Empurrar direto seria pedir 409 e ficar sem cura. Além disso, um revert que
+    quebre outra coisa precisa ser reprovado como qualquer mudança.
+    """
+    script = _script_do_reverter()
+    assert "gh pr create" in script
+    assert "git push origin main" not in script
+    assert "--force" not in script
+
+
+def test_a_reversao_pede_pouso_em_vez_de_mergear():
+    """Quem mergeia é a pista, com todos os checks — inclusive os do revert."""
+    script = _script_do_reverter()
+    assert "--add-label pousar" in script
+    assert "mergear.py" not in script, "a reversão não pode mergear com as próprias mãos"
+
+
+def test_a_reversao_usa_o_token_da_pista():
+    """PR aberto com o GITHUB_TOKEN não dispara check nenhum.
+
+    Um PR de reversão sem checks nunca pousaria — ficaria aberto para sempre,
+    com a `main` vermelha e a impressão de que algo está sendo feito.
+    """
+    passos = _job_reverter()["steps"]
+    envs = " ".join(str(p.get("env", "")) for p in passos)
+    assert "PISTA_TOKEN" in envs
+    assert "github.token" not in envs
+
+
+@pytest.mark.parametrize(
+    "guarda,motivo",
+    [
+        ("-lt 3", "commit que não é merge: `-m 1` seria erro"),
+        ("Revert*", "commit que JÁ é revert: sem isto, laço de reverts"),
+        ("--head \"$RAMO\"", "PR de reversão já aberto para o mesmo commit"),
+        ("git revert --abort", "revert com conflito: não se força"),
+    ],
+)
+def test_as_quatro_recusas_existem(guarda: str, motivo: str):
+    """Cada uma é um jeito de a automação estragar o que tentava consertar."""
+    assert guarda in _script_do_reverter(), f"sumiu a recusa — {motivo}"
