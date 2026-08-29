@@ -913,3 +913,26 @@ def test_a_pista_nao_atende_o_mesmo_PR_duas_vezes_na_mesma_passagem():
         "sumiu a lista de PRs já atendidos na passagem — a pista pode voltar a "
         "comentar 'não pousei' num PR que pousou"
     )
+
+
+def test_a_pista_acorda_quando_os_checks_concluem():
+    """O agendamento é rede, não despertador único.
+
+    Pergunta do mantenedor em 29/08/2026: "esse agendamento resolve algum
+    problema concreto ou causa mais demora desnecessária?". Medido: as duas
+    coisas — sem o gatilho de evento, um PR cujos checks terminam em ~2 min
+    esperava até ~13 min parado, e a espera cheia caía justamente em quem
+    seguia a regra da casa ("peça pouso e vá embora"). Se este gatilho sumir,
+    a demora desnecessária volta em silêncio.
+    """
+    import yaml as _yaml
+
+    fluxo = _yaml.safe_load(_pouso_yml())
+    gatilhos = fluxo.get(True) or fluxo.get("on")
+    assert "workflow_run" in gatilhos, "a pista voltou a acordar só pelo relógio"
+    vigiados = gatilhos["workflow_run"]["workflows"]
+    assert "ci-celula" in vigiados and "muralhas" in vigiados
+    assert "schedule" in gatilhos, (
+        "a rede de segurança saiu — o evento perde acordadas (workflow "
+        "renomeado, etiqueta posta num PR já verde), e aí alguém espera para sempre"
+    )
