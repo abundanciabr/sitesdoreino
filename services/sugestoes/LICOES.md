@@ -1954,3 +1954,40 @@ mapa de qual OUTRA coisa a mudança também precisa tocar para não virar mentir
 silenciosa. Lei: `docs/decisoes/DECISAO-ocultar-nao-planejado.md` — que cita a
 decisão irmã (mesma sessão, mesmo dia) sobre a mesma pergunta, "isto sai de
 vista, mas de que jeito?", para um caso diferente (arquivar em vez de recusar).
+
+## "Apagar de vez" bateu de frente com três degraus de proteção — e a saída foi não brigar com eles (29/08/2026)
+
+Depois de arquivar, o mantenedor pediu um "apagar definitivamente, sem volta,
+nem para quem criou". A tentação óbvia era `sugestao.delete()`. Ela não
+chega nem perto de funcionar: `HistoricoStatus` e `ChangeSpecAprovado`
+apontam para `Sugestao` com `on_delete=PROTECT`, são append-only em TRÊS
+degraus (o `save()`/`delete()` do model recusam, o `AppendOnlyQuerySet`
+recusa, e o Postgres tem um trigger `BEFORE UPDATE OR DELETE` recusando) —
+e `Aviso` também é `PROTECT`. Qualquer ideia que já tenha mudado de fase UMA
+vez tem pelo menos uma linha de `HistoricoStatus`; tentar apagá-la estoura
+`ProtectedError` antes de chegar perto do banco.
+
+**A pergunta certa não era "como contorno a trava", era "o que a pessoa
+realmente quer que aconteça".** Ela quer que ningém veja o conteúdo de novo —
+não necessariamente que a LINHA suma da tabela. As duas coisas parecem a
+mesma coisa até você escrever a frase com essa precisão. Uma vez separadas,
+a resposta óbvia aparece: apagar o CONTEÚDO (título, texto, votos,
+comentários — que não têm proteção nenhuma) e deixar a linha, vazia, como
+esqueleto que só existe para as tabelas append-only continuarem apontando
+para algo. `HistoricoStatus`/`Aviso` nunca guardaram o título da ideia — só
+status e nota — então o esqueleto não vaza nada de quem escreveu.
+
+**O guarda que vale copiar para a próxima "trava que parece brigar com o
+pedido":** antes de desmontar uma proteção, pergunte se o pedido pode ser
+satisfeito por fora (o que a pessoa VÊ) sem tocar o que a proteção defende
+por dentro (a integridade referencial de outra tabela). Quase sempre pode —
+e quando não pode, é sinal de que a proteção mesmo precisa de uma exceção
+explícita, decidida por quem tem autoridade para isso (o mantenedor, com o
+preço na mesa), não contornada em silêncio dentro de uma função.
+
+**Apagada reaproveita o carimbo de arquivada, e não inventa um segundo
+filtro.** Toda superfície que já sabia esconder uma arquivada (o quadro do
+aluno, a busca de duplicatas, a listagem padrão da gestão) esconde a apagada
+de graça, porque `apagar()` também seta `arquivada_em`. A única coisa NOVA
+que `apagada` precisa ensinar ao sistema é "não existe mais Restaurar" —
+tudo o mais já estava resolvido.

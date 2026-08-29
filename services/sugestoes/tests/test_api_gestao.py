@@ -80,10 +80,11 @@ def operacoes_da_api():
 def test_ha_operacoes_para_medir():
     """Guarda que varre lista vazia é guarda verde à toa.
 
-    8 desde `arquivar`/`desarquivar` (`DECISAO-arquivar-ideia.md`, 29/08/2026),
-    que somaram-se às 6 de `DECISAO-a-gestao-da-caixa-mora-no-admin.md`.
+    9 desde `apagar` (`DECISAO-apagar-ideia.md`, 29/08/2026), que somou-se às
+    8 de `arquivar`/`desarquivar` (`DECISAO-arquivar-ideia.md`), que já
+    somavam as 6 de `DECISAO-a-gestao-da-caixa-mora-no-admin.md`.
     """
-    assert len(operacoes_da_api()) == 8
+    assert len(operacoes_da_api()) == 9
 
 
 def test_nenhuma_operacao_responde_sem_o_token_do_par(client, db, par_autorizado):
@@ -616,3 +617,130 @@ def test_ideia_arquivada_nao_conta_em_quem_esta_esperando(
     )
 
     assert ler(client)["pessoas_esperando"] == 0
+
+
+# ---------------------------------------------------------------------------
+# 7. Apagar de vez — `DECISAO-apagar-ideia.md` (29/08/2026), a lousa apagada
+# ---------------------------------------------------------------------------
+
+
+def test_apagar_esvazia_o_conteudo_e_remove_votos_e_comentarios(
+    client, db, par_autorizado, caixa, sugestao
+):
+    from apps.sugestoes.models import Comentario, Voto
+
+    caixa.votar(sugestao)
+    caixa.aluno.client.post(
+        f"/sugestoes/{sugestao.id}/comentarios", {"texto": "eu também preciso disso"}
+    )
+    assert Voto.objects.filter(sugestao=sugestao).count() == 1
+    assert Comentario.objects.filter(sugestao=sugestao).count() == 1
+
+    resposta = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/apagar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert resposta.status_code == 200, resposta.content
+    corpo = resposta.json()
+    assert corpo["apagada"] is True
+    assert corpo["arquivada"] is True
+    assert corpo["titulo"] == ""
+    assert corpo["problema"] == ""
+    assert corpo["solucao_proposta"] == ""
+    assert corpo["votos"] == 0
+    assert corpo["comentarios"] == 0
+    assert Voto.objects.filter(sugestao=sugestao).count() == 0
+    assert Comentario.objects.filter(sugestao=sugestao).count() == 0
+
+
+def test_apagar_some_da_listagem_como_uma_arquivada(
+    client, db, par_autorizado, sugestao
+):
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/apagar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert sugestao.id not in {i["id"] for i in ler(client)["ideias"]}
+    # E nem `incluir_arquivadas=true` a traz de volta — não sobrou nada nela
+    # para "achar de novo".
+    resposta = client.get(
+        IDEIAS + "?incluir_arquivadas=true",
+        headers={"authorization": f"Bearer {TOKEN}"},
+    )
+    assert sugestao.id not in {i["id"] for i in resposta.json()["ideias"]}
+
+
+def test_apagar_duas_vezes_e_recusado(client, db, par_autorizado, sugestao):
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/apagar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    de_novo = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/apagar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert de_novo.status_code == 422
+    assert "já foi apagada" in de_novo.json()["erro"]
+
+
+def test_desarquivar_uma_apagada_e_recusado_com_instrucao(
+    client, db, par_autorizado, sugestao
+):
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/apagar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    resposta = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/desarquivar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert resposta.status_code == 422
+    assert "não pode ser restaurada" in resposta.json()["erro"]
+
+
+def test_arquivar_uma_apagada_e_recusado(client, db, par_autorizado, sugestao):
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/apagar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    resposta = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/arquivar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    assert resposta.status_code == 422
+    assert "apagada definitivamente" in resposta.json()["erro"]
+
+
+def test_apagar_preserva_o_historico_sem_vazar_conteudo(
+    client, db, par_autorizado, caixa, sugestao
+):
+    """O histórico é append-only — apagar não pode tocá-lo, e nunca guardou
+    título nenhum, então não há conteúdo para vazar por ali."""
+    caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO, nota="vai entrar")
+
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/apagar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    corpo = ler_uma(client, sugestao.id)
+    assert corpo["apagada"] is True
+    assert len(corpo["historico"]) == 1
+    assert corpo["historico"][0]["nota"] == "vai entrar"

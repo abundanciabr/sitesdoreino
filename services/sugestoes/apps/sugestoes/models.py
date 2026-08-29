@@ -232,6 +232,23 @@ class Sugestao(models.Model):
     # histórico de status. Vazio é o normal (nem toda arquivada precisa de
     # explicação escrita); a tela só a oferece como campo opcional.
     motivo_do_arquivamento = models.TextField(blank=True, default="")
+    # O apagamento definitivo (`DECISAO-apagar-ideia.md`, 29/08/2026) — a
+    # "lousa apagada": irreversível por fora (título, texto, votos e
+    # comentários desaparecem para sempre), mas a LINHA fica, porque
+    # `HistoricoStatus`/`ChangeSpecAprovado`/`Aviso` são `PROTECT` de
+    # propósito e o Postgres tem um trigger recusando apagar o histórico
+    # (EVO-11/EVO-40) — apagar a `Sugestao` de verdade quebraria os três
+    # degraus dessa trava. Uma ideia apagada é SEMPRE também arquivada (ver
+    # `apagar()`): `apagada_em` não entra em `visiveis()` porque nada
+    # precisa filtrar duas vezes o que `arquivada_em` já esconde.
+    apagada_em = models.DateTimeField(null=True, blank=True)
+    apagada_por = models.ForeignKey(
+        "Identidade",
+        null=True,
+        blank=True,
+        related_name="ideias_apagadas",
+        on_delete=models.PROTECT,
+    )
 
     objects = SugestaoQuerySet.as_manager()
 
