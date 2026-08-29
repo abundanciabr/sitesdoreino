@@ -4,7 +4,9 @@ import uuid
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from .eventos import carta_de_situacao
 from .models import Matricula
+from .tasks import relay_apos_commit
 
 
 class OrderIdReservado(ValueError):
@@ -158,8 +160,32 @@ def entrar_na_fila(
             return _atualizar(existente), False
 
 
+#: [AVISO] Os estados que DÃO acesso — a lista que decide se uma mudança merece
+#: carta. É a mesma pergunta de `STATUS_QUE_VALEM`, e por isso ela é reusada em
+#: vez de reescrita: duas listas do que "dá acesso" divergiriam no primeiro
+#: estado novo, e o efeito seria alguém virar aluno sem ser avisado.
+#:
+#: **A regra é uma só: avisa quando a pessoa PASSA a ter acesso e antes não
+#: tinha.** Foi a escolha do mantenedor em 29/08/2026 ("liberei você"), e ela
+#: cobre os dois caminhos que levam ao mesmo lugar — a decisão da fila e o
+#: religar de quem estava pausado. Perder acesso NÃO gera carta: quem está
+#: pausado ou encerrado não consegue abrir a página de avisos (ela mora dentro
+#: da Caixa, e a Caixa só abre para aluno), então a carta seria escrita e nunca
+#: lida. Está registrado no livro, com a bifurcação, para o dia em que a página
+#: de avisos mudar de casa.
+def ganhou_acesso(anterior: str, novo: str) -> bool:
+    return novo in Matricula.STATUS_QUE_VALEM and anterior not in (
+        Matricula.STATUS_QUE_VALEM
+    )
+
+
 def decidir_na_fila(
-    *, id_da_linha: str, decisao: str, decidido_por: str, motivo: str = ""
+    *,
+    id_da_linha: str,
+    decisao: str,
+    decidido_por: str,
+    motivo: str = "",
+    destinatario_id: str = "",
 ) -> tuple[Matricula | None, str]:
     """[FILA] Liberar ou recusar quem está na fila.
 
@@ -186,6 +212,7 @@ def decidir_na_fila(
             return None, "ja-decidida"
 
         liberou = decisao == "liberar"
+        antes = linha.status
         linha.status = Matricula.STATUS_ATIVA if liberou else Matricula.STATUS_RECUSADA
         linha.decidido_em = timezone.now()
         linha.decidido_por = decidido_por
@@ -193,6 +220,24 @@ def decidir_na_fila(
         linha.save(
             update_fields=["status", "decidido_em", "decidido_por", "motivo_recusa"]
         )
+
+        # [AVISO] A carta nasce na MESMA transação do fato — é o que a outbox
+        # garante e o que `emitir()` recusa fazer de outro jeito. Sem
+        # `destinatario_id` não há para quem endereçar (a pessoa nunca entrou
+        # com o Google, ou a `identidade` não respondeu), e a ausência da carta
+        # é o comportamento correto: o acesso foi liberado do mesmo jeito, e ela
+        # vê a mudança na próxima vez que abrir o site.
+        if destinatario_id and ganhou_acesso(antes, linha.status):
+            carta_de_situacao(
+                site_id=linha.site_id,
+                destinatario_id=destinatario_id,
+                matricula_id=str(linha.pk),
+                situacao_nova=linha.status,
+                situacao_anterior=antes,
+                decidido_por=decidido_por,
+            )
+            transaction.on_commit(relay_apos_commit)
+
         return linha, "ok"
 
 
@@ -370,7 +415,7 @@ CAMPOS_CORRIGIVEIS = {
 
 
 def atualizar_matricula(
-    *, id_da_linha: str, mudancas: dict, decidido_por: str
+    *, id_da_linha: str, mudancas: dict, decidido_por: str, destinatario_id: str = ""
 ) -> "tuple[Matricula | None, str]":
     """Muda o estado de um aluno, ou corrige os dados dele.
 
@@ -395,6 +440,7 @@ def atualizar_matricula(
             return None, "na-fila"
 
         campos = []
+        antes = linha.status
         novo_status = mudancas.get("status")
         if novo_status and novo_status != linha.status:
             linha.status = novo_status
@@ -420,6 +466,23 @@ def atualizar_matricula(
         linha.decidido_por = decidido_por
         campos += ["decidido_em", "decidido_por"]
         linha.save(update_fields=campos)
+
+        # [AVISO] O MESMO gesto da fila, pelo outro caminho: religar quem estava
+        # pausado também é "liberei você", e a pessoa precisa saber disso do
+        # mesmo jeito. A regra é uma só (`ganhou_acesso`) e mora num lugar só —
+        # duas cópias divergiriam no primeiro estado novo, e o efeito seria
+        # alguém virar aluno por uma porta e não ser avisado.
+        if destinatario_id and ganhou_acesso(antes, linha.status):
+            carta_de_situacao(
+                site_id=linha.site_id,
+                destinatario_id=destinatario_id,
+                matricula_id=str(linha.pk),
+                situacao_nova=linha.status,
+                situacao_anterior=antes,
+                decidido_por=decidido_por,
+            )
+            transaction.on_commit(relay_apos_commit)
+
         return linha, "ok"
 
 
