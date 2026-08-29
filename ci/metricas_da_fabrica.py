@@ -188,14 +188,52 @@ def coletar(raiz: Path, dias: int, agora: datetime | None = None) -> dict:
     }
 
 
+# O leitor do livro, em JavaScript, porque a REGRA é de lá.
+#
+# Ele carrega cada registro do jeito que o painel carrega (é código JS, e só um
+# motor JS o lê sem inventar), e depois pergunta o tamanho da fila a
+# `painel/logica.js::caixaDeEntrada` — a MESMA função que desenha a caixa
+# "Precisa de você" na tela do mantenedor.
+_CONTAR_PEDIDOS = """
+var fs = require('fs'), path = require('path'), vm = require('vm');
+var raiz = process.cwd();   // executar() roda com cwd = raiz do repo
+var LOGICA = require(path.join(raiz, 'painel', 'logica.js'));
+var dir = path.join(raiz, 'painel', 'registros');
+var regs = [];
+fs.readdirSync(dir).filter(function (n) { return n.slice(-3) === '.js'; })
+  .sort().forEach(function (n) {
+    var caixa = { window: {} };
+    vm.runInNewContext(fs.readFileSync(path.join(dir, n), 'utf8'), caixa,
+                       { timeout: 5000 });
+    (caixa.window.REGISTROS || []).forEach(function (r) { regs.push(r); });
+  });
+if (!regs.length) { throw new Error('nenhum registro carregado'); }
+process.stdout.write(String(LOGICA.caixaDeEntrada(regs, new Date()).length));
+"""
+
+
 def pedidos_ao_dono(raiz: Path) -> int:
     """Pedidos do livro esperando resposta — a fila de UMA pessoa (B14).
 
-    A regra é a MESMA do painel: pedido é registro com `precisa_do_dono: true`
-    sem nenhum outro registro apontando `responde_a` para ele. Reimplementar a
-    regra aqui daria dois números diferentes para a mesma pergunta no primeiro
-    dia em que alguém mexesse numa das cópias — então esta função lê o livro
-    cru e aplica a definição, e o teste-guarda compara com o painel.
+    A regra é a do painel, e é a do painel LITERALMENTE: esta função chama
+    `painel/logica.js::caixaDeEntrada`, a mesma que desenha a caixa "Precisa de
+    você". Duas medidas da mesma coisa não podem discordar quando só existe uma.
+
+    POR QUE ISTO MUDOU (auditoria das Ondas 3 a 6, 29/08/2026)
+    ----------------------------------------------------------
+    Até aqui esta função não LIA o livro: ela procurava o texto
+    `precisa_do_dono: true` DENTRO do arquivo. Um registro gravado com as chaves
+    entre aspas — `"precisa_do_dono": true`, forma que o livro aceita sem
+    reclamar — não casava com nenhuma das variações procuradas, e o pedido
+    simplesmente não era contado. Medido: o Python dizia 6 e o painel dizia 7.
+
+    O guarda `test_a_fila_do_dono_bate_com_a_do_painel` pegou, e é por isso que
+    ele existe. Mas comparar duas implementações só descobre a divergência
+    DEPOIS que ela aparece; ter uma implementação só a torna impossível — que é
+    o que a lei anti-duplicação do `CLAUDE.md` pede desde sempre.
+
+    Sem Node isto é ERROR, nunca um número: um contador que chuta a fila do
+    mantenedor é pior que um contador que se cala.
     """
     pasta = raiz / "painel" / "registros"
     if not pasta.is_dir():
@@ -203,21 +241,26 @@ def pedidos_ao_dono(raiz: Path) -> int:
             "painel/registros/ não existe",
             "Sem o livro não dá para medir a fila do mantenedor.",
         )
-    pedidos: set[str] = set()
-    respondidos: set[str] = set()
-    for arquivo in sorted(pasta.glob("*.js")):
-        texto = arquivo.read_text(encoding="utf-8")
-        ident = arquivo.stem
-        if '"precisa_do_dono": true' in texto.replace(" ", "").replace(
-            "precisa_do_dono:true", '"precisa_do_dono": true'
-        ) or "precisa_do_dono: true" in texto:
-            pedidos.add(ident)
-        for linha in texto.splitlines():
-            if "responde_a" in linha and '"' in linha:
-                alvo = linha.split('"')
-                if len(alvo) >= 2 and alvo[-2] and alvo[-2] != "null":
-                    respondidos.add(alvo[-2])
-    return len(pedidos - respondidos)
+    if not (raiz / "painel" / "logica.js").is_file():
+        raise ErroDeInstrumentacao(
+            "painel/logica.js não existe",
+            "A regra da caixa 'Precisa de você' mora lá. Sem ela, contar aqui "
+            "seria inventar uma segunda regra — exatamente o que causou a "
+            "divergência de 29/08/2026.",
+        )
+    saida = executar(
+        ["node", "-e", _CONTAR_PEDIDOS],
+        cwd=raiz,
+        descricao="contar a fila do mantenedor pela regra do painel",
+        exigir_stdout=True,
+    ).stdout.strip()
+    if not saida.isdigit():
+        raise ErroDeInstrumentacao(
+            "o contador da fila não devolveu um número",
+            f"Recebido:\n  {saida!r}\n\nSem número não há medida, e 'não sei' "
+            "nunca vira zero.",
+        )
+    return int(saida)
 
 
 def leis_sem_mecanismo(raiz: Path) -> int:

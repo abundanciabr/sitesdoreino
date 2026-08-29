@@ -10,10 +10,18 @@ Os três jeitos de este arquivo mentir, e um teste para cada:
     inventar seção quando falta medida      (meia-verdade com cara de relatório)
     discordar do painel sobre a fila do dono (dois números para a mesma pergunta)
 
-O terceiro é o mais importante do arquivo: `pedidos_ao_dono` reimplementa, em
-Python, uma regra que o painel calcula em JavaScript. Duas implementações da
-mesma pergunta divergem no primeiro dia em que alguém mexe numa delas — então
-o teste compara as duas contra o livro REAL.
+O terceiro é o mais importante do arquivo, e em 29/08/2026 ele COBROU: o
+`pedidos_ao_dono` não lia o livro — procurava o texto `precisa_do_dono: true`
+dentro do arquivo. Um registro gravado com as chaves entre aspas
+(`"precisa_do_dono": true`, forma que o livro aceita sem reclamar) não casava
+com nenhuma variação procurada, e o pedido não era contado: o Python disse 6
+onde o painel dizia 7. O guarda pegou — e a cura foi tirar a segunda
+implementação do mundo: hoje o Python CHAMA `painel/logica.js::caixaDeEntrada`,
+a mesma função que desenha a caixa "Precisa de você" na tela.
+
+Os testes abaixo cobrem as duas metades disso: o contador precisa contar o que
+o livro aceita (não o que uma expressão de texto reconhece), e precisa se CALAR
+quando não consegue medir, em vez de devolver um número menor.
 """
 
 from __future__ import annotations
@@ -219,3 +227,107 @@ def test_a_coleta_separa_contagem_de_amostra(tmp_path: Path, monkeypatch):
     assert dados["pousos"] == 90
     assert dados["amostra"] == 2
     assert "90 entrega(s)" in metricas.montar(dados)
+
+
+# --------------------------------------------------------------------------
+# O CONTADOR LÊ O LIVRO — os guardas que faltavam em 29/08/2026
+# --------------------------------------------------------------------------
+
+
+def _livro(tmp_path: Path, registros: list[str]) -> Path:
+    """Um repositório de mentirinha com o painel de verdade dentro.
+
+    `logica.js` é copiada, não reescrita: é ela que está sob teste junto.
+    """
+    raiz = tmp_path / "repo"
+    (raiz / "painel" / "registros").mkdir(parents=True)
+    (raiz / "painel" / "logica.js").write_text(
+        (RAIZ / "painel" / "logica.js").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    for i, conteudo in enumerate(registros):
+        (raiz / "painel" / "registros" / f"20260829-{i:03d}-r.js").write_text(
+            conteudo, encoding="utf-8"
+        )
+    return raiz
+
+
+def _registro(nome: str, precisa: bool, aspas: bool, responde_a: str | None = None):
+    """Um registro do livro. `aspas=True` usa chaves entre aspas (JSON)."""
+    campos = {
+        "arquivo": f'"{nome}"',
+        "tipo": '"nota"',
+        "quando": '"2026-08-29"',
+        "titulo": '"t"',
+        "detalhe": '"d"',
+        "autoridade": '"sessao"',
+        "evidencia": "null",
+        "verificado_em": "null",
+        "precisa_do_dono": "true" if precisa else "false",
+        "responde_a": f'"{responde_a}"' if responde_a else "null",
+        "gravidade": '"info"',
+        "frente": "null",
+        "vence_em_dias": "null",
+        "se_eu_nao_decidir": "null",
+        "recomendacao": "null",
+        "reversivel": "null",
+        "impacto": "null",
+    }
+    corpo = ",\n  ".join(
+        (f'"{k}": {v}' if aspas else f"{k}: {v}") for k, v in campos.items()
+    )
+    return (
+        "(function(){ (window.REGISTROS = window.REGISTROS || []).push({\n  "
+        + corpo
+        + "\n});})();\n"
+    )
+
+
+def test_registro_com_chaves_entre_aspas_TAMBEM_conta(tmp_path: Path):
+    """O bug de 29/08/2026, encenado.
+
+    O livro aceita as duas pontuações; a busca por texto só reconhecia uma. Um
+    pedido sumia da conta sem nada ficar vermelho nas telas.
+    """
+    raiz = _livro(
+        tmp_path,
+        [
+            _registro("20260829-000-r", precisa=True, aspas=False),
+            _registro("20260829-001-r", precisa=True, aspas=True),
+        ],
+    )
+    assert metricas.pedidos_ao_dono(raiz) == 2, (
+        "um dos dois pedidos não foi contado — é exatamente o defeito que fez "
+        "o Python dizer 6 e o painel dizer 7"
+    )
+
+
+def test_pedido_respondido_sai_da_fila(tmp_path: Path):
+    """A outra metade da regra: pedido com resposta não espera mais ninguém."""
+    raiz = _livro(
+        tmp_path,
+        [
+            _registro("20260829-000-r", precisa=True, aspas=False),
+            _registro(
+                "20260829-001-r",
+                precisa=False,
+                aspas=True,
+                responde_a="20260829-000-r",
+            ),
+        ],
+    )
+    assert metricas.pedidos_ao_dono(raiz) == 0
+
+
+def test_sem_a_regra_do_painel_e_ERROR_nunca_um_numero(tmp_path: Path):
+    """Contador que chuta a fila do dono é pior que contador que se cala."""
+    raiz = _livro(tmp_path, [_registro("20260829-000-r", precisa=True, aspas=False)])
+    (raiz / "painel" / "logica.js").unlink()
+    with pytest.raises(ErroDeInstrumentacao):
+        metricas.pedidos_ao_dono(raiz)
+
+
+def test_livro_ilegivel_e_ERROR_nunca_zero(tmp_path: Path):
+    """Registro quebrado não pode virar 'ninguém está esperando por você'."""
+    raiz = _livro(tmp_path, ["isto nao e javascript valido ((("])
+    with pytest.raises(ErroDeInstrumentacao):
+        metricas.pedidos_ao_dono(raiz)

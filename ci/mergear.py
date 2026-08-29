@@ -665,6 +665,37 @@ def sou_a_pista() -> bool:
     }
 
 
+def so_falta_atualizar_a_base(relatorio: Relatorio) -> bool:
+    """A ÚNICA reprovação é `BEHIND` — que é o serviço da pista, não um defeito.
+
+    POR QUE ISTO EXISTE (auditoria das Ondas 3 a 6, 29/08/2026)
+    -----------------------------------------------------------
+    O `RITOS.md` se contradizia, e o código seguia a metade errada:
+
+      §2 peça 4:  "o `--pousar` só age com o portão verde"
+      §2 peça 5:  "Quando usar: o PR ficou `BEHIND` mais de uma vez"
+
+    Um PR `BEHIND` NÃO está verde — logo o comando recusava exatamente o caso
+    que a lei manda mandar para a pista. Quem batia nisso tinha duas saídas: a
+    etiqueta na mão (que a própria peça 5 abençoa) ou voltar ao
+    `update-branch` → esperar 90s → a `main` andou → repetir, que é o laço de
+    oito voltas que a pista existe para abolir (`armadilhas/156`).
+
+    ISTO NÃO AFROUXA NADA. Pedir pouso não mergeia: põe o PR na fila. A pista
+    atualiza a base, roda ESTE MESMO portão contra o mundo novo, e só então
+    mergeia. O que muda é quem faz o trabalho chato — ela, que tem paciência,
+    em vez do agente, que não tem. Vermelho de verdade e ERROR continuam sendo
+    recusa: a pista não é lugar de despejar PR quebrado.
+    """
+    if relatorio.estado is not Estado.FAIL:
+        return False
+    reprovados = [r for r in relatorio.resultados if r.estado is not Estado.PASS]
+    reprovados = [r for r in reprovados if r.estado is not Estado.SKIP]
+    return len(reprovados) == 1 and reprovados[0].resumo.startswith(
+        "a base envelheceu"
+    )
+
+
 def pedir_pouso(numero: int) -> int:
     """Põe a etiqueta e explica o que vem depois. É o novo gesto normal."""
     try:
@@ -732,7 +763,12 @@ def main(argv: list[str] | None = None) -> int:
         print(cabecalho(pr))
     print(relatorio.render())
 
-    if relatorio.estado is not Estado.PASS:
+    # `--pousar` com a base envelhecida é o caso que a pista existe para
+    # resolver — ver `so_falta_atualizar_a_base`. Qualquer outra reprovação,
+    # e o ERROR, continuam recusando.
+    pouso_da_base_velha = args.pousar and so_falta_atualizar_a_base(relatorio)
+
+    if relatorio.estado is not Estado.PASS and not pouso_da_base_velha:
         print(
             "\nMERGE RECUSADO. "
             + (
@@ -743,6 +779,15 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
         return relatorio.exit_code
+
+    if pouso_da_base_velha:
+        print(
+            "\nA base deste PR envelheceu — e é exatamente para isso que a pista "
+            "serve.\n"
+            "   Ela atualiza, espera os checks medirem o mundo NOVO, confere por "
+            "este\n"
+            "   mesmo portão e só então mergeia. Pondo na fila:"
+        )
 
     if args.conferir:
         print("\nTudo verde. (--conferir: nada foi mergeado.)")

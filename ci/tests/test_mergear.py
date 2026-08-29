@@ -966,3 +966,84 @@ def test_a_pista_acorda_quando_a_etiqueta_e_posta():
     assert checkouts and all(
         p.get("with", {}).get("ref") == "main" for p in checkouts
     ), "o checkout da pista deixou de ser ref: main — o juiz virou o réu"
+
+
+# --------------------------------------------------------------------------
+# PEDIR POUSO COM A BASE ENVELHECIDA — a contradição que a auditoria achou
+#
+# `RITOS.md` §2 peça 4 dizia "o --pousar só age com o portão verde"; a peça 5
+# dizia "Quando usar: o PR ficou BEHIND mais de uma vez". Um PR BEHIND não está
+# verde, então o comando recusava exatamente o caso que a lei manda mandar para
+# a pista — e empurrava o agente de volta para o laço de oito voltas
+# (`armadilhas/156`) que a pista existe para abolir.
+#
+# Pedir pouso NÃO mergeia: põe na fila. A pista atualiza a base, roda ESTE
+# MESMO portão contra o mundo novo e só então mergeia. Por isso aceitar aqui
+# não afrouxa nada — e por isso vermelho de verdade e ERROR continuam recusando.
+# --------------------------------------------------------------------------
+
+
+def _relatorio(*resultados):
+    r = mergear.Relatorio("teste")
+    for x in resultados:
+        r.registrar(x)
+    return r
+
+
+_BEHIND = mergear.Resultado(
+    "conflitos", Estado.FAIL, "a base envelheceu — este PR está ATRÁS da main (BEHIND)"
+)
+_VERDE = mergear.Resultado("check/x", Estado.PASS, "verde")
+_PULADO = mergear.Resultado("check/y", Estado.SKIP, "pulo declarado como permitido")
+_VERMELHO = mergear.Resultado("check/z", Estado.FAIL, "não passou (conclusão: FAILURE)")
+_ERRO = mergear.Resultado("checks", Estado.ERROR, "nenhum check reportado neste PR")
+
+
+def test_so_a_base_velha_pode_pedir_pouso():
+    """O caso que a peça 5 nomeia: só falta atualizar, e a pista faz isso."""
+    assert mergear.so_falta_atualizar_a_base(
+        _relatorio(_VERDE, _BEHIND, _PULADO)
+    ) is True
+
+
+def test_base_velha_MAIS_check_vermelho_continua_recusando():
+    """A pista não é lugar de despejar PR quebrado — ela é a catraca com paciência."""
+    assert mergear.so_falta_atualizar_a_base(
+        _relatorio(_BEHIND, _VERMELHO)
+    ) is False
+
+
+def test_base_velha_MAIS_erro_continua_recusando():
+    """ERROR é 'não consegui medir'. Enfileirar o que não se mediu é adivinhar."""
+    assert mergear.so_falta_atualizar_a_base(_relatorio(_BEHIND, _ERRO)) is False
+
+
+def test_check_vermelho_sozinho_nao_vira_pouso():
+    assert mergear.so_falta_atualizar_a_base(_relatorio(_VERDE, _VERMELHO)) is False
+
+
+def test_erro_sozinho_nao_vira_pouso():
+    assert mergear.so_falta_atualizar_a_base(_relatorio(_ERRO)) is False
+
+
+def test_relatorio_verde_nao_passa_por_esta_porta():
+    """Verde segue o caminho normal; esta função é só para a exceção."""
+    assert mergear.so_falta_atualizar_a_base(_relatorio(_VERDE)) is False
+
+
+def test_a_lei_e_o_codigo_dizem_a_mesma_coisa_sobre_pousar_com_base_velha():
+    """A contradição era entre DUAS metades do RITOS — o texto viaja junto.
+
+    Sem este guarda, o conserto do código deixaria a peça 4 dizendo o oposto do
+    que o comando faz, e a próxima sessão acreditaria no documento.
+    """
+    ritos = (RAIZ / "RITOS.md").read_text(encoding="utf-8")
+    assert "o `--pousar` só age com o portão verde" not in ritos, (
+        "a peça 4 do RITOS ainda afirma que o --pousar exige portão verde, e o "
+        "código já aceita a base envelhecida. Documento e mecanismo discordando "
+        "é a doença que este projeto mais paga caro."
+    )
+    assert "base envelhecida" in ritos or "base velha" in ritos, (
+        "o RITOS precisa dizer, em algum lugar, o que acontece ao pedir pouso "
+        "com a base envelhecida"
+    )
