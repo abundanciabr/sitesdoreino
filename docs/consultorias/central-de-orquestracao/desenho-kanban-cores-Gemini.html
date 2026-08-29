@@ -1,0 +1,70 @@
+<div style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;">Exemplo de cartões de kanban com cores e ícones indicando o estado de cada tarefa: tranquila, atenção, precisa de decisão, ou bloqueada.</div>
+
+<div style="display:flex;align-items:center;gap:8px;margin-bottom:1rem;padding:8px 12px;background:var(--surface-1);border-radius:var(--radius);font-size:13px;color:var(--text-secondary);">
+  <i class="ti ti-player-play" style="font-size:16px;" aria-hidden="true"></i>
+  <span>Em execução: 2 de 3 — limite de trabalho simultâneo</span>
+</div>
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:1.25rem;font-size:12px;color:var(--text-secondary);">
+  <div style="display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--border-success);display:inline-block;"></span>tranquila</div>
+  <div style="display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--border-warning);display:inline-block;"></span>atenção</div>
+  <div style="display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--border-danger);display:inline-block;"></span>precisa de você agora</div>
+  <div style="display:flex;align-items:center;gap:6px;"><span style="width:9px;height:9px;border-radius:50%;background:var(--border-accent);display:inline-block;"></span>bloqueada, aguardando</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">
+
+  <div style="background:var(--surface-2);border:0.5px solid var(--border);border-left:3px solid var(--border-success);border-radius:12px;padding:1rem 1.1rem;">
+    <p style="font-size:12px;font-family:var(--font-mono);color:var(--text-muted);margin:0 0 4px;">EVO-40</p>
+    <p style="font-size:14px;font-weight:500;margin:0 0 10px;">Filtro de idioma no catálogo</p>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-secondary);">
+      <i class="ti ti-git-branch" style="font-size:14px;" aria-hidden="true"></i>onda 3
+    </div>
+  </div>
+
+  <div style="background:var(--surface-2);border:0.5px solid var(--border);border-left:3px solid var(--border-success);border-radius:12px;padding:1rem 1.1rem;">
+    <p style="font-size:12px;font-family:var(--font-mono);color:var(--text-muted);margin:0 0 4px;">EVO-38</p>
+    <p style="font-size:14px;font-weight:500;margin:0 0 10px;">Paginação da caixa de sugestões</p>
+    <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--text-secondary);">
+      <div style="display:flex;align-items:center;gap:5px;"><i class="ti ti-robot" style="font-size:14px;" aria-hidden="true"></i>sessão 3</div>
+      <div style="display:flex;align-items:center;gap:5px;"><i class="ti ti-clock" style="font-size:14px;" aria-hidden="true"></i>40 min</div>
+    </div>
+  </div>
+
+  <div style="background:var(--surface-2);border:0.5px solid var(--border);border-left:3px solid var(--border-warning);border-radius:12px;padding:1rem 1.1rem;">
+    <p style="font-size:12px;font-family:var(--font-mono);color:var(--text-muted);margin:0 0 4px;">EVO-35</p>
+    <p style="font-size:14px;font-weight:500;margin:0 0 10px;">Reindexação de busca</p>
+    <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;">
+      <div style="display:flex;align-items:center;gap:5px;color:var(--text-secondary);"><i class="ti ti-robot" style="font-size:14px;" aria-hidden="true"></i>sessão 1</div>
+      <div style="display:flex;align-items:center;gap:5px;color:var(--text-warning);"><i class="ti ti-clock" style="font-size:14px;" aria-hidden="true"></i>6 h — acima do esperado</div>
+    </div>
+  </div>
+
+  <div style="background:var(--surface-2);border:0.5px solid var(--border);border-left:3px solid var(--border-danger);border-radius:12px;padding:1rem 1.1rem;">
+    <p style="font-size:12px;font-family:var(--font-mono);color:var(--text-muted);margin:0 0 4px;">EVO-31 · rodada 2</p>
+    <p style="font-size:14px;font-weight:500;margin:0 0 8px;">Sininho de avisos</p>
+    <div style="display:flex;flex-direction:column;gap:4px;font-size:12px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:5px;color:var(--text-secondary);"><i class="ti ti-alert-triangle" style="font-size:14px;" aria-hidden="true"></i>decisão de produto</div>
+      <div style="display:flex;align-items:center;gap:5px;color:var(--text-secondary);"><i class="ti ti-link" style="font-size:14px;" aria-hidden="true"></i>3 tarefas esperando</div>
+      <div style="display:flex;align-items:center;gap:5px;color:var(--text-danger);"><i class="ti ti-clock" style="font-size:14px;" aria-hidden="true"></i>há 2 dias</div>
+    </div>
+    <div style="background:var(--bg-danger);color:var(--text-danger);border-radius:var(--radius);padding:8px 10px;font-size:12px;">Marca como lida ao abrir o card ou ao passar o mouse?</div>
+  </div>
+
+  <div style="background:var(--surface-2);border:0.5px solid var(--border);border-left:3px solid var(--border-accent);border-radius:12px;padding:1rem 1.1rem;">
+    <p style="font-size:12px;font-family:var(--font-mono);color:var(--text-muted);margin:0 0 4px;">EVO-42</p>
+    <p style="font-size:14px;font-weight:500;margin:0 0 10px;">Certificado com QR code</p>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-accent);">
+      <i class="ti ti-link" style="font-size:14px;" aria-hidden="true"></i>espera EVO-31
+    </div>
+  </div>
+
+  <div style="background:var(--surface-1);border:0.5px solid var(--border);border-radius:12px;padding:1rem 1.1rem;">
+    <p style="font-size:12px;font-family:var(--font-mono);color:var(--text-muted);margin:0 0 4px;">EVO-29</p>
+    <p style="font-size:14px;font-weight:500;margin:0 0 10px;color:var(--text-secondary);">Login com Google</p>
+    <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);">
+      <i class="ti ti-check" style="font-size:14px;" aria-hidden="true"></i>evidência anexada
+    </div>
+  </div>
+
+</div>
