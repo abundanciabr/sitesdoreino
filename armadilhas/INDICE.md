@@ -191,5 +191,7 @@
 | [171](171-mais-em-querystring-vira-espaco-e-o-vazio-parece.md) | `+` em querystring vira ESPAÇO — e o vazio resultante parece uma resposta legítima — Uma tela que busca por e-mail (ou por qualquer texto que possa conter `+`) mostra "não encontramos nada" para alguém que **existe**.… | — |
 | [172](172-cortar-bloco-por-dois-indices-duplica-quando-a.md) | Cortar um bloco com `s[:i] + s[j:]` DUPLICA o arquivo quando `j < i` — Um script de edição "remove" um bloco de código e o arquivo **cresce**. Funções aparecem duas vezes; o `grep` acha dois `def` iguais; o Python nem… | — |
 | [173](173-workflow-manual-no-grupo-deploy-e-cancelado-antes-de-comecar.md) | Workflow manual posto no grupo `deploy` termina `cancelled` em segundos, sem uma linha de log — você dispara um `workflow_dispatch` à mão, ele entra como `pending`, e meio minuto depois está `cancelled`. Não há erro… | — |
+| [174](174-git-diff-name-only-esconde-a-origem-do-rename.md) | `git diff --name-only` mostra só o DESTINO de um rename — e o portão que lê o diff fica cego — não há erro nenhum, e é esse o problema. Um portão que deriva o escopo do diff (a catraca de testes, a cerca de célula, o… | — |
+| [175](175-compare-lido-ao-contrario-faz-voce-anunciar-que-a-main-regrediu.md) | `compare/A...B` lido ao contrário faz você anunciar que a `main` REGREDIU — e quase alarmar o mantenedor — você confere a `main` depois de mergear, e o commit do topo tem um título de um PR **muito antigo**: | — |
 
-**154 entradas.**
+**156 entradas.**
