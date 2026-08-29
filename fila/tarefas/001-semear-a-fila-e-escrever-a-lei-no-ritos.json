@@ -1,0 +1,15 @@
+{
+  "arquivo": "001-semear-a-fila-e-escrever-a-lei-no-ritos",
+  "id": "TAR-001",
+  "titulo": "Semear a fila com as tarefas reais abertas e escrever a lei no RITOS",
+  "toca": [
+    "fila",
+    "RITOS.md",
+    "painel"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "PR mergeado com as tarefas semeadas + a seção nova do RITOS.md citando os mecanismos que a fazem valer (ci/fila.py, ci/muralha-da-fila.sh, almoxarife) + registro no livro.",
+  "despacho": "Fase 2b do plano da lista de tarefas (veredito: docs/consultorias/central-de-orquestracao/VEREDITO.md).\n\n1. Leia fila/LEIA-ME.md e o veredito.\n2. Reivindique ESTA tarefa: python ci/fila.py pegar TAR-001 --quem \"sessao-<sua>\". Se o servidor recusar, ela já é de outro robô — pare e escolha outra.\n3. Semeie a fila com as tarefas realmente abertas do projeto (uma por arquivo, número pelo almoxarife): as pendências vivas do livro que são trabalho de robô, e as 10 recomendações aceitas-e-não-construídas do PLANO-MESTRE-ROBOS-SEM-COLISAO (origem: \"aguardando despacho do mantenedor\" — registrar não é reabrir; nenhum robô as pega sem despacho dele).\n4. Escreva no RITOS.md o rito: tarefa de despacho se pega pela fila (pegar/concluir), nunca de memória — com a linha **Quem faz valer:** citando ci/muralha-da-fila.sh e o almoxarife.\n5. Conclua: python ci/fila.py concluir TAR-001 --quem \"...\" --evidencia \"<URL do PR mergeado>\". Registre no livro e confira o deploy se tocar painel/.\n\nSe travar em algo que só o mantenedor decide, NÃO force: evento bloqueada com o motivo, registro no livro, e devolva à maestro. Abrir exceção é o resultado esperado, não falha.",
+  "origem": "fase 2 do plano aprovado pelo mantenedor em 29/08/2026 (registro 20260829-032)",
+  "criada_em": "2026-08-29"
+}

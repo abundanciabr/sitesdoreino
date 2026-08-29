@@ -161,6 +161,25 @@ def test_armadilha_nunca_reusa_numero_aposentado(tmp_path, monkeypatch):
     assert reservar.alocar_numero(tmp_path, "armadilha", agora=AGORA) == "154"
 
 
+def test_tarefa_nunca_reusa_numero(tmp_path, monkeypatch):
+    """A fila segue a política da armadilha: TAR concluída continua citada."""
+    (tmp_path / "fila" / "tarefas").mkdir(parents=True)
+    (tmp_path / "fila" / "tarefas" / "002-a.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(reservar, "refs_existentes", lambda *a, **k: [])
+    monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: True)
+    assert reservar.alocar_numero(tmp_path, "tarefa", agora=AGORA) == "003"
+
+
+def test_tarefa_sem_pasta_ainda_conta_as_reservas_do_servidor(tmp_path, monkeypatch):
+    """No dia em que a fila nasce a pasta não existe — e os números já
+    reservados por outra sessão continuam valendo (não é erro, é o começo)."""
+    monkeypatch.setattr(
+        reservar, "refs_existentes", lambda *a, **k: ["refs/numeros/tarefa/001"]
+    )
+    monkeypatch.setattr(reservar, "criar_ref_atomica", lambda *a, **k: True)
+    assert reservar.alocar_numero(tmp_path, "tarefa", agora=AGORA) == "002"
+
+
 def test_registro_preenche_buraco_do_dia(tmp_path, monkeypatch):
     preparar_pastas(tmp_path, registros=["20260828-001-a.js", "20260828-003-c.js"])
     monkeypatch.setattr(reservar, "refs_existentes", lambda *a, **k: [])
