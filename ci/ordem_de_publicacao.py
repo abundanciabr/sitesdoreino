@@ -59,6 +59,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import mapa_de_celulas  # noqa: E402
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
     configurar_saida,
@@ -66,15 +67,12 @@ from _nucleo import (  # noqa: E402
     raiz_do_repo,
 )
 
-# A convenção que as 13 células já seguem: quem consome a `alunos` lê
-# ALUNOS_API_URL. Derivar disto é o que mantém o mapa colado no código.
-CONSUMO = re.compile(r"\b([A-Z][A-Z0-9_]*)_API_URL\b")
-
-# Onde procurar. Código e configuração da célula — nunca os testes: uma célula
-# que MOCKA outra num teste não depende dela em produção, e tratar isso como
-# dependência inventaria uma ordem que o mundo real não pede.
-EXTENSOES = (".py", ".env.example", ".yml", ".yaml", ".html", ".txt")
-PASTAS_IGNORADAS = {"tests", "test", "__pycache__", "node_modules", "migrations"}
+# O GRAFO VEM DO MAPA — `celulas.yml`, verificado contra o código pelo varredor
+# de `ci/mapa_de_celulas.py` em toda muralha (Onda 5). Até 29/08/2026 este
+# arquivo varria o código por conta própria: funcionava, e era uma segunda
+# implementação da mesma pergunta. Duas implementações divergem no primeiro dia
+# em que alguém mexe numa delas — e a que ia decidir a ordem de publicação em
+# produção seria, por lei de Murphy, a atrasada.
 
 
 def _raiz() -> Path:
@@ -83,52 +81,15 @@ def _raiz() -> Path:
 
 
 def celulas_declaradas(raiz: Path) -> list[str]:
-    """A lista autoritativa é o manifesto — o mesmo do rollback e da reversão."""
-    caminho = raiz / "ci" / "manifesto-de-contratos.json"
-    try:
-        dados = json.loads(caminho.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise ErroDeInstrumentacao(
-            "manifesto de contratos ilegível", f"Caminho:\n  {caminho}\n\n{exc}"
-        ) from exc
-    except json.JSONDecodeError as exc:
-        raise ErroDeInstrumentacao(
-            "manifesto de contratos não é json válido",
-            f"Caminho:\n  {caminho}\n\n{exc}",
-        ) from exc
-    celulas = dados.get("celulas")
-    if not isinstance(celulas, dict) or not celulas:
-        raise ErroDeInstrumentacao(
-            "manifesto de contratos sem a chave 'celulas'",
-            "Lista vazia NÃO é 'qualquer nome serve'.",
-        )
-    return sorted(celulas)
+    """A lista autoritativa é o mapa; o varredor garante que ela bate com o
+    manifesto de contratos em toda muralha (`ci/mapa_de_celulas.py`)."""
+    return sorted(mapa_de_celulas.carregar(raiz))
 
 
 def dependencias(raiz: Path, celulas: list[str]) -> dict[str, set[str]]:
-    """Para cada célula, de quais OUTRAS células declaradas ela consome API."""
-    conhecidas = {c.upper(): c for c in celulas}
-    grafo: dict[str, set[str]] = {c: set() for c in celulas}
-    for celula in celulas:
-        pasta = raiz / "services" / celula
-        if not pasta.is_dir():
-            # Célula declarada e ausente do disco é problema do portão de
-            # contratos, não deste — aqui ela simplesmente não tem consumo.
-            continue
-        for arquivo in pasta.rglob("*"):
-            if not arquivo.is_file() or arquivo.suffix not in EXTENSOES:
-                continue
-            if PASTAS_IGNORADAS & set(p.name for p in arquivo.parents):
-                continue
-            try:
-                texto = arquivo.read_text(encoding="utf-8", errors="ignore")
-            except OSError:
-                continue
-            for nome in CONSUMO.findall(texto):
-                outra = conhecidas.get(nome)
-                if outra and outra != celula:
-                    grafo[celula].add(outra)
-    return grafo
+    """Para cada célula, de quais OUTRAS ela consome — lido do mapa único."""
+    mapa = mapa_de_celulas.carregar(raiz)
+    return {nome: set(celula.consome) for nome, celula in mapa.items() if nome in celulas}
 
 
 def ordenar(

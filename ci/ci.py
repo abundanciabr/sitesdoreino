@@ -46,7 +46,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import contract_freeze  # noqa: E402
+import contract_freeze
+import mapa_de_celulas  # noqa: E402
 import guarda_dos_guardas  # noqa: E402
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
@@ -177,6 +178,11 @@ MURALHAS = [
         "muralha-do-painel",
         "ci/muralha-do-painel.sh",
         "o livro de ocorrências (painel/) inválido ou com manifesto desatualizado",
+    ),
+    PortaoDeShell(
+        "mapa-de-celulas",
+        "ci/mapa-de-celulas.sh",
+        "celulas.yml discorda do código (dependência escondida ou declaração órfã)",
     ),
 ]
 
@@ -371,16 +377,19 @@ def rodar_celula(raiz: Path, celula: str) -> Resultado:
 def celulas_tocadas(raiz: Path, base: str) -> list[str]:
     """Quais células o diff contra `base` toca. Falha do git é ERROR, não lista vazia.
 
-    Esta é a MEDIÇÃO que decide o escopo da CI da célula no GitHub Actions. O
-    workflow calculava isso em YAML com `... | head -1 || true`: o `|| true`
+    Esta é a MEDIÇÃO que decide o escopo da CI da célula e a matriz do deploy.
+    O workflow calculava isso em YAML com `... | head -1 || true`: o `|| true`
     cobria o pipeline inteiro, então um `git diff` que falhasse devolvia string
     vazia — indistinguível de "nenhuma célula foi tocada". Daí o job da célula
     era pulado e o gate aceitava `skipped` como verde: merge liberado sem que um
-    único teste tivesse rodado.
+    único teste tivesse rodado. Aqui as duas situações são separadas na origem.
 
-    Aqui as duas situações são separadas na origem: git com exit != 0 levanta
-    ErroDeInstrumentacao; lista vazia só existe quando o git respondeu com
-    sucesso e o diff realmente não tocou `services/`.
+    **Quem responde "este arquivo é de quem" é `celulas.yml`** (Onda 5). Até
+    28/08/2026 o mapa morava dentro desta função E dentro de
+    `ci/cerca-de-celula.sh`, e os dois já discordavam: aqui `painel/` contava
+    como a célula `admin`, lá não. A divergência estava escrita num comentário,
+    isto é, era conhecida e tolerada. Agora existe um mapa só, e um varredor que
+    o impede de mentir (`ci/mapa_de_celulas.py`).
     """
     execucao = executar(
         ["git", "diff", "--name-only", f"{base}...HEAD"],
@@ -390,36 +399,9 @@ def celulas_tocadas(raiz: Path, base: str) -> list[str]:
         # — o que não pode passar é exit != 0, e disso `executar` já cuida.
         exigir_stdout=False,
     )
-    encontradas = set()
-    for linha in execucao.stdout.splitlines():
-        partes = linha.strip().replace("\\", "/").split("/")
-        if len(partes) >= 2 and partes[0] == "services" and partes[1]:
-            encontradas.add(partes[1])
-        elif len(partes) >= 2 and partes[0] == "painel":
-            # `painel/` é INSUMO da célula `admin`, e por isso conta como
-            # tocá-la: desde o PR do painel vivo, a área administrativa SERVE
-            # `painel/painel.html` + `painel/registros/` atrás do login
-            # (`services/admin/apps/core/painel.py`), e a pasta entra na imagem
-            # no build.
-            #
-            # Sem esta linha o painel online congelaria em silêncio: um registro
-            # novo no livro mergearia sem disparar deploy nenhum, e o mantenedor
-            # veria o projeto parado no passado — exatamente a doença que o
-            # painel existe para curar, e que originou este trabalho.
-            #
-            # ATENÇÃO — são DOIS detectores no projeto, e este NÃO é o da
-            # muralha. Quem responde por "1 PR = 1 célula" é
-            # `ci/cerca-de-celula.sh`, que casa apenas `services/*` e portanto
-            # ignora `painel/`. Consequência, medida e não suposta: um PR que
-            # toque `painel/` E uma célula continua contando como UMA célula
-            # para a muralha — ela não barra, e não há nada a contornar.
-            #
-            # Esta função é a que monta a matriz do `deploy-celula` e o escopo
-            # do `ci-celula`. O efeito que importa é esse: PR só de livro passa
-            # a RODAR a suíte da `admin` no `ci-celula` (é o que dá evidência ao
-            # portão de deploy) e a disparar o deploy dela no merge.
-            encontradas.add("admin")
-    return sorted(encontradas)
+    arquivos = [ln.strip() for ln in execucao.stdout.splitlines() if ln.strip()]
+    mapa = mapa_de_celulas.carregar(raiz)
+    return mapa_de_celulas.celulas_do_diff(arquivos, mapa)
 
 
 PORTOES = ("freeze", "muralhas", "guardas", "testador")
