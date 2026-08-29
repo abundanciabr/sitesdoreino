@@ -322,7 +322,14 @@ def checar_checks(pr: dict[str, Any]) -> list[Resultado]:
         elif conclusao == "SUCCESS":
             resultados.append(Resultado(f"check/{nome}", Estado.PASS, "verde"))
         elif conclusao == "SKIPPED":
-            motivo = SKIPS_PERMITIDOS.get(nome)
+            # O nome do job da célula virou `ci-celula (admin)` quando ele
+            # passou a ser MATRIZ (Onda 5). O skip continua sendo o mesmo fato
+            # — "este PR não toca essa célula" —, e a lista de skips permitidos
+            # continua FECHADA: só o prefixo antes do parêntese é considerado, e
+            # ele tem de constar da lista do mesmo jeito.
+            motivo = SKIPS_PERMITIDOS.get(nome) or SKIPS_PERMITIDOS.get(
+                nome.split(" (", 1)[0]
+            )
             if motivo:
                 resultados.append(Resultado(f"check/{nome}", Estado.SKIP, motivo))
             else:
