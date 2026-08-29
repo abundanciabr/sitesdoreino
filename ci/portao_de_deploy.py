@@ -46,7 +46,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -59,7 +58,14 @@ from _nucleo import (  # noqa: E402
     Relatorio,
     Resultado,
     configurar_saida,
-    executar,
+)
+from espera import (  # noqa: E402
+    FalhasSeguidas,
+    GracaVencida,
+    Olhada,
+    TetoVencido,
+    chamar_gh,
+    vigiar,
 )
 
 # Conclusões que significam "mediu e REPROVOU" (FAIL). Qualquer outra conclusão
@@ -163,25 +169,11 @@ def ler_contexto() -> Contexto:
 def gh_api(ctx: Contexto, caminho: str) -> Any:
     """Uma chamada `gh api`, com JSON provado.
 
-    Sem `--paginate`: com resposta-objeto (actions/runs) ele concatena páginas
-    em documentos JSON justapostos, que `json.loads` não lê. `per_page=100`
-    nos chamadores cobre com folga um SHA (runs) e um run (jobs).
+    A definição mora em `ci/espera.py` (`chamar_gh`) desde 29/08/2026 — o laço
+    de espera saiu daqui para ganhar voz (armadilhas/161), e a chamada foi
+    junto para não existirem duas. Este wrapper só carrega o contexto.
     """
-    execucao = executar(
-        [*ctx.gh, "api", caminho],
-        cwd=Path.cwd(),
-        descricao=f"gh api {caminho}",
-        exigir_stdout=True,
-        timeout=120,
-    )
-    try:
-        return json.loads(execucao.stdout)
-    except ValueError as exc:
-        raise ErroDeInstrumentacao(
-            f"gh api {caminho}: resposta não é JSON",
-            f"stdout recebido ({len(execucao.stdout)} bytes):\n"
-            + execucao.stdout[:2000],
-        ) from exc
+    return chamar_gh(ctx.gh, caminho)
 
 
 def listar_runs(ctx: Contexto, sha: str) -> list[dict]:
@@ -223,29 +215,15 @@ def esperar_workflows(
       - 5 falhas seguidas do gh        => ERROR (API fora do ar não é verde).
     Devolve (run escolhido por path, todos os runs da última leitura).
     """
-    inicio = time.monotonic()
-    falhas_seguidas = 0
-    ultimo_erro: ErroDeInstrumentacao | None = None
-    while True:
-        try:
-            runs = listar_runs(ctx, sha)
-            falhas_seguidas = 0
-        except ErroDeInstrumentacao as erro:
-            falhas_seguidas += 1
-            ultimo_erro = erro
-            if falhas_seguidas >= 5:
-                raise ErroDeInstrumentacao(
-                    "gh api falhou 5 vezes seguidas — não dá para medir",
-                    erro.detalhe,
-                ) from erro
-            if time.monotonic() - inicio >= ctx.timeout:
-                raise ErroDeInstrumentacao(
-                    f"timeout de {ctx.timeout:.0f}s consultando a API",
-                    erro.detalhe,
-                ) from erro
-            time.sleep(ctx.intervalo)
-            continue
+    # O laço em si mora em `ci/espera.py` (`vigiar`) desde 29/08/2026 — a
+    # semântica é a MESMA de sempre (a suíte deste arquivo é a prova); o que
+    # mudou é que agora a mesma espera pode falar quando rodada por um agente
+    # (`ci/esperar.py`). Aqui, no CI, ela continua muda de propósito: o log do
+    # runner já é a voz.
+    caixa: dict[str, Any] = {}
 
+    def observar() -> Olhada:
+        runs = listar_runs(ctx, sha)
         escolhidos = {
             path: escolher_run(runs, path, evento) for path in exigidos
         }
@@ -255,27 +233,55 @@ def esperar_workflows(
             for p, r in escolhidos.items()
             if r is not None and r.get("status") != "completed"
         ]
-        if not ausentes and not pendentes:
-            return {p: r for p, r in escolhidos.items() if r is not None}, runs
+        caixa.update(
+            runs=runs, escolhidos=escolhidos, ausentes=ausentes, pendentes=pendentes
+        )
+        return Olhada(
+            pronta=not ausentes and not pendentes,
+            apareceu=not ausentes,
+            resumo=(
+                f"ausentes: {ausentes or '—'} · pendentes: {pendentes or '—'}"
+            ),
+        )
 
-        decorrido = time.monotonic() - inicio
-        if ausentes and decorrido >= ctx.graca:
-            vistos = sorted({str(r.get("path")) for r in runs})
+    try:
+        vigiar(
+            observar,
+            teto=ctx.timeout,
+            intervalo=ctx.intervalo,
+            graca=ctx.graca,
+            falhas_max=5,
+        )
+    except FalhasSeguidas as falha:
+        raise ErroDeInstrumentacao(
+            "gh api falhou 5 vezes seguidas — não dá para medir",
+            falha.erro.detalhe if falha.erro else "",
+        ) from falha
+    except GracaVencida as falha:
+        vistos = sorted({str(r.get("path")) for r in caixa["runs"]})
+        raise ErroDeInstrumentacao(
+            f"workflow exigido sem run para {sha[:12]} após {ctx.graca:.0f}s "
+            f"de graça: {', '.join(caixa['ausentes'])}",
+            "Ou o workflow foi deletado/renomeado/desabilitado, ou nunca "
+            "disparou para este commit — nenhuma das hipóteses é verde.\n"
+            f"Workflows vistos no SHA (evento {evento}): {vistos or ['nenhum']}",
+        ) from falha
+    except TetoVencido as falha:
+        if falha.erro is not None:
             raise ErroDeInstrumentacao(
-                f"workflow exigido sem run para {sha[:12]} após {ctx.graca:.0f}s "
-                f"de graça: {', '.join(ausentes)}",
-                "Ou o workflow foi deletado/renomeado/desabilitado, ou nunca "
-                "disparou para este commit — nenhuma das hipóteses é verde.\n"
-                f"Workflows vistos no SHA (evento {evento}): {vistos or ['nenhum']}",
-            )
-        if decorrido >= ctx.timeout:
-            raise ErroDeInstrumentacao(
-                f"checks ainda não concluídos após {ctx.timeout:.0f}s: "
-                f"{', '.join(pendentes or ausentes)}",
-                "Recuperação: espere os checks e faça re-run DESTE workflow — "
-                "o portão reavalia do zero.",
-            )
-        time.sleep(ctx.intervalo)
+                f"timeout de {ctx.timeout:.0f}s consultando a API",
+                falha.erro.detalhe,
+            ) from falha
+        raise ErroDeInstrumentacao(
+            f"checks ainda não concluídos após {ctx.timeout:.0f}s: "
+            f"{', '.join(caixa['pendentes'] or caixa['ausentes'])}",
+            "Recuperação: espere os checks e faça re-run DESTE workflow — "
+            "o portão reavalia do zero.",
+        ) from falha
+
+    return {
+        p: r for p, r in caixa["escolhidos"].items() if r is not None
+    }, caixa["runs"]
 
 
 def veredito_do_run(
