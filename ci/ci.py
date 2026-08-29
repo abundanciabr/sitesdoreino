@@ -184,6 +184,11 @@ MURALHAS = [
         "ci/mapa-de-celulas.sh",
         "celulas.yml discorda do código (dependência escondida ou declaração órfã)",
     ),
+    PortaoDeShell(
+        "contrato-aditivo",
+        "ci/contrato-aditivo.sh",
+        "a mudança de contrato REMOVE algo sem a etiqueta 'contrato-remocao'",
+    ),
 ]
 
 
