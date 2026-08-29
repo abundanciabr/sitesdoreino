@@ -29,6 +29,7 @@ mostre o link para o prontuário do mesmo."*
 
 import itertools
 import json
+from datetime import timedelta
 
 import pytest
 from django.test import Client
@@ -301,3 +302,32 @@ def test_a_fila_nao_pergunta_o_passado_uma_vez_por_linha(
 
     with django_assert_num_queries(len(tres.captured_queries)):
         client.get(f"{FILA}?status=aguardando", **auth)
+
+
+@pytest.mark.django_db
+def test_saiu_em_traz_a_ULTIMA_saida_e_nao_a_primeira(client, auth):
+    """Quem entrou e saiu duas vezes precisa aparecer com a saída mais recente.
+
+    O guarda existe porque a escolha errada aqui é invisível no caso comum (uma
+    passagem só) e só aparece com quem já foi e voltou — exatamente a pessoa que
+    esta tela foi feita para reconhecer.
+
+    As duas saídas ficam a menos de um segundo uma da outra de propósito: é
+    quando uma comparação de TEXTO ISO passaria despercebida, se o formato das
+    duas datas não fosse idêntico.
+    """
+    primeira = criar(status=Matricula.STATUS_ENCERRADA)
+    primeira.decidido_em = timezone.now() - timedelta(days=400)
+    primeira.save(update_fields=["decidido_em"])
+
+    segunda = criar(site_id="escola-b", status=Matricula.STATUS_ENCERRADA)
+    ultima_saida = timezone.now() - timedelta(seconds=30)
+    segunda.decidido_em = ultima_saida
+    segunda.save(update_fields=["decidido_em"])
+
+    na_fila()
+
+    linha = client.get(f"{FILA}?status=aguardando", **auth).json()[0]
+
+    assert linha["passagens_anteriores"] == 2
+    assert linha["saiu_em"] == ultima_saida.isoformat()
