@@ -4,6 +4,7 @@
 import logging
 import os
 import time
+from urllib.parse import quote
 
 import httpx
 
@@ -258,6 +259,56 @@ class AlunosClient:
         (`DECISAO-categorias-de-usuario`).
         """
         return self._buscar("/pre-matriculas", {"status": status})
+
+    def prontuario(self, email: str) -> "dict | None":
+        """[PRONTUARIO] A história de UMA pessoa — todas as passagens dela.
+
+        Mesmo fail-OPEN das listas acima: `None` é *"não consegui perguntar"*, e
+        a tela diz isso com todas as letras. Nunca levanta.
+
+        Não passa pelo `_buscar` porque aquele exige LISTA, e esta porta
+        devolve um objeto — afrouxar a conferência de lá para caber os dois
+        tiraria de `fila()` e `alunos()` a garantia que elas têm hoje: se a
+        `alunos` responder um objeto onde a tela espera lista, o `for` do
+        template iteraria as CHAVES do dicionário em silêncio.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.info(
+                "prontuario: ALUNOS_API_URL/ALUNOS_API_TOKEN ainda não estão no "
+                "env desta célula — a tela vai dizer que não consegue perguntar."
+            )
+            return None
+        base, token = config
+
+        try:
+            r = http().get(
+                # `email` vai no caminho, e o `quote` não é enfeite: um "+" num
+                # endereço (`fulano+curso@exemplo.com`) vira espaço sem ele, e a
+                # tela mostraria o prontuário vazio de uma pessoa que existe.
+                f"{base}/alunos/{quote(email, safe='')}/prontuario",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("prontuario: não deu para perguntar: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            logger.error("prontuario: a alunos respondeu HTTP %s", r.status_code)
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # *Status 2xx não é sucesso* (RETROSPECTIVA §4).
+            logger.error("prontuario: resposta fora do contrato: %s", erro)
+            return None
+
+        if not isinstance(corpo, dict) or not isinstance(corpo.get("passagens"), list):
+            logger.error("prontuario: a alunos respondeu um corpo fora da forma")
+            return None
+        return corpo
 
     # ------------------------------------------------------------------ escrita
     #

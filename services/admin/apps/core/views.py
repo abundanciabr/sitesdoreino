@@ -14,6 +14,8 @@ improvável.
 preenche). O `/healthz` é a exceção declarada, e por isso não o usa.
 """
 
+from datetime import datetime
+
 from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -286,6 +288,83 @@ def escola_alunos(request):
     )
 
 
+# ------------------------------------------------------------- o prontuário
+#
+# `DECISAO-a-ficha-nao-se-apaga.md` §5 (29/08/2026). Ele existe porque a mesma
+# lei decidiu que quem sai e volta ganha uma ficha NOVA a cada passagem: a
+# história sobrevive, e o preço é mais de uma linha por pessoa. Esta tela é
+# quem junta as linhas num rosto só.
+
+
+def _dia(iso: str | None) -> "datetime | None":
+    """Uma data que o template sabe formatar, ou `None`.
+
+    A `alunos` manda texto ISO; `{{ x|date:"d/m/Y" }}` sobre uma string devolve
+    a string crua, sem erro nenhum — o tipo de falha que passa despercebida por
+    meses porque a tela "mostra alguma coisa".
+    """
+    if not iso:
+        return None
+    try:
+        return datetime.fromisoformat(iso.replace("Z", "+00:00"))
+    except ValueError:
+        # Data fora do formato é dado ruim de fora, não motivo para a página
+        # inteira não abrir. A linha aparece sem a data.
+        return None
+
+
+@require_GET
+def escola_prontuario(request):
+    """A história inteira de uma pessoa — todas as passagens dela pela escola.
+
+    Fail-OPEN como as outras leituras desta área: `None` do cliente vira um
+    aviso honesto, nunca uma ficha vazia que se leria como "esta pessoa não
+    existe".
+
+    O e-mail vem por querystring e é usado só para PERGUNTAR — nada é decidido
+    aqui. Quem autoriza continua sendo a porta, uma vez, na entrada.
+    """
+    email = (request.GET.get("email") or "").strip().lower()
+    if not email:
+        return HttpResponseRedirect(reverse("escola_alunos"))
+
+    ficha = AlunosClient().prontuario(email)
+    passagens = []
+    for p in (ficha or {}).get("passagens", []):
+        passagens.append(
+            {
+                **p,
+                # Traduzido AQUI, e não no template: `{% if %}` encadeado para
+                # seis estados é onde um deles fica de fora sem ninguém ver.
+                "estado_na_tela": ESTADO_DA_PASSAGEM.get(
+                    p.get("status"), p.get("status")
+                ),
+                "criada_em_dia": _dia(p.get("criada_em")),
+                "decidida_em_dia": _dia(p.get("decidido_em")),
+            }
+        )
+
+    return render(
+        request,
+        "admin/escola_prontuario.html",
+        {
+            "admin": request.admin,
+            "email": email,
+            "ficha": ficha,
+            "passagens": passagens,
+            # `None` (não consegui perguntar) e ficha vazia (pessoa que a
+            # célula não conhece) são telas DIFERENTES — e a diferença é entre
+            # "meu sistema falhou" e "esta pessoa nunca esteve aqui".
+            "nao_consigo_perguntar": ficha is None,
+            "situacao_na_tela": (
+                SITUACAO_NA_TELA.get(ficha.get("categoria"), "Não sei dizer")
+                if ficha
+                else None
+            ),
+        },
+    )
+
+
 # ------------------------------------------------- liberar e recusar (escrita)
 #
 # A PRIMEIRA escrita desta área (`DECISAO-fila-de-liberacao` §8, fase 2), e por
@@ -401,6 +480,34 @@ ESTADOS_NA_TELA = [
     ("encerrada", "Ex-aluno — perde o acesso, e a ficha continua aqui"),
     ("reembolsada", "Reembolsado — devolveu o dinheiro e mantém o acesso"),
 ]
+
+#: [PRONTUARIO] A situação de AGORA, na palavra do mantenedor. As chaves são as
+#: cinco categorias do contrato (`GET /alunos/{email}/situacao`); a tradução é
+#: daqui, porque quem fala com ele é esta tela.
+#:
+#: Categoria que a `alunos` inventar amanhã e não estiver aqui cai em "não sei
+#: dizer" — nunca no rótulo mais próximo. Um mapa que chutasse o vizinho diria
+#: "aluno" para alguém que não é, e a tela do painel é onde ele decide.
+SITUACAO_NA_TELA = {
+    "aluno": "Aluno — entra normalmente",
+    "ex_aluno": "Ex-aluno — saiu da escola, e a ficha continua aqui",
+    "pausado": "Pausado — acesso desligado por enquanto",
+    "na_fila": "Na fila — esperando a sua decisão",
+    "cadastrado": "Cadastrado — entrou no site e nunca pediu entrada",
+}
+
+#: [PRONTUARIO] O estado de UMA passagem. Vocabulário maior que o do formulário
+#: de gestão porque aqui aparecem também os da fila: o prontuário é o único
+#: lugar em que as duas famílias se encontram, e esconder as passagens recusadas
+#: contaria a história pela metade.
+ESTADO_DA_PASSAGEM = {
+    "ativa": "Aluno",
+    "suspensa": "Pausado",
+    "encerrada": "Ex-aluno",
+    "reembolsada": "Reembolsado",
+    "aguardando": "Aguardando decisão",
+    "recusada": "Recusado",
+}
 
 #: Os campos do formulário que viajam para a `alunos`. Lista de PERMISSÃO: um
 #: `<input name="email">` que alguém acrescente ao template não passa daqui —
