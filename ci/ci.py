@@ -189,6 +189,11 @@ MURALHAS = [
         "ci/contrato-aditivo.sh",
         "a mudança de contrato REMOVE algo sem a etiqueta 'contrato-remocao'",
     ),
+    PortaoDeShell(
+        "leis-sem-mecanismo",
+        "ci/leis-sem-mecanismo.sh",
+        "lei sem quem a faça valer e fora da dívida declarada (Onda 6, B10)",
+    ),
 ]
 
 

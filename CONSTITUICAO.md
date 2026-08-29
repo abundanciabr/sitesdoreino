@@ -11,6 +11,7 @@ autoridade aqui. Em conflito, esta Constituição vence.
 
 ## Lei 1 — A Escada da Imposição
 
+
 Toda regra vive num degrau: **esperança → documento → processo → portão mecânico →
 impossibilidade física.** Toda regra desta plataforma deve ser empurrada escada acima
 até onde fisicamente puder ir. Só o que não pode ser mecanizado vira texto.
@@ -18,7 +19,10 @@ até onde fisicamente puder ir. Só o que não pode ser mecanizado vira texto.
 mecanização — abra uma issue `mecanizar:` explicando por que não pôde ser um portão.
 Documento não impõe nada a um agente sob pressão de erro; portão impõe.
 
+**Quem faz valer:** `ci/leis_sem_mecanismo.py` — o censo que exige esta linha em toda lei, e que é ele próprio o degrau mais alto desta escada aplicado a ela mesma.
+
 ## Lei 2 — As Quatro Muralhas
+
 
 1. **Execução:** cada célula é um processo próprio numa porta própria, atrás do Traefik
    (file provider). Deploy e rollback são por célula. APIs internas **não** têm rota
@@ -37,14 +41,20 @@ Documento não impõe nada a um agente sob pressão de erro; portão impõe.
    (congelados; drift reprova no CI) e por eventos versionados (`contracts/eventos/`).
    Consumidores desenvolvem contra mocks (`prism`), nunca contra o código do provedor.
 
+**Quem faz valer:** `ci/mapa_de_celulas.py` (quem é dono do quê, e quem consome quem) · `ci/contract_freeze.py` (o contrato congelado) · `ci/contrato_aditivo.py` (contrato cresce, não encolhe) · `ci/cerca-de-celula.sh` (o Rito de Contrato).
+
 ## Lei 3 — Os Três Pecados e a Virtude
+
 
 Pecados: **(1)** importar código de outra célula; **(2)** ler ou escrever no banco de
 outra célula; **(3)** duplicar-e-divergir comportamento. Virtude: **copiar dados** —
 snapshots são sagrados. Comportamento tem uma casa só: ou é serviço (chamada de API)
 ou é pacote versionado.
 
+**Quem faz valer:** `ci/guarda_dos_guardas.py` — ele prova que o `.importlinter` da célula existe E é invocado pelo `Makefile` (pecado 1). O pecado 2 é imposto pelo Postgres (role por célula: acesso cruzado não é proibido, é `permission denied`). **O pecado 3 — duplicar-e-divergir — não tem mecanismo**, e essa lacuna está declarada em `ci/leis-sem-mecanismo.txt`.
+
 ## Lei 4 — Separação de Poderes
+
 
 Quem escreve código **não certifica**: o CI certifica, e todo merge passa pelo
 portão `ci/mergear.py`, que recusa check vermelho, ausente, pendente ou pulado sem
@@ -74,20 +84,29 @@ máquina; mudou qual máquina, e ela tem paciência. A trava no `ci/mergear.py` 
 disciplina (o agente tem o mesmo `gh`); a muralha de verdade contra merge com
 base velha é o `strict` do conjunto de regras da `main`, que roda no servidor.
 
+**Quem faz valer:** `ci/mergear.py` (a catraca, e a recusa de mergear para quem não é a pista) · `.github/workflows/pouso.yml` (quem mergeia) · `ci/tests/test_mergear.py`.
+
 ## Lei 5 — A Lei das 2h da Manhã
+
 
 O caminho seguro deve ser o mais rápido. A resposta canônica a qualquer emergência é
 **rollback** (re-apontar a tag de imagem anterior — comando em RITOS.md §4), nunca
 hotfix no servidor. Agentes não possuem chave SSH da VPS — não é proibição, é
 inexistência. A correção definitiva viaja sempre por PR + pipeline.
 
+**Quem faz valer:** `ci/rollback.py` e `.github/workflows/rollback.yml` (o rollback manual, validado antes de qualquer SSH) · `ci/reversao.py` (a reversão automática quando a entrega falha).
+
 ## Lei 6 — Evidência Falsificável, Não Prosa
+
 
 "Eu arrumei" não é aceito. Qualquer trabalho que toque um invariante apresenta a saída
 crua do teste-guarda **vermelho sem o fix e verde com o fix**. Qualquer alegação
 arquitetural vem com o comando que a falsificaria (02-RED-TEAM.md).
 
+**Quem faz valer:** `ci/guarda_dos_guardas.py` — ele exige que todo invariante declare um teste-guarda, que o arquivo exista, que ele tenha teste e que MORDA (sem `skip`, sem corpo vazio).
+
 ## Lei 7 — Zonas Quentes Nascem Vazias
+
 
 Não existe nesta plataforma um arquivo que "toda rota toca". Cada célula possui seus
 próprios `settings`, `urls`, templates e static. Se um mesmo caminho aparecer em três
@@ -97,12 +116,16 @@ arquitetura: abra issue `arquitetura:` e resolva a fronteira. Exceção delibera
 
 ## Lei 8 — Jurisprudência Pré-Paga
 
+
 Os invariantes de dinheiro (`INVARIANTES.md`) existem, com teste-guarda, **antes da
 primeira feature**. Invariante sem guarda no mesmo PR só entra na seção de dívida, com
 dono e prazo. Testes-guarda são intocáveis: nunca deletar, desativar ou afrouxar para
 passar.
 
+**Quem faz valer:** `ci/indice_de_armadilhas.py` — o índice é gerado do conteúdo, então uma armadilha nova sem entrada no índice reprova.
+
 ## Lei 9 — Multissítio (uma fábrica, N lojas)
+
 
 A plataforma é um único deploy servindo N domínios: "site" é dado (registro no
 catálogo), nunca uma nova infraestrutura. O Host é resolvido para um site UMA vez
@@ -125,3 +148,6 @@ nunca por cirurgia de infra.
 Abertura de sessão, catraca verde/anti-thrashing, mudança de contrato e emergência:
 ver `RITOS.md`. Formato de invariante (o quê / por quê / teste-guarda): ver
 `INVARIANTES.md`.
+
+**Quem faz valer:** `infra/sincronizar_sites.py` e `ci/tests/test_sincronizar_sites_tolerante.py`.
+

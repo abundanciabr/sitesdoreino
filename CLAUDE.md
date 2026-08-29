@@ -4,6 +4,7 @@ Instruções para qualquer sessão do Claude Code neste repositório.
 
 ## Antes de começar qualquer tarefa: leia as armadilhas
 
+
 A memória de campo do projeto — o que já custou tempo aqui, em formato sintoma →
 causa → solução — mora em **`armadilhas/`**, uma entrada por arquivo. Desde
 23/08/2026 ela **não é mais um monólito**: o antigo `ARMADILHAS.md` de 1.490 linhas
@@ -57,7 +58,10 @@ Por que a regra é dura: até 26/08 as duas listas coexistiam e **já discordava
 mantenedor. Foi a doença do H18 voltando por dentro da própria lei que a curou
 (a auditoria que achou isso está no registro `20260826-019`).
 
+**Quem faz valer:** `ci/indice_de_armadilhas.py` — o índice é gerado, então entrada nova sem índice reprova. **A LEITURA em si não tem mecanismo** e está declarada em `ci/leis-sem-mecanismo.txt`.
+
 ## Mapa do projeto para IA (desde 27/08/2026)
+
 
 Existe um mapa técnico do projeto inteiro — leis, células, contratos,
 infraestrutura, CI/CD, decisões de produto — escrito especificamente para
@@ -71,7 +75,10 @@ outros mapas deste projeto, ele é um resumo curado: se divergir do
 documento original, o original vence, e quem perceber a divergência corrige
 o mapa no mesmo PR.
 
+**Quem faz valer:** `ci/tests/test_painel_ia_atualizado.py`.
+
 ## O livro de ocorrências é obrigatório, não opcional (desde 26/08/2026)
+
 
 O painel do dono é **`painel/painel.html`** — a porta única, que **não guarda
 nenhum dado próprio**: toda vista é calculada de **`painel/registros/`** (o
@@ -120,7 +127,10 @@ As regras que importam:
 - Os painéis antigos de `arquivos/painel-*.html` são **lápides e fotografias**
   (história congelada). Não os atualize; não crie novos.
 
+**Quem faz valer:** `ci/divida_do_livro.py` (merge sem registro reprova no portão) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
+
 ## O clone principal é espelho, não bancada (desde 26/08/2026)
+
 
 Duas sessões dividindo a pasta principal já apagaram o trabalho uma da outra
 (26/08/2026 — uma trocou o ramo, as edições da outra sumiram). Desde então a
@@ -135,7 +145,10 @@ leituras, `git fetch`, `git worktree` e `gh`; com a árvore limpa, também
 `git switch main` e `git pull` (para manter o espelho fresco). Detalhes e
 fronteiras: `armadilhas/135`.
 
+**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, ligado como hook em `.claude/settings.json`.
+
 ## O agente pede pouso; quem mergeia é a pista (desde 29/08/2026)
+
 
 Decisão do mantenedor em 22/08/2026 tirou o merge das mãos dele (motivos em
 `docs/decisoes/DECISAO-merge-pelo-agente.md`); decisão dele em 29/08/2026
@@ -179,7 +192,10 @@ vocabulário de tipos é mudança em `painel/logica.js`, por PR, com teste-guard
 A capa do painel tem teto de blocos e se RECUSA a crescer: realidade nova entra
 como registro, não como seção nova.
 
+**Quem faz valer:** `ci/mergear.py` (recusa `--confirmo` para quem não é a pista) · `.github/workflows/pouso.yml` · `ci/tests/test_mergear.py`.
+
 ## Como trabalhar com o mantenedor (vale para TODA sessão)
+
 
 O dono do projeto é leigo em código e em terminal, e lê SOMENTE português —
 **toda resposta em PT-BR, sempre**. O resto foi aprendido a custo alto em
@@ -230,6 +246,7 @@ no meio dos passos manuais):
 
 ## Este projeto é para ser feito completo — nunca proponha a versão minimalista
 
+
 Decisão do mantenedor em 25/08/2026 (lei completa, com as palavras dele:
 `docs/decisoes/DECISAO-filosofia-de-escopo.md`): **entre uma opção completa/robusta
 e uma reduzida/rápida, a completa é a escolha padrão — mesmo custando mais tempo,
@@ -259,6 +276,7 @@ Na prática:
 
 ## Depois de todo merge que dispara deploy
 
+
 Merge tocando `services/**` **ou `painel/**`** dispara o `deploy-celula` (a
 célula `admin` embute `painel/` no build — registro novo no livro também
 conta); tocando `infra/docker-compose.yml`, `infra/traefik/**` ou o próprio
@@ -272,3 +290,6 @@ onde parou; repete-se sem novo merge com `gh run rerun <id> --failed`. Reporte
 o veredito ao mantenedor em texto claro — desde 26/08/2026 a `main` tem sim
 required checks (`muralhas` e `ci-celula-gate`, H3), mas **nenhum deles olha o
 deploy**: ele roda DEPOIS do merge, e ninguém mais vai olhar por você.
+
+**Quem faz valer:** `ci/portao_de_deploy.py` (nenhuma imagem sobe sem evidência verde) · `.github/workflows/alarme-main.yml` (abre issue se a `main` fica vermelha).
+

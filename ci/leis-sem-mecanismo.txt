@@ -1,0 +1,18 @@
+# LINHA DE BASE — leis que ainda NÃO têm quem as faça valer
+#
+# Lido por `ci/leis_sem_mecanismo.py` (Onda 6, B10). Cada linha é uma DÍVIDA
+# reconhecida: uma regra deste projeto que existe só como texto.
+#
+# A CATRACA, em duas frases: lei sem a linha `**Quem faz valer:**` e fora desta
+# lista deixa a CI VERMELHA. Linha que SAI daqui — porque a lei ganhou um
+# portão, ou deixou de existir — é sempre permitida. A dívida só encolhe.
+#
+# Estar aqui NÃO é permissão para desobedecer: é a admissão de que a obediência
+# hoje depende de alguém lembrar. É exatamente esse tipo de dependência que
+# custou caro na Parte 0 do PLANO-MESTRE-ROBOS-SEM-COLISAO.md.
+#
+# Formato: <arquivo>::<título da seção>   # por que ainda não tem mecanismo
+
+CONSTITUICAO.md::Lei 7 — Zonas Quentes Nascem Vazias   # nada mede "o mesmo caminho apareceu em três briefs"; exigiria histórico de despachos, que não é versionado
+CLAUDE.md::Como trabalhar com o mantenedor (vale para TODA sessão)   # é sobre COMO falar com uma pessoa (bloco único de colar, janela rotulada, pergunta estruturada); só a régua da pergunta estruturada seria mecanizável, e ainda assim fora do CI
+CLAUDE.md::Este projeto é para ser feito completo — nunca proponha a versão minimalista   # é uma diretriz de JULGAMENTO sobre escopo; um portão que a medisse teria de opinar sobre ambição, e opinaria errado
