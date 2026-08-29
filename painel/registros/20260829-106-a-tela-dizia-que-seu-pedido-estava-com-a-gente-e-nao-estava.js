@@ -1,0 +1,15 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260829-106-a-tela-dizia-que-seu-pedido-estava-com-a-gente-e-nao-estava",
+  tipo: "incidente",
+  quando: "2026-08-29",
+  titulo: "A tela dizia 'seu pedido ja esta com a gente' e nao estava — voce esperou uma hora por um pedido que nao existia",
+  detalhe: "VOCE ACHOU DE NOVO, COM A SUA PROPRIA CONTA. A porta da Caixa dizia 'Seu pedido ja esta com a gente. Alguem da equipe vai conferir e liberar o seu acesso'. No mesmo instante, o seu painel dizia 'Ninguem esta esperando agora — este zero e medido'. Voce esperou mais de uma hora.\n\nAS DUAS TELAS ESTAVAM CERTAS SOBRE O QUE CADA UMA SABIA. O painel MEDIU a fila. A porta nao mediu nada: ela lia um biscoito (cookie) guardado no seu navegador na hora em que voce pediu, com validade de 30 dias. Um biscoito nao sabe nada sobre a fila — ele continua dizendo 'seu pedido esta com a gente' depois de a linha ter sido liberada, recusada, ou APAGADA. E foi apagada: foi voce mesmo que apagou a propria ficha hoje de manha, no dia em que apagar ainda existia.\n\nO PIOR DETALHE E QUE A RESPOSTA CERTA JA EXISTIA. Desde 28/08 a parte que guarda os alunos sabe dizer 'esta pessoa esta na fila'. A porta recebia essa resposta e a jogava fora, tratando 'esta na fila' e 'nunca pediu nada' como a mesma coisa — e entao inventava a resposta a partir do biscoito.\n\nO CONSERTO: o recibo passou a vir de quem sabe. Se a parte que guarda os alunos diz que existe um pedido, a tela mostra o recibo; se ela diz que nao existe, a tela mostra o FORMULARIO de novo. O biscoito foi apagado do sistema.\n\nA DIRECAO DO ERRO FOI ESCOLHIDA: mostrar o formulario para quem ja pediu custa a pessoa mandar de novo (e mandar de novo nao duplica nada — ja era assim). Mostrar o recibo para quem nao pediu custa uma pessoa esperando para sempre. Os dois erros nao tem o mesmo preco.\n\nENQUANTO O CONSERTO NAO SOBE, o seu caminho mais rapido e o formulario que entrou no ar hoje: /admin/escola/alunos/ -> 'Cadastrar alguem a mao'. Ele te poe na escola em um passo.",
+  autoridade: "mantenedor",
+  evidencia: "PR #514. O mantenedor reportou as duas telas ao vivo em 29/08/2026, com print da porta da Caixa mostrando o recibo e o texto do painel dizendo que a fila estava vazia. Causa confirmada no codigo de origin/main: services/sugestoes/apps/core/views.py montava o recibo com request.COOKIES.get(PEDIU_ENTRADA), e apps/core/sessao.py mapeava as categorias 'cadastrado' e 'na_fila' para o MESMO estado SEM_MATRICULA — jogando fora a resposta que a alunos ja dava desde 28/08. Vermelho->verde: o guarda novo test_sem_linha_na_fila_a_porta_devolve_o_FORMULARIO_e_nao_o_recibo reprova na main de hoje; 471 passed com o conserto. O guarda antigo test_recarregar_a_porta_nao_devolve_o_formulario_vazio PASSAVA com o defeito no lugar — ele media a lembranca, nao o fato — e foi reescrito.",
+  verificado_em: "2026-08-29",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "curso",
+  vence_em_dias: null
+});})();
