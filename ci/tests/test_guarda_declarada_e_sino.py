@@ -235,10 +235,17 @@ def test_o_sino_e_fail_open_em_toda_borda():
         assert proc.returncode == 0, f"o sino recusou algo: {entrada!r}"
 
 
-def test_o_json_do_sino_aninha_additional_context():
-    """Fora de hookSpecificOutput o harness IGNORA em silêncio: falso-verde."""
+def test_o_json_do_sino_aninha_additional_context(tmp_path: Path):
+    """Fora de hookSpecificOutput o harness IGNORA em silêncio: falso-verde.
+
+    O `cwd` aponta para uma pasta sem `.git` de propósito: rodar o hook de
+    verdade a partir do repositório gravaria eventos FALSOS no caderninho da
+    casa, e é dele que sai a decisão de promover uma regra de sombra para
+    bloqueio. Medição envenenada por teste é pior que medição nenhuma.
+    """
     corpo = json.dumps({
         "tool_name": "Bash", "tool_input": {"command": "make ci"},
+        "cwd": str(tmp_path),
         "tool_response": {"stderr":
                           "ConfigError: Schema for status 201 is not set in response"},
     })
@@ -279,6 +286,38 @@ def test_o_sinal_do_repositorio_real_e_lido_pelo_sino():
     assert sinais, "nenhum sinal declarado — o sino nunca tocaria"
     for s in sinais:
         assert (RAIZ / s["arquivo"]).is_file(), f"sinal aponta {s['arquivo']}, que sumiu"
+
+
+def test_a_suite_nao_suja_o_caderninho_da_casa(tmp_path: Path):
+    """Rodar os testes não pode gerar medição FALSA no repositório de verdade.
+
+    É do caderninho que sai a decisão de promover uma regra de sombra para
+    bloqueio. Um teste que exercita o hook a partir da casa grava disparos que
+    nunca aconteceram fora da suíte — e a promoção passaria a se justificar com
+    dado inventado. Isto pegou de verdade em 29/08/2026: 33 eventos falsos,
+    9 deles "em bloqueia", vindos da prova por mutação.
+    """
+    import telemetria
+
+    raiz = telemetria.dir_git_comum(Path(__file__).resolve())
+    assert raiz is not None, "o teste precisa da casa para poder vigiá-la"
+    antes = len(telemetria.ler_tudo(raiz))
+
+    subprocess.run(
+        [sys.executable, str(SINO)],
+        input=json.dumps({
+            "tool_name": "Bash", "tool_input": {"command": "make ci"},
+            "cwd": str(tmp_path),
+            "tool_response": {"stderr":
+                              "ConfigError: Schema for status 201 is not set"},
+        }),
+        capture_output=True, text=True, timeout=60,
+        encoding="utf-8", errors="replace",
+    )
+    assert len(telemetria.ler_tudo(raiz)) == antes, (
+        "a suíte gravou medição na casa real — aponte o cwd do hook para uma "
+        "pasta sem .git, ou troque o registrador por um dublê"
+    )
 
 
 def test_settings_do_projeto_liga_o_sino():

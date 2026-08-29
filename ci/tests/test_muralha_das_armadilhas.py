@@ -161,6 +161,12 @@ def test_bloqueio_recusa_e_ensina(monkeypatch):
         for r in muralha.REGRAS
     )
     monkeypatch.setattr(muralha, "REGRAS", promovida)
+    # Sem isto, o teste grava um disparo "em bloqueia" no caderninho da CASA —
+    # e é do caderninho que sai a decisão de promover a regra de sombra para
+    # bloqueio. Medição envenenada pelo próprio teste é pior que medição
+    # nenhuma: ela faria a promoção parecer justificada por disparos que nunca
+    # existiram fora da suíte.
+    monkeypatch.setattr(muralha.telemetria, "registrar", lambda *a, **k: None)
     monkeypatch.setattr(
         sys, "stdin",
         type("F", (), {"buffer": type("B", (), {"read": staticmethod(
