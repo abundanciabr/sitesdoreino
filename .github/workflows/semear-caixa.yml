@@ -1,0 +1,118 @@
+# =============================================================================
+# SEMEAR A CAIXA — inaugura na produção o quadro de ideias da célula
+# `sugestoes`, pelo pipeline, sem o mantenedor colar nada em terminal nenhum.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# `apps/core/participacao.py::quadro_atual()` é fail-closed de propósito: com
+# zero quadros no banco ela levanta Http404 em vez de inventar um. Em 27/08/2026
+# o mantenedor entrou na Caixa em produção, clicou em "Ver o quadro de
+# sugestões" e recebeu "Não encontrado" — a célula nasceu em dois lotes e este
+# passo ficou no vão entre eles. O conserto (`infra/semear-caixa.sh`) existe
+# desde então, mas SÓ como bloco de colar dentro da VPS: o pedido
+# `20260827-014` do livro ficou dois dias esperando um humano abrir um terminal.
+#
+# É o padrão §5 da RETROSPECTIVA-FASE-D — humano no caminho crítico de um passo
+# que a máquina faz melhor. O rollback passou por esta mesma porta em 23/08.
+#
+# POR QUE workflow_dispatch É SEGURO AQUI (a mesma pergunta do rollback.yml)
+# --------------------------------------------------------------------------
+# Este workflow não ENTREGA código: ele roda um script versionado que só sabe
+# fazer uma coisa, e essa coisa é idempotente por construção (`get_or_create`
+# no quadro e em cada categoria — rodar duas vezes não duplica nada e não apaga
+# ideia nenhuma). O script é fail-closed em cada passo: para se não estiver em
+# /opt/plataforma, se `catalogo` ou `sugestoes` não estiverem de pé, se o
+# catálogo não tiver site ativo, se o host pedido não existir, e se terminar
+# com um número de quadros diferente de 1.
+#
+# Ele roda SEMPRE a versão do script que está no commit disparado — o
+# `script_path` da ssh-action envia o arquivo do checkout do runner.
+#
+# O HOST VIAJA POR `envs:`, NUNCA COSTURADO NO SCRIPT: `${{ inputs.* }}` dentro
+# de `script:` é injeção de comando na VPS (armadilhas/047). O script lê
+# HOST_CAIXA do ambiente.
+#
+# NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy. As
+# únicas escritas são as linhas do quadro e das categorias no banco da Caixa.
+# =============================================================================
+name: semear-caixa
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: 'Host do site que recebe o quadro (ex.: meshcraft.top). Precisa estar ATIVO no catálogo.'
+        required: true
+        type: string
+        default: meshcraft.top
+permissions:
+  contents: read
+# MESMO grupo dos deploys e do rollback: este script fala com o `docker compose`
+# da VPS, e intercalar isso com um deploy em curso seria pedir dois donos para o
+# mesmo comando. Enfileira sem cancelar — cancelar pela metade é pior que esperar.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+jobs:
+  semear:
+    name: inaugurar o quadro na produção
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # O script é o mesmo que o bloco de colar do mantenedor usa. Se um dia ele
+      # sumir ou for renomeado, PARAMOS AQUI — a ssh-action com `script_path`
+      # apontando para arquivo inexistente é caminho conhecido de falso-verde
+      # (armadilhas/149: parâmetro que a ação avisa e IGNORA, saindo com sucesso).
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/semear-caixa.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/semear-caixa.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/semear-caixa.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Semear na VPS
+        id: semear
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: HOST_CAIXA
+          capture_stdout: true
+          command_timeout: 10m
+          script_path: infra/semear-caixa.sh
+        env:
+          HOST_CAIXA: ${{ inputs.host }}
+
+      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o script
+      # inteiro, e ler o eco como se fosse a execução já enganou este projeto. A
+      # linha "PRONTO." só existe no CAMINHO FELIZ do script, depois de ele
+      # contar os quadros no banco e achar exatamente 1.
+      - name: Provar que o quadro existe (não basta a conexão ter aberto)
+        # A saída viaja por `env:`, como no deploy-celula e no rollback, e nunca
+        # costurada no corpo do `run:` — texto vindo de fora interpolado dentro de
+        # shell é a mesma família de furo da armadilhas/047, e uma linha `EOF` na
+        # saída bastaria para quebrar a leitura.
+        env:
+          SAIDA: ${{ steps.semear.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO\.'; then
+            echo "::error::Não encontrei a linha 'PRONTO.' na saída do script."
+            echo "Ela só é impressa depois de o script contar 1 quadro no banco."
+            echo "Sem ela, o quadro NÃO está provado — e ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          echo "✅ o quadro de sugestões existe na produção, conferido pela contagem no banco."
