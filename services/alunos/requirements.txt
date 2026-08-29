@@ -3,9 +3,26 @@ django-ninja==1.3.0
 psycopg[binary]==3.2.3
 dj-database-url==2.3.0
 redis==5.1.1
+# O relay da outbox (29/08/2026, quando esta célula ganhou voz). As versões são
+# as MESMAS de sugestoes/checkout/quiz/mensageria de propósito: um relay por
+# célula em versão própria seria N comportamentos de biblioteca para o mesmo
+# padrão (`armadilhas/071` mostra o preço de divergir).
+huey==2.5.1
+# A única conversa desta célula com outra: `findPersonByEmail` na identidade,
+# para endereçar a carta. Timeout explícito, fail-aberto.
+httpx==0.28.1
 gunicorn==23.0.0
 uvicorn[standard]==0.32.0
 pytest==8.3.3
 pytest-django==4.9.0
+# O dublê de rede dos testes. Sem ele a suíte precisaria de internet — e uma
+# suíte que depende de outra célula de pé é uma suíte que fica vermelha por
+# motivo alheio.
+respx==0.23.1
+# Só de teste: é com ele que `contracts/eventos/notificacao.devida.v1.json`
+# deixa de ser documentação e passa a reprovar o CI — o envelope real é
+# validado contra o arquivo do contrato, não contra uma cópia do formato dentro
+# do teste.
+jsonschema==4.23.0
 black==24.10.0
 PyYAML==6.0.2
