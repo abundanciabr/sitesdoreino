@@ -15,12 +15,15 @@ nada errado, então pode" é o falso positivo original em outra roupa.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
 
 import mergear
 from _nucleo import Estado
+
+RAIZ = Path(__file__).resolve().parents[2]
 
 
 def _check(nome: str, conclusao: str = "SUCCESS", status: str = "COMPLETED") -> dict:
@@ -425,6 +428,12 @@ def _relatorio_verde() -> "mergear.Relatorio":
     return relatorio
 
 
+def _relatorio_vermelho() -> "mergear.Relatorio":
+    relatorio = mergear.Relatorio("teste")
+    relatorio.registrar(mergear.Resultado("tudo", Estado.FAIL, "vermelho"))
+    return relatorio
+
+
 def _gh_de_mentira(chamadas: list, estado_apos_merge: str = "MERGED"):
     import json as _json
 
@@ -455,9 +464,15 @@ def test_confirmo_errado_recusa_sem_chamar_o_gh(monkeypatch) -> None:
 
 
 def test_confirmo_certo_mergeia_e_confere_o_estado(monkeypatch) -> None:
-    """O caminho do agente: --confirmo com o número certo mergeia E confere no
-    GitHub que o PR virou MERGED — o veredito nunca é o exit do disparo."""
+    """O caminho DA PISTA: --confirmo com o número certo mergeia E confere no
+    GitHub que o PR virou MERGED — o veredito nunca é o exit do disparo.
+
+    Desde 29/08/2026 este caminho é da pista, não do agente: por isso a
+    variável de identificação entra aqui. Sem ela o portão recusa (teste
+    abaixo), e é essa recusa que faz o agente ir pedir pouso.
+    """
     chamadas: list = []
+    monkeypatch.setenv(mergear.VARIAVEL_DA_PISTA, "sim")
     monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
     monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
     assert mergear.main(["99", "--confirmo", "99"]) == 0
@@ -469,9 +484,83 @@ def test_merge_que_nao_vira_merged_reprova(monkeypatch) -> None:
     """Se o gh não recusar mas o PR não constar como MERGED, o resultado é
     FAIL — 'o comando não reclamou' não é evidência de merge (Lei 6)."""
     chamadas: list = []
+    monkeypatch.setenv(mergear.VARIAVEL_DA_PISTA, "sim")
     monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
     monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas, "OPEN"))
     assert mergear.main(["99", "--confirmo", "99"]) == 1
+
+
+# ---------------------------------------------------------------------------
+# O MERGE SAIU DA MÃO DO ROBÔ — Onda 4, fatia 3 (decisão do mantenedor,
+# registro 20260829-006). O agente pede pouso; quem mergeia é a pista.
+#
+# O que estes testes guardam não é "o robô não merge": é que a recusa
+# ENSINA. Uma recusa que só diga "não" faria a próxima sessão procurar um
+# contorno — e contorno existe, porque isto é disciplina, não muralha.
+# ---------------------------------------------------------------------------
+
+
+def test_o_agente_nao_mergeia_mais_e_a_recusa_ensina_o_caminho(monkeypatch, capsys):
+    chamadas: list = []
+    monkeypatch.delenv(mergear.VARIAVEL_DA_PISTA, raising=False)
+    monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "99"]) == 1
+    assert chamadas == [], "com tudo verde, o robô AINDA assim não pode mergear"
+    saida = capsys.readouterr().out
+    assert "--pousar" in saida, "a recusa precisa dizer o que fazer em seguida"
+    assert "20260829-006" in saida, "e de onde veio a decisão"
+
+
+def test_pousar_poe_a_etiqueta_e_nao_mergeia(monkeypatch, capsys):
+    chamadas: list = []
+    monkeypatch.delenv(mergear.VARIAVEL_DA_PISTA, raising=False)
+    monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
+    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: RAIZ)
+    assert mergear.main(["99", "--pousar"]) == 0
+    assert ["pr", "edit", "99", "--add-label", "pousar"] in chamadas
+    assert not any(c[:2] == ["pr", "merge"] for c in chamadas)
+    assert "não precisa esperar" in capsys.readouterr().out.lower()
+
+
+def test_pousar_so_acontece_com_o_portao_verde(monkeypatch):
+    """Pedir pouso de um PR reprovado entupiria a fila com trabalho quebrado."""
+    chamadas: list = []
+    monkeypatch.delenv(mergear.VARIAVEL_DA_PISTA, raising=False)
+    monkeypatch.setattr(
+        mergear, "conferir", lambda n: (_relatorio_vermelho(), _pr())
+    )
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--pousar"]) == 1
+    assert chamadas == []
+
+
+def test_so_a_pista_declara_a_variavel_de_identificacao():
+    """A identificação existe num lugar só: o workflow da pista.
+
+    Se ela aparecer em outro workflow, a recusa vira decoração — e o motivo de
+    a Lei 4 ter mudado (o agente perdendo a corrida contra o relógio dos
+    checks) volta em silêncio.
+    """
+    import yaml
+
+    fluxos = sorted((RAIZ / ".github" / "workflows").glob("*.yml"))
+    com_a_variavel = [
+        f.name
+        for f in fluxos
+        if mergear.VARIAVEL_DA_PISTA in f.read_text(encoding="utf-8")
+    ]
+    assert com_a_variavel == ["pouso.yml"], (
+        "a identificação da pista tem de existir só no pouso.yml; encontrada em: "
+        + ", ".join(com_a_variavel)
+    )
+
+
+def test_a_pista_continua_usando_o_MESMO_portao():
+    """A pista não pode ser mais permissiva que a catraca do agente."""
+    texto = (RAIZ / ".github" / "workflows" / "pouso.yml").read_text(encoding="utf-8")
+    assert "ci/mergear.py" in texto and "--confirmo" in texto
 
 
 # ---------------------------------------------------------------------------

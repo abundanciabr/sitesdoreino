@@ -179,6 +179,12 @@ jobs:
         if: steps.portao.outputs.codigo == '0' && steps.alvo.outputs.vazio != '1'
         env:
           GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
+          # A PISTA SE IDENTIFICA. Desde 29/08/2026 (Onda 4, fatia 3 — decisão
+          # do mantenedor, registro 20260829-006) o `ci/mergear.py` RECUSA
+          # mergear para qualquer um que não seja a pista: o agente pede pouso
+          # e vai embora. Esta variável é a identificação, e ela existe num
+          # lugar só — aqui. Guarda: ci/tests/test_mergear.py.
+          MERGEAR_SOU_A_PISTA: 'sim'
         run: |
           set -euo pipefail
           # O MESMO portão que o agente usa: a pista não pode ser mais
