@@ -701,3 +701,53 @@ def test_a_ordem_da_lista_nao_salva_um_vermelho_recente() -> None:
         ]
     )
     assert _pior(mergear.checar_checks(pr)) is Estado.FAIL
+
+
+def test_skip_do_job_de_matriz_e_lido_pelo_prefixo(monkeypatch):
+    """`ci-celula (admin)` é o MESMO check que `ci-celula`, com a matriz.
+
+    Sem isto, o primeiro PR que pulasse uma célula reprovaria com "pulo não
+    declarado" — e o motivo verdadeiro (o nome do job ganhou um sufixo) não
+    apareceria em lugar nenhum.
+    """
+    pr = _pr()
+    pr["statusCheckRollup"] = [
+        {
+            "__typename": "CheckRun",
+            "name": "ci-celula (admin)",
+            "status": "COMPLETED",
+            "conclusion": "SKIPPED",
+        },
+        {
+            "__typename": "CheckRun",
+            "name": "muralhas",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+        },
+        {
+            "__typename": "CheckRun",
+            "name": "ci-celula-gate",
+            "status": "COMPLETED",
+            "conclusion": "SUCCESS",
+        },
+    ]
+    resultados = mergear.checar_checks(pr)
+    do_skip = [r for r in resultados if "ci-celula (admin)" in r.nome]
+    assert do_skip and do_skip[0].estado is Estado.SKIP, [
+        (r.nome, r.estado) for r in resultados
+    ]
+
+
+def test_skip_de_check_desconhecido_continua_reprovando(monkeypatch):
+    """A lista de skips permitidos continua FECHADA — o prefixo não a abre."""
+    pr = _pr()
+    pr["statusCheckRollup"] = [
+        {
+            "__typename": "CheckRun",
+            "name": "inventado (algo)",
+            "status": "COMPLETED",
+            "conclusion": "SKIPPED",
+        }
+    ]
+    resultados = mergear.checar_checks(pr)
+    assert any(r.estado is Estado.FAIL for r in resultados)
