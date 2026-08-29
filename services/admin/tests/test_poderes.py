@@ -1,4 +1,4 @@
-"""Administrador por botão, e apagar de vez — `DECISAO-administradores-e-apagar`.
+"""Administrador por botão — `DECISAO-administradores-e-apagar`.
 
 O mantenedor pediu as duas em 28/08/2026, **contra a recomendação do agente e
 com o preço apresentado antes da escolha**. A lei §2 escreve o que se perdeu:
@@ -18,19 +18,25 @@ escrita justamente porque promessa não basta aqui:
 4. `test_ninguem_se_remove_sozinho` — um clique errado do único administrador
    deixaria a casa sem dono.
 
-E `test_apagar_exige_a_palavra_digitada`: é a única ação da tela sem desfazer,
-e esta área não tem JavaScript (o CSP bloqueia script inline), então a
-confirmação tem de ser algo que funcione sem ele.
+**A OUTRA metade daquela lei foi revertida em 29/08/2026** pela
+`DECISAO-a-ficha-nao-se-apaga.md`: o botão que apagava a ficha de vez saiu, e
+com ele a rota, o método de cliente e a porta da `alunos`. Os testes que
+mediam o apagar deram lugar a `test_nao_existe_caminho_para_apagar` — o que
+precisa de guarda agora é a AUSÊNCIA, porque um botão removido volta com uma
+linha de template e ninguém percebe.
 """
+
+import inspect
 
 import httpx
 import pytest
 import respx
 from django.db import DatabaseError
 from django.test import Client
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 
 from apps.auditoria.models import Registro
+from apps.core.clients import AlunosClient
 from apps.core.models import Administrador
 from apps.core.porta import _emails_autorizados
 
@@ -215,76 +221,81 @@ def test_quem_nao_e_admin_nao_promove_ninguem():
     assert Administrador.objects.count() == 0
 
 
-# ------------------------------------------------------------- apagar de vez
+# ------------------------------------------------------- a ficha NAO se apaga
+#
+# `DECISAO-a-ficha-nao-se-apaga.md`, 29/08/2026: *"Eu quero que o cadastro do
+# aluno NUNCA SEJA APAGADO"*. Os testes abaixo medem uma AUSÊNCIA, e por isso
+# eles existem: o que foi removido daqui — uma rota, um método, um formulário —
+# volta com uma linha em cada arquivo, e nenhum teste comum notaria.
 
 
-def _apagar_responde(status=204):
-    return respx.delete(f"{ALUNOS}/matriculas/{ALVO}").mock(
-        return_value=httpx.Response(status)
-    )
+def test_nao_existe_caminho_para_apagar():
+    """As TRÊS camadas, e não só o botão.
 
-
-@pytest.mark.django_db
-@respx.mock
-def test_apagar_com_a_palavra_certa_apaga_e_registra():
-    rota = _apagar_responde()
-    r = _dentro().post(
-        reverse("escola_aluno_apagar"), {"alvo": ALVO, "confirmacao": "APAGAR"}
-    )
-
-    assert rota.called
-    assert r["Location"].endswith("?resultado=apagado")
-    linha = Registro.objects.get()
-    assert linha.acao == Registro.APAGAR
-    assert linha.alvo == ALVO
-
-
-@pytest.mark.django_db
-@respx.mock
-@pytest.mark.parametrize("palavra", ["", "apagar tudo", "sim", "APAGA"])
-def test_apagar_exige_a_palavra_digitada(palavra):
-    """A única ação da tela sem desfazer.
-
-    E a confirmação NÃO pode ser um `confirm()` do navegador: esta área serve
-    com `script-src 'self'` e sem arquivo de JS — um `onclick` inline
-    simplesmente não roda, e o botão apagaria no primeiro clique.
+    Tirar só o `<form>` do template deixaria a rota viva para quem soubesse o
+    endereço; tirar a rota deixaria o método do cliente pronto para a próxima
+    view que alguém escrevesse. A capacidade sai inteira ou não sai.
     """
-    rota = _apagar_responde()
-    r = _dentro().post(
-        reverse("escola_aluno_apagar"), {"alvo": ALVO, "confirmacao": palavra}
-    )
+    with pytest.raises(NoReverseMatch):
+        reverse("escola_aluno_apagar")
 
-    assert not rota.called, f"apagou com a confirmação {palavra!r}"
-    assert Registro.objects.count() == 0
-    assert r["Location"].endswith("?resultado=confirme")
+    assert not hasattr(AlunosClient, "apagar_aluno")
+    # Nenhum método desta classe fala DELETE com a `alunos` — a porta que
+    # apagava saiu do contrato dela na mesma leva.
+    assert ".delete(" not in inspect.getsource(AlunosClient)
 
 
-@pytest.mark.django_db
 @respx.mock
-def test_a_palavra_aceita_minuscula_e_espaco():
-    """Exigir a palavra é proteção contra clique errado, não pegadinha."""
-    rota = _apagar_responde()
-    _dentro().post(
-        reverse("escola_aluno_apagar"), {"alvo": ALVO, "confirmacao": " apagar "}
-    )
-    assert rota.called
+def test_a_tela_nao_oferece_apagar_e_explica_a_ausencia():
+    """A tela não fica só sem o botão: ela CONTA o que aconteceu com ele.
 
-
-@pytest.mark.django_db
-@respx.mock
-def test_a_auditoria_do_apagar_nao_guarda_nada_da_pessoa():
-    """O que sobra de alguém que pediu para sumir do sistema.
-
-    Uma linha dizendo que a ficha X foi apagada, por quem e quando — e mais
-    nada. É o máximo que o direito da pessoa permite e o mínimo para a
-    auditoria continuar respondendo "o que foi feito nesta área?".
+    Sem essa linha, o mantenedor procuraria por um botão que ele mesmo pediu na
+    véspera — e a explicação é onde mora a única coisa que ele precisa saber:
+    que um pedido formal de exclusão de dados existe e passa por mim.
     """
-    _apagar_responde()
-    _dentro().post(
-        reverse("escola_aluno_apagar"), {"alvo": ALVO, "confirmacao": "APAGAR"}
+    respx.get(f"{ALUNOS}/pre-matriculas", params={"status": "aguardando"}).mock(
+        return_value=httpx.Response(200, json=[])
     )
+    respx.get(f"{ALUNOS}/pre-matriculas", params={"status": "recusada"}).mock(
+        return_value=httpx.Response(200, json=[])
+    )
+    respx.get(f"{ALUNOS}/matriculas").mock(
+        return_value=httpx.Response(
+            200,
+            json=[
+                {
+                    "id": ALVO,
+                    "site_id": "escola-a",
+                    "email": "aluno@exemplo.com",
+                    "nome_completo": "Aluno Exemplo",
+                    "whatsapp": "(96) 99999-0000",
+                    "turma": None,
+                    "comprou_em": None,
+                    "status": "ativa",
+                    "origem": "liberado",
+                    "criada_em": "2026-08-20T10:00:00Z",
+                }
+            ],
+        )
+    )
+    html = _dentro().get("/escola/alunos/").content.decode()
 
-    linha = Registro.objects.get()
+    assert "escola/alunos/apagar" not in html
+    assert "Apagar esta ficha" not in html
+    assert "Nenhuma ficha se apaga por aqui" in html
+    # O caminho que SUBSTITUI o botão continua na tela, com a palavra do
+    # mantenedor: tirar o acesso é o estado "Ex-aluno" do seletor.
+    assert "Ex-aluno" in html
+
+
+@pytest.mark.django_db
+def test_a_auditoria_nunca_ganha_campo_de_dado_da_pessoa():
+    """A regra do `DECISAO-administradores-e-apagar` §4 que SOBREVIVEU.
+
+    Esta tabela é append-only por trigger: um campo novo que guardasse nome ou
+    telefone não teria como ser corrigido depois. O teste morava junto do
+    apagar; sem ele, a única prova da regra iria embora com o botão.
+    """
     campos = {c.name for c in Registro._meta.get_fields()}
     assert campos == {
         "id",
@@ -296,31 +307,18 @@ def test_a_auditoria_do_apagar_nao_guarda_nada_da_pessoa():
         "desfecho",
         "detalhe",
     }
-    assert linha.detalhe == ""
 
 
-@pytest.mark.django_db
-@respx.mock
-def test_apagar_que_nao_chegou_e_registrado_como_nao_respondeu():
-    """Irreversível do outro lado ⇒ "talvez tenha acontecido" precisa de nome.
+def test_o_verbo_apagar_continua_no_vocabulario_da_auditoria():
+    """A tabela não se edita — nem para tirar um verbo de circulação.
 
-    Dizer "não deu certo" faria o mantenedor tentar de novo achando que a
-    primeira não valeu.
+    Se alguma linha antiga usou `apagar`, ela precisa continuar legível. O
+    verbo fica; o que não existe mais é o caminho que o produzia.
     """
-    respx.delete(f"{ALUNOS}/matriculas/{ALVO}").mock(
-        side_effect=httpx.ConnectError("recusou")
-    )
-    r = _dentro().post(
-        reverse("escola_aluno_apagar"), {"alvo": ALVO, "confirmacao": "APAGAR"}
-    )
-
-    assert Registro.objects.get().desfecho == Registro.NAO_RESPONDEU
-    assert r["Location"].endswith("?resultado=nao-deu")
+    assert Registro.APAGAR in dict(Registro.ACOES)
 
 
 @respx.mock
-@pytest.mark.parametrize(
-    "rota", ["escola_aluno_apagar", "escola_admin_promover", "escola_admin_remover"]
-)
-def test_as_tres_rotas_novas_nao_atendem_GET(rota):
+@pytest.mark.parametrize("rota", ["escola_admin_promover", "escola_admin_remover"])
+def test_as_rotas_de_poder_nao_atendem_GET(rota):
     assert _dentro().get(reverse(rota)).status_code == 405

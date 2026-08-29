@@ -174,26 +174,12 @@
       </div>
 
       {% comment %}
-      APAGAR pede a palavra digitada, e não uma caixa de confirmação: esta área
-      não tem JavaScript nenhum (o CSP dela bloqueia script inline), e um
-      `confirm()` simplesmente não apareceria. Digitar é mais chato de propósito
-      — é a única ação da tela que não tem desfazer.
+      O formulario de APAGAR morava aqui, e a ausencia dele e a lei:
+      `DECISAO-a-ficha-nao-se-apaga.md` (29/08/2026) tirou do sistema a
+      capacidade de apagar uma ficha — a rota, o metodo de cliente e a porta da
+      `alunos` sairam junto. Tirar o acesso e o `<select>` de situacao ali em
+      cima, no estado "Ex-aluno". Guarda: tests/test_poderes.py.
       {% endcomment %}
-      <form class="decidir" method="post" action="{% url 'escola_aluno_apagar' %}">
-        {% csrf_token %}
-        <input type="hidden" name="alvo" value="{{ pessoa.id }}">
-        <label class="rotulo" for="apagar-{{ pessoa.id }}">
-          <b>Apagar NÃO é o mesmo que "Ex-aluno".</b>
-          Ex-aluno tira o acesso e a ficha continua aqui, com tudo o que a
-          pessoa preencheu — e voltar é um clique. Apagar some com a ficha,
-          e não há desfazer: para voltar,
-          a pessoa precisa pedir entrada do zero.
-          Escreva APAGAR para liberar o botão:
-        </label>
-        <input id="apagar-{{ pessoa.id }}" type="text" name="confirmacao"
-               autocomplete="off" placeholder="APAGAR">
-        <button class="nao" type="submit">Apagar esta ficha para sempre</button>
-      </form>
     </div>
     {% endfor %}
   </div>
@@ -219,6 +205,21 @@
     administrador da plataforma, era preciso ter as chaves do servidor. Agora
     não é mais — e por isso toda promoção e toda remoção ficam registradas, num
     registro que ninguém consegue editar nem apagar.
+  </p>
+
+  <p style="margin-top:16px" class="aviso">
+    <b>Nenhuma ficha se apaga por aqui — e isso é de propósito.</b>
+    Você decidiu em 29/08/2026 que o cadastro de um aluno nunca é destruído:
+    quem sai vira <b>Ex-aluno</b> no seletor de situação ali em cima, perde o
+    acesso na hora e continua com a ficha inteira aqui. Se essa pessoa pedir
+    para voltar, o pedido dela cai na fila de espera com a tarja de ex-aluno e
+    o link do prontuário — você decide de novo, sabendo de tudo.
+    <br><br>
+    O botão de apagar de vez que existiu por um dia foi retirado, e com ele a
+    porta que apagava. <b>Se algum dia uma pessoa exigir por escrito que os
+    dados dela sejam eliminados</b> — a lei brasileira de dados dá esse direito
+    —, me peça: isso é raro, é irreversível, e merece ser feito com cuidado, e
+    não com um clique de rotina.
   </p>
 
   <p style="margin-top:28px" class="aviso">
