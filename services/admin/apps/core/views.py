@@ -306,6 +306,214 @@ def peneirar(linhas, procurado: str = "", estado: str = ""):
     return resultado
 
 
+# --------------------------------------------------------- a jornada do aluno
+#
+# `docs/decisoes/DECISAO-o-mapa-da-jornada-do-aluno.md` (29/08/2026). O
+# mantenedor pediu *"um tipo de mapa da jornada do aluno para que ficasse mais
+# facil de gerencia-los"*, depois de descobrir — com a conta dele — que nao
+# sabia dizer em que estado uma pessoa removida tinha ficado.
+#
+# **Esta tela nao guarda nada e nao conta nada por conta propria.** Os numeros
+# saem de `contar_a_escola()`, a MESMA funcao que alimenta os cartoes de
+# `/escola/alunos/`, e cada parada leva para aquela lista ja filtrada. Uma
+# segunda contagem aqui seria uma segunda verdade sobre quantos alunos existem —
+# e as duas discordariam no primeiro estado novo, com o mantenedor lendo a que
+# abrisse primeiro. E a lei anti-duplicacao do `CLAUDE.md`, aplicada dentro da
+# mesma celula.
+
+#: As faixas da jornada, na ordem em que uma pessoa as vive. Cada parada diz o
+#: que a pessoa VE e como se sai dali — e isso que transforma um mapa numa
+#: ferramenta de gestao, em vez de um diagrama bonito.
+#:
+#: `slug` casa com o das contagens (`TIPOS_DE_ALUNO`); `estado` e o valor que
+#: vai no `?estado=` da lista. Parada sem `slug` nao tem numero — `visitante` e
+#: `cadastrado` nao sao matriculas, e inventar um zero para elas seria a tela
+#: afirmando que ninguem entrou no site hoje.
+FAIXAS_DA_JORNADA = (
+    {
+        "nome": "Fora da escola",
+        "paradas": (
+            {
+                "titulo": "Visitante",
+                "slug": None,
+                "estado": None,
+                "acesso": False,
+                "quem": "Abriu o site e nao entrou com o Google.",
+                "ve": "O convite para entrar, e nada mais.",
+                "sai": "Entrando com a conta do Google.",
+            },
+            {
+                "titulo": "Cadastrado",
+                "slug": None,
+                "estado": None,
+                "acesso": False,
+                "quem": "Entrou com o Google e nunca pediu para estudar aqui.",
+                "ve": "O convite para pedir entrada, que leva ao formulario.",
+                "sai": "Pedindo entrada — e ai ela cai na sua fila.",
+            },
+        ),
+    },
+    {
+        "nome": "Pedindo entrada",
+        "paradas": (
+            {
+                "titulo": "Aguardando",
+                "slug": "aguardando-aprovacao",
+                "estado": None,
+                "acesso": False,
+                "quem": "Preencheu o formulario e espera a sua decisao.",
+                "ve": "Ha quantos dias esta esperando.",
+                "sai": "Voce liberando ou recusando, na fila da lista de alunos.",
+            },
+            {
+                "titulo": "Recusado",
+                "slug": "recusados",
+                "estado": None,
+                "acesso": False,
+                "quem": "Voce disse nao, e escreveu o motivo.",
+                "ve": "O motivo que voce escreveu, e que pode pedir de novo.",
+                "sai": "Pedindo de novo — o pedido volta limpo para a fila.",
+            },
+        ),
+    },
+    {
+        "nome": "Dentro da escola",
+        "paradas": (
+            {
+                "titulo": "Aluno",
+                "slug": "ativos",
+                "estado": "ativa",
+                "acesso": True,
+                "quem": "Tem acesso agora.",
+                "ve": "O caminho da Caixa de Sugestoes, para votar e propor.",
+                "sai": "Voce mudando a situacao dela no formulario do aluno.",
+            },
+            {
+                "titulo": "Reembolsado",
+                "slug": "reembolsados",
+                "estado": "reembolsada",
+                "acesso": True,
+                "quem": "Devolveu o dinheiro e CONTINUA entrando.",
+                "ve": "O mesmo que um aluno — foi o que voce decidiu em 24/08.",
+                "sai": "Voce mudando a situacao dela.",
+            },
+        ),
+    },
+    {
+        "nome": "Depois",
+        "paradas": (
+            {
+                "titulo": "Pausado",
+                "slug": "pausados",
+                "estado": "suspensa",
+                "acesso": False,
+                "quem": "Voce pausou o acesso; volta com um clique.",
+                "ve": "Que e temporario e volta sozinho — sem formulario nenhum.",
+                "sai": "Voce pondo a situacao de volta em Ativo.",
+            },
+            {
+                "titulo": "Ex-aluno",
+                "slug": "encerrados",
+                "estado": "encerrada",
+                "acesso": False,
+                "quem": "Saiu da escola. A ficha continua aqui, inteira.",
+                "ve": "Que o acesso acabou, e o botao Pedir para voltar.",
+                "sai": (
+                    "Ela pedindo para voltar (nasce uma ficha nova), ou voce "
+                    "pondo a situacao em Ativo na ficha antiga."
+                ),
+            },
+        ),
+    },
+)
+
+
+def contar_a_escola(cliente):
+    """Uma leitura da escola: as contagens, as filas e os alunos.
+
+    Existe porque DUAS telas precisam dos mesmos numeros — a lista de alunos e o
+    mapa da jornada. Duas montagens a mao divergiriam no primeiro estado novo, e
+    o mantenedor leria a que abrisse primeiro sem saber que a outra discorda.
+    E a lei anti-duplicacao aplicada dentro da celula.
+
+    **`None` significa "nao consegui perguntar", e nunca vira zero.** Um
+    "nao sei" mostrado como 0 faria a tela dizer *"ninguem esta esperando
+    aprovacao"* quando a verdade e que a pergunta nao chegou
+    (`RETROSPECTIVA-FASE-D.md` §1).
+
+    UMA chamada para os quatro estados de gestao, contados aqui: quatro
+    chamadas filtradas custariam quatro idas a rede para montar a mesma tela.
+    """
+    filas = {
+        "aguardando": cliente.fila("aguardando"),
+        "recusada": cliente.fila("recusada"),
+    }
+    alunos = cliente.alunos()
+
+    def _quantos(status):
+        if alunos is None:
+            return None
+        return sum(1 for a in alunos if a.get("status") == status)
+
+    contagens = {
+        "aguardando-aprovacao": (
+            None if filas["aguardando"] is None else len(filas["aguardando"])
+        ),
+        "recusados": (None if filas["recusada"] is None else len(filas["recusada"])),
+        "ativos": _quantos("ativa"),
+        "pausados": _quantos("suspensa"),
+        "encerrados": _quantos("encerrada"),
+        "reembolsados": _quantos("reembolsada"),
+    }
+    return contagens, filas, alunos
+
+
+def jornada_com_contagem(contagens: dict) -> list[dict]:
+    """O mapa + o que a `alunos` respondeu NESTA requisicao.
+
+    Mesma disciplina de `tipos_com_contagem`: o numero nao mora no catalogo do
+    modulo. Um dicionario de modulo mutado por requisicao e estado compartilhado
+    entre pedidos de pessoas diferentes.
+
+    Parada sem `slug` fica sem numero — e sem numero e diferente de zero. Nao ha
+    como contar visitantes nem cadastrados a partir das matriculas (nao existe
+    matricula para eles), e um zero ali seria a tela afirmando que ninguem
+    entrou no site.
+    """
+    faixas = []
+    for faixa in FAIXAS_DA_JORNADA:
+        paradas = []
+        for parada in faixa["paradas"]:
+            copia = dict(parada)
+            copia["quantidade"] = (
+                contagens.get(parada["slug"]) if parada["slug"] else None
+            )
+            copia["contavel"] = parada["slug"] is not None
+            paradas.append(copia)
+        faixas.append({"nome": faixa["nome"], "paradas": paradas})
+    return faixas
+
+
+@require_GET
+def escola_jornada(request):
+    """O mapa da jornada, com os numeros de agora.
+
+    Fail-OPEN como o resto da area: a `alunos` fora do ar deixa as paradas sem
+    numero e a pagina abre igual — o MAPA continua verdadeiro mesmo quando a
+    contagem nao chega, porque ele descreve as regras, nao as pessoas.
+    """
+    contagens, _filas, alunos = contar_a_escola(AlunosClient())
+    return render(
+        request,
+        "admin/escola_jornada.html",
+        {
+            "admin": request.admin,
+            "faixas": jornada_com_contagem(contagens),
+            "nao_consigo_contar": alunos is None,
+        },
+    )
+
+
 @require_GET
 def escola_alunos(request):
     """A tela da escola: quem espera, e quem já é aluno.
@@ -319,29 +527,11 @@ def escola_alunos(request):
     porta só, a do painel. Quem estiver lendo isto pensando em reusar estes
     dados em outra tela está prestes a quebrar aquela promessa.
     """
-    cliente = AlunosClient()
-    filas = {
-        "aguardando": cliente.fila("aguardando"),
-        "recusada": cliente.fila("recusada"),
-    }
+    # A leitura da escola mora em UMA função, e não aqui: o mapa da jornada
+    # mostra exatamente estes números, e duas contagens à mão divergiriam no
+    # primeiro estado novo (`DECISAO-o-mapa-da-jornada-do-aluno.md` §2).
+    contagens, filas, alunos = contar_a_escola(AlunosClient())
     esperando = filas["aguardando"]
-    # UMA chamada para os quatro estados de gestão, contados aqui — quatro
-    # chamadas filtradas custariam quatro idas à rede para montar a mesma tela.
-    alunos = cliente.alunos()
-
-    def _quantos(status):
-        if alunos is None:
-            return None
-        return sum(1 for a in alunos if a.get("status") == status)
-
-    contagens = {
-        "aguardando-aprovacao": None if esperando is None else len(esperando),
-        "recusados": (None if filas["recusada"] is None else len(filas["recusada"])),
-        "ativos": _quantos("ativa"),
-        "pausados": _quantos("suspensa"),
-        "encerrados": _quantos("encerrada"),
-        "reembolsados": _quantos("reembolsada"),
-    }
 
     # A coluna da escola só aparece quando há MAIS DE UMA — com uma só, o
     # identificador interno seria ruído numa tela feita para leigo. Contada

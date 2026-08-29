@@ -85,6 +85,19 @@ primeira versão deste arquivo, e o teste pegou.
     .decidir button.sim { color: var(--verde); border-color: var(--verde); }
     .decidir button.nao { color: var(--vermelho); border-color: var(--vermelho); }
     .recado { border: 1px solid var(--azul); border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; }
+    /* [JORNADA] O mapa da jornada do aluno. A cor da tarja responde a UMA
+       pergunta — essa pessoa entra ou nao entra? —, que e a unica que o
+       mantenedor faz o dia todo. Verde e vermelho aqui NAO significam
+       "bom" e "ruim": um ex-aluno nao e um erro. Significam so a porta
+       aberta e a porta fechada. */
+    .faixa { font-size: 13px; text-transform: uppercase; letter-spacing: .08em;
+             color: var(--texto-3); margin: 28px 0 10px; font-weight: 600; }
+    .parada { border-top: 3px solid var(--linha); }
+    .parada.entra { border-top-color: var(--verde); }
+    .parada.nao-entra { border-top-color: var(--texto-3); }
+    .parada .acesso { font-size: 12px; font-weight: 600; margin-top: 2px; }
+    .parada.entra .acesso { color: var(--verde); }
+    .parada.nao-entra .acesso { color: var(--texto-3); }
     /* [BUSCA] A peneira da lista de alunos. Em coluna no celular e em linha a
        partir de 560px: o campo de procurar precisa de largura para caber um
        e-mail, e um <select> espremido ao lado dele fica ilegível justamente na

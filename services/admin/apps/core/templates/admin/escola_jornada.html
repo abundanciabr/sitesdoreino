@@ -1,0 +1,94 @@
+{% extends "admin/base.html" %}
+{% block titulo %}A jornada do aluno{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a>
+  <h1>A jornada do aluno</h1>
+  <p class="subtitulo">Todo caminho que uma pessoa pode percorrer entre chegar no site e sair da escola — com quantas estão em cada ponto agora.</p>
+
+  {% comment %}
+  [JORNADA] `DECISAO-o-mapa-da-jornada-do-aluno.md` (29/08/2026).
+
+  Esta página NÃO guarda nada e NÃO conta nada por conta própria: os números
+  vêm de `contar_a_escola()`, a mesma função que alimenta os cartões da lista de
+  alunos, e cada parada leva para aquela lista já filtrada. Uma segunda contagem
+  aqui seria uma segunda verdade sobre quantos alunos existem, e as duas
+  discordariam no primeiro estado novo — com o mantenedor lendo a que abrisse
+  primeiro. Lei anti-duplicação do `CLAUDE.md`, aplicada dentro da célula.
+
+  As paradas SEM número (visitante, cadastrado) não são falha: não existe
+  matrícula para elas, e um zero ali seria a tela afirmando que ninguém entrou
+  no site. `contavel` separa "não há como contar" de "contei e deu zero".
+  {% endcomment %}
+
+  {% if nao_consigo_contar %}
+  <p class="aviso">
+    <b>O mapa está certo; os números é que não chegaram.</b>
+    Não consegui perguntar à parte do sistema que guarda os alunos — falta a
+    senha de par entre esta área e ela, ou ela está fora do ar neste instante.
+    As regras abaixo continuam valendo do mesmo jeito.
+  </p>
+  {% endif %}
+
+  {% for faixa in faixas %}
+  <h2 class="faixa">{{ faixa.nome }}</h2>
+  <div class="cartoes">
+    {% for parada in faixa.paradas %}
+    <div class="cartao parada {% if parada.acesso %}entra{% else %}nao-entra{% endif %}">
+      <div class="rotulo">{{ parada.titulo }}</div>
+
+      {% comment %}
+      `is None` e não `{% if parada.quantidade %}`: zero é falso em template, e
+      um zero MEDIDO — "perguntei e não há ninguém" — cairia no ramo do "não
+      sei". São respostas opostas à pergunta do mantenedor.
+      {% endcomment %}
+      {% if not parada.contavel %}
+      <div class="valor vazio">&mdash;</div>
+      {% elif parada.quantidade is None %}
+      <div class="valor vazio">&mdash;</div>
+      {% else %}
+      <div class="valor">{{ parada.quantidade }}</div>
+      {% endif %}
+
+      <div class="acesso">{% if parada.acesso %}Entra na escola{% else %}Não entra{% endif %}</div>
+
+      <div class="nota">{{ parada.quem }}</div>
+      <div class="nota"><b>Vê:</b> {{ parada.ve }}</div>
+      <div class="nota"><b>Sai daqui:</b> {{ parada.sai }}</div>
+
+      {% if parada.estado %}
+      <div class="nota">
+        <a href="{% url 'escola_alunos' %}?estado={{ parada.estado }}">Ver quem está aqui &rarr;</a>
+      </div>
+      {% elif parada.contavel %}
+      <div class="nota">
+        <a href="{% url 'escola_alunos' %}">Ver na fila &rarr;</a>
+      </div>
+      {% elif not parada.contavel %}
+      <div class="nota">
+        Sem matrícula, então sem lista: o sistema só conta quem tem ficha.
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  <p style="margin-top:28px" class="aviso">
+    <b>Nenhuma ficha se apaga.</b>
+    Tirar o acesso de alguém tem uma forma só — pôr a situação em <b>Ex-aluno</b>
+    no formulário do aluno. A ficha continua aqui com a data da saída, e quem sai
+    pode pedir para voltar: aí nasce uma ficha nova, e a antiga vira história no
+    prontuário. Você decidiu isso em 29/08/2026.
+  </p>
+
+  <p style="margin-top:16px">
+    <a class="botao" href="{% url 'escola_alunos' %}">Gerenciar os alunos &rarr;</a>
+  </p>
+</div>
+{% endblock %}

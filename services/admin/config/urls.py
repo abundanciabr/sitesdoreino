@@ -19,6 +19,7 @@ from apps.core.views import (
     escola_admin_remover,
     escola_aluno_salvar,
     escola_alunos,
+    escola_jornada,
     escola_decidir,
     escola_prontuario,
     healthz,
@@ -98,6 +99,11 @@ urlpatterns = [
     path("caixa/ideia/<int:ideia_id>/avaliacao", avaliar_ideia, name="caixa_avaliar"),
     path("caixa/ideia/<int:ideia_id>/assinatura", assinar_obra, name="caixa_assinar"),
     path("escola/", escola, name="escola"),
+    # [JORNADA] O mapa, com os numeros de agora
+    # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro
+    # dela: sao perguntas diferentes — "como funciona a escola?" e "quem esta
+    # nela?" — e o mapa precisa abrir sem que ninguem role uma lista.
+    path("escola/jornada/", escola_jornada, name="escola_jornada"),
     path("escola/alunos/", escola_alunos, name="escola_alunos"),
     # [PRONTUARIO] A historia de UMA pessoa (`DECISAO-a-ficha-nao-se-apaga` §5).
     # GET, e o e-mail vem por querystring: esta tela so PERGUNTA, nao decide
