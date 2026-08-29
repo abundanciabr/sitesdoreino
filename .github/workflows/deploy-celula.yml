@@ -133,8 +133,24 @@ jobs:
           # pasta ausente viraria uma imagem publicada em que o painel
           # simplesmente não existe — e o deploy ficaria VERDE. É a forma exata
           # do falso-verde que a RETROSPECTIVA-FASE-D lista como padrão 1.
-          test -f painel/painel.html || { echo "PAROU: painel/painel.html nao existe"; exit 1; }
           test -d painel/registros || { echo "PAROU: painel/registros/ nao existe"; exit 1; }
+          #
+          # A MATERIALIZACAO — este job e o ESCRITOR UNICO dos artefatos do
+          # painel (Onda 3, 28/08/2026). painel.html e livro-AAAAMM.js nao
+          # moram mais no Git: eram a colisao diaria entre robos, porque todo
+          # registro novo reescrevia os dois arquivos inteiros. Quem os
+          # constroi e a integracao — aqui, e na muralha de cada PR.
+          #
+          # Fail-CLOSED duas vezes: o gerador so escreve se TODOS os registros
+          # forem validos (senao sai 1 ou 2, e o `set -e` para o job), e a
+          # conferencia abaixo garante que a pagina existe de verdade antes de
+          # a imagem ser construida. Deploy que publica um painel ausente
+          # ficaria verde, e essa e a forma exata do falso-verde que a
+          # RETROSPECTIVA-FASE-D lista como padrao 1.
+          command -v node >/dev/null 2>&1 || { echo "PAROU: node nao esta disponivel para montar o painel"; exit 1; }
+          node painel/gerar_manifesto.js
+          test -f painel/painel.html || { echo "PAROU: o gerador terminou e painel/painel.html nao existe"; exit 1; }
+          ls painel/livro-*.js >/dev/null 2>&1 || { echo "PAROU: nenhum arquivo de mes foi gerado"; exit 1; }
           rm -rf services/admin/painel_embutido
           cp -R painel services/admin/painel_embutido
           echo "painel embutido: $(ls services/admin/painel_embutido/registros | wc -l) registros"

@@ -1,24 +1,41 @@
 #!/usr/bin/env bash
 # =============================================================================
-# MURALHA DO PAINEL — o livro de ocorrências não mente e não fica para trás.
+# MURALHA DO PAINEL — ela MATERIALIZA o painel e depois confere o que saiu.
 #
-# Roda em todo PR (via ci/ci.py --apenas muralhas). Quatro garantias:
-#   1. os artefatos estão EM DIA com painel/registros/ (gerar_manifesto
-#      --conferir — inclui a validação completa de cada registro, com a mesma
-#      logica.js que a página usa);
-#   2. a lógica que calcula as vistas continua passando no teste-guarda
+# Roda em todo PR (via ci/ci.py --apenas muralhas). Desde 28/08/2026 (Onda 3 do
+# PLANO-MESTRE-ROBOS-SEM-COLISAO.md) o painel tem ESCRITOR ÚNICO: a fonte é
+# `painel/registros/` (um arquivo por ocorrência, multiescritor, imune a
+# conflito por construção) e os artefatos — `painel.html` e `livro-AAAAMM.js` —
+# são construídos aqui, não commitados. Antes disso, todo PR que registrasse
+# qualquer coisa reescrevia os dois arquivos inteiros, e dois robôs no mesmo dia
+# colidiam sem ter escrito uma linha em comum (`armadilhas/156`: oito tentativas
+# para um PR de 4 arquivos entrar).
+#
+# Cinco garantias, nesta ordem:
+#   1. o painel CONSTRÓI a partir do livro (gerar_manifesto — inclui a validação
+#      completa de cada registro, com a mesma logica.js que a página usa). Se um
+#      registro estiver inválido, nada é escrito e a muralha reprova aqui;
+#   2. construir de novo dá exatamente os mesmos bytes (`--conferir` logo depois
+#      do build). Gerador não determinístico faria o mesmo livro virar imagens
+#      diferentes a cada deploy, sem nada acusar;
+#   3. a lógica que calcula as vistas continua passando no teste-guarda
 #      (quem vigia o vigia da tela);
-#   3. o gerador continua reprovando sabotagem (suíte adversarial dele);
-#   4. um verificador ESCRITO DE FORA confere o resultado do gerador contra o
-#      índice do Git (ci/verificar_painel.py).
+#   4. o gerador continua reprovando sabotagem (suíte adversarial dele);
+#   5. um verificador ESCRITO DE FORA confere o resultado contra o índice do Git
+#      (ci/verificar_painel.py) — e é ele que também reprova se um artefato
+#      gerado voltar a ser commitado.
 #
-# Por que o passo 4 existe, sendo que o 1 já confere: os passos 1 a 3 saem todos
-# do mesmo programa. O `--conferir` compara a saída do gerador com a
+# Por que o passo 5 existe, sendo que os anteriores já conferem: os passos 1 a 4
+# saem todos do mesmo programa. O `--conferir` compara a saída do gerador com a
 # recomputação do gerador — um bug que pule registros gera os dois lados errados
-# do mesmo jeito e fica verde. O passo 4 parte de `git ls-files`, em Python, sem
+# do mesmo jeito e fica verde. O passo 5 parte de `git ls-files`, em Python, sem
 # reusar uma linha de código do gerador, e compara CONJUNTOS de ids em vez de
 # contagens. É a resposta ao achado que três consultorias fizeram em 27/08/2026
 # (correlated failure) — e o único passo capaz de dizer que o gerador mentiu.
+#
+# As duas provas medem coisas DIFERENTES de propósito: passos 1+2 são byte a
+# byte (o build é reprodutível), o passo 5 é semântico (o conjunto de registros
+# do Git chegou inteiro à tela). Nenhuma cobre a outra.
 #
 # Nasceu da reforma dos painéis (26/08/2026): o painel antigo apodreceu porque
 # NENHUMA trava alcançava os dados — arquivos/ era gitignored e nenhum workflow
@@ -46,6 +63,7 @@ fi
 
 falhou=0
 for passo in \
+  "painel/gerar_manifesto.js" \
   "painel/gerar_manifesto.js --conferir" \
   "painel/testes/teste_logica.js" \
   "painel/testes/teste_gerador.js"; do
@@ -96,4 +114,5 @@ if [[ $codigo -ne 0 ]]; then
 fi
 
 if [[ $falhou -eq 1 ]]; then exit 1; fi
-echo "✅ Muralha do painel: artefatos em dia, guardas verdes, e o verificador de fora confirmou."
+echo "✅ Muralha do painel: construiu do livro, reconstruiu igual byte a byte, guardas"
+echo "   verdes, e o verificador de fora confirmou."

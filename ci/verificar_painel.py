@@ -131,6 +131,39 @@ def ids_no_git(p: Painel) -> set[str]:
     return {Path(n).stem for n in nomes}
 
 
+def gerados_no_indice(p: Painel) -> list[str]:
+    """Os artefatos GERADOS que voltaram ao índice do Git — devem ser zero.
+
+    Desde 28/08/2026 (Onda 3 do PLANO-MESTRE-ROBOS-SEM-COLISAO.md) o painel tem
+    **escritor único**: `painel/registros/` é a fonte multiescritor, e
+    `painel.html` + `livro-AAAAMM.js` são MATERIALIZADOS pela integração — na
+    muralha, a cada PR, e no deploy, antes de a imagem da célula `admin` ser
+    construída. Eles não viajam mais no Git.
+
+    O motivo é medido, não estético: enquanto viajavam, todo PR que registrasse
+    qualquer coisa reescrevia os dois arquivos inteiros, e dois robôs no mesmo
+    dia colidiam sem ter escrito uma linha em comum. Um PR de 4 arquivos levou
+    OITO tentativas para entrar (`armadilhas/156`).
+
+    Quem devolvesse um deles ao índice reabriria a colisão em silêncio — e
+    silêncio é o que este arquivo inteiro existe para não permitir. O
+    `.gitignore` já os mantém fora e `.githooks/pre-commit` avisa aqui na
+    máquina; esta função é o degrau que vale para todo mundo, porque roda na
+    muralha de todo PR.
+    """
+    exec_ = executar(
+        ["git", "ls-files", "--", "painel/painel.html", "painel/livro-*.js"],
+        cwd=p.raiz,
+        descricao="conferir se algum artefato gerado voltou ao índice do Git",
+    )
+    if exec_.exit_code != 0:
+        raise ErroDeInstrumentacao(
+            "git ls-files não conseguiu inspecionar os artefatos gerados",
+            f"exit {exec_.exit_code}" + chr(10) + exec_.stderr.strip(),
+        )
+    return [ln.strip() for ln in exec_.stdout.splitlines() if ln.strip()]
+
+
 def registros_da_fonte(p: Painel) -> dict[str, dict]:
     """Cada registro, executado a partir do arquivo-fonte. Chave = id."""
     exec_ = executar(
@@ -263,6 +296,16 @@ def conferir(p: Painel) -> list[str]:
 
     no_git = ids_no_git(p)
     fonte = registros_da_fonte(p)
+
+    # O ESCRITOR ÚNICO: gerado não mora no Git. Vem antes de tudo porque é a
+    # única divergência que não se conserta regenerando — conserta-se tirando o
+    # arquivo do índice.
+    for caminho in gerados_no_indice(p):
+        problemas.append(
+            f"{caminho}: artefato GERADO de volta no índice do Git. Desde a Onda 3 "
+            "quem materializa é a integração — commitá-lo devolve a colisão diária "
+            "entre robôs. Tire com: git rm --cached " + caminho
+        )
 
     # Registro que o Git conhece e que não executa é problema de CONTEÚDO, não de
     # instrumento: ele viajaria no PR e não existiria na tela.

@@ -11,10 +11,11 @@
 | Arquivo | O que é | Quem mexe |
 |---|---|---|
 | `painel.template.html` | **A FONTE da porta.** É este que se edita. Ele não tem dados — o gerador injeta o resumo e as regras nele. | Por PR, como código. |
-| `painel.html` | **GERADO** por `gerar_manifesto.js`: o template + as regras + o resumo, num arquivo só. Abrir o painel é **UM pedido**. Não guarda dado próprio: tudo é calculado dos registros. | Só o gerador. Nunca à mão. |
+| `painel.html` | **GERADO** por `gerar_manifesto.js`: o template + as regras + o resumo, num arquivo só. Abrir o painel é **UM pedido**. Não guarda dado próprio: tudo é calculado dos registros. **Não mora no Git** desde 28/08/2026 — quem o constrói é a integração. | Só o gerador — e só a integração commita nada disso (ela não commita: constrói). |
 | `registros/*.js` | **O livro de ocorrências.** Um arquivo pequeno por acontecimento. Só se ACRESCENTA — nunca se edita nem se apaga um registro existente. | Toda sessão, ao terminar trabalho relevante. |
-| `livro-AAAAMM.js` | **GERADO**, um por mês. O conteúdo dos registros daquele mês, buscado só quando você abre a Memória. Mês fechado nunca mais é reescrito — é isso que faz o Git parar de crescer com o livro. | Só o gerador. Nunca à mão. |
+| `livro-AAAAMM.js` | **GERADO**, um por mês. O conteúdo dos registros daquele mês, buscado só quando você abre a Memória. Mês fechado nunca mais é reescrito. **Não mora no Git** desde 28/08/2026. | Só o gerador. Nunca à mão. |
 | `logica.js` | As regras que calculam as vistas (caixa de entrada, frescor, capa). Pura, roda em Node e no navegador. | Por PR, com teste-guarda. |
+| `abrir-o-painel.cmd` | **Dois cliques** para ver o painel nesta máquina: monta os artefatos a partir do livro e abre a página. Fail-closed — sem Node, ele manda você para o painel do site em vez de abrir algo velho. | Por PR. |
 | `gerar_manifesto.js` | Valida TODOS os registros (fail-closed, com a MESMA `logica.js` da página) e monta `painel.html` + os meses. `--conferir` só confere (para CI). O nome ficou do tempo em que ele só escrevia um manifesto. | Por PR. |
 | `testes/` | Testes-guarda da lógica e do gerador — incluindo os casos em que devem REPROVAR. | Por PR. |
 | `../ci/verificar_painel.py` | **O verificador de FORA.** Confere os gerados contra o índice do Git (`git ls-files`), em Python, sem reusar uma linha do gerador. É ele que pega o que o `--conferir` não tem como pegar: um bug do próprio gerador. Roda na muralha. | Por PR. |
@@ -58,10 +59,15 @@
 });})();
 ```
 
-3. Rode `node painel/gerar_manifesto.js` (da raiz). Ele valida tudo e
-   regenera `painel.html` e o arquivo do mês. **Se ele reprovar, o registro está errado — conserte;
-   não contorne.**
-4. Confira abrindo `painel/painel.html` (ou o teste: `node painel/testes/teste_logica.js`).
+3. Rode `node painel/gerar_manifesto.js` (da raiz). Ele valida tudo e monta
+   `painel.html` e o arquivo do mês **na sua máquina**. **Se ele reprovar, o
+   registro está errado — conserte; não contorne.**
+4. Confira abrindo `painel/painel.html` (ou dois cliques em
+   `painel/abrir-o-painel.cmd`; ou o teste: `node painel/testes/teste_logica.js`).
+5. **Commite só o registro.** Os dois arquivos gerados estão no `.gitignore`
+   desde 28/08/2026 e **não viajam no PR** — quem os constrói é a integração.
+   Se você tentar forçá-los para dentro do commit, `.githooks/pre-commit` barra;
+   se passar, `ci/verificar_painel.py` reprova na muralha.
 
 ## As regras que a lógica impõe (não são convenção — são código com teste)
 
@@ -129,6 +135,24 @@
 - **O carimbo da geração** viaja na página e em cada mês. Se diferirem, os
   arquivos são de gerações diferentes — quase sempre OneDrive sincronizando
   pela metade — e a tela diz isso, em vez de acusar registro faltando.
+- **ESCRITOR ÚNICO (desde 28/08/2026 — Onda 3):** a fonte é multiescritor
+  (`registros/`: arquivo novo por ocorrência, imune a conflito por construção);
+  a MATERIALIZAÇÃO tem um escritor só (a integração: a muralha em todo PR, o
+  deploy antes de montar a imagem da `admin`); e quem confere é um terceiro
+  independente (`ci/verificar_painel.py`, em Python, partindo de `git ls-files`).
+  Nenhum robô commita arquivo gerado — `.gitignore` os mantém fora,
+  `.githooks/pre-commit` barra o `git add -f`, e o verificador reprova o PR se
+  um deles voltar ao índice. **O motivo é medido, não estético:** enquanto eles
+  viajavam no Git, todo PR que registrasse qualquer coisa reescrevia os dois
+  arquivos inteiros — dois robôs no mesmo dia colidiam sem ter escrito uma linha
+  em comum, e um PR de 4 arquivos levou OITO tentativas para entrar
+  (`armadilhas/156`). A lei vale para o que vier: índice, catálogo, resumo —
+  fonte que muitos escrevem, materialização que um só escreve, prova por fora.
+- **Duas provas diferentes, porque medem coisas diferentes:** a muralha constrói
+  e reconstrói (byte a byte: o build é reprodutível) E roda o verificador
+  semântico (o conjunto de ids do Git chegou inteiro à tela). Uma não cobre a
+  outra: um gerador que pule registros produz os dois lados errados do mesmo
+  jeito, e um build não determinístico passaria na comparação de conjuntos.
 - **Conflito em arquivo gerado não se resolve à mão:** `painel.html` e
   `livro-*.js` estão marcados com `-merge` no `.gitattributes`, então o Git para
   em vez de produzir uma junção plausível e errada. Apague, rode o gerador,
@@ -148,6 +172,9 @@
   novo com `responde_a`).
 - ❌ Editar `painel.html` ou `livro-AAAAMM.js` à mão (os dois são gerados —
   mexa em `painel.template.html` e em `painel/registros/`).
+- ❌ Commitar `painel.html` ou `livro-AAAAMM.js` (nem com `git add -f`). Eles são
+  materializados pela integração desde 28/08/2026; commitá-los devolve a colisão
+  diária entre robôs, que é o problema que a Onda 3 fechou.
 - ❌ Resolver conflito de Git num arquivo gerado editando o arquivo. Apague,
   rode o gerador, `git add`. A pasta de registros é a verdade; o gerado é sombra.
 - ❌ Fazer o custo de ABRIR o painel crescer com o tamanho do livro. Até 27/08/2026 a página pedia um arquivo por registro, e a rajada de dezenas de pedidos batia na porta da área administrativa até parte deles voltar como erro — o painel se recusava a abrir, com número diferente a cada vez, quatro vezes num dia. Hoje abrir é **um pedido**, sempre (guardas: `teste_gerador.js` mede com 1, 100 e 1.000 registros; `test_painel_vivo.py::test_o_livro_chega_em_UM_pedido_e_nao_um_por_registro` mede pelo servidor real).
