@@ -13,6 +13,7 @@
 
   <p style="margin-top:20px">
     <a class="botao" href="{% url 'escola_alunos' %}">Gerenciar os alunos &rarr;</a>
+    <a class="botao" href="{% url 'escola_jornada' %}">Ver a jornada do aluno &rarr;</a>
   </p>
 
   {% comment %}
@@ -23,7 +24,12 @@
   entra junto com a parte do sistema que sabe respondê-la.
   {% endcomment %}
   <p style="margin-top:28px" class="aviso">
-    <b>Por enquanto há uma porta só aqui: os alunos.</b>
+    <b>Duas portas, e as duas falam de alunos.</b>
+    Uma administra <b>as pessoas</b> (quem está esperando, quem é aluno, e o
+    formulário de cada um); a outra mostra <b>as regras</b> — por onde alguém
+    passa entre chegar no site e sair da escola, com quantas estão em cada
+    ponto agora.
+    <br><br>
     Turmas, aulas e certificados moram nesta mesma página quando existirem — e
     cada um só aparece depois que a parte do sistema que guarda aquele dado
     souber entregá-lo. Um atalho que abre uma tela vazia é pior que a ausência
