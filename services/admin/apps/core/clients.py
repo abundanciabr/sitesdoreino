@@ -667,3 +667,12 @@ class CaixaClient:
         return self._escrever(
             f"/gestao/ideias/{ideia_id}/changespec", {**campos, **quem}
         )
+
+    def arquivar(self, ideia_id: int, *, motivo: str, quem: dict):
+        """`DECISAO-arquivar-ideia.md`: some do aluno, nada se perde no banco."""
+        return self._escrever(
+            f"/gestao/ideias/{ideia_id}/arquivar", {"motivo": motivo, **quem}
+        )
+
+    def desarquivar(self, ideia_id: int, *, quem: dict):
+        return self._escrever(f"/gestao/ideias/{ideia_id}/desarquivar", quem)

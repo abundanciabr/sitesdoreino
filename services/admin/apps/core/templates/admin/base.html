@@ -267,6 +267,10 @@ primeira versão deste arquivo, e o teste pegou.
        area que libera trabalho de verdade, e nao deve parecer igual a "guardar
        a avaliacao". */
     .forma button.assinar { background: var(--amarelo); color: #0f1115; border-color: var(--amarelo); }
+    /* Arquivar tira algo de vista — não é "guardar", e não é "assinar obra"
+       (que libera trabalho). Borda vermelha discreta, sem preencher: é reversível,
+       não é a mesma gravidade de um "apagar de vez" que este projeto nem tem. */
+    .forma button.calado, .aviso .botao.calado { border-color: var(--vermelho); color: var(--vermelho); }
     .aviso.feito { border-style: solid; border-color: var(--verde); color: var(--texto-2); margin-bottom: 16px; }
 
     @media (max-width: 900px) {

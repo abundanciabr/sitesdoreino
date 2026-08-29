@@ -450,6 +450,31 @@ def assinar_obra(request, ideia_id: int):
     )
 
 
+@require_POST
+def arquivar_ideia(request, ideia_id: int):
+    """`DECISAO-arquivar-ideia.md`: some do quadro do aluno, nada se perde."""
+    motivo = (request.POST.get("motivo") or "").strip()
+    return _agir(
+        request,
+        ideia_id,
+        Registro.ARQUIVAR_IDEIA,
+        lambda: CaixaClient().arquivar(ideia_id, motivo=motivo, quem=_quem(request)),
+        "Arquivada. Ela some do quadro do aluno; nada foi apagado, e dá para "
+        "trazer de volta quando quiser.",
+    )
+
+
+@require_POST
+def desarquivar_ideia(request, ideia_id: int):
+    return _agir(
+        request,
+        ideia_id,
+        Registro.DESARQUIVAR_IDEIA,
+        lambda: CaixaClient().desarquivar(ideia_id, quem=_quem(request)),
+        "Restaurada. A ideia volta a aparecer para o aluno, exatamente como estava.",
+    )
+
+
 def _email(request) -> str:
     """O e-mail de quem está olhando — a porta já o resolveu pela `identidade`.
 
