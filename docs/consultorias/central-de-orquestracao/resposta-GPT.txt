@@ -1,0 +1,149 @@
+Isso já está dentro do que foi contratado — "kanban com limite de trabalho simultâneo" é uma das 13 ideias decididas — mas o que você está pedindo agora emenda quatro problemas que o kanban sozinho não resolve: onde a tarefa mora nos dados, como travar sem servidor, como calcular paralelo, e como sair direto pro prompt. Vou tratar os quatro juntos.
+
+**Onde isso entra no que já existe**
+
+Não é painel novo, é aba nova dentro do hub — a lei anti-proliferação já prevê isso. Ela mora na sala de máquinas (é operação: reivindicar, travar, sequenciar), com um resumo — quantas tarefas em cada coluna, quantas frentes paralelas ativas agora — refletido na capa, pra você ver de relance sem entrar no operacional.
+
+E ela usa o mesmo livro de ocorrências, não uma fonte de dados nova. A tarefa não vira um registro que alguém edita — vira uma cadeia de ocorrências, do mesmo jeito que o resto do painel já funciona. A coluna em que um card aparece é sempre calculada a partir da última ocorrência daquela tarefa, nunca um campo "status" sobrescrito.
+
+**O que falta no vocabulário de ocorrências**
+
+Ciclo de vida da tarefa como novos tipos: `tarefa_criada` (id, título, o que toca, de que depende, evidência exigida pra fechar), `tarefa_reivindicada` (id, robô, quando — essa é a trava, explico abaixo), `tarefa_em_auditoria` (mesma regra de ouro do Painel 10X: outra sessão audita antes de fechar), `tarefa_concluida` (com evidência crua) e `reivindicacao_expirada` (pra destravar uma reivindicação abandonada).
+
+Reivindicar e começar a executar são o mesmo instante, de propósito — não faz sentido travar depois que o robô já começou a mexer em código. Então a ocorrência de reivindicação é o que move o card pra "Em execução" na hora. Colunas: Fila → Pronta → Reivindicada/Em execução → Em auditoria → Concluída, com Bloqueada de lado.
+
+De brinde: isso continua sob a mesma trava vermelha (registros esperados vs. carregados) sem trabalho extra — não estamos criando um arquivo por tarefa, e sim reaproveitando o mesmo manifesto.js/livro.js/logica.js que o conserto de agosto já deixou pronto pra isso.
+
+**A trava: o próprio Git como árbitro**
+
+Sem servidor, só o controle de versão pode arbitrar "quem chegou primeiro". O truque: o nome do arquivo de reivindicação não leva timestamp, é fixo por tarefa — `reivindicacao-EVO-31.js`, sempre esse nome pra essa tarefa. Se dois robôs tentam reivindicar a mesma tarefa em branches diferentes, os dois criam um arquivo no mesmo caminho com conteúdo diferente — isso é exatamente o conflito que o Git se recusa a resolver sozinho. Quem mergear primeiro fica com a tarefa; o segundo é forçado a parar no conflito, e a resposta certa ali é abortar, não resolver o conflito e seguir os dois.
+
+É a mesma lógica por trás de lock via `mkdir` em shell script ou escrita condicional em bancos tipo DynamoDB: usar uma operação atômica de "criar se não existir" como trava, sem precisar de um serviço de lock de verdade. O custo de errar: se a reivindicação não for literalmente o primeiro commit do robô — se ele mexe em código antes de registrar a ocorrência — a trava não trava nada, os dois trabalham a tarde inteira e só descobrem o conflito na hora de subir. É o mesmo tipo de falha do incidente da tela vermelha: o desenho está certo no papel, quem decide se funciona é a disciplina de quando cada coisa é escrita. Por isso o protocolo tem que estar embutido, palavra por palavra, dentro do prompt que o robô recebe — não pode depender dele lembrar.
+
+Dois riscos reais, sem resposta ainda:
+1. Se a reivindicação precisar da sua aprovação manual de PR antes de valer, a trava para de ser em tempo real — vira tão rápida quanto sua fila de revisão. Pra funcionar de verdade, esse arquivo específico provavelmente precisa de uma pista rápida, parecida com a lane só-tradução que já existe no i18n: passa direto, sem esperar revisão, porque é mecanicamente verificável.
+2. Robô trava, a sessão cai, ninguém libera — a tarefa fica "reivindicada" pra sempre. Por isso a `reivindicacao_expirada`: referencia a reivindicação antiga, diz que passou de um tempo sem progresso, só então outro robô pode reivindicar de novo. Sem prazo de validade, uma trava morta trava pra sempre.
+
+**Paralelo e lote: falta um campo dizendo o que a tarefa toca**
+
+Pra responder "pode ir em paralelo ou tem que ser em lote", a tarefa precisa declarar o que mexe — um campo `toca`: `["quiz"]`, `["identidade", "alunos"]`. Duas tarefas com `toca` sem interseção e sem dependência entre si → seguras em paralelo, isso é a "onda" que o Painel 10X já fecha com auditoria. Duas tarefas com `toca` sobreposto, ou uma dependendo da outra → mesma frente, sequenciar — isso é o "lote", a mesma unidade que já aparece como Lote 4 no site: andam uma atrás da outra, não juntas.
+
+É a mesma lógica que sistemas de build (Make, Bazel) e pipeline de CI usam pra decidir o que roda em paralelo: um grafo de conflito, onde só entra junto o que não compartilha nada. O custo de errar é o mesmo viés que você já registrou sobre robô sob pressão relatar sucesso — vale igual aqui pra declarar menos do que realmente vai tocar. Declaração otimista libera duas tarefas em paralelo que colidem de verdade, e o estrago só aparece no merge. Por isso o `toca` declarado na reivindicação devia ser conferido depois contra o diff real do PR — mesmo princípio do `--conferir` que já existe — e divergência entre declarado e real vira alerta, não passa batido.
+
+**Kanban ou algo melhor**
+
+Kanban dá exatamente o que a trava precisa: estado discreto, com limite de trabalho simultâneo na coluna "Em execução" — a mesma disciplina da linha de montagem da Toyota, formalizada pra trabalho de conhecimento por David Anderson. Errar aqui é o que já aconteceu com o Painel 10X: limite que ninguém respeita vira decoração. O número certo não é padrão de livro-texto — é quantas sessões de robô você realmente supervisiona ao mesmo tempo, calibrado pelo ritmo que vocês já têm (o dia de 5 frentes em paralelo é um bom chão pra esse número).
+
+O que kanban sozinho não dá: nuance de dentro do "Em execução" — uma tarefa parada há dois dias na mesma coluna, sem saber se está "quase lá" ou "ainda brigando com o problema". É exatamente o que a Colina do Basecamp — já contratada — resolve, mas ela complementa, não troca: colina não tem estado discreto, não trava sozinha. Faz sentido como uma segunda ocorrência (`tarefa_posicao_colina`, escrita pelo próprio robô) só pras tarefas já em execução.
+
+**O prompt pronto**
+
+Pra cada card em "Pronta", o painel monta o texto pra colar direto na sessão do robô. Algo como:
+
+```
+TAREFA: EVO-31 — Sininho de avisos na Caixa de Sugestões
+Toca: alunos, mensageria
+Depende de: célula identidade (resolvido), Caixa de Sugestões (resolvido)
+Evidência exigida ao concluir: saída crua do teste + captura de tela do sininho
+
+PROTOCOLO — antes de qualquer código:
+1. Crie e comite arquivos/ocorrencias/reivindicacao-EVO-31.js
+2. Suba esse commit sozinho, antes de tocar em qualquer outro arquivo
+3. Se o push falhar porque o arquivo já existe: pare e reporte "EVO-31 já
+   reivindicada" — não prossiga, não resolva o conflito
+```
+
+O protocolo fica em um lugar só de onde é sempre injetado, pra mudar a regra uma vez e valer em todo prompt futuro. O botão de copiar via `navigator.clipboard` deveria funcionar em `file://` no Chrome, mas isso é exatamente o tipo de coisa que precisa de teste ao vivo, já que ninguém consegue olhar por cima do seu ombro se travar.
+
+**Ordem de construção** (sem prazo — a ordem que as dependências reais exigem)
+
+1. Vocabulário de ocorrências (criada, reivindicada, em_auditoria, concluída, reivindicação_expirada) e os campos `toca`/`depende_de` — e migrar pra esse formato o que hoje só existe espalhado (os ~140 itens do checklist da Fundação, o que está no Roadmap), senão o kanban nasce vazio enquanto o resto do painel ainda fala deles do jeito antigo
+2. Lógica de projeção: reduzir a cadeia de ocorrências de cada tarefa pra coluna atual, reaproveitando o mesmo manifesto.js/livro.js/logica.js — não um arquivo por tarefa
+3. A aba kanban dentro do hub, com o limite visível na coluna "Em execução"
+4. O grafo de conflito e a sugestão de onda/lote a partir do `toca`
+5. A conferência automática do `toca` real (diff do PR) contra o declarado
+6. Geração de prompt + botão de copiar, com o protocolo embutido
+7. Teste ao vivo da trava — duas branches de teste reivindicando a mesma tarefa — antes de confiar nela pra qualquer coisa que importe
+
+Se quiser, me manda o `logica.js` (ou o que hoje monta as views do painel-fundacao) que eu escrevo os tipos de ocorrência e a projeção em cima do que já existe, em vez de supor a forma dos seus arquivos.
+
+
+
+Como deve ser estruturada a tela e os dados para a coluna de 'Revisão / Exceção', onde eu precisarei aprovar ou consertar o que o robô não conseguiu resolver?
+
+
+Pra esse tanto quanto pro resto: nada de tela onde ele "resolve" tecnicamente — a tela mostra, o robô registra. A diferença aqui é que ele é o único que pode *decidir*, não o único que pode *escrever*. Isso muda o desenho, mas não quebra a regra "só robô edita arquivo".
+
+**De onde vem uma exceção**
+
+Duas entradas possíveis pra essa coluna, e o card precisa dizer qual foi:
+- O robô travou no meio da execução (ambiguidade, teste que não fecha, algo que esbarra num invariante da constituição) — nunca chegou em auditoria
+- Uma auditoria reprovou um "concluída" que já tinha sido reivindicado — volta, não avança
+
+```js
+// excecao-EVO-31-2.js
+window.OCORRENCIAS.push({
+  tipo: "tarefa_excecao",
+  id: "EVO-31",
+  rodada: 2,
+  origem: "execucao", // ou "auditoria"
+  motivo: "conflito_invariante", // ambiguidade | teste_vermelho | conflito_invariante | decisao_produto | auditoria_reprovada
+  pergunta_para_dono: "O sininho marca como lida ao abrir o card ou ao passar o mouse?",
+  evidencia_crua: "<saída de teste/diff colado, sem interpretação>",
+  robo: "sessão claude-code-3",
+  quando: "2026-08-28T16:40:00-03:00"
+});
+```
+
+`motivo` fixo, não texto livre — é o que deixa o card escaneável: você olha o badge e já sabe se é "preciso decidir algo de produto" ou "achei um problema técnico sério".
+
+**Como a decisão dele entra no livro**
+
+Ele não edita arquivo, então quem escreve continua sendo um robô — mas o robô só registra o que ele falou, não decide por conta própria:
+
+```js
+// decisao-EVO-31-2.js
+window.OCORRENCIAS.push({
+  tipo: "tarefa_decisao",
+  id: "EVO-31",
+  rodada: 2,
+  decisao: "ajustar", // aprovado | ajustar | cancelado
+  instrucoes: "Marcar como lida só ao abrir o card, não ao passar o mouse.",
+  registrado_por: "sessão claude-code-5",
+  quando: "2026-08-28T20:10:00-03:00"
+});
+```
+
+`aprovado` fecha como se fosse concluída. `ajustar` abre uma rodada nova pra mesma tarefa, com as instruções dele penduradas — o próximo prompt gerado já nasce com esse contexto. `cancelado` tira do quadro ativo, sem apagar do livro.
+
+Pra isso ser rápido de verdade pra ele — responder uma pergunta, não preencher formulário — o card já pode trazer um textinho pronto pra colar em qualquer sessão:
+
+```
+Registrar decisão sobre EVO-31 (rodada 2):
+decisao: [aprovado / ajustar / cancelado]
+instrucoes: <preencher se for ajustar>
+```
+
+Mesmo truque do prompt de execução, aplicado à decisão em vez de ao trabalho.
+
+**Onde isso entra na leitura de status**
+
+Antes de checar reivindicação ou auditoria da rodada, checa exceção primeiro:
+1. Existe `tarefa_excecao` da rodada atual sem `tarefa_decisao` correspondente? → Revisão/Exceção, e nenhuma nova reivindicação dessa rodada é aceita enquanto isso não sair daqui
+2. `tarefa_decisao` com `aprovado`? → conta como concluída
+3. `tarefa_decisao` com `ajustar`? → nova rodada, volta pra Pronta com as instruções como contexto
+4. `tarefa_decisao` com `cancelado`? → fora do quadro ativo
+
+**A tela: o que o card precisa ter pra ele decidir rápido sem ler código**
+
+- A pergunta em português simples, em destaque — quem escreveu a exceção já traduziu o problema técnico numa pergunta de decisão, não jogou o problema cru pra ele interpretar
+- Evidência crua, escondida por padrão (um "ver saída bruta") — existe pra ele verificar se quiser, não é a forma principal de entender o que houve
+- Quantas tarefas em `depende_de` estão paradas esperando essa decisão — isso ordena o que ele olha primeiro, sem precisar adivinhar
+- Selo de frescor (já contratado como ideia) — "há 2 dias esperando" — porque essa coluna é, na prática, a versão final e única do "precisa de você" que hoje existe em três painéis diferentes. Se ela virar mais um lugar entre outros pedindo atenção, o problema que começou essa reforma inteira volta.
+
+**Um risco que vale nomear agora**
+
+Se essa fila demorar pra esvaziar, nasce um incentivo ruim: o robô, sob pressão pra "concluir", prefere forçar um jeito de marcar como resolvido em vez de abrir exceção e esperar. É o mesmo viés de sempre, agora mirando direto no mecanismo que devia pegá-lo. O prompt de execução precisa deixar explícito que abrir exceção é o resultado esperado quando travar, não uma falha do robô — senão a coluna fica vazia não porque nada trava, mas porque nada é declarado.
+
+
+
