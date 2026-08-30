@@ -273,6 +273,30 @@ primeira versão deste arquivo, e o teste pegou.
     .forma button.calado, .aviso .botao.calado { border-color: var(--vermelho); color: var(--vermelho); }
     .aviso.feito { border-style: solid; border-color: var(--verde); color: var(--texto-2); margin-bottom: 16px; }
 
+    /* --- o mapa do site (30/08/2026) --------------------------------------
+       Uma lista longa (perto de 100 linhas), lida de cima para baixo por uma
+       pessoa procurando UM endereço. Por isso: nada de grade de cartões (que
+       espalha a leitura em zigue-zague) e nada de tabela (que no celular vira
+       rolagem lateral). Uma linha por endereço, com o NOME em primeiro lugar —
+       é pelo nome que o dono procura, nunca pelo caminho.
+       -------------------------------------------------------------------- */
+    .mapa-grupo { margin-top: 34px; }
+    .mapa-item { padding: 12px 0; border-top: 1px solid var(--linha); }
+    .mapa-item b { display: block; font-size: 15px; }
+    .mapa-item .nota { margin-top: 4px; color: var(--texto-2); }
+    .mapa-endereco { margin-top: 3px; font-size: 13px; word-break: break-all; }
+    .mapa-endereco code { color: var(--texto-3); }
+    /* "molde" e "exemplo" avisam que aquele endereço não é UM lugar. Selo com
+       texto, e não só uma cor: quem não distingue as cores lê a palavra. */
+    .mapa-selo {
+      display: inline-block; margin-left: 6px; padding: 1px 7px;
+      border: 1px solid var(--linha); border-radius: 6px;
+      font-size: 11px; color: var(--texto-3);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    .mapa-obs { color: var(--texto-3); font-size: 13px; }
+    .mapa-grupo .cadastrar { margin-top: 16px; }
+
     @media (max-width: 900px) {
       .forma { grid-template-columns: 1fr; }
     }

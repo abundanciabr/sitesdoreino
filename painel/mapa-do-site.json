@@ -1,0 +1,950 @@
+{
+  "_doc": [
+    "O MAPA DO SITE — a camada HUMANA. Pedido do mantenedor em 30/08/2026.",
+    "",
+    "A tela mora em /admin/mapa/ (services/admin/apps/core/mapa_do_site.py) e mostra",
+    "TODO endereço que este site tem: as páginas de quem visita, as de quem é aluno,",
+    "as suas, e as portas que só máquina usa.",
+    "",
+    "O QUE MORA AQUI E O QUE NAO MORA. Aqui mora a única coisa que uma máquina não",
+    "sabe: o que cada endereço É, em português, para quem não lê código. O endereço",
+    "real, o alcance (a internet chega ou não) e a existência da rota são MEDIDOS de",
+    "três fontes — infra/traefik/dynamic/plataforma.yml, services/<celula>/config/urls.py",
+    "e infra/env/<celula>.env.exemplo — por ci/mapa_do_site.py, que roda como muralha em",
+    "todo PR e reprova nos DOIS sentidos: rota sem entrada aqui, e entrada sem rota lá.",
+    "",
+    "Por isso este arquivo não pode envelhecer em silêncio, que é a doença que a lei",
+    "anti-duplicação do CLAUDE.md existe para impedir. Página nova SEM entrada aqui",
+    "reprova o PR, e a recusa diz exatamente o que escrever.",
+    "",
+    "COMO ACRESCENTAR UMA ENTRADA (o portão te manda aqui quando você cria uma rota):",
+    "  celula     a que célula a rota pertence (o mesmo nome de celulas.yml)",
+    "  rota       a string exata do path()/re_path() no urls.py da célula",
+    "  endereco   por onde ela responde — MEDIDO; escreva o que o portão disser",
+    "  alcance    publico = a internet alcança · interno = só a rede do Docker",
+    "  para_quem  visitante · aluno · equipe · maquina (vocabulário fechado)",
+    "  titulo     o nome da coisa, como o dono a chamaria",
+    "  descricao  uma ou duas frases, sem jargão: o que é e para que serve",
+    "  exemplo    (opcional) um endereço concreto e clicável, quando o real é molde",
+    "  gesto      (opcional) true quando não é página: é o que acontece ao apertar",
+    "             um botão. É o que explica por que há ~97 endereços e ~35 telas",
+    "  observacao (opcional) a nota de rodapé daquela linha",
+    "",
+    "O QUE O VARREDOR NAO CONFERE (buraco declarado, RETROSPECTIVA-FASE-D §2): o texto",
+    "de titulo/descricao (nenhuma máquina sabe se está bem escrito) e o campo `gesto`",
+    "(derivá-lo exigiria seguir cada view até achar o require_POST). Os dois são",
+    "conferidos por gente, na revisão do PR."
+  ],
+  "enderecos": [
+    {
+      "celula": "funil",
+      "rota": "",
+      "endereco": "/",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A porta de entrada do site",
+      "descricao": "A primeira página que qualquer pessoa vê ao digitar meshcraft.top. É ela que apresenta a oferta e leva a pessoa ao resto.",
+      "observacao": "O mesmo endereço serve três idiomas: português na raiz nua (meshcraft.top), inglês em /en/ e espanhol em /es/. Quem escolhe é o idioma do navegador do visitante, e não uma página diferente."
+    },
+    {
+      "celula": "funil",
+      "rota": "login",
+      "endereco": "/login",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A tela de entrar",
+      "descricao": "Onde a pessoa entra na conta dela, com o Google. É a única porta de entrada do site inteiro: quem entra aqui está entrando no fórum, na Caixa de Sugestões e em tudo mais."
+    },
+    {
+      "celula": "funil",
+      "rota": "cadastro",
+      "endereco": "/cadastro",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A tela de deixar o contato",
+      "descricao": "O formulário em que um interessado deixa nome e e-mail antes de virar aluno."
+    },
+    {
+      "celula": "funil",
+      "rota": "leads",
+      "endereco": "/leads",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "gesto": true,
+      "titulo": "Guardar o contato deixado",
+      "descricao": "Não é uma página: é o que acontece quando alguém aperta o botão do formulário de contato. Abrir este endereço no navegador não mostra nada."
+    },
+    {
+      "celula": "funil",
+      "rota": "sitemap.xml",
+      "endereco": "/sitemap.xml",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A lista de páginas para o Google",
+      "descricao": "O arquivo que os buscadores leem para saber que páginas existem no site e em que idiomas."
+    },
+    {
+      "celula": "funil",
+      "rota": "^static/(?P<path>.*)$",
+      "endereco": "/static/(?P<path>.*)$",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A aparência do site",
+      "descricao": "Os arquivos de estilo e imagem que o navegador busca sozinho para desenhar as páginas. Ninguém abre isto à mão."
+    },
+    {
+      "celula": "funil",
+      "rota": "healthz",
+      "endereco": "/healthz",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida do site",
+      "descricao": "Um endereço que responde 'estou de pé'. É por ele que o servidor descobre sozinho se o site caiu e precisa ser reiniciado."
+    },
+    {
+      "celula": "identidade",
+      "rota": "entrar/google",
+      "endereco": "/entrar/google",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "gesto": true,
+      "titulo": "Começar a entrada pelo Google",
+      "descricao": "O passo que leva a pessoa até a tela do Google. Não é página: é a porta girando."
+    },
+    {
+      "celula": "identidade",
+      "rota": "entrar/google/retorno",
+      "endereco": "/entrar/google/retorno",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "gesto": true,
+      "titulo": "A volta do Google",
+      "descricao": "Para onde o Google devolve a pessoa depois de confirmar quem ela é. Este endereço exato está cadastrado no console do Google — mudá-lo quebra o login do site inteiro."
+    },
+    {
+      "celula": "identidade",
+      "rota": "entrar/sair",
+      "endereco": "/entrar/sair",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "gesto": true,
+      "titulo": "Sair da conta",
+      "descricao": "O que acontece quando a pessoa aperta 'sair'. Apaga o crachá dela e ela volta a ser uma visitante."
+    },
+    {
+      "celula": "identidade",
+      "rota": "interno/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "Quem é o dono desta sessão?",
+      "descricao": "A pergunta que as outras partes do site fazem ao login para saber quem está do outro lado. Fica escondida da internet de propósito: só as máquinas de dentro conversam por aqui."
+    },
+    {
+      "celula": "identidade",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida do login",
+      "descricao": "Responde 'estou de pé' para o servidor, pela rede interna."
+    },
+    {
+      "celula": "forum",
+      "rota": "",
+      "endereco": "/forum/",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "O fórum da escola",
+      "descricao": "A porta do fórum: a lista das áreas de conversa. Qualquer pessoa pode LER as áreas públicas; escrever é para aluno."
+    },
+    {
+      "celula": "forum",
+      "rota": "a/<slug:slug>",
+      "endereco": "/forum/a/<slug:slug>",
+      "exemplo": "/forum/a/avisos",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Uma área do fórum",
+      "descricao": "A lista de assuntos de uma área — 'Avisos', por exemplo. Cada área tem seu próprio endereço."
+    },
+    {
+      "celula": "forum",
+      "rota": "t/<int:topico_id>",
+      "endereco": "/forum/t/<int:topico_id>",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Um assunto do fórum",
+      "descricao": "A conversa em si, com as respostas. Cada assunto ganha um número próprio."
+    },
+    {
+      "celula": "forum",
+      "rota": "^static/(?P<caminho>.*)$",
+      "endereco": "/forum/static/(?P<caminho>.*)$",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A aparência do fórum",
+      "descricao": "Os arquivos de estilo do fórum, buscados pelo navegador sozinho."
+    },
+    {
+      "celula": "forum",
+      "rota": "interno/",
+      "endereco": "/forum/interno/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina do fórum",
+      "descricao": "Por onde outra parte do site pergunta coisas ao fórum. Fica sob o mesmo endereço público, mas só responde a quem apresenta a senha de máquina.",
+      "observacao": "Está alcançável pela internet porque mora debaixo do prefixo /forum. Quem a fecha é a senha de par, não o roteamento."
+    },
+    {
+      "celula": "forum",
+      "rota": "healthz",
+      "endereco": "/forum/healthz",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida do fórum",
+      "descricao": "Responde 'estou de pé' para o servidor."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "",
+      "endereco": "/forms/sugestoes/",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "A Caixa de Sugestões",
+      "descricao": "O quadro onde os alunos veem as ideias que já foram pedidas e votam nelas. Quem não tem acesso liberado cai na porta."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "entrar",
+      "endereco": "/forms/sugestoes/entrar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "A porta da Caixa",
+      "descricao": "A tela que recebe quem chega sem acesso: explica o que é a Caixa e oferece pedir liberação."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "entrar/pedido",
+      "endereco": "/forms/sugestoes/entrar/pedido",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Pedir liberação",
+      "descricao": "O que acontece quando a pessoa aperta 'quero participar'. Entra na sua fila de aprovação."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "entrar/google",
+      "endereco": "/forms/sugestoes/entrar/google",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Entrar na Caixa pelo Google",
+      "descricao": "O passo que leva à tela do Google, para quem chegou direto na Caixa."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "entrar/google/retorno",
+      "endereco": "/forms/sugestoes/entrar/google/retorno",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "A volta do Google, na Caixa",
+      "descricao": "Para onde o Google devolve quem entrou pela Caixa."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "sair",
+      "endereco": "/forms/sugestoes/sair",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Sair da Caixa",
+      "descricao": "Apaga o crachá de quem estava na Caixa."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "sugestoes/nova",
+      "endereco": "/forms/sugestoes/sugestoes/nova",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Escrever uma ideia nova",
+      "descricao": "O formulário em que o aluno conta o que gostaria que a escola tivesse."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "sugestoes/<int:sugestao_id>",
+      "endereco": "/forms/sugestoes/sugestoes/<int:sugestao_id>",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Uma ideia por dentro",
+      "descricao": "A ideia com o texto inteiro, os votos e os comentários. Cada ideia ganha um número próprio."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "sugestoes/<int:sugestao_id>/votar",
+      "endereco": "/forms/sugestoes/sugestoes/<int:sugestao_id>/votar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Votar numa ideia",
+      "descricao": "O que acontece quando o aluno aperta o botão de apoiar uma ideia."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "sugestoes/<int:sugestao_id>/desvotar",
+      "endereco": "/forms/sugestoes/sugestoes/<int:sugestao_id>/desvotar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Tirar o voto",
+      "descricao": "O contrário do de cima: o aluno retira o apoio que tinha dado."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "sugestoes/<int:sugestao_id>/comentarios",
+      "endereco": "/forms/sugestoes/sugestoes/<int:sugestao_id>/comentarios",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Comentar numa ideia",
+      "descricao": "O que acontece quando o aluno escreve um comentário e envia."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "avisos",
+      "endereco": "/forms/sugestoes/avisos",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "O sininho do aluno",
+      "descricao": "A lista de avisos daquela pessoa: quem comentou na ideia dela, o que mudou de fase."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "avisos/marcar-tudo",
+      "endereco": "/forms/sugestoes/avisos/marcar-tudo",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Marcar todos os avisos como lidos",
+      "descricao": "O que acontece ao apertar 'limpar tudo' no sininho."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "avisos/<str:aviso_id>/lido",
+      "endereco": "/forms/sugestoes/avisos/<str:aviso_id>/lido",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Marcar UM aviso como lido",
+      "descricao": "O que acontece ao abrir um aviso do sininho."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "gestao",
+      "endereco": "/forms/sugestoes/gestao",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A gestão antiga da Caixa (mudou de casa)",
+      "descricao": "Endereço antigo: hoje ele apenas leva você para /admin/caixa/. Continua vivo para não quebrar links que alguém tenha salvado."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "gestao/travessia",
+      "endereco": "/forms/sugestoes/gestao/travessia",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A travessia antiga (mudou de casa)",
+      "descricao": "Endereço antigo, redireciona para a aba correspondente em /admin/caixa/."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "gestao/esperando",
+      "endereco": "/forms/sugestoes/gestao/esperando",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Quem espera, antigo (mudou de casa)",
+      "descricao": "Endereço antigo, redireciona para a aba correspondente em /admin/caixa/."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "moderacao",
+      "endereco": "/forms/sugestoes/moderacao",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A fila de moderação antiga",
+      "descricao": "A tela antiga de aprovar ideias, ainda no ar. A gestão de verdade hoje é /admin/caixa/.",
+      "observacao": "Aposentar estas telas é a tarefa TAR-014 da fila de trabalho."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "moderacao/<int:sugestao_id>",
+      "endereco": "/forms/sugestoes/moderacao/<int:sugestao_id>",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Moderar uma ideia (tela antiga)",
+      "descricao": "A ideia vista pelos olhos da equipe, na tela antiga."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "moderacao/<int:sugestao_id>/status",
+      "endereco": "/forms/sugestoes/moderacao/<int:sugestao_id>/status",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Mudar a fase de uma ideia (tela antiga)",
+      "descricao": "O que acontece ao mover a ideia de coluna na tela antiga."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "moderacao/<int:sugestao_id>/avaliacao",
+      "endereco": "/forms/sugestoes/moderacao/<int:sugestao_id>/avaliacao",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Guardar a avaliação de uma ideia (tela antiga)",
+      "descricao": "O que acontece ao salvar esforço e impacto na tela antiga."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "moderacao/<int:sugestao_id>/changespec",
+      "endereco": "/forms/sugestoes/moderacao/<int:sugestao_id>/changespec",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A ficha técnica de uma obra (tela antiga)",
+      "descricao": "O documento que descreve o que vai ser construído a partir da ideia. Só quem está na lista de aprovadores abre."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "interno/",
+      "endereco": "/forms/sugestoes/interno/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina da Caixa",
+      "descricao": "Por onde a área administrativa pergunta as ideias à Caixa. Só responde a quem apresenta a senha de máquina."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "^static/(?P<caminho>.*)$",
+      "endereco": "/forms/sugestoes/static/(?P<caminho>.*)$",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A aparência da Caixa",
+      "descricao": "Os arquivos de estilo da Caixa, buscados pelo navegador sozinho."
+    },
+    {
+      "celula": "sugestoes",
+      "rota": "healthz",
+      "endereco": "/forms/sugestoes/healthz",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida da Caixa",
+      "descricao": "Responde 'estou de pé' para o servidor."
+    },
+    {
+      "celula": "admin",
+      "rota": "",
+      "endereco": "/admin/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A visão geral da administração",
+      "descricao": "A sala de comando: a porta para os painéis, a escola e a Caixa. Só abre para quem está na sua lista de administradores."
+    },
+    {
+      "celula": "admin",
+      "rota": "mapa/",
+      "endereco": "/admin/mapa/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O mapa do site",
+      "descricao": "Esta página: todo endereço que o site tem, agrupado por quem o usa. Ela se conserta sozinha — um endereço novo no site sem entrada no mapa reprova o robô que o criou."
+    },
+    {
+      "celula": "admin",
+      "rota": "painel/",
+      "endereco": "/admin/painel/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O painel do sistema",
+      "descricao": "Como a plataforma está sendo construída: o que ficou pronto, o que falhou e o que espera por você."
+    },
+    {
+      "celula": "admin",
+      "rota": "painel/divida.json",
+      "endereco": "/admin/painel/divida.json",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A conta de merges não registrados",
+      "descricao": "Um número que o painel busca sozinho: quantas entregas ainda não viraram registro no livro."
+    },
+    {
+      "celula": "admin",
+      "rota": "painel/diag.json",
+      "endereco": "/admin/painel/diag.json",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O diagnóstico do servidor",
+      "descricao": "Números que o próprio servidor conta sobre si mesmo — quantas vezes perguntou quem é você, quantas demorou. O painel os lê sozinho."
+    },
+    {
+      "celula": "admin",
+      "rota": "^painel/(?P<path>.+)$",
+      "endereco": "/admin/painel/(?P<path>.+)$",
+      "exemplo": "/admin/painel/logica.js",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "Os arquivos do painel",
+      "descricao": "As peças que o painel busca sozinho para se desenhar. Ninguém abre isto à mão."
+    },
+    {
+      "celula": "admin",
+      "rota": "docs/",
+      "endereco": "/docs/",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A biblioteca pública",
+      "descricao": "A lista de documentos que o site publica para qualquer pessoa ler, sem login.",
+      "observacao": "O mesmo endereço também responde em /admin/docs/ — é a mesma página, servida pela área administrativa."
+    },
+    {
+      "celula": "admin",
+      "rota": "^docs/(?P<nome>[a-z0-9-]+)$",
+      "endereco": "/docs/(?P<nome>[a-z0-9-]+)$",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Um documento público",
+      "descricao": "Um texto da biblioteca, aberto para qualquer pessoa. Documento que não está marcado como público responde 'não existe' — nem confirma que existe."
+    },
+    {
+      "celula": "admin",
+      "rota": "documentos/",
+      "endereco": "/admin/documentos/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A biblioteca completa",
+      "descricao": "Todos os documentos, públicos e internos, com a etiqueta de quem pode ler cada um. É o único lugar em que os dois aparecem juntos."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Um documento, por dentro",
+      "descricao": "Qualquer documento — público ou interno — para quem passou pela porta."
+    },
+    {
+      "celula": "admin",
+      "rota": "mapa-ia/",
+      "endereco": "/mapa-ia/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O mapa técnico para outras IAs",
+      "descricao": "Um endereço que você manda para uma inteligência artificial de fora conhecer o projeto inteiro, sem precisar dar acesso a nada. É texto puro, sem login."
+    },
+    {
+      "celula": "admin",
+      "rota": "^mapa-ia/(?P<nome>[\\w.-]+)$",
+      "endereco": "/mapa-ia/(?P<nome>[\\w.-]+)$",
+      "exemplo": "/mapa-ia/INDICE.md",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "Um capítulo do mapa técnico",
+      "descricao": "Cada parte do mapa para IA tem seu endereço. Só os capítulos nomeados na porta respondem sem login."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/",
+      "endereco": "/admin/escola/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O painel da escola",
+      "descricao": "A escola funcionando: quantos alunos, quem está esperando aprovação, e as portas para a lista e o mapa da jornada."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/jornada/",
+      "endereco": "/admin/escola/jornada/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O mapa da jornada do aluno",
+      "descricao": "As paradas por onde uma pessoa passa — de interessada a aluna — com quantas estão em cada uma agora."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/alunos/",
+      "endereco": "/admin/escola/alunos/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A lista de alunos",
+      "descricao": "Quem é aluno, quem pediu para entrar e quem saiu. Com busca e peneira por estado."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/alunos/prontuario",
+      "endereco": "/admin/escola/alunos/prontuario",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A ficha de uma pessoa",
+      "descricao": "A história inteira de um aluno: quando pediu, quando entrou, o que mudou e quem mudou. Uma ficha nunca se apaga."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/alunos/decidir",
+      "endereco": "/admin/escola/alunos/decidir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Liberar ou recusar um pedido",
+      "descricao": "O que acontece quando você aperta 'liberar' ou 'recusar' na fila. Muda a vida de uma pessoa — por isso não é um link."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/alunos/salvar",
+      "endereco": "/admin/escola/alunos/salvar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Guardar a mudança num aluno",
+      "descricao": "O que acontece ao salvar o formulário de gestão de quem já é aluno."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/alunos/cadastrar",
+      "endereco": "/admin/escola/alunos/cadastrar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Pôr alguém na escola à mão",
+      "descricao": "O que acontece ao cadastrar uma pessoa sem esperar que ela peça."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/admin/promover",
+      "endereco": "/admin/escola/admin/promover",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Dar poder de administrador a alguém",
+      "descricao": "O que acontece ao promover uma pessoa a administradora da área."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/admin/remover",
+      "endereco": "/admin/escola/admin/remover",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Tirar o poder de administrador",
+      "descricao": "O contrário do de cima: a pessoa deixa de administrar a área."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/",
+      "endereco": "/admin/caixa/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A gestão da Caixa de Sugestões",
+      "descricao": "A mesa: uma ideia por vez esperando a sua decisão. É aqui que a Caixa se administra, e não mais nas telas antigas."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/travessia/",
+      "endereco": "/admin/caixa/travessia/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A travessia das ideias",
+      "descricao": "Todas as ideias em colunas, da chegada até o ar — e onde a fila está entupindo."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/esperando/",
+      "endereco": "/admin/caixa/esperando/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Quem está esperando",
+      "descricao": "As pessoas que pediram algo e ainda não tiveram resposta, com há quanto tempo esperam."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/robos/",
+      "endereco": "/admin/caixa/robos/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Os robôs",
+      "descricao": "O quadro da fila de trabalho: que tarefa cada robô pegou, o que está bloqueado e o que já terminou."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/ideia/<int:ideia_id>/",
+      "endereco": "/admin/caixa/ideia/<int:ideia_id>/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Uma ideia por dentro, na gestão",
+      "descricao": "A ideia com a história inteira e os botões de decidir o que fazer com ela."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/ideia/<int:ideia_id>/fase",
+      "endereco": "/admin/caixa/ideia/<int:ideia_id>/fase",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Mover a ideia de fase",
+      "descricao": "O que acontece ao mudar a coluna em que a ideia está."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/ideia/<int:ideia_id>/avaliacao",
+      "endereco": "/admin/caixa/ideia/<int:ideia_id>/avaliacao",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Guardar a avaliação da ideia",
+      "descricao": "O que acontece ao salvar o quanto aquela ideia custa e o quanto vale."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/ideia/<int:ideia_id>/assinatura",
+      "endereco": "/admin/caixa/ideia/<int:ideia_id>/assinatura",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Assinar a obra",
+      "descricao": "O gesto que libera um robô a construir aquela ideia. É o único botão da área que manda trabalho de verdade acontecer."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/ideia/<int:ideia_id>/arquivar",
+      "endereco": "/admin/caixa/ideia/<int:ideia_id>/arquivar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Arquivar a ideia",
+      "descricao": "Some do quadro do aluno e nada se perde. Dá para voltar atrás."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/ideia/<int:ideia_id>/desarquivar",
+      "endereco": "/admin/caixa/ideia/<int:ideia_id>/desarquivar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Tirar a ideia do arquivo",
+      "descricao": "O contrário do de cima: a ideia volta ao quadro."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/ideia/<int:ideia_id>/apagar",
+      "endereco": "/admin/caixa/ideia/<int:ideia_id>/apagar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Apagar a ideia de vez",
+      "descricao": "Sem volta, nem para quem a escreveu. O único gesto irreversível da área."
+    },
+    {
+      "celula": "admin",
+      "rota": "healthz",
+      "endereco": "/admin/healthz",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida da área administrativa",
+      "descricao": "Responde 'estou de pé' para o servidor. É o único endereço da área que não exige crachá, junto com o mapa para IA e a biblioteca pública."
+    },
+    {
+      "celula": "checkout",
+      "rota": "<slug:offer_slug>/",
+      "endereco": "/checkout/<slug:offer_slug>/",
+      "exemplo": "/checkout/curso-teste/",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A tela de comprar",
+      "descricao": "Onde a pessoa preenche os dados para comprar uma oferta. Cada oferta tem seu endereço."
+    },
+    {
+      "celula": "checkout",
+      "rota": "pedido/<uuid:order_id>/pix/",
+      "endereco": "/checkout/pedido/<uuid:order_id>/pix/",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A tela do Pix",
+      "descricao": "O código de pagamento de um pedido feito por Pix."
+    },
+    {
+      "celula": "checkout",
+      "rota": "pedido/<uuid:order_id>/cartao/",
+      "endereco": "/checkout/pedido/<uuid:order_id>/cartao/",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "A tela do cartão",
+      "descricao": "Onde a pessoa digita o cartão para pagar um pedido."
+    },
+    {
+      "celula": "checkout",
+      "rota": "api/checkout/",
+      "endereco": "/api/checkout/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina da compra",
+      "descricao": "Por onde a tela de compra conversa com o servidor. Sem ela ninguém compra — e é por isso que ela tem prioridade sobre todo o resto no roteamento."
+    },
+    {
+      "celula": "checkout",
+      "rota": "^static/(?P<path>.*)$",
+      "endereco": "/checkout/static/(?P<path>.*)$",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A aparência da compra",
+      "descricao": "Os arquivos de estilo das telas de compra."
+    },
+    {
+      "celula": "checkout",
+      "rota": "healthz",
+      "endereco": "/checkout/healthz",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida da compra",
+      "descricao": "Responde 'estou de pé' para o servidor."
+    },
+    {
+      "celula": "quiz",
+      "rota": "quiz/<slug:slug>/",
+      "endereco": "/quiz/quiz/<slug:slug>/",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Um quiz",
+      "descricao": "As perguntas de um quiz. Hoje nenhum quiz está publicado no site — a máquina existe, o conteúdo ainda não.",
+      "observacao": "O endereço tem 'quiz' duas vezes porque o prefixo do site e o caminho da célula se somam. Vale conferir isso no dia em que o primeiro quiz for publicado."
+    },
+    {
+      "celula": "quiz",
+      "rota": "quiz/<slug:slug>/resultado",
+      "endereco": "/quiz/quiz/<slug:slug>/resultado",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "O resultado de um quiz",
+      "descricao": "A tela que a pessoa vê depois de responder. A nota é calculada no servidor, nunca no navegador."
+    },
+    {
+      "celula": "quiz",
+      "rota": "healthz",
+      "endereco": "/quiz/healthz",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida do quiz",
+      "descricao": "Responde 'estou de pé' para o servidor."
+    },
+    {
+      "celula": "alunos",
+      "rota": "api/alunos/",
+      "endereco": "/alunos/api/alunos/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina dos alunos",
+      "descricao": "Por onde a área administrativa e o fórum perguntam quem é aluno. Só responde a quem apresenta a senha de máquina.",
+      "observacao": "Não tem tela: é conversa entre máquinas. As pessoas veem estes dados em /admin/escola/alunos/."
+    },
+    {
+      "celula": "alunos",
+      "rota": "healthz",
+      "endereco": "/alunos/healthz",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida dos alunos",
+      "descricao": "Responde 'estou de pé' para o servidor."
+    },
+    {
+      "celula": "pagamentos",
+      "rota": "api/pagamentos/",
+      "endereco": "/api/pagamentos/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A porta dos pagamentos",
+      "descricao": "Por onde o Mercado Pago avisa que um pagamento foi aprovado. É o único endereço do sistema preso a outro domínio.",
+      "observacao": "Responde em basileiatoutheou.org, não em meshcraft.top: o Mercado Pago precisa de um endereço fixo cadastrado lá."
+    },
+    {
+      "celula": "pagamentos",
+      "rota": "debug/simulate-webhook",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O simulador de pagamento (só em teste)",
+      "descricao": "Finge um aviso do Mercado Pago para provar que o caminho da compra funciona. A internet não alcança."
+    },
+    {
+      "celula": "pagamentos",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida dos pagamentos",
+      "descricao": "Responde 'estou de pé' pela rede interna."
+    },
+    {
+      "celula": "catalogo",
+      "rota": "api/catalogo/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O catálogo de sites e ofertas",
+      "descricao": "A memória de quais sites e quais ofertas existem. Todo o resto pergunta a ela; ninguém de fora fala com ela."
+    },
+    {
+      "celula": "catalogo",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida do catálogo",
+      "descricao": "Responde 'estou de pé' pela rede interna."
+    },
+    {
+      "celula": "leads",
+      "rota": "api/leads/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "A caixa dos interessados",
+      "descricao": "Onde ficam guardados os contatos deixados no site e a linha do tempo de cada um. Sem porta para a internet."
+    },
+    {
+      "celula": "leads",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida dos interessados",
+      "descricao": "Responde 'estou de pé' pela rede interna."
+    },
+    {
+      "celula": "notificacoes",
+      "rota": "api/notificacoes/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "A caixa central de avisos",
+      "descricao": "Onde nascem os avisos que aparecem no sininho do aluno. Não tem tela e não tem porta para a internet — de propósito."
+    },
+    {
+      "celula": "notificacoes",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida dos avisos",
+      "descricao": "Responde 'estou de pé' pela rede interna."
+    },
+    {
+      "celula": "mensageria",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida do correio",
+      "descricao": "A parte que envia e-mails não tem nenhuma página: só este sinal, pela rede interna."
+    }
+  ]
+}
