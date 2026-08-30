@@ -24,12 +24,15 @@ PostgreSQL, em português, indexada com GIN e preenchida na ESCRITA
    `_trecho_seguro` existir, é: **escapar primeiro, trocar os marcadores
    depois.**
 
-**O limite conhecido, dito na tela e não escondido:** a configuração
-`portuguese` do PostgreSQL é sensível a acento, e no Brasil quase ninguém
-acentua ao buscar (`armadilhas/154`). A cura é a extensão `unaccent`, que só se
-instala como superusuário do banco — passo do mantenedor, registrado como
-tarefa própria. Enquanto ela não vem, a tela avisa em português quando não acha
-nada.
+**Com que configuração ela indexa e procura:** com a que `config_de_busca()`
+disser, nunca com uma cravada aqui. É a mesma função que a escrita usa para
+indexar (`Mensagem.indexar_para_busca`), e o motivo de as duas pontas morarem
+no mesmo arquivo é que indexar com uma e procurar com outra é a forma
+silenciosa de a busca não achar o que existe.
+
+Enquanto o banco não tiver a cura do acento instalada, a tela avisa disso em
+português ao não achar nada — e o aviso some sozinho quando ela chegar, porque
+quem decide é `acento_importa()`, medindo o que está ativo.
 """
 
 from __future__ import annotations
@@ -41,15 +44,11 @@ from django.utils.html import escape
 from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_GET
 
+from apps.forum.config_de_busca import acento_importa, config_de_busca
 from apps.forum.models import Mensagem, Topico
 
 from .permissoes import areas_visiveis, pode_moderar
 from .sessao import quem_e
-
-# A MESMA configuração com que a coluna é preenchida na escrita
-# (`Mensagem.indexar_para_busca`). Buscar com uma configuração diferente da que
-# indexou é a forma silenciosa de a busca não achar o que existe.
-CONFIG = "portuguese"
 
 POR_PAGINA = 20
 # Uma letra casa com quase tudo e devolve o fórum inteiro ordenado por acaso.
@@ -90,6 +89,10 @@ def buscar(request):
     contexto = {
         "ator": ator,
         "termo": termo,
+        # A tela só avisa do acento enquanto o acento importa de verdade. Quando
+        # a cura estiver instalada no banco, o aviso some por MEDIÇÃO do que
+        # está ativo, e não porque alguém lembrou de apagar a frase.
+        "acento_importa": acento_importa(),
         "curto": bool(termo) and len(termo) < TERMO_MINIMO,
         "pagina": None,
         "quantas": 0,
@@ -106,7 +109,7 @@ def buscar(request):
     # frase exata, `or` vira alternativa, `-palavra` exclui. E, ao contrário do
     # `to_tsquery` cru, ele **nunca levanta** com pontuação solta — o que
     # importa numa caixa onde qualquer pessoa digita qualquer coisa.
-    consulta = SearchQuery(termo, config=CONFIG, search_type="websearch")
+    consulta = SearchQuery(termo, config=config_de_busca(), search_type="websearch")
 
     achadas = (
         Mensagem.objects.filter(topico__area__in=areas, busca=consulta)
@@ -116,7 +119,7 @@ def buscar(request):
             trecho=SearchHeadline(
                 "texto",
                 consulta,
-                config=CONFIG,
+                config=config_de_busca(),
                 start_sel=ABRE,
                 stop_sel=FECHA,
                 max_words=40,

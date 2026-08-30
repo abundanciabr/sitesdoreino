@@ -71,7 +71,7 @@ done
 #    script a apagaria em silêncio, com o deploy verde (`armadilhas/111`).
 #    Guarda: `ci/tests/test_provisionamento_nao_perde_variavel.py`.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY FORUM_PROFESSORES IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY FORUM_BUSCA_CONFIG FORUM_PROFESSORES IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
 
 # LITERAL, e não `$ENV_FORUM`, de propósito: quem confere esta trava é
 # `ci/tests/test_provisionamento_nao_perde_variavel.py`, e ele lê o script
@@ -139,6 +139,7 @@ T_ALUNOS="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_FORUM)"
 # script de novo para o fórum acompanhar. Vazio ⇒ ninguém, que é fail-closed.
 ADMINS="$(ler_de "$ENV_ADMIN" ADMIN_EMAILS)"
 
+BUSCA_CONFIG=""
 SENHA_DB="$(gerar_segredo)" || parar "não consegui gerar a senha do banco. Nada foi alterado."
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
 
@@ -162,9 +163,33 @@ psql_super -c "REVOKE ALL ON DATABASE forum_db FROM PUBLIC" >/dev/null \
 # "chapéu" — e no Brasil quase ninguém acentua ao buscar. Instalar exige
 # superusuário, então é AQUI e não numa migração do Django, que roda com o
 # papel restrito da célula. Só instala; quem passa a usá-la é o código, depois.
-psql_super -d forum_db -c "CREATE EXTENSION IF NOT EXISTS unaccent" >/dev/null 2>&1 \
-  && echo "  extensão unaccent ...... pronta (a busca sem acento pode ser ligada)" \
-  || echo "  AVISO: não consegui instalar a extensão unaccent. O fórum funciona; a busca sem acento fica para depois."
+# A CURA DO ACENTO, em duas partes: a extensao e a configuracao de busca que a
+# usa. Instalar exige superusuario, entao e AQUI e nao numa migracao do Django,
+# que roda com o papel restrito da celula e morreria no boot, na VPS
+# (`armadilhas/154`).
+#
+# ATENCAO, DUPLICACAO DECLARADA: este SQL e uma copia do que mora em
+# `services/forum/apps/forum/config_de_busca.py` (`SQL_DA_CURA`), que e a fonte.
+# Ele esta repetido aqui porque este script tem de funcionar COLADO numa VPS que
+# nao tem o repositorio. Se um dos dois mudar, o outro muda junto: o nome
+# `portugues_sem_acento` e o contrato entre eles, e e o que o env liga.
+if psql_super -d forum_db -v ON_ERROR_STOP=1 >/dev/null 2>&1 <<'SQL_DA_BUSCA'
+CREATE EXTENSION IF NOT EXISTS unaccent;
+DROP TEXT SEARCH CONFIGURATION IF EXISTS portugues_sem_acento;
+CREATE TEXT SEARCH CONFIGURATION portugues_sem_acento (COPY = portuguese);
+ALTER TEXT SEARCH CONFIGURATION portugues_sem_acento
+  ALTER MAPPING FOR hword, hword_part, word
+  WITH unaccent, portuguese_stem;
+SQL_DA_BUSCA
+then
+  BUSCA_CONFIG="portugues_sem_acento"
+  echo "  busca sem acento ....... pronta (quem procurar 'chapeu' acha 'chapeu' com acento)"
+else
+  # Falhou? `BUSCA_CONFIG` fica VAZIO, o env sai vazio e o codigo volta sozinho
+  # para a configuracao de sempre. A busca continua funcionando, sensivel a
+  # acento, e a tela avisa. Fail-closed sem derrubar nada.
+  echo "  AVISO: nao consegui preparar a busca sem acento. O forum funciona; a busca segue sensivel a acento."
+fi
 
 # -----------------------------------------------------------------------------
 # 5. O ENV DA CÉLULA — reescrito inteiro, com cópia do anterior.
@@ -187,6 +212,7 @@ ALUNOS_API_URL=$ALUNOS_URL
 ALUNOS_API_TOKEN=$T_ALUNOS
 FORUM_PROFESSORES=
 ADMIN_EMAILS=$ADMINS
+FORUM_BUSCA_CONFIG=${BUSCA_CONFIG:-}
 ENV
 
 chown --reference="$ENV_REF" "$ENV_FORUM" 2>/dev/null \

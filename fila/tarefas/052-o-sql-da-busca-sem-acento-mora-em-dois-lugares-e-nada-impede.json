@@ -1,0 +1,14 @@
+{
+  "arquivo": "052-o-sql-da-busca-sem-acento-mora-em-dois-lugares-e-nada-impede",
+  "id": "TAR-052",
+  "titulo": "O SQL da busca sem acento mora em dois lugares e nada impede que eles discordem",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com o teste em ci/tests/ e a prova de que ele reprova quando so um dos lados muda (sabotagem encenada), mais a suite dos portoes verde",
+  "despacho": "O SQL que cria a configuracao de busca sem acento existe em DOIS lugares, e a\nduplicacao esta declarada nos dois:\n\n  services/forum/apps/forum/config_de_busca.py  (SQL_DA_CURA, a fonte)\n  infra/provisionar-forum.sh                    (a copia)\n\nEla existe por um motivo real: o script de provisionamento tem de funcionar\nCOLADO numa VPS que nao tem o repositorio, entao ele nao pode ler o arquivo da\ncelula. Mas a lei anti-duplicacao do CLAUDE.md nao aceita \"fato em dois lugares\"\nsem mecanismo -- e o custo de divergirem e alto: o script criaria uma\nconfiguracao com nome ou definicao diferente da que o codigo espera, e o forum\nquebraria em TODA escrita e TODA busca.\n\nO que construir: um teste em ci/tests/ que leia os dois arquivos e exija que o\nSQL da cura seja o mesmo (normalizando espaco em branco). Ele NAO pode morar na\nsuite do forum: a constituicao da celula proibe ate LER infra/\n(constituicoes/AGENTS.forum.md, secao Fronteiras).\n\nCuidado ao escrever: o teste tem de reprovar de verdade se alguem mudar so um\ndos lados. Prove isso com uma sabotagem encenada (armadilhas/132: guarda que\nnasce verde sem encenar falha nao guarda nada).\n\nEste PR toca ci/, que e caminho CODEOWNERS: precisa de mandato no despacho e\nanuncio nominal no relatorio final.",
+  "origem": "duplicacao declarada ao curar o acento na TAR-047",
+  "criada_em": "2026-08-30"
+}

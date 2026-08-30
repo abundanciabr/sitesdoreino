@@ -47,11 +47,16 @@
   {% endif %}
 {% else %}
   <h1>Nada encontrado para "{{ termo }}"</h1>
+  {% comment %}
+  O aviso do acento só aparece enquanto o acento importa de verdade. Quem decide
+  é `acento_importa`, medindo a configuração ATIVA do banco (`config_de_busca`):
+  instalada a cura, a frase some sozinha, sem ninguém precisar lembrar dela.
+  {% endcomment %}
   <div class="vazio">
-    <strong>Duas coisas que costumam resolver:</strong>
+    <strong>{% if acento_importa %}Duas coisas que costumam resolver:{% else %}O que costuma resolver:{% endif %}</strong>
     <p style="margin:8px 0 0">
-      A busca leva o acento a sério, então "chapeu" não acha "chapéu": tente
-      escrever a palavra acentuada. E prefira uma palavra sozinha à frase
+      {% if acento_importa %}A busca leva o acento a sério, então "chapeu" não acha "chapéu": tente
+      escrever a palavra acentuada. E prefira{% else %}Prefira{% endif %} uma palavra sozinha à frase
       inteira, porque a frase exige que tudo apareça junto.
     </p>
     <p style="margin:8px 0 0">

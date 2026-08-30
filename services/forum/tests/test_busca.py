@@ -314,6 +314,51 @@ def test_nada_encontrado_explica_o_acento(client, env, monkeypatch, escola, ana)
     assert "acento" in pagina
 
 
+def test_com_a_cura_instalada_a_busca_acha_sem_acento(
+    client, env, monkeypatch, escola, ana
+):
+    """A cura de `armadilhas/154`, provada pela TELA e não só pelo modelo.
+
+    Com a configuração sem acento ativa, quem digita `chapeu` acha `chapéu` — e
+    o aviso sobre acento some da tela, porque ele é calculado do que está ativo
+    (`acento_importa`), não escrito à mão.
+
+    O `setenv` vem ANTES de escrever a mensagem de propósito: a indexação
+    acontece na escrita, e indexar com uma configuração para procurar com outra
+    é justamente o defeito que este desenho evita.
+    """
+    from apps.forum.config_de_busca import CONFIG_SEM_ACENTO
+
+    monkeypatch.setenv("FORUM_BUSCA_CONFIG", CONFIG_SEM_ACENTO)
+    falar(escola["duvidas"], ana, "Uma dúvida", "Meu chapéu ficou torto.")
+    como_aluna(monkeypatch)
+
+    pagina = procurar(client, "chapeu").content.decode()
+    assert "1 resultado" in pagina, "com a cura instalada, sem acento tem de achar"
+    assert "ficou torto" in pagina
+    # E quem escreve certo continua achando.
+    assert "1 resultado" in procurar(client, "chapéu").content.decode()
+
+
+def test_sem_a_cura_a_tela_avisa_e_com_a_cura_ela_cala(
+    client, env, monkeypatch, escola, ana
+):
+    """O aviso do acento é MEDIDO, não lembrado.
+
+    Sem esta prova, a frase sobre acento continuaria na tela para sempre depois
+    da cura — e uma tela que ensina um limite que não existe mais é pior do que
+    uma tela calada.
+    """
+    from apps.forum.config_de_busca import CONFIG_SEM_ACENTO
+
+    falar(escola["duvidas"], ana, "Uma dúvida", "Meu chapéu ficou torto.")
+    como_aluna(monkeypatch)
+    assert "acento" in procurar(client, "girafa").content.decode()
+
+    monkeypatch.setenv("FORUM_BUSCA_CONFIG", CONFIG_SEM_ACENTO)
+    assert "acento" not in procurar(client, "girafa").content.decode()
+
+
 # ======================================================================
 # 3. O QUE ESTÁ FORA DO AR SEGUE FORA DO AR — inclusive aqui
 # ======================================================================

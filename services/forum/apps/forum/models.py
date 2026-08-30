@@ -15,6 +15,8 @@ from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVector, SearchVectorField
 from django.db import models
 
+from .config_de_busca import config_de_busca
+
 # ---------------------------------------------------------------------------
 # A VOZ DA ESCOLA — como a instituição assina o que publica (TAR-020, 30/08/2026)
 # ---------------------------------------------------------------------------
@@ -319,9 +321,13 @@ class Mensagem(models.Model):
         `SearchVector` é expressão de BANCO: não há como atribuí-la a um atributo
         Python antes do `save()`. O caminho é um `update()` sobre a linha que
         acabou de nascer, uma ida a mais ao banco por mensagem escrita.
+
+        **A configuração vem de `config_de_busca()`, nunca cravada aqui.** É a
+        mesma que a tela de busca usa para procurar: indexar com uma e procurar
+        com outra é a forma silenciosa de a busca não achar o que existe.
         """
         Mensagem.objects.filter(pk=self.pk).update(
-            busca=SearchVector("texto", config="portuguese")
+            busca=SearchVector("texto", config=config_de_busca())
         )
 
     def __str__(self) -> str:
