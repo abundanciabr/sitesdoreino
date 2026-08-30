@@ -61,6 +61,19 @@
         uma decisão por vez.
       </div>
     </a>
+    {% comment %}
+    A quarta porta (30/08/2026), a pedido do mantenedor. Ela não é um painel de
+    acompanhamento como as três de cima — é a planta da casa: que endereços o
+    site tem, e o que cada um é. Entra na mesma grade porque a decisão de "uma
+    porta só" vale para ela também.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'mapa_do_site' %}">
+      <div class="rotulo">Ver o mapa do site &rarr;</div>
+      <div class="nota">
+        Todo endereço que o site tem hoje, agrupado por quem consegue abrir:
+        visitante, aluno, você, e as portas que só as máquinas usam.
+      </div>
+    </a>
   </div>
 
   {% comment %}
