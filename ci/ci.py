@@ -215,6 +215,12 @@ MURALHAS = [
         "ci/muralha-das-reservas.sh",
         "armadilha nova com número escolhido à mão em vez de pedido ao almoxarife",
     ),
+    PortaoDeShell(
+        "muralha-do-indice",
+        "ci/muralha-do-indice.sh",
+        "os gerados de armadilhas/ (INDICE.md, GUARDAS.json, SINAIS.json) não "
+        "constroem, não reconstroem iguais, ou voltaram ao índice do Git",
+    ),
 ]
 
 
