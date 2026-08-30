@@ -85,7 +85,17 @@ CAMPOS_OPCIONAIS_DO_EVENTO = {"detalhe": str, "evidencia": str, "verificado_em":
 
 RE_ID = re.compile(r"^TAR-(\d{3,})$")
 RE_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# Como um PR diz a que tarefa ele atende: citando `TAR-NNN` no título ou no
+# ramo. UMA definição só — `ci/conferencia_do_toca.py` lê o mesmo fato para
+# saber de quem é o `toca` que vai conferir, e duas leituras do mesmo fato
+# divergiriam no primeiro dia em que alguém mexesse numa só.
+RE_CITACAO = re.compile(r"TAR-\d{3,}")
 PREFIXO_DA_RESERVA = "tarefa-"  # refs/reservas/tarefa-TAR-001
+
+
+def tarefas_citadas(texto: str) -> list[str]:
+    """Os ids de tarefa citados num texto livre (título de PR, nome de ramo)."""
+    return RE_CITACAO.findall(texto or "")
 
 
 def pasta_tarefas(raiz: Path) -> Path:
@@ -366,7 +376,7 @@ def prs_citando_tarefas(raiz: Path) -> dict[str, str]:
     achados: dict[str, str] = {}
     for pr in json.loads(proc.stdout or "[]"):
         texto = f"{pr.get('title', '')} {pr.get('headRefName', '')}"
-        for tid in re.findall(r"TAR-\d{3,}", texto):
+        for tid in tarefas_citadas(texto):
             achados.setdefault(tid, f"PR #{pr['number']}")
     return achados
 
