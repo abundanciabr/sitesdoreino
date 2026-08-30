@@ -223,6 +223,7 @@ http:
       entryPoints: [websecure]
       middlewares: [seguranca-admin]
       service: admin
+      tls: {}
 
     forum:
       # O forum da escola (DECISAO-forum-da-escola.md, 28/08/2026).
