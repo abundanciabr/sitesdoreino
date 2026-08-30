@@ -112,8 +112,79 @@ h2 { font-size: 18px; margin: 0 0 4px; }
   margin: 0 0 4px;
 }
 
+/* AS FERRAMENTAS DO ADMINISTRADOR. Ficam dobradas (`<details>`) de propósito:
+   quem modera também é quem lê, e uma tela coberta de botões de moderação é uma
+   tela em que a conversa deixou de ser o assunto. A cor é a de aviso, e não a de
+   destaque, para o olho separar "isto muda o site" de "isto é o site". */
+.ferramentas {
+  background: var(--papel);
+  border: 1px dashed var(--aviso);
+  border-radius: 12px;
+  padding: 12px 16px;
+  margin: 16px 0 24px;
+}
+.ferramentas > summary,
+.ferramentas-mini > summary {
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--aviso);
+}
+.ferramentas .escrever { margin-top: 12px; }
+.ferramentas h2 { font-size: 16px; }
+.ferramentas-mini {
+  margin-top: 12px;
+  border-top: 1px solid var(--linha);
+  padding-top: 10px;
+}
+.ferramentas-mini > summary { font-size: 13px; }
+.ferramentas-mini .escrever { margin-top: 8px; }
+
+.escrever select {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: var(--fundo);
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.escrever select:focus {
+  outline: 2px solid var(--destaque);
+  outline-offset: 1px;
+  background: var(--papel);
+}
+
+/* Uma fileira de botões pequenos, cada um dentro do próprio formulário: é o que
+   faz cada ação viajar por POST, com o token de CSRF junto. */
+.linha-de-botoes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.linha-de-botoes form { margin: 0; }
+button.mini {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--aviso);
+  background: var(--papel);
+  border: 1px solid var(--aviso);
+  border-radius: 8px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+button.mini:hover { background: #fffbeb; }
+
+/* O que está fora do ar continua na tela de quem modera, e tem de PARECER fora
+   do ar: sem esta marca, o administrador leria a mensagem removida como se ela
+   ainda estivesse publicada. */
+.mensagem.fora-do-ar { opacity: 0.6; border-left-color: var(--aviso); }
+
 @media (max-width: 520px) {
   main { padding: 16px 14px 40px; }
   .quem { float: none; display: block; margin-top: 4px; }
   .escrever button, .botao { width: 100%; text-align: center; }
+  .linha-de-botoes form, button.mini { width: 100%; }
 }
