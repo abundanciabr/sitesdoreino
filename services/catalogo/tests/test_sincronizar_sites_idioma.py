@@ -140,7 +140,15 @@ def test_sites_json_do_repositorio_converge_como_declarado(monkeypatch):
     exec(codigo, {"__name__": "__main__"})
 
     site = Site.objects.get(host="meshcraft.top")
-    assert site.default_language == "en"
+    # `pt-br` desde 27/08/2026 (commit 388976a, "o padrao do meshcraft.top
+    # passa a ser pt-br, raiz nua em portugues"): o `infra/sites.json` mudou e
+    # ESTA linha ficou para tras, exigindo "en". Ficou vermelha em silencio por
+    # tres dias, porque a suite do `catalogo` so roda quando um PR toca a
+    # celula, e nenhum tocou. Achada em 30/08/2026 por um PR de outro assunto.
+    #
+    # As asserçoes iguais mais acima NAO mudam: aquelas leem uma declaraçao
+    # sintetica do proprio teste, nao o arquivo real da produçao.
+    assert site.default_language == "pt-br"
     assert site.languages == [
         {"code": "en", "indexable": True},
         {"code": "pt-br", "indexable": True},
