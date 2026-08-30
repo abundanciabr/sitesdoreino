@@ -85,6 +85,17 @@ SCRIPTS = [
         "env/notificacoes.env",
         "infra/env/notificacoes.env.exemplo",
     ),
+    # A quinta da família (28/08/2026, gênese do fórum da escola). Entrou aqui
+    # no MESMO PR do script, pelo motivo escrito acima. E aqui a data também é
+    # PREVISÍVEL, por dois lados: `FORUM_PROFESSORES` ganha nome de gente assim
+    # que a escola tiver professor, e a lei do fórum já prevê variáveis novas de
+    # moderação e de anexo — cada uma é uma chance de o script apagar o que não
+    # conhece.
+    (
+        "infra/provisionar-forum.sh",
+        "env/forum.env",
+        "infra/env/forum.env.exemplo",
+    ),
 ]
 
 RE_LISTA = re.compile(r'^CHAVES_QUE_EU_GERO="([^"]*)"', re.MULTILINE)
