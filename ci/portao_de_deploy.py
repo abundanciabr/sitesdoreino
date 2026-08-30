@@ -96,6 +96,25 @@ MURALHAS = ".github/workflows/muralhas.yml"
 # Quem grita quando ele fica vermelho é a issue do próprio workflow, não este
 # portão.
 VIGIA_DO_CADEADO = ".github/workflows/vigia-do-cadeado.yml"
+# DECLARADA POR ESCRITO pela mesma regra, e pelo caso mais literal dela que este
+# repositório tem (TAR-029, 30/08/2026). A vacina do deploy acorda por
+# `workflow_run` quando um deploy termina `cancelled`, então ela roda NO MESMO
+# `head_sha` do deploy doente — e a cura que ela pede é um rerun DAQUELE deploy,
+# que passa por este portão.
+#
+# Se ela ficasse vermelha e não estivesse aqui, `vermelhos_nao_previstos`
+# reprovaria o rerun que ela mesma pediu: a vacina trancaria a porta por dentro,
+# e o único caso em que isso aconteceria é justamente aquele em que ela falhou —
+# ou seja, o deploy ficaria fora do ar E sem caminho de volta. É a
+# `armadilhas/180` com o alvo trocado: lá o conserto era um deploy, aqui o
+# conserto É o deploy.
+#
+# Fora de `exigidos` pelo mesmo par de razões do vigia: ela não mede este commit
+# (mede se um run cancelado pode ser republicado), e ela só existe quando houve
+# cancelamento — exigi-la faria todo deploy saudável esperar por um run que não
+# nasceu. Quem grita quando ela não cura é a issue `deploy-fora-do-ar` dela
+# mesma; o desenho é o do `alarme-main`, reusado.
+VACINA_DO_DEPLOY = ".github/workflows/vacina-do-deploy.yml"
 
 
 @dataclass
@@ -533,7 +552,7 @@ def main() -> int:
             )
         )
 
-        conhecidos = set(exigidos) | {MURALHAS, VIGIA_DO_CADEADO}
+        conhecidos = set(exigidos) | {MURALHAS, VIGIA_DO_CADEADO, VACINA_DO_DEPLOY}
         relatorio.registrar(vermelhos_nao_previstos(runs_do_commit, conhecidos))
 
     except ErroDeInstrumentacao as erro:

@@ -167,6 +167,7 @@ def _cancelado(**kwargs) -> vacina.Fatos:
     base = dict(
         conclusion="cancelled",
         event="push",
+        workflow="deploy-celula",
         head_sha="a" * 40,
         sha_publicado="b" * 40,
         publicado_e_ancestral=True,
@@ -449,3 +450,177 @@ def test_a_entrada_188_declara_ESTE_arquivo_como_sua_guarda():
         "a 188 precisa declarar ESTE arquivo de teste como sua guarda "
         f"(veio: {guarda.get('dono')})"
     )
+
+
+# ------------ a esteira do run decide contra o que medir (TAR-029) ----------
+#
+# Estas provas nasceram da TAR-029, e todas elas falam o vocabulário do código
+# ANTIGO de propósito (armadilhas/195): montam `Fatos` só com campos que a
+# versão anterior conhecia e põem `workflow` por `setattr`, para que o vermelho
+# caia numa ASSERÇÃO — "a vacina perguntou à esteira errada" — e não num
+# `TypeError` de construtor, que provaria apenas que o teste é novo.
+
+
+def _sem_rede(monkeypatch, registrar: list) -> None:
+    """Desliga tudo o que sai da máquina, menos a pergunta que está sob teste."""
+    monkeypatch.setattr(vacina, "_rodar", lambda *a, **k: (0, ""))
+    monkeypatch.setattr(vacina, "http_do_site", lambda *a, **k: 200)
+    monkeypatch.setattr(vacina, "e_ancestral", lambda *a, **k: True)
+    monkeypatch.setattr(vacina, "commits_que_ficam_de_fora", lambda *a, **k: (0, False))
+
+    def _espiao(workflow=vacina.WORKFLOW_DO_DEPLOY, limite=vacina.RUNS_OLHADOS_ATRAS):
+        registrar.append(workflow)
+        return "b" * 40
+
+    monkeypatch.setattr(vacina, "sha_do_ultimo_deploy_verde", _espiao)
+
+
+def test_o_cancelado_do_deploy_infra_pergunta_ao_deploy_INFRA(monkeypatch):
+    """O buraco que a TAR-029 achou: a vacina media a esteira errada.
+
+    `deploy-celula` e `deploy-infra` publicam COISAS DIFERENTES — uma imagem de
+    célula e o `docker-compose.yml`/`traefik` da VPS. Até 30/08/2026
+    `_colher_o_cancelado` chamava `sha_do_ultimo_deploy_verde()` sem argumento,
+    ou seja, perguntava SEMPRE ao `deploy-celula`.
+
+    Não é hipótese. Medido em 30/08/2026 nos dois últimos verdes do dia: o do
+    `deploy-celula` (00952d43) continha o do `deploy-infra` (8848f1f7) e mais 47
+    commits, nenhum tocando `infra/`. Um `deploy-infra` cancelado em qualquer
+    ponto dessa faixa recebia `head_ja_publicado = True` — "já está no ar" —
+    sobre uma infraestrutura que nunca foi sincronizada.
+    """
+    perguntou: list[str] = []
+    _sem_rede(monkeypatch, perguntou)
+    fatos = vacina.Fatos(run="1", status="completed", conclusion="cancelled",
+                         event="push", head_sha="a" * 40)
+    fatos.workflow = "deploy-infra"
+
+    vacina._colher_o_cancelado(fatos)
+
+    assert perguntou == ["deploy-infra.yml"], (
+        "a vacina precisa perguntar o que ESTA esteira publicou; perguntar ao "
+        f"deploy-celula devolve a resposta de outra pergunta (perguntou: {perguntou})"
+    )
+
+
+def test_o_cancelado_do_deploy_celula_continua_perguntando_ao_deploy_CELULA(monkeypatch):
+    """A correção é ESTREITA: o caso que já funcionava não pode mudar de mira.
+
+    Sozinha, a prova de cima passaria também se alguém tivesse feito a vacina
+    perguntar sempre ao `deploy-infra` — trocar um erro pelo simétrico.
+    """
+    perguntou: list[str] = []
+    _sem_rede(monkeypatch, perguntou)
+    fatos = vacina.Fatos(run="1", status="completed", conclusion="cancelled",
+                         event="push", head_sha="a" * 40)
+    fatos.workflow = "deploy-celula"
+
+    vacina._colher_o_cancelado(fatos)
+
+    assert perguntou == ["deploy-celula.yml"]
+
+
+def test_sem_saber_a_esteira_o_cancelado_e_ERROR_e_nao_um_palpite():
+    """Fail-closed na borda: 'não sei contra o que comparar' não vira 'repetir'.
+
+    Antes da TAR-029 esta mesma história devolvia `repetir`/0 — a vacina
+    republicava um SHA sem ter medido a publicação da esteira certa. A história
+    é montada aqui SEM a palavra `workflow` (e não com ela vazia) porque é
+    assim que o código antigo a enxergava: o vermelho tem de cair nesta
+    asserção, não no construtor (armadilhas/195).
+    """
+    decisao = vacina.decidir(_fatos(
+        conclusion="cancelled", event="push",
+        head_sha="a" * 40, sha_publicado="b" * 40,
+        publicado_e_ancestral=True, head_ja_publicado=False,
+        commits_de_fora=0, commits_de_fora_tocam_o_deploy=False, site_http=200,
+    ))
+    assert decisao.codigo == 2, (
+        "esteira desconhecida é ERROR; 'não medi' nunca vira 'pode repetir'"
+    )
+    assert decisao.acao != "repetir"
+
+
+def test_o_attempt_do_run_e_a_conta_que_sobrevive_ao_processo(monkeypatch):
+    """A regra de parada precisa valer ENTRE execuções (TAR-029).
+
+    Com um gatilho automático, cada rerun cancelado acorda um processo NOVO com
+    o contador de memória em zero — vacina → rerun → cancelado → vacina, sem
+    fim. `attempt` é a única conta que o GitHub guarda; medido no dia, o run
+    33325108776 estava em `attempt: 4`.
+    """
+    monkeypatch.setattr(vacina, "_colher_o_cancelado", lambda fatos: None)
+    monkeypatch.setattr(
+        vacina, "dados_do_run",
+        lambda run: {"status": "completed", "conclusion": "cancelled",
+                     "event": "push", "headSha": "a" * 40,
+                     "workflowName": "deploy-celula", "attempt": 4},
+    )
+
+    fatos = vacina.colher("1", "host.invalido", tentativas=0)
+
+    assert fatos.tentativas_feitas == 3, (
+        "quatro tentativas de run são três repetições já feitas; ler zero aqui "
+        "é o que faria a vacina repetir para sempre"
+    )
+    assert vacina.decidir(fatos).acao != "repetir", (
+        "estourada a regra de parada, a vacina PARA — a quarta tentativa não é "
+        "diagnóstico, é teimosia (armadilhas/127)"
+    )
+
+
+def test_o_laco_de_memoria_ainda_conta_quando_o_attempt_nao_ajuda():
+    """Piso, não substituição: o maior dos dois é o que a regra enxerga."""
+    assert vacina.tentativas_ja_feitas({"attempt": 1}, 2) == 2
+    assert vacina.tentativas_ja_feitas({"attempt": 4}, 0) == 3
+    assert vacina.tentativas_ja_feitas({}, 1) == 1, "sem attempt, vale a memória"
+    assert vacina.tentativas_ja_feitas({"attempt": "nao-numero"}, 1) == 1
+
+
+def test_os_paths_do_deploy_infra_sao_LIDOS_apesar_da_forma_em_bloco():
+    """As duas formas de `paths:` são YAML válido, e as duas existem aqui.
+
+    O `deploy-celula` escreve em linha (`paths: [a, b]`) e o `deploy-infra` em
+    bloco (`- 'infra/...'`). Um leitor que só soubesse a primeira devolveria
+    ERROR sobre o `deploy-infra` — e o recado da 188 ("nenhum deploy novo vai
+    nascer") viraria "não consegui contar" justamente no caso novo.
+    """
+    from _nucleo import raiz_do_repo
+
+    raiz = raiz_do_repo()
+    prefixos = vacina.paths_do_deploy(
+        raiz, raiz / ".github" / "workflows" / "deploy-infra.yml"
+    )
+    assert "infra/traefik/" in prefixos, f"veio: {prefixos}"
+    assert "infra/docker-compose.yml" in prefixos, (
+        "o gatilho do deploy-infra tem ARQUIVOS, não só pastas — cortá-los "
+        f"deixaria a conta cega (veio: {prefixos})"
+    )
+    for prefixo in prefixos:
+        assert (raiz / prefixo).exists(), (
+            f"'{prefixo}' saiu do gatilho mas não existe neste repositório — a "
+            "leitura está pegando outra coisa"
+        )
+
+
+def test_paths_em_bloco_nao_engole_a_chave_seguinte(tmp_path: Path):
+    """Ler lixo é pior que não achar: lixo decide sem levantar suspeita."""
+    pasta = tmp_path / ".github" / "workflows"
+    pasta.mkdir(parents=True)
+    (pasta / "deploy-celula.yml").write_text(
+        "on:\n  push:\n    paths:\n      - 'infra/traefik/**'\n"
+        "permissions:\n  contents: read\n",
+        encoding="utf-8",
+    )
+    assert vacina.paths_do_deploy(tmp_path) == ("infra/traefik/",)
+
+
+def test_o_arquivo_do_workflow_e_descoberto_pelo_nome_de_dentro():
+    """Casar por convenção de nome de arquivo quebraria calado num rename."""
+    from _nucleo import raiz_do_repo
+
+    raiz = raiz_do_repo()
+    assert vacina.arquivo_do_workflow("deploy-infra", raiz).name == "deploy-infra.yml"
+    assert vacina.arquivo_do_workflow("deploy-celula", raiz).name == "deploy-celula.yml"
+    with pytest.raises(vacina.ErroDeMedicao):
+        vacina.arquivo_do_workflow("workflow-que-nao-existe", raiz)

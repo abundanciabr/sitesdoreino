@@ -1,0 +1,257 @@
+# =============================================================================
+# A VACINA DO DEPLOY, COM GATILHO — TAR-029 (30/08/2026)
+#
+# O PROBLEMA, medido três vezes em dois dias por robôs diferentes: o
+# `deploy-celula` e o `deploy-infra` dividem o grupo de concorrência `deploy`,
+# que guarda UM único run pendente. Quando dois merges chegam perto, o pendente
+# anterior é EXPULSO e termina `cancelled`. O merge fica na `main` sem estar em
+# produção — e `cancelled` não é `failure`: o `alarme-main` não dispara, nada
+# fica vermelho, nenhuma issue nasce. O deploy some em silêncio.
+#
+# E não é azar: TODO PR deste projeto carrega um registro obrigatório em
+# `painel/registros/`, que casa o `paths:` do `deploy-celula`. Ou seja, todo PR
+# de infraestrutura dispara os DOIS deploys, e eles brigam pela mesma vaga.
+# Quanto mais robôs em paralelo, mais vezes por dia.
+#
+# O QUE JÁ EXISTIA E NÃO BASTAVA: `ci/rerun_de_deploy.py` sabe decidir o caso
+# desde a TAR-017 — mede a ancestralidade e diz se repetir avança ou seria
+# rollback. Mas era um COMANDO, e alguém precisava notar o cinza no histórico e
+# rodá-lo. Classe 2 da RETROSPECTIVA-FASE-D (garantia sem mecanismo): a cura
+# existia, escrita e testada; o gatilho não. Este arquivo é o gatilho.
+#
+# -----------------------------------------------------------------------------
+# POR QUE `workflow_run`, E NÃO UM RELÓGIO
+#
+# A pergunta é "este run terminou cancelado?", e o Actions já a responde no
+# instante exato. Um `schedule` teria de varrer o histórico atrás de cinzas, e
+# ainda erraria a janela: entre a varredura e o cancelamento, a `main` anda.
+# `workflow_run` custa zero minuto enquanto nada é cancelado.
+#
+# Limite conhecido e declarado: um workflow `workflow_run` só dispara a partir
+# da definição que está no ramo PADRÃO. Ou seja, este arquivo não faz efeito
+# nenhum enquanto vive num ramo de trabalho — a primeira prova real dele só
+# existe depois do merge. É por isso que a decisão inteira é provada sem rede em
+# `ci/tests/test_rerun_de_deploy.py` e a fiação, aqui, em
+# `ci/tests/test_vacina_do_deploy_automatica.py`.
+#
+# -----------------------------------------------------------------------------
+# GRUPO DE CONCORRÊNCIA PRÓPRIO — e este é o ponto mais fácil de errar
+#
+# Este workflow NÃO pode entrar no grupo `deploy`. Ele é exatamente o caso da
+# `armadilhas/173`: um workflow que não mexe no `docker compose` da VPS, posto
+# na fila mais disputada do projeto, é expulso da vaga de pendente e morre em
+# `cancelled` sem uma linha de log. A vacina contra o cancelamento morrendo de
+# cancelamento seria a piada que a 173 já contou uma vez.
+#
+# A chave é o ID DO RUN doente: duas curas do MESMO run se enfileiram (nunca se
+# atropelam), e curas de runs diferentes correm em paralelo, porque não disputam
+# recurso nenhum — quem disputa a VPS é o deploy que elas repetem, e esse já tem
+# a fila dele.
+#
+# -----------------------------------------------------------------------------
+# ESTE JOB TERMINA VERDE MESMO QUANDO NÃO CURA — de propósito (armadilhas/180)
+#
+# `ci/portao_de_deploy.py::vermelhos_nao_previstos` barra o deploy se qualquer
+# workflow fora da lista `conhecidos` estiver vermelho NAQUELE SHA. Este
+# workflow roda no mesmo SHA do deploy que ele tenta curar: se ficasse vermelho
+# ao não conseguir curar, ele trancaria a porta por dentro — o rerun que ele
+# mesmo pediu seria barrado pelo seu próprio vermelho. Por isso:
+#
+#   1. o passo captura o código de saída em vez de deixá-lo derrubar o job; e
+#   2. o workflow está DECLARADO em `conhecidos` (e fora de `exigidos`) em
+#      `ci/portao_de_deploy.py`, com o par de testes que a 180 exige.
+#
+# Quem grita quando não há cura é a ISSUE — o mesmo desenho do `alarme-main`,
+# reusado e não reinventado. Ficar vermelho aqui não avisaria ninguém melhor:
+# só somaria um bloqueio.
+#
+# -----------------------------------------------------------------------------
+# POR QUE A ISSUE NÃO NASCE EM TODO CANCELAMENTO
+#
+# Porque o cancelamento CURADO não precisa de ninguém. Uma issue por cadeira
+# musical, num repositório que recebe da ordem de 100 entregas por dia, é o
+# alarme que se aprende a ignorar — e aí ele deixa de servir para o caso em que
+# importa (é o argumento que o próprio `alarme-main` escreve sobre as muralhas
+# de diff). O sinal aqui é fiel ao que o mantenedor precisa saber:
+#
+#   vacina saiu 0  → ou já estava no ar, ou o rerun subiu. Ninguém precisa vir.
+#   vacina saiu 1  → PAROU por regra (divergiu ⇒ repetir seria rollback; ou a
+#                    regra de parada estourou). Só mão humana resolve. ISSUE.
+#   vacina saiu 2  → NÃO CONSEGUIU MEDIR. "Não medi" nunca vira "deu certo"
+#                    (INV-CI01), e ninguém mais vai olhar. ISSUE.
+#
+# -----------------------------------------------------------------------------
+# USA `PISTA_TOKEN` QUANDO ELE EXISTE
+#
+# Um rerun pedido pelo `GITHUB_TOKEN` cai perto demais da regra que o
+# `pouso.yml` documenta ("events triggered by the GITHUB_TOKEN will not create a
+# new workflow run") para eu apostar nela sem medir: se o rerun não gerasse o
+# `workflow_run` seguinte, a segunda volta da cura nunca aconteceria, em
+# silêncio. Com o `PISTA_TOKEN` a dúvida não existe. Sem ele, cai no token
+# padrão e DIZ no log que caiu — degradar calado é o que esta casa não faz.
+# =============================================================================
+name: vacina-do-deploy
+on:
+  workflow_run:
+    workflows: [deploy-celula, deploy-infra]
+    types: [completed]
+permissions:
+  contents: read
+concurrency:
+  group: vacina-do-deploy-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+jobs:
+  curar:
+    name: cuidar do deploy cancelado
+    # `cancelled` e só ele: `failure` na `main` já tem dono (o agente que
+    # mergeou, avisado pelo vermelho) e `success` não tem doença. `main` porque
+    # é a única linha que vai para produção.
+    if: >-
+      github.event.workflow_run.conclusion == 'cancelled' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      actions: write   # `gh run rerun` — é a cura inteira
+      issues: write    # o sinal, quando não há cura
+    steps:
+      # `fetch-depth: 0` NÃO é exagero: a decisão inteira é
+      # `git merge-base --is-ancestor` entre o que está publicado e o SHA deste
+      # run. Num clone raso o Git responde 128 ("não consegui medir"), a vacina
+      # devolve ERROR e a cura vira uma issue inútil (armadilhas/159).
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: A vacina decide e, se for o caso, repete
+        id: vacina
+        env:
+          GH_TOKEN: ${{ secrets.PISTA_TOKEN || github.token }}
+          RUN_DOENTE: ${{ github.event.workflow_run.id }}
+          ESTEIRA: ${{ github.event.workflow_run.name }}
+          # A PERGUNTA, e não o segredo: interpolar `secrets.PISTA_TOKEN` dentro
+          # da linha de comando para testá-lo poria a chave no `argv` do
+          # processo. O booleano responde a mesma coisa sem carregar nada.
+          TEM_PISTA: ${{ secrets.PISTA_TOKEN != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$TEM_PISTA" != "true" ]; then
+            echo "AVISO: sem PISTA_TOKEN — pedindo o rerun com o token padrão."
+            echo "Se a segunda volta da cura não acontecer, é aqui que se olha."
+          fi
+          echo "Esteira doente: $ESTEIRA · run: $RUN_DOENTE"
+          # O CÓDIGO DE SAÍDA DA VACINA É O VEREDITO (0 PASS · 1 FAIL · 2 ERROR),
+          # não um acidente — e ele precisa chegar inteiro ao passo seguinte, que
+          # decide se abre a issue.
+          #
+          # `|| CODIGO=$?` CAPTURA a falha; `set +e` e `|| true` a ESCONDERIAM, e
+          # os dois são proibidos aqui por
+          # `ci/tests/test_contract_freeze.py::test_workflows_nao_escondem_erro`
+          # (o bypass do `ci-celula` nasceu de um `|| true` dentro de um YAML).
+          # A diferença não é de estilo: com `||` a falha vira um valor que
+          # alguém lê; sem ele, vira silêncio.
+          #
+          # Sem pipe, também de propósito: `vacina | tee` faria o `$?` ser o do
+          # `tee`, que sai 0 sempre (ARMADILHAS §5.10 / armadilhas/045). A saída
+          # vai para arquivo e é impressa na linha seguinte — o log do run
+          # continua mostrando tudo, e o `-e` não derruba o passo, porque a falha
+          # está tratada.
+          CODIGO=0
+          python ci/rerun_de_deploy.py --run "$RUN_DOENTE" \
+            > saida-da-vacina.txt 2>&1 || CODIGO=$?
+          cat saida-da-vacina.txt
+          echo "codigo=$CODIGO" >> "$GITHUB_OUTPUT"
+          echo "--- a vacina saiu com $CODIGO ---"
+          if [ "$CODIGO" -eq 0 ]; then
+            echo "Nada a alarmar: ou o commit já estava no ar, ou o rerun subiu."
+          fi
+      # ---------------------------------------------------------------------
+      # O SINAL — mesmo desenho do `alarme-main`: uma issue por vez, com label,
+      # e comentário nela se já estiver aberta. Reusar em vez de inventar um
+      # segundo mecanismo de alarme foi pedido nominalmente pelo despacho.
+      # ---------------------------------------------------------------------
+      - name: Abrir (ou atualizar) a issue de deploy fora do ar
+        if: steps.vacina.outputs.codigo != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_DOENTE: ${{ github.event.workflow_run.id }}
+          ESTEIRA: ${{ github.event.workflow_run.name }}
+          SHA: ${{ github.event.workflow_run.head_sha }}
+          TITULO_DO_MERGE: ${{ github.event.workflow_run.display_title }}
+          URL_DOENTE: ${{ github.event.workflow_run.html_url }}
+          URL_DESTA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          CODIGO: ${{ steps.vacina.outputs.codigo }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          SAIDA="$(head -c 3000 saida-da-vacina.txt 2>/dev/null || echo '(a vacina não deixou saída)')"
+          CORPO="$(cat <<EOF
+          🟠 **Um deploy foi CANCELADO e a vacina não conseguiu curá-lo sozinha.**
+
+          - esteira: \`$ESTEIRA\`
+          - run cancelado: $URL_DOENTE
+          - commit: \`$SHA\` — $TITULO_DO_MERGE
+          - tentativa de cura: $URL_DESTA (a vacina saiu **$CODIGO**)
+
+          ## O que isto significa, em português
+
+          O merge está na \`main\` e **não está em produção**. Ninguém ficou fora do
+          ar: o site segue servindo a versão anterior. Mas o que aquele merge
+          entregou não chegou ao site, e não vai chegar sozinho.
+
+          Isto acontece porque \`deploy-celula\` e \`deploy-infra\` dividem uma única
+          vaga de espera (\`concurrency: deploy\`): quando dois merges chegam perto,
+          o que estava esperando é expulso (\`armadilhas/173\`, \`/183\`, \`/188\`).
+
+          ## Por que a cura automática parou
+
+          \`\`\`
+          $SAIDA
+          \`\`\`
+
+          Os dois motivos possíveis, e os dois são de propósito:
+
+          - **PAROU (saída 1)** — repetir aquele run publicaria um mundo mais VELHO
+            que o que está no ar (rollback silencioso), ou a regra de parada de três
+            tentativas estourou. Nos dois casos, insistir seria pior que parar.
+          - **NÃO MEDI (saída 2)** — faltou uma medição para decidir, e "não medi"
+            nunca vira "pode repetir" ([INV-CI01]).
+
+          ## O que fazer
+
+          1. Diagnóstico, sem mexer em nada:
+             \`python ci/rerun_de_deploy.py --run $RUN_DOENTE --so-diagnosticar\`
+          2. Leia a \`armadilhas/188\` — ela ensina as três medidas (o que está
+             publicado é ancestral? o que fica de fora? algum desses commits tem
+             deploy próprio?).
+          3. Se a medida disser que republicar só avança, \`gh run rerun $RUN_DOENTE\`.
+             Se disser que divergiu, o caminho é um merge NOVO que toque os mesmos
+             \`paths:\` — nunca um rerun de um commit mais velho.
+
+          Feche esta issue quando o que aquele merge entregou estiver no ar.
+          EOF
+          )"
+
+          EXISTENTE="$(gh issue list --label deploy-fora-do-ar --state open \
+            --json number --jq '.[0].number // empty')"
+
+          if [ -n "$EXISTENTE" ]; then
+            echo "Issue #$EXISTENTE já aberta — comentando nela."
+            gh issue comment "$EXISTENTE" --body "$CORPO"
+          else
+            # `|| true` aqui seria a preguiça que o INV-CI01 combate: esconderia
+            # "não consegui criar a label" junto com "ela já existe".
+            if ! gh label list --json name --jq '.[].name' | grep -qx deploy-fora-do-ar; then
+              gh label create deploy-fora-do-ar \
+                --description "Um merge está na main e não chegou à produção" \
+                --color d93f0b
+            fi
+            gh issue create \
+              --title "deploy fora do ar: $ESTEIRA cancelado em ${SHA:0:8}" \
+              --label deploy-fora-do-ar \
+              --body "$CORPO"
+          fi
