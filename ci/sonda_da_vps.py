@@ -156,7 +156,7 @@ NAO_MEDI = "nao_medi"
 #             soluço da armadilhas/127 (`dial tcp ***:22: i/o timeout`).
 #
 # Dar o mesmo veredito às duas fazia a sonda declarar PERMANENTE justamente no
-# sintoma da falha INTERMITENTE (`armadilhas/197`).
+# sintoma da falha INTERMITENTE (`armadilhas/208`).
 ATENDEU = "atendeu"                      # falou o banner de SSH: a porta está viva
 NAO_E_SSH = "nao_e_ssh"                  # a conexão abriu, mas quem está lá não é SSH
 RECUSOU = "recusou"                      # levou um "não" da rede: resposta negativa
@@ -340,7 +340,7 @@ def decidir_pela_sonda(medicao: Medicao) -> Veredito:
         "público, que serve 200 para o mundo. Quem está cego é o runner, não a "
         "porta: estouro de tempo é a assinatura literal do soluço da "
         "armadilhas/127 (`i/o timeout`), e chamar isso de 017 seria a sonda "
-        "diagnosticar o próprio engasgo como defeito da VPS (armadilhas/197).",
+        "diagnosticar o próprio engasgo como defeito da VPS (armadilhas/208).",
         "O retry segue inteiro — e é isso que fail-closed significa aqui: "
         "repetir à toa custa 45 s, desistir à toa custa a entrega.",
         medicoes=quantas,

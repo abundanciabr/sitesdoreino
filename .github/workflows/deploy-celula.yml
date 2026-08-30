@@ -394,7 +394,7 @@ jobs:
       # abortar deploys por defeito próprio.
       #
       # E AS DUAS MEDIÇÕES NÃO BASTARAM — no mesmo dia em que nasceram (TAR-026,
-      # `armadilhas/197`). No run 33312655853 as duas disseram `permanente` com a
+      # `armadilhas/208`). No run 33312655853 as duas disseram `permanente` com a
       # VPS VIVA, porque cada uma era UMA sondagem só e as duas estouraram o
       # tempo pelo mesmo motivo: o runner não alcançava nada, nem o site
       # público. Hoje cada medição é composta de várias sondagens, silêncio
