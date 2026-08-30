@@ -159,18 +159,33 @@ def _normalizar(runs: list[dict[str, Any]]) -> list[Passagem]:
 def mirar(runs: list[dict[str, Any]], sha_atual: str) -> Mira:
     """O cálculo inteiro, sem rede e sem efeito colateral.
 
-    `sha_atual` é o commit da execução que está chamando. Ele é forçado a
-    VERMELHO porque quem chama é o job `reverter`, que só existe sob
+    `sha_atual` é o commit da execução que está chamando. A conclusão dele é
+    forçada a VERMELHO porque quem chama é o job `reverter`, que só existe sob
     `if: failure()` — a API ainda vai estar mostrando esta execução como
     `in_progress` quando a pergunta for feita, e esperar por ela seria esperar
     por si mesmo.
+
+    **Forçada NA POSIÇÃO DELE, não no topo**, e a diferença é um fail-open que
+    só apareceu ao rodar a mira contra a rede de verdade: enquanto este job
+    roda, a `main` anda. Se um merge posterior já devolveu o alarme ao verde,
+    não há fogo para apagar — e empurrar `sha_atual` para o topo esconderia
+    esse verde, fazendo a mira propor a reversão de um incêndio que outra
+    pessoa já apagou. Mantendo a posição real, o verde mais novo vira "a
+    execução mais recente" e a recusa correspondente dispara sozinha. Só quando
+    o commit ainda NÃO aparece no histórico (a API não indexou a execução em
+    andamento) ele entra no topo, que é onde ele de fato está.
     """
     passagens = _normalizar(runs)
 
     if sha_atual:
-        passagens = [p for p in passagens if p.sha != sha_atual]
-        topo = max((p.numero for p in passagens), default=0) + 1
-        passagens.insert(0, Passagem(sha=sha_atual, conclusao=VERMELHO, numero=topo))
+        if any(p.sha == sha_atual for p in passagens):
+            passagens = [
+                Passagem(p.sha, VERMELHO, p.numero, p.url) if p.sha == sha_atual else p
+                for p in passagens
+            ]
+        else:
+            topo = max((p.numero for p in passagens), default=0) + 1
+            passagens.insert(0, Passagem(sha=sha_atual, conclusao=VERMELHO, numero=topo))
 
     if not passagens:
         return Mira(None, "histórico vazio: o alarme nunca rodou nesta branch")

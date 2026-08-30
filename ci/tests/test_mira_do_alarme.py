@@ -196,6 +196,23 @@ def test_a_execucao_que_pergunta_e_vermelha_mesmo_se_a_api_disser_outra_coisa():
     assert mira.culpado == "eu"
 
 
+def test_se_a_main_ja_ficou_verde_depois_desta_execucao_nao_ha_fogo_para_apagar():
+    """O fail-open que só apareceu rodando a mira contra a rede de verdade.
+
+    Enquanto o job de reversão roda, a `main` anda. Se um merge posterior já
+    devolveu o alarme ao verde, propor a reversão seria desfazer trabalho por
+    causa de um incêndio que outra pessoa apagou. A execução que pergunta é
+    marcada vermelha NA POSIÇÃO DELA — empurrá-la para o topo esconderia esse
+    verde mais novo.
+    """
+    mira = mira_do_alarme.mirar(
+        historia([("o-conserto", "success"), ("eu", "failure"), ("velho", "success")]),
+        "eu",
+    )
+    assert not mira.achou
+    assert "não há vermelho corrente" in mira.motivo
+
+
 def test_ordena_por_numero_da_execucao_e_nao_pela_ordem_da_lista():
     """Dois merges no mesmo segundo empatam no carimbo de tempo.
 
