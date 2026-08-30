@@ -1,0 +1,19 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260830-047-o-resumo-do-deploy-nao-pode-jurar-que-a-producao-esta-intacta",
+  tipo: "entrega",
+  quando: "2026-08-30",
+  titulo: "Tirei do relatorio da publicacao uma frase que jurava 'nada foi mexido no servidor' sem ter como saber",
+  detalhe: "ESTE E O ACERTO DE UM DETALHE DO TRABALHO ANTERIOR (o que fez a publicacao da encanacao aguentar o solucinho de rede). Vale registrar separado porque o erro era do tipo que faz uma pessoa parar de investigar.\n\nO QUE ERA. Quando a publicacao falha, o sistema agora escreve um relatorio em portugues na tela da execucao. O ultimo paragrafo desse relatorio dizia, em toda falha: 'o servidor continua com os arquivos ANTERIORES, ninguem ficou fora do ar'.\n\nPOR QUE ISSO ERA PERIGOSO. Essa frase e verdadeira num caso e FALSA no outro. Se o comando nem chegou a rodar no servidor — que e a falha comum, o solucinho de rede — ela esta certa: nada foi tocado. Mas se o comando comecou e morreu no meio, ele pode ter chegado a trocar os arquivos, e a frase estaria afirmando o contrario do que aconteceu. Alem disso ela mandava o leitor olhar as medicoes de rede, que nesse caso nem existem, e a causa nem era rede.\n\nESTA CASA JA TEM NOME PARA A FAMILIA DISSO: o falso-verde — o sistema dizer que deu certo sem ter dado. Este e um primo: nao e sobre o resultado, e sobre o ESTADO. Uma frase que garante 'esta tudo intacto' faz quem le fechar a janela e ir cuidar de outra coisa.\n\nO CONSERTO. O relatorio passou a contar duas historias diferentes, e ele sabe qual e qual porque o comando no servidor imprime uma marca na primeira linha. Sem a marca: 'nada foi tocado, o servidor nao executou uma linha' — e ai as medicoes de rede sao mesmo o proximo passo. Com a marca: 'comecou e parou no meio; NAO afirmo que esta intacto' — e aponta para o registro da falha e para a copia de seguranca que o proprio sistema guarda antes de mexer em qualquer coisa.\n\nCOMO SEI QUE O GUARDA NOVO FUNCIONA: estraguei a frase de proposito, de volta para a versao antiga, e o teste ficou vermelho apontando exatamente a linha errada; desfiz e ficou verde. Sem essa encenacao, um teste que passa nao prova nada.\n\nPOR QUE VIROU UM SEGUNDO TRABALHO E NAO ENTROU NO PRIMEIRO: eu achei o defeito minutos depois de por o trabalho anterior na fila de entrada, e a fila entregou antes de eu conseguir emendar. Tentei tirar da fila para corrigir e a acao foi barrada pelo controle de permissoes desta maquina — nao contornei; abri um trabalho novo, que e o caminho limpo.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/605 — este PR. Corrige o resumo do run entregue no https://github.com/abundanciabr/sitesdoreino/pull/602 (TAR-024). PROVA POR MUTACAO: com a frase antiga de volta, 'test_o_narrador_nao_afirma_producao_intacta_quando_nao_sabe' reprova na assercao da linha 466 ('a frase continua com o compose ANTERIOR so pode aparecer no ramo em que esta provado que nada rodou na VPS') — 1 failed, 22 passed; restaurada, 23 passed. Suite completa do repositorio: 1233 passed. SOBRE O 602: o deploy-celula do merge dele terminou 'success' (run 33317249613, conferido por gh run view --json), e o deploy-infra saiu 'cancelled' pela cadeira musical do grupo de concorrencia (run 33317249576) — sem prejuizo, porque o unico arquivo que o 602 mudou dentro de infra/ foi o sincronizar-infra-na-vps.sh, que NAO esta na lista de copia para a VPS (ele roda do runner, por script_path); compose, traefik e sites.json ficaram identicos. ci/rerun_de_deploy.py confirmou 'NADA a repetir'. Site medido de fora no mesmo minuto: meshcraft.top/healthz 200 e raiz 200.",
+  verificado_em: "2026-08-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+});})();
