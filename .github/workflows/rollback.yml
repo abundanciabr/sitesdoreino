@@ -43,6 +43,7 @@ on:
           - checkout
           - forum
           - funil
+          - gamificacao
           - identidade
           - leads
           - mensageria
