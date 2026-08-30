@@ -1,0 +1,13 @@
+{
+  "arquivo": "019-o-forum-passa-a-aceitar-escrita-atras-do-login-so-para-aluno",
+  "id": "TAR-019",
+  "titulo": "O forum passa a aceitar escrita: atras do login, so para aluno matriculado",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "Um aluno matriculado criando topico e respondendo, medido DE FORA; e as duas provas negativas: quem tem cadastro sem matricula e quem nao tem login recebendo recusa. Teste vermelho->verde para os tres casos.",
+  "despacho": "O mantenedor respondeu em 30/08/2026 as tres perguntas que travavam o degrau de\nESCREVER do forum (registro 20260830-021 no livro; a §6 de\ndocs/decisoes/DECISAO-forum-da-escola.md aponta para la). As escolhas dele SAO o\nmandato desta tarefa, e nenhuma delas se reabre aqui:\n\n1. ALUNO SO ESCREVE ATRAS DO LOGIN. O que e publico -- aberto ao Google e a\n   estranhos -- passa a ser so a escola falando. Nenhuma mensagem de aluno pode\n   aparecer em pagina publica sem login. Motivo declarado por ele: escola de\n   Roblox tem aluno crianca e adolescente, e menor nao fica exposto a estranho.\n   Consequencia aceita por ele: o forum sai do alcance de buscador.\n\n2. SO ALUNO MATRICULADO ESCREVE. Quem tem apenas cadastro, sem ter comprado, LE\n   mas nao escreve. Esse e o desenho de anti-spam escolhido: para estragar o\n   forum a pessoa teria que pagar o curso. Ele NAO pediu autorizacao de\n   responsavel no cadastro -- nao construa essa etapa.\n\n3. A PROTECAO E O CADEADO, NAO A FILA DE APROVACAO. Ele nao marcou moderacao\n   previa nem moderacao posterior aberta. Nao construa fila de aprovacao de\n   mensagem nesta tarefa.\n\nAs sete condicoes da §4 da lei do forum continuam valendo para esta construcao:\nleia-as antes de desenhar. O contrato contracts/forum.openapi.yaml esta\nCONGELADO -- mexer nele e Rito de Contrato (RITOS §3): PR proprio, etiqueta\ncontrato, caminho CODEOWNERS, e mandato explicito. Se a escrita exigir emenda de\ncontrato, PARE e devolva para a sessao principal.\n\nSe nao couber no orcamento de 15 arquivos, fatie em escada de PRs. Escada nao e\nreduzir escopo -- e a forma responsavel de construir algo grande.",
+  "origem": "decisao do mantenedor em 30/08/2026, respondendo as tres perguntas da §6 da lei do forum (registro 20260830-021)",
+  "criada_em": "2026-08-30"
+}
