@@ -1,0 +1,15 @@
+{
+  "arquivo": "016-medir-os-tres-numeros-que-decidem-a-porta-de-leitura-da-aba-",
+  "id": "TAR-016",
+  "titulo": "Medir os tres numeros que decidem a porta de leitura da aba Os robos",
+  "toca": [
+    "admin",
+    "painel",
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "um registro de tipo medicao no livro com os tres numeros e o comando que produziu cada um",
+  "despacho": "Medir os três números que decidem se a aba \"Os robôs\" precisa da porta de\nleitura. Eles estão nomeados na tabela do §3 de\ndocs/decisoes/PARECER-uma-porta-de-leitura-para-o-livro-e-a-fila.md:\n\n1. Quantos deploys por dia a fila provoca — contar eventos em fila/eventos/\n   por dia × gatilhos do deploy-celula. Decide se materializar a fila dentro\n   da imagem é sustentável.\n2. Quantas chamadas por hora a aba faz ao GitHub — contar no código da aba\n   (services/admin, a aba /admin/caixa/robos/) × o padrão de atualização real.\n   Decide se o teto de 60/hora encosta.\n3. Quantas vezes o dono viu a aba desatualizada — este é o único número que\n   mede o incômodo REAL, e ele não se calcula: ele se colhe do livro, contando\n   registros em que isso apareceu.\n\nEntregue os três números como um registro de tipo `medicao` no livro, com a\nconta feita à vista (o comando que produziu cada número na evidência). NÃO\nconstrua a porta de leitura nesta tarefa — a decisão do mantenedor em\n30/08/2026 foi explicitamente \"deixar como está e medir\". Se os números\nmostrarem que o teto encosta, o resultado é uma RECOMENDAÇÃO registrada, não\numa construção.\n\nA tomada já está isolada num lugar só do código: a troca, se vier, é uma\nentrega pequena. Não a antecipe.",
+  "origem": "decisao do mantenedor em 30/08/2026, respondendo ao pedido 20260829-038",
+  "criada_em": "2026-08-30"
+}
