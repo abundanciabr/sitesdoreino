@@ -20,7 +20,13 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.forum.models import Area, Mensagem, Topico
 
-from .permissoes import areas_visiveis, pode_escrever, pode_ler, por_que_nao_escreve
+from .permissoes import (
+    areas_visiveis,
+    pode_escrever,
+    pode_ler,
+    pode_moderar,
+    por_que_nao_escreve,
+)
 from .sessao import quem_e
 
 # ---------------------------------------------------------------------------
@@ -102,19 +108,7 @@ def home(request):
     o que o robô do Google encontra.
     """
     ator = quem_e(request)
-    areas = areas_visiveis(ator)
-    return render(
-        request,
-        "forum/home.html",
-        {
-            "ator": ator,
-            "areas": areas,
-            # O "salão vazio" é problema conhecido e declarado
-            # (`DECISAO-forum-da-escola.md` §6.1): o fórum nasce sem ninguém.
-            # A tela diz isso em voz alta em vez de fingir movimento.
-            "vazio": not areas,
-        },
-    )
+    return render(request, "forum/home.html", contexto_da_home(ator))
 
 
 @require_GET
@@ -124,13 +118,17 @@ def ver_area(request, slug: str):
     **404 e não 403 é decisão de segurança:** um 403 confirma que a área
     existe, e numa escola isso vaza a estrutura de turmas para quem não deveria
     conhecê-la.
+
+    A consulta NÃO filtra `ativa=True`: quem decide se uma área arquivada
+    aparece é `pode_ler` (e ela aparece só para o administrador). Dois lugares
+    decidindo a mesma coisa é como um deles passa a discordar do outro.
     """
     ator = quem_e(request)
-    area = get_object_or_404(Area, slug=slug, ativa=True)
+    area = get_object_or_404(Area, slug=slug)
     if not pode_ler(area, ator):
         raise Http404("área não encontrada")
 
-    return render(request, "forum/area.html", _contexto_da_area(request, ator, area))
+    return render(request, "forum/area.html", contexto_da_area(request, ator, area))
 
 
 @require_GET
@@ -138,25 +136,35 @@ def ver_topico(request, topico_id: int):
     """Uma conversa inteira. A permissão é a da ÁREA — o tópico não afrouxa."""
     ator = quem_e(request)
     topico = get_object_or_404(
-        Topico.objects.select_related("area", "autor"),
-        pk=topico_id,
-        estado=Topico.Estado.PUBLICADO,
+        Topico.objects.select_related("area", "autor"), pk=topico_id
     )
     if not pode_ler(topico.area, ator):
         raise Http404("tópico não encontrado")
+    if topico.estado != Topico.Estado.PUBLICADO and not pode_moderar(ator):
+        # Tópico fora do ar é 404 para o mundo inteiro, e continua abrindo para
+        # quem pode devolvê-lo ao ar — senão "tirar do ar" seria porta de mão
+        # única, e o administrador teria de decidir sem reler o que tirou.
+        raise Http404("tópico não encontrado")
 
     return render(
-        request, "forum/topico.html", _contexto_do_topico(request, ator, topico)
+        request, "forum/topico.html", contexto_do_topico(request, ator, topico)
     )
 
 
 # ===========================================================================
-# O CONTEXTO DAS DUAS TELAS — montado uma vez, usado por quem lê e por quem erra
+# O CONTEXTO DAS TRÊS TELAS — montado uma vez, usado por quem lê e por quem erra
 # ===========================================================================
 # Existe uma função só porque a tela de erro de escrita é a MESMA tela de
 # leitura, com o que a pessoa digitou ainda dentro do formulário. Montar o
 # contexto duas vezes é como uma delas passa a esquecer um campo — e o campo
 # esquecido aqui seria justamente `motivo`, o que explica a recusa.
+#
+# **Sem underline no nome, e isso é intencional:** desde as ferramentas do
+# administrador (30/08/2026) quem devolve a tela com um erro de moderação é
+# `apps/core/moderacao.py`, um módulo vizinho. Um contexto montado lá dentro
+# seria a segunda expressão da mesma tela, e a primeira coisa que ela esqueceria
+# é `pode_moderar` — os botões sumiriam justamente na tela que veio explicar
+# por que a ação foi recusada.
 
 
 def _porta_de_entrada(request) -> str:
@@ -177,14 +185,40 @@ def _porta_de_entrada(request) -> str:
     return f"{porta}?{urlencode({'next': request.get_full_path()})}"
 
 
-def _contexto_da_area(request, ator, area, *, erro="", titulo="", texto=""):
+def contexto_da_home(ator, *, erro_admin="", nome="", descricao=""):
+    """A capa do fórum. `nome`/`descricao` voltam preenchidos quando a criação
+    de uma área foi recusada — perder o que a pessoa digitou é a pior forma de
+    recusar."""
+    areas = areas_visiveis(ator)
+    return {
+        "ator": ator,
+        "areas": areas,
+        # O "salão vazio" é problema conhecido e declarado
+        # (`DECISAO-forum-da-escola.md` §6.1): o fórum nasce sem ninguém. A tela
+        # diz isso em voz alta em vez de fingir movimento.
+        "vazio": not areas,
+        "pode_moderar": pode_moderar(ator),
+        "erro_admin": erro_admin,
+        "nome_digitado": nome,
+        "descricao_digitada": descricao,
+    }
+
+
+def contexto_da_area(
+    request, ator, area, *, erro="", titulo="", texto="", erro_admin=""
+):
+    topicos = Topico.objects.filter(area=area).select_related("autor")
+    if not pode_moderar(ator):
+        # Fora do ar é fora do ar para o mundo. Para quem modera, o tópico
+        # removido continua na lista, marcado — senão restaurá-lo exigiria
+        # lembrar o endereço de cor.
+        topicos = topicos.filter(estado=Topico.Estado.PUBLICADO)
+
     return {
         "ator": ator,
         "area": area,
         "porta_de_entrada": _porta_de_entrada(request),
-        "topicos": Topico.objects.filter(
-            area=area, estado=Topico.Estado.PUBLICADO
-        ).select_related("autor"),
+        "topicos": topicos,
         "pode_escrever": pode_escrever(area, ator),
         # POR QUE não pode, quando não pode. A tela diz a verdade em vez de
         # simplesmente esconder o formulário: "entre" e "matricule-se" são
@@ -193,24 +227,32 @@ def _contexto_da_area(request, ator, area, *, erro="", titulo="", texto=""):
         "erro": erro,
         "titulo_digitado": titulo,
         "texto_digitado": texto,
+        "pode_moderar": pode_moderar(ator),
+        "erro_admin": erro_admin,
     }
 
 
-def _contexto_do_topico(request, ator, topico, *, erro="", texto=""):
+def contexto_do_topico(request, ator, topico, *, erro="", texto="", erro_admin=""):
+    mensagens = Mensagem.objects.filter(topico=topico).select_related("autor")
+    if not pode_moderar(ator):
+        mensagens = mensagens.filter(removida_em__isnull=True)
+
+    modera = pode_moderar(ator)
     return {
         "ator": ator,
         "topico": topico,
         "porta_de_entrada": _porta_de_entrada(request),
         "area": topico.area,
-        "mensagens": (
-            Mensagem.objects.filter(topico=topico, removida_em__isnull=True)
-            .select_related("autor")
-            .order_by("criado_em")
-        ),
+        "mensagens": mensagens.order_by("criado_em"),
         "pode_escrever": pode_escrever(topico.area, ator),
         "motivo": por_que_nao_escreve(topico.area, ator),
         "erro": erro,
         "texto_digitado": texto,
+        "pode_moderar": modera,
+        "erro_admin": erro_admin,
+        # O destino possível de uma mudança de área. Só é montado para quem
+        # modera: para o resto é consulta ao banco que ninguém vai olhar.
+        "areas_para_mover": Area.objects.all() if modera else [],
     }
 
 
@@ -245,7 +287,7 @@ def _contexto_do_topico(request, ator, topico, *, erro="", texto=""):
 def _area_para_ler(request, slug: str):
     """A área desta requisição, ou 404. Devolve `(ator, area)`."""
     ator = quem_e(request)
-    area = get_object_or_404(Area, slug=slug, ativa=True)
+    area = get_object_or_404(Area, slug=slug)
     if not pode_ler(area, ator):
         raise Http404("área não encontrada")
     return ator, area
@@ -279,7 +321,7 @@ def novo_topico(request, slug: str):
         return render(
             request,
             "forum/area.html",
-            _contexto_da_area(
+            contexto_da_area(
                 request, ator, area, erro=erro, titulo=titulo, texto=texto
             ),
             status=400,
@@ -322,7 +364,7 @@ def responder(request, topico_id: int):
         return render(
             request,
             "forum/topico.html",
-            _contexto_do_topico(request, ator, topico, erro=erro, texto=texto),
+            contexto_do_topico(request, ator, topico, erro=erro, texto=texto),
             status=400,
         )
 

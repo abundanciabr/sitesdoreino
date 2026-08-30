@@ -19,6 +19,29 @@ from apps.forum.models import Area
 from .sessao import Ator
 
 
+def pode_moderar(ator: Ator) -> bool:
+    """Este Ator enxerga as ferramentas de administração do fórum?
+
+    **Só o administrador** — quem está em `ADMIN_EMAILS`, a mesma lista que
+    abre o painel do dono. É o mandato do mantenedor em 30/08/2026, com as
+    palavras dele: *"as opções que devem aparecer apenas para o Admin"*.
+
+    **Por que não `eh_equipe`, que já existe.** O professor fala com autoridade
+    (a lei §5 promete isso, e o selo "a escola" já é dele), mas editar a
+    mensagem de um aluno, tirar conversa do ar e trancar a porta de uma área
+    inteira é outra ordem de poder. A mesma lei diz que o professor *"modera sem
+    ser dono do sistema"*; qual metade da moderação cabe a ele é decisão do
+    mantenedor, não conclusão que este arquivo possa tirar sozinho. Enquanto ela
+    não vem, o poder fica com quem o pedido nomeou — que é o lado seguro do erro,
+    e é uma linha de mudança no dia em que ele decidir o contrário.
+
+    **Fail-closed de ponta a ponta:** `eh_admin` sai de uma lista de e-mails do
+    env, e env ausente ou vazio significa *ninguém* (`apps/core/sessao.py`).
+    Fórum sem a lista é fórum sem moderador, nunca fórum de portas abertas.
+    """
+    return ator.eh_admin
+
+
 def pode_ler(area: Area, ator: Ator) -> bool:
     """A área é visível para este Ator?
 
@@ -29,9 +52,15 @@ def pode_ler(area: Area, ator: Ator) -> bool:
     - **Turma:** exige matrícula E o curso certo. Enquanto o fórum não souber
       perguntar "esta pessoa está NESTE curso?", **ninguém entra** — que é o
       lado seguro do erro, e está travado em teste.
+    - **Arquivada:** some para todo mundo, menos para quem consegue desarquivar.
     """
     if not area.ativa:
-        return False
+        # ARQUIVAR PRECISA TER VOLTA. Arquivar é o "apagar" honesto desta casa
+        # (nada sai do banco), e se a área arquivada sumisse também para o
+        # administrador, o gesto viraria porta de mão única: reabrir exigiria
+        # alguém com acesso ao banco. Para o resto do mundo, arquivada continua
+        # indistinguível de inexistente — inclusive para o robô do Google.
+        return pode_moderar(ator)
 
     if area.visibilidade == Area.Visibilidade.PUBLICA:
         return True
@@ -142,5 +171,11 @@ def areas_visiveis(ator: Ator):
     alguém mexer numa delas. O número de áreas de um fórum de escola é dezenas,
     não milhões; quando deixar de ser, a otimização vem com um teste que compare
     as duas.
+
+    **E é por isso que a consulta não filtra `ativa=True`.** O filtro em SQL
+    seria a segunda expressão da regra: quem decide se área arquivada aparece é
+    `pode_ler` (e ela aparece para o administrador, senão arquivar não teria
+    volta). Filtrar aqui teria escondido a área arquivada até dele, e o defeito
+    seria invisível — a home simplesmente não a mostraria, sem erro nenhum.
     """
-    return [a for a in Area.objects.filter(ativa=True) if pode_ler(a, ator)]
+    return [a for a in Area.objects.all() if pode_ler(a, ator)]

@@ -1,5 +1,11 @@
 from django.urls import path, re_path
 
+from apps.core.moderacao import (
+    criar_area,
+    moderar_area,
+    moderar_mensagem,
+    moderar_topico,
+)
 from apps.core.views import (
     healthz,
     home,
@@ -39,4 +45,15 @@ urlpatterns = [
     # `apps/core/permissoes.py`, nunca aqui.
     path("a/<slug:slug>/novo", novo_topico, name="novo_topico"),
     path("t/<int:topico_id>/responder", responder, name="responder"),
+    # AS FERRAMENTAS DO ADMINISTRADOR (`apps/core/moderacao.py`). Mesmas duas
+    # razões de `require_POST` acima, um degrau mais fundo: uma acao de
+    # moderacao por GET seria um "tirar do ar" que o robo do Google executa
+    # sozinho ao seguir os links da pagina.
+    #
+    # Para quem nao esta em `ADMIN_EMAILS`, estas quatro rotas respondem 404 —
+    # nao 403. O 403 confirmaria que a porta existe.
+    path("areas/nova", criar_area, name="criar_area"),
+    path("a/<slug:slug>/moderar", moderar_area, name="moderar_area"),
+    path("t/<int:topico_id>/moderar", moderar_topico, name="moderar_topico"),
+    path("m/<int:mensagem_id>/moderar", moderar_mensagem, name="moderar_mensagem"),
 ]
