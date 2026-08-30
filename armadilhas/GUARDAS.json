@@ -183,6 +183,30 @@
       "tem_sinal": true
     },
     {
+      "armadilha": "199",
+      "arquivo": "armadilhas/199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md",
+      "estado": "guardada",
+      "degrau": 2,
+      "confianca": "alta",
+      "custo_por_queda": "alto",
+      "tipo": "CI",
+      "detector": null,
+      "dono": "services/admin/tests/test_estilo_chega_ao_navegador.py",
+      "tem_sinal": true
+    },
+    {
+      "armadilha": "200",
+      "arquivo": "armadilhas/200-o-indice-gerado-das-armadilhas-viajava-no-git-e-colidia.md",
+      "estado": "guardada",
+      "degrau": 3,
+      "confianca": "estrutural",
+      "custo_por_queda": "alto",
+      "tipo": "CI",
+      "detector": null,
+      "dono": "ci/muralha-do-indice.sh",
+      "tem_sinal": false
+    },
+    {
       "armadilha": "205",
       "arquivo": "armadilhas/205-curl-i-manda-head-e-a-view-so-aceita-get-405-sem-corpo.md",
       "estado": "guardada",

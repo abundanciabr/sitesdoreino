@@ -75,6 +75,18 @@
       "regex": "mergeStateStatus.*DIRTY"
     },
     {
+      "armadilha": "199",
+      "arquivo": "armadilhas/199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md",
+      "titulo": "`style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho",
+      "regex": "Applying inline style violates"
+    },
+    {
+      "armadilha": "199",
+      "arquivo": "armadilhas/199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md",
+      "titulo": "`style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho",
+      "regex": "style-src 'self'"
+    },
+    {
       "armadilha": "205",
       "arquivo": "armadilhas/205-curl-i-manda-head-e-a-view-so-aceita-get-405-sem-corpo.md",
       "titulo": "`curl -I` manda HEAD: numa view `@require_GET` isso é 405 SEM CORPO — e o cabeçalho que você leu não é o da página",
