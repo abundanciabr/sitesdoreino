@@ -7,8 +7,8 @@ confianca: alta
 custo_por_queda: alto
 guarda:
   tipo: vacina
-  detector: sonda_da_vps
-  dono: .github/workflows/deploy-celula.yml
+  detector: rerun_de_deploy
+  dono: ci/rerun_de_deploy.py
 sinal:
   - `dial tcp [^\n]*:22: i/o timeout`
 ---
@@ -47,7 +47,15 @@ Duas coisas que o desenho garante, e que valem saber antes de mexer:
 - **O workflow lê `outputs.veredito`, nunca `outcome`.** O `outcome` de um passo
   só tem dois valores e juntaria "a porta está morta" com "não consegui medir" —
   a confusão que o [INV-CI01] proíbe, e que faria a sonda abortar deploys por
-  defeito próprio. Guarda: `ci/tests/test_sonda_da_vps.py`.
+  defeito próprio.
+
+> **Esta lição tem DUAS guardas, e o frontmatter só cabe uma.** O campo
+> `guarda.dono` acima aponta para `ci/rerun_de_deploy.py` (a vacina do PC), que
+> é a que existia primeiro. A vacina de dentro do deploy é imposta por
+> `ci/tests/test_sonda_da_vps.py` — ele reprova se os passos de medição saírem
+> do workflow, se a parada antecipada se contentar com UMA medição, ou se
+> alguém trocar a leitura do veredito pelo `outcome`. Buraco de vocabulário
+> declarado, não silencioso.
 
 **Se mesmo assim o run terminar vermelho, aí sim rode a vacina do PC:**
 
