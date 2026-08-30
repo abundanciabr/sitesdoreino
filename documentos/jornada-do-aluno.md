@@ -57,7 +57,7 @@ de 24 de agosto: quem já foi aluno mantém a voz na Caixa.
 ### Depois
 
 **Pausado**: você desligou o acesso; volta com um clique. A pessoa vê que é
-temporário e **não recebe formulário nenhum**: não há o que ela pedir. Sai daqui
+temporário e **não recebe formulário nenhum**, porque não há o que ela pedir. Sai daqui
 quando você puser a situação de volta em Ativo.
 
 **Ex-aluno**: saiu da escola, e a ficha continua aqui inteira. Vê que o acesso

@@ -70,7 +70,7 @@ com `-`, `**negrito**`, `` `código` ``, citação com `>`, linha `---` e links
 `[texto](endereço)`.
 
 **Todo o texto é escapado ANTES de qualquer formatação.** HTML escrito dentro de
-um documento aparece como texto na tela, nunca como marcação: é o que torna
+um documento aparece como texto na tela, nunca como marcação, e é isso que torna
 impossível um documento injetar script na página, mesmo que alguém cole algo sem
 pensar. Tabela, imagem e HTML cru **não** são suportados: se um documento
 precisar deles, a conversa é sobre o renderizador, não sobre contornar.

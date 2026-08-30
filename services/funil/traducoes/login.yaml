@@ -59,38 +59,38 @@ aviso_email:
   # recusa — quem lê aqui não chega a ver a tela de "não encontramos matrícula".
   # Reescrito em 25/08/2026 para ser CONDICIONAL ("já é aluno?") em vez de
   # instrução geral: quem não é aluno não deve ler isto como requisito.
-  _fonte: "4945fa"
-  en: "Already a student? Use the same e-mail as your enrollment: it is the one that opens the student areas."
-  pt-br: "Já é aluno? Use o mesmo e-mail da sua matrícula: é ele que abre as áreas de aluno."
-  es: "¿Ya eres alumno? Usa el mismo correo de tu matrícula: es el que abre las áreas de alumno."
+  _fonte: "f412f7"
+  en: "Already a student? Use the same e-mail as your enrollment, since it is the one that opens the student areas."
+  pt-br: "Já é aluno? Use o mesmo e-mail da sua matrícula, pois é ele que abre as áreas de aluno."
+  es: "¿Ya eres alumno? Usa el mismo correo de tu matrícula, pues es el que abre las áreas de alumno."
 
 erro_interrompida:
   # A pessoa voltou do Google sem concluir (?error= no retorno).
-  _fonte: "5162d9"
-  en: "Sign-in was interrupted before finishing. Nothing was created: just try again."
-  pt-br: "A entrada foi interrompida antes do fim. Nada foi criado: é só tentar de novo."
-  es: "La entrada se interrumpió antes de terminar. No se creó nada: solo inténtalo de nuevo."
+  _fonte: "ee9c9a"
+  en: "Sign-in was interrupted before finishing. Nothing was created. Just try again."
+  pt-br: "A entrada foi interrompida antes do fim. Nada foi criado. É só tentar de novo."
+  es: "La entrada se interrumpió antes de terminar. No se creó nada. Solo inténtalo de nuevo."
 
 erro_nao_confere:
   # `state` ausente ou errado — retorno fora de ordem, página velha ou forja.
-  _fonte: "a2e3d8"
-  en: "The return from Google did not match the request that left this site. Nothing was created: start again from the button below."
-  pt-br: "A volta do Google não confere com o pedido que saiu daqui. Nada foi criado: comece de novo pelo botão abaixo."
-  es: "El regreso de Google no coincide con la solicitud que salió de aquí. No se creó nada: empieza de nuevo con el botón de abajo."
+  _fonte: "5db689"
+  en: "The return from Google did not match the request that left this site. Nothing was created. Start again from the button below."
+  pt-br: "A volta do Google não confere com o pedido que saiu daqui. Nada foi criado. Comece de novo pelo botão abaixo."
+  es: "El regreso de Google no coincide con la solicitud que salió de aquí. No se creó nada. Empieza de nuevo con el botón de abajo."
 
 erro_nao_configurada:
   # Falta credencial do Google no env da identidade — problema NOSSO, e a
   # frase diz isso (a pessoa não deve sair achando que errou algo).
-  _fonte: "291d33"
-  en: "Sign-in is not fully set up yet. This is on us: please try again later."
-  pt-br: "A entrada ainda não está toda configurada. O problema é nosso: tente de novo mais tarde."
-  es: "La entrada aún no está configurada del todo. El problema es nuestro: inténtalo más tarde."
+  _fonte: "b8684f"
+  en: "Sign-in is not fully set up yet. This is on us. Please try again later."
+  pt-br: "A entrada ainda não está toda configurada. O problema é nosso. Tente de novo mais tarde."
+  es: "La entrada aún no está configurada del todo. El problema es nuestro. Inténtalo más tarde."
 
 erro_google_indisponivel:
-  _fonte: "dff70d"
-  en: "Google did not respond. Nothing was created: try again in a few moments."
-  pt-br: "O Google não respondeu. Nada foi criado: tente de novo em instantes."
-  es: "Google no respondió. No se creó nada: inténtalo de nuevo en unos instantes."
+  _fonte: "197375"
+  en: "Google did not respond. Nothing was created. Try again in a few moments."
+  pt-br: "O Google não respondeu. Nada foi criado. Tente de novo em instantes."
+  es: "Google no respondió. No se creó nada. Inténtalo de nuevo en unos instantes."
 
 erro_email_nao_verificado:
   # O único "não" que é da conta da pessoa — e a frase diz como consertar.
