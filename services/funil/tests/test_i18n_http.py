@@ -371,7 +371,7 @@ HTML_DE_HOJE = """<!-- templates/base_mobile.html  [RECEITA:R6 v1] -->
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Curso Esqueleto — Site A</title>
+  <title>Curso Esqueleto (Site A)</title>
   <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
   <style>
     * { box-sizing: border-box; }
