@@ -154,30 +154,23 @@ def test_a_busca_em_portugues_encontra_a_duvida_ja_respondida(area, aluno):
     assert "texturas" in achadas.first().texto
 
 
-def test_os_dois_buracos_conhecidos_da_busca_em_portugues(area, aluno):
+def test_o_buraco_do_plural_em_ens_continua_aberto(area, aluno):
     """MEDIDO em 28/08/2026 contra PostgreSQL 17 — e documentado, não escondido.
 
-    O radicalizador português do PostgreSQL não é mágico, e é melhor ter isto
-    escrito num teste do que descobrir pelo aluno que não achou a resposta:
+    O radicalizador português do PostgreSQL não é mágico: `modelagem` vira o
+    radical `modelag`, mas `modelagens` fica inteiro. Numa escola de modelagem
+    3D, essa é justamente uma das palavras mais buscadas.
 
-    1. **Plural em `-ens` NÃO é unido.** `modelagem` vira o radical `modelag`,
-       mas `modelagens` fica inteiro. Numa escola de modelagem 3D, essa é
-       justamente uma das palavras mais buscadas.
-    2. **Acento importa.** Quem digitar `chapeu` não acha `chapéu` — e no
-       Brasil praticamente ninguém acentua ao buscar.
-
-    Os dois se curam com a extensão `unaccent` mais uma lista de sinônimos, e
-    isso entra no provisionamento (que roda como superusuário do banco, o único
-    lugar onde `CREATE EXTENSION` é possível). **Este teste vira vermelho no dia
-    em que a cura chegar** — e aí ele é atualizado para exigir o contrário, que
-    é exatamente o sinal que se quer.
+    **Este teste vira vermelho no dia em que a cura chegar** (uma lista de
+    sinônimos ou um dicionário ispell/hunspell sobre a mesma configuração) — e
+    aí ele é atualizado para exigir o contrário, que é exatamente o sinal que se
+    quer. Foi assim que o buraco do ACENTO deixou esta função: ele foi curado em
+    30/08/2026 e virou o teste logo abaixo.
     """
     from django.contrib.postgres.search import SearchQuery, SearchVector
 
     topico = Topico.objects.create(area=area, autor=aluno, titulo="t")
-    Mensagem.objects.create(
-        topico=topico, autor=aluno, texto="Fiz a modelagem de um chapéu"
-    )
+    Mensagem.objects.create(topico=topico, autor=aluno, texto="Fiz a modelagem")
     Mensagem.objects.update(busca=SearchVector("texto", config="portuguese"))
 
     def acha(termo: str) -> int:
@@ -186,9 +179,38 @@ def test_os_dois_buracos_conhecidos_da_busca_em_portugues(area, aluno):
         ).count()
 
     assert acha("modelagem") == 1, "o singular tem de achar — isto é o básico"
-    assert acha("modelagens") == 0, "buraco 1: plural em -ens não é unido (ainda)"
-    assert acha("chapéu") == 1, "com acento acha"
-    assert acha("chapeu") == 0, "buraco 2: sem acento não acha (ainda)"
+    assert acha("modelagens") == 0, "buraco: plural em -ens não é unido (ainda)"
+
+
+def test_a_cura_do_acento_chegou_e_esta_travada(area, aluno):
+    """O buraco 2 de 28/08 CURADO, e o guarda invertido — 30/08/2026.
+
+    A configuração `portugues_sem_acento` (criada pelo provisionamento, com
+    `unaccent`) faz `chapeu` achar `chapéu`. Isso importa mais do que parece: no
+    Brasil quase ninguém acentua ao buscar, então a versão sensível a acento
+    errava a maioria das buscas reais **em silêncio** — a pessoa concluía que a
+    resposta não existia e perguntava de novo, que é o oposto do que um fórum
+    existe para fazer.
+
+    O guarda exige as DUAS direções: com acento e sem acento acham a mesma
+    mensagem. Um teste que só provasse `chapeu` passaria com uma configuração
+    que tivesse simplesmente parado de indexar o acento.
+    """
+    from django.contrib.postgres.search import SearchQuery, SearchVector
+
+    from apps.forum.config_de_busca import CONFIG_SEM_ACENTO
+
+    topico = Topico.objects.create(area=area, autor=aluno, titulo="t")
+    Mensagem.objects.create(topico=topico, autor=aluno, texto="Meu chapéu ficou torto")
+    Mensagem.objects.update(busca=SearchVector("texto", config=CONFIG_SEM_ACENTO))
+
+    def acha(termo: str) -> int:
+        return Mensagem.objects.filter(
+            busca=SearchQuery(termo, config=CONFIG_SEM_ACENTO)
+        ).count()
+
+    assert acha("chapeu") == 1, "a cura do acento não está no banco de teste"
+    assert acha("chapéu") == 1, "quem escreve certo também tem de achar"
 
 
 # --------------------------------------------------------------------------
