@@ -86,3 +86,61 @@ O desenho correto — o mesmo do Discourse — é `MarcaDeLeitura` (uma por pess
 por área) mais `TopicoLido` (as poucas exceções lidas depois da marca).
 Guarda: `test_ler_uma_area_inteira_cria_UMA_linha_e_nao_uma_por_mensagem`,
 que cria 30 mensagens e exige **uma** linha de leitura.
+
+---
+
+## 5. Mudar permissão de área semeada EXIGE migração de dados — o `semear_areas` não alcança (30/08/2026)
+
+**Sintoma.** O mandato do mantenedor mudou o desenho das áreas (`duvidas` e
+`mostre-seu-trabalho` deixaram de ser públicas). Você edita as constantes de
+`apps/forum/management/commands/semear_areas.py`, a suíte fica verde, o PR
+mergeia — e **em produção nada muda**. As áreas continuam públicas.
+
+**Causa.** O comando é `get_or_create` pelo `slug` e **de propósito não
+atualiza o que já existe** (§ do próprio arquivo: semear é dar o primeiro
+empurrão, não ficar de dono). Ele alcança um banco vazio; nunca o banco que já
+tem as áreas. E toda a suíte roda em banco vazio, então ela concorda com você.
+
+É a família do *falso-verde por cenário fraco*: o teste mede o mundo em que a
+mudança é trivial, e o mundo que importa é o outro.
+
+**Solução — a migração de dados, e ela vem ANTES da restrição.** Quando a
+mudança é de permissão, o par correto é:
+
+```python
+operations = [
+    migrations.RunPython(fechar_o_que_ja_esta_aberto, nao_reabre),  # 1º
+    migrations.AddConstraint(...),                                  # 2º
+]
+```
+
+A ordem não é estilo: com a restrição primeiro, o `AddConstraint` encontra as
+linhas antigas em desacordo e o `migrate` **morre no meio, na VPS**, com o banco
+a meio caminho e o container em crashloop. O `CMD` do `Dockerfile` desta célula
+roda `migrate --noinput` no boot — quem paga esse erro é a produção, não a CI.
+
+E o reverso do `RunPython` **não desfaz**: um `migrate` para trás é coisa que se
+faz às pressas, num rollback, sem ninguém lendo o código. Reabrir área ali seria
+expor mensagem de menor de idade a estranho como efeito colateral de um comando
+de emergência.
+
+**Corolário.** A regra que protege criança não podia depender de alguém lembrar
+dela: junto com a migração desceu uma `CheckConstraint`
+(`pagina_publica_so_a_escola_fala`) que torna a combinação proibida
+**impossível**, inclusive por `QuerySet.update()` — que fura qualquer guarda
+escrito em `Model.save()` (`armadilhas/023`).
+
+---
+
+## 6. Testar formulário desta célula tem uma pegadinha própria: o cabeçalho `cookie` apaga o CSRF
+
+O fórum reconhece a pessoa por um cookie que vem de OUTRA célula, então a forma
+óbvia de simular login nos testes é `headers={"cookie": "meshcraft_sessao=..."}`.
+Isso funciona em todo teste **menos** nos que atravessam um `<form>`: o cabeçalho
+substitui o pote de cookies inteiro e leva junto o `forum_csrf`. O detalhe, com
+o caminho certo, está em `armadilhas/204`.
+
+O que fica para esta célula: `tests/test_escrever.py` tem **um** teste com
+`Client(enforce_csrf_checks=True)` percorrendo a tela inteira. Ele é o único que
+prova o formulário — todos os outros provam a permissão e passam por cima da
+porta de CSRF.
