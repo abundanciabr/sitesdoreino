@@ -22,6 +22,10 @@ from apps.core.views import (
     escola_admin_promover,
     escola_admin_remover,
     escola_aluno_salvar,
+    doc_publico,
+    docs_publicos,
+    documento_admin,
+    documentos_admin,
     escola_alunos,
     escola_cadastrar,
     escola_jornada,
@@ -69,6 +73,27 @@ urlpatterns = [
     # nome de rota que começa com `painel/` sinaliza "atrás da porta" em todo
     # o resto deste arquivo, e misturar os dois seria o tipo de detalhe que
     # engana quem lê o diff rápido demais.
+    # A AREA DE DOCUMENTOS (`DECISAO-a-area-de-documentos.md`, 29/08/2026).
+    #
+    # DOIS prefixos, e a diferenca entre eles nao e estilo: esta celula roda sob
+    # SCRIPT_NAME=/admin e o Django TIRA esse prefixo do `path_info`, entao
+    # `/admin/docs/x` e `/docs/x` chegariam com o mesmo caminho interno — e a
+    # porta nao teria como distinguir o publico do privado. Com nomes
+    # diferentes, cada um tem o seu caminho e a isencao da porta alcanca
+    # exatamente um deles.
+    #
+    #   /docs/…        PUBLICO, isento na porta, serve so `publico: true`
+    #   /documentos/…  atras da porta, serve tudo
+    #
+    # O padrao do nome (`[a-z0-9-]+`) e a primeira cerca: nome com barra ou com
+    # ponto nao casa a rota, entao nao ha caminho para escapar da pasta. A
+    # segunda cerca esta em `documentos.py::_arquivo`, que resolve e confere.
+    path("docs/", docs_publicos, name="docs_publicos"),
+    re_path(r"^docs/(?P<nome>[a-z0-9-]+)$", doc_publico, name="doc_publico"),
+    path("documentos/", documentos_admin, name="documentos_admin"),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)$", documento_admin, name="documento_admin"
+    ),
     path("mapa-ia/", mapa_ia_indice, name="mapa_ia_indice"),
     re_path(r"^mapa-ia/(?P<nome>[\w.-]+)$", mapa_ia_arquivo, name="mapa_ia_arquivo"),
     # A ESCOLA — o painel do NEGÓCIO, vizinho e separado do painel do SISTEMA

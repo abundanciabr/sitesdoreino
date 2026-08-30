@@ -75,6 +75,24 @@ CAMINHOS_ISENTOS = frozenset(
     }
 )
 
+#: [DOCUMENTOS] O prefixo público da área de documentos
+#: (`DECISAO-a-area-de-documentos.md`, 29/08/2026).
+#:
+#: **Por que aqui é PREFIXO e no `/mapa-ia/` é lista exata.** Lá, a decisão de
+#: "isto é público" mora nesta lista e em lugar nenhum mais — arquivo novo em
+#: `painel/ia/` não fica público sozinho. Aqui a decisão mora no PRÓPRIO
+#: documento (`publico: true` no cabeçalho, fail-closed), e enumerar os
+#: endereços aqui criaria uma SEGUNDA lista sobre o mesmo fato: no dia em que as
+#: duas discordassem, ou um documento público ficaria inacessível, ou — o lado
+#: caro — alguém tiraria o `publico: true` achando que bastava.
+#:
+#: O que impede o prefixo de virar uma fresta: sob `/docs/` existem EXATAMENTE
+#: duas rotas, as duas de leitura, e as duas conferem `publico` antes de
+#: responder. Rota nova aqui embaixo não escapa em silêncio — há um guarda que
+#: varre o urlconf e reprova
+#: (`tests/test_area_de_documentos.py::test_o_prefixo_publico_tem_so_as_duas_rotas`).
+PREFIXO_PUBLICO_DOS_DOCUMENTOS = "/docs/"
+
 
 def _emails_autorizados() -> frozenset[str]:
     """A lista de quem entra, lida NO PONTO DE USO e normalizada.
@@ -150,7 +168,9 @@ class PortaAdministrativa:
         self.identidade = IdentidadeClient()
 
     def __call__(self, request):
-        if request.path_info in CAMINHOS_ISENTOS:
+        if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
+            PREFIXO_PUBLICO_DOS_DOCUMENTOS
+        ):
             return self._com_seguranca(self.get_response(request))
 
         cookie = request.META.get("HTTP_COOKIE", "")

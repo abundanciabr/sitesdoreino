@@ -17,7 +17,7 @@ preenche). O `/healthz` é a exceção declarada, e por isso não o usa.
 import unicodedata
 from datetime import date, datetime
 
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import Http404, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils import timezone
@@ -27,6 +27,7 @@ from django.conf import settings
 
 from apps.auditoria.models import Registro
 
+from . import documentos
 from .clients import AlunosClient
 from .models import Administrador
 from .porta import _emails_autorizados
@@ -52,6 +53,85 @@ def visao_geral(request):
         request,
         "admin/visao_geral.html",
         {"admin": request.admin, "agora": timezone.localtime()},
+    )
+
+
+# ------------------------------------------------------------- os documentos
+#
+# `docs/decisoes/DECISAO-a-area-de-documentos.md` (29/08/2026). O mantenedor
+# pediu que o site publicasse documentos — uns para qualquer pessoa, outros só
+# para quem administra.
+#
+# **Duas telas, uma fonte.** Os mesmos arquivos de `documentos/` servem as duas,
+# e é o PRÓPRIO documento que declara quem pode lê-lo. O que separa as duas views
+# aqui embaixo é uma linha: a pública passa `so_publicos=True` e recusa o que não
+# é público; a administrativa serve tudo.
+#
+# **Os endereços são DIFERENTES de propósito, e não por estilo.** Esta célula
+# roda sob `SCRIPT_NAME=/admin`, e o Django tira esse prefixo do `path_info`:
+# `meshcraft.top/admin/docs/x` e `meshcraft.top/docs/x` chegariam aqui com o
+# MESMO caminho interno, e a porta não teria como distinguir a pública da
+# privada. Por isso a pública é `/docs/…` e a administrativa é
+# `/documentos/…`. Guarda: `tests/test_area_de_documentos.py`.
+
+
+@require_GET
+def docs_publicos(request):
+    """A lista pública. Sem sessão, sem crachá, sem nada."""
+    return render(
+        request,
+        "admin/docs_publicos.html",
+        {"documentos": documentos.listar(so_publicos=True)},
+    )
+
+
+@require_GET
+def doc_publico(request, nome):
+    """Um documento público — e 404 para todo o resto.
+
+    **404, e não 403**, para um documento que existe e não é público: um 403
+    confirmaria que o arquivo existe, e a lista de documentos internos de uma
+    escola não é assunto de quem está do lado de fora. Para quem chega aqui, um
+    documento privado e um endereço inventado são a mesma coisa.
+    """
+    documento = documentos.ler(nome)
+    if documento is None or not documento.publico:
+        raise Http404("documento não encontrado")
+    return render(
+        request,
+        "admin/doc_publico.html",
+        {"documento": documento, "corpo": documentos.para_html(documento.corpo)},
+    )
+
+
+@require_GET
+def documentos_admin(request):
+    """A lista completa, com a etiqueta de visibilidade de cada um.
+
+    É o único lugar em que as duas famílias aparecem juntas — sem ele, saber se
+    um documento está no ar para o mundo exigiria abrir o repositório.
+    """
+    return render(
+        request,
+        "admin/documentos.html",
+        {"admin": request.admin, "documentos": documentos.listar(so_publicos=False)},
+    )
+
+
+@require_GET
+def documento_admin(request, nome):
+    """Qualquer documento, público ou não — quem passou pela porta lê tudo."""
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+    return render(
+        request,
+        "admin/documento_admin.html",
+        {
+            "admin": request.admin,
+            "documento": documento,
+            "corpo": documentos.para_html(documento.corpo),
+        },
     )
 
 

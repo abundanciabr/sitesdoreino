@@ -26,7 +26,12 @@ on:
     # `fila/**` desde 29/08/2026: a aba "Os robôs" (/admin/caixa/robos/) é
     # calculada da fila embutida no build — tarefa ou evento novo É quadro
     # novo. Mapa: `celulas.yml` (fila ⇒ admin); mesmo desenho do painel.
-    paths: ['services/**', 'painel/**', 'fila/**']
+    # `documentos/**` desde 29/08/2026: a área de documentos do site
+    # (`DECISAO-a-area-de-documentos.md`) é servida pela célula `admin` — a
+    # pública em `/docs/` e a fechada em `/admin/documentos/`. Documento novo É
+    # página nova; sem esta linha o workflow nem começaria, e o site continuaria
+    # publicando a lista antiga em silêncio. Mapa: `celulas.yml`.
+    paths: ['services/**', 'painel/**', 'fila/**', 'documentos/**']
 permissions:
   contents: read
 concurrency:
@@ -218,6 +223,24 @@ jobs:
           # resumo curado dos estouros (fila/esperas/, exportado do diário).
           cp ci/tempos_esperados.json services/admin/fila_embutida/regua.json
           echo "fila embutida: $(ls services/admin/fila_embutida/tarefas | wc -l) tarefas"
+      - name: Embutir os documentos do site no contexto do build (só a célula admin)
+        if: matrix.celula == 'admin'
+        run: |
+          set -eu
+          # A área de documentos (`DECISAO-a-area-de-documentos.md`): os MESMOS
+          # arquivos servem a lista pública (`/docs/`) e a fechada
+          # (`/admin/documentos/`), e é o cabeçalho de cada um que diz quem pode
+          # lê-lo. A célula SERVE a pasta; não guarda cópia dela
+          # (`services/admin/.gitignore`).
+          #
+          # Fail-CLOSED como os passos acima: pasta ausente viraria uma imagem
+          # publicada com a lista de documentos VAZIA — e o deploy ficaria verde.
+          # É o falso-verde padrão 1 da RETROSPECTIVA-FASE-D, e aqui ele apagaria
+          # páginas que já estavam no ar.
+          test -d documentos || { echo "PAROU: documentos/ nao existe"; exit 1; }
+          rm -rf services/admin/documentos_embutidos
+          cp -R documentos services/admin/documentos_embutidos
+          echo "documentos embutidos: $(ls services/admin/documentos_embutidos/*.md | wc -l) arquivos"
       - name: Build & push da imagem da célula
         run: |
           IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}

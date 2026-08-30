@@ -1,0 +1,21 @@
+{% extends "admin/base_publico.html" %}
+{% comment %}
+A lista pública de documentos. Mostra SÓ os que declararam `publico: true` — a
+view já filtra, e este template não tem como mostrar outro: ele não conhece a
+pasta, só a lista que recebeu.
+{% endcomment %}
+{% block titulo %}Documentos{% endblock %}
+{% block conteudo %}
+  <h1>Documentos</h1>
+  <p class="sub">O que a gente escreveu para explicar como as coisas funcionam por aqui.</p>
+
+  {% if documentos %}
+  <ul class="lista">
+    {% for documento in documentos %}
+    <li><a href="{% url 'doc_publico' documento.nome %}">{{ documento.titulo }}</a></li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>Ainda não há nenhum documento publicado aqui. Volte em breve.</p>
+  {% endif %}
+{% endblock %}

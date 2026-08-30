@@ -1,0 +1,75 @@
+{% comment %}
+A moldura das páginas PÚBLICAS desta célula (`/docs/`). Separada de
+`admin/base.html` de propósito, e a separação é a metade que importa:
+
+  · aquela mostra "Meshcraft · Administração" e o nome de quem entrou — texto
+    que um estranho não deve ver, e que aqui não existe para poder vazar;
+  · aquela é `noindex`, porque área administrativa não se indexa. Esta é
+    indexável: um documento público que ninguém acha é um documento que não
+    foi publicado.
+
+Claro e não escuro, pelo mesmo motivo: o painel é ferramenta de operação, isto é
+página de leitura. O CSS é EMBUTIDO, como no vizinho — célula sob SCRIPT_NAME
+precisa de rota própria de estático para não dar 404 só em produção
+(`armadilhas/083`), e a tag `static` monta endereço do prefixo errado nessa
+situação (`armadilhas/102`).
+
+Sem fonte remota, sem script, sem imagem: uma página de texto não precisa de
+nada disso, e cada peça de fora é uma dependência que pode cair sozinha.
+{% endcomment %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Documentos{% endblock %} · Meshcraft</title>
+  <style>
+    :root {
+      --fundo: #ffffff; --papel: #f7f8fa; --linha: #e3e6ec;
+      --texto: #1b1f27; --texto-2: #5b6472; --azul: #1c50b8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--fundo); color: var(--texto);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.7;
+    }
+    .barra {
+      padding: 14px 20px; border-bottom: 1px solid var(--linha);
+      background: var(--papel); font-weight: 600;
+    }
+    .barra a { color: inherit; text-decoration: none; }
+    .envolucro { max-width: 720px; margin: 0 auto; padding: 32px 20px 72px; }
+    .volta { display: inline-block; margin-bottom: 18px; font-size: 14px; color: var(--azul); }
+    h1 { font-size: 27px; line-height: 1.25; margin: 0 0 20px; }
+    h2 { font-size: 20px; margin: 34px 0 10px; }
+    h3 { font-size: 16px; margin: 26px 0 8px; }
+    p { margin: 0 0 16px; }
+    ul { margin: 0 0 16px; padding-left: 22px; }
+    li { margin-bottom: 6px; }
+    a { color: var(--azul); }
+    code {
+      background: var(--papel); border: 1px solid var(--linha);
+      border-radius: 4px; padding: 1px 5px; font-size: 90%;
+    }
+    blockquote {
+      margin: 0 0 16px; padding: 2px 16px; border-left: 3px solid var(--linha);
+      color: var(--texto-2);
+    }
+    hr { border: 0; border-top: 1px solid var(--linha); margin: 28px 0; }
+    .lista { list-style: none; padding: 0; }
+    .lista li { margin-bottom: 14px; }
+    .lista a { font-size: 17px; font-weight: 600; text-decoration: none; }
+    .sub { color: var(--texto-2); margin: 0 0 26px; }
+    .rodape { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--linha);
+              color: var(--texto-2); font-size: 13px; }
+  </style>
+</head>
+<body>
+<div class="barra"><a href="/">Meshcraft</a></div>
+<div class="envolucro">
+{% block conteudo %}{% endblock %}
+  <p class="rodape">Meshcraft &middot; <a href="/">voltar ao site</a></p>
+</div>
+</body>
+</html>
