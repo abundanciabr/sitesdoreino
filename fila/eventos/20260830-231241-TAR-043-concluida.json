@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-231241-TAR-043-concluida",
+  "tarefa": "TAR-043",
+  "evento": "concluida",
+  "quando": "2026-08-30T23:12:41+00:00",
+  "quem": "sessao-ci-sino199-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/654 — vermelho->verde por assercao: (a) base: guarda passava COM o defeito (1 passed in 0.16s), pois nao havia cabecalho CSP no CORPUS_FELIZ; (b) VERMELHO com o corpus ampliado: 'AssertionError: sinal casando saida de sucesso: 199-...md: o sinal \"style-src 'self'\" casa saida FELIZ \"style-src 'self'\"'; (c) VERDE com o conserto: 'nenhum sinal do catalogo casa o corpus feliz' + 1 passed in 0.10s; (d) o sino AINDA toca na falha real, rodando ci/sino_das_armadilhas.py de verdade: SILENCIO no 302 saudavel e no 'style-src self sha256-...' (a cura), TOCA nomeando a 199 na mensagem do navegador (Casou: 'Applying inline style violates'); (e) o candidato do despacho (style-src sem sha256) foi REFUTADO medindo a producao: curl -sI https://meshcraft.top/admin/ devolve 'style-src 'self';' nu num dia saudavel, porque 302 sem corpo nao tem style para hashear; (f) ci/tests 1338 passed in 417.45s; gerador PASS com 211 entradas; licao nova armadilhas/233",
+  "verificado_em": "2026-08-30"
+}
