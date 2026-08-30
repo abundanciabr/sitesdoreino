@@ -93,9 +93,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _nucleo import configurar_saida, raiz_do_repo  # noqa: E402
 
-VPS_PADRAO = "217.196.62.220"
-BANNER_SSH = "SSH-2.0"
-SONDA_DO_SITE = "https://meshcraft.top/healthz"
+# A MEDIÇÃO DA PORTA 22 MORA EM UM LUGAR SÓ (TAR-013, 30/08/2026). Desde que o
+# `deploy-celula.yml` passou a medir a porta de dentro do próprio deploy, a
+# mesma pergunta — "a VPS está alcançável agora?" — é feita de dois lugares: o
+# runner, entre as tentativas, e o PC, depois do fato. Se cada um tivesse a sua
+# cópia, bastaria alguém afinar o tempo de espera de um deles para as duas
+# vacinas passarem a discordar sobre o MESMO fato — e ninguém perceberia até o
+# dia em que a discordância decidisse um deploy. É a lei anti-duplicação do
+# `CLAUDE.md` aplicada a uma medição.
+from sonda_da_vps import VPS_PADRAO, http_do_site, porta_22_responde  # noqa: E402
+
 MAXIMO_DE_TENTATIVAS = 3
 PAUSA_ENTRE_TENTATIVAS_S = 60
 INTERVALO_DE_CONFERENCIA_S = 15
@@ -550,28 +557,9 @@ def log_da_falha(run: str) -> str:
     return saida  # exit != 0 é normal aqui: o run falhou
 
 
-def porta_22_responde(host: str) -> bool:
-    import socket
-
-    try:
-        with socket.create_connection((host, 22), timeout=10) as conexao:
-            conexao.settimeout(10)
-            return BANNER_SSH in conexao.recv(64).decode("utf-8", "replace")
-    except OSError:
-        return False
-
-
-def http_do_site(url: str = SONDA_DO_SITE) -> int | None:
-    import urllib.error
-    import urllib.request
-
-    try:
-        with urllib.request.urlopen(url, timeout=15) as resposta:
-            return int(resposta.status)
-    except urllib.error.HTTPError as erro:
-        return int(erro.code)
-    except Exception:
-        return None
+# `porta_22_responde` e `http_do_site` moraram aqui até 30/08/2026 (TAR-013).
+# Hoje vêm de `ci/sonda_da_vps.py`, que é a MESMA medição que o deploy passou a
+# fazer de dentro do runner — ver o comentário do import, no topo.
 
 
 def ultimo_run(workflow: str = "deploy-celula.yml") -> str:
