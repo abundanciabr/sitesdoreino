@@ -6,8 +6,7 @@ degrau: 3
 confianca: estrutural
 custo_por_queda: alto
 guarda:
-  tipo: muralha
-  detector: gerado_de_volta_no_indice_do_git
+  tipo: CI
   dono: ci/muralha-do-indice.sh
 sinal: null
 ---
