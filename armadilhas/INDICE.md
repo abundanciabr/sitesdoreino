@@ -225,5 +225,6 @@
 | [190](190-registro-que-quita-divida-dentro-de-pr-nao-painel-nunca-conta.md) | `dívida do livro FAIL` que não sai por mais que você escreva o registro — a pista julga da `main`, não do seu PR — `ci/mergear.py <N> --conferir` na sua máquina diz **`dívida do livro PASS — livro em dia`**, você pede… | nenhum (declarado) | — |
 | [191](191-response-schema-tipado-vs-contrato-inline.md) | `response=Schema` no django-ninja sempre emite `$ref` nomeado — errado quando o contrato da rota é inline — um handler novo declara `@router.get("/resumo", response=RespostaResumo, ...)` com… | — sem guarda | — |
 | [193](193-o-balcao-da-fila-nao-sabe-escrever-bloqueada.md) | O balcão da fila não sabe escrever `bloqueada` — o RITOS manda um gesto que o CLI não tem — o seu despacho travou em algo que só o mantenedor decide. O `RITOS.md` §5 item 3 é explícito sobre o que fazer: | — sem guarda | — |
+| [194](194-workflow-de-pull-request-target-nao-roda-no-pr-que-o-cria.md) | Workflow novo de `pull_request_target` NÃO roda no PR que o cria — e o silêncio parece "ainda vai rodar" — você acrescenta um workflow com gatilho `pull_request_target`, abre o PR, e o check dele **não aparece em lugar… | — sem guarda | — |
 
-**173 entradas** — 10 com guarda declarada, 163 ainda sem.
+**174 entradas** — 10 com guarda declarada, 164 ainda sem.
