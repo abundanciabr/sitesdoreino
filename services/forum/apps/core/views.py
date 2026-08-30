@@ -6,17 +6,71 @@ dia em que alguém mexer num deles.
 """
 
 import mimetypes
+import os
 from pathlib import Path
+from urllib.parse import urlencode
 
 from django.conf import settings
-from django.http import FileResponse, Http404, JsonResponse
-from django.shortcuts import get_object_or_404, render
-from django.views.decorators.http import require_GET
+from django.contrib.postgres.search import SearchVector
+from django.db import transaction
+from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.utils import timezone
+from django.views.decorators.http import require_GET, require_POST
 
 from apps.forum.models import Area, Mensagem, Topico
 
-from .permissoes import areas_visiveis, pode_escrever, pode_ler
+from .permissoes import areas_visiveis, pode_escrever, pode_ler, por_que_nao_escreve
 from .sessao import quem_e
+
+# ---------------------------------------------------------------------------
+# OS LIMITES DO QUE SE ESCREVE — números, num lugar só
+# ---------------------------------------------------------------------------
+# Não são regra de negócio inventada: são a diferença entre uma tela que recusa
+# com uma frase em português e um `DataError` do PostgreSQL virando HTTP 500. O
+# teto do título é o `max_length` do modelo, repetido aqui para a recusa
+# acontecer ANTES do banco.
+TITULO_MINIMO = 5
+TITULO_MAXIMO = 180
+TEXTO_MINIMO = 2
+# Vinte mil caracteres são umas oito páginas. O limite não existe contra o aluno
+# prolixo — existe para uma requisição não conseguir empurrar um megabyte para
+# dentro da coluna de busca que todo mundo consulta.
+TEXTO_MAXIMO = 20000
+
+ERRO_TITULO_CURTO = (
+    f"O título precisa ter pelo menos {TITULO_MINIMO} letras — "
+    "escreva a dúvida em uma linha, como você contaria para um colega."
+)
+ERRO_TITULO_LONGO = (
+    f"O título passou de {TITULO_MAXIMO} letras. O resto cabe na mensagem."
+)
+ERRO_TEXTO_VAZIO = "Faltou escrever a mensagem."
+ERRO_TEXTO_LONGO = "A mensagem é longa demais para uma só. Divida em duas."
+ERRO_TOPICO_TRANCADO = "Esta conversa foi trancada pela moderação."
+ERRO_SEM_PERMISSAO = (
+    "Você não pode escrever nesta área. "
+    "Volte para a página dela — ela diz o motivo, em português."
+)
+
+
+def _publicar(mensagem: Mensagem) -> None:
+    """Preenche a coluna de BUSCA da mensagem recém-criada, na ESCRITA.
+
+    A lei §4.4 é explícita: a busca é coluna materializada e indexada, calculada
+    quando se escreve — **nunca** montada no `WHERE` da consulta. Calcular na
+    consulta funciona lindamente com 500 mensagens, trava com 50 mil, e só se
+    descobre em produção.
+
+    `SearchVector` é uma expressão de BANCO: não há como atribuí-la a um
+    atributo Python antes do `save()`. O caminho é um `update()` sobre a linha
+    que acabou de nascer — uma ida a mais ao banco por mensagem escrita, dentro
+    da mesma transação.
+    """
+    Mensagem.objects.filter(pk=mensagem.pk).update(
+        busca=SearchVector("texto", config="portuguese")
+    )
 
 
 @require_GET
@@ -95,20 +149,7 @@ def ver_area(request, slug: str):
     if not pode_ler(area, ator):
         raise Http404("área não encontrada")
 
-    topicos = Topico.objects.filter(
-        area=area, estado=Topico.Estado.PUBLICADO
-    ).select_related("autor")
-
-    return render(
-        request,
-        "forum/area.html",
-        {
-            "ator": ator,
-            "area": area,
-            "topicos": topicos,
-            "pode_escrever": pode_escrever(area, ator),
-        },
-    )
+    return render(request, "forum/area.html", _contexto_da_area(request, ator, area))
 
 
 @require_GET
@@ -123,19 +164,195 @@ def ver_topico(request, topico_id: int):
     if not pode_ler(topico.area, ator):
         raise Http404("tópico não encontrado")
 
-    mensagens = (
-        Mensagem.objects.filter(topico=topico, removida_em__isnull=True)
-        .select_related("autor")
-        .order_by("criado_em")
-    )
     return render(
-        request,
-        "forum/topico.html",
-        {
-            "ator": ator,
-            "topico": topico,
-            "area": topico.area,
-            "mensagens": mensagens,
-            "pode_escrever": pode_escrever(topico.area, ator),
-        },
+        request, "forum/topico.html", _contexto_do_topico(request, ator, topico)
     )
+
+
+# ===========================================================================
+# O CONTEXTO DAS DUAS TELAS — montado uma vez, usado por quem lê e por quem erra
+# ===========================================================================
+# Existe uma função só porque a tela de erro de escrita é a MESMA tela de
+# leitura, com o que a pessoa digitou ainda dentro do formulário. Montar o
+# contexto duas vezes é como uma delas passa a esquecer um campo — e o campo
+# esquecido aqui seria justamente `motivo`, o que explica a recusa.
+
+
+def _porta_de_entrada(request) -> str:
+    """O destino do "entrar para escrever": a porta central, voltando PARA CÁ.
+
+    Duas metades, e cada uma tem seu motivo:
+
+    * O endereço da porta vem do env (`URL_DE_ENTRADA`), lido no ponto de uso e
+      com o endereço real como default (`armadilhas/097`: variável ausente não
+      pode derrubar a página; aqui, no pior caso, ela leva ao lugar certo). É o
+      mesmo desenho de `services/sugestoes/apps/core/views.py`, a célula de
+      referência para consumir a `identidade`.
+    * O `next` sai de `request.get_full_path()`, que já carrega o prefixo
+      público — em produção ele é `/forum/a/duvidas`, em dev `/a/duvidas`, sem
+      uma string cravada em lugar nenhum (`armadilhas/029` e `/081`).
+    """
+    porta = (os.environ.get("URL_DE_ENTRADA") or "").strip() or "/entrar/google"
+    return f"{porta}?{urlencode({'next': request.get_full_path()})}"
+
+
+def _contexto_da_area(request, ator, area, *, erro="", titulo="", texto=""):
+    return {
+        "ator": ator,
+        "area": area,
+        "porta_de_entrada": _porta_de_entrada(request),
+        "topicos": Topico.objects.filter(
+            area=area, estado=Topico.Estado.PUBLICADO
+        ).select_related("autor"),
+        "pode_escrever": pode_escrever(area, ator),
+        # POR QUE não pode, quando não pode. A tela diz a verdade em vez de
+        # simplesmente esconder o formulário: "entre" e "matricule-se" são
+        # recusas diferentes, e quem lê merece saber qual das duas levou.
+        "motivo": por_que_nao_escreve(area, ator),
+        "erro": erro,
+        "titulo_digitado": titulo,
+        "texto_digitado": texto,
+    }
+
+
+def _contexto_do_topico(request, ator, topico, *, erro="", texto=""):
+    return {
+        "ator": ator,
+        "topico": topico,
+        "porta_de_entrada": _porta_de_entrada(request),
+        "area": topico.area,
+        "mensagens": (
+            Mensagem.objects.filter(topico=topico, removida_em__isnull=True)
+            .select_related("autor")
+            .order_by("criado_em")
+        ),
+        "pode_escrever": pode_escrever(topico.area, ator),
+        "motivo": por_que_nao_escreve(topico.area, ator),
+        "erro": erro,
+        "texto_digitado": texto,
+    }
+
+
+# ===========================================================================
+# ESCREVER — atrás do login, e só para quem está matriculado
+# ===========================================================================
+# Mandato do mantenedor em 30/08/2026 (registro `20260830-021`). As três regras
+# que estas duas views fazem valer, e que não se reabrem aqui:
+#
+#   1. aluno só escreve atrás do login;
+#   2. só aluno matriculado escreve — cadastro sem matrícula LÊ e não escreve;
+#   3. a proteção é o CADEADO, não fila de aprovação. Não há moderação prévia
+#      nesta porta, e é por isso que o tópico nasce PUBLICADO: o estado
+#      `esperando` continua existindo no modelo, para o dia em que a moderação
+#      em volume for construída (lei §4.6), mas nada aqui o usa.
+#
+# Nenhuma das duas confere permissão por conta própria: quem responde "pode?" é
+# `apps/core/permissoes.py`, sempre — e é a MESMA função que decide se o
+# formulário aparece na tela. Duas expressões da mesma regra divergem no
+# primeiro dia em que alguém mexer numa delas.
+#
+# **404 para quem não pode LER, 403 para quem não pode ESCREVER.** A diferença é
+# de segurança: o 404 esconde a existência da área (num fórum de escola isso
+# vaza a estrutura de turmas para quem não deveria conhecê-la); o 403 só alcança
+# quem já enxerga a área, e aí esconder não protegeria ninguém — só confundiria.
+#
+# **`require_POST`, e não uma view que aceita GET e POST.** Escrita por GET é
+# escrita que um `<img src>` de outro site consegue disparar, e que o robô do
+# Google executa ao passear pela página.
+
+
+def _area_para_ler(request, slug: str):
+    """A área desta requisição, ou 404. Devolve `(ator, area)`."""
+    ator = quem_e(request)
+    area = get_object_or_404(Area, slug=slug, ativa=True)
+    if not pode_ler(area, ator):
+        raise Http404("área não encontrada")
+    return ator, area
+
+
+@require_POST
+def novo_topico(request, slug: str):
+    """Abre uma conversa nova: o tópico e a primeira mensagem, juntos."""
+    ator, area = _area_para_ler(request, slug)
+    if not pode_escrever(area, ator):
+        return HttpResponseForbidden(ERRO_SEM_PERMISSAO)
+
+    titulo = (request.POST.get("titulo") or "").strip()
+    texto = (request.POST.get("texto") or "").strip()
+
+    erro = ""
+    if len(titulo) < TITULO_MINIMO:
+        erro = ERRO_TITULO_CURTO
+    elif len(titulo) > TITULO_MAXIMO:
+        erro = ERRO_TITULO_LONGO
+    elif len(texto) < TEXTO_MINIMO:
+        erro = ERRO_TEXTO_VAZIO
+    elif len(texto) > TEXTO_MAXIMO:
+        erro = ERRO_TEXTO_LONGO
+
+    if erro:
+        # Devolve a MESMA tela com o que a pessoa digitou ainda lá dentro. Esta
+        # célula não assina sessão (lei §3), então não existe
+        # `django.contrib.messages` para levar o recado num redirect — e perder
+        # o texto de quem escreveu seria a pior forma de recusar.
+        return render(
+            request,
+            "forum/area.html",
+            _contexto_da_area(
+                request, ator, area, erro=erro, titulo=titulo, texto=texto
+            ),
+            status=400,
+        )
+
+    with transaction.atomic():
+        topico = Topico.objects.create(area=area, autor=ator.pessoa, titulo=titulo)
+        mensagem = Mensagem.objects.create(
+            topico=topico, autor=ator.pessoa, texto=texto
+        )
+        _publicar(mensagem)
+
+    return redirect(f"{reverse('topico', args=[topico.pk])}#m{mensagem.pk}")
+
+
+@require_POST
+def responder(request, topico_id: int):
+    """Acrescenta uma fala a uma conversa que já existe."""
+    ator = quem_e(request)
+    topico = get_object_or_404(
+        Topico.objects.select_related("area", "autor"),
+        pk=topico_id,
+        estado=Topico.Estado.PUBLICADO,
+    )
+    if not pode_ler(topico.area, ator):
+        raise Http404("tópico não encontrado")
+    if not pode_escrever(topico.area, ator):
+        return HttpResponseForbidden(ERRO_SEM_PERMISSAO)
+    if topico.trancado:
+        return HttpResponseForbidden(ERRO_TOPICO_TRANCADO)
+
+    texto = (request.POST.get("texto") or "").strip()
+    erro = ""
+    if len(texto) < TEXTO_MINIMO:
+        erro = ERRO_TEXTO_VAZIO
+    elif len(texto) > TEXTO_MAXIMO:
+        erro = ERRO_TEXTO_LONGO
+
+    if erro:
+        return render(
+            request,
+            "forum/topico.html",
+            _contexto_do_topico(request, ator, topico, erro=erro, texto=texto),
+            status=400,
+        )
+
+    with transaction.atomic():
+        mensagem = Mensagem.objects.create(
+            topico=topico, autor=ator.pessoa, texto=texto
+        )
+        _publicar(mensagem)
+        # A marca de leitura compara com ISTO (`MarcaDeLeitura`), nunca com a
+        # data de cada mensagem. Sem este avanço, uma conversa que acabou de
+        # receber resposta continuaria parecendo lida para a turma inteira.
+        Topico.objects.filter(pk=topico.pk).update(ultima_atividade_em=timezone.now())
+
+    return redirect(f"{reverse('topico', args=[topico.pk])}#m{mensagem.pk}")

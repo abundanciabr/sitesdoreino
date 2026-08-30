@@ -21,4 +21,49 @@
     <p style="margin:8px 0 0">Esta área acabou de nascer.</p>
   </div>
 {% endfor %}
+
+{% comment %}
+A CAIXA DE ESCREVER. Quem decide se ela aparece é `pode_escrever`, calculado em
+`apps/core/permissoes.py` — o MESMO cálculo que a view de POST usa para aceitar
+ou recusar. Esconder o formulário nunca é a proteção: a proteção é o 403 do
+outro lado. Isto aqui é honestidade de tela, não cadeado.
+
+E quando ela NÃO aparece, a página diz POR QUÊ. "Entre para escrever" e "só
+quem está matriculado escreve" são recusas diferentes, e um formulário que
+some em silêncio faz a pessoa achar que o site quebrou.
+{% endcomment %}
+{% if pode_escrever %}
+  <form class="cartao escrever" method="post" action="{% url 'novo_topico' area.slug %}">
+    {% csrf_token %}
+    <h2>Abrir uma conversa</h2>
+    {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+    <label for="titulo">Sua pergunta em uma linha</label>
+    <input id="titulo" name="titulo" maxlength="180" required
+           value="{{ titulo_digitado }}"
+           placeholder="Ex.: como faço a textura não esticar no braço?">
+    <label for="texto">Conte com calma</label>
+    <textarea id="texto" name="texto" rows="6" required
+              placeholder="O que você tentou, o que aconteceu, e onde travou.">{{ texto_digitado }}</textarea>
+    <button type="submit">Publicar</button>
+  </form>
+{% elif motivo == "entrar" %}
+  <div class="cartao recado">
+    <strong>Entre para escrever aqui.</strong>
+    <p>Esta área é de quem estuda na escola. Depois de entrar, você volta para
+      esta mesma página.</p>
+    <a class="botao" href="{{ porta_de_entrada }}">Entrar</a>
+  </div>
+{% elif motivo == "matricula" %}
+  <div class="cartao recado">
+    <strong>Escrever é para quem está matriculado.</strong>
+    <p>Você pode ler tudo por aqui. Para abrir uma conversa, é preciso estar
+      matriculado em um curso da escola.</p>
+  </div>
+{% elif motivo == "equipe" %}
+  <div class="cartao recado">
+    <strong>Nesta área quem publica é a escola.</strong>
+    <p>Aqui saem os avisos oficiais. Para perguntar, ou para mostrar o que você
+      está construindo, use as outras áreas.</p>
+  </div>
+{% endif %}
 {% endblock %}
