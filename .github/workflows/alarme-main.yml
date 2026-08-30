@@ -193,8 +193,37 @@ jobs:
   # disso, um revert que quebra outra coisa precisa ser reprovado como qualquer
   # mudança: é o que os checks do PR fazem.
   #
-  # AS QUATRO RECUSAS, todas fail-closed (nenhuma abre PR "por via das dúvidas"):
+  # A MIRA VEM ANTES DAS RECUSAS, e ela é MEDIDA (30/08/2026, TAR-025)
+  # -------------------------------------------------------------------------
+  # Até 30/08/2026 este job revertia `github.sha` — o commit do push da vez.
+  # Numa `main` que JÁ estava vermelha isso acusa o inocente seguinte, e foi
+  # exatamente o que aconteceu: o alarme concluiu `failure` OITO vezes entre
+  # 12:13 e 12:31 UTC; o vermelho começou em `caaeb2e8` (PR #580) e as outras
+  # sete execuções eram merges sem relação nenhuma com a quebra. Nas oito o job
+  # rodou, e nas oito o commit de reversão já estava montado na árvore quando o
+  # push bateu no 403 — na execução 33311082356 o diff local era
+  # `15 files changed, 90 insertions(+), 1251 deletions(-)`, apagando a escrita
+  # do fórum. Só a falta de permissão evitou oito PRs de reversão etiquetados
+  # `pousar`, sete contra inocentes, mergeados sozinhos pela pista.
   #
+  # `ci/mira_do_alarme.py` calcula o culpado do histórico do próprio workflow:
+  # o commit da execução mais ANTIGA da sequência vermelha que chega até agora,
+  # e essa sequência precisa começar logo depois de um `success`. Fora disso é
+  # RECUSA — sem cura automática, com a issue chamando gente. Provado com
+  # históricos montados à mão (inclusive o real deste incidente) em
+  # `ci/tests/test_mira_do_alarme.py`, sem rede.
+  #
+  # Efeito colateral que vale mais que o principal: o ramo passa a se chamar
+  # pelo CULPADO, então as oito execuções de uma sequência calculam o mesmo
+  # nome e a recusa 3 as reduz a UM PR. "Um PR por incidente" só passou a ser
+  # verdade agora.
+  #
+  # AS CINCO RECUSAS, todas fail-closed (nenhuma abre PR "por via das dúvidas"):
+  #
+  #   0. a mira não sabe quem quebrou -> não reverte ninguém. Janela toda
+  #                                   vermelha, `cancelled` na fronteira, ou a
+  #                                   `main` já verde: escolher alguém aqui é
+  #                                   sortear a vítima.
   #   1. o commit não é merge      -> não reverte. `-m 1` num commit comum é
   #                                   erro, e adivinhar o pai é pior que parar.
   #   2. o commit JÁ é um revert   -> não reverte. Sem isto, um revert que
@@ -206,13 +235,34 @@ jobs:
   #                                   andou por cima; resolver sozinho aqui é
   #                                   inventar código sem ninguém olhando.
   #
-  # Em qualquer das quatro, o job termina VERDE e diz o motivo no log — o
+  # Em qualquer das cinco, o job termina VERDE e diz o motivo no log — o
   # alarme (a issue) já registrou o incidente, e este job é a tentativa de cura,
   # não o detector. Ficar vermelho aqui só duplicaria o vermelho de cima.
+  #
+  # O POUSO É CONDICIONAL, e a condição é medida. `PONTA=sim` significa que o
+  # culpado é o commit mais novo que o alarme viu: reverter é "desfazer a
+  # última coisa", a operação mais segura que existe em Git, e a etiqueta
+  # `pousar` entra — a pista mergeia sozinha, como sempre. `PONTA=nao`
+  # significa que outros merges já construíram por cima: o PR nasce pronto
+  # (que é a parte cara) mas SEM a etiqueta, porque uma cirurgia no meio da
+  # história não se mergeia sem ninguém ter olhado. Quem olhar pede pouso com
+  # um comando; ninguém espera pelo mantenedor.
   #
   # USA `PISTA_TOKEN` pelo mesmo motivo da pista: PR aberto com o `GITHUB_TOKEN`
   # NÃO dispara os workflows de check, e um PR de reversão sem checks não
   # pousaria nunca.
+  #
+  # `contents: write` PORQUE FOI MEDIDO QUE FALTAVA. O `PISTA_TOKEN` vai para o
+  # `gh`, mas quem empurra o ramo é o `git`, e a credencial que o
+  # `actions/checkout` guarda é a do `GITHUB_TOKEN` — que aqui era `read`:
+  #   remote: Permission to abundanciabr/sitesdoreino.git denied to github-actions[bot].
+  #   fatal: ... The requested URL returned error: 403      (exit 128)
+  # Ou seja, a cura automática nunca funcionou uma vez sequer, e ninguém sabia.
+  # A escalada por job vale mesmo com o padrão do repositório em `read`
+  # (`default_workflow_permissions: read`), e este repositório já a exerce em
+  # três lugares que funcionam: `issues: write` aqui embaixo (abriu a issue
+  # #587), `packages: write` no `deploy-celula` (publica no ghcr a cada deploy)
+  # e `pull-requests: write` na `conferencia-do-toca`.
   # ===========================================================================
   reverter:
     name: propor reversão da main vermelha
@@ -220,16 +270,20 @@ jobs:
     if: failure()
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - name: Propor a reversão (ou dizer por que não dá)
         env:
           GH_TOKEN: ${{ secrets.PISTA_TOKEN }}
           SHA: ${{ github.sha }}
+          REPO: ${{ github.repository }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
         run: |
@@ -241,59 +295,92 @@ jobs:
             exit 0
           fi
 
-          PAIS="$(git rev-list --parents -n 1 "$SHA" | wc -w)"
+          # ----- recusa 0: quem quebrou? Se eu não souber, não escolho ninguém.
+          MIRA=0
+          SAIDA="$(python ci/mira_do_alarme.py --repo "$REPO" --sha "$SHA")" || MIRA=$?
+          echo "$SAIDA"
+          if [ "$MIRA" -ne 0 ]; then
+            echo "--- A mira do socorro não apontou ninguém (exit $MIRA)."
+            echo "Não reverto no escuro: em 30/08/2026 a mira antiga preparou"
+            echo "sete reversões de commits inocentes. A issue do alarme continua"
+            echo "valendo, e a cura fica com quem medir."
+            exit 0
+          fi
+          ALVO="$(printf '%s\n' "$SAIDA" | sed -n 's/^MIRA=//p')"
+          PONTA="$(printf '%s\n' "$SAIDA" | sed -n 's/^PONTA=//p')"
+          if [ -z "$ALVO" ]; then
+            echo "PAROU POR SEGURANÇA: a mira saiu 0 sem dizer o alvo."
+            echo "Instrumento que não responde não vira permissão para agir."
+            exit 0
+          fi
+          echo "--- Culpado medido: $ALVO (é a ponta da main? $PONTA)"
+
+          PAIS="$(git rev-list --parents -n 1 "$ALVO" | wc -w)"
           if [ "$PAIS" -lt 3 ]; then
-            echo "O commit $SHA não é um merge (pais: $((PAIS - 1)))."
+            echo "O commit $ALVO não é um merge (pais: $((PAIS - 1)))."
             echo 'Nao reverto: "-m 1" num commit comum e erro, e adivinhar o pai'
             echo "seria inventar. Conserte por PR, como sempre."
             exit 0
           fi
 
-          TITULO="$(git log -1 --pretty=%s "$SHA")"
+          TITULO="$(git log -1 --pretty=%s "$ALVO")"
           case "$TITULO" in
             Revert*|reverter:*)
-              echo "O commit $SHA JÁ é uma reversão ($TITULO)."
+              echo "O commit $ALVO JÁ é uma reversão ($TITULO)."
               echo "Não reverto de novo: seria um laço, cada volta com um PR novo."
               exit 0 ;;
           esac
 
-          RAMO="reverter/${SHA:0:12}"
+          RAMO="reverter/${ALVO:0:12}"
           if gh pr list --state open --head "$RAMO" --json number --jq '.[0].number // empty' | grep -q .; then
-            echo "Já existe PR de reversão aberto para $SHA. Um por incidente."
+            echo "Já existe PR de reversão aberto para $ALVO. Um por incidente."
             exit 0
           fi
 
           git config user.name "pista de pouso"
           git config user.email "pista@sitesdoreino.invalid"
           git switch -c "$RAMO"
-          if ! git revert -m 1 --no-edit "$SHA"; then
+          if ! git revert -m 1 --no-edit "$ALVO"; then
             # `|| true` aqui seria a preguiça que o INV-CI01 combate: ele
             # esconderia 'não havia o que abortar' junto com 'o abort
             # falhou'. A pergunta é feita, e a resposta é dita.
             if ! git revert --abort; then
               echo '(não havia revert em andamento para abortar — seguindo)'
             fi
-            echo "O revert de $SHA deu CONFLITO — a main andou por cima."
+            echo "O revert de $ALVO deu CONFLITO — a main andou por cima."
             echo "Não forço: resolver conflito sozinho aqui é inventar código"
             echo "sem ninguém olhando. A issue do alarme pede a mão humana."
             exit 0
           fi
           git push origin "$RAMO"
 
-          CORPO="$(cat <<EOF
-          🔴 **A \`main\` ficou vermelha depois deste merge, e esta é a proposta de cura.**
+          if [ "$PONTA" = "sim" ]; then
+            NOTA="A etiqueta \`pousar\` já está posta: **quem mergeia é a pista**, com
+          todos os checks — inclusive os deste revert. Se o próprio revert reprovar,
+          ele fica aqui parado, e aí é caso para mão humana."
+          else
+            NOTA="**Este PR NÃO pediu pouso, de propósito.** O commit culpado não é mais
+          a ponta da \`main\` — outros merges entraram por cima dele, e reverter no meio
+          da história é cirurgia, não 'desfazer a última coisa'. O trabalho caro já está
+          feito; confira e, se for isso mesmo, peça pouso pelo caminho normal de todo
+          mundo (\`RITOS.md\` §2 peça 4)."
+          fi
 
-          - commit revertido: \`$SHA\` — $TITULO
+          CORPO="$(cat <<EOF
+          🔴 **A \`main\` ficou vermelha, e esta é a proposta de cura.**
+
+          - commit revertido: \`$ALVO\` — $TITULO
           - execução que acusou: $RUN_URL
+          - alvo escolhido por medição (\`ci/mira_do_alarme.py\`): é o commit da
+            primeira execução vermelha do alarme depois do último verde — **não** o
+            último merge a chegar.
 
           Reverter é a resposta canônica do \`RITOS.md\` §4: **primeiro apaga o fogo,
           depois investiga**. Este PR não conserta o defeito — ele devolve a \`main\`
           ao último estado verde conhecido, para que ninguém trabalhe em cima de
           uma base quebrada enquanto o conserto é escrito.
 
-          A etiqueta \`pousar\` já está posta: **quem mergeia é a pista**, com todos os
-          checks — inclusive os deste revert. Se o próprio revert reprovar, ele fica
-          aqui parado, e aí é caso para mão humana.
+          $NOTA
 
           Se a correção de verdade for mais rápida que a reversão, feche este PR e
           mande a correção — a decisão é de quem estiver olhando.
@@ -303,5 +390,10 @@ jobs:
             --base main --head "$RAMO" \
             --title "reverter: $TITULO" \
             --body "$CORPO"
-          gh pr edit "$RAMO" --add-label pousar --add-label main-vermelha
-          echo "PR de reversão aberto e com pedido de pouso."
+          gh pr edit "$RAMO" --add-label main-vermelha
+          if [ "$PONTA" = "sim" ]; then
+            gh pr edit "$RAMO" --add-label pousar
+            echo "PR de reversão aberto e com pedido de pouso."
+          else
+            echo "PR de reversão aberto SEM pedido de pouso — o culpado não é a ponta."
+          fi
