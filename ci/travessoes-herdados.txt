@@ -1,0 +1,46 @@
+# LINHA DE BASE — o travessão que JÁ estava publicado quando a regra nasceu.
+#
+# Lido por `ci/travessao.py`. Cada linha é uma DÍVIDA reconhecida: um texto que
+# alguém de fora lê hoje e que ainda carrega travessão, escrito antes da decisão
+# do mantenedor de 30/08/2026.
+#
+# A CATRACA, em duas frases: arquivo público com travessão fora desta lista
+# deixa a CI VERMELHA. O número aqui é COMPROMISSO, não teto frouxo — encontrar
+# menos do que o declarado também reprova, com a linha nova pronta para colar.
+#
+# Por que reprovar quando a dívida ENCOLHE, que é o que se quer: porque a queda
+# precisa aparecer no diff. Lista que se ajusta sozinha vira ficção — foi por
+# isso que `ci/guardas-nao-declarados.txt` pediu o mesmo gesto, e por isso o
+# `-# TOTAL:` / `+# TOTAL:` de cada limpeza é a prova de que a dívida andou.
+#
+# COMO PAGAR UMA LINHA (é barato, e é o objetivo):
+#   1. `python ci/travessao.py --listar` mostra frase por frase, com a linha;
+#   2. troque cada travessão por vírgula, parênteses, dois-pontos ou aspas —
+#      a regra inteira está em CLAUDE.md e na recusa do portão;
+#   3. baixe o número aqui (ou apague a linha, se chegou a zero) e o `# TOTAL:`.
+#
+# Estar aqui NÃO é permissão para escrever travessão novo: linha de arquivo que
+# CRESCE reprova igual. A dívida só encolhe.
+#
+# Formato: `<caminho a partir da raiz> :: <quantos travessões ainda vivos>`
+
+documentos/LEIA-ME.md :: 10
+documentos/como-funciona-a-entrada.md :: 15
+documentos/jornada-do-aluno.md :: 33
+services/admin/apps/core/templates/admin/503.html :: 1
+services/admin/apps/core/templates/admin/mapa_do_site.html :: 6
+services/checkout/templates/checkout/cartao.html :: 1
+services/checkout/templates/checkout/dados.html :: 2
+services/checkout/templates/checkout/pix.html :: 1
+services/forum/apps/core/templates/forum/topico.html :: 1
+services/funil/templates/funil/landing.html :: 1
+services/funil/traducoes/cadastro.yaml :: 3
+services/funil/traducoes/landing.yaml :: 6
+services/funil/traducoes/login.yaml :: 21
+services/quiz/apps/quiz/templates/quiz/resultado.html :: 1
+services/sugestoes/apps/core/templates/sugestoes/avisos.html :: 8
+services/sugestoes/apps/core/templates/sugestoes/entrar.html :: 4
+services/sugestoes/apps/core/templates/sugestoes/nova.html :: 4
+services/sugestoes/apps/core/templates/sugestoes/quadro.html :: 4
+services/sugestoes/apps/core/templates/sugestoes/sugestao.html :: 3
+# TOTAL: 125

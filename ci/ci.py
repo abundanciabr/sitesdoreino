@@ -211,6 +211,11 @@ MURALHAS = [
         "a fila de trabalho (fila/) inválida — tarefa/evento fora do molde",
     ),
     PortaoDeShell(
+        "muralha-do-travessao",
+        "ci/muralha-do-travessao.sh",
+        "travessão em texto que vai ser publicado online (decisão de 30/08/2026)",
+    ),
+    PortaoDeShell(
         "muralha-das-reservas",
         "ci/muralha-das-reservas.sh",
         "armadilha nova com número escolhido à mão em vez de pedido ao almoxarife",
