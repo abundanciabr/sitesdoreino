@@ -19,3 +19,9 @@ regra_do_livro/
 # para a aba "Os robôs" (`apps/core/robos.py`). Mesma lei das duas de cima: a
 # fonte é `fila/` na raiz; cópia versionada aqui seria a segunda casa do fato.
 fila_embutida/
+
+# A área de documentos (`documentos/`), embutida pelo mesmo passo do deploy
+# (`apps/core/documentos.py`). Mesma lei das três de cima — e aqui ela tem um
+# lado extra: dois lugares com o mesmo documento significa dois cabeçalhos
+# `publico:`, e o dia em que discordassem um texto interno estaria no ar.
+documentos_embutidos/

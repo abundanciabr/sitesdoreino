@@ -47,7 +47,12 @@ celulas:
     # congelaria em silêncio.
     # `fila/` idem, desde 29/08/2026: a aba "Os robôs" da gestão da Caixa é
     # calculada da fila embutida — evento novo na fila É quadro novo na admin.
-    caminhos: [services/admin, painel, fila]
+    # `documentos/` entra pela MESMA razão de `painel/` e `fila/`: a área de
+    # documentos do site (`DECISAO-a-area-de-documentos.md`) é servida por esta
+    # célula, e a pasta entra na imagem no build. Documento novo é página nova —
+    # sem esta linha, mexer num documento mergearia sem disparar deploy e o site
+    # continuaria publicando o texto antigo, em silêncio.
+    caminhos: [services/admin, painel, fila, documentos]
     consome: [alunos, identidade, sugestoes]
 
   alunos:

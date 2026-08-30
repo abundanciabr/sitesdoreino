@@ -1,0 +1,18 @@
+{% extends "admin/base_publico.html" %}
+{% comment %}
+Um documento público.
+
+`{{ corpo|safe }}` é seguro AQUI, e só aqui, por uma razão mecânica: quem monta
+esse HTML é `apps/core/documentos.py::para_html`, que ESCAPA o texto inteiro
+antes de aplicar qualquer formatação. Marcação escrita dentro de um documento
+chega nesta linha já como `&lt;script&gt;` — texto, nunca tag. Guarda:
+`tests/test_area_de_documentos.py::test_html_dentro_do_documento_sai_escapado`.
+
+Se um dia alguém trocar o renderizador por um que não escape, é este `|safe`
+que vira o buraco — e é por isso que a explicação mora coladinha nele.
+{% endcomment %}
+{% block titulo %}{{ documento.titulo }}{% endblock %}
+{% block conteudo %}
+  <a class="volta" href="{% url 'docs_publicos' %}">&larr; Todos os documentos</a>
+  {{ corpo|safe }}
+{% endblock %}

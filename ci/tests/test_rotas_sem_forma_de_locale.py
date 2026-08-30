@@ -226,8 +226,16 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # uma regra de segurança: rota nova obriga quem a acrescenta a passar por
     # aqui e olhar as duas regras acima. As regras que julgam de fato (A: forma
     # de locale; B: colisão com idioma declarado) continuam medindo a tabela
-    # real e nada nelas foi afrouxado — `forms`, `entrar`, `admin` e `mapa-ia`
-    # têm 5, 6, 5 e 7 letras, logo nem casam a FORMA.
+    # real e nada nelas foi afrouxado — `forms`, `entrar`, `admin`, `mapa-ia` e
+    # `docs` têm 5, 6, 5, 7 e 4 letras, logo nenhum casa a FORMA (que exige
+    # 2-3). E nenhum deles é idioma declarado em `infra/sites.json`.
+    #
+    # `docs` entrou com a área PÚBLICA de documentos (`PathPrefix(/docs)`,
+    # `DECISAO-a-area-de-documentos.md`, 29/08/2026), no mesmo backend da
+    # `admin` — o mesmo desenho do `mapa-ia`. Ele mereceu um segundo olhar por
+    # causa do outro lado do `PathPrefix`, que casa string CRUA e sem fronteira
+    # de segmento: ele engoliria `/docsomething` junto. Não há rota assim hoje,
+    # e não haverá por acidente — quem criar uma vai encontrar esta linha.
     assert segmentos == {
         "",
         "quiz",
@@ -238,6 +246,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "forms",
         "entrar",
         "admin",
+        "docs",
     }
 
 

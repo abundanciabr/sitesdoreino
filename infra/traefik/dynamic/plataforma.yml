@@ -199,6 +199,32 @@ http:
       service: admin
       tls: {}
 
+    docs:
+      # A área PÚBLICA de documentos (`DECISAO-a-area-de-documentos.md`,
+      # 29/08/2026). MESMO backend da área administrativa — a pasta
+      # `documentos/` já vem embutida na imagem dela pelo passo "Embutir os
+      # documentos do site" —, e é a célula que decide o que sai: só os
+      # arquivos com `publico: true` no cabeçalho respondem aqui, e a isenção
+      # da porta alcança exatamente este prefixo (`porta.py`,
+      # `PREFIXO_PUBLICO_DOS_DOCUMENTOS`).
+      #
+      # Prefixo PRÓPRIO, fora de `/admin`, pelo mesmo motivo do `/mapa-ia`: um
+      # endereço público não se esconde debaixo do prefixo da área
+      # administrativa. E há um motivo a mais aqui, que é mecânico: a célula
+      # roda sob `SCRIPT_NAME=/admin`, e o Django TIRA esse prefixo do
+      # `path_info` — `/admin/docs/x` e `/docs/x` chegariam com o mesmo caminho
+      # interno. Por isso a tela fechada se chama `/admin/documentos/`, e não
+      # `/admin/docs/`.
+      #
+      # Mesma escala de prioridade do resto: 10 = prefixo de página, contra o
+      # 1 do catch-all do funil.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/docs`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca-admin]
+      service: admin
+      tls: {}
+
     www-meshcraft:
       # No host `www.` nenhuma PÁGINA é servida: tudo é desviado para o
       # endereço canônico. Dois endereços servindo o mesmo conteúdo rendem
