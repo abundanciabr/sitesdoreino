@@ -1,6 +1,6 @@
 ---
 schema_version: 2
-armadilha: 192
+armadilha: 195
 estado: documentada
 degrau: 6
 confianca: alta
