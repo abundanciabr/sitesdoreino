@@ -9,7 +9,7 @@
 </p>
 
 {% for mensagem in mensagens %}
-  <div class="cartao mensagem">
+  <div class="cartao mensagem" id="m{{ mensagem.pk }}">
     <span class="autor">{{ mensagem.autor.nome_exibido|default:"alguém" }}</span>
     <span class="quando">· {{ mensagem.criado_em|date:"d/m/Y H:i" }}</span>
     {% if topico.resposta_aceita_id == mensagem.pk %}<span class="etiqueta">resposta aceita</span>{% endif %}
@@ -18,4 +18,44 @@
 {% empty %}
   <div class="vazio"><strong>Este tópico ainda não tem mensagens.</strong></div>
 {% endfor %}
+
+{% comment %}
+A CAIXA DE RESPONDER — mesma regra da caixa de abrir conversa, na área.
+`pode_escrever` vem de `apps/core/permissoes.py`; a proteção de verdade é o 403
+da view de POST. Tópico trancado esconde a caixa aqui E recusa lá.
+{% endcomment %}
+{% if topico.trancado %}
+  <div class="cartao recado">
+    <strong>Esta conversa foi trancada.</strong>
+    <p>Dá para ler, mas não dá para responder. Se ainda ficou dúvida, abra uma
+      conversa nova em <a href="{% url 'area' area.slug %}">{{ area.nome }}</a>.</p>
+  </div>
+{% elif pode_escrever %}
+  <form class="cartao escrever" method="post" action="{% url 'responder' topico.pk %}">
+    {% csrf_token %}
+    <h2>Responder</h2>
+    {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+    <label for="texto">Sua resposta</label>
+    <textarea id="texto" name="texto" rows="5" required
+              placeholder="Escreva como você explicaria para um colega.">{{ texto_digitado }}</textarea>
+    <button type="submit">Responder</button>
+  </form>
+{% elif motivo == "entrar" %}
+  <div class="cartao recado">
+    <strong>Entre para responder.</strong>
+    <p>Depois de entrar, você volta para esta mesma conversa.</p>
+    <a class="botao" href="{{ porta_de_entrada }}">Entrar</a>
+  </div>
+{% elif motivo == "matricula" %}
+  <div class="cartao recado">
+    <strong>Responder é para quem está matriculado.</strong>
+    <p>Você pode ler a conversa inteira. Para responder, é preciso estar
+      matriculado em um curso da escola.</p>
+  </div>
+{% elif motivo == "equipe" %}
+  <div class="cartao recado">
+    <strong>Nesta área quem publica é a escola.</strong>
+    <p>Aqui saem os avisos oficiais — as respostas ficam nas outras áreas.</p>
+  </div>
+{% endif %}
 {% endblock %}
