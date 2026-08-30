@@ -156,7 +156,17 @@ class AlunosClient:
         token = exigir("ALUNOS_API_TOKEN")
         try:
             resposta = http().get(
-                f"{base}/{quote(email, safe='')}/situacao",
+                # O `/alunos` do meio NÃO é decorativo, e a falta dele foi um bug
+                # real desta célula até 29/08/2026. `ALUNOS_API_URL` é o `servers:`
+                # do contrato (`http://alunos:8000/api/alunos`) e o caminho da
+                # operação `getStudentStanding` é `/alunos/{email}/situacao` — os
+                # dois se somam. Sem o segmento, a chamada dava 404, o 404 virava
+                # `AlunosIndisponivel`, e o fail-closed devolvia `eh_aluno=False`
+                # para TODO MUNDO, para sempre, com o deploy verde. Fail-closed
+                # por bug é indistinguível de fail-closed por decisão
+                # (`armadilhas/111`) — e é por isso que o dublê dos testes passou
+                # a conferir a URL inteira, não só o hostname.
+                f"{base}/alunos/{quote(email, safe='')}/situacao",
                 headers={"Authorization": f"Bearer {token}"},
             )
         except httpx.RequestError as erro:
