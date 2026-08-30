@@ -5,16 +5,111 @@
 <h1>{{ topico.titulo }}</h1>
 <p class="sub">
   aberto por {{ topico.assinatura }}{% if topico.publicado_pela_escola %} <span class="etiqueta">a escola</span>{% endif %} em {{ topico.criado_em|date:"d/m/Y" }}
+  {% if topico.fixado %}<span class="etiqueta">fixado</span>{% endif %}
   {% if topico.trancado %}<span class="etiqueta">trancado</span>{% endif %}
+  {% if topico.estado != "publicado" %}<span class="etiqueta">fora do ar</span>{% endif %}
 </p>
 
+{% comment %}
+AS FERRAMENTAS DO ADMINISTRADOR desta conversa (mandato de 30/08/2026). Quem
+decide se aparecem é `pode_moderar` (`apps/core/permissoes.py`), o MESMO cálculo
+que a view de POST usa para aceitar ou recusar. Quem não modera recebe 404 nestas
+rotas: esconder o botão nunca é a proteção.
+{% endcomment %}
+{% if pode_moderar %}
+  <details class="ferramentas" {% if erro_admin %}open{% endif %}>
+    <summary>Ferramentas do administrador</summary>
+    <p class="sub" style="margin:10px 0 0">Só você enxerga esta caixa.</p>
+    {% if erro_admin %}<p class="erro">{{ erro_admin }}</p>{% endif %}
+
+    <form class="escrever" method="post" action="{% url 'moderar_topico' topico.pk %}">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="salvar">
+      <h2>Editar esta conversa</h2>
+      <label for="titulo">Título</label>
+      <input id="titulo" name="titulo" maxlength="180" required value="{{ topico.titulo }}">
+      <label for="area_id">Em qual área ela fica</label>
+      <select id="area_id" name="area_id">
+        {% for destino in areas_para_mover %}
+          <option value="{{ destino.pk }}" {% if destino.pk == topico.area_id %}selected{% endif %}>{{ destino.nome }}{% if not destino.ativa %} (arquivada){% endif %}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Salvar</button>
+    </form>
+
+    <div class="linha-de-botoes">
+      <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="{% if topico.fixado %}desafixar{% else %}fixar{% endif %}">
+        <button class="mini" type="submit">{% if topico.fixado %}Desafixar{% else %}Fixar no topo{% endif %}</button>
+      </form>
+      <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="{% if topico.trancado %}destrancar{% else %}trancar{% endif %}">
+        <button class="mini" type="submit">{% if topico.trancado %}Destrancar{% else %}Trancar{% endif %}</button>
+      </form>
+      <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="acao" value="{% if topico.estado == 'publicado' %}tirar_do_ar{% else %}restaurar{% endif %}">
+        <button class="mini" type="submit">{% if topico.estado == 'publicado' %}Tirar do ar{% else %}Devolver ao ar{% endif %}</button>
+      </form>
+      {% if topico.resposta_aceita_id %}
+        <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="desmarcar">
+          <button class="mini" type="submit">Tirar o selo de resolvido</button>
+        </form>
+      {% endif %}
+    </div>
+    <p class="sub" style="margin:10px 0 0">
+      Tirar do ar é o jeito seguro de apagar: a conversa some para todo mundo e
+      continua aqui para você, inteira. Nada é destruído.
+    </p>
+  </details>
+{% endif %}
+
 {% for mensagem in mensagens %}
-  <div class="cartao mensagem" id="m{{ mensagem.pk }}">
+  <div class="cartao mensagem{% if mensagem.removida_em %} fora-do-ar{% endif %}" id="m{{ mensagem.pk }}">
     <span class="autor">{{ mensagem.assinatura }}</span>
     {% if mensagem.publicado_pela_escola %}<span class="etiqueta">a escola</span>{% endif %}
     <span class="quando">· {{ mensagem.criado_em|date:"d/m/Y H:i" }}</span>
+    {% comment %}
+    "Editada" não é enfeite: editar em silêncio a fala de outra pessoa é o que um
+    fórum não pode fazer. Quem respondeu confiando no que estava escrito merece
+    ver que o texto mudou depois.
+    {% endcomment %}
+    {% if mensagem.editado_em %}<span class="etiqueta">editada em {{ mensagem.editado_em|date:"d/m/Y" }}</span>{% endif %}
     {% if topico.resposta_aceita_id == mensagem.pk %}<span class="etiqueta">resposta aceita</span>{% endif %}
+    {% if mensagem.removida_em %}<span class="etiqueta">fora do ar</span>{% endif %}
     <div class="texto">{{ mensagem.texto }}</div>
+
+    {% if pode_moderar %}
+      <details class="ferramentas-mini">
+        <summary>editar, tirar do ar, marcar como resposta</summary>
+        <form class="escrever" method="post" action="{% url 'moderar_mensagem' mensagem.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="salvar">
+          <label for="texto{{ mensagem.pk }}">Texto da mensagem</label>
+          <textarea id="texto{{ mensagem.pk }}" name="texto" rows="5" required>{{ mensagem.texto }}</textarea>
+          <button type="submit">Salvar</button>
+        </form>
+        <div class="linha-de-botoes">
+          <form method="post" action="{% url 'moderar_mensagem' mensagem.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="acao" value="{% if mensagem.removida_em %}restaurar{% else %}tirar_do_ar{% endif %}">
+            <button class="mini" type="submit">{% if mensagem.removida_em %}Devolver ao ar{% else %}Tirar do ar{% endif %}</button>
+          </form>
+          {% if not mensagem.removida_em and topico.resposta_aceita_id != mensagem.pk %}
+            <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="acao" value="aceitar">
+              <input type="hidden" name="mensagem_id" value="{{ mensagem.pk }}">
+              <button class="mini" type="submit">Esta é a resposta certa</button>
+            </form>
+          {% endif %}
+        </div>
+      </details>
+    {% endif %}
   </div>
 {% empty %}
   <div class="vazio"><strong>Este tópico ainda não tem mensagens.</strong></div>

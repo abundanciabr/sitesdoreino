@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-190320-TAR-037-concluida",
+  "tarefa": "TAR-037",
+  "evento": "concluida",
+  "quando": "2026-08-30T19:03:20+00:00",
+  "quem": "sessao-forum-moderacao-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/627 — 34 testes novos em services/forum/tests/test_moderacao.py; suite da celula 119 -> 153 passed. Vermelho->verde com a segunda medida do armadilhas/195: SEM O CONSERTO a tela do administrador nao tinha 'Ferramentas do administrador' (False) nem botao 'Tirar do ar' (False) e os quatro enderecos davam NoReverseMatch; COM O CONSERTO os dois marcadores dao True e os quatro enderecos EXISTEM. Contra o codigo de origin/main os testes novos dao 32 failed, 2 passed (os 2 que passam sao os que exigem AUSENCIA de botao para aluno e visitante). black --check PASS, ci/travessao.py PASS, ci/mapa_do_site.py PASS com as 4 rotas novas no mapa. Falta o veredito do deploy-celula depois do pouso.",
+  "verificado_em": "2026-08-30"
+}

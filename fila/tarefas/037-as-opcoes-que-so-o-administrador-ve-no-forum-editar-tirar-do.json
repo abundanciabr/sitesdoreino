@@ -1,0 +1,13 @@
+{
+  "arquivo": "037-as-opcoes-que-so-o-administrador-ve-no-forum-editar-tirar-do",
+  "id": "TAR-037",
+  "titulo": "As opcoes que so o administrador ve no forum: editar, tirar do ar, deixar privado, arquivar",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "PR mergeado, suite da celula verde com prova vermelho->verde por assercao, deploy-celula do forum verde lido por gh run view --json, e a tela publica do forum sem botao nenhum para quem nao e admin",
+  "despacho": "O mantenedor pediu em 30/08/2026, com as palavras dele: \"Crie as opcoes (que\ndeve aparecer apenas para o Admin) de editar, deletar, deixar privado, e etc;\ntudo no forum.\"\n\nConstrua as ferramentas do administrador dentro das proprias telas do forum\n(nada de tela separada de moderacao): elas aparecem so para quem esta em\nADMIN_EMAILS, e sao invisiveis para aluno, professor e visitante.\n\nO escopo, item por item:\n\nAREA: criar area nova, editar nome e descricao, deixar privada (so aluno le)\nou publica (o mundo le, e ai so a escola fala, por causa da restricao\npagina_publica_so_a_escola_fala), escolher quem escreve, arquivar (o \"deletar\"\nhonesto: some da lista, o conteudo fica) e reabrir.\n\nTOPICO: editar o titulo, mover para outra area, fixar/desafixar,\ntrancar/destrancar, tirar do ar/restaurar (estado removido, nunca DELETE),\nmarcar/desmarcar a resposta aceita.\n\nMENSAGEM: editar o texto (marcando editado_em, e a tela mostra \"editada\"),\ntirar do ar/restaurar (removida_em, nunca DELETE).\n\nAs leis que valem: nada de DELETE de verdade (o publico da escola e\nmajoritariamente menor de idade, e apagar destroi o contexto de uma denuncia);\nquem responde \"pode?\" e apps/core/permissoes.py, sempre; 404 para quem nao e\nadmin, nunca 403 (o 403 confirma que a porta existe); toda acao por POST com\nCSRF; e nenhum travessao no texto das telas (ci/travessao.py).",
+  "origem": "pedido direto do mantenedor em 30/08/2026",
+  "criada_em": "2026-08-30"
+}
