@@ -263,6 +263,75 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
 
 
 # ---------------------------------------------------------------------------
+# GUARDA 2: roteador no ponto de entrada HTTPS precisa declarar `tls`.
+#
+# NASCEU DE UM DEFEITO REAL, em 29/08/2026. O roteador `/docs` (a área pública
+# de documentos) entrou na tabela sem a linha `tls: {}`. O arquivo continuou
+# YAML válido, o `deploy-infra` ficou VERDE, e de fora o endereço respondia
+# 404 — servido pelo catch-all do funil, porque o Traefik não cria um roteador
+# que não sabe como servir TLS no `websecure`.
+#
+# O tempo perdido não foi consertar (uma linha): foi DESCOBRIR. Tudo parecia
+# certo — a regra na tabela, o `PathPrefix` correto, o serviço existente, dois
+# deploys verdes —, e o único jeito de ver a diferença de fora foi comparar os
+# cabeçalhos de segurança de `/docs` com os de um roteador irmão que funcionava.
+#
+# É a forma mais pura de falso-verde de infraestrutura: o portão mede a
+# sintaxe, e o que quebra é a semântica.
+# ---------------------------------------------------------------------------
+ENTRADA_TLS = "websecure"
+
+
+def sem_cadeado(documento: dict) -> "list[str]":
+    """Os roteadores do `websecure` que não declaram `tls`.
+
+    Devolve nomes, não booleano: quem lê o CI vermelho precisa saber QUAL
+    roteador ficou de fora, e não só que existe um.
+    """
+    routers = ((documento or {}).get("http") or {}).get("routers") or {}
+    achados = []
+    for nome, config in sorted(routers.items()):
+        if not isinstance(config, dict):
+            continue
+        entradas = config.get("entryPoints") or []
+        if ENTRADA_TLS in entradas and "tls" not in config:
+            achados.append(nome)
+    return achados
+
+
+def test_todo_roteador_https_declara_o_cadeado():
+    """A medição real, sobre a tabela que está no ar."""
+    faltando = sem_cadeado(_rotas_reais())
+    assert faltando == [], (
+        "Roteador no ponto de entrada `websecure` sem `tls` declarado, em "
+        "infra/traefik/dynamic/plataforma.yml:\n  "
+        + "\n  ".join(faltando)
+        + "\n\nO Traefik NÃO cria esse roteador, e o endereço cai no catch-all "
+        "do funil — 404 com o deploy verde. Acrescente `tls: {}` (é o que todos "
+        "os outros fazem)."
+    )
+
+
+@pytest.mark.parametrize(
+    "config,esperado",
+    [
+        ({"entryPoints": ["websecure"], "tls": {}}, []),
+        ({"entryPoints": ["websecure"]}, ["r"]),
+        # Sem `entryPoints`, o roteador atende TODOS — inclusive o `web` (porta
+        # 80), onde `tls` não faz sentido. Fora do alcance deste guarda de
+        # propósito: ele julga o que declarou `websecure`, e nada mais.
+        ({"tls": {}}, []),
+        ({}, []),
+        ({"entryPoints": ["web"]}, []),
+    ],
+)
+def test_o_guarda_do_cadeado_reprova_quando_deve(config, esperado):
+    """Prova adversarial: guarda que não fica vermelho quando deveria é
+    decoração — e este nasceu porque um deploy verde escondeu o defeito."""
+    assert sem_cadeado({"http": {"routers": {"r": config}}}) == esperado
+
+
+# ---------------------------------------------------------------------------
 # Prova adversarial: o guarda REPROVA quando deve. Guarda que não fica vermelho
 # quando deveria é decoração — aqui ele é exercitado contra tabelas de rota
 # fabricadas, no mesmo espírito do resto de ci/tests (repositório de mentira).
