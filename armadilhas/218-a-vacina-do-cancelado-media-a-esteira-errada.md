@@ -1,6 +1,6 @@
 ---
 schema_version: 2
-armadilha: 216
+armadilha: 218
 estado: guardada
 degrau: 2
 confianca: alta
