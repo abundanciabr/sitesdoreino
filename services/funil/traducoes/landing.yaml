@@ -129,9 +129,9 @@ acesso_encerrado:
   # o formulário e o botão "Pedir para voltar". Uma home que continuasse dizendo
   # "fale com a escola" mandaria a mesma pessoa para dois lugares diferentes.
   _fonte: "161565"
-  en: "Your access to the school has ended. If you want to come back, ask again on the Suggestion Box page — the team decides."
-  pt-br: "Seu acesso à escola foi encerrado. Se você quiser voltar, é só pedir de novo — a equipe decide."
-  es: "Tu acceso a la escuela terminó. Si quieres volver, solo pídelo de nuevo — el equipo decide."
+  en: "Your access to the school has ended. If you want to come back, ask again on the Suggestion Box page: the team decides."
+  pt-br: "Seu acesso à escola foi encerrado. Se você quiser voltar, é só pedir de novo: a equipe decide."
+  es: "Tu acceso a la escuela terminó. Si quieres volver, solo pídelo de nuevo: el equipo decide."
 
 pedir_para_voltar:
   # O botão que acompanha `acesso_encerrado` desde 29/08/2026. Ele leva à Caixa,
@@ -171,9 +171,9 @@ quer_estudar_aqui:
   # enfeite: sem ela, quem pede fica esperando uma porta automática que não
   # existe — e a fila de liberação é humana de propósito.
   _fonte: "2fd764"
-  en: "Want to study at Meshcraft? Ask to join — the team decides who comes in."
-  pt-br: "Quer estudar no Meshcraft? Peça sua entrada — a equipe decide quem entra."
-  es: "¿Quieres estudiar en Meshcraft? Pide tu acceso — el equipo decide quién entra."
+  en: "Want to study at Meshcraft? Ask to join: the team decides who comes in."
+  pt-br: "Quer estudar no Meshcraft? Peça sua entrada: a equipe decide quem entra."
+  es: "¿Quieres estudiar en Meshcraft? Pide tu acceso: el equipo decide quién entra."
 
 pedir_entrada:
   # NÃO é o mesmo rótulo de `pedir_para_voltar`, e não deve ser: um é a
