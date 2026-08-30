@@ -436,3 +436,34 @@ def test_o_deploy_infra_registra_no_resumo_do_run_o_que_fez():
         "o narrador não é portão: se ele pudesse reprovar, 'não consegui contar "
         "a história' viraria 'a entrega falhou'"
     )
+
+
+def test_o_narrador_nao_afirma_producao_intacta_quando_nao_sabe():
+    """A frase mais fácil de escrever errado deste workflow.
+
+    "A VPS continua com o compose ANTERIOR" é verdade quando a VPS não executou
+    nada — e MENTIRA quando o script morreu depois do bloco 3, que é justamente
+    onde a troca acontece. Afirmar produção intacta sem saber é a mesma família
+    do falso-verde: o leitor para de investigar por causa de uma frase.
+
+    Por isso o narrador separa os dois desfechos pela marca de partida, do mesmo
+    jeito que o portão de conclusão faz — e é a marca, e não o `outcome`, que
+    decide (`outcome` não sabe distinguir os dois).
+    """
+    narrador = [p for p in _passos() if "GITHUB_STEP_SUMMARY" in str(p.get("run", ""))][0]
+    corpo = str(narrador.get("run", ""))
+    assert MARCA_DE_PARTIDA in corpo, (
+        "o narrador voltou a contar uma história só para os dois desfechos de "
+        "falha — e um deles não pode afirmar que a produção está intacta"
+    )
+    intactas = [
+        linha
+        for linha in corpo.splitlines()
+        if "ANTERIORES" in linha and "GITHUB_STEP_SUMMARY" in linha
+    ]
+    assert intactas, "sumiu a frase que tranquiliza quando NADA foi tocado"
+    for linha in intactas:
+        assert "não executou uma linha" in linha, (
+            "a frase 'continua com o compose ANTERIOR' só pode aparecer no ramo "
+            f"em que está provado que nada rodou na VPS — achei: {linha.strip()[:120]}"
+        )
