@@ -52,7 +52,7 @@ from django.db.models import Exists, Max, OuterRef
 from django.db.models.functions import Coalesce
 from django.http import Http404
 from django.utils import timezone
-from ninja import Router, Schema
+from ninja import Field, Router, Schema
 
 from apps.sugestoes.eventos import AtorSemIdDaPlataforma
 from apps.sugestoes.models import (
@@ -168,6 +168,39 @@ class LinhaDoHistorico(Schema):
     por: str
 
 
+# O nome NÃO é `ChangeSpecAprovado` de propósito: esse é o model, e ele está
+# importado neste módulo — um `ninja.Schema` homônimo sombrearia o import em
+# silêncio (`armadilhas/020`), como o comentário lá em cima já explica.
+class ChangeSpecAssinado(Schema):
+    """Uma assinatura de obra, como ela ficou registrada — a FICHA dela.
+
+    `tem_changespec` responde "está assinada?"; esta ficha responde "assinada
+    por quem, quando, com qual documento?". São perguntas diferentes, e só a
+    segunda permite CONFERIR depois o que foi autorizado — que é a razão de o
+    documento ser um endereço obrigatório desde o EVO-40.
+
+    Ela viaja só em `IdeiaComHistorico`, pelo mesmo motivo do histórico: a lista
+    do quadro não mostra ficha nenhuma, e carregá-la ali multiplicaria a
+    resposta por algo que ninguém lê.
+
+    `registrado_por` é o nome exibido, nunca o e-mail — a mesma regra do `por`
+    do histórico, e vazio é resposta legítima: quem exibe decide o que escrever
+    no lugar.
+    """
+
+    change_id: str
+    documento: str
+    # O NOME de quem aprovou (nunca e-mail: `registrar()` recusa valor com "@").
+    aprovado_por: str
+    # A data escrita por quem assinou (AAAA-MM-DD) — é do documento, não do
+    # sistema. Diferente de `registrado_em`, que é o instante em que o fato
+    # entrou na Caixa: um ChangeSpec pode ser aprovado numa terça e registrado
+    # na quinta, e as duas datas contam histórias diferentes.
+    aprovado_em: str
+    registrado_por: str
+    registrado_em: str
+
+
 class IdeiaComHistorico(IdeiaEmGestao):
     """A ideia inteira, com a história dela.
 
@@ -180,9 +213,24 @@ class IdeiaComHistorico(IdeiaEmGestao):
     de cada ideia ficaria inalcançável no dia em que as telas antigas forem
     aposentadas. Descobrir isso ANTES de aposentá-las é a razão de esta emenda
     existir.
+
+    `changespecs` entra pelo mesmo caminho e pelo mesmo motivo, uma emenda
+    depois: era a ÚNICA das cinco telas antigas de `/moderacao` sem paridade
+    nenhuma do lado do Admin — ele deixava ASSINAR e não deixava CONFERIR o que
+    foi assinado. Lista, e não objeto: uma ideia pode ter vários ChangeSpecs
+    (escopo que mudou nasce `-v2`, formato §4), e a tela antiga sempre os
+    listou. Ordem: o mais recente primeiro, a mesma do model. Ela entra
+    OPCIONAL: ausente é "esta ideia não tem assinatura nenhuma", o mesmo que a
+    lista vazia — e é isso que faz o campo novo não quebrar quem já consome.
     """
 
     historico: "list[LinhaDoHistorico]"
+    # OPCIONAL, e não é timidez: campo novo OBRIGATÓRIO num contrato congelado é
+    # quebra para quem consome, e `ci/contrato_aditivo.py` reprova (reprovou
+    # este PR na primeira volta — o Admin de ontem não espera a chave).
+    # `default_factory=list` e não `= []`: `default=` faria o pydantic emitir
+    # uma chave `"default"` no schema exportado (`armadilhas/075`).
+    changespecs: "list[ChangeSpecAssinado]" = Field(default_factory=list)
 
 
 class QuadroEmGestao(Schema):
@@ -406,8 +454,10 @@ def listar_ideias(request, por_email: str = "", incluir_arquivadas: bool = False
     description=(
         "A mesma ideia da lista, mais o histórico de mudanças de fase — cada "
         "linha com quando, de onde para onde, a nota escrita e o nome de quem "
-        "moderou. O histórico é append-only na origem: uma correção é uma linha "
-        "nova, nunca uma linha reescrita. Nenhum e-mail viaja."
+        "moderou — e a ficha de cada ChangeSpec assinado: qual documento, quem "
+        "aprovou, quando, e quem trouxe o fato para dentro da Caixa. Os dois "
+        "são append-only na origem: uma correção é uma linha nova, nunca uma "
+        "linha reescrita. Nenhum e-mail viaja."
     ),
 )
 def uma_ideia(request, sugestao_id: int):
@@ -426,6 +476,26 @@ def uma_ideia(request, sugestao_id: int):
             "por": linha.alterado_por.nome_exibido,
         }
         for linha in sorted(ideia.historico.all(), key=lambda l: l.criado_em)
+    ]
+    # A consulta é feita AQUI, e não no `prefetch_related` de
+    # `_ideias_do_quadro`: aquele queryset serve também a lista do quadro, que
+    # não mostra ficha nenhuma — carregar as assinaturas lá custaria uma
+    # consulta a mais em toda abertura da mesa para nada. `select_related`
+    # porque `registrado_por` é lido em cada linha; a ordem é a do model
+    # (`-registrado_em`, `-id`): o mais recente primeiro, como a tela antiga.
+    corpo["changespecs"] = [
+        {
+            "change_id": cs.change_id,
+            "documento": cs.documento,
+            "aprovado_por": cs.aprovado_por,
+            "aprovado_em": cs.aprovado_em.isoformat(),
+            # Nome exibido, nunca o e-mail — e sem o fallback que a tela antiga
+            # tinha (`nome_exibido|default:email`): quem exibe decide o que
+            # escrever quando o nome está vazio.
+            "registrado_por": cs.registrado_por.nome_exibido,
+            "registrado_em": cs.registrado_em.isoformat(),
+        }
+        for cs in ideia.changespecs.select_related("registrado_por")
     ]
     return corpo
 

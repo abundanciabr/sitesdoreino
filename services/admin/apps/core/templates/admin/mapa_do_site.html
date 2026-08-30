@@ -53,6 +53,39 @@
     </div>
   </div>
 
+  {% comment %}
+  A BUSCA é um formulário do servidor, e não um filtro em script — a mesma
+  peneira da lista de alunos. Assim ela funciona com script bloqueado, não pede
+  nada da política de segurança, e o endereço `?q=forum` fica guardável nos
+  favoritos e compartilhável.
+  {% endcomment %}
+  <form class="peneira" method="get" action="{% url 'mapa_do_site' %}">
+    <label class="campo">
+      <span class="rotulo">Procurar um endereço</span>
+      <input type="search" name="q" value="{{ procurado }}"
+             placeholder="fórum, aluno, pagar, avisos…">
+    </label>
+    <button type="submit">Procurar</button>
+    {% if procurado %}
+    <a class="volta" href="{% url 'mapa_do_site' %}">mostrar todos</a>
+    {% endif %}
+  </form>
+
+  {% if procurado %}
+  <p class="subtitulo">
+    {{ achados }} de {{ total }} endereços com <b>{{ procurado }}</b>.
+  </p>
+  {% endif %}
+
+  {% if not grupos %}
+  <p class="aviso">
+    <b>Nenhum endereço com essa palavra.</b>
+    A busca olha o nome, a explicação, o endereço e as notas de cada linha —
+    tente uma palavra mais curta, ou
+    <a href="{% url 'mapa_do_site' %}">mostre todos os {{ total }}</a>.
+  </p>
+  {% endif %}
+
   {% for grupo in grupos %}
   <div class="mapa-grupo">
     <h2 class="faixa">{{ grupo.titulo }} &middot; {{ grupo.total }}</h2>
@@ -61,6 +94,14 @@
     {% for item in grupo.paginas %}
     <div class="mapa-item">
       <b>{{ item.titulo }}</b>
+      {% comment %}
+      A luz nasce ESCONDIDA e quem a mostra é o script. Com script bloqueado
+      ela simplesmente não aparece — o que é honesto: ninguém mediu nada.
+      Uma bolinha cinza dizendo "—" seria pior, porque parece medição.
+      {% endcomment %}
+      {% if item.sonda %}
+      <span class="luz" data-sonda="{{ item.sonda }}" hidden>conferindo…</span>
+      {% endif %}
       <div class="mapa-endereco">
         {% if item.link %}
         <a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.link }}</a>
@@ -135,6 +176,40 @@
     não é um lugar só: é a forma de muitos — cada aluno, cada ideia, cada pedido
     tem o seu.
   </p>
+
+  {% comment %}
+  A LUZ DE "ESTÁ NO AR?" — e quem pergunta é o SEU navegador, não o servidor.
+  Isso é de propósito: um servidor conferindo a si mesmo por dentro da rede do
+  Docker não passaria pelo roteador nem pelo cadeado, e responderia "no ar" para
+  uma porta que a internet não alcança. Daqui, o caminho é o mesmo que qualquer
+  visitante faria.
+
+  `redirect: "manual"` porque várias destas portas respondem com um desvio
+  (para o login, por exemplo): sem isso o navegador seguiria o desvio até o
+  Google e a pergunta morreria numa regra de origem cruzada. Com ele, o desvio
+  JÁ É a resposta — a porta respondeu.
+
+  A ilha entra na política de segurança por HASH (`apps/core/mapa_do_site.py`),
+  nunca por `'unsafe-inline'`.
+  {% endcomment %}
+  <script>
+    (function () {
+      var luzes = document.querySelectorAll("[data-sonda]");
+      Array.prototype.forEach.call(luzes, function (luz) {
+        luz.hidden = false;
+        fetch(luz.getAttribute("data-sonda"), {
+          method: "GET", redirect: "manual", cache: "no-store"
+        }).then(function (r) {
+          var respondeu = r.type === "opaqueredirect" || (r.status >= 200 && r.status < 400);
+          luz.className = "luz " + (respondeu ? "no-ar" : "caida");
+          luz.textContent = respondeu ? "no ar" : "respondeu " + r.status;
+        }).catch(function () {
+          luz.className = "luz caida";
+          luz.textContent = "não respondeu";
+        });
+      });
+    })();
+  </script>
   {% endif %}
 </div>
 {% endblock %}
