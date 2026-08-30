@@ -29,6 +29,9 @@ descuido vira um texto interno no ar, e é isso que este arquivo trava.
    distinguir uma da outra.
 """
 
+import re
+from pathlib import Path
+
 import httpx
 import pytest
 import respx
@@ -292,6 +295,98 @@ def test_os_dois_enderecos_nao_colidem():
     nomes = {str(p.pattern).lstrip("^") for p in get_resolver().url_patterns}
     assert "docs/" in nomes
     assert "documentos/" in nomes
+
+
+# ------------- 3b. o endereço público não carrega o prefixo da célula
+#
+# O DEFEITO DE 29/08/2026, achado na prova de fora minutos depois de subir: a
+# lista pública mostrava `/admin/docs/como-funciona-a-entrada`. O link
+# funcionava (aquele endereço também chega à mesma view), mas mostrava
+# `/admin/` para um aluno e criava um SEGUNDO endereço para a mesma página.
+#
+# A causa é `{% url %}`, que prefixa `FORCE_SCRIPT_NAME` — e ele vale para a
+# célula inteira, inclusive para as páginas que NÃO moram sob `/admin`. A regra
+# da casa (`armadilhas/081`: endereço sai de `{% url %}`, senão o prefixo some
+# em produção) tem aqui a sua exceção, declarada em
+# `documentos.PREFIXO_PUBLICO`.
+#
+# POR QUE O GUARDA É NA FONTE DO TEMPLATE, E NÃO NA PÁGINA RENDERIZADA. A
+# tentativa óbvia — ligar `FORCE_SCRIPT_NAME` e conferir o `href` da resposta —
+# foi escrita, rodada, e **passou com o defeito de volta no lugar**: nem o
+# `Client` nem o `AsyncClient` reproduzem aqui o prefixo que o `{% url %}` usa
+# em produção (medido: `reverse()` devolve `/docs/aberto` mesmo com
+# `FORCE_SCRIPT_NAME="/admin"`). Um guarda que fica verde com o defeito presente
+# é pior que nenhum — ele carimba. Então o que se mede é a REGRA, na fonte: as
+# páginas públicas não montam endereço com `{% url %}`.
+
+
+CAMINHO_DOS_TEMPLATES = (
+    Path(__file__).resolve().parents[1] / "apps" / "core" / "templates" / "admin"
+)
+TEMPLATES_PUBLICOS = ("docs_publicos.html", "doc_publico.html")
+
+
+@pytest.mark.parametrize("nome", TEMPLATES_PUBLICOS)
+def test_a_pagina_publica_nao_monta_endereco_com_url(nome):
+    """A regra invertida, medida onde ela se quebra.
+
+    `{% url %}` prefixa `FORCE_SCRIPT_NAME`, e a página pública não mora sob
+    `/admin`. O endereço dela sai de `documentos.PREFIXO_PUBLICO`, uma constante
+    só, que casa com o prefixo do gateway e com o da porta.
+
+    Se você chegou aqui porque o teste ficou vermelho: a pergunta não é como
+    contornar, é qual endereço aquela página deve mostrar a quem não entrou.
+    """
+    fonte = (CAMINHO_DOS_TEMPLATES / nome).read_text(encoding="utf-8")
+    # O `{% url %}` dentro de `{% comment %}` não conta — os comentários destes
+    # arquivos EXPLICAM a regra, e citar a tag é como se explica.
+    sem_comentarios = re.sub(
+        r"\{%\s*comment\s*%\}.*?\{%\s*endcomment\s*%\}", "", fonte, flags=re.S
+    )
+    assert "{% url" not in sem_comentarios, (
+        f"{nome} monta endereço com `{{% url %}}`, e isso prefixa `/admin` numa "
+        "página que não mora lá. Use `documentos.PREFIXO_PUBLICO`."
+    )
+
+
+@pytest.mark.parametrize("nome", ("documentos.html", "documento_admin.html"))
+def test_a_pagina_ADMINISTRATIVA_continua_montando_endereco_com_url(nome):
+    """O outro lado, e ele é a regra normal da casa.
+
+    As telas de `/admin/documentos/` moram sob o prefixo, e ali `{% url %}` é
+    obrigatório — caminho cravado quebraria em produção e só lá
+    (`armadilhas/081`). Sem este guarda, alguém "consertaria" as quatro páginas
+    de uma vez e quebraria as duas que estavam certas.
+    """
+    fonte = (CAMINHO_DOS_TEMPLATES / nome).read_text(encoding="utf-8")
+    assert "{% url" in fonte, f"{nome} deixou de usar `{{% url %}}`"
+
+
+def test_o_endereco_publico_de_um_documento_e_o_prefixo_mais_o_nome():
+    documento = documentos.de_texto("meu-doc", "---\npublico: true\n---\n")
+    assert documento.endereco == "/docs/meu-doc"
+
+
+def test_o_prefixo_publico_casa_com_o_da_porta():
+    """Três lugares dizem o mesmo prefixo — o gateway, a porta e o endereço dos
+    links. Se dois discordassem, ou o link levaria a lugar nenhum, ou a porta
+    pediria crachá para uma página pública."""
+    assert (
+        documentos.PREFIXO_PUBLICO + "/" == PREFIXO_PUBLICO_DOS_DOCUMENTOS
+    ), "o prefixo do endereço público e o da isenção da porta divergiram"
+
+
+def test_o_prefixo_publico_esta_no_roteamento_do_gateway():
+    """A terceira ponta: sem a regra no Traefik, `/docs/` cai no catch-all do
+    funil e a área pública responde 404 — com a célula inteira saudável."""
+    rotas = (
+        Path(__file__).resolve().parents[3]
+        / "infra"
+        / "traefik"
+        / "dynamic"
+        / "plataforma.yml"
+    ).read_text(encoding="utf-8")
+    assert "PathPrefix(`" + documentos.PREFIXO_PUBLICO + "`)" in rotas
 
 
 # ------------------------------- 4. HTML dentro do documento sai escapado
