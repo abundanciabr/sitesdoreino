@@ -79,6 +79,18 @@ celulas:
     caminhos: [services/funil]
     consome: [alunos, catalogo, identidade, leads, notificacoes]
 
+  gamificacao:
+    caminhos: [services/gamificacao]
+    # NASCE SEM CONSUMIR NINGUÉM, e a lista vazia é a declaração honesta —
+    # não um esquecimento. O plano prevê `consome: [identidade]`
+    # (`PLANO-CELULA-GAMIFICACAO.md` §4), e essa linha entra no PR 7 da
+    # escada, junto com o cliente que lê `IDENTIDADE_API_URL`. Declará-la
+    # HOJE seria declaração órfã, e o varredor reprova por isso, com razão:
+    # um mapa que promete a mais é tão mentiroso quanto um que promete a
+    # menos. Quem escrever o cliente da sessão volta aqui no mesmo PR — e
+    # se esquecer, o varredor cobra pelo outro lado (consumo escondido).
+    consome: []
+
   identidade:
     caminhos: [services/identidade]
     consome: []
