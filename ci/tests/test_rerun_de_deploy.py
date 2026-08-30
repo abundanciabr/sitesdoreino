@@ -96,30 +96,86 @@ def test_run_pulado_nao_se_repete():
 # -------------------------------------------- 127 (blip) contra 017 (fixa) ----
 
 
-def test_porta_viva_com_timeout_e_blip_entao_repete():
-    decisao = vacina.decidir(
-        _fatos(tem_timeout_ssh=True, porta22_viva=True, site_http=200)
+def _timeout(**kwargs) -> vacina.Fatos:
+    """Um deploy de PUSH que morreu no timeout da porta 22, história completa.
+
+    Desde a TAR-041 este ramo atravessa o MESMO portão de ancestralidade que o
+    cancelado (`_a_republicacao_avanca`), porque o gatilho automático passou a
+    acordar nele: sem esse portão uma vacina disparada sozinha republicaria o
+    SHA de um run velho e faria voltar o que já estava no ar — a frase literal
+    da `armadilhas/188`. Enquanto quem rodava a vacina era um robô minutos
+    depois do próprio merge, a pergunta tinha resposta óbvia e o portão não
+    fazia falta.
+
+    O caso-base é o que aconteceu nos PRs #610/#622/#635 em 30/08/2026: o
+    publicado é ancestral estrito do SHA deste run, a porta 22 responde do PC e
+    o site está de pé. Ou seja: repetir só AVANÇA, e é o certo.
+    """
+    base = dict(
+        conclusion="failure",
+        event="push",
+        workflow="deploy-celula",
+        tem_timeout_ssh=True,
+        porta22_viva=True,
+        site_http=200,
+        head_sha="a" * 40,
+        sha_publicado="b" * 40,
+        publicado_e_ancestral=True,
+        head_ja_publicado=False,
+        commits_de_fora=0,
+        commits_de_fora_tocam_o_deploy=False,
     )
+    base.update(kwargs)
+    return _fatos(**base)
+
+
+def test_porta_viva_com_timeout_e_blip_entao_repete():
+    decisao = vacina.decidir(_timeout())
     assert decisao.acao == "repetir"
     assert decisao.codigo == 0
+    assert decisao.rerun_apenas_falhados is True, (
+        "run FALHADO tem job falhado: `--failed` repete só o que morreu. É o "
+        "contrário do cancelado, que precisa do rerun inteiro (armadilhas/188)"
+    )
 
 
 def test_porta_morta_e_a_017_e_para_com_pendencia():
-    decisao = vacina.decidir(
-        _fatos(tem_timeout_ssh=True, porta22_viva=False, site_http=200)
-    )
+    decisao = vacina.decidir(_timeout(porta22_viva=False))
     assert decisao.acao == "parar"
     assert "017" in decisao.motivo
     assert decisao.pendencia, "a 017 precisa chegar ao mantenedor, não morrer no log"
     assert "NÃO está em produção" in decisao.pendencia
+    assert decisao.precisa_de_alarme, (
+        "a 017 é configuração e o conserto passa pelo mantenedor — este é "
+        "exatamente o desfecho que TEM de acordar alguém"
+    )
 
 
 def test_porta_nao_medida_e_ERROR_e_nao_uma_tentativa_otimista():
-    decisao = vacina.decidir(
-        _fatos(tem_timeout_ssh=True, porta22_viva=None)
-    )
+    decisao = vacina.decidir(_timeout(porta22_viva=None))
     assert decisao.acao == "nada"
     assert decisao.codigo == 2, "não medir não pode virar 'pode repetir'"
+
+
+def test_quando_o_medidor_esta_cego_a_mensagem_DIZ_isso(monkeypatch):
+    """A testemunha da `armadilhas/209`, agora também na vacina do PC.
+
+    Se a porta 22 fica muda E o site público — que serve 200 para o mundo —
+    também não responde de onde a vacina mediu, quem está cego é o MEDIDOR. Foi
+    o que o log do run 33330434813 gravou do runner do deploy, com todas as
+    letras. Sem essa frase a issue diz só "não consegui medir a porta 22", e o
+    mantenedor lê "a minha VPS quebrou" — a leitura errada, e a cara do
+    falso-vermelho categórico que a TAR-026 já pagou uma vez.
+    """
+    cego = vacina.decidir(_timeout(porta22_viva=None, site_http=None))
+    assert cego.codigo == 2
+    assert "cego" in cego.motivo
+    assert "209" in cego.motivo
+
+    enxergando = vacina.decidir(_timeout(porta22_viva=None, site_http=200))
+    assert enxergando.codigo == 2, "a decisão NÃO muda — só o que o humano lê"
+    assert "cego" not in enxergando.motivo
+    assert "enxerga a internet" in enxergando.motivo
 
 
 # ------------------------------------------------------ regra de parada ----
@@ -128,29 +184,138 @@ def test_porta_nao_medida_e_ERROR_e_nao_uma_tentativa_otimista():
 @pytest.mark.parametrize("tentativas, acao", [(0, "repetir"), (1, "repetir"),
                                               (2, "repetir"), (3, "parar")])
 def test_a_regra_de_parada_e_de_tres(tentativas: int, acao: str):
-    decisao = vacina.decidir(
-        _fatos(tem_timeout_ssh=True, porta22_viva=True, site_http=200,
-               tentativas_feitas=tentativas)
-    )
+    decisao = vacina.decidir(_timeout(tentativas_feitas=tentativas))
     assert decisao.acao == acao
 
 
 def test_ao_parar_a_pendencia_diz_que_o_site_esta_no_ar():
     """O que o mantenedor precisa saber: ninguém caiu, mas o merge não subiu."""
-    decisao = vacina.decidir(
-        _fatos(tem_timeout_ssh=True, porta22_viva=True, site_http=200,
-               tentativas_feitas=3)
-    )
+    decisao = vacina.decidir(_timeout(tentativas_feitas=3))
     assert "continua no ar" in decisao.pendencia
     assert "ANTIGA" in decisao.pendencia
 
 
 def test_a_pendencia_alerta_quando_o_site_tambem_caiu():
-    decisao = vacina.decidir(
-        _fatos(tem_timeout_ssh=True, porta22_viva=True, site_http=502,
-               tentativas_feitas=3)
-    )
+    decisao = vacina.decidir(_timeout(site_http=502, tentativas_feitas=3))
     assert "ATENÇÃO" in decisao.pendencia
+
+
+# ------------- o `failure` também atravessa o portão da 188 (TAR-041) ----
+#
+# ESTE BLOCO É A ENTREGA DA TAR-041, e cada teste aqui reprova uma decisão que
+# o código de 30/08/2026 tomava ao contrário. Medido antes do conserto, com os
+# MESMOS fatos que estas histórias montam:
+#
+#     A-divergiu   acao='repetir' codigo=0     <- publicaria um mundo mais VELHO
+#     B-ja-no-ar   acao='repetir' codigo=0     <- faria voltar o que já subiu
+#     C-nao-medi   acao='repetir' codigo=0     <- repetiria sem ter medido nada
+#     D-manual     acao='repetir' codigo=0     <- repetiria disparo de humano
+#
+# Enquanto a vacina era um COMANDO rodado por um robô minutos depois do próprio
+# merge, os quatro eram inofensivos: o SHA era o mais novo do mundo. Com o
+# gatilho automático da TAR-041 acordando em todo `failure` da `main`, o
+# primeiro deles publica um rollback sozinho, sem ninguém pedir e sem nada
+# ficar vermelho.
+
+
+def test_failure_com_o_publicado_divergente_PARA_em_vez_de_repetir():
+    """O desfecho que dói: repetir aqui seria um rollback silencioso."""
+    decisao = vacina.decidir(
+        _timeout(publicado_e_ancestral=False, head_ja_publicado=False)
+    )
+    assert decisao.acao == "parar"
+    assert decisao.codigo == 1
+    assert "rollback silencioso" in decisao.motivo
+    assert decisao.pendencia
+    assert "RODOU e morreu na conexão" in decisao.pendencia, (
+        "a pendência do cancelado dizia 'foi CANCELADO antes de começar' — "
+        "sobre um run que RODOU isso manda procurar a doença errada"
+    )
+
+
+def test_failure_cujo_sha_um_verde_mais_novo_ja_publicou_nao_se_repete():
+    decisao = vacina.decidir(
+        _timeout(publicado_e_ancestral=False, head_ja_publicado=True)
+    )
+    assert decisao.acao == "nada"
+    assert decisao.codigo == 0, "nada a fazer não é falha: o merge chegou ao ar"
+    assert "JÁ está no ar" in decisao.motivo
+    assert "falhou no timeout da porta 22" in decisao.motivo
+
+
+@pytest.mark.parametrize(
+    "campos",
+    [
+        {"publicado_e_ancestral": None},
+        {"head_ja_publicado": None},
+        {"sha_publicado": ""},
+        {"head_sha": ""},
+        {"workflow": ""},
+    ],
+)
+def test_failure_sem_a_ancestralidade_medida_e_ERROR_e_nao_uma_tentativa(campos):
+    """'Não medi' nunca vira 'pode repetir' — também aqui (INV-CI01)."""
+    decisao = vacina.decidir(_timeout(**campos))
+    assert decisao.acao == "nada"
+    assert decisao.codigo == 2
+
+
+def test_failure_de_disparo_MANUAL_nao_se_repete_sozinho():
+    """Um humano apertou o botão e sabe o que queria publicar.
+
+    A vacina automática cura deploy de MERGE. Repetir um `workflow_dispatch`
+    sozinho republicaria o SHA daquele disparo sem que ninguém tivesse pedido —
+    o mesmo cuidado que a 173 já impunha ao cancelado, agora no `failure`.
+    """
+    decisao = vacina.decidir(_timeout(event="workflow_dispatch"))
+    assert decisao.acao == "nada"
+    assert decisao.codigo == 1
+    assert "workflow_dispatch" in decisao.motivo
+    assert decisao.precisa_de_alarme is False, (
+        "há um humano no caso; abrir issue para ele seria contar-lhe o que ele "
+        "acabou de fazer"
+    )
+
+
+def test_o_repetir_do_failure_DIZ_que_a_republicacao_avanca():
+    """Sem a frase, ninguém confere que o portão da 188 foi mesmo atravessado."""
+    decisao = vacina.decidir(_timeout())
+    assert "ancestral" in decisao.motivo
+    assert "só AVANÇA" in decisao.motivo
+
+
+# ------------------- veredito e alarme são perguntas DIFERENTES (TAR-041) ----
+#
+# Com o gatilho só no `cancelled`, `codigo != 0` e "acorde alguém" eram a mesma
+# coisa: todo cancelado não-curado é um merge invisível fora do ar. Com o
+# `failure` no gatilho deixam de ser — 27 dos 41 deploys vermelhos dos últimos
+# 30 dias são defeito de código, que já está VERMELHO e já tem dono. Uma issue
+# por cada um afogaria as 14 que interessam, que é o alarme que se aprende a
+# ignorar (o argumento que o próprio `vacina-do-deploy.yml` escreve).
+
+
+def test_falha_que_nao_e_o_timeout_NAO_acorda_ninguem():
+    decisao = vacina.decidir(_fatos(tem_timeout_ssh=False))
+    assert decisao.codigo == 1, "continua sendo FAIL: a vacina não curou nada"
+    assert decisao.precisa_de_alarme is False, (
+        "o run está vermelho na `main`, quem mergeou já foi avisado pelo "
+        "próprio vermelho, e o `alarme-main` cuida da `main` vermelha"
+    )
+
+
+def test_a_regra_de_parada_estourada_ACORDA_alguem():
+    decisao = vacina.decidir(_timeout(tentativas_feitas=3))
+    assert decisao.codigo == 1
+    assert decisao.precisa_de_alarme is True
+
+
+def test_o_alarme_nasce_LIGADO_e_o_silencio_se_escreve_a_mao():
+    """Ramo novo tem de nascer barulhento.
+
+    O contrário — nascer mudo e alguém lembrar de ligar o alarme — é a garantia
+    sem mecanismo da RETROSPECTIVA-FASE-D §2, e nunca se descobre no dia certo.
+    """
+    assert vacina.Decisao("parar", 1, "qualquer").precisa_de_alarme is True
 
 
 # --------------------------- o cancelado: a 173 contra a 188 (TAR-017) ----
@@ -480,7 +645,7 @@ def test_o_cancelado_do_deploy_infra_pergunta_ao_deploy_INFRA(monkeypatch):
 
     `deploy-celula` e `deploy-infra` publicam COISAS DIFERENTES — uma imagem de
     célula e o `docker-compose.yml`/`traefik` da VPS. Até 30/08/2026
-    `_colher_o_cancelado` chamava `sha_do_ultimo_deploy_verde()` sem argumento,
+    `_colher_a_ancestralidade` chamava `sha_do_ultimo_deploy_verde()` sem argumento,
     ou seja, perguntava SEMPRE ao `deploy-celula`.
 
     Não é hipótese. Medido em 30/08/2026 nos dois últimos verdes do dia: o do
@@ -495,7 +660,7 @@ def test_o_cancelado_do_deploy_infra_pergunta_ao_deploy_INFRA(monkeypatch):
                          event="push", head_sha="a" * 40)
     fatos.workflow = "deploy-infra"
 
-    vacina._colher_o_cancelado(fatos)
+    vacina._colher_a_ancestralidade(fatos)
 
     assert perguntou == ["deploy-infra.yml"], (
         "a vacina precisa perguntar o que ESTA esteira publicou; perguntar ao "
@@ -515,7 +680,7 @@ def test_o_cancelado_do_deploy_celula_continua_perguntando_ao_deploy_CELULA(monk
                          event="push", head_sha="a" * 40)
     fatos.workflow = "deploy-celula"
 
-    vacina._colher_o_cancelado(fatos)
+    vacina._colher_a_ancestralidade(fatos)
 
     assert perguntou == ["deploy-celula.yml"]
 
@@ -549,7 +714,7 @@ def test_o_attempt_do_run_e_a_conta_que_sobrevive_ao_processo(monkeypatch):
     fim. `attempt` é a única conta que o GitHub guarda; medido no dia, o run
     33325108776 estava em `attempt: 4`.
     """
-    monkeypatch.setattr(vacina, "_colher_o_cancelado", lambda fatos: None)
+    monkeypatch.setattr(vacina, "_colher_a_ancestralidade", lambda fatos: None)
     monkeypatch.setattr(
         vacina, "dados_do_run",
         lambda run: {"status": "completed", "conclusion": "cancelled",

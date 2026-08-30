@@ -115,6 +115,44 @@ VIGIA_DO_CADEADO = ".github/workflows/vigia-do-cadeado.yml"
 # nasceu. Quem grita quando ela não cura é a issue `deploy-fora-do-ar` dela
 # mesma; o desenho é o do `alarme-main`, reusado.
 VACINA_DO_DEPLOY = ".github/workflows/vacina-do-deploy.yml"
+# ---------------------------------------------------------------------------
+# AS DUAS ESTEIRAS DE DEPLOY, UMA PARA A OUTRA — DECLARADAS POR ESCRITO desde a
+# TAR-041 (30/08/2026), que é exatamente o que a mensagem de erro do
+# `vermelhos_nao_previstos` pede de quem quer uma isenção.
+#
+# O QUE ACONTECIA. Todo PR deste projeto carrega um registro obrigatório em
+# `painel/**`, que casa o `paths:` do `deploy-celula`; um PR de infraestrutura
+# casa TAMBÉM o do `deploy-infra`. Os dois runs nascem no MESMO SHA, e o portão
+# de um lista os runs daquele SHA e enxerga o outro. Como nenhuma das duas
+# esteiras estava em `conhecidos`, um soluço de rede em uma REPROVAVA a outra.
+#
+# MEDIDO em 30/08/2026, nos 30 dias anteriores: `vermelhos_nao_previstos`
+# reprovou 4 vezes, e as QUATRO foram esta cascata — duas em cada direção
+# (célula travada por infra nos runs 32713472907 e 33274286219; infra travada
+# por célula nos runs 33029073525 e 33328262912). Zero vezes ela pegou o que
+# existe para pegar: um check novo nascido fora do portão.
+#
+# POR QUE SEPARAR É SEGURO, e não só conveniente. As duas esteiras publicam
+# coisas diferentes e não dependem uma da outra: o `deploy-celula` empurra a
+# IMAGEM de uma célula, e o `deploy-infra` troca o `docker-compose.yml` e o
+# `traefik`. O compose referencia as imagens por tag MÓVEL
+# (`ghcr.io/…:${CELULA_TAG:-main}`), então uma imagem que não foi publicada
+# deixa a tag `main` apontando para a anterior — a mesma que já está rodando.
+# Sincronizar a infraestrutura com uma imagem de célula atrasada não quebra
+# nada: é o estado normal entre dois deploys.
+#
+# E BLOQUEAR PIORAVA. O merge ficava fora do ar DUAS vezes em vez de uma, e o
+# mantenedor lia "deploy-infra vermelho" — que soa como problema de
+# infraestrutura quando a causa era um engasgo de rede na outra esteira.
+#
+# FORA DE `exigidos`, e isto não é descuido: exigir a esteira irmã faria todo
+# deploy de célula esperar por um `deploy-infra` que, na esmagadora maioria dos
+# SHAs, nem nasce (26 runs em 30 dias, contra 417). Cada esteira tem o próprio
+# portão, o próprio veredito e o próprio vermelho visível; e o deploy que não
+# chega ao ar tem a vacina (`vacina-do-deploy.yml`), que desde a TAR-041 acorda
+# sozinha nas DUAS conclusões doentes.
+DEPLOY_CELULA = ".github/workflows/deploy-celula.yml"
+DEPLOY_INFRA = ".github/workflows/deploy-infra.yml"
 
 
 @dataclass
@@ -552,7 +590,7 @@ def main() -> int:
             )
         )
 
-        conhecidos = set(exigidos) | {MURALHAS, VIGIA_DO_CADEADO, VACINA_DO_DEPLOY}
+        conhecidos = set(exigidos) | {MURALHAS, VIGIA_DO_CADEADO, VACINA_DO_DEPLOY, DEPLOY_CELULA, DEPLOY_INFRA}
         relatorio.registrar(vermelhos_nao_previstos(runs_do_commit, conhecidos))
 
     except ErroDeInstrumentacao as erro:

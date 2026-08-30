@@ -110,6 +110,43 @@ regra de parada passa a valer entre processos. Medido no dia: o run
 33325108776 estava em `attempt: 4` — três repetições feitas à mão, antes de
 existir automatismo nenhum.
 
+--------------------------------------------------------------------------
+O QUARTO CASO — o `failure` por timeout, com GATILHO (TAR-041, 30/08/2026)
+
+A tabela sempre soube decidir o `failure` por timeout da porta 22: é o caso
+ORIGINAL desta vacina, a `armadilhas/127`. O que faltava era o GATILHO —
+`vacina-do-deploy.yml` só acordava no `cancelled`, com a justificativa escrita
+de que *"`failure` na `main` já tem dono: o agente que mergeou, avisado pelo
+vermelho"*. Medido em 30/08/2026, essa justificativa não se sustentou:
+
+  - 14 dos 41 deploys vermelhos dos últimos 30 dias morreram no timeout da
+    porta 22 — e 13 deles nos últimos 7 dias. TRÊS num único dia (PRs #610,
+    #622 e #635), que é a régua que a própria 127 declara: *"dois episódios em
+    24h ainda são blip; três viram estrutura"*.
+  - A escada de 3 tentativas DENTRO do deploy quase não salva: das 18 vezes em
+    que a VPS recusou a 1ª conexão, 17 chegaram à 3ª tentativa e as 17
+    morreram. A janela ruim dura mais que os 105 s de pausa do workflow.
+  - O `gh run rerun --failed`, minutos depois, curou em todas elas.
+
+Ou seja: o dono existia, e o trabalho dele era apertar um botão que uma
+máquina podia apertar. Desde a TAR-041 o gatilho cobre as duas conclusões.
+
+E COBRIR O `failure` OBRIGOU A TRAZER O PORTÃO DA 188 PARA CÁ. Enquanto quem
+rodava a vacina era um robô, do PC, minutos depois do próprio merge, "repetir
+faz voltar alguma coisa?" tinha resposta óbvia. Com gatilho, não tem: um
+`gh run rerun --failed` reconstrói a imagem do SHA DAQUELE run, e a 188 escreve
+a frase inteira — *"nunca repita o run FALHADO de um commit mais velho para
+curar o seu: ele publica o mundo sem o seu merge"*. Por isso o `failure` passou
+a atravessar exatamente o mesmo `_a_republicacao_avanca` do cancelado, e a
+recusar disparo que não seja `push`.
+
+E OBRIGOU A SEPARAR "VEREDITO" DE "ALARME". Com o gatilho no `cancelled`,
+`codigo != 0` e "acorde um humano" eram a mesma coisa. Não são mais: 27 dos 41
+vermelhos são defeito de código, que já está vermelho e já tem dono. Quem
+responde essa segunda pergunta é `Decisao.precisa_de_alarme`, num canal próprio
+(`$GITHUB_OUTPUT`), sem torcer o sentido do código de saída.
+
+--------------------------------------------------------------------------
 Uso:
     python ci/rerun_de_deploy.py --run <id>        # cuida deste run
     python ci/rerun_de_deploy.py --ultimo          # o último deploy-celula
@@ -125,6 +162,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -216,6 +254,24 @@ class Decisao:
     # do rerun inteiro. Quem decide o QUE repetir é a mesma tabela que decide
     # SE repete — senão a escolha viraria improviso do main() (armadilhas/188).
     rerun_apenas_falhados: bool = True
+    # ESTE DESFECHO PRECISA ACORDAR UM HUMANO? (TAR-041, 30/08/2026)
+    #
+    # Até aqui a pergunta não existia porque o gatilho automático só acordava no
+    # `cancelled`, e TODO cancelado que a vacina não cura é um merge invisível
+    # fora do ar — ou seja, `codigo != 0` e "precisa de alarme" eram a mesma
+    # coisa. Com o gatilho cobrindo também o `failure`, deixam de ser: a maioria
+    # esmagadora dos deploys vermelhos é defeito de código, que **já tem dono** —
+    # o run está VERMELHO, quem mergeou foi avisado, e o `alarme-main` existe
+    # para isso. Abrir uma issue `deploy-fora-do-ar` para cada um deles seria o
+    # alarme que se aprende a ignorar, e aí ele deixa de servir no caso em que
+    # importa (o mesmo argumento que o próprio `vacina-do-deploy.yml` escreve
+    # sobre não gritar em todo cancelamento).
+    #
+    # `True` por padrão de propósito: ramo novo nasce BARULHENTO, e o silêncio
+    # tem de ser escrito à mão, com o motivo do lado. O contrário — nascer mudo
+    # e alguém lembrar de ligar o alarme — é a garantia sem mecanismo da
+    # RETROSPECTIVA-FASE-D §2. Só é consultado quando `codigo != 0`.
+    precisa_de_alarme: bool = True
 
 
 def decidir(fatos: Fatos) -> Decisao:
@@ -234,6 +290,7 @@ def decidir(fatos: Fatos) -> Decisao:
             f"o run {fatos.run} terminou 'skipped', não 'failure' — ele nem "
             "chegou a rodar, e um run que foi pulado não se cura repetindo: "
             "quem decide isso é a condição do workflow, não uma tentativa nova",
+            precisa_de_alarme=False,
         )
     if fatos.conclusion == "cancelled":
         return _decidir_o_cancelado(fatos)
@@ -250,6 +307,13 @@ def decidir(fatos: Fatos) -> Decisao:
             "armadilhas/127. Repetir uma falha de código não conserta código — "
             "e trataria um defeito real como blip. Veja o log: "
             f"gh run view {fatos.run} --log-failed",
+            # SEM ALARME, e é o ramo que torna o gatilho no `failure` viável
+            # (TAR-041): este deploy está VERMELHO na `main`, quem mergeou já
+            # foi avisado pelo próprio vermelho e o `alarme-main` cuida da
+            # `main` vermelha. Medido em 30/08/2026: dos 41 deploys vermelhos
+            # dos últimos 30 dias, 27 são deste ramo. Uma issue por cada um
+            # afogaria as 14 que interessam.
+            precisa_de_alarme=False,
         )
     if fatos.porta22_viva is False:
         return Decisao(
@@ -265,8 +329,40 @@ def decidir(fatos: Fatos) -> Decisao:
             "nada", 2,
             "não consegui medir a porta 22 — e sem essa medição não dá para "
             "separar o blip da armadilhas/127 da falha permanente da 017. "
-            "'Não medi' não vira 'pode repetir'.",
+            "'Não medi' não vira 'pode repetir'." + _o_medidor_estava_cego(fatos),
         )
+    # ------------------------------------------------------------------
+    # DAQUI PARA BAIXO É O MESMO PORTÃO QUE O CANCELADO JÁ ATRAVESSAVA — e ele
+    # não era exigido do `failure` até a TAR-041 (30/08/2026).
+    #
+    # Por que ele NÃO fazia falta antes: quem rodava a vacina num `failure` era
+    # um robô, do PC, minutos depois do PRÓPRIO merge. O run que ele repetia era
+    # o dele, o SHA era o mais novo do mundo, e a pergunta "isto faz voltar
+    # alguma coisa?" tinha resposta óbvia.
+    #
+    # Por que ele passa a fazer: desde a TAR-041 o gatilho automático acorda
+    # também no `failure`, e aí ninguém garante que o run doente é o mais novo.
+    # `gh run rerun --failed` reconstrói a imagem a partir do SHA DAQUELE run —
+    # a armadilhas/188 escreve a frase inteira: *"Nunca repita o run FALHADO de
+    # um commit mais velho para curar o seu: ele publica o mundo sem o seu
+    # merge."* Sem este portão, o gatilho novo publicaria um mundo mais velho
+    # sozinho, sem ninguém pedir e sem nada ficar vermelho. Seria a vacina
+    # virando a doença.
+    # ------------------------------------------------------------------
+    if fatos.event != "push":
+        return Decisao(
+            "nada", 1,
+            f"o run {fatos.run} falhou no timeout da porta 22, mas o disparo "
+            f"foi '{fatos.event or 'desconhecido'}', não 'push'. A vacina "
+            "automática cura deploy de MERGE: um disparo manual tem um humano "
+            "que apertou o botão e sabe o que queria publicar, e repeti-lo "
+            "sozinho publicaria o SHA daquele disparo sem que ninguém tivesse "
+            "pedido. Rode `gh run rerun` à mão se for isso que você quer.",
+            precisa_de_alarme=False,
+        )
+    barreira = _a_republicacao_avanca(fatos, o_que_houve="falhou no timeout da porta 22")
+    if barreira is not None:
+        return barreira
     if fatos.tentativas_feitas >= MAXIMO_DE_TENTATIVAS:
         return Decisao(
             "parar", 1,
@@ -278,8 +374,39 @@ def decidir(fatos: Fatos) -> Decisao:
     return Decisao(
         "repetir", 0,
         "a porta 22 respondeu e o site está de pé: é o blip intermitente entre "
-        "o runner e a VPS (armadilhas/127), não a 017. Repetindo o deploy.",
+        "o runner e a VPS (armadilhas/127), não a 017. E o que "
+        f"`{fatos.workflow or 'esta esteira'}` tem publicado "
+        f"({_curto(fatos.sha_publicado)}) É ancestral do SHA deste run "
+        f"({_curto(fatos.head_sha)}): republicar só AVANÇA. Repetindo o deploy.",
+        recado=_recado_do_que_fica_de_fora(fatos),
     )
+
+
+def _o_medidor_estava_cego(fatos: Fatos) -> str:
+    """A testemunha que separa "a VPS sumiu" de "EU não enxergo nada".
+
+    Não muda veredito nenhum — muda o que o humano lê na issue. Quando a porta
+    22 fica muda E o site público (que serve 200 para o mundo) também não
+    responde de onde a vacina está medindo, quem está cego é o MEDIDOR, não a
+    VPS. Foi exatamente isso que o log do run 33330434813 gravou, do runner do
+    deploy: *"e daqui eu também NÃO alcancei o site público"*.
+
+    Sem esta frase, a issue diz "não consegui medir a porta 22" e o mantenedor
+    lê "a minha VPS está com problema" — que é a leitura errada, e a cara da
+    `armadilhas/209` (o falso-vermelho categórico).
+    """
+    if fatos.site_http == 200:
+        return (
+            " Vale saber: daqui o site público respondeu 200, então esta máquina "
+            "enxerga a internet — o silêncio é da porta 22 mesmo."
+        )
+    if fatos.site_http is None:
+        return (
+            " E daqui eu também NÃO alcancei o site público, que serve 200 para "
+            "o mundo: quem está cego é a máquina que mediu, não necessariamente "
+            "a VPS (armadilhas/209)."
+        )
+    return f" (o site público respondeu {fatos.site_http} daqui.)"
 
 
 def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
@@ -303,12 +430,60 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
             "disparo manual tem causa própria (armadilhas/173: a vaga de "
             "pendente do grupo `deploy` é cadeira musical) e não se cura "
             "repetindo. A cura é dar grupo de concorrência próprio ao workflow.",
+            precisa_de_alarme=False,
         )
+    barreira = _a_republicacao_avanca(fatos, o_que_houve="foi cancelado")
+    if barreira is not None:
+        return barreira
+    if fatos.tentativas_feitas >= MAXIMO_DE_TENTATIVAS:
+        return Decisao(
+            "parar", 1,
+            f"{fatos.tentativas_feitas} tentativas e o deploy segue sendo "
+            "cancelado — a vaga de pendente do grupo `deploy` está sendo "
+            "tomada a cada volta (armadilhas/173+188). A regra de parada é a "
+            "mesma da 127: a quarta tentativa não é diagnóstico, é teimosia.",
+            pendencia=_pendencia_do_cancelado(fatos, divergente=False),
+        )
+    return Decisao(
+        "repetir", 0,
+        f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188) de "
+        f"`{fatos.workflow}` e o que essa esteira tem publicado "
+        f"({_curto(fatos.sha_publicado)}) É ancestral do SHA "
+        f"deste run ({_curto(fatos.head_sha)}): republicar só AVANÇA, nada "
+        "volta. Repetindo o deploy.",
+        recado=_recado_do_que_fica_de_fora(fatos),
+        rerun_apenas_falhados=False,
+    )
+
+
+def _a_republicacao_avanca(fatos: Fatos, o_que_houve: str) -> Decisao | None:
+    """Repetir este run AVANÇA, ou faz voltar? `None` = pode repetir.
+
+    Este é o portão que a `armadilhas/188` descreve em três medidas, e ele vale
+    para os DOIS jeitos de um deploy não chegar ao ar — o cancelado (188) e o
+    que falhou no timeout da porta 22 (127). Era código do ramo do cancelado até
+    a TAR-041; virou função porque a segunda porta passou a precisar dele, e
+    duplicá-lo seria assinar que um dia os dois discordariam sobre a mesma
+    conta (a lei anti-duplicação do CLAUDE.md, aplicada a uma decisão).
+
+    `o_que_houve` é só a metade da frase que muda entre os dois casos ("foi
+    cancelado" / "falhou no timeout da porta 22"): a mensagem precisa dizer ao
+    humano o que aconteceu com AQUELE run, e um texto genérico foi exatamente o
+    que fez um agente fechar a tarefa com o merge fora do ar (188).
+
+    O BURACO QUE ESTA FUNÇÃO NÃO FECHA, e não é ela que fecha: para o
+    `deploy-celula`, "o publicado é ancestral do meu SHA" é uma resposta de RUN
+    a uma pergunta de CÉLULA. Um verde mais novo pode conter este commit no Git
+    e ainda assim não ter publicado a célula que morreu aqui, porque cada run
+    publica só as células que o push DELE tocou (armadilhas/215, e a 220 já
+    declara este buraco aberto). O ramo `head_ja_publicado` herda isso — dizer
+    "já está no ar" pode ser grosso demais. Declarado, não silencioso.
+    """
     if not fatos.workflow:
         return Decisao(
             "nada", 2,
-            f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188), "
-            "mas eu não sei de QUAL esteira ele é. `deploy-celula` e "
+            f"o run {fatos.run} {o_que_houve} (deploy de PUSH que não chegou ao "
+            "ar), mas eu não sei de QUAL esteira ele é. `deploy-celula` e "
             "`deploy-infra` publicam coisas diferentes, e a única pergunta que "
             "decide o caso — 'o que está publicado é ancestral deste SHA?' — não "
             "tem resposta sem saber contra qual publicação comparar. Medir "
@@ -318,8 +493,8 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
     if not fatos.head_sha or not fatos.sha_publicado:
         return Decisao(
             "nada", 2,
-            f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188) "
-            f"da esteira `{fatos.workflow}`, mas não consegui descobrir os dois "
+            f"o run {fatos.run} {o_que_houve} (armadilhas/188) "
+            f"na esteira `{fatos.workflow}`, mas não consegui descobrir os dois "
             "SHAs que decidem o caso — o "
             f"deste run ({fatos.head_sha or 'ausente'}) e o da última "
             f"publicação verde ({fatos.sha_publicado or 'ausente'}). Sem eles "
@@ -339,7 +514,7 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
         iguais = fatos.publicado_e_ancestral
         return Decisao(
             "nada", 0,
-            f"o run {fatos.run} foi cancelado, mas o commit dele JÁ está no ar "
+            f"o run {fatos.run} {o_que_houve}, mas o commit dele JÁ está no ar "
             f"por `{fatos.workflow}`: "
             + (
                 f"a última publicação verde é exatamente {_curto(fatos.head_sha)}."
@@ -361,25 +536,7 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
             "(armadilhas/188). Isto se trata à mão, com o histórico na frente.",
             pendencia=_pendencia_do_cancelado(fatos, divergente=True),
         )
-    if fatos.tentativas_feitas >= MAXIMO_DE_TENTATIVAS:
-        return Decisao(
-            "parar", 1,
-            f"{fatos.tentativas_feitas} tentativas e o deploy segue sendo "
-            "cancelado — a vaga de pendente do grupo `deploy` está sendo "
-            "tomada a cada volta (armadilhas/173+188). A regra de parada é a "
-            "mesma da 127: a quarta tentativa não é diagnóstico, é teimosia.",
-            pendencia=_pendencia_do_cancelado(fatos, divergente=False),
-        )
-    return Decisao(
-        "repetir", 0,
-        f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188) de "
-        f"`{fatos.workflow}` e o que essa esteira tem publicado "
-        f"({_curto(fatos.sha_publicado)}) É ancestral do SHA "
-        f"deste run ({_curto(fatos.head_sha)}): republicar só AVANÇA, nada "
-        "volta. Repetindo o deploy.",
-        recado=_recado_do_que_fica_de_fora(fatos),
-        rerun_apenas_falhados=False,
-    )
+    return None
 
 
 def _curto(sha: str) -> str:
@@ -427,11 +584,22 @@ def _recado_do_que_fica_de_fora(fatos: Fatos) -> str:
 
 
 def _pendencia_do_cancelado(fatos: Fatos, divergente: bool) -> str:
-    """O que o mantenedor precisa saber — em linguagem de resultado."""
+    """O que o mantenedor precisa saber — em linguagem de resultado.
+
+    A primeira frase olha o `conclusion` desde a TAR-041: a divergência de
+    histórico pode barrar tanto um cancelado quanto um `failure` por timeout, e
+    escrever "foi CANCELADO antes de começar" sobre um run que RODOU e morreu no
+    SSH mandaria o mantenedor procurar a doença errada.
+    """
     site = (
         "o site continua no ar (a versão ANTIGA está servindo)"
         if fatos.site_http == 200
         else f"ATENÇÃO: a sonda do site respondeu {fatos.site_http} — confira o ar"
+    )
+    o_que_houve = (
+        "foi CANCELADO antes de começar, não falhou"
+        if fatos.conclusion == "cancelled"
+        else "RODOU e morreu na conexão com a VPS (o timeout da porta 22)"
     )
     causa = (
         "o histórico divergiu do que está publicado, e repetir o deploy faria "
@@ -441,7 +609,7 @@ def _pendencia_do_cancelado(fatos: Fatos, divergente: bool) -> str:
         "de publicação é tomada por cada merge novo"
     )
     return (
-        f"O deploy do run {fatos.run} foi CANCELADO antes de começar, não falhou: "
+        f"O deploy do run {fatos.run} {o_que_houve}: "
         f"{causa}. Enquanto isso, {site} — ninguém ficou fora do ar, mas o que "
         "foi mergeado ainda NÃO está em produção. "
         f"Tentativas feitas: {fatos.tentativas_feitas}."
@@ -716,6 +884,42 @@ def log_da_falha(run: str) -> str:
 # fazer de dentro do runner — ver o comentário do import, no topo.
 
 
+def escrever_saida_do_passo(decisao: Decisao) -> None:
+    """`acao=`, `codigo=` e `alarmar=` em `$GITHUB_OUTPUT` — o canal do workflow.
+
+    O MESMO desenho de `ci/sonda_da_vps.py::_escrever_saida_do_passo`, e pela
+    MESMA razão (TAR-041): o workflow precisa distinguir mais respostas do que
+    um código de saída carrega. Até aqui ele lia só `codigo != 0` para decidir
+    se abria a issue, e isso bastava porque o gatilho só via cancelamento —
+    todo desfecho não-zero ali era um merge invisível fora do ar. Com o
+    `failure` no gatilho, `codigo != 0` passou a incluir o deploy que falhou
+    por DEFEITO DE CÓDIGO, que já está vermelho e já tem dono.
+
+    O código de saída continua sendo o veredito [INV-CI01] e não muda de
+    sentido: 0 PASS · 1 FAIL · 2 ERROR. `alarmar` é uma pergunta DIFERENTE — "e
+    isto precisa acordar alguém?" — e ela ganha um canal próprio em vez de
+    torcer o significado do exit code, que é como um contrato apodrece.
+
+    Falha de escrita NÃO derruba nada: fora do Actions a variável não existe, e
+    a vacina precisa continuar rodando na mão, do PC.
+    """
+    caminho = os.environ.get("GITHUB_OUTPUT")
+    if not caminho:
+        return
+    try:
+        with open(caminho, "a", encoding="utf-8") as arquivo:
+            arquivo.write(f"acao={decisao.acao}\n")
+            arquivo.write(f"codigo={decisao.codigo}\n")
+            arquivo.write(
+                "alarmar="
+                + ("true" if decisao.codigo != 0 and decisao.precisa_de_alarme
+                   else "false")
+                + "\n"
+            )
+    except OSError as erro:
+        print(f"(não consegui escrever em GITHUB_OUTPUT: {erro})", file=sys.stderr)
+
+
 def ultimo_run(workflow: str = "deploy-celula.yml") -> str:
     codigo, saida = _rodar(
         ["gh", "run", "list", "--workflow", workflow, "--limit", "1",
@@ -762,7 +966,7 @@ def colher(run: str, host: str, tentativas: int) -> Fatos:
     if status != "completed":
         return fatos
     if conclusion == "cancelled":
-        _colher_o_cancelado(fatos)
+        _colher_a_ancestralidade(fatos)
     elif conclusion not in ("success", "skipped"):
         log = log_da_falha(run)
         fatos.tem_timeout_ssh = bool(RE_TIMEOUT_SSH.search(log))
@@ -773,15 +977,24 @@ def colher(run: str, host: str, tentativas: int) -> Fatos:
             except Exception:
                 fatos.porta22_viva = None
             fatos.site_http = http_do_site()
+            # SÓ QUANDO É A 127 (TAR-041). A ancestralidade custa um `gh run
+            # list`, um `git fetch` e dois `merge-base`; gastar isso num deploy
+            # que morreu por defeito de código seria pagar rede para responder
+            # uma pergunta cuja decisão já está tomada duas linhas acima.
+            _colher_a_ancestralidade(fatos)
     return fatos
 
 
-def _colher_o_cancelado(fatos: Fatos) -> None:
+def _colher_a_ancestralidade(fatos: Fatos) -> None:
     """As medidas que a armadilhas/188 exige — todas fora da VPS (Lei 5).
 
-    Só faz sentido para o cancelado de PUSH: no manual (a 173) a decisão já
-    está tomada pelo `event`, e medir ancestralidade ali seria gastar rede
-    para responder uma pergunta que ninguém fez.
+    Só faz sentido para o deploy de PUSH: no disparo manual a decisão já está
+    tomada pelo `event`, e medir ancestralidade ali seria gastar rede para
+    responder uma pergunta que ninguém fez.
+
+    Chamada pelos DOIS caminhos desde a TAR-041 — o cancelado (188) e o
+    `failure` por timeout da porta 22 (127) —, porque a pergunta que ela
+    responde é a mesma nos dois: *repetir este run avança ou faz voltar?*
     """
     if fatos.event != "push" or not fatos.head_sha or not fatos.workflow:
         return
@@ -880,6 +1093,7 @@ def main(argv: list[str] | None = None) -> int:
                 if decisao.pendencia:
                     print("\n--- para o livro (registro de pendência) ---")
                     print(decisao.pendencia)
+                escrever_saida_do_passo(decisao)
                 print(f"\nRESULTADO  {'PASS' if decisao.codigo == 0 else 'FAIL'}"
                       if decisao.codigo != 2 else "\nRESULTADO  ERROR")
                 return decisao.codigo
@@ -906,15 +1120,22 @@ def main(argv: list[str] | None = None) -> int:
                 site = http_do_site()
                 print(f"\n✅ o deploy do run {run} FICOU VERDE na tentativa "
                       f"{tentativas} — a versão nova subiu. Sonda do site: {site}.")
+                escrever_saida_do_passo(
+                    Decisao("nada", 0, "o rerun subiu", precisa_de_alarme=False)
+                )
                 print("RESULTADO  PASS")
                 return 0
     except ErroDeMedicao as erro:
+        # ERROR SEMPRE ALARMA: "não consegui medir" é o desfecho em que ninguém
+        # mais vai olhar, e é exatamente onde o INV-CI01 manda ser barulhento.
+        escrever_saida_do_passo(Decisao("nada", 2, str(erro)))
         print(f"\n🧱 PAROU POR SEGURANÇA: {erro}\n"
               "'Não consegui medir' nunca vira 'deu certo' (INV-CI01).",
               file=sys.stderr)
         print("RESULTADO  ERROR", file=sys.stderr)
         return 2
     except Exception as erro:  # pragma: no cover - rede/ambiente
+        escrever_saida_do_passo(Decisao("nada", 2, str(erro)))
         print(f"\n🧱 PAROU POR SEGURANÇA: erro inesperado "
               f"({erro.__class__.__name__}: {erro})", file=sys.stderr)
         print("RESULTADO  ERROR", file=sys.stderr)
