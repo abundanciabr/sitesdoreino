@@ -43,13 +43,16 @@ projeto: o que não pode ser mecanizado em portão de CI acaba exigindo um
 passo manual do único ser humano no projeto, então mecanizar é
 sistematicamente preferido a documentar.
 
-Arquiteturalmente, é uma plataforma de **12 microsserviços Django+django-ninja
-isolados ("células")** — `admin`, `alunos`, `catalogo`, `checkout`, `funil`,
-`identidade`, `leads`, `mensageria`, `notificacoes`, `pagamentos`, `quiz`,
-`sugestoes` — cada uma com banco Postgres próprio, processo próprio atrás de
-um Traefik roteado por caminho, e proibida de importar código ou ler banco
-de outra célula. A comunicação entre células é só HTTP contratado
-(OpenAPI congelado) ou eventos versionados (outbox + Redis Streams). Tudo
+Arquiteturalmente, é uma plataforma de **13 microsserviços Django+django-ninja
+isolados ("células")** — `admin`, `alunos`, `catalogo`, `checkout`, `forum`,
+`funil`, `identidade`, `leads`, `mensageria`, `notificacoes`, `pagamentos`,
+`quiz`, `sugestoes` — cada uma com banco Postgres próprio, processo próprio
+atrás de um Traefik roteado por caminho, e proibida de importar código ou ler
+banco de outra célula. Uma 14ª, `gamificacao`, foi aprovada em 30/08/2026 e
+está nascendo — ela ainda não existe em `services/`, e tem seção própria em
+[04](04-arquitetura-de-celulas-e-contratos.md). A comunicação entre células é
+só HTTP contratado (OpenAPI congelado) ou eventos versionados (outbox +
+Redis Streams). Tudo
 isso é lei escrita e imposta por portões mecânicos, não só convenção — ver
 [01](01-leis-ritos-e-invariantes.md).
 
@@ -74,7 +77,7 @@ de propor mudança de processo, importa mais aqui do que em um projeto médio.
 | 01 | [Leis, Ritos e Invariantes](01-leis-ritos-e-invariantes.md) | As 9 leis da `CONSTITUICAO.md`, os ritos obrigatórios de sessão/merge/emergência, os invariantes técnicos (INV-P*, INV-CI01), as receitas do Caminho Dourado (R1-R12) | ...mexer em qualquer código — especialmente dinheiro, CI, merge, ou abrir uma sessão nova |
 | 02 | [Armadilhas e Padrões Recorrentes](02-armadilhas-e-padroes-recorrentes.md) | Taxonomia do catálogo de ~126 armadilhas, os 8 padrões estruturais da retrospectiva, como o índice é gerado | ...investigar um erro específico, ou quiser não repetir uma falha já catalogada |
 | 03 | [Sistema do Painel e Livro](03-sistema-do-painel-e-livro.md) | O mecanismo `painel/` inteiro — schema do registro, como as vistas são calculadas, a lei anti-duplicação, como a produção serve o painel | ...mexer em `painel/`, ou construir qualquer coisa que relate status/progresso |
-| 04 | [Arquitetura de Células e Contratos](04-arquitetura-de-celulas-e-contratos.md) | O padrão de célula, tabela das 13 células, o mecanismo de contratos (OpenAPI + eventos) e o isolamento entre células | ...entender ou mudar uma célula específica, ou mexer em `contracts/` |
+| 04 | [Arquitetura de Células e Contratos](04-arquitetura-de-celulas-e-contratos.md) | O padrão de célula, tabela das 13 células **+ a 14ª em gênese (`gamificacao`: o que consome, o que oferece, o que deliberadamente não faz)**, o mecanismo de contratos (OpenAPI + eventos) e o isolamento entre células | ...entender ou mudar uma célula específica, mexer em `contracts/`, ou propor qualquer mecânica de ponto/selo/recompensa |
 | 05 | [Infraestrutura, CI e Deploy](05-infraestrutura-ci-e-deploy.md) | Topologia Docker/Traefik, os 6 workflows do GitHub Actions, todos os scripts de `ci/`, deploy e rollback, integrações externas por célula | ...mexer em `infra/`, `.github/workflows/`, ou qualquer script de `ci/` |
 | 06 | [Produto, Decisões e Roadmap](06-produto-decisoes-e-roadmap.md) | Mapa de features (identidade, admin, notificações, i18n, Caixa de Sugestões, pagamentos), o mecanismo de ChangeSpec, e uma lista do que não reabrir | ...avaliar prioridade de feature, ou perguntar "por que isso existe assim" |
 | 07 | [Oportunidades e Fronteiras](07-oportunidades-e-fronteiras.md) | Lacunas já conhecidas, achados concretos desta pesquisa, e o método que este projeto exige antes de propor mudança | ...está exatamente caçando o que melhorar — **comece e termine sua auditoria aqui** |
@@ -129,3 +132,18 @@ tempo (quantidade de registros no painel, quantidade de armadilhas
 catalogadas, quantidade de contratos congelados) estão marcados como
 fotografia nos documentos individuais — **recontar é sempre mais confiável
 que confiar no número escrito aqui.**
+
+**Revisões desde então** (uma linha por passagem, para que quem ler saiba a
+idade de cada parte):
+
+- **30/08/2026** — [04](04-arquitetura-de-celulas-e-contratos.md) ganhou a
+  seção da célula `gamificacao`, que está nascendo, e teve corrigidos os
+  fatos que haviam envelhecido desde 27/08: o `forum` passou de esqueleto a
+  célula com `LICOES.md` e contrato congelado, `notificacoes` também já tem
+  contrato, e a contagem de contratos (que dizia "7 + 5" num projeto de 13
+  células) foi refeita contra `ci/manifesto-de-contratos.json`. **Ainda
+  velho, e não corrigido nesta passagem:** a contagem de armadilhas ("~126"
+  aqui e em [02](02-armadilhas-e-padroes-recorrentes.md)) — o catálogo tinha
+  **201** entradas em 30/08/2026, contadas por
+  `python ci/indice_de_armadilhas.py`. O porquê de o guarda deste mapa não
+  pegar nada disso está em `armadilhas/222`.

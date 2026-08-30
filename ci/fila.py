@@ -82,7 +82,11 @@ CAMPOS_DA_TAREFA = {
     "origem": str,
     "criada_em": str,
 }
-CAMPOS_OPCIONAIS_DA_TAREFA = {"depende_de": list, "notas": str}
+# `cria`: as pastas que ESTA tarefa traz à existência. Só a tarefa de gênese
+# precisa dele, e ele existe para que um `toca` legítimo possa nomear uma célula
+# que ainda não nasceu. Quem lê e o que isso muda: `ci/conferencia_do_toca.py`,
+# em `areas_criadas` — UMA definição só, para as duas leituras não divergirem.
+CAMPOS_OPCIONAIS_DA_TAREFA = {"depende_de": list, "notas": str, "cria": list}
 
 CAMPOS_DO_EVENTO = {
     "arquivo": str,
@@ -347,6 +351,9 @@ def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
         toca = dados.get("toca")
         if isinstance(toca, list) and (not toca or not all(isinstance(t, str) and t.strip() for t in toca)):
             erros.append(f"{nome}: 'toca' precisa ser lista não vazia de textos")
+        cria = dados.get("cria")
+        if isinstance(cria, list) and not all(isinstance(c, str) and c.strip() for c in cria):
+            erros.append(f"{nome}: 'cria' precisa ser lista de caminhos não vazios")
         criada = dados.get("criada_em")
         if isinstance(criada, str) and not RE_DATA.match(criada):
             erros.append(f"{nome}: 'criada_em' precisa ser AAAA-MM-DD")
@@ -640,6 +647,7 @@ def cmd_criar(raiz: Path, args) -> int:
         "titulo": args.titulo,
         "toca": args.toca,
         "depende_de": args.depende_de,
+        "cria": args.cria,
         "evidencia_exigida": args.evidencia_exigida,
         "despacho": despacho,
         "origem": args.origem,
@@ -805,6 +813,13 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--titulo", required=True, help="uma linha, para leigo, sem sigla")
     p.add_argument("--toca", required=True, nargs="+", help="o que ela mexe (ex.: admin painel)")
     p.add_argument("--depende-de", nargs="*", default=[], metavar="TAR-NNN")
+    p.add_argument(
+        "--cria",
+        nargs="*",
+        default=[],
+        metavar="CAMINHO",
+        help="pastas que esta tarefa traz à existência (só a gênese precisa)",
+    )
     p.add_argument("--evidencia-exigida", required=True, help="que prova fecha esta tarefa")
     p.add_argument("--despacho", default="", help="o prompt pronto para colar")
     p.add_argument("--despacho-arquivo", default="", help="ou um arquivo com o despacho")

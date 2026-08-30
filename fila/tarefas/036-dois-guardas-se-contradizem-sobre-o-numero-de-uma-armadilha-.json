@@ -1,0 +1,15 @@
+{
+  "arquivo": "036-dois-guardas-se-contradizem-sobre-o-numero-de-uma-armadilha-",
+  "id": "TAR-036",
+  "titulo": "Dois guardas se contradizem sobre o numero de uma armadilha nova, e ja custou duas rodadas de CI",
+  "toca": [
+    "ci",
+    "armadilhas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "Um teste que force a colisao de numeros e afirme que a mensagem ensina 'python ci/reservar.py numero armadilha' e NAO ensina escolha manual: vermelho sem o conserto, verde com ele, com as duas saidas cruas",
+  "despacho": "DOIS GUARDAS SE CONTRADIZEM, e isso ja custou uma rodada de CI a DOIS robos\ndiferentes no mesmo dia (30/08/2026).\n\nO SINTOMA\n---------\nQuando dois numeros de armadilha colidem, `ci/indice_de_armadilhas.py` (por\nvolta das linhas 505-513) manda escolher o numero A MAO:\n\n  \"renomeando a SUA entrada para o primeiro numero acima de todos, hoje NNN\"\n  + um `git mv`\n\nQuem segue essa instrucao e reprovado pela `muralha-das-reservas`, com a\nmensagem \"numero escolhido a mao: 218\".\n\nMEDIDO DUAS VEZES NO MESMO DIA, por robos que nao se conheciam:\n- o robo da TAR-029 seguiu a instrucao e foi reprovado;\n- o commit `56af952` de outro robo diz a mesma coisa nas proprias palavras:\n  \"armadilha 219: numero pedido ao almoxarife (a muralha das reservas ensinou)\".\n\nNenhum dos dois estava errado. A INSTRUCAO estava.\n\nO QUE FAZER\n-----------\nO conserto e de uma linha e meia: a mensagem de colisao precisa mandar\n\n  python ci/reservar.py numero armadilha\n\nem vez de mandar escolher um numero e fazer `git mv`. Confira o texto inteiro\nda mensagem, nao so a linha citada: se houver outra passagem sugerindo escolha\nmanual de numero (no proprio script, no `ARMADILHAS.md` ou no `LEIA-ME` das\narmadilhas), ela cai junto. Uma instrucao errada em dois lugares e a lei\nanti-duplicacao cobrando juros.\n\nCuidado para nao trocar um erro por outro: a mensagem tem de continuar dizendo\no que fazer com o ARQUIVO ja escrito (renomear arquivo E o campo do numero,\nque precisam bater), so que com o numero vindo do almoxarife.\n\nA PROVA EXIGIDA\n---------------\nVermelho->verde por ASSERCAO (armadilhas/195), sem rede: um teste que force a\ncolisao de numeros e afirme que a mensagem devolvida ENSINA o almoxarife e NAO\nensina escolha manual. Sem o conserto ele fica vermelho; com o conserto, verde.\nCole as duas saidas cruas.\n\nLeia antes: `armadilhas/085` (a trava de numero repetido), `armadilhas/200` (o\nindice gerado que saiu do Git) e a secao do `CLAUDE.md` sobre onde escrever\naprendizado.\n\nORIGEM: achado pelo robo da TAR-029 em 30/08/2026, ao fechar a vacina do deploy\ncancelado (PR 622), e confirmado no commit 56af952 de outra sessao no mesmo dia.",
+  "origem": "achado pelo robo da TAR-029 em 30/08/2026 (PR 622) e confirmado no commit 56af952 de outra sessao no mesmo dia",
+  "criada_em": "2026-08-30"
+}
