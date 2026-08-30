@@ -51,6 +51,31 @@ balcão recusa — a mesma lei do verde do livro. `validar` reprova evento
 - **concluída / cancelada** — evento terminal. Depois do fim, silêncio:
   evento após o fim reprova na muralha.
 
+## O `toca` é conferido contra o diff — em SOMBRA (desde 30/08/2026, TAR-015)
+
+O campo `toca` é o único que autoriza duas tarefas a rodarem em paralelo, e até
+aqui ninguém o comparava com a realidade: **declaração otimista libera um
+paralelo que colide de verdade**, e a colisão só aparece depois, como conflito
+de merge ou suíte alheia quebrada.
+
+Agora, em todo PR que cita `TAR-NNN` no título ou no ramo,
+`ci/conferencia_do_toca.py` compara o `toca` declarado com os caminhos que o
+diff realmente alterou (as áreas saem de `celulas.yml`, a mesma fonte que
+decide a matriz do deploy — nunca de uma lista nova). Divergiu, ele **comenta
+no PR** dizendo onde.
+
+**Ela avisa e não reprova**, e isso é desenho: regra nova nasce em sombra (a
+lei da autoridade proporcional à certeza, no cabeçalho de
+`ci/muralha_das_armadilhas.py`), porque um PR pode legitimamente crescer para
+além de um `toca` escrito antes de alguém abrir o código. O comentário diz, com
+todas as letras, o que a regra teria feito.
+
+E o conserto **nunca** é editar a tarefa — o arquivo de `tarefas/` não muda
+depois de criado. Ou o PR encolhe, ou o desvio é contado no `--detalhe` do
+evento de conclusão, para a próxima declaração nascer melhor. Três lojas
+append-only ficam de fora da conta por não poderem gerar colisão:
+`painel/registros/`, `fila/eventos/` e `armadilhas/`.
+
 ## O que NÃO mora aqui
 
 - **O que já aconteceu no projeto** — isso é do livro (`painel/registros/`).
@@ -68,3 +93,7 @@ balcão recusa — a mesma lei do verde do livro. `validar` reprova evento
   (refs atômicas com `--force-with-lease` e nonce — ver o cabeçalho de lá).
 - Testes-guarda: `ci/tests/test_fila.py` (inclui a corrida: segunda sessão
   recusada) e `ci/tests/test_reservar.py`.
+- A conferência do `toca`: `ci/conferencia_do_toca.py`, disparada por
+  `.github/workflows/conferencia-do-toca.yml` em todo PR que cita `TAR-NNN`.
+  Em SOMBRA — ela comenta, não reprova. Guarda:
+  `ci/tests/test_conferencia_do_toca.py`.

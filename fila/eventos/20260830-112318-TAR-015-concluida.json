@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-112318-TAR-015-concluida",
+  "tarefa": "TAR-015",
+  "evento": "concluida",
+  "quando": "2026-08-30T11:23:18+00:00",
+  "quem": "sessao-tar015-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/574 — a conferencia do toca em sombra. PROVA VERMELHO->VERDE sem rede: 30 testes em ci/tests/test_conferencia_do_toca.py; quatro sabotagens deliberadas deixam o teste vermelho (rename lido so pelo destino: 2 failed; area na granularidade grossa da celula: 8 failed; a regra nunca disparar: 3 failed; o rito isentar painel/ inteiro: 1 failed) e com o codigo no lugar: 30 passed. Suite inteira: 1091 passed. PROVA DE FORA: python ci/conferencia_do_toca.py --pr 574 --comentar publicou o alerta REAL no PR 574, apontando .github fora do toca declarado [ci, fila]; a segunda execucao nao repetiu. PR aberto, aguardando pouso.",
+  "verificado_em": "2026-08-30"
+}
