@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-231504-TAR-044-concluida",
+  "tarefa": "TAR-044",
+  "evento": "concluida",
+  "quando": "2026-08-30T23:15:04+00:00",
+  "quem": "sessao-gamificacao-porta-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/656 — freeze do contrato de ERROR (Unknown command: 'export_openapi', exit 2) para PASS (identico ao congelado, 263 linhas; seguranca conferida na fonte nas 2 operacoes); 31 guardas de porta em vermelho->verde por assercao; 96 passed na celula",
+  "verificado_em": "2026-08-30"
+}
