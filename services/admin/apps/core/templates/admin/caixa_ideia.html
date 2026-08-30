@@ -17,6 +17,10 @@ Três coisas ditas de propósito na tela:
    tela, não a regra. Quem recusa de verdade é a Caixa.
 3. **O histórico nunca é editado.** Uma correção é uma linha nova, e a tela diz
    isso embaixo dele.
+4. **A assinatura mostra a FICHA, não só o carimbo.** Qual documento, quem
+   aprovou, quando, e quem trouxe o fato para dentro — porque "está assinada" e
+   "com base em quê" são perguntas diferentes, e só a segunda serve para
+   auditar. Era a última coisa que ainda só existia nas telas velhas da Caixa.
 {% endcomment %}
 {% block titulo %}{% if ideia %}{{ ideia.titulo }}{% else %}Ideia{% endif %} · Caixa{% endblock %}
 {% block corpo %}
@@ -134,10 +138,45 @@ Três coisas ditas de propósito na tela:
     <h2 class="secao">A assinatura que libera a obra</h2>
     {% if ideia.tem_changespec %}
       <p class="aviso feito">Esta ideia já está assinada — pode entrar em construção.</p>
-    {% elif pode_assinar %}
+    {% endif %}
+    {% comment %}
+    A FICHA de cada assinatura. Até 30/08/2026 esta tela conhecia um booleano só
+    (`tem_changespec`): ela deixava ASSINAR e não deixava CONFERIR o que foi
+    assinado. Quem quisesse saber COM BASE EM QUÊ a obra foi liberada tinha de
+    abrir a tela velha da Caixa — a última das cinco de `/moderacao` sem
+    substituta aqui, e o que travava a aposentadoria delas.
+
+    É uma LISTA porque escopo que muda nasce `-v2` (FORMATO-CHANGESPEC.md §4) e
+    as duas continuam valendo: mostrar só a última esconderia a corrente, que é
+    justamente o que uma auditoria procura.
+    {% endcomment %}
+    {% for cs in ideia.changespecs %}
+      <div class="historia">
+        <b>{{ cs.change_id }}</b>
+        <p class="nota">
+          Aprovado por {{ cs.aprovado_por|default:"—" }} em {{ cs.aprovado_em|slice:":10" }} ·
+          registrado por {{ cs.registrado_por|default:"equipe" }} em {{ cs.registrado_em|slice:":10" }}
+        </p>
+        {% comment %}
+        Link só quando o documento é uma URL. Caminho de repositório sai como
+        texto de propósito: um `href` relativo seria resolvido a partir de
+        `/admin/caixa/ideia/<id>` e levaria a um 404 com cara de link quebrado.
+        {% endcomment %}
+        {% if cs.documento|slice:":4" == "http" %}
+          <p class="nota"><a href="{{ cs.documento }}" rel="noopener noreferrer">{{ cs.documento }}</a></p>
+        {% else %}
+          <p class="nota"><code>{{ cs.documento }}</code></p>
+        {% endif %}
+      </div>
+    {% endfor %}
+    {% if pode_assinar %}
       <p class="subtitulo">
         Assinando, você afirma que leu o documento de obra e autoriza um robô a construir exatamente
         o que está nele. Fica registrado o seu nome e a data, e o registro nunca é apagado.
+        {% if ideia.tem_changespec %}
+          Um documento já assinado não se edita: escopo que mudou é um documento novo, com o sufixo
+          <code>-v2</code>.
+        {% endif %}
       </p>
       <form method="post" action="{% url 'caixa_assinar' ideia.id %}" class="forma">
         {% csrf_token %}
@@ -159,7 +198,7 @@ Três coisas ditas de propósito na tela:
         </label>
         <button type="submit" class="botao assinar">Assinar e liberar a obra</button>
       </form>
-    {% else %}
+    {% elif not ideia.tem_changespec %}
       <p class="aviso">
         <b>Só quem está na lista de aprovadores da Caixa assina.</b>
         O seu acesso ao Admin permite moderar as ideias; autorizar uma obra a começar é outro papel,
