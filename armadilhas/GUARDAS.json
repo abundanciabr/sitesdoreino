@@ -97,6 +97,18 @@
       "detector": null,
       "dono": null,
       "tem_sinal": true
+    },
+    {
+      "armadilha": "189",
+      "arquivo": "armadilhas/189-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md",
+      "estado": "guardada",
+      "degrau": 4,
+      "confianca": "alta",
+      "custo_por_queda": "medio",
+      "tipo": "sino",
+      "detector": null,
+      "dono": "ci/sino_das_armadilhas.py",
+      "tem_sinal": true
     }
   ]
 }

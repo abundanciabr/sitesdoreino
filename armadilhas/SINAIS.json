@@ -43,6 +43,12 @@
       "arquivo": "armadilhas/188-deploy-de-push-cancelado-pela-cadeira-musical-fica-fora-do-ar.md",
       "titulo": "Deploy de PUSH cancelado pela cadeira musical fica fora do ar em silêncio — e a vacina manda não fazer nada",
       "regex": "terminou 'cancelled', não 'failure'"
+    },
+    {
+      "armadilha": "189",
+      "arquivo": "armadilhas/189-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md",
+      "titulo": "`assert datetime.datetime(...) > datetime.datetime(...)` com os DOIS lados IDÊNTICOS — no Windows, dois `timezone.now()` seguidos caem no mesmo tique do relógio",
+      "regex": "assert (datetime\\.datetime\\([^)]*\\)) [<>]=? \\1"
     }
   ]
 }
