@@ -10,7 +10,7 @@ guarda:
   dono: ci/sino_das_armadilhas.py
 sinal:
   - `405 Method Not Allowed`
-  - `curl -I`
+  - `curl -sI`
 ---
 
 # `curl -I` manda HEAD: numa view `@require_GET` isso é 405 SEM CORPO — e o cabeçalho que você leu não é o da página

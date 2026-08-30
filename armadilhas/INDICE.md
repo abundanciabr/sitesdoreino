@@ -231,5 +231,6 @@
 | [196](196-o-rascunho-do-agente-e-compartilhado-entre-sessoes-irmas.md) | O arquivo de rascunho do agente é COMPARTILHADO entre sessões irmãs — e o `--body-file` publica o texto de outra — Você escreve o corpo do seu PR num arquivo do diretório de rascunho que o harness anuncia como… | nenhum (declarado) | — |
 | [197](197-endereco-publico-de-celula-sob-prefixo-nao-e-prefixo.md) | O endereço público de uma célula sob prefixo NÃO é "prefixo + rota" — ele dobra num caso e duplica noutro — Você precisa do endereço público de uma rota (para um link numa tela, uma linha de documentação, um `curl` de… | CI+sino | — |
 | [198](198-pr-com-conflito-nao-dispara-os-workflows-de-pull-request.md) | PR com CONFLITO não dispara os workflows de `pull_request` — os checks obrigatórios não ficam pendentes, eles não existem — O PR está aberto, o push chegou, e `gh pr checks <N>` lista **um check só** — nenhum dos… | CI+sino | — |
+| [205](205-curl-i-manda-head-e-a-view-so-aceita-get-405-sem-corpo.md) | `curl -I` manda HEAD: numa view `@require_GET` isso é 405 SEM CORPO — e o cabeçalho que você leu não é o da página — Você acabou de mergear e deployar um conserto que muda um | sino | — |
 
-**179 entradas** — 15 com guarda declarada, 164 ainda sem.
+**180 entradas** — 16 com guarda declarada, 164 ainda sem.
