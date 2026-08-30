@@ -1,6 +1,7 @@
 from django.urls import path, re_path
 
 from apps.core.views import healthz, home, servir_estatico, ver_area, ver_topico
+from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/forum`): quem o aplica é
 # `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover o fórum de
@@ -13,6 +14,11 @@ from apps.core.views import healthz, home, servir_estatico, ver_area, ver_topico
 # (`armadilhas/029` e `/081`).
 urlpatterns = [
     path("healthz", healthz),
+    # A superficie de MAQUINA (`/interno/...`): o que outra celula pode
+    # perguntar ao forum. Fica FORA do `/forum` publico de proposito — o
+    # Traefik roteia so `/forum`, entao `/interno` nao tem porta pela borda.
+    # Quem fecha em qualquer topologia futura e o Bearer do par (config/api.py).
+    path("interno/", api.urls),
     # O rosto. Rota de MÁQUINA, como o `/healthz`: sem ela o CSS é 404 em
     # produção e SÓ lá (`armadilhas/083`).
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
