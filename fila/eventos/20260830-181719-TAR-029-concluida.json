@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-181719-TAR-029-concluida",
+  "tarefa": "TAR-029",
+  "evento": "concluida",
+  "quando": "2026-08-30T18:17:19+00:00",
+  "quem": "sessao-ci-tar029-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/622 — vacina-do-deploy.yml acorda no cancelled das duas esteiras; vermelho->verde por assercao (a vacina perguntava a ['deploy-celula.yml'] num run do deploy-infra; e devolvia acao='repetir' codigo=0 sem saber a esteira); 1305 testes verdes; passo do aviso EXECUTADO com gh duble; run real 33317249576 diagnosticado com a esteira certa. Gatilho real so vale depois do merge (workflow_run so dispara do ramo padrao) — dito em texto.",
+  "verificado_em": "2026-08-30"
+}
