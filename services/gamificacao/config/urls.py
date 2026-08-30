@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.core.views import healthz
+from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/conquistas`): quem o
 # aplica é `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a
@@ -21,14 +22,26 @@ from apps.core.views import healthz
 # `/static/…` em `meshcraft.top` é endereço do `funil`, não desta célula
 # (`armadilhas/102`). O molde vivo está em `services/forum`.
 #
-# E quando a porta de MÁQUINA nascer (PR 16 — `getPublicProfiles`,
-# `getMyStatus`): ela mora em `/interno/`, e nesta célula esse caminho FICA
-# DEBAIXO do prefixo roteado. Ou seja, `meshcraft.top/conquistas/interno/…` é
+# A porta de MÁQUINA (PR 16 — `getPublicProfiles`, `getMyStatus`) nasceu aqui
+# embaixo, e o endereço dela NÃO é o que este comentário previa na gênese.
+#
+# A gênese escreveu `/interno/` (o formato de `identidade` e `forum`). O
+# contrato foi congelado na Sessão B de 30/08/2026 com
+# `servers: http://gamificacao:8000/api/gamificacao` (o formato de `alunos`,
+# `catalogo` e `notificacoes`), e o cabeçalho do contrato registra a divergência
+# de propósito, resolvendo-a: **o contrato vence**. Trocar o endereço depois é
+# Rito de Contrato (RITOS.md §3), não preferência de sessão.
+#
+# O que a gênese acertou, e continua valendo: nesta célula o caminho FICA
+# DEBAIXO do prefixo roteado. `meshcraft.top/conquistas/api/gamificacao/…` é
 # alcançável pela internet — o corte do prefixo é do Django, não do Traefik
-# (`armadilhas/186`). Quem fecha a porta é o Bearer do par, e o guarda que
-# importa é o teste de 401 em TODAS as operações; a topologia não fecha nada
-# aqui, e escrever o contrário no comentário seria ensinar errado quem chegar
-# depois.
+# (`armadilhas/186`; premissa fixada em
+# `tests/test_healthz_script_name.py::test_o_prefixo_alcanca_a_raiz_do_urlconf`).
+# Quem fecha a porta é o Bearer do par, e o guarda que importa é o teste de 401
+# em TODAS as operações (`tests/test_porta_de_maquina.py`); a topologia não
+# fecha nada aqui, e escrever o contrário no comentário seria ensinar errado
+# quem chegar depois.
 urlpatterns = [
     path("healthz", healthz),
+    path("api/gamificacao/", api.urls),
 ]
