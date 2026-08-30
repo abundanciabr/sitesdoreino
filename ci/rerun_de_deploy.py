@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""A VACINA DA ARMADILHA 127 — o deploy recusado pela VPS se resolve sozinho.
+"""A VACINA DO DEPLOY QUE NÃO CHEGOU — armadilhas/127 e armadilhas/188.
+
+Duas doenças, o mesmo desfecho para o mantenedor: o merge está na `main` e
+NÃO está em produção, em silêncio. A 127 é o deploy que FALHOU no SSH; a 188
+é o deploy que foi CANCELADO por push — expulso da vaga de pendente do grupo
+`deploy` pelo merge seguinte. Esta vacina cuida das duas.
 
 Por que ela existe (29/08/2026): a `armadilhas/127` é o MAIOR sangramento
 medido deste catálogo. A contagem de citações no livro de ocorrências deu 5
@@ -37,6 +42,33 @@ significa que a imagem NOVA não subiu — a antiga continua servindo, ninguém 
 fora do ar, mas o merge não está em produção até o verde. É fácil esquecer disso
 e anunciar a entrega como no ar.
 
+--------------------------------------------------------------------------
+O SEGUNDO CASO — `cancelled` de PUSH (armadilhas/188, TAR-017, 30/08/2026)
+
+Até 30/08/2026 esta vacina devolvia "NADA" para QUALQUER `conclusion`
+`cancelled`, com a orientação da `armadilhas/173`: *cancelamento tem causa
+própria e não se cura repetindo*. Isso está certo para o disparo MANUAL da
+173 — a cura lá é dar grupo de concorrência próprio ao workflow, e repetir só
+perde a cadeira outra vez. E está ERRADO para o deploy de PUSH, que **tem** de
+ficar no grupo `deploy`: ali o expulso é um merge que ficou fora do ar, e a
+vacina mandava o agente fechar a tarefa achando que não havia nada a fazer.
+
+Para o `cancelled` de push, o que decide é ANCESTRALIDADE — e ela se mede no
+Actions e no Git, nunca perguntando à VPS (o agente não tem SSH, Lei 5):
+
+  a. Qual SHA a última publicação VERDE do `deploy-celula` pôs no ar?
+     (`gh run list --workflow deploy-celula.yml --branch main --json
+     headSha,conclusion`)
+  b. Esse SHA é ancestral do SHA deste run? Um rerun publica o SHA DAQUELE
+     run, não o topo da `main` — se o publicado for ancestral, republicar só
+     AVANÇA. Se não for, repetir seria um **rollback silencioso**: PARA.
+  c. Se o SHA deste run já está contido no publicado, o merge JÁ está no ar
+     por uma publicação mais nova: nada a repetir (e repetir faria voltar).
+  d. Quantos commits da `main` ficam de fora do rerun, e algum deles toca os
+     `paths:` do `deploy-celula`? Se tocam, cada um terá o próprio deploy e
+     não há o que perder. Se NENHUM toca, nenhum deploy novo vai nascer
+     sozinho — e repetir é a única saída.
+
 Uso:
     python ci/rerun_de_deploy.py --run <id>        # cuida deste run
     python ci/rerun_de_deploy.py --ultimo          # o último deploy-celula
@@ -59,7 +91,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _nucleo import configurar_saida  # noqa: E402
+from _nucleo import configurar_saida, raiz_do_repo  # noqa: E402
 
 VPS_PADRAO = "217.196.62.220"
 BANNER_SSH = "SSH-2.0"
@@ -69,11 +101,18 @@ PAUSA_ENTRE_TENTATIVAS_S = 60
 INTERVALO_DE_CONFERENCIA_S = 15
 TETO_PADRAO_MIN = 15
 
+WORKFLOW_DO_DEPLOY = "deploy-celula.yml"
+ARQUIVO_DO_WORKFLOW = Path(".github") / "workflows" / WORKFLOW_DO_DEPLOY
+RUNS_OLHADOS_ATRAS = 30
+REF_DO_TOPO = "origin/main"
+
 RE_TIMEOUT_SSH = re.compile(r"dial tcp [^\n]*:22: i/o timeout")
 # Outras falhas de SSH que NÃO são a 127 — não se resolvem repetindo.
 RE_SSH_AUTENTICACAO = re.compile(
     r"ssh: handshake failed|permission denied|unable to authenticate", re.IGNORECASE
 )
+# `paths: ['services/**', 'painel/**', ...]` do gatilho do deploy-celula.
+RE_PATHS_DO_GATILHO = re.compile(r"^\s*paths:\s*\[(?P<lista>[^\]]*)\]", re.MULTILINE)
 
 
 class ErroDeMedicao(Exception):
@@ -93,6 +132,14 @@ class Fatos:
     porta22_viva: bool | None = None
     site_http: int | None = None
     tentativas_feitas: int = 0
+    # --- o cancelado de PUSH (armadilhas/188). `None` = NÃO MEDIDO, sempre ---
+    event: str = ""
+    head_sha: str = ""
+    sha_publicado: str = ""
+    publicado_e_ancestral: bool | None = None
+    head_ja_publicado: bool | None = None
+    commits_de_fora: int | None = None
+    commits_de_fora_tocam_o_deploy: bool | None = None
 
 
 @dataclass
@@ -102,10 +149,14 @@ class Decisao:
     motivo: str
     recado: str = ""
     pendencia: str = field(default="")
+    # Um run CANCELADO não tem job falhado para `--failed` repetir: ele precisa
+    # do rerun inteiro. Quem decide o QUE repetir é a mesma tabela que decide
+    # SE repete — senão a escolha viraria improviso do main() (armadilhas/188).
+    rerun_apenas_falhados: bool = True
 
 
 def decidir(fatos: Fatos) -> Decisao:
-    """A tabela de decisão da armadilhas/127, pura e completa."""
+    """A tabela de decisão das armadilhas 127 e 188, pura e completa."""
     if fatos.status != "completed":
         return Decisao(
             "nada", 2,
@@ -114,13 +165,15 @@ def decidir(fatos: Fatos) -> Decisao:
         )
     if fatos.conclusion == "success":
         return Decisao("nada", 0, f"o run {fatos.run} está VERDE — nada a repetir")
-    if fatos.conclusion in ("cancelled", "skipped"):
+    if fatos.conclusion == "skipped":
         return Decisao(
             "nada", 1,
-            f"o run {fatos.run} terminou '{fatos.conclusion}', não 'failure' — "
-            "cancelamento tem causa própria (veja a armadilhas/173) e não se "
-            "cura repetindo",
+            f"o run {fatos.run} terminou 'skipped', não 'failure' — ele nem "
+            "chegou a rodar, e um run que foi pulado não se cura repetindo: "
+            "quem decide isso é a condição do workflow, não uma tentativa nova",
         )
+    if fatos.conclusion == "cancelled":
+        return _decidir_o_cancelado(fatos)
     if fatos.tem_falha_de_autenticacao:
         return Decisao(
             "parar", 1,
@@ -166,6 +219,157 @@ def decidir(fatos: Fatos) -> Decisao:
     )
 
 
+def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
+    """O cancelamento tem DUAS causas, e elas pedem coisas OPOSTAS.
+
+    `armadilhas/173` — disparo MANUAL expulso da vaga de pendente do grupo
+    `deploy`. A cura é grupo de concorrência próprio; repetir só perde a
+    cadeira outra vez, e num dia movimentado perde sempre.
+
+    `armadilhas/188` — deploy de PUSH expulso pelo merge seguinte. Aqui o
+    grupo `deploy` é obrigatório (dois donos do mesmo `docker compose up` é
+    pior que um disparo perdido), o merge ficou na `main` sem chegar ao ar, e
+    **repetir É a cura** — depois de provar que republicar aquele SHA não faz
+    nada voltar.
+    """
+    if fatos.event != "push":
+        return Decisao(
+            "nada", 1,
+            f"o run {fatos.run} terminou 'cancelled' e o disparo foi "
+            f"'{fatos.event or 'desconhecido'}', não 'push' — cancelamento de "
+            "disparo manual tem causa própria (armadilhas/173: a vaga de "
+            "pendente do grupo `deploy` é cadeira musical) e não se cura "
+            "repetindo. A cura é dar grupo de concorrência próprio ao workflow.",
+        )
+    if not fatos.head_sha or not fatos.sha_publicado:
+        return Decisao(
+            "nada", 2,
+            f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188), "
+            "mas não consegui descobrir os dois SHAs que decidem o caso — o "
+            f"deste run ({fatos.head_sha or 'ausente'}) e o da última "
+            f"publicação verde ({fatos.sha_publicado or 'ausente'}). Sem eles "
+            "não dá para saber se um rerun avança ou faz voltar, e 'não medi' "
+            "nunca vira 'pode repetir' (INV-CI01).",
+        )
+    if fatos.publicado_e_ancestral is None or fatos.head_ja_publicado is None:
+        return Decisao(
+            "nada", 2,
+            "não consegui medir a ancestralidade entre o SHA publicado "
+            f"({_curto(fatos.sha_publicado)}) e o deste run "
+            f"({_curto(fatos.head_sha)}) — provavelmente o commit não existe "
+            "neste checkout (clone raso ou fetch faltando, armadilhas/159). "
+            "Sem essa medição, repetir seria apostar num rollback.",
+        )
+    if fatos.head_ja_publicado:
+        iguais = fatos.publicado_e_ancestral
+        return Decisao(
+            "nada", 0,
+            f"o run {fatos.run} foi cancelado, mas o commit dele JÁ está no ar: "
+            + (
+                f"a última publicação verde é exatamente {_curto(fatos.head_sha)}."
+                if iguais
+                else f"a última publicação verde ({_curto(fatos.sha_publicado)}) "
+                f"já contém {_curto(fatos.head_sha)}."
+            )
+            + " Nada a repetir — e repetir agora republicaria um mundo mais "
+            "VELHO, que é o rollback silencioso da armadilhas/188.",
+        )
+    if not fatos.publicado_e_ancestral:
+        return Decisao(
+            "parar", 1,
+            f"PARAR: o que está publicado ({_curto(fatos.sha_publicado)}) NÃO é "
+            f"ancestral do SHA deste run ({_curto(fatos.head_sha)}), e também "
+            "não o contém — as duas linhas divergiram. Um rerun publica o SHA "
+            "DAQUELE run, então repetir aqui seria um rollback silencioso "
+            "(armadilhas/188). Isto se trata à mão, com o histórico na frente.",
+            pendencia=_pendencia_do_cancelado(fatos, divergente=True),
+        )
+    if fatos.tentativas_feitas >= MAXIMO_DE_TENTATIVAS:
+        return Decisao(
+            "parar", 1,
+            f"{fatos.tentativas_feitas} tentativas e o deploy segue sendo "
+            "cancelado — a vaga de pendente do grupo `deploy` está sendo "
+            "tomada a cada volta (armadilhas/173+188). A regra de parada é a "
+            "mesma da 127: a quarta tentativa não é diagnóstico, é teimosia.",
+            pendencia=_pendencia_do_cancelado(fatos, divergente=False),
+        )
+    return Decisao(
+        "repetir", 0,
+        f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188) e o "
+        f"que está publicado ({_curto(fatos.sha_publicado)}) É ancestral do SHA "
+        f"deste run ({_curto(fatos.head_sha)}): republicar só AVANÇA, nada "
+        "volta. Repetindo o deploy.",
+        recado=_recado_do_que_fica_de_fora(fatos),
+        rerun_apenas_falhados=False,
+    )
+
+
+def _curto(sha: str) -> str:
+    return sha[:12] if sha else "?"
+
+
+def _recado_do_que_fica_de_fora(fatos: Fatos) -> str:
+    """Um rerun publica o SHA DAQUELE run, não o topo da `main`.
+
+    O que fica de fora não muda a decisão — muda o que o agente precisa saber
+    depois dela, e é a diferença entre "espere o próximo deploy" e "repetir é
+    a única saída" (armadilhas/188).
+    """
+    alvo = f"{REF_DO_TOPO} (o topo da `main`)"
+    if fatos.commits_de_fora is None:
+        return (
+            f"não consegui contar quantos commits de {alvo} ficam de fora deste "
+            "rerun — ele publica o SHA daquele run, não o topo. Confira à mão "
+            f"com: git rev-list --count {_curto(fatos.head_sha)}..{REF_DO_TOPO}"
+        )
+    if fatos.commits_de_fora == 0:
+        return f"o SHA deste run é {alvo}: o rerun publica tudo o que existe."
+    quantos = f"{fatos.commits_de_fora} commit(s) de {alvo} ficam de fora deste rerun"
+    if fatos.commits_de_fora_tocam_o_deploy is None:
+        return (
+            f"{quantos}, e não consegui medir se algum deles toca os `paths:` do "
+            f"{WORKFLOW_DO_DEPLOY} — sem isso não dá para dizer se eles terão "
+            "deploy próprio."
+        )
+    if fatos.commits_de_fora_tocam_o_deploy:
+        return (
+            f"{quantos} — mas eles TOCAM os `paths:` do {WORKFLOW_DO_DEPLOY}, "
+            "então cada um terá o próprio deploy e não há o que perder."
+        )
+    try:
+        quais = ", ".join(paths_do_deploy())
+    except ErroDeMedicao:  # o recado é texto, não veredito: nunca derruba a decisão
+        quais = f"os declarados em {ARQUIVO_DO_WORKFLOW.as_posix()}"
+    return (
+        f"{quantos} e NENHUM deles toca os `paths:` do {WORKFLOW_DO_DEPLOY} "
+        f"({quais}) — ou seja, nenhum deploy novo vai nascer sozinho para "
+        "carregar este merge ao ar. Repetir este run é a única saída "
+        "(armadilhas/188)."
+    )
+
+
+def _pendencia_do_cancelado(fatos: Fatos, divergente: bool) -> str:
+    """O que o mantenedor precisa saber — em linguagem de resultado."""
+    site = (
+        "o site continua no ar (a versão ANTIGA está servindo)"
+        if fatos.site_http == 200
+        else f"ATENÇÃO: a sonda do site respondeu {fatos.site_http} — confira o ar"
+    )
+    causa = (
+        "o histórico divergiu do que está publicado, e repetir o deploy faria "
+        "voltar uma versão mais velha — precisa de olho humano"
+        if divergente
+        else "o deploy foi cancelado repetidamente: a vaga de espera do canal "
+        "de publicação é tomada por cada merge novo"
+    )
+    return (
+        f"O deploy do run {fatos.run} foi CANCELADO antes de começar, não falhou: "
+        f"{causa}. Enquanto isso, {site} — ninguém ficou fora do ar, mas o que "
+        "foi mergeado ainda NÃO está em produção. "
+        f"Tentativas feitas: {fatos.tentativas_feitas}."
+    )
+
+
 def _texto_da_pendencia(fatos: Fatos, permanente: bool) -> str:
     """O que o mantenedor precisa saber — em linguagem de resultado."""
     site = (
@@ -201,10 +405,15 @@ def _rodar(comando: list[str], teto_s: int = 120) -> tuple[int, str]:
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
 
 
-def veredito_do_run(run: str) -> tuple[str, str]:
-    """O veredito vem da fonte estruturada, nunca do exit de um pipe (045)."""
+def dados_do_run(run: str) -> dict:
+    """O veredito vem da fonte estruturada, nunca do exit de um pipe (045).
+
+    `event` entra aqui porque é ele que separa as duas causas de cancelamento:
+    `workflow_dispatch` é a armadilhas/173 (não se cura repetindo) e `push` é a
+    armadilhas/188 (repetir é a cura). `headSha` é o que a ancestralidade mede.
+    """
     codigo, saida = _rodar(
-        ["gh", "run", "view", run, "--json", "status,conclusion"]
+        ["gh", "run", "view", run, "--json", "status,conclusion,event,headSha"]
     )
     if codigo != 0:
         raise ErroDeMedicao(f"gh run view {run} falhou: {saida.strip()[:200]}")
@@ -212,7 +421,128 @@ def veredito_do_run(run: str) -> tuple[str, str]:
         dados = json.loads(saida)
     except json.JSONDecodeError as erro:
         raise ErroDeMedicao(f"resposta do gh não é JSON: {erro}") from erro
+    if not isinstance(dados, dict):
+        raise ErroDeMedicao(f"resposta do gh não é um objeto JSON: {saida[:120]}")
+    return dados
+
+
+def veredito_do_run(run: str) -> tuple[str, str]:
+    dados = dados_do_run(run)
     return str(dados.get("status") or ""), str(dados.get("conclusion") or "")
+
+
+def sha_do_ultimo_deploy_verde(
+    workflow: str = WORKFLOW_DO_DEPLOY, limite: int = RUNS_OLHADOS_ATRAS
+) -> str:
+    """Que SHA está publicado, segundo a única fonte que o CI alcança.
+
+    NÃO se pergunta à VPS: o agente não tem SSH (Lei 5), e o harness bloqueia a
+    tentativa. O Actions sabe qual foi o último `deploy-celula` VERDE da `main`,
+    e é esse `headSha` que está servindo.
+    """
+    codigo, saida = _rodar(
+        ["gh", "run", "list", "--workflow", workflow, "--branch", "main",
+         "--limit", str(limite), "--json", "headSha,conclusion"]
+    )
+    if codigo != 0:
+        raise ErroDeMedicao(f"gh run list falhou: {saida.strip()[:200]}")
+    try:
+        dados = json.loads(saida)
+    except json.JSONDecodeError as erro:
+        raise ErroDeMedicao(f"resposta do gh não é JSON: {erro}") from erro
+    for item in dados if isinstance(dados, list) else []:
+        if isinstance(item, dict) and item.get("conclusion") == "success":
+            return str(item.get("headSha") or "")
+    raise ErroDeMedicao(
+        f"nenhum run VERDE de {workflow} entre os {limite} últimos da main — "
+        "sem saber o que está publicado, não dá para dizer se um rerun avança"
+    )
+
+
+def e_ancestral(anterior: str, posterior: str) -> bool | None:
+    """`anterior` é ancestral de (ou igual a) `posterior`? `None` = não medi.
+
+    O exit 1 do `git merge-base --is-ancestor` é "provei que NÃO"; qualquer
+    outro código é "não consegui medir" — commit ausente do checkout, clone
+    raso (armadilhas/159). Confundir os dois transforma "não medi" em
+    permissão para repetir, que é exatamente o rollback silencioso da 188.
+    """
+    try:
+        codigo, _saida = _rodar(
+            ["git", "merge-base", "--is-ancestor", anterior, posterior]
+        )
+    except ErroDeMedicao:
+        return None
+    if codigo == 0:
+        return True
+    if codigo == 1:
+        return False
+    return None
+
+
+def paths_do_deploy(raiz: Path | None = None) -> tuple[str, ...]:
+    """Os `paths:` do gatilho do `deploy-celula`, LIDOS do workflow.
+
+    Nenhum fato do projeto mora em dois lugares (CLAUDE.md). Se esta lista
+    fosse uma constante copiada e alguém acrescentasse uma pasta ao gatilho, a
+    vacina passaria a afirmar "nenhum deploy novo vai nascer" sobre um merge
+    que nasce COM deploy — errado, e caro exatamente na hora em que se decide
+    repetir ou não. Guarda: `ci/tests/test_rerun_de_deploy.py`.
+    """
+    raiz = raiz or raiz_do_repo()
+    arquivo = raiz / ARQUIVO_DO_WORKFLOW
+    try:
+        texto = arquivo.read_text(encoding="utf-8")
+    except OSError as erro:
+        raise ErroDeMedicao(f"não consegui ler {ARQUIVO_DO_WORKFLOW}: {erro}") from erro
+    achado = RE_PATHS_DO_GATILHO.search(texto)
+    if not achado:
+        raise ErroDeMedicao(
+            f"não achei a linha `paths:` em {ARQUIVO_DO_WORKFLOW} — o gatilho "
+            "mudou de forma, e adivinhar a lista seria pior que não saber"
+        )
+    prefixos = []
+    for pedaco in achado.group("lista").split(","):
+        limpo = pedaco.strip().strip("'\"").strip()
+        if limpo:
+            prefixos.append(limpo.removesuffix("**").removesuffix("*"))
+    if not prefixos:
+        raise ErroDeMedicao(f"a linha `paths:` de {ARQUIVO_DO_WORKFLOW} está vazia")
+    return tuple(prefixos)
+
+
+def commits_que_ficam_de_fora(
+    sha: str, ref: str = REF_DO_TOPO, raiz: Path | None = None
+) -> tuple[int | None, bool | None]:
+    """Quantos commits de `ref` o rerun deixa de fora, e se algum dispara deploy.
+
+    Um rerun publica o SHA DAQUELE run, não o topo da `main`. Isto não decide
+    nada — informa o agente sobre a única coisa que ele não veria sozinho: se
+    NENHUM dos commits de fora toca os `paths:` do deploy, nenhum deploy novo
+    vai nascer, e repetir deixa de ser opção para virar a única saída (188).
+    """
+    codigo, saida = _rodar(["git", "rev-list", "--count", f"{sha}..{ref}"])
+    if codigo != 0:
+        return None, None
+    linhas = [linha.strip() for linha in saida.splitlines() if linha.strip()]
+    try:
+        quantos = int(linhas[-1])
+    except (IndexError, ValueError):
+        return None, None
+    if quantos == 0:
+        return 0, False
+    try:
+        prefixos = paths_do_deploy(raiz)
+    except ErroDeMedicao:
+        return quantos, None
+    # `git log --name-only` (e não `git diff --name-only`): o diff mostra só o
+    # DESTINO de um rename e cegaria a conta (armadilhas/174).
+    codigo, saida = _rodar(["git", "log", "--format=", "--name-only", f"{sha}..{ref}"])
+    if codigo != 0:
+        return quantos, None
+    tocados = [linha.strip() for linha in saida.splitlines() if linha.strip()]
+    toca = any(caminho.startswith(prefixos) for caminho in tocados)
+    return quantos, toca
 
 
 def log_da_falha(run: str) -> str:
@@ -258,10 +588,18 @@ def ultimo_run(workflow: str = "deploy-celula.yml") -> str:
 
 
 def colher(run: str, host: str, tentativas: int) -> Fatos:
-    status, conclusion = veredito_do_run(run)
+    dados = dados_do_run(run)
+    status = str(dados.get("status") or "")
+    conclusion = str(dados.get("conclusion") or "")
     fatos = Fatos(run=run, status=status, conclusion=conclusion,
+                  event=str(dados.get("event") or ""),
+                  head_sha=str(dados.get("headSha") or ""),
                   tentativas_feitas=tentativas)
-    if status == "completed" and conclusion not in ("success", "cancelled", "skipped"):
+    if status != "completed":
+        return fatos
+    if conclusion == "cancelled":
+        _colher_o_cancelado(fatos)
+    elif conclusion not in ("success", "skipped"):
         log = log_da_falha(run)
         fatos.tem_timeout_ssh = bool(RE_TIMEOUT_SSH.search(log))
         fatos.tem_falha_de_autenticacao = bool(RE_SSH_AUTENTICACAO.search(log))
@@ -272,6 +610,35 @@ def colher(run: str, host: str, tentativas: int) -> Fatos:
                 fatos.porta22_viva = None
             fatos.site_http = http_do_site()
     return fatos
+
+
+def _colher_o_cancelado(fatos: Fatos) -> None:
+    """As medidas que a armadilhas/188 exige — todas fora da VPS (Lei 5).
+
+    Só faz sentido para o cancelado de PUSH: no manual (a 173) a decisão já
+    está tomada pelo `event`, e medir ancestralidade ali seria gastar rede
+    para responder uma pergunta que ninguém fez.
+    """
+    if fatos.event != "push" or not fatos.head_sha:
+        return
+    # O `origin/main` local envelhece em silêncio (armadilhas/148). Melhor
+    # esforço: se o fetch falhar, a conta abaixo devolve None e vira "não medi".
+    try:
+        _rodar(["git", "fetch", "origin", "main", "--quiet"], teto_s=120)
+    except ErroDeMedicao:
+        pass
+    try:
+        fatos.sha_publicado = sha_do_ultimo_deploy_verde()
+    except ErroDeMedicao:
+        fatos.sha_publicado = ""
+    fatos.site_http = http_do_site()
+    if not fatos.sha_publicado:
+        return
+    fatos.publicado_e_ancestral = e_ancestral(fatos.sha_publicado, fatos.head_sha)
+    fatos.head_ja_publicado = e_ancestral(fatos.head_sha, fatos.sha_publicado)
+    fatos.commits_de_fora, fatos.commits_de_fora_tocam_o_deploy = (
+        commits_que_ficam_de_fora(fatos.head_sha)
+    )
 
 
 def esperar_o_run(run: str, teto_min: int) -> str:
@@ -294,7 +661,8 @@ def esperar_o_run(run: str, teto_min: int) -> str:
 def main(argv: list[str] | None = None) -> int:
     configurar_saida()
     parser = argparse.ArgumentParser(
-        description="Cuida do deploy recusado pela VPS (armadilhas/127)."
+        description="Cuida do deploy que não chegou ao ar: recusado pela VPS "
+                    "(armadilhas/127) ou cancelado por push (armadilhas/188)."
     )
     alvo = parser.add_mutually_exclusive_group(required=True)
     alvo.add_argument("--run", help="id do run de deploy")
@@ -313,9 +681,19 @@ def main(argv: list[str] | None = None) -> int:
             fatos = colher(run, args.host, tentativas)
             decisao = decidir(fatos)
             print(f"\nrun {run}: status={fatos.status} conclusion={fatos.conclusion}"
+                  f" · event={fatos.event or '?'}"
                   f" · timeout-ssh={fatos.tem_timeout_ssh}"
                   f" · porta22={fatos.porta22_viva} · site={fatos.site_http}")
+            if fatos.conclusion == "cancelled" and fatos.event == "push":
+                print(f"   armadilhas/188: publicado={_curto(fatos.sha_publicado)}"
+                      f" · run={_curto(fatos.head_sha)}"
+                      f" · publicado-é-ancestral={fatos.publicado_e_ancestral}"
+                      f" · já-no-ar={fatos.head_ja_publicado}"
+                      f" · ficam de fora={fatos.commits_de_fora}"
+                      f" (tocam o deploy: {fatos.commits_de_fora_tocam_o_deploy})")
             print(f"{decisao.acao.upper()}: {decisao.motivo}")
+            if decisao.recado:
+                print(f"   ↳ {decisao.recado}")
 
             if decisao.acao != "repetir" or args.so_diagnosticar:
                 if args.so_diagnosticar and decisao.acao == "repetir":
@@ -335,7 +713,12 @@ def main(argv: list[str] | None = None) -> int:
             tentativas += 1
             print(f"   repetindo o deploy (tentativa {tentativas} de "
                   f"{MAXIMO_DE_TENTATIVAS})…", flush=True)
-            codigo, saida = _rodar(["gh", "run", "rerun", run, "--failed"])
+            # Run CANCELADO não tem job falhado: `--failed` não teria o que
+            # repetir. Quem decide isso é a tabela, não este laço (188).
+            comando = ["gh", "run", "rerun", run]
+            if decisao.rerun_apenas_falhados:
+                comando.append("--failed")
+            codigo, saida = _rodar(comando)
             if codigo != 0:
                 raise ErroDeMedicao(f"gh run rerun falhou: {saida.strip()[:200]}")
             time.sleep(INTERVALO_DE_CONFERENCIA_S)

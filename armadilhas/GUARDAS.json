@@ -93,9 +93,9 @@
       "degrau": 2,
       "confianca": "alta",
       "custo_por_queda": "alto",
-      "tipo": "nenhum",
+      "tipo": "CI",
       "detector": null,
-      "dono": null,
+      "dono": "ci/tests/test_rerun_de_deploy.py",
       "tem_sinal": true
     },
     {
