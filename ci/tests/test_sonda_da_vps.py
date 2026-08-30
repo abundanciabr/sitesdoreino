@@ -56,6 +56,35 @@ def test_porta_viva_e_o_soluco_da_127_e_manda_repetir():
     assert "127" in veredito.motivo, "parar sem nomear a armadilha não ensina nada"
 
 
+def test_a_medicao_de_partida_nao_afirma_que_algo_falhou():
+    """A mesma medição, momentos diferentes, frases diferentes.
+
+    Na partida nada falhou ainda. Reaproveitar ali o texto do diagnóstico —
+    "o que falhou foi a rede" — poria uma frase FALSA no log de todo deploy
+    saudável, e mensagem que mente gasta a confiança de que a mensagem certa
+    precisa (é a lição da mensagem alarmante errada do run 33260367237).
+    """
+    partida = sonda.decidir_pela_sonda(
+        sonda.Medicao(porta22=True, site_http=200, apos_recusa=False)
+    )
+    assert partida.veredito == sonda.BLIP
+    assert "falhou" not in partida.motivo
+    assert "linha de base" in partida.motivo
+
+
+def test_a_medicao_de_partida_com_porta_morta_nao_interrompe_sozinha():
+    """Ela nomeia a suspeita e diz, no próprio texto, que não decide nada.
+
+    Quem interrompe é o PAR de medições tomadas depois de recusas reais; uma
+    leitura isolada da partida derrubaria deploys por um blip da própria sonda.
+    """
+    partida = sonda.decidir_pela_sonda(
+        sonda.Medicao(porta22=False, site_http=200, apos_recusa=False)
+    )
+    assert partida.veredito == sonda.PERMANENTE
+    assert "NÃO interrompe" in partida.motivo
+
+
 def test_porta_morta_e_a_017_e_nao_se_cura_repetindo():
     veredito = sonda.decidir_pela_sonda(sonda.Medicao(porta22=False, site_http=200))
     assert veredito.veredito == sonda.PERMANENTE
@@ -272,6 +301,27 @@ def test_a_sonda_recebe_o_host_por_env_e_nunca_por_argumento():
         assert "secrets.VPS_HOST" not in str(passo.get("run", "")), (
             f"{passo.get('name')}: o host não pode viajar na linha de comando"
         )
+
+
+def test_so_a_medicao_de_partida_se_declara_partida():
+    """As medições de recusa NÃO podem herdar o texto neutro da partida.
+
+    Se alguém marcasse todas como `MOMENTO: partida`, o run pararia de dizer
+    "repetir é exatamente o certo" no único momento em que essa frase é a
+    conclusão — e a medição voltaria a ser decoração.
+    """
+    partidas = [
+        passo
+        for passo in _passos_de_sonda()
+        if (passo.get("env") or {}).get("MOMENTO") == "partida"
+    ]
+    assert len(partidas) == 1, (
+        f"esperava exatamente uma medição de linha de base, achei {len(partidas)}"
+    )
+    assert not partidas[0].get("if"), (
+        "a medição de partida é a única que roda SEMPRE — condicioná-la faria o "
+        "deploy saudável deixar de registrar qualquer medição"
+    )
 
 
 def _passo_de_parada() -> dict:

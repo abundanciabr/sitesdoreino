@@ -106,6 +106,13 @@ class Medicao:
     porta22: bool | None = None  # None = NÃO MEDI, sempre
     site_http: int | None = None
     host_declarado: bool = True
+    # A MESMA medição responde a DUAS perguntas diferentes conforme o momento.
+    # Depois de uma recusa: "o que acabou de falhar foi a rede?" — e aí "repetir
+    # é o certo" é a conclusão. Na partida, ANTES de qualquer tentativa, nada
+    # falhou: dizer ali "o que falhou foi a rede" seria uma frase falsa no log
+    # de TODO deploy saudável, e mensagem que mente gasta a confiança de que a
+    # mensagem certa precisa.
+    apos_recusa: bool = True
 
 
 @dataclass
@@ -142,6 +149,13 @@ def decidir_pela_sonda(medicao: Medicao) -> Veredito:
             "O retry segue inteiro: uma sonda que não mediu não tira tentativa "
             "de ninguém.",
         )
+    if medicao.porta22 and not medicao.apos_recusa:
+        return Veredito(
+            BLIP, 0,
+            "a porta 22 da VPS RESPONDEU o banner de SSH deste runner, antes de "
+            "qualquer tentativa. É a linha de base do deploy: no minuto em que "
+            "ele começou, a VPS estava alcançável daqui.",
+        )
     if medicao.porta22:
         return Veredito(
             BLIP, 0,
@@ -149,6 +163,17 @@ def decidir_pela_sonda(medicao: Medicao) -> Veredito:
             "A VPS está viva e alcançável: o que falhou foi a rede no momento "
             "da tentativa — é o soluço intermitente da armadilhas/127, não a "
             "017. Repetir é exatamente o certo.",
+            _recado_do_site(medicao.site_http),
+        )
+    if not medicao.apos_recusa:
+        return Veredito(
+            PERMANENTE, 1,
+            "a porta 22 da VPS NÃO respondeu deste runner, e isto é a linha de "
+            "base — a medição foi feita ANTES da primeira tentativa. Se a "
+            "entrega falhar a seguir, a causa já está nomeada: é a assinatura "
+            "da armadilhas/017 (falha permanente de alcance), não o soluço da "
+            "127. Esta medição sozinha NÃO interrompe nada: quem decide é o "
+            "par de medições tomadas depois das recusas reais.",
             _recado_do_site(medicao.site_http),
         )
     return Veredito(
@@ -398,7 +423,13 @@ def _tupla_do_env(*nomes: str) -> tuple[str, ...]:
 
 def _sondar(args: argparse.Namespace) -> int:
     host = (os.environ.get("VPS_HOST") or "").strip()
-    medicao = Medicao(host_declarado=bool(host))
+    # `MOMENTO=partida` é a medição de linha de base, antes de qualquer
+    # tentativa. Sem a variável, o padrão é "depois de uma recusa" — que é o
+    # caso de quem roda isto na mão, do PC, diagnosticando um vermelho.
+    medicao = Medicao(
+        host_declarado=bool(host),
+        apos_recusa=(os.environ.get("MOMENTO") or "").strip() != "partida",
+    )
     if host:
         medicao.porta22 = porta_22_responde(host)
         medicao.site_http = http_do_site(args.site)

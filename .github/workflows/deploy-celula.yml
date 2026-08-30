@@ -310,6 +310,12 @@ jobs:
         continue-on-error: true
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
+          # `partida` muda o que a sonda DIZ, não o que ela mede: aqui nada
+          # falhou ainda, e a frase "o que falhou foi a rede" seria falsa no
+          # log de todo deploy saudável. Esta é a linha de base — a única
+          # medição que roda mesmo quando a VPS atende de primeira, e a que
+          # responde "a porta estava alcançável quando isto começou?".
+          MOMENTO: partida
         run: python3 ci/sonda_da_vps.py --sondar-porta
 
       - name: Ativar na VPS (tentativa 1 de 3)
