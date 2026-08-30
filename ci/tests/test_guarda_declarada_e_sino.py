@@ -21,6 +21,7 @@ O que estes testes protegem, e por quê:
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -154,8 +155,18 @@ def test_guarda_nenhum_com_motivo_passa(tmp_path: Path):
         ("`[nao fecha`", "não compila"),
         ("`PASS indice-de-armadilhas`", "BENIGNA"),
         ("`passed in `", "BENIGNA"),
+        # 30/08/2026 (TAR-033 / PR 626): estes tres tocaram o sino em cima
+        # de um PR VERDE. O rotulo de uma linha do relatorio e dito igual no
+        # PASS e no FAIL, entao ele nunca serve de assinatura de falha; o
+        # corpus so continha o RODAPE do relatorio, e por isso o gerador
+        # deixava passar. Assinatura ancora no que SO a falha diz.
+        ("`d[íi]vida do livro`", "BENIGNA"),
+        ("`orçamento +PASS`", "BENIGNA"),
+        ("`A FILA DE TRABALHO`", "BENIGNA"),
     ],
-    ids=["curto", "casa-vazio", "nao-compila", "corpus-feliz", "pytest-verde"],
+    ids=["curto", "casa-vazio", "nao-compila", "corpus-feliz", "pytest-verde",
+         "rotulo-de-linha-do-conferir", "linha-de-pass-do-conferir",
+         "cabecalho-do-balcao-da-fila"],
 )
 def test_sinal_ruim_e_ERROR_na_geracao(tmp_path: Path, sinal: str, motivo_esperado: str):
     """A mensagem tem de dizer QUAL guarda pegou.
@@ -337,3 +348,55 @@ def test_settings_do_projeto_liga_o_sino():
     ]
     assert ligado, "o sino não está ligado em .claude/settings.json"
     assert "Bash" in ligado[0].get("matcher", "")
+# ---------------------------------- o catalogo real x o corpus feliz ----
+
+
+def test_nenhum_sinal_do_catalogo_real_casa_saida_feliz():
+    """Nenhuma assinatura do catálogo pode tocar em cima de uma saída de SUCESSO.
+
+    Isto é uma PROVA DE FORA do `validar_sinais`: em vez de confiar que o gerador
+    reprova, esta varredura lê os `.md` de verdade, compila cada `sinal:` e passa
+    o CORPUS_FELIZ inteiro por ele. Junta TODOS os infratores em vez de estourar
+    no primeiro — a mensagem precisa dizer o nome de quem errou, senão o conserto
+    vira caça ao tesouro.
+
+    Origem: 30/08/2026 (TAR-038). A `185` declarava `d[íi]vida do livro`, que é o
+    RÓTULO de uma linha do relatório do `ci/mergear.py --conferir` — e rótulo é
+    dito igual no PASS e no FAIL. O sino tocou três vezes numa sessão em cima de
+    PR verde, uma delas durante a simples LEITURA do código-fonte. Sino que toca
+    à toa é sino que todo robô aprende a ignorar, e aí ele para de proteger
+    quando a dívida for real (`armadilhas/174` registrou essa doença em outro
+    guarda). Assinatura de falha ancora no que SÓ a falha diz.
+    """
+    infratores = []
+    for caminho in sorted((RAIZ / "armadilhas").glob("*.md")):
+        linhas = caminho.read_text(encoding="utf-8").splitlines()
+        try:
+            dados = indice.ler_frontmatter(linhas, caminho.name)
+        except indice.ErroDeFrontmatter:
+            continue  # frontmatter quebrado tem teste próprio; aqui não é o assunto
+        if not dados:
+            continue
+        cru = dados.get("sinal")
+        if cru is None:
+            continue
+        for sinal in [cru] if isinstance(cru, str) else cru:
+            if not isinstance(sinal, str):
+                continue
+            try:
+                compilado = re.compile(sinal)
+            except re.error:
+                continue  # regex ruim tem teste próprio
+            for feliz in indice.CORPUS_FELIZ:
+                achado = compilado.search(feliz)
+                if achado:
+                    infratores.append(
+                        f"{caminho.name}: o sinal {sinal!r} casa saída FELIZ "
+                        f"{achado.group(0)[:60]!r}"
+                    )
+                    break
+
+    assert not infratores, (
+        "sinal casando saída de sucesso — o sino tocaria em dia normal:\n  "
+        + "\n  ".join(infratores)
+    )
