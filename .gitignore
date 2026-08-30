@@ -39,3 +39,34 @@ docs/documentos/
 # =============================================================================
 painel/painel.html
 painel/livro-*.js
+
+# =============================================================================
+# OS GERADOS DAS ARMADILHAS — A MESMA CURA, APLICADA À MEMÓRIA DE CAMPO
+# (30/08/2026, TAR-022 — Onda 3 do PLANO-MESTRE-ROBOS-SEM-COLISAO.md de novo)
+#
+# `armadilhas/INDICE.md`, `armadilhas/GUARDAS.json` e `armadilhas/SINAIS.json`
+# são GERADOS por `ci/indice_de_armadilhas.py` a partir de `armadilhas/*.md`.
+# Até 30/08/2026 os três viajavam no Git — e a lei do projeto MANDA todo robô
+# acrescentar uma armadilha ao fim de cada tarefa, o que reescreve os três
+# arquivos inteiros. Dois robôs do mesmo lote colidiam sem ter escrito uma linha
+# em comum: no lote de 4 daquele dia, DOIS PRs foram devolvidos pela pista pelo
+# mesmo conflito (o #573, duas vezes).
+#
+# É literalmente a doença do painel (`armadilhas/156`), no mesmo desenho de cura:
+#   fonte multiescritor (armadilhas/NNN-slug.md, um arquivo por entrada)
+#   + materialização de ESCRITOR ÚNICO (a integração gera, ninguém commita)
+#   + validação independente (ci/muralha-do-indice.sh, de fora do gerador).
+#
+# Quem materializa: a muralha em todo PR (`ci/muralha-do-indice.sh`), o
+# `SessionStart` de `.claude/settings.json` (para o sino e para o agente), e
+# `python ci/indice_de_armadilhas.py` (ou `make indice`) na mão.
+# Quem impede a volta: a mesma muralha e `.githooks/pre-commit`.
+#
+# PARA LER O ÍNDICE na sua máquina: `python ci/indice_de_armadilhas.py` e abra
+# `armadilhas/INDICE.md`. Um clone novo não tem o arquivo até você gerá-lo — e
+# isso é BARULHENTO de propósito (arquivo ausente dá erro na hora), ao contrário
+# do conflito diário, que era silencioso até a pista devolver o PR.
+# =============================================================================
+armadilhas/INDICE.md
+armadilhas/GUARDAS.json
+armadilhas/SINAIS.json
