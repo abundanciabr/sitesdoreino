@@ -1,0 +1,215 @@
+PARECER 5 — fonte não nomeada pelo mantenedor ("IA 5")
+Recebido em 30/08/2026. Texto verbatim; nada foi editado.
+
+============================================================
+
+Parecer de design de gamificação — Meshcraft Academy
+Escopo: sistema de gamificação da escola (XP, níveis, sequência diária, ligas, missões, medalhas, moeda virtual, marcos de carreira). Data: 30/08/2026
+Veredito em 30 segundos
+O plano está acima da média. Três coisas o distinguem de 90% das gamificações de escola: moeda não comprável, XP concentrado onde há validação humana, e marcos reais de carreira. Essas três decisões são o produto. O resto é embalagem.
+Três premissas que eu mudaria antes de escrever a primeira linha de código:
+
+1. XP e marcos de carreira não podem ser a mesma escala. Se "Primeiro Cliente" vale 5.000 XP e um quiz vale 50, você acabou de dizer que 100 quizzes equivalem a conquistar um cliente. Precisa ser outra moeda, outro eixo, outra visualização.
+2. Ofensiva diária é a mecânica errada para esta escola. Duolingo pode exigir 7 dias porque a unidade de prática dura 3 minutos. Uma sessão de Blender dura 40 a 90 minutos. Um streak diário empurra a criança para a atividade mais barata disponível, que é exatamente o que você chama de farm. Meta semanal com folga embutida resolve.
+3. Ligas são P1, não P0. Escola recém-inaugurada não tem massa crítica para grupos de 15. Liga com 4 pessoas ativas é humilhante para as 4. Só ligue quando houver volume.
+
+O restante do parecer assume que você aceita ou rejeita essas três, e funciona de qualquer jeito.
+1. As recomendações mais valiosas
+Cada uma tem: o quê, por quê (núcleo Octalysis), prioridade.
+1. Separe duas moedas de progresso: XP (prática) e Marcos (carreira). XP mede esforço e é abundante. Marcos medem obra real, são raros, validados por professor e permanentes. Visualizações diferentes, telas diferentes, celebrações diferentes. Por quê: Núcleo 2 (Realização) e Núcleo 1 (Significado Épico). Impede que a escala de esforço canibalize o significado do resultado real. P0
+2. O título do aluno vem do maior marco atingido, não do nível de XP. "Aprendiz de Modelador" → "Modelador Publicado" → "Modelador com Portfólio" → "Modelador Contratado" → "Modelador Profissional". Nível de XP vira número ao lado, não identidade. Por quê: Núcleos 1 e 4 (Posse). Identidade deve ser lastreada em obra, não em tempo de tela. É também a promessa comercial da escola dita de volta ao aluno. P0
+3. A maior fonte de XP disponível para um aluno novo tem que ser "publiquei algo que fiz". Hoje o topo da tabela de XP é resposta aceita por professor, e o aluno da primeira semana não tem o que responder. Sem uma rampa própria, veteranos dominam e novatos desistem. Por quê: Núcleo 3 (Criatividade e Feedback) e Núcleo 2. Corrige um furo de sequenciamento no desenho atual. P0
+4. Sequência medida em dias de estúdio, com meta semanal e folga embutida. Formato sugerido: "4 de 7 dias" fecha a semana. Escudo automático concedido a cada mês, sem custo. Ao quebrar, a sequência cai para o valor da semana anterior, nunca a zero. Por quê: Mantém o Núcleo 2 e neutraliza o Núcleo 8 (Perda e Evitação), que é o núcleo mais tóxico com criança. P0
+5. Vitrine da Obra como coração social do produto. Feed de criações com card por modelo: render, título, software, autor, "feito no módulo X". Todo post do fórum com imagem pode ser promovido a card de Vitrine. Por quê: Núcleos 3 e 5 (Pertencimento). É a mecânica que os melhores produtos de criação usam e a que mais combina com o que a escola vende. P0
+6. "Resposta aceita" e "Ideia implementada" geram medalha e Cristais, não apenas XP. Raridade natural, sem timer artificial. A ideia implementada deve virar aviso público: "a Caixa de Sugestões da Ana virou funcionalidade". Por quê: Núcleos 1, 2 e 5. É a prova viva de que a escola escuta, e vale mais do que qualquer campanha de retenção. P0
+7. Vitória nos primeiros 60 segundos. O aluno ganha o primeiro XP e a primeira medalha antes de assistir qualquer aula: completar o perfil de estúdio, escolher apelido, dizer o que quer criar. Por quê: Núcleo 2. Onboarding sem recompensa imediata é onde a maioria dos sistemas morre. P0
+8. Ranking sempre por esforço da semana, com reset total, nunca por acumulado vitalício. Quem entrou ontem tem chance real de ganhar a semana. Ranking vitalício é uma tabela de "quem chegou primeiro". Por quê: Núcleo 5 em versão saudável. Evita o efeito de casta que mata comunidades novas. P0
+9. Missões que ensinam o comportamento certo, não o volume. Três diárias curtas e uma grande semanal. Exemplos: "responda à dúvida de um colega", "poste um render com o wireframe do lado", "refaça um modelo antigo e mostre o antes e depois". Por quê: Núcleos 2 e 3. Missão é o instrumento mais barato de mudar comportamento sem mudar currículo. P0
+10. Celebração assimétrica. Animação, som e tela cheia para marco real. Toast discreto para XP diário. Se subir de nível soa igual a fechar o primeiro cliente, nada soa importante. Por quê: Núcleo 2. Gestão da hierarquia de significado dentro do próprio sistema. P0
+11. Modo "sem ranking" reversível, sem penalidade, e desligado por padrão para menores de 13. O aluno continua ganhando XP, medalhas e Cristais. Só não aparece em tabela comparativa. Por quê: Ético, antes de tudo. Também reduz churn do perfil que mais sofre com comparação. P0
+12. Painel "meu caminho": o aluno comparado com o próprio aluno. Modelos publicados por mês, evolução do primeiro render ao atual, módulos concluídos, marcos. Por quê: Núcleos 2 e 3. É o antídoto direto de comparação social e o painel que os pais vão querer ver. P0
+13. Servidor calcula tudo, com livro-razão de XP append-only e eventos idempotentes. Cada crédito guarda origem (evento, objeto, regra, versão da regra). Isso permite estorno em cascata quando um post é moderado ou apagado. Por quê: Sem isso não existe anti-fraude possível nem correção de erro de calibração. Já cabe na sua arquitetura de células e Redis Streams. P0
+14. Ligas só entram no ar com massa crítica, e sem rebaixamento até a liga Ouro. Promoção para todos que atingirem um limiar absoluto de esforço, não só para os N primeiros. Rebaixamento, se existir, apenas nas ligas de topo e com aviso. Por quê: Reduz Núcleo 8 ao mínimo, que é a sua própria diretriz de chapéu branco dominante. Também evita liga fantasma no lançamento. P1
+15. Temporadas de 6 a 8 semanas com trilha de recompensas cosméticas. Todo mundo recomeça, o tema muda, itens antigos ficam permanentemente no armário de quem ganhou. Nada comprável. Por quê: Núcleos 4, 6 (dose controlada) e 2. Dá ao aluno novo a sensação de ter chegado no começo de algo. P1
+16. Papel de mentor desbloqueado por marco, não por XP. Quem publicou o primeiro modelo ganha permissão e selo para responder na área de iniciantes. Quem conseguiu o primeiro cliente ganha acesso à área de negociação. Por quê: Núcleos 1 e 5. Transforma distância em recurso: o avançado tem o que fazer, o iniciante tem a quem perguntar. P1
+17. Cristais com sumidouros recorrentes e cosméticos que contam história. Itens sazonais que saem de catálogo, temas de perfil, molduras que só existem para quem tem determinado marco. Cristais não são transferíveis entre contas. Por quê: Núcleo 4. Economia sem sumidouro infla e a moeda perde sentido em dois meses. P1
+18. Desafio criativo semanal com tema. "Um item de festa junina", "uma arma que não machuca ninguém", "um carro de 500 polígonos". Entrega é obra, não quiz. Vitrine própria, curadoria do professor, não votação por popularidade. Por quê: Núcleos 3 e 7 (Curiosidade). Gera conteúdo, comunidade e portfólio ao mesmo tempo. P1
+19. Medalhas secretas premiando comportamento nobre, nunca grind. "Ajudou 10 alunos na primeira semana deles", "voltou depois de 30 dias fora e publicou algo", "refez um modelo antigo". Nunca "postou 100 comentários". Por quê: Núcleos 7 e 5. Surpresa em vez de checklist, e reforço do que você quer que a comunidade seja. P1
+20. Bônus de descanso, no lugar de punição por ausência. Quem passou dias fora volta com um multiplicador temporário de XP nas primeiras atividades. Mecânica emprestada do World of Warcraft. Por quê: Inverte o Núcleo 8. O aluno que sumiu volta ganhando, não com dívida. Barato de implementar e muito eficaz em retenção de retorno. P2
+2. O que o Duolingo faz que você não deve copiar
+
+1. Streak de 7/7 com pressão emocional. O produto inteiro passa a ser sobre não quebrar o número, não sobre aprender. Com criança, isso vira ansiedade real, incluindo pedir o celular da mãe às 23h50.
+2. Notificação com culpa. Personagem triste, "você está me decepcionando", ameaça de perda. É eficaz em métrica e indefensável numa escola infantil que fala com pais.
+3. Congelamento de sequência como item comprável. Vender a proteção contra a dor que você mesmo criou. Você já eliminou dinheiro real da economia; mantenha a lógica também na de Cristais, dando escudos de graça.
+4. Vidas e corações que bloqueiam a aula depois de erros. Punir erro numa escola de modelagem 3D é o oposto do ofício. Errar topologia é o método.
+5. Rebaixamento semanal de liga. Perda recorrente, previsível e pública. É o motor de chapéu preto mais forte do produto deles.
+6. Baús e recompensas aleatórias. Reforço intermitente variável é a mecânica de cassino. Com menor de idade, não.
+7. XP por volume de exercício trivial. Premia repetição rasa. Numa escola de criação, gera aluno com nível 30 e portfólio vazio.
+8. A métrica-alvo deles. Duolingo otimiza minutos diários no app. Você otimiza modelos publicados e clientes conseguidos. Copiar as mecânicas sem trocar a função-objetivo é copiar o carro sem o motorista.
+
+O que vale copiar: o encerramento explícito de sessão ("você já fez o de hoje, pode ir"), a clareza absoluta do próximo passo, a qualidade da animação de celebração e a generosidade do feedback imediato.
+3. O que os grandes jogos fazem que cabe numa escola de criação
+Roblox (o mais óbvio e o mais ignorado) Atribuição permanente. Todo item tem "criado por" para sempre. Traga isso: a assinatura do aluno anda junto com o modelo dentro da escola, na Vitrine, no perfil, na aula que usa o modelo dele como exemplo.
+Fortnite Temporada com fim e armário de cosméticos. O armário é memória: cada item lembra quando foi ganho. Aplique com itens sazonais nomeados ("Turma de Inauguração 2026"). O passe de temporada, na versão sem compra, é uma trilha de recompensas por esforço da temporada.
+World of Warcraft Três coisas: bônus de descanso (recompensa quem ficou longe), títulos raros por feito específico e não por acúmulo, e conquistas com histórico datado. A tela de conquistas do WoW é uma autobiografia. A do aluno também deveria ser.
+Zelda: Breath of the Wild Progressão não linear e descoberta opcional. Aplique no mapa de habilidades: hard surface, orgânico, texturização, rigging e animação como regiões visitáveis em ordem livre, com marcadores do que já foi dominado. Autonomia é combustível de motivação intrínseca.
+Mario Feedback imediato, generoso e barato de errar. O som da moeda existe porque acerto pequeno precisa soar. Coloque "juice" nas micro-ações: salvar projeto, exportar FBX, subir render.
+Animal Crossing e Terraria A casa e o museu. O jogador exibe o que juntou. Faça o perfil ser Meu Estúdio: um espaço que o aluno decora com Cristais e povoa com as próprias obras. Cosmético que mobilia uma vitrine vale mais que cosmético solto.
+LittleBigPlanet, Dreams, Splatoon Curadoria humana com destaque editorial. Aplique como Escolha do Professor, semanal, com critério declarado que às vezes premia evolução em vez de qualidade absoluta ("maior salto do mês", "primeira publicação"). Curadoria humana é o único mecanismo que faz o iniciante aparecer.
+Dark Souls Mensagens de jogador para jogador deixadas nos pontos difíceis. Aplique como dicas de veterano ancoradas nas aulas onde a galera trava (retopologia, UV, exportação para o Studio). Ajuda assíncrona, barata, e altíssimo Núcleo 5.
+Mecânicas específicas para celebrar obra, que é o seu caso:
+
+* Linha do tempo do artista: primeiro render ao lado do render atual, gerado automaticamente. É a coisa mais motivadora que existe para quem cria e quase ninguém implementa.
+* Timelapse ou making-of valorizado tanto quanto o resultado. Recompensa processo e ensina a turma.
+* Remix com crédito: pegar o modelo de um colega, melhorar, publicar citando a origem. Ambos ganham.
+* Encomenda interna: a comunidade já permite aluno contratar aluno. Isso merece medalha própria dos dois lados, contratante e contratado.
+* Obra coletiva: um cenário montado com um item de cada aluno da turma. Núcleo 1 puro, e inclui quem ainda não tem marco individual.
+
+4. Riscos psicológicos e éticos com crianças
+4.1 Efeito de sobrejustificação
+O risco é real e específico: a recompensa externa corrói motivação intrínseca quando é esperada, contingente à tarefa e tangível, numa atividade que já era interessante por si. Modelar no Blender é exatamente esse tipo de atividade.
+Mitigações no desenho:
+
+* XP por entrega e marco, nunca proporcional à quantidade criada. "Ganhe 10 XP por polígono" mercantiliza a criação.
+* Recompensa informacional, não controladora. A tela diz "você dominou modelagem de hard surface", não "você cumpriu a meta e liberou o prêmio".
+* Para atividade criativa, prefira reconhecimento inesperado (Escolha do Professor, medalha secreta) a recompensa anunciada de antemão.
+* Nunca condicione conteúdo educacional a XP, nível ou Cristais. No instante em que a aula fica atrás do ponto, o ponto vira pedágio e o aprendizado vira preço.
+* Cosmético é o alvo certo da moeda porque é identidade, não conteúdo.
+
+4.2 Ansiedade de sequência
+
+* Meta semanal em vez de 7 de 7 dias.
+* Escudo automático mensal, sem pedir, sem gastar.
+* Modo férias e modo doença, ativáveis pelo próprio aluno.
+* Ao quebrar, a sequência retrocede, não zera.
+* Zero notificação com contagem regressiva, cor vermelha ou linguagem de perda. "Que tal 20 minutos de Blender hoje?" resolve o mesmo problema.
+* Nada de sequência exibida em ranking público. Sequência é assunto entre o aluno e ele mesmo.
+
+4.3 Comparação social
+
+* Grupos pequenos, apelido, sem foto real.
+* A tabela mostra apenas a faixa de cima e a vizinhança do aluno. Ninguém vê o último lugar, inclusive o próprio último lugar.
+* Nunca exiba "você caiu de posição".
+* A Vitrine não deve ordenar por curtidas nem exibir contador grande de curtidas. Ordene por recência e por curadoria.
+* Diversifique os eixos de destaque: quem mais ajudou, quem mais evoluiu, quem publicou pela primeira vez. Com um único eixo, sempre vencem os mesmos cinco.
+
+4.4 Riscos que não estavam na sua lista
+
+* Pressão financeira. "Primeiro Dólar" como marco pode fazer uma criança de 11 anos se sentir fracassada. Nunca exiba valores ganhos por ninguém, e crie marcos intermediários muito antes do dinheiro.
+* Expectativa dos pais. "Primeiros dólares" precisa aparecer como possibilidade, nunca como promessa. Isso é design, comunicação e também exposição jurídica.
+* Recebimento por menor. Receber em dólar envolve responsável legal. O sistema não pode empurrar a criança para plataformas de pagamento sozinha; o marco deve incluir "com ajuda do responsável" no próprio texto.
+* Exposição de menores. Apelido obrigatório, sem link externo sem moderação, sem mensagem direta aberta entre alunos, moderação humana na Vitrine antes de tornar público.
+* LGPD. Consentimento do responsável, dado mínimo, e o cuidado extra que a lei dá a criança e adolescente.
+* Tempo de tela. Tetos diários já ajudam. Some um encerramento explícito: "você já fez o que importava hoje". Um bom produto infantil sabe mandar a criança embora.
+
+5. Anti-fraude
+Como vão tentar farmar
+
+1. Login diário sem fazer nada, só para manter a sequência.
+2. Respostas curtas e genéricas em massa no fórum.
+3. Conluio: dois alunos combinam perguntas e aceites recíprocos.
+4. Multiconta para se auto-responder, se auto-votar e se auto-contratar.
+5. Spam na Caixa de Sugestões.
+6. Refazer quiz até acertar, ou circular gabarito no WhatsApp.
+7. Apagar e repostar conteúdo para reprocessar o evento de crédito.
+8. Manipular fuso horário para fechar dois dias de sequência em um.
+9. Ficar inativo de propósito para cair de liga e dominar liga fraca.
+10. Macro de clique e automação de navegador.
+11. Venda de conta com Cristais e medalhas fora da plataforma.
+
+Defesas
+
+* Idempotência por identificador de evento e crédito único por tripla (aluno, objeto, tipo de regra).
+* Tetos diários por tipo mais teto global, com rendimento decrescente depois de N ações do mesmo tipo, em vez de corte seco.
+* Quarentena: XP de atividade social entra pendente e vira definitivo em 24 a 72 horas se nada for moderado. Estorno em cascata quando o conteúdo cai. O livro-razão append-only torna isso trivial.
+* Sequência exige ação significativa, não login. Defina uma lista curta e explícita do que conta.
+* Fuso ancorado na conta, com mudança limitada; virada do dia decidida no servidor.
+* Quiz: primeira tentativa vale XP, repetições valem zero ou muito pouco; banco de questões embaralhado; nada de XP por acerto isolado, só por conclusão.
+* Grafo de reciprocidade: quem aceita e vota em quem. Pares com reciprocidade anômala vão para revisão humana, não para bloqueio automático.
+* Plausibilidade temporal: resposta de 400 caracteres postada 4 segundos depois de abrir a página é suspeita.
+* Limite de contas por responsável, cadastro com e-mail de adulto, impressão digital leve de dispositivo.
+* Cristais e medalhas não transferíveis, o que elimina o mercado cinza de venda de conta.
+* Anti-sandbagging na liga: entrada exige atividade mínima na semana e o histórico influencia o grupo sorteado.
+* Painel do professor com poder de zerar XP suspeito, com registro auditável de quem fez o quê.
+
+Um princípio acima de todos: prefira teto a punição. Com criança, o custo de um falso positivo é altíssimo e o de um XP indevido é quase zero.
+6. Vocabulário em português
+Manter como está
+
+* XP e Nível. Universais, entendidos por qualquer criança que já jogou qualquer coisa.
+* Missões, Títulos, Cristais. Claros e não infantilizantes.
+* Escudo. Ótima metáfora, protege sem explicação.
+
+Ajustar
+
+* Ofensiva → Sequência. "Ofensiva" é a tradução do Duolingo para streak e não significa nada em português. Usar o léxico deles marca o produto como cópia. "Sequência" é imediato. Se quiser tema: "Sequência de Estúdio".
+* Medalhas → dois nomes distintos. Use Medalhas para conquistas do sistema e Marcos para os feitos reais validados por professor. Nomes diferentes são metade do trabalho da recomendação 1.
+* Ligas Bronze/Prata/Ouro/Diamante. Funcionam, mas Diamante colide semanticamente com Cristais e vai confundir. Troque a liga de topo para Platina, ou tematize a escala inteira com materiais de modelagem: Argila → Madeira → Metal → Platina. Se tematizar, tematize tudo; meia tematização confunde mais do que nenhuma.
+* Perfil → Meu Estúdio. Muda a relação do aluno com a página. Galeria pública vira Vitrine.
+
+Considerar
+
+* Missão semanal grande → Encomenda da Semana. A escola ensina a atender cliente. Chamar a tarefa grande de "encomenda" ensina o modelo mental do freelancer de graça, todo santo dia. Missões diárias podem virar "Tarefas do Dia".
+
+Anglicismos a banir da interface streak, badge, quest, leaderboard, level up, daily, achievement. Use: sequência, medalha, missão, quadro da semana, subir de nível, do dia, conquista.
+Sobre o tom, que importa mais que os nomes O público vai de 9 a 17 anos. Adolescente de 15 abandona produto que o trata como criança, e essa é a faixa que tem mais chance de conseguir o primeiro cliente. Escreva como um estúdio profissional júnior: "você", frases curtas, sem diminutivo, sem mascote fofo dando bronca. A proteção infantil deve estar nas regras e na moderação, não no vocabulário.
+7. As cinco métricas, e o alarme
+As métricas
+
+1. Tempo até a primeira obra publicada. Percentual de alunos que publicam o primeiro modelo em até 14 dias da matrícula. É a métrica-norte. Se ela sobe, tudo o mais tende a subir junto.
+2. Alunos que criaram na semana, dividido por alunos ativos na semana. Mede se o engajamento é de produção ou de navegação. Ativo puro não diz nada.
+3. Retenção por coorte no dia 30 e no dia 90, cruzada com progresso na trilha. Retenção sem progresso é entretenimento, não escola.
+4. Marcos de carreira por coorte. Funil: portfólio no ar → primeira proposta enviada → primeiro cliente → primeira venda UGC → primeiro dólar. É o que a escola promete e o único número que vende matrícula com honestidade.
+5. Densidade de ajuda mútua. Percentual de perguntas do fórum respondidas em menos de 24 horas e respostas aceitas por aluno ativo. Comunidade viva é o ativo mais difícil de copiar.
+
+Sinais de que a gamificação está fazendo mal
+
+* XP sobe e obra não. A razão entre XP total e modelos publicados crescendo mês a mês é o sintoma clássico de farm ou de atividade vazia.
+* Pico de atividade nos últimos 30 minutos do dia ou da semana da liga. Sinal de que estão jogando o placar, não estudando.
+* Alunos que quebram a sequência somem. Se a taxa de retorno após quebra é baixa, o streak virou a razão de estar lá. Esse é o alarme mais importante da lista.
+* Concentração de XP no topo. Se 5% dos alunos detêm mais da metade do XP e a cauda está parada, o sistema virou um clube.
+* Sessões curtas e repetidas crescendo enquanto entregas caem. A criança está checando a posição, não abrindo o Blender.
+* Aluno atinge marco e some. Sintoma direto de sobrejustificação: a recompensa acabou e com ela o motivo.
+* Queda na qualidade média das respostas do fórum. Volume subindo com valor caindo.
+* Sinal qualitativo, que vale mais que os seis anteriores: pai relatando que a criança ficou ansiosa, ou aluno pedindo para sair do ranking. Isso não aparece em dashboard. Pergunte de tempos em tempos.
+
+8. Lista de "não faça"
+
+1. Não bloqueie conteúdo educacional atrás de XP, nível ou moeda. Nunca.
+2. Não puna o erro. Sem vidas, sem corações, sem perder progresso por errar.
+3. Não dê XP por login, por tempo em página ou por vídeo assistido sem interação.
+4. Não crie ranking global vitalício.
+5. Não venda nada da economia por dinheiro real, nem "só nesta Black Friday". Escreva essa regra na constituição da célula e teste ela no CI.
+6. Não use caixa de recompensa aleatória, roleta ou baú surpresa com prêmio variável.
+7. Não notifique com culpa, medo ou contagem regressiva.
+8. Não exiba quem está atrasado, quem não entregou ou quem está em último.
+9. Não gamifique acima de um produto ruim. Gamificação amplifica o que existe; se a aula não presta, o XP acelera a descoberta disso.
+10. Não dê ponto para tudo. Se toda ação vale XP, XP não significa nada.
+11. Não solte a economia sem sumidouro. Sem itens que consomem Cristais e sem calibração de curva, o nível máximo chega em um mês e o jogo acabou.
+12. Não crie conquista de grind vazio ("100 comentários", "50 dias seguidos").
+13. Não mude regra de XP retroativamente sem avisar. Versione as regras e comunique mudanças.
+14. Não deixe o professor sem ferramenta para reverter, zerar e conceder manualmente.
+15. Não prometa dinheiro. Marcos de renda são possibilidade demonstrada, não garantia contratada.
+16. Não lance evento sazonal que você não consiga manter. Evento de Natal abandonado em março é o cartão de visita de uma escola morta.
+17. Não lance liga sem massa crítica.
+18. Não tire do aluno um cosmético já conquistado, por nenhum motivo.
+19. Não trate a gamificação como projeto com data de entrega. É produto: precisa de dono, de ciclo de ajuste e de calibração contínua.
+
+9. Como celebrar os marcos reais sem constranger ninguém
+Este é o seu diferencial de verdade. Nenhuma escola online brasileira tem "Primeiro Cliente" como conquista validada. Tratamento sugerido:
+Validação Professor confirma com evidência: link do item publicado, print do portfólio no ar, comprovante com valores ocultados. O marco é binário, aconteceu ou não aconteceu. Nunca registre nem exiba quanto alguém ganhou. Comparação financeira entre crianças é o pior resultado possível deste sistema.
+Escadinha, para que ninguém esteja longe de tudo Cada marco grande precisa de dois ou três marcos menores antes dele, no mesmo caminho: Primeiro Render Apresentável → Primeiro Modelo Publicado → Portfólio no Ar → Primeira Proposta Enviada → Primeiro Cliente → Primeira Venda UGC → Primeiro Dólar. Assim todo aluno está sempre a um passo de algo, e "Primeiro Cliente" deixa de ser um abismo.
+Consentimento em três níveis, escolhido pelo aluno Só para mim / para a minha turma / público na Vitrine. Padrão: turma. Isso resolve as duas pontas do constrangimento, a de quem não quer aparecer e a de quem não quer ver.
+Nunca ordene pessoas por marcos Marcos vivem numa linha do tempo pessoal, jamais numa tabela comparativa. Não existe ranking de quem já ganhou dólar.
+Vitrine curada, não algorítmica Escolha do Professor semanal, com critério declarado que gira: melhor acabamento, maior evolução do mês, primeira publicação, melhor uso de textura. Curadoria rotativa é o único jeito de o iniciante aparecer na home.
+O card do marco mostra o antes e o depois Primeiro modelo do aluno ao lado do modelo do marco. Comunica caminho percorrido, não talento inato. Quem vê pensa "eu também consigo", não "eu nunca vou chegar lá".
+Quem chega vira mentor O marco desbloqueia poder de ajudar: selo, acesso à área de iniciantes, direito de responder na seção de primeiros clientes. O avançado ganha propósito, o iniciante ganha referência, e a distância deixa de ser humilhação e vira escada.
+Cerimônia mensal coletiva Um post ou live com todos que atingiram qualquer marco no mês, do "Primeiro Render" ao "Primeiro Dólar", na mesma lista, em ordem alfabética. Lista, nunca ranking. Iniciante e avançado aparecem juntos.
+Marcos coletivos da escola "A Meshcraft publicou 100 modelos", "a turma atendeu 10 clientes". Inclui quem ainda não tem marco individual e é o Núcleo 1 mais barato que existe.
+Aniversário do marco Um ano depois: "faz um ano que você publicou seu primeiro modelo. Olha ele aqui". Memória vale mais que troféu.
+Medalha de Fundador Concedida a todos da primeira turma, sem condição de desempenho, permanente e nunca mais emitida. Pertencimento sem competição, e a única escassez de que você precisa.
+Apêndice: ordem sugerida de lançamento
+Fase 1 — antes das trilhas de aula existirem XP com tetos, níveis, medalhas, Vitrine da Obra, missões diárias e semanais, sequência semanal, marcos de carreira, medalha de Fundador, livro-razão e painel do professor.
+Fase 2 — quando as trilhas entrarem XP de aula concluída (a tomada já está pronta), mapa de habilidades não linear, painel "meu caminho", papel de mentor.
+Fase 3 — quando houver volume de alunos ativos Ligas, temporadas com trilha cosmética, desafio criativo semanal, loja de Cristais com itens sazonais.
+Ligar liga antes da fase 3 é o erro mais provável deste projeto.

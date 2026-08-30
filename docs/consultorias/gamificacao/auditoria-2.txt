@@ -1,0 +1,72 @@
+AUDITORIA 2 — fonte não nomeada pelo mantenedor (pelo estilo e pelas
+referências ao próprio parecer, muito provavelmente a mesma IA do parecer 5).
+Recebida em 30/08/2026; 21 itens. Texto verbatim.
+
+============================================================
+
+Antes da lista, uma limitação que muda o valor do que segue: recebi **o veredito consolidado e um dos seis pareceres** (o meu, da conversa anterior). Não tenho os outros cinco. Então não posso verificar cobertura de cinco fontes que não vi. O que posso auditar com segurança é: (a) o que do parecer que tenho sumiu ou foi achatado, (b) coerência interna do próprio veredito, (c) as divergências que o veredito cita mas não resolve, (d) riscos que o desenho final cria e não responde. É isso que está abaixo. Se quiser a auditoria completa, me mande os seis pareceres.
+
+---
+
+**1. Validação de marcos reais por pares é a decisão mais perigosa do documento e passou sem análise de risco.**
+"Primeiro Cliente", "Primeira Venda UGC" e "Primeiro Dólar" não são fatos verificáveis dentro da plataforma. São alegações sobre a vida financeira de uma criança fora dela. O veredito adota validação por pares como direção geral (consenso 5) e, ao mesmo tempo, define o método de validação como "link vivo + conversa de 5 min" (consenso 7), que só faz sentido com um adulto do outro lado. Uma conversa de cinco minutos entre dois menores sobre o dinheiro que um deles recebeu é um problema de privacidade, não uma checagem. A separação mínima que faltou: marcos de obra podem ir para pares; marcos financeiros ficam com professor, sempre.
+
+**2. O modelo de pares tem um problema de partida que ninguém registrou.**
+"Quem já bateu um marco pode se credenciar validador daquele marco" significa que, no dia do lançamento, existem zero validadores de "Primeiro Dólar", porque ninguém bateu ainda. O sistema só funciona depois de já ter funcionado. E há um descompasso de escala: a decisão do dono foi tomada "pensando em milhares de alunos", enquanto o portão da Camada 3 é 150 ativos por semana. Construir quórum ponderado por reputação agora é construir para um problema que não existe por vários trimestres, enquanto o problema real (um professor validando algumas dezenas de alunos) já está resolvido de graça.
+
+**3. "Mentor" foi convertido em "validador" e isso trocou a substância.**
+A recomendação era que o marco desbloqueasse o poder de **ajudar**: selo, acesso à área de iniciantes, direito de responder na seção de primeiros clientes. O veredito manteve só o poder de **julgar**. São funções opostas em efeito social: uma converte distância em escada, a outra converte distância em hierarquia. Pior, cria conflito de interesse direto, já que o validador credenciado é também concorrente do validado no mesmo mercado de freelas. O papel de ajuda precisa voltar, e de preferência separado do papel de validação.
+
+**4. A escadinha de marcos tem degraus juridicamente inacessíveis para metade do público, e o veredito registra o fato sem conectá-lo ao desenho.**
+O consenso 10 anota corretamente que a loja UGC do Roblox exige 13+ com documento e Premium, e que Fiverr entre 13 e 17 só via conta do responsável. O consenso 7 coloca "Venda UGC" e "Primeiro Dólar" na escadinha principal, com "com ajuda do responsável" apenas nos marcos de dinheiro. Para um aluno de 9 anos, esses degraus não são difíceis, são impossíveis. Ou a escadinha tem uma bifurcação declarada por faixa etária, ou o Modo Júnior inclui uma escadinha própria que termina em obra e não em receita.
+
+**5. O veredito introduziu perfil público de menor e comércio entre menores sem camada de segurança.**
+"Meu Estúdio" é descrito como perfil público com link que o aluno manda ao cliente. "Encomenda interna" é aluno contratando aluno. "Conversa de 5 min" é contato direto. O único filtro citado para a galeria é um **checklist de qualidade**. Não há uma linha sobre moderação de segurança antes de publicar, sobre links externos no perfil, nem sobre canal de mensagem direta entre menores. Isso é a lacuna mais séria depois do item 1, e é diferente de LGPD, que o documento cobre.
+
+**6. Sumiu a regra "nunca condicione conteúdo educacional a XP, nível ou moeda".**
+Não foi adotada nem recusada. É a regra que mais importa numa escola que também tem loja e moeda, porque é o ponto exato onde gamificação vira pedágio. O veredito tem o equivalente para dinheiro real ("vira teste automático no CI") e para cosmético ("nunca dá vantagem"), mas não para acesso a aula. Deveria ser o terceiro invariante, com o mesmo teste de CI.
+
+**7. O checklist de qualidade para entrar na galeria contradiz a rampa do novato.**
+O consenso 3 define a rampa do iniciante como "publiquei algo que fiz". O consenso 2 coloca um portão de qualidade na entrada da galeria. Se o primeiro modelo de uma criança de 10 anos reprova no checklist, a rampa está bloqueada exatamente onde ela é necessária, e a rejeição vem de uma máquina. A referência ao Mario Maker também está torta: o portão de lá é "prove que a fase é vencível", que é solvabilidade, não qualidade. O equivalente honesto aqui seria checklist técnico objetivo (exporta, abre no Studio, tem thumbnail), nunca julgamento estético.
+
+**8. Duas das quatro coisas que o aluno já pode fazer hoje ficaram sem tratamento.**
+O fórum entrou (resposta aceita, validação 10x) e a entrada diária entrou (zero XP por login). **Quizzes** e **Caixa de Sugestões com votação** não aparecem em lugar nenhum do veredito: nem regra de XP, nem antifraude, nem faseamento. A Caixa de Sugestões é o mecanismo mais barato de Núcleo 1 que a escola tem, porque "a sugestão da Ana virou funcionalidade" é a prova pública de que a escola escuta. Ela existe, está de graça, e desapareceu. Quizzes precisam de regra explícita ou viram a primeira fonte de farm da Camada 1.
+
+**9. Onboarding não foi tratado.**
+Não há nada sobre os primeiros minutos do aluno novo. A Camada 1 entrega XP, níveis, galeria, medalhas e fila de validação, e o aluno chega numa tela onde a única coisa que ele pode fazer para pontuar exige que ele já saiba modelar. A primeira vitória precisa acontecer antes da primeira aula.
+
+**10. Dois dos oito núcleos do Octalysis ficaram em zero, e isso não foi registrado como decisão.**
+O cliente pediu os oito cobertos, com chapéu preto "em dose mínima". O veredito recusou loot box, recusou itens-relâmpago, tornou o item sazonal recorrente todo ano, e as medalhas secretas (pedido explícito do briefing original) desapareceram sem recusa registrada. Resultado: Núcleo 7 (Imprevisibilidade) e Núcleo 6 (Escassez) ficaram vazios, não mínimos. Dose mínima e dose zero são coisas diferentes. Medalha secreta por comportamento nobre e edição sazonal irrepetível são as duas formas de surpresa e escassez que não têm nada de cassino, e as duas foram perdidas por arrasto.
+
+**11. O efeito agregado das recusas sobre a economia de Cristais não foi calculado.**
+Cada recusa é defensável isolada. Somadas, retiraram gorjeta, destaque de post e itens-relâmpago, e o escudo virou grátis. Sobrou uma economia com fonte contínua e quase nenhum sumidouro. Sem sumidouro recorrente, os Cristais inflacionam e a moeda perde sentido em poucos meses, o que é o mesmo desfecho que a compra com dinheiro real teria produzido, só que mais devagar. Falta uma decisão explícita sobre onde os Cristais vão morrer.
+
+**12. "XP moderado para marco" contradiz o consenso 1.**
+O consenso 1 diz que os dois eixos nunca se misturam. O consenso 7 dá XP ao marco, moderado e fora do ranking. Se marco dá XP, os eixos se misturam, só que com câmbio ruim, e o aluno aprende que o primeiro cliente vale alguns quizzes. A escolha coerente é marco valendo zero XP e valendo Cristais, medalha, título e vitrine. A "síntese de divergência" aqui não sintetizou nada, apenas escolheu um meio-termo que quebra o princípio que o próprio documento colocou em primeiro lugar.
+
+**13. Três recusas estão fundamentadas em contagem de votos, não em argumento.**
+"3 consultores contra 1", "venceu o 5", "posições divergentes dos pareceres 4 e 6 registradas". Registrar divergência não é resolvê-la, e maioria entre consultores não é razão, ainda mais em decisão que afeta criança. Duas dessas recusas têm também um motivo real anexado (FOMO agressivo, não se vende proteção), e nesses casos basta apagar a aritmética. A terceira (item 12 acima) não tem razão nenhuma além do placar.
+
+**14. O consenso 8 não foi faseado, priorizado nem recusado.**
+São cerca de vinte mecânicas nomeadas (Guildas, Meta da Turma, Missões de Impacto, Grande Obra, Museu da Evolução, Arquivo, Mapa de Evidências, Livro de Descobertas, Escada do Multiplicador, Legado, Cerimônia, Meshjam, Oficina Aberta, e mais). O consenso 9, que é o faseamento, quase não menciona nenhuma delas. Uma escola recém-inaugurada não constrói vinte mecânicas, e uma lista sem portão vira dívida. Ou cada item recebe camada e dono, ou o bloco vira "banco de ideias" declarado, fora do escopo de construção.
+
+**15. As métricas ganharam portões para ligar coisas e nenhum critério para desligar.**
+O consenso 9 define portões de lançamento por camada. Não há um único limiar de alarme: nenhum critério que diga quando uma mecânica está fazendo mal e deve ser desligada. Os três sinais mais importantes ficaram de fora: razão entre XP total e obras publicadas subindo (farm), queda na taxa de retorno de quem quebra a sequência (o streak virou a razão de estar lá), e aluno que bate marco e some (sobrejustificação). A coluna "Bem-estar" existe no dashboard sem instrumento que a alimente, e bem-estar aqui é qualitativo: relato de responsável e pedido de saída do ranking.
+
+**16. Faltam duas métricas que o próprio desenho tornou críticas.**
+Primeira: **densidade de ajuda mútua** (percentual de perguntas respondidas em menos de 24h, respostas aceitas por aluno ativo). O veredito apostou o modelo inteiro de validação na comunidade, o que torna a saúde da comunidade um componente estrutural sem nenhum número associado. Segunda: **funil de marcos por coorte**, com número absoluto em cada degrau. É a promessa comercial da escola e a coluna "Transformação" não a nomeia.
+
+**17. Não existe mecanismo de encerramento de sessão.**
+O consenso 10 cita "uso compulsivo" do ECA Digital e o consenso 6 tem uma coluna de bem-estar, mas nenhuma mecânica encerra o dia. Tetos suaves com redirecionamento fazem o oposto: sinalizam para onde ir em seguida. Falta o "você já fez o que importava hoje, pode fechar", que é a única coisa do Duolingo que vale copiar inteira nesse quesito.
+
+**18. Buracos pontuais de antifraude.**
+Ficaram de fora: **limite de contas por responsável e impressão digital de dispositivo** (multiconta é o vetor mais óbvio, e passa a valer muito mais com validação por pares, porque uma conta fantasma vira um voto de quórum); **regra de quiz** (primeira tentativa vale, repetição não vale, banco embaralhado); **idempotência por identificador de evento**, que numa arquitetura de Redis Streams com entrega ao menos uma vez é requisito de correção, não refinamento; e **definição explícita do que dispara a sequência**, já que "zero XP por login" não diz o que conta como dia de estúdio.
+
+**19. Sumiu o mecanismo estrutural contra sobrejustificação, que é autonomia.**
+O veredito trata sobrejustificação pelo lado da recompensa (nada por volume, nada por login, marcos espelho). Falta o lado da autonomia: mapa de habilidades não linear, em que o aluno escolhe a ordem entre hard surface, orgânico, texturização, rigging e animação. Autonomia é uma das três necessidades da autodeterminação e é a defesa que não custa nada, porque é organização de conteúdo, não mecânica nova.
+
+**20. Três mecânicas de celebração de obra caíram sem substituto.**
+**Atribuição permanente** ("criado por" que anda junto com o modelo, inclusive quando o professor usa o trabalho como exemplo em aula), **remix com crédito** (pegar o modelo do colega, melhorar e publicar citando a origem, com ganho para os dois) e **valorização do processo** (timelapse ou making-of pontuando como resultado). Eram as três respostas mais diretas à pergunta 3 do briefing, que pedia mecânicas que celebram criação e obra. Nenhuma aparece.
+
+**21. Dois detalhes de nomenclatura que vão se perder se ninguém escrever agora.**
+O veredito manda o tema das ligas para a sessão de arquitetura sem registrar **por que**: a colisão semântica entre Liga Diamante e a moeda Cristais. Adiar a decisão está certo, adiar sem levar a restrição junto significa refazer a análise. E o documento alterna "Galeria" e "Vitrine" para a mesma coisa, o que é exatamente o tipo de duplicidade que a seção de vocabulário existia para eliminar.

@@ -1,0 +1,214 @@
+PARECER 2 — fonte não nomeada pelo mantenedor ("IA 2")
+Recebido em 30/08/2026. Texto verbatim; nada foi editado.
+
+============================================================
+
+## Antes das seções: três premissas que eu contestaria
+
+**1. "Sistema completo estilo Duolingo" está resolvendo um problema que você não tem.** A gamificação do Duolingo existe porque o produto não tem linha de chegada. O objetivo é fazer o adulto voltar amanhã, para sempre, a uma prática repetitiva e sem entrega final. A sua escola tem linha de chegada, e ela é brutalmente concreta: um dólar na conta. O risco de copiar o Duolingo inteiro é criar um **segundo placar concorrente**, no qual o aluno pode se sentir vencedor (nível 30, 180 dias de ofensiva) sem nunca ter aberto o Blender por três horas seguidas para terminar um cabelo. Isso não é hipótese: é a crítica mais consolidada ao próprio Duolingo, a de que sequência longa não é igual a falar o idioma. A sua versão desse fracasso é pior, porque o pai pagou por um resultado, não por um hábito.
+
+Sua intuição já aponta para a saída (XP mais alto na validação humana, medalhas de marco real). Só que ela contradiz a decisão de arquitetura. Eu inverteria a hierarquia: **a espinha do sistema é a trilha de marcos reais; o pacote Duolingo é o andaime que sustenta a caminhada até lá**, e a interface precisa deixar isso óbvio em qualquer tela.
+
+**2. Ligas semanais com rebaixamento são a mecânica mais chapéu-preto do repertório do Duolingo.** Você escreveu "chapéu preto em dose mínima, por ser público infantil" e, três linhas acima, "ligas semanais com promoção e rebaixamento". Rebaixamento é aversão à perda pura. Não dá para ter as duas coisas. Há ainda um problema de justiça que ninguém costuma calcular: liga por XP semanal premia **tempo disponível**, não talento. A criança com PC compartilhado, internet fraca e Blender travando nunca chega ao topo — e é exatamente ela que precisa não desistir. Trato disso na recomendação 6.
+
+**3. "Primeira Venda na Loja UGC" provavelmente não é um marco que uma criança consegue bater sozinha.** Isso muda o desenho da medalha e talvez da promessa. Detalho na seção 4.
+
+O restante do parecer assume que você aceita ou rejeita essas três, e funciona de qualquer jeito.
+
+---
+
+## 1. As recomendações (17)
+
+**1. Dois trilhos visualmente separados: Jornada e Jogo.** A *Jornada* guarda os marcos reais, é permanente, validada por professor e nunca reseta. O *Jogo* guarda XP, nível, sequência, missões e temporada, e pode resetar. Nenhuma tela mostra o Jogo acima da Jornada. **Por quê:** Significado Épico e Realização. Sem essa separação, "logou 7 dias" e "recebeu o primeiro dólar" viram a mesma categoria de coisa na cabeça da criança, e a segunda perde peso. **P0.**
+
+**2. XP nunca destranca conteúdo pago.** Nem aula, nem material, nem mentoria, nem acesso ao fórum. A gamificação só soma; nunca bloqueia. **Por quê:** Propriedade e Posse. É a linha que separa gamificação de escola de mecânica de jogo free-to-play, e cruzá-la gera reclamação de pai e pedido de reembolso. **P0.**
+
+**3. Ato criativo não tem tabela de preço.** Ação de processo (aula concluída, quiz, presença no fórum) tem XP previsível e anunciado. O ato de **fazer uma obra** ganha celebração e bônus surpresa, nunca um valor publicado antes. **Por quê:** Criatividade e Feedback + Imprevisibilidade. É a defesa direta contra o efeito de sobrejustificação (seção 4). "Modelar um cabelo = 50 XP" transforma arte em produção por peça. **P0.**
+
+**4. Trocar "ofensiva diária" por "Meta da Semana" (ex.: 3 dias em 7).** Mesmo efeito de hábito, sem o precipício diário. O escudo passa a ser automático e existe "Modo Férias", que pausa sem perda. **Por quê:** Realização, com remoção deliberada de Perda e Fuga. **P0.**
+
+**5. Bônus de volta, não punição por ausência.** Quem some por uma semana recebe um pequeno bônus no retorno, não uma tela de luto. É o mecanismo de "descanso" do World of Warcraft, no qual o tempo longe do jogo acumula XP extra, invertido para a escola. **Por quê:** Realização. Converte a mecânica de perda em acolhimento. **P0.**
+
+**6. Substituir ligas competitivas por Temporadas de Ateliê (equipes de ~5).** Meta coletiva, sem rebaixamento, sorteio de equipes a cada temporada. **Por quê:** Influência Social e Identificação, que é o núcleo que a liga realmente serve — e ele funciona melhor cooperando do que competindo. Se você fizer questão da liga individual: só promoção, sem rebaixamento, agrupamento por tempo disponível declarado, e entrada opcional. **P0.**
+
+**7. Vitrine da Obra com números reais.** Cada modelo publicado do aluno ganha uma página com visualizações, favoritos e vendas reais, espelhando o painel de criador do Roblox. **Por quê:** Criatividade e Feedback + Posse. O número que importa é o do mundo, não o inventado pela escola. Quem faz isso na prática: o próprio Roblox e o ArtStation. Onde custa caro se aplicado errado: se você mostrar publicamente o ranking desses números, cria um segundo placar cruel, no qual o menino que fez um chapéu com 4 vendas fica ao lado do que teve 400. Números visíveis no perfil do dono, agregados na vitrine. **P0.**
+
+**8. Fila de validação com prazo declarado e recusa privada e gentil.** Se o XP mais alto depende de professor, o professor vira gargalo do sistema inteiro. Prazo máximo público (48h), estado "em análise" nunca parecido com "recusado", e a negativa é sempre privada e sempre com o que falta. **Por quê:** Realização. Progresso travado por motivo alheio à criança é o jeito mais rápido de matar a confiança no sistema. **P0.**
+
+**9. Premiar quem pergunta, não só quem responde.** O autor da pergunta recebe XP quando a pergunta é marcada como útil. **Por quê:** Influência Social. Quem usa isso na prática: o Stack Overflow, com a mecânica de resposta aceita. O que custou quando aplicado errado: a reputação premiava respondedores e punia perguntas ruins, e o site ficou famoso por hostilidade a iniciante. Numa escola de criança, isso é fatal — o aluno para de perguntar para não parecer burro, e o fórum morre. **P0.**
+
+**10. Nenhuma notificação com culpa.** Nada de "você está prestes a perder", nada de mascote decepcionado. Informação e convite, sempre. **Por quê:** remoção de Perda e Fuga. **P0.**
+
+**11. Todo elemento social tem botão de sair, e sair não custa nada.** Você já previu isso para o ranking; estenda para vitrine, perfil público e equipe. Sair não pode custar XP, medalha nem posição. **P0.**
+
+**12. Marco que envolve dinheiro real exige responsável no circuito.** Ver seção 4. **P0.**
+
+**13. Compêndio do Modelador.** Catálogo pessoal preenchido automaticamente com cada tipo de peça que o aluno já fez: cabelo, chapéu, arma, carro, roupa, acessório, rig, animação. **Por quê:** Posse + Curiosidade. É o mecanismo do compêndio de Zelda e da Pokédex: coleção que se preenche fazendo a atividade normal. A criança descobre lacunas e vai atrás delas sozinha, o que é currículo disfarçado de coleção. **P1.**
+
+**14. Publicar exige passar no teste.** Um modelo só conta como "publicado" depois de importar no Roblox Studio e passar em uma checagem técnica objetiva (contagem de triângulos, UV, ponto de encaixe nomeado, textura dentro do limite). **Por quê:** Realização real, não inflada. Quem usa: o Super Mario Maker, onde você é obrigado a zerar a própria fase antes de publicá-la. É a melhor tradução possível dessa mecânica para a sua escola, e resolve metade do seu problema de antifraude de graça. **P1.**
+
+**15. Remix com crédito automático, e XP para o autor original.** Aluno pode partir do modelo de outro, com atribuição carimbada, e quem foi remixado ganha XP. **Por quê:** Criatividade + Influência Social. Quem usa: o Scratch, do MIT, que é o exemplo mais próximo que existe do seu público (criança que cria e publica). Vale notar que o Scratch deliberadamente não tem pontos nem ranking, e ainda assim é o ecossistema de criação infantil mais saudável que existe. **P1.**
+
+**16. Cristais generosos, ralos de verdade e um Cofre.** Como não se compra com dinheiro, o erro clássico é a mesquinhez, que faz a loja virar vitrine de coisa inalcançável. Seja generoso, tenha itens caros que valham poupança longa e crie um "Cofre" que devolve itens de temporadas antigas de tempos em tempos. **Por quê:** Posse, com Escassez em dose mínima. Quem usa a versão errada: a loja rotativa do Fortnite, desenhada para forçar visita diária por medo de perder o item; a Epic pagou acordos de centenas de milhões de dólares nos EUA por padrões obscuros e por dados de crianças. Item sazonal, sim; pressão de "some para sempre", não. **P1.**
+
+**17. Painel do Responsável.** Uma tela para o pai que mostra **o que o filho fez**, não quantos pontos tem: obras da semana, marcos, o antes e depois. **Por quê:** Influência Social externa. É o que sustenta renovação e desarma a objeção de "meu filho só quer ficar juntando pontinho". **P1.**
+
+**18. Cada mecânica precisa de interruptor.** Nenhuma liga, sequência ou vitrine pode ser impossível de desligar sem quebrar o histórico. **P1.**
+
+---
+
+## 2. O que o Duolingo faz e você não deve copiar
+
+- **Ligas com rebaixamento.** Já argumentado. Aversão à perda como motor principal, com viés de tempo disponível embutido.
+- **Vidas ou corações que interrompem o estudo depois de X erros.** Numa escola paga, cobrar recurso para continuar errando é indefensável. Erro é o material didático.
+- **Conserto pago da sequência.** Vender salvação de uma perda que o próprio produto fabricou. Com criança, nem discussão merece.
+- **Moeda comprável com dinheiro.** Você já eliminou, e é seu maior acerto.
+- **Impulsos de "XP em dobro por 15 minutos".** Pressão de tempo produz trabalho apressado. Modelagem 3D é ofício de lentidão e capricho; premiar velocidade ensina o vício exato que você vai passar o curso inteiro tentando desfazer.
+- **Notificação passivo-agressiva.** É meme entre adultos e é dano real em criança.
+- **XP como métrica de fim.** No Duolingo, XP mede minutos. Na sua escola, se XP virar o número que o aluno persegue, ele já perdeu de vista o dólar.
+
+**O que vale copiar:** o próximo passo sempre visível e sempre único (elimina paralisia de escolha), a animação de conclusão bem feita, a revisão dirigida aos erros anteriores, e o fato de o XP ser subproduto da aula, nunca uma tarefa separada.
+
+---
+
+## 3. O que os grandes jogos fazem e cabe aqui — em especial para obra e criação
+
+| Jogo | Mecânica | Como transpor | Custo quando aplicado errado |
+|---|---|---|---|
+| **Super Mario Maker** | Você precisa zerar a própria fase para publicar | Modelo só conta como publicado depois de importar e passar no Studio | Se a checagem for subjetiva, vira punição arbitrária |
+| **Minecraft / Scratch** | Zero pontos; a motivação é a obra e o público dela | Vitrine com obra, remix com crédito, comentário de colega | Sem moderação, comentário em obra de criança vira bullying |
+| **Roblox (criador)** | Painel com vendas, favoritos e visitas em tempo real | Números reais da obra no perfil do aluno | Ranking público desses números humilha quem vende pouco |
+| **Zelda** | Compêndio que se preenche sozinho fazendo o normal | Compêndio do Modelador por tipo de peça | Se exigir peça obscura, vira lista de tarefa chata |
+| **World of Warcraft** | Guilda; "transmog", em que o visual conta a história do que você já fez; feitos irrepetíveis | Ateliês; molduras e títulos que só existem se você bateu certo marco; medalha de Fundador | As tarefas diárias obrigatórias da WoW são a receita de burnout mais documentada do gênero |
+| **WoW (descanso)** | Tempo longe acumula bônus | Bônus de retorno | — |
+| **Fortnite** | Passe de temporada: trilha visível, com fim conhecido, só cosmético | Temporada com trilha de recompensas anunciada e data de fim cumprida | Loja rotativa com medo de perder = compulsão; a Epic pagou caro por isso |
+| **LittleBigPlanet / Dreams** | Perfil de criador com seguidores e curtidas na criação | Perfil de modelador seguível dentro da escola | Contagem de seguidores visível cria casta |
+
+O padrão que emerge dos jogos que celebram criação e não os que celebram consumo: **o prêmio é a obra ganhar público, não o criador ganhar ponto.** O sistema que dá mais status para quem tem mais XP está premiando a coisa errada; o que dá mais status para quem tem obra vista, usada e remixada está premiando exatamente o que a escola vende.
+
+---
+
+## 4. Riscos psicológicos e éticos
+
+**Sobrejustificação.** O experimento fundador desse efeito (Lepper, Greene e Nisbett, 1973) foi feito com crianças em idade pré-escolar **desenhando**. As que ganharam recompensa prometida por desenhar desenharam menos depois, espontaneamente. Sua população e sua atividade são quase idênticas às do estudo original. A literatura posterior (metanálise de Deci, Koestner e Ryan, 1999) refina: o que corrói é a recompensa **tangível, esperada e atrelada à execução da tarefa**. Recompensa inesperada, elogio verbal e recompensa que informa competência não corroem — podem até somar.
+
+Como desenhar em cima disso: XP previsível só para o que já é enfadonho (rotina, revisão, presença); celebração e bônus surpresa para o ato criativo; retorno sempre informacional ("o topo do seu cabelo ficou limpo, a base ainda tem triângulo demais") em vez de controlador ("faça isso para ganhar 50"). E nunca prometer prêmio antes de pedir criação livre.
+
+**Ansiedade de sequência.** Mitigada pela meta semanal, pelo modo férias, pelo bônus de retorno e pela proibição de notificação de perda. Acrescente uma regra dura: nenhuma tela pode mostrar um número de sequência caindo para zero. Se a semana não fechou, a tela mostra a semana nova, não o luto da anterior.
+
+**Comparação social.** Padrão de exibição: comparação com você mesmo é a tela principal; comparação com outros é opcional e só mostra a vizinhança, nunca a distância do topo nem a posição contada de baixo. Nada de "faltam 40 XP para não ser rebaixado". E meça o efeito por quartil: se a atividade do quartil de baixo cai depois que o social entra no ar, o social está fazendo mal (seção 7).
+
+**O risco que você não listou, e é o mais concreto: os marcos de dinheiro com menor de idade.** Pelo que se lê hoje sobre o programa UGC do Roblox, publicar exige ter 13 anos ou mais, verificação de identidade com documento oficial e assinatura ativa do Roblox Premium 1000 ou 2200, e há uma taxa em Robux por item enviado, com revisão antes da listagem. Além disso, desde 26 de agosto de 2026 a verificação só por telefone deixou de ser aceita para publicar na Creator Store: é preciso checagem de idade por estimativa facial ou documento, em conta com pelo menos dois dias. Fontes secundárias, então confirme na documentação oficial do Roblox antes de fechar o desenho — mas a direção é clara e tem três consequências:
+
+1. "Primeira Venda na Loja UGC" **não é um marco individual da criança**; é um marco da família, com documento e assinatura paga de um adulto. Trate como tal na interface e na comunicação, ou você vai frustrar o aluno de 10 anos que fez tudo certo e esbarrou num documento.
+2. O mesmo vale para plataformas de freelance, que costumam exigir maioridade nos termos de uso. Uma medalha chamada "Primeiro Cliente" pode empurrar um menor a mentir a idade num cadastro. Verifique os termos de cada plataforma que o curso cita e ajuste a instrução.
+3. Nenhum marco deve incentivar contato comercial não mediado entre uma criança e um estranho. Cliente de aluno menor passa pelo responsável, e o sistema deve dizer isso na própria tela do marco.
+
+Isso é limitação de plataforma e de lei, não excesso de cautela. E há um ponto de defesa comercial junto: no Brasil, publicidade dirigida diretamente à criança é tratada como abusiva pelo Código de Defesa do Consumidor e pela Resolução 163 do CONANDA. Sua regra de "nada comprável com dinheiro real" já te coloca do lado seguro dessa linha, e vale transformá-la em argumento de venda para o pai, não só em restrição técnica.
+
+---
+
+## 5. Antifraude
+
+**Como vão tentar farmar:**
+
+1. Contas extras para votar na própria sugestão, aceitar a própria resposta e inflar reputação.
+2. Resposta-lixo em série no fórum ("top demais", "vlw") para bater contador de posts.
+3. Gabarito de quiz circulando no WhatsApp; refazer quiz até acertar; força bruta em múltipla escolha.
+4. Troca de votos combinada ("voto na sua ideia, vota na minha").
+5. Mudar o relógio do aparelho ou o fuso para salvar sequência.
+6. Macro, autoclique, aula rodando em outra aba a 2x sem ninguém olhando.
+7. **Baixar modelo pronto de banco gratuito e apresentar como próprio.** Este é o mais danoso e o mais difícil de pegar.
+8. Copiar a resposta de outro aluno do fórum.
+9. Vender ou trocar conta de nível alto.
+
+**Defesas:**
+
+- Pontuação só no servidor, evento com chave de deduplicação, nada de confiar em evento vindo do cliente. Com arquitetura de eventos, reenvio de evento é vetor real.
+- **Teto suave, não muro.** Retorno decrescente em vez de zero. Muro ensina a criança motivada a fechar o navegador quando bate o limite, o que é o oposto do que você quer. E deixe sem teto tudo que não é XP: obra, marco, compêndio.
+- XP de resposta no fórum só depois de sinal humano (professor ou colega), nunca na postagem.
+- **Voto ponderado por reputação**, com detecção de agrupamento por aparelho e rede. Não puna automaticamente: sinalize para revisão humana.
+- Quiz com banco de questões sorteado, embaralhamento por tentativa, XP cheio só na primeira aprovação e decrescente na repetição.
+- Dia e sequência sempre pelo relógio do servidor, fuso fixo em São Paulo, com janela de tolerância.
+- **Originalidade de modelo:** exija o arquivo do projeto, não só o render; capturas do trabalho em andamento em etapas definidas; uma captura da viewport com o apelido do aluno escrito num objeto de texto dentro da cena. Para marco de alto valor, refazer um trecho ao vivo na mentoria. É o padrão dos concursos de arte digital, que pedem arquivo de processo justamente por isso.
+- Punição desenhada para criança: nunca exposição pública, nunca banimento na primeira vez. Ajuste silencioso mais mensagem privada do professor. Restaurativo.
+- **A defesa mais profunda é econômica:** se todo cosmético é alcançável por qualquer aluno em ritmo normal, o retorno da fraude cai perto de zero. Escassez artificial é o que cria mercado paralelo.
+
+---
+
+## 6. Vocabulário
+
+| Termo atual | Parecer |
+|---|---|
+| **XP** | Manter. Toda criança que joga Roblox, Minecraft e Fortnite já usa. Não traduza para "Pontos de Experiência" na interface. **Não tematize com termo técnico real** — "Polígonos" ou "Vértices" seria charmoso e pedagogicamente venenoso, porque no ofício deles polígono a mais é defeito, e você ensinaria o instinto invertido. |
+| **Nível** | Manter. |
+| **Ofensiva** | **Trocar.** É artefato de tradução literal do Duolingo para o português e soa estranho fora dali. Além disso, adotar o termo dele carrega a marca dele para dentro do seu produto. Prefira **"Sequência"** (claro e neutro) ou **"Chama"** (combina com o ícone que a criança já reconhece). Se você aceitar a recomendação 4, o nome certo é **"Meta da Semana"**. |
+| **Escudo de Ofensiva** | **"Escudo"**, seco. Nome de duas palavras com um termo já ruim dentro piora tudo. |
+| **Missões** | Manter. Universal em Roblox e Fortnite. |
+| **Medalhas** | Manter — **mas só para a camada de jogo.** Marco de carreira precisa de nome de outra classe, ou "entrou 7 dias seguidos" e "recebeu o primeiro dólar" viram irmãs. Proponho **"Marcos"** (ou "Marcos de Carreira"), com linguagem visual, som e cerimônia próprios. |
+| **Ligas Bronze/Prata/Ouro/Diamante** | Legível na hora, sem dúvida. Se você tirar a competição semanal (recomendação 6), aproveite esses nomes para a **escada de domínio pessoal**, no modelo de faixa de artes marciais: sobe pelo que você sabe fazer, não pela semana que teve. Alternativa temática mais bonita e mais sua: **Argila → Madeira → Pedra → Metal → Cristal**. Custa um pouco de legibilidade imediata e ganha identidade. |
+| **Cristais** | Manter, com uma ressalva. Em todo jogo de celular, cristal é moeda premium comprável, e é isso que o pai vai presumir ao ver a palavra. Escreva na própria tela da loja: *"Cristais não se compram. Só se ganham."* Sua restrição inegociável só vira vantagem se estiver visível. |
+| **Títulos** | Manter. |
+| **"Aprendiz de Modelador" → "Modelador Profissional"** | Cuidado com credencial falsa. Chamar de "Modelador Profissional" uma criança de 12 anos que fez 20 aulas é uma promessa que o mercado não vai honrar, e o tombo é feio. Prefira a escada de ofício, que é honesta sobre ser interna à escola: **Aprendiz → Oficial → Mestre de Ateliê**. A credencial real fica onde ela é verdadeira: nos Marcos e no portfólio. |
+
+---
+
+## 7. As cinco métricas
+
+1. **Taxa de conclusão do curso**, por turma de entrada, com tempo até a conclusão. É o número que a gamificação existe para mover. Se ele não mexer, nada mais importa.
+2. **Taxa de Primeira Obra**: percentual de matriculados que publicam o primeiro modelo dentro de N dias da matrícula. O melhor indicador antecedente de tudo que vem depois.
+3. **Conversão de Marco**: percentual que chega a Primeiro Cliente e a Primeiro Dólar. É a promessa do produto medida sem eufemismo.
+4. **Retorno após quebra**: percentual dos que faltaram uma semana e voltaram. É o sinal mais honesto de saúde do sistema. Sistema saudável é aquele do qual dá para sair e voltar.
+5. **Razão criação/presença**: XP vindo de criar, publicar e ajudar dividido pelo XP vindo de presença e consumo passivo. Se pende para presença, você construiu um relógio de ponto.
+
+**Sinais de que está fazendo mal:**
+
+- Frequência sobe e **duração da sessão cai**. É a assinatura do login para salvar sequência.
+- XP e nível sobem e publicações não. O metajogo comeu o ofício.
+- Pico de atividade na última hora antes da virada do dia ou do fechamento da liga. Isso é ansiedade, não estudo.
+- Evasão concentrada logo depois do dia de rebaixamento.
+- Atividade do quartil de baixo caindo depois que a comparação social entrou no ar. Meça sempre por quartil; a média esconde exatamente a criança que você está machucando.
+- Vocabulário de perda aparecendo no suporte e no fórum: "perdi minha sequência", "nunca vou alcançar".
+- Pai pedindo para desligar alguma coisa.
+
+---
+
+## 8. NÃO FAÇA
+
+1. Não trave conteúdo pago atrás de XP, nível ou Cristal. Nunca, em hipótese alguma.
+2. Não dê XP relevante por só entrar no site. Isso ensina presença, não trabalho.
+3. Não use XP como nota nem como sinal de aprovação do professor.
+4. Não faça ranking público de todo mundo.
+5. Não publique placar que você não tem gente para moderar.
+6. Não desvalorize retroativamente o que já foi ganho: nada de cortar XP de atividade antiga, expirar medalha ou zerar Cristal. Confiança quebrada assim não volta.
+7. Não deixe a moeda sem ralo, nem deixe a moeda comprar tudo.
+8. Não use culpa, mascote decepcionado ou contagem regressiva de perda.
+9. Não amarre prêmio em dinheiro ou sorteio ao XP. Isso convida fraude e beira o jogo de azar. Prêmio real vale para Marco real, que é validado por humano.
+10. Não deixe a gamificação virar fonte de verdade sobre aprendizado. Ela consome eventos; o registro do aluno pertence à escola.
+11. Não lance com 40 medalhas para 3 atividades. Medalha fácil demais e catálogo vazio matam a credibilidade do sistema na primeira semana. Comece com o número de medalhas que suas atividades reais sustentam, e a régua é a densidade da conquista, não a economia de esforço.
+12. Não crie mecânica sem interruptor e sem histórico recalculável.
+13. Não personifique um mascote que cobra.
+14. Não anuncie temporada com data de fim que você não vai cumprir. Temporada atrasada destrói a credibilidade de todas as seguintes.
+15. Não deixe o primeiro contato do aluno ser com a gamificação. Os primeiros dez minutos dele têm que ser o Blender abrindo.
+16. Não meça sucesso por usuários ativos por dia.
+17. Não exponha nível, liga ou XP de um aluno para outro sem consentimento explícito dele.
+
+---
+
+## 9. Marcos reais: celebrar sem constranger
+
+O princípio que resolve quase tudo: **presença é pública, ausência é privada.** Você mostra o que alguém conquistou; você nunca mostra quem não conquistou. Isso significa nada de "3 de 5 marcos" em perfil público, nada de mural de quem falta.
+
+**O desenho:**
+
+1. **Marcos não têm ranking nem cronômetro.** Nada de "terceiro aluno a conseguir cliente", nada de "mais rápido até o primeiro dólar". A ordem de chegada é a coisa mais cruel que você poderia expor.
+2. **Encha a escada de marcos de ofício, não só de marcos de dinheiro.** Primeira textura aplicada. Primeiro rig que funciona. Primeiro modelo importado no Studio sem erro. Dez peças terminadas. Ajudou cinco colegas. Assim ninguém fica com a parede vazia, e a criança que ainda não vendeu nada tem uma trajetória visível e legítima em vez de um vazio ao lado do colega que vendeu. Este item, sozinho, é a maior parte da resposta à sua pergunta.
+3. **A vitrine tem categorias por estágio, não uma lista única.** "Primeiras Peças", "Em Progresso", "Publicados", "Vendidos". Cada aluno tem onde aparecer no primeiro dia. Reserve uma vaga fixa e rotativa para a primeira peça de alguém que começou naquela semana.
+4. **Celebre a evolução, não só o resultado.** O par "meu primeiro cabelo × meu cabelo de hoje" é o conteúdo mais motivador que existe para iniciante, porque diz "dá para chegar" em vez de "você está atrasado". Todo aluno tem esse par depois de um mês. Nenhum ranking tem.
+5. **Quem bate um marco vira padrinho dele.** Ao validar, o sistema pede três linhas de conselho, que passam a aparecer para quem está chegando perto do mesmo marco. Isso converte a conquista, que poderia isolar, em ajuda — e é o único uso de comparação social que aumenta a motivação de quem está atrás em vez de reduzir.
+6. **Cerimônia com peso, recompensa sem peso.** O marco rende celebração forte, objeto permanente no perfil, moldura exclusiva, alguns Cristais e um **certificado imprimível com o nome da escola** (esse papel é o que justifica a compra dentro da casa do aluno, e vale mais que qualquer animação). O que ele **não** deve render é XP alto. Se o marco for a rota mais rápida para subir de nível, você acabou de criar o incentivo para inventar um cliente.
+7. **Critério de prova público, recusa privada.** Publique o que é preciso apresentar para cada marco. A negativa é sempre privada, sempre com o que falta, e nunca custa nada.
+8. **Marcos coletivos.** "A turma publicou 100 modelos." Vitória coletiva não deixa ninguém individualmente para trás.
+9. **O aluno pode esconder qualquer marco do perfil público.** Especialmente os de dinheiro — há famílias que não vão querer isso visível, e há razões de segurança para uma criança não anunciar publicamente que recebeu dólares.
+
+Se eu tivesse que apontar o único ponto de falha do projeto inteiro: é a fila de validação do professor. Todo o valor deste desenho está apoiado em um humano dizer "sim, isso aconteceu de verdade", e essa é a única parte do sistema que não escala sozinha. Antes de decidir qualquer coisa sobre liga ou Cristal, decida quantas validações por semana a escola aguenta com o professor que você tem, porque esse número é o teto real de tudo que descrevi aqui.
