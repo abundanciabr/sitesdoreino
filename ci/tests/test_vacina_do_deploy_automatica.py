@@ -72,14 +72,28 @@ def test_acorda_com_o_FIM_das_DUAS_esteiras_de_deploy(gatilho):
     assert gatilho["workflow_run"]["types"] == ["completed"]
 
 
-def test_so_age_no_CANCELADO_da_main(job):
-    """`failure` já tem dono e `success` não tem doença.
+def test_acorda_no_CANCELADO_e_no_VERMELHO_da_main(job):
+    """As DUAS conclusões doentes desde a TAR-041 — e `success` fora.
 
-    O cancelado é o único desfecho que não avisa ninguém: não é vermelho, o
-    `alarme-main` não dispara, e a linha fica cinza no meio de verdes.
+    Até 30/08/2026 era só o `cancelled`, com a justificativa escrita de que
+    *"`failure` na `main` já tem dono: o agente que mergeou, avisado pelo
+    vermelho"*. A medição do dia derrubou a justificativa: 14 dos 41 deploys
+    vermelhos dos últimos 30 dias morreram no timeout da porta 22
+    (`armadilhas/127`), TRÊS num único dia, e a escada de 3 tentativas de
+    dentro do deploy salvou 1 de 18. O "dono" existia — e o trabalho dele era
+    apertar um botão que uma máquina aperta.
+
+    A asserção do `success` não é enfeite: é ela que impede alguém de "abrir um
+    pouco mais" a condição até a vacina acordar em todo deploy saudável do
+    repositório, que são ~100 por dia.
     """
     condicao = " ".join(job["if"].split())
     assert "github.event.workflow_run.conclusion == 'cancelled'" in condicao
+    assert "github.event.workflow_run.conclusion == 'failure'" in condicao
+    assert "'success'" not in condicao, (
+        "deploy verde não tem doença; acordar nele seria gastar um runner por "
+        "merge para responder 'nada a fazer'"
+    )
     assert "github.event.workflow_run.head_branch == 'main'" in condicao
 
 
@@ -159,8 +173,11 @@ def test_a_falta_de_cura_vira_ISSUE_no_desenho_do_alarme_main(job):
     ignorar — e aí ele para de servir para o caso em que importa.
     """
     passo = next(p for p in job["steps"] if "issue" in str(p.get("name", "")).lower())
-    assert passo["if"] == "steps.vacina.outputs.codigo != '0'", (
-        f"a issue precisa nascer do veredito, e só dele (veio: {passo.get('if')})"
+    assert passo["if"] == "steps.vacina.outputs.alarmar == 'true'", (
+        "a issue precisa nascer da resposta a 'isto acorda alguém?', que é uma "
+        "pergunta DIFERENTE do veredito desde a TAR-041 — com o `failure` no "
+        "gatilho, `codigo != 0` passou a incluir o defeito de código, que já "
+        f"está vermelho e já tem dono (veio: {passo.get('if')})"
     )
     corpo = str(passo["run"])
     assert "gh issue list" in corpo and "--state open" in corpo, (
@@ -223,3 +240,56 @@ def test_o_portao_de_deploy_conhece_esta_vacina():
 
     assert pd.VACINA_DO_DEPLOY == ".github/workflows/vacina-do-deploy.yml"
     assert ARQUIVO.exists()
+
+
+# ---------------------------------------------------------------------------
+# O CANAL DO `alarmar` — TAR-041. Três testes, e cada um fecha um jeito medido
+# de esta separação virar decoração.
+# ---------------------------------------------------------------------------
+def test_quem_escreve_o_alarmar_e_a_TABELA_e_nao_o_YAML(job):
+    """A lei anti-duplicação aplicada de novo, agora à pergunta do alarme.
+
+    Se o YAML decidisse por conta própria quando alarmar — por `grep` na saída,
+    por lista de códigos, por qualquer coisa —, existiriam DUAS regras sobre o
+    mesmo assunto e um dia elas discordariam, sem que nada acusasse. Quem
+    responde é `Decisao.precisa_de_alarme`, onde o motivo mora colado ao
+    desfecho e é testável sem rede.
+    """
+    import rerun_de_deploy as vacina
+
+    assert hasattr(vacina.Decisao("nada", 0, "x"), "precisa_de_alarme")
+    assert vacina.Decisao("parar", 1, "x").precisa_de_alarme is True, (
+        "o padrão tem de ser ALARMAR: ramo novo nasce barulhento, e o silêncio "
+        "se escreve à mão com o motivo do lado"
+    )
+    codigo = next(
+        str(p["run"]) for p in job["steps"] if p.get("id") == "vacina"
+    )
+    assert "grep -q '^codigo='" in codigo, (
+        "a rede que cobre o script morrendo antes de escrever a saída dele"
+    )
+
+
+def test_ha_uma_REDE_para_o_caso_de_a_vacina_morrer_sem_escrever(job):
+    """Se o processo morrer antes do `$GITHUB_OUTPUT`, o passo do sinal ficaria
+    sem `alarmar` — e um `if` sobre variável ausente é sempre falso. Ou seja: a
+    vacina morrer viraria SILÊNCIO, que é o desfecho que este arquivo inteiro
+    existe para impedir."""
+    codigo = next(str(p["run"]) for p in job["steps"] if p.get("id") == "vacina")
+    assert "alarmar=" in codigo
+    assert "codigo do processo" in codigo or "código do processo" in codigo
+
+
+def test_a_issue_DIZ_qual_das_duas_doencas_foi(job):
+    """Chamar de "cancelado" um run que RODOU e morreu no SSH manda quem abre a
+    issue procurar a cadeira musical em vez do timeout de rede (TAR-041)."""
+    passo = next(p for p in job["steps"] if "issue" in str(p.get("name", "")).lower())
+    corpo = str(passo["run"])
+    assert "CONCLUSAO" in str(passo.get("env", {})) or "CONCLUSAO" in corpo
+    assert "CANCELADO" in corpo and "FALHOU" in corpo, (
+        "as duas manchetes precisam existir; uma só serviria para os dois "
+        "casos — e serviu, com o merge fora do ar como consequência (188)"
+    )
+    assert "armadilhas/127" in corpo, (
+        "o vermelho por timeout precisa apontar a entrada que o explica"
+    )

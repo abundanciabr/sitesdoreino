@@ -595,3 +595,94 @@ def test_a_vacina_esta_em_conhecidos_e_NAO_em_exigidos():
         "exigi-la faria TODO deploy esperar por um run que só nasce quando "
         "houve cancelamento — trocaria um bloqueio raro por um bloqueio diário"
     )
+
+
+# ---------------------------------------------------------------------------
+# UMA ESTEIRA DE DEPLOY NÃO TRANCA A OUTRA — TAR-041 (30/08/2026).
+#
+# `deploy-celula` e `deploy-infra` nascem no MESMO SHA sempre que um PR de
+# infraestrutura entra, porque todo PR deste projeto carrega um registro em
+# `painel/**`. Fora de `conhecidos`, um soluço de rede em uma REPROVAVA a outra
+# — e o merge ficava fora do ar duas vezes em vez de uma, com o mantenedor
+# lendo "deploy-infra vermelho" sobre um problema que era de rede na célula.
+#
+# MEDIDO nos 30 dias até 30/08/2026: `vermelhos_nao_previstos` reprovou 4 vezes,
+# e as QUATRO foram esta cascata, nas duas direções. Zero vezes ela pegou o que
+# existe para pegar (um check novo fora do portão) — por isso a isenção é
+# estreita e o teste do "inventado.yml" continua sendo o par obrigatório.
+#
+# Medição crua do antes/depois, com estas mesmas histórias:
+#
+#   deploy-celula vermelho   ANTES=FAIL   DEPOIS=PASS
+#   deploy-infra vermelho    ANTES=FAIL   DEPOIS=PASS
+#   inventado.yml vermelho   ANTES=FAIL   DEPOIS=FAIL
+# ---------------------------------------------------------------------------
+DEPLOY_INFRA = ".github/workflows/deploy-infra.yml"
+
+
+def _conhecidos_de_verdade() -> set:
+    """A lista REAL da fonte, não uma cópia — senão o teste prova outra coisa."""
+    import portao_de_deploy as pd
+
+    return {CI_CELULA, ALARME, MURALHAS, pd.VIGIA_DO_CADEADO,
+            pd.VACINA_DO_DEPLOY, pd.DEPLOY_CELULA, pd.DEPLOY_INFRA}
+
+
+def _a_irma_vermelha_nao_barra(esteira: str) -> None:
+    import portao_de_deploy as pd
+
+    runs = [run_(1, esteira, conclusao="failure")]
+    resultado = pd.vermelhos_nao_previstos(runs, _conhecidos_de_verdade())
+    assert resultado.estado is not pd.Estado.FAIL, (
+        f"um soluço de rede em `{esteira}` não pode trancar a outra esteira: "
+        "elas publicam coisas diferentes (imagem de célula × compose/traefik) e "
+        "o compose referencia a imagem por tag MÓVEL, então uma imagem atrasada "
+        "é o estado normal entre dois deploys"
+    )
+
+
+def test_deploy_celula_vermelho_nao_barra_o_deploy_de_infra():
+    """A direção medida no PR #622: o run 33328262912 morreu por isto."""
+    _a_irma_vermelha_nao_barra(DEPLOY_CELULA)
+
+
+def test_deploy_infra_vermelho_nao_barra_o_deploy_de_celula():
+    """A direção oposta, medida nos PRs #106 e #502 — a cascata vai nos dois
+    sentidos, e cobrir só uma deixaria metade da doença de pé."""
+    _a_irma_vermelha_nao_barra(DEPLOY_INFRA)
+
+
+def test_a_isencao_das_esteiras_e_estreita_e_nao_um_buraco():
+    """Sozinha, a prova de cima passaria com a regra inteira desligada.
+
+    É o mesmo par que o vigia e a vacina já exigem — e é o teste que impede
+    alguém de "resolver" a cascata apagando `vermelhos_nao_previstos`.
+    """
+    import portao_de_deploy as pd
+
+    runs = [
+        run_(1, DEPLOY_CELULA, conclusao="failure"),
+        run_(2, DEPLOY_INFRA, conclusao="failure"),
+        run_(3, ".github/workflows/inventado.yml", conclusao="failure"),
+    ]
+    resultado = pd.vermelhos_nao_previstos(runs, _conhecidos_de_verdade())
+    assert resultado.estado is pd.Estado.FAIL
+    assert "inventado.yml" in resultado.detalhe
+    assert "deploy-celula" not in resultado.detalhe
+    assert "deploy-infra" not in resultado.detalhe
+
+
+def test_as_esteiras_estao_em_conhecidos_e_NAO_em_exigidos():
+    """A FIAÇÃO — o que os dois testes de cima não enxergam (armadilhas/180)."""
+    fonte = (RAIZ / "ci" / "portao_de_deploy.py").read_text(encoding="utf-8")
+    linha = _linha_dos_conhecidos()
+    for nome in ("DEPLOY_CELULA", "DEPLOY_INFRA"):
+        assert nome in linha, (
+            f"sem `{nome}` em `conhecidos`, a esteira irmã vermelha volta a "
+            "reprovar este deploy — a cascata medida 4 vezes em 30 dias"
+        )
+        assert f"{nome}: (" not in fonte, (
+            f"exigir `{nome}` faria todo deploy esperar por um run da outra "
+            "esteira que, na maioria dos SHAs, nem nasce (26 contra 417 em 30 "
+            "dias) — trocaria um bloqueio raro por um bloqueio diário"
+        )

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-221116-TAR-041-concluida",
+  "tarefa": "TAR-041",
+  "evento": "concluida",
+  "quando": "2026-08-30T22:11:16+00:00",
+  "quem": "sessao-ci-porta22-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/648 — medido: 14 dos 41 deploys vermelhos de 30 dias (13 dos 39 de 7 dias) morreram no timeout da porta 22; a escada interna salvou 1 de 18; a cascata entre esteiras reprovou 4x e as 4 eram esteira irma. A vacina passou a acordar no failure com o portao da 188 junto (antes/depois por assercao: divergiu repetir/0 -> parar/1). Registro 20260830-084.",
+  "verificado_em": "2026-08-30"
+}

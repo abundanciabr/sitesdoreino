@@ -102,12 +102,37 @@ concurrency:
   cancel-in-progress: false
 jobs:
   curar:
-    name: cuidar do deploy cancelado
-    # `cancelled` e só ele: `failure` na `main` já tem dono (o agente que
-    # mergeou, avisado pelo vermelho) e `success` não tem doença. `main` porque
-    # é a única linha que vai para produção.
+    name: cuidar do deploy que não chegou ao ar
+    # ---------------------------------------------------------------------
+    # AS DUAS CONCLUSÕES DOENTES — e por que a segunda entrou (TAR-041)
+    #
+    # Até 30/08/2026 esta linha dizia `cancelled` e só ele, com a justificativa
+    # escrita ao lado: *"`failure` na `main` já tem dono — o agente que mergeou,
+    # avisado pelo vermelho"*. Ela caiu na medição do próprio dia:
+    #
+    #   · 14 dos 41 deploys vermelhos dos últimos 30 dias morreram no timeout da
+    #     porta 22 (`armadilhas/127`), 13 deles nos últimos 7 — e TRÊS num único
+    #     dia (PRs #610, #622 e #635). É a régua que a 127 declara: dois
+    #     episódios em 24h ainda são blip, três viram estrutura.
+    #   · A escada de 3 tentativas DENTRO do deploy quase não salva: das 18
+    #     vezes em que a VPS recusou a 1ª conexão, 17 chegaram à 3ª e as 17
+    #     morreram. A janela ruim dura mais que os 105 s de pausa do workflow.
+    #   · O `gh run rerun --failed` curou em todas. Ou seja: o "dono" existia, e
+    #     o trabalho dele era apertar um botão que uma máquina pode apertar.
+    #
+    # `success` continua fora: não tem doença. `main` porque é a única linha que
+    # vai para produção.
+    #
+    # O QUE PROTEGE O `failure` DE VIRAR ESTRAGO: a vacina não repete nada sem
+    # atravessar o portão da `armadilhas/188` — só repete se o que está
+    # publicado for ancestral do SHA daquele run (repetir só AVANÇA), PARA se as
+    # linhas divergiram (seria rollback silencioso), recusa disparo que não seja
+    # `push`, e conta as tentativas pelo `attempt` do run, que sobrevive ao fim
+    # do processo (`armadilhas/220`). Guardas em `ci/tests/test_rerun_de_deploy.py`.
+    # ---------------------------------------------------------------------
     if: >-
-      github.event.workflow_run.conclusion == 'cancelled' &&
+      (github.event.workflow_run.conclusion == 'cancelled' ||
+       github.event.workflow_run.conclusion == 'failure') &&
       github.event.workflow_run.head_branch == 'main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -164,7 +189,17 @@ jobs:
           python ci/rerun_de_deploy.py --run "$RUN_DOENTE" \
             > saida-da-vacina.txt 2>&1 || CODIGO=$?
           cat saida-da-vacina.txt
-          echo "codigo=$CODIGO" >> "$GITHUB_OUTPUT"
+          # A VACINA ESCREVE `acao`, `codigo` e `alarmar` NELA MESMA, direto no
+          # `$GITHUB_OUTPUT` (TAR-041) — o mesmo canal que `ci/sonda_da_vps.py`
+          # já usa. Esta linha continua existindo como REDE: se o script morrer
+          # antes de escrever (um `kill`, um estouro do runner), o passo
+          # seguinte ainda enxerga um código, e ele é o do processo.
+          if ! grep -q '^codigo=' "$GITHUB_OUTPUT"; then
+            echo "codigo=$CODIGO" >> "$GITHUB_OUTPUT"
+            echo "alarmar=$([ "$CODIGO" -eq 0 ] && echo false || echo true)" \
+              >> "$GITHUB_OUTPUT"
+            echo "(a vacina não escreveu a saída dela — usando o código do processo)"
+          fi
           echo "--- a vacina saiu com $CODIGO ---"
           if [ "$CODIGO" -eq 0 ]; then
             echo "Nada a alarmar: ou o commit já estava no ar, ou o rerun subiu."
@@ -173,9 +208,24 @@ jobs:
       # O SINAL — mesmo desenho do `alarme-main`: uma issue por vez, com label,
       # e comentário nela se já estiver aberta. Reusar em vez de inventar um
       # segundo mecanismo de alarme foi pedido nominalmente pelo despacho.
+      #
+      # A CONDIÇÃO É `alarmar`, NÃO `codigo != 0` (TAR-041). Elas eram a mesma
+      # coisa enquanto o gatilho só via cancelamento: todo cancelado não-curado
+      # é um merge invisível fora do ar. Com o `failure` no gatilho deixam de
+      # ser — 27 dos 41 deploys vermelhos dos últimos 30 dias são defeito de
+      # código, que já está VERMELHO, já tem dono e já acorda o `alarme-main`.
+      # Uma issue por cada um afogaria as 14 que interessam, e um alarme que se
+      # aprende a ignorar deixa de servir justamente no caso em que importa —
+      # é o argumento que este mesmo arquivo já escreve sobre não gritar em
+      # todo cancelamento.
+      #
+      # Quem responde "isto precisa acordar alguém?" é a TABELA DE DECISÃO
+      # (`Decisao.precisa_de_alarme`), onde o motivo mora ao lado do desfecho, e
+      # não uma condição de YAML que ninguém consegue testar. O padrão dela é
+      # ALARMAR: ramo novo nasce barulhento, e o silêncio se escreve à mão.
       # ---------------------------------------------------------------------
       - name: Abrir (ou atualizar) a issue de deploy fora do ar
-        if: steps.vacina.outputs.codigo != '0'
+        if: steps.vacina.outputs.alarmar == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_DOENTE: ${{ github.event.workflow_run.id }}
@@ -185,15 +235,34 @@ jobs:
           URL_DOENTE: ${{ github.event.workflow_run.html_url }}
           URL_DESTA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           CODIGO: ${{ steps.vacina.outputs.codigo }}
+          CONCLUSAO: ${{ github.event.workflow_run.conclusion }}
         shell: bash
         run: |
           set -euo pipefail
           SAIDA="$(head -c 3000 saida-da-vacina.txt 2>/dev/null || echo '(a vacina não deixou saída)')"
+          # A DOENÇA TEM DUAS CARAS DESDE A TAR-041, e a issue precisa dizer QUAL.
+          # Chamar de "cancelado" um run que RODOU e morreu no SSH mandaria quem
+          # abrisse a issue procurar a cadeira musical em vez do timeout de rede.
+          if [ "$CONCLUSAO" = "cancelled" ]; then
+            MANCHETE="Um deploy foi CANCELADO e a vacina não conseguiu curá-lo sozinha."
+            ROTULO_DO_RUN="run cancelado"
+            PORQUE="Isto acontece porque \`deploy-celula\` e \`deploy-infra\` dividem uma única
+          vaga de espera (\`concurrency: deploy\`): quando dois merges chegam perto,
+          o que estava esperando é expulso (\`armadilhas/173\`, \`/183\`, \`/188\`)."
+          else
+            MANCHETE="Um deploy FALHOU e a vacina não conseguiu curá-lo sozinha."
+            ROTULO_DO_RUN="run vermelho"
+            PORQUE="A causa mais comum aqui é o timeout da porta 22 (\`armadilhas/127\`): a
+          rede entre o runner do GitHub e a VPS engasga, o deploy não consegue abrir
+          a conexão e morre — com a VPS viva o tempo todo. Se a vacina não curou, a
+          saída dela abaixo diz por quê, e é sempre uma destas duas: ou repetir faria
+          voltar uma versão mais velha, ou faltou uma medição para decidir."
+          fi
           CORPO="$(cat <<EOF
-          🟠 **Um deploy foi CANCELADO e a vacina não conseguiu curá-lo sozinha.**
+          🟠 **$MANCHETE**
 
           - esteira: \`$ESTEIRA\`
-          - run cancelado: $URL_DOENTE
+          - $ROTULO_DO_RUN: $URL_DOENTE
           - commit: \`$SHA\` — $TITULO_DO_MERGE
           - tentativa de cura: $URL_DESTA (a vacina saiu **$CODIGO**)
 
@@ -203,9 +272,7 @@ jobs:
           ar: o site segue servindo a versão anterior. Mas o que aquele merge
           entregou não chegou ao site, e não vai chegar sozinho.
 
-          Isto acontece porque \`deploy-celula\` e \`deploy-infra\` dividem uma única
-          vaga de espera (\`concurrency: deploy\`): quando dois merges chegam perto,
-          o que estava esperando é expulso (\`armadilhas/173\`, \`/183\`, \`/188\`).
+          $PORQUE
 
           ## Por que a cura automática parou
 
@@ -251,7 +318,7 @@ jobs:
                 --color d93f0b
             fi
             gh issue create \
-              --title "deploy fora do ar: $ESTEIRA cancelado em ${SHA:0:8}" \
+              --title "deploy fora do ar: $ESTEIRA ${CONCLUSAO} em ${SHA:0:8}" \
               --label deploy-fora-do-ar \
               --body "$CORPO"
           fi
