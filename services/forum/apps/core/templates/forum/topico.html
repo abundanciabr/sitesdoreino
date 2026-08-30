@@ -11,15 +11,16 @@
 </p>
 
 {% comment %}
-AS FERRAMENTAS DO ADMINISTRADOR desta conversa (mandato de 30/08/2026). Quem
-decide se aparecem é `pode_moderar` (`apps/core/permissoes.py`), o MESMO cálculo
-que a view de POST usa para aceitar ou recusar. Quem não modera recebe 404 nestas
-rotas: esconder o botão nunca é a proteção.
+AS FERRAMENTAS DA ESCOLA nesta conversa. Mandato de 30/08/2026, e o professor
+entrou nelas por decisão dele no mesmo dia. Quem decide se aparecem é
+`pode_moderar` (`apps/core/permissoes.py`), o MESMO cálculo que a view de POST
+usa para aceitar ou recusar. Quem não modera recebe 404 nestas rotas: esconder o
+botão nunca é a proteção.
 {% endcomment %}
 {% if pode_moderar %}
   <details class="ferramentas" {% if erro_admin %}open{% endif %}>
-    <summary>Ferramentas do administrador</summary>
-    <p class="sub" style="margin:10px 0 0">Só você enxerga esta caixa.</p>
+    <summary>Ferramentas da escola</summary>
+    <p class="sub" style="margin:10px 0 0">Só a escola enxerga esta caixa: você e os professores.</p>
     {% if erro_admin %}<p class="erro">{{ erro_admin }}</p>{% endif %}
 
     <form class="escrever" method="post" action="{% url 'moderar_topico' topico.pk %}">

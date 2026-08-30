@@ -36,15 +36,16 @@
 {% endif %}
 
 {% comment %}
-AS FERRAMENTAS DO ADMINISTRADOR (mandato de 30/08/2026). Quem decide se elas
-aparecem é `pode_moderar`, em `apps/core/permissoes.py` — o MESMO cálculo que a
-view de POST usa para aceitar ou recusar. Esconder o botão nunca é a proteção:
-a proteção é o 404 do outro lado.
+AS FERRAMENTAS DA ESCOLA. Mandato de 30/08/2026, e o professor entrou nelas por
+decisão dele no mesmo dia. Quem decide se elas aparecem é `pode_moderar`, em
+`apps/core/permissoes.py` — o MESMO cálculo que a view de POST usa para aceitar
+ou recusar. Esconder o botão nunca é a proteção: a proteção é o 404 do outro
+lado.
 {% endcomment %}
 {% if pode_moderar %}
   <details class="ferramentas" {% if erro_admin %}open{% endif %}>
-    <summary>Ferramentas do administrador</summary>
-    <p class="sub" style="margin:10px 0 0">Só você enxerga esta caixa.</p>
+    <summary>Ferramentas da escola</summary>
+    <p class="sub" style="margin:10px 0 0">Só a escola enxerga esta caixa: você e os professores.</p>
     {% if erro_admin %}<p class="erro">{{ erro_admin }}</p>{% endif %}
     <form class="escrever" method="post" action="{% url 'criar_area' %}">
       {% csrf_token %}
