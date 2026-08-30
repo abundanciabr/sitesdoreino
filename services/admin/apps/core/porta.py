@@ -26,7 +26,10 @@ esconde.
 casa, `/admin` não existe. É decisão registrada na lei (§2), não improviso.
 """
 
+import base64
+import hashlib
 import logging
+import re
 
 from django.conf import settings
 from django.db import DatabaseError
@@ -39,6 +42,9 @@ from .clients import IdentidadeClient, IdentidadeIndisponivel
 from .models import Administrador
 
 logger = logging.getLogger("admin.porta")
+
+# O bloco `<style>` embutido do `admin/base.html`. Ver `_hashes_de_estilo`.
+_ESTILO_EMBUTIDO = re.compile(rb"<style[^>]*>(.*?)</style>", re.DOTALL | re.IGNORECASE)
 
 # Os únicos caminhos que respondem sem crachá. É `frozenset` e é conferido por
 # igualdade EXATA em `tests/test_inv_porta_fail_closed.py`: rota nova não
@@ -251,12 +257,63 @@ class PortaAdministrativa:
         O resto é o que fecha a porta do lado do navegador: sem `script-src`
         de terceiro, sem `object-src`, sem `<base>` sequestrado, e formulário
         que só posta para a própria origem.
+
+        **`style-src` leva o HASH do estilo da casa** — ver `_hashes_de_estilo`.
         """
         resposta.setdefault(
             "Content-Security-Policy",
-            "default-src 'self'; script-src 'self'; style-src 'self'; "
+            "default-src 'self'; script-src 'self'; "
+            f"style-src 'self'{self._hashes_de_estilo(resposta)}; "
             "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
             "form-action 'self'; frame-ancestors 'self'",
         )
         resposta.setdefault("Referrer-Policy", "same-origin")
         return resposta
+
+    @staticmethod
+    def _hashes_de_estilo(resposta) -> str:
+        """O `sha256` de cada `<style>` embutido desta resposta, para o CSP.
+
+        **O buraco que isto fecha, medido em produção em 30/08/2026.** O estilo
+        desta área mora embutido no `<head>` (`admin/base.html` explica por quê:
+        célula sob `SCRIPT_NAME` que serve estático por tag monta endereço da
+        célula errada — `armadilhas/083` e `/102`). E a política que este mesmo
+        método mandava dizia `style-src 'self'`, que **proíbe estilo embutido**.
+        Resultado: TODA tela desta área — visão geral, escola, alunos, Caixa,
+        documentos, o mapa do site — chegava ao navegador do dono **sem estilo
+        nenhum**. As duas exceções eram `/admin/painel/` e a aba "Os robôs",
+        que mandam CSP própria e por isso nunca sofreram.
+
+        Ninguém viu porque nada media: o teste do Django não executa CSP, e o
+        `curl` baixa o HTML inteiro (com o `<style>` lá dentro) e não o aplica.
+        A prova veio de fora, de um Chrome de verdade batendo em
+        `https://meshcraft.top/docs/`:
+
+            "Applying inline style violates the following Content Security
+             Policy directive 'style-src 'self''. ... The action has been
+             blocked."
+
+        **Hash, e nunca `'unsafe-inline'`** — o mesmo desenho de `painel.py`
+        para o script embutido, e pelo mesmo motivo: `'unsafe-inline'` liberaria
+        QUALQUER estilo injetado, inclusive um vindo de conteúdo de terceiro. O
+        hash libera exatamente estes bytes. E, por ser calculado da resposta
+        servida, ninguém precisa lembrar de atualizá-lo quando o CSS mudar —
+        que é a diferença entre um mecanismo e uma promessa.
+
+        Resposta sem corpo (302, 404 de redirecionamento) simplesmente não tem
+        `<style>`: a política sai igual à de antes, sem hash nenhum.
+        """
+        if "text/html" not in resposta.get("Content-Type", ""):
+            return ""
+        # `.content` não existe em resposta em streaming — e ali não há o que
+        # hashear de qualquer forma.
+        corpo = getattr(resposta, "content", b"")
+        if not corpo:
+            return ""
+        hashes = {
+            "'sha256-"
+            + base64.b64encode(hashlib.sha256(m.group(1)).digest()).decode()
+            + "'"
+            for m in _ESTILO_EMBUTIDO.finditer(corpo)
+        }
+        return "".join(f" {h}" for h in sorted(hashes))

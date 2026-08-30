@@ -181,6 +181,18 @@
       "detector": null,
       "dono": "ci/mergear.py",
       "tem_sinal": true
+    },
+    {
+      "armadilha": "199",
+      "arquivo": "armadilhas/199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md",
+      "estado": "guardada",
+      "degrau": 2,
+      "confianca": "alta",
+      "custo_por_queda": "alto",
+      "tipo": "CI",
+      "detector": null,
+      "dono": "services/admin/tests/test_estilo_chega_ao_navegador.py",
+      "tem_sinal": true
     }
   ]
 }
