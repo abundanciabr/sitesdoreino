@@ -789,3 +789,60 @@ def test_o_arquivo_do_workflow_e_descoberto_pelo_nome_de_dentro():
     assert vacina.arquivo_do_workflow("deploy-celula", raiz).name == "deploy-celula.yml"
     with pytest.raises(vacina.ErroDeMedicao):
         vacina.arquivo_do_workflow("workflow-que-nao-existe", raiz)
+
+
+# ------------- o FIO entre a tabela e o workflow (TAR-041) ------------------
+#
+# O controle de ruído inteiro pende desta função: se ela escrever `alarmar`
+# errado, a tabela decide uma coisa e a issue nasce por outra — e ninguém
+# descobre, porque os dois lados continuam parecendo certos separadamente.
+
+
+def _saida_escrita(decisao, tmp_path, monkeypatch) -> dict:
+    arquivo = tmp_path / "saida.txt"
+    monkeypatch.setenv("GITHUB_OUTPUT", str(arquivo))
+    vacina.escrever_saida_do_passo(decisao)
+    linhas = arquivo.read_text(encoding="utf-8").splitlines()
+    return dict(linha.split("=", 1) for linha in linhas if "=" in linha)
+
+
+def test_o_defeito_de_codigo_sai_FAIL_mas_alarmar_FALSE(tmp_path, monkeypatch):
+    """As duas perguntas na mesma saída, e elas discordam de propósito."""
+    decisao = vacina.decidir(_fatos(tem_timeout_ssh=False))
+    saida = _saida_escrita(decisao, tmp_path, monkeypatch)
+    assert saida["codigo"] == "1", "o veredito continua sendo FAIL: nada foi curado"
+    assert saida["alarmar"] == "false", (
+        "27 dos 41 vermelhos de 30 dias caem aqui; uma issue por cada um "
+        "afogaria as 14 que interessam"
+    )
+    assert saida["acao"] == "parar"
+
+
+def test_a_017_sai_FAIL_e_alarmar_TRUE(tmp_path, monkeypatch):
+    decisao = vacina.decidir(_timeout(porta22_viva=False))
+    saida = _saida_escrita(decisao, tmp_path, monkeypatch)
+    assert saida["codigo"] == "1"
+    assert saida["alarmar"] == "true", "configuração da VPS é território do dono"
+
+
+def test_o_sucesso_nunca_alarma(tmp_path, monkeypatch):
+    saida = _saida_escrita(
+        vacina.decidir(_fatos(conclusion="success")), tmp_path, monkeypatch
+    )
+    assert saida["codigo"] == "0" and saida["alarmar"] == "false"
+
+
+def test_o_ERROR_sempre_alarma_mesmo_com_precisa_de_alarme_no_padrao(
+    tmp_path, monkeypatch
+):
+    """'Não medi' é o desfecho em que ninguém mais vai olhar (INV-CI01)."""
+    saida = _saida_escrita(
+        vacina.decidir(_timeout(porta22_viva=None)), tmp_path, monkeypatch
+    )
+    assert saida["codigo"] == "2" and saida["alarmar"] == "true"
+
+
+def test_fora_do_actions_a_funcao_nao_estoura(monkeypatch):
+    """A vacina precisa continuar rodando na mão, do PC, sem GITHUB_OUTPUT."""
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    vacina.escrever_saida_do_passo(vacina.Decisao("nada", 0, "x"))
