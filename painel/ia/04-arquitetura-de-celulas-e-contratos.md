@@ -45,31 +45,140 @@ Convenções mecânicas que atravessam as 13 células:
 | `alunos` | `bridge`, `core`, `eventos`, `matriculas` | ✓ | ✓ | ✓ |
 | `catalogo` | `core`, `ofertas`, `produtos`, `sites` | ✓ | ✓ | ✓ |
 | `checkout` | `core`, `pedidos` | ✓ | ✓ | ✓ |
-| `forum` | `core` apenas — nasce em esqueleto (modelo de dados no PR 2) | — (ainda não) | ✓ | — (nasce sem contrato, por lei de gênese; vira `required` no PR 3) |
+| `forum` | `core`, `forum` | ✓ | ✓ | ✓ (3 operações; nasceu sem contrato por lei de gênese e virou `required` depois) |
 | `funil` | `core`, `i18n` | ✓ | ✓ | — (páginas HTML, sem API JSON) |
 | `identidade` | `core`, `identidade` | ✓ | ✓ | ✓ |
 | `leads` | `core` apenas | ✓ | ✓ | ✓ |
 | `mensageria` | `core`, `eventos` | ✓ | ✓ | — (esqueleto: só `/healthz`) |
-| `notificacoes` | `core`, `eventos`, `notificacoes` | ✓ | ✓ | — (nasce sem contrato, por lei de gênese) |
+| `notificacoes` | `core`, `eventos`, `notificacoes` | ✓ | ✓ | ✓ (4 operações; nasceu sem contrato por lei de gênese e virou `required` depois) |
 | `pagamentos` | sem `apps/`: `core`, `methods/{pix,card}`, `providers/mercadopago`, `api` | ✓ | ✓ | ✓ |
 | `quiz` | `core`, `quiz` | ✓ | ✓ | — (só páginas HTML) |
 | `sugestoes` | `core`, `sugestoes` | ✓ | ✓ | ✓ (1 operação) |
 
 **Todas as 13 células têm `LICOES.md` e constituição própria** — não é um
 subconjunto (um levantamento anterior a este mapa presumia só 8; foi
-corrigido nesta pesquisa). 7 células têm contrato OpenAPI `required`
-(alunos, catalogo, checkout, leads, pagamentos, identidade, sugestoes); as
-outras 5 são `not-applicable` por motivo escrito em
-`ci/manifesto-de-contratos.json`.
+corrigido nesta pesquisa). **9** células têm contrato OpenAPI `required`
+(alunos, catalogo, checkout, forum, identidade, leads, notificacoes,
+pagamentos, sugestoes); as outras **4** (admin, funil, mensageria, quiz) são
+`not-applicable` por motivo escrito em `ci/manifesto-de-contratos.json`
+— recontado em 30/08/2026, contra o manifesto e o disco. (A contagem
+anterior deste mapa, "7 required + 5 not-applicable", somava 12 num projeto
+de 13 células: sinal exato do padrão 2 da retrospectiva — número escrito à
+mão em documento que nada recalcula. Recontar é sempre mais confiável que
+confiar na linha acima.)
+
+> **Uma 14ª célula está nascendo:** `gamificacao`, aprovada pelo mantenedor
+> em 30/08/2026 e ainda ausente de `services/` no momento desta escrita.
+> Ela tem seção própria logo abaixo — leia-a antes de propor qualquer
+> mecânica de ponto, selo, ranking ou recompensa em qualquer outra célula.
 
 **Nota de método para medir tamanho de célula:** use `git ls-files
 services/<celula> | wc -l`, nunca `find`. O caso `services/pagamentos`
 chegou a mostrar 2073 arquivos num `find` cru — investigado a fundo, **96%
 era `.mypy_cache/`** de uma sessão anterior (gitignored, não existe em clone
 limpo). Contado certo (`git ls-files`), `pagamentos` tem 48 arquivos — menor
-que `funil` (50) e pouco maior que `checkout` (44), apesar de ser o domínio
-mais crítico. Por código real versionado, quem lidera é `sugestoes` (97
-arquivos), de longe a célula mais recente e mais extensa.
+que `funil` (54) e pouco maior que `checkout` (44), apesar de ser o domínio
+mais crítico. Por código real versionado, quem lidera é `sugestoes` (114
+arquivos), de longe a célula mais extensa; a mais recente das 13 é `forum`
+(51 arquivos). *Contagens de 30/08/2026 — recontar, não confiar.*
+
+## A 14ª célula, ainda nascendo: `gamificacao`
+
+**Estado:** lei aprovada pelo mantenedor em 30/08/2026 (Sessão A de
+arquitetura + aprovação da lei; registros `20260830-061` e `20260830-064` no
+livro); a pasta `services/gamificacao` **ainda não existe** no momento desta
+escrita. Esta seção existe para que a próxima IA não desenhe ponto, selo,
+ranking ou recompensa dentro de outra célula sem saber que já há dona para
+isso. **Fonte de verdade:**
+`docs/decisoes/PLANO-CELULA-GAMIFICACAO.md` (a engenharia, com a escada de
+entrega no §6) e `docs/consultorias/gamificacao/VEREDITO.md` (a
+rastreabilidade de cada decisão, vinda de 6 consultorias + 5 auditorias).
+O resumo abaixo é curado: divergiu, **o original vence**. E quem responde
+"isto já foi feito?" continua sendo só o livro (`painel/registros/`) e a
+fila (`fila/`) — este mapa não é placar.
+
+**O que ela é.** Uma célula consumidora de fatos por evento e provedora de
+leitura por HTTP. Ela transforma o que a plataforma **já afirma** (quiz
+completado, sugestão criada/votada, e — com eventos novos — atividade no
+fórum) em XP, níveis, Sequência semanal, Forja, missões, medalhas, Marcos de
+carreira, Cristais e cosméticos. A hierarquia que decide todo conflito de
+desenho é *realidade > criação > maestria > comunidade > XP* — e o objetivo
+declarado da gamificação é **tornar-se progressivamente menos necessária**.
+
+**Por que célula própria** (as alternativas foram consideradas e recusadas):
+calcular XP dentro de `forum`/`sugestoes` violaria a Lei 3 e o §4.7 da lei do
+fórum, e espalharia a economia por N células; um plugin/SaaS de gamificação
+poria dado de **menores** em terceiro (Lei 2). Ela nasce com banco + role
+próprios, `site_id` em toda entidade (Lei 9/INV-P11), **sem sessão própria**
+(INV-P12), e falando com o resto só por contrato congelado + eventos
+versionados. A previsão de uma célula assim já estava escrita em três
+documentos anteriores — inclusive no `AGENTS.sugestoes.md`, com a frase
+"nunca calcula XP".
+
+**O que ela consome** (ninguém emite nada novo *para* ela em v1; ela só ouve
+o que já existe):
+
+- `quiz.completado.v1` — XP só na primeira aprovação de cada quiz.
+- `sugestao.criada.v1`, `sugestao.voto-adicionado.v1` /
+  `voto-removido.v1` (estorno espelhado do crédito),
+  `sugestao.status-alterado.v2`.
+- **Eventos de pagamento NÃO são consumidos** — a diretiva "pagamento por
+  último" vale aqui também; o selo de Fundador entra por backfill.
+- **A congelar em Rito de Contrato** (`RITOS.md` §3, uma sessão só):
+  `forum.topico-criado.v1`, `forum.mensagem-criada.v1`,
+  `forum.mensagem-removida.v1` (estorno) e `forum.resposta-aceita.v1` — este
+  último é o evento mais valioso do desenho, porque é validação por gente de
+  verdade. Mais um aditivo de assuntos em `notificacao.devida.v1`.
+- **Tomada futura**: `aula.concluida.v1`, quando a trilha de aulas existir.
+- **Não nasce evento de presença**, e **login vale 0 XP, sempre**: "dia
+  ativo" deriva do próprio ledger, não de um evento de comparecimento.
+
+**O que ela oferece** (leitura por HTTP; contrato
+`contracts/gamificacao.openapi.yaml`, ainda por escrever): `getPublicProfiles`
+— lote de até 50 ids, devolvendo `id → {nivel, titulo_slug, moldura_slug}`,
+para o fórum decorar N autores com **uma** chamada; id desconhecido é
+omitido, e nunca sai e-mail nem XP bruto. E `getMyStatus`, o painel do
+próprio aluno. **Todo consumidor liga com cache de 5 min e falha ABERTA**: se
+a gamificação cair, a página perde o selo, nunca quebra.
+
+**Superfície pública:** `/conquistas` (host-bound em `meshcraft.top`), com
+`/medalhas`, `/jornada`, `/loja` e `/estudio`. O prefixo tem 10 letras de
+propósito — um prefixo de 2 letras como `xp` seria lido como código de
+idioma pelo guarda de locale (armadilha 089). A vitrine pública do aluno é
+**opt-in** e mora em `meshcraft.top/estudio/apelido`: só apelido, obras
+aprovadas e marcos escolhidos, `noindex`.
+
+**O que ela deliberadamente NÃO faz** — esta lista é desenho, não backlog:
+
+| Não faz | Por quê |
+|---|---|
+| Não é fonte de verdade sobre **pessoas, matrículas ou conteúdo** | Espelha por evento; a verdade continua em `identidade`, `alunos` e `catalogo` (mesmo padrão do espelho `Pessoa` do fórum) |
+| **Não calcula ponto dentro de outra célula** | Lei 3; e "pontos calculados dentro de outra célula" é **critério de morte** declarado desta célula |
+| Não é reputação **do fórum** | O fórum só (a) afirma fatos por evento e (b) exibe um selo vindo por HTTP com falha aberta — o critério de morte do fórum segue intacto |
+| Não é nota pedagógica | Avaliação de aprendizagem não é o mesmo objeto que XP |
+| Não é economia comprável | **Nada por dinheiro real**: Cristais não se compram nem se transferem |
+| Não dá vantagem por cosmético | **Cosmético é só estética** — nunca vantagem em XP, ranking ou visibilidade |
+| Não tranca aula atrás de jogo | **Conteúdo educacional jamais** atrás de XP, nível ou Cristal |
+| Não publica ranking global | Ranking global público/indexável é critério de morte |
+| Não vira motor de regras genérico/DSL | Também critério de morte; e ajustar a economia **não pode** exigir PR de código |
+
+Os três invariantes em **negrito** acima não são promessa de documento:
+nascem como **testes no CI da própria célula** já no PR dos modelos, provados
+por sabotagem (padrão 2 da retrospectiva — garantia sem mecanismo apodrece).
+
+**Vocabulário já fechado pelo mantenedor — não reabrir:** as ligas são
+**Bronze, Prata, Ouro e Platina** (*Diamante está proibido*: colidiria com os
+Cristais, que são a moeda); o medidor de esforço por desafio chama-se
+**Forja**, e vira selo na própria obra ("forjada em 14 tentativas"); a
+vitrine pública mora em **`meshcraft.top/estudio/apelido`**. Onde o plano de
+30/08/2026 ainda escrever "Têmpera", **leia Forja** — o plano foi escrito
+antes da Sessão A e o registro `20260830-061` é o mais novo.
+
+**Quando ela existir de verdade**, a linha dela entra na tabela das células
+acima, junto com `celulas.yml`, `ci/manifesto-de-contratos.json` e
+`constituicoes/AGENTS.gamificacao.md` — e aí o teste-guarda
+`ci/tests/test_painel_ia_atualizado.py` passa a **exigir** que este mapa a
+cite, em vez de apenas aceitar que ele a antecipe.
 
 ## O mecanismo de contratos: OpenAPI + eventos, e o freeze que os protege
 
