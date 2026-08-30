@@ -36,6 +36,30 @@ removido, aquilo seria 404. O mesmo corte que entrega o `healthz` entrega
 E o Traefik **não** remove o prefixo (é decisão da casa, `armadilhas/029`), o que
 fecha a conta: o caminho chega inteiro, e quem o corta é o Django.
 
+## A medição que decide, e ela cabe numa linha
+
+**`401` e `404` respondem a perguntas diferentes, e é essa diferença que mede.**
+Um `404` diria *"esta rota não existe pela borda"*; um `401` diz *"existe, e foi
+o Bearer que te barrou"*.
+
+Medido na internet pública em 30/08/2026, logo após o deploy da porta do `forum`:
+
+```
+https://meshcraft.top/forum/interno/areas             -> 401
+https://meshcraft.top/forum/interno/resumo            -> 401
+https://meshcraft.top/forum/interno/topicos/recentes  -> 401
+com `Authorization: Bearer <inventado>`               -> 401
+https://meshcraft.top/forum/                          -> 200
+```
+
+As três operações estão publicadas e fechadas. Se alguém um dia remover o
+`auth=` do `NinjaAPI`, elas passam a `200` **para a internet inteira** — sem
+mudar uma linha de `infra/`, e sem nada no roteador para segurar. É por isso que
+o teste de `401` é o guarda, e não o Traefik.
+
+Para a célula sem `SCRIPT_NAME` a mesma medida dá `404`, e aí sim a topologia
+está ajudando.
+
 ## Por que isto engana com facilidade
 
 1. **O teste local não reproduz.** O `Client()` de teste do Django não aplica o
