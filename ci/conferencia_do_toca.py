@@ -226,6 +226,39 @@ def areas_declaradas(toca: list[str], mapa: dict[str, mapa_de_celulas.Celula]) -
     return areas
 
 
+def areas_criadas(tarefa: dict) -> set[str]:
+    """As áreas que a tarefa declara, por escrito, que vai TRAZER À EXISTÊNCIA.
+
+    Havia dois motivos conhecidos para um `toca` não apontar para pasta que
+    existe: vocabulário errado, ou pasta renomeada sem avisar a fila. Existe um
+    terceiro, e ele é legítimo: a tarefa de GÊNESE, que é justamente quem cria
+    a pasta. Sem uma forma de dizer isso, nenhuma célula nova pode nascer pela
+    fila — medido em 30/08/2026, quando a tarefa da gênese da gamificação
+    reprovou o guarda por declarar a célula que ela mesma inaugura.
+
+    A declaração é EXPLÍCITA de propósito, e é isso que impede o terceiro caso
+    de virar desculpa para os dois primeiros: `toca` com erro de digitação
+    continua reprovando, porque ninguém escreveu no arquivo da tarefa que ia
+    criar aquilo. Só passa o que a tarefa assumiu.
+
+    O vocabulário é o MESMO do `toca` (`gamificacao`, e não
+    `services/gamificacao`): a tarefa de gênese escreve `toca: [gamificacao]`
+    e `cria: [gamificacao]`, que se lê "eu mexo nesta célula, e sou eu quem a
+    inaugura". Isto vale só na janela entre a tarefa nascer e a célula existir;
+    depois disso a pasta está lá e a dispensa deixa de ser usada sozinha.
+
+    Isto NÃO afrouxa a conferência do diff: lá a célula já está declarada em
+    `celulas.yml` pelo próprio PR da gênese, então o `toca` e o diff se
+    encontram sem precisar de dispensa nenhuma.
+    """
+    areas: set[str] = set()
+    for termo in tarefa.get("cria") or []:
+        limpo = str(termo).strip().replace("\\", "/").strip("/")
+        if limpo:
+            areas.add(limpo)
+    return areas
+
+
 def e_de_rito(caminho: str) -> str:
     """A justificativa do rito que dispensa este caminho, ou "" se não há uma."""
     partes = caminho.strip().replace("\\", "/").strip("/").split("/")

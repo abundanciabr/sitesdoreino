@@ -76,6 +76,34 @@ A cura tem duas peças, com autoridade deliberadamente diferente:
 - **concluída / cancelada** — evento terminal. Depois do fim, silêncio:
   evento após o fim reprova na muralha.
 
+## A tarefa que CRIA o que declara: o campo `cria` (desde 30/08/2026)
+
+Um guarda da muralha exige que todo `toca` aponte para pasta que existe, e ele
+tem razão em dois casos: vocabulário errado, e pasta renomeada sem avisar a
+fila. Existe um terceiro, legítimo, que ele não sabia distinguir: **a tarefa de
+GÊNESE, que é justamente quem cria a pasta.**
+
+Medido em 30/08/2026, na hora de enfileirar a gênese da célula da gamificação:
+a tarefa reprovou a muralha por declarar `toca: [gamificacao]`, a célula que ela
+mesma inaugura. Sem uma saída, **nenhuma célula nova poderia nascer pela fila**.
+
+A saída é escrita, nunca implícita:
+
+```
+python ci/fila.py criar --titulo "..." --toca gamificacao --cria gamificacao ...
+```
+
+`cria` usa o MESMO vocabulário do `toca`, e se lê "eu mexo nesta célula, e sou
+eu quem a inaugura". Exigir a declaração é o que impede a porta de absolver os
+dois primeiros casos: `toca` com erro de digitação continua reprovando, porque
+ninguém escreveu no arquivo da tarefa que ia criar aquilo.
+
+A dispensa vale só na janela entre a tarefa nascer e a célula existir. Depois
+disso a pasta está lá, e a conferência do diff nem precisa dela: o PR da gênese
+declara a célula em `celulas.yml`, então o `toca` e o diff se encontram
+sozinhos. Quem lê o campo: `ci/conferencia_do_toca.py::areas_criadas`, uma
+definição só.
+
 ## O `toca` é conferido contra o diff — em SOMBRA (desde 30/08/2026, TAR-015)
 
 O campo `toca` é o único que autoriza duas tarefas a rodarem em paralelo, e até
