@@ -287,12 +287,94 @@ def test_a_reversao_usa_o_token_da_pista():
 @pytest.mark.parametrize(
     "guarda,motivo",
     [
+        ("mira_do_alarme.py", "não sei quem quebrou: não sorteio a vítima"),
         ("-lt 3", "commit que não é merge: `-m 1` seria erro"),
         ("Revert*", "commit que JÁ é revert: sem isto, laço de reverts"),
         ("--head \"$RAMO\"", "PR de reversão já aberto para o mesmo commit"),
         ("git revert --abort", "revert com conflito: não se força"),
     ],
 )
-def test_as_quatro_recusas_existem(guarda: str, motivo: str):
+def test_as_cinco_recusas_existem(guarda: str, motivo: str):
     """Cada uma é um jeito de a automação estragar o que tentava consertar."""
     assert guarda in _script_do_reverter(), f"sumiu a recusa — {motivo}"
+
+
+# ---------------------------------------------------------------------------
+# A MIRA E A PERMISSÃO (30/08/2026, TAR-025)
+#
+# As duas descobertas do mesmo incidente, e as duas eram garantias sem
+# mecanismo: o socorro mirava no commit errado, e não tinha permissão para
+# agir. A segunda escondia a primeira — enquanto o push falhava com 403,
+# ninguém via que o alvo estava errado.
+# ---------------------------------------------------------------------------
+
+
+def test_a_reversao_mira_o_culpado_medido_e_nunca_o_commit_da_vez():
+    """O defeito, em forma executável: reverter `github.sha` acusa o inocente.
+
+    Medido em 30/08/2026: oito execuções vermelhas seguidas, o vermelho
+    começando em `caaeb2e8` (PR #580). As outras sete eram merges sem relação
+    nenhuma — e o job preparou a reversão DELES. Na execução `33311082356` o
+    commit de reversão já estava na árvore, apagando a escrita do fórum
+    (`15 files changed, 90 insertions(+), 1251 deletions(-)`), quando o push
+    bateu no 403.
+    """
+    script = _script_do_reverter()
+    assert 'git revert -m 1 --no-edit "$ALVO"' in script, (
+        "a reversão voltou a apontar para outra coisa que não o culpado MEDIDO "
+        "por ci/mira_do_alarme.py"
+    )
+    assert 'git revert -m 1 --no-edit "$SHA"' not in script, (
+        "a reversão voltou a reverter o commit do push da vez. Numa `main` que "
+        "já estava vermelha isso acusa o inocente seguinte — foi o defeito de "
+        "30/08/2026, e ele quase apagou a escrita do fórum."
+    )
+    assert 'RAMO="reverter/${ALVO:0:12}"' in script, (
+        "o ramo da reversão precisa ser nomeado pelo CULPADO. É o nome que faz "
+        "a recusa 'já existe PR de reversão' valer: com o nome vindo do commit "
+        "da vez, uma sequência de oito vermelhos abriria oito PRs."
+    )
+
+
+def test_a_reversao_tem_permissao_de_empurrar_o_ramo():
+    """A cura automática nunca funcionou uma vez sequer, e ninguém sabia.
+
+    O `PISTA_TOKEN` vai para o `gh`; quem empurra o ramo é o `git`, com a
+    credencial que o `actions/checkout` guardou — a do `GITHUB_TOKEN`, que
+    neste job era `read`:
+
+        remote: Permission to abundanciabr/sitesdoreino.git denied to github-actions[bot].
+        fatal: ... The requested URL returned error: 403     (exit 128)
+
+    É a Classe "garantia sem mecanismo" da RETROSPECTIVA-FASE-D §2 aplicada ao
+    próprio socorro.
+    """
+    assert _job_reverter().get("permissions", {}).get("contents") == "write", (
+        "o job `reverter` voltou a `contents: read`. Ele consegue montar o "
+        "commit de reversão e não consegue empurrá-lo: o job morre em 403 e a "
+        "`main` fica vermelha com a impressão de que algo tentou consertar."
+    )
+
+
+def test_o_pouso_automatico_so_vale_quando_o_culpado_e_a_ponta():
+    """Reverter a ponta é desfazer a última coisa; no meio da história é cirurgia.
+
+    A distinção é medida (`PONTA=sim|nao` sai da mira) e não estimada. Sem ela,
+    a etiqueta `pousar` faria a pista mergear sozinha uma reversão de um commit
+    que outros merges já usaram como base.
+    """
+    script = _script_do_reverter()
+    assert 'PONTA=' in script, "sumiu a leitura da ponta que a mira devolve"
+    assert '"$PONTA" = "sim"' in script, (
+        "o pouso automático deixou de ser condicional à ponta: toda reversão "
+        "voltaria a ser mergeada sozinha, inclusive as cirúrgicas"
+    )
+
+
+def test_a_mira_do_socorro_existe_como_arquivo():
+    """Portão ausente não é portão satisfeito — nem quando é um script Python."""
+    assert (CI / "mira_do_alarme.py").is_file(), (
+        "ci/mira_do_alarme.py sumiu, e o alarme-main o invoca. Sem ele o job "
+        "recusa (fail-closed, o desfecho certo), mas a cura automática deixa "
+        "de existir sem ninguém dizer isso em voz alta."
+    )

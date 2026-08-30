@@ -44,6 +44,80 @@ jobs:
         run: python ci/ci.py --apenas testador
 
   # ===========================================================================
+  # O ESPELHO DA MAIN — o que vai rodar DEPOIS do merge, rodando ANTES dele.
+  #
+  # O BURACO, medido em 30/08/2026 (TAR-025). É tentador dizer que a suíte
+  # `ci/tests/` "não roda em PR": ela roda, no step acima, e é required check.
+  # O defeito é mais fino e por isso passou: **o job `muralhas` mede uma árvore
+  # que ele mesmo acabou de modificar.** `ci/ci.py --apenas muralhas` chama
+  # `ci/muralha-do-indice.sh`, que MATERIALIZA `armadilhas/INDICE.md`,
+  # `GUARDAS.json` e `SINAIS.json`; o step seguinte roda a suíte com os três já
+  # no disco. O `alarme-main`, depois do merge, roda a MESMA suíte num checkout
+  # cru, onde eles não existem. Mesma suíte, dois mundos — e o mundo do PR é
+  # sempre o mais rico. Nenhum check de PR conseguia, por construção, ver esta
+  # classe de quebra.
+  #
+  # A MEDIÇÃO, na árvore exata do commit `caaeb2e8` (PR #580, o que apagou a
+  # `main`), com `pytest ci/tests`:
+  #
+  #     árvore crua, como o runner do alarme a viu ......... 29 reprovas
+  #     depois de a muralha materializar de passagem ....... 24 reprovas
+  #
+  # As 5 de diferença são exatamente as que derrubaram a `main` — entre elas
+  # `test_o_sinal_do_repositorio_real_e_lido_pelo_sino`, que morria em
+  # `JSONDecodeError: Expecting value: line 1 column 1 (char 0)`. (As 24 comuns
+  # vêm da árvore sintética da reprodução — um `git archive` + `git init`, sem
+  # `origin` e sem os gerados do painel — e são idênticas nos dois lados, logo
+  # se cancelam. O número que decide é a DIFERENÇA. Na árvore de verdade, com o
+  # conserto, a suíte fecha em 0 reprovas.)
+  #
+  # A CURA: este job. Ele é o `guardas-do-repositorio` do `alarme-main.yml`
+  # copiado passo a passo, num checkout limpo, rodando no evento
+  # `pull_request`. O que ele mede é literalmente "como a `main` vai ficar" —
+  # RETROSPECTIVA-FASE-D §3, a prova vem de fora. E a cópia não se degrada em
+  # silêncio: `ci/tests/test_espelho_do_alarme_em_pr.py` compara os dois jobs
+  # passo a passo e REPROVA se alguém acrescentar um step lá e esquecer aqui.
+  #
+  # POR QUE UM JOB SEPARADO, e não reordenar os steps do `muralhas`: (a) rodar
+  # a suíte antes da muralha consertaria este caso e deixaria a garantia
+  # dependendo de uma ORDEM que ninguém enxerga no diff; (b) o `muralhas` é
+  # required check no conjunto de regras da `main` — tirar a suíte de dentro
+  # dele enfraqueceria o único caminho que o botão do site respeita. Aqui as
+  # duas medições coexistem porque são medições DIFERENTES.
+  #
+  # CUSTO, medido no run 33315506488: o job `muralhas` leva 71 s (59 s só de
+  # suíte) e o `painel-no-navegador`, em paralelo, 49 s. Este espelho roda em
+  # paralelo com os dois e fica na mesma faixa — o relógio do PR não muda.
+  # ===========================================================================
+  espelho-da-main:
+    name: espelho-da-main
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependências dos portões
+        run: python -m pip install --quiet pytest pyyaml
+      - name: Muralha repo-wide — guarda de segredos (INV-P8)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -f ci/guarda-de-segredos.sh ]; then
+            echo "❌ ERROR: ci/guarda-de-segredos.sh não existe."
+            echo "   Portão ausente não é portão satisfeito. [INV-CI01]"
+            exit 2
+          fi
+          # O script já separa os três estados: 0 OK · 1 segredo achado (FAIL) ·
+          # 2 `git grep` não conseguiu varrer (ERROR). `set -e` propaga o exit
+          # tal e qual, para o log distinguir "achei" de "não consegui olhar".
+          bash ci/guarda-de-segredos.sh
+      - name: Testar o testador
+        run: python ci/ci.py --apenas testador
+
+  # ===========================================================================
   # O PAINEL NUM NAVEGADOR DE VERDADE.
   #
   # Job SEPARADO, e de propósito: ele instala um Chromium e leva minutos, então
