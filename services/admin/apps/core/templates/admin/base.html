@@ -315,6 +315,52 @@ primeira versão deste arquivo, e o teste pegou.
     .luz.caida { color: var(--vermelho); border-color: var(--vermelho); }
     .luz.caida::before { background: var(--vermelho); }
 
+    /* --- o que estava escrito NA MARCAÇÃO até 30/08/2026 -------------------
+       Atributo `style="..."` é estilo embutido, e a política de segurança desta
+       área o BLOQUEIA — a folha volta por hash (`armadilhas/199`), mas para
+       atributo o padrão exigiria `'unsafe-hashes'` mais o hash de cada valor,
+       que não escala. Ou seja: cada um destes ajustes simplesmente não chegava
+       ao navegador do dono, e só aqui eles voltam a existir.
+
+       Os valores são os MESMOS de antes, um por um — nada foi arredondado nem
+       unificado. Uniformizar espaçamento é decisão de desenho, e este PR só
+       muda ONDE a regra mora, nunca o que ela diz. Quem impede o atributo de
+       voltar é `tests/test_estilo_nao_volta_para_a_marcacao.py`.
+       -------------------------------------------------------------------- */
+    .espaco-8 { margin-top: 8px; }
+    .espaco-14 { margin-top: 14px; }
+    .espaco-16 { margin-top: 16px; }
+    .espaco-20 { margin-top: 20px; }
+    .espaco-26 { margin-top: 26px; }
+    .espaco-28 { margin-top: 28px; }
+    .espaco-34 { margin-top: 34px; }
+    .espaco-abaixo-10 { margin-bottom: 10px; }
+    .espaco-abaixo-20 { margin-bottom: 20px; }
+    .titulo-de-bloco { font-size: 16px; margin: 30px 0 10px; }
+    .titulo-de-bloco.mais-afastado { margin-top: 34px; }
+    .titulo-de-lista { font-size: 17px; margin: 28px 0 4px; }
+    .titulo-da-conta { font-size: 18px; margin: 6px 0 0; }
+    .texto-maior { font-size: 15px; }
+    .recado-fraco { color: var(--texto-3); font-size: 13px; }
+    .verde { color: var(--verde); }
+    .amarelo { color: var(--amarelo); }
+    .borda-vermelha { border-color: var(--vermelho); }
+    .borda-amarela { border-color: var(--amarelo); }
+    .vazio-da-coluna { padding: 8px 2px; }
+    /* A barra proporcional de "quem espera", em passos de 10%. A precisão fina
+       não faz falta: a barra é decorativa e o número está escrito ao lado. */
+    .barra-gente.passo-0 { width: 0; }
+    .barra-gente.passo-1 { width: 10%; }
+    .barra-gente.passo-2 { width: 20%; }
+    .barra-gente.passo-3 { width: 30%; }
+    .barra-gente.passo-4 { width: 40%; }
+    .barra-gente.passo-5 { width: 50%; }
+    .barra-gente.passo-6 { width: 60%; }
+    .barra-gente.passo-7 { width: 70%; }
+    .barra-gente.passo-8 { width: 80%; }
+    .barra-gente.passo-9 { width: 90%; }
+    .barra-gente.passo-10 { width: 100%; }
+
     @media (max-width: 900px) {
       .forma { grid-template-columns: 1fr; }
     }
