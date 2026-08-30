@@ -1,0 +1,143 @@
+PARECER 6 — Claude Fable 5 (fonte nomeada pelo mantenedor)
+Recebido em 30/08/2026. Texto verbatim; nada foi editado.
+
+============================================================
+
+Li o briefing inteiro. Antes das nove seções, quatro premissas que eu contestaria diretamente:
+
+1. "Estilo Duolingo". O Duolingo é um produto de hábito por repetição, com maioria adulta e receita de assinatura/anúncios. O motor dele (ofensiva + ligas com rebaixamento + corações) é chapéu preto por design. Vocês vendem criação e carreira para crianças. Copiem o acabamento e a clareza visual, não o motor.
+2. Ligas com rebaixamento contradizem "chapéu preto em dose mínima": rebaixamento é o Núcleo 8 em estado puro, e é a mecânica que mais gera farm de XP no Duolingo. Proposta em 1.4.
+3. Títulos por XP terminando em "Modelador Profissional". XP mede atividade na escola; profissional é quem entregou para um cliente. Se o topo da escada de XP se chama "profissional", o título mais valioso do sistema passa a ser comprado com volume. Separem os eixos (1.1).
+4. "Cobrir os 8 núcleos" é armadilha de checklist. O objetivo não é cobertura, é peso: N1, N2, N3 e N5 dominantes; N4 como tempero; N6, N7 e N8 quase ausentes. E "entrar todo dia para acompanhar" não é aprendizado — nunca dê XP por login.
+
+Abreviações: N1 Significado Épico, N2 Realização, N3 Criatividade e Feedback, N4 Posse, N5 Social, N6 Escassez, N7 Curiosidade, N8 Perda.
+1. Recomendações
+1. Dois eixos: Nível (aprender) e Carreira (marcos reais) — P0 — N2, N1 Nível sobe com XP; Carreira só com marco validado por professor. Títulos de nível usam linguagem do ofício (Aprendiz → Iniciante → Escultor de Malhas → Artesão 3D → Artista 3D → Mestre Modelador); "Modelador Profissional" é título de carreira, ganho no Primeiro Cliente. Os dois eixos ficam lado a lado no perfil. Um aluno com 50 mil XP e nenhuma venda nunca ostenta título maior que um com 2 mil XP e um cliente.
+2. A obra é a unidade central do sistema — P0 — N3, N4 Todo XP grande gera ou melhora uma obra: modelo na galeria, desafio entregue, portfólio atualizado. A celebração de subida de nível mostra os modelos do aluno, não o número. Regra de tela: se o XP aparece maior que a imagem do modelo, o layout está errado.
+3. Desafio Semanal de Modelagem — P0 — N3, N5, N7 Tema toda segunda ("chapéu de pirata", "espada de gelo"), entrega até domingo, galeria com todas as entregas, "Destaque do Professor" (3 por semana, cada um com uma frase dizendo por quê) e "Escolha da Galera" por voto. XP alto por entregar (teto: 1/semana), bônus pequeno por destaque. É Inktober + game jam: cria ritmo semanal sem punir ausência. Vale mais que a liga; se tiver que escolher, lance isto primeiro.
+4. Ligas: sobe quem cumpre a meta, ninguém desce — e só quando houver gente — P1 — N5 (N8 zerado) Abaixo de ~150 alunos ativos por semana, liga de 15 fica vazia ou constrangedora: use a Meta da Turma (objetivo coletivo, "300 aulas concluídas juntos" desbloqueia um tema para todos). Quando lançar: pontuação de liga = XP da semana com teto diário (empate no topo é desejável — "todos que fizeram o máximo"); promoção para quem bate a meta da liga, não só os 5 primeiros; sem rebaixamento; temporada de 6–8 semanas com reset suave. Mostra top 3 e a própria posição; opt-out mantido; desligada por padrão para menores de 12.
+5. Sequência que não zera, com meta escolhida pelo aluno — P0 — N2 (N8 mínimo) Dia conta só com XP de aprendizado (nunca login). Um Escudo grátis por semana, automático; extras por Cristais, máximo 2 guardados. Ao falhar, a sequência pausa e mostra "retome hoje para continuar de 23" por 48h; só depois recomeça. Modo Férias (julho, dezembro–janeiro). "Total de dias de estudo" sempre visível ao lado — esse número nunca some. Meta diária escolhida pelo aluno (Leve / Normal / Intensa), mudável a qualquer hora: a sequência mede contra a meta dele, não contra a escola. Para menores de 12, padrão semanal: 3 dias na semana mantêm a sequência.
+6. Tabela de XP com "validação vale 10x" e curva acelerada no início — P0 — N2 Escala de referência (ajustem valores, mantenham proporções): aula concluída 20; quiz 15 na 1ª vez, 0 a partir da 3ª tentativa; pergunta 5; resposta 5 (teto 5/dia); resposta marcada "resolveu" pelo autor 25; aceita pelo professor 150; ideia enviada 5, implementada 400; modelo na galeria 40 (teto 1/dia); desafio semanal 120; Marco Real 500–1.000 + título. Primeiro nível na primeira sessão (~100 XP), nível 5 em um mês de uso normal, últimos níveis inalcançáveis sem validações. Lance com 10 níveis: ampliar depois é fácil, encurtar é impossível sem trauma.
+7. Missões em três ritmos, incluindo cooperativas — P1 — N2, N5 Diárias minúsculas (1 aula, 1 resposta), semanais criativas (publicar 1 modelo, entregar o desafio), mensais de carreira (atualizar o portfólio, escrever um orçamento). Missões de dupla, no molde das Friend Quests: "vocês dois, 6 aulas até domingo". Nenhuma missão exige presença diária.
+8. Medalhas em três famílias + medalhas de época — P1 — N2, N7 Ofício (Primeiro Rig, Primeira Textura, Primeira Exportação), Comunidade (Primeira Resposta Aceita, 10 Ajudas), Marcos Reais (seção 9). Secretas premiam curiosidade e exploração de ferramenta (descobriu o wireframe, usou um modificador que a aula não ensinou) — nunca horário nem excesso. Fundador e "Turma de 2026" como as Feats of Strength do WoW: irrepetíveis, marcam época. Nada expira.
+9. Economia de Cristais fechada e previsível — P1 — N4 (N6 mínimo) Fontes: subir de nível, missões semanais, desafio entregue. Sumidouros: cosméticos e escudos. Preço calibrado para o aluno casual comprar algo a cada duas semanas. Sazonal significa "só em outubro", não "nunca mais": tudo volta na mesma época do ano seguinte. Sem cronômetro na tela, sem caixa-surpresa (aleatoriedade em recompensa é loot box), e nenhum item afeta XP ou ranking. A regra "nada comprável com dinheiro real" merece virar invariante com teste automático, não só decisão de produto.
+10. Perfil = portfólio de verdade — P1 — N4, N1 Página pública por apelido (meshcraft.top/@apelido) com título, moldura, tema, até 6 obras em destaque e os marcos. É o link que o aluno manda para o cliente. A cosmética comprada com Cristais decora algo com utilidade fora do jogo.
+11. Feedback de criação em três camadas — P1 — N3 Reações específicas no lugar de "curtir" ("ficou lindo", "me inspirou", "quero aprender isso"); posts de processo (wireframe + render) com XP igual ao de obra pronta; "Antes/Depois" automático a cada 3 meses (primeiro modelo vs. último). Feedback de competência é o que protege motivação intrínseca; likes não.
+12. Marcos Reais com protocolo de validação e Mural — P0 — N1, N2 Detalhado na seção 9.
+13. Professor com fila, prazo e ferramenta — P0 — justiça do N2 Todo XP alto passa por validação humana, então a fila do professor é a casa da moeda. Fila única de pendências, meta de 48h úteis, ações de um clique e delegação escalonada: autor da pergunta marca "resolveu" (XP menor), monitores veteranos aceitam (XP intermediário), professor aceita (XP máximo). Sem isso o XP alto vira loteria, e percepção de injustiça é o que mais derruba criança.
+14. Onboarding desenhado para as 4 fases do Octalysis — P0 — N2, N3 Descoberta: a promessa concreta ("seu primeiro modelo hoje"). Onboarding: primeiro XP em 2 minutos, primeiro nível na primeira sessão, primeira obra na galeria na primeira semana. Scaffolding: o loop semanal (desafio + meta da turma). Endgame: monitor/mentor, marcos reais, vitrine. Desenhem a tela do dia 1 e a do dia 180 antes de qualquer outra.
+15. Dois modos por idade — P1 "Crianças e adolescentes" cobre de 8 a 17: um aluno de 9 anos quer colecionar e decorar; um de 15 quer competir e vender. Modo Júnior (padrão abaixo de 13): ligas e notificações desligadas, sequência semanal, foco em coleção e galeria. Modo Teen: tudo ligado, opt-out preservado. O responsável escolhe o modo.
+16. Painel do responsável — P1 — N1 (e exigência legal) Relatório mensal em linguagem de pai/mãe: o que aprendeu, obras, marcos. É quem paga, e a gamificação precisa provar aprendizado para ele, não só engajamento. Controles: horário silencioso, sair do ranking, ocultar sequência. Consentimento do responsável para dados de criança (LGPD, art. 14) e apelido obrigatório em tudo que é público.
+17. Notificações: só boas notícias, no máximo 1 por dia, com horário — P0 — N8 evitado "Seu modelo ganhou destaque", "saiu o tema da semana". Nunca "você vai perder sua sequência", nunca após as 20h, nunca em horário escolar. Push de culpa em criança é risco reputacional e jurídico.
+18. Lançamento em camadas, com métrica antes da próxima — P0 Camada 1 (agora): XP, níveis, galeria + desafio semanal, medalhas de ofício, marcos reais, fila do professor. Camada 2 (30–60 dias): missões, Cristais e loja, sequência com escudo. Camada 3 (com população): ligas, meta de turma, sazonais, secretas. Cada camada só entra quando a anterior mostrou os sinais da seção 7.
+2. O que NÃO copiar do Duolingo
+
+* Corações/vidas. Punir erro funciona para revisar vocabulário; em modelagem o erro é o método (retopologia refeita, vértice movido). Corações ensinam a não experimentar.
+* Rebaixamento e a corrida de domingo à noite. Geram farm de lições fáceis (problema documentado do Duolingo) — a criança troca aprender por grindar.
+* Ofensiva como métrica-mestra e a coruja passivo-agressiva. Notificação de culpa é aceitável para adulto que escolheu; para criança, é ansiedade com nome fofo.
+* Apostas de ofensiva ("dobro ou nada" com gemas). É mecânica de aposta. Fora de cogitação com menores.
+* Boosts de XP por 15 minutos, ofertas com cronômetro, corações à venda. Urgência artificial a serviço de conversão. Vocês não vendem nada dentro do sistema; não há por que importar o gatilho.
+* "Prática" com XP infinito. É a porta do volume; vocês já decidiram que XP mora na validação.
+* Caminho estritamente linear. Idioma exige ordem; 3D pede escolha depois do básico (cabelos ou armas primeiro).
+* Social raso (seguir + like). Fórum, marketplace interno e obra publicada são muito mais fortes que lista de amigos.
+
+Vale copiar: meta diária escolhida pelo usuário, Friend Quests (missões cooperativas), o escudo (gratuito e automático), a celebração curta e caprichada de progresso, a clareza visual do caminho.
+3. O que os melhores jogos fazem que cabe na escola
+
+* Super Mario Maker: só publica quem zerou a própria fase. Traduza em ritual de qualidade: o modelo só entra na galeria se passar no checklist (importa no Studio, polycount, textura aplicada). O aluno se orgulha de passar e a galeria não vira depósito.
+* Minecraft: sem pontos. A obra é a recompensa e mostrar o mundo é a moeda social. A galeria tem que ser a tela mais bonita do site, não o ranking.
+* Roblox: a economia de criador já expõe favoritos e vendas. Deixe o aluno puxar isso voluntariamente para o perfil ("meu cabelo tem 1.200 favoritos"). Grupos → turmas. Status de criador verificado → título de carreira.
+* Fortnite: o Passe de Batalha. Temporada com trilha de cosméticos que qualquer atividade avança e onde nada se perde. É o formato certo para os itens sazonais: passe gratuito, 100% ganhável, sem escassez artificial.
+* Zelda (Breath of the Wild / Tears of the Kingdom): liberdade de ordem depois do tutorial; santuários como mini-desafios autocontidos com conclusão clara (cada aula prática merece esse fechamento); sementes Korok como medalhas secretas de exploração. Ultrahand: dê peças e deixe combinar — o desafio semanal com "kit de peças" faz isso.
+* Mario Odyssey: centenas de luas pequenas, "sempre tem mais uma". Conquistas pequenas e frequentes no começo, raras e grandes no fim.
+* World of Warcraft: profissões com graus de maestria (Aprendiz → Artesão → Mestre → Grão-Mestre) são a escada de títulos de ofício; guildas = turmas; raids = projeto coletivo (a turma modela uma "Coleção de Inverno", cada um faz uma peça); Feats of Strength = Fundador; transmog = cosméticos.
+* Animal Crossing: loop diário gentil onde nada se perde por ausência; Nook Miles = Cristais. Se a criança some por um mês, o retorno é "que bom que voltou", não "você perdeu tudo".
+* Scratch (e o "uncopylocked" do Roblox): cultura de remix com crédito. Remixar o modelo de um colega, com consentimento, cria linhagem de obras e ensina mais que tutorial — N3 e N5 no mesmo gesto.
+* ArtStation/Sketchfab (o mundo profissional do aluno): Staff Picks, breakdowns de processo, "art vs. artist". O Destaque do Professor e o Antes/Depois vêm daí.
+* Game jams (Ludum Dare, GMTK): tema, prazo, medalha para todo mundo que entrega. Uma "Meshjam" mensal de 48h é o evento de comunidade mais barato e mais forte que vocês podem fazer.
+
+4. Riscos psicológicos e éticos
+Sobrejustificação. O risco não é dar XP; é XP controlador ("faça X para ganhar Y") sobre o que a criança já faria por gosto. Mitigações: recompensa informacional — a medalha diz "você agora sabe rigging", não "você fez 10 tarefas"; valores fixos, transparentes, nunca inflados por promoção; a celebração mostra a obra e a habilidade, XP em segundo plano; elogio do professor específico e sobre o trabalho; Modo Foco que esconde XP e ranking sem perder nada; metas escolhidas pelo aluno. Sinal de que já aconteceu: aluno perguntando "quanto XP dá?" antes de fazer.
+Ansiedade de sequência. Mitigações: pausa em vez de zerar, escudo automático, Modo Férias, contador de dias totais, zero notificação de perda, modo semanal para os menores, e nenhum benefício de ranking atrelado à sequência (ela só rende cosmético). Sinal: churn concentrado no dia seguinte à quebra.
+Comparação social. Mitigações: ligas opt-in em grupos pequenos, sem mostrar quem está embaixo; comparação preferencial consigo mesmo (Antes/Depois, recorde pessoal); Destaque rotativo (ninguém é destacado duas vezes até que outros tenham sido); valores em dinheiro nunca aparecem; comentários moderados, reações só positivas; Modo Júnior sem liga. Sinal: opt-out crescente e queda de posts na galeria de quem está fora do top.
+Riscos que o briefing não citou:
+
+* Pressão do "primeiro dólar". Nem toda criança quer vender, e um marco monetário pode virar cobrança dos pais. Trate carreira como trilha opcional e crie marcos espelho de aprendizado (Primeira Coleção, Primeiro Modelo no Studio) com o mesmo prestígio visual.
+* Tempo de tela. Tetos diários de XP também servem para dizer "por hoje chega — mostre para alguém o que fez".
+* Menores contratando menores no marketplace interno. Pagamento entre menores exige responsável, regras claras e moderação. Revisão jurídica antes de gamificar isso.
+* Idade mínima das plataformas. O Roblox exige idade mínima e verificação de identidade para criadores UGC; marketplaces como o Fiverr e contas de pagamento têm regras próprias para menores. Os marcos "Primeiro Cliente" e "Primeiro Dólar" precisam de uma jornada "com responsável" desenhada, senão o sistema celebra algo que o aluno de 11 anos não pode fazer sozinho. Confirmem as regras vigentes com o jurídico.
+* Dados de criança. LGPD art. 14 (consentimento do responsável), apelido em tudo que é público, nenhum rosto, nenhum valor financeiro armazenado. A Resolução 163/2014 do CONANDA considera abusiva comunicação mercadológica dirigida a crianças — mecânicas de escassez e urgência apontadas para menores merecem olhar jurídico.
+
+5. Anti-fraude
+Como vão tentar → defesa:
+
+1. Spam no fórum (pergunta trivial, "eu também", "obrigado") → XP só em validação; teto diário; retorno decrescente (1ª resposta do dia vale cheio, 3ª vale zero); estorno automático se o post for removido.
+2. Conluio (A pergunta, B responde, A marca "resolveu") → "resolveu" pelo autor vale pouco; limite de "resolveu" recebido do mesmo autor por semana; detecção de pares recorrentes; XP grande só com professor.
+3. Contas múltiplas para votar na própria ideia/obra → voto só com conta de 7+ dias e XP mínimo; voto é sinal, não moeda (XP da ideia só na implementação); e-mail do responsável e fingerprint de dispositivo.
+4. Repetir quiz → XP só na 1ª conclusão (ou melhor nota até a 2ª tentativa); banco rotativo; o gabarito vai circular no Discord — embaralhe e renove.
+5. Sequência "abre e fecha" → dia só conta com XP de aprendizado acima da meta leve.
+6. Respostas geradas por IA em massa → não tente detectar por texto (não funciona e gera falso positivo); o professor aceita pelo mérito; teto diário; monitore a razão respostas/aceitas por aluno.
+7. Obra que não é do aluno (modelo baixado do Sketchfab ou do catálogo) → desafio e marco exigem screenshot do viewport + arquivo-fonte (.blend); professor confere em 30 segundos; denúncia da comunidade; regra de plágio educativa na 1ª vez, estorno e suspensão na 2ª.
+8. Marco falso (print editado) → validação por link vivo (item no catálogo, portfólio no ar) e conversa de 5 min com o professor; nunca pedir extrato bancário.
+9. Farm de liga → pontos de liga com teto diário; XP de marco fora da liga.
+10. Replay/duplicação de eventos → idempotência por id de evento, ledger de XP append-only com estorno, alerta de anomalia por tipo (desvio diário por aluno).
+
+Transversal: tetos visíveis e redirecionadores ("você já ganhou o máximo de hoje em respostas — que tal mostrar um modelo?"), regras publicadas, mudanças anunciadas com antecedência e nunca retroativas. Transparência é anti-fraude: criança que entende a regra tenta menos burlar e aceita mais a punição.
+6. Vocabulário
+
+* XP: mantenha. Universal no Roblox.
+* Nível: mantenha.
+* Ofensiva → Sequência. "Ofensiva" é tradução do Duolingo com tom militar; criança diz "sequência de 10 dias" (e chama de "foguinho" — use a chama como ícone).
+* Escudo de Ofensiva → Escudo. Autoexplicativo com o ícone.
+* Missões: mantenha (o Roblox usa).
+* Medalhas: mantenha para o sistema geral, mas dê nome próprio à família de carreira: Marcos. "Marco de Carreira" tem peso que "medalha" não tem. (O Roblox pt-BR usa "Emblemas"; "Medalhas" é mais claro para os menores.)
+* Ligas Bronze/Prata/Ouro/Diamante: funciona (Fortnite e CS ensinaram), mas perde a chance de identidade. Alternativa com materiais do Roblox Studio: Plástico → Madeira → Metal → Neon → Diamante. Toda criança que abriu o Studio reconhece.
+* Cristais: bom — não lembra dinheiro. Evite qualquer coisa que soe como "bux", "coins" ou "moedas".
+* Títulos: mantenha, com duas escadas. Nível: Aprendiz de Modelador → Modelador Iniciante → Escultor de Malhas → Artesão 3D → Artista 3D → Mestre Modelador. Carreira: Criador Publicado (1º modelo), Portfólio no Ar, Modelador Profissional (1º cliente), Criador UGC (1ª venda), Pago em Dólar (1º dólar). Ofereça a forma feminina ("Modeladora", "Escultora") por escolha no perfil.
+* Nomes que faltam: Galeria (onde as obras vivem), Destaque (escolha do professor), Meta da Turma, Modo Férias, Modo Foco, Mural dos Marcos.
+
+7. As 5 métricas
+
+1. Obras publicadas por aluno ativo por semana — a métrica-norte. Se sobe, o sistema está fazendo criador; se o XP sobe e esta não, está fazendo grinder.
+2. Progresso de aprendizado por coorte: % de aulas da trilha concluídas semana a semana e tempo médio até o primeiro modelo exportado no Studio.
+3. Retenção W4 e W12 de alunos com aprendizado (não de logins).
+4. Funil de marcos: % da coorte que atinge cada Marco Real em 90 e 180 dias, e tempo mediano até o primeiro.
+5. Saúde da comunidade: % de perguntas respondidas em 24h e % de respostas aceitas sobre respostas totais.
+
+Sinais de que está fazendo mal (qualquer um aciona revisão):
+
+* XP por minuto de aula subindo enquanto obras por aluno caem.
+* Sessões de menos de 2 minutos crescendo (login de sequência).
+* Churn no dia seguinte à quebra de sequência acima do churn médio.
+* Volume de posts subindo com taxa de aceitação caindo.
+* Opt-out de ranking crescendo, ou obras concentradas no top 20% da liga.
+* Top 5% dos alunos concentrando mais de metade do XP.
+* Reclamação de responsável, ou "quanto XP dá?" aparecendo no fórum.
+
+8. NÃO FAÇA
+
+* XP por login, tempo de tela ou "abrir o app".
+* Ranking global e público de toda a escola.
+* Rebaixamento, zeramento ou qualquer perda que a criança não escolheu.
+* Título "Profissional" por volume de XP.
+* Medalha para tudo: inflação transforma medalha em spam.
+* XP em fonte maior que a obra em qualquer tela.
+* Notificação de culpa, cronômetro, "última chance".
+* Caixa-surpresa ou qualquer aleatoriedade em recompensa.
+* Item de Cristais que dê vantagem em XP ou liga.
+* Mudar regras de XP sem aviso ou nerfar retroativamente — injustiça é o que criança menos perdoa.
+* Professor como máquina de XP sem fila, prazo e ferramenta.
+* Deixar a gamificação decidir o currículo (aulas curtinhas porque rendem XP).
+* Expor dinheiro, ganhos ou nome real.
+* Lançar sem opt-out de cada peça.
+* Ignorar o responsável — ele paga e decide se continua.
+* Lançar ligas sem população (liga de 4 pessoas humilha).
+* Medir sucesso por DAU.
+* Esquecer o endgame: aluno no nível máximo sem papel novo vai embora — transforme-o em monitor.
+* Lançar tudo de uma vez.
+
+9. Marcos reais
+Validação. Três camadas: (1) evidência com link vivo — item no catálogo do Roblox, portfólio público, modelo no perfil; para cliente e venda, print com dados sensíveis cobertos mais o arquivo-fonte da obra; (2) conversa de 5 minutos com o professor, que confere autoria pelo histórico da galeria e pelo .blend — a mesma conversa é feedback de carreira; (3) registro no ledger com data e professor validador. Prazo de até 5 dias úteis. Nunca pedir extrato, valor ou dado bancário; o marco reconhece o trabalho, não a conta — "Primeiro Dólar" pode ter entrado na conta do responsável, e a descrição do marco diz isso explicitamente. Defina "cliente": alguém fora da família (colega da comunidade conta).
+Celebração, nessa ordem. Privada primeiro: tela de celebração com a obra em destaque e mensagem pessoal do professor (áudio de 20 segundos vale mais que qualquer moldura); aviso ao responsável. Depois, pública e opt-in: entrada no Mural dos Marcos (apelido, marco, a obra, uma frase do aluno) e um "toque de sino" — post automático no fórum onde a comunidade reage. Permanente: título de carreira, moldura exclusiva não comprável, ícone fixo no perfil e no portfólio. Registro: o Diário do Marco — três perguntas ("como achou o cliente", "o que aprendeu", "uma dica") que viram inspiração para os outros e, com consentimento, o melhor material de marketing que a escola pode ter.
+Vitrine. Mural filtrável por tipo, mostrando a obra e a história, nunca a cifra. A galeria da home destaca obras de marco em rotação. Quem atingiu marco pode abrir uma sessão de perguntas moderada — vira ajudante, não ídolo (N5, N1).
+Sem constranger quem não chegou. O Mural mostra quem chegou, nunca quem falta. A visão pessoal é "Minha Jornada": os 5 marcos como estações de uma linha, a próxima destacada com "o que falta" concreto e um normalizador de tempo ("a maioria levou 4 meses até aqui"). Nenhuma contagem regressiva, nenhum "X% da sua turma já fez". XP de marco não conta para a liga — dinheiro não pode vencer o ranking. Marcos espelho de aprendizado (Primeira Coleção, Primeiro Modelo no Studio) têm o mesmo brilho visual, para quem está aqui para criar e não para vender. E uma regra simples para o professor: em toda comunicação de marco, cite a obra e o esforço; nunca a velocidade nem o valor.

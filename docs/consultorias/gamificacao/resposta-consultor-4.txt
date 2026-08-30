@@ -1,0 +1,129 @@
+PARECER 4 — Claude Sonnet (fonte nomeada pelo mantenedor)
+Recebido em 30/08/2026. Texto verbatim; nada foi editado.
+
+============================================================
+
+# Parecer de Gamificação — Meshcraft Academy
+
+Antes de entrar nas seções: a espinha dorsal que vocês já decidiram é sólida — Cristais só-ganháveis, XP mais alto em validação humana, chapéu branco dominante, ligas protegidas para crianças. Vou construir em cima disso e marcar em negrito os dois ou três pontos onde discordo ou pediria ajuste.
+
+---
+
+## 1. Recomendações prioritárias
+
+**1. Curva de XP com validação humana valendo 5–10x mais que atividade passiva (P0 — Núcleo 2 Realização + Núcleo 1 Significado Épico).** Sugestão de proporção: login = 1 XP, quiz = 5–10 XP, post no fórum = 5 XP, resposta aceita = 50 XP, modelo publicado = 100 XP, marco de carreira = 300–500 XP. O importante não é o número exato, é a proporção: nunca deixar que volume de cliques chegue perto do que uma conquista real vale.
+
+**2. Marcos de Carreira como categoria visualmente separada de "medalha" (P0 — Núcleo 2 + Núcleo 1).** Não chame Primeiro Cliente ou Primeiro Dólar de "medalha" — isso dilui na mesma gaveta de itens cosméticos. Dê a eles um nome e um tratamento visual próprios (ex.: "Marco de Carreira"), impossíveis de obter por grind, só por revisão do professor.
+
+**3. Vitrine de Criações como loop central de feedback (P0 — Núcleo 3 Empoderamento da Criatividade).** Toda publicação de modelo aparece com um visualizador 3D embutido e reações categorizadas ("Compraria", "Técnica boa", "Usaria no meu jogo") em vez de curtida genérica. O objeto criado — não o ícone de conquista — deve ser o troféu mais visível do perfil.
+
+**4. Ofensiva com "pouso suave" além do escudo (P0 — mitigar Núcleo 8 Perda).** Quando o streak quebra mesmo com escudo gasto, em vez de zerar abruptamente, um período curto de recuperação parcial ("Semente" ou similar) evita o gatilho de ansiedade que o Duolingo é conhecido por causar em adultos — em criança o efeito tende a ser pior.
+
+**5. Ligas de ~15, apelido/primeiro nome, sem exposição de quem está mal (P0 — Núcleo 5 Social, já decidido, refinando).** Acrescente: **não mostrar publicamente a zona de rebaixamento**. Rebaixamento pode acontecer no backend, mas a experiência de quem cai deve ser privada e acolhedora ("Você sobe de novo essa semana"), nunca um "você foi rebaixado" público para o grupo.
+
+**6. Missões diárias/semanais distribuídas entre categorias, nunca uma só dominante (P0 — anti-farm + Núcleo 2).** Se toda missão pode ser cumprida só fazendo quiz, você criou um grinding loop disfarçado de missão. Force diversidade: uma de prática, uma de comunidade, uma de portfólio.
+
+**7. Cristais 100% cosméticos com raridade sazonal dosada (P1 — Núcleo 6 em dose mínima, como já pedido).** Limite a 2–3 itens sazonais por mês, sem contagem regressiva agressiva — texto convidativo, não urgência vermelha piscando.
+
+**8. Medalhas secretas ligadas a curiosidade e generosidade, não a grind (P1 — Núcleo 7 Imprevisibilidade).** Ex.: "achou um easter egg no fórum", "ajudou 10 pessoas sem que ninguém pedisse". Segredo bom é descoberta, não trap de farm escondido.
+
+**9. Medalha de Fundador permanente e não repetível por coorte (P0 — Núcleo 4 Posse + Núcleo 1).** Já decidido e correto — é escassez legítima (fato histórico), não escassez artificial.
+
+**10. Perfil-currículo interno para contratação entre alunos (P0 — diferencial único, Núcleo 1 + 5).** Um perfil leve mostrando habilidades e projetos reais concluídos dentro da comunidade — é o elo direto entre gamificação e resultado econômico real, algo que nenhum concorrente educacional tem.
+
+**11. Diário de bordo (devlog) de progresso, não só resultado final (P1 — Núcleo 3).** XP pequeno por postar prints de trabalho em progresso incentiva mostrar processo, não só produto acabado — replica o que jogadores fazem espontaneamente em jogos com editor (Roblox Studio, Fortnite Creative).
+
+**12. Árvore de habilidades visual (não linear) além da barra de XP (P1 — Núcleo 2).** Modelagem, textura, rigging, exportação como "ramos" visitáveis dá sensação de maestria de ofício mesmo antes das trilhas estruturadas existirem.
+
+**13. Painel de transparência opcional para responsável (P1 — confiança/ético).** Resumo semanal simples para o adulto responsável focado em conquistas reais, não em XP bruto — constrói confiança e é uma defesa preventiva contra a crítica (justa) de que sistemas de engajamento infantil são desenhados para viciar.
+
+**14. Vitrine da Semana curada pelo professor, não pelo topo do ranking (P0 — Núcleo 1 + 5).** Reconhecimento que não depende de vencer ninguém evita que só os já-fortes recebam validação social.
+
+**15. Tetos diários com redirecionamento, não parede muda (P0 — técnico + Núcleo 2).** Quando o teto de uma atividade é atingido, a mensagem deve sugerir a próxima fonte de XP ("Você zerou o XP de quiz hoje — que tal ajudar no fórum?") em vez de simplesmente não dar mais nada.
+
+**16. Saída tranquila de liga/streak sem perda de medalhas já conquistadas (P1 — mitigar Núcleo 8).** Um botão claro de "pausar" sem punição retroativa reduz o loop compulsivo que às vezes se instala em sistemas de streak.
+
+---
+
+## 2. O que NÃO copiar do Duolingo
+
+- **Notificações de culpa** ("sentimos sua falta", mascote triste) — pressão emocional manipulativa, inadequada para menores.
+- **Sistema de vidas/corações que bloqueia o progresso** até esperar ou pagar — escassez punitiva; contradiz o espírito de "nada comprável com dinheiro real".
+- **Liga Diamante como pressão de defesa de posição** — há relatos amplos de adultos entrando de madrugada só para não cair de liga. Em criança isso vira ansiedade de sono, não engajamento saudável.
+- **Ansiedade de streak como motor central** — o próprio Duolingo é criticado por isso; não repitam o erro, mitiguem desde o design (ver recomendação 4).
+- **Gamificar absolutamente tudo**, até preencher o perfil — isso cansa e esvazia o significado dos marcos grandes quando cada micro-ação já ganha confete.
+
+## 3. O que os melhores jogos fazem e cabe aqui
+
+- **Roblox** já tem o modelo mais próximo do de vocês: destaque de criações na página inicial, sistema de criador verificado, DevEx pagando por criação real. Traduza isso num carrossel rotativo de criações em destaque na home da escola.
+- **Fortnite** (Creative/UEFN + Support-a-Creator): celebra o criador como figura central, não só o jogador. É o mesmo padrão que a Vitrine de Criações (recomendação 3) e o perfil-currículo (recomendação 10) buscam replicar.
+- **Zelda**: recompensa exploração e descoberta no próprio ritmo do jogador, sem grind forçado — mapeia bem para deixar o aluno navegar a árvore de habilidades (recomendação 12) fora de ordem.
+- **Mario**: desafios opcionais escondidos recompensam técnica, não tempo investido — inspire os badges secretos (recomendação 8) nesse espírito, nunca em "jogou X horas".
+- **World of Warcraft**: conquistas cooperativas de guilda e cosméticos de coleção (transmog) — mapeia para projetos em grupo publicados juntos no Roblox, e para os Cristais cosméticos.
+- Padrão comum a todos: o **objeto criado ou a conquista de habilidade é o troféu**, não o ícone da conquista em si. Em jogos com "modo foto", a screenshot da obra é o que se compartilha — não o pop-up de XP.
+
+## 4. Riscos psicológicos e éticos
+
+**Efeito de sobrejustificação.** Recompensa externa grande pode corroer a motivação intrínseca de criar. Mitigação: mantenha as maiores recompensas em ações que já exigem esforço/habilidade real (marcos), narre como reconhecimento ("Reconhecemos que você...") em vez de pagamento ("Ganhe X por..."), e garanta que a hierarquia visual da tela sempre coloque "ver sua obra na vitrine" acima de "ver seu contador de XP".
+
+**Ansiedade de streak.** Mitigação: escudo + pouso suave (recomendação 4), linguagem de acolhimento na quebra ("sem problema, vamos recomeçar"), nunca ícone de choro/X vermelho.
+
+**Comparação social.** Mitigação: liga pequena e anônima (já decidido), sem zona de rebaixamento pública (recomendação 5), destaque curado em vez de só ranking (recomendação 14), opção de sair do ranking a qualquer momento (já decidido, mantenha visível e fácil de usar, não escondido em configurações).
+
+**Ponto extra, específico de vocês:** como o produto conecta menores a dinheiro real, há uma camada de risco que vai além de gamificação — pressão psicológica em torno de ganhar dólares pode se comportar como pressão de "sucesso precoce". Nunca transforme valor em dólares num número comparativo público; trate marcos financeiros como celebração privada (com visibilidade opcional ao responsável), nunca como ranking de quem ganhou mais. Vale também checar com jurídico as implicações de LGPD/ECA para menores recebendo pagamento via plataformas como Fiverr — isso é fora do escopo de gamificação, mas nasce direto dela.
+
+## 5. Anti-fraude
+
+| Tentativa de farm | Defesa |
+|---|---|
+| Contas alternativas | Verificação vinculada a e-mail do responsável; limites por IP/dispositivo, com cuidado de privacidade |
+| Aceitar a própria resposta / combinar com amigo | Só autor da pergunta ou professor pode marcar "aceita"; exigir reputação mínima; sinalizar padrões estatísticos anômalos para revisão |
+| Modelo plagiado enviado como marco | Revisão humana obrigatória em todo marco (já previsto) + checagem de similaridade contra assets conhecidos de marketplace |
+| Farm de quiz repetindo o fácil | Retorno decrescente por repetição, XP só na primeira tentativa, cooldown |
+| Spam de posts curtos só para bater missão | Heurística de qualidade mínima (tamanho, reação de terceiros exigida, não só contagem bruta) |
+| Streak via sessão automatizada/script | Exigir evento mínimo de interação real (scroll, clique, tempo de página) antes de creditar |
+| Manipulação de voto na Caixa de Sugestões | Um voto por conta verificada, cooldown, peso levemente maior para contas mais antigas |
+
+## 6. Vocabulário
+
+- **XP, Nível, Missões** — mantenha; já são intuitivos para crianças brasileiras que jogam.
+- **Ofensiva** — mantenha, mesmo sendo um pouco formal: é exatamente o termo que o Duolingo já ensinou a uma geração de crianças brasileiras. Trocar por outra palavra perde compreensão instantânea de graça.
+- **Escudo de Ofensiva** — bom, até melhor que "congelamento" (termo do Duolingo): "escudo" combina mais com a narrativa heroica/épica que vocês querem no chapéu branco.
+- **Medalhas** — mantenha para cosméticos, mas **não use para os marcos de carreira** (ver recomendação 2). Sugestão: "Marco de Carreira" ou "Conquista Real" para separar linguisticamente o que é jogo do que é fato.
+- **Ligas Bronze/Prata/Ouro/Diamante** — ótima escolha, já é o vocabulário de LoL/Valorant que o público já domina.
+- **Cristais** — muito bom: evoca matéria-prima/artesanato, conecta bem com "vocês criam coisas com as mãos digitais".
+- **Títulos** — funciona bem.
+- Sugestão nova: um nome separado para a reputação de ajuda no fórum (ex.: "Confiança da Comunidade") distinto de XP puro, para não misturar "aprender" com "ajudar os outros" na mesma métrica.
+
+## 7. Métricas de sucesso — e o sinal de alerta
+
+1. **% de alunos que publicam um modelo na vitrine nos primeiros 30 dias** (métrica-norte: produção real).
+2. **Proporção de XP vindo de validação humana vs. ação passiva**, e se ela cresce ao longo do tempo.
+3. **Retenção D7/D30 segmentada por quem já publicou algo vs. quem não publicou** — isso mostra se é a criação, e não só o streak, que retém.
+4. **Taxa de reciprocidade no fórum**: % de alunos que tanto perguntam quanto respondem (comunidade saudável vs. farm de mão única).
+5. **Conversão real do funil de carreira**: % da coorte que chega a Primeiro Cliente / Primeiro Dólar.
+
+**Sinal de alerta de dano:** tempo de sessão ou tamanho de streak subindo enquanto produção real (modelos publicados, domínio de quiz, marcos) estagna ou cai — indica que o motor de engajamento se descolou do aprendizado. Some a isso qualquer aumento em reclamações de responsáveis sobre ansiedade com streak ou rebaixamento de liga.
+
+## 8. Lista de "NÃO FAÇA"
+
+- Não trave conteúdo/trilhas de aula atrás de grind ou de "pular pagando" — acesso a aula nunca deve ser a recompensa retida.
+- Não envie notificação de culpa com mascote triste.
+- Não exiba fundo de ranking publicamente sem proteção.
+- Não transforme marcos financeiros em ranking público de "quem ganhou mais" — isso converte renda real de criança em jogo de status, é o item de maior risco de toda a proposta.
+- Não deixe cosmético virar vantagem indireta (ex.: moldura que também aumenta visibilidade do post no fórum) — cosmético tem que ser só estética, sem exceção.
+- Não gamifique cada micro-ação com pop-up/confete — isso esvazia o peso emocional dos marcos grandes.
+- Não deixe a ofensiva ser visualmente o número mais dominante da tela — o contador de criações/marcos deve competir em destaque.
+- Não exponha nome real ou idade em rankings ou na vitrine pública.
+- Não deixe a fila de revisão do professor virar gargalo de semanas — defina um SLA, ou o momentum do marco morre.
+- Não premie "acerto perfeito único" de um jeito que puna tentativa e erro — premie iteração.
+- Não use contagem regressiva agressiva/estilo painique nos itens sazonais de Cristais.
+
+## 9. Celebrando marcos reais sem constranger quem não chegou lá
+
+- Trate "Marco de Carreira" como tier visual totalmente distinto de medalha comum (forma, cor, animação claramente mais especial).
+- Fluxo: aluno envia evidência → revisão privada do professor → momento de revelação com nota pessoal do professor na aprovação (o toque humano é o que ativa Significado Épico + Relacionamento, não o ícone em si).
+- Um "Mural de Marcos" opcional e cronológico (não ordenado por valor em dólar, não segmentado por liga) para servir de inspiração, não de ranking.
+- Nunca mostre valor em dólares de forma comparativa pública; se aparecer, que seja estatística privada do próprio aluno (e do responsável, se ele optar).
+- Para quem ainda não chegou lá: nunca mostre um contador de déficit ("0/5 marcos"). Mostre só o caminho à frente ("Próximo marco: Primeiro Modelo Publicado — veja como outros alunos chegaram lá"), com link para devlogs de colegas como inspiração, não comparação.
+- Considere que alcançar um marco destrave a possibilidade (nunca obrigação) de mentorar quem está no mesmo passo — fecha o ciclo comunitário sem virar cobrança.
