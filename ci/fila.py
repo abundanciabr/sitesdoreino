@@ -21,6 +21,10 @@ consultores pediram e aqui vira mecanismo:
   reserva expira sozinha se a sessão morrer.
 - **Concluir exige evidência.** Sem prova, `concluir` recusa — a mesma lei
   do verde do livro (`painel/LEIA-ME.md`).
+- **O comprovante nasce na bancada, nunca no espelho** (30/08/2026, TAR-018).
+  `criar`/`pegar`/`concluir` RECUSAM no clone principal, e `validar` diz em
+  voz alta quando acha comprovante que o Git não conhece — ver a seção
+  "Onde o comprovante nasce", mais abaixo.
 
 O molde é o do livro: fonte multiescritor (um arquivo por tarefa em
 `fila/tarefas/`, um arquivo por acontecimento em `fila/eventos/` — imune a
@@ -47,6 +51,12 @@ if str(CI) not in sys.path:
 
 import reservar  # noqa: E402
 from _nucleo import ErroDeInstrumentacao, configurar_saida, raiz_do_repo  # noqa: E402
+
+# Quem sabe distinguir espelho de bancada é a muralha da pasta compartilhada, e
+# ela sabe desde 26/08/2026: no worktree o `.git` é ARQUIVO, no clone principal
+# é PASTA. Importar é de propósito — duas leituras do mesmo fato divergiriam no
+# primeiro dia em que alguém mexesse numa só (a lei anti-duplicação, no código).
+from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
 
 # O ciclo de vida inteiro. Fechado de propósito: evento fora desta lista é
 # arquivo inválido, não "vocabulário novo" — vocabulário muda por PR, aqui.
@@ -91,6 +101,166 @@ RE_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 # divergiriam no primeiro dia em que alguém mexesse numa só.
 RE_CITACAO = re.compile(r"TAR-\d{3,}")
 PREFIXO_DA_RESERVA = "tarefa-"  # refs/reservas/tarefa-TAR-001
+
+
+# ---------------------------------------------------------------------------
+# Onde o comprovante nasce — a cura da armadilhas/192 (TAR-018, 30/08/2026)
+#
+# O buraco medido: a ordem de partida dos despachos mandava pegar a tarefa no
+# balcão ANTES de criar o worktree. O evento de reivindicação nascia então no
+# CLONE PRINCIPAL — pasta onde a muralha do RITOS §1 impede commitar qualquer
+# coisa — e NADA acusava: com o arquivo fora, `validar` respondia "✅ Fila
+# válida", exit 0. A tarefa chegava à `main` com `concluida` e sem
+# `reivindicada`, e o histórico de quem pegou o trabalho sumia. A muralha da
+# pasta compartilhada não pegava porque ela cobre `Edit`/`Write` e git de
+# estado — não escrita feita por dentro de um script (fronteira que a própria
+# `armadilhas/135` declara).
+#
+# A cura tem duas peças, com AUTORIDADE DIFERENTE de propósito:
+#
+#   1. RECUSA (exit 1) nos gestos que escrevem: o arquivo simplesmente não
+#      nasce no lugar errado. Não é portão de CI — nenhum PR reprova por isto;
+#      é um comando interativo se recusando a produzir lixo, e o conserto custa
+#      um `git worktree add`. Aviso em sombra aqui não curaria nada: o arquivo
+#      já teria nascido, e o robô nem consegue apagá-lo (medido em 30/08/2026 —
+#      o classificador de permissão recusou a limpeza ao robô da TAR-014).
+#   2. SOMBRA no `validar`: comprovante que o Git não conhece é DITO em voz
+#      alta, e o veredito não muda. É aqui que mora o portão de CI
+#      (`ci/muralha-da-fila.sh`), e é aqui que vale a lei do Sistema
+#      Imunológico — regra nova nasce em sombra, dizendo o que teria feito.
+# ---------------------------------------------------------------------------
+
+# Os gestos que ESCREVEM arquivo no repositório e por isso exigem bancada.
+# `listar` e `validar` só leem. `soltar` escreve, e continua livre no espelho
+# de propósito: devolver à fila uma tarefa presa é gesto de emergência, e
+# emergência não pode depender de ter worktree — o evento perdido custa menos
+# que a tarefa travada (decisão do despacho da TAR-018).
+GESTOS_QUE_EXIGEM_BANCADA = ("criar", "pegar", "concluir")
+
+RITO_DO_WORKTREE = (
+    "git fetch origin && git worktree add ../wt-<area>-<tarefa> "
+    "-b agent/<area>/<tarefa> origin/main"
+)
+
+
+def _parar_se_for_o_espelho(gesto: str, raiz: Path) -> str | None:
+    """O motivo da recusa (quem chama devolve exit 1), ou None para seguir.
+
+    Três estados, como todo portão deste projeto:
+      - bancada (worktree, `.git` ARQUIVO) ou pasta que não é checkout git ..... None
+      - espelho (clone principal, `.git` PASTA) ................ o motivo, e ele ENSINA
+      - não deu para medir onde estamos ....... ErroDeInstrumentacao (exit 2, INV-CI01)
+
+    Pasta sem `.git` nenhum não é "não consegui medir": é medição que deu
+    "não há repositório aqui" — e sem repositório não há PR para o comprovante
+    perder. É o caso dos próprios testes, e ele passa.
+    """
+    try:
+        encontrado = raiz_do_checkout(raiz)
+    except Exception as erro:  # pragma: no cover - defesa, não caminho
+        raise ErroDeInstrumentacao(
+            f"não consegui medir em que pasta `{gesto}` está rodando",
+            f"{erro.__class__.__name__}: {erro}\n"
+            "Sem essa medição eu escreveria o comprovante às cegas, e ele já "
+            "nasceu órfão uma vez (armadilhas/192). 'Não medi' nunca vira "
+            "permissão de escrever.",
+        )
+    if encontrado is None:
+        return None
+    checkout, e_o_clone_principal = encontrado
+    if not e_o_clone_principal:
+        return None
+    return (
+        f"🧱 RECUSADO NO ESPELHO: `fila.py {gesto}` está rodando dentro do CLONE\n"
+        "   PRINCIPAL —\n"
+        f"     {checkout}\n"
+        "   e o comprovante nasceria numa pasta onde você não pode commitar nada\n"
+        "   (RITOS.md §1, a muralha da pasta compartilhada). Ele ficaria órfão, e\n"
+        "   o seu PR iria sem ele.\n"
+        "\n"
+        f"   ISTO NÃO É RECUSA DA TAREFA — ela continua livre, e a reserva no\n"
+        "   servidor do GitHub NÃO depende da pasta. Inverta a ordem e o MESMO\n"
+        "   comando passa:\n"
+        "\n"
+        f"     {RITO_DO_WORKTREE}\n"
+        "     cd ../wt-<area>-<tarefa>\n"
+        f"     python ci/fila.py {gesto} ...        # o mesmo comando, aqui dentro\n"
+        "\n"
+        "   Por quê: em 30/08/2026 o comprovante da TAR-016 nasceu no espelho,\n"
+        "   ninguém avisou, e `validar` respondeu '✅ Fila válida' com ele fora\n"
+        "   (armadilhas/192). No espelho continuam livres `listar`, `validar` e\n"
+        "   `soltar`."
+    )
+
+
+def comprovantes_que_o_git_nao_conhece(raiz: Path) -> list[str] | None:
+    """Arquivos de `fila/eventos/` que o Git não rastreia — o comprovante que
+    existe no disco e NÃO vai viajar em PR nenhum.
+
+    `None` = não deu para medir (git ausente ou mudo). Pasta sem `.git` devolve
+    lista vazia: sem repositório não há PR a perder.
+    """
+    if not (raiz / ".git").exists():
+        return []
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(raiz), "ls-files", "--others", "--exclude-standard",
+             "--", "fila/eventos"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=30, stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if proc.returncode != 0:
+        return None
+    return sorted(linha.strip() for linha in proc.stdout.splitlines() if linha.strip())
+
+
+AVISO_DE_SOMBRA = (
+    "   (SOMBRA: esta regra AVISA e não reprova — regra nova nasce em sombra,\n"
+    "    autoridade proporcional à certeza. O dia em que ela passar a reprovar\n"
+    "    entra por PR, com teste-guarda.)"
+)
+
+
+def dizer_os_comprovantes_soltos(raiz: Path) -> None:
+    """A peça em SOMBRA: fala alto sobre comprovante fora do Git, e não muda
+    veredito nenhum. Chamada por `validar` — o gesto que a muralha do CI roda
+    e o que um robô roda antes de pedir pouso."""
+    achados = comprovantes_que_o_git_nao_conhece(raiz)
+    if achados is None:
+        print()
+        print("⚠️  NÃO CONSEGUI CONFERIR se algum comprovante de fila/eventos/ ficou")
+        print("   fora do Git (o git não respondeu). Não medi — e isso se diz, não")
+        print("   se esconde (armadilhas/192).")
+        print(AVISO_DE_SOMBRA)
+        return
+    if not achados:
+        return
+    try:
+        encontrado = raiz_do_checkout(raiz)
+    except Exception:  # pragma: no cover - defesa do aviso, que nunca trava
+        encontrado = None
+    no_espelho = bool(encontrado and encontrado[1])
+    print()
+    if no_espelho:
+        print(f"🧱 COMPROVANTE ÓRFÃO — {len(achados)} arquivo(s) de fila/eventos/ que o Git")
+        print("   não conhece, e esta pasta é o CLONE PRINCIPAL: aqui não se commita")
+        print("   nada (RITOS.md §1). Eles não vão viajar em PR nenhum, e o histórico")
+        print("   de quem pegou o trabalho some (armadilhas/192).")
+    else:
+        print(f"⚠️  {len(achados)} comprovante(s) de fila/eventos/ ainda fora do Git — o")
+        print("   evento viaja no PR do trabalho (RITOS.md §5). Commite antes de pedir")
+        print("   pouso, senão o PR vai sem ele (armadilhas/192).")
+    for arquivo in achados:
+        print(f"     - {arquivo}")
+    if no_espelho:
+        print("   Conserto: mova cada um para a sua bancada e commite lá —")
+        print("     mv <arquivo> ../wt-<area>-<tarefa>/fila/eventos/")
+    else:
+        print("   Conserto: git add fila/eventos && git commit")
+    print("   Confira sempre com: git diff --name-only origin/main...HEAD")
+    print(AVISO_DE_SOMBRA)
 
 
 def tarefas_citadas(texto: str) -> list[str]:
@@ -443,6 +613,10 @@ def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
 
 
 def cmd_criar(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("criar", raiz)
+    if recusa:
+        print(recusa)
+        return 1
     despacho = args.despacho
     if args.despacho_arquivo:
         despacho = Path(args.despacho_arquivo).read_text(encoding="utf-8").strip()
@@ -507,6 +681,12 @@ def cmd_listar(raiz: Path, args) -> int:
 
 
 def cmd_pegar(raiz: Path, args) -> int:
+    # Antes de tudo — antes até de ler a fila e de tocar no servidor: se a
+    # pasta é o espelho, o comprovante nasceria órfão (armadilhas/192).
+    recusa = _parar_se_for_o_espelho("pegar", raiz)
+    if recusa:
+        print(recusa)
+        return 1
     tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
     if tid not in tarefas:
@@ -548,6 +728,10 @@ def cmd_soltar(raiz: Path, args) -> int:
 
 
 def cmd_concluir(raiz: Path, args) -> int:
+    recusa = _parar_se_for_o_espelho("concluir", raiz)
+    if recusa:
+        print(recusa)
+        return 1
     tarefas, eventos = _carregar_ou_parar(raiz)
     tid = args.tarefa
     if tid not in tarefas:
@@ -605,6 +789,9 @@ def cmd_validar(raiz: Path) -> int:
         contagem[e["estado"]] = contagem.get(e["estado"], 0) + 1
     resumo = " · ".join(f"{k}: {v}" for k, v in sorted(contagem.items())) or "vazia"
     print(f"✅ Fila válida — {len(tarefas)} tarefa(s), {len(eventos)} evento(s) ({resumo}).")
+    # E, em SOMBRA, o que o ✅ sozinho já escondeu uma vez: comprovante que
+    # existe no disco e o Git não conhece (armadilhas/192). Avisa, não reprova.
+    dizer_os_comprovantes_soltos(raiz)
     return 0
 
 
