@@ -105,12 +105,19 @@ CABECALHO = """<!-- GERADO por `python ci/indice_de_armadilhas.py`. NÃO EDITE �
 > `stash`…). Achou a linha? Abra **só aquele arquivo**. Ler a pasta inteira
 > desfaz o motivo de ela existir.
 >
-> **Entrada nova ao terminar o despacho:** crie
-> `armadilhas/NNN-slug.md` (NNN = **o primeiro número acima de todos**, nunca um
-> vago no meio: os vagos estão aposentados e ainda são citados), comece pelo
-> **sintoma concreto** e rode `python ci/indice_de_armadilhas.py`. Nunca edite
-> este arquivo à mão, e nunca acrescente ao fim de um arquivo alheio — arquivo
-> novo por entrada é o que faz duas sessões paralelas pararem de colidir.
+> **Entrada nova ao terminar o despacho:** peça o número —
+> `python ci/reservar.py numero armadilha` — crie `armadilhas/NNN-slug.md` com
+> ele, comece pelo **sintoma concreto** e rode
+> `python ci/indice_de_armadilhas.py`. Nunca edite este arquivo à mão, e nunca
+> acrescente ao fim de um arquivo alheio — arquivo novo por entrada é o que faz
+> duas sessões paralelas pararem de colidir.
+>
+> **O número NÃO se escolhe** (desde 29/08/2026, e agora é portão):
+> `ci/muralha-das-reservas.sh` reprova o PR cujo número de entrada nova não foi
+> pedido ao almoxarife. "O primeiro livre" lido da pasta não tem trava nenhuma —
+> duas sessões leem, veem o mesmo livre, e o `git merge` junta os dois arquivos
+> sem ter o que reclamar. Vagos no meio seguem aposentados: o almoxarife nunca
+> reusa número, porque entrada antiga continua sendo citada para sempre.
 >
 > Se o seu rebase trouxe um `NNN` que outra sessão já usou, o gerador para com
 > `ERROR` e diz para qual número renomear — dois arquivos com o mesmo número

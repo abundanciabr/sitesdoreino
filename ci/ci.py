@@ -204,6 +204,11 @@ MURALHAS = [
         "ci/muralha-da-fila.sh",
         "a fila de trabalho (fila/) inválida — tarefa/evento fora do molde",
     ),
+    PortaoDeShell(
+        "muralha-das-reservas",
+        "ci/muralha-das-reservas.sh",
+        "armadilha nova com número escolhido à mão em vez de pedido ao almoxarife",
+    ),
 ]
 
 

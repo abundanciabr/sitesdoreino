@@ -108,7 +108,9 @@ e o `CLAUDE.md` mandavam "NNN = proximo numero livre", que e escolher a mao e na
 tem trava nenhuma. Duas sessoes leem a pasta, veem o mesmo livre, e o `git merge`
 junta os dois arquivos sem ter o que reclamar — nomes diferentes, hunks
 diferentes. **Peca o numero; nao o escolha.** O `ARMADILHAS.md` foi corrigido no
-mesmo PR desta entrada.
+mesmo PR desta entrada — e no PR seguinte a regra deixou de depender de leitura:
+`ci/muralha-das-reservas.sh` reprova, em todo PR, numero de armadilha novo sem
+reserva no servidor, e a recusa ja traz o conserto.
 
 **Origem:** 29/08/2026, `services/forum/tests/test_modelo_de_dados.py::test_a_excecao_existe_para_o_que_foi_lido_depois_da_marca`.
 Ver também `armadilhas/139` (o mesmo mecanismo — `pre_save()` de campo — visto
