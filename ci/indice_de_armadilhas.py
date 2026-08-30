@@ -172,6 +172,39 @@ CORPUS_FELIZ = (
     "Everything up-to-date",
     "total 48\ndrwxr-xr-x 1 davia 197121 0 Aug 29 16:11 ci",
     "Successfully installed huey-2.5.1 redis-5.0.1",
+    # A TABELA do `ci/mergear.py --conferir` num PR saudavel. O
+    # "RESULTADO  PASS" acima ja estava no corpus, mas ele e so o RODAPE do
+    # relatorio: as linhas de cima faltavam, e foi por esse buraco que o sino
+    # tocou em dia feliz. O rotulo "divida do livro" era a assinatura da
+    # armadilhas/185 e e dito IGUAL nos dois estados (30/08/2026, TAR-033 /
+    # PR 626: duas badaladas em cima de um PASS, na mesma sessao). A tabela
+    # entra INTEIRA de proposito: o rotulo de cada linha daqui aparece em todo
+    # PR verde, e nenhum deles pode virar assinatura de falha. Assinatura de
+    # falha ancora no que SO a falha diz.
+    "MERGE GUARDADO — PR #640\n"
+    "\n"
+    "  estado do PR          PASS   aberto e pronto para revisão\n"
+    "  conflitos             PASS   sem conflitos (MERGEABLE)\n"
+    "  check/muralhas        PASS   verde\n"
+    "  check/ci-celula-gate  PASS   verde\n"
+    "  orçamento             PASS   4 arquivo(s)\n"
+    "  dívida do livro       PASS   livro em dia\n"
+    "\n"
+    "RESULTADO  PASS",
+    # As outras duas linhas felizes do mesmo relatorio: a isencao de quem so
+    # escritura, e o unico pulo declarado como permitido.
+    "  dívida do livro       PASS   isento: este PR é o registro",
+    "  check/ci-celula (admin)  SKIP   o job da célula é pulado de "
+    "propósito quando o PR não toca services/",
+    # O balcao da fila em dia (`python ci/fila.py listar`), a outra saida de
+    # rotina que todo agente le: ela nomeia tarefa, estado e PR.
+    "A FILA DE TRABALHO — 38 tarefa(s) · só arquivos "
+    "(use --ao-vivo para reservas e PRs)\n"
+    "\n"
+    "  TAR-013  [concluída · sessao-tar013-2026-08-30] — "
+    "https://github.com/abundanciabr/sitesdoreino/pull/584\n"
+    "         A vacina do deploy: medir a porta, repetir com pausa, parar "
+    "na terceira  (toca: .github, ci)",
 )
 
 
