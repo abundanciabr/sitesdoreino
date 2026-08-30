@@ -317,6 +317,36 @@ frase, e é de quem escreve:
 - **Aspas (diálogo)** — quando o travessão marcava fala de personagem.
   `— Não quero ir hoje — disse Pedro.` vira `"Não quero ir hoje", disse Pedro.`
 
+**A troca é uma REESCRITA, não um caractere trocado.** Esta é a metade da lei
+que faltava, e ela custou uma dúzia de frases ruins publicadas no site antes de
+o mantenedor apontar o erro em 30/08/2026. A régua não é "sumiu o travessão": é
+**a frase ficou em português correto do Brasil**. Se a troca mais próxima
+deixar a frase torta, a resposta é reescrever, não aceitar a torta.
+
+**O erro que já aconteceu, para ninguém repetir:** dois-pontos **não** separa o
+verbo do seu complemento, nem abre uma oração que continua direto o pensamento
+anterior. Quando o trecho depois do travessão é continuação direta (começa por
+`é`, `são`, `não`, um imperativo), dois-pontos quebra a frase:
+
+```
+travessão:  Modelo pela metade também conta — é vendo o meio do caminho…
+ERRADO:     Modelo pela metade também conta: é vendo o meio do caminho…
+certo:      Modelo pela metade também conta, pois é vendo o meio do caminho…
+certo:      Modelo pela metade também conta: afinal, é vendo o meio do caminho…
+```
+
+A saída é **vírgula com conectivo** (`pois`, `porque`, `e`, `mas`), ou um
+**ponto final** quando o que vem depois é uma frase nova (`Nada foi criado.
+Tente de novo.`), ou dois-pontos **com** palavra de transição (`: afinal,`).
+
+**Onde dois-pontos está certo, e continua:** lista de definição
+(`**Aluno**: você entra normalmente`), enumeração seguida de síntese
+(`…o que está pronto: isso é calculado`), anúncio do único item
+(`tem uma forma só: a situação Ex-aluno`) e rótulo antes do conteúdo.
+
+**A régua final, em uma pergunta:** leia a frase em voz alta. Se você tropeçar,
+a troca está errada, ainda que o travessão tenha sumido.
+
 Contam como travessão as três riscas longas (`—`, `–`, `―`) e as formas
 escritas em HTML que viram risca na tela (`&mdash;`, `&#8212;` e parentes). O
 **hífen continua livre**: ele é letra de palavra composta ("guarda-chuva"), não
