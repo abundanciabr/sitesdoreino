@@ -85,6 +85,18 @@
       "arquivo": "armadilhas/199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md",
       "titulo": "`style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho",
       "regex": "style-src 'self'"
+    },
+    {
+      "armadilha": "202",
+      "arquivo": "armadilhas/202-campo-novo-obrigatorio-num-contrato-congelado-e-quebra.md",
+      "titulo": "Campo novo num contrato congelado nasce OBRIGATÓRIO por descuido — e o `contrato-aditivo` reprova o PR do Rito",
+      "regex": "passou a ser OBRIGAT[ÓO]RIO \\\\(quebra quem j[áa] envia sem ele\\\\)"
+    },
+    {
+      "armadilha": "202",
+      "arquivo": "armadilhas/202-campo-novo-obrigatorio-num-contrato-congelado-e-quebra.md",
+      "titulo": "Campo novo num contrato congelado nasce OBRIGATÓRIO por descuido — e o `contrato-aditivo` reprova o PR do Rito",
+      "regex": "contrato-aditivo *FAIL"
     }
   ]
 }

@@ -193,6 +193,18 @@
       "detector": null,
       "dono": "services/admin/tests/test_estilo_chega_ao_navegador.py",
       "tem_sinal": true
+    },
+    {
+      "armadilha": "202",
+      "arquivo": "armadilhas/202-campo-novo-obrigatorio-num-contrato-congelado-e-quebra.md",
+      "estado": "guardada",
+      "degrau": 2,
+      "confianca": "alta",
+      "custo_por_queda": "baixo",
+      "tipo": "CI",
+      "detector": null,
+      "dono": "ci/contrato_aditivo.py",
+      "tem_sinal": true
     }
   ]
 }
