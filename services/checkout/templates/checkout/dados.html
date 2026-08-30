@@ -37,7 +37,7 @@
           <template x-for="bump in offer.bumps" :key="bump.id">
             <label class="bump">
               <input type="checkbox" :value="bump.id" @change="alternarBump(bump.id)">
-              <span x-text="`${bump.name} — R$ ${(bump.price_cents / 100).toFixed(2)}`"></span>
+              <span x-text="`${bump.name} (R$ ${(bump.price_cents / 100).toFixed(2)})`"></span>
             </label>
           </template>
         </div>

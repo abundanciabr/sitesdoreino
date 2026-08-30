@@ -20,7 +20,7 @@ que ele diz em palavras vive no `title`/`aria-label` ("Votar" / "Tirar meu
 voto"): a seta sozinha não é rótulo para quem usa leitor de tela — e é por
 essas palavras que os guardas do EVO-12b medem de quem é o voto.
 {% endcomment %}
-{% block titulo %}{{ quadro.nome }} — Caixa de Sugestões{% endblock %}
+{% block titulo %}{{ quadro.nome }} (Caixa de Sugestões){% endblock %}
 {% block migalha %}Quadro{% endblock %}
 
 {% block numeros %}
@@ -121,7 +121,7 @@ nome para quem usa leitor de tela — a mesma regra do botão de voto (LICOES §
           {% for marco in zona.marcos %}
             <a class="marco" href="{% url 'sugestao' marco.id %}"
                title="{{ marco.titulo }}"
-               aria-label="{{ marco.titulo }} — {{ marco.total_votos }} voto{{ marco.total_votos|pluralize }}"><span class="losango" aria-hidden="true"></span><span class="marco-votos">{{ marco.total_votos }}</span></a>
+               aria-label="{{ marco.titulo }}, {{ marco.total_votos }} voto{{ marco.total_votos|pluralize }}"><span class="losango" aria-hidden="true"></span><span class="marco-votos">{{ marco.total_votos }}</span></a>
           {% empty %}
             <span class="zona-vazia">nenhuma ideia por aqui ainda</span>
           {% endfor %}
@@ -239,7 +239,7 @@ desmentir as 12 que a pessoa escreveu no quadro inteiro.
       <p class="meta">
         Você ainda não publicou nenhuma ideia
         {% if categoria_do_recorte %}em {{ categoria_do_recorte }}{% else %}aqui{% endif %}.
-        <a href="{% url 'nova_sugestao' %}">Conte o que está faltando</a> — é assim
+        <a href="{% url 'nova_sugestao' %}">Conte o que está faltando</a>: é assim
         que este painel começa a encher.
       </p>
     {% endif %}
@@ -252,7 +252,7 @@ desmentir as 12 que a pessoa escreveu no quadro inteiro.
   <p class="identificacao">Nova ideia</p>
   <h2>O que está faltando?</h2>
   <p class="meta" style="margin-bottom:14px">
-    Conte o problema que você vive. Quem sabe o que dói é você — e cada voto
+    Conte o problema que você vive. Quem sabe o que dói é você, e cada voto
     que a sua ideia receber empurra ela para cima deste quadro.
   </p>
   <a class="botao principal" href="{% url 'nova_sugestao' %}">Sugerir alguma coisa</a>

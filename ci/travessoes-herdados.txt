@@ -24,17 +24,9 @@
 #
 # Formato: `<caminho a partir da raiz> :: <quantos travessões ainda vivos>`
 
-services/admin/apps/core/templates/admin/503.html :: 1
-services/admin/apps/core/templates/admin/mapa_do_site.html :: 6
-services/checkout/templates/checkout/cartao.html :: 1
-services/checkout/templates/checkout/dados.html :: 2
-services/checkout/templates/checkout/pix.html :: 1
-services/forum/apps/core/templates/forum/topico.html :: 1
-services/funil/templates/funil/landing.html :: 1
-services/quiz/apps/quiz/templates/quiz/resultado.html :: 1
-services/sugestoes/apps/core/templates/sugestoes/avisos.html :: 8
-services/sugestoes/apps/core/templates/sugestoes/entrar.html :: 4
-services/sugestoes/apps/core/templates/sugestoes/nova.html :: 4
-services/sugestoes/apps/core/templates/sugestoes/quadro.html :: 4
-services/sugestoes/apps/core/templates/sugestoes/sugestao.html :: 3
-# TOTAL: 37
+# A DIVIDA FOI PAGA POR INTEIRO em 30/08/2026, no mesmo dia em que a regra
+# nasceu: os 125 travessoes viraram virgula, parenteses, dois-pontos ou
+# palavra. A lista fica aqui, vazia, porque a catraca continua valendo — e
+# porque uma linha nova aqui seria uma decisao visivel, nao um esquecimento.
+
+# TOTAL: 0

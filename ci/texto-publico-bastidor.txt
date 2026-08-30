@@ -30,3 +30,4 @@ services/admin/apps/core/templates/admin/caixa_*.html :: gestão da Caixa de Sug
 services/admin/apps/core/templates/admin/escola*.html :: prontuário e jornada dos alunos, tela de administração
 services/admin/apps/core/templates/admin/documentos.html :: a lista de documentos do lado de dentro, para publicar ou não
 services/admin/apps/core/templates/admin/documento_admin.html :: a leitura administrativa de um documento, atrás da porta
+services/admin/apps/core/templates/admin/mapa_do_site.html :: o mapa de endereços é do lado de dentro; `/mapa/` não está em CAMINHOS_ISENTOS da porta
