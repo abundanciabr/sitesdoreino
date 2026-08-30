@@ -1,0 +1,63 @@
+{% extends "forum/base.html" %}
+{% block titulo %}{% if termo %}{{ termo }}{% else %}Procurar{% endif %}{% endblock %}
+{% block conteudo %}
+<p class="migalha"><a href="{% url 'home' %}">← todas as áreas</a></p>
+
+{% if not termo %}
+  <h1>Procurar no fórum</h1>
+  <p class="sub">Escreva no campo lá em cima o que você quer achar. A busca
+    procura dentro de todas as conversas que você pode ler.</p>
+{% elif curto %}
+  <h1>Escreva um pouco mais</h1>
+  <p class="sub">Com uma letra só, a busca acha quase tudo e não ajuda em nada.
+    Tente com pelo menos duas.</p>
+{% elif quantas %}
+  <h1>{{ quantas }} resultado{{ quantas|pluralize }} para "{{ termo }}"</h1>
+  <p class="sub">Do mais parecido com o que você escreveu para o menos.</p>
+
+  {% for mensagem in pagina %}
+    <div class="cartao achado">
+      <h2><a href="{% url 'topico' mensagem.topico_id %}#m{{ mensagem.pk }}">{{ mensagem.topico.titulo }}</a>
+        {% if mensagem.topico.resposta_aceita_id == mensagem.pk %}<span class="etiqueta">resposta aceita</span>{% endif %}
+        {% comment %}
+        Só chega a aparecer para quem modera: para o resto, a consulta já tirou
+        o que está fora do ar (`apps/core/busca.py`).
+        {% endcomment %}
+        {% if mensagem.removida_em or mensagem.topico.estado != "publicado" %}<span class="etiqueta">fora do ar</span>{% endif %}
+      </h2>
+      <p class="sub" style="margin:4px 0 0">
+        em {{ mensagem.topico.area.nome }} · por {{ mensagem.assinatura }} · {{ mensagem.criado_em|date:"d/m/Y" }}
+      </p>
+      {% comment %}
+      O trecho já vem escapado e marcado por `apps/core/busca.py`. Ele é a ÚNICA
+      coisa desta tela que carrega HTML, e o `|safe` daqui só é seguro porque o
+      escape aconteceu ANTES, lá. Nunca ponha `|safe` no texto cru de uma
+      mensagem.
+      {% endcomment %}
+      <div class="texto">{{ mensagem.trecho_seguro|safe }}</div>
+    </div>
+  {% endfor %}
+
+  {% if pagina.has_other_pages %}
+    <div class="paginas">
+      {% if pagina.has_previous %}<a href="?q={{ termo|urlencode }}&amp;p={{ pagina.previous_page_number }}">← anteriores</a>{% endif %}
+      <span>página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+      {% if pagina.has_next %}<a href="?q={{ termo|urlencode }}&amp;p={{ pagina.next_page_number }}">próximas →</a>{% endif %}
+    </div>
+  {% endif %}
+{% else %}
+  <h1>Nada encontrado para "{{ termo }}"</h1>
+  <div class="vazio">
+    <strong>Duas coisas que costumam resolver:</strong>
+    <p style="margin:8px 0 0">
+      A busca leva o acento a sério, então "chapeu" não acha "chapéu": tente
+      escrever a palavra acentuada. E prefira uma palavra sozinha à frase
+      inteira, porque a frase exige que tudo apareça junto.
+    </p>
+    <p style="margin:8px 0 0">
+      Se mesmo assim não achar, provavelmente ninguém perguntou isso ainda.
+      Abra a conversa você: é assim que a próxima pessoa encontra a resposta.
+    </p>
+  </div>
+{% endif %}
+{% endblock %}

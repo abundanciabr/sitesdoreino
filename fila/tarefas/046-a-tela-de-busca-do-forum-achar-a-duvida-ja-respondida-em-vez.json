@@ -1,0 +1,14 @@
+{
+  "arquivo": "046-a-tela-de-busca-do-forum-achar-a-duvida-ja-respondida-em-vez",
+  "id": "TAR-046",
+  "titulo": "A tela de busca do forum: achar a duvida ja respondida em vez de perguntar de novo",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado, suite da celula verde com prova vermelho->verde por assercao (inclusive o teste de que area privada nao vaza na busca e o de que <script> nao vira script), deploy-celula verde lido por gh run view --json e a busca respondendo na internet",
+  "despacho": "Escolha do mantenedor em 30/08/2026, com a inauguracao da escola na segunda: o\nforum ganha a TELA de busca. A parte cara ja existe desde o modelo de dados (a\ncoluna `busca` do PostgreSQL, em portugues, indexada, preenchida na ESCRITA\npor Mensagem.indexar_para_busca) -- e nenhuma tela usa.\n\nO que construir: uma pagina /forum/buscar?q=... e um campo de busca no topo de\ntodas as paginas do forum. O resultado mostra o trecho da mensagem que casou,\ncom o termo destacado, e leva direto para a mensagem dentro da conversa.\n\nAs tres regras que decidem o desenho:\n\n1. A BUSCA NUNCA MOSTRA O QUE A PESSOA NAO PODERIA LER. Quem responde \"pode?\"\n   continua sendo apps/core/permissoes.py (areas_visiveis), nunca um filtro\n   novo escrito na consulta -- duas expressoes da mesma regra divergem, e aqui\n   divergir significa vazar mensagem de aluno de area privada para estranho.\n2. O DESTAQUE NAO PODE VIRAR BURACO DE SEGURANCA. O ts_headline do PostgreSQL\n   devolve HTML e NAO escapa o texto de origem: marcar o trecho como seguro\n   sem escapar antes deixaria um aluno publicar <script> e ele rodar na tela\n   de quem busca. A ordem e: escapar primeiro, trocar os marcadores depois.\n3. Conteudo fora do ar nao aparece para aluno nem visitante; para quem modera,\n   aparece marcado, pela MESMA regra das outras telas.\n\nFechar com: entrada no painel/mapa-do-site.json, registro no livro e as\narmadilhas que aparecerem.",
+  "origem": "escolha do mantenedor em 30/08/2026, na caixa de pergunta que fechou a TAR-039",
+  "criada_em": "2026-08-30"
+}

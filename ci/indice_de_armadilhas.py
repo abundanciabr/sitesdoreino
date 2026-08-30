@@ -208,6 +208,37 @@ CORPUS_FELIZ = (
     "https://github.com/abundanciabr/sitesdoreino/pull/584\n"
     "         A vacina do deploy: medir a porta, repetir com pausa, parar "
     "na terceira  (toca: .github, ci)",
+    # Os CABECALHOS CSP SAUDAVEIS da celula `admin`. Faltavam, e por esse
+    # buraco a `armadilhas/199` declarava `style-src 'self'` — que e o PREFIXO
+    # da politica CERTA, nao a assinatura da errada. O sino badalava em cima da
+    # propria cura que a licao manda escrever (30/08/2026, TAR-043).
+    #
+    # As TRES formas saudaveis entram, porque cada uma refuta uma assinatura
+    # tentadora diferente. A primeira e a mais importante: um 302/404 sem corpo
+    # nao tem `<style>` para hashear, entao `porta.py::_hashes_de_estilo`
+    # devolve vazio DE PROPOSITO e a politica sai com `style-src 'self';` nu.
+    # Isso e SAUDE, nao doenca — e e o que `curl -I` no /admin/ devolve num dia
+    # perfeitamente normal (medido no ar em 30/08/2026). Sem esta linha aqui, o
+    # proximo agente "aperta" a assinatura para o `style-src` sem `sha256-` e
+    # reintroduz o mesmo sino falso por outro caminho.
+    "HTTP/1.1 302 Found\r\n"
+    "Content-Security-Policy: default-src 'self'; script-src 'self'; "
+    "style-src 'self'; img-src 'self' data:; object-src 'none'; "
+    "base-uri 'none'; form-action 'self'; frame-ancestors 'self'",
+    # A politica do painel (`painel.py::_politica_de_seguranca`): `style-src`
+    # com `'unsafe-inline'` e as fontes do Google.
+    "default-src 'self'; script-src 'self' 'sha256-gaaMFNHZyRta8zB2VHkWLMP4"
+    "tMxJ+d8v3dTW7nw2r6M='; style-src 'self' 'unsafe-inline' "
+    "https://fonts.googleapis.com; font-src https://fonts.gstatic.com; "
+    "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
+    "form-action 'self'; frame-ancestors 'self'",
+    # A politica da porta com CORPO: `style-src 'self'` MAIS o hash do estilo
+    # embutido. Esta linha e literalmente a CURA que a `armadilhas/199` ensina
+    # a escrever — nenhuma assinatura de falha pode casar com ela.
+    "default-src 'self'; script-src 'self'; style-src 'self' "
+    "'sha256-FcQqt3aNlV7AZnGV4zkQRVeCeJOxbMPnQSx258L803E='; "
+    "img-src 'self' data:; object-src 'none'; base-uri 'none'; "
+    "form-action 'self'; frame-ancestors 'self'",
 )
 
 

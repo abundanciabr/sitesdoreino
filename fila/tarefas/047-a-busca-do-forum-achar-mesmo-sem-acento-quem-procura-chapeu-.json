@@ -1,0 +1,15 @@
+{
+  "arquivo": "047-a-busca-do-forum-achar-mesmo-sem-acento-quem-procura-chapeu-",
+  "id": "TAR-047",
+  "titulo": "A busca do forum achar mesmo sem acento: quem procura chapeu tem de achar chapeu",
+  "toca": [
+    "forum",
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com a configuracao nova, a coluna reindexada e o teste dos buracos conhecidos atualizado; o bloco de colar entregue ao mantenedor e rodado por ele na VPS; e a prova de fora: procurar sem acento no site achando o texto acentuado",
+  "despacho": "A busca do forum ficou no ar em 30/08/2026 (TAR-046), e ela e SENSIVEL A\nACENTO: quem procura \"chapeu\" nao acha \"chapeu\" com acento. No Brasil quase\nninguem acentua ao buscar, entao isso erra a maioria das consultas reais sem\nque ninguem perceba -- a pessoa conclui que a resposta nao existe e pergunta de\nnovo, que e exatamente o que o forum existe para evitar. Hoje a tela avisa o\nlimite em portugues quando nao acha nada; isso e honestidade, nao cura.\n\nA cura, medida em armadilhas/154:\n\n1. A extensao `unaccent` no banco do forum. Ela SO se instala como superusuario\n   do PostgreSQL, entao o lugar dela e infra/provisionar-forum.sh (que ja roda\n   com esse poder), nunca uma migracao do Django -- a migracao roda com o papel\n   restrito da celula e falharia. Isso e um passo do mantenedor na VPS, e ele\n   precisa de um bloco unico de colar, fail-closed.\n2. Uma configuracao de busca propria (por exemplo `portugues_sem_acento`) que\n   componha unaccent + o dicionario portugues, criada no mesmo script.\n3. A coluna `busca` das mensagens REINDEXADA com a configuracao nova, e o\n   `CONFIG` de services/forum/apps/core/busca.py e de\n   Mensagem.indexar_para_busca apontando para ela. As duas pontas tem de mudar\n   juntas: indexar com uma configuracao e buscar com outra e a forma silenciosa\n   de a busca nao achar o que existe.\n4. O teste test_os_dois_buracos_conhecidos_da_busca_em_portugues, em\n   tests/test_modelo_de_dados.py, EXIGE hoje o comportamento limitado. Quando a\n   cura chegar ele fica vermelho, e e assim que se descobre que ela chegou --\n   atualize-o junto, dizendo o que passou a valer.\n5. A frase sobre acento na tela de \"nada encontrado\"\n   (templates/forum/busca.html) sai no mesmo PR.\n\nO plural em -ens (modelagem x modelagens) continua fora: e dicionario\nispell/hunspell, outra tarefa.",
+  "origem": "limite medido em armadilhas/154, encontrado de novo ao construir a tela de busca (TAR-046)",
+  "criada_em": "2026-08-30"
+}

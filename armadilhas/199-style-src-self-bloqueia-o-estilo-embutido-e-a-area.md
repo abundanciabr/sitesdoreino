@@ -9,8 +9,22 @@ guarda:
   tipo: CI
   dono: services/admin/tests/test_estilo_chega_ao_navegador.py
 sinal:
+  # SÓ a mensagem do navegador. Ela é a única frase que aparece quando o estilo
+  # é MESMO bloqueado, e cala em cima de qualquer cabeçalho saudável.
+  #
+  # NÃO acrescente `style-src 'self'` aqui de volta — foi o que estava escrito
+  # até 30/08/2026 (TAR-043), e é o PREFIXO da política CERTA, não a assinatura
+  # da errada: a cura que esta lição ensina emite `style-src 'self' 'sha256-…'`
+  # e o painel emite `style-src 'self' 'unsafe-inline' …`. O sino badalava em
+  # cima da própria cura.
+  #
+  # E não tente "apertar" para o `style-src` SEM hash: um 302/404 sem corpo não
+  # tem `<style>` para hashear, então `porta.py::_hashes_de_estilo` devolve
+  # vazio DE PROPÓSITO e a política sai `style-src 'self';` nu. Medido no ar em
+  # 30/08/2026: `curl -I https://meshcraft.top/admin/` devolve exatamente isso
+  # num dia perfeitamente saudável. Os três cabeçalhos estão no `CORPUS_FELIZ`
+  # de `ci/indice_de_armadilhas.py`, e o gerador reprova quem tentar.
   - `Applying inline style violates`
-  - `style-src 'self'`
 ---
 
 # `style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho
