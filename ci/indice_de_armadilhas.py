@@ -120,8 +120,11 @@ CABECALHO = """<!-- GERADO por `python ci/indice_de_armadilhas.py`. NÃO EDITE �
 > reusa número, porque entrada antiga continua sendo citada para sempre.
 >
 > Se o seu rebase trouxe um `NNN` que outra sessão já usou, o gerador para com
-> `ERROR` e diz para qual número renomear — dois arquivos com o mesmo número
-> passam pelo `git rebase` sem conflito nenhum.
+> `ERROR` — dois arquivos com o mesmo número passam pelo `git rebase` sem
+> conflito nenhum. O conserto é o mesmo de sempre: **peça outro número ao
+> almoxarife** (`python ci/reservar.py numero armadilha`) e renomeie o arquivo E
+> o campo `armadilha:` com ele. O gerador não escolhe número por você — se
+> escolhesse, a `muralha-das-reservas` reprovaria quem obedecesse.
 >
 > `§ antigo` é o número que a entrada tinha no `ARMADILHAS.md` monolítico, até
 > 23/08/2026 — é por ele que as referências antigas (`ARMADILHAS §5.3`) ainda
@@ -519,7 +522,6 @@ def conferir_numeracao(entradas: list[Entrada]) -> None:
     if not colisoes:
         return
 
-    livre = max(por_numero) + 1
     detalhe = []
     for numero, nomes in colisoes:
         detalhe.append(f"  {numero:03d} — {len(nomes)} arquivos:")
@@ -528,25 +530,45 @@ def conferir_numeracao(entradas: list[Entrada]) -> None:
     # Qual dos dois arquivos renomear é uma decisão que este gerador NÃO tem
     # como tomar sozinho (ele não olha o git): renomear o que já está na main
     # quebraria as referências de quem já cita aquela entrada. Por isso a
-    # mensagem entrega o comando com o slug em branco e o jeito de descobrir
-    # qual é o seu — instrução errada em mensagem de erro custa mais que
-    # instrução incompleta.
+    # mensagem entrega o jeito de descobrir qual é o seu — instrução errada em
+    # mensagem de erro custa mais que instrução incompleta.
+    #
+    # E o NÚMERO NOVO NÃO SAI DAQUI. Até 30/08/2026 esta mensagem mandava
+    # escolher "o primeiro número acima de todos, hoje NNN" e fazer um `git mv`
+    # — e a `muralha-das-reservas` (ci/reservas_das_armadilhas.py) reprova
+    # exatamente isso, com "número escolhido à mão". Dois guardas se
+    # contradiziam sobre o mesmo número, e obedecer a este custou uma rodada de
+    # CI a TRÊS robôs num só dia. Quem dá número é o almoxarife
+    # (`ci/reservar.py`), que aloca por comparar-e-trocar no servidor do GitHub;
+    # "o primeiro livre que eu vejo agora" é justamente a leitura que as duas
+    # sessões fazem ao mesmo tempo. Guarda de erro que ensina o conserto errado
+    # é pior que guarda mudo: TAR-036.
     detalhe.append(
-        "\nDuas sessões escolheram o mesmo 'próximo número livre'. O `git rebase`\n"
-        "junta os dois arquivos SEM conflito (nomes diferentes, hunks diferentes)\n"
-        "e a pasta fica com dois NNN iguais — foi o que aconteceu em 24/08/2026.\n"
+        "\nDuas sessões escolheram o mesmo número. O `git rebase` junta os dois\n"
+        "arquivos SEM conflito (nomes diferentes, hunks diferentes) e a pasta\n"
+        "fica com dois NNN iguais — foi o que aconteceu em 24/08/2026.\n"
         "\n"
-        "Conserte renomeando a SUA entrada — a que ainda NÃO está na main — para o\n"
-        f"primeiro número acima de todos, hoje {livre:03d}, e regenere o índice:\n"
+        "Conserte a SUA entrada — a que ainda NÃO está na main. Descubra qual é:\n"
         "\n"
         f"  git log origin/main --oneline -- {PASTA}/{repetido}-<slug>.md"
         "   # vazio = essa é a sua\n"
-        f"  git mv {PASTA}/{repetido}-<o-seu-slug>.md "
-        f"{PASTA}/{livre:03d}-<o-seu-slug>.md\n"
+        "\n"
+        "PEÇA o número novo ao almoxarife; não escolha um. Ele aloca no servidor\n"
+        "do GitHub (comparar-e-trocar), então duas sessões nunca recebem o mesmo:\n"
+        "\n"
+        "  python ci/reservar.py numero armadilha\n"
+        "\n"
+        "Com o número que ele devolveu (chame-o de NNN), renomeie o arquivo E o\n"
+        "campo `armadilha:` do frontmatter — os dois têm de bater —, ajuste as\n"
+        "citações à entrada, e regenere:\n"
+        "\n"
+        f"  git mv {PASTA}/{repetido}-<o-seu-slug>.md {PASTA}/NNN-<o-seu-slug>.md\n"
         "  python ci/indice_de_armadilhas.py\n"
         "\n"
-        "Não reaproveite um número vago no meio (042, 046…): eles estão\n"
-        "aposentados e as referências antigas continuam apontando para eles."
+        "Escolher o número à mão é reprovado pela `muralha-das-reservas` em todo\n"
+        "PR, com 'número escolhido à mão' — e não adianta pegar um número vago no\n"
+        "meio (042, 046…): eles estão aposentados e as referências antigas\n"
+        "continuam apontando para eles."
     )
     raise ErroDeInstrumentacao(
         f"número repetido em '{PASTA}/': "
