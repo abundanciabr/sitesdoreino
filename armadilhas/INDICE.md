@@ -232,5 +232,6 @@
 | [197](197-endereco-publico-de-celula-sob-prefixo-nao-e-prefixo.md) | O endereço público de uma célula sob prefixo NÃO é "prefixo + rota" — ele dobra num caso e duplica noutro — Você precisa do endereço público de uma rota (para um link numa tela, uma linha de documentação, um `curl` de… | CI+sino | — |
 | [198](198-pr-com-conflito-nao-dispara-os-workflows-de-pull-request.md) | PR com CONFLITO não dispara os workflows de `pull_request` — os checks obrigatórios não ficam pendentes, eles não existem — O PR está aberto, o push chegou, e `gh pr checks <N>` lista **um check só** — nenhum dos… | CI+sino | — |
 | [199](199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md) | `style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho — As telas de uma célula chegam ao navegador **sem estilo nenhum** — texto preto em fundo branco, tudo empilhado.… | CI+sino | — |
+| [204](204-cabecalho-cookie-no-cliente-de-teste-apaga-o-cookie-de-csrf.md) | `headers={"cookie": ...}` no cliente de teste do Django APAGA o cookie de CSRF, e o formulário responde 403 — Um teste que atravessa o formulário inteiro — pede a página, lê o token que ela imprimiu, devolve o token no… | nenhum (declarado) | — |
 
-**180 entradas** — 16 com guarda declarada, 164 ainda sem.
+**181 entradas** — 17 com guarda declarada, 164 ainda sem.

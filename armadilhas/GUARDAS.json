@@ -193,6 +193,18 @@
       "detector": null,
       "dono": "services/admin/tests/test_estilo_chega_ao_navegador.py",
       "tem_sinal": true
+    },
+    {
+      "armadilha": "204",
+      "arquivo": "armadilhas/204-cabecalho-cookie-no-cliente-de-teste-apaga-o-cookie-de-csrf.md",
+      "estado": "documentada",
+      "degrau": 3,
+      "confianca": "alta",
+      "custo_por_queda": "medio",
+      "tipo": "nenhum",
+      "detector": null,
+      "dono": null,
+      "tem_sinal": false
     }
   ]
 }
