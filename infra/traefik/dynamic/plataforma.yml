@@ -223,6 +223,36 @@ http:
       entryPoints: [websecure]
       middlewares: [seguranca-admin]
       service: admin
+
+    forum:
+      # O forum da escola (DECISAO-forum-da-escola.md, 28/08/2026).
+      #
+      # POR CAMINHO, NUNCA POR SUBDOMINIO, e a razao nao e estetica: o cookie
+      # `meshcraft_sessao` e de HOST (`SESSION_COOKIE_PATH=/`, e
+      # deliberadamente SEM `SESSION_COOKIE_DOMAIN`). Em `forum.meshcraft.top`
+      # o cracha nao viajaria, e o forum passaria a exigir um SEGUNDO login —
+      # exatamente o que o mantenedor pediu para nao ter, e o que a §2 da lei
+      # proibe nominalmente. Mover esta linha para um subdominio quebra o login
+      # unico do site inteiro.
+      #
+      # A celula conhece o prefixo por `SCRIPT_NAME=/forum` no env dela; o
+      # Traefik NAO o remove (`armadilhas/029`).
+      #
+      # `Host(...)` explicito, como na `identidade` e na `admin`: sem ele,
+      # qualquer dominio apontado para esta VPS serviria o forum da escola.
+      #
+      # Cadeia `seguranca` (a compartilhada), e NAO a `seguranca-admin`: o
+      # forum tem areas PUBLICAS de proposito — visitante le e o Google indexa
+      # (lei §5). Quem pode ler o que e decidido DENTRO da celula, por dado e
+      # fail-closed (`apps/core/permissoes.py`), nunca aqui no roteador.
+      #
+      # Mesma escala do resto: 10 = prefixo de pagina, contra o 1 do catch-all
+      # do funil.
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/forum`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: forum
       tls: {}
 
     www-meshcraft:
@@ -318,3 +348,6 @@ http:
     admin:
       loadBalancer:
         servers: [ { url: "http://admin:8000" } ]
+    forum:
+      loadBalancer:
+        servers: [ { url: "http://forum:8000" } ]
