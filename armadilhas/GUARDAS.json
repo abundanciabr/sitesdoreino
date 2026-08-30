@@ -93,9 +93,9 @@
       "degrau": 2,
       "confianca": "alta",
       "custo_por_queda": "alto",
-      "tipo": "nenhum",
+      "tipo": "CI",
       "detector": null,
-      "dono": null,
+      "dono": "ci/tests/test_rerun_de_deploy.py",
       "tem_sinal": true
     },
     {
@@ -133,6 +133,54 @@
       "detector": null,
       "dono": null,
       "tem_sinal": false
+    },
+    {
+      "armadilha": "195",
+      "arquivo": "armadilhas/195-vermelho-que-morre-na-construcao-do-teste-nao-prova-a-decisao.md",
+      "estado": "documentada",
+      "degrau": 6,
+      "confianca": "alta",
+      "custo_por_queda": "medio",
+      "tipo": "nenhum",
+      "detector": null,
+      "dono": null,
+      "tem_sinal": false
+    },
+    {
+      "armadilha": "196",
+      "arquivo": "armadilhas/196-o-rascunho-do-agente-e-compartilhado-entre-sessoes-irmas.md",
+      "estado": "observada",
+      "degrau": 6,
+      "confianca": "alta",
+      "custo_por_queda": "alto",
+      "tipo": "nenhum",
+      "detector": null,
+      "dono": null,
+      "tem_sinal": false
+    },
+    {
+      "armadilha": "197",
+      "arquivo": "armadilhas/197-endereco-publico-de-celula-sob-prefixo-nao-e-prefixo.md",
+      "estado": "guardada",
+      "degrau": 2,
+      "confianca": "alta",
+      "custo_por_queda": "medio",
+      "tipo": "CI",
+      "detector": null,
+      "dono": "ci/mapa_do_site.py",
+      "tem_sinal": true
+    },
+    {
+      "armadilha": "198",
+      "arquivo": "armadilhas/198-pr-com-conflito-nao-dispara-os-workflows-de-pull-request.md",
+      "estado": "guardada",
+      "degrau": 3,
+      "confianca": "alta",
+      "custo_por_queda": "medio",
+      "tipo": "CI",
+      "detector": null,
+      "dono": "ci/mergear.py",
+      "tem_sinal": true
     }
   ]
 }
