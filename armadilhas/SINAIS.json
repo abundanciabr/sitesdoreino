@@ -37,6 +37,12 @@
       "arquivo": "armadilhas/185-registro-sem-o-numero-do-pr-vira-divida-real.md",
       "titulo": "O registro viajou dentro do PR, mas a evidência não cita o número — a dívida é REAL, e cai no colo da próxima sessão",
       "regex": "merges que ningu[ée]m contou"
+    },
+    {
+      "armadilha": "187",
+      "arquivo": "armadilhas/187-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md",
+      "titulo": "`assert datetime.datetime(...) > datetime.datetime(...)` com os DOIS lados IDÊNTICOS — no Windows, dois `timezone.now()` seguidos caem no mesmo tique do relógio",
+      "regex": "assert (datetime\\.datetime\\([^)]*\\)) [<>]=? \\1"
     }
   ]
 }

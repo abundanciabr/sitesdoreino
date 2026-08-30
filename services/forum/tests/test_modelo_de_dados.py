@@ -10,6 +10,8 @@ se for desfeita sem querer, só aparece em produção e cara:
    migrar para o Discourse.
 """
 
+from datetime import timedelta
+
 import pytest
 from django.db import IntegrityError, connection
 from django.utils import timezone
@@ -66,7 +68,17 @@ def test_ler_uma_area_inteira_cria_UMA_linha_e_nao_uma_por_mensagem(area, aluno)
 
 def test_a_excecao_existe_para_o_que_foi_lido_depois_da_marca(area, aluno):
     """A tabela de exceções é o que deixa a marca ser uma linha só sem mentir."""
-    marca = timezone.now()
+    # A marca nasce UM SEGUNDO no passado de propósito, e não em `timezone.now()`:
+    # o relógio do Windows anda de 15,625 ms em 15,625 ms
+    # (`time.get_clock_info("time").resolution`), então esta chamada e a que o
+    # `auto_now_add` de `Topico.ultima_atividade_em` faz logo abaixo caem no
+    # MESMO tique com frequência — e a comparação estrita vira `==`. Medido em
+    # 29/08/2026 nesta máquina: 10 falhas em 30 execuções, com os dois
+    # timestamps idênticos até o microssegundo; verde no Linux da CI, onde a
+    # resolução é ~1 ns. Um segundo é 64 tiques de folga, e a propriedade
+    # provada continua a mesma. Afrouxar para `>=` seria apagar exatamente o
+    # que este teste existe para provar (`armadilhas/187`).
+    marca = timezone.now() - timedelta(seconds=1)
     MarcaDeLeitura.objects.create(pessoa=aluno, area=area, lido_ate=marca)
 
     novo = Topico.objects.create(area=area, autor=aluno, titulo="Chegou depois")
