@@ -109,12 +109,44 @@ def test_ninguem_escreve_onde_nao_pode_ler(cadastrado):
     assert pode_escrever(a, cadastrado) is False
 
 
-def test_area_publica_com_escrita_de_aluno_e_o_desenho_padrao(cadastrado, aluno):
-    """ "Todos leem, aluno escreve" — o desenho que não abre porta para spam."""
+def test_em_pagina_publica_so_a_escola_fala(cadastrado, aluno, professor):
+    """**O desenho mudou em 30/08/2026, por decisão do mantenedor.**
+
+    Até aqui valia *"todos leem, aluno escreve"*. Ele decidiu o contrário para
+    a página pública (registro `20260830-021`): a escola é de Roblox, o público
+    é criança e adolescente, e mensagem de menor não fica exposta a estranho
+    sem login. O que é aberto ao Google passa a ser **só a escola falando** — e
+    o preço, aceito por ele na mesma escolha, é o fórum sair do alcance de
+    buscador.
+
+    A combinação antiga (`publica` + escrita de aluno) não é mais só recusada
+    aqui: **o banco a recusa** (`Area.Meta.constraints`,
+    `pagina_publica_so_a_escola_fala`), e por isso este teste não consegue nem
+    montá-la — ver `tests/test_escrever.py`.
+    """
     a = area(
-        visibilidade=Area.Visibilidade.PUBLICA, quem_escreve=Area.QuemEscreve.ALUNO
+        visibilidade=Area.Visibilidade.PUBLICA, quem_escreve=Area.QuemEscreve.EQUIPE
     )
+    # Todo mundo lê — a página pública continua pública para LER.
+    assert pode_ler(a, VISITANTE) is True
     assert pode_ler(a, cadastrado) is True
+    assert pode_ler(a, aluno) is True
+    # E ninguém escreve, a não ser a escola.
+    assert pode_escrever(a, VISITANTE) is False
+    assert pode_escrever(a, cadastrado) is False
+    assert pode_escrever(a, aluno) is False
+    assert pode_escrever(a, professor) is True
+
+
+def test_o_aluno_escreve_atras_do_login_na_area_de_alunos(cadastrado, aluno):
+    """Onde aluno escreve, exige login — e exige matrícula.
+
+    É o outro lado do teste acima: o mandato não fechou a escrita do aluno,
+    mudou o LUGAR dela. `duvidas` e `mostre-seu-trabalho` deixaram de ser
+    públicas por isso (ver `apps/forum/management/commands/semear_areas.py`).
+    """
+    a = area(visibilidade=Area.Visibilidade.ALUNOS, quem_escreve=Area.QuemEscreve.ALUNO)
+    assert pode_escrever(a, VISITANTE) is False
     assert pode_escrever(a, cadastrado) is False
     assert pode_escrever(a, aluno) is True
 
@@ -129,13 +161,25 @@ def test_area_de_avisos_so_aceita_a_equipe(aluno, professor):
 
 
 def test_visitante_nunca_escreve_em_lugar_nenhum():
-    for quem in Area.QuemEscreve.values:
-        a = area(
-            slug=f"v-{quem}",
-            visibilidade=Area.Visibilidade.PUBLICA,
-            quem_escreve=quem,
-        )
-        assert pode_escrever(a, VISITANTE) is False, quem
+    """Escrita é SEMPRE atrás do login — inclusive onde o dado diz `cadastrado`.
+
+    O caso que este teste guarda é `quem_escreve="cadastrado"` numa área que
+    ninguém trancou: sem o degrau do login em `pode_escrever`, "qualquer pessoa
+    com login" seria lido como "qualquer pessoa".
+    """
+    for visibilidade in Area.Visibilidade.values:
+        for quem in Area.QuemEscreve.values:
+            # A combinação `publica` + escrita de não-equipe é proibida pelo
+            # banco desde 30/08/2026: pular é o que o dado permite existir.
+            if visibilidade == Area.Visibilidade.PUBLICA and quem != "equipe":
+                continue
+            a = area(
+                slug=f"v-{visibilidade}-{quem}",
+                visibilidade=visibilidade,
+                quem_escreve=quem,
+                curso_id="c" if visibilidade == Area.Visibilidade.TURMA else "",
+            )
+            assert pode_escrever(a, VISITANTE) is False, f"{visibilidade}/{quem}"
 
 
 # --------------------------------------------------------------- a lista
