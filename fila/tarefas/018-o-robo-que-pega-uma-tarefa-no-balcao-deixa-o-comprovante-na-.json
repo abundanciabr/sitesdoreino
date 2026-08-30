@@ -1,0 +1,14 @@
+{
+  "arquivo": "018-o-robo-que-pega-uma-tarefa-no-balcao-deixa-o-comprovante-na-",
+  "id": "TAR-018",
+  "titulo": "O robo que pega uma tarefa no balcao deixa o comprovante na pasta errada, e ninguem avisa",
+  "toca": [
+    "fila",
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "ci/fila.py pegar RECUSANDO no clone principal, com teste-guarda vermelho sem o fix e verde com ele (saida crua no PR)",
+  "despacho": "Fechar o buraco da armadilhas/192: o evento de reivindicacao da fila nasce no\nCLONE PRINCIPAL quando o agente segue a ordem de partida (pegar a tarefa antes\nde criar o worktree), e NADA acusa — `python ci/fila.py validar` responde\n\"Fila valida\" com o evento faltando (medido em 30/08/2026: arquivo fora,\nexit 0). Resultado: a tarefa chega a main com `concluida` e sem `reivindicada`,\ne o historico de quem pegou o trabalho some.\n\nO QUE FAZER (duas peças, e a segunda é a que cura a classe):\n\n1. `ci/fila.py pegar` passa a RECUSAR quando roda no clone principal, com a\n   mensagem ensinando o caminho — o mesmo desenho e o mesmo tom de\n   `ci/muralha_pasta_compartilhada.py` (que ja sabe distinguir espelho de\n   worktree: no worktree o `.git` e ARQUIVO, no principal e PASTA). A recusa\n   diz: crie o worktree primeiro e peça a tarefa de dentro dele. Cuidado com a\n   fronteira: `validar`, `listar` e `soltar` continuam livres no principal —\n   so os comandos que ESCREVEM evento (`pegar`, `concluir`, `criar`) recusam.\n\n2. Teste-guarda em `ci/tests/test_fila.py` com o instrumento quebrado de\n   proposito (RETROSPECTIVA-FASE-D §1, os tres estados): aceita o certo\n   (worktree), recusa o errado (principal) E DIZ O QUE FAZER, e erro de\n   instrumento vira ERROR — nunca PASS.\n\n3. Atualize a ordem de partida nos ritos: `RITOS.md` §5 peça 1 passa a dizer\n   worktree primeiro, balcao depois. A reserva e atomica no servidor do GitHub\n   (`ci/reservar.py`) — ela NAO depende da pasta, entao inverter a ordem nao\n   enfraquece a trava contra dois robos na mesma tarefa.\n\nNAO FAÇA: mudar o formato do evento, mudar o vocabulario de eventos da fila,\nnem fazer o validador exigir `reivindicada` (uma tarefa pode ser concluida por\num caminho legitimo sem reivindicacao previa — a cura e impedir o arquivo de\nnascer no lugar errado, nao proibir o estado).\n\nLeia antes: `armadilhas/192-pegar-a-tarefa-antes-do-worktree-deixa-o-evento-no-espelho.md`\n(o caso completo, com a medicao), `armadilhas/135` (a fronteira que a muralha\nda pasta compartilhada declara NAO cobrir) e `RITOS.md` §1 e §5.",
+  "origem": "armadilhas/192, achada na TAR-016 (PR #571)",
+  "criada_em": "2026-08-30"
+}
