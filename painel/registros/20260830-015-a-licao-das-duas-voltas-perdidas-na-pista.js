@@ -1,0 +1,15 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260830-015-a-licao-das-duas-voltas-perdidas-na-pista",
+  tipo: "nota",
+  quando: "2026-08-30",
+  titulo: "Duas voltas perdidas na porta de entrega — descobri por que, e deixei escrito para o proximo robo",
+  detalhe: "ESTA E UMA LICAO DE PROCESSO, nao uma entrega de site — mas ela custou tempo real hoje e vai custar de novo se nao ficar escrita.\n\nO QUE ACONTECEU: o projeto tem uma regra boa — todo trabalho que entra precisa de uma linha aqui no livro contando o que foi feito, senao a porta de entrega trava para TODO MUNDO, nao so para quem esqueceu. Hoje uma entrega de ontem (o instalador do forum na VPS) estava sem essa linha, e a porta estava travada.\n\nEscrevi a linha que faltava. O conferente na minha maquina disse 'esta tudo certo'. Mandei entregar. O conferente do servidor disse 'continua faltando' — exatamente a mesma coisa, apontando exatamente a mesma entrega. Tentei de novo achando que fosse coincidencia de horario. Mesma recusa. Duas voltas inteiras perdidas.\n\nPOR QUE: o conferente do servidor foi feito de proposito para olhar so o projeto JA PUBLICADO, e nunca o pacote que esta pedindo para entrar. O motivo e bom — se ele olhasse o pacote, um pacote poderia trazer dentro de si uma regra que o aprovasse. E como um fiscal que so consulta o registro oficial, nunca o papel que o candidato traz na mao.\n\nA CONSEQUENCIA, que ninguem tinha escrito: a linha que quita uma pendencia precisa JA ESTAR publicada para contar. Escrever ela junto com o resto do trabalho nunca funciona, por melhor que esteja escrita.\n\nO QUE FIZ: mandei a linha sozinha, num pacote que so mexe no livro — esse tipo passa direto, porque ele proprio E a linha. Publicada ela, o trabalho de verdade entrou na sequencia, sem mais nenhuma volta.\n\nE ESCREVI ISSO NO CADERNO (armadilha 190), com a pergunta de dois comandos que distingue este caso de dois parecidos que ja estavam catalogados. O proximo robo que bater nisso perde um minuto, nao duas voltas.",
+  autoridade: "sessao",
+  evidencia: "PR #568 (https://github.com/abundanciabr/sitesdoreino/pull/568), a entrada armadilhas/190. A MEDICAO: o PR #566 foi devolvido pela pista DUAS vezes com 'divida do livro FAIL - 1 merge sem registro' apontando o #547, enquanto 'python ci/mergear.py 566 --conferir' na maquina dizia 'livro em dia' (exit 0) com o mesmo registro presente no ramo. A causa foi conferida lendo .github/workflows/pouso.yml, que faz checkout com ref main e explica o porque no proprio comentario. A cura foi provada: o registro sozinho no PR #567 (so painel/) pousou de primeira, e depois disso o #566 pousou tambem. BONUS CONFERIDO: a entrada 190 e a primeira a passar pela tranca que o #566 instalou - numero pedido ao almoxarife, e a muralha aprovou dizendo '1 entrada nova, com o numero pedido ao almoxarife: 190'.",
+  verificado_em: "2026-08-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "fabrica",
+  vence_em_dias: null
+});})();
