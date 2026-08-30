@@ -165,7 +165,22 @@ COMO TROCAR — escolha pelo papel que o travessão fazia na frase:
       antes:  — Não quero ir hoje — disse Pedro.
       depois: "Não quero ir hoje", disse Pedro.
 
-O hífen (-) continua livre: ele é letra de palavra composta, não pontuação."""
+O hífen (-) continua livre: ele é letra de palavra composta, não pontuação.
+
+A TROCA É UMA REESCRITA, NÃO UM CARACTERE TROCADO. Este erro já foi cometido, em
+30/08/2026, numa dúzia de frases publicadas: dois-pontos NÃO separa o verbo do
+seu complemento, nem abre uma oração que continua direto o pensamento anterior.
+Se o trecho depois do travessão começa por "é", "são", "não" ou um imperativo,
+dois-pontos quebra a frase.
+
+      travessão:  Modelo pela metade também conta — é vendo o meio do caminho...
+      ERRADO:     Modelo pela metade também conta: é vendo o meio do caminho...
+      certo:      Modelo pela metade também conta, pois é vendo o meio...
+      certo:      Nada foi criado. Tente de novo.        (ponto final)
+
+Leia a frase em voz alta. Se você tropeçar, a troca está errada, ainda que o
+travessão tenha sumido.
+"""
 
 
 @dataclass(frozen=True)

@@ -67,7 +67,7 @@ PRIMEIRAS = [
     (
         "mostre-seu-trabalho",
         "Mostre seu trabalho",
-        "O que você está construindo. Modelo pela metade também conta: é vendo "
+        "O que você está construindo. Modelo pela metade também conta, pois é vendo "
         "o meio do caminho que se aprende o caminho.",
         20,
         # A parte mais exposta da escola vira a mais fechada: aqui aparecem
