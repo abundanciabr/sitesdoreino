@@ -237,14 +237,19 @@ def test_area_de_turma_com_curso_e_aceita():
 
 
 def test_o_padrao_de_uma_area_nova_e_fechado(area):
-    """Área nasce para ALUNOS e com escrita de aluno — nunca aberta por descuido.
+    """Área nasce para ALUNOS e com escrita só da EQUIPE — nunca aberta por descuido.
 
     O mantenedor decidiu áreas mistas (lei §5), e o público é majoritariamente
     menor de idade. O padrão seguro é o fechado: abrir uma área é um ato
     explícito, escrito no dado, e não o que acontece quando alguém esquece.
+
+    **O default de `quem_escreve` apertou em 30/08/2026**: era `aluno`, virou
+    `equipe`. Uma área que nascia sem o campo preenchido já vinha com a porta
+    mais aberta do que a intenção de quem a criou — e "mais aberto do que se
+    quis" é exatamente o erro que um default fail-closed existe para evitar.
     """
     assert area.visibilidade == Area.Visibilidade.ALUNOS
-    assert area.quem_escreve == Area.QuemEscreve.ALUNO
+    assert area.quem_escreve == Area.QuemEscreve.EQUIPE
 
 
 def test_remover_mensagem_nao_apaga_o_historico(area, aluno):

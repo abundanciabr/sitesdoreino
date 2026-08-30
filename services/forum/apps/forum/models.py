@@ -69,15 +69,16 @@ class Area(models.Model):
         TURMA = "turma", "Turma — só quem está no curso"
 
     class QuemEscreve(models.TextChoices):
-        # O caso padrão, e o mais seguro: escrever exige matrícula. Numa área
-        # PÚBLICA isso é "visitante lê, aluno escreve" — o desenho que não abre
-        # porta para spam.
+        # Escrever exige matrícula. Numa área trancada isso é "aluno lê, aluno
+        # escreve"; numa área PÚBLICA esta combinação passou a ser PROIBIDA em
+        # 30/08/2026 — ver a restrição `pagina_publica_so_a_escola_fala`.
         ALUNO = "aluno", "Alunos e acima"
-        # Área de avisos: a escola fala, a turma lê.
+        # A escola fala, a turma lê. É o ÚNICO valor que uma área pública
+        # aceita, e é por isso que virou o default (abaixo).
         EQUIPE = "equipe", "Só professor ou administrador"
-        # Existe para o dia em que o mantenedor decidir abrir — e está
-        # documentado como o caso que EXIGE defesa anti-spam de verdade
-        # (`DECISAO-forum-da-escola.md` §6.3, pergunta em aberto).
+        # Existe para o dia em que o mantenedor decidir abrir uma área
+        # trancada a quem só tem cadastro. **Numa área pública ele é
+        # impossível** — a restrição do banco recusa.
         CADASTRADO = "cadastrado", "Qualquer pessoa com login"
 
     slug = models.SlugField(max_length=60, unique=True)
@@ -89,8 +90,12 @@ class Area(models.Model):
     visibilidade = models.CharField(
         max_length=10, choices=Visibilidade.choices, default=Visibilidade.ALUNOS
     )
+    # O DEFAULT É O LADO FECHADO, e mudou em 30/08/2026: onde ninguém disse
+    # quem escreve, quem escreve é a ESCOLA. Antes o default era `ALUNO`, e uma
+    # área nascida sem o campo preenchido já vinha com a porta mais aberta que
+    # a intenção de quem a criou — o oposto de fail-closed.
     quem_escreve = models.CharField(
-        max_length=12, choices=QuemEscreve.choices, default=QuemEscreve.ALUNO
+        max_length=12, choices=QuemEscreve.choices, default=QuemEscreve.EQUIPE
     )
     # Opaco de propósito: o fórum não é dono do catálogo de cursos. Só faz
     # sentido com `visibilidade = TURMA`.
@@ -105,6 +110,32 @@ class Area(models.Model):
             models.CheckConstraint(
                 condition=~models.Q(visibilidade="turma") | ~models.Q(curso_id=""),
                 name="area_de_turma_exige_curso",
+            ),
+            # ---------------------------------------------------------------
+            # EM PÁGINA PÚBLICA, SÓ A ESCOLA FALA (mandato do mantenedor em
+            # 30/08/2026 — registro `20260830-021`).
+            # ---------------------------------------------------------------
+            # A escola é de Roblox: o público é majoritariamente criança e
+            # adolescente. A decisão dele, nas palavras do livro, foi *"menor
+            # de idade não escreve em página pública"* — o que é aberto ao
+            # Google e a estranhos passa a ser só a escola falando, e onde
+            # aluno escreve, exige login. O preço, aceito por ele na mesma
+            # escolha: o fórum sai do alcance de buscador.
+            #
+            # **Por que no BANCO, e não só numa função de permissão.** A
+            # permissão também confere (`apps/core/permissoes.py`), e ela é o
+            # que decide cada requisição. Mas uma regra que existe só em código
+            # é uma promessa: basta um `Area.objects.update(visibilidade=...)`
+            # numa tela de administração futura, ou uma linha editada à mão no
+            # `psql` numa madrugada de incidente, para a combinação proibida
+            # existir — e ninguém saber. Aqui ela não chega a existir: o
+            # PostgreSQL recusa o INSERT e o UPDATE. É a `RETROSPECTIVA-FASE-D`
+            # §2 (garantia declarada sem mecanismo apodrece) aplicada à decisão
+            # que protege menores.
+            models.CheckConstraint(
+                condition=~models.Q(visibilidade="publica")
+                | models.Q(quem_escreve="equipe"),
+                name="pagina_publica_so_a_escola_fala",
             ),
         ]
 
