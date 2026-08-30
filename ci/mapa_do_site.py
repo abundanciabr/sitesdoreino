@@ -166,7 +166,8 @@ def roteamento(raiz: Path) -> dict[str, list[tuple[str, set[str]]]]:
     except Exception as exc:  # noqa: BLE001 - erro de parse do yaml
         raise ErroDeInstrumentacao(f"{ROTEADOR} não é YAML válido", str(exc)) from exc
 
-    routers = ((bruto or {}).get("http") or {}).get("routers")
+    http = (bruto or {}).get("http") or {}
+    routers = http.get("routers")
     if not isinstance(routers, dict) or not routers:
         raise ErroDeInstrumentacao(
             f"{ROTEADOR} sem `http.routers`",
@@ -174,20 +175,30 @@ def roteamento(raiz: Path) -> dict[str, list[tuple[str, set[str]]]]:
             "interno — um mapa vazio é pior que mapa nenhum.",
         )
 
+    # Os middlewares que ENCERRAM a requisição antes de o serviço ser chamado.
+    # O `www-meshcraft` declara `service: funil` e nunca serve nada: o desvio
+    # responde 301 e o funil jamais é consultado. Contá-lo daria a TODAS as
+    # rotas do funil um endereço `www.` que não existe como página.
+    #
+    # A lista é DERIVADA das definições (`http.middlewares.*.redirectRegex`), e
+    # não do nome do router: um desvio futuro batizado de outro jeito
+    # continuaria fora da conta sem ninguém precisar lembrar desta linha.
+    desviadores = {
+        nome
+        for nome, corpo in (http.get("middlewares") or {}).items()
+        if isinstance(corpo, dict)
+        and ("redirectRegex" in corpo or "redirectScheme" in corpo)
+    }
+
     por_celula: dict[str, list[tuple[str, set[str]]]] = {}
-    for nome, router in routers.items():
+    for router in routers.values():
         if not isinstance(router, dict):
             continue
         servico = router.get("service")
         regra = router.get("rule") or ""
         if not servico or not isinstance(regra, str):
             continue
-        # O `www-meshcraft` declara `service: funil` e nunca serve nada: o
-        # middleware de desvio encerra a requisição com 301 antes. Contá-lo
-        # daria ao `funil` um endereço `www.` que não existe.
-        if "redirectRegex" in str(router.get("middlewares", "")) or nome.startswith(
-            "www-"
-        ):
+        if desviadores & set(router.get("middlewares") or []):
             continue
         dominios = set(_HOST.findall(regra))
         for prefixo in _PATH_PREFIX.findall(regra):

@@ -230,5 +230,6 @@
 | [195](195-vermelho-que-morre-na-construcao-do-teste-nao-prova-a-decisao.md) | O vermelho da prova morreu na CONSTRUÇÃO do teste, não na asserção — e não prova nada sobre a decisão — Você segue o protocolo vermelho→verde à risca: desfaz só o conserto, mantém os testes novos, roda a suíte, e ela… | nenhum (declarado) | — |
 | [196](196-o-rascunho-do-agente-e-compartilhado-entre-sessoes-irmas.md) | O arquivo de rascunho do agente é COMPARTILHADO entre sessões irmãs — e o `--body-file` publica o texto de outra — Você escreve o corpo do seu PR num arquivo do diretório de rascunho que o harness anuncia como… | nenhum (declarado) | — |
 | [197](197-endereco-publico-de-celula-sob-prefixo-nao-e-prefixo.md) | O endereço público de uma célula sob prefixo NÃO é "prefixo + rota" — ele dobra num caso e duplica noutro — Você precisa do endereço público de uma rota (para um link numa tela, uma linha de documentação, um `curl` de… | CI+sino | — |
+| [198](198-pr-com-conflito-nao-dispara-os-workflows-de-pull-request.md) | PR com CONFLITO não dispara os workflows de `pull_request` — os checks obrigatórios não ficam pendentes, eles não existem — O PR está aberto, o push chegou, e `gh pr checks <N>` lista **um check só** — nenhum dos… | CI+sino | — |
 
-**178 entradas** — 14 com guarda declarada, 164 ainda sem.
+**179 entradas** — 15 com guarda declarada, 164 ainda sem.
