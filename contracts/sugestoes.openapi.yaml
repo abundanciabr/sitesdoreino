@@ -96,8 +96,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/IdeiaComHistorico'
       description: 'A mesma ideia da lista, mais o histórico de mudanças de fase — cada linha com quando,
-        de onde para onde, a nota escrita e o nome de quem moderou. O histórico é append-only na origem:
-        uma correção é uma linha nova, nunca uma linha reescrita. Nenhum e-mail viaja.'
+        de onde para onde, a nota escrita e o nome de quem moderou — e a ficha de cada ChangeSpec assinado:
+        qual documento, quem aprovou, quando, e quem trouxe o fato para dentro da Caixa. Os dois são append-only
+        na origem: uma correção é uma linha nova, nunca uma linha reescrita. Nenhum e-mail viaja.'
   /gestao/ideias/{sugestao_id}/status:
     post:
       operationId: setIdeaStatus
@@ -447,7 +448,24 @@ components:
 
         aposentadas. Descobrir isso ANTES de aposentá-las é a razão de esta emenda
 
-        existir.'
+        existir.
+
+
+        `changespecs` entra pelo mesmo caminho e pelo mesmo motivo, uma emenda
+
+        depois: era a ÚNICA das cinco telas antigas de `/moderacao` sem paridade
+
+        nenhuma do lado do Admin — ele deixava ASSINAR e não deixava CONFERIR o que
+
+        foi assinado. Lista, e não objeto: uma ideia pode ter vários ChangeSpecs
+
+        (escopo que mudou nasce `-v2`, formato §4), e a tela antiga sempre os
+
+        listou. Ordem: o mais recente primeiro, a mesma do model. Ela entra
+
+        OPCIONAL: ausente é "esta ideia não tem assinatura nenhuma", o mesmo que a
+
+        lista vazia — e é isso que faz o campo novo não quebrar quem já consome.'
       properties:
         id:
           type: integer
@@ -501,6 +519,10 @@ components:
           items:
             $ref: '#/components/schemas/LinhaDoHistorico'
           type: array
+        changespecs:
+          items:
+            $ref: '#/components/schemas/ChangeSpecAssinado'
+          type: array
       required:
       - id
       - titulo
@@ -546,6 +568,52 @@ components:
       - para
       - nota
       - por
+      type: object
+    ChangeSpecAssinado:
+      description: 'Uma assinatura de obra, como ela ficou registrada — a FICHA dela.
+
+
+        `tem_changespec` responde "está assinada?"; esta ficha responde "assinada
+
+        por quem, quando, com qual documento?". São perguntas diferentes, e só a
+
+        segunda permite CONFERIR depois o que foi autorizado — que é a razão de o
+
+        documento ser um endereço obrigatório desde o EVO-40.
+
+
+        Ela viaja só em `IdeiaComHistorico`, pelo mesmo motivo do histórico: a lista
+
+        do quadro não mostra ficha nenhuma, e carregá-la ali multiplicaria a
+
+        resposta por algo que ninguém lê.
+
+
+        `registrado_por` é o nome exibido, nunca o e-mail — a mesma regra do `por`
+
+        do histórico, e vazio é resposta legítima: quem exibe decide o que escrever
+
+        no lugar.'
+      properties:
+        change_id:
+          type: string
+        documento:
+          type: string
+        aprovado_por:
+          type: string
+        aprovado_em:
+          type: string
+        registrado_por:
+          type: string
+        registrado_em:
+          type: string
+      required:
+      - change_id
+      - documento
+      - aprovado_por
+      - aprovado_em
+      - registrado_por
+      - registrado_em
       type: object
     Recusa:
       description: Uma recusa que ENSINA o caminho — a frase é a mesma que a tela dizia.
