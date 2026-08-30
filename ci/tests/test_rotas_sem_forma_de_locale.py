@@ -210,6 +210,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "sugestoes",
         "identidade",
         "admin",
+        "forum",
     } <= nomes
     segmentos = {
         primeiro_segmento(prefixo)
@@ -222,13 +223,17 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # `admin` entrou com a área administrativa (`PathPrefix(/admin)`,
     # DECISAO-celula-admin, 25/08/2026). `mapa-ia` entrou com o mapa técnico
     # público (`PathPrefix(/mapa-ia)`, INV-P14, 28/08/2026), mesmo backend da
-    # `admin`. Esta igualdade é um INVENTÁRIO, não
+    # `admin`. `forum` entrou com o fórum da escola
+    # (`PathPrefix(/forum)`, DECISAO-forum-da-escola, 28/08/2026) — e ali o
+    # caminho é LEI, não preferência: em subdomínio o cookie de sessão não
+    # viaja e o fórum exigiria um segundo login (§2 daquela lei).
+    # Esta igualdade é um INVENTÁRIO, não
     # uma regra de segurança: rota nova obriga quem a acrescenta a passar por
     # aqui e olhar as duas regras acima. As regras que julgam de fato (A: forma
     # de locale; B: colisão com idioma declarado) continuam medindo a tabela
     # real e nada nelas foi afrouxado — `forms`, `entrar`, `admin`, `mapa-ia` e
-    # `docs` têm 5, 6, 5, 7 e 4 letras, logo nenhum casa a FORMA (que exige
-    # 2-3). E nenhum deles é idioma declarado em `infra/sites.json`.
+    # `docs` e `forum` têm 5, 6, 5, 7, 4 e 5 letras, logo nenhum casa a FORMA
+    # (que exige 2-3). E nenhum deles é idioma declarado em `infra/sites.json`.
     #
     # `docs` entrou com a área PÚBLICA de documentos (`PathPrefix(/docs)`,
     # `DECISAO-a-area-de-documentos.md`, 29/08/2026), no mesmo backend da
@@ -236,6 +241,12 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # causa do outro lado do `PathPrefix`, que casa string CRUA e sem fronteira
     # de segmento: ele engoliria `/docsomething` junto. Não há rota assim hoje,
     # e não haverá por acidente — quem criar uma vai encontrar esta linha.
+    #
+    # `forum` entrou com o fórum da escola (`PathPrefix(/forum)`,
+    # `DECISAO-forum-da-escola.md`, 28/08/2026) — e ali o caminho é LEI, não
+    # preferência: em subdomínio o cookie de sessão não viaja e o fórum
+    # exigiria um segundo login (§2 daquela lei). Mesmo cuidado do `docs` com o
+    # prefixo cru: `/forumX` seria engolido junto, e não existe rota assim.
     assert segmentos == {
         "",
         "quiz",
@@ -247,6 +258,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "entrar",
         "admin",
         "docs",
+        "forum",
     }
 
 
@@ -309,6 +321,7 @@ def test_regra_b_fecha_a_valvula_dos_reservados_de_maquina():
         "/forms/sugestoes",
         "/entrar",
         "/admin",
+        "/forum",
         "/",
         "/estatisticas",
     ],

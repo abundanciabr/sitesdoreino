@@ -347,6 +347,25 @@ services:
       sugestoes:
         condition: service_healthy
 
+  # O forum da escola (DECISAO-forum-da-escola.md, 28/08/2026). Celula de
+  # PAGINA, como a `admin`: serve HTML sob o prefixo `/forum`, que ela conhece
+  # por `SCRIPT_NAME=/forum` no env dela — o Traefik NAO remove o prefixo.
+  #
+  # Sem processo auxiliar, e isso e o estado de HOJE, nao uma decisao
+  # permanente: o forum ainda e SO DE LEITURA. Quando escrever nascer, a lei
+  # §4.6 preve fila de moderacao e a §5 preve o sininho — e ai um auxiliar
+  # entra aqui, no molde do `sugestoes-relay`, com `<<: *processo`.
+  #
+  # O banco `forum_db` e o par `forum_user` NAO nascem daqui: quem os cria e
+  # `infra/provisionar-forum.sh`, rodado pelo mantenedor DENTRO da VPS antes
+  # desta entrega. Sem ele este servico sobe e morre em crashloop no `migrate`
+  # do CMD (licao H18) — e e por isso que aquele passo vem antes deste PR na
+  # escada da §7 da lei.
+  forum:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-forum:${FORUM_TAG:-main}
+    env_file: [env/forum.env]
+
 volumes:
   pgdata: {}
   redisdata: {}

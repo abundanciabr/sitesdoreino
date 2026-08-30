@@ -61,6 +61,23 @@ RE_NOME = re.compile(r"^[a-z0-9-]+$")
 #: documento novo pular na frente dos que alguém posicionou de propósito.
 ORDEM_PADRAO = 1000
 
+#: O prefixo do endereço PÚBLICO — e ele NÃO sai de `{% url %}`, ao contrário de
+#: todo o resto desta célula.
+#:
+#: A regra da casa é que endereço sai de `{% url %}`, senão o prefixo público
+#: (`/admin`) some em produção (`armadilhas/081`). Aqui a situação é o INVERSO,
+#: e foi medida de fora em 29/08/2026, logo depois de subir: `{% url %}` monta
+#: `/admin/docs/…` porque `FORCE_SCRIPT_NAME` vale para a célula inteira — e as
+#: páginas públicas não moram sob `/admin`. O link funcionava (aquele endereço
+#: também chega aqui), mas mostrava `/admin/` para um aluno e criava um SEGUNDO
+#: endereço para a mesma página.
+#:
+#: Uma constante só, aqui, é o que impede a correção de virar caminho cravado
+#: espalhado por três templates. Ela casa com o `PathPrefix(/docs)` do gateway e
+#: com o `PREFIXO_PUBLICO_DOS_DOCUMENTOS` da porta; um guarda mede os três
+#: juntos.
+PREFIXO_PUBLICO = "/docs"
+
 
 @dataclass(frozen=True)
 class Documento:
@@ -71,6 +88,15 @@ class Documento:
     publico: bool
     ordem: int
     corpo: str  # o markdown, sem o cabeçalho
+
+    @property
+    def endereco(self) -> str:
+        """O endereço PÚBLICO deste documento — sem o prefixo da célula.
+
+        Ver `PREFIXO_PUBLICO` acima para o porquê de isto não sair de
+        `{% url %}`.
+        """
+        return f"{PREFIXO_PUBLICO}/{self.nome}"
 
 
 def diretorio() -> Path | None:
