@@ -93,14 +93,20 @@ def test_todo_toca_das_tarefas_reais_aponta_para_algo_que_existe(mapa):
     Se esta asserção cair, ou uma tarefa nova escreveu o `toca` num vocabulário
     que a conferência não entende (e o alerta dela nasceria errado), ou uma
     pasta mudou de nome sem ninguém avisar a fila.
+
+    A terceira causa é legítima e tem porta própria: a tarefa de GÊNESE, que
+    cria a pasta que declara. Ela precisa dizer isso no campo `cria`, por
+    escrito — e é a exigência da declaração explícita que impede esta porta de
+    absolver as duas causas de cima.
     """
     erros = []
     tarefas = conf.fila.carregar_tarefas(RAIZ, erros)
     assert tarefas, "nenhuma tarefa lida — o próprio teste está cego"
     orfas = []
     for tid, dados in sorted(tarefas.items()):
+        nascendo = conf.areas_criadas(dados)
         for area in conf.areas_declaradas(list(dados.get("toca") or []), mapa):
-            if not (RAIZ / area).exists():
+            if not (RAIZ / area).exists() and area not in nascendo:
                 orfas.append(f"{tid}: {area}")
     assert not orfas, (
         "`toca` apontando para caminho que não existe: " + ", ".join(orfas)
@@ -373,3 +379,34 @@ def test_comentario_multilinha_nao_e_partido_em_dois(monkeypatch):
     """
     monkeypatch.setattr(conf, "_gh", lambda *a, **k: '"a\\n\\nb"\n"c"\n')
     assert conf.ja_avisado(RAIZ, 570, "a\n\nb") is True
+
+
+# --------------------------------------------- a gênese: criar o que se declara
+
+
+def test_area_que_a_tarefa_declara_criar_e_dispensada_da_existencia(mapa):
+    """A terceira causa legítima: a pasta não existe porque é esta tarefa que a cria."""
+    nascendo = conf.areas_criadas({"cria": ["gamificacao"]})
+    assert nascendo == {"gamificacao"}
+    assert not (RAIZ / "gamificacao").exists(), (
+        "o teste ficaria cego se esta pasta passasse a existir de verdade"
+    )
+
+
+def test_sem_declarar_cria_a_pasta_inexistente_continua_reprovando(mapa):
+    """A porta da gênese não absolve erro de digitação nem pasta renomeada."""
+    assert conf.areas_criadas({}) == set()
+    assert conf.areas_criadas({"cria": []}) == set()
+    area = next(iter(conf.areas_declaradas(["gamifikacao"], mapa)))
+    assert not (RAIZ / area).exists()
+    assert area not in conf.areas_criadas({"cria": ["gamificacao"]}), (
+        "declarar a criação de uma coisa não pode absolver o nome errado de outra"
+    )
+
+
+def test_cria_normaliza_barra_e_ignora_vazio():
+    """Mesma normalização do `toca`, para os dois lados falarem a mesma língua."""
+    assert conf.areas_criadas({"cria": ["services\\gamificacao", "  ", "/fila/"]}) == {
+        "services/gamificacao",
+        "fila",
+    }
