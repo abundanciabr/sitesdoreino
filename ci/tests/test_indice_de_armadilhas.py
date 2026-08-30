@@ -209,8 +209,48 @@ def test_dois_arquivos_com_o_mesmo_numero_sao_ERROR(
     erro = capsys.readouterr().err
     assert "ERROR" in erro
     assert "002-segunda.md" in erro and "002-outra-coisa.md" in erro
-    # a mensagem precisa entregar o conserto pronto: o próximo número livre
-    assert "003" in erro
+
+
+def test_a_colisao_manda_pedir_o_numero_ao_almoxarife(
+    repo_falso: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Dois guardas não podem se contradizer sobre o mesmo número.
+
+    Até 30/08/2026 esta mensagem mandava escolher o número À MÃO ("renomeando a
+    SUA entrada para o primeiro número acima de todos, hoje NNN" + um `git mv`)
+    — e quem obedecia era reprovado pela `muralha-das-reservas` com "número
+    escolhido à mão". Custou uma rodada de CI a TRÊS robôs no mesmo dia, e
+    nenhum deles estava errado: a INSTRUÇÃO estava.
+
+    Este teste é o que impede a contradição de voltar: a mensagem de colisão
+    ensina o almoxarife (`python ci/reservar.py numero armadilha`), e NÃO ensina
+    escolha manual.
+    """
+    _entrada(repo_falso / indice.PASTA, "002-outra-coisa.md", "Colidiu com a 002")
+    monkeypatch.setattr(indice, "raiz_do_repo", lambda: repo_falso)
+
+    assert indice.main([]) == 2
+    erro = capsys.readouterr().err
+
+    # (a) ensina o almoxarife — o MESMO conserto que a muralha-das-reservas exige
+    assert "ci/reservar.py numero armadilha" in erro
+    # (b) e continua dizendo o que fazer com o arquivo já escrito: renomear o
+    #     arquivo E o campo do frontmatter, que precisam bater
+    assert "armadilha:" in erro
+    assert "python ci/indice_de_armadilhas.py" in erro
+
+    # (c) e NÃO escolhe número por você. O veneno não é o `git mv` — renomear
+    #     continua sendo o que se faz com o arquivo já escrito; o veneno é o
+    #     gerador NOMEAR um número. Aqui o "primeiro livre" seria 003: ele não
+    #     pode aparecer em lugar nenhum da mensagem, nem no destino do `git mv`.
+    assert "003" not in erro, (
+        "a mensagem de colisão voltou a escolher o número por conta própria — "
+        "a `muralha-das-reservas` reprova quem obedecer, com 'número escolhido "
+        "à mão'. O destino do `git mv` é o NNN que o almoxarife devolver."
+    )
+    assert "primeiro número acima de todos" not in erro
 
 
 def test_numero_repetido_nao_deixa_o_indice_ser_escrito(
@@ -277,8 +317,10 @@ def test_a_pasta_real_nao_tem_dois_arquivos_com_o_mesmo_numero() -> None:
     assert not colisoes, (
         "dois arquivos com o mesmo NNN em armadilhas/:\n  "
         + "\n  ".join(f"{n:03d}: {', '.join(v)}" for n, v in sorted(colisoes.items()))
-        + "\n\nRenomeie a entrada mais nova para o primeiro número acima de todos "
-        "e regenere o índice."
+        + "\n\nPeça um número novo — `python ci/reservar.py numero armadilha` — e "
+        "renomeie com ele a entrada mais nova (o arquivo E o campo `armadilha:` "
+        "do frontmatter), depois regenere o índice. Escolher o número à mão é "
+        "reprovado pela `muralha-das-reservas`."
     )
 
 

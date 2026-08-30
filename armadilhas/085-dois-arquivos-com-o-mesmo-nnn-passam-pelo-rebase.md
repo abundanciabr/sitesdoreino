@@ -28,15 +28,19 @@ terminam no mesmo dia.
 
 **Solução (mecanizada em 24/08/2026):** `ci/indice_de_armadilhas.py` agora **para
 com ERROR (exit 2)** quando dois arquivos compartilham o mesmo `NNN` — comparando o
-número, não o texto, para `78-` e `078-` também colidirem. A mensagem já traz o
-`git mv` pronto para o primeiro número acima de todos. O portão roda em três
+número, não o texto, para `78-` e `078-` também colidirem. O portão roda em três
 lugares: ao regenerar, no `--conferir`, e na suíte do testador
 (`python ci/ci.py --apenas testador`), que o workflow `muralhas` executa em **todo
 PR** — ou seja, a colisão agora deixa o PR vermelho antes do merge.
 
-Se você caiu aqui com o ERROR na tela: renomeie a SUA entrada (a que ainda não está
-na `main`) para o número que a mensagem indica e rode
-`python ci/indice_de_armadilhas.py`. **Nunca** reaproveite um número vago no meio
+Se você caiu aqui com o ERROR na tela: descubra qual das duas entradas é a SUA (a
+que ainda não está na `main`), **peça um número novo ao almoxarife** —
+`python ci/reservar.py numero armadilha` —, renomeie com ele o arquivo E o campo
+`armadilha:` do frontmatter (os dois têm de bater), e rode
+`python ci/indice_de_armadilhas.py`. **Não escolha o número à mão:** desde
+29/08/2026 a `muralha-das-reservas` reprova isso em todo PR, com "número escolhido
+à mão" — e "o primeiro livre que eu vejo agora" é justamente a leitura que as duas
+sessões fazem ao mesmo tempo. **Nunca** reaproveite um número vago no meio
 (042, 046…): eles estão aposentados e as referências antigas ainda apontam para eles.
 
 **Origem:** despacho de mecanização da numeração (Lei 1 — empurrar a regra escada

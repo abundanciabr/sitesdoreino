@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-214757-TAR-036-concluida",
+  "tarefa": "TAR-036",
+  "evento": "concluida",
+  "quando": "2026-08-30T21:47:57+00:00",
+  "quem": "sessao-catalogo-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/640 — vermelho na assercao (assert 'ci/reservar.py numero armadilha' in erro; 1 failed) e verde depois: 33 passed nos testes do indice+reservas, testador 1309 passed, muralhas RESULTADO PASS",
+  "verificado_em": "2026-08-30"
+}
