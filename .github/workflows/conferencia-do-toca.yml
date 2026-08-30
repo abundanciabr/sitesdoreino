@@ -1,0 +1,76 @@
+# =============================================================================
+# A CONFERÊNCIA DO `toca` — primeira evolução da fila (TAR-015).
+#
+# O QUE ELA FAZ: para todo PR que cita `TAR-NNN` no título ou no ramo, compara
+# o campo `toca` da tarefa com os caminhos que o diff REALMENTE alterou. Se o
+# diff sai do que a tarefa prometeu, ela comenta no PR dizendo exatamente onde.
+# A regra e o porquê de cada decisão: `ci/conferencia_do_toca.py`.
+#
+# ELA NÃO REPROVA NINGUÉM, e isso é desenho. Regra nova nasce em SOMBRA (a lei
+# da autoridade proporcional à certeza, no cabeçalho de
+# `ci/muralha_das_armadilhas.py`): o detector roda, avisa o que TERIA feito, e
+# deixa passar. Este workflow não é required check, e um comentário dele nunca
+# segurou merge nenhum. Promover a `bloqueia` é trocar uma palavra no script —
+# com disparos reais e sem falso positivo na mão, nunca antes.
+#
+# ---------------------------------------------------------------------------
+# TRÊS DECISÕES QUE NÃO SÃO ÓBVIAS
+#
+# 1. `pull_request_target`, NÃO `pull_request` — e o checkout é da `main`.
+#    Em `pull_request` o workflow roda a partir do código DO PR: um PR que
+#    mexesse aqui alteraria o juiz que vai julgá-lo, e comentar exige token de
+#    escrita. É a mesma decisão 2 do cabeçalho de `.github/workflows/pouso.yml`.
+#    **Este job NUNCA faz checkout do código do PR nem executa uma linha dele**:
+#    ele lê a lista de arquivos pela API (dado, não código) e a fila da `main`.
+#
+# 2. A TAREFA VEM DA `main`, e é por isso que existe um SKIP declarado.
+#    Um PR que CRIA a tarefa não é conferível — ela ainda não existe na base. O
+#    script devolve SKIP com o motivo escrito, nunca um PASS por omissão.
+#
+# 3. NÃO ESPERA CHECK NENHUM. A conferência não depende de teste, de deploy nem
+#    de merge: ela só precisa do diff. Rodar cedo é o ponto — o alerta serve
+#    para o robô ainda estar na tarefa quando o lê.
+# =============================================================================
+name: conferencia-do-toca
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+# `pull-requests: write` só para comentar. Sem `contents: write` — esta regra
+# não muda uma linha do repositório, e permissão que ela não usa é superfície
+# que ela não deveria ter num repositório público.
+permissions:
+  contents: read
+  pull-requests: write
+
+# Um PR por vez: um push seguido de outro não pode gerar dois alertas em
+# paralelo, que é como um aviso vira eco.
+concurrency:
+  group: conferencia-do-toca-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  conferir:
+    name: conferir o toca declarado
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A `main`, sempre — nunca o código do PR. Ver decisão 1.
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Dependências do portão
+        run: python -m pip install --quiet pyyaml
+
+      # `--comentar` só posta quando HÁ divergência, e não repete um alerta
+      # idêntico ao que já está no PR. Exit 0 em sombra, mesmo reprovando; exit
+      # 2 se não conseguiu medir — porque "não consegui ler o diff" nunca vira
+      # "o diff estava dentro do declarado" (INV-CI01).
+      - name: Conferir o `toca` declarado contra o diff real
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python ci/conferencia_do_toca.py --pr ${{ github.event.pull_request.number }} --comentar

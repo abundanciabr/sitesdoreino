@@ -123,6 +123,18 @@
       "tem_sinal": false
     },
     {
+      "armadilha": "192",
+      "arquivo": "armadilhas/192-pegar-a-tarefa-antes-do-worktree-deixa-o-evento-no-espelho.md",
+      "estado": "documentada",
+      "degrau": 6,
+      "confianca": "alta",
+      "custo_por_queda": "baixo",
+      "tipo": "nenhum",
+      "detector": null,
+      "dono": null,
+      "tem_sinal": false
+    },
+    {
       "armadilha": "197",
       "arquivo": "armadilhas/197-endereco-publico-de-celula-sob-prefixo-nao-e-prefixo.md",
       "estado": "guardada",

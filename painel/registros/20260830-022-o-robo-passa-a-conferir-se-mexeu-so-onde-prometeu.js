@@ -1,0 +1,15 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260830-022-o-robo-passa-a-conferir-se-mexeu-so-onde-prometeu",
+  tipo: "entrega",
+  quando: "2026-08-30",
+  titulo: "Cada tarefa promete em que partes do projeto vai mexer — agora tem quem confira se a promessa foi cumprida",
+  detalhe: "O QUE MUDOU, em uma frase: quando um robo entrega um trabalho, o proprio projeto compara o que a tarefa PROMETEU mexer com o que ele MEXEU de verdade, e escreve um aviso no pedido de entrega quando os dois nao batem.\n\nPOR QUE ISSO IMPORTA PARA O SENHOR: e o que permite varios robos trabalharem ao mesmo tempo sem se atrapalharem. Cada tarefa da lista traz uma etiqueta dizendo em que partes da obra ela vai mexer — e e so olhando essas etiquetas que se decide quais tarefas podem sair juntas. Se a etiqueta estiver otimista ('eu so mexo na cozinha') e o robo acabar mexendo tambem na sala, dois robos sao mandados para a mesma sala achando que estao em comodos diferentes. O estrago aparece depois, na hora de juntar o trabalho, e custa uma rodada inteira para desfazer.\n\nO QUE ELE FAZ, na pratica: le a etiqueta da tarefa, le a lista de arquivos que o robo realmente mexeu, e escreve um recado no pedido de entrega apontando o que ficou de fora da promessa.\n\nELE AVISA E NAO BARRA NINGUEM — de proposito. E a regra da casa para conferente novo: primeiro ele so observa, para provar que nao esta reclamando a toa. Se um conferente novo comecar barrando por engano, todo mundo aprende a ignorar o que ele diz, e ai ele nao serve para mais nada. Depois de um tempo acertando, ele pode passar a barrar — e essa mudanca e de uma palavra so.\n\nUM DETALHE HONESTO: o primeiro aviso que ele escreveu foi sobre ESTA propria entrega. A tarefa prometia mexer em duas partes e o trabalho precisou de tres. A promessa nao muda depois de escrita (essa e a lei da lista de tarefas), entao o desvio fica anotado — e a proxima etiqueta nasce mais honesta.\n\nDe onde veio: e a primeira das evolucoes que as tres consultorias externas apontaram para a lista de tarefas, em 29/08.",
+  autoridade: "sessao",
+  evidencia: "PR #574 (https://github.com/abundanciabr/sitesdoreino/pull/574) — TAR-015 da fila. PROVA VERMELHO->VERDE, sem rede: 30 testes novos em ci/tests/test_conferencia_do_toca.py, e quatro sabotagens deliberadas no codigo deixam o teste vermelho (ler so o destino de um rename: 2 failed; area na granularidade grossa da celula: 8 failed; a regra nunca disparar: 3 failed; a isencao de rito cobrir painel/ inteiro: 1 failed) — com o codigo no lugar, 30 passed. Suite inteira do repositorio: 1091 passed in 203.92s. Muralhas locais: RESULTADO PASS (14 portoes). PROVA DE FORA: `python ci/conferencia_do_toca.py --pr 574 --comentar` publicou o alerta real no proprio PR #574, apontando `.github` fora do `toca` declarado `[ci, fila]`, e a segunda execucao nao repetiu o comentario.",
+  verificado_em: "2026-08-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  vence_em_dias: null
+});})();
