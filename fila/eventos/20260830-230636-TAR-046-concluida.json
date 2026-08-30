@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-230636-TAR-046-concluida",
+  "tarefa": "TAR-046",
+  "evento": "concluida",
+  "quando": "2026-08-30T23:06:36+00:00",
+  "quem": "sessao-forum-busca-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/653 — 14 testes novos, suite da celula 153 -> 167 verdes. deploy-celula run 33340706830 completed/success nas duas celulas, lido por gh run view --json. PROVA DE FORA, sem login: GET /forum/buscar 200, GET /forum/buscar?q=roblox 200 devolvendo '1 resultado para roblox' (so a area publica, que e o que visitante pode ler), e a caixa de busca presente na capa. O achado que mudou o teste esta em armadilhas/232: o ts_headline remove <script> mas devolve <img src=x onerror=alert(1)> inteiro, entao a prova de escape usa a carga que sobrevive.",
+  "verificado_em": "2026-08-30"
+}
