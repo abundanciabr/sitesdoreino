@@ -39,7 +39,7 @@ FAIXAS = [
 
 
 class Command(BaseCommand):
-    help = "Dados fixos do Crivo (perguntas, opções, faixas de resultado) — idempotente"
+    help = "Dados fixos do Crivo (perguntas, opções, faixas de resultado): idempotente"
 
     def add_arguments(self, parser):
         parser.add_argument("--host", required=True)

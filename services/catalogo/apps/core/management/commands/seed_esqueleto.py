@@ -12,7 +12,7 @@ HOST_ESQUELETO_PADRAO = "esqueleto.exemplo.com.br"
 
 class Command(BaseCommand):
     help = (
-        "Dados do esqueleto — idempotente: rodar 2x não duplica nada. "
+        "Dados do esqueleto (idempotente: rodar 2x não duplica nada). "
         "Cria o Site 'esqueleto' (host = domínio de operações, via env "
         "DOMINIO_OPERACOES) e a oferta 'curso-esqueleto' (990 cents) nesse site."
     )

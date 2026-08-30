@@ -412,14 +412,24 @@ def superficie(raiz: Path) -> list[Path]:
                 continue
             for sufixo in (".yaml", ".yml"):
                 achados |= {p for p in pasta.rglob(f"*{sufixo}") if p.is_file()}
-        # Os SEMEADORES: os únicos `.py` da superfície, e por um motivo estreito
-        # — eles existem para CRIAR conteúdo que o visitante lê (o nome e a
-        # descrição de uma área do fórum saem daqui para `meshcraft.top/forum`).
-        # Só as constantes de string entram; docstring e comentário, não.
+        # OS COMANDOS DE GESTÃO: os únicos `.py` da superfície, e a fronteira
+        # aqui já foi estreita DEMAIS uma vez. Ela era `semear_*.py`, pelo
+        # motivo certo (o nome e a descrição de uma área do fórum saem daqui
+        # para `meshcraft.top/forum`) e com a régua errada: o NOME do arquivo.
+        # `seed_sugestoes.py` cria as categorias e o quadro que o aluno lê, e
+        # escapava por começar com `seed` em vez de `semear`. Quem achou o
+        # buraco foi o mantenedor, olhando o site.
+        #
+        # Hoje entra a pasta inteira. O custo é pequeno e foi medido em
+        # 30/08/2026: 12 travessões em 10 comandos, a maioria texto de terminal
+        # que só o operador lê. Pagar 12 uma vez vale mais que uma régua que
+        # depende de alguém escolher o prefixo certo do nome do arquivo.
         for pasta in celula.rglob("commands"):
             if not pasta.is_dir():
                 continue
-            achados |= {p for p in pasta.glob("semear_*.py") if p.is_file()}
+            achados |= {
+                p for p in pasta.glob("*.py") if p.is_file() and p.name != "__init__.py"
+            }
 
     bastidor = _padroes_de_bastidor(raiz)
     publicos = []

@@ -39,7 +39,7 @@ class Command(BaseCommand):
         # uma frase que parece um problema e não é.
         fatia = f" ({100 * com / total:.1f}%)" if total else ""
 
-        self.stdout.write("RELATÓRIO — id da plataforma nas identidades da Caixa")
+        self.stdout.write("RELATÓRIO: id da plataforma nas identidades da Caixa")
         self.stdout.write(f"  com o id da plataforma: {com}{fatia}")
         self.stdout.write(f"  ainda sem o id:         {sem}")
         self.stdout.write(f"  total de identidades:   {total}")

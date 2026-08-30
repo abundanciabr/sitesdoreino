@@ -309,7 +309,7 @@ def test_contagem_sem_numero_e_ERROR(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# 5. OS SEMEADORES — os únicos `.py` da superfície.
+# 5. OS COMANDOS DE GESTÃO — os únicos `.py` da superfície.
 # ---------------------------------------------------------------------------
 SEMEADOR = "services/loja/apps/loja/management/commands/semear_areas.py"
 
@@ -359,6 +359,41 @@ def test_semeador_com_sintaxe_quebrada_nao_inventa_achado(tmp_path: Path) -> Non
     """Quem cobra sintaxe é o CI da célula. Aqui, arquivo ilegível não é violação."""
     raiz = _cenario(tmp_path, {SEMEADOR: "def (((\n"})
     assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_comando_que_nao_se_chama_semear_tambem_conta(tmp_path: Path) -> None:
+    """A fronteira era o NOME do arquivo, e o nome deixou conteúdo de fora.
+
+    Achado pelo mantenedor em 30/08/2026, olhando o site: `seed_sugestoes.py`
+    cria as categorias e o quadro que o aluno lê na Caixa, e escapava do portão
+    por começar com `seed` em vez de `semear`. Régua que depende de alguém
+    escolher o prefixo certo do nome do arquivo não é régua.
+    """
+    raiz = _cenario(
+        tmp_path,
+        {"services/loja/apps/loja/management/commands/seed_categorias.py": 'N = ["Preço — justo"]\n'},
+    )
+    relatorio = travessao.rodar(raiz)
+    assert relatorio.estado is Estado.FAIL
+    assert "seed_categorias.py" in relatorio.render()
+
+
+def test_o_init_da_pasta_de_comandos_nao_entra(tmp_path: Path) -> None:
+    """`__init__.py` é encanamento do Python, nunca conteúdo."""
+    raiz = _cenario(
+        tmp_path,
+        {"services/loja/apps/loja/management/commands/__init__.py": 'X = "a — b"\n'},
+    )
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_o_seed_real_da_caixa_esta_na_superficie() -> None:
+    """Prova de fora: o arquivo que o portão deixava escapar agora está dentro."""
+    publicos = {p.relative_to(RAIZ).as_posix() for p in travessao.superficie(RAIZ)}
+    assert (
+        "services/sugestoes/apps/sugestoes/management/commands/seed_sugestoes.py"
+        in publicos
+    )
 
 
 def test_o_semeador_real_do_forum_esta_na_superficie() -> None:

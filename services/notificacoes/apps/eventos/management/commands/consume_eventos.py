@@ -112,7 +112,7 @@ def _mover_para_fila_morta(
     msg_id_txt = msg_id.decode() if isinstance(msg_id, bytes) else str(msg_id)
     logger.error(
         "FILA MORTA: evento %s (stream=%s, msg_id=%s, delivery_count=%s) movido "
-        "para %s.dlq — o handler NAO rodou; investigar e reprocessar manualmente.",
+        "para %s.dlq: o handler NAO rodou; investigar e reprocessar manualmente.",
         event_id,
         stream,
         msg_id_txt,
