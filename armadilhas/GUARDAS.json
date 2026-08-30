@@ -181,6 +181,18 @@
       "detector": null,
       "dono": "ci/mergear.py",
       "tem_sinal": true
+    },
+    {
+      "armadilha": "203",
+      "arquivo": "armadilhas/203-guarda-tipo-muralha-exige-detector-que-e-regra-da-muralha.md",
+      "estado": "guardada",
+      "degrau": 2,
+      "confianca": "alta",
+      "custo_por_queda": "baixo",
+      "tipo": "CI",
+      "detector": null,
+      "dono": "ci/tests/test_guarda_declarada_e_sino.py",
+      "tem_sinal": true
     }
   ]
 }

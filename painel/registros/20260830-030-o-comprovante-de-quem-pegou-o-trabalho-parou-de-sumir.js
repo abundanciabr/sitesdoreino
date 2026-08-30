@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260830-024-o-comprovante-de-quem-pegou-o-trabalho-parou-de-sumir",
+  arquivo: "20260830-030-o-comprovante-de-quem-pegou-o-trabalho-parou-de-sumir",
   tipo: "entrega",
   quando: "2026-08-30",
   titulo: "O comprovante de quem pegou cada trabalho parou de sumir sem ninguem avisar",

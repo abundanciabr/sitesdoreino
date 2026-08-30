@@ -85,6 +85,12 @@
       "arquivo": "armadilhas/198-pr-com-conflito-nao-dispara-os-workflows-de-pull-request.md",
       "titulo": "PR com CONFLITO não dispara os workflows de `pull_request` — os checks obrigatórios não ficam pendentes, eles não existem",
       "regex": "mergeStateStatus.*DIRTY"
+    },
+    {
+      "armadilha": "203",
+      "arquivo": "armadilhas/203-guarda-tipo-muralha-exige-detector-que-e-regra-da-muralha.md",
+      "titulo": "`entrada declara detector que a muralha não tem` — você curou a armadilha com CÓDIGO PRÓPRIO e declarou `guarda: tipo: muralha`",
+      "regex": "entrada declara detector que a muralha não tem"
     }
   ]
 }
