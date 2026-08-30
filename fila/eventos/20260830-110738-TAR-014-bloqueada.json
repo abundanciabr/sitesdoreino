@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260830-110738-TAR-014-bloqueada",
+  "tarefa": "TAR-014",
+  "evento": "bloqueada",
+  "quando": "2026-08-30T11:07:38+00:00",
+  "quem": "sessao-tar014-2026-08-30",
+  "detalhe": "aposentar as telas antigas perderia funcao, e a regra do despacho manda parar: o corredor do ChangeSpec (GET /forms/sugestoes/moderacao/<id>/changespec) mostra QUAL documento autorizou a obra, quem aprovou, quando, quem registrou e onde o documento esta; a tela nova do Admin so sabe o booleano tem_changespec ('assinada' / 'nao assinada'). O contrato sugestoes.openapi.yaml nao carrega esses campos, e nenhuma outra tela do Admin os mostra (nao ha tela de auditoria; docs/changespecs/ nao esta no catalogo de documentos). Fechar o vazio exige uma 4a emenda ao contrato (Rito de Contrato, RITOS §3, caminho CODEOWNERS) - mandato que este despacho nao carrega. As outras 4 rotas antigas tem paridade total. Detalhes no registro do livro do mesmo PR."
+}
