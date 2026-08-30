@@ -12,7 +12,7 @@ pasta, só a lista que recebeu.
   {% if documentos %}
   <ul class="lista">
     {% for documento in documentos %}
-    <li><a href="{% url 'doc_publico' documento.nome %}">{{ documento.titulo }}</a></li>
+    <li><a href="{{ documento.endereco }}">{{ documento.titulo }}</a></li>
     {% endfor %}
   </ul>
   {% else %}

@@ -100,7 +100,13 @@ def doc_publico(request, nome):
     return render(
         request,
         "admin/doc_publico.html",
-        {"documento": documento, "corpo": documentos.para_html(documento.corpo)},
+        {
+            "documento": documento,
+            "corpo": documentos.para_html(documento.corpo),
+            # Ver `documentos.PREFIXO_PUBLICO`: aqui o endereço NÃO sai de
+            # `{% url %}`, porque as páginas públicas não moram sob `/admin`.
+            "prefixo_publico": documentos.PREFIXO_PUBLICO,
+        },
     )
 
 

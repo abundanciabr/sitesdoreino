@@ -13,6 +13,6 @@ que vira o buraco — e é por isso que a explicação mora coladinha nele.
 {% endcomment %}
 {% block titulo %}{{ documento.titulo }}{% endblock %}
 {% block conteudo %}
-  <a class="volta" href="{% url 'docs_publicos' %}">&larr; Todos os documentos</a>
+  <a class="volta" href="{{ prefixo_publico }}/">&larr; Todos os documentos</a>
   {{ corpo|safe }}
 {% endblock %}
