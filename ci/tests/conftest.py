@@ -136,6 +136,33 @@ class RepoFalso:
         return self.exportador(celula, corpo)
 
 
+# ---------------------------------------------------------------------------
+# OS GERADOS DE `armadilhas/` NÃO MORAM MAIS NO GIT (30/08/2026, armadilhas/200):
+# o índice inteiro era reescrito por todo robô que aprendia uma lição, e dois
+# robôs do mesmo lote colidiam sem ter escrito uma linha em comum. Quem os
+# materializa passou a ser a integração.
+#
+# Esta fixture fecha a METADE QUE FALTOU e que deixou a `main` vermelha no mesmo
+# dia: o job `guardas do repositório` do `alarme-main` roda esta suíte SEM passar
+# pelas muralhas, então numa árvore recém-clonada os testes do sino liam um
+# `armadilhas/SINAIS.json` inexistente e morriam em
+# `JSONDecodeError: Expecting value: line 1 column 1 (char 0)`. O portão de
+# deploy então recusou publicar — fail-closed, como devia — e nenhum merge
+# chegava ao site.
+#
+# Por que aqui e não num passo de YAML: um passo conserta UM workflow. Esta
+# suíte tem três chamadores — `muralhas`, `alarme-main` e a pessoa que roda
+# `pytest ci/tests` na mão — e o terceiro não tem YAML nenhum. Materializar na
+# porta da suíte cobre os três de uma vez, que é a mesma escolha de "uma
+# definição só" que o resto desta casa faz.
+@pytest.fixture(scope="session", autouse=True)
+def _materializar_os_gerados_das_armadilhas() -> None:
+    """Garante `INDICE.md`, `GUARDAS.json` e `SINAIS.json` antes de qualquer teste."""
+    import indice_de_armadilhas
+
+    indice_de_armadilhas.rodar(raiz=CI.parent, conferir=False)
+
+
 @pytest.fixture
 def repo(tmp_path: Path) -> RepoFalso:
     raiz = tmp_path / "repo-falso"
