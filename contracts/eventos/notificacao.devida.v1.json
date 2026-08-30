@@ -64,9 +64,13 @@
           "type": "string",
           "enum": [
             "sugestao.status-alterado",
-            "matricula.situacao-alterada"
+            "matricula.situacao-alterada",
+            "gamificacao.nivel-alcancado",
+            "gamificacao.conquista-concedida",
+            "gamificacao.marco-validado",
+            "gamificacao.destaque-da-semana"
           ],
-          "description": "O que aconteceu, do ponto de vista de quem le. Comecou com um so porque a V1 nasceu so com a Caixa (DECISAO-notificacoes §3); `matricula.situacao-alterada` entrou em 29/08/2026, decidido pelo mantenedor, para que quem espera na fila descubra que foi liberado sem precisar reabrir o site. Assunto novo entra aqui e ganha um ramo em 'parametros' logo abaixo, num PR PEQUENO — foi exatamente o que aconteceu, e a FORMA do evento nao precisou mudar: e o sinal de que o desenho de 26/08 estava certo. E a regra de sempre continua valendo: se acrescentar um assunto exigir mexer na FORMA deste evento, o desenho esta errado e se conserta antes, nao depois."
+          "description": "O que aconteceu, do ponto de vista de quem le. Comecou com um so porque a V1 nasceu so com a Caixa (DECISAO-notificacoes §3); `matricula.situacao-alterada` entrou em 29/08/2026, decidido pelo mantenedor, para que quem espera na fila descubra que foi liberado sem precisar reabrir o site; os quatro `gamificacao.*` entraram na Sessao B de 30/08/2026 (Rito de Contrato com o mantenedor), e sao as CARTAS DE CELEBRACAO do Sistema de Formacao de Criadores. Assunto novo entra aqui e ganha um ramo em 'parametros' logo abaixo, num PR PEQUENO — foi exatamente o que aconteceu DUAS vezes, e a FORMA do evento nao precisou mudar nenhuma delas: e o sinal de que o desenho de 26/08 estava certo. E a regra de sempre continua valendo: se acrescentar um assunto exigir mexer na FORMA deste evento, o desenho esta errado e se conserta antes, nao depois. A REGRA DA GAMIFICACAO, que vem junto com os quatro: so BOA NOTICIA vira carta — perder XP, regredir na sequencia ou ter uma marca estornada NAO gera aviso nenhum (lei da celula; maximo 1 por dia, nunca depois das 20h nem em horario escolar)."
         },
         "parametros": {
           "type": "object",
@@ -217,6 +221,203 @@
                       "encerrada"
                     ],
                     "description": "O vocabulario INTEIRO de status da `alunos`, e nao so os dois que hoje geram aviso. O contrato descreve o que PODE ser dito; QUEM decide o que merece carta e a celula que publica, e essa decisao muda sem rito de contrato. Amarrar as duas coisas faria toda mudanca de politica de aviso virar uma sessao de arquitetura."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "SUBIU DE NIVEL (Sessao B, 30/08/2026). Primeira das quatro cartas da gamificacao. Segue a mesma disciplina dos ramos de cima: numero e SLUG, nunca a frase pronta — a escola serve tres idiomas, e gravar 'Voce chegou ao nivel 7, Modelador!' congela o idioma de quem gravou. A frase nasce na LEITURA, no sininho (PR 21 da escada), no idioma de quem le.",
+      "if": {
+        "properties": {
+          "data": {
+            "properties": {
+              "assunto": {
+                "const": "gamificacao.nivel-alcancado"
+              }
+            },
+            "required": [
+              "assunto"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "parametros": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "nivel",
+                  "titulo_slug"
+                ],
+                "properties": {
+                  "nivel": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "O nivel alcancado. Nivel comeca em 1 (CheckConstraint `nivel_comeca_em_um` na celula) — 0 aqui seria carta de um estado que nao existe."
+                  },
+                  "titulo_slug": {
+                    "type": "string",
+                    "description": "O slug do titulo do nivel (a metade 'Modelador' da etiqueta 'Nv 7 · Modelador'). SLUG e nao texto: os titulos tem forma feminina opcional e existem em tres idiomas, e quem escolhe qual mostrar e quem LE. XP nao viaja nesta carta: o aviso e sobre o degrau alcancado, nao sobre o placar."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "GANHOU UMA MEDALHA (Sessao B, 30/08/2026). Medalha e o andaime — reconhecimento do sistema, contado automaticamente. NAO confundir com o MARCO, que e a espinha e tem carta propria logo abaixo: marco exige validacao humana e vale ZERO XP (VEREDITO §5.B, decisao fechada 7 da Sessao A). Sao dois assuntos e nao um justamente para o sininho poder falar de cada um com o peso certo.",
+      "if": {
+        "properties": {
+          "data": {
+            "properties": {
+              "assunto": {
+                "const": "gamificacao.conquista-concedida"
+              }
+            },
+            "required": [
+              "assunto"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "parametros": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "conquista_slug"
+                ],
+                "properties": {
+                  "conquista_slug": {
+                    "type": "string",
+                    "description": "Slug opaco da conquista na celula gamificacao — e por ele que a tela busca o NOME na hora de ler. O nome NAO viaja aqui, pela mesma razao do `suggestion_id` do primeiro ramo: uma medalha renomeada deixaria avisos antigos mostrando o nome velho para sempre."
+                  },
+                  "familia": {
+                    "type": "string",
+                    "enum": [
+                      "oficio",
+                      "comunidade",
+                      "epoca",
+                      "secreta",
+                      "carreira",
+                      "espelho"
+                    ],
+                    "description": "A familia da medalha, para o sininho escolher o tom da frase (uma medalha SECRETA merece outra frase que uma de oficio). OPCIONAL de proposito: ausencia e 'nao informado', nunca erro — a mesma regra que `vinculo` e `situacao_anterior` ja seguem nos ramos de cima."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "UM MARCO REAL FOI VALIDADO (Sessao B, 30/08/2026). E a carta mais importante do sistema e a que menos XP carrega: marco rende ZERO XP (decisao fechada 7 da Sessao A). O aviso existe porque marco passa por FILA DE VALIDACAO com SLA (48h uteis para respostas, 5 dias uteis para marcos) — quem enviou uma evidencia e ficou esperando precisa saber que foi aceita, e a evidencia em si NUNCA viaja nesta carta: ela mora na camada privada do PedidoDeValidacao, e pares nunca a veem.",
+      "if": {
+        "properties": {
+          "data": {
+            "properties": {
+              "assunto": {
+                "const": "gamificacao.marco-validado"
+              }
+            },
+            "required": [
+              "assunto"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "parametros": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "conquista_slug"
+                ],
+                "properties": {
+                  "conquista_slug": {
+                    "type": "string",
+                    "description": "Slug opaco do marco na celula gamificacao. Marcos de dinheiro sao faixa etaria 13+ e a validacao deles e SEMPRE adulta — mas isso e regra de quem PUBLICA, nao forma deste evento."
+                  },
+                  "validador_papel": {
+                    "type": "string",
+                    "enum": [
+                      "professor",
+                      "monitor",
+                      "par",
+                      "sistema"
+                    ],
+                    "description": "COM QUE AUTORIDADE o marco foi validado — o mesmo vocabulario fechado do `validador_papel` da Concessao. O ID de quem validou NAO viaja: quem valida e adulto responsavel, e o aviso do aluno diz 'a equipe', como o `ator_id` do envelope ja resolve (guardar sim, mostrar nao). OPCIONAL: ausencia e 'nao informado', nunca erro."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "O PROFESSOR DESTACOU A OBRA (Sessao B, 30/08/2026). Sao no maximo 3 destaques por semana (Camada 1, via forum), e cada um leva a frase do porque escrita pelo professor — que fica NA GALERIA, nao aqui: texto escrito por gente nao viaja por fila de evento nem por log de servidor nesta plataforma, e um texto sobre a obra de uma crianca menos ainda. A carta so diz 'houve um destaque, e e este'; a tela busca o resto na hora de ler.",
+      "if": {
+        "properties": {
+          "data": {
+            "properties": {
+              "assunto": {
+                "const": "gamificacao.destaque-da-semana"
+              }
+            },
+            "required": [
+              "assunto"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "parametros": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "destaque_id"
+                ],
+                "properties": {
+                  "destaque_id": {
+                    "type": "string",
+                    "description": "Id opaco do destaque na galeria da celula gamificacao. E por ele que a tela chega na obra, na frase do professor e no card — nenhum dos tres viaja aqui."
+                  },
+                  "semana": {
+                    "type": "string",
+                    "format": "date",
+                    "description": "A SEGUNDA-FEIRA da semana do destaque, em America/Sao_Paulo — o mesmo recorte que a Sequencia usa para fechar a semana. Data e nao data-hora de proposito: 'a semana de 25 de agosto' e o que a tela mostra, e um instante com fuso convidaria o consumidor a converter para o fuso dele e exibir a semana errada (`armadilhas/099`). OPCIONAL: ausencia e 'nao informado', nunca erro."
                   }
                 }
               }

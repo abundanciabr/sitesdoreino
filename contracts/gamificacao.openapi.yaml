@@ -1,0 +1,294 @@
+# =============================================================================
+# CONTRATO DA CÉLULA `gamificacao` — a porta de MÁQUINA do Sistema de Formação
+# de Criadores (XP, níveis, Sequência, missões, Cristais, celebrações).
+#
+# CONGELADO EM 30/08/2026, na Sessão B (Rito de Contrato, RITOS.md §3), com o
+# mantenedor presente. Mudar este arquivo é o mesmo rito: PR só de `contracts/`,
+# etiqueta `contrato`, provedor primeiro, consumidores em PRs seguintes. O
+# portão que faz valer é `ci/contract_freeze.py`.
+#
+# LEI DO ASSUNTO: `docs/decisoes/DECISAO-gamificacao.md`.
+# PLANO: `docs/decisoes/PLANO-CELULA-GAMIFICACAO.md` §4 (eventos e contrato).
+#
+# ORDEM DA ESCADA — leia antes de "consertar" alguma coisa aqui: este contrato
+# foi congelado no PR 4 da escada do §6, e a IMPLEMENTAÇÃO dele é o PR 16 (a
+# porta de máquina: `config/api.py`, `export_openapi`, testes de 401 em todas as
+# operações). É contrato-primeiro deliberado: as duas operações abaixo são o que
+# o fórum e o funil vão consumir, e escrevê-las antes do motor é o que impede a
+# célula de nascer com uma superfície improvisada. Enquanto o PR 16 não chega, a
+# linha desta célula em `ci/manifesto-de-contratos.json` guarda o motivo por
+# escrito — ela não pode ser `freeze: required` antes de existir o que exportar.
+#
+# AS TRÊS INVARIANTES QUE ATRAVESSAM AS DUAS OPERAÇÕES:
+#
+#   1. NUNCA SAI E-MAIL, NUNCA SAI TEXTO DE PESSOA. O público desta escola é
+#      majoritariamente menor de idade. Só id opaco, número e slug.
+#   2. NUNCA SAI XP BRUTO DE OUTRA PESSOA. `getPublicProfiles` devolve nível e
+#      título; quem quiser XP vê o PRÓPRIO, em `getMyStatus`. Placar de XP entre
+#      alunos não existe nesta plataforma, e a porta é onde isso fica mecânico.
+#   3. SLUG, NUNCA FRASE PRONTA. O site serve três idiomas: gravar ou transmitir
+#      "Modelador" congela o idioma de quem escreveu. Quem lê traduz o slug — a
+#      mesma lição que `contracts/eventos/notificacao.devida.v1.json` já carrega
+#      ("os dados da frase, nunca a frase").
+#
+# DECISÃO B DA SESSÃO B — ESTÁ AQUI PARA VOCÊ NÃO "CONSERTAR":
+# a etiqueta do aluno é visível para TODO MUNDO, inclusive visitante não logado.
+# Por isso `getPublicProfiles` responde a chamador SEM SESSÃO DE PESSOA (o
+# Bearer do par continua obrigatório — ele prova QUEM CHAMA, nunca quem é a
+# pessoa). Hoje isso não expõe aluno nenhum, porque a única área pública do
+# fórum é a de avisos e só a escola publica nela; a decisão existe para o dia em
+# que houver área pública com post de aluno. Não é descuido, é decisão do
+# mantenedor em 30/08/2026.
+#
+# ENDEREÇO — divergência conhecida, registrada de propósito: o §4 do plano (e o
+# despacho da Sessão B) escreve as operações como `/api/gamificacao/perfis` e
+# `/api/gamificacao/eu`, e é isso que está congelado abaixo (`servers` + `paths`,
+# o mesmo formato de `alunos`, `catalogo` e `notificacoes`). O comentário de
+# `services/gamificacao/config/urls.py`, escrito na gênese, previa a porta em
+# `/interno/` (o formato de `identidade` e `forum`). Quem implementar o PR 16
+# segue ESTE arquivo — mudar o endereço depois é Rito de Contrato, não
+# preferência de sessão.
+# =============================================================================
+openapi: 3.1.0
+info:
+  title: Gamificacao — API interna
+  version: 1.0.0
+  description: 'Superficie de MAQUINA do Sistema de Formacao de Criadores.
+
+    Existe para que o resto da plataforma dependa do CONTRATO e nunca do
+
+    motor de XP: quem consome le nivel, titulo e sequencia por aqui, e o
+
+    motor por baixo pode ser trocado sem ninguem do outro lado saber.
+
+
+    Lei do assunto: docs/decisoes/DECISAO-gamificacao.md.
+
+
+    NADA DE DADO PESSOAL SAI POR AQUI: nem e-mail, nem nome, nem texto
+
+    escrito por aluno. Só id opaco, número e slug. O público desta escola é
+
+    majoritariamente menor de idade.
+
+
+    E NADA DE XP DE TERCEIRO: `getPublicProfiles` devolve nivel e titulo;
+
+    XP so aparece em `getMyStatus`, e so o proprio. Placar de XP entre
+
+    alunos nao existe nesta plataforma.
+
+    '
+paths:
+  /perfis:
+    get:
+      operationId: getPublicProfiles
+      summary: A etiqueta publica de varios alunos de uma vez
+      parameters:
+      - in: query
+        name: ids
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                additionalProperties:
+                  $ref: '#/components/schemas/PerfilPublico'
+                type: object
+      description: 'A etiqueta que o forum estampa ao lado do nome do autor: "Nv 7 ·
+
+        Modelador". Decisao do mantenedor na Sessao B de 30/08/2026 — NIVEL +
+
+        TITULO, e mais nada. Moldura NAO entra nesta porta (o plano previa; a
+
+        Sessao B decidiu que nao), e XP bruto de outra pessoa nunca sai daqui.
+
+
+        `ids` e uma lista separada por virgula de ids OPACOS de pessoa, ate 50
+
+        por chamada. E lote porque uma pagina de forum decora N autores: uma
+
+        chamada por autor faria a tela do forum depender da latencia desta
+
+        celula N vezes.
+
+
+        Id desconhecido e OMITIDO do mapa, nunca vira erro e nunca vira linha
+
+        vazia. Quem chama trata ausencia como "sem etiqueta" e desenha a tela
+
+        igual — a falha desta porta e ABERTA por contrato: pagina sem selo,
+
+        nunca pagina quebrada.
+
+
+        RESPONDE A CHAMADOR SEM SESSAO DE PESSOA, de proposito (decisao B da
+
+        Sessao B): a etiqueta e visivel para todo mundo, inclusive visitante
+
+        nao logado. O Bearer do par continua obrigatorio — ele prova QUEM
+
+        CHAMA, nunca quem e a pessoa.'
+  /eu:
+    get:
+      operationId: getMyStatus
+      summary: 'O proprio painel do aluno: XP, nivel, sequencia, missoes'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeuStatus'
+      description: 'O estado do DONO DA SESSAO — nunca de outra pessoa. Resolve o cookie
+
+        opaco repassado pelo chamador, do mesmo jeito que `getSession` da
+
+        identidade: o cookie nao aparece como parametro porque quem o le e a
+
+        camada de sessao, nao a assinatura da operacao.
+
+
+        200 SEMPRE, inclusive para visitante: `autenticado: false` com os
+
+        numeros em null e as listas vazias. Visitante nao e erro — obrigar o
+
+        consumidor a traduzir 401 em "ninguem logado" e como o widget da home
+
+        acabaria mostrando tela de erro para quem so nao entrou ainda.
+
+
+        XP e nivel sao os numeros DESNORMALIZADOS do perfil; a fonte da
+
+        verdade e o ledger, e quem prova que a copia nao mentiu e o comando
+
+        `reconciliar_perfis` da propria celula, nunca esta porta.'
+components:
+  schemas:
+    PerfilPublico:
+      properties:
+        nivel:
+          type: integer
+        titulo_slug:
+          type: string
+      required:
+      - nivel
+      - titulo_slug
+      type: object
+    Sequencia:
+      properties:
+        semanas:
+          type: integer
+        dias_da_semana:
+          type: integer
+        meta:
+          type: integer
+        escudos:
+          type: integer
+      required:
+      - semanas
+      - dias_da_semana
+      - meta
+      - escudos
+      type: object
+    MissaoEmAndamento:
+      properties:
+        slug:
+          type: string
+        cadencia:
+          enum:
+          - diaria
+          - semanal
+          - dupla
+          type: string
+        categoria:
+          enum:
+          - criar
+          - aprender
+          - ajudar
+          - polir
+          - mostrar
+          type: string
+        progresso:
+          type: integer
+        meta:
+          type: integer
+        cumprida:
+          type: boolean
+      required:
+      - slug
+      - cadencia
+      - categoria
+      - progresso
+      - meta
+      - cumprida
+      type: object
+    CelebracaoPendente:
+      properties:
+        tipo:
+          enum:
+          - nivel-alcancado
+          - conquista-concedida
+          - marco-validado
+          - destaque-da-semana
+          type: string
+        referencia:
+          type: string
+      required:
+      - tipo
+      - referencia
+      type: object
+    MeuStatus:
+      properties:
+        autenticado:
+          type: boolean
+        xp:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        nivel:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        xp_para_proximo:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        sequencia:
+          anyOf:
+          - $ref: '#/components/schemas/Sequencia'
+          - type: 'null'
+        cristais:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        missoes:
+          items:
+            $ref: '#/components/schemas/MissaoEmAndamento'
+          type: array
+        celebracoes_pendentes:
+          items:
+            $ref: '#/components/schemas/CelebracaoPendente'
+          type: array
+      required:
+      - autenticado
+      - xp
+      - nivel
+      - xp_para_proximo
+      - sequencia
+      - cristais
+      - missoes
+      - celebracoes_pendentes
+      type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+servers:
+- url: http://gamificacao:8000/api/gamificacao
+security:
+- bearerAuth: []
