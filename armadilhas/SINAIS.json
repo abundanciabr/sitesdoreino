@@ -25,6 +25,18 @@
       "arquivo": "armadilhas/179-numero-do-registro-escolhido-cedo-colide-e-so-o-ci-conta.md",
       "titulo": "Número do registro escolhido cedo colide — e quem conta é o CI, 15 minutos depois",
       "regex": "n[úu]mero repetido no mesmo dia"
+    },
+    {
+      "armadilha": "185",
+      "arquivo": "armadilhas/185-registro-sem-o-numero-do-pr-vira-divida-real.md",
+      "titulo": "O registro viajou dentro do PR, mas a evidência não cita o número — a dívida é REAL, e cai no colo da próxima sessão",
+      "regex": "d[íi]vida do livro"
+    },
+    {
+      "armadilha": "185",
+      "arquivo": "armadilhas/185-registro-sem-o-numero-do-pr-vira-divida-real.md",
+      "titulo": "O registro viajou dentro do PR, mas a evidência não cita o número — a dívida é REAL, e cai no colo da próxima sessão",
+      "regex": "merges que ningu[ée]m contou"
     }
   ]
 }
