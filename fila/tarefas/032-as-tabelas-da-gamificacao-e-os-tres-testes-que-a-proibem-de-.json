@@ -1,0 +1,15 @@
+{
+  "arquivo": "032-as-tabelas-da-gamificacao-e-os-tres-testes-que-a-proibem-de-",
+  "id": "TAR-032",
+  "titulo": "As tabelas da gamificacao e os tres testes que a proibem de trair o aluno",
+  "toca": [
+    "gamificacao"
+  ],
+  "depende_de": [
+    "TAR-031"
+  ],
+  "evidencia_exigida": "As tabelas do §3 migradas, tudo nascendo desligado, e os TRES testes-invariante provados por sabotagem: cada um vermelho quando a trava e quebrada de proposito e verde com ela no lugar (armadilhas/195), com a saida crua",
+  "despacho": "PASSO 3 da escada do §6 de `docs/decisoes/PLANO-CELULA-GAMIFICACAO.md`, aprovado\npelo mantenedor em 30/08/2026 (registro 20260830-061). So comece depois que a\ngenese da celula estiver na main.\n\nO QUE FAZER: as tabelas do §3 do plano, a migracao, o comando de semear com\nTUDO nascendo `ativa=False`, os testes de constraint, e OS TRES\nTESTES-INVARIANTE que sao a lei desta celula e nunca se flexibilizam (§10.5):\n\n1. nada por dinheiro real (nenhum item, moeda, protecao ou vantagem);\n2. cosmetico e so estetica (nunca vantagem em XP, ranking ou visibilidade);\n3. aula nunca fica atras de jogo (conteudo educacional jamais trancado por XP,\n   nivel ou Cristal).\n\nEles nascem AQUI, como teste que reprova a publicacao, e nao como promessa em\ndocumento. Prova vermelho->verde por ASSERCAO (armadilhas/195): sabote cada um\nde proposito, mostre o teste vermelho, e depois verde.\n\nMoldes a copiar, nao reinventar: o espelho `Pessoa` de `services/forum/models.py`,\nas definicoes-como-DADO com default fechado do forum, e a marca-d'agua em vez de\nlinha-por-item (MarcaDeLeitura).\n\nCuidados: `site_id` em TODA entidade (Lei 9 / INV-P11); banco e role proprios\n(Lei 2); nada de sessao propria (INV-P12). Leia `armadilhas/170` (conn_max_age\nsob ASGI) antes de mexer na conexao.\n\nNOMES: as ligas sao Bronze, Prata, Ouro e Platina. O medidor de esforco se chama\nFORJA (onde o plano disser Tempera, leia Forja). Decisoes do mantenedor na\nSessao A.\n\nORCAMENTO: cerca de 14 arquivos.",
+  "origem": "passo 3 da escada do §6 do PLANO-CELULA-GAMIFICACAO.md, aprovado pelo mantenedor na Sessao A de 30/08/2026 (registro 20260830-061)",
+  "criada_em": "2026-08-30"
+}
