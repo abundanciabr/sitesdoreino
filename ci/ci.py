@@ -185,6 +185,12 @@ MURALHAS = [
         "celulas.yml discorda do código (dependência escondida ou declaração órfã)",
     ),
     PortaoDeShell(
+        "mapa-do-site",
+        "ci/mapa-do-site.sh",
+        "painel/mapa-do-site.json discorda do roteamento (endereço novo fora do "
+        "mapa do dono, ou linha sobrando)",
+    ),
+    PortaoDeShell(
         "contrato-aditivo",
         "ci/contrato-aditivo.sh",
         "a mudança de contrato REMOVE algo sem a etiqueta 'contrato-remocao'",
@@ -208,6 +214,12 @@ MURALHAS = [
         "muralha-das-reservas",
         "ci/muralha-das-reservas.sh",
         "armadilha nova com número escolhido à mão em vez de pedido ao almoxarife",
+    ),
+    PortaoDeShell(
+        "muralha-do-indice",
+        "ci/muralha-do-indice.sh",
+        "os gerados de armadilhas/ (INDICE.md, GUARDAS.json, SINAIS.json) não "
+        "constroem, não reconstroem iguais, ou voltaram ao índice do Git",
     ),
 ]
 

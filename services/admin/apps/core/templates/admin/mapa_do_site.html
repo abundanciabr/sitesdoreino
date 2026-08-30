@@ -1,0 +1,140 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Mapa do site{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'visao_geral' %}">&larr; Visão geral</a>
+  <h1>O mapa do site</h1>
+  <p class="subtitulo">
+    Todo endereço que este site tem hoje — o que cada um é, e quem consegue abrir.
+  </p>
+
+  {% if mapa_ausente %}
+  {% comment %}
+  Mapa ausente se DECLARA (500), nunca vira página vazia. "Este site não tem
+  endereço nenhum" seria a mentira mais convincente que esta tela poderia
+  contar — o falso-verde do padrão 1 da RETROSPECTIVA-FASE-D, em forma de
+  tela em branco.
+  {% endcomment %}
+  <p class="aviso" style="border-color:var(--vermelho)">
+    <b>O mapa não veio nesta versão do site.</b>
+    O arquivo <code>painel/mapa-do-site.json</code> não chegou na imagem — é falha
+    de empacotamento, não site sem endereços. Avise o agente: nada do que você vê
+    no site mudou por causa disso.
+  </p>
+  {% else %}
+
+  <div class="cartoes">
+    <div class="cartao">
+      <div class="rotulo">Endereços ao todo</div>
+      <div class="valor">{{ total }}</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">São telas de gente</div>
+      <div class="valor">{{ total_telas }}</div>
+      <div class="nota">Páginas que alguém abre e lê.</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">São botões, não páginas</div>
+      <div class="valor">{{ total_gestos }}</div>
+      <div class="nota">O que acontece quando alguém aperta algo.</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Só as máquinas usam</div>
+      <div class="valor">{{ total_maquina }}</div>
+      <div class="nota">
+        Portas de conversa entre as partes do site e sinais de vida —
+        {{ total_internos }} delas nem sequer alcançáveis pela internet.
+      </div>
+    </div>
+  </div>
+
+  {% for grupo in grupos %}
+  <div class="mapa-grupo">
+    <h2 class="faixa">{{ grupo.titulo }} &middot; {{ grupo.total }}</h2>
+    <p class="subtitulo">{{ grupo.explicacao }}</p>
+
+    {% for item in grupo.paginas %}
+    <div class="mapa-item">
+      <b>{{ item.titulo }}</b>
+      <div class="mapa-endereco">
+        {% if item.link %}
+        <a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.link }}</a>
+        {% if item.exemplo %}<span class="mapa-selo">exemplo</span>{% endif %}
+        {% elif item.interno %}
+        <code>sem endereço no site</code>
+        {% else %}
+        <code>{{ item.endereco }}</code>
+        {% if item.molde %}<span class="mapa-selo">molde</span>{% endif %}
+        {% endif %}
+      </div>
+      <p class="nota">{{ item.descricao }}</p>
+      {% if item.observacao %}<p class="nota mapa-obs">{{ item.observacao }}</p>{% endif %}
+    </div>
+    {% endfor %}
+
+    {% if grupo.gestos %}
+    <details class="cadastrar">
+      <summary>
+        E mais {{ grupo.gestos|length }} endereço{{ grupo.gestos|length|pluralize:"s" }}
+        que não são páginas
+      </summary>
+      <p class="nota">
+        Estes não abrem no navegador: são o que acontece quando alguém aperta um
+        botão — votar, salvar, liberar, sair. Estão no mapa porque existem, e
+        porque é isso que explica a diferença entre {{ total }} endereços e
+        {{ total_telas }} telas.
+      </p>
+      {% for item in grupo.gestos %}
+      <div class="mapa-item">
+        <b>{{ item.titulo }}</b>
+        <div class="mapa-endereco"><code>{{ item.endereco }}</code></div>
+        <p class="nota">{{ item.descricao }}</p>
+        {% if item.observacao %}<p class="nota mapa-obs">{{ item.observacao }}</p>{% endif %}
+      </div>
+      {% endfor %}
+    </details>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% if orfas %}
+  {% comment %}
+  Zero hoje, e a seção existe para o dia em que não for: uma entrada com um
+  público que a tela não desenha sumiria em silêncio, e endereço que some do
+  mapa é exatamente o que este mapa existe para impedir.
+  {% endcomment %}
+  <div class="mapa-grupo">
+    <h2 class="faixa">Sem grupo &middot; {{ orfas|length }}</h2>
+    <p class="aviso" style="border-color:var(--amarelo)">
+      Estes endereços foram cadastrados com um público que esta tela não conhece.
+      Eles aparecem aqui em vez de sumir.
+    </p>
+    {% for item in orfas %}
+    <div class="mapa-item">
+      <b>{{ item.titulo }}</b>
+      <div class="mapa-endereco"><code>{{ item.endereco }}</code></div>
+      <p class="nota">{{ item.descricao }}</p>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <p style="margin-top:34px" class="aviso">
+    <b>Por que dá para confiar neste mapa.</b>
+    Ele não é uma lista digitada à mão que alguém precisa lembrar de atualizar.
+    O endereço de cada linha é conferido, a cada mudança no site, contra o
+    roteamento de verdade e contra o código das 13 partes da plataforma: um robô
+    que criar uma página nova e não a escrever aqui <b>é reprovado antes de a
+    mudança entrar</b>, e o mesmo vale para uma linha que sobrar depois que uma
+    página deixar de existir. Um endereço marcado <span class="mapa-selo">molde</span>
+    não é um lugar só: é a forma de muitos — cada aluno, cada ideia, cada pedido
+    tem o seu.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

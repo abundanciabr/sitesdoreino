@@ -675,6 +675,37 @@ def rodar(raiz: Path, conferir: bool) -> int:
     return 0
 
 
+def raizes_a_materializar(tambem_aqui: bool) -> list[Path]:
+    """As árvores onde este comando deve materializar os gerados.
+
+    Sempre a árvore DESTE arquivo (`raiz_do_repo()` resolve pelo `__file__`, do
+    mesmo jeito que `ci/mergear.py` — `armadilhas/147`). Com `--tambem-aqui`,
+    também a árvore de onde o comando foi chamado, quando ela é outra.
+
+    Por que a segunda existe (30/08/2026, TAR-022): desde que os gerados saíram
+    do Git, quem os materializa é a integração — e o `SessionStart` chama
+    `python "${CLAUDE_PROJECT_DIR}/ci/indice_de_armadilhas.py"`, que aponta
+    SEMPRE para o clone principal. É de lá que o sino lê (`ci/sino_das_armadilhas.py`
+    resolve pelo `__file__` dele também), então o clone principal precisa mesmo
+    ser materializado. Mas o agente trabalha num WORKTREE (RITOS §1), e é lá que
+    ele vai abrir o `INDICE.md`. Sem esta flag, uma árvore ficaria sempre sem os
+    arquivos — e a lei que manda ler o índice no começo de toda tarefa
+    dependeria de alguém lembrar de rodar o gerador à mão.
+    """
+    raizes = [raiz_do_repo()]
+    if not tambem_aqui:
+        return raizes
+    try:
+        aqui = raiz_do_repo(Path.cwd())
+    except ErroDeInstrumentacao:
+        # Chamado de fora de qualquer checkout: a árvore do próprio arquivo já
+        # foi materializada, e isso é tudo o que dá para prometer daqui.
+        return raizes
+    if aqui not in raizes:
+        raizes.append(aqui)
+    return raizes
+
+
 def main(argv: list[str] | None = None) -> int:
     # Console cp1252 do Windows não pode virar UnicodeEncodeError no meio de uma
     # mensagem de erro acentuada (armadilhas/003).
@@ -687,16 +718,36 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="não escreve: reprova (exit 1) se o índice estiver desatualizado",
     )
+    parser.add_argument(
+        "--tambem-aqui",
+        action="store_true",
+        help=(
+            "materializa também na árvore de onde o comando foi chamado "
+            "(o worktree do agente), além da árvore deste arquivo"
+        ),
+    )
     args = parser.parse_args(argv)
     try:
-        raiz = raiz_do_repo()
-        return rodar(raiz, conferir=args.conferir)
+        raizes = raizes_a_materializar(args.tambem_aqui)
     except ErroDeInstrumentacao as erro:
         print(f"ERROR indice-de-armadilhas: {erro}", file=sys.stderr)
         detalhe = getattr(erro, "detalhe", "")
         if detalhe:
             print(detalhe, file=sys.stderr)
         return 2
+
+    pior = 0
+    for raiz in raizes:
+        try:
+            codigo = rodar(raiz, conferir=args.conferir)
+        except ErroDeInstrumentacao as erro:
+            print(f"ERROR indice-de-armadilhas: {erro}", file=sys.stderr)
+            detalhe = getattr(erro, "detalhe", "")
+            if detalhe:
+                print(detalhe, file=sys.stderr)
+            codigo = 2
+        pior = max(pior, codigo)
+    return pior
 
 
 if __name__ == "__main__":
