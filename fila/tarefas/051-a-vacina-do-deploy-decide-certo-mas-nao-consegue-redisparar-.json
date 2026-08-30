@@ -1,0 +1,15 @@
+{
+  "arquivo": "051-a-vacina-do-deploy-decide-certo-mas-nao-consegue-redisparar-",
+  "id": "TAR-051",
+  "titulo": "A vacina do deploy decide certo mas nao consegue redisparar: falta um token com forca",
+  "toca": [
+    "ci",
+    ".github"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "um run de deploy cancelado redisparado PELA PROPRIA vacina em producao (ou, se exigir segredo do dono, a pergunta estruturada registrada)",
+  "despacho": "CONTEXTO: em 30/08/2026 ~23:20 UTC o run 33341511607 (deploy-celula, merge do PR 657, celula admin) foi cancelado pela cadeira musical. A vacina (vacina-do-deploy.yml) acordou, decidiu REPETIR corretamente ('republicar so AVANCA'), mas o gh run rerun falhou: 'run cannot be rerun; Resource not accessible by personal access token'. TEM_PISTA era false (sem secrets.PISTA_TOKEN) e o token padrao nao teve permissao. O alarme funcionou (comentario na issue 651 as 23:20:22); a celula so chegou ao ar de carona no deploy verde do PR 658. MISSAO: dar braco a vacina — medir se basta um bloco permissions (actions: write) no job do vacina-do-deploy.yml para o github.token conseguir redisparar, ou se precisa mesmo do segredo PISTA_TOKEN (PAT do dono). Decidir MEDINDO (teste com run cancelado real ou duble), nunca por inferencia. Se o unico caminho for segredo que so o dono cria, registrar pendencia precisa_do_dono e devolver a pergunta estruturada a ele. Leia antes: armadilhas/183, 188, 215, 231; o log do run 33341539836 mostra a falha crua. ORCAMENTO: 1-5 arquivos; toca caminho CODEOWNERS (.github/), anunciar nominalmente no relatorio.",
+  "origem": "descoberta do despacho do super prompt (30/08/2026, PR 657)",
+  "criada_em": "2026-08-30"
+}
