@@ -229,5 +229,6 @@
 | [194](194-workflow-de-pull-request-target-nao-roda-no-pr-que-o-cria.md) | Workflow novo de `pull_request_target` NÃO roda no PR que o cria — e o silêncio parece "ainda vai rodar" — você acrescenta um workflow com gatilho `pull_request_target`, abre o PR, e o check dele **não aparece em lugar… | — sem guarda | — |
 | [195](195-vermelho-que-morre-na-construcao-do-teste-nao-prova-a-decisao.md) | O vermelho da prova morreu na CONSTRUÇÃO do teste, não na asserção — e não prova nada sobre a decisão — Você segue o protocolo vermelho→verde à risca: desfaz só o conserto, mantém os testes novos, roda a suíte, e ela… | nenhum (declarado) | — |
 | [196](196-o-rascunho-do-agente-e-compartilhado-entre-sessoes-irmas.md) | O arquivo de rascunho do agente é COMPARTILHADO entre sessões irmãs — e o `--body-file` publica o texto de outra — Você escreve o corpo do seu PR num arquivo do diretório de rascunho que o harness anuncia como… | nenhum (declarado) | — |
+| [201](201-git-show-redirecionado-para-o-proprio-arquivo-o-apaga.md) | `git show origin/main:arquivo > arquivo` APAGA o arquivo antes de o comando rodar — e a segunda tentativa come o seu backup — Você está provando o vermelho→verde do jeito certo: manter os testes novos e trocar SÓ o… | sino | — |
 
-**177 entradas** — 13 com guarda declarada, 164 ainda sem.
+**178 entradas** — 14 com guarda declarada, 164 ainda sem.

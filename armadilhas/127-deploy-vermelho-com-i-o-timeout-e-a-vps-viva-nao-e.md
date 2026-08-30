@@ -7,8 +7,8 @@ confianca: alta
 custo_por_queda: alto
 guarda:
   tipo: vacina
-  detector: rerun_de_deploy
-  dono: ci/rerun_de_deploy.py
+  detector: sonda_da_vps
+  dono: .github/workflows/deploy-celula.yml
 sinal:
   - `dial tcp [^\n]*:22: i/o timeout`
 ---
@@ -29,20 +29,43 @@ mais. Tratar o caso intermitente como se fosse a 017 leva a mexer em segredo de
 repositório — que é território do mantenedor — para consertar algo que não está
 quebrado.
 
-**Desde 29/08/2026 isto NÃO se faz mais à mão — rode a vacina:**
+**Desde 30/08/2026 (TAR-013) O PRÓPRIO DEPLOY FAZ ISTO — você provavelmente não
+precisa fazer nada.** O `deploy-celula.yml` mede a porta 22 na partida e depois
+de cada recusa, repete com pausa (45 s e 60 s) e só a 3ª tentativa decide o
+veredito. E ele **registra**: o resumo do run diz, em português, quantas
+tentativas foram precisas, o que cada medição da porta disse e se o que foi
+mergeado está ou não em produção — abrir a execução basta, não é preciso cavar
+log. A medição e a tabela de decisão moram em `ci/sonda_da_vps.py`; a fiação e o
+porquê de cada regra estão nos comentários do job `deploy`.
+
+Duas coisas que o desenho garante, e que valem saber antes de mexer:
+
+- **A sonda nunca derruba entrega que ainda poderia dar certo.** A única direção
+  em que ela encurta o laço é a provada: DUAS medições dizendo "porta morta"
+  pulam a 3ª tentativa (é a 017, e a 3ª só falharia igual). Porta viva ou "não
+  consegui medir" mantêm o retry inteiro.
+- **O workflow lê `outputs.veredito`, nunca `outcome`.** O `outcome` de um passo
+  só tem dois valores e juntaria "a porta está morta" com "não consegui medir" —
+  a confusão que o [INV-CI01] proíbe, e que faria a sonda abortar deploys por
+  defeito próprio. Guarda: `ci/tests/test_sonda_da_vps.py`.
+
+**Se mesmo assim o run terminar vermelho, aí sim rode a vacina do PC:**
 
 ```bash
 python ci/rerun_de_deploy.py --run <id>      # ou --ultimo
 ```
 
-Ela executa exatamente o procedimento descrito abaixo: colhe o veredito por
-`--json` (nunca por pipe), confirma que a falha é o timeout de SSH, mede a porta
-22, separa o blip da [017](017-cloudflare-na-frente-do-dominio-deploy-morre-em.md),
-repete com a pausa entre tentativas, para na terceira e escreve o texto da
-pendência para o livro. `--so-diagnosticar` decide e explica sem repetir nada.
+Ela cuida do que o deploy não alcança: um run que já terminou (inclusive o
+CANCELADO da [188](188-deploy-de-push-cancelado-pela-cadeira-musical-fica-fora-do-ar.md)).
+Colhe o veredito por `--json` (nunca por pipe), confirma que a falha é o timeout
+de SSH, mede a porta 22 — a MESMA medição, importada de `ci/sonda_da_vps.py`,
+para que as duas vacinas não possam discordar sobre o mesmo fato —, separa o
+blip da [017](017-cloudflare-na-frente-do-dominio-deploy-morre-em.md), repete com
+pausa, para na terceira e escreve o texto da pendência para o livro.
+`--so-diagnosticar` decide e explica sem repetir nada.
 
-O texto abaixo continua valendo — é o raciocínio que a vacina automatiza, e é o
-que você lê quando ela PARA e devolve a decisão para um humano.
+O texto abaixo continua valendo — é o raciocínio que as duas vacinas automatizam,
+e é o que você lê quando elas PARAM e devolvem a decisão para um humano.
 
 **A medição que separa os dois casos, em uma linha, do PC:**
 

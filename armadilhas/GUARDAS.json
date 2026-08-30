@@ -34,8 +34,8 @@
       "confianca": "alta",
       "custo_por_queda": "alto",
       "tipo": "vacina",
-      "detector": "rerun_de_deploy",
-      "dono": "ci/rerun_de_deploy.py",
+      "detector": "sonda_da_vps",
+      "dono": ".github/workflows/deploy-celula.yml",
       "tem_sinal": true
     },
     {
@@ -157,6 +157,18 @@
       "detector": null,
       "dono": null,
       "tem_sinal": false
+    },
+    {
+      "armadilha": "201",
+      "arquivo": "armadilhas/201-git-show-redirecionado-para-o-proprio-arquivo-o-apaga.md",
+      "estado": "documentada",
+      "degrau": 6,
+      "confianca": "alta",
+      "custo_por_queda": "medio",
+      "tipo": "nenhum",
+      "detector": null,
+      "dono": null,
+      "tem_sinal": true
     }
   ]
 }

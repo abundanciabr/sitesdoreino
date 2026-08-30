@@ -49,6 +49,12 @@
       "arquivo": "armadilhas/189-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md",
       "titulo": "`assert datetime.datetime(...) > datetime.datetime(...)` com os DOIS lados IDÊNTICOS — no Windows, dois `timezone.now()` seguidos caem no mesmo tique do relógio",
       "regex": "assert (datetime\\.datetime\\([^)]*\\)) [<>]=? \\1"
+    },
+    {
+      "armadilha": "201",
+      "arquivo": "armadilhas/201-git-show-redirecionado-para-o-proprio-arquivo-o-apaga.md",
+      "titulo": "`git show origin/main:arquivo > arquivo` APAGA o arquivo antes de o comando rodar — e a segunda tentativa come o seu backup",
+      "regex": "fatal: ambiguous argument '[^']*;[^']*'"
     }
   ]
 }
