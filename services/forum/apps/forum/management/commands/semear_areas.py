@@ -22,16 +22,28 @@ IDEMPOTENTE, E QUE NÃO PISA EM CIMA DE EDIÇÃO HUMANA
 renomear "Dúvidas gerais" ou desativar uma área, rodar de novo não desfaz.
 Semear é dar o primeiro empurrão, nunca ficar de dono.
 
-AS PERMISSÕES FICAM NO LADO FECHADO, DE PROPÓSITO
---------------------------------------------------
-A lei §5 manda áreas MISTAS, e é o que estas quatro dão: o visitante enxerga
-três, o aluno enxerga quatro.
+AS PERMISSÕES MUDARAM EM 30/08/2026, E QUEM MUDOU FOI O MANTENEDOR
+------------------------------------------------------------------
+A pergunta que estava em aberto (lei §6.3 — *"quem escreve nas áreas
+públicas?"*) foi respondida por ele em 30/08/2026, registro `20260830-021`:
+**em página pública, só a escola fala; onde aluno escreve, exige login; e só
+aluno matriculado escreve.** O motivo declarado é o público desta escola:
+criança e adolescente não ficam expostos a estranho. O preço, aceito por ele na
+mesma escolha: o fórum sai do alcance de buscador.
 
-Mas *"quem escreve nas áreas públicas — só aluno, ou também quem tem cadastro
-sem ter comprado?"* está EM ABERTO e é decisão do mantenedor (lei §6.3).
-Semear com `cadastrado` tomaria essa decisão por ele — e justamente na opção
-que exige anti-spam de verdade. Fica `aluno`, o lado seguro; mudar é uma linha
-no dia em que ele responder. Guarda: `tests/test_semear_areas.py`.
+Na prática isto virou o seed abaixo: **`duvidas` e `mostre-seu-trabalho`, que
+nasceram públicas, agora são de ALUNOS.** A única área que continua pública é
+`avisos`, porque nela quem publica é a equipe — ou seja, a página que o mundo
+inteiro lê é só a voz da escola.
+
+A lei §5 continua mandando áreas MISTAS, e continua sendo o que estas quatro
+dão: o visitante enxerga uma, o aluno enxerga quatro.
+
+**Não é este comando que fecha o que já estava aberto.** Ele é idempotente e de
+propósito não atualiza o que existe (não pisa em edição humana), então as áreas
+que já nasceram em produção não seriam alcançadas por ele. Quem as fecha é a
+migração `0002_pagina_publica_so_a_escola_fala`, e é lá que a restrição do banco
+torna a combinação proibida impossível. Guarda: `tests/test_semear_areas.py`.
 """
 
 from django.core.management.base import BaseCommand
@@ -46,7 +58,10 @@ PRIMEIRAS = [
         "Travou no Studio, o script não roda, a peça não encaixa? Pergunte aqui. "
         "Dúvida respondida vira resposta para quem chegar depois.",
         10,
-        Area.Visibilidade.PUBLICA,
+        # De ALUNOS, e não pública: é aqui que o aluno escreve, e mensagem de
+        # aluno não aparece em página aberta a estranhos (decisão de
+        # 30/08/2026). Quem tem cadastro sem matrícula não enxerga.
+        Area.Visibilidade.ALUNOS,
         Area.QuemEscreve.ALUNO,
     ),
     (
@@ -55,7 +70,9 @@ PRIMEIRAS = [
         "O que você está construindo. Modelo pela metade também conta — é vendo "
         "o meio do caminho que se aprende o caminho.",
         20,
-        Area.Visibilidade.PUBLICA,
+        # A parte mais exposta da escola vira a mais fechada: aqui aparecem
+        # rosto, nome de jogo e trabalho de criança.
+        Area.Visibilidade.ALUNOS,
         Area.QuemEscreve.ALUNO,
     ),
     (
@@ -64,6 +81,10 @@ PRIMEIRAS = [
         "O que a escola precisa contar para todo mundo: turmas, mudanças, datas. "
         "Só a equipe publica aqui.",
         30,
+        # A ÚNICA que continua pública, e ela só pode continuar porque quem
+        # escreve aqui é a equipe. A restrição do banco
+        # (`pagina_publica_so_a_escola_fala`) recusaria qualquer outra
+        # combinação.
         Area.Visibilidade.PUBLICA,
         Area.QuemEscreve.EQUIPE,
     ),
