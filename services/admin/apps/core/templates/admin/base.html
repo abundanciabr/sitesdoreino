@@ -296,6 +296,24 @@ primeira versão deste arquivo, e o teste pegou.
     }
     .mapa-obs { color: var(--texto-3); font-size: 13px; }
     .mapa-grupo .cadastrar { margin-top: 16px; }
+    /* A luz de "está no ar?" das portas principais. Ela DIZ o estado por
+       extenso, e não só por cor: quem não distingue verde de vermelho lê
+       "no ar" ou "não respondeu". A bolinha é o reforço, nunca a informação. */
+    .luz {
+      display: inline-block; margin-top: 4px; padding: 1px 9px 1px 7px;
+      border: 1px solid var(--linha); border-radius: 20px;
+      font-size: 11px; color: var(--texto-3);
+      text-transform: uppercase; letter-spacing: .06em;
+    }
+    .luz::before {
+      content: ""; display: inline-block; width: 7px; height: 7px;
+      border-radius: 50%; margin-right: 6px; background: var(--texto-3);
+      vertical-align: 1px;
+    }
+    .luz.no-ar { color: var(--verde); border-color: var(--verde); }
+    .luz.no-ar::before { background: var(--verde); }
+    .luz.caida { color: var(--vermelho); border-color: var(--vermelho); }
+    .luz.caida::before { background: var(--vermelho); }
 
     @media (max-width: 900px) {
       .forma { grid-template-columns: 1fr; }

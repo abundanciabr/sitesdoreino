@@ -269,3 +269,52 @@ def test_celula_sem_urlconf_e_ERROR(tmp_path: Path):
     (raiz / "services" / "forum" / "config" / "urls.py").unlink()
     with pytest.raises(ErroDeInstrumentacao):
         mapa_do_site.verificar(raiz)
+
+
+# --------------------------------------------------------------------------
+# A sonda — a luz de "está no ar?" que o navegador do DONO acende
+# --------------------------------------------------------------------------
+
+
+def test_sonda_num_gesto_reprova(tmp_path: Path):
+    """A cerca que impede um DANO, não uma inconsistência.
+
+    `/entrar/sair` é um gesto. Marcado com `sonda`, o navegador do dono o
+    abriria sozinho ao carregar o mapa — e ele sairia da própria conta. Um
+    `/…/apagar` seria pior.
+    """
+    mapa = _mapa_real()
+    _entrada(mapa, "identidade", "entrar/sair")["sonda"] = True
+    relatorio = mapa_do_site.verificar(_cenario(tmp_path, mapa))
+    assert relatorio.estado is Estado.FAIL
+    assert "GESTO" in relatorio.render()
+
+
+def test_sonda_em_endereco_interno_reprova(tmp_path: Path):
+    """O navegador dele não alcança a rede do Docker: a luz mentiria vermelho."""
+    mapa = _mapa_real()
+    _entrada(mapa, "catalogo", "api/catalogo/")["sonda"] = True
+    relatorio = mapa_do_site.verificar(_cenario(tmp_path, mapa))
+    assert relatorio.estado is Estado.FAIL
+    assert "interno" in relatorio.render()
+
+
+def test_sonda_num_molde_sem_exemplo_reprova(tmp_path: Path):
+    """Pedir `/forum/t/<int:topico_id>` devolve 404 e pintaria de vermelho uma
+    porta que está aberta."""
+    mapa = _mapa_real()
+    _entrada(mapa, "forum", "t/<int:topico_id>")["sonda"] = True
+    relatorio = mapa_do_site.verificar(_cenario(tmp_path, mapa))
+    assert relatorio.estado is Estado.FAIL
+    assert "molde" in relatorio.render()
+
+
+def test_as_portas_principais_estao_sondadas():
+    """O mapa de hoje acende luz nas portas que o dono chamaria de 'o site'."""
+    sondadas = {
+        e.get("exemplo") or e["endereco"]
+        for e in _mapa_real()["enderecos"]
+        if e.get("sonda")
+    }
+    for porta in ("/", "/login", "/forum/", "/forms/sugestoes/", "/admin/"):
+        assert porta in sondadas, f"a porta {porta} deveria ter luz"

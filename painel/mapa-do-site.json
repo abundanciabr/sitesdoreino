@@ -44,7 +44,8 @@
       "para_quem": "visitante",
       "titulo": "A porta de entrada do site",
       "descricao": "A primeira página que qualquer pessoa vê ao digitar meshcraft.top. É ela que apresenta a oferta e leva a pessoa ao resto.",
-      "observacao": "O mesmo endereço serve três idiomas: português na raiz nua (meshcraft.top), inglês em /en/ e espanhol em /es/. Quem escolhe é o idioma do navegador do visitante, e não uma página diferente."
+      "observacao": "O mesmo endereço serve três idiomas: português na raiz nua (meshcraft.top), inglês em /en/ e espanhol em /es/. Quem escolhe é o idioma do navegador do visitante, e não uma página diferente.",
+      "sonda": true
     },
     {
       "celula": "funil",
@@ -53,7 +54,8 @@
       "alcance": "publico",
       "para_quem": "visitante",
       "titulo": "A tela de entrar",
-      "descricao": "Onde a pessoa entra na conta dela, com o Google. É a única porta de entrada do site inteiro: quem entra aqui está entrando no fórum, na Caixa de Sugestões e em tudo mais."
+      "descricao": "Onde a pessoa entra na conta dela, com o Google. É a única porta de entrada do site inteiro: quem entra aqui está entrando no fórum, na Caixa de Sugestões e em tudo mais.",
+      "sonda": true
     },
     {
       "celula": "funil",
@@ -156,7 +158,8 @@
       "alcance": "publico",
       "para_quem": "visitante",
       "titulo": "O fórum da escola",
-      "descricao": "A porta do fórum: a lista das áreas de conversa. Qualquer pessoa pode LER as áreas públicas; escrever é para aluno."
+      "descricao": "A porta do fórum: a lista das áreas de conversa. Sem entrar, você vê só as áreas em que quem publica é a escola. As áreas onde o aluno escreve aparecem depois de entrar, e só para quem está matriculado.",
+      "sonda": true
     },
     {
       "celula": "forum",
@@ -176,6 +179,30 @@
       "para_quem": "visitante",
       "titulo": "Um assunto do fórum",
       "descricao": "A conversa em si, com as respostas. Cada assunto ganha um número próprio."
+    },
+    {
+      "celula": "forum",
+      "rota": "a/<slug:slug>/novo",
+      "endereco": "/forum/a/<slug:slug>/novo",
+      "exemplo": "/forum/a/duvidas/novo",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Abrir uma conversa no fórum",
+      "descricao": "O que acontece quando um aluno aperta 'Publicar' no formulário de uma área. Só funciona para quem entrou e está matriculado; qualquer outra pessoa leva um 'não'.",
+      "gesto": true,
+      "observacao": "Nas áreas em que a escola fala sozinha — como Avisos — nem aluno publica: só professor ou administrador."
+    },
+    {
+      "celula": "forum",
+      "rota": "t/<int:topico_id>/responder",
+      "endereco": "/forum/t/<int:topico_id>/responder",
+      "exemplo": "/forum/t/1/responder",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Responder uma conversa do fórum",
+      "descricao": "O que acontece ao apertar 'Responder' dentro de uma conversa. Mesma regra de abrir conversa: é preciso ter entrado e estar matriculado.",
+      "gesto": true,
+      "observacao": "Conversa trancada pela moderação não aceita resposta de ninguém."
     },
     {
       "celula": "forum",
@@ -212,7 +239,8 @@
       "alcance": "publico",
       "para_quem": "aluno",
       "titulo": "A Caixa de Sugestões",
-      "descricao": "O quadro onde os alunos veem as ideias que já foram pedidas e votam nelas. Quem não tem acesso liberado cai na porta."
+      "descricao": "O quadro onde os alunos veem as ideias que já foram pedidas e votam nelas. Quem não tem acesso liberado cai na porta.",
+      "sonda": true
     },
     {
       "celula": "sugestoes",
@@ -449,7 +477,8 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "A visão geral da administração",
-      "descricao": "A sala de comando: a porta para os painéis, a escola e a Caixa. Só abre para quem está na sua lista de administradores."
+      "descricao": "A sala de comando: a porta para os painéis, a escola e a Caixa. Só abre para quem está na sua lista de administradores.",
+      "sonda": true
     },
     {
       "celula": "admin",
@@ -505,7 +534,8 @@
       "para_quem": "visitante",
       "titulo": "A biblioteca pública",
       "descricao": "A lista de documentos que o site publica para qualquer pessoa ler, sem login.",
-      "observacao": "O mesmo endereço também responde em /admin/docs/ — é a mesma página, servida pela área administrativa."
+      "observacao": "O mesmo endereço também responde em /admin/docs/ — é a mesma página, servida pela área administrativa.",
+      "sonda": true
     },
     {
       "celula": "admin",
@@ -541,7 +571,8 @@
       "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "O mapa técnico para outras IAs",
-      "descricao": "Um endereço que você manda para uma inteligência artificial de fora conhecer o projeto inteiro, sem precisar dar acesso a nada. É texto puro, sem login."
+      "descricao": "Um endereço que você manda para uma inteligência artificial de fora conhecer o projeto inteiro, sem precisar dar acesso a nada. É texto puro, sem login.",
+      "sonda": true
     },
     {
       "celula": "admin",
@@ -761,7 +792,8 @@
       "alcance": "publico",
       "para_quem": "visitante",
       "titulo": "A tela de comprar",
-      "descricao": "Onde a pessoa preenche os dados para comprar uma oferta. Cada oferta tem seu endereço."
+      "descricao": "Onde a pessoa preenche os dados para comprar uma oferta. Cada oferta tem seu endereço.",
+      "sonda": true
     },
     {
       "celula": "checkout",
