@@ -94,6 +94,10 @@
       "freeze": "not-applicable",
       "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."
     },
+    "gamificacao": {
+      "freeze": "not-applicable",
+      "reason": "Célula nascida em 30/08/2026 (PR 1 da escada do §6 de docs/decisoes/PLANO-CELULA-GAMIFICACAO.md): config/urls.py expõe só /healthz, não há config/api.py nem API pública. O contrato (contracts/gamificacao.openapi.yaml, com getPublicProfiles e getMyStatus) entra pelo RITOS.md §3 no PR 4 da escada, depois da Sessão B de Rito de Contrato com o mantenedor."
+    },
     "identidade": {
       "freeze": "required",
       "frozen": "contracts/identidade.openapi.yaml",

@@ -146,8 +146,10 @@ primeira oportunidade de violá-la.
   registra o episódio em que isso quase entrou em produção, e a §6.4 o proíbe
   por escrito; este invariante é o mecanismo que faltava à proibição.
 - **Teste-Guarda:**
-  `services/admin/tests/test_inv_admin_nao_assina_sessao.py` e
-  `services/forum/tests/test_inv_forum_nao_assina_sessao.py` — medem a
+  `services/admin/tests/test_inv_admin_nao_assina_sessao.py`,
+  `services/forum/tests/test_inv_forum_nao_assina_sessao.py` e
+  `services/gamificacao/tests/test_inv_gamificacao_nao_assina_sessao.py` —
+  medem a
   CONFIGURAÇÃO da célula (sem SessionMiddleware, sem django.contrib.sessions
   e sem SESSION_ENGINE no settings dela), porque sem essas três
   `request.session` nem existe. Provados por mutação na gênese de cada uma:
@@ -156,13 +158,20 @@ primeira oportunidade de violá-la.
   próprio — não é sessão, mas é o mesmo problema de vizinhança: quatro células
   no mesmo host gravando `csrftoken` é uma invalidando o formulário da outra.
 - **Célula dona:** identidade (única emissora) — guarda plantado em `admin`,
-  a primeira célula a nascer **depois** da regra, e replicado em `forum`;
+  a primeira célula a nascer **depois** da regra, e replicado em `forum` e em
+  `gamificacao`;
   toda célula futura que consuma sessão herda a mesma obrigação. **No `forum`
   a obrigação pesa mais que o normal:** foi um requisito de login que criou a
   célula (`DECISAO-forum-da-escola.md` §2 — *"logado uma única vez, o site
   todo"*), e foi ele que eliminou os motores de fórum de prateleira. Uma
   segunda assinatura de cookie ali quebraria exatamente a coisa que justificou
-  construir em vez de instalar.
+  construir em vez de instalar. **Na `gamificacao` (30/08/2026) a tentação tem
+  nome próprio: a celebração visceral.** O desenho manda a comemoração de nível
+  e de marco aparecer em tela cheia, uma vez só, no segundo da validação
+  (`DECISAO-gamificacao.md` §5) — e toda tela assim precisa lembrar "já viu?".
+  O caminho de menor esforço para essa lembrança é `request.session[...]`, que
+  ali deslogaria a plataforma inteira; por isso o estado mora no MODELO
+  (`celebracoes_pendentes`), e não na sessão.
 
 ### [INV-SUG10] Corredor do ChangeSpec (nada entra em desenvolvimento sem ele)
 - **O quê:** `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se
