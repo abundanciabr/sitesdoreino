@@ -11,6 +11,8 @@ sempre a mesma: **quando algo dá errado, a pessoa recebe MENOS poder, nunca
 mais?**
 """
 
+from pathlib import Path
+
 import httpx
 import pytest
 
@@ -47,22 +49,71 @@ def env(monkeypatch):
         monkeypatch.setenv(nome, valor)
 
 
+# As DUAS únicas URLs que esta célula tem direito de chamar, montadas a partir
+# dos `servers:` dos contratos congelados mais o caminho da operação. Ficam aqui,
+# escritas por extenso, porque o dublê abaixo passa a EXIGI-LAS — e foi
+# exatamente a ausência dessa exigência que deixou um bug real passar por 39
+# testes verdes (ver `test_a_url_da_alunos_carrega_o_segmento_do_contrato`).
+URL_IDENTIDADE = "http://identidade:8000/interno/sessao/completa"
+URL_ALUNOS = "http://alunos:8000/api/alunos/alunos/ana%40exemplo.com/situacao"
+
+
 def dublar(monkeypatch, *, identidade=None, alunos=None):
     """Troca `httpx.Client.get` por um dublê que responde por URL.
 
     Cada parâmetro é uma `httpx.Response` OU uma exceção a levantar. `None`
     significa "esta chamada não deveria acontecer" — e se acontecer, quebra.
+
+    **O dublê confere a URL INTEIRA, não só o hostname**, e essa é a lição de
+    29/08/2026: enquanto ele casava só `"identidade" in url`, o cliente da
+    `alunos` chamava um caminho sem o segmento `/alunos` — 404 em produção,
+    `eh_aluno=False` para todo mundo — e os 39 testes continuavam verdes. Um
+    dublê que aceita qualquer caminho testa metade do cliente.
     """
 
     def falso_get(self, url, **kwargs):
-        alvo = identidade if "identidade" in str(url) else alunos
+        endereco = str(url)
+        if "identidade" in endereco:
+            alvo, esperada = identidade, URL_IDENTIDADE
+        else:
+            alvo, esperada = alunos, URL_ALUNOS
         if alvo is None:
-            raise AssertionError(f"chamada inesperada a {url}")
+            raise AssertionError(f"chamada inesperada a {endereco}")
+        assert endereco == esperada, (
+            f"o cliente chamou uma URL fora do contrato:\n"
+            f"  chamou:   {endereco}\n"
+            f"  contrato: {esperada}\n"
+            "Em produção isto é 404 -> fail-closed silencioso, com deploy verde."
+        )
         if isinstance(alvo, Exception):
             raise alvo
         return alvo
 
     monkeypatch.setattr(httpx.Client, "get", falso_get)
+
+
+def test_a_url_da_alunos_carrega_o_segmento_do_contrato():
+    """**Prova de FORA: a URL montada tem de existir no contrato congelado.**
+
+    Bug real, corrigido em 29/08/2026: o cliente montava
+    `{ALUNOS_API_URL}/{email}/situacao` e comia o segmento `/alunos` do
+    caminho da operação. `ALUNOS_API_URL` é o `servers:` do contrato
+    (`http://alunos:8000/api/alunos`); o caminho de `getStudentStanding` é
+    `/alunos/{email}/situacao`. Os dois se SOMAM — e todas as células irmãs
+    (`sugestoes`, `admin`) já montavam assim.
+
+    Este teste lê o contrato em vez de repetir a minha crença sobre ele: se
+    alguém mover a operação, ele fica vermelho aqui, e não em produção.
+    """
+    contrato = (
+        Path(__file__).resolve().parents[3] / "contracts" / "alunos.openapi.yaml"
+    ).read_text(encoding="utf-8")
+
+    assert "url: http://alunos:8000/api/alunos" in contrato
+    assert "  /alunos/{email}/situacao:" in contrato
+    # E a URL que o dublê exige é a soma exata das duas pontas acima.
+    assert URL_ALUNOS.startswith("http://alunos:8000/api/alunos/alunos/")
+    assert URL_ALUNOS.endswith("/situacao")
 
 
 def resposta(corpo, status=200):
