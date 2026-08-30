@@ -8,7 +8,7 @@
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/578 — este PR, que traz a TAR-023 e este registro. A autorizacao foi dada por ele em caixa de pergunta estruturada, em 30/08/2026, escolhendo 'Ensinar o Admin a mostrar' contra 'Aposentar as 4 que tem substituta' e 'Deixar tudo como esta'. O vazio foi MEDIDO pelo robo da TAR-014 e esta no registro 20260830-019 (PR 572): GET /forms/sugestoes/moderacao/<id>/changespec expoe change_id, documento, aprovado_por, aprovado_em, registrado_por e registrado_em, enquanto services/admin/apps/core/templates/admin/caixa_ideia.html conhece so o booleano tem_changespec, e contracts/sugestoes.openapi.yaml nao carrega nenhum dos campos da ficha.",
   verificado_em: "2026-08-30",
   precisa_do_dono: false,
-  responde_a: "20260830-019-as-telas-antigas-da-caixa-nao-foram-aposentadas",
+  responde_a: "20260830-019-parei-antes-de-aposentar-a-moderacao",
   gravidade: "info",
   frente: "comunidade",
   vence_em_dias: null,
