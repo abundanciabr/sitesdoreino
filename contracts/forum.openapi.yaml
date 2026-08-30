@@ -1,0 +1,202 @@
+# =============================================================================
+# CONTRATO DA CÉLULA `forum` — a porta de MÁQUINA do fórum da escola.
+#
+# CONGELADO. Mudar este arquivo é o Rito de Contrato (RITOS.md §3): PR só de
+# `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores em
+# PRs seguintes. O portão que faz valer é `ci/contract_freeze.py`, que compara
+# este arquivo com o que a célula EXPORTA de verdade — divergência reprova.
+#
+# POR QUE ESTE CONTRATO EXISTE, e não é papelada: o veredito da consultoria de
+# 28/08/2026 (ponto 4) exigiu que "o resto da plataforma nunca dependa
+# diretamente de um motor". É este arquivo que torna essa frase mecânica — quem
+# consome o fórum consome ISTO, e o motor por baixo pode ser trocado um dia sem
+# ninguém do outro lado saber.
+#
+# A INVARIANTE QUE ATRAVESSA AS TRÊS OPERAÇÕES: elas só falam de ÁREA PÚBLICA.
+# Nem conteúdo, nem contagem, nem existência de área trancada. O Bearer prova
+# QUEM CHAMA, nunca quem é a pessoa — não chega cookie aqui, não há visitante, e
+# sem pessoa o único recorte honesto é o que qualquer um já veria de graça.
+# Guarda: `services/forum/tests/test_porta_de_maquina.py`.
+#
+# E não sai dado pessoal: nem e-mail, nem identificador de plataforma, nem quem
+# leu o quê. O público desta escola é majoritariamente menor de idade.
+#
+# Lei do assunto: `docs/decisoes/DECISAO-forum-da-escola.md`.
+# =============================================================================
+openapi: 3.1.0
+info:
+  title: Forum — API interna
+  version: 1.0.0
+  description: 'Superficie de MAQUINA do forum da escola. Existe para que o resto da
+
+    plataforma dependa do CONTRATO e nunca do motor do forum — foi o
+
+    ponto 4 do veredito da consultoria de 28/08/2026, e e o que mantem
+
+    aberta a porta de trocar o motor um dia.
+
+
+    Lei do assunto: docs/decisoes/DECISAO-forum-da-escola.md.
+
+
+    ESTA PORTA SO RESPONDE SOBRE AREA PUBLICA. Nao ha cookie aqui e nao ha
+
+    pessoa a reconhecer: o Bearer prova QUEM CHAMA, nunca quem e o
+
+    visitante. Sem pessoa, o unico recorte honesto e o que qualquer um ja
+
+    veria de graca. Area de aluno e area de turma nao aparecem por aqui —
+
+    nem o conteudo, nem a contagem, nem a existencia.
+
+
+    E nao sai dado pessoal: nem e-mail, nem quem leu o que. O publico
+
+    desta escola e majoritariamente menor de idade.
+
+    '
+paths:
+  /areas:
+    get:
+      operationId: listPublicAreas
+      summary: As areas publicas do forum, na ordem da tela
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/AreaPublica'
+                type: array
+      description: 'Somente areas PUBLICAS e ativas. Area de aluno e area de turma nunca
+
+        aparecem aqui — nem o nome, nem a existencia.
+
+
+        200 com lista VAZIA quando nao ha nenhuma, nunca 404: um 404 obrigaria
+
+        o consumidor a traduzir erro em ''forum vazio'', e o primeiro que o
+
+        tratasse como falha de rede mostraria a tela errada.'
+  /topicos/recentes:
+    get:
+      operationId: listRecentTopics
+      summary: As discussoes publicas mais recentes
+      parameters:
+      - in: query
+        name: limite
+        schema:
+          default: 10
+          type: integer
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/TopicoRecente'
+                type: array
+      description: 'A vitrine do forum para o resto do site. Nasce para o problema do
+
+        SALAO VAZIO (lei §6.1): um forum sem porta de entrada visivel nao
+
+        recebe a primeira pergunta.
+
+
+        Somente topicos PUBLICADOS de area PUBLICA, do mais recente para o
+
+        mais antigo. `limite` vai de 1 a 50; fora disso a porta corta para o
+
+        teto em vez de recusar — consumidor nenhum deve quebrar por pedir
+
+        demais.
+
+
+        `autor` e o nome de EXIBICAO. E-mail nao sai por esta porta.'
+  /resumo:
+    get:
+      operationId: getForumSummary
+      summary: Quantas areas, discussoes e mensagens PUBLICAS existem
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resumo'
+      description: 'As contas da parte publica do forum, para a area administrativa
+
+        mostrar o tamanho da comunidade sem ler o banco de outra celula
+
+        (Lei 3).
+
+
+        SO O PUBLICO, de proposito: contagem de area trancada e informacao
+
+        sobre area trancada. Quem precisar do numero de dentro vera na tela
+
+        de moderacao do proprio forum, com sessao.'
+components:
+  schemas:
+    AreaPublica:
+      properties:
+        slug:
+          type: string
+        nome:
+          type: string
+        descricao:
+          type: string
+        topicos:
+          type: integer
+      required:
+      - slug
+      - nome
+      - descricao
+      - topicos
+      type: object
+    TopicoRecente:
+      properties:
+        id:
+          type: integer
+        titulo:
+          type: string
+        area_slug:
+          type: string
+        autor:
+          type: string
+        respostas:
+          type: integer
+        ultima_atividade_em:
+          type: string
+      required:
+      - id
+      - titulo
+      - area_slug
+      - autor
+      - respostas
+      - ultima_atividade_em
+      type: object
+    Resumo:
+      properties:
+        areas_publicas:
+          type: integer
+        topicos_publicos:
+          type: integer
+        mensagens_publicas:
+          type: integer
+      required:
+      - areas_publicas
+      - topicos_publicos
+      - mensagens_publicas
+      type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+servers:
+- url: http://forum:8000/interno
+security:
+- bearerAuth: []
