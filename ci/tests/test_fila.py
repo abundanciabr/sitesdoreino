@@ -7,6 +7,10 @@ O que não pode deixar de morder, na ordem do que mais dói:
 2. Concluir sem evidência não existe — a lei do verde do livro, na fila.
 3. Estado é sempre uma conta: ninguém escreve "status" em lugar nenhum.
 4. A validação fail-closed que a muralha roda (`ci/muralha-da-fila.sh`).
+5. Onde o comprovante NASCE (armadilhas/192, desde 30/08/2026): no espelho os
+   gestos que escrevem RECUSAM, e `validar` diz em voz alta — em SOMBRA — o
+   comprovante que o Git não conhece. Estes encenam a falha de verdade
+   (armadilhas/132): repositório descartável real, com worktree ligado.
 
 Nenhum teste toca a rede: o almoxarife é fingido, como em test_reservar.py —
 a prova VIVA da trava (servidor de verdade recusando a segunda reserva) foi
@@ -17,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -302,3 +307,189 @@ def test_concluir_duas_vezes_recusa(tmp_path, monkeypatch):
     monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
     args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", evidencia="PR #10", verificado_em="")
     assert fila.cmd_concluir(tmp_path, args) == 1
+
+
+# ---------------------------------------------------------------------------
+# Onde o comprovante nasce — armadilhas/192 (TAR-018)
+#
+# Encenação de verdade: um clone principal (.git PASTA) e um worktree irmão
+# (.git ARQUIVO), a mesma topologia que a muralha da pasta compartilhada
+# distingue. Sem isso o teste seria sobre um mock, não sobre a decisão.
+# ---------------------------------------------------------------------------
+
+
+def _git(*args: str, cwd: Path) -> None:
+    subprocess.run(
+        ["git", "-c", "core.hooksPath=/dev/null", *args],
+        cwd=cwd, check=True, capture_output=True,
+    )
+
+
+@pytest.fixture()
+def espelho_e_bancada(tmp_path):
+    """(clone principal, worktree irmão) — os dois com a fila montada."""
+    principal = tmp_path / "principal"
+    principal.mkdir()
+    _git("init", "-b", "main", cwd=principal)
+    _git("config", "user.email", "teste@teste", cwd=principal)
+    _git("config", "user.name", "teste", cwd=principal)
+    (principal / "leia.txt").write_text("oi", encoding="utf-8")
+    _git("add", "leia.txt", cwd=principal)
+    _git("commit", "-m", "genese", cwd=principal)
+    bancada = tmp_path / "wt-fila-tarefa"
+    _git("worktree", "add", str(bancada), "-b", "agent/fila/tarefa", cwd=principal)
+    montar(principal, [tarefa()])
+    montar(bancada, [tarefa()])
+    return principal, bancada
+
+
+def _args_pegar():
+    return argparse.Namespace(tarefa="TAR-001", quem="sessao-b")
+
+
+def test_pegar_NO_ESPELHO_recusa_e_NAO_escreve_o_comprovante(
+    espelho_e_bancada, monkeypatch, capsys
+):
+    """O caso da armadilhas/192: o evento nascia no clone principal, numa pasta
+    onde ninguém pode commitar, e nada acusava."""
+    principal, _ = espelho_e_bancada
+    sem_rede(monkeypatch)
+
+    def nunca(*a, **k):
+        raise AssertionError("nem devia ter chegado ao servidor: a pasta já estava errada")
+
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", nunca)
+    assert fila.cmd_pegar(principal, _args_pegar()) == 1
+    assert not list((principal / "fila" / "eventos").glob("*.json"))
+
+
+def test_a_recusa_no_espelho_ENSINA_o_caminho(espelho_e_bancada, monkeypatch, capsys):
+    """Recusa que não ensina vira robô parado. Ela precisa dizer três coisas:
+    que a TAREFA não foi recusada, o rito do worktree, e a armadilha."""
+    principal, _ = espelho_e_bancada
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    fila.cmd_pegar(principal, _args_pegar())
+    saida = capsys.readouterr().out
+    assert "NÃO É RECUSA DA TAREFA" in saida
+    assert "git worktree add" in saida
+    assert "armadilhas/192" in saida
+
+
+def test_pegar_NA_BANCADA_passa(espelho_e_bancada, monkeypatch):
+    """O certo continua certo: no worktree, o comprovante nasce onde vai ser
+    commitado."""
+    _, bancada = espelho_e_bancada
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    assert fila.cmd_pegar(bancada, _args_pegar()) == 0
+    assert len(list((bancada / "fila" / "eventos").glob("*-TAR-001-reivindicada.json"))) == 1
+
+
+def test_pegar_FORA_DE_CHECKOUT_GIT_passa(tmp_path, monkeypatch):
+    """Pasta sem `.git` nenhum não é 'não consegui medir': é medição que deu
+    'não há repositório aqui' — e sem repositório não há PR a perder."""
+    montar(tmp_path, [tarefa()])
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+    assert fila.cmd_pegar(tmp_path, _args_pegar()) == 0
+
+
+def test_criar_e_concluir_TAMBEM_recusam_no_espelho(espelho_e_bancada, monkeypatch):
+    principal, _ = espelho_e_bancada
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila.reservar, "alocar_numero", lambda *a, **k: "099")
+    criar = argparse.Namespace(
+        titulo="qualquer", toca=["admin"], depende_de=[], evidencia_exigida="PR",
+        despacho="faça", despacho_arquivo="", origem="teste",
+    )
+    assert fila.cmd_criar(principal, criar) == 1
+    concluir = argparse.Namespace(
+        tarefa="TAR-001", quem="sessao-b", evidencia="PR #1", verificado_em="2026-08-30",
+    )
+    assert fila.cmd_concluir(principal, concluir) == 1
+    assert not list((principal / "fila" / "eventos").glob("*.json"))
+    assert len(list((principal / "fila" / "tarefas").glob("*.json"))) == 1
+
+
+def test_soltar_CONTINUA_LIVRE_no_espelho(espelho_e_bancada, monkeypatch):
+    """A fronteira declarada: devolver à fila uma tarefa presa é gesto de
+    emergência, e emergência não pode depender de ter worktree."""
+    principal, _ = espelho_e_bancada
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-b", motivo="mudei de ideia")
+    assert fila.cmd_soltar(principal, args) == 0
+
+
+def test_nao_conseguir_medir_a_pasta_vira_ERROR_nunca_PASS(tmp_path, monkeypatch):
+    """O terceiro estado: instrumento quebrado não vira permissão de escrever.
+
+    Sem a cura, este mesmo teste falha na ASSERÇÃO (`DID NOT RAISE`) e não no
+    monkeypatch — por isso o `raising=False` e a rede fingida: vermelho que
+    morre montando o teste não prova decisão nenhuma (armadilhas/195).
+    """
+    montar(tmp_path, [tarefa()])
+    sem_rede(monkeypatch)
+    monkeypatch.setattr(fila.reservar, "reservar_intencao", lambda *a, **k: (True, "é sua"))
+
+    def instrumento_quebrado(_caminho):
+        raise OSError("o disco sumiu no meio da medição")
+
+    monkeypatch.setattr(fila, "raiz_do_checkout", instrumento_quebrado, raising=False)
+    with pytest.raises(ErroDeInstrumentacao):
+        fila.cmd_pegar(tmp_path, _args_pegar())
+
+
+# ---- a peça em SOMBRA: `validar` fala, e não reprova -----------------------
+
+
+def test_validar_DIZ_o_comprovante_orfao_do_espelho_e_NAO_reprova(
+    espelho_e_bancada, capsys
+):
+    """O falso-verde medido em 30/08/2026: com o comprovante fora, `validar`
+    respondia '✅ Fila válida' e mais nada."""
+    principal, _ = espelho_e_bancada
+    orfao = evento()
+    (principal / "fila" / "eventos" / f"{orfao['arquivo']}.json").write_text(
+        json.dumps(orfao, ensure_ascii=False), encoding="utf-8"
+    )
+    assert fila.cmd_validar(principal) == 0  # SOMBRA: avisa, não reprova
+    saida = capsys.readouterr().out
+    assert "COMPROVANTE ÓRFÃO" in saida
+    assert orfao["arquivo"] in saida
+    assert "SOMBRA" in saida
+
+
+def test_validar_na_bancada_lembra_de_commitar(espelho_e_bancada, capsys):
+    _, bancada = espelho_e_bancada
+    solto = evento()
+    (bancada / "fila" / "eventos" / f"{solto['arquivo']}.json").write_text(
+        json.dumps(solto, ensure_ascii=False), encoding="utf-8"
+    )
+    assert fila.cmd_validar(bancada) == 0
+    saida = capsys.readouterr().out
+    assert "fora do Git" in saida and "git add fila/eventos" in saida
+    assert "COMPROVANTE ÓRFÃO" not in saida  # na bancada dá para commitar
+
+
+def test_validar_com_tudo_commitado_fica_calado(espelho_e_bancada, capsys):
+    """Aviso que grita sempre vira ruído que ninguém lê."""
+    _, bancada = espelho_e_bancada
+    ev = evento()
+    (bancada / "fila" / "eventos" / f"{ev['arquivo']}.json").write_text(
+        json.dumps(ev, ensure_ascii=False), encoding="utf-8"
+    )
+    _git("add", "fila", cwd=bancada)  # agora o Git conhece o comprovante
+    assert fila.cmd_validar(bancada) == 0
+    saida = capsys.readouterr().out
+    assert "fora do Git" not in saida and "COMPROVANTE ÓRFÃO" not in saida
+
+
+def test_validar_DIZ_quando_nao_conseguiu_conferir(tmp_path, monkeypatch, capsys):
+    """'Não medi' se diz, não se esconde — mesmo em sombra, mesmo sem reprovar."""
+    montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(
+        fila, "comprovantes_que_o_git_nao_conhece", lambda raiz: None, raising=False
+    )
+    assert fila.cmd_validar(tmp_path) == 0
+    assert "NÃO CONSEGUI CONFERIR" in capsys.readouterr().out
