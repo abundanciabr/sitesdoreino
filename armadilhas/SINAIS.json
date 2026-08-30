@@ -39,8 +39,8 @@
       "regex": "merges que ningu[ée]m contou"
     },
     {
-      "armadilha": "187",
-      "arquivo": "armadilhas/187-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md",
+      "armadilha": "188",
+      "arquivo": "armadilhas/188-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md",
       "titulo": "`assert datetime.datetime(...) > datetime.datetime(...)` com os DOIS lados IDÊNTICOS — no Windows, dois `timezone.now()` seguidos caem no mesmo tique do relógio",
       "regex": "assert (datetime\\.datetime\\([^)]*\\)) [<>]=? \\1"
     }
