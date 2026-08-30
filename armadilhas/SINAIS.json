@@ -73,6 +73,18 @@
       "arquivo": "armadilhas/198-pr-com-conflito-nao-dispara-os-workflows-de-pull-request.md",
       "titulo": "PR com CONFLITO não dispara os workflows de `pull_request` — os checks obrigatórios não ficam pendentes, eles não existem",
       "regex": "mergeStateStatus.*DIRTY"
+    },
+    {
+      "armadilha": "199",
+      "arquivo": "armadilhas/199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md",
+      "titulo": "`style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho",
+      "regex": "Applying inline style violates"
+    },
+    {
+      "armadilha": "199",
+      "arquivo": "armadilhas/199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md",
+      "titulo": "`style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho",
+      "regex": "style-src 'self'"
     }
   ]
 }
