@@ -222,5 +222,6 @@
 | [187](187-roteador-do-traefik-sem-tls-o-endereco-cai-no-catch-all-com-o-deploy-verde.md) | Roteador do Traefik sem `tls`: o endereço cai no catch-all, com o deploy VERDE — Você acrescenta um roteador em `infra/traefik/dynamic/plataforma.yml`, o `deploy-infra` fica verde, e o endereço novo responde **404**… | — sem guarda | — |
 | [188](188-deploy-de-push-cancelado-pela-cadeira-musical-fica-fora-do-ar.md) | Deploy de PUSH cancelado pela cadeira musical fica fora do ar em silêncio — e a vacina manda não fazer nada — Você mergeia, o `deploy-celula` do seu commit entra como `queued`, e minutos depois está `cancelled`. Sem… | sino | — |
 | [189](189-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md) | `assert datetime.datetime(...) > datetime.datetime(...)` com os DOIS lados IDÊNTICOS — no Windows, dois `timezone.now()` seguidos caem no mesmo tique do relógio — um teste que compara instantes falha **às vezes**, só na… | sino | — |
+| [190](190-registro-que-quita-divida-dentro-de-pr-nao-painel-nunca-conta.md) | `dívida do livro FAIL` que não sai por mais que você escreva o registro — a pista julga da `main`, não do seu PR — `ci/mergear.py <N> --conferir` na sua máquina diz **`dívida do livro PASS — livro em dia`**, você pede… | nenhum (declarado) | — |
 
-**170 entradas** — 9 com guarda declarada, 161 ainda sem.
+**171 entradas** — 10 com guarda declarada, 161 ainda sem.
