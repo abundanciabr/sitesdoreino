@@ -11,10 +11,10 @@
 
 titulo:
   # <title> e og:title da página — inclui a marca (glossário).
-  _fonte: "d241b2"
-  en: "Sign in (Meshcraft)"
-  pt-br: "Entrar (Meshcraft)"
-  es: "Entrar (Meshcraft)"
+  _fonte: "e3dc6e"
+  en: "Sign in | Meshcraft"
+  pt-br: "Entrar | Meshcraft"
+  es: "Entrar | Meshcraft"
 
 meta_descricao:
   # meta description e og:description.
