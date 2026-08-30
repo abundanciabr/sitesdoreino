@@ -130,7 +130,7 @@ def test_sem_host_declarado_tambem_e_nao_medi():
     assert veredito.codigo == 2
 
 
-# ------------------- o falso `permanente` de 30/08/2026 (TAR-026 · a/208) --
+# ------------------- o falso `permanente` de 30/08/2026 (TAR-026 · a/209) --
 #
 # O run 33312655853 (deploy da `admin`, PR #589) mediu a porta 22 três vezes,
 # disse `permanente` nas três, e o deploy DESISTIU — enquanto a mesma porta,
@@ -156,7 +156,7 @@ def test_uma_medicao_sozinha_nunca_manda_o_deploy_desistir():
     veredito = sonda.decidir_pela_sonda(sonda.Medicao(porta22=False, site_http=None))
     assert veredito.veredito != sonda.PERMANENTE, (
         "uma medição sozinha voltou a mandar o deploy desistir — é o falso "
-        "`permanente` da armadilhas/208 de volta"
+        "`permanente` da armadilhas/209 de volta"
     )
     assert veredito.veredito == sonda.NAO_MEDI
     assert veredito.codigo == 2
@@ -308,7 +308,7 @@ def test_o_estouro_de_tempo_sozinho_nunca_devolve_porta_morta(monkeypatch):
 
     monkeypatch.setattr(socket, "create_connection", estourar)
     assert sonda.porta_22_responde("nao-importa", 22) is None, (
-        "silêncio voltou a valer como 'porta morta' — é a armadilhas/208"
+        "silêncio voltou a valer como 'porta morta' — é a armadilhas/209"
     )
 
 
