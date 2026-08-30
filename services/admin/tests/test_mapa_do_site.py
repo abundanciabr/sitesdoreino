@@ -148,3 +148,117 @@ def test_sem_cracha_a_pagina_nao_abre():
     )
     resposta = Client().get(reverse("mapa_do_site"))
     assert resposta.status_code != 200
+
+
+# --------------------------------------------------------------------------
+# A BUSCA (30/08/2026) — formulário do servidor, sem script
+# --------------------------------------------------------------------------
+
+
+@respx.mock
+def test_a_busca_encolhe_a_lista_e_diz_de_quantos():
+    resposta = _dentro().get(reverse("mapa_do_site"), {"q": "forum"})
+    assert resposta.status_code == 200
+    assert resposta.context["achados"] < resposta.context["total"]
+    assert resposta.context["achados"] > 0
+    assert "O fórum da escola" in resposta.content.decode()
+
+
+@respx.mock
+def test_a_busca_ignora_acento_e_maiuscula():
+    """O dono digita 'sugestoes' no celular tanto quanto 'Sugestões'."""
+    com = _dentro().get(reverse("mapa_do_site"), {"q": "Sugestões"}).context["achados"]
+    sem = _dentro().get(reverse("mapa_do_site"), {"q": "sugestoes"}).context["achados"]
+    assert com == sem > 0
+
+
+@respx.mock
+def test_a_busca_olha_tambem_o_endereco_e_a_nota():
+    """Procurar por um pedaço de caminho encontra a linha."""
+    resposta = _dentro().get(reverse("mapa_do_site"), {"q": "/healthz"})
+    assert resposta.context["achados"] > 0
+
+
+@respx.mock
+def test_busca_sem_resultado_diz_isso_e_oferece_a_volta():
+    resposta = _dentro().get(reverse("mapa_do_site"), {"q": "xyzzy-nao-existe"})
+    assert resposta.status_code == 200
+    html = resposta.content.decode()
+    assert "Nenhum endereço com essa palavra" in html
+    assert resposta.context["achados"] == 0
+
+
+@respx.mock
+def test_sem_busca_a_lista_e_inteira():
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    assert resposta.context["achados"] == resposta.context["total"]
+    assert resposta.context["procurado"] == ""
+
+
+# --------------------------------------------------------------------------
+# A LUZ de "está no ar?" — quem pergunta é o navegador do dono
+# --------------------------------------------------------------------------
+
+
+@respx.mock
+def test_as_portas_principais_ganham_luz_e_o_resto_nao():
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    sondados = [e["sonda"] for e in _arquivo()["enderecos"] if e.get("sonda")]
+    assert len(sondados) >= 5, "o mapa deveria marcar as portas principais"
+    html = resposta.content.decode()
+    for entrada in _arquivo()["enderecos"]:
+        alvo = entrada.get("exemplo") or entrada["endereco"]
+        marcado = f'data-sonda="{alvo}"' in html
+        assert marcado == bool(entrada.get("sonda")), f"{alvo}: sonda fora do lugar"
+
+
+@respx.mock
+def test_nenhum_gesto_e_sondado():
+    """A cerca que impede um dano: sondar /entrar/sair deslogaria o dono."""
+    html = _dentro().get(reverse("mapa_do_site")).content.decode()
+    for entrada in _arquivo()["enderecos"]:
+        if entrada.get("gesto"):
+            alvo = entrada.get("exemplo") or entrada["endereco"]
+            assert f'data-sonda="{alvo}"' not in html
+
+
+@respx.mock
+def test_a_ilha_de_script_entra_no_csp_por_hash_e_nunca_por_unsafe_inline():
+    import base64
+    import hashlib
+    import re as _re
+
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    csp = resposta["Content-Security-Policy"]
+    ilhas = _re.findall(
+        rb"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", resposta.content, _re.DOTALL
+    )
+    assert ilhas, "a página deveria ter a ilha da luz — sem ela o teste é vazio"
+    for ilha in ilhas:
+        h = base64.b64encode(hashlib.sha256(ilha).digest()).decode()
+        assert f"'sha256-{h}'" in csp, "o navegador bloquearia a luz"
+    assert "'unsafe-inline'" not in csp
+
+
+@respx.mock
+def test_o_csp_proprio_desta_pagina_nao_esquece_o_estilo():
+    """Esta resposta traz política pronta, então a da porta não se aplica —
+    e sem o hash do estilo a página voltaria a chegar sem desenho nenhum
+    (`armadilhas/199`)."""
+    import base64
+    import hashlib
+    import re as _re
+
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    csp = resposta["Content-Security-Policy"]
+    for folha in _re.findall(
+        rb"<style[^>]*>(.*?)</style>", resposta.content, _re.DOTALL
+    ):
+        h = base64.b64encode(hashlib.sha256(folha).digest()).decode()
+        assert f"'sha256-{h}'" in csp, "o navegador bloquearia o estilo desta página"
+
+
+@respx.mock
+def test_a_luz_so_pergunta_a_este_mesmo_site():
+    csp = _dentro().get(reverse("mapa_do_site"))["Content-Security-Policy"]
+    assert "connect-src 'self'" in csp

@@ -399,6 +399,49 @@ OBRIGATORIA_PODENDO_SER_VAZIA = "rota"
 _PARTE_FIXA = re.compile(r"[<(].*$")
 
 
+def _forma_da_sonda(entrada: dict, onde: str) -> list[str]:
+    """`sonda: true` é o que o NAVEGADOR do dono vai abrir sozinho.
+
+    A tela do mapa acende uma luz de "está no ar?" para cada endereço marcado
+    assim — e quem faz o pedido é o navegador dele, pelo endereço público de
+    verdade. Por isso as três cercas abaixo não são preciosismo:
+
+    - **gesto NUNCA se sonda.** `/entrar/sair` é um gesto; sondá-lo deslogaria
+      o dono ao abrir o mapa. Um `/…/apagar` seria pior. Esta é a cerca que
+      existe para impedir um dano, não uma inconsistência.
+    - **interno não se sonda:** o navegador dele não alcança a rede do Docker,
+      e a luz ficaria vermelha para sempre dizendo uma mentira.
+    - **molde não se sonda** (a menos que traga um `exemplo` concreto): pedir
+      `/forum/t/<int:topico_id>` devolve 404 e pintaria de vermelho uma coisa
+      que está perfeitamente no ar.
+    """
+    if "sonda" not in entrada:
+        return []
+    if not isinstance(entrada["sonda"], bool):
+        return [f"{onde}: `sonda` é verdadeiro ou falso, sem aspas"]
+    if not entrada["sonda"]:
+        return []
+    problemas = []
+    if entrada.get("gesto"):
+        problemas.append(
+            f"{onde}: `sonda` num GESTO — o navegador do dono abriria este "
+            "endereço sozinho ao carregar o mapa, e gesto muda coisa"
+        )
+    if entrada.get("alcance") != "publico":
+        problemas.append(
+            f"{onde}: `sonda` num endereço interno — o navegador dele não "
+            "alcança, e a luz mentiria vermelho para sempre"
+        )
+    alvo = entrada.get("exemplo") or str(entrada.get("endereco", ""))
+    if _PARTE_FIXA.search(alvo):
+        problemas.append(
+            f"{onde}: `sonda` num molde ({alvo!r}) — dê um `exemplo` concreto "
+            "ou tire a sonda; pedir o molde devolve 404 e pinta de vermelho "
+            "uma porta que está aberta"
+        )
+    return problemas
+
+
 def _forma(entradas: list[dict]) -> list[str]:
     """Os defeitos de forma de cada entrada, em português e com o conserto."""
     problemas: list[str] = []
@@ -417,6 +460,7 @@ def _forma(entradas: list[dict]) -> list[str]:
             problemas.append(f"{onde}: campo `rota` ausente")
         if "gesto" in entrada and not isinstance(entrada["gesto"], bool):
             problemas.append(f"{onde}: `gesto` é verdadeiro ou falso, sem aspas")
+        problemas.extend(_forma_da_sonda(entrada, onde))
         exemplo = entrada.get("exemplo")
         if exemplo is not None:
             endereco = str(entrada.get("endereco", ""))
