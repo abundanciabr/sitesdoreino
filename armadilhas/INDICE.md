@@ -211,5 +211,6 @@
 | [183](183-deploy-cancelado-nao-e-deploy-adiado-a-celula-fica-para-tras.md) | `deploy-celula` cancelado NÃO é deploy adiado — aquela célula fica para trás, em silêncio — O PR pousou, todos os checks verdes, a `main` tem o código. Mas o comportamento novo **não aparece no site**. Nenhum run… | — sem guarda | — |
 | [184](184-dado-de-demonstracao-com-linha-append-only-nasce-imortal.md) | Dado de demonstração que toca tabela append-only nasce imortal — e a "vitrine" vira produção para sempre — você semeia dado de vitrine numa célula para o dono ver a tela cheia, ele aprova, e na hora de limpar o… | — sem guarda | — |
 | [185](185-registro-sem-o-numero-do-pr-vira-divida-real.md) | O registro viajou dentro do PR, mas a evidência não cita o número — a dívida é REAL, e cai no colo da próxima sessão — `python ci/mergear.py <N> --conferir` (ou `--pousar`) reprova em | CI+sino | — |
+| [186](186-celula-com-script-name-expoe-o-interno-pela-borda.md) | Célula com `SCRIPT_NAME` expõe o `/interno` dela pela borda pública — e a irmã sem `SCRIPT_NAME` não — você copia da `identidade` o comentário que diz *"nada em `/interno` resolve pela borda pública"*, cola na célula… | — sem guarda | — |
 
-**166 entradas** — 7 com guarda declarada, 159 ainda sem.
+**167 entradas** — 7 com guarda declarada, 160 ainda sem.
