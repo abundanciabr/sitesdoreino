@@ -309,6 +309,65 @@ def test_contagem_sem_numero_e_ERROR(tmp_path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# 5. OS SEMEADORES — os únicos `.py` da superfície.
+# ---------------------------------------------------------------------------
+SEMEADOR = "services/loja/apps/loja/management/commands/semear_areas.py"
+
+
+def test_texto_que_o_semeador_publica_conta(tmp_path: Path) -> None:
+    """O buraco que este bloco fecha era REAL, e tinha morador.
+
+    A descrição das áreas do fórum nasce em `semear_areas.py` e aparece em
+    `meshcraft.top/forum`. Enquanto a superfície era só `templates/`, esse texto
+    ficava fora da regra — e a lei dizia, errado, que `.py` não tinha morador.
+    """
+    raiz = _cenario(tmp_path, {SEMEADOR: 'AREAS = [("a", "Mostre — seu trabalho")]\n'})
+    relatorio = travessao.rodar(raiz)
+    assert relatorio.estado is Estado.FAIL
+    assert "semear_areas.py" in relatorio.render()
+
+
+@pytest.mark.parametrize(
+    "corpo",
+    [
+        '"""Cria as áreas do fórum — para ele não nascer vazio."""\nAREAS = []\n',
+        "# nota de quem escreveu — interna\nAREAS = []\n",
+        'def f():\n    """O porquê disto — só para quem programa."""\n    return 1\n',
+    ],
+)
+def test_docstring_e_comentario_do_semeador_nao_contam(tmp_path: Path, corpo: str) -> None:
+    """A peneira é o que separa este portão de um `grep` no `.py`.
+
+    Medido em 30/08/2026: 160 strings de `.py` com travessão nas células
+    públicas; depois da peneira, 5 — e só uma delas vai mesmo para a tela.
+    Sem isso a regra seria ruído puro e ninguém a respeitaria.
+    """
+    raiz = _cenario(tmp_path, {SEMEADOR: corpo})
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_py_que_nao_e_semeador_fica_de_fora(tmp_path: Path) -> None:
+    """A superfície cresceu para uma CLASSE estreita, não para `.py` em geral."""
+    raiz = _cenario(
+        tmp_path,
+        {"services/loja/apps/loja/views.py": 'MSG = "erro de validação — para quem programa"\n'},
+    )
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_semeador_com_sintaxe_quebrada_nao_inventa_achado(tmp_path: Path) -> None:
+    """Quem cobra sintaxe é o CI da célula. Aqui, arquivo ilegível não é violação."""
+    raiz = _cenario(tmp_path, {SEMEADOR: "def (((\n"})
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_o_semeador_real_do_forum_esta_na_superficie() -> None:
+    """Prova de fora: contra o repositório, não contra um cenário amigo."""
+    publicos = {p.relative_to(RAIZ).as_posix() for p in travessao.superficie(RAIZ)}
+    assert "services/forum/apps/forum/management/commands/semear_areas.py" in publicos
+
+
+# ---------------------------------------------------------------------------
 # 4. A PROVA DE FORA — contra o repositório REAL, não contra um cenário amigo.
 # ---------------------------------------------------------------------------
 def test_a_superficie_real_pega_o_site_e_poupa_o_bastidor() -> None:
