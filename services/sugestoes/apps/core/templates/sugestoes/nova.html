@@ -14,12 +14,12 @@ etiqueta desenhada por cima: o estado mora no formulário, não em JavaScript, e
 por isso sobrevive a um POST que volta com erro. Quem pinta a escolhida é o
 `:has()` do CSS.
 {% endcomment %}
-{% block titulo %}Nova ideia — Caixa de Sugestões{% endblock %}
+{% block titulo %}Nova ideia (Caixa de Sugestões){% endblock %}
 {% block migalha %}Nova ideia{% endblock %}
 {% block conteudo %}
 <h1>O que está faltando?</h1>
 <p class="sub">
-  Conte o problema que você vive. A solução é opcional — quem decide como
+  Conte o problema que você vive. A solução é opcional: quem decide como
   resolver é a equipe, mas quem sabe o que dói é você.
 </p>
 
@@ -34,11 +34,11 @@ por isso sobrevive a um POST que volta com erro. Quem pinta a escolhida é o
   <div class="recado">
     {% if duplicatas %}
       <h2>Isto já foi sugerido?</h2>
-      <p>Se alguma destas é a sua ideia, vote nela — é mais forte do que uma sugestão nova parecida.</p>
+      <p>Se alguma destas é a sua ideia, vote nela: é mais forte do que uma sugestão nova parecida.</p>
       <ul>
         {% for parecida in duplicatas %}
           <li><a href="{% url 'sugestao' parecida.id %}">{{ parecida.titulo }}</a>
-              — <span class="votos">{{ parecida.total_votos }}</span> voto{{ parecida.total_votos|pluralize }}</li>
+              (<span class="votos">{{ parecida.total_votos }}</span> voto{{ parecida.total_votos|pluralize }})</li>
         {% endfor %}
       </ul>
     {% else %}

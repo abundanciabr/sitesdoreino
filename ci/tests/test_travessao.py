@@ -169,6 +169,61 @@ def test_comentario_de_yaml_nao_conta_mas_o_texto_da_linha_conta(tmp_path: Path)
     assert "b.yaml" in saida and "a.yaml" not in saida
 
 
+@pytest.mark.parametrize(
+    "corpo",
+    [
+        "<script>\n/* nota do programador — some no navegador */\nvar a = 1;\n</script>\n",
+        "<script>\n// nota curta — interna\nvar a = 1;\n</script>\n",
+        "<style>\n/* o porquê deste padding — interno */\n.a { padding: 1px }\n</style>\n",
+    ],
+)
+def test_comentario_de_js_e_de_css_nao_e_texto_publicado(tmp_path: Path, corpo: str) -> None:
+    """Reprovar comentário de código é a definição de portão chato.
+
+    Achado em 30/08/2026, ao pagar a dívida: três dos 37 travessões "publicados"
+    eram a nota de um programador dentro de `/* … */` no checkout. Texto que
+    nenhum visitante recebe, e que teria sido reescrito para agradar o portão.
+    """
+    raiz = _cenario(tmp_path, {"services/loja/templates/loja/home.html": corpo})
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_o_texto_dentro_do_script_continua_valendo(tmp_path: Path) -> None:
+    """A poda é dos COMENTÁRIOS, não do bloco. Rótulo montado em JS vai na tela.
+
+    O caso real: `x-text="\\`${bump.name} — R$ ${preco}\\`"` no checkout é o nome
+    do produto que a pessoa lê antes de pagar. Se a poda comesse o bloco todo, o
+    portão ficaria cego justamente onde o texto é mais caro.
+    """
+    raiz = _cenario(
+        tmp_path,
+        {
+            "services/loja/templates/loja/home.html": (
+                "<script>\n"
+                "  const rotulo = `${nome} — R$ ${preco}`;\n"
+                "  const url = 'https://exemplo.test/a';\n"
+                "</script>\n"
+            )
+        },
+    )
+    relatorio = travessao.rodar(raiz)
+    assert relatorio.estado is Estado.FAIL
+    assert "R$" in relatorio.render()
+
+
+def test_barra_dupla_de_url_nao_corta_a_linha(tmp_path: Path) -> None:
+    """`https://` não é comentário. Confundir os dois cegaria o resto da linha."""
+    raiz = _cenario(
+        tmp_path,
+        {
+            "services/loja/templates/loja/home.html": (
+                "<script>\n  const a = 'https://x.test'; const b = `oi — tchau`;\n</script>\n"
+            )
+        },
+    )
+    assert travessao.rodar(raiz).estado is Estado.FAIL
+
+
 def test_o_bastidor_declarado_fica_de_fora(tmp_path: Path) -> None:
     raiz = _cenario(
         tmp_path,
@@ -267,6 +322,10 @@ def test_a_superficie_real_pega_o_site_e_poupa_o_bastidor() -> None:
     publicos = {p.relative_to(RAIZ).as_posix() for p in travessao.superficie(RAIZ)}
     assert "services/admin/apps/core/templates/admin/doc_publico.html" in publicos
     assert "services/admin/apps/core/templates/admin/visao_geral.html" not in publicos
+    # `/mapa/` não está em CAMINHOS_ISENTOS da porta: é tela de dentro, como a
+    # visão geral. Classificá-la como pública foi o erro de 30/08/2026, corrigido
+    # antes de entrar — e este assert é o que impede a volta.
+    assert "services/admin/apps/core/templates/admin/mapa_do_site.html" not in publicos
     assert any(c.startswith("documentos/") for c in publicos)
 
 

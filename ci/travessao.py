@@ -49,6 +49,29 @@ Eles são despidos antes da contagem — e sem essa poda a dívida medida aqui
 seria quatro vezes maior e quase toda falsa, o que treinaria todo mundo a
 ignorar o portão. Medir a coisa errada com precisão é como um portão morre.
 
+O QUE ELE **NÃO** MEDE, dito na cara
+------------------------------------
+Texto publicado que more em `.py`. A superfície é de `templates/`,
+`traducoes/` e `documentos/`, e só — e isto **é um buraco real**, não uma
+categoria vazia. Ele tem pelo menos um morador conhecido: as descrições das
+áreas do fórum nascem em
+`services/forum/apps/forum/management/commands/semear_areas.py` e aparecem em
+`meshcraft.top/forum`.
+
+Varrer `.py` inteiro seria pior que o buraco: das 160 strings com travessão nas
+células públicas, a esmagadora maioria é docstring, mensagem de log e texto de
+validação que só um programador lê. O caminho certo é a superfície crescer para
+a classe ESTREITA de arquivos que existem para criar conteúdo público (os
+`semear_*`), lendo só as constantes de string que não são docstring.
+
+Também fica de fora `painel/ia/`, servido em `/mapa-ia/` sem porta: é mapa
+TÉCNICO, escrito para uma IA de fora auditar o sistema, e a régua do
+mantenedor é a leitura de PESSOAS. São 314 travessões que nenhum aluno lê.
+
+Se um dia a cópia do site passar a morar em `.py`, é aqui que a superfície
+cresce. Enquanto não passar, este parágrafo é a diferença entre um limite
+conhecido e um buraco.
+
 A CATRACA DA DÍVIDA HERDADA
 ---------------------------
 O texto que já estava publicado quando a regra nasceu está em
@@ -207,28 +230,68 @@ def _podar_comentario_django(texto: str) -> str:
         procura = fim
 
 
-def _podar_comentario_de_yaml(texto: str) -> str:
-    """`#` até o fim da linha — mas só FORA de aspas.
+def _podar_comentario_de_linha(texto: str, marca: str, exigir_folga: bool) -> str:
+    """`marca` até o fim da linha, mas só FORA de aspas.
 
     `titulo: "Promoção # 2"` publica a cerquilha; tratá-la como comentário
     cegaria o portão para o resto da linha, que é justamente onde o texto do
-    site mora.
+    site mora. Em JS a mesma regra vale para `//`, com o cuidado extra de não
+    confundir com o `//` de uma URL (`https://…`).
+
+    `exigir_folga` pede espaço antes da marca — é o que separa o `#` de
+    comentário do `#` colado numa palavra.
     """
     saida = []
     for linha in texto.split("\n"):
         aspas: str | None = None
         corte = None
-        for pos, c in enumerate(linha):
+        pos = 0
+        while pos < len(linha):
+            c = linha[pos]
             if aspas:
-                if c == aspas and (pos == 0 or linha[pos - 1] != "\\"):
+                if c == aspas and linha[pos - 1] != "\\":
                     aspas = None
-            elif c in "'\"":
+            elif c in "'\"`":
                 aspas = c
-            elif c == "#" and (pos == 0 or linha[pos - 1] in " \t"):
-                corte = pos
-                break
+            elif linha.startswith(marca, pos):
+                anterior = linha[pos - 1] if pos else " "
+                folga_ok = (not exigir_folga) or anterior in " \t" or pos == 0
+                if folga_ok and anterior != ":":
+                    corte = pos
+                    break
+            pos += 1
         saida.append(linha if corte is None else linha[:corte] + " " * (len(linha) - corte))
     return "\n".join(saida)
+
+
+def _podar_comentario_de_yaml(texto: str) -> str:
+    return _podar_comentario_de_linha(texto, "#", exigir_folga=True)
+
+
+RE_BLOCO_DE_CODIGO = re.compile(r"<(script|style)\b[^>]*>(.*?)</\1\s*>", re.DOTALL | re.IGNORECASE)
+
+
+def _podar_comentario_de_codigo(texto: str) -> str:
+    """Comentário de JS e de CSS dentro de `<script>`/`<style>` também não é lido.
+
+    Sem esta poda o portão reprovava a nota de um programador dentro de um
+    `/* … */` — texto que nenhum visitante recebe. Reprovar comentário de código
+    é a definição de portão chato, e portão chato é desligado por quem trabalha:
+    a lição está na `docs/decisoes/RETROSPECTIVA-FASE-D.md`.
+
+    A poda é DELIBERADAMENTE estreita. Só o miolo de `<script>` e `<style>`
+    entra, para um `/*` solto no meio do HTML nunca comer texto de verdade; e o
+    `//` só corta fora de aspas, porque `x_text="\\`${a} — ${b}\\`"` é rótulo na
+    tela, não comentário.
+    """
+    saida = texto
+    for casa in RE_BLOCO_DE_CODIGO.finditer(texto):
+        inicio, fim = casa.span(2)
+        miolo = saida[inicio:fim]
+        limpo = _podar_par(miolo, "/*", "*/")
+        limpo = _podar_comentario_de_linha(limpo, "//", exigir_folga=False)
+        saida = saida[:inicio] + limpo + saida[fim:]
+    return saida
 
 
 def despir(texto: str, sufixo: str) -> str:
@@ -236,7 +299,8 @@ def despir(texto: str, sufixo: str) -> str:
     if sufixo in (".html", ".htm"):
         texto = _podar_comentario_django(texto)
         texto = _podar_par(texto, "{#", "#}")
-        return _podar_par(texto, "<!--", "-->")
+        texto = _podar_par(texto, "<!--", "-->")
+        return _podar_comentario_de_codigo(texto)
     if sufixo in (".yaml", ".yml"):
         return _podar_comentario_de_yaml(texto)
     if sufixo == ".md":
