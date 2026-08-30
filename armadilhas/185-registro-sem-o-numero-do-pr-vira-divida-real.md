@@ -9,8 +9,8 @@ guarda:
   tipo: CI
   dono: ci/divida_do_livro.py
 sinal:
-  - `d[íi]vida do livro`
-  - `merges que ningu[ée]m contou`
+  - `d[íi]vida do livro +FAIL`
+  - `merge\(s\) sem registro`
 ---
 
 # O registro viajou dentro do PR, mas a evidência não cita o número — a dívida é REAL, e cai no colo da próxima sessão
