@@ -41,7 +41,7 @@
     {
       "armadilha": "188",
       "arquivo": "armadilhas/188-deploy-de-push-cancelado-pela-cadeira-musical-fica-fora-do-ar.md",
-      "titulo": "Deploy de PUSH cancelado pela cadeira musical fica fora do ar em silêncio — e a vacina manda não fazer nada",
+      "titulo": "Deploy de PUSH cancelado pela cadeira musical fica fora do ar em silêncio — `cancelled` não é `failure`, mas também não é \"nada a fazer\"",
       "regex": "terminou 'cancelled', não 'failure'"
     },
     {

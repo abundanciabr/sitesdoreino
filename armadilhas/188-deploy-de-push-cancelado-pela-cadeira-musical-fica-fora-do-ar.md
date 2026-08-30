@@ -6,17 +6,17 @@ degrau: 2
 confianca: alta
 custo_por_queda: alto
 guarda:
-  tipo: nenhum
-  motivo: repetir ou nao depende de ancestralidade contra o SHA que a VPS serve, e nada guarda esse SHA hoje (o agente nao tem SSH, Lei 5); mecanizar e a TAR-017 — ensinar ci/rerun_de_deploy.py a tratar 'cancelled' de push medindo a ancestralidade contra o ultimo deploy verde do proprio Actions
+  tipo: CI
+  dono: ci/tests/test_rerun_de_deploy.py
 sinal:
   - `terminou 'cancelled', não 'failure'`
 ---
 
-# Deploy de PUSH cancelado pela cadeira musical fica fora do ar em silêncio — e a vacina manda não fazer nada
+# Deploy de PUSH cancelado pela cadeira musical fica fora do ar em silêncio — `cancelled` não é `failure`, mas também não é "nada a fazer"
 
 **Sintoma.** Você mergeia, o `deploy-celula` do seu commit entra como `queued`, e
-minutos depois está `cancelled`. Sem log, sem step vermelho. A vacina concorda que
-não há nada a fazer:
+minutos depois está `cancelled`. Sem log, sem step vermelho. Até 30/08/2026 a
+vacina concordava que não havia nada a fazer:
 
 ```
 $ python ci/rerun_de_deploy.py --run <id> --so-diagnosticar
@@ -26,6 +26,13 @@ própria (veja a armadilhas/173) e não se cura repetindo
 
 Você fecha a tarefa. **E o seu merge não está em produção.** O site segue no ar,
 servindo a imagem anterior; nada quebra, nada alarma, e ninguém mais vai olhar.
+
+> **Desde 30/08/2026 (TAR-017) a vacina distingue os dois cancelamentos** e a
+> saída acima só aparece para o disparo MANUAL (a 173 de verdade). Rode-a como
+> na 127 — `python ci/rerun_de_deploy.py --run <id>` (ou `--so-diagnosticar`):
+> ela colhe o SHA da última publicação verde pelo Actions, mede a
+> ancestralidade e decide. O texto abaixo continua valendo: é o raciocínio que
+> ela automatiza, e é o que você lê quando ela PARA e devolve a decisão.
 
 **Causa.** É a `armadilhas/173` — `concurrency: {group: deploy, cancel-in-progress:
 false}` guarda **um único run pendente** por grupo, e um deploy novo expulsa o
@@ -62,11 +69,11 @@ gh run rerun <id>
 
 **Distinção rápida das vizinhas.** `conclusion` decide:
 
-| `conclusion` | Quem é | O que fazer |
+| `conclusion` + `event` | Quem é | O que fazer |
 |---|---|---|
 | `failure` + `i/o timeout` | `armadilhas/127` | `python ci/rerun_de_deploy.py --run <id>` |
-| `cancelled` de disparo manual | `armadilhas/173` | grupo de concorrência próprio |
-| `cancelled` de push | **esta** | conferir ancestralidade e `gh run rerun` |
+| `cancelled` de `workflow_dispatch` | `armadilhas/173` | grupo de concorrência próprio |
+| `cancelled` de `push` | **esta** | a mesma vacina: ela mede a ancestralidade e repete |
 
 **Origem.** 30/08/2026, sessão de "atualize o painel". O deploy do merge do PR 558
 foi expulso da vaga de pendente; o do PR 559, logo antes, tinha falhado no timeout
@@ -74,3 +81,11 @@ de SSH da `127`. Resultado: a última publicação verde era de 12 minutos antes
 dois merges estavam na `main` sem estar no ar. Como o meu commit já continha o do
 PR 559 e descendia do publicado, um único rerun curou os dois. O buraco da vacina
 virou a TAR-017 na fila.
+
+**Mecanizada** no mesmo dia (TAR-017): `ci/rerun_de_deploy.py::_decidir_o_cancelado`
+faz as três medidas acima e devolve um dos quatro desfechos — repetir (o publicado
+é ancestral) · parar (divergiu: repetir seria rollback) · nada (o SHA já está no
+ar) · ERROR (não consegui medir a ancestralidade, e "não medi" nunca vira "pode
+repetir"). O `event` é o que separa esta entrada da 173, e o `--failed` sai do
+`gh run rerun` porque run cancelado não tem job falhado. Guarda:
+`ci/tests/test_rerun_de_deploy.py`.

@@ -93,9 +93,9 @@
       "degrau": 2,
       "confianca": "alta",
       "custo_por_queda": "alto",
-      "tipo": "nenhum",
+      "tipo": "CI",
       "detector": null,
-      "dono": null,
+      "dono": "ci/tests/test_rerun_de_deploy.py",
       "tem_sinal": true
     },
     {
@@ -129,6 +129,30 @@
       "degrau": 6,
       "confianca": "alta",
       "custo_por_queda": "baixo",
+      "tipo": "nenhum",
+      "detector": null,
+      "dono": null,
+      "tem_sinal": false
+    },
+    {
+      "armadilha": "195",
+      "arquivo": "armadilhas/195-vermelho-que-morre-na-construcao-do-teste-nao-prova-a-decisao.md",
+      "estado": "documentada",
+      "degrau": 6,
+      "confianca": "alta",
+      "custo_por_queda": "medio",
+      "tipo": "nenhum",
+      "detector": null,
+      "dono": null,
+      "tem_sinal": false
+    },
+    {
+      "armadilha": "196",
+      "arquivo": "armadilhas/196-o-rascunho-do-agente-e-compartilhado-entre-sessoes-irmas.md",
+      "estado": "observada",
+      "degrau": 6,
+      "confianca": "alta",
+      "custo_por_queda": "alto",
       "tipo": "nenhum",
       "detector": null,
       "dono": null,
