@@ -1,0 +1,19 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260830-080-o-sino-de-alerta-tocava-em-cima-de-mensagem-de-sucesso",
+  tipo: "entrega",
+  quando: "2026-08-30",
+  titulo: "O alarme dos robôs tocava quando estava tudo certo, e eles estavam aprendendo a ignorá-lo",
+  detalhe: "Os robôs deste projeto têm um alarme que reconhece um problema pela frase que aparece na tela e aponta a lição já escrita sobre ele. Um desses alarmes estava mal ajustado: ele foi programado para reagir à expressão \"dívida do livro\", que é o NOME de uma linha do relatório que o robô lê antes de mandar um trabalho para a esteira.\n\nO problema é que esse nome aparece igual nas duas situações: quando está tudo em ordem (\"dívida do livro: em dia\") e quando falta mesmo alguma anotação (\"dívida do livro: 2 entregas sem registro\"). Como o alarme só olhava o nome, ele tocava nas duas.\n\nResultado: em trabalho perfeitamente normal, o robô era interrompido por um alerta vermelho dizendo \"atenção, leia a lição 185 antes de continuar\" — sem que houvesse nada de errado. Aconteceu 3 vezes numa sessão ontem e mais 4 nesta, uma delas só porque o robô estava LENDO o código-fonte e a frase estava escrita lá dentro.\n\nIsso é pior do que parece. Um alarme que dispara à toa é um alarme que todo mundo aprende a ignorar, e no dia em que ele estiver certo ninguém vai olhar. É o mesmo problema que já tínhamos anotado sobre outro guarda (lição 174).\n\nO conserto foi em três camadas, para curar a classe do problema e não só este caso:\n\n1. O alarme agora reage só à frase que aparece EXCLUSIVAMENTE quando há problema de verdade, nunca ao nome da linha.\n\n2. A lista de \"saídas normais conhecidas\" que o sistema usa para reprovar alarmes mal ajustados ganhou o relatório de sucesso que faltava nela. Era esse buraco que deixava um alarme desses ser aceito sem ninguém notar. Agora o próximo alarme mal escrito é recusado sozinho, na hora, em vez de custar semanas de atenção de todos os robôs.\n\n3. Varri os 41 alarmes declarados no catálogo contra as saídas normais do dia a dia para conferir se outros tinham o mesmo defeito. Este era o único.\n\nUm segundo alarme da mesma lição foi apagado: a frase que ele procurava (\"merges que ninguém contou\") só existe em comentário dentro do código, nunca numa mensagem de tela. Ele nunca poderia acertar — só errar.\n\nTem teste-guarda novo que lê o catálogo de verdade e reprova qualquer alarme futuro que reaja a mensagem de sucesso, nomeando o culpado.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/642 — prova vermelho→verde por asserção, sem rede: (a) com a lista de saídas normais ampliada e o alarme antigo, o gerador reprova nomeando o arquivo ('185-registro-sem-o-numero-do-pr-vira-divida-real.md: o sinal \\'d[íi]vida do livro\\' casa saída BENIGNA do dia a dia', EXIT=2); (b) o teste novo fica vermelho NA ASSERÇÃO nomeando a 185 ('AssertionError: sinal casando saída de sucesso — o sino tocaria em dia normal: 185-...: o sinal \\'d[íi]vida do livro\\' casa saída FELIZ \\'dívida do livro\\''); (c) desfeitas as sabotagens, 30 passed e o gerador PASS com 205 entradas; (d) prova de que o alarme AINDA toca na falha real, montada com as funções de produção (Relatorio.render + como_pagar) e passada pelo reconhecedor real do sino: em PR verde nenhuma armadilha toca, em PR devedor tocam a 185 e a 214. Portões: muralha-do-indice.sh PASS, travessao.py RESULTADO PASS, suíte ci/tests 1311 passed (a única vermelha, test_o_varredor_ignora_os_worktrees_de_outras_sessoes, não lê nenhum arquivo deste PR e falha por a bancada ter sido criada dentro de .claude/worktrees/).",
+  verificado_em: "2026-08-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+});})();
