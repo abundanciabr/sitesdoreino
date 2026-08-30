@@ -34,7 +34,7 @@ por isso sobrevive a um POST que volta com erro. Quem pinta a escolhida é o
   <div class="recado">
     {% if duplicatas %}
       <h2>Isto já foi sugerido?</h2>
-      <p>Se alguma destas é a sua ideia, vote nela: é mais forte do que uma sugestão nova parecida.</p>
+      <p>Se alguma destas é a sua ideia, vote nela, pois é mais forte do que uma sugestão nova parecida.</p>
       <ul>
         {% for parecida in duplicatas %}
           <li><a href="{% url 'sugestao' parecida.id %}">{{ parecida.titulo }}</a>

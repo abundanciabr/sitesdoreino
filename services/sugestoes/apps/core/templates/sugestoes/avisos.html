@@ -79,7 +79,7 @@ queryset) — o custo é o mesmo, zero consultas a mais.
   <div class="recado">
     <h2>Algo deu errado do nosso lado</h2>
     <p>
-      A lista de avisos está temporariamente indisponível: não significa que
+      A lista de avisos está temporariamente indisponível, mas isso não significa que
       você não tenha nenhum. Atualize a página em alguns instantes; se
       continuar assim, avise a equipe técnica.
     </p>
@@ -126,7 +126,7 @@ queryset) — o custo é o mesmo, zero consultas a mais.
         <h3 class="aviso-titulo">Um aviso para você</h3>
         <p class="aviso-mudanca">
           Este recado é de um tipo que esta tela ainda não sabe mostrar. O
-          problema é nosso, não seu: a equipe já consegue vê-lo.
+          problema é nosso, não seu, e a equipe já consegue vê-lo.
         </p>
         {% if not aviso.lido_em %}
           <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
@@ -244,7 +244,7 @@ queryset) — o custo é o mesmo, zero consultas a mais.
   <h2>Você é avisado, sempre</h2>
   <p class="meta" style="margin-bottom:14px">
     Toda vez que a equipe mexe no status de uma ideia que você criou, votou ou
-    comentou, o recado nasce aqui: junto com a mudança, nunca depois dela. Cada
+    comentou, o recado nasce aqui, junto com a mudança, nunca depois dela. Cada
     aviso diz de onde veio, e quando a resposta for "não vamos fazer" o motivo
     vem escrito junto: é regra da casa.
   </p>
