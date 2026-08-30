@@ -19,6 +19,7 @@ O que estes guardas protegem:
 """
 
 import json
+from urllib.parse import quote
 
 import httpx
 import pytest
@@ -88,6 +89,10 @@ def uma_ideia(**campos) -> dict:
         "arquivada_em": "",
         "motivo_do_arquivamento": "",
         "apagada": False,
+        # A ficha da assinatura (TAR-023). Vazia por padrão — é assim que a
+        # Caixa responde uma ideia que ninguém assinou. O campo é OPCIONAL no
+        # contrato, e há um guarda para a tela aguentar ele não vir.
+        "changespecs": [],
         "historico": [
             {
                 "quando": "2026-08-14T09:00:00+00:00",
@@ -176,6 +181,110 @@ def test_quem_assina_ve_o_formulario():
 
 
 # ---------------------------------------------------------------------------
+# A FICHA da assinatura (TAR-023) — "está assinada?" e "com base em quê?"
+# ---------------------------------------------------------------------------
+#
+# Até 30/08/2026 esta tela conhecia um booleano só. Ela deixava ASSINAR e não
+# deixava CONFERIR o que foi assinado — a última das cinco telas de
+# `/forms/sugestoes/moderacao` sem substituta aqui, e o que travava a
+# aposentadoria delas (TAR-014).
+
+
+def uma_ficha(**campos) -> dict:
+    ficha = {
+        "change_id": "CS-PORTFOLIO-0001",
+        "documento": "docs/changespecs/CS-PORTFOLIO-0001.md",
+        "aprovado_por": "Davi (mantenedor)",
+        "aprovado_em": "2026-08-25",
+        "registrado_por": "Davi",
+        "registrado_em": "2026-08-25T18:30:00+00:00",
+    }
+    ficha.update(campos)
+    return ficha
+
+
+@respx.mock
+def test_a_ficha_da_assinatura_aparece_inteira_na_tela():
+    """Os quatro fatos que só existiam na tela velha da Caixa."""
+    cliente = _dentro()
+    a_caixa_conta(uma_ideia(tem_changespec=True, changespecs=[uma_ficha()]))
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert "CS-PORTFOLIO-0001" in pagina
+    assert "docs/changespecs/CS-PORTFOLIO-0001.md" in pagina
+    assert "Davi (mantenedor)" in pagina
+    assert "2026-08-25" in pagina
+
+
+@respx.mock
+def test_a_ficha_mostra_TODAS_as_versoes_assinadas():
+    """Escopo que mudou nasce `-v2`; mostrar só a última esconderia a corrente."""
+    cliente = _dentro()
+    a_caixa_conta(
+        uma_ideia(
+            tem_changespec=True,
+            changespecs=[
+                uma_ficha(change_id="CS-PORTFOLIO-0001-v2"),
+                uma_ficha(change_id="CS-PORTFOLIO-0001"),
+            ],
+        )
+    )
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert "CS-PORTFOLIO-0001-v2" in pagina
+    assert pagina.index("CS-PORTFOLIO-0001-v2") < pagina.rindex("CS-PORTFOLIO-0001")
+
+
+@respx.mock
+def test_o_documento_que_e_URL_vira_link_e_o_caminho_do_repo_nao():
+    """Um `href` relativo levaria a um 404 com cara de link quebrado do Admin."""
+    cliente = _dentro()
+    a_caixa_conta(
+        uma_ideia(
+            tem_changespec=True,
+            changespecs=[uma_ficha(documento="https://exemplo.test/cs-1")],
+        )
+    )
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert '<a href="https://exemplo.test/cs-1"' in pagina
+
+
+@respx.mock
+def test_quem_assina_continua_podendo_registrar_uma_versao_nova():
+    """Assinada não é o fim: `-v2` existe, e sem esta tela ele fica sem porta.
+
+    A tela velha listava e oferecia o formulário na mesma página; esconder o
+    formulário depois da primeira assinatura tiraria da plataforma a única
+    forma de registrar a versão seguinte no dia em que ela for aposentada.
+    """
+    cliente = _dentro()
+    a_caixa_conta(uma_ideia(tem_changespec=True, changespecs=[uma_ficha()]))
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert reverse("caixa_assinar", args=[7]) in pagina
+    assert "-v2" in pagina
+
+
+@respx.mock
+def test_a_tela_aguenta_a_ficha_ausente():
+    """`changespecs` é opcional no contrato — a Caixa de ontem não o manda."""
+    cliente = _dentro()
+    corpo = uma_ideia(tem_changespec=True)
+    del corpo["changespecs"]
+    a_caixa_conta(corpo)
+
+    resposta = cliente.get(reverse("caixa_ideia", args=[7]))
+
+    assert resposta.status_code == 200
+    assert "já está assinada" in texto(resposta)
+
+
+# ---------------------------------------------------------------------------
 # As três ações
 # ---------------------------------------------------------------------------
 
@@ -260,28 +369,56 @@ def test_avaliar_manda_os_cinco_campos():
     assert enviado["decisao_produto"] == "Modelo fixo."
 
 
+@pytest.mark.parametrize(
+    "campo,valor,rotulo",
+    [
+        ("impacto_educacional", "99", "Ajuda o aluno a aprender"),
+        ("impacto_comercial", "-3", "Ajuda a escola a vender"),
+        ("esforco_tecnico", "x", "Trabalho que dá"),
+    ],
+)
 @respx.mock
-def test_uma_nota_absurda_e_aparada_antes_de_sair():
-    """Zero a cinco é a escala da Caixa; mandar 99 daria recusa por formulário."""
+def test_uma_nota_fora_da_escala_e_RECUSADA_e_nada_e_guardado(campo, valor, rotulo):
+    """Arredondar em silêncio escreve outra coisa no lugar do que a pessoa quis.
+
+    Até 30/08/2026 esta tela fazia `max(0, min(5, ...))`: quem digitasse 99 via
+    "Avaliação guardada" com um 5 gravado, e quem digitasse "x" via um 0. A tela
+    velha da Caixa recusava com uma frase em português — e é ela que fica, agora
+    daqui: falso-verde de produto (`RETROSPECTIVA-FASE-D` §1) é a resposta de
+    sucesso descrevendo um dado que ninguém pediu.
+    """
     cliente = _dentro()
     a_caixa_conta()
     escrita = respx.post(f"{IDEIAS}/7/avaliacao").mock(
         return_value=httpx.Response(200, json=uma_ideia())
     )
 
-    cliente.post(
+    resposta = cliente.post(
         reverse("caixa_avaliar", args=[7]),
-        {
-            "impacto_educacional": "99",
-            "impacto_comercial": "-3",
-            "esforco_tecnico": "x",
-        },
+        {"impacto_educacional": "4", "impacto_comercial": "4", "esforco_tecnico": "4"}
+        | {campo: valor},
     )
 
+    assert resposta.status_code == 302
+    assert not escrita.called, "nota fora da escala não podia nem sair daqui"
+    assert "erro=" in resposta["Location"]
+    assert quote(rotulo).replace("%20", "+") in resposta["Location"]
+
+
+@respx.mock
+def test_a_nota_em_branco_continua_valendo_zero():
+    """O formulário sai da tela com campos vazios; vazio é 0, não é recusa."""
+    cliente = _dentro()
+    a_caixa_conta()
+    escrita = respx.post(f"{IDEIAS}/7/avaliacao").mock(
+        return_value=httpx.Response(200, json=uma_ideia())
+    )
+
+    cliente.post(reverse("caixa_avaliar", args=[7]), {"notas": "só um bilhete"})
+
     enviado = json.loads(escrita.calls.last.request.content)
-    assert enviado["impacto_educacional"] == 5, "99 tinha de virar 5"
-    assert enviado["impacto_comercial"] == 0, "negativo tinha de virar 0"
-    assert enviado["esforco_tecnico"] == 0, "texto tinha de virar 0"
+    assert enviado["impacto_educacional"] == 0
+    assert enviado["notas"] == "só um bilhete"
 
 
 @respx.mock

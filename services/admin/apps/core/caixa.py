@@ -309,6 +309,17 @@ FASES = (
     ("nao_planejado", "Não vamos fazer"),
 )
 
+# As três notas da avaliação interna, com o rótulo que a TELA usa — e não o nome
+# do campo com underscores trocados por espaço. Quem lê a recusa é o mantenedor,
+# e ele nunca viu a palavra "impacto_educacional" em lugar nenhum.
+NOTAS_DA_AVALIACAO = (
+    ("impacto_educacional", "Ajuda o aluno a aprender"),
+    ("impacto_comercial", "Ajuda a escola a vender"),
+    ("esforco_tecnico", "Trabalho que dá"),
+)
+NOTA_MINIMA = 0
+NOTA_MAXIMA = 5
+
 
 def _quem(request) -> dict:
     """Quem está agindo, na forma que o contrato da Caixa pede.
@@ -408,16 +419,38 @@ def mover_ideia(request, ideia_id: int):
 
 @require_POST
 def avaliar_ideia(request, ideia_id: int):
-    def numero(campo):
+    """A avaliação interna. Nota fora de 0–5 é RECUSADA, nunca corrigida calada.
+
+    Até 30/08/2026 esta tela fazia `max(0, min(5, ...))`: quem digitasse 9 via
+    a página voltar dizendo "Avaliação guardada" com um 5 guardado, e quem
+    digitasse "cinco" via um 0. A tela antiga da Caixa (`moderacao.avaliar`)
+    recusava com uma frase em português — não é função a mais, é a diferença
+    entre "não entendi o que você escreveu" e "escrevi outra coisa no seu
+    lugar". Arredondar em silêncio é falso-verde de produto
+    (`RETROSPECTIVA-FASE-D` §1): a resposta de sucesso descrevia um dado que
+    ninguém pediu.
+    """
+    notas = {}
+    for campo, rotulo in NOTAS_DA_AVALIACAO:
+        cru = (request.POST.get(campo) or "").strip()
         try:
-            return max(0, min(5, int(request.POST.get(campo) or 0)))
-        except (TypeError, ValueError):
-            return 0
+            valor = int(cru or 0)
+        except ValueError:
+            # -1 cai no mesmo lugar que 9 ou -3: uma frase só, porque para quem
+            # preenche a diferença entre "não é número" e "é número demais" não
+            # muda o que ele precisa fazer.
+            valor = -1
+        if not NOTA_MINIMA <= valor <= NOTA_MAXIMA:
+            return _voltar(
+                ideia_id,
+                CaixaClient.RECUSADO,
+                f"A nota de “{rotulo}” vai de {NOTA_MINIMA} a {NOTA_MAXIMA} — "
+                "nada foi guardado.",
+            )
+        notas[campo] = valor
 
     campos = {
-        "impacto_educacional": numero("impacto_educacional"),
-        "impacto_comercial": numero("impacto_comercial"),
-        "esforco_tecnico": numero("esforco_tecnico"),
+        **notas,
         "notas": (request.POST.get("notas") or "").strip(),
         "decisao_produto": (request.POST.get("decisao_produto") or "").strip(),
     }
