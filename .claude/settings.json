@@ -51,6 +51,11 @@
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_pasta_compartilhada.py\" --aviso",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/indice_de_armadilhas.py\" --tambem-aqui",
+            "timeout": 60
           }
         ]
       }

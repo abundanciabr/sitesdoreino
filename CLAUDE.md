@@ -17,6 +17,27 @@ que vai tocar. Ler a pasta inteira desfaz o motivo de ela existir. Leia também 
 `ARMADILHAS.md` (que ficou curto: a regra de uso + a partida rápida do §2) e, se for
 trabalhar dentro de uma célula, o `services/<celula>/LICOES.md` quando existir.
 
+**O índice é GERADO e não viaja mais no Git (desde 30/08/2026, TAR-022).** Ele, o
+`armadilhas/GUARDAS.json` e o `armadilhas/SINAIS.json` saem de
+`ci/indice_de_armadilhas.py` — e por isso **não existem num checkout novo até serem
+materializados**. Quem materializa por você: o `SessionStart` de
+`.claude/settings.json`, ao abrir a sessão (no clone principal, de onde o sino lê, e
+no seu worktree). Se mesmo assim faltar, é uma linha:
+
+```bash
+python ci/indice_de_armadilhas.py    # ou: make indice
+```
+
+Não procure o índice com `git show origin/main:armadilhas/INDICE.md` — ele não está
+mais lá, e o comando falha. **Por que saiu:** a lei manda todo robô acrescentar uma
+armadilha ao fim de cada tarefa, e cada entrada nova reescrevia os três arquivos
+inteiros; dois robôs do mesmo lote colidiam sem ter escrito uma linha em comum. Em
+30/08/2026, num lote de 4, DOIS PRs foram devolvidos pela pista por esse conflito
+(o #573, duas vezes). É a doença do painel (`armadilhas/156`), curada com o mesmo
+desenho da Onda 3 — fonte multiescritor, materialização de escritor único, validação
+independente. Arquivo ausente dá erro na hora e você regenera; o conflito diário era
+silencioso até a pista devolver o PR.
+
 Não é formalidade: as mesmas armadilhas já pegaram mais de um agente — sombreamento
 de nome entre model Django e `ninja.Schema`, o middleware que derruba o `/healthz`, o
 orçamento de 15 arquivos que decide a arquitetura antes de você escrever código. Cada
@@ -60,7 +81,7 @@ Por que a regra é dura: até 26/08 as duas listas coexistiam e **já discordava
 mantenedor. Foi a doença do H18 voltando por dentro da própria lei que a curou
 (a auditoria que achou isso está no registro `20260826-019`).
 
-**Quem faz valer:** `ci/indice_de_armadilhas.py` — o índice é gerado, então entrada nova sem índice reprova. **A LEITURA em si não tem mecanismo** e está declarada em `ci/leis-sem-mecanismo.txt`.
+**Quem faz valer:** `ci/muralha-do-indice.sh` (constrói o índice em todo PR, prova que reconstrói igual, e reprova se um gerado voltar ao índice do Git) · `.githooks/pre-commit` (o mesmo, aqui na máquina) · `ci/muralha-das-reservas.sh` (número pedido ao almoxarife). **A LEITURA em si não tem mecanismo** e está declarada em `ci/leis-sem-mecanismo.txt`.
 
 ## Mapa do projeto para IA (desde 27/08/2026)
 

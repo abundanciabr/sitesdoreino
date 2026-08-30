@@ -35,4 +35,41 @@ if [[ -n "$gerados" ]]; then
   echo "   A fonte é painel/registros/ — é ELA que viaja no PR."
   exit 1
 fi
+
+# =============================================================================
+# O MESMO GANCHO, PARA OS GERADOS DAS ARMADILHAS (30/08/2026, TAR-022).
+#
+# `armadilhas/INDICE.md`, `GUARDAS.json` e `SINAIS.json` saem de
+# `ci/indice_de_armadilhas.py`. Eles adoeceram exatamente como o painel: a lei
+# manda todo robô acrescentar uma entrada ao fim de cada tarefa, e cada entrada
+# nova reescreve os três arquivos inteiros. Medido em 30/08/2026, num lote de 4
+# robôs: DOIS PRs devolvidos pela pista pelo mesmo conflito, o #573 duas vezes.
+#
+# O degrau que vale para todo mundo é `ci/muralha-do-indice.sh`, na muralha de
+# todo PR. Este aqui só evita a viagem inútil até o CI.
+#
+# Escapatória deliberada e visível:
+#   PERMITIR_GERADO_DAS_ARMADILHAS=sim git commit ...
+# =============================================================================
+gerados_armadilhas="$(git diff --cached --name-only --diff-filter=AM \
+  | grep -E '^armadilhas/(INDICE\.md|GUARDAS\.json|SINAIS\.json)$' || true)"
+
+if [[ -n "$gerados_armadilhas" ]]; then
+  if [[ "${PERMITIR_GERADO_DAS_ARMADILHAS:-}" == "sim" ]]; then
+    echo "⚠️  Arquivo gerado das armadilhas commitado com permissão explícita."
+    exit 0
+  fi
+  echo "❌ BLOQUEADO: arquivo GERADO das armadilhas no commit."
+  echo "$gerados_armadilhas" | sed 's/^/     /'
+  echo
+  echo "   Estes arquivos são materializados pela integração desde 30/08/2026"
+  echo "   (TAR-022 — a cura da Onda 3 aplicada à memória de campo). Commitá-los"
+  echo "   devolve a colisão diária: toda armadilha nova reescreve os três"
+  echo "   arquivos inteiros, e dois robôs do mesmo lote conflitam sem ter"
+  echo "   escrito uma linha em comum."
+  echo
+  echo "   O que fazer: git restore --staged $(echo "$gerados_armadilhas" | tr '\n' ' ')"
+  echo "   A fonte é armadilhas/NNN-slug.md — é ELA que viaja no PR."
+  exit 1
+fi
 exit 0
