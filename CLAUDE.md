@@ -342,6 +342,23 @@ e quase toda falsa, e medir a coisa errada com precisão é como um portão morr
 e a área pública de documentos (`/docs/…`, isenta na porta) moram nela e
 continuam sob a regra.
 
+**Onde a regra alcança o código:** os SEMEADORES entram na superfície
+(`management/commands/semear_*.py`), porque é deles que sai conteúdo que o
+visitante lê — a descrição das áreas do fórum nasce ali e aparece em
+`meshcraft.top/forum`. Só as constantes de string contam; docstring e
+comentário, não.
+
+**O que o portão ainda não vê:** texto publicado escrito em qualquer OUTRO
+`.py`. Varrer `.py` inteiro seria ruído puro: das 160 strings com travessão nas
+células públicas, 5 sobrevivem à peneira dos semeadores e só uma vai mesmo para
+a tela. Se um dia a cópia do site passar a morar fora dos semeadores, a
+superfície precisa crescer junto — e enquanto não crescer, isso é
+responsabilidade de quem escreve.
+
+Fica de fora também `painel/ia/`, que sai em `/mapa-ia/` sem porta: é mapa
+técnico para uma IA de fora auditar o sistema, e a régua do mantenedor é a
+leitura de PESSOAS.
+
 **O que já estava publicado** quando a regra nasceu está em
 `ci/travessoes-herdados.txt`, arquivo por arquivo, com a contagem exata. A
 catraca é a mesma das outras dívidas da casa: o número declarado é compromisso,

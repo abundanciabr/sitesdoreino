@@ -99,6 +99,7 @@ Exit codes: 0 PASS · 1 travessão em texto público · 2 ERROR (não mediu).
 from __future__ import annotations
 
 import argparse
+import ast
 import fnmatch
 import re
 import sys
@@ -294,6 +295,48 @@ def _podar_comentario_de_codigo(texto: str) -> str:
     return saida
 
 
+def _so_as_strings_de_codigo(texto: str) -> str:
+    """Só as constantes de string que NÃO são docstring, no lugar exato delas.
+
+    Num `.py` a maior parte do texto é para quem programa: docstring, comentário,
+    mensagem de log, texto de validação. Varrer o arquivo inteiro seria ruído —
+    medido em 30/08/2026, 160 achados nas células públicas e quase nenhum na
+    tela de alguém. O que sobra depois desta peneira é o que o código realmente
+    ESCREVE: o nome de uma área, a descrição que o aluno lê.
+
+    A tela em branco preserva linha e coluna, então a recusa aponta para o lugar
+    certo do arquivo original. Arquivo que nem parseia devolve vazio: quem cobra
+    sintaxe é o CI da célula, e um `SyntaxError` aqui não é travessão nenhum.
+    """
+    try:
+        arvore = ast.parse(texto)
+    except SyntaxError:
+        return ""
+
+    docstrings: set[int] = set()
+    for no in ast.walk(arvore):
+        if isinstance(no, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if no.body and isinstance(no.body[0], ast.Expr):
+                primeiro = no.body[0].value
+                if isinstance(primeiro, ast.Constant) and isinstance(primeiro.value, str):
+                    docstrings.add(id(primeiro))
+
+    linhas = texto.split("\n")
+    tela = [[" "] * len(linha) for linha in linhas]
+    for no in ast.walk(arvore):
+        if not (isinstance(no, ast.Constant) and isinstance(no.value, str)):
+            continue
+        if id(no) in docstrings or no.end_lineno is None:
+            continue
+        for numero in range(no.lineno, no.end_lineno + 1):
+            original = linhas[numero - 1]
+            comeco = no.col_offset if numero == no.lineno else 0
+            fim = no.end_col_offset if numero == no.end_lineno else len(original)
+            for coluna in range(comeco, min(fim, len(original))):
+                tela[numero - 1][coluna] = original[coluna]
+    return "\n".join("".join(linha) for linha in tela)
+
+
 def despir(texto: str, sufixo: str) -> str:
     """O texto como o leitor o recebe: sem os comentários de quem escreveu."""
     if sufixo in (".html", ".htm"):
@@ -305,6 +348,8 @@ def despir(texto: str, sufixo: str) -> str:
         return _podar_comentario_de_yaml(texto)
     if sufixo == ".md":
         return _podar_par(texto, "<!--", "-->")
+    if sufixo == ".py":
+        return _so_as_strings_de_codigo(texto)
     return texto
 
 
@@ -367,6 +412,14 @@ def superficie(raiz: Path) -> list[Path]:
                 continue
             for sufixo in (".yaml", ".yml"):
                 achados |= {p for p in pasta.rglob(f"*{sufixo}") if p.is_file()}
+        # Os SEMEADORES: os únicos `.py` da superfície, e por um motivo estreito
+        # — eles existem para CRIAR conteúdo que o visitante lê (o nome e a
+        # descrição de uma área do fórum saem daqui para `meshcraft.top/forum`).
+        # Só as constantes de string entram; docstring e comentário, não.
+        for pasta in celula.rglob("commands"):
+            if not pasta.is_dir():
+                continue
+            achados |= {p for p in pasta.glob("semear_*.py") if p.is_file()}
 
     bastidor = _padroes_de_bastidor(raiz)
     publicos = []

@@ -218,7 +218,7 @@ COMENTARIOS = {
         (
             3,
             "Se der pra separar preço de UGC e preço de encomenda, melhor "
-            "ainda — são mercados bem diferentes.",
+            "ainda: são mercados bem diferentes.",
         ),
     ],
     "Gerador de portfólio automático": [
@@ -255,7 +255,7 @@ NOMES = [
 
 
 class Command(BaseCommand):
-    help = "Ideias de vitrine na Caixa, uma por status — e --remover desfaz"
+    help = "Ideias de vitrine na Caixa, uma por status, e --remover desfaz"
 
     def add_arguments(self, parser):
         parser.add_argument("--site-id", required=True)
@@ -277,7 +277,7 @@ class Command(BaseCommand):
         if quadro is None:
             raise CommandError(
                 f"PAROU POR SEGURANÇA: não existe quadro para o site {site_id}. "
-                "Rode `seed_sugestoes --site-id <id>` primeiro — é ele que "
+                "Rode `seed_sugestoes --site-id <id>` primeiro: é ele que "
                 "inaugura o quadro e as categorias."
             )
 
@@ -431,6 +431,6 @@ class Command(BaseCommand):
         )
         if arquivadas:
             self.stdout.write(
-                "As arquivadas não aparecem mais no quadro do aluno — "
+                "As arquivadas não aparecem mais no quadro do aluno: "
                 "elas ficam fora de vista, e é isso que importa."
             )
