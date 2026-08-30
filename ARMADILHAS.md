@@ -23,9 +23,16 @@ Ler a pasta inteira desfaz o motivo de ela existir.
    índice. As entradas começam pelo **sintoma** justamente para serem encontradas
    assim.
 3. **Ao terminar o despacho — isto não é opcional:** crie **um arquivo novo**,
-   `armadilhas/NNN-slug.md` (NNN = próximo número livre), no formato
+   `armadilhas/NNN-slug.md`, no formato
    `Sintoma → Causa → Solução → Origem`, e rode
    `python ci/indice_de_armadilhas.py` (ou `make indice`) para regenerar o índice.
+   **O `NNN` se PEDE, não se escolhe** — `python ci/reservar.py numero armadilha`
+   devolve o próximo, reservando-o no servidor do GitHub (comparar-e-trocar, a
+   mesma trava do livro). "Próximo número livre" lido da pasta não tem trava
+   nenhuma: duas sessões leem, veem o mesmo livre, e o `git merge` junta os dois
+   arquivos sem ter o que reclamar — nomes e hunks diferentes. Medido em
+   29/08/2026: uma entrada colidiu DUAS vezes seguidas no mesmo PR
+   (`armadilhas/189`).
    **Nunca acrescente ao fim deste arquivo, e nunca edite a entrada de outro
    agente para encaixar a sua** — arquivo novo por entrada é exatamente o que faz
    duas sessões paralelas pararem de colidir no mesmo hunk. Entrada sem sintoma

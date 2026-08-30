@@ -1,6 +1,6 @@
 ---
 schema_version: 2
-armadilha: 188
+armadilha: 189
 estado: guardada
 degrau: 4
 confianca: alta
@@ -97,6 +97,18 @@ retro-referência `\1` — ele só toca quando os dois lados da comparação sã
 textualmente **idênticos**, que é a colisão de tique. Uma falha de ordenação
 legítima (datas de fato diferentes) não o toca, e nenhuma saída do dia a dia
 casa.
+
+**Nota de rodape que custou duas rodadas, e nao e sobre relogio:** esta entrada
+nasceu `187`, virou `188` e so entao `189` — colidiu DUAS vezes com entradas que
+outras sessoes mergearam enquanto este PR existia. O motivo e um buraco de
+documentacao, nao de sorte: **o almoxarife ja sabe dar numero de armadilha**
+(`python ci/reservar.py numero armadilha`, uma reserva no servidor do GitHub,
+comparar-e-trocar — a mesma trava dos registros do livro), mas o `ARMADILHAS.md`
+e o `CLAUDE.md` mandavam "NNN = proximo numero livre", que e escolher a mao e nao
+tem trava nenhuma. Duas sessoes leem a pasta, veem o mesmo livre, e o `git merge`
+junta os dois arquivos sem ter o que reclamar — nomes diferentes, hunks
+diferentes. **Peca o numero; nao o escolha.** O `ARMADILHAS.md` foi corrigido no
+mesmo PR desta entrada.
 
 **Origem:** 29/08/2026, `services/forum/tests/test_modelo_de_dados.py::test_a_excecao_existe_para_o_que_foi_lido_depois_da_marca`.
 Ver também `armadilhas/139` (o mesmo mecanismo — `pre_save()` de campo — visto

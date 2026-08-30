@@ -77,7 +77,7 @@ def test_a_excecao_existe_para_o_que_foi_lido_depois_da_marca(area, aluno):
     # timestamps idênticos até o microssegundo; verde no Linux da CI, onde a
     # resolução é ~1 ns. Um segundo é 64 tiques de folga, e a propriedade
     # provada continua a mesma. Afrouxar para `>=` seria apagar exatamente o
-    # que este teste existe para provar (`armadilhas/188`).
+    # que este teste existe para provar (`armadilhas/189`).
     marca = timezone.now() - timedelta(seconds=1)
     MarcaDeLeitura.objects.create(pessoa=aluno, area=area, lido_ate=marca)
 

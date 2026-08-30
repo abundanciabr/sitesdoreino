@@ -213,6 +213,7 @@
 | [185](185-registro-sem-o-numero-do-pr-vira-divida-real.md) | O registro viajou dentro do PR, mas a evidência não cita o número — a dívida é REAL, e cai no colo da próxima sessão — `python ci/mergear.py <N> --conferir` (ou `--pousar`) reprova em | CI+sino | — |
 | [186](186-celula-com-script-name-expoe-o-interno-pela-borda.md) | Célula com `SCRIPT_NAME` expõe o `/interno` dela pela borda pública — e a irmã sem `SCRIPT_NAME` não — você copia da `identidade` o comentário que diz *"nada em `/interno` resolve pela borda pública"*, cola na célula… | — sem guarda | — |
 | [187](187-roteador-do-traefik-sem-tls-o-endereco-cai-no-catch-all-com-o-deploy-verde.md) | Roteador do Traefik sem `tls`: o endereço cai no catch-all, com o deploy VERDE — Você acrescenta um roteador em `infra/traefik/dynamic/plataforma.yml`, o `deploy-infra` fica verde, e o endereço novo responde **404**… | — sem guarda | — |
-| [188](188-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md) | `assert datetime.datetime(...) > datetime.datetime(...)` com os DOIS lados IDÊNTICOS — no Windows, dois `timezone.now()` seguidos caem no mesmo tique do relógio — um teste que compara instantes falha **às vezes**, só na… | sino | — |
+| [188](188-deploy-de-push-cancelado-pela-cadeira-musical-fica-fora-do-ar.md) | Deploy de PUSH cancelado pela cadeira musical fica fora do ar em silêncio — e a vacina manda não fazer nada — Você mergeia, o `deploy-celula` do seu commit entra como `queued`, e minutos depois está `cancelled`. Sem… | sino | — |
+| [189](189-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md) | `assert datetime.datetime(...) > datetime.datetime(...)` com os DOIS lados IDÊNTICOS — no Windows, dois `timezone.now()` seguidos caem no mesmo tique do relógio — um teste que compara instantes falha **às vezes**, só na… | sino | — |
 
-**169 entradas** — 8 com guarda declarada, 161 ainda sem.
+**170 entradas** — 9 com guarda declarada, 161 ainda sem.

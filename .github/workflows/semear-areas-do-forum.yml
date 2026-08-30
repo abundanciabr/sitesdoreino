@@ -1,0 +1,100 @@
+# =============================================================================
+# SEMEAR AS ÁREAS DO FÓRUM — cria na produção as primeiras áreas da célula
+# `forum`, pelo pipeline, sem o mantenedor colar nada em terminal nenhum.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# O fórum subiu em 30/08/2026 e a home dele dizia, com honestidade, "ainda não
+# há nenhuma área aberta para você" — porque literalmente não havia nenhuma
+# cadastrada. O mantenedor pediu para ver a cara dele de verdade.
+#
+# O caminho curto seria uma migração de dados. Foi tentado, e a suíte respondeu:
+# 20 testes quebraram, a maioria com UniqueViolation no slug. Migração de dados
+# entra no banco de TODO teste — semear é CONTEÚDO, não esquema. Virou comando
+# (`semear_areas`), como a Caixa já fazia.
+#
+# E virou workflow pelo mesmo motivo do `semear-caixa.yml`: é o padrão §5 da
+# RETROSPECTIVA-FASE-D — humano no caminho crítico de um passo que a máquina faz
+# melhor. O pedido da Caixa esperou DOIS DIAS por alguém abrir um terminal.
+#
+# POR QUE workflow_dispatch É SEGURO AQUI
+# ----------------------------------------
+# Não ENTREGA código: roda um script versionado que só sabe fazer uma coisa, e
+# essa coisa é idempotente por construção (`get_or_create` pelo slug, sem
+# atualizar o que existe). Rodar duas vezes não duplica área nem desfaz edição
+# do mantenedor. O script é fail-closed em cada passo: para se não estiver em
+# /opt/plataforma, se o `forum` não estiver de pé, se o comando não imprimir a
+# linha de conclusão, e se a contagem final for menor que 4.
+#
+# NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
+#
+# GRUPO PRÓPRIO, e isto foi aprendido caro (`armadilhas/173`): `cancel-in-progress:
+# false` NÃO faz fila ilimitada — o GitHub guarda UM run pendente por grupo, e o
+# próximo CANCELA o pendente. Num repositório com ~100 entregas por dia, um
+# disparo manual no grupo `deploy` morre antes de começar.
+# =============================================================================
+name: semear-areas-do-forum
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: semear-areas-do-forum
+  cancel-in-progress: false
+jobs:
+  semear:
+    name: criar as primeiras areas na producao
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # inexistente AVISA e IGNORA, saindo com sucesso — falso-verde conhecido.
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/semear-areas-do-forum.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/semear-areas-do-forum.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/semear-areas-do-forum.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Semear na VPS
+        id: semear
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 10m
+          script_path: infra/semear-areas-do-forum.sh
+
+      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o
+      # script inteiro, e ler o eco como se fosse a execução já enganou este
+      # projeto. A linha "PRONTO:" só existe no CAMINHO FELIZ, depois de o
+      # script contar as áreas no banco por fora do comando que as criou.
+      - name: Provar que as áreas existem (não basta a conexão ter aberto)
+        # A saída viaja por `env:`, nunca costurada no corpo do `run:` — texto
+        # de fora interpolado em shell é a família da `armadilhas/047`.
+        env:
+          SAIDA: ${{ steps.semear.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO: as primeiras áreas'; then
+            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script."
+            echo "Ela só é impressa depois de o script CONTAR as áreas no banco."
+            echo "Sem ela, nada está provado — e ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          echo "✅ as primeiras áreas do fórum existem na produção, conferido pela contagem no banco."

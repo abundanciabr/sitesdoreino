@@ -1,0 +1,13 @@
+{
+  "arquivo": "017-a-vacina-do-deploy-precisa-tratar-o-deploy-cancelado-por-pus",
+  "id": "TAR-017",
+  "titulo": "A vacina do deploy precisa tratar o deploy cancelado por push, nao so o falhado",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "PR mergeado com teste em ci/tests/ cobrindo os tres desfechos, e a armadilhas/188 com guarda declarada",
+  "despacho": "Ensinar a vacina do deploy (ci/rerun_de_deploy.py) a tratar o caso\n'cancelled' de um deploy disparado por PUSH. Hoje ela devolve \"NADA\" para\nqualquer conclusion 'cancelled' (decidir(), o ramo que cita a armadilhas/173)\n— e isso está certo para o disparo manual da 173, mas ERRADO para o deploy de\npush: o merge fica na main sem estar em produção, em silêncio, e a orientação\n\"não se cura repetindo\" faz o agente fechar a tarefa achando que não há nada\na fazer. O caso está descrito na armadilhas/188.\n\nO que a vacina precisa passar a fazer quando conclusion == 'cancelled' e o\nrun foi disparado por push (event == 'push'):\n\n1. Descobrir o SHA do último deploy-celula VERDE do próprio Actions\n   (gh run list --workflow deploy-celula.yml --branch main --json\n   headSha,conclusion). Essa é a fonte que o CI alcança — não perguntar à VPS,\n   porque o agente não tem SSH (Lei 5).\n2. Conferir a ancestralidade: `git merge-base --is-ancestor <verde> <sha-do-run>`.\n   - Ancestral ⇒ repetir só AVANÇA: recomendar/executar `gh run rerun <id>`.\n   - Não ancestral ⇒ repetir seria um rollback silencioso: PARAR e explicar,\n     nunca repetir.\n3. Contar o que fica de fora (`git rev-list --count <sha>..origin/main`) e dizer\n   se algum desses commits toca os `paths:` do deploy-celula — se tocar, eles\n   terão o próprio deploy e não há o que perder; se não tocar, avisar que\n   NENHUM deploy novo vai nascer sozinho e que repetir é a única saída.\n4. Continuar recusando 'skipped' e o 'cancelled' de workflow_dispatch (a 173\n   de verdade), com a mensagem atual.\n\nProva exigida: teste em ci/tests/ cobrindo os três desfechos (ancestral ⇒\nrepete; não-ancestral ⇒ para; manual ⇒ mensagem da 173), com histórias\nmontadas à mão, sem rede — o mesmo desenho que ci/tests/test_divida_do_livro.py\njá usa. E a armadilhas/188 passa a ter guarda: troque o bloco\n`guarda: {tipo: nenhum, motivo: ...}` por `guarda: {tipo: CI, dono: <o teste>}`\ne rode `python ci/indice_de_armadilhas.py`.",
+  "origem": "armadilhas/188, achada em 30/08/2026 quando o deploy do PR 558 foi expulso da vaga de pendente",
+  "criada_em": "2026-08-30"
+}
