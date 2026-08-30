@@ -119,6 +119,24 @@ TEMPLATES = [
     },
 ]
 
+# ---------------------------------------------------------------------------
+# Tokens do PAR consumidor->provedor (R1), um por par: TOKENS_ACEITOS_ADMIN etc.
+# ---------------------------------------------------------------------------
+# Env ausente => conjunto VAZIO => toda chamada a `/interno` e recusada com 401.
+# Fail-closed por construcao, e sem derrubar o boot: a celula sobe, as paginas
+# do forum seguem servindo, e so a porta de maquina fica fechada ate o token
+# existir no env. E o mesmo desenho de `identidade` e `alunos`.
+#
+# Nao ha `TOKENS_COMPLETOS` aqui, e a ausencia e a decisao: aquele degrau existe
+# na `identidade` para liberar E-MAIL a pares autorizados. Esta porta nao
+# devolve dado pessoal nenhum (nem e-mail, nem quem leu o que), entao nao ha
+# segundo degrau a conceder — ver `apps/core/api.py`.
+TOKENS_ACEITOS = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_ACEITOS_") and valor
+}
+
 ROOT_URLCONF = "config.urls"
 ASGI_APPLICATION = "config.asgi.application"
 
