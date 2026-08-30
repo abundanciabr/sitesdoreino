@@ -1,0 +1,15 @@
+{
+  "arquivo": "020-semear-o-forum-com-as-duvidas-reais-da-escola-em-nome-da-esc",
+  "id": "TAR-020",
+  "titulo": "Semear o forum com as duvidas reais da escola, em nome da escola",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [
+    "TAR-019"
+  ],
+  "evidencia_exigida": "As duvidas semeadas visiveis no forum ao vivo, medidas DE FORA, com a autoria da escola aparecendo na tela -- e nenhuma mensagem com autoria de aluno inventado.",
+  "despacho": "O mantenedor decidiu em 30/08/2026 (registro 20260830-021) que o forum NAO vai\nabrir vazio: antes de a escrita abrir para os alunos, ele e semeado com as\nduvidas REAIS da escola -- as perguntas que os alunos mais fazem, ja com\nresposta. O motivo e medido no mundo: forum que abre deserto morre nos primeiros\n90 dias.\n\nREGRA DURA, escolhida por ele com todas as letras: as mensagens semeadas sao\npublicadas EM NOME DA ESCOLA. Nenhuma pode fingir ser de aluno -- nem com nome\ninventado, nem com conta de aluno de mentira, nem com avatar generico que sugira\numa pessoa. Se o modelo de dados hoje nao permitir uma mensagem de autoria da\nescola, ensinar isso a ele FAZ PARTE da tarefa; inventar aluno nao e alternativa.\n\nO CONTEUDO PRECISA PASSAR PELO MANTENEDOR antes de ir ao ar -- ele e o unico que\nsabe o que os alunos realmente perguntam. Traga a lista proposta para a SESSAO\nPRINCIPAL em texto; NAO abra caixa de pergunta com ele por conta propria.\n\nSemear e conteudo, nao esquema: use um comando de manage.py mais o pipeline, do\nmesmo jeito que semear-areas-do-forum.yml ja faz. NAO faca como migracao de\ndados -- ja foi tentado em 30/08/2026 e quebrou 20 testes (UniqueViolation no\nslug).",
+  "origem": "decisao do mantenedor em 30/08/2026, respondendo a pergunta do salao vazio da §6 da lei do forum (registro 20260830-021)",
+  "criada_em": "2026-08-30"
+}

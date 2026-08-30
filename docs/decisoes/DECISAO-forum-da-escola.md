@@ -92,7 +92,19 @@ Vieram do veredito e são parte do escopo, não enfeite:
 - **O fórum nasce em salão vazio** — não existe comunidade hoje, nem Discord,
   nem grupo de mensagens. Isso é problema de desenho, não detalhe.
 
-## 6. O que está EM ABERTO, e não se resolve por conta própria
+## 6. As três que não se resolviam por conta própria — RESPONDIDAS em 30/08/2026
+
+> **Estado: as três foram decididas pelo mantenedor em 30/08/2026.** As
+> respostas moram no livro, no registro
+> `20260830-021-voce-decidiu-como-o-forum-vai-aceitar-escrita` — **e só lá**.
+> Esta seção guarda a PERGUNTA e o motivo de ela ter existido; copiar a
+> resposta para cá faria o mesmo fato morar em dois lugares, que é a doença
+> que este projeto já pagou caro para curar. Em uma linha, para quem passa por
+> aqui: o salão é semeado com as dúvidas reais da escola, em nome da escola;
+> aluno só escreve atrás do login, nunca em página pública; e escrever é
+> direito de aluno matriculado. **Os itens 1 e 2 deixaram de exigir rodada
+> própria de consultoria** — foram decididos direto, e o parágrafo abaixo que
+> os condiciona a ela está superado por esta decisão.
 
 Registrado com honestidade porque a rodada de consultoria **não** respondeu:
 
