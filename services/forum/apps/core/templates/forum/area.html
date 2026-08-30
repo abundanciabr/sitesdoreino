@@ -12,7 +12,7 @@
       {% if topico.resposta_aceita_id %}<span class="etiqueta">resolvido</span>{% endif %}
     </h2>
     <p class="sub" style="margin:4px 0 0">
-      por {{ topico.autor.nome_exibido|default:"alguém" }} · {{ topico.ultima_atividade_em|date:"d/m/Y H:i" }}
+      por {{ topico.assinatura }}{% if topico.publicado_pela_escola %} <span class="etiqueta">a escola</span>{% endif %} · {{ topico.ultima_atividade_em|date:"d/m/Y H:i" }}
     </p>
   </div>
 {% empty %}

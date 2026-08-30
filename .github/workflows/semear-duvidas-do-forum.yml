@@ -1,0 +1,105 @@
+# =============================================================================
+# SEMEAR AS DÚVIDAS DA ESCOLA NO FÓRUM — publica na produção os tópicos que a
+# escola assina, pelo pipeline, sem o mantenedor colar nada em terminal nenhum.
+#
+# POR QUE ELE EXISTE, E POR QUE ELE É SEPARADO
+# --------------------------------------------
+# O mantenedor decidiu em 30/08/2026 (registro `20260830-021`, tarefa TAR-020)
+# que o fórum não abre vazio: ele é semeado com as dúvidas reais da escola, já
+# respondidas, porque fórum que abre deserto morre nos primeiros 90 dias.
+#
+# Mas o CONTEÚDO é dele. Só ele sabe o que os alunos realmente perguntam, e o
+# texto vai para o site com o nome da escola em cima. Por isso a publicação é um
+# passo DELIBERADO, com botão próprio: o PR entrega a capacidade e a lista
+# proposta; este workflow só roda depois de ele aprovar o texto. Um seed que
+# subisse junto do deploy publicaria em nome da escola sem ela ter lido.
+#
+# EM NOME DA ESCOLA, E O PIPELINE CONFERE ISSO
+# ---------------------------------------------
+# A regra dura: nenhuma mensagem semeada finge ser de aluno. O script não confia
+# na promessa do comando: depois de publicar, ele conta no banco quantas
+# mensagens da escola têm autor de pessoa, e PARA se achar qualquer uma.
+#
+# POR QUE workflow_dispatch É SEGURO AQUI
+# ----------------------------------------
+# Não ENTREGA código: roda um script versionado que só sabe fazer uma coisa, e
+# essa coisa é idempotente por construção (pela dupla área e título, sem
+# atualizar o que já existe). Rodar duas vezes não duplica tópico nem desfaz
+# edição do mantenedor. O script é fail-closed em cada passo: para se não estiver
+# em /opt/plataforma, se o `forum` não estiver de pé, se a imagem ainda não tiver
+# a migração da autoria da escola, se o comando não imprimir a linha de conclusão,
+# e se a contagem final for menor que 8.
+#
+# NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
+#
+# GRUPO PRÓPRIO, e isto foi aprendido caro (`armadilhas/173`): `cancel-in-progress:
+# false` NÃO faz fila ilimitada — o GitHub guarda UM run pendente por grupo, e o
+# próximo CANCELA o pendente. Num repositório com ~100 entregas por dia, um
+# disparo manual no grupo `deploy` morre antes de começar.
+# =============================================================================
+name: semear-duvidas-do-forum
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: semear-duvidas-do-forum
+  cancel-in-progress: false
+jobs:
+  semear:
+    name: publicar as duvidas da escola na producao
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # inexistente AVISA e IGNORA, saindo com sucesso — falso-verde conhecido.
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/semear-duvidas-do-forum.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/semear-duvidas-do-forum.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/semear-duvidas-do-forum.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Publicar na VPS
+        id: semear
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 10m
+          script_path: infra/semear-duvidas-do-forum.sh
+
+      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o
+      # script inteiro, e ler o eco como se fosse a execução já enganou este
+      # projeto. A linha "PRONTO:" só existe no CAMINHO FELIZ, depois de o
+      # script contar no banco, por fora do comando que publicou.
+      - name: Provar que as dúvidas existem (não basta a conexão ter aberto)
+        # A saída viaja por `env:`, nunca costurada no corpo do `run:` — texto
+        # de fora interpolado em shell é a família da `armadilhas/047`.
+        env:
+          SAIDA: ${{ steps.semear.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO: as dúvidas da escola'; then
+            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script."
+            echo "Ela só é impressa depois de o script CONTAR os tópicos no banco e"
+            echo "conferir que nenhuma mensagem da escola tem autor de pessoa."
+            echo "Sem ela, nada está provado — e ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          echo "✅ as dúvidas da escola estão publicadas, conferido pela contagem no banco."
