@@ -8,15 +8,16 @@
 {% if area.descricao %}<p class="sub">{{ area.descricao }}</p>{% endif %}
 
 {% comment %}
-AS FERRAMENTAS DO ADMINISTRADOR desta área (mandato de 30/08/2026). Aparecem
-por `pode_moderar` (`apps/core/permissoes.py`), o MESMO cálculo que a view de
-POST usa para aceitar ou recusar. Esconder o botão nunca é a proteção: quem não
-modera recebe 404 nas rotas de `apps/core/moderacao.py`.
+AS FERRAMENTAS DA ESCOLA nesta área. Mandato de 30/08/2026, e o professor entrou
+nelas por decisão dele no mesmo dia. Aparecem por `pode_moderar`
+(`apps/core/permissoes.py`), o MESMO cálculo que a view de POST usa para aceitar
+ou recusar. Esconder o botão nunca é a proteção: quem não modera recebe 404 nas
+rotas de `apps/core/moderacao.py`.
 {% endcomment %}
 {% if pode_moderar %}
   <details class="ferramentas" {% if erro_admin %}open{% endif %}>
-    <summary>Ferramentas do administrador</summary>
-    <p class="sub" style="margin:10px 0 0">Só você enxerga esta caixa.</p>
+    <summary>Ferramentas da escola</summary>
+    <p class="sub" style="margin:10px 0 0">Só a escola enxerga esta caixa: você e os professores.</p>
     {% if erro_admin %}<p class="erro">{{ erro_admin }}</p>{% endif %}
 
     <form class="escrever" method="post" action="{% url 'moderar_area' area.slug %}">

@@ -77,11 +77,25 @@ def test_area_de_turma_fecha_ate_para_aluno_enquanto_o_curso_nao_for_conferido(a
     assert pode_ler(a, aluno) is False
 
 
-def test_area_desativada_some_para_todo_mundo(aluno, professor):
+def test_area_desativada_some_para_quem_nao_modera(aluno, professor):
+    """Arquivada é indistinguível de inexistente — para quem não pode reabrir.
+
+    **Este guarda mudou em 30/08/2026, e a mudança é deliberada, não um
+    afrouxamento para o código passar.** Ele nasceu dizendo "some para todo
+    mundo", quando desativar uma área era gesto que só existia no banco. Desde
+    que arquivar virou um BOTÃO (`apps/core/moderacao.py`), a regra ganhou a
+    exceção sem a qual o botão seria porta de mão única: quem arquiva continua
+    enxergando a área, marcada, senão reabrir exigiria alguém com acesso ao
+    banco. O professor entrou nessa lista por decisão do mantenedor no mesmo
+    dia (*"professor também, com tudo"*).
+
+    A metade que NÃO afrouxou, e é a que este guarda existe para travar: para
+    visitante e para aluno, área arquivada continua não existindo.
+    """
     a = area(visibilidade=Area.Visibilidade.PUBLICA, ativa=False)
     assert pode_ler(a, VISITANTE) is False
     assert pode_ler(a, aluno) is False
-    assert pode_ler(a, professor) is False
+    assert pode_ler(a, professor) is True
 
 
 def test_visibilidade_desconhecida_fecha(aluno):

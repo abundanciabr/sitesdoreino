@@ -1,0 +1,14 @@
+{
+  "arquivo": "039-o-professor-tambem-modera-o-forum-com-os-mesmos-poderes-do-a",
+  "id": "TAR-039",
+  "titulo": "O professor tambem modera o forum, com os mesmos poderes do administrador",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com o teste do professor invertido (de ausencia para presenca), suite da celula verde e deploy-celula verde lido por gh run view --json",
+  "despacho": "Decisao do mantenedor em 30/08/2026, respondendo a pergunta que a TAR-037\ndeixou aberta: o PROFESSOR tambem usa as ferramentas de moderacao do forum, e\ncom TUDO -- os mesmos poderes que o administrador, inclusive deixar area\nprivada, arquivar e criar area nova.\n\nEle respondeu tambem que o diario de moderacao (anotar quem mexeu no que) NAO\ndeve ser construido agora.\n\nO que muda: pode_moderar passa de `ator.eh_admin` para `ator.eh_equipe`\n(professor OU administrador). A caixa deixa de se chamar \"Ferramentas do\nadministrador\" e passa a \"Ferramentas da escola\", porque o nome tem de dizer a\nverdade sobre quem a enxerga. O teste que travava a ausencia do professor vira\no teste que trava a PRESENCA dele.\n\nNada muda no site hoje: FORUM_PROFESSORES esta vazio no env da VPS, entao\neh_equipe e eh_admin dao o mesmo resultado. A capacidade passa a existir para o\ndia em que o mantenedor puser o e-mail de um professor naquela lista.",
+  "origem": "decisao do mantenedor em 30/08/2026, na caixa de pergunta que fechou a TAR-037",
+  "criada_em": "2026-08-30"
+}

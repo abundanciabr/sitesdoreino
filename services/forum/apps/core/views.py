@@ -120,7 +120,7 @@ def ver_area(request, slug: str):
     conhecê-la.
 
     A consulta NÃO filtra `ativa=True`: quem decide se uma área arquivada
-    aparece é `pode_ler` (e ela aparece só para o administrador). Dois lugares
+    aparece é `pode_ler` (e ela aparece só para quem modera). Dois lugares
     decidindo a mesma coisa é como um deles passa a discordar do outro.
     """
     ator = quem_e(request)
@@ -143,7 +143,7 @@ def ver_topico(request, topico_id: int):
     if topico.estado != Topico.Estado.PUBLICADO and not pode_moderar(ator):
         # Tópico fora do ar é 404 para o mundo inteiro, e continua abrindo para
         # quem pode devolvê-lo ao ar — senão "tirar do ar" seria porta de mão
-        # única, e o administrador teria de decidir sem reler o que tirou.
+        # única, e quem modera teria de decidir sem reler o que tirou.
         raise Http404("tópico não encontrado")
 
     return render(
@@ -160,7 +160,7 @@ def ver_topico(request, topico_id: int):
 # esquecido aqui seria justamente `motivo`, o que explica a recusa.
 #
 # **Sem underline no nome, e isso é intencional:** desde as ferramentas do
-# administrador (30/08/2026) quem devolve a tela com um erro de moderação é
+# da escola (30/08/2026) quem devolve a tela com um erro de moderação é
 # `apps/core/moderacao.py`, um módulo vizinho. Um contexto montado lá dentro
 # seria a segunda expressão da mesma tela, e a primeira coisa que ela esqueceria
 # é `pode_moderar` — os botões sumiriam justamente na tela que veio explicar

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-201751-TAR-039-concluida",
+  "tarefa": "TAR-039",
+  "evento": "concluida",
+  "quando": "2026-08-30T20:17:51+00:00",
+  "quem": "sessao-forum-moderacao-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/633 — pode_moderar passou de eh_admin para eh_equipe. Vermelho->verde na ASSERCAO (armadilhas/195), medido contra origin/main: 'assert Ferramentas da escola in <html...>' (a tela do professor nao tinha a caixa) e 'assert False is True where False = pode_ler(area, Ator(eh_professor=True))' (o professor nao via a area arquivada). Com o conserto: 153 verdes na suite da celula, black --check PASS, ci/travessao.py PASS, ci/mapa_do_site.py PASS. O guarda antigo test_area_desativada_some_para_todo_mundo virou test_area_desativada_some_para_quem_nao_modera, com o porque escrito dentro dele: as duas negativas que importam (visitante e aluno) continuam intactas.",
+  "verificado_em": "2026-08-30"
+}

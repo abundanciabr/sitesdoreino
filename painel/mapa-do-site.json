@@ -213,7 +213,7 @@
       "titulo": "Criar uma área nova no fórum",
       "descricao": "O que acontece quando você aperta 'Criar área' na caixa de ferramentas da capa do fórum. Só você enxerga essa caixa.",
       "gesto": true,
-      "observacao": "Só quem está na lista de administradores (ADMIN_EMAILS). Para todos os outros, inclusive professor, este endereço responde 'não existe'."
+      "observacao": "Só a escola: quem está em ADMIN_EMAILS ou em FORUM_PROFESSORES no env do fórum. Para aluno e visitante, este endereço responde 'não existe', e não 'você não pode'."
     },
     {
       "celula": "forum",

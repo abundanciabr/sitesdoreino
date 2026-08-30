@@ -14,8 +14,8 @@ As cinco regras que este arquivo inteiro obedece, e que não se reabrem aqui:
    uma denúncia precisa — justamente quando ele importa. Não existe `DELETE`
    neste módulo, e a ausência é a decisão.
 
-2. **404 para quem não é administrador, nunca 403.** Um 403 confirmaria que a
-   porta existe. Quem não modera não deve nem descobrir que estas rotas foram
+2. **404 para quem não modera, nunca 403.** Um 403 confirmaria que a porta
+   existe. Aluno e visitante não devem nem descobrir que estas rotas foram
    construídas. É o mesmo desenho do resto do fórum, um degrau acima.
 
 3. **Quem responde "pode?" é `apps/core/permissoes.py`**, sempre, e é a MESMA
@@ -107,7 +107,7 @@ QUEM_ESCREVE_OFERECIDO = {
 }
 
 
-def _so_o_administrador(request):
+def _so_quem_modera(request):
     """O Ator desta requisição, se ele modera. Se não, a porta não existe.
 
     Regra 2 do cabeçalho: 404, nunca 403. E vale para aluno, para professor e
@@ -182,7 +182,7 @@ def criar_area(request):
     acompanha o nome parece gentileza e é armadilha: cada renomeação quebraria
     todos os links já compartilhados, e um fórum existe para ser linkado.
     """
-    ator = _so_o_administrador(request)
+    ator = _so_quem_modera(request)
     campos, erro = _ler_o_formulario_da_area(request)
 
     slug = slugify(campos["nome"])[:60] if not erro else ""
@@ -241,7 +241,7 @@ def criar_area(request):
 @require_POST
 def moderar_area(request, slug: str):
     """Editar, deixar privada ou aberta, arquivar e reabrir uma área."""
-    ator = _so_o_administrador(request)
+    ator = _so_quem_modera(request)
     area = get_object_or_404(Area, slug=slug)
     acao = (request.POST.get("acao") or "").strip()
 
@@ -294,7 +294,7 @@ def _de_volta_para(request, topico) -> str:
 @require_POST
 def moderar_topico(request, topico_id: int):
     """As seis ações sobre uma conversa inteira."""
-    ator = _so_o_administrador(request)
+    ator = _so_quem_modera(request)
     topico = get_object_or_404(
         Topico.objects.select_related("area", "autor"), pk=topico_id
     )
@@ -373,7 +373,7 @@ def _apontar_a_resposta_certa(request, topico) -> str:
 @require_POST
 def moderar_mensagem(request, mensagem_id: int):
     """As três ações sobre uma fala."""
-    ator = _so_o_administrador(request)
+    ator = _so_quem_modera(request)
     mensagem = get_object_or_404(
         Mensagem.objects.select_related("topico", "topico__area", "autor"),
         pk=mensagem_id,

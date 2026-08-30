@@ -1,13 +1,15 @@
-"""Guardas das FERRAMENTAS DO ADMINISTRADOR — editar, tirar do ar, deixar privado.
+"""Guardas das FERRAMENTAS DA ESCOLA — editar, tirar do ar, deixar privado.
 
 Mandato do mantenedor em 30/08/2026: *"Crie as opções (que devem aparecer
 apenas para o Admin) de editar, deletar, deixar privado, e etc; tudo no fórum."*
+No mesmo dia, respondendo à pergunta que o pedido deixou aberta, ele decidiu que
+**o professor também modera, com tudo** — a caixa é da escola, não só do dono.
 
 As quatro coisas que esta suíte existe para travar:
 
-1. **Ninguém além do administrador enxerga ou alcança as ferramentas.** Nem
-   aluno, nem professor, nem visitante — e a recusa é 404, nunca 403, porque um
-   403 confirmaria que a porta existe.
+1. **Só a escola enxerga e alcança as ferramentas.** Professor e administrador
+   sim; aluno e visitante não — e a recusa é 404, nunca 403, porque um 403
+   confirmaria que a porta existe.
 2. **Nada é apagado de verdade.** Toda ação de "deletar" tem, do outro lado, uma
    contagem no banco que não mudou. Se um dia alguém trocar o `update` por um
    `delete()`, é aqui que o vermelho aparece.
@@ -36,7 +38,7 @@ from apps.forum.models import Area, Mensagem, Pessoa, Topico
 pytestmark = pytest.mark.django_db
 
 COOKIE = "meshcraft_sessao=um-cookie-opaco-qualquer"
-FERRAMENTAS = "Ferramentas do administrador"
+FERRAMENTAS = "Ferramentas da escola"
 
 SESSAO_DO_DONO = {
     "autenticado": True,
@@ -62,9 +64,10 @@ SESSAO_DO_PROFESSOR = {
 def env(monkeypatch):
     """O env mínimo, com as DUAS listas de poder preenchidas.
 
-    `ADMIN_EMAILS` com uma pessoa e `FORUM_PROFESSORES` com outra: é o que
-    permite provar que o professor não herda as ferramentas do administrador,
-    que foi a decisão de 30/08/2026 e não um esquecimento.
+    `ADMIN_EMAILS` com uma pessoa e `FORUM_PROFESSORES` com OUTRA: é o que
+    permite provar que o professor modera por estar na lista dele, e não por
+    acidente de ser o mesmo e-mail do dono. Lista vazia significa ninguém, que é
+    o estado da VPS hoje para os professores.
     """
     for nome, valor in [
         ("IDENTIDADE_API_URL", "http://identidade:8000/interno"),
@@ -235,22 +238,31 @@ def test_o_visitante_nao_ve_ferramenta_nenhuma(client, env, monkeypatch, avisos)
         assert FERRAMENTAS not in resposta.content.decode()
 
 
-def test_o_professor_nao_ve_as_ferramentas(client, env, monkeypatch, conversa):
-    """A decisão de 30/08/2026, travada: o professor fala com autoridade e
-    **não** modera. Não é esquecimento, é a espera de uma decisão do mantenedor
-    sobre qual metade da moderação cabe a ele (lei §5)."""
+def test_o_professor_tambem_modera(client, env, monkeypatch, conversa, sala):
+    """A decisão do mantenedor em 30/08/2026: *professor também, com tudo*.
+
+    É a lei §5 cumprida — o professor "modera sem ser dono do sistema". Ele não
+    abre a VPS nem o painel do dono; dentro do fórum, pode o mesmo que o
+    administrador. O teste cobre as duas pontas do poder: a conversa (o gesto de
+    sala de aula) e a ÁREA (o gesto de estrutura), porque foi o "com tudo" que
+    ele escolheu, e é essa metade que uma leitura mais tímida cortaria.
+    """
     como_professor(monkeypatch)
 
     resposta = ver(client, "topico", conversa.pk)
     assert resposta.status_code == 200
-    assert FERRAMENTAS not in resposta.content.decode()
+    assert FERRAMENTAS in resposta.content.decode()
 
-    assert moderar_topico(client, conversa, acao="fixar").status_code == 404
+    assert moderar_topico(client, conversa, acao="fixar").status_code == 302
     conversa.refresh_from_db()
-    assert conversa.fixado is False
+    assert conversa.fixado is True
+
+    assert moderar_area(client, sala, acao="arquivar").status_code == 302
+    sala.refresh_from_db()
+    assert sala.ativa is False
 
 
-def test_a_porta_responde_404_para_quem_nao_e_administrador(
+def test_a_porta_responde_404_para_quem_nao_modera(
     client, env, monkeypatch, conversa, sala
 ):
     """**404, nunca 403.** O 403 confirmaria que a porta existe, e um fórum de
