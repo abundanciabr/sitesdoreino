@@ -39,8 +39,8 @@
       "regex": "merges que ningu[ée]m contou"
     },
     {
-      "armadilha": "187",
-      "arquivo": "armadilhas/187-deploy-de-push-cancelado-pela-cadeira-musical-fica-fora-do-ar.md",
+      "armadilha": "188",
+      "arquivo": "armadilhas/188-deploy-de-push-cancelado-pela-cadeira-musical-fica-fora-do-ar.md",
       "titulo": "Deploy de PUSH cancelado pela cadeira musical fica fora do ar em silêncio — e a vacina manda não fazer nada",
       "regex": "terminou 'cancelled', não 'failure'"
     }
