@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/forum.topico-criado.v1.json",
+  "title": "forum.topico-criado.v1",
+  "description": "Alguem abriu uma discussao no forum da escola. E o FATO, publicado pela celula `forum`; quem o consome hoje e a `gamificacao` (motor de XP, PR 8 da escada do §6 do PLANO-CELULA-GAMIFICACAO.md). Congelado na Sessao B / Rito de Contrato de 30/08/2026, com o mantenedor presente. So IDs OPACOS viajam aqui: nem titulo, nem texto, nem e-mail, nem nome — o publico desta escola e majoritariamente menor de idade, e um evento e a coisa mais facil de esquecer num log. Quem precisar do titulo pergunta ao forum na hora de MOSTRAR.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "forum.topico-criado"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay credita XP uma vez so (Unique(origem_event_id, regra_slug, pessoa) no ledger da gamificacao)."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de quem abriu a discussao — o unico identificador de pessoa que atravessa as celulas (PLANO-MESTRE das notificacoes, §2). NAO e nulavel aqui, ao contrario de `notificacao.devida.v1`: topico do forum sempre tem gente atras. NUNCA e o e-mail (DECISAO-EVO-01 §3)."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "topico_id",
+        "area_id"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) a que o forum pertence — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "topico_id": {
+          "type": "string",
+          "description": "Id opaco da discussao dentro da celula `forum`."
+        },
+        "area_id": {
+          "type": "string",
+          "description": "Id opaco da area onde a discussao nasceu. Viaja porque a economia e DADO (RegraDePontuacao): premiar diferente por area — ou nao premiar numa area de brincadeira — vira UPDATE numa linha, nunca PR de codigo. Sem a area no evento, essa regra exigiria o motor perguntar ao forum a cada mensagem."
+        }
+      }
+    }
+  }
+}

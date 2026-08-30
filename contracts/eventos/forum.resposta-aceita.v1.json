@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/forum.resposta-aceita.v1.json",
+  "title": "forum.resposta-aceita.v1",
+  "description": "Uma mensagem foi marcada como A RESPOSTA que resolveu a duvida. E o evento MAIS VALIOSO do sistema: quem ajudou de verdade recebe a maior recompensa do catalogo, porque validacao humana vale ~10x consumo (decisao 4 da Sessao A). Congelado na Sessao B / Rito de Contrato de 30/08/2026, com o mantenedor presente. DECISAO D DA SESSAO B: a marca e do AUTOR DA PERGUNTA e vale a recompensa CHEIA na hora, sem confirmacao de adulto — decisao do mantenedor, reafirmada depois de o risco ser levantado. A consequencia esta escrita no $comment abaixo, e ela e a razao de este corpo carregar dois campos que parecem redundantes.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "forum.resposta-aceita"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato, e a chave de idempotencia de quem consome."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de QUEM MARCOU. E o par do `marcada_por` do corpo, do mesmo jeito que a `Concessao` da gamificacao guarda `validador_id` + `validador_papel`: o id diz quem, o papel diz com que autoridade. NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "$comment": "POR QUE ESTE EVENTO CARREGA MAIS DO QUE OS OUTROS. Com a decisao D, as defesas antifraude do §8 do plano (grafo de pares, deteccao de aneis de reciprocidade, teto diario, quarentena de 24-72h) deixam de ser rede de seguranca e passam a ser a UNICA protecao do maior premio do sistema — nao ha mais o adulto no caminho. Elas nao nascem aqui (sao do motor, PR 8 da escada), mas SEM ESTES DOIS CAMPOS elas sao impossiveis: sem `autor_da_resposta_id` nao ha aresta no grafo de quem premia quem, e sem `marcada_por` o motor nao distingue marca de colega de marca de adulto, e a deteccao de aneis fica cega. NAO REMOVA NENHUM DOS DOIS POR ECONOMIA.",
+      "required": [
+        "site_id",
+        "topico_id",
+        "mensagem_id",
+        "autor_da_resposta_id",
+        "marcada_por"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "topico_id": {
+          "type": "string",
+          "description": "Id opaco da discussao que foi resolvida."
+        },
+        "mensagem_id": {
+          "type": "string",
+          "description": "Id opaco da mensagem escolhida como resposta. E a chave que liga este premio ao conteudo: se a mensagem for removida depois, chega `forum.mensagem-removida.v1` com este mesmo id e o estorno cai em cascata."
+        },
+        "autor_da_resposta_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA de QUEM ESCREVEU a resposta aceita — ou seja, quem RECEBE o premio. E diferente do `ator_id` do envelope, que e quem marcou. Sem este campo o consumidor teria de perguntar ao forum quem escreveu a mensagem para saber a quem creditar, e a aresta 'A premiou B' do grafo antifraude nao existiria no proprio fato."
+        },
+        "marcada_por": {
+          "type": "string",
+          "enum": [
+            "autor",
+            "monitor",
+            "professor"
+          ],
+          "description": "COM QUE AUTORIDADE a marca foi feita — a escadinha de tres degraus da decisao 5 da Sessao A: o autor da pergunta marca 'resolveu', um monitor confere, o professor entra no que e sensivel. E o PAPEL, nunca o id: o id de quem marcou e o `ator_id` do envelope. Existe porque `autor` e `professor` valem coisas diferentes para o motor: a marca de colega e a que pode virar anel de reciprocidade entre amigos, e a de adulto nao. Vocabulario FECHADO de proposito, no molde do `validador_papel` da `Concessao` — papel novo entra por Rito de Contrato, nunca por decisao de sessao."
+        }
+      }
+    }
+  }
+}

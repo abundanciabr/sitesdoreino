@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-215614-TAR-042-concluida",
+  "tarefa": "TAR-042",
+  "evento": "concluida",
+  "quando": "2026-08-30T21:56:14+00:00",
+  "quem": "sessao-gamificacao-invariantes-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/641 - guarda_dos_guardas PASS com os tres declarados (35 guardas em 25 invariantes; 61 em disco: 24 declarados, 37 na divida - a divida NAO cresceu) e prova por ASSERCAO de que ele reclama: retirado o bloco [INV-GAM2] do INVARIANTES.md -> guardas/inverso FAIL nomeando test_inv_economia_cosmetico_e_so_estetica.py, EXIT=1 (FAIL da regra 5, nao ERROR de instrumento); retirados os tres -> FAIL nomeando os tres; desfeito -> PASS EXIT=0. Saidas cruas no corpo do PR e no registro 20260830-079. CODEOWNERS: INVARIANTES.md (mandato da lei da celula) e ci/tests/test_guarda_dos_guardas.py (o inventario exato exigido pelo proprio mecanismo).",
+  "verificado_em": "2026-08-30"
+}
