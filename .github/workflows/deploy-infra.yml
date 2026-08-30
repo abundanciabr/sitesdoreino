@@ -453,6 +453,8 @@ jobs:
             echo "**Resultado: a infraestrutura nova ESTÁ em produção**, e a VPS atendeu de primeira — nada de anormal nesta sincronização." >> "$GITHUB_STEP_SUMMARY"
           elif [ "$TROCOU" = "sim" ]; then
             echo "**Resultado: a infraestrutura nova ESTÁ em produção** — mas foram precisas $VITORIOSA tentativas. A VPS recusou a conexão antes de aceitar: é a armadilhas/127 mordendo de novo, e a sincronização sobreviveu sozinha, sem ninguém pedir rerun. Registre a ocorrência em painel/registros/." >> "$GITHUB_STEP_SUMMARY"
+          elif printf '%s' "$TODAS" | grep -q 'SINCRONIZACAO-INICIADA:'; then
+            echo "**Resultado: a sincronização COMEÇOU na VPS e parou no meio.** Não afirmo que a produção está intacta: dependendo de onde o script parou, a troca pode ter acontecido pela metade. O log da tentativa diz onde foi, e o backup datado que ele imprime é o caminho de volta. Isto NÃO é soluço de rede — não adianta repetir." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "**Resultado: a infraestrutura nova NÃO foi aplicada.** A VPS continua com o compose e o traefik ANTERIORES — ninguém ficou fora do ar —, mas o que foi mergeado não está em produção. As medições da porta 22 acima dizem se foi soluço de rede (armadilhas/127) ou falha de alcance (armadilhas/017)." >> "$GITHUB_STEP_SUMMARY"
+            echo "**Resultado: a infraestrutura nova NÃO foi aplicada, e nada foi tocado** — a VPS não executou uma linha. Ela continua com o compose e o traefik ANTERIORES, ninguém ficou fora do ar, mas o que foi mergeado não está em produção. As medições da porta 22 acima dizem se foi soluço de rede (armadilhas/127) ou falha de alcance (armadilhas/017)." >> "$GITHUB_STEP_SUMMARY"
           fi
