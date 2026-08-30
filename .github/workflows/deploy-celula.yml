@@ -392,13 +392,27 @@ jobs:
       # Comparamos com `outputs.veredito`, NUNCA com `outcome`: 'não consegui
       # medir' também produz `outcome == failure`, e ler assim faria a sonda
       # abortar deploys por defeito próprio.
+      #
+      # E AS DUAS MEDIÇÕES NÃO BASTARAM — no mesmo dia em que nasceram (TAR-026,
+      # `armadilhas/197`). No run 33312655853 as duas disseram `permanente` com a
+      # VPS VIVA, porque cada uma era UMA sondagem só e as duas estouraram o
+      # tempo pelo mesmo motivo: o runner não alcançava nada, nem o site
+      # público. Hoje cada medição é composta de várias sondagens, silêncio
+      # deixou de valer como "porta morta" e o site é testemunha da saída do
+      # runner — tudo dentro de `ci/sonda_da_vps.py`. Por isso a mensagem abaixo
+      # cita o NÚMERO de sondagens: desistir de publicar é a decisão mais cara
+      # desta casa, e ela tem de mostrar em quantas medições se apoia.
       - name: PARAR — a porta 22 não respondeu nas DUAS medições (é a 017)
         if: steps.sonda1.outputs.veredito == 'permanente' && steps.sonda2.outputs.veredito == 'permanente'
+        env:
+          N1: ${{ steps.sonda1.outputs.sondagens }}
+          N2: ${{ steps.sonda2.outputs.sondagens }}
         run: |
           set -eu
           echo "🧱 PAROU POR SEGURANÇA: a porta 22 da VPS não respondeu deste"
-          echo "   runner em NENHUMA das duas medições, tomadas depois de duas"
-          echo "   recusas reais da conexão."
+          echo "   runner em NENHUMA das ${N1:-?}+${N2:-?} sondagens, repartidas em"
+          echo "   duas medições independentes, cada uma tomada depois de uma"
+          echo "   recusa real da conexão."
           echo
           echo "   Isto NÃO é o soluço de rede da armadilhas/127 — é a"
           echo "   armadilhas/017: falha PERMANENTE de alcance. Uma terceira"
