@@ -20,26 +20,29 @@ from .sessao import Ator
 
 
 def pode_moderar(ator: Ator) -> bool:
-    """Este Ator enxerga as ferramentas de administração do fórum?
+    """Este Ator enxerga as ferramentas de moderação do fórum?
 
-    **Só o administrador** — quem está em `ADMIN_EMAILS`, a mesma lista que
-    abre o painel do dono. É o mandato do mantenedor em 30/08/2026, com as
-    palavras dele: *"as opções que devem aparecer apenas para o Admin"*.
+    **A ESCOLA: professor ou administrador.** O pedido de 30/08/2026 nasceu
+    como *"as opções que devem aparecer apenas para o Admin"*, e a pergunta que
+    ele deixou aberta (o professor herda isto?) foi levada ao mantenedor no
+    mesmo dia. **Ele respondeu: professor também, com tudo** — os mesmos
+    poderes, inclusive deixar área privada, arquivar e criar área nova. A
+    resposta mora no livro (`painel/registros/`), que é a casa dela; aqui fica
+    só o mecanismo.
 
-    **Por que não `eh_equipe`, que já existe.** O professor fala com autoridade
-    (a lei §5 promete isso, e o selo "a escola" já é dele), mas editar a
-    mensagem de um aluno, tirar conversa do ar e trancar a porta de uma área
-    inteira é outra ordem de poder. A mesma lei diz que o professor *"modera sem
-    ser dono do sistema"*; qual metade da moderação cabe a ele é decisão do
-    mantenedor, não conclusão que este arquivo possa tirar sozinho. Enquanto ela
-    não vem, o poder fica com quem o pedido nomeou — que é o lado seguro do erro,
-    e é uma linha de mudança no dia em que ele decidir o contrário.
+    É a lei §5 sendo cumprida: *"o papel de professor nasce com o fórum, com
+    autoridade real: resposta com selo, poder de marcar dúvida como resolvida,
+    moderar sem ser dono do sistema"*. "Sem ser dono do sistema" é o que ele
+    continua sendo: professor não abre a VPS, não mexe no painel do dono, não
+    entra em `/admin`. Dentro do fórum, modera igual.
 
-    **Fail-closed de ponta a ponta:** `eh_admin` sai de uma lista de e-mails do
-    env, e env ausente ou vazio significa *ninguém* (`apps/core/sessao.py`).
-    Fórum sem a lista é fórum sem moderador, nunca fórum de portas abertas.
+    **Fail-closed de ponta a ponta:** as duas listas (`FORUM_PROFESSORES` e
+    `ADMIN_EMAILS`) saem do env, e env ausente ou vazio significa *ninguém*
+    (`apps/core/sessao.py`). Fórum sem as listas é fórum sem moderador, nunca
+    fórum de portas abertas. Hoje `FORUM_PROFESSORES` está vazio na VPS: pôr um
+    e-mail lá é o gesto que dá as ferramentas a um professor, e é do mantenedor.
     """
-    return ator.eh_admin
+    return ator.eh_equipe
 
 
 def pode_ler(area: Area, ator: Ator) -> bool:
@@ -56,8 +59,8 @@ def pode_ler(area: Area, ator: Ator) -> bool:
     """
     if not area.ativa:
         # ARQUIVAR PRECISA TER VOLTA. Arquivar é o "apagar" honesto desta casa
-        # (nada sai do banco), e se a área arquivada sumisse também para o
-        # administrador, o gesto viraria porta de mão única: reabrir exigiria
+        # (nada sai do banco), e se a área arquivada sumisse também para quem
+        # modera, o gesto viraria porta de mão única: reabrir exigiria
         # alguém com acesso ao banco. Para o resto do mundo, arquivada continua
         # indistinguível de inexistente — inclusive para o robô do Google.
         return pode_moderar(ator)
@@ -174,7 +177,7 @@ def areas_visiveis(ator: Ator):
 
     **E é por isso que a consulta não filtra `ativa=True`.** O filtro em SQL
     seria a segunda expressão da regra: quem decide se área arquivada aparece é
-    `pode_ler` (e ela aparece para o administrador, senão arquivar não teria
+    `pode_ler` (e ela aparece para quem modera, senão arquivar não teria
     volta). Filtrar aqui teria escondido a área arquivada até dele, e o defeito
     seria invisível — a home simplesmente não a mostraria, sem erro nenhum.
     """
