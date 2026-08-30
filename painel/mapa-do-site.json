@@ -206,6 +206,17 @@
     },
     {
       "celula": "forum",
+      "rota": "buscar",
+      "endereco": "/forum/buscar",
+      "exemplo": "/forum/buscar?q=textura",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "titulo": "Procurar no fórum",
+      "descricao": "A tela que acha uma dúvida já respondida. O campo de busca fica no topo de todas as páginas do fórum, e o resultado leva direto à mensagem dentro da conversa.",
+      "observacao": "Cada pessoa só encontra o que ela já poderia ler: visitante acha só as áreas abertas, aluno acha também as trancadas em que estuda. A busca leva o acento a sério (procurar 'chapeu' não acha 'chapéu'), e a tela avisa isso quando não encontra nada."
+    },
+    {
+      "celula": "forum",
       "rota": "areas/nova",
       "endereco": "/forum/areas/nova",
       "alcance": "publico",

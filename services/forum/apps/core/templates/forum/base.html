@@ -15,6 +15,19 @@ caminho, e caminho cravado em string quebra em produção e SÓ lá
 <div class="faixa">
   <a href="{% url 'home' %}">Fórum da Meshcraft Academy</a>
   <span class="quem">{% if ator.autenticado %}{{ ator.pessoa.nome_exibido|default:"você" }}{% else %}visitante{% endif %}</span>
+  {% comment %}
+  A CAIXA DE BUSCA fica no molde, e não em cada página, porque procurar é o
+  gesto que a pessoa faz de qualquer lugar do fórum: no meio de uma conversa,
+  no fim de uma área, na capa. Método GET de propósito, que é o que põe a
+  pergunta dentro do endereço e deixa o aluno mandar o resultado para um
+  colega. Quem decide o que ela ENXERGA mora em `apps/core/permissoes.py`.
+  {% endcomment %}
+  <form class="procurar" method="get" action="{% url 'buscar' %}" role="search">
+    <label class="somente-leitor" for="q">Procurar no fórum</label>
+    <input id="q" name="q" type="search" maxlength="120" value="{{ termo }}"
+           placeholder="Procurar uma dúvida já respondida">
+    <button type="submit">Procurar</button>
+  </form>
 </div>
 <main>{% block conteudo %}{% endblock %}</main>
 </body>
