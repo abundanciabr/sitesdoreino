@@ -1,0 +1,19 @@
+{
+  "arquivo": "027-trocar-os-125-travessoes-que-ja-estavam-publicados-no-site",
+  "id": "TAR-027",
+  "titulo": "Trocar os 125 travessoes que ja estavam publicados no site",
+  "toca": [
+    "funil",
+    "sugestoes",
+    "checkout",
+    "quiz",
+    "forum",
+    "admin",
+    "documentos"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "python ci/travessao.py verde com ci/travessoes-herdados.txt sem nenhuma linha de divida",
+  "despacho": "Pagar a dívida herdada da regra do travessão: os 125 travessões que já estavam\npublicados quando a regra nasceu (30/08/2026).\n\nContexto: a lei está em CLAUDE.md, seção \"Nenhum texto publicado sai com\ntravessão\". O portão é `ci/muralha-do-travessao.sh` -> `ci/travessao.py`, e a\ndívida está em `ci/travessoes-herdados.txt`, arquivo por arquivo, com a\ncontagem exata.\n\nO que fazer:\n\n1. `python ci/travessao.py --listar` mostra frase por frase, com o número da\n   linha. Trabalhe por arquivo, do maior para o menor.\n2. Em cada frase, escolha a troca pelo PAPEL que o travessão fazia: vírgula\n   (explicação comum no meio da frase), parênteses (dado acessório), dois-pontos\n   (fechamento no fim da frase), aspas (fala de personagem). A regra inteira,\n   com exemplo de cada uma, sai na própria recusa do portão.\n3. Atenção aos casos que NÃO são prosa: um travessão sozinho numa célula de\n   tabela ou num `{% else %}` é marcador de \"vazio\", e nenhuma das quatro trocas\n   serve. Troque por palavra (\"sem data\", \"não informado\") — leitor de tela lê\n   travessão como silêncio, então a troca melhora a acessibilidade junto.\n4. Baixe o número em `ci/travessoes-herdados.txt` (ou apague a linha, se chegou\n   a zero) e o `# TOTAL:`, no MESMO PR. O portão reprova até o número novo\n   aparecer no diff.\n5. Respeite o orçamento de 15 arquivos: são 19 arquivos, então vão pelo menos\n   dois PRs. Sugestão de corte, por afinidade de revisão:\n   - PR A: `documentos/*.md` (58) + `services/funil/traducoes/*.yaml` (30);\n   - PR B: os templates das células (37).\n\nEvidência que fecha: `python ci/travessao.py` verde com\n`ci/travessoes-herdados.txt` vazio de linhas, e os PRs mergeados.",
+  "origem": "decisao do mantenedor em 30/08/2026 (regra do travessao)",
+  "criada_em": "2026-08-30"
+}

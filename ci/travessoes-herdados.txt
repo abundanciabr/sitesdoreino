@@ -1,0 +1,32 @@
+# LINHA DE BASE — o travessão que JÁ estava publicado quando a regra nasceu.
+#
+# Lido por `ci/travessao.py`. Cada linha é uma DÍVIDA reconhecida: um texto que
+# alguém de fora lê hoje e que ainda carrega travessão, escrito antes da decisão
+# do mantenedor de 30/08/2026.
+#
+# A CATRACA, em duas frases: arquivo público com travessão fora desta lista
+# deixa a CI VERMELHA. O número aqui é COMPROMISSO, não teto frouxo — encontrar
+# menos do que o declarado também reprova, com a linha nova pronta para colar.
+#
+# Por que reprovar quando a dívida ENCOLHE, que é o que se quer: porque a queda
+# precisa aparecer no diff. Lista que se ajusta sozinha vira ficção — foi por
+# isso que `ci/guardas-nao-declarados.txt` pediu o mesmo gesto, e por isso o
+# `-# TOTAL:` / `+# TOTAL:` de cada limpeza é a prova de que a dívida andou.
+#
+# COMO PAGAR UMA LINHA (é barato, e é o objetivo):
+#   1. `python ci/travessao.py --listar` mostra frase por frase, com a linha;
+#   2. troque cada travessão por vírgula, parênteses, dois-pontos ou aspas —
+#      a regra inteira está em CLAUDE.md e na recusa do portão;
+#   3. baixe o número aqui (ou apague a linha, se chegou a zero) e o `# TOTAL:`.
+#
+# Estar aqui NÃO é permissão para escrever travessão novo: linha de arquivo que
+# CRESCE reprova igual. A dívida só encolhe.
+#
+# Formato: `<caminho a partir da raiz> :: <quantos travessões ainda vivos>`
+
+# A DIVIDA FOI PAGA POR INTEIRO em 30/08/2026, no mesmo dia em que a regra
+# nasceu: os 125 travessoes viraram virgula, parenteses, dois-pontos ou
+# palavra. A lista fica aqui, vazia, porque a catraca continua valendo — e
+# porque uma linha nova aqui seria uma decisao visivel, nao um esquecimento.
+
+# TOTAL: 0

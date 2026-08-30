@@ -1,0 +1,33 @@
+# O BASTIDOR — telas que ficam FORA da regra do travessão, uma por linha.
+#
+# Lido por `ci/travessao.py`. Tudo que é `templates/`, `traducoes/` ou
+# `documentos/` conta como texto público por padrão; cada linha daqui TIRA algo
+# dessa conta, e por isso cada uma precisa dizer por que ninguém de fora lê
+# aquilo.
+#
+# A fronteira é a do mantenedor, decidida em 30/08/2026: entra tudo que alguém
+# que não é ele lê. Fica de fora só o bastidor dele — o painel e as telas de
+# administração. A inversão é de propósito: em dúvida, o texto é público.
+# Tirar uma tela da regra exige uma linha aqui, que aparece no diff e alguém vê.
+#
+# Formato: `<padrão de caminho> :: <por que ninguém de fora lê isto>`
+# O padrão casa contra o caminho a partir da raiz do repositório, com `*` e `?`
+# no estilo do shell. Motivo com menos de 15 caracteres é recusado pelo portão:
+# carimbo não é motivo.
+#
+# CUIDADO ao acrescentar linha nesta célula: a `admin` NÃO é bastidor inteira.
+# Ela serve a área pública de documentos (`/docs/…`, isenta na porta — ver
+# `services/admin/config/urls.py`) e as páginas de erro, que qualquer visitante
+# alcança. Por isso as exceções abaixo nomeiam TELAS, nunca a pasta toda:
+# `base_publico.html`, `doc_publico.html`, `docs_publicos.html`, `404.html`,
+# `503.html` e `mapa_do_site.html` continuam sob a regra, como deve ser.
+
+services/admin/apps/core/templates/admin/base.html :: moldura das telas de administração; só o mantenedor entra nelas
+services/admin/apps/core/templates/admin/visao_geral.html :: a capa do bastidor do mantenedor, atrás da porta
+services/admin/apps/core/templates/admin/painel_ausente.html :: aviso técnico do bastidor quando o painel não veio na imagem
+services/admin/apps/core/templates/admin/_caixa_abas.html :: as abas da gestão da Caixa, tela de administração
+services/admin/apps/core/templates/admin/caixa_*.html :: gestão da Caixa de Sugestões; quem lê é o mantenedor, não o aluno
+services/admin/apps/core/templates/admin/escola*.html :: prontuário e jornada dos alunos, tela de administração
+services/admin/apps/core/templates/admin/documentos.html :: a lista de documentos do lado de dentro, para publicar ou não
+services/admin/apps/core/templates/admin/documento_admin.html :: a leitura administrativa de um documento, atrás da porta
+services/admin/apps/core/templates/admin/mapa_do_site.html :: o mapa de endereços é do lado de dentro; `/mapa/` não está em CAMINHOS_ISENTOS da porta

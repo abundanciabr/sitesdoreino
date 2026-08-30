@@ -16,7 +16,7 @@ O que esta página NÃO mostra, e nunca vai mostrar:
   direito à decisão e à justificativa; o nome de quem decidiu é auditoria da
   equipe (LICOES, "o aviso é da Caixa").
 {% endcomment %}
-{% block titulo %}{{ sugestao.titulo }} — Caixa de Sugestões{% endblock %}
+{% block titulo %}{{ sugestao.titulo }} (Caixa de Sugestões){% endblock %}
 {% block migalha %}Sugestão{% endblock %}
 {% block conteudo %}
 <p class="meta"><a href="{% url 'quadro' %}">← voltar ao quadro</a></p>
@@ -35,7 +35,7 @@ O que esta página NÃO mostra, e nunca vai mostrar:
 
 <div class="ficha">
   <h3>A solução proposta</h3>
-  <p>{% if sugestao.solucao_proposta %}{{ sugestao.solucao_proposta|linebreaksbr }}{% else %}Quem sugeriu não propôs uma solução específica — o que vale aqui é o problema.{% endif %}</p>
+  <p>{% if sugestao.solucao_proposta %}{{ sugestao.solucao_proposta|linebreaksbr }}{% else %}Quem sugeriu não propôs uma solução específica: o que vale aqui é o problema.{% endif %}</p>
 </div>
 
 <form method="post"
@@ -93,7 +93,7 @@ O que esta página NÃO mostra, e nunca vai mostrar:
       <div class="etapa{% if etapa.feita %} feita{% endif %}">
         <div class="risco"></div>
         <div class="bola"></div>
-        <span>{{ etapa.rotulo }}<br>{% if etapa.data %}{{ etapa.data|date:"d/m/y" }}{% else %}—{% endif %}</span>
+        <span>{{ etapa.rotulo }}<br>{% if etapa.data %}{{ etapa.data|date:"d/m/y" }}{% else %}sem data{% endif %}</span>
       </div>
     {% endfor %}
   </div>
