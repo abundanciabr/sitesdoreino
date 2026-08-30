@@ -81,15 +81,16 @@ celulas:
 
   gamificacao:
     caminhos: [services/gamificacao]
-    # NASCE SEM CONSUMIR NINGUÉM, e a lista vazia é a declaração honesta —
-    # não um esquecimento. O plano prevê `consome: [identidade]`
-    # (`PLANO-CELULA-GAMIFICACAO.md` §4), e essa linha entra no PR 7 da
-    # escada, junto com o cliente que lê `IDENTIDADE_API_URL`. Declará-la
-    # HOJE seria declaração órfã, e o varredor reprova por isso, com razão:
-    # um mapa que promete a mais é tão mentiroso quanto um que promete a
-    # menos. Quem escrever o cliente da sessão volta aqui no mesmo PR — e
-    # se esquecer, o varredor cobra pelo outro lado (consumo escondido).
-    consome: []
+    # A gênese declarou `consome: []` e escreveu aqui que a linha entraria
+    # "no PR 7 da escada, junto com o cliente que lê IDENTIDADE_API_URL".
+    # O cliente chegou ANTES: quem o escreveu foi a porta de máquina (o PR
+    # que a escada chamava de 16, antecipado porque o contrato congelou sem
+    # porta e travava toda a célula). É `getMyStatus` quem pergunta "quem é
+    # esta pessoa?" — `services/gamificacao/apps/core/sessao.py`.
+    #
+    # `alunos` NÃO entra: a gamificação não confere matrícula. Quem decide o
+    # que pode é quem serve a tela; esta porta só diz de quem é o XP.
+    consome: [identidade]
 
   identidade:
     caminhos: [services/identidade]

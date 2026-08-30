@@ -135,6 +135,31 @@ TEMPLATES = [
     },
 ]
 
+# ---------------------------------------------------------------------------
+# Tokens do PAR consumidor->provedor (R1), um por par: TOKENS_ACEITOS_FORUM etc.
+# ---------------------------------------------------------------------------
+# Env ausente => conjunto VAZIO => toda chamada a `/api/gamificacao` é recusada
+# com 401. Fail-closed por construção, e sem derrubar o boot: a célula sobe, o
+# `/healthz` segue respondendo, e só a porta de máquina fica fechada até o token
+# existir no env. É o mesmo desenho de `identidade`, `alunos` e `forum`.
+#
+# **Aqui o conjunto vazio é o ÚNICO cadeado**, e isso é diferente da
+# `identidade`: esta célula roda sob `SCRIPT_NAME=/conquistas`, e o corte do
+# prefixo é do Django, não do Traefik — a porta é alcançável pela borda pública
+# (`armadilhas/186`). Não há topologia por baixo para segurar o que este
+# conjunto deixar passar.
+#
+# Não há `TOKENS_COMPLETOS` aqui, e a ausência é a decisão: aquele degrau existe
+# na `identidade` para liberar E-MAIL a pares autorizados. Esta porta não
+# devolve dado pessoal nenhum — só id opaco, número e slug (invariante 1 do
+# `contracts/gamificacao.openapi.yaml`) —, então não há segundo degrau a
+# conceder.
+TOKENS_ACEITOS = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_ACEITOS_") and valor
+}
+
 ROOT_URLCONF = "config.urls"
 ASGI_APPLICATION = "config.asgi.application"
 
