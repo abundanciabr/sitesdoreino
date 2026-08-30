@@ -50,8 +50,9 @@ isolados ("células")** — `admin`, `alunos`, `catalogo`, `checkout`, `forum`,
 atrás de um Traefik roteado por caminho, e proibida de importar código ou ler
 banco de outra célula. Uma 14ª, `gamificacao`, foi aprovada em 30/08/2026 e
 está nascendo — ela ainda não existe em `services/`, e tem seção própria em
-[04](04-arquitetura-de-celulas-e-contratos.md). A comunicação entre células é só HTTP contratado
-(OpenAPI congelado) ou eventos versionados (outbox + Redis Streams). Tudo
+[04](04-arquitetura-de-celulas-e-contratos.md). A comunicação entre células é
+só HTTP contratado (OpenAPI congelado) ou eventos versionados (outbox +
+Redis Streams). Tudo
 isso é lei escrita e imposta por portões mecânicos, não só convenção — ver
 [01](01-leis-ritos-e-invariantes.md).
 
