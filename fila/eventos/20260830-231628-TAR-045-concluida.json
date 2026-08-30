@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-231628-TAR-045-concluida",
+  "tarefa": "TAR-045",
+  "evento": "concluida",
+  "quando": "2026-08-30T23:16:28+00:00",
+  "quem": "sessao-ci-espelho-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/658 — vermelho->verde por assercao, sem rede: (1) espelho em dia => paragrafo da idade AUSENTE (calou); (2) 358 atras com CLAUDE.md mexido => 'IDADE DO ESPELHO: 358 commits atras de origin/main [...] parte das ordens que voce recebeu pode estar REVOGADA'; (3) sem origin/main no cache => 'IDADE DO ESPELHO: NAO MEDIDA (git rev-list falhou) [...] Nao medir nao e estar em dia (INV-CI01)'. 5 vermelhos por assert antes do conserto; guarda anti-barulho falsificada por mutacao (commits == 0 -> == -1) ficou vermelha acusando '0 commits atras'. 43 testes na muralha, 1345 em ci/tests.",
+  "verificado_em": "2026-08-30"
+}
