@@ -297,6 +297,65 @@ Na prática:
   é fato sobre o que é possível, não "conselho de ir devagar", e continua
   reportado como sempre (`ARMADILHAS-OPERACAO.md` §1).
 
+## Nenhum texto publicado sai com travessão (desde 30/08/2026)
+
+
+Decisão do mantenedor em 30/08/2026: **todo texto escrito para ser publicado
+online sai sem travessão.** No lugar dele entram vírgula, parênteses,
+dois-pontos ou aspas. A escolha depende do papel que o travessão fazia na
+frase, e é de quem escreve:
+
+- **Vírgula (troca neutra)** — explicação comum no meio da frase, que mantém a
+  leitura fluida e natural. `O motorista — que estava muito cansado — parou no
+  posto.` vira `O motorista, que estava muito cansado, parou no posto.`
+- **Parênteses (menor destaque)** — dado puramente acessório, que pode ser
+  ignorado sem perda. `A inflação — principal vilã do orçamento — voltou a
+  subir.` vira `A inflação (principal vilã do orçamento) voltou a subir.`
+- **Dois-pontos (fechamento)** — quando o trecho isolado fica no FIM da frase e
+  serve de esclarecimento ou conclusão. `Ele só queria uma coisa — paz.` vira
+  `Ele só queria uma coisa: paz.`
+- **Aspas (diálogo)** — quando o travessão marcava fala de personagem.
+  `— Não quero ir hoje — disse Pedro.` vira `"Não quero ir hoje", disse Pedro.`
+
+Contam como travessão as três riscas longas (`—`, `–`, `―`) e as formas
+escritas em HTML que viram risca na tela (`&mdash;`, `&#8212;` e parentes). O
+**hífen continua livre**: ele é letra de palavra composta ("guarda-chuva"), não
+pontuação de frase — um portão que o caçasse recusaria português correto.
+
+**Onde a regra vale:** em tudo que alguém que não é o mantenedor lê. A vitrine
+do site, cadastro, login, checkout, quiz, fórum, área do aluno, Caixa de
+Sugestões, os documentos publicados e as traduções. A superfície é DERIVADA, não
+listada à mão: toda pasta `templates/` de toda célula, toda `traducoes/` e
+`documentos/`. Célula nova, ou tela nova numa célula que já existe, entra
+sozinha — mapa mantido à mão envelhece em silêncio, e é a Classe 8 do
+`docs/decisoes/PLANO-MESTRE-ROBOS-SEM-COLISAO.md`.
+
+**Onde ela NÃO vale:** o bastidor do mantenedor (o painel e as telas de
+administração), que sai por lista curta em `ci/texto-publico-bastidor.txt`, uma
+linha por tela e com o motivo escrito; e o que nunca é publicado — este
+arquivo, as armadilhas, os documentos internos e os comentários dentro do
+código. O portão DESPE os comentários antes de contar (`{% comment %}`, `{# #}`,
+`<!-- -->`, `#` de YAML): sem essa poda a dívida medida seria quatro vezes maior
+e quase toda falsa, e medir a coisa errada com precisão é como um portão morre.
+
+**Cuidado com a célula `admin`:** ela não é bastidor inteira. As páginas de erro
+e a área pública de documentos (`/docs/…`, isenta na porta) moram nela e
+continuam sob a regra.
+
+**O que já estava publicado** quando a regra nasceu está em
+`ci/travessoes-herdados.txt`, arquivo por arquivo, com a contagem exata. A
+catraca é a mesma das outras dívidas da casa: o número declarado é compromisso,
+não teto frouxo — crescer reprova, e encolher também reprova até o número novo
+aparecer no diff. Texto NOVO nunca nasce devendo.
+
+Na dúvida sobre uma frase, rode `python ci/travessao.py --listar`: ele mostra
+frase por frase, com o número da linha. A recusa do portão já traz as quatro
+trocas com exemplo, na mesma tela — não é preciso voltar aqui.
+
+**Quem faz valer:** `ci/muralha-do-travessao.sh` → `ci/travessao.py` (roda em
+todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · `ci/tests/test_travessao.py`.
+
+
 ## Depois de todo merge que dispara deploy
 
 
