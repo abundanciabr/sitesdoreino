@@ -51,6 +51,18 @@
       "regex": "assert (datetime\\.datetime\\([^)]*\\)) [<>]=? \\1"
     },
     {
+      "armadilha": "192",
+      "arquivo": "armadilhas/192-pegar-a-tarefa-antes-do-worktree-deixa-o-evento-no-espelho.md",
+      "titulo": "Você pegou a tarefa no balcão antes de criar o worktree — o evento nasceu no espelho e o seu PR vai sem ele, em silêncio",
+      "regex": "RECUSADO NO ESPELHO"
+    },
+    {
+      "armadilha": "192",
+      "arquivo": "armadilhas/192-pegar-a-tarefa-antes-do-worktree-deixa-o-evento-no-espelho.md",
+      "titulo": "Você pegou a tarefa no balcão antes de criar o worktree — o evento nasceu no espelho e o seu PR vai sem ele, em silêncio",
+      "regex": "COMPROVANTE ÓRFÃO"
+    },
+    {
       "armadilha": "197",
       "arquivo": "armadilhas/197-endereco-publico-de-celula-sob-prefixo-nao-e-prefixo.md",
       "titulo": "O endereço público de uma célula sob prefixo NÃO é \"prefixo + rota\" — ele dobra num caso e duplica noutro",

@@ -1,14 +1,16 @@
 ---
 schema_version: 2
 armadilha: 192
-estado: documentada
+estado: guardada
 degrau: 6
 confianca: alta
 custo_por_queda: baixo
 guarda:
-  tipo: nenhum
-  motivo: `o balcao ja IMPRIME o caminho do arquivo e a ordem de commita-lo; o que falta e o pedido acontecer na pasta certa, e isso e ordem de despacho, nao codigo. A muralha e construivel (ci/muralha_pasta_compartilhada.py ja sabe distinguir espelho de worktree) e ficou registrada como TAR-018 em vez de improvisada aqui — esta sessao era de MEDIR, nao de construir. Buraco assumido, nao silencioso.`
-sinal: null
+  tipo: CI
+  dono: ci/tests/test_fila.py
+sinal:
+  - `RECUSADO NO ESPELHO`
+  - `COMPROVANTE ÓRFÃO`
 ---
 
 # Você pegou a tarefa no balcão antes de criar o worktree — o evento nasceu no espelho e o seu PR vai sem ele, em silêncio
@@ -78,6 +80,20 @@ confira com os olhos:
 ```bash
 git diff --name-only origin/main...HEAD    # tem TODOS os eventos da tarefa?
 ```
+
+**A guarda, desde 30/08/2026 (TAR-018).** O buraco deixou de ser assumido:
+
+- `criar`, `pegar` e `concluir` **RECUSAM no clone principal** (exit 1), e a
+  recusa ensina as quatro linhas acima — ela diz, com todas as letras, que a
+  TAREFA não foi recusada. Aviso em sombra não serviria aqui: o arquivo já
+  teria nascido, e o robô nem consegue apagá-lo (medido no mesmo dia — o
+  classificador de permissão recusou a limpeza ao robô da TAR-014).
+- `validar` **diz em voz alta, em SOMBRA**, todo arquivo de `fila/eventos/` que
+  o Git não conhece, nomeando cada um e o conserto. Não muda o veredito: é ali
+  que mora o portão de CI, e regra nova nasce em sombra.
+- `listar`, `validar` e `soltar` **continuam livres** no espelho — devolver à
+  fila uma tarefa presa é gesto de emergência.
+- `RITOS.md` §5 peça 1 passou a mandar **worktree primeiro, balcão depois**.
 
 **Origem.** 30/08/2026, na TAR-016 (a medição dos três números da aba "Os
 robôs", PR #571). O evento de reivindicação nasceu no clone principal e foi

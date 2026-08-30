@@ -125,14 +125,14 @@
     {
       "armadilha": "192",
       "arquivo": "armadilhas/192-pegar-a-tarefa-antes-do-worktree-deixa-o-evento-no-espelho.md",
-      "estado": "documentada",
+      "estado": "guardada",
       "degrau": 6,
       "confianca": "alta",
       "custo_por_queda": "baixo",
-      "tipo": "nenhum",
+      "tipo": "CI",
       "detector": null,
-      "dono": null,
-      "tem_sinal": false
+      "dono": "ci/tests/test_fila.py",
+      "tem_sinal": true
     },
     {
       "armadilha": "195",
