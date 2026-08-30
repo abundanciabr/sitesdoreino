@@ -75,7 +75,7 @@ def test_quem_nao_tem_id_da_plataforma_nao_recebe_carta_mas_recebe_o_aviso(
 
 
 def test_o_ator_sem_id_da_plataforma_para_tudo_e_nada_e_escrito(
-    caixa, entrar_como_staff
+    caixa, entrar_como_staff, gestao
 ):
     """Fail-closed, e o `nada é escrito` é o ponto — não só o evento.
 
@@ -93,21 +93,20 @@ def test_o_ator_sem_id_da_plataforma_para_tudo_e_nada_e_escrito(
     sem_identidade = entrar_como_staff("outro@meshcraft.test", "Outro", com_id=False)
     antes = OutboxEvent.objects.count()
 
-    resposta = sem_identidade.client.post(
-        f"/moderacao/{sugestao.id}/status",
-        {"status": Sugestao.Status.PLANEJADO, "nota": ""},
-    )
+    resposta = gestao.mudar_status(sem_identidade, sugestao, Sugestao.Status.PLANEJADO)
 
-    assert resposta.status_code == 409
+    # 422 e nao mais 409: a jornada de moderacao passou a ser o CONTRATO
+    # (30/08/2026), e la a recusa vem como `Recusa` com a frase que ensina o
+    # caminho — a mesma que a tela dizia. O que este guarda mede nao mudou:
+    # sem quem afirma, NADA e escrito.
+    assert resposta.status_code == 422, resposta.content
+    assert "entre uma vez em meshcraft.top" in resposta.json()["erro"].lower()
     sugestao.refresh_from_db()
     assert sugestao.status == Sugestao.Status.EM_ANALISE, "o status mudou mesmo assim"
     assert (
         OutboxEvent.objects.count() == antes
     ), "nasceu evento numa transação revertida"
     assert not Aviso.objects.filter(sugestao=sugestao).exists()
-    assert (
-        "entre de novo" in resposta.content.decode()
-    ), "a tela não explica o que fazer"
 
 
 def test_a_carta_aponta_para_o_fato_que_a_gerou(caixa, quadro, categoria, plateia):

@@ -140,11 +140,10 @@ def test_a_jornada_inteira_de_mudar_status_nao_cresce_com_a_plateia(
 
     def _post(sugestao):
         def _fazer():
-            resposta = equipe.client.post(
-                reverse("mudar_status", args=[sugestao.id]),
-                {"status": Sugestao.Status.PLANEJADO, "nota": "vai sair"},
+            resposta = equipe.gestao.mudar_status(
+                equipe, sugestao, Sugestao.Status.PLANEJADO, nota="vai sair"
             )
-            assert resposta.status_code == 302, resposta.content
+            assert resposta.status_code == 200, resposta.content
 
         return _fazer
 

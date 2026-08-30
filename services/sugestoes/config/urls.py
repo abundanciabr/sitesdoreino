@@ -1,9 +1,7 @@
 from django.urls import path, re_path
 
 from apps.core.avisos import marcar_lido, marcar_tudo_lido, ver_avisos
-from apps.core.changespecs import changespecs
 from apps.core.mudou_de_casa import mudou_de_casa
-from apps.core.moderacao import avaliar, moderar, mudar_status, ver_fila
 from apps.core.participacao import (
     comentar,
     desvotar,
@@ -100,24 +98,33 @@ urlpatterns = [
     path("gestao", mudou_de_casa, name="mesa"),
     path("gestao/travessia", mudou_de_casa, name="travessia"),
     path("gestao/esperando", mudou_de_casa, name="quem_espera"),
-    # A moderação (EVO-13) mora sob um prefixo próprio, `/moderacao`, e não
-    # espalhada por `/sugestoes/<id>/...`: assim a fronteira do crachá é legível
-    # no urlconf, e não só no decorador. Toda rota daqui responde **403** a quem
-    # tem sessão sem papel `staff` (apps/core/moderacao.py).
-    path("moderacao", ver_fila, name="fila"),
-    path("moderacao/<int:sugestao_id>", moderar, name="moderar"),
-    path("moderacao/<int:sugestao_id>/status", mudar_status, name="mudar_status"),
-    path("moderacao/<int:sugestao_id>/avaliacao", avaliar, name="avaliar"),
-    # O corredor do ChangeSpec (EVO-40). Mora sob `/moderacao` porque é tela da
-    # EQUIPE — e é a única rota da célula com um SEGUNDO portão em cima do
-    # crachá: só quem está em `SUGESTOES_APROVADORES` passa
-    # (`apps/core/changespecs.py`). Uma rota para os dois métodos, de propósito:
-    # o GET é a página, o POST é o formulário dela mesma. Duas rotas seriam
-    # duas entradas a mais em cada varredura de urlconf desta célula para
-    # servir uma tela só.
+    # A MODERAÇÃO TAMBÉM MUDOU DE CASA (30/08/2026, TAR-023 degrau 4) — e ela
+    # foi a última, dois dias depois das três abas acima. O atraso não foi
+    # esquecimento: das cinco rotas daqui, quatro já tinham paridade no Admin, e
+    # a quinta (o corredor do ChangeSpec) mostrava uma coisa que o Admin não
+    # sabia dizer — COM BASE EM QUE cada obra foi liberada. Aposentá-la antes
+    # disso teria apagado a única forma de auditar a trava mais dura da célula.
+    # O robô da TAR-014 parou aqui e registrou (`20260830-019`); a emenda que
+    # destravou é a 4ª do contrato (PR #581), e o Admin passou a mostrar a ficha
+    # em `/admin/caixa/ideia/<id>`.
+    #
+    # Mesmo molde das três de cima, e pelos mesmos motivos: os endereços
+    # CONTINUAM VIVOS e redirecionam (301) — apagá-los puniria quem os salvou, e
+    # quem salvou foi quem mais usava a tela —, e continuam ATRÁS DO CRACHÁ:
+    # quem não é da equipe leva 403 antes de saber para onde a gestão foi.
+    #
+    # As três rotas de ESCRITA (status, avaliação, changespec) recusam POST com
+    # uma frase em português em vez de redirecionar: uma aba velha ainda aberta
+    # precisa saber que o que ela enviou NÃO foi salvo, e um 301 num POST vira
+    # um GET silencioso no destino — a pessoa veria a página nova e acharia que
+    # deu certo (`apps/core/mudou_de_casa.py`).
+    path("moderacao", mudou_de_casa, name="fila"),
+    path("moderacao/<int:sugestao_id>", mudou_de_casa, name="moderar"),
+    path("moderacao/<int:sugestao_id>/status", mudou_de_casa, name="mudar_status"),
+    path("moderacao/<int:sugestao_id>/avaliacao", mudou_de_casa, name="avaliar"),
     path(
         "moderacao/<int:sugestao_id>/changespec",
-        changespecs,
+        mudou_de_casa,
         name="changespecs",
     ),
 ]

@@ -20,7 +20,6 @@ trigger no Postgres.
 """
 
 import pytest
-from django.urls import reverse
 
 from apps.sugestoes.models import HistoricoStatus, Sugestao
 
@@ -28,15 +27,14 @@ pytestmark = pytest.mark.django_db
 
 
 def _mudar(equipe, sugestao, status, nota=""):
-    return equipe.client.post(
-        reverse("mudar_status", args=[sugestao.id]), {"status": status, "nota": nota}
-    )
+    """Pelo contrato — a tela de `/moderacao` foi aposentada em 30/08/2026."""
+    return equipe.gestao.mudar_status(equipe, sugestao, status, nota=nota)
 
 
 def test_mudar_o_status_grava_exatamente_uma_linha(equipe, sugestao):
     resposta = _mudar(equipe, sugestao, Sugestao.Status.PLANEJADO, "entra na trilha 2")
 
-    assert resposta.status_code == 302, resposta.content
+    assert resposta.status_code == 200, resposta.content
     sugestao.refresh_from_db()
     assert sugestao.status == Sugestao.Status.PLANEJADO
     assert HistoricoStatus.objects.count() == 1
@@ -99,7 +97,9 @@ def test_se_o_historico_NAO_PUDER_ser_gravado_o_status_nao_muda(
 def test_status_fora_da_lista_e_recusado_e_nao_grava_nada(equipe, sugestao):
     resposta = _mudar(equipe, sugestao, "virou_unicornio")
 
-    assert resposta.status_code == 400
+    # 422 e nao mais 400: a recusa deixou de ser um formulario redesenhado e
+    # passou a ser a `Recusa` do contrato. O que ela recusa e identico.
+    assert resposta.status_code == 422, resposta.content
     sugestao.refresh_from_db()
     assert sugestao.status == Sugestao.Status.EM_ANALISE
     assert HistoricoStatus.objects.count() == 0
@@ -116,7 +116,7 @@ def test_mesclado_nao_entra_pela_porta_do_status(equipe, sugestao):
     """
     resposta = _mudar(equipe, sugestao, Sugestao.Status.MESCLADO, "juntei com a outra")
 
-    assert resposta.status_code == 400
+    assert resposta.status_code == 422, resposta.content
     sugestao.refresh_from_db()
     assert sugestao.status == Sugestao.Status.EM_ANALISE
     assert HistoricoStatus.objects.count() == 0

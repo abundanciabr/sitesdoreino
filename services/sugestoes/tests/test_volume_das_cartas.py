@@ -142,11 +142,10 @@ def test_a_jornada_inteira_da_moderacao_nao_cresce_com_a_plateia(
 
     def _moderar(sugestao):
         def _fazer():
-            resposta = equipe.client.post(
-                reverse("mudar_status", args=[sugestao.id]),
-                {"status": Sugestao.Status.PLANEJADO, "nota": "Entra no ciclo."},
+            resposta = equipe.gestao.mudar_status(
+                equipe, sugestao, Sugestao.Status.PLANEJADO, nota="Entra no ciclo."
             )
-            assert resposta.status_code == 302, resposta.status_code
+            assert resposta.status_code == 200, resposta.content
 
         return _fazer
 

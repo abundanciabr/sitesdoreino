@@ -161,44 +161,69 @@ def _rotas_de_moderacao() -> set[str]:
     }
 
 
-def _moderacao_completa(cliente, sugestao) -> dict[str, list]:
+def _moderacao_completa(equipe, sugestao) -> dict[str, list]:
     """Todo endereço que a EQUIPE alcança, exercitado uma vez cada.
+
+    **As cinco rotas de `/moderacao` foram aposentadas em 30/08/2026** (TAR-023)
+    e hoje redirecionam para `/admin/caixa/` (GET) ou recusam com 410 (POST).
+    Elas continuam na varredura, e isso NÃO é zelo antigo: elas continuam
+    existindo no urlconf, continuam atrás do crachá — e é justamente por isso
+    que `_rotas_de_moderacao()` continua encontrando-as sozinho.
+
+    O que mudou é que a ESCRITA que antes acontecia nelas agora acontece pelo
+    contrato, então a varredura a exercita por lá. Sem isso este guarda passaria
+    a medir três respostas 410 e ficaria verde sem ter olhado para nenhuma
+    escrita — que é a forma mais silenciosa de um guarda deixar de morder.
 
     Duas mudanças de status seguidas, e não uma: a segunda é o caso em que
     alguém "corrige" a primeira, que é exatamente onde um `update()` distraído
     nasceria.
     """
+    cliente = equipe.client
+    gestao = equipe.gestao
     return {
         "fila": [cliente.get(reverse("fila"))],
         "moderar": [cliente.get(reverse("moderar", args=[sugestao.id]))],
         "mudar_status": [
-            cliente.post(
-                reverse("mudar_status", args=[sugestao.id]),
-                {"status": Sugestao.Status.EM_DESENVOLVIMENTO, "nota": "começou"},
+            cliente.get(reverse("mudar_status", args=[sugestao.id])),
+            gestao.mudar_status(
+                equipe, sugestao, Sugestao.Status.EM_DESENVOLVIMENTO, nota="começou"
             ),
-            cliente.post(
-                reverse("mudar_status", args=[sugestao.id]),
-                {"status": Sugestao.Status.EM_ANALISE, "nota": "voltou: me enganei"},
+            gestao.mudar_status(
+                equipe,
+                sugestao,
+                Sugestao.Status.EM_ANALISE,
+                nota="voltou: me enganei",
             ),
         ],
         "avaliar": [
-            cliente.post(
-                reverse("avaliar", args=[sugestao.id]),
-                {"impacto_educacional": 4, "notas": "vale a pena"},
-            )
+            cliente.get(reverse("avaliar", args=[sugestao.id])),
+            gestao.avaliar(
+                equipe, sugestao, impacto_educacional=4, notas="vale a pena"
+            ),
         ],
-        # [EVO-40] A tela do corredor do ChangeSpec. Entra aqui porque a
-        # varredura abaixo exige o urlconf INTEIRO — e o que este arquivo mede
-        # nela é o que ela NÃO faz: nenhuma tela da equipe emite UPDATE ou
-        # DELETE no histórico, nem a que autoriza desenvolvimento. Sem mandato
-        # de aprovador a resposta é 403, e isso não enfraquece a medição: o que
-        # se conta são as consultas emitidas, e uma recusa que não escreve nada
-        # é justamente o caso mais fácil de estar certo.
-        "changespecs": [cliente.get(reverse("changespecs", args=[sugestao.id]))],
+        # [EVO-40] O corredor do ChangeSpec. Entra aqui porque a varredura
+        # exige o urlconf INTEIRO — e o que este arquivo mede nele é o que ele
+        # NÃO faz: nenhum caminho da equipe emite UPDATE ou DELETE no
+        # histórico, nem o que autoriza desenvolvimento. Sem mandato de
+        # aprovador a resposta é 403, e isso não enfraquece a medição: o que se
+        # conta são as consultas emitidas, e uma recusa que não escreve nada é
+        # justamente o caso mais fácil de estar certo.
+        "changespecs": [
+            cliente.get(reverse("changespecs", args=[sugestao.id])),
+            gestao.assinar(
+                equipe,
+                sugestao,
+                change_id="CS-SUGESTOES-0009",
+                documento="docs/changespecs/CS-SUGESTOES-0009.md",
+                aprovado_por="Davi (mantenedor)",
+                aprovado_em="2026-08-30",
+            ),
+        ],
         # [28/08/2026] A Mesa — a porta do painel de gestão. Ela entra aqui
         # pelo mesmo motivo da `changespecs`: a varredura exige o urlconf
         # INTEIRO. E ela é o caso mais puro do que este arquivo mede — uma
-        # tela que só conta, e cuja própria razão de existir some se ela
+        # rota que só redireciona, e cuja própria razão de existir some se ela
         # escrever qualquer coisa.
         "mesa": [cliente.get(reverse("mesa"))],
         "travessia": [cliente.get(reverse("travessia"))],
@@ -208,7 +233,7 @@ def _moderacao_completa(cliente, sugestao) -> dict[str, list]:
 
 def test_a_varredura_cobre_TODAS_as_rotas_da_equipe(equipe, sugestao):
     """Sem isto, rota de moderação nova nasceria fora deste degrau."""
-    percorridas = set(_moderacao_completa(equipe.client, sugestao))
+    percorridas = set(_moderacao_completa(equipe, sugestao))
     assert percorridas == _rotas_de_moderacao(), (
         f"faltando {_rotas_de_moderacao() - percorridas}, "
         f"sobrando {percorridas - _rotas_de_moderacao()}"
@@ -219,7 +244,7 @@ def test_nenhuma_rota_da_equipe_edita_ou_apaga_o_historico(equipe, sugestao, reg
     tabela = HistoricoStatus._meta.db_table
 
     with CaptureQueriesContext(connection) as consultas:
-        _moderacao_completa(equipe.client, sugestao)
+        _moderacao_completa(equipe, sugestao)
 
     culpadas = [
         c["sql"]
@@ -238,7 +263,7 @@ def test_a_linha_antiga_continua_intacta_depois_da_moderacao(
 ):
     """A outra metade: o SQL pode estar limpo e a linha ter sumido por outro
     caminho. Aqui se olha para a linha, não para as consultas."""
-    _moderacao_completa(equipe.client, sugestao)
+    _moderacao_completa(equipe, sugestao)
 
     recarregada = HistoricoStatus.objects.get(pk=registro.pk)
     assert recarregada.nota == "entra na próxima trilha"

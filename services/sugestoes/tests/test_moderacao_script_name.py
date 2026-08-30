@@ -31,7 +31,6 @@ from asgiref.sync import async_to_sync
 from django.test import AsyncClient
 from django.urls import clear_script_prefix, reverse, set_script_prefix
 
-from apps.sugestoes.models import Sugestao
 
 PREFIXO = "/forms/sugestoes"
 
@@ -75,54 +74,40 @@ def test_a_borda_publica_resolve_as_rotas_de_moderacao(sob_prefixo):
         assert resposta["Location"] == f"{PREFIXO}/entrar"
 
 
-def test_todo_link_da_fila_leva_o_prefixo(equipe_sob_prefixo, sugestao):
-    corpo = equipe_sob_prefixo.client.get("/moderacao").content.decode()
-    internos = LINK_INTERNO.findall(corpo)
+# As três telas de `/moderacao` foram aposentadas em 30/08/2026 (TAR-023), e com
+# elas saíram os quatro guardas que mediam os LINKS e os `action=` delas: não há
+# mais página desta célula com formulário de moderação dentro, e um guarda que
+# varresse uma resposta de 301 estaria varrendo o vazio. O que eles protegiam —
+# "todo `action=` carrega o prefixo público" — mudou de casa junto com as telas,
+# e do lado do Admin não existe: `/admin` não roda sob `FORCE_SCRIPT_NAME` de
+# caminho aninhado do mesmo jeito, e a célula tem os próprios guardas
+# (`services/admin/tests/test_healthz_script_name.py`).
+#
+# O que SOBRA aqui é o que continua sendo desta célula sob prefixo, e é o que os
+# três guardas abaixo medem: a borda pública resolve os endereços aposentados, o
+# destino do redirecionamento é ABSOLUTO (e por isso não leva o prefixo — ele é
+# de outra superfície), e o urlconf continua sem conhecer o prefixo.
 
-    assert internos, "a fila não tem link interno — o guarda não mediu nada"
-    sem_prefixo = [link for link in internos if not link.startswith(f"{PREFIXO}/")]
-    assert sem_prefixo == [], (
-        f"links sem o prefixo público na fila: {sem_prefixo}. "
-        "Todo endereço interno sai de {% url %}, nunca escrito à mão."
-    )
 
-
-def test_todo_link_e_action_da_pagina_de_moderacao_levam_o_prefixo(
+def test_o_destino_do_redirecionamento_e_absoluto_e_NAO_leva_o_prefixo(
     equipe_sob_prefixo, sugestao
 ):
-    """Os dois `action=` desta página são o que quebra em silêncio: o
-    formulário de status e o da avaliação interna."""
-    corpo = equipe_sob_prefixo.client.get(f"/moderacao/{sugestao.id}").content.decode()
-    internos = LINK_INTERNO.findall(corpo)
+    """A exceção que confirma a regra deste arquivo, e ela é deliberada.
 
-    assert f"{PREFIXO}/moderacao/{sugestao.id}/status" in internos
-    assert f"{PREFIXO}/moderacao/{sugestao.id}/avaliacao" in internos
-    sem_prefixo = [link for link in internos if not link.startswith(f"{PREFIXO}/")]
-    assert sem_prefixo == [], f"links sem o prefixo público: {sem_prefixo}"
+    Todo endereço desta célula sai de `reverse()` justamente para carregar o
+    prefixo público. O destino da mudança de casa, não: `/admin/caixa/` não
+    pertence a esta célula, e nenhum `reverse()` daqui saberia montá-lo — as
+    duas superfícies vivem sob o MESMO host, roteadas pelo mesmo Traefik, então
+    o caminho absoluto basta (`apps/core/mudou_de_casa.py`).
 
+    Sem este guarda, alguém "consertaria" o destino um dia pondo o prefixo nele
+    por analogia com o resto do arquivo — e mandaria a equipe para
+    `/forms/sugestoes/admin/caixa/`, que é um 404 do Traefik.
+    """
+    resposta = equipe_sob_prefixo.client.get(f"/moderacao/{sugestao.id}")
 
-def test_o_redirecionamento_depois_de_mudar_o_status_leva_o_prefixo(
-    equipe_sob_prefixo, sugestao
-):
-    """O `Location` é onde o navegador vai bater em seguida — sem prefixo, 404."""
-    resposta = equipe_sob_prefixo.client.post(
-        f"/moderacao/{sugestao.id}/status",
-        {"status": Sugestao.Status.PLANEJADO, "nota": "vai entrar"},
-    )
-
-    assert resposta.status_code == 302, resposta.content
-    assert resposta["Location"] == f"{PREFIXO}/moderacao/{sugestao.id}"
-
-
-def test_o_redirecionamento_depois_de_avaliar_leva_o_prefixo(
-    equipe_sob_prefixo, sugestao
-):
-    resposta = equipe_sob_prefixo.client.post(
-        f"/moderacao/{sugestao.id}/avaliacao", {"impacto_educacional": 3}
-    )
-
-    assert resposta.status_code == 302, resposta.content
-    assert resposta["Location"] == f"{PREFIXO}/moderacao/{sugestao.id}"
+    assert resposta.status_code == 301, resposta.content
+    assert resposta["Location"] == "/admin/caixa/"
 
 
 def test_o_link_do_cracha_no_topo_leva_o_prefixo(equipe_sob_prefixo, sugestao):

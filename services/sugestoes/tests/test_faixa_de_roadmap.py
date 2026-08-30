@@ -105,7 +105,7 @@ def povoar(caixa, entrar_como):
             Sugestao.objects.filter(pk=sugestao.pk).update(status=status)
             sugestao.refresh_from_db()
         elif status != Sugestao.Status.EM_ANALISE:
-            assert caixa.mudar_status(sugestao, status, nota=nota).status_code == 302
+            assert caixa.mudar_status(sugestao, status, nota=nota).status_code == 200
             sugestao.refresh_from_db()
         return sugestao
 
@@ -319,7 +319,7 @@ def test_a_faixa_encolhe_junto_com_o_filtro_de_categoria(povoar, caixa, quadro):
     quadro.categorias.create(slug="blender", nome="Blender")
     de_curso = povoar("Coisa de curso", Sugestao.Status.PLANEJADO)
     de_blender = caixa.publicar("Coisa de Blender", categoria="blender")
-    assert caixa.mudar_status(de_blender, Sugestao.Status.PLANEJADO).status_code == 302
+    assert caixa.mudar_status(de_blender, Sugestao.Status.PLANEJADO).status_code == 200
 
     corpo = _corpo(caixa.aluno, categoria="curso")
 

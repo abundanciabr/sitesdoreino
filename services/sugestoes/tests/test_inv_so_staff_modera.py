@@ -161,7 +161,11 @@ def test_o_cracha_sai_com_a_variavel_de_ambiente(
     (antes, a matrícula só era conferida no login — o ex-staff sem matrícula
     ficava dentro até sair sozinho).
     """
-    assert equipe.client.get(reverse("fila")).status_code == 200
+    # 301, e não mais 200: a tela foi aposentada em 30/08/2026 e o endereço
+    # redireciona para a casa nova. O que este guarda mede é o CRACHÁ, e ele
+    # continua na frente do redirecionamento — é essa a diferença entre 301 e
+    # 403 aqui embaixo.
+    assert equipe.client.get(reverse("fila")).status_code == 301
 
     monkeypatch.delenv("SUGESTOES_STAFF_EMAILS")
 

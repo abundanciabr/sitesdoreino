@@ -67,10 +67,14 @@ def planejada(sugestao):
     return sugestao
 
 
-def _mudar_pela_tela(equipe, sugestao, status, nota=""):
-    return equipe.client.post(
-        reverse("mudar_status", args=[sugestao.id]), {"status": status, "nota": nota}
-    )
+def _mudar_pela_porta(equipe, sugestao, status, nota=""):
+    """O degrau de cima da trava: a porta por onde GENTE muda o status.
+
+    Era a tela de `/moderacao`; desde 30/08/2026 é o Admin, pelo contrato
+    (TAR-023). O nome mudou de `_pela_tela` para `_pela_porta` por isso — o
+    degrau continua sendo o mesmo, e continua sendo o único com frase legível.
+    """
+    return equipe.gestao.mudar_status(equipe, sugestao, status, nota=nota)
 
 
 # ---------------------------------------------------------------------------
@@ -79,9 +83,11 @@ def _mudar_pela_tela(equipe, sugestao, status, nota=""):
 
 
 def test_a_equipe_nao_move_para_em_desenvolvimento_sem_changespec(equipe, planejada):
-    resposta = _mudar_pela_tela(equipe, planejada, EM_DESENVOLVIMENTO)
+    resposta = _mudar_pela_porta(equipe, planejada, EM_DESENVOLVIMENTO)
 
-    assert resposta.status_code == 400
+    # 422 e nao mais 400: a recusa deixou de ser uma pagina redesenhada e
+    # passou a ser a `Recusa` do contrato. A trava e a mesma, no mesmo degrau.
+    assert resposta.status_code == 422, resposta.content
     planejada.refresh_from_db()
     assert planejada.status == PLANEJADO
 
@@ -93,7 +99,7 @@ def test_a_recusa_nao_deixa_rastro_nenhum(equipe, planejada):
     seria pior que nenhuma trava — o status voltaria atrás na tela e o resto da
     plataforma teria recebido `sugestao.status-alterado`.
     """
-    _mudar_pela_tela(equipe, planejada, EM_DESENVOLVIMENTO)
+    _mudar_pela_porta(equipe, planejada, EM_DESENVOLVIMENTO)
 
     assert HistoricoStatus.objects.count() == 0
     assert Aviso.objects.count() == 0
@@ -115,7 +121,7 @@ def test_a_recusa_nem_chega_a_travar_a_linha(equipe, planejada):
     a fila de moderação inteira quando alguém insiste no botão.
     """
     with CaptureQueriesContext(connection) as consultas:
-        _mudar_pela_tela(equipe, planejada, EM_DESENVOLVIMENTO)
+        _mudar_pela_porta(equipe, planejada, EM_DESENVOLVIMENTO)
 
     travas = [
         c["sql"] for c in consultas.captured_queries if "FOR UPDATE" in c["sql"].upper()
@@ -127,26 +133,37 @@ def test_a_recusa_nem_chega_a_travar_a_linha(equipe, planejada):
 
 
 def test_a_recusa_ensina_o_caminho_em_portugues(equipe, planejada):
-    """Erro que não diz o que fazer custa uma rodada de investigação."""
-    corpo = _mudar_pela_tela(equipe, planejada, EM_DESENVOLVIMENTO).content.decode()
+    """Erro que não diz o que fazer custa uma rodada de investigação.
 
-    assert "ChangeSpec" in corpo
-    assert "docs/changespecs/" in corpo
-    assert reverse("changespecs", args=[planejada.id]) in corpo
+    A frase é a MESMA de sempre — ela nasce no `save()` do model
+    (`CorredorAusente`) e atravessa a fronteira inteira dentro de `Recusa`. O
+    endereço da tela antiga saiu dela porque a tela saiu do ar; quem lê agora é
+    o Admin, que já sabe onde fica o próprio formulário de assinatura.
+    """
+    erro = _mudar_pela_porta(equipe, planejada, EM_DESENVOLVIMENTO).json()["erro"]
+
+    assert "ChangeSpec" in erro
+    assert "docs/changespecs/" in erro
+    assert "FORMATO-CHANGESPEC.md" in erro
+    # E ela NÃO aponta para tela nenhuma: descrever o botão de outra célula é
+    # uma frase que envelhece sozinha no dia em que aquela tela mudar.
+    assert "aqui embaixo" not in erro
 
 
-def test_a_pagina_de_moderacao_avisa_antes_de_alguem_tentar(equipe, planejada):
-    """A mesma frase, no GET — descobrir depois do clique não ensina nada."""
-    corpo = equipe.client.get(reverse("moderar", args=[planejada.id])).content.decode()
-
-    assert "está barrado" in corpo
-    assert reverse("changespecs", args=[planejada.id]) in corpo
+# `test_a_pagina_de_moderacao_avisa_antes_de_alguem_tentar` e
+# `test_o_aviso_some_da_pagina_quando_o_corredor_existe` saíram daqui em
+# 30/08/2026: eles mediam o GET da tela de `/moderacao`, que foi aposentada
+# (TAR-023 degrau 4). O aviso ANTES do clique continua existindo — mudou de
+# casa junto com a tela, e hoje é `services/admin`, na seção "A assinatura que
+# libera a obra" de `caixa_ideia.html`, com guardas em
+# `services/admin/tests/test_caixa_acoes.py`. Do lado de cá o que sobra é o que
+# é desta célula: a trava, e ela continua medida nos quatro degraus abaixo.
 
 
 def test_com_changespec_registrado_a_ideia_anda(equipe, planejada, changespec):
-    resposta = _mudar_pela_tela(equipe, planejada, EM_DESENVOLVIMENTO, "começou")
+    resposta = _mudar_pela_porta(equipe, planejada, EM_DESENVOLVIMENTO, "começou")
 
-    assert resposta.status_code == 302, resposta.content
+    assert resposta.status_code == 200, resposta.content
     planejada.refresh_from_db()
     assert planejada.status == EM_DESENVOLVIMENTO
     assert HistoricoStatus.objects.count() == 1
@@ -154,13 +171,6 @@ def test_com_changespec_registrado_a_ideia_anda(equipe, planejada, changespec):
     # trava é um portão, não um caminho paralelo.
     assert Aviso.objects.count() == 1
     assert OutboxEvent.objects.filter(event="sugestao.status-alterado").count() == 1
-
-
-def test_o_aviso_some_da_pagina_quando_o_corredor_existe(equipe, planejada, changespec):
-    corpo = equipe.client.get(reverse("moderar", args=[planejada.id])).content.decode()
-
-    assert "está barrado" not in corpo
-    assert changespec.change_id in corpo
 
 
 # ---------------------------------------------------------------------------
@@ -322,8 +332,8 @@ def test_as_outras_transicoes_continuam_livres(equipe, planejada):
         (Sugestao.Status.IMPLEMENTADO, "entregue"),
         (Sugestao.Status.NAO_PLANEJADO, "não vamos fazer, e o motivo é este"),
     ):
-        resposta = _mudar_pela_tela(equipe, planejada, status, nota)
-        assert resposta.status_code == 302, f"{status}: {resposta.content}"
+        resposta = _mudar_pela_porta(equipe, planejada, status, nota)
+        assert resposta.status_code == 200, f"{status}: {resposta.content}"
         planejada.refresh_from_db()
         assert planejada.status == status
 
@@ -341,9 +351,9 @@ def test_a_fronteira_da_lei_e_a_transicao_NOMINAL(equipe, sugestao):
     não reescreve spec de plataforma dentro de um despacho; o que ele pode
     fazer é deixar a fronteira medida, em vez de implícita.
     """
-    resposta = _mudar_pela_tela(equipe, sugestao, EM_DESENVOLVIMENTO, "começou")
+    resposta = _mudar_pela_porta(equipe, sugestao, EM_DESENVOLVIMENTO, "começou")
 
-    assert resposta.status_code == 302, resposta.content
+    assert resposta.status_code == 200, resposta.content
     sugestao.refresh_from_db()
     assert sugestao.status == EM_DESENVOLVIMENTO
 

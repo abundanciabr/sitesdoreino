@@ -565,7 +565,7 @@ def lista_da_staff(monkeypatch):
 
 
 @pytest.fixture
-def entrar_como_staff(rede, lista_da_staff, db):
+def entrar_como_staff(rede, lista_da_staff, db, gestao):
     """Alguém da equipe, pela mesma porta real do aluno.
 
     Uma diferença que é prova por si: aqui **não se dubla a `alunos`**. A
@@ -573,6 +573,12 @@ def entrar_como_staff(rede, lista_da_staff, db):
     antiga), e o `respx` estoura em qualquer requisição não registrada
     (armadilhas/054) — se alguém inverter a ordem um dia, esta fixture cai com
     `AllMockedAssertionError`, não com um teste verde de mentira.
+
+    **`pessoa.gestao` é a jornada de moderação de hoje** (desde 30/08/2026): as
+    telas de `/moderacao` desta célula foram aposentadas, e quem modera é o
+    Admin, pelo contrato. Quem tem crachá ganha o atalho aqui, e só quem tem —
+    a porta de máquina continua fechada para o resto da suíte, que é o que faz
+    `test_nenhuma_operacao_responde_sem_o_token_do_par` continuar medindo algo.
     """
 
     def _entrar(
@@ -584,6 +590,7 @@ def entrar_como_staff(rede, lista_da_staff, db):
         lista_da_staff(email)
         pessoa = sessao_do_site(rede, email=email, nome=nome, com_id=com_id)
         assert pessoa.esta_dentro
+        pessoa.gestao = gestao
         return pessoa
 
     return _entrar
@@ -638,20 +645,21 @@ def changespec(aprovador, sugestao):
 
     Nunca por `ChangeSpecAprovado.objects.create(...)` à mão: o que os guardas
     da trava precisam provar é que a JORNADA abre o corredor, e um `create()`
-    continuaria verde no dia em que a tela parasse de conferir qualquer coisa.
-    """
-    from django.urls import reverse
+    continuaria verde no dia em que a porta parasse de conferir qualquer coisa.
 
-    resposta = aprovador.client.post(
-        reverse("changespecs", args=[sugestao.id]),
-        {
-            "change_id": "CS-SUGESTOES-0001",
-            "documento": "docs/changespecs/CS-SUGESTOES-0001.md",
-            "aprovado_por": "Davi (mantenedor)",
-            "aprovado_em": "2026-08-25",
-        },
+    A jornada mudou de porta em 30/08/2026 (a tela de `/moderacao` foi
+    aposentada) e **não mudou de portão**: `SUGESTOES_APROVADORES` continua
+    sendo quem decide, agora conferido no handler do contrato.
+    """
+    resposta = aprovador.gestao.assinar(
+        aprovador,
+        sugestao,
+        change_id="CS-SUGESTOES-0001",
+        documento="docs/changespecs/CS-SUGESTOES-0001.md",
+        aprovado_por="Davi (mantenedor)",
+        aprovado_em="2026-08-25",
     )
-    assert resposta.status_code == 302, resposta.content
+    assert resposta.status_code == 200, resposta.content
     return sugestao.changespecs.get()
 
 
@@ -711,6 +719,87 @@ def fio(monkeypatch):
     return linha
 
 
+# ---------------------------------------------------------------------------
+# A jornada de MODERAÇÃO, depois de 30/08/2026 — pelo contrato, do Admin
+# ---------------------------------------------------------------------------
+#
+# As telas de `/moderacao` desta célula foram aposentadas (TAR-023 degrau 4);
+# quem move de fase, avalia e assina é `/admin/caixa/`, e ele fala com esta
+# célula pela superfície de máquina (`apps/core/api_gestao.py`). Provocar o
+# fato POR AQUI é provocá-lo pela jornada REAL de hoje — que é a razão de esta
+# suíte não usar `objects.create` para os fatos que importam. Um guarda que
+# continuasse chamando a view morta provaria uma jornada que ninguém percorre.
+
+TOKEN_DO_PAR_ADMIN = "token-do-par-admin-sugestoes"
+GESTAO = "/interno/gestao/ideias"
+
+
+class Gestao:
+    """O Admin falando com a Caixa — as três escritas da gestão."""
+
+    def __init__(self, client) -> None:
+        self.client = client
+
+    @staticmethod
+    def quem(pessoa) -> dict:
+        """Quem age, na forma do contrato — igual ao `_quem` do Admin.
+
+        Aceita uma `Porta` ou uma `Identidade`: os guardas usam as duas, e
+        exigir uma delas só faria cada teste lembrar de qual.
+        """
+        identidade = getattr(pessoa, "identidade", pessoa)
+        return {
+            "por_email": identidade.email,
+            "por_nome": identidade.nome_exibido,
+            # [INV-SUG12] sem ele a Caixa recusa COM INSTRUÇÃO — e há guarda
+            # medindo exatamente isso; por isso o dublê o manda quando existe.
+            "por_id_da_plataforma": identidade.id_da_plataforma or "",
+        }
+
+    def _post(self, caminho: str, corpo: dict):
+        return self.client.post(
+            caminho,
+            data=json.dumps(corpo),
+            content_type="application/json",
+            headers={"authorization": f"Bearer {TOKEN_DO_PAR_ADMIN}"},
+        )
+
+    def mudar_status(self, pessoa, sugestao: Sugestao, status: str, nota: str = ""):
+        return self._post(
+            f"{GESTAO}/{sugestao.id}/status",
+            {**self.quem(pessoa), "status": status, "nota": nota},
+        )
+
+    def avaliar(self, pessoa, sugestao: Sugestao, **campos):
+        return self._post(
+            f"{GESTAO}/{sugestao.id}/avaliacao", {**self.quem(pessoa), **campos}
+        )
+
+    def assinar(self, pessoa, sugestao: Sugestao, **campos):
+        return self._post(
+            f"{GESTAO}/{sugestao.id}/changespec", {**self.quem(pessoa), **campos}
+        )
+
+    def uma_ideia(self, sugestao_id: int):
+        return self.client.get(
+            f"{GESTAO}/{sugestao_id}",
+            headers={"authorization": f"Bearer {TOKEN_DO_PAR_ADMIN}"},
+        )
+
+
+@pytest.fixture
+def gestao(client, settings):
+    """A porta de máquina aberta para o par do Admin, e só para ele.
+
+    O token entra por `settings` (e não pelo env) porque é assim que
+    `apps/core/auth.py` o lê; a fixture existe justamente para o teste NÃO
+    montar isso à mão e para nenhum outro teste ganhar a porta aberta por
+    acidente — a suíte inteira continua começando com a fronteira trancada.
+    """
+    settings.TOKENS_ACEITOS = {TOKEN_DO_PAR_ADMIN}
+    return Gestao(client)
+
+
 class Caixa:
     """Os quatro fatos, provocados pelo clique de verdade — nunca pelo ORM.
 
@@ -719,9 +808,10 @@ class Caixa:
     parasse de chamá-lo. O que interessa é o contrário: que a JORNADA emite.
     """
 
-    def __init__(self, aluno, equipe) -> None:
+    def __init__(self, aluno, equipe, gestao: "Gestao") -> None:
         self.aluno = aluno
         self.equipe = equipe
+        self.gestao = gestao
 
     def publicar(self, titulo: str = "Legendas nas aulas", **extra) -> Sugestao:
         resposta = self.aluno.client.post(
@@ -744,10 +834,12 @@ class Caixa:
         return (quem or self.aluno).client.post(reverse("desvotar", args=[sugestao.id]))
 
     def mudar_status(self, sugestao: Sugestao, status: str, nota: str = ""):
-        return self.equipe.client.post(
-            reverse("mudar_status", args=[sugestao.id]),
-            {"status": status, "nota": nota},
-        )
+        """Pelo CONTRATO, como o Admin faz — a tela antiga não existe mais.
+
+        Responde **200** (a ideia, em JSON), e não mais 302: quem chama aqui
+        não é um navegador seguindo redirecionamento, é a outra célula.
+        """
+        return self.gestao.mudar_status(self.equipe, sugestao, status, nota=nota)
 
     def os_quatro_fatos(self) -> Sugestao:
         """Publicar, votar, desvotar e mudar o status — nesta ordem.
@@ -759,19 +851,17 @@ class Caixa:
         sugestao = self.publicar()
         assert self.votar(sugestao).status_code == 302
         assert self.desvotar(sugestao).status_code == 302
-        assert (
-            self.mudar_status(
-                sugestao, Sugestao.Status.PLANEJADO, nota="Entra no próximo ciclo."
-            ).status_code
-            == 302
+        resposta = self.mudar_status(
+            sugestao, Sugestao.Status.PLANEJADO, nota="Entra no próximo ciclo."
         )
+        assert resposta.status_code == 200, resposta.content
         return sugestao
 
 
 @pytest.fixture
-def caixa(dentro, equipe, categoria):
+def caixa(dentro, equipe, categoria, gestao):
     """Um aluno e alguém da equipe, os dois já dentro pela porta de verdade."""
-    return Caixa(dentro, equipe)
+    return Caixa(dentro, equipe, gestao)
 
 
 # ---------------------------------------------------------------------------

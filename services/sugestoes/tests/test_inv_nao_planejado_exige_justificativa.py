@@ -14,7 +14,6 @@ uma justificativa que a equipe escreve e o banco não guarda seria teatro.
 """
 
 import pytest
-from django.urls import reverse
 
 from apps.sugestoes.models import HistoricoStatus, Sugestao
 
@@ -22,16 +21,16 @@ pytestmark = pytest.mark.django_db
 
 
 def _recusar(equipe, sugestao, nota=""):
-    return equipe.client.post(
-        reverse("mudar_status", args=[sugestao.id]),
-        {"status": Sugestao.Status.NAO_PLANEJADO, "nota": nota},
+    """Pelo contrato — a tela de `/moderacao` foi aposentada em 30/08/2026."""
+    return equipe.gestao.mudar_status(
+        equipe, sugestao, Sugestao.Status.NAO_PLANEJADO, nota=nota
     )
 
 
 def test_sem_justificativa_a_mudanca_e_recusada_e_nada_e_escrito(equipe, sugestao):
     resposta = _recusar(equipe, sugestao)
 
-    assert resposta.status_code == 400
+    assert resposta.status_code == 422, resposta.content
     sugestao.refresh_from_db()
     assert sugestao.status == Sugestao.Status.EM_ANALISE
     assert HistoricoStatus.objects.count() == 0
@@ -41,17 +40,18 @@ def test_justificativa_so_de_espaco_nao_conta(equipe, sugestao):
     """Senão o portão vira peneira: um espaço passaria por "texto"."""
     resposta = _recusar(equipe, sugestao, "   \n\t  ")
 
-    assert resposta.status_code == 400
+    assert resposta.status_code == 422, resposta.content
     sugestao.refresh_from_db()
     assert sugestao.status == Sugestao.Status.EM_ANALISE
     assert HistoricoStatus.objects.count() == 0
 
 
 def test_a_recusa_diz_o_que_falta_em_portugues(equipe, sugestao):
-    corpo = _recusar(equipe, sugestao).content.decode()
+    """A MESMA frase que a tela dizia — ela mudou de casa, não de redação."""
+    erro = _recusar(equipe, sugestao).json()["erro"]
 
-    assert "Não planejado" in corpo
-    assert "quem sugeriu vai ler" in corpo
+    assert "escreva o porquê" in erro
+    assert "quem sugeriu vai ler" in erro
 
 
 def test_com_justificativa_passa_e_a_nota_fica_no_historico(equipe, sugestao):
@@ -59,7 +59,7 @@ def test_com_justificativa_passa_e_a_nota_fica_no_historico(equipe, sugestao):
 
     resposta = _recusar(equipe, sugestao, motivo)
 
-    assert resposta.status_code == 302, resposta.content
+    assert resposta.status_code == 200, resposta.content
     sugestao.refresh_from_db()
     assert sugestao.status == Sugestao.Status.NAO_PLANEJADO
     linha = HistoricoStatus.objects.get()
@@ -85,25 +85,18 @@ def test_os_outros_status_nao_exigem_nota(equipe, sugestao, changespec):
         Sugestao.Status.IMPLEMENTADO,
         Sugestao.Status.EM_ANALISE,
     ):
-        resposta = equipe.client.post(
-            reverse("mudar_status", args=[sugestao.id]), {"status": status}
-        )
-        assert resposta.status_code == 302, f"{status}: {resposta.content}"
+        resposta = equipe.gestao.mudar_status(equipe, sugestao, status)
+        assert resposta.status_code == 200, f"{status}: {resposta.content}"
 
     sugestao.refresh_from_db()
     assert sugestao.status == Sugestao.Status.EM_ANALISE
     assert HistoricoStatus.objects.count() == 4
 
 
-def test_depois_de_recusado_o_texto_digitado_volta_na_tela(equipe, sugestao):
-    """Detalhe de gente: quem escreveu um parágrafo e errou o campo não pode
-    perder o parágrafo. O rascunho da nota volta preenchido."""
-    corpo = _recusar(equipe, sugestao, "  ").content.decode()
-    assert "Não planejado" in corpo
-
-    escrito = "Fora de escopo, e aqui está o porquê inteiro."
-    corpo = equipe.client.post(
-        reverse("mudar_status", args=[sugestao.id]),
-        {"status": "virou_unicornio", "nota": escrito},
-    ).content.decode()
-    assert escrito in corpo
+# `test_depois_de_recusado_o_texto_digitado_volta_na_tela` saiu daqui em
+# 30/08/2026 junto com a tela que ele media: ele exigia que o formulário fosse
+# REDESENHADO com o rascunho dentro, e formulário é do consumidor — esta célula
+# devolve `Recusa` em JSON e não desenha tela nenhuma. O cuidado que ele
+# protegia (quem escreveu um parágrafo e errou o campo não pode perder o
+# parágrafo) é hoje responsabilidade da tela do Admin, e está anotado no
+# relatório da TAR-023 como diferença conhecida.

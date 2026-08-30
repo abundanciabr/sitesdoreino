@@ -1,205 +1,106 @@
-"""A superfície da equipe (EVO-13): a fila, a página de moderação e a avaliação.
+"""A moderação depois da mudança de casa (30/08/2026): os cinco endereços.
 
-Os invariantes moram nos `test_inv_*` deste diretório — 403 para quem não é
-staff, histórico na mesma transação, justificativa obrigatória, append-only,
-situação de matrícula. Aqui ficam os comportamentos que fazem a moderação ser
-utilizável: a fila mostra o que precisa mostrar, a avaliação interna é UMA por
-sugestão e revisitável, e a equipe tem como chegar até a fila sem decorar URL.
+Até 30/08/2026 este arquivo media a superfície da equipe DENTRO desta célula —
+a fila, a página de moderação, a avaliação interna. Essas telas foram
+aposentadas (TAR-023 degrau 4, fechando a decisão
+`docs/decisoes/DECISAO-a-gestao-da-caixa-mora-no-admin.md`): quem conduz as
+ideias é `/admin/caixa/`, e os comportamentos que estes testes mediam mudaram de
+célula junto com as telas — hoje estão em
+`services/admin/tests/test_caixa_no_admin.py` e `test_caixa_acoes.py`.
+
+**O que ficou aqui é o que continua sendo desta célula**, e é o assunto novo do
+arquivo: os cinco endereços antigos NÃO foram apagados, e este arquivo é o
+guarda do que eles fazem agora.
+
+Os três fatos que ele mede, e por que cada um importa:
+
+1. **GET redireciona (301), não some.** Um 404 puniria quem salvou o endereço —
+   e quem salvou foi justamente quem mais usava a tela.
+2. **POST RECUSA (410) e diz que nada foi salvo.** Um 301 num POST vira um GET
+   silencioso no destino: a pessoa veria a página nova e leria aquilo como
+   "salvou". É falso-verde de produto (`RETROSPECTIVA-FASE-D` §1), e é o modo de
+   falha que só existe porque estas cinco rotas incluíam ESCRITA — as três abas
+   aposentadas em 28/08 eram todas de leitura.
+3. **O crachá continua na frente.** Quem não é da equipe leva 403 e não descobre
+   nem para onde a gestão foi. Redirecionamento é cortesia para quem já tinha
+   acesso, nunca mapa para quem não tem.
+
+Os invariantes continuam nos `test_inv_*` deste diretório — e eles agora
+percorrem a jornada REAL (o contrato, `conftest.Gestao`), não uma view morta.
 """
 
 import pytest
 from django.urls import reverse
 
-from apps.sugestoes.models import AvaliacaoInterna, Sugestao, Voto
-
 pytestmark = pytest.mark.django_db
 
+# A casa nova. Escrita por extenso de propósito: se alguém mudar o destino em
+# `apps/core/mudou_de_casa.py`, este guarda tem de reprovar, e não seguir a
+# constante de mansinho.
+CASA_NOVA = "/admin/caixa/"
 
-@pytest.fixture
-def duas_sugestoes(quadro, categoria, aluno, outro_aluno):
-    """Uma com voto, outra sem — o suficiente para a ordem significar algo."""
-    campeã = Sugestao.objects.create(
-        quadro=quadro,
-        categoria=categoria,
-        autor=aluno,
-        titulo="Exportar o projeto para o Roblox",
-        problema="Termino a aula e não sei como publicar.",
-    )
-    quieta = Sugestao.objects.create(
-        quadro=quadro,
-        categoria=categoria,
-        autor=outro_aluno,
-        titulo="Aula sobre iluminação",
-        problema="Meus mapas ficam escuros.",
-    )
-    Voto.objects.create(sugestao=campeã, autor=outro_aluno)
-    return campeã, quieta
+# Os CINCO endereços aposentados, com o método que cada um servia. É a lista da
+# auditoria de paridade do registro `20260830-019`.
+ENDERECOS = [
+    ("fila", (), "get"),
+    ("moderar", (1,), "get"),
+    ("mudar_status", (1,), "post"),
+    ("avaliar", (1,), "post"),
+    ("changespecs", (1,), "get"),
+]
 
 
-# ---------------------------------------------------------------------------
-# A fila
-# ---------------------------------------------------------------------------
-
-
-def test_a_fila_mostra_as_sugestoes_do_mais_votado_para_o_menos(equipe, duas_sugestoes):
-    campeã, quieta = duas_sugestoes
-
-    corpo = equipe.client.get(reverse("fila")).content.decode()
-
-    assert corpo.index(campeã.titulo) < corpo.index(quieta.titulo)
-
-
-def test_a_fila_mostra_o_status_e_se_ja_foi_avaliada(equipe, duas_sugestoes, aluno):
-    campeã, _ = duas_sugestoes
-    AvaliacaoInterna.objects.create(
-        sugestao=campeã, notas="já olhamos", avaliado_por=aluno
-    )
-
-    corpo = equipe.client.get(reverse("fila")).content.decode()
-
-    assert "Em análise" in corpo
-    assert "sem avaliação interna" in corpo
-    assert "avaliada" in corpo
-
-
-def test_a_fila_filtra_por_status(equipe, duas_sugestoes):
-    campeã, quieta = duas_sugestoes
-    Sugestao.objects.filter(pk=quieta.pk).update(status=Sugestao.Status.PLANEJADO)
-
-    corpo = equipe.client.get(
-        reverse("fila"), {"status": Sugestao.Status.PLANEJADO}
-    ).content.decode()
-
-    assert quieta.titulo in corpo
-    assert campeã.titulo not in corpo
-
-
-def test_um_filtro_de_status_inventado_e_ignorado_e_nao_quebra_a_fila(
-    equipe, duas_sugestoes
+@pytest.mark.parametrize("nome,args,_metodo", ENDERECOS)
+def test_todo_endereco_antigo_leva_a_equipe_para_a_casa_nova(
+    equipe, sugestao, nome, args, _metodo
 ):
-    """Filtro desconhecido cai para "todos" — e não para uma lista vazia que
-    faria a equipe achar que a fila esvaziou."""
-    resposta = equipe.client.get(reverse("fila"), {"status": "virou_unicornio"})
+    """GET em qualquer um dos cinco: 301 permanente para `/admin/caixa/`."""
+    resposta = equipe.client.get(reverse(nome, args=args))
 
-    assert resposta.status_code == 200
-    for sugestao in duas_sugestoes:
-        assert sugestao.titulo in resposta.content.decode()
+    assert resposta.status_code == 301, f"{nome}: {resposta.content[:200]}"
+    assert resposta["Location"] == CASA_NOVA
 
 
-# ---------------------------------------------------------------------------
-# A página de uma sugestão, do lado da equipe
-# ---------------------------------------------------------------------------
-
-
-def test_a_pagina_de_moderacao_mostra_o_historico_com_a_nota(equipe, sugestao):
-    equipe.client.post(
-        reverse("mudar_status", args=[sugestao.id]),
-        {"status": Sugestao.Status.PLANEJADO, "nota": "entra na trilha de agosto"},
-    )
-
-    corpo = equipe.client.get(reverse("moderar", args=[sugestao.id])).content.decode()
-
-    assert "Em análise" in corpo and "Planejado" in corpo
-    assert "entra na trilha de agosto" in corpo
-    assert "Equipe" in corpo  # quem mudou
-
-
-def test_a_pagina_de_moderacao_nao_oferece_apagar_o_historico(equipe, sugestao):
-    """O histórico é append-only nos três degraus do EVO-11: um botão de apagar
-    seria uma promessa que o banco recusa — erro 500 em vez de tela útil."""
-    corpo = equipe.client.get(reverse("moderar", args=[sugestao.id])).content.decode()
-
-    assert "Apagar" not in corpo
-    assert "Excluir" not in corpo
-
-
-# ---------------------------------------------------------------------------
-# A avaliação interna
-# ---------------------------------------------------------------------------
-
-
-def test_a_equipe_registra_a_avaliacao_interna(equipe, sugestao):
-    resposta = equipe.client.post(
-        reverse("avaliar", args=[sugestao.id]),
-        {
-            "impacto_educacional": 5,
-            "impacto_comercial": 3,
-            "esforco_tecnico": 2,
-            "notas": "dá para reaproveitar o player que já existe",
-            "decisao_produto": "entra depois do módulo 3",
-        },
-    )
-
-    assert resposta.status_code == 302, resposta.content
-    avaliacao = AvaliacaoInterna.objects.get()
-    assert avaliacao.sugestao_id == sugestao.id
-    assert (
-        avaliacao.impacto_educacional,
-        avaliacao.impacto_comercial,
-        avaliacao.esforco_tecnico,
-    ) == (5, 3, 2)
-    assert avaliacao.decisao_produto == "entra depois do módulo 3"
-    assert avaliacao.avaliado_por_id == equipe.identidade.id
-
-
-def test_avaliar_de_novo_atualiza_a_mesma_linha(equipe, sugestao):
-    """A avaliação é UMA por sugestão (`OneToOneField`) e é revisitada. Quem
-    guarda linha do tempo é o `HistoricoStatus`, e ele é de status, não de
-    opinião interna."""
-    endereco = reverse("avaliar", args=[sugestao.id])
-    equipe.client.post(endereco, {"esforco_tecnico": 1, "notas": "primeira leitura"})
-    equipe.client.post(
-        endereco, {"esforco_tecnico": 4, "notas": "é mais caro do que parecia"}
-    )
-
-    avaliacao = AvaliacaoInterna.objects.get()
-    assert avaliacao.esforco_tecnico == 4
-    assert avaliacao.notas == "é mais caro do que parecia"
-
-
-def test_a_segunda_pessoa_da_equipe_assume_a_avaliacao(
-    equipe, entrar_como_staff, sugestao
+@pytest.mark.parametrize("nome,args", [(n, a) for n, a, m in ENDERECOS if m == "post"])
+def test_um_POST_de_aba_velha_e_RECUSADO_dizendo_que_nada_foi_salvo(
+    equipe, sugestao, nome, args
 ):
-    """`avaliado_por` responde "quem responde por este texto agora", e não
-    "quem escreveu primeiro" — senão a coluna aponta para quem já discorda."""
-    endereco = reverse("avaliar", args=[sugestao.id])
-    equipe.client.post(endereco, {"notas": "primeira leitura"})
+    """O caso que só existe aqui: uma aba aberta desde antes da mudança.
 
-    outra = entrar_como_staff(email="outra@meshcraft.test", nome="Outra")
-    outra.client.post(endereco, {"notas": "reescrevi"})
+    Ela ainda tem o formulário na tela. Se o POST dela virasse 301, o navegador
+    faria um GET no destino, a pessoa cairia na tela nova e leria aquilo como
+    confirmação — teria "movido a ideia" sem nada ter acontecido.
+    """
+    resposta = equipe.client.post(reverse(nome, args=args), {"status": "planejado"})
 
-    assert AvaliacaoInterna.objects.get().avaliado_por_id == outra.identidade.id
-
-
-@pytest.mark.parametrize("valor", ["-1", "6", "muitos"])
-def test_nota_fora_da_escala_e_recusada_com_frase_em_portugues(equipe, sugestao, valor):
-    """A recusa vem como texto, não como `IntegrityError` do check constraint
-    do Postgres — que é o que aconteceria com um número negativo passando."""
-    resposta = equipe.client.post(
-        reverse("avaliar", args=[sugestao.id]), {"impacto_educacional": valor}
-    )
-
-    assert resposta.status_code == 400
-    assert "vai de 0 a 5" in resposta.content.decode()
-    assert AvaliacaoInterna.objects.count() == 0
+    assert resposta.status_code == 410
+    corpo = resposta.content.decode()
+    assert "NÃO foi guardado" in corpo
+    assert CASA_NOVA in corpo
 
 
-def test_campo_de_nota_em_branco_vale_zero(equipe, sugestao):
-    """Salvar só a decisão de produto, sem tocar nas notas, é caso normal."""
-    resposta = equipe.client.post(
-        reverse("avaliar", args=[sugestao.id]), {"decisao_produto": "vamos fazer"}
-    )
+@pytest.mark.parametrize("nome,args,_metodo", ENDERECOS)
+def test_quem_nao_e_da_equipe_nem_descobre_para_onde_a_gestao_foi(
+    dentro, sugestao, nome, args, _metodo
+):
+    """403 ANTES do redirecionamento — a ordem dos decoradores é o guarda."""
+    resposta = dentro.client.get(reverse(nome, args=args))
 
-    assert resposta.status_code == 302, resposta.content
-    assert AvaliacaoInterna.objects.get().impacto_educacional == 0
+    assert resposta.status_code == 403
+    assert CASA_NOVA not in resposta.content.decode()
 
 
 # ---------------------------------------------------------------------------
-# O caminho até a fila
+# O caminho até a gestão, no topo de toda página
 # ---------------------------------------------------------------------------
 
 
 def test_a_equipe_tem_link_para_a_fila_no_topo_de_toda_pagina(equipe, sugestao):
+    """O link ficou: ele é o atalho de quem tem crachá para a casa nova.
+
+    Apagá-lo obrigaria a equipe a decorar `/admin/caixa/`; mantê-lo custa um
+    salto de redirecionamento e nenhuma decoreba.
+    """
     corpo = equipe.client.get(reverse("quadro")).content.decode()
 
     assert reverse("fila") in corpo

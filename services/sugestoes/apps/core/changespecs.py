@@ -30,19 +30,22 @@ toda variável desta célula (`config/settings.py`, topo).
 import os
 import re
 from datetime import date
-from functools import wraps
 
 from django.db import IntegrityError, transaction
-from django.http import HttpResponseForbidden, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
-from django.urls import reverse
 from django.utils.dateparse import parse_date
 
-from apps.sugestoes.models import ChangeSpecAprovado, Sugestao
+from apps.sugestoes.models import ChangeSpecAprovado
 
-from .moderacao import exige_staff
-
-PAGINA = "sugestoes/changespecs.html"
+# A TELA saiu daqui em 30/08/2026 (TAR-023 degrau 4), junto com o decorador
+# `exige_aprovador` que só ela usava: quem registra ChangeSpec agora é o Admin,
+# em `/admin/caixa/ideia/<id>`, e ele chega por `apps/core/api_gestao.py`.
+#
+# **O portão NÃO mudou de dono nem afrouxou** ([INV-SUG10]): quem decide
+# continua sendo `e_aprovador()`, aqui embaixo, lido do env no ponto de uso e
+# fail-closed com lista vazia. O que mudou é quem o chama — antes um decorador
+# de view, agora o handler do contrato, que devolve **403 com a mesma frase**
+# (`SEM_MANDATO`). Estar no Admin continua não bastando, e há guarda medindo
+# exatamente isso (`test_estar_no_admin_nao_da_o_direito_de_assinar`).
 
 # `CS-{celula}-{sequencial}` (formato §3, ex.: `CS-PORTFOLIO-0001`). O sufixo
 # `-v2` é a imutabilidade do §4 em pessoa: escopo que mudou não edita o
@@ -85,30 +88,6 @@ def emails_dos_aprovadores() -> set[str]:
 
 def e_aprovador(email: str) -> bool:
     return email.strip().lower() in emails_dos_aprovadores()
-
-
-def exige_aprovador(view):
-    """Empilha sobre `exige_staff`, que empilha sobre `exige_sessao`.
-
-    A ordem é o que faz cada recusa dizer a verdade: anônimo vai para a porta
-    (302), quem tem sessão e não é da equipe leva 403 do crachá, e quem é da
-    equipe mas não aprova leva 403 **com outro motivo escrito**. Três estados,
-    três respostas — e nenhuma delas é esconder o botão, que protegeria a tela
-    e não a rota.
-
-    O atributo `exige_aprovador` fica no objeto pelo mesmo motivo dos outros
-    dois: é por ele que o guarda varre o urlconf. `functools.wraps` copia o
-    `__dict__`, então os três atributos sobrevivem ao empilhamento.
-    """
-
-    @wraps(view)
-    def mandato(request, ator, *args, **kwargs):
-        if not e_aprovador(ator.identidade.email):
-            return HttpResponseForbidden(SEM_MANDATO, content_type="text/plain")
-        return view(request, ator, *args, **kwargs)
-
-    mandato.exige_aprovador = True
-    return exige_staff(mandato)
 
 
 # ---------------------------------------------------------------------------
@@ -189,57 +168,3 @@ def registrar(*, sugestao, por, **campos) -> ChangeSpecAprovado:
                 "escopo novo é uma versão nova, com o sufixo -v2."
             ]
         )
-
-
-# ---------------------------------------------------------------------------
-# A tela de quem aprova
-# ---------------------------------------------------------------------------
-
-
-def _pagina(request, ator, sugestao, *, erros=(), status=200):
-    return render(
-        request,
-        PAGINA,
-        {
-            "ator": ator,
-            "sugestao": sugestao,
-            "changespecs": sugestao.changespecs.select_related("registrado_por"),
-            "erros": list(erros),
-            "rascunho": {
-                campo: (request.POST.get(campo) or "").strip()
-                for campo in ("change_id", "documento", "aprovado_por", "aprovado_em")
-            },
-        },
-        status=status,
-    )
-
-
-@exige_aprovador
-def changespecs(request, ator, sugestao_id):
-    """Uma rota, dois métodos: a página e o formulário que posta para ela mesma.
-
-    Não há `require_GET`/`require_POST` aqui de propósito — seriam duas rotas
-    para uma tela só, e duas entradas a mais em cada uma das varreduras de
-    urlconf desta célula. O que cada método faz está escrito abaixo, e o
-    guarda mede os dois.
-    """
-    sugestao = get_object_or_404(
-        Sugestao.objects.select_related("categoria", "autor", "quadro"),
-        pk=sugestao_id,
-    )
-    if request.method != "POST":
-        return _pagina(request, ator, sugestao)
-
-    try:
-        registrar(
-            sugestao=sugestao,
-            por=ator.identidade,
-            change_id=request.POST.get("change_id"),
-            documento=request.POST.get("documento"),
-            aprovado_por=request.POST.get("aprovado_por"),
-            aprovado_em=request.POST.get("aprovado_em"),
-        )
-    except ChangeSpecInvalido as erro:
-        return _pagina(request, ator, sugestao, erros=erro.args[0], status=400)
-
-    return HttpResponseRedirect(reverse("changespecs", args=[sugestao.id]))
