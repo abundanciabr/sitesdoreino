@@ -14,6 +14,7 @@ from apps.core.caixa import (
     travessia,
 )
 from apps.core.divida import divida_json
+from apps.core.mapa_do_site import mapa_do_site
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.painel import painel, painel_arquivo
 from apps.core.robos import robos
@@ -67,6 +68,16 @@ urlpatterns = [
     # Sem esta rota, saber isso exige entrar na VPS — e ninguém entra (Lei 5).
     path("painel/diag.json", diag_json, name="painel_diag"),
     re_path(r"^painel/(?P<path>.+)$", painel_arquivo, name="painel_arquivo"),
+    # O MAPA DO SITE (`apps/core/mapa_do_site.py`, 30/08/2026) — todo endereço
+    # que a plataforma tem, numa página só, em português.
+    #
+    # FORA do prefixo `painel/`: a rota genérica logo acima engoliria qualquer
+    # irmão dele (ela casa `painel/<qualquer coisa>`), e este mapa não é uma
+    # peça do painel — é uma tela da área, vizinha da escola e da Caixa.
+    #
+    # Barra final pela convenção das outras telas; quem chega sem ela é
+    # redirecionado pelo APPEND_SLASH, que já está na cadeia.
+    path("mapa/", mapa_do_site, name="mapa_do_site"),
     # O MAPA PARA IA (`apps/core/mapa_ia.py`) — a ÚNICA área desta célula que
     # responde SEM sessão, além de `/healthz` (INV-P14, `CAMINHOS_ISENTOS` em
     # `apps/core/porta.py`). Nasce fora do prefixo `painel/` de propósito: um

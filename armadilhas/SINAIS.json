@@ -49,6 +49,30 @@
       "arquivo": "armadilhas/189-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md",
       "titulo": "`assert datetime.datetime(...) > datetime.datetime(...)` com os DOIS lados IDÊNTICOS — no Windows, dois `timezone.now()` seguidos caem no mesmo tique do relógio",
       "regex": "assert (datetime\\.datetime\\([^)]*\\)) [<>]=? \\1"
+    },
+    {
+      "armadilha": "197",
+      "arquivo": "armadilhas/197-endereco-publico-de-celula-sob-prefixo-nao-e-prefixo.md",
+      "titulo": "O endereço público de uma célula sob prefixo NÃO é \"prefixo + rota\" — ele dobra num caso e duplica noutro",
+      "regex": "endere[çc]o (p[úu]blico )?(da|do) c[ée]lula"
+    },
+    {
+      "armadilha": "197",
+      "arquivo": "armadilhas/197-endereco-publico-de-celula-sob-prefixo-nao-e-prefixo.md",
+      "titulo": "O endereço público de uma célula sob prefixo NÃO é \"prefixo + rota\" — ele dobra num caso e duplica noutro",
+      "regex": "prefixo dobrado"
+    },
+    {
+      "armadilha": "198",
+      "arquivo": "armadilhas/198-pr-com-conflito-nao-dispara-os-workflows-de-pull-request.md",
+      "titulo": "PR com CONFLITO não dispara os workflows de `pull_request` — os checks obrigatórios não ficam pendentes, eles não existem",
+      "regex": "n[ãa]o reportaram: muralhas"
+    },
+    {
+      "armadilha": "198",
+      "arquivo": "armadilhas/198-pr-com-conflito-nao-dispara-os-workflows-de-pull-request.md",
+      "titulo": "PR com CONFLITO não dispara os workflows de `pull_request` — os checks obrigatórios não ficam pendentes, eles não existem",
+      "regex": "mergeStateStatus.*DIRTY"
     }
   ]
 }
