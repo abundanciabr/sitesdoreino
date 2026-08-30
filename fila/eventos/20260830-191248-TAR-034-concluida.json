@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-191248-TAR-034-concluida",
+  "tarefa": "TAR-034",
+  "evento": "concluida",
+  "quando": "2026-08-30T19:12:48+00:00",
+  "quem": "sessao-gamificacao-genese-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/629 - a celula services/gamificacao existe, com /healthz nas duas formas e os tres guardas provados por MUTACAO, vermelho na ASSERCAO (armadilhas/195). (a) Instalando sessao na celula: 4 failed em test_inv_gamificacao_nao_assina_sessao.py, todas em linha de assert - :37 SessionMiddleware, :45 django.contrib.sessions, :64 SESSION_ENGINE, :79 assert 'csrftoken' == 'gamificacao_csrf'. (b) Apagando TIME_ZONE: 3 failed em test_fuso_horario.py, com o template acusando assert '24/08/2026 23:00' == '25/08/2026 01:00' (o DIA errado). (c) Cravando 'conquistas/' no urls.py: 4 failed em test_healthz_script_name.py, incluindo assert 200 != 200. Desfeitas as sabotagens: 12 passed in 0.08s e black --check 11 files unchanged. celulas.yml, ci/manifesto-de-contratos.json (not-applicable), .github/workflows/rollback.yml e painel/mapa-do-site.json no lugar; DECISAO-gamificacao.md e AGENTS.gamificacao.md escritas. Portoes locais verdes (mapa-de-celulas PASS, mapa-do-site PASS, guarda-dos-guardas PASS com divida em 37, testador 1307 passed). Deploy vermelho ate o PR de infra e ESPERADO (armadilhas/088).",
+  "verificado_em": "2026-08-30"
+}
