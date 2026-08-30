@@ -109,6 +109,18 @@
       "detector": null,
       "dono": "ci/sino_das_armadilhas.py",
       "tem_sinal": true
+    },
+    {
+      "armadilha": "190",
+      "arquivo": "armadilhas/190-registro-que-quita-divida-dentro-de-pr-nao-painel-nunca-conta.md",
+      "estado": "documentada",
+      "degrau": 6,
+      "confianca": "alta",
+      "custo_por_queda": "medio",
+      "tipo": "nenhum",
+      "detector": null,
+      "dono": null,
+      "tem_sinal": false
     }
   ]
 }
