@@ -701,6 +701,15 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # andando junto, e o que ela consome casa com o contrato congelado.
         "INV-NOT1",
         "INV-NOT2",
+        # As três leis da economia da célula `gamificacao` (30/08/2026,
+        # TAR-042). Os guardas nasceram no PR #636 e reprovavam de verdade,
+        # mas viviam fora da lista: a regra 5 só vigia o que está declarado,
+        # então apagar um deles não acusaria nada. Aparecem antes do
+        # INV-CI01 porque a ordem é a de APARIÇÃO no documento, e eles
+        # fecham a seção da plataforma.
+        "INV-GAM1",
+        "INV-GAM2",
+        "INV-GAM3",
         "INV-CI01",
     ]
 
