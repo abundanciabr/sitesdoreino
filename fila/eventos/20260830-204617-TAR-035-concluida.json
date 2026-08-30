@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-204617-TAR-035-concluida",
+  "tarefa": "TAR-035",
+  "evento": "concluida",
+  "quando": "2026-08-30T20:46:17+00:00",
+  "quem": "sessao-gamificacao-modelos-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/636 - as tabelas do §3 migradas num PostgreSQL 17 de verdade, semeadura com TUDO ativa=False (37 linhas), e os TRES testes-invariante provados por sabotagem com vermelho na ASSERCAO (armadilhas/195): (1) ItemCosmetico.preco_em_reais -> AssertionError 'INVARIANTE 1 QUEBRADO: campo desta celula carrega dinheiro real / ItemCosmetico.preco_em_reais [PositiveIntegerField] (por preco) (por reais)'; e removendo a restricao cristal_positivo_nunca_vem_de_compra -> 'Failed: DID NOT RAISE IntegrityError'; (2) ItemCosmetico.multiplicador_de_xp -> AssertionError 'INVARIANTE 2 QUEBRADO: um cosmetico ganhou campo de vantagem (por xp) (por multiplicador)'; (3) NivelDefinicao.aulas_desbloqueadas -> tres asserções vermelhas: 'INVARIANTE 3 QUEBRADO: esta celula passou a nomear conteudo educacional (por aula)', 'nasceu um portao nesta celula (desbloque + aula)' e 'a forma do NivelDefinicao mudou / sobrou: aulas_desbloqueadas'. Desfeitas: 10, 5 e 4 passed. make ci verde (65 passed, black OK) e ci/ci.py --apenas muralhas RESULTADO PASS.",
+  "verificado_em": "2026-08-30"
+}
