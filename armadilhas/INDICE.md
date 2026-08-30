@@ -231,6 +231,7 @@
 | [196](196-o-rascunho-do-agente-e-compartilhado-entre-sessoes-irmas.md) | O arquivo de rascunho do agente é COMPARTILHADO entre sessões irmãs — e o `--body-file` publica o texto de outra — Você escreve o corpo do seu PR num arquivo do diretório de rascunho que o harness anuncia como… | nenhum (declarado) | — |
 | [197](197-endereco-publico-de-celula-sob-prefixo-nao-e-prefixo.md) | O endereço público de uma célula sob prefixo NÃO é "prefixo + rota" — ele dobra num caso e duplica noutro — Você precisa do endereço público de uma rota (para um link numa tela, uma linha de documentação, um `curl` de… | CI+sino | — |
 | [198](198-pr-com-conflito-nao-dispara-os-workflows-de-pull-request.md) | PR com CONFLITO não dispara os workflows de `pull_request` — os checks obrigatórios não ficam pendentes, eles não existem — O PR está aberto, o push chegou, e `gh pr checks <N>` lista **um check só** — nenhum dos… | CI+sino | — |
+| [199](199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md) | `style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho — As telas de uma célula chegam ao navegador **sem estilo nenhum** — texto preto em fundo branco, tudo empilhado.… | CI+sino | — |
 | [203](203-guarda-tipo-muralha-exige-detector-que-e-regra-da-muralha.md) | `entrada declara detector que a muralha não tem` — você curou a armadilha com CÓDIGO PRÓPRIO e declarou `guarda: tipo: muralha` — Você construiu o mecanismo que cura uma armadilha, foi honestamente atualizar o… | CI+sino | — |
 
-**180 entradas** — 16 com guarda declarada, 164 ainda sem.
+**181 entradas** — 17 com guarda declarada, 164 ainda sem.

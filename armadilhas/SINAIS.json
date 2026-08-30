@@ -87,6 +87,18 @@
       "regex": "mergeStateStatus.*DIRTY"
     },
     {
+      "armadilha": "199",
+      "arquivo": "armadilhas/199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md",
+      "titulo": "`style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho",
+      "regex": "Applying inline style violates"
+    },
+    {
+      "armadilha": "199",
+      "arquivo": "armadilhas/199-style-src-self-bloqueia-o-estilo-embutido-e-a-area.md",
+      "titulo": "`style-src 'self'` bloqueia o `<style>` embutido — a área inteira fica SEM ESTILO, e nada fica vermelho",
+      "regex": "style-src 'self'"
+    },
+    {
       "armadilha": "203",
       "arquivo": "armadilhas/203-guarda-tipo-muralha-exige-detector-que-e-regra-da-muralha.md",
       "titulo": "`entrada declara detector que a muralha não tem` — você curou a armadilha com CÓDIGO PRÓPRIO e declarou `guarda: tipo: muralha`",
