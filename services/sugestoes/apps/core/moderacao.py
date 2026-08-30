@@ -41,15 +41,10 @@ from functools import wraps
 import logging
 
 from django.db import transaction
-from django.db.models import Exists, OuterRef
-from django.http import HttpResponseForbidden, HttpResponseRedirect
-from django.shortcuts import get_object_or_404, render
-from django.urls import reverse
-from django.views.decorators.http import require_GET, require_POST
+from django.http import HttpResponseForbidden
 
 from apps.sugestoes import eventos
 from apps.sugestoes.models import (
-    AvaliacaoInterna,
     CorredorAusente,
     HistoricoStatus,
     Sugestao,
@@ -57,12 +52,9 @@ from apps.sugestoes.models import (
 from apps.sugestoes.tasks import relay_apos_commit
 
 from .avisos import avisar_os_interessados, ids_de_plataforma
-from .participacao import exige_sessao, quadro_atual, sugestoes_ordenadas
+from .participacao import exige_sessao
 
 logger = logging.getLogger(__name__)
-
-PAGINA_FILA = "sugestoes/fila.html"
-PAGINA_MODERAR = "sugestoes/moderar.html"
 
 # Os cinco estados que a equipe escolhe. `MESCLADO` fica FORA: mesclar é V1.1
 # (spec §10) e é uma operação transacional inteira — mover votos sem duplicar
@@ -83,34 +75,36 @@ STATUS_QUE_A_EQUIPE_ESCOLHE = (
 # forma mais rápida de a Caixa ensinar aos alunos que sugerir não adianta.
 EXIGEM_JUSTIFICATIVA = frozenset({Sugestao.Status.NAO_PLANEJADO})
 
-# A escala das três notas da avaliação interna. A spec §6 só diz
-# `PositiveSmallIntegerField`; o teto é decisão desta implementação, e existe
-# para que a recusa venha como uma frase em português em vez de um
-# `IntegrityError` do check constraint do Postgres.
-NOTA_MINIMA = 0
-NOTA_MAXIMA = 5
-CAMPOS_DE_NOTA = ("impacto_educacional", "impacto_comercial", "esforco_tecnico")
+# A escala das três notas da avaliação interna saiu daqui em 30/08/2026, junto
+# com a tela que a impunha: quem conversa com a pessoa agora é o Admin
+# (`services/admin/apps/core/caixa.py`, `NOTA_MINIMA`/`NOTA_MAXIMA`), e é lá que
+# a recusa em português tem de nascer, porque é lá que existe um formulário. Do
+# lado de cá o teto continua sendo do banco (o check constraint de
+# `AvaliacaoInterna`) — e ele é a única trava que ninguém contorna.
 
 SEM_CRACHA = (
     "Esta parte da Caixa é da equipe. Sua sessão está aberta, mas o seu e-mail "
     "não está na lista de quem modera."
 )
 
-# [INV-SUG10] A frase que a trava do ChangeSpec diz — uma só, usada na recusa
-# do POST e no aviso que a página mostra ANTES de alguém tentar. Duas cópias
-# divergiriam no primeiro ajuste, e a que ninguém testa é a que fica errada.
+# [INV-SUG10] A frase que a trava do ChangeSpec diz — uma só, e agora ela
+# atravessa a fronteira: a recusa do contrato a devolve inteira ao Admin
+# (`Recusa`), que a mostra à pessoa. Duas cópias divergiriam no primeiro ajuste,
+# e a que ninguém testa é a que fica errada.
 #
-# Ela diz o CAMINHO, e não só o "não": erro que não ensina o que fazer custa
-# uma rodada de investigação a quem o lê. O endereço da tela de registro não
-# entra aqui — sai de `{% url %}` no template, como todo endereço desta casa
-# (`armadilhas/102`).
+# Ela diz o CAMINHO, e não só o "não": erro que não ensina o que fazer custa uma
+# rodada de investigação a quem o lê. **Ela não aponta para nenhuma tela** — nem
+# por endereço, nem por "aqui embaixo": até 30/08/2026 apontava para o botão da
+# tela de `/moderacao` desta célula, que foi aposentada (TAR-023), e uma frase
+# que descreve a tela de OUTRA célula envelhece no dia em que ela mudar de
+# layout. Ela descreve o FATO que falta; onde clicar é de quem desenha a tela.
 SEM_CORREDOR = (
     "Esta ideia está em “Planejado” e ainda não tem ChangeSpec aprovado "
     "registrado — por isso ela não vai para “Em desenvolvimento”. O corredor "
     "existe para que uma ideia aprovada nunca vire um prompt aberto do tipo "
     "“implemente isso” (FORMATO-CHANGESPEC.md §5). O caminho: escreva o "
-    "ChangeSpec em docs/changespecs/, colha a aprovação humana e registre-a "
-    "no botão “Registrar ChangeSpec aprovado”, aqui embaixo."
+    "ChangeSpec em docs/changespecs/, colha a aprovação humana e registre a "
+    "assinatura de obra desta ideia — é ela que destrava a passagem."
 )
 
 
@@ -142,11 +136,6 @@ def exige_staff(view):
 
     cracha.exige_staff = True
     return exige_sessao(cracha)
-
-
-def opcoes_de_status():
-    """Os pares (valor, rótulo) que o `<select>` mostra — só os cinco de cima."""
-    return [(status.value, status.label) for status in STATUS_QUE_A_EQUIPE_ESCOLHE]
 
 
 def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
@@ -292,197 +281,3 @@ def registrar_mudanca_de_status(*, sugestao, status_novo, nota, por):
     # que a transação ainda pode desfazer.
     transaction.on_commit(relay_apos_commit)
     return status_anterior
-
-
-# ---------------------------------------------------------------------------
-# As rotas
-# ---------------------------------------------------------------------------
-
-
-@require_GET
-@exige_staff
-def ver_fila(request, ator):
-    """A fila de trabalho da equipe: o quadro inteiro, com votos e status.
-
-    É a mesma consulta ordenada do quadro do aluno (`sugestoes_ordenadas`), e
-    de propósito: duas ordenações para a mesma lista seriam duas verdades sobre
-    o que está mais pedido, e a que a equipe vê seria a que ninguém testa. O
-    que muda é o filtro — aqui se filtra por status, que é o eixo de quem
-    trabalha a fila, e não por categoria, que é o eixo de quem procura.
-    """
-    quadro = quadro_atual()
-    escolhido = (request.GET.get("status") or "").strip()
-    valores = {valor for valor, _ in opcoes_de_status()}
-    if escolhido and escolhido not in valores:
-        escolhido = ""
-
-    sugestoes = sugestoes_ordenadas(quadro).annotate(
-        tem_avaliacao=Exists(
-            AvaliacaoInterna.objects.filter(sugestao_id=OuterRef("pk"))
-        )
-    )
-    if escolhido:
-        sugestoes = sugestoes.filter(status=escolhido)
-
-    return render(
-        request,
-        PAGINA_FILA,
-        {
-            "ator": ator,
-            "quadro": quadro,
-            "sugestoes": sugestoes,
-            "status_disponiveis": opcoes_de_status(),
-            "status_escolhido": escolhido,
-        },
-    )
-
-
-def _pagina_de_moderacao(request, ator, sugestao, *, erros=(), status=200):
-    return render(
-        request,
-        PAGINA_MODERAR,
-        {
-            "ator": ator,
-            "sugestao": sugestao,
-            "total_votos": sugestao.votos.count(),
-            "historico": sugestao.historico.select_related("alterado_por"),
-            "avaliacao": AvaliacaoInterna.objects.filter(sugestao=sugestao).first(),
-            "status_disponiveis": opcoes_de_status(),
-            "nota_rascunho": (request.POST.get("nota") or "").strip(),
-            "erros": list(erros),
-            # [INV-SUG10] O corredor do EVO-40, nas duas metades que a página
-            # precisa: o que JÁ está registrado (a lista, que é a prova de que
-            # a ideia pode andar) e a frase do que está barrado agora — que a
-            # página mostra ANTES de alguém tentar, e não só depois do 400.
-            "changespecs": sugestao.changespecs.select_related("registrado_por"),
-            "sem_corredor": (
-                SEM_CORREDOR
-                if sugestao.status == Sugestao.Status.PLANEJADO
-                and not sugestao.changespecs.exists()
-                else ""
-            ),
-        },
-        status=status,
-    )
-
-
-@require_GET
-@exige_staff
-def moderar(request, ator, sugestao_id):
-    sugestao = get_object_or_404(
-        Sugestao.objects.select_related("categoria", "autor", "quadro"), pk=sugestao_id
-    )
-    return _pagina_de_moderacao(request, ator, sugestao)
-
-
-@require_POST
-@exige_staff
-def mudar_status(request, ator, sugestao_id):
-    sugestao = get_object_or_404(
-        Sugestao.objects.select_related("categoria", "autor", "quadro"), pk=sugestao_id
-    )
-    escolhido = (request.POST.get("status") or "").strip()
-
-    if escolhido not in {valor for valor, _ in opcoes_de_status()}:
-        # Vale também para `mesclado`: ele é status legítimo do model e mesmo
-        # assim não passa por aqui, porque mesclar é V1.1 e é uma operação, não
-        # um rótulo.
-        return _pagina_de_moderacao(
-            request,
-            ator,
-            sugestao,
-            erros=["Escolha um dos status da lista."],
-            status=400,
-        )
-
-    try:
-        registrar_mudanca_de_status(
-            sugestao=sugestao,
-            status_novo=escolhido,
-            nota=request.POST.get("nota"),
-            por=ator.identidade,
-        )
-    except (JustificativaObrigatoria, CorredorAusente) as erro:
-        # As duas recusam ANTES de qualquer escrita e as duas voltam como
-        # página, com o motivo em português — nunca como 500. A `CorredorAusente`
-        # também pode subir de dentro do `save()` (degrau 2), e cair aqui é o
-        # que garante que nem o caminho de corrida vire erro de servidor.
-        return _pagina_de_moderacao(
-            request, ator, sugestao, erros=[str(erro)], status=400
-        )
-    except eventos.AtorSemIdDaPlataforma:
-        # Esta recusa é DIFERENTE das de cima: ela sobe de DENTRO do `atomic`, e
-        # o rollback é o ponto — nada foi escrito, e é isso que a torna segura
-        # (INV-P6: estado sem evento é impossível, então recusar os dois juntos é
-        # a única saída correta quando o evento não pode ser afirmado).
-        #
-        # Cai aqui, e não em 500, porque a pessoa da equipe consegue resolver
-        # sozinha: sair e entrar de novo pelo site faz a porta gravar o id
-        # (INV-SUG11). Uma tela de erro do servidor não diria isso a ninguém.
-        logger.warning(
-            "moderacao recusada: identidade local %s sem id_da_plataforma "
-            "(INV-SUG11); sugestao %s ficou intacta",
-            ator.identidade.id,
-            sugestao.id,
-        )
-        return _pagina_de_moderacao(
-            request,
-            ator,
-            sugestao,
-            erros=[
-                "Não conseguimos confirmar sua identidade na plataforma, então "
-                "nada foi alterado. Saia e entre de novo pelo site, e tente "
-                "outra vez — se continuar, avise a equipe técnica."
-            ],
-            status=409,
-        )
-
-    return HttpResponseRedirect(reverse("moderar", args=[sugestao.id]))
-
-
-@require_POST
-@exige_staff
-def avaliar(request, ator, sugestao_id):
-    """A avaliação interna: impacto, esforço, notas e a decisão de produto.
-
-    `update_or_create` porque a avaliação é UMA por sugestão (`OneToOneField`)
-    e é revisitada: a equipe volta, muda a nota de esforço, reescreve a
-    decisão. Não é histórico — quem guarda a linha do tempo é o
-    `HistoricoStatus`, e ele é de status, não de opinião interna.
-
-    `avaliado_por` é sempre reescrito com quem salvou por último: a pergunta que
-    essa coluna responde é "quem responde por este texto agora", e não "quem
-    escreveu primeiro".
-    """
-    sugestao = get_object_or_404(
-        Sugestao.objects.select_related("categoria", "autor", "quadro"), pk=sugestao_id
-    )
-
-    erros = []
-    notas = {}
-    for campo in CAMPOS_DE_NOTA:
-        cru = (request.POST.get(campo) or "").strip()
-        try:
-            valor = int(cru or 0)
-        except ValueError:
-            valor = -1
-        if not NOTA_MINIMA <= valor <= NOTA_MAXIMA:
-            erros.append(
-                f"A nota de “{campo.replace('_', ' ')}” vai de "
-                f"{NOTA_MINIMA} a {NOTA_MAXIMA}."
-            )
-        notas[campo] = valor
-
-    if erros:
-        return _pagina_de_moderacao(request, ator, sugestao, erros=erros, status=400)
-
-    AvaliacaoInterna.objects.update_or_create(
-        sugestao=sugestao,
-        defaults={
-            **notas,
-            "notas": (request.POST.get("notas") or "").strip(),
-            "decisao_produto": (request.POST.get("decisao_produto") or "").strip(),
-            "avaliado_por": ator.identidade,
-        },
-    )
-    return HttpResponseRedirect(reverse("moderar", args=[sugestao.id]))

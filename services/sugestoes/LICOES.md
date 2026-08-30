@@ -1991,3 +1991,44 @@ aluno, a busca de duplicatas, a listagem padrão da gestão) esconde a apagada
 de graça, porque `apagar()` também seta `arquivada_em`. A única coisa NOVA
 que `apagada` precisa ensinar ao sistema é "não existe mais Restaurar" —
 tudo o mais já estava resolvido.
+
+
+## Aposentar uma tela é MOVER A JORNADA DOS GUARDAS, não só apagar rotas (30/08/2026)
+
+TAR-023 degrau 4: as cinco rotas de `/moderacao` viraram redirecionamento. O
+trabalho de VERDADE não foi apagar as views — foram cinco minutos. Foram os
+**90 testes** que ficaram vermelhos: 14 arquivos, 5 deles guardas de invariante,
+todos percorrendo a tela que acabara de morrer.
+
+**A causa não é descuido, é uma regra boa desta casa mordendo o próprio rabo.**
+Os `test_inv_*` provocam o fato *pela jornada de verdade*, nunca por
+`objects.create()` — é isso que os impede de ficarem verdes no dia em que a view
+parar de chamar a função certa. Só que "a jornada de verdade" é uma coisa
+DATADA: ela virou o contrato em 28/08, e os guardas continuaram percorrendo a
+tela por mais dois dias, provando um caminho que já não era o de ninguém.
+
+**A ordem que funcionou, e que vale para a próxima aposentadoria:**
+
+1. **Uma porta só, no `conftest`.** `conftest.Gestao` (o Admin falando com a
+   Caixa) mais `pessoa.gestao` pendurado em quem tem crachá. Com isso, um helper
+   de arquivo (`_mudar`, `_recusar`) muda de corpo e **nenhuma assinatura de
+   teste muda** — foi o que transformou "editar 120 testes" em "editar 6
+   helpers". Sem isso, cada `def test_x(equipe, sugestao)` teria de virar
+   `def test_x(equipe, sugestao, gestao)`.
+2. **Traduza o vocabulário de resposta uma vez, por escrito.** Tela → contrato:
+   `302 → 200`, `400 → 422`, `403 → 403`. Escrever a tabela antes de sair
+   trocando número evita o pior erro possível aqui, que é afrouxar uma asserção
+   ("ah, agora dá 200") sem perceber que ela deixou de medir a recusa.
+3. **Toda frase que descrevia a TELA envelhece com ela.** `SEM_CORREDOR` dizia
+   "no botão …, aqui embaixo", e virou uma mentira no instante em que aquele
+   botão saiu do ar. Frase de célula descreve o FATO que falta; onde clicar é de
+   quem desenha a tela. O guarda novo mede que ela não volte a apontar.
+4. **Teste que morre com a tela morre EXPLICADO, no lugar onde estava.** Um
+   bloco de comentário dizendo o que ele media e para onde aquilo foi (outra
+   célula, outro arquivo) custa três linhas e é o que impede a próxima sessão de
+   ler a queda de 507 → 497 como descuido. A etiqueta `remove-teste` autoriza a
+   remoção; o comentário é o que a torna auditável.
+
+**A armadilha irmã, que não é desta célula:** `armadilhas/202` — campo novo
+OBRIGATÓRIO num contrato congelado é quebra, e o `contrato-aditivo` reprova.
+Ela apareceu no degrau 1 desta mesma tarefa.

@@ -48,9 +48,14 @@ pytestmark = pytest.mark.django_db
 
 
 def _mudar(equipe, sugestao, status, nota=""):
-    return equipe.client.post(
-        reverse("mudar_status", args=[sugestao.id]), {"status": status, "nota": nota}
-    )
+    """A jornada de moderação de hoje: o Admin, pelo contrato.
+
+    As telas de `/moderacao` desta célula foram aposentadas em 30/08/2026
+    (TAR-023). O que este guarda mede não mudou uma vírgula — o aviso continua
+    nascendo dentro da MESMA transação do status —, mas ele mede pelo caminho
+    que existe, e não por uma view que ninguém mais alcança.
+    """
+    return equipe.gestao.mudar_status(equipe, sugestao, status, nota=nota)
 
 
 def _vinculos_por_pessoa(sugestao=None) -> dict[str, str]:
@@ -77,7 +82,7 @@ def test_mudar_o_status_deixa_exatamente_um_aviso_para_o_autor(equipe, sugestao)
     """Sem plateia, o leque tem uma pessoa só — e ela é o autor, como no EVO-21."""
     resposta = _mudar(equipe, sugestao, Sugestao.Status.PLANEJADO, "entra na trilha 2")
 
-    assert resposta.status_code == 302, resposta.content
+    assert resposta.status_code == 200, resposta.content
     aviso = Aviso.objects.get()
     assert aviso.destinatario_id == sugestao.autor_id
     assert aviso.sugestao_id == sugestao.id
@@ -104,7 +109,7 @@ def test_o_leque_alcanca_o_autor_quem_votou_e_quem_comentou(equipe, sugestao, pl
 
     assert (
         _mudar(equipe, sugestao, Sugestao.Status.PLANEJADO, "vai sair").status_code
-        == 302
+        == 200
     )
 
     vinculos = _vinculos_por_pessoa()
@@ -138,7 +143,7 @@ def test_quem_acumula_os_tres_papeis_recebe_UM_aviso_so(equipe, sugestao, platei
 
     assert (
         _mudar(equipe, sugestao, Sugestao.Status.IMPLEMENTADO, "saiu").status_code
-        == 302
+        == 200
     )
 
     vinculos = _vinculos_por_pessoa()
@@ -431,7 +436,7 @@ def test_os_avisos_nascem_mesmo_sem_redis_nenhum(
     monkeypatch.delenv("REDIS_STREAMS_URL", raising=False)
     plateia(sugestao, votantes=2, comentaristas=1)
 
-    assert _mudar(equipe, sugestao, Sugestao.Status.PLANEJADO).status_code == 302
+    assert _mudar(equipe, sugestao, Sugestao.Status.PLANEJADO).status_code == 200
 
     sugestao.refresh_from_db()
     assert sugestao.status == Sugestao.Status.PLANEJADO

@@ -55,7 +55,7 @@ def quadro_com_marco(caixa):
     requisições da jornada bateriam em 404 (LICOES.md, EVO-21).
     """
     sugestao = caixa.publicar("Legendas nas aulas")
-    assert caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO).status_code == 302
+    assert caixa.mudar_status(sugestao, Sugestao.Status.PLANEJADO).status_code == 200
     return caixa.aluno, sugestao
 
 

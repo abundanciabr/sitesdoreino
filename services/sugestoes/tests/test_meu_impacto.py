@@ -84,7 +84,7 @@ def test_o_painel_conta_a_participacao_de_quem_esta_olhando(caixa, entrar_como):
         fa = entrar_como(f"fa{numero}@exemplo.test", f"Fã {numero}")
         assert caixa.votar(minha, quem=fa).status_code == 302
     # E a equipe move uma das minhas para fora da análise.
-    assert caixa.mudar_status(outra, Sugestao.Status.PLANEJADO).status_code == 302
+    assert caixa.mudar_status(outra, Sugestao.Status.PLANEJADO).status_code == 200
 
     assert _numeros(_corpo(caixa.aluno)) == [2, 1, 1, 2]
 
@@ -117,7 +117,7 @@ def test_quem_so_votou_tambem_ve_a_ideia_avancar_na_conta(caixa, entrar_como):
 
     antes = _numeros(_corpo(apoiadora))
     assert (
-        caixa.mudar_status(ideia, Sugestao.Status.EM_DESENVOLVIMENTO).status_code == 302
+        caixa.mudar_status(ideia, Sugestao.Status.EM_DESENVOLVIMENTO).status_code == 200
     )
     depois = _numeros(_corpo(apoiadora))
 
@@ -131,7 +131,7 @@ def test_quem_votou_na_propria_ideia_conta_uma_vez_so(caixa):
     vezes e o número passaria a premiar quem vota em si mesmo."""
     minha = caixa.publicar("Legendas nas aulas")
     assert caixa.votar(minha).status_code == 302
-    assert caixa.mudar_status(minha, Sugestao.Status.PLANEJADO).status_code == 302
+    assert caixa.mudar_status(minha, Sugestao.Status.PLANEJADO).status_code == 200
 
     assert _numeros(_corpo(caixa.aluno))[2] == 1
 
@@ -147,7 +147,7 @@ def test_recusada_e_mesclada_nao_contam_como_avanco(caixa):
         caixa.mudar_status(
             recusada, Sugestao.Status.NAO_PLANEJADO, nota="Sai do escopo do curso."
         ).status_code
-        == 302
+        == 200
     )
     # `mesclado` fica FORA do <select> da moderação desde o EVO-13 (há guarda
     # para isso), então só o ORM o escreve — mas a tela tem de saber contá-lo
@@ -165,7 +165,7 @@ def test_recusada_e_mesclada_nao_contam_como_avanco(caixa):
 def test_a_lista_mostra_as_ideias_da_pessoa_com_o_status_de_cada_uma(caixa):
     """Quatro números sozinhos não dizem QUAL ideia andou."""
     andou = caixa.publicar("Esta entrou no roadmap")
-    assert caixa.mudar_status(andou, Sugestao.Status.PLANEJADO).status_code == 302
+    assert caixa.mudar_status(andou, Sugestao.Status.PLANEJADO).status_code == 200
     caixa.publicar("Esta ainda está em análise")
 
     painel = _painel(_corpo(caixa.aluno))
@@ -236,7 +236,7 @@ def test_o_painel_obedece_ao_filtro_de_categoria(caixa, quadro):
 # ---------------------------------------------------------------------------
 
 
-def test_nenhuma_nota_interna_da_equipe_chega_ao_painel(caixa, equipe):
+def test_nenhuma_nota_interna_da_equipe_chega_ao_painel(caixa, equipe, gestao):
     """O guarda do despacho: "Meu impacto" não é a avaliação da EQUIPE.
 
     Dois degraus, sobre a MESMA jornada em que o painel aparece — as três abas e
@@ -252,19 +252,16 @@ def test_nenhuma_nota_interna_da_equipe_chega_ao_painel(caixa, equipe):
     código novo, porque ele varre o módulo inteiro.
     """
     minha = caixa.publicar("Legendas nas aulas")
-    assert (
-        equipe.client.post(
-            reverse("avaliar", args=[minha.id]),
-            {
-                "impacto_educacional": 5,
-                "impacto_comercial": 4,
-                "esforco_tecnico": 2,
-                "notas": MARCA,
-                "decisao_produto": MARCA,
-            },
-        ).status_code
-        == 302
+    escrita = gestao.avaliar(
+        equipe,
+        minha,
+        impacto_educacional=5,
+        impacto_comercial=4,
+        esforco_tecnico=2,
+        notas=MARCA,
+        decisao_produto=MARCA,
     )
+    assert escrita.status_code == 200, escrita.content
     assert AvaliacaoInterna.objects.filter(
         sugestao=minha
     ).exists(), "a avaliação nem chegou a existir — este guarda não mediu nada"

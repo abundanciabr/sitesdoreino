@@ -176,7 +176,7 @@ def test_a_pagina_da_sugestao_conta_por_onde_a_ideia_andou(caixa):
         caixa.mudar_status(
             sugestao, Sugestao.Status.PLANEJADO, nota="Entra no ciclo de setembro."
         ).status_code
-        == 302
+        == 200
     )
 
     corpo = caixa.aluno.client.get(

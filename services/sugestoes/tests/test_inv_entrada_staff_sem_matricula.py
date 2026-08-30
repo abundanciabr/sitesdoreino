@@ -24,7 +24,12 @@ def test_staff_entra_sem_a_alunos_ser_consultada(equipe):
 
 
 def test_staff_alcanca_a_moderacao(equipe, sugestao):
-    assert equipe.client.get(reverse("fila")).status_code == 200
+    """301 (e não 200) desde 30/08/2026: a tela mudou de casa, o crachá não.
+
+    O que este guarda mede é que quem tem crachá ATRAVESSA a porta — quem não
+    tem leva 403 e nem descobre para onde a gestão foi.
+    """
+    assert equipe.client.get(reverse("fila")).status_code == 301
 
 
 def test_papel_do_contrato_nao_da_cracha(entrar_como, rede, db):
