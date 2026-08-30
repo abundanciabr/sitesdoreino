@@ -11,7 +11,6 @@ from pathlib import Path
 from urllib.parse import urlencode
 
 from django.conf import settings
-from django.contrib.postgres.search import SearchVector
 from django.db import transaction
 from django.http import FileResponse, Http404, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -53,24 +52,6 @@ ERRO_SEM_PERMISSAO = (
     "Você não pode escrever nesta área. "
     "Volte para a página dela — ela diz o motivo, em português."
 )
-
-
-def _publicar(mensagem: Mensagem) -> None:
-    """Preenche a coluna de BUSCA da mensagem recém-criada, na ESCRITA.
-
-    A lei §4.4 é explícita: a busca é coluna materializada e indexada, calculada
-    quando se escreve — **nunca** montada no `WHERE` da consulta. Calcular na
-    consulta funciona lindamente com 500 mensagens, trava com 50 mil, e só se
-    descobre em produção.
-
-    `SearchVector` é uma expressão de BANCO: não há como atribuí-la a um
-    atributo Python antes do `save()`. O caminho é um `update()` sobre a linha
-    que acabou de nascer — uma ida a mais ao banco por mensagem escrita, dentro
-    da mesma transação.
-    """
-    Mensagem.objects.filter(pk=mensagem.pk).update(
-        busca=SearchVector("texto", config="portuguese")
-    )
 
 
 @require_GET
@@ -309,7 +290,7 @@ def novo_topico(request, slug: str):
         mensagem = Mensagem.objects.create(
             topico=topico, autor=ator.pessoa, texto=texto
         )
-        _publicar(mensagem)
+        mensagem.indexar_para_busca()
 
     return redirect(f"{reverse('topico', args=[topico.pk])}#m{mensagem.pk}")
 
@@ -349,7 +330,7 @@ def responder(request, topico_id: int):
         mensagem = Mensagem.objects.create(
             topico=topico, autor=ator.pessoa, texto=texto
         )
-        _publicar(mensagem)
+        mensagem.indexar_para_busca()
         # A marca de leitura compara com ISTO (`MarcaDeLeitura`), nunca com a
         # data de cada mensagem. Sem este avanço, uma conversa que acabou de
         # receber resposta continuaria parecendo lida para a turma inteira.

@@ -150,7 +150,11 @@ def list_recent_topics(request, limite: int = 10):
             id=t.id,
             titulo=t.titulo,
             area_slug=t.area.slug,
-            autor=t.autor.nome_exibido,
+            # `assinatura`, e não `autor.nome_exibido`: desde a TAR-020 um
+            # tópico pode ser da ESCOLA, e aí não há pessoa para perguntar o
+            # nome. Ler o atributo direto seria HTTP 500 na vitrine que o resto
+            # do site consome.
+            autor=t.assinatura,
             respostas=t.n,
             ultima_atividade_em=t.ultima_atividade_em.isoformat(),
         )

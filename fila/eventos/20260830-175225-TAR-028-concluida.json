@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-175225-TAR-028-concluida",
+  "tarefa": "TAR-028",
+  "evento": "concluida",
+  "quando": "2026-08-30T17:52:25+00:00",
+  "quem": "sessao-ci-tar028-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/619 — apagados os tres gerados de armadilhas/, 'python -m pytest ci/tests/test_guarda_declarada_e_sino.py' devolve '26 passed in 1.33s' com a fixture unica (contra '2 failed, 24 passed' sem fixture nenhuma); a suite ci/tests/ inteira, tambem da arvore sem os gerados, fecha '1284 passed in 371.85s'",
+  "verificado_em": "2026-08-30"
+}

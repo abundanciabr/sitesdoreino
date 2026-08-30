@@ -12,8 +12,66 @@ concordaram.
 """
 
 from django.contrib.postgres.indexes import GinIndex
-from django.contrib.postgres.search import SearchVectorField
+from django.contrib.postgres.search import SearchVector, SearchVectorField
 from django.db import models
+
+# ---------------------------------------------------------------------------
+# A VOZ DA ESCOLA — como a instituição assina o que publica (TAR-020, 30/08/2026)
+# ---------------------------------------------------------------------------
+# O mandato do mantenedor, com as palavras dele: o fórum é semeado com as
+# dúvidas reais dos alunos, já respondidas, e essas mensagens saem EM NOME DA
+# ESCOLA. Nenhuma pode fingir ser de aluno, nem com nome inventado, nem com
+# conta de mentira, nem com um rótulo genérico que sugira uma pessoa.
+#
+# Até aqui o modelo não sabia dizer isso: `autor` era obrigatório em tópico e em
+# mensagem, então a única forma de a escola publicar seria criar uma `Pessoa` de
+# mentira, ou seja, exatamente o proibido. A capacidade nasce agora.
+NOME_DA_ESCOLA = "Meshcraft Academy"
+
+# O rótulo que a tela mostra quando quem escreveu não pôs nome de exibição. Ele
+# sugere UMA PESSOA, e por isso nunca pode sobrar para uma fala da instituição:
+# seria o avatar genérico que o mantenedor recusou, escrito em palavra.
+ALGUEM = "alguém"
+
+
+def assinatura_de(autor, publicado_pela_escola: bool) -> str:
+    """Quem a tela diz que falou. Uma regra só, para todas as telas.
+
+    Se esta conta morasse no template, cada página resolveria a autoria por
+    conta própria, e a primeira que esquecesse mostraria `alguém` no lugar do
+    nome da escola. Duas expressões da mesma regra divergem no primeiro dia em
+    que alguém mexer numa delas.
+    """
+    if publicado_pela_escola:
+        return NOME_DA_ESCOLA
+    return (autor.nome_exibido if autor else "") or ALGUEM
+
+
+def _fala_de_pessoa_ou_da_escola(nome: str) -> models.CheckConstraint:
+    """A restrição que impede as DUAS mentiras possíveis sobre quem falou.
+
+    Ou existe uma pessoa por trás da fala, ou a fala é declaradamente da
+    instituição. Nunca as duas juntas, nunca nenhuma das duas.
+
+    **Por que no BANCO, e não só numa regra de aplicação.** É a mesma razão de
+    `pagina_publica_so_a_escola_fala`, mais abaixo: regra que existe só em
+    código é promessa. Bastaria um `update()` numa tela de administração futura,
+    ou uma linha editada à mão no `psql` numa madrugada de incidente, para uma
+    mensagem da escola ganhar autor de aluno (ou o contrário) sem ninguém saber.
+
+    **E o campo explícito não é redundante com `autor IS NULL`.** Ele é o que
+    torna a declaração DELIBERADA: sem ele a leitura seria "sem autor, logo é da
+    escola", e um caminho de código que esquecesse o autor publicaria em nome da
+    instituição por acidente. Com ele, o esquecimento é recusado pelo banco, que
+    é o lado seguro do erro.
+    """
+    return models.CheckConstraint(
+        condition=(
+            models.Q(autor__isnull=False, publicado_pela_escola=False)
+            | models.Q(autor__isnull=True, publicado_pela_escola=True)
+        ),
+        name=nome,
+    )
 
 
 class Pessoa(models.Model):
@@ -156,7 +214,12 @@ class Topico(models.Model):
         REMOVIDO = "removido", "Removido pela moderação"
 
     area = models.ForeignKey(Area, related_name="topicos", on_delete=models.PROTECT)
-    autor = models.ForeignKey(Pessoa, related_name="topicos", on_delete=models.PROTECT)
+    # NULO quando quem abriu a conversa foi a própria escola. Ver
+    # `_fala_de_pessoa_ou_da_escola`: o nulo sozinho nunca basta.
+    autor = models.ForeignKey(
+        Pessoa, related_name="topicos", on_delete=models.PROTECT, null=True, blank=True
+    )
+    publicado_pela_escola = models.BooleanField(default=False)
     titulo = models.CharField(max_length=180)
     criado_em = models.DateTimeField(auto_now_add=True)
 
@@ -188,6 +251,12 @@ class Topico(models.Model):
             # topo, do mais recente para o mais antigo.
             models.Index(fields=["area", "estado", "-fixado", "-ultima_atividade_em"]),
         ]
+        constraints = [_fala_de_pessoa_ou_da_escola("topico_de_pessoa_ou_da_escola")]
+
+    @property
+    def assinatura(self) -> str:
+        """Quem a tela diz que abriu esta conversa."""
+        return assinatura_de(self.autor, self.publicado_pela_escola)
 
     def __str__(self) -> str:
         return self.titulo
@@ -199,9 +268,16 @@ class Mensagem(models.Model):
     topico = models.ForeignKey(
         Topico, related_name="mensagens", on_delete=models.CASCADE
     )
+    # NULO quando quem falou foi a própria escola (ver
+    # `_fala_de_pessoa_ou_da_escola`, no topo do arquivo).
     autor = models.ForeignKey(
-        Pessoa, related_name="mensagens", on_delete=models.PROTECT
+        Pessoa,
+        related_name="mensagens",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
     )
+    publicado_pela_escola = models.BooleanField(default=False)
     texto = models.TextField()
     criado_em = models.DateTimeField(auto_now_add=True)
     editado_em = models.DateTimeField(null=True, blank=True)
@@ -224,6 +300,29 @@ class Mensagem(models.Model):
             GinIndex(fields=["busca"], name="forum_mensagem_busca_gin"),
             models.Index(fields=["topico", "criado_em"]),
         ]
+        constraints = [_fala_de_pessoa_ou_da_escola("mensagem_de_pessoa_ou_da_escola")]
+
+    @property
+    def assinatura(self) -> str:
+        """Quem a tela diz que escreveu esta fala."""
+        return assinatura_de(self.autor, self.publicado_pela_escola)
+
+    def indexar_para_busca(self) -> None:
+        """Preenche a coluna de BUSCA desta mensagem, na ESCRITA.
+
+        Mora AQUI, e não em quem escreve, porque quem escreve são dois caminhos
+        diferentes (a tela do aluno e a semeadura da escola) e um terceiro
+        aparecerá. A cópia que ficasse para trás numa mudança de configuração de
+        idioma deixaria um lote inteiro de mensagens invisível para a busca do
+        site, e o defeito só apareceria quando alguém procurasse.
+
+        `SearchVector` é expressão de BANCO: não há como atribuí-la a um atributo
+        Python antes do `save()`. O caminho é um `update()` sobre a linha que
+        acabou de nascer, uma ida a mais ao banco por mensagem escrita.
+        """
+        Mensagem.objects.filter(pk=self.pk).update(
+            busca=SearchVector("texto", config="portuguese")
+        )
 
     def __str__(self) -> str:
         return f"#{self.pk} em {self.topico_id}"
