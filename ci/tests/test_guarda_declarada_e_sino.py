@@ -281,7 +281,13 @@ def test_todo_detector_declarado_existe_na_muralha():
 
 
 def test_o_sinal_do_repositorio_real_e_lido_pelo_sino():
-    """Prova de fora: o SINAIS.json versionado é carregável pelo sino de verdade."""
+    """Prova de fora: o SINAIS.json GERADO é carregável pelo sino de verdade.
+
+    Desde 30/08/2026 (TAR-022) ele não é versionado: quem o materializa é a
+    integração — e, nesta suíte, o fixture `indice_das_armadilhas_materializado`
+    do `conftest.py`. Sem ele, este teste lê um arquivo ausente num checkout
+    limpo, que foi o que deixou a `main` vermelha (issue #587).
+    """
     sinais = sino.carregar_sinais()
     assert sinais, "nenhum sinal declarado — o sino nunca tocaria"
     for s in sinais:
