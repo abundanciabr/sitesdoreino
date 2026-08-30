@@ -206,6 +206,53 @@
     },
     {
       "celula": "forum",
+      "rota": "areas/nova",
+      "endereco": "/forum/areas/nova",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Criar uma área nova no fórum",
+      "descricao": "O que acontece quando você aperta 'Criar área' na caixa de ferramentas da capa do fórum. Só você enxerga essa caixa.",
+      "gesto": true,
+      "observacao": "Só quem está na lista de administradores (ADMIN_EMAILS). Para todos os outros, inclusive professor, este endereço responde 'não existe'."
+    },
+    {
+      "celula": "forum",
+      "rota": "a/<slug:slug>/moderar",
+      "endereco": "/forum/a/<slug:slug>/moderar",
+      "exemplo": "/forum/a/duvidas/moderar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Mudar uma área do fórum",
+      "descricao": "O que acontece ao salvar as ferramentas de uma área: trocar o nome, trocar a descrição, deixar a área privada ou aberta ao mundo, arquivar e reabrir.",
+      "gesto": true,
+      "observacao": "Arquivar não apaga nada: a área some da lista de todo mundo e continua visível para você, marcada."
+    },
+    {
+      "celula": "forum",
+      "rota": "t/<int:topico_id>/moderar",
+      "endereco": "/forum/t/<int:topico_id>/moderar",
+      "exemplo": "/forum/t/1/moderar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Mudar uma conversa do fórum",
+      "descricao": "O que acontece ao apertar um botão das suas ferramentas dentro de uma conversa: mudar o título, mover para outra área, fixar no topo, trancar, tirar do ar e apontar qual resposta resolveu a dúvida.",
+      "gesto": true,
+      "observacao": "Tirar do ar não apaga: a conversa some para o aluno e continua inteira para você, com um botão de devolver ao ar."
+    },
+    {
+      "celula": "forum",
+      "rota": "m/<int:mensagem_id>/moderar",
+      "endereco": "/forum/m/<int:mensagem_id>/moderar",
+      "exemplo": "/forum/m/1/moderar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Mudar uma mensagem do fórum",
+      "descricao": "O que acontece ao editar o texto de uma mensagem ou tirá-la do ar pelas suas ferramentas.",
+      "gesto": true,
+      "observacao": "Mensagem editada passa a mostrar 'editada' na tela, com a data. Editar em silêncio a fala de outra pessoa é o que um fórum não pode fazer."
+    },
+    {
+      "celula": "forum",
       "rota": "^static/(?P<caminho>.*)$",
       "endereco": "/forum/static/(?P<caminho>.*)$",
       "alcance": "publico",

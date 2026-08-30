@@ -2,18 +2,115 @@
 {% block titulo %}{{ area.nome }}{% endblock %}
 {% block conteudo %}
 <p class="migalha"><a href="{% url 'home' %}">← todas as áreas</a></p>
-<h1>{{ area.nome }}</h1>
+<h1>{{ area.nome }}
+  {% if not area.ativa %}<span class="etiqueta">arquivada</span>{% endif %}
+</h1>
 {% if area.descricao %}<p class="sub">{{ area.descricao }}</p>{% endif %}
+
+{% comment %}
+AS FERRAMENTAS DO ADMINISTRADOR desta área (mandato de 30/08/2026). Aparecem
+por `pode_moderar` (`apps/core/permissoes.py`), o MESMO cálculo que a view de
+POST usa para aceitar ou recusar. Esconder o botão nunca é a proteção: quem não
+modera recebe 404 nas rotas de `apps/core/moderacao.py`.
+{% endcomment %}
+{% if pode_moderar %}
+  <details class="ferramentas" {% if erro_admin %}open{% endif %}>
+    <summary>Ferramentas do administrador</summary>
+    <p class="sub" style="margin:10px 0 0">Só você enxerga esta caixa.</p>
+    {% if erro_admin %}<p class="erro">{{ erro_admin }}</p>{% endif %}
+
+    <form class="escrever" method="post" action="{% url 'moderar_area' area.slug %}">
+      {% csrf_token %}
+      <input type="hidden" name="acao" value="salvar">
+      <h2>Editar esta área</h2>
+      <label for="nome">Nome</label>
+      <input id="nome" name="nome" maxlength="100" required value="{{ area.nome }}">
+      <label for="descricao">Do que se trata</label>
+      <textarea id="descricao" name="descricao" rows="3">{{ area.descricao }}</textarea>
+      <label for="visibilidade">Quem enxerga (hoje: {{ area.get_visibilidade_display }})</label>
+      <select id="visibilidade" name="visibilidade">
+        <option value="alunos" {% if area.visibilidade == "alunos" %}selected{% endif %}>Privada: só quem está matriculado</option>
+        <option value="publica" {% if area.visibilidade == "publica" %}selected{% endif %}>Aberta: qualquer pessoa da internet lê</option>
+      </select>
+      <label for="quem_escreve">Quem escreve (hoje: {{ area.get_quem_escreve_display }})</label>
+      <select id="quem_escreve" name="quem_escreve">
+        <option value="aluno" {% if area.quem_escreve == "aluno" %}selected{% endif %}>Alunos matriculados</option>
+        <option value="equipe" {% if area.quem_escreve == "equipe" %}selected{% endif %}>Só a escola</option>
+        <option value="cadastrado" {% if area.quem_escreve == "cadastrado" %}selected{% endif %}>Qualquer pessoa com login</option>
+      </select>
+      <p class="sub" style="margin:10px 0 0">
+        Área aberta ao mundo é sempre só a escola falando. É a regra que protege
+        os alunos menores de idade, e o banco a recusa se as duas escolhas não
+        combinarem.
+      </p>
+      <button type="submit">Salvar</button>
+    </form>
+
+    <div class="linha-de-botoes">
+      {% if area.ativa %}
+        <form method="post" action="{% url 'moderar_area' area.slug %}">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="arquivar">
+          <button class="mini" type="submit">Arquivar esta área</button>
+        </form>
+      {% else %}
+        <form method="post" action="{% url 'moderar_area' area.slug %}">
+          {% csrf_token %}
+          <input type="hidden" name="acao" value="reabrir">
+          <button class="mini" type="submit">Reabrir esta área</button>
+        </form>
+      {% endif %}
+    </div>
+    <p class="sub" style="margin:10px 0 0">
+      Arquivar é o jeito seguro de apagar: a área some da lista de todo mundo e
+      continua aqui para você, com tudo o que foi escrito. Nada é destruído.
+    </p>
+  </details>
+{% endif %}
 
 {% for topico in topicos %}
   <div class="cartao">
     <h2><a href="{% url 'topico' topico.pk %}">{{ topico.titulo }}</a>
       {% if topico.fixado %}<span class="etiqueta">fixado</span>{% endif %}
+      {% if topico.trancado %}<span class="etiqueta">trancado</span>{% endif %}
       {% if topico.resposta_aceita_id %}<span class="etiqueta">resolvido</span>{% endif %}
+      {% comment %}
+      "Fora do ar" só chega a aparecer para quem modera: para o resto, o
+      contexto da tela já tirou o tópico da lista (`views.contexto_da_area`).
+      {% endcomment %}
+      {% if topico.estado != "publicado" %}<span class="etiqueta">fora do ar</span>{% endif %}
     </h2>
     <p class="sub" style="margin:4px 0 0">
       por {{ topico.assinatura }}{% if topico.publicado_pela_escola %} <span class="etiqueta">a escola</span>{% endif %} · {{ topico.ultima_atividade_em|date:"d/m/Y H:i" }}
     </p>
+    {% if pode_moderar %}
+      {% comment %}
+      Os botões rápidos. `de_onde=area` faz a volta cair nesta lista, e não na
+      conversa: quem está varrendo a área quer continuar varrendo. O destino
+      sai de uma lista fechada de dois valores dentro da view, nunca de um
+      endereço que veio no formulário.
+      {% endcomment %}
+      <div class="linha-de-botoes">
+        <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="de_onde" value="area">
+          <input type="hidden" name="acao" value="{% if topico.fixado %}desafixar{% else %}fixar{% endif %}">
+          <button class="mini" type="submit">{% if topico.fixado %}Desafixar{% else %}Fixar no topo{% endif %}</button>
+        </form>
+        <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="de_onde" value="area">
+          <input type="hidden" name="acao" value="{% if topico.trancado %}destrancar{% else %}trancar{% endif %}">
+          <button class="mini" type="submit">{% if topico.trancado %}Destrancar{% else %}Trancar{% endif %}</button>
+        </form>
+        <form method="post" action="{% url 'moderar_topico' topico.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="de_onde" value="area">
+          <input type="hidden" name="acao" value="{% if topico.estado == 'publicado' %}tirar_do_ar{% else %}restaurar{% endif %}">
+          <button class="mini" type="submit">{% if topico.estado == 'publicado' %}Tirar do ar{% else %}Devolver ao ar{% endif %}</button>
+        </form>
+      </div>
+    {% endif %}
   </div>
 {% empty %}
   <div class="vazio">

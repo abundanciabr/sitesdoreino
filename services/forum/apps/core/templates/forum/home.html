@@ -24,9 +24,55 @@
       <h2><a href="{% url 'area' area.slug %}">{{ area.nome }}</a>
         {% if area.visibilidade == "publica" %}<span class="etiqueta">aberta</span>{% endif %}
         {% if area.visibilidade == "turma" %}<span class="etiqueta">turma</span>{% endif %}
+        {% comment %}
+        A etiqueta de arquivada só chega a aparecer para quem modera: para todo
+        o resto, `pode_ler` já tirou a área desta lista (`permissoes.py`).
+        {% endcomment %}
+        {% if not area.ativa %}<span class="etiqueta">arquivada</span>{% endif %}
       </h2>
       {% if area.descricao %}<p class="sub" style="margin:4px 0 0">{{ area.descricao }}</p>{% endif %}
     </div>
   {% endfor %}
+{% endif %}
+
+{% comment %}
+AS FERRAMENTAS DO ADMINISTRADOR (mandato de 30/08/2026). Quem decide se elas
+aparecem é `pode_moderar`, em `apps/core/permissoes.py` — o MESMO cálculo que a
+view de POST usa para aceitar ou recusar. Esconder o botão nunca é a proteção:
+a proteção é o 404 do outro lado.
+{% endcomment %}
+{% if pode_moderar %}
+  <details class="ferramentas" {% if erro_admin %}open{% endif %}>
+    <summary>Ferramentas do administrador</summary>
+    <p class="sub" style="margin:10px 0 0">Só você enxerga esta caixa.</p>
+    {% if erro_admin %}<p class="erro">{{ erro_admin }}</p>{% endif %}
+    <form class="escrever" method="post" action="{% url 'criar_area' %}">
+      {% csrf_token %}
+      <h2>Criar uma área nova</h2>
+      <label for="nome">Nome da área</label>
+      <input id="nome" name="nome" maxlength="100" required
+             value="{{ nome_digitado }}" placeholder="Ex.: Dicas de textura">
+      <label for="descricao">Do que se trata (aparece embaixo do nome)</label>
+      <textarea id="descricao" name="descricao" rows="3"
+                placeholder="Uma linha explicando para que serve a área.">{{ descricao_digitada }}</textarea>
+      <label for="visibilidade">Quem enxerga</label>
+      <select id="visibilidade" name="visibilidade">
+        <option value="alunos" selected>Privada: só quem está matriculado</option>
+        <option value="publica">Aberta: qualquer pessoa da internet lê</option>
+      </select>
+      <label for="quem_escreve">Quem escreve</label>
+      <select id="quem_escreve" name="quem_escreve">
+        <option value="aluno" selected>Alunos matriculados</option>
+        <option value="equipe">Só a escola</option>
+        <option value="cadastrado">Qualquer pessoa com login</option>
+      </select>
+      <p class="sub" style="margin:10px 0 0">
+        Área aberta ao mundo é sempre só a escola falando. É a regra que protege
+        os alunos menores de idade, e o banco a recusa se as duas escolhas não
+        combinarem.
+      </p>
+      <button type="submit">Criar área</button>
+    </form>
+  </details>
 {% endif %}
 {% endblock %}
