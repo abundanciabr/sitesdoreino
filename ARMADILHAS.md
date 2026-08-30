@@ -32,7 +32,11 @@ Ler a pasta inteira desfaz o motivo de ela existir.
    nenhuma: duas sessões leem, veem o mesmo livre, e o `git merge` junta os dois
    arquivos sem ter o que reclamar — nomes e hunks diferentes. Medido em
    29/08/2026: uma entrada colidiu DUAS vezes seguidas no mesmo PR
-   (`armadilhas/189`).
+   (`armadilhas/189`). **Isto deixou de ser conselho em 29/08/2026:**
+   `ci/muralha-das-reservas.sh` reprova, em todo PR, número de armadilha que
+   apareça pela primeira vez sem ter sido pedido — e a recusa já traz o
+   conserto. Só o que é NOVO em relação à base é cobrado: o catálogo histórico
+   e o renomear-slug de entrada antiga passam.
    **Nunca acrescente ao fim deste arquivo, e nunca edite a entrada de outro
    agente para encaixar a sua** — arquivo novo por entrada é exatamente o que faz
    duas sessões paralelas pararem de colidir no mesmo hunk. Entrada sem sintoma

@@ -33,7 +33,9 @@ e não a categoria.
 
 **Ao terminar, acrescente o que aprendeu** — isso faz parte de terminar a tarefa, como
 o painel. Regra de onde escrever: se serve para qualquer célula, **crie um arquivo
-novo** `armadilhas/NNN-slug.md` (NNN = próximo número livre) e rode
+novo** `armadilhas/NNN-slug.md` — e o **`NNN` se PEDE, não se escolhe**
+(`python ci/reservar.py numero armadilha`, que reserva no servidor; `ci/muralha-das-reservas.sh`
+reprova o PR que escolheu à mão) — e rode
 `python ci/indice_de_armadilhas.py` para regenerar o índice; se só faz sentido dentro
 de uma célula, vai no `LICOES.md` dela. **Nunca acrescente ao fim do `ARMADILHAS.md`
 nem edite a entrada de outro agente para encaixar a sua** — arquivo novo por entrada
