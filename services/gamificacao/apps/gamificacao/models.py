@@ -20,15 +20,15 @@ mecanismo neste arquivo, e um teste que reprova a publicação:
    forma como um Cristal NASCE é vocabulário fechado, conferido pelo
    PostgreSQL: `origem_de_cristal_no_vocabulario_fechado` +
    `cristal_positivo_nunca_vem_de_compra`. Guarda:
-   `tests/test_economia_nada_por_dinheiro_real.py`.
+   `tests/test_inv_economia_nada_por_dinheiro_real.py` [INV-GAM1].
 2. **Cosmético é só estética.** `ItemCosmetico` tem quatro tipos, todos
    visuais, e o banco recusa um quinto (`tipo_de_cosmetico_e_so_estetica`).
    Nenhuma tabela que calcula XP, nível ou liga conhece um cosmético. Guarda:
-   `tests/test_economia_cosmetico_e_so_estetica.py`.
+   `tests/test_inv_economia_cosmetico_e_so_estetica.py` [INV-GAM2].
 3. **Aula nunca fica atrás de jogo.** Esta célula não sabe o que é uma aula:
    não há campo, modelo nem chave estrangeira que nomeie conteúdo educacional.
    Quem não consegue nomear uma aula não consegue trancá-la. Guarda:
-   `tests/test_economia_aula_nunca_atras_de_jogo.py`.
+   `tests/test_inv_economia_aula_nunca_atras_de_jogo.py` [INV-GAM3].
 
 `site_id` EM TODA ENTIDADE, COM UMA EXCEÇÃO DECLARADA
 -----------------------------------------------------
@@ -275,7 +275,7 @@ class NivelDefinicao(models.Model):
     sistema de níveis é "no nível 5 você desbloqueia o módulo avançado" — e é
     exatamente o que a lei §3.3 proíbe. Aqui um nível não tem onde guardar o que
     ele libera: os campos são o número, o XP e o título, e o guarda
-    `tests/test_economia_aula_nunca_atras_de_jogo.py` afirma que essa forma é
+    `tests/test_inv_economia_aula_nunca_atras_de_jogo.py` afirma que essa forma é
     FECHADA. Acrescentar `aulas_liberadas` deixa o teste vermelho na asserção.
 
     **Os títulos não falam a língua de credencial** (VEREDITO): a base é
@@ -510,7 +510,7 @@ class ItemCosmetico(models.Model):
 
     **Este modelo é o corpo do segundo invariante.** Os quatro tipos são
     visuais, o banco recusa um quinto (`tipo_de_cosmetico_e_so_estetica`), e o
-    guarda `tests/test_economia_cosmetico_e_so_estetica.py` afirma que a FORMA
+    guarda `tests/test_inv_economia_cosmetico_e_so_estetica.py` afirma que a FORMA
     do modelo é fechada: não há onde guardar um multiplicador de XP, um peso de
     ranking ou um destaque de visibilidade. Acrescentar
     `multiplicador_de_xp` deixa o teste vermelho na asserção.
@@ -521,7 +521,7 @@ class ItemCosmetico(models.Model):
     está vetada por escrito.
 
     **`custo_em_cristais` não tem irmão em dinheiro**, e o guarda
-    `tests/test_economia_nada_por_dinheiro_real.py` afirma que nenhum campo
+    `tests/test_inv_economia_nada_por_dinheiro_real.py` afirma que nenhum campo
     desta célula nomeia dinheiro real. O sazonal volta todo ano e **não tem
     cronômetro**: item-relâmpago com contagem regressiva é o padrão de urgência
     vetado pelo ECA Digital.

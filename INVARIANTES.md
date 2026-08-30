@@ -426,6 +426,92 @@ primeira oportunidade de violá-la.
   passaria no vazio [INV-CI01].
 - **Célula dona:** notificacoes
 
+### [INV-GAM1] Nada na Gamificação se Compra com Dinheiro Real
+- **O quê:** nenhum item, moeda, proteção ou vantagem da célula `gamificacao` é
+  vendável. Cristais são *earn-only* **por construção do banco**, e não por
+  convenção: a origem de um movimento vem de vocabulário fechado no PostgreSQL
+  (`origem_de_cristal_no_vocabulario_fechado`), crédito nunca nasce de compra
+  (`cristal_positivo_nunca_vem_de_compra`) e débito só existe como compra de
+  cosmético com o recibo junto (`cristal_negativo_so_com_referencia_de_compra`) —
+  o que também torna a moeda intransferível na prática, porque uma “gorjeta”
+  precisaria de uma porta de saída que não existe. Somam-se a isso quatro
+  ausências de forma: nenhum campo nomeia instrumento de pagamento (cartão,
+  boleto, Pix, gateway, fatura), nenhum campo que CARREGUE valor nomeia dinheiro
+  real, nenhum módulo importa SDK de cobrança, e a proteção de sequência não tem
+  tipo de item que a represente — o escudo é 1 por mês, automático e grátis,
+  dentro da `Sequencia`.
+- **Por quê:** a escola vende curso para famílias e o público é criança. “Nós não
+  vendemos vantagem” escrito num documento e a mesma frase conferida pelo
+  PostgreSQL são coisas diferentes: documento não sobrevive a seis meses e quatro
+  sessões (`RETROSPECTIVA-FASE-D` §2), restrição de banco sobrevive — e continua
+  valendo numa madrugada de incidente, com alguém logado no `psql`. Lei:
+  `DECISAO-gamificacao.md` §3.1 e §8 (“nenhum item, moeda, proteção ou vantagem se
+  compra”). Cristal comprável ou transferível é o critério de morte nº 2 da célula,
+  e este guarda precisar de exceção é o nº 6: nos dois casos a resposta certa é
+  parar e reabrir a decisão com o mantenedor, nunca afrouxar o teste.
+- **Teste-Guarda:**
+  `services/gamificacao/tests/test_inv_economia_nada_por_dinheiro_real.py` — as
+  quatro frentes de forma (campo com nome de instrumento de pagamento, campo
+  portador de valor com nome de dinheiro, escolha declarada, import de cobrança)
+  mais as recusas do banco provadas até em SQL cru, o caminho feliz que impede um
+  banco que recusa TUDO de passar por engano, e a ausência do escudo na loja.
+  Provado por mutação em 30/08/2026: `ItemCosmetico.preco_em_reais` e a remoção da
+  restrição `cristal_positivo_nunca_vem_de_compra` deixam o guarda vermelho.
+- **Célula dona:** gamificacao
+
+### [INV-GAM2] Cosmético é Só Estética
+- **O quê:** o que se compra com Cristais muda a APARÊNCIA e não muda mais nada:
+  nunca vantagem em XP, ranking ou visibilidade. `ItemCosmetico` tem quatro tipos,
+  todos visuais (título, moldura, tema, decoração de estúdio), e o banco recusa um
+  quinto (`tipo_de_cosmetico_e_so_estetica`). A forma do item é fechada: não há
+  onde guardar multiplicador, bônus, peso, prioridade, destaque ou posição — e
+  nenhuma tabela que calcula XP, nível ou liga conhece um cosmético.
+- **Por quê:** dos três, este é o mais fácil de perder. Os outros dois se quebram
+  por uma decisão grande, que alguém tomaria de olhos abertos; este se quebra por
+  uma boa ideia numa tarde qualquer — *“e se a moldura dourada desse 5% a mais de
+  XP?”*, *“e se quem comprou o tema aparecesse antes na galeria?”*. Cada uma parece
+  um detalhe simpático e, juntas, transformam a loja no lugar onde se compra
+  posição, que é exatamente o que a economia earn-only existe para tornar
+  impossível. Por isso a garantia é de FORMA e não de intenção: um cosmético que
+  não tem onde guardar um multiplicador não multiplica nada, mesmo que o motor de
+  XP de amanhã queira. Lei: `DECISAO-gamificacao.md` §3.2.
+- **Teste-Guarda:**
+  `services/gamificacao/tests/test_inv_economia_cosmetico_e_so_estetica.py` — o
+  vocabulário da vantagem recusado em qualquer campo de cosmético, a forma fechada
+  do item de loja, os quatro tipos visuais exatos, a recusa do quinto tipo pelo
+  PostgreSQL e a prova de que nenhuma tabela de XP, nível ou ranking referencia um
+  cosmético. Provado por mutação em 30/08/2026: `ItemCosmetico.multiplicador_de_xp`
+  deixa o guarda vermelho.
+- **Célula dona:** gamificacao
+
+### [INV-GAM3] Aula Nunca Fica Atrás de Jogo
+- **O quê:** conteúdo educacional jamais fica trancado por XP, nível ou Cristal. A
+  garantia é por AUSÊNCIA: esta célula não sabe o que é uma aula — nenhum campo,
+  modelo ou chave estrangeira nomeia aula, curso, módulo, lição, material ou
+  matrícula — e nenhum nome de campo ou de modelo é um portão (verbo de porteiro
+  somado a substantivo de conteúdo ou de economia). `NivelDefinicao` tem forma
+  fechada: um nível dá um título, e mais nada. A direção importa e está preservada:
+  a `RegraDePontuacao` vai LER `aula.concluida.v1` um dia (a tomada já está
+  semeada, desligada), e ler que a aula terminou é o oposto de decidir se ela pode
+  começar — por isso a régua mede NOME de campo e de modelo, nunca o valor de um
+  `evento_gatilho`.
+- **Por quê:** a família pagou por um curso. No dia em que uma aula estiver atrás
+  de “chegue ao nível 4”, a escola terá vendido uma coisa e entregado outra, e a
+  gamificação terá deixado de ser andaime para virar pedágio. A hierarquia da lei
+  (*Realidade > Criação > Maestria > Comunidade > XP*, `DECISAO-gamificacao.md`
+  §2) põe o XP em último; trancar aula com XP a inverte por completo. E a ausência
+  é a garantia mais durável disponível numa célula que ainda não tem tela nem
+  motor: quem não consegue nomear uma aula não consegue trancá-la, e nenhum motor
+  futuro consegue trancá-la sem antes acrescentar aqui um campo que a CI recusa.
+  Lei: `DECISAO-gamificacao.md` §3.3.
+- **Teste-Guarda:**
+  `services/gamificacao/tests/test_inv_economia_aula_nunca_atras_de_jogo.py` — o
+  inventário de campos e de modelos contra o vocabulário de conteúdo educacional,
+  a régua combinatória do portão (que deixa `liberado_em` em paz por ser inocente
+  sozinho) e a forma fechada do nível. Provado por mutação em 30/08/2026:
+  `NivelDefinicao.aulas_desbloqueadas` deixa três asserções vermelhas.
+- **Célula dona:** gamificacao
+
 ---
 
 ## Invariantes da própria CI

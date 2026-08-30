@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/forum.mensagem-removida.v1.json",
+  "title": "forum.mensagem-removida.v1",
+  "description": "Uma mensagem saiu do ar — moderacao, remocao pelo autor, ou remocao em cascata com o topico. E O EVENTO DE ESTORNO: quem creditou XP por `forum.mensagem-criada.v1` com este mesmo `mensagem_id` lanca o contra-lancamento (pontos negativos no ledger, `status` estornado), para que apagar o conteudo apague tambem o premio. Sem ele, escrever lixo e apagar depois seria XP de graca — e a moderacao viraria trabalho sem efeito. Congelado na Sessao B / Rito de Contrato de 30/08/2026, com o mantenedor presente.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "forum.mensagem-removida"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia do ESTORNO: a mesma remocao reentregue pelo relay debita uma vez so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de quem removeu — que quase nunca e o autor da mensagem: aqui o ator costuma ser um moderador. Por isso este id NAO serve para achar quem perde o XP; ver o $comment de `data`."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "$comment": "NAO ha id de autor neste corpo, e e de proposito: quem perde o XP e quem GANHOU o XP, e isso o consumidor ja sabe — o lancamento original foi gravado com o `origem_event_id` da criacao e a pessoa creditada. O estorno se resolve dentro do ledger de quem consome, por `mensagem_id`, sem o forum precisar dizer de novo quem escreveu. Repetir o autor aqui seria mais um lugar por onde um id de crianca viaja, para responder uma pergunta que o consumidor ja tem respondida.",
+      "required": [
+        "site_id",
+        "mensagem_id",
+        "topico_id"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "mensagem_id": {
+          "type": "string",
+          "description": "Id opaco da mensagem que saiu do ar — o MESMO que veio em `forum.mensagem-criada.v1`. E a unica chave do estorno."
+        },
+        "topico_id": {
+          "type": "string",
+          "description": "Id opaco da discussao de onde a mensagem saiu."
+        }
+      }
+    }
+  }
+}
