@@ -276,7 +276,48 @@ jobs:
       #
       # Só a ÚLTIMA tentativa decide o veredito. As duas primeiras usam
       # `continue-on-error`, que registra a falha sem derrubar o job.
+      #
+      # ---------------------------------------------------------------------
+      # E DESDE 30/08/2026 (TAR-013) O DEPLOY TAMBÉM MEDE — a peça que faltava.
+      #
+      # Repetir com pausa e parar na terceira já estavam aqui desde 26/08. A
+      # terceira ordem da `armadilhas/127` — MEDIR A PORTA 22 — não estava em
+      # lugar nenhum do deploy: ela morava no texto da armadilha (um comando
+      # para o agente colar) e em `ci/rerun_de_deploy.py`, que roda no PC,
+      # DEPOIS do fato, e só se alguém tiver visto o vermelho.
+      #
+      # Sem a medição, este retry repete às cegas: trata todo timeout de SSH
+      # como o soluço intermitente da 127, inclusive quando é a `armadilhas/017`
+      # — a falha PERMANENTE de alcance, em que nenhuma tentativa passa nunca.
+      # O log terminava dizendo "a suspeita é a 017", que é palpite. Agora a
+      # sonda mede do RUNNER, que é a ponta certa: o engasgo da 127 é entre o
+      # runner e a VPS, e é o runner que sabe se alcança a porta 22 AGORA.
+      #
+      # DUAS REGRAS QUE MANTÊM A SONDA VACINA, E NÃO ARMA:
+      #
+      # 1. Ela NUNCA derruba entrega que ainda poderia dar certo. A única
+      #    direção em que encurta o laço é a provada: DUAS medições
+      #    independentes dizendo "porta morta" pulam a 3ª tentativa. Porta viva
+      #    ou "não consegui medir" mantêm o retry inteiro, como antes.
+      # 2. A decisão sai por `outputs.veredito`, NUNCA por `outcome`. O
+      #    `outcome` só tem dois valores e juntaria "a porta está morta" com
+      #    "não consegui medir" — a confusão exata que o [INV-CI01] proíbe.
+      #    Por isso as sondas são `continue-on-error: true`: o exit code delas
+      #    não decide nada aqui; o texto do veredito decide.
       # =====================================================================
+      - name: Medir a porta 22 antes de tentar (só registra, não decide)
+        id: sonda0
+        continue-on-error: true
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          # `partida` muda o que a sonda DIZ, não o que ela mede: aqui nada
+          # falhou ainda, e a frase "o que falhou foi a rede" seria falsa no
+          # log de todo deploy saudável. Esta é a linha de base — a única
+          # medição que roda mesmo quando a VPS atende de primeira, e a que
+          # responde "a porta estava alcançável quando isto começou?".
+          MOMENTO: partida
+        run: python3 ci/sonda_da_vps.py --sondar-porta
+
       - name: Ativar na VPS (tentativa 1 de 3)
         id: subir1
         continue-on-error: true
@@ -290,6 +331,17 @@ jobs:
           script_path: infra/deploy-celula-na-vps.sh
         env:
           CELULA: ${{ matrix.celula }}
+
+      # A MEDIÇÃO QUE SEPARA AS DUAS DOENÇAS. Ela vem ANTES da pausa de
+      # propósito: se a porta estiver morta, é isso que a pausa vai esperar
+      # passar, e é bom saber disso já na primeira medição.
+      - name: Medir a porta 22 depois da 1ª recusa (127 ou 017?)
+        id: sonda1
+        if: steps.subir1.outcome == 'failure'
+        continue-on-error: true
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: python3 ci/sonda_da_vps.py --sondar-porta
 
       # A espera entre tentativas é conselho medido, não superstição: em
       # 26/08/2026 duas tentativas emendadas falharam e a terceira, depois de
@@ -315,6 +367,53 @@ jobs:
         env:
           CELULA: ${{ matrix.celula }}
 
+      - name: Medir a porta 22 depois da 2ª recusa (a medição que confirma)
+        id: sonda2
+        if: steps.subir1.outcome == 'failure' && steps.subir2.outcome == 'failure'
+        continue-on-error: true
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: python3 ci/sonda_da_vps.py --sondar-porta
+
+      # A REGRA DE PARADA ANTECIPADA — e por que ela exige DUAS medições.
+      #
+      # Uma medição isolada dizendo "porta morta" pode ser defeito da própria
+      # sonda no runner. Duas, tomadas com ~1 minuto de distância e cada uma
+      # depois de uma recusa real da VPS, são evidência: isto não é o soluço
+      # intermitente da `armadilhas/127`, é a `armadilhas/017` — falha de
+      # alcance, que nenhuma tentativa nova conserta.
+      #
+      # Só aqui a sonda tem poder de decisão, e só nesta direção: pular a 3ª
+      # tentativa quando já está provado que ela não pode dar certo. O ganho
+      # não é o minuto economizado — é o run parar de dizer "a suspeita é a
+      # 017" (palpite) e passar a dizer "é a 017" (medido, duas vezes), com o
+      # encaminhamento certo já escrito.
+      #
+      # Comparamos com `outputs.veredito`, NUNCA com `outcome`: 'não consegui
+      # medir' também produz `outcome == failure`, e ler assim faria a sonda
+      # abortar deploys por defeito próprio.
+      - name: PARAR — a porta 22 não respondeu nas DUAS medições (é a 017)
+        if: steps.sonda1.outputs.veredito == 'permanente' && steps.sonda2.outputs.veredito == 'permanente'
+        run: |
+          set -eu
+          echo "🧱 PAROU POR SEGURANÇA: a porta 22 da VPS não respondeu deste"
+          echo "   runner em NENHUMA das duas medições, tomadas depois de duas"
+          echo "   recusas reais da conexão."
+          echo
+          echo "   Isto NÃO é o soluço de rede da armadilhas/127 — é a"
+          echo "   armadilhas/017: falha PERMANENTE de alcance. Uma terceira"
+          echo "   tentativa não é diagnóstico, é teimosia: ela levaria mais um"
+          echo "   minuto para falhar exatamente igual."
+          echo
+          echo "   O site continua no ar servindo a versão ANTERIOR — ninguém"
+          echo "   ficou fora do ar. Mas o que foi mergeado NÃO está em"
+          echo "   produção, e não vai estar enquanto a porta não voltar."
+          echo
+          echo "   O conserto é de configuração e passa pelo mantenedor (Lei 5):"
+          echo "   o que o VPS_HOST resolve? entrou CDN na frente do domínio? o"
+          echo "   firewall da VPS passou a recusar a faixa dos runners?"
+          exit 1
+
       - name: Esperar antes da última tentativa
         if: steps.subir1.outcome == 'failure' && steps.subir2.outcome == 'failure'
         run: |
@@ -322,7 +421,9 @@ jobs:
           sleep 60
 
       # A que vale. Sem `continue-on-error`: se esta falhar, o deploy é vermelho
-      # — e aí não é mais blip, é para investigar (armadilhas/017 é a suspeita).
+      # — e aí não é mais blip. O que É, o passo de parada acima já mediu: se
+      # chegou aqui, a porta 22 respondeu pelo menos uma vez, então a 017 está
+      # descartada por medição, não por suspeita.
       - name: Ativar na VPS (tentativa 3 de 3 — esta decide)
         id: subir3
         if: steps.subir1.outcome == 'failure' && steps.subir2.outcome == 'failure'
@@ -489,3 +590,43 @@ jobs:
             echo "   volta não se confirmou (sem a marca REVERSAO-CONCLUIDA)."
             echo "   Trate a célula como QUEBRADA e dispare o rollback manual."
           fi
+
+      # =====================================================================
+      # REGISTRAR O QUE O DEPLOY FEZ — a terceira ordem da armadilhas/127.
+      #
+      # O log já preservava as tentativas dentro do mesmo run. O problema é que
+      # ninguém lê log: um deploy que se salvou na 2ª tentativa era, para quem
+      # abre a execução, IDÊNTICO a um que passou de primeira — e o padrão da
+      # VPS recusando ficava invisível justamente nos dias em que ela mais
+      # recusou. Este passo escreve o resumo do run (a primeira coisa que
+      # aparece ao abrir a execução) em português de resultado: quantas
+      # tentativas foram precisas, o que cada medição da porta 22 disse, se o
+      # site ficou no ar, e — a frase que se esquece — se o que foi mergeado
+      # está ou não em produção.
+      #
+      # `!cancelled()` e não `always()`: um run cancelado pela cadeira musical
+      # do grupo `deploy` (armadilhas/173 e /188) não executou nada, e narrar
+      # um deploy que não aconteceu seria inventar história. `always()` inclui
+      # cancelamento; este não.
+      #
+      # O passo NUNCA reprova (o narrador não é portão — quem reprova são os
+      # passos acima). Um narrador que pudesse derrubar o job transformaria
+      # "não consegui contar a história" em "a entrega falhou".
+      # =====================================================================
+      - name: Registrar no resumo do run o que o deploy fez
+        if: ${{ !cancelled() }}
+        env:
+          CELULA: ${{ matrix.celula }}
+          R1: ${{ steps.subir1.outcome }}
+          R2: ${{ steps.subir2.outcome }}
+          R3: ${{ steps.subir3.outcome }}
+          V0: ${{ steps.sonda0.outputs.veredito }}
+          V1: ${{ steps.sonda1.outputs.veredito }}
+          V2: ${{ steps.sonda2.outputs.veredito }}
+          # A marca de conclusão vem das MESMAS saídas capturadas que o passo
+          # "A entrega rodou mesmo?" examina — e por env, nunca interpolada
+          # dentro do `run:`, que seria injeção esperando acontecer.
+          SAIDA_1: ${{ steps.subir1.outputs.stdout }}
+          SAIDA_2: ${{ steps.subir2.outputs.stdout }}
+          SAIDA_3: ${{ steps.subir3.outputs.stdout }}
+        run: python3 ci/sonda_da_vps.py --resumir
