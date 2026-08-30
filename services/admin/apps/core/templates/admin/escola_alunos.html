@@ -79,7 +79,7 @@
   </p>
   {% endif %}
 
-  <h2 style="font-size:16px; margin:30px 0 10px">Quem está esperando</h2>
+  <h2 class="titulo-de-bloco">Quem está esperando</h2>
 
   {% if peneirando and esperando %}
   <p class="nota">Mostrando {{ esperando|length }} de {{ total_esperando }} na fila.</p>
@@ -238,7 +238,7 @@
     </form>
   </details>
 
-  <h2 style="font-size:16px; margin:34px 0 10px">Os alunos</h2>
+  <h2 class="titulo-de-bloco mais-afastado">Os alunos</h2>
 
   {% if peneirando and alunos %}
   <p class="nota">Mostrando {{ alunos|length }} de {{ total_de_alunos }} alunos.</p>
@@ -353,7 +353,7 @@
   o botão NÃO existia. O mantenedor decidiu que ele passasse a existir, com o
   preço na mesa — e agora o aviso conta o que esse preço é, em vez de sumir.
   {% endcomment %}
-  <p style="margin-top:16px" class="aviso">
+  <p class="aviso espaco-16">
     <b>Quem é administrador desta área:</b> {{ administradores|join:", " }}.
     <br><br>
     Os botões acima promovem e removem — menos quem vem da lista do servidor,
@@ -366,7 +366,7 @@
     registro que ninguém consegue editar nem apagar.
   </p>
 
-  <p style="margin-top:16px" class="aviso">
+  <p class="aviso espaco-16">
     <b>Nenhuma ficha se apaga por aqui — e isso é de propósito.</b>
     Você decidiu em 29/08/2026 que o cadastro de um aluno nunca é destruído:
     quem sai vira <b>Ex-aluno</b> no seletor de situação ali em cima, perde o
@@ -381,7 +381,7 @@
     não com um clique de rotina.
   </p>
 
-  <p style="margin-top:28px" class="aviso">
+  <p class="aviso espaco-28">
     <b>Onde aparece um traço, o número não foi medido.</b>
     Um <b>0</b> no lugar dele seria mentira: diria <i>"não há ninguém"</i>
     quando a verdade é <i>"não consegui contar"</i>. Onde há número, ele foi

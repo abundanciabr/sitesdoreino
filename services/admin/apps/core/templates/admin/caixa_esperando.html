@@ -25,7 +25,7 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
 
   {% if nao_respondeu %}
     <h1>Quem está esperando</h1>
-    <p class="aviso" style="margin-top:16px">Não consegui perguntar à parte que guarda as ideias. Nenhum número aqui seria confiável agora, então não mostro nenhum.</p>
+    <p class="aviso espaco-16">Não consegui perguntar à parte que guarda as ideias. Nenhum número aqui seria confiável agora, então não mostro nenhum.</p>
   {% else %}
     {% include "admin/_caixa_abas.html" %}
 
@@ -33,7 +33,7 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
       <div class="hero">
         <div>
           <div class="hero-numero">{{ gente_esperando }}</div>
-          <h1 style="font-size:18px;margin:6px 0 0">aluno{{ gente_esperando|pluralize:"s" }} esperando notícia de alguma ideia</h1>
+          <h1 class="titulo-da-conta">aluno{{ gente_esperando|pluralize:"s" }} esperando notícia de alguma ideia</h1>
         </div>
         <p class="hero-nota">
           Cada um escreveu, votou ou comentou — e desde então não recebeu nenhum aviso.
@@ -58,7 +58,15 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
         {% for i in ideias %}
           <div class="espera{% if i.parada_ha > limiar %} calada{% endif %}">
             <div class="espera-gente">
-              <span class="barra-gente" style="width:{% widthratio i.pessoas maior_plateia 100 %}%"></span>
+              {% comment %}
+              A largura em PASSOS de 10%, e não escrita na marcação: atributo
+              `style=` é estilo embutido, e a política de segurança desta área
+              o bloqueia (`armadilhas/199`) — a barra ficava sem largura nenhuma.
+              Perder a precisão fina não custa nada aqui: a barra é decorativa e
+              o NÚMERO está sempre escrito ao lado dela.
+              {% endcomment %}
+              {% widthratio i.pessoas maior_plateia 10 as passo %}
+              <span class="barra-gente passo-{{ passo }}"></span>
               <b>{{ i.pessoas }}</b>
               <span class="nota">pessoa{{ i.pessoas|pluralize:"s" }}</span>
             </div>

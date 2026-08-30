@@ -24,7 +24,7 @@ roxo = robô com ela agora; azul = fila andando; verde = terminou com prova.
 
   {% if fila_ausente %}
     <h1>Os robôs</h1>
-    <p class="aviso" style="margin-top:16px">
+    <p class="aviso espaco-16">
       A fila de trabalho não veio nesta imagem. Isso não significa que não há
       trabalho — significa que esta parte quebrou. O quadro vivo mora no
       repositório (<code>fila/</code>); avise um robô com estas palavras:
@@ -82,11 +82,11 @@ roxo = robô com ela agora; azul = fila andando; verde = terminou com prova.
       {% endfor %}
     </div>
 
-    <h2 style="margin-top:26px">Agora, ao vivo</h2>
+    <h2 class="espaco-26">Agora, ao vivo</h2>
     <p class="carimbo" id="ao-vivo-estado">Perguntando ao GitHub o que está acontecendo neste minuto…</p>
     <ul class="ao-vivo" id="ao-vivo-lista"></ul>
 
-    <h2 style="margin-top:26px">As esperas dos robôs</h2>
+    <h2 class="espaco-26">As esperas dos robôs</h2>
     {% if esperas %}
       <p class="carimbo">
         Resumo do diário de esperas, exportado em {{ esperas.gerado_em }} —
@@ -113,7 +113,7 @@ roxo = robô com ela agora; azul = fila andando; verde = terminou com prova.
     {% endif %}
 
     {% if regua %}
-      <p style="margin-top:14px"><b>Quanto cada espera costuma levar</b>
+      <p class="espaco-14"><b>Quanto cada espera costuma levar</b>
         <span class="carimbo">(medido em {{ regua_medida_em }}, nunca chutado)</span></p>
       <table class="regua">
         <tr><th>espera</th><th>normalmente</th><th>quase sempre até</th><th>amostra</th></tr>

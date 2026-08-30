@@ -30,7 +30,7 @@ Três coisas ditas de propósito na tela:
 
   {% if nao_respondeu %}
     <h1>Ideia</h1>
-    <p class="aviso" style="margin-top:16px">Não consegui perguntar à parte que guarda as ideias — ou esta ideia não existe. Nada aqui seria confiável agora, então não mostro nada.</p>
+    <p class="aviso espaco-16">Não consegui perguntar à parte que guarda as ideias — ou esta ideia não existe. Nada aqui seria confiável agora, então não mostro nada.</p>
   {% else %}
 
     {% if recado %}<div class="aviso feito">{{ recado }}</div>{% endif %}
@@ -47,7 +47,7 @@ Três coisas ditas de propósito na tela:
         Nada foi apagado: votos, comentários e histórico continuam intactos, e desarquivar traz tudo
         de volta exatamente como estava.
         {% if ideia.motivo_do_arquivamento %}<p class="citacao">{{ ideia.motivo_do_arquivamento }}</p>{% endif %}
-        <form method="post" action="{% url 'caixa_desarquivar' ideia.id %}" style="margin-top:8px">
+        <form class="espaco-8" method="post" action="{% url 'caixa_desarquivar' ideia.id %}">
           {% csrf_token %}
           <button type="submit" class="botao">Restaurar — voltar a mostrar ao aluno</button>
         </form>

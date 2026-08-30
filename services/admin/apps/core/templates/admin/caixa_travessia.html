@@ -21,7 +21,7 @@ que toca sempre não é alarme.
 
   {% if nao_respondeu %}
     <h1>A travessia</h1>
-    <p class="aviso" style="margin-top:16px">Não consegui perguntar à parte que guarda as ideias. A página abre, mas não mostro número nenhum — número inventado é pior que número ausente.</p>
+    <p class="aviso espaco-16">Não consegui perguntar à parte que guarda as ideias. A página abre, mas não mostro número nenhum — número inventado é pior que número ausente.</p>
   {% else %}
     {% include "admin/_caixa_abas.html" %}
 
@@ -46,7 +46,7 @@ que toca sempre não é alarme.
           {% for i in coluna.ideias %}
             <div class="peca"><a href="{% url 'caixa_ideia' i.id %}">{{ i.titulo }}</a><p class="nota">{{ i.votos }} votos · {{ i.categoria }}</p></div>
           {% empty %}
-            <p class="nota" style="padding:8px 2px">Ninguém aqui.</p>
+            <p class="nota vazio-da-coluna">Ninguém aqui.</p>
           {% endfor %}
         </div>
       {% endfor %}
@@ -61,10 +61,10 @@ que toca sempre não é alarme.
       </div>
     {% endif %}
 
-    <h2 style="font-size:17px;margin:28px 0 4px">Fora do trilho</h2>
+    <h2 class="titulo-de-lista">Fora do trilho</h2>
     <p class="subtitulo">Ideias que não seguem — cada uma com o motivo que foi entregue a quem estava esperando.</p>
     {% for i in saidas %}
-      <div class="cartao" style="margin-bottom:10px">
+      <div class="cartao espaco-abaixo-10">
         <b>{% if i.status == 'nao_planejado' %}<span class="selo recusada">recusada</span>{% else %}<span class="selo">juntada a outra</span>{% endif %} {{ i.titulo }}</b>
         <p class="nota">{{ i.votos }} votos · {{ i.categoria }}</p>
         {% if i.motivo_da_saida %}

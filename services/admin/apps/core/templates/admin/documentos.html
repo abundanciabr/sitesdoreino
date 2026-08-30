@@ -22,12 +22,12 @@
     {% for documento in documentos %}
     <div class="cartao">
       <div class="rotulo">{{ documento.titulo }}</div>
-      <div class="nota" style="margin-top:8px">
+      <div class="nota espaco-8">
         {% if documento.publico %}
-        <b style="color:var(--verde)">PÚBLICO</b> &middot; qualquer pessoa lê em
+        <b class="verde">PÚBLICO</b> &middot; qualquer pessoa lê em
         <code>meshcraft.top/docs/{{ documento.nome }}</code>
         {% else %}
-        <b style="color:var(--amarelo)">SÓ ADMINISTRADORES</b> &middot; ninguém de
+        <b class="amarelo">SÓ ADMINISTRADORES</b> &middot; ninguém de
         fora consegue abrir
         {% endif %}
       </div>
@@ -45,7 +45,7 @@
   </p>
   {% endif %}
 
-  <p style="margin-top:28px" class="aviso">
+  <p class="aviso espaco-28">
     <b>Como um documento vira público.</b>
     Cada documento é um arquivo em <code>documentos/</code>, e o próprio arquivo
     diz quem pode lê-lo: uma linha <code>publico: true</code> no topo. Sem essa
