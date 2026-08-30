@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-215951-TAR-040-concluida",
+  "tarefa": "TAR-040",
+  "evento": "concluida",
+  "quando": "2026-08-30T21:59:51+00:00",
+  "quem": "sessao-contrato-gamificacao-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/644 : contrato congelado (gamificacao.openapi.yaml com getPublicProfiles e getMyStatus), os 4 eventos forum.* e o aditivo de notificacao.devida; muralhas PASS (13 portoes), testador PASS (1308 testes), contrato_aditivo PASS nos 6 arquivos, auditar_manifesto coerente com o disco. O freeze de gamificacao e ERROR ate a porta de maquina (PR 16) existir, e isso esta medido e escrito no PR e em armadilhas/228.",
+  "verificado_em": "2026-08-30"
+}
