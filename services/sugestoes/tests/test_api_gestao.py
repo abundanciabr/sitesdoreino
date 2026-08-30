@@ -503,6 +503,113 @@ def test_a_lista_nao_carrega_historico(client, db, par_autorizado, caixa, sugest
 
 
 # ---------------------------------------------------------------------------
+# 5b. A FICHA da assinatura — `tem_changespec` diz "sim"; ela diz "o quê"
+# ---------------------------------------------------------------------------
+#
+# Antes desta emenda, a única coisa que atravessava a fronteira sobre a
+# assinatura era o booleano `tem_changespec`. O Admin deixava ASSINAR e não
+# deixava CONFERIR o que foi assinado — a última das cinco telas de
+# `/moderacao` sem paridade nenhuma do lado de lá, e a razão de a TAR-014 ter
+# parado antes de aposentá-las.
+
+
+def assinar(client, sugestao, **campos):
+    """Uma assinatura pelo caminho REAL de escrita — nunca por `create()`."""
+    corpo = {
+        "por_email": MANTENEDOR,
+        "por_id_da_plataforma": ID_DA_PLATAFORMA,
+        "por_nome": "Davi (mantenedor)",
+        "change_id": "CS-SUGESTOES-0001",
+        "documento": "docs/changespecs/CS-SUGESTOES-0001.md",
+        "aprovado_por": "Davi (mantenedor)",
+        "aprovado_em": "2026-08-28",
+    }
+    corpo.update(campos)
+    resposta = escrever(client, f"{IDEIAS}/{sugestao.id}/changespec", corpo)
+    assert resposta.status_code == 200, resposta.content
+    return resposta
+
+
+def test_a_ficha_da_assinatura_atravessa_inteira(
+    client, db, par_autorizado, sugestao, lista_de_aprovadores
+):
+    """Os seis campos que a tela antiga mostrava, e nenhum a menos.
+
+    O booleano responde "está assinada?"; auditar exige "por quem, quando, com
+    qual documento" — e é isso que some no dia em que a tela velha sair do ar.
+    """
+    lista_de_aprovadores(MANTENEDOR)
+    assinar(client, sugestao)
+
+    (ficha,) = ler_uma(client, sugestao.id)["changespecs"]
+
+    assert ficha["change_id"] == "CS-SUGESTOES-0001"
+    assert ficha["documento"] == "docs/changespecs/CS-SUGESTOES-0001.md"
+    assert ficha["aprovado_por"] == "Davi (mantenedor)"
+    assert ficha["aprovado_em"] == "2026-08-28"
+    assert ficha["registrado_por"] == "Davi (mantenedor)"
+    # O instante em que o fato entrou na Caixa — diferente da data do documento.
+    assert ficha["registrado_em"].startswith(
+        sugestao.changespecs.get().registrado_em.isoformat()[:10]
+    )
+
+
+def test_a_ficha_traz_as_DUAS_versoes_do_changespec(
+    client, db, par_autorizado, sugestao, lista_de_aprovadores
+):
+    """Escopo que mudou nasce `-v2` (formato §4) — e as duas continuam valendo.
+
+    É por isso que a ficha é uma LISTA e não um objeto: mostrar só a última
+    esconderia justamente o que a auditoria procura, que é a corrente.
+    """
+    lista_de_aprovadores(MANTENEDOR)
+    assinar(client, sugestao, change_id="CS-SUGESTOES-0001")
+    assinar(client, sugestao, change_id="CS-SUGESTOES-0001-v2")
+
+    ids = [f["change_id"] for f in ler_uma(client, sugestao.id)["changespecs"]]
+
+    # A ordem é a do model (`-registrado_em`, `-id`): o mais recente primeiro,
+    # a mesma que a tela antiga mostrava.
+    assert ids == ["CS-SUGESTOES-0001-v2", "CS-SUGESTOES-0001"]
+
+
+def test_o_email_de_quem_registrou_nao_atravessa_nem_sem_nome(
+    client, db, par_autorizado, sugestao, lista_de_aprovadores
+):
+    """A tela antiga caía no e-mail quando o nome era vazio; a fronteira, não.
+
+    `changespecs.html` escrevia `nome_exibido|default:email` — inofensivo numa
+    página que só a equipe abre, e um vazamento assim que o mesmo dado vira
+    resposta de API. Vazio é a resposta certa: quem exibe decide o que escrever.
+    """
+    lista_de_aprovadores(MANTENEDOR)
+    assinar(client, sugestao)
+    quem = sugestao.changespecs.get().registrado_por
+    quem.nome_exibido = ""
+    quem.save(update_fields=["nome_exibido"])
+
+    corpo = ler_uma(client, sugestao.id)
+
+    assert corpo["changespecs"][0]["registrado_por"] == ""
+    assert "@" not in json.dumps(corpo), "algum e-mail atravessou a fronteira"
+
+
+def test_a_lista_nao_carrega_a_ficha_da_assinatura(
+    client, db, par_autorizado, sugestao, lista_de_aprovadores
+):
+    """Pelo mesmo motivo do histórico: a mesa não mostra ficha nenhuma."""
+    lista_de_aprovadores(MANTENEDOR)
+    assinar(client, sugestao)
+
+    ideia = uma(ler(client), sugestao)
+
+    assert "changespecs" not in ideia
+    # E o booleano continua lá: quem só quer saber "está assinada?" não paga
+    # pela ficha.
+    assert ideia["tem_changespec"] is True
+
+
+# ---------------------------------------------------------------------------
 # 6. Arquivar — `DECISAO-arquivar-ideia.md` (29/08/2026), nada se perde
 # ---------------------------------------------------------------------------
 

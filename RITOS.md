@@ -284,11 +284,28 @@ Desde 29/08/2026 (fase 2 do plano da lista de tarefas; desenho em
 do projeto mora em **`fila/`** — um arquivo por tarefa, um por acontecimento,
 estado sempre CALCULADO (não existe campo de status). O rito:
 
-1. **Antes de começar trabalho que já está na fila, reivindique:**
-   `python ci/fila.py pegar TAR-NNN --quem "sessao-<area>-<data>"`. Quem chega
-   segundo recebe recusa DO SERVIDOR na hora — isso não é erro, é a trava
-   funcionando: escolha outra tarefa. A reserva expira sozinha em 3h se a
-   sessão morrer.
+1. **A BANCADA PRIMEIRO, o balcão depois** — ordem corrigida em 30/08/2026
+   (TAR-018; a antiga fazia o comprovante nascer órfão, `armadilhas/192`):
+
+   ```bash
+   git fetch origin
+   git worktree add ../wt-<area>-<tarefa> -b agent/<area>/<tarefa> origin/main
+   cd ../wt-<area>-<tarefa>
+   python ci/fila.py pegar TAR-NNN --quem "sessao-<area>-<data>"
+   ```
+
+   Quem chega segundo recebe recusa DO SERVIDOR na hora — isso não é erro, é a
+   trava funcionando: escolha outra tarefa (e o worktree a mais se remove). A
+   reserva expira sozinha em 3h se a sessão morrer.
+
+   **Inverter a ordem não enfraquece a trava:** a reserva é uma referência
+   atômica no servidor do GitHub (`ci/reservar.py`) e não depende da pasta de
+   onde você pede. Quem depende da pasta é o COMPROVANTE — pedido no clone
+   principal, ele nasce onde ninguém commita, o PR viaja sem ele e o histórico
+   de quem pegou o trabalho some. Por isso `pegar`, `criar` e `concluir`
+   **recusam no espelho** desde 30/08/2026, com a recusa ensinando estas
+   quatro linhas; `listar`, `validar` e `soltar` continuam livres lá (devolver
+   tarefa presa é gesto de emergência, e emergência não espera worktree).
 2. **Trabalho novo que um despacho descobre vira tarefa registrada**
    (`python ci/fila.py criar ...`, número do almoxarife) — nunca item de
    memória de sessão, nunca lista paralela num documento. A fila é a única
@@ -299,9 +316,15 @@ estado sempre CALCULADO (não existe campo de status). O rito:
    mantenedor decide? Evento `bloqueada` com o motivo e devolva à maestro:
    abrir exceção é o resultado esperado, não falha.
 4. **O evento viaja no PR do trabalho.** A referência no servidor vale AGORA;
-   o evento em `fila/eventos/` vale para sempre.
+   o evento em `fila/eventos/` vale para sempre. Antes de pedir pouso, confira
+   com os olhos: `git diff --name-only origin/main...HEAD` tem TODOS os eventos
+   da tarefa? `python ci/fila.py validar` avisa — em SOMBRA, sem reprovar
+   ninguém — quando acha comprovante que o Git não conhece.
 
 **Quem faz valer:** `ci/muralha-da-fila.sh` → `ci/fila.py validar` (roda em
 todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · o servidor do GitHub
-via `ci/reservar.py` (a trava atômica com prazo) · `ci/tests/test_fila.py`
-(inclui a corrida: segunda sessão recusada) · `ci/tests/test_reservar.py`.
+via `ci/reservar.py` (a trava atômica com prazo) · a recusa no espelho, em
+`ci/fila.py` (`criar`/`pegar`/`concluir`), que reusa a mesma leitura de
+espelho-vs-bancada da muralha da pasta compartilhada · `ci/tests/test_fila.py`
+(inclui a corrida: segunda sessão recusada; e o comprovante órfão, encenado com
+repositório descartável) · `ci/tests/test_reservar.py`.

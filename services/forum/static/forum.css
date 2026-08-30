@@ -58,7 +58,62 @@ h2 { font-size: 18px; margin: 0 0 4px; }
 }
 .migalha { font-size: 14px; margin-bottom: 12px; }
 .migalha a { color: var(--tinta-fraca); }
+
+/* ESCREVER — a caixa de abrir conversa e a de responder. */
+.escrever { margin-top: 28px; }
+.escrever h2 { margin-bottom: 12px; }
+.escrever label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin: 12px 0 4px;
+}
+.escrever input,
+.escrever textarea {
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  background: var(--fundo);
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+.escrever textarea { resize: vertical; min-height: 110px; }
+.escrever input:focus,
+.escrever textarea:focus {
+  outline: 2px solid var(--destaque);
+  outline-offset: 1px;
+  background: var(--papel);
+}
+.escrever button, .botao {
+  display: inline-block;
+  margin-top: 14px;
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--destaque);
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 20px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.escrever button:hover, .botao:hover { filter: brightness(1.1); }
+/* O recado que aparece NO LUGAR do formulário quando a pessoa não pode
+   escrever. Não é erro — é explicação —, então não usa a cor de alarme. */
+.recado { border-left: 3px solid var(--destaque); margin-top: 28px; }
+.recado p { margin: 6px 0 0; color: var(--tinta-fraca); }
+.erro {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 0 0 4px;
+}
+
 @media (max-width: 520px) {
   main { padding: 16px 14px 40px; }
   .quem { float: none; display: block; margin-top: 4px; }
+  .escrever button, .botao { width: 100%; text-align: center; }
 }

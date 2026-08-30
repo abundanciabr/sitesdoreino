@@ -38,7 +38,11 @@ disso.
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
+import re
+import unicodedata
 from pathlib import Path
 
 from django.shortcuts import render
@@ -47,6 +51,13 @@ from django.views.decorators.http import require_GET
 from .painel import diretorio_do_painel
 
 NOME_DO_ARQUIVO = "mapa-do-site.json"
+
+_EMBUTIDO = {
+    "script-src": re.compile(
+        rb"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE
+    ),
+    "style-src": re.compile(rb"<style[^>]*>(.*?)</style>", re.DOTALL | re.IGNORECASE),
+}
 
 # Os quatro públicos, na ordem em que a página os desenha — de fora para
 # dentro: quem passa na rua, quem é da casa, você, e as máquinas. O vocabulário
@@ -129,7 +140,64 @@ def _preparar(entrada: dict) -> dict:
         "interno": not publico,
         "celula": entrada.get("celula", ""),
         "para_quem": entrada.get("para_quem", ""),
+        # A luz de "está no ar?". Quem a acende é o NAVEGADOR do dono, pedindo
+        # o endereço público de verdade — a prova de fora, do jeito que ele
+        # veria. O que pode ser sondado é cercado em `ci/mapa_do_site.py`:
+        # gesto, endereço interno e molde sem exemplo são recusados no portão.
+        "sonda": (entrada.get("exemplo") or endereco) if entrada.get("sonda") else None,
     }
+
+
+def _sem_acento(texto: str) -> str:
+    """`Sugestões` e `sugestoes` acham a mesma linha.
+
+    O dono digita sem acento no celular tanto quanto com — e uma busca que
+    exige o acento certo é uma busca que não encontra.
+    """
+    sem = unicodedata.normalize("NFKD", texto)
+    return "".join(c for c in sem if not unicodedata.combining(c)).casefold()
+
+
+def _casa(item: dict, procurado: str) -> bool:
+    """A busca varre o que a pessoa leria: nome, explicação, endereço e nota."""
+    campos = (
+        item["titulo"],
+        item["descricao"],
+        item["endereco"],
+        item["observacao"] or "",
+        item["exemplo"] or "",
+    )
+    return any(procurado in _sem_acento(c) for c in campos)
+
+
+def _politica(html: bytes) -> str:
+    """O CSP desta página, com o hash do que ela traz embutido.
+
+    Esta tela manda a própria política porque tem uma ILHA DE SCRIPT (a luz de
+    "está no ar?"), e a política da porta diz `script-src 'self'` — sob ela a
+    ilha não roda. O caminho é o hash, o mesmo de `painel.py` e `robos.py`:
+    `'unsafe-inline'` liberaria QUALQUER script injetado, e nunca entra aqui.
+
+    O `style-src` leva o hash pelo mesmo motivo, e não pode ser esquecido: como
+    esta resposta traz a política pronta, a da porta não se aplica (`setdefault`)
+    — e sem o hash do estilo a página voltaria a chegar sem desenho nenhum, que
+    é exatamente o defeito medido em 30/08/2026 (`armadilhas/199`).
+
+    `connect-src 'self'`: a luz só pergunta a este mesmo site, nunca a terceiro.
+    """
+    partes = []
+    for diretiva, padrao in _EMBUTIDO.items():
+        hashes = sorted(
+            "'sha256-" + base64.b64encode(hashlib.sha256(m).digest()).decode() + "'"
+            for m in set(padrao.findall(html))
+        )
+        partes.append(f"{diretiva} 'self'" + "".join(f" {h}" for h in hashes))
+    return (
+        "default-src 'self'; "
+        + "; ".join(partes)
+        + "; img-src 'self' data:; object-src 'none'; base-uri 'none'; "
+        "form-action 'self'; frame-ancestors 'self'; connect-src 'self'"
+    )
 
 
 @require_GET
@@ -156,9 +224,17 @@ def mapa_do_site(request):
             status=500,
         )
 
+    # A BUSCA, e ela é do SERVIDOR de propósito: um formulário que recarrega a
+    # página, o mesmo gesto da peneira da lista de alunos. Uma busca em script
+    # exigiria abrir a política de segurança para mais uma ilha, e deixaria de
+    # funcionar exatamente para quem tem script bloqueado. Aqui o endereço
+    # `?q=forum` também é COMPARTILHÁVEL e guardável nos favoritos.
+    procurado = _sem_acento(request.GET.get("q", "").strip())
+    achados = [e for e in entradas if _casa(e, procurado)] if procurado else entradas
+
     grupos = []
     for chave, titulo, explicacao in GRUPOS:
-        do_grupo = [e for e in entradas if e["para_quem"] == chave]
+        do_grupo = [e for e in achados if e["para_quem"] == chave]
         paginas = [e for e in do_grupo if not e["gesto"]]
         gestos = [e for e in do_grupo if e["gesto"]]
         if not do_grupo:
@@ -174,12 +250,16 @@ def mapa_do_site(request):
             }
         )
 
-    return render(
+    resposta = render(
         request,
         "admin/mapa_do_site.html",
         {
             "admin": request.admin,
             "grupos": grupos,
+            # O que a pessoa digitou volta para o campo (senão a busca "some" e
+            # ela não sabe o que está vendo), e a conta diz de quantos.
+            "procurado": request.GET.get("q", "").strip(),
+            "achados": len(achados),
             "total": len(entradas),
             # As três contas são DISJUNTAS e somam o total — é isso que faz a
             # capa desta página ser conferível de cabeça. A primeira versão
@@ -200,3 +280,5 @@ def mapa_do_site(request):
             "orfas": [e for e in entradas if e["para_quem"] not in CHAVES],
         },
     )
+    resposta["Content-Security-Policy"] = _politica(resposta.content)
+    return resposta

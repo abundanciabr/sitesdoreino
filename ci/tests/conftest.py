@@ -9,6 +9,7 @@ a prova C (instrumentation failure) exige.
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -135,6 +136,33 @@ class RepoFalso:
         return self.exportador(celula, corpo)
 
 
+# ---------------------------------------------------------------------------
+# OS GERADOS DE `armadilhas/` NÃO MORAM MAIS NO GIT (30/08/2026, armadilhas/200):
+# o índice inteiro era reescrito por todo robô que aprendia uma lição, e dois
+# robôs do mesmo lote colidiam sem ter escrito uma linha em comum. Quem os
+# materializa passou a ser a integração.
+#
+# Esta fixture fecha a METADE QUE FALTOU e que deixou a `main` vermelha no mesmo
+# dia: o job `guardas do repositório` do `alarme-main` roda esta suíte SEM passar
+# pelas muralhas, então numa árvore recém-clonada os testes do sino liam um
+# `armadilhas/SINAIS.json` inexistente e morriam em
+# `JSONDecodeError: Expecting value: line 1 column 1 (char 0)`. O portão de
+# deploy então recusou publicar — fail-closed, como devia — e nenhum merge
+# chegava ao site.
+#
+# Por que aqui e não num passo de YAML: um passo conserta UM workflow. Esta
+# suíte tem três chamadores — `muralhas`, `alarme-main` e a pessoa que roda
+# `pytest ci/tests` na mão — e o terceiro não tem YAML nenhum. Materializar na
+# porta da suíte cobre os três de uma vez, que é a mesma escolha de "uma
+# definição só" que o resto desta casa faz.
+@pytest.fixture(scope="session", autouse=True)
+def _materializar_os_gerados_das_armadilhas() -> None:
+    """Garante `INDICE.md`, `GUARDAS.json` e `SINAIS.json` antes de qualquer teste."""
+    import indice_de_armadilhas
+
+    indice_de_armadilhas.rodar(raiz=CI.parent, conferir=False)
+
+
 @pytest.fixture
 def repo(tmp_path: Path) -> RepoFalso:
     raiz = tmp_path / "repo-falso"
@@ -164,3 +192,36 @@ def celula_ok(repo: RepoFalso) -> RepoFalso:
         }
     )
     return repo
+
+
+@pytest.fixture(scope="session", autouse=True)
+def indice_das_armadilhas_materializado():
+    """Os gerados de `armadilhas/` são MONTADOS antes da suíte que os mede.
+
+    Desde 30/08/2026 (TAR-022) `INDICE.md`, `GUARDAS.json` e `SINAIS.json` não
+    moram mais no Git: eram a colisão diária entre robôs — toda armadilha nova
+    reescrevia os três arquivos inteiros. Quem os constrói agora é a integração.
+
+    Num checkout limpo eles simplesmente não existem, e os testes do sino
+    (`test_guarda_declarada_e_sino.py`) passam a ler um arquivo ausente. Foi
+    exatamente o que deixou a `main` vermelha em 30/08/2026 às 12:21 (issue
+    #587): `JSONDecodeError: Expecting value: line 1 column 1` — e, com a `main`
+    vermelha, o portão de deploy recusa publicar QUALQUER célula. Uma mudança de
+    "versionado" para "gerado" trouxe junto a obrigação de materializar antes de
+    medir, e este fixture é essa obrigação.
+
+    Mesmo desenho do `painel_materializado` de `services/admin/tests/conftest.py`,
+    e pelo mesmo motivo. **Não silencia nada:** se o gerador falhar, o erro sobe
+    aqui — um "não consegui montar" que virasse suíte verde seria o falso-verde
+    do padrão 1 da RETROSPECTIVA-FASE-D.
+    """
+    raiz = CI.parent
+    if (raiz / "armadilhas" / "SINAIS.json").is_file():
+        return
+    subprocess.run(
+        [sys.executable, str(CI / "indice_de_armadilhas.py")],
+        cwd=str(raiz),
+        check=True,
+        capture_output=True,
+        timeout=300,
+    )
