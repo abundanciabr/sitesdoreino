@@ -39,6 +39,31 @@ vale AGORA, o evento vale para sempre (entra no PR do trabalho).
 balcão recusa — a mesma lei do verde do livro. `validar` reprova evento
 `concluida` sem `evidencia` + `verificado_em`.
 
+**O comprovante nasce na bancada, nunca no espelho** (desde 30/08/2026,
+TAR-018). O balcão escreve o evento na pasta em que foi chamado — e a ordem de
+partida antiga (pegar a tarefa *antes* de criar o worktree) fazia esse arquivo
+nascer no CLONE PRINCIPAL, onde ninguém commita. O PR viajava sem ele, a tarefa
+chegava à `main` com `concluida` e sem `reivindicada`, e nada acusava: com o
+arquivo fora, `validar` respondia `✅ Fila válida`, exit 0 (`armadilhas/192`).
+
+A cura tem duas peças, com autoridade deliberadamente diferente:
+
+- **`criar`, `pegar` e `concluir` RECUSAM no clone principal** (exit 1) e a
+  recusa ensina a ordem certa: worktree primeiro, balcão de dentro dele. Não é
+  portão de CI — nenhum PR reprova por isto; é um comando interativo se
+  recusando a produzir lixo, e o conserto custa um `git worktree add`. Aviso em
+  sombra aqui não curaria nada: o arquivo já teria nascido, e o robô nem
+  consegue apagá-lo (medido em 30/08/2026 — o classificador de permissão
+  recusou a limpeza). `listar`, `validar` e `soltar` **continuam livres** no
+  espelho: devolver à fila uma tarefa presa é gesto de emergência, e emergência
+  não pode depender de ter worktree.
+- **`validar` DIZ EM VOZ ALTA, em SOMBRA**, todo arquivo de `eventos/` que o
+  Git não conhece — nomeando cada um, com o conserto (`mv` para a bancada, no
+  espelho; `git add` na bancada) — e **não muda o veredito**. Aqui é onde mora
+  o portão de CI, e é aqui que vale a lei do Sistema Imunológico: regra nova
+  nasce em sombra, dizendo o que teria feito. Quando não consegue medir (git
+  mudo), ela **diz que não mediu** — "não medi" se declara, não se esconde.
+
 ## Os estados que o quadro calcula
 
 - **na fila** — existe, ninguém pegou, dependências satisfeitas.
@@ -89,6 +114,12 @@ append-only ficam de fora da conta por não poderem gerar colisão:
 
 - `ci/muralha-da-fila.sh` (roda em todo PR via `ci/ci.py --apenas muralhas`)
   → `python ci/fila.py validar`, fail-closed.
+- A recusa no espelho e o aviso em sombra sobre comprovante fora do Git:
+  `ci/fila.py` (`_parar_se_for_o_espelho` e `dizer_os_comprovantes_soltos`),
+  que reusam a leitura de espelho-vs-bancada de
+  `ci/muralha_pasta_compartilhada.py` — uma definição só. Guardas em
+  `ci/tests/test_fila.py`, encenados com repositório descartável real
+  (principal + worktree ligado).
 - A trava de reivindicação: o servidor do GitHub, via `ci/reservar.py`
   (refs atômicas com `--force-with-lease` e nonce — ver o cabeçalho de lá).
 - Testes-guarda: `ci/tests/test_fila.py` (inclui a corrida: segunda sessão
