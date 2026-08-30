@@ -56,6 +56,53 @@ permissions:
 # MESMO grupo do deploy-celula: dois workflows fazendo SSH na VPS ao mesmo
 # tempo (um merge de célula + um de infra) seriam intercalados; o grupo único
 # os enfileira, sem cancelar o que já está no meio de um deploy.
+#
+# -----------------------------------------------------------------------------
+# SEPARAR OS DOIS GRUPOS FOI CONSIDERADO E RECUSADO — TAR-029, 30/08/2026
+#
+# A pergunta é legítima e volta sempre: as duas esteiras publicam COISAS
+# DIFERENTES (uma imagem de célula e o compose/traefik da VPS), e o grupo único
+# é a causa raiz dos deploys que terminam `cancelled` em silêncio
+# (`armadilhas/183`, `/188`). Se elas não disputassem nada, dar grupo próprio a
+# cada uma acabaria com a cadeira musical na origem.
+#
+# Elas disputam. MEDIDO nos dois scripts que rodam DENTRO da VPS, e o conflito é
+# de ESCRITA no mesmo recurso — não é "usam a mesma máquina":
+#
+#   `infra/sincronizar-infra-na-vps.sh`   (esta esteira)
+#     mv -f docker-compose.yml.new docker-compose.yml   ← TROCA o arquivo
+#     rm -rf traefik && mv traefik.new traefik          ← TROCA o diretório
+#     docker compose up -d                              ← SEM argumento: age
+#                                                          sobre o PROJETO INTEIRO
+#     docker compose up -d --force-recreate traefik
+#
+#   `infra/deploy-celula-na-vps.sh`       (o deploy-celula)
+#     docker compose config --services  ← LÊ o arquivo que o de cima troca, e é
+#                                          dele que sai a lista de serviços
+#     docker compose pull $SERVICOS
+#     docker compose up -d --wait --wait-timeout 180 $SERVICOS
+#
+# Correndo juntos, três coisas quebram — e nenhuma delas fica necessariamente
+# vermelha:
+#   1. o `config --services` lê o compose no meio da troca: a lista de serviços
+#      da célula sai errada, ou vazia (e aí o script aborta dizendo que a célula
+#      não existe no compose);
+#   2. o `up -d` SEM argumento recria containers da plataforma inteira enquanto o
+#      outro está no meio do `pull`/`up --wait` de uma célula — a célula termina
+#      servindo a imagem que o compose apontava, não a que acabou de subir;
+#   3. o `rm -rf traefik` acontece enquanto o outro depende daquele bind mount.
+#
+# É exatamente o caso que a `armadilhas/173` já tinha escrito: *"um workflow que
+# de fato mexesse no `docker compose up` (deploy, rollback) DEVE ficar no grupo
+# `deploy`, e para ele a cadeira musical é o preço certo: melhor um disparo
+# perdido que dois donos do mesmo comando"*. O grupo único FICA.
+#
+# O preço — o expulso que fica fora do ar em silêncio — passou a ser coberto por
+# `.github/workflows/vacina-do-deploy.yml`, que acorda no `cancelled` das DUAS
+# esteiras, repete quando republicar só AVANÇA e abre issue quando não dá.
+# Se um dia alguém quiser acabar com a cadeira musical na raiz, o caminho não é
+# separar os grupos: é FUNDIR as duas esteiras numa só, que trate compose e
+# imagens no mesmo run, com uma ordem definida entre eles.
 concurrency:
   group: deploy
   cancel-in-progress: false

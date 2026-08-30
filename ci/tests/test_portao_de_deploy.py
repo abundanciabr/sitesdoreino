@@ -519,9 +519,79 @@ def test_workflow_desconhecido_vermelho_continua_barrando_o_deploy():
     assert "inventado.yml" in resultado.detalhe
 
 
+def _linha_dos_conhecidos() -> str:
+    """A FIAÇÃO, e não a função: é ela que os outros dois testes não veem.
+
+    Os dois testes acima montam `conhecidos` à mão e provam o COMPORTAMENTO de
+    `vermelhos_nao_previstos`. Nenhum dos dois ficaria vermelho se alguém
+    apagasse a declaração da fonte — foi medido em 29/08/2026 (armadilhas/180):
+    só o teste estrutural pegou. Este lê a linha de verdade.
+
+    Ler a LINHA (e não `"NOME}" in fonte`) porque a lista cresce: em
+    30/08/2026 a vacina do deploy entrou nela, e a asserção literal do vigia
+    quebrou por ordem de membros — o teste reprovou sem nenhum buraco existir,
+    que é como um guarda ensina a gente a ignorá-lo.
+    """
+    fonte = (RAIZ / "ci" / "portao_de_deploy.py").read_text(encoding="utf-8")
+    linhas = [ln for ln in fonte.splitlines() if "conhecidos = set(exigidos)" in ln]
+    assert len(linhas) == 1, (
+        f"esperava UMA linha montando `conhecidos`, achei {len(linhas)} — a "
+        "fiação mudou de forma e este guarda precisa ser refeito, não removido"
+    )
+    return linhas[0]
+
+
 def test_o_vigia_esta_em_conhecidos_e_NAO_em_exigidos():
     # Se alguém um dia o promover a exigido, todo deploy passaria a esperar um
     # run que, na maioria dos SHAs, nem existe — o vigia roda no relógio.
     fonte = (RAIZ / "ci" / "portao_de_deploy.py").read_text(encoding="utf-8")
-    assert "MURALHAS, VIGIA_DO_CADEADO}" in fonte
+    assert "VIGIA_DO_CADEADO" in _linha_dos_conhecidos()
     assert "VIGIA_DO_CADEADO: (" not in fonte
+
+
+# ---------------------------------------------------------------------------
+# A VACINA DO DEPLOY é o caso mais literal da armadilhas/180 que este
+# repositório tem (TAR-029, 30/08/2026): ela acorda por `workflow_run` quando um
+# deploy termina `cancelled`, roda NO MESMO `head_sha` do deploy doente, e a
+# cura que ela pede é um rerun DAQUELE deploy — que passa por este portão.
+#
+# Vermelha e fora de `conhecidos`, ela reprovaria o rerun que ela mesma pediu,
+# exatamente no caso em que já tinha falhado. O mesmo trio de testes que o vigia
+# exige: a isenção existe · a isenção é estreita · a declaração está na fonte.
+# ---------------------------------------------------------------------------
+VACINA = ".github/workflows/vacina-do-deploy.yml"
+
+
+def test_vacina_do_deploy_vermelha_nao_barra_o_deploy():
+    import portao_de_deploy as pd
+
+    runs = [run_(1, VACINA, conclusao="failure")]
+    conhecidos = {CI_CELULA, ALARME, MURALHAS, pd.VACINA_DO_DEPLOY}
+    assert pd.vermelhos_nao_previstos(runs, conhecidos).estado is not pd.Estado.FAIL
+
+
+def test_a_isencao_da_vacina_e_estreita_e_nao_um_buraco():
+    """Sozinha, a prova de cima passaria com a regra inteira desligada."""
+    import portao_de_deploy as pd
+
+    runs = [
+        run_(1, VACINA, conclusao="failure"),
+        run_(2, ".github/workflows/inventado.yml", conclusao="failure"),
+    ]
+    conhecidos = {CI_CELULA, ALARME, MURALHAS, pd.VACINA_DO_DEPLOY}
+    resultado = pd.vermelhos_nao_previstos(runs, conhecidos)
+    assert resultado.estado is pd.Estado.FAIL
+    assert "inventado.yml" in resultado.detalhe
+    assert "vacina-do-deploy" not in resultado.detalhe
+
+
+def test_a_vacina_esta_em_conhecidos_e_NAO_em_exigidos():
+    fonte = (RAIZ / "ci" / "portao_de_deploy.py").read_text(encoding="utf-8")
+    assert "VACINA_DO_DEPLOY" in _linha_dos_conhecidos(), (
+        "sem esta declaração, uma vacina vermelha tranca a porta por dentro "
+        "(armadilhas/180) — e só no dia em que ela falhar é que se descobre"
+    )
+    assert "VACINA_DO_DEPLOY: (" not in fonte, (
+        "exigi-la faria TODO deploy esperar por um run que só nasce quando "
+        "houve cancelamento — trocaria um bloqueio raro por um bloqueio diário"
+    )

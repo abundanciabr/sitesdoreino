@@ -1,0 +1,225 @@
+"""A FIAÇÃO da vacina automática do deploy — TAR-029 (30/08/2026).
+
+`ci/tests/test_rerun_de_deploy.py` prova a DECISÃO (repetir? parar? não medi?)
+com histórias montadas à mão, sem rede. Este arquivo prova a outra metade, que
+nenhum teste de decisão enxerga: **que existe um gatilho, e que ele está ligado
+no lugar certo**.
+
+A distinção é a Classe 2 da `RETROSPECTIVA-FASE-D` (garantia sem mecanismo), e
+foi ela que criou esta tarefa: a cura do deploy cancelado existia desde a
+TAR-017, escrita e testada, e mesmo assim três deploys ficaram fora do ar em
+dois dias — porque a cura era um COMANDO que alguém precisava lembrar de rodar.
+Um teste que só provasse a decisão continuaria verde nesse mundo.
+
+Por que a fiação se testa lendo o YAML: um workflow não roda em pytest. O que
+dá para afirmar sem rede é o que está escrito nele — e cada asserção aqui
+corresponde a um jeito MEDIDO de esta mecânica se desligar sozinha, não a uma
+transcrição do arquivo.
+"""
+
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+
+CI = Path(__file__).resolve().parents[1]
+if str(CI) not in sys.path:
+    sys.path.insert(0, str(CI))
+
+yaml = pytest.importorskip("yaml")
+
+RAIZ = CI.parent
+ARQUIVO = RAIZ / ".github" / "workflows" / "vacina-do-deploy.yml"
+
+
+@pytest.fixture(scope="module")
+def wf() -> dict:
+    assert ARQUIVO.exists(), (
+        "sem este arquivo não há gatilho nenhum: a vacina volta a ser um "
+        "comando que alguém precisa lembrar de rodar (Classe 2 da retrospectiva)"
+    )
+    return yaml.safe_load(ARQUIVO.read_text(encoding="utf-8"))
+
+
+@pytest.fixture(scope="module")
+def gatilho(wf: dict) -> dict:
+    # `on:` sem aspas é o booleano True em YAML 1.1 — a pegadinha clássica.
+    return wf.get("on") or wf.get(True)
+
+
+@pytest.fixture(scope="module")
+def job(wf: dict) -> dict:
+    jobs = wf["jobs"]
+    assert len(jobs) == 1, f"esperava um job só; achei {sorted(jobs)}"
+    return next(iter(jobs.values()))
+
+
+def test_acorda_com_o_FIM_das_DUAS_esteiras_de_deploy(gatilho):
+    """As duas brigam pela mesma vaga, então as duas podem ser a expulsa.
+
+    Medido: 2 cancelados no `deploy-infra` (PRs 602 e 605) e mais dois no
+    `deploy-celula` (armadilhas/183 e /188). Cobrir só uma deixaria metade da
+    doença sem cura, e seria invisível — o desfecho é silêncio nos dois casos.
+    """
+    assert "workflow_run" in gatilho, (
+        "um `schedule` teria de varrer o histórico atrás de cinzas e ainda "
+        "erraria a janela; o Actions sabe a hora exata"
+    )
+    esteiras = set(gatilho["workflow_run"]["workflows"])
+    assert esteiras == {"deploy-celula", "deploy-infra"}, f"veio: {esteiras}"
+    assert gatilho["workflow_run"]["types"] == ["completed"]
+
+
+def test_so_age_no_CANCELADO_da_main(job):
+    """`failure` já tem dono e `success` não tem doença.
+
+    O cancelado é o único desfecho que não avisa ninguém: não é vermelho, o
+    `alarme-main` não dispara, e a linha fica cinza no meio de verdes.
+    """
+    condicao = " ".join(job["if"].split())
+    assert "github.event.workflow_run.conclusion == 'cancelled'" in condicao
+    assert "github.event.workflow_run.head_branch == 'main'" in condicao
+
+
+def test_NAO_entra_no_grupo_deploy_senao_a_vacina_morre_da_doenca(wf, job):
+    """O erro mais fácil deste arquivo, e ele já aconteceu uma vez (173).
+
+    O grupo `deploy` guarda UM pendente e é a fila mais disputada do projeto.
+    Uma vacina posta ali seria expulsa e morreria em `cancelled` sem uma linha
+    de log — a cura contra o cancelamento morrendo de cancelamento.
+    """
+    grupo = str(wf["concurrency"]["group"])
+    assert grupo != "deploy"
+    assert "workflow_run.id" in grupo, (
+        "a chave precisa ser o RUN DOENTE: assim duas curas do mesmo run se "
+        "enfileiram e curas de runs diferentes correm juntas, porque não "
+        f"disputam recurso nenhum (veio: {grupo})"
+    )
+    assert wf["concurrency"]["cancel-in-progress"] is False, (
+        "cancelar a cura em andamento para começar outra do mesmo run é "
+        "trocar uma cura pela metade por outra pela metade"
+    )
+    assert "concurrency" not in job, "grupo por job aqui só confundiria o de cima"
+
+
+def test_chama_a_vacina_que_ja_sabe_decidir_em_vez_de_decidir_de_novo(job):
+    """A lei anti-duplicação aplicada a uma DECISÃO (CLAUDE.md).
+
+    Se o YAML medisse ancestralidade por conta própria, existiriam duas regras
+    para a mesma pergunta — e bastaria afinar uma para elas discordarem sobre
+    republicar ou não, que é a diferença entre curar e fazer rollback.
+    """
+    passos = "\n".join(str(p.get("run", "")) for p in job["steps"])
+    # O PASSO DA CURA, e não o arquivo inteiro: o corpo da issue cita
+    # `--so-diagnosticar` de propósito, ensinando o humano a olhar sem mexer.
+    curar = next(p for p in job["steps"] if p.get("id") == "vacina")["run"]
+    assert "ci/rerun_de_deploy.py" in curar
+    assert "--run" in curar
+    assert "--so-diagnosticar" not in curar, (
+        "diagnosticar sem repetir devolveria o problema para o humano, que é "
+        "exatamente o que esta tarefa veio tirar do caminho"
+    )
+    assert "merge-base" not in passos, (
+        "a ancestralidade se mede num lugar só: dentro da vacina, onde ela "
+        "tem teste sem rede"
+    )
+
+
+def test_o_veredito_da_vacina_e_CAPTURADO_e_nao_perdido_num_pipe(job):
+    """O modo de falha nº 1 desta casa (RETROSPECTIVA-FASE-D §1).
+
+    `vacina | tee` sai 0 sempre, porque o exit de um pipeline é o do ÚLTIMO
+    comando: ler dali faria toda vacina parecer bem-sucedida, e a issue — que é
+    o sinal inteiro — nunca nasceria.
+
+    E a captura é `|| CODIGO=$?`, nunca `set +e`/`|| true`: a diferença é entre
+    a falha virar um VALOR que alguém lê e a falha virar silêncio. Os dois
+    últimos são proibidos em workflow por
+    `test_contract_freeze.py::test_workflows_nao_escondem_erro`.
+    """
+    curar = next(p for p in job["steps"] if p.get("id") == "vacina")["run"]
+    # Só o que EXECUTA: o comentário do passo explica os padrões proibidos e
+    # naturalmente os cita — é o mesmo cuidado que o guarda de
+    # `test_contract_freeze.py` toma ao pular linhas iniciadas por `#`.
+    codigo = "\n".join(
+        ln for ln in curar.splitlines() if not ln.lstrip().startswith("#")
+    )
+    assert "|| CODIGO=$?" in codigo
+    assert "| tee" not in codigo, "o `$?` seria o do tee, que sai 0 sempre"
+    assert "set +e" not in codigo and "|| true" not in codigo
+
+
+def test_a_falta_de_cura_vira_ISSUE_no_desenho_do_alarme_main(job):
+    """Reusar o alarme que existe, não inventar o segundo (pedido do despacho).
+
+    E a issue nasce SÓ quando não houve cura: uma issue por cadeira musical,
+    num repositório com ~100 entregas por dia, é o alarme que se aprende a
+    ignorar — e aí ele para de servir para o caso em que importa.
+    """
+    passo = next(p for p in job["steps"] if "issue" in str(p.get("name", "")).lower())
+    assert passo["if"] == "steps.vacina.outputs.codigo != '0'", (
+        f"a issue precisa nascer do veredito, e só dele (veio: {passo.get('if')})"
+    )
+    corpo = str(passo["run"])
+    assert "gh issue list" in corpo and "--state open" in corpo, (
+        "empilhar uma issue por cancelamento é o alarme que se aprende a "
+        "ignorar; o `alarme-main` comenta na que já está aberta"
+    )
+    assert "gh issue create" in corpo and "gh issue comment" in corpo
+    assert "gh label create" in corpo, "issue sem label não se acha depois"
+
+
+def test_o_job_NAO_reprova_quando_nao_conseguiu_curar(job):
+    """armadilhas/180 com o alvo trocado: aqui o conserto É o deploy.
+
+    A vacina roda no MESMO `head_sha` do deploy doente e pede um rerun DAQUELE
+    deploy. Vermelha, ela seria barrada por `vermelhos_nao_previstos` — o único
+    caso em que isso aconteceria é justamente aquele em que ela já falhou.
+    """
+    curar = next(p for p in job["steps"] if p.get("id") == "vacina")["run"]
+    assert "|| CODIGO=$?" in curar, (
+        "o `run:` do GitHub roda com `bash -e`: sem TRATAR a falha, a saída 1 "
+        "da vacina (PAROU por regra, que é um veredito legítimo) derrubaria o "
+        "passo — e o job vermelho barraria o rerun que a própria vacina pediu"
+    )
+    assert "continue-on-error" not in str(job), (
+        "`continue-on-error` esconderia também a falha que NÃO é veredito — "
+        "é o falso-verde da armadilhas/211; aqui o exit é lido, não ignorado"
+    )
+
+
+def test_tem_as_permissoes_que_a_cura_e_o_sinal_exigem(job):
+    """Permissão que falta não avisa: ela vira 403 no meio, uma vez só.
+
+    O `alarme-main` viveu meses com a cura automática quebrada por exatamente
+    isto — `contents: read` onde precisava de `write` —, e ninguém sabia.
+    """
+    permissoes = job["permissions"]
+    assert permissoes.get("actions") == "write", "sem isto, `gh run rerun` é 403"
+    assert permissoes.get("issues") == "write", "sem isto, o sinal não nasce"
+    assert permissoes.get("contents") == "read"
+
+
+def test_o_checkout_e_FUNDO_porque_a_decisao_e_ancestralidade(job):
+    """Clone raso faz `git merge-base` responder 128 — "não consegui medir".
+
+    A vacina então devolve ERROR (correto e fail-closed) e a cura vira uma
+    issue inútil sobre um caso que era decidível (armadilhas/159).
+    """
+    checkout = next(p for p in job["steps"] if "checkout" in str(p.get("uses", "")))
+    assert checkout["with"]["fetch-depth"] == 0
+
+
+def test_o_portao_de_deploy_conhece_esta_vacina():
+    """A ponta solta que faria tudo isto se voltar contra si (armadilhas/180).
+
+    O par de testes de comportamento vive em `test_portao_de_deploy.py`; este
+    aqui é o que amarra os dois arquivos, para que apagar a declaração lá
+    reprove também de quem depende dela.
+    """
+    import portao_de_deploy as pd
+
+    assert pd.VACINA_DO_DEPLOY == ".github/workflows/vacina-do-deploy.yml"
+    assert ARQUIVO.exists()

@@ -69,9 +69,51 @@ Actions e no Git, nunca perguntando à VPS (o agente não tem SSH, Lei 5):
      não há o que perder. Se NENHUM toca, nenhum deploy novo vai nascer
      sozinho — e repetir é a única saída.
 
+--------------------------------------------------------------------------
+O TERCEIRO CASO — o `deploy-infra` cancelado (TAR-029, 30/08/2026)
+
+Até 30/08/2026 esta vacina só sabia falar de UM workflow: `WORKFLOW_DO_DEPLOY`
+= `deploy-celula.yml` era constante, e `sha_do_ultimo_deploy_verde()` era
+chamada SEM argumento também quando o run cancelado era do `deploy-infra`. Ou
+seja, ela media o SHA de um `deploy-infra` cancelado contra a última publicação
+verde do `deploy-CELULA` — duas esteiras que publicam coisas DIFERENTES (a
+imagem de uma célula e o `docker-compose.yml`/`traefik` da VPS).
+
+Isso não é detalhe: as duas referências divergem o tempo todo, porque o
+`deploy-celula` dispara em `painel/**` e TODO PR deste projeto carrega um
+registro obrigatório ali. MEDIDO em 30/08/2026, nos dois últimos verdes do dia:
+o do `deploy-celula` (`00952d43`) continha o do `deploy-infra` (`8848f1f7`) e
+mais **47 commits**, nenhum deles tocando `infra/`. Um `deploy-infra` cancelado
+em qualquer ponto dessa faixa receberia da vacina antiga o veredito
+`head_ja_publicado = True` — *"o commit dele JÁ está no ar, nada a repetir"* —
+sobre uma infraestrutura que NUNCA foi sincronizada. É o falso-verde da
+RETROSPECTIVA-FASE-D §1 dentro da própria vacina.
+
+Desde a TAR-029 a esteira é lida do run (`workflowName`) e todas as medidas —
+qual publicação está no ar, quais `paths:` fazem nascer deploy novo — usam o
+workflow DAQUELE run. Sem esteira sabida, o cancelado de push vira ERROR: não
+há como dizer se um rerun avança sem saber contra o que comparar.
+
+--------------------------------------------------------------------------
+A REGRA DE PARADA PRECISA SOBREVIVER AO PROCESSO (TAR-029)
+
+`MAXIMO_DE_TENTATIVAS` sempre existiu, mas contava em memória: cada execução do
+script começava do zero. Isso bastava enquanto um humano rodava a vacina — e
+deixa de bastar no minuto em que ela é chamada por GATILHO
+(`.github/workflows/vacina-do-deploy.yml`), porque o desfecho de um rerun
+cancelado dispara o gatilho DE NOVO: vacina → rerun → cancelado → vacina →
+rerun, para sempre, cada volta com o contador em zero.
+
+A conta durável já existe e mora no GitHub: o `attempt` do próprio run. Ela é
+colhida junto com o veredito e vira o PISO de `tentativas_feitas`, então a
+regra de parada passa a valer entre processos. Medido no dia: o run
+33325108776 estava em `attempt: 4` — três repetições feitas à mão, antes de
+existir automatismo nenhum.
+
 Uso:
     python ci/rerun_de_deploy.py --run <id>        # cuida deste run
     python ci/rerun_de_deploy.py --ultimo          # o último deploy-celula
+    python ci/rerun_de_deploy.py --ultimo --workflow deploy-infra.yml
     python ci/rerun_de_deploy.py --run <id> --so-diagnosticar   # não repete
 
 Semântica de saída [INV-CI01]: 0 PASS (verde, ou nada a fazer) · 1 FAIL (parou
@@ -109,7 +151,8 @@ INTERVALO_DE_CONFERENCIA_S = 15
 TETO_PADRAO_MIN = 15
 
 WORKFLOW_DO_DEPLOY = "deploy-celula.yml"
-ARQUIVO_DO_WORKFLOW = Path(".github") / "workflows" / WORKFLOW_DO_DEPLOY
+PASTA_DOS_WORKFLOWS = Path(".github") / "workflows"
+ARQUIVO_DO_WORKFLOW = PASTA_DOS_WORKFLOWS / WORKFLOW_DO_DEPLOY
 RUNS_OLHADOS_ATRAS = 30
 REF_DO_TOPO = "origin/main"
 
@@ -118,8 +161,16 @@ RE_TIMEOUT_SSH = re.compile(r"dial tcp [^\n]*:22: i/o timeout")
 RE_SSH_AUTENTICACAO = re.compile(
     r"ssh: handshake failed|permission denied|unable to authenticate", re.IGNORECASE
 )
-# `paths: ['services/**', 'painel/**', ...]` do gatilho do deploy-celula.
+# `paths: ['services/**', 'painel/**', ...]` — a forma EM LINHA, do deploy-celula.
 RE_PATHS_DO_GATILHO = re.compile(r"^\s*paths:\s*\[(?P<lista>[^\]]*)\]", re.MULTILINE)
+# `paths:` seguido de `  - 'infra/...'` — a forma EM BLOCO, do deploy-infra. As
+# duas são YAML válido e as duas existem neste repositório: uma vacina que só
+# soubesse ler a primeira acharia que o gatilho do `deploy-infra` mudou de forma
+# e devolveria ERROR onde a resposta era simples (TAR-029).
+RE_PATHS_EM_BLOCO = re.compile(r"^(?P<recuo>\s*)paths:\s*$", re.MULTILINE)
+RE_ITEM_DE_LISTA = re.compile(r"^\s*-\s*(?P<item>\S.*?)\s*$")
+# O `name:` do topo de um workflow — é ele que o `workflowName` de um run diz.
+RE_NOME_DO_WORKFLOW = re.compile(r"^name:\s*(?P<nome>\S.*?)\s*$", re.MULTILINE)
 
 
 class ErroDeMedicao(Exception):
@@ -139,6 +190,11 @@ class Fatos:
     porta22_viva: bool | None = None
     site_http: int | None = None
     tentativas_feitas: int = 0
+    # A ESTEIRA DESTE RUN (`workflowName`), e não uma constante (TAR-029). Ela
+    # decide contra QUAL publicação a ancestralidade é medida: `deploy-celula` e
+    # `deploy-infra` publicam coisas diferentes, e comparar um com o outro
+    # devolve "já está no ar" sobre algo que nunca subiu.
+    workflow: str = ""
     # --- o cancelado de PUSH (armadilhas/188). `None` = NÃO MEDIDO, sempre ---
     event: str = ""
     head_sha: str = ""
@@ -248,11 +304,23 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
             "pendente do grupo `deploy` é cadeira musical) e não se cura "
             "repetindo. A cura é dar grupo de concorrência próprio ao workflow.",
         )
-    if not fatos.head_sha or not fatos.sha_publicado:
+    if not fatos.workflow:
         return Decisao(
             "nada", 2,
             f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188), "
-            "mas não consegui descobrir os dois SHAs que decidem o caso — o "
+            "mas eu não sei de QUAL esteira ele é. `deploy-celula` e "
+            "`deploy-infra` publicam coisas diferentes, e a única pergunta que "
+            "decide o caso — 'o que está publicado é ancestral deste SHA?' — não "
+            "tem resposta sem saber contra qual publicação comparar. Medir "
+            "contra a esteira errada devolve 'já está no ar' sobre algo que "
+            "nunca subiu (TAR-029).",
+        )
+    if not fatos.head_sha or not fatos.sha_publicado:
+        return Decisao(
+            "nada", 2,
+            f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188) "
+            f"da esteira `{fatos.workflow}`, mas não consegui descobrir os dois "
+            "SHAs que decidem o caso — o "
             f"deste run ({fatos.head_sha or 'ausente'}) e o da última "
             f"publicação verde ({fatos.sha_publicado or 'ausente'}). Sem eles "
             "não dá para saber se um rerun avança ou faz voltar, e 'não medi' "
@@ -271,7 +339,8 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
         iguais = fatos.publicado_e_ancestral
         return Decisao(
             "nada", 0,
-            f"o run {fatos.run} foi cancelado, mas o commit dele JÁ está no ar: "
+            f"o run {fatos.run} foi cancelado, mas o commit dele JÁ está no ar "
+            f"por `{fatos.workflow}`: "
             + (
                 f"a última publicação verde é exatamente {_curto(fatos.head_sha)}."
                 if iguais
@@ -284,7 +353,8 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
     if not fatos.publicado_e_ancestral:
         return Decisao(
             "parar", 1,
-            f"PARAR: o que está publicado ({_curto(fatos.sha_publicado)}) NÃO é "
+            f"PARAR: o que `{fatos.workflow}` tem publicado "
+            f"({_curto(fatos.sha_publicado)}) NÃO é "
             f"ancestral do SHA deste run ({_curto(fatos.head_sha)}), e também "
             "não o contém — as duas linhas divergiram. Um rerun publica o SHA "
             "DAQUELE run, então repetir aqui seria um rollback silencioso "
@@ -302,8 +372,9 @@ def _decidir_o_cancelado(fatos: Fatos) -> Decisao:
         )
     return Decisao(
         "repetir", 0,
-        f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188) e o "
-        f"que está publicado ({_curto(fatos.sha_publicado)}) É ancestral do SHA "
+        f"o run {fatos.run} é um deploy de PUSH cancelado (armadilhas/188) de "
+        f"`{fatos.workflow}` e o que essa esteira tem publicado "
+        f"({_curto(fatos.sha_publicado)}) É ancestral do SHA "
         f"deste run ({_curto(fatos.head_sha)}): republicar só AVANÇA, nada "
         "volta. Repetindo o deploy.",
         recado=_recado_do_que_fica_de_fora(fatos),
@@ -418,9 +489,15 @@ def dados_do_run(run: str) -> dict:
     `event` entra aqui porque é ele que separa as duas causas de cancelamento:
     `workflow_dispatch` é a armadilhas/173 (não se cura repetindo) e `push` é a
     armadilhas/188 (repetir é a cura). `headSha` é o que a ancestralidade mede.
+
+    `workflowName` e `attempt` entraram na TAR-029, e nenhum dos dois é enfeite:
+    o primeiro diz contra QUAL publicação medir (célula e infra publicam coisas
+    diferentes) e o segundo é a única conta de tentativas que sobrevive ao fim
+    do processo — sem ela, um gatilho automático repete para sempre.
     """
     codigo, saida = _rodar(
-        ["gh", "run", "view", run, "--json", "status,conclusion,event,headSha"]
+        ["gh", "run", "view", run, "--json",
+         "status,conclusion,event,headSha,workflowName,attempt"]
     )
     if codigo != 0:
         raise ErroDeMedicao(f"gh run view {run} falhou: {saida.strip()[:200]}")
@@ -438,14 +515,48 @@ def veredito_do_run(run: str) -> tuple[str, str]:
     return str(dados.get("status") or ""), str(dados.get("conclusion") or "")
 
 
+def arquivo_do_workflow(nome: str, raiz: Path | None = None) -> Path:
+    """O arquivo `.yml` cujo `name:` é `nome` — descoberto, nunca adivinhado.
+
+    O `workflowName` de um run é o `name:` do topo do YAML, e nada garante que
+    ele case com o nome do arquivo. Casar por convenção funcionaria hoje e
+    quebraria calado no dia em que alguém renomeasse um dos dois — bem na hora
+    em que a vacina precisa saber contra qual esteira medir. Zero ou mais de um
+    candidato é ERRO de medição, jamais um palpite (INV-CI01, TAR-029).
+    """
+    raiz = raiz or raiz_do_repo()
+    pasta = raiz / PASTA_DOS_WORKFLOWS
+    achados = []
+    for arquivo in sorted(pasta.glob("*.yml")) + sorted(pasta.glob("*.yaml")):
+        try:
+            texto = arquivo.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        casou = RE_NOME_DO_WORKFLOW.search(texto)
+        if casou and casou.group("nome").strip("'\"") == nome:
+            achados.append(arquivo)
+    if len(achados) != 1:
+        raise ErroDeMedicao(
+            f"procurei em {PASTA_DOS_WORKFLOWS} o workflow chamado '{nome}' e "
+            f"achei {len(achados)} — precisava de exatamente 1. Sem o arquivo "
+            "não dá para ler os `paths:` do gatilho, e adivinhar a lista é pior "
+            "que não saber."
+        )
+    return achados[0]
+
+
 def sha_do_ultimo_deploy_verde(
     workflow: str = WORKFLOW_DO_DEPLOY, limite: int = RUNS_OLHADOS_ATRAS
 ) -> str:
     """Que SHA está publicado, segundo a única fonte que o CI alcança.
 
     NÃO se pergunta à VPS: o agente não tem SSH (Lei 5), e o harness bloqueia a
-    tentativa. O Actions sabe qual foi o último `deploy-celula` VERDE da `main`,
-    e é esse `headSha` que está servindo.
+    tentativa. O Actions sabe qual foi o último run VERDE daquela esteira na
+    `main`, e é esse `headSha` que está servindo.
+
+    `workflow` é parâmetro e não constante DESDE A TAR-029, porque a resposta
+    muda com a esteira: o último verde do `deploy-celula` não diz nada sobre o
+    que o `deploy-infra` sincronizou, e vice-versa.
     """
     codigo, saida = _rodar(
         ["gh", "run", "list", "--workflow", workflow, "--branch", "main",
@@ -487,39 +598,82 @@ def e_ancestral(anterior: str, posterior: str) -> bool | None:
     return None
 
 
-def paths_do_deploy(raiz: Path | None = None) -> tuple[str, ...]:
-    """Os `paths:` do gatilho do `deploy-celula`, LIDOS do workflow.
+def _itens_em_bloco(texto: str) -> list[str]:
+    """`paths:` seguido de `  - 'infra/...'` — a forma do `deploy-infra`.
+
+    Lê só os itens MAIS RECUADOS que a chave, e para no primeiro que não é item
+    de lista: assim um `paths:` no fim de um bloco `on:` não engole a chave
+    seguinte (`permissions:`, `jobs:`) e transforma "não achei" em "achei
+    lixo" — que seria pior, porque lixo decide sem levantar suspeita.
+    """
+    linhas = texto.splitlines()
+    for indice, linha in enumerate(linhas):
+        casou = RE_PATHS_EM_BLOCO.match(linha)
+        if not casou:
+            continue
+        recuo = len(casou.group("recuo"))
+        itens: list[str] = []
+        for seguinte in linhas[indice + 1:]:
+            if not seguinte.strip() or seguinte.lstrip().startswith("#"):
+                continue
+            if len(seguinte) - len(seguinte.lstrip()) <= recuo:
+                break
+            item = RE_ITEM_DE_LISTA.match(seguinte)
+            if not item:
+                break
+            bruto = item.group("item").split("#", 1)[0].strip()
+            if bruto:
+                itens.append(bruto)
+        if itens:
+            return itens
+    return []
+
+
+def paths_do_deploy(
+    raiz: Path | None = None, arquivo: Path | None = None
+) -> tuple[str, ...]:
+    """Os `paths:` do gatilho de uma esteira de deploy, LIDOS do workflow.
 
     Nenhum fato do projeto mora em dois lugares (CLAUDE.md). Se esta lista
     fosse uma constante copiada e alguém acrescentasse uma pasta ao gatilho, a
     vacina passaria a afirmar "nenhum deploy novo vai nascer" sobre um merge
     que nasce COM deploy — errado, e caro exatamente na hora em que se decide
     repetir ou não. Guarda: `ci/tests/test_rerun_de_deploy.py`.
+
+    `arquivo` é parâmetro desde a TAR-029: o `deploy-infra` tem gatilho próprio
+    (e escrito na forma EM BLOCO), e ler o do `deploy-celula` para decidir sobre
+    ele responderia a pergunta de outro workflow.
     """
     raiz = raiz or raiz_do_repo()
-    arquivo = raiz / ARQUIVO_DO_WORKFLOW
+    alvo = arquivo or (raiz / ARQUIVO_DO_WORKFLOW)
+    rotulo = alvo.name
     try:
-        texto = arquivo.read_text(encoding="utf-8")
+        texto = alvo.read_text(encoding="utf-8")
     except OSError as erro:
-        raise ErroDeMedicao(f"não consegui ler {ARQUIVO_DO_WORKFLOW}: {erro}") from erro
+        raise ErroDeMedicao(f"não consegui ler {rotulo}: {erro}") from erro
     achado = RE_PATHS_DO_GATILHO.search(texto)
-    if not achado:
+    if achado:
+        brutos = [pedaco for pedaco in achado.group("lista").split(",")]
+    else:
+        brutos = _itens_em_bloco(texto)
+    if not brutos:
         raise ErroDeMedicao(
-            f"não achei a linha `paths:` em {ARQUIVO_DO_WORKFLOW} — o gatilho "
+            f"não achei a linha `paths:` em {rotulo} — o gatilho "
             "mudou de forma, e adivinhar a lista seria pior que não saber"
         )
     prefixos = []
-    for pedaco in achado.group("lista").split(","):
+    for pedaco in brutos:
         limpo = pedaco.strip().strip("'\"").strip()
         if limpo:
             prefixos.append(limpo.removesuffix("**").removesuffix("*"))
     if not prefixos:
-        raise ErroDeMedicao(f"a linha `paths:` de {ARQUIVO_DO_WORKFLOW} está vazia")
+        raise ErroDeMedicao(f"a linha `paths:` de {rotulo} está vazia")
     return tuple(prefixos)
 
 
 def commits_que_ficam_de_fora(
-    sha: str, ref: str = REF_DO_TOPO, raiz: Path | None = None
+    sha: str, ref: str = REF_DO_TOPO, raiz: Path | None = None,
+    arquivo: Path | None = None,
 ) -> tuple[int | None, bool | None]:
     """Quantos commits de `ref` o rerun deixa de fora, e se algum dispara deploy.
 
@@ -539,7 +693,7 @@ def commits_que_ficam_de_fora(
     if quantos == 0:
         return 0, False
     try:
-        prefixos = paths_do_deploy(raiz)
+        prefixos = paths_do_deploy(raiz, arquivo)
     except ErroDeMedicao:
         return quantos, None
     # `git log --name-only` (e não `git diff --name-only`): o diff mostra só o
@@ -575,6 +729,27 @@ def ultimo_run(workflow: str = "deploy-celula.yml") -> str:
     return str(dados[0]["databaseId"])
 
 
+def tentativas_ja_feitas(dados: dict, em_memoria: int) -> int:
+    """A conta de tentativas que SOBREVIVE ao fim do processo (TAR-029).
+
+    `attempt` é 1 no run original e sobe a cada rerun — é a conta que o próprio
+    GitHub guarda, e a única que continua valendo quando quem chama a vacina é
+    um gatilho: cada cancelamento acorda um processo NOVO, com o contador de
+    memória em zero. Sem este piso, `MAXIMO_DE_TENTATIVAS` viraria decoração
+    exatamente no modo de uso em que ela mais importa (vacina → rerun →
+    cancelado → vacina, sem fim).
+
+    Piso, e não substituição: dentro de uma execução o laço conta as suas
+    próprias voltas, e o maior dos dois é o que a regra de parada enxerga.
+    """
+    bruto = dados.get("attempt")
+    try:
+        attempt = int(bruto)
+    except (TypeError, ValueError):
+        return em_memoria
+    return max(em_memoria, attempt - 1) if attempt >= 1 else em_memoria
+
+
 def colher(run: str, host: str, tentativas: int) -> Fatos:
     dados = dados_do_run(run)
     status = str(dados.get("status") or "")
@@ -582,7 +757,8 @@ def colher(run: str, host: str, tentativas: int) -> Fatos:
     fatos = Fatos(run=run, status=status, conclusion=conclusion,
                   event=str(dados.get("event") or ""),
                   head_sha=str(dados.get("headSha") or ""),
-                  tentativas_feitas=tentativas)
+                  workflow=str(dados.get("workflowName") or ""),
+                  tentativas_feitas=tentativas_ja_feitas(dados, tentativas))
     if status != "completed":
         return fatos
     if conclusion == "cancelled":
@@ -607,7 +783,7 @@ def _colher_o_cancelado(fatos: Fatos) -> None:
     está tomada pelo `event`, e medir ancestralidade ali seria gastar rede
     para responder uma pergunta que ninguém fez.
     """
-    if fatos.event != "push" or not fatos.head_sha:
+    if fatos.event != "push" or not fatos.head_sha or not fatos.workflow:
         return
     # O `origin/main` local envelhece em silêncio (armadilhas/148). Melhor
     # esforço: se o fetch falhar, a conta abaixo devolve None e vira "não medi".
@@ -615,8 +791,18 @@ def _colher_o_cancelado(fatos: Fatos) -> None:
         _rodar(["git", "fetch", "origin", "main", "--quiet"], teto_s=120)
     except ErroDeMedicao:
         pass
+    # A ESTEIRA DO RUN, não uma constante (TAR-029): perguntar ao
+    # `deploy-celula` o que o `deploy-infra` publicou devolve a resposta de
+    # outra pergunta, e ela chega com cara de certeza.
+    arquivo: Path | None = None
     try:
-        fatos.sha_publicado = sha_do_ultimo_deploy_verde()
+        arquivo = arquivo_do_workflow(fatos.workflow)
+    except ErroDeMedicao:
+        arquivo = None
+    try:
+        fatos.sha_publicado = sha_do_ultimo_deploy_verde(
+            arquivo.name if arquivo else fatos.workflow
+        )
     except ErroDeMedicao:
         fatos.sha_publicado = ""
     fatos.site_http = http_do_site()
@@ -625,7 +811,7 @@ def _colher_o_cancelado(fatos: Fatos) -> None:
     fatos.publicado_e_ancestral = e_ancestral(fatos.sha_publicado, fatos.head_sha)
     fatos.head_ja_publicado = e_ancestral(fatos.head_sha, fatos.sha_publicado)
     fatos.commits_de_fora, fatos.commits_de_fora_tocam_o_deploy = (
-        commits_que_ficam_de_fora(fatos.head_sha)
+        commits_que_ficam_de_fora(fatos.head_sha, arquivo=arquivo)
     )
 
 
@@ -655,7 +841,10 @@ def main(argv: list[str] | None = None) -> int:
     alvo = parser.add_mutually_exclusive_group(required=True)
     alvo.add_argument("--run", help="id do run de deploy")
     alvo.add_argument("--ultimo", action="store_true",
-                      help="o último run de deploy-celula")
+                      help="o último run da esteira de --workflow")
+    parser.add_argument("--workflow", default=WORKFLOW_DO_DEPLOY,
+                        help="a esteira de --ultimo (padrão: deploy-celula.yml)."
+                             " Com --run, a esteira é lida do próprio run.")
     parser.add_argument("--host", default=VPS_PADRAO)
     parser.add_argument("--teto", type=int, default=TETO_PADRAO_MIN)
     parser.add_argument("--so-diagnosticar", action="store_true",
@@ -663,12 +852,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     try:
-        run = args.run or ultimo_run()
+        run = args.run or ultimo_run(args.workflow)
         tentativas = 0
         while True:
             fatos = colher(run, args.host, tentativas)
             decisao = decidir(fatos)
-            print(f"\nrun {run}: status={fatos.status} conclusion={fatos.conclusion}"
+            print(f"\nrun {run}: esteira={fatos.workflow or '?'}"
+                  f" · status={fatos.status} conclusion={fatos.conclusion}"
+                  f" · tentativas={fatos.tentativas_feitas}"
                   f" · event={fatos.event or '?'}"
                   f" · timeout-ssh={fatos.tem_timeout_ssh}"
                   f" · porta22={fatos.porta22_viva} · site={fatos.site_http}")
