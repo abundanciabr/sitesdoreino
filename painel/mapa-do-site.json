@@ -300,6 +300,16 @@
       "descricao": "Responde 'estou de pé' pela rede interna. A parte que guarda XP, medalhas e marcos acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /conquistas."
     },
     {
+      "celula": "gamificacao",
+      "rota": "api/gamificacao/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina das conquistas",
+      "descricao": "Por onde outra parte do site pergunta o nível e o título de um aluno — a etiqueta que o fórum estampa ao lado do nome de quem escreveu — e por onde o próprio aluno vê o XP, a sequência e as missões dele. Só responde a quem apresenta a senha de máquina, e nunca devolve e-mail, nome nem o XP de outra pessoa.",
+      "observacao": "Hoje só a rede interna alcança, porque as conquistas ainda não têm endereço público. No dia em que /conquistas entrar no roteamento, esta porta passa a ficar debaixo dele e alcançável pela internet — quem a fecha é a senha de par, não o roteamento."
+    },
+    {
       "celula": "sugestoes",
       "rota": "",
       "endereco": "/forms/sugestoes/",
