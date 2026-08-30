@@ -1,5 +1,6 @@
 from django.urls import path, re_path
 
+from apps.core.busca import buscar
 from apps.core.moderacao import (
     criar_area,
     moderar_area,
@@ -39,6 +40,11 @@ urlpatterns = [
     path("", home, name="home"),
     path("a/<slug:slug>", ver_area, name="area"),
     path("t/<int:topico_id>", ver_topico, name="topico"),
+    # A BUSCA (lei §4.4). GET de propósito: buscar não muda nada, e o endereço
+    # com a pergunta dentro é o que deixa o aluno mandar o link do resultado
+    # para um colega. Quem decide o que ela pode ENXERGAR é `areas_visiveis`,
+    # em `apps/core/permissoes.py` — nunca um filtro proprio da consulta.
+    path("buscar", buscar, name="buscar"),
     # ESCREVER. Endereco proprio e `require_POST` nas duas: escrita por GET e
     # escrita que um `<img src>` de outro site dispara e que o robo do Google
     # executa ao passear pela pagina. O cadeado de quem pode escrever mora em

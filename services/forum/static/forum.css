@@ -182,6 +182,57 @@ button.mini:hover { background: #fffbeb; }
    ainda estivesse publicada. */
 .mensagem.fora-do-ar { opacity: 0.6; border-left-color: var(--aviso); }
 
+/* A BUSCA. A caixa mora na faixa do topo, em todas as páginas: procurar é o
+   gesto que a pessoa faz de qualquer lugar do fórum. */
+.procurar { display: flex; gap: 8px; margin-top: 10px; }
+.procurar input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  color: inherit;
+  background: var(--fundo);
+  border: 1px solid var(--linha);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+.procurar input:focus {
+  outline: 2px solid var(--destaque);
+  outline-offset: 1px;
+  background: var(--papel);
+}
+.procurar button {
+  font: inherit;
+  font-weight: 600;
+  color: #fff;
+  background: var(--destaque);
+  border: 0;
+  border-radius: 8px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+.procurar button:hover { filter: brightness(1.1); }
+/* Existe para quem usa leitor de tela: o rótulo do campo precisa estar escrito
+   em algum lugar, mesmo quando o desenho o dispensa. */
+.somente-leitor {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+.achado .texto { margin-top: 8px; color: var(--tinta-fraca); }
+.achado mark { background: #fef08a; color: inherit; padding: 0 2px; border-radius: 3px; }
+.paginas {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--tinta-fraca);
+}
+.paginas a { color: var(--destaque); text-decoration: none; font-weight: 600; }
+
 @media (max-width: 520px) {
   main { padding: 16px 14px 40px; }
   .quem { float: none; display: block; margin-top: 4px; }
