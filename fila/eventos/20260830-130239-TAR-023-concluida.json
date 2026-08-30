@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-130239-TAR-023-concluida",
+  "tarefa": "TAR-023",
+  "evento": "concluida",
+  "quando": "2026-08-30T13:02:39+00:00",
+  "quem": "sessao-tar023-2026-08-30",
+  "evidencia": "Escada de 4 PRs, todos MERGEADOS (gh pr view --json state): https://github.com/abundanciabr/sitesdoreino/pull/581 contrato, 4a emenda (componente ChangeSpecAssinado + changespecs[] em IdeiaComHistorico), merge 1dfce1a4 · /588 a Caixa responde a ficha, 507 testes verdes, merge ecaa4742 · /589 o Admin mostra a ficha e recusa nota fora de 0-5, 370 testes verdes, merge 8e207975 · /596 as CINCO rotas antigas viram redirecionamento, 497 testes verdes, merge 6d3c3daf. Vermelho->verde por ASSERCAO em cada degrau (armadilhas/195), com a segunda medida no degrau 2: SEM O CONSERTO 'changespecs esta na resposta? False' / COM O CONSERTO 'True'. Freeze do contrato PASS (947 linhas, 9 operacoes com auth conferida na fonte); guarda_dos_guardas PASS (31 guardas em 22 invariantes). DEPLOYS, lidos por gh run view --json status,conclusion: sugestoes run 33312825854 completed/success; admin run 33312655853 completed/success no rerun (a 1a tentativa parou na sonda da porta 22 — armadilhas/127, intermitente: a porta respondeu SSH-2.0-OpenSSH_9.6p1 do PC durante a janela). PROVA DE FORA das 5 rotas, antes->depois do deploy: /moderacao 302->302, /moderacao/1 302->302, /moderacao/1/status 405->302, /moderacao/1/avaliacao 405->302, /moderacao/1/changespec 302->302, todas para /forms/sugestoes/entrar; a virada 405->302 e a diferenca observavel de fora. A ficha em si so e visivel atras do login do Admin — dela a prova sao os 370 testes e o deploy verde. Aprendizado: armadilhas/202 e services/sugestoes/LICOES.md.",
+  "verificado_em": "2026-08-30"
+}

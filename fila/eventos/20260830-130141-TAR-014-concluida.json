@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-130141-TAR-014-concluida",
+  "tarefa": "TAR-014",
+  "evento": "concluida",
+  "quando": "2026-08-30T13:01:41+00:00",
+  "quem": "sessao-tar023-2026-08-30",
+  "evidencia": "As CINCO rotas antigas aposentadas no PR https://github.com/abundanciabr/sitesdoreino/pull/596 (deploy-celula 33312825854 completed/success, lido por gh run view --json). Medido na internet publica ANTES e DEPOIS do deploy: /forms/sugestoes/moderacao 302->302, /moderacao/1 302->302, /moderacao/1/status 405->302, /moderacao/1/avaliacao 405->302, /moderacao/1/changespec 302->302 — todas para /forms/sugestoes/entrar (o cracha vem antes do redirecionamento, como projetado). A virada 405->302 nas duas de escrita e a prova de fora de que o codigo novo esta no ar. Nenhuma responde 404: nenhum endereco foi apagado. Nada se perdeu: a funcao que faltava (a ficha da assinatura) foi entregue antes, nos PRs #581, #588 e #589 — que e a condicao registrada em 20260830-019 e o mandato do mantenedor de 30/08/2026. Suite da celula 497 verdes.",
+  "verificado_em": "2026-08-30"
+}
