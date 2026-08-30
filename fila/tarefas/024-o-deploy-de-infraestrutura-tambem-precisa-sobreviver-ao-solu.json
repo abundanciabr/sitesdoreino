@@ -1,0 +1,14 @@
+{
+  "arquivo": "024-o-deploy-de-infraestrutura-tambem-precisa-sobreviver-ao-solu",
+  "id": "TAR-024",
+  "titulo": "O deploy de infraestrutura também precisa sobreviver ao soluço de rede",
+  "toca": [
+    "infra",
+    "ci"
+  ],
+  "depende_de": [],
+  "evidencia_exigida": "O deploy-infra medindo a porta 22 e repetindo com pausa como o deploy-celula, com o guarda vermelho->verde e um run real como prova.",
+  "despacho": "O deploy-infra (.github/workflows/deploy-infra.yml) fala com a VPS por SSH e SCP\nUMA VEZ SÓ, sem nenhuma tentativa de repetição — enquanto o deploy-celula já\ntem três tentativas com pausa desde 26/08/2026 e, desde a TAR-013, também mede a\nporta 22 e registra o que fez. A armadilha 127 (o soluço de rede entre o runner\ndo GitHub e a VPS, campeã de reincidência: 6 quedas em 3 dias) mata o\ndeploy-infra no primeiro engasgo, e ele não tem nem o retry nem a medição.\n\nA entrega é levar ao deploy-infra a MESMA vacina, reusando ci/sonda_da_vps.py\n(nunca uma segunda cópia da medição — lei anti-duplicação do CLAUDE.md). Cuidado\nde desenho que a TAR-013 não resolveu e precisa de análise própria: o\ndeploy-infra tem DOIS passos de rede em sequência (appleboy/scp-action para a\nárea de staging e depois appleboy/ssh-action para validar/trocar/aplicar), e\nrepetir os dois é seguro só porque o staging é limpo com rm:true — confirme isso\nantes de repetir, e escreva por que é seguro no comentário do workflow.\n\nLeia antes: armadilhas/127, armadilhas/195 (a régua do vermelho que prova), o\nci/sonda_da_vps.py e o job `deploy` do deploy-celula.yml (a fiação já pronta,\ncom o porquê de cada regra nos comentários).",
+  "origem": "descoberta da TAR-013",
+  "criada_em": "2026-08-30"
+}
