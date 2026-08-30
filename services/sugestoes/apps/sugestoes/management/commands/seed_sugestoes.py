@@ -27,7 +27,7 @@ CATEGORIAS = [
 
 
 class Command(BaseCommand):
-    help = "Quadro padrão + categorias de um site — idempotente (rodar 2× não duplica)"
+    help = "Quadro padrão + categorias de um site: idempotente (rodar 2× não duplica)"
 
     def add_arguments(self, parser):
         parser.add_argument("--site-id", required=True)

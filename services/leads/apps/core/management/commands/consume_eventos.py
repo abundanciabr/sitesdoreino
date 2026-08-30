@@ -74,7 +74,7 @@ def _mover_para_fila_morta(r: redis.Redis, stream: str, msg_id, entregas: int) -
     r.xack(stream, GRUPO, msg_id)
     log.error(
         "FILA MORTA: evento %s esgotou %s entregas e foi movido para %s.dlq "
-        "(msg_id=%s) — precisa de intervenção manual",
+        "(msg_id=%s): precisa de intervenção manual",
         event_id,
         entregas,
         stream,

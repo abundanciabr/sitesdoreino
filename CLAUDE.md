@@ -350,18 +350,26 @@ e quase toda falsa, e medir a coisa errada com precisão é como um portão morr
 e a área pública de documentos (`/docs/…`, isenta na porta) moram nela e
 continuam sob a regra.
 
-**Onde a regra alcança o código:** os SEMEADORES entram na superfície
-(`management/commands/semear_*.py`), porque é deles que sai conteúdo que o
-visitante lê — a descrição das áreas do fórum nasce ali e aparece em
-`meshcraft.top/forum`. Só as constantes de string contam; docstring e
-comentário, não.
+**Onde a regra alcança o código:** a pasta `management/commands/` inteira, de
+toda célula. É de lá que sai conteúdo que o visitante lê — o nome e a descrição
+de uma área do fórum, as categorias da Caixa. Só as constantes de string contam;
+docstring e comentário, não.
 
-**O que o portão ainda não vê:** texto publicado escrito em qualquer OUTRO
-`.py`. Varrer `.py` inteiro seria ruído puro: das 160 strings com travessão nas
-células públicas, 5 sobrevivem à peneira dos semeadores e só uma vai mesmo para
-a tela. Se um dia a cópia do site passar a morar fora dos semeadores, a
-superfície precisa crescer junto — e enquanto não crescer, isso é
-responsabilidade de quem escreve.
+A fronteira já foi estreita demais uma vez, e quem achou o buraco foi o
+mantenedor olhando o site: ela era `semear_*.py`, e `seed_sugestoes.py` escapava
+pelo NOME do arquivo. Régua que depende de alguém escolher o prefixo certo não é
+régua.
+
+**O limite que fica, e é o mais importante desta lei:** o portão vigia
+ARQUIVOS. **Texto que já está gravado no banco ele não vê, e nunca verá.**
+Corrigir um semeador NÃO corrige a linha que ele criou — `semear_areas` é
+`get_or_create` e de propósito não altera o que existe. Foi assim que um
+travessão sobreviveu no fórum a uma varredura que se declarou completa: o
+mantenedor o viu no site depois de eu reportar tudo limpo (registro
+`20260830-051`). Quando mexer no texto de um semeador, pergunte **se aquilo já
+foi semeado em produção** — e, se foi, o conserto é uma migração de dados que
+casa o texto antigo inteiro (molde em `forum/migrations/0003`). O teste não
+avisa: ele roda em banco vazio, onde o `UPDATE` não encontra linha nenhuma.
 
 Fica de fora também `painel/ia/`, que sai em `/mapa-ia/` sem porta: é mapa
 técnico para uma IA de fora auditar o sistema, e a régua do mantenedor é a

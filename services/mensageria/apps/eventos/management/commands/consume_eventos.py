@@ -125,7 +125,7 @@ def _mover_para_fila_morta(r, stream, msg_id, campos, entregas) -> None:
     r.xack(stream, GRUPO, msg_id)
     log.error(
         "FILA MORTA: event_id=%s esgotou %d entregas (MAX_ENTREGAS=%d) e foi "
-        "movido de %s para %s.dlq (msg_id=%s) — intervencao manual necessaria",
+        "movido de %s para %s.dlq (msg_id=%s): intervencao manual necessaria",
         event_id,
         entregas,
         MAX_ENTREGAS,

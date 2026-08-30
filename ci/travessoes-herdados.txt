@@ -24,9 +24,20 @@
 #
 # Formato: `<caminho a partir da raiz> :: <quantos travessões ainda vivos>`
 
-# A DIVIDA FOI PAGA POR INTEIRO em 30/08/2026, no mesmo dia em que a regra
-# nasceu: os 125 travessoes viraram virgula, parenteses, dois-pontos ou
-# palavra. A lista fica aqui, vazia, porque a catraca continua valendo — e
-# porque uma linha nova aqui seria uma decisao visivel, nao um esquecimento.
+# Os 125 travessoes que existiam quando a regra nasceu foram TODOS pagos em
+# 30/08/2026, no mesmo dia: viraram virgula, parenteses, dois-pontos ou palavra.
+#
+# A linha abaixo nasceu depois, quando a superficie cresceu para a pasta inteira
+# de `management/commands` (antes ela era so `semear_*.py`, e o proprio
+# mantenedor achou o buraco: `seed_sugestoes.py` cria as categorias que o aluno
+# le e escapava pelo NOME do arquivo). Ela e uma decisao visivel, nao um
+# esquecimento — que e exatamente para isto que esta lista existe.
 
-# TOTAL: 0
+# O mantenedor tem diretiva permanente, desde 22/08/2026, de nao mexer em
+# pagamento ate decidir que o site vai vender. Sao tres travessoes num comando
+# que exporta o contrato da API — texto que so um programador le, e que nao
+# chega a tela de ninguem. Trocar tres riscas nao vale desobedecer a diretiva;
+# quando ele reabrir pagamentos, esta linha sai junto.
+services/pagamentos/pagamentos/api/management/commands/export_openapi.py :: 3
+
+# TOTAL: 3

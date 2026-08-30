@@ -93,7 +93,7 @@ def _mover_para_fila_morta(r, stream: str, msg_id, campos, entregas: int) -> Non
     r.xack(stream, GRUPO, msg_id)
     logger.error(
         "FILA MORTA: evento %s (stream %s, msg %s) esgotou %d entregas e foi "
-        "movido para %s.dlq — investigue o payload antes de reinjetar.",
+        "movido para %s.dlq: investigue o payload antes de reinjetar.",
         event_id,
         stream,
         msg_id,
