@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-175742-TAR-020-concluida",
+  "tarefa": "TAR-020",
+  "evento": "concluida",
+  "quando": "2026-08-30T17:57:42+00:00",
+  "quem": "sessao-forum-semeadura-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/620 - vermelho por assercao sem o conserto: 'AssertionError: Topico.autor continua obrigatorio: para a escola publicar, alguem teria de criar uma Pessoa de mentira' + 'Topico nao sabe declarar autoria institucional' + 'Topico nao expoe assinatura' (5 failed). Com o conserto: 119 passed na suite da celula forum (eram 101). ci/travessao.py PASS, freeze de contrato PASS. A publicacao no ar espera a aprovacao do conteudo pelo mantenedor (workflow_dispatch semear-duvidas-do-forum), entao a evidencia de fora AINDA NAO foi medida.",
+  "verificado_em": "2026-08-30"
+}
