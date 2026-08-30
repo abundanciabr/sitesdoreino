@@ -1,0 +1,19 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260830-084-o-deploy-que-engasga-na-rede-volta-a-subir-sozinho",
+  tipo: "entrega",
+  quando: "2026-08-30",
+  titulo: "O deploy que engasga na rede volta a subir sozinho, sem ninguem de plantao",
+  detalhe: "Tres vezes hoje uma entrega ficou pelo caminho porque a conexao entre o computador que publica (o do GitHub) e o nosso servidor engasgou. Nada estava quebrado: o site respondeu o tempo todo, o servidor esteve vivo o tempo todo. Era so a rede tropecando por alguns minutos.\n\nAte agora, quando isso acontecia, alguem precisava perceber a luz vermelha, conferir se o servidor estava mesmo de pe e mandar publicar de novo. O robo ja sabia fazer essa conferencia sozinho desde a semana passada — o que faltava era ele ACORDAR quando a luz ficava vermelha. Ele so acordava quando a entrega era engolida pela fila, nao quando ela tropecava na rede.\n\nAgora ele acorda nos dois casos, e com os mesmos cuidados de antes: ele so republica se isso for um passo PARA A FRENTE. Se republicar fosse voltar para uma versao mais velha do site, ele para e chama uma pessoa. Se ele nao conseguir medir alguma coisa, ele tambem para — 'nao consegui medir' nunca vira 'pode ir'.\n\nContei os numeros antes de mexer, porque sem conta e chute: nos ultimos 30 dias foram 41 entregas com luz vermelha, e 14 delas eram esse tropeco de rede. So nos ultimos 7 dias foram 13. E o problema esta piorando junto com o numero de robos trabalhando ao mesmo tempo: nenhuma ocorrencia ate 27/08, 3% das publicacoes em 28/08, 5% em 29/08 e 10% hoje.\n\nDescobri de quebra que a repeticao automatica que ja existia DENTRO da publicacao quase nao ajuda: das 18 vezes em que o servidor recusou a primeira conexao, 17 chegaram ate a terceira tentativa e as 17 morreram. As pausas dela (45 e 60 segundos) sao curtas demais para o tropeco passar. O que funciona e tentar de novo alguns minutos depois — que e exatamente o que o robo passou a fazer sozinho.\n\nConsertei tambem um efeito colateral que fazia parecer coisa pior do que era: quando a publicacao das paginas do site tropecava, ela DERRUBAVA JUNTO a publicacao da infraestrutura, mesmo sendo duas coisas independentes. Aconteceu 4 vezes em 30 dias, sempre por esse motivo — a regra que causava isso nunca pegou nada de util. Com o conserto, cada uma segue o proprio caminho, e a entrega deixa de ficar fora do ar duas vezes em vez de uma.\n\nVOCE NAO PRECISA FAZER NADA, e nao ha o que pedir para a empresa que hospeda o servidor. O registro da falha mostra que o computador do GitHub nao conseguia alcancar NEM o nosso servidor NEM o site publico naquele minuto — ou seja, quem estava sem enxergar era ele, nao o nosso lado. Nosso servidor esteve no ar nas 18 vezes.",
+  autoridade: "github",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/648 — TAR-041. Medicao por `gh run list --json` / `gh run view --json` (nunca por pipe): 30 dias = 417 runs de deploy-celula, 41 vermelhos, 14 no timeout da porta 22; deploy-infra = 26 runs, 4 vermelhos, 0 no timeout. 7 dias = 39 vermelhos, 13 no timeout. Por celula: admin 11, forum 5, gamificacao 2. Escada interna: 18 primeiras recusas, 17 chegaram a 3a tentativa, 17 morreram. Cascata: `vermelhos_nao_previstos` reprovou 4x em 30 dias e as 4 foram esteira irma (runs 32713472907, 33274286219, 33029073525, 33328262912). Antes/depois por assercao no mesmo vocabulario: divergiu repetir/0 -> parar/1; ja-no-ar repetir/0 -> nada/0; nao-medi repetir/0 -> nada/2; manual repetir/0 -> nada/1. Suite: 22 vermelhos com o conserto desfeito (11 deles em ASSERCAO), 108 verdes com ele de volta, 1328 verdes em ci/tests/. Licao em armadilhas/227.",
+  verificado_em: "2026-08-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "verde",
+  frente: "fabrica",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+});})();
