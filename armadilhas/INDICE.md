@@ -224,5 +224,6 @@
 | [189](189-dois-timezone-now-seguidos-caem-no-mesmo-tique-no-windows.md) | `assert datetime.datetime(...) > datetime.datetime(...)` com os DOIS lados IDÊNTICOS — no Windows, dois `timezone.now()` seguidos caem no mesmo tique do relógio — um teste que compara instantes falha **às vezes**, só na… | sino | — |
 | [190](190-registro-que-quita-divida-dentro-de-pr-nao-painel-nunca-conta.md) | `dívida do livro FAIL` que não sai por mais que você escreva o registro — a pista julga da `main`, não do seu PR — `ci/mergear.py <N> --conferir` na sua máquina diz **`dívida do livro PASS — livro em dia`**, você pede… | nenhum (declarado) | — |
 | [191](191-response-schema-tipado-vs-contrato-inline.md) | `response=Schema` no django-ninja sempre emite `$ref` nomeado — errado quando o contrato da rota é inline — um handler novo declara `@router.get("/resumo", response=RespostaResumo, ...)` com… | — sem guarda | — |
+| [192](192-pegar-a-tarefa-antes-do-worktree-deixa-o-evento-no-espelho.md) | Você pegou a tarefa no balcão antes de criar o worktree — o evento nasceu no espelho e o seu PR vai sem ele, em silêncio — Você seguiu a ordem de partida do despacho à risca: primeiro `python ci/fila.py pegar TAR-NNN… | nenhum (declarado) | — |
 
-**172 entradas** — 10 com guarda declarada, 162 ainda sem.
+**173 entradas** — 11 com guarda declarada, 162 ainda sem.
