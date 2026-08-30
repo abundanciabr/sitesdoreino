@@ -258,6 +258,148 @@ def test_aviso_aparece_no_principal_e_cala_no_worktree(reino):
     assert no_worktree.stdout.strip() == ""
 
 
+# ---------- o aviso mede a IDADE do espelho (TAR-045, armadilhas/148) ----------
+#
+# O clone principal entrega o `CLAUDE.md` DELE para o prompt de sistema de todo
+# agente. Enquanto ele estiver atrás, os robôs recebem ordens revogadas e nada
+# acusa (medido em 30/08/2026: 358 commits de atraso). Estas histórias são
+# montadas à mão e SEM REDE: `origin/main` é escrito com `git update-ref`.
+
+def _sha(cwd: Path) -> str:
+    return subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=cwd,
+        check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
+def _montar_espelho(
+    raiz: Path,
+    *,
+    atras: int = 0,
+    ordens_mudam: bool = False,
+    com_origin_main: bool = True,
+) -> Path:
+    """Um clone principal de mentira, com a distância que a história pedir.
+
+    Os commits da frente nascem de verdade, `origin/main` passa a apontar para
+    eles, e um `reset --hard` devolve o HEAD para a base — é assim que se
+    fabrica um espelho `atras` commits atrasado sem tocar em rede.
+    """
+    raiz.mkdir(parents=True)
+    _git("init", "-b", "main", cwd=raiz)
+    _git("config", "user.email", "teste@teste", cwd=raiz)
+    _git("config", "user.name", "teste", cwd=raiz)
+    (raiz / "CLAUDE.md").write_text("as ordens de ontem\n", encoding="utf-8")
+    _git("add", "CLAUDE.md", cwd=raiz)
+    _git("commit", "-m", "genese", cwd=raiz)
+    base = _sha(raiz)
+
+    for i in range(atras):
+        alvo = "CLAUDE.md" if ordens_mudam else f"outro-{i}.txt"
+        (raiz / alvo).write_text(f"avanco {i}\n", encoding="utf-8")
+        _git("add", alvo, cwd=raiz)
+        _git("commit", "-m", f"avanco {i}", cwd=raiz)
+
+    if com_origin_main:
+        _git("update-ref", "refs/remotes/origin/main", _sha(raiz), cwd=raiz)
+    _git("reset", "--hard", base, cwd=raiz)
+    return raiz
+
+
+# O parágrafo do atraso se identifica por este cabeçalho — é ele que separa
+# "falou" de "calou", nos dois sentidos.
+CABECALHO = "IDADE DO ESPELHO"
+
+
+def test_espelho_em_dia_nao_fala_do_atraso(tmp_path):
+    """A guarda ANTI-BARULHO, e ela é o centro da tarefa.
+
+    Este aviso roda em TODA sessão: se ele falar com o espelho em dia, vira
+    ruído — e guarda que grita à toa é guarda que se aprende a ignorar
+    (armadilhas/174; o sino da TAR-038 adoeceu exatamente assim).
+    """
+    raiz = _montar_espelho(tmp_path / "espelho", atras=0)
+    r = _aviso(raiz)
+    assert r.returncode == 0
+    assert "MURALHA" in r.stdout, "o aviso de sempre tem de continuar lá"
+    assert CABECALHO not in r.stdout, (
+        f"espelho em dia e o aviso falou do atraso assim mesmo: {r.stdout!r}"
+    )
+    assert "atrás de origin/main" not in r.stdout
+
+
+def test_espelho_atras_fala_com_o_numero_certo(tmp_path):
+    raiz = _montar_espelho(tmp_path / "espelho", atras=3, ordens_mudam=True)
+    r = _aviso(raiz)
+    assert r.returncode == 0
+    assert CABECALHO in r.stdout, r.stdout
+    assert "3 commits atrás de origin/main" in r.stdout, r.stdout
+    assert "2 commits" not in r.stdout and "4 commits" not in r.stdout
+
+
+def test_ordens_divergentes_dizem_a_consequencia_com_todas_as_letras(tmp_path):
+    """Atraso que ALCANÇOU o CLAUDE.md: o agente precisa ouvir que as ordens
+    que ele recebeu podem estar revogadas, e como conferir."""
+    raiz = _montar_espelho(tmp_path / "espelho", atras=3, ordens_mudam=True)
+    saida = _aviso(raiz).stdout
+    assert "revogad" in saida.lower(), saida
+    assert "git show origin/main:CLAUDE.md" in saida, saida
+
+
+def test_atraso_que_nao_tocou_as_ordens_nao_grita_revogado(tmp_path):
+    """Precisão em vez de probabilidade: o espelho está atrás, mas o
+    `CLAUDE.md` que o agente recebeu é o mesmo da main — dizer 'suas ordens
+    estão revogadas' aqui seria mentira, e mentira vira ruído."""
+    raiz = _montar_espelho(tmp_path / "espelho", atras=2, ordens_mudam=False)
+    saida = _aviso(raiz).stdout
+    assert "2 commits atrás de origin/main" in saida, saida
+    assert "revogad" not in saida.lower(), saida
+
+
+def test_git_mudo_diz_que_nao_mediu_e_nunca_cala_como_se_estivesse_em_dia(tmp_path):
+    """INV-CI01: 'não consegui medir' é RESULTADO, não silêncio. Sem
+    `origin/main` no cache, o `rev-list` falha — e o pior desfecho possível
+    seria o aviso calar, porque calar é o que ele faz quando está tudo em dia.
+    """
+    raiz = _montar_espelho(
+        tmp_path / "espelho", atras=3, com_origin_main=False
+    )
+    r = _aviso(raiz)
+    assert r.returncode == 0, "o aviso nunca bloqueia a sessão"
+    assert CABECALHO in r.stdout, (
+        "sem medir, o aviso caiu no MESMO silêncio do espelho em dia: "
+        f"{r.stdout!r}"
+    )
+    assert "NÃO MEDIDA" in r.stdout, r.stdout
+    assert "INV-CI01" in r.stdout, r.stdout
+    assert "atrás de origin/main" not in r.stdout, (
+        "não mediu, então não pode inventar número"
+    )
+    assert "git show origin/main:CLAUDE.md" in r.stdout
+
+
+def test_o_aviso_nunca_manda_atualizar_o_espelho_sozinho(tmp_path):
+    """A pasta é compartilhada e pode ter trabalho não commitado de outra
+    sessão (armadilhas/135). O aviso é a cura; atualizar é decisão de quem
+    está na frente do computador."""
+    raiz = _montar_espelho(tmp_path / "espelho", atras=3, ordens_mudam=True)
+    saida = _aviso(raiz).stdout
+    assert "git pull" not in saida, saida
+    assert "não atualize" in saida.lower(), saida
+
+
+def test_o_atraso_nao_e_medido_em_worktree(tmp_path):
+    """Worktree de ramo vivo fica atrás de origin/main o tempo todo — é o
+    normal, não um defeito. Medir ali seria o alarme falso da armadilhas/174,
+    e o `CLAUDE.md` do worktree nasceu de `origin/main` de qualquer forma."""
+    principal = _montar_espelho(tmp_path / "espelho", atras=3, ordens_mudam=True)
+    banca = tmp_path / "wt-banca"
+    _git("worktree", "add", str(banca), "-b", "agent/x/y", cwd=principal)
+    r = _aviso(banca)
+    assert r.returncode == 0
+    assert r.stdout.strip() == "", r.stdout
+
+
 # ---------- a fiação: sem o hook no settings, a muralha é decoração ----------
 
 def test_settings_do_projeto_liga_a_muralha():

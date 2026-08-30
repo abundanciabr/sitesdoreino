@@ -15,8 +15,32 @@ Como o harness a chama (fiação em .claude/settings.json):
                 agente lê. Fail-closed: erro interno TAMBÉM recusa (exit 2) —
                 "não consegui medir" nunca vira permissão (INV-CI01).
   SessionStart — com --aviso: se a sessão nasceu no clone principal, imprime o
-                aviso (vira contexto da sessão). O aviso nunca bloqueia nada:
-                se ele próprio falhar, sai calado com exit 0.
+                aviso (vira contexto da sessão) e MEDE a idade do espelho. O
+                aviso nunca bloqueia nada: se ele próprio falhar, sai calado
+                com exit 0.
+
+A idade do espelho, e por que ela virou parte do aviso (30/08/2026, TAR-045):
+o harness injeta o CLAUDE.md DA PASTA ONDE A SESSÃO NASCE no prompt de sistema
+de todo agente e de todo subagente. Enquanto o espelho ficar atrás, os robôs
+recebem ORDENS REVOGADAS antes de lerem qualquer coisa — e a divergência é
+silenciosa. Medido no dia: 358 commits de atraso, com o CLAUDE.md de lá ainda
+mandando escolher número de armadilha à mão (regra revogada pela armadilhas/227);
+um robô obedeceu, colidiu e pagou uma rodada de CI. A armadilhas/148 já tinha
+registrado o custo de LER do espelho; isto é a mesma doença uma camada acima.
+
+As três coisas que o aviso pode dizer sobre a idade, e só estas:
+
+  0 commits atrás ........... NADA. Silêncio é o estado normal, e aviso que
+                              fala à toa se aprende a ignorar (armadilhas/174).
+  N > 0 commits atrás ....... fala, com o número; e diz se o atraso ALCANÇOU o
+                              CLAUDE.md (aí as ordens podem estar revogadas) ou
+                              não (aí só o código lido daqui está velho).
+  não conseguiu medir ....... fala DIZENDO que não mediu. "Não medi" nunca vira
+                              "está em dia" (INV-CI01) — e nunca inventa número.
+
+Ele nunca manda atualizar o espelho: a pasta é compartilhada e pode ter
+trabalho não commitado de outra sessão. O aviso é a cura; atualizar é decisão
+de quem está na frente do computador.
 
 O que a muralha decide:
 
@@ -44,6 +68,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 FERRAMENTAS_DE_EDICAO = {
     "Edit": "file_path",
@@ -67,6 +92,16 @@ RITO = (
     "git fetch origin && git worktree add ../wt-<area>-<tarefa> "
     "-b agent/<area>/<tarefa> origin/main"
 )
+
+# A régua da idade do espelho. `origin/main` é lido do CACHE local do git —
+# nenhuma rede, nenhuma espera: o que estiver ali é o que o último `git fetch`
+# de alguém deixou.
+REF_DA_VERDADE = "origin/main"
+# O arquivo que o harness injeta no prompt de sistema. É ele que transforma
+# "espelho velho" em "ordens revogadas", e é ele que torna o aviso PRECISO em
+# vez de probabilístico.
+ARQUIVO_DE_ORDENS = "CLAUDE.md"
+CABECALHO_DA_IDADE = "📅 IDADE DO ESPELHO:"
 
 
 def _utf8_na_saida() -> None:
@@ -144,15 +179,142 @@ def _arvore_limpa(raiz: Path) -> bool:
     return all(linha.startswith("??") for linha in saida.splitlines() if linha)
 
 
-def _ramo_atual(raiz: Path) -> str:
+def _git_de_leitura(raiz: Path, *argumentos: str):
+    """Um git que só LÊ, rodado no espelho. Devolve o CompletedProcess, ou
+    None quando o próprio git não respondeu (ausente do PATH, timeout, erro
+    de SO). None é 'não medi' — quem chama tem de tratá-lo como resultado."""
     try:
         return subprocess.run(
-            ["git", "-C", str(raiz), "symbolic-ref", "--short", "-q", "HEAD"],
+            ["git", "-C", str(raiz), *argumentos],
             capture_output=True, text=True, encoding="utf-8",
             errors="replace", timeout=10,
-        ).stdout.strip()
+        )
     except Exception:
-        return ""
+        return None
+
+
+def _ramo_atual(raiz: Path) -> str:
+    resposta = _git_de_leitura(raiz, "symbolic-ref", "--short", "-q", "HEAD")
+    return resposta.stdout.strip() if resposta else ""
+
+
+class IdadeDoEspelho(NamedTuple):
+    """Quanto o espelho está atrás de `origin/main`, medido sem rede.
+
+    commits=None significa NÃO MEDI — nunca "está em dia" (INV-CI01).
+    ordens_divergem=None significa que a comparação do CLAUDE.md não foi
+    feita (ou porque não havia atraso para investigar, ou porque o git não
+    respondeu); ela também nunca vira "as ordens estão iguais".
+    """
+
+    commits: int | None
+    ordens_divergem: bool | None
+    motivo: str  # por que não mediu — vazio quando mediu
+
+
+def medir_idade_do_espelho(raiz: Path) -> IdadeDoEspelho:
+    contagem = _git_de_leitura(
+        raiz, "rev-list", "--count", f"HEAD..{REF_DA_VERDADE}"
+    )
+    if contagem is None:
+        return IdadeDoEspelho(None, None, "o git não respondeu")
+    if contagem.returncode != 0:
+        # a PRIMEIRA linha do stderr é a que diz o quê ("fatal: ambiguous
+        # argument..."); as seguintes são a dica de uso genérica do git.
+        linhas = [l.strip() for l in (contagem.stderr or "").splitlines()
+                  if l.strip()]
+        return IdadeDoEspelho(
+            None, None,
+            f"`git rev-list --count HEAD..{REF_DA_VERDADE}` falhou "
+            + (f"— {linhas[0]}" if linhas
+               else f"com código {contagem.returncode}"),
+        )
+    try:
+        commits = int(contagem.stdout.strip())
+    except ValueError:
+        return IdadeDoEspelho(
+            None, None,
+            "`git rev-list --count` devolveu algo que não é número: "
+            f"{contagem.stdout.strip()!r}",
+        )
+    if commits <= 0:
+        # Em dia. NÃO perguntamos mais nada de propósito: o contrato deste
+        # aviso é calar quando não há atraso, e cada pergunta extra é uma
+        # chance a mais de falar à toa (armadilhas/174).
+        return IdadeDoEspelho(0, None, "")
+
+    # Há atraso. Só agora vale a pena perguntar se ele ALCANÇOU as ordens.
+    # A comparação é contra a ÁRVORE DE TRABALHO, não contra o HEAD, porque é
+    # o arquivo em disco que o harness injetou no prompt de sistema.
+    diferenca = _git_de_leitura(
+        raiz, "diff", "--name-only", REF_DA_VERDADE, "--", ARQUIVO_DE_ORDENS
+    )
+    if diferenca is None or diferenca.returncode != 0:
+        return IdadeDoEspelho(commits, None, "")
+    return IdadeDoEspelho(commits, bool(diferenca.stdout.strip()), "")
+
+
+_NAO_ATUALIZE = (
+    "E NÃO atualize esta pasta por conta própria: ela é compartilhada e pode "
+    "ter trabalho não commitado de outra sessão (armadilhas/135) — atualizar "
+    "o espelho é decisão de quem está na frente do computador."
+)
+_LEIA_DO_ORIGIN = (
+    "Vale para tudo que você ler DAQUI — código, contrato, lei: leia do "
+    "origin/main (`git show origin/main:<caminho>`) ou crie o worktree ANTES "
+    "do reconhecimento (armadilhas/148). "
+)
+_CONFIRA_AS_ORDENS = (
+    f"Confira o texto vivo com `git show {REF_DA_VERDADE}:{ARQUIVO_DE_ORDENS}` "
+    "antes de seguir qualquer regra que te pareça estranha. "
+)
+
+
+def frase_da_idade(idade: IdadeDoEspelho) -> str | None:
+    """O parágrafo extra do aviso — ou None quando não há o que dizer.
+
+    None SÓ existe para o espelho medido e em dia. "Não medi" fala.
+    """
+    if idade.commits == 0:
+        return None
+
+    if idade.commits is None:
+        return (
+            f"{CABECALHO_DA_IDADE} NÃO MEDIDA ({idade.motivo}). Não medir não "
+            "é estar em dia (INV-CI01, RETROSPECTIVA-FASE-D §1): trate esta "
+            f"pasta como possivelmente atrasada. O `{ARQUIVO_DE_ORDENS}` que o "
+            "harness injetou no seu prompt de sistema veio DAQUI e pode estar "
+            f"revogado. {_CONFIRA_AS_ORDENS}(Se faltou a ref, um `git fetch "
+            f"origin` no espelho é permitido e a repõe.) {_LEIA_DO_ORIGIN}"
+            f"{_NAO_ATUALIZE}"
+        )
+
+    plural = "commit" if idade.commits == 1 else "commits"
+    cabeca = (
+        f"{CABECALHO_DA_IDADE} {idade.commits} {plural} atrás de "
+        f"{REF_DA_VERDADE}. "
+    )
+
+    if idade.ordens_divergem is False:
+        return (
+            cabeca
+            + f"O `{ARQUIVO_DE_ORDENS}` daqui está IGUAL ao de "
+            f"{REF_DA_VERDADE}, então as ordens que você recebeu valem. "
+            f"O resto desta pasta, não. {_LEIA_DO_ORIGIN}{_NAO_ATUALIZE}"
+        )
+
+    certeza = (
+        f"e o `{ARQUIVO_DE_ORDENS}` daqui DIVERGE do de {REF_DA_VERDADE}"
+        if idade.ordens_divergem
+        else f"e não consegui comparar o `{ARQUIVO_DE_ORDENS}` daqui com o de "
+             f"{REF_DA_VERDADE}"
+    )
+    return (
+        cabeca
+        + f"O harness injetou o `{ARQUIVO_DE_ORDENS}` DESTA pasta no seu "
+        f"prompt de sistema, {certeza}: parte das ordens que você recebeu pode "
+        f"estar REVOGADA. {_CONFIRA_AS_ORDENS}{_LEIA_DO_ORIGIN}{_NAO_ATUALIZE}"
+    )
 
 
 def _recusa_de_git(sub: str, raiz: Path) -> str:
@@ -310,6 +472,18 @@ def _hook_aviso_de_sessao() -> int:
         "A muralha recusará edição e troca de ramo feitas aqui; leituras, "
         "git fetch, git worktree e gh continuam livres."
     )
+    # A idade do espelho só se mede AQUI, no principal. Num worktree de ramo
+    # vivo o atraso para origin/main é o normal — medir lá seria alarme falso
+    # (armadilhas/174), e o CLAUDE.md de lá nasceu de origin/main de qualquer
+    # forma. Falha da medição não pode calar o aviso que já saiu.
+    try:
+        frase = frase_da_idade(medir_idade_do_espelho(raiz))
+    except Exception as erro:
+        frase = frase_da_idade(
+            IdadeDoEspelho(None, None, f"{erro.__class__.__name__}: {erro}")
+        )
+    if frase:
+        print(frase)
     return 0
 
 
