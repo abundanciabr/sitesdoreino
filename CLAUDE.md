@@ -322,6 +322,14 @@ escritas em HTML que viram risca na tela (`&mdash;`, `&#8212;` e parentes). O
 **hífen continua livre**: ele é letra de palavra composta ("guarda-chuva"), não
 pontuação de frase — um portão que o caçasse recusaria português correto.
 
+**Título de aba usa barra vertical, não uma das quatro.** Em `<title>` e em
+`{% block titulo %}` o travessão não era pontuação de frase: era separador entre
+a página e o nome do lugar (`Cadastro — Meshcraft`). Nenhuma das quatro trocas
+encaixa ali, e o mantenedor escolheu a barra em 30/08/2026, depois de ver a
+proposta de parênteses: **`Cadastro | Meshcraft`**. A barra vale SÓ para
+separador de título; dentro de uma frase, as quatro continuam sendo a régua.
+Não "conserte" isto de volta para parênteses.
+
 **Onde a regra vale:** em tudo que alguém que não é o mantenedor lê. A vitrine
 do site, cadastro, login, checkout, quiz, fórum, área do aluno, Caixa de
 Sugestões, os documentos publicados e as traduções. A superfície é DERIVADA, não
