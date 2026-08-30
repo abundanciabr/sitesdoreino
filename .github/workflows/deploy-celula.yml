@@ -34,6 +34,19 @@ on:
     paths: ['services/**', 'painel/**', 'fila/**', 'documentos/**']
 permissions:
   contents: read
+# O GRUPO É COMPARTILHADO COM O `deploy-infra`, E ISSO FOI MEDIDO (TAR-029,
+# 30/08/2026). O preço é conhecido: a vaga de PENDENTE é uma só, então um merge
+# novo expulsa o deploy que estava esperando e ele termina `cancelled` — sem
+# vermelho, sem alarme (`armadilhas/173`, `/183`, `/188`).
+#
+# Separar os dois grupos foi considerado e RECUSADO: os dois scripts escrevem no
+# MESMO `docker-compose.yml` da VPS e no mesmo projeto do compose (o de infra
+# troca o arquivo e roda `up -d` sem argumento; este LÊ o arquivo para descobrir
+# os serviços da célula). A medição, com as linhas exatas, está no cabeçalho do
+# `concurrency:` de `.github/workflows/deploy-infra.yml`.
+#
+# O expulso deixou de ficar órfão: `.github/workflows/vacina-do-deploy.yml`
+# acorda no `cancelled` desta esteira e da outra, e cura ou grita.
 concurrency:
   group: deploy
   cancel-in-progress: false
