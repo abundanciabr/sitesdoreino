@@ -143,4 +143,6 @@ idade de cada parte):
   células) foi refeita contra `ci/manifesto-de-contratos.json`. **Ainda
   velho, e não corrigido nesta passagem:** a contagem de armadilhas ("~126"
   aqui e em [02](02-armadilhas-e-padroes-recorrentes.md)) — o catálogo tinha
-  **200** entradas em 30/08/2026.
+  **201** entradas em 30/08/2026, contadas por
+  `python ci/indice_de_armadilhas.py`. O porquê de o guarda deste mapa não
+  pegar nada disso está em `armadilhas/222`.
