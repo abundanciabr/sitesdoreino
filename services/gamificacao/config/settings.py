@@ -69,9 +69,12 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
-    # `apps.gamificacao` — o ledger de XP, os Cristais, a Sequência, a Forja,
-    # as medalhas e os Marcos — nasce no PR 3 da escada (`PLANO` §6), junto com
-    # os três testes-invariante da economia. Esqueleto não inventa tabela.
+    # O ledger de XP, os Cristais, a Sequência, a Forja, as medalhas e os
+    # Marcos — o §3 do `PLANO-CELULA-GAMIFICACAO.md`, entregue no PR 3 da
+    # escada. Entra junto com os três testes-invariante da economia, que são a
+    # lei desta célula e nascem como teste que reprova a publicação — nunca
+    # como promessa em documento.
+    "apps.gamificacao",
 ]
 
 MIDDLEWARE = [
