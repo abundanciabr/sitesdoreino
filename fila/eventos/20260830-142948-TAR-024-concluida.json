@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-142948-TAR-024-concluida",
+  "tarefa": "TAR-024",
+  "evento": "concluida",
+  "quando": "2026-08-30T14:29:48+00:00",
+  "quem": "sessao-tar024-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/602 — deploy-infra com a vacina da armadilhas/127: 3 tentativas, medicao da porta 22 por ci/sonda_da_vps.py (reusada, nao reescrita), pausas de 45s e 60s, parada antecipada com DUAS medicoes, e portao de conclusao contra o falso-verde que a repeticao criava. Guarda ci/tests/test_deploy_infra_sobrevive_ao_soluco.py: 22 verdes com o conserto, 17 vermelhos com o workflow antigo, todos na ASSERCAO (armadilhas/195). Suite 1166 -> 1188 passed; muralhas PASS nas 12.",
+  "verificado_em": "2026-08-30"
+}
