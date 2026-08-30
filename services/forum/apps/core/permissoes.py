@@ -56,28 +56,81 @@ def pode_ler(area: Area, ator: Ator) -> bool:
     return False
 
 
+# As três recusas possíveis, ditas em português para quem está do outro lado da
+# tela. Ficam AQUI, e não no template, porque a razão da recusa é a mesma regra
+# que a produz — separá-las é o começo de duas verdades sobre a mesma coisa.
+PRECISA_ENTRAR = "entrar"
+PRECISA_SER_ALUNO = "matricula"
+SO_A_ESCOLA_FALA = "equipe"
+NAO_SE_APLICA = ""
+
+
 def pode_escrever(area: Area, ator: Ator) -> bool:
     """Este Ator pode abrir tópico ou responder nesta área?
 
-    Escrever exige, SEMPRE, poder ler — e mais um degrau, declarado no campo
-    `quem_escreve` da área.
+    Três degraus, nesta ordem, e todos precisam passar:
+
+    1. **Poder ler.** Nunca se escreve onde não se enxerga.
+    2. **Estar logado.** Escrita é SEMPRE atrás do login — mandato do
+       mantenedor em 30/08/2026 (registro `20260830-021`). Visitante não
+       escreve em lugar nenhum, nem numa área que aceite "qualquer cadastrado".
+    3. **O degrau da área**, declarado em `quem_escreve` — com uma exceção que
+       vem por cima de tudo: **em página PÚBLICA, só a escola fala.**
+
+    O passo 3 tem cinto e suspensório: a combinação "área pública onde aluno
+    escreve" também é recusada pelo BANCO (`Area.Meta.constraints`,
+    `pagina_publica_so_a_escola_fala`). A conferência aqui não é redundância
+    ociosa — é o que decide cada requisição, e o que continua valendo se um dia
+    alguém dropar a restrição para "destravar" um incidente.
+    """
+    return por_que_nao_escreve(area, ator) == NAO_SE_APLICA
+
+
+def por_que_nao_escreve(area: Area, ator: Ator) -> str:
+    """A MESMA regra de `pode_escrever`, dizendo qual degrau reprovou.
+
+    Devolve `NAO_SE_APLICA` (string vazia) quando a pessoa PODE escrever. A tela
+    usa isto para dizer a verdade em vez de esconder o formulário em silêncio —
+    "você precisa entrar" e "você precisa estar matriculado" são recusas
+    diferentes, e quem lê merece saber qual das duas levou.
+
+    **Uma função só, dois usos.** `pode_escrever` é esta função com os olhos
+    fechados. Se a razão morasse num `if` paralelo, ela divergiria da regra no
+    primeiro dia em que alguém mexesse numa das duas — e a tela passaria a
+    convidar para entrar numa área onde entrar não resolve.
     """
     if not pode_ler(area, ator):
-        return False
+        # Quem não pode nem ler não chega a ver esta tela (a view responde 404
+        # antes). Se chegasse, a recusa honesta é a mais fechada de todas.
+        return PRECISA_SER_ALUNO
+
+    # ESCREVER É SEMPRE ATRÁS DO LOGIN (mandato de 30/08/2026).
+    if not ator.autenticado:
+        return PRECISA_ENTRAR
+
+    # EM PÁGINA PÚBLICA, SÓ A ESCOLA FALA. Vem antes de `quem_escreve` de
+    # propósito: mesmo que o dado dissesse `aluno` — dado velho, restrição
+    # dropada à mão, bug de migração —, a página que estranhos leem sem login
+    # continua sendo só a voz da escola.
+    if area.visibilidade == Area.Visibilidade.PUBLICA:
+        return NAO_SE_APLICA if ator.eh_equipe else SO_A_ESCOLA_FALA
 
     if area.quem_escreve == Area.QuemEscreve.EQUIPE:
-        return ator.eh_equipe
+        return NAO_SE_APLICA if ator.eh_equipe else SO_A_ESCOLA_FALA
 
     if area.quem_escreve == Area.QuemEscreve.ALUNO:
-        return ator.eh_aluno or ator.eh_equipe
+        return NAO_SE_APLICA if (ator.eh_aluno or ator.eh_equipe) else PRECISA_SER_ALUNO
 
     if area.quem_escreve == Area.QuemEscreve.CADASTRADO:
-        # O único caso que aceita quem tem login sem ter comprado — e é o que
-        # EXIGE defesa anti-spam de verdade antes de ser usado numa área
-        # pública (`DECISAO-forum-da-escola.md` §6.3, pergunta em aberto).
-        return ator.autenticado
+        # Quem tem login sem ter comprado. O mantenedor decidiu em 30/08/2026
+        # que **não** é assim que o fórum nasce (só aluno matriculado escreve),
+        # e nenhuma área semeada usa este valor — ele fica no vocabulário para
+        # o dia em que ele quiser abrir uma área trancada. Numa área pública
+        # ele é impossível: a restrição do banco recusa.
+        return NAO_SE_APLICA
 
-    return False
+    # Valor desconhecido (dado novo, código velho) ⇒ fechado.
+    return SO_A_ESCOLA_FALA
 
 
 def areas_visiveis(ator: Ator):

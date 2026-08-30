@@ -1,0 +1,19 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260830-031-o-forum-passou-a-aceitar-o-que-o-aluno-escreve",
+  tipo: "entrega",
+  quando: "2026-08-30",
+  titulo: "O forum passou a aceitar o que o aluno escreve",
+  detalhe: "O FORUM DEIXOU DE SER SO DE LEITURA. Ate hoje ele mostrava as areas e nada mais: nao havia botao de escrever em lugar nenhum do site. Agora um aluno matriculado abre uma conversa e responde as dos colegas, e as tres escolhas que voce fez hoje de manha sao exatamente o que o codigo faz.\n\n1) ESCREVER SO DEPOIS DE ENTRAR. Nenhuma mensagem de aluno aparece numa pagina que estranho abre sem login. Como voce decidiu que a pagina publica e so a escola falando, as duas areas onde o aluno escreve — 'Duvidas gerais' e 'Mostre seu trabalho' — FECHARAM: elas saem do alcance do Google e passam a aparecer so para quem entrou e esta matriculado. A unica area que continua aberta ao mundo e 'Avisos da escola', onde quem publica e a escola. Isso e o preco que voce aceitou na escolha, e ele esta pago aqui.\n\n2) SO QUEM PAGOU ESCREVE. Quem tem cadastro e nao comprou continua lendo e nao consegue escrever — nem na area aberta. Para estragar o forum, a pessoa teria que pagar o curso.\n\n3) SEM FILA DE APROVACAO. Nada do que um aluno escreve fica esperando alguem liberar: a protecao e o cadeado da entrada, como voce marcou. Nenhuma tela de moderar foi construida nesta entrega.\n\nO QUE ISSO TEM DE DIFERENTE DE UMA PROMESSA: a regra nao mora so no codigo das telas — ela desceu ate o BANCO. O banco agora RECUSA a existencia de uma area que seja publica e ao mesmo tempo aceite escrita de aluno. Nem uma tela de administracao futura, nem alguem mexendo no banco a mao numa madrugada de problema, conseguem criar essa combinacao. Foi de proposito: a regra que protege crianca nao podia ficar dependendo de ninguem lembrar dela.\n\nO QUE FALTA CONFERIR, E EU NAO CONSIGO SOZINHO: a prova final e um aluno matriculado de verdade escrevendo no site publicado, e isso so da para medir depois que esta entrega subir. Ate la o que existe e a prova de laboratorio: 101 testes verdes contra um banco PostgreSQL de verdade, com os tres casos que voce pediu — o aluno matriculado conseguindo, e as duas recusas (quem so tem cadastro e quem nao entrou).\n\nUMA COISA PARA VOCE CONFERIR NA VPS quando puder: para VOCE conseguir publicar em 'Avisos da escola', o seu e-mail precisa estar na lista ADMIN_EMAILS do arquivo env/forum.env. O instalador do forum copia essa lista do arquivo da area admin, entao ela provavelmente ja esta la — mas eu nao tenho como olhar dentro do servidor para confirmar.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/585 — a entrega da TAR-019. Prova de laboratorio: 101 testes da celula forum verdes contra PostgreSQL 17 real (eram 78 antes; 21 novos em services/forum/tests/test_escrever.py), incluindo o aluno matriculado abrindo topico e respondendo, e as duas recusas. Prova de que a decisao MUDOU (e nao so de que o teste novo passa): a mesma cena levada as duas versoes de pode_escrever() — em origin/main um aluno escrevia em pagina publica (True), neste ramo nao escreve (False), e o caso que nao devia mudar (area de alunos) continua True nos dois. Prova de FORA, medida no site no ar antes deste PR: POST /forum/a/duvidas/novo respondia 404 (a porta nao existia) e GET /forum/a/duvidas respondia 200. O contrato contracts/forum.openapi.yaml NAO foi tocado — o freeze passou com 177 linhas identicas. O que ainda NAO esta comprovado e o caminho feliz medido de fora no site publicado: so e possivel depois do deploy deste PR.",
+  verificado_em: "2026-08-30",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "comunidade",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+});})();
