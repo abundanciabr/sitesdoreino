@@ -95,8 +95,14 @@
       "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."
     },
     "gamificacao": {
-      "freeze": "not-applicable",
-      "reason": "Célula nascida em 30/08/2026 (PR 1 da escada do §6 de docs/decisoes/PLANO-CELULA-GAMIFICACAO.md): config/urls.py expõe só /healthz, não há config/api.py nem API pública. O contrato (contracts/gamificacao.openapi.yaml, com getPublicProfiles e getMyStatus) entra pelo RITOS.md §3 no PR 4 da escada, depois da Sessão B de Rito de Contrato com o mantenedor."
+      "freeze": "required",
+      "frozen": "contracts/gamificacao.openapi.yaml",
+      "exportador": [
+        "python",
+        "manage.py",
+        "export_openapi"
+      ],
+      "_nota": "CONTRATO CONGELADO ANTES DA IMPLEMENTAÇÃO — leia isto antes de achar que quebrou. O contrato entrou na Sessão B (Rito de Contrato com o mantenedor, 30/08/2026), que é o PR 4 da escada do §6 de docs/decisoes/PLANO-CELULA-GAMIFICACAO.md; a porta de máquina que o implementa (config/api.py + export_openapi) é o PR 16 da mesma escada. Enquanto ela não chegar, `make ci` desta célula termina em ERROR no passo `contrato-check`, com a mensagem \"Unknown command: 'export_openapi'\" — é o portão fazendo o trabalho dele, não defeito. A linha não pode ficar `not-applicable` com o arquivo em disco: `auditar_manifesto` trata isso como contradição e reprova. CONSEQUÊNCIA PRÁTICA: o próximo PR que tocar services/gamificacao precisa trazer junto a porta de máquina — ou seja, o PR 16 sobe na fila. Ver armadilhas/228."
     },
     "identidade": {
       "freeze": "required",
