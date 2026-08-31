@@ -91,6 +91,13 @@ class Registro(models.Model):
     # diferentes na hora de reconstruir o que aconteceu.
     CRIAR_DOCUMENTO = "criar_documento"
     EDITAR_DOCUMENTO = "editar_documento"
+    # [HISTORICO] 31/08/2026: voltar um documento a uma versao anterior. E um
+    # verbo, e nao um EDITAR reaproveitado, porque e o unico gesto desta area
+    # que escreve um texto que NINGUEM digitou naquele momento. Confundi-lo com
+    # uma edicao esconderia justamente o que aconteceu, e este verbo entra junto
+    # com o historico porque ele e metade do que substituiu o `git log` destes
+    # textos (`DECISAO-o-editor-de-documentos.md` §6).
+    RESTAURAR_DOCUMENTO = "restaurar_documento"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -108,6 +115,7 @@ class Registro(models.Model):
         (EDITAR_MENU, "mudar o menu do topo do site"),
         (CRIAR_DOCUMENTO, "criar um documento do site"),
         (EDITAR_DOCUMENTO, "editar um documento do site"),
+        (RESTAURAR_DOCUMENTO, "voltar um documento a uma versao anterior"),
     ]
 
     OK = "ok"
