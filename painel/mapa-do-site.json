@@ -305,21 +305,21 @@
     {
       "celula": "gamificacao",
       "rota": "healthz",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/conquistas/healthz",
+      "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "O sinal de vida das conquistas",
-      "descricao": "Responde 'estou de pé' pela rede interna. A parte que guarda XP, medalhas e marcos acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /conquistas."
+      "descricao": "Responde 'estou de pé' para o servidor. É por aqui que o pipeline sabe se a parte que guarda XP, medalhas e marcos subiu inteira."
     },
     {
       "celula": "gamificacao",
       "rota": "api/gamificacao/",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/conquistas/api/gamificacao/",
+      "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "A porta de máquina das conquistas",
       "descricao": "Por onde outra parte do site pergunta o nível e o título de um aluno — a etiqueta que o fórum estampa ao lado do nome de quem escreveu — e por onde o próprio aluno vê o XP, a sequência e as missões dele. Só responde a quem apresenta a senha de máquina, e nunca devolve e-mail, nome nem o XP de outra pessoa.",
-      "observacao": "Hoje só a rede interna alcança, porque as conquistas ainda não têm endereço público. No dia em que /conquistas entrar no roteamento, esta porta passa a ficar debaixo dele e alcançável pela internet — quem a fecha é a senha de par, não o roteamento."
+      "observacao": "O dia previsto chegou: /conquistas entrou no roteamento em 31/08/2026, e esta porta ficou debaixo dele, alcançável pela internet. Quem a fecha é a senha de par, nunca o roteamento, e hoje a lista de senhas está VAZIA: ninguém passa. Cada consumidor novo (o fórum, para o selo; a home, para o widget) ganha a sua no provisionamento do par."
     },
     {
       "celula": "sugestoes",
