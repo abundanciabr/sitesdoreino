@@ -101,6 +101,7 @@ def entrar_google(request):
     leitor futuro lembrar de sanear.
     """
     destino = destino_seguro(request.GET.get("next"))
+    site = site_seguro(request.GET.get("site"))
     estado = secrets.token_urlsafe(24)
     try:
         para_o_google = GoogleOAuth().url_de_autorizacao(
@@ -110,6 +111,7 @@ def entrar_google(request):
         return _recusar(destino, "nao-configurada")
     request.session[ses.CHAVE_ESTADO_OAUTH] = estado
     request.session[ses.CHAVE_DESTINO] = destino
+    request.session[ses.CHAVE_SITE] = site
     return HttpResponseRedirect(para_o_google)
 
 
@@ -151,9 +153,35 @@ def entrar_google_retorno(request):
 
     nome = (perfil.get("given_name") or perfil.get("name") or "").strip()
 
-    identidade = ses.cunhar_ou_recuperar(email=email, nome=nome)
+    # Lido ANTES do `flush()` que `abrir_sessao` faz, como o destino.
+    site = site_seguro(request.session.get(ses.CHAVE_SITE))
+    identidade = ses.cunhar_ou_recuperar(email=email, nome=nome, site_id=site)
     ses.abrir_sessao(request, identidade)
     return HttpResponseRedirect(destino)
+
+
+# O formato de um id de site nesta plataforma: opaco, curto, sem espaço e sem
+# pontuação exótica. A cerca é de FORMA, não de existência — esta célula não
+# fala com o catálogo e não tem como saber se o site existe.
+RE_SITE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9._-]{0,63}\Z")
+
+
+def site_seguro(cru: "str | None") -> str:
+    """O site de onde a pessoa veio, saneado. Vazio quando não dá para confiar.
+
+    **Por que este valor vem pela URL, e por que isso é aceitável:** esta
+    célula não resolve Host→Site (isso é do catálogo, e ela nem fala com ele).
+    Quem conhece o site é quem manda a pessoa para cá — o `funil`, que já o
+    resolveu pelo CONV-SITE. Entrada de rede, portanto: saneada aqui e usada
+    para UMA coisa só, escolher a quem o fato de cadastro pertence. **Ela nunca
+    autoriza nada** — a autorização desta célula é a sessão do Google, e um
+    `site` forjado não abre porta nenhuma.
+
+    Vazio é resposta legítima e o lado seguro: sem site, a pessoa é cunhada e o
+    fato não é anunciado (`sessao.cunhar_ou_recuperar`).
+    """
+    valor = (cru or "").strip()
+    return valor if RE_SITE.match(valor) else ""
 
 
 def _mesma_origem(request) -> bool:

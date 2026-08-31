@@ -23,15 +23,26 @@ resposta completa entrega ao par autorizado); a daqui só decide o que o site
 MOSTRA. Papel novo = lista própria (DECISAO-onde-mora-a-sessao §5.5).
 """
 
+import logging
 import os
 from dataclasses import dataclass
 
+from django.db import transaction
+
+from apps.identidade import eventos
 from apps.identidade.models import Identidade
+from apps.identidade.tasks import relay_apos_commit
 
 # Chaves do dicionário de sessão. Nomeadas aqui e importadas por quem precisa —
 # string solta espalhada por views é como uma delas vira `estado_oauth2` num
 # lugar só e o CSRF do OAuth para de conferir sem ninguém notar.
+logger = logging.getLogger("identidade.sessao")
+
 CHAVE_IDENTIDADE = "identidade"
+# O site de onde a pessoa veio, guardado entre o "vai para o Google" e a volta.
+# Mesma razão do destino: o redirecionamento externo apaga tudo que não estiver
+# na sessão, e este valor precisa existir na hora da cunhagem, do outro lado.
+CHAVE_SITE = "site_de_origem"
 CHAVE_ESTADO_OAUTH = "estado_oauth"
 CHAVE_DESTINO = "destino"
 
@@ -60,7 +71,7 @@ def papel_de(email: str) -> str:
     return PAPEL_STAFF if e_staff(email) else PAPEL_ALUNO
 
 
-def cunhar_ou_recuperar(*, email: str, nome: str) -> Identidade:
+def cunhar_ou_recuperar(*, email: str, nome: str, site_id: str = "") -> Identidade:
     """A mesma pessoa entrando dez vezes tem UMA linha (EVO-01 §3).
 
     A idempotência é do banco, não desta função: `Identidade.email` é `unique`,
@@ -70,11 +81,42 @@ def cunhar_ou_recuperar(*, email: str, nome: str) -> Identidade:
     `nome_exibido` só é gravado na CUNHAGEM. Reentrar não sobrescreve: o campo
     poderá ser editável pela pessoa, e deixar o Google reescrevê-lo a cada
     login apagaria essa escolha sem aviso.
+
+    **Desde 31/08/2026 a cunhagem ANUNCIA o fato** (`identidade.pessoa-cadastrada`,
+    degrau 1 do `PLANO-SEQUENCIAS-DE-MENSAGENS`), na MESMA transação em que a
+    linha nasce. Só a cunhagem: reentrar não é cadastrar-se, e um evento por
+    login mandaria boas-vindas para sempre à mesma pessoa.
+
+    **`site_id` vazio ⇒ a pessoa é cunhada e o fato NÃO é anunciado**, com um
+    ERROR no log. É a única degradação possível aqui, e ela é o lado certo:
+    esta célula não resolve Host→Site (isso é do catálogo, e ela nem fala com
+    ele), então o site chega de quem já o conhece — o `funil`, na URL de
+    entrada. Publicar um fato com o site errado seria pior que não publicar:
+    quem escuta usa esse campo para escolher template e remetente, e uma
+    mensagem sairia com a marca de outro site. Entrar continua funcionando nos
+    dois casos, que é o que não pode quebrar nunca.
     """
-    identidade, _ = Identidade.objects.get_or_create(
-        email=email.strip().lower(),
-        defaults={"provedor": "google", "nome_exibido": nome.strip()[:120]},
-    )
+    with transaction.atomic():
+        identidade, criada = Identidade.objects.get_or_create(
+            email=email.strip().lower(),
+            defaults={"provedor": "google", "nome_exibido": nome.strip()[:120]},
+        )
+        if criada:
+            if site_id:
+                eventos.pessoa_cadastrada(site_id=site_id, pessoa_id=identidade.id)
+            else:
+                logger.error(
+                    "pessoa %s cunhada SEM site_id — o fato nao foi anunciado, "
+                    "e nenhuma sequencia de boas-vindas vai comecar por ela. "
+                    "Quem manda o site e a porta de entrada (parametro `site`).",
+                    identidade.id,
+                )
+    if criada:
+        # Depois do COMMIT, nunca dentro: é o que dá latência de segundos sem
+        # furar a outbox — no fio nunca há evento de um fato que não aconteceu.
+        # Falhar aqui não perde nada: a linha fica pendente e a task periódica
+        # do relay a republica.
+        transaction.on_commit(relay_apos_commit)
     return identidade
 
 
