@@ -87,6 +87,13 @@ EX_ALUNO = "ex-aluno"
 # dizia "seu pedido já está com a gente" enquanto a fila do painel estava
 # vazia, medida. `DECISAO-o-recibo-e-conferido.md`.
 NA_FILA = "na-fila"
+# [REEMBOLSO] 31/08/2026: o mantenedor reverteu a decisao dele de 24/08 ("quem ja
+# foi aluno mantem a voz") ao encontrar o texto antigo publicado no site.
+# Reembolso passou a significar A COMPRA DESFEITA, e quem recebeu o dinheiro de
+# volta nao entra. Estado PROPRIO, e nao um apelido de `EX_ALUNO`: os dois nao
+# entram, mas o ex-aluno pode pedir para voltar e o reembolsado nao, e a tela de
+# cada um diz uma coisa diferente. `DECISAO-reembolso-tira-o-acesso.md`.
+REEMBOLSADO = "reembolsado"
 
 #: O que a `alunos` responde ⇒ o estado desta porta. Mapa explícito, e não um
 #: `if` por categoria: categoria nova que apareça amanhã cai no `else` de quem
@@ -96,6 +103,7 @@ ESTADO_POR_CATEGORIA = {
     "aluno": DENTRO,
     "pausado": PAUSADO,
     "ex_aluno": EX_ALUNO,
+    "reembolsado": REEMBOLSADO,
     "cadastrado": SEM_MATRICULA,
     "na_fila": NA_FILA,
 }
@@ -333,8 +341,12 @@ def _situacao(email: str) -> str:
     pessoa BARRADA depois de já ter sido liberada, olhando para uma tela que
     lhe promete o contrário.
 
-    QUALQUER matrícula conta (EVO-01 §4.1: quem já foi aluno mantém a voz —
-    reembolsada inclusive; mudar isso é decisão do mantenedor).
+    Quem entra é quem a `alunos` chama de `aluno`, e a lista de status por trás
+    disso é dela — nunca reescrita aqui. Até 31/08/2026 `reembolsada` estava
+    nessa lista (EVO-01 §4.1, *"quem já foi aluno mantém a voz"*); o mantenedor
+    reverteu, e a mudança chegou aqui **sozinha**, sem uma linha nesta célula,
+    porque a pergunta é uma só e a resposta mora lá
+    (`DECISAO-reembolso-tira-o-acesso.md`).
     """
     chave = email.strip().lower()
     agora = time.time()

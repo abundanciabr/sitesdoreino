@@ -1125,24 +1125,43 @@ vaza entre testes) e confere as três partes do endereço separadamente, porque
 elas falham por motivos diferentes: o esquema vem de `SECURE_PROXY_SSL_HEADER`, o
 domínio vem do `Host` da requisição, o caminho vem de `reverse()`.
 
-## Matrícula `reembolsada` entra — DECIDIDO pelo mantenedor em 24/08/2026
+## Matrícula `reembolsada` NÃO entra — decidido em 31/08/2026, revertendo 24/08
 
-O contrato de `alunos` devolve matrículas com `status` em
-`[ativa, suspensa, reembolsada]`. A `DECISAO-EVO-01` diz "só quem tem matrícula"
-e **não fala de status**. Esta implementação segue a decisão ao pé da letra:
-qualquer matrícula devolvida deixa entrar.
+**A regra de hoje:** quem foi reembolsado não entra na Caixa. A `alunos` responde
+`reembolsado` em `GET /alunos/{email}/situacao`, e esta célula mostra a ele uma
+tela que nomeia o reembolso, sem formulário de pedir para voltar.
+Lei: `docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`.
 
-Não foi descuido — filtrar por `status == "ativa"` seria decidir, dentro de um
-despacho, que quem pediu reembolso perde a voz na Caixa.
+Até 31/08/2026 a regra era a oposta, decidida pelo mantenedor em 24/08 (*"quem já
+foi aluno mantém a voz"*). Ele mesmo reverteu, ao encontrar o texto antigo
+publicado no site. **Não "conserte" de volta**: a regra já foi decidida duas
+vezes em sentidos opostos, e saber disso é o que evita a terceira.
 
-**A pergunta foi levada ao mantenedor e ele decidiu em 24/08/2026: TODAS as
-situações entram, inclusive a `reembolsada`.** Quem já foi aluno mantém a voz.
-Está na `DECISAO-EVO-01-identidade.md` **§4.1**, que é a lei do assunto.
+### E aqui mora a lição de verdade, que não é sobre reembolso
 
-**Isto agora tem guarda** (EVO-13): o patch que "conserta" o filtro para
-`status == "ativa"` deixa o CI VERMELHO, de propósito. Se você chegou aqui
-achando que deixar reembolsado entrar é bug esquecido — não é. Foi escolhido, e
-mudar exige nova sessão com o mantenedor, nunca uma decisão de despacho.
+O guarda que protegia a decisão de 24/08 vivia neste arquivo
+(`test_inv_matricula_reembolsada_entra.py`) e **tinha parado de medir o que
+dizia medir**, em silêncio, desde 28/08/2026.
+
+Ele chamava `rede.alunos_diz(email, [{..., "status": "reembolsada"}])`. Quando a
+porta migrou de *"tem matrícula?"* para *"em que situação está?"*
+(`DECISAO-ex-aluno-e-a-porta-que-explica.md`), `alunos_diz` virou um atalho
+legado que traduz **"lista não-vazia = aluno"** e **joga o status fora**. A
+partir daquele dia o teste passava a mesma categoria `aluno` em todos os cinco
+casos parametrizados, incluindo `"qualquer-nova"`: ele afirmava que um aluno
+entra, o que é verdade e não tem nada a ver com reembolso.
+
+Ninguém percebeu porque **um guarda vazio é verde**, e verde parece saúde. A
+lei, os registros do painel e três documentos continuaram citando esta trava
+como a prova viva da decisão, por três dias, enquanto quem realmente segurava a
+regra era `STATUS_QUE_VALEM`, lá na `alunos`.
+
+**A regra que fica:** dublê que "traduz para o formato antigo" apaga
+exatamente a variável que o teste parametriza. Quando o contrato de uma
+dependência muda de forma, os guardas escritos contra a forma velha não
+quebram — eles emudecem. Só se descobre isso **sabotando o código e exigindo
+ver o vermelho**, que é o que `RETROSPECTIVA-FASE-D` §1 manda fazer com todo
+verificador novo, e que o guarda novo desta regra fez (evidência no PR).
 
 ## O modelo de dados diverge da spec em três pontos, e os três são deliberados
 

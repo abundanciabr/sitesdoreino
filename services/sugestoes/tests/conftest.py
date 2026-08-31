@@ -299,6 +299,26 @@ class Rede:
     def alunos_diz_pausado(self, email: str):
         return self.alunos_situacao(email, "pausado")
 
+    def alunos_diz_reembolsado(self, email: str):
+        """[REEMBOLSO] A sexta categoria, nascida em 31/08/2026.
+
+        Existe como dublê PRÓPRIO, e não como `alunos_diz(...)` com um status
+        dentro, porque `alunos_diz` é um atalho legado que traduz *"lista
+        não-vazia = aluno"* e joga o status fora. Um guarda escrito com ele
+        mediria sempre `aluno`, qualquer que fosse a palavra passada.
+        """
+        return self.alunos_situacao(email, "reembolsado")
+
+    def alunos_diz_reembolsado(self, email: str):
+        """[REEMBOLSO] A sexta categoria, nascida em 31/08/2026.
+
+        Existe como dublê PRÓPRIO, e não como `alunos_diz(...)` com um status
+        dentro, porque `alunos_diz` é um atalho legado que traduz *"lista
+        não-vazia = aluno"* e joga o status fora. Um guarda escrito com ele
+        mediria sempre `aluno`, qualquer que fosse a palavra passada.
+        """
+        return self.alunos_situacao(email, "reembolsado")
+
     def alunos_fora_do_ar(self, email: str):
         return self.mock.get(self._url(email)).mock(
             side_effect=httpx.ConnectError("connection refused")
