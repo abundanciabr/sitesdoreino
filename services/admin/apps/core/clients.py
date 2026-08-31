@@ -680,3 +680,100 @@ class CaixaClient:
     def apagar(self, ideia_id: int, *, quem: dict):
         """`DECISAO-apagar-ideia.md`: sem volta, nem para quem criou."""
         return self._escrever(f"/gestao/ideias/{ideia_id}/apagar", quem)
+
+
+class CatalogoClient:
+    """O catálogo, que é onde mora o MENU do topo do site.
+
+    Fala só o que está no contrato congelado (`contracts/catalogo.openapi.yaml`,
+    operações `getSiteByHost`, `getSiteMenu` e `putSiteMenu`). Nunca lê o banco
+    dele (Lei 3).
+
+    **Fail-OPEN na leitura, e a mensagem é honesta.** O par de tokens
+    `admin→catalogo` é um passo do mantenedor na VPS (INV-P8, Lei 5): enquanto
+    ele não existir, esta tela abre dizendo o que falta, em português, em vez de
+    500. Uma tela de operação que não abre é inútil justamente quando você
+    precisa dela.
+
+    As variáveis são lidas no PONTO DE USO, nunca no `__init__`
+    (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
+    """
+
+    TIMEOUT = 4.0
+    OK = "ok"
+    RECUSADO = "recusado"
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        base = (os.environ.get("CATALOGO_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("TOKEN_CATALOGO") or "").strip()
+        if not base or not token:
+            return None
+        return base, token
+
+    def site_por_host(self, host: str) -> "dict | None":
+        """O site deste domínio, com o menu dentro. `None` = não deu para saber.
+
+        Host, e não um id guardado aqui: [INV-P11] manda o site sair do domínio
+        pelo qual a requisição chegou, e essa é também a resposta certa para o
+        multissítio — quem abre `/admin` em outro domínio configura o menu
+        daquele site, sem escolher nada numa lista.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.warning(
+                "menu: CATALOGO_API_URL/TOKEN_CATALOGO ainda não estão no env "
+                "desta célula (par admin→catalogo não provisionado)"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/sites/by-host/{quote(host, safe='')}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("menu: o catálogo não respondeu: %s", erro)
+            return None
+        if r.status_code != 200:
+            logger.error("menu: o catálogo respondeu HTTP %s", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("menu: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, dict) or "id" not in corpo:
+            logger.error("menu: resposta com forma inesperada")
+            return None
+        return corpo
+
+    def gravar_menu(self, site_id: str, menu: dict) -> "tuple[str, str]":
+        """Grava o documento INTEIRO. Devolve (situação, frase para a tela)."""
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com o catálogo não está ligado"
+        base, token = config
+        try:
+            r = http().put(
+                f"{base}/sites/{quote(str(site_id), safe='')}/menu",
+                json={"menu": menu},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("menu: não deu para gravar: %s", erro)
+            return self.NAO_RESPONDEU, "o catálogo não respondeu"
+        if r.status_code == 200:
+            return self.OK, ""
+        if r.status_code == 422:
+            # A recusa do catálogo é escrita para esta tela mostrar. Reescrevê-la
+            # aqui daria duas redações para o mesmo "não", e a que ninguém testa
+            # é a que fica errada.
+            try:
+                return self.RECUSADO, str(r.json().get("detail", "")).strip()
+            except ValueError:
+                return self.RECUSADO, "o catálogo recusou, sem dizer o motivo"
+        logger.error("menu: a gravação respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "o catálogo respondeu com erro"

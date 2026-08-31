@@ -1123,6 +1123,85 @@
       "para_quem": "maquina",
       "titulo": "O sinal de vida do correio",
       "descricao": "A parte que envia e-mails não tem nenhuma página: só este sinal, pela rede interna."
+    },
+    {
+      "celula": "admin",
+      "rota": "menu/",
+      "endereco": "/admin/menu/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Onde você monta o menu do topo do site",
+      "descricao": "A tela em que você decide o que aparece no alto de cada página do site: quais opções, com que nome em cada idioma, para quem, e em quais páginas o menu não aparece."
+    },
+    {
+      "celula": "admin",
+      "rota": "menu/versao/criar",
+      "endereco": "/admin/menu/versao/criar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Criar um menu novo",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de criar mais um menu na tela do menu do topo."
+    },
+    {
+      "celula": "admin",
+      "rota": "menu/versao/apagar",
+      "endereco": "/admin/menu/versao/apagar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Apagar um menu",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de apagar um dos menus. As páginas que o usavam voltam a usar o menu padrão."
+    },
+    {
+      "celula": "admin",
+      "rota": "menu/versao/padrao",
+      "endereco": "/admin/menu/versao/padrao",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Escolher o menu padrão do site",
+      "descricao": "Não é uma página: é o que acontece quando você salva qual menu vale para as páginas que você não configurou uma a uma."
+    },
+    {
+      "celula": "admin",
+      "rota": "menu/item/acrescentar",
+      "endereco": "/admin/menu/item/acrescentar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Acrescentar uma opção a um menu",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de acrescentar uma opção dentro de um dos menus."
+    },
+    {
+      "celula": "admin",
+      "rota": "menu/item/remover",
+      "endereco": "/admin/menu/item/remover",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Tirar uma opção de um menu",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de tirar uma das opções de um menu."
+    },
+    {
+      "celula": "admin",
+      "rota": "menu/item/mover",
+      "endereco": "/admin/menu/item/mover",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Mudar a ordem das opções de um menu",
+      "descricao": "Não é uma página: é o que acontece quando você aperta a setinha que sobe ou desce uma opção. A ordem aqui é a ordem que aparece no site."
+    },
+    {
+      "celula": "admin",
+      "rota": "menu/paginas",
+      "endereco": "/admin/menu/paginas",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar qual menu cada página mostra",
+      "descricao": "Não é uma página: é o que acontece quando você salva a lista de páginas, escolhendo para cada uma qual menu ela mostra (ou nenhum)."
     }
   ]
 }
