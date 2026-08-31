@@ -405,6 +405,35 @@ Com a escola sendo 18+, esse §9 inteiro fica sem sujeito.
 Enquanto ele não decidir, §9 é lei escrita. A pergunta foi devolvida a ele e o
 estado dela se lê no livro (`painel/registros/`), não aqui.
 
+**RESPONDIDA em 30/08/2026, ainda na mesma sessão:** ele mandou **revisar o §9
+guardando o que serve para adulto** — sai o que só existia por causa de idade
+(Modo Júnior, faixa 13+, contato de responsável), fica o que vale em qualquer
+comunidade (moderação antes de publicar, sem mensagem privada entre alunos,
+links de lista permitida, estúdio público opt-in, evidência de marco em camada
+privada). A emenda foi feita; a divergência está fechada.
+
+### 8.6 Quais sequências primeiro → **as quatro**
+
+Perguntado a ele em 30/08/2026, com escolha múltipla. Ele marcou **todas**:
+
+1. **Boas-vindas no cadastro** — o pedido original. Depende do degrau 1
+   (`identidade` ganhar voz).
+2. **Matrícula liberada** — quem espera na fila descobre sem reabrir o site. O
+   fato já é publicado pela `alunos` hoje; falta a sequência que continua depois
+   do primeiro aviso.
+3. **Sumiu há alguns dias** — a mais difícil, e a que exige a varredura
+   periódica e a reavaliação de condição (§2, faltas 1 e 3). É ela que justifica
+   o motor existir; uma sequência que não sabe desistir manda "sentimos sua
+   falta" para quem voltou ontem.
+4. **Comemoração — subiu de nível, ganhou medalha** — depende do degrau 6
+   (`gamificacao` ganhar voz). Os quatro assuntos já estão congelados no
+   contrato desde a Sessão B.
+
+Nenhuma delas muda a escada do §7 — elas são **dado** (§8.3), e entram como
+linhas de tabela conforme os degraus que cada uma exige ficam prontos. A ordem
+natural de entrada é 1 → 2 → 4 → 3, porque a terceira é a única que precisa do
+motor inteiro.
+
 ---
 
 ## §9 — Riscos, com o antídoto de cada um
