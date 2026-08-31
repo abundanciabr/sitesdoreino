@@ -16,10 +16,14 @@ De onde vêm os números:
                  último concluir (muralhas + ci-celula, evento pull_request) —
                  é a "volta de checks" que um PR de verdade atravessa.
   deploy-celula  GitHub: duração dos runs do deploy-celula (evento push).
-  pouso, sonda,  O log local `~/.sitesdoreino/esperas.jsonl`, que o próprio
+  pouso,         O log local `~/.sitesdoreino/esperas.jsonl`, que o próprio
   docker-frio    `ci/esperar.py` alimenta a cada espera concluída — a régua
                  passa a comer do próprio uso (só desfechos que MEDIRAM algo:
                  verde/vermelho; estouro e falha-de-medição não são duração).
+                 Chave de prefixo GENÉRICO só come de espera que se declarou
+                 (`--regua <chave>`) — ver DO_LOG e armadilhas/259. `sonda`
+                 não tem régua: é o alvo livre, e média de coisas sem
+                 parentesco não é medição de nada.
 
 Regras de honestidade (as mesmas da voz):
   - p50 sempre que houver 1+ amostra; p90 só sustenta veredito com n >= 20 —
