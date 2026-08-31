@@ -6,6 +6,14 @@
 // caixa do sistema só aparece DEPOIS de um toque no nosso botão, nunca ao abrir
 // a página, e o cartaz só existe para quem já entrou (`avisos_no_celular.py`).
 //
+// **E "nunca ao abrir a página" é lei de sobrevivência, não estilo.** Em
+// 31/08/2026 este arquivo abria o pedido sozinho onde o navegador deixava
+// (registro 20260831-075), e no MESMO dia o Malwarebytes Browser Guard passou
+// a bloquear o meshcraft.top inteiro como site malicioso, por "excesso de
+// solicitação de notificações": pedir permissão sem gesto, página após página,
+// é a assinatura que as ferramentas de segurança caçam. O cartaz com botão é o
+// único caminho que existe, em todo navegador (armadilhas/257).
+//
 // A ordem completa, e cada passo depende do anterior:
 //
 //   1. a pessoa toca em "Ligar os avisos";
@@ -129,26 +137,6 @@
     return;
   }
 
-  // ---------------------------------------------------------------------
-  // QUEM PODE ABRIR A CAIXA DO NAVEGADOR SEM UM TOQUE ANTES
-  // ---------------------------------------------------------------------
-  // Decisão do mantenedor em 31/08/2026, com as palavras dele: "quero o aviso
-  // que aparece no navegador ou na tela, e não um botão na página". Onde o
-  // navegador deixa, o pedido abre sozinho e o cartaz nem aparece.
-  //
-  // **Onde ele NÃO deixa, isto não é preferência nossa e não tem contorno:**
-  // a Apple e a Mozilla exigem que `requestPermission()` seja chamado de
-  // dentro de um gesto da pessoa. Chamado sozinho ali, ele não abre caixa
-  // nenhuma e a promessa volta "default" — o aluno de iPhone ficaria sem
-  // aviso para sempre, sem nunca ter visto uma pergunta. Por isso o cartaz
-  // continua existindo para eles: é o gesto que a regra exige.
-  function abreSozinho() {
-    if (ehIOS) {
-      return false;
-    }
-    return !/Firefox|FxiOS/.test(ua);
-  }
-
   function inscrever(registro) {
     return registro.pushManager
       .subscribe({
@@ -188,11 +176,8 @@
           silenciar();
           return "recusado";
         }
-        // "default" — a pessoa fechou a caixa sem escolher, OU o navegador
-        // engoliu o pedido. O Chrome faz isso quando um site pede permissão
-        // sem contexto: em vez da caixa, mostra um ícone quase invisível na
-        // barra. Nos dois casos ninguém decidiu nada, e é aqui que o cartaz
-        // vira o plano B — ele explica o porquê antes de pedir de novo.
+        // "default" — a pessoa fechou a caixa sem escolher. Ninguém decidiu
+        // nada: o cartaz continua na tela, e o botão continua valendo.
         return "default";
       })
       .catch(function () {
@@ -234,24 +219,11 @@
           });
         }
 
-        if (!abreSozinho()) {
-          mostrarSo("convite");
-          return;
-        }
-
-        // O caminho que o mantenedor pediu: a caixa do navegador, direto.
-        // O cartaz só entra em cena quando tem algo a dizer.
-        return pedirPermissao(registro).then(function (desfecho) {
-          if (desfecho === "ligado") {
-            // Deu certo sozinho: a página fica LIMPA. A própria caixa do
-            // navegador já foi o aviso, e um cartaz de "pronto" depois dela
-            // seria o botão na página que este caminho existe para não ter.
-            return;
-          }
-          // Recusou, deu erro, ou o navegador engoliu o pedido: aí sim o
-          // cartaz aparece, porque tem uma explicação a dar.
-          mostrarSo(desfecho === "default" ? "convite" : desfecho);
-        });
+        // O convite aparece como cartaz NOSSO, dentro da página. A caixa do
+        // navegador, só o clique no botão abre — sem exceção. Não recrie um
+        // caminho automático "onde o navegador deixa": foi ele que fez o
+        // Malwarebytes bloquear o site inteiro em 31/08/2026 (armadilhas/257).
+        mostrarSo("convite");
       });
     })
     .catch(function () {
