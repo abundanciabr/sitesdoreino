@@ -44,12 +44,13 @@ import unicodedata
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
 
 from . import documentos, travessao
-from .models import Documento
+from .models import Documento, VersaoDoDocumento
 from .views import _auditar
 
 #: Endereços que a ÁREA ADMINISTRATIVA já usa, e que por isso nenhum documento
@@ -212,6 +213,7 @@ def documento_criar(request):
         return _tela(request, rascunho, criando=True, riscas=riscas, status=422)
 
     documento = Documento.objects.create(**rascunho)
+    _guardar_versao(request, documento, "criou o documento")
     _auditar(
         request,
         Registro.CRIAR_DOCUMENTO,
@@ -282,6 +284,7 @@ def documento_salvar(request, nome):
     documento.publico = rascunho["publico"]
     documento.save()
 
+    _guardar_versao(request, documento, "editou o documento")
     _auditar(
         request,
         Registro.EDITAR_DOCUMENTO,
@@ -291,4 +294,91 @@ def documento_salvar(request, nome):
     )
     return HttpResponseRedirect(
         f"{reverse('documento_admin', args=[documento.nome])}?recado=salvo"
+    )
+
+
+# ------------------------------------------------------------- o histórico
+#
+# `DECISAO-o-editor-de-documentos.md` §6. Ao tirar o texto do Git, a plataforma
+# perdeu o `git log` dos documentos: nao ha mais como ver quem mudou uma frase,
+# nem como voltar atras. Isto e o que entra no lugar, e entra junto com a
+# primeira escrita — "a versao anterior" so existe se alguem a guardou ANTES de
+# sobrescrever.
+
+
+def _guardar_versao(request, documento, gesto: str) -> None:
+    """O retrato do documento DEPOIS desta gravação.
+
+    Chamado por toda escrita, e nunca condicionalmente: ao tirar o texto do
+    Git, esta tabela virou a única memória de "o que estava escrito antes".
+    Uma escrita que esquecesse de passar por aqui abriria um buraco silencioso
+    no histórico, e ninguém descobriria até precisar dele.
+    """
+    VersaoDoDocumento.objects.create(
+        documento=documento,
+        titulo=documento.titulo,
+        publico=documento.publico,
+        ordem=documento.ordem,
+        corpo=documento.corpo,
+        salvo_por=(request.admin.get("email") or ""),
+        gesto=gesto,
+    )
+
+
+@require_GET
+def documento_versoes(request, nome):
+    """Todas as versoes deste documento, da mais nova para a mais velha."""
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+    return render(
+        request,
+        "admin/documento_versoes.html",
+        {
+            "admin": request.admin,
+            "documento": documento,
+            "versoes": documento.versoes.order_by("-salvo_em", "-id"),
+            "recado": request.GET.get("recado", ""),
+        },
+    )
+
+
+@require_POST
+def documento_restaurar(request, nome):
+    """Copia uma versao antiga por cima do documento de hoje.
+
+    **A volta nao apaga historia: ela ESCREVE mais uma.** O texto restaurado
+    vira a versao mais nova, com o gesto dizendo de onde ele veio. Desfazer uma
+    restauracao e restaurar de novo, e nenhuma linha do historico some no
+    caminho — que e a diferenca entre um historico e um rascunho.
+    """
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+
+    versao = documento.versoes.filter(id=request.POST.get("versao") or 0).first()
+    if versao is None:
+        # Nao ha 404 aqui: o documento existe, e quem nao existe e a versao. A
+        # tela volta dizendo isso, em vez de trocar a pagina inteira por um erro.
+        return HttpResponseRedirect(
+            f"{reverse('documento_versoes', args=[documento.nome])}?recado=sumiu"
+        )
+
+    documento.titulo = versao.titulo
+    documento.corpo = versao.corpo
+    documento.ordem = versao.ordem
+    documento.publico = versao.publico
+    documento.save()
+
+    quando = timezone.localtime(versao.salvo_em).strftime("%d/%m/%Y às %H:%M")
+    _guardar_versao(request, documento, f"voltou para a versão de {quando}")
+    _auditar(
+        request,
+        Registro.RESTAURAR_DOCUMENTO,
+        documento.nome,
+        Registro.OK,
+        f"voltou para a versao {versao.id}",
+    )
+    return HttpResponseRedirect(
+        f"{reverse('documento_admin', args=[documento.nome])}?recado=restaurado"
     )

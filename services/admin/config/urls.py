@@ -18,7 +18,9 @@ from apps.core.editor_de_documentos import (
     documento_criar,
     documento_editar,
     documento_novo,
+    documento_restaurar,
     documento_salvar,
+    documento_versoes,
 )
 from apps.core.mapa_do_site import mapa_do_site
 from apps.core.menu import (
@@ -170,6 +172,21 @@ urlpatterns = [
         r"^documentos/(?P<nome>[a-z0-9-]+)/salvar$",
         documento_salvar,
         name="documento_salvar",
+    ),
+    # O HISTORICO (`DECISAO-o-editor-de-documentos.md` §6) — o que entrou no
+    # lugar do `git log` que os documentos tinham enquanto moravam no
+    # repositorio. Ver e LEITURA, e por isso e GET; voltar atras muda o texto
+    # de uma pagina publica, e por isso e POST: decisao que se aplica por GET e
+    # decisao que um pre-carregador de link toma sozinho.
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/versoes$",
+        documento_versoes,
+        name="documento_versoes",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/restaurar$",
+        documento_restaurar,
+        name="documento_restaurar",
     ),
     # OS PLANOS PARA IA (`apps/core/planos_para_ia.py`), 31/08/2026 — e as duas
     # linhas vêm ANTES das do mapa, porque a ordem é o que faz funcionar: a rota
