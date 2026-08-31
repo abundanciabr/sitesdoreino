@@ -119,6 +119,12 @@ TEMPLATES = [
                 # cada template, porque "em todas as páginas" não pode depender
                 # de alguém lembrar da peça: tela nova nasce com rodapé.
                 "apps.core.rodape.rodape_do_contexto",
+                # O MENU DO TOPO em TODA página (`apps.core.menu`), 31/08/2026.
+                # Processador pelo MESMO motivo do rodapé acima: "em todas as
+                # páginas" não pode depender de alguém lembrar da peça. Ele lê o
+                # menu que o mantenedor configurou em /admin/menu/, e falha para
+                # o lado de "sem menu" em qualquer tropeço.
+                "apps.core.menu.menu_do_contexto",
             ],
         },
     },

@@ -1,0 +1,100 @@
+# traducoes/avisos.yaml — o aviso na tela do celular (Fase 7, 31/08/2026).
+# Formato key-major (D2); `_fonte` é sha256[:6] do valor `en` no momento da
+# tradução (D4). en é a FONTE; Meshcraft nunca se traduz (glossário, D8.1).
+#
+# DUAS FAMÍLIAS DE CHAVE AQUI, e a diferença importa:
+#
+#   · as `cartaz_*` são a tela que PERGUNTA se a pessoa quer receber avisos
+#     (templates/funil/_avisos_no_celular.html);
+#   · as `js.*` são o texto do AVISO em si, o que aparece na tela do celular.
+#     Elas não são usadas em template nenhum: viajam para o service worker,
+#     injetadas pela view que serve o `/sw.js` no idioma de quem instalou. O
+#     validador isenta chave com `.js.` da regra "definida e não usada" —
+#     mesma convenção da ilha Alpine da landing antiga.
+#
+# **Por que o texto do aviso nasce AQUI e não na célula `notificacoes`:** ela
+# guarda dado, nunca frase pronta (`DECISAO-notificacoes` §5.1), e o que viaja
+# no push é assunto + parâmetros. A frase nasce na leitura, no idioma da
+# pessoa, e o catálogo de traduções do site mora nesta célula. Duas casas para
+# a mesma frase seria a Classe 8 do plano mestre dos robôs.
+
+cartaz_titulo:
+  _fonte: "8a21be"
+  en: "Get school notices on your screen"
+  pt-br: "Receba os avisos da escola na sua tela"
+  es: "Recibe los avisos de la escuela en tu pantalla"
+
+cartaz_porque:
+  # O motivo, sem promessa que a gente não vá cumprir: só o que a pessoa
+  # precisa saber, e o limite (ela pode desligar quando quiser).
+  _fonte: "e68746"
+  en: "You get a notice when something you asked about is answered. You can turn this off whenever you want."
+  pt-br: "Você recebe um aviso quando algo que você pediu for respondido. Dá para desligar quando quiser."
+  es: "Recibes un aviso cuando algo que pediste sea respondido. Puedes desactivarlo cuando quieras."
+
+cartaz_botao:
+  _fonte: "c0898b"
+  en: "Turn notices on"
+  pt-br: "Ligar os avisos"
+  es: "Activar los avisos"
+
+cartaz_agora_nao:
+  _fonte: "a0e63d"
+  en: "Not now"
+  pt-br: "Agora não"
+  es: "Ahora no"
+
+cartaz_ligado:
+  # O que a tela diz quando deu certo. Confirmar importa: sem isso a pessoa
+  # aperta o botão, nada visível acontece, e ela aperta de novo.
+  _fonte: "1cbc7e"
+  en: "Done. The notices will arrive on this device."
+  pt-br: "Pronto. Os avisos vão chegar neste aparelho."
+  es: "Listo. Los avisos van a llegar a este aparato."
+
+cartaz_nao_deu:
+  # Falha honesta: nem promete que vai chegar, nem culpa a pessoa.
+  _fonte: "06c69c"
+  en: "It did not work now. You can try again later."
+  pt-br: "Não deu certo agora. Você pode tentar de novo mais tarde."
+  es: "No funcionó ahora. Puedes intentarlo de nuevo más tarde."
+
+cartaz_recusado:
+  # A pessoa (ou o aparelho dela) negou a permissão. O navegador só pergunta
+  # uma vez, então o caminho de volta é a configuração do próprio aparelho, e
+  # dizer isso é mais útil que insistir.
+  _fonte: "517d9e"
+  en: "Your device blocked the notices. To allow them, change the notification setting for this app on your device."
+  pt-br: "Seu aparelho bloqueou os avisos. Para liberar, mude a permissão de notificações deste app nos ajustes do aparelho."
+  es: "Tu aparato bloqueó los avisos. Para permitirlos, cambia el permiso de notificaciones de esta app en los ajustes."
+
+# ---------------------------------------------------------------------------
+# O texto do AVISO na tela do celular. Uma dupla por assunto, e o genérico
+# para o assunto que esta versão do site ainda não conhece — o site é
+# atualizado num ritmo, e o aviso pode chegar de uma parte nova antes de o
+# aparelho ter recarregado o service worker.
+# ---------------------------------------------------------------------------
+js:
+  sugestao_titulo:
+    _fonte: "00057d"
+    en: "Meshcraft"
+    pt-br: "Meshcraft"
+    es: "Meshcraft"
+
+  sugestao_corpo:
+    _fonte: "f8ad9c"
+    en: "Your suggestion has an update."
+    pt-br: "Sua sugestão teve uma novidade."
+    es: "Tu sugerencia tuvo una novedad."
+
+  generico_titulo:
+    _fonte: "00057d"
+    en: "Meshcraft"
+    pt-br: "Meshcraft"
+    es: "Meshcraft"
+
+  generico_corpo:
+    _fonte: "ce26a2"
+    en: "You have a new notice."
+    pt-br: "Você tem um aviso novo."
+    es: "Tienes un aviso nuevo."
