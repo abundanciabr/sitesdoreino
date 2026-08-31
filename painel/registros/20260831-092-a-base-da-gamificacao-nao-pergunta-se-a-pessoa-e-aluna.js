@@ -1,0 +1,19 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260831-092-a-base-da-gamificacao-nao-pergunta-se-a-pessoa-e-aluna",
+  tipo: "pendencia",
+  quando: "2026-08-31",
+  titulo: "Falta uma decisao sua: a pagina de progresso nao pergunta se a pessoa ainda e aluna",
+  detalhe: "PRIMEIRO, UMA CORRECAO DE UMA COISA QUE EU TE DISSE HOJE E ESTAVA ERRADA.\n\nNo registro de mais cedo eu escrevi que o reembolsado deixa de entrar 'no curso, na Caixa de Sugestoes, no forum e na gamificacao'. Fui conferir cada uma, uma por uma, em vez de confiar no que eu tinha escrito. As tres primeiras estao certas. A quarta nao.\n\nA PAGINA DE PROGRESSO (a Base, onde a pessoa ve o nivel e os pontos dela) NAO PERGUNTA SE A PESSOA E ALUNA. Ela pergunta apenas 'quem e voce?' para a parte que cuida do login, e mostra os numeros de quem estiver com a conta aberta. Ou seja: alguem reembolsado, que continue logado, continuaria vendo o proprio progresso ali.\n\nISSO NAO E ALGO QUE EU QUEBREI HOJE, e nem e defeito escondido: e como aquela parte sempre foi. Foi escrita assim de proposito, para que um visitante que ainda nao comprou possa abrir a pagina e ver o convite em vez de um erro na cara. Faz sentido para visitante; a pergunta que ninguem fez e o que fazer com quem JA FOI aluno e nao e mais.\n\nPOR QUE ISSO E SEU E NAO MEU: voce disse hoje que a pessoa reembolsada 'perde totalmente o acesso ao curso e ao site'. Ler ao pe da letra, a Base entra nessa conta. Mas mudar aquela porta significa escolher o que um visitante passa a ver, e isso muda uma decisao de produto que ja estava tomada — nao e conserto de bug, e escolha sua.\n\nO QUE ACONTECE SE VOCE NAO DECIDIR AGORA: nada quebra, e ninguem entra em nada por causa disso. O reembolsado continua fora do curso, da Caixa e do forum. A unica coisa que ele ainda enxerga e o proprio placar de progresso, que nao da acesso a conteudo nenhum. E uma folga estreita, e ela pode esperar.\n\nMINHA RECOMENDACAO, se voce quiser um caminho: fechar tambem a Base, pelo mesmo motivo das outras tres — 'perde o acesso ao site' fica mais facil de explicar a um aluno quando nao tem excecao. Mas o custo e que a pagina precisa passar a distinguir tres casos em vez de dois (visitante, aluno, e quem ja foi), e isso e uma entrega propria.",
+  autoridade: "sessao",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/766 — corpo do PR, com a tabela das tres celulas conferidas uma a uma. Lido no codigo em 31/08/2026, nao suposto: services/gamificacao/apps/core/sessao.py::quem_e resolve a sessao SO contra a celula identidade (cookie -> getSession -> id opaco) e nao ha nenhuma chamada a alunos em services/gamificacao/apps/ (grep por AlunosClient/situacao_de/matriculas_de nao encontra nada). A docstring de services/gamificacao/apps/core/views.py::base declara a escolha: 'Visitante nao leva erro. Ele ve a mesma pagina, com um convite para entrar no lugar dos numeros.' Comparacao: services/forum/apps/core/sessao.py usa categoria_de e faz eh_aluno = (categoria == 'aluno'); services/sugestoes usa ESTADO_POR_CATEGORIA. Este registro tambem CORRIGE o registro 20260831-086, que afirmou que a gamificacao barrava o reembolsado — registro mergeado nao se edita, entao a correcao e este.",
+  verificado_em: "2026-08-31",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "info",
+  frente: "site",
+  vence_em_dias: null,
+  se_eu_nao_decidir: "Nada quebra e ninguem ganha acesso indevido a conteudo: o reembolsado continua fora do curso, da Caixa e do forum. A unica folga e ele continuar vendo o proprio placar de progresso, que nao abre porta nenhuma.",
+  recomendacao: "Fechar tambem a Base, pelo mesmo motivo das outras tres: 'perde o acesso ao site' e mais facil de explicar sem excecao. Custo: a pagina passa a distinguir tres casos (visitante, aluno, ja-foi-aluno) em vez de dois, e isso e uma entrega propria.",
+  reversivel: true,
+  impacto: "baixo"
+});})();
