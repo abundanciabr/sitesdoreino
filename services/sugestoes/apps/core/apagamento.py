@@ -34,7 +34,7 @@ preencher a coluna.
 
 from django.utils import timezone
 
-from apps.sugestoes.models import Comentario, Sugestao, Voto
+from apps.sugestoes.models import Aviso, Comentario, Sugestao, Voto
 
 CAMPOS_GRAVADOS = [
     "titulo",
@@ -60,6 +60,19 @@ def apagar_definitivamente(sugestao: Sugestao, quem=None, agora=None) -> bool:
     agora = agora or timezone.now()
     Voto.objects.filter(sugestao=sugestao).delete()
     Comentario.objects.filter(sugestao=sugestao).delete()
+    # O recado também vai. `Aviso` NÃO é append-only (só `HistoricoStatus` e
+    # `ChangeSpecAprovado` são, com trigger no Postgres): apagar estas linhas
+    # não encosta na trava que protege a auditoria da equipe.
+    #
+    # Esta é a cópia LOCAL do recado. A que a pessoa realmente lê hoje mora na
+    # caixa central (`notificacoes`), e o contrato congelado dela só sabe
+    # listar e marcar como lida — não retirar. Por isso o sumiço visível é
+    # feito na leitura (`avisos.py::_sobre_ideia_apagada`), e esta linha é a
+    # metade que ESTA célula consegue destruir de verdade. As duas juntas são
+    # o mínimo para a promessa da `DECISAO-apagar-ideia.md` valer também para
+    # quem recebeu o aviso; o que falta para ela valer inteira é uma operação
+    # de retirada na caixa central, que é mudança de contrato (Rito §3).
+    Aviso.objects.filter(sugestao=sugestao).delete()
     sugestao.titulo = ""
     sugestao.problema = ""
     sugestao.solucao_proposta = ""
