@@ -82,7 +82,11 @@ celulas:
 
   forum:
     caminhos: [services/forum]
-    consome: [alunos, identidade]
+    # `catalogo` desde 31/08/2026: o menu do topo e DADO DO SITE, e o forum
+    # mostra o MESMO menu que o site. Ele NAO tem o CONV-SITE inteiro (isso
+    # mexeria em toda a identidade da celula) — pergunta so o menu do host da
+    # requisicao, com cache, e cai para "sem menu" em qualquer tropeco.
+    consome: [alunos, catalogo, identidade]
 
   funil:
     caminhos: [services/funil]
