@@ -9,11 +9,11 @@
   verificado_em: "2026-08-31",
   precisa_do_dono: true,
   responde_a: null,
-  gravidade: "amarelo",
+  gravidade: "ambar",
   frente: "curso",
   vence_em_dias: null,
   se_eu_nao_decidir: "A tela fica no ar mas abre dizendo que ainda nao consegue falar com a parte das conquistas. Nada quebra e nada muda no site: a economia continua inteira desligada e nenhum aluno ganha nem perde ponto. So nao da para ligar a primeira regra.",
   recomendacao: "Rodar a linha do provisionamento dentro da VPS quando o PR 777 estiver no ar, e depois ligarmos a primeira regra juntos.",
   reversivel: true,
-  impacto: "Sem o passo, a tela existe mas nao funciona. Com o passo, voce passa a poder ligar e desligar cada regra sozinho, sem depender de robo nenhum."
+  impacto: "medio"
 });})();
