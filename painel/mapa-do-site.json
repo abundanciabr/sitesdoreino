@@ -1202,6 +1202,44 @@
       "gesto": true,
       "titulo": "Salvar qual menu cada página mostra",
       "descricao": "Não é uma página: é o que acontece quando você salva a lista de páginas, escolhendo para cada uma qual menu ela mostra (ou nenhum)."
+    },
+    {
+      "celula": "admin",
+      "rota": "documentos/novo",
+      "endereco": "/admin/documentos/novo",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Escrever um documento novo",
+      "descricao": "O formulario em branco. O documento nasce fechado: so aparece no site aberto se voce marcar a caixa de publicar."
+    },
+    {
+      "celula": "admin",
+      "rota": "documentos/criar",
+      "endereco": "/admin/documentos/criar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Criar o documento",
+      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta o botao de criar. Se houver risca comprida no texto, ele recusa e mostra onde esta."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/editar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/editar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Editar um documento",
+      "descricao": "O texto de hoje dentro de um campo, para voce reescrever. O endereco da pagina nao muda por aqui: alguem pode ter guardado o link."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/salvar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/salvar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar a edicao do documento",
+      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta salvar. A mudanca aparece no site na hora, sem esperar atualizacao nenhuma."
     }
   ]
 }
