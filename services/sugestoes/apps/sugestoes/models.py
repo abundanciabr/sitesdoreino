@@ -525,6 +525,78 @@ class ChangeSpecAprovado(RegistroAppendOnly):
         return f"{self.change_id} → sugestão {self.sugestao_id}"
 
 
+class CorrecaoDeTexto(RegistroAppendOnly):
+    """O que estava escrito antes de a escola corrigir (`DECISAO-corrigir-o-texto-de-uma-ideia.md`).
+
+    O mantenedor pediu isto em 31/08/2026, com o caso na mão: um aluno escreveu
+    "turorial" no nome de duas sugestões e não havia, em lugar nenhum do site,
+    onde consertar. Ele decidiu as duas perguntas por pergunta estruturada — dá
+    para corrigir o nome **e** o texto, e a correção é **calada** para o aluno.
+
+    **Calada não é sem rastro, e é por isso que esta tabela existe.** Sem ela,
+    "correção silenciosa" seria a escola podendo reescrever a fala de um aluno
+    sem que sobrasse prova do que ele tinha dito — e o dia em que alguém
+    reclamar do texto trocado é exatamente o dia em que ninguém consegue
+    responder. Aqui a linha antiga fica inteira, e só a equipe a vê.
+
+    Uma linha por CAMPO alterado, e não uma por gesto: corrigir o nome e o
+    problema de uma vez vira duas linhas com o mesmo carimbo de tempo. É o
+    mesmo formato do `HistoricoStatus` (um fato por linha) e é o que faz a
+    leitura "o que já mudou neste título?" ser um filtro, não uma varredura de
+    três colunas de cada linha.
+
+    **Os valores de `Campo` são os nomes reais dos campos da `Sugestao`**, de
+    propósito: quem escreve usa `setattr(sugestao, correcao.campo, ...)` e quem
+    lê usa `getattr`. Um vocabulário próprio aqui ("nome", "texto") exigiria um
+    mapa de tradução, e mapa mantido à mão é o que envelhece em silêncio.
+
+    Append-only nos três degraus, como o `HistoricoStatus` e o
+    `ChangeSpecAprovado`: `save()` e `AppendOnlyQuerySet` de
+    `RegistroAppendOnly`, mais o trigger `BEFORE UPDATE OR DELETE` da migration
+    `0012`. Uma correção mal feita se conserta com outra correção, nunca
+    reescrevendo esta linha — se ela pudesse ser reescrita, o texto original
+    voltaria a não existir em lugar nenhum.
+    """
+
+    class Campo(models.TextChoices):
+        TITULO = "titulo", "Título"
+        PROBLEMA = "problema", "Problema"
+        SOLUCAO_PROPOSTA = "solucao_proposta", "Solução proposta"
+
+    # `PROTECT` como toda referência desta célula: a ideia não some por baixo do
+    # registro que guarda o que ela dizia antes.
+    sugestao = models.ForeignKey(
+        Sugestao, related_name="correcoes", on_delete=models.PROTECT
+    )
+    campo = models.CharField(max_length=20, choices=Campo.choices)
+    # `blank=True` nos dois porque a solução proposta é opcional desde sempre:
+    # acrescentá-la a uma ideia que não tinha nenhuma é uma correção legítima,
+    # e apagá-la também. O que NÃO pode é `antes == depois` — ver a constraint.
+    antes = models.TextField(blank=True)
+    depois = models.TextField(blank=True)
+    corrigido_por = models.ForeignKey(
+        "Identidade", related_name="correcoes_de_texto", on_delete=models.PROTECT
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-criado_em", "-id"]
+        constraints = [
+            # Uma "correção" que não corrige nada é ruído no rastro: quem abrir
+            # a ficha da ideia em seis meses veria três linhas de correção e
+            # nenhuma diferença entre elas. Quem recusa antes, com frase em
+            # português, é `apps/core/correcao.py`; este degrau é o que pega
+            # qualquer caminho futuro que não passe por lá.
+            models.CheckConstraint(
+                condition=~models.Q(antes=models.F("depois")),
+                name="correcao_muda_alguma_coisa",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
+        return f"{self.campo} da sugestão {self.sugestao_id}"
+
+
 class AvaliacaoInterna(models.Model):
     """Staff-only. Nunca exposta nem editável pelo aluno (spec §8).
 
