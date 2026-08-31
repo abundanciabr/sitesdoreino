@@ -146,33 +146,65 @@ três regras dela são lei, porque já custaram caro em outras gêneses:
 Vetado agora para não entrar depois disfarçado de novidade (VEREDITO §4):
 
 - **Gorjeta de Cristais entre alunos** e qualquer transferência de moeda entre
-  menores. A intenção sobrevive no botão Parabéns.
+  pessoas. A intenção sobrevive no botão Parabéns.
 - **Comprar destaque** para um post, ou qualquer visibilidade paga.
 - **Itens-relâmpago com cronômetro** e loot box (ECA Digital, 17/03/2026).
 - **Ranking global público, vitalício ou indexável.**
 - **Pontos de personalidade** ("Resiliência 73/100") — gamificam-se
-  comportamentos observáveis, nunca traços de criança.
+  comportamentos observáveis, nunca traços de quem estuda aqui.
 - **XP proporcional a volume** ("10 XP por polígono").
-- **Detecção de texto de IA** — falso positivo com criança custa caríssimo.
+- **Detecção de texto de IA** — acusar um aluno errado custa caríssimo, e o
+  erro é caro em qualquer idade: ninguém prova que não usou.
 - **Voto popular no desafio** ("Escolha da Galera").
 - **Corações/vidas, notificação de culpa, aposta de sequência, boost com
   cronômetro, mascote que cobra.**
 
-## 9. Menores, e o que isso obriga
+## 9. A escola é 18+, e o que isso ainda obriga
 
-Modo Júnior **obrigatório** abaixo de 13 anos (trava de sistema, não escolha).
-Sem mensagem direta entre alunos. Moderação humana **antes** de qualquer
-publicação pública. Links externos só de lista permitida. Meu Estúdio público é
-opt-in. Marcos de dinheiro são faixa 13+, validados **sempre por adulto da
-equipe**, com a evidência em camada privada. "Com ajuda do responsável" em todo
-marco que envolva contato externo. Nenhum marco induz menor a mentir a idade ou
-a abordar estranhos.
+> **EMENDA DE 30/08/2026.** Esta seção se chamava *"Menores, e o que isso
+> obriga"* e construía Modo Júnior como trava de sistema. O mantenedor declarou
+> no mesmo dia: *"Só temos alunos acima de 18 anos, não temos e nem teremos
+> alunos menores de idade, registre isso."* A seção foi revista por decisão
+> dele, com a régua que ele mesmo deu: **guardar o que serve para adulto,
+> remover o que só existia por causa de idade.** Origem do achado e da
+> divergência: o plano das sequências de mensagens (§8.5).
 
-**PORTÃO DA CAMADA 1:** a verificação oficial das regras de idade do Roblox e
-do Fiverr acontece **antes** de os marcos de carreira serem ligados.
+**O público desta escola é adulto.** Não há Modo Júnior, não há faixa etária de
+13 anos, não há contato de responsável, e nenhum desenho novo deve assumir
+criança no sistema. Se isso mudar um dia, esta seção é o lugar onde a trava
+volta — e volta **antes** de a funcionalidade que a exige ser ligada.
+
+**O que CONTINUA valendo, e não era sobre idade:**
+
+- **Sem mensagem direta entre alunos.** Comunidade sem canal privado é
+  comunidade que a moderação consegue enxergar. Vale para qualquer idade.
+- **Moderação humana antes de qualquer publicação pública.** É mais fácil
+  segurar do que despublicar; e uma comunidade que nasce sem isso não o ganha
+  depois sem crise.
+- **Links externos só de lista permitida.** Isto é segurança, não tutela.
+- **Meu Estúdio público é opt-in.** Ninguém tem a obra exposta sem ter pedido —
+  privacidade é de adulto também.
+- **A evidência de um Marco fica em camada privada, e pares nunca a veem.** O
+  que alguém manda para provar um marco é dele.
+- **Marco é validado por quem tem autoridade para isso** (`validador_papel`:
+  professor · monitor · par · sistema). O que muda é a razão: era proteção de
+  menor, agora é qualidade e confiança no que a escola afirma.
+- **Nenhum marco induz alguém a abordar estranhos.**
+
+**PORTÃO DA CAMADA 1:** a verificação oficial das regras de idade do Roblox e do
+Fiverr acontece **antes** de os marcos de carreira serem ligados. **Continua
+valendo, e agora é mais fácil de passar** — o Fiverr exige 18+, e a escola
+inteira já é. Mas quem liga esses marcos confere as regras vigentes das
+plataformas na data, não este parágrafo.
 
 E a promessa que a escola faz: *"primeiros dólares"* é **possibilidade, nunca
 promessa**.
+
+**Dívida que esta emenda deixa aberta, de propósito:** o contrato
+`contracts/eventos/notificacao.devida.v1.json` ainda diz, na descrição da regra
+de avisos da gamificação, *"nunca em horário escolar"*. Contrato só muda por
+Rito de Contrato (RITOS §3), em PR só de `contracts/` com a etiqueta `contrato`
+— não se corrige de carona aqui. Fica anotado para o próximo rito.
 
 ## 10. Critério de morte
 
