@@ -72,7 +72,8 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
   <div class="wrap">{% if request.i18n_seo %}
     <nav class="idiomas" translate="no">{% for opcao in request.i18n_seo.seletor %}{% if not forloop.first %} · {% endif %}<a href="{{ opcao.href }}" hreflang="{{ opcao.tag }}" lang="{{ opcao.tag }}">{{ opcao.codigo }}</a>{% endfor %}</nav>{% endif %}
     {% block conteudo %}{% endblock %}{% if request.i18n_seo %}
-    {% include "funil/_instalar_o_app.html" %}{% endif %}{% if rodape %}
+    {% include "funil/_instalar_o_app.html" %}{% endif %}{% if avisos_no_celular %}
+    {% include "funil/_avisos_no_celular.html" %}{% endif %}{% if rodape %}
     {% include "funil/_rodape.html" %}{% endif %}
   </div>
   {% block script_extra %}{% endblock %}
