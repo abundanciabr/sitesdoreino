@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-133622-TAR-066-concluida",
+  "tarefa": "TAR-066",
+  "evento": "concluida",
+  "quando": "2026-08-31T13:36:22+00:00",
+  "quem": "sessao-plano-mensagens-2026-08-31",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/690 — e prova de fora: https://meshcraft.top/mapa-ia/planos/ responde 200 text/plain sem cookie, e um documento nao marcado responde 404",
+  "verificado_em": "2026-08-31"
+}
