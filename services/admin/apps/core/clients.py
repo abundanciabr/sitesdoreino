@@ -777,3 +777,101 @@ class CatalogoClient:
                 return self.RECUSADO, "o catálogo recusou, sem dizer o motivo"
         logger.error("menu: a gravação respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "o catálogo respondeu com erro"
+
+
+class GamificacaoClient:
+    """A economia da escola — quanto vale cada coisa, e o que está ligado.
+
+    Fala só o que está no contrato congelado (`contracts/gamificacao.openapi.yaml`,
+    operações `listEconomySwitches` e `setEconomySwitch`, do Rito de 31/08/2026).
+    Nunca lê o banco dela (Lei 3), e **nunca guarda uma cópia** das regras aqui:
+    a economia é dado da `gamificacao`, e o mesmo fato em dois lugares é a lei
+    anti-duplicação do `CLAUDE.md` sendo quebrada — no dia em que as duas
+    discordassem, esta tela mostraria uma coisa e o motor pagaria outra.
+
+    **É AQUI que a autorização mora, e não do outro lado.** A `gamificacao` não
+    assina sessão ([INV-P12]) e o `papel` que a `identidade` devolve nunca
+    autoriza rota ("reconhecer não é autorizar", `DECISAO-onde-mora-a-sessao`
+    §4). Quem confere que é o mantenedor é esta célula, sobre a lista DELA — o
+    crachá que a porta desta área já exige. O Bearer daqui prova só QUEM CHAMA.
+
+    **Fail-OPEN na leitura, e a mensagem é honesta.** O par de tokens
+    `admin→gamificacao` é um passo do mantenedor na VPS (INV-P8, Lei 5): enquanto
+    ele não existir, esta tela abre dizendo o que falta, em português, em vez de
+    500. Uma tela de operação que não abre é inútil justamente quando você
+    precisa dela. Na ESCRITA a falha é fechada: dizer "liguei" sem ter ligado
+    seria pior que recusar.
+
+    As variáveis são lidas no PONTO DE USO, nunca no `__init__`
+    (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
+    """
+
+    TIMEOUT = 4.0
+    OK = "ok"
+    RECUSADO = "recusado"
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        base = (os.environ.get("GAMIFICACAO_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("TOKEN_GAMIFICACAO") or "").strip()
+        if not base or not token:
+            return None
+        return base, token
+
+    def regras(self) -> "list | None":
+        """As regras de pontuação, ligadas e desligadas. `None` = não deu."""
+        config = self._configuracao()
+        if config is None:
+            logger.warning(
+                "economia: GAMIFICACAO_API_URL/TOKEN_GAMIFICACAO ainda não estão "
+                "no env desta célula (par admin→gamificacao não provisionado)"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/economia/regras",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("economia: a gamificação não respondeu: %s", erro)
+            return None
+        if r.status_code != 200:
+            logger.error("economia: a gamificação respondeu HTTP %s", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("economia: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, list):
+            logger.error("economia: resposta com forma inesperada")
+            return None
+        return corpo
+
+    def mudar(self, slug: str, ativa: bool) -> "tuple[str, str]":
+        """Liga ou desliga UMA regra. Devolve (situação, frase para a tela)."""
+        config = self._configuracao()
+        if config is None:
+            return (
+                self.NAO_RESPONDEU,
+                "o par de tokens com a gamificação não está ligado",
+            )
+        base, token = config
+        try:
+            r = http().post(
+                f"{base}/economia/regras/{quote(slug, safe='')}",
+                json={"ativa": ativa},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("economia: não deu para mudar a regra: %s", erro)
+            return self.NAO_RESPONDEU, "a gamificação não respondeu"
+        if r.status_code == 200:
+            return self.OK, ""
+        if r.status_code == 404:
+            return self.RECUSADO, "essa regra não existe nesta escola"
+        logger.error("economia: a mudança respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a gamificação respondeu com erro"

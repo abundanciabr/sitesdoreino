@@ -90,6 +90,23 @@
         aparece no site na hora.
       </div>
     </a>
+    {% comment %}
+    A sexta porta (31/08/2026). Ela não é conveniência: a lei da gamificação
+    (§10.5) chama de CRITÉRIO DE MORTE o dia em que ajustar a economia passar a
+    exigir PR de código. Enquanto ligar uma regra dependesse de um robô editar um
+    arquivo e esperar uma publicação, a economia era código com aparência de
+    dado. E vale aqui a mesma lição do editor de documentos, logo acima: um botão
+    que ninguém encontra é uma funcionalidade que não existe.
+    Lei: docs/decisoes/DECISAO-gamificacao.md §10.5.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'economia' %}">
+      <div class="rotulo">Ligar os pontos da escola &rarr;</div>
+      <div class="nota">
+        Cada coisa que o aluno pode fazer e quantos pontos ela vale. Tudo nasce
+        desligado: uma regra só passa a valer quando você liga, e a partir do
+        momento em que você liga, nunca para trás.
+      </div>
+    </a>
   </div>
 
   {% comment %}
