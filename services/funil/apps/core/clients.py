@@ -326,6 +326,65 @@ class NotificacoesClient:
             return None
         return valor
 
+    # -----------------------------------------------------------------------
+    # O aviso na tela do celular (Fase 7, 31/08/2026) — as duas ESCRITAS
+    # -----------------------------------------------------------------------
+    # Ao contrário do `obter_resumo` acima, estas duas não são leitura de
+    # enfeite: quem chama é a pessoa apertando um botão, e ela precisa saber se
+    # deu certo. Continuam sem derrubar página nenhuma (devolvem `False` em vez
+    # de levantar), mas o `False` VIAJA até a tela, que diz que não deu.
+    def inscrever_aparelho(
+        self, *, destinatario_id: str, site_id: str, inscricao: dict
+    ) -> bool:
+        """`inscreverAparelhoParaPush`. `inscricao` é o que o navegador deu:
+        `endpoint`, `p256dh` e `auth`, repassados sem interpretação — são
+        opacos para esta célula, e é assim que devem continuar."""
+        return self._escrever(
+            "post",
+            "/inscricoes-push",
+            {
+                "destinatario_id": destinatario_id,
+                "site_id": site_id,
+                "endpoint": inscricao["endpoint"],
+                "p256dh": inscricao["p256dh"],
+                "auth": inscricao["auth"],
+            },
+        )
+
+    def esquecer_aparelho(self, *, site_id: str, endpoint: str) -> bool:
+        """`cancelarInscricaoDeAparelho`. Não manda `destinatario_id` porque o
+        contrato não o pede: desligar os avisos de um aparelho acontece
+        justamente quando pode não haver mais sessão viva."""
+        return self._escrever(
+            "delete", "/inscricoes-push", {"site_id": site_id, "endpoint": endpoint}
+        )
+
+    def _escrever(self, metodo: str, caminho: str, corpo: dict) -> bool:
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "%s: NOTIFICACOES_API_URL/NOTIFICACOES_API_TOKEN ausentes no env "
+                "desta célula — o aviso no celular não pode ser ligado",
+                caminho,
+            )
+            return False
+        base, token = config
+        try:
+            r = http().request(
+                metodo.upper(),
+                f"{base}{caminho}",
+                json=corpo,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("%s: não deu para falar com a notificacoes: %s", caminho, erro)
+            return False
+        if r.status_code != 200:
+            logger.error("%s: a notificacoes respondeu HTTP %s", caminho, r.status_code)
+            return False
+        return True
+
 
 class AlunosClient:
     """`contracts/alunos.openapi.yaml` — em que categoria a pessoa está.
