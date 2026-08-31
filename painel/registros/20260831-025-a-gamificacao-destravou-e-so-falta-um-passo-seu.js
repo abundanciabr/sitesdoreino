@@ -1,0 +1,19 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260831-025-a-gamificacao-destravou-e-so-falta-um-passo-seu",
+  tipo: "entrega",
+  quando: "2026-08-31",
+  titulo: "A gamificacao destravou: o preparo esta pronto e agora falta um passo seu, uma vez so",
+  detalhe: "Voce perguntou como estava a parte que guarda o progresso do aluno, e a resposta medida foi: bem construida por dentro, e fora do ar. O endereco /conquistas respondia 404, a parte nao aparecia na lista de servicos publicados, e nenhum aluno via nada. Seis degraus de vinte e tres estavam prontos.\n\nO motivo de ter parado nao era dificuldade: era um degrau que ninguem pegou. O preparo da parte nova estava no balcao desde 30/08 e existia justamente para te entregar o unico passo manual que a gamificacao inteira pede de voce. Ele foi feito agora.\n\nO QUE ELE FAZ, em portugues: cria o banco de dados proprio dessa parte, com senha propria, gerada dentro do servidor e que nunca passa por robo nenhum; escreve o arquivo de configuracao dela; e abre a conversa com a parte que sabe quem e cada pessoa logada.\n\nO CUIDADO QUE VIROU O CORACAO DA ENTREGA tem nome tecnico feio, SITE_ID, e uma consequencia simples: e o campo que diz de qual site e cada perfil. Se ele faltar, o nivel e o titulo de TODOS os alunos somem de uma vez e NENHUMA tela quebra para avisar. E a falha que melhor se esconde. Por isso o programa nao pergunta esse numero a voce e nao aceita chutar: ele pergunta ao catalogo do proprio site e se RECUSA a terminar sem a resposta. Testado quebrando de proposito: com a recusa desligada, ele termina dizendo PRONTO e com o campo vazio, que e exatamente o silencio que ela existe para impedir.\n\nDUAS COISAS QUE APARECERAM NO CAMINHO. A primeira foi um defeito de mensagem, pego pelo proprio teste: quando o catalogo nao respondia e quando o catalogo respondia que nao ha site, a tela dizia a MESMA coisa. Duas causas diferentes precisam de duas telas diferentes, porque o conserto de cada uma e outro. Corrigido.\n\nA segunda foi uma divergencia entre a sua lei e o codigo, e ela foi devolvida a voce em vez de decidida sozinha: voce revisou a lei da gamificacao em 30/08 para uma escola de maiores de 18, mas o codigo nasceu antes e ainda faz todo perfil nascer marcado como abaixo de 13 anos. Hoje nao machuca ninguem porque a parte nao esta no ar e nao existe um perfil criado. Voce escolheu corrigir agora, que e a hora barata: depois de subir, virar essa chave deixa de ser uma mudanca em terreno vazio.",
+  autoridade: "github",
+  evidencia: "O preparo veio no PR https://github.com/abundanciabr/sitesdoreino/pull/693 (TAR-049), 5 arquivos. Suite local completa: 1361 testes verdes; 33 verdes nos dois guardas do provisionamento (13 novos, que EXECUTAM o script contra uma plataforma de mentira); `bash -n` limpo. PROVA VERMELHO->VERDE POR ASSERCAO (armadilhas/195): com as duas travas do SITE_ID comentadas, o script imprime 'env/gamificacao.env ... escrito, com SITE_ID preenchido' e sai com sucesso, e o guarda reprova com 'assert 0 != 0'; restauradas, verde. MEDICAO DE FORA em 31/08/2026, antes do PR: https://meshcraft.top/conquistas -> 404 e https://meshcraft.top/gamificacao/healthz -> 404. Este PR tambem cria a TAR-067 (por a parte no ar) e a TAR-068 (a limpeza do modo de crianca).",
+  verificado_em: "2026-08-31",
+  precisa_do_dono: true,
+  responde_a: null,
+  gravidade: "ambar",
+  frente: "curso",
+  vence_em_dias: null,
+  se_eu_nao_decidir: "A parte que guarda o progresso do aluno continua pronta e fora do ar. Nenhum XP, nenhuma medalha e nenhum selo aparece para ninguem, e os doze degraus seguintes seguem travados atras deste.",
+  recomendacao: "Colar o bloco unico que a sessao te entregou, dentro do servidor. Sao poucos segundos e ele para sozinho se algo estiver estranho, dizendo PAROU POR SEGURANCA. Depois disso o robo poe a parte no ar sem voce.",
+  reversivel: true,
+  impacto: "alto"
+});})();
