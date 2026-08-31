@@ -20,9 +20,10 @@ este arquivo trava:
 4. **`publico` continua fail-CLOSED do lado da tela.** Caixa não marcada não é
    enviada pelo navegador, e a ausência do campo é o "não".
 
-5. **Toda escrita deixa dois rastros:** uma linha de auditoria e uma versão no
-   histórico. Ao tirar o texto do Git, essas duas viraram a única memória do que
-   estava escrito antes.
+5. **Toda escrita deixa rastro na auditoria da célula.** A lei do `LICOES.md`
+   daqui: a auditoria entra no MESMO PR da primeira escrita, nunca depois. O
+   histórico de versões, que é a outra metade do que substituiu o `git log`
+   destes textos, vem no PR seguinte.
 """
 
 import httpx
@@ -34,7 +35,7 @@ from django.urls import get_resolver
 from apps.auditoria.models import Registro
 from apps.core import documentos
 from apps.core.editor_de_documentos import NOMES_RESERVADOS
-from apps.core.models import Documento, VersaoDoDocumento
+from apps.core.models import Documento
 
 BASE = "http://identidade:8000/interno"
 SESSAO = f"{BASE}/sessao/completa"
@@ -283,48 +284,16 @@ def test_desmarcar_a_caixa_tira_do_ar():
     assert Client().get("/docs/aberto").status_code == 404
 
 
-# ---------------------------------------- 5. os dois rastros de toda escrita
-
-
-@respx.mock
-def test_criar_deixa_auditoria_e_a_primeira_versao():
-    _criar(_dentro(), titulo="Guia", corpo="primeiro texto")
-
-    registro = Registro.objects.get()
-    assert registro.acao == Registro.CRIAR_DOCUMENTO
-    assert registro.quem_email == DONO
-
-    versao = VersaoDoDocumento.objects.get()
-    assert versao.corpo == "primeiro texto"
-    assert versao.salvo_por == DONO
-
-
-@respx.mock
-def test_editar_guarda_a_versao_ANTERIOR_para_dar_para_voltar():
-    """Ao tirar o texto do Git, esta tabela virou a única memória de "o que
-    estava escrito antes". Sem ela, a decisão do mantenedor teria custado o
-    histórico sem nada no lugar."""
-    cliente = _dentro()
-    _criar(cliente, titulo="Guia", corpo="primeira versao")
-
-    cliente.post(
-        "/documentos/guia/salvar", {"titulo": "Guia", "corpo": "segunda versao"}
-    )
-
-    corpos = list(
-        VersaoDoDocumento.objects.order_by("id").values_list("corpo", flat=True)
-    )
-    assert corpos == ["primeira versao", "segunda versao"]
+# ------------------------------------------- 5. o rastro de toda escrita
 
 
 @respx.mock
 def test_uma_gravacao_recusada_nao_deixa_rastro_de_nada():
-    """Recusa não é escrita. Uma linha de auditoria aqui contaria uma história
-    que não aconteceu, e uma versão contaria um texto que nunca esteve no ar."""
+    """Recusa não é escrita: uma linha de auditoria aqui contaria uma história
+    que não aconteceu."""
     _criar(_dentro(), corpo="frase — recusada")
 
     assert Registro.objects.count() == 0
-    assert VersaoDoDocumento.objects.count() == 0
 
 
 # ------------------------------------------------- a tela, de ponta a ponta
@@ -388,3 +357,29 @@ def test_o_editor_nao_usa_markdown_que_o_site_nao_renderiza():
 
     assert "Tabela e imagem ainda não funcionam" in fonte
     assert documentos.para_html("| a | b |").startswith("<p>")
+
+
+@respx.mock
+def test_criar_deixa_uma_linha_de_auditoria():
+    """A lei do `LICOES.md` desta celula: a auditoria entra no MESMO PR da
+    primeira escrita, ou num PR imediatamente anterior a ela, nunca depois."""
+    _criar(_dentro(), titulo="Guia", corpo="primeiro texto")
+
+    registro = Registro.objects.get()
+    assert registro.acao == Registro.CRIAR_DOCUMENTO
+    assert registro.alvo == "guia"
+    assert registro.quem_email == DONO
+
+
+@respx.mock
+def test_editar_deixa_um_verbo_DIFERENTE_do_de_criar():
+    """ "Este texto nasceu hoje" e "este texto mudou hoje" sao perguntas
+    diferentes na hora de reconstruir o que aconteceu."""
+    cliente = _dentro()
+    _criar(cliente, titulo="Guia")
+    cliente.post("/documentos/guia/salvar", {"titulo": "Guia", "corpo": "outro"})
+
+    assert [r.acao for r in Registro.objects.order_by("id")] == [
+        Registro.CRIAR_DOCUMENTO,
+        Registro.EDITAR_DOCUMENTO,
+    ]

@@ -49,7 +49,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.auditoria.models import Registro
 
 from . import documentos, travessao
-from .models import Documento, VersaoDoDocumento
+from .models import Documento
 from .views import _auditar
 
 #: Endereços que a ÁREA ADMINISTRATIVA já usa, e que por isso nenhum documento
@@ -212,7 +212,6 @@ def documento_criar(request):
         return _tela(request, rascunho, criando=True, riscas=riscas, status=422)
 
     documento = Documento.objects.create(**rascunho)
-    _guardar_versao(request, documento, "criou o documento")
     _auditar(
         request,
         Registro.CRIAR_DOCUMENTO,
@@ -283,7 +282,6 @@ def documento_salvar(request, nome):
     documento.publico = rascunho["publico"]
     documento.save()
 
-    _guardar_versao(request, documento, "editou o documento")
     _auditar(
         request,
         Registro.EDITAR_DOCUMENTO,
@@ -293,26 +291,4 @@ def documento_salvar(request, nome):
     )
     return HttpResponseRedirect(
         f"{reverse('documento_admin', args=[documento.nome])}?recado=salvo"
-    )
-
-
-# ------------------------------------------------------------- o histórico
-
-
-def _guardar_versao(request, documento, gesto: str) -> None:
-    """O retrato do documento DEPOIS desta gravação.
-
-    Chamado por toda escrita, e nunca condicionalmente: ao tirar o texto do
-    Git, esta tabela virou a única memória de "o que estava escrito antes".
-    Uma escrita que esquecesse de passar por aqui abriria um buraco silencioso
-    no histórico, e ninguém descobriria até precisar dele.
-    """
-    VersaoDoDocumento.objects.create(
-        documento=documento,
-        titulo=documento.titulo,
-        publico=documento.publico,
-        ordem=documento.ordem,
-        corpo=documento.corpo,
-        salvo_por=(request.admin.get("email") or ""),
-        gesto=gesto,
     )
