@@ -28,6 +28,20 @@ O que esta página NÃO mostra, e nunca vai mostrar:
   {{ sugestao.autor.nome_exibido|default:"Aluno" }}
 </p>
 
+{% comment %}
+O selo diz em que situação a ideia está; esta linha diz o que aquilo SIGNIFICA
+para quem está lendo. É a primeira metade do pedido do mantenedor de 31/08/2026
+(a segunda é a legenda inteira, no inspetor): antes dela, "Em análise" era uma
+palavra sem nada explicando se o aluno devia esperar, votar ou desistir.
+
+Cobre também `nao_planejado` e `mesclado`, que não têm bolinha na linha do tempo
+e chegam aqui pelo link direto — são justamente as duas situações em que a
+pessoa mais precisa de uma frase.
+{% endcomment %}
+{% if explicacao_da_situacao %}
+  <p class="situacao">{{ explicacao_da_situacao }}</p>
+{% endif %}
+
 <div class="ficha">
   <h3>O problema</h3>
   <p>{{ sugestao.problema|linebreaksbr }}</p>
@@ -93,10 +107,12 @@ O que esta página NÃO mostra, e nunca vai mostrar:
       <div class="etapa{% if etapa.feita %} feita{% endif %}">
         <div class="risco"></div>
         <div class="bola"></div>
-        <span>{{ etapa.rotulo }}<br>{% if etapa.data %}{{ etapa.data|date:"d/m/y" }}{% else %}sem data{% endif %}</span>
+        <span title="{{ etapa.explicacao }}">{{ etapa.rotulo }}<br>{% if etapa.data %}{{ etapa.data|date:"d/m/y" }}{% else %}sem data{% endif %}</span>
       </div>
     {% endfor %}
   </div>
+
+  {% include "sugestoes/_legenda_das_etapas.html" %}
 
   {% if notas_da_equipe %}
     <div class="ficha">
