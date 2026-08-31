@@ -1,0 +1,16 @@
+{
+  "arquivo": "087-o-portao-do-travessao-passa-a-enxergar-o-texto-do-site-que-m",
+  "id": "TAR-087",
+  "titulo": "O portao do travessao passa a enxergar o texto do site que mora em codigo Python",
+  "toca": [
+    "ci",
+    "sugestoes",
+    "gamificacao"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado; ci/travessao.py --listar acusa um travessao plantado num rotulo de TextChoices, e o portao fica verde depois de corrigido",
+  "despacho": "O portao do travessao (ci/travessao.py) varre templates/, traducoes/, documentos/\ne management/commands/. Ele declara na propria docstring que texto publicado\nmorando em .py e um buraco conhecido, e que \"se um dia a copia do site passar a\nmorar em .py, e aqui que a superficie cresce\".\n\nEsse dia chegou, e o buraco e maior do que o morador que a docstring cita:\n\n* os ROTULOS de todo TextChoices que vira selo na tela sao texto publicado.\n  Sugestao.Status (\"Em analise\", \"Planejado\", \"Em desenvolvimento\",\n  \"Implementado\", \"Nao planejado\", \"Mesclado\") sai em get_status_display no\n  quadro, na pagina da ideia e no aviso do sininho, e mora em\n  services/sugestoes/apps/sugestoes/models.py, fora da varredura.\n* desde 31/08/2026 as explicacoes das etapas (EXPLICACAO_DAS_ETAPAS,\n  VOTAR_NUNCA_FECHA) moram em services/sugestoes/apps/core/participacao.py.\n  Idem gamificacao, que tem TextChoices com rotulo em portugues.\n\nO trabalho: crescer a superficie de ci/travessao.py para a classe ESTREITA de\ncopia de site que mora em .py, sem varrer .py inteiro (a docstring explica por\nque varrer tudo seria pior: das 160 strings com travessao nas celulas publicas,\na esmagadora maioria e docstring, log e texto de validacao que so programador\nle). Duas pistas de desenho, a escolher com medicao:\n\n1. os ROTULOS de TextChoices, lidos por AST (o segundo elemento da tupla), em\n   todo models.py de celula publica; e\n2. constantes de string em modulos declarados como copia de site, por uma marca\n   explicita no arquivo, e nao por prefixo de nome (o prefixo semear_* ja\n   deixou seed_sugestoes.py escapar uma vez).\n\nDocstring e comentario ficam de fora, como ja ficam hoje. A divida herdada entra\nem ci/travessoes-herdados.txt com a contagem exata, pela mesma catraca.\n\nEnquanto isto nao existe, quem segura a lei na celula sugestoes e o guarda\nservices/sugestoes/tests/test_a_caixa_explica_as_etapas.py::test_o_texto_do_aluno_nao_tem_travessao.\nO molde e o motivo estao em armadilhas/254.\n\nATENCAO: ci/ e caminho CODEOWNERS. Esta tarefa so entra em despacho com mandato\nexplicito do mantenedor, e o relatorio final anuncia isso nominalmente.",
+  "origem": "descoberto em 31/08/2026 pela TAR-086, ao pôr as explicacoes das etapas em .py; armadilhas/254",
+  "criada_em": "2026-08-31"
+}
