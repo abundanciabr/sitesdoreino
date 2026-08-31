@@ -119,7 +119,11 @@ urlpatterns = [
     # próprio na porta (`PREFIXO_PUBLICO_DOS_PLANOS`).
     path("mapa-ia/planos/", planos_indice, name="planos_indice"),
     re_path(
-        r"^mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+)$",
+        # O `(\.md)?` no fim e opcional e a segunda diferenca medida contra o
+        # `raw.githubusercontent.com` (31/08/2026): os dois enderecos servem o
+        # mesmo arquivo, e a view descarta a extensao. O ponto NAO abre caminho
+        # para escapar da pasta — so casa a sequencia exata `.md` no fim.
+        r"^mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+(?:\.md)?)$",
         plano_publico,
         name="plano_publico",
     ),

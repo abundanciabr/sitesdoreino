@@ -125,9 +125,39 @@ def test_html_dentro_do_documento_nao_vira_html_na_resposta(pasta_de_planos):
     assert resposta["Content-Type"] == "text/plain; charset=utf-8"
 
 
-def test_a_area_pede_para_nao_ser_indexada(pasta_de_planos):
+def test_a_area_nao_pede_para_ser_ignorada(pasta_de_planos):
+    """O `noindex` NAO pode voltar — ele derrotava o proposito da area.
+
+    Este teste e o oposto do que estava aqui em 31/08/2026 de manha, e a
+    inversao foi medida: com `X-Robots-Tag: noindex`, o mantenedor mandou o
+    endereco ao Gemini e ouviu "nao consegui acessar o conteudo". `noindex` diz
+    "nao use este conteudo" — pedir que uma IA leia uma pagina marcada assim e
+    pedir que ela desobedeca.
+
+    Se alguem quiser o header de volta, que seja por conversa com o mantenedor
+    (a troca e visibilidade em busca), e nao por copiar `mapa_ia.py` sem ler.
+    """
     for endereco in ("/mapa-ia/planos/", "/mapa-ia/planos/plano-aberto"):
-        assert Client().get(endereco)["X-Robots-Tag"] == "noindex"
+        assert "X-Robots-Tag" not in Client().get(endereco)
+
+
+def test_o_endereco_aceita_ponto_md_no_fim(pasta_de_planos):
+    """Com e sem `.md` servem o mesmo arquivo.
+
+    E a forma do `raw.githubusercontent.com`, que as IAs leem sem reclamar —
+    igualar as duas foi a outra metade do conserto de 31/08/2026.
+    """
+    com = Client().get("/mapa-ia/planos/plano-aberto.md")
+    sem = Client().get("/mapa-ia/planos/plano-aberto")
+    assert com.status_code == 200
+    assert com.content == sem.content
+    assert com["Content-Type"] == "text/plain; charset=utf-8"
+
+
+def test_so_a_extensao_md_e_aceita(pasta_de_planos):
+    """`.md` nao abriu a porta para qualquer ponto no nome."""
+    for nome in ("plano-aberto.txt", "plano-aberto.md.md", "plano-aberto."):
+        assert Client().get(f"/mapa-ia/planos/{nome}").status_code == 404
 
 
 def test_o_prefixo_dos_planos_tem_so_as_duas_rotas():
