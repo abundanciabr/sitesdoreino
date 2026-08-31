@@ -3,9 +3,11 @@ from django.urls import path, re_path
 from apps.core.views import (
     cadastro,
     capturar_lead,
+    desligar_avisos,
     entrar,
     healthz,
     landing,
+    ligar_avisos,
     manifesto_do_app,
     service_worker,
     servir_estatico,
@@ -30,6 +32,12 @@ urlpatterns = [
     # cada detalhe está na docstring da view.
     re_path(r"^static/(?P<path>.*)$", servir_estatico, name="static"),
     path("leads", capturar_lead, name="capturar_lead"),
+    # Ligar e desligar o aviso na tela do celular. São gestos de uma PESSOA
+    # numa página (não rota de máquina): servem sob o prefixo de idioma como
+    # o /leads, e é por isso que o JavaScript recebe o endereço pronto do
+    # template em vez de montá-lo.
+    path("avisos/ligar", ligar_avisos, name="ligar_avisos"),
+    path("avisos/desligar", desligar_avisos, name="desligar_avisos"),
     path("cadastro", cadastro, name="cadastro"),  # PLANO-I18N fase 2
     # A porta de entrada do site (DECISAO-onde-mora-a-sessao). Serve em
     # /{idioma}/login pelo mesmo resolver das outras: o urlconf não conhece o

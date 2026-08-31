@@ -78,6 +78,26 @@
     },
     {
       "celula": "funil",
+      "rota": "avisos/ligar",
+      "endereco": "/avisos/ligar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Ligar os avisos no celular",
+      "descricao": "Não é uma página: é o que acontece quando alguém aperta o botão para receber os avisos da escola na tela do celular. Abrir este endereço no navegador não mostra nada."
+    },
+    {
+      "celula": "funil",
+      "rota": "avisos/desligar",
+      "endereco": "/avisos/desligar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Desligar os avisos no celular",
+      "descricao": "O contrário do anterior: o aparelho pede para parar de receber os avisos. Também não é uma página."
+    },
+    {
+      "celula": "funil",
       "rota": "manifest.webmanifest",
       "endereco": "/manifest.webmanifest",
       "alcance": "publico",
