@@ -52,7 +52,12 @@ celulas:
     # célula, e a pasta entra na imagem no build. Documento novo é página nova —
     # sem esta linha, mexer num documento mergearia sem disparar deploy e o site
     # continuaria publicando o texto antigo, em silêncio.
-    caminhos: [services/admin, painel, fila, documentos]
+    # `docs/decisoes/` desde 31/08/2026, pela MESMA razao das tres acima: a
+    # area `/mapa-ia/planos/` serve esses arquivos e a pasta entra na imagem
+    # no build. Plano corrigido e pagina corrigida — sem esta linha, mexer
+    # num plano mergearia sem disparar deploy e o site continuaria servindo
+    # o texto antigo, em silencio.
+    caminhos: [services/admin, painel, fila, documentos, docs/decisoes]
     consome: [alunos, identidade, sugestoes]
 
   alunos:

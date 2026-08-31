@@ -25,3 +25,9 @@ fila_embutida/
 # lado extra: dois lugares com o mesmo documento significa dois cabeçalhos
 # `publico:`, e o dia em que discordassem um texto interno estaria no ar.
 documentos_embutidos/
+
+# Os planos para IA (`docs/decisoes/`), embutidos pelo mesmo passo do deploy
+# (`apps/core/planos_para_ia.py`). Mesma lei das de cima: a celula SERVE a
+# pasta, nunca guarda copia dela — duas copias divergiriam, e a que o site
+# mostra seria a errada.
+planos_embutidos/

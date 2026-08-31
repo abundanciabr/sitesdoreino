@@ -31,7 +31,12 @@ on:
     # pública em `/docs/` e a fechada em `/admin/documentos/`. Documento novo É
     # página nova; sem esta linha o workflow nem começaria, e o site continuaria
     # publicando a lista antiga em silêncio. Mapa: `celulas.yml`.
-    paths: ['services/**', 'painel/**', 'fila/**', 'documentos/**']
+    # `docs/decisoes/**` desde 31/08/2026: a area `/mapa-ia/planos/` serve
+    # esses arquivos, e a pasta entra na imagem no build (passo "Embutir os
+    # planos para IA"). Plano corrigido E pagina corrigida; sem esta linha o
+    # site continuaria servindo o texto antigo em silencio — o mesmo modo de
+    # falha que `documentos/**` acima existe para impedir. Mapa: `celulas.yml`.
+    paths: ['services/**', 'painel/**', 'fila/**', 'documentos/**', 'docs/decisoes/**']
 permissions:
   contents: read
 # O GRUPO É COMPARTILHADO COM O `deploy-infra`, E ISSO FOI MEDIDO (TAR-029,
@@ -254,6 +259,28 @@ jobs:
           rm -rf services/admin/documentos_embutidos
           cp -R documentos services/admin/documentos_embutidos
           echo "documentos embutidos: $(ls services/admin/documentos_embutidos/*.md | wc -l) arquivos"
+      - name: Embutir os planos para IA no contexto do build (só a célula admin)
+        if: matrix.celula == 'admin'
+        run: |
+          set -eu
+          # A área `/mapa-ia/planos/` (`apps/core/planos_para_ia.py`), pedida
+          # pelo mantenedor em 31/08/2026: os planos e decisões do projeto num
+          # endereço que uma IA de fora consegue ler, porque artefato hospedado
+          # fora é privado e nenhuma conseguiu abrir.
+          #
+          # A pasta inteira entra, e QUEM DECIDE o que é público é o cabeçalho
+          # de cada documento (`publico-para-ia: true`, fail-closed) — nunca uma
+          # lista aqui. Embutir só os marcados criaria uma SEGUNDA regra sobre o
+          # mesmo fato, e o dia em que as duas discordassem seria o dia em que
+          # um documento marcado responderia 404 sem ninguém entender por quê.
+          #
+          # Fail-CLOSED como os passos acima: pasta ausente viraria uma imagem
+          # publicada com a área VAZIA, e o deploy ficaria verde — o falso-verde
+          # padrão 1 da RETROSPECTIVA-FASE-D.
+          test -d docs/decisoes || { echo "PAROU: docs/decisoes/ nao existe"; exit 1; }
+          rm -rf services/admin/planos_embutidos
+          cp -R docs/decisoes services/admin/planos_embutidos
+          echo "planos embutidos: $(ls services/admin/planos_embutidos/*.md | wc -l) arquivos"
       - name: Build & push da imagem da célula
         run: |
           IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}
