@@ -68,9 +68,10 @@
             "gamificacao.nivel-alcancado",
             "gamificacao.conquista-concedida",
             "gamificacao.marco-validado",
-            "gamificacao.destaque-da-semana"
+            "gamificacao.destaque-da-semana",
+            "jornada.passo"
           ],
-          "description": "O que aconteceu, do ponto de vista de quem le. Comecou com um so porque a V1 nasceu so com a Caixa (DECISAO-notificacoes §3); `matricula.situacao-alterada` entrou em 29/08/2026, decidido pelo mantenedor, para que quem espera na fila descubra que foi liberado sem precisar reabrir o site; os quatro `gamificacao.*` entraram na Sessao B de 30/08/2026 (Rito de Contrato com o mantenedor), e sao as CARTAS DE CELEBRACAO do Sistema de Formacao de Criadores. Assunto novo entra aqui e ganha um ramo em 'parametros' logo abaixo, num PR PEQUENO — foi exatamente o que aconteceu DUAS vezes, e a FORMA do evento nao precisou mudar nenhuma delas: e o sinal de que o desenho de 26/08 estava certo. E a regra de sempre continua valendo: se acrescentar um assunto exigir mexer na FORMA deste evento, o desenho esta errado e se conserta antes, nao depois. A REGRA DA GAMIFICACAO, que vem junto com os quatro: so BOA NOTICIA vira carta — perder XP, regredir na sequencia ou ter uma marca estornada NAO gera aviso nenhum (lei da celula; maximo 1 por dia, nunca depois das 20h nem em horario escolar)."
+          "description": "O que aconteceu, do ponto de vista de quem le. Comecou com um so porque a V1 nasceu so com a Caixa (DECISAO-notificacoes §3); `matricula.situacao-alterada` entrou em 29/08/2026, decidido pelo mantenedor, para que quem espera na fila descubra que foi liberado sem precisar reabrir o site; os quatro `gamificacao.*` entraram na Sessao B de 30/08/2026 (Rito de Contrato com o mantenedor), e sao as CARTAS DE CELEBRACAO do Sistema de Formacao de Criadores. Assunto novo entra aqui e ganha um ramo em 'parametros' logo abaixo, num PR PEQUENO — foi exatamente o que aconteceu DUAS vezes, e a FORMA do evento nao precisou mudar nenhuma delas: e o sinal de que o desenho de 26/08 estava certo. E a regra de sempre continua valendo: se acrescentar um assunto exigir mexer na FORMA deste evento, o desenho esta errado e se conserta antes, nao depois. A REGRA DA GAMIFICACAO, que vem junto com os quatro: so BOA NOTICIA vira carta — perder XP, regredir na sequencia ou ter uma marca estornada NAO gera aviso nenhum (lei da celula; maximo 1 por dia, nunca depois das 20h). A REGRA DO 'HORARIO ESCOLAR' SAIU em 31/08/2026: o mantenedor declarou que a escola so tem alunos maiores de 18 anos e nunca tera menores, e a lei da gamificacao foi emendada no mesmo dia (DECISAO-gamificacao.md §9) — um adulto as 14h de terca e exatamente quem se quer alcancar. A DECISAO DE 31/08/2026, no Rito que trouxe `jornada.passo`, e o MODELO HIBRIDO, e a regra de qual forma usar e esta: MENSAGEM DE SERVICO — a que nao pode falhar (`matricula.situacao-alterada` hoje; senha e seguranca amanha) — ganha assunto PROPRIO aqui, com ramo proprio de parametros, e o sininho a monta sozinho nos tres idiomas sem depender de ninguem. MENSAGEM DE INCENTIVO — boas-vindas, 'senti sua falta', e todo passo de sequencia que o mantenedor vai querer ajustar numa terca a noite — viaja como `jornada.passo`, e o texto vem da tela dele na hora de ler. Nas palavras dele: 'servico no contrato, incentivo na minha tela'."
         },
         "parametros": {
           "type": "object",
@@ -418,6 +419,57 @@
                     "type": "string",
                     "format": "date",
                     "description": "A SEGUNDA-FEIRA da semana do destaque, em America/Sao_Paulo — o mesmo recorte que a Sequencia usa para fechar a semana. Data e nao data-hora de proposito: 'a semana de 25 de agosto' e o que a tela mostra, e um instante com fuso convidaria o consumidor a converter para o fuso dele e exibir a semana errada (`armadilhas/099`). OPCIONAL: ausencia e 'nao informado', nunca erro."
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "$comment": "UM PASSO DE SEQUENCIA (Rito de 31/08/2026). E o ramo do INCENTIVO no modelo hibrido que o mantenedor escolheu — boas-vindas depois do cadastro, o empurrao de quem sumiu, e todo passo que ele va querer ajustar sozinho. A diferenca para os seis ramos de cima: eles nomeiam O QUE aconteceu e o sininho monta a frase do proprio catalogo; aqui o sininho BUSCA o texto na hora de ler, pelo `passo_id`, na tela que o mantenedor edita. Nao e excecao a lei 'aviso e DADO, nunca frase pronta' — e a MESMA saida que `suggestion_id` ja usa no primeiro ramo: o titulo nao viaja, a tela o busca. O que muda e so quem guarda o texto. O CUSTO ACEITO, dito por inteiro: o sininho passa a depender da `mensageria` para exibir estes avisos; ela fora do ar deixa o aviso na lista SEM o texto — e a tela deve mostrar isso como 'nao carregou', nunca sumir com a linha nem inventar frase.",
+      "if": {
+        "properties": {
+          "data": {
+            "properties": {
+              "assunto": {
+                "const": "jornada.passo"
+              }
+            },
+            "required": [
+              "assunto"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "then": {
+        "properties": {
+          "data": {
+            "properties": {
+              "parametros": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "jornada_slug",
+                  "passo_id"
+                ],
+                "properties": {
+                  "jornada_slug": {
+                    "type": "string",
+                    "description": "Qual sequencia — o slug estavel dela (`boas-vindas`, `senti-sua-falta`). SLUG e nao nome: o nome da sequencia e editavel pelo mantenedor e mudaria o sentido de avisos antigos. Serve ao sininho para agrupar e para escolher o tom, e serve a quem for auditar 'que sequencia mandou isto'."
+                  },
+                  "passo_id": {
+                    "type": "string",
+                    "description": "Id opaco do passo na celula `mensageria`. E por ele que a tela busca O TEXTO na hora de ler, no idioma de quem le. O texto NAO viaja aqui, pela mesma razao do `suggestion_id`: um passo reescrito deixaria avisos antigos mostrando a frase velha para sempre — e o mantenedor vai reescrever, porque a tela existe justamente para isso."
+                  },
+                  "ordem": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "A posicao do passo na sequencia (1 = o primeiro). OPCIONAL de proposito: ausencia e 'nao informado', nunca erro — a mesma regra que `vinculo` e `situacao_anterior` ja seguem nos ramos de cima. Existe para o sininho poder dizer 'primeira mensagem' com outro peso, sem ter de perguntar nada a ninguem."
                   }
                 }
               }
