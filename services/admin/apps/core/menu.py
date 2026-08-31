@@ -56,7 +56,7 @@ from django.views.decorators.http import require_GET, require_POST
 from apps.auditoria.models import Registro
 
 from .clients import CatalogoClient
-from .mapa_do_site import arquivo_do_mapa
+from .mapa_do_site import _e_molde, arquivo_do_mapa
 from .views import _auditar
 
 # As células que DESENHAM o menu. Uma página da área administrativa ou uma rota
@@ -116,6 +116,13 @@ def _mapa_de_paginas() -> list:
                 # idioma no caminho (R12). Guardar isso no item, na hora de
                 # criá-lo, poupa o mantenedor de entender a regra.
                 "traduzida": entrada["celula"] == "funil",
+                # `/forum/t/<int:topico_id>` NÃO é um lugar: é a forma de todos
+                # os assuntos do fórum. Ela pode ter regra de menu (todas as
+                # conversas mostram o mesmo topo), mas não pode virar DESTINO de
+                # um item — seria um link para 404. A regra é a mesma de
+                # `/admin/mapa/`, e por isso ela é IMPORTADA de lá em vez de
+                # reescrita: duas cópias divergiriam no primeiro molde novo.
+                "molde": _e_molde(entrada.get("endereco", "")),
             }
         )
     paginas.sort(key=lambda p: (p["celula"], p["endereco"]))
@@ -348,6 +355,18 @@ def menu_adicionar_item(request):
 
     if not destino:
         return _erro(request, site, menu, "Diga para onde este item leva.")
+    if _e_molde(destino):
+        # Cinto e suspensório: a tela já não oferece molde na lista, mas um POST
+        # montado à mão não passa por ela. Um item apontando para um molde é um
+        # link para 404 no topo de toda página.
+        return _erro(
+            request,
+            site,
+            menu,
+            "Esse endereço vale para várias páginas ao mesmo tempo, então ele "
+            "não serve como opção de menu: um visitante que clicasse nele veria "
+            "uma página inexistente.",
+        )
 
     rotulos = {}
     for idioma in _idiomas_do_site(site):

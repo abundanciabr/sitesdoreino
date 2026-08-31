@@ -10,6 +10,7 @@ from ninja.errors import HttpError
 # Aliases: os nomes Site/Product/Offer são reusados abaixo pelos Schemas de
 # resposta (mesmo nome do contrato) — sem alias o import do model seria
 # sombreado pela classe Schema de mesmo nome definida no mesmo módulo.
+from apps.sites.menu import normalizar_menu
 from apps.ofertas.models import Offer as OfferModel
 from apps.produtos.models import Product as ProductModel
 from apps.sites.models import Site as SiteModel
@@ -40,6 +41,133 @@ def _inline_site_languages(schema: dict) -> None:
         },
     }
     schema.pop("additionalProperties", None)
+
+
+# ---------------------------------------------------------------------------
+# O MENU DO TOPO: a forma do dado, escrita UMA vez
+# ---------------------------------------------------------------------------
+# Este dicionário é o schema JSON do menu, e ele aparece em três lugares do
+# contrato: dentro do Site (para quem DESENHA a página), na resposta do
+# getSiteMenu e no corpo do putSiteMenu (para quem CONFIGURA, no Admin). Uma
+# constante em vez de três blocos copiados: três cópias divergiriam no primeiro
+# campo novo, e o contrato congelado é justamente o lugar onde divergir custa
+# um Rito inteiro.
+#
+# A REGRA de coerência não mora aqui, mora em `apps/sites/menu.py`, que é quem
+# recusa endereço `javascript:`, apelido duplicado e página apontando para
+# versão que não existe. Aqui é só a FORMA.
+ESQUEMA_DO_MENU = {
+    "type": "object",
+    "description": (
+        "O menu do topo deste site. Ausente: o site não tem menu configurado, "
+        "e a resposta segue byte a byte igual à de antes desta fase."
+    ),
+    "properties": {
+        "default_version": {
+            "type": "string",
+            "description": (
+                "Apelido da versão usada por toda página sem regra própria. "
+                "Vazio: página sem regra não mostra menu nenhum."
+            ),
+        },
+        "versions": {
+            "type": "array",
+            "description": "As versões do menu deste site (ex.: completo, enxuto).",
+            "items": {
+                "type": "object",
+                "required": ["slug", "name", "items"],
+                "properties": {
+                    "slug": {
+                        "type": "string",
+                        "description": "Apelido único da versão; é o que as páginas apontam.",
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "Nome que o mantenedor lê na tela de configuração.",
+                    },
+                    "items": {
+                        "type": "array",
+                        "description": "As opções do menu, na ordem em que aparecem.",
+                        "items": {
+                            "type": "object",
+                            "required": ["url", "labels"],
+                            "properties": {
+                                "url": {
+                                    "type": "string",
+                                    "description": (
+                                        "Caminho deste site começando com uma barra, "
+                                        "ou endereço completo de um site de fora."
+                                    ),
+                                },
+                                "labels": {
+                                    "type": "object",
+                                    "additionalProperties": {"type": "string"},
+                                    "description": (
+                                        "Nome do item por idioma (BCP 47 minúsculo). "
+                                        "Idioma sem rótulo cai no idioma padrão do site."
+                                    ),
+                                },
+                                "localized": {
+                                    "type": "boolean",
+                                    "default": False,
+                                    "description": (
+                                        "true: quem serve a página põe o prefixo do "
+                                        "idioma no caminho. Só vale para rota da própria "
+                                        "célula: link para outra célula segue cru (R12)."
+                                    ),
+                                },
+                                "audience": {
+                                    "type": "string",
+                                    "enum": ["everyone", "logged_out", "logged_in"],
+                                    "default": "everyone",
+                                    "description": "Para quem este item aparece.",
+                                },
+                                "new_tab": {
+                                    "type": "boolean",
+                                    "default": False,
+                                    "description": "Abrir numa aba nova.",
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        "pages": {
+            "type": "array",
+            "description": (
+                "Qual versão cada página usa. Página fora desta lista usa a "
+                "default_version."
+            ),
+            "items": {
+                "type": "object",
+                "required": ["page", "version"],
+                "properties": {
+                    "page": {
+                        "type": "string",
+                        "description": (
+                            "Chave da página na forma 'celula/rota', a mesma dupla de "
+                            "painel/mapa-do-site.json (ex.: 'funil/' ou 'funil/login')."
+                        ),
+                    },
+                    "version": {
+                        "type": "string",
+                        "description": (
+                            "Apelido da versão. Vazio: esta página NÃO mostra menu."
+                        ),
+                    },
+                },
+            },
+        },
+    },
+}
+
+
+def _inline_menu(schema: dict) -> None:
+    """Mesmo motivo do `_inline_site_languages`: o contrato declara o menu como
+    objeto inline, e sem isto o pydantic emitiria um objeto nu, sem forma."""
+    schema.clear()
+    schema.update(ESQUEMA_DO_MENU)
 
 
 class Site(Schema):
@@ -73,6 +201,29 @@ class Site(Schema):
             "Idiomas que este site serve. Ausente ou vazio ⇒ monolíngue. Quando "
             "presente, DEVE conter default_language. A ordem não é significativa."
         ),
+    )
+    menu: dict = Field(
+        default_factory=dict,
+        json_schema_extra=_inline_menu,
+        description=(
+            "O menu do topo deste site. Ausente: o site não tem menu "
+            "configurado, e a resposta segue byte a byte igual à de antes."
+        ),
+    )
+
+
+# Envelope, e não o objeto nu: um corpo de topo que É o próprio dado não tem
+# onde crescer. No dia em que a tela precisar devolver junto "quando isto
+# mudou" ou "quem mudou", o campo entra ao lado de `menu` sem quebrar
+# ninguém. A docstring é curta de propósito — o django-ninja a exporta como a
+# `description` do componente, e o contrato congelado não é lugar de ensaio.
+class SiteMenu(Schema):
+    """O menu do topo de um site, no envelope que o contrato declara."""
+
+    menu: dict = Field(
+        default_factory=dict,
+        json_schema_extra=_inline_menu,
+        description="O menu do topo deste site. Objeto vazio = site sem menu.",
     )
 
 
@@ -131,6 +282,15 @@ class Offer(Schema):
     )
 
 
+def _site_por_id(site_id: str) -> SiteModel:
+    """O site, ou 404. `ValidationError`/`ValueError` cobrem o id que não tem
+    nem forma de UUID: sem elas, um id torto viraria 500 em vez de 404."""
+    try:
+        return SiteModel.objects.get(id=site_id)
+    except (SiteModel.DoesNotExist, ValidationError, ValueError):
+        raise HttpError(404, "site inexistente")
+
+
 @router.get(
     "/sites/by-host/{host}",
     response=Site,
@@ -168,6 +328,12 @@ def get_site_by_host(
         "theme": site.theme or {},
         "default_offer_slug": site.default_offer_slug or "",
     }
+    if site.menu:
+        # Omitido quando não há menu, pelo MESMO motivo dos idiomas: a
+        # ausência é o sinal de "este site não tem menu", e ela deixa a
+        # resposta do site sem menu byte-idêntica à de antes desta fase, que
+        # é a garantia mais forte possível de que nenhum consumidor quebra.
+        payload["menu"] = site.menu
     if site.languages:
         payload["default_language"] = site.default_language
         payload["languages"] = [
@@ -253,3 +419,57 @@ def get_product(request, product_id: str):
         "price_cents": produto.price_cents,
         "active": produto.active,
     }
+
+
+@router.get(
+    "/sites/{site_id}/menu",
+    response=SiteMenu,
+    operation_id="getSiteMenu",
+    summary="O menu do topo de um site, para a tela que o configura",
+    description=(
+        "Serve a configuração inteira do menu. Site sem menu responde 200 com "
+        "um objeto vazio, e não 404: para quem vai configurar, 'ainda não tem "
+        "menu' é um estado normal, não um erro."
+    ),
+    openapi_extra={
+        "responses": {
+            200: {"description": "O menu deste site (vazio quando não há)"},
+            404: {"description": "Site inexistente"},
+        }
+    },
+)
+def get_site_menu(request, site_id: str):
+    site = _site_por_id(site_id)
+    return {"menu": site.menu or {}}
+
+
+@router.put(
+    "/sites/{site_id}/menu",
+    response=SiteMenu,
+    operation_id="putSiteMenu",
+    summary="Grava o menu do topo de um site, inteiro",
+    description=(
+        "Substitui a configuração inteira do menu: versões, itens e regras por "
+        "página de uma vez. Documento inteiro, e não remendo campo a campo, "
+        "porque a coerência é do CONJUNTO: uma versão só pode sumir junto com "
+        "as páginas que apontavam para ela. Configuração incoerente responde "
+        "422 com o motivo em português, e NADA é gravado."
+    ),
+    openapi_extra={
+        "responses": {
+            200: {"description": "O menu como ficou gravado, na forma canônica"},
+            404: {"description": "Site inexistente"},
+            422: {"description": "Configuração incoerente; nada foi gravado"},
+        }
+    },
+)
+def put_site_menu(request, site_id: str, payload: SiteMenu):
+    site = _site_por_id(site_id)
+    try:
+        site.menu = normalizar_menu(payload.menu)
+    except ValidationError as erro:
+        # A mensagem do validador é escrita para o mantenedor ler na tela do
+        # Admin, então ela ATRAVESSA a fronteira em vez de virar um 422 mudo.
+        raise HttpError(422, "; ".join(erro.messages))
+    site.save()
+    return {"menu": site.menu}
