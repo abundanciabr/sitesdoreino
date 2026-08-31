@@ -19,10 +19,21 @@
 # linha desta célula em `ci/manifesto-de-contratos.json` guarda o motivo por
 # escrito — ela não pode ser `freeze: required` antes de existir o que exportar.
 #
-# AS TRÊS INVARIANTES QUE ATRAVESSAM AS DUAS OPERAÇÕES:
+# AS TRÊS INVARIANTES QUE ATRAVESSAM TODAS AS OPERAÇÕES:
 #
-#   1. NUNCA SAI E-MAIL, NUNCA SAI TEXTO DE PESSOA. O público desta escola é
-#      majoritariamente menor de idade. Só id opaco, número e slug.
+#   1. NUNCA SAI E-MAIL, NUNCA SAI TEXTO DE PESSOA. Só id opaco, número e slug.
+#      A razão escrita aqui já foi *"o público desta escola é majoritariamente
+#      menor de idade"*, e ela MORREU em 30/08/2026: a escola é 18+
+#      (`DECISAO-gamificacao.md` §9, emendado). A regra não mudou uma vírgula, e
+#      a razão que fica é mais simples: e-mail é dado pessoal de adulto também, e
+#      uma porta de máquina que o entrega o entrega para sempre. A frase saiu no
+#      Rito de 31/08/2026, com o mantenedor presente — a dívida que o §9 da lei
+#      deixou anotada de propósito. (A outra dívida da mesma emenda, o *"nunca em
+#      horário escolar"* de `contracts/eventos/notificacao.devida.v1.json`, saiu
+#      antes, no Rito que trouxe `jornada.passo`.) A MESMA frase morta continua
+#      em `contracts/forum.openapi.yaml` e em
+#      `contracts/eventos/forum.topico-criado.v1.json`: é dívida do `forum`, sai
+#      no próximo Rito DELE, e não se corrige de carona daqui.
 #   2. NUNCA SAI XP BRUTO DE OUTRA PESSOA. `getPublicProfiles` devolve nível e
 #      título; quem quiser XP vê o PRÓPRIO, em `getMyStatus`. Placar de XP entre
 #      alunos não existe nesta plataforma, e a porta é onde isso fica mecânico.
@@ -39,6 +50,32 @@
 # fórum é a de avisos e só a escola publica nela; a decisão existe para o dia em
 # que houver área pública com post de aluno. Não é descuido, é decisão do
 # mantenedor em 30/08/2026.
+#
+# OS INTERRUPTORES DA ECONOMIA (Rito de Contrato de 31/08/2026, com o mantenedor
+# presente) — `listEconomySwitches` e `setEconomySwitch`.
+#
+# Elas existem para que o critério de morte nº 5 da lei NÃO aconteça: *"ajustar a
+# economia passar a exigir PR de código"* obriga a parar e reabrir a decisão. A
+# economia inteira nasce `ativa=False` (`semear_economia`), e até aqui ligar uma
+# regra significava um agente editar o semeador e esperar um deploy — ou seja, a
+# economia era código com aparência de dado. Estas duas operações são o que torna
+# a §10.5 verdade: `UPDATE` + versão + data, pela tela do mantenedor.
+#
+# QUEM AUTORIZA NÃO É ESTA PORTA, e a distinção é invariante da plataforma. Esta
+# célula não assina sessão ([INV-P12]) e o `papel` que a `identidade` devolve
+# NUNCA autoriza rota ("reconhecer não é autorizar", `DECISAO-onde-mora-a-sessao`
+# §4). Aqui fecha o Bearer do par; quem confere que é o mantenedor é a `admin`,
+# sobre a lista DELA — o mesmo desenho de `/admin/menu/`, que lê e grava o menu
+# no `catalogo` sem guardar cópia.
+#
+# `impedimentos` MERECE A LEITURA antes de alguém "simplificar" o schema: uma
+# regra pode estar ligada e ainda assim não fazer número nenhum se mexer, e sem
+# este campo a tela mostraria um zero que parece defeito dela. Os três motivos
+# são fatos da célula, não opinião: `sem-produtor` (ninguém publica o assunto),
+# `sem-credito` (chega, mas esta célula não sabe de quem é o ponto — hoje o quiz,
+# que identifica por e-mail) e `cristais-sem-efeito` (a regra promete Cristais e
+# o motor não os credita, porque `MovimentoDeCristais.Origem` é vocabulário
+# FECHADO e mexer nele é mexer no que o [INV-GAM1] protege).
 #
 # ENDEREÇO — divergência conhecida, registrada de propósito: o §4 do plano (e o
 # despacho da Sessão B) escreve as operações como `/api/gamificacao/perfis` e
@@ -67,9 +104,11 @@ info:
 
     NADA DE DADO PESSOAL SAI POR AQUI: nem e-mail, nem nome, nem texto
 
-    escrito por aluno. Só id opaco, número e slug. O público desta escola é
+    escrito por aluno. So id opaco, numero e slug. E-mail e dado pessoal de
 
-    majoritariamente menor de idade.
+    adulto tambem, e uma porta de maquina que o entrega o entrega para
+
+    sempre.
 
 
     E NADA DE XP DE TERCEIRO: `getPublicProfiles` devolve nivel e titulo;
@@ -167,6 +206,100 @@ paths:
         verdade e o ledger, e quem prova que a copia nao mentiu e o comando
 
         `reconciliar_perfis` da propria celula, nunca esta porta.'
+  /economia/regras:
+    get:
+      operationId: listEconomySwitches
+      summary: Todas as regras de pontuacao, ligadas e desligadas
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/InterruptorDaEconomia'
+                type: array
+      description: 'A lista que a tela do mantenedor desenha. Devolve TODAS as regras
+        do
+
+        site — ligadas e desligadas — porque a tela precisa mostrar o que ele
+
+        PODE ligar, nao so o que ja esta valendo.
+
+
+        `impedimentos` e o campo que evita uma frustracao concreta: uma regra
+
+        pode estar perfeitamente ligada e ainda assim nao fazer numero nenhum
+
+        se mexer. `sem-produtor` = ninguem publica esse acontecimento ainda;
+
+        `sem-credito` = ele chega mas esta celula nao sabe de quem e o ponto;
+
+        `cristais-sem-efeito` = a regra promete Cristais e o motor nao os
+
+        credita (o vocabulario de origens e fechado, [INV-GAM1]). Lista vazia
+
+        significa que ligar vai funcionar.
+
+
+        SLUG, NUNCA FRASE PRONTA (invariante 3 desta porta): daqui saem slugs e
+
+        numeros. Quem escreve a frase em portugues e a tela que mostra.'
+  /economia/regras/{slug}:
+    post:
+      operationId: setEconomySwitch
+      summary: Liga ou desliga UMA regra de pontuacao
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterruptorDaEconomia'
+      description: 'O gesto que a lei §10.5 exige que exista: ajustar a economia e UPDATE
+
+        mais versao, anunciado e nunca retroativo — nunca um PR de codigo.
+
+
+        LIGAR faz TRES coisas de uma vez, e as tres importam: marca `ativa`,
+
+        soma 1 na `versao` (o motor grava a versao dentro de cada lancamento,
+
+        entao mudar a economia amanha nao reescreve o passado) e carimba
+
+        `vigente_desde` com o instante de agora. Esse carimbo E o mecanismo do
+
+        ''nunca retroativo'': o motor compara a data com o instante do FATO, e um
+
+        evento antigo reentregue depois do clique nao paga.
+
+
+        Ligar de novo REDEFINE a data — desligar e religar nao paga a janela em
+
+        que a regra esteve desligada. Chamada que nao muda nada devolve a linha
+
+        como esta, sem gastar versao: dois cliques no mesmo botao nao inflam o
+
+        historico com mudancas que ninguem fez.
+
+
+        Slug desconhecido responde 404. Aqui a falha e FECHADA, ao contrario
+
+        das operacoes de leitura desta porta: inventar em silencio qual regra o
+
+        mantenedor quis ligar seria pior que recusar.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoDeInterruptor'
+        required: true
 components:
   schemas:
     PerfilPublico:
@@ -178,54 +311,6 @@ components:
       required:
       - nivel
       - titulo_slug
-      type: object
-    Sequencia:
-      properties:
-        semanas:
-          type: integer
-        dias_da_semana:
-          type: integer
-        meta:
-          type: integer
-        escudos:
-          type: integer
-      required:
-      - semanas
-      - dias_da_semana
-      - meta
-      - escudos
-      type: object
-    MissaoEmAndamento:
-      properties:
-        slug:
-          type: string
-        cadencia:
-          enum:
-          - diaria
-          - semanal
-          - dupla
-          type: string
-        categoria:
-          enum:
-          - criar
-          - aprender
-          - ajudar
-          - polir
-          - mostrar
-          type: string
-        progresso:
-          type: integer
-        meta:
-          type: integer
-        cumprida:
-          type: boolean
-      required:
-      - slug
-      - cadencia
-      - categoria
-      - progresso
-      - meta
-      - cumprida
       type: object
     CelebracaoPendente:
       properties:
@@ -283,6 +368,110 @@ components:
       - cristais
       - missoes
       - celebracoes_pendentes
+      type: object
+    MissaoEmAndamento:
+      properties:
+        slug:
+          type: string
+        cadencia:
+          enum:
+          - diaria
+          - semanal
+          - dupla
+          type: string
+        categoria:
+          enum:
+          - criar
+          - aprender
+          - ajudar
+          - polir
+          - mostrar
+          type: string
+        progresso:
+          type: integer
+        meta:
+          type: integer
+        cumprida:
+          type: boolean
+      required:
+      - slug
+      - cadencia
+      - categoria
+      - progresso
+      - meta
+      - cumprida
+      type: object
+    Sequencia:
+      properties:
+        semanas:
+          type: integer
+        dias_da_semana:
+          type: integer
+        meta:
+          type: integer
+        escudos:
+          type: integer
+      required:
+      - semanas
+      - dias_da_semana
+      - meta
+      - escudos
+      type: object
+    InterruptorDaEconomia:
+      properties:
+        slug:
+          type: string
+        evento_gatilho:
+          type: string
+        beneficiario:
+          enum:
+          - ator
+          - autor_do_alvo
+          type: string
+        pontos:
+          type: integer
+        cristais:
+          type: integer
+        acoes_cheias_por_dia:
+          type: integer
+        quarentena_horas:
+          type: integer
+        ativa:
+          type: boolean
+        versao:
+          type: integer
+        vigente_desde:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+        impedimentos:
+          items:
+            enum:
+            - sem-produtor
+            - sem-credito
+            - cristais-sem-efeito
+            type: string
+          type: array
+      required:
+      - slug
+      - evento_gatilho
+      - beneficiario
+      - pontos
+      - cristais
+      - acoes_cheias_por_dia
+      - quarentena_horas
+      - ativa
+      - versao
+      - vigente_desde
+      - impedimentos
+      type: object
+    PedidoDeInterruptor:
+      properties:
+        ativa:
+          type: boolean
+      required:
+      - ativa
       type: object
   securitySchemes:
     bearerAuth:
