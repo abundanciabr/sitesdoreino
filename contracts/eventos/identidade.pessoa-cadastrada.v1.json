@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/identidade.pessoa-cadastrada.v1.json",
+  "title": "identidade.pessoa-cadastrada.v1",
+  "description": "ALGUEM ENTROU NO SITE PELA PRIMEIRA VEZ. Ate 31/08/2026 a celula `identidade` era MUDA: ela cunhava a Identidade e nao contava a ninguem — nao tinha outbox, nao tinha relay, nao publicava nada. Por isso o pedido mais obvio do mantenedor, 'apos o cadastro mandar uma mensagem de boas-vindas', nao tinha o que escutar (PLANO-SEQUENCIAS-DE-MENSAGENS §2). Este e o primeiro fato que ela afirma. Congelado no Rito de Contrato de 31/08/2026, com o mantenedor presente. NAO e a carta: a carta e `notificacao.devida.v1`, e quem decide se este fato merece carta e quem escuta, nao quem publica.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "identidade.pessoa-cadastrada"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo cadastro reentregue pelo relay inscreve a pessoa numa jornada UMA vez."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Quando a Identidade foi cunhada. Instante com fuso, como todo evento desta plataforma — quem precisar do DIA converte para America/Sao_Paulo na hora de usar (`armadilhas/099`)."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "pessoa_id"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "pessoa_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA de quem entrou — a pessoa como a celula `identidade` a conhece, o mesmo id que viaja no `destinatario_id` da carta. NUNCA e o e-mail (DECISAO-EVO-01 §3): quem precisa falar com a pessoa PERGUNTA a `identidade`, sob o token do par, na hora do envio. E por isso que este evento pode circular pela plataforma inteira sem espalhar o e-mail de ninguem."
+        }
+      },
+      "$comment": "DUAS COISAS QUE FICARAM DE FORA DE PROPOSITO, e a razao de cada uma. (1) NOME e E-MAIL: nenhum dado pessoal viaja em evento nesta plataforma — `additionalProperties: false` existe para que um campo 'que seria util' nao entre despercebido. Uma mensagem de boas-vindas que queira dizer 'Ola, Fulano' busca o nome na hora de escrever, no idioma de quem le. (2) PROVEDOR (google, codigo, ...): seria util para relatorio, e nao e preciso para nada hoje. Campo especulativo e campo que ninguem mantem — quando alguem precisar, entra como opcional num PR pequeno, que e o que este contrato permite por ser aditivo."
+    }
+  }
+}
