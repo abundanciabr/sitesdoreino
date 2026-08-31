@@ -70,7 +70,13 @@ def test_post_no_caminho_nu_chega_a_view_e_entra_na_fila(client, alunos_ligada):
     )
     resp = client.post(
         "/cadastro",
-        {"name": "Ana", "email": "ana@exemplo.com", "whatsapp": "+5511900000000"},
+        {
+            "name": "Ana",
+            "email": "ana@exemplo.com",
+            "whatsapp": "+5511900000000",
+            "senha": "uma-senha-boa-123",
+            "confirmar_senha": "uma-senha-boa-123",
+        },
         HTTP_HOST=HOST_MESH,
     )
     assert resp.status_code == 200
