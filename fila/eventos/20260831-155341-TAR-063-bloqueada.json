@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260831-155341-TAR-063-bloqueada",
+  "tarefa": "TAR-063",
+  "evento": "bloqueada",
+  "quando": "2026-08-31T15:53:41+00:00",
+  "quem": "sessao-plano-mensagens-2026-08-31",
+  "detalhe": "TRANCADA POR DEPENDER DE TAREFA TRANCADA. O conteudo dela nao estava errado — o que quebrou foi a corrente: as TAR-057/058/059 foram trancadas por descreverem o desenho anterior a consultoria de 31/08/2026, e no balcao so tarefa CONCLUIDA destrava quem depende dela (ci/fila.py:498). Substituta ja criada, apontando para a corrente nova (TAR-071/072/073) e para o plano em vez de copia-lo."
+}
