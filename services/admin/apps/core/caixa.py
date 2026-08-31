@@ -320,6 +320,16 @@ NOTAS_DA_AVALIACAO = (
 NOTA_MINIMA = 0
 NOTA_MAXIMA = 5
 
+# Os três campos que a correção alcança, com o nome que a TELA usa — e não
+# `solucao_proposta` com o underscore trocado por espaço. Quem lê o rastro é o
+# mantenedor, que nunca viu nome de campo em lugar nenhum. A chave é o nome real
+# que o contrato devolve; o valor é português.
+NOME_DO_CAMPO = {
+    "titulo": "o nome da ideia",
+    "problema": "o texto do problema",
+    "solucao_proposta": "a solução proposta",
+}
+
 
 def _quem(request) -> dict:
     """Quem está agindo, na forma que o contrato da Caixa pede.
@@ -346,6 +356,13 @@ def ideia(request, ideia_id: int):
 
     agora = datetime.now(tz.utc)
     (enriquecida,) = _enriquecer([corpo], agora)
+    # O rastro das correções, com o nome do campo já em português. A tradução
+    # acontece AQUI e não no template porque um `{{ dicionario|lookup:chave }}`
+    # exigiria filtro próprio — e porque campo que o contrato passe a devolver
+    # sem tradução aparece como o nome cru, que é feio e visível, em vez de
+    # sumir da tela como uma linha vazia.
+    for linha in enriquecida.get("correcoes") or []:
+        linha["o_que"] = NOME_DO_CAMPO.get(linha.get("campo"), linha.get("campo"))
     quadro = CaixaClient().ideias(por_email=_email(request)) or {}
 
     return render(
@@ -524,6 +541,37 @@ def apagar_ideia(request, ideia_id: int):
         lambda: CaixaClient().apagar(ideia_id, quem=_quem(request)),
         "Apagada para sempre. Título, texto, votos e comentários não existem "
         "mais em lugar nenhum — nem eu consigo trazer de volta.",
+    )
+
+
+@require_POST
+def corrigir_ideia(request, ideia_id: int):
+    """`DECISAO-corrigir-o-texto-de-uma-ideia.md`: o erro de digitação some.
+
+    Os três campos viajam inteiros, como o contrato pede — e esta tela NÃO
+    calcula o que mudou. Quem calcula é a Caixa, comparando com o que está
+    gravado agora; fazer a conta aqui seria decidir, com o texto que a página
+    carregou minutos atrás, uma coisa que só a dona do dado sabe. Se nada mudou,
+    a recusa dela chega pronta e em português, e é ela que aparece na tela.
+
+    Sem `strip()` aqui pelo mesmo motivo: as réguas (nome obrigatório, 140
+    caracteres, problema obrigatório) moram todas do outro lado, num lugar só.
+    Uma segunda cópia delas nesta view seria a primeira a ficar desatualizada.
+    """
+    campos = {
+        "titulo": request.POST.get("titulo") or "",
+        "problema": request.POST.get("problema") or "",
+        "solucao_proposta": request.POST.get("solucao_proposta") or "",
+    }
+    return _agir(
+        request,
+        ideia_id,
+        Registro.CORRIGIR_IDEIA,
+        lambda: CaixaClient().corrigir_texto(
+            ideia_id, campos=campos, quem=_quem(request)
+        ),
+        "Texto corrigido. O aluno vê a versão nova sem nenhuma marca — e o que "
+        "estava escrito antes fica guardado aqui embaixo, só para você.",
     )
 
 
