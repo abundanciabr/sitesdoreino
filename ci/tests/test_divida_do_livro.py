@@ -35,9 +35,7 @@ def merge(numero: int, quando: datetime, arquivos: list[str], titulo="trabalho")
     return {
         "number": numero,
         "title": titulo,
-        "mergedAt": quando.astimezone(timezone.utc)
-        .isoformat()
-        .replace("+00:00", "Z"),
+        "mergedAt": quando.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"),
         "files": [{"path": caminho} for caminho in arquivos],
     }
 
@@ -127,7 +125,9 @@ def test_dentro_da_folga_nao_cobra(livro):
 
 def test_depois_da_folga_cobra(livro):
     esquecido = AGORA - timedelta(minutes=GRACA_EM_MINUTOS + 5)
-    assert [p["number"] for p in divida(livro, AGORA, [merge(100, esquecido, ["a.py"])])] == [100]
+    assert [
+        p["number"] for p in divida(livro, AGORA, [merge(100, esquecido, ["a.py"])])
+    ] == [100]
 
 
 # --------------------------------------------------- isenção 3: o marco zero
@@ -147,7 +147,9 @@ def test_merge_anterior_ao_marco_zero_nao_e_divida(livro):
 def test_merge_logo_depois_do_marco_zero_e_divida(livro):
     novo = INICIO_DA_COBRANCA + timedelta(minutes=1)
     agora = INICIO_DA_COBRANCA + timedelta(minutes=GRACA_EM_MINUTOS + 10)
-    assert [p["number"] for p in divida(livro, agora, [merge(100, novo, ["a.py"])])] == [100]
+    assert [
+        p["number"] for p in divida(livro, agora, [merge(100, novo, ["a.py"])])
+    ] == [100]
 
 
 # ------------------------------------------------------------------ a ordem
@@ -207,6 +209,48 @@ def test_falha_de_medicao_vira_ERROR_e_nunca_PASS(livro, monkeypatch):
 
 
 # ------------------------------------------------------------------- ajudante
+
+
+def test_so_escriturar_isenta_mesmo_misturando_livro_e_fila():
+    """O gesto NORMAL de quem termina um trabalho escreve nos dois: o registro
+    para o dono e o fechamento da tarefa no balcão.
+
+    Enquanto a isenção era só `painel/`, esse PR virava dívida — uma dívida sem
+    dono real, que trava a fila de pouso de TODOS os robôs até alguém escrever
+    um registro sobre um PR que não tinha o que registrar. Custou dois PRs de
+    rodeio em 30/08 (`armadilhas/214`) e três rodadas em 31/08, a última
+    segurando um passo que o mantenedor esperava no terminal.
+    """
+    assert so_toca_o_livro(
+        [
+            "painel/registros/20260831-001-alguma-coisa.js",
+            "fila/tarefas/099-alguma-tarefa.json",
+            "fila/eventos/20260831-120000-TAR-099-concluida.json",
+        ]
+    )
+    assert so_toca_o_livro(["fila/eventos/20260831-120000-TAR-099-concluida.json"])
+
+
+def test_quem_entrega_codigo_continua_devendo_registro():
+    """A outra metade da mesma regra, e a que não pode afrouxar: a isenção é
+    para quem SÓ escritura. Um PR que fecha a tarefa E mexe no código continua
+    tendo o que contar ao dono — é justamente o trabalho dele que interessa."""
+    assert not so_toca_o_livro(
+        [
+            "fila/eventos/20260831-120000-TAR-099-concluida.json",
+            "services/funil/apps/core/views.py",
+        ]
+    )
+    assert not so_toca_o_livro(
+        ["painel/registros/20260831-001-x.js", "infra/docker-compose.yml"]
+    )
+
+
+def test_pasta_com_nome_parecido_nao_pega_carona():
+    """`startswith` sobre prefixo de PASTA, nunca sobre o nome solto: um
+    arquivo chamado `fila-de-espera.py` na raiz não é escrituração."""
+    assert not so_toca_o_livro(["fila-de-espera.py"])
+    assert not so_toca_o_livro(["painelzinho/coisa.js"])
 
 
 def test_so_toca_o_livro_recusa_lista_vazia():
