@@ -165,6 +165,40 @@ TOKENS_COMPLETOS = {
     if chave.startswith("TOKENS_COMPLETOS_") and valor
 }
 
+# O terceiro grau (DECISAO-login-por-senha.md §4): gravar a senha de alguém
+# é mais que perguntar quem é alguém (TOKENS_ACEITOS_*) e mais que ler o
+# e-mail da sessão (TOKENS_COMPLETOS_*) — por isso é um grau PRÓPRIO, não uma
+# reutilização de nenhum dos dois. `setPassword`/`resetPassword` exigem estar
+# também aqui. Conjunto vazio ⇒ ninguém grava senha nenhuma.
+TOKENS_SENHA = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_SENHA_") and valor
+}
+
+# ---------------------------------------------------------------------------
+# Login por senha (DECISAO-login-por-senha.md) — o segundo jeito de entrar.
+# ---------------------------------------------------------------------------
+# `django.contrib.auth.hashers`/`password_validation` funcionam standalone,
+# sem o app `django.contrib.auth` inteiro em INSTALLED_APPS (que traria User,
+# admin e migrações que esta célula não usa) — só dependem destas duas
+# configurações. Declaradas por extenso, mesmo repetindo o default de
+# fábrica do Django: esta célula já segue a convenção de nunca depender de
+# default calado (ver TIME_ZONE acima).
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+]
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+        "OPTIONS": {"min_length": 8},
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+]
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

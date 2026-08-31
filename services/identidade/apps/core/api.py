@@ -36,10 +36,12 @@ recurso, sobre as listas e regras DELA.
 """
 
 from django.conf import settings
+from django.contrib.auth.hashers import make_password
 from ninja import Router, Schema
 from ninja.errors import HttpError
 
 from apps.core import sessao as ses
+from apps.core import tokens_de_entrada as tokens
 from apps.identidade.models import Identidade
 
 router = Router()
@@ -97,6 +99,36 @@ class PessoaPorEmail(Schema):
     """O id opaco de quem tem aquele e-mail, ou `null` — nunca o e-mail de volta."""
 
     id: "str | None" = None
+
+
+# [LOGIN-POR-SENHA] Os schemas de `DECISAO-login-por-senha.md` (31/08/2026).
+class TokenDeEntrada(Schema):
+    """O token efêmero a embutir no POST de /entrar/senha. Opaco para quem o recebe."""
+
+    token: str
+
+
+class DefinirSenhaPedido(Schema):
+    """O e-mail e a senha em texto puro (transporte é HTTPS interno, nunca fica em log — o hash nasce do lado da identidade, nunca do lado de quem chama). nome/site_id só valem na primeira vez (cunhagem); numa Identidade que já existe, são ignorados."""
+
+    email: str
+    senha: str
+    nome: "str | None" = None
+    site_id: "str | None" = None
+
+
+class PessoaComSenha(Schema):
+    """Confirma que a senha foi gravada. Nunca ecoa a senha nem o hash."""
+
+    id: str
+    criada: bool
+
+
+class PessoaComSenhaNova(Schema):
+    """A senha nova, em texto puro, para o mantenedor repassar por fora (WhatsApp). Sai UMA vez nesta resposta; a célula não a grava em lugar nenhum além do hash."""
+
+    id: str
+    senha_nova: str
 
 
 def _quem_e(request) -> "tuple[dict, object | None]":
@@ -223,3 +255,91 @@ def pessoa_por_email(request, corpo: EmailPedido):
 
     achada = Identidade.objects.filter(email=email).values_list("id", flat=True).first()
     return {"id": achada}
+
+
+@router.post(
+    "/tokens-de-entrada",
+    response=TokenDeEntrada,
+    operation_id="issueLoginToken",
+    summary="Um token efêmero para provar, no POST de /entrar/senha, que o pedido veio do site",
+    description=(
+        "Login por senha (DECISAO-login-por-senha.md) é um POST que CRIA "
+        "sessão — ao contrário de /entrar/sair, que só destrói, o padrão de "
+        "origem (Origin/Referer) não basta aqui (LICOES.md da célula já "
+        "registra isso por escrito). Como quem RENDERIZA o formulário de "
+        "senha é o `funil`, não esta célula, e um CSRF token do funil nunca "
+        "validaria aqui (segredos diferentes), a prova é este token assinado "
+        "(TimestampSigner, expira em minutos) — o mesmo princípio do `state` "
+        "que o fluxo do Google já usa, só que emitido para outra célula em "
+        "vez de guardado na própria sessão. Qualquer par aceito pode pedir; "
+        'o token não carrega e-mail nem senha nenhuma, só prova "isto foi '
+        'pedido a este site, agora".'
+    ),
+)
+def emitir_token_de_entrada(request):
+    return {"token": tokens.emitir()}
+
+
+@router.post(
+    "/pessoas/definir-senha",
+    response=PessoaComSenha,
+    operation_id="setPassword",
+    summary="Cria ou atualiza a senha de uma pessoa (cadastro sem conta do Google)",
+    description=(
+        "Upsert por e-mail — mesma forma de cunhar_ou_recuperar (o caminho "
+        "do Google): se a Identidade não existir, nasce aqui; se existir, "
+        "só a senha é atualizada. `criada: true` só na primeira vez, mesma "
+        "semântica do resto da célula. Exige o grau TOKENS_SENHA_* além do "
+        'par aceito — gravar senha alheia é mais que "perguntar quem é '
+        'alguém", e por isso não reusa TOKENS_COMPLETOS_* (esse grau é '
+        "sobre LER e-mail, não sobre ESCREVER senha)."
+    ),
+)
+def definir_senha(request, corpo: DefinirSenhaPedido):
+    if request.auth not in settings.TOKENS_SENHA:
+        raise HttpError(403, "este par não está autorizado a definir senha")
+
+    email = (corpo.email or "").strip().lower()
+    if not email or not corpo.senha:
+        raise HttpError(422, "email e senha são obrigatórios")
+
+    identidade, criada = ses.definir_senha(
+        email=email,
+        senha=corpo.senha,
+        nome=corpo.nome or "",
+        site_id=corpo.site_id or "",
+    )
+    return {"id": identidade.id, "criada": criada}
+
+
+@router.post(
+    "/pessoas/resetar-senha",
+    response=PessoaComSenhaNova,
+    operation_id="resetPassword",
+    summary="Gera uma senha nova para um e-mail que já existe, e a devolve em texto puro UMA vez",
+    description=(
+        "Para o caminho de recuperação manual (DECISAO-login-por-senha.md "
+        "§1): o mantenedor confirma quem é a pessoa pelo WhatsApp que ela "
+        "já deixou no cadastro, aciona esta porta pelo admin, e repassa a "
+        "senha nova por fora — esta célula nunca manda mensagem nenhuma. A "
+        "senha em texto puro sai UMA vez nesta resposta e não é gravada em "
+        "lugar nenhum (só o hash fica). 404 se o e-mail não tiver Identidade "
+        "nenhuma (nada a resetar). Mesmo grau de setPassword."
+    ),
+)
+def resetar_senha(request, corpo: EmailPedido):
+    if request.auth not in settings.TOKENS_SENHA:
+        raise HttpError(403, "este par não está autorizado a resetar senha")
+
+    email = (corpo.email or "").strip().lower()
+    if not email:
+        raise HttpError(422, "email é obrigatório")
+
+    identidade = Identidade.objects.filter(email=email).first()
+    if identidade is None:
+        raise HttpError(404, "nenhuma identidade com este e-mail")
+
+    senha_nova = ses.gerar_senha_aleatoria()
+    identidade.senha_hash = make_password(senha_nova)
+    identidade.save(update_fields=["senha_hash"])
+    return {"id": identidade.id, "senha_nova": senha_nova}
