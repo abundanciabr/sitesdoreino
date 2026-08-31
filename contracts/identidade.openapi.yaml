@@ -100,8 +100,6 @@ paths:
         só na primeira vez, mesma semântica do resto da célula. Exige o grau TOKENS_SENHA_* além
         do par aceito — gravar senha alheia é mais que "perguntar quem é alguém", e por isso não
         reusa TOKENS_COMPLETOS_* (esse grau é sobre LER e-mail, não sobre ESCREVER senha).
-      security:
-        - bearerAuth: []
       responses:
         '200':
           description: OK
@@ -125,8 +123,6 @@ paths:
         repassa a senha nova por fora — esta célula nunca manda mensagem nenhuma. A senha em texto
         puro sai UMA vez nesta resposta e não é gravada em lugar nenhum (só o hash fica). 404 se o
         e-mail não tiver Identidade nenhuma (nada a resetar). Mesmo grau de setPassword.
-      security:
-        - bearerAuth: []
       responses:
         '200':
           description: OK
