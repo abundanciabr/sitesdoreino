@@ -32,6 +32,7 @@ from espera import (  # noqa: E402
     TetoVencido,
     vigiar,
 )
+from esperar import ESPERAS_QUE_NAO_DEVIAM_EXISTIR  # noqa: E402
 
 ESPERAR = RAIZ_DO_REPO / "ci" / "esperar.py"
 
@@ -192,6 +193,81 @@ def test_sem_teto_a_cli_recusa_e_ensina(tmp_path):
     assert proc.returncode != 0
     assert "teto" in (proc.stderr + proc.stdout)
     assert "armadilhas/161" in (proc.stderr + proc.stdout)
+
+
+@pytest.mark.parametrize("alvo", sorted(ESPERAS_QUE_NAO_DEVIAM_EXISTIR))
+def test_a_espera_que_nao_devia_existir_recusa_e_ensina_o_caminho(alvo, tmp_path):
+    """`--pouso`/`--checks` recusam, e a recusa ENSINA (31/08/2026).
+
+    A regra existia desde 29/08 no texto do RITOS e no cabeçalho deste script,
+    e apodreceu por não ter mecanismo: os robôs esperavam o pouso porque a
+    opção estava listada ao lado das legítimas. Medido nos 40 PRs de 31/08,
+    isso era ~8,4 min de robô parado por tarefa, olhando uma fila que anda
+    sozinha. Recusa muda não serviria: ela precisa dizer o que fazer no lugar.
+    """
+    proc = _rodar([f"--{alvo}", "447", "--teto", "15"], tmp_path)
+    saida = proc.stdout + proc.stderr
+    assert proc.returncode != 0, saida
+    assert "--pousar" in saida, "a recusa precisa ENSINAR o caminho certo"
+    assert "447" in saida, "a recusa precisa citar o PR de quem a leu"
+    assert "RITOS" in saida
+
+
+@pytest.mark.parametrize("alvo", sorted(ESPERAS_QUE_NAO_DEVIAM_EXISTIR))
+def test_a_recusa_nao_falou_a_partida_antes_de_desistir(alvo, tmp_path):
+    """Recusar DEPOIS de anunciar "vou esperar" ensinaria o oposto da lei."""
+    proc = _rodar([f"--{alvo}", "447", "--teto", "15"], tmp_path)
+    assert "▶ vou esperar" not in proc.stdout
+
+
+def test_o_escape_exige_motivo_escrito_e_entao_espera_de_verdade(tmp_path):
+    """`--mesmo-assim` existe para depurar a própria pista — e cobra o motivo."""
+    proc = _rodar(
+        ["--pouso", "447", "--teto", "1", "--intervalo", "0.05",
+         "--mesmo-assim", "depurando a pista"],
+        tmp_path,
+        gh_respostas=[{"state": "MERGED", "labels": [], "url": "u"}],
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "▶ vou esperar" in proc.stdout
+    assert "POUSOU" in proc.stdout
+
+
+def test_o_veredito_do_deploy_continua_livre(tmp_path):
+    """A espera que a LEI MANDA ter nunca pode cair na recusa acima."""
+    assert "deploy-celula" not in ESPERAS_QUE_NAO_DEVIAM_EXISTIR
+    proc = _rodar(
+        ["--run", "9", "--teto", "1", "--intervalo", "0.05"],
+        tmp_path,
+        gh_respostas=[{"status": "completed", "conclusion": "success",
+                       "name": "deploy-celula", "html_url": "u"}],
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+def test_esperar_os_checks_UMA_VEZ_continua_livre(tmp_path):
+    """`--checks` NÃO pode ser proibido — é pré-requisito do `--pousar`.
+
+    Este teste existe por um erro que quase pousou (armadilhas/258): a primeira
+    versão do PR #801 proibiu `--checks` apoiada na letra do RITOS §2 peça 6
+    ("checks de PR não se esperam"). A peça fala do LAÇO da armadilhas/156, não
+    da espera única que o portão EXIGE: `ci/mergear.py --pousar` recusa com
+    check em andamento (ERROR), e o CLAUDE.md manda esperá-los concluir antes
+    de pedir pouso. Proibir aqui tornaria o rito da casa impossível de cumprir.
+    """
+    assert "checks" not in ESPERAS_QUE_NAO_DEVIAM_EXISTIR, (
+        "proibir --checks quebra o passo 1 do rito (CLAUDE.md): o portão recusa "
+        "pedido de pouso com check em andamento — ver armadilhas/258"
+    )
+    proc = _rodar(
+        ["--checks", "447", "--teto", "1", "--intervalo", "0.05"],
+        tmp_path,
+        gh_respostas=[{"state": "OPEN", "statusCheckRollup": [
+            {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas"},
+        ]}],
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "verdes" in proc.stdout
 
 
 def test_run_verde_fala_verde_e_sai_zero(tmp_path):

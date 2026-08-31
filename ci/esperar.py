@@ -19,14 +19,31 @@ senão o harness mata o esperador antes da linha de morte — silêncio, a doen�
 
     python ci/esperar.py --run 33210 --teto 20 --dizendo "o deploy da admin"
     python ci/esperar.py --deploy <sha> --teto 20
-    python ci/esperar.py --checks 447 --teto 15 --ao-estourar pousar
-    python ci/esperar.py --pouso 447 --teto 45
+    python ci/esperar.py --checks 447 --teto 10   (uma vez, antes do --pousar)
     python ci/esperar.py --sonda "docker info" --teto 3 --regua docker-frio
 
-ANTES DE ESPERAR, PERGUNTE SE A ESPERA PRECISA EXISTIR. Checks de PR não se
-esperam: `python ci/mergear.py <N> --pousar` e siga (RITOS.md §2). A espera que
-a lei manda ter é o veredito do deploy (CLAUDE.md) — e é para essa que o
-`--run`/`--deploy` existem.
+ANTES DE ESPERAR, PERGUNTE SE A ESPERA PRECISA EXISTIR. As duas que a casa
+manda ter são o veredito do deploy (CLAUDE.md) e a conclusão dos checks UMA VEZ
+antes de pedir pouso (o portão recusa com check em andamento). Todo o resto é
+tempo morto.
+
+E DESDE 31/08/2026 ISSO TEM MECANISMO: `--pouso` RECUSA. A regra existia só em
+texto — aqui e no RITOS — e apodreceu como toda garantia sem mecanismo
+(RETROSPECTIVA-FASE-D §2): os robôs seguiam esperando o pouso, porque a opção
+estava listada ao lado das legítimas. O que custava, medido em 31/08/2026 sobre
+os 40 PRs do dia:
+
+    PR aberto até entrar (mediana) .................... 8,4 min
+    uma passagem da pista ............................. 34 s (máx 61 s)
+    o deploy chegar na VPS (mediana) .................. 3,2 min
+
+Depois que a etiqueta está posta, o robô não tem mais nada a fazer ali: a fila
+anda sozinha 326 vezes por hora e comenta no PR o desfecho. Ficar olhando não
+acelera um segundo, e enche a janela do mantenedor de batimento sem fato novo.
+A fila nunca precisou de plateia.
+
+Quem tem motivo real (depurar a própria pista) passa `--mesmo-assim "<motivo>"`;
+a recusa ensina o caminho e não se contorna por acidente.
 
 AS TRÊS LINHAS DO CONTRATO
 --------------------------
@@ -79,6 +96,22 @@ LOG_DAS_ESPERAS = Path.home() / ".sitesdoreino" / "esperas.jsonl"
 REGUA_VELHA_APOS_DIAS = 30
 AMOSTRA_MINIMA = 20
 DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infra.yml")
+
+# As esperas que a lei manda NÃO existir (RITOS.md §2 peça 6: "a melhor espera
+# é a que não acontece"). Chave = a mesma `chave` de régua resolvida no main().
+# Estão aqui, e não numa checagem espalhada, para que acrescentar uma seja uma
+# linha — e para que o teste-guarda leia a mesma lista que a recusa usa.
+#
+# `checks` NÃO ESTÁ AQUI, e a tentação de pôr é forte — a peça 6 diz "checks de
+# PR não se esperam". Ela fala do LAÇO (atualizar → esperar → a main andou →
+# repetir, as oito voltas da armadilhas/156), não da única espera que o portão
+# EXIGE: `ci/mergear.py --pousar` recusa com check em andamento (ERROR), e o
+# `CLAUDE.md` manda "espere os checks concluírem" ANTES de pedir pouso. Proibir
+# `--checks` tornaria o rito da casa impossível de cumprir. Medido ao vivo no
+# PR #801, que quase entrou com esse defeito: 90s (p50) de espera obrigatória.
+ESPERAS_QUE_NAO_DEVIAM_EXISTIR = {
+    "pouso": "a pista mergeia sozinha e comenta no PR o que aconteceu",
+}
 
 
 def _gh() -> list[str]:
@@ -425,8 +458,9 @@ def main(argv: list[str] | None = None) -> int:
     alvo.add_argument("--deploy", metavar="SHA",
                       help="sha na main — espera os runs de deploy dele")
     alvo.add_argument("--checks", metavar="PR",
-                      help="checks de um PR (pergunte antes: precisa mesmo? --pousar!)")
-    alvo.add_argument("--pouso", metavar="PR", help="PR na fila da pista até pousar")
+                      help="checks de um PR — a espera OBRIGATÓRIA antes do --pousar")
+    alvo.add_argument("--pouso", metavar="PR",
+                      help="RECUSA: a fila não precisa de plateia — peça pouso e siga")
     alvo.add_argument("--sonda", metavar="CMD",
                       help="comando local: exit 0 = pronto (Docker, Postgres…)")
     alvo.add_argument("--autoteste", action="store_true",
@@ -445,6 +479,8 @@ def main(argv: list[str] | None = None) -> int:
                    help="o plano Z — e 'continuar esperando' não é opção")
     p.add_argument("--pr", help="o PR do --ao-estourar pousar (se o alvo não for PR)")
     p.add_argument("--regua", help="chave em tempos_esperados.json (senão, deduzo)")
+    p.add_argument("--mesmo-assim", dest="mesmo_assim", metavar="MOTIVO",
+                   help="escapa da recusa de --checks/--pouso, com o MOTIVO escrito")
     args = p.parse_args(argv)
 
     if args.autoteste:
@@ -483,6 +519,25 @@ def main(argv: list[str] | None = None) -> int:
     dizendo = args.dizendo or rotulo
     regua = carregar_regua(args.regua or chave)
     pr_do_pouso = args.pr or args.checks or args.pouso
+
+    # A ESPERA QUE NÃO DEVIA EXISTIR (31/08/2026) — ver o cabeçalho. A recusa
+    # vem ANTES da partida da voz de propósito: um robô que já anunciou "vou
+    # esperar" e depois desiste ensina o oposto do que a lei quer.
+    if chave in ESPERAS_QUE_NAO_DEVIAM_EXISTIR and not args.mesmo_assim:
+        p.error(
+            f"esperar {rotulo} é a espera que a lei manda NÃO existir "
+            "(RITOS.md §2 peça 6: \"a melhor espera é a que não acontece\"). "
+            f"{ESPERAS_QUE_NAO_DEVIAM_EXISTIR[chave]}.\n\n"
+            f"  O caminho:  python ci/mergear.py {pr_do_pouso} --pousar\n"
+            "              …e SIGA para a próxima tarefa.\n\n"
+            "Medido em 31/08/2026, nos 40 PRs do dia: a fila entrega em 8,4 min "
+            "(mediana) e uma passagem da pista leva 34s. Esperar aqui não "
+            "acelera nada — é tempo morto do robô, e enche a janela do "
+            "mantenedor de batimento sem fato novo. A espera que a lei manda "
+            "ter é o veredito do deploy: --run/--deploy.\n\n"
+            "Se você tem motivo real (depurar a própria pista), repita com "
+            "--mesmo-assim \"<o motivo>\"."
+        )
 
     if args.ao_estourar == "pousar" and not pr_do_pouso:
         p.error("--ao-estourar pousar precisa de um PR (--pr N)")

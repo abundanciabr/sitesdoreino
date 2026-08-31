@@ -177,6 +177,40 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
      espera é a que não acontece: checks de PR não se esperam (peça 4 —
      `--pousar` e siga; a pista tem a paciência que você não tem). A espera
      que a lei manda ter é o veredito do run de deploy (`CLAUDE.md`).
+
+     **Desde 31/08/2026 isto tem mecanismo: `--pouso` RECUSA** (escape
+     consciente: `--mesmo-assim "<motivo>"`). A frase acima existia desde 29/08
+     e apodreceu por ser só texto — os robôs seguiam esperando o pouso porque a
+     opção estava listada ao lado das legítimas, e garantia sem mecanismo é o
+     padrão 2 da `RETROSPECTIVA-FASE-D.md`. **Depois que a etiqueta está posta,
+     não há mais nada a fazer ali:** a fila anda sozinha 326 vezes por hora
+     (medido nos 40 PRs de 31/08) e comenta no PR o desfecho.
+     **A fila nunca precisou de plateia.**
+
+     **Onde "checks de PR não se esperam" NÃO se aplica, e o texto acima
+     enganava:** a frase fala do LAÇO (atualizar → esperar → a `main` andou →
+     repetir, as oito voltas da `armadilhas/156`), nunca da espera ÚNICA que o
+     portão exige. `ci/mergear.py --pousar` recusa com check em andamento
+     (ERROR), e o `CLAUDE.md` manda "espere os checks concluírem" antes de
+     pedir pouso — então `--checks`, uma vez, é rito, não desperdício. Isto
+     quase virou defeito: o PR #801 nasceu proibindo `--checks` também, e a
+     tentativa de pedir o próprio pouso é que revelou a contradição.
+
+   - **Enquanto o deploy roda, VÁ TRABALHAR.** O `Monitor` roda a espera em
+     segundo plano e te acorda: essa é a razão de ele existir. Ficar parado
+     olhando os ~3,2 min do deploy (mediana medida em 31/08/2026) é a mesma
+     doença da espera do pouso, com o alvo trocado. Abra a próxima tarefa,
+     leia o balcão da fila, escreva o registro — e colha o veredito quando ele
+     chegar. O que a lei exige é **reportar** o veredito, nunca *encarar* o
+     relógio até ele sair.
+
+   - **A voz da espera já fala; não repita cada batimento com uma linha sua.**
+     Cada `⏳` do `esperar.py` já aparece na janela do mantenedor, com o estado
+     observado e o tempo decorrido. Responder a cada um com "Aguardando."
+     duplica o ruído sem acrescentar fato, e foi exatamente o que ele viu e
+     reclamou em 31/08/2026: uma tela inteira de "Aguardando" para 12 minutos
+     de espera. Fale quando **mudar o fato** (pousou, deploy verde, estourou o
+     teto), não quando mudar o relógio.
    - **A espera autorizada é a que fala sozinha e morre no prazo:**
 
      ```bash
@@ -189,8 +223,9 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
      **batimento** com o estado OBSERVADO lá fora (relógio nu é silêncio com
      batimento bonito), **desfecho sempre barulhento**. O plano Z nunca é
      "continuar esperando" — `--ao-estourar pousar` o executa em vez de só
-     anunciá-lo. Alvos: `--run` · `--deploy` · `--checks` · `--pouso` ·
-     `--sonda` (Docker frio, Postgres). A régua de "quanto costuma levar" vem
+     anunciá-lo. Alvos: `--run` · `--deploy` · `--checks` (uma vez, antes do
+     `--pousar`) · `--sonda` (Docker frio, Postgres) — `--pouso` recusa (a
+     regra acima). A régua de "quanto costuma levar" vem
      de `ci/tempos_esperados.json`; sem régua a voz diz "não sei" — nunca
      inventa número.
    - **Segundo plano sem teto interno não existe.** Medido em 29/08/2026: o
