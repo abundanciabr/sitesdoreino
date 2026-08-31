@@ -15,7 +15,10 @@ from apps.core.caixa import (
 )
 from apps.core.divida import divida_json
 from apps.core.editor_de_documentos import (
+    documento_apagar,
+    documento_arquivar,
     documento_criar,
+    documento_desarquivar,
     documento_editar,
     documento_novo,
     documento_restaurar,
@@ -172,6 +175,26 @@ urlpatterns = [
         r"^documentos/(?P<nome>[a-z0-9-]+)/salvar$",
         documento_salvar,
         name="documento_salvar",
+    ),
+    # OS GESTOS QUE MEXEM NO LUGAR DO DOCUMENTO, e nao no texto dele
+    # (`DECISAO-o-editor-de-documentos.md` §4). Todos POST: decisao que se
+    # aplica por GET e decisao que um pre-carregador de link, um antivirus
+    # corporativo ou um crawler autenticado tomam sozinhos — e um deles aqui
+    # destroi um texto. Um verbo por rota, como as sete do menu.
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/arquivar$",
+        documento_arquivar,
+        name="documento_arquivar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/desarquivar$",
+        documento_desarquivar,
+        name="documento_desarquivar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/apagar$",
+        documento_apagar,
+        name="documento_apagar",
     ),
     # O HISTORICO (`DECISAO-o-editor-de-documentos.md` §6) — o que entrou no
     # lugar do `git log` que os documentos tinham enquanto moravam no

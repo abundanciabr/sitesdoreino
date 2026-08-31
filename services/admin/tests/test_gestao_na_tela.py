@@ -26,6 +26,8 @@ salva":
 
 import json
 
+import re
+
 import httpx
 import pytest
 import respx
@@ -401,7 +403,20 @@ def test_ex_aluno_e_o_unico_caminho_para_tirar_o_acesso():
     html = _dentro().get("/escola/alunos/").content.decode()
 
     assert "Ex-aluno — perde o acesso, e a ficha continua aqui" in html
-    assert "Apagar" not in html.split("Nenhuma ficha se apaga por aqui")[0]
+    assert "Apagar" not in _sem_estilo(html).split("Nenhuma ficha se apaga por aqui")[0]
+
+
+RE_ESTILO = re.compile("<style\\b[^>]*>.*?</style\\s*>", re.DOTALL | re.IGNORECASE)
+
+
+def _sem_estilo(html: str) -> str:
+    """A página sem a folha de estilo embutida.
+
+    A folha mora dentro do HTML nesta área (`base.html` explica por quê), e
+    um comentário de CSS que fale de "apagar" não é um botão de apagar.
+    Medir a folha aqui é medir a coisa errada com precisão: `armadilhas/247`.
+    """
+    return RE_ESTILO.sub("", html)
 
 
 @respx.mock
