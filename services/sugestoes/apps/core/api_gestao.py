@@ -67,6 +67,8 @@ from . import apagamento
 from . import sessao as ses
 from .changespecs import ChangeSpecInvalido, e_aprovador
 from .changespecs import registrar as registrar_changespec
+from .correcao import CorrecaoInvalida
+from .correcao import corrigir as corrigir_o_texto
 from .gestao import (
     DIAS_DE_SILENCIO_DEMAIS,
     JA_RESPONDIDAS,
@@ -200,6 +202,32 @@ class ChangeSpecAssinado(Schema):
     registrado_em: str
 
 
+# De novo o cuidado do `armadilhas/020`: o model chama-se `CorrecaoDeTexto`, e
+# por isso este schema chama-se outra coisa. Ele não está importado aqui (quem
+# fala com o model é `apps/core/correcao.py`), e o nome distinto é o que impede
+# o sombreamento silencioso no dia em que alguém precisar importá-lo.
+class LinhaDaCorrecao(Schema):
+    """Uma correção de texto, como ela ficou registrada — append-only na origem.
+
+    Só a EQUIPE vê isto. A correção é calada para o aluno (decisão do mantenedor
+    em 31/08/2026), e calada só é aceitável porque o que estava escrito antes
+    fica guardado inteiro em algum lugar, e este é o lugar.
+
+    `por` é o nome exibido de quem corrigiu, nunca o e-mail: a mesma regra do
+    histórico de fases.
+    """
+
+    quando: str
+    # `titulo`, `problema` ou `solucao_proposta` — os nomes reais dos campos da
+    # ideia, como o model os guarda. Quem exibe traduz para a palavra que o
+    # leitor entende; um vocabulário próprio aqui obrigaria os dois lados a
+    # concordar sobre um terceiro conjunto de nomes.
+    campo: str
+    antes: str
+    depois: str
+    por: str
+
+
 class IdeiaComHistorico(IdeiaEmGestao):
     """A ideia inteira, com a história dela.
 
@@ -230,6 +258,11 @@ class IdeiaComHistorico(IdeiaEmGestao):
     # `default_factory=list` e não `= []`: `default=` faria o pydantic emitir
     # uma chave `"default"` no schema exportado (`armadilhas/075`).
     changespecs: "list[ChangeSpecAssinado]" = Field(default_factory=list)
+    # O rastro das correções de texto (31/08/2026), pela mesma porta e pelas
+    # mesmas razões do `changespecs`: opcional, `default_factory`, e só na ideia
+    # individual. Mais recente primeiro, a ordem do model. Uma ideia nunca
+    # corrigida devolve lista vazia, que é a resposta certa: "ninguém mexeu".
+    correcoes: "list[LinhaDaCorrecao]" = Field(default_factory=list)
 
 
 class QuadroEmGestao(Schema):
@@ -309,6 +342,29 @@ class ChangeSpecEscrito(QuemAge):
 
 class ArquivamentoEscrito(QuemAge):
     motivo: str = ""
+
+
+class TextoCorrigido(QuemAge):
+    """O texto inteiro como ele deve ficar, não só o pedaço que mudou.
+
+    Os três campos viajam SEMPRE, com o valor final de cada um — inclusive os
+    que não mudaram. É o que a tela tem na mão (um formulário preenchido com o
+    texto atual), e é o que torna a operação idempotente: reenviar o mesmo corpo
+    duas vezes não cria uma segunda correção, porque a segunda não muda nada e a
+    Caixa a recusa dizendo isso.
+
+    A alternativa — mandar só os campos alterados — obrigaria a distinguir "não
+    mandei este campo" de "mandei este campo vazio", que num JSON são a mesma
+    ausência para quem não declara `null` explicitamente. Apagar a solução
+    proposta é uma correção legítima, e ela não pode depender dessa sutileza.
+
+    `solucao_proposta` é a única com default: ela é opcional na ideia desde
+    sempre, e omiti-la significa "esta ideia não tem solução proposta".
+    """
+
+    titulo: str
+    problema: str
+    solucao_proposta: str = ""
 
 
 class Recusa(Schema):
@@ -496,6 +552,19 @@ def uma_ideia(request, sugestao_id: int):
         }
         for cs in ideia.changespecs.select_related("registrado_por")
     ]
+    # O rastro das correções, pelo mesmo caminho e pelo mesmo motivo das fichas
+    # acima: consulta feita AQUI, não no queryset que a lista do quadro também
+    # usa. `select_related` porque `corrigido_por` é lido em cada linha.
+    corpo["correcoes"] = [
+        {
+            "quando": linha.criado_em.isoformat(),
+            "campo": linha.campo,
+            "antes": linha.antes,
+            "depois": linha.depois,
+            "por": linha.corrigido_por.nome_exibido,
+        }
+        for linha in ideia.correcoes.select_related("corrigido_por")
+    ]
     return corpo
 
 
@@ -631,6 +700,39 @@ def registrar_o_changespec(request, sugestao_id: int, payload: ChangeSpecEscrito
             aprovado_em=payload.aprovado_em.isoformat(),
         )
     except ChangeSpecInvalido as recusa:
+        return 422, {"erro": " ".join(recusa.args[0])}
+    return _uma_ideia(sugestao_id)
+
+
+@router.post(
+    "/gestao/ideias/{sugestao_id}/texto",
+    response={200: IdeiaEmGestao, 422: Recusa},
+    operation_id="fixIdeaText",
+    summary="Corrige o nome e o texto da ideia — o aluno não vê marca nenhuma",
+    description=(
+        "`DECISAO-corrigir-o-texto-de-uma-ideia.md` (31/08/2026): existe para o "
+        "erro de digitação do aluno, e a correção é CALADA — nenhuma marca na "
+        "página que ele lê. O rastro fica inteiro do lado da equipe: cada campo "
+        "alterado vira uma linha append-only com o texto anterior, o texto novo "
+        "e quem corrigiu, e volta em `correcoes` na ideia individual. As mesmas "
+        "réguas de quando o aluno escreveu (nome obrigatório e de até 140 "
+        "caracteres, problema obrigatório). Recusa 422 se a ideia foi apagada "
+        "definitivamente, se uma régua não passa, ou se o texto enviado é igual "
+        "ao que já estava lá — este último para um formulário salvo sem "
+        "alteração não responder “corrigido” tendo gravado nada."
+    ),
+)
+def corrigir_texto(request, sugestao_id: int, payload: TextoCorrigido):
+    sugestao = _ideia(sugestao_id)
+    try:
+        corrigir_o_texto(
+            sugestao=sugestao,
+            por=_quem(payload),
+            titulo=payload.titulo,
+            problema=payload.problema,
+            solucao_proposta=payload.solucao_proposta,
+        )
+    except CorrecaoInvalida as recusa:
         return 422, {"erro": " ".join(recusa.args[0])}
     return _uma_ideia(sugestao_id)
 
