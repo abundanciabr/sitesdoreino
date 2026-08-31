@@ -155,3 +155,59 @@ class NotificacaoArquivada(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover
         return f"[arquivada] {self.assunto}→{self.destinatario_id}"
+
+
+class InscricaoPush(models.Model):
+    """Um APARELHO que aceitou receber o aviso na tela, mesmo com o site fechado.
+
+    Canal novo da Fase 7 (`docs/notificacoes/PLANO-MESTRE.md`), autorizado pelo
+    mantenedor em 31/08/2026 depois de o site virar app instalável (PR #706).
+    No iPhone essa ordem é obrigatória e não tem atalho: só um site instalado na
+    tela de início pode receber aviso.
+
+    **Uma linha por APARELHO, nunca por pessoa.** A mesma pessoa no celular e no
+    tablet tem duas linhas, e cada uma morre sozinha quando aquele aparelho
+    desinstala. Por isso a chave única é o `endpoint`, e não o par
+    pessoa+site: é o aparelho que o servidor de push conhece.
+
+    **E é por isso que `destinatario_id` pode MUDAR numa linha que já existe.**
+    Um aparelho emprestado, ou uma segunda conta no mesmo celular, reinscreve o
+    MESMO endpoint com outro dono, e a linha passa a ser da pessoa que está
+    entrando. A alternativa (uma linha por par pessoa+aparelho) mandaria o aviso
+    da primeira pessoa para o aparelho da segunda, que é vazamento de aviso
+    alheio e não é reversível depois de acontecer.
+
+    O que vive aqui é opaco de propósito: `endpoint` é o endereço do servidor de
+    push do fabricante, e as duas chaves são o material que CIFRA o conteúdo do
+    aviso de ponta a ponta. Nem esta célula guarda texto de aviso, nem o
+    fabricante consegue ler o que passou por ele. Nada aqui é e-mail
+    (`DECISAO-EVO-01` §3).
+    """
+
+    site_id = models.CharField(max_length=64)
+    destinatario_id = models.CharField(max_length=64)
+    # 2048 é o teto do contrato. Os endpoints reais de hoje têm ~200 caracteres,
+    # mas o valor é opaco e do fabricante: apertar isto seria decidir, por ele,
+    # o formato que ele pode usar amanhã.
+    endpoint = models.CharField(max_length=2048, unique=True)
+    p256dh = models.CharField(max_length=256)
+    auth = models.CharField(max_length=64)
+    criado_em = models.DateTimeField(auto_now_add=True)
+    # Quando este aparelho foi visto pela última vez reinscrevendo-se. O
+    # navegador reemite a inscrição sozinho de tempos em tempos, então esta
+    # coluna é o sinal mais honesto de "este aparelho ainda existe" — e é o que
+    # permitirá, um dia, uma limpeza por idade sem chutar.
+    visto_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            # O caminho quente é um só: "os aparelhos DESTA pessoa NESTE site",
+            # perguntado uma vez por carta que chega. Mesma dupla que lidera o
+            # índice da caixa, e pelo mesmo motivo (Lei 9: nada atravessa sites).
+            models.Index(
+                fields=["site_id", "destinatario_id"], name="notif_aparelhos_da_pessoa"
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.destinatario_id}@{self.endpoint[:32]}"

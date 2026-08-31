@@ -18,8 +18,14 @@ from django.db.models import F
 from django.db.models.functions import Greatest
 from django.utils import timezone
 
+from . import push
 from .consultas import resolver_id
-from .models import ContadorDeNaoLidos, Notificacao, NotificacaoArquivada
+from .models import (
+    ContadorDeNaoLidos,
+    InscricaoPush,
+    Notificacao,
+    NotificacaoArquivada,
+)
 
 
 @transaction.atomic
@@ -220,3 +226,75 @@ def marcar_uma_como_lida(*, site_id: str, destinatario_id: str, id_bruto: str) -
     if not existe:
         raise AvisoNaoEncontrado(id_bruto)
     return True
+
+
+# ---------------------------------------------------------------------------
+# O aviso na tela do aparelho (Fase 7 — o canal novo, 31/08/2026)
+# ---------------------------------------------------------------------------
+def inscrever_aparelho(
+    *, site_id: str, destinatario_id: str, endpoint: str, p256dh: str, auth: str
+) -> bool:
+    """Guarda (ou reconhece) um aparelho. Devolve se ele JÁ estava inscrito.
+
+    **Idempotente pelo `endpoint`, que é a chave do aparelho.** O navegador
+    reemite a inscrição sozinho de tempos em tempos, e cada reemissão chega
+    aqui: sem esta regra, um mesmo celular viraria dezenas de linhas e
+    receberia o mesmo aviso dezenas de vezes.
+
+    E o dono da linha é sempre quem acabou de se inscrever. Um aparelho
+    emprestado, ou uma segunda conta no mesmo celular, muda o `destinatario_id`
+    da linha que já existe — ver a docstring do model. Manter o dono antigo
+    mandaria o aviso de uma pessoa para o aparelho de outra.
+    """
+    _, criado = InscricaoPush.objects.update_or_create(
+        endpoint=endpoint,
+        defaults={
+            "site_id": site_id,
+            "destinatario_id": destinatario_id,
+            "p256dh": p256dh,
+            "auth": auth,
+        },
+    )
+    return not criado
+
+
+def esquecer_aparelho(*, site_id: str, endpoint: str) -> bool:
+    """Apaga um aparelho. Devolve se ele existia. Apagar o que não existe é 200.
+
+    Escopado por `site_id` como toda operação desta casa (Lei 9): um endpoint
+    é de um site, e pedir para esquecer o de outro não pode funcionar por
+    acidente de colisão.
+    """
+    apagados, _ = InscricaoPush.objects.filter(
+        site_id=site_id, endpoint=endpoint
+    ).delete()
+    return apagados > 0
+
+
+def avisar_os_aparelhos(
+    *, site_id: str, destinatario_id: str, assunto: str, parametros: dict
+) -> int:
+    """Manda o aviso para todo aparelho daquela pessoa. Devolve quantos saíram.
+
+    **Chamada DEPOIS da transação que grava a carta, nunca dentro dela.** Uma
+    chamada de rede dentro de uma transação segura a conexão do banco pelo
+    tempo do servidor mais lento do outro lado — e, se falhasse, desfaria a
+    gravação da carta, que é justamente a parte que não pode se perder.
+
+    Aparelho que o servidor de push declarar morto sai do banco aqui mesmo. É
+    a única limpeza automática desta tabela, e ela precisa existir: sem ela,
+    todo celular que desinstalar o app ficaria para sempre, e o custo de cada
+    carta cresceria com o número de aparelhos que já não existem.
+    """
+    if not push.esta_configurado():
+        return 0
+    enviados = 0
+    for inscricao in InscricaoPush.objects.filter(
+        site_id=site_id, destinatario_id=destinatario_id
+    ):
+        try:
+            if push.enviar(inscricao, assunto=assunto, parametros=parametros):
+                enviados += 1
+        except push.AparelhoMorto:
+            inscricao.delete()
+    return enviados
