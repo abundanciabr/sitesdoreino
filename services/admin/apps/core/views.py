@@ -735,6 +735,43 @@ def escola_alunos(request):
     )
 
 
+@require_GET
+def escola_alunos_liberados(request):
+    """Só os nomes completos de quem está ativo — pronto para colar no grupo.
+
+    Pedido do mantenedor (31/08/2026): depois de liberar alguém na tela de
+    cima, ele quer avisar o grupo de quem já pode entrar. O cartão inteiro
+    (e-mail, WhatsApp, turma) é ruído nesse gesto — ele só quer os nomes, um
+    por linha, para colar direto.
+
+    Busca DIRETO `status="ativa"` na `alunos` (a mesma porta que o cartão
+    "Alunos ativos" já declara em `TIPOS_DE_ALUNO`), e não filtra a lista
+    inteira que `contar_a_escola` traz: pedir só o que esta tela precisa poupa
+    a `alunos` de mandar gente pausada, ex-aluna e reembolsada que aqui
+    ninguém vai usar.
+
+    Fail-OPEN como o resto da área: `None` é "não consegui perguntar", e a
+    tela diz isso com todas as letras — nunca uma lista vazia, que o
+    mantenedor leria como "ninguém está liberado ainda".
+    """
+    alunos = AlunosClient().alunos(status="ativa")
+    nomes = None
+    if alunos is not None:
+        nomes = sorted(
+            (nome for a in alunos if (nome := (a.get("nome_completo") or "").strip())),
+            key=_sem_acento,
+        )
+    return render(
+        request,
+        "admin/escola_alunos_liberados.html",
+        {
+            "admin": request.admin,
+            "nomes": nomes,
+            "nao_consigo_ver": alunos is None,
+        },
+    )
+
+
 # ------------------------------------------------------------- o prontuário
 #
 # `DECISAO-a-ficha-nao-se-apaga.md` §5 (29/08/2026). Ele existe porque a mesma
