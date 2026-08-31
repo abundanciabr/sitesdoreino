@@ -1,0 +1,46 @@
+{% load t %}{% load url_i18n %}{% comment %}
+templates/funil/_instalar_o_app.html — o convite para instalar o site como app
+no celular. Pedido do mantenedor em 31/08/2026, com o motivo dele: só um site
+INSTALADO na tela de início pode mandar aviso a quem usa iPhone, e avisar os
+alunos é o ponto de tudo isso.
+
+Peça única, incluída pelo `base_mobile.html` dentro do `{% if request.i18n_seo %}`
+— e a condição não é detalhe de estilo, é o que mantém os sites monolíngues
+byte a byte como estavam (o golden de
+`tests/test_i18n_http.py::test_regressao_site_nao_registrado_landing_byte_identica`).
+O app é do site da escola; os domínios antigos são vitrine e não têm o que
+notificar. Foi pelo mesmo motivo que o `_sessao.html` nasceu fora do base, e é
+a mesma técnica de sempre: a tag de condição cola no fim da linha anterior.
+
+**O cartaz nasce escondido, e quem o revela é o `static/funil/instalar.js`** —
+depois de saber três coisas que só o navegador sabe: se é celular ou tablet
+(no PC ele nunca aparece), se o app já está instalado, e se a pessoa não pediu
+silêncio nos últimos 30 dias. Escondido por padrão é o lado seguro: com o
+JavaScript bloqueado, ninguém vê um convite que não teria como funcionar.
+
+Os DOIS blocos são os dois mundos reais, e nenhum navegador vê os dois: o
+Android abre a caixa de instalação do sistema (um botão), e o iPhone não tem
+caixa nenhuma para o site abrir (o passo a passo do Compartilhar). O JS mostra
+um ou outro, nunca os dois.
+
+`data-inicio` é a home DESTE idioma, e vai daqui para o service worker: é a
+página que o app guarda para abrir quando o celular estiver sem rede. Ela sai
+da tag de rota localizada, nunca de uma f-string com o código do idioma — no
+idioma padrão a home é a raiz nua, e `/en/` é 404 (D1 revisto).
+{% endcomment %}<aside id="instalar-o-app" class="card instalar" hidden data-inicio="{% url_i18n 'landing' %}">
+  <p class="instalar-titulo">{% t "instalar.titulo" %}</p>
+  <p class="instalar-porque">{% t "instalar.porque" %}</p>
+  <div data-modo="botao" hidden>
+    <button type="button" class="instalar-botao" data-acao="instalar">{% t "instalar.botao" %}</button>
+  </div>
+  <div data-modo="ios" hidden>
+    <p class="instalar-passos-titulo">{% t "instalar.ios_titulo" %}</p>
+    <ol class="instalar-passos">
+      <li>{% t "instalar.ios_passo_um" %}</li>
+      <li>{% t "instalar.ios_passo_dois" %}</li>
+      <li>{% t "instalar.ios_passo_tres" %}</li>
+    </ol>
+  </div>
+  <button type="button" class="instalar-depois" data-acao="depois">{% t "instalar.agora_nao" %}</button>
+</aside>
+<script src="/static/funil/instalar.js" defer></script>
