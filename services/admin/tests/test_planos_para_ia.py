@@ -152,7 +152,9 @@ def test_a_lista_exata_do_mapa_ia_nao_foi_afrouxada():
     `/mapa-ia/` continua com a decisão arquivo por arquivo (INV-P14). Se um dia
     alguém puser um prefixo lá, este teste reprova e a conversa acontece antes.
     """
-    assert all(caminho.endswith((".md", "/healthz", "/")) for caminho in CAMINHOS_ISENTOS)
+    assert all(
+        caminho.endswith((".md", "/healthz", "/")) for caminho in CAMINHOS_ISENTOS
+    )
     assert not any(
         caminho.startswith(PREFIXO_PUBLICO_DOS_PLANOS) for caminho in CAMINHOS_ISENTOS
     )
