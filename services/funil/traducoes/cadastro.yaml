@@ -12,11 +12,12 @@ titulo:
   es: "Registro | Meshcraft"
 
 meta_descricao:
-  # meta description e og:description.
-  _fonte: "c4fdbf"
-  en: "Sign up to learn to build games with Roblox Studio."
-  pt-br: "Cadastre-se para aprender a criar jogos com o Roblox Studio."
-  es: "Regístrate para aprender a crear juegos con Roblox Studio."
+  # meta description e og:description. Escola ensina modelagem 3D/UGC para o
+  # Roblox, não criação de jogos (correção do mantenedor em 30/08/2026).
+  _fonte: "a69d0d"
+  en: "Sign up to learn 3D modeling for Roblox, from scratch to your portfolio."
+  pt-br: "Cadastre-se para aprender modelagem 3D para o Roblox, do zero ao portfólio."
+  es: "Regístrate para aprender modelado 3D para Roblox, desde cero hasta tu portafolio."
 
 titulo_pagina:
   # <h1> visível da página.
