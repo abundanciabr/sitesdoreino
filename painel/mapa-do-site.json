@@ -942,6 +942,16 @@
     },
     {
       "celula": "admin",
+      "rota": "caixa/ideia/<int:ideia_id>/texto",
+      "endereco": "/admin/caixa/ideia/<int:ideia_id>/texto",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Corrigir o nome e o texto da ideia",
+      "descricao": "Para erro de digitacao do aluno. Ele passa a ver o texto novo sem marca nenhuma, e o que estava escrito antes fica guardado para a equipe."
+    },
+    {
+      "celula": "admin",
       "rota": "caixa/ideia/<int:ideia_id>/apagar",
       "endereco": "/admin/caixa/ideia/<int:ideia_id>/apagar",
       "alcance": "publico",

@@ -93,6 +93,10 @@ def uma_ideia(**campos) -> dict:
         # Caixa responde uma ideia que ninguém assinou. O campo é OPCIONAL no
         # contrato, e há um guarda para a tela aguentar ele não vir.
         "changespecs": [],
+        # O rastro das correcoes de texto (31/08/2026). Vazio por padrao: e
+        # assim que a Caixa responde uma ideia em que ninguem mexeu. Opcional
+        # no contrato, e ha guarda para a tela aguentar ele nao vir.
+        "correcoes": [],
         "historico": [
             {
                 "quando": "2026-08-14T09:00:00+00:00",
@@ -543,6 +547,7 @@ def test_a_caixa_fora_do_ar_tambem_deixa_rastro():
         "caixa_arquivar",
         "caixa_desarquivar",
         "caixa_apagar",
+        "caixa_corrigir",
     ],
 )
 def test_as_acoes_recusam_GET(rota):
@@ -567,6 +572,7 @@ def _dentro_sem_rede() -> Client:
         "caixa_arquivar",
         "caixa_desarquivar",
         "caixa_apagar",
+        "caixa_corrigir",
     ],
 )
 def test_sem_sessao_nenhuma_rota_nova_responde(rota):
@@ -746,3 +752,168 @@ def test_apagar_deixa_rastro_na_auditoria():
     assert linha.acao == Registro.APAGAR_IDEIA
     assert linha.desfecho == Registro.OK
     assert linha.alvo == "ideia:7"
+
+
+# ---------------------------------------------------------------------------
+# Corrigir o texto — `DECISAO-corrigir-o-texto-de-uma-ideia.md` (31/08/2026)
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+def test_corrigir_manda_os_tres_campos_e_quem_agiu():
+    """Os três inteiros, não só o que mudou: quem compara é a Caixa.
+
+    Fazer a conta aqui seria a tela decidir, com o texto que a página carregou
+    minutos atrás, uma coisa que só a dona do dado sabe agora.
+    """
+    cliente = _dentro()
+    a_caixa_conta()
+    escrita = respx.post(f"{IDEIAS}/7/texto").mock(
+        return_value=httpx.Response(200, json=uma_ideia(titulo="Tutorial de cabelo"))
+    )
+
+    resposta = cliente.post(
+        reverse("caixa_corrigir", args=[7]),
+        {
+            "titulo": "Tutorial de cabelo",
+            "problema": "Meus projetos ficam parados no computador.",
+            "solucao_proposta": "",
+        },
+    )
+
+    assert resposta.status_code == 302
+    enviado = json.loads(escrita.calls.last.request.content)
+    assert enviado["titulo"] == "Tutorial de cabelo"
+    assert enviado["problema"] == "Meus projetos ficam parados no computador."
+    assert enviado["solucao_proposta"] == ""
+    assert enviado["por_email"] == DONO
+    assert enviado["por_id_da_plataforma"] == ID_DA_PLATAFORMA
+
+
+@respx.mock
+def test_a_recusa_de_texto_igual_chega_inteira_ao_operador():
+    """A frase é da Caixa. Reescrevê-la aqui daria duas redações para a mesma
+    recusa, e a que ninguém testa é a que fica errada."""
+    cliente = _dentro()
+    a_caixa_conta()
+    respx.post(f"{IDEIAS}/7/texto").mock(
+        return_value=httpx.Response(
+            422,
+            json={"erro": "Não havia nada para mudar: o texto enviado é igual."},
+        )
+    )
+
+    resposta = cliente.post(
+        reverse("caixa_corrigir", args=[7]),
+        {"titulo": "Página pública com os meus projetos", "problema": "x"},
+    )
+
+    assert "erro=" in resposta["Location"]
+    assert "nada+para+mudar" in resposta["Location"]
+
+
+@respx.mock
+def test_corrigir_deixa_rastro_na_auditoria_com_verbo_proprio():
+    cliente = _dentro()
+    a_caixa_conta()
+    respx.post(f"{IDEIAS}/7/texto").mock(
+        return_value=httpx.Response(200, json=uma_ideia())
+    )
+
+    cliente.post(reverse("caixa_corrigir", args=[7]), {"titulo": "x", "problema": "y"})
+
+    linha = Registro.objects.get()
+    assert linha.acao == Registro.CORRIGIR_IDEIA
+    assert linha.desfecho == Registro.OK
+    assert linha.alvo == "ideia:7"
+
+
+@respx.mock
+def test_a_recusa_da_caixa_tambem_deixa_rastro():
+    """O desfecho RECUSADO é o que justifica esta tabela existir: quando a Caixa
+    diz não, nada é escrito lá — e mexer no texto de um aluno não pode ser um
+    gesto sem rastro em lugar nenhum."""
+    cliente = _dentro()
+    a_caixa_conta()
+    respx.post(f"{IDEIAS}/7/texto").mock(
+        return_value=httpx.Response(422, json={"erro": "O nome não pode ficar vazio."})
+    )
+
+    cliente.post(reverse("caixa_corrigir", args=[7]), {"titulo": "  ", "problema": "y"})
+
+    linha = Registro.objects.get()
+    assert linha.acao == Registro.CORRIGIR_IDEIA
+    assert linha.desfecho == Registro.RECUSADO_PELA_CELULA
+
+
+@respx.mock
+def test_o_formulario_vem_preenchido_com_o_texto_de_agora():
+    """É o que faz o gesto ser um conserto, e não um recomeço."""
+    cliente = _dentro()
+    a_caixa_conta(
+        uma_ideia(
+            titulo="Turorial de cabelo avançado masculino",
+            problema="Queria um turorial mais avançado.",
+        )
+    )
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert reverse("caixa_corrigir", args=[7]) in pagina
+    assert 'value="Turorial de cabelo avançado masculino"' in pagina
+    assert "Queria um turorial mais avançado." in pagina
+    assert "sem nenhuma marca" in pagina, (
+        "quem corrige precisa saber, ANTES de apertar o botão, que o aluno não "
+        "vê marca nenhuma"
+    )
+
+
+@respx.mock
+def test_o_rastro_aparece_com_o_texto_anterior_e_o_campo_em_portugues():
+    cliente = _dentro()
+    a_caixa_conta(
+        uma_ideia(
+            titulo="Tutorial de cabelo",
+            correcoes=[
+                {
+                    "quando": "2026-08-31T18:00:00+00:00",
+                    "campo": "titulo",
+                    "antes": "Turorial de cabelo",
+                    "depois": "Tutorial de cabelo",
+                    "por": "Davi",
+                }
+            ],
+        )
+    )
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert "o nome da ideia" in pagina, "o rastro mostra nome de campo cru"
+    assert "Turorial de cabelo" in pagina
+    assert "Davi" in pagina
+
+
+@respx.mock
+def test_a_tela_aguenta_o_rastro_ausente():
+    """`correcoes` é opcional no contrato: a Caixa de ontem não manda a chave."""
+    cliente = _dentro()
+    ideia = uma_ideia()
+    del ideia["correcoes"]
+    a_caixa_conta(ideia)
+
+    pagina = cliente.get(reverse("caixa_ideia", args=[7]))
+
+    assert pagina.status_code == 200
+    assert reverse("caixa_corrigir", args=[7]) in texto(pagina)
+
+
+@respx.mock
+def test_a_ideia_apagada_nao_oferece_corrigir():
+    """Corrigir o texto de uma ideia apagada traria de volta, por uma porta
+    lateral, o conteúdo que o apagar prometeu destruir."""
+    cliente = _dentro()
+    a_caixa_conta(uma_ideia(apagada=True, arquivada=True, titulo="", problema=""))
+
+    pagina = texto(cliente.get(reverse("caixa_ideia", args=[7])))
+
+    assert reverse("caixa_corrigir", args=[7]) not in pagina

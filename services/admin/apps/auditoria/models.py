@@ -73,6 +73,14 @@ class Registro(models.Model):
     # comentário acima) — este é sobre a ideia, é um alvo diferente, e a
     # mesma palavra "apagar" nos dois criaria ambiguidade sobre QUEM sumiu.
     APAGAR_IDEIA = "apagar_ideia"
+    # [CORRIGIR-IDEIA] 31/08/2026 (`DECISAO-corrigir-o-texto-de-uma-ideia.md`).
+    # Verbo próprio pela razão mais forte da lista: a correção é CALADA para o
+    # aluno, por decisão do mantenedor. A Caixa guarda o texto anterior de cada
+    # campo; o que ESTA tabela acrescenta, e nenhuma outra tem, é a tentativa
+    # RECUSADA — quando a Caixa diz não (texto igual, nome vazio, ideia já
+    # apagada), nada é escrito lá, e sem esta linha o gesto de mexer no texto de
+    # um aluno não teria deixado rastro em lugar nenhum.
+    CORRIGIR_IDEIA = "corrigir_ideia"
     # [MENU] 31/08/2026: o menu do topo do site passou a ser configuravel pelo
     # mantenedor (/admin/menu/). Verbo proprio pelo mesmo motivo dos de cima, e
     # com um agravante: o alvo aqui nao e uma pessoa nem uma ideia, e o SITE
@@ -132,6 +140,7 @@ class Registro(models.Model):
         (ARQUIVAR_IDEIA, "arquivar a ideia"),
         (DESARQUIVAR_IDEIA, "desarquivar a ideia"),
         (APAGAR_IDEIA, "apagar a ideia definitivamente"),
+        (CORRIGIR_IDEIA, "corrigir o texto da ideia"),
         (EDITAR_MENU, "mudar o menu do topo do site"),
         (CRIAR_DOCUMENTO, "criar um documento do site"),
         (EDITAR_DOCUMENTO, "editar um documento do site"),
