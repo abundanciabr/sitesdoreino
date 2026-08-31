@@ -438,6 +438,45 @@ linhas de tabela conforme os degraus que cada uma exige ficam prontos. A ordem
 natural de entrada é 1 → 2 → 4 → 3, porque a terceira é a única que precisa do
 motor inteiro.
 
+### 8.7 O Rito de Contrato aconteceu — e trouxe mais duas decisões
+
+Rito conduzido **com o mantenedor presente** em 31/08/2026, dentro da `TAR-055`
+(contratos no PR #688; registro `20260831-023`). Ficam aqui porque **este é o
+documento que se entrega a quem for construir** — decisão que mora só no livro
+ou só no contrato é decisão que o próximo agente lê tarde, ou não lê.
+
+**8.7.1 O modelo HÍBRIDO.** Nas palavras dele: *"serviço no contrato, incentivo
+na minha tela"*.
+
+| | forma no contrato | quem monta a frase |
+|---|---|---|
+| **Serviço** — a que não pode falhar (`matricula.situacao-alterada` hoje; senha e segurança amanhã) | assunto próprio, com ramo próprio de parâmetros | o sininho, sozinho, nos três idiomas |
+| **Incentivo** — boas-vindas, "senti sua falta", todo passo que ele vai ajustar numa terça à noite | **`jornada.passo`** (`jornada_slug` + `passo_id`, `ordem` opcional) | a tela dele, buscada na hora de ler pelo `passo_id` |
+
+**Isto não é exceção à lei 1 do §3** ("aviso é DADO, nunca frase pronta"): é a
+mesma saída que `suggestion_id` já usa desde 26/08 — o título não viaja, a tela
+o busca. O que muda é só quem guarda o texto.
+
+**O custo aceito, e ele está escrito dentro do próprio ramo do contrato:** o
+sininho passa a depender da `mensageria` para exibir esses avisos. Ela fora do
+ar deixa a linha **sem texto** — e a tela deve mostrar isso como *"não
+carregou"*, nunca sumindo com a linha nem inventando frase.
+
+**8.7.2 NENHUM preenchimento retroativo.** Só quem se cadastrar daí em diante
+recebe boas-vindas. Ele pesou contra mandar *"bem-vindo"* para quem usa o site
+há meses, e o projeto já teve um preenchimento retroativo confuso antes.
+
+Isto é **regra de quem publica, não forma de evento** — por isso não entrou no
+contrato, e mora no despacho da `TAR-056`. Quem for construir aquele degrau
+precisa obedecê-la sem ter de vir perguntar.
+
+**8.7.3 O que mais saiu do rito.** Nasceu
+`contracts/eventos/identidade.pessoa-cadastrada.v1.json` (só `site_id` e
+`pessoa_id`: nome, e-mail e provedor ficaram de fora, cada um com a razão
+escrita no próprio arquivo), e **saiu do contrato a regra "nunca em horário
+escolar"** — a dívida que a emenda do §9 de `DECISAO-gamificacao.md` tinha
+deixado anotada de propósito para o próximo rito.
+
 ---
 
 ## §9 — Riscos, com o antídoto de cada um
