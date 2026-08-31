@@ -28,7 +28,7 @@ from django.conf import settings
 from apps.auditoria.models import Registro
 
 from . import documentos
-from .clients import AlunosClient
+from .clients import AlunosClient, IdentidadeClient
 from .models import Administrador
 from .porta import _emails_autorizados
 
@@ -811,7 +811,15 @@ def escola_prontuario(request):
     email = (request.GET.get("email") or "").strip().lower()
     if not email:
         return HttpResponseRedirect(reverse("escola_alunos"))
+    return _tela_do_prontuario(request, email)
 
+
+def _tela_do_prontuario(request, email: str, **extra):
+    """O corpo de `escola_prontuario`, extraído para `escola_resetar_senha`
+    também poder renderizar esta MESMA tela depois de agir — nunca um
+    redirect (`DECISAO-login-por-senha.md`): a senha nova não pode viajar
+    pela URL (histórico do navegador, log do servidor, cabeçalho Referer).
+    `**extra` é o que cada chamador acrescenta ao contexto comum."""
     ficha = AlunosClient().prontuario(email)
     passagens = []
     for p in (ficha or {}).get("passagens", []):
@@ -845,7 +853,40 @@ def escola_prontuario(request):
                 if ficha
                 else None
             ),
+            **extra,
         },
+    )
+
+
+@require_POST
+def escola_resetar_senha(request):
+    """O reset manual de senha (`DECISAO-login-por-senha.md` §1.4) — para
+    quando alguém esquece a senha e fala com o mantenedor pelo WhatsApp que
+    já deixou no cadastro.
+
+    A senha nova sai em texto puro nesta MESMA tela, uma vez — nunca por
+    redirect, nunca gravada em auditoria (só o hash fica do lado da
+    `identidade`; esta linha registra QUEM pediu e QUANDO, nunca o segredo).
+    """
+    email = (request.POST.get("email") or "").strip().lower()
+    if not email:
+        return HttpResponseRedirect(reverse("escola_alunos"))
+
+    desfecho, detalhe, senha_nova = IdentidadeClient().resetar_senha(email)
+    Registro.objects.create(
+        quem_email=request.admin.get("email") or "",
+        quem_id=request.admin.get("id") or "",
+        acao=Registro.RESETAR_SENHA,
+        alvo=email,
+        desfecho=DESFECHO_NA_AUDITORIA[desfecho],
+        detalhe=detalhe,
+    )
+
+    return _tela_do_prontuario(
+        request,
+        email,
+        senha_nova=senha_nova if desfecho == IdentidadeClient.OK else "",
+        erro_resetar_senha=detalhe if desfecho != IdentidadeClient.OK else "",
     )
 
 

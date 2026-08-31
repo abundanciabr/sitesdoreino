@@ -27,7 +27,13 @@ completo, com o mapa das seções por fase: `docs/decisoes/PLANO-AREA-ADMIN.md`.
   página é pública: a única rota que responde sem crachá é `/healthz`
 - **Consome:** `identidade` — `GET /interno/sessao/completa` (`getSessionFull`),
   server-side, com timeout explícito, para saber quem é o dono do cookie. A
-  partir da fase 2, a operação de métricas de cada provedora
+  partir da fase 2, a operação de métricas de cada provedora. Desde
+  31/08/2026 (`DECISAO-login-por-senha.md`), também `POST
+  /interno/pessoas/resetar-senha` (`resetPassword`) — a ÚNICA escrita desta
+  célula fora do próprio banco, decidida em sessão de arquitetura com o
+  mantenedor presente (o rito que a lei abaixo já exige para este gesto),
+  pelo botão de reset manual de senha no prontuário do aluno. Exige o grau
+  `TOKENS_SENHA_ADMIN` além do par aceito
 - **Auth:** Bearer dedicado por par (`TOKENS_ACEITOS_ADMIN` na provedora). Para
   ver e-mail na resposta da `identidade`, o par precisa estar TAMBÉM em
   `TOKENS_COMPLETOS_ADMIN` — registrado na lei da identidade §6.3. **Nas

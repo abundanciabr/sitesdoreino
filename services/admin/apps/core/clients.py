@@ -68,7 +68,14 @@ class IdentidadeIndisponivel(Exception):
 
 
 class IdentidadeClient:
-    """contracts/identidade.openapi.yaml — `getSessionFull` (somente-leitura)."""
+    """contracts/identidade.openapi.yaml — `getSessionFull` (leitura, quem
+    entrou) e, desde `DECISAO-login-por-senha.md`, `resetPassword` (escrita,
+    o reset manual de senha). Estilos DIFERENTES por desenho, não por
+    inconsistência: `sessao_completa` decide ACESSO a esta área inteira e
+    levanta em qualquer falha (fail-CLOSED); `resetar_senha` é uma ação de
+    UMA tela, sempre auditada — quem chama precisa do desfecho aconteça o
+    que acontecer, então ela segue o padrão `(desfecho, detalhe, ...)` que
+    `AlunosClient.decidir` já usa neste mesmo arquivo, nunca levanta."""
 
     # Curto de propósito: isto está no caminho de alguém esperando uma página
     # abrir. A diferença para o `funil` (que também usa 2s) não é o número —
@@ -162,6 +169,72 @@ class IdentidadeClient:
 
         _anota(medidor.registrar_chamada, "respondeu", decorrido_ms)
         return corpo
+
+    # ------------------------------------------------------------------ escrita
+    #
+    # O reset manual (DECISAO-login-por-senha.md §1.4, §4): o mantenedor
+    # confirma quem é a pessoa pelo WhatsApp que ela já deixou no cadastro,
+    # aciona esta porta, e repassa a senha nova por fora. Exige o grau
+    # TOKENS_SENHA_ADMIN, além do par aceito.
+
+    #: A `identidade` gerou a senha nova e a devolveu.
+    OK = "ok"
+    #: A `identidade` respondeu e RECUSOU — 404, nenhuma Identidade com este
+    #: e-mail (a pessoa nunca entrou nem pelo Google nem por senha, então não
+    #: há o que resetar).
+    RECUSADO = "recusado"
+    #: Não deu para saber — rede, configuração ausente, 5xx, corpo fora do
+    #: contrato. Nome próprio pelo mesmo motivo de `AlunosClient.NAO_RESPONDEU`:
+    #: "não deu certo" quando pode ter dado faria o mantenedor tentar de novo
+    #: sem necessidade.
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def resetar_senha(self, email: str) -> "tuple[str, str, str]":
+        """Devolve `(desfecho, detalhe, senha_nova)`. `senha_nova` só vem
+        preenchida em `OK` — nos outros dois é `""`. **Nunca levanta**: quem
+        chama grava a linha de auditoria aconteça o que acontecer, e a
+        senha NUNCA entra nela (só a tela mostra, uma vez)."""
+        config = self._configuracao()
+        if config is None:
+            return (
+                self.NAO_RESPONDEU,
+                "o par de tokens com a identidade não está ligado",
+                "",
+            )
+        base, token = config
+
+        try:
+            r = http().post(
+                f"{base}/pessoas/resetar-senha",
+                json={"email": email},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("resetar senha: não deu para falar com a identidade: %s", erro)
+            return self.NAO_RESPONDEU, "a identidade não respondeu", ""
+
+        if r.status_code == 404:
+            return (
+                self.RECUSADO,
+                "esta pessoa ainda não tem conta nenhuma para resetar",
+                "",
+            )
+        if r.status_code != 200:
+            logger.error("resetar senha: a identidade respondeu HTTP %s", r.status_code)
+            return self.NAO_RESPONDEU, "a identidade respondeu com erro", ""
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("resetar senha: resposta fora do contrato: %s", erro)
+            return self.NAO_RESPONDEU, "a identidade respondeu fora do contrato", ""
+
+        senha_nova = corpo.get("senha_nova") if isinstance(corpo, dict) else None
+        if not senha_nova:
+            logger.error("resetar senha: resposta sem senha_nova")
+            return self.NAO_RESPONDEU, "a identidade não devolveu a senha nova", ""
+        return self.OK, "", senha_nova
 
 
 class AlunosClient:
