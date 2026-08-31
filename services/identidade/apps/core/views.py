@@ -6,11 +6,18 @@ matrícula com ninguém.** O passo a passo encolheu para:
 
     botão (no `funil`) → Google → e-mail VERIFICADO → sessão
 
+Desde 31/08/2026 (`DECISAO-login-por-senha.md`) existe um SEGUNDO caminho,
+para quem não tem conta do Google — a senha nasce no `/cadastro` do `funil`
+e o login em si é `entrar_senha`, mais abaixo neste arquivo. Os dois
+terminam no MESMO lugar: `ses.abrir_sessao`, a mesma sessão, o mesmo
+cookie — o resto do site não sabe (nem precisa saber) por qual porta
+alguém entrou.
+
 Quem decide SE PODE alguma coisa é a célula dona do recurso, na hora do
 recurso — a Caixa confere matrícula e staff quando a pessoa participa, como o
 invariante "reconhecer não é autorizar" manda (DECISAO-onde-mora-a-sessao §4).
 Há guarda mecânico provando que nenhum salto de rede além do Google acontece
-aqui (`tests/test_inv_porta_nao_consulta_ninguem.py`).
+no caminho do Google (`tests/test_inv_porta_nao_consulta_ninguem.py`).
 
 **Esta célula não renderiza página nenhuma.** A tela de entrada, nos três
 idiomas, mora no `funil` (`/{idioma}/login`); toda recusa daqui VOLTA para lá
@@ -28,7 +35,9 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
+from . import limite_de_tentativas as limites
 from . import sessao as ses
+from . import tokens_de_entrada as tokens
 from .clients import ConfiguracaoAusente, GoogleIndisponivel, GoogleOAuth
 
 # Primeiro segmento com forma de idioma (`pt-br`, `en`, `es`…) — o mesmo
@@ -210,3 +219,45 @@ def sair(request):
         return HttpResponseForbidden("origem não confere")
     ses.encerrar_sessao(request)
     return HttpResponseRedirect(destino_seguro(request.POST.get("next")))
+
+
+@csrf_exempt
+@require_POST
+def entrar_senha(request):
+    """O segundo jeito de entrar, para quem não tem conta do Google
+    (`DECISAO-login-por-senha.md`) — o POST que o mini-formulário de senha
+    de `/login` (no `funil`) manda direto para cá.
+
+    `csrf_exempt` por necessidade, como `sair` — mas a defesa NÃO é
+    `_mesma_origem`: login CRIA sessão, e `LICOES.md` desta célula já
+    registra por escrito que aquele padrão é só para ações que destroem
+    estado. Aqui a defesa é o token assinado que `issueLoginToken` emite e
+    o `funil` embute no formulário (`apps/core/tokens_de_entrada.py`) —
+    conferido ANTES de tocar em qualquer credencial, mesma ordem de
+    portões em série que `entrar_google_retorno` já usa.
+
+    A mesma chave de recusa (`senha-invalida`) serve para "e-mail sem
+    conta" e "senha errada" — `ses.verificar_senha` já não distingue os
+    dois, de propósito (não virar um jeito de descobrir quem tem conta).
+    """
+    destino = destino_seguro(request.POST.get("next"))
+
+    if not tokens.confere(request.POST.get("token") or ""):
+        return _recusar(destino, "nao-confere")
+
+    email = (request.POST.get("email") or "").strip().lower()
+    senha = request.POST.get("senha") or ""
+    if not email or not senha:
+        return _recusar(destino, "senha-invalida")
+
+    if limites.excedeu(email):
+        return _recusar(destino, "muitas-tentativas")
+
+    identidade = ses.verificar_senha(email=email, senha=senha)
+    if identidade is None:
+        limites.registrar_falha(email)
+        return _recusar(destino, "senha-invalida")
+
+    limites.limpar(email)
+    ses.abrir_sessao(request, identidade)
+    return HttpResponseRedirect(destino)
