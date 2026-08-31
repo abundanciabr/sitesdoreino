@@ -1,28 +1,37 @@
-"""A área de documentos do site — `documentos/` na raiz do repositório.
+"""A área de documentos do site — hoje no banco, ontem em `documentos/`.
 
 Decisão do mantenedor em 29/08/2026: o site passa a publicar documentos, uns
 para qualquer pessoa e outros só para quem administra. Lei:
 `docs/decisoes/DECISAO-a-area-de-documentos.md`.
 
-**Duas portas, uma fonte.** Os mesmos arquivos servem as duas telas, e é o
-PRÓPRIO documento que declara quem pode lê-lo (`publico:` no cabeçalho). Duas
-listas — uma de públicos e outra de privados — discordariam no primeiro dia em
-que alguém mexesse numa só, e a discordância aqui tem um lado caro: um texto
-saindo para o mundo sem ninguém ter decidido isso.
+**Onde o texto mora mudou em 31/08/2026** (`DECISAO-o-editor-de-documentos.md`),
+e a mudança é toda por causa de uma frase dele: *"quero gerenciar / editar os
+documentos"*. O disco do container é remontado a cada atualização da
+plataforma, então gravar a edição dele no arquivo embutido a apagaria no deploy
+seguinte, sem erro nenhum aparecer. O texto passou a morar no banco
+(`models.Documento`), e a pasta `documentos/` virou SEMENTE: lida uma vez, pela
+migração `0003`, e nunca mais.
 
-**`publico` é fail-CLOSED.** Ausente, escrito errado, ou qualquer valor que não
-seja exatamente `true` ⇒ o documento NÃO é público. Um documento novo nasce
-privado, e sair no site aberto exige uma linha escrita de propósito.
+O que este módulo continua sendo: o LEITOR da pasta (`de_texto`, para a
+semeadura) e o RENDERIZADOR (`para_html`), mais as duas perguntas que as telas
+fazem (`ler`, `listar`) — que agora respondem do banco.
+
+**Duas portas, uma fonte.** A mesma tabela serve as duas telas, e é o PRÓPRIO
+documento que declara quem pode lê-lo. Duas listas — uma de públicos e outra de
+privados — discordariam no primeiro dia em que alguém mexesse numa só, e a
+discordância aqui tem um lado caro: um texto saindo para o mundo sem ninguém ter
+decidido isso.
+
+**`publico` é fail-CLOSED.** No cabeçalho de um arquivo semeado, só a igualdade
+exata com `true` publica; na tabela, a coluna nasce `False`. Um documento novo
+nasce privado, e sair no site aberto exige um gesto de propósito.
 
 **Todo texto é escapado ANTES de virar HTML.** O renderizador daqui não deixa
 marcação passar: HTML dentro de um documento aparece como texto na tela. Isso
 torna impossível um documento injetar script na página — não por confiança em
-quem escreve, mas por construção. Guarda:
+quem escreve, mas por construção. E desde que o mantenedor escreve o texto por
+uma tela, isso deixou de ser cinto e virou o próprio cinto de segurança. Guarda:
 `tests/test_area_de_documentos.py::test_html_dentro_do_documento_sai_escapado`.
-
-A pasta vem embutida na imagem pelo mesmo passo do deploy que embute o painel
-(`deploy-celula.yml`), e este módulo NÃO guarda cópia de nada: serve os mesmos
-bytes do repositório.
 """
 
 from __future__ import annotations
@@ -80,23 +89,22 @@ PREFIXO_PUBLICO = "/docs"
 
 
 @dataclass(frozen=True)
-class Documento:
-    """Um documento, já lido do disco."""
+class CamposDoArquivo:
+    """O que um `.md` da pasta-semente diz. NÃO é o documento do site.
+
+    Um tipo próprio, e não o `models.Documento`, porque os dois respondem
+    perguntas diferentes: este é o resultado de LER um arquivo, e some assim que
+    a semeadura acaba; aquele é o texto que o site publica. Devolver um modelo
+    não-salvo aqui convidaria alguém a chamar `.save()` num objeto que veio de
+    um arquivo — que é exatamente o caminho que a migração `0003` fechou, para
+    um documento apagado não ressuscitar no deploy seguinte.
+    """
 
     nome: str  # o endereço: `como-funciona-a-entrada`
     titulo: str
     publico: bool
     ordem: int
     corpo: str  # o markdown, sem o cabeçalho
-
-    @property
-    def endereco(self) -> str:
-        """O endereço PÚBLICO deste documento — sem o prefixo da célula.
-
-        Ver `PREFIXO_PUBLICO` acima para o porquê de isto não sair de
-        `{% url %}`.
-        """
-        return f"{PREFIXO_PUBLICO}/{self.nome}"
 
 
 def diretorio() -> Path | None:
@@ -132,8 +140,8 @@ def _cabecalho(texto: str) -> tuple[dict[str, str], str]:
     return {}, texto
 
 
-def de_texto(nome: str, texto: str) -> Documento:
-    """Um `Documento` a partir do conteúdo cru do arquivo.
+def de_texto(nome: str, texto: str) -> CamposDoArquivo:
+    """Os campos de um documento a partir do conteúdo cru do arquivo.
 
     Separada da leitura de disco de propósito: é ela que os guardas do
     cabeçalho exercitam, sem precisar de arquivo nenhum.
@@ -143,7 +151,7 @@ def de_texto(nome: str, texto: str) -> Documento:
         ordem = int(campos.get("ordem", ""))
     except ValueError:
         ordem = ORDEM_PADRAO
-    return Documento(
+    return CamposDoArquivo(
         nome=nome,
         # Sem título, o endereço serve — a lista nunca mostra uma linha em
         # branco, que seria um documento invisível na prática.
@@ -157,58 +165,97 @@ def de_texto(nome: str, texto: str) -> Documento:
     )
 
 
-def _arquivo(pasta: Path, nome: str) -> Path | None:
-    """O caminho do documento, ou `None` — resolvido e conferido.
+# A função `_arquivo` viveu aqui até 31/08/2026, e o desaparecimento dela é
+# uma boa notícia: ela resolvia e conferia o caminho de um `.md` pedido POR
+# NOME NA URL, defesa em profundidade contra alguém escapar da pasta. Com o
+# texto no banco, nenhum caminho de arquivo é montado a partir do que chega
+# pela rede — a classe inteira de problema deixou de existir, em vez de ser
+# vigiada.
+def ler(nome: str) -> "Documento | None":
+    """Um documento pelo endereço, ou `None` se não existe.
 
-    O padrão da rota já impede barra e ponto-ponto; isto é defesa em
-    profundidade, não confiança cega na URL (mesmo cuidado de `mapa_ia.py`).
+    **Não decide visibilidade** — devolve o documento com as bandeiras que ele
+    tem, e quem chama decide o que fazer com elas. A view pública confere
+    `no_ar` e responde 404; a view administrativa serve tudo, inclusive o
+    arquivado (é de lá que sai o botão de desarquivar). Concentrar as duas
+    decisões aqui obrigaria esta função a saber por qual porta a pergunta veio,
+    que é justamente o tipo de dado que se esquece de passar.
+
+    O padrão do nome é conferido ANTES da consulta, e não é enfeite: a coluna é
+    `SlugField`, que aceita maiúscula e sublinhado, e um nome assim seria um
+    documento inalcançável pela rota. Aqui ele simplesmente não existe.
     """
     if not RE_NOME.match(nome):
         return None
-    caminho = (pasta / f"{nome}.md").resolve()
-    if not caminho.is_file() or pasta.resolve() not in caminho.parents:
-        return None
-    return caminho
+    from .models import Documento
+
+    return Documento.objects.filter(nome=nome).first()
 
 
-def ler(nome: str) -> Documento | None:
-    """Um documento pelo endereço, ou `None` se não existe.
-
-    **Não decide visibilidade** — devolve o documento com a bandeira que ele
-    declara, e quem chama decide o que fazer com ela. A view pública confere
-    `publico` e responde 404; a view administrativa serve tudo. Concentrar as
-    duas decisões aqui obrigaria esta função a saber por qual porta a pergunta
-    veio, que é justamente o tipo de dado que se esquece de passar.
-    """
-    pasta = diretorio()
-    if pasta is None:
-        return None
-    caminho = _arquivo(pasta, nome)
-    if caminho is None:
-        return None
-    return de_texto(nome, caminho.read_text(encoding="utf-8"))
-
-
-def listar(*, so_publicos: bool) -> list[Documento]:
+def listar(*, so_publicos: bool, com_arquivados: bool = False) -> "list[Documento]":
     """Os documentos, na ordem em que a lista os mostra.
 
     `so_publicos` é OBRIGATÓRIO e nomeado: uma chamada sem ele não compila, e
     quem escrever uma tela nova é forçado a dizer para quem ela é. Um default
-    aqui — qualquer que fosse — seria a decisão mais importante desta pasta
+    aqui — qualquer que fosse — seria a decisão mais importante desta área
     tomada por omissão.
+
+    `com_arquivados` TEM default, e o contraste com o de cima é a regra: o
+    arquivado está fora do site por decisão de alguém, então esquecer este
+    argumento esconde um documento (barulhento, e o dono reclama), enquanto
+    esquecer o de cima publicaria um texto interno (silencioso, e ninguém
+    reclama até ser tarde). O default de cada um segue essa diferença.
+
+    Pedir os públicos E os arquivados é uma pergunta que ninguém tem: nenhuma
+    tela mostra ao visitante o que foi tirado do ar. Por isso `so_publicos`
+    vence, sempre.
+    """
+    from .models import Documento
+
+    consulta = Documento.objects.all()
+    if so_publicos:
+        consulta = consulta.filter(publico=True, arquivado=False)
+    elif not com_arquivados:
+        consulta = consulta.filter(arquivado=False)
+    return list(consulta.order_by("ordem", "nome"))
+
+
+def importar_da_pasta(modelo) -> int:
+    """Semeia a tabela com os arquivos de `documentos/`. Devolve quantos entrou.
+
+    Chamada por UM lugar só, a migração `0003` — e é dela que vem o `modelo`,
+    que é a versão HISTÓRICA da tabela. Receber a classe em vez de importá-la é
+    o que deixa esta função sobreviver a mudanças futuras no modelo sem que a
+    migração antiga passe a rodar com um esquema que não existia quando ela foi
+    escrita.
+
+    **Nunca sobrescreve o que já está lá** (`get_or_create`, como o
+    `semear_areas` do fórum): rodar duas vezes é seguro, e uma edição do
+    mantenedor não é desfeita por uma semeadura repetida.
+
+    **E ela roda uma vez só.** Isso não é detalhe de implementação: fosse a
+    semeadura um passo de toda subida, um documento que o mantenedor apagasse
+    voltaria do túmulo no deploy seguinte, sem ninguém entender por quê.
     """
     pasta = diretorio()
     if pasta is None:
-        return []
-    achados = []
+        return 0
+    quantos = 0
     for caminho in sorted(pasta.glob("*.md")):
         if caminho.stem in FORA_DA_LISTA:
             continue
-        documento = de_texto(caminho.stem, caminho.read_text(encoding="utf-8"))
-        if so_publicos and not documento.publico:
-            continue
-        achados.append(documento)
-    return sorted(achados, key=lambda d: (d.ordem, d.nome))
+        campos = de_texto(caminho.stem, caminho.read_text(encoding="utf-8"))
+        _, criado = modelo.objects.get_or_create(
+            nome=campos.nome,
+            defaults={
+                "titulo": campos.titulo,
+                "publico": campos.publico,
+                "ordem": campos.ordem,
+                "corpo": campos.corpo,
+            },
+        )
+        quantos += 1 if criado else 0
+    return quantos
 
 
 # ---------------------------------------------------------------------------

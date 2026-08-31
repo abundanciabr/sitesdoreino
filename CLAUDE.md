@@ -137,10 +137,19 @@ As regras que importam:
   ninguém a mantém à mão.
 - **Verde exige prova conferida** (`evidencia` + `verificado_em`). Sem prova,
   registre como está — o painel mostra "não comprovado", e isso é honesto.
-- **Merge é gatilho de registro, não pergunta.** Mergeou (ou confirmou um
-  merge de fora — "feito", "ok", um link, um "✓"): confira de verdade
+- **O registro EMBARCA no próprio PR, antes do pedido de pouso** (desde
+  31/08/2026). Abra o PR, leia o número, escreva o registro citando esse
+  número e commite no MESMO ramo — o portão (`ci/mergear.py`) recusa pouso de
+  PR sem o próprio recibo a bordo. Não é falso-verde: o registro só entra no
+  livro SE o merge acontecer, o recibo não existe sem o fato. Por que mudou:
+  o rito manda pedir pouso e ir embora, e "registrar depois do merge" deixava
+  o livro sem ninguém para escrevê-lo — em 31/08, 12 das 25 aterrissagens de
+  um dia foram PRs pagando dívida atrasada (`armadilhas/248`).
+- **Merge confirmado de FORA ainda é gatilho de registro, não pergunta.**
+  Alguém confirmou um merge que não veio pela pista ("feito", "ok", um link,
+  um "✓"): confira de verdade
   (`gh pr view <N> --json state,mergedBy,mergeCommit`) e registre na MESMA
-  resposta.
+  resposta — esse é o caso raro que o embarque não cobre.
 - **A LEI ANTI-DUPLICAÇÃO: nenhum fato do projeto mora em dois lugares.**
   Superfície nova de acompanhamento se calcula do livro; superfície que
   mantém lista própria é proibida — inclusive dentro do próprio painel, e
@@ -150,7 +159,7 @@ As regras que importam:
 - Os painéis antigos de `arquivos/painel-*.html` são **lápides e fotografias**
   (história congelada). Não os atualize; não crie novos.
 
-**Quem faz valer:** `ci/divida_do_livro.py` (merge sem registro reprova no portão) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
+**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` (o recibo embarca no PR e o portão confere NA PORTA; a cobrança pós-merge vira rede de segurança, que ainda lista os pagamentos já em voo) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
 
 ## O clone principal é espelho, não bancada (desde 26/08/2026)
 
@@ -182,14 +191,18 @@ máquina — mudou qual, e a nova tem paciência.
 
 O fluxo, sem perguntar nada:
 
-1. PR aberto dentro do escopo de um despacho → espere os checks concluírem.
+1. PR aberto dentro do escopo de um despacho → leia o número que o `gh`
+   devolveu e **embarque o registro no mesmo ramo** (`painel/registros/`,
+   citando o número — molde em `painel/LEIA-ME.md`; PR que só escritura é
+   isento). Espere os checks concluírem.
 2. `python ci/mergear.py <N> --conferir` — tudo verde?
 3. `python ci/mergear.py <N> --pousar` — pede pouso e **vá embora**. A pista
    atualiza com a `main` de agora, confere pelo MESMO portão e mergeia; ela
-   comenta no PR o que aconteceu (pousou, devolveu, ou está esperando).
-4. O registro no livro (`painel/registros/` — só o registro); e, se o merge
-   toca `services/` ou `infra/`, o veredito do run de deploy (seção "Depois de
-   todo merge que dispara deploy").
+   comenta no PR o que aconteceu (pousou, devolveu, ou está esperando). O
+   registro aterrissa junto — depois do pouso não fica devendo nada ao livro.
+4. Se o merge toca `services/` ou `infra/`, o veredito do run de deploy
+   (seção "Depois de todo merge que dispara deploy") — esse é registro NOVO,
+   pós-merge, porque só existe depois mesmo.
 
 `--confirmo` **recusa** para quem não é a pista, e a recusa ensina o caminho.
 Vermelho, pendente, ausente ou ERROR **nunca** vira pedido de pouso — conserte
