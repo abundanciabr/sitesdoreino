@@ -779,6 +779,15 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/alunos/liberados",
+      "endereco": "/admin/escola/alunos/liberados",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Os nomes para avisar o grupo",
+      "descricao": "Só os nomes completos de quem está com matrícula ativa, um por linha — pronta para colar num aviso, sem e-mail, WhatsApp ou turma."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/alunos/prontuario",
       "endereco": "/admin/escola/alunos/prontuario",
       "alcance": "publico",
