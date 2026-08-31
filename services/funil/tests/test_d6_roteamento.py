@@ -163,7 +163,14 @@ def test_healthz_nu_continua_servindo_com_o_catalogo_fora_do_ar(client, rede):
 # (DECISAO-onde-mora-a-sessao). Não é de máquina — apesar de o nome parecer
 # infraestrutura, quem a abre é uma pessoa, e ela precisa existir nos três
 # idiomas como qualquer outra página do site.
-ROTAS_LOCALIZAVEIS = ("/", "/leads", "/cadastro", "/login")
+ROTAS_LOCALIZAVEIS = (
+    "/",
+    "/leads",
+    "/cadastro",
+    "/login",
+    "/avisos/ligar",
+    "/avisos/desligar",
+)
 
 # Um urlconf tem `path()` e `re_path()`, e o guarda precisa comparar os dois com
 # as listas do middleware — que casam por `startswith` sobre prefixo LITERAL.
