@@ -169,6 +169,12 @@ TEMPLATES = [
                 # Django só executa se o template pedir), então página que não
                 # mostra o sino não paga consulta. Ver apps/core/avisos.py.
                 "apps.core.avisos.sino",
+                # O MENU DO TOPO em TODA página (`apps.core.menu`), 31/08/2026.
+                # Processador pelo MESMO motivo do sino acima: "em todas as
+                # páginas" não pode depender de a view lembrar da peça. Ele lê o
+                # menu que o mantenedor configurou em /admin/menu/, e falha para
+                # o lado de "sem menu" em qualquer tropeço.
+                "apps.core.menu.menu_do_contexto",
             ],
         },
     },

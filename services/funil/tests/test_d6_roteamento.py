@@ -65,15 +65,19 @@ def test_a_lista_de_isencoes_do_middleware_nao_regrediu():
     `/healthz` e `/static/` saem antes de QUALQUER lógica (nem catálogo, nem
     idioma): a sonda do container não pode depender do catálogo estar de pé.
     `/sitemap.xml` precisa do Site (desde a fase 4 os idiomas vêm do catálogo)
-    mas nunca se localiza. Tirar um destes daqui é a regressão silenciosa que
-    o D6 manda vigiar.
+    mas nunca se localiza. `/google0e78b54775677e95.html` é a verificação do
+    Google Search Console (31/08/2026), conteúdo fixo como o /healthz. Tirar
+    um destes daqui é a regressão silenciosa que o D6 manda vigiar.
     """
     assert "/healthz" in CAMINHOS_SEM_SITE
     assert "/static/" in CAMINHOS_SEM_SITE
+    assert "/google0e78b54775677e95.html" in CAMINHOS_SEM_SITE
     assert "/sitemap.xml" in CAMINHOS_DE_MAQUINA
 
 
-@pytest.mark.parametrize("caminho", ["/healthz", "/static/funil/api.js"])
+@pytest.mark.parametrize(
+    "caminho", ["/healthz", "/static/funil/api.js", "/google0e78b54775677e95.html"]
+)
 def test_isencao_sem_site_roda_antes_do_catalogo_e_sem_idioma(rede, caminho):
     """A isenção é medida no comportamento, não só na constante.
 
@@ -114,6 +118,9 @@ def test_isencao_sem_site_roda_antes_do_catalogo_e_sem_idioma(rede, caminho):
         # /sitemap.xml — a rota de máquina que o funil REALMENTE serve
         "/pt-br/sitemap.xml",
         "/en/sitemap.xml",
+        # /google0e78b54775677e95.html — a verificação do Google, mesma regra
+        "/pt-br/google0e78b54775677e95.html",
+        "/en/google0e78b54775677e95.html",
     ],
 )
 def test_rota_de_maquina_prefixada_nao_vira_rota_localizada(client, rede, caminho):

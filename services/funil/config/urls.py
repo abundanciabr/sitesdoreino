@@ -12,6 +12,7 @@ from apps.core.views import (
     service_worker,
     servir_estatico,
     sitemap_xml,
+    verificacao_do_google,
 )
 
 # O urlconf NÃO conhece prefixo de idioma: o resolver (CONV-SITE, fase 1 do
@@ -26,6 +27,14 @@ urlpatterns = [
     # está na docstring de cada view).
     path("manifest.webmanifest", manifesto_do_app, name="manifesto_do_app"),
     path("sw.js", service_worker, name="service_worker"),
+    # Verificação de propriedade do Google Search Console (31/08/2026): rota
+    # de máquina isenta de Site, como o /healthz — o nome do arquivo é o token
+    # que o Google emitiu para meshcraft.top.
+    path(
+        "google0e78b54775677e95.html",
+        verificacao_do_google,
+        name="verificacao_do_google",
+    ),
     # Rota de máquina (D6) como o /healthz: o CONV-SITE já isentava `/static/`
     # de resolver Host, mas a isenção só entrega a requisição ao urlconf — e o
     # urlconf não tinha onde entregá-la. Daí o 404 de produção. O porquê de

@@ -29,6 +29,11 @@
     .sessao .sair { display: inline; margin-left: .5rem; }
     .sessao .sair button { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; opacity: .7; }
     .recusa { font-size: .9rem; color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: .5rem; padding: .75rem 1rem; margin-bottom: 1rem; }
+    .divisor { display: flex; align-items: center; gap: .75rem; margin: 1.25rem 0; font-size: .8rem; color: #71717a; }
+    .divisor::before, .divisor::after { content: ""; flex: 1; border-top: 1px solid #e4e4e7; }
+    input[type=email], input[type=password] { width: 100%; padding: .75rem; border: 1px solid #ccc; border-radius: .5rem; font-size: 1rem; margin-bottom: .5rem; }
+    label { display: block; font-size: .875rem; margin-bottom: .25rem; }
+    .cta-secundaria { background: #fff; color: #16a34a; border: 1px solid #16a34a; }
 {% endblock %}
 {% block conteudo %}
 {% include "funil/_sessao.html" %}
@@ -44,10 +49,26 @@
   {% elif erro == "nao-configurada" %}<p class="recusa">{% t "login.erro_nao_configurada" %}</p>
   {% elif erro == "google-indisponivel" %}<p class="recusa">{% t "login.erro_google_indisponivel" %}</p>
   {% elif erro == "email-nao-verificado" %}<p class="recusa">{% t "login.erro_email_nao_verificado" %}</p>
+  {% elif erro == "senha-invalida" %}<p class="recusa">{% t "login.erro_senha_invalida" %}</p>
+  {% elif erro == "muitas-tentativas" %}<p class="recusa">{% t "login.erro_muitas_tentativas" %}</p>
   {% endif %}
   <p>{% t "login.subtitulo" %}</p>
   <a class="cta" href="{{ url_de_entrada }}">{% t "login.botao_google" %}</a>
   <p class="aviso">{% t "login.aviso_email" %}</p>
+  {% if token_de_senha %}
+  <p class="divisor">{% t "login.ou_com_senha" %}</p>
+  <form method="post" action="{{ url_de_entrada_por_senha }}">
+    <input type="hidden" name="token" value="{{ token_de_senha }}">
+    <input type="hidden" name="next" value="{{ destino }}">
+    <label>{% t "login.campo_email" %}
+      <input type="email" name="email">
+    </label>
+    <label>{% t "login.campo_senha" %}
+      <input type="password" name="senha">
+    </label>
+    <button class="cta cta-secundaria" type="submit">{% t "login.botao_senha" %}</button>
+  </form>
+  {% endif %}
   <p class="aviso">{% t "login.nao_tem_conta_google" %} <a href="{% url_i18n 'cadastro' %}">{% t "login.link_cadastro" %}</a></p>
 </div>
 {% endblock %}

@@ -142,6 +142,15 @@
       "descricao": "Um endereço que responde 'estou de pé'. É por ele que o servidor descobre sozinho se o site caiu e precisa ser reiniciado."
     },
     {
+      "celula": "funil",
+      "rota": "google0e78b54775677e95.html",
+      "endereco": "/google0e78b54775677e95.html",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A prova de propriedade para o Google Search Console",
+      "descricao": "Um arquivo com um código fixo que o Google pediu para confirmar que o meshcraft.top é mesmo seu. Ninguém abre isto à mão."
+    },
+    {
       "celula": "identidade",
       "rota": "entrar/google",
       "endereco": "/entrar/google",
@@ -160,6 +169,16 @@
       "gesto": true,
       "titulo": "A volta do Google",
       "descricao": "Para onde o Google devolve a pessoa depois de confirmar quem ela é. Este endereço exato está cadastrado no console do Google — mudá-lo quebra o login do site inteiro."
+    },
+    {
+      "celula": "identidade",
+      "rota": "entrar/senha",
+      "endereco": "/entrar/senha",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "gesto": true,
+      "titulo": "Entrar com e-mail e senha",
+      "descricao": "O segundo jeito de entrar, para quem não tem conta do Google: recebe o e-mail e a senha que a pessoa escolheu no cadastro."
     },
     {
       "celula": "identidade",
