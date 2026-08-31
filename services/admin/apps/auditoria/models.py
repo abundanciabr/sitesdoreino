@@ -73,6 +73,12 @@ class Registro(models.Model):
     # comentário acima) — este é sobre a ideia, é um alvo diferente, e a
     # mesma palavra "apagar" nos dois criaria ambiguidade sobre QUEM sumiu.
     APAGAR_IDEIA = "apagar_ideia"
+    # [MENU] 31/08/2026: o menu do topo do site passou a ser configuravel pelo
+    # mantenedor (/admin/menu/). Verbo proprio pelo mesmo motivo dos de cima, e
+    # com um agravante: o alvo aqui nao e uma pessoa nem uma ideia, e o SITE
+    # INTEIRO — o que se muda por esta tela aparece para todo visitante. Uma
+    # linha por gesto, inclusive quando o catalogo recusa.
+    EDITAR_MENU = "editar_menu"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -87,6 +93,7 @@ class Registro(models.Model):
         (ARQUIVAR_IDEIA, "arquivar a ideia"),
         (DESARQUIVAR_IDEIA, "desarquivar a ideia"),
         (APAGAR_IDEIA, "apagar a ideia definitivamente"),
+        (EDITAR_MENU, "mudar o menu do topo do site"),
     ]
 
     OK = "ok"
