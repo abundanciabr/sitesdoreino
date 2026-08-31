@@ -96,6 +96,18 @@ SCRIPTS = [
         "env/forum.env",
         "infra/env/forum.env.exemplo",
     ),
+    # A sexta da família (31/08/2026, provisionamento da gamificação). Entrou
+    # aqui no MESMO PR do script, pelo motivo escrito acima. E nesta célula a
+    # data é a mais previsível de todas: a escada do
+    # `PLANO-CELULA-GAMIFICACAO.md` §6 tem doze degraus pela frente, e dois
+    # deles já sabem o nome da variável que vão pedir a este env
+    # (`TOKENS_ACEITOS_FORUM` no degrau 18, `TOKENS_ACEITOS_FUNIL` no 20).
+    # Cada uma é uma chance de o script apagar o que não conhece.
+    (
+        "infra/provisionar-gamificacao.sh",
+        "env/gamificacao.env",
+        "infra/env/gamificacao.env.exemplo",
+    ),
 ]
 
 RE_LISTA = re.compile(r'^CHAVES_QUE_EU_GERO="([^"]*)"', re.MULTILINE)
