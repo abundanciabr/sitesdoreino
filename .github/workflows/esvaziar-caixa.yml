@@ -1,0 +1,134 @@
+# =============================================================================
+# ESVAZIAR A CAIXA — apaga DEFINITIVAMENTE toda ideia com conteúdo no quadro,
+# pelo pipeline, sem o mantenedor colar nada em terminal nenhum.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# Em 31/08/2026, depois de a vitrine de demonstração sair, sobraram no quadro
+# duas ideias escritas por conta de gente de verdade — a retirada da vitrine é
+# cega para elas de propósito. Perguntado se preferia olhá-las pelo Admin ou
+# mandar o robô apagar tudo, o mantenedor escolheu o robô. O agente não tem SSH
+# (Lei 5) e segredo não passa por ele: o canal é este.
+#
+# ISTO NÃO TEM VOLTA, E É O ÚNICO WORKFLOW DESTA CASA COM ESSA PROPRIEDADE
+# --------------------------------------------------------------------------
+# `semear-demo-caixa` põe e tira; `semear-caixa` e `semear-*-do-forum` são
+# idempotentes e aditivos. Este destrói: título, texto, votos e comentários de
+# quem participou desaparecem para sempre (`DECISAO-apagar-ideia.md`).
+#
+# Por isso a entrada `quantas` é OBRIGATÓRIA E SEM VALOR PADRÃO. Ela é quantas
+# ideias com conteúdo quem dispara ESPERA encontrar, e o script recusa se a
+# realidade não bater exatamente. Um valor padrão faria o campo virar enfeite:
+# quem clica sem ler manteria o número de outra época, que é exatamente o
+# acidente que a trava existe para impedir.
+#
+# É uma trava diferente de um "tem certeza?": a confirmação simples mede a
+# INTENÇÃO de quem clica; esta mede o ESTADO DO MUNDO no instante do clique. A
+# turma entra em 31/08/2026 — daqui a um mês o quadro tem ideia de aluno
+# dentro, e um disparo distraído precisa parar sozinho.
+#
+# O HOST E O NÚMERO VIAJAM POR `envs:`, NUNCA COSTURADOS NO SCRIPT:
+# `${{ inputs.* }}` dentro de `script:` é injeção de comando na VPS
+# (armadilhas/047). O script lê HOST_CAIXA e QUANTAS do ambiente.
+#
+# NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
+# =============================================================================
+name: esvaziar-caixa
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: 'Host do site (ex.: meshcraft.top). Precisa estar ATIVO no catálogo.'
+        required: true
+        type: string
+        default: meshcraft.top
+      quantas:
+        description: 'Quantas ideias COM CONTEÚDO você espera apagar. Sem valor padrão de propósito: se o número não bater com o quadro, nada é apagado.'
+        required: true
+        type: string
+permissions:
+  contents: read
+# Grupo PRÓPRIO, e não `deploy` — a lição da `armadilhas/173`, que o
+# `semear-caixa.yml` pagou primeiro: o GitHub guarda UM run pendente por grupo e
+# o próximo CANCELA o anterior. Num repositório com ~100 entregas por dia, um
+# disparo manual no grupo `deploy` morre antes de começar.
+concurrency:
+  group: esvaziar-caixa
+  cancel-in-progress: false
+jobs:
+  esvaziar:
+    name: apagar as ideias do quadro
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Se o script sumir ou for renomeado, PARAMOS AQUI: a ssh-action com
+      # `script_path` apontando para arquivo inexistente é caminho conhecido de
+      # falso-verde (armadilhas/149 — parâmetro que a ação avisa e IGNORA,
+      # saindo com sucesso).
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/esvaziar-caixa.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/esvaziar-caixa.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/esvaziar-caixa.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      # A trava do script mora na VPS, onde ela pode comparar com o banco. Esta
+      # aqui é só a peneira grossa: um campo em branco ou com letra não merece
+      # abrir conexão nenhuma.
+      - name: Conferir que o número é um número
+        env:
+          QUANTAS: ${{ inputs.quantas }}
+        run: |
+          set -euo pipefail
+          if ! printf '%s' "$QUANTAS" | grep -qE '^[0-9]+$'; then
+            echo "::error::PAROU POR SEGURANÇA — 'quantas' precisa ser um número inteiro, e veio '$QUANTAS'."
+            exit 1
+          fi
+          echo "✅ esperando apagar $QUANTAS ideia(s); quem confere de verdade é o banco, na VPS"
+
+      - name: Rodar na VPS
+        id: esvaziamento
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          envs: HOST_CAIXA,QUANTAS
+          capture_stdout: true
+          command_timeout: 10m
+          script_path: infra/esvaziar-caixa.sh
+        env:
+          HOST_CAIXA: ${{ inputs.host }}
+          QUANTAS: ${{ inputs.quantas }}
+
+      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o
+      # script inteiro, e ler o eco como se fosse a execução já enganou este
+      # projeto. A linha "PRONTO." só existe no caminho feliz, depois de o
+      # script conferir no banco que não sobrou conteúdo E que a conta das
+      # apagadas fecha.
+      - name: Provar pelo banco (não basta a conexão ter aberto)
+        env:
+          SAIDA: ${{ steps.esvaziamento.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi apagado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO\.'; then
+            echo "::error::Não encontrei a linha 'PRONTO.' na saída do script."
+            echo "Ela só é impressa depois de o script conferir no banco que nenhuma ideia"
+            echo "com conteúdo sobrou e que a contagem total de apagadas fecha."
+            echo "Sem ela, nada está provado — e ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          echo "✅ a Caixa está vazia. Isto não tem volta: o conteúdo apagado não existe mais."
