@@ -69,9 +69,21 @@ rotas de `apps/core/moderacao.py`.
   </details>
 {% endif %}
 
+{% comment %}
+"JÁ VI TUDO" só aparece para quem entrou E tem algo por ver. Para visitante ele
+nunca aparece: sem login não há de quem guardar a marca de leitura.
+{% endcomment %}
+{% if ator.autenticado and tem_novidade_na_area %}
+  <form class="ja-vi" method="post" action="{% url 'li_tudo' area.slug %}">
+    {% csrf_token %}
+    <button class="mini" type="submit">Já vi tudo desta área</button>
+  </form>
+{% endif %}
+
 {% for topico in topicos %}
   <div class="cartao">
     <h2><a href="{% url 'topico' topico.pk %}">{{ topico.titulo }}</a>
+      {% if topico.tem_novidade %}<span class="novidade">novidade</span>{% endif %}
       {% if topico.fixado %}<span class="etiqueta">fixado</span>{% endif %}
       {% if topico.trancado %}<span class="etiqueta">trancado</span>{% endif %}
       {% if topico.resposta_aceita_id %}<span class="etiqueta">resolvido</span>{% endif %}
