@@ -6,6 +6,7 @@ from apps.core.caixa import (
     arquivar_ideia,
     assinar_obra,
     avaliar_ideia,
+    corrigir_ideia,
     desarquivar_ideia,
     ideia,
     mesa,
@@ -291,6 +292,10 @@ urlpatterns = [
     # [APAGAR] `DECISAO-apagar-ideia.md` (29/08/2026): sem volta, nem para
     # quem criou. Mesma gramática das outras — POST, redireciona de volta.
     path("caixa/ideia/<int:ideia_id>/apagar", apagar_ideia, name="caixa_apagar"),
+    # [CORRIGIR] `DECISAO-corrigir-o-texto-de-uma-ideia.md` (31/08/2026): o erro
+    # de digitacao do aluno some, e ele nao ve marca nenhuma. Mesma gramatica
+    # das outras — POST, redireciona de volta para a ideia dizendo o que houve.
+    path("caixa/ideia/<int:ideia_id>/texto", corrigir_ideia, name="caixa_corrigir"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro

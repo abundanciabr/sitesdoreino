@@ -681,6 +681,17 @@ class CaixaClient:
         """`DECISAO-apagar-ideia.md`: sem volta, nem para quem criou."""
         return self._escrever(f"/gestao/ideias/{ideia_id}/apagar", quem)
 
+    def corrigir_texto(self, ideia_id: int, *, campos: dict, quem: dict):
+        """`DECISAO-corrigir-o-texto-de-uma-ideia.md`: o erro de digitação some.
+
+        `campos` traz os TRÊS textos inteiros (`titulo`, `problema`,
+        `solucao_proposta`), como o contrato pede — e não só o que mudou. Quem
+        decide o que de fato mudou é a Caixa, comparando com o que está gravado;
+        fazer essa conta aqui seria a tela decidindo, com dados de segundos
+        atrás, uma coisa que só a dona do dado sabe agora.
+        """
+        return self._escrever(f"/gestao/ideias/{ideia_id}/texto", {**campos, **quem})
+
 
 class CatalogoClient:
     """O catálogo, que é onde mora o MENU do topo do site.
