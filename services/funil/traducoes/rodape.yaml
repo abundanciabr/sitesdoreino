@@ -1,0 +1,78 @@
+# traducoes/rodape.yaml — o rodapé, presente em TODA página do site
+# (apps/core/rodape.py). Formato key-major (D2); `_fonte` é sha256[:6] do valor
+# `en`; o inglês é a FONTE.
+#
+# Por que é catálogo PRÓPRIO, e não parte de `landing` ou `sessao`: estes textos
+# não pertencem a página nenhuma, e o validador confere template↔catálogo nos
+# dois sentidos. É a mesma razão pela qual `sessao.yaml` existe.
+#
+# ETAPA 2, para quem vier depois: o mantenedor pediu, no mesmo dia, poder trocar
+# estes textos sozinho, pelo painel. Quando isso existir, o que estiver aqui vira
+# o TEXTO DE FÁBRICA (o que o site mostra enquanto ninguém escreveu nada, e para
+# onde ele volta se o painel ficar fora do ar), e o que o dono escrever passa a
+# ter preferência. Nada aqui precisa mudar por causa disso.
+
+marca:
+  # A assinatura da escola. Nome próprio protegido pelo glossário (D8.1):
+  # idêntico nas três línguas por definição. É o mesmo nome que a faixa do
+  # fórum usa, de propósito — uma casa, um nome.
+  _fonte: "3cfc28"
+  en: "Meshcraft Academy"
+  pt-br: "Meshcraft Academy"
+  es: "Meshcraft Academy"
+
+descricao:
+  # Uma linha só, dizendo o que a escola faz. "Roblox" está no glossário e
+  # aparece literal nas três.
+  _fonte: "39ab69"
+  en: "The school that teaches you to model in 3D and earn your first dollars on Roblox."
+  pt-br: "A escola que ensina você a modelar em 3D e a ganhar seus primeiros dólares no Roblox."
+  es: "La escuela que te enseña a modelar en 3D y a ganar tus primeros dólares en Roblox."
+
+aria_links:
+  # Só para leitor de tela: diz O QUE é aquele grupo de links. O texto visível
+  # é a própria lista, logo abaixo dele.
+  _fonte: "44cf6f"
+  en: "Useful links"
+  pt-br: "Links úteis"
+  es: "Enlaces útiles"
+
+link_inicio:
+  _fonte: "3a7869"
+  en: "Home"
+  pt-br: "Início"
+  es: "Inicio"
+
+link_cadastro:
+  _fonte: "5e2b8e"
+  en: "Sign up"
+  pt-br: "Cadastro"
+  es: "Registro"
+
+link_forum:
+  # O fórum é outra célula e é monolíngue: o rótulo aqui é traduzido, mas o
+  # destino é o mesmo endereço cru nos três idiomas.
+  _fonte: "4da7bd"
+  en: "Forum"
+  pt-br: "Fórum"
+  es: "Foro"
+
+link_documentos:
+  # A biblioteca pública (`/docs/`), onde mora "Como funciona a entrada".
+  _fonte: "b4e929"
+  en: "Documents"
+  pt-br: "Documentos"
+  es: "Documentos"
+
+direitos:
+  # `{ano}` vem do servidor (`apps/core/rodape.py`), nunca escrito à mão: um ano
+  # cravado no texto fica velho em 1º de janeiro e ninguém percebe.
+  #
+  # NÃO leva `_juridico` (D8.2): aquela marca é para texto com efeito legal que
+  # exige revisão humana declarada — termos de uso, privacidade, consentimento.
+  # Uma linha de direitos autorais não pede tradutor juramentado, e marcá-la
+  # assim gastaria o mecanismo no lugar errado.
+  _fonte: "a785c0"
+  en: "© {ano} Meshcraft Academy. All rights reserved."
+  pt-br: "© {ano} Meshcraft Academy. Todos os direitos reservados."
+  es: "© {ano} Meshcraft Academy. Todos los derechos reservados."

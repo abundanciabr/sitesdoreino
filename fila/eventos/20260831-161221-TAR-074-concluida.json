@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-161221-TAR-074-concluida",
+  "tarefa": "TAR-074",
+  "evento": "concluida",
+  "quando": "2026-08-31T16:12:21+00:00",
+  "quem": "sessao-gamificacao-3108",
+  "evidencia": "PR https://github.com/abundanciabr/sitesdoreino/pull/708 mergeado (commit 5ab960ae), deploy-celula run 33412064640 completed/success. 107 testes verdes na celula (11 novos), black limpo, contrato IDENTICO ao congelado, 13 muralhas PASS. PROVA DE FORA: https://meshcraft.top/conquistas/ responde 200 com <title>Conquistas | Meshcraft Academy</title> e o convite 'Suas conquistas ficam aqui'; https://meshcraft.top/conquistas/static/gamificacao.css responde 200 (as armadilhas 083 e 102 nao pegaram). Antes do PR o endereco era 404.",
+  "verificado_em": "2026-08-31"
+}

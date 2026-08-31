@@ -144,3 +144,24 @@ O que fica para esta célula: `tests/test_escrever.py` tem **um** teste com
 `Client(enforce_csrf_checks=True)` percorrendo a tela inteira. Ele é o único que
 prova o formulário — todos os outros provam a permissão e passam por cima da
 porta de CSRF.
+
+## O rodapé é COPIADO da `funil`, e o que foi copiado é o desenho (não o arquivo)
+
+`apps/core/rodape.py` e o `<footer>` do `base.html` nasceram em 31/08/2026 com a
+mesma FORMA da célula `funil` (PR #705): quem DECIDE é um processador de
+contexto e quem DESENHA é o molde. Lei 7 do Caminho Dourado — copie o padrão,
+nunca importe o arquivo da outra célula. A razão de as duas terem a mesma forma
+é a etapa 2 (o mantenedor editando os textos no painel): ela vai mandar nas duas
+pelo mesmo caminho, e forma diferente aqui custaria dois desenhos.
+
+Duas diferenças propositais, para quem for mexer:
+
+- **Não há catálogo de tradução** — o fórum é monolíngue e o texto mora no
+  molde, como "Fórum da Meshcraft Academy" já morava.
+- **O estilo precisa de guarda própria.** Esta célula serve o CSS por rota
+  (`armadilhas/083`), então classe nova no HTML sem regra no arquivo é um rodapé
+  sem forma, e nada fica vermelho.
+  `test_o_estilo_do_rodape_chega_pela_rota_do_css` pergunta ao SERVIDOR, não ao
+  disco. E a resposta dessa rota é um `FileResponse`: pedir `.content` dela
+  levanta `AttributeError` e deixa o teste vermelho por instrumento, não por
+  defeito — use `streaming_content`.

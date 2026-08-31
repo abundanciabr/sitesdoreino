@@ -61,7 +61,15 @@ TEMPLATES = [  # [RECEITA:R6 v1] — landing (ilha Alpine)
         # emissão SEO de site registrado (D5). Site não registrado não referencia
         # a variável — saída byte-idêntica à anterior (teste de regressão).
         "OPTIONS": {
-            "context_processors": ["django.template.context_processors.request"]
+            "context_processors": [
+                "django.template.context_processors.request",
+                # O RODAPÉ em TODA página (`apps/core/rodape.py`), pedido do
+                # mantenedor em 31/08/2026. É processador de contexto, e não
+                # `{% include %}` escrito em cada template, porque "em todas as
+                # páginas" não pode depender de alguém lembrar de incluir a
+                # peça: página nova nasce com rodapé sozinha.
+                "apps.core.rodape.rodape_do_contexto",
+            ]
         },
     },
 ]

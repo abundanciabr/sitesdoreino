@@ -67,6 +67,57 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Product' }
         '404': { description: Inexistente }
+  /sites/{site_id}/menu:
+    get:
+      operationId: getSiteMenu
+      summary: O menu do topo de um site, para a tela que o configura
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: O menu deste site (vazio quando não há)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteMenu'
+        '404':
+          description: Site inexistente
+      description: 'Serve a configuração inteira do menu. Site sem menu responde 200 com um objeto vazio,
+        e não 404: para quem vai configurar, ''ainda não tem menu'' é um estado normal, não um erro.'
+    put:
+      operationId: putSiteMenu
+      summary: Grava o menu do topo de um site, inteiro
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: O menu como ficou gravado, na forma canônica
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteMenu'
+        '404':
+          description: Site inexistente
+        '422':
+          description: Configuração incoerente; nada foi gravado
+      description: 'Substitui a configuração inteira do menu: versões, itens e regras por página de uma
+        vez. Documento inteiro, e não remendo campo a campo, porque a coerência é do CONJUNTO: uma versão
+        só pode sumir junto com as páginas que apontavam para ela. Configuração incoerente responde 422
+        com o motivo em português, e NADA é gravado.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiteMenu'
+        required: true
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
@@ -109,6 +160,164 @@ components:
                   false ⇒ as páginas desse idioma saem com noindex e ficam fora
                   do hreflang e do sitemap. Serve para lançar um idioma antes de
                   querer tráfego nele.
+        menu:
+          description: 'O menu do topo deste site. Ausente: o site não tem menu configurado, e a resposta segue
+            byte a byte igual à de antes desta fase.'
+          properties:
+            default_version:
+              description: 'Apelido da versão usada por toda página sem regra própria. Vazio: página sem regra
+                não mostra menu nenhum.'
+              type: string
+            versions:
+              description: 'As versões do menu deste site (ex.: completo, enxuto).'
+              items:
+                properties:
+                  slug:
+                    description: Apelido único da versão; é o que as páginas apontam.
+                    type: string
+                  name:
+                    description: Nome que o mantenedor lê na tela de configuração.
+                    type: string
+                  items:
+                    description: As opções do menu, na ordem em que aparecem.
+                    items:
+                      properties:
+                        url:
+                          description: Caminho deste site começando com uma barra, ou endereço completo de um
+                            site de fora.
+                          type: string
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: Nome do item por idioma (BCP 47 minúsculo). Idioma sem rótulo cai no idioma
+                            padrão do site.
+                          type: object
+                        localized:
+                          default: false
+                          description: 'true: quem serve a página põe o prefixo do idioma no caminho. Só vale
+                            para rota da própria célula: link para outra célula segue cru (R12).'
+                          type: boolean
+                        audience:
+                          default: everyone
+                          description: Para quem este item aparece.
+                          enum:
+                          - everyone
+                          - logged_out
+                          - logged_in
+                          type: string
+                        new_tab:
+                          default: false
+                          description: Abrir numa aba nova.
+                          type: boolean
+                      required:
+                      - url
+                      - labels
+                      type: object
+                    type: array
+                required:
+                - slug
+                - name
+                - items
+                type: object
+              type: array
+            pages:
+              description: Qual versão cada página usa. Página fora desta lista usa a default_version.
+              items:
+                properties:
+                  page:
+                    description: 'Chave da página na forma ''celula/rota'', a mesma dupla de painel/mapa-do-site.json
+                      (ex.: ''funil/'' ou ''funil/login'').'
+                    type: string
+                  version:
+                    description: 'Apelido da versão. Vazio: esta página NÃO mostra menu.'
+                    type: string
+                required:
+                - page
+                - version
+                type: object
+              type: array
+          type: object
+    SiteMenu:
+      description: O menu do topo de um site, no envelope que o contrato declara.
+      properties:
+        menu:
+          description: 'O menu do topo deste site. Ausente: o site não tem menu configurado, e a resposta
+            segue byte a byte igual à de antes desta fase.'
+          properties:
+            default_version:
+              description: 'Apelido da versão usada por toda página sem regra própria. Vazio: página sem regra
+                não mostra menu nenhum.'
+              type: string
+            versions:
+              description: 'As versões do menu deste site (ex.: completo, enxuto).'
+              items:
+                properties:
+                  slug:
+                    description: Apelido único da versão; é o que as páginas apontam.
+                    type: string
+                  name:
+                    description: Nome que o mantenedor lê na tela de configuração.
+                    type: string
+                  items:
+                    description: As opções do menu, na ordem em que aparecem.
+                    items:
+                      properties:
+                        url:
+                          description: Caminho deste site começando com uma barra, ou endereço completo de
+                            um site de fora.
+                          type: string
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: Nome do item por idioma (BCP 47 minúsculo). Idioma sem rótulo cai no
+                            idioma padrão do site.
+                          type: object
+                        localized:
+                          default: false
+                          description: 'true: quem serve a página põe o prefixo do idioma no caminho. Só vale
+                            para rota da própria célula: link para outra célula segue cru (R12).'
+                          type: boolean
+                        audience:
+                          default: everyone
+                          description: Para quem este item aparece.
+                          enum:
+                          - everyone
+                          - logged_out
+                          - logged_in
+                          type: string
+                        new_tab:
+                          default: false
+                          description: Abrir numa aba nova.
+                          type: boolean
+                      required:
+                      - url
+                      - labels
+                      type: object
+                    type: array
+                required:
+                - slug
+                - name
+                - items
+                type: object
+              type: array
+            pages:
+              description: Qual versão cada página usa. Página fora desta lista usa a default_version.
+              items:
+                properties:
+                  page:
+                    description: 'Chave da página na forma ''celula/rota'', a mesma dupla de painel/mapa-do-site.json
+                      (ex.: ''funil/'' ou ''funil/login'').'
+                    type: string
+                  version:
+                    description: 'Apelido da versão. Vazio: esta página NÃO mostra menu.'
+                    type: string
+                required:
+                - page
+                - version
+                type: object
+              type: array
+          type: object
+      type: object
     Product:
       type: object
       required: [id, name, price_cents, active]

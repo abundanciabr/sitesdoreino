@@ -1,0 +1,16 @@
+{
+  "arquivo": "076-a-primeira-sequencia-no-ar-boas-vindas-chegando-no-sininho",
+  "id": "TAR-076",
+  "titulo": "A primeira sequencia no ar: boas-vindas chegando no sininho",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-073"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + PROVA DE FORA: uma pessoa cadastrada e o aviso aparecendo na caixa dela (resposta crua da porta de consulta, nao so teste local) + registro no livro.",
+  "despacho": "Substitui a TAR-060. E O DEGRAU QUE O MANTENEDOR VAI VER.\n\n*** ESTE DESPACHO NAO REPETE O PLANO. Ele APONTA. ***\n\nLEIA ANTES: docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md — §3 (as oito leis,\nsobretudo a 1 e a 2), §4.3 (por que e-mail nao viola a lei da frase pronta) e\n§8.7.1 (o modelo hibrido, que decide COMO esta mensagem viaja).\n\nO QUE ENTREGA: o motor passa a publicar `notificacao.devida.v1` pelo padrao\noutbox, e a primeira sequencia de verdade entra no ar — boas-vindas no cadastro.\n\nA MENSAGEM DE BOAS-VINDAS E INCENTIVO, entao ela viaja como `jornada.passo`\n(`jornada_slug` + `passo_id`), e o TEXTO fica na tabela que o mantenedor edita.\nNao invente assunto proprio para ela: o contrato ja decidiu isso em 31/08/2026, e\ninventar um assunto novo exigiria Rito de Contrato.\n\nA JORNADA SE SEMEIA COMO DADO, versionada, nunca retroativa — e \"semear\" aqui\nsignifica criar uma JornadaVersao publicada com os passos e os textos nos tres\nidiomas. Management command ou migracao de dados; nunca codigo que so um robo\nconsegue mudar depois.\n\nPROVA DE FORA, e ela nao e negociavel: uma pessoa se cadastra e o aviso APARECE\nna caixa dela, medido pela porta de consulta da notificacoes. \"O teste passou\"\nnao e prova de fora — a Fase D deste projeto ensinou isso caro\n(docs/decisoes/RETROSPECTIVA-FASE-D.md).",
+  "origem": "substitui a TAR-060, trancada por depender de tarefa trancada (consultoria de 31/08/2026)",
+  "criada_em": "2026-08-31"
+}

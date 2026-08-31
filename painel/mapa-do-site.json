@@ -78,6 +78,24 @@
     },
     {
       "celula": "funil",
+      "rota": "manifest.webmanifest",
+      "endereco": "/manifest.webmanifest",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A ficha do app para o celular",
+      "descricao": "O arquivo que o navegador do celular lê para saber o nome, a cor e o ícone do site quando alguém instala o Meshcraft na tela de início. Ninguém abre isto na mão."
+    },
+    {
+      "celula": "funil",
+      "rota": "sw.js",
+      "endereco": "/sw.js",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O ajudante do app instalado",
+      "descricao": "O programinha que fica no celular de quem instalou o site e faz o app abrir mesmo sem internet, mostrando a última versão que ele guardou."
+    },
+    {
+      "celula": "funil",
       "rota": "sitemap.xml",
       "endereco": "/sitemap.xml",
       "alcance": "publico",
@@ -301,6 +319,25 @@
       "para_quem": "maquina",
       "titulo": "O sinal de vida do fórum",
       "descricao": "Responde 'estou de pé' para o servidor."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "",
+      "endereco": "/conquistas/",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Suas conquistas",
+      "descricao": "A primeira tela do progresso do aluno: em que degrau ele está, que título ganhou e quanto falta para o próximo. Quem não entrou vê a mesma página com um convite para entrar, nunca um erro.",
+      "observacao": "Ela abre mesmo sem SITE_ID no env da célula: nesse caso trata todo mundo como visitante e grita no log, em vez de quebrar. É a mesma falha aberta que o contrato da porta de máquina exige."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "^static/(?P<caminho>.*)$",
+      "endereco": "/conquistas/static/(?P<caminho>.*)$",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A aparência das conquistas",
+      "descricao": "Os arquivos de estilo da tela de conquistas, buscados pelo navegador sozinho."
     },
     {
       "celula": "gamificacao",

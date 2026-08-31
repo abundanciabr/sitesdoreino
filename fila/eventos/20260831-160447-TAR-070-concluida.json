@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-160447-TAR-070-concluida",
+  "tarefa": "TAR-070",
+  "evento": "concluida",
+  "quando": "2026-08-31T16:04:47+00:00",
+  "quem": "sessao-funil-rodape-20260831",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/705 MERGED (mergeCommit 12ef6323, lido por gh pr view --json state,mergedBy,mergeCommit); deploy-celula run 33411626311 completed/success (gh run view --json). PROVA DE FORA na internet publica, depois do deploy: / -> rodape-completo com 'Todos os direitos reservados'; /en/ -> rodape-completo com 'All rights reserved'; /es/ -> rodape-completo com 'Todos los derechos reservados'; /cadastro, /es/cadastro e /login -> rodape-enxuto, cada um no seu idioma. Suite da celula 356 -> 383 verdes.",
+  "verificado_em": "2026-08-31"
+}

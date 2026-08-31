@@ -20,20 +20,60 @@ compara os bytes).
   <meta property="og:locale:alternate" content="{{ og }}">{% endfor %}{% if request.i18n_seo.noindex %}
   <meta name="robots" content="noindex">{% endif %}{% endif %}
   <title>{% block titulo %}{{ site.name }}{% endblock %}</title>
-  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>{% if request.i18n_seo %}{% comment %}
+O app instalado na tela do celular (31/08/2026). Tudo aqui vive dentro do
+mesmo `{% if %}` do bloco de SEO acima, e pelo mesmo motivo: site monolíngue
+renderiza saída byte-idêntica à de antes (o golden compara os bytes). O app
+é do site da escola.
+
+O idioma vai na query do manifesto porque o `start_url` dele é a página que
+abre ao tocar no ícone: quem instalou em português precisa abrir em
+português, e existe UM manifesto por site.
+
+As duas linhas da Apple continuam sendo necessárias em 2026: o iPhone lê o
+manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
+{% endcomment %}
+  <link rel="manifest" href="/manifest.webmanifest?idioma={{ request.idioma }}">
+  <meta name="theme-color" content="#16a34a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="apple-touch-icon" href="/static/funil/pwa/icone-192.png">{% endif %}
   <style>
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
     .wrap { width: 100%; max-width: 32rem; margin: 0 auto; padding: 1rem; }
-    .card { background: #fff; border-radius: .75rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    {% block estilo %}{% endblock %}
+    .card { background: #fff; border-radius: .75rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }{% if request.i18n_seo %}
+    .instalar { border: 1px solid #bbf7d0; background: #f0fdf4; }
+    .instalar-titulo { margin: 0 0 .25rem; font-weight: 600; }
+    .instalar-porque { margin: 0 0 .75rem; font-size: .9rem; color: #3f3f46; }
+    .instalar-botao { display: block; width: 100%; padding: .875rem; border: 0; border-radius: .5rem; background: #16a34a; color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .instalar-passos-titulo { margin: 0 0 .25rem; font-size: .9rem; font-weight: 600; }
+    .instalar-passos { margin: 0; padding-left: 1.25rem; font-size: .9rem; color: #3f3f46; }
+    .instalar-passos li { margin-bottom: .35rem; }
+    .instalar-depois { display: block; margin: .75rem auto 0; border: 0; background: none; padding: 0; font: inherit; font-size: .875rem; color: inherit; text-decoration: underline; cursor: pointer; opacity: .7; }{% endif %}
+    {% block estilo %}{% endblock %}{% if rodape %}
+    {% comment %}
+    O RODAPÉ (apps/core/rodape.py). Este estilo nasce dentro da condicional
+    de propósito: solto, os bytes dele entrariam também na saída dos
+    domínios monolíngues, que o golden da fase 1 do i18n compara byte a
+    byte. Quem decide se há rodapé é o processador de contexto.
+    {% endcomment %}
+    .rodape { margin-top: 2rem; padding: 1.25rem 0 .5rem; border-top: 1px solid #e4e4e7; font-size: .875rem; color: #52525b; text-align: center; }
+    .rodape .marca { margin: 0 0 .25rem; font-weight: 600; color: #1a1a1a; }
+    .rodape .descricao { margin: 0 0 1rem; }
+    .rodape .links { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem 1rem; margin: 0 0 1rem; }
+    .rodape .links a { color: #52525b; text-decoration: none; }
+    .rodape .links a:hover, .rodape .links a:focus { text-decoration: underline; }
+    .rodape .direitos { margin: 0; opacity: .8; }{% endif %}
   </style>
   {% block head_extra %}{% endblock %}
 </head>
 <body>
   <div class="wrap">{% if request.i18n_seo %}
     <nav class="idiomas" translate="no">{% for opcao in request.i18n_seo.seletor %}{% if not forloop.first %} · {% endif %}<a href="{{ opcao.href }}" hreflang="{{ opcao.tag }}" lang="{{ opcao.tag }}">{{ opcao.codigo }}</a>{% endfor %}</nav>{% endif %}
-    {% block conteudo %}{% endblock %}
+    {% block conteudo %}{% endblock %}{% if request.i18n_seo %}
+    {% include "funil/_instalar_o_app.html" %}{% endif %}{% if rodape %}
+    {% include "funil/_rodape.html" %}{% endif %}
   </div>
   {% block script_extra %}{% endblock %}
 </body>
