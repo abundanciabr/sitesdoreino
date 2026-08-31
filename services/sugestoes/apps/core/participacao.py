@@ -850,8 +850,12 @@ def votar(request, ator, sugestao_id):
     ainda dentro da transação, que é o que o contrato pede ("DEPOIS deste
     voto").
     """
+    # `autor` entra no `select_related` junto com `quadro` porque o evento passou
+    # a levar o crachá de plataforma de QUEM ESCREVEU (a regra `sugestao-votada`
+    # da gamificação paga o autor, não quem votou). Sem ele seria uma consulta a
+    # mais por voto, dentro da transação — e votar é o gesto mais repetido daqui.
     sugestao = get_object_or_404(
-        Sugestao.objects.visiveis().select_related("quadro"), pk=sugestao_id
+        Sugestao.objects.visiveis().select_related("quadro", "autor"), pk=sugestao_id
     )
     criado = False
     try:
@@ -861,7 +865,10 @@ def votar(request, ator, sugestao_id):
             )
             if criado:
                 eventos.emitir_voto_adicionado(
-                    sugestao=sugestao, autor_id=ator.identidade.id
+                    sugestao=sugestao,
+                    autor_id=ator.identidade.id,
+                    # Quem VOTOU, no id que atravessa as células.
+                    autor_id_da_plataforma=ator.identidade.id_da_plataforma,
                 )
     except IntegrityError:
         criado = False
