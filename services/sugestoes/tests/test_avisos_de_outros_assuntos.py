@@ -102,7 +102,10 @@ def test_carta_SEM_assunto_continua_sendo_de_sugestao():
             "parametros": {"suggestion_id": "5", "status_novo": "planejado"},
             "criado_em": "2026-08-29T09:00:00+00:00",
         },
-        {"5": "Uma ideia"},
+        # A forma que `_sugestoes_dos_avisos` devolve desde 31/08/2026: o
+        # título e `apagada` juntos, porque a tela precisa dos dois e eles
+        # saem da mesma consulta.
+        {"5": {"titulo": "Uma ideia", "apagada": False}},
     )
     assert item["sugestao_titulo"] == "Uma ideia"
 

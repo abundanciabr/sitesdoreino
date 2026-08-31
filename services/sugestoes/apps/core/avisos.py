@@ -391,26 +391,51 @@ def _buscar_todos_os_avisos(
     return itens
 
 
-def _titulos_das_sugestoes(itens: list[dict]) -> dict[str, str]:
-    """`suggestion_id` (de `parametros`) → título — UMA consulta para a
-    plateia inteira de avisos, nunca uma por linha (o mesmo cuidado de N+1
-    que `select_related("sugestao")` já tinha antes desta migração).
+def _sugestoes_dos_avisos(itens: list[dict]) -> dict[str, dict]:
+    """`suggestion_id` (de `parametros`) → o que a tela precisa saber da ideia:
+    o título, e se ela foi apagada. UMA consulta para a plateia inteira de
+    avisos, nunca uma por linha (o mesmo cuidado de N+1 que
+    `select_related("sugestao")` já tinha antes desta migração).
 
     O título NÃO viaja na carta de propósito
     (`DECISAO-fase-2-do-sininho.md` §4: uma ideia renomeada deixaria avisos
     antigos mostrando o nome velho para sempre) — por isso a tela busca aqui,
     NA HORA DE LER, pelo `suggestion_id` opaco.
+
+    **`apagada` vem junto pelo mesmo motivo, e é o que fecha o buraco achado
+    em 31/08/2026 pelo mantenedor:** o apagamento definitivo destrói o
+    conteúdo da ideia, mas a carta que já saiu vive na caixa central, cujo
+    contrato congelado não tem operação de retirada. Sem este campo, quem
+    recebeu o recado continuava vendo um cartão de título VAZIO — com a
+    justificativa da equipe ainda legível ao lado — apontando para uma ideia
+    que não existe mais. Isso contraria por escrito a promessa da
+    `DECISAO-apagar-ideia.md`: *"desapareça até mesmo para quem a criou"*.
     """
     ids = {(item.get("parametros") or {}).get("suggestion_id") for item in itens}
     ids_numericos = [i for i in ids if i and str(i).isdigit()]
     if not ids_numericos:
         return {}
     return {
-        str(pk): titulo
-        for pk, titulo in Sugestao.objects.filter(pk__in=ids_numericos).values_list(
-            "id", "titulo"
-        )
+        str(pk): {"titulo": titulo, "apagada": apagada_em is not None}
+        for pk, titulo, apagada_em in Sugestao.objects.filter(
+            pk__in=ids_numericos
+        ).values_list("id", "titulo", "apagada_em")
     }
+
+
+def _sobre_ideia_apagada(item: dict, sugestoes: dict[str, dict]) -> bool:
+    """Este aviso fala de uma ideia que foi apagada definitivamente?
+
+    Carta de OUTRO assunto (matrícula, por exemplo) nunca cai aqui: ela não
+    tem `suggestion_id`, e `sugestoes` não a conhece.
+
+    `suggestion_id` que esta Caixa não acha também não cai — pode ser carta de
+    outro quadro, e sumir com ela seria esconder um recado legítimo por não
+    saber lê-lo. Esse caso segue no caminho de sempre, que mostra
+    "(sugestão não encontrada)" e deixa a pessoa ver que existe algo ali.
+    """
+    id_da_ideia = str((item.get("parametros") or {}).get("suggestion_id") or "")
+    return sugestoes.get(id_da_ideia, {}).get("apagada", False)
 
 
 def _matricula_para_o_template(item: dict, parametros: dict) -> dict:
@@ -435,7 +460,7 @@ def _matricula_para_o_template(item: dict, parametros: dict) -> dict:
     }
 
 
-def _item_para_o_template(item: dict, titulos: dict[str, str]) -> dict:
+def _item_para_o_template(item: dict, sugestoes: dict[str, dict]) -> dict:
     """Um item de `GET /avisos` (a forma da API) → o dicionário que o
     template usa. Mesmos NOMES de campo que o `Aviso` (model) já expunha —
     `status_novo`, `vinculo`, `nota`, `criado_em`, `lido_em`, `id` — para a
@@ -480,7 +505,8 @@ def _item_para_o_template(item: dict, titulos: dict[str, str]) -> dict:
     return {
         **comum,
         "sugestao_id": suggestion_id,
-        "sugestao_titulo": titulos.get(suggestion_id, "(sugestão não encontrada)"),
+        "sugestao_titulo": (sugestoes.get(suggestion_id) or {}).get("titulo")
+        or "(sugestão não encontrada)",
         "status_novo": status_novo,
         "status_novo_label": STATUS_ROTULOS.get(status_novo, status_novo),
         "status_anterior": status_anterior,
@@ -521,8 +547,15 @@ def ver_avisos(request, ator):
             status=503,
         )
 
-    titulos = _titulos_das_sugestoes(itens)
-    avisos = [_item_para_o_template(item, titulos) for item in itens]
+    sugestoes = _sugestoes_dos_avisos(itens)
+    # A ideia apagada não deixa recado para trás. O corte é AQUI, na leitura, e
+    # não na escrita, porque a carta já saiu: ela mora na caixa central, cujo
+    # contrato congelado não tem operação de retirada (só listar e marcar como
+    # lida). Filtrar na hora de ler é o que esta célula consegue fazer sozinha,
+    # e é o mesmo desenho de `SugestaoQuerySet.visiveis()` — um corte de
+    # visibilidade num lugar só, em vez de um campo novo em cada superfície.
+    itens = [i for i in itens if not _sobre_ideia_apagada(i, sugestoes)]
+    avisos = [_item_para_o_template(item, sugestoes) for item in itens]
     nao_lidos = sum(1 for item in itens if not item.get("lido_em"))
 
     return render(
