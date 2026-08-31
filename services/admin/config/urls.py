@@ -15,6 +15,16 @@ from apps.core.caixa import (
 )
 from apps.core.divida import divida_json
 from apps.core.mapa_do_site import mapa_do_site
+from apps.core.menu import (
+    menu_adicionar_item,
+    menu_apagar_versao,
+    menu_criar_versao,
+    menu_do_topo,
+    menu_mover_item,
+    menu_regras_das_paginas,
+    menu_remover_item,
+    menu_versao_padrao,
+)
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import plano_publico, planos_indice
 from apps.core.painel import painel, painel_arquivo
@@ -79,6 +89,29 @@ urlpatterns = [
     # Barra final pela convenção das outras telas; quem chega sem ela é
     # redirecionado pelo APPEND_SLASH, que já está na cadeia.
     path("mapa/", mapa_do_site, name="mapa_do_site"),
+    # O MENU DO TOPO (`apps/core/menu.py`, 31/08/2026) — a tela em que o
+    # mantenedor decide o que aparece no alto de cada página do site, e em
+    # quais páginas não aparece nada.
+    #
+    # FORA do prefixo `painel/` pelo mesmo motivo do mapa acima: a rota
+    # genérica `painel/<qualquer coisa>` engoliria qualquer irmão dela, e esta
+    # não é uma peça do painel — é uma tela da área, vizinha do mapa.
+    #
+    # Barra final pela convenção das outras telas; quem chega sem ela é
+    # redirecionado pelo APPEND_SLASH, que já está na cadeia.
+    #
+    # Os SETE gestos têm rota própria, e isso não é enfeite: com um POST só e
+    # um campo escondido dizendo "o que fazer", a auditoria e o CSRF passariam
+    # a depender de um valor de formulário, e a leitura deste arquivo deixaria
+    # de contar o que a tela faz. Cada rota é um verbo.
+    path("menu/", menu_do_topo, name="menu_do_topo"),
+    path("menu/versao/criar", menu_criar_versao, name="menu_criar_versao"),
+    path("menu/versao/apagar", menu_apagar_versao, name="menu_apagar_versao"),
+    path("menu/versao/padrao", menu_versao_padrao, name="menu_versao_padrao"),
+    path("menu/item/acrescentar", menu_adicionar_item, name="menu_adicionar_item"),
+    path("menu/item/remover", menu_remover_item, name="menu_remover_item"),
+    path("menu/item/mover", menu_mover_item, name="menu_mover_item"),
+    path("menu/paginas", menu_regras_das_paginas, name="menu_regras_das_paginas"),
     # O MAPA PARA IA (`apps/core/mapa_ia.py`) — a ÚNICA área desta célula que
     # responde SEM sessão, além de `/healthz` (INV-P14, `CAMINHOS_ISENTOS` em
     # `apps/core/porta.py`). Nasce fora do prefixo `painel/` de propósito: um
