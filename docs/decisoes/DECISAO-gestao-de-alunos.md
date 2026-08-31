@@ -45,13 +45,21 @@ estava na mesa. Fica assim:
 | `ativa` | **sim** | compra, ou liberação | é aluno |
 | `suspensa` | **não** *(mudou)* | o mantenedor | acesso pausado — volta com um clique |
 | `encerrada` *(novo)* | não | o mantenedor | saiu da escola |
-| `reembolsada` | **sim** *(inalterado)* | ninguém ainda | devolveu o dinheiro |
+| `reembolsada` | **não** *(mudou em 31/08/2026)* | o mantenedor | devolveu o dinheiro, e o acesso acabou junto |
 
 **`suspensa` sai de `STATUS_QUE_VALEM`, e isso NÃO reverte a decisão de
-24/08/2026.** Aquela decisão — *"quem já foi aluno mantém a voz na Caixa"* —
-foi tomada sobre **reembolso**, e `reembolsada` continua valendo acesso,
-exatamente como ela manda. `suspensa` é outra intenção: é o mantenedor dizendo
-*"agora não"*. Duas intenções diferentes não podem ter o mesmo efeito.
+24/08/2026.** Aquela decisão, *"quem já foi aluno mantém a voz na Caixa"*, foi
+tomada sobre **reembolso**, e `reembolsada` continua valendo acesso, exatamente
+como ela manda. `suspensa` é outra intenção: é o mantenedor dizendo *"agora
+não"*. Duas intenções diferentes não podem ter o mesmo efeito.
+
+> **EMENDA de 31/08/2026.** A decisão de 24/08 caiu, por decisão do próprio
+> mantenedor: `reembolsada` **deixou de valer acesso**
+> (`DECISAO-reembolso-tira-o-acesso.md`). O parágrafo acima continua certo no
+> que ele afirma sobre `suspensa`, e o raciocínio dele continua valendo por
+> inteiro: duas intenções diferentes não podem ter o mesmo efeito. O que mudou
+> é a intenção que o mantenedor atribui ao reembolso, que hoje é "a compra foi
+> desfeita" e não "o dinheiro voltou, mas a pessoa fica".
 
 **A migração custa zero, e isso foi medido, não suposto:** como nada nunca
 atribuiu `suspensa`, não há linha em produção nesse estado para mudar de
