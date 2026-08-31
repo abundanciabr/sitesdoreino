@@ -9,7 +9,8 @@ A IA pode reescrever a vitrine 100 vezes sem encostar em dinheiro.
 
 ## Fronteiras
 - **PERMITIDO ESCREVER:** `services/funil/**`
-- **SOMENTE LEITURA:** `contracts/catalogo.openapi.yaml`, `contracts/leads.openapi.yaml`
+- **SOMENTE LEITURA:** `contracts/catalogo.openapi.yaml`, `contracts/leads.openapi.yaml`,
+  `contracts/alunos.openapi.yaml`
 - **PROIBIDO (nem ler):** as demais células, `infra/`, qualquer segredo de pagamento
 
 ## Comunicação
@@ -19,9 +20,15 @@ A IA pode reescrever a vitrine 100 vezes sem encostar em dinheiro.
   `getSession`) para reconhecer o visitante, e notificacoes (`GET /resumo`,
   `obterResumo`) para o contador do sino — as duas fail-open por desenho: fora
   do ar, a página abre normal sem sessão/sem sino, nunca cai
-  (`DECISAO-onde-mora-a-sessao.md`, `DECISAO-fase-4-do-sininho.md`)
+  (`DECISAO-onde-mora-a-sessao.md`, `DECISAO-fase-4-do-sininho.md`). Desde
+  28/08/2026 também alunos (`DECISAO-categorias-de-usuario.md`): leitura
+  (`GET /alunos/{email}/situacao`, fail-open, decide o que a home mostra) e,
+  desde 31/08/2026, escrita (`POST /pre-matriculas`, `createPreEnrollment` —
+  fail-CLOSED, é o pedido de entrada de quem se cadastra sem conta do Google
+  em `/cadastro`; MESMO endpoint que `admin` e `sugestoes` já usam, nenhum
+  contrato novo).
 - **Auth:** Bearer dedicado (`TOKEN_CATALOGO`, `TOKEN_LEADS`,
-  `IDENTIDADE_API_TOKEN`, `NOTIFICACOES_API_TOKEN`)
+  `IDENTIDADE_API_TOKEN`, `NOTIFICACOES_API_TOKEN`, `ALUNOS_API_TOKEN`)
 
 ## Invariantes desta célula
 - **Multissítio (INV-P11):** o site vem do Host (middleware CONV-SITE, cache 60s);

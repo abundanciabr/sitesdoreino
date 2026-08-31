@@ -766,6 +766,27 @@ instalar o app e para o rodapé. A regra prática, que dá para seguir sem pensa
 Seguindo isso, o guarda de regressão fica verde **sem ser tocado**, que é a
 prova de que nenhum site herdou o que não pediu.
 
+## O par `funil→alunos` já provisionado na VPS não estava limitado à leitura que o comentário descrevia (31/08/2026)
+
+**O que eu quase fiz de errado:** ao transformar `/cadastro` de captura de lead
+em pedido de entrada (`POST /pre-matriculas`), eu ia propor um NOVO par de
+tokens `funil→alunos` — infra, passo manual do mantenedor, tudo. Antes de
+propor, conferi `infra/env/funil.env.exemplo` e `infra/env/alunos.env.exemplo`:
+o par **já existe e já está provisionado em produção** desde 28/08/2026
+(`DECISAO-categorias-de-usuario.md`, registro
+`20260828-023-voce-ligou-as-cinco-categorias-no-servidor`). O comentário nos
+dois arquivos de exemplo diz "`funil` usa só GET /alunos/{email}/situacao" —
+mas isso descreve o USO de então, não um LIMITE do token: `TOKENS_ACEITOS_FUNIL`
+do lado da `alunos` autoriza o Bearer para qualquer rota do router (a mesma
+credencial que o `admin` usa para GET **e** POST em `/pre-matriculas`), porque
+a autorização daquela célula é por PAR, não por operação.
+**A pergunta de bolso antes de propor infra nova:** o par já existe para
+QUALQUER outro motivo com esta célula vizinha? Se sim, confira se ele já cobre
+a operação nova antes de pedir um segredo novo ao mantenedor — o comentário do
+`.env.exemplo` documenta o uso de ontem, não a fronteira de hoje.
+**Origem:** despacho funil/cadastro-pre-matricula — `apps/core/clients.py`
+(`AlunosClient.criar_pre_matricula`).
+
 ## Guarda de "sumiu do menu" precisa olhar SÓ o menu
 
 O item de visitante (`Cadastro`) some do menu para quem já entrou. Um teste que

@@ -21,6 +21,7 @@ from apps.i18n.catalogo import t
 # uma só, e duplicá-la aqui seria duas verdades sobre o que a sessão devolve.
 from test_sessao_no_site import COOKIE, logado  # noqa: F401  (fixture)
 from tests.conftest import (
+    ALUNOS,
     CATALOGO,
     HOST_A,
     HOST_DESCONHECIDO,
@@ -60,19 +61,24 @@ def test_prefixo_do_idioma_padrao_e_404(client, rede):
         assert resp.status_code == 404, f"{caminho} devolveu {resp.status_code}"
 
 
-def test_post_no_caminho_nu_chega_a_view_e_cria_o_lead(client, rede):
+def test_post_no_caminho_nu_chega_a_view_e_entra_na_fila(client, alunos_ligada):
     # Ganho direto de não haver redirecionamento no meio: na matriz antiga este
     # POST era 404 (302 converteria em GET e descartaria o corpo). Agora ele é
     # simplesmente o cadastro em inglês.
+    alunos_ligada.post(f"{ALUNOS}/pre-matriculas", name="pre_matricula").mock(
+        return_value=httpx.Response(201, json={"id": "123", "status": "aguardando"})
+    )
     resp = client.post(
         "/cadastro",
-        {"name": "Ana", "email": "ana@exemplo.com", "phone": ""},
+        {"name": "Ana", "email": "ana@exemplo.com", "whatsapp": "+5511900000000"},
         HTTP_HOST=HOST_MESH,
     )
     assert resp.status_code == 200
-    enviados = [c for c in rede.calls if str(c.request.url).endswith("/leads")]
-    assert enviados, "o POST no caminho nu não chegou à célula leads"
-    assert b'"source":"cadastro-meshcraft-en"' in enviados[-1].request.content
+    enviados = [
+        c for c in alunos_ligada.calls if str(c.request.url).endswith("/pre-matriculas")
+    ]
+    assert enviados, "o POST no caminho nu não chegou à célula alunos"
+    assert b'"email":"ana@exemplo.com"' in enviados[-1].request.content
 
 
 def test_idioma_nao_habilitado_404(client, rede):
