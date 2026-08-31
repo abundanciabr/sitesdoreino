@@ -2,46 +2,52 @@
   "_leia_me": [
     "A RÉGUA DAS ESPERAS — quanto cada espera costuma levar, medido, nunca chutado.",
     "Quem lê: ci/esperar.py (a voz diz 'normalmente isso leva ~X' e 'ACIMA do esperado').",
-    "Quem escreve: por enquanto, medição manual por PR (a semente abaixo foi medida em",
-    "29/08/2026 com gh run list/gh pr list); o recalculo automático a partir de",
-    "~/.sitesdoreino/esperas.jsonl e do histórico do GitHub é a fatia seguinte.",
+    "Quem escreve: `python ci/medir_tempos.py --escrever`, que recalcula sozinho a",
+    "partir do histórico do GitHub (checks e deploy-celula) e de",
+    "~/.sitesdoreino/esperas.jsonl, o log que o próprio esperar.py alimenta. Não",
+    "edite os números à mão: meça e grave. Fonte sem amostra nova MANTÉM o número",
+    "antigo, e o aviso do script diz qual — número inventado nunca entra.",
     "REGRAS DE HONESTIDADE: amostra < 20 => a voz diz 'pouca amostra, desconfie' e o",
     "p90 não sustenta veredito; medido_em com mais de 30 dias => a voz manda desconfiar;",
     "regime diferente do atual => os números NÃO se comparam (a pista de pouso mudou o",
     "jogo em 29/08/2026 — tempos de merge de antes não dizem nada sobre os de agora).",
+    "CADA CHAVE MEDE UMA GRANDEZA SÓ, e o rótulo diz qual: 'pouso' é a pista mergear um",
+    "PR que JÁ está verde e na fila, e não o PR aberto até o merge (esse, medido em",
+    "31/08/2026, dá p50 de ~8min porque embute a volta de checks). Misturar as duas",
+    "faz a voz mentir para os dois lados. História: armadilhas/161 e armadilhas/258.",
     "Régua ausente ou quebrada NUNCA vira número: a voz diz 'não sei quanto isto",
-    "costuma levar'. História: armadilhas/161."
+    "costuma levar'."
   ],
-  "medido_em": "2026-08-29",
+  "medido_em": "2026-08-31",
   "regime": "pista-de-pouso",
   "esperas": {
     "checks": {
       "rotulo": "os testes de um PR (muralhas + ci-celula)",
-      "p50_s": 90,
-      "p90_s": 180,
-      "amostra": 62,
-      "nota": "uma volta completa; muralhas p50 59s (n=62), ci-celula p50 53s (n=52)"
+      "p50_s": 96,
+      "p90_s": 225,
+      "amostra": 44,
+      "nota": "uma volta completa por head_sha, do primeiro run começar ao último concluir; muralhas p50 95s (n=55), ci-celula p50 65s (n=43)"
     },
     "deploy-celula": {
       "rotulo": "o deploy de uma célula chegar na VPS",
-      "p50_s": 147,
-      "p90_s": 213,
-      "amostra": 23,
-      "nota": "outliers de ~444s = as 3 tentativas de SSH do workflow"
+      "p50_s": 191,
+      "p90_s": 290,
+      "amostra": 33,
+      "nota": "do run começar a concluir; 1 dos 33 passou de 400s (máx 524s) — é o workflow gastando as 3 tentativas de SSH"
     },
     "pouso": {
       "rotulo": "a pista de pouso mergear um PR da fila",
-      "p50_s": 420,
-      "p90_s": 900,
-      "amostra": 5,
-      "nota": "desde o PR #451 uma passagem da pista atende até 5 PRs em sequência; o cron de 15 min segue como rede — medido ao vivo: PR #452 pousou em 2min35s"
+      "p50_s": 109,
+      "p90_s": 387,
+      "amostra": 233,
+      "nota": "do pedido de pouso ao merge, medido no log das esperas (só 29 a 31/08/2026, todo o regime da pista); 16 dos 233 marcaram ~0s porque a pista já havia mergeado antes de a espera começar, e sem eles o p50 sobe para 124s. NÃO é o tempo de PR aberto até merge, que é outra grandeza (ver o _leia_me)"
     },
     "docker-frio": {
       "rotulo": "o Docker Desktop acordar frio",
       "p50_s": 90,
       "p90_s": 120,
       "amostra": 3,
-      "nota": "armadilhas/004"
+      "nota": "armadilhas/004; medição de mão de 29/08/2026 — o recálculo só a substitui quando houver espera declarando `--regua docker-frio`, porque `sonda:` é prefixo genérico"
     },
     "sonda": {
       "rotulo": null,
