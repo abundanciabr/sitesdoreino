@@ -146,6 +146,11 @@ def documento_admin(request, nome):
             "admin": request.admin,
             "documento": documento,
             "corpo": documentos.para_html(documento.corpo),
+            # O recado do POST-redirect-GET, que e o que impede um F5 depois de
+            # salvar de repetir a gravacao. O template so reconhece as palavras
+            # que ele mesmo escreve; qualquer outra coisa na querystring nao
+            # imprime nada.
+            "recado": request.GET.get("recado", ""),
         },
     )
 

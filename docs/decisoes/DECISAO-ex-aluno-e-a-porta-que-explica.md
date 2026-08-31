@@ -57,7 +57,8 @@ pessoa?":
 | Na fila | ficha `aguardando` ou `recusada` | não |
 | **Pausado** *(novo nome)* | ficha `suspensa` | **não** |
 | **Ex-aluno** *(novo nome)* | ficha `encerrada` | **não** |
-| Aluno | ficha `ativa` ou `reembolsada` | **sim** |
+| Aluno | ficha `ativa` | **sim** |
+| **Reembolsado** *(31/08/2026)* | ficha `reembolsada` | **não** |
 | Administrador | lista da célula `admin` | (ortogonal) |
 
 **Nada muda no banco.** Os estados `suspensa` e `encerrada` já existem e já

@@ -9,7 +9,11 @@
 <div class="envolucro">
   <a class="volta" href="{% url 'visao_geral' %}">&larr; Visão geral</a>
   <h1>Documentos</h1>
-  <p class="subtitulo">Tudo o que o site publica — e quem pode ler cada um.</p>
+  <p class="subtitulo">Tudo o que o site publica, e quem pode ler cada um.</p>
+
+  <p class="espaco-abaixo-20">
+    <a class="botao" href="{% url 'documento_novo' %}">Escrever um documento novo</a>
+  </p>
 
   {% comment %}
   A lista do administrador mostra TODOS, com a etiqueta de visibilidade bem
@@ -32,7 +36,9 @@
         {% endif %}
       </div>
       <div class="nota">
-        <a href="{% url 'documento_admin' documento.nome %}">Ler &rarr;</a>
+        <a href="{% url 'documento_admin' documento.nome %}">Ler</a>
+        &middot;
+        <a href="{% url 'documento_editar' documento.nome %}">Editar</a>
       </div>
     </div>
     {% endfor %}
