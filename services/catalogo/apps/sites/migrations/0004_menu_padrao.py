@@ -40,7 +40,12 @@ MENU_PADRAO = {
                     # Outra célula: segue cru e monolíngue enquanto o D6 não
                     # estiver no gateway (R12). `localized: false` é o que
                     # impede o link de virar `/es/forum`, que é 404.
-                    "url": "/forum",
+                    #
+                    # COM a barra final, e ela não é detalhe: `/forum` responde
+                    # 301 para `/forum/`, então o link funcionaria com um salto
+                    # a mais — e, pior, a marca de "você está aqui" nunca
+                    # casaria, porque o endereço da página é o com barra.
+                    "url": "/forum/",
                     "labels": {"pt-br": "Fórum", "en": "Forum", "es": "Foro"},
                     "localized": False,
                     "audience": "everyone",
