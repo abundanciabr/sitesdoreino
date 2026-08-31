@@ -1,0 +1,14 @@
+{
+  "arquivo": "053-o-forum-mostrar-o-que-e-novo-desde-a-ultima-visita",
+  "id": "TAR-053",
+  "titulo": "O forum mostrar o que e novo desde a ultima visita",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado, suite da celula verde com prova vermelho->verde por assercao, o teste-guarda de UMA linha por pessoa por area continuando verde, deploy-celula verde lido por gh run view --json e a prova de fora",
+  "despacho": "Escolha do mantenedor em 30/08/2026: o forum passa a mostrar O QUE E NOVO desde\na ultima visita. A fundacao ja existe desde o modelo de dados (lei §4.3): a\nMarcaDeLeitura (uma linha por pessoa por AREA, o \"li ate aqui\") e a pequena\nTopicoLido (as excecoes lidas depois da marca). Nenhuma tela usa.\n\nO que construir:\n\n1. Na capa, cada area mostra quantas conversas tem novidade para esta pessoa.\n2. Na area, cada conversa nova aparece marcada.\n3. Um botao \"marcar tudo como lido\" por area, que avanca a marca-d'agua e PODA\n   as excecoes que ficaram para tras.\n4. Abrir uma conversa registra que ela foi lida.\n\nAs regras que decidem o desenho:\n\n- NUNCA uma linha por pessoa por MENSAGEM. Com 200 alunos e 20 mil mensagens\n  isso fabrica milhoes de linhas para responder \"tem coisa nova?\", e o conserto\n  depois e migracao na maior tabela do sistema (lei §4.3, e ja ha teste-guarda\n  em tests/test_modelo_de_dados.py exigindo UMA linha).\n- Visitante nao tem novidade nenhuma: sem login nao ha de quem guardar marca.\n- A conta so olha o que a pessoa PODE ler: areas_visiveis, a mesma funcao das\n  outras telas, nunca um filtro proprio.\n- Quem nunca leu nada ve tudo como novo, e isso e desejado: o aluno que entra\n  na segunda encontra as dez duvidas semeadas convidando a entrar.",
+  "origem": "escolha do mantenedor em 30/08/2026, na caixa que fechou a TAR-047",
+  "criada_em": "2026-08-31"
+}

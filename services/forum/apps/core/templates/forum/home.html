@@ -29,6 +29,12 @@
         o resto, `pode_ler` já tirou a área desta lista (`permissoes.py`).
         {% endcomment %}
         {% if not area.ativa %}<span class="etiqueta">arquivada</span>{% endif %}
+        {% comment %}
+        A contagem vem pendurada em cada área por `views.contexto_da_home`, de
+        UMA consulta só. Visitante nunca tem novidade: sem login o fórum não tem
+        de quem guardar a marca de leitura.
+        {% endcomment %}
+        {% if area.novidades %}<span class="novidade">{{ area.novidades }} novidade{{ area.novidades|pluralize }}</span>{% endif %}
       </h2>
       {% if area.descricao %}<p class="sub" style="margin:4px 0 0">{{ area.descricao }}</p>{% endif %}
     </div>

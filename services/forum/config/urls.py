@@ -10,6 +10,7 @@ from apps.core.moderacao import (
 from apps.core.views import (
     healthz,
     home,
+    li_tudo,
     novo_topico,
     responder,
     servir_estatico,
@@ -51,6 +52,9 @@ urlpatterns = [
     # `apps/core/permissoes.py`, nunca aqui.
     path("a/<slug:slug>/novo", novo_topico, name="novo_topico"),
     path("t/<int:topico_id>/responder", responder, name="responder"),
+    # "Ja vi tudo" — avanca a marca-d'agua da area. POST porque aqui a escrita e
+    # o PEDIDO da pessoa, e nao consequencia de ela ter lido.
+    path("a/<slug:slug>/li-tudo", li_tudo, name="li_tudo"),
     # AS FERRAMENTAS DO ADMINISTRADOR (`apps/core/moderacao.py`). Mesmas duas
     # razões de `require_POST` acima, um degrau mais fundo: uma acao de
     # moderacao por GET seria um "tirar do ar" que o robo do Google executa

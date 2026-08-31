@@ -20,6 +20,12 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.forum.models import Area, Mensagem, Topico
 
+from .leitura import (
+    marcar_area_como_lida,
+    novidades_por_area,
+    registrar_leitura,
+    topicos_com_novidade,
+)
 from .permissoes import (
     areas_visiveis,
     pode_escrever,
@@ -54,6 +60,10 @@ ERRO_TITULO_LONGO = (
 ERRO_TEXTO_VAZIO = "Faltou escrever a mensagem."
 ERRO_TEXTO_LONGO = "A mensagem é longa demais para uma só. Divida em duas."
 ERRO_TOPICO_TRANCADO = "Esta conversa foi trancada pela moderação."
+ERRO_SEM_LEITURA = (
+    "Entre para o fórum guardar o que você já leu. Sem entrar, ele não tem de "
+    "quem guardar essa marca."
+)
 ERRO_SEM_PERMISSAO = (
     "Você não pode escrever nesta área. "
     "Volte para a página dela — ela diz o motivo, em português."
@@ -146,6 +156,10 @@ def ver_topico(request, topico_id: int):
         # única, e quem modera teria de decidir sem reler o que tirou.
         raise Http404("tópico não encontrado")
 
+    # Abrir a conversa é o gesto que a marca como lida (`leitura.py` explica por
+    # que uma escrita durante um GET é aceitável AQUI, e só aqui).
+    registrar_leitura(ator, topico)
+
     return render(
         request, "forum/topico.html", contexto_do_topico(request, ator, topico)
     )
@@ -190,6 +204,13 @@ def contexto_da_home(ator, *, erro_admin="", nome="", descricao=""):
     de uma área foi recusada — perder o que a pessoa digitou é a pior forma de
     recusar."""
     areas = areas_visiveis(ator)
+    # A contagem de novidades vem de UMA consulta para todas as áreas, e é
+    # pendurada em cada uma. Perguntar dentro do laço do template faria uma ida
+    # ao banco por área — o tipo de lentidão que só aparece quando o fórum
+    # cresce, que é quando ela é mais cara de consertar.
+    quantas = novidades_por_area(ator, areas)
+    for uma in areas:
+        uma.novidades = quantas.get(uma.pk, 0)
     return {
         "ator": ator,
         "areas": areas,
@@ -214,11 +235,20 @@ def contexto_da_area(
         # lembrar o endereço de cor.
         topicos = topicos.filter(estado=Topico.Estado.PUBLICADO)
 
+    # A lista é materializada aqui porque cada tópico leva consigo se é
+    # novidade para esta pessoa. A conta é uma consulta só (`leitura.py`), e o
+    # conjunto de ids evita perguntar de novo por linha.
+    novos = topicos_com_novidade(ator, area)
+    lista = list(topicos)
+    for topico in lista:
+        topico.tem_novidade = topico.pk in novos
+
     return {
         "ator": ator,
         "area": area,
         "porta_de_entrada": _porta_de_entrada(request),
-        "topicos": topicos,
+        "topicos": lista,
+        "tem_novidade_na_area": bool(novos),
         "pode_escrever": pode_escrever(area, ator),
         # POR QUE não pode, quando não pode. A tela diz a verdade em vez de
         # simplesmente esconder o formulário: "entre" e "matricule-se" são
@@ -291,6 +321,22 @@ def _area_para_ler(request, slug: str):
     if not pode_ler(area, ator):
         raise Http404("área não encontrada")
     return ator, area
+
+
+@require_POST
+def li_tudo(request, slug: str):
+    """ "Já vi tudo": avança a marca-d'água desta área para agora.
+
+    POST, e não GET, porque aqui a escrita é o PEDIDO da pessoa — diferente de
+    abrir uma conversa, onde marcar como lida é consequência de ler. Um `<img
+    src>` de outro site não pode apagar as novidades de ninguém.
+    """
+    ator, area = _area_para_ler(request, slug)
+    if not ator.autenticado:
+        # Visitante não tem marca de leitura: não há de quem guardar.
+        return HttpResponseForbidden(ERRO_SEM_LEITURA)
+    marcar_area_como_lida(ator, area)
+    return redirect(reverse("area", args=[area.slug]))
 
 
 @require_POST

@@ -233,6 +233,20 @@ button.mini:hover { background: #fffbeb; }
 }
 .paginas a { color: var(--destaque); text-decoration: none; font-weight: 600; }
 
+/* "TEM COISA NOVA". A etiqueta de novidade usa a cor de DESTAQUE, e não a
+   neutra das outras: ela é a única da tela que convida a clicar. */
+.novidade {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--destaque);
+  border-radius: 999px;
+  padding: 1px 9px;
+  margin-left: 6px;
+}
+.ja-vi { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+
 @media (max-width: 520px) {
   main { padding: 16px 14px 40px; }
   .quem { float: none; display: block; margin-top: 4px; }

@@ -217,6 +217,18 @@
     },
     {
       "celula": "forum",
+      "rota": "a/<slug:slug>/li-tudo",
+      "endereco": "/forum/a/<slug:slug>/li-tudo",
+      "exemplo": "/forum/a/duvidas/li-tudo",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Marcar uma área do fórum como lida",
+      "descricao": "O que acontece ao apertar \"Já vi tudo desta área\": as etiquetas de novidade somem, e só volta a aparecer o que for escrito a partir de agora.",
+      "gesto": true,
+      "observacao": "Só para quem entrou: sem login o fórum não tem de quem guardar a marca de leitura, e o endereço responde 'você não pode'."
+    },
+    {
+      "celula": "forum",
       "rota": "areas/nova",
       "endereco": "/forum/areas/nova",
       "alcance": "publico",
