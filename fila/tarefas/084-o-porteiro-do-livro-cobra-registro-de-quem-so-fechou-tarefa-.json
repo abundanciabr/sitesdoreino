@@ -1,0 +1,14 @@
+{
+  "arquivo": "084-o-porteiro-do-livro-cobra-registro-de-quem-so-fechou-tarefa-",
+  "id": "TAR-084",
+  "titulo": "O porteiro do livro cobra registro de quem so fechou tarefa no balcao, e isso trava a fila de todos",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "vermelho->verde na assercao: PR que toca so painel/ + fila/ gera divida antes e nao gera depois; e um que tambem toca services/ continua gerando",
+  "despacho": "# DESPACHO — alargar a isencao do porteiro do livro para o balcao\n\nORIGEM: medido cinco vezes em UMA tarde (31/08/2026), durante a TAR-069.\nA cura ja esta proposta por escrito em `armadilhas/214`, desde 30/08/2026, e\nsegue nao construida.\n\nO DEFEITO. `ci/divida_do_livro.py` isenta o PR que so toca `painel/`, com o\nargumento correto de que esse PR E o registro. Mas fechar uma tarefa no balcao\nescreve em `fila/`, e o gesto NORMAL de quem termina um trabalho e commitar o\nregistro E o fechamento juntos. Um PR de escrituracao pura com as duas coisas\ncai fora da isencao e vira divida.\n\nE a divida do livro e COMPARTILHADA: ela trava a fila de pouso de TODO MUNDO.\n\nMEDIDO NA TAR-069, cinco vezes na mesma tarde, todas de sessoes diferentes:\n  #694 (painel/ + fila/)  #696 (armadilhas/)  #697 (fila/)\n  #701 (painel/ + fila/)  #703 (fila/)\nCada uma custou: conferir o merge alheio, escrever um registro, abrir um PR\nproprio, esperar os checks, esperar o pouso. Cinco vezes, num trabalho que nao\ntinha relacao nenhuma com gamificacao nem com o balcao.\n\nMISSAO: a isencao passa a ser \"so `painel/` E/OU `fila/`\". PR que toca APENAS\nesses dois caminhos nao gera divida.\n\nCUIDADO COM O ESCOPO: a isencao NAO pode alcancar `armadilhas/` nem qualquer\noutro caminho — o #696 tocou so `armadilhas/` e tambem virou divida, mas esse\ncaso e diferente e merece decisao separada: uma licao nova E um fato do\nprojeto, e talvez deva mesmo ser contada ao dono. Decida um de cada vez.\n\nALVOS: `ci/divida_do_livro.py` (a funcao `so_toca_o_livro`) e o teste-guarda\ncorrespondente em `ci/tests/`.\nFORA DE ESCOPO: mudar o que CONTA como divida; mexer no portao de pouso.\nDoD: vermelho->verde na ASSERCAO (armadilhas/195) — um PR de exemplo que toca\nso `painel/` + `fila/` gera divida ANTES do conserto e nao gera DEPOIS; e o\ninverso provado por sabotagem: um PR que tambem toca `services/` CONTINUA\ngerando. Suite de `ci/tests` verde.\nCAMINHO CODEOWNERS: `ci/` — precisa de mandato explicito do mantenedor.",
+  "origem": "medido 5 vezes numa tarde durante a TAR-069; cura ja proposta em armadilhas/214",
+  "criada_em": "2026-08-31"
+}
