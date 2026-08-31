@@ -118,6 +118,57 @@ paths:
             schema:
               $ref: '#/components/schemas/SiteMenu'
         required: true
+  /sites/{site_id}/rodape:
+    get:
+      operationId: getSiteFooter
+      summary: O rodapé de um site, para a tela que o configura
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: O rodapé deste site (vazio quando não há)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteFooter'
+        '404':
+          description: Site inexistente
+      description: 'Serve a configuração inteira do rodapé. Site sem rodapé responde 200 com um objeto vazio,
+        e não 404: para quem vai configurar, ''ainda não tem rodapé'' é um estado normal, não um erro.'
+    put:
+      operationId: putSiteFooter
+      summary: Grava o rodapé de um site, inteiro
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: O rodapé como ficou gravado, na forma canônica
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SiteFooter'
+        '404':
+          description: Site inexistente
+        '422':
+          description: Configuração incoerente; nada foi gravado
+      description: 'Substitui a configuração inteira do rodapé: versões, textos, links e regras por página
+        de uma vez. Documento inteiro, e não remendo campo a campo, porque a coerência é do CONJUNTO: uma
+        versão só pode sumir junto com as páginas que apontavam para ela. Configuração incoerente responde
+        422 com o motivo em português, e NADA é gravado.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiteFooter'
+        required: true
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
@@ -237,6 +288,94 @@ components:
                 type: object
               type: array
           type: object
+        footer:
+          description: 'O rodapé deste site. Ausente: o site não tem rodapé configurado, e quem
+            desenha usa o texto de fábrica da própria célula.'
+          properties:
+            default_version:
+              description: 'Apelido da versão usada por toda página sem regra própria. Vazio: página sem
+                regra não mostra rodapé nenhum.'
+              type: string
+            versions:
+              description: 'As versões do rodapé deste site (ex.: completo, enxuto).'
+              items:
+                properties:
+                  slug:
+                    description: Apelido único da versão; é o que as páginas apontam.
+                    type: string
+                  name:
+                    description: Nome que o mantenedor lê na tela de configuração.
+                    type: string
+                  signature:
+                    additionalProperties:
+                      type: string
+                    description: A assinatura da casa por idioma (BCP 47 minúsculo), ex. o nome da escola.
+                      Vazio em todos os idiomas esconde a linha.
+                    type: object
+                  tagline:
+                    additionalProperties:
+                      type: string
+                    description: A frase curta sob a assinatura, por idioma. Vazio em todos os idiomas
+                      esconde a linha.
+                    type: object
+                  legal:
+                    additionalProperties:
+                      type: string
+                    description: 'A linha de direitos, por idioma. O marcador {ano} é trocado pelo ano
+                      corrente por quem desenha: ano escrito à mão fica velho em 1º de janeiro e ninguém
+                      percebe.'
+                    type: object
+                  items:
+                    description: Os links do rodapé, na ordem em que aparecem. Lista vazia esconde o bloco.
+                    items:
+                      properties:
+                        url:
+                          description: Caminho deste site começando com uma barra, ou endereço completo de
+                            um site de fora.
+                          type: string
+                        labels:
+                          additionalProperties:
+                            type: string
+                          description: Nome do link por idioma (BCP 47 minúsculo). Idioma sem rótulo cai no
+                            idioma padrão do site.
+                          type: object
+                        localized:
+                          default: false
+                          description: 'true: quem serve a página põe o prefixo do idioma no caminho. Só vale
+                            para rota da própria célula: link para outra célula segue cru (R12).'
+                          type: boolean
+                        new_tab:
+                          default: false
+                          description: Abrir numa aba nova.
+                          type: boolean
+                      required:
+                      - url
+                      - labels
+                      type: object
+                    type: array
+                required:
+                - slug
+                - name
+                - items
+                type: object
+              type: array
+            pages:
+              description: Qual versão cada página usa. Página fora desta lista usa a default_version.
+              items:
+                properties:
+                  page:
+                    description: 'Chave da página na forma ''celula/rota'', a mesma dupla de painel/mapa-do-site.json
+                      (ex.: ''funil/'' ou ''forum/home'').'
+                    type: string
+                  version:
+                    description: 'Apelido da versão. Vazio: esta página NÃO mostra rodapé.'
+                    type: string
+                required:
+                - page
+                - version
+                type: object
+              type: array
+          type: object
     SiteMenu:
       description: O menu do topo de um site, no envelope que o contrato declara.
       properties:
@@ -317,6 +456,98 @@ components:
                 type: object
               type: array
           type: object
+      type: object
+    SiteFooter:
+      description: O rodapé de um site, no envelope que o contrato declara.
+      properties:
+        footer:
+            description: 'O rodapé deste site. Ausente: o site não tem rodapé configurado, e quem
+              desenha usa o texto de fábrica da própria célula.'
+            properties:
+              default_version:
+                description: 'Apelido da versão usada por toda página sem regra própria. Vazio: página sem
+                  regra não mostra rodapé nenhum.'
+                type: string
+              versions:
+                description: 'As versões do rodapé deste site (ex.: completo, enxuto).'
+                items:
+                  properties:
+                    slug:
+                      description: Apelido único da versão; é o que as páginas apontam.
+                      type: string
+                    name:
+                      description: Nome que o mantenedor lê na tela de configuração.
+                      type: string
+                    signature:
+                      additionalProperties:
+                        type: string
+                      description: A assinatura da casa por idioma (BCP 47 minúsculo), ex. o nome da escola.
+                        Vazio em todos os idiomas esconde a linha.
+                      type: object
+                    tagline:
+                      additionalProperties:
+                        type: string
+                      description: A frase curta sob a assinatura, por idioma. Vazio em todos os idiomas
+                        esconde a linha.
+                      type: object
+                    legal:
+                      additionalProperties:
+                        type: string
+                      description: 'A linha de direitos, por idioma. O marcador {ano} é trocado pelo ano
+                        corrente por quem desenha: ano escrito à mão fica velho em 1º de janeiro e ninguém
+                        percebe.'
+                      type: object
+                    items:
+                      description: Os links do rodapé, na ordem em que aparecem. Lista vazia esconde o bloco.
+                      items:
+                        properties:
+                          url:
+                            description: Caminho deste site começando com uma barra, ou endereço completo de
+                              um site de fora.
+                            type: string
+                          labels:
+                            additionalProperties:
+                              type: string
+                            description: Nome do link por idioma (BCP 47 minúsculo). Idioma sem rótulo cai no
+                              idioma padrão do site.
+                            type: object
+                          localized:
+                            default: false
+                            description: 'true: quem serve a página põe o prefixo do idioma no caminho. Só vale
+                              para rota da própria célula: link para outra célula segue cru (R12).'
+                            type: boolean
+                          new_tab:
+                            default: false
+                            description: Abrir numa aba nova.
+                            type: boolean
+                        required:
+                        - url
+                        - labels
+                        type: object
+                      type: array
+                  required:
+                  - slug
+                  - name
+                  - items
+                  type: object
+                type: array
+              pages:
+                description: Qual versão cada página usa. Página fora desta lista usa a default_version.
+                items:
+                  properties:
+                    page:
+                      description: 'Chave da página na forma ''celula/rota'', a mesma dupla de painel/mapa-do-site.json
+                        (ex.: ''funil/'' ou ''forum/home'').'
+                      type: string
+                    version:
+                      description: 'Apelido da versão. Vazio: esta página NÃO mostra rodapé.'
+                      type: string
+                  required:
+                  - page
+                  - version
+                  type: object
+                type: array
+            type: object
       type: object
     Product:
       type: object
