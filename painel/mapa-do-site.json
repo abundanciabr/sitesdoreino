@@ -142,6 +142,15 @@
       "descricao": "Um endereço que responde 'estou de pé'. É por ele que o servidor descobre sozinho se o site caiu e precisa ser reiniciado."
     },
     {
+      "celula": "funil",
+      "rota": "google0e78b54775677e95.html",
+      "endereco": "/google0e78b54775677e95.html",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A prova de propriedade para o Google Search Console",
+      "descricao": "Um arquivo com um código fixo que o Google pediu para confirmar que o meshcraft.top é mesmo seu. Ninguém abre isto à mão."
+    },
+    {
       "celula": "identidade",
       "rota": "entrar/google",
       "endereco": "/entrar/google",

@@ -346,7 +346,10 @@ class AtorDaRequisicao:
 # o mesmo para todo site, não lê nada do catálogo, e é pedido de novo pelo
 # navegador de quem já instalou o app. Fazê-lo depender do catálogo seria pôr
 # uma consulta de rede no caminho de um arquivo estático servido da raiz.
-CAMINHOS_SEM_SITE = ("/healthz", "/static/", "/sw.js")
+# `/google0e78b54775677e95.html` (31/08/2026) é o arquivo de verificação do
+# Google Search Console: conteúdo fixo, e o Google bate nele sem conhecer o
+# catálogo de sites — mesma razão do /healthz.
+CAMINHOS_SEM_SITE = ("/healthz", "/static/", "/sw.js", "/google0e78b54775677e95.html")
 
 # Rota de MÁQUINA (D6): precisa do Site — desde a fase 4 os idiomas vêm do
 # catálogo, e o sitemap é feito deles — mas NUNCA se localiza (nenhum prefixo
