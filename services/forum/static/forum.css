@@ -253,3 +253,99 @@ button.mini:hover { background: #fffbeb; }
   .escrever button, .botao { width: 100%; text-align: center; }
   .linha-de-botoes form, button.mini { width: 100%; }
 }
+
+/* =========================================================================
+   O MASCOTE DA CAIXA DE ESCREVER
+   =========================================================================
+   Um brick 3D que levita ao lado de "Abrir uma conversa" e de "Responder" —
+   as duas telas em que o aluno CRIA alguma coisa aqui dentro. O desenho mora
+   em `templates/forum/_mascote.html`, com o porquê da forma.
+
+   Ele é ROXO, e não laranja, apesar de o laranja ser a cor de um objeto
+   selecionado no Blender: nesta folha o laranja (`--aviso`) já tem dono, e o
+   dono é "isto muda o site" — as ferramentas da escola. Um mascote laranja na
+   caixa de escrever do aluno diria, sem querer, que aquilo ali é botão de
+   administrador.
+
+   TODA a animação está aqui, e não em atributos SVG, por um motivo prático:
+   é o que deixa o `prefers-reduced-motion` desligar tudo de uma vez, no fim
+   desta seção. Quem sente enjoo com movimento na tela pede isso ao sistema
+   uma vez e o site inteiro obedece.
+   ========================================================================= */
+.escrever .cabeca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+/* O `h2` já tinha margem de baixo pela regra do `.escrever`; dentro da linha
+   do mascote ela viraria um degrau entre o desenho e o texto. */
+.escrever .cabeca h2 { margin: 0; }
+.mascote { width: 40px; height: 40px; flex-shrink: 0; overflow: visible; }
+.mascote-topo { fill: #7d76ef; }
+.mascote-frente { fill: var(--destaque); }
+.mascote-lado { fill: #3b32b8; }
+.mascote-stud { fill: #a49ff5; }
+/* Olhos e boca são o PAPEL aparecendo por baixo: recortes, não desenhos. */
+.mascote-olho, .mascote-boca { fill: var(--papel); }
+.mascote-sombra { fill: rgba(79, 70, 229, .16); }
+
+/* 1. Levitar. O bloco sobe dois passos e desce; a sombra encolhe junto, que é
+      o que dá altura ao movimento em vez de o fazer parecer um solavanco. */
+.mascote-corpo { animation: mascote-levita 3.2s ease-in-out infinite; }
+.mascote-sombra { animation: mascote-sombra 3.2s ease-in-out infinite; }
+@keyframes mascote-levita {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+@keyframes mascote-sombra {
+  0%, 100% { transform: scaleX(1);   opacity: 1; }
+  50%      { transform: scaleX(.82); opacity: .6; }
+}
+.mascote-sombra { transform-box: fill-box; transform-origin: center; }
+
+/* 2. A luz da cena. A face de cima clareia quando o bloco sobe — é o mesmo
+      ciclo de 3,2s, e é ele que faz o desenho parecer um objeto num viewport
+      em vez de uma figura chapada. */
+.mascote-topo { animation: mascote-luz 3.2s ease-in-out infinite; }
+@keyframes mascote-luz {
+  0%, 100% { fill: #6f68ec; }
+  50%      { fill: #8f89f2; }
+}
+
+/* 3. Piscar. Duas piscadas seguidas a cada seis segundos, que é como um bicho
+      pisca de verdade — uma só, espaçada, lê como falha de renderização.
+      `transform-box: fill-box` faz o olho encolher a partir do próprio centro;
+      sem isso ele encolheria a partir do canto da imagem e escorregaria. */
+.mascote-olho {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascote-pisca 6s infinite;
+}
+@keyframes mascote-pisca {
+  0%, 88%, 100% { transform: scaleY(1); }
+  90%, 94%      { transform: scaleY(.1); }
+  92%, 96%      { transform: scaleY(1); }
+}
+
+/* 4. Ele repara em você. Assim que o cursor entra em qualquer campo do
+      formulário, o bloco acelera e acende — a mesma borda de luz que o Blender
+      põe no objeto selecionado. É o único jeito de o desenho responder ao que
+      a pessoa está fazendo sem uma linha de JavaScript. */
+.escrever:focus-within .mascote-corpo { animation-duration: 1.5s; }
+.escrever:focus-within .mascote-sombra { animation-duration: 1.5s; }
+.escrever:focus-within .mascote-topo { animation-duration: 1.5s; }
+.escrever:focus-within .mascote { filter: drop-shadow(0 0 5px rgba(79, 70, 229, .5)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mascote-corpo,
+  .mascote-sombra,
+  .mascote-topo,
+  .mascote-olho,
+  .escrever:focus-within .mascote-corpo,
+  .escrever:focus-within .mascote-sombra,
+  .escrever:focus-within .mascote-topo { animation: none; }
+}
+@media (max-width: 520px) {
+  .mascote { width: 32px; height: 32px; }
+}

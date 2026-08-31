@@ -261,6 +261,88 @@ textarea { resize: vertical; min-height: 72px; }
 .discreto { border: 0; background: none; font-weight: 400; color: var(--texto-tenue); text-decoration: underline; padding: 0; margin-top: 0; }
 .discreto:hover { background: none; color: var(--texto); }
 
+/* --- o mascote da ideia nova --------------------------------------------
+   Um brick 3D que levita ao lado de "O que está faltando?". Ele existe numa
+   tela só — a de CRIAR — e é de propósito: é o momento em que a pessoa encara
+   um formulário em branco, e é o único lugar da Caixa em que vale gastar
+   movimento para dizer "pode escrever".
+
+   O desenho é um tijolo visto de três quartos (três faces com luz diferente,
+   dois studs em cima), a forma que o aluno desta escola vê o dia inteiro no
+   Blender e no Roblox Studio. O gêmeo dele mora no fórum
+   (`services/forum/.../_mascote.html`): mesmo PADRÃO, arquivo próprio, como
+   manda a Lei 7 — as duas células não compartilham folha nem template.
+
+   Ele NÃO entrou no estojo de `<symbol>` da moldura, e isso é decisão, não
+   esquecimento: o que está dentro de um `<use>` vira shadow DOM, e o CSS de
+   fora não alcança as peças lá dentro. Sem alcançar, não há como piscar só os
+   olhos nem acender só a face de cima.
+   ------------------------------------------------------------------------ */
+.cabeca { display: flex; align-items: center; gap: 12px; margin-bottom: .3rem; }
+.cabeca h1 { margin: 0; }
+.mascote { width: 46px; height: 46px; flex-shrink: 0; overflow: visible; }
+.mascote-topo { fill: #ff9d63; }
+.mascote-frente { fill: var(--laranja); }
+.mascote-lado { fill: #c2551f; }
+.mascote-stud { fill: #ffc39b; }
+/* Olhos e boca são o FUNDO da página aparecendo por baixo: recortes, não
+   desenhos — é o que faz o bloco parecer um objeto, e não um adesivo. */
+.mascote-olho, .mascote-boca { fill: var(--tinta); }
+.mascote-sombra { fill: rgba(255, 122, 51, .22); transform-box: fill-box; transform-origin: center; }
+
+/* 1. Levitar. O bloco sobe dois passos e desce; a sombra encolhe junto, que é
+      o que dá ALTURA ao movimento em vez de o fazer parecer um solavanco. */
+.mascote-corpo { animation: mascote-levita 3.2s ease-in-out infinite; }
+.mascote-sombra { animation: mascote-sombra 3.2s ease-in-out infinite; }
+@keyframes mascote-levita {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-2px); }
+}
+@keyframes mascote-sombra {
+  0%, 100% { transform: scaleX(1);   opacity: 1; }
+  50%      { transform: scaleX(.82); opacity: .6; }
+}
+
+/* 2. A luz da cena. A face de cima clareia quando o bloco sobe — mesmo ciclo
+      de 3,2s. É isso que faz o desenho parecer um objeto dentro de um viewport
+      em vez de uma figura chapada. */
+.mascote-topo { animation: mascote-luz 3.2s ease-in-out infinite; }
+@keyframes mascote-luz {
+  0%, 100% { fill: #ff8f4d; }
+  50%      { fill: #ffb07d; }
+}
+
+/* 3. Piscar. Duas piscadas seguidas a cada seis segundos, que é como um bicho
+      pisca de verdade — uma só, espaçada, lê como falha de renderização.
+      `transform-box: fill-box` faz o olho encolher a partir do próprio centro;
+      sem isso ele encolheria a partir do canto da imagem e escorregaria. */
+.mascote-olho { transform-box: fill-box; transform-origin: center; animation: mascote-pisca 6s infinite; }
+@keyframes mascote-pisca {
+  0%, 88%, 100% { transform: scaleY(1); }
+  90%, 94%      { transform: scaleY(.1); }
+  92%, 96%      { transform: scaleY(1); }
+}
+
+/* 4. Ele repara em você. Assim que o cursor entra em qualquer campo, o bloco
+      acelera e acende — a mesma borda de luz que o Blender põe no objeto
+      selecionado. O mascote está FORA do formulário (mora no título), e por
+      isso quem faz a ponte é o `:has()`, o mesmo seletor que já pinta a
+      categoria escolhida logo abaixo. Zero JavaScript, como o resto da casa. */
+.coluna:has(form:focus-within) .mascote-corpo,
+.coluna:has(form:focus-within) .mascote-sombra,
+.coluna:has(form:focus-within) .mascote-topo { animation-duration: 1.5s; }
+.coluna:has(form:focus-within) .mascote { filter: drop-shadow(0 0 6px rgba(255, 122, 51, .5)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mascote-corpo, .mascote-sombra, .mascote-topo, .mascote-olho,
+  .coluna:has(form:focus-within) .mascote-corpo,
+  .coluna:has(form:focus-within) .mascote-sombra,
+  .coluna:has(form:focus-within) .mascote-topo { animation: none; }
+}
+@media (max-width: 720px) {
+  .mascote { width: 36px; height: 36px; }
+}
+
 /* --- a linha do tempo da sugestão (histórico) ---------------------------- */
 
 .etapas { display: flex; align-items: flex-start; margin: 4px 0 18px; }

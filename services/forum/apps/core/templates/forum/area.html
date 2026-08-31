@@ -145,7 +145,7 @@ some em silêncio faz a pessoa achar que o site quebrou.
 {% if pode_escrever %}
   <form class="cartao escrever" method="post" action="{% url 'novo_topico' area.slug %}">
     {% csrf_token %}
-    <h2>Abrir uma conversa</h2>
+    <div class="cabeca">{% include "forum/_mascote.html" %}<h2>Abrir uma conversa</h2></div>
     {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
     <label for="titulo">Sua pergunta em uma linha</label>
     <input id="titulo" name="titulo" maxlength="180" required

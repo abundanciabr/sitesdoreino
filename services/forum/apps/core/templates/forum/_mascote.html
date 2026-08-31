@@ -1,0 +1,39 @@
+{% comment %}
+O MASCOTE DA CAIXA DE ESCREVER — um bloco 3D que flutua ao lado do título.
+
+Ele aparece nos DOIS lugares em que o aluno cria alguma coisa no fórum: a caixa
+de abrir conversa (`area.html`) e a de responder (`topico.html`). Por isso mora
+num pedaço só: mudar o desenho num lugar e esquecer o outro é como dois rostos
+diferentes para a mesma pessoa.
+
+Por que um TIJOLO e não um bicho de pixel: a escola ensina modelagem 3D e UGC do
+Roblox. O desenho é um brick visto de três quartos — três faces com luz
+diferente, dois studs em cima —, que é a forma que o aluno vê o dia inteiro no
+Blender e no Studio. Os olhos quadrados são a piscadela para o pixel art.
+
+Por que INLINE e não um `<symbol>` + `<use>` como os ícones de categoria: o que
+está dentro de um `<use>` vira shadow DOM, e o CSS de fora não alcança as peças
+lá dentro. Sem alcançar, não há como piscar SÓ os olhos nem acender SÓ a face de
+cima — a animação inteira depende de o CSS enxergar cada parte.
+
+`aria-hidden` + `focusable="false"`: é enfeite. Quem usa leitor de tela ouve o
+título ao lado, que é a informação de verdade; o mascote só atrapalharia.
+{% endcomment %}
+<svg class="mascote" viewBox="0 0 34 34" aria-hidden="true" focusable="false">
+  {% comment %}
+  A sombra fica FORA do grupo que flutua: é ela parada, e o bloco subindo, que
+  faz o olho ler "está levitando". Se ela subisse junto, o conjunto pareceria
+  apenas um desenho escorregando na tela.
+  {% endcomment %}
+  <ellipse class="mascote-sombra" cx="14" cy="32.4" rx="9" ry="1.5"/>
+  <g class="mascote-corpo">
+    <polygon class="mascote-lado" points="23,10 31,2 31,22 23,30"/>
+    <polygon class="mascote-topo" points="3,10 11,2 31,2 23,10"/>
+    <rect class="mascote-frente" x="3" y="10" width="20" height="20"/>
+    <polygon class="mascote-stud" points="8.6,7.6 13.4,7.6 16,5 11.2,5"/>
+    <polygon class="mascote-stud" points="16.6,7.6 21.4,7.6 24,5 19.2,5"/>
+    <rect class="mascote-olho" x="7" y="16" width="4" height="5"/>
+    <rect class="mascote-olho" x="15" y="16" width="4" height="5"/>
+    <rect class="mascote-boca" x="10" y="25" width="6" height="2"/>
+  </g>
+</svg>
