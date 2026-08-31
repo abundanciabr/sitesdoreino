@@ -1,0 +1,16 @@
+{
+  "arquivo": "071-criar-as-tabelas-do-motor-das-sequencias-versao-corrigida-pe",
+  "id": "TAR-071",
+  "titulo": "Criar as tabelas do motor das sequencias (versao corrigida pela consultoria)",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-054"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + saida crua dos testes provando: (a) a trava parcial PERMITE segunda inscricao depois de concluida e RECUSA duas andando ao mesmo tempo; (b) unique(inscricao, passo, canal) recusa duplicata; (c) diff vazio na constraint uniq_envio_por_order_tipo_canal.",
+  "despacho": "Substitui a TAR-057, trancada por estar desatualizada.\n\n*** ESTE DESPACHO NAO REPETE O PLANO. Ele APONTA. ***\nA TAR-057 copiou o §5 para dentro de si, o plano mudou, e o despacho virou mapa\nvelho — a Classe 8 do PLANO-MESTRE-ROBOS-SEM-COLISAO. Aqui isso nao se repete:\no que vale e o documento, sempre na versao de agora.\n\nLEIA, NESTA ORDEM, ANTES DE ESCREVER UMA LINHA:\n1. docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md — o §5 INTEIRO (o modelo de\n   dados) e o §4.1 (por que o motor mora dentro da mensageria).\n2. docs/consultorias/sequencias-de-mensagens/VEREDITO.md — os dez defeitos que a\n   consultoria externa achou, e POR QUE cada correcao existe. Sem isso voce vai\n   achar que metade das travas e exagero.\n3. services/mensageria/LICOES.md inteiro.\n4. armadilhas/INDICE.md — procure por transacao, constraint e migracao.\n\nO QUE ESTA TAREFA ENTREGA: `services/mensageria/apps/jornadas/` com as tabelas do\n§5 e as travas, e NADA MAIS. Nao manda mensagem, nao consome evento, nao agenda.\n\nAS TRES COISAS QUE MAIS DERRUBAM QUEM FAZ ISTO:\n\n1. A trava da Inscricao e PARCIAL (`condition=Q(estado=\"andando\")`), e nao total.\n   Total era o defeito: fazia a jornada \"sumiu\" rodar UMA VEZ na vida do aluno. Se\n   voce \"simplificar\" para total, quebra uma das quatro sequencias que o\n   mantenedor escolheu. O §5 explica o efeito de segunda ordem, que e pior.\n\n2. A versao e IMUTAVEL por construcao. Inscricao aponta para JornadaVersao, nunca\n   para Jornada. Se apontar para Jornada, a promessa de \"nao retroativo\" volta a\n   ser disciplina humana — que e a categoria de erro que este projeto ja catalogou\n   como a mais cara dele.\n\n3. A constraint `uniq_envio_por_order_tipo_canal` de EnvioRegistrado NAO SE TOCA.\n   Nem para \"melhorar\". E a trava do fluxo de dinheiro, e o motor a reusa com\n   order_id sintetico.\n\nTravas no BANCO (CheckConstraint/UniqueConstraint), nunca so em `save()` —\n`armadilhas/023`: um `queryset.update()` fura guarda escrita em Python.\n\nOrcamento de 15 arquivos (`armadilhas/035`): a celula ja tem ~30. Se nao couber,\nDIVIDA em PRs — nunca peca a etiqueta arquitetural.",
+  "origem": "substitui a TAR-057, trancada por copiar um plano que mudou (consultoria externa de 31/08/2026)",
+  "criada_em": "2026-08-31"
+}

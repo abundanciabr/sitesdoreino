@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260831-154506-TAR-057-bloqueada",
+  "tarefa": "TAR-057",
+  "evento": "bloqueada",
+  "quando": "2026-08-31T15:45:06+00:00",
+  "quem": "sessao-plano-mensagens-2026-08-31",
+  "detalhe": "TRANCADA POR ESTAR DESATUALIZADA. O despacho desta tarefa COPIOU o plano, e o plano mudou: a consultoria externa de 31/08/2026 achou dez defeitos, quatro deles no §5 e no §6 que este despacho descreve. Construir por ele reproduziria os defeitos — inclusive a trava que impedia a jornada 'sumiu' de rodar mais de uma vez por aluno. Substituta ja criada, apontando para o plano em vez de copia-lo. Veredito: docs/consultorias/sequencias-de-mensagens/VEREDITO.md"
+}
