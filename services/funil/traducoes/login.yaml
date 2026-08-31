@@ -115,3 +115,45 @@ link_cadastro:
   en: "Register"
   pt-br: "Cadastre-se"
   es: "Regístrate"
+
+ou_com_senha:
+  # O divisor entre o botão do Google e o mini-formulário de senha
+  # (DECISAO-login-por-senha.md, 31/08/2026) — só aparece quando a
+  # identidade emitiu o token de entrada (fail-open na EXIBIÇÃO).
+  _fonte: "673eeb"
+  en: "Or sign in with e-mail and password"
+  pt-br: "Ou entre com e-mail e senha"
+  es: "O inicia sesión con correo y contraseña"
+
+campo_email:
+  _fonte: "2550d9"
+  en: "E-mail"
+  pt-br: "E-mail"
+  es: "Correo electrónico"
+
+campo_senha:
+  _fonte: "e7cf3e"
+  en: "Password"
+  pt-br: "Senha"
+  es: "Contraseña"
+
+botao_senha:
+  _fonte: "bedac8"
+  en: "Sign in with password"
+  pt-br: "Entrar com senha"
+  es: "Iniciar sesión con contraseña"
+
+erro_senha_invalida:
+  # Não distingue "e-mail sem conta" de "senha errada", de propósito
+  # (DECISAO-login-por-senha.md §6.1) — não virar jeito de descobrir quem
+  # tem conta.
+  _fonte: "076268"
+  en: "Wrong e-mail or password."
+  pt-br: "E-mail ou senha incorretos."
+  es: "Correo o contraseña incorrectos."
+
+erro_muitas_tentativas:
+  _fonte: "85ea31"
+  en: "Too many attempts. Wait a bit and try again."
+  pt-br: "Muitas tentativas. Espere um pouco e tente de novo."
+  es: "Demasiados intentos. Espera un poco e inténtalo de nuevo."

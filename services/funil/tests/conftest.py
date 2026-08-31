@@ -202,6 +202,25 @@ def rede():
         mock.get(f"{IDENTIDADE}/sessao/completa", name="get_session_full").mock(
             return_value=httpx.Response(200, json={"autenticado": False})
         )
+        # `issueLoginToken` (DECISAO-login-por-senha.md) — a tela /login pede
+        # este token TODA vez que renderiza (fail-open na exibição), então
+        # precisa de default aqui, como os dois de cima. Nomeada para o
+        # teste que simula falha (o mini-formulário de senha some).
+        mock.post(
+            f"{IDENTIDADE}/tokens-de-entrada", name="emitir_token_de_entrada"
+        ).mock(
+            return_value=httpx.Response(
+                200, json={"token": "token-de-entrada-de-teste"}
+            )
+        )
+        # `setPassword` — o /cadastro chama isto sempre que o pedido de vaga
+        # deu certo (DECISAO-login-por-senha.md). Default sucesso; o teste
+        # de falha (502 fail-closed) troca esta resposta.
+        mock.post(f"{IDENTIDADE}/pessoas/definir-senha", name="definir_senha").mock(
+            return_value=httpx.Response(
+                200, json={"id": "idt-de-teste", "criada": True}
+            )
+        )
         yield mock
 
 
