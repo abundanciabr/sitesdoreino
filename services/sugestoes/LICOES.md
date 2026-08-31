@@ -3,6 +3,49 @@
 > Decisões e armadilhas específicas desta célula. Regra geral em `ARMADILHAS.md`
 > (leia `armadilhas/INDICE.md` e abra só a entrada que casa com a sua tarefa).
 
+## Corrigir o texto de uma ideia: "calada" é uma decisão de produto que compra uma tabela
+
+`DECISAO-corrigir-o-texto-de-uma-ideia.md` (31/08/2026). O mantenedor pediu o
+gesto com o caso na mão ("turorial" no nome de duas sugestões) e escolheu, entre
+três opções, que a correção não deixa marca nenhuma na página do aluno.
+
+**A lição não é sobre a rota, é sobre o que a segunda decisão obriga.** Correção
+sem marca visível é aceitável; correção sem RASTRO não é — sem ele a escola
+poderia reescrever a fala de um aluno e ninguém conseguiria dizer o que ele
+tinha escrito. As duas coisas parecem a mesma quando se lê "calada" rápido, e a
+diferença entre elas é uma tabela: `CorrecaoDeTexto`, uma linha por campo
+alterado, append-only nos três degraus.
+
+**O terceiro degrau pesa mais aqui do que nas outras duas tabelas append-only da
+célula.** O `HistoricoStatus` e o `ChangeSpecAprovado` guardam fatos que também
+existem em outro lugar (o status atual da ideia, o documento do ChangeSpec).
+Esta guarda a ÚNICA cópia do que o aluno escreveu: um `UPDATE` cru passando por
+baixo do Python não corromperia um registro, destruiria a prova.
+
+**Três decisões de desenho que valem para quem mexer nisto:**
+
+1. **Uma linha por CAMPO, não por gesto.** Corrigir nome e problema de uma vez
+   dá duas linhas com o mesmo carimbo. É o formato do `HistoricoStatus` (um
+   fato por linha), e é o que faz "o que já mudou neste título?" ser um filtro,
+   não uma varredura de três colunas por linha.
+2. **Os valores de `Campo` são os nomes reais dos campos da `Sugestao`.** Quem
+   escreve usa `setattr`, quem lê usa `getattr`, e não existe mapa de tradução
+   para envelhecer em silêncio.
+3. **O corpo da requisição carrega os TRÊS campos, sempre**, com o valor final
+   de cada um. Mandar só os alterados obrigaria a distinguir "não mandei este
+   campo" de "mandei vazio", que num JSON são a mesma ausência — e apagar a
+   solução proposta é correção legítima. De brinde, a operação fica idempotente:
+   reenviar o mesmo corpo não cria uma segunda correção, porque a segunda não
+   muda nada e é recusada com essa frase.
+
+**E a régua que ficou escrita na lei, porque ela não é óbvia:** o fórum desta
+mesma escola corrige texto de aluno de outro jeito — título de conversa muda
+calado, mensagem ganha a marca "editada". Não é contradição. Lá as pessoas
+RESPONDEM a uma mensagem, e quem respondeu confiando no texto antigo precisa ver
+que ele mudou; aqui as pessoas VOTAM numa ideia, e o voto continua valendo
+depois de "turorial" virar "tutorial". Antes de copiar o desenho de uma célula
+para a outra, pergunte o que a plateia daquele texto fez com ele.
+
 ## A tela de avisos passa a ler da caixa central (Fase 3/4 do sininho): a double fiel, o `id` que deixou de ser inteiro, e um cache que confundiu um guarda antigo
 
 Fecha `docs/decisoes/DECISAO-fase-2-do-sininho.md` §3 (*"a tela de avisos da
