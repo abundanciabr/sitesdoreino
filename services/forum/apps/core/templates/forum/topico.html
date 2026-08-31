@@ -130,7 +130,7 @@ da view de POST. Tópico trancado esconde a caixa aqui E recusa lá.
 {% elif pode_escrever %}
   <form class="cartao escrever" method="post" action="{% url 'responder' topico.pk %}">
     {% csrf_token %}
-    <h2>Responder</h2>
+    <div class="cabeca">{% include "forum/_mascote.html" %}<h2>Responder</h2></div>
     {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
     <label for="texto">Sua resposta</label>
     <textarea id="texto" name="texto" rows="5" required

@@ -17,7 +17,46 @@ por isso sobrevive a um POST que volta com erro. Quem pinta a escolhida é o
 {% block titulo %}Nova ideia | Caixa de Sugestões{% endblock %}
 {% block migalha %}Nova ideia{% endblock %}
 {% block conteudo %}
-<h1>O que está faltando?</h1>
+{% comment %}
+O MASCOTE. Um tijolo que gira ao lado do título, como uma peça na mesa
+giratória do Blender — quatro studs em cima, seis faces, uma volta lenta.
+Escolha do mantenedor em 31/08/2026, entre quatro desenhos que ele viu animados
+lado a lado.
+
+Ele fica FORA do formulário de propósito, colado no título: é a primeira coisa
+que a pessoa vê ao chegar numa página em branco. Quem o faz reagir ao cursor
+dentro dos campos é o `:has()` do CSS (`static/sugestoes/caixa.css`), o mesmo
+seletor que pinta a categoria escolhida aqui embaixo — nada disso depende de
+JavaScript, como o resto desta casa.
+
+**Por que `<div>` e não SVG, sendo que todo ícone desta casa é SVG** — e isto é
+decisão, não descuido: a rotação aqui é 3D de verdade, e
+`transform-style: preserve-3d` **não vale para os filhos de um `<svg>`**
+(`armadilhas/238`). Num SVG o cubo achataria a cada volta em vez de girar. As
+faces são divs porque só o layout de caixas do CSS entende profundidade.
+
+`aria-hidden`: é enfeite. Quem usa leitor de tela ouve o título ao lado, que é
+a informação de verdade. E como não há texto aqui dentro, não há o que anunciar.
+{% endcomment %}
+<div class="cabeca">
+  <div class="mascote" aria-hidden="true">
+    <div class="mascote-cubo">
+      <div class="mascote-face mascote-f1"></div>
+      <div class="mascote-face mascote-f2"></div>
+      <div class="mascote-face mascote-f3"></div>
+      <div class="mascote-face mascote-f4"></div>
+      {% comment %}
+      O topo é a face que o aluno reconhece de longe: os quatro studs de uma
+      peça de montar. São `<i>` vazios — quatro caixinhas redondas numa grade
+      de 2 por 2 —, e não desenho: menos marcação, e a cor sai da folha junto
+      com o resto.
+      {% endcomment %}
+      <div class="mascote-face mascote-topo"><i></i><i></i><i></i><i></i></div>
+      <div class="mascote-face mascote-base"></div>
+    </div>
+  </div>
+  <h1>O que está faltando?</h1>
+</div>
 <p class="sub">
   Conte o problema que você vive. A solução é opcional: quem decide como
   resolver é a equipe, mas quem sabe o que dói é você.

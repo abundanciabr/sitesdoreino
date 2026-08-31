@@ -261,6 +261,93 @@ textarea { resize: vertical; min-height: 72px; }
 .discreto { border: 0; background: none; font-weight: 400; color: var(--texto-tenue); text-decoration: underline; padding: 0; margin-top: 0; }
 .discreto:hover { background: none; color: var(--texto); }
 
+/* --- o mascote da ideia nova --------------------------------------------
+   Um tijolo que gira ao lado de "O que está faltando?", como uma peça na mesa
+   giratória do Blender. Escolha do mantenedor em 31/08/2026, entre quatro
+   desenhos que ele viu animados lado a lado.
+
+   Ele existe numa tela só — a de CRIAR — e é de propósito: é o momento em que
+   a pessoa encara um formulário em branco, e é o único lugar da Caixa em que
+   vale gastar movimento para dizer "pode escrever".
+
+   O gêmeo dele mora no fórum (`services/forum/.../_mascote.html`): mesmo
+   PADRÃO, arquivo próprio, como manda a Lei 7 — as duas células não
+   compartilham folha nem template.
+
+   **Ele é feito de `<div>`, e não de SVG como todo ícone desta casa**, e isto é
+   decisão, não descuido: a rotação é 3D de verdade, e `transform-style:
+   preserve-3d` não vale para os filhos de um `<svg>` (`armadilhas/238`). Num
+   SVG o cubo achataria a cada volta em vez de girar.
+   ------------------------------------------------------------------------ */
+.cabeca { display: flex; align-items: center; gap: 12px; margin-bottom: .3rem; }
+.cabeca h1 { margin: 0; }
+
+/* A CAIXA DE PERSPECTIVA. Sem ela o cubo gira "chapado": as faces mudam de
+   largura, mas nada se aproxima do olho, e o efeito lê como origami.
+
+   A conta dos tamanhos, para quem for mexer: girando, a diagonal do cubo passa
+   na frente e a perspectiva a aumenta. Com cubo de 28px e perspectiva de 200,
+   o ponto mais largo da volta dá ~44px — cabe nos 50px da caixa. Aumentar o
+   cubo sem aumentar a caixa faz o tijolo encostar no título. */
+.mascote {
+  width: 50px; height: 50px; flex-shrink: 0; perspective: 200px;
+  display: flex; align-items: center; justify-content: center;
+}
+.mascote-cubo {
+  width: 28px; height: 28px; position: relative;
+  transform-style: preserve-3d;
+  animation: mascote-gira 7s linear infinite;
+}
+/* Sete segundos por volta: devagar o bastante para não puxar o olho de quem
+   está escrevendo. O `linear` é de propósito — mesa giratória não acelera nem
+   freia, e qualquer `ease` aqui faz o tijolo parecer que hesita. */
+@keyframes mascote-gira {
+  from { transform: rotateX(-18deg) rotateY(0deg); }
+  to   { transform: rotateX(-18deg) rotateY(360deg); }
+}
+.mascote-face {
+  position: absolute; width: 28px; height: 28px; box-sizing: border-box;
+  border: 1px solid rgba(21, 22, 28, .35);
+}
+/* As quatro laterais em duas tintas alternadas: é o contraste entre elas que
+   deixa a volta VISÍVEL. Com as quatro iguais, o cubo giraria e pareceria
+   parado — a silhueta de um cubo em rotação muda pouco. */
+.mascote-f1, .mascote-f3 { background: var(--laranja); }
+.mascote-f2, .mascote-f4 { background: #e86a28; }
+.mascote-f1 { transform: translateZ(14px); }
+.mascote-f2 { transform: rotateY(90deg) translateZ(14px); }
+.mascote-f3 { transform: rotateY(180deg) translateZ(14px); }
+.mascote-f4 { transform: rotateY(-90deg) translateZ(14px); }
+/* O topo é a face que o aluno reconhece de longe: quatro studs, como uma peça
+   de montar. É o mais claro dos seis porque a luz da cena vem de cima. */
+.mascote-topo {
+  background: #ffb07d;
+  transform: rotateX(90deg) translateZ(14px);
+  display: grid; grid-template-columns: 1fr 1fr; place-items: center;
+  gap: 2px; padding: 5px;
+}
+.mascote-topo i { display: block; width: 7px; height: 7px; border-radius: 50%; background: #ffd0af; }
+.mascote-base { background: #a8471a; transform: rotateX(-90deg) translateZ(14px); }
+
+/* ELE REPARA EM VOCÊ. Assim que o cursor entra em qualquer campo, o tijolo
+   acelera e acende — a mesma borda de luz que o Blender põe no objeto
+   selecionado. O mascote está FORA do formulário (mora no título), e por isso
+   quem faz a ponte é o `:has()`, o mesmo seletor que já pinta a categoria
+   escolhida logo abaixo. Zero JavaScript, como o resto da casa. */
+.coluna:has(form:focus-within) .mascote-cubo { animation-duration: 2.8s; }
+.coluna:has(form:focus-within) .mascote { filter: drop-shadow(0 0 6px rgba(255, 122, 51, .5)); }
+
+/* Quem pede menos movimento ao sistema recebe o tijolo PARADO — e parado numa
+   pose de três quartos, não na de frente. De frente ele seria um quadrado
+   chapado, e jogaria fora a única coisa que este desenho tem a dizer. */
+@media (prefers-reduced-motion: reduce) {
+  .mascote-cubo,
+  .coluna:has(form:focus-within) .mascote-cubo {
+    animation: none;
+    transform: rotateX(-18deg) rotateY(-32deg);
+  }
+}
+
 /* --- a linha do tempo da sugestão (histórico) ---------------------------- */
 
 .etapas { display: flex; align-items: flex-start; margin: 4px 0 18px; }

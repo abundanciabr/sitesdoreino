@@ -253,3 +253,117 @@ button.mini:hover { background: #fffbeb; }
   .escrever button, .botao { width: 100%; text-align: center; }
   .linha-de-botoes form, button.mini { width: 100%; }
 }
+
+/* =========================================================================
+   O MASCOTE DA CAIXA DE ESCREVER
+   =========================================================================
+   Um tijolo que gira, como uma peça na mesa giratória do Blender. Escolha do
+   mantenedor em 31/08/2026, entre quatro desenhos que ele viu animados lado a
+   lado. Ele vive ao lado de "Abrir uma conversa" e de "Responder" — as duas
+   telas em que o aluno CRIA alguma coisa aqui dentro. A marcação mora em
+   `templates/forum/_mascote.html`, com o porquê da forma.
+
+   Ele é ROXO, e não laranja, apesar de o laranja ser a cor de um objeto
+   selecionado no Blender: nesta folha o laranja (`--aviso`) já tem dono, e o
+   dono é "isto muda o site" — as ferramentas da escola. Um mascote laranja na
+   caixa de escrever do aluno diria, sem querer, que aquilo ali é botão de
+   administrador.
+
+   TODA a animação está aqui, e não em atributos de marcação, por um motivo
+   prático: é o que deixa o `prefers-reduced-motion` desligá-la de uma vez, no
+   fim desta seção. Quem sente enjoo com movimento na tela pede isso ao sistema
+   uma vez e o site inteiro obedece.
+   ========================================================================= */
+.escrever .cabeca {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+/* O `h2` já tinha margem de baixo pela regra do `.escrever`; dentro da linha
+   do mascote ela viraria um degrau entre o desenho e o texto. */
+.escrever .cabeca h2 { margin: 0; }
+
+/* A CAIXA DE PERSPECTIVA. Sem ela o cubo gira "chapado": as faces mudam de
+   largura, mas nada se aproxima do olho, e o efeito lê como origami.
+
+   A conta dos tamanhos, para quem for mexer: girando, a diagonal do cubo passa
+   na frente e a perspectiva a aumenta. Com cubo de 24px e perspectiva de 180,
+   o ponto mais largo da volta dá ~38px — cabe nos 44px da caixa. Aumentar o
+   cubo sem aumentar a caixa faz o tijolo encostar no título. */
+.mascote {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  perspective: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.mascote-cubo {
+  width: 24px;
+  height: 24px;
+  position: relative;
+  transform-style: preserve-3d;
+  animation: mascote-gira 7s linear infinite;
+}
+/* Sete segundos por volta: devagar o bastante para não puxar o olho de quem
+   está escrevendo. O `linear` é de propósito — mesa giratória não acelera nem
+   freia, e qualquer `ease` aqui faz o tijolo parecer que hesita. */
+@keyframes mascote-gira {
+  from { transform: rotateX(-18deg) rotateY(0deg); }
+  to   { transform: rotateX(-18deg) rotateY(360deg); }
+}
+.mascote-face {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  box-sizing: border-box;
+  border: 1px solid rgba(27, 27, 31, .18);
+}
+/* As quatro laterais em duas tintas alternadas: é o contraste entre elas que
+   deixa a volta VISÍVEL. Com as quatro iguais, o cubo giraria e pareceria
+   parado — a silhueta de um cubo em rotação muda pouco. */
+.mascote-f1, .mascote-f3 { background: var(--destaque); }
+.mascote-f2, .mascote-f4 { background: #4038c9; }
+.mascote-f1 { transform: translateZ(12px); }
+.mascote-f2 { transform: rotateY(90deg) translateZ(12px); }
+.mascote-f3 { transform: rotateY(180deg) translateZ(12px); }
+.mascote-f4 { transform: rotateY(-90deg) translateZ(12px); }
+/* O topo é a face que o aluno reconhece de longe: quatro studs, como uma peça
+   de montar. É o mais claro dos seis porque a luz da cena vem de cima. */
+.mascote-topo {
+  background: #7d76ef;
+  transform: rotateX(90deg) translateZ(12px);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  place-items: center;
+  gap: 2px;
+  padding: 4px;
+}
+.mascote-topo i {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #b0abf7;
+}
+.mascote-base { background: #2e2894; transform: rotateX(-90deg) translateZ(12px); }
+
+/* ELE REPARA EM VOCÊ. Assim que o cursor entra em qualquer campo do
+   formulário, o tijolo acelera e acende — a mesma borda de luz que o Blender
+   põe no objeto selecionado. É o único jeito de o desenho responder ao que a
+   pessoa está fazendo sem uma linha de JavaScript. */
+.escrever:focus-within .mascote-cubo { animation-duration: 2.8s; }
+.escrever:focus-within .mascote { filter: drop-shadow(0 0 5px rgba(79, 70, 229, .5)); }
+
+/* Quem pede menos movimento ao sistema recebe o tijolo PARADO — e parado numa
+   pose de três quartos, não na de frente. De frente ele seria um quadrado
+   chapado, e jogaria fora a única coisa que este desenho tem a dizer. */
+@media (prefers-reduced-motion: reduce) {
+  .mascote-cubo,
+  .escrever:focus-within .mascote-cubo {
+    animation: none;
+    transform: rotateX(-18deg) rotateY(-32deg);
+  }
+}
