@@ -105,7 +105,7 @@ ASSUNTO_MATRICULA = "matricula.situacao-alterada"
 #: a mesma regra do `vinculo` ausente logo acima.
 SITUACAO_ROTULOS = {
     "ativa": "Você é aluno",
-    "reembolsada": "Reembolsado — o acesso continua",
+    "reembolsada": "Reembolsado, e o acesso acabou",
     "suspensa": "Acesso pausado",
     "encerrada": "Acesso encerrado",
     "aguardando": "Na fila, esperando decisão",

@@ -1,0 +1,70 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O histórico de um documento. Ele é o que entrou no lugar do `git log` que os
+documentos tinham enquanto moravam no repositório: sem esta tela, a decisão de
+31/08/2026 teria custado a memória do que estava escrito antes, sem nada no
+lugar.
+
+Da mais nova para a mais velha, e a primeira da lista é a que está no ar. Nada
+de script: voltar para uma versão é um POST com o número dela.
+{% endcomment %}
+{% block titulo %}Histórico de {{ documento.titulo }} | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'documento_admin' documento.nome %}">&larr; Voltar ao documento</a>
+  <h1>O que já foi escrito aqui</h1>
+  <p class="subtitulo">
+    Cada vez que alguém salvou este documento, o texto daquele momento ficou
+    guardado. A primeira da lista é a que está valendo agora.
+  </p>
+
+  {% if recado == "sumiu" %}
+  <p class="recado borda-vermelha">
+    Essa versão não existe mais. Talvez o documento tenha sido apagado e criado
+    de novo.
+  </p>
+  {% endif %}
+
+  {% if versoes %}
+  <div class="versoes">
+    {% for versao in versoes %}
+    <div class="versao {% if forloop.first %}atual{% endif %}">
+      <div class="versao-topo">
+        <b>{{ versao.salvo_em|date:"d/m/Y" }} às {{ versao.salvo_em|date:"H:i" }}</b>
+        {% if forloop.first %}<span class="selo">é a que está no ar</span>{% endif %}
+      </div>
+      <p class="nota">
+        {{ versao.gesto }}{% if versao.salvo_por %}, por {{ versao.salvo_por }}{% endif %}.
+        Título: "{{ versao.titulo }}".
+        {% if versao.publico %}Estava publicado no site.{% else %}Não estava publicado.{% endif %}
+      </p>
+      <p class="versao-trecho">{{ versao.corpo|truncatechars:400 }}</p>
+      {% if not forloop.first %}
+      <form method="post" action="{% url 'documento_restaurar' documento.nome %}">
+        {% csrf_token %}
+        <input type="hidden" name="versao" value="{{ versao.id }}">
+        <button type="submit">Voltar para esta versão</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+  <p class="aviso espaco-28">
+    <b>Voltar para uma versão não apaga nada.</b>
+    O texto antigo é copiado por cima do de hoje, e o de hoje continua nesta
+    lista. Se você voltar por engano, é só voltar de novo para a versão certa.
+  </p>
+  {% else %}
+  <p class="aviso">
+    Este documento ainda não foi salvo nenhuma vez por esta tela, então não há
+    versão guardada. Da próxima vez que você salvar, ela aparece aqui.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{
+  "arquivo": "082-aviso-no-celular-web-push-para-quem-instalou-o-app",
+  "id": "TAR-082",
+  "titulo": "Aviso no celular (web push) para quem instalou o app",
+  "toca": [
+    "services/notificacoes",
+    "contracts",
+    "services/funil",
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com as celulas verdes e um aviso de teste recebido num celular real",
+  "despacho": "# Despacho — o aviso que chega na tela do celular (web push)\n\nO mantenedor autorizou o canal em 31/08/2026, logo depois de o site instalável\nentrar (PR #706). No iPhone, instalar era o pré-requisito: só um site na tela de\ninício pode receber notificação. Agora falta o aviso em si.\n\n**Os três tipos de aviso que ele escolheu**, em pergunta estruturada, na mesma\nresposta em que autorizou:\n\n1. resposta a algo que a pessoa pediu (entrada aceita, sugestão respondida);\n2. novidade da escola (aula nova, recado dele) — no máximo um por dia;\n3. movimento no fórum (resposta à mensagem dela, assunto novo na área).\n\n**Leia antes:** `docs/notificacoes/PLANO-MESTRE.md` (a Fase 7 é o lugar deste\ntrabalho: \"preferências, e só então outros canais\"),\n`docs/decisoes/DECISAO-notificacoes.md` (a lei: notificação é DADO, nunca frase\npronta), `armadilhas/241` (as duas regras do service worker),\n`constituicoes/AGENTS.notificacoes.md`.\n\n## A escada, um PR por degrau\n\n**A — contrato.** `contracts/notificacoes.openapi.yaml` ganha a inscrição de um\naparelho: `POST /inscricoes-push` (destinatario_id, site_id, endpoint, chaves) e\n`DELETE /inscricoes-push`. Rito §3: PR só de `contracts/`, label `contrato`,\nmandato do mantenedor anunciado nominalmente. Aditivo, nunca renomeando nada.\n\n**B — a célula `notificacoes`.** Modelo `InscricaoPush` (uma linha por aparelho,\ncom `site_id` + `destinatario_id`), as duas rotas, e o envio: quando uma carta\n`notificacao.devida.v1` vira linha, os aparelhos daquela pessoa recebem o aviso.\nRegras duras: o envio **falha aberto** (a carta gravada é a verdade durável; o\npush é o espelho dela), tem timeout curto para não travar o consumidor, e\ninscrição que o servidor de push recusar com 404/410 é **apagada na hora** —\naparelho que desinstalou não pode virar lixo eterno no banco. A chave VAPID vem\ndo ambiente e é fail-closed: sem ela a célula não envia e diz isso no log, em vez\nde fingir que enviou.\n\n**C — o site (`funil`).** Dentro do app instalado, um cartaz pergunta se a pessoa\nquer receber os avisos, e só então o navegador mostra a caixa de permissão do\nsistema. Nunca no primeiro segundo, nunca fora do app instalado: permissão pedida\nde surpresa é negada para sempre, e não há segunda chance. O `sw.js` ganha os\ndois ouvintes (`push` e `notificationclick`), e o texto do aviso nasce no idioma\nda pessoa, como toda frase desta plataforma.\n\n**D — a VPS.** O par de chaves VAPID (a pública viaja no código, a privada é\nsegredo) e a variável no compose. É passo do mantenedor: um bloco único de colar,\nfail-closed, com a janela nomeada.\n\n## Fronteira congelada\n\nNenhuma célula lê o banco de outra. O `funil` continua falando com a\n`notificacoes` só pelo contrato, server-side, e nenhuma rota nova devolve\ne-mail: o destinatário é sempre o id da plataforma.",
+  "origem": "mantenedor 31/08/2026, logo depois do PR 706",
+  "criada_em": "2026-08-31"
+}

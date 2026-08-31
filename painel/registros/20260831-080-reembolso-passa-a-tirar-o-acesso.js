@@ -1,0 +1,19 @@
+(function(){ (window.REGISTROS = window.REGISTROS || []).push({
+  arquivo: "20260831-080-reembolso-passa-a-tirar-o-acesso",
+  tipo: "decisao",
+  quando: "2026-08-31",
+  titulo: "Voce corrigiu o site: quem e reembolsado perde o acesso, e a ficha fica guardada",
+  detalhe: "VOCE ACHOU UM TEXTO ERRADO NO PROPRIO SITE. Em tres lugares estava escrito que quem foi reembolsado 'devolveu o dinheiro e CONTINUA com acesso'. Voce disse que a verdade e o contrario: a pessoa e removida, e perde totalmente o acesso ao curso e ao site.\n\nISSO REVERTE UMA DECISAO SUA, a de 24 de agosto ('quem ja foi aluno mantem a voz'). Nao foi descuido de ninguem: a regra estava escrita como definitiva em seis documentos e TRAVADA por tres testes que quebram o sistema de proposito, postos ali justamente para nenhum robo 'consertar' aquilo de boa-fe. As travas fizeram o trabalho delas: elas dizem 'mudar isto e decisao do mantenedor, nunca de um despacho' — e a decisao veio de voce.\n\nPOR QUE A REGRA ANTIGA CAIU, e vale voce saber porque a licao e maior que este caso. Em 24/08 a pergunta que te fizeram foi estreita: 'quem pediu reembolso perde a voz na Caixa de Sugestoes?'. Naquele recorte, deixar entrar e generoso e custa pouco. Ninguem te perguntou o que o reembolso significa no NEGOCIO — e ali a sua resposta e outra: reembolso e a compra sendo desfeita, e continuar entrando no curso depois de receber o dinheiro de volta e o curso saindo de graca. A resposta de uma tela virou, por heranca, a regra de acesso da plataforma inteira, e ninguem voltou a te perguntar quando o alcance cresceu. Isso agora esta escrito na lei, para nao repetir.\n\nAS SUAS DUAS ESCOLHAS DE HOJE:\n\n1. A FICHA NAO E APAGADA, so o acesso acaba. Voce continua vendo quem foi reembolsado e quando, e religa com um clique se tiver sido engano. Isso mantem de pe a sua propria lei de 29/08, que diz que nenhum caminho do sistema apaga a ficha de uma pessoa.\n\n2. TELA PROPRIA DE REEMBOLSO. Quando a pessoa tentar entrar, ela le que o acesso acabou porque o dinheiro foi devolvido — e nao uma tela generica que a deixaria sem saber o motivo. Sem botao de 'pedir para voltar': o ex-aluno tem esse botao desde 29/08, e a diferenca e a decisao. Quem terminou um curso e quer o do semestre seguinte nao esta insistindo contra uma decisao sua; quem foi reembolsado esta.\n\nUMA COISA QUE VOCE PRECISA SABER, e que eu medi antes de escrever qualquer linha: NINGUEM EM PRODUCAO PERDE ACESSO POR CAUSA DISSO HOJE. Nenhuma linha de codigo do sistema jamais marcou alguem como reembolsado — o unico caminho que existe e voce pondo a mao, pela tela de gestao. Se houver alguem marcado assim por voce, essa pessoa perde o acesso, que e o que a palavra sempre prometeu.\n\nESTE REGISTRO E DA LEI. O comportamento muda nos PRs seguintes, nesta ordem: o contrato entre as pecas, a parte que decide quem entra, a tela da Caixa, e por fim as suas telas de administracao e as duas paginas de /docs/ que voce leu.",
+  autoridade: "mantenedor",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/756 — a lei em docs/decisoes/DECISAO-reembolso-tira-o-acesso.md, mais emendas nos cinco documentos que citavam a decisao de 24/08 como definitiva e no mapa para IA. As duas escolhas do mantenedor foram colhidas por pergunta estruturada nesta sessao, com o preco de cada caminho apresentado ANTES da escolha, e estao transcritas no cabecalho da lei. Medido em origin/main em 31/08/2026, antes do desenho: 'git grep' em services/ nao encontra uma unica linha que atribua o status reembolsada (so a declaracao dele no modelo e nas migrations), entao nao ha linha em producao que mude de comportamento.",
+  verificado_em: "2026-08-31",
+  precisa_do_dono: false,
+  responde_a: null,
+  gravidade: "info",
+  frente: "site",
+  vence_em_dias: null,
+  se_eu_nao_decidir: null,
+  recomendacao: null,
+  reversivel: null,
+  impacto: null
+});})();

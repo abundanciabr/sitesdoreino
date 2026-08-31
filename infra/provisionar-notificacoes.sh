@@ -73,6 +73,13 @@ if [ -f env/notificacoes.env ]; then
           echo "   · $CHAVE -> é o par da célula '$CELULA'. Rode-me primeiro e"
           echo "     DEPOIS o infra/provisionar-$CELULA.sh, que regrava os dois lados."
           ;;
+        VAPID_*)
+          echo "   · $CHAVE -> é a chave do aviso na tela do celular. Rode-me"
+          echo "     primeiro e DEPOIS o infra/provisionar-aviso-no-celular.sh."
+          echo "     ATENÇÃO: a chave vai NASCER DE NOVO, e todo aparelho que já"
+          echo "     recebia aviso vai precisar ligar outra vez (o cartaz volta a"
+          echo "     aparecer para essas pessoas). Nada mais se perde."
+          ;;
         *)
           echo "   · $CHAVE -> não sei de quem é. Mande esta tela ao agente."
           ;;

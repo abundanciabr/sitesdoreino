@@ -62,10 +62,14 @@ def visao_geral(request):
 # pediu que o site publicasse documentos — uns para qualquer pessoa, outros só
 # para quem administra.
 #
-# **Duas telas, uma fonte.** Os mesmos arquivos de `documentos/` servem as duas,
-# e é o PRÓPRIO documento que declara quem pode lê-lo. O que separa as duas views
-# aqui embaixo é uma linha: a pública passa `so_publicos=True` e recusa o que não
-# é público; a administrativa serve tudo.
+# **Duas telas, uma fonte.** A mesma tabela serve as duas, e é o PRÓPRIO
+# documento que declara quem pode lê-lo. O que separa as duas views aqui embaixo
+# é uma linha: a pública passa `so_publicos=True` e recusa o que não está no ar;
+# a administrativa serve tudo.
+#
+# Desde 31/08/2026 essa fonte é o BANCO, e não mais os `.md` da pasta
+# (`DECISAO-o-editor-de-documentos.md`): o mantenedor edita por uma tela, e o
+# disco do container é remontado a cada atualização da plataforma.
 #
 # **Os endereços são DIFERENTES de propósito, e não por estilo.** Esta célula
 # roda sob `SCRIPT_NAME=/admin`, e o Django tira esse prefixo do `path_info`:
@@ -89,13 +93,18 @@ def docs_publicos(request):
 def doc_publico(request, nome):
     """Um documento público — e 404 para todo o resto.
 
-    **404, e não 403**, para um documento que existe e não é público: um 403
-    confirmaria que o arquivo existe, e a lista de documentos internos de uma
-    escola não é assunto de quem está do lado de fora. Para quem chega aqui, um
-    documento privado e um endereço inventado são a mesma coisa.
+    **404, e não 403**, para um documento que existe e não está no ar: um 403
+    confirmaria que ele existe, e a lista de documentos internos de uma escola
+    não é assunto de quem está do lado de fora. Para quem chega aqui, um
+    documento privado, um arquivado e um endereço inventado são a mesma coisa.
+
+    A pergunta é `no_ar`, e não `publico`: um documento que o mantenedor
+    arquivou continua com `publico=True` gravado, porque arquivar não é
+    despublicar — é tirar de circulação sem perder a decisão anterior. Perguntar
+    só por `publico` deixaria o arquivado no ar.
     """
     documento = documentos.ler(nome)
-    if documento is None or not documento.publico:
+    if documento is None or not documento.no_ar:
         raise Http404("documento não encontrado")
     return render(
         request,
@@ -117,10 +126,20 @@ def documentos_admin(request):
     É o único lugar em que as duas famílias aparecem juntas — sem ele, saber se
     um documento está no ar para o mundo exigiria abrir o repositório.
     """
+    todos = documentos.listar(so_publicos=False, com_arquivados=True)
     return render(
         request,
         "admin/documentos.html",
-        {"admin": request.admin, "documentos": documentos.listar(so_publicos=False)},
+        {
+            "admin": request.admin,
+            "documentos": [d for d in todos if not d.arquivado],
+            # Os arquivados numa lista SEPARADA, e nao misturados com uma
+            # etiqueta: eles nao estao no site, e quem abre esta tela quer ver o
+            # que esta no ar. Escondidos de vez, porem, desarquivar seria
+            # impossivel — entao eles ficam embaixo, fechados.
+            "arquivados": [d for d in todos if d.arquivado],
+            "recado": request.GET.get("recado", ""),
+        },
     )
 
 
@@ -137,6 +156,11 @@ def documento_admin(request, nome):
             "admin": request.admin,
             "documento": documento,
             "corpo": documentos.para_html(documento.corpo),
+            # O recado do POST-redirect-GET, que e o que impede um F5 depois de
+            # salvar de repetir a gravacao. O template so reconhece as palavras
+            # que ele mesmo escreve; qualquer outra coisa na querystring nao
+            # imprime nada.
+            "recado": request.GET.get("recado", ""),
         },
     )
 
@@ -252,8 +276,9 @@ TIPOS_DE_ALUNO = (
         "slug": "reembolsados",
         "nome": "Reembolsados",
         "quem": (
-            "Devolveram o dinheiro e CONTINUAM com acesso — foi o que você "
-            "decidiu em 24/08: quem já foi aluno mantém a voz."
+            "Devolveram o dinheiro e NÃO entram mais: nem no curso, nem na "
+            "Caixa, nem no fórum. A ficha continua aqui, e você religa com "
+            "um clique se tiver sido engano."
         ),
         "fonte": "GET /matriculas?status=reembolsada",
         "fonte_ausente": FonteAusente.PORTA_PRONTA,
@@ -474,15 +499,6 @@ FAIXAS_DA_JORNADA = (
                 "ve": "O caminho da Caixa de Sugestoes, para votar e propor.",
                 "sai": "Voce mudando a situacao dela no formulario do aluno.",
             },
-            {
-                "titulo": "Reembolsado",
-                "slug": "reembolsados",
-                "estado": "reembolsada",
-                "acesso": True,
-                "quem": "Devolveu o dinheiro e CONTINUA entrando.",
-                "ve": "O mesmo que um aluno — foi o que voce decidiu em 24/08.",
-                "sai": "Voce mudando a situacao dela.",
-            },
         ),
     },
     {
@@ -508,6 +524,23 @@ FAIXAS_DA_JORNADA = (
                     "Ela pedindo para voltar (nasce uma ficha nova), ou voce "
                     "pondo a situacao em Ativo na ficha antiga."
                 ),
+            },
+            # [REEMBOLSO] Estava em "Dentro da escola" ate 31/08/2026, com
+            # acesso. Mudou de faixa junto com a decisao do mantenedor
+            # (`DECISAO-reembolso-tira-o-acesso.md`): a faixa e a resposta a
+            # pergunta "entra?", e uma parada na faixa errada e a tela mentindo
+            # com o layout mesmo com o texto certo.
+            {
+                "titulo": "Reembolsado",
+                "slug": "reembolsados",
+                "estado": "reembolsada",
+                "acesso": False,
+                "quem": "O dinheiro voltou, e a matricula foi desfeita junto.",
+                "ve": (
+                    "Que o acesso terminou com o reembolso, e o que fazer "
+                    "para voltar. SEM o botao de pedir para voltar."
+                ),
+                "sai": "Voce pondo a situacao em Ativo, se decidir religar.",
             },
         ),
     },
@@ -913,7 +946,7 @@ ESTADOS_NA_TELA = [
     ("ativa", "Ativo — entra normalmente"),
     ("suspensa", "Pausado — não entra, volta com um clique"),
     ("encerrada", "Ex-aluno — perde o acesso, e a ficha continua aqui"),
-    ("reembolsada", "Reembolsado — devolveu o dinheiro e mantém o acesso"),
+    ("reembolsada", "Reembolsado — devolveu o dinheiro, e perde o acesso"),
 ]
 
 #: [PRONTUARIO] A situação de AGORA, na palavra do mantenedor. As chaves são as
@@ -926,6 +959,10 @@ ESTADOS_NA_TELA = [
 SITUACAO_NA_TELA = {
     "aluno": "Aluno — entra normalmente",
     "ex_aluno": "Ex-aluno — saiu da escola, e a ficha continua aqui",
+    # [REEMBOLSO] A sexta categoria (31/08/2026). Sem esta linha o mantenedor
+    # leria "não sei dizer" sobre alguém que ele mesmo reembolsou — honesto,
+    # mas inútil na tela em que ele decide.
+    "reembolsado": "Reembolsado — o dinheiro voltou, e o acesso acabou",
     "pausado": "Pausado — acesso desligado por enquanto",
     "na_fila": "Na fila — esperando a sua decisão",
     "cadastrado": "Cadastrado — entrou no site e nunca pediu entrada",

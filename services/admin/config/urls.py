@@ -14,6 +14,17 @@ from apps.core.caixa import (
     travessia,
 )
 from apps.core.divida import divida_json
+from apps.core.editor_de_documentos import (
+    documento_apagar,
+    documento_arquivar,
+    documento_criar,
+    documento_desarquivar,
+    documento_editar,
+    documento_novo,
+    documento_restaurar,
+    documento_salvar,
+    documento_versoes,
+)
 from apps.core.mapa_do_site import mapa_do_site
 from apps.core.menu import (
     menu_adicionar_item,
@@ -136,8 +147,69 @@ urlpatterns = [
     path("docs/", docs_publicos, name="docs_publicos"),
     re_path(r"^docs/(?P<nome>[a-z0-9-]+)$", doc_publico, name="doc_publico"),
     path("documentos/", documentos_admin, name="documentos_admin"),
+    # AS QUATRO ROTAS DO EDITOR (`DECISAO-o-editor-de-documentos.md`,
+    # 31/08/2026): mostrar o formulario vazio, criar, mostrar o formulario
+    # cheio, gravar. Quatro verbos e nao um POST com um campo escondido dizendo
+    # "o que fazer" — com isso, a auditoria e o CSRF passariam a depender de um
+    # valor de formulario, e ler este arquivo deixaria de contar o que a tela
+    # faz. Mesma gramatica das sete rotas do menu, acima.
+    #
+    # A ORDEM E O QUE FAZ FUNCIONAR. `novo` e `criar` casam a rota generica
+    # logo abaixo (`[a-z0-9-]+`), entao vem ANTES dela; e como um documento
+    # chamado "novo" existiria na lista e nunca abriria, esses dois nomes sao
+    # recusados na criacao (`editor_de_documentos.NOMES_RESERVADOS`, medido
+    # junto com esta lista por `test_nenhum_endereco_reservado_escapa`).
+    path("documentos/novo", documento_novo, name="documento_novo"),
+    path("documentos/criar", documento_criar, name="documento_criar"),
     re_path(
         r"^documentos/(?P<nome>[a-z0-9-]+)$", documento_admin, name="documento_admin"
+    ),
+    # Estas duas nao disputam nada com a generica acima: o `/editar` e o
+    # `/salvar` no fim as tornam caminhos diferentes.
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/editar$",
+        documento_editar,
+        name="documento_editar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/salvar$",
+        documento_salvar,
+        name="documento_salvar",
+    ),
+    # OS GESTOS QUE MEXEM NO LUGAR DO DOCUMENTO, e nao no texto dele
+    # (`DECISAO-o-editor-de-documentos.md` §4). Todos POST: decisao que se
+    # aplica por GET e decisao que um pre-carregador de link, um antivirus
+    # corporativo ou um crawler autenticado tomam sozinhos — e um deles aqui
+    # destroi um texto. Um verbo por rota, como as sete do menu.
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/arquivar$",
+        documento_arquivar,
+        name="documento_arquivar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/desarquivar$",
+        documento_desarquivar,
+        name="documento_desarquivar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/apagar$",
+        documento_apagar,
+        name="documento_apagar",
+    ),
+    # O HISTORICO (`DECISAO-o-editor-de-documentos.md` §6) — o que entrou no
+    # lugar do `git log` que os documentos tinham enquanto moravam no
+    # repositorio. Ver e LEITURA, e por isso e GET; voltar atras muda o texto
+    # de uma pagina publica, e por isso e POST: decisao que se aplica por GET e
+    # decisao que um pre-carregador de link toma sozinho.
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/versoes$",
+        documento_versoes,
+        name="documento_versoes",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/restaurar$",
+        documento_restaurar,
+        name="documento_restaurar",
     ),
     # OS PLANOS PARA IA (`apps/core/planos_para_ia.py`), 31/08/2026 — e as duas
     # linhas vêm ANTES das do mapa, porque a ordem é o que faz funcionar: a rota

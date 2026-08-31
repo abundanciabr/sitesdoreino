@@ -57,6 +57,24 @@
 #    atende até `MAX_POUSOS` PRs na mesma execução. Cada volta é um PR
 #    DIFERENTE, com checks já concluídos — não é espera, é fila andando. O
 #    `schedule` continua como rede: o que sobrar entra na próxima passagem.
+#
+# 5. ELA ESPERA OS CHECKS DE UM PR QUE **ELA MESMA** ACABOU DE ATUALIZAR.
+#    Isto emenda a decisão 3 acima, e o motivo foi medido em 31/08/2026, num
+#    dia de 108 merges por hora. A pista atualizava um PR atrasado e o devolvia
+#    à fila; atualizar reinicia os checks (2 a 3 min na célula mais lenta), e
+#    nesses minutos a `main` andava 4 ou 5 vezes. O PR ficava velho de novo
+#    ANTES de ficar verde, e como a fila começa pelos mais ANTIGOS, ela
+#    reiniciava justamente quem já estava esperando há mais tempo.
+#
+#    Não era lentidão: era uma corrida que o PR não tinha como vencer. Medido:
+#    NOVE atualizações no mesmo PR sem um único pouso, e outro PR preso há mais
+#    de uma hora. Nada ficava vermelho — a fila parecia andar, porque OUTROS
+#    PRs (recém-chegados, já em dia) pousavam por cima dos antigos.
+#
+#    A emenda é estreita de propósito: a espera vale SÓ para o PR que a própria
+#    pista acabou de atualizar, tem teto (`TETO_DA_ESPERA`) e orçamento por
+#    passagem (`esperas_restantes`). A decisão 3 continua valendo para todo o
+#    resto: ela não espera pelos checks de um PR que chegou cedo demais.
 # =============================================================================
 name: pouso
 on:
@@ -159,6 +177,45 @@ jobs:
           # PR é pior que volta perdida: ele vira a memória do projeto.
           ja_vistos=""
 
+          # A ESPERA QUE FECHA A CORRIDA (31/08/2026) — ver o cabeçalho, item 5.
+          # Quanto a pista espera pelos checks de um PR que ELA acabou de
+          # atualizar, e quantas dessas esperas cabem numa passagem. O teto
+          # existe para uma passagem não virar refém de um check pendurado; o
+          # orçamento, para cinco voltas lentas não segurarem o grupo de
+          # concorrência por meia hora.
+          TETO_DA_ESPERA=420
+          esperas_restantes=2
+
+          # Devolve 0 quando não há mais check pendente (ou quando não deu para
+          # saber), 1 quando estourou o teto. Ela NÃO julga o resultado dos
+          # checks: quem julga é `ci/mergear.py --conferir`, logo depois. Uma
+          # segunda opinião aqui seria uma segunda régua para o mesmo fato.
+          esperar_os_checks() {
+            alvo="$1"
+            teto="$2"
+            gasto=0
+            while [ "$gasto" -lt "$teto" ]; do
+              pendentes=$(gh pr checks "$alvo" --json bucket                             --jq '[.[] | select(.bucket == "pending")] | length'                             2>/dev/null || echo "")
+              case "$pendentes" in
+                ""|*[!0-9]*)
+                  # Resposta que não é número: o GitHub ainda não montou a lista,
+                  # ou o `gh` mudou de formato. FAIL-SOFT de propósito — a pista
+                  # segue para a conferência, que é o juiz de verdade. Insistir
+                  # aqui daria a um enfeite o poder de travar a fila.
+                  echo "Não consegui ler os checks do #$alvo; sigo para a conferência."
+                  return 0 ;;
+                0)
+                  echo "Os checks do #$alvo terminaram (${gasto}s de espera)."
+                  return 0 ;;
+              esac
+              echo "Esperando os checks do #$alvo: $pendentes pendente(s), ${gasto}s de ${teto}s."
+              sleep 20
+              gasto=$((gasto + 20))
+            done
+            echo "Os checks do #$alvo passaram de ${teto}s sem terminar."
+            return 1
+          }
+
           for volta in $(seq 1 "$MAX_POUSOS"); do
             if [ "$volta" = "1" ] && [ -n "${PEDIDO:-}" ]; then
               alvo="$PEDIDO"
@@ -239,15 +296,53 @@ jobs:
               # exemplo). Isso não pode derrubar a passagem: seria um PR
               # travando os outros por outro caminho. Fica registrado, o PR
               # mantém a etiqueta, e a próxima passagem tenta de novo.
-              if gh pr update-branch "$alvo"; then
-                gh pr comment "$alvo" --body \
-                  "🛬 **pista de pouso** — a base tinha envelhecido; atualizei este PR e devolvi para a fila. A próxima passagem tenta de novo, com os checks já medidos contra a \`main\` de agora. Você não precisa fazer nada."
-                echo "PR #$alvo estava atrasado: atualizado e devolvido à fila."
-              else
+              if ! gh pr update-branch "$alvo"; then
                 echo "PR #$alvo está atrasado e NÃO consegui atualizá-lo (conflito?)."
                 echo "Ele fica na fila com a etiqueta; seguindo para o próximo."
+                continue
               fi
-              continue
+
+              # E AQUI A PISTA NÃO LARGA MAIS A VEZ DELE (31/08/2026).
+              # Até hoje ela atualizava e seguia para o próximo. Atualizar
+              # reinicia os checks (2 a 3 min na célula mais lenta), e num dia
+              # de 108 merges por hora a `main` anda 4 ou 5 vezes nesse
+              # intervalo — então o PR estava velho de novo antes de ficar
+              # verde. Ele nunca chegava aos dois estados ao mesmo tempo, e a
+              # fila começa pelos mais ANTIGOS, que são justamente os que ela
+              # reinicia. Medido em 31/08/2026: NOVE atualizações no mesmo PR
+              # sem um único pouso, e outro preso há mais de uma hora.
+              if [ "$esperas_restantes" -le 0 ]; then
+                gh pr comment "$alvo" --body \
+                  "🛬 **pista de pouso** — a base tinha envelhecido e eu atualizei este PR, mas já gastei a espera desta passagem. A próxima tenta de novo. Você não precisa fazer nada."
+                echo "PR #$alvo atualizado; sem orçamento de espera nesta passagem."
+                continue
+              fi
+              esperas_restantes=$((esperas_restantes - 1))
+              gh pr comment "$alvo" --body \
+                "🛬 **pista de pouso** — a base tinha envelhecido; atualizei este PR e estou ESPERANDO as conferências dele terminarem, sem largar a vez dele. Você não precisa fazer nada."
+              echo "PR #$alvo estava atrasado: atualizado, e agora espero os checks dele."
+
+              if ! esperar_os_checks "$alvo" "$TETO_DA_ESPERA"; then
+                echo "PR #$alvo: os checks demoraram demais. Devolvido à fila."
+                continue
+              fi
+
+              # Confere DE NOVO, o mesmo PR, na mesma volta. É esta segunda
+              # leitura que fecha a corrida: ou ele está verde e em dia agora,
+              # ou a `main` andou outra vez — e aí ele volta para a fila,
+              # sem ter travado ninguém.
+              if python ci/mergear.py "$alvo" --conferir > veredito.txt 2>&1; then
+                codigo=0
+              else
+                codigo=$?
+              fi
+              cat veredito.txt
+
+              if grep -q "MOTIVO-DA-RECUSA:.*BASE-VELHA" veredito.txt; then
+                echo "PR #$alvo envelheceu DE NOVO enquanto os checks rodavam."
+                echo "Devolvido à fila; a próxima passagem tenta de novo."
+                continue
+              fi
             fi
 
             # AINDA NÃO DÁ PARA SABER (exit 2 = ERROR): checks rodando, ou o

@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260831-164424-TAR-082-devolvida",
+  "tarefa": "TAR-082",
+  "evento": "devolvida",
+  "quando": "2026-08-31T16:44:24+00:00",
+  "quem": "sessao-notificacoes-20260831",
+  "detalhe": "Os quatro degraus de codigo estao entregues (PRs 709, 715, 721, 723). A evidencia combinada (um aviso recebido num celular real) depende do passo do mantenedor: instalar a chave VAPID na VPS, registrado no livro como pendencia 20260831-041. Devolvo em vez de fechar sem a prova."
+}
