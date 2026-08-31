@@ -1,0 +1,16 @@
+{
+  "arquivo": "077-fazer-a-mensageria-enviar-e-mail-de-verdade-hoje-ela-so-fing",
+  "id": "TAR-077",
+  "titulo": "Fazer a mensageria enviar e-mail de verdade (hoje ela so finge)",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-071"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + a pendencia do provedor registrada e RESPONDIDA pelo dono + prova de fora: um e-mail real recebido numa caixa de teste, com o cabecalho mostrando SPF e DKIM passando.",
+  "despacho": "Substitui a TAR-063. TEM UM PASSO QUE SO O MANTENEDOR FAZ.\n\n*** ESTE DESPACHO NAO REPETE O PLANO. Ele APONTA. ***\n\nLEIA ANTES: docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md — §4.3 (renderizar no\ninstante do envio, no idioma de quem le), §6.3 (a regua de CAPACIDADE, que e\noutra coisa da regua do aluno) e §8.1. E services/mensageria/LICOES.md inteiro.\n\nO FATO CRU: o envio de e-mail desta plataforma e STUB desde sempre.\n`apps/eventos/tasks.py` diz \"\"\"Stub: loga o envio\"\"\". NENHUM e-mail jamais saiu\ndaqui. Ligar o e-mail e CONSTRUIR o envio.\n\nO PASSO DELE (Lei 5 — agente nao tem SSH, env nunca viaja por pipeline): conta no\nprovedor, dominio remetente, e os tres registros de DNS. Antes de tocar em\ncodigo: abra a pendencia em painel/registros/ com precisa_do_dono: true,\nexplicando as opcoes em portugues de leigo com o custo de cada uma, e prepare o\npasso dele como UMA LINHA de colar, fail-closed, no modelo dos H20/H21/H22 do\nARMADILHAS-OPERACAO.md. Diga em qual janela colar.\n\nO QUE E DO ROBO: cliente de provedor real no lugar do stub (leia `armadilhas/028`\nantes — cliente que so levanta em 5xx e armadilha conhecida); `consome:\n[identidade]` no celulas.yml NESTE PR; renderizacao no instante do envio; e\norder_id sintetico reusando a constraint existente, que NAO se altera.\n\nFALHA DE PROVEDOR TEM QUE ESTOURAR para o Huey reagendar. Engolir a excecao e\nfalso-verde, e a LICOES.md da celula explica por que.",
+  "origem": "substitui a TAR-063, trancada por depender de tarefa trancada (consultoria de 31/08/2026)",
+  "criada_em": "2026-08-31"
+}
