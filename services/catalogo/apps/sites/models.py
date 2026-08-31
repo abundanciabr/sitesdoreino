@@ -5,6 +5,8 @@ import uuid
 from django.core.exceptions import ValidationError
 from django.db import models
 
+from apps.sites.menu import normalizar_menu
+
 # BCP 47 na forma que aparece na URL: minúscula, com hífen (en, pt-br, es).
 # A tag canônica (pt-BR, para <html lang>/hreflang) DERIVA desta — guardar as
 # duas seria deixá-las divergir em silêncio (PLANO-I18N D5).
@@ -91,6 +93,11 @@ class SiteQuerySet(models.QuerySet):
     nenhuma, e o banco aceitaria um site torto pela porta dos fundos."""
 
     def update(self, **kwargs):
+        # O menu segue a mesma regra dos idiomas, e pelo mesmo motivo: este é
+        # um caminho de escrita que NÃO passa pelo `save()`, e sem esta linha o
+        # banco aceitaria um menu torto pela porta dos fundos.
+        if "menu" in kwargs:
+            kwargs["menu"] = normalizar_menu(kwargs["menu"])
         toca = {"default_language", "languages"} & set(kwargs)
         if toca:
             if len(toca) == 1:
@@ -121,6 +128,11 @@ class Site(models.Model):
     # elemento a mais na lista, nunca uma migration.
     default_language = models.CharField(max_length=16, blank=True, default="")
     languages = models.JSONField(default=list, blank=True)
+    # O menu do topo (apps/sites/menu.py). JSONField pelo mesmo motivo de
+    # `languages`: ele é lido inteiro junto com o site, ninguém filtra site POR
+    # item de menu, e assim a décima opção do menu é um elemento a mais na
+    # lista, nunca uma migration. Vazio ({}) é o site sem menu, e é o padrão.
+    menu = models.JSONField(default=dict, blank=True)
 
     objects = SiteQuerySet.as_manager()
 
@@ -129,6 +141,7 @@ class Site(models.Model):
         self.default_language, self.languages = normalizar_idiomas(
             self.default_language, self.languages
         )
+        self.menu = normalizar_menu(self.menu)
         super().save(*args, **kwargs)
 
     def __str__(self) -> str:
