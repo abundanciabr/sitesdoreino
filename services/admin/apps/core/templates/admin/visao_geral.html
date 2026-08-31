@@ -74,6 +74,22 @@
         visitante, aluno, você, e as portas que só as máquinas usam.
       </div>
     </a>
+    {% comment %}
+    A quinta porta (31/08/2026), a pedido dele: "uma parte no painel do admin
+    para eu gerenciar / editar os documentos". A área de documentos existia
+    desde 29/08, mas só de leitura e SEM porta nesta sala de comando: quem não
+    soubesse o endereço de cor não chegava nela. Um botão que ninguém encontra
+    é uma funcionalidade que não existe.
+    Lei: docs/decisoes/DECISAO-o-editor-de-documentos.md.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'documentos_admin' %}">
+      <div class="rotulo">Escrever os documentos do site &rarr;</div>
+      <div class="nota">
+        As páginas de texto que o site publica, como o "Como funciona a
+        entrada". Escrever, corrigir, publicar ou tirar do ar, e a mudança
+        aparece no site na hora.
+      </div>
+    </a>
   </div>
 
   {% comment %}

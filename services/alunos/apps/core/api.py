@@ -141,8 +141,8 @@ _LIST_ENROLLMENTS_OPENAPI = {
                                 "product_id": {"type": "string"},
                                 "status": {
                                     "type": "string",
-                                    "enum": ["ativa", "reembolsada"],
-                                    "description": 'SO os status que VALEM como acesso. `suspensa` saiu desta\nlista em 28/08/2026 (DECISAO-gestao-de-alunos §2): passou a\nsignificar "acesso pausado pelo mantenedor" e deixou de dar\nacesso. `reembolsada` continua — e isso e a decisao de\n24/08/2026, "quem ja foi aluno mantem a voz", que foi tomada\nsobre REEMBOLSO e segue intacta.\n',
+                                    "enum": ["ativa"],
+                                    "description": 'SO os status que VALEM como acesso, e hoje ha um so.\n`suspensa` saiu em 28/08/2026 (DECISAO-gestao-de-alunos §2):\npassou a significar "acesso pausado pelo mantenedor".\n`reembolsada` saiu em 31/08/2026\n(DECISAO-reembolso-tira-o-acesso), quando o mantenedor\nREVERTEU a decisao dele de 24/08 ("quem ja foi aluno mantem\na voz"): reembolso passou a significar a compra desfeita, e\nquem recebeu o dinheiro de volta nao entra mais em nada.\n\nA LISTA ENCOLHEU, e o encolhimento e o ponto: um consumidor\nque ja tratava `reembolsada` continua compilando e apenas\nnunca mais recebe esse valor. Nenhum consumidor precisa\nmudar por causa desta porta — mas quem DERIVAVA acesso dela\npassa a excluir o reembolsado automaticamente, que e o\nefeito desejado.\n\nStatus novo nasce FORA desta lista: ela e de PERMISSAO, e a\ncelula tem um guarda que reprova quem esquecer de decidir.\n',
                                 },
                                 "enrolled_at": {
                                     "type": "string",
@@ -246,7 +246,7 @@ _CREATE_PRE_ENROLLMENT_OPENAPI = {
             "description": "Ja estava na fila — dados atualizados",
         },
         "409": {
-            "description": "Este e-mail JA tem matricula que vale; nao entra na fila",
+            "description": 'Este e-mail nao entra na fila. DUAS razoes, e elas sao diferentes:\n\n1. JA TEM matricula que vale — quem ja entra nao precisa de fila.\n   A conferencia usa a MESMA consulta que decide acesso, para nao\n   existir gente recusada aqui por "voce ja tem" que a Caixa nao\n   deixa entrar.\n2. FOI REEMBOLSADO (31/08/2026, DECISAO-reembolso-tira-o-acesso).\n   O mantenedor decidiu que quem recebeu o dinheiro de volta nao\n   pede para voltar sozinho: quem quiser voltar compra de novo ou\n   fala com a escola, e ele religa com um clique. A recusa mora\n   AQUI, e nao so na tela que esconde o formulario — regra que so\n   existe em HTML e promessa sem mecanismo.\n\n`encerrada` (ex-aluno) NAO barra, de proposito: ele PODE pedir para\nvoltar desde 29/08 (DECISAO-a-ficha-nao-se-apaga §3). A diferenca\nentre os dois e a decisao, nao um descuido.\n',
         },
         "422": {
             "description": "Payload invalido",
@@ -872,7 +872,7 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
 # inline, pelo mesmo motivo das irmãs deste arquivo — o dicionário fica legível.
 DESCRICAO_SITUACAO = 'A porta das CINCO CATEGORIAS (`docs/decisoes/DECISAO-categorias-de-usuario.md`).\nExiste para que a home, a Caixa e o painel parem de adivinhar cada um do seu\njeito o que uma pessoa e — hoje sao quatro respostas para a mesma pergunta, e\ntres delas erram em pelo menos um caso.\n\nRESPONDE 200 COM `cadastrado` PARA QUEM ELA NAO CONHECE — NUNCA 404. "Nao\ntenho linha para esta pessoa" E a resposta, nao um erro. A porta vizinha\n(`GET /alunos/{email}/matriculas`) devolve 404 nesse caso e esta certa no\ncontexto dela; aqui um 404 obrigaria cada consumidor a traduzir "erro" em\n"cadastrado" por conta propria, e o primeiro que tratasse 404 como falha de\nrede mostraria a tela errada — fail-OPEN — para todo visitante novo do site.\n\nNAO DEVOLVE PII: sem WhatsApp, sem nome, sem eco do e-mail. E a §5 da\n`DECISAO-fila-de-liberacao.md` aplicada — o telefone sai por UMA porta so,\n`GET /pre-matriculas`, a do painel administrativo. Guarda de conjunto EXATO\nde chaves na resposta.\n\n`administrador` NAO E uma categoria possivel aqui, e a ausencia e a decisao:\nquem decide isso e a lista da celula `admin`, na hora. Se esta porta pudesse\nresponder isso, a autorizacao da area administrativa passaria a depender de\numa celula de produto (`DECISAO-onde-mora-a-sessao.md` §4).\n'
 
-_D_CATEGORIA = "`aluno` sai da MESMA lista de status que decide acesso\n(`STATUS_QUE_VALEM`) — uma segunda lista seriam duas verdades\nsobre quem e aluno, e elas divergiriam no primeiro status novo.\n\n`pausado` (ficha `suspensa`) e `ex_aluno` (ficha `encerrada`)\nentraram em 28/08/2026\n(`DECISAO-ex-aluno-e-a-porta-que-explica.md`). Ate entao os\ndois voltavam como `cadastrado` — mentira sobre a pessoa, e a\ncausa de quem saiu da escola ver o formulario de pedir\nentrada, como se nunca tivesse pedido nada.\n\nOs dois NAO dao acesso, e a diferenca entre eles e a unica\ncoisa que a pessoa quer saber: pausado e temporario, ex-aluno\ne o fim. Quem consome isto mostra telas diferentes; quem\nautoriza continua olhando so `aluno`.\n"
+_D_CATEGORIA = "`aluno` sai da MESMA lista de status que decide acesso\n(`STATUS_QUE_VALEM`) — uma segunda lista seriam duas verdades\nsobre quem e aluno, e elas divergiriam no primeiro status novo.\n\n`pausado` (ficha `suspensa`) e `ex_aluno` (ficha `encerrada`)\nentraram em 28/08/2026\n(`DECISAO-ex-aluno-e-a-porta-que-explica.md`). Ate entao os\ndois voltavam como `cadastrado` — mentira sobre a pessoa, e a\ncausa de quem saiu da escola ver o formulario de pedir\nentrada, como se nunca tivesse pedido nada.\n\n`reembolsado` (ficha `reembolsada`) entrou em 31/08/2026\n(`DECISAO-reembolso-tira-o-acesso.md`) pela MESMA razao, e e\nADICAO pura: nenhum consumidor quebra por ela existir. Sem\nela, o reembolsado cairia em `cadastrado`, que e o mesmo tipo\nde mentira que os dois de cima nasceram para curar.\n\nNENHUM dos tres da acesso, e a diferenca entre eles e a unica\ncoisa que a pessoa quer saber: pausado e temporario, ex-aluno\ne o fim e pode pedir para voltar, reembolsado e a compra\ndesfeita e nao pede. Quem consome isto mostra telas\ndiferentes; quem autoriza continua olhando so `aluno`.\n"
 
 _D_NA_FILA = "Preenchido SO quando `categoria` = `na_fila`; `null` nos outros casos."
 
@@ -908,6 +908,7 @@ _GET_STUDENT_STANDING_OPENAPI = {
                                     "na_fila",
                                     "pausado",
                                     "ex_aluno",
+                                    "reembolsado",
                                     "aluno",
                                 ],
                                 "description": _D_CATEGORIA,
@@ -1009,6 +1010,7 @@ _GET_STUDENT_RECORD_OPENAPI = {
                                     "na_fila",
                                     "pausado",
                                     "ex_aluno",
+                                    "reembolsado",
                                     "aluno",
                                 ],
                                 "description": "A "

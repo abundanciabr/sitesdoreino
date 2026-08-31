@@ -138,9 +138,9 @@ def test_o_mapa_tem_as_quatro_faixas_e_as_oito_paradas():
         "Aguardando",
         "Recusado",
         "Aluno",
-        "Reembolsado",
         "Pausado",
         "Ex-aluno",
+        "Reembolsado",
     ]
 
 
@@ -157,17 +157,36 @@ def test_toda_parada_diz_o_que_a_pessoa_ve_e_como_sai_dali():
             assert parada["sai"].strip(), parada["titulo"]
 
 
-def test_so_aluno_e_reembolsado_entram():
+def test_so_o_aluno_entra():
     """A pergunta que o mantenedor faz o dia todo, travada no catálogo.
 
-    `reembolsada` dando acesso não é descuido: é a decisão dele de 24/08/2026 —
-    quem já foi aluno mantém a voz na Caixa. Se alguém "arrumar" isso um dia, é
-    aqui que a arrumação para.
+    Até 31/08/2026 este guarda exigia `{"Aluno", "Reembolsado"}`, e era a trava
+    da decisão dele de 24/08 (*"quem já foi aluno mantém a voz"*). Ele mesmo
+    reverteu ao ver o texto antigo publicado no site, e a trava é substituída,
+    não removida: quem devolver `Reembolsado` ao acesso encontra esta linha
+    vermelha, e a lei em `docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`.
+
+    A regra já foi decidida DUAS vezes, em sentidos opostos. Uma terceira
+    mudança é decisão do mantenedor, nunca de um despacho.
     """
     com_acesso = {
         p["titulo"] for f in FAIXAS_DA_JORNADA for p in f["paradas"] if p["acesso"]
     }
-    assert com_acesso == {"Aluno", "Reembolsado"}
+    assert com_acesso == {"Aluno"}
+
+
+def test_o_reembolsado_esta_na_faixa_de_quem_nao_entra():
+    """A faixa é a resposta visual a "entra?", e ela pode mentir sozinha.
+
+    Tirar o acesso do dicionário e deixar a parada em "Dentro da escola" faria
+    a tela dizer a verdade no texto e o contrário no layout — e o mantenedor lê
+    o layout primeiro. Este guarda mede a posição, não a palavra.
+    """
+    por_faixa = {
+        f["nome"]: [p["titulo"] for p in f["paradas"]] for f in FAIXAS_DA_JORNADA
+    }
+    assert "Reembolsado" in por_faixa["Depois"]
+    assert por_faixa["Dentro da escola"] == ["Aluno"]
 
 
 def test_todo_slug_do_mapa_existe_no_catalogo_de_contagem():

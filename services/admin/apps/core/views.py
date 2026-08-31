@@ -126,10 +126,20 @@ def documentos_admin(request):
     É o único lugar em que as duas famílias aparecem juntas — sem ele, saber se
     um documento está no ar para o mundo exigiria abrir o repositório.
     """
+    todos = documentos.listar(so_publicos=False, com_arquivados=True)
     return render(
         request,
         "admin/documentos.html",
-        {"admin": request.admin, "documentos": documentos.listar(so_publicos=False)},
+        {
+            "admin": request.admin,
+            "documentos": [d for d in todos if not d.arquivado],
+            # Os arquivados numa lista SEPARADA, e nao misturados com uma
+            # etiqueta: eles nao estao no site, e quem abre esta tela quer ver o
+            # que esta no ar. Escondidos de vez, porem, desarquivar seria
+            # impossivel — entao eles ficam embaixo, fechados.
+            "arquivados": [d for d in todos if d.arquivado],
+            "recado": request.GET.get("recado", ""),
+        },
     )
 
 
@@ -266,8 +276,9 @@ TIPOS_DE_ALUNO = (
         "slug": "reembolsados",
         "nome": "Reembolsados",
         "quem": (
-            "Devolveram o dinheiro e CONTINUAM com acesso — foi o que você "
-            "decidiu em 24/08: quem já foi aluno mantém a voz."
+            "Devolveram o dinheiro e NÃO entram mais: nem no curso, nem na "
+            "Caixa, nem no fórum. A ficha continua aqui, e você religa com "
+            "um clique se tiver sido engano."
         ),
         "fonte": "GET /matriculas?status=reembolsada",
         "fonte_ausente": FonteAusente.PORTA_PRONTA,
@@ -488,15 +499,6 @@ FAIXAS_DA_JORNADA = (
                 "ve": "O caminho da Caixa de Sugestoes, para votar e propor.",
                 "sai": "Voce mudando a situacao dela no formulario do aluno.",
             },
-            {
-                "titulo": "Reembolsado",
-                "slug": "reembolsados",
-                "estado": "reembolsada",
-                "acesso": True,
-                "quem": "Devolveu o dinheiro e CONTINUA entrando.",
-                "ve": "O mesmo que um aluno — foi o que voce decidiu em 24/08.",
-                "sai": "Voce mudando a situacao dela.",
-            },
         ),
     },
     {
@@ -522,6 +524,23 @@ FAIXAS_DA_JORNADA = (
                     "Ela pedindo para voltar (nasce uma ficha nova), ou voce "
                     "pondo a situacao em Ativo na ficha antiga."
                 ),
+            },
+            # [REEMBOLSO] Estava em "Dentro da escola" ate 31/08/2026, com
+            # acesso. Mudou de faixa junto com a decisao do mantenedor
+            # (`DECISAO-reembolso-tira-o-acesso.md`): a faixa e a resposta a
+            # pergunta "entra?", e uma parada na faixa errada e a tela mentindo
+            # com o layout mesmo com o texto certo.
+            {
+                "titulo": "Reembolsado",
+                "slug": "reembolsados",
+                "estado": "reembolsada",
+                "acesso": False,
+                "quem": "O dinheiro voltou, e a matricula foi desfeita junto.",
+                "ve": (
+                    "Que o acesso terminou com o reembolso, e o que fazer "
+                    "para voltar. SEM o botao de pedir para voltar."
+                ),
+                "sai": "Voce pondo a situacao em Ativo, se decidir religar.",
             },
         ),
     },
@@ -927,7 +946,7 @@ ESTADOS_NA_TELA = [
     ("ativa", "Ativo — entra normalmente"),
     ("suspensa", "Pausado — não entra, volta com um clique"),
     ("encerrada", "Ex-aluno — perde o acesso, e a ficha continua aqui"),
-    ("reembolsada", "Reembolsado — devolveu o dinheiro e mantém o acesso"),
+    ("reembolsada", "Reembolsado — devolveu o dinheiro, e perde o acesso"),
 ]
 
 #: [PRONTUARIO] A situação de AGORA, na palavra do mantenedor. As chaves são as
@@ -940,6 +959,10 @@ ESTADOS_NA_TELA = [
 SITUACAO_NA_TELA = {
     "aluno": "Aluno — entra normalmente",
     "ex_aluno": "Ex-aluno — saiu da escola, e a ficha continua aqui",
+    # [REEMBOLSO] A sexta categoria (31/08/2026). Sem esta linha o mantenedor
+    # leria "não sei dizer" sobre alguém que ele mesmo reembolsou — honesto,
+    # mas inútil na tela em que ele decide.
+    "reembolsado": "Reembolsado — o dinheiro voltou, e o acesso acabou",
     "pausado": "Pausado — acesso desligado por enquanto",
     "na_fila": "Na fila — esperando a sua decisão",
     "cadastrado": "Cadastrado — entrou no site e nunca pediu entrada",
