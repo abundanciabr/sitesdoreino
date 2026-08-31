@@ -800,6 +800,25 @@ class Gestao:
             f"{GESTAO}/{sugestao.id}/changespec", {**self.quem(pessoa), **campos}
         )
 
+    def corrigir(self, pessoa, sugestao: Sugestao, **campos):
+        """A correção de texto (31/08/2026) — o texto INTEIRO, não o pedaço.
+
+        Os campos ausentes viajam com o valor que está gravado agora, que é o
+        que a tela faz: ela mostra um formulário já preenchido. Assim um teste
+        que só quer trocar o nome escreve `corrigir(..., titulo="…")` sem
+        repetir o problema inteiro, e continua exercitando o contrato de
+        verdade, que exige os três campos.
+        """
+        atual = {
+            "titulo": sugestao.titulo,
+            "problema": sugestao.problema,
+            "solucao_proposta": sugestao.solucao_proposta,
+        }
+        return self._post(
+            f"{GESTAO}/{sugestao.id}/texto",
+            {**self.quem(pessoa), **atual, **campos},
+        )
+
     def uma_ideia(self, sugestao_id: int):
         return self.client.get(
             f"{GESTAO}/{sugestao_id}",

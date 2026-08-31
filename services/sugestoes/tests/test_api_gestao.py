@@ -80,11 +80,13 @@ def operacoes_da_api():
 def test_ha_operacoes_para_medir():
     """Guarda que varre lista vazia é guarda verde à toa.
 
-    9 desde `apagar` (`DECISAO-apagar-ideia.md`, 29/08/2026), que somou-se às
-    8 de `arquivar`/`desarquivar` (`DECISAO-arquivar-ideia.md`), que já
-    somavam as 6 de `DECISAO-a-gestao-da-caixa-mora-no-admin.md`.
+    10 desde `texto` (`DECISAO-corrigir-o-texto-de-uma-ideia.md`, 31/08/2026),
+    que somou-se às 9 de `apagar` (`DECISAO-apagar-ideia.md`, 29/08/2026), que
+    tinham somado às 8 de `arquivar`/`desarquivar`
+    (`DECISAO-arquivar-ideia.md`), que já somavam as 6 de
+    `DECISAO-a-gestao-da-caixa-mora-no-admin.md`.
     """
-    assert len(operacoes_da_api()) == 9
+    assert len(operacoes_da_api()) == 10
 
 
 def test_nenhuma_operacao_responde_sem_o_token_do_par(client, db, par_autorizado):
@@ -851,3 +853,112 @@ def test_apagar_preserva_o_historico_sem_vazar_conteudo(
     assert corpo["apagada"] is True
     assert len(corpo["historico"]) == 1
     assert corpo["historico"][0]["nota"] == "vai entrar"
+
+
+# ---------------------------------------------------------------------------
+# 8. Corrigir o texto — `DECISAO-corrigir-o-texto-de-uma-ideia.md` (31/08/2026)
+# ---------------------------------------------------------------------------
+#
+# A REGRA e os três degraus do append-only estão medidos em
+# `test_correcao_de_texto.py`. O que se prova AQUI é o que atravessa a
+# fronteira: o Admin manda o texto inteiro, recebe a ideia relida de volta, e
+# enxerga o rastro na ideia individual.
+
+
+def corrigir(client, sugestao, **campos):
+    """O texto inteiro, como a tela o manda — os três campos, sempre."""
+    atual = {
+        "titulo": sugestao.titulo,
+        "problema": sugestao.problema,
+        "solucao_proposta": sugestao.solucao_proposta,
+    }
+    return escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/texto",
+        {
+            "por_email": MANTENEDOR,
+            "por_id_da_plataforma": ID_DA_PLATAFORMA,
+            **atual,
+            **campos,
+        },
+    )
+
+
+def test_corrigir_devolve_a_ideia_ja_com_o_texto_novo(
+    client, db, par_autorizado, sugestao
+):
+    """A resposta é a ideia RELIDA — é o que a faz valer como confirmação."""
+    resposta = corrigir(client, sugestao, titulo="Legendas nas aulas gravadas")
+
+    assert resposta.status_code == 200, resposta.content
+    assert resposta.json()["titulo"] == "Legendas nas aulas gravadas"
+    sugestao.refresh_from_db()
+    assert sugestao.titulo == "Legendas nas aulas gravadas"
+
+
+def test_o_rastro_da_correcao_volta_na_ideia_individual(
+    client, db, par_autorizado, sugestao
+):
+    """O que estava escrito antes tem de ser alcançável por quem gere a Caixa.
+
+    Sem esta metade, o rastro existiria no banco e não existiria para ninguém —
+    e a correção calada passaria a ser, na prática, correção sem rastro.
+    """
+    antes = sugestao.titulo
+    corrigir(client, sugestao, titulo="Legendas nas aulas gravadas")
+
+    (linha,) = ler_uma(client, sugestao.id)["correcoes"]
+
+    assert linha["campo"] == "titulo"
+    assert linha["antes"] == antes
+    assert linha["depois"] == "Legendas nas aulas gravadas"
+    assert (
+        linha["por"] == MANTENEDOR
+    ), "o Admin manda o e-mail como nome quando não há outro"
+
+
+def test_ideia_nunca_corrigida_devolve_a_lista_vazia(
+    client, db, par_autorizado, sugestao
+):
+    assert ler_uma(client, sugestao.id)["correcoes"] == []
+
+
+def test_texto_igual_e_recusado_com_frase_em_portugues(
+    client, db, par_autorizado, sugestao
+):
+    resposta = corrigir(client, sugestao)
+
+    assert resposta.status_code == 422
+    assert "nada para mudar" in resposta.json()["erro"]
+
+
+def test_nome_vazio_e_recusado_pelo_contrato(client, db, par_autorizado, sugestao):
+    resposta = corrigir(client, sugestao, titulo="  ")
+
+    assert resposta.status_code == 422
+    assert "não pode ficar vazio" in resposta.json()["erro"]
+    sugestao.refresh_from_db()
+    assert sugestao.titulo == "Legendas nas aulas"
+
+
+def test_corrigir_uma_ideia_apagada_e_recusado(client, db, par_autorizado, sugestao):
+    escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/apagar",
+        {"por_email": MANTENEDOR, "por_id_da_plataforma": ID_DA_PLATAFORMA},
+    )
+
+    resposta = escrever(
+        client,
+        f"{IDEIAS}/{sugestao.id}/texto",
+        {
+            "por_email": MANTENEDOR,
+            "por_id_da_plataforma": ID_DA_PLATAFORMA,
+            "titulo": "Trazendo de volta pela porta lateral",
+            "problema": "…",
+            "solucao_proposta": "",
+        },
+    )
+
+    assert resposta.status_code == 422
+    assert "apagada definitivamente" in resposta.json()["erro"]
