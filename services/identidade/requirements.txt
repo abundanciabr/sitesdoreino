@@ -13,6 +13,12 @@ dj-database-url==2.3.0
 uvicorn==0.32.1
 # Cliente da única conversa de fora (o Google) — R2, timeout explícito.
 httpx==0.28.1
+# A voz desta célula (31/08/2026): a outbox publica no Redis Streams e o relay
+# roda como `periodic_task` do Huey. Mesmas versões EXATAS das outras células
+# que já fazem isto — versão divergente da mesma biblioteca para o mesmo padrão
+# é comportamento a mais para depurar (`armadilhas/071`).
+huey==2.5.1
+redis==5.1.1
 pytest==8.3.4
 pytest-django==4.9.0
 # O dublê de rede dos testes. Sem ele a suíte precisaria de internet, e uma

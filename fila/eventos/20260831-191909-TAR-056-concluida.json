@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-191909-TAR-056-concluida",
+  "tarefa": "TAR-056",
+  "evento": "concluida",
+  "quando": "2026-08-31T19:19:09+00:00",
+  "quem": "sessao-identidade-20260831",
+  "evidencia": "20 testes novos verdes (115 na celula identidade, 447 no funil), com Postgres de bancada. Provas exigidas pelo despacho: emitir() fora de transacao levanta EventoForaDaTransacao e nao grava; o relay nao republica linha ja publicada (segunda passada devolve 0); e um guarda a mais, que encena a morte do processo no meio do xadd para provar que nada fica marcado como publicado. Sem PII no evento: so site_id e pessoa_id. 13 muralhas PASS.",
+  "verificado_em": "2026-08-31"
+}
