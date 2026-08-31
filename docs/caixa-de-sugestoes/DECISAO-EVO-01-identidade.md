@@ -93,6 +93,14 @@ migração, sem deploy de código.
 
 ## 4.1 Situação da matrícula: TODAS entram (decidido em 24/08/2026)
 
+> **EMENDA de 31/08/2026 — este parágrafo foi REVERTIDO pelo mantenedor.**
+> `reembolsada` **deixou de dar acesso**: quem foi reembolsado não entra na
+> Caixa, nem em nada mais. A lei nova, com as palavras dele e o porquê da
+> reversão, é `docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`. O texto
+> abaixo fica como está, e não se corrige: ele conta o que valeu de 24/08 a
+> 31/08/2026, e saber que a regra já foi decidida duas vezes é o que impede a
+> próxima sessão de reinventá-la achando que é descuido.
+
 O contrato de `alunos` devolve matrículas com `status` em **`ativa`**, **`suspensa`**
 e **`reembolsada`**. A decisão original (§1) disse "só quem tem matrícula" e **não**
 falou de situação — a implementação do EVO-12a seguiu ao pé da letra e deixou as três
