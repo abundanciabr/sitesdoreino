@@ -245,6 +245,31 @@ def test_o_veredito_do_deploy_continua_livre(tmp_path):
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
+def test_esperar_os_checks_UMA_VEZ_continua_livre(tmp_path):
+    """`--checks` NÃO pode ser proibido — é pré-requisito do `--pousar`.
+
+    Este teste existe por um erro que quase pousou (armadilhas/258): a primeira
+    versão do PR #801 proibiu `--checks` apoiada na letra do RITOS §2 peça 6
+    ("checks de PR não se esperam"). A peça fala do LAÇO da armadilhas/156, não
+    da espera única que o portão EXIGE: `ci/mergear.py --pousar` recusa com
+    check em andamento (ERROR), e o CLAUDE.md manda esperá-los concluir antes
+    de pedir pouso. Proibir aqui tornaria o rito da casa impossível de cumprir.
+    """
+    assert "checks" not in ESPERAS_QUE_NAO_DEVIAM_EXISTIR, (
+        "proibir --checks quebra o passo 1 do rito (CLAUDE.md): o portão recusa "
+        "pedido de pouso com check em andamento — ver armadilhas/258"
+    )
+    proc = _rodar(
+        ["--checks", "447", "--teto", "1", "--intervalo", "0.05"],
+        tmp_path,
+        gh_respostas=[{"state": "OPEN", "statusCheckRollup": [
+            {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas"},
+        ]}],
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "verdes" in proc.stdout
+
+
 def test_run_verde_fala_verde_e_sai_zero(tmp_path):
     proc = _rodar(
         ["--run", "9", "--teto", "1", "--intervalo", "0.05"],

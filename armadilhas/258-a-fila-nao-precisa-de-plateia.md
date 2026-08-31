@@ -39,20 +39,35 @@ olhando uma fila que anda sozinha 326 vezes por hora.
 
 **Solução.** Dar mecanismo à frase que já era lei:
 
-- `ci/esperar.py`: `--checks` e `--pouso` **recusam** (exit 2), e a recusa
-  ENSINA — cita o PR de quem a leu, mostra o `--pousar` no lugar, e traz os
-  números acima. Escape consciente: `--mesmo-assim "<motivo>"`, para quem
-  precisa depurar a própria pista.
+- `ci/esperar.py`: `--pouso` **recusa** (exit 2), e a recusa ENSINA — cita o PR
+  de quem a leu, mostra o `--pousar` no lugar, e traz os números acima. Escape
+  consciente: `--mesmo-assim "<motivo>"`, para quem precisa depurar a própria
+  pista.
 - A recusa vem **antes** da linha de partida da voz: um robô que anuncia "vou
   esperar" e depois desiste ensina o oposto do que a lei quer.
-- `RITOS.md` §2 peça 6 passou a listar só os três alvos que sobraram
-  (`--run`, `--deploy`, `--sonda`) e ganhou duas regras de comportamento:
+- `RITOS.md` §2 peça 6 tirou `--pouso` da lista de alvos e ganhou duas regras
+  de comportamento:
   **trabalhe durante o deploy** (o `Monitor` roda em segundo plano e te acorda
   — é para isso que ele existe) e **não repita cada batimento com uma linha
   sua** (o `⏳` já está na tela do mantenedor; falar quando muda o relógio, e
   não quando muda o fato, é o que constrói a parede de "Aguardando").
 
-**O detalhe que quase virou um segundo diagnóstico errado.** O `--intervalo`
+**O TERCEIRO erro, que quase pousou: proibir `--checks` junto.** A primeira
+versão deste PR proibia `--checks` também, apoiada na letra da peça 6 ("checks
+de PR não se esperam"). Isso teria tornado o rito da casa **impossível de
+cumprir**: `ci/mergear.py --pousar` recusa com check em andamento (`ERROR`), e o
+`CLAUDE.md` manda, no passo 1, "espere os checks concluírem" ANTES de pedir
+pouso. Quem revelou foi o próprio PR #801 tentando pedir o próprio pouso, e
+recebendo `RESULTADO ERROR / MOTIVO-DA-RECUSA: BASE-VELHA`.
+
+A peça 6 fala do **laço** (atualizar → esperar → a `main` andou → repetir, as
+oito voltas da `armadilhas/156`), nunca da espera ÚNICA que o portão exige. Ler
+"não se espera checks" como proibição literal é confundir o laço com a espera.
+**Lição de método: um portão novo precisa ser testado contra o rito que ele vai
+governar, não só contra os testes que você escreveu para ele.** Os 40 testes
+passavam verdes enquanto a mudança quebrava o fluxo padrão da casa.
+
+**O detalhe que quase virou um quarto diagnóstico errado.** O `--intervalo`
 do `esperar.py` é 15s e parece ser a fonte do ruído. Não é: quem controla a
 fala é o `--voz` (60s), e o batimento só fura essa trava quando o *resumo
 observado muda*. Em `--pouso` o resumo é estável, então a voz já respeitava os

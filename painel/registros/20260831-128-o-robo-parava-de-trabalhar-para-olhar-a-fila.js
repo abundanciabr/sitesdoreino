@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260831-124-o-robo-parava-de-trabalhar-para-olhar-a-fila",
+  arquivo: "20260831-128-o-robo-parava-de-trabalhar-para-olhar-a-fila",
   tipo: "nota",
   quando: "2026-08-31",
   titulo: "O monte de 'Aguardando' era o robô parado olhando uma fila que anda sozinha (PR #801)",

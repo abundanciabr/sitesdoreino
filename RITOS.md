@@ -178,15 +178,23 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
      `--pousar` e siga; a pista tem a paciência que você não tem). A espera
      que a lei manda ter é o veredito do run de deploy (`CLAUDE.md`).
 
-     **Desde 31/08/2026 isto tem mecanismo: `--checks` e `--pouso` RECUSAM**
-     (escape consciente: `--mesmo-assim "<motivo>"`). A frase acima existia
-     desde 29/08 e apodreceu por ser só texto — os robôs seguiam esperando o
-     pouso porque a opção estava listada ao lado das legítimas, e garantia sem
-     mecanismo é o padrão 2 da `RETROSPECTIVA-FASE-D.md`. Medido nos 40 PRs de
-     31/08: a fila entrega em **8,4 min** (mediana) e uma passagem da pista
-     leva **34s**, com 326 passagens por hora. Dos ~12 min de espera por
-     tarefa, ~8,4 eram robô parado olhando uma fila que anda sozinha.
+     **Desde 31/08/2026 isto tem mecanismo: `--pouso` RECUSA** (escape
+     consciente: `--mesmo-assim "<motivo>"`). A frase acima existia desde 29/08
+     e apodreceu por ser só texto — os robôs seguiam esperando o pouso porque a
+     opção estava listada ao lado das legítimas, e garantia sem mecanismo é o
+     padrão 2 da `RETROSPECTIVA-FASE-D.md`. **Depois que a etiqueta está posta,
+     não há mais nada a fazer ali:** a fila anda sozinha 326 vezes por hora
+     (medido nos 40 PRs de 31/08) e comenta no PR o desfecho.
      **A fila nunca precisou de plateia.**
+
+     **Onde "checks de PR não se esperam" NÃO se aplica, e o texto acima
+     enganava:** a frase fala do LAÇO (atualizar → esperar → a `main` andou →
+     repetir, as oito voltas da `armadilhas/156`), nunca da espera ÚNICA que o
+     portão exige. `ci/mergear.py --pousar` recusa com check em andamento
+     (ERROR), e o `CLAUDE.md` manda "espere os checks concluírem" antes de
+     pedir pouso — então `--checks`, uma vez, é rito, não desperdício. Isto
+     quase virou defeito: o PR #801 nasceu proibindo `--checks` também, e a
+     tentativa de pedir o próprio pouso é que revelou a contradição.
 
    - **Enquanto o deploy roda, VÁ TRABALHAR.** O `Monitor` roda a espera em
      segundo plano e te acorda: essa é a razão de ele existir. Ficar parado
@@ -215,8 +223,8 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
      **batimento** com o estado OBSERVADO lá fora (relógio nu é silêncio com
      batimento bonito), **desfecho sempre barulhento**. O plano Z nunca é
      "continuar esperando" — `--ao-estourar pousar` o executa em vez de só
-     anunciá-lo. Alvos: `--run` · `--deploy` · `--sonda` (Docker frio,
-     Postgres) — e só esses três, porque `--checks` e `--pouso` recusam (a
+     anunciá-lo. Alvos: `--run` · `--deploy` · `--checks` (uma vez, antes do
+     `--pousar`) · `--sonda` (Docker frio, Postgres) — `--pouso` recusa (a
      regra acima). A régua de "quanto costuma levar" vem
      de `ci/tempos_esperados.json`; sem régua a voz diz "não sei" — nunca
      inventa número.
