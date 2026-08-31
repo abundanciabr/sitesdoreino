@@ -24,6 +24,28 @@ Um PR mergeado está **contado** quando algum registro do livro cita o número
 dele. O que não está contado, depois da folga, é **dívida** — e a porta do
 merge (`ci/mergear.py`) se recusa a abrir enquanto houver dívida.
 
+A PORTA, DESDE 31/08/2026: O REGISTRO EMBARCA NO PRÓPRIO PR
+-----------------------------------------------------------
+A cobrança pós-merge sozinha tinha um buraco de DESENHO, medido em 31/08/2026:
+o rito manda o agente pedir pouso e IR EMBORA (RITOS.md §2 peça 5), a pista
+mergeia minutos depois — e não há mais ninguém ali para registrar. A dívida
+nascia do caminho NORMAL, não do descuido. E por ser compartilhada (trava a
+fila de todos), cada robô travado corria para pagá-la em paralelo: num único
+dia, 12 das 25 aterrissagens foram PRs de escrituração, com 4 PRs pagando as
+MESMAS duas dívidas (`armadilhas/248`).
+
+A cura é a mesma da doença do painel: juntar o fato e o recibo no mesmo átomo.
+**Todo PR que deve registro EMBARCA o próprio registro** — abre-se o PR, lê-se
+o número, escreve-se o registro citando-o, commita-se no mesmo ramo
+(`armadilhas/185` já prescrevia essa ordem). O portão confere o embarque ANTES
+do pouso (`registro_embarcado`), e o registro aterrissa junto com o trabalho:
+ele só entra no livro SE o merge acontecer, então citar o próprio número não é
+prometer futuro — é impossível o recibo existir sem o fato. O veredito do
+deploy continua sendo registro pós-merge, porque esse só existe depois mesmo.
+
+A cobrança pós-merge (`divida`) vira rede de segurança para o caso raro: merge
+por fora da pista, ou registro embarcado que a citação não alcançou.
+
 AS TRÊS ISENÇÕES, E POR QUE CADA UMA EXISTE
 --------------------------------------------
 1. **PR que só ESCRITURA não precisa de registro próprio** — `painel/`
@@ -138,6 +160,103 @@ def so_toca_o_livro(arquivos: list[str]) -> bool:
     )
 
 
+# A pasta onde vive o livro — é ela que decide se um arquivo do PR é registro.
+PASTA_DO_LIVRO = "painel/registros/"
+
+# Os quatro vereditos do embarque. Strings, não enum: quem consome é uma linha
+# de `ci/mergear.py` e os testes — um enum aqui seria cerimônia sem guarda.
+ISENTO = "isento"
+EMBARCADO = "embarcado"
+SEM_REGISTRO = "sem-registro"
+SEM_CITACAO = "sem-citacao"
+
+
+def registro_embarcado(
+    numero: int, arquivos: list[str], remessas: list[dict[str, Any]]
+) -> str:
+    """O PR carrega o próprio registro, citando o próprio número?
+
+    `remessas` é o diff por arquivo como o GitHub devolve
+    (`gh api .../pulls/N/files`): uma lista de `{"filename": ..., "patch": ...}`.
+    Vem de fora porque a pista NUNCA faz checkout do código do PR (o PR não
+    pode alterar o juiz que vai julgá-lo — `pouso.yml`), então o registro
+    embarcado não existe no disco de quem confere: só no diff.
+
+    Só linhas ADICIONADAS contam. Uma citação em linha removida seria um
+    registro saindo do livro — e registro não se apaga (`painel/LEIA-ME.md`).
+
+    A citação de outro número não vale de nada aqui de propósito: o registro
+    que paga dívida ALHEIA continua bem-vindo, mas ele não é o recibo DESTE
+    trabalho — foi exatamente o furo da `armadilhas/185` (registro a bordo,
+    número ausente, dívida real no colo da sessão seguinte).
+    """
+    if so_toca_o_livro(arquivos):
+        return ISENTO
+    caminhos = [a.replace("\\", "/") for a in arquivos]
+    if not any(caminho.startswith(PASTA_DO_LIVRO) for caminho in caminhos):
+        return SEM_REGISTRO
+    for remessa in remessas:
+        caminho = (remessa.get("filename") or "").replace("\\", "/")
+        if not caminho.startswith(PASTA_DO_LIVRO):
+            continue
+        for linha in (remessa.get("patch") or "").splitlines():
+            if not linha.startswith("+"):
+                continue
+            for url, curto in _CITACAO.findall(linha):
+                if int(url or curto) == numero:
+                    return EMBARCADO
+    return SEM_CITACAO
+
+
+def como_embarcar(numero: int, veredito: str) -> str:
+    """A recusa que ensina o caminho — os dois passos, com os comandos."""
+    if veredito == SEM_CITACAO:
+        abertura = (
+            f"Um registro viaja neste PR, mas nenhuma linha dele cita #{numero} — "
+            "e sem o número o recibo não conta (armadilhas/185)."
+        )
+    else:
+        abertura = (
+            "Nenhum registro viaja neste PR — e desde 31/08/2026 o recibo "
+            "embarca JUNTO com o trabalho, antes do pedido de pouso."
+        )
+    return "\n".join(
+        [
+            abertura,
+            "",
+            "O conserto é um commit de dez segundos, no MESMO ramo:",
+            "",
+            "  git fetch origin",
+            "  N=$(python ci/reservar.py numero registro)   # o almoxarife",
+            "  # escreva painel/registros/AAAAMMDD-$N-slug.js (molde em painel/LEIA-ME.md)",
+            f"  # citando https://github.com/abundanciabr/sitesdoreino/pull/{numero}",
+            "  # commite, push, e peça pouso de novo.",
+            "",
+            "Por que na porta: o rito manda pedir pouso e ir embora — depois do",
+            "pouso não há mais ninguém para registrar, e a dívida travava a fila",
+            "de TODOS (armadilhas/248). O registro embarcado aterrissa junto com",
+            "o trabalho: só entra no livro se o merge acontecer.",
+            "",
+            "PR que só escritura (painel/ e/ou fila/) é isento: ele É o registro.",
+        ]
+    )
+
+
+def pagamentos_em_voo(prs_abertos: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Os PRs de escrituração pura ainda abertos — pagamentos a caminho.
+
+    Existe para matar a corrida de cobradores de 31/08/2026: com a fila travada
+    por dívida, cada robô travado escrevia o próprio PR de pagamento, sem olhar
+    se outro já estava em voo — 4 PRs pagando as mesmas duas dívidas
+    (`armadilhas/248`). A recusa da porta passa a LISTAR o que já voa.
+    """
+    return [
+        pr
+        for pr in prs_abertos
+        if so_toca_o_livro([f["path"] for f in pr.get("files") or []])
+    ]
+
+
 def listar_prs_mergeados(raiz: Path) -> list[dict[str, Any]]:
     """Os merges recentes, com os arquivos de cada um, em UMA chamada.
 
@@ -199,11 +318,18 @@ def divida(
     return sorted(devedores, key=lambda p: p["mergedAt"], reverse=True)
 
 
-def como_pagar(devedores: list[dict[str, Any]]) -> str:
+def como_pagar(
+    devedores: list[dict[str, Any]],
+    em_voo: list[dict[str, Any]] | None = None,
+) -> str:
     """A mensagem que o agente lê quando a porta não abre.
 
     Diz o que fazer, não só o que está errado: um guarda que reprova sem
     ensinar o caminho vira um guarda que alguém contorna.
+
+    `em_voo` são os pagamentos já a caminho (`pagamentos_em_voo`). `None`
+    significa "não consegui olhar" — a recusa base fica de pé sem o aviso,
+    porque isto é enriquecimento de uma mensagem de FAIL, não um veredito.
     """
     linhas = [
         f"{len(devedores)} merge(s) entraram na main e NINGUÉM contou ao dono:",
@@ -211,6 +337,20 @@ def como_pagar(devedores: list[dict[str, Any]]) -> str:
     ]
     for pr in devedores:
         linhas.append(f"  #{pr['number']}  {pr['mergedAt'][0:10]}  {pr['title'][:64]}")
+    if em_voo:
+        linhas += [
+            "",
+            "ANTES DE ESCREVER QUALQUER COISA: pagamento(s) já EM VOO —",
+        ]
+        for pr in em_voo:
+            linhas.append(f"  #{pr['number']}  {pr.get('title', '')[:64]}")
+        linhas += [
+            "",
+            "Confira se algum deles já cita o(s) devedor(es) acima. Se cita,",
+            "NÃO crie outro: espere o pouso dele. Dois cobradores para a mesma",
+            "conta foi a corrida de 31/08/2026 — 4 PRs pagando as mesmas duas",
+            "dívidas (armadilhas/248).",
+        ]
     linhas += [
         "",
         "Para pagar: um registro NOVO por acontecimento em painel/registros/",
@@ -219,6 +359,6 @@ def como_pagar(devedores: list[dict[str, Any]]) -> str:
         "Um registro pode contar mais de um PR quando eles são o mesmo",
         "acontecimento — cite todos os números.",
         "",
-        "PR que só toca painel/ é isento: ele É o registro, e mergeia normalmente.",
+        "PR que só escritura (painel/ e/ou fila/) é isento: ele É o registro.",
     ]
     return "\n".join(linhas)
