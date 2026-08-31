@@ -64,7 +64,7 @@ cd /opt/plataforma 2>/dev/null || parar "não achei /opt/plataforma — você es
 [ -f docker-compose.yml ] || parar "não achei docker-compose.yml em /opt/plataforma."
 docker compose ps >/dev/null 2>&1 || parar "não consegui falar com o Docker Compose aqui."
 
-echo "== 1/4 — conferindo se as duas peças estão de pé =="
+echo "== 1/5 — conferindo se as duas peças estão de pé =="
 for SERVICO in catalogo sugestoes; do
   ESTADO=$(docker compose ps --status running --services 2>/dev/null | grep -Fx "$SERVICO" || true)
   [ -n "$ESTADO" ] || parar "o serviço '$SERVICO' não está rodando. Suba a plataforma antes (docker compose up -d) e rode de novo."
@@ -72,7 +72,22 @@ for SERVICO in catalogo sugestoes; do
 done
 
 echo
-echo "== 2/4 — descobrindo o site no catálogo =="
+echo "== 2/5 — conferindo se a imagem já conhece o comando =="
+# Fail-closed contra a ORDEM ERRADA, na forma do `semear-duvidas-do-forum.sh`:
+# se este script rodar antes de o deploy da célula subir a imagem nova, o
+# `manage.py` responde "Unknown command" em inglês cru, e quem estiver lendo não
+# tem como saber que a resposta é "espere o deploy". A recusa daqui diz isso em
+# português, e diz antes de qualquer conta ser feita.
+SABE=$(docker compose exec -T sugestoes python manage.py shell -c \
+  "from django.core.management import get_commands; print('esvaziar_caixa' in get_commands())" 2>&1 | tr -d '\r[:space:]')
+case "$SABE" in
+  True) echo "  comando esvaziar_caixa ...... disponível" ;;
+  False) parar "esta imagem da Caixa ainda não conhece o comando 'esvaziar_caixa'. Espere o deploy da célula 'sugestoes' ficar verde e rode de novo." ;;
+  *) echo "$SABE"; parar "não consegui perguntar à Caixa se ela conhece o comando." ;;
+esac
+
+echo
+echo "== 3/5 — descobrindo o site no catálogo =="
 # A MESMA regra do `semear-demo-caixa.sh`, de propósito: um site ativo serve;
 # zero ou vários PARAM. Escolher "o primeiro" aqui seria este script inventando
 # um site padrão — e, num comando sem volta, inventar é o pior que ele podia
@@ -109,7 +124,7 @@ print(f'{com.count()}\t{sem.count()}')" \
 }
 
 echo
-echo "== 3/4 — estado ANTES =="
+echo "== 4/5 — estado ANTES =="
 ANTES=$(contar) || parar "não consegui perguntar à Caixa quantas ideias ela tem."
 COM_ANTES=$(printf '%s' "$ANTES" | cut -f1)
 SEM_ANTES=$(printf '%s' "$ANTES" | cut -f2)
@@ -123,7 +138,7 @@ if [ "$COM_ANTES" != "$QUANTAS_ESPERO" ]; then
 fi
 
 echo
-echo "== 4/4 — apagando definitivamente =="
+echo "== 5/5 — apagando definitivamente =="
 docker compose exec -T sugestoes python manage.py esvaziar_caixa \
   --site-id "$SITE_ID" --confirmo "$QUANTAS_ESPERO" \
   || parar "o comando falhou. A tela acima diz por quê — mande-a ao agente."
