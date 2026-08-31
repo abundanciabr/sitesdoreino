@@ -86,6 +86,28 @@ def quem_e(request) -> Ator:
     entre reconhecimento e autorização: não conseguir perguntar "é aluno?" não
     pode virar "então é aluno".
     """
+    # UMA resolução por requisição, guardada na própria requisição. Desde
+    # 31/08/2026 o menu do topo também precisa saber se a pessoa entrou (há
+    # item que só aparece para quem entrou, e item que só aparece para quem
+    # não entrou), e ele é montado por processador de contexto — ou seja, DEPOIS
+    # da view que já perguntou. Sem esta memória, toda página de gente logada
+    # custaria duas idas à `identidade` e duas à `alunos` em vez de uma.
+    #
+    # A memória vive na requisição, e não em módulo: ela morre com a resposta, e
+    # duas pessoas nunca compartilham a mesma. Cache de sessão em variável de
+    # processo é exatamente como um guarda de "visitante" passa verde mostrando
+    # o nome de outra pessoa.
+    guardado = getattr(request, "_ator_desta_requisicao", None)
+    if guardado is not None:
+        return guardado
+
+    ator = _resolver(request)
+    request._ator_desta_requisicao = ator
+    return ator
+
+
+def _resolver(request) -> Ator:
+    """A cadeia de verdade. `quem_e` é a porta com memória; esta é a viagem."""
     cookie = request.META.get("HTTP_COOKIE", "")
     if not cookie:
         return VISITANTE

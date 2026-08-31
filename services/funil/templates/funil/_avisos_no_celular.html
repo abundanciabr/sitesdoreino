@@ -1,0 +1,35 @@
+{% load t %}{% comment %}
+templates/funil/_avisos_no_celular.html — o cartaz que pergunta se a pessoa
+quer receber os avisos na tela do celular. Fase 7 do sininho, autorizada pelo
+mantenedor em 31/08/2026, junto com os três tipos de aviso que ele escolheu.
+
+Quem decide se ele EXISTE na página é `apps/core/avisos_no_celular.py` (site da
+escola, gente entrando, chave configurada); quem decide se ele APARECE é
+`static/funil/avisos.js`, no aparelho: celular ou tablet, app instalado, e a
+permissão ainda não respondida. Nasce escondido, como o cartaz de instalar, e
+pelo mesmo motivo: com o JavaScript bloqueado ninguém vê um convite que não
+teria como funcionar.
+
+**O `data-chave` é a chave PÚBLICA do push, e estar aqui é o uso correto dela**
+— o navegador precisa dela para se inscrever. A privada mora na célula
+`notificacoes` e nunca sai de lá.
+
+As três frases de desfecho (deu certo, não deu, o aparelho bloqueou) vêm
+prontas do catálogo e ficam escondidas até o JS escolher uma. Montá-las no JS
+seria texto de tela fora do catálogo de tradução, que é a única coisa que esta
+plataforma não deixa acontecer com texto que alguém lê.
+{% endcomment %}<aside id="avisos-no-celular" class="card instalar" hidden
+  data-chave="{{ avisos_no_celular.chave }}"
+  data-ligar="{{ avisos_no_celular.ligar }}"
+  data-desligar="{{ avisos_no_celular.desligar }}">
+  <p class="instalar-titulo">{% t "avisos.cartaz_titulo" %}</p>
+  <p class="instalar-porque">{% t "avisos.cartaz_porque" %}</p>
+  <div data-parte="convite">
+    <button type="button" class="instalar-botao" data-acao="ligar-avisos">{% t "avisos.cartaz_botao" %}</button>
+    <button type="button" class="instalar-depois" data-acao="avisos-depois">{% t "avisos.cartaz_agora_nao" %}</button>
+  </div>
+  <p class="instalar-porque" data-parte="ligado" hidden>{% t "avisos.cartaz_ligado" %}</p>
+  <p class="instalar-porque" data-parte="nao-deu" hidden>{% t "avisos.cartaz_nao_deu" %}</p>
+  <p class="instalar-porque" data-parte="recusado" hidden>{% t "avisos.cartaz_recusado" %}</p>
+</aside>
+<script src="/static/funil/avisos.js" defer></script>
