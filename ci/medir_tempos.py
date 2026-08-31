@@ -16,10 +16,14 @@ De onde vêm os números:
                  último concluir (muralhas + ci-celula, evento pull_request) —
                  é a "volta de checks" que um PR de verdade atravessa.
   deploy-celula  GitHub: duração dos runs do deploy-celula (evento push).
-  pouso, sonda,  O log local `~/.sitesdoreino/esperas.jsonl`, que o próprio
+  pouso,         O log local `~/.sitesdoreino/esperas.jsonl`, que o próprio
   docker-frio    `ci/esperar.py` alimenta a cada espera concluída — a régua
                  passa a comer do próprio uso (só desfechos que MEDIRAM algo:
                  verde/vermelho; estouro e falha-de-medição não são duração).
+                 Chave de prefixo GENÉRICO só come de espera que se declarou
+                 (`--regua <chave>`) — ver DO_LOG e armadilhas/259. `sonda`
+                 não tem régua: é o alvo livre, e média de coisas sem
+                 parentesco não é medição de nada.
 
 Regras de honestidade (as mesmas da voz):
   - p50 sempre que houver 1+ amostra; p90 só sustenta veredito com n >= 20 —
@@ -58,7 +62,13 @@ REPO_PADRAO = "abundanciabr/sitesdoreino"
 LIMITE_DE_IDADE_DIAS = 45
 CHECKS = (".github/workflows/muralhas.yml", ".github/workflows/ci-celula.yml")
 DEPLOY = ".github/workflows/deploy-celula.yml"
-DO_LOG = {"pouso": "pouso:", "docker-frio": "sonda:", "sonda": "sonda:"}
+# Do log local: (prefixo do alvo, exige que a espera tenha DECLARADO a régua?).
+# `pouso:` só é escrito pelo `--pouso`, então o prefixo já identifica sozinho.
+# `sonda:` é genérico — um `gh pr view`, um `pg_isready` e o Docker acordando
+# frio moram todos nele. Por isso o `docker-frio` exige a declaração explícita
+# (`--regua docker-frio`): sem ela, a fonte fica sem amostra e a régua mantém o
+# número antigo, que é o desfecho honesto. Ver a nota em `registrar_espera`.
+DO_LOG = {"pouso": ("pouso:", False), "docker-frio": ("sonda:", True)}
 
 
 def _gh() -> list[str]:
@@ -128,8 +138,12 @@ def medir_deploy(gh: list[str], repo: str) -> dict | None:
     return {"p50_s": p50, "p90_s": p90, "amostra": len(duracoes)}
 
 
-def medir_do_log(prefixo: str) -> dict | None:
-    """O que o próprio esperar.py viveu — só desfechos que mediram duração."""
+def medir_do_log(chave: str, prefixo: str, exige_declaracao: bool) -> dict | None:
+    """O que o próprio esperar.py viveu — só desfechos que mediram duração.
+
+    Com `exige_declaracao`, só contam as esperas que gravaram `regua` igual a
+    `chave`: é o que impede uma sonda genérica de virar número de outra régua.
+    Registro antigo não tem o campo e por isso não entra — de propósito."""
     caminho = _log()
     if not caminho.exists():
         return None
@@ -139,9 +153,13 @@ def medir_do_log(prefixo: str) -> dict | None:
             registro = json.loads(linha)
         except ValueError:
             continue
-        if (str(registro.get("alvo", "")).startswith(prefixo)
-                and registro.get("desfecho") in ("verde", "vermelho")):
-            duracoes.append(float(registro.get("decorrido_s") or 0))
+        if not str(registro.get("alvo", "")).startswith(prefixo):
+            continue
+        if registro.get("desfecho") not in ("verde", "vermelho"):
+            continue
+        if exige_declaracao and str(registro.get("regua", "")) != chave:
+            continue
+        duracoes.append(float(registro.get("decorrido_s") or 0))
     if not duracoes:
         return None
     p50, p90 = _p50_p90(duracoes)
@@ -159,8 +177,10 @@ def medir(agora: datetime | None = None) -> tuple[dict, list[str]]:
     fontes = {
         "checks": lambda: medir_checks(gh, repo),
         "deploy-celula": lambda: medir_deploy(gh, repo),
-        "pouso": lambda: medir_do_log("pouso:"),
-        "docker-frio": lambda: medir_do_log("sonda:"),
+        **{
+            chave: (lambda c=chave, p=pref, e=exige: medir_do_log(c, p, e))
+            for chave, (pref, exige) in DO_LOG.items()
+        },
     }
     mediu_algo = False
     for chave, fonte in fontes.items():

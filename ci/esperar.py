@@ -390,8 +390,16 @@ class Voz:
 
 
 def registrar_espera(alvo: str, dizendo: str, teto_s: float, decorrido: float,
-                     desfecho: str, detalhe: str) -> None:
-    """A casa única do fato "quanto durou esta espera". Nunca derruba a espera."""
+                     desfecho: str, detalhe: str, regua: str = "") -> None:
+    """A casa única do fato "quanto durou esta espera". Nunca derruba a espera.
+
+    `regua` é a CHAVE de tempos_esperados.json que esta espera alimenta. Sem
+    ela, `ci/medir_tempos.py` só tinha o prefixo do alvo para separar as
+    esperas, e `sonda:` é genérico: em 31/08/2026 as 6 sondas do log (um
+    `gh pr view`, um `pg_isready`, um `git fetch`) iam todas para a régua do
+    `docker-frio`, que teria virado p50 de 2s no lugar dos 90s reais. Medir a
+    coisa errada com precisão é como um portão morre — quem declara a régua é
+    quem esperou, no `--regua`."""
     try:
         LOG_DAS_ESPERAS.parent.mkdir(parents=True, exist_ok=True)
         with LOG_DAS_ESPERAS.open("a", encoding="utf-8") as f:
@@ -403,6 +411,7 @@ def registrar_espera(alvo: str, dizendo: str, teto_s: float, decorrido: float,
                 "decorrido_s": round(decorrido),
                 "desfecho": desfecho,
                 "detalhe": detalhe[:300],
+                "regua": regua,
             }, ensure_ascii=False) + "\n")
     except OSError:
         pass
@@ -517,7 +526,8 @@ def main(argv: list[str] | None = None) -> int:
         alvo_txt, graca = f"sonda:{args.sonda[:60]}", None
 
     dizendo = args.dizendo or rotulo
-    regua = carregar_regua(args.regua or chave)
+    chave_da_regua = args.regua or chave
+    regua = carregar_regua(chave_da_regua)
     pr_do_pouso = args.pr or args.checks or args.pouso
 
     # A ESPERA QUE NÃO DEVIA EXISTIR (31/08/2026) — ver o cabeçalho. A recusa
@@ -569,7 +579,7 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
-                         "estouro", str(falha))
+                         "estouro", str(falha), chave_da_regua)
         return 2
     except GracaVencida as falha:
         print(
@@ -579,7 +589,7 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
-                         "nao-apareceu", str(falha))
+                         "nao-apareceu", str(falha), chave_da_regua)
         return 2
     except FalhasSeguidas as falha:
         detalhe = falha.erro.resumo if falha.erro else str(falha)
@@ -590,7 +600,7 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
         registrar_espera(alvo_txt, dizendo, teto_s, falha.decorrido,
-                         "falha-de-medicao", detalhe)
+                         "falha-de-medicao", detalhe, chave_da_regua)
         return 2
 
     verde = bool((olhada.dados or {}).get("verde"))
@@ -605,7 +615,8 @@ def main(argv: list[str] | None = None) -> int:
             flush=True,
         )
     registrar_espera(alvo_txt, dizendo, teto_s, decorrido,
-                     "verde" if verde else "vermelho", olhada.resumo)
+                     "verde" if verde else "vermelho", olhada.resumo,
+                     chave_da_regua)
     return 0 if verde else 1
 
 
