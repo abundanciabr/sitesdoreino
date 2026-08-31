@@ -77,7 +77,12 @@ class LeadsClient:
 
 
 class IdentidadeClient:
-    """`contracts/identidade.openapi.yaml`, operação `getSession` — leitura pura.
+    """`contracts/identidade.openapi.yaml` — quem é a pessoa, e (desde
+    `DECISAO-login-por-senha.md`) o segundo jeito de ela provar quem é.
+
+    `obter_sessao`/`obter_email` são leitura pura e fail-OPEN.
+    `emitir_token_de_senha`/`definir_senha` são diferentes por natureza —
+    ver o docstring de cada um.
 
     Lei do assunto: `docs/decisoes/DECISAO-onde-mora-a-sessao.md`. O site não lê
     o cookie de sessão: ele **pergunta** quem é o dono dele. O cookie é assinado
@@ -239,6 +244,100 @@ class IdentidadeClient:
         if not isinstance(corpo, dict) or not corpo.get("autenticado"):
             return None
         return (corpo.get("email") or "").strip() or None
+
+    # [LOGIN-POR-SENHA] `DECISAO-login-por-senha.md` — as duas operações que
+    # o /cadastro e o /login precisam para o segundo jeito de entrar.
+    RESULTADO_SENHA_OK = "ok"
+    RESULTADO_SENHA_FALHOU = "falhou"
+
+    def emitir_token_de_senha(self) -> "str | None":
+        """O token que defende `/entrar/senha` de CSRF (`issueLoginToken`).
+
+        **Fail-OPEN, ao contrário de `definir_senha` logo abaixo** — mesma
+        lei de `obter_sessao`: isto está no caminho de alguém abrindo
+        `/login`, e a página não pode cair porque a identidade está fora do
+        ar. `None` faz o mini-formulário de senha simplesmente não
+        aparecer; o botão do Google continua funcionando sozinho.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "token de senha: IDENTIDADE_API_URL/IDENTIDADE_API_TOKEN "
+                "ausentes no env desta célula — mini-formulário de senha some"
+            )
+            return None
+        base, token = config
+
+        try:
+            r = http().post(
+                f"{base}/tokens-de-entrada",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("token de senha: não deu para perguntar: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            logger.error(
+                "token de senha: a identidade respondeu HTTP %s", r.status_code
+            )
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("token de senha: resposta fora do contrato: %s", erro)
+            return None
+
+        if not isinstance(corpo, dict) or not corpo.get("token"):
+            return None
+        return corpo["token"]
+
+    def definir_senha(
+        self, *, email: str, senha: str, nome: str = "", site_id: str = ""
+    ) -> str:
+        """`setPassword` — grava a senha escolhida no `/cadastro`.
+
+        **Fail-CLOSED, ao contrário de `emitir_token_de_senha` acima e de
+        `obter_sessao`/`obter_email`** — decisão do mantenedor
+        (`DECISAO-login-por-senha.md` §1.3): se isto falhar, quem chama
+        (a view `cadastro`) trata o pedido inteiro como não enviado (502,
+        formulário preservado), mesmo que o pedido de vaga em si
+        (`AlunosClient.criar_pre_matricula`) já tenha ido. É seguro
+        reenviar: `entrar_na_fila` do lado da `alunos` é idempotente por
+        e-mail, então tentar de novo nunca duplica ninguém na fila.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "definir senha: IDENTIDADE_API_URL/IDENTIDADE_API_TOKEN "
+                "ausentes no env desta célula — a senha não foi gravada"
+            )
+            return self.RESULTADO_SENHA_FALHOU
+        base, token = config
+
+        try:
+            r = http().post(
+                f"{base}/pessoas/definir-senha",
+                json={
+                    "email": email,
+                    "senha": senha,
+                    "nome": nome,
+                    "site_id": site_id,
+                },
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("definir senha: não deu para falar com a identidade: %s", erro)
+            return self.RESULTADO_SENHA_FALHOU
+
+        if r.status_code != 200:
+            logger.error("definir senha: a identidade respondeu HTTP %s", r.status_code)
+            return self.RESULTADO_SENHA_FALHOU
+
+        return self.RESULTADO_SENHA_OK
 
 
 class NotificacoesClient:

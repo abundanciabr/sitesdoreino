@@ -47,6 +47,10 @@ DOCUMENTOS_PADRAO = "/docs/"
 # tela de "Entrar com Google" seria um clique a mais para dizer a mesma coisa.
 ENTRADA_PADRAO = "/entrar/google"
 
+# O segundo jeito de entrar (`DECISAO-login-por-senha.md`), também da célula
+# `identidade` — o `action` do mini-formulário de senha em `funil/login.html`.
+ENTRADA_SENHA_PADRAO = "/entrar/senha"
+
 
 def _ler(nome: str, padrao: str) -> str:
     return (os.environ.get(nome) or "").strip() or padrao
@@ -62,6 +66,10 @@ def url_dos_avisos() -> str:
 
 def url_de_entrada() -> str:
     return _ler("URL_DE_ENTRADA", ENTRADA_PADRAO)
+
+
+def url_de_entrada_por_senha() -> str:
+    return _ler("URL_DE_ENTRADA_SENHA", ENTRADA_SENHA_PADRAO)
 
 
 def url_do_forum() -> str:
