@@ -1,0 +1,16 @@
+{
+  "arquivo": "078-a-tela-onde-o-dono-ve-e-edita-as-sequencias-sozinho",
+  "id": "TAR-078",
+  "titulo": "A tela onde o dono ve e edita as sequencias sozinho",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [
+    "TAR-076"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + prova de fora: a tela abrindo em https://meshcraft.top/admin/escola/jornadas/ (codigo HTTP cru) + o veredito do run de deploy por gh run view --json.",
+  "despacho": "Substitui a TAR-062. E O DEGRAU QUE ENTREGA AO MANTENEDOR O QUE ELE PEDIU.\n\n*** ESTE DESPACHO NAO REPETE O PLANO. Ele APONTA. ***\n\nLEIA ANTES: docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md — §5 (o modelo, para\nsaber o que a tela le), §6 (a regua, para saber o que ela precisa EXPLICAR) e\n§8.3 (a decisao dele de editar sozinho).\n\nO QUE ENTREGA: a tela em /admin/escola/jornadas/ onde ele ve e EDITA as\nsequencias sem robo e sem publicacao.\n\nA METADE QUE FAZ A TELA VALER e a que e facil cortar por engano: o que foi\nBARRADO e POR QUE. Sem isso, \"por que o aluno X nao recebeu?\" fica sem resposta e\nele olha para o silencio. Com isso, a tela responde \"barrada pela regua: ja tinha\nrecebido uma hoje\".\n\nEDITAR TEXTO E PUBLICAR VERSAO NOVA, e a tela precisa dizer isso a ele em\nportugues simples: quem ja esta no meio da sequencia continua com o texto antigo.\nNao e limitacao, e a promessa do §5 — e uma tela que escondesse isso faria ele\nachar que a correcao nao pegou.\n\nLEI ANTI-DUPLICACAO (CLAUDE.md): a tela CALCULA tudo das tabelas. Nada de lista\npropria, nada de contador a mao.\n\nLINGUAGEM: ele e leigo. \"Barrada pela regua\", nunca \"rate limit exceeded\".",
+  "origem": "substitui a TAR-062, trancada por depender de tarefa trancada (consultoria de 31/08/2026)",
+  "criada_em": "2026-08-31"
+}
