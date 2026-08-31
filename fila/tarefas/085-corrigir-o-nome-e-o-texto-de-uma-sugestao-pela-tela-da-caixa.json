@@ -1,0 +1,16 @@
+{
+  "arquivo": "085-corrigir-o-nome-e-o-texto-de-uma-sugestao-pela-tela-da-caixa",
+  "id": "TAR-085",
+  "titulo": "Corrigir o nome e o texto de uma sugestao pela tela da Caixa, quando o aluno erra a digitacao",
+  "toca": [
+    "sugestoes",
+    "admin",
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "a tela /admin/caixa/ideia/<id>/ mostra o formulario de correcao, o titulo corrigido volta na resposta da Caixa e o texto anterior fica guardado",
+  "despacho": "Um aluno escreveu \"turorial\" (em vez de \"tutorial\") no nome de duas sugestoes,\ne nao existe hoje nenhuma tela onde a escola conserte isso. Pedido do\nmantenedor em 31/08/2026, com as duas decisoes ja tomadas por pergunta\nestruturada: (1) da para corrigir o NOME e tambem o TEXTO que o aluno escreveu\n(problema e solucao proposta); (2) a correcao e CALADA para o aluno — nenhuma\nmarca na tela dele — e o rastro (quem corrigiu, quando, o que estava escrito\nantes) fica so por dentro.\n\nA escada, na ordem, tres PRs:\n\n1. Rito de Contrato (RITOS.md §3): POST /gestao/ideias/{id}/texto no\n   contracts/sugestoes.openapi.yaml, mais a lei em\n   docs/decisoes/DECISAO-corrigir-o-texto-de-uma-ideia.md. Adicao pura.\n2. Celula sugestoes: model append-only guardando o texto anterior (os tres\n   degraus da Lei 1, trigger no Postgres incluso), a rota, as mesmas reguas da\n   criacao (titulo obrigatorio e ate 140, problema obrigatorio), recusa para\n   ideia apagada e para \"nada mudou\".\n3. Celula admin: o formulario \"Corrigir o texto\" em /admin/caixa/ideia/<id>/,\n   verbo proprio de auditoria, e o rastro das correcoes anteriores na tela.",
+  "origem": "pedido do mantenedor em 31/08/2026: um aluno escreveu 'turorial' em duas sugestoes e nao ha onde corrigir",
+  "criada_em": "2026-08-31"
+}
