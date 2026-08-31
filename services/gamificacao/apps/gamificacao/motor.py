@@ -174,8 +174,18 @@ def creditos_de(envelope: dict, site_id: str) -> list[Credito]:
     )
 
     dia = dia_local_de(quando)
+    data = envelope.get("data") or {}
     creditos = []
     for regra in regras:
+        # O QUALIFICADOR DE STATUS, quando a regra tem um. Um assunto pode
+        # carregar seis fatos diferentes — `sugestao.status-alterado` carrega —
+        # e sem esta conferência a regra `sugestao-implementada` pagava em CADA
+        # passo do funil, 40 XP por vez, para a mesma sugestão. Vazio significa
+        # "qualquer status", que é o caso de todas as outras regras.
+        if regra.quando_status_novo and (
+            data.get("status_novo") != regra.quando_status_novo
+        ):
+            continue
         pessoa_id = _pessoa_do_credito(regra, envelope)
         if not pessoa_id:
             logger.warning(
