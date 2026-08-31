@@ -1,0 +1,18 @@
+{
+  "arquivo": "069-um-menu-no-topo-do-site-publico-configuravel-no-painel-quais",
+  "id": "TAR-069",
+  "titulo": "Um menu no topo do site publico, configuravel no painel: quais paginas tem menu e qual versao",
+  "toca": [
+    "funil",
+    "catalogo",
+    "admin",
+    "contracts",
+    "forum"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "URL dos PRs mergeados + o menu visivel em https://meshcraft.top nos tres idiomas + a tela de configuracao em /admin/menu/",
+  "despacho": "# DESPACHO — menu do topo do site publico, configuravel no painel\n\nORIGEM: o mantenedor, pelo super prompt docs/despachos/DESPACHO-PARTE-DO-SITE.md,\nem 31/08/2026. Palavras dele: \"PARTE DO SITE QUE EU QUERO: menu do topo da\npagina. COMO EU QUERO QUE SEJA: quero que em algumas paginas nao tenha o menu e\nem outras tenha mas seja diferente, dai preciso poder configurar ele no painel\nde controle. aceito recomendacoes.\"\n\nMISSAO: o site publico ganha um menu no topo, e o mantenedor decide no painel\nquais paginas tem menu, qual versao do menu cada uma usa, e o que tem dentro de\ncada versao — sem PR nenhum.\n\nDESENHO (decidido no reconhecimento, com a configuracao real lida):\n- O menu e DADO DO SITE, e dado de site mora na celula `catalogo` — a mesma que\n  o funil ja consulta em toda requisicao (CONV-SITE, cache de 60s). Assim o\n  menu chega ao funil e ao forum pelo caminho que ja existe, sem celula nova e\n  sem ninguem ler o banco de ninguem (Lei 3).\n- Modelo: um site tem N VERSOES de menu (ex.: \"completo\", \"enxuto\"); cada versao\n  tem itens ordenados (rotulo por idioma, destino, para quem aparece); e uma\n  tabela de REGRA POR PAGINA diz qual versao cada pagina usa — inclusive\n  \"nenhuma\", que e a pagina sem menu que ele pediu.\n- Quem edita e a celula `admin`, em /admin/menu/, escrevendo no catalogo pela\n  porta de maquina (token), nunca no banco dele.\n\nESCADA DE PRs (declarada desde o inicio; contracts/ nunca junto com codigo):\n  1. contracts/catalogo.openapi.yaml — emenda ADITIVA (label `contrato`)\n  2. services/catalogo — modelos, migracao, porta de leitura e de escrita\n  3. services/funil — o menu no base_mobile.html, nos 3 idiomas\n  4. services/admin — a tela /admin/menu/\n  5. services/forum — o mesmo padrao copiado (Lei 7), nao o arquivo importado\n\nINVARIANTES TOCADOS: INV-P11 (tudo de request.site, nada de \"meshcraft\" cravado)\nDoD: make ci verde em cada celula tocada + o menu medido de fora nos 3 idiomas +\na tela de configuracao respondendo atras da porta do admin.",
+  "origem": "despacho do mantenedor (super prompt de parte do site)",
+  "criada_em": "2026-08-31"
+}
