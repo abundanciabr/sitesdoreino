@@ -28,15 +28,37 @@ continua exato. Aquela lista é outra decisão (INV-P14) e afrouxá-la de carona
 seria mudar uma postura de segurança sem ninguém ter pedido. Esta área ganha o
 próprio prefixo isento, ao lado dela.
 
-**As três travas que tornam a exceção segura**, herdadas de `mapa_ia.py`:
+**As duas travas que tornam a exceção segura**, herdadas de `mapa_ia.py`:
 
 1. Servido como `text/plain`, **nunca HTML** — não executa nada, não injeta
    nada, e nenhum documento consegue virar página.
 2. O nome chega restrito pelo padrão da rota (sem barra), e mesmo assim
    `Path.resolve()` confere que o alvo continua DENTRO da pasta antes de ler —
    defesa em profundidade, não confiança no regex.
-3. `X-Robots-Tag: noindex` — isto é para uma IA ler quando recebe o link, não
-   para competir com o site nas buscas.
+
+**O `X-Robots-Tag: noindex` SAIU em 31/08/2026, e a razão é medição.** Ele
+estava aqui copiado de `mapa_ia.py`, com a intenção de "não competir com o site
+nas buscas" — e derrotava o único propósito da área. No dia em que ela subiu, o
+mantenedor mandou o endereço para o Gemini e ouviu *"não consegui acessar o
+conteúdo"*. A investigação descartou, uma a uma, as causas plausíveis: o
+servidor responde **200 a todo User-Agent**, inclusive `GPTBot`, `GoogleOther` e
+`Google-Extended`; não há `robots.txt` bloqueando (é 404, que significa liberado);
+não há IPv6 quebrado (o domínio não tem AAAA); e a cadeia TLS verifica completa
+(`Verify return code: 0`).
+
+Sobrou UMA diferença entre este endereço e o `raw.githubusercontent.com` do mesmo
+arquivo, que as IAs leem sem reclamar: o `noindex` — e a extensão. `noindex` é
+uma instrução que diz *"não use este conteúdo"*, e pedir que uma IA leia uma
+página marcada assim é pedir que ela desobedeça.
+
+**A troca, dita por inteiro:** sem o `noindex`, estas páginas podem passar a
+aparecer numa busca do Google por "Meshcraft". São documentos de projeto num
+repositório que já é público — mas é visibilidade nova, e o mantenedor foi
+avisado e pode mandar reverter.
+
+**E o endereço passou a aceitar `.md` no fim**, opcional. Não é enfeite: é a
+outra diferença medida contra o `raw` do GitHub, e custa uma linha na rota. Os
+dois endereços servem o mesmo arquivo.
 """
 
 from __future__ import annotations
@@ -126,6 +148,10 @@ def _arquivo(nome: str) -> Path:
     pasta = diretorio_dos_planos()
     if pasta is None:
         raise Http404("os planos não vieram nesta imagem")
+    # `.md` no fim e opcional: e a forma do `raw.githubusercontent.com`, que
+    # as IAs leem sem reclamar, e igualar as duas custou esta linha.
+    if nome.endswith(".md"):
+        nome = nome[:-3]
     if not RE_NOME.match(nome):
         raise Http404("nome de plano inválido")
 
@@ -157,10 +183,14 @@ def listar() -> list[Plano]:
 
 
 def _resposta(corpo: str) -> HttpResponse:
-    """Texto puro, nunca HTML, e fora das buscas."""
+    """Texto puro, nunca HTML.
+
+    SEM `X-Robots-Tag: noindex`, de propósito e por medição — ver o cabeçalho
+    deste arquivo. O guarda que impede o header de voltar sem conversa é
+    `tests/test_planos_para_ia.py::test_a_area_nao_pede_para_ser_ignorada`.
+    """
     resposta = HttpResponse(corpo, content_type="text/plain; charset=utf-8")
     resposta["Cache-Control"] = "public, max-age=300"
-    resposta["X-Robots-Tag"] = "noindex"
     return resposta
 
 

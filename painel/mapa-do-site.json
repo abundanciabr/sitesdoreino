@@ -685,13 +685,13 @@
     },
     {
       "celula": "admin",
-      "rota": "^mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+)$",
-      "endereco": "/mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+)$",
+      "rota": "^mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+(?:\\.md)?)$",
+      "endereco": "/mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+(?:\\.md)?)$",
       "exemplo": "/mapa-ia/planos/PLANO-SEQUENCIAS-DE-MENSAGENS",
       "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "Um plano, para outras IAs lerem",
-      "descricao": "O texto de um plano ou decisao, do jeito que esta no repositorio. Documento que nao se declarou publico responde 'nao encontrado'."
+      "descricao": "O texto de um plano ou decisao, do jeito que esta no repositorio. Funciona com ou sem `.md` no fim. Documento que nao se declarou publico responde 'nao encontrado'."
     },
     {
       "celula": "admin",
