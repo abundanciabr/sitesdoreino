@@ -52,7 +52,7 @@ caminho da **Caixa de Sugestões**, que é onde você pede o que falta e vota no
 importa. E você recebe um aviso no **sininho** do site dizendo que a sua situação
 mudou.
 
-**Não aprovado.** A equipe é obrigada a escrever o motivo, e você lê esse motivo
+**Não aprovado.** A equipe escreve o motivo, e você lê esse motivo
 na sua página inicial. **Você pode pedir de novo**, inclusive é assim que se
 corrige um dado errado: se você digitou o telefone errado, mande o pedido de novo
 com o número certo.
@@ -62,27 +62,9 @@ com o número certo.
 Sua situação pode mudar, e cada uma delas quer dizer uma coisa diferente:
 
 - **Aluno**: você entra normalmente.
-- **Pausado**: o acesso está desligado por enquanto, e **volta sozinho** quando
-  a equipe religar. Você não precisa fazer nada, e não há o que pedir.
-- **Ex-aluno**: o acesso acabou. Sua ficha continua guardada, e **se você quiser
-  voltar, é só pedir de novo** (o mesmo formulário do começo).
-- **Reembolsado**: o dinheiro da sua compra foi devolvido, e a matrícula foi
-  desfeita junto. **Você não entra mais**, nem no curso nem na Caixa de
-  Sugestões. Sua ficha continua guardada, mas aqui não há o botão de pedir de
-  novo: se quiser voltar a estudar, fale com a escola ou faça uma nova compra.
-
-## O que a escola guarda sobre você
-
-Seu nome, seu e-mail, seu WhatsApp, e a data e a turma se você as informou. Mais
-o histórico das suas passagens pela escola: quando entrou, quando saiu, e as
-decisões que a equipe tomou.
-
-**A sua ficha nunca é apagada.** Se você sair e voltar, ganha uma ficha nova, e a
-antiga fica como história. Isso é para que ninguém precise contar tudo de novo,
-e para que a escola nunca perca o registro do que decidiu sobre você.
-
-Seu **WhatsApp** aparece numa tela só: a da equipe, e apenas para decidir sobre a
-sua entrada. Ele não sai em nenhum outro lugar do site.
+- **Reembolsado**: a plataforma é exclusiva para alunos que estão fazendo algum
+  curso, e em caso de reembolso o aluno perde o acesso à mesma.
+- **Ex-aluno**: o acesso ao curso acabou. Pode voltar comprando um novo curso.
 
 ## Se algo não funcionar
 
