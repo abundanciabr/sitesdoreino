@@ -75,6 +75,12 @@ INSTALLED_APPS = [
     # lei desta célula e nascem como teste que reprova a publicação — nunca
     # como promessa em documento.
     "apps.gamificacao",
+    # A memória de quais eventos já foram vistos (a receita R4 v1, igual nas
+    # cinco células que consomem). A unicidade de `event_id` é o guarda de
+    # idempotência da ENTREGA; a do ledger é a do CRÉDITO, e as duas precisam
+    # existir: a primeira impede o handler de rodar de novo, a segunda impede o
+    # mesmo fato de pagar duas vezes por caminhos diferentes.
+    "apps.eventos",
 ]
 
 MIDDLEWARE = [

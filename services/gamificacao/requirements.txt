@@ -16,6 +16,11 @@ httpx==0.28.1
 # `contracts/gamificacao.openapi.yaml`). Mesma versao das outras celulas de
 # proposito (`armadilhas/071`).
 django-ninja==1.3.0
+# O consumidor de eventos (Redis Streams, receita R4 v1). MESMA versão das
+# outras quatro células consumidoras de propósito: quatro versões da mesma
+# biblioteca para o mesmo padrão são quatro comportamentos a depurar
+# (`armadilhas/071`).
+redis==5.1.1
 # O freeze de contrato importa PyYAML para comparar o congelado com o vivo. Ele
 # entra NO MESMO DIA em que esta celula vira mensuravel, e nao depois: sem ele o
 # `make contrato-check` morre com "No module named 'yaml'" no primeiro PR
