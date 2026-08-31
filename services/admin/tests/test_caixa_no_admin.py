@@ -21,6 +21,8 @@ prova mecânica de que nada aqui sai para a internet — `respx.mock` estoura em
 qualquer chamada não registrada.
 """
 
+import re
+
 import httpx
 import pytest
 import respx
@@ -103,8 +105,24 @@ def a_caixa_responde(ideias, **topo):
     respx.get(IDEIAS).mock(return_value=httpx.Response(200, json=corpo))
 
 
+RE_ESTILO = re.compile("<style\\b[^>]*>.*?</style\\s*>", re.DOTALL | re.IGNORECASE)
+
+
 def texto(resposta) -> str:
-    return resposta.content.decode()
+    """A página SEM a folha de estilo embutida.
+
+    A folha mora dentro do HTML nesta área (`base.html` explica por quê), e vários
+    guardas daqui perguntam se um NÚMERO aparece na tela. Sem esta poda, um
+    `min-width: 200px` escrito no CSS conta como o número 200 na página — foi
+    exatamente o que aconteceu em 31/08/2026, quando o editor de documentos
+    acrescentou uma regra de estilo e derrubou um teste sobre a contagem de
+    gente esperando.
+
+    Podar aqui, e não afastar o valor no CSS: um guarda que obriga a próxima
+    pessoa a escolher medidas que não colidem com números de negócio é um guarda
+    que vai ser desligado.
+    """
+    return RE_ESTILO.sub("", resposta.content.decode())
 
 
 # ---------------------------------------------------------------------------

@@ -15,6 +15,16 @@ um dia alguém vai ler só um deles.
 <div class="envolucro">
   <a class="volta" href="{% url 'documentos_admin' %}">&larr; Documentos</a>
 
+  {% if recado == "criado" %}
+  <p class="recado">Documento criado.</p>
+  {% elif recado == "salvo" %}
+  <p class="recado">Salvo.</p>
+  {% endif %}
+
+  <p class="espaco-abaixo-20">
+    <a class="botao" href="{% url 'documento_editar' documento.nome %}">Editar este documento</a>
+  </p>
+
   <p class="aviso espaco-abaixo-20">
     {% if documento.publico %}
     <b>Este documento é PÚBLICO.</b> Qualquer pessoa o lê em
