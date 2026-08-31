@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260830-235742-TAR-047-concluida",
+  "tarefa": "TAR-047",
+  "evento": "concluida",
+  "quando": "2026-08-30T23:57:42+00:00",
+  "quem": "sessao-forum-busca-2026-08-30",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/667 — a configuracao portugues_sem_acento (unaccent + portuguese_stem) criada pelo provisionamento, o nome lido do env com padrao inofensivo, as duas pontas (indexar e procurar) na mesma funcao, e a migracao 0006 reindexando no boot. Suite da celula 167 -> 170 verdes, com o guarda dos buracos INVERTIDO: o do acento agora exige a cura nas duas direcoes. deploy-celula run 33342991511 completed/success nas duas celulas (gh run view --json). PROVA DE FORA, sem login, depois do deploy: /forum/buscar?q=duvida devolve '2 resultados' e /forum/buscar?q=duvida-com-acento devolve os MESMOS '2 resultados'. O mantenedor rodou o passo da VPS as 20:45 e a saida foi 'PRONTO. A busca do forum agora acha sem acento. FORUM_BUSCA_CONFIG=portugues_sem_acento'.",
+  "verificado_em": "2026-08-30"
+}
