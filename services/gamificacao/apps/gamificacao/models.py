@@ -256,6 +256,28 @@ class RegraDePontuacao(models.Model):
     acoes_cheias_por_dia = models.PositiveSmallIntegerField(default=0)
     # 0 = definitivo na hora. 24 a 72 para o XP social.
     quarentena_horas = models.PositiveSmallIntegerField(default=0)
+    # UM CAMPO ESTREITO, E A ESTREITEZA É O PONTO — leia antes de "generalizar".
+    #
+    # O assunto `sugestao.status-alterado` é UM evento para SEIS status. Sem esta
+    # coluna, a regra `sugestao-implementada` pagava 40 XP em CADA passo do funil
+    # (em_analise → planejado → em_desenvolvimento → implementado = 160 por uma
+    # sugestão só), porque o motor casava só pelo `evento_gatilho`. Medido em
+    # 31/08/2026, antes de a regra ser ligada.
+    #
+    # **Vazio = qualquer status**, que é o comportamento de todas as outras
+    # regras e de todos os outros assuntos. Preenchido, a regra só paga quando o
+    # `data.status_novo` do evento for exatamente este texto.
+    #
+    # **POR QUE NÃO UM CAMPO DE CONDIÇÃO GENÉRICO** (`filtro`, `condicao`, um
+    # JSON de `campo: valor`, uma expressão): porque isso é o CRITÉRIO DE MORTE
+    # Nº 1 da lei — *"a célula virar motor de regras genérico ou ganhar uma
+    # DSL"*. Um campo com nome concreto, que compara UM campo conhecido de UM
+    # assunto conhecido, não é uma linguagem: é uma regra a mais, escrita por
+    # extenso. No dia em que um segundo assunto precisar de qualificador, a
+    # resposta certa continua sendo outra coluna com nome próprio — e se um dia
+    # forem muitas, isso é sinal de parar e reabrir a decisão, não de inventar
+    # uma gramática. Guarda: `tests/test_inv_economia_nao_vira_motor_generico.py`.
+    quando_status_novo = models.CharField(max_length=30, blank=True, default="")
 
     ativa = models.BooleanField(default=False)
     versao = models.PositiveIntegerField(default=1)

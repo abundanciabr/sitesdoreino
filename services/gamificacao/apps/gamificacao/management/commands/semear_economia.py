@@ -69,15 +69,29 @@ NIVEIS = [
 ]
 
 # (slug, evento_gatilho, beneficiario, pontos, cristais, acoes_cheias_por_dia,
-#  quarentena_horas)
+#  quarentena_horas, quando_status_novo)
+#
+# O ULTIMO CAMPO e o qualificador, e ele so nao e vazio numa linha. O assunto
+# `sugestao.status-alterado` carrega SEIS fatos (um por status), e sem o
+# qualificador a regra `sugestao-implementada` pagava 40 XP em CADA passo do
+# funil. Vazio = qualquer status, que e o caso de todos os outros assuntos.
 # Só eventos JÁ CONGELADOS, mais a tomada futura da aula. Quarentena de 24h no
 # que é social: se o conteúdo de origem for moderado, o estorno acontece antes
 # de o número virar parte da identidade de alguém.
 REGRAS = [
-    ("quiz-aprovado", "quiz.completado.v1", "ator", 30, 0, 3, 0),
-    ("sugestao-criada", "sugestao.criada.v1", "ator", 10, 0, 3, 24),
-    ("voto-dado", "sugestao.voto-adicionado.v1", "ator", 2, 0, 10, 24),
-    ("sugestao-votada", "sugestao.voto-adicionado.v1", "autor_do_alvo", 5, 0, 0, 24),
+    ("quiz-aprovado", "quiz.completado.v1", "ator", 30, 0, 3, 0, ""),
+    ("sugestao-criada", "sugestao.criada.v1", "ator", 10, 0, 3, 24, ""),
+    ("voto-dado", "sugestao.voto-adicionado.v1", "ator", 2, 0, 10, 24, ""),
+    (
+        "sugestao-votada",
+        "sugestao.voto-adicionado.v1",
+        "autor_do_alvo",
+        5,
+        0,
+        0,
+        24,
+        "",
+    ),
     (
         "sugestao-implementada",
         "sugestao.status-alterado.v2",
@@ -86,11 +100,14 @@ REGRAS = [
         5,
         0,
         0,
+        # SO quando a sugestao vira PRONTA. Sem isto, mover a sugestao pelo funil
+        # pagava a cada passo — medido em 31/08/2026, antes de a regra ser ligada.
+        "implementado",
     ),
     # A TOMADA FUTURA do §3 do plano: uma linha, desligada, esperando o evento
     # nascer. Note a direção: a célula LÊ que a aula terminou. Nada aqui decide
     # se alguém pode assisti-la, e é isso que o terceiro invariante protege.
-    ("aula-concluida", "aula.concluida.v1", "ator", 25, 0, 5, 0),
+    ("aula-concluida", "aula.concluida.v1", "ator", 25, 0, 5, 0, ""),
 ]
 
 # (slug, nome, descricao, cadencia, categoria, meta, pontos, cristais)
@@ -349,12 +366,22 @@ class Command(BaseCommand):
                         "cristais": cristais,
                         "acoes_cheias_por_dia": cheias,
                         "quarentena_horas": quarentena,
+                        "quando_status_novo": qualificador,
                         "ativa": False,
                         "versao": 1,
                     },
                     slug,
                 )
-                for slug, evento, quem, pontos, cristais, cheias, quarentena in REGRAS
+                for (
+                    slug,
+                    evento,
+                    quem,
+                    pontos,
+                    cristais,
+                    cheias,
+                    quarentena,
+                    qualificador,
+                ) in REGRAS
             ],
         )
 

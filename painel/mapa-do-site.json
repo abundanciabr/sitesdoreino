@@ -172,6 +172,16 @@
     },
     {
       "celula": "identidade",
+      "rota": "entrar/senha",
+      "endereco": "/entrar/senha",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "gesto": true,
+      "titulo": "Entrar com e-mail e senha",
+      "descricao": "O segundo jeito de entrar, para quem não tem conta do Google: recebe o e-mail e a senha que a pessoa escolheu no cadastro."
+    },
+    {
+      "celula": "identidade",
       "rota": "entrar/sair",
       "endereco": "/entrar/sair",
       "alcance": "publico",
