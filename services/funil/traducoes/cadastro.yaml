@@ -105,3 +105,25 @@ link_entrar:
   en: "Sign in"
   pt-br: "Entrar"
   es: "Iniciar sesión"
+
+campo_senha:
+  # A senha escolhida no cadastro (DECISAO-login-por-senha.md, 31/08/2026) —
+  # o segundo jeito de entrar, ao lado do Google.
+  _fonte: "e7cf3e"
+  en: "Password"
+  pt-br: "Senha"
+  es: "Contraseña"
+
+campo_confirmar_senha:
+  _fonte: "5ac265"
+  en: "Confirm password"
+  pt-br: "Confirmar senha"
+  es: "Confirmar contraseña"
+
+erro_senhas_diferentes:
+  # Conferido na view (request.idioma), não em Form.clean() — ver o
+  # comentário em FormularioDeCadastro.
+  _fonte: "e14090"
+  en: "The two passwords do not match."
+  pt-br: "As duas senhas não são iguais."
+  es: "Las dos contraseñas no coinciden."

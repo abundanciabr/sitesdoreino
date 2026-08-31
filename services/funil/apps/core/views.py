@@ -16,10 +16,15 @@ from django.views.static import serve as serve_do_django
 from apps.core.clients import (
     AlunosClient,
     CatalogoClient,
+    IdentidadeClient,
     LeadsClient,
     NotificacoesClient,
 )
-from apps.core.enderecos import url_de_entrada, url_dos_avisos
+from apps.core.enderecos import (
+    url_de_entrada,
+    url_de_entrada_por_senha,
+    url_dos_avisos,
+)
 from apps.i18n import catalogo as cat
 from apps.i18n.idiomas import caminho_publico, direcao, tag_bcp47
 
@@ -146,11 +151,26 @@ class FormularioDeCadastro(forms.Form):
     `POST /pre-matriculas` da célula `alunos` já recusa o pedido por essa
     mesma razão (`nome_completo e whatsapp são obrigatórios`) — o form aqui só
     adianta a mesma regra, no idioma da página.
+
+    `senha`/`confirmar_senha` (`DECISAO-login-por-senha.md`, também
+    31/08/2026): a pessoa escolhe a senha JUNTO com o pedido de vaga, não
+    numa etapa separada depois da aprovação — decisão do mantenedor. Mínimo
+    de 8 caracteres, mesma régua que `AUTH_PASSWORD_VALIDATORS` já exige do
+    lado da `identidade`; conferir aqui adianta o erro no idioma da página
+    em vez de um 502 vindo de uma validação que só existe do outro lado.
+
+    **A conferência "as duas senhas batem?" NÃO mora em `clean()`**: a
+    mensagem de erro vem do catálogo de tradução (`apps.i18n.catalogo`, não
+    do gettext do Django, que é o que localiza os erros DE CAMPO acima), e
+    `clean()` não tem `request.idioma`. Quem faz essa conferência é a view
+    `cadastro`, depois de `is_valid()`.
     """
 
     name = forms.CharField(max_length=200)
     email = forms.EmailField()
     whatsapp = forms.CharField(max_length=32)
+    senha = forms.CharField(min_length=8, widget=forms.PasswordInput)
+    confirmar_senha = forms.CharField(min_length=8, widget=forms.PasswordInput)
 
 
 # HEAD junto com GET, sempre: `require_http_methods` NÃO o inclui de graça (o
@@ -190,9 +210,19 @@ def cadastro(request):
         raise Http404("cadastro só existe em site registrado no i18n")
 
     sucesso, ja_matriculado, erro_envio, status = False, False, False, 200
+    # [LOGIN-POR-SENHA] Flag própria, não `form.add_error()`: a mensagem sai
+    # do catálogo de tradução via `{% t %}` NO TEMPLATE (mesmo padrão de
+    # `sucesso`/`ja_matriculado`/`erro_envio` logo abaixo) — não em Python,
+    # onde o validador do i18n não veria a chave sendo usada (ela só conta
+    # como "usada" dentro de um `{% t %}` real num arquivo de template).
+    senhas_diferentes = False
     if request.method == "POST":
         form = FormularioDeCadastro(request.POST)
         if form.is_valid():
+            senhas_diferentes = (
+                form.cleaned_data["senha"] != form.cleaned_data["confirmar_senha"]
+            )
+        if form.is_valid() and not senhas_diferentes:
             resultado = AlunosClient().criar_pre_matricula(
                 site_id=request.site["id"],  # [INV-P11] do Host, não do payload
                 email=form.cleaned_data["email"],
@@ -200,8 +230,27 @@ def cadastro(request):
                 whatsapp=form.cleaned_data["whatsapp"],
             )
             if resultado == AlunosClient.RESULTADO_NA_FILA:
-                sucesso = True
-                form = FormularioDeCadastro()  # sucesso limpa o formulário
+                # A senha só é gravada quando o pedido de vaga deu certo — uma
+                # senha "órfã" para um e-mail que nunca entrou na fila não
+                # serviria a ninguém. Fail-CLOSED aqui (decisão do
+                # mantenedor, DECISAO-login-por-senha.md §1.3): se a senha
+                # não puder ser gravada, o pedido inteiro é tratado como não
+                # enviado — reenviar é seguro, `entrar_na_fila` do lado da
+                # alunos é idempotente por e-mail.
+                senha_ok = (
+                    IdentidadeClient().definir_senha(
+                        email=form.cleaned_data["email"],
+                        senha=form.cleaned_data["senha"],
+                        nome=form.cleaned_data["name"],
+                        site_id=request.site["id"],
+                    )
+                    == IdentidadeClient.RESULTADO_SENHA_OK
+                )
+                if senha_ok:
+                    sucesso = True
+                    form = FormularioDeCadastro()  # sucesso limpa o formulário
+                else:
+                    erro_envio, status = True, 502
             elif resultado == AlunosClient.RESULTADO_JA_TEM_MATRICULA:
                 # Não é erro de envio (ARMADILHAS §4.9 é sobre falha de rede):
                 # o pedido chegou, só que esta pessoa já está na plataforma. A
@@ -223,6 +272,7 @@ def cadastro(request):
             "sucesso": sucesso,
             "ja_matriculado": ja_matriculado,
             "erro_envio": erro_envio,
+            "senhas_diferentes": senhas_diferentes,
         },
         status=status,
     )
@@ -255,6 +305,11 @@ CHAVES_DE_RECUSA = {
     "nao-configurada",
     "google-indisponivel",
     "email-nao-verificado",
+    # [LOGIN-POR-SENHA] O vocabulário de recusa de /entrar/senha
+    # (DECISAO-login-por-senha.md §6.1) — "senha-invalida" serve tanto para
+    # "e-mail sem conta" quanto para "senha errada", de propósito.
+    "senha-invalida",
+    "muitas-tentativas",
 }
 
 
@@ -307,10 +362,21 @@ def entrar(request):
     entrada = f"{url_de_entrada()}?" + urlencode(
         {"next": destino, "site": request.site["id"]}
     )
+    # [LOGIN-POR-SENHA] O token que defende /entrar/senha de CSRF
+    # (DECISAO-login-por-senha.md §3) — buscado aqui, fail-open na EXIBIÇÃO:
+    # `None` faz o template simplesmente não desenhar o mini-formulário de
+    # senha, e o botão do Google continua funcionando sozinho.
+    token_de_senha = IdentidadeClient().emitir_token_de_senha()
     return render(
         request,
         "funil/login.html",
-        {"url_de_entrada": entrada, "erro": erro, "destino": destino},
+        {
+            "url_de_entrada": entrada,
+            "url_de_entrada_por_senha": url_de_entrada_por_senha(),
+            "erro": erro,
+            "destino": destino,
+            "token_de_senha": token_de_senha,
+        },
     )
 
 
