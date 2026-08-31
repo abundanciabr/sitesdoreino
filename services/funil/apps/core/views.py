@@ -248,7 +248,19 @@ def entrar(request):
     # "Entrar" na home.
     home = caminho_publico(request.i18n, request.idioma, "/")
     destino = destino_local(request.GET.get("next"), home)
-    entrada = f"{url_de_entrada()}?{urlencode({'next': destino})}"
+    # `site` viaja junto com o `next` desde 31/08/2026 (degrau 1 do
+    # PLANO-SEQUENCIAS-DE-MENSAGENS): a célula `identidade` cunha a pessoa e
+    # anuncia o fato, e o fato precisa dizer de QUAL site alguém entrou. Ela não
+    # resolve Host→Site (isso é do catálogo, e ela nem fala com ele), então quem
+    # manda o site é quem já o resolveu — esta célula, aqui, com o valor que o
+    # CONV-SITE pôs em `request.site`.
+    #
+    # Do outro lado ele é tratado como entrada de rede: saneado por forma, e
+    # usado só para escolher a quem o cadastro pertence, nunca para autorizar.
+    # Faltando, a pessoa entra igual e o fato não é anunciado.
+    entrada = f"{url_de_entrada()}?" + urlencode(
+        {"next": destino, "site": request.site["id"]}
+    )
     return render(
         request,
         "funil/login.html",

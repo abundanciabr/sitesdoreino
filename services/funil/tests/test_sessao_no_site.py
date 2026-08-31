@@ -214,7 +214,13 @@ def test_a_pagina_de_entrada_leva_ao_google(client, rede, idioma):
     ).content.decode()
 
     volta_para = quote(caminho_mesh(idioma), safe="")  # "/" → %2F; "/es/" → %2Fes%2F
-    assert f'href="/entrar/google?next={volta_para}"' in conteudo
+    # O `site` entrou em 31/08/2026 (degrau 1 do PLANO-SEQUENCIAS-DE-MENSAGENS):
+    # a `identidade` anuncia o cadastro e o fato precisa dizer de qual site a
+    # pessoa veio. Quem resolve Host→Site é ESTA célula, então é ela que manda.
+    assert (
+        f'href="/entrar/google?next={volta_para}&amp;site={SITE_MESH["id"]}"'
+        in conteudo
+    )
 
 
 def test_o_endereco_de_entrada_vem_do_ambiente(client, rede, monkeypatch):
@@ -224,7 +230,9 @@ def test_o_endereco_de_entrada_vem_do_ambiente(client, rede, monkeypatch):
 
     conteudo = client.get("/pt-br/login", HTTP_HOST=HOST_MESH).content.decode()
 
-    assert 'href="/outra/porta?next=%2Fpt-br%2F"' in conteudo
+    assert (
+        f'href="/outra/porta?next=%2Fpt-br%2F&amp;site={SITE_MESH["id"]}"' in conteudo
+    )
 
 
 def test_caminho_nu_e_a_porta_no_idioma_padrao(client, rede):

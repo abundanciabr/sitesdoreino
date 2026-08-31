@@ -80,6 +80,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "apps.core",
     "apps.identidade",  # a linha da pessoa: e-mail, nome, id opaco
+    # A fila intra-célula. Está aqui, e não só no worker, porque é esta linha
+    # que dá o `python manage.py run_huey` com autodiscover de `tasks.py` —
+    # subir o `huey_consumer` direto deixa o registro VAZIO, e o worker fica de
+    # pé sem executar nada e sem reclamar de nada (`armadilhas/030`).
+    "huey.contrib.djhuey",
 ]
 
 MIDDLEWARE = [
@@ -184,3 +189,10 @@ USE_TZ = True
 # registrada em ARMADILHAS-OPERACAO.md §9): sem esta linha vale o default de
 # fábrica do Django, `America/Chicago`.
 TIME_ZONE = "America/Sao_Paulo"
+
+# A instância única do Huey desta célula (config/huey.py). O relay da outbox é
+# uma `periodic_task` dela: sem esta linha o djhuey procuraria uma configuração
+# de fábrica e o worker rodaria noutra fila que ninguém alimenta.
+from config.huey import huey as _huey  # noqa: E402  (depois de INSTALLED_APPS)
+
+HUEY = _huey
