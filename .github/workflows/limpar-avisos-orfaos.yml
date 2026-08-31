@@ -1,0 +1,101 @@
+# =============================================================================
+# LIMPAR OS AVISOS ÓRFÃOS — apaga da caixa central os recados sobre ideias que
+# já foram apagadas definitivamente da Caixa de Sugestões.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# Em 31/08/2026, depois de esvaziar a Caixa, o mantenedor continuou vendo no
+# perfil dele o aviso de uma ideia apagada — cartão sem título, com a
+# justificativa da equipe ainda legível. Ele pediu: *"verifique se outros
+# usuários também têm e apague-os"*. O agente não tem SSH (Lei 5): o canal é
+# este.
+#
+# ELE RESPONDE ANTES DE AGIR
+# ---------------------------
+# O script roda uma SIMULAÇÃO primeiro e imprime quantas cartas existem e
+# quantas PESSOAS têm alguma — a resposta à pergunta, antes de qualquer linha
+# ser tocada. Só depois vem a retirada. Se a simulação achar zero, ele termina
+# ali e não apaga nada.
+#
+# POR QUE NÃO PRECISA DE ENTRADA NENHUMA
+# ---------------------------------------
+# Diferente do `esvaziar-caixa`, aqui não há o que escolher: o alvo é derivado,
+# não digitado. A lista de ideias apagadas vem da própria Caixa no momento do
+# disparo, e "carta de ideia apagada" é órfã por definição — não existe um
+# número que alguém possa errar. A trava aqui é a ESTREITEZA do filtro
+# (um assunto, um parâmetro, uma lista de valores concretos), coberta por teste
+# na célula: carta de outro assunto, de outra pessoa ou de outra ideia não é
+# tocada.
+#
+# NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
+# =============================================================================
+name: limpar-avisos-orfaos
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+# Grupo PRÓPRIO, e não `deploy` — a lição da `armadilhas/173`: o GitHub guarda
+# UM run pendente por grupo e o próximo CANCELA o anterior. Num repositório com
+# ~100 entregas por dia, um disparo manual no grupo `deploy` morre antes de
+# começar.
+concurrency:
+  group: limpar-avisos-orfaos
+  cancel-in-progress: false
+jobs:
+  limpar:
+    name: retirar os avisos de ideias apagadas
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # Se o script sumir ou for renomeado, PARAMOS AQUI: a ssh-action com
+      # `script_path` apontando para arquivo inexistente é caminho conhecido de
+      # falso-verde (armadilhas/149 — parâmetro que a ação avisa e IGNORA,
+      # saindo com sucesso).
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/limpar-avisos-orfaos.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/limpar-avisos-orfaos.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/limpar-avisos-orfaos.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Rodar na VPS
+        id: limpeza
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 10m
+          script_path: infra/limpar-avisos-orfaos.sh
+
+      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o
+      # script inteiro, e ler o eco como se fosse a execução já enganou este
+      # projeto. A linha "PRONTO." só sai depois de o script perguntar de novo,
+      # do zero, quantas cartas órfãs restam.
+      - name: Provar pelo banco (não basta a conexão ter aberto)
+        env:
+          SAIDA: ${{ steps.limpeza.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi apagado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO\.'; then
+            echo "::error::Não encontrei a linha 'PRONTO.' na saída do script."
+            echo "Ela só é impressa depois de o script conferir, por fora do comando que"
+            echo "apagou, que não restou nenhuma carta órfã."
+            echo "Sem ela, nada está provado — e ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          echo "✅ a caixa central não tem mais recado de ideia apagada."
