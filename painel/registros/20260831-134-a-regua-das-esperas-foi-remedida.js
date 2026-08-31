@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260831-130-a-regua-das-esperas-foi-remedida",
+  arquivo: "20260831-134-a-regua-das-esperas-foi-remedida",
   tipo: "medicao",
   quando: "2026-08-31",
   titulo: "A régua que diz quanto cada espera demora foi remedida, e uma fonte errada foi tapada",
