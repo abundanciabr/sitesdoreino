@@ -98,7 +98,12 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    é aceito.
 4. **Fecho da catraca — o agente PEDE POUSO; quem mergeia é a pista (desde
    29/08/2026):** aberto o PR, o próprio agente conclui, sem pedir nem esperar o
-   humano — mas o gesto final mudou de mão:
+   humano — mas o gesto final mudou de mão. E **antes de pedir pouso, o recibo
+   embarca** (desde 31/08/2026): leia o número que o `gh` devolveu ao abrir o
+   PR, escreva o registro do livro citando-o e commite NO MESMO RAMO
+   (`armadilhas/185` prescreveu a ordem; `armadilhas/248` mediu o preço de não
+   tê-la). O portão confere o embarque e recusa pouso sem ele — PR que só
+   escritura (`painel/` e/ou `fila/`) é isento.
 
    ```bash
    python ci/mergear.py <PR> --conferir   # o portão, como sempre
@@ -126,10 +131,11 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
    **O que NÃO mudou:** ninguém espera pelo mantenedor; quem mergeia continua
    sendo máquina.
 
-   Depois do pouso, ao agente restam o registro no livro e, se o merge dispara
-   deploy, o veredito do run (CLAUDE.md) — a pista comenta no PR o que
-   aconteceu. Merge em caminho CODEOWNERS exige mandato do despacho e anúncio
-   nominal no relatório (Lei 4). Se o objetivo era Pix e o diff mostra
+   Depois do pouso, o registro já aterrissou junto com o PR — ao agente resta,
+   se o merge dispara deploy, o veredito do run (CLAUDE.md), que é registro
+   NOVO pós-merge. A pista comenta no PR o que aconteceu. Merge em caminho
+   CODEOWNERS exige mandato do despacho e anúncio nominal no relatório (Lei 4).
+   Se o objetivo era Pix e o diff mostra
 `methods/card/` ou 42 arquivos — é o alarme dele, antes de ser o alarme do CI.
 
 5. **A pista, por dentro — o que acontece depois que você pede pouso:**

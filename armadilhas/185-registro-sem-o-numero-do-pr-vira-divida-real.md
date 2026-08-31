@@ -70,3 +70,12 @@ e **a dívida é real** — vá procurar o número, não o checkout.
 projeto": o espelho local estava 427 commits atrás, e depois de sincronizar,
 o conferidor de contas apontou os dois merges órfãos da véspera. Registro:
 `painel/registros/20260830-005-duas-entregas-nao-estavam-contadas-no-livro.js`.
+
+---
+
+**A ordem virou LEI COM PORTÃO em 31/08/2026** (`armadilhas/248`): o passo 1
+acima deixou de ser conselho — `ci/mergear.py` confere o embarque na porta do
+pouso (`checar_registro_embarcado`) e recusa PR de entrega cujo registro a
+bordo não cite o próprio número. O erro desta armadilha agora é apanhado com
+um commit de conserto, antes do merge, em vez de virar dívida no colo da
+sessão seguinte.

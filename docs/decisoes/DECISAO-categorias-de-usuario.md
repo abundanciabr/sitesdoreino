@@ -48,7 +48,7 @@ que se age precisa de nome curto.
 | 1 | **Visitante** | não há sessão do site | quem pergunta (não há e-mail para consultar) |
 | 2 | **Cadastrado** | tem sessão; a `alunos` não tem linha nenhuma para este e-mail | `alunos` |
 | 3 | **Na fila** | tem linha com status `aguardando` ou `recusada` | `alunos` |
-| 4 | **Aluno** | tem linha com status em `STATUS_QUE_VALEM` (`ativa`, `suspensa`, `reembolsada`) | `alunos` |
+| 4 | **Aluno** | tem linha com status em `STATUS_QUE_VALEM` (desde 31/08/2026, só `ativa`) | `alunos` |
 | 5 | **Administrador** | e-mail em `ADMIN_EMAILS` | **a célula `admin`, e só ela** |
 
 **"Recusado" é um estado de "Na fila", não uma sexta categoria.** Quem foi
@@ -56,10 +56,17 @@ recusado precisa ver o motivo para poder pedir de novo — a `DECISAO-fila-de-li
 §7 já define o reenvio como o jeito de corrigir um dado errado. Uma categoria
 separada obrigaria toda tela a tratar seis casos para exibir a mesma coisa.
 
-**"Ex-aluno" não existe, e a ausência é decisão.** Foi oferecida ao mantenedor e
-recusada: em 24/08/2026 ele decidiu que `reembolsada` continua contando como
-aluno — *quem já foi aluno mantém a voz na Caixa*. Separar teria mudado essa
-regra por tabela.
+**"Ex-aluno" não existe aqui, e a ausência FOI decisão.** Foi oferecida ao
+mantenedor e recusada: em 24/08/2026 ele decidiu que `reembolsada` continua
+contando como aluno, *quem já foi aluno mantém a voz na Caixa*. Separar teria
+mudado essa regra por tabela.
+
+> **EMENDA de 31/08/2026.** As duas coisas mudaram desde então, cada uma em lei
+> própria. "Ex-aluno" **existe** como categoria desde 28/08
+> (`DECISAO-ex-aluno-e-a-porta-que-explica.md`), e `reembolsada` **deixou de
+> dar acesso** em 31/08 (`DECISAO-reembolso-tira-o-acesso.md`), que também fez
+> nascer a categoria `reembolsado`. A escada desta seção tem hoje sete degraus,
+> não cinco.
 
 ### 2.1 Administrador é ORTOGONAL, e isso não é detalhe
 

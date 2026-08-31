@@ -62,10 +62,14 @@ def visao_geral(request):
 # pediu que o site publicasse documentos — uns para qualquer pessoa, outros só
 # para quem administra.
 #
-# **Duas telas, uma fonte.** Os mesmos arquivos de `documentos/` servem as duas,
-# e é o PRÓPRIO documento que declara quem pode lê-lo. O que separa as duas views
-# aqui embaixo é uma linha: a pública passa `so_publicos=True` e recusa o que não
-# é público; a administrativa serve tudo.
+# **Duas telas, uma fonte.** A mesma tabela serve as duas, e é o PRÓPRIO
+# documento que declara quem pode lê-lo. O que separa as duas views aqui embaixo
+# é uma linha: a pública passa `so_publicos=True` e recusa o que não está no ar;
+# a administrativa serve tudo.
+#
+# Desde 31/08/2026 essa fonte é o BANCO, e não mais os `.md` da pasta
+# (`DECISAO-o-editor-de-documentos.md`): o mantenedor edita por uma tela, e o
+# disco do container é remontado a cada atualização da plataforma.
 #
 # **Os endereços são DIFERENTES de propósito, e não por estilo.** Esta célula
 # roda sob `SCRIPT_NAME=/admin`, e o Django tira esse prefixo do `path_info`:
@@ -89,13 +93,18 @@ def docs_publicos(request):
 def doc_publico(request, nome):
     """Um documento público — e 404 para todo o resto.
 
-    **404, e não 403**, para um documento que existe e não é público: um 403
-    confirmaria que o arquivo existe, e a lista de documentos internos de uma
-    escola não é assunto de quem está do lado de fora. Para quem chega aqui, um
-    documento privado e um endereço inventado são a mesma coisa.
+    **404, e não 403**, para um documento que existe e não está no ar: um 403
+    confirmaria que ele existe, e a lista de documentos internos de uma escola
+    não é assunto de quem está do lado de fora. Para quem chega aqui, um
+    documento privado, um arquivado e um endereço inventado são a mesma coisa.
+
+    A pergunta é `no_ar`, e não `publico`: um documento que o mantenedor
+    arquivou continua com `publico=True` gravado, porque arquivar não é
+    despublicar — é tirar de circulação sem perder a decisão anterior. Perguntar
+    só por `publico` deixaria o arquivado no ar.
     """
     documento = documentos.ler(nome)
-    if documento is None or not documento.publico:
+    if documento is None or not documento.no_ar:
         raise Http404("documento não encontrado")
     return render(
         request,
@@ -137,6 +146,11 @@ def documento_admin(request, nome):
             "admin": request.admin,
             "documento": documento,
             "corpo": documentos.para_html(documento.corpo),
+            # O recado do POST-redirect-GET, que e o que impede um F5 depois de
+            # salvar de repetir a gravacao. O template so reconhece as palavras
+            # que ele mesmo escreve; qualquer outra coisa na querystring nao
+            # imprime nada.
+            "recado": request.GET.get("recado", ""),
         },
     )
 
