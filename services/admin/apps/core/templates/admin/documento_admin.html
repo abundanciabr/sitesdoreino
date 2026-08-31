@@ -19,10 +19,13 @@ um dia alguém vai ler só um deles.
   <p class="recado">Documento criado.</p>
   {% elif recado == "salvo" %}
   <p class="recado">Salvo.</p>
+  {% elif recado == "restaurado" %}
+  <p class="recado">Pronto: este documento voltou para a versão que você escolheu.</p>
   {% endif %}
 
   <p class="espaco-abaixo-20">
     <a class="botao" href="{% url 'documento_editar' documento.nome %}">Editar este documento</a>
+    <a class="botao" href="{% url 'documento_versoes' documento.nome %}">Ver o histórico</a>
   </p>
 
   <p class="aviso espaco-abaixo-20">
