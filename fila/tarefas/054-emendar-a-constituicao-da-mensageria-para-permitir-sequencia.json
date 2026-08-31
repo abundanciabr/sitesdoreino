@@ -1,0 +1,14 @@
+{
+  "arquivo": "054-emendar-a-constituicao-da-mensageria-para-permitir-sequencia",
+  "id": "TAR-054",
+  "titulo": "Emendar a constituicao da mensageria para permitir sequencias que esperam",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com a emenda em constituicoes/AGENTS.mensageria.md + registro no livro citando o numero do PR.",
+  "despacho": "Degrau 0a da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\n\nAntes de qualquer codigo das sequencias de mensagens, a constituicao da celula\nprecisa permitir o que vem depois. Hoje `constituicoes/AGENTS.mensageria.md`\ndeclara como missao \"Comunicacao transacional: e-mail e WhatsApp disparados por\neventos\" — um fato, um envio, agora. Uma sequencia que espera dois dias e\nreavalia a condicao NAO e transacional. Sem esta emenda, a cerca do CI e o\nproximo agente leem a missao e recusam o trabalho como fora de escopo.\n\nO que fazer:\n1. Leia o plano (§4.1 e §8.2) e `constituicoes/AGENTS.mensageria.md`.\n2. Emende a Missao para incluir sequencias com espera (jornadas), mantendo a\n   parte transacional intacta.\n3. Acrescente aos Invariantes desta celula o que o §6 do plano chama de regua:\n   uma so, por pessoa, atravessando toda entrega; teto de 1 por dia; nunca\n   depois das 20h em America/Sao_Paulo; fail-closed.\n4. Acrescente em Comunicacao que a celula passara a consumir a `identidade`\n   (traduzir id de plataforma em e-mail e idioma na hora do envio) — e NAO\n   mexa em `celulas.yml` aqui: a linha `consome:` entra no PR que de fato\n   escrever o cliente, senao o varredor reprova declaracao orfa.\n\nRegra dura: NAO revogue nem enfraqueca nenhum invariante existente. A missao\ncresce; nada encolhe.",
+  "origem": "degrau 0a de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md, decidido pelo mantenedor em 30/08/2026 (registro 20260831-007)",
+  "criada_em": "2026-08-31"
+}
