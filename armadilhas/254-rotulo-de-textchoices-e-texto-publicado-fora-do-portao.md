@@ -85,7 +85,7 @@ de uma ideia, viu "Em análise" e perguntou se aquilo não deveria se chamar "Em
 votação", para incentivar os alunos a votar. A pergunta destapou o buraco de
 verdade: a Caixa desenhava quatro etapas em DUAS telas, havia uma semana, e
 nenhuma das duas dizia o que elas significam. Ele decidiu manter o nome e
-mandar a Caixa explicar (registro `20260831-…`, PR do dia).
+mandar a Caixa explicar (registro `20260831-107`, PR [#782](https://github.com/abundanciabr/sitesdoreino/pull/782)).
 
 A segunda metade veio de graça na mesma tarefa: as explicações novas foram
 escritas em `apps/core/participacao.py`, e ao conferir a lei do travessão ficou
