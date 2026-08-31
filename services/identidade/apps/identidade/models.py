@@ -50,6 +50,13 @@ class Identidade(models.Model):
     provedor = models.CharField(max_length=20, default="google")
     nome_exibido = models.CharField(max_length=120, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
+    # `DECISAO-login-por-senha.md` (31/08/2026) — o segundo jeito de provar
+    # QUEM É, ao lado do Google. `128` é o mesmo max_length que o próprio
+    # Django usa em `AbstractBaseUser.password` (convenção do framework, não
+    # número inventado). Em branco para a maioria das linhas de hoje (só
+    # Google nunca precisou de senha) — nunca guarda a senha em texto puro,
+    # só o hash que `django.contrib.auth.hashers.make_password` produz.
+    senha_hash = models.CharField(max_length=128, blank=True)
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
         return self.nome_exibido or self.email

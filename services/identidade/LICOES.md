@@ -116,3 +116,51 @@ abandoná-la, e `max_size` põe um teto que não existia. O Django exige
 `CONN_MAX_AGE == 0` junto com o pool, e levanta `ImproperlyConfigured` se você
 esquecer — o guarda de `tests/test_pool_de_conexoes.py` encena essa recusa de
 propósito, para não nascer verde por acidente (`armadilhas/132`).
+
+## O segundo login (por senha) — a mesma lição do `/sair`, mas na direção oposta (31/08/2026)
+
+`DECISAO-login-por-senha.md` deu à célula um SEGUNDO caminho de entrada,
+para quem não tem conta do Google — `entrar_senha` (`apps/core/views.py`),
+que termina exatamente no mesmo `ses.abrir_sessao` que o retorno do Google já
+usa. A parte que valeu a pena registrar:
+
+**A seção acima ("`/entrar/sair` é `csrf_exempt`") já avisava, por escrito,
+antes de este login existir: aquele padrão é só para ações que DESTROEM
+estado.** Login CRIA sessão — é exatamente o caso que a frase reservou. A
+tentação óbvia (copiar `_mesma_origem` para `entrar_senha` também, "já que
+funcionou pro logout") teria sido copiar o padrão errado: Origin/Referer
+prova de onde a REQUISIÇÃO saiu, não protege contra "login CSRF" (um site
+malicioso forçar a vítima a logar como o ATACANTE, com as credenciais dele,
+para minerar o que a vítima digita ou faz achando que está na própria conta).
+
+**A saída, sem inventar CSRF cruzando célula:** `apps/core/tokens_de_entrada.py`
+assina um valor efêmero com `TimestampSigner` (o `funil` busca via
+`issueLoginToken` ao montar `/login`, embute como campo oculto). Mesmo
+princípio do `state` do OAuth — só que emitido por uma célula e consumido
+pela mesma, atravessando a fronteira por um valor opaco carregado por outra
+célula, exatamente como o cookie de sessão já atravessa. **Detalhe que
+custou um teste vermelho:** `TimestampSigner().sign(valor)` não amarra o
+token a UM propósito por si só — qualquer string assinada com o mesmo
+`SECRET_KEY` "confere". É o `salt` (`TimestampSigner(salt=...)`) que separa
+usos diferentes da mesma chave, e é conferir o VALOR desassinado (não só a
+assinatura) que fecha a porta para "um token de outro assunto, mas assinado
+por esta célula, também vale aqui".
+
+## `make ci` fica vermelho até o contrato mergear — e a ordem certa é exportar, não escrever de cabeça
+
+Vivido na prática: o contrato de `issueLoginToken`/`setPassword`/`resetPassword`
+foi escrito à mão no PR de contrato (`DECISAO-login-por-senha.md`), e quando o
+código desta célula saiu pronto, o freeze (`ci/freeze-de-contrato.sh
+identidade`) achou DUAS divergências reais — descrição com palavras
+ligeiramente diferentes (fácil: copiar o texto exato do congelado para o
+docstring) e um bloco `security: [{bearerAuth: []}]` POR OPERAÇÃO que o
+código nunca emitiria (esta célula usa `security` GLOBAL, `openapi_extra` em
+`config/api.py`; nenhuma operação, nova ou velha, tem bloco próprio). A
+segunda exigiu um PR de contrato à parte, só para apagar as duas linhas
+erradas — `armadilhas/243` já documentava o sintoma ("vermelho até o
+contrato mergear é o portão funcionando"), mas não cobria o caso de o
+CONTRATO em si estar errado, só o caso comum de "código ainda não implementa
+o que o contrato já promete". **Lição para a próxima operação nova:**
+escreva o handler primeiro, rode `python manage.py export_openapi`, e monte
+(ou audite) o texto do contrato A PARTIR do que sai dali — nunca as duas
+proses de cabeça, mesmo com cinco minutos de distância uma da outra.

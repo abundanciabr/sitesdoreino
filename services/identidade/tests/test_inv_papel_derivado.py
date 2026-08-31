@@ -37,6 +37,18 @@ def test_sair_da_lista_derruba_o_cracha_na_hora(
 
 
 def test_o_modelo_nao_tem_coluna_de_papel():
-    """A metade estrutural: não existe onde gravar papel — e é assim que fica."""
+    """A metade estrutural: não existe onde gravar papel — e é assim que fica.
+
+    `senha_hash` (DECISAO-login-por-senha.md) entrou na lista em 31/08/2026 —
+    é o segundo jeito de provar QUEM É, não um papel; continua fora daqui
+    qualquer coluna que guardasse o QUE a pessoa pode fazer.
+    """
     campos = {campo.name for campo in Identidade._meta.get_fields()}
-    assert campos == {"id", "email", "provedor", "nome_exibido", "criada_em"}
+    assert campos == {
+        "id",
+        "email",
+        "provedor",
+        "nome_exibido",
+        "criada_em",
+        "senha_hash",
+    }
