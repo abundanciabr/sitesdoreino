@@ -532,3 +532,22 @@ th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transfo
    desta casa ja tem dono (o "nao vamos fazer" da faixa de roadmap), e o ambar
    nao sobrou responsavel por nada.
    ------------------------------------------------------------------------ */
+
+/* ── O MENU DO TOPO (apps/core/menu.py), 31/08/2026 ───────────────────────
+   O mesmo menu do site, com as cores desta celula. Mobile-first, como nas
+   outras: uma fila que ROLA na horizontal em vez de quebrar em duas linhas ou
+   virar um botao de tres riscas. Num celular estreito, tres opcoes visiveis e
+   o resto a um arrasto valem mais que um menu escondido atras de um toque. */
+.menu-topo {
+  display: flex; gap: 4px; overflow-x: auto;
+  padding: 8px 0 0; margin: 0;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.menu-topo::-webkit-scrollbar { display: none; }
+.menu-topo a {
+  flex: 0 0 auto; padding: 6px 12px; border-radius: 8px;
+  color: inherit; text-decoration: none;
+  font-size: 14px; font-weight: 600; white-space: nowrap;
+}
+.menu-topo a:hover, .menu-topo a:focus { background: rgba(127, 127, 127, .16); }
+.menu-topo a[aria-current=page] { background: rgba(127, 127, 127, .28); }

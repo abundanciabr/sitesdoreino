@@ -89,6 +89,18 @@ renderiza vazio, não quebra.
     {% endif %}
   </div>
 
+  {% if menu_do_topo %}{% comment %}
+  O MENU DO TOPO (apps/core/menu.py), 31/08/2026. O mesmo menu do site, lido do
+  mesmo lugar: quem o configura e o mantenedor, em /admin/menu/, e as celulas
+  leem o MESMO dado. Quem DECIDE se esta pagina tem menu, e qual, e o
+  processador de contexto; aqui so se desenha.
+
+  Abaixo da faixa e FORA da bancada, e nao dentro dela: a faixa e a identidade
+  da Caixa (a marca e a migalha), a bancada e o trabalho, e o menu e a
+  navegacao do site inteiro. Dentro da bancada ele brigaria com o trilho da
+  esquerda, que e outra coisa.
+  {% endcomment %}<nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav>{% endif %}
+
   <div class="bancada">
     {% if ator %}
       <nav class="trilho" aria-label="Seções da Caixa">

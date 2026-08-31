@@ -136,4 +136,8 @@ celulas:
 
   sugestoes:
     caminhos: [services/sugestoes]
-    consome: [alunos, identidade, notificacoes]
+    # `catalogo` desde 31/08/2026, pela MESMA razao do forum: o menu do topo e
+    # DADO DO SITE, e a Caixa mostra o MESMO menu. Ela NAO ganhou o CONV-SITE
+    # inteiro — pergunta so o menu do host da requisicao, com cache, e cai para
+    # "sem menu" em qualquer tropeco.
+    consome: [alunos, catalogo, identidade, notificacoes]
