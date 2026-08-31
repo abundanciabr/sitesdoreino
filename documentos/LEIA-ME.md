@@ -1,7 +1,22 @@
-# `documentos/`: a área de documentos do site
+# `documentos/`: a SEMENTE da área de documentos do site
 
-Aqui moram os documentos que o **site publica**: uns para qualquer pessoa, outros
-só para quem administra. Decidido pelo mantenedor em 29/08/2026; a lei é
+> **Editar um arquivo daqui NÃO muda o site.** Desde 31/08/2026 o texto vivo mora
+> no banco da célula `admin`, e quem o edita é o mantenedor, pela tela
+> `meshcraft.top/admin/documentos/`. Esta pasta é lida **uma vez**, pela migração
+> `0003` da célula, e é dela que uma instalação nova da plataforma parte. Lei:
+> `docs/decisoes/DECISAO-o-editor-de-documentos.md`.
+>
+> Motivo, em uma linha: o disco do container é remontado a cada atualização da
+> plataforma, então uma edição gravada aqui pela tela sumiria no deploy seguinte,
+> em silêncio.
+>
+> **Precisa mudar um documento que já está no ar?** É pela tela, nunca por aqui.
+> Mexer no arquivo depois da semeadura não tem efeito nenhum, e o guarda
+> `test_mexer_no_arquivo_da_pasta_NAO_muda_o_que_o_site_publica` existe para essa
+> confusão não voltar em silêncio.
+
+Aqui moram os documentos com que o **site nasce**: uns para qualquer pessoa,
+outros só para quem administra. Decidido pelo mantenedor em 29/08/2026; a lei é
 `docs/decisoes/DECISAO-a-area-de-documentos.md`.
 
 Não confundir com as outras pastas de texto do repositório, porque a diferença é

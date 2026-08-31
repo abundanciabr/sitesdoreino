@@ -23,6 +23,14 @@
 
 ## Como registrar um acontecimento (o gesto de toda sessão)
 
+0. **A ordem do rito, desde 31/08/2026: abra o PR PRIMEIRO, registre depois —
+   e no MESMO ramo.** O registro de uma entrega embarca no próprio PR que a
+   faz: commite o trabalho, faça `push`, abra o PR, leia o número que o `gh`
+   devolve, e só então escreva o registro citando esse número
+   (`armadilhas/185`). O portão do pouso confere o embarque e recusa PR de
+   entrega sem o próprio recibo a bordo (`ci/mergear.py`); PR que só escritura
+   (`painel/` e/ou `fila/`) é isento. Registro de fato pós-merge (veredito de
+   deploy, incidente) continua sendo PR próprio, só de livro.
 1. Crie **um arquivo novo** em `registros/`, nome `AAAAMMDD-NNN-slug.js`. O
    `NNN` **se pede ao almoxarife — não se escolhe:**
 
