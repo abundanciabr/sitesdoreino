@@ -976,6 +976,12 @@ def plateia(db):
 # A regra passou a morar AQUI, uma vez só, pelo motivo de sempre: escrita em
 # quatro arquivos ela diverge no primeiro ajuste.
 #
+# **`test_moderacao_script_name.py` ficou de fora, e de propósito.** Ele não
+# reprovou: as telas de moderação são lápides que redirecionam, e rodapé nenhum
+# chega a ser desenhado nelas. Mexer no guarda que não falhou é risco sem ganho.
+# Quando aquele arquivo precisar de um ajuste por outro motivo, ele troca a
+# cópia dele por esta função na mesma passada.
+#
 # **A lista de isenções é IMPORTADA do código de produção, nunca escrita à mão
 # aqui.** É o que impede a saída fácil: quem quiser calar o guarda para um link
 # interno esquecido tem de declará-lo, no código, como endereço de outra
