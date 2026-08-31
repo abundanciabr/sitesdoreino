@@ -84,3 +84,64 @@ self.addEventListener("fetch", (evento) => {
       })
   );
 });
+
+// ---------------------------------------------------------------------------
+// O AVISO na tela do aparelho (Fase 7, 31/08/2026)
+// ---------------------------------------------------------------------------
+// O que chega no `push` é DADO, nunca frase pronta (`DECISAO-notificacoes`
+// §5.1): assunto e parâmetros. A frase nasce aqui, com os textos que a view de
+// `/sw.js` injetou no idioma de quem instalou — é literalmente "a frase nasce
+// na leitura", agora no aparelho da pessoa.
+//
+// `self.AVISOS_DO_SITE` é posto por essa view ANTES deste arquivo. O valor
+// abaixo é só a rede de segurança para o dia em que este arquivo for servido
+// cru: sem ele, um `undefined` faria o aviso não aparecer, e o navegador
+// mostraria no lugar dele a mensagem genérica dele ("Este site foi atualizado
+// em segundo plano"), que é pior que qualquer texto nosso.
+const AVISOS = self.AVISOS_DO_SITE || {
+  caminho: "/",
+  textos: {},
+  generico: { titulo: "Meshcraft", corpo: "Você tem um aviso novo." },
+};
+
+self.addEventListener("push", (evento) => {
+  let carta = {};
+  try {
+    carta = evento.data ? evento.data.json() : {};
+  } catch (e) {
+    // Conteúdo que não é o nosso JSON. Não é motivo para ficar calado: o
+    // aviso genérico ainda leva a pessoa à página certa.
+    carta = {};
+  }
+  const texto = AVISOS.textos[carta.assunto] || AVISOS.generico;
+  evento.waitUntil(
+    self.registration.showNotification(texto.titulo, {
+      body: texto.corpo,
+      icon: "/static/funil/pwa/icone-192.png",
+      badge: "/static/funil/pwa/icone-192.png",
+      // Um aviso por assunto na tela: sem esta etiqueta, dez novidades viram
+      // dez cartazes empilhados no celular de quem só queria saber que tem
+      // coisa nova. O último substitui o anterior.
+      tag: carta.assunto || "meshcraft",
+      data: { caminho: AVISOS.caminho },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (evento) => {
+  evento.notification.close();
+  const destino = (evento.notification.data && evento.notification.data.caminho) || "/";
+  evento.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((abas) => {
+      // Se o app já está aberto, leva ELE ao destino em vez de abrir uma
+      // segunda janela: duas cópias do mesmo app abertas é o jeito mais rápido
+      // de a pessoa achar que o aviso quebrou alguma coisa.
+      for (const aba of abas) {
+        if ("focus" in aba && "navigate" in aba) {
+          return aba.navigate(destino).then((focada) => (focada || aba).focus());
+        }
+      }
+      return self.clients.openWindow(destino);
+    })
+  );
+});

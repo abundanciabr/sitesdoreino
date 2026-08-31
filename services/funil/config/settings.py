@@ -69,6 +69,12 @@ TEMPLATES = [  # [RECEITA:R6 v1] — landing (ilha Alpine)
                 # páginas" não pode depender de alguém lembrar de incluir a
                 # peça: página nova nasce com rodapé sozinha.
                 "apps.core.rodape.rodape_do_contexto",
+                # O cartaz do aviso no celular (Fase 7), pela MESMA razão do
+                # rodapé: ele precisa existir em toda página em que alguém
+                # entrou, e "toda página" não pode depender de memória. Ele
+                # devolve vazio na maioria das visitas — a decisão inteira
+                # está em apps/core/avisos_no_celular.py.
+                "apps.core.avisos_no_celular.avisos_do_contexto",
             ]
         },
     },

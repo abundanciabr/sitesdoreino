@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from urllib.parse import urlencode
 
 import httpx
@@ -13,8 +14,9 @@ from django.views.decorators.http import (
 )
 from django.views.static import serve as serve_do_django
 
-from apps.core.clients import CatalogoClient, LeadsClient
-from apps.core.enderecos import url_de_entrada
+from apps.core.clients import CatalogoClient, LeadsClient, NotificacoesClient
+from apps.core.enderecos import url_de_entrada, url_dos_avisos
+from apps.i18n import catalogo as cat
 from apps.i18n.idiomas import caminho_publico, direcao, tag_bcp47
 
 # Ordem fixa: é também a ordem em que a query string do link do checkout é
@@ -380,6 +382,20 @@ def manifesto_do_app(request):
     )
 
 
+# Os textos do aviso que aparece na tela do celular, por assunto. A frase nasce
+# na LEITURA, no idioma de quem lê (`DECISAO-notificacoes` §5.1) — e a leitura,
+# aqui, acontece no aparelho: por isso os textos viajam para dentro do
+# `/sw.js` em vez de serem escolhidos na hora de enviar. O catálogo é o mesmo
+# de todo texto do site (`traducoes/avisos.yaml`), nunca uma segunda casa.
+#
+# `sugestao.status-alterado` é o único assunto que a plataforma publica hoje.
+# Assunto que esta versão do site não conhece cai no genérico — e isso não é
+# defeito: o aviso pode chegar de uma parte nova antes de o aparelho ter
+# recarregado o service worker, e um aviso honesto e vago é melhor que
+# nenhum.
+TEXTOS_DO_AVISO = {"sugestao.status-alterado": "sugestao"}
+
+
 @require_safe
 def service_worker(request):
     """`/sw.js` — o mesmo arquivo de `static/funil/sw.js`, servido da RAIZ.
@@ -397,12 +413,134 @@ def service_worker(request):
     """
     if getattr(request, "idioma", None) is not None:
         raise Http404("service worker não tem prefixo de idioma")
-    resposta = serve_do_django(
-        request, "funil/sw.js", document_root=settings.STATICFILES_DIRS[0]
+
+    # O idioma vem da QUERY porque esta é rota de máquina e não carrega
+    # prefixo: quem o passa é `static/funil/instalar.js`, no registro. Código
+    # desconhecido cai no idioma fonte, como toda entrada de rede desta célula.
+    idioma = request.GET.get("idioma") or ""
+    if idioma not in cat.IDIOMAS_BASE:
+        idioma = cat.IDIOMA_FONTE
+
+    textos = {
+        assunto: {
+            "titulo": cat.t(f"avisos.js.{chave}_titulo", idioma),
+            "corpo": cat.t(f"avisos.js.{chave}_corpo", idioma),
+        }
+        for assunto, chave in TEXTOS_DO_AVISO.items()
+    }
+    configuracao = {
+        # Para onde o toque na notificação leva. O endereço público é
+        # conhecimento DESTA célula (apps/core/enderecos.py), nunca da
+        # `notificacoes` — é por isso que ele viaja daqui e não do envio.
+        "caminho": url_dos_avisos(),
+        "textos": textos,
+        "generico": {
+            "titulo": cat.t("avisos.js.generico_titulo", idioma),
+            "corpo": cat.t("avisos.js.generico_corpo", idioma),
+        },
+    }
+    arquivo = Path(settings.STATICFILES_DIRS[0]) / "funil" / "sw.js"
+    corpo = (
+        "// Injetado por apps/core/views.py::service_worker — os textos do\n"
+        "// aviso no idioma de quem instalou. O arquivo abaixo é\n"
+        "// static/funil/sw.js, palavra por palavra.\n"
+        f"self.AVISOS_DO_SITE = {json.dumps(configuracao, ensure_ascii=False)};\n"
+        + arquivo.read_text(encoding="utf-8")
     )
+    resposta = HttpResponse(corpo, content_type="text/javascript")
     resposta["Service-Worker-Allowed"] = "/"
     resposta["Cache-Control"] = "no-cache"
     return resposta
+
+
+# ---------------------------------------------------------------------------
+# Ligar e desligar o aviso na tela do celular (Fase 7, 31/08/2026)
+# ---------------------------------------------------------------------------
+# O navegador entrega a inscrição do aparelho para o JAVASCRIPT da página; ele
+# a manda para cá, e é o SERVIDOR que fala com a `notificacoes`. Nunca o
+# contrário: o token do par funil→notificacoes é segredo de servidor, e uma
+# chamada direta do navegador o entregaria a qualquer pessoa que abrisse o
+# site. É a mesma forma do `/leads` (RECEITA R2).
+TETOS_DA_INSCRICAO = {"endpoint": 2048, "p256dh": 256, "auth": 64}
+
+
+def _inscricao_do_corpo(request) -> dict:
+    """As três partes que o navegador dá, conferidas antes de sair daqui.
+
+    Os tetos são os do contrato (`contracts/notificacoes.openapi.yaml`).
+    Conferir aqui não substitui a cerca do outro lado — ela existe e é a que
+    manda; esta evita um salto de rede para mandar algo que já se sabe
+    inválido, e transforma lixo em 422 legível em vez de 502 confuso.
+    """
+    try:
+        corpo = json.loads(request.body or b"{}")
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise ValueError("payload inválido")
+    if not isinstance(corpo, dict):
+        raise ValueError("payload inválido")
+    inscricao = {}
+    for campo, teto in TETOS_DA_INSCRICAO.items():
+        valor = corpo.get(campo)
+        if not isinstance(valor, str) or not valor.strip() or len(valor) > teto:
+            raise ValueError(f"{campo} ausente ou inválido")
+        inscricao[campo] = valor.strip()
+    return inscricao
+
+
+@require_POST
+def ligar_avisos(request):
+    """A pessoa disse sim para o aviso na tela, e o navegador já deu a
+    permissão. Aqui o aparelho dela vira uma linha na `notificacoes`.
+
+    Precisa de gente entrando: um aviso é de alguém, e sem `request.ator` não
+    há a quem endereçar. Fail-CLOSED aqui, ao contrário do sino: o sino some
+    quando não sabe, e esta rota não pode inventar um destinatário.
+    """
+    if getattr(request, "idioma", None) is None:
+        raise Http404("avisos só existem em site registrado no i18n")
+    ator = getattr(request, "ator", None)
+    if not ator or not ator.id:
+        return JsonResponse({"erro": "é preciso entrar primeiro"}, status=401)
+    try:
+        inscricao = _inscricao_do_corpo(request)
+    except ValueError as erro:
+        return JsonResponse({"erro": str(erro)}, status=422)
+
+    ligado = NotificacoesClient().inscrever_aparelho(
+        destinatario_id=ator.id, site_id=request.site["id"], inscricao=inscricao
+    )
+    # 502 e não 200 quando a caixa não confirmou: a tela precisa poder dizer
+    # "não deu, tente de novo" em vez de prometer avisos que nunca chegariam.
+    # É a lição do "2xx não é sucesso" (RETROSPECTIVA-FASE-D §1).
+    return JsonResponse({"ligado": ligado}, status=200 if ligado else 502)
+
+
+@require_POST
+def desligar_avisos(request):
+    """A pessoa desligou os avisos deste aparelho.
+
+    NÃO exige sessão, de propósito: desligar acontece justamente quando a
+    pessoa está saindo, e um aparelho que não consegue se desinscrever
+    continuaria recebendo aviso de uma conta que já não usa. O `endpoint` é a
+    prova de posse do aparelho — quem o tem é ele.
+    """
+    if getattr(request, "idioma", None) is None:
+        raise Http404("avisos só existem em site registrado no i18n")
+    try:
+        corpo = json.loads(request.body or b"{}")
+        endpoint = corpo.get("endpoint") if isinstance(corpo, dict) else None
+        if not isinstance(endpoint, str) or not endpoint.strip():
+            raise ValueError
+        endpoint = endpoint.strip()
+        if len(endpoint) > TETOS_DA_INSCRICAO["endpoint"]:
+            raise ValueError
+    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
+        return JsonResponse({"erro": "endpoint ausente ou inválido"}, status=422)
+
+    desligado = NotificacoesClient().esquecer_aparelho(
+        site_id=request.site["id"], endpoint=endpoint
+    )
+    return JsonResponse({"desligado": desligado}, status=200 if desligado else 502)
 
 
 @require_POST
