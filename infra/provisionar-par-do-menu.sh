@@ -228,12 +228,24 @@ echo
 # -----------------------------------------------------------------------------
 if [ -n "$MEXIDOS" ]; then
   echo "== reiniciando as celulas para que leiam o env novo =="
-  if docker compose up -d --force-recreate catalogo admin forum sugestoes 2>&1 | tail -5; then
+  # O VEREDITO VEM DO COMANDO, NUNCA DO PIPE (corrigido em 31/08/2026).
+  # `if docker compose … | tail -5` pergunta o estado do `tail`, que dá 0 quase
+  # sempre — o ramo de erro abaixo era CÓDIGO MORTO, e o script diria PRONTO com
+  # as células paradas. O mantenedor abriria uma tela que não funciona, sem nada
+  # na saída explicando por quê. É o falso-verde do ARMADILHAS §5.10, o mesmo
+  # que fez os greens do deploy-celula mentirem até 21/08/2026 (H13). Achado
+  # pelo guarda irmão `ci/tests/test_provisionar_par_da_economia.py`, que EXECUTA
+  # o script com o docker fora de alcance.
+  saida_do_reinicio="$(docker compose up -d --force-recreate catalogo admin forum sugestoes 2>&1)"
+  estado_do_reinicio=$?
+  printf '%s\n' "$saida_do_reinicio" | tail -5
+  if [ "$estado_do_reinicio" -eq 0 ]; then
     echo
     echo "PRONTO. Abra https://meshcraft.top/admin/menu/ e monte o menu do site."
   else
     echo
-    echo "Os arquivos ficaram certos, mas o reinicio das celulas falhou."
+    echo "Os arquivos ficaram certos, mas o reinicio das celulas FALHOU."
+    echo "Nada foi perdido: os dois pares estao gravados e conferidos."
     echo "Rode a linha abaixo e me mande a saida:"
     echo "  cd $RAIZ && docker compose up -d --force-recreate catalogo admin forum sugestoes"
   fi

@@ -10,6 +10,7 @@ from io import StringIO
 
 import pytest
 from django.core.management import call_command
+from django.utils import timezone
 
 from apps.gamificacao.models import (
     ConquistaDefinicao,
@@ -67,8 +68,13 @@ def test_a_semeadura_e_idempotente_e_nao_pisa_em_edicao_humana():
     _semear()
     antes = {m.__name__: m.objects.count() for m in TABELAS_DE_ECONOMIA}
 
-    # O mantenedor liga uma regra e muda um número, como fará na vida real.
-    RegraDePontuacao.objects.filter(slug="quiz-aprovado").update(ativa=True, pontos=45)
+    # O mantenedor liga uma regra e muda um número, como fará na vida real — e
+    # "como na vida real" agora inclui a DATA: o banco recusa regra ligada sem
+    # `vigente_desde`, que é o mecanismo do "nunca retroativo" da lei §10.5.
+    # Quem carimba de verdade é `interruptores.mudar()`, pela tela do painel.
+    RegraDePontuacao.objects.filter(slug="quiz-aprovado").update(
+        ativa=True, pontos=45, vigente_desde=timezone.now()
+    )
 
     saida = _semear()
     depois = {m.__name__: m.objects.count() for m in TABELAS_DE_ECONOMIA}
