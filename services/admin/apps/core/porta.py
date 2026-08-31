@@ -99,6 +99,37 @@ CAMINHOS_ISENTOS = frozenset(
 #: (`tests/test_area_de_documentos.py::test_o_prefixo_publico_tem_so_as_duas_rotas`).
 PREFIXO_PUBLICO_DOS_DOCUMENTOS = "/docs/"
 
+#: [PLANOS PARA IA] O prefixo público dos planos e decisões (31/08/2026).
+#:
+#: Nasceu de um atrito medido: o mantenedor mandou a IAs externas o link de um
+#: artefato hospedado fora, e NENHUMA conseguiu abrir — artefato é privado e
+#: exige sessão. O conteúdo nunca foi segredo (este repositório é público de
+#: propósito); faltava um endereço do próprio site que uma IA pudesse ler.
+#:
+#: **Prefixo, e não lista exata — ao contrário do `/mapa-ia/` logo acima.** As
+#: duas áreas moram sob o mesmo prefixo de roteamento e têm posturas
+#: deliberadamente diferentes, porque a pergunta "quem decide que isto é
+#: público" tem resposta diferente em cada uma:
+#:
+#:   `/mapa-ia/…`         a decisão mora AQUI, arquivo por arquivo. São sete
+#:                        arquivos de um mapa curado, e a raridade da mudança é
+#:                        o que torna a lista exata barata.
+#:   `/mapa-ia/planos/…`  a decisão mora NO PRÓPRIO DOCUMENTO
+#:                        (`publico-para-ia: true`, fail-closed), escolha do
+#:                        mantenedor em 31/08/2026. Enumerar os endereços aqui
+#:                        criaria uma SEGUNDA lista sobre o mesmo fato — o
+#:                        mesmo argumento que `/docs/` já usa acima.
+#:
+#: **Não afrouxei a lista do `/mapa-ia/` de carona**: aquilo é o INV-P14 e é
+#: outra decisão. Área nova ganha prefixo novo.
+#:
+#: O que impede o prefixo de virar uma fresta: sob `/mapa-ia/planos/` existem
+#: EXATAMENTE duas rotas, as duas de leitura, e as duas conferem
+#: `publico-para-ia` antes de responder. Guarda que varre o urlconf e reprova
+#: rota nova aqui embaixo:
+#: `tests/test_planos_para_ia.py::test_o_prefixo_dos_planos_tem_so_as_duas_rotas`.
+PREFIXO_PUBLICO_DOS_PLANOS = "/mapa-ia/planos/"
+
 
 def _emails_autorizados() -> frozenset[str]:
     """A lista de quem entra, lida NO PONTO DE USO e normalizada.
@@ -175,7 +206,7 @@ class PortaAdministrativa:
 
     def __call__(self, request):
         if request.path_info in CAMINHOS_ISENTOS or request.path_info.startswith(
-            PREFIXO_PUBLICO_DOS_DOCUMENTOS
+            (PREFIXO_PUBLICO_DOS_DOCUMENTOS, PREFIXO_PUBLICO_DOS_PLANOS)
         ):
             return self._com_seguranca(self.get_response(request))
 

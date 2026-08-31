@@ -16,6 +16,7 @@ from apps.core.caixa import (
 from apps.core.divida import divida_json
 from apps.core.mapa_do_site import mapa_do_site
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
+from apps.core.planos_para_ia import plano_publico, planos_indice
 from apps.core.painel import painel, painel_arquivo
 from apps.core.robos import robos
 from apps.core.views import (
@@ -104,6 +105,23 @@ urlpatterns = [
     path("documentos/", documentos_admin, name="documentos_admin"),
     re_path(
         r"^documentos/(?P<nome>[a-z0-9-]+)$", documento_admin, name="documento_admin"
+    ),
+    # OS PLANOS PARA IA (`apps/core/planos_para_ia.py`), 31/08/2026 — e as duas
+    # linhas vêm ANTES das do mapa, porque a ordem é o que faz funcionar: a rota
+    # genérica de baixo (`^mapa-ia/([\w.-]+)$`) casaria `mapa-ia/planos` e
+    # tentaria servir um arquivo com esse nome. Com estas duas na frente, o
+    # índice responde e a genérica nunca vê o caminho.
+    #
+    # Mora sob `/mapa-ia/` de propósito: o gateway já roteia esse prefixo
+    # (`PathPrefix`), então a área nasceu sem tocar em `infra/` e sem
+    # `deploy-infra`. O que ela NÃO herda é a isenção — `/mapa-ia/` continua
+    # com a lista exata de `CAMINHOS_ISENTOS`, e estes caminhos têm prefixo
+    # próprio na porta (`PREFIXO_PUBLICO_DOS_PLANOS`).
+    path("mapa-ia/planos/", planos_indice, name="planos_indice"),
+    re_path(
+        r"^mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+)$",
+        plano_publico,
+        name="plano_publico",
     ),
     path("mapa-ia/", mapa_ia_indice, name="mapa_ia_indice"),
     re_path(r"^mapa-ia/(?P<nome>[\w.-]+)$", mapa_ia_arquivo, name="mapa_ia_arquivo"),

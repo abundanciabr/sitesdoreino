@@ -83,6 +83,9 @@ def test_celula_nomeada_no_toca_expande_para_todos_os_caminhos_dela(mapa):
         "painel",
         "fila",
         "documentos",
+        # 31/08/2026: a area `/mapa-ia/planos/` serve `docs/decisoes/`, entao a
+        # pasta e da `admin` para efeito de deploy e de escopo de PR.
+        "docs/decisoes",
     }
     assert conf.areas_declaradas(["ci", "fila"], mapa) == {"ci", "fila"}
 

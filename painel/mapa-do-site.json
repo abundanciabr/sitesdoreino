@@ -675,6 +675,26 @@
     },
     {
       "celula": "admin",
+      "rota": "mapa-ia/planos/",
+      "endereco": "/mapa-ia/planos/",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "Os planos do projeto, para outras IAs",
+      "descricao": "A lista dos planos e decisoes que voce pode mandar para uma inteligencia artificial de fora ler. Texto puro, sem login. So aparece aqui o documento que se declarou publico no proprio cabecalho.",
+      "sonda": true
+    },
+    {
+      "celula": "admin",
+      "rota": "^mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+)$",
+      "endereco": "/mapa-ia/planos/(?P<nome>[A-Za-z0-9-]+)$",
+      "exemplo": "/mapa-ia/planos/PLANO-SEQUENCIAS-DE-MENSAGENS",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "Um plano, para outras IAs lerem",
+      "descricao": "O texto de um plano ou decisao, do jeito que esta no repositorio. Documento que nao se declarou publico responde 'nao encontrado'."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/",
       "endereco": "/admin/escola/",
       "alcance": "publico",

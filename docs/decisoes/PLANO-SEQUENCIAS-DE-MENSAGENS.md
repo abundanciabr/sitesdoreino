@@ -1,3 +1,7 @@
+---
+publico-para-ia: true
+---
+
 # PLANO — as sequências de mensagens para o aluno
 
 > **AS QUATRO DECISÕES DO §8 FORAM RESPONDIDAS PELO MANTENEDOR EM 30/08/2026**,
