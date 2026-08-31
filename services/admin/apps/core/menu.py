@@ -62,7 +62,14 @@ from .views import _auditar
 # As células que DESENHAM o menu. Uma página da área administrativa ou uma rota
 # de máquina não tem topo de site para configurar, e oferecê-la aqui seria
 # convidar a uma regra que nunca teria efeito.
-CELULAS_COM_MENU = ("funil", "forum")
+#
+# ESTA LISTA CRESCE JUNTO COM AS CÉLULAS QUE MOSTRAM O MENU, e esquecê-la é o
+# defeito que ela mesma documenta: em 31/08/2026 a `sugestoes` passou a desenhar
+# o menu e ficou de fora daqui por uma linha — o menu aparecia na Caixa e o
+# mantenedor não tinha onde configurá-lo. Célula que ganha o menu entra aqui no
+# MESMO PR, e `ci/tests/test_menu_no_admin.py` mede a lista contra as células
+# que de fato o desenham.
+CELULAS_COM_MENU = ("funil", "forum", "sugestoes")
 
 # Para quem o item aparece, com o nome que o mantenedor lê. A ordem é a da
 # tela; os códigos são os do contrato.
