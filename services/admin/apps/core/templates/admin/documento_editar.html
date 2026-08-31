@@ -1,0 +1,139 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O formulário de escrever um documento. Sem script nenhum: cada gesto é um POST
+que recarrega a página. O que se vê aqui é o que está gravado, e a política de
+segurança desta área bloqueia script embutido (armadilhas/199).
+
+O `value` e o conteúdo do textarea saem escapados pelo Django, como em qualquer
+template. O corpo só vira HTML na hora de EXIBIR o documento, e lá o
+renderizador escapa antes de formatar (documentos.para_html).
+{% endcomment %}
+{% block titulo %}{% if criando %}Documento novo{% else %}Editando {{ rascunho.titulo }}{% endif %} | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  {% if criando %}
+  <a class="volta" href="{% url 'documentos_admin' %}">&larr; Documentos</a>
+  <h1>Escrever um documento novo</h1>
+  <p class="subtitulo">
+    Ele nasce fechado. Só aparece no site aberto se você marcar a caixa lá
+    embaixo.
+  </p>
+  {% else %}
+  <a class="volta" href="{% url 'documento_admin' rascunho.nome %}">&larr; Voltar ao documento</a>
+  <h1>Editando</h1>
+  <p class="subtitulo">
+    O endereço deste documento é
+    <code>meshcraft.top{{ prefixo_publico }}/{{ rascunho.nome }}</code>, e ele
+    não muda: alguém pode ter guardado esse link.
+  </p>
+  {% endif %}
+
+  {% if erro %}
+  <p class="recado borda-vermelha">{{ erro }}</p>
+  {% endif %}
+
+  {% if riscas %}
+  {% comment %}
+  A recusa do travessão, com a lição na mesma tela. Quem topa com o portão
+  precisa saber como sair dele sem abrir documento nenhum, e a lei do
+  CLAUDE.md diz que a troca é uma REESCRITA, nunca um caractere trocado.
+  {% endcomment %}
+  <div class="recado borda-vermelha">
+    <b>Não salvei: há risca comprida no texto.</b>
+    <p class="nota">
+      A regra do projeto é que nenhum texto publicado sai com essa risca. Onde
+      ela está:
+    </p>
+    <ul class="riscas">
+      {% for risca in riscas %}
+      <li>
+        <b>{{ risca.onde }}</b> ({{ risca.risca }})
+        <span class="frase">{{ risca.frase }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="nota">
+      <b>Como trocar,</b> escolhendo pelo papel que a risca fazia na frase:
+    </p>
+    <ul class="riscas">
+      <li><b>Vírgula</b>, quando era uma explicação no meio da frase.
+        "O motorista, que estava cansado, parou no posto."</li>
+      <li><b>Parênteses</b>, quando era um dado acessório que dá para ignorar.
+        "A inflação (principal vilã do orçamento) voltou a subir."</li>
+      <li><b>Dois-pontos</b>, quando o trecho ficava no fim e fechava a ideia.
+        "Ele só queria uma coisa: paz."</li>
+      <li><b>Aspas</b>, quando era fala de alguém.
+        "Não quero ir hoje", disse Pedro.</li>
+    </ul>
+    <p class="nota">
+      Leia a frase em voz alta depois de trocar. Se você tropeçar, reescreva a
+      frase inteira: a regra é a frase ficar em português correto, não a risca
+      sumir. O hífen de palavra composta, como em "guarda-chuva", continua
+      liberado.
+    </p>
+  </div>
+  {% endif %}
+
+  <form method="post" class="editor"
+        action="{% if criando %}{% url 'documento_criar' %}{% else %}{% url 'documento_salvar' rascunho.nome %}{% endif %}">
+    {% csrf_token %}
+
+    <label class="rotulo" for="titulo">Título</label>
+    <input type="text" id="titulo" name="titulo" value="{{ rascunho.titulo }}"
+           maxlength="200" autocomplete="off" required>
+    <p class="nota">É o nome que aparece na lista e no alto da página.</p>
+
+    {% if criando %}
+    <label class="rotulo" for="nome">Endereço da página</label>
+    <div class="endereco-do-doc">
+      <span class="prefixo">meshcraft.top{{ prefixo_publico }}/</span>
+      <input type="text" id="nome" name="nome" value="{{ rascunho.nome }}"
+             maxlength="80" autocomplete="off">
+    </div>
+    <p class="nota">
+      Pode deixar em branco: eu monto a partir do título. Depois de criado ele
+      não muda mais, porque alguém pode ter guardado o link.
+    </p>
+    {% endif %}
+
+    <label class="rotulo" for="corpo">O texto</label>
+    <textarea id="corpo" name="corpo" rows="24" spellcheck="true">{{ rascunho.corpo }}</textarea>
+    <p class="nota">
+      Escreva normalmente. Para dar forma:
+      <code># Título grande</code>, <code>## Título médio</code>,
+      <code>- item de lista</code>, <code>**negrito**</code>,
+      <code>&gt; citação</code> e <code>[o texto do link](/o-endereco)</code>.
+      Linha em branco separa parágrafos. Tabela e imagem ainda não funcionam.
+    </p>
+
+    <label class="rotulo" for="ordem">Posição na lista</label>
+    <input type="number" id="ordem" name="ordem" value="{{ rascunho.ordem }}"
+           class="campo-curto">
+    <p class="nota">
+      Número menor aparece primeiro. Na dúvida, deixe como está.
+    </p>
+
+    <label class="marcar espaco-20">
+      <input type="checkbox" name="publico" value="sim"
+             {% if rascunho.publico %}checked{% endif %}>
+      <span>Publicar no site, para qualquer pessoa ler</span>
+    </label>
+    <p class="nota">
+      Desmarcado, o documento fica só aqui dentro, visível para quem
+      administra.
+    </p>
+
+    <div class="gestos-do-editor">
+      <button type="submit" class="salvar">
+        {% if criando %}Criar o documento{% else %}Salvar{% endif %}
+      </button>
+      <a class="volta" href="{% if criando %}{% url 'documentos_admin' %}{% else %}{% url 'documento_admin' rascunho.nome %}{% endif %}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
