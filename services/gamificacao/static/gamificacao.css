@@ -1,0 +1,141 @@
+/* A Base das conquistas.
+
+   A regra de tela da lei mandou aqui: "XP nunca maior que a imagem da obra"
+   (PLANO §5). Por isso o número de experiência é a menor coisa da página, e o
+   que ocupa o topo é o TÍTULO do degrau, que fala de quem a pessoa está
+   virando. Se um dia alguém quiser aumentar a fonte do XP, esta linha é o
+   lugar de reabrir a conversa. */
+
+:root {
+  --tinta: #1b1b1f;
+  --tinta-fraca: #5c5c66;
+  --papel: #fbfaf7;
+  --caixa: #ffffff;
+  --borda: #e3e0d8;
+  --marca: #7a5cff;
+  --marca-fraca: #efeaff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--papel);
+  color: var(--tinta);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+.faixa {
+  background: var(--caixa);
+  border-bottom: 1px solid var(--borda);
+  padding: 14px 20px;
+}
+
+.faixa a {
+  color: var(--tinta);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+main {
+  margin: 0 auto;
+  max-width: 640px;
+  padding: 32px 20px 64px;
+}
+
+.degrau, .convite, .aviso {
+  background: var(--caixa);
+  border: 1px solid var(--borda);
+  border-radius: 14px;
+  margin-bottom: 20px;
+  padding: 28px 24px;
+}
+
+.rotulo {
+  color: var(--tinta-fraca);
+  font-size: 14px;
+  letter-spacing: .04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  margin: 4px 0 2px;
+}
+
+.nivel {
+  color: var(--tinta-fraca);
+  margin: 0 0 20px;
+}
+
+/* A barra é a única peça com cor forte da página: ela mostra caminho andado,
+   que é a informação que ajuda. */
+.barra {
+  background: var(--marca-fraca);
+  border-radius: 999px;
+  height: 12px;
+  margin: 20px 0 10px;
+  overflow: hidden;
+}
+
+.cheio {
+  background: var(--marca);
+  border-radius: 999px;
+  height: 100%;
+  transition: width .4s ease;
+}
+
+.passo { margin: 0; }
+
+/* O XP: informação de rodapé, nunca manchete. */
+.xp {
+  color: var(--tinta-fraca);
+  font-size: 14px;
+  margin: 14px 0 0;
+}
+
+.aviso h2 {
+  font-size: 17px;
+  margin: 0 0 8px;
+}
+
+.aviso p {
+  color: var(--tinta-fraca);
+  margin: 0;
+}
+
+.convite .entrar {
+  margin: 22px 0 10px;
+}
+
+.convite .entrar a {
+  background: var(--marca);
+  border-radius: 10px;
+  color: #fff;
+  display: inline-block;
+  font-weight: 600;
+  padding: 12px 22px;
+  text-decoration: none;
+}
+
+.miudo {
+  color: var(--tinta-fraca);
+  font-size: 14px;
+  margin: 0;
+}
+
+.miudo a, .convite p a { color: var(--marca); }
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tinta: #f2f1ee;
+    --tinta-fraca: #a8a6a0;
+    --papel: #16161a;
+    --caixa: #1f1f25;
+    --borda: #32323a;
+    --marca: #a58cff;
+    --marca-fraca: #2b2545;
+  }
+}

@@ -304,6 +304,25 @@
     },
     {
       "celula": "gamificacao",
+      "rota": "",
+      "endereco": "/conquistas/",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Suas conquistas",
+      "descricao": "A primeira tela do progresso do aluno: em que degrau ele está, que título ganhou e quanto falta para o próximo. Quem não entrou vê a mesma página com um convite para entrar, nunca um erro.",
+      "observacao": "Ela abre mesmo sem SITE_ID no env da célula: nesse caso trata todo mundo como visitante e grita no log, em vez de quebrar. É a mesma falha aberta que o contrato da porta de máquina exige."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "^static/(?P<caminho>.*)$",
+      "endereco": "/conquistas/static/(?P<caminho>.*)$",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A aparência das conquistas",
+      "descricao": "Os arquivos de estilo da tela de conquistas, buscados pelo navegador sozinho."
+    },
+    {
+      "celula": "gamificacao",
       "rota": "healthz",
       "endereco": "/conquistas/healthz",
       "alcance": "publico",
