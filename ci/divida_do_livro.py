@@ -26,9 +26,12 @@ merge (`ci/mergear.py`) se recusa a abrir enquanto houver dívida.
 
 AS TRÊS ISENÇÕES, E POR QUE CADA UMA EXISTE
 --------------------------------------------
-1. **PR que só toca `painel/` não precisa de registro próprio.** Ele É o
-   registro. Sem esta isenção o sistema trava em deadlock: para registrar é
-   preciso mergear, e mergear exigiria ter registrado.
+1. **PR que só ESCRITURA não precisa de registro próprio** — `painel/`
+   (o livro) e/ou `fila/` (o balcão de tarefas). Ele É o registro. Sem esta
+   isenção o sistema trava em deadlock: para registrar é preciso mergear, e
+   mergear exigiria ter registrado. A metade `fila/` chegou em 31/08/2026,
+   depois de a isenção estreita cobrar três rodadas num dia — ver o comentário
+   de `PASTAS_DE_ESCRITURACAO`.
 2. **Merge anterior ao marco zero da cobrança não é dívida.** A regra "cite o
    número do PR" nasce com este guarda; antes dela o costume era narrar o
    acontecimento em prosa. Medido: cobrar o passado inventaria 17 devedores, a
@@ -104,10 +107,34 @@ def numeros_citados(raiz: Path, registros: Path | None = None) -> set[int]:
     return citados
 
 
+# As pastas de ESCRITURAÇÃO: o que se escreve para contar o que aconteceu, e
+# não para mudar o que o sistema faz. `painel/` é o livro do dono; `fila/` é o
+# balcão de tarefas, e fechar uma tarefa lá é o gesto NORMAL de quem termina um
+# trabalho — o registro e o fechamento viajam juntos, no mesmo PR.
+#
+# **`fila/` entrou aqui em 31/08/2026, depois de a isenção estreita cobrar três
+# rodadas num único dia.** Até então a isenção era só `painel/`, e todo PR de
+# escrituração que também fechasse tarefa virava dívida: uma dívida sem dono
+# real, que trava a fila de pouso de TODOS os robôs até alguém escrever um
+# registro sobre um PR que não tinha o que registrar. Aconteceu em 30/08
+# (`armadilhas/214`, dois PRs de rodeio) e três vezes em 31/08, a última
+# segurando um passo que o mantenedor esperava no terminal. A própria armadilha
+# já prescrevia esta linha como "a solução de verdade".
+#
+# O que NÃO muda: um PR que mexe em `fila/` **e** em código continua devendo
+# registro. A isenção é para o PR que só escritura, nunca para o que entrega.
+PASTAS_DE_ESCRITURACAO = ("painel/", "fila/")
+
+
 def so_toca_o_livro(arquivos: list[str]) -> bool:
-    """O PR é ele próprio um registro? (isenção 1)"""
+    """O PR é ele próprio escrituração? (isenção 1)
+
+    Cobrar um registro sobre ele seria circular: para registrar é preciso
+    mergear, e mergear exigiria ter registrado.
+    """
     return bool(arquivos) and all(
-        caminho.replace("\\", "/").startswith("painel/") for caminho in arquivos
+        caminho.replace("\\", "/").startswith(PASTAS_DE_ESCRITURACAO)
+        for caminho in arquivos
     )
 
 
@@ -120,10 +147,15 @@ def listar_prs_mergeados(raiz: Path) -> list[dict[str, Any]]:
     """
     saida = subprocess.run(
         [
-            "gh", "pr", "list",
-            "--state", "merged",
-            "--limit", str(JANELA_DE_PRS),
-            "--json", "number,title,mergedAt,files",
+            "gh",
+            "pr",
+            "list",
+            "--state",
+            "merged",
+            "--limit",
+            str(JANELA_DE_PRS),
+            "--json",
+            "number,title,mergedAt,files",
         ],
         cwd=raiz,
         capture_output=True,
