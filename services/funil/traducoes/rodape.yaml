@@ -22,12 +22,19 @@ marca:
   es: "Meshcraft Academy"
 
 descricao:
-  # Uma linha só, dizendo o que a escola faz. "Roblox" está no glossário e
-  # aparece literal nas três.
-  _fonte: "39ab69"
-  en: "The school that teaches you to model in 3D and earn your first dollars on Roblox."
-  pt-br: "A escola que ensina você a modelar em 3D e a ganhar seus primeiros dólares no Roblox."
-  es: "La escuela que te enseña a modelar en 3D y a ganar tus primeros dólares en Roblox."
+  # O AVISO DE VERSÃO DE TESTES, e as palavras são do mantenedor (31/08/2026).
+  # Até aqui esta linha dizia o que a escola faz; ele a trocou por este aviso
+  # porque a plataforma ainda está sendo construída, e a frase anterior
+  # prometia uma escola pronta. A escolha dele junta as duas coisas de
+  # propósito: avisa que é teste E convida ("você está vendo o começo"), em vez
+  # de só pedir desculpa.
+  #
+  # `Atenção:` com dois-pontos é rótulo antes do conteúdo, que é um dos usos
+  # que a lei do travessão preserva.
+  _fonte: "fa49bb"
+  en: "Heads up: this is a test version of the site. We are still building the platform, and you are seeing the beginning."
+  pt-br: "Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo."
+  es: "Atención: esta es una versión de prueba del sitio. Todavía estamos construyendo la plataforma, y estás viendo el comienzo."
 
 aria_links:
   # Só para leitor de tela: diz O QUE é aquele grupo de links. O texto visível

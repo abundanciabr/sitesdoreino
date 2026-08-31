@@ -29,7 +29,7 @@
 # Medido em 25/08/2026 contra a main: 47 guardas em disco, 14 caminhos
 # declarados em 12 linhas `Teste-Guarda:` (10 deles guardas de célula).
 #
-# TOTAL: 37
+# TOTAL: 36
 services/alunos/tests/test_inv_p5_dedup_atomico.py :: segundo guarda do INV-P5 (dedup atômico); o documento só cita o test_inv_p5_matricula_lock.py
 services/identidade/tests/test_inv_cookie_de_sessao.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
 services/identidade/tests/test_inv_identidade_idempotente.py :: célula de identidade entregue em 25/08/2026; a lei está em docs/decisoes/DECISAO-celula-de-identidade.md e ainda não virou invariante numerado
@@ -56,7 +56,6 @@ services/sugestoes/tests/test_inv_entrada_staff_sem_matricula.py :: célula da C
 services/sugestoes/tests/test_inv_envelope_casa_com_contrato.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
 services/sugestoes/tests/test_inv_historico_append_only.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
 services/sugestoes/tests/test_inv_identidade_idempotente.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
-services/sugestoes/tests/test_inv_matricula_reembolsada_entra.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
 services/sugestoes/tests/test_inv_nao_planejado_exige_justificativa.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
 services/sugestoes/tests/test_inv_outbox_transacional.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md
 services/sugestoes/tests/test_inv_rate_limit_sugestoes.py :: célula da Caixa de Sugestões (EVO-1..EVO-30) nasceu com guarda próprio; a lei dela mora em docs/decisoes e nunca foi transcrita para INVARIANTES.md

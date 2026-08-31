@@ -375,6 +375,32 @@ def entrar(request):
         # ansiedade sem destino.
         return _tela_da_fila(request, email=resolucao.email, voltando=True)
 
+    if resolucao.estado == ses.REEMBOLSADO:
+        # [REEMBOLSO] Tela PRÓPRIA, escolhida pelo mantenedor em 31/08/2026
+        # entre reusar a do ex-aluno e escrever esta. Ele recusou reusar: a
+        # pessoa ficaria sem saber que o motivo foi o reembolso dela, e uma
+        # porta que fecha sem dizer por quê é a mesma exclusão com outro nome.
+        #
+        # E NÃO oferece o formulário de voltar, ao contrário do ex-aluno logo
+        # acima. A diferença é a decisão, e o próprio argumento que devolveu o
+        # formulário ao ex-aluno em 29/08 é o que o nega aqui: quem terminou um
+        # curso e quer o do semestre seguinte não está insistindo contra uma
+        # decisão; quem foi reembolsado está. O caminho de volta existe e está
+        # dito no texto — comprar de novo, ou falar com a escola, que religa
+        # com um clique.
+        return _recado(
+            request,
+            titulo="Seu acesso terminou com o reembolso",
+            texto=(
+                "O dinheiro da sua compra foi devolvido, e a matrícula foi "
+                "desfeita junto. Por isso a Caixa de Sugestões não abre mais "
+                "para você. Se quiser voltar a estudar aqui, fale com a "
+                "escola ou faça uma nova compra."
+            ),
+            email=resolucao.email,
+            status=403,
+        )
+
     if resolucao.estado == ses.PAUSADO:
         # [EX-ALUNO] Texto diferente do de cima DE PROPÓSITO: a diferença entre
         # "pausado" e "encerrado" é a única coisa que a pessoa quer saber.

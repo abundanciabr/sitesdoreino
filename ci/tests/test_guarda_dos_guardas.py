@@ -665,6 +665,12 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # Nasceu na gênese da célula `admin` (25/08/2026): um único assinante
         # do cookie de sessão do site.
         "INV-P12",
+        # Reversão do mantenedor em 31/08/2026, célula `sugestoes`: quem foi
+        # REEMBOLSADO não entra, e a porta diz por quê. Entrou aqui pagando uma
+        # linha da dívida de `ci/guardas-nao-declarados.txt` — a do guarda
+        # antigo, que afirmava o CONTRÁRIO e, pior, tinha parado de medir o que
+        # dizia medir desde 28/08 (`armadilhas/252`).
+        "INV-SUG09",
         # EVO-40 (25/08/2026), célula `sugestoes`: nada sai de `planejado` para
         # `em_desenvolvimento` sem ChangeSpec aprovado registrado. Entrou aqui
         # pagando uma linha da dívida de `ci/guardas-nao-declarados.txt`, que é

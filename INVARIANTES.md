@@ -173,6 +173,28 @@ primeira oportunidade de violá-la.
   ali deslogaria a plataforma inteira; por isso o estado mora no MODELO
   (`celebracoes_pendentes`), e não na sessão.
 
+### [INV-SUG09] Quem Foi Reembolsado Não Entra, e a Porta Diz Por Quê
+- **O quê:** a Caixa recusa quem a `alunos` classifica como `reembolsado`, e a
+  recusa vem com a **tela própria do reembolso** — nunca a tela genérica de
+  desconhecido, nunca a do ex-aluno, e **sem** o formulário de *Pedir para
+  voltar* que o ex-aluno tem desde 29/08.
+- **Por quê:** decisão do mantenedor em 31/08/2026
+  (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`), revertendo a dele
+  própria de 24/08 (*"quem já foi aluno mantém a voz"*) ao encontrar o texto
+  antigo publicado no site. **A regra já foi decidida duas vezes, em sentidos
+  opostos**, e é isso que a torna cara de deixar sem guarda: um agente futuro
+  que só conheça a versão de 24/08 vai "consertar" de boa-fé.
+  O *"diz por quê"* é metade do invariante, e não enfeite: sem a linha no mapa
+  de categorias a pessoa já seria barrada (a lista é de PERMISSÃO), mas leria
+  *"não conseguimos conferir sua entrada agora"* — o sistema culpando a si
+  mesmo por uma situação que conhece perfeitamente.
+- **Teste-Guarda:** `services/sugestoes/tests/test_inv_reembolso_nao_entra.py` —
+  a categoria está no mapa e não dá acesso; a pessoa recebe 403; o corpo nomeia
+  o reembolso e **não** é a tela do ex-aluno; nenhum formulário é oferecido; a
+  identidade não é cunhada para quem não entra; e o aluno continua entrando (o
+  contraste, sem o qual tudo isso ficaria verde numa porta que barra todo mundo).
+- **Célula dona:** sugestoes
+
 ### [INV-SUG10] Corredor do ChangeSpec (nada entra em desenvolvimento sem ele)
 - **O quê:** `Sugestao.status` só sai de `PLANEJADO` para `EM_DESENVOLVIMENTO` se
   existir um ChangeSpec **aprovado** registrado referenciando aquela sugestão
