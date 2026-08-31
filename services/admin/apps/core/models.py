@@ -1,4 +1,6 @@
-"""Quem é administrador desta área — a metade que mora no banco.
+"""O que esta área GRAVA: quem administra, e os documentos que o site publica.
+
+## Quem é administrador desta área — a metade que mora no banco
 
 **Isto reverte, em parte, a `DECISAO-celula-admin` §2**, que dizia *"derivada e
 nunca gravada"*. A reversão é decisão do mantenedor de 28/08/2026, tomada com o
@@ -14,6 +16,22 @@ continua sendo o CHÃO. Duas consequências, as duas desejadas:
 
 Ver `apps/core/porta.py`, que é quem soma as duas metades — e que trata falha
 de banco como "vale só o env", nunca como "deixa entrar".
+
+## Os documentos do site — a mudança de 31/08/2026
+
+Até aqui, um documento era um ARQUIVO em `documentos/`, e o site só o lia. O
+mantenedor pediu em 31/08/2026 uma tela para **gerenciar e editar** os
+documentos, e essa frase tem uma consequência mecânica que decide o desenho: o
+disco do container é remontado a cada atualização da plataforma. Gravar a
+edição dele no arquivo embutido a apagaria no deploy seguinte, **em silêncio**.
+
+Por isso o texto passa a morar AQUI, e a pasta `documentos/` vira SEMENTE: ela
+é lida uma vez, pela migração que criou estas linhas, e nunca mais. Não são dois
+lugares dizendo a mesma coisa (a lei anti-duplicação do `CLAUDE.md`): depois da
+semeadura, quem responde "o que este documento diz" é esta tabela, e só ela.
+Mesmo desenho de `semear_areas` no fórum.
+
+Lei: `docs/decisoes/DECISAO-o-editor-de-documentos.md`.
 """
 
 from django.db import models
@@ -43,3 +61,69 @@ class Administrador(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de shell
         return f"{self.email}{'' if self.ativo else ' (removido)'}"
+
+
+class Documento(models.Model):
+    """Um documento que o site publica. A ÚNICA fonte do texto, desde 31/08/2026."""
+
+    # O endereço, e a chave: `como-funciona-a-entrada` sai em
+    # `meshcraft.top/docs/como-funciona-a-entrada`. `unique` porque dois
+    # documentos com o mesmo nome seriam dois textos disputando um endereço.
+    #
+    # O formato (minúsculas, números e hífen) é o mesmo `RE_NOME` que a rota
+    # exige, e a conferência acontece na borda de escrita, não aqui: um
+    # `SlugField` aceita maiúscula e sublinhado, que a rota não casa — um nome
+    # assim viraria um documento inalcançável, existindo só na lista.
+    nome = models.SlugField(max_length=80, unique=True)
+    titulo = models.CharField(max_length=200)
+
+    # FAIL-CLOSED, e este `default=False` é a lei do §2 da
+    # `DECISAO-a-area-de-documentos` escrita no banco: documento novo nasce
+    # PRIVADO, e sair para o mundo exige um gesto de propósito. Enquanto o
+    # texto morava em arquivo, quem garantia isso era a igualdade exata com
+    # "true" no cabeçalho; aqui é o default da coluna.
+    publico = models.BooleanField(default=False)
+
+    # Menor primeiro. O default alto manda o documento novo para o FIM: um
+    # default pequeno o faria pular na frente dos que alguém posicionou.
+    ordem = models.IntegerField(default=1000)
+    corpo = models.TextField(blank=True, default="")
+
+    # Arquivar tira do site sem destruir o texto (a escolha do mantenedor em
+    # 31/08/2026, e o mesmo desenho de `DECISAO-arquivar-ideia`). É por isso que
+    # `publico` sozinho não responde "está no ar?": ver `no_ar` abaixo.
+    arquivado = models.BooleanField(default=False)
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        # A pergunta que a área pública faz a cada visita: os que estão no ar,
+        # na ordem da lista.
+        indexes = [models.Index(fields=["publico", "arquivado", "ordem"])]
+
+    @property
+    def no_ar(self) -> bool:
+        """Se qualquer pessoa de fora consegue ler isto agora.
+
+        DUAS condições, e a segunda foi acrescentada junto com o botão de
+        arquivar. Quem perguntar só por `publico` deixará um documento
+        arquivado visível no site — e é exatamente o tipo de esquecimento que
+        uma propriedade com nome próprio evita.
+        """
+        return self.publico and not self.arquivado
+
+    @property
+    def endereco(self) -> str:
+        """O endereço PÚBLICO deste documento, sem o prefixo da célula."""
+        # Importado AQUI dentro, e não no topo do arquivo: `documentos.py`
+        # importa este módulo, e um import no topo fecharia o ciclo. O prefixo
+        # mora lá porque é lá que está escrito por que ele não sai de
+        # `{% url %}` — e uma constante só é o que impede a explicação de virar
+        # caminho cravado espalhado por três templates.
+        from .documentos import PREFIXO_PUBLICO
+
+        return f"{PREFIXO_PUBLICO}/{self.nome}"
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.nome}{'' if self.no_ar else ' (fora do ar)'}"
