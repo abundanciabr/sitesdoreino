@@ -1234,6 +1234,26 @@
     },
     {
       "celula": "admin",
+      "rota": "economia/",
+      "endereco": "/admin/economia/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Os pontos da escola: ligar e desligar cada regra",
+      "descricao": "Uma linha por coisa que o aluno pode fazer, com quantos pontos ela vale e um botão de ligar ou desligar. Tudo nasce desligado: uma regra só passa a valer quando você liga, e a partir do momento em que você liga, nunca para trás. Quando ligar não fosse adiantar (porque nada no site ainda avisa aquilo, por exemplo), a tela diz isso antes do clique."
+    },
+    {
+      "celula": "admin",
+      "rota": "economia/mudar",
+      "endereco": "/admin/economia/mudar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Ligar ou desligar uma regra de pontuação",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de ligar ou desligar uma regra. Ligar carimba a data em que ela passou a valer, e é essa data que impede o passado de virar ponto."
+    },
+    {
+      "celula": "admin",
       "rota": "documentos/novo",
       "endereco": "/admin/documentos/novo",
       "alcance": "publico",

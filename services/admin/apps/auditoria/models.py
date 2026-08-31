@@ -105,6 +105,19 @@ class Registro(models.Model):
     ARQUIVAR_DOCUMENTO = "arquivar_documento"
     DESARQUIVAR_DOCUMENTO = "desarquivar_documento"
     APAGAR_DOCUMENTO = "apagar_documento"
+    # [ECONOMIA] 31/08/2026: ligar e desligar cada regra de pontuacao da escola
+    # (/admin/economia/). DOIS verbos, e nao um "mudar_regra", porque ligar e
+    # desligar sao perguntas diferentes na hora de reconstruir o que aconteceu:
+    # "desde quando esta regra paga?" e a pergunta que importa quando um aluno
+    # estranha o proprio numero, e ela se responde lendo os LIGAR.
+    #
+    # Este registro e METADE do "anunciado" que a lei §10.5 exige. A outra
+    # metade e a `vigente_desde` da propria regra, na celula `gamificacao`: la
+    # mora DESDE QUANDO a regra vale, aqui mora QUEM mandou e QUANDO pediu. Sao
+    # fatos diferentes, e nenhum e copia do outro — e por isso que esta tela
+    # nao guarda copia nenhuma das regras (a lei anti-duplicacao do CLAUDE.md).
+    LIGAR_REGRA = "ligar_regra"
+    DESLIGAR_REGRA = "desligar_regra"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -126,6 +139,8 @@ class Registro(models.Model):
         (ARQUIVAR_DOCUMENTO, "tirar um documento do ar, guardando o texto"),
         (DESARQUIVAR_DOCUMENTO, "devolver um documento arquivado"),
         (APAGAR_DOCUMENTO, "apagar um documento definitivamente"),
+        (LIGAR_REGRA, "ligar uma regra de pontuacao da escola"),
+        (DESLIGAR_REGRA, "desligar uma regra de pontuacao da escola"),
     ]
 
     OK = "ok"
