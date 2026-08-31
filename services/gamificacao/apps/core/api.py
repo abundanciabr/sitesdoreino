@@ -23,12 +23,19 @@ São as do cabeçalho do contrato, e este arquivo é onde elas ficam mecânicas:
    simples: e-mail é dado pessoal de adulto também, e uma porta de máquina que
    o entrega o entrega para sempre.
 
-   **A mesma frase continua no contrato congelado** (`contracts/gamificacao.openapi.yaml`,
-   na `description` da API, escrita em `config/api.py`). Contrato só muda por
-   Rito de Contrato (`RITOS.md` §3), em PR só de `contracts/` com a etiqueta
-   `contrato` e o mantenedor presente: não se corrige de carona. Fica anotado
-   junto da outra dívida da mesma emenda, o *"nunca em horário escolar"* de
-   `contracts/eventos/notificacao.devida.v1.json`.
+   **A dívida foi PAGA em 31/08/2026**, no Rito de Contrato que trouxe os
+   interruptores da economia, com o mantenedor presente: a frase saiu da
+   `description` da API (`config/api.py`) e do cabeçalho do contrato congelado.
+   A outra dívida da mesma emenda, o *"nunca em horário escolar"* de
+   `contracts/eventos/notificacao.devida.v1.json`, já tinha saído antes — no
+   Rito de 31/08/2026 que trouxe `jornada.passo`, e o próprio contrato registra
+   a remoção.
+
+   **O que ficou de fora, e é dívida de OUTRA célula:** a mesma frase morta
+   ainda está em `contracts/forum.openapi.yaml` (duas vezes) e em
+   `contracts/eventos/forum.topico-criado.v1.json`. Sai no próximo Rito de
+   Contrato do `forum` — não se corrige de carona daqui, e a cerca de célula
+   reprovaria o PR que tentasse.
 2. **Nunca sai XP bruto de outra pessoa.** `getPublicProfiles` devolve nível e
    título; quem quiser XP vê o PRÓPRIO, em `getMyStatus`. Placar de XP entre
    alunos não existe nesta plataforma.
@@ -62,13 +69,20 @@ Guarda: `tests/test_porta_de_maquina.py`.
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Literal
 
 from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
 from ninja import Router, Schema
+from ninja.errors import HttpError
+
+# Os interruptores entram com nome PRÓPRIO em vez de nomes curtos: `listar` e
+# `mudar` soltos neste arquivo não diriam do quê.
+from apps.gamificacao.interruptores import RegraDesconhecida, impedimentos_de
+from apps.gamificacao.interruptores import listar as listar_interruptores
+from apps.gamificacao.interruptores import mudar as mudar_interruptor
 
 # ARMADILHA 020: alias obrigatório. `Sequencia` colide com o Schema homônimo do
 # contrato, e os outros seguem a mesma regra por disciplina, não por colisão.
@@ -431,3 +445,123 @@ def _celebracoes(perfil) -> list[CelebracaoPendente]:
             continue
         saida.append(CelebracaoPendente(tipo=tipo, referencia=referencia))
     return saida
+
+
+# ---------------------------------------------------------------------------
+# OS INTERRUPTORES DA ECONOMIA — a porta que faz a lei §10.5 ser verdade
+# ---------------------------------------------------------------------------
+# Estas duas operações existem para que ajustar a economia NÃO exija PR de
+# código. Enquanto ligar uma regra dependesse de um agente editar o semeador e
+# esperar um deploy, valia o critério de morte nº 5 da lei, e a promessa "a
+# economia é dado" era só uma frase bonita no topo do `motor.py`.
+#
+# QUEM AUTORIZA NÃO É ESTA PORTA, e a distinção é um invariante da plataforma.
+# Esta célula não assina sessão ([INV-P12]) e o `papel` que a `identidade`
+# devolve NUNCA autoriza rota ("reconhecer não é autorizar",
+# `DECISAO-onde-mora-a-sessao` §4). Aqui fecha o Bearer do par, como em todas as
+# operações desta célula; quem confere que é o mantenedor é a célula `admin`,
+# sobre a lista DELA, do mesmo jeito que já faz em `/admin/menu/`.
+class InterruptorDaEconomia(Schema):
+    slug: str
+    evento_gatilho: str
+    beneficiario: Literal["ator", "autor_do_alvo"]
+    pontos: int
+    cristais: int
+    acoes_cheias_por_dia: int
+    quarentena_horas: int
+    ativa: bool
+    versao: int
+    vigente_desde: datetime | None
+    impedimentos: list[Literal["sem-produtor", "sem-credito", "cristais-sem-efeito"]]
+
+
+class PedidoDeInterruptor(Schema):
+    ativa: bool
+
+
+def _interruptor(regra) -> InterruptorDaEconomia:
+    return InterruptorDaEconomia(
+        slug=regra.slug,
+        evento_gatilho=regra.evento_gatilho,
+        beneficiario=regra.beneficiario,
+        pontos=regra.pontos,
+        cristais=regra.cristais,
+        acoes_cheias_por_dia=regra.acoes_cheias_por_dia,
+        quarentena_horas=regra.quarentena_horas,
+        ativa=regra.ativa,
+        versao=regra.versao,
+        vigente_desde=regra.vigente_desde,
+        impedimentos=impedimentos_de(regra),
+    )
+
+
+@router.get(
+    "/economia/regras",
+    response=list[InterruptorDaEconomia],
+    operation_id="listEconomySwitches",
+    summary="Todas as regras de pontuacao, ligadas e desligadas",
+    description=(
+        "A lista que a tela do mantenedor desenha. Devolve TODAS as regras do\n"
+        "site — ligadas e desligadas — porque a tela precisa mostrar o que ele\n"
+        "PODE ligar, nao so o que ja esta valendo.\n"
+        "\n"
+        "`impedimentos` e o campo que evita uma frustracao concreta: uma regra\n"
+        "pode estar perfeitamente ligada e ainda assim nao fazer numero nenhum\n"
+        "se mexer. `sem-produtor` = ninguem publica esse acontecimento ainda;\n"
+        "`sem-credito` = ele chega mas esta celula nao sabe de quem e o ponto;\n"
+        "`cristais-sem-efeito` = a regra promete Cristais e o motor nao os\n"
+        "credita (o vocabulario de origens e fechado, [INV-GAM1]). Lista vazia\n"
+        "significa que ligar vai funcionar.\n"
+        "\n"
+        "SLUG, NUNCA FRASE PRONTA (invariante 3 desta porta): daqui saem slugs e\n"
+        "numeros. Quem escreve a frase em portugues e a tela que mostra."
+    ),
+)
+def list_economy_switches(request):
+    site_id = site_atual()
+    if site_id is None:
+        return []
+    return [_interruptor(regra) for regra in listar_interruptores(site_id)]
+
+
+@router.post(
+    "/economia/regras/{slug}",
+    response=InterruptorDaEconomia,
+    operation_id="setEconomySwitch",
+    summary="Liga ou desliga UMA regra de pontuacao",
+    description=(
+        "O gesto que a lei §10.5 exige que exista: ajustar a economia e UPDATE\n"
+        "mais versao, anunciado e nunca retroativo — nunca um PR de codigo.\n"
+        "\n"
+        "LIGAR faz TRES coisas de uma vez, e as tres importam: marca `ativa`,\n"
+        "soma 1 na `versao` (o motor grava a versao dentro de cada lancamento,\n"
+        "entao mudar a economia amanha nao reescreve o passado) e carimba\n"
+        "`vigente_desde` com o instante de agora. Esse carimbo E o mecanismo do\n"
+        "'nunca retroativo': o motor compara a data com o instante do FATO, e um\n"
+        "evento antigo reentregue depois do clique nao paga.\n"
+        "\n"
+        "Ligar de novo REDEFINE a data — desligar e religar nao paga a janela em\n"
+        "que a regra esteve desligada. Chamada que nao muda nada devolve a linha\n"
+        "como esta, sem gastar versao: dois cliques no mesmo botao nao inflam o\n"
+        "historico com mudancas que ninguem fez.\n"
+        "\n"
+        "Slug desconhecido responde 404. Aqui a falha e FECHADA, ao contrario\n"
+        "das operacoes de leitura desta porta: inventar em silencio qual regra o\n"
+        "mantenedor quis ligar seria pior que recusar."
+    ),
+)
+def set_economy_switch(request, slug: str, payload: PedidoDeInterruptor):
+    site_id = site_atual()
+    if site_id is None:
+        # Sem `SITE_ID` no env nao ha de qual escola e a regra, e esta operacao
+        # ESCREVE. As leituras desta porta falham abertas (pagina sem selo,
+        # nunca pagina quebrada); esta recusa, porque escrever na escola errada
+        # nao tem volta.
+        raise HttpError(503, "esta instalacao nao declara SITE_ID")
+    try:
+        regra = mudar_interruptor(
+            site_id=site_id, slug=slug, ativa=payload.ativa, agora=timezone.now()
+        )
+    except RegraDesconhecida as erro:
+        raise HttpError(404, str(erro)) from erro
+    return _interruptor(regra)

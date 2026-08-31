@@ -96,6 +96,38 @@ def _site_de(sugestao: Sugestao) -> str:
     return sugestao.quadro.site_id
 
 
+def _envelope_com_cracha(id_da_plataforma: str | None) -> dict[str, Any]:
+    """`{"ator_id": ...}` quando há crachá, e `{}` quando não há.
+
+    **A chave é OMITIDA, nunca mandada como `null`.** O relay faz
+    `envelope.update(envelope_extra)` (`tasks.py`), então um `None` viajaria
+    como `ator_id: null` — e o contrato declara `type: string`, sem `null`
+    entre as formas aceitas. Campo ausente é o que "não sei" quer dizer nos
+    três contratos; `null` seria uma terceira coisa que ninguém combinou.
+    """
+    return {"ator_id": id_da_plataforma} if id_da_plataforma else {}
+
+
+def _cracha_da_plataforma(identidade) -> str | None:
+    """O id da MESMA pessoa na célula `identidade`, ou `None` quando não há.
+
+    **Os dois ids desta casa não são intercambiáveis, e confundi-los já ia sair
+    caro.** `Identidade.id` é local desta célula; `Identidade.id_da_plataforma`
+    é o único que atravessa a plataforma ([INV-SUG11]) — cunhados
+    separadamente, para a mesma pessoa. Quem consome um evento daqui e precisa
+    creditar, endereçar ou casar alguém do lado de fora usa o SEGUNDO.
+
+    **`None` é resposta, nunca exceção.** O campo é `null=True` por decisão
+    desta célula ("nada disto pode recusar ninguém": a linha nasce sem o id
+    quando ele colide, e a frente 2 do `cunhar_ou_recuperar` o grava na
+    reentrada). E estes eventos nascem DENTRO da transação do fato ([INV-P6]):
+    levantar aqui faria CRIAR UMA SUGESTÃO falhar por causa de um dado que a
+    pessoa não tem como resolver. Quem consome trata ausência como "não sei de
+    quem é" e não credita — é o que o contrato manda, e é fail-closed.
+    """
+    return getattr(identidade, "id_da_plataforma", None) or None
+
+
 def emitir_sugestao_criada(sugestao: Sugestao) -> OutboxEvent:
     """`sugestao.criada.v1` — nasce no `create()` de `nova_sugestao`."""
     return emitir(
@@ -109,28 +141,52 @@ def emitir_sugestao_criada(sugestao: Sugestao) -> OutboxEvent:
             "suggestion_id": str(sugestao.pk),
             "quadro_id": str(sugestao.quadro_id),
             "categoria_id": str(sugestao.categoria_id),
-            # Já é texto opaco: `Identidade.id` é CharField (EVO-01 §3).
+            # LOCAL desta célula, e continua local de propósito: quem estuda o
+            # FATO dentro do mundo da Caixa usa este. Quem precisa creditar do
+            # lado de fora usa o `ator_id` do envelope, logo abaixo.
             "autor_id": sugestao.autor_id,
         },
+        # O CRACHÁ QUE ATRAVESSA AS CÉLULAS, no ENVELOPE e não no `data`:
+        # qualquer célula lê "quem fez isto" sem conhecer o formato do assunto
+        # (PLANO-MESTRE das notificações §2). Acrescentado em 31/08/2026, no
+        # Rito que ligou a economia da gamificação — sem ele, ligar a regra
+        # `sugestao-criada` creditava o id LOCAL e o XP ia para uma Pessoa
+        # fantasma, com a tela do aluno marcando zero e nada dando erro.
+        envelope_extra=_envelope_com_cracha(_cracha_da_plataforma(sugestao.autor)),
     )
 
 
-def emitir_voto_adicionado(*, sugestao: Sugestao, autor_id: str) -> OutboxEvent:
+def emitir_voto_adicionado(
+    *, sugestao: Sugestao, autor_id: str, autor_id_da_plataforma: str | None = None
+) -> OutboxEvent:
     """`sugestao.voto-adicionado.v1` — `autor_id` é quem VOTOU, não quem sugeriu.
 
     `total_votos` é contado agora, dentro da transação, e o contrato o define
     como "DEPOIS deste voto". Contar aqui (e não deixar o consumidor somar) é o
     que faz o evento ser útil sozinho: quem monta um ranking não precisa manter
     um contador próprio nem perguntar nada de volta à Caixa.
+
+    **ESTE ASSUNTO CREDITA DUAS PESSOAS, e por isso leva DOIS crachás.** Quem
+    votou ganha pouco e quem escreveu ganha mais (regras `voto-dado` e
+    `sugestao-votada` da gamificação), então o evento precisa dizer quem é cada
+    um no id que atravessa as células. Antes de 31/08/2026 ele não dizia nenhum
+    dos dois: só viajava o `autor_id` LOCAL do votante, e a regra do AUTOR caía
+    nele por falta de campo melhor — creditando a pessoa errada, com o id
+    errado. Os dois são opcionais pela razão de `_cracha_da_plataforma`.
     """
+    data: dict[str, Any] = {
+        "site_id": _site_de(sugestao),
+        "suggestion_id": str(sugestao.pk),
+        "autor_id": autor_id,
+        "total_votos": sugestao.votos.count(),
+    }
+    alvo = _cracha_da_plataforma(sugestao.autor)
+    if alvo:
+        data["autor_da_sugestao_id_da_plataforma"] = alvo
     return emitir(
         VOTO_ADICIONADO,
-        {
-            "site_id": _site_de(sugestao),
-            "suggestion_id": str(sugestao.pk),
-            "autor_id": autor_id,
-            "total_votos": sugestao.votos.count(),
-        },
+        data,
+        envelope_extra=_envelope_com_cracha(autor_id_da_plataforma),
     )
 
 
@@ -220,6 +276,15 @@ def emitir_status_alterado(
         "status_anterior": status_anterior,
         "status_novo": status_novo,
     }
+    # O CRACHÁ DE QUEM ESCREVEU, que é coisa DIFERENTE do `ator_id` do envelope:
+    # ali viaja quem MODEROU, aqui quem vai receber o XP da regra
+    # `sugestao-implementada` (beneficiário `autor_do_alvo`). O
+    # `autor_da_sugestao_id` acima continua LOCAL — o contrato diz isso com
+    # todas as letras, e foi justamente por ele que a gamificação ia creditar
+    # uma Pessoa fantasma. Omitido quando não há, nunca `null`.
+    alvo = _cracha_da_plataforma(sugestao.autor)
+    if alvo:
+        data["autor_da_sugestao_id_da_plataforma"] = alvo
     if nota:
         data["nota"] = nota
     # `ator_id` vai no ENVELOPE, não no `data`: qualquer célula lê "quem fez

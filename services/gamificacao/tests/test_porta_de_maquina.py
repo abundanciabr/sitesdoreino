@@ -504,17 +504,17 @@ def test_sem_env_da_identidade_a_porta_fecha_em_visitante_e_nao_derruba(monkeypa
 # ---------------------------------------------------------------------------
 # A porta é fechada por padrão — e o Bearer é o ÚNICO cadeado
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("caminho", ["/perfis?ids=p_a", "/eu"])
+@pytest.mark.parametrize("caminho", ["/perfis?ids=p_a", "/eu", "/economia/regras"])
 def test_sem_token_e_401_em_toda_operacao(caminho):
     assert pedir(caminho, token=None).status_code == 401
 
 
-@pytest.mark.parametrize("caminho", ["/perfis?ids=p_a", "/eu"])
+@pytest.mark.parametrize("caminho", ["/perfis?ids=p_a", "/eu", "/economia/regras"])
 def test_token_errado_e_401_em_toda_operacao(caminho):
     assert pedir(caminho, token="token-de-outra-pessoa").status_code == 401
 
 
-@pytest.mark.parametrize("caminho", ["/perfis?ids=p_a", "/eu"])
+@pytest.mark.parametrize("caminho", ["/perfis?ids=p_a", "/eu", "/economia/regras"])
 def test_conjunto_de_tokens_vazio_recusa_todo_mundo(settings, caminho):
     """Env ausente ⇒ conjunto vazio ⇒ ninguém entra. Fail-closed por construção.
 
@@ -525,6 +525,45 @@ def test_conjunto_de_tokens_vazio_recusa_todo_mundo(settings, caminho):
     """
     settings.TOKENS_ACEITOS = set()
     assert pedir(caminho).status_code == 401
+
+
+def postar(caminho: str, token: str | None = TOKEN, corpo_json: dict | None = None):
+    """Uma chamada de ESCRITA à porta. O `pedir` acima só faz GET.
+
+    Existe porque `setEconomySwitch` é POST, e uma operação de escrita sem
+    cadeado seria a mais cara das quatro para deixar passar: ela LIGA a economia
+    da escola. O guarda de 401 do arquivo cobria só as operações de leitura
+    enquanto a porta só lia.
+    """
+    cabecalhos = {}
+    if token:
+        cabecalhos["HTTP_AUTHORIZATION"] = f"Bearer {token}"
+    return Client().post(
+        f"{BASE}{caminho}",
+        data=json.dumps(corpo_json or {"ativa": True}),
+        content_type="application/json",
+        **cabecalhos,
+    )
+
+
+@pytest.mark.parametrize(
+    "token", [None, "token-de-outra-pessoa"], ids=["sem-token", "token-errado"]
+)
+def test_ligar_uma_regra_sem_credencial_e_401(token):
+    """A operação que LIGA a economia é a que mais precisa do cadeado.
+
+    Ela é alcançável pela internet em `meshcraft.top/conquistas/api/…` (esta
+    célula roda sob `SCRIPT_NAME` e o corte do prefixo é do Django, não do
+    Traefik — `armadilhas/186`), e não há segunda camada por baixo: quem fecha é
+    o Bearer, e só ele.
+    """
+    assert postar("/economia/regras/sugestao-criada", token=token).status_code == 401
+
+
+def test_conjunto_de_tokens_vazio_tambem_recusa_a_escrita(settings):
+    """Env ausente ⇒ conjunto vazio ⇒ ninguém liga nada. Fail-closed."""
+    settings.TOKENS_ACEITOS = frozenset()
+    assert postar("/economia/regras/sugestao-criada").status_code == 401
 
 
 def test_a_porta_responde_no_endereco_do_CONTRATO_e_nao_no_da_genese():

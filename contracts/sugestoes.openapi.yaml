@@ -194,6 +194,42 @@ paths:
             schema:
               $ref: '#/components/schemas/ChangeSpecEscrito'
         required: true
+  /gestao/ideias/{sugestao_id}/texto:
+    post:
+      operationId: fixIdeaText
+      summary: Corrige o nome e o texto da ideia — o aluno não vê marca nenhuma
+      parameters:
+      - in: path
+        name: sugestao_id
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IdeiaEmGestao'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+      description: '`DECISAO-corrigir-o-texto-de-uma-ideia.md` (31/08/2026): existe para o erro de digitação do aluno,
+        e a correção é CALADA — nenhuma marca na página que ele lê. O rastro fica inteiro do lado da equipe: cada
+        campo alterado vira uma linha append-only com o texto anterior, o texto novo e quem corrigiu, e volta em `correcoes`
+        na ideia individual. As mesmas réguas de quando o aluno escreveu (nome obrigatório e de até 140 caracteres,
+        problema obrigatório). Recusa 422 se a ideia foi apagada definitivamente, se uma régua não passa, ou se o
+        texto enviado é igual ao que já estava lá — este último para um formulário salvo sem alteração não responder
+        “corrigido” tendo gravado nada.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextoCorrigido'
+        required: true
   /gestao/ideias/{sugestao_id}/arquivar:
     post:
       operationId: archiveIdea
@@ -523,6 +559,10 @@ components:
           items:
             $ref: '#/components/schemas/ChangeSpecAssinado'
           type: array
+        correcoes:
+          items:
+            $ref: '#/components/schemas/LinhaDaCorrecao'
+          type: array
       required:
       - id
       - titulo
@@ -614,6 +654,38 @@ components:
       - aprovado_em
       - registrado_por
       - registrado_em
+      type: object
+    LinhaDaCorrecao:
+      description: 'Uma correção de texto, como ela ficou registrada — append-only na origem.
+    
+    
+        Só a EQUIPE vê isto. A correção é calada para o aluno (decisão do mantenedor
+    
+        em 31/08/2026), e calada só é aceitável porque o que estava escrito antes
+    
+        fica guardado inteiro em algum lugar, e este é o lugar.
+    
+    
+        `por` é o nome exibido de quem corrigiu, nunca o e-mail: a mesma regra do
+    
+        histórico de fases.'
+      properties:
+        quando:
+          type: string
+        campo:
+          type: string
+        antes:
+          type: string
+        depois:
+          type: string
+        por:
+          type: string
+      required:
+      - quando
+      - campo
+      - antes
+      - depois
+      - por
       type: object
     Recusa:
       description: Uma recusa que ENSINA o caminho — a frase é a mesma que a tela dizia.
@@ -711,6 +783,54 @@ components:
           type: string
       required:
       - por_email
+      type: object
+    TextoCorrigido:
+      description: 'O texto inteiro como ele deve ficar, não só o pedaço que mudou.
+    
+    
+        Os três campos viajam SEMPRE, com o valor final de cada um — inclusive os
+    
+        que não mudaram. É o que a tela tem na mão (um formulário preenchido com o
+    
+        texto atual), e é o que torna a operação idempotente: reenviar o mesmo corpo
+    
+        duas vezes não cria uma segunda correção, porque a segunda não muda nada e a
+    
+        Caixa a recusa dizendo isso.
+    
+    
+        A alternativa — mandar só os campos alterados — obrigaria a distinguir "não
+    
+        mandei este campo" de "mandei este campo vazio", que num JSON são a mesma
+    
+        ausência para quem não declara `null` explicitamente. Apagar a solução
+    
+        proposta é uma correção legítima, e ela não pode depender dessa sutileza.
+    
+    
+        `solucao_proposta` é a única com default: ela é opcional na ideia desde
+    
+        sempre, e omiti-la significa "esta ideia não tem solução proposta".'
+      properties:
+        por_email:
+          type: string
+        por_nome:
+          default: ''
+          type: string
+        por_id_da_plataforma:
+          default: ''
+          type: string
+        titulo:
+          type: string
+        problema:
+          type: string
+        solucao_proposta:
+          default: ''
+          type: string
+      required:
+      - por_email
+      - titulo
+      - problema
       type: object
     QuemAge:
       description: 'Quem está agindo, vindo do Admin.

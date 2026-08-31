@@ -117,17 +117,36 @@ def pontos_com_teto(regra: RegraDePontuacao, ja_feitas_hoje: int) -> int:
 def _pessoa_do_credito(regra: RegraDePontuacao, envelope: dict) -> str | None:
     """De quem é o ponto: de quem AGIU, ou de quem escreveu o que foi votado.
 
-    Os dois nomes de campo mudam por assunto, e é o CONTRATO de cada evento que
-    manda. Nada aqui adivinha: campo ausente devolve `None`, e o crédito
-    simplesmente não acontece, com o motivo no log. Inventar um dono para um
-    ponto é pior que não pagá-lo.
+    **SÓ ID DE PLATAFORMA ENTRA AQUI, e é por isso que não há mais atalho.**
+    Esta função tinha, até 31/08/2026, dois `or` que pareciam tolerância e eram
+    um bug silencioso: `data.autor_id` e `data.autor_da_sugestao_id` são ids
+    OPACOS LOCAIS DA CÉLULA `sugestoes` — o contrato de cada um dos três eventos
+    diz isso com todas as letras ("id opaco da identidade DENTRO da celula
+    sugestoes"), e a própria Caixa guarda os dois lado a lado ([INV-SUG11]:
+    `Identidade.id` local e `Identidade.id_da_plataforma`), cunhados
+    separadamente.
+
+    `Pessoa` desta célula é chaveada por `id_da_plataforma`, e é esse o id que
+    `apps/core/sessao.py::quem_e` devolve para a tela do aluno. Creditar o id
+    local criava uma `Pessoa` FANTASMA: o ledger enchia, nada estourava, e o
+    número na tela de quem trabalhou continuava zero. Nenhum teste pegava,
+    porque os testes montavam um envelope com `ator_id` — que os contratos de
+    `sugestao.criada.v1` e `sugestao.voto-adicionado.v1` nem permitiam
+    (`additionalProperties: false`).
+
+    **Ausente devolve `None` e o crédito não acontece**, com o motivo no log. É
+    fail-closed de propósito, e tem de ser: o `id_da_plataforma` é `null=True`
+    na Caixa por decisão dela ("nada disto pode recusar ninguém"), então o campo
+    é OPCIONAL no contrato e um dia vai faltar. Não pagar é recuperável — o
+    evento fica no log e a regra pode ser reprocessada. Pagar ao fantasma não é:
+    ninguém descobre olhando a tela.
     """
     data = envelope.get("data") or {}
     if regra.beneficiario == RegraDePontuacao.Beneficiario.ATOR:
-        # O `ator_id` do ENVELOPE é o lugar canônico desde o Rito de 26/08/2026;
-        # os assuntos mais antigos ainda o trazem dentro do `data`.
-        return envelope.get("ator_id") or data.get("autor_id")
-    return data.get("autor_da_sugestao_id") or data.get("autor_id")
+        # O `ator_id` do ENVELOPE é o lugar canônico do id de plataforma desde o
+        # Rito de 26/08/2026 (PLANO-MESTRE das notificações §2).
+        return envelope.get("ator_id") or None
+    return data.get("autor_da_sugestao_id_da_plataforma") or None
 
 
 def creditos_de(envelope: dict, site_id: str) -> list[Credito]:
@@ -138,11 +157,23 @@ def creditos_de(envelope: dict, site_id: str) -> list[Credito]:
     diferentes, com tetos diferentes.
     """
     chave = chave_do_evento(envelope)
+    quando = _quando(envelope)
+    # NUNCA RETROATIVO (lei §10.5), e agora com mecanismo. Ligar uma regra hoje
+    # não pode pagar o que aconteceu ontem: o `vigente_desde__lte` compara o
+    # instante do FATO (`occurred_at`, não o da entrega) com a data em que a
+    # regra passou a valer. Sem esta linha, um evento reentregue — ou uma fila
+    # represada, ou um `XAUTOCLAIM` do lote de reentrega — pagaria semanas de
+    # passado no segundo em que o mantenedor clicasse em "ligar", e o aluno
+    # veria um número saltar sem ter feito nada.
     regras = RegraDePontuacao.objects.filter(
-        site_id=site_id, evento_gatilho=chave, ativa=True
+        site_id=site_id,
+        evento_gatilho=chave,
+        ativa=True,
+        vigente_desde__isnull=False,
+        vigente_desde__lte=quando,
     )
 
-    dia = dia_local_de(_quando(envelope))
+    dia = dia_local_de(quando)
     creditos = []
     for regra in regras:
         pessoa_id = _pessoa_do_credito(regra, envelope)

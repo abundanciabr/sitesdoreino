@@ -18,6 +18,7 @@ evento pode chegar por caminhos que a primeira não cobre.
 """
 
 import uuid
+from datetime import timedelta
 
 import pytest
 from django.utils import timezone
@@ -43,6 +44,9 @@ def _regra() -> RegraDePontuacao:
         beneficiario=RegraDePontuacao.Beneficiario.ATOR,
         pontos=10,
         ativa=True,
+        # Ligada E vigente: o banco recusa regra ligada sem data, e o motor só
+        # paga fato posterior a ela (lei §10.5, "nunca retroativo").
+        vigente_desde=timezone.now() - timedelta(days=365),
     )
 
 
@@ -109,6 +113,7 @@ def test_o_quiz_nao_credita_ninguem_e_isso_e_deliberado():
         beneficiario=RegraDePontuacao.Beneficiario.ATOR,
         pontos=30,
         ativa=True,
+        vigente_desde=timezone.now() - timedelta(days=365),
     )
     envelope = {
         "event": "quiz.completado",
