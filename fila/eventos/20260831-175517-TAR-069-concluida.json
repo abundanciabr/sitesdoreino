@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-175517-TAR-069-concluida",
+  "tarefa": "TAR-069",
+  "evento": "concluida",
+  "quando": "2026-08-31T17:55:17+00:00",
+  "quem": "sessao-menu-do-topo-2026-08-31",
+  "evidencia": "ENTREGUE E MEDIDO NA INTERNET PUBLICA. Escada de 5 degraus, todos MERGEADOS: contrato #704, catalogo #714, funil #710, admin #713, forum #722 (mergeCommit 323f43ba); mais #718 (molde nao vira link), #725 e #726 (licoes das celulas). Deploys lidos por gh run view --json: catalogo run 33418134374 completed/success, funil run 33418368555 completed/success. PROVA DE FORA, depois do deploy: / responde 200 com 'Inicio Forum Cadastro'; /es/ 200 com 'Inicio Foro Registro'; /en/ 200 com 'Home Forum Sign up'; /cadastro 200 com menu; /login 200 SEM MENU (o pedido do mantenedor gravado no dado); /pt-br/ 404 (idioma padrao na raiz nua, D1). O R12 provado no HTML: em espanhol o link do cadastro vira /es/cadastro e o do forum continua /forum/, porque /es/forum seria 404. Tela de configuracao /admin/menu/ responde 302 para o login (o cracha vem antes). Registros no livro: 20260831-033, -036 (pendencia do passo do mantenedor) e -053. Aprendizado: armadilhas/243, services/catalogo/LICOES.md e services/funil/LICOES.md.",
+  "verificado_em": "2026-08-31"
+}
