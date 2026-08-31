@@ -393,19 +393,51 @@ e quase toda falsa, e medir a coisa errada com precisão é como um portão morr
 e a área pública de documentos (`/docs/…`, isenta na porta) moram nela e
 continuam sob a regra.
 
-**Onde a regra alcança o código:** a pasta `management/commands/` inteira, de
-toda célula. É de lá que sai conteúdo que o visitante lê — o nome e a descrição
-de uma área do fórum, as categorias da Caixa. Só as constantes de string contam;
-docstring e comentário, não.
+**Onde a regra alcança o código:** três lugares, e os dois últimos entraram em
+31/08/2026 (TAR-087, `armadilhas/254`, com mandato do mantenedor porque `ci/` é
+caminho CODEOWNERS). Em todos, só as constantes de string contam; docstring e
+comentário, não.
 
-A fronteira já foi estreita demais uma vez, e quem achou o buraco foi o
-mantenedor olhando o site: ela era `semear_*.py`, e `seed_sugestoes.py` escapava
-pelo NOME do arquivo. Régua que depende de alguém escolher o prefixo certo não é
-régua.
+1. **A pasta `management/commands/` inteira, de toda célula.** É de lá que sai
+   conteúdo que o visitante lê: o nome e a descrição de uma área do fórum, as
+   categorias da Caixa.
+2. **O RÓTULO de todo `TextChoices`, em qualquer arquivo de célula.** Entra
+   sozinho, sem marca e sem lista. Uma linha dessas tem duas metades, e só a
+   segunda é interface:
+
+   ```python
+   EM_ANALISE = "em_analise", "Em análise"
+   #            ^ contrato       ^ o que a pessoa lê no selo
+   ```
+
+   A primeira viaja em contrato congelado, migration e banco, e trocá-la é um
+   Rito; a segunda sai em `{{ objeto.get_status_display }}` e nunca esteve sob
+   régua nenhuma até esta data. Só o rótulo é medido. `migrations/` fica de
+   fora: o rótulo lá é fotografia do modelo naquele dia, não a frase viva.
+3. **Qualquer arquivo que se declare**, com o comentário `ci:texto-publicado` em
+   qualquer linha dele. Aí o arquivo INTEIRO é medido, pela mesma peneira dos
+   comandos. É para a cópia de site que não cabe em `Choices`: um dicionário de
+   frases escrito para o aluno, como o `EXPLICACAO_DAS_ETAPAS` da Caixa.
+
+**A terceira é opt-in, e a fraqueza está dita na cara:** quem esquecer a marca
+fica de fora. Não existe forma mecânica barata para essa classe. Medido em
+31/08/2026, varrer toda constante MAIÚSCULA de módulo nas células públicas daria
+2758 strings e 94 travessões, quase todos em mensagem de erro que só um
+programador lê, e vários no próprio painel de travessões do Admin, que lista as
+riscas como DADO. Medir a coisa errada com precisão é como um portão morre. O
+que segura a lei é a segunda regra não depender de marca nenhuma, e ela é o caso
+comum.
+
+A fronteira já foi estreita demais duas vezes, e nas duas quem achou o buraco
+foi o mantenedor olhando o site. Na primeira ela era `semear_*.py`, e
+`seed_sugestoes.py` escapava pelo NOME do arquivo. Na segunda ela era só
+`templates/`, e os seis rótulos de `Sugestao.Status` viviam em `models.py`, fora
+de tudo. Régua que depende de alguém escolher o prefixo certo, ou de o texto
+estar na pasta que alguém imaginou, não é régua.
 
 **O limite que fica, e é o mais importante desta lei:** o portão vigia
 ARQUIVOS. **Texto que já está gravado no banco ele não vê, e nunca verá.**
-Corrigir um semeador NÃO corrige a linha que ele criou — `semear_areas` é
+Corrigir um semeador NÃO corrige a linha que ele criou, porque `semear_areas` é
 `get_or_create` e de propósito não altera o que existe. Foi assim que um
 travessão sobreviveu no fórum a uma varredura que se declarou completa: o
 mantenedor o viu no site depois de eu reportar tudo limpo (registro
@@ -413,6 +445,10 @@ mantenedor o viu no site depois de eu reportar tudo limpo (registro
 foi semeado em produção** — e, se foi, o conserto é uma migração de dados que
 casa o texto antigo inteiro (molde em `forum/migrations/0003`). O teste não
 avisa: ele roda em banco vazio, onde o `UPDATE` não encontra linha nenhuma.
+
+O rótulo de `TextChoices` NÃO tem esse problema, e a diferença vale saber: o
+banco guarda o VALOR (`em_analise`), e o rótulo é montado na hora de desenhar a
+tela. Corrigir o rótulo conserta o site na mesma hora, sem migração de dados.
 
 Fica de fora também `painel/ia/`, que sai em `/mapa-ia/` sem porta: é mapa
 técnico para uma IA de fora auditar o sistema, e a régua do mantenedor é a
