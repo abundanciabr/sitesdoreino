@@ -62,12 +62,14 @@ com o número certo.
 Sua situação pode mudar, e cada uma delas quer dizer uma coisa diferente:
 
 - **Aluno**: você entra normalmente.
-- **Reembolsado**: você devolveu o dinheiro e **continua entrando**. Foi uma
-  decisão da escola: quem já foi aluno mantém a voz na Caixa de Sugestões.
 - **Pausado**: o acesso está desligado por enquanto, e **volta sozinho** quando
   a equipe religar. Você não precisa fazer nada, e não há o que pedir.
 - **Ex-aluno**: o acesso acabou. Sua ficha continua guardada, e **se você quiser
   voltar, é só pedir de novo** (o mesmo formulário do começo).
+- **Reembolsado**: o dinheiro da sua compra foi devolvido, e a matrícula foi
+  desfeita junto. **Você não entra mais**, nem no curso nem na Caixa de
+  Sugestões. Sua ficha continua guardada, mas aqui não há o botão de pedir de
+  novo: se quiser voltar a estudar, fale com a escola ou faça uma nova compra.
 
 ## O que a escola guarda sobre você
 
