@@ -26,14 +26,28 @@ compara os bytes).
     body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
     .wrap { width: 100%; max-width: 32rem; margin: 0 auto; padding: 1rem; }
     .card { background: #fff; border-radius: .75rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
-    {% block estilo %}{% endblock %}
+    {% block estilo %}{% endblock %}{% if rodape %}
+    {% comment %}
+    O RODAPÉ (apps/core/rodape.py). Este estilo nasce dentro da condicional
+    de propósito: solto, os bytes dele entrariam também na saída dos
+    domínios monolíngues, que o golden da fase 1 do i18n compara byte a
+    byte. Quem decide se há rodapé é o processador de contexto.
+    {% endcomment %}
+    .rodape { margin-top: 2rem; padding: 1.25rem 0 .5rem; border-top: 1px solid #e4e4e7; font-size: .875rem; color: #52525b; text-align: center; }
+    .rodape .marca { margin: 0 0 .25rem; font-weight: 600; color: #1a1a1a; }
+    .rodape .descricao { margin: 0 0 1rem; }
+    .rodape .links { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem 1rem; margin: 0 0 1rem; }
+    .rodape .links a { color: #52525b; text-decoration: none; }
+    .rodape .links a:hover, .rodape .links a:focus { text-decoration: underline; }
+    .rodape .direitos { margin: 0; opacity: .8; }{% endif %}
   </style>
   {% block head_extra %}{% endblock %}
 </head>
 <body>
   <div class="wrap">{% if request.i18n_seo %}
     <nav class="idiomas" translate="no">{% for opcao in request.i18n_seo.seletor %}{% if not forloop.first %} · {% endif %}<a href="{{ opcao.href }}" hreflang="{{ opcao.tag }}" lang="{{ opcao.tag }}">{{ opcao.codigo }}</a>{% endfor %}</nav>{% endif %}
-    {% block conteudo %}{% endblock %}
+    {% block conteudo %}{% endblock %}{% if rodape %}
+    {% include "funil/_rodape.html" %}{% endif %}
   </div>
   {% block script_extra %}{% endblock %}
 </body>

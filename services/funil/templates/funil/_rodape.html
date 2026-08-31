@@ -1,0 +1,28 @@
+{% load t %}{% load url_i18n %}{% comment %}
+templates/funil/_rodape.html [RECEITA:R12 v1] — o rodapé, desenhado UMA vez e
+mostrado em toda página do site (`base_mobile.html` inclui; `apps/core/rodape.py`
+decide qual). Pedido do mantenedor em 31/08/2026.
+
+Ele NÃO decide nada: os blocos que aparecem vêm prontos no `rodape`, e é por
+isso que a etapa 2 (o mantenedor trocando os textos no painel) não vai precisar
+mexer neste arquivo. Quem escolhe está em `apps/core/rodape.py`.
+
+Em COMENTÁRIO de template, a tag de URL crua do Django é citada pelo NOME e
+nunca escrita: o lint do validador varre o arquivo inteiro por expressão
+regular e reprovaria o comentário como se fosse código.
+
+Os dois links de FORA (o fórum e a biblioteca) saem de variável, sem prefixo de
+idioma, porque são de outras células e monolíngues; prefixá-los responderia 404
+no gateway (guarda 3 do D6). Os dois links de DENTRO saem de `url_i18n`, que é
+o único jeito de o link continuar no idioma em que a pessoa está.
+{% endcomment %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+  <p class="marca">{% t "rodape.marca" %}</p>
+  <p class="descricao">{% t "rodape.descricao" %}</p>{% endif %}{% if rodape.mostra_links %}
+  <nav class="links" aria-label="{% t 'rodape.aria_links' %}">
+    <a href="{% url_i18n 'landing' %}">{% t "rodape.link_inicio" %}</a>
+    <a href="{% url_i18n 'cadastro' %}">{% t "rodape.link_cadastro" %}</a>
+    <a href="{{ rodape.url_do_forum }}">{% t "rodape.link_forum" %}</a>
+    <a href="{{ rodape.url_dos_documentos }}">{% t "rodape.link_documentos" %}</a>
+  </nav>{% endif %}{% if rodape.mostra_direitos %}
+  <p class="direitos">{% t "rodape.direitos" ano=rodape.ano %}</p>{% endif %}
+</footer>
