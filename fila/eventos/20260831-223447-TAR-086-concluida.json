@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-223447-TAR-086-concluida",
+  "tarefa": "TAR-086",
+  "evento": "concluida",
+  "quando": "2026-08-31T22:34:47+00:00",
+  "quem": "sessao-sugestoes-20260831",
+  "evidencia": "PR https://github.com/abundanciabr/sitesdoreino/pull/782 mergeado (commit 8538296d). deploy-celula run 33446494887, sha 8538296db: status completed, conclusion success (gh run view --json, nao por pipe). Conferido de FORA, no site publicado: a folha https://meshcraft.top/forms/sugestoes/static/sugestoes/caixa.css traz 8 ocorrencias das classes novas da legenda, e https://meshcraft.top/forms/sugestoes/ continua respondendo 302 para /entrar (o quadro segue exigindo login, como deve).",
+  "verificado_em": "2026-08-31"
+}
