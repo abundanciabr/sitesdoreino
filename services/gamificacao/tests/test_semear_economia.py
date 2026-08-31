@@ -116,20 +116,17 @@ def test_nenhum_marco_semeado_paga_xp():
 
 
 @pytest.mark.django_db
-def test_todo_marco_de_dinheiro_e_13mais_e_so_adulto_valida():
+def test_todo_marco_de_dinheiro_semeado_so_a_equipe_valida():
     """Lei §9, conferida nos DADOS semeados e não só no esquema."""
     _semear()
 
     frouxos = list(
         ConquistaDefinicao.objects.filter(envolve_dinheiro=True)
-        .exclude(
-            faixa_etaria=ConquistaDefinicao.FaixaEtaria.TREZE_MAIS,
-            exige_validador_adulto=True,
-        )
+        .exclude(exige_validador_da_equipe=True)
         .values_list("slug", flat=True)
     )
 
-    assert frouxos == [], f"marco de dinheiro sem as duas travas: {frouxos}"
+    assert frouxos == [], f"marco de dinheiro sem a trava: {frouxos}"
     assert ConquistaDefinicao.objects.filter(envolve_dinheiro=True).count() >= 1, (
         "nenhum marco de dinheiro foi semeado — a trava acima passou a ser "
         "vácuo, e um teste que não vê nada não prova nada"

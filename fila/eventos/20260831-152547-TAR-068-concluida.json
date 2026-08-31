@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-152547-TAR-068-concluida",
+  "tarefa": "TAR-068",
+  "evento": "concluida",
+  "quando": "2026-08-31T15:25:47+00:00",
+  "quem": "sessao-gamificacao-3108",
+  "evidencia": "PR #698: migracao 0002_escola_18_mais (remove PerfilJogador.modo e ConquistaDefinicao.faixa_etaria, renomeia exige_validador_adulto para exige_validador_da_equipe, troca a CheckConstraint). 96 testes verdes na celula, black limpo, contrato IDENTICO ao congelado (263 linhas), 13 muralhas PASS. Prova vermelho->verde: reintroduzido o campo de modo no modelo E na migracao, o guarda reprova com 'voltou um campo de modo por idade ao PerfilJogador'. Varredura por junior/13 anos/menor/crianca na celula: so restam as mencoes que EXPLICAM a remocao, mais a frase presa no contrato congelado, declarada como divida para o proximo Rito de Contrato.",
+  "verificado_em": "2026-08-31"
+}

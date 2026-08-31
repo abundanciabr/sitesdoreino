@@ -126,9 +126,9 @@ class Pessoa(models.Model):
 
     Guardar mais que isto violaria a Lei 2: dado de outra célula copiado sem
     necessidade vira uma segunda verdade que ninguém mantém. Em particular, aqui
-    **não** entram idade, data de nascimento nem nome real — o `modo` júnior do
-    `PerfilJogador` é a única consequência que esta célula precisa conhecer, e
-    ela chega como decisão já tomada, não como dado de menor copiado.
+    **não** entram idade, data de nascimento nem nome real: a escola é 18+ (lei
+    §9, emendada em 30/08/2026) e nenhuma regra desta célula depende de saber
+    quantos anos alguém tem.
     """
 
     # O id OPACO da plataforma, como a `identidade` o devolve. É a chave de
@@ -150,7 +150,7 @@ class Pessoa(models.Model):
 
 
 class PerfilJogador(models.Model):
-    """O estado do aluno num site: XP, nível, saldo, modo e o que falta comemorar.
+    """O estado do aluno num site: XP, nível, saldo e o que falta comemorar.
 
     **Os três números são DESNORMALIZADOS do ledger**, e isso é decisão, não
     atalho: a Base em `/conquistas` mostra nível e barra em toda visita, e somar
@@ -158,11 +158,19 @@ class PerfilJogador(models.Model):
     quando a escola cresce. A fonte da verdade continua sendo `LancamentoDeXP` e
     `MovimentoDeCristais`; o comando `reconciliar_perfis` (PR 8 da escada) é o
     que prova, de fora, que a cópia não mentiu.
-    """
 
-    class Modo(models.TextChoices):
-        JUNIOR = "junior", "Júnior (abaixo de 13 anos)"
-        TEEN = "teen", "13 anos ou mais"
+    **Não há campo de MODO por idade, e a ausência é decisão registrada.** Este
+    modelo nasceu em 30/08/2026 com um `modo` de duas faixas (júnior abaixo de
+    13 anos, teen acima), porque a lei da célula previa Modo Júnior como trava
+    de sistema. No mesmo dia o mantenedor declarou que a escola é 18+ e o §9 da
+    `DECISAO-gamificacao.md` foi emendado: *"Não há Modo Júnior, não há faixa
+    etária de 13 anos (…) e nenhum desenho novo deve assumir criança no
+    sistema."* O campo saiu na migração `0002`, com o banco ainda vazio.
+
+    Se a escola um dia admitir menores, o caminho é o que a lei escreve: a trava
+    volta ao §9 ANTES de a funcionalidade que a exige ser ligada — e este
+    docstring é onde o próximo a ler descobre que ela já existiu.
+    """
 
     pessoa = models.ForeignKey(Pessoa, related_name="perfis", on_delete=models.PROTECT)
     site_id = id_do_site()
@@ -171,13 +179,11 @@ class PerfilJogador(models.Model):
     nivel = models.PositiveSmallIntegerField(default=1)
     cristais_saldo = models.PositiveIntegerField(default=0)
 
-    # O DEFAULT É O LADO PROTEGIDO. Modo Júnior é trava de sistema abaixo de 13
-    # anos (lei §9), e um perfil que nascesse `teen` por omissão daria ao menor
-    # tudo o que o modo existe para não dar. Fail-closed é o júnior.
-    modo = models.CharField(max_length=6, choices=Modo.choices, default=Modo.JUNIOR)
     modo_foco = models.BooleanField(default=False)
-    # Opt-in, e o default fechado vale duas vezes: abaixo de 13 anos a liga fica
-    # desligada por TRAVA, não por preferência (lei §9).
+    # Opt-in, e o default fechado continua sendo o certo depois da emenda de
+    # 30/08/2026: a razão deixou de ser trava por idade e passou a ser a que a
+    # lei §9 dá para o Meu Estúdio, *"privacidade é de adulto também"*. Liga é
+    # exposição entre pares; ninguém entra nela por omissão.
     participa_de_ligas = models.BooleanField(default=False)
 
     # A CELEBRAÇÃO VISCERAL MORA AQUI, E NÃO NA SESSÃO.
@@ -369,10 +375,23 @@ class ConquistaDefinicao(models.Model):
     viraria mais um item do andaime, e o aluno aprenderia a perseguir o número
     em vez da coisa. O banco recusa a linha; não é convenção.
 
-    **`marco_de_dinheiro_e_13mais_e_so_adulto_valida`** é o §9 da lei virando
-    restrição: marco que envolve dinheiro é faixa 13+, e é SEMPRE adulto da
-    equipe quem valida, com a evidência em camada privada. Duas travas que uma
-    tela de administração futura não consegue afrouxar por engano.
+    **`marco_de_dinheiro_so_a_equipe_valida`** é o §9 da lei virando restrição:
+    marco que envolve dinheiro é SEMPRE validado por alguém da equipe, com a
+    evidência em camada privada. Trava que uma tela de administração futura não
+    consegue afrouxar por engano.
+
+    **Ela já teve uma faixa etária dentro, e perdê-la foi decisão.** Até
+    30/08/2026 a restrição se chamava `marco_de_dinheiro_e_13mais_e_so_adulto_valida`
+    e exigia também `faixa_etaria="13mais"`. O mantenedor declarou que a escola é
+    18+ e o §9 foi emendado; a metade etária virou tautologia (numa escola só de
+    adultos, "13 anos ou mais" não separa ninguém de ninguém) e saiu na migração
+    `0002`. A metade que ficou mudou de RAZÃO, não de força: era proteção de
+    menor, agora é qualidade e confiança no que a escola afirma.
+
+    É por isso que o campo se chama `exige_validador_da_equipe` e não
+    `..._adulto`: aqui todo mundo é adulto, inclusive o aluno. O que a trava
+    separa é AUTORIDADE — `validador_papel` aceita `par`, e um par não fecha
+    marco de dinheiro.
     """
 
     class Classe(models.TextChoices):
@@ -387,10 +406,6 @@ class ConquistaDefinicao(models.Model):
         CARREIRA = "carreira", "Carreira"
         ESPELHO = "espelho", "Espelho (a própria evolução)"
 
-    class FaixaEtaria(models.TextChoices):
-        TODAS = "todas", "Todas as idades"
-        TREZE_MAIS = "13mais", "13 anos ou mais"
-
     slug = models.SlugField(max_length=60)
     site_id = id_do_site()
     nome = models.CharField(max_length=120)
@@ -400,11 +415,8 @@ class ConquistaDefinicao(models.Model):
     # Vocabulário FECHADO (`CRITERIOS_ACEITOS`), conferido no `save()`. Não é
     # DSL, e a diferença é o critério de morte nº 1 da lei.
     criterio = models.JSONField(default=dict, blank=True)
-    faixa_etaria = models.CharField(
-        max_length=6, choices=FaixaEtaria.choices, default=FaixaEtaria.TODAS
-    )
     envolve_dinheiro = models.BooleanField(default=False)
-    exige_validador_adulto = models.BooleanField(default=False)
+    exige_validador_da_equipe = models.BooleanField(default=False)
     secreta = models.BooleanField(default=False)
     pontos = models.PositiveIntegerField(default=0)
     cristais = models.PositiveIntegerField(default=0)
@@ -423,8 +435,8 @@ class ConquistaDefinicao(models.Model):
             ),
             models.CheckConstraint(
                 condition=~models.Q(envolve_dinheiro=True)
-                | models.Q(faixa_etaria="13mais", exige_validador_adulto=True),
-                name="marco_de_dinheiro_e_13mais_e_so_adulto_valida",
+                | models.Q(exige_validador_da_equipe=True),
+                name="marco_de_dinheiro_so_a_equipe_valida",
             ),
         ]
 
@@ -461,7 +473,7 @@ class LigaDefinicao(models.Model):
     inserir `diamante` é recusado, venha de onde vier.
 
     **SEM REBAIXAMENTO, e por isso não existe campo para ele.** O limiar de
-    promoção é ABSOLUTO (não é "os 3 primeiros sobem"): a criança compete com um
+    promoção é ABSOLUTO (não é "os 3 primeiros sobem"): o aluno compete com um
     número, não com os colegas — e ninguém desce por ter tido uma semana ruim.
     """
 
@@ -517,7 +529,7 @@ class ItemCosmetico(models.Model):
 
     **O ESCUDO NÃO É ITEM DE LOJA** (decisão fechada 7 da Sessão A). Ele é 1 por
     mês, automático e grátis, e mora em `Sequencia.escudos`. Vender proteção de
-    sequência é a mecânica que transforma a criança em cliente ansioso, e ela
+    sequência é a mecânica que transforma um aluno em cliente ansioso, e ela
     está vetada por escrito.
 
     **`custo_em_cristais` não tem irmão em dinheiro**, e o guarda
@@ -767,9 +779,10 @@ class Sequencia(models.Model):
     quatro números nesta linha, e o passado vira `HistoricoDeSequencia`.
 
     **Semana falhada sem escudo REGRIDE UM DEGRAU, nunca zera.** Zerar 30
-    semanas por causa de uma gripe é a mecânica que ensina a criança que o
+    semanas por causa de uma gripe é a mecânica que ensina a pessoa que o
     esforço dela é frágil, e é a que produz o uso compulsivo que o ECA Digital
-    mira. Regredir dói o suficiente para importar e pouco o bastante para não
+    mira (a escola é 18+, e o vício que aquela lei descreve não pede carteira
+    de identidade). Regredir dói o suficiente para importar e pouco o bastante para não
     quebrar ninguém.
 
     **O escudo é 1 por mês, automático e GRÁTIS** (decisão fechada 7 da Sessão
@@ -791,7 +804,9 @@ class Sequencia(models.Model):
     )
     site_id = id_do_site()
     ritmo = models.CharField(max_length=7, choices=Ritmo.choices, default=Ritmo.LEVE)
-    # A meta que o ALUNO escolheu. Abaixo de 13 anos o padrão é 3 (lei §9).
+    # A meta que o ALUNO escolheu. O padrão é 3, e é padrão de gentileza, não de
+    # idade: sequência que começa exigindo cinco dias é sequência que quebra na
+    # primeira semana cheia de quem trabalha.
     meta_dias = models.PositiveSmallIntegerField(default=3)
     dias_ativos_na_semana = models.PositiveSmallIntegerField(default=0)
     # A segunda-feira da semana corrente, em São Paulo.
@@ -897,7 +912,7 @@ class Forja(models.Model):
     **Vale ZERO XP, e não tem onde guardar XP.** É o único medidor do sistema
     que celebra a INSISTÊNCIA, e pagá-lo em pontos ensinaria a inflar o número
     de tentativas. O prêmio é o selo, que vira atributo exibível da obra: a
-    criança mostra que errou treze vezes antes de acertar, e isso é o oposto de
+    pessoa mostra que errou treze vezes antes de acertar, e isso é o oposto de
     esconder o esforço.
 
     **O medidor só cresce** (tentativa, pedido de feedback, revisão), com teto
@@ -939,9 +954,10 @@ class Concessao(models.Model):
     """Esta pessoa tem esta conquista. Com quem validou, e com que permissão de mostrar.
 
     **`consentimento` nasce PRIVADO** (decisão fechada 7 da Sessão A): nada é
-    exposto sem ação explícita do aluno. Abaixo de 13 anos, ir além da turma
-    envolve o responsável. O default fechado é o que impede uma tela nova de
-    publicar conquista de criança por omissão.
+    exposto sem ação explícita do aluno. O default fechado é o que impede uma
+    tela nova de publicar a conquista de alguém por omissão — e continua sendo a
+    regra depois da emenda de 30/08/2026, com a razão que a lei §9 dá por
+    escrito: privacidade é de adulto também.
 
     **`validador_id` + `validador_papel` são a auditoria.** Quando um marco é
     contestado, a pergunta é "quem disse que sim?", e ela precisa ter resposta

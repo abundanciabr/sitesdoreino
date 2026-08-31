@@ -440,10 +440,15 @@ primeira oportunidade de violá-la.
   real, nenhum módulo importa SDK de cobrança, e a proteção de sequência não tem
   tipo de item que a represente — o escudo é 1 por mês, automático e grátis,
   dentro da `Sequencia`.
-- **Por quê:** a escola vende curso para famílias e o público é criança. “Nós não
-  vendemos vantagem” escrito num documento e a mesma frase conferida pelo
-  PostgreSQL são coisas diferentes: documento não sobrevive a seis meses e quatro
-  sessões (`RETROSPECTIVA-FASE-D` §2), restrição de banco sobrevive — e continua
+- **Por quê:** a escola vende formação, e quem paga por ela não pode descobrir
+  depois que o progresso do filho, do colega ou o dele próprio também estava à
+  venda. (Esta justificativa dizia “o público é criança” até 30/08/2026; a escola
+  é 18+ desde a emenda do §9 da `DECISAO-gamificacao.md`, e o invariante não
+  perdeu um grama de força ao perder esse argumento: vender vantagem numa escola
+  de adultos é a mesma traição.) “Nós não vendemos vantagem” escrito num
+  documento e a mesma frase conferida pelo PostgreSQL são coisas diferentes:
+  documento não sobrevive a seis meses e quatro sessões
+  (`RETROSPECTIVA-FASE-D` §2), restrição de banco sobrevive — e continua
   valendo numa madrugada de incidente, com alguém logado no `psql`. Lei:
   `DECISAO-gamificacao.md` §3.1 e §8 (“nenhum item, moeda, proteção ou vantagem se
   compra”). Cristal comprável ou transferível é o critério de morte nº 2 da célula,
