@@ -33,6 +33,34 @@ aconteceu.
     {% if ficha.comprou_em %}<div class="nota">Diz ter comprado em {{ ficha.comprou_em }}</div>{% endif %}
   </div>
 
+  {% comment %}
+  [SENHA] O reset manual de senha (DECISAO-login-por-senha.md §1.4). Para
+  quando a pessoa esquece a senha e fala com você pelo WhatsApp que já
+  deixou no cadastro: confirme quem ela é, clique aqui, e a senha nova
+  aparece abaixo, uma vez, para você copiar e mandar por fora. Este site
+  nunca manda mensagem nenhuma sozinho.
+  {% endcomment %}
+  <div class="cartao">
+    <div class="nota"><b>Entrar com e-mail e senha</b> (segundo jeito de entrar, sem Google)</div>
+    <form method="post" action="{% url 'escola_resetar_senha' %}">
+      {% csrf_token %}
+      <input type="hidden" name="email" value="{{ email }}">
+      <button type="submit">Resetar senha desta pessoa</button>
+    </form>
+    {% if senha_nova %}
+    <p class="aviso">
+      <b>Pronto. A senha nova é:</b> <code>{{ senha_nova }}</code><br>
+      Copie e mande para esta pessoa pelo WhatsApp dela — este site não manda
+      nada sozinho. Esta senha só aparece aqui UMA vez; se você sair desta
+      página, não tem como ver de novo (é só resetar outra vez).
+    </p>
+    {% elif erro_resetar_senha %}
+    <p class="aviso">
+      <b>Não consegui resetar a senha.</b> {{ erro_resetar_senha }}
+    </p>
+    {% endif %}
+  </div>
+
   {% if nao_consigo_perguntar %}
   <p class="aviso">
     <b>Não consegui perguntar sobre esta pessoa agora.</b>
