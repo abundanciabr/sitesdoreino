@@ -1,0 +1,14 @@
+{
+  "arquivo": "083-o-rodape-da-casa-na-caixa-de-sugestoes-no-lugar-do-pe-antigo",
+  "id": "TAR-083",
+  "titulo": "O rodape da casa na Caixa de Sugestoes, no lugar do pe antigo dela",
+  "toca": [
+    "sugestoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "URL do PR mergeado + o rodape visivel nas telas da Caixa",
+  "despacho": "DESPACHO - sugestoes: o rodape da casa na Caixa\nCELULA: sugestoes - WORKTREE: wt-sugestoes-rodape - RECEITAS: R6\n\nCONTEXTO: o rodape da casa entrou no site (PR #705) e no forum (PR #711). O\nmantenedor reparou que ele NAO aparece na Caixa de Sugestoes. A Caixa tem um\nrodape PROPRIO, anterior e diferente (<footer class=\"pe\">, com \"Caixa de\nSugestoes / o que voce pedir, a equipe le\").\n\nMISSAO: por o rodape da casa em toda tela da Caixa, no lugar do pe antigo,\ncopiando o PADRAO das outras duas celulas (Lei 7).\n\nALVOS: services/sugestoes/apps/core, services/sugestoes/static,\nservices/sugestoes/tests, services/sugestoes/config\nSOMENTE-LEITURA: contracts/\nFORA DE ESCOPO: pagamento/checkout; a tela do painel (etapa 2)\nDoD: make ci da celula verde + rodape visivel nas telas da Caixa\nORCAMENTO: <= 15 arquivos",
+  "origem": "o mantenedor reparou a ausencia em 31/08/2026, depois das TAR-070 e TAR-081",
+  "criada_em": "2026-08-31"
+}

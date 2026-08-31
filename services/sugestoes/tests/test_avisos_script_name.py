@@ -28,11 +28,9 @@ from asgiref.sync import async_to_sync
 from django.test import AsyncClient
 from django.urls import clear_script_prefix, reverse, set_script_prefix
 
-PREFIXO = "/forms/sugestoes"
+from tests.conftest import LINK_INTERNO, links_sem_prefixo
 
-# Escrito à mão: é o endereço que o Traefik serve (DECISAO-EVO-01 §2). Um teste
-# que o montasse com o mesmo `reverse()` do código passaria com o prefixo errado.
-LINK_INTERNO = re.compile(r'(?:href|action)="(/[^"]*)"')
+PREFIXO = "/forms/sugestoes"
 
 
 @pytest.fixture
@@ -72,7 +70,7 @@ def test_todo_link_da_pagina_de_avisos_leva_o_prefixo(dentro_sob_prefixo, aviso)
     internos = LINK_INTERNO.findall(corpo)
 
     assert internos, "a página de avisos não tem link interno — nada foi medido"
-    sem_prefixo = [link for link in internos if not link.startswith(f"{PREFIXO}/")]
+    sem_prefixo = links_sem_prefixo(corpo, PREFIXO)
     assert sem_prefixo == [], (
         f"links sem o prefixo público na página de avisos: {sem_prefixo}. "
         "Todo endereço interno sai de {% url %}, nunca escrito à mão."

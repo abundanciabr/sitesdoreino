@@ -34,11 +34,9 @@ from django.urls import clear_script_prefix, reverse, set_script_prefix
 # `AsyncClient` e não tocam o banco (o anônimo é recusado antes de qualquer
 # consulta). Quem precisa de banco recebe a marca pelas fixtures, que já
 # dependem de `db` — é o mesmo desenho do `test_entrada_script_name.py`.
-PREFIXO = "/forms/sugestoes"
+from tests.conftest import LINK_INTERNO, links_sem_prefixo
 
-# Escrito à mão: é o endereço que o Traefik serve (DECISAO-EVO-01 §2). Um teste
-# que o montasse com o mesmo `reverse()` do código passaria com o prefixo errado.
-LINK_INTERNO = re.compile(r'(?:href|action)="(/[^"]*)"')
+PREFIXO = "/forms/sugestoes"
 
 
 @pytest.fixture
@@ -94,7 +92,7 @@ def test_todo_link_do_quadro_leva_o_prefixo(dentro_sob_prefixo, sugestao):
     internos = LINK_INTERNO.findall(corpo)
 
     assert internos, "o quadro não tem nenhum link interno — o guarda não mediu nada"
-    sem_prefixo = [link for link in internos if not link.startswith(f"{PREFIXO}/")]
+    sem_prefixo = links_sem_prefixo(corpo, PREFIXO)
     assert sem_prefixo == [], (
         f"links sem o prefixo público no quadro: {sem_prefixo}. "
         "Todo endereço interno sai de {% url %}, nunca escrito à mão."
@@ -104,11 +102,7 @@ def test_todo_link_do_quadro_leva_o_prefixo(dentro_sob_prefixo, sugestao):
 def test_todo_link_da_pagina_da_sugestao_leva_o_prefixo(dentro_sob_prefixo, sugestao):
     corpo = dentro_sob_prefixo.client.get(f"/sugestoes/{sugestao.id}").content.decode()
 
-    sem_prefixo = [
-        link
-        for link in LINK_INTERNO.findall(corpo)
-        if not link.startswith(f"{PREFIXO}/")
-    ]
+    sem_prefixo = links_sem_prefixo(corpo, PREFIXO)
     assert sem_prefixo == [], f"links sem o prefixo público: {sem_prefixo}"
 
 
@@ -117,11 +111,7 @@ def test_todo_link_do_formulario_de_sugerir_leva_o_prefixo(
 ):
     corpo = dentro_sob_prefixo.client.get("/sugestoes/nova").content.decode()
 
-    sem_prefixo = [
-        link
-        for link in LINK_INTERNO.findall(corpo)
-        if not link.startswith(f"{PREFIXO}/")
-    ]
+    sem_prefixo = links_sem_prefixo(corpo, PREFIXO)
     assert sem_prefixo == [], f"links sem o prefixo público: {sem_prefixo}"
 
 

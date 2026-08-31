@@ -29,11 +29,10 @@ from apps.sugestoes.models import Sugestao
 
 pytestmark = pytest.mark.django_db
 
+from tests.conftest import LINK_INTERNO, links_sem_prefixo
+
 PREFIXO = "/forms/sugestoes"
 
-# Escrito à mão: é o endereço que o Traefik serve (DECISAO-EVO-01 §2). Um teste
-# que o montasse com o mesmo `reverse()` do código passaria com o prefixo errado.
-LINK_INTERNO = re.compile(r'(?:href|action)="(/[^"]*)"')
 MARCO = re.compile(r'<a class="marco" href="([^"]+)"')
 
 
@@ -73,7 +72,7 @@ def test_todo_link_do_quadro_com_a_faixa_leva_o_prefixo(quadro_com_marco, sob_pr
     internos = LINK_INTERNO.findall(corpo)
     assert internos, "o quadro não tem link interno — nada foi medido"
 
-    sem_prefixo = [link for link in internos if not link.startswith(f"{PREFIXO}/")]
+    sem_prefixo = links_sem_prefixo(corpo, PREFIXO)
     assert sem_prefixo == [], (
         f"links sem o prefixo público no quadro: {sem_prefixo}. Todo endereço "
         "interno sai de {% url %}, nunca escrito à mão."

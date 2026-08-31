@@ -959,3 +959,46 @@ def plateia(db):
         return {"votaram": quem_votou, "comentaram": quem_comentou}
 
     return _montar
+
+
+# ---------------------------------------------------------------------------
+# A varredura de prefixo (armadilhas/029 e /081), agora que existem links para
+# FORA desta célula
+# ---------------------------------------------------------------------------
+# Até 31/08/2026 os quatro guardas de `*_script_name.py` tinham cada um a sua
+# cópia desta regra, e todos partiam de uma premissa que era verdade na época:
+# **todo link que começa com `/` é desta célula**, logo tem de levar o prefixo
+# público. O rodapé da casa quebrou a premissa — ele leva, de propósito, três
+# endereços de OUTRAS células (o site, o fórum, a biblioteca), que são
+# monolíngues, têm prefixo próprio e morreriam 404 no gateway se ganhassem o
+# `/forms/sugestoes` na frente.
+#
+# A regra passou a morar AQUI, uma vez só, pelo motivo de sempre: escrita em
+# quatro arquivos ela diverge no primeiro ajuste.
+#
+# **A lista de isenções é IMPORTADA do código de produção, nunca escrita à mão
+# aqui.** É o que impede a saída fácil: quem quiser calar o guarda para um link
+# interno esquecido tem de declará-lo, no código, como endereço de outra
+# célula — e isso aparece na revisão. Uma lista à mão no teste seria um cheque
+# em branco.
+from apps.core import rodape as _rodape  # noqa: E402
+
+ENDERECOS_DE_FORA = frozenset(
+    {_rodape.URL_DO_SITE, _rodape.URL_DO_FORUM, _rodape.URL_DOS_DOCUMENTOS}
+)
+
+# Escrito à mão de propósito (o comentário original dos guardas): montá-lo com
+# o mesmo `reverse()` do código faria o teste passar com o prefixo errado.
+LINK_INTERNO = re.compile(r'(?:href|action)="(/[^"]*)"')
+
+
+def links_sem_prefixo(corpo: str, prefixo: str) -> list:
+    """Os links DESTA célula que saíram sem o prefixo público.
+
+    Devolve lista para o `assert` do chamador poder nomeá-los na falha.
+    """
+    return [
+        link
+        for link in LINK_INTERNO.findall(corpo)
+        if not link.startswith(f"{prefixo}/") and link not in ENDERECOS_DE_FORA
+    ]

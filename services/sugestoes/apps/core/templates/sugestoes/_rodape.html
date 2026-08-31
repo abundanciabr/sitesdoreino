@@ -1,0 +1,27 @@
+{% comment %}
+templates/sugestoes/_rodape.html — o rodapé da casa, o mesmo do site e do
+fórum, desenhado UMA vez e mostrado em toda tela da Caixa.
+
+**Peça, e não marcação repetida em cada molde**, porque esta célula tem DOIS
+moldes de página inteira: a moldura comum (`base_caixa.html`) e a porta de
+entrada (`entrar.html`), que é uma página standalone com o próprio `<html>`.
+Foi essa segunda que o processador de contexto sozinho não alcançava, e é o
+buraco que a `armadilhas/242` prevê: um molde-base não cobre a tela que não o
+estende. Escrever o rodapé duas vezes faria as duas versões divergirem no
+primeiro ajuste.
+
+Ele NÃO decide nada: os blocos vêm prontos no `rodape` (`apps/core/rodape.py`),
+e é por isso que a tela do painel não vai precisar mexer aqui.
+
+Os três links são de FORA desta célula e saem de variável, crus: cada célula é
+dona do próprio prefixo, e a Caixa não monta endereço de ninguém.
+{% endcomment %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+  <p class="marca">Meshcraft Academy</p>
+  <p class="descricao">A escola que ensina você a modelar em 3D e a ganhar seus primeiros dólares no Roblox.</p>{% endif %}{% if rodape.mostra_links %}
+  <nav class="links" aria-label="Links úteis">
+    <a href="{{ rodape.url_do_site }}">Início do site</a>
+    <a href="{{ rodape.url_do_forum }}">Fórum</a>
+    <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
+  </nav>{% endif %}{% if rodape.mostra_direitos %}
+  <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
+</footer>

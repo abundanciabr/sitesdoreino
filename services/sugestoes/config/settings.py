@@ -169,6 +169,12 @@ TEMPLATES = [
                 # Django só executa se o template pedir), então página que não
                 # mostra o sino não paga consulta. Ver apps/core/avisos.py.
                 "apps.core.avisos.sino",
+                # O RODAPÉ da casa em TODA tela (`apps/core/rodape.py`),
+                # 31/08/2026. Mesmo motivo do sino, uma linha acima: um
+                # `{% include %}` por molde faria "em todas as telas" depender
+                # de alguém lembrar, e sumiria da primeira tela nova
+                # (`armadilhas/242`).
+                "apps.core.rodape.rodape",
             ],
         },
     },

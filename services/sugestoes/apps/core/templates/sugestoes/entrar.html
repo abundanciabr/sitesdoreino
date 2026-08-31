@@ -36,6 +36,28 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
       line-height: 1.55; background: Canvas; color: CanvasText;
     }
     main { width: 100%; max-width: 26rem; }
+    /* O RODAPÉ DA CASA (apps/core/rodape.py), 31/08/2026. As regras vivem
+       AQUI, e não no caixa.css, porque esta tela é standalone: ela não carrega
+       a folha da Caixa e se pinta com as cores do sistema (Canvas/CanvasText),
+       para funcionar em claro e em escuro. Sem estas linhas o rodapé apareceria
+       sem forma nenhuma, e nada ficaria vermelho.
+
+       Os blocos que hoje não aparecem aqui (a variante desta tela é a enxuta)
+       estão estilizados assim mesmo: no dia em que o painel mudar a regra desta
+       tela, ela não pode ficar torta esperando um segundo PR. */
+    .rodape {
+      margin-top: 2rem; padding-top: 1rem; text-align: center;
+      border-top: 1px solid color-mix(in srgb, CanvasText 15%, Canvas);
+      font-size: .8rem; opacity: .75;
+    }
+    .rodape p { margin: 0; }
+    .rodape .marca { font-weight: 600; margin-bottom: .25rem; }
+    .rodape .descricao { margin-bottom: .75rem; }
+    .rodape .links {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: .5rem 1rem; margin-bottom: .75rem;
+    }
+    .rodape .links a { color: inherit; }
     h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
     .sub { margin: 0 0 1.5rem; opacity: .7; font-size: .95rem; }
     .recado {
@@ -244,6 +266,7 @@ quebra exatamente quando não deveria. Mobile-first no `viewport` e nas medidas.
       {% endif %}
       <a class="botao discreto" href="/">&#8592; Voltar ao site</a>
     {% endif %}
+  {% if rodape %}{% include "sugestoes/_rodape.html" %}{% endif %}
   </main>
 </body>
 </html>

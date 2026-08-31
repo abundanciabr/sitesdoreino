@@ -2061,3 +2061,53 @@ pergunta "tem certeza?" mede a INTENÇÃO de quem dispara; esta mede o ESTADO DO
 MUNDO no instante do disparo. Para um comando sem volta que roda em produção
 meses depois de escrito, é a diferença entre parar sozinho diante de quarenta
 ideias de aluno e destruir as quarenta.
+
+## O molde-base não cobre a tela que não o estende: a porta ficou sem rodapé
+
+**Sintoma.** O rodapé da casa entrou no `base_caixa.html` e apareceu no quadro,
+na ideia e nos avisos. Na **porta de entrada** (`entrar.html`) ele continuou
+ausente, sem erro, sem teste vermelho, sem log. Quem viu foi o mantenedor,
+olhando o site.
+**Causa.** A `entrar.html` é uma página **standalone**: `<!doctype>` próprio,
+`<html>` próprio e estilo embutido, porque ela precisa abrir mesmo quando a
+folha da Caixa não carrega. Ela não estende molde nenhum, então o
+`{% block %}` do molde comum nunca a alcança. O processador de contexto até
+punha o `rodape` no contexto dela; o que faltava era quem desenhasse.
+**Solução, em três partes:**
+1. O rodapé virou **peça** (`templates/sugestoes/_rodape.html`), incluída pelos
+   DOIS moldes. Escrevê-lo duas vezes faria as versões divergirem no primeiro
+   ajuste.
+2. O **estilo dela também é standalone**: a porta não carrega o `caixa.css`, e
+   as regras `.rodape` foram para o `<style>` embutido, com as cores do sistema
+   (`Canvas`/`CanvasText`), que é como aquela tela se pinta em claro e escuro.
+   Marcação sem regra é rodapé sem forma, e nada fica vermelho.
+3. O guarda mede os **ARQUIVOS**, não as telas
+   (`test_todo_molde_de_pagina_inteira_inclui_a_peca_do_rodape`): todo template
+   com `<!doctype` tem de incluir a peça. Molde standalone novo é justamente o
+   caso em que ninguém lembra de escrever um teste de tela para ele — assim o
+   guarda reprova antes de a página existir. A marca é o `<!doctype`, e não a
+   tag `<html>`: a própria peça CITA `<html>` num comentário e seria acusada de
+   não incluir a si mesma.
+**Origem:** TAR-083, 31/08/2026. Generaliza a `armadilhas/242`, que dizia para
+pôr a peça no molde-base e não previa a célula com dois moldes.
+
+## Link para OUTRA célula não leva o prefixo público desta, e o guarda precisou aprender
+
+**Sintoma.** Quatro guardas de `*_script_name.py` ficaram vermelhos ao mesmo
+tempo, acusando `/`, `/forum/` e `/docs/` como "links sem o prefixo público".
+**Causa.** Eles partiam de uma premissa que era verdade até o rodapé existir:
+**todo link que começa com `/` é desta célula**, logo tem de levar
+`/forms/sugestoes` (`armadilhas/029` e `/081`). O rodapé da casa leva, de
+propósito, três endereços de OUTRAS células — monolíngues, com prefixo próprio,
+e que morreriam 404 no gateway se ganhassem o desta na frente.
+**Solução.** A regra saiu das quatro cópias e passou a morar UMA vez em
+`tests/conftest.py` (`links_sem_prefixo`), com a lista de isentos **importada
+do código de produção** (`apps.core.rodape`), nunca escrita à mão no teste.
+**Por que a importação importa, e não é preciosismo:** afrouxar guarda é onde
+nasce falso-verde. Com a lista vindo do código, quem quiser calar o guarda para
+um link interno esquecido tem de declará-lo como endereço de outra célula, no
+código, onde a revisão vê. Uma lista à mão no teste seria cheque em branco — e
+há guarda para isso também
+(`test_a_isencao_dos_links_de_fora_nao_cala_o_guarda_de_prefixo`), que prova
+que link interno sem prefixo continua reprovando.
+**Origem:** TAR-083, 31/08/2026.

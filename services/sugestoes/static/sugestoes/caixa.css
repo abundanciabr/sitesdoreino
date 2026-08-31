@@ -496,13 +496,30 @@ table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--linha); }
 th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
 
-/* --- o pé ---------------------------------------------------------------- */
+/* --- o rodapé da casa ------------------------------------------------------
 
-.pe {
+   31/08/2026: o mesmo rodapé do site e do fórum, com as cores desta casa.
+   Ele SUBSTITUI o antigo `.pe`, que era só desta célula (duas colunas em
+   fonte mono). A troca é o pedido do mantenedor: a Caixa é parte do site.
+
+   Centralizado e em coluna, como nas outras duas células, e não em duas
+   pontas como o `.pe` era: um rodapé que muda de forma a cada área do site
+   deixa de ser assinatura e vira decoração local. */
+
+.rodape {
   margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--linha);
-  font-family: var(--f-mono); font-size: 12px; color: var(--texto-tenue);
-  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  font-size: 13px; color: var(--texto-fraco); text-align: center;
 }
+.rodape .marca { margin: 0 0 4px; font-weight: 600; color: var(--texto); }
+.rodape .descricao { margin: 0 0 16px; }
+.rodape .links {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 16px;
+  margin: 0 0 16px;
+}
+.rodape .links a { color: var(--texto-fraco); text-decoration: none; }
+.rodape .links a:hover,
+.rodape .links a:focus { color: var(--azul); text-decoration: underline; }
+.rodape .direitos { margin: 0; font-family: var(--f-mono); font-size: 12px; color: var(--texto-tenue); }
 
 @media (max-width: 900px) {
   .bancada { flex-direction: column; }

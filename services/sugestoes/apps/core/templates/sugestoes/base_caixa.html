@@ -175,10 +175,7 @@ renderiza vazio, não quebra.
     {% block inspetor %}{% endblock %}
   </div>
 
-  <footer class="pe">
-    <span>Caixa de Sugestões</span>
-    <span>o que você pedir, a equipe lê</span>
-  </footer>
+{% if rodape %}{% include "sugestoes/_rodape.html" %}{% endif %}
 </div>
 </body>
 </html>
