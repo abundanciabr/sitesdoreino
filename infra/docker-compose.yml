@@ -366,6 +366,32 @@ services:
     image: ghcr.io/abundanciabr/plataforma-forum:${FORUM_TAG:-main}
     env_file: [env/forum.env]
 
+  # O progresso do aluno (DECISAO-gamificacao.md, 30/08/2026). Celula de PAGINA,
+  # como a `admin` e o `forum`: serve HTML sob o prefixo `/conquistas`, que ela
+  # conhece por `SCRIPT_NAME=/conquistas` no env dela — o Traefik NAO remove o
+  # prefixo (armadilhas/029).
+  #
+  # Sem processo auxiliar, e isso e o estado de HOJE: a celula ainda nao tem
+  # motor de XP nem consumidor de evento. Quando o motor nascer (degrau 8 da
+  # escada) entra um consumidor aqui, e com as cartas (degrau 9) um relay Huey,
+  # os dois no molde do `sugestoes-relay`, com `<<: *processo`.
+  #
+  # O banco `gamificacao_db` e o par `gamificacao_user` NAO nascem daqui: quem os
+  # cria e `infra/provisionar-gamificacao.sh`, rodado pelo mantenedor DENTRO da
+  # VPS antes desta entrega. Sem ele este servico sobe e morre em crashloop no
+  # `migrate` do CMD (licao H18) — e e por isso que aquele passo vem antes deste
+  # PR na escada do §6 do plano.
+  #
+  # E ha um segundo motivo para a ordem, so desta celula: o env que aquele script
+  # escreve carrega o `SITE_ID`. Sem ele a celula SOBE e responde, e apenas a
+  # etiqueta de todo aluno some — falha aberta, sem tela quebrada e sem alarme.
+  # O script se recusa a terminar sem esse campo justamente para que este
+  # servico nunca encoste na producao sem ele.
+  gamificacao:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-gamificacao:${GAMIFICACAO_TAG:-main}
+    env_file: [env/gamificacao.env]
+
 volumes:
   pgdata: {}
   redisdata: {}

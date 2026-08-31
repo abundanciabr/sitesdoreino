@@ -247,6 +247,21 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # preferência: em subdomínio o cookie de sessão não viaja e o fórum
     # exigiria um segundo login (§2 daquela lei). Mesmo cuidado do `docs` com o
     # prefixo cru: `/forumX` seria engolido junto, e não existe rota assim.
+    #
+    # `conquistas` entrou com a gamificação (`PathPrefix(/conquistas)`,
+    # `DECISAO-gamificacao.md` §4, 31/08/2026). Passei pelas duas regras, que é
+    # para isto que este inventário existe:
+    #   A (forma de locale): 10 letras, e a forma exige 2-3. Não casa.
+    #   B (idioma declarado): `conquistas` não está em `infra/sites.json` e não
+    #     é código de idioma em língua nenhuma.
+    # E o cuidado do prefixo CRU, o terceiro olhar que `docs` e `forum`
+    # mereceram: `/conquistasX` seria engolido por este roteador. Não existe
+    # rota assim, e quem criar uma vai encontrar esta linha.
+    #
+    # A palavra é LEI na decisão, não escolha de quem roteou: o aluno lê o que
+    # ganhou, nunca o nome do mecanismo (`/gamificacao` seria a máquina falando
+    # de si mesma). E, como no fórum, o CAMINHO é lei: esta célula não assina
+    # sessão ([INV-P12]) e depende de o cookie de host chegar até ela.
     assert segmentos == {
         "",
         "quiz",
@@ -259,6 +274,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "admin",
         "docs",
         "forum",
+        "conquistas",
     }
 
 
