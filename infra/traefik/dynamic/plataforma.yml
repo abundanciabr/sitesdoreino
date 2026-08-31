@@ -256,6 +256,35 @@ http:
       service: forum
       tls: {}
 
+    gamificacao:
+      # O progresso do aluno (DECISAO-gamificacao.md, 30/08/2026). O endereco e
+      # LEI na propria decisao (§4): `/conquistas`, e nao `/gamificacao` — a
+      # palavra que o aluno le e o que ele ganhou, nunca o nome do mecanismo.
+      #
+      # POR CAMINHO, NUNCA POR SUBDOMINIO, pela mesma razao do forum acima: o
+      # cookie `meshcraft_sessao` e de HOST, e em `conquistas.meshcraft.top` o
+      # cracha nao viajaria. Aqui isso e ainda mais grave — esta celula NAO
+      # assina sessao ([INV-P12]) e depende inteiramente de o cookie chegar
+      # para saber de quem e o XP.
+      #
+      # A celula conhece o prefixo por `SCRIPT_NAME=/conquistas` no env dela; o
+      # Traefik NAO o remove (`armadilhas/029`).
+      #
+      # `Host(...)` explicito, como nas outras: sem ele, qualquer dominio
+      # apontado para esta VPS serviria as conquistas da escola.
+      #
+      # Cadeia `seguranca` (a compartilhada), e NAO a `seguranca-admin`: quem
+      # pode ver o que e decidido DENTRO da celula. A porta de MAQUINA, que
+      # responde sob este mesmo prefixo, tem cadeado proprio — o conjunto
+      # `TOKENS_ACEITOS_*`, hoje VAZIO, que recusa todo mundo por construcao
+      # (`armadilhas/186`, e esta escrito no `config/settings.py` da celula).
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/conquistas`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: gamificacao
+      tls: {}
+
     www-meshcraft:
       # No host `www.` nenhuma PÁGINA é servida: tudo é desviado para o
       # endereço canônico. Dois endereços servindo o mesmo conteúdo rendem
@@ -352,3 +381,6 @@ http:
     forum:
       loadBalancer:
         servers: [ { url: "http://forum:8000" } ]
+    gamificacao:
+      loadBalancer:
+        servers: [ { url: "http://gamificacao:8000" } ]

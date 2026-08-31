@@ -1,6 +1,6 @@
-from django.urls import path
+from django.urls import path, re_path
 
-from apps.core.views import healthz
+from apps.core.views import base, healthz, servir_estatico
 from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/conquistas`): quem o
@@ -44,4 +44,13 @@ from config.api import api
 urlpatterns = [
     path("healthz", healthz),
     path("api/gamificacao/", api.urls),
+    # O CSS, servido pela própria célula. Sem esta rota o estilo é 404 em
+    # produção e SÓ lá (`armadilhas/083`): com DEBUG=0 o Django não serve
+    # estático, e não há nginx nem CDN atrás do Traefik.
+    re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
+    # A BASE, e ela é a raiz da célula: `meshcraft.top/conquistas` sem mais
+    # nada. Nomeada, como todas: é `{% url 'base' %}` quem carrega o prefixo
+    # público para dentro do endereço. Vem por último porque `path("")` casa o
+    # caminho vazio, e ler a lista de cima para baixo é como se confere isto.
+    path("", base, name="base"),
 ]

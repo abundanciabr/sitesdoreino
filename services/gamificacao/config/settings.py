@@ -122,6 +122,21 @@ CSRF_COOKIE_NAME = "gamificacao_csrf"
 CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
 CSRF_COOKIE_SECURE = not DEBUG
 
+# ---------------------------------------------------------------------------
+# OS DOIS ENDEREÇOS QUE NÃO SÃO DESTA CÉLULA
+# ---------------------------------------------------------------------------
+# Para onde mandar quem chega sem sessão, e onde fica a capa do site. Os dois
+# moram em OUTRAS células (`identidade` e `funil`), então `{% url %}` não os
+# conhece — e cravá-los num template seria endereço alheio escondido dentro do
+# HTML desta casa, longe de qualquer lugar onde alguém pensaria em procurar.
+# Molde: `services/admin/config/settings.py`.
+#
+# Com PADRÃO, e isso importa: o `infra/provisionar-gamificacao.sh` não escreve
+# estas chaves, e a trava de deriva dele reprova env com variável que ele não
+# sabe gerar. Padrão aqui significa que o env não precisa declará-las.
+URL_DE_ENTRADA = os.environ.get("URL_DE_ENTRADA", "/entrar/google")
+URL_DA_CAPA = os.environ.get("URL_DA_CAPA", "/")
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

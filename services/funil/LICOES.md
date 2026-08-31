@@ -702,3 +702,35 @@ o `en` de uma chave que continua existindo exige recalcular o hash.
 **Origem:** despacho funil/home-nova — `traducoes/landing.yaml` perdeu 9 chaves
 (preço, botão de compra e o formulário inteiro) quando a raiz do site
 multilíngue deixou de ser vitrine e virou porta.
+
+## "Em todas as páginas" pede processador de contexto, não `{% include %}` em cada template
+
+**Sintoma que isto evita:** a peça comum (rodapé, cabeçalho, faixa de aviso)
+nasce em todas as telas no dia da entrega e some da PRIMEIRA tela nova, sem
+erro nenhum. Ninguém percebe porque nada fica vermelho: a página abre.
+**Causa:** `{% include %}` escrito à mão em cada template faz "em todas as
+páginas" depender de alguém lembrar. Lembrar não é mecanismo.
+**Solução (o desenho do rodapé, 31/08/2026):** quem DECIDE é um processador de
+contexto (`apps/core/rodape.py::rodape_do_contexto`, ligado em
+`config/settings.py`) e quem DESENHA é o `base_mobile.html`, com um
+`{% if %}` colado no fim da linha anterior. Página nova herda a peça sem tocar
+em nada. O guarda que fecha o buraco varre o urlconf REAL
+(`tests/test_rodape.py::test_nenhuma_rota_de_pagina_fica_sem_decisao_de_rodape`)
+e exige que toda rota nomeada tenha decisão: silêncio significa o padrão,
+nunca "sem a peça".
+**A pegadinha que vem de graça:** o processador entra no `<style>` e no corpo
+DENTRO da condicional, senão os bytes dele vazam para os domínios monolíngues e
+derrubam o golden byte a byte da fase 1 do i18n (a lição da regressão
+byte-idêntica, acima, vale tal e qual).
+**Origem:** despacho funil/rodape (pedido do mantenedor em 31/08/2026).
+
+## O texto do painel e o texto do catálogo: onde a costura fica
+
+O mantenedor pediu, junto com o rodapé, poder trocar os textos dele sozinho.
+A `funil` não tem banco (é vitrine pura), então isso é uma etapa própria, com
+dono do dado e Rito de Contrato (RITOS §3). Para a etapa 2 não virar
+reescrita, o template do rodapé **não sabe de onde o texto veio**: quem monta o
+dicionário é `apps/core/rodape.py::montar`. O catálogo de tradução
+(`traducoes/rodape.yaml`) é o TEXTO DE FÁBRICA — o que o site mostra enquanto
+ninguém escreveu nada, e para onde ele volta se a origem do dado ficar fora do
+ar. Quem for fazer a etapa 2 muda uma função, não os templates.

@@ -1,0 +1,16 @@
+{
+  "arquivo": "079-enderecos-que-devolvem-e-a-regua-de-capacidade-do-provedor",
+  "id": "TAR-079",
+  "titulo": "Enderecos que devolvem, e a regua de capacidade do provedor",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-077"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + teste de que endereco marcado nao e tentado por nenhuma via + prova de que uma devolucao real do provedor marca o endereco + teste do teto por minuto.",
+  "despacho": "Substitui a TAR-064. VEM ANTES DE QUALQUER VOLUME.\n\n*** ESTE DESPACHO NAO REPETE O PLANO. Ele APONTA. ***\n\nLEIA ANTES: docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md §6.3 e §9.\n\nE o degrau que decide se o dominio da escola sobrevive. E-mail que devolve e\ncontinua sendo tentado e o que mata a reputacao de um remetente — e depois disso\nate os e-mails legitimos caem no spam de todo mundo, por meses.\n\nO QUE ENTREGA: receber devolucoes e reclamacoes do provedor, marcar o endereco, e\nNUNCA mais tentar — nem por outra jornada, nem por mensagem transacional.\nReclamacao (\"marcou como spam\") vale mais que devolucao: aquela pessoa sai de\nTODA comunicacao por e-mail na hora, sem esperar preferencia.\n\nE aqui tambem entra a REGUA DE CAPACIDADE do §6.3, se ela ainda nao existir: teto\npor minuto e por hora no provedor, backoff com jitter, disjuntor. Ela e outra\ncoisa da regua do aluno — a do aluno protege a atencao de uma pessoa, esta\nprotege a cota do provedor. Dez mil pessoas elegiveis as 9h respeitam \"uma por\ndia\" perfeitamente e ainda assim sao dez mil envios.\n\nFAIL-CLOSED: se nao der para saber se um endereco esta marcado, NAO envie. Melhor\num aviso a menos que um dominio queimado.",
+  "origem": "substitui a TAR-064, e absorve o degrau 9b (regua de capacidade) que a consultoria de 31/08/2026 criou",
+  "criada_em": "2026-08-31"
+}
