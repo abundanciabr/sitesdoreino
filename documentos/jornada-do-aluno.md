@@ -51,9 +51,6 @@ sua fila.
 **Aluno**: tem acesso agora. Vê o caminho da Caixa de Sugestões. Sai daqui
 quando você mudar a situação dela no formulário do aluno.
 
-**Reembolsado**: devolveu o dinheiro e **continua entrando**. Foi a sua decisão
-de 24 de agosto: quem já foi aluno mantém a voz na Caixa.
-
 ### Depois
 
 **Pausado**: você desligou o acesso; volta com um clique. A pessoa vê que é
@@ -63,6 +60,11 @@ quando você puser a situação de volta em Ativo.
 **Ex-aluno**: saiu da escola, e a ficha continua aqui inteira. Vê que o acesso
 acabou e o botão *Pedir para voltar*. Sai daqui de dois jeitos: ela pedindo para
 voltar (nasce uma ficha nova), ou você pondo a situação em Ativo na ficha antiga.
+
+**Reembolsado**: o dinheiro voltou, e a matrícula foi desfeita junto. **Não
+entra mais**, e a ficha continua aqui. Vê uma tela que nomeia o reembolso e diz
+o que fazer para voltar, **sem** o botão *Pedir para voltar* que o ex-aluno tem.
+Sai daqui de um jeito só: você pondo a situação em Ativo.
 
 ## As doze passagens
 
@@ -84,8 +86,9 @@ não muda sozinho, e ninguém muda de estado sem passar por uma destas portas.
   entrar.
 - **Aluno → Ex-aluno** (*você*): situação **Ex-aluno**. É a única forma de tirar
   o acesso de vez.
-- **Aluno → Reembolsado** (*você*): situação **Reembolsado**. O acesso continua:
-  é sobre o dinheiro, não sobre a porta.
+- **Aluno → Reembolsado** (*você*): situação **Reembolsado**. O acesso acaba
+  junto, porque o reembolso desfaz a compra. Ela não pede para voltar sozinha,
+  e a volta é você pondo a situação em Ativo.
 - **Ex-aluno → Aguardando** (*a pessoa*): botão **Pedir para voltar**. Nasce uma
   ficha nova; a antiga vira história.
 - **Ex-aluno → Aluno** (*você*): situação **Ativo** direto na ficha antiga, sem
