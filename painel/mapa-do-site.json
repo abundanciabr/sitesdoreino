@@ -78,6 +78,24 @@
     },
     {
       "celula": "funil",
+      "rota": "manifest.webmanifest",
+      "endereco": "/manifest.webmanifest",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "A ficha do app para o celular",
+      "descricao": "O arquivo que o navegador do celular lê para saber o nome, a cor e o ícone do site quando alguém instala o Meshcraft na tela de início. Ninguém abre isto na mão."
+    },
+    {
+      "celula": "funil",
+      "rota": "sw.js",
+      "endereco": "/sw.js",
+      "alcance": "publico",
+      "para_quem": "maquina",
+      "titulo": "O ajudante do app instalado",
+      "descricao": "O programinha que fica no celular de quem instalou o site e faz o app abrir mesmo sem internet, mostrando a última versão que ele guardou."
+    },
+    {
+      "celula": "funil",
       "rota": "sitemap.xml",
       "endereco": "/sitemap.xml",
       "alcance": "publico",

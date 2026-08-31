@@ -1,0 +1,65 @@
+# traducoes/instalar.yaml — o convite para instalar o site como app no celular
+# (templates/funil/_instalar_o_app.html). Formato key-major (D2): todas as
+# línguas da peça lado a lado; `_fonte` é sha256[:6] do valor `en` no momento
+# da tradução (D4 — anti-obsolescência). en é a FONTE; Meshcraft nunca se
+# traduz (glossário, D8.1).
+#
+# Nasceu em 31/08/2026, a pedido do mantenedor: o site precisa estar instalado
+# na tela de início para poder mandar aviso a quem usa iPhone, e um app que
+# ninguém instala não avisa ninguém.
+
+titulo:
+  _fonte: "655c4d"
+  en: "Install Meshcraft on your phone"
+  pt-br: "Instale o Meshcraft no seu celular"
+  es: "Instala Meshcraft en tu celular"
+
+porque:
+  # O motivo, na linguagem de quem vai ganhar alguma coisa com isso: um toque
+  # para abrir, e os avisos chegando sem depender de e-mail.
+  _fonte: "a1889b"
+  en: "The app opens with one tap, and school announcements arrive right on your screen."
+  pt-br: "O app abre com um toque, e os avisos da escola chegam direto na sua tela."
+  es: "La app se abre con un toque, y los avisos de la escuela llegan directo a tu pantalla."
+
+botao:
+  _fonte: "9c509f"
+  en: "Install the app"
+  pt-br: "Instalar o app"
+  es: "Instalar la app"
+
+agora_nao:
+  # Quem clica aqui não vê o convite por 30 dias (static/funil/instalar.js).
+  _fonte: "a0e63d"
+  en: "Not now"
+  pt-br: "Agora não"
+  es: "Ahora no"
+
+# ---------------------------------------------------------------------------
+# O passo a passo do iPhone e do iPad. No Safari não existe caixa de
+# instalação para o site abrir: o caminho é manual, pelo botão Compartilhar, e
+# por isso estas três linhas existem em vez de um botão.
+# ---------------------------------------------------------------------------
+ios_titulo:
+  _fonte: "56a2da"
+  en: "To install on iPhone or iPad:"
+  pt-br: "Para instalar no iPhone ou no iPad:"
+  es: "Para instalar en iPhone o iPad:"
+
+ios_passo_um:
+  _fonte: "2c3e25"
+  en: "Tap the Share button, at the bottom of the screen."
+  pt-br: "Toque no botão Compartilhar, embaixo da tela."
+  es: "Toca el botón Compartir, abajo en la pantalla."
+
+ios_passo_dois:
+  _fonte: "548932"
+  en: "Choose \"Add to Home Screen\"."
+  pt-br: "Escolha \"Adicionar à Tela de Início\"."
+  es: "Elige \"Añadir a pantalla de inicio\"."
+
+ios_passo_tres:
+  _fonte: "eb81bd"
+  en: "Confirm on Add, and Meshcraft stays on your home screen."
+  pt-br: "Confirme em Adicionar, e o Meshcraft fica na sua tela inicial."
+  es: "Confirma en Añadir, y Meshcraft queda en tu pantalla de inicio."
