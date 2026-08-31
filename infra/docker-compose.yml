@@ -396,6 +396,15 @@ services:
   # hoje: este processo sobe, escuta e nao credita ninguem ate o mantenedor
   # ligar a primeira.
   #
+  # ESTE SERVICO LEVOU DOIS DEPLOYS PARA CHEGAR AQUI, e a licao vale a linha.
+  # O merge que o criou (PR #719, 31/08/2026) teve o `deploy-infra` CANCELADO
+  # pela cadeira musical e depois VERMELHO com `i/o timeout` na porta 22, com a
+  # VPS viva (`armadilhas/127`). Tres reruns depois, todos cancelados por novos
+  # merges chegando, ficou claro o que a 127 nao diz: num repositorio movimentado
+  # o rerun NAO e o caminho, porque ele revive um run de SHA velho e a
+  # concorrencia o mata de novo. O que funciona e um commit NOVO tocando
+  # `infra/`, que cria uma publicacao propria com o topo da main.
+  #
   # [ARMADILHAS §3.13] O `condition: service_healthy` em `gamificacao` e o que
   # impede este processo de migrar em paralelo com o CMD do servidor HTTP
   # contra o mesmo banco — um dos dois morreria com IntegrityError.

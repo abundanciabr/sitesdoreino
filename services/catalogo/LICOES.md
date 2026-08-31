@@ -93,3 +93,33 @@ Resumo local: os campos opcionais do `Schema` desta célula (`theme`,
 exportado que o contrato não tem — e o `contrato-check` reprovaria. O
 `getSiteByHost` usa `exclude_unset=True` para que o site monolíngue responda sem
 as chaves novas, byte-idêntico ao de antes da fase 4.
+
+## O menu do topo: a terceira coisa que é DADO DO SITE, e o mesmo desenho das duas primeiras
+
+31/08/2026. O menu do topo do site (versões, itens, regra por página) mora aqui,
+como `Site.menu`, pelo mesmo motivo de `theme` e de `languages`: as células
+públicas já perguntam *"quem é este host?"* uma vez por requisição, com cache de
+60s, e pendurar o menu nessa resposta faz o dado chegar às telas **sem nenhum
+salto de rede a mais**. Há teste do outro lado contando as chamadas
+(`services/funil/tests/test_menu_do_topo.py`) para que continue assim.
+
+Três decisões que se repetem, e a razão de cada uma:
+
+* **JSON validado por função única** (`apps/sites/menu.py::normalizar_menu`),
+  chamada pelo `save()` **e** pelo `update()` do queryset — a mesma dupla porta
+  de `normalizar_idiomas`, e pelo mesmo motivo (ARMADILHAS §4.4). Aqui o
+  `update()` não precisa exigir par nenhum: a coerência do menu é do documento
+  inteiro, que viaja num campo só.
+* **Ausência é o sinal de "não tem"**: `getSiteByHost` OMITE `menu` quando ele
+  está vazio, e é isso que mantém a resposta de um site sem menu byte-idêntica à
+  de antes. Mandar `{}` faria quem consome ter de distinguir dois vazios.
+* **A escrita é do documento INTEIRO** (`putSiteMenu`), e não remendo campo a
+  campo, porque a coerência é do conjunto: uma versão só pode sumir junto com as
+  páginas que apontavam para ela. Remendo parcial deixaria o dado num estado que
+  o próprio validador recusa.
+
+E uma que é da migração, não do modelo: **a 0004 semeia o primeiro menu só onde
+não há nada** (`if site.menu: continue`). A partir do primeiro deploy o dono
+deste dado é o mantenedor, pela tela `/admin/menu/`; uma migração que
+sobrescrevesse apagaria a configuração dele no deploy seguinte. É a mesma regra
+do `get_or_create` dos semeadores, e o `desfazer` também não apaga.
