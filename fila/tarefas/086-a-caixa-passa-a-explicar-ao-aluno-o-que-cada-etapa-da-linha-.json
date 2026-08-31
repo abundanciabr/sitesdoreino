@@ -3,8 +3,7 @@
   "id": "TAR-086",
   "titulo": "A Caixa passa a explicar ao aluno o que cada etapa da linha do tempo quer dizer",
   "toca": [
-    "sugestoes",
-    "caixa"
+    "sugestoes"
   ],
   "depende_de": [],
   "cria": [],
