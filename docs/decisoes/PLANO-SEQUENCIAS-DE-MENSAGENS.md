@@ -1,6 +1,17 @@
 # PLANO — as sequências de mensagens para o aluno
 
-> **Data:** 30/08/2026 · **Estado:** PLANO, aguardando as decisões do §8
+> **AS QUATRO DECISÕES DO §8 FORAM RESPONDIDAS PELO MANTENEDOR EM 30/08/2026**,
+> na mesma sessão que gerou este plano. Este documento foi corrigido para
+> obedecê-las — **o §4.1 diz hoje o CONTRÁRIO do que dizia quando foi escrito**,
+> porque a recomendação era célula nova e ele escolheu outra coisa. Quem for
+> construir segue o §8, não a recomendação original.
+>
+> Uma das respostas dele é um fato de negócio que atravessa o projeto inteiro:
+> **a escola só tem alunos maiores de 18 anos, e não terá menores.** Isso diverge
+> do `DECISAO-gamificacao.md` §9, promulgado no MESMO dia — a divergência está
+> registrada no livro e é decisão dele, não deste plano (§8.5).
+
+> **Data:** 30/08/2026 · **Estado:** decidido no §8, a construir pela escada do §7
 > **Pedido do mantenedor, nas palavras dele:**
 >
 > > *"Quero criar algumas sequências de mensagens automáticas para serem enviadas
@@ -100,6 +111,12 @@ atrás. Quem for construir precisa das oito na cabeça **antes** de desenhar tab
    escolha. Nada de mascote que cobra, notificação de culpa, corações/vidas ou
    aposta de sequência — **explicitamente vetados**.
    → `DECISAO-gamificacao.md` §8 e §9.
+   **⚠ EM DIVERGÊNCIA (30/08/2026):** o mantenedor declarou que *"só temos alunos
+   acima de 18 anos, não temos e nem teremos alunos menores de idade"* — a metade
+   desta lei que fala de IDADE ficou sem sujeito. Este plano **não constrói trava
+   de menor** (§8.4) e **não revoga o §9**, que continua escrito e é lei até ele
+   decidir (§8.5). O veto a mascote-que-cobra e notificação-de-culpa **continua
+   valendo integralmente** — aquilo nunca foi sobre idade.
 6. **O dia é o dia de São Paulo.** `America/Sao_Paulo`, sempre. Com o fuso do
    Django cru, o esforço das 22h cai no dia errado e nada acusa.
    → invariante da `gamificacao`, e `test_fuso_horario.py` em toda célula.
@@ -113,46 +130,65 @@ atrás. Quem for construir precisa das oito na cabeça **antes** de desenhar tab
 
 ---
 
-## §4 — O desenho proposto: uma célula `jornadas`, e cada peça no seu lugar
+## §4 — O desenho: o motor mora DENTRO da `mensageria` (decisão de 30/08/2026)
 
 ```
-  UM FATO ACONTECE                  QUEM DECIDE                    QUEM ENTREGA
- ───────────────────      ─────────────────────────────      ──────────────────────
-  identidade  ──┐                                          ┌──▶  notificacoes
-  alunos      ──┤                                          │     (o sininho — no ar)
-  gamificacao ──┼──▶  eventos.*  ──▶   jornadas   ──▶ ─────┤
-  forum       ──┤                     (célula nova)        │
-  quiz        ──┘                   motor de sequência     └──▶  mensageria
-                                    tempo · condição ·           (e-mail/WhatsApp —
-                                    régua · preferência           hoje é stub)
+  UM FATO ACONTECE                      A MENSAGERIA                  ONDE CHEGA
+ ───────────────────      ─────────────────────────────────      ──────────────────
+  identidade  ──┐          ┌───────────────────────────┐       ┌──▶ notificacoes
+  alunos      ──┤          │  apps/jornadas  (NOVO)    │       │    (o sininho — no ar)
+  gamificacao ──┼──▶ eventos│  tempo · condição · régua │──────▶┤
+  forum       ──┤          ├───────────────────────────┤       │
+  quiz        ──┘          │  apps/eventos  (JÁ EXISTE)│       └──▶ e-mail / WhatsApp
+                           │  envio · retry · registro │            (hoje é stub)
+                           └───────────────────────────┘
 ```
 
-### 4.1 Por que uma célula nova, e não "dentro da mensageria"
+### 4.1 A escolha do mantenedor, e o que ela obriga
 
-A `mensageria` **não serve** para isto, e a razão é estrutural, não de gosto:
+**Este plano recomendava uma célula nova (`jornadas`). O mantenedor escolheu o
+contrário: o motor entra dentro da `mensageria`.** Decisão dele em 30/08/2026,
+com os custos de cada lado na mesa. É a decisão que vale; o que segue é como
+executá-la sem quebrar nada.
 
-- A missão dela, na constituição, é *"comunicação transacional: e-mail e WhatsApp
-  disparados por eventos"* — um fato, um envio, agora.
-- A chave de idempotência dela é `order_id + tipo + canal`. **Uma sequência de
-  aluno não tem `order_id`**, e o mesmo `tipo` se repete de propósito em passos
-  diferentes. Enfiar jornada ali obriga a mexer na constraint que hoje protege o
-  fluxo de pagamento — mexer no que já funciona, para acomodar o que nem nasceu.
-- A `gamificacao` tem como **critério de morte** *"a célula virar motor de regras
-  genérico"*. O mesmo raciocínio se aplica: motor de regras é uma
-  responsabilidade inteira, e responsabilidade inteira é célula.
+**O problema real que a escolha traz, e a solução:** a trava de idempotência da
+`mensageria` é `unique(order_id, tipo, canal)` em `EnvioRegistrado` — é ela que
+hoje impede um cliente de receber dois e-mails do mesmo pagamento. Uma sequência
+de aluno **não tem `order_id`**, e o mesmo `tipo` se repete de propósito em
+passos diferentes.
 
-**A separação que faz o desenho ficar em pé:**
+**Não se altera essa constraint.** O motor escreve `order_id` sintético:
 
-| Célula | Responsabilidade | Uma frase |
+```
+order_id = "jornada:<inscricao_id>:<passo_id>"
+```
+
+`order_id` de pagamento é um id real vindo do checkout e **nunca colide com uma
+chave prefixada** — a trava passa a proteger as duas coisas sem uma linha de
+migração e sem risco para o fluxo de dinheiro. O motor tem, além dela, as duas
+travas próprias do §5.
+
+**As três coisas que a escolha obriga, e que não se pode esquecer:**
+
+1. **Emendar `constituicoes/AGENTS.mensageria.md`.** A missão hoje diz
+   *"comunicação transacional… disparados por eventos"* — um fato, um envio,
+   agora. Sequência que espera dois dias **não é transacional**. Sem a emenda, a
+   cerca do CI e o próximo agente leem a missão e recusam o trabalho como fora de
+   escopo. Isto é PR próprio, e é o degrau 0 da escada.
+2. **App separado, banco compartilhado.** `apps/jornadas/` é um app novo dentro da
+   célula. Ele **lê e escreve as próprias tabelas** e toca `apps/eventos/` num
+   ponto só: criando a linha de `EnvioRegistrado`. Nada além disso.
+3. **O orçamento de 15 arquivos por PR fica apertado** — a célula já tem ~30
+   arquivos. Cada degrau do §7 precisa ser fatiado com isso em mente.
+
+**Quem faz o quê, depois da decisão:**
+
+| Onde | Responsabilidade | Uma frase |
 |---|---|---|
 | origem (`identidade`, `alunos`, `gamificacao`, `forum`…) | **afirmar o fato** | "isto aconteceu" |
-| `jornadas` | **decidir** | "quem recebe o quê, quando, e se ainda faz sentido" |
+| `mensageria/apps/jornadas` | **decidir** | "quem recebe o quê, quando, e se ainda faz sentido" |
+| `mensageria/apps/eventos` | **entregar fora do site** | "saiu por e-mail/WhatsApp" |
 | `notificacoes` | **guardar e mostrar dentro do site** | "está no seu sininho" |
-| `mensageria` | **entregar fora do site** | "saiu por e-mail/WhatsApp" |
-
-Criar célula é abrir o congelamento arquitetural de propósito — foi assim com a
-Caixa, com a `identidade` e com a `gamificacao`, e **é decisão do mantenedor**
-(§8, pergunta 2).
 
 ### 4.2 A sequência é DADO, não código
 
@@ -178,10 +214,10 @@ O aviso do sininho é gravado hoje e lido daqui a três meses, possivelmente em
 outro idioma — por isso guarda dado. O e-mail é **renderizado no instante do
 envio** e sai da plataforma; aquele instante *é* o momento da leitura. Então:
 
-- `jornadas` publica **`mensagem.devida.v1`** com `destinatario_id`, `assunto`,
-  `parametros`, `canal` — **sem uma palavra de texto, sem e-mail, sem nome**.
-- `mensageria` recebe, **pergunta à `identidade`** quem é (e-mail + idioma),
-  renderiza o template naquele idioma **naquela hora**, e envia.
+- `apps/jornadas` decide o passo e grava `assunto` + `parametros` + `canal` —
+  **sem uma palavra de texto pronta**.
+- Na hora do envio, `apps/eventos` **pergunta à `identidade`** quem é (e-mail +
+  idioma), renderiza o template naquele idioma **naquela hora**, e envia.
 - O que fica gravado no `EnvioRegistrado` é o texto que **realmente saiu** — isso
   é registro de auditoria, não conteúdo a ser reexibido, e é justamente o que se
   quer guardar quando alguém perguntar "o que vocês me mandaram?".
@@ -191,11 +227,20 @@ Consequência mecânica: `mensageria` passa a ter `consome: [identidade]` no
 antecipado — *"a `mensageria` precisa de um destinatário, e o e-mail vive numa
 linha só"*.
 
+**Um ganho real da decisão de 30/08:** com o motor dentro da própria célula, o
+caminho do e-mail **não precisa de evento nenhum** — o app novo chama a máquina
+de envio que já existe, na mesma transação. O contrato `mensagem.devida.v1`, que
+a versão anterior deste plano previa, **deixa de ser necessário**: é um Rito de
+Contrato a menos e um transporte a menos para dar errado. O sininho continua
+recebendo por evento (`notificacao.devida.v1`, que já existe), porque
+`notificacoes` é outra célula e ninguém escreve no banco alheio (Lei 3).
+
 ---
 
-## §5 — O modelo de dados da célula `jornadas`
+## §5 — O modelo de dados de `mensageria/apps/jornadas`
 
-Quatro tabelas. Nem uma a mais — e as travas em `CheckConstraint`/
+Quatro tabelas **novas, no banco que a célula já tem** (`mensageria_db`) — nenhuma
+alteração nas duas que já existem. Nem uma a mais — e as travas em `CheckConstraint`/
 `UniqueConstraint`, no banco, nunca só em `save()` (`armadilhas/023`: um
 `queryset.update()` fura guarda escrita em Python).
 
@@ -246,16 +291,21 @@ A régua barra, nesta ordem:
    não são incentivo.
 2. **Teto diário.** Máximo 1 por dia por pessoa (lei 4 do §3). Um passo barrado
    **não se perde: reagenda** para a próxima janela válida.
-3. **Janela de silêncio.** Nunca depois das 20h; nunca em horário escolar. Fuso
-   `America/Sao_Paulo`, sempre (lei 6).
-4. **Modo Júnior.** Abaixo de 13 anos, o que a lei 5 mandar (§8, pergunta 4).
-5. **Só boa notícia.** Nenhuma jornada de culpa, cobrança ou "você está
+3. **Janela de silêncio.** Nunca depois das 20h. Fuso `America/Sao_Paulo`,
+   sempre (lei 6). *"Nunca em horário escolar" **cai** — o público é adulto
+   (§8.4), e um adulto às 14h de terça é exatamente quem se quer alcançar.*
+4. **Só boa notícia.** Nenhuma jornada de culpa, cobrança ou "você está
    perdendo". O vocabulário de assuntos é fechado justamente para que uma
-   jornada nova não consiga inventar um assunto ruim.
+   jornada nova não consiga inventar um assunto ruim. **Isto não era sobre
+   idade e continua valendo integralmente.**
 
-**Fail-closed:** régua indisponível, preferência ilegível, idade desconhecida ⇒
-**não envia** e registra o motivo. É a mesma escolha que a Caixa de Sugestões já
-fez com a lista de aprovadores, e é desenho, não bug.
+**Não há trava de menor, e é decisão declarada, não esquecimento** (§8.4): a
+escola só tem alunos maiores de 18 anos. Se algum dia isso mudar, esta régua é o
+lugar onde a trava entra — e entra antes de qualquer mensagem sair.
+
+**Fail-closed:** régua indisponível ou preferência ilegível ⇒ **não envia** e
+registra o motivo. É a mesma escolha que a Caixa de Sugestões já fez com a lista
+de aprovadores, e é desenho, não bug.
 
 ---
 
@@ -266,21 +316,27 @@ evidência vermelho→verde, e **cada degrau deve virar uma TAR em `fila/`** —
 assim que várias IAs constroem em paralelo sem colidir (RITOS §5: tarefa se pega
 no balcão, nunca de memória).
 
-**Os degraus 1 a 6 não dependem de decisão nenhuma sobre e-mail**, e ao fim deles
-as sequências **já estão no ar pelo sininho**. Isto não é a "versão reduzida"
-proibida pelo `DECISAO-filosofia-de-escopo.md`: é a escada segura para chegar ao
-completo — o destino continua sendo e-mail + WhatsApp + preferências + painel.
+**Os degraus 0 a 7 não dependem de decisão nenhuma sobre e-mail**, e ao fim deles
+as sequências **já estão no ar pelo sininho** — que é a ordem que o mantenedor
+escolheu em 30/08/2026 (§8.1). Isto não é a "versão reduzida" proibida pelo
+`DECISAO-filosofia-de-escopo.md`: é a escada segura para chegar ao completo — o
+destino continua sendo e-mail + WhatsApp + preferências + painel.
 
-| # | Degrau | Célula | Entrega visível |
+**A escada encurtou com a decisão do §8.2:** não há gênese de célula, não há
+provisionamento de banco novo na VPS, e o contrato `mensagem.devida.v1` sumiu
+(§4.3). Em troca, entrou a emenda da constituição, que é degrau próprio.
+
+| # | Degrau | Onde | Entrega visível |
 |---|---|---|---|
-| **0** | **Rito de Contrato** com o mantenedor: `identidade.pessoa-cadastrada.v1`, `mensagem.devida.v1`, e os assuntos novos em `notificacao.devida.v1` | `contracts/` | não é código (RITOS §3) |
+| **0a** | **Emenda a `AGENTS.mensageria.md`:** a missão passa a incluir sequência com espera, e não só transacional | `constituicoes/` | sem isto, a cerca do CI recusa tudo que vem depois |
+| **0b** | **Rito de Contrato** com o mantenedor: `identidade.pessoa-cadastrada.v1` e os assuntos novos em `notificacao.devida.v1` | `contracts/` | não é código (RITOS §3) |
 | 1 | `identidade` ganha voz: outbox + relay + publica o cadastro | `identidade` | o cadastro finalmente vira fato na plataforma |
-| 2 | Gênese da célula `jornadas`: as 4 tabelas, as constraints, o `healthz` — **nasce sem enviar nada** | `jornadas` | célula no ar, provisionamento na VPS (passo do mantenedor) |
-| 3 | A régua (§6) + preferências, com os testes de fuso e de teto | `jornadas` | a régua barra, e o motivo fica registrado |
-| 4 | O motor: consumidor dos gatilhos, inscrição, varredura periódica, condições | `jornadas` | uma pessoa entra numa jornada e o passo é agendado |
-| 5 | Publica `notificacao.devida.v1` — **a primeira sequência de verdade no ar** | `jornadas` | **boas-vindas chegando no sininho do aluno** |
+| 2 | Nasce `apps/jornadas`: as 4 tabelas e as travas — **sem mandar nada ainda** | `mensageria` | migração aplicada, `healthz` intacto |
+| 3 | A régua (§6) + preferências, com os testes de fuso e de teto | `mensageria` | a régua barra, e o motivo fica registrado |
+| 4 | O motor: consumidor dos gatilhos, inscrição, varredura periódica, condições | `mensageria` | uma pessoa entra numa jornada e o passo é agendado |
+| 5 | Publica `notificacao.devida.v1` — **a primeira sequência de verdade no ar** | `mensageria` | **boas-vindas chegando no sininho do aluno** |
 | 6 | `gamificacao` ganha voz (os 4 assuntos já congelados) | `gamificacao` | comemoração automática ao subir de nível |
-| 7 | Tela em `/admin/escola/jornadas/`: quais existem, quem está em cada uma, o que foi enviado e o que foi barrado | `admin` | o mantenedor vê e edita as sequências |
+| 7 | Tela em `/admin/escola/jornadas/`: quais existem, quem está em cada uma, o que foi enviado e o que foi barrado — **e é aqui que ele edita o texto** (§8.3) | `admin` | o mantenedor troca uma frase sozinho |
 | **8** | **`mensageria` deixa de ser stub:** provedor de e-mail real, `consome: [identidade]`, renderização por idioma | `mensageria` | **o primeiro e-mail de verdade sai** |
 | 9 | Devolvidos e reclamações (*bounce/complaint*): endereço que devolve é marcado e não se tenta de novo | `mensageria` | a reputação do domínio sobrevive |
 | 10 | WhatsApp oficial, se o mantenedor quiser | `mensageria` | segundo canal |
@@ -293,22 +349,61 @@ e uma pendência em `painel/registros/` com `precisa_do_dono: true`.
 
 ---
 
-## §8 — As quatro decisões que são do mantenedor
+## §8 — As quatro decisões — RESPONDIDAS pelo mantenedor em 30/08/2026
 
-Nenhuma sessão decide estas por conta própria.
+As quatro foram feitas a ele em pergunta estruturada, com o custo de cada lado na
+mesa, na mesma sessão que produziu este plano. **Estas respostas são a lei deste
+plano — onde o texto original recomendava outra coisa, o texto foi corrigido.**
 
-1. **Por onde as mensagens saem?** Só o sininho (dentro do site, já funciona,
-   custo zero, degraus 1–7); ou e-mail de verdade também (degraus 8–9, exige
-   provedor pago e DNS). **Reabre a porta fechada da Fase 7 do sininho — só ele
-   reabre.**
-2. **Nasce a célula `jornadas`?** É abrir o congelamento arquitetural de
-   propósito, como já foi feito três vezes. A alternativa é forçar o motor dentro
-   da `mensageria`, mexendo na constraint que hoje protege o fluxo de pagamento.
-3. **As sequências são dado editável no `/admin/` ou código?** Dado = ele troca o
-   texto de uma mensagem sozinho, em qualquer hora. Código = cada troca é um PR.
-4. **Aluno abaixo de 13 anos: a mensagem vai para ele ou para o responsável?**
-   Muda o modelo de dados (a ficha precisaria guardar o contato do responsável) e
-   é decisão legal, não técnica.
+### 8.1 Canal → **sininho primeiro, e-mail em seguida**
+
+Escolhida a opção recomendada. As sequências entram no ar pelos avisos dentro do
+site (degraus 0–7) e o e-mail vem logo atrás (degraus 8–9), quando ele escolher o
+provedor. **A porta fechada da Fase 7 do sininho está reaberta por ele** — o
+`docs/notificacoes/PLANO-MESTRE.md` §Fase 7 deve ser atualizado para dizer isso,
+citando este §8.1, no PR do degrau 8.
+
+### 8.2 Onde mora o motor → **dentro da `mensageria`, NÃO uma célula nova**
+
+**Contra a recomendação deste plano**, e é a escolha dele que vale. Sem célula
+nova, sem congelamento arquitetural aberto, sem banco novo para provisionar na
+VPS. O §4.1 foi reescrito para executar esta decisão: a constraint do pagamento
+**não se toca**, o motor entra como `apps/jornadas/` com tabelas próprias, e o
+`order_id` sintético (`jornada:<inscricao>:<passo>`) reusa a trava existente sem
+migração.
+
+O custo aceito, dito por inteiro: a célula passa a ter duas responsabilidades
+(decidir e entregar), e o §10 ganhou um critério de morte para vigiar isso.
+
+### 8.3 Quem edita o texto → **ele mesmo, na área administrativa**
+
+Escolhida a opção recomendada. Sequência é linha de tabela (§4.2), e o degrau 7
+entrega a tela onde ele troca a frase de boas-vindas numa terça à noite, sem
+robô e sem publicação.
+
+### 8.4 Menores de idade → **a pergunta não se aplica: a escola é 18+**
+
+Ele não escolheu nenhuma das opções oferecidas. Respondeu, com pedido explícito
+de registro:
+
+> *"Só temos alunos acima de 18 anos, não temos e nem teremos alunos menores de
+> idade, registre isso."*
+
+Consequência neste plano: **nenhuma trava de menor é construída** — sem Modo
+Júnior, sem contato de responsável, sem "horário escolar" na régua (§6). O veto a
+mascote-que-cobra e notificação-de-culpa **continua**, porque nunca foi sobre
+idade.
+
+### 8.5 A divergência que essa resposta abriu — e que é dele, não deste plano
+
+`docs/decisoes/DECISAO-gamificacao.md` §9 (*"Menores, e o que isso obriga"*) foi
+promulgado em **30/08/2026, o mesmo dia**, e constrói Modo Júnior como **trava de
+sistema**, marcos de dinheiro restritos a 13+, e validação sempre por adulto.
+Com a escola sendo 18+, esse §9 inteiro fica sem sujeito.
+
+**Este plano não revoga o §9 e nenhuma sessão deve revogá-lo por conta própria.**
+Enquanto ele não decidir, §9 é lei escrita. A pergunta foi devolvida a ele e o
+estado dela se lê no livro (`painel/registros/`), não aqui.
 
 ---
 
@@ -335,7 +430,13 @@ Nenhuma sessão decide estas por conta própria.
 3. nascer uma jornada de culpa, cobrança ou perda;
 4. a régua do §6 ganhar exceção "só para esta jornada";
 5. o texto de uma mensagem passar a exigir PR de código;
-6. qualquer invariante do CI precisar de exceção.
+6. qualquer invariante do CI precisar de exceção;
+7. **`apps/jornadas` precisar ler ou escrever em qualquer tabela de
+   `apps/eventos` além de criar a linha de `EnvioRegistrado`.** Este é o
+   critério que a decisão 8.2 obriga: foi o acoplamento que a separação em
+   célula teria impedido por construção, e aqui ele só é impedido por
+   disciplina. Passou desse ponto, a separação volta à mesa — com a medição na
+   mão, não com a mesma recomendação de antes.
 
 ---
 
