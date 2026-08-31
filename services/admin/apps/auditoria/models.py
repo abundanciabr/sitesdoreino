@@ -126,6 +126,13 @@ class Registro(models.Model):
     # nao guarda copia nenhuma das regras (a lei anti-duplicacao do CLAUDE.md).
     LIGAR_REGRA = "ligar_regra"
     DESLIGAR_REGRA = "desligar_regra"
+    # [SENHA] 31/08/2026 (`DECISAO-login-por-senha.md`): o reset manual de
+    # senha, pelo prontuário de um aluno. Verbo próprio pelo mesmo motivo dos
+    # de cima — e com o agravante de que a senha em si NUNCA entra em
+    # `detalhe` nem em lugar nenhum desta tabela (só o hash fica do lado da
+    # `identidade`); esta linha registra só QUEM pediu, QUANDO, e para QUAL
+    # e-mail, nunca o segredo.
+    RESETAR_SENHA = "resetar_senha"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -150,6 +157,7 @@ class Registro(models.Model):
         (APAGAR_DOCUMENTO, "apagar um documento definitivamente"),
         (LIGAR_REGRA, "ligar uma regra de pontuacao da escola"),
         (DESLIGAR_REGRA, "desligar uma regra de pontuacao da escola"),
+        (RESETAR_SENHA, "resetar a senha de um aluno"),
     ]
 
     OK = "ok"

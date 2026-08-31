@@ -57,6 +57,7 @@ from apps.core.views import (
     escola_jornada,
     escola_decidir,
     escola_prontuario,
+    escola_resetar_senha,
     healthz,
     visao_geral,
 )
@@ -326,6 +327,13 @@ urlpatterns = [
     # A segunda rota de escrita: o formulario de gestao de quem JA e aluno.
     # POST-only pelo mesmo motivo da de cima.
     path("escola/alunos/salvar", escola_aluno_salvar, name="escola_aluno_salvar"),
+    # [SENHA] O reset manual de senha (DECISAO-login-por-senha.md), pelo
+    # botao do prontuario. POST-only pelo mesmo motivo dos de cima.
+    path(
+        "escola/alunos/resetar-senha",
+        escola_resetar_senha,
+        name="escola_resetar_senha",
+    ),
     # [A MAO] Por uma pessoa na escola sem esperar que ela peca
     # (`DECISAO-cadastrar-alguem-a-mao.md`). POST, como todo gesto que muda a
     # vida de alguem — decisao que se aplica por GET e decisao que um
