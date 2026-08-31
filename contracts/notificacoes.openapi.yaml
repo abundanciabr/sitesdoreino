@@ -192,6 +192,110 @@ paths:
                 properties:
                   marcados: { type: integer, minimum: 0 }
         '422': { description: destinatario_id ou site_id ausente ou inválido }
+  /inscricoes-push:
+    post:
+      operationId: inscreverAparelhoParaPush
+      summary: Guarda um aparelho para receber o aviso na tela, mesmo com o site fechado
+      description: |
+        O canal novo da Fase 7 (`docs/notificacoes/PLANO-MESTRE.md` — "e só
+        então outros canais"), autorizado pelo mantenedor em 31/08/2026 depois
+        de o site virar app instalável (PR #706). No iPhone a ordem é essa e
+        não tem atalho: só um site instalado na tela de início pode receber
+        aviso.
+
+        **Uma linha por APARELHO, não por pessoa.** A mesma pessoa no celular e
+        no tablet tem duas inscrições, e cada uma morre sozinha quando aquele
+        aparelho desinstala o app. Reinscrever o mesmo `endpoint` é
+        idempotente: o navegador reemite a inscrição de tempos em tempos, e
+        cada reemissão não pode virar uma linha nova.
+
+        **`endpoint` e as duas chaves vêm do NAVEGADOR, cruas.** São o
+        endereço do servidor de push do fabricante (Google, Apple, Mozilla) e
+        o material que cifra o conteúdo do aviso de ponta a ponta: nem esta
+        célula nem o servidor de push conseguem ler o que foi enviado sem
+        elas. Nada aqui é e-mail, e nada aqui identifica a pessoa fora desta
+        plataforma: o destinatário continua sendo o id da PLATAFORMA
+        (`DECISAO-EVO-01` §3).
+
+        **O aviso enviado carrega DADO, nunca frase pronta**
+        (`DECISAO-notificacoes` §5.1): assunto e parâmetros viajam, e a frase
+        nasce no aparelho, no idioma de quem lê. Por isso não existe campo de
+        idioma nesta inscrição: guardá-lo seria congelar o idioma de quem
+        instalou, que é exatamente o erro que aquela lei proíbe.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [destinatario_id, site_id, endpoint, p256dh, auth]
+              properties:
+                destinatario_id: { type: string }
+                site_id:
+                  type: string
+                  description: Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). O aparelho recebe só os avisos daquele site.
+                endpoint:
+                  type: string
+                  format: uri
+                  maxLength: 2048
+                  description: Endereço do servidor de push do fabricante, dado pelo navegador. Opaco para nós.
+                p256dh:
+                  type: string
+                  maxLength: 256
+                  description: Chave pública do aparelho (base64url), do navegador. Sem ela o conteúdo não pode ser cifrado.
+                auth:
+                  type: string
+                  maxLength: 64
+                  description: Segredo de autenticação do aparelho (base64url), do navegador.
+      responses:
+        '200':
+          description: Inscrito agora, ou já estava inscrito — os dois devolvem 200 (idempotente)
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [ja_estava_inscrito]
+                properties:
+                  ja_estava_inscrito: { type: boolean }
+        '422': { description: campo obrigatório ausente ou inválido }
+    delete:
+      operationId: cancelarInscricaoDeAparelho
+      summary: Esquece um aparelho — a pessoa desligou os avisos, ou desinstalou o app
+      description: |
+        Idempotente e silencioso: apagar o que não existe devolve 200. A
+        célula também apaga sozinha, sem ninguém pedir, a inscrição que o
+        servidor de push recusar como morta (404/410 na entrega) — aparelho
+        que sumiu não pode virar lixo eterno no banco.
+
+        Não exige `destinatario_id`: quem tem o `endpoint` é o próprio
+        aparelho, e ele é o único que precisa desligar os avisos dele. Pedir o
+        dono junto faria a saída depender de uma sessão viva, e desinstalar
+        acontece justamente quando não há mais sessão nenhuma.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [site_id, endpoint]
+              properties:
+                site_id: { type: string }
+                endpoint: { type: string, format: uri, maxLength: 2048 }
+      responses:
+        '200':
+          description: Esquecido, ou já não existia
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [existia]
+                properties:
+                  existia: { type: boolean }
+        '422': { description: campo obrigatório ausente ou inválido }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
