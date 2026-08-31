@@ -8,7 +8,7 @@ este {% comment %} colam no fim da linha anterior de propósito, para que site
 monolíngue renderize saída byte-idêntica à de antes (o teste de regressão
 compara os bytes).
 {% endcomment %}
-<!doctype html>
+{% load menu %}{% menu_do_topo as itens_do_menu %}<!doctype html>
 {% if request.i18n_seo %}<html lang="{{ request.i18n_seo.lang }}" dir="{{ request.i18n_seo.dir }}">{% else %}<html lang="pt-br">{% endif %}
 <head>
   <meta charset="utf-8">
@@ -42,7 +42,16 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
     * { box-sizing: border-box; }
     body { margin: 0; font-family: system-ui, sans-serif; background: #f7f7f8; color: #1a1a1a; }
     .wrap { width: 100%; max-width: 32rem; margin: 0 auto; padding: 1rem; }
-    .card { background: #fff; border-radius: .75rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }{% if request.i18n_seo %}
+    .card { background: #fff; border-radius: .75rem; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.08); }{% if itens_do_menu %}
+    /* O menu do topo. Mobile-first: uma fila que ROLA na horizontal, em vez de
+       quebrar em duas linhas ou virar um botao de tres riscas. Num celular
+       estreito, tres opcoes visiveis e o resto a um arrasto valem mais do que
+       um menu inteiro escondido atras de um toque. */
+    .menu-topo { display: flex; gap: .25rem; overflow-x: auto; margin: 0 -1rem 1rem; padding: 0 1rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    .menu-topo::-webkit-scrollbar { display: none; }
+    .menu-topo a { flex: 0 0 auto; padding: .5rem .75rem; border-radius: .5rem; color: #1a1a1a; text-decoration: none; font-size: .95rem; font-weight: 600; white-space: nowrap; }
+    .menu-topo a:hover, .menu-topo a:focus { background: #ececef; }
+    .menu-topo a[aria-current=page] { background: #1a1a1a; color: #fff; }{% endif %}{% if request.i18n_seo %}
     .instalar { border: 1px solid #bbf7d0; background: #f0fdf4; }
     .instalar-titulo { margin: 0 0 .25rem; font-weight: 600; }
     .instalar-porque { margin: 0 0 .75rem; font-size: .9rem; color: #3f3f46; }
@@ -69,7 +78,8 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
   {% block head_extra %}{% endblock %}
 </head>
 <body>
-  <div class="wrap">{% if request.i18n_seo %}
+  <div class="wrap">{% if itens_do_menu %}
+    <nav class="menu-topo">{% for item in itens_do_menu %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav>{% endif %}{% if request.i18n_seo %}
     <nav class="idiomas" translate="no">{% for opcao in request.i18n_seo.seletor %}{% if not forloop.first %} · {% endif %}<a href="{{ opcao.href }}" hreflang="{{ opcao.tag }}" lang="{{ opcao.tag }}">{{ opcao.codigo }}</a>{% endfor %}</nav>{% endif %}
     {% block conteudo %}{% endblock %}{% if request.i18n_seo %}
     {% include "funil/_instalar_o_app.html" %}{% endif %}{% if avisos_no_celular %}

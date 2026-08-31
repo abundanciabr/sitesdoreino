@@ -6,6 +6,10 @@ redis==5.1.1
 gunicorn==23.0.0
 uvicorn[standard]==0.32.0
 jsonschema==4.23.0
+# O aviso na tela do aparelho (Fase 7): cifra o conteúdo com as chaves do
+# próprio celular e assina com a VAPID. Sem chave configurada, nada disto é
+# importado — ver apps/notificacoes/push.py.
+pywebpush==2.0.0
 pytest==8.3.3
 pytest-django==4.9.0
 black==24.10.0

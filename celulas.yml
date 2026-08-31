@@ -58,7 +58,11 @@ celulas:
     # num plano mergearia sem disparar deploy e o site continuaria servindo
     # o texto antigo, em silencio.
     caminhos: [services/admin, painel, fila, documentos, docs/decisoes]
-    consome: [alunos, identidade, sugestoes]
+    # `catalogo` desde 31/08/2026: o menu do topo do site e DADO DO SITE, e
+    # dado de site mora no catalogo. A tela /admin/menu/ le e grava la, pela
+    # porta de maquina — nunca no banco dele, e nunca guardando uma copia
+    # aqui (seria o mesmo fato em dois lugares).
+    consome: [alunos, catalogo, identidade, sugestoes]
 
   alunos:
     caminhos: [services/alunos]

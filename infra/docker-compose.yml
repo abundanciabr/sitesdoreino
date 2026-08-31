@@ -371,10 +371,9 @@ services:
   # conhece por `SCRIPT_NAME=/conquistas` no env dela — o Traefik NAO remove o
   # prefixo (armadilhas/029).
   #
-  # Sem processo auxiliar, e isso e o estado de HOJE: a celula ainda nao tem
-  # motor de XP nem consumidor de evento. Quando o motor nascer (degrau 8 da
-  # escada) entra um consumidor aqui, e com as cartas (degrau 9) um relay Huey,
-  # os dois no molde do `sugestoes-relay`, com `<<: *processo`.
+  # O consumidor de eventos entrou logo abaixo, com o motor (degrau 8). O relay
+  # Huey das cartas de celebracao ainda nao existe: ele vem no degrau 9, no
+  # molde do `sugestoes-relay`.
   #
   # O banco `gamificacao_db` e o par `gamificacao_user` NAO nascem daqui: quem os
   # cria e `infra/provisionar-gamificacao.sh`, rodado pelo mantenedor DENTRO da
@@ -391,6 +390,39 @@ services:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-gamificacao:${GAMIFICACAO_TAG:-main}
     env_file: [env/gamificacao.env]
+
+  # Consome os quatro assuntos que a economia semeada conhece e transforma cada
+  # um em XP, pelas regras que estao no BANCO (R4). Nenhuma regra esta ligada
+  # hoje: este processo sobe, escuta e nao credita ninguem ate o mantenedor
+  # ligar a primeira.
+  #
+  # [ARMADILHAS §3.13] O `condition: service_healthy` em `gamificacao` e o que
+  # impede este processo de migrar em paralelo com o CMD do servidor HTTP
+  # contra o mesmo banco — um dos dois morreria com IntegrityError.
+  #
+  # REDIS_STREAMS_URL VEM DAQUI, E NAO DO ENV DA CELULA, e a diferenca em
+  # relacao as outras celulas consumidoras e deliberada. Naquelas o valor esta
+  # no `env/<celula>.env`, escrito pelo provisionamento. Aqui o provisionamento
+  # JA RODOU, na mao do mantenedor, em 31/08/2026 — e o script nao escreveu esta
+  # chave porque a celula ainda nao consumia evento nenhum. Acrescenta-la la
+  # agora custaria um SEGUNDO passo manual dele, para uma variavel que nao e
+  # segredo e vale igual em toda a plataforma: e topologia deste compose, nao
+  # configuracao desta celula. O `infra/env/gamificacao.env.exemplo` diz isso
+  # por escrito, para ninguem procurar a chave la e concluir que ela sumiu.
+  gamificacao-consumer:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-gamificacao:${GAMIFICACAO_TAG:-main}
+    env_file: [env/gamificacao.env]
+    environment:
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: ["python", "manage.py", "consume_eventos"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      gamificacao:
+        condition: service_healthy
 
 volumes:
   pgdata: {}
