@@ -79,6 +79,25 @@ class Registro(models.Model):
     # INTEIRO — o que se muda por esta tela aparece para todo visitante. Uma
     # linha por gesto, inclusive quando o catalogo recusa.
     EDITAR_MENU = "editar_menu"
+    # [DOCUMENTOS] 31/08/2026: o mantenedor passou a escrever os documentos do
+    # site por uma tela (`DECISAO-o-editor-de-documentos.md`). Verbos proprios
+    # pelo mesmo motivo dos de cima, e com o agravante do menu: o alvo nao e uma
+    # pessoa nem uma ideia — e um texto que qualquer visitante pode ler.
+    #
+    # E ha um motivo a mais, que so vale para estes. Ao tirar o texto do Git, a
+    # plataforma perdeu o `git log` dos documentos; a auditoria e o historico de
+    # versoes sao o que entra no lugar. CRIAR e EDITAR sao separados porque
+    # "este texto nasceu hoje" e "este texto mudou hoje" sao perguntas
+    # diferentes na hora de reconstruir o que aconteceu.
+    CRIAR_DOCUMENTO = "criar_documento"
+    EDITAR_DOCUMENTO = "editar_documento"
+    # [HISTORICO] 31/08/2026: voltar um documento a uma versao anterior. E um
+    # verbo, e nao um EDITAR reaproveitado, porque e o unico gesto desta area
+    # que escreve um texto que NINGUEM digitou naquele momento. Confundi-lo com
+    # uma edicao esconderia justamente o que aconteceu, e este verbo entra junto
+    # com o historico porque ele e metade do que substituiu o `git log` destes
+    # textos (`DECISAO-o-editor-de-documentos.md` §6).
+    RESTAURAR_DOCUMENTO = "restaurar_documento"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -94,6 +113,9 @@ class Registro(models.Model):
         (DESARQUIVAR_IDEIA, "desarquivar a ideia"),
         (APAGAR_IDEIA, "apagar a ideia definitivamente"),
         (EDITAR_MENU, "mudar o menu do topo do site"),
+        (CRIAR_DOCUMENTO, "criar um documento do site"),
+        (EDITAR_DOCUMENTO, "editar um documento do site"),
+        (RESTAURAR_DOCUMENTO, "voltar um documento a uma versao anterior"),
     ]
 
     OK = "ok"

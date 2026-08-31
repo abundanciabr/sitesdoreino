@@ -21,10 +21,17 @@ RAIZ = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(RAIZ / "ci"))
 
 from divida_do_livro import (  # noqa: E402
+    EMBARCADO,
     GRACA_EM_MINUTOS,
     INICIO_DA_COBRANCA,
+    ISENTO,
+    SEM_CITACAO,
+    SEM_REGISTRO,
+    como_pagar,
     divida,
     numeros_citados,
+    pagamentos_em_voo,
+    registro_embarcado,
     so_toca_o_livro,
 )
 
@@ -260,3 +267,162 @@ def test_so_toca_o_livro_recusa_lista_vazia():
     devolvesse `files: []` viraria isenção silenciosa para todo mundo.
     """
     assert so_toca_o_livro([]) is False
+
+
+# --------------------------------------- o embarque (a porta, desde 31/08/2026)
+#
+# A dívida nascia do caminho NORMAL: o rito manda pedir pouso e ir embora, e
+# depois do pouso não há mais ninguém para registrar. A cura junta o fato e o
+# recibo no mesmo átomo — o PR embarca o próprio registro, citando o próprio
+# número, e o portão confere ANTES do pouso (`armadilhas/248`).
+
+
+def remessa(caminho: str, patch: str) -> dict:
+    """Um item de `gh api .../pulls/N/files`, como o GitHub devolve."""
+    return {"filename": caminho, "patch": patch}
+
+
+def test_pr_de_escrituracao_e_isento_de_embarque():
+    """O PR que É o registro não deve registro sobre si mesmo — circular."""
+    arquivos = ["painel/registros/20260831-001-x.js", "fila/eventos/e.json"]
+    assert registro_embarcado(500, arquivos, []) == ISENTO
+
+
+def test_pr_sem_registro_a_bordo_reprova():
+    assert registro_embarcado(500, ["services/x/a.py"], []) == SEM_REGISTRO
+
+
+def test_registro_a_bordo_citando_o_proprio_numero_embarca():
+    """As duas formas de citar valem — URL e forma curta, como no livro."""
+    arquivos = ["services/x/a.py", "painel/registros/20260831-001-x.js"]
+    por_url = [
+        remessa(
+            "painel/registros/20260831-001-x.js",
+            '+  evidencia: "https://github.com/o/r/pull/500",',
+        )
+    ]
+    por_forma_curta = [
+        remessa("painel/registros/20260831-001-x.js", '+  detalhe: "o PR #500",')
+    ]
+    assert registro_embarcado(500, arquivos, por_url) == EMBARCADO
+    assert registro_embarcado(500, arquivos, por_forma_curta) == EMBARCADO
+
+
+def test_registro_a_bordo_sem_o_proprio_numero_reprova():
+    """`armadilhas/185`, agora com guarda: registro a bordo que cita OUTRO
+    número (ou nenhum) não é o recibo DESTE trabalho — a dívida seria real e
+    cairia no colo da sessão seguinte."""
+    arquivos = ["services/x/a.py", "painel/registros/20260831-001-x.js"]
+    outro_numero = [
+        remessa(
+            "painel/registros/20260831-001-x.js",
+            '+  evidencia: "https://github.com/o/r/pull/499",',
+        )
+    ]
+    assert registro_embarcado(500, arquivos, outro_numero) == SEM_CITACAO
+
+
+def test_citacao_em_linha_removida_nao_conta():
+    """Linha removida seria registro SAINDO do livro — e registro não se
+    apaga. Só o que o PR ACRESCENTA é recibo."""
+    arquivos = ["services/x/a.py", "painel/registros/20260831-001-x.js"]
+    remessas = [
+        remessa("painel/registros/20260831-001-x.js", '-  detalhe: "o PR #500",')
+    ]
+    assert registro_embarcado(500, arquivos, remessas) == SEM_CITACAO
+
+
+def test_citacao_fora_do_livro_nao_conta():
+    """Citar o próprio número num comentário de código não é registrar."""
+    arquivos = ["services/x/a.py", "painel/registros/20260831-001-x.js"]
+    remessas = [remessa("services/x/a.py", "+# nascido no PR #500")]
+    assert registro_embarcado(500, arquivos, remessas) == SEM_CITACAO
+
+
+def test_a_porta_cobra_o_embarque_sem_precisar_de_rede(livro):
+    """O caso comum (nenhum registro a bordo) reprova ANTES de qualquer
+    chamada ao GitHub — guarda lento é guarda que alguém desliga."""
+    import mergear
+    from _nucleo import Estado
+
+    pr = {"number": 500, "files": [{"path": "services/x/a.py"}]}
+    resultado = mergear.checar_registro_embarcado(livro, pr)
+    assert resultado.estado is Estado.FAIL
+    assert "reservar.py numero registro" in (resultado.detalhe or "")
+
+
+def test_a_porta_libera_o_embarque_completo(livro, monkeypatch):
+    import json as json_
+
+    import mergear
+    from _nucleo import Estado
+
+    diff = [
+        remessa(
+            "painel/registros/20260831-001-x.js",
+            '+  evidencia: "https://github.com/o/r/pull/500",',
+        )
+    ]
+    monkeypatch.setattr(mergear, "_gh", lambda *a, **kw: json_.dumps(diff))
+    pr = {
+        "number": 500,
+        "files": [
+            {"path": "services/x/a.py"},
+            {"path": "painel/registros/20260831-001-x.js"},
+        ],
+    }
+    assert mergear.checar_registro_embarcado(livro, pr).estado is Estado.PASS
+
+
+def test_falha_na_leitura_do_diff_vira_ERROR_e_nunca_PASS(livro, monkeypatch):
+    """INV-CI01: 'não consegui ler o diff' não é 'está a bordo'."""
+    import mergear
+    from _nucleo import Estado
+
+    monkeypatch.setattr(mergear, "_gh", lambda *a, **kw: "isto não é JSON")
+    pr = {
+        "number": 500,
+        "files": [
+            {"path": "services/x/a.py"},
+            {"path": "painel/registros/20260831-001-x.js"},
+        ],
+    }
+    assert mergear.checar_registro_embarcado(livro, pr).estado is Estado.ERROR
+
+
+# ------------------------------------------------------- pagamentos em voo
+
+
+def test_pagamentos_em_voo_filtra_so_escrituracao():
+    """Só o PR que É pagamento entra na lista — um PR de código que leva
+    registro de carona não paga dívida de ninguém."""
+    abertos = [
+        {"number": 1, "title": "livro: paga", "files": [{"path": "painel/registros/a.js"}]},
+        {"number": 2, "title": "feat: entrega", "files": [{"path": "services/x/a.py"}]},
+        {
+            "number": 3,
+            "title": "feat com recibo",
+            "files": [{"path": "services/x/a.py"}, {"path": "painel/registros/b.js"}],
+        },
+    ]
+    assert [p["number"] for p in pagamentos_em_voo(abertos)] == [1]
+
+
+def test_como_pagar_lista_o_pagamento_em_voo():
+    """A recusa que mata a corrida de cobradores: antes de escrever, olhe o
+    que já voa (4 PRs pagaram as mesmas duas dívidas em 31/08/2026)."""
+    devedores = [merge(100, AGORA - timedelta(hours=5), ["a.py"])]
+    em_voo = [{"number": 744, "title": "livro: os comprovantes que faltavam"}]
+    texto = como_pagar(devedores, em_voo)
+    assert "EM VOO" in texto
+    assert "#744" in texto
+    assert "NÃO crie outro" in texto
+
+
+def test_como_pagar_fica_de_pe_sem_a_lista_dos_abertos():
+    """`None` = 'não consegui olhar os abertos' — a recusa base não pode
+    depender do enriquecimento."""
+    devedores = [merge(100, AGORA - timedelta(hours=5), ["a.py"])]
+    texto = como_pagar(devedores, None)
+    assert "#100" in texto
+    assert "EM VOO" not in texto

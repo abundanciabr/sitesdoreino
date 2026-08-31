@@ -113,8 +113,11 @@ unificar esse vocabulário.
 
 **Decisões-chave:**
 - **Identidade:** "o Google prova QUEM É; a célula `alunos` decide SE PODE"
-  — duas perguntas, dois lugares. Qualquer matrícula entra, inclusive
-  reembolsada. Staff é lista de e-mails, não precisa de matrícula.
+  — duas perguntas, dois lugares. Quem entra é só a matrícula `ativa`:
+  `suspensa` saiu em 28/08/2026 e `reembolsada` saiu em 31/08/2026, esta
+  última por decisão do mantenedor revertendo a dele próprio de 24/08
+  (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`). Staff é lista de
+  e-mails, não precisa de matrícula.
 - **Aprovação de ChangeSpec:** só o mantenedor, mecanicamente, via lista de
   aprovadores — lista vazia é fail-closed.
 - **Quem é avisado:** todos que interagiram (autor + votantes +

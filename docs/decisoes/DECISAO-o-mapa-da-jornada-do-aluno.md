@@ -29,9 +29,14 @@ exatamente o mantenedor não saber o que esperar da tela de alguém.
 A tarja de cada parada diz **entra** ou **não entra**. É a única pergunta que se
 faz o dia todo sobre um aluno.
 
-Verde e cinza aqui **não significam "bom" e "ruim"**: um ex-aluno não é um erro,
-e um reembolsado entra (decisão do mantenedor de 24/08/2026 — quem já foi aluno
-mantém a voz na Caixa). Significam a porta aberta e a porta fechada.
+Verde e cinza aqui **não significam "bom" e "ruim"**: um ex-aluno não é um
+erro, e um pausado volta com um clique. Significam a porta aberta e a porta
+fechada.
+
+O **reembolsado** aparece do lado fechado desde 31/08/2026
+(`DECISAO-reembolso-tira-o-acesso.md`). Até essa data ele entrava, por decisão
+do mantenedor de 24/08; ele mesmo reverteu, ao encontrar o texto antigo no
+site.
 
 ## §2 — Uma contagem, duas telas
 
