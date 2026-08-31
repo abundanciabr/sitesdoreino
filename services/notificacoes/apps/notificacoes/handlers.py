@@ -10,7 +10,7 @@ escrita. Regra de negócio aqui dentro seria regra escondida num tradutor.
 o formato do assunto.
 """
 
-from .services import guardar
+from .services import avisar_os_aparelhos, guardar
 
 
 def ao_notificacao_devida(data: dict, *, ator_id: str | None = None) -> None:
@@ -21,4 +21,15 @@ def ao_notificacao_devida(data: dict, *, ator_id: str | None = None) -> None:
         assunto=data["assunto"],
         parametros=data["parametros"],
         origem_event_id=data["origem_event_id"],
+    )
+    # E, DEPOIS de a carta estar gravada, o espelho dela na tela do aparelho
+    # (Fase 7, 31/08/2026). A ordem é a regra: primeiro o que é durável,
+    # depois o que é entrega. `avisar_os_aparelhos` nunca levanta — servidor de
+    # push fora do ar, chave ausente ou aparelho que sumiu não podem derrubar o
+    # consumidor do fio nem impedir a carta seguinte de ser gravada.
+    avisar_os_aparelhos(
+        site_id=data["site_id"],
+        destinatario_id=data["destinatario_id"],
+        assunto=data["assunto"],
+        parametros=data["parametros"],
     )
