@@ -121,14 +121,26 @@ paths:
                     product_id: { type: string }
                     status:
                       type: string
-                      enum: [ativa, reembolsada]
+                      enum: [ativa]
                       description: |
-                        SO os status que VALEM como acesso. `suspensa` saiu desta
-                        lista em 28/08/2026 (DECISAO-gestao-de-alunos §2): passou a
-                        significar "acesso pausado pelo mantenedor" e deixou de dar
-                        acesso. `reembolsada` continua — e isso e a decisao de
-                        24/08/2026, "quem ja foi aluno mantem a voz", que foi tomada
-                        sobre REEMBOLSO e segue intacta.
+                        SO os status que VALEM como acesso, e hoje ha um so.
+                        `suspensa` saiu em 28/08/2026 (DECISAO-gestao-de-alunos §2):
+                        passou a significar "acesso pausado pelo mantenedor".
+                        `reembolsada` saiu em 31/08/2026
+                        (DECISAO-reembolso-tira-o-acesso), quando o mantenedor
+                        REVERTEU a decisao dele de 24/08 ("quem ja foi aluno mantem
+                        a voz"): reembolso passou a significar a compra desfeita, e
+                        quem recebeu o dinheiro de volta nao entra mais em nada.
+
+                        A LISTA ENCOLHEU, e o encolhimento e o ponto: um consumidor
+                        que ja tratava `reembolsada` continua compilando e apenas
+                        nunca mais recebe esse valor. Nenhum consumidor precisa
+                        mudar por causa desta porta — mas quem DERIVAVA acesso dela
+                        passa a excluir o reembolsado automaticamente, que e o
+                        efeito desejado.
+
+                        Status novo nasce FORA desta lista: ela e de PERMISSAO, e a
+                        celula tem um guarda que reprova quem esquecer de decidir.
                     enrolled_at: { type: string, format: date-time }
         '404': { description: Aluno inexistente }
   /pre-matriculas:
@@ -341,7 +353,7 @@ paths:
                 properties:
                   categoria:
                     type: string
-                    enum: [cadastrado, na_fila, pausado, ex_aluno, aluno]
+                    enum: [cadastrado, na_fila, pausado, ex_aluno, reembolsado, aluno]
                     description: |
                       `aluno` sai da MESMA lista de status que decide acesso
                       (`STATUS_QUE_VALEM`) — uma segunda lista seriam duas verdades
@@ -354,10 +366,17 @@ paths:
                       causa de quem saiu da escola ver o formulario de pedir
                       entrada, como se nunca tivesse pedido nada.
 
-                      Os dois NAO dao acesso, e a diferenca entre eles e a unica
+                      `reembolsado` (ficha `reembolsada`) entrou em 31/08/2026
+                      (`DECISAO-reembolso-tira-o-acesso.md`) pela MESMA razao, e e
+                      ADICAO pura: nenhum consumidor quebra por ela existir. Sem
+                      ela, o reembolsado cairia em `cadastrado`, que e o mesmo tipo
+                      de mentira que os dois de cima nasceram para curar.
+
+                      NENHUM dos tres da acesso, e a diferenca entre eles e a unica
                       coisa que a pessoa quer saber: pausado e temporario, ex-aluno
-                      e o fim. Quem consome isto mostra telas diferentes; quem
-                      autoriza continua olhando so `aluno`.
+                      e o fim e pode pedir para voltar, reembolsado e a compra
+                      desfeita e nao pede. Quem consome isto mostra telas
+                      diferentes; quem autoriza continua olhando so `aluno`.
                   na_fila:
                     type: [object, 'null']
                     additionalProperties: false
