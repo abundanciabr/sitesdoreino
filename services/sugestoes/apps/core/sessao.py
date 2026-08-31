@@ -372,6 +372,28 @@ def resolver(request) -> Resolucao:
     fora quando a `alunos` estiver fora do ar (a pergunta nem chega a ser
     feita; há guarda que estoura se alguém inverter isso um dia).
     """
+    # UMA resolução por requisição, guardada na própria requisição. Desde
+    # 31/08/2026 o menu do topo também precisa saber se a pessoa entrou (há
+    # item que só aparece para quem entrou, e item que só aparece para quem
+    # não entrou), e ele é montado por processador de contexto — ou seja,
+    # DEPOIS da view que já perguntou. Sem esta memória, toda página de gente
+    # logada custaria duas idas à `identidade` e duas à `alunos` em vez de uma.
+    #
+    # A memória vive na REQUISIÇÃO, e não em módulo: ela morre com a resposta,
+    # e duas pessoas nunca compartilham a mesma. Cache de sessão em variável de
+    # processo é exatamente como um guarda de "visitante" passa verde mostrando
+    # o nome de outra pessoa (`armadilhas/026`).
+    guardada = getattr(request, "_resolucao_desta_requisicao", None)
+    if guardada is not None:
+        return guardada
+
+    resolucao = _resolver(request)
+    request._resolucao_desta_requisicao = resolucao
+    return resolucao
+
+
+def _resolver(request) -> Resolucao:
+    """A viagem em si. `resolver` é a porta com memória; esta é o caminho."""
     cookie = request.META.get("HTTP_COOKIE", "")
     if not cookie:
         # Sem cookie nenhum não há o que perguntar — e é o caminho de quase

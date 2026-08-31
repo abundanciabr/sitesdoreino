@@ -21,16 +21,18 @@
 # outro lado reiniciar, e o sintoma seria 401 intermitente. Rodar de novo é
 # seguro, e é a cura de qualquer dúvida.
 #
-# O QUE ELE LIGA (três degraus, e a ordem é deliberada — PROVEDOR PRIMEIRO):
+# O QUE ELE LIGA (quatro degraus, e a ordem é deliberada — PROVEDOR PRIMEIRO):
 #
-#   1. env/catalogo.env  TOKENS_ACEITOS_ADMIN, TOKENS_ACEITOS_FORUM
-#   2. env/admin.env     CATALOGO_API_URL, TOKEN_CATALOGO   (quem ESCREVE o menu)
-#   3. env/forum.env     CATALOGO_API_URL, TOKEN_CATALOGO   (quem LÊ o menu)
+#   1. env/catalogo.env   TOKENS_ACEITOS_ADMIN, TOKENS_ACEITOS_FORUM,
+#                         TOKENS_ACEITOS_SUGESTOES
+#   2. env/admin.env      CATALOGO_API_URL, TOKEN_CATALOGO  (quem ESCREVE o menu)
+#   3. env/forum.env      CATALOGO_API_URL, TOKEN_CATALOGO  (quem LÊ o menu)
+#   4. env/sugestoes.env  CATALOGO_API_URL, TOKEN_CATALOGO  (idem, na Caixa)
 #
-# Dois pares, e não um compartilhado: token é POR PAR consumidor→provedor. Um
-# token só nos dois lados faria "trocar a credencial do fórum" e "trocar a
-# credencial do Admin" serem o mesmo gesto, e no dia de rotacionar um deles o
-# outro cairia junto, sem aviso.
+# Três pares, e não um compartilhado: token é POR PAR consumidor→provedor. Um
+# token só nos três lados faria "trocar a credencial do fórum", "a da Caixa" e
+# "a do Admin" serem o mesmo gesto, e no dia de rotacionar um deles os outros
+# cairiam junto, sem aviso.
 #
 # Provedor antes de consumidor porque a ordem inversa tem janela ruim: o
 # consumidor com token que o provedor ainda não aceita responde 401 para gente
@@ -38,9 +40,12 @@
 # ainda não faz nada, e é uma janela sem sintoma.
 #
 # SE NADA FOR RODADO: a tela do menu abre e diz, em português, que ainda não
-# consegue falar com o registro de sites, e o fórum abre exatamente como antes,
-# sem menu no topo. O site em si não muda nada, e nada quebra — só não dá para
-# configurar o menu pela tela, nem vê-lo no fórum.
+# consegue falar com o registro de sites, e o fórum e a Caixa abrem exatamente
+# como antes, sem menu no topo. O site em si não muda nada, e nada quebra — só
+# não dá para configurar o menu pela tela, nem vê-lo nessas duas áreas.
+#
+# RODAR DE NOVO É O CAMINHO NORMAL quando uma área NOVA passa a mostrar o menu:
+# ele reusa os pares que já existem e cria só o que falta.
 # =============================================================================
 
 # O modo de falha de 24/08 em pessoa: carregado com `source`/`.`, um `exit` daqui
@@ -58,6 +63,7 @@ RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 ENV_CATALOGO="env/catalogo.env"
 ENV_ADMIN="env/admin.env"
 ENV_FORUM="env/forum.env"
+ENV_SUGESTOES="env/sugestoes.env"
 # A referência de dono/permissão: um env que JÁ funciona nesta máquina.
 ENV_REF="$ENV_CATALOGO"
 
@@ -70,7 +76,7 @@ CATALOGO_URL="http://catalogo:8000/api/catalogo"
 #    Tudo conferido ANTES de gerar ou escrever coisa nenhuma.
 # -----------------------------------------------------------------------------
 cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ — você está na VPS certa? (o prompt tem de começar com deploy@srv… ou root@srv…)"
-for arquivo in "$ENV_CATALOGO" "$ENV_ADMIN" "$ENV_FORUM"; do
+for arquivo in "$ENV_CATALOGO" "$ENV_ADMIN" "$ENV_FORUM" "$ENV_SUGESTOES"; do
   [ -f "$arquivo" ] || parar "não achei $RAIZ/$arquivo — alguma das células não está provisionada nesta máquina. Nada foi criado, nada foi alterado."
   [ -w "$arquivo" ] || parar "não consigo escrever em $RAIZ/$arquivo — rode como root ou como o dono dos env. Nada foi alterado."
 done
@@ -97,6 +103,7 @@ gerar_segredo() {
 # -----------------------------------------------------------------------------
 T_ADMIN="$(ler_de "$ENV_CATALOGO" TOKENS_ACEITOS_ADMIN)"
 T_FORUM="$(ler_de "$ENV_CATALOGO" TOKENS_ACEITOS_FORUM)"
+T_CAIXA="$(ler_de "$ENV_CATALOGO" TOKENS_ACEITOS_SUGESTOES)"
 NOVO=0
 if [ -z "$T_ADMIN" ]; then
   T_ADMIN="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
@@ -106,15 +113,21 @@ if [ -z "$T_FORUM" ]; then
   T_FORUM="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
   NOVO=$((NOVO + 1))
 fi
+if [ -z "$T_CAIXA" ]; then
+  T_CAIXA="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
+  NOVO=$((NOVO + 1))
+fi
 [ ${#T_ADMIN} -ge 32 ] || parar "o token do par admin→catalogo ficou curto demais. Nada foi alterado."
 [ ${#T_FORUM} -ge 32 ] || parar "o token do par forum→catalogo ficou curto demais. Nada foi alterado."
+[ ${#T_CAIXA} -ge 32 ] || parar "o token do par sugestoes→catalogo ficou curto demais. Nada foi alterado."
 
 echo "== estado ANTES =="
 printf '  %-22s %s\n' "$ENV_CATALOGO" "encontrado ($(wc -l < "$ENV_CATALOGO") linhas)"
 printf '  %-22s %s\n' "$ENV_ADMIN" "encontrado ($(wc -l < "$ENV_ADMIN") linhas)"
 printf '  %-22s %s\n' "$ENV_FORUM" "encontrado ($(wc -l < "$ENV_FORUM") linhas)"
+printf '  %-22s %s\n' "$ENV_SUGESTOES" "encontrado ($(wc -l < "$ENV_SUGESTOES") linhas)"
 if [ "$NOVO" -eq 0 ]; then
-  echo "  segredos ............... os dois pares JÁ existiam; vou reusar, não regerar"
+  echo "  segredos ............... os tres pares JÁ existiam; vou reusar, não regerar"
 else
   echo "  segredos ............... vou gerar $NOVO (o outro, se houver, é reusado)"
 fi
@@ -175,6 +188,9 @@ garantir "$ENV_ADMIN" CATALOGO_API_URL "$CATALOGO_URL" "par admin→catalogo"
 garantir "$ENV_ADMIN" TOKEN_CATALOGO "$T_ADMIN" "par admin→catalogo"
 garantir "$ENV_FORUM" CATALOGO_API_URL "$CATALOGO_URL" "par forum→catalogo"
 garantir "$ENV_FORUM" TOKEN_CATALOGO "$T_FORUM" "par forum→catalogo"
+garantir "$ENV_CATALOGO" TOKENS_ACEITOS_SUGESTOES "$T_CAIXA" "par sugestoes→catalogo: a Caixa mostra o mesmo menu do site"
+garantir "$ENV_SUGESTOES" CATALOGO_API_URL "$CATALOGO_URL" "par sugestoes→catalogo"
+garantir "$ENV_SUGESTOES" TOKEN_CATALOGO "$T_CAIXA" "par sugestoes→catalogo"
 
 # -----------------------------------------------------------------------------
 # 4. ESTADO DEPOIS — a conferência que fecha o assunto. Compara SEM imprimir
@@ -187,16 +203,23 @@ U="$(ler_de "$ENV_ADMIN" CATALOGO_API_URL)"
 F="$(ler_de "$ENV_CATALOGO" TOKENS_ACEITOS_FORUM)"
 G="$(ler_de "$ENV_FORUM" TOKEN_CATALOGO)"
 V="$(ler_de "$ENV_FORUM" CATALOGO_API_URL)"
+C="$(ler_de "$ENV_CATALOGO" TOKENS_ACEITOS_SUGESTOES)"
+D="$(ler_de "$ENV_SUGESTOES" TOKEN_CATALOGO)"
+W="$(ler_de "$ENV_SUGESTOES" CATALOGO_API_URL)"
 [ -n "$A" ] || parar "TOKENS_ACEITOS_ADMIN não ficou gravado em $ENV_CATALOGO. As cópias intactas estão em $RAIZ ($BACKUPS)."
 [ -n "$F" ] || parar "TOKENS_ACEITOS_FORUM não ficou gravado em $ENV_CATALOGO. As cópias intactas estão em $RAIZ ($BACKUPS)."
 [ "$A" = "$B" ] || parar "os dois lados do par do Admin ficaram com valores DIFERENTES — isso daria 401 em toda gravação do menu. As cópias intactas estão em $RAIZ ($BACKUPS)."
 [ "$F" = "$G" ] || parar "os dois lados do par do fórum ficaram com valores DIFERENTES — o fórum abriria sem menu, em silêncio. As cópias intactas estão em $RAIZ ($BACKUPS)."
-[ "$A" != "$F" ] || parar "o Admin e o fórum ficaram com o MESMO token — token é por par, e um só faria a rotação de um derrubar o outro. As cópias intactas estão em $RAIZ ($BACKUPS)."
+[ -n "$C" ] || parar "TOKENS_ACEITOS_SUGESTOES não ficou gravado em $ENV_CATALOGO. As cópias intactas estão em $RAIZ ($BACKUPS)."
+[ "$C" = "$D" ] || parar "os dois lados do par da Caixa ficaram com valores DIFERENTES — a Caixa abriria sem menu, em silêncio. As cópias intactas estão em $RAIZ ($BACKUPS)."
+[ "$A" != "$F" ] && [ "$A" != "$C" ] && [ "$F" != "$C" ] || parar "duas areas ficaram com o MESMO token — token é por par, e um só faria a rotação de um derrubar o outro. As cópias intactas estão em $RAIZ ($BACKUPS)."
+[ "$W" = "$CATALOGO_URL" ] || parar "CATALOGO_API_URL não ficou como esperado em $ENV_SUGESTOES. As cópias intactas estão em $RAIZ ($BACKUPS)."
 [ "$U" = "$CATALOGO_URL" ] || parar "CATALOGO_API_URL não ficou como esperado em $ENV_ADMIN. As cópias intactas estão em $RAIZ ($BACKUPS)."
 [ "$V" = "$CATALOGO_URL" ] || parar "CATALOGO_API_URL não ficou como esperado em $ENV_FORUM. As cópias intactas estão em $RAIZ ($BACKUPS)."
 echo "  par admin→catalogo ..... confere nos dois lados"
 echo "  par forum→catalogo ..... confere nos dois lados"
-echo "  os dois pares .......... sao tokens DIFERENTES, como devem ser"
+echo "  par caixa→catalogo ..... confere nos dois lados"
+echo "  os tres pares .......... sao tokens DIFERENTES, como devem ser"
 echo "  endereco do catalogo ... $CATALOGO_URL"
 echo
 
@@ -213,7 +236,7 @@ if [ -n "$MEXIDOS" ]; then
   # que fez os greens do deploy-celula mentirem até 21/08/2026 (H13). Achado
   # pelo guarda irmão `ci/tests/test_provisionar_par_da_economia.py`, que EXECUTA
   # o script com o docker fora de alcance.
-  saida_do_reinicio="$(docker compose up -d --force-recreate catalogo admin forum 2>&1)"
+  saida_do_reinicio="$(docker compose up -d --force-recreate catalogo admin forum sugestoes 2>&1)"
   estado_do_reinicio=$?
   printf '%s\n' "$saida_do_reinicio" | tail -5
   if [ "$estado_do_reinicio" -eq 0 ]; then
@@ -224,7 +247,7 @@ if [ -n "$MEXIDOS" ]; then
     echo "Os arquivos ficaram certos, mas o reinicio das celulas FALHOU."
     echo "Nada foi perdido: os dois pares estao gravados e conferidos."
     echo "Rode a linha abaixo e me mande a saida:"
-    echo "  cd $RAIZ && docker compose up -d --force-recreate catalogo admin forum"
+    echo "  cd $RAIZ && docker compose up -d --force-recreate catalogo admin forum sugestoes"
   fi
 else
   echo "Nada a fazer: os dois lados ja estavam ligados."
