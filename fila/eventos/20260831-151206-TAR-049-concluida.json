@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-151206-TAR-049-concluida",
+  "tarefa": "TAR-049",
+  "evento": "concluida",
+  "quando": "2026-08-31T15:12:06+00:00",
+  "quem": "sessao-gamificacao-3108",
+  "evidencia": "PR https://github.com/abundanciabr/sitesdoreino/pull/693 mergeado (commit 50a5978a). 33 testes verdes nos dois guardas (13 novos, que EXECUTAM o script), suite local completa 1361 verdes, bash -n limpo. Prova vermelho->verde por assercao: com as travas do SITE_ID comentadas o script sai 0 dizendo 'SITE_ID preenchido', e o guarda reprova. O script ja responde 200 em raw.githubusercontent.com/.../main/infra/provisionar-gamificacao.sh. O bloco de colar do passo H foi entregue ao mantenedor pela sessao principal.",
+  "verificado_em": "2026-08-31"
+}
