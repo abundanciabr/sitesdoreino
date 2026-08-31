@@ -2032,3 +2032,32 @@ tela por mais dois dias, provando um caminho que já não era o de ninguém.
 **A armadilha irmã, que não é desta célula:** `armadilhas/202` — campo novo
 OBRIGATÓRIO num contrato congelado é quebra, e o `contrato-aditivo` reprova.
 Ela apareceu no degrau 1 desta mesma tarefa.
+
+---
+
+## A regra do apagamento mora fora do endpoint (31/08/2026)
+
+Se você precisar apagar uma ideia de qualquer caminho novo — outro comando de
+`manage.py`, uma rotina, uma correção em massa — **chame
+`apps/core/apagamento.py::apagar_definitivamente()`**. Não reescreva a
+sequência.
+
+Até 31/08 ela morava no corpo de `api_gestao.apagar()`, e o único caminho era o
+botão do Admin. Quando o mantenedor pediu um caminho pelo pipeline para
+esvaziar o quadro (`manage.py esvaziar_caixa`), a saída rápida era copiar as
+oito linhas para dentro do comando novo. O problema dessa cópia não é estética:
+o apagamento tem uma promessa em lei (`DECISAO-apagar-ideia.md` — título,
+problema, solução, votos e comentários de TODOS somem; a linha fica por causa
+do histórico append-only). No dia em que a promessa mudar, uma das cópias muda
+e a outra continua apagando pela regra velha, **sem erro nenhum na tela**: o
+sintoma seria conteúdo que a decisão prometeu destruir sobrevivendo em silêncio.
+
+`test_esvaziar_caixa.py::test_usa_a_funcao_do_botao_e_nao_uma_copia_da_regra`
+espiona a chamada e reprova quem escrever a segunda cópia.
+
+**A trava do comando em lote é de outra família, e vale copiar:** `--confirmo N`
+recusa se o número de ideias com conteúdo não bater exatamente com N. Uma
+pergunta "tem certeza?" mede a INTENÇÃO de quem dispara; esta mede o ESTADO DO
+MUNDO no instante do disparo. Para um comando sem volta que roda em produção
+meses depois de escrito, é a diferença entre parar sozinho diante de quarenta
+ideias de aluno e destruir as quarenta.

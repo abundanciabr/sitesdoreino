@@ -58,13 +58,12 @@ from apps.sugestoes.eventos import AtorSemIdDaPlataforma
 from apps.sugestoes.models import (
     AvaliacaoInterna,
     ChangeSpecAprovado,
-    Comentario,
     CorredorAusente,
     HistoricoStatus,
     Sugestao,
-    Voto,
 )
 
+from . import apagamento
 from . import sessao as ses
 from .changespecs import ChangeSpecInvalido, e_aprovador
 from .changespecs import registrar as registrar_changespec
@@ -709,35 +708,13 @@ def desarquivar(request, sugestao_id: int, payload: QuemAge):
     ),
 )
 def apagar(request, sugestao_id: int, payload: QuemAge):
+    # A REGRA mora em `apps/core/apagamento.py` desde 31/08/2026, quando o
+    # comando `esvaziar_caixa` passou a precisar dela. Os dois caminhos
+    # chamando a MESMA função é o que garante que o passo do pipeline apague
+    # exatamente o que este botão apaga — hoje, e depois de a regra mudar.
     sugestao = _ideia(sugestao_id)
-    if sugestao.apagada_em is not None:
+    if not apagamento.apagar_definitivamente(sugestao, quem=_quem(payload)):
         return 422, {"erro": "Esta ideia já foi apagada."}
-    agora = timezone.now()
-    quem = _quem(payload)
-    Voto.objects.filter(sugestao=sugestao).delete()
-    Comentario.objects.filter(sugestao=sugestao).delete()
-    sugestao.titulo = ""
-    sugestao.problema = ""
-    sugestao.solucao_proposta = ""
-    sugestao.apagada_em = agora
-    sugestao.apagada_por = quem
-    # Apagada é sempre arquivada: nenhuma superfície do aluno ou da gestão
-    # precisa aprender um segundo carimbo para saber que isto sumiu — a
-    # exclusiva NOVIDADE que `apagada` acrescenta é "não há mais nada para
-    # restaurar".
-    sugestao.arquivada_em = sugestao.arquivada_em or agora
-    sugestao.arquivada_por = sugestao.arquivada_por or quem
-    sugestao.save(
-        update_fields=[
-            "titulo",
-            "problema",
-            "solucao_proposta",
-            "apagada_em",
-            "apagada_por",
-            "arquivada_em",
-            "arquivada_por",
-        ]
-    )
     return _uma_ideia(sugestao_id)
 
 
