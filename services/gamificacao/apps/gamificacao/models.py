@@ -259,6 +259,18 @@ class RegraDePontuacao(models.Model):
 
     ativa = models.BooleanField(default=False)
     versao = models.PositiveIntegerField(default=1)
+    # A DATA da lei §10.5: "ajustar a economia é UPDATE + versão, ANUNCIADO e
+    # NUNCA RETROATIVO". Até 31/08/2026 a promessa do "nunca retroativo" não
+    # tinha mecanismo nenhum — o motor olhava só `ativa`, e um evento antigo
+    # reentregue depois de alguém ligar a regra pagaria como se a regra sempre
+    # tivesse valido. É a "garantia sem mecanismo" da RETROSPECTIVA-FASE-D, e
+    # aqui ela vira coluna: o motor recusa fato ANTERIOR a esta data.
+    #
+    # `null` = regra que nunca foi ligada. Não é "vale desde sempre": regra
+    # desligada não paga de qualquer jeito, e o dia em que ela for ligada é o
+    # dia em que esta coluna nasce. O default NÃO é `auto_now_add` de
+    # propósito — a data que importa é a de LIGAR, não a de cadastrar.
+    vigente_desde = models.DateTimeField(null=True, blank=True)
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
 
@@ -267,6 +279,14 @@ class RegraDePontuacao(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["site_id", "slug"], name="uma_regra_por_slug_por_site"
+            ),
+            # Ligada sem data seria justamente o buraco que a coluna veio
+            # fechar: o motor não teria com o que comparar o fato e voltaria a
+            # pagar retroativo, em silêncio. O banco recusa — invariante por
+            # construção, não por lembrança de quem escreve o próximo `UPDATE`.
+            models.CheckConstraint(
+                condition=models.Q(ativa=False) | models.Q(vigente_desde__isnull=False),
+                name="regra_ligada_tem_data_de_vigencia",
             ),
         ]
 
