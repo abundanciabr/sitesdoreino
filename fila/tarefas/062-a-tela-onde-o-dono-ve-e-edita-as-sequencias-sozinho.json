@@ -1,0 +1,16 @@
+{
+  "arquivo": "062-a-tela-onde-o-dono-ve-e-edita-as-sequencias-sozinho",
+  "id": "TAR-062",
+  "titulo": "A tela onde o dono ve e edita as sequencias sozinho",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [
+    "TAR-060"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + prova de fora: a tela abrindo em https://meshcraft.top/admin/escola/jornadas/ (codigo HTTP cru) + o veredito do run de deploy por gh run view --json.",
+  "despacho": "Degrau 7 da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\nE O DEGRAU QUE ENTREGA AO MANTENEDOR O QUE ELE PEDIU NA DECISAO 8.3: editar o\ntexto de uma mensagem sozinho, a qualquer hora, sem robo e sem publicacao.\n\nTela em `/admin/escola/jornadas/`:\n- Quais sequencias existem, e o editor do texto de cada passo. Sequencia e DADO\n  (§4.2): linha de tabela, versionada, NUNCA retroativa — mudar a jornada nao\n  reescreve quem ja esta no meio dela.\n- Quem esta em cada uma, agora.\n- O que foi enviado, para quem, e QUANDO.\n- **O que foi BARRADO e por que** — esta e a metade que faz a tela ser util. Sem\n  ela, a pergunta \"por que o aluno X nao recebeu?\" fica sem resposta e o\n  mantenedor olha para o silencio. Com ela, a tela responde \"barrada pela regua:\n  ja tinha recebido uma hoje\".\n\nLEI ANTI-DUPLICACAO (CLAUDE.md): a tela CALCULA tudo das tabelas do motor. Nada\nde lista propria, nada de contador mantido a mao. Se a tela precisar mostrar algo\nque a tabela nao sabe, a mudanca e na tabela — nunca uma lista paralela.\n\nLinguagem: o mantenedor e leigo. Zero sigla, zero jargao. \"Barrada pela regua\",\nnao \"rate limit exceeded\".",
+  "origem": "degrau 7 de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md",
+  "criada_em": "2026-08-31"
+}

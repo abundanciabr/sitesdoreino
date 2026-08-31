@@ -1,0 +1,16 @@
+{
+  "arquivo": "058-a-regua-que-impede-a-chateacao-uma-por-pessoa-e-ela-se-recus",
+  "id": "TAR-058",
+  "titulo": "A regua que impede a chateacao: uma por pessoa, e ela se recusa na duvida",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-057"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + testes: tres jornadas no mesmo dia => uma entrega e duas reagendadas; passo das 21h nao sai; teste de fuso America/Sao_Paulo; regua indisponivel => nao envia e grava o motivo.",
+  "despacho": "Degrau 3 da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\nLeia o §6 do plano inteiro antes de comecar — ele e a especificacao desta tarefa.\n\nA REGUA e UMA SO, por pessoa, atravessando toda entrega. Se cada jornada tivesse\na propria, tres jornadas somariam tres mensagens no mesmo dia — cada uma\nrespeitando \"1 por dia\" sozinha, e o aluno recebendo tres.\n\nEla barra nesta ordem:\n1. Preferencia da pessoa (silenciou o assunto ou o canal). Transacional NUNCA se\n   silencia — \"sua matricula foi liberada\" nao e incentivo.\n2. Teto diario: 1 por dia por pessoa. Passo barrado NAO se perde — reagenda para\n   a proxima janela valida.\n3. Janela de silencio: nunca depois das 20h. Fuso America/Sao_Paulo SEMPRE\n   (`armadilhas/099` — com o fuso do Django cru o passo das 22h cai no dia\n   errado e nada acusa).\n4. So boa noticia. O vocabulario de assuntos e fechado para que uma jornada nova\n   nao consiga inventar um assunto ruim.\n\nNAO EXISTE trava de menor de idade, e isso e decisao declarada e nao esquecimento:\na escola so tem alunos maiores de 18 (registro 20260831-007, e o §9 emendado de\nDECISAO-gamificacao.md). \"Nunca em horario escolar\" TAMBEM caiu — um adulto as\n14h de terca e exatamente quem se quer alcancar.\n\nFAIL-CLOSED: regua indisponivel ou preferencia ilegivel => NAO envia e registra o\nmotivo na Entrega. Silencio por duvida, nunca mensagem por duvida.\n\nNesta tarefa entram tambem as preferencias por pessoa (silenciar assunto/canal).",
+  "origem": "degrau 3 de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md",
+  "criada_em": "2026-08-31"
+}
