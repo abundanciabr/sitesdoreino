@@ -734,3 +734,42 @@ dicionário é `apps/core/rodape.py::montar`. O catálogo de tradução
 (`traducoes/rodape.yaml`) é o TEXTO DE FÁBRICA — o que o site mostra enquanto
 ninguém escreveu nada, e para onde ele volta se a origem do dado ficar fora do
 ar. Quem for fazer a etapa 2 muda uma função, não os templates.
+
+## O menu do topo: tag de template, e não processador de contexto
+
+31/08/2026 (TAR-069). O menu do topo é resolvido por `{% menu_do_topo as itens %}`
+(`apps/core/templatetags/menu.py`), e a escolha é de ORDEM, não de gosto: a chave
+da página sai do `resolver_match`, que só existe **depois** da resolução de URL,
+isto é, depois de todo middleware. No momento em que o template renderiza, ele já
+está lá. (No fórum a mesma peça é processador de contexto — lá isso também roda
+no render, e é o desenho que o rodapé daquela célula já usava. Copiar o PADRÃO,
+não o arquivo.)
+
+O `as variavel` também não é enfeite: o template pergunta UMA vez e usa a
+resposta duas (o estilo e o desenho). Chamar a tag duas vezes resolveria o menu
+duas vezes, e as duas leituras poderiam discordar.
+
+## Bloco novo no `base_mobile.html` nasce DENTRO de um `{% if %}`, colado
+
+O `base_mobile.html` é compartilhado com os sites monolíngues, e a landing de um
+site não registrado é comparada **byte a byte**
+(`tests/test_i18n_http.py::test_regressao_site_nao_registrado_landing_byte_identica`).
+Isso já valia para o bloco de SEO; vale igual para o menu, para o convite de
+instalar o app e para o rodapé. A regra prática, que dá para seguir sem pensar:
+
+* o estilo do bloco entra dentro de `{% if <o que decide o bloco> %}`, **colado**
+  no fim da linha anterior;
+* a marcação, idem;
+* nada de linha em branco "para respirar" fora da condicional — cada uma delas é
+  um byte na saída de todo site que não tem o recurso.
+
+Seguindo isso, o guarda de regressão fica verde **sem ser tocado**, que é a
+prova de que nenhum site herdou o que não pediu.
+
+## Guarda de "sumiu do menu" precisa olhar SÓ o menu
+
+O item de visitante (`Cadastro`) some do menu para quem já entrou. Um teste que
+procura `"Sign up" not in corpo` no HTML inteiro reprova por causa do RODAPÉ, que
+também leva ao cadastro — e reprovaria por um link que não é do menu. O guarda
+recorta `<nav class="menu-topo">…</nav>` antes de afirmar. Caiu de verdade em
+31/08/2026, no merge do rodapé com este PR.
