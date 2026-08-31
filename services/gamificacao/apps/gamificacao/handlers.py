@@ -103,3 +103,21 @@ HANDLERS = {
     "sugestao.voto-adicionado": ao_voto_adicionado,
     "sugestao.status-alterado": ao_status_alterado,
 }
+
+# OS ASSUNTOS QUE CHEGAM E MESMO ASSIM NÃO VIRAM PONTO, declarados aqui porque é
+# aqui que a decisão mora — ao lado do handler que a implementa. O valor é o
+# MOTIVO, escrito para ser lido por gente: quem monta a tela de ligar e desligar
+# (`apps/gamificacao/interruptores.py`) usa esta chave para avisar o mantenedor
+# ANTES do clique que ligar esta regra não faria número nenhum se mexer.
+#
+# Sem a declaração, esse aviso teria de ser deduzido do código do handler, e os
+# dois divergiriam no dia em que o quiz ganhasse a tradução de e-mail para id: a
+# tela continuaria dizendo "não paga" depois de já pagar. Apagar a linha daqui é
+# PARTE de fazer o quiz pagar, e é de propósito que as duas coisas ficam juntas.
+NAO_CREDITAM = {
+    "quiz.completado": (
+        "o contrato do quiz identifica a pessoa por e-mail, e esta célula só "
+        "sabe creditar id de plataforma; o caminho é findPersonByEmail, da "
+        "identidade, e é degrau próprio"
+    ),
+}
