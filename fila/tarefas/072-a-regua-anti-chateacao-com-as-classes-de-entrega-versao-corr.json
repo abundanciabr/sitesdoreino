@@ -1,0 +1,16 @@
+{
+  "arquivo": "072-a-regua-anti-chateacao-com-as-classes-de-entrega-versao-corr",
+  "id": "TAR-072",
+  "titulo": "A regua anti-chateacao com as classes de entrega (versao corrigida)",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-071"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + testes: (a) O CENARIO DAS 10h/18h — medalha de manha nao barra matricula liberada a tarde; (b) tres jornadas no mesmo dia => uma entrega e duas reagendadas; (c) passo das 21h e das 6h nao saem; (d) desempate pela inscricao mais antiga; (e) regua indisponivel => nao envia e grava o motivo.",
+  "despacho": "Substitui a TAR-058, trancada por estar desatualizada.\n\n*** ESTE DESPACHO NAO REPETE O PLANO. Ele APONTA. ***\n\nLEIA ANTES DE ESCREVER UMA LINHA:\n1. docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md — o §6 INTEIRO. Ele tem tres\n   partes agora (6.1 classes, 6.2 a regua, 6.3 a regua de capacidade), e a\n   primeira e a que a TAR-058 nao tinha.\n2. docs/consultorias/sequencias-de-mensagens/VEREDITO.md §1.6 e §1.7 — o cenario\n   exato que quebrava, com hora marcada.\n\nO QUE ESTA TAREFA ENTREGA: a regua do §6 e a tabela Preferencia. Uma peca so,\natravessada por toda entrega.\n\nO DEFEITO QUE ELA EXISTE PARA NAO REPETIR, e ele tem cenario com hora:\no aluno ganha uma medalha as 10h; as 18h a matricula dele e liberada; a regua\nantiga BARRAVA o aviso da matricula, porque o teto diario nao isentava mensagem\nde servico. Mensagem de servico barrada por uma de incentivo.\n\nPor isso a classe de entrega vem PRIMEIRO, e critica/transacional passam POR FORA\nda regua inteira — nao so do teto. \"Isento do teto\" nao basta: um aviso de senha\ntambem nao espera janela de horario nem some porque a pessoa silenciou incentivo.\n\nMAIS TRES QUE O PLANO EXIGE E QUE E FACIL ESQUECER:\n- A janela tem hora de ABRIR (8h), nao so de fechar (20h). Sem piso, \"reagenda\n  para a proxima janela valida\" manda as 6h da manha.\n- O desempate e deterministico: inscricao mais antiga primeiro. Sem ordem\n  definida o teste do teto nao tem o que afirmar, e guarda que nao pode afirmar e\n  guarda decorativo.\n- Preferencia e por canal E por CLASSE, nunca um booleano `receber_email`.\n\nFAIL-CLOSED: regua indisponivel ou preferencia ilegivel => NAO envia e registra o\nmotivo na Entrega. Silencio por duvida, nunca mensagem por duvida.\n\nE fuso America/Sao_Paulo SEMPRE (`armadilhas/099`).",
+  "origem": "substitui a TAR-058, trancada por copiar um plano que mudou (consultoria externa de 31/08/2026)",
+  "criada_em": "2026-08-31"
+}

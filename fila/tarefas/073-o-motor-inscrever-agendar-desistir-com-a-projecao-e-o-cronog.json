@@ -1,0 +1,17 @@
+{
+  "arquivo": "073-o-motor-inscrever-agendar-desistir-com-a-projecao-e-o-cronog",
+  "id": "TAR-073",
+  "titulo": "O motor: inscrever, agendar, desistir — com a projecao e o cronograma ancorado",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-056",
+    "TAR-072"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + vermelho->verde real: a condicao que deixa de valer ENTRE a inscricao e a varredura gera Entrega pulada + o mesmo evento reentregue nao inscreve duas vezes + o passo 3 sai no cronograma ancorado mesmo com o passo 2 atrasado pela regua + teto por passada coberto.",
+  "despacho": "Substitui a TAR-059, trancada por estar desatualizada.\n\n*** ESTE DESPACHO NAO REPETE O PLANO. Ele APONTA. ***\n\nLEIA ANTES DE ESCREVER UMA LINHA:\n1. docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md — §2 (as tres capacidades que\n   nao existem), §5 (o modelo, incluindo EstadoDoAluno e os cinco carimbos de\n   tempo) e §9 (os riscos, que sao a lista de testes que voce deve escrever).\n2. docs/consultorias/sequencias-de-mensagens/VEREDITO.md §1.9 — de onde as\n   condicoes leem, e por que a `leads` foi considerada e recusada com medicao.\n\nO QUE ESTA TAREFA ENTREGA: o coracao do motor — inscrever, agendar, reavaliar a\ncondicao, desistir, e a varredura periodica.\n\nO QUE MUDOU DESDE A TAR-059, e e o que faz esta tarefa ser outra:\n\n1. A PROJECAO `EstadoDoAluno`. As condicoes NAO consultam outras celulas no\n   instante do envio. Elas leem a projecao, que e alimentada por eventos. Sem\n   isso, 10 mil pessoas x 4 condicoes viram 40 mil idas a rede numa passada. A\n   projecao e superficie CALCULADA, nao fonte da verdade — e isso precisa estar\n   escrito no codigo, senao a proxima sessao le como duplicacao e tem razao.\n\n2. O CRONOGRAMA E ANCORADO. `ancora_em` na Inscricao, e a Entrega guarda\n   `previsto_para`, `reagendado_para` e `enviado_em` separados. A pergunta que\n   isso responde: se o passo 2 era para D+2 e a regua empurrou para D+3, o passo\n   3 sai em D+5 ou D+6? O plano decidiu D+5 — atraso da regua NAO empurra os\n   passos seguintes. Sem os carimbos separados, isso vira bug irreproduzivel.\n\n3. A trava da Inscricao e PARCIAL. Cada episodio e uma Inscricao nova, e o\n   `inscricao_id` muda — e e isso que mantem o order_id sintetico unico por\n   episodio. Se voce reaproveitar a linha, o segundo episodio some em silencio.\n\nO QUE NAO MUDOU E CONTINUA VALENDO: condicao e FUNCAO PYTHON num dicionario,\nnunca linguagem de formula no banco (DSL e criterio de morte, §10); a condicao e\nreavaliada NO INSTANTE DO ENVIO, nunca no da inscricao; e teto por passada\n(LOTE = 200, como os relays ja fazem).\n\nO gatilho da inatividade NAO e desta tarefa: ele virou evento proprio\n(`aluno.inatividade-detectada.v1`) e exige Rito de Contrato — degrau 6b.",
+  "origem": "substitui a TAR-059, trancada por copiar um plano que mudou (consultoria externa de 31/08/2026)",
+  "criada_em": "2026-08-31"
+}
