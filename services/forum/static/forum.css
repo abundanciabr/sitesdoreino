@@ -367,3 +367,30 @@ button.mini:hover { background: #fffbeb; }
     transform: rotateX(-18deg) rotateY(-32deg);
   }
 }
+
+/* O RODAPÉ (apps/core/rodape.py), 31/08/2026 — a mesma peça do site público,
+   com as cores desta casa. Fora do <main> e por isso com a largura dele
+   repetida aqui: sem isso, num monitor largo, a assinatura ficaria colada nas
+   bordas enquanto o conteúdo acima segue centrado. */
+.rodape {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 24px 20px 40px;
+  border-top: 1px solid var(--linha);
+  color: var(--tinta-fraca);
+  font-size: 14px;
+  text-align: center;
+}
+.rodape .marca { margin: 0 0 4px; font-weight: 600; color: var(--tinta); }
+.rodape .descricao { margin: 0 0 16px; }
+.rodape .links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  margin: 0 0 16px;
+}
+.rodape .links a { color: var(--tinta-fraca); text-decoration: none; }
+.rodape .links a:hover,
+.rodape .links a:focus { color: var(--destaque); text-decoration: underline; }
+.rodape .direitos { margin: 0; }
