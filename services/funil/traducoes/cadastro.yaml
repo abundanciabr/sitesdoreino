@@ -26,10 +26,13 @@ titulo_pagina:
   es: "Regístrate en Meshcraft"
 
 subtitulo:
-  _fonte: "05551f"
-  en: "Leave your name and e-mail to follow the news."
-  pt-br: "Deixe seu nome e e-mail para acompanhar as novidades."
-  es: "Deja tu nombre y correo para seguir las novedades."
+  # Até 30/08/2026 esta página era captura de lead ("acompanhar as
+  # novidades"). Decisão do mantenedor em 31/08/2026: uma escola tem aluno ou
+  # não tem, então o texto passou a pedir a vaga, não a inscrição num boletim.
+  _fonte: "a079b1"
+  en: "Request a spot at Meshcraft. Our team reviews every request and replies through WhatsApp."
+  pt-br: "Peça sua vaga no Meshcraft. Nossa equipe analisa cada pedido e responde pelo WhatsApp."
+  es: "Pide tu lugar en Meshcraft. Nuestro equipo revisa cada solicitud y responde por WhatsApp."
 
 campo_nome:
   _fonte: "dcd1d5"
@@ -44,11 +47,14 @@ campo_email:
   es: "Correo electrónico"
 
 campo_whatsapp:
-  # WhatsApp é nome de produto — não se traduz (mesmo espírito do glossário).
-  _fonte: "1e9e69"
-  en: "WhatsApp (optional)"
-  pt-br: "WhatsApp (opcional)"
-  es: "WhatsApp (opcional)"
+  # WhatsApp é nome de produto, não se traduz (mesmo espírito do glossário).
+  # Desde 31/08/2026 o campo é OBRIGATÓRIO (era opcional na versão de
+  # captura de lead): sem WhatsApp o mantenedor não tem como avisar a decisão
+  # (`POST /pre-matriculas` da célula alunos já recusa sem ele).
+  _fonte: "6a40ed"
+  en: "WhatsApp"
+  pt-br: "WhatsApp"
+  es: "WhatsApp"
 
 botao_enviar:
   _fonte: "5e2b8e"
@@ -57,15 +63,44 @@ botao_enviar:
   es: "Registrarme"
 
 sucesso:
-  _fonte: "bdbe77"
-  en: "Done! We received your sign-up."
-  pt-br: "Pronto! Recebemos seu cadastro."
-  es: "¡Listo! Recibimos tu registro."
+  # Desde 31/08/2026 o pedido vira uma linha na mesma fila "Aguardando
+  # aprovação" que o admin gerencia em /admin/escola/alunos/.
+  _fonte: "2021cf"
+  en: "Done! Your request is awaiting approval. We will reach out on WhatsApp."
+  pt-br: "Pronto! Seu pedido está aguardando aprovação. Vamos entrar em contato pelo WhatsApp."
+  es: "¡Listo! Tu solicitud está esperando aprobación. Te contactaremos por WhatsApp."
 
 erro_envio:
-  # Falha ao repassar o lead à célula leads (a página responde 502 e mantém o
-  # que a pessoa digitou — nunca perde o formulário em silêncio).
-  _fonte: "37c9df"
-  en: "We could not send your sign-up. Try again."
-  pt-br: "Não foi possível enviar seu cadastro. Tente de novo."
-  es: "No pudimos enviar tu registro. Inténtalo de nuevo."
+  # Falha ao repassar o pedido de entrada à célula alunos (a página responde
+  # 502 e mantém o que a pessoa digitou — nunca perde o formulário em
+  # silêncio).
+  _fonte: "a496fc"
+  en: "We could not send your request. Try again."
+  pt-br: "Não foi possível enviar seu pedido. Tente de novo."
+  es: "No pudimos enviar tu solicitud. Inténtalo de nuevo."
+
+erro_ja_matriculado:
+  # 409 da alunos: este e-mail já está na fila, já é aluno, ou foi
+  # reembolsado (a porta não distingue os três — DECISAO-reembolso-tira-o-
+  # acesso.md). Não é erro de envio: o pedido chegou, só que esta pessoa já
+  # está na plataforma.
+  _fonte: "04a21b"
+  en: "This e-mail is already registered with us. If you already have a Google account, sign in instead."
+  pt-br: "Este e-mail já está cadastrado com a gente. Se você já tem conta do Google, entre por ela em vez de se cadastrar de novo."
+  es: "Este correo ya está registrado con nosotros. Si ya tienes cuenta de Google, inicia sesión en lugar de registrarte de nuevo."
+
+tem_conta_google:
+  # Metade 1 do convite reciproco com login.html (login.yaml tem a metade
+  # simétrica, "nao_tem_conta_google"): quem chega aqui sem saber que já tem
+  # conta do Google não devia duplicar o cadastro.
+  _fonte: "4cc13d"
+  en: "Already have a Google account?"
+  pt-br: "Já tem conta do Google?"
+  es: "¿Ya tienes cuenta de Google?"
+
+link_entrar:
+  # Texto do link para {% url_i18n 'entrar' %}, ao lado de "tem_conta_google".
+  _fonte: "bfd402"
+  en: "Sign in"
+  pt-br: "Entrar"
+  es: "Iniciar sesión"

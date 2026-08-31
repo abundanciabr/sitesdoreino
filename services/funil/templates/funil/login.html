@@ -1,5 +1,6 @@
 {% extends "base_mobile.html" %}
 {% load t %}
+{% load url_i18n %}
 <!-- templates/funil/login.html — a porta de entrada do site, com a marca dele
      e nos três idiomas (DECISAO-onde-mora-a-sessao). Página SÓ de site
      registrado no i18n, como o cadastro: a view devolve 404 fora do regime.
@@ -47,5 +48,6 @@
   <p>{% t "login.subtitulo" %}</p>
   <a class="cta" href="{{ url_de_entrada }}">{% t "login.botao_google" %}</a>
   <p class="aviso">{% t "login.aviso_email" %}</p>
+  <p class="aviso">{% t "login.nao_tem_conta_google" %} <a href="{% url_i18n 'cadastro' %}">{% t "login.link_cadastro" %}</a></p>
 </div>
 {% endblock %}

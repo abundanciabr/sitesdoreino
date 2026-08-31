@@ -387,14 +387,19 @@ class NotificacoesClient:
 
 
 class AlunosClient:
-    """`contracts/alunos.openapi.yaml` — em que categoria a pessoa está.
+    """`contracts/alunos.openapi.yaml` — em que categoria a pessoa está, e o
+    pedido de entrada de quem ainda não é.
 
-    Somente leitura, e **fail-OPEN**: qualquer falha devolve `None`, que o
-    chamador trata como `cadastrado`. É a mesma lei do `IdentidadeClient` acima
-    e pelo mesmo motivo — esta resposta decide o que a HOME mostra, nunca o que
-    alguém pode fazer. A Caixa continua conferindo matrícula na entrada dela;
-    esconder um botão nunca protegeu nada, e mostrá-lo nunca liberou nada
-    (`DECISAO-categorias-de-usuario` §6).
+    `situacao_de` é somente leitura e **fail-OPEN**: qualquer falha devolve
+    `None`, que o chamador trata como `cadastrado`. É a mesma lei do
+    `IdentidadeClient` acima e pelo mesmo motivo — esta resposta decide o que
+    a HOME mostra, nunca o que alguém pode fazer. A Caixa continua conferindo
+    matrícula na entrada dela; esconder um botão nunca protegeu nada, e
+    mostrá-lo nunca liberou nada (`DECISAO-categorias-de-usuario` §6).
+
+    `criar_pre_matricula` é diferente por natureza: é uma ESCRITA que a
+    página de cadastro precisa ver confirmada, então ela é **fail-CLOSED** —
+    ver o docstring do método.
     """
 
     # Mesmo orçamento da sessão, e pelo mesmo motivo: isto está no caminho de
@@ -453,3 +458,63 @@ class AlunosClient:
             logger.error("categoria: a alunos respondeu um corpo fora do contrato")
             return None
         return corpo
+
+    # Os três desfechos possíveis de `criar_pre_matricula` — nenhum é `None`,
+    # ao contrário de `situacao_de` acima. Esta é uma ESCRITA que a página de
+    # cadastro espera ver confirmada: quem preencheu o formulário não pode
+    # receber um "recebemos" educado quando o pedido nunca chegou à fila do
+    # mantenedor.
+    RESULTADO_NA_FILA = "na_fila"
+    RESULTADO_JA_TEM_MATRICULA = "ja_tem_matricula"
+    RESULTADO_FALHOU = "falhou"
+
+    def criar_pre_matricula(
+        self, *, site_id: str, email: str, nome_completo: str, whatsapp: str
+    ) -> str:
+        """`createPreEnrollment` — a pessoa pede entrada e fica AGUARDANDO.
+
+        Mesma porta que o `admin` (cadastro à mão) e a `sugestoes` (pedido de
+        entrada de quem já logou com o Google) já usam — esta célula só ganha
+        um terceiro chamador do mesmo endpoint congelado, nunca contrato novo.
+
+        `RESULTADO_NA_FILA`: o contrato responde 201 na primeira vez e 200 no
+        reenvio (`entrar_na_fila` do lado de lá é idempotente por e-mail);
+        para quem preencheu o formulário os dois significam a mesma coisa — o
+        pedido está registrado.
+        `RESULTADO_JA_TEM_MATRICULA`: 409, este e-mail já é aluno (ou já foi,
+        e o reembolso tirou o acesso — a porta não distingue os dois casos).
+        `RESULTADO_FALHOU`: config ausente, rede fora, ou resposta fora do
+        contrato — "não consegui registrar" nunca pode virar "registrei"
+        (RETROSPECTIVA-FASE-D §1: 2xx não é sucesso).
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "pre-matricula: ALUNOS_API_URL/ALUNOS_API_TOKEN ausentes no "
+                "env desta célula — o pedido de entrada não foi enviado"
+            )
+            return self.RESULTADO_FALHOU
+        base, token = config
+
+        try:
+            r = http().post(
+                f"{base}/pre-matriculas",
+                json={
+                    "site_id": site_id,
+                    "email": email,
+                    "nome_completo": nome_completo,
+                    "whatsapp": whatsapp,
+                },
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("pre-matricula: não deu para falar com a alunos: %s", erro)
+            return self.RESULTADO_FALHOU
+
+        if r.status_code in (200, 201):
+            return self.RESULTADO_NA_FILA
+        if r.status_code == 409:
+            return self.RESULTADO_JA_TEM_MATRICULA
+        logger.error("pre-matricula: a alunos respondeu HTTP %s", r.status_code)
+        return self.RESULTADO_FALHOU

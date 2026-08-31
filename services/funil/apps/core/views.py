@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 from urllib.parse import urlencode
 
-import httpx
 from django import forms
 from django.conf import settings
 from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
@@ -14,7 +13,12 @@ from django.views.decorators.http import (
 )
 from django.views.static import serve as serve_do_django
 
-from apps.core.clients import CatalogoClient, LeadsClient, NotificacoesClient
+from apps.core.clients import (
+    AlunosClient,
+    CatalogoClient,
+    LeadsClient,
+    NotificacoesClient,
+)
 from apps.core.enderecos import url_de_entrada, url_dos_avisos
 from apps.i18n import catalogo as cat
 from apps.i18n.idiomas import caminho_publico, direcao, tag_bcp47
@@ -119,11 +123,21 @@ def landing(request):
 
 class FormularioDeCadastro(forms.Form):
     """Validação server-side da página de cadastro. As mensagens de erro são
-    as do próprio Django — o activate() do resolver (fase 1) as localiza."""
+    as do próprio Django — o activate() do resolver (fase 1) as localiza.
+
+    `whatsapp` é OBRIGATÓRIO — ao contrário do antigo `phone` opcional da
+    versão de captura de lead. Esta página deixou de ser "deixe seu contato
+    para acompanhar novidades" e virou o pedido de entrada de quem não tem
+    conta do Google (decisão do mantenedor, 31/08/2026): sem WhatsApp o
+    mantenedor não tem como avisar a pessoa da decisão, e a porta
+    `POST /pre-matriculas` da célula `alunos` já recusa o pedido por essa
+    mesma razão (`nome_completo e whatsapp são obrigatórios`) — o form aqui só
+    adianta a mesma regra, no idioma da página.
+    """
 
     name = forms.CharField(max_length=200)
     email = forms.EmailField()
-    phone = forms.CharField(max_length=40, required=False)
+    whatsapp = forms.CharField(max_length=32)
 
 
 # HEAD junto com GET, sempre: `require_http_methods` NÃO o inclui de graça (o
@@ -133,13 +147,23 @@ class FormularioDeCadastro(forms.Form):
 # pré-visualizador de link. Medido em produção depois do deploy do PR #158.
 @require_http_methods(["GET", "HEAD", "POST"])
 def cadastro(request):
-    """PLANO-I18N fase 2: página de cadastro, só no regime prefixado.
+    """O pedido de entrada de quem não tem conta do Google.
+
+    Até 31/08/2026 esta página era captura de lead ("deixe seu nome e e-mail
+    para acompanhar as novidades") — um site de notícias, não uma escola.
+    Decisão do mantenedor nessa data: quem não tem Google (a ÚNICA porta de
+    login do site, `DECISAO-celula-de-identidade.md`) ainda precisa de um
+    jeito de virar aluno, e o jeito é este formulário entrar DIRETO na mesma
+    fila "Aguardando aprovação" que o admin já gerencia em
+    `/admin/escola/alunos/` — a mesma porta `POST /pre-matriculas` que o
+    cadastro à mão do admin e o pedido de entrada da Caixa (para quem já
+    logou com o Google) usam. Nenhum contrato novo: um terceiro consumidor do
+    mesmo endpoint congelado (`AlunosClient.criar_pre_matricula`).
 
     O form posta para a PRÓPRIA URL prefixada (decisão da maestro sobre a
     pendência 1 do PR #87): o resolver decapa o prefixo, esta view recebe e
-    repassa à célula leads server-side — mesmo canal POST /leads da landing,
-    com o idioma do lead gravado em `source` (D9: lead sem idioma não tem
-    retrofit).
+    repassa à célula alunos server-side, com `site_id` do Host (INV-P11) —
+    nunca do payload.
 
     Desde o D1 revisto (25/08/2026) o caminho nu `/cadastro` **é** a página em
     inglês, e o POST dele chega aqui normalmente. Na matriz antiga ele morria
@@ -152,22 +176,26 @@ def cadastro(request):
         # caminho respondia antes desta fase (rota inexistente).
         raise Http404("cadastro só existe em site registrado no i18n")
 
-    sucesso, erro_envio, status = False, False, 200
+    sucesso, ja_matriculado, erro_envio, status = False, False, False, 200
     if request.method == "POST":
         form = FormularioDeCadastro(request.POST)
         if form.is_valid():
-            payload = {
-                "site_id": request.site["id"],  # [INV-P11] do Host, não do payload
-                "email": form.cleaned_data["email"],
-                "name": form.cleaned_data["name"],
-                "phone": form.cleaned_data["phone"],
-                "source": f"cadastro-meshcraft-{request.idioma}",
-            }
-            try:
-                LeadsClient().upsert_lead(payload)
+            resultado = AlunosClient().criar_pre_matricula(
+                site_id=request.site["id"],  # [INV-P11] do Host, não do payload
+                email=form.cleaned_data["email"],
+                nome_completo=form.cleaned_data["name"],
+                whatsapp=form.cleaned_data["whatsapp"],
+            )
+            if resultado == AlunosClient.RESULTADO_NA_FILA:
                 sucesso = True
                 form = FormularioDeCadastro()  # sucesso limpa o formulário
-            except httpx.HTTPError:
+            elif resultado == AlunosClient.RESULTADO_JA_TEM_MATRICULA:
+                # Não é erro de envio (ARMADILHAS §4.9 é sobre falha de rede):
+                # o pedido chegou, só que esta pessoa já está na plataforma. A
+                # tela explica em vez de repetir "cadastro recebido" para
+                # quem talvez precise é só entrar com o Google.
+                ja_matriculado = True
+            else:
                 # Falha fechada e honesta (ARMADILHAS §4.9): nada de 200 com
                 # cara de sucesso — 502 com a página e o que a pessoa digitou.
                 erro_envio, status = True, 502
@@ -177,7 +205,12 @@ def cadastro(request):
     return render(
         request,
         "funil/cadastro.html",
-        {"form": form, "sucesso": sucesso, "erro_envio": erro_envio},
+        {
+            "form": form,
+            "sucesso": sucesso,
+            "ja_matriculado": ja_matriculado,
+            "erro_envio": erro_envio,
+        },
         status=status,
     )
 

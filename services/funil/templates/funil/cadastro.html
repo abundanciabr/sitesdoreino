@@ -19,6 +19,7 @@
     .msg { font-size: .875rem; margin-top: .5rem; }
     .erro { color: #b91c1c; }
     .sucesso { color: #16a34a; }
+    .aviso { font-size: .875rem; color: #52525b; margin-top: 1rem; }
     .sessao { font-size: .875rem; text-align: right; margin-bottom: .5rem; }
     .sessao .eu { opacity: .8; }
     .sessao .sair { display: inline; margin-left: .5rem; }
@@ -29,7 +30,9 @@
 <div class="card">
   <h1>{% t "cadastro.titulo_pagina" %}</h1>
   <p>{% t "cadastro.subtitulo" %}</p>
+  <p class="aviso">{% t "cadastro.tem_conta_google" %} <a href="{% url_i18n 'entrar' %}">{% t "cadastro.link_entrar" %}</a></p>
   {% if sucesso %}<p class="msg sucesso">{% t "cadastro.sucesso" %}</p>{% endif %}
+  {% if ja_matriculado %}<p class="msg aviso">{% t "cadastro.erro_ja_matriculado" %}</p>{% endif %}
   {% if erro_envio %}<p class="msg erro">{% t "cadastro.erro_envio" %}</p>{% endif %}
   <form method="post" action="{% url_i18n 'cadastro' %}">
     <label>{% t "cadastro.campo_nome" %}
@@ -41,9 +44,9 @@
     </label>
     {% for erro in form.email.errors %}<p class="msg erro">{{ erro }}</p>{% endfor %}
     <label>{% t "cadastro.campo_whatsapp" %}
-      <input type="tel" name="phone" value="{{ form.phone.value|default:'' }}">
+      <input type="tel" name="whatsapp" value="{{ form.whatsapp.value|default:'' }}">
     </label>
-    {% for erro in form.phone.errors %}<p class="msg erro">{{ erro }}</p>{% endfor %}
+    {% for erro in form.whatsapp.errors %}<p class="msg erro">{{ erro }}</p>{% endfor %}
     <button class="cta" type="submit">{% t "cadastro.botao_enviar" %}</button>
   </form>
 </div>

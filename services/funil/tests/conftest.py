@@ -249,3 +249,17 @@ def aluno(rede, monkeypatch):
         return_value=httpx.Response(200, json={"categoria": "aluno", "na_fila": None})
     )
     return rede
+
+
+@pytest.fixture
+def alunos_ligada(rede, monkeypatch):
+    """As duas variáveis do par `funil→alunos` ligadas, sem sessão nenhuma —
+    o caminho de quem preenche `/cadastro` sem nunca ter entrado com o
+    Google. Diferente da fixture `aluno` (que também loga a pessoa): esta
+    serve `test_cadastro.py`, onde a escrita (`POST /pre-matriculas`) é o que
+    se testa, e cada teste registra a resposta que quer em
+    `rede.post(f"{ALUNOS}/pre-matriculas", ...)`.
+    """
+    monkeypatch.setenv("ALUNOS_API_URL", ALUNOS)
+    monkeypatch.setenv("ALUNOS_API_TOKEN", "token-do-par-funil-alunos")
+    return rede

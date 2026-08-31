@@ -98,3 +98,20 @@ erro_email_nao_verificado:
   en: "Google does not confirm that e-mail as verified. Verify it in your Google account and try again."
   pt-br: "O Google não confirma esse e-mail como verificado. Verifique o endereço na sua conta Google e tente de novo."
   es: "Google no confirma ese correo como verificado. Verifícalo en tu cuenta de Google y vuelve a intentarlo."
+
+nao_tem_conta_google:
+  # Metade 1 do convite recíproco com cadastro.html (cadastro.yaml tem a
+  # metade simétrica, "tem_conta_google"): esta é a ÚNICA porta de login do
+  # site (DECISAO-celula-de-identidade), então quem não tem Google precisa de
+  # um caminho visível daqui, não só descobrir o /cadastro por acaso.
+  _fonte: "b5cada"
+  en: "Don't have a Google account?"
+  pt-br: "Não tem conta do Google?"
+  es: "¿No tienes cuenta de Google?"
+
+link_cadastro:
+  # Texto do link para {% url_i18n 'cadastro' %}, ao lado de "nao_tem_conta_google".
+  _fonte: "bb7234"
+  en: "Register"
+  pt-br: "Cadastre-se"
+  es: "Regístrate"
