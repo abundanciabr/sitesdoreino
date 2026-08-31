@@ -33,6 +33,16 @@
       {% if tipo.quantidade is None %}
       <div class="nota"><b>Ainda não dá para contar.</b> {{ tipo.falta }}</div>
       {% endif %}
+      {% comment %}
+      [LIBERADOS] Só no cartão "Alunos ativos", e não nos outros: é o único
+      grupo que faz sentido avisar num grupo de WhatsApp depois de liberar
+      alguém. Pedido do mantenedor, 31/08/2026.
+      {% endcomment %}
+      {% if tipo.slug == "ativos" %}
+      <div class="nota">
+        <a href="{% url 'escola_alunos_liberados' %}">Ver os nomes para avisar o grupo &rarr;</a>
+      </div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>

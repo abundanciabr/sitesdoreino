@@ -50,6 +50,7 @@ from apps.core.views import (
     documento_admin,
     documentos_admin,
     escola_alunos,
+    escola_alunos_liberados,
     escola_cadastrar,
     escola_jornada,
     escola_decidir,
@@ -289,6 +290,15 @@ urlpatterns = [
     # nela?" — e o mapa precisa abrir sem que ninguem role uma lista.
     path("escola/jornada/", escola_jornada, name="escola_jornada"),
     path("escola/alunos/", escola_alunos, name="escola_alunos"),
+    # A lista de nomes para colar no grupo, pedida pelo mantenedor em
+    # 31/08/2026 — vizinha da lista de gestão, e não dentro dela: uma pergunta
+    # sobre o cartão da pessoa ("qual a turma dela?") e uma sobre quem avisar
+    # ("quem já pode entrar?") são leituras diferentes da mesma escola.
+    path(
+        "escola/alunos/liberados",
+        escola_alunos_liberados,
+        name="escola_alunos_liberados",
+    ),
     # [PRONTUARIO] A historia de UMA pessoa (`DECISAO-a-ficha-nao-se-apaga` §5).
     # GET, e o e-mail vem por querystring: esta tela so PERGUNTA, nao decide
     # nada — e um e-mail no caminho da URL exigiria escapar barra e ponto para

@@ -494,6 +494,19 @@ primeira versão deste arquivo, e o teste pegou.
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 12px; word-break: break-word;
     }
+
+    /* --- a lista de nomes dos alunos liberados (31/08/2026) ---------------
+       Existe para SER colada: o mantenedor libera alguém e depois avisa o
+       grupo, e cada campo a mais aqui (e-mail, turma, data) seria uma linha
+       que ele seria obrigado a apagar à mão antes de colar. `pre-wrap`
+       preserva a quebra de linha entre nomes sem exigir marcação nenhuma
+       dentro do bloco — ver [LIBERADOS] em escola_alunos_liberados.html. */
+    .lista-de-nomes {
+      margin: 14px 0 0; padding: 14px 16px; border-radius: 10px;
+      background: var(--painel); border: 1px solid var(--linha); color: var(--texto);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word;
+    }
   </style>
 </head>
 <body>

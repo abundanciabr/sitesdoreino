@@ -1,0 +1,44 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Alunos liberados{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'escola_alunos' %}">&larr; Alunos</a>
+  <h1>Alunos liberados</h1>
+  <p class="subtitulo">
+    Só os nomes completos de quem está com acesso ativo agora, um por linha,
+    prontos para colar no grupo. Toque e segure (ou Ctrl+A no computador) em
+    cima da caixa abaixo para selecionar tudo, e depois copie.
+  </p>
+
+  {% if nao_consigo_ver %}
+  <p class="aviso">
+    <b>Ainda não consigo ver os nomes.</b>
+    Falta a senha de par entre esta área e a parte do sistema que guarda os
+    alunos, um comando de uma linha no servidor, que está no painel do
+    sistema, na caixa <b>Precisa de você</b>.
+  </p>
+  {% elif not nomes %}
+  <p class="aviso">
+    <b>Ainda ninguém está liberado.</b>
+    Este zero é medido, não suposto: eu perguntei e a lista voltou vazia.
+    Quem você liberar na tela de alunos aparece aqui.
+  </p>
+  {% else %}
+  {% comment %}
+  [LIBERADOS] O `<pre>` guarda SÓ os nomes, um por linha, e nada mais dentro
+  dele — o pedido do mantenedor foi literal: uma lista pronta para colar, sem
+  e-mail, sem WhatsApp, sem rótulo de nenhuma espécie que ele precisasse
+  apagar à mão antes de mandar no grupo. `white-space: pre-wrap` (em
+  base.html) é o que faz a quebra de linha aparecer sem marcação nenhuma
+  entre um nome e o outro.
+  {% endcomment %}
+  <pre class="lista-de-nomes">{% for nome in nomes %}{{ nome }}
+{% endfor %}</pre>
+  {% endif %}
+</div>
+{% endblock %}
