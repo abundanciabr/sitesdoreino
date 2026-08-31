@@ -69,3 +69,23 @@ TIME_ZONE = "America/Sao_Paulo"
 # `DECISAO-notificacoes` §5.2: o sino aparece em TODA página, e uma tabela que
 # só cresce fica lenta exatamente quando o produto der certo.
 DIAS_ATE_ARQUIVAR = int(os.environ.get("NOTIFICACOES_DIAS_ATE_ARQUIVAR", "30"))
+
+# ---------------------------------------------------------------------------
+# O aviso na tela do aparelho (Fase 7 — canal novo, 31/08/2026)
+# ---------------------------------------------------------------------------
+# As três variáveis do VAPID, e as três são OPCIONAIS de propósito — ao
+# contrário de `DJANGO_SECRET_KEY` e `DATABASE_URL`, que são fail-hard. Sem
+# elas a célula sobe igual, a caixa de avisos funciona igual, e só o canal
+# novo não existe: enquanto o segredo não estiver instalado no servidor,
+# `apps/notificacoes/push.py` não envia nada e diz isso no log, uma vez por
+# processo. Fail-hard aqui derrubaria a caixa inteira por causa do canal mais
+# novo e menos essencial dela.
+#
+# A PÚBLICA não é segredo: ela viaja no JavaScript do site, e é assim que tem
+# de ser (o navegador precisa dela para se inscrever). A PRIVADA é segredo de
+# servidor e nunca aparece em página nenhuma.
+VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
+VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
+# Exigido pelo padrão do web push: um jeito de o fabricante falar com o dono do
+# site se algo der errado. `mailto:` é o formato que os servidores aceitam.
+VAPID_SUBJECT = os.environ.get("VAPID_SUBJECT", "")

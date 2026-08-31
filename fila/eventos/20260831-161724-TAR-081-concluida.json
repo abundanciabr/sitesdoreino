@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-161724-TAR-081-concluida",
+  "tarefa": "TAR-081",
+  "evento": "concluida",
+  "quando": "2026-08-31T16:17:24+00:00",
+  "quem": "sessao-forum-rodape-20260831",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/711 MERGED (mergeCommit 97b15639, lido por gh pr view --json state,mergedBy,mergeCommit); deploy-celula run 33412851789 completed/success (gh run view --json). PROVA DE FORA na internet publica, depois do deploy: /forum/ e /forum/buscar?q=roblox devolvem 200 com rodape-completo e a linha de direitos; /forum/static/forum.css devolve 200 com a regra .rodape. Suite da celula 184 -> 195 verdes.",
+  "verificado_em": "2026-08-31"
+}
