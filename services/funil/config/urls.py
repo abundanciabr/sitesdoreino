@@ -6,6 +6,8 @@ from apps.core.views import (
     entrar,
     healthz,
     landing,
+    manifesto_do_app,
+    service_worker,
     servir_estatico,
     sitemap_xml,
 )
@@ -15,6 +17,13 @@ from apps.core.views import (
 urlpatterns = [
     path("healthz", healthz),
     path("sitemap.xml", sitemap_xml, name="sitemap_xml"),  # rota de máquina (D6)
+    # O app instalado na tela do celular. As duas são rotas de MÁQUINA, como o
+    # sitemap: nunca levam prefixo de idioma. E as duas moram na RAIZ por
+    # exigência do navegador, não por gosto — o manifesto é do site inteiro, e
+    # o service worker só manda na pasta de onde foi baixado (o porquê inteiro
+    # está na docstring de cada view).
+    path("manifest.webmanifest", manifesto_do_app, name="manifesto_do_app"),
+    path("sw.js", service_worker, name="service_worker"),
     # Rota de máquina (D6) como o /healthz: o CONV-SITE já isentava `/static/`
     # de resolver Host, mas a isenção só entrega a requisição ao urlconf — e o
     # urlconf não tinha onde entregá-la. Daí o 404 de produção. O porquê de

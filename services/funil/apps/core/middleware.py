@@ -342,14 +342,22 @@ class AtorDaRequisicao:
 # /healthz é sonda do container e do gateway — chega sem Host de site e não pode
 # depender do catálogo estar de pé. Estáticos idem. A isenção roda ANTES de
 # QUALQUER lógica.
-CAMINHOS_SEM_SITE = ("/healthz", "/static/")
+# `/sw.js` entra aqui, e não na lista de baixo: o arquivo do service worker é
+# o mesmo para todo site, não lê nada do catálogo, e é pedido de novo pelo
+# navegador de quem já instalou o app. Fazê-lo depender do catálogo seria pôr
+# uma consulta de rede no caminho de um arquivo estático servido da raiz.
+CAMINHOS_SEM_SITE = ("/healthz", "/static/", "/sw.js")
 
 # Rota de MÁQUINA (D6): precisa do Site — desde a fase 4 os idiomas vêm do
 # catálogo, e o sitemap é feito deles — mas NUNCA se localiza (nenhum prefixo
 # de idioma, nenhum redirect da matriz D1). Custo do dado ter virado contrato:
 # o sitemap deixou de ser servível com o catálogo fora do ar; em compensação
 # usa o MESMO cache de 60s de qualquer outra rota.
-CAMINHOS_DE_MAQUINA = ("/sitemap.xml",)
+# O manifesto do app, ao contrário, PRECISA do Site: o nome do app é o nome do
+# site e o `start_url` sai dos idiomas do catálogo. Mesmo cache de 60s de
+# qualquer outra rota, e nenhum prefixo de idioma (o idioma dele vai na query,
+# não no caminho).
+CAMINHOS_DE_MAQUINA = ("/sitemap.xml", "/manifest.webmanifest")
 
 # D6: TODA rota de máquina desta célula — as isentas de Site e a que precisa
 # dele. Nenhuma delas se localiza. As duas listas acima são conferidas no
