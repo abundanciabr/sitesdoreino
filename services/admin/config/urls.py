@@ -26,6 +26,7 @@ from apps.core.editor_de_documentos import (
     documento_versoes,
 )
 from apps.core.mapa_do_site import mapa_do_site
+from apps.core.economia import economia, economia_mudar
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -124,6 +125,13 @@ urlpatterns = [
     path("menu/item/remover", menu_remover_item, name="menu_remover_item"),
     path("menu/item/mover", menu_mover_item, name="menu_mover_item"),
     path("menu/paginas", menu_regras_das_paginas, name="menu_regras_das_paginas"),
+    # A ECONOMIA (`apps/core/economia.py`, 31/08/2026) — a tela em que o
+    # mantenedor liga e desliga cada regra de pontuacao da escola. Ela existe
+    # porque a lei da gamificacao (§10.5) chama de CRITERIO DE MORTE o dia em
+    # que ajustar a economia passar a exigir PR de codigo. Duas rotas: a tela e
+    # o gesto, com verbo proprio, na mesma gramatica das sete do menu.
+    path("economia/", economia, name="economia"),
+    path("economia/mudar", economia_mudar, name="economia_mudar"),
     # O MAPA PARA IA (`apps/core/mapa_ia.py`) — a ÚNICA área desta célula que
     # responde SEM sessão, além de `/healthz` (INV-P14, `CAMINHOS_ISENTOS` em
     # `apps/core/porta.py`). Nasce fora do prefixo `painel/` de propósito: um

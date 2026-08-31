@@ -1,0 +1,110 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A tela dos interruptores da economia. Formulários simples, sem script: o porquê
+está na docstring de apps/core/economia.py, e o resumo é que cada gesto é um POST
+que recarrega a página, então o que se vê é sempre o que está gravado.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087): escrito em várias linhas, a segunda em diante vaza para a tela.
+
+Os números e os slugs vêm da célula `gamificacao`; as FRASES são de
+apps/core/economia.py. É o invariante 3 do contrato dela: slug, nunca frase
+pronta — o site serve três idiomas, e frase que sai de lá congela o idioma de
+quem a escreveu. Esta área é bastidor, e é só em português.
+{% endcomment %}
+{% block titulo %}Economia | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'visao_geral' %}">&larr; Visão geral</a>
+  <h1>Os pontos da escola</h1>
+  <p class="subtitulo">
+    Cada linha é uma coisa que o aluno pode fazer, e quantos pontos ela vale.
+    Nenhuma regra funciona sozinha: ela só passa a valer quando você liga, e a
+    partir do momento em que você liga (nunca para trás).
+  </p>
+
+  {% if sem_gamificacao %}
+  <p class="aviso borda-vermelha">
+    <b>Ainda não consigo falar com a parte das conquistas.</b>
+    Falta ligar a ligação entre esta área e o lugar onde os pontos ficam
+    guardados. É um passo de máquina, dentro do servidor, e está escrito no
+    relatório do robô que construiu esta tela. Nada do que está no ar mudou por
+    causa disso: nenhum aluno ganha nem perde ponto, porque a economia inteira
+    continua desligada.
+  </p>
+  {% else %}
+
+  {% if erro %}
+  <p class="aviso borda-vermelha"><b>Não deu para mudar.</b> {{ erro }}</p>
+  {% endif %}
+  {% if recado == "ligada" %}
+  <p class="aviso borda-verde">
+    <b>Regra ligada.</b> Ela vale a partir de agora. O que aconteceu antes deste
+    momento não conta, de propósito.
+  </p>
+  {% endif %}
+  {% if recado == "desligada" %}
+  <p class="aviso borda-verde">
+    <b>Regra desligada.</b> Ela para de pagar agora. O que já foi creditado
+    continua com quem ganhou.
+  </p>
+  {% endif %}
+
+  <p class="subtitulo">
+    {% if ligadas == 0 %}
+    <b>Nenhuma regra está ligada.</b> Ninguém está ganhando ponto neste momento.
+    {% else %}
+    <b>{{ ligadas }} de {{ regras|length }}</b> regras estão ligadas.
+    {% endif %}
+  </p>
+
+  {% for regra in regras %}
+  <div class="cartao">
+    <h2>{{ regra.nome }}</h2>
+    <p>{{ regra.explicacao }}</p>
+
+    <p class="numeros">
+      <b>{{ regra.pontos }}</b> ponto{{ regra.pontos|pluralize }}
+      {% if regra.cristais %} e <b>{{ regra.cristais }}</b> Cristal{{ regra.cristais|pluralize:"is" }}{% endif %}
+      {% if regra.teto %}
+      &middot; valor cheio nas primeiras {{ regra.teto }} vezes do dia, e depois
+      vai caindo (não zera nunca)
+      {% endif %}
+    </p>
+
+    {% if regra.espera %}
+    <p class="aviso">{{ regra.espera }}</p>
+    {% endif %}
+
+    {% for aviso in regra.impedimentos %}
+    <p class="aviso borda-amarela">{{ aviso }}</p>
+    {% endfor %}
+
+    {% if regra.ativa %}
+    <p class="estado"><b>Ligada</b> desde {{ regra.vigente_desde }}.</p>
+    <form method="post" action="{% url 'economia_mudar' %}">
+      {% csrf_token %}
+      <input type="hidden" name="slug" value="{{ regra.slug }}">
+      <input type="hidden" name="ativa" value="0">
+      <button type="submit">Desligar esta regra</button>
+    </form>
+    {% else %}
+    <p class="estado">Desligada. Ninguém ganha ponto por isso hoje.</p>
+    <form method="post" action="{% url 'economia_mudar' %}">
+      {% csrf_token %}
+      <input type="hidden" name="slug" value="{{ regra.slug }}">
+      <input type="hidden" name="ativa" value="1">
+      <button type="submit">Ligar esta regra</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  {% endif %}
+</div>
+{% endblock %}
