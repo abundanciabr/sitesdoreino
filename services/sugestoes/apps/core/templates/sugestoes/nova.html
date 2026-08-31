@@ -18,10 +18,10 @@ por isso sobrevive a um POST que volta com erro. Quem pinta a escolhida é o
 {% block migalha %}Nova ideia{% endblock %}
 {% block conteudo %}
 {% comment %}
-O MASCOTE. Um brick 3D que levita ao lado do título — três faces com luz
-diferente e dois studs em cima, a forma que o aluno desta escola vê o dia
-inteiro no Blender e no Roblox Studio. Os olhos quadrados são a piscadela para
-o pixel art.
+O MASCOTE. Um tijolo que gira ao lado do título, como uma peça na mesa
+giratória do Blender — quatro studs em cima, seis faces, uma volta lenta.
+Escolha do mantenedor em 31/08/2026, entre quatro desenhos que ele viu animados
+lado a lado.
 
 Ele fica FORA do formulário de propósito, colado no título: é a primeira coisa
 que a pessoa vê ao chegar numa página em branco. Quem o faz reagir ao cursor
@@ -29,33 +29,32 @@ dentro dos campos é o `:has()` do CSS (`static/sugestoes/caixa.css`), o mesmo
 seletor que pinta a categoria escolhida aqui embaixo — nada disso depende de
 JavaScript, como o resto desta casa.
 
-O desenho está aqui INLINE, e não no estojo de `<symbol>` da moldura, porque o
-que está dentro de um `<use>` vira shadow DOM e o CSS de fora não alcança as
-peças lá dentro: sem alcançar, não há como piscar só os olhos nem acender só a
-face de cima.
+**Por que `<div>` e não SVG, sendo que todo ícone desta casa é SVG** — e isto é
+decisão, não descuido: a rotação aqui é 3D de verdade, e
+`transform-style: preserve-3d` **não vale para os filhos de um `<svg>`**
+(`armadilhas/238`). Num SVG o cubo achataria a cada volta em vez de girar. As
+faces são divs porque só o layout de caixas do CSS entende profundidade.
 
-`aria-hidden` + `focusable="false"`: é enfeite. Quem usa leitor de tela ouve o
-título ao lado, que é a informação de verdade.
+`aria-hidden`: é enfeite. Quem usa leitor de tela ouve o título ao lado, que é
+a informação de verdade. E como não há texto aqui dentro, não há o que anunciar.
 {% endcomment %}
 <div class="cabeca">
-  <svg class="mascote" viewBox="0 0 34 34" aria-hidden="true" focusable="false">
-    {% comment %}
-    A sombra fica FORA do grupo que flutua: é ela parada, e o bloco subindo,
-    que faz o olho ler "está levitando". Se subisse junto, o conjunto pareceria
-    só um desenho escorregando na tela.
-    {% endcomment %}
-    <ellipse class="mascote-sombra" cx="14" cy="32.4" rx="9" ry="1.5"/>
-    <g class="mascote-corpo">
-      <polygon class="mascote-lado" points="23,10 31,2 31,22 23,30"/>
-      <polygon class="mascote-topo" points="3,10 11,2 31,2 23,10"/>
-      <rect class="mascote-frente" x="3" y="10" width="20" height="20"/>
-      <polygon class="mascote-stud" points="8.6,7.6 13.4,7.6 16,5 11.2,5"/>
-      <polygon class="mascote-stud" points="16.6,7.6 21.4,7.6 24,5 19.2,5"/>
-      <rect class="mascote-olho" x="7" y="16" width="4" height="5"/>
-      <rect class="mascote-olho" x="15" y="16" width="4" height="5"/>
-      <rect class="mascote-boca" x="10" y="25" width="6" height="2"/>
-    </g>
-  </svg>
+  <div class="mascote" aria-hidden="true">
+    <div class="mascote-cubo">
+      <div class="mascote-face mascote-f1"></div>
+      <div class="mascote-face mascote-f2"></div>
+      <div class="mascote-face mascote-f3"></div>
+      <div class="mascote-face mascote-f4"></div>
+      {% comment %}
+      O topo é a face que o aluno reconhece de longe: os quatro studs de uma
+      peça de montar. São `<i>` vazios — quatro caixinhas redondas numa grade
+      de 2 por 2 —, e não desenho: menos marcação, e a cor sai da folha junto
+      com o resto.
+      {% endcomment %}
+      <div class="mascote-face mascote-topo"><i></i><i></i><i></i><i></i></div>
+      <div class="mascote-face mascote-base"></div>
+    </div>
+  </div>
   <h1>O que está faltando?</h1>
 </div>
 <p class="sub">

@@ -1,39 +1,38 @@
 {% comment %}
-O MASCOTE DA CAIXA DE ESCREVER — um bloco 3D que flutua ao lado do título.
+O MASCOTE DA CAIXA DE ESCREVER — um tijolo que gira ao lado do título.
+
+Escolha do mantenedor em 31/08/2026, entre quatro desenhos que ele viu animados
+lado a lado: uma peça de Roblox numa mesa giratória, como a que o aluno vê no
+Blender o dia inteiro. Quatro studs em cima, seis faces, e uma volta lenta.
 
 Ele aparece nos DOIS lugares em que o aluno cria alguma coisa no fórum: a caixa
 de abrir conversa (`area.html`) e a de responder (`topico.html`). Por isso mora
 num pedaço só: mudar o desenho num lugar e esquecer o outro é como dois rostos
 diferentes para a mesma pessoa.
 
-Por que um TIJOLO e não um bicho de pixel: a escola ensina modelagem 3D e UGC do
-Roblox. O desenho é um brick visto de três quartos — três faces com luz
-diferente, dois studs em cima —, que é a forma que o aluno vê o dia inteiro no
-Blender e no Studio. Os olhos quadrados são a piscadela para o pixel art.
+**Por que `<div>` e não SVG, sendo que TODO ícone desta casa é SVG** — e isto é
+decisão, não descuido: a rotação aqui é 3D de verdade, e
+`transform-style: preserve-3d` **não vale para os filhos de um `<svg>`**
+(`armadilhas/238`). Num SVG o cubo achataria a cada volta em vez de girar. As
+faces são divs porque só o layout de caixas do CSS entende profundidade.
 
-Por que INLINE e não um `<symbol>` + `<use>` como os ícones de categoria: o que
-está dentro de um `<use>` vira shadow DOM, e o CSS de fora não alcança as peças
-lá dentro. Sem alcançar, não há como piscar SÓ os olhos nem acender SÓ a face de
-cima — a animação inteira depende de o CSS enxergar cada parte.
-
-`aria-hidden` + `focusable="false"`: é enfeite. Quem usa leitor de tela ouve o
-título ao lado, que é a informação de verdade; o mascote só atrapalharia.
+`aria-hidden`: é enfeite. Quem usa leitor de tela ouve o título ao lado, que é a
+informação de verdade; o mascote só atrapalharia. E como não há texto nenhum
+aqui dentro, não há o que anunciar.
 {% endcomment %}
-<svg class="mascote" viewBox="0 0 34 34" aria-hidden="true" focusable="false">
-  {% comment %}
-  A sombra fica FORA do grupo que flutua: é ela parada, e o bloco subindo, que
-  faz o olho ler "está levitando". Se ela subisse junto, o conjunto pareceria
-  apenas um desenho escorregando na tela.
-  {% endcomment %}
-  <ellipse class="mascote-sombra" cx="14" cy="32.4" rx="9" ry="1.5"/>
-  <g class="mascote-corpo">
-    <polygon class="mascote-lado" points="23,10 31,2 31,22 23,30"/>
-    <polygon class="mascote-topo" points="3,10 11,2 31,2 23,10"/>
-    <rect class="mascote-frente" x="3" y="10" width="20" height="20"/>
-    <polygon class="mascote-stud" points="8.6,7.6 13.4,7.6 16,5 11.2,5"/>
-    <polygon class="mascote-stud" points="16.6,7.6 21.4,7.6 24,5 19.2,5"/>
-    <rect class="mascote-olho" x="7" y="16" width="4" height="5"/>
-    <rect class="mascote-olho" x="15" y="16" width="4" height="5"/>
-    <rect class="mascote-boca" x="10" y="25" width="6" height="2"/>
-  </g>
-</svg>
+<div class="mascote" aria-hidden="true">
+  <div class="mascote-cubo">
+    <div class="mascote-face mascote-f1"></div>
+    <div class="mascote-face mascote-f2"></div>
+    <div class="mascote-face mascote-f3"></div>
+    <div class="mascote-face mascote-f4"></div>
+    {% comment %}
+    O topo é a face que o aluno reconhece de longe: os quatro studs de uma peça
+    de montar. Eles são `<i>` vazios — quatro caixinhas redondas numa grade de
+    2 por 2 —, e não desenho: menos marcação, e a cor sai da folha junto com o
+    resto.
+    {% endcomment %}
+    <div class="mascote-face mascote-topo"><i></i><i></i><i></i><i></i></div>
+    <div class="mascote-face mascote-base"></div>
+  </div>
+</div>

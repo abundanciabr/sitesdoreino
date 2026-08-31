@@ -43,6 +43,10 @@ TAMANHO. Desenho que muda por dentro vai inline.
 problema não é a animação.
 
 **Origem:** o mascote 3D das caixas de escrever do fórum e da Caixa de Sugestões
-(pedido do mantenedor em 30/08/2026). O desenho nasceu inline por causa disto, e
-o porquê está escrito nos dois templates para a próxima sessão não "arrumar" o
-que parece inconsistência com os ícones vizinhos.
+(pedido do mantenedor em 30/08/2026). A primeira versão dele era um SVG desenhado
+à mão que precisava piscar só os olhos e acender só a face de cima — e foi ao
+tentar guardá-lo no estojo de `<symbol>` da moldura, ao lado dos ícones de
+categoria, que isto apareceu. O desenho que ficou no ar acabou sendo outro (um
+cubo que gira, feito de `<div>`, por causa da `armadilhas/239`), mas a lição vale
+para o próximo ícone com partes vivas: `<symbol>` + `<use>` é para desenho que
+muda de COR e de TAMANHO.

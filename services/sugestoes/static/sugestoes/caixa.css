@@ -262,85 +262,90 @@ textarea { resize: vertical; min-height: 72px; }
 .discreto:hover { background: none; color: var(--texto); }
 
 /* --- o mascote da ideia nova --------------------------------------------
-   Um brick 3D que levita ao lado de "O que está faltando?". Ele existe numa
-   tela só — a de CRIAR — e é de propósito: é o momento em que a pessoa encara
-   um formulário em branco, e é o único lugar da Caixa em que vale gastar
-   movimento para dizer "pode escrever".
+   Um tijolo que gira ao lado de "O que está faltando?", como uma peça na mesa
+   giratória do Blender. Escolha do mantenedor em 31/08/2026, entre quatro
+   desenhos que ele viu animados lado a lado.
 
-   O desenho é um tijolo visto de três quartos (três faces com luz diferente,
-   dois studs em cima), a forma que o aluno desta escola vê o dia inteiro no
-   Blender e no Roblox Studio. O gêmeo dele mora no fórum
-   (`services/forum/.../_mascote.html`): mesmo PADRÃO, arquivo próprio, como
-   manda a Lei 7 — as duas células não compartilham folha nem template.
+   Ele existe numa tela só — a de CRIAR — e é de propósito: é o momento em que
+   a pessoa encara um formulário em branco, e é o único lugar da Caixa em que
+   vale gastar movimento para dizer "pode escrever".
 
-   Ele NÃO entrou no estojo de `<symbol>` da moldura, e isso é decisão, não
-   esquecimento: o que está dentro de um `<use>` vira shadow DOM, e o CSS de
-   fora não alcança as peças lá dentro. Sem alcançar, não há como piscar só os
-   olhos nem acender só a face de cima.
+   O gêmeo dele mora no fórum (`services/forum/.../_mascote.html`): mesmo
+   PADRÃO, arquivo próprio, como manda a Lei 7 — as duas células não
+   compartilham folha nem template.
+
+   **Ele é feito de `<div>`, e não de SVG como todo ícone desta casa**, e isto é
+   decisão, não descuido: a rotação é 3D de verdade, e `transform-style:
+   preserve-3d` não vale para os filhos de um `<svg>` (`armadilhas/238`). Num
+   SVG o cubo achataria a cada volta em vez de girar.
    ------------------------------------------------------------------------ */
 .cabeca { display: flex; align-items: center; gap: 12px; margin-bottom: .3rem; }
 .cabeca h1 { margin: 0; }
-.mascote { width: 46px; height: 46px; flex-shrink: 0; overflow: visible; }
-.mascote-topo { fill: #ff9d63; }
-.mascote-frente { fill: var(--laranja); }
-.mascote-lado { fill: #c2551f; }
-.mascote-stud { fill: #ffc39b; }
-/* Olhos e boca são o FUNDO da página aparecendo por baixo: recortes, não
-   desenhos — é o que faz o bloco parecer um objeto, e não um adesivo. */
-.mascote-olho, .mascote-boca { fill: var(--tinta); }
-.mascote-sombra { fill: rgba(255, 122, 51, .22); transform-box: fill-box; transform-origin: center; }
 
-/* 1. Levitar. O bloco sobe dois passos e desce; a sombra encolhe junto, que é
-      o que dá ALTURA ao movimento em vez de o fazer parecer um solavanco. */
-.mascote-corpo { animation: mascote-levita 3.2s ease-in-out infinite; }
-.mascote-sombra { animation: mascote-sombra 3.2s ease-in-out infinite; }
-@keyframes mascote-levita {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-2px); }
-}
-@keyframes mascote-sombra {
-  0%, 100% { transform: scaleX(1);   opacity: 1; }
-  50%      { transform: scaleX(.82); opacity: .6; }
-}
+/* A CAIXA DE PERSPECTIVA. Sem ela o cubo gira "chapado": as faces mudam de
+   largura, mas nada se aproxima do olho, e o efeito lê como origami.
 
-/* 2. A luz da cena. A face de cima clareia quando o bloco sobe — mesmo ciclo
-      de 3,2s. É isso que faz o desenho parecer um objeto dentro de um viewport
-      em vez de uma figura chapada. */
-.mascote-topo { animation: mascote-luz 3.2s ease-in-out infinite; }
-@keyframes mascote-luz {
-  0%, 100% { fill: #ff8f4d; }
-  50%      { fill: #ffb07d; }
+   A conta dos tamanhos, para quem for mexer: girando, a diagonal do cubo passa
+   na frente e a perspectiva a aumenta. Com cubo de 28px e perspectiva de 200,
+   o ponto mais largo da volta dá ~44px — cabe nos 50px da caixa. Aumentar o
+   cubo sem aumentar a caixa faz o tijolo encostar no título. */
+.mascote {
+  width: 50px; height: 50px; flex-shrink: 0; perspective: 200px;
+  display: flex; align-items: center; justify-content: center;
 }
-
-/* 3. Piscar. Duas piscadas seguidas a cada seis segundos, que é como um bicho
-      pisca de verdade — uma só, espaçada, lê como falha de renderização.
-      `transform-box: fill-box` faz o olho encolher a partir do próprio centro;
-      sem isso ele encolheria a partir do canto da imagem e escorregaria. */
-.mascote-olho { transform-box: fill-box; transform-origin: center; animation: mascote-pisca 6s infinite; }
-@keyframes mascote-pisca {
-  0%, 88%, 100% { transform: scaleY(1); }
-  90%, 94%      { transform: scaleY(.1); }
-  92%, 96%      { transform: scaleY(1); }
+.mascote-cubo {
+  width: 28px; height: 28px; position: relative;
+  transform-style: preserve-3d;
+  animation: mascote-gira 7s linear infinite;
 }
+/* Sete segundos por volta: devagar o bastante para não puxar o olho de quem
+   está escrevendo. O `linear` é de propósito — mesa giratória não acelera nem
+   freia, e qualquer `ease` aqui faz o tijolo parecer que hesita. */
+@keyframes mascote-gira {
+  from { transform: rotateX(-18deg) rotateY(0deg); }
+  to   { transform: rotateX(-18deg) rotateY(360deg); }
+}
+.mascote-face {
+  position: absolute; width: 28px; height: 28px; box-sizing: border-box;
+  border: 1px solid rgba(21, 22, 28, .35);
+}
+/* As quatro laterais em duas tintas alternadas: é o contraste entre elas que
+   deixa a volta VISÍVEL. Com as quatro iguais, o cubo giraria e pareceria
+   parado — a silhueta de um cubo em rotação muda pouco. */
+.mascote-f1, .mascote-f3 { background: var(--laranja); }
+.mascote-f2, .mascote-f4 { background: #e86a28; }
+.mascote-f1 { transform: translateZ(14px); }
+.mascote-f2 { transform: rotateY(90deg) translateZ(14px); }
+.mascote-f3 { transform: rotateY(180deg) translateZ(14px); }
+.mascote-f4 { transform: rotateY(-90deg) translateZ(14px); }
+/* O topo é a face que o aluno reconhece de longe: quatro studs, como uma peça
+   de montar. É o mais claro dos seis porque a luz da cena vem de cima. */
+.mascote-topo {
+  background: #ffb07d;
+  transform: rotateX(90deg) translateZ(14px);
+  display: grid; grid-template-columns: 1fr 1fr; place-items: center;
+  gap: 2px; padding: 5px;
+}
+.mascote-topo i { display: block; width: 7px; height: 7px; border-radius: 50%; background: #ffd0af; }
+.mascote-base { background: #a8471a; transform: rotateX(-90deg) translateZ(14px); }
 
-/* 4. Ele repara em você. Assim que o cursor entra em qualquer campo, o bloco
-      acelera e acende — a mesma borda de luz que o Blender põe no objeto
-      selecionado. O mascote está FORA do formulário (mora no título), e por
-      isso quem faz a ponte é o `:has()`, o mesmo seletor que já pinta a
-      categoria escolhida logo abaixo. Zero JavaScript, como o resto da casa. */
-.coluna:has(form:focus-within) .mascote-corpo,
-.coluna:has(form:focus-within) .mascote-sombra,
-.coluna:has(form:focus-within) .mascote-topo { animation-duration: 1.5s; }
+/* ELE REPARA EM VOCÊ. Assim que o cursor entra em qualquer campo, o tijolo
+   acelera e acende — a mesma borda de luz que o Blender põe no objeto
+   selecionado. O mascote está FORA do formulário (mora no título), e por isso
+   quem faz a ponte é o `:has()`, o mesmo seletor que já pinta a categoria
+   escolhida logo abaixo. Zero JavaScript, como o resto da casa. */
+.coluna:has(form:focus-within) .mascote-cubo { animation-duration: 2.8s; }
 .coluna:has(form:focus-within) .mascote { filter: drop-shadow(0 0 6px rgba(255, 122, 51, .5)); }
 
+/* Quem pede menos movimento ao sistema recebe o tijolo PARADO — e parado numa
+   pose de três quartos, não na de frente. De frente ele seria um quadrado
+   chapado, e jogaria fora a única coisa que este desenho tem a dizer. */
 @media (prefers-reduced-motion: reduce) {
-  .mascote-corpo, .mascote-sombra, .mascote-topo, .mascote-olho,
-  .coluna:has(form:focus-within) .mascote-corpo,
-  .coluna:has(form:focus-within) .mascote-sombra,
-  .coluna:has(form:focus-within) .mascote-topo { animation: none; }
-}
-@media (max-width: 720px) {
-  .mascote { width: 36px; height: 36px; }
+  .mascote-cubo,
+  .coluna:has(form:focus-within) .mascote-cubo {
+    animation: none;
+    transform: rotateX(-18deg) rotateY(-32deg);
+  }
 }
 
 /* --- a linha do tempo da sugestão (histórico) ---------------------------- */

@@ -1,8 +1,10 @@
 """O MASCOTE da caixa de escrever, medido pela borda HTTP.
 
 Pedido do mantenedor em 30/08/2026: um ícone animado, com cara de 3D/Blender/
-Roblox, no formulário de CRIAR — aqui e na Caixa de Sugestões. O desenho mora
-em `templates/forum/_mascote.html` e a animação inteira em `static/forum.css`.
+Roblox, no formulário de CRIAR — aqui e na Caixa de Sugestões. Em 31/08 ele
+escolheu, entre quatro desenhos animados lado a lado, **o tijolo que gira**: uma
+peça de montar numa mesa giratória. A marcação mora em
+`templates/forum/_mascote.html` e a animação inteira em `static/forum.css`.
 
 Três coisas podem apagar isto sem ninguém perceber, e cada uma tem um guarda
 abaixo:
@@ -13,12 +15,16 @@ abaixo:
 2. o desenho ESCAPAR do `{% if pode_escrever %}` e ficar boiando na tela de
    quem não pode escrever, ao lado do recado que explica a recusa — é o modo de
    falha típico de mover um bloco de lugar;
-3. a folha de estilo perder a animação (ou o `prefers-reduced-motion` que a
-   desliga) e o mascote virar um quadrado parado, sem que teste nenhum caia.
+3. a folha de estilo perder a volta, a profundidade ou o
+   `prefers-reduced-motion` que desliga tudo, e o mascote virar um quadrado
+   parado, sem que teste nenhum caia.
 
-O guarda 3 é o que mais importa deste arquivo: o desenho no HTML sem o CSS
-correspondente rende um bloco 3D estático — VERDE em qualquer teste que só
-procure o `<svg>`, e nada do que foi pedido na tela.
+O guarda 3 é o que mais importa deste arquivo, e ele mede TRÊS coisas porque são
+três as maneiras de o tijolo deixar de ser um tijolo: sem `@keyframes` ele não
+gira; sem `preserve-3d` as seis faces empilham chapadas e a volta vira origami;
+sem `perspective` ele gira sem nada se aproximar do olho. Qualquer uma das três
+sozinha já devolve um quadrado — e um quadrado passa em qualquer teste que só
+procure a marcação.
 """
 
 from __future__ import annotations
@@ -43,7 +49,7 @@ SESSAO_DA_ANA = {
 # O que prova que o mascote CHEGOU: a moldura do desenho e uma peça de dentro
 # dele. Só `class="mascote"` ficaria verde com um `<svg>` vazio.
 MOLDURA = 'class="mascote"'
-PECA = 'class="mascote-corpo"'
+PECA = 'class="mascote-cubo"'
 
 
 @pytest.fixture
@@ -124,7 +130,7 @@ def test_a_caixa_de_abrir_conversa_chega_com_o_mascote(client, env, monkeypatch,
 
     assert "Abrir uma conversa" in corpo
     assert MOLDURA in corpo, "o formulário de abrir conversa veio sem o mascote"
-    assert PECA in corpo, "o `<svg>` do mascote chegou vazio"
+    assert PECA in corpo, "a caixa do mascote chegou vazia"
 
 
 def test_a_caixa_de_responder_tambem_chega_com_o_mascote(
@@ -167,11 +173,13 @@ def test_quem_nao_pode_escrever_nao_ve_o_mascote(client, env, monkeypatch, aviso
 # ---------------------------------------------------------------------------
 
 
-def test_a_folha_de_estilo_traz_a_animacao_e_o_botao_de_desligar(client):
-    """Sem estas regras o mascote é um quadrado parado — e o pedido era um
-    ícone ANIMADO. O `prefers-reduced-motion` entra no mesmo guarda de
-    propósito: movimento que não se pode desligar é acessibilidade quebrada,
-    e some tão silenciosamente quanto a animação.
+def test_a_folha_traz_a_volta_a_profundidade_e_o_botao_de_desligar(client):
+    """As três pernas do tijolo, e o botão de desligar.
+
+    Sem estas regras o mascote é um quadrado parado — e o pedido era um ícone
+    ANIMADO e 3D. O `prefers-reduced-motion` entra no mesmo guarda de
+    propósito: movimento que não se pode desligar é acessibilidade quebrada, e
+    some tão silenciosamente quanto a animação.
     """
     resposta = client.get(reverse("estatico", args=["forum.css"]))
     assert resposta.status_code == 200
@@ -180,9 +188,26 @@ def test_a_folha_de_estilo_traz_a_animacao_e_o_botao_de_desligar(client):
     else:
         folha = resposta.content.decode()
 
-    for regra in ("mascote-levita", "mascote-pisca", "mascote-luz"):
-        assert f"@keyframes {regra}" in folha, f"a animação `{regra}` sumiu da folha"
+    assert "@keyframes mascote-gira" in folha, "a volta do tijolo sumiu da folha"
+    assert "preserve-3d" in folha, (
+        "sem `transform-style: preserve-3d` as seis faces empilham chapadas: o "
+        "cubo deixa de ser cubo e a volta vira origami"
+    )
+    assert "perspective" in folha, (
+        "sem `perspective` o tijolo gira sem nada se aproximar do olho — é a "
+        "diferença entre girar e escorregar"
+    )
     assert "prefers-reduced-motion" in folha, (
         "a folha perdeu o desligamento de movimento — quem sente enjoo com "
         "animação na tela pede isso ao sistema uma vez, e o site tem de obedecer"
+    )
+    assert ".escrever:focus-within .mascote-cubo { animation-duration" in folha, (
+        "sumiu a regra que faz o tijolo ACELERAR quando a pessoa põe o cursor "
+        "num campo. A asserção carrega o `animation-duration` de propósito: o "
+        "mesmo seletor reaparece no bloco de `prefers-reduced-motion`, e sem "
+        "esta metade o guarda ficaria verde com a aceleração apagada"
+    )
+    assert ".escrever:focus-within .mascote { filter" in folha, (
+        "sumiu a regra que faz o tijolo ACENDER — a borda de luz do objeto "
+        "selecionado"
     )
