@@ -115,8 +115,10 @@ def test_todo_status_que_vale_responde_aluno(client, auth, status):
     regra em vez de a consultar. Derivando, ele mede a regra verdadeira, seja
     qual for ela amanhã.
 
-    `reembolsada` continuar valendo é decisão de 24/08/2026, não descuido:
-    quem já foi aluno mantém a voz na Caixa.
+    Em 31/08/2026 a lista encolheu de novo, para `[ativa]`: o mantenedor
+    reverteu a decisão dele de 24/08 e `reembolsada` deixou de valer
+    (`DECISAO-reembolso-tira-o-acesso.md`). Este teste não precisou de uma
+    linha — é o que "derivar da constante" compra.
     """
     linha(status=status)
     assert perguntar(client, auth).json() == {"categoria": "aluno", "na_fila": None}
@@ -124,9 +126,19 @@ def test_todo_status_que_vale_responde_aluno(client, auth, status):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "status", [Matricula.STATUS_SUSPENSA, Matricula.STATUS_ENCERRADA]
+    ("status", "categoria"),
+    [
+        (Matricula.STATUS_SUSPENSA, "pausado"),
+        (Matricula.STATUS_ENCERRADA, "ex_aluno"),
+        # [REEMBOLSO] 31/08/2026. A categoria é conferida NOMINALMENTE, e não
+        # só por `!= "aluno"`: cair em `cadastrado` também passaria num teste
+        # de desigualdade, e `cadastrado` é a mentira exata que esta porta
+        # nasceu para não contar (a pessoa veria o formulário de pedir entrada
+        # como se nunca tivesse tido ficha).
+        (Matricula.STATUS_REEMBOLSADA, "reembolsado"),
+    ],
 )
-def test_pausado_e_encerrado_nao_sao_aluno(client, auth, status):
+def test_quem_nao_entra_e_nomeado_um_a_um(client, auth, status, categoria):
     """O outro lado da mudança de 28/08, e o que a torna real.
 
     Sem este teste, tirar `suspensa` de `STATUS_QUE_VALEM` teria como única
@@ -135,7 +147,9 @@ def test_pausado_e_encerrado_nao_sao_aluno(client, auth, status):
     aluno, e é isso que faz o botão "pausar" valer alguma coisa.
     """
     linha(status=status, order_id=f"pedido-{status}")
-    assert perguntar(client, auth).json()["categoria"] != "aluno"
+    resposta = perguntar(client, auth).json()["categoria"]
+    assert resposta != "aluno"
+    assert resposta == categoria
 
 
 @pytest.mark.django_db

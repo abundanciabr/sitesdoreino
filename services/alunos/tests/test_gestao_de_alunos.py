@@ -330,17 +330,29 @@ def test_encerrar_tira_o_acesso_e_a_linha_continua_existindo(client, auth):
 
 
 @pytest.mark.django_db
-def test_reembolsada_continua_valendo_acesso(client, auth):
-    """A decisão de 24/08 do mantenedor, intacta: quem já foi aluno mantém a voz.
+def test_reembolsada_nao_vale_mais_acesso(client, auth):
+    """[REEMBOLSO] 31/08/2026: o mantenedor reverteu a decisão dele de 24/08.
 
-    Ela foi tomada sobre REEMBOLSO, e a mudança de 28/08 (pausar bloqueia) não
-    a toca. Este teste existe para que a próxima pessoa que "limpar" a lista de
-    status que valem encontre a decisão em vez de a adivinhar.
+    Até essa data este teste afirmava o CONTRÁRIO, com estas palavras: *"a
+    decisão de 24/08 do mantenedor, intacta: quem já foi aluno mantém a voz"*.
+    Ele mesmo reverteu, ao encontrar o texto antigo publicado no site
+    (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`).
+
+    O teste é SUBSTITUÍDO, não apagado, e a mudança de lado é o ponto: quem
+    "limpar" a lista em qualquer uma das duas direções encontra uma decisão
+    escrita em vez de a adivinhar. A regra já foi decidida duas vezes; a
+    terceira é do mantenedor, nunca de um despacho.
+
+    A ficha CONTINUA existindo, e isso também é escolha dele: só o acesso
+    acaba. Por isso a linha segue aparecendo na gestão, logo abaixo.
     """
     criar(status=Matricula.STATUS_REEMBOLSADA)
     assert (
-        client.get(f"/api/alunos/alunos/{ALGUEM}/matriculas", **auth).status_code == 200
+        client.get(f"/api/alunos/alunos/{ALGUEM}/matriculas", **auth).status_code == 404
     )
+    # A ficha não sumiu: ela continua na lista que o painel administra, para
+    # ele ver quem reembolsou e religar com um clique se foi engano.
+    assert [l["status"] for l in listar(client, auth).json()] == ["reembolsada"]
 
 
 # ------------------------------------------------------- a borda da internet
