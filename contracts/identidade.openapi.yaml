@@ -70,6 +70,76 @@ paths:
             schema:
               $ref: '#/components/schemas/EmailPedido'
         required: true
+  /tokens-de-entrada:
+    post:
+      operationId: issueLoginToken
+      summary: Um token efêmero para provar, no POST de /entrar/senha, que o pedido veio do site
+      description: >-
+        Login por senha (DECISAO-login-por-senha.md) é um POST que CRIA sessão — ao contrário de
+        /entrar/sair, que só destrói, o padrão de origem (Origin/Referer) não basta aqui (LICOES.md
+        da célula já registra isso por escrito). Como quem RENDERIZA o formulário de senha é o
+        `funil`, não esta célula, e um CSRF token do funil nunca validaria aqui (segredos
+        diferentes), a prova é este token assinado (TimestampSigner, expira em minutos) — o mesmo
+        princípio do `state` que o fluxo do Google já usa, só que emitido para outra célula em vez
+        de guardado na própria sessão. Qualquer par aceito pode pedir; o token não carrega e-mail
+        nem senha nenhuma, só prova "isto foi pedido a este site, agora".
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenDeEntrada'
+  /pessoas/definir-senha:
+    post:
+      operationId: setPassword
+      summary: Cria ou atualiza a senha de uma pessoa (cadastro sem conta do Google)
+      description: >-
+        Upsert por e-mail — mesma forma de cunhar_ou_recuperar (o caminho do Google): se a
+        Identidade não existir, nasce aqui; se existir, só a senha é atualizada. `criada: true`
+        só na primeira vez, mesma semântica do resto da célula. Exige o grau TOKENS_SENHA_* além
+        do par aceito — gravar senha alheia é mais que "perguntar quem é alguém", e por isso não
+        reusa TOKENS_COMPLETOS_* (esse grau é sobre LER e-mail, não sobre ESCREVER senha).
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PessoaComSenha'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DefinirSenhaPedido'
+        required: true
+  /pessoas/resetar-senha:
+    post:
+      operationId: resetPassword
+      summary: Gera uma senha nova para um e-mail que já existe, e a devolve em texto puro UMA vez
+      description: >-
+        Para o caminho de recuperação manual (DECISAO-login-por-senha.md §1): o mantenedor confirma
+        quem é a pessoa pelo WhatsApp que ela já deixou no cadastro, aciona esta porta pelo admin, e
+        repassa a senha nova por fora — esta célula nunca manda mensagem nenhuma. A senha em texto
+        puro sai UMA vez nesta resposta e não é gravada em lugar nenhum (só o hash fica). 404 se o
+        e-mail não tiver Identidade nenhuma (nada a resetar). Mesmo grau de setPassword.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PessoaComSenhaNova'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailPedido'
+        required: true
 components:
   schemas:
     EmailPedido:
@@ -128,6 +198,46 @@ components:
           anyOf:
             - type: string
             - type: 'null'
+    TokenDeEntrada:
+      description: O token efêmero a embutir no POST de /entrar/senha. Opaco para quem o recebe.
+      type: object
+      required: [token]
+      properties:
+        token: { type: string }
+    DefinirSenhaPedido:
+      description: >-
+        O e-mail e a senha em texto puro (transporte é HTTPS interno, nunca fica em log — o hash
+        nasce do lado da identidade, nunca do lado de quem chama). nome/site_id só valem na
+        primeira vez (cunhagem); numa Identidade que já existe, são ignorados.
+      type: object
+      required: [email, senha]
+      properties:
+        email: { type: string }
+        senha: { type: string }
+        nome:
+          anyOf:
+            - type: string
+            - type: 'null'
+        site_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+    PessoaComSenha:
+      description: Confirma que a senha foi gravada. Nunca ecoa a senha nem o hash.
+      type: object
+      required: [id, criada]
+      properties:
+        id: { type: string }
+        criada: { type: boolean }
+    PessoaComSenhaNova:
+      description: >-
+        A senha nova, em texto puro, para o mantenedor repassar por fora (WhatsApp). Sai UMA vez
+        nesta resposta; a célula não a grava em lugar nenhum além do hash.
+      type: object
+      required: [id, senha_nova]
+      properties:
+        id: { type: string }
+        senha_nova: { type: string }
   securitySchemes:
     bearerAuth:
       type: http

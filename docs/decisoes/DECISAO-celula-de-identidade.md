@@ -152,6 +152,18 @@ cookie disputado por um cabeçalho desatualizado por alguns minutos é troca
    `sugestoes` pode escrever `request.session`** (guarda lá) — quem grava o
    cookie `meshcraft_sessao` é só a `identidade`.
 
+### 6.1 Registro de grau novo (31/08/2026): `TOKENS_SENHA_*`
+
+`DECISAO-login-por-senha.md` acrescenta um grau de autorização IRMÃO de
+`TOKENS_COMPLETOS_*` (não uma variação dele): `TOKENS_SENHA_*`, que autoriza
+GRAVAR a senha de uma pessoa (`setPassword`/`resetPassword`), ao contrário
+de `TOKENS_COMPLETOS_*`, que só autoriza LER o e-mail da sessão. Concedido a
+`funil` (grava a senha escolhida em `/cadastro`) e a `admin` (reset manual
+pelo mantenedor). Este parágrafo é o registro que o item 3 acima exige —
+adaptado, porque o grau novo não é `TOKENS_COMPLETOS_*` em si, mas nasce do
+mesmo espírito: nenhum grau de acesso cresce sem que este arquivo diga por
+quê.
+
 ## 7. Estado
 
 **Decidido em 25/08/2026.** Passo do mantenedor: o bloco H20 (único), entregue
