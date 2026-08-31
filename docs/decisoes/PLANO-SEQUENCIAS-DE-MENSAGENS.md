@@ -239,41 +239,179 @@ Contrato a menos e um transporte a menos para dar errado. O sininho continua
 recebendo por evento (`notificacao.devida.v1`, que já existe), porque
 `notificacoes` é outra célula e ninguém escreve no banco alheio (Lei 3).
 
+### 4.4 A dívida que o modelo híbrido criou no sininho — e ela é desta sessão
+
+**Achado em 31/08/2026, na conferência da consultoria, e nenhum dos três
+consultores viu: foi a sessão que escreveu o plano que o encontrou no próprio
+trabalho.**
+
+O contrato congelado no mesmo dia (`jornada.passo`, §8.7.1) manda o sininho
+**buscar o texto na `mensageria` na hora de ler**. Mas o `celulas.yml` declara
+`notificacoes: consome: []` — e a célula foi desenhada para ser burra de
+propósito. As palavras estão no próprio código dela:
+
+> *"Esta célula é BURRA de propósito, e é isso que a mantém barata. […] Quando
+> dez células estiverem publicando, o custo por carta continua o mesmo."*
+
+O modelo híbrido cria a **primeira dependência de leitura** dessa célula, e ela
+é no caminho mais quente que existe: **o sino aparece em toda página do site.**
+
+Duas coisas obrigatórias, e nenhuma é opcional:
+
+1. **Declarar** `notificacoes: consome: [mensageria]` no `celulas.yml`, no PR
+   que escrever o cliente — o varredor do mapa reprova declaração órfã e
+   dependência escondida, nos dois sentidos.
+2. **Buscar em lote, nunca por carta.** A página do sino traz N avisos; N
+   chamadas seriam o N+1 clássico, na página mais visitada do site. Uma chamada
+   com os `passo_id` da página, e o que não voltar aparece como *"não
+   carregou"* — nunca sumindo com a linha, nunca inventando frase.
+
+**Isto não reabre a decisão 8.7.1**, que é do mantenedor e está no contrato. É o
+custo dela, escrito onde quem construir vai ler.
+
 ---
 
 ## §5 — O modelo de dados de `mensageria/apps/jornadas`
 
-Quatro tabelas **novas, no banco que a célula já tem** (`mensageria_db`) — nenhuma
-alteração nas duas que já existem. Nem uma a mais — e as travas em `CheckConstraint`/
+> **ESTE §5 FOI REESCRITO EM 31/08/2026, depois da consultoria externa.** A
+> versão anterior tinha quatro tabelas e a linha *"nem uma a mais"* — e
+> **quatro dos dez defeitos que os consultores acharam estavam nela.** O
+> veredito completo, com quem viu o quê e o que não sobreviveu à conferência,
+> está em `docs/consultorias/sequencias-de-mensagens/VEREDITO.md`.
+
+Oito tabelas **novas, no banco que a célula já tem** (`mensageria_db`) — nenhuma
+alteração nas duas que já existem. As travas em `CheckConstraint`/
 `UniqueConstraint`, no banco, nunca só em `save()` (`armadilhas/023`: um
 `queryset.update()` fura guarda escrita em Python).
 
-**`Jornada`** — a sequência em si.
-`site_id` · `slug` · `gatilho` (o evento que inscreve) · `ativa` · `versao` ·
-`criada_em`. Uma jornada por assunto de vida do aluno.
+### A versão é imutável, e é por construção
 
-**`Passo`** — cada mensagem da sequência.
-`jornada` · `ordem` · `atraso` (quanto tempo depois do passo anterior) ·
-`assunto` (o vocabulário fechado das cartas) · `parametros_modelo` ·
-`canais` (`sino` · `email` · `whatsapp`) · `condicao_slug` (a função que decide
-se ainda faz sentido) · `so_entre` (janela de horário permitida).
-Constraint: `unique(jornada, ordem)`.
+**`Jornada`** — a identidade estável da sequência.
+`site_id` · `slug` · `gatilho` · `ativa` · `criada_em`.
 
-**`Inscricao`** — uma pessoa dentro de uma jornada.
-`jornada` · `destinatario_id` · `site_id` · `passo_atual` · `proximo_em` ·
-`estado` (`andando` · `concluida` · `saiu` · `cancelada`) · `motivo_de_saida` ·
-`origem_event_id`.
-Constraint: **`unique(jornada, destinatario_id, site_id)`** — a mesma pessoa
-nunca entra duas vezes na mesma jornada. É esta linha que impede o pesadelo
-clássico: o evento reentregue inscrevendo de novo e mandando tudo em dobro.
+> **O `gatilho` é SEMPRE um evento — e a ausência também vira um.** O §2 deste
+> plano diz, com todas as letras, que *"sumiu há cinco dias" não é um
+> acontecimento, é a falta de um*. E o campo `gatilho` só sabe nomear evento. O
+> plano se contradizia a uma página de distância, e o GPT viu.
+>
+> A saída **não** é abrir uma exceção dentro da jornada (um campo
+> `tipo_de_entrada`, com um ramo para evento e outro para condição temporal).
+> É a varredura **publicar** o que ela descobriu:
+> **`aluno.inatividade-detectada.v1`**. Aí a forma do sistema continua a mesma —
+> detector → evento → jornada —, a jornada continua sabendo só de eventos, e
+> qualquer outra célula que um dia precise saber que alguém sumiu recebe de
+> graça.
+>
+> **Exige Rito de Contrato** (RITOS §3, com o mantenedor presente), e por isso é
+> degrau próprio na escada do §7 — não se resolve dentro do PR do motor.
 
-**`Entrega`** — o que foi (ou não foi) entregue, e por quê.
-`inscricao` · `passo` · `decidida_em` · `resultado` (`enviada` · `pulada` ·
+**`JornadaVersao`** — uma versão publicada, **imutável depois de publicada**.
+`jornada` · `numero` · `publicada_em`.
+Constraint: `unique(jornada, numero)`.
+
+**`Passo`** — cada mensagem, presa a UMA versão e imutável com ela.
+`jornada_versao` · `ordem` · `atraso` · `assunto` · `classe` (§6) ·
+`canais` (`sino` · `email` · `whatsapp`) · `condicao_slug` · `janela`.
+Constraint: `unique(jornada_versao, ordem)`.
+
+**`TextoDoPasso`** — o texto que o mantenedor edita, um por idioma.
+`passo` · `idioma` · `assunto_visivel` · `corpo`.
+Constraint: `unique(passo, idioma)`.
+
+**Por que a versão precisa ser imutável, e não bastava um campo `versao`.** O
+plano prometia que mudar uma jornada não afeta quem está no meio dela — e o
+modelo anterior não garantia nada disso: `Inscricao` apontava para `Jornada`, e
+editar as linhas de `Passo` trocaria o texto de quem já estava andando. Era
+**garantia sem mecanismo**, um dos oito padrões que este projeto já catalogou
+como causa dos próprios erros caros (`RETROSPECTIVA-FASE-D.md`). Agora publicar é
+criar versão nova: quem entrou na v1 termina a v1 **porque não existe caminho
+para o contrário.**
+
+E é aqui que mora o texto que o §8.3 promete que ele edita sozinho. A versão
+imutável é o que torna as duas promessas compatíveis: ele troca a frase quando
+quiser, e ninguém que já está no meio vê a frase mudar embaixo de si.
+
+### A pessoa dentro da jornada
+
+**`Inscricao`** — um EPISÓDIO de uma pessoa numa jornada.
+`jornada_versao` · `destinatario_id` · `site_id` · `passo_atual` ·
+`ancora_em` · `proximo_em` · `estado` (`andando` · `concluida` · `saiu` ·
+`cancelada`) · `motivo_de_saida` · `origem_event_id`.
+Constraint: **`unique(jornada, destinatario_id, site_id)` PARCIAL — só quando
+`estado = "andando"`** (`condition=Q(estado="andando")`).
+
+**A palavra "parcial" é a correção mais importante desta consultoria.** Sem a
+condição, a mesma pessoa entraria numa jornada **uma vez na vida** — e quem
+sumiu em março, voltou e sumiu de novo em julho não entraria na segunda vez. Isso
+bloqueava *"sumiu há alguns dias"*, uma das quatro sequências que o mantenedor
+escolheu (§8.6).
+
+**E reaproveitar a linha antiga não salvava**, por um efeito de segunda ordem que
+custa citar por inteiro: o `order_id` sintético é
+`jornada:<inscricao_id>:<passo_id>`, então repetir a inscrição repetiria o
+`order_id` — e o segundo episódio seria **descartado como "já enviado", em
+silêncio**, pela mesma trava do pagamento que o §4.1 reusa de propósito. Com a
+trava parcial, cada episódio é uma `Inscricao` nova, o `inscricao_id` muda, e o
+`order_id` volta a ser único sem tocar na constraint do dinheiro.
+
+A trava parcial **não afrouxa nada**: continua no banco, e continua impedindo —
+junto com o dedup por `event_id` — que um evento reentregue inscreva em dobro.
+
+**Os cinco carimbos de tempo, e por que não basta um.** `ancora_em` (quando o
+episódio começou) · `proximo_em` (quando o próximo passo fica elegível) e, na
+`Entrega`, `previsto_para` · `reagendado_para` · `enviado_em`. Sem separá-los,
+uma pergunta simples fica sem resposta definida: se o passo 2 era para D+2 e a
+régua o empurrou para D+3, o passo 3 sai em D+5 (cronograma da jornada) ou D+6
+(três dias depois da entrega real)? **São comportamentos diferentes**, e o que
+não estiver escrito o agente do PR decide sozinho. Fica: **o cronograma é
+ancorado em `ancora_em`** — atraso da régua não empurra os passos seguintes.
+
+### O que saiu, e o que a pessoa aceita receber
+
+**`Entrega`** — o que foi (ou não foi) entregue, **por canal**, e por quê.
+`inscricao` · `passo` · `canal` · `decidida_em` · `previsto_para` ·
+`reagendado_para` · `enviado_em` · `resultado` (`enviada` · `pulada` ·
 `barrada_pela_regua` · `barrada_por_preferencia`) · `motivo` · `event_id`.
-Constraint: **`unique(inscricao, passo)`** — segunda camada de idempotência, por
-chave de negócio, exatamente como a `mensageria` já faz com
-`order_id+tipo+canal`. A varredura pode rodar duas vezes no mesmo segundo: a
-segunda não entrega nada.
+Constraint: **`unique(inscricao, passo, canal)`**.
+
+**O canal na chave, e não fora dela:** `Passo.canais` é lista, e sino entregue +
+e-mail devolvido + WhatsApp barrado são **três** resultados independentes. Uma
+linha por passo não os representava. A tela do §7 vai ter de responder *"por que
+o aluno X não recebeu **no e-mail**?"*, e ela não deve precisar de duas tabelas
+para isso.
+
+**`Preferencia`** — o que a pessoa aceita, por canal e por classe.
+`destinatario_id` · `site_id` · `canal` · `classe` · `aceita`.
+Constraint: `unique(destinatario_id, site_id, canal, classe)`.
+
+**Por classe, e não um `receber_email` booleano.** O booleano funciona três meses
+e vira dívida no dia em que for preciso distinguir segurança de progresso de
+comunidade — e nesse dia já haverá gente com a preferência gravada, o que torna a
+migração uma adivinhação sobre o que cada um quis dizer.
+
+### O que a jornada precisa saber sobre o aluno
+
+**`EstadoDoAluno`** — uma projeção, **não** fonte da verdade.
+`destinatario_id` · `site_id` · `ultima_atividade_em` · `ultima_aula_em` ·
+`ultimo_post_em` · `atualizado_em`.
+Constraint: `unique(destinatario_id, site_id)`.
+
+As condições do §5 (*"já entrou em aula?"*, *"postou no fórum?"*) perguntam por
+fatos que **não moram na `mensageria`**. Sem esta tabela, cada condição vira
+chamada síncrona a outra célula: o `consome:` da célula cresce a cada condição
+nova, e a varredura vira uma multiplicação de chamadas — 10 mil pessoas × 4
+condições é 40 mil idas à rede numa passada.
+
+**A Lei 7 continua respeitada, e a distinção é o que a salva:** esta tabela é
+**calculada de eventos**, e a autoridade sobre cada fato continua na célula de
+origem. Projeção operacional não é segunda fonte da verdade — mas isso precisa
+estar escrito, senão a próxima sessão lê como duplicação e tem razão.
+
+**`Efeito`** — o que a pessoa fez DEPOIS de receber (decisão do mantenedor,
+§8.8).
+`entrega` · `voltou_em` · `abriu_aula_em` · `concluiu_aula_em` · `postou_em` ·
+`apurado_em`.
+Constraint: `unique(entrega)`.
 
 **A tabela `Entrega` guarda também o que NÃO foi enviado, e isso é essencial.**
 Sem ela, a pergunta *"por que o aluno X não recebeu?"* não tem resposta, e o
@@ -288,16 +426,45 @@ mantenedor fica olhando para o silêncio. Com ela, a tela do admin responde
 própria régua, três jornadas somariam três mensagens no mesmo dia — cada uma
 respeitando "1 por dia" isoladamente, e o aluno recebendo três.
 
-A régua barra, nesta ordem:
+### 6.1 A classe de entrega decide se a régua se aplica
 
-1. **Preferência da pessoa.** Silenciou aquele assunto, ou aquele canal ⇒ barra.
-   *Transacional nunca se silencia* — "sua matrícula foi liberada" e "sua senha"
-   não são incentivo.
+**Correção de 31/08/2026, e ela conserta um defeito com cenário reproduzível.**
+Antes, o transacional era isento de ser *silenciado* mas **não** do teto diário.
+Resultado, testado contra o texto anterior:
+
+> aluno ganha uma medalha às 10h · às 18h a matrícula dele é liberada ·
+> **a régua barra o aviso da matrícula.** Mensagem de serviço barrada por uma de
+> incentivo.
+
+Toda mensagem nasce com uma **classe**, e ela decide antes de tudo:
+
+| classe | exemplos | a régua se aplica? |
+|---|---|---|
+| **crítica** | senha, segurança, confirmação | **não** — passa por fora, inteira |
+| **transacional** | matrícula liberada, pagamento, acesso | **não** — passa por fora, inteira |
+| **relacional** | boas-vindas, progresso, comunidade | sim |
+| **engajamento** | inatividade, incentivo | sim |
+
+*"Por fora da régua inteira"* é mais forte do que *"isento do teto"*, e é
+deliberado: um aviso de senha não espera a vaga do dia, não espera a janela de
+horário e não some porque a pessoa silenciou incentivo.
+
+### 6.2 A régua, para o que ela alcança
+
+Barra nesta ordem:
+
+1. **Preferência da pessoa**, por canal e por classe. Silenciou ⇒ barra.
 2. **Teto diário.** Máximo 1 por dia por pessoa (lei 4 do §3). Um passo barrado
    **não se perde: reagenda** para a próxima janela válida.
-3. **Janela de silêncio.** Nunca depois das 20h. Fuso `America/Sao_Paulo`,
-   sempre (lei 6). *"Nunca em horário escolar" **cai** — o público é adulto
-   (§8.4), e um adulto às 14h de terça é exatamente quem se quer alcançar.*
+   **Quando duas jornadas disputam a vaga do dia, ganha a inscrição mais
+   antiga.** Sem uma ordem definida, o teste do teto não tem o que afirmar — e
+   guarda que não pode afirmar é guarda decorativo.
+3. **Janela de silêncio, com hora de abrir E de fechar.** Nunca depois das 20h e
+   **nunca antes das 8h**. O piso não é zelo: sem ele, *"reagenda para a próxima
+   janela válida"* manda a mensagem às 6h da manhã, e a régua que existe para não
+   incomodar teria acabado de incomodar. Fuso `America/Sao_Paulo`, sempre
+   (lei 6). *"Nunca em horário escolar" **cai** — o público é adulto (§8.4), e um
+   adulto às 14h de terça é exatamente quem se quer alcançar.*
 4. **Só boa notícia.** Nenhuma jornada de culpa, cobrança ou "você está
    perdendo". O vocabulário de assuntos é fechado justamente para que uma
    jornada nova não consiga inventar um assunto ruim. **Isto não era sobre
@@ -310,6 +477,26 @@ lugar onde a trava entra — e entra antes de qualquer mensagem sair.
 **Fail-closed:** régua indisponível ou preferência ilegível ⇒ **não envia** e
 registra o motivo. É a mesma escolha que a Caixa de Sugestões já fez com a lista
 de aprovadores, e é desenho, não bug.
+
+### 6.3 A régua do aluno NÃO é a régua da máquina
+
+São duas coisas, e confundi-las esconde um modo de falha inteiro. A régua acima
+protege **a atenção de uma pessoa**: uma mensagem por dia, na janela certa. Ela
+não limita nada do lado de fora.
+
+Dez mil pessoas ficando elegíveis às 9h continuam sendo **dez mil envios**, cada
+um respeitando "uma por dia" perfeitamente. E provedor de e-mail tem cota: passar
+do limite não devolve erro claro, devolve entrega degradada e reputação
+queimada — que é justamente o que o degrau 9 existe para evitar.
+
+Então há uma **segunda régua, de capacidade**, e ela é do sistema e não do aluno:
+teto por minuto e por hora no provedor, `backoff` com `jitter` quando ele
+reclamar, e um disjuntor que para tudo quando o provedor está claramente fora.
+
+O `LOTE = 200` por passada, que o §9 já citava como antídoto, **limita o
+trabalho de uma varredura, não o volume do dia** — e essa distinção precisava
+estar escrita, porque ler o `LOTE` como proteção de volume é exatamente o tipo
+de conforto falso que faz ninguém construir a régua que falta.
 
 ---
 
@@ -335,15 +522,18 @@ provisionamento de banco novo na VPS, e o contrato `mensagem.devida.v1` sumiu
 | **0a** | **Emenda a `AGENTS.mensageria.md`:** a missão passa a incluir sequência com espera, e não só transacional | `constituicoes/` | sem isto, a cerca do CI recusa tudo que vem depois |
 | **0b** | **Rito de Contrato** com o mantenedor: `identidade.pessoa-cadastrada.v1` e os assuntos novos em `notificacao.devida.v1` | `contracts/` | não é código (RITOS §3) |
 | 1 | `identidade` ganha voz: outbox + relay + publica o cadastro | `identidade` | o cadastro finalmente vira fato na plataforma |
-| 2 | Nasce `apps/jornadas`: as 4 tabelas e as travas — **sem mandar nada ainda** | `mensageria` | migração aplicada, `healthz` intacto |
-| 3 | A régua (§6) + preferências, com os testes de fuso e de teto | `mensageria` | a régua barra, e o motivo fica registrado |
+| 2 | Nasce `apps/jornadas`: as **8 tabelas** e as travas (incluindo a **parcial** da `Inscricao`) — **sem mandar nada ainda** | `mensageria` | migração aplicada, `healthz` intacto |
+| 3 | A régua (§6): classes, preferências, janela com piso e teto, ordem determinística | `mensageria` | a régua barra, e o motivo fica registrado |
 | 4 | O motor: consumidor dos gatilhos, inscrição, varredura periódica, condições | `mensageria` | uma pessoa entra numa jornada e o passo é agendado |
 | 5 | Publica `notificacao.devida.v1` — **a primeira sequência de verdade no ar** | `mensageria` | **boas-vindas chegando no sininho do aluno** |
 | 6 | `gamificacao` ganha voz (os 4 assuntos já congelados) | `gamificacao` | comemoração automática ao subir de nível |
+| **6b** | **Rito de Contrato:** `aluno.inatividade-detectada.v1` — a ausência vira evento (§5) | `contracts/` | não é código; destrava a 4ª sequência |
 | 7 | Tela em `/admin/escola/jornadas/`: quais existem, quem está em cada uma, o que foi enviado e o que foi barrado — **e é aqui que ele edita o texto** (§8.3) | `admin` | o mantenedor troca uma frase sozinho |
 | **8** | **`mensageria` deixa de ser stub:** provedor de e-mail real, `consome: [identidade]`, renderização por idioma | `mensageria` | **o primeiro e-mail de verdade sai** |
 | 9 | Devolvidos e reclamações (*bounce/complaint*): endereço que devolve é marcado e não se tenta de novo | `mensageria` | a reputação do domínio sobrevive |
+| **9b** | A régua de CAPACIDADE (§6.3): teto por minuto/hora no provedor, backoff com jitter, disjuntor | `mensageria` | volume grande não degrada a entrega de todos |
 | 10 | WhatsApp oficial, se o mantenedor quiser | `mensageria` | segundo canal |
+| **11** | A tabela `Efeito` ganha tela: quem recebeu voltou? abriu aula? (§8.8, sem grupo de controle e sem rastreio) | `admin` | **ele passa a saber se as mensagens ajudam** |
 
 **O degrau 8 tem trabalho que só o mantenedor faz** (Lei 5 — agente não tem SSH,
 env nunca viaja por pipeline): conta no provedor, domínio remetente, e os
@@ -477,6 +667,34 @@ escrita no próprio arquivo), e **saiu do contrato a regra "nunca em horário
 escolar"** — a dívida que a emenda do §9 de `DECISAO-gamificacao.md` tinha
 deixado anotada de propósito para o próximo rito.
 
+### 8.8 Medir o efeito: sim — grupo de controle e rastreio: não
+
+Decisão dele em 31/08/2026, provocada pelos pontos 11 e 12 do parecer do GPT
+(veredito completo em `docs/consultorias/sequencias-de-mensagens/VEREDITO.md`).
+
+O parecer propunha sair de *"quem recebe o quê e quando"* para *"qual mensagem
+está produzindo qual comportamento"*, com variantes e grupo de controle. **Não
+foi descartado por custo** — a lei do escopo proíbe recomendar o menor por ser
+mais barato. Foi levado a ele com as duas consequências que eram dele, e ele
+escolheu o meio:
+
+- **SIM à medição de efeito.** O sistema passa a saber se quem recebeu voltou,
+  abriu aula, concluiu, postou. É a tabela `Efeito` do §5. Comportamento **dentro
+  da plataforma**, que ela já observa.
+- **NÃO a grupo de controle.** Ele recusou deliberadamente não ajudar parte dos
+  alunos para medir a diferença. Consequência aceita e dita: os números mostram
+  **correlação, não causa** — "quem recebeu voltou mais" não prova que a mensagem
+  fez voltar. Quem ler os números depois precisa saber disso, e por isso está
+  escrito aqui e não só no livro.
+- **NÃO a rastreio de abertura e clique.** Nada de pixel de rastreio nem de link
+  reescrito para contar cliques. É prática comum no mercado e colide com a
+  disciplina de privacidade desta casa.
+
+**O que isso obriga em quem construir:** a tabela `Efeito` nasce junto do motor,
+mesmo que a tela que a lê venha depois. Reservar o lugar custa uma tabela agora;
+descobrir o efeito de mensagens que já saíram, sem tê-lo reservado, é impossível
+— o passado não volta para ser medido.
+
 ---
 
 ## §9 — Riscos, com o antídoto de cada um
@@ -485,8 +703,15 @@ deixado anotada de propósito para o próximo rito.
 |---|---|
 | **A sequência manda o passo 2 para quem já resolveu** — "sentimos sua falta" para quem voltou ontem. É o defeito que faz o aluno desligar tudo. | `condicao_slug` reavaliada **no instante do envio**, nunca no da inscrição. Teste-guarda: a condição deixa de valer entre a inscrição e a varredura ⇒ `Entrega` com `resultado="pulada"`. |
 | **Três jornadas somam três mensagens no mesmo dia**, cada uma respeitando "1 por dia" sozinha. | A régua é UMA, por pessoa, atravessando toda entrega (§6). |
-| **Evento reentregue inscreve de novo e manda tudo em dobro.** | `unique(jornada, destinatario_id, site_id)` + `unique(inscricao, passo)` + dedup por `event_id` — as três camadas que a `mensageria` já provou funcionarem. |
-| **A varredura fica presa e a fila represa** — a plataforma acorda e dispara 400 mensagens de uma vez. | Teto por passada (o `LOTE = 200` que os relays já usam) + a régua barra o excedente e reagenda. |
+| **Evento reentregue inscreve de novo e manda tudo em dobro.** | `unique(jornada, destinatario_id, site_id)` **parcial** (só `andando`) + `unique(inscricao, passo, canal)` + dedup por `event_id` — as três camadas que a `mensageria` já provou funcionarem. |
+| **A pessoa que sumiu duas vezes só é alcançada uma** — e a trava que causa isso é a mesma que protege contra a linha de cima. | A trava é **parcial** (§5): vale enquanto a inscrição está andando. Teste-guarda: inscrever, concluir, inscrever de novo ⇒ duas `Inscricao`, dois `order_id` distintos. |
+| **O segundo episódio some em silêncio** porque o `order_id` sintético se repetiu e a trava do pagamento o tratou como reenvio. | O `inscricao_id` muda por episódio (consequência da trava parcial). Teste-guarda que mede o `order_id` dos dois episódios, e não só a contagem de `Entrega`. |
+| **Editar uma jornada muda o texto de quem está no meio dela.** | `JornadaVersao` imutável e `Inscricao` apontando para a versão (§5) — por construção, não por disciplina. |
+| **Uma mensagem de serviço é barrada por uma de incentivo** — a matrícula liberada não chega porque o aluno ganhou medalha de manhã. | A classe de entrega (§6.1): crítica e transacional passam **por fora da régua inteira**. Teste-guarda com o cenário exato das 10h/18h. |
+| **A varredura fica presa e a fila represa** — a plataforma acorda e dispara 400 mensagens de uma vez. | Teto por passada (o `LOTE = 200` que os relays já usam) + a régua barra o excedente e reagenda. **E o `LOTE` não é proteção de volume** (§6.3): a régua de capacidade é outra, e é ela que protege a cota do provedor. |
+| **Dez mil pessoas ficam elegíveis às 9h** e cada envio respeita "1 por dia" — mas o provedor recebe dez mil de uma vez e degrada a entrega de todos. | A segunda régua, de capacidade (§6.3): teto por minuto e por hora, `backoff` com `jitter`, disjuntor. |
+| **As condições consultam meia plataforma a cada varredura** — 10 mil pessoas × 4 condições = 40 mil idas à rede numa passada. | A projeção `EstadoDoAluno` (§5), alimentada por eventos e declarada como superfície calculada. |
+| **O sino fica lento na página mais visitada do site**, por buscar o texto de cada aviso na `mensageria`. | Busca **em lote**, uma chamada por página (§4.4), e o que não voltar aparece como "não carregou". |
 | **E-mail vai para spam e o domínio queima.** | Degrau 9 antes de qualquer volume: devolvidos e reclamações tratados, endereço ruim marcado. E-mail que devolve e continua sendo tentado é o que mata a reputação. |
 | **A tabela de tempo mente por fuso** — o passo das 22h cai no dia errado. | `America/Sao_Paulo` explícito e `test_fuso_horario.py`, que toda célula já tem (`armadilhas/099`). |
 | **O motor vira monstro** com uma linguagem de fórmulas dentro do banco. | Condição é função Python registrada num dicionário, PR pequeno por condição nova. DSL é critério de morte (§10). |

@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-154400-TAR-067-concluida",
+  "tarefa": "TAR-067",
+  "evento": "concluida",
+  "quando": "2026-08-31T15:44:00+00:00",
+  "quem": "sessao-gamificacao-3108",
+  "evidencia": "PR #699 mergeado (commit 5eaf73bc). Deploy-celula run 33409669280 completed/success e deploy-infra run 33409669287 completed/success, lidos por gh run view --json. PROVA DE FORA: https://meshcraft.top/conquistas/healthz 404 antes -> 200 com corpo {status: ok} depois; /conquistas/api/gamificacao/eu responde 401 (conjunto de tokens vazio recusando, como projetado). Passo H feito pelo mantenedor, site meshcraft.top, SITE_ID cc06b8c3-043b-4c06-92c5-5ea624e00586.",
+  "verificado_em": "2026-08-31"
+}
