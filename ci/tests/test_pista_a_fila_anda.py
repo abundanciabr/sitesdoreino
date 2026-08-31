@@ -146,15 +146,74 @@ def test_o_segundo_da_fila_pousa_mesmo_com_o_primeiro_atrasado(bash, tmp_path):
 
 
 def test_o_primeiro_atrasado_continua_na_fila_e_e_atualizado(bash, tmp_path):
-    """Andar não pode virar desistir: o atrasado é atualizado e fica na fila."""
+    """Andar não pode virar desistir: o atrasado é atualizado e fica na fila.
+
+    Neste cenário o dublê responde BEHIND ao #100 para SEMPRE — nem a segunda
+    conferência o salva. É o caso real em que a `main` andou outra vez enquanto
+    os checks rodavam: o PR volta para a fila, com a etiqueta, e não trava
+    ninguém.
+    """
     saida = _rodar(bash, tmp_path, _preparar(_script_da_fila()))
     assert "[gh pr update-branch 100]" in saida, saida
-    assert "atualizado e devolvido à fila" in saida, saida
+    assert "envelheceu DE NOVO enquanto os checks rodavam" in saida, saida
     # E ninguém tirou a etiqueta dele: atrasado não é reprovado.
     assert "remove-label" not in saida, (
         "o PR atrasado perdeu a etiqueta 'pousar' — ele não reprovou, só "
         "envelheceu.\n\n" + saida
     )
+
+
+def test_o_pr_que_a_pista_ATUALIZOU_pousa_na_MESMA_passagem(bash, tmp_path):
+    """O guarda do conserto de 31/08/2026, e o que ele fecha foi medido.
+
+    Até aqui a pista atualizava um PR atrasado e o DEVOLVIA à fila. Atualizar
+    reinicia os checks (2 a 3 min na célula mais lenta), e num dia de 108
+    merges por hora a `main` anda 4 ou 5 vezes nesse intervalo: o PR ficava
+    velho de novo ANTES de ficar verde. Como a fila começa pelos mais antigos,
+    ela reiniciava justamente quem esperava há mais tempo.
+
+    Não era lentidão, era uma corrida que o PR não tinha como vencer — e nada
+    ficava vermelho, porque OUTROS PRs (recém-chegados, já em dia) pousavam por
+    cima. Medido no dia: nove atualizações no mesmo PR sem um único pouso, e
+    outro preso há mais de uma hora.
+
+    Aqui o dublê faz o que a atualização faz de verdade: a PRIMEIRA conferência
+    do #100 diz BEHIND, a segunda diz verde. O que se afirma é o desfecho — ele
+    pousa na mesma passagem, sem depender de sorte.
+    """
+    script = _preparar(_script_da_fila())
+    # O #100 fica em dia depois da atualização, como na vida real.
+    script = script.replace(
+        '    if [ "$alvo" = "100" ]; then',
+        '    if [ "$alvo" = "100" ] && [ -z "${JA_ATUALIZEI_100:-}" ]; then',
+    )
+    script = script.replace(
+        '  echo "   [gh $*]"\n  return 0',
+        '  case "$*" in *update-branch*100*) JA_ATUALIZEI_100=sim ;; esac\n'
+        '  echo "   [gh $*]"\n  return 0',
+    )
+    saida = _rodar(bash, tmp_path, script)
+
+    assert "PR #100 POUSOU." in saida, (
+        "o PR que a pista acabou de atualizar NÃO pousou na mesma passagem — "
+        "a corrida contra a `main` voltou.\n\n" + saida
+    )
+    assert "Passagem encerrada: 2 PR(s) pousado(s)." in saida, saida
+
+
+def test_a_espera_tem_teto_e_orcamento_declarados(bash, tmp_path):
+    """Espera sem teto é a armadilha 161 desta casa, e ela vale aqui também.
+
+    O teto impede uma passagem de virar refém de um check pendurado; o
+    orçamento impede cinco voltas lentas de segurarem o grupo de concorrência
+    por meia hora. Este guarda é de INVENTÁRIO de propósito — ele não consegue
+    medir a duração de verdade, e diz isso em voz alta: o que ele impede é
+    alguém apagar os dois limites sem perceber.
+    """
+    script = _script_da_fila()
+    assert "TETO_DA_ESPERA=" in script, "a espera da pista perdeu o teto"
+    assert "esperas_restantes=" in script, "a espera da pista perdeu o orçamento"
+    assert "esperar_os_checks" in script, "a função de espera sumiu do laço"
 
 
 def test_a_passagem_para_quando_so_restam_os_ja_atendidos(bash, tmp_path):
