@@ -39,6 +39,7 @@ from django.test import Client
 from django.urls import get_resolver
 
 from apps.core import documentos
+from apps.core.models import Documento
 from apps.core.porta import PREFIXO_PUBLICO_DOS_DOCUMENTOS
 
 BASE = "http://identidade:8000/interno"
@@ -57,18 +58,32 @@ def env(settings, monkeypatch):
 
 @pytest.fixture
 def pasta(tmp_path, monkeypatch):
-    """Uma pasta de documentos de mentira, no lugar da de verdade.
+    """Uma pasta-semente de mentira, no lugar da de verdade.
 
     Escrever os arquivos aqui — em vez de medir os que existem no repositório —
     é o que deixa cada teste dizer exatamente que cabeçalho ele está exercitando.
     Os documentos reais têm guarda próprio, no fim do arquivo.
     """
     monkeypatch.setattr(documentos, "CANDIDATOS", (tmp_path,))
+    # A tabela comeca VAZIA, e isto nao e higiene de teste: a migracao `0003`
+    # roda quando o banco de teste e criado, e os tres documentos de verdade
+    # ficam la. O rollback de cada teste volta para o estado SEMEADO, nunca
+    # para um banco vazio. Sem esta linha, todo teste de lista contaria os
+    # documentos do repositorio junto com os seus.
+    Documento.objects.all().delete()
     return tmp_path
 
 
 def escrever(pasta, nome, texto):
+    """Escreve o `.md` e SEMEIA, que é o caminho de verdade desde 31/08/2026.
+
+    Desde a `DECISAO-o-editor-de-documentos`, o site não lê a pasta: ele lê a
+    tabela, e a pasta é de onde a tabela partiu. Um teste que só escrevesse o
+    arquivo mediria um caminho que produção não tem mais — o falso-verde do
+    padrão 1 da RETROSPECTIVA-FASE-D, na sua forma mais barata de cometer.
+    """
     (pasta / f"{nome}.md").write_text(texto, encoding="utf-8")
+    documentos.importar_da_pasta(Documento)
 
 
 def _dentro() -> Client:
@@ -363,8 +378,7 @@ def test_a_pagina_ADMINISTRATIVA_continua_montando_endereco_com_url(nome):
 
 
 def test_o_endereco_publico_de_um_documento_e_o_prefixo_mais_o_nome():
-    documento = documentos.de_texto("meu-doc", "---\npublico: true\n---\n")
-    assert documento.endereco == "/docs/meu-doc"
+    assert Documento(nome="meu-doc").endereco == "/docs/meu-doc"
 
 
 def test_o_prefixo_publico_casa_com_o_da_porta():
@@ -462,20 +476,27 @@ def test_paragrafo_de_varias_linhas_vira_um_paragrafo_so():
 
 
 # ------------------------------------ 5. a pasta de verdade, do repositório
+#
+# Aqui não há `pasta` de mentira: o que se mede são os arquivos-semente que
+# existem no repositório, semeados como a migração `0003` os semeia em produção.
 
 
-def test_a_pasta_do_repositorio_e_encontrada_e_tem_documentos():
-    """Sem `pasta` de mentira: mede os arquivos que existem de verdade.
+@pytest.fixture
+def semente():
+    """A pasta de verdade, dentro da tabela — o mesmo que a migração faz."""
+    documentos.importar_da_pasta(Documento)
 
-    Se este teste ficar vermelho, ou a pasta sumiu do repositório, ou o caminho
-    até ela mudou — e nos dois casos o site publicaria uma lista vazia sem nada
-    ficar vermelho no deploy.
+
+def test_a_pasta_do_repositorio_e_encontrada_e_tem_documentos(semente):
+    """Se este teste ficar vermelho, ou a pasta-semente sumiu do repositório, ou
+    o caminho até ela mudou — e nos dois casos uma instalação nova da plataforma
+    subiria com `meshcraft.top/docs/` vazia, sem nada ficar vermelho no deploy.
     """
     assert documentos.diretorio() is not None
     assert documentos.listar(so_publicos=False), "a pasta documentos/ está vazia"
 
 
-def test_todo_documento_do_repositorio_tem_titulo_e_renderiza():
+def test_todo_documento_do_repositorio_tem_titulo_e_renderiza(semente):
     """Um documento sem título aparece na lista pelo endereço, o que é feio; um
     que estoure o renderizador derruba a página de quem o abrir."""
     for documento in documentos.listar(so_publicos=False):
@@ -483,7 +504,7 @@ def test_todo_documento_do_repositorio_tem_titulo_e_renderiza():
         assert documentos.para_html(documento.corpo)
 
 
-def test_a_jornada_do_aluno_NAO_e_publica():
+def test_a_jornada_do_aluno_NAO_e_publica(semente):
     """Ela fala do painel, da fila e de como administrar gente — é escrita para
     o mantenedor. O documento do ALUNO é outro, e esse sim é público."""
     jornada = documentos.ler("jornada-do-aluno")
@@ -491,7 +512,7 @@ def test_a_jornada_do_aluno_NAO_e_publica():
     assert jornada.publico is False
 
 
-def test_o_documento_da_entrada_E_publico():
+def test_o_documento_da_entrada_E_publico(semente):
     entrada = documentos.ler("como-funciona-a-entrada")
     assert entrada is not None, "o documento da entrada sumiu da pasta"
     assert entrada.publico is True

@@ -9,13 +9,17 @@
 <div class="envolucro">
   <a class="volta" href="{% url 'visao_geral' %}">&larr; Visão geral</a>
   <h1>Documentos</h1>
-  <p class="subtitulo">Tudo o que o site publica — e quem pode ler cada um.</p>
+  <p class="subtitulo">Tudo o que o site publica, e quem pode ler cada um.</p>
+
+  <p class="espaco-abaixo-20">
+    <a class="botao" href="{% url 'documento_novo' %}">Escrever um documento novo</a>
+  </p>
 
   {% comment %}
   A lista do administrador mostra TODOS, com a etiqueta de visibilidade bem
   visível. É o único lugar onde as duas famílias aparecem juntas, e é de
   propósito: sem isso, saber se um documento está no ar para o mundo exigiria
-  abrir o arquivo no repositório.
+  abrir o banco do servidor.
   {% endcomment %}
   {% if documentos %}
   <div class="cartoes">
@@ -32,25 +36,27 @@
         {% endif %}
       </div>
       <div class="nota">
-        <a href="{% url 'documento_admin' documento.nome %}">Ler &rarr;</a>
+        <a href="{% url 'documento_admin' documento.nome %}">Ler</a>
+        &middot;
+        <a href="{% url 'documento_editar' documento.nome %}">Editar</a>
       </div>
     </div>
     {% endfor %}
   </div>
   {% else %}
   <p class="aviso">
-    <b>Nenhum documento nesta imagem.</b>
-    A pasta <code>documentos/</code> não veio no build — é falha de empacotamento,
-    não pasta vazia. Avise o agente.
+    <b>Nenhum documento por aqui ainda.</b>
+    Se você não apagou nenhum, avise o agente: a carga inicial pode não ter
+    rodado nesta subida do sistema.
   </p>
   {% endif %}
 
   <p class="aviso espaco-28">
     <b>Como um documento vira público.</b>
-    Cada documento é um arquivo em <code>documentos/</code>, e o próprio arquivo
-    diz quem pode lê-lo: uma linha <code>publico: true</code> no topo. Sem essa
-    linha — ou com ela escrita de outro jeito — o documento fica só aqui. Nada
-    escapa para o site aberto por esquecimento.
+    Todo documento nasce fechado, visível só nesta tela. Ele passa a aparecer em
+    <code>meshcraft.top/docs/</code> quando alguém decide abri-lo, de propósito.
+    Não existe caminho em que um texto interno escape para o site aberto por
+    esquecimento.
   </p>
 </div>
 {% endblock %}
