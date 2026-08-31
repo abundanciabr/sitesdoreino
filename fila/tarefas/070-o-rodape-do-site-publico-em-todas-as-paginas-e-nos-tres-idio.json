@@ -1,0 +1,14 @@
+{
+  "arquivo": "070-o-rodape-do-site-publico-em-todas-as-paginas-e-nos-tres-idio",
+  "id": "TAR-070",
+  "titulo": "O rodape do site publico, em todas as paginas e nos tres idiomas, com variantes por pagina",
+  "toca": [
+    "funil"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "URL do PR mergeado + o rodape visivel em https://meshcraft.top nos tres idiomas",
+  "despacho": "DESPACHO - funil: o rodape do site\nCELULA: funil - WORKTREE: wt-funil-rodape - RECEITAS: R6, R12\n\nCONTEXTO: o site publico (meshcraft.top) nao tem rodape em pagina nenhuma. O\nmantenedor pediu, em 31/08/2026, um rodape em todas as paginas, com os textos\nalteraveis por ele no painel, com paginas que nao mostram rodape e com\nvariantes diferentes por pagina.\n\nMISSAO: por o rodape em toda pagina do site publico, nos tres idiomas, com\nvariante escolhida por pagina e com o desenho preparado para o painel mandar\nnele depois (etapa 2, que exige rito de contrato).\n\nALVOS: services/funil/apps/core, services/funil/templates,\nservices/funil/traducoes, services/funil/tests\nSOMENTE-LEITURA: contracts/, infra/\nFORA DE ESCOPO: pagamento/checkout; mudar contrato; a tela do painel (etapa 2)\nDoD: make ci da celula verde + rodape visivel em /, /pt-br/, /es/ e /cadastro\nORCAMENTO: <= 15 arquivos",
+  "origem": "despacho do mantenedor (super prompt de parte do site) - rodape",
+  "criada_em": "2026-08-31"
+}
