@@ -90,6 +90,61 @@ Três coisas ditas de propósito na tela:
       </div>
     </div>
 
+    {% comment %}
+    CORRIGIR O TEXTO — `DECISAO-corrigir-o-texto-de-uma-ideia.md` (31/08/2026).
+
+    Fica ANTES de "Mover de fase" porque é sobre o conteúdo da ideia, e porque o
+    gesto que trouxe esta seção à existência ("o aluno escreveu turorial") é o
+    primeiro que alguém faz ao abrir a ficha e ver o erro.
+
+    Três coisas ditas de propósito na tela:
+
+    1. **A frase diz que o aluno não vê marca nenhuma.** Quem corrige precisa
+       saber disso ANTES de apertar o botão: é a diferença entre consertar uma
+       digitação e reescrever a fala de alguém em silêncio.
+    2. **Os campos vêm preenchidos com o texto de agora.** É o que faz o
+       formulário ser um conserto, e não um recomeço — e é o que permite mandar
+       os três campos inteiros, como o contrato pede.
+    3. **O que já foi corrigido aparece embaixo, com o texto anterior.** Sem
+       isto, o rastro existiria no banco e não existiria para ninguém, e a
+       correção calada viraria correção sem rastro.
+    {% endcomment %}
+    <h2 class="secao">Corrigir o texto</h2>
+    <p class="subtitulo">
+      Para erro de digitação, como "turorial" no lugar de "tutorial". O aluno passa a ver o texto
+      novo <b>sem nenhuma marca</b> de que alguém mexeu; o que estava escrito antes fica guardado
+      aqui embaixo, e só quem administra enxerga.
+    </p>
+    <form method="post" action="{% url 'caixa_corrigir' ideia.id %}" class="forma">
+      {% csrf_token %}
+      <label class="largo">
+        <span class="rotulo">O nome da ideia</span>
+        <input type="text" name="titulo" value="{{ ideia.titulo }}" maxlength="140">
+      </label>
+      <label class="largo">
+        <span class="rotulo">O problema, como o aluno contou</span>
+        <textarea name="problema" rows="3">{{ ideia.problema }}</textarea>
+      </label>
+      <label class="largo">
+        <span class="rotulo">A solução que ele propôs (pode ficar vazia)</span>
+        <textarea name="solucao_proposta" rows="2">{{ ideia.solucao_proposta }}</textarea>
+      </label>
+      <button type="submit" class="botao">Salvar a correção</button>
+    </form>
+
+    {% if ideia.correcoes %}
+      <p class="subtitulo">O que já foi corrigido nesta ideia:</p>
+      {% for linha in ideia.correcoes %}
+        <div class="historia">
+          <b>{{ linha.o_que }}</b>
+          <p class="nota">{{ linha.quando|slice:":10" }} · {{ linha.por|default:"equipe" }}</p>
+          <p class="citacao">Antes: {{ linha.antes|default:"(vazio)" }}</p>
+          <p class="citacao">Depois: {{ linha.depois|default:"(vazio)" }}</p>
+        </div>
+      {% endfor %}
+      <p class="nota">Este rastro nunca é editado nem apagado, nem por mim. O aluno não o vê.</p>
+    {% endif %}
+
     <h2 class="secao">Mover de fase</h2>
     <form method="post" action="{% url 'caixa_mover' ideia.id %}" class="forma">
       {% csrf_token %}
