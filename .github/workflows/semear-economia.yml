@@ -1,0 +1,109 @@
+# =============================================================================
+# SEMEAR A ECONOMIA DA ESCOLA — cria na produção as linhas da célula
+# `gamificacao`, pelo pipeline, sem o mantenedor colar nada em terminal nenhum.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# A tela `/admin/economia/` subiu em 31/08/2026 e abriu SEM NENHUMA LINHA. Não
+# era defeito dela: as tabelas existem (as migrações rodaram), mas as LINHAS
+# nunca foram criadas em produção — `semear_economia` é comando de gerência, e
+# comando de gerência não roda no deploy. O que a memória do projeto chamava de
+# "tudo semeado ativa=False" era verdade no banco de TESTE, e ninguém tinha
+# medido a produção porque, até existir a tela, não havia por onde olhar.
+#
+# É o MESMO caso do fórum um dia antes (`semear-areas-do-forum.yml`), que nasceu
+# dizendo "ainda não há nenhuma área" pela mesma razão. Duas vezes em dois dias:
+# a lição é que subir o código de uma célula e POVOAR essa célula são dois
+# passos, e o segundo não acontece sozinho.
+#
+# O caminho curto seria uma migração de dados. Ele já foi tentado no fórum e a
+# suíte respondeu com 20 testes quebrados: migração de dados entra no banco de
+# TODO teste, e semear é CONTEÚDO, não esquema.
+#
+# POR QUE workflow_dispatch É SEGURO AQUI
+# ----------------------------------------
+# Não ENTREGA código: roda um script versionado que só sabe fazer uma coisa, e
+# essa coisa é idempotente por construção (`get_or_create` pelo par site+slug,
+# sem atualizar o que existe). Rodar duas vezes não duplica regra e NÃO DESLIGA
+# o que o mantenedor tiver ligado. O script é fail-closed em cada passo: para se
+# não estiver em /opt/plataforma, se a `gamificacao` não estiver de pé, se o
+# contêiner não declarar `SITE_ID`, se o comando não imprimir a linha de
+# conclusão, e se a contagem final for menor que 6.
+#
+# TUDO NASCE DESLIGADO, e o script confere isso e diz na saída. Semear que
+# ligasse alguma regra seria uma mudança de economia que ninguém decidiu — é o
+# oposto da lei §10.5, que manda ligar ser decisão do mantenedor, com data.
+#
+# NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
+#
+# GRUPO PRÓPRIO, e isto foi aprendido caro (`armadilhas/173`): `cancel-in-progress:
+# false` NÃO faz fila ilimitada — o GitHub guarda UM run pendente por grupo, e o
+# próximo CANCELA o pendente. Num repositório com ~100 entregas por dia, um
+# disparo manual no grupo `deploy` morre antes de começar.
+# =============================================================================
+name: semear-economia
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: semear-economia
+  cancel-in-progress: false
+jobs:
+  semear:
+    name: criar as linhas da economia na producao
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # inexistente AVISA e IGNORA, saindo com sucesso — falso-verde conhecido.
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/semear-economia.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/semear-economia.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/semear-economia.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Semear na VPS
+        id: semear
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 10m
+          script_path: infra/semear-economia.sh
+
+      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o
+      # script inteiro, e ler o eco como se fosse a execução já enganou este
+      # projeto. A linha "PRONTO:" só existe no CAMINHO FELIZ, depois de o
+      # script contar as regras no banco por fora do comando que as criou.
+      - name: Provar que as regras existem (não basta a conexão ter aberto)
+        # A saída viaja por `env:`, nunca costurada no corpo do `run:` — texto
+        # de fora interpolado em shell é a família da `armadilhas/047`.
+        env:
+          SAIDA: ${{ steps.semear.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO: a economia da escola existe'; then
+            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script."
+            echo "Ela só é impressa depois de o script CONTAR as regras no banco,"
+            echo "pelo mesmo site_id que a tela consulta."
+            echo "Sem ela, nada está provado — e ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          echo "✅ a economia existe na produção, conferida pela contagem no banco."
