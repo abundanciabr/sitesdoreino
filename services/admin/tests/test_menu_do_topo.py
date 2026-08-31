@@ -428,3 +428,47 @@ def test_nenhum_gesto_escreve_quando_o_catalogo_esta_mudo():
     resp = _dentro().post(reverse("menu_criar_versao"), {"nome": "Qualquer"})
     assert resp.status_code == 503
     assert not gravar.called
+
+
+# ---------------------------------------------------------------------------
+# Molde nao e lugar
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+def test_molde_nao_e_oferecido_como_destino_de_item():
+    """`/forum/t/<int:topico_id>` nao e um lugar: e a forma de todos os
+    assuntos do forum. Oferece-lo como destino seria um link para 404 no topo
+    de toda pagina."""
+    _catalogo()
+    corpo = _dentro().get(reverse("menu_do_topo")).content.decode()
+    # o controle positivo: pagina concreta CONTINUA sendo oferecida, senao
+    # este guarda passaria com a lista inteira vazia
+    assert '<option value="/forum/">' in corpo
+    # e o molde nao aparece — nem cru nem escapado, que e como ele sairia
+    assert 'value="/forum/t/<int:topico_id>"' not in corpo
+    assert 'value="/forum/t/&lt;int:topico_id&gt;"' not in corpo
+    # e o molde CONTINUA na tabela de regras: todas as conversas mostram o
+    # mesmo topo, e isso e configuravel
+    assert 'name="pagina_forum/t/&lt;int:topico_id&gt;"' in corpo
+
+
+@respx.mock
+def test_item_apontando_para_molde_e_recusado_mesmo_por_post_montado_a_mao():
+    """Cinto e suspensorio: a tela nao oferece, e a escrita tambem recusa."""
+    gravar = _catalogo()
+    resp = _dentro().post(
+        reverse("menu_adicionar_item"),
+        {
+            "versao": "completo",
+            "pagina": "__externo__",
+            "endereco": "/forum/t/<int:topico_id>",
+            "rotulo_en": "Topic",
+        },
+    )
+    assert resp.status_code == 422
+    assert not gravar.called
+    assert (
+        "varias paginas" in resp.content.decode()
+        or "várias páginas" in resp.content.decode()
+    )

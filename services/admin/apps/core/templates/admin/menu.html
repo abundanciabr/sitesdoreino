@@ -105,9 +105,9 @@ tela.
 
         <label>Para onde esta opção leva</label>
         <select name="pagina">
-          {% for pagina in paginas %}
+          {% for pagina in paginas %}{% if not pagina.molde %}
           <option value="{{ pagina.endereco }}">{{ pagina.titulo }} ({{ pagina.endereco }})</option>
-          {% endfor %}
+          {% endif %}{% endfor %}
           <option value="__externo__">Um endereço de fora (escreva abaixo)</option>
         </select>
         <input type="text" name="endereco" placeholder="https://... (só se escolheu a última opção)">
