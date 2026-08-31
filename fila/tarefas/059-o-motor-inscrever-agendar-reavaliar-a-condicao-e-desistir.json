@@ -1,0 +1,17 @@
+{
+  "arquivo": "059-o-motor-inscrever-agendar-reavaliar-a-condicao-e-desistir",
+  "id": "TAR-059",
+  "titulo": "O motor: inscrever, agendar, reavaliar a condicao e desistir",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-056",
+    "TAR-058"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + teste-guarda de que a condicao que deixa de valer ENTRE a inscricao e a varredura gera Entrega pulada (vermelho->verde real) + teste de que o mesmo evento reentregue nao inscreve duas vezes + teto por passada coberto.",
+  "despacho": "Degrau 4 da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\nE o coracao do motor: as tres capacidades que hoje NAO existem em lugar nenhum\nda plataforma (§2 do plano).\n\n1. ESPERAR. Consumidor dos gatilhos (`identidade.pessoa-cadastrada.v1` e os\n   demais) que INSCREVE a pessoa e agenda `proximo_em`. Idempotencia em tres\n   camadas — dedup por `event_id`, `unique(jornada, destinatario_id, site_id)`,\n   `unique(inscricao, passo)`.\n2. DESISTIR NA HORA CERTA. A `condicao_slug` de cada passo e reavaliada NO\n   INSTANTE DO ENVIO, nunca no da inscricao. Condicao e FUNCAO PYTHON registrada\n   num dicionario — NUNCA uma linguagem de formula dentro do banco. DSL aqui e\n   criterio de morte (§10 do plano). Condicao que deixou de valer => Entrega com\n   `resultado=\"pulada\"` e o motivo.\n3. PERCEBER A AUSENCIA. Varredura periodica (`crontab` do Huey, mesmo padrao dos\n   relays que ja rodam) que acha as entregas vencidas. TETO POR PASSADA — use o\n   mesmo `LOTE = 200` dos relays: sem teto, uma fila represada acorda e dispara\n   400 mensagens de uma vez.\n\nToda entrega passa pela regua do degrau anterior. Nenhuma excecao \"so para esta\njornada\" — isso e criterio de morte.\n\nLeia antes: `services/mensageria/LICOES.md` inteiro (ele tem a licao do dedup e\ndo efeito na MESMA transacao, e a do off-by-one do delivery_count), e\n`armadilhas/INDICE.md` procurando por Huey, outbox e transacao.",
+  "origem": "degrau 4 de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md",
+  "criada_em": "2026-08-31"
+}

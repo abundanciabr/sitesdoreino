@@ -1,0 +1,14 @@
+{
+  "arquivo": "055-sessao-de-contrato-com-o-dono-o-cadastro-vira-um-fato-anunci",
+  "id": "TAR-055",
+  "titulo": "Sessao de contrato com o dono: o cadastro vira um fato anunciado",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR so de contracts/ com a etiqueta contrato, mergeado, com o mantenedor presente na decisao + registro no livro citando o numero do PR.",
+  "despacho": "Degrau 0b da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\nNAO E CODIGO — e uma sessao de arquitetura COM O MANTENEDOR PRESENTE (RITOS §3).\n\nNenhum robo abre esta tarefa sozinho: contrato so muda por Rito, em PR contendo\nSOMENTE `contracts/`, com a etiqueta `contrato`.\n\nO que precisa ser congelado:\n1. `identidade.pessoa-cadastrada.v1` — o fato \"alguem entrou pela primeira vez\".\n   So ids opacos e site_id; NUNCA e-mail, nome ou telefone (lei 2 do §3 do plano,\n   e `additionalProperties: false` em todo contrato).\n2. Os assuntos novos em `notificacao.devida.v1.json` que as quatro sequencias\n   escolhidas (§8.6) exigirem — cada assunto ganha o proprio ramo em\n   `parametros`. Se acrescentar assunto exigir mexer na FORMA do evento, o\n   desenho esta errado e se conserta antes.\n3. Aproveitar o rito para pagar a divida anotada no §9 de\n   `docs/decisoes/DECISAO-gamificacao.md`: a descricao de\n   `notificacao.devida.v1.json` ainda diz \"nunca em horario escolar\", e a escola\n   e 18+ desde 30/08/2026.\n\nO contrato `mensagem.devida.v1` NAO entra: ficou desnecessario quando o\nmantenedor decidiu por o motor dentro da propria `mensageria` (§4.3).",
+  "origem": "degrau 0b de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md",
+  "criada_em": "2026-08-31"
+}
