@@ -46,6 +46,19 @@ def healthz(request):
     return JsonResponse({"status": "ok"})
 
 
+@require_safe
+def verificacao_do_google(request):
+    """`/google0e78b54775677e95.html` — verificação de propriedade do Google
+    Search Console para meshcraft.top (31/08/2026). Rota de MÁQUINA como o
+    /healthz: conteúdo fixo, sem Site e sem prefixo de idioma — o Google bate
+    exatamente neste caminho, sem conhecer nem se importar com o catálogo de
+    sites."""
+    return HttpResponse(
+        "google-site-verification: google0e78b54775677e95.html",
+        content_type="text/plain",
+    )
+
+
 def servir_estatico(request, path):
     """Estáticos em produção. Sem esta rota o formulário da landing não existe.
 
