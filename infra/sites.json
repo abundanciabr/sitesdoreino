@@ -11,7 +11,7 @@
   "sites": [
     {
       "host": "meshcraft.top",
-      "name": "Meshcraft (site de testes)",
+      "name": "Meshcraft",
       "active": true,
       "default_offer_slug": "curso-teste",
       "default_language": "pt-br",
