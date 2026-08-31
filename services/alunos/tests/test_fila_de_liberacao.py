@@ -254,10 +254,24 @@ def test_quem_ja_tem_matricula_que_vale_recebe_409(client, auth):
 
 
 @pytest.mark.django_db
-def test_o_409_da_fila_usa_a_mesma_regra_do_acesso(client, auth):
-    """Se as duas consultas divergissem, existiria gente recusada na fila por
-    'você já tem acesso' que a Caixa não deixa entrar. `reembolsada` vale
-    (decisão do mantenedor em 24/08/2026), então ela também barra a fila."""
+def test_o_reembolsado_nao_entra_e_tambem_nao_pede_para_voltar(client, auth):
+    """[REEMBOLSO] O 409 da fila passou a ter DUAS razões, e esta é a nova.
+
+    Até 31/08/2026 este teste media outra coisa: `reembolsada` VALIA como
+    acesso, e a fila a barrava por "você já tem". As duas consultas eram a
+    mesma, e o teste existia para provar isso — se divergissem, existiria
+    gente recusada na fila por "você já tem acesso" que a Caixa não deixa
+    entrar.
+
+    Agora elas divergem DE PROPÓSITO, e a divergência é a decisão do
+    mantenedor: o reembolsado não entra E não pede para voltar. Isso não
+    recria o beco que o teste antigo temia, porque o beco é EXPLICADO: a tela
+    dele nomeia o reembolso e diz o caminho de volta (comprar de novo, ou
+    falar com a escola). Beco mudo é defeito; beco explicado é decisão.
+
+    A recusa é medida AQUI, na porta, e não na tela que esconde o formulário:
+    um POST direto furaria uma regra que só existisse em template.
+    """
     matricula = matricular(
         site_id="site-1",
         order_id="pedido-reembolsado",
@@ -271,11 +285,40 @@ def test_o_409_da_fila_usa_a_mesma_regra_do_acesso(client, auth):
     assert (
         pedir_entrada(client, auth, email="reembolsado@example.com").status_code == 409
     )
+    # E nenhuma linha da fila nasceu com a tentativa: recusar e criar mesmo
+    # assim deixaria a pessoa aparecendo no painel dele como se esperasse.
+    assert Matricula.objects.filter(status=Matricula.STATUS_AGUARDANDO).count() == 0
+    # A porta de acesso, do outro lado, já não devolve a matrícula: 404.
     assert (
         client.get(
             "/api/alunos/alunos/reembolsado@example.com/matriculas", **auth
         ).status_code
-        == 200
+        == 404
+    )
+
+
+@pytest.mark.django_db
+def test_o_ex_aluno_continua_podendo_pedir_para_voltar(client, auth):
+    """O outro lado da regra acima, e o que a torna uma decisão e não um corte.
+
+    `encerrada` fica FORA de `STATUS_QUE_BARRAM_A_FILA` de propósito
+    (`DECISAO-a-ficha-nao-se-apaga.md` §3). Sem este teste, alguém poderia
+    "simplificar" a lista para "todo mundo que já teve ficha" e o ex-aluno
+    perderia o botão de voltar sem que nada ficasse vermelho.
+    """
+    matricula = matricular(
+        site_id="site-1",
+        order_id="pedido-ex-aluno",
+        product_id="curso",
+        email="ex-aluno@example.com",
+        name="Ex-aluno",
+    )[0]
+    matricula.status = Matricula.STATUS_ENCERRADA
+    matricula.save(update_fields=["status"])
+
+    assert pedir_entrada(client, auth, email="ex-aluno@example.com").status_code in (
+        200,
+        201,
     )
 
 

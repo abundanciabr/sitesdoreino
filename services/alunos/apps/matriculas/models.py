@@ -17,15 +17,25 @@ STATUS_ENCERRADA = "encerrada"
 # ela e o "acesso pausado pelo mantenedor", e um pause que deixa a pessoa
 # entrar do mesmo jeito seria decoracao.
 #
-# `reembolsada` FICA, e isso NAO e descuido: e a decisao do mantenedor de
-# 24/08/2026 — "quem ja foi aluno mantem a voz na Caixa" —, tomada sobre
-# REEMBOLSO. Pausar e outra intencao; duas intencoes diferentes nao podem ter o
-# mesmo efeito.
+# [REEMBOLSO] `reembolsada` SAIU em 31/08/2026
+# (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`), e isto REVERTE a decisao
+# do mantenedor de 24/08/2026 ("quem ja foi aluno mantem a voz na Caixa"). Ele
+# mesmo reverteu, ao encontrar o texto antigo publicado no site: reembolso
+# passou a significar A COMPRA DESFEITA, e quem recebeu o dinheiro de volta nao
+# entra em nada.
 #
-# Custo da migracao, MEDIDO e nao suposto: nenhuma linha de codigo em
-# `services/` jamais atribuiu `suspensa` ou `reembolsada` (so a declaracao
-# delas aqui), entao nao ha linha em producao que mude de comportamento.
-STATUS_QUE_VALEM = (STATUS_ATIVA, STATUS_REEMBOLSADA)
+# NAO "limpe" isto de volta achando que e descuido, nos dois sentidos: nem
+# devolvendo `reembolsada` ao acesso, nem apagando este comentario. A regra ja
+# foi decidida DUAS vezes em sentidos opostos, e saber disso e o que evita a
+# terceira. `services/alunos/tests/test_reembolso_tira_o_acesso.py` reprova
+# quem tentar.
+#
+# Custo da mudanca, MEDIDO e nao suposto (31/08/2026): nenhuma linha de codigo
+# em `services/` jamais atribuiu `suspensa` ou `reembolsada` (so a declaracao
+# delas aqui e nas migrations), entao nao ha linha em producao que mude de
+# comportamento. Se houver uma posta a mao pelo painel, ela perde o acesso — e
+# e o que a palavra sempre prometeu.
+STATUS_QUE_VALEM = (STATUS_ATIVA,)
 STATUS_DA_FILA = (STATUS_AGUARDANDO, STATUS_RECUSADA)
 # [GESTAO] Quem NAO tem acesso. Existe como lista propria — e nao como "tudo que
 # nao esta em STATUS_QUE_VALEM" — porque a pergunta "este status da acesso?" tem
@@ -38,7 +48,30 @@ STATUS_SEM_ACESSO = (
     STATUS_RECUSADA,
     STATUS_SUSPENSA,
     STATUS_ENCERRADA,
+    # [REEMBOLSO] 31/08/2026. Entrou aqui no mesmo PR em que saiu de
+    # `STATUS_QUE_VALEM`: as duas listas sao a mesma decisao vista dos dois
+    # lados, e um status que saisse de uma sem entrar na outra ficaria invisivel
+    # para o guarda `test_status_novo_nasce_sem_acesso`.
+    STATUS_REEMBOLSADA,
 )
+
+# [REEMBOLSO] Quem NAO pode pedir entrada pela fila (31/08/2026). Lista PROPRIA,
+# e nao `STATUS_QUE_VALEM`, porque as duas razoes de barrar sao diferentes:
+#
+# · quem JA TEM acesso nao precisa de fila (a regra de 27/08, que existe para
+#   nao haver gente recusada por "voce ja tem" que a Caixa nao deixa entrar);
+# · quem foi REEMBOLSADO nao pede para voltar sozinho — decisao do mantenedor
+#   em 31/08. Quem quiser voltar compra de novo ou fala com a escola, e ele
+#   religa com um clique.
+#
+# A recusa mora AQUI, e nao so na tela que esconde o formulario: regra que so
+# existe em template e garantia sem mecanismo (RETROSPECTIVA-FASE-D §2), e
+# bastaria um POST direto na porta para fura-la.
+#
+# `encerrada` fica FORA de proposito: o ex-aluno PODE pedir para voltar desde
+# 29/08 (`DECISAO-a-ficha-nao-se-apaga.md` §3). A diferenca entre ele e o
+# reembolsado e a decisao, nao um esquecimento.
+STATUS_QUE_BARRAM_A_FILA = STATUS_QUE_VALEM + (STATUS_REEMBOLSADA,)
 
 # [PRONTUARIO] Os estados que provam que esta pessoa JA TEVE ACESSO alguma vez
 # (29/08/2026, `DECISAO-a-ficha-nao-se-apaga.md`). E o que responde "esta pessoa
@@ -98,10 +131,15 @@ class Matricula(models.Model):
     # PERMISSÃO, não de exclusão, e a diferença é a única coisa que separa esta
     # decisão de um vazamento de acesso: com `.exclude(aguardando, recusada)`,
     # todo status inventado no futuro nasceria DANDO acesso; com a permissão,
-    # nasce sem — e alguém precisa decidir explicitamente. Os três de baixo
-    # significam todos "comprou" (o mantenedor decidiu em 24/08/2026 que
-    # `reembolsada` continua entrando: quem já foi aluno mantém a voz).
+    # nasce sem — e alguém precisa decidir explicitamente.
+    #
+    # [REEMBOLSO] Desde 31/08/2026 sobrou UM: `ativa`. "Comprou" deixou de ser o
+    # critério no dia em que o mantenedor decidiu que o reembolso desfaz a
+    # compra; o critério é "a compra está de pé".
     STATUS_QUE_VALEM = STATUS_QUE_VALEM
+    # [REEMBOLSO] Quem não pode pedir entrada pela fila — superconjunto do de
+    # cima, e o comentário do módulo explica por que são listas separadas.
+    STATUS_QUE_BARRAM_A_FILA = STATUS_QUE_BARRAM_A_FILA
     # [FILA] Os status da fila de liberação: ninguém aqui tem acesso a nada.
     STATUS_DA_FILA = STATUS_DA_FILA
     # [GESTAO] Quem nao tem acesso, e o que o painel administra.
