@@ -1,0 +1,14 @@
+{
+  "arquivo": "081-o-rodape-do-forum-em-todas-as-paginas-com-o-mesmo-desenho-do",
+  "id": "TAR-081",
+  "titulo": "O rodape do forum, em todas as paginas, com o mesmo desenho do site",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "URL do PR mergeado + o rodape visivel em https://meshcraft.top/forum/",
+  "despacho": "DESPACHO - forum: o rodape do forum\nCELULA: forum - WORKTREE: wt-forum-rodape - RECEITAS: R6\n\nCONTEXTO: o PR #705 pos rodape em toda pagina do site publico (celula funil).\nO forum e outra celula, monolingue, e continua sem rodape nenhum. O mantenedor\nescolheu, em 31/08/2026, fazer o rodape do forum antes da tela do painel.\n\nMISSAO: por o mesmo rodape em toda pagina do forum, copiando o PADRAO da\nfunil (Lei 7: copie o padrao, nunca importe o arquivo da outra celula).\n\nALVOS: services/forum/apps/core, services/forum/static, services/forum/tests\nSOMENTE-LEITURA: contracts/, services/funil/\nFORA DE ESCOPO: pagamento/checkout; mudar contrato; a tela do painel\nDoD: make ci da celula verde + rodape visivel em /forum/ e nas telas internas\nORCAMENTO: <= 15 arquivos",
+  "origem": "escolha do mantenedor em 31/08/2026, depois da TAR-070",
+  "criada_em": "2026-08-31"
+}
