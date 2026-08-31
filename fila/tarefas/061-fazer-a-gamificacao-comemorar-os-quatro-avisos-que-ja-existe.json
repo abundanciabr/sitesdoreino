@@ -1,0 +1,14 @@
+{
+  "arquivo": "061-fazer-a-gamificacao-comemorar-os-quatro-avisos-que-ja-existe",
+  "id": "TAR-061",
+  "titulo": "Fazer a gamificacao comemorar: os quatro avisos que ja existem no contrato e nunca sairam",
+  "toca": [
+    "gamificacao"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + prova de que subir de nivel gera a carta no sininho (resposta crua da porta de consulta) + teste de que perder XP NAO gera aviso.",
+  "despacho": "Degrau 6 da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\n\nA celula `gamificacao` esta no ar mas e MUDA: os quatro assuntos de celebracao\nja estao congelados em `contracts/eventos/notificacao.devida.v1.json` desde a\nSessao B de 30/08/2026 — `gamificacao.nivel-alcancado`,\n`gamificacao.conquista-concedida`, `gamificacao.marco-validado`,\n`gamificacao.destaque-da-semana` — e ela nunca os emitiu. Nao ha contrato novo a\nfazer: e so dar voz.\n\nO que fazer:\n1. Outbox + relay, o MESMO padrao das 5 celulas que ja o rodam (referencia:\n   `services/alunos/apps/matriculas/`). Nao invente outro.\n2. Emitir os quatro assuntos, cada um DENTRO da transacao do fato que o justifica.\n3. So BOA NOTICIA vira carta — lei da celula: perder XP, regredir na sequencia\n   ou ter marca estornada NAO gera aviso nenhum.\n4. Numero e SLUG viajam; a FRASE nunca. `titulo_slug`, `conquista_slug`,\n   `destaque_id` — o nome de uma medalha renomeada nao pode ficar congelado em\n   avisos antigos.\n5. Marco rende ZERO XP e a evidencia dele NUNCA viaja na carta.\n\nATENCAO ao §9 emendado de `docs/decisoes/DECISAO-gamificacao.md`: a escola e\n18+ desde 30/08/2026. NAO construa Modo Junior, faixa 13+ nem contato de\nresponsavel. Continuam valendo: moderacao humana antes de publicacao publica,\nsem mensagem direta entre alunos, links so de lista permitida.",
+  "origem": "degrau 6 de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md",
+  "criada_em": "2026-08-31"
+}
