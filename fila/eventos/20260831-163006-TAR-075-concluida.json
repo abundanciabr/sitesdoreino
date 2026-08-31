@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-163006-TAR-075-concluida",
+  "tarefa": "TAR-075",
+  "evento": "concluida",
+  "quando": "2026-08-31T16:30:06+00:00",
+  "quem": "sessao-gamificacao-3108",
+  "evidencia": "PR https://github.com/abundanciabr/sitesdoreino/pull/717 mergeado (commit e4975f37), com label 'arquitetural' (16 arquivos: um app novo custa 6 de estrutura, e a armadilhas/077 desaconselha encolher PR para caber). 130 testes verdes na celula, 23 novos. As quatro promessas com teste proprio: regra desligada NAO paga; o mesmo evento reentregue paga UMA vez (recusa do Unique do PostgreSQL, provada tambem com o EventoProcessado apagado, para medir a segunda camada isolada); o teto diario decresce 10-10-10-5-2 com piso 1 e monotonicidade conferida; a quarentena nasce pendente, NAO entra no perfil, e so vira definitiva depois do liberar_quarentena. Mais: versao da regra gravada no lancamento, evento sem beneficiario nao inventa dono, evento de outro site nao credita, perfil nunca fica negativo, e o reconciliar_perfis acha o perfil que mentiu. O processo consumidor entra no PR https://github.com/abundanciabr/sitesdoreino/pull/719 (compose sozinho, armadilhas/134).",
+  "verificado_em": "2026-08-31"
+}
