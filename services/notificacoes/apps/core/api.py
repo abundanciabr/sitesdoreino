@@ -467,3 +467,206 @@ def marcar_lidas(request):
         site_id=site_id, destinatario_id=destinatario_id
     )
     return JsonResponse({"marcados": marcados}, status=200)
+
+
+# ---------------------------------------------------------------------------
+# POST e DELETE /inscricoes-push — o aviso na tela do aparelho (Fase 7)
+# ---------------------------------------------------------------------------
+# As duas formas abaixo são o YAML congelado transcrito, e a transcrição foi
+# feita por script a partir do próprio arquivo, nunca à mão: o freeze compara
+# byte a byte, e uma vírgula de diferença numa descrição reprova o CI igual a
+# uma divergência real de campo.
+_INSCREVER_OPENAPI = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": [
+                        "destinatario_id",
+                        "site_id",
+                        "endpoint",
+                        "p256dh",
+                        "auth",
+                    ],
+                    "properties": {
+                        "destinatario_id": {"type": "string"},
+                        "site_id": {
+                            "type": "string",
+                            "description": "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). O aparelho recebe só os avisos daquele site.",
+                        },
+                        "endpoint": {
+                            "type": "string",
+                            "format": "uri",
+                            "maxLength": 2048,
+                            "description": "Endereço do servidor de push do fabricante, dado pelo navegador. Opaco para nós.",
+                        },
+                        "p256dh": {
+                            "type": "string",
+                            "maxLength": 256,
+                            "description": "Chave pública do aparelho (base64url), do navegador. Sem ela o conteúdo não pode ser cifrado.",
+                        },
+                        "auth": {
+                            "type": "string",
+                            "maxLength": 64,
+                            "description": "Segredo de autenticação do aparelho (base64url), do navegador.",
+                        },
+                    },
+                }
+            }
+        },
+    },
+    "responses": {
+        200: {
+            "description": "Inscrito agora, ou já estava inscrito — os dois devolvem 200 (idempotente)",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["ja_estava_inscrito"],
+                        "properties": {"ja_estava_inscrito": {"type": "boolean"}},
+                    }
+                }
+            },
+        },
+        422: {"description": "campo obrigatório ausente ou inválido"},
+    },
+}
+
+_ESQUECER_OPENAPI = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["site_id", "endpoint"],
+                    "properties": {
+                        "site_id": {"type": "string"},
+                        "endpoint": {
+                            "type": "string",
+                            "format": "uri",
+                            "maxLength": 2048,
+                        },
+                    },
+                }
+            }
+        },
+    },
+    "responses": {
+        200: {
+            "description": "Esquecido, ou já não existia",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["existia"],
+                        "properties": {"existia": {"type": "boolean"}},
+                    }
+                }
+            },
+        },
+        422: {"description": "campo obrigatório ausente ou inválido"},
+    },
+}
+
+
+def _corpo_json(request) -> dict:
+    try:
+        payload = json.loads(request.body or b"{}")
+    except json.JSONDecodeError:
+        raise HttpError(422, "corpo inválido: não é JSON")
+    return payload if isinstance(payload, dict) else {}
+
+
+def _texto_obrigatorio(payload: dict, nome: str, *, teto: int) -> str:
+    """Campo de texto que precisa existir, não pode ser vazio e tem teto.
+
+    O teto não é decoração: `endpoint` e as chaves vêm da rede, e o contrato
+    declara um `maxLength` para cada um. Sem esta cerca, um valor gigante
+    chegaria ao banco e estouraria na coluna — erro 500 onde o contrato promete
+    422, e uma linha de log incompreensível em vez de uma recusa clara.
+    """
+    valor = payload.get(nome)
+    if not isinstance(valor, str) or not valor.strip():
+        raise HttpError(422, f"{nome} ausente ou inválido")
+    valor = valor.strip()
+    if len(valor) > teto:
+        raise HttpError(422, f"{nome} inválido: passa de {teto} caracteres")
+    return valor
+
+
+@router.post(
+    "/inscricoes-push",
+    operation_id="inscreverAparelhoParaPush",
+    summary="Guarda um aparelho para receber o aviso na tela, mesmo com o site fechado",
+    description=(
+        'O canal novo da Fase 7 (`docs/notificacoes/PLANO-MESTRE.md` — "e só\n'
+        'então outros canais"), autorizado pelo mantenedor em 31/08/2026 depois\n'
+        "de o site virar app instalável (PR #706). No iPhone a ordem é essa e\n"
+        "não tem atalho: só um site instalado na tela de início pode receber\n"
+        "aviso.\n"
+        "\n"
+        "**Uma linha por APARELHO, não por pessoa.** A mesma pessoa no celular e\n"
+        "no tablet tem duas inscrições, e cada uma morre sozinha quando aquele\n"
+        "aparelho desinstala o app. Reinscrever o mesmo `endpoint` é\n"
+        "idempotente: o navegador reemite a inscrição de tempos em tempos, e\n"
+        "cada reemissão não pode virar uma linha nova.\n"
+        "\n"
+        "**`endpoint` e as duas chaves vêm do NAVEGADOR, cruas.** São o\n"
+        "endereço do servidor de push do fabricante (Google, Apple, Mozilla) e\n"
+        "o material que cifra o conteúdo do aviso de ponta a ponta: nem esta\n"
+        "célula nem o servidor de push conseguem ler o que foi enviado sem\n"
+        "elas. Nada aqui é e-mail, e nada aqui identifica a pessoa fora desta\n"
+        "plataforma: o destinatário continua sendo o id da PLATAFORMA\n"
+        "(`DECISAO-EVO-01` §3).\n"
+        "\n"
+        "**O aviso enviado carrega DADO, nunca frase pronta**\n"
+        "(`DECISAO-notificacoes` §5.1): assunto e parâmetros viajam, e a frase\n"
+        "nasce no aparelho, no idioma de quem lê. Por isso não existe campo de\n"
+        "idioma nesta inscrição: guardá-lo seria congelar o idioma de quem\n"
+        "instalou, que é exatamente o erro que aquela lei proíbe.\n"
+    ),
+    openapi_extra=_INSCREVER_OPENAPI,
+)
+def inscrever_aparelho(request):
+    payload = _corpo_json(request)
+    ja_estava = services.inscrever_aparelho(
+        site_id=_texto_obrigatorio(payload, "site_id", teto=64),
+        destinatario_id=_texto_obrigatorio(payload, "destinatario_id", teto=64),
+        endpoint=_texto_obrigatorio(payload, "endpoint", teto=2048),
+        p256dh=_texto_obrigatorio(payload, "p256dh", teto=256),
+        auth=_texto_obrigatorio(payload, "auth", teto=64),
+    )
+    return JsonResponse({"ja_estava_inscrito": ja_estava}, status=200)
+
+
+@router.delete(
+    "/inscricoes-push",
+    operation_id="cancelarInscricaoDeAparelho",
+    summary="Esquece um aparelho — a pessoa desligou os avisos, ou desinstalou o app",
+    description=(
+        "Idempotente e silencioso: apagar o que não existe devolve 200. A\n"
+        "célula também apaga sozinha, sem ninguém pedir, a inscrição que o\n"
+        "servidor de push recusar como morta (404/410 na entrega) — aparelho\n"
+        "que sumiu não pode virar lixo eterno no banco.\n"
+        "\n"
+        "Não exige `destinatario_id`: quem tem o `endpoint` é o próprio\n"
+        "aparelho, e ele é o único que precisa desligar os avisos dele. Pedir o\n"
+        "dono junto faria a saída depender de uma sessão viva, e desinstalar\n"
+        "acontece justamente quando não há mais sessão nenhuma.\n"
+    ),
+    openapi_extra=_ESQUECER_OPENAPI,
+)
+def esquecer_aparelho(request):
+    payload = _corpo_json(request)
+    existia = services.esquecer_aparelho(
+        site_id=_texto_obrigatorio(payload, "site_id", teto=64),
+        endpoint=_texto_obrigatorio(payload, "endpoint", teto=2048),
+    )
+    return JsonResponse({"existia": existia}, status=200)

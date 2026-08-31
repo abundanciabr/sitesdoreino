@@ -1,0 +1,220 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A tela do menu do topo. Formulários simples, sem script: o porquê está na
+docstring de apps/core/menu.py, e o resumo é que cada gesto é um POST que
+recarrega a página, então o que se vê é sempre o que está gravado.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087): escrito em várias linhas, a segunda em diante vaza para a
+tela.
+{% endcomment %}
+{% block titulo %}Menu do topo{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'visao_geral' %}">&larr; Visão geral</a>
+  <h1>O menu do topo do site</h1>
+  <p class="subtitulo">
+    As opções que aparecem no alto de cada página, para quem visita o site.
+    Você monta os menus aqui e decide, página por página, qual deles aparece
+    (ou se aquela página fica sem menu nenhum).
+  </p>
+
+  {% if sem_catalogo %}
+  <p class="aviso borda-vermelha">
+    <b>Ainda não consigo falar com o registro de sites.</b>
+    Falta ligar a ligação entre esta área e o lugar onde o menu fica guardado.
+    É um passo de máquina, dentro do servidor, e está escrito no relatório do
+    robô que construiu esta tela. Nada do que está no ar mudou por causa disso:
+    o site continua exatamente como você o vê.
+  </p>
+  {% else %}
+
+  {% if erro %}
+  <p class="aviso borda-vermelha"><b>Não deu para salvar.</b> {{ erro }}</p>
+  {% endif %}
+  {% if recado %}
+  <p class="aviso"><b>Salvo.</b> O site já está mostrando o menu assim.</p>
+  {% endif %}
+
+  {% comment %}
+  ── 1. AS VERSÕES ────────────────────────────────────────────────────────
+  Cada versão é um menu inteiro. Ter mais de uma é o que permite que uma
+  página mostre um menu diferente da outra.
+  {% endcomment %}
+  <h2>Os menus que você tem</h2>
+
+  {% if not versoes %}
+  <p class="aviso">
+    Você ainda não montou nenhum menu. Crie o primeiro logo abaixo: dê um nome
+    a ele (por exemplo, <b>Menu completo</b>) e depois acrescente as opções.
+  </p>
+  {% endif %}
+
+  {% for versao in versoes %}
+  <div class="cartao">
+    <div class="rotulo">
+      {{ versao.name }}
+      {% if versao.slug == padrao %}<span class="nota">(é o menu padrão do site)</span>{% endif %}
+    </div>
+
+    {% if not versao.items %}
+    <p class="nota">Este menu ainda está vazio. Acrescente a primeira opção abaixo.</p>
+    {% endif %}
+
+    <ol class="itens-do-menu">
+      {% for item in versao.items %}
+      <li>
+        <span class="nome">{{ item.nome }}</span>
+        <span class="nota">{{ item.url }} &middot; {{ item.plateia }}{% if item.new_tab %} &middot; abre em aba nova{% endif %}</span>
+        <span class="gestos">
+          <form method="post" action="{% url 'menu_mover_item' %}">{% csrf_token %}
+            <input type="hidden" name="versao" value="{{ versao.slug }}">
+            <input type="hidden" name="indice" value="{{ item.indice }}">
+            <input type="hidden" name="para" value="cima">
+            <button type="submit" title="Subir">&uarr;</button>
+          </form>
+          <form method="post" action="{% url 'menu_mover_item' %}">{% csrf_token %}
+            <input type="hidden" name="versao" value="{{ versao.slug }}">
+            <input type="hidden" name="indice" value="{{ item.indice }}">
+            <input type="hidden" name="para" value="baixo">
+            <button type="submit" title="Descer">&darr;</button>
+          </form>
+          <form method="post" action="{% url 'menu_remover_item' %}">{% csrf_token %}
+            <input type="hidden" name="versao" value="{{ versao.slug }}">
+            <input type="hidden" name="indice" value="{{ item.indice }}">
+            <button type="submit" class="perigo">Tirar</button>
+          </form>
+        </span>
+      </li>
+      {% endfor %}
+    </ol>
+
+    {% comment %}
+    O formulário de acrescentar mora DENTRO do cartão da versão: assim não há
+    como acrescentar uma opção ao menu errado por distração.
+    {% endcomment %}
+    <details class="acrescentar">
+      <summary>Acrescentar uma opção a este menu</summary>
+      <form method="post" action="{% url 'menu_adicionar_item' %}">{% csrf_token %}
+        <input type="hidden" name="versao" value="{{ versao.slug }}">
+
+        <label>Para onde esta opção leva</label>
+        <select name="pagina">
+          {% for pagina in paginas %}{% if not pagina.molde %}
+          <option value="{{ pagina.endereco }}">{{ pagina.titulo }} ({{ pagina.endereco }})</option>
+          {% endif %}{% endfor %}
+          <option value="__externo__">Um endereço de fora (escreva abaixo)</option>
+        </select>
+        <input type="text" name="endereco" placeholder="https://... (só se escolheu a última opção)">
+
+        <label>Como esta opção se chama</label>
+        {% for idioma in idiomas %}
+        <input type="text" name="rotulo_{{ idioma }}" maxlength="40"
+               placeholder="{% if forloop.first %}Nome da opção{% else %}O mesmo nome em {{ idioma }} (pode deixar em branco){% endif %}">
+        {% endfor %}
+
+        <label>Quem vê esta opção</label>
+        <select name="plateia">
+          {% for codigo, nome in plateias %}
+          <option value="{{ codigo }}">{{ nome }}</option>
+          {% endfor %}
+        </select>
+
+        <label class="marcar">
+          <input type="checkbox" name="aba_nova" value="sim">
+          Abrir numa aba nova do navegador
+        </label>
+
+        <button type="submit">Acrescentar</button>
+      </form>
+    </details>
+
+    <form method="post" action="{% url 'menu_apagar_versao' %}" class="apagar-versao">{% csrf_token %}
+      <input type="hidden" name="versao" value="{{ versao.slug }}">
+      <button type="submit" class="perigo">Apagar o menu {{ versao.name }}</button>
+      <span class="nota">As páginas que usavam este menu voltam a usar o padrão.</span>
+    </form>
+  </div>
+  {% endfor %}
+
+  <div class="cartao">
+    <div class="rotulo">Criar um menu novo</div>
+    <form method="post" action="{% url 'menu_criar_versao' %}">{% csrf_token %}
+      <input type="text" name="nome" maxlength="60" placeholder="Ex.: Menu completo">
+      <button type="submit">Criar</button>
+    </form>
+  </div>
+
+  {% comment %}
+  ── 2. O MENU PADRÃO ─────────────────────────────────────────────────────
+  {% endcomment %}
+  <h2>Qual menu aparece por padrão</h2>
+  <p class="subtitulo">
+    Vale para toda página que você não configurar de outro jeito na lista de
+    baixo.
+  </p>
+  <div class="cartao">
+    <form method="post" action="{% url 'menu_versao_padrao' %}">{% csrf_token %}
+      <select name="versao">
+        <option value="{{ sem_menu }}"{% if not padrao %} selected{% endif %}>Nenhum: o site fica sem menu</option>
+        {% for versao in versoes %}
+        <option value="{{ versao.slug }}"{% if versao.slug == padrao %} selected{% endif %}>{{ versao.name }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">Salvar</button>
+    </form>
+  </div>
+
+  {% comment %}
+  ── 3. PÁGINA POR PÁGINA ─────────────────────────────────────────────────
+  A lista sai de painel/mapa-do-site.json, a mesma de /admin/mapa/. Página
+  nova aparece aqui sozinha.
+  {% endcomment %}
+  <h2>Página por página</h2>
+  <p class="subtitulo">
+    Aqui você escolhe, para cada página do site, qual menu ela mostra. Deixar
+    em <b>o menu padrão</b> é o normal; <b>nenhum menu</b> deixa aquela página
+    limpa, sem topo.
+  </p>
+
+  {% if not paginas %}
+  <p class="aviso borda-vermelha">
+    <b>A lista de páginas não veio nesta versão do site.</b>
+    É falha de empacotamento, não site sem páginas. Avise o robô: nada do que
+    está no ar mudou por causa disso.
+  </p>
+  {% else %}
+  <form method="post" action="{% url 'menu_regras_das_paginas' %}">{% csrf_token %}
+    <table class="paginas">
+      <tbody>
+        {% for pagina in paginas %}
+        <tr>
+          <td>
+            <b>{{ pagina.titulo }}</b>
+            <span class="nota">{{ pagina.endereco }}</span>
+          </td>
+          <td>
+            <select name="pagina_{{ pagina.chave }}">
+              <option value="{{ usar_o_padrao }}"{% if pagina.escolha == usar_o_padrao %} selected{% endif %}>O menu padrão</option>
+              <option value="{{ sem_menu }}"{% if pagina.escolha == sem_menu %} selected{% endif %}>Nenhum menu nesta página</option>
+              {% for versao in versoes %}
+              <option value="{{ versao.slug }}"{% if pagina.escolha == versao.slug %} selected{% endif %}>{{ versao.name }}</option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit">Salvar a lista inteira</button>
+  </form>
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}
