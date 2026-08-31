@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-003623-TAR-053-concluida",
+  "tarefa": "TAR-053",
+  "evento": "concluida",
+  "quando": "2026-08-31T00:36:23+00:00",
+  "quem": "sessao-forum-leitura-2026-08-31",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/670 — 10 testes novos, suite da celula 170 -> 180 verdes. Vermelho->verde na ASSERCAO (armadilhas/195): contra origin/main os testes novos dao 9 failed / 1 passed, com 'assert 2 novidades in <html...>', 'assert 0 == 1' (abrir a conversa nao guardava leitura) e 'assert 0 == 30' (30 conversas abertas, nenhuma excecao). O teste-guarda de UMA linha por pessoa por area continua verde, e ha teste novo medindo a PODA: 30 excecoes viram 0 e a marca fica em 1. deploy-celula run 33344865619 completed/success nas duas celulas (gh run view --json). PROVA DE FORA, sem login: /forum/ 200 e /forum/a/avisos 200 com ZERO etiquetas de novidade e ZERO botoes 'Ja vi tudo' (visitante nao tem marca de leitura, como projetado); o estilo novo servido pelo site; e POST /forum/a/avisos/li-tudo respondendo 403 sem cracha.",
+  "verificado_em": "2026-08-31"
+}
