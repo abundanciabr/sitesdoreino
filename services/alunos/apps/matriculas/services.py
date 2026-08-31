@@ -86,11 +86,23 @@ def entrar_na_fila(
 ) -> tuple[Matricula | None, bool]:
     """[FILA] Alguém pede entrada e fica AGUARDANDO decisão humana.
 
-    Devolve `(None, False)` quando o e-mail JÁ tem matrícula que vale — quem já
-    entra na Caixa não precisa de fila (vira 409 na porta). A conferência usa
-    exatamente `matriculas_que_valem()`, a MESMA consulta que decide o acesso:
-    se as duas divergissem, existiria gente recusada na fila por "você já tem
-    acesso" que a Caixa não deixa entrar.
+    Devolve `(None, False)` quando o e-mail não pode entrar na fila (vira 409
+    na porta). São DUAS razões, e a distinção é a decisão:
+
+    · **já tem matrícula que vale** — quem já entra na Caixa não precisa de
+      fila. Esta metade continua derivando de `STATUS_QUE_VALEM`: se as duas
+      divergissem, existiria gente recusada na fila por "você já tem acesso"
+      que a Caixa não deixa entrar.
+    · **foi reembolsado** (31/08/2026,
+      `docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`) — o mantenedor
+      decidiu que quem recebeu o dinheiro de volta não pede para voltar
+      sozinho. Aqui a pessoa realmente não entra e realmente não pede, e isso
+      NÃO é o beco que o parágrafo acima teme: a tela dela nomeia o reembolso e
+      diz o que fazer (comprar de novo, ou falar com a escola). Beco explicado
+      é decisão; beco mudo é defeito.
+
+    A recusa mora aqui, e não só na tela que esconde o formulário: um POST
+    direto na porta furaria uma regra que só existisse em template.
 
     Idempotente por (site_id, email): reenviar atualiza os dados e devolve
     `(linha, False)`. Quem foi recusado e reenvia volta para `aguardando` com o
@@ -124,7 +136,9 @@ def entrar_na_fila(
         return linha
 
     with transaction.atomic():
-        if matriculas_que_valem(email).exists():
+        if Matricula.objects.filter(
+            email=email, status__in=Matricula.STATUS_QUE_BARRAM_A_FILA
+        ).exists():
             return None, False
 
         na_fila = (
@@ -262,6 +276,11 @@ CATEGORIA_ALUNO = "aluno"
 # como se nunca tivesse pedido nada.
 CATEGORIA_PAUSADO = "pausado"
 CATEGORIA_EX_ALUNO = "ex_aluno"
+# [REEMBOLSO] Acrescentada em 31/08/2026
+# (`docs/decisoes/DECISAO-reembolso-tira-o-acesso.md`), pela MESMA razao das
+# duas de cima: sem ela o reembolsado voltaria como `cadastrado`, e veria o
+# formulário de pedir entrada como se nunca tivesse tido ficha nenhuma.
+CATEGORIA_REEMBOLSADO = "reembolsado"
 
 #: Ficha que não dá acesso ⇒ a categoria que a tela precisa mostrar. Não é o
 #: mesmo que `STATUS_SEM_ACESSO`: aquele responde "pode entrar?", este responde
@@ -270,6 +289,7 @@ CATEGORIA_EX_ALUNO = "ex_aluno"
 _CATEGORIA_POR_STATUS_SEM_ACESSO = {
     Matricula.STATUS_SUSPENSA: CATEGORIA_PAUSADO,
     Matricula.STATUS_ENCERRADA: CATEGORIA_EX_ALUNO,
+    Matricula.STATUS_REEMBOLSADA: CATEGORIA_REEMBOLSADO,
 }
 
 
