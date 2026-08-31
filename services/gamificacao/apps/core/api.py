@@ -12,11 +12,23 @@ AS TRÊS INVARIANTES QUE ATRAVESSAM AS DUAS OPERAÇÕES
 ----------------------------------------------------
 São as do cabeçalho do contrato, e este arquivo é onde elas ficam mecânicas:
 
-1. **Nunca sai e-mail, nunca sai texto de pessoa.** O público desta escola é
-   majoritariamente menor de idade. Só id opaco, número e slug. Repare que
-   `Pessoa` (o espelho local, com e-mail e nome de exibição) NÃO é importada
-   aqui: o mapa é chaveado pelo `pessoa_id`, que é o id opaco da plataforma, e
-   nenhuma consulta desta porta encosta na tabela de pessoas.
+1. **Nunca sai e-mail, nunca sai texto de pessoa.** Só id opaco, número e slug.
+   Repare que `Pessoa` (o espelho local, com e-mail e nome de exibição) NÃO é
+   importada aqui: o mapa é chaveado pelo `pessoa_id`, que é o id opaco da
+   plataforma, e nenhuma consulta desta porta encosta na tabela de pessoas.
+
+   A razão escrita aqui já foi *"o público desta escola é majoritariamente menor
+   de idade"*, e ela morreu em 30/08/2026: a escola é 18+ (`DECISAO-gamificacao.md`
+   §9, emendado). A REGRA não mudou uma vírgula, e a razão que fica é mais
+   simples: e-mail é dado pessoal de adulto também, e uma porta de máquina que
+   o entrega o entrega para sempre.
+
+   **A mesma frase continua no contrato congelado** (`contracts/gamificacao.openapi.yaml`,
+   na `description` da API, escrita em `config/api.py`). Contrato só muda por
+   Rito de Contrato (`RITOS.md` §3), em PR só de `contracts/` com a etiqueta
+   `contrato` e o mantenedor presente: não se corrige de carona. Fica anotado
+   junto da outra dívida da mesma emenda, o *"nunca em horário escolar"* de
+   `contracts/eventos/notificacao.devida.v1.json`.
 2. **Nunca sai XP bruto de outra pessoa.** `getPublicProfiles` devolve nível e
    título; quem quiser XP vê o PRÓPRIO, em `getMyStatus`. Placar de XP entre
    alunos não existe nesta plataforma.

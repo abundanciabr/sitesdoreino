@@ -11,8 +11,8 @@ resposta certa é parar e reabrir a decisão com o mantenedor.
 
 POR QUE ELE NASCE AQUI, NO PR DAS TABELAS
 ------------------------------------------
-Porque é aqui que a promessa vira mecanismo. A escola vende para famílias, o
-público é criança, e a diferença entre "nós não vendemos vantagem" dito num
+Porque é aqui que a promessa vira mecanismo. A escola vende formação a
+adultos que pagam por ela, e a diferença entre "nós não vendemos vantagem" dito num
 documento e a mesma frase conferida pelo PostgreSQL é a diferença entre uma
 intenção e uma garantia. Documento não sobrevive a seis meses e quatro sessões
 diferentes (`RETROSPECTIVA-FASE-D` §2); restrição de banco sobrevive.
@@ -34,9 +34,9 @@ POR QUE A FRENTE 2 OLHA O TIPO DO CAMPO, E POR QUE ISSO NÃO É UMA BRECHA
 Existe um campo legítimo nesta célula com a palavra "dinheiro" no nome:
 `ConquistaDefinicao.envolve_dinheiro`. Ele não guarda dinheiro — é um booleano
 que diz *"este marco fala do aluno RECEBENDO dinheiro na vida real"*, e serve
-para o banco poder EXIGIR faixa 13+ e validação por adulto
-(`marco_de_dinheiro_e_13mais_e_so_adulto_valida`). Ou seja: é uma trava de
-proteção de menor, o oposto de uma violação.
+para o banco poder EXIGIR que só a equipe valide esse marco
+(`marco_de_dinheiro_so_a_equipe_valida`). Ou seja: é uma trava de qualidade no
+que a escola afirma, o oposto de uma violação.
 
 A régua honesta, então, não é a palavra — é o CARREGADOR. Um booleano não
 guarda quantia; uma coluna numérica ou de texto guarda. Por isso a frente 2 mede
@@ -343,7 +343,8 @@ def test_o_banco_recusa_um_debito_que_nao_e_compra_na_loja(aluno):
 
     É isto que torna a moeda intransferível na prática: uma "gorjeta" para
     outro aluno precisaria de um débito que não é compra, e ele não existe.
-    Gorjeta entre menores está vetada por escrito (lei §8).
+    Gorjeta de Cristais entre alunos está vetada por escrito (lei §8), e o veto
+    nunca foi sobre idade: a intenção sobrevive no botão Parabéns.
     """
     with pytest.raises(IntegrityError) as erro:
         with transaction.atomic():
