@@ -187,7 +187,24 @@ paths:
       responses:
         '201': { description: Entrou na fila }
         '200': { description: Ja estava na fila — dados atualizados }
-        '409': { description: Este e-mail JA tem matricula que vale; nao entra na fila }
+        '409':
+          description: |
+            Este e-mail nao entra na fila. DUAS razoes, e elas sao diferentes:
+
+            1. JA TEM matricula que vale — quem ja entra nao precisa de fila.
+               A conferencia usa a MESMA consulta que decide acesso, para nao
+               existir gente recusada aqui por "voce ja tem" que a Caixa nao
+               deixa entrar.
+            2. FOI REEMBOLSADO (31/08/2026, DECISAO-reembolso-tira-o-acesso).
+               O mantenedor decidiu que quem recebeu o dinheiro de volta nao
+               pede para voltar sozinho: quem quiser voltar compra de novo ou
+               fala com a escola, e ele religa com um clique. A recusa mora
+               AQUI, e nao so na tela que esconde o formulario — regra que so
+               existe em HTML e promessa sem mecanismo.
+
+            `encerrada` (ex-aluno) NAO barra, de proposito: ele PODE pedir para
+            voltar desde 29/08 (DECISAO-a-ficha-nao-se-apaga §3). A diferenca
+            entre os dois e a decisao, nao um descuido.
         '422': { description: Payload invalido }
     get:
       operationId: listPreEnrollments
@@ -451,13 +468,19 @@ paths:
                   email: { type: string, format: email }
                   categoria:
                     type: string
-                    enum: [cadastrado, na_fila, pausado, ex_aluno, aluno]
+                    enum: [cadastrado, na_fila, pausado, ex_aluno, reembolsado, aluno]
                     description: |
                       A situacao de AGORA, e ela vem da MESMA funcao que responde
                       `GET /alunos/{email}/situacao`. Duas contas para a mesma
                       pergunta divergiriam no primeiro status novo — e a tela do
                       prontuario mostraria uma coisa enquanto a porta da Caixa
                       mostra outra para a mesma pessoa.
+
+                      Por isso esta lista e a de la mudam SEMPRE JUNTAS. Em
+                      31/08/2026 `reembolsado` entrou nas duas no mesmo PR; uma
+                      lista que ficasse para tras faria o prontuario dizer
+                      "cadastrado" sobre alguem que a porta ja chama de
+                      reembolsado.
                   nome_completo:
                     type: string
                     description: |
