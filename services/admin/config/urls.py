@@ -15,10 +15,15 @@ from apps.core.caixa import (
 )
 from apps.core.divida import divida_json
 from apps.core.editor_de_documentos import (
+    documento_apagar,
+    documento_arquivar,
     documento_criar,
+    documento_desarquivar,
     documento_editar,
     documento_novo,
+    documento_restaurar,
     documento_salvar,
+    documento_versoes,
 )
 from apps.core.mapa_do_site import mapa_do_site
 from apps.core.menu import (
@@ -170,6 +175,41 @@ urlpatterns = [
         r"^documentos/(?P<nome>[a-z0-9-]+)/salvar$",
         documento_salvar,
         name="documento_salvar",
+    ),
+    # OS GESTOS QUE MEXEM NO LUGAR DO DOCUMENTO, e nao no texto dele
+    # (`DECISAO-o-editor-de-documentos.md` §4). Todos POST: decisao que se
+    # aplica por GET e decisao que um pre-carregador de link, um antivirus
+    # corporativo ou um crawler autenticado tomam sozinhos — e um deles aqui
+    # destroi um texto. Um verbo por rota, como as sete do menu.
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/arquivar$",
+        documento_arquivar,
+        name="documento_arquivar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/desarquivar$",
+        documento_desarquivar,
+        name="documento_desarquivar",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/apagar$",
+        documento_apagar,
+        name="documento_apagar",
+    ),
+    # O HISTORICO (`DECISAO-o-editor-de-documentos.md` §6) — o que entrou no
+    # lugar do `git log` que os documentos tinham enquanto moravam no
+    # repositorio. Ver e LEITURA, e por isso e GET; voltar atras muda o texto
+    # de uma pagina publica, e por isso e POST: decisao que se aplica por GET e
+    # decisao que um pre-carregador de link toma sozinho.
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/versoes$",
+        documento_versoes,
+        name="documento_versoes",
+    ),
+    re_path(
+        r"^documentos/(?P<nome>[a-z0-9-]+)/restaurar$",
+        documento_restaurar,
+        name="documento_restaurar",
     ),
     # OS PLANOS PARA IA (`apps/core/planos_para_ia.py`), 31/08/2026 — e as duas
     # linhas vêm ANTES das do mapa, porque a ordem é o que faz funcionar: a rota

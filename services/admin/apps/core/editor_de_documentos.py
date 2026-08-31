@@ -44,12 +44,13 @@ import unicodedata
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.auditoria.models import Registro
 
 from . import documentos, travessao
-from .models import Documento
+from .models import Documento, VersaoDoDocumento
 from .views import _auditar
 
 #: Endereços que a ÁREA ADMINISTRATIVA já usa, e que por isso nenhum documento
@@ -212,6 +213,7 @@ def documento_criar(request):
         return _tela(request, rascunho, criando=True, riscas=riscas, status=422)
 
     documento = Documento.objects.create(**rascunho)
+    _guardar_versao(request, documento, "criou o documento")
     _auditar(
         request,
         Registro.CRIAR_DOCUMENTO,
@@ -282,6 +284,7 @@ def documento_salvar(request, nome):
     documento.publico = rascunho["publico"]
     documento.save()
 
+    _guardar_versao(request, documento, "editou o documento")
     _auditar(
         request,
         Registro.EDITAR_DOCUMENTO,
@@ -291,4 +294,182 @@ def documento_salvar(request, nome):
     )
     return HttpResponseRedirect(
         f"{reverse('documento_admin', args=[documento.nome])}?recado=salvo"
+    )
+
+
+# ------------------------------------------------- arquivar e desarquivar
+#
+# `DECISAO-o-editor-de-documentos.md` §4, e a escolha e do mantenedor com as
+# tres opcoes na mesa: os dois gestos existem, SEPARADOS.
+#
+# Arquivar tira do site na hora e guarda o texto inteiro. E reversivel, e por
+# isso nao pede confirmacao escrita — pedir cerimonia por um gesto que se
+# desfaz com um clique treina a pessoa a clicar em qualquer confirmacao.
+#
+# Arquivar NAO e despublicar: `publico` continua gravado como estava, e e por
+# isso que a pergunta "esta no ar?" e o `no_ar` do modelo. Desarquivar devolve
+# o documento ao estado exato em que ele estava, sem o mantenedor ter de
+# lembrar se aquilo era publico.
+
+
+@require_POST
+def documento_arquivar(request, nome):
+    """Tira o documento do site. O texto fica inteiro, aqui dentro."""
+    return _mudar_o_lugar(
+        request, nome, arquivado=True, acao=Registro.ARQUIVAR_DOCUMENTO
+    )
+
+
+@require_POST
+def documento_desarquivar(request, nome):
+    """Devolve o documento ao estado em que ele estava antes de ser arquivado."""
+    return _mudar_o_lugar(
+        request, nome, arquivado=False, acao=Registro.DESARQUIVAR_DOCUMENTO
+    )
+
+
+def _mudar_o_lugar(request, nome, *, arquivado: bool, acao: str):
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+
+    documento.arquivado = arquivado
+    documento.save(update_fields=["arquivado", "atualizado_em"])
+    _auditar(request, acao, documento.nome, Registro.OK)
+
+    # NENHUMA versao e gravada aqui, e a omissao e a decisao: o historico guarda
+    # o TEXTO, e nada no texto mudou. Uma linha "arquivou" no meio das versoes
+    # faria "voltar para esta" significar tambem "e tire do ar de novo", que e
+    # outra decisao (ver o comentario de `VersaoDoDocumento`).
+    recado = "arquivado" if arquivado else "desarquivado"
+    return HttpResponseRedirect(
+        f"{reverse('documento_admin', args=[documento.nome])}?recado={recado}"
+    )
+
+
+# ------------------------------------------------------------ apagar de vez
+
+
+@require_POST
+def documento_apagar(request, nome):
+    """Destroi o documento e todo o historico dele. Sem volta.
+
+    **Pede o nome digitado**, e a cerimonia e proporcional: e o unico gesto
+    desta tela que nao se desfaz. Mesma gramatica de `DECISAO-apagar-ideia.md`.
+    A confirmacao que NAO serve e a que so pergunta "tem certeza?": ela vira
+    reflexo em uma semana, e o dia em que o clique for errado ela nao vai ter
+    parado nada. Digitar o nome obriga a pessoa a OLHAR para o que vai destruir.
+
+    O historico vai junto, por cascata e de proposito. Guardar as versoes de um
+    documento apagado seria guardar o texto de quem mandou apaga-lo — "sem
+    volta" que deixa copia nao e sem volta.
+    """
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+
+    digitado = (request.POST.get("confirmacao") or "").strip().lower()
+    if digitado != documento.nome:
+        return HttpResponseRedirect(
+            f"{reverse('documento_admin', args=[documento.nome])}?recado=confirmacao"
+        )
+
+    # A auditoria ANTES de apagar, porque depois nao ha `nome` para citar — e
+    # esta linha e o unico lugar do sistema em que o documento continua
+    # existindo. A tabela e append-only por trigger no banco.
+    _auditar(
+        request,
+        Registro.APAGAR_DOCUMENTO,
+        documento.nome,
+        Registro.OK,
+        f"apagou o documento, publico={documento.publico}",
+    )
+    documento.delete()
+    return HttpResponseRedirect(f"{reverse('documentos_admin')}?recado=apagado")
+
+
+# ------------------------------------------------------------- o histórico
+#
+# `DECISAO-o-editor-de-documentos.md` §6. Ao tirar o texto do Git, a plataforma
+# perdeu o `git log` dos documentos: nao ha mais como ver quem mudou uma frase,
+# nem como voltar atras. Isto e o que entra no lugar, e entra junto com a
+# primeira escrita — "a versao anterior" so existe se alguem a guardou ANTES de
+# sobrescrever.
+
+
+def _guardar_versao(request, documento, gesto: str) -> None:
+    """O retrato do documento DEPOIS desta gravação.
+
+    Chamado por toda escrita, e nunca condicionalmente: ao tirar o texto do
+    Git, esta tabela virou a única memória de "o que estava escrito antes".
+    Uma escrita que esquecesse de passar por aqui abriria um buraco silencioso
+    no histórico, e ninguém descobriria até precisar dele.
+    """
+    VersaoDoDocumento.objects.create(
+        documento=documento,
+        titulo=documento.titulo,
+        publico=documento.publico,
+        ordem=documento.ordem,
+        corpo=documento.corpo,
+        salvo_por=(request.admin.get("email") or ""),
+        gesto=gesto,
+    )
+
+
+@require_GET
+def documento_versoes(request, nome):
+    """Todas as versoes deste documento, da mais nova para a mais velha."""
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+    return render(
+        request,
+        "admin/documento_versoes.html",
+        {
+            "admin": request.admin,
+            "documento": documento,
+            "versoes": documento.versoes.order_by("-salvo_em", "-id"),
+            "recado": request.GET.get("recado", ""),
+        },
+    )
+
+
+@require_POST
+def documento_restaurar(request, nome):
+    """Copia uma versao antiga por cima do documento de hoje.
+
+    **A volta nao apaga historia: ela ESCREVE mais uma.** O texto restaurado
+    vira a versao mais nova, com o gesto dizendo de onde ele veio. Desfazer uma
+    restauracao e restaurar de novo, e nenhuma linha do historico some no
+    caminho — que e a diferenca entre um historico e um rascunho.
+    """
+    documento = documentos.ler(nome)
+    if documento is None:
+        raise Http404("documento não encontrado")
+
+    versao = documento.versoes.filter(id=request.POST.get("versao") or 0).first()
+    if versao is None:
+        # Nao ha 404 aqui: o documento existe, e quem nao existe e a versao. A
+        # tela volta dizendo isso, em vez de trocar a pagina inteira por um erro.
+        return HttpResponseRedirect(
+            f"{reverse('documento_versoes', args=[documento.nome])}?recado=sumiu"
+        )
+
+    documento.titulo = versao.titulo
+    documento.corpo = versao.corpo
+    documento.ordem = versao.ordem
+    documento.publico = versao.publico
+    documento.save()
+
+    quando = timezone.localtime(versao.salvo_em).strftime("%d/%m/%Y às %H:%M")
+    _guardar_versao(request, documento, f"voltou para a versão de {quando}")
+    _auditar(
+        request,
+        Registro.RESTAURAR_DOCUMENTO,
+        documento.nome,
+        Registro.OK,
+        f"voltou para a versao {versao.id}",
+    )
+    return HttpResponseRedirect(
+        f"{reverse('documento_admin', args=[documento.nome])}?recado=restaurado"
     )

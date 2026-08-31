@@ -126,10 +126,20 @@ def documentos_admin(request):
     É o único lugar em que as duas famílias aparecem juntas — sem ele, saber se
     um documento está no ar para o mundo exigiria abrir o repositório.
     """
+    todos = documentos.listar(so_publicos=False, com_arquivados=True)
     return render(
         request,
         "admin/documentos.html",
-        {"admin": request.admin, "documentos": documentos.listar(so_publicos=False)},
+        {
+            "admin": request.admin,
+            "documentos": [d for d in todos if not d.arquivado],
+            # Os arquivados numa lista SEPARADA, e nao misturados com uma
+            # etiqueta: eles nao estao no site, e quem abre esta tela quer ver o
+            # que esta no ar. Escondidos de vez, porem, desarquivar seria
+            # impossivel — entao eles ficam embaixo, fechados.
+            "arquivados": [d for d in todos if d.arquivado],
+            "recado": request.GET.get("recado", ""),
+        },
     )
 
 

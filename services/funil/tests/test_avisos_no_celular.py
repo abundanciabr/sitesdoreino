@@ -15,6 +15,7 @@ que se mede aqui é que, sem JavaScript, ninguém vê convite nenhum.
 
 import json
 import re
+from pathlib import Path
 
 import httpx
 import pytest
@@ -256,13 +257,58 @@ def test_o_toque_no_aviso_leva_a_pagina_de_avisos(client, rede):
     assert configuracao["caminho"] != "/"
 
 
+def test_o_pedido_abre_sozinho_onde_o_navegador_deixa():
+    """Decisão do mantenedor em 31/08/2026: "quero o aviso que aparece no
+    navegador ou na tela, e não um botão na página". Onde dá, a caixa do
+    sistema abre sozinha e o cartaz não aparece.
+
+    Medido no arquivo servido, que é a única prova possível sem um celular:
+    o caminho automático existe, e ele NÃO alcança quem exige um gesto."""
+    js = (
+        Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
+    ).read_text(encoding="utf-8")
+
+    assert "function abreSozinho()" in js
+    # As duas exceções, e elas não são preferência nossa: a Apple e a Mozilla
+    # exigem que o pedido saia de dentro de um gesto da pessoa. Sem isto, o
+    # aluno de iPhone ficaria sem aviso para sempre sem nunca ver a pergunta.
+    trecho = js[js.index("function abreSozinho()") : js.index("function inscrever(")]
+    assert "ehIOS" in trecho and "Firefox" in trecho
+
+
+def test_o_cartaz_continua_existindo_para_quem_precisa_de_um_toque():
+    """A outra metade da mesma decisão: onde a caixa não abre sozinha, o
+    cartaz É o gesto que a regra do navegador exige. Apagá-lo deixaria o
+    iPhone sem caminho nenhum."""
+    js = (
+        Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
+    ).read_text(encoding="utf-8")
+
+    assert "if (!abreSozinho()) {" in js
+    assert 'mostrarSo("convite")' in js
+    assert '[data-acao="ligar-avisos"]' in js
+
+
+def test_quando_o_pedido_automatico_da_certo_a_pagina_fica_limpa():
+    """ "Não quero um botão na página" vale também para o depois: um cartaz de
+    "pronto" após a caixa do navegador seria exatamente o que este caminho
+    existe para não ter. Só sobra cartaz quando há explicação a dar."""
+    js = (
+        Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
+    ).read_text(encoding="utf-8")
+
+    automatico = js[js.index("O caminho que o mantenedor pediu") :]
+    assert 'if (desfecho === "ligado") {' in automatico
+    assert automatico.index('if (desfecho === "ligado") {') < automatico.index(
+        "mostrarSo("
+    )
+
+
 def test_o_service_worker_promete_um_aviso_visivel_por_push():
     """`userVisibleOnly` do lado do site, `showNotification` do lado do worker:
     a promessa que o navegador cobra. Um push que não vira aviso visível faz o
     navegador mostrar a mensagem genérica dele e, repetido, tira a permissão do
     site."""
-    from pathlib import Path
-
     sw = (
         Path(__file__).resolve().parent.parent / "static" / "funil" / "sw.js"
     ).read_text(encoding="utf-8")

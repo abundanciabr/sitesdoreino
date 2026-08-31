@@ -1260,6 +1260,55 @@
       "gesto": true,
       "titulo": "Salvar a edicao do documento",
       "descricao": "Nao e uma pagina: e o que acontece quando voce aperta salvar. A mudanca aparece no site na hora, sem esperar atualizacao nenhuma."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/versoes$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/versoes$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O historico de um documento",
+      "descricao": "Tudo o que ja foi escrito neste documento, da versao mais nova para a mais velha, com quem salvou e quando."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/restaurar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/restaurar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Voltar um documento a uma versao anterior",
+      "descricao": "Nao e uma pagina: copia um texto antigo por cima do de hoje. Nao apaga nada, o texto de hoje continua no historico."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/arquivar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/arquivar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Arquivar um documento",
+      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta arquivar. O documento sai do site na hora, e o texto continua guardado."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/desarquivar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/desarquivar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Desarquivar um documento",
+      "descricao": "Nao e uma pagina: devolve o documento ao estado em que ele estava antes de ser arquivado, inclusive se era publico."
+    },
+    {
+      "celula": "admin",
+      "rota": "^documentos/(?P<nome>[a-z0-9-]+)/apagar$",
+      "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/apagar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Apagar um documento de vez",
+      "descricao": "Nao e uma pagina: destroi o texto e todo o historico dele. Sem volta, e por isso pede que voce escreva o endereco do documento para confirmar."
     }
   ]
 }

@@ -11,6 +11,10 @@
   <h1>Documentos</h1>
   <p class="subtitulo">Tudo o que o site publica, e quem pode ler cada um.</p>
 
+  {% if recado == "apagado" %}
+  <p class="recado">Apagado de vez. O texto e o histórico dele não existem mais.</p>
+  {% endif %}
+
   <p class="espaco-abaixo-20">
     <a class="botao" href="{% url 'documento_novo' %}">Escrever um documento novo</a>
   </p>
@@ -49,6 +53,34 @@
     Se você não apagou nenhum, avise o agente: a carga inicial pode não ter
     rodado nesta subida do sistema.
   </p>
+  {% endif %}
+
+  {% if arquivados %}
+  {% comment %}
+  Os arquivados numa lista separada e fechada. Misturados com uma etiqueta,
+  eles empurrariam para baixo o que está no ar, que é o que se vem ver aqui;
+  escondidos de vez, desarquivar seria impossível.
+  {% endcomment %}
+  <details class="cadastrar espaco-34">
+    <summary>Arquivados ({{ arquivados|length }})</summary>
+    <p class="nota">
+      Estes saíram do site e não abrem para ninguém de fora. O texto de cada um
+      continua guardado, e volta como estava quando você desarquivar.
+    </p>
+    <div class="cartoes espaco-16">
+      {% for documento in arquivados %}
+      <div class="cartao">
+        <div class="rotulo">{{ documento.titulo }}</div>
+        <div class="nota espaco-8">
+          <code>{{ documento.nome }}</code>
+        </div>
+        <div class="nota">
+          <a href="{% url 'documento_admin' documento.nome %}">Abrir</a>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </details>
   {% endif %}
 
   <p class="aviso espaco-28">

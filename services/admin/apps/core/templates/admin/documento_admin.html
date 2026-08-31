@@ -19,14 +19,30 @@ um dia alguém vai ler só um deles.
   <p class="recado">Documento criado.</p>
   {% elif recado == "salvo" %}
   <p class="recado">Salvo.</p>
+  {% elif recado == "arquivado" %}
+  <p class="recado">Arquivado. Saiu do site, e o texto continua aqui inteiro.</p>
+  {% elif recado == "desarquivado" %}
+  <p class="recado">Desarquivado, e de volta ao estado em que estava.</p>
+  {% elif recado == "restaurado" %}
+  <p class="recado">Pronto: este documento voltou para a versão que você escolheu.</p>
+  {% elif recado == "confirmacao" %}
+  <p class="recado borda-vermelha">
+    Não apaguei nada. Para apagar de vez, escreva o endereço do documento
+    exatamente como ele aparece na caixa, sem espaço a mais.
+  </p>
   {% endif %}
 
   <p class="espaco-abaixo-20">
     <a class="botao" href="{% url 'documento_editar' documento.nome %}">Editar este documento</a>
+    <a class="botao" href="{% url 'documento_versoes' documento.nome %}">Ver o histórico</a>
   </p>
 
   <p class="aviso espaco-abaixo-20">
-    {% if documento.publico %}
+    {% if documento.arquivado %}
+    <b>Este documento está ARQUIVADO.</b> Ele saiu do site e não abre para
+    ninguém de fora, nem por link direto. O texto continua guardado aqui, e
+    volta como estava quando você desarquivar.
+    {% elif documento.publico %}
     <b>Este documento é PÚBLICO.</b> Qualquer pessoa o lê em
     <code>meshcraft.top/docs/{{ documento.nome }}</code>, sem entrar em nada.
     {% else %}
@@ -36,5 +52,53 @@ um dia alguém vai ler só um deles.
   </p>
 
   <div class="documento">{{ corpo|safe }}</div>
+
+  {% comment %}
+  Os dois gestos que tiram o documento de vista ficam no FIM da página, e
+  fechados dentro de um `details`: eles são a exceção, não a rotina, e abertos
+  empurrariam o texto para baixo em toda visita. Mesma escolha do formulário de
+  cadastrar alguém à mão.
+  {% endcomment %}
+  <details class="cadastrar espaco-34">
+    <summary>Tirar este documento do site</summary>
+
+    <div class="espaco-16">
+      {% if documento.arquivado %}
+      <p class="nota">
+        Desarquivar devolve o documento ao estado em que ele estava antes: se
+        era público, volta a ser público.
+      </p>
+      <form method="post" action="{% url 'documento_desarquivar' documento.nome %}">
+        {% csrf_token %}
+        <button type="submit">Desarquivar</button>
+      </form>
+      {% else %}
+      <p class="nota">
+        Arquivar tira o documento do site na hora, e guarda o texto inteiro
+        aqui. Dá para desfazer com um clique.
+      </p>
+      <form method="post" action="{% url 'documento_arquivar' documento.nome %}">
+        {% csrf_token %}
+        <button type="submit">Arquivar</button>
+      </form>
+      {% endif %}
+    </div>
+
+    <div class="apagar-de-vez espaco-26">
+      <p class="nota">
+        <b>Apagar de vez destrói o texto e todo o histórico dele.</b> Não tem
+        volta, nem para mim. Se você só quer tirar a página do ar, use
+        arquivar aqui em cima.
+      </p>
+      <form method="post" action="{% url 'documento_apagar' documento.nome %}">
+        {% csrf_token %}
+        <label class="rotulo" for="confirmacao">
+          Para confirmar, escreva <code>{{ documento.nome }}</code> aqui:
+        </label>
+        <input type="text" id="confirmacao" name="confirmacao" autocomplete="off">
+        <button type="submit" class="perigo">Apagar de vez</button>
+      </form>
+    </div>
+  </details>
 </div>
 {% endblock %}
