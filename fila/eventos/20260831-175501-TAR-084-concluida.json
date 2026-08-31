@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260831-175501-TAR-084-concluida",
+  "tarefa": "TAR-084",
+  "evento": "concluida",
+  "quando": "2026-08-31T17:55:01+00:00",
+  "quem": "sessao-menu-do-topo-2026-08-31",
+  "evidencia": "JA RESOLVIDA por outra sessao antes de esta comecar a construir: https://github.com/abundanciabr/sitesdoreino/pull/733 (commit 7ef0d51, 'o porteiro do livro dispensa quem so escritura, no livro E na fila'). Conferido na main de agora, caso a caso: so livro isento=True; livro+balcao isento=True; so balcao isento=True; balcao+CODIGO isento=False; so codigo isento=False; nenhum arquivo isento=False. A mira ficou certa: escrituracao pura passa, entrega continua devendo. Nao refiz o trabalho.",
+  "verificado_em": "2026-08-31"
+}
