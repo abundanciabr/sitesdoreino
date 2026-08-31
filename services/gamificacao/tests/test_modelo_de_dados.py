@@ -148,29 +148,19 @@ def test_marco_real_com_zero_xp_entra_normalmente():
 
 
 @pytest.mark.django_db
-def test_o_banco_recusa_marco_de_dinheiro_fora_da_faixa_de_13_anos():
-    """Lei §9: marco que envolve dinheiro é 13+, e é SEMPRE adulto quem valida.
+def test_o_banco_recusa_marco_de_dinheiro_validavel_por_colega():
+    """Lei §9: marco que envolve dinheiro é SEMPRE validado por alguém da equipe.
 
     A trava está no banco porque a alternativa seria confiar em toda tela futura
-    lembrar da regra, e o custo do esquecimento cai sobre uma criança.
+    lembrar da regra. Ela sobreviveu à emenda de 30/08/2026 mudando de RAZÃO, e
+    não de força: era proteção de menor, hoje é qualidade e confiança no que a
+    escola afirma ao dizer que alguém ganhou dinheiro com o próprio trabalho.
+
+    A metade que MORREU foi a faixa etária: numa escola só de adultos, exigir
+    "13 anos ou mais" não separa ninguém de ninguém. E "equipe" não é sinônimo
+    de "adulto" aqui, porque aqui o aluno também é adulto: `validador_papel`
+    aceita `par`, e um par não fecha marco de dinheiro.
     """
-    with pytest.raises(IntegrityError) as erro:
-        with transaction.atomic():
-            _conquista(
-                slug="primeiros-dolares",
-                classe=ConquistaDefinicao.Classe.MARCO,
-                familia=ConquistaDefinicao.Familia.CARREIRA,
-                envolve_dinheiro=True,
-                faixa_etaria=ConquistaDefinicao.FaixaEtaria.TODAS,
-                exige_validador_adulto=True,
-            )
-
-    assert "marco_de_dinheiro_e_13mais_e_so_adulto_valida" in str(erro.value)
-
-
-@pytest.mark.django_db
-def test_o_banco_recusa_marco_de_dinheiro_validavel_por_colega():
-    """A outra metade da mesma trava: 13+ não basta, precisa do adulto."""
     with pytest.raises(IntegrityError) as erro:
         with transaction.atomic():
             _conquista(
@@ -178,11 +168,28 @@ def test_o_banco_recusa_marco_de_dinheiro_validavel_por_colega():
                 classe=ConquistaDefinicao.Classe.MARCO,
                 familia=ConquistaDefinicao.Familia.CARREIRA,
                 envolve_dinheiro=True,
-                faixa_etaria=ConquistaDefinicao.FaixaEtaria.TREZE_MAIS,
-                exige_validador_adulto=False,
+                exige_validador_da_equipe=False,
             )
 
-    assert "marco_de_dinheiro_e_13mais_e_so_adulto_valida" in str(erro.value)
+    assert "marco_de_dinheiro_so_a_equipe_valida" in str(erro.value)
+
+
+@pytest.mark.django_db
+def test_o_banco_aceita_marco_de_dinheiro_quando_a_equipe_valida():
+    """O caminho feliz, e ele não é decoração.
+
+    Sem esta linha, um banco que recusasse TODA conquista passaria no teste
+    acima e ninguém saberia até a primeira medalha não nascer.
+    """
+    marco = _conquista(
+        slug="primeiros-dolares",
+        classe=ConquistaDefinicao.Classe.MARCO,
+        familia=ConquistaDefinicao.Familia.CARREIRA,
+        envolve_dinheiro=True,
+        exige_validador_da_equipe=True,
+    )
+
+    assert marco.pk and marco.exige_validador_da_equipe is True
 
 
 # ---------------------------------------------------------------------------
@@ -348,17 +355,28 @@ def test_um_perfil_por_pessoa_por_site(aluno):
     assert "um_perfil_por_pessoa_por_site" in str(erro.value)
 
 
-def test_o_perfil_nasce_no_modo_junior_e_fora_das_ligas(aluno):
-    """Fail-closed é o lado protegido: júnior por padrão, liga desligada.
+def test_o_perfil_nasce_fora_das_ligas_e_sem_faixa_etaria(aluno):
+    """Liga é opt-in, e não existe modo por idade para nascer marcado.
 
-    Um perfil que nascesse `teen` por omissão daria ao menor tudo o que o Modo
-    Júnior existe para não dar (lei §9).
+    A metade das ligas é a de sempre: ninguém entra em exposição entre pares por
+    omissão, e depois da emenda de 30/08/2026 a razão está escrita na lei §9 com
+    todas as letras, *"privacidade é de adulto também"*.
+
+    A outra metade é uma AUSÊNCIA, e ela é o ponto deste teste. Até 30/08/2026
+    o perfil nascia com `modo="junior"` (abaixo de 13 anos), porque a lei previa
+    Modo Júnior como trava de sistema. A escola é 18+, o §9 foi emendado e o
+    campo saiu na migração `0002`. Se alguém reintroduzir um modo por faixa
+    etária sem passar pela lei, este teste quebra, e é para quebrar mesmo.
     """
     perfil = PerfilJogador.objects.create(pessoa=aluno, site_id="escola-a")
 
-    assert perfil.modo == PerfilJogador.Modo.JUNIOR
     assert perfil.participa_de_ligas is False
     assert perfil.celebracoes_pendentes == []
+    assert not hasattr(perfil, "modo"), (
+        "voltou um campo de modo por idade ao PerfilJogador. A escola é 18+ "
+        "(DECISAO-gamificacao.md §9, emendado em 30/08/2026): a trava volta à "
+        "LEI antes de voltar ao modelo."
+    )
 
 
 def test_a_sequencia_recusa_recorde_menor_que_a_contagem_atual(aluno):
