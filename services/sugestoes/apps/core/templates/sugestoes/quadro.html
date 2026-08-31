@@ -134,6 +134,14 @@ nome para quem usa leitor de tela — a mesma regra do botão de voto (LICOES §
   </div>
 
   {% comment %}
+  A MESMA legenda da página da ideia, do mesmo dicionário em Python. Ela fecha
+  aqui a metade que faltava do pedido do mantenedor de 31/08/2026: a faixa
+  mostrava quatro colunas com nome e contagem, e nada dizia o que cada coluna
+  quer dizer nem que votar continua valendo depois da primeira.
+  {% endcomment %}
+  {% include "sugestoes/_legenda_das_etapas.html" %}
+
+  {% comment %}
   As duas situações que NÃO são zona do trilho — `nao_planejado` e `mesclado`.
   Elas não são etapas do caminho, são saídas dele, e por isso não têm coluna na
   faixa; mas continuam na tela. Escondê-las faria a soma das quatro zonas

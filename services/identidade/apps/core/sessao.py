@@ -25,8 +25,11 @@ MOSTRA. Papel novo = lista própria (DECISAO-onde-mora-a-sessao §5.5).
 
 import logging
 import os
+import secrets
+import string
 from dataclasses import dataclass
 
+from django.contrib.auth.hashers import check_password, make_password
 from django.db import transaction
 
 from apps.identidade import eventos
@@ -118,6 +121,67 @@ def cunhar_ou_recuperar(*, email: str, nome: str, site_id: str = "") -> Identida
         # do relay a republica.
         transaction.on_commit(relay_apos_commit)
     return identidade
+
+
+def definir_senha(
+    *, email: str, senha: str, nome: str = "", site_id: str = ""
+) -> tuple[Identidade, bool]:
+    """`setPassword` — o segundo jeito de provar quem é (DECISAO-login-por-senha.md).
+
+    Mesma forma de `cunhar_ou_recuperar`: idempotente por e-mail
+    (`get_or_create`), anuncia `pessoa_cadastrada` só na CUNHAGEM (reentrar
+    para trocar a senha não é cadastrar-se de novo). A diferença é o
+    `provedor` — `"senha"` em vez de `"google"` — e que aqui a senha é sempre
+    gravada, mesmo numa linha que já existia: é o "definir" do nome da
+    operação, não um "definir só se ainda não tinha".
+
+    A senha NUNCA aparece em texto puro depois desta função — só o hash que
+    `make_password` produz entra na linha.
+    """
+    with transaction.atomic():
+        identidade, criada = Identidade.objects.get_or_create(
+            email=email.strip().lower(),
+            defaults={"provedor": "senha", "nome_exibido": nome.strip()[:120]},
+        )
+        identidade.senha_hash = make_password(senha)
+        identidade.save(update_fields=["senha_hash"])
+        if criada:
+            if site_id:
+                eventos.pessoa_cadastrada(site_id=site_id, pessoa_id=identidade.id)
+            else:
+                logger.error(
+                    "pessoa %s cunhada por senha SEM site_id — o fato nao foi "
+                    "anunciado, e nenhuma sequencia de boas-vindas vai comecar "
+                    "por ela.",
+                    identidade.id,
+                )
+    if criada:
+        transaction.on_commit(relay_apos_commit)
+    return identidade, criada
+
+
+def verificar_senha(*, email: str, senha: str) -> "Identidade | None":
+    """`entrar_senha` confere aqui — devolve a `Identidade` se a senha bate,
+    `None` em QUALQUER outro caso (e-mail sem linha, linha sem senha
+    definida, senha errada). Os três casos são indistinguíveis de propósito
+    (`DECISAO-login-por-senha.md` §6.1): a chave de recusa é a mesma, para
+    não virar um jeito de descobrir quais e-mails têm conta.
+    """
+    identidade = Identidade.objects.filter(email=email.strip().lower()).first()
+    if identidade is None or not identidade.senha_hash:
+        return None
+    if not check_password(senha, identidade.senha_hash):
+        return None
+    return identidade
+
+
+def gerar_senha_aleatoria() -> str:
+    """A senha nova do reset manual (`resetPassword`) — nunca escolhida por
+    quem chama, sempre sorteada aqui. Sai em texto puro só na resposta
+    daquele POST, uma vez; esta função não grava nada, quem chama grava o
+    hash com `make_password`."""
+    alfabeto = string.ascii_letters + string.digits
+    return "".join(secrets.choice(alfabeto) for _ in range(12))
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,35 @@
+{% comment %}
+A LEGENDA DAS ETAPAS — o mesmo pedaço nas DUAS telas que desenham o caminho: a
+linha do tempo da ideia ("Por onde ela andou") e a faixa de roadmap do quadro.
+
+Ele existe porque as duas desenhavam quatro etapas e nenhuma dizia o que elas
+significam. Quem notou foi o mantenedor, em 31/08/2026.
+
+Três decisões que parecem detalhe e não são:
+
+* **O texto NÃO mora aqui.** Vem de `EXPLICACAO_DAS_ETAPAS`
+  (`apps/core/participacao.py`), pela `legenda_das_etapas()`. Escrever a frase
+  no template faria a segunda tela envelhecer sozinha no primeiro ajuste de
+  redação, e é exatamente o que `tests/test_a_caixa_explica_as_etapas.py`
+  reprova: ele lê ESTE arquivo e recusa a cópia literal.
+* **`<details>` fechado, e não um bloco sempre aberto.** Na página da ideia isto
+  mora no inspetor da direita, que é estreito; seis parágrafos abertos ali
+  empurrariam a linha do tempo para fora da primeira tela. Fechado, é uma linha
+  que se abre no clique, sem uma linha de JavaScript e funcionando no celular
+  (tooltip de passar o mouse não existe em tela de toque).
+* **A cor da bolinha sai do STATUS do model** (`data-etapa="em_analise"`), a
+  mesma regra da faixa: status novo no model nasce SEM cor, em vez de casar com
+  a cor de outra etapa por acidente de ordem.
+{% endcomment %}
+<details class="legenda">
+  <summary>O que cada etapa quer dizer</summary>
+  <dl class="legenda-lista">
+    {% for etapa in legenda_das_etapas %}
+      <div class="legenda-item" data-etapa="{{ etapa.chave }}">
+        <dt><span class="bolinha" aria-hidden="true"></span>{{ etapa.rotulo }}</dt>
+        <dd>{{ etapa.explicacao }}</dd>
+      </div>
+    {% endfor %}
+  </dl>
+  <p class="legenda-voto">{{ votar_nunca_fecha }}</p>
+</details>

@@ -163,6 +163,16 @@
     },
     {
       "celula": "identidade",
+      "rota": "entrar/senha",
+      "endereco": "/entrar/senha",
+      "alcance": "publico",
+      "para_quem": "visitante",
+      "gesto": true,
+      "titulo": "Entrar com e-mail e senha",
+      "descricao": "O segundo jeito de entrar, para quem não tem conta do Google: recebe o e-mail e a senha que a pessoa escolheu no cadastro."
+    },
+    {
+      "celula": "identidade",
       "rota": "entrar/sair",
       "endereco": "/entrar/sair",
       "alcance": "publico",
@@ -939,6 +949,16 @@
       "gesto": true,
       "titulo": "Tirar a ideia do arquivo",
       "descricao": "O contrário do de cima: a ideia volta ao quadro."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/ideia/<int:ideia_id>/texto",
+      "endereco": "/admin/caixa/ideia/<int:ideia_id>/texto",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Corrigir o nome e o texto da ideia",
+      "descricao": "Para erro de digitacao do aluno. Ele passa a ver o texto novo sem marca nenhuma, e o que estava escrito antes fica guardado para a equipe."
     },
     {
       "celula": "admin",
