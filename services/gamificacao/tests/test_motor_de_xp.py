@@ -37,6 +37,13 @@ VOTANTE = "pes-votante"
 
 
 def _regra(**campos) -> RegraDePontuacao:
+    """Uma regra LIGADA e já vigente, que é o caso comum destes testes.
+
+    `vigente_desde` no passado não é detalhe de fixture: desde 31/08/2026 o banco
+    RECUSA regra ligada sem data (`regra_ligada_tem_data_de_vigencia`) e o motor
+    só paga fato POSTERIOR a ela. Uma regra ligada "agora" não pagaria um evento
+    de agora por questão de microssegundos, e o teste piscaria.
+    """
     base = {
         "slug": "sugestao-criada",
         "site_id": SITE,
@@ -47,12 +54,24 @@ def _regra(**campos) -> RegraDePontuacao:
         "acoes_cheias_por_dia": 0,
         "quarentena_horas": 0,
         "ativa": True,
+        "vigente_desde": timezone.now() - timedelta(days=365),
     }
     base.update(campos)
     return RegraDePontuacao.objects.create(**base)
 
 
 def _envelope(**campos) -> dict:
+    """O envelope como ele CHEGA — a forma que `contracts/eventos/*.json` fixa.
+
+    **`ator_id` mora no ENVELOPE e é o id da PLATAFORMA**; `data.autor_id` é o id
+    LOCAL da célula `sugestoes` e não credita ninguém aqui. Até 31/08/2026 estes
+    testes passavam em parte pelo motivo errado: o motor tinha um
+    `or data.get("autor_id")` por baixo, e para o beneficiário `autor_do_alvo`
+    era SÓ esse caminho local que existia — creditando uma Pessoa fantasma. O
+    contrato daquele evento nem permitia `ator_id` no envelope, então a suíte
+    media uma forma que a produção nunca enviava, que é exatamente contra o que o
+    cabeçalho deste arquivo já advertia.
+    """
     envelope = {
         "event": "sugestao.criada",
         "version": 1,
@@ -135,14 +154,26 @@ def test_um_evento_credita_duas_pessoas_por_regras_diferentes():
     aplicar(
         _envelope(
             event="sugestao.voto-adicionado",
+            # Quem VOTOU, no id da plataforma (envelope).
             ator_id=VOTANTE,
-            data={"site_id": SITE, "suggestion_id": 1, "autor_id": AUTOR},
+            data={
+                "site_id": SITE,
+                "suggestion_id": 1,
+                # LOCAL da `sugestoes`, e aqui ele é justamente o do VOTANTE —
+                # está no dicionário para provar que o motor NÃO o usa. Antes de
+                # 31/08/2026 a regra do autor caía nele e pagava a pessoa errada,
+                # com um id que não existe nesta célula.
+                "autor_id": "id-local-da-caixa-do-votante",
+                "autor_da_sugestao_id_da_plataforma": AUTOR,
+            },
         ),
         SITE,
     )
 
     assert PerfilJogador.objects.get(pessoa_id=VOTANTE).xp_total == 2
     assert PerfilJogador.objects.get(pessoa_id=AUTOR).xp_total == 5
+    # E o id local não virou pessoa nenhuma: nada de fantasma no ledger.
+    assert not Pessoa.objects.filter(id_da_plataforma__startswith="id-local").exists()
 
 
 # ------------------------------------------------- 3. o teto diário com decaimento
