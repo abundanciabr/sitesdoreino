@@ -1,0 +1,16 @@
+{
+  "arquivo": "056-fazer-o-cadastro-anunciar-que-alguem-entrou-a-identidade-gan",
+  "id": "TAR-056",
+  "titulo": "Fazer o cadastro anunciar que alguem entrou (a identidade ganha voz)",
+  "toca": [
+    "identidade"
+  ],
+  "depende_de": [
+    "TAR-055"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + saida crua dos testes novos (emitir fora de transacao estoura; relay nao republica) + registro no livro citando o numero do PR.",
+  "despacho": "Degrau 1 da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\n\nO gatilho mais obvio do pedido do mantenedor — \"apos o cadastro\" — hoje NAO\nchega a lugar nenhum: `services/identidade/` nao tem `apps/eventos`, nao tem\noutbox e nao publica NADA. Esta tarefa da voz a ela.\n\nO que fazer:\n1. Copie o padrao que ja roda em producao em 5 celulas — NAO invente outro. A\n   referencia mais proxima e `services/alunos/apps/matriculas/`: `eventos.py`\n   (o construtor + `emitir()` que RECUSA fora de transacao), `models.py`\n   (`OutboxEvent`) e `tasks.py` (o relay com `crontab`, LOTE=200, publica ANTES\n   de marcar `published_at`).\n2. Publique `identidade.pessoa-cadastrada.v1` no momento em que a `Identidade`\n   e cunhada, DENTRO da mesma transacao do fato.\n3. NADA de PII no `data` — so o id opaco de plataforma e o site_id.\n4. Leia `armadilhas/INDICE.md` procurando por outbox, relay e Huey antes de\n   comecar; e `services/identidade/LICOES.md`.\n5. `celulas.yml` nao muda: publicar evento nao e consumir API.\n\nProvas exigidas: teste de que `emitir()` fora de transacao estoura; teste de que\no relay nao republica linha ja publicada; e o `test_fuso_horario.py` da celula\ncontinuando verde.",
+  "origem": "degrau 1 de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md",
+  "criada_em": "2026-08-31"
+}
