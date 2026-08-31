@@ -1,0 +1,72 @@
+{% comment %}
+A Base das conquistas.
+
+Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
+prefixo público `/conquistas` para dentro do caminho, e caminho cravado em
+string quebra em produção e SÓ lá (`armadilhas/029` e `/081`). O CSS sai de
+`{% url 'estatico' %}` e nunca de `{% static %}`, porque as duas tags leem
+prefixos diferentes e `/static/…` neste domínio é endereço do funil
+(`armadilhas/102`).
+
+A REGRA DE TELA, que mandou no desenho abaixo: "XP nunca maior que a imagem da
+obra" (PLANO §5). Por isso o número não abre a página nem aparece grande. O que
+abre é o título do degrau, que é uma palavra sobre quem a pessoa está virando.
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conquistas | Meshcraft Academy</title>
+<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
+</head>
+<body>
+<div class="faixa">
+  <a href="{% url 'base' %}">Suas conquistas</a>
+</div>
+
+<main>
+{% if entrou %}
+  <section class="degrau">
+    {% if escada.titulo %}
+      <p class="rotulo">Você é</p>
+      <h1>{{ escada.titulo }}</h1>
+      <p class="nivel">Nível {{ escada.nivel }}</p>
+    {% else %}
+      <p class="rotulo">Você está no</p>
+      <h1>Nível {{ escada.nivel }}</h1>
+    {% endif %}
+
+    {% if escada.no_topo %}
+      <p class="passo">Você chegou ao último degrau desta escada. O que vem
+      agora não é um número: é o que você faz com o que aprendeu.</p>
+    {% else %}
+      <div class="barra" role="img"
+           aria-label="Faltam {{ escada.falta }} pontos para o próximo nível">
+        <div class="cheio" style="width: {{ escada.fracao }}%"></div>
+      </div>
+      <p class="passo">Faltam <strong>{{ escada.falta }}</strong> para o
+      próximo degrau.</p>
+    {% endif %}
+
+    <p class="xp">{{ escada.xp }} de experiência até aqui</p>
+  </section>
+
+  <section class="aviso">
+    <h2>Esta página está começando</h2>
+    <p>Por enquanto ela mostra só o seu degrau. As medalhas, a sequência de dias
+    e a sua trilha de marcos reais chegam nos próximos passos, e o que você
+    fizer até lá continua contando: o histórico é guardado desde já.</p>
+  </section>
+{% else %}
+  <section class="convite">
+    <h1>Suas conquistas ficam aqui</h1>
+    <p>Esta página mostra em que degrau você está, o que já conquistou e o que
+    vem em seguida. Ela é sua, e por isso precisa saber quem você é.</p>
+    <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>
+    <p class="miudo">Ainda não é aluno? A porta de entrada da Meshcraft Academy
+    fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
+  </section>
+{% endif %}
+</main>
+</body>
+</html>

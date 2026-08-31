@@ -1,0 +1,16 @@
+{
+  "arquivo": "080-whatsapp-oficial-se-e-quando-o-dono-quiser-o-segundo-canal",
+  "id": "TAR-080",
+  "titulo": "WhatsApp oficial, se e quando o dono quiser o segundo canal",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-077"
+  ],
+  "cria": [],
+  "evidencia_exigida": "Decisao explicita do mantenedor registrada no livro + PR mergeado + prova de uma mensagem real entregue.",
+  "despacho": "Substitui a TAR-065. SO COMECE COM DECISAO EXPLICITA DO MANTENEDOR.\n\n*** ESTE DESPACHO NAO REPETE O PLANO. Ele APONTA. ***\n\nLEIA ANTES: docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md §6 (a regua conta a\nPESSOA, nao o canal) e §8.1.\n\nO WhatsApp oficial (Meta Cloud API) exige verificacao da empresa junto a Meta e\naprovacao previa de CADA modelo de mensagem. Isso leva dias e nao depende de\nnos — nao e trabalho que se comeca por conta propria.\n\nO QUE A CONSULTORIA DE 31/08/2026 ACRESCENTOU AQUI: o WhatsApp nao e 'mais um\ncanal'. Ele tem consentimento proprio, modelo aprovado, categoria, nota de\nqualidade e opt-out separado. Tratar os tres canais como iguais no codigo e o\nerro que se paga depois — e o plano ja preve a Entrega por canal, entao o lugar\npara essa assimetria existe.\n\nA REGUA CONTA A PESSOA: quem recebeu por e-mail hoje NAO recebe por WhatsApp\ntambem. E o opt-out do WhatsApp e separado e mais facil, porque ele e mais\ninvasivo que e-mail.\n\nQuando ele decidir: pendencia em painel/registros/ com precisa_do_dono: true\npara o cadastro e a verificacao, no modelo dos H20/H21/H22.",
+  "origem": "substitui a TAR-065, trancada por depender de tarefa trancada (consultoria de 31/08/2026)",
+  "criada_em": "2026-08-31"
+}
