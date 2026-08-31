@@ -129,6 +129,77 @@
     return;
   }
 
+  // ---------------------------------------------------------------------
+  // QUEM PODE ABRIR A CAIXA DO NAVEGADOR SEM UM TOQUE ANTES
+  // ---------------------------------------------------------------------
+  // Decisão do mantenedor em 31/08/2026, com as palavras dele: "quero o aviso
+  // que aparece no navegador ou na tela, e não um botão na página". Onde o
+  // navegador deixa, o pedido abre sozinho e o cartaz nem aparece.
+  //
+  // **Onde ele NÃO deixa, isto não é preferência nossa e não tem contorno:**
+  // a Apple e a Mozilla exigem que `requestPermission()` seja chamado de
+  // dentro de um gesto da pessoa. Chamado sozinho ali, ele não abre caixa
+  // nenhuma e a promessa volta "default" — o aluno de iPhone ficaria sem
+  // aviso para sempre, sem nunca ter visto uma pergunta. Por isso o cartaz
+  // continua existindo para eles: é o gesto que a regra exige.
+  function abreSozinho() {
+    if (ehIOS) {
+      return false;
+    }
+    return !/Firefox|FxiOS/.test(ua);
+  }
+
+  function inscrever(registro) {
+    return registro.pushManager
+      .subscribe({
+        // Obrigatório, e é uma promessa: todo push que chegar vai virar um
+        // aviso visível. Sem isto o navegador recusa a inscrição.
+        userVisibleOnly: true,
+        applicationServerKey: chaveEmBytes(chavePublica),
+      })
+      .then(function (inscricao) {
+        return fetch(enderecoLigar, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(comoJson(inscricao)),
+        }).then(function (resposta) {
+          if (resposta.ok) {
+            return "ligado";
+          }
+          // O servidor não confirmou. Desfazemos a inscrição no aparelho:
+          // deixá-la de pé faria o navegador achar que está tudo certo, e a
+          // pessoa esperaria um aviso que nunca viria.
+          return inscricao.unsubscribe().then(function () {
+            return "nao-deu";
+          });
+        });
+      });
+  }
+
+  function pedirPermissao(registro) {
+    return Notification.requestPermission()
+      .then(function (resposta) {
+        if (resposta === "granted") {
+          return inscrever(registro);
+        }
+        if (resposta === "denied") {
+          // Silenciar aqui é honestidade, não desistência: o navegador não
+          // deixaria perguntar de novo de qualquer forma.
+          silenciar();
+          return "recusado";
+        }
+        // "default" — a pessoa fechou a caixa sem escolher, OU o navegador
+        // engoliu o pedido. O Chrome faz isso quando um site pede permissão
+        // sem contexto: em vez da caixa, mostra um ícone quase invisível na
+        // barra. Nos dois casos ninguém decidiu nada, e é aqui que o cartaz
+        // vira o plano B — ele explica o porquê antes de pedir de novo.
+        return "default";
+      })
+      .catch(function () {
+        return "nao-deu";
+      });
+  }
+
   navigator.serviceWorker.ready
     .then(function (registro) {
       return registro.pushManager.getSubscription().then(function (jaInscrito) {
@@ -139,7 +210,6 @@
         if (estaEmSilencio()) {
           return;
         }
-        mostrarSo("convite");
 
         var botao = cartaz.querySelector('[data-acao="ligar-avisos"]');
         var depois = cartaz.querySelector('[data-acao="avisos-depois"]');
@@ -154,53 +224,34 @@
         if (botao) {
           botao.addEventListener("click", function () {
             botao.disabled = true;
-            Notification.requestPermission()
-              .then(function (resposta) {
-                if (resposta !== "granted") {
-                  // Recusou: o cartaz explica o caminho dos ajustes e não
-                  // volta a perguntar. Silenciar aqui é honestidade, não
-                  // desistência — o navegador não deixaria perguntar de novo
-                  // de qualquer forma.
-                  silenciar();
-                  mostrarSo("recusado");
-                  return null;
-                }
-                return registro.pushManager
-                  .subscribe({
-                    // Obrigatório, e é uma promessa: todo push que chegar vai
-                    // virar um aviso visível. Sem isto o navegador recusa a
-                    // inscrição.
-                    userVisibleOnly: true,
-                    applicationServerKey: chaveEmBytes(chavePublica),
-                  })
-                  .then(function (inscricao) {
-                    return fetch(enderecoLigar, {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify(comoJson(inscricao)),
-                    }).then(function (resposta) {
-                      if (resposta.ok) {
-                        mostrarSo("ligado");
-                        return;
-                      }
-                      // O servidor não confirmou. Desfazemos a inscrição no
-                      // aparelho: deixá-la de pé faria o navegador achar que
-                      // está tudo certo, e o cartaz nunca mais apareceria
-                      // para uma pessoa que na verdade não vai receber nada.
-                      return inscricao.unsubscribe().then(function () {
-                        mostrarSo("nao-deu");
-                      });
-                    });
-                  });
-              })
-              .catch(function () {
-                mostrarSo("nao-deu");
+            pedirPermissao(registro)
+              .then(function (desfecho) {
+                mostrarSo(desfecho === "default" ? "convite" : desfecho);
               })
               .then(function () {
                 botao.disabled = false;
               });
           });
         }
+
+        if (!abreSozinho()) {
+          mostrarSo("convite");
+          return;
+        }
+
+        // O caminho que o mantenedor pediu: a caixa do navegador, direto.
+        // O cartaz só entra em cena quando tem algo a dizer.
+        return pedirPermissao(registro).then(function (desfecho) {
+          if (desfecho === "ligado") {
+            // Deu certo sozinho: a página fica LIMPA. A própria caixa do
+            // navegador já foi o aviso, e um cartaz de "pronto" depois dela
+            // seria o botão na página que este caminho existe para não ter.
+            return;
+          }
+          // Recusou, deu erro, ou o navegador engoliu o pedido: aí sim o
+          // cartaz aparece, porque tem uma explicação a dar.
+          mostrarSo(desfecho === "default" ? "convite" : desfecho);
+        });
       });
     })
     .catch(function () {
