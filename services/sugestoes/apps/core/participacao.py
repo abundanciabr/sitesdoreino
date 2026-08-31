@@ -160,6 +160,80 @@ ETAPAS = (
 # sobre o que existe no banco (`tests/test_faixa_de_roadmap.py` mede isso).
 SAIDAS = (Sugestao.Status.MESCLADO,)
 
+# O que cada etapa QUER DIZER, em português de quem nunca leu um roadmap.
+#
+# Existe porque a Caixa mostrava as etapas há uma semana e nunca dissera o que
+# elas significam: a linha do tempo da ideia desenhava quatro bolinhas com nome
+# e data, a faixa do quadro desenhava quatro colunas, e nenhuma das duas telas
+# explicava nada. Quem perguntou foi o mantenedor, em 31/08/2026, ao propor
+# renomear "Em análise" para "Em votação" — o nome ficou (decisão dele, no mesmo
+# dia), e o que faltava mesmo era a explicação.
+#
+# **Uma fonte só, e as DUAS telas leem dela.** É a lei anti-duplicação do
+# `CLAUDE.md` aplicada a texto: o dia em que alguém melhorar a frase de
+# "Planejado", ela melhora nos dois lugares ou em nenhum. O guarda de
+# `tests/test_a_caixa_explica_as_etapas.py` reprova a cópia literal num template.
+#
+# Inclui `nao_planejado` e `mesclado`, que NÃO são zona da faixa mas têm selo na
+# página da ideia: o aluno que abre uma recusada precisa da mesma explicação que
+# o que abre uma planejada, e um selo sem legenda seria o buraco de novo.
+EXPLICACAO_DAS_ETAPAS = {
+    Sugestao.Status.EM_ANALISE: (
+        "A ideia chegou e ainda não foi decidida. É aqui que o seu voto pesa "
+        "mais, porque é ele que mostra à equipe o que mais gente quer. "
+        "Enquanto isso, a equipe lê, avalia e escreve a resposta."
+    ),
+    Sugestao.Status.PLANEJADO: (
+        "A equipe decidiu fazer. Ainda não começou, e ainda não tem data " "marcada."
+    ),
+    Sugestao.Status.EM_DESENVOLVIMENTO: (
+        "Alguém está construindo isso agora. É a última parada antes de ir "
+        "para o ar."
+    ),
+    Sugestao.Status.IMPLEMENTADO: ("Está pronto e no ar. Pode usar."),
+    Sugestao.Status.NAO_PLANEJADO: (
+        "A equipe decidiu não fazer. O motivo está escrito dentro da ideia, "
+        "porque um não sem explicação não é resposta."
+    ),
+    Sugestao.Status.MESCLADO: (
+        "Essa ideia virou uma outra, porque as duas pediam a mesma coisa. Os "
+        "votos e a conversa continuam valendo na ideia que ficou."
+    ),
+}
+
+# A frase que sozinha justifica a legenda existir, e que nenhuma tela dizia.
+#
+# **Ela descreve o código, não uma intenção:** `votar()` não olha o status em
+# nenhum momento — só recusa a sugestão arquivada. Votar numa ideia já
+# implementada funciona hoje e continua funcionando (decisão do mantenedor,
+# 31/08/2026: "o voto continua aberto"). Sem esta frase, quem lê "Em análise" na
+# primeira bolinha conclui sozinho que a votação fecha quando a ideia anda, e
+# para de votar no que já está no trilho.
+VOTAR_NUNCA_FECHA = (
+    "Votar nunca fecha: dá para votar numa ideia em qualquer etapa. Mas é na "
+    "primeira que o seu voto decide se ela entra."
+)
+
+
+def legenda_das_etapas():
+    """As etapas do caminho, cada uma com o nome e o que ela quer dizer.
+
+    Só as quatro de `ETAPAS`: a legenda acompanha a linha do tempo e a faixa,
+    que desenham o CAMINHO. As duas saídas (`nao_planejado`, `mesclado`) têm a
+    explicação delas em `EXPLICACAO_DAS_ETAPAS` e aparecem por outro caminho, o
+    selo da própria ideia — pô-las na legenda faria a legenda listar seis
+    passos para uma linha que tem quatro.
+    """
+    return [
+        {
+            "chave": etapa,
+            "rotulo": Sugestao.Status(etapa).label,
+            "explicacao": EXPLICACAO_DAS_ETAPAS[etapa],
+        }
+        for etapa in ETAPAS
+    ]
+
+
 # Quantos marcos uma zona desenha antes de virar "+ N". A zona é uma faixa
 # horizontal estreita: cem losangos ali não informam nada e ainda empurram as
 # quatro zonas para alturas diferentes. O corte é feito em Python sobre a MESMA
@@ -574,6 +648,11 @@ def linha_do_tempo(sugestao):
             "rotulo": Sugestao.Status(etapa).label,
             "data": marcos.get(etapa),
             "feita": indice <= atual,
+            # O `title` de cada bolinha. A legenda por extenso vem logo abaixo,
+            # no mesmo bloco; isto é o atalho de quem passa o mouse — e, como o
+            # rótulo do marco da faixa (LICOES §6), o texto que um leitor de
+            # tela anuncia no lugar de uma bolinha sem nome.
+            "explicacao": EXPLICACAO_DAS_ETAPAS[etapa],
         }
         for indice, etapa in enumerate(ETAPAS)
     ]
@@ -700,6 +779,12 @@ def ver_quadro(request, ator):
             # não crescem com o tamanho do quadro (ver `_marcos`). E as duas
             # recebem a categoria escolhida: a faixa encolhe junto com a grade.
             "faixa": faixa_de_roadmap(quadro, categoria_slug=escolhida),
+            # A MESMA legenda da página da ideia, da mesma fonte. Duas telas
+            # desenham as etapas; duas telas as explicam. Copiar o texto para o
+            # template faria a segunda envelhecer sozinha, e é o que o guarda de
+            # `test_a_caixa_explica_as_etapas.py` proíbe.
+            "legenda_das_etapas": legenda_das_etapas(),
+            "votar_nunca_fecha": VOTAR_NUNCA_FECHA,
             "fora_do_trilho": fora_do_trilho(quadro, categoria_slug=escolhida),
             # "Meu impacto" (V1.2) mora DENTRO do quadro pelo mesmo motivo da
             # faixa: é uma seção com `id`, que o botão do trilho alcança por
@@ -814,6 +899,16 @@ def _pagina_da_sugestao(request, ator, sugestao, *, erros=(), status=200):
             "ja_votou": sugestao.votos.filter(autor=ator.identidade).exists(),
             "comentarios": sugestao.comentarios.select_related("autor"),
             "linha_do_tempo": linha_do_tempo(sugestao),
+            "legenda_das_etapas": legenda_das_etapas(),
+            # A explicação da etapa em que ESTA ideia está — inclusive quando é
+            # uma das duas saídas, que não têm bolinha na linha do tempo. É o
+            # `.get` e não o `[...]`: um status novo no model sem texto aqui
+            # apaga a frase, e não derruba a página de quem só queria ler uma
+            # ideia. O guarda que impede esse silêncio é
+            # `test_toda_situacao_tem_explicacao`, que casa a lista do model com
+            # as chaves do dicionário.
+            "explicacao_da_situacao": EXPLICACAO_DAS_ETAPAS.get(sugestao.status, ""),
+            "votar_nunca_fecha": VOTAR_NUNCA_FECHA,
             "notas_da_equipe": notas_da_equipe(sugestao),
             "erros": list(erros),
         },

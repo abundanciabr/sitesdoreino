@@ -358,6 +358,59 @@ textarea { resize: vertical; min-height: 72px; }
 .etapa:last-child .risco { display: none; }
 .etapa span { font-family: var(--f-mono); font-size: 10px; color: var(--texto-tenue); text-align: center; line-height: 1.4; }
 
+/* --- a legenda das etapas (31/08/2026) ----------------------------------
+   O MESMO bloco em duas telas de larguras muito diferentes: o inspetor estreito
+   da página da ideia e a faixa larga do quadro. Por isso nada aqui fixa
+   largura — ele herda a do pai e quebra sozinho.
+
+   `.situacao` é a frase solta do topo da página da ideia (a explicação da etapa
+   em que ELA está); `.legenda` é o bloco que se abre com as quatro. */
+
+.situacao { font-size: 13px; color: var(--texto-fraco); line-height: 1.55; margin: -8px 0 18px; }
+
+.legenda { margin: 4px 0 18px; border-top: 1px solid var(--linha); padding-top: 12px; }
+.legenda summary {
+  font-size: 12px; color: var(--texto-fraco); cursor: pointer;
+  list-style: none; display: flex; align-items: center; gap: 6px;
+}
+/* A setinha própria: a nativa do `<details>` muda de forma entre navegadores, e
+   no Safari ela nem obedece a `list-style: none` sem este pseudo-elemento. */
+.legenda summary::-webkit-details-marker { display: none; }
+.legenda summary::before {
+  content: "▸"; color: var(--texto-tenue); font-size: 10px;
+  transition: transform .15s ease;
+}
+.legenda[open] summary::before { transform: rotate(90deg); }
+.legenda summary:hover { color: var(--texto); }
+
+.legenda-lista { margin: 12px 0 0; }
+.legenda-item + .legenda-item { margin-top: 10px; }
+.legenda-item dt {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--texto); font-weight: 500;
+}
+.legenda-item dt .bolinha {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--texto-tenue); flex-shrink: 0;
+}
+.legenda-item dd { margin: 3px 0 0 14px; font-size: 12px; color: var(--texto-fraco); line-height: 1.55; }
+
+/* A cor sai do STATUS do model, como na faixa: etapa nova nasce sem cor em vez
+   de casar com a cor de outra por acidente de ordem. */
+.legenda-item[data-etapa="planejado"] .bolinha { background: var(--azul); }
+.legenda-item[data-etapa="em_desenvolvimento"] .bolinha { background: var(--laranja); }
+.legenda-item[data-etapa="implementado"] .bolinha { background: var(--verde); }
+
+.legenda-voto {
+  margin: 14px 0 0; padding: 10px 12px; border-radius: 8px;
+  background: var(--laranja-fraco); color: var(--texto-fraco);
+  font-size: 12px; line-height: 1.55;
+}
+
+/* Na faixa do quadro a legenda não é um apêndice do inspetor: ela fecha a
+   seção inteira, e por isso ganha o respiro que lá dentro seria exagero. */
+.roadmap .legenda { margin-top: 14px; border-top: none; padding-top: 0; }
+
 .ficha { margin-bottom: 16px; }
 .ficha h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--texto-tenue); margin: 0 0 5px; font-weight: 500; }
 .ficha p { font-size: 13px; color: var(--texto-fraco); margin: 0; line-height: 1.55; }

@@ -1,0 +1,14 @@
+{
+  "arquivo": "086-a-caixa-passa-a-explicar-ao-aluno-o-que-cada-etapa-da-linha-",
+  "id": "TAR-086",
+  "titulo": "A Caixa passa a explicar ao aluno o que cada etapa da linha do tempo quer dizer",
+  "toca": [
+    "sugestoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + deploy verde da celula sugestoes; a pagina da ideia e o roadmap mostram a explicacao das quatro etapas",
+  "despacho": "Contexto: em 31/08/2026 o mantenedor perguntou se \"Em analise\" nao deveria virar\n\"Em votacao\" na linha do tempo da Caixa de Sugestoes, para incentivar os alunos a\nvotar. Decisao dele, pela caixa estruturada: o NOME CONTINUA \"Em analise\"; o voto\ncontinua aberto em qualquer etapa (como ja e hoje); e a Caixa passa a EXPLICAR ao\naluno o que cada etapa quer dizer, coisa que hoje nao existe em lugar nenhum.\n\nO trabalho:\n\n1. Uma unica fonte para os textos das etapas, em services/sugestoes/apps/core/participacao.py,\n   ao lado da constante ETAPAS. Inclua tambem \"nao_planejado\" e \"mesclado\", que a\n   pagina da ideia mostra pelo selo. Lei anti-duplicacao: as duas superficies leem\n   da mesma fonte, ninguem copia texto.\n2. A pagina da ideia (templates/sugestoes/sugestao.html) explica a etapa ATUAL da\n   ideia, e traz a legenda das quatro etapas junto da linha do tempo \"Por onde ela andou\".\n3. A faixa de roadmap do quadro (templates/sugestoes/quadro.html) ganha a mesma legenda.\n4. O texto diz, com todas as letras, que votar nunca fecha: da para votar numa ideia\n   em qualquer etapa, e e na primeira que o voto decide se a ideia entra.\n5. Guardas: teste que prova que a explicacao chega nas duas telas e que as duas leem\n   da MESMA fonte (uma copia de texto no template reprova).\n\nRegras da casa: sem travessao em texto publicado (ci/travessao.py), orcamento de 15\narquivos, evidencia vermelho->verde, registro do livro embarcado no proprio PR.",
+  "origem": "pedido do mantenedor em 31/08/2026, na conversa sobre renomear Em analise",
+  "criada_em": "2026-08-31"
+}
