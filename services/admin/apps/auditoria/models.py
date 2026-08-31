@@ -98,6 +98,13 @@ class Registro(models.Model):
     # com o historico porque ele e metade do que substituiu o `git log` destes
     # textos (`DECISAO-o-editor-de-documentos.md` §6).
     RESTAURAR_DOCUMENTO = "restaurar_documento"
+    # [LUGAR] 31/08/2026: os tres gestos que mexem no LUGAR do documento, e nao
+    # no texto dele. Separados de EDITAR pela mesma razao que ARQUIVAR_IDEIA nao
+    # e APAGAR_IDEIA: quem ler esta tabela em meses precisa distinguir "reescrevi
+    # o texto" de "tirei a pagina do ar" e de "destrui o documento".
+    ARQUIVAR_DOCUMENTO = "arquivar_documento"
+    DESARQUIVAR_DOCUMENTO = "desarquivar_documento"
+    APAGAR_DOCUMENTO = "apagar_documento"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -116,6 +123,9 @@ class Registro(models.Model):
         (CRIAR_DOCUMENTO, "criar um documento do site"),
         (EDITAR_DOCUMENTO, "editar um documento do site"),
         (RESTAURAR_DOCUMENTO, "voltar um documento a uma versao anterior"),
+        (ARQUIVAR_DOCUMENTO, "tirar um documento do ar, guardando o texto"),
+        (DESARQUIVAR_DOCUMENTO, "devolver um documento arquivado"),
+        (APAGAR_DOCUMENTO, "apagar um documento definitivamente"),
     ]
 
     OK = "ok"
@@ -137,7 +147,13 @@ class Registro(models.Model):
     quem_email = models.EmailField()
     quem_id = models.CharField(max_length=64, blank=True, default="")
 
-    acao = models.CharField(max_length=20, choices=ACOES)
+    # 32, e nao 20: `desarquivar_documento` tem 21 caracteres e o Django recusa
+    # o modelo inteiro quando a coluna nao cabe a maior escolha. Alargar uma
+    # coluna de texto e a metade "expand" do Expand-and-Contract — o codigo
+    # anterior continua escrevendo e lendo as mesmas palavras, e nenhuma linha
+    # antiga precisa ser tocada. CUIDADO ao mexer aqui: no SQLite isso
+    # reconstroi a tabela e derruba os gatilhos (`armadilhas/246`).
+    acao = models.CharField(max_length=32, choices=ACOES)
 
     # SOBRE O QUÊ. `alvo` é o id da linha na `alunos` — um identificador opaco
     # de OUTRA célula, guardado como texto de propósito: não é chave estrangeira
