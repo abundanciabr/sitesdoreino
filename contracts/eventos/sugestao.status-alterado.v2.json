@@ -55,6 +55,10 @@
           "type": "string",
           "description": "Id OPACO da identidade dentro da celula sugestoes — inalterado desde o v1, e continua sendo local de proposito. Serve a quem estuda o FATO (analise, gamificacao) dentro do mundo da Caixa. Quem precisa FALAR com a pessoa nao usa este campo: usa o 'destinatario_id' do evento 'notificacao.devida', que ja vem no id da plataforma. NUNCA e o e-mail (DECISAO-EVO-01 §3)."
         },
+        "autor_da_sugestao_id_da_plataforma": {
+          "type": "string",
+          "description": "Id da PLATAFORMA de quem escreveu a sugestao — o beneficiario das regras de pontuacao cujo alvo NAO e quem agiu (quem escreveu algo que foi votado ou aceito). Existe ao lado de `autor_da_sugestao_id`/`autor_id`, que continuam sendo ids LOCAIS da celula `sugestoes` e NAO servem para creditar ninguem fora dela: a Caixa guarda os dois lado a lado ([INV-SUG11]) e eles sao cunhados separadamente. OPCIONAL pela mesma razao do `ator_id` do envelope, e com o mesmo desfecho seguro: ausente significa 'nao sei de quem e', e quem consome nao credita. Acrescentado em 31/08/2026, no Rito que ligou a economia da gamificacao."
+        },
         "status_anterior": {
           "type": "string",
           "enum": [

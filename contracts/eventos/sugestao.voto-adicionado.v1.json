@@ -27,6 +27,10 @@
       "type": "string",
       "format": "date-time"
     },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de quem causou o fato — o mesmo id que `getSession` da `identidade` devolve, e o unico identificador de pessoa que atravessa as celulas (PLANO-MESTRE das notificacoes, §2). Fica no ENVELOPE, e nao dentro de `data`, de proposito: qualquer celula sabe ler 'quem fez isto' sem conhecer o formato do assunto. NUNCA e o e-mail (DECISAO-EVO-01 §3). OPCIONAL, e a escolha e deliberada: `Identidade.id_da_plataforma` e `null=True` na Caixa por decisao dela ('nada disto pode recusar ninguem'), e este evento nasce DENTRO da transacao do fato ([INV-P6]) — exigir o campo faria criar uma sugestao FALHAR para quem ainda nao tem o id. Quem consome trata a ausencia como 'nao sei de quem e' e NAO credita: e o unico desfecho seguro, porque o id local que viaja em `data` pertence a outro espaco de nomes e creditaria uma pessoa fantasma. Acrescentado em 31/08/2026, no Rito que ligou a economia da gamificacao."
+    },
     "data": {
       "type": "object",
       "additionalProperties": false,
@@ -48,6 +52,10 @@
         "autor_id": {
           "type": "string",
           "description": "Id OPACO da identidade dentro da célula sugestoes. NUNCA é o e-mail: por decisão do mantenedor (DECISAO-EVO-01 §3) o e-mail vive numa linha só, dentro da Caixa. Consumidor que precise falar com a pessoa não resolve isto sozinho."
+        },
+        "autor_da_sugestao_id_da_plataforma": {
+          "type": "string",
+          "description": "Id da PLATAFORMA de quem escreveu a sugestao — o beneficiario das regras de pontuacao cujo alvo NAO e quem agiu (quem escreveu algo que foi votado ou aceito). Existe ao lado de `autor_da_sugestao_id`/`autor_id`, que continuam sendo ids LOCAIS da celula `sugestoes` e NAO servem para creditar ninguem fora dela: a Caixa guarda os dois lado a lado ([INV-SUG11]) e eles sao cunhados separadamente. OPCIONAL pela mesma razao do `ator_id` do envelope, e com o mesmo desfecho seguro: ausente significa 'nao sei de quem e', e quem consome nao credita. Acrescentado em 31/08/2026, no Rito que ligou a economia da gamificacao."
         },
         "total_votos": {
           "type": "integer",
