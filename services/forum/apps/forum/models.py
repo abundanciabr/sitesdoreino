@@ -122,11 +122,11 @@ class Area(models.Model):
     class Visibilidade(models.TextChoices):
         # Visitante lê e o Google indexa. É a aposta de crescimento da escola:
         # dúvida respondida é porta de entrada gratuita e permanente.
-        PUBLICA = "publica", "Pública — qualquer um lê"
+        PUBLICA = "publica", "Pública: qualquer um lê"
         # Só quem tem matrícula válida (a `alunos` é quem responde isso).
-        ALUNOS = "alunos", "Alunos — só quem comprou"
+        ALUNOS = "alunos", "Alunos: só quem comprou"
         # Trancada num curso específico, via `curso_id`.
-        TURMA = "turma", "Turma — só quem está no curso"
+        TURMA = "turma", "Turma: só quem está no curso"
 
     class QuemEscreve(models.TextChoices):
         # Escrever exige matrícula. Numa área trancada isso é "aluno lê, aluno

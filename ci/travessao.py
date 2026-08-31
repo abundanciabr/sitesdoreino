@@ -49,28 +49,44 @@ Eles são despidos antes da contagem — e sem essa poda a dívida medida aqui
 seria quatro vezes maior e quase toda falsa, o que treinaria todo mundo a
 ignorar o portão. Medir a coisa errada com precisão é como um portão morre.
 
-O QUE ELE **NÃO** MEDE, dito na cara
-------------------------------------
-Texto publicado que more em `.py`. A superfície é de `templates/`,
-`traducoes/` e `documentos/`, e só — e isto **é um buraco real**, não uma
-categoria vazia. Ele tem pelo menos um morador conhecido: as descrições das
-áreas do fórum nascem em
-`services/forum/apps/forum/management/commands/semear_areas.py` e aparecem em
-`meshcraft.top/forum`.
+O TEXTO DE TELA QUE MORA EM CÓDIGO (31/08/2026)
+-----------------------------------------------
+Até 31/08/2026 este parágrafo se chamava "o que ele NÃO mede" e prometia que a
+superfície cresceria "se um dia a cópia do site passar a morar em `.py`". Esse
+dia chegou, e o buraco era maior que o morador que o parágrafo citava: os
+RÓTULOS de todo `TextChoices` sempre foram texto de tela morando em `models.py`.
 
-Varrer `.py` inteiro seria pior que o buraco: das 160 strings com travessão nas
-células públicas, a esmagadora maioria é docstring, mensagem de log e texto de
-validação que só um programador lê. O caminho certo é a superfície crescer para
-a classe ESTREITA de arquivos que existem para criar conteúdo público (os
-`semear_*`), lendo só as constantes de string que não são docstring.
+    EM_ANALISE = "em_analise", "Em análise"
+    #            ^ contrato       ^ o que o aluno lê no selo
 
-Também fica de fora `painel/ia/`, servido em `/mapa-ia/` sem porta: é mapa
-TÉCNICO, escrito para uma IA de fora auditar o sistema, e a régua do
-mantenedor é a leitura de PESSOAS. São 314 travessões que nenhum aluno lê.
+O primeiro elemento viaja em contrato congelado, migration e banco; trocá-lo é
+um Rito. O segundo sai em `{{ objeto.get_status_display }}` e nunca esteve sob
+régua nenhuma. Entram agora DOIS conjuntos de `.py`, com regras diferentes de
+propósito:
 
-Se um dia a cópia do site passar a morar em `.py`, é aqui que a superfície
-cresce. Enquanto não passar, este parágrafo é a diferença entre um limite
-conhecido e um buraco.
+* **Quem declara `Choices` com rótulo escrito entra SOZINHO**, sem marca e sem
+  lista, e só o RÓTULO é medido. É a classe que já mordeu, e não depende de
+  ninguém lembrar de nada.
+* **Quem se declara** com o comentário `ci:texto-publicado` entra INTEIRO, pela
+  mesma peneira dos comandos de gestão. É para a cópia de site que não cabe em
+  `Choices` — um dicionário de frases escrito para o aluno, como o
+  `EXPLICACAO_DAS_ETAPAS` da Caixa de Sugestões.
+
+`migrations/` fica fora das duas: o rótulo lá é fotografia do modelo naquele
+dia, não a frase viva.
+
+**Por que a segunda metade é opt-in, dito na cara:** para ela não existe forma
+mecânica barata. Medido em 31/08/2026, varrer toda constante MAIÚSCULA de módulo
+nas células públicas daria 2758 strings e 94 travessões, quase todos em mensagem
+de erro e no próprio painel de travessões do Admin, que lista as riscas como
+DADO. Medir a coisa errada com precisão é como um portão morre. Quem esquecer a
+marca fica de fora, e essa é a fraqueza que sobra — mitigada por a primeira
+metade, que é o caso comum, não depender de marca nenhuma.
+
+O que continua fora, e por decisão e não por esquecimento: `painel/ia/`, servido
+em `/mapa-ia/` sem porta, é mapa TÉCNICO escrito para uma IA de fora auditar o
+sistema, e a régua do mantenedor é a leitura de PESSOAS. São 314 travessões que
+nenhum aluno lê.
 
 A CATRACA DA DÍVIDA HERDADA
 ---------------------------
@@ -103,6 +119,7 @@ import ast
 import fnmatch
 import re
 import sys
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -119,6 +136,31 @@ from _nucleo import (  # noqa: E402
 
 LISTA_DE_HERDADOS = "ci/travessoes-herdados.txt"
 LISTA_DE_BASTIDOR = "ci/texto-publico-bastidor.txt"
+
+# A marca que um módulo `.py` põe em si mesmo para dizer "as minhas constantes
+# de string saem na tela de alguém". É COMENTÁRIO, não código: não custa um
+# import, não muda o comportamento em produção, e some do texto medido (o `.py`
+# é despido de comentários antes da contagem).
+#
+# Ela existe porque a regra mecânica de baixo (`_arquivos_com_rotulos`) resolve
+# a classe MAIS COMUM de cópia de site em código — o rótulo de um `TextChoices`
+# — e não resolve a outra: um dicionário de frases escrito para o aluno ler,
+# como o `EXPLICACAO_DAS_ETAPAS` da Caixa de Sugestões. Para essa não existe
+# forma mecânica barata: medido em 31/08/2026, varrer toda constante MAIÚSCULA
+# de módulo nas células públicas daria 2758 strings e 94 travessões, quase todos
+# em mensagem de erro e no próprio painel de travessões do Admin, que lista as
+# riscas como DADO. Medir a coisa errada com precisão é como um portão morre.
+#
+# É opt-in, e isso é uma fraqueza declarada, não escondida: quem esquecer a
+# marca fica de fora. O que a torna honesta é ela não ser a única linha de
+# defesa — o rótulo de `Choices`, que é o caso que já mordeu, entra sozinho.
+MARCA_DE_TEXTO_PUBLICO = "ci:texto-publicado"
+
+# Os dois modos de ler um `.py`. O sufixo do arquivo não basta para decidir:
+# dois arquivos `.py` da superfície podem ser medidos de formas diferentes, e é
+# `modo_de_leitura` quem escolhe.
+MODO_PY_INTEIRO = ".py"
+MODO_PY_ROTULOS = ".py:rotulos"
 
 # ---------------------------------------------------------------------------
 # O que é travessão. Cada forma tem nome, porque a recusa cita o nome.
@@ -203,7 +245,11 @@ class Achado:
 # ---------------------------------------------------------------------------
 def _apagar(texto: str, inicio: int, fim: int) -> str:
     miolo = texto[inicio:fim]
-    return texto[:inicio] + "".join("\n" if c == "\n" else " " for c in miolo) + texto[fim:]
+    return (
+        texto[:inicio]
+        + "".join("\n" if c == "\n" else " " for c in miolo)
+        + texto[fim:]
+    )
 
 
 def _podar_par(texto: str, abre: str, fecha: str) -> str:
@@ -276,7 +322,9 @@ def _podar_comentario_de_linha(texto: str, marca: str, exigir_folga: bool) -> st
                     corte = pos
                     break
             pos += 1
-        saida.append(linha if corte is None else linha[:corte] + " " * (len(linha) - corte))
+        saida.append(
+            linha if corte is None else linha[:corte] + " " * (len(linha) - corte)
+        )
     return "\n".join(saida)
 
 
@@ -284,7 +332,9 @@ def _podar_comentario_de_yaml(texto: str) -> str:
     return _podar_comentario_de_linha(texto, "#", exigir_folga=True)
 
 
-RE_BLOCO_DE_CODIGO = re.compile(r"<(script|style)\b[^>]*>(.*?)</\1\s*>", re.DOTALL | re.IGNORECASE)
+RE_BLOCO_DE_CODIGO = re.compile(
+    r"<(script|style)\b[^>]*>(.*?)</\1\s*>", re.DOTALL | re.IGNORECASE
+)
 
 
 def _podar_comentario_de_codigo(texto: str) -> str:
@@ -330,10 +380,14 @@ def _so_as_strings_de_codigo(texto: str) -> str:
 
     docstrings: set[int] = set()
     for no in ast.walk(arvore):
-        if isinstance(no, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+        if isinstance(
+            no, (ast.Module, ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+        ):
             if no.body and isinstance(no.body[0], ast.Expr):
                 primeiro = no.body[0].value
-                if isinstance(primeiro, ast.Constant) and isinstance(primeiro.value, str):
+                if isinstance(primeiro, ast.Constant) and isinstance(
+                    primeiro.value, str
+                ):
                     docstrings.add(id(primeiro))
 
     linhas = texto.split("\n")
@@ -352,6 +406,77 @@ def _so_as_strings_de_codigo(texto: str) -> str:
     return "\n".join("".join(linha) for linha in tela)
 
 
+def _so_os_rotulos_de_choices(texto: str) -> str:
+    """Só o RÓTULO de cada membro de um `TextChoices`, no lugar exato dele.
+
+    Um `TextChoices` tem duas metades por linha, e só a segunda é interface:
+
+        EM_ANALISE = "em_analise", "Em análise"
+        #            ^ contrato       ^ o que a pessoa lê na tela
+
+    A primeira viaja em contrato congelado, migration e banco; trocá-la é um
+    Rito. A segunda sai em `{{ objeto.get_status_display }}`, no selo, na linha
+    do tempo e no aviso — e nunca esteve sob portão de texto nenhum, porque
+    mora num arquivo de MODELO.
+
+    Só o segundo elemento em diante da tupla entra. O primeiro é deixado de
+    fora de propósito: ele é identificador, não frase, e um travessão ali seria
+    um problema de outra natureza (e outro portão).
+
+    Mesma tela em branco de `_so_as_strings_de_codigo`: linha e coluna
+    preservadas, para a recusa apontar o lugar certo do arquivo original.
+    """
+    try:
+        arvore = ast.parse(texto)
+    except SyntaxError:
+        return ""
+
+    linhas = texto.split("\n")
+    tela = [[" "] * len(linha) for linha in linhas]
+    for no in ast.walk(arvore):
+        if not isinstance(no, ast.ClassDef) or not _eh_classe_de_choices(no):
+            continue
+        for membro in no.body:
+            if not isinstance(membro, ast.Assign) or not isinstance(
+                membro.value, ast.Tuple
+            ):
+                continue
+            for elemento in membro.value.elts[1:]:
+                if not (
+                    isinstance(elemento, ast.Constant)
+                    and isinstance(elemento.value, str)
+                ):
+                    continue
+                if elemento.end_lineno is None:
+                    continue
+                for numero in range(elemento.lineno, elemento.end_lineno + 1):
+                    original = linhas[numero - 1]
+                    comeco = elemento.col_offset if numero == elemento.lineno else 0
+                    fim = (
+                        elemento.end_col_offset
+                        if numero == elemento.end_lineno
+                        else len(original)
+                    )
+                    for coluna in range(comeco, min(fim, len(original))):
+                        tela[numero - 1][coluna] = original[coluna]
+    return "\n".join("".join(linha) for linha in tela)
+
+
+def _eh_classe_de_choices(no: ast.ClassDef) -> bool:
+    """A classe herda de algo terminado em `Choices`.
+
+    Casa `models.TextChoices`, `TextChoices`, `models.IntegerChoices` e o
+    `Choices` cru, sem importar o Django aqui — o portão roda sem as células
+    instaladas. O sufixo, e não a lista fechada de nomes, porque uma base
+    própria (`class MinhasChoices(models.TextChoices)`) continua sendo choices.
+    """
+    for base in no.bases:
+        nome = base.attr if isinstance(base, ast.Attribute) else getattr(base, "id", "")
+        if nome.endswith("Choices"):
+            return True
+    return False
+
+
 def despir(texto: str, sufixo: str) -> str:
     """O texto como o leitor o recebe: sem os comentários de quem escreveu."""
     if sufixo in (".html", ".htm"):
@@ -363,7 +488,9 @@ def despir(texto: str, sufixo: str) -> str:
         return _podar_comentario_de_yaml(texto)
     if sufixo == ".md":
         return _podar_par(texto, "<!--", "-->")
-    if sufixo == ".py":
+    if sufixo == MODO_PY_ROTULOS:
+        return _so_os_rotulos_de_choices(texto)
+    if sufixo == MODO_PY_INTEIRO:
         return _so_as_strings_de_codigo(texto)
     return texto
 
@@ -396,6 +523,54 @@ def _padroes_de_bastidor(raiz: Path) -> list[str]:
             )
         padroes.append(padrao.strip())
     return padroes
+
+
+def _define_choices(fonte: str) -> bool:
+    r"""O arquivo declara ao menos uma classe de `Choices` com rótulo escrito.
+
+    Rótulo ESCRITO é a metade que importa: `PUBLICA = "publica"` sozinho não
+    tem frase nenhuma (o Django deriva o rótulo do nome), e um arquivo assim não
+    tem o que medir. Só a forma de tupla entra.
+
+    O silêncio em volta do `ast.parse` não é preguiça: esta função agora lê TODO
+    `.py` de célula à procura de `Choices`, e um `SyntaxWarning` de sequência de
+    escape mal escrita num arquivo qualquer (`"\g"` numa regex sem `r`) sairia
+    no meio da saída do portão, parecendo achado dele. O aviso é legítimo e
+    continua aparecendo para quem roda aquele arquivo; aqui ele é ruído de
+    instrumento.
+    """
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", SyntaxWarning)
+            arvore = ast.parse(fonte)
+    except SyntaxError:
+        return False
+    for no in ast.walk(arvore):
+        if not isinstance(no, ast.ClassDef) or not _eh_classe_de_choices(no):
+            continue
+        for membro in no.body:
+            if isinstance(membro, ast.Assign) and isinstance(membro.value, ast.Tuple):
+                if len(membro.value.elts) > 1:
+                    return True
+    return False
+
+
+def modo_de_leitura(caminho: Path, texto: str) -> str:
+    """Como este arquivo deve ser despido antes da contagem.
+
+    Para tudo que não é `.py`, o modo É o sufixo. Para um `.py` a pergunta é
+    outra: o arquivo INTEIRO é cópia de site (um comando de gestão, ou um
+    módulo que se declarou com a marca), ou só os rótulos de `Choices` dele?
+
+    A marca vence o `Choices` de propósito. Um `models.py` que se declarou
+    inteiro público está dizendo que tem mais texto de tela do que os rótulos, e
+    medir só os rótulos ali seria obedecer à metade mais fraca da declaração.
+    """
+    if caminho.suffix.lower() != ".py":
+        return caminho.suffix.lower()
+    if caminho.parent.name == "commands" or MARCA_DE_TEXTO_PUBLICO in texto:
+        return MODO_PY_INTEIRO
+    return MODO_PY_ROTULOS
 
 
 def _dentro_de_pasta_ignorada(relativo: Path) -> bool:
@@ -445,6 +620,41 @@ def superficie(raiz: Path) -> list[Path]:
             achados |= {
                 p for p in pasta.glob("*.py") if p.is_file() and p.name != "__init__.py"
             }
+
+        # O CÓDIGO QUE ESCREVE TEXTO DE TELA. O buraco que o parágrafo "o que
+        # ele NÃO mede" desta docstring anunciava desde 30/08/2026, fechado em
+        # 31/08/2026 (TAR-087, `armadilhas/254`), com mandato do mantenedor
+        # porque `ci/` é caminho CODEOWNERS.
+        #
+        # Entram DOIS conjuntos, e a diferença entre eles é o ponto:
+        #
+        # 1. **Quem tem `Choices` entra sozinho** — sem marca, sem lista, sem
+        #    ninguém lembrar. É a classe que já mordeu: os seis rótulos de
+        #    `Sugestao.Status` ("Em análise" e companhia) sempre foram texto que
+        #    o aluno lê, morando em `models.py`, fora de qualquer portão. Aqui
+        #    só o RÓTULO é medido (ver `_so_os_rotulos_de_choices`): o valor
+        #    viaja em contrato congelado e não é frase.
+        # 2. **Quem se declara** com a marca `ci:texto-publicado`, para a cópia
+        #    de site que não cabe em `Choices` — um dicionário de frases para o
+        #    aluno, como o `EXPLICACAO_DAS_ETAPAS` da Caixa. Aí o arquivo INTEIRO
+        #    é medido pela mesma peneira dos comandos de gestão.
+        #
+        # `migrations/` fica FORA das duas. O rótulo lá é uma fotografia do que
+        # o modelo era no dia, não a frase viva: corrigir a fotografia não muda
+        # uma tela, e um portão que exigisse isso mandaria reescrever história.
+        for arquivo in celula.rglob("*.py"):
+            if not arquivo.is_file() or arquivo.name == "__init__.py":
+                continue
+            if "migrations" in arquivo.relative_to(celula).parts:
+                continue
+            if arquivo in achados:
+                continue
+            try:
+                fonte = arquivo.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            if MARCA_DE_TEXTO_PUBLICO in fonte or _define_choices(fonte):
+                achados.add(arquivo)
 
     bastidor = _padroes_de_bastidor(raiz)
     publicos = []
@@ -496,7 +706,7 @@ def censo(raiz: Path) -> dict[str, list[Achado]]:
                 f"não consegui ler {relativo}",
                 f"{erro}\n\nUm arquivo público ilegível não é um arquivo limpo.",
             ) from erro
-        achados = achar(texto, caminho.suffix.lower(), relativo)
+        achados = achar(texto, modo_de_leitura(caminho, texto), relativo)
         if achados:
             resultado[relativo] = achados
     return resultado
@@ -545,11 +755,13 @@ def rodar(raiz: Path | None = None) -> Relatorio:
 
     novos = {c: a for c, a in vivos.items() if c not in declarados}
     cresceu = {
-        c: (len(a), declarados[c]) for c, a in vivos.items()
+        c: (len(a), declarados[c])
+        for c, a in vivos.items()
         if c in declarados and len(a) > declarados[c]
     }
     encolheu = {
-        c: (len(vivos.get(c, [])), n) for c, n in declarados.items()
+        c: (len(vivos.get(c, [])), n)
+        for c, n in declarados.items()
         if len(vivos.get(c, [])) < n
     }
 
@@ -584,7 +796,9 @@ def rodar(raiz: Path | None = None) -> Relatorio:
         )
     else:
         relatorio.registrar(
-            Resultado("texto-novo", Estado.PASS, "nenhum travessão fora da dívida herdada")
+            Resultado(
+                "texto-novo", Estado.PASS, "nenhum travessão fora da dívida herdada"
+            )
         )
 
     if cresceu:
@@ -595,7 +809,12 @@ def rodar(raiz: Path | None = None) -> Relatorio:
                 linhas.append(f"      linha {achado.linha}: {achado.trecho}")
         linhas += ["", COMO_TROCAR]
         relatorio.registrar(
-            Resultado("divida-cresceu", Estado.FAIL, f"{len(cresceu)} arquivo(s)", "\n".join(linhas))
+            Resultado(
+                "divida-cresceu",
+                Estado.FAIL,
+                f"{len(cresceu)} arquivo(s)",
+                "\n".join(linhas),
+            )
         )
     elif encolheu:
         linhas = [
@@ -626,7 +845,11 @@ def rodar(raiz: Path | None = None) -> Relatorio:
             )
         )
 
-    orfaos = [c for c in declarados if c not in {p.relative_to(raiz).as_posix() for p in superficie(raiz)}]
+    orfaos = [
+        c
+        for c in declarados
+        if c not in {p.relative_to(raiz).as_posix() for p in superficie(raiz)}
+    ]
     if orfaos:
         relatorio.registrar(
             Resultado(
@@ -650,7 +873,9 @@ def main(argv: list[str] | None = None) -> int:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=COMO_TROCAR,
     )
-    parser.add_argument("--listar", action="store_true", help="o censo, para leitura humana")
+    parser.add_argument(
+        "--listar", action="store_true", help="o censo, para leitura humana"
+    )
     parser.add_argument(
         "--herdados",
         action="store_true",
@@ -673,7 +898,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\n{caminho}  ({len(achados)})")
             for achado in achados:
                 print(f"  linha {achado.linha}  {achado.forma}: {achado.trecho}")
-        print(f"\nTOTAL: {sum(len(a) for a in vivos.values())} em {len(vivos)} arquivo(s)")
+        print(
+            f"\nTOTAL: {sum(len(a) for a in vivos.values())} em {len(vivos)} arquivo(s)"
+        )
         return 0
 
     relatorio = rodar()

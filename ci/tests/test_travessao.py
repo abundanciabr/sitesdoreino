@@ -57,7 +57,9 @@ def _cenario(
 def test_travessao_em_pagina_publica_reprova(tmp_path: Path) -> None:
     raiz = _cenario(
         tmp_path,
-        {"services/loja/templates/loja/home.html": "<p>Ele só queria uma coisa — paz.</p>\n"},
+        {
+            "services/loja/templates/loja/home.html": "<p>Ele só queria uma coisa — paz.</p>\n"
+        },
     )
     relatorio = travessao.rodar(raiz)
     assert relatorio.estado is Estado.FAIL
@@ -71,7 +73,8 @@ def test_a_recusa_ensina_as_quatro_trocas(tmp_path: Path) -> None:
     arquivo, e é assim que a regra vira folclore.
     """
     raiz = _cenario(
-        tmp_path, {"services/loja/templates/loja/home.html": "<p>Uma coisa — paz.</p>\n"}
+        tmp_path,
+        {"services/loja/templates/loja/home.html": "<p>Uma coisa — paz.</p>\n"},
     )
     texto = travessao.rodar(raiz).render()
     for pista in ("VÍRGULA", "PARÊNTESES", "DOIS-PONTOS", "ASPAS"):
@@ -86,7 +89,9 @@ def test_toda_forma_de_risca_conta(tmp_path: Path, escrita: str) -> None:
     """Escrever `&mdash;` põe a mesma risca na tela — e escapava de um grep ingênuo."""
     raiz = _cenario(
         tmp_path,
-        {"services/loja/templates/loja/home.html": f"<p>Uma coisa {escrita} paz.</p>\n"},
+        {
+            "services/loja/templates/loja/home.html": f"<p>Uma coisa {escrita} paz.</p>\n"
+        },
     )
     assert travessao.rodar(raiz).estado is Estado.FAIL
 
@@ -100,7 +105,9 @@ def test_celula_nova_entra_sozinha_na_superficie(tmp_path: Path) -> None:
     """
     raiz = _cenario(
         tmp_path,
-        {"services/celula-que-nasceu-hoje/apps/x/templates/x/pagina.html": "<p>a — b</p>\n"},
+        {
+            "services/celula-que-nasceu-hoje/apps/x/templates/x/pagina.html": "<p>a — b</p>\n"
+        },
     )
     assert travessao.rodar(raiz).estado is Estado.FAIL
 
@@ -156,12 +163,14 @@ def test_comentario_nao_e_texto_publicado(tmp_path: Path, corpo: str) -> None:
     assert travessao.rodar(raiz).estado is Estado.PASS
 
 
-def test_comentario_de_yaml_nao_conta_mas_o_texto_da_linha_conta(tmp_path: Path) -> None:
+def test_comentario_de_yaml_nao_conta_mas_o_texto_da_linha_conta(
+    tmp_path: Path,
+) -> None:
     """`#` fora de aspas é nota; dentro de aspas é o texto que o site publica."""
     raiz = _cenario(
         tmp_path,
         {
-            "services/loja/traducoes/a.yaml": "# nota — interna\ntitulo:\n  pt-br: \"limpo\"\n",
+            "services/loja/traducoes/a.yaml": '# nota — interna\ntitulo:\n  pt-br: "limpo"\n',
             "services/loja/traducoes/b.yaml": 'titulo:\n  pt-br: "Promoção # 2 — hoje"\n',
         },
     )
@@ -177,7 +186,9 @@ def test_comentario_de_yaml_nao_conta_mas_o_texto_da_linha_conta(tmp_path: Path)
         "<style>\n/* o porquê deste padding — interno */\n.a { padding: 1px }\n</style>\n",
     ],
 )
-def test_comentario_de_js_e_de_css_nao_e_texto_publicado(tmp_path: Path, corpo: str) -> None:
+def test_comentario_de_js_e_de_css_nao_e_texto_publicado(
+    tmp_path: Path, corpo: str
+) -> None:
     """Reprovar comentário de código é a definição de portão chato.
 
     Achado em 30/08/2026, ao pagar a dívida: três dos 37 travessões "publicados"
@@ -227,7 +238,9 @@ def test_barra_dupla_de_url_nao_corta_a_linha(tmp_path: Path) -> None:
 def test_o_bastidor_declarado_fica_de_fora(tmp_path: Path) -> None:
     raiz = _cenario(
         tmp_path,
-        {"services/admin/templates/admin/painel.html": "<p>só o dono lê — isto aqui</p>\n"},
+        {
+            "services/admin/templates/admin/painel.html": "<p>só o dono lê — isto aqui</p>\n"
+        },
         bastidor="services/admin/templates/admin/painel.html :: tela de administração, atrás da porta\n",
     )
     assert travessao.rodar(raiz).estado is Estado.PASS
@@ -291,10 +304,14 @@ def test_divida_apontando_para_o_nada_reprova(tmp_path: Path) -> None:
     assert "apagada.html" in relatorio.render()
 
 
-@pytest.mark.parametrize("lista", [travessao.LISTA_DE_HERDADOS, travessao.LISTA_DE_BASTIDOR])
+@pytest.mark.parametrize(
+    "lista", [travessao.LISTA_DE_HERDADOS, travessao.LISTA_DE_BASTIDOR]
+)
 def test_lista_ausente_e_ERROR_nunca_PASS(tmp_path: Path, lista: str) -> None:
     """Lista ausente não é lista vazia. "Não consegui medir" nunca vira verde."""
-    raiz = _cenario(tmp_path, {"services/loja/templates/loja/home.html": "<p>a — b</p>\n"})
+    raiz = _cenario(
+        tmp_path, {"services/loja/templates/loja/home.html": "<p>a — b</p>\n"}
+    )
     (raiz / lista).unlink()
     assert travessao.rodar(raiz).estado is Estado.ERROR
 
@@ -335,7 +352,9 @@ def test_texto_que_o_semeador_publica_conta(tmp_path: Path) -> None:
         'def f():\n    """O porquê disto — só para quem programa."""\n    return 1\n',
     ],
 )
-def test_docstring_e_comentario_do_semeador_nao_contam(tmp_path: Path, corpo: str) -> None:
+def test_docstring_e_comentario_do_semeador_nao_contam(
+    tmp_path: Path, corpo: str
+) -> None:
     """A peneira é o que separa este portão de um `grep` no `.py`.
 
     Medido em 30/08/2026: 160 strings de `.py` com travessão nas células
@@ -350,7 +369,9 @@ def test_py_que_nao_e_semeador_fica_de_fora(tmp_path: Path) -> None:
     """A superfície cresceu para uma CLASSE estreita, não para `.py` em geral."""
     raiz = _cenario(
         tmp_path,
-        {"services/loja/apps/loja/views.py": 'MSG = "erro de validação — para quem programa"\n'},
+        {
+            "services/loja/apps/loja/views.py": 'MSG = "erro de validação — para quem programa"\n'
+        },
     )
     assert travessao.rodar(raiz).estado is Estado.PASS
 
@@ -371,7 +392,9 @@ def test_comando_que_nao_se_chama_semear_tambem_conta(tmp_path: Path) -> None:
     """
     raiz = _cenario(
         tmp_path,
-        {"services/loja/apps/loja/management/commands/seed_categorias.py": 'N = ["Preço — justo"]\n'},
+        {
+            "services/loja/apps/loja/management/commands/seed_categorias.py": 'N = ["Preço — justo"]\n'
+        },
     )
     relatorio = travessao.rodar(raiz)
     assert relatorio.estado is Estado.FAIL
@@ -427,3 +450,200 @@ def test_o_portao_esta_verde_no_repositorio_real() -> None:
     """Se este teste ficar vermelho, é texto público com travessão a mais."""
     relatorio = travessao.rodar(RAIZ)
     assert relatorio.estado is Estado.PASS, relatorio.render()
+
+
+# ---------------------------------------------------------------------------
+# 9. O TEXTO DE TELA QUE MORA EM CÓDIGO (31/08/2026, TAR-087, `armadilhas/254`)
+#
+# O portão passou a enxergar duas classes de `.py` que antes escapavam: quem
+# declara `Choices` com rótulo escrito (automático, e só o RÓTULO é medido) e
+# quem se declara com a marca `ci:texto-publicado` (o arquivo inteiro).
+#
+# A metade que estes guardas mais protegem é a NEGATIVA. Crescer a superfície
+# para todo `.py` seria pior que o buraco: medido em 31/08/2026, 2758 strings e
+# 94 travessões nas células públicas, quase todos em mensagem de erro que só um
+# programador lê, e vários no próprio painel de travessões do Admin, que lista
+# as riscas como DADO. Os testes de "fica de fora" abaixo não são zelo: são o
+# desenho.
+# ---------------------------------------------------------------------------
+RISCA = "—"
+
+MODELO_COM_ROTULO = "\n".join(
+    [
+        "from django.db import models",
+        "",
+        "",
+        "class Sugestao(models.Model):",
+        "    class Status(models.TextChoices):",
+        f'        EM_ANALISE = "em_analise", "Em análise {RISCA} a equipe ainda olha"',
+        '        PLANEJADO = "planejado", "Planejado"',
+        "",
+    ]
+)
+
+
+def test_rotulo_de_textchoices_reprova(tmp_path: Path) -> None:
+    """O caso que motivou tudo: texto de tela morando em `models.py`."""
+    raiz = _cenario(tmp_path, {"services/loja/apps/loja/models.py": MODELO_COM_ROTULO})
+    relatorio = travessao.rodar(raiz)
+    assert relatorio.estado is Estado.FAIL
+    assert "models.py" in relatorio.render()
+
+
+def test_o_valor_do_textchoices_nao_e_medido(tmp_path: Path) -> None:
+    """O primeiro elemento da tupla é contrato, não frase.
+
+    Ele viaja em contrato congelado, migration e banco. Medi-lo faria o portão
+    mandar reescrever um identificador, que é mudança de contrato e tem Rito
+    próprio.
+    """
+    fonte = "\n".join(
+        [
+            "from django.db import models",
+            "",
+            "",
+            "class A(models.Model):",
+            "    class Status(models.TextChoices):",
+            f'        X = "em{RISCA}analise", "Em análise"',
+            "",
+        ]
+    )
+    raiz = _cenario(tmp_path, {"services/loja/apps/loja/models.py": fonte})
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_docstring_e_comentario_de_models_nao_contam(tmp_path: Path) -> None:
+    fonte = "\n".join(
+        [
+            f'"""A camada de dados {RISCA} escrita para quem programa."""',
+            "from django.db import models",
+            "",
+            "",
+            "class A(models.Model):",
+            "    class Status(models.TextChoices):",
+            f"        # o rótulo abaixo {RISCA} este comentário não é texto de tela",
+            '        X = "x", "Em análise"',
+            "",
+        ]
+    )
+    raiz = _cenario(tmp_path, {"services/loja/apps/loja/models.py": fonte})
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_py_sem_choices_e_sem_marca_fica_de_fora(tmp_path: Path) -> None:
+    """A metade negativa do desenho, e a mais importante das duas.
+
+    Se este teste ficar VERMELHO um dia, é porque alguém cresceu a superfície
+    para todo `.py` — e o portão morre afogado no próprio ruído. É o `.py` comum
+    que precisa ficar de fora, não o `models.py` que precisa entrar.
+    """
+    fonte = f'ERRO = "não consegui abrir o arquivo {RISCA} tente de novo"\n'
+    raiz = _cenario(tmp_path, {"services/loja/apps/loja/servicos.py": fonte})
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_a_marca_poe_o_arquivo_inteiro_sob_o_portao(tmp_path: Path) -> None:
+    fonte = "\n".join(
+        [
+            "# ci:texto-publicado",
+            f'FRASES = {{"a": "A ideia chegou {RISCA} e ainda não foi decidida"}}',
+            "",
+        ]
+    )
+    raiz = _cenario(tmp_path, {"services/loja/apps/loja/textos.py": fonte})
+    relatorio = travessao.rodar(raiz)
+    assert relatorio.estado is Estado.FAIL
+    assert "textos.py" in relatorio.render()
+
+
+def test_a_marca_vence_o_choices(tmp_path: Path) -> None:
+    """Arquivo com as duas coisas é medido INTEIRO, não só nos rótulos.
+
+    Quem se declarou inteiro público está dizendo que tem mais texto de tela do
+    que os rótulos. Obedecer só à metade mais fraca da declaração seria escolher,
+    entre duas leituras, a que mede menos.
+    """
+    fonte = "\n".join(
+        [
+            "# ci:texto-publicado",
+            "from django.db import models",
+            "",
+            "",
+            "class A(models.Model):",
+            "    class Status(models.TextChoices):",
+            '        X = "x", "Em análise"',
+            "",
+            "",
+            f'AVISO = "Espere a janela virar {RISCA} e vote nas outras"',
+            "",
+        ]
+    )
+    raiz = _cenario(tmp_path, {"services/loja/apps/loja/models.py": fonte})
+    assert travessao.rodar(raiz).estado is Estado.FAIL
+
+
+def test_choices_sem_rotulo_escrito_nao_entra(tmp_path: Path) -> None:
+    """`X = "x"` sozinho não tem frase: o Django deriva o rótulo do nome."""
+    fonte = "\n".join(
+        [
+            "from django.db import models",
+            "",
+            "",
+            "class A(models.Model):",
+            "    class Status(models.TextChoices):",
+            '        PUBLICA = "publica"',
+            "",
+            "",
+            f'ERRO = "falhou {RISCA} tente de novo"',
+            "",
+        ]
+    )
+    raiz = _cenario(tmp_path, {"services/loja/apps/loja/models.py": fonte})
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_migrations_ficam_de_fora(tmp_path: Path) -> None:
+    """O rótulo numa migration é fotografia do modelo naquele dia.
+
+    Corrigi-la não muda tela nenhuma, e um portão que exigisse isso mandaria
+    reescrever história por um texto que ninguém mais lê.
+    """
+    fonte = "\n".join(
+        [
+            "# ci:texto-publicado",
+            f'CHOICES = [("publica", "Pública {RISCA} qualquer um lê")]',
+            "",
+        ]
+    )
+    raiz = _cenario(
+        tmp_path, {"services/loja/apps/loja/migrations/0001_initial.py": fonte}
+    )
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_o_bastidor_tira_o_py_tambem(tmp_path: Path) -> None:
+    """A lista curta do bastidor vale para código, não só para template."""
+    raiz = _cenario(
+        tmp_path,
+        {"services/admin/apps/core/models.py": MODELO_COM_ROTULO},
+        bastidor=(
+            "services/admin/apps/core/models.py :: tela de administração, "
+            "só o mantenedor lê estes rótulos\n"
+        ),
+    )
+    assert travessao.rodar(raiz).estado is Estado.PASS
+
+
+def test_neste_repo_o_texto_em_codigo_esta_sob_o_portao() -> None:
+    """Prova sobre o repositório REAL, e não sobre um cenário de mentira.
+
+    Os cenários de `tmp_path` acima provam a REGRA; este prova que ela alcança
+    os moradores concretos que a `armadilhas/254` descreve. Sem ele a regra
+    poderia estar certa e não pegar nada aqui dentro, que é a lição da
+    `armadilhas/131`: um dublê com forma diferente da real responde a outra
+    pergunta.
+    """
+    publicos = {p.relative_to(RAIZ).as_posix() for p in travessao.superficie(RAIZ)}
+    assert "services/sugestoes/apps/sugestoes/models.py" in publicos
+    assert "services/forum/apps/forum/models.py" in publicos
+    assert "services/sugestoes/apps/core/participacao.py" in publicos

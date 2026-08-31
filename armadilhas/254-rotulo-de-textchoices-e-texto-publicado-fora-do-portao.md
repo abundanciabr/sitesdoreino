@@ -1,13 +1,13 @@
 ---
 schema_version: 2
 armadilha: 254
-estado: documentada
 degrau: 5
 confianca: alta
 custo_por_queda: medio
+estado: guardada
 guarda:
-  tipo: teste
-  motivo: `ci/travessao.py` varre `templates/`, `traducoes/`, `documentos/` e `management/commands/`, e declara na própria docstring que texto publicado em `.py` é buraco conhecido. Quem cobre a classe descrita aqui é um guarda DA CÉLULA — o molde está em `services/sugestoes/tests/test_a_caixa_explica_as_etapas.py::test_o_texto_do_aluno_nao_tem_travessao`. Crescer a superfície do portão é TAR-087.
+  tipo: muralha
+  motivo: RESOLVIDA no mesmo dia (TAR-087, PR do dia). `ci/travessao.py` passou a enxergar os RÓTULOS de todo `TextChoices` (automático, sem marca) e qualquer arquivo que se declare com o comentário `ci:texto-publicado` (inteiro). Roda em todo PR pela `ci/muralha-do-travessao.sh`, fail-closed. Guardas em `ci/tests/test_travessao.py` seção 9 — inclusive os NEGATIVOS, que impedem a superfície de crescer para todo `.py` e afogar o portão em ruído
 ---
 
 # O rótulo de um `TextChoices` é texto publicado, e mora onde nenhum portão de texto olha
@@ -92,3 +92,35 @@ escritas em `apps/core/participacao.py`, e ao conferir a lei do travessão ficou
 claro que nem elas nem os rótulos antigos jamais estiveram sob o portão. O
 `ci/travessao.py` já previa isto por escrito ("se um dia a cópia do site passar
 a morar em `.py`, é aqui que a superfície cresce") — este é o dia.
+
+---
+
+## ATUALIZAÇÃO 31/08/2026, no mesmo dia: o portão do repositório passou a cobrir isto
+
+A entrada nasceu com `guarda: teste` porque o conserto definitivo dependia de
+mandato — `ci/` é caminho CODEOWNERS. O mantenedor deu o mandato no mesmo dia, e
+a segunda metade da solução deixou de ser "reimplante a régua na célula":
+
+* **quem declara `Choices` com rótulo escrito entra sozinho**, e só o RÓTULO é
+  medido (`_so_os_rotulos_de_choices`). Sem marca, sem lista, sem lembrar;
+* **quem se declara** com o comentário `ci:texto-publicado` entra INTEIRO, pela
+  peneira dos comandos de gestão;
+* `migrations/` fica fora das duas.
+
+**O que a mudança pescou na primeira execução, e nenhum humano tinha visto:**
+três rótulos do fórum (`"Pública — qualquer um lê"` e irmãos, em
+`services/forum/apps/forum/models.py`) e **três frases da Caixa que o aluno lê
+quando erra** — a validação `"Conte qual é o problema — é o que os outros
+votam."` e o aviso de limite `"Espere a janela virar — enquanto isso…"`, ambas
+em `apps/core/participacao.py`. Estavam publicadas havia dias.
+
+Duas notas que economizam uma rodada a quem repetir isto:
+
+* **Rótulo de `TextChoices` NÃO precisa de migração de dados.** O banco guarda o
+  VALOR; o rótulo é montado ao desenhar a tela. É a diferença entre esta classe
+  e a do semeador (`armadilhas` do §"texto gravado no banco"), onde corrigir o
+  código não corrige a linha já criada.
+* **A frase `"Conte qual é o problema — é o que os outros votam."` é o exemplo
+  vivo do erro que a lei do `CLAUDE.md` descreve:** depois da risca vem `é`,
+  continuação direta, e dois-pontos QUEBRA a frase. A troca certa foi ponto
+  final: `"Conte qual é o problema. É o que os outros votam."`

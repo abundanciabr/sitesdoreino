@@ -177,6 +177,18 @@ SAIDAS = (Sugestao.Status.MESCLADO,)
 # Inclui `nao_planejado` e `mesclado`, que NÃO são zona da faixa mas têm selo na
 # página da ideia: o aluno que abre uma recusada precisa da mesma explicação que
 # o que abre uma planejada, e um selo sem legenda seria o buraco de novo.
+# ci:texto-publicado
+#
+# A marca acima põe ESTE arquivo sob o portão do travessão (`ci/travessao.py`).
+# Ele não entraria sozinho: a regra mecânica do portão pega os rótulos de
+# `TextChoices`, e as frases daqui não são rótulo, são um dicionário escrito
+# para o aluno ler na tela. Sem a marca, elas seriam a mesma cópia de site fora
+# de qualquer régua que a `armadilhas/254` descreve.
+#
+# O que a marca custa: o arquivo inteiro passa a ser medido, então QUALQUER
+# string daqui (mensagem de erro inclusive, docstring não) obedece à lei do
+# `CLAUDE.md`. É de propósito — a fronteira "só as frases bonitas" precisaria de
+# alguém para decidir onde ela passa, e isso é lembrar, não mecanismo.
 EXPLICACAO_DAS_ETAPAS = {
     Sugestao.Status.EM_ANALISE: (
         "A ideia chegou e ainda não foi decidida. É aqui que o seu voto pesa "
@@ -317,7 +329,7 @@ def quadro_atual():
     quadros = list(Quadro.objects.order_by("id")[:2])
     if not quadros:
         raise Http404(
-            "a Caixa ainda não tem quadro neste banco — rode "
+            "a Caixa ainda não tem quadro neste banco: rode "
             "`manage.py seed_sugestoes --site-id <id do site>`."
         )
     if len(quadros) > 1:
@@ -851,7 +863,7 @@ def nova_sugestao(request, ator):
     elif len(rascunho["titulo"]) > 140:
         contexto["erros"].append("O título precisa caber em 140 caracteres.")
     if not rascunho["problema"]:
-        contexto["erros"].append("Conte qual é o problema — é o que os outros votam.")
+        contexto["erros"].append("Conte qual é o problema. É o que os outros votam.")
     if categoria is None:
         contexto["erros"].append("Escolha uma categoria da lista.")
     if contexto["erros"]:
@@ -863,7 +875,7 @@ def nova_sugestao(request, ator):
     if sugestoes_na_janela(ator) >= LIMITE_DE_SUGESTOES:
         contexto["erros"].append(
             f"Você já publicou {LIMITE_DE_SUGESTOES} sugestões nos últimos 7 dias. "
-            "Espere a janela virar — enquanto isso, vote e comente nas que já estão "
+            "Espere a janela virar. Enquanto isso, vote e comente nas que já estão "
             "no quadro: é o que faz uma ideia subir."
         )
         return render(request, PAGINA_NOVA, contexto, status=429)
