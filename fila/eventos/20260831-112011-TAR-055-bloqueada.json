@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260831-112011-TAR-055-bloqueada",
+  "tarefa": "TAR-055",
+  "evento": "bloqueada",
+  "quando": "2026-08-31T11:20:11+00:00",
+  "quem": "sessao-plano-mensagens-2026-08-31",
+  "detalhe": "aguardando despacho do mantenedor — a escada das sequencias de mensagens foi semeada em 31/08/2026 a pedido dele (registro 20260831-007), mas nenhum robo comeca sem a palavra dele. Plano: docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md"
+}

@@ -1,0 +1,16 @@
+{
+  "arquivo": "060-a-primeira-sequencia-no-ar-boas-vindas-chegando-no-sininho-d",
+  "id": "TAR-060",
+  "titulo": "A primeira sequencia no ar: boas-vindas chegando no sininho do aluno",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-059"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + PROVA DE FORA: uma pessoa cadastrada e o aviso aparecendo na caixa dela (resposta crua da porta de consulta da notificacoes, nao so teste local) + registro no livro.",
+  "despacho": "Degrau 5 da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\nE O DEGRAU QUE O MANTENEDOR VAI VER: a primeira sequencia de verdade no ar.\n\nO motor passa a publicar `notificacao.devida.v1` pelo padrao outbox — o mesmo\nevento que a `sugestoes`, a `alunos` e o sininho ja usam desde 26/08/2026. Nao\ninventa contrato: o sininho ja sabe receber.\n\nREGRAS QUE NAO SE NEGOCIAM:\n- A carta e DADO, nunca frase pronta. Grave `assunto` + `parametros`; a frase\n  nasce na LEITURA, no idioma de quem le. A escola serve tres idiomas.\n- Nenhum e-mail, nome ou telefone no evento. So o id opaco de plataforma.\n- Fan-out na ORIGEM: uma carta por pessoa.\n\nA PRIMEIRA JORNADA a semear (como DADO, nao codigo — §8.3): boas-vindas no\ncadastro. Semeie-a por management command ou migracao de dados, versionada e\nNUNCA retroativa.\n\nProva de fora exigida: uma pessoa se cadastra e o aviso aparece no sininho dela.\nNao aceite \"o teste passou\" como prova de que o aluno recebeu — a Fase D deste\nprojeto ensinou caro que verde de dentro nao e prova de fora\n(`docs/decisoes/RETROSPECTIVA-FASE-D.md`).",
+  "origem": "degrau 5 de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md",
+  "criada_em": "2026-08-31"
+}

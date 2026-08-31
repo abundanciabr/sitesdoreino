@@ -1,0 +1,16 @@
+{
+  "arquivo": "063-fazer-a-mensageria-enviar-e-mail-de-verdade-hoje-ela-so-fing",
+  "id": "TAR-063",
+  "titulo": "Fazer a mensageria enviar e-mail de verdade (hoje ela so finge)",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-057"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + a pendencia do provedor registrada e RESPONDIDA pelo dono + prova de fora: um e-mail real recebido numa caixa de teste, com o cabecalho mostrando SPF e DKIM passando.",
+  "despacho": "Degrau 8 da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\n\n*** ESTA TAREFA TEM UM PASSO QUE SO O MANTENEDOR FAZ. NAO COMECE SEM ELE. ***\n\nO FATO CRU: o envio de e-mail desta plataforma e STUB desde sempre.\n`services/mensageria/apps/eventos/tasks.py` diz, com todas as letras,\n\"\"\"Stub: loga o envio\"\"\" — NENHUM e-mail jamais saiu daqui. Ligar o e-mail e\nCONSTRUIR o envio, nao plugar um fio.\n\nO QUE SO ELE PODE FAZER (Lei 5 — agente nao tem SSH, env nunca viaja por\npipeline): escolher e pagar o provedor, decidir o dominio remetente, e por os\ntres registros de DNS (SPF, DKIM, DMARC) no Cloudflare. Antes de tudo:\n- Abra uma pendencia em `painel/registros/` com `precisa_do_dono: true`,\n  explicando as opcoes em portugues de leigo, com custo de cada uma.\n- Prepare o passo dele como UMA LINHA SO DE COLAR, fail-closed, no modelo dos\n  H20/H21/H22 do ARMADILHAS-OPERACAO.md — script versionado em `infra/`,\n  sem argumentos, que termina em \"PRONTO: ...\" ou \"PAROU POR SEGURANCA: ...\".\n  Diga SEMPRE em qual janela colar (prompt `deploy@srv...` = dentro da VPS).\n\nO QUE E TRABALHO DE ROBO:\n1. Trocar os stubs por um cliente de provedor real, com retry via Huey (o\n   `@huey.task(retries=5, retry_delay=30)` ja existe e ja funciona).\n2. `mensageria` passa a consumir a `identidade` — traduzir `destinatario_id` em\n   e-mail + idioma NA HORA DO ENVIO. Acrescente `consome: [identidade]` em\n   `celulas.yml` NESTE PR (o varredor exige que a declaracao case com o codigo).\n3. RENDERIZAR NO INSTANTE DO ENVIO, no idioma de quem le (§4.3 do plano). A lei\n   proibe GRAVAR frase pronta; o e-mail nao grava — ele E a leitura.\n4. `order_id = \"jornada:<inscricao_id>:<passo_id>\"` para reusar a constraint\n   existente. NAO altere `uniq_envio_por_order_tipo_canal`.\n5. `armadilhas/028`: cliente de provedor externo que so levanta em 5xx e uma\n   armadilha conhecida — leia antes de escrever o cliente.\n\nLeia `services/mensageria/LICOES.md` inteiro. Falha de provedor tem que ESTOURAR\npara o Huey reagendar; engolir a excecao e falso-verde.",
+  "origem": "degrau 8 de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md — reabre a porta que o PLANO-MESTRE do sininho fechou na Fase 7, por decisao do mantenedor em 30/08/2026",
+  "criada_em": "2026-08-31"
+}

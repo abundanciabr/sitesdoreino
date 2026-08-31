@@ -1,0 +1,16 @@
+{
+  "arquivo": "065-whatsapp-oficial-se-e-quando-o-dono-quiser-o-segundo-canal",
+  "id": "TAR-065",
+  "titulo": "WhatsApp oficial, se e quando o dono quiser o segundo canal",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-063"
+  ],
+  "cria": [],
+  "evidencia_exigida": "Decisao explicita do mantenedor registrada no livro + PR mergeado + prova de uma mensagem real entregue.",
+  "despacho": "Degrau 10 da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\n\n*** SO COMECE COM DECISAO EXPLICITA DO MANTENEDOR. ***\n\nO WhatsApp oficial (Meta Cloud API) exige verificacao da empresa junto a Meta e\naprovacao previa de CADA modelo de mensagem — isso leva dias e nao depende de\nnos. Nao e trabalho que se comeca por conta propria.\n\nQuando ele decidir:\n1. Pendencia em painel/registros/ com precisa_do_dono: true para o cadastro e a\n   verificacao — passo dele, no modelo dos H20/H21/H22.\n2. O canal 'whatsapp' ja existe no CANAL_CHOICES do EnvioRegistrado e nos\n   canais do Passo; o que falta e o cliente real no lugar do stub.\n3. A regua do paragrafo 6 vale igual: teto diario e janela de silencio contam a\n   PESSOA, nao o canal. Alguem que recebeu por e-mail hoje NAO recebe por\n   WhatsApp tambem.\n4. WhatsApp e mais invasivo que e-mail. O opt-out dele e separado e mais facil.",
+  "origem": "degrau 10 de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md",
+  "criada_em": "2026-08-31"
+}

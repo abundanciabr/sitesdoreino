@@ -1,0 +1,16 @@
+{
+  "arquivo": "057-criar-o-motor-das-sequencias-dentro-da-mensageria-so-as-tabe",
+  "id": "TAR-057",
+  "titulo": "Criar o motor das sequencias dentro da mensageria (so as tabelas, sem enviar nada)",
+  "toca": [
+    "mensageria"
+  ],
+  "depende_de": [
+    "TAR-054"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + saida crua dos testes provando que cada uma das tres travas RECUSA a linha duplicada + prova de que a constraint de EnvioRegistrado nao mudou (diff vazio nela).",
+  "despacho": "Degrau 2 da escada de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.\nLeia o §4.1 e o §5 do plano ANTES de escrever uma linha.\n\nNasce `services/mensageria/apps/jornadas/` — o motor que entende TEMPO. Nesta\ntarefa ele NAO manda nada: so as tabelas, as travas e a migracao.\n\nAS QUATRO TABELAS (§5), no banco que a celula JA tem, sem alterar as duas\nexistentes: Jornada (site_id, slug, gatilho, ativa, versao) · Passo (jornada,\nordem, atraso, assunto, parametros_modelo, canais, condicao_slug, so_entre) ·\nInscricao (jornada, destinatario_id, site_id, passo_atual, proximo_em, estado,\nmotivo_de_saida, origem_event_id) · Entrega (inscricao, passo, decidida_em,\nresultado, motivo, event_id).\n\nAS TRAVAS, em CheckConstraint/UniqueConstraint NO BANCO — nunca so em `save()`\n(`armadilhas/023`: um `queryset.update()` fura guarda escrita em Python):\n- `unique(jornada, ordem)` no Passo.\n- `unique(jornada, destinatario_id, site_id)` na Inscricao — e esta linha que\n  impede o evento reentregue de inscrever de novo e mandar tudo em dobro.\n- `unique(inscricao, passo)` na Entrega — segunda camada de idempotencia.\n\nO QUE NAO SE TOCA, e e o ponto inteiro da decisao do mantenedor (§8.2): a\nconstraint `uniq_envio_por_order_tipo_canal` de `EnvioRegistrado` fica EXATAMENTE\ncomo esta. Quando o motor for enviar (degrau 5 em diante), ele grava\n`order_id = \"jornada:<inscricao_id>:<passo_id>\"` — `order_id` de pagamento vem do\ncheckout e nunca colide com uma chave prefixada.\n\nA Entrega guarda tambem o que NAO foi enviado, com o motivo. Sem isso a pergunta\n\"por que o aluno X nao recebeu?\" nao tem resposta.\n\nCuidado com o orcamento de 15 arquivos (`armadilhas/035`): a celula ja tem ~30.",
+  "origem": "degrau 2 de docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md",
+  "criada_em": "2026-08-31"
+}
