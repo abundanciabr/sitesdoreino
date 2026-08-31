@@ -453,6 +453,21 @@ primeira versão deste arquivo, e o teste pegou.
        mantenedor precisa reconhecer o trecho de relance. */
     .riscas { margin: 8px 0 0; padding-left: 20px; font-size: 13px; }
     .riscas li { margin-bottom: 7px; }
+    /* Apagar de vez fica separado do resto por uma linha, e vermelho: e o unico
+       gesto desta area que nao se desfaz. */
+    .apagar-de-vez { border-top: 1px solid var(--linha); padding-top: 16px; }
+    .apagar-de-vez input[type=text] {
+      width: 100%; max-width: 320px; box-sizing: border-box; padding: 9px 11px;
+      background: var(--fundo); color: var(--texto);
+      border: 1px solid var(--linha); border-radius: 8px; font: inherit;
+    }
+    .apagar-de-vez button, details.cadastrar form button {
+      margin-top: 10px; padding: 9px 15px; font: inherit; font-weight: 600;
+      background: var(--painel); color: var(--texto);
+      border: 1px solid var(--linha); border-radius: 8px; cursor: pointer;
+    }
+    .apagar-de-vez button.perigo { color: var(--vermelho); border-color: var(--vermelho); }
+
     /* O historico de um documento. Cada versao e um bloco, e a que esta no ar
        ganha borda verde: e a unica pergunta que se faz de relance nesta tela. */
     .versoes { display: grid; gap: 12px; }
