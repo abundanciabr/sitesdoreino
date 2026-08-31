@@ -63,7 +63,7 @@ Sua situação pode mudar, e cada uma delas quer dizer uma coisa diferente:
 
 - **Aluno**: você entra normalmente.
 - **Reembolsado**: a plataforma é exclusiva para alunos que estão fazendo algum
-  curso, e em caso de reembolso o aluno perde o acesso à mesma.
+  curso, e em caso de reembolso o aluno perde o acesso a mesma.
 - **Ex-aluno**: o acesso ao curso acabou. Pode voltar comprando um novo curso.
 
 ## Se algo não funcionar
