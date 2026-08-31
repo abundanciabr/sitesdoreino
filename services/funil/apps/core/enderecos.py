@@ -31,6 +31,17 @@ CAIXA_PADRAO = "/forms/sugestoes/"
 # lida ali, nunca adivinhada, porque só ela sabe se um dia esse prefixo muda.
 AVISOS_PADRAO = "/forms/sugestoes/avisos"
 
+# O FÓRUM da escola — a área pública dele responde sem login desde 30/08/2026.
+# Célula `forum`, monolíngue, prefixo próprio no gateway. Entra aqui (e não
+# cravado no template) pela mesma razão dos de cima: no dia em que o fórum
+# mudar de endereço, a mudança do lado do site é esta linha.
+FORUM_PADRAO = "/forum/"
+
+# A BIBLIOTECA PÚBLICA de documentos (`DECISAO-a-area-de-documentos.md`). Mora
+# na célula `admin`, mas o caminho público NÃO leva o prefixo `/admin`: são
+# dois prefixos de propósito, e só este é isento na porta.
+DOCUMENTOS_PADRAO = "/docs/"
+
 # A rota que manda direto ao Google — da célula `identidade`, dona do login do
 # site inteiro: quem clica no botão do site já decidiu entrar, e uma segunda
 # tela de "Entrar com Google" seria um clique a mais para dizer a mesma coisa.
@@ -51,3 +62,11 @@ def url_dos_avisos() -> str:
 
 def url_de_entrada() -> str:
     return _ler("URL_DE_ENTRADA", ENTRADA_PADRAO)
+
+
+def url_do_forum() -> str:
+    return _ler("URL_DO_FORUM", FORUM_PADRAO)
+
+
+def url_dos_documentos() -> str:
+    return _ler("URL_DOS_DOCUMENTOS", DOCUMENTOS_PADRAO)

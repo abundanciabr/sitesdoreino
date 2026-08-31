@@ -15,7 +15,7 @@ from django.views.static import serve as serve_do_django
 
 from apps.core.clients import CatalogoClient, LeadsClient
 from apps.core.enderecos import url_de_entrada
-from apps.i18n.idiomas import caminho_publico
+from apps.i18n.idiomas import caminho_publico, direcao, tag_bcp47
 
 # Ordem fixa: é também a ordem em que a query string do link do checkout é
 # montada — preservar isso torna o teste de UTM determinístico.
@@ -287,6 +287,122 @@ def sitemap_xml(request):
         "</urlset>\n"
     )
     return HttpResponse(corpo, content_type="application/xml")
+
+
+# ---------------------------------------------------------------------------
+# O app instalado na tela do celular (pedido do mantenedor, 31/08/2026)
+# ---------------------------------------------------------------------------
+# As duas rotas de MÁQUINA que fazem um site virar app instalável. Elas moram
+# na raiz e não se localizam, como o /healthz, o /sitemap.xml e o /static/ —
+# mas por motivos diferentes, e vale escrever qual é cada um:
+#
+#   · o manifesto é do SITE, não da página: um por origem, e o navegador o
+#     relê para decidir se oferece a instalação;
+#   · o service worker manda na PASTA de onde foi baixado. Servido de
+#     `/static/funil/sw.js` ele só mandaria em `/static/`, e o app não teria
+#     como abrir sem rede. Por isso ele tem rota própria na raiz.
+#
+# A cor, o fundo e o desenho do ícone são a marca do site nas mãos de quem
+# instalou: o verde é o mesmo do botão principal das páginas, e os PNGs saem
+# do desenho versionado em `tests/test_icones_do_app.py`.
+COR_DO_APP = "#16a34a"
+FUNDO_DO_APP = "#f7f7f8"
+ICONES_DO_APP = [
+    {
+        "src": "/static/funil/pwa/icone-192.png",
+        "sizes": "192x192",
+        "type": "image/png",
+        "purpose": "any",
+    },
+    {
+        "src": "/static/funil/pwa/icone-512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any",
+    },
+    # O `maskable` é o mesmo desenho, menor: o Android recorta o ícone na forma
+    # que o aparelho usar, e sem esta variante ele desenha o nosso dentro de um
+    # quadrado branco. São dois arquivos porque são dois usos, não por capricho.
+    {
+        "src": "/static/funil/pwa/icone-maskable-512.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "maskable",
+    },
+]
+
+
+@require_safe
+def manifesto_do_app(request):
+    """`/manifest.webmanifest` — a ficha de identidade do app instalado.
+
+    Site FORA do registro i18n responde 404, pelo mesmo critério do cadastro e
+    do login: o app é do site da escola, que tem gente entrando e avisos para
+    mandar; os domínios monolíngues são vitrine, e instalar uma vitrine não
+    serve a ninguém.
+
+    **O idioma vem da query string, e é saneado como toda entrada de rede.**
+    O `start_url` é a página que abre quando a pessoa toca no ícone: quem
+    instalou em português tem de abrir em português, e um manifesto só por
+    origem não saberia disso sozinho. Código desconhecido cai no idioma padrão
+    do site em silêncio, como o `?erro=` da página de entrada faz com chave
+    fora da lista — nunca vira caminho.
+    """
+    if getattr(request, "idioma", None) is not None:
+        raise Http404("manifesto não tem prefixo de idioma")
+    cfg = getattr(request, "i18n", None)
+    if cfg is None:
+        raise Http404("site sem app instalável")
+
+    pedido = request.GET.get("idioma") or ""
+    codigo = pedido if pedido in cfg["idiomas"] else cfg["default"]
+    nome = request.site["name"]
+
+    return JsonResponse(
+        {
+            "name": nome,
+            "short_name": nome,
+            "lang": tag_bcp47(codigo),
+            "dir": direcao(codigo),
+            "start_url": caminho_publico(cfg, codigo, "/"),
+            # O escopo é o site inteiro de propósito: quem instalou e toca num
+            # link do fórum ou da Caixa continua DENTRO do app, em vez de o
+            # celular abrir o navegador por cima.
+            "scope": "/",
+            "display": "standalone",
+            "orientation": "portrait",
+            "background_color": FUNDO_DO_APP,
+            "theme_color": COR_DO_APP,
+            "icons": ICONES_DO_APP,
+        },
+        content_type="application/manifest+json",
+        json_dumps_params={"ensure_ascii": False},
+    )
+
+
+@require_safe
+def service_worker(request):
+    """`/sw.js` — o mesmo arquivo de `static/funil/sw.js`, servido da RAIZ.
+
+    Serve para qualquer site, inclusive os monolíngues: só chega aqui quem
+    pede, e quem pede é o `instalar.js`, que só existe nas páginas do site
+    multilíngue. Uma condição a mais aqui seria uma regra a manter sem nenhum
+    comportamento a proteger.
+
+    `Service-Worker-Allowed: /` é cinto e suspensório: o escopo da raiz já vem
+    do endereço, e o cabeçalho mantém a promessa caso este arquivo um dia
+    passe a ser servido de outro lugar. `Cache-Control: no-cache` é o que faz
+    uma correção neste arquivo alcançar quem já instalou: sem ele o navegador
+    pode guardar o service worker por até 24 horas.
+    """
+    if getattr(request, "idioma", None) is not None:
+        raise Http404("service worker não tem prefixo de idioma")
+    resposta = serve_do_django(
+        request, "funil/sw.js", document_root=settings.STATICFILES_DIRS[0]
+    )
+    resposta["Service-Worker-Allowed"] = "/"
+    resposta["Cache-Control"] = "no-cache"
+    return resposta
 
 
 @require_POST

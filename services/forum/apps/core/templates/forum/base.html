@@ -30,5 +30,20 @@ caminho, e caminho cravado em string quebra em produção e SÓ lá
   </form>
 </div>
 <main>{% block conteudo %}{% endblock %}</main>
+{% if rodape %}{% comment %}
+O RODAPÉ (apps/core/rodape.py) — a mesma peça do site, com o mesmo desenho.
+Quem DECIDE qual rodapé cada página mostra é o processador de contexto; aqui
+só se desenha. Fora do <main> de propósito: ele não é conteúdo do fórum, é
+assinatura da casa, e leitor de tela o anuncia como rodapé por causa da tag.
+{% endcomment %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+  <p class="marca">Meshcraft Academy</p>
+  <p class="descricao">A escola que ensina você a modelar em 3D e a ganhar seus primeiros dólares no Roblox.</p>{% endif %}{% if rodape.mostra_links %}
+  <nav class="links" aria-label="Links úteis">
+    <a href="{{ rodape.url_do_site }}">Início do site</a>
+    <a href="{% url 'home' %}">Fórum</a>
+    <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
+  </nav>{% endif %}{% if rodape.mostra_direitos %}
+  <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
+</footer>{% endif %}
 </body>
 </html>

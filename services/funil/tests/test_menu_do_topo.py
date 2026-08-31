@@ -170,9 +170,9 @@ def test_cada_pagina_pode_ter_uma_versao_diferente(client, rede):
     com_menu(rede, SITE_MESH, HOST_MESH)
     inicial = client.get("/", HTTP_HOST=HOST_MESH).content.decode()
     cadastro = client.get("/cadastro", HTTP_HOST=HOST_MESH).content.decode()
-    assert "Forum" in inicial  # versão completa (o meshcraft nasce em inglês)
+    assert "Forum" in so_o_menu(inicial)  # versão completa (o site nasce em inglês)
     assert "menu-topo" in cadastro
-    assert "Forum" not in cadastro  # versão enxuta: só a página inicial
+    assert "Forum" not in so_o_menu(cadastro)  # versão enxuta: só a página inicial
 
 
 @pytest.mark.parametrize(
@@ -236,12 +236,20 @@ def test_rotulo_faltando_no_idioma_cai_no_padrao_do_site(client, rede):
     assert "Home" in corpo
 
 
+def so_o_menu(corpo: str) -> str:
+    """Só o pedaço do menu, e a precisão importa: a página tem rodapé, e o
+    rodapé também leva ao cadastro. Procurar no HTML inteiro faria este guarda
+    reprovar por causa de um link que não é do menu."""
+    inicio = corpo.index('<nav class="menu-topo">')
+    return corpo[inicio : corpo.index("</nav>", inicio)]
+
+
 def test_item_de_visitante_some_para_quem_entrou(client, rede, logado):
     """`Cadastro` para quem já tem conta é convite para se cadastrar de novo."""
     com_menu(rede, SITE_MESH, HOST_MESH)
     corpo = client.get("/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE).content.decode()
-    assert "menu-topo" in corpo
-    assert "Sign up" not in corpo
+    assert "Home" in so_o_menu(corpo)
+    assert "Sign up" not in so_o_menu(corpo)
 
 
 def test_a_pagina_atual_e_marcada(client, rede):
