@@ -475,12 +475,6 @@ paths:
                       pergunta divergiriam no primeiro status novo — e a tela do
                       prontuario mostraria uma coisa enquanto a porta da Caixa
                       mostra outra para a mesma pessoa.
-
-                      Por isso esta lista e a de la mudam SEMPRE JUNTAS. Em
-                      31/08/2026 `reembolsado` entrou nas duas no mesmo PR; uma
-                      lista que ficasse para tras faria o prontuario dizer
-                      "cadastrado" sobre alguem que a porta ja chama de
-                      reembolsado.
                   nome_completo:
                     type: string
                     description: |
