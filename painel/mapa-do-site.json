@@ -817,6 +817,16 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/alunos/resetar-senha",
+      "endereco": "/admin/escola/alunos/resetar-senha",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Resetar a senha de um aluno",
+      "descricao": "O botão do prontuário para quando alguém esquece a senha do segundo jeito de entrar (sem Google). Gera uma senha nova e a mostra uma vez, para você repassar por fora."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/alunos/cadastrar",
       "endereco": "/admin/escola/alunos/cadastrar",
       "alcance": "publico",
