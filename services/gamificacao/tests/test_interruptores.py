@@ -24,7 +24,6 @@ from apps.gamificacao.interruptores import (
     CRISTAIS_SEM_EFEITO,
     SEM_CREDITO,
     SEM_FATO_QUE_ALIMENTA,
-    SEM_MOTOR_DE_CRITERIO,
     SEM_PRODUTOR,
     SO_POR_CONCESSAO_MANUAL,
     ConquistaDesconhecida,
@@ -393,28 +392,35 @@ def test_o_marco_nunca_tem_impedimento():
 
 
 @pytest.mark.django_db
-def test_a_medalha_automatica_avisa_que_o_motor_ainda_nao_existe():
-    """O aviso que impede a frustração de ligar e não ver nada acontecer.
+def test_a_medalha_com_conta_de_verdade_nao_tem_impedimento_nenhum():
+    """Desde 01/09/2026 o motor existe, e o aviso de que ele faltava SAIU.
 
-    É a mesma lição da tela das regras: um zero sem explicação parece defeito da
-    tela, e a busca começa pelo lugar errado.
+    Um aviso que mente é pior que nenhum: a tela seguiria dizendo "isto não vai
+    conceder nada" sobre uma medalha que cai na hora. Este guarda é o que impede
+    aquele aviso de sobreviver ao motivo dele.
     """
-    medalha = _conquista(criterio={"tipo": "primeira_vez", "assunto": "obra"})
+    medalha = _conquista(criterio={"tipo": "xp_acumulado", "alvo": 300})
 
-    assert impedimentos_da_conquista(medalha) == [SEM_MOTOR_DE_CRITERIO]
+    assert impedimentos_da_conquista(medalha) == []
 
 
 @pytest.mark.django_db
-def test_criterio_que_nada_alimenta_avisa_as_duas_coisas():
-    """`forjas_seladas` espera a Forja; `respostas_aceitas` espera o fórum falar."""
-    medalha = _conquista(
+def test_criterio_que_nada_alimenta_continua_avisando():
+    """`forjas_seladas` espera a Forja (degrau 14); `primeira_vez` espera a
+    plataforma saber dizer que uma obra ficou pronta (degrau 19).
+
+    A lista encolhe sozinha à medida que a escada sobe — e é por isso que ela é
+    medida contra o que EXISTE, não contra o que alguém se lembrou de escrever.
+    """
+    forjas = _conquista(
         slug="dez-forjas", criterio={"tipo": "forjas_seladas", "alvo": 10}
     )
+    obra = _conquista(
+        slug="primeira-obra-2", criterio={"tipo": "primeira_vez", "assunto": "obra"}
+    )
 
-    assert impedimentos_da_conquista(medalha) == [
-        SEM_MOTOR_DE_CRITERIO,
-        SEM_FATO_QUE_ALIMENTA,
-    ]
+    assert impedimentos_da_conquista(forjas) == [SEM_FATO_QUE_ALIMENTA]
+    assert impedimentos_da_conquista(obra) == [SEM_FATO_QUE_ALIMENTA]
 
 
 @pytest.mark.django_db
