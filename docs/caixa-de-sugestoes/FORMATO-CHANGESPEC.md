@@ -19,6 +19,11 @@ Sugestao (linguagem do aluno)
 
 Todo ChangeSpec referencia pelo menos um `suggestion_id` real da célula de sugestões. Se nasceu de várias sugestões mescladas, ou de um padrão identificado em várias sugestões (fase de clustering, mais adiante), referencia todas.
 
+**O caminho inteiro, com as estações que vêm antes e depois desta, está em
+[`DA-IDEIA-A-OBRA.md`](DA-IDEIA-A-OBRA.md)** (01/09/2026). Sugestão grande passa
+por um estudo de viabilidade ANTES do ChangeSpec: sem ele, o corredor é escrito
+sobre suposições do que a plataforma sabe fazer, e a escada desaba no meio.
+
 A decisão de produto — o passo do meio — agora tem um lugar concreto: `AvaliacaoInterna.decisao_produto`, na célula de sugestões. É onde a tradução de "problema do aluno" para "vamos resolver assim" fica registrada antes de virar ChangeSpec — uma linha, não um documento novo.
 
 ## 3. Campos obrigatórios

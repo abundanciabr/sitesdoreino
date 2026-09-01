@@ -1,0 +1,153 @@
+# PLANO — o aluno monta o portfólio, a escola confere, e sai um link para mandar ao cliente
+
+**Nasceu de:** sugestão "Guias de portifolio com Check-list" na Caixa (15 votos,
+categoria "Curso e aulas", autor Ricardo) · 01/09/2026
+**Estado:** estudo. Nada aqui está decidido enquanto o §6 não voltar respondido.
+**Molde:** `docs/caixa-de-sugestoes/MODELO-ESTUDO-DE-VIABILIDADE.md` (este é o
+primeiro estudo escrito nele, e serve de exemplo preenchido).
+
+## §1 O pedido, decomposto
+
+> "Eu terminei as aulas e senti que tinha muita coisa para fazer até finalizar o
+> portifolio então procrastinei bastante, queria ajuda para decidir o que entra
+> no portifolio ou nao."
+>
+> "Alguns Check-list tipo como estruturar o portifolio, e gostaria de um filtro
+> de qualidade, e um gerador final, eu não sei se é em PDF ou se só envia as
+> fotos, mas seria bom um suporte a mais nessa reta 'final' do curso."
+
+São cinco pedidos, e o quinto ele não fez com todas as letras:
+
+1. **Roteiro** — check-lists de como estruturar o portfólio.
+2. **Curadoria** — ajuda para decidir o que entra e o que não entra.
+3. **Filtro de qualidade** — alguém ou algo diz se a peça está boa.
+4. **Gerador final** — PDF, ou envio das fotos; ele mesmo não sabe qual.
+5. **O empurrão da reta final** — "procrastinei bastante". O problema não é só
+   falta de ferramenta: é a montanha sem trilha depois da última aula. Um plano
+   que entregue 1 a 4 e ignore o 5 resolve o pedido e não resolve o aluno.
+
+## §2 O que a casa já tem
+
+Medido com `python ci/reconhecer.py portfolio portifolio estudio` em
+`origin/main` (commit `62f70ba1`), e conferido a mão nos pontos que decidem o
+plano:
+
+- **A fila de conferência humana já existe e está no ar.** `/conquistas/marcos`
+  recebe a prova do aluno, `/conquistas/interno` é a fila da equipe, com prazo,
+  aceite e devolução com motivo escrito em português. É o pedido 3 quase pronto,
+  faltando só a peça de imagem. Molde:
+  `services/gamificacao/apps/core/templates/gamificacao/marcos.html`.
+- **A trilha de marcos reais já prevê o portfólio como degrau:** "obra →
+  portfólio → cliente → dólar" (`DECISAO-gamificacao.md` §2).
+- **A vitrine pública já foi decidida:** `meshcraft.top/estudio/<apelido>`,
+  opt-in, só apelido, obras aprovadas e marcos escolhidos, `noindex` (decisão 3
+  da Sessão A, 30/08/2026 — fechada, não se reabre por preferência de agente).
+- **A validação em três degraus já foi decidida:** o autor marca "resolveu", um
+  monitor confere, o mantenedor entra só no que envolve dinheiro (decisão 5).
+- **O texto de tela já pode morar no banco:** o editor de documentos do admin
+  (31/08/2026) deixa o mantenedor escrever e versionar sem PR.
+- **O sininho e o motor de sequências existem**, então o pedido 5 tem por onde
+  chegar ao aluno.
+
+## §3 O que não existe
+
+- **Nenhuma tela desta plataforma recebe arquivo.** Sem `FileField`, sem
+  `ImageField`, sem `MEDIA_ROOT`, sem `boto3`, e no `infra/docker-compose.yml`
+  os únicos volumes são banco, Redis e certificados. **Custo:** um portfólio de
+  modelagem 3D é feito de imagem, então a parte visual do plano depende de uma
+  decisão do mantenedor sobre onde os arquivos moram (§6.2) e de um PR de
+  infraestrutura próprio. É a maior consequência deste estudo, e a que mais
+  muda o desenho.
+- **Nada aqui monta PDF.** **Custo:** a saída barata é uma página com desenho de
+  impressão (o navegador salva sozinho); o dossiê montado no servidor é
+  dependência nova na imagem e vira degrau próprio.
+- **O curso não mora no site.** Nenhuma célula serve aula. **Custo:** "quando o
+  aluno terminar as aulas" não é medível pela plataforma — o gatilho do pedido 5
+  precisa ser declarado (liberação, marco, ou um botão "terminei as aulas"),
+  nunca inferido.
+
+*Observação de método:* a primeira execução do `ci/reconhecer.py` respondeu SIM
+para "guardar arquivo" e "servir vídeo", os dois falsos. As assinaturas foram
+corrigidas e o teste-guarda encena os dois enganos
+(`ci/tests/test_reconhecer.py`). Falso SIM apaga trabalho real da escada, e foi
+por pouco que não apagou daqui.
+
+## §4 Onde a coisa mora
+
+**Opção A — célula nova `portfolio` (recomendada).** A obra do aluno ganha casa
+própria e a página pública sai dela; a gamificação só recebe o evento e acende o
+marco.
+
+- *A favor:* a gamificação tem **critério de morte declarado** (`DECISAO-gamificacao`
+  §10) — ela pode ser desligada um dia, de propósito. O portfólio é o que o
+  aluno mostra a cliente pagante e não pode ser desligado junto. Guardar imagem
+  traz preocupações novas (disco, backup, conteúdo impróprio, dado pessoal) que
+  merecem canto próprio, e é a Muralha 1 e 2 da Lei 2. O exemplo do
+  `FORMATO-CHANGESPEC.md` §6 já nomeia `CS-PORTFOLIO-0001` numa célula própria.
+- *Preço:* 1 gênese (~22 arquivos, label `arquitetural`), 1 contrato, 1
+  provisionamento, 1 PR de infra e **1 passo manual do mantenedor** na VPS.
+
+**Opção B — dentro de `gamificacao`.** O portfólio entra como mais telas de
+`/conquistas`, aproveitando a fila de validação que já existe.
+
+- *A favor:* zero fundação, zero passo manual, começa quatro degraus antes.
+- *Preço:* a maior célula do projeto fica maior; o portfólio passa a viver e
+  morrer com o andaime; e a célula que conta pontos herda o disco de imagens.
+
+**Nos dois casos, a mesma regra:** a peça tem UMA casa. O portfólio não guarda
+cópia de medalha, a gamificação não guarda cópia de peça, e a tela que precisa
+das duas pergunta por HTTP com falha ABERTA (o mesmo desenho já usado entre
+fórum e gamificação).
+
+## §5 A escada
+
+| # | Entrega | O que muda para o aluno | Célula | Arqs |
+|---|---|---|---|---|
+| **S** | **Conversa de fronteira com o mantenedor** | nada | — | 0 |
+| 00 | O mapa para IA cita a célula que nasce (canário do lote) | nada | painel | 2 |
+| 01 | Gênese da célula (esqueleto, INV-P12, healthz, celulas.yml, manifesto, rollback, constituição) | nada | portfolio | ~22 |
+| 02 | Modelos: portfólio, peça, item de conferência, estado do aluno | nada | portfolio | ~14 |
+| 03 | Contrato congelado + eventos `portfolio.*` | nada | contracts | ~7 |
+| 04 | `infra/provisionar-portfolio.sh` + env exemplo (SOZINHO) | nada | infra | ~5 |
+| **H** | **Passo manual: banco, role e env na VPS** (bloco único, fail-closed) | nada | mantenedor | 1 linha |
+| 05 | Compose + Traefik `/portfolio` e `/estudio` + inventário de rotas no MESMO PR | o endereço responde | infra | ~3 |
+| 06 | Porta e sessão (repassa o cookie à `identidade`, nunca assina) + tela mínima | abre a Prancheta e é reconhecido | portfolio | ~12 |
+| 07 | A Prancheta: cinco etapas, listas de conferência lidas do banco | vê o roteiro e marca o que fez | portfolio | ~12 |
+| 08 | Peças por link, com legenda, ordem e destaque | monta o portfólio | portfolio | ~10 |
+| 09 | Envio de imagem: limite, tipo real conferido, miniatura | sobe o render direto | portfolio + infra | ~12 |
+| 10 | O semáforo por peça, calculado das respostas objetivas | vê o que falta em cada peça | portfolio | ~8 |
+| 11 | Pedido de conferência + tela da equipe (molde dos marcos) | manda para a escola olhar | portfolio | ~12 |
+| 12 | Selo "conferido pela escola" + evento + carta no sininho | recebe o selo e fica sabendo | portfolio | ~9 |
+| 13 | `/estudio/<apelido>` (opt-in, `noindex`, despublicar imediato) + versão de impressão | o link para mandar no chat | portfolio | ~12 |
+| 14 | O dossiê em PDF montado no servidor | baixa o arquivo para anexar | portfolio | ~7 |
+| 15 | A gamificação escuta o evento e acende o marco "portfólio" | o marco acende na trilha | gamificacao | ~8 |
+| **16** | **Os guias no editor de documentos** (rascunho pronto, texto dele) | lê o guia com a voz da escola | admin | ~4 |
+| 17 | A sequência que convida quem terminou as aulas | recebe o convite em vez de travar | mensageria | ~9 |
+| 18 | O caminho no menu e na home logada | encontra sem procurar | funil | ~6 |
+
+Se a resposta do §6.1 for a opção B, saem 01, 03, 04, 05 e o passo H.
+
+## §6 O que volta para o mantenedor
+
+1. **A fronteira** (§4): célula própria ou dentro das conquistas.
+2. **Onde as fotos moram:** só link colado (custo zero, link do aluno quebra) ·
+   disco da VPS (sem custo novo, exige limites e backup; medir espaço antes) ·
+   serviço de nuvem (mensal pequeno, credencial dele). Recomendação: VPS com a
+   troca isolada atrás de uma peça única, para virar nuvem sem reforma.
+3. **Assinar a obra na Caixa** (estação 4 de `DA-IDEIA-A-OBRA.md`), conferindo
+   antes que o e-mail dele está em `SUGESTOES_APROVADORES`.
+4. **O texto dos guias** — ou a aprovação do rascunho que a entrega 16 deixa
+   pronto no editor.
+
+## §7 O que ninguém pode inventar
+
+- Nota, estrela, ranking ou voto popular em portfólio de aluno (`DECISAO-gamificacao`
+  §8 já proíbe voto popular e ranking público; aqui vale para peça também).
+- Detecção de "isto foi feito por IA" (proibida por escrito, §8).
+- Trancar aula ou conteúdo atrás de check-list, ponto ou nível (invariante 3 da
+  economia: aula nunca fica atrás de jogo).
+- E-mail, telefone ou nome completo na página pública; padrão é privado e o
+  `noindex` não é negociável.
+- Guardar a peça em duas células.
+- Travessão em texto que o aluno lê (`ci/travessao.py`).
+- Marco real pagando XP (decisão 7 da Sessão A: vale zero, de propósito).
