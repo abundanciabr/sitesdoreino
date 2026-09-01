@@ -1,0 +1,14 @@
+{
+  "arquivo": "090-o-motor-de-criterios-as-medalhas-que-a-escola-concede-sozinh",
+  "id": "TAR-090",
+  "titulo": "O motor de criterios: as medalhas que a escola concede sozinha, sem ninguem pedir",
+  "toca": [
+    "gamificacao"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + teste de que cada criterio do vocabulario fechado concede exatamente uma vez, de que criterio fora do vocabulario e recusado, e de que a medalha credita XP e Cristais pela origem certa.",
+  "despacho": "Degrau 12 da escada, segunda metade. Depende da TAR-088 (ela cria o caminho\nda Concessao e a carta).\n\nAs medalhas de ofício e de comunidade nao se pedem: a escola as concede quando\na conta bate. O vocabulario de criterios ja existe FECHADO em\napps/gamificacao/models.py (CRITERIOS_ACEITOS), e o save() da ConquistaDefinicao\nja recusa qualquer palavra fora dele. O que falta e quem CONFERE a conta.\n\nO que fazer:\n\n1. Um avaliador que, depois de cada fato que muda um numero (credito de XP,\n   subida de nivel, resposta aceita no forum), pergunta quais conquistas\n   ativas daquele site a pessoa passou a cumprir.\n2. Conceder pela mesma porta da TAR-088, para a carta e a auditoria saírem\n   iguais. Papel do validador: \"sistema\" — o unico sem pessoa por tras.\n3. A MEDALHA CREDITA, e o marco nao: medalha tem pontos e cristais, e\n   \"medalha\" E uma das cinco origens legitimas de MovimentoDeCristais. E aqui\n   que a lacuna declarada em 31/08 se fecha em parte: o motor de EVENTOS\n   continua sem creditar Cristal (o vocabulario nao tem \"regra de evento\"), e\n   isso segue sendo decisao do mantenedor.\n4. NAO invente criterio novo. Se faltar um, e uma palavra a mais na lista e o\n   diff aparece. Se o que faltar for uma EXPRESSAO, PARE: virar motor de regras\n   generico e o criterio de morte numero 1 da lei.\n\nCUIDADO com o custo: avaliar todas as conquistas a cada fato e a forma\npreguiçosa de ficar lento quando a escola crescer. Filtre por criterio\nrelevante ao fato.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-01"
+}

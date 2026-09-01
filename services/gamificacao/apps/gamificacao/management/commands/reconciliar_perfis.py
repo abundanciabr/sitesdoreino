@@ -23,7 +23,11 @@ começo da investigação, não o fim: conserte a causa, não só o número.
 from django.core.management.base import BaseCommand
 from django.db.models import Sum
 
-from apps.gamificacao.models import LancamentoDeXP, PerfilJogador
+from apps.gamificacao.models import (
+    LancamentoDeXP,
+    MovimentoDeCristais,
+    PerfilJogador,
+)
 from apps.gamificacao.motor import nivel_para, recalcular
 
 
@@ -48,10 +52,27 @@ class Command(BaseCommand):
                 ).aggregate(soma=Sum("pontos"))["soma"]
                 or 0
             )
+            # A MOEDA entra na conferência junto com as conquistas (degrau 12).
+            # Uma promessa que o comando não confere é uma promessa sem
+            # mecanismo, e `cristais_saldo` passou a ser copiado do razão no
+            # mesmo dia em que passou a existir quem o creditasse.
+            saldo = (
+                MovimentoDeCristais.objects.filter(
+                    pessoa=perfil.pessoa, site_id=perfil.site_id
+                ).aggregate(soma=Sum("delta"))["soma"]
+                or 0
+            )
             esperado_xp = max(0, somado)
             esperado_nivel = nivel_para(esperado_xp, perfil.site_id)
-            if perfil.xp_total != esperado_xp or perfil.nivel != esperado_nivel:
-                divergentes.append((perfil, esperado_xp, esperado_nivel))
+            esperado_saldo = max(0, saldo)
+            if (
+                perfil.xp_total != esperado_xp
+                or perfil.nivel != esperado_nivel
+                or perfil.cristais_saldo != esperado_saldo
+            ):
+                divergentes.append(
+                    (perfil, esperado_xp, esperado_nivel, esperado_saldo)
+                )
 
         if not divergentes:
             self.stdout.write(
@@ -59,15 +80,16 @@ class Command(BaseCommand):
             )
             return
 
-        for perfil, xp, nivel in divergentes:
+        for perfil, xp, nivel, saldo in divergentes:
             self.stdout.write(
                 f"DIVERGE: {perfil.pessoa_id}@{perfil.site_id} "
-                f"gravado xp={perfil.xp_total} nv={perfil.nivel} · "
-                f"ledger xp={xp} nv={nivel}"
+                f"gravado xp={perfil.xp_total} nv={perfil.nivel} "
+                f"cristais={perfil.cristais_saldo} · "
+                f"ledger xp={xp} nv={nivel} cristais={saldo}"
             )
 
         if opts["consertar"]:
-            for perfil, _, _ in divergentes:
+            for perfil, _, _, _ in divergentes:
                 # `celebrar=False`: consertar a cópia não é a pessoa ter subido
                 # de nível. Um perfil que estava atrasado em relação ao ledger
                 # "sobe" ao ser reparado, e comemorar isso mandaria uma carta

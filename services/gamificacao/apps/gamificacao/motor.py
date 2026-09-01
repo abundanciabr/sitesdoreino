@@ -63,6 +63,7 @@ from django.db.models import Sum
 from .cartas import carta_de_nivel
 from .models import (
     LancamentoDeXP,
+    MovimentoDeCristais,
     NivelDefinicao,
     PerfilJogador,
     Pessoa,
@@ -336,10 +337,28 @@ def recalcular(
         # O ledger tem lançamentos negativos (estorno é linha nova, nunca
         # apagar). O perfil guarda um `PositiveIntegerField`: um saldo negativo
         # é impossível de exibir e seria recusado pelo banco.
+        # O SALDO DA MOEDA sai do mesmo lugar: o livro-razão, somado. Ele entrou
+        # aqui com as conquistas (degrau 12), quando passou a existir algo que
+        # credita Cristal — antes disso a coluna era zero para todo mundo e somar
+        # nada seria teatro. Sem esta linha, uma medalha creditaria a moeda no
+        # razão e a tela do aluno continuaria mostrando o saldo de antes, sem
+        # erro em lugar nenhum: a doença clássica da cópia desnormalizada.
+        saldo = (
+            MovimentoDeCristais.objects.filter(
+                pessoa=pessoa, site_id=site_id
+            ).aggregate(soma=Sum("delta"))["soma"]
+            or 0
+        )
+
         nivel_anterior = perfil.nivel
         perfil.xp_total = max(0, total)
         perfil.nivel = nivel_para(perfil.xp_total, site_id)
-        campos = ["xp_total", "nivel", "atualizado_em"]
+        # `max(0, ...)` pela mesma razão do XP: a coluna é positiva no banco, e um
+        # saldo negativo seria impossível de exibir. Ele não deveria acontecer — a
+        # loja só gasta o que existe —, mas a defesa é barata e a alternativa é
+        # uma tela que estoura.
+        perfil.cristais_saldo = max(0, saldo)
+        campos = ["xp_total", "nivel", "cristais_saldo", "atualizado_em"]
 
         # SÓ PARA CIMA. Nível que cai não gera aviso nenhum — lei da célula, e a
         # razão é de produto, não de código: notificação de culpa está na lista
