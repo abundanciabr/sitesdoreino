@@ -5,6 +5,10 @@
 > Herdado do formato da casa (ver `docs/decisoes/DESPACHO-04-deploy-infra.md`
 > como exemplo real) + as regras do `RUNBOOK-LOTES.md`.
 >
+> **Antes deste molde vem o caminho:** [`DA-IDEIA-A-OBRA.md`](DA-IDEIA-A-OBRA.md)
+> (estação 5). Este documento é o brief de UM agente; lá está de onde o brief
+> nasce e o que precisa estar decidido antes de ele existir.
+>
 > Arquivo preenchido vai para `docs/caixa-de-sugestoes/despachos/DESPACHO-EVO-NN-<apelido>.md`
 > — assim o histórico de cada despacho fica versionado ao lado do plano.
 
