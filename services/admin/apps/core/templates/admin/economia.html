@@ -70,7 +70,7 @@ quem a escreveu. Esta área é bastidor, e é só em português.
 
     <p class="numeros">
       <b>{{ regra.pontos }}</b> ponto{{ regra.pontos|pluralize }}
-      {% if regra.cristais %} e <b>{{ regra.cristais }}</b> Cristal{{ regra.cristais|pluralize:"is" }}{% endif %}
+      {% if regra.cristais %} e <b>{{ regra.cristais }}</b> Crista{{ regra.cristais|pluralize:"l,is" }}{% endif %}
       {% if regra.teto %}
       &middot; valor cheio nas primeiras {{ regra.teto }} vezes do dia, e depois
       vai caindo (não zera nunca)
@@ -149,7 +149,7 @@ quem a escreveu. Esta área é bastidor, e é só em português.
     <p class="numeros">
       <b>Medalha.</b>
       {% if c.pontos %}Vale <b>{{ c.pontos }}</b> ponto{{ c.pontos|pluralize }}{% endif %}
-      {% if c.cristais %} e <b>{{ c.cristais }}</b> Cristal{{ c.cristais|pluralize:"is" }}{% endif %}
+      {% if c.cristais %} e <b>{{ c.cristais }}</b> Crista{{ c.cristais|pluralize:"l,is" }}{% endif %}
     </p>
     {% endif %}
 
