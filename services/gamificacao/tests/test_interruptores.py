@@ -406,21 +406,37 @@ def test_a_medalha_com_conta_de_verdade_nao_tem_impedimento_nenhum():
 
 @pytest.mark.django_db
 def test_criterio_que_nada_alimenta_continua_avisando():
-    """`forjas_seladas` espera a Forja (degrau 14); `primeira_vez` espera a
-    plataforma saber dizer que uma obra ficou pronta (degrau 19).
+    """`primeira_vez` espera a plataforma saber dizer que uma obra ficou pronta
+    (degrau 19); a sequência semanal e as missões esperam os degraus 10 e 11.
 
     A lista encolhe sozinha à medida que a escada sobe — e é por isso que ela é
     medida contra o que EXISTE, não contra o que alguém se lembrou de escrever.
     """
-    forjas = _conquista(
-        slug="dez-forjas", criterio={"tipo": "forjas_seladas", "alvo": 10}
-    )
     obra = _conquista(
         slug="primeira-obra-2", criterio={"tipo": "primeira_vez", "assunto": "obra"}
     )
+    sequencia = _conquista(
+        slug="quatro-semanas", criterio={"tipo": "semanas_de_sequencia", "alvo": 4}
+    )
 
-    assert impedimentos_da_conquista(forjas) == [SEM_FATO_QUE_ALIMENTA]
     assert impedimentos_da_conquista(obra) == [SEM_FATO_QUE_ALIMENTA]
+    assert impedimentos_da_conquista(sequencia) == [SEM_FATO_QUE_ALIMENTA]
+
+
+@pytest.mark.django_db
+def test_a_medalha_das_dez_forjas_parou_de_dizer_que_falta_o_fato():
+    """A Forja nasceu em 01/09/2026 (degrau 14), e o aviso saiu junto.
+
+    Este guarda é o que impede o aviso de sobreviver ao motivo dele. Um aviso
+    que mente é pior que nenhum: a tela do mantenedor seguiria dizendo "ligar
+    isto não vai conceder nada" sobre a única medalha que celebra insistência,
+    e ele não a ligaria nunca.
+    """
+    forjas = _conquista(
+        slug="dez-forjas", criterio={"tipo": "forjas_seladas", "alvo": 10}
+    )
+
+    assert impedimentos_da_conquista(forjas) == []
 
 
 @pytest.mark.django_db

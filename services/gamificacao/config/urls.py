@@ -4,6 +4,8 @@ from apps.core.views import (
     base,
     decidir,
     enviar_prova,
+    forja,
+    forjar,
     healthz,
     interno,
     marcos,
@@ -71,6 +73,17 @@ urlpatterns = [
     path("marcos/enviar", enviar_prova, name="enviar-prova"),
     path("interno", interno, name="interno"),
     path("interno/decidir", decidir, name="decidir"),
+    # A FORJA (degrau 14): o medidor de tentativas por peça, e o selo que sai
+    # dele. Duas rotas e três gestos, todos do ALUNO: não há área de equipe
+    # aqui, porque ninguém confere insistência.
+    #
+    # O gesto NÃO carrega o id de uma linha, e isso é desenho de segurança, não
+    # de estilo: o formulário manda o NOME da peça, e o dono é sempre quem a
+    # sessão diz que é. Uma rota que aceitasse `forja=317` dependeria de alguém
+    # lembrar de conferir o dono a cada caminho novo; esta não tem o que
+    # lembrar (guarda em `tests/test_forja.py`).
+    path("forja", forja, name="forja"),
+    path("forja/registrar", forjar, name="forjar"),
     # A BASE, e ela é a raiz da célula: `meshcraft.top/conquistas` sem mais
     # nada. Nomeada, como todas: é `{% url 'base' %}` quem carrega o prefixo
     # público para dentro do endereço. Vem por último porque `path("")` casa o

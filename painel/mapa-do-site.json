@@ -437,6 +437,26 @@
       "observacao": "PUBLICO aqui quer dizer alcancavel pela internet, nao aberto: o corte do prefixo /conquistas e do Django, nao do Traefik, entao o endereco responde para qualquer um. Quem fecha e a lista de ids no env da celula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem nao esta nela leva 403 com a razao escrita. Ela NAO usa o papel que a identidade devolve, que e de exibicao: reconhecer nao e autorizar."
     },
     {
+      "celula": "gamificacao",
+      "rota": "forja",
+      "endereco": "/conquistas/forja",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "A Forja",
+      "descricao": "Onde o aluno conta quantas vezes tentou até cada peça ficar pronta. Ele dá um apelido para a peça, clica a cada nova tentativa, e quando termina a peça é selada com o número congelado: 'forjada em 13 tentativas'.",
+      "observacao": "É o único medidor da escola que celebra a teimosia, e ele vale ZERO ponto de propósito: pagar insistência em pontos ensinaria a inflar justamente o número que o selo existe para tornar honesto. Duas regras não voltam atrás: o contador só sobe, e selar é caminho só de ida."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "forja/registrar",
+      "endereco": "/conquistas/forja/registrar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Começar, somar ou selar uma peça",
+      "descricao": "Os três gestos da Forja num endereço só. Não é uma página: quem clica volta para a bancada com a resposta.",
+      "observacao": "O gesto nunca recebe o número de uma linha do banco, e sim o NOME da peça: o dono é sempre quem a sessão diz que é, então a peça de outro aluno não é protegida por uma conferência que alguém precisa lembrar de escrever, ela simplesmente não existe para a consulta."
+    },
+    {
       "celula": "sugestoes",
       "rota": "",
       "endereco": "/forms/sugestoes/",
