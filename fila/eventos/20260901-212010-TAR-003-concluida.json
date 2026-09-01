@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260901-212010-TAR-003-concluida",
+  "tarefa": "TAR-003",
+  "evento": "concluida",
+  "quando": "2026-09-01T21:20:10+00:00",
+  "quem": "sessao-infra-backup-2026-09-01",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/837",
+  "verificado_em": "2026-09-01"
+}
