@@ -1,0 +1,14 @@
+{
+  "arquivo": "088-o-pedido-de-validacao-de-um-marco-real-a-fila-com-prazo-e-a-",
+  "id": "TAR-088",
+  "titulo": "O pedido de validacao de um marco real: a fila com prazo, e a concessao que sai dela",
+  "toca": [
+    "gamificacao"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + teste de que aceitar um marco cria a Concessao e a carta, de que devolver exige motivo estruturado, e de que N devolucoes escalam para a equipe. Prazo calculado em dias uteis, provado por sabotagem.",
+  "despacho": "Degrau 12 da escada de docs/decisoes/PLANO-CELULA-GAMIFICACAO.md, primeira\nmetade: a ESPINHA do sistema.\n\nAs tabelas ja existem desde a TAR-035 (Concessao, PedidoDeValidacao,\nConquistaDefinicao) e nunca tiveram codigo que as usasse. O que falta e o\nservico:\n\n1. pedir_validacao: o aluno manda a evidencia de um marco. Estado inicial\n   \"em_analise\" (nunca parece recusa) e \"prazo_ate\" pelo SLA da lei: 48h uteis\n   para respostas, 5 dias uteis para marcos.\n2. aceitar: cria a Concessao (idempotente pelo Unique(pessoa, conquista)),\n   grava QUEM validou e com que papel, e emite a carta\n   \"gamificacao.marco-validado\" por apps/gamificacao/cartas.py, que ja existe e\n   ja esta provada contra o contrato congelado.\n3. devolver: motivo ESTRUTURADO obrigatorio (o banco ja recusa sem ele) e\n   privado. N devolucoes de PAR escalam para a equipe\n   (escalado_para_adulto) — o anti-anel que o modelo previu.\n\nTRAVAS QUE NAO SE AFROUXAM: marco rende ZERO XP (o banco recusa o contrario);\nmarco que envolve dinheiro exige validador da equipe, e \"par\" nao fecha; a\nevidencia nasce privada e NUNCA viaja na carta; consentimento nasce \"privado\".\n\nNAO construa tela aqui (vem na tarefa seguinte) e NAO mexa em contracts/: a\nporta de maquina esta congelada, e mudar exige Rito de Contrato com o\nmantenedor presente.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-01"
+}

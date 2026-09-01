@@ -1,0 +1,14 @@
+{
+  "arquivo": "089-as-duas-telas-dos-marcos-o-aluno-envia-a-prova-e-a-equipe-de",
+  "id": "TAR-089",
+  "titulo": "As duas telas dos marcos: o aluno envia a prova, e a equipe decide em um clique",
+  "toca": [
+    "gamificacao"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + prova de que a tela da equipe RECUSA quem nao e da equipe (fail-closed, provado por assercao) + o caminho inteiro medido: pedir, aceitar, e a conquista aparecendo na tela do aluno.",
+  "despacho": "Degrau 13 da escada, e a segunda metade do 12. Depende da TAR-088.\n\nONDE MORA, e a decisao esta tomada com o motivo escrito: DENTRO da celula\ngamificacao, em /conquistas/interno, e nao na celula admin. O plano deixou as\nduas portas abertas (\"decidir na Sessao B\") e a Sessao B nao decidiu. Duas\nrazoes fecham a questao: (1) a lei da celula §5 diz, com todas as letras, que\n\"reconhecer nao e autorizar\" e que quem decide o que alguem pode fazer AQUI e\nesta celula, fail-CLOSED; (2) por a tela na admin obrigaria a abrir a porta de\nmaquina da gamificacao para mais operacoes, e o contrato dela esta CONGELADO —\nseria um Rito de Contrato com o mantenedor presente para uma tela interna.\n\nO que fazer:\n\n1. A tela do aluno: em /conquistas, um marco que ele ainda nao tem mostra o\n   botao de enviar a prova. Evidencia e texto (link do portfolio, descricao do\n   trabalho), nunca upload nesta fase.\n2. A tela da equipe em /conquistas/interno: a fila UNICA, ordenada por prazo,\n   com o que esta atrasado em primeiro. Aceitar e devolver em UM clique, e a\n   devolucao exige escolher o motivo da lista fechada.\n3. Fail-CLOSED de verdade: sem cracha de equipe, 404 ou 403 — nunca uma tela\n   vazia que sugira que a pessoa chegou perto. Guarda por assercao.\n4. Auditoria visivel: quem validou e quando, na propria linha. E o desfazer\n   (estorno da concessao), que e linha nova, nunca apagar.\n\nA evidencia de um marco de dinheiro NUNCA aparece para um par. A tela da equipe\ne a unica que a mostra.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-01"
+}
