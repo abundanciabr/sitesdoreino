@@ -42,7 +42,7 @@ import logging
 
 from django.db import transaction
 
-from .models import RegraDePontuacao
+from .models import ConquistaDefinicao, RegraDePontuacao
 
 logger = logging.getLogger(__name__)
 
@@ -158,3 +158,124 @@ def mudar(*, site_id: str, slug: str, ativa: bool, agora) -> RegraDePontuacao:
         regra.vigente_desde.isoformat() if regra.vigente_desde else "-",
     )
     return regra
+
+
+# ---------------------------------------------------------------------------
+# AS CONQUISTAS — o segundo tipo de interruptor, e ele NÃO é igual ao primeiro
+# ---------------------------------------------------------------------------
+# Uma regra de pontuação e uma conquista são as duas coisas que o mantenedor liga,
+# e por isso moram na mesma tela. Mas a mecânica de ligar é diferente numa coisa
+# que importa, e a diferença foi DECIDIDA por ele em 01/09/2026, em pergunta
+# estruturada:
+#
+#   **ligar uma conquista RECONHECE quem já cumpriu o critério antes.**
+#
+# É por isso que não existe `vigente_desde` aqui. Na regra de pontuação, aquele
+# carimbo é o mecanismo do "nunca retroativo": pagar hoje o que aconteceu ontem
+# inflaria o placar de quem não fez nada novo. Numa conquista a conta é outra —
+# quem já terminou a primeira obra não tem como fazer outra primeira, e negar a
+# medalha a essa pessoa seria a escola punir quem chegou cedo. A palavra dele:
+# reconhecer quem já cumpriu, sabendo que no dia de ligar sai um punhado de
+# medalhas de uma vez.
+#
+# Quem executa esse reconhecimento é o motor de critérios (TAR-090), que ainda
+# não existe: é por isso que `sem-motor-de-criterio` é um impedimento declarado
+# aqui embaixo, e não uma surpresa depois do clique.
+
+# O vocabulário FECHADO dos impedimentos de conquista. Slugs, nunca frase —
+# mesma lei da lista das regras: quem escreve em português é a tela, porque o
+# site serve três idiomas.
+SEM_MOTOR_DE_CRITERIO = "sem-motor-de-criterio"
+SEM_FATO_QUE_ALIMENTA = "sem-fato-que-alimenta"
+SO_POR_CONCESSAO_MANUAL = "so-por-concessao-manual"
+
+# Os critérios que dependem de um fato que NADA no site produz hoje. `forjas_seladas`
+# espera a Forja (degrau 14) e `respostas_aceitas` espera o fórum ganhar voz
+# (degrau 17). Ligar uma conquista dessas não faz mal nenhum e também não faz
+# nada — e é exatamente esse "nada" que a tela precisa dizer antes do clique.
+CRITERIOS_SEM_FATO = frozenset({"forjas_seladas", "respostas_aceitas"})
+
+
+def impedimentos_da_conquista(conquista: ConquistaDefinicao) -> list[str]:
+    """O que impede ESTA conquista de acontecer, mesmo ligada. Vazio = nada impede.
+
+    **O marco real não tem impedimento nenhum**, e a assimetria é o desenho: ele
+    não depende de conta automática. Ligar um marco faz ele aparecer na trilha do
+    aluno, que manda a prova, e alguém da equipe decide. Esse caminho existe
+    inteiro desde a TAR-088.
+    """
+    if conquista.classe == ConquistaDefinicao.Classe.MARCO:
+        return []
+
+    criterio = (conquista.criterio or {}).get("tipo", "manual")
+    if criterio == "manual":
+        # Medalha de critério manual (o Fundador é a única hoje): ligar não a
+        # concede a ninguém — ela sai por um comando de backfill ou pela mão da
+        # equipe. Sem este aviso, o mantenedor ligaria e esperaria medalhas que
+        # nunca viriam.
+        return [SO_POR_CONCESSAO_MANUAL]
+
+    achados = [SEM_MOTOR_DE_CRITERIO]
+    if criterio in CRITERIOS_SEM_FATO:
+        achados.append(SEM_FATO_QUE_ALIMENTA)
+    return achados
+
+
+class ConquistaDesconhecida(LookupError):
+    """Não existe conquista com esse slug NESTE site. Vira 404 na porta."""
+
+
+def listar_conquistas(site_id: str) -> list[ConquistaDefinicao]:
+    """Todas as conquistas deste site, ligadas e desligadas, em ordem estável.
+
+    Marcos primeiro, e não é gosto: a hierarquia da lei é
+    *Realidade > Criação > Maestria > Comunidade > XP*, e a tela que lista o
+    andaime acima da espinha ensina a ordem errada a quem a lê todo dia.
+    """
+    return sorted(
+        ConquistaDefinicao.objects.filter(site_id=site_id),
+        key=lambda c: (c.classe != ConquistaDefinicao.Classe.MARCO, c.slug),
+    )
+
+
+def mudar_conquista(
+    *, site_id: str, slug: str, ativa: bool, agora=None
+) -> ConquistaDefinicao:
+    """Liga ou desliga UMA conquista. Devolve a linha como ela ficou.
+
+    Mesmo desenho do interruptor das regras, menos a data: `versao` sobe quando
+    algo muda, e chamada que não muda nada devolve a linha sem gastar versão —
+    dois cliques no mesmo botão não inflam um histórico de mudanças que ninguém
+    fez.
+
+    `agora` é aceito e IGNORADO de propósito, para as duas funções de interruptor
+    terem a mesma assinatura na tela que as chama. Guardar a data aqui seria
+    guardar um campo que nada lê, e campo que nada lê é a primeira coisa a
+    envelhecer mentindo.
+    """
+    with transaction.atomic():
+        try:
+            conquista = ConquistaDefinicao.objects.select_for_update().get(
+                site_id=site_id, slug=slug
+            )
+        except ConquistaDefinicao.DoesNotExist as erro:
+            raise ConquistaDesconhecida(
+                f"não há conquista {slug!r} no site {site_id!r}"
+            ) from erro
+
+        if conquista.ativa == ativa:
+            return conquista
+
+        conquista.ativa = ativa
+        conquista.versao += 1
+        conquista.save(update_fields=["ativa", "versao"])
+
+    logger.info(
+        "economia: conquista %s (%s) do site %s ficou %s (versao %s)",
+        conquista.slug,
+        conquista.classe,
+        site_id,
+        "LIGADA" if ativa else "desligada",
+        conquista.versao,
+    )
+    return conquista

@@ -31,6 +31,7 @@ vazando — seria verde provando nada.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from datetime import timedelta
 
 import httpx
@@ -504,7 +505,37 @@ def test_sem_env_da_identidade_a_porta_fecha_em_visitante_e_nao_derruba(monkeypa
 # ---------------------------------------------------------------------------
 # A porta é fechada por padrão — e o Bearer é o ÚNICO cadeado
 # ---------------------------------------------------------------------------
-@pytest.mark.parametrize("caminho", ["/perfis?ids=p_a", "/eu", "/economia/regras"])
+def _operacoes_de_leitura_do_contrato() -> list[str]:
+    """Os caminhos de LEITURA que o contrato congelado declara, medidos e não digitados.
+
+    Era uma lista escrita à mão, e listas escritas à mão esquecem: o dia em que
+    uma operação nova entrasse na porta, o guarda do 401 continuaria verde
+    cobrindo as antigas, e a operação nova nasceria sem cadeado provado. Foi o
+    que quase aconteceu em 01/09/2026, quando o Rito de Contrato acrescentou os
+    interruptores das conquistas.
+
+    Lê o CONGELADO e não o código vivo de propósito: o congelado é o que a
+    plataforma promete, e é contra a promessa que o cadeado precisa valer.
+    """
+    import yaml
+
+    contrato = yaml.safe_load(
+        (
+            Path(__file__).resolve().parents[3]
+            / "contracts"
+            / "gamificacao.openapi.yaml"
+        ).read_text(encoding="utf-8")
+    )
+    caminhos = [
+        rota.replace("{slug}", "qualquer-coisa")
+        for rota, operacoes in contrato["paths"].items()
+        if "get" in operacoes
+    ]
+    assert caminhos, "o contrato não declarou operação de leitura nenhuma"
+    return caminhos
+
+
+@pytest.mark.parametrize("caminho", _operacoes_de_leitura_do_contrato())
 def test_sem_token_e_401_em_toda_operacao(caminho):
     assert pedir(caminho, token=None).status_code == 401
 

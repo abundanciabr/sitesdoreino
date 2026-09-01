@@ -80,7 +80,14 @@ from ninja.errors import HttpError
 
 # Os interruptores entram com nome PRÓPRIO em vez de nomes curtos: `listar` e
 # `mudar` soltos neste arquivo não diriam do quê.
-from apps.gamificacao.interruptores import RegraDesconhecida, impedimentos_de
+from apps.gamificacao.interruptores import (
+    ConquistaDesconhecida,
+    RegraDesconhecida,
+    impedimentos_da_conquista,
+    impedimentos_de,
+)
+from apps.gamificacao.interruptores import listar_conquistas
+from apps.gamificacao.interruptores import mudar_conquista
 from apps.gamificacao.interruptores import listar as listar_interruptores
 from apps.gamificacao.interruptores import mudar as mudar_interruptor
 
@@ -565,3 +572,126 @@ def set_economy_switch(request, slug: str, payload: PedidoDeInterruptor):
     except RegraDesconhecida as erro:
         raise HttpError(404, str(erro)) from erro
     return _interruptor(regra)
+
+
+# ---------------------------------------------------------------------------
+# O SEGUNDO INTERRUPTOR: as conquistas
+# ---------------------------------------------------------------------------
+# Nasceu no Rito de Contrato de 01/09/2026, com o mantenedor presente. A pergunta
+# que o rito respondeu não foi a forma da porta (ela é gêmea da de cima), e sim
+# uma de produto: **ligar uma conquista reconhece quem já cumpriu o critério
+# antes?** A resposta dele foi SIM, com o custo declarado na hora — no dia de
+# ligar, um punhado de medalhas sai de uma vez, com os pontos delas.
+#
+# É por isso que aqui NÃO existe `vigente_desde`. Na regra de pontuação aquele
+# carimbo é o mecanismo do "nunca retroativo"; aqui ele seria o mecanismo de
+# negar a "Primeira obra" a quem já fez a primeira obra — e ninguém faz duas
+# estreias.
+class InterruptorDeConquista(Schema):
+    slug: str
+    nome: str
+    descricao: str
+    classe: Literal["medalha", "marco"]
+    familia: Literal["oficio", "comunidade", "epoca", "secreta", "carreira", "espelho"]
+    pontos: int
+    cristais: int
+    envolve_dinheiro: bool
+    exige_validador_da_equipe: bool
+    ativa: bool
+    versao: int
+    impedimentos: list[
+        Literal[
+            "sem-motor-de-criterio", "sem-fato-que-alimenta", "so-por-concessao-manual"
+        ]
+    ]
+
+
+def _interruptor_de_conquista(conquista) -> InterruptorDeConquista:
+    return InterruptorDeConquista(
+        slug=conquista.slug,
+        nome=conquista.nome,
+        descricao=conquista.descricao,
+        classe=conquista.classe,
+        familia=conquista.familia,
+        pontos=conquista.pontos,
+        cristais=conquista.cristais,
+        envolve_dinheiro=conquista.envolve_dinheiro,
+        exige_validador_da_equipe=conquista.exige_validador_da_equipe,
+        ativa=conquista.ativa,
+        versao=conquista.versao,
+        impedimentos=impedimentos_da_conquista(conquista),
+    )
+
+
+@router.get(
+    "/economia/conquistas",
+    response=list[InterruptorDeConquista],
+    operation_id="listAchievementSwitches",
+    summary="Todas as medalhas e marcos, ligados e desligados",
+    description=(
+        "A segunda metade da tela do mantenedor. Devolve TODAS as conquistas do\n"
+        "site, com os MARCOS primeiro: a hierarquia da lei e\n"
+        "Realidade > Criacao > Maestria > Comunidade > XP, e uma tela que lista o\n"
+        "andaime acima da espinha ensina a ordem errada a quem a le todo dia.\n"
+        "\n"
+        "`nome` e `descricao` VIAJAM AQUI, e isto e uma excecao declarada ao\n"
+        "invariante 3 desta porta ('slug, nunca frase pronta'). A razao: estas\n"
+        "duas operacoes servem a tela do MANTENEDOR, que e bastidor e nao\n"
+        "vitrine, e o texto de uma conquista e dado que ele proprio edita, nao\n"
+        "frase de interface que precise existir em tres idiomas. As operacoes\n"
+        "que servem o ALUNO continuam devolvendo so slug e numero.\n"
+        "\n"
+        "`impedimentos` avisa antes do clique quando ligar nao vai adiantar:\n"
+        "`sem-motor-de-criterio` = a conta automatica das medalhas ainda nao\n"
+        "existe; `sem-fato-que-alimenta` = nada no site produz o numero que o\n"
+        "criterio conta; `so-por-concessao-manual` = a medalha so sai pela mao da\n"
+        "equipe. MARCO nunca tem impedimento: ele nao depende de conta, e sim de\n"
+        "alguem mandar a prova e a equipe conferir."
+    ),
+)
+def list_achievement_switches(request):
+    site_id = site_atual()
+    if site_id is None:
+        return []
+    return [
+        _interruptor_de_conquista(conquista) for conquista in listar_conquistas(site_id)
+    ]
+
+
+@router.post(
+    "/economia/conquistas/{slug}",
+    response=InterruptorDeConquista,
+    operation_id="setAchievementSwitch",
+    summary="Liga ou desliga UMA medalha ou marco",
+    description=(
+        "Ligar um MARCO faz ele aparecer na trilha do aluno, que manda a prova e\n"
+        "espera a equipe conferir. Ligar uma MEDALHA faz a escola passar a\n"
+        "conceder sozinha quando a conta bater.\n"
+        "\n"
+        "NAO HA `vigente_desde` AQUI, e a ausencia e a decisao do mantenedor no\n"
+        "Rito de 01/09/2026: ligar uma conquista RECONHECE quem ja cumpriu o\n"
+        "criterio antes. O carimbo de data e o mecanismo do 'nunca retroativo'\n"
+        "das regras de pontuacao, onde pagar o passado inflaria o placar de quem\n"
+        "nao fez nada novo; aqui ele seria o mecanismo de negar a 'Primeira obra'\n"
+        "a quem ja fez a primeira obra, e ninguem faz duas estreias.\n"
+        "\n"
+        "`versao` sobe quando algo muda, e chamada que nao muda nada devolve a\n"
+        "linha como esta, sem gastar versao: dois cliques no mesmo botao nao\n"
+        "inflam o historico com mudancas que ninguem fez.\n"
+        "\n"
+        "Slug desconhecido responde 404, como o interruptor das regras: inventar\n"
+        "em silencio qual conquista o mantenedor quis ligar seria pior que\n"
+        "recusar."
+    ),
+)
+def set_achievement_switch(request, slug: str, payload: PedidoDeInterruptor):
+    site_id = site_atual()
+    if site_id is None:
+        raise HttpError(503, "esta instalacao nao declara SITE_ID")
+    try:
+        conquista = mudar_conquista(
+            site_id=site_id, slug=slug, ativa=payload.ativa, agora=timezone.now()
+        )
+    except ConquistaDesconhecida as erro:
+        raise HttpError(404, str(erro)) from erro
+    return _interruptor_de_conquista(conquista)
