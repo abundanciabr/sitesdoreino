@@ -78,6 +78,29 @@ h2 { font-size: 18px; margin: 0 0 4px; }
 }
 .mensagem { border-left: 3px solid var(--linha); }
 .mensagem .autor { font-weight: 600; font-size: 14px; }
+/* ── A ETIQUETA DE NÍVEL (apps/core/etiquetas.py) ─────────────────────────
+   "Nv 7 · Modelador" ao lado de quem escreveu. Ela usa a cor de destaque, e
+   não a cinza de `.etiqueta`, porque as duas dizem coisas diferentes: aquela
+   marca o ESTADO da mensagem (fora do ar, editada, resposta aceita) e some
+   quando o estado passa; esta é uma conquista de quem escreveu, e é o único
+   lugar do fórum onde o progresso do aluno aparece para quem não foi
+   procurá-lo em `/conquistas`.
+
+   Discreta de propósito: 12px e fundo lavado. O nome de quem falou continua
+   sendo a informação mais forte da linha, e um selo gritando ao lado dele
+   inverteria isso — a conversa é do aluno, não do placar. */
+.mensagem .nivel {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--destaque);
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 999px;
+  padding: 1px 9px;
+  margin-left: 6px;
+  white-space: nowrap;
+}
 .mensagem .quando { color: var(--tinta-fraca); font-size: 13px; }
 .mensagem .texto { margin-top: 8px; white-space: pre-wrap; }
 .vazio {

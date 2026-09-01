@@ -20,6 +20,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.forum.models import Area, Mensagem, Topico
 
+from .etiquetas import decorar as decorar_com_etiquetas
 from .leitura import (
     marcar_area_como_lida,
     novidades_por_area,
@@ -271,13 +272,25 @@ def contexto_do_topico(request, ator, topico, *, erro="", texto="", erro_admin="
     if not pode_moderar(ator):
         mensagens = mensagens.filter(removida_em__isnull=True)
 
+    # A ETIQUETA DE NÍVEL de cada autor, em UMA ida à rede para a página
+    # inteira. A lista é materializada aqui de propósito: cada mensagem leva
+    # consigo a etiqueta do autor, pelo mesmo desenho de `topico.tem_novidade`
+    # na tela de área. Perguntar dentro do laço do template faria um salto de
+    # rede por mensagem exibida — e a página do fórum passaria a depender da
+    # latência da `gamificacao` tantas vezes quantas fossem as falas.
+    #
+    # Falha sempre para "sem etiqueta" (`apps/core/etiquetas.py`): gamificação
+    # fora do ar ou par de tokens não provisionado deixa a página exatamente
+    # como ela era antes desta linha existir.
+    lista = decorar_com_etiquetas(list(mensagens.order_by("criado_em")))
+
     modera = pode_moderar(ator)
     return {
         "ator": ator,
         "topico": topico,
         "porta_de_entrada": _porta_de_entrada(request),
         "area": topico.area,
-        "mensagens": mensagens.order_by("criado_em"),
+        "mensagens": lista,
         "pode_escrever": pode_escrever(topico.area, ator),
         "motivo": por_que_nao_escreve(topico.area, ator),
         "erro": erro,
