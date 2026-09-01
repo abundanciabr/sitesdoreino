@@ -60,7 +60,7 @@ from django.db import transaction
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from django.views.decorators.http import require_GET, require_POST
 
 from apps.sugestoes.models import Aviso, Comentario, Identidade, Sugestao, Voto
@@ -94,6 +94,86 @@ VINCULO_ROTULOS = dict(Aviso.Vinculo.choices)
 # ---------------------------------------------------------------------------
 ASSUNTO_SUGESTAO = "sugestao.status-alterado"
 ASSUNTO_MATRICULA = "matricula.situacao-alterada"
+
+# As QUATRO CARTAS DE CELEBRAÇÃO da gamificação (Sessão B, 30/08/2026). Elas já
+# eram escritas e já chegavam aqui: até este PR caíam todas no cartão do
+# `desconhecido`, e a pessoa que subiu de nível lia "esta tela ainda não sabe
+# mostrar". O fato existia, a voz não.
+#
+# **Cada uma é uma constante, e a lista é FECHADA de propósito.** A tentação
+# óbvia é `assunto.startswith("gamificacao.")` — e ela é um erro: o contrato
+# pode ganhar um quinto assunto amanhã, e o prefixo guloso o desenharia com o
+# cartão errado em vez de admitir que não o conhece. O ramo do `desconhecido` é
+# fail-VISÍVEL, e ele só protege enquanto for possível cair nele.
+ASSUNTO_NIVEL = "gamificacao.nivel-alcancado"
+ASSUNTO_CONQUISTA = "gamificacao.conquista-concedida"
+ASSUNTO_MARCO = "gamificacao.marco-validado"
+ASSUNTO_DESTAQUE = "gamificacao.destaque-da-semana"
+
+#: Os títulos dos níveis NA PALAVRA DE QUEM LÊ. Mesma forma, e mesmo motivo, do
+#: `SITUACAO_ROTULOS` logo abaixo: um mapa explícito, pequeno, com fallback
+#: fail-open — **slug que não estiver aqui mostra a frase só com o número do
+#: nível, nunca um rótulo chutado**.
+#:
+#: **Por que um mapa, e não desfazer o slug.** O `titulo_slug` da carta é
+#: DERIVADO (`slugify(titulo)` em `gamificacao/cartas.py::carta_de_nivel`), então
+#: ele já perdeu o acento e juntou as palavras: "Aprendiz de Ateliê" chega como
+#: `aprendiz-de-atelie`. Reconstruí-lo programaticamente produz lixo visível ao
+#: aluno ("Aprendiz De Atelie"), e é justamente o tipo de chute que a lei desta
+#: tela proíbe.
+#:
+#: **Este mapa é um ESPELHO, e vai envelhecer.** A escada mora na tabela
+#: `NIVEIS` de `gamificacao/management/commands/semear_economia.py`, célula que
+#: esta aqui não pode ler em tempo de execução (Lei 3, e a constituição da
+#: `sugestoes` lista `gamificacao` como proibida até de ler). O espelho é aceito
+#: porque a divergência é INÓCUA por construção: nível renomeado ou nível novo
+#: cai no fallback e a frase continua verdadeira, com o número. O que nunca pode
+#: acontecer é o contrário, um rótulo desatualizado apresentado como certo.
+#:
+#: Só as formas masculinas estão aqui porque só elas são emitidas: o motor passa
+#: `degrau.titulo` (`gamificacao/motor.py`), nunca `titulo_feminino`. Se um dia
+#: passar, o slug feminino cai no fallback e a pessoa lê o número do nível, que
+#: continua sendo verdade.
+TITULO_DE_NIVEL_ROTULOS = {
+    "aprendiz": "Aprendiz",
+    "aprendiz-de-atelie": "Aprendiz de Ateliê",
+    "modelador": "Modelador",
+    "modelador-de-atelie": "Modelador de Ateliê",
+    "oficial": "Oficial",
+    "oficial-de-atelie": "Oficial de Ateliê",
+    "artesao": "Artesão",
+    "artesao-de-atelie": "Artesão de Ateliê",
+    "mestre": "Mestre",
+    "mestre-de-atelie": "Mestre de Ateliê",
+}
+
+#: O TOM de cada família de medalha. `familia` é opcional no contrato, e
+#: ausência é "não informado", nunca erro: sem ela o cartão fica só com a frase
+#: de sempre, que já é uma boa notícia inteira.
+#:
+#: O NOME da medalha não aparece em lugar nenhum, e isso é fronteira, não
+#: esquecimento: ele mora na célula `gamificacao`, que esta tela não pode
+#: consultar. Um cartão que celebrasse "sua medalha" sem saber qual seria menos
+#: honesto do que um que celebra o fato e manda a pessoa olhar o perfil dela.
+FAMILIA_DE_MEDALHA_FRASES = {
+    "oficio": "É uma medalha de ofício, dessas que nascem do trabalho pronto.",
+    "comunidade": "É uma medalha de comunidade, de quem apareceu quando alguém precisou.",
+    "epoca": "É uma medalha de época, e ela só existe para quem estava por aqui agora.",
+    "secreta": "É uma medalha secreta, e você achou o caminho sem ninguém contar.",
+    "carreira": "É uma medalha de carreira, das que marcam o caminho inteiro.",
+    "espelho": "É uma medalha de espelho, e ela compara você com você mesmo, mais ninguém.",
+}
+
+#: COM QUE AUTORIDADE o marco foi validado. O ID de quem validou nunca viaja na
+#: carta (é a mesma regra do `ator_id` do envelope: guardar sim, mostrar não), e
+#: por isso o cartão fala do PAPEL, jamais de uma pessoa. Opcional no contrato:
+#: sem ele, o cartão simplesmente não diz quem conferiu.
+VALIDADOR_DE_MARCO_FRASES = {
+    "professor": "Quem conferiu foi um professor da escola.",
+    "monitor": "Quem conferiu foi um monitor da escola.",
+    "par": "Quem conferiu foi outro aluno, com a mesma régua de sempre.",
+    "sistema": "A conferência foi automática, feita pela própria plataforma.",
+}
 
 #: As situações de matrícula NA PALAVRA DE QUEM LÊ — o aluno, não o mantenedor.
 #: O painel dele tem o próprio vocabulário ("Ativo — entra normalmente"), e a
@@ -460,6 +540,102 @@ def _matricula_para_o_template(item: dict, parametros: dict) -> dict:
     }
 
 
+def _nivel_para_o_template(item: dict, parametros: dict) -> dict:
+    """[GAMIFICAÇÃO] Subiu de nível.
+
+    **O `nivel` é o campo autoritativo; o `titulo_slug` só escolhe o tom.** A
+    frase se monta a partir do número, e o título entra por cima quando o slug
+    está no mapa. Slug fora do mapa (ou ausente) não vira rótulo chutado: some,
+    e sobra a frase com o número, que continua inteiramente verdadeira.
+
+    **`nivel` ausente também é caso NORMAL, não erro.** Ele é obrigatório no
+    contrato de hoje, mas a tela lê cartas que já estão gravadas na caixa
+    central, e um contrato congelado não retroage sobre o que já foi escrito.
+    Sem o número, o cartão diz que houve uma subida, sem dizer para onde: menos
+    informação, nunca uma mentira nem um `nível ` com um buraco no fim da frase.
+    """
+    bruto = parametros.get("nivel")
+    nivel = bruto if isinstance(bruto, int) and not isinstance(bruto, bool) else None
+    slug = parametros.get("titulo_slug") or ""
+    return {
+        "nivel": nivel,
+        # Só entra na tela quando o slug é conhecido E o número existe: um
+        # título solto, sem o degrau a que pertence, não é frase de ninguém.
+        "titulo_do_nivel": TITULO_DE_NIVEL_ROTULOS.get(slug, "") if nivel else "",
+    }
+
+
+def _conquista_para_o_template(item: dict, parametros: dict) -> dict:
+    """[GAMIFICAÇÃO] Ganhou uma medalha.
+
+    A medalha é o andaime, contado automaticamente pelo sistema — **não
+    confundir com o MARCO**, que é a espinha, exige validação humana e vale zero
+    XP. São dois assuntos no contrato justamente para esta tela poder falar de
+    cada um com o peso certo, e é por isso que são dois cartões aqui.
+
+    O `conquista_slug` **não vai para a tela**, pela mesma razão do
+    `matricula_id`: é identificador opaco, e o NOME da medalha mora na célula
+    `gamificacao`, que esta aqui não consulta.
+    """
+    return {
+        "familia_frase": FAMILIA_DE_MEDALHA_FRASES.get(
+            parametros.get("familia") or "", ""
+        )
+    }
+
+
+def _marco_para_o_template(item: dict, parametros: dict) -> dict:
+    """[GAMIFICAÇÃO] Um marco real foi validado.
+
+    A carta mais importante do sistema, e a que menos XP carrega: marco rende
+    ZERO. Ela existe porque marco passa por fila de validação com prazo, e quem
+    mandou uma evidência e ficou esperando precisa saber que ela foi aceita.
+
+    A evidência em si nunca viaja na carta e nunca aparece aqui: ela é privada,
+    e nem os colegas a veem.
+    """
+    return {
+        "validador_frase": VALIDADOR_DE_MARCO_FRASES.get(
+            parametros.get("validador_papel") or "", ""
+        )
+    }
+
+
+def _destaque_para_o_template(item: dict, parametros: dict) -> dict:
+    """[GAMIFICAÇÃO] O professor destacou a obra.
+
+    `semana` é a SEGUNDA-FEIRA da semana, e o contrato a manda como DATA e não
+    como data-hora exatamente para ninguém converter fuso e exibir a semana
+    errada (`armadilhas/099`). Por isso ela vira `datetime.date`, que o filtro
+    `|date:` formata sem conversão nenhuma, e nunca um `datetime` ciente.
+
+    Data ausente, vazia ou malformada some do cartão: a frase sem ela continua
+    verdadeira, e uma semana errada seria pior do que semana nenhuma.
+    """
+    semana = None
+    try:
+        semana = parse_date(parametros.get("semana") or "")
+    except ValueError:
+        # Formato de data certo e dia impossível ("2026-02-31"): `parse_date`
+        # levanta em vez de devolver None, e uma carta não pode derrubar a
+        # página inteira de ninguém por causa de um caractere.
+        semana = None
+    return {"semana": semana}
+
+
+#: [ASSUNTOS] Assunto → quem desenha o cartão dele. Uma tabela, e não uma escada
+#: de `if`, porque assunto novo passou a ser rotina: foram DOIS em 29/08, e mais
+#: QUATRO em 01/09. A tabela também é o que torna barato o teste que mais
+#: importa aqui — o de que um assunto FORA dela continua caindo no fail-visível.
+_DESENHO_DO_CARTAO = {
+    ASSUNTO_MATRICULA: _matricula_para_o_template,
+    ASSUNTO_NIVEL: _nivel_para_o_template,
+    ASSUNTO_CONQUISTA: _conquista_para_o_template,
+    ASSUNTO_MARCO: _marco_para_o_template,
+    ASSUNTO_DESTAQUE: _destaque_para_o_template,
+}
+
+
 def _item_para_o_template(item: dict, sugestoes: dict[str, dict]) -> dict:
     """Um item de `GET /avisos` (a forma da API) → o dicionário que o
     template usa. Mesmos NOMES de campo que o `Aviso` (model) já expunha —
@@ -485,8 +661,9 @@ def _item_para_o_template(item: dict, sugestoes: dict[str, dict]) -> dict:
         "criado_em": parse_datetime(item["criado_em"]),
     }
 
-    if assunto == ASSUNTO_MATRICULA:
-        return {**comum, **_matricula_para_o_template(item, parametros)}
+    desenho = _DESENHO_DO_CARTAO.get(assunto)
+    if desenho is not None:
+        return {**comum, **desenho(item, parametros)}
 
     if assunto and assunto != ASSUNTO_SUGESTAO:
         # [ASSUNTOS] Assunto que esta tela NÃO conhece. O cartão diz isso, em vez
