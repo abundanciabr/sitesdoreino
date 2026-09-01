@@ -1,0 +1,109 @@
+{% comment %}
+A trilha de MARCOS REAIS do aluno.
+
+Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
+prefixo público `/conquistas` para dentro do caminho, e caminho cravado em
+string quebra em produção e SÓ lá (`armadilhas/029` e `/081`). O CSS sai de
+`{% url 'estatico' %}` e nunca de `{% static %}` (`armadilhas/102`).
+
+A REGRA DE TELA, que mandou no desenho: "XP nunca maior que a imagem da obra".
+Aqui não há número NENHUM, e a ausência é a decisão: marco real vale zero ponto,
+e mostrar um contador ao lado dele ensinaria exatamente o que a lei quer evitar.
+O que a página mostra é o que a pessoa fez, e o que falta fazer.
+
+ESTA TELA É A ÚNICA QUE CONTA A DEVOLUÇÃO. Devolver não gera aviso no sininho
+(só boa notícia vira carta), então é aqui que o aluno descobre o que faltou — em
+português, com o botão de mandar de novo ao lado.
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Marcos | Meshcraft Academy</title>
+<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
+</head>
+<body>
+<div class="faixa">
+  <a href="{% url 'base' %}">Suas conquistas</a>
+  <a href="{% url 'marcos' %}">Marcos reais</a>
+</div>
+
+<main>
+{% if entrou %}
+  <section class="degrau">
+    <p class="rotulo">A sua trilha</p>
+    <h1>Marcos reais</h1>
+    <p class="passo">Estas são as coisas que acontecem fora da escola: a
+    primeira peça terminada, o primeiro cliente, o primeiro dinheiro que o seu
+    trabalho trouxe. Você mostra a prova, alguém da escola confere, e fica
+    registrado. <strong>Marco não vale ponto</strong>, e é de propósito: ele não
+    é parte do jogo, é a razão de o jogo existir.</p>
+  </section>
+
+  {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+
+  {% for linha in linhas %}
+    <section class="marco {{ linha.estado }}">
+      <h2>{{ linha.marco.nome }}</h2>
+      {% if linha.marco.descricao %}<p class="passo">{{ linha.marco.descricao }}</p>{% endif %}
+
+      {% if linha.estado == "conquistado" %}
+        <p class="selo">Conferido pela escola em
+        {{ linha.concessao.concedida_em|date:"d/m/Y" }}.</p>
+
+      {% elif linha.estado == "em_analise" %}
+        <p class="selo">Em análise. A escola responde até
+        {{ linha.pedido.prazo_ate|date:"d/m/Y" }}.</p>
+        <p class="miudo">Esperar não é recusa: alguém precisa olhar com calma o
+        que você mandou.</p>
+
+      {% elif linha.estado == "devolvido" %}
+        <p class="selo devolvido">Voltou para você:
+        <strong>{{ linha.pedido.get_motivo_da_devolucao_display }}</strong></p>
+        <form method="post" action="{% url 'enviar-prova' %}">
+          {% csrf_token %}
+          <input type="hidden" name="slug" value="{{ linha.marco.slug }}">
+          <input type="hidden" name="de_novo" value="1">
+          <label for="evidencia-{{ linha.marco.slug }}">O que mudou desde então</label>
+          <textarea id="evidencia-{{ linha.marco.slug }}" name="evidencia" rows="3"
+                    placeholder="O link, o print, o que a escola precisa ver."></textarea>
+          <button type="submit">Mandar de novo</button>
+        </form>
+
+      {% else %}
+        <form method="post" action="{% url 'enviar-prova' %}">
+          {% csrf_token %}
+          <input type="hidden" name="slug" value="{{ linha.marco.slug }}">
+          <label for="evidencia-{{ linha.marco.slug }}">A sua prova</label>
+          <textarea id="evidencia-{{ linha.marco.slug }}" name="evidencia" rows="3"
+                    placeholder="O link, o print, o que a escola precisa ver."></textarea>
+          <button type="submit">Enviar para a escola</button>
+        </form>
+        {% if linha.marco.envolve_dinheiro %}
+          <p class="miudo">Este envolve dinheiro, então quem confere é sempre
+          alguém da equipe da escola, e o que você mandar fica privado: nenhum
+          colega vê.</p>
+        {% endif %}
+      {% endif %}
+    </section>
+  {% empty %}
+    <section class="aviso">
+      <h2>Ainda não há marcos abertos nesta escola</h2>
+      <p>Eles existem e estão prontos; a escola ainda não os ligou. Quando
+      ligar, eles aparecem aqui.</p>
+    </section>
+  {% endfor %}
+{% else %}
+  <section class="convite">
+    <h1>A sua trilha de marcos fica aqui</h1>
+    <p>Esta página guarda o que você conseguiu no mundo real, conferido pela
+    escola. Ela é sua, e por isso precisa saber quem você é.</p>
+    <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>
+    <p class="miudo">Ainda não é aluno? A porta de entrada da Meshcraft Academy
+    fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
+  </section>
+{% endif %}
+</main>
+</body>
+</html>

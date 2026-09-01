@@ -502,6 +502,61 @@ def reenviar(*, pedido: PedidoDeValidacao, evidencia: str) -> PedidoDeValidacao:
     return pedido
 
 
+def marcos_da_pessoa(pessoa: Pessoa, site_id: str) -> list[dict]:
+    """Os marcos ativos da escola, cada um com o estado DESTA pessoa.
+
+    Uma consulta e não uma tela: quem desenha é a view. Mora aqui porque juntar
+    "o que existe" com "o que é meu" é regra de negócio, e um template que
+    perguntasse isso sozinho faria N consultas por marco — a forma preguiçosa de
+    ficar lento exatamente quando a escola crescer.
+
+    Os quatro estados possíveis são o vocabulário que a tela usa:
+    `conquistado`, `em_analise`, `devolvido` e `disponivel`. Não há "recusado":
+    a lei manda que esperar nunca pareça recusa, e devolver não é dizer não — é
+    dizer o que falta.
+    """
+    marcos = ConquistaDefinicao.objects.filter(
+        site_id=site_id, classe=ConquistaDefinicao.Classe.MARCO, ativa=True
+    ).order_by("slug")
+
+    concedidos = {
+        c.conquista_id: c
+        for c in Concessao.objects.filter(pessoa=pessoa, site_id=site_id)
+    }
+    # O pedido mais RECENTE de cada marco. Ordenar por id decrescente e deixar o
+    # primeiro vencer é o que faz um reenvio aparecer no lugar da devolução
+    # antiga — a linha velha continua no banco, e é isso que mantém a história.
+    pedidos: dict[int, PedidoDeValidacao] = {}
+    for pedido in PedidoDeValidacao.objects.filter(
+        pessoa=pessoa, site_id=site_id, conquista__isnull=False
+    ).order_by("id"):
+        pedidos[pedido.conquista_id] = pedido
+
+    linhas = []
+    for marco in marcos:
+        concessao = concedidos.get(marco.pk)
+        pedido = pedidos.get(marco.pk)
+        if concessao is not None:
+            estado = "conquistado"
+        elif (
+            pedido is not None and pedido.estado == PedidoDeValidacao.Estado.EM_ANALISE
+        ):
+            estado = "em_analise"
+        elif pedido is not None and pedido.estado == PedidoDeValidacao.Estado.DEVOLVIDO:
+            estado = "devolvido"
+        else:
+            estado = "disponivel"
+        linhas.append(
+            {
+                "marco": marco,
+                "estado": estado,
+                "concessao": concessao,
+                "pedido": pedido,
+            }
+        )
+    return linhas
+
+
 def fila_da_equipe(site_id: str, *, incluir_respondidos: bool = False):
     """A fila única, na ordem em que uma pessoa deve olhar: o mais atrasado primeiro.
 

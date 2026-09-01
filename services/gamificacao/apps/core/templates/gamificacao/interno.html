@@ -1,0 +1,92 @@
+{% comment %}
+A FILA DA EQUIPE. Bastidor, não vitrine: quem chega aqui é professor ou monitor,
+e a tela é feita para decidir depressa, não para impressionar.
+
+A ordem da fila é REGRA, não gosto: o mais urgente em cima, por prazo. Ela vem
+pronta de `validacao.fila_da_equipe()` — um template que ordenasse sozinho seria
+a segunda expressão da mesma regra.
+
+O QUE NUNCA APARECE AQUI: nada além do que a equipe precisa para decidir. O id
+opaco de quem pediu, o marco, a prova e o prazo. Sem e-mail, sem nome real, sem
+telefone — quem precisa falar com a pessoa pergunta à célula que guarda isso.
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fila da equipe | Meshcraft Academy</title>
+<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
+</head>
+<body>
+<div class="faixa">
+  <a href="{% url 'base' %}">Suas conquistas</a>
+  {% if pode %}<a href="{% url 'interno' %}">Fila da equipe</a>{% endif %}
+</div>
+
+<main>
+{% if pode %}
+  <section class="degrau">
+    <p class="rotulo">Bastidor</p>
+    <h1>Pedidos esperando você</h1>
+    <p class="passo">O mais urgente em cima. Aceitar registra a conquista no
+    nome da pessoa e avisa ela na hora; devolver pede o que falta, em particular,
+    e não avisa ninguém.</p>
+  </section>
+
+  {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+
+  {% for pedido in fila %}
+    <section class="pedido{% if pedido.prazo_ate < agora %} atrasado{% endif %}">
+      <h2>{{ pedido.conquista.nome|default:"Pedido sem marco" }}</h2>
+      <p class="miudo">De {{ pedido.pessoa_id }} · pedido em
+      {{ pedido.criado_em|date:"d/m/Y" }} ·
+      {% if pedido.prazo_ate < agora %}
+        <strong>atrasado desde {{ pedido.prazo_ate|date:"d/m/Y" }}</strong>
+      {% else %}
+        responder até {{ pedido.prazo_ate|date:"d/m/Y" }}
+      {% endif %}
+      {% if pedido.escalado_para_adulto %} · <strong>escalado para a equipe</strong>{% endif %}
+      {% if pedido.devolucoes %} · já voltou {{ pedido.devolucoes }}x{% endif %}
+      </p>
+
+      {% if pedido.conquista.envolve_dinheiro %}
+        <p class="selo">Envolve dinheiro: só a equipe fecha, e a prova abaixo é
+        privada.</p>
+      {% endif %}
+
+      <blockquote class="prova">{{ pedido.evidencia|default:"(mandou sem escrever nada)" }}</blockquote>
+
+      <form method="post" action="{% url 'decidir' %}" class="decidir">
+        {% csrf_token %}
+        <input type="hidden" name="pedido" value="{{ pedido.pk }}">
+        <button type="submit" name="gesto" value="aceitar">Aceitar</button>
+        <label for="motivo-{{ pedido.pk }}">ou devolver dizendo</label>
+        <select id="motivo-{{ pedido.pk }}" name="motivo">
+          {% for valor, rotulo in motivos %}
+            <option value="{{ valor }}">{{ rotulo }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" name="gesto" value="devolver">Devolver</button>
+      </form>
+    </section>
+  {% empty %}
+    <section class="aviso">
+      <h2>Nada esperando</h2>
+      <p>A fila está vazia. Quando alguém mandar a prova de um marco, ela
+      aparece aqui.</p>
+    </section>
+  {% endfor %}
+{% else %}
+  <section class="convite">
+    <h1>Esta área é da equipe da escola</h1>
+    <p>Aqui a equipe confere as provas que os alunos mandam. Se você é da equipe
+    e está vendo esta mensagem, o seu nome ainda não está na lista de quem pode
+    decidir.</p>
+    <p class="miudo">Voltar para a <a href="{{ url_da_capa }}">página
+    inicial</a>.</p>
+  </section>
+{% endif %}
+</main>
+</body>
+</html>

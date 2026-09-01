@@ -139,3 +139,121 @@ h1 {
     --marca-fraca: #2b2545;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* OS MARCOS REAIS (degrau 12/13) e a fila da equipe.                  */
+/*                                                                     */
+/* A mesma regra de tela manda aqui, e com mais força: nesta página não */
+/* existe número nenhum. Marco real vale zero ponto, e um contador ao   */
+/* lado dele ensinaria exatamente o que a lei quer evitar — perseguir o */
+/* número em vez da coisa. O que ocupa espaço é o nome do que a pessoa  */
+/* fez e o estado em que o pedido está.                                 */
+/* ------------------------------------------------------------------ */
+
+.faixa a + a { margin-left: 18px; }
+
+.marco, .pedido {
+  background: var(--caixa);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  margin: 0 0 16px;
+  padding: 18px 20px;
+}
+
+.marco h2, .pedido h2 {
+  font-size: 19px;
+  margin: 0 0 6px;
+}
+
+/* O já conquistado é o único com cor de marca: ele é o que a página     */
+/* existe para produzir, e merece ser o que o olho acha primeiro.        */
+.marco.conquistado { border-color: var(--marca); }
+.marco.em_analise { border-style: dashed; }
+
+.selo {
+  color: var(--tinta-fraca);
+  font-size: 15px;
+  margin: 10px 0 0;
+}
+
+.marco.conquistado .selo { color: var(--marca); font-weight: 600; }
+.selo.devolvido { color: var(--tinta); }
+
+/* O pedido atrasado é a única coisa vermelha do bastidor. Vermelho em    */
+/* mais de um lugar deixa de significar urgência e passa a ser decoração. */
+.pedido.atrasado { border-color: #c0392b; }
+.pedido.atrasado .miudo strong { color: #c0392b; }
+
+.prova {
+  background: var(--papel);
+  border-left: 3px solid var(--borda);
+  margin: 12px 0;
+  padding: 10px 14px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+form label {
+  color: var(--tinta-fraca);
+  display: block;
+  font-size: 14px;
+  margin: 12px 0 4px;
+}
+
+form textarea, form select {
+  background: var(--papel);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  color: var(--tinta);
+  font: inherit;
+  padding: 10px 12px;
+  width: 100%;
+}
+
+form button {
+  background: var(--marca);
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  margin-top: 12px;
+  padding: 11px 20px;
+}
+
+/* Na fila, os dois gestos ficam na mesma linha e o de devolver é discreto:
+   aceitar é o caminho comum, devolver é a exceção que precisa de escolha. */
+.decidir {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.decidir label { margin: 0; }
+.decidir select { width: auto; }
+
+.decidir button[value="devolver"] {
+  background: transparent;
+  border: 1px solid var(--borda);
+  color: var(--tinta);
+  margin-top: 0;
+}
+
+.decidir button[value="aceitar"] { margin-top: 0; }
+
+.recado, .erro {
+  border-radius: 10px;
+  margin: 0 0 16px;
+  padding: 12px 16px;
+}
+
+.recado { background: var(--marca-fraca); color: var(--tinta); }
+.erro { background: #fdecea; color: #7d2018; }
+
+@media (prefers-color-scheme: dark) {
+  .erro { background: #3a1d1a; color: #f6c8c2; }
+  .pedido.atrasado { border-color: #e06a5c; }
+  .pedido.atrasado .miudo strong { color: #e06a5c; }
+}
