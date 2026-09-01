@@ -127,6 +127,27 @@ def _versao_desta_pagina(menu: dict, chave: str) -> str:
     return menu.get("default_version") or ""
 
 
+def _estou_aqui(destino: str, caminho: str) -> bool:
+    """Este item leva para o lugar onde a pessoa já está?
+
+    Regra do mantenedor (01/09/2026): o item da área atual não aparece. Estando
+    no fórum, "Fórum" no menu é um link para onde você já está — ele gasta
+    espaço e ensina o aluno a desconfiar do menu.
+
+    **A raiz é o caso especial, e ignorá-la quebraria tudo.** `/` é prefixo de
+    QUALQUER caminho, então tratá-la como as outras faria "Início" sumir do
+    site inteiro. Ela some só na própria raiz.
+
+    Endereço de fora nunca é "aqui": ele leva para outro site.
+    """
+    if not destino.startswith("/"):
+        return False
+    if destino == "/":
+        return caminho == "/"
+    alvo = destino.rstrip("/")
+    return caminho == alvo or caminho.startswith(alvo + "/")
+
+
 def menu_do_contexto(request) -> dict:
     """Processador de contexto: põe `menu_do_topo` em TODA página desta célula.
 
@@ -168,12 +189,15 @@ def menu_do_contexto(request) -> dict:
         if not _plateia_confere(item.get("audience", "everyone"), entrou):
             continue
         destino = item.get("url", "")
+        # `request.path` inclui o prefixo público desta célula, que é
+        # justamente o que o destino do item também tem.
+        if _estou_aqui(destino, request.path):
+            continue
         itens.append(
             {
                 "href": destino,
                 "rotulo": _rotulo(item.get("labels") or {}, padrao),
                 "nova_aba": bool(item.get("new_tab")),
-                "atual": destino == request.path,
             }
         )
     if not itens:

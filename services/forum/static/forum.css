@@ -52,7 +52,6 @@ body {
 }
 .barra-do-site .menu-topo a:hover,
 .barra-do-site .menu-topo a:focus { background: #ececef; }
-.barra-do-site .menu-topo a[aria-current=page] { background: #1a1a1a; color: #fff; }
 
 .quem { float: right; color: var(--tinta-fraca); font-size: 14px; font-weight: 400; }
 main { max-width: 780px; margin: 0 auto; padding: 24px 20px 60px; }

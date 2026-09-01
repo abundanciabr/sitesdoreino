@@ -66,8 +66,7 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
     .menu-topo { display: flex; gap: .25rem; overflow-x: auto; width: 100%; max-width: 32rem; margin: 0 auto; padding: .5rem 1rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .menu-topo::-webkit-scrollbar { display: none; }
     .menu-topo a { flex: 0 0 auto; padding: .5rem .75rem; border-radius: .5rem; color: #1a1a1a; text-decoration: none; font-size: .95rem; font-weight: 600; white-space: nowrap; }
-    .menu-topo a:hover, .menu-topo a:focus { background: #ececef; }
-    .menu-topo a[aria-current=page] { background: #1a1a1a; color: #fff; }{% endif %}{% if request.i18n_seo %}
+    .menu-topo a:hover, .menu-topo a:focus { background: #ececef; }{% endif %}{% if request.i18n_seo %}
     .instalar { border: 1px solid #bbf7d0; background: #f0fdf4; }
     .instalar-titulo { margin: 0 0 .25rem; font-weight: 600; }
     .instalar-porque { margin: 0 0 .75rem; font-size: .9rem; color: #3f3f46; }
@@ -94,7 +93,7 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
   {% block head_extra %}{% endblock %}
 </head>
 <body>{% if itens_do_menu %}
-  <div class="barra-do-site"><nav class="menu-topo">{% for item in itens_do_menu %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
+  <div class="barra-do-site"><nav class="menu-topo">{% for item in itens_do_menu %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
   <div class="wrap">{% if request.i18n_seo %}
     <nav class="idiomas" translate="no">{% for opcao in request.i18n_seo.seletor %}{% if not forloop.first %} · {% endif %}<a href="{{ opcao.href }}" hreflang="{{ opcao.tag }}" lang="{{ opcao.tag }}">{{ opcao.codigo }}</a>{% endfor %}</nav>{% endif %}
     {% block conteudo %}{% endblock %}{% if request.i18n_seo %}

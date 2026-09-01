@@ -232,7 +232,11 @@ def test_rotulo_faltando_no_idioma_cai_no_padrao_do_site(client, rede):
         "pages": [],
     }
     com_menu(rede, SITE_MESH, HOST_MESH, menu=menu)
-    corpo = client.get(caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH).content.decode()
+    # Medido FORA da raiz de propósito: desde 01/09/2026 o item da página atual
+    # não aparece, e este item aponta para a raiz.
+    corpo = client.get(
+        caminho_mesh("pt-br", "/cadastro"), HTTP_HOST=HOST_MESH
+    ).content.decode()
     assert "Home" in corpo
 
 
@@ -248,17 +252,22 @@ def test_item_de_visitante_some_para_quem_entrou(client, rede, logado):
     """`Cadastro` para quem já tem conta é convite para se cadastrar de novo."""
     com_menu(rede, SITE_MESH, HOST_MESH)
     corpo = client.get("/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE).content.decode()
-    assert "Home" in so_o_menu(corpo)
+    # "Home" some por outro motivo (e a pagina atual), entao a sonda do que
+    # SOBRA e o forum; o que este guarda mede e o sumico do item de visitante.
+    assert "Forum" in so_o_menu(corpo)
     assert "Sign up" not in so_o_menu(corpo)
 
 
-def test_a_pagina_atual_e_marcada(client, rede):
-    """`aria-current=page` é o que o leitor de tela anuncia e o que o estilo
-    usa para destacar. Marcar por CSS no cliente não diria nada a quem não vê
-    a tela."""
+def test_a_pagina_atual_nao_e_marcada_porque_nem_aparece(client, rede):
+    """A marca de "você está aqui" deixou de existir, e não por descuido.
+
+    Desde 01/09/2026 o item da área atual NÃO APARECE (pedido do mantenedor),
+    então nenhum item pode ser a página atual. Manter o atributo seria código
+    morto que a próxima pessoa leria como intenção.
+    """
     com_menu(rede, SITE_A, HOST_A)
     corpo = client.get("/", HTTP_HOST=HOST_A).content.decode()
-    assert '<a href="/" aria-current="page">' in corpo
+    assert "aria-current" not in corpo
 
 
 def test_aba_nova_leva_o_rel_noopener(client, rede):
@@ -300,7 +309,9 @@ def test_rotulo_com_marcacao_sai_escapado(client, rede):
                 "name": "V",
                 "items": [
                     {
-                        "url": "/",
+                        # NÃO a raiz: na raiz este item some (é a página atual),
+                        # e o guarda mediria uma página sem menu nenhum.
+                        "url": "/cadastro",
                         "labels": {"pt-br": "<script>alert(1)</script>"},
                         "localized": False,
                         "audience": "everyone",
@@ -326,3 +337,75 @@ def test_o_menu_nao_custa_nenhuma_ida_a_rede(client, rede):
     chamadas_ao_catalogo = [c for c in rede.calls if CATALOGO in str(c.request.url)]
     # uma pelo site, uma pela oferta da landing — e nenhuma pelo menu
     assert len(chamadas_ao_catalogo) == 2
+
+
+# ---------------------------------------------------------------------------
+# O item do lugar onde voce ja esta nao aparece (pedido de 01/09/2026)
+# ---------------------------------------------------------------------------
+
+
+def test_na_pagina_inicial_o_item_inicio_some(client, rede):
+    """ "No início em / ele mostra Fórum, Caixa" — sem "Início", porque é aqui."""
+    com_menu(rede, SITE_A, HOST_A)
+    menu = so_o_menu(client.get("/", HTTP_HOST=HOST_A).content.decode())
+    assert "Fórum" in menu
+    assert "Início" not in menu
+
+
+def test_fora_da_raiz_o_item_inicio_volta(client, rede):
+    """A raiz é o caso especial: `/` é prefixo de TUDO, e tratá-la como as
+    outras faria "Início" sumir do site inteiro."""
+    # SITE_MESH e nao SITE_A: `/cadastro` so existe no site multilingue
+    com_menu(rede, SITE_MESH, HOST_MESH)
+    menu = so_o_menu(client.get("/cadastro", HTTP_HOST=HOST_MESH).content.decode())
+    assert "Home" in menu
+    assert ">Cadastro<" not in menu  # este agora é o "aqui"
+
+
+@pytest.mark.parametrize("idioma", ["en", "pt-br", "es"])
+def test_o_item_inicio_so_some_na_raiz_daquele_idioma(client, rede, idioma):
+    """O guarda que pega o erro mais traiçoeiro desta regra.
+
+    Se a comparação usasse o endereço JÁ prefixado, `/es/` seria prefixo de
+    `/es/cadastro` e "Início" sumiria de toda página em espanhol. A comparação
+    usa o destino CRU contra o caminho que o resolver já decapou.
+    """
+    com_menu(rede, SITE_MESH, HOST_MESH)
+    na_raiz = so_o_menu(
+        client.get(caminho_mesh(idioma), HTTP_HOST=HOST_MESH).content.decode()
+    )
+    no_cadastro = so_o_menu(
+        client.get(
+            caminho_mesh(idioma, "/cadastro"), HTTP_HOST=HOST_MESH
+        ).content.decode()
+    )
+    assert "/forum" in na_raiz  # a raiz mostra os outros
+    assert 'href="/"' not in na_raiz and f'href="/{idioma}/"' not in na_raiz
+    assert ">Cadastro<" not in no_cadastro and ">Sign up<" not in no_cadastro
+    assert ">Registro<" not in no_cadastro  # o cadastro esconde a si mesmo
+    assert 'href="/"' in no_cadastro or f'href="/{idioma}/"' in no_cadastro
+
+
+def test_endereco_de_fora_nunca_e_aqui(client, rede):
+    """Um site de fora leva para outro lugar: ele nunca é a página atual."""
+    menu = {
+        "default_version": "v",
+        "versions": [
+            {
+                "slug": "v",
+                "name": "V",
+                "items": [
+                    {
+                        "url": "https://www.roblox.com",
+                        "labels": {"pt-br": "Roblox"},
+                        "localized": False,
+                        "audience": "everyone",
+                        "new_tab": True,
+                    }
+                ],
+            }
+        ],
+        "pages": [],
+    }
+    com_menu(rede, SITE_A, HOST_A, menu=menu)
+    assert "Roblox" in so_o_menu(client.get("/", HTTP_HOST=HOST_A).content.decode())

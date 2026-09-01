@@ -67,6 +67,27 @@ def _versao_desta_pagina(menu: dict, chave: str) -> str:
     return menu.get("default_version") or ""
 
 
+def _estou_aqui(destino: str, caminho: str) -> bool:
+    """Este item leva para o lugar onde a pessoa já está?
+
+    Regra do mantenedor (01/09/2026): o item da área atual não aparece. Estando
+    no fórum, "Fórum" no menu é um link para onde você já está — ele gasta
+    espaço e ensina o aluno a desconfiar do menu.
+
+    **A raiz é o caso especial, e ignorá-la quebraria tudo.** `/` é prefixo de
+    QUALQUER caminho, então tratá-la como as outras faria "Início" sumir do
+    site inteiro. Ela some só na própria raiz.
+
+    Endereço de fora nunca é "aqui": ele leva para outro site.
+    """
+    if not destino.startswith("/"):
+        return False
+    if destino == "/":
+        return caminho == "/"
+    alvo = destino.rstrip("/")
+    return caminho == alvo or caminho.startswith(alvo + "/")
+
+
 def menu_do_topo(request) -> list:
     """Os itens que ESTA página mostra, prontos para o template."""
     site = getattr(request, "site", None) or {}
@@ -102,6 +123,12 @@ def menu_do_topo(request) -> list:
         if not _plateia_confere(item.get("audience", "everyone"), entrou):
             continue
         destino = item.get("url", "")
+        # A comparação usa o destino CRU e o `path_info`, que o resolver já
+        # decapou do idioma. Comparar as versões prefixadas faria "Início"
+        # (`/es/`) sumir de toda página espanhola, porque `/es/` é prefixo de
+        # `/es/cadastro`.
+        if _estou_aqui(destino, request.path_info):
+            continue
         if item.get("localized") and cfg is not None and idioma:
             # Só rota DESTA célula ganha prefixo de idioma. Link para outra
             # célula segue cru e monolíngue enquanto o D6 não estiver no
@@ -113,7 +140,6 @@ def menu_do_topo(request) -> list:
                 "href": destino,
                 "rotulo": _rotulo(item.get("labels") or {}, idioma, padrao),
                 "nova_aba": bool(item.get("new_tab")),
-                "atual": destino == request.path,
             }
         )
     return itens

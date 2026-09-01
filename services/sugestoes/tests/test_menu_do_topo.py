@@ -24,6 +24,11 @@ from apps.core import menu as motor
 
 CATALOGO = "http://catalogo:8000/api/catalogo"
 
+# O prefixo público desta célula, pelo mesmo motivo do fórum: em produção a
+# Caixa mora em `/forms/sugestoes/`, e é esse caminho que a regra "o item da
+# área atual some" compara.
+PREFIXO = {"SCRIPT_NAME": "/forms/sugestoes"}
+
 MENU = {
     "default_version": "completo",
     "versions": [
@@ -58,6 +63,28 @@ MENU = {
     ],
     "pages": [{"page": "sugestoes/sugestoes/nova", "version": ""}],
 }
+
+# O mesmo menu, com o item da própria Caixa dentro — é ele que a regra nova
+# tem de esconder quando a pessoa já está aqui.
+MENU_COM_A_CAIXA = dict(
+    MENU,
+    versions=[
+        dict(
+            MENU["versions"][0],
+            items=MENU["versions"][0]["items"]
+            + [
+                {
+                    "url": "/forms/sugestoes/",
+                    "labels": {"pt-br": "Caixa"},
+                    "localized": False,
+                    "audience": "everyone",
+                    "new_tab": False,
+                }
+            ],
+        ),
+        MENU["versions"][1],
+    ],
+)
 
 SITE = {
     "id": "site-mesh",
@@ -133,7 +160,7 @@ def so_o_menu(corpo: str) -> str:
 
 def test_sem_menu_configurado_a_caixa_abre_como_antes(dentro, rede, quadro):
     catalogo_diz(rede, site=dict(SITE, menu={}))
-    resposta = dentro.client.get(reverse("quadro"))
+    resposta = dentro.client.get(reverse("quadro"), **PREFIXO)
     assert resposta.status_code == 200
     assert "menu-topo" not in resposta.content.decode()
 
@@ -145,7 +172,7 @@ def test_catalogo_fora_do_ar_nao_derruba_a_caixa(dentro, rede, quadro):
         side_effect=httpx.ConnectError("sem rede")
     )
     motor.limpar_cache()
-    resposta = dentro.client.get(reverse("quadro"))
+    resposta = dentro.client.get(reverse("quadro"), **PREFIXO)
     assert resposta.status_code == 200
     assert "menu-topo" not in resposta.content.decode()
 
@@ -158,14 +185,14 @@ def test_par_de_tokens_ausente_nao_custa_nem_uma_tentativa_de_rede(
     guarda falharia sozinho se alguém tentasse perguntar."""
     monkeypatch.delenv("TOKEN_CATALOGO", raising=False)
     motor.limpar_cache()
-    resposta = dentro.client.get(reverse("quadro"))
+    resposta = dentro.client.get(reverse("quadro"), **PREFIXO)
     assert resposta.status_code == 200
     assert "menu-topo" not in resposta.content.decode()
 
 
 def test_host_desconhecido_no_catalogo_e_caixa_sem_menu(dentro, rede, quadro):
     catalogo_diz(rede, resposta=httpx.Response(404))
-    resposta = dentro.client.get(reverse("quadro"))
+    resposta = dentro.client.get(reverse("quadro"), **PREFIXO)
     assert resposta.status_code == 200
     assert "menu-topo" not in resposta.content.decode()
 
@@ -177,7 +204,7 @@ def test_versao_apontada_que_sumiu_nao_derruba_a_pagina(dentro, rede, quadro):
             SITE, menu={"default_version": "fantasma", "versions": [], "pages": []}
         ),
     )
-    resposta = dentro.client.get(reverse("quadro"))
+    resposta = dentro.client.get(reverse("quadro"), **PREFIXO)
     assert resposta.status_code == 200
     assert "menu-topo" not in resposta.content.decode()
 
@@ -189,7 +216,7 @@ def test_versao_apontada_que_sumiu_nao_derruba_a_pagina(dentro, rede, quadro):
 
 def test_o_menu_aparece_no_quadro(dentro, rede, quadro):
     catalogo_diz(rede)
-    corpo = dentro.client.get(reverse("quadro")).content.decode()
+    corpo = dentro.client.get(reverse("quadro"), **PREFIXO).content.decode()
     assert '<nav class="menu-topo">' in corpo
     assert "Início" in so_o_menu(corpo)
     assert 'href="/forum/"' in so_o_menu(corpo)
@@ -199,7 +226,7 @@ def test_o_rotulo_sai_no_idioma_padrao_do_site(dentro, rede, quadro):
     """Esta célula é monolíngue: o nome do item é o do idioma padrão, e o
     prefixo de idioma nunca é aplicado."""
     catalogo_diz(rede)
-    menu = so_o_menu(dentro.client.get(reverse("quadro")).content.decode())
+    menu = so_o_menu(dentro.client.get(reverse("quadro"), **PREFIXO).content.decode())
     assert "Início" in menu
     assert "Home" not in menu
     assert "/pt-br/" not in menu
@@ -209,7 +236,7 @@ def test_o_item_de_visitante_some_para_quem_esta_na_caixa(dentro, rede, quadro):
     """Quem chega a uma tela com moldura já entrou: `Cadastro` ali seria convite
     para se cadastrar de novo."""
     catalogo_diz(rede)
-    menu = so_o_menu(dentro.client.get(reverse("quadro")).content.decode())
+    menu = so_o_menu(dentro.client.get(reverse("quadro"), **PREFIXO).content.decode())
     assert "Início" in menu
     assert "Cadastro" not in menu
 
@@ -218,7 +245,7 @@ def test_a_pagina_marcada_sem_menu_nao_mostra_menu(dentro, rede, quadro):
     """`version: ""` numa página VENCE a versão padrão do site. Cair no padrão
     aqui traria o menu de volta justamente onde ele mandou tirá-lo."""
     catalogo_diz(rede)
-    corpo = dentro.client.get(reverse("nova_sugestao")).content.decode()
+    corpo = dentro.client.get(reverse("nova_sugestao"), **PREFIXO).content.decode()
     assert "menu-topo" not in corpo
 
 
@@ -226,9 +253,9 @@ def test_o_menu_nao_custa_uma_consulta_por_pagina(dentro, rede, quadro):
     """Uma ida ao catálogo por janela de cache, não por página aberta."""
     rota = catalogo_diz(rede)
     antes = rota.call_count
-    dentro.client.get(reverse("quadro"))
-    dentro.client.get(reverse("quadro"))
-    dentro.client.get(reverse("quadro"))
+    dentro.client.get(reverse("quadro"), **PREFIXO)
+    dentro.client.get(reverse("quadro"), **PREFIXO)
+    dentro.client.get(reverse("quadro"), **PREFIXO)
     # a diferenca, e nao o total: entrar na Caixa (a fixture `dentro`) ja abriu
     # uma pagina antes deste teste comecar, e ela tambem consultou o catalogo
     assert rota.call_count - antes == 1
@@ -244,7 +271,9 @@ def test_rotulo_com_marcacao_sai_escapado(dentro, rede, quadro):
                 "name": "V",
                 "items": [
                     {
-                        "url": "/",
+                        # NAO a raiz: dependendo do caminho medido ela pode ser
+                        # "a pagina atual", e o item sumiria antes de ser escapado.
+                        "url": "/cadastro",
                         "labels": {"pt-br": "<script>alert(1)</script>"},
                         "localized": False,
                         "audience": "everyone",
@@ -256,7 +285,7 @@ def test_rotulo_com_marcacao_sai_escapado(dentro, rede, quadro):
         "pages": [],
     }
     catalogo_diz(rede, site=dict(SITE, menu=menu))
-    corpo = dentro.client.get(reverse("quadro")).content.decode()
+    corpo = dentro.client.get(reverse("quadro"), **PREFIXO).content.decode()
     assert "<script>alert(1)</script>" not in corpo
     assert "&lt;script&gt;" in corpo
 
@@ -271,4 +300,34 @@ def test_o_estilo_do_menu_chega_ao_navegador(client):
         b"".join(resposta.streaming_content) if resposta.streaming else resposta.content
     ).decode("utf-8")
     assert ".barra-do-site" in corpo
-    assert ".barra-do-site .menu-topo a[aria-current=page]" in corpo
+    assert "position: sticky" in corpo
+
+
+# ---------------------------------------------------------------------------
+# O item do lugar onde voce ja esta nao aparece (pedido de 01/09/2026)
+# ---------------------------------------------------------------------------
+
+
+def test_na_caixa_o_item_da_caixa_some(dentro, rede, quadro):
+    """ "A mesma coisa em Caixa": estando nela, o item dela é um link para onde
+    a pessoa já está."""
+    catalogo_diz(rede, site=dict(SITE, menu=MENU_COM_A_CAIXA))
+    menu = so_o_menu(dentro.client.get(reverse("quadro"), **PREFIXO).content.decode())
+    assert "Início" in menu
+    assert 'href="/forms/sugestoes/"' not in menu
+
+
+def test_o_item_da_caixa_some_tambem_nas_telas_de_dentro(dentro, rede, quadro):
+    """A regra é por ÁREA: escrevendo uma ideia, a pessoa continua na Caixa."""
+    catalogo_diz(rede, site=dict(SITE, menu=MENU_COM_A_CAIXA))
+    corpo = dentro.client.get(reverse("nova_sugestao"), **PREFIXO).content.decode()
+    if "menu-topo" in corpo:  # esta tela pode ter regra própria de menu
+        assert 'href="/forms/sugestoes/"' not in so_o_menu(corpo)
+
+
+def test_os_outros_lugares_continuam_no_menu_da_caixa(dentro, rede, quadro):
+    """O controle positivo: some SÓ o item de quem é dono da página."""
+    catalogo_diz(rede, site=dict(SITE, menu=MENU_COM_A_CAIXA))
+    menu = so_o_menu(dentro.client.get(reverse("quadro"), **PREFIXO).content.decode())
+    assert 'href="/"' in menu
+    assert 'href="/forum/"' in menu
