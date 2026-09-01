@@ -350,6 +350,36 @@ def test_aluno_sem_etiqueta_tambem_e_lembrado(client, porta, conversa):
 
 
 # ---------------------------------------------------------------------------
+# 3b. O mapa de rótulos não pode envelhecer errado em silêncio
+# ---------------------------------------------------------------------------
+
+
+def test_toda_chave_do_mapa_e_mesmo_o_slug_do_seu_rotulo():
+    """Cada chave tem de ser `slugify` do rótulo que ela aponta.
+
+    É a invariante do mapa: a chave nasce lá na `gamificacao` como
+    `slugify(titulo)`, então uma chave que não seja o slug do próprio rótulo
+    **nunca casa com nada**. O efeito de um erro de digitação é SILENCIOSO —
+    a etiqueta cai no fallback e mostra só "Nv 7", que é exatamente o modo de
+    falha que o resto deste arquivo existe para evitar. Nada fica vermelho,
+    ninguém vê exceção, e o título simplesmente não aparece mais.
+
+    Conferido de fora, com o `slugify` de verdade: os dez títulos da lista
+    `NIVEIS` de `semear_economia.py` passam por aqui, um a um, e batem. A lista
+    da outra célula NÃO é importada (Lei 3), então este guarda prova a forma do
+    mapa; quem prova o conteúdo é o comentário que aponta a fonte.
+    """
+    from django.utils.text import slugify
+
+    for chave, rotulo in motor.ROTULO_POR_SLUG.items():
+        assert slugify(rotulo) == chave, (
+            f"a chave {chave!r} não é o slug de {rotulo!r} (que dá "
+            f"{slugify(rotulo)!r}) — ela nunca vai casar, e a etiqueta vai "
+            f"cair no fallback em silêncio"
+        )
+
+
+# ---------------------------------------------------------------------------
 # 4. A escola não tem nível
 # ---------------------------------------------------------------------------
 
