@@ -1,0 +1,15 @@
+{
+  "arquivo": "095-a-etiqueta-de-nivel-ao-lado-de-quem-escreve-no-forum",
+  "id": "TAR-095",
+  "titulo": "A etiqueta de nivel ao lado de quem escreve no forum",
+  "toca": [
+    "forum",
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado, deploy verde e a pagina do topico no ar; a etiqueta some sozinha quando a gamificacao nao responde",
+  "despacho": "Voce e um agente de celula do projeto sitesdoreino. Tarefa: a etiqueta \"Nv 7 - Modelador\" ao lado de quem escreve no forum (degrau 18 da escada da gamificacao).\n\nHoje o progresso do aluno so aparece para quem abre /conquistas de proposito. O forum e o lugar com mais gente passando.\n\nCONSUMA a porta ja no ar e congelada: GET /api/gamificacao/perfis?ids=<a,b,c> (operation_id getPublicProfiles, em contracts/gamificacao.openapi.yaml). Devolve {pessoa_id: {nivel, titulo_slug}}, lote de ate 50 ids, id desconhecido e OMITIDO do mapa, responde a chamador sem sessao de pessoa. Endereco interno http://gamificacao:8000/api/gamificacao.\n\nDESENHO JA DECIDIDO: titulo_slug e SLUG (slugify do titulo), nao rotulo. O forum mantem o proprio mapa slug -> rotulo em portugues, constante pequena e comentada, fallback fail-open: slug fora do mapa desenha so \"Nv 7\", sem titulo. Nunca derive rotulo do slug. Acrescentar titulo ao contrato esta PROIBIDO (Rito de Contrato, RITOS 3).\n\nMOLDE: services/forum/apps/core/menu.py (cliente de outra celula, cache por TTL curto, teto de tamanho, falha para o lado de \"sem menu\"). Sua versao falha para o lado de \"sem etiqueta\".\n\nONDE APARECE: ao lado de {{ mensagem.assinatura }} em services/forum/apps/core/templates/forum/topico.html. Decore em LOTE, uma chamada por pagina, em contexto_do_topico de services/forum/apps/core/views.py. Fala publicada pela escola NUNCA recebe etiqueta; autor nulo tambem nao. O id e o id OPACO da plataforma.\n\nARQUIVOS-ALVO (teto de 15): services/forum/apps/core/etiquetas.py (NOVO), views.py, templates/forum/topico.html, services/forum/static/forum.css, services/forum/tests/test_etiqueta_de_nivel.py (NOVO), celulas.yml (so a linha do forum), infra/provisionar-par-do-forum-com-a-gamificacao.sh (NOVO), 1 registro + 1 armadilha + fila.\n\nSENHA DE MAQUINA: escreva infra/provisionar-par-do-forum-com-a-gamificacao.sh copiando a FORMA de infra/provisionar-par-da-economia.sh. Liga env/gamificacao.env -> TOKENS_ACEITOS_FORUM (PROVEDOR PRIMEIRO) e env/forum.env -> GAMIFICACAO_API_URL, GAMIFICACAO_API_TOKEN. Idempotente, nao rotaciona, segredo gerado dentro da VPS e nunca impresso, backup por arquivo, dono/modo por --reference, reinicia gamificacao, gamificacao-consumer e forum.\n\nEVIDENCIA: suite verde com contagem antes/depois; testes com respx provando (a) etiqueta com rotulo certo, (b) UMA chamada para N autores, (c) porta fora do ar / env ausente / corpo fora do contrato = 200 sem etiqueta, (d) id omitido nao desenha, (e) slug fora do mapa desenha so \"Nv N\", (f) fala da escola sem etiqueta. black limpo, make ci verde, contrato-check verde.",
+  "origem": "Lote A da gamificacao, degrau 18 do PLANO-CELULA-GAMIFICACAO",
+  "criada_em": "2026-09-01"
+}

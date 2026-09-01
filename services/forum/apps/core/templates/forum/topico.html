@@ -72,6 +72,17 @@ botão nunca é a proteção.
 {% for mensagem in mensagens %}
   <div class="cartao mensagem{% if mensagem.removida_em %} fora-do-ar{% endif %}" id="m{{ mensagem.pk }}">
     <span class="autor">{{ mensagem.assinatura }}</span>
+    {% comment %}
+    A ETIQUETA DE NÍVEL de quem escreveu. Quem a monta é
+    `apps/core/etiquetas.py`, em UMA consulta para a página inteira, e ela é
+    OPCIONAL por desenho: gamificação fora do ar, par de tokens ainda não
+    provisionado, ou aluno que nunca pontuou, deixam esta linha vazia e a
+    conversa abre igual. Nunca aparece em fala da escola, que não tem nível.
+
+    Sai sem título quando o slug do degrau ainda não está no mapa de rótulos:
+    a tela mostra "Nv 7", que é verdade, em vez de um nome chutado.
+    {% endcomment %}
+    {% if mensagem.etiqueta %}<span class="nivel" title="O degrau deste aluno na escola">Nv {{ mensagem.etiqueta.nivel }}{% if mensagem.etiqueta.titulo %} · {{ mensagem.etiqueta.titulo }}{% endif %}</span>{% endif %}
     {% if mensagem.publicado_pela_escola %}<span class="etiqueta">a escola</span>{% endif %}
     <span class="quando">· {{ mensagem.criado_em|date:"d/m/Y H:i" }}</span>
     {% comment %}
