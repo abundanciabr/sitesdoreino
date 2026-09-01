@@ -1,0 +1,14 @@
+{
+  "arquivo": "094-a-medalha-de-fundador-para-quem-estava-aqui-no-comeco",
+  "id": "TAR-094",
+  "titulo": "A medalha de Fundador para quem estava aqui no comeco",
+  "toca": [
+    "gamificacao"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + o comando rodando em ensaio e concedendo de verdade em teste, com re-execucao provada idempotente",
+  "despacho": "Degrau 22 da escada da gamificacao: a medalha de Fundador para quem ja estava.\n\nCrie um comando de management re-executavel que concede a conquista `fundador`\na uma lista de pessoas, chamando a porta unica `conceder()` de\n`services/gamificacao/apps/gamificacao/validacao.py` (nao escreva concessao\nnova; duas portas dariam duas auditorias para a mesma pergunta).\n\nA conquista ja existe, semeada em `semear_economia.py`: slug `fundador`, classe\n`medalha`, familia `epoca`, criterio manual, 0 pontos, 25 Cristais.\n\nDecisoes de desenho ja tomadas (nao reabrir):\n1. A lista de quem e fundador e ARGUMENTO obrigatorio (`--ids` + `--site`), nao\n   uma consulta. O espelho `Pessoa` desta celula e preguicoso (nasce no primeiro\n   XP ou na primeira visita a /conquistas), entao deduzir da tabela local daria\n   \"fundador = quem entrou ontem\". Quem sabe de matricula e a celula `alunos`,\n   que a gamificacao nao consome de proposito.\n2. O comando RECUSA quando a conquista esta `ativa=False`, com mensagem em\n   portugues: ligar uma conquista e decisao do mantenedor, na tela dele\n   (/admin/economia/), com data. Fail-closed. Hoje a economia inteira nasce\n   desligada, entao o comando vai mesmo recusar ate ele ligar, e isso e o\n   comportamento certo.\n3. `--ensaio` (dry-run) e o padrao. Sem `--confirmo`, so imprime o que faria.\n4. Pessoa que nao existe no espelho local nao vira linha inventada: e reportada\n   e o comando segue com as outras.\n5. Re-executar e seguro: o `Unique(pessoa, conquista)` dentro de `conceder()`\n   garante que nao concede duas vezes nem credita Cristais duas vezes.\n\nArquivos-alvo: `services/gamificacao/apps/gamificacao/management/commands/\nconceder_fundador.py` (novo), `services/gamificacao/tests/\ntest_conceder_fundador.py` (novo), 1 registro no livro, 1 armadilha.",
+  "origem": "Lote A da gamificacao, degrau 22 do PLANO-CELULA-GAMIFICACAO",
+  "criada_em": "2026-09-01"
+}
