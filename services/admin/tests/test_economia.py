@@ -515,3 +515,51 @@ def test_conquista_recusada_pela_gamificacao_vira_frase_e_fica_na_auditoria():
     registro = Registro.objects.get()
     assert registro.acao == Registro.LIGAR_CONQUISTA
     assert registro.desfecho == Registro.RECUSADO_PELA_CELULA
+
+
+# ---------------------------------------------------------------------------
+# O PLURAL DE CRISTAL É CRISTAIS
+# ---------------------------------------------------------------------------
+# Achado pelo mantenedor na própria tela, em 01/09/2026, ao ligar a medalha das
+# dez forjas: o cartão dizia "Vale 80 pontos e 10 Cristalis".
+#
+# A causa é o `pluralize` de UM argumento, que ACRESCENTA o sufixo em vez de
+# trocar a terminação: `Cristal{{ n|pluralize:"is" }}` dá "Cristal" no singular
+# e "Cristalis" no plural. A forma de DOIS argumentos escolhe entre as duas
+# terminações, e é a única que serve para palavra cuja raiz muda
+# (`Crista{{ n|pluralize:"l,is" }}`).
+#
+# Os dois casos abaixo existem porque UM SÓ não pega o defeito: o singular
+# estava certo antes e depois, e um teste que olhasse só ele passaria com o
+# defeito no lugar. É a família de falso-verde que este lote encontrou quatro
+# vezes — asserção com mais de uma causa suficiente.
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_o_plural_de_cristal_e_cristais_e_nunca_cristalis():
+    """A palavra que o mantenedor lê na tela dele, escrita em português."""
+    _gamificacao(
+        conquistas=[_conquista("dez-forjas", cristais=10, impedimentos=[])],
+        regras=[_regra("sugestao-criada", cristais=3)],
+    )
+
+    html = _dentro().get(reverse("economia")).content.decode()
+
+    assert "Cristalis" not in html
+    assert "10 Cristais" in html or "10</b> Cristais" in html
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_um_cristal_sozinho_continua_no_singular():
+    """O outro lado da mesma régua: 1 é Cristal, sem o `is` colado."""
+    _gamificacao(
+        conquistas=[_conquista("dez-forjas", cristais=1, impedimentos=[])],
+        regras=[_regra("sugestao-criada", cristais=0)],
+    )
+
+    html = _dentro().get(reverse("economia")).content.decode()
+
+    assert "Cristais" not in html
+    assert "Cristal" in html
