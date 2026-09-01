@@ -586,21 +586,34 @@ th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transfo
    nao sobrou responsavel por nada.
    ------------------------------------------------------------------------ */
 
-/* ── O MENU DO TOPO (apps/core/menu.py), 31/08/2026 ───────────────────────
-   O mesmo menu do site, com as cores desta celula. Mobile-first, como nas
-   outras: uma fila que ROLA na horizontal em vez de quebrar em duas linhas ou
-   virar um botao de tres riscas. Num celular estreito, tres opcoes visiveis e
-   o resto a um arrasto valem mais que um menu escondido atras de um toque. */
-.menu-topo {
+/* ── A BARRA DO SITE (apps/core/menu.py) ──────────────────────────────────
+   Decisao do mantenedor em 31/08/2026, olhando o site: "quero um menu que
+   seja padrao para todo o site, que fique sempre no topo e sempre no mesmo
+   lugar em todas as paginas".
+
+   IDENTICA a da celula `funil`, de proposito, e por isso escrita com cores
+   proprias em vez das variaveis desta folha: a barra nao pertence a esta
+   area, ela e do site. Numa tela de fundo escuro ela e a unica peca clara, e
+   e justamente isso que a torna reconhecivel de longe.
+
+   ACIMA de tudo, inclusive da faixa com o nome desta area, e GRUDADA no topo
+   (`position: sticky`): o aluno nao precisa rolar de volta para achar o
+   caminho. O `z-index` existe porque ela passa POR CIMA do conteudo ao rolar. */
+.barra-do-site {
+  position: sticky; top: 0; z-index: 20;
+  background: #fff; border-bottom: 1px solid #e4e4e7;
+}
+.barra-do-site .menu-topo {
   display: flex; gap: 4px; overflow-x: auto;
-  padding: 8px 0 0; margin: 0;
+  width: 100%; max-width: 780px; margin: 0 auto; padding: 8px 20px;
   -webkit-overflow-scrolling: touch; scrollbar-width: none;
 }
-.menu-topo::-webkit-scrollbar { display: none; }
-.menu-topo a {
+.barra-do-site .menu-topo::-webkit-scrollbar { display: none; }
+.barra-do-site .menu-topo a {
   flex: 0 0 auto; padding: 6px 12px; border-radius: 8px;
-  color: inherit; text-decoration: none;
-  font-size: 14px; font-weight: 600; white-space: nowrap;
+  color: #1a1a1a; text-decoration: none;
+  font-size: 15px; font-weight: 600; white-space: nowrap;
 }
-.menu-topo a:hover, .menu-topo a:focus { background: rgba(127, 127, 127, .16); }
-.menu-topo a[aria-current=page] { background: rgba(127, 127, 127, .28); }
+.barra-do-site .menu-topo a:hover,
+.barra-do-site .menu-topo a:focus { background: #ececef; }
+.barra-do-site .menu-topo a[aria-current=page] { background: #1a1a1a; color: #fff; }

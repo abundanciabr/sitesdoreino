@@ -12,6 +12,12 @@ caminho, e caminho cravado em string quebra em produção e SÓ lá
 <link rel="stylesheet" href="{% url 'estatico' 'forum.css' %}">
 </head>
 <body>
+{% comment %}
+A BARRA DO SITE vem ANTES da faixa desta area, e isso e a decisao do
+mantenedor de 31/08/2026: primeiro o caminho para o site inteiro, depois o
+nome do lugar onde voce esta. Quem DECIDE o que vai nela e o processador de
+contexto (apps/core/menu.py); aqui so se desenha.
+{% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
 <div class="faixa">
   <a href="{% url 'home' %}">Fórum da Meshcraft Academy</a>
   <span class="quem">{% if ator.autenticado %}{{ ator.pessoa.nome_exibido|default:"você" }}{% else %}visitante{% endif %}</span>
@@ -28,16 +34,7 @@ caminho, e caminho cravado em string quebra em produção e SÓ lá
            placeholder="Procurar uma dúvida já respondida">
     <button type="submit">Procurar</button>
   </form>
-</div>{% if menu_do_topo %}{% comment %}
-O MENU DO TOPO (apps/core/menu.py), 31/08/2026. O mesmo menu do site, lido do
-mesmo lugar: quem o configura e o mantenedor, em /admin/menu/, e as duas
-celulas leem o MESMO dado. Quem DECIDE se esta pagina tem menu, e qual, e o
-processador de contexto; aqui so se desenha.
-
-Abaixo da faixa, e nao dentro dela: a faixa e a identidade do forum (o nome e
-a busca), o menu e a navegacao do site inteiro. Misturar os dois faria o
-mantenedor mudar o menu e ver a busca andar de lugar.
-{% endcomment %}<nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav>{% endif %}
+</div>
 <main>{% block conteudo %}{% endblock %}</main>
 {% if rodape %}{% comment %}
 O RODAPÉ (apps/core/rodape.py) — a mesma peça do site, com o mesmo desenho.

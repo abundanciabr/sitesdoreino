@@ -270,5 +270,5 @@ def test_o_estilo_do_menu_chega_ao_navegador(client):
     corpo = (
         b"".join(resposta.streaming_content) if resposta.streaming else resposta.content
     ).decode("utf-8")
-    assert ".menu-topo" in corpo
-    assert ".menu-topo a[aria-current=page]" in corpo
+    assert ".barra-do-site" in corpo
+    assert ".barra-do-site .menu-topo a[aria-current=page]" in corpo

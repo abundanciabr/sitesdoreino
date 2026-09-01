@@ -63,6 +63,12 @@ renderiza vazio, não quebra.
   <symbol id="i-pessoa" viewBox="0 0 20 20"><circle cx="10" cy="7" r="3.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M4 16.6c0-3.1 2.7-4.8 6-4.8s6 1.7 6 4.8" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
 </svg>
 
+{% comment %}
+A BARRA DO SITE vem ANTES do `wrap` desta area, e isso e a decisao do
+mantenedor de 31/08/2026: primeiro o caminho para o site inteiro, depois o
+nome do lugar onde voce esta. Fora do `wrap` porque a barra e do SITE e
+ocupa a largura toda; o `wrap` e a bancada desta area.
+{% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
 <div class="wrap">
   <div class="topo">
     <div class="marca-do-topo">
@@ -88,19 +94,6 @@ renderiza vazio, não quebra.
       </span>
     {% endif %}
   </div>
-
-  {% if menu_do_topo %}{% comment %}
-  O MENU DO TOPO (apps/core/menu.py), 31/08/2026. O mesmo menu do site, lido do
-  mesmo lugar: quem o configura e o mantenedor, em /admin/menu/, e as celulas
-  leem o MESMO dado. Quem DECIDE se esta pagina tem menu, e qual, e o
-  processador de contexto; aqui so se desenha.
-
-  Abaixo da faixa e FORA da bancada, e nao dentro dela: a faixa e a identidade
-  da Caixa (a marca e a migalha), a bancada e o trabalho, e o menu e a
-  navegacao do site inteiro. Dentro da bancada ele brigaria com o trilho da
-  esquerda, que e outra coisa.
-  {% endcomment %}<nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav>{% endif %}
-
   <div class="bancada">
     {% if ator %}
       <nav class="trilho" aria-label="Seções da Caixa">

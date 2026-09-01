@@ -47,7 +47,23 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
        quebrar em duas linhas ou virar um botao de tres riscas. Num celular
        estreito, tres opcoes visiveis e o resto a um arrasto valem mais do que
        um menu inteiro escondido atras de um toque. */
-    .menu-topo { display: flex; gap: .25rem; overflow-x: auto; margin: 0 -1rem 1rem; padding: 0 1rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+    /* A BARRA DO SITE. Decisao do mantenedor em 31/08/2026, olhando o site:
+       "quero um menu que seja padrao para todo o site, que fique sempre no topo
+       e sempre no mesmo lugar em todas as paginas".
+
+       Tres consequencias de desenho, e as tres sao a mesma decisao:
+       (a) LARGURA TOTAL, fora da coluna de leitura — dentro dela a barra
+           comecava em alturas diferentes conforme a pagina;
+       (b) GRUDADA no topo (`position: sticky`), para o aluno nao ter de rolar
+           de volta para achar o caminho;
+       (c) A MESMA em toda parte, inclusive nas areas de fundo escuro (o forum
+           e a Caixa), onde ela e a unica peca clara: e isso que a faz
+           reconhecivel como "a barra do site" e nao como parte da area.
+
+       `z-index` porque ela passa POR CIMA do conteudo ao rolar; sem ele, um
+       cartao com fundo proprio passaria na frente dela. */
+    .barra-do-site { position: sticky; top: 0; z-index: 20; background: #fff; border-bottom: 1px solid #e4e4e7; }
+    .menu-topo { display: flex; gap: .25rem; overflow-x: auto; width: 100%; max-width: 32rem; margin: 0 auto; padding: .5rem 1rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
     .menu-topo::-webkit-scrollbar { display: none; }
     .menu-topo a { flex: 0 0 auto; padding: .5rem .75rem; border-radius: .5rem; color: #1a1a1a; text-decoration: none; font-size: .95rem; font-weight: 600; white-space: nowrap; }
     .menu-topo a:hover, .menu-topo a:focus { background: #ececef; }
@@ -77,9 +93,9 @@ manifesto, mas o ícone da tela de início ele tira do `apple-touch-icon`.
   </style>
   {% block head_extra %}{% endblock %}
 </head>
-<body>
-  <div class="wrap">{% if itens_do_menu %}
-    <nav class="menu-topo">{% for item in itens_do_menu %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav>{% endif %}{% if request.i18n_seo %}
+<body>{% if itens_do_menu %}
+  <div class="barra-do-site"><nav class="menu-topo">{% for item in itens_do_menu %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
+  <div class="wrap">{% if request.i18n_seo %}
     <nav class="idiomas" translate="no">{% for opcao in request.i18n_seo.seletor %}{% if not forloop.first %} · {% endif %}<a href="{{ opcao.href }}" hreflang="{{ opcao.tag }}" lang="{{ opcao.tag }}">{{ opcao.codigo }}</a>{% endfor %}</nav>{% endif %}
     {% block conteudo %}{% endblock %}{% if request.i18n_seo %}
     {% include "funil/_instalar_o_app.html" %}{% endif %}{% if avisos_no_celular %}
