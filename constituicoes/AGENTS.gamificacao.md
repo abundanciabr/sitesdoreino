@@ -44,7 +44,10 @@ de produto (6 pareceres + 5 auditorias):
   declaração órfã é FAIL no varredor, e com razão)
 - **Emite:** `notificacao.devida.v1` pelo padrão outbox, com os assuntos
   `gamificacao.nivel-alcancado`, `.conquista-concedida`, `.marco-validado` e
-  `.destaque-da-semana`. Nasce sem emitir nada
+  `.destaque-da-semana`. Nasceu muda; ganhou VOZ em 01/09/2026 (degrau 9), e
+  hoje emite UM deles: `nivel-alcancado`. Os outros três não esperam código
+  nem contrato — esperam o FATO que os justifica (medalha e marco no degrau 12,
+  destaque no 19). Só BOA NOTÍCIA vira carta: nível que cai não avisa
 - **Auth:** Bearer dedicado por par, `TOKENS_ACEITOS_<PAR>`. Env ausente ⇒
   conjunto vazio ⇒ 401 para todo mundo (fail-closed sem derrubar o boot)
 - **Banco:** `gamificacao_db` (role `gamificacao_user` — não enxerga nenhum
