@@ -30,3 +30,14 @@ black==24.10.0
 # verdade no ar — e suíte que depende de outra célula fica vermelha por motivo
 # alheio.
 respx==0.23.1
+
+# A VOZ do forum (01/09/2026, degrau 17): a outbox e o relay que levam os quatro
+# eventos ao fio. MESMAS versoes das outras celulas de proposito — um relay por
+# celula em versao propria seria N comportamentos de biblioteca para o mesmo
+# padrao (`armadilhas/071`).
+huey==2.5.1
+redis==5.1.1
+# So de teste: e com ele que os contratos congelados de contracts/eventos/forum.*
+# deixam de ser documentacao e passam a reprovar o CI — o envelope real e
+# validado contra o ARQUIVO, nunca contra uma copia do formato dentro do teste.
+jsonschema==4.23.0

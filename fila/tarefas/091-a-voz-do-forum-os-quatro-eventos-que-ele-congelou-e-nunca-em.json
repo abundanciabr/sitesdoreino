@@ -1,0 +1,14 @@
+{
+  "arquivo": "091-a-voz-do-forum-os-quatro-eventos-que-ele-congelou-e-nunca-em",
+  "id": "TAR-091",
+  "titulo": "A voz do forum: os quatro eventos que ele congelou e nunca emitiu",
+  "toca": [
+    "forum"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + teste de que cada um dos quatro eventos nasce na transacao do fato, casa com o contrato congelado (validado contra o ARQUIVO) e nao carrega texto escrito por aluno. Prova por sabotagem de que a emissao fora da transacao e recusada.",
+  "despacho": "Degrau 17 da escada de docs/decisoes/PLANO-CELULA-GAMIFICACAO.md, e o\ncaminho mais curto para as medalhas comecarem a acontecer de verdade.\n\nO forum esta no ar com gente usando e e MUDO para o resto da plataforma: nada do\nque acontece nele vira ponto, e a medalha \"Mao amiga\" (cinco respostas aceitas)\nnunca vai cair enquanto isso for verdade. Os quatro eventos ja estao CONGELADOS\ndesde a Sessao B de 30/08/2026 — nao ha contrato a fazer, so voz a dar.\n\nO que fazer:\n\n1. Outbox + relay no molde das celulas que ja o rodam (referencia:\n   services/gamificacao/apps/gamificacao/tasks.py, que e o mais novo). NAO\n   invente outro.\n2. Emitir os quatro assuntos, cada um DENTRO da transacao do fato que o\n   justifica: topico-criado e mensagem-criada nas views de criar e responder,\n   resposta-aceita e mensagem-removida na moderacao.\n3. O site_id que os eventos exigem NAO precisa de env novo: o forum ja resolve o\n   site pelo HOST, perguntando ao catalogo (getSiteByHost devolve `id`), com\n   cache. Resolva ANTES de abrir a transacao — chamada de rede dentro dela\n   segura a transacao aberta.\n4. Sem site conhecido, NAO emita e grite no log. O topico continua sendo criado:\n   a falta de um evento nunca pode custar a fala de um aluno.\n\nCUIDADO com resposta-aceita: ele carrega `autor_da_resposta_id` (quem RECEBE o\npremio) alem do `ator_id` do envelope (quem MARCOU), e `marcada_por` com o papel.\nOs dois campos existem porque as defesas antifraude dependem deles, e o contrato\ndiz por escrito: NAO REMOVA NENHUM DOS DOIS POR ECONOMIA.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-01"
+}

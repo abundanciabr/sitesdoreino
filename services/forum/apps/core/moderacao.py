@@ -43,8 +43,11 @@ from django.utils import timezone
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 
+from apps.forum import eventos
 from apps.forum.models import Area, Mensagem, Topico
+from apps.forum.tasks import relay_apos_commit
 
+from .menu import site_id_do_host
 from .permissoes import pode_moderar
 from .sessao import quem_e
 from .views import (
@@ -291,14 +294,36 @@ def _de_volta_para(request, topico) -> str:
     return reverse("topico", args=[topico.pk])
 
 
+# AS DUAS AÇÕES QUE O DONO DA PERGUNTA TAMBÉM FAZ, e a lista é fechada.
+#
+# Decisão D da Sessão B (30/08/2026, com o mantenedor presente): *a marca
+# "resolveu" é do AUTOR da pergunta e vale a recompensa cheia na hora, sem
+# confirmação de adulto*. Até 01/09/2026 essa decisão existia só no contrato do
+# evento — no fórum, apontar a resposta certa era ação de moderador, e o dono da
+# dúvida não conseguia fazer o gesto que a lei diz ser dele.
+#
+# É uma LISTA e não um `if` solto porque o poder que se abre aqui é exatamente
+# este e mais nada: o autor NÃO fixa, NÃO tranca, NÃO move de área e NÃO tira do
+# ar. Um `elif` embutido no meio das seis ações abriria a porta por descuido no
+# dia em que uma sétima chegasse.
+ACOES_DO_AUTOR_DA_PERGUNTA = frozenset({"aceitar", "desmarcar"})
+
+
 @require_POST
 def moderar_topico(request, topico_id: int):
-    """As seis ações sobre uma conversa inteira."""
-    ator = _so_quem_modera(request)
+    """As seis ações sobre uma conversa inteira, e duas que o autor também faz."""
     topico = get_object_or_404(
         Topico.objects.select_related("area", "autor"), pk=topico_id
     )
     acao = (request.POST.get("acao") or "").strip()
+    ator = quem_e(request)
+    dono_da_pergunta = (
+        ator.pessoa is not None and ator.pessoa.id_da_plataforma == topico.autor_id
+    )
+    if not (dono_da_pergunta and acao in ACOES_DO_AUTOR_DA_PERGUNTA):
+        # A porta de sempre, para todo o resto: 404 e não 403 (regra 2 do
+        # cabeçalho deste arquivo).
+        ator = _so_quem_modera(request)
 
     erro = ""
     if acao == "salvar":
@@ -361,8 +386,46 @@ def _apontar_a_resposta_certa(request, topico) -> str:
         return ERRO_MENSAGEM_DE_OUTRO_TOPICO
     if mensagem.removida_em is not None:
         return ERRO_MENSAGEM_FORA_DO_AR
-    topico.resposta_aceita = mensagem
-    return _salvar_com_a_rede_do_banco(topico)
+
+    site_id = site_id_do_host(request.get_host())
+    ator = quem_e(request)
+
+    with transaction.atomic():
+        topico.resposta_aceita = mensagem
+        erro = _salvar_com_a_rede_do_banco(topico)
+        if erro:
+            return erro
+        # O FATO MAIS VALIOSO DO SISTEMA (decisão 4 da Sessão A: validação humana
+        # vale ~10x consumo). Os dois ids são diferentes de propósito — quem
+        # marcou vai no envelope, quem escreveu vai no `data` e é quem recebe.
+        eventos.resposta_aceita(
+            site_id=site_id,
+            topico=topico,
+            mensagem=mensagem,
+            ator_id=ator.pessoa.id_da_plataforma if ator.pessoa else "",
+            marcada_por=_papel_de_quem_marcou(ator, topico),
+        )
+        transaction.on_commit(relay_apos_commit)
+    return ""
+
+
+def _papel_de_quem_marcou(ator, topico) -> str:
+    """COM QUE AUTORIDADE a marca foi feita — a escadinha da decisão 5 da Sessão A.
+
+    É o PAPEL, nunca o id (o id de quem marcou já vai no `ator_id` do envelope), e
+    o vocabulário é fechado pelo contrato: `autor`, `monitor`, `professor`.
+
+    Ele existe porque a decisão D da Sessão B tirou o adulto do caminho do maior
+    prêmio do sistema: sem este campo, o motor não distingue a marca de um colega
+    da marca de alguém da equipe, e a detecção de anéis de reciprocidade fica
+    cega. Quem é da equipe entra como `professor`; o dono da pergunta, como
+    `autor`; qualquer outro caminho é `monitor`.
+    """
+    if ator.pessoa and ator.pessoa.id_da_plataforma == topico.autor_id:
+        return "autor"
+    if ator.eh_equipe:
+        return "professor"
+    return "monitor"
 
 
 # ===========================================================================
@@ -399,6 +462,7 @@ def moderar_mensagem(request, mensagem_id: int):
                 # o antigo continuaria aparecendo nela, sem erro em lugar nenhum.
                 mensagem.indexar_para_busca()
     elif acao in ("tirar_do_ar", "restaurar"):
+        site_id = site_id_do_host(request.get_host())
         with transaction.atomic():
             mensagem.removida_em = timezone.now() if acao == "tirar_do_ar" else None
             erro = _salvar_com_a_rede_do_banco(mensagem)
@@ -408,6 +472,18 @@ def moderar_mensagem(request, mensagem_id: int):
                 Topico.objects.filter(pk=topico.pk, resposta_aceita=mensagem).update(
                     resposta_aceita=None
                 )
+                # O EVENTO DO ESTORNO. Sem ele, o ponto pago por uma mensagem que
+                # a escola depois removeu ficaria no placar de quem a escreveu, e
+                # a quarentena do motor de XP — que existe para exatamente esta
+                # janela — não teria o que desfazer.
+                eventos.mensagem_removida(
+                    site_id=site_id,
+                    mensagem=mensagem,
+                    ator_id=(
+                        ator.pessoa.id_da_plataforma if ator and ator.pessoa else ""
+                    ),
+                )
+                transaction.on_commit(relay_apos_commit)
     else:
         erro = ERRO_ACAO_DESCONHECIDA
 

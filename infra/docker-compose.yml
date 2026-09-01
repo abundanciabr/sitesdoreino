@@ -366,6 +366,37 @@ services:
     image: ghcr.io/abundanciabr/plataforma-forum:${FORUM_TAG:-main}
     env_file: [env/forum.env]
 
+  # A VOZ do forum (degrau 17, 01/09/2026): publica no fio os quatro fatos que
+  # ele afirma — topico criado, mensagem criada, resposta aceita e mensagem
+  # removida. Ate aqui o forum era MUDO, e a medalha "Mao amiga" nao tinha como
+  # cair porque ninguem contava as respostas aceitas.
+  #
+  # Como o `gamificacao-relay`, ele NAO e o caminho rapido: quem publica em
+  # segundos e o proprio processo web, por `transaction.on_commit`. Este servico
+  # e a rede de seguranca que republica o que ficou para tras (Redis fora do ar
+  # no instante do commit, processo morto no meio).
+  #
+  # As duas variaveis vem daqui e nao do env da celula pela mesma razao ja
+  # escrita no `gamificacao-consumer`: endereco de Redis nao e segredo, vale
+  # igual em toda a plataforma, e e topologia deste compose. O banco 1 e a fila
+  # intra-celula, o banco 0 e o fio entre celulas: dividir o mesmo faria uma
+  # varredura de chaves de uma passar pelas da outra.
+  forum-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-forum:${FORUM_TAG:-main}
+    env_file: [env/forum.env]
+    environment:
+      REDIS_STREAMS_URL: redis://redis:6379/0
+      HUEY_REDIS_URL: redis://redis:6379/1
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      forum:
+        condition: service_healthy
+
   # O progresso do aluno (DECISAO-gamificacao.md, 30/08/2026). Celula de PAGINA,
   # como a `admin` e o `forum`: serve HTML sob o prefixo `/conquistas`, que ela
   # conhece por `SCRIPT_NAME=/conquistas` no env dela — o Traefik NAO remove o
