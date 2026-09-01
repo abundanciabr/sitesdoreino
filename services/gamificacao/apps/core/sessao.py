@@ -12,10 +12,29 @@ cabo-de-guerra invisível: abrir a página de conquistas deslogaria do site, e
 vice-versa, sem erro em lugar nenhum (`armadilhas/143`).
 
 O molde é `services/forum/apps/core/clients.py`, o consumidor de referência da
-plataforma — copiado, não importado (Lei 3). A diferença é que aqui basta
-`getSession`: a gamificação precisa do **id opaco**, nunca do e-mail. Pedir
-`getSessionFull` exigiria o degrau `TOKENS_COMPLETOS_*` no env da `identidade`
-para receber um dado que esta célula não tem o que fazer com ele.
+plataforma — copiado, não importado (Lei 3). No caminho da PÁGINA basta
+`getSession`: a gamificação precisa do **id opaco**, nunca do e-mail, e pedir
+`getSessionFull` seria receber um dado que esta célula não tem o que fazer com
+ele.
+
+**Há um segundo caminho aqui desde 01/09/2026, e ele é de linha de comando, não
+de página:** `pessoa_por_email`, a tradução que `conceder_fundador --emails`
+usa. A célula que sabe quem pediu entrada na escola (`alunos`) conhece as
+pessoas por e-mail, e a medalha se concede por id opaco. A ponte é
+`findPersonByEmail`, no contrato congelado da `identidade`, e ela **exige o
+degrau `TOKENS_COMPLETOS_GAMIFICACAO`** no env da `identidade` — o mesmo de
+`getSessionFull`, porque quem manda um e-mail para aquela porta descobre se ele
+existe. Sem o degrau a resposta é 403, com Bearer válido; quem instala o degrau
+é `infra/conceder-fundador-aos-alunos.sh`.
+
+**As duas funções têm posturas OPOSTAS diante da falha, e isso é deliberado.**
+`quem_e` falha ABERTO (tropeço vira visitante), porque uma página sem selo é uma
+página e uma página quebrada não é. `pessoa_por_email` falha FECHADO (tropeço
+vira exceção), porque quem a chama está prestes a CONCEDER: "não consegui
+perguntar" lido como "esta pessoa não existe" faria a medalha deixar de sair
+para quem a merece, e o relatório afirmaria, com todas as letras, que aquelas
+pessoas não foram encontradas. Ali o silêncio é caro; aqui a exceção alta é
+barata, porque do outro lado há um humano lendo a tela e podendo rodar de novo.
 
 **Nada aqui é lido no import.** Toda variável de ambiente é buscada no ponto de
 uso, com falha fechada e o nome da variável na mensagem: cliente que lê env no
@@ -165,3 +184,72 @@ def _sessao(cookie: str) -> dict:
             f"a célula identidade respondeu fora do contrato: {type(corpo).__name__}"
         )
     return corpo
+
+
+def pessoa_por_email(email: str) -> str | None:
+    """O id OPACO de quem tem este e-mail, ou `None` quando ninguém tem.
+
+    `contracts/identidade.openapi.yaml`, operação `findPersonByEmail`. POST e
+    não GET com o e-mail no caminho: caminho de URL entra em log de servidor, em
+    histórico de proxy e em rastro de erro; corpo, não.
+
+    **`None` significa UMA coisa só: a `identidade` respondeu, e disse que não
+    conhece este e-mail.** Todo o resto levanta. É a metade que separa esta
+    função da vizinha `quem_e`, e é a razão de ela existir separada: quem chama
+    está prestes a conceder uma medalha, e um "não encontrei" que na verdade era
+    "não consegui perguntar" tiraria a medalha de gente que a merece, num
+    relatório que afirma o contrário.
+
+    **Não normaliza o e-mail.** Quem é dono do dado é dono da forma canônica
+    dele, e a `identidade` já faz isso do lado dela. Uma segunda regra aqui
+    divergiria da primeira algum dia, e a divergência apareceria como `None`
+    para uma pessoa que existe.
+
+    Levanta `ConfiguracaoAusente` se o par não está no env, e
+    `IdentidadeIndisponivel` para rede, status fora de 200 e corpo fora do
+    contrato. 403 é o caso mais provável dos três, e o mais fácil de
+    diagnosticar errado: ele quer dizer que o token da gamificação ainda não
+    está em `TOKENS_COMPLETOS_GAMIFICACAO` no env da `identidade`, que é passo
+    de provisionamento e não defeito de código. Por isso a mensagem nomeia a
+    variável em vez de dizer só o número.
+    """
+    base = exigir("IDENTIDADE_API_URL").rstrip("/")
+    token = exigir("IDENTIDADE_API_TOKEN")
+    try:
+        resposta = http().post(
+            f"{base}/pessoas/por-email",
+            json={"email": email},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    except httpx.RequestError as erro:
+        raise IdentidadeIndisponivel(
+            f"não deu para falar com a célula identidade: {erro}"
+        ) from erro
+
+    if resposta.status_code == 403:
+        raise IdentidadeIndisponivel(
+            "a célula identidade respondeu HTTP 403: o token desta célula ainda "
+            "não está em TOKENS_COMPLETOS_GAMIFICACAO no env dela. Esse degrau é "
+            "o que autoriza procurar uma pessoa por e-mail, e quem o instala é "
+            "infra/conceder-fundador-aos-alunos.sh, dentro da VPS."
+        )
+    if resposta.status_code != 200:
+        raise IdentidadeIndisponivel(
+            f"a célula identidade respondeu HTTP {resposta.status_code}"
+        )
+
+    try:
+        corpo = resposta.json()
+    except ValueError as erro:
+        # *Status 200 não é sucesso*: fora deste `try`, um proxy devolvendo HTML
+        # com 200 viraria "não conheço esta pessoa" para a lista inteira.
+        raise IdentidadeIndisponivel(
+            f"a célula identidade respondeu algo que não é JSON: {erro}"
+        ) from erro
+    if not isinstance(corpo, dict):
+        raise IdentidadeIndisponivel(
+            f"a célula identidade respondeu fora do contrato: {type(corpo).__name__}"
+        )
+    # `id: null` é RESPOSTA, e a mais comum de todas: quem foi cadastrado à mão
+    # e ainda não entrou uma vez sequer não tem identidade nenhuma por lá.
+    return (corpo.get("id") or "").strip() or None

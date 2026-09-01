@@ -1,0 +1,16 @@
+{
+  "arquivo": "098-a-ponte-entre-quem-pediu-entrada-e-a-medalha-de-fundador",
+  "id": "TAR-098",
+  "titulo": "A ponte entre quem pediu entrada e a medalha de Fundador",
+  "toca": [
+    "alunos",
+    "gamificacao",
+    "infra"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado e o ensaio rodando: a lista sai agrupada por situacao e nada e concedido sem --confirmo",
+  "despacho": "Construa a ponte entre a celula alunos (que conhece quem pediu entrada por E-MAIL)\ne o comando conceder_fundador da gamificacao (que so aceita id opaco da plataforma).\n\nTres pecas:\n\n1) Na celula alunos, um management command SOMENTE DE LEITURA que lista quem pediu\n   entrada no site, com a situacao de cada um, agrupado e contado por situacao, com\n   resumo legivel por leigo. Duas plateias, um comando: uma opcao de formato entrega\n   ou a lista para pessoa (nome/e-mail + situacao) ou so os e-mails para outro comando\n   consumir. Nada de escrita e nada de rede.\n\n2) Em services/gamificacao/apps/gamificacao/management/commands/conceder_fundador.py,\n   acrescente --emails ao lado do --ids que ja existe. Cada e-mail e resolvido para o\n   id opaco chamando findPersonByEmail na celula identidade (que a gamificacao ja\n   consome via services/gamificacao/apps/core/sessao.py). Regras: --ids continua\n   identico; e-mail desconhecido entra no relatorio e NAO para o lote; identidade fora\n   do ar e ERROR fail-closed e nao concede nada a ninguem naquela rodada; o e-mail nao\n   sai impresso ao lado do id opaco; --ensaio continua sendo a postura padrao.\n\n3) infra/conceder-fundador-aos-alunos.sh, no molde de infra/provisionar-par-da-economia.sh\n   (recusa source, parar() com PAROU POR SEGURANCA, veredito lido do comando e nunca do\n   exit de um pipe). Ele junta as duas pecas DENTRO da VPS via docker compose exec. Sem\n   argumento: ENSAIO (mostra a lista agrupada e diz que nada foi concedido). Com\n   --confirmo: concede. Por padrao entram todas as situacoes menos recusada; o ensaio\n   mostra os recusados contados em separado e existe uma opcao para inclui-los.\n\nEvidencia: as duas suites verdes com contagem antes/depois, testes com respx no\ntransporte cobrindo --ids intacto, --emails resolve e concede, e-mail desconhecido nao\npara o lote, identidade fora do ar nao concede nada, --ensaio nao escreve, dupla execucao\nnao concede duas vezes, conquista desligada continua recusando, e o agrupamento da\ncelula alunos. Cada guarda novo provado por mutacao deliberada.",
+  "origem": "Decisao do mantenedor em 01/09/2026: conceder o Fundador a todos que pediram entrada",
+  "criada_em": "2026-09-01"
+}

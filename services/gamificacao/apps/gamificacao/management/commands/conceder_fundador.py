@@ -18,7 +18,7 @@ chance de esquecer um pedaço dele.
 
 A LISTA É ARGUMENTO, E ISSO NÃO É PREGUIÇA
 -------------------------------------------
-`--ids` é obrigatório porque **quem é fundador não é derivável desta célula**, e
+A lista é obrigatória porque **quem é fundador não é derivável desta célula**, e
 tentar derivar daria uma resposta errada com cara de certa. Duas razões, as
 duas medidas:
 
@@ -31,8 +31,52 @@ duas medidas:
    dependência nova, senha de máquina nova e um passo do mantenedor na VPS,
    tudo isso para responder a uma pergunta que se responde uma vez na vida.
 
-A lista de quem estava no começo é conhecimento do mantenedor, não do banco.
-Ela entra pela mão dele, e o comando só executa.
+A lista de quem estava no começo é conhecimento de fora desta célula. Ela entra
+pela linha de comando, e o comando só executa.
+
+DUAS PORTAS DE ENTRADA PARA A MESMA LISTA: `--ids` E `--emails`
+----------------------------------------------------------------
+`--ids` é a porta original, e nada nela mudou: id opaco entra, medalha sai, sem
+tocar a rede. `--emails` nasceu em 01/09/2026 porque a célula que sabe quem
+pediu entrada na escola identifica as pessoas por E-MAIL, e a `alunos` não tem
+`id_da_plataforma` nenhum para oferecer.
+
+A ponte não passa pela `alunos`, e a escolha é a mesma de sempre: a
+`gamificacao` não confere matrícula. Ela passa pela `identidade`, que esta
+célula já consome, pela operação `findPersonByEmail` do contrato congelado.
+Entra e-mail, sai id opaco, e daí em diante o caminho é o que já existia.
+
+**A resolução acontece INTEIRA antes da primeira concessão**, e a ordem é o
+mecanismo, não um detalhe de implementação: é ela que impede uma `identidade`
+fora do ar de deixar metade da lista concedida e a outra metade num erro.
+
+**A porta exige o degrau `TOKENS_COMPLETOS_GAMIFICACAO`** no env da
+`identidade` (o mesmo de `getSessionFull`, porque quem manda um e-mail para ela
+descobre se ele existe). Sem esse degrau a resposta é 403, com Bearer válido, e
+o comando trata isso como indisponibilidade: passo de provisionamento não é
+"esta pessoa não existe". Quem instala o degrau é
+`infra/conceder-fundador-aos-alunos.sh`, dentro da VPS.
+
+O QUE ACONTECE QUANDO A TRADUÇÃO FALHA, E POR QUE OS DOIS CASOS SÃO DIFERENTES
+-------------------------------------------------------------------------------
+**E-mail que a `identidade` não conhece não é erro e não para o lote.** É o caso
+comum de quem foi cadastrado à mão e ainda não entrou uma vez sequer. Ele entra
+no relatório e os outros seguem: parcial é melhor que nada, e o comando é
+re-executável de propósito.
+
+**`identidade` fora do ar é ERROR, e nada é concedido a ninguém naquela
+rodada.** *Não consegui perguntar* nunca pode virar *perguntei e não existe*: a
+primeira frase é uma falha minha, a segunda é uma afirmação sobre a pessoa. Se
+as duas saíssem iguais no relatório, um dia de rede ruim viraria uma lista de
+gente que "não existe", e alguém a leria como decisão.
+
+O E-MAIL E O ID NUNCA SAEM NA MESMA LINHA
+-------------------------------------------
+Os grupos do relatório continuam falando por id; os e-mails que não resolveram
+saem num grupo próprio, sem id nenhum ao lado. Esta célula guarda o espelho
+mínimo de pessoa que a lei dela manda guardar, e uma tabela de correspondência
+entre e-mail e id opaco impressa na tela seria essa mesma ligação vazando por
+outro caminho, num texto que alguém cola em qualquer lugar.
 
 ELE RECUSA ENQUANTO A MEDALHA ESTIVER DESLIGADA, E ISSO É O DESENHO
 ---------------------------------------------------------------------
@@ -68,6 +112,11 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand, CommandError
 
+from apps.core.sessao import (
+    ConfiguracaoAusente,
+    IdentidadeIndisponivel,
+    pessoa_por_email,
+)
 from apps.gamificacao.models import Concessao, ConquistaDefinicao, Pessoa
 from apps.gamificacao.validacao import conceder
 
@@ -88,6 +137,11 @@ def ids_pedidos(cruas: list[str] | None) -> list[str]:
     Repetido sai porque a saída do ensaio é o que o mantenedor vai ler para
     decidir: uma lista que conta a mesma pessoa duas vezes dá um número que não
     bate com a realidade, e um número que não bate ensina a ignorar o relatório.
+
+    Serve aos dois argumentos, `--ids` e `--emails`: as duas listas chegam da
+    mesma mão, com os mesmos tropeços de digitação, e uma segunda função para
+    fazer o mesmo trabalho divergiria da primeira no dia em que alguém mexesse
+    numa delas.
     """
     vistos: dict[str, None] = {}
     for pedaco in cruas or []:
@@ -125,6 +179,16 @@ class Command(BaseCommand):
             ),
         )
         parser.add_argument(
+            "--emails",
+            action="append",
+            default=[],
+            metavar="EMAIL[,EMAIL...]",
+            help=(
+                "os e-mails de quem recebe a medalha; cada um é traduzido no id "
+                "opaco pela célula identidade antes de qualquer concessão"
+            ),
+        )
+        parser.add_argument(
             "--confirmo",
             action="store_true",
             help="executa de verdade (sem esta opção o comando só faz um ensaio)",
@@ -133,15 +197,16 @@ class Command(BaseCommand):
     def handle(self, *args, **opcoes):
         site = opcoes["site"]
         ids = ids_pedidos(opcoes["ids"])
-        if not ids:
+        emails = ids_pedidos(opcoes["emails"])
+        if not ids and not emails:
             raise CommandError(
-                "PAROU POR SEGURANÇA: nenhum id foi passado em --ids, e este "
-                "comando não tem como descobrir sozinho quem é fundador. O "
-                "espelho de pessoas desta célula só conhece quem já ganhou XP "
-                "ou já abriu a página de conquistas, então perguntar a ele "
-                "responderia 'quem chegou por último'. Quem estava aqui no "
+                "PAROU POR SEGURANÇA: nenhuma lista foi passada em --ids nem em "
+                "--emails, e este comando não tem como descobrir sozinho quem é "
+                "fundador. O espelho de pessoas desta célula só conhece quem já "
+                "ganhou XP ou já abriu a página de conquistas, então perguntar a "
+                "ele responderia 'quem chegou por último'. Quem estava aqui no "
                 "começo é conhecimento seu: passe a lista, por exemplo "
-                "--ids pessoa-1,pessoa-2."
+                "--ids pessoa-1,pessoa-2 ou --emails alguem@exemplo.com."
             )
 
         try:
@@ -168,6 +233,16 @@ class Command(BaseCommand):
                 "Nada foi concedido."
             )
 
+        # A tradução acontece DEPOIS da recusa por medalha desligada, e a ordem
+        # é decisão: numa escola em que a medalha ainda não foi ligada, uma
+        # rodada de ensaio não tem por que mandar a lista inteira de e-mails
+        # para outra célula. A recusa que já existia continua sendo a primeira
+        # coisa que este comando faz.
+        traduzidos, nao_encontrados = self._traduzir(emails)
+        for id_da_pessoa in traduzidos:
+            if id_da_pessoa not in ids:
+                ids.append(id_da_pessoa)
+
         conhecidas = {
             pessoa.id_da_plataforma: pessoa
             for pessoa in Pessoa.objects.filter(id_da_plataforma__in=ids)
@@ -186,6 +261,11 @@ class Command(BaseCommand):
         self._grupo("recebem a medalha", receberiam)
         self._grupo("já têm, e nada muda para elas", repetidos)
         self._grupo("não conheço esta pessoa ainda", desconhecidos)
+        if emails:
+            # Grupo próprio, e nunca ao lado de um id: ver a docstring do módulo.
+            # Ele sai mesmo vazio, porque "0 não encontrei" é a notícia que diz
+            # que a lista inteira foi traduzida.
+            self._grupo("não encontrei esta pessoa na identidade", nao_encontrados)
 
         if not opcoes["confirmo"]:
             self.stdout.write(
@@ -220,6 +300,45 @@ class Command(BaseCommand):
             f"{mantidas} já existia(m), {len(desconhecidos)} pessoa(s) fora do "
             "espelho local. Rodar de novo é seguro e não concede duas vezes."
         )
+        if emails:
+            self.stdout.write(
+                f"E {len(nao_encontrados)} e-mail(s) a identidade não conhece. "
+                "Quem entra com o Google ou define uma senha aparece por lá na "
+                "hora, e aí basta rodar este comando de novo."
+            )
+
+    def _traduzir(self, emails: list[str]) -> tuple[list[str], list[str]]:
+        """Cada e-mail vira id opaco, ou entra na lista de quem não foi achado.
+
+        **Levanta ao primeiro tropeço de infraestrutura, e é para isso que ela
+        existe separada do laço de concessão.** Como a lista inteira é traduzida
+        antes de a primeira medalha sair, uma `identidade` fora do ar interrompe
+        a rodada sem ter escrito nada: não há metade concedida, e não há um
+        relatório afirmando que gente de verdade "não existe".
+
+        Devolve os ids na ordem pedida, e os e-mails que a `identidade`
+        respondeu não conhecer.
+        """
+        traduzidos: list[str] = []
+        nao_encontrados: list[str] = []
+        for email in emails:
+            try:
+                achado = pessoa_por_email(email)
+            except (IdentidadeIndisponivel, ConfiguracaoAusente) as erro:
+                raise CommandError(
+                    f"PAROU POR SEGURANÇA: não consegui traduzir os e-mails em "
+                    f"ids porque a célula identidade não respondeu ({erro}). "
+                    "NADA foi concedido a ninguém nesta rodada, nem às pessoas "
+                    "cujo e-mail já tinha sido traduzido. Isto é diferente de "
+                    "'não encontrei estas pessoas': eu não cheguei a perguntar. "
+                    "Conserte a conversa entre as células e rode de novo, que "
+                    "repetir é seguro."
+                ) from erro
+            if achado:
+                traduzidos.append(achado)
+            else:
+                nao_encontrados.append(email)
+        return traduzidos, nao_encontrados
 
     def _grupo(self, rotulo: str, ids: list[str]) -> None:
         """Uma linha por grupo, sempre, mesmo vazio.
