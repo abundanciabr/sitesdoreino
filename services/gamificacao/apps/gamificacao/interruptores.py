@@ -189,11 +189,26 @@ SEM_MOTOR_DE_CRITERIO = "sem-motor-de-criterio"
 SEM_FATO_QUE_ALIMENTA = "sem-fato-que-alimenta"
 SO_POR_CONCESSAO_MANUAL = "so-por-concessao-manual"
 
-# Os critérios que dependem de um fato que NADA no site produz hoje. `forjas_seladas`
-# espera a Forja (degrau 14) e `respostas_aceitas` espera o fórum ganhar voz
-# (degrau 17). Ligar uma conquista dessas não faz mal nenhum e também não faz
-# nada — e é exatamente esse "nada" que a tela precisa dizer antes do clique.
-CRITERIOS_SEM_FATO = frozenset({"forjas_seladas", "respostas_aceitas"})
+# Os critérios que dependem de um fato que NADA no site produz hoje, MEDIDO e não
+# suposto: uma varredura por `.objects.create` nesta célula não acha ninguém
+# escrevendo `Forja` (degrau 14), `Sequencia` (degrau 10) nem `ProgressoDeMissao`
+# (degrau 11); `respostas_aceitas` espera o fórum ganhar voz (degrau 17) e
+# `primeira_vez` espera a plataforma saber dizer "uma obra ficou pronta"
+# (degrau 19).
+#
+# Ligar uma conquista dessas não faz mal nenhum e também não faz nada — e é
+# exatamente esse "nada" que a tela precisa dizer antes do clique. A lista encolhe
+# sozinha à medida que a escada sobe: quando a Forja existir, `forjas_seladas` sai
+# daqui e a medalha das dez forjas passa a cair.
+CRITERIOS_SEM_FATO = frozenset(
+    {
+        "forjas_seladas",
+        "respostas_aceitas",
+        "primeira_vez",
+        "semanas_de_sequencia",
+        "missoes_cumpridas",
+    }
+)
 
 
 def impedimentos_da_conquista(conquista: ConquistaDefinicao) -> list[str]:
@@ -215,10 +230,14 @@ def impedimentos_da_conquista(conquista: ConquistaDefinicao) -> list[str]:
         # nunca viriam.
         return [SO_POR_CONCESSAO_MANUAL]
 
-    achados = [SEM_MOTOR_DE_CRITERIO]
+    # `SEM_MOTOR_DE_CRITERIO` SAIU daqui em 01/09/2026, quando o motor nasceu
+    # (`criterios.py`). A palavra continua no contrato de propósito: um consumidor
+    # antigo pode tê-la guardado, e o `enum` descrever um valor que ninguém emite
+    # mais é barato. O que não pode é a tela seguir avisando de um impedimento que
+    # deixou de existir — um aviso que mente é pior que nenhum.
     if criterio in CRITERIOS_SEM_FATO:
-        achados.append(SEM_FATO_QUE_ALIMENTA)
-    return achados
+        return [SEM_FATO_QUE_ALIMENTA]
+    return []
 
 
 class ConquistaDesconhecida(LookupError):

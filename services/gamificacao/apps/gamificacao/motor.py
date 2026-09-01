@@ -60,6 +60,7 @@ from datetime import timedelta
 from django.db import IntegrityError, transaction
 from django.db.models import Sum
 
+from . import criterios
 from .cartas import carta_de_nivel
 from .models import (
     LancamentoDeXP,
@@ -370,6 +371,18 @@ def recalcular(
             campos.append("celebracoes_pendentes")
 
         perfil.save(update_fields=campos)
+
+        # AS MEDALHAS QUE CAEM SOZINHAS (degrau 12, TAR-090). O ponto de chamada é
+        # aqui porque este é o lugar por onde TODA mudança de número passa: o
+        # crédito de um evento, a liberação de uma quarentena, o reparo de um
+        # perfil. Pendurá-la em `aplicar()` deixaria de fora a quarentena, e a
+        # medalha dos 300 XP não sairia para quem cruzou os 300 na liberação.
+        #
+        # `celebrar=False` também não avalia: quem repara uma cópia divergente não
+        # está fazendo a pessoa conquistar nada, e conceder ali mandaria a carta
+        # pelo relógio da manutenção.
+        if celebrar:
+            criterios.avaliar(pessoa.id_da_plataforma, site_id)
 
         if celebrar and subiu:
             # DEPOIS do commit, nunca antes: é o que dá o aviso em segundos sem
