@@ -7,6 +7,19 @@
 # etiqueta `contrato`, provedor primeiro, consumidores em PRs seguintes. O
 # portão que faz valer é `ci/contract_freeze.py`.
 #
+# EMENDA DE 01/09/2026 (Rito de Contrato, com o mantenedor presente): entraram
+# `listAchievementSwitches` e `setAchievementSwitch`, o segundo interruptor da
+# tela dele. Crescimento puro — nenhuma operação, campo ou nome mudou, e por
+# isso nenhum consumidor precisa migrar.
+#
+# A PERGUNTA QUE O RITO RESPONDEU não foi a forma da porta (ela é gêmea da dos
+# interruptores de regra), e sim uma de PRODUTO: *ligar uma conquista reconhece
+# quem já cumpriu o critério antes?* A resposta dele foi SIM, com o custo dito
+# na hora — no dia de ligar, um punhado de medalhas sai de uma vez, com os
+# pontos delas. É por isso que estas duas operações não têm `vigente_desde`: nas
+# regras de pontuação aquele carimbo impede pagar o passado; aqui ele impediria
+# a "Primeira obra" de quem já fez a primeira obra, e ninguém faz duas estreias.
+#
 # LEI DO ASSUNTO: `docs/decisoes/DECISAO-gamificacao.md`.
 # PLANO: `docs/decisoes/PLANO-CELULA-GAMIFICACAO.md` §4 (eventos e contrato).
 #
@@ -300,6 +313,109 @@ paths:
             schema:
               $ref: '#/components/schemas/PedidoDeInterruptor'
         required: true
+  /economia/conquistas:
+    get:
+      operationId: listAchievementSwitches
+      summary: Todas as medalhas e marcos, ligados e desligados
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/InterruptorDeConquista'
+                type: array
+      description: 'A segunda metade da tela do mantenedor. Devolve TODAS as conquistas
+        do
+
+        site, com os MARCOS primeiro: a hierarquia da lei e
+
+        Realidade > Criacao > Maestria > Comunidade > XP, e uma tela que lista o
+
+        andaime acima da espinha ensina a ordem errada a quem a le todo dia.
+
+
+        `nome` e `descricao` VIAJAM AQUI, e isto e uma excecao declarada ao
+
+        invariante 3 desta porta (''slug, nunca frase pronta''). A razao: estas
+
+        duas operacoes servem a tela do MANTENEDOR, que e bastidor e nao
+
+        vitrine, e o texto de uma conquista e dado que ele proprio edita, nao
+
+        frase de interface que precise existir em tres idiomas. As operacoes
+
+        que servem o ALUNO continuam devolvendo so slug e numero.
+
+
+        `impedimentos` avisa antes do clique quando ligar nao vai adiantar:
+
+        `sem-motor-de-criterio` = a conta automatica das medalhas ainda nao
+
+        existe; `sem-fato-que-alimenta` = nada no site produz o numero que o
+
+        criterio conta; `so-por-concessao-manual` = a medalha so sai pela mao da
+
+        equipe. MARCO nunca tem impedimento: ele nao depende de conta, e sim de
+
+        alguem mandar a prova e a equipe conferir.'
+  /economia/conquistas/{slug}:
+    post:
+      operationId: setAchievementSwitch
+      summary: Liga ou desliga UMA medalha ou marco
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterruptorDeConquista'
+      description: 'Ligar um MARCO faz ele aparecer na trilha do aluno, que manda a
+        prova e
+
+        espera a equipe conferir. Ligar uma MEDALHA faz a escola passar a
+
+        conceder sozinha quando a conta bater.
+
+
+        NAO HA `vigente_desde` AQUI, e a ausencia e a decisao do mantenedor no
+
+        Rito de 01/09/2026: ligar uma conquista RECONHECE quem ja cumpriu o
+
+        criterio antes. O carimbo de data e o mecanismo do ''nunca retroativo''
+
+        das regras de pontuacao, onde pagar o passado inflaria o placar de quem
+
+        nao fez nada novo; aqui ele seria o mecanismo de negar a ''Primeira obra''
+
+        a quem ja fez a primeira obra, e ninguem faz duas estreias.
+
+
+        `versao` sobe quando algo muda, e chamada que nao muda nada devolve a
+
+        linha como esta, sem gastar versao: dois cliques no mesmo botao nao
+
+        inflam o historico com mudancas que ninguem fez.
+
+
+        Slug desconhecido responde 404, como o interruptor das regras: inventar
+
+        em silencio qual conquista o mantenedor quis ligar seria pior que
+
+        recusar.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoDeInterruptor'
+        required: true
 components:
   schemas:
     PerfilPublico:
@@ -472,6 +588,62 @@ components:
           type: boolean
       required:
       - ativa
+      type: object
+    InterruptorDeConquista:
+      properties:
+        slug:
+          type: string
+        nome:
+          type: string
+        descricao:
+          type: string
+        classe:
+          enum:
+          - medalha
+          - marco
+          type: string
+        familia:
+          enum:
+          - oficio
+          - comunidade
+          - epoca
+          - secreta
+          - carreira
+          - espelho
+          type: string
+        pontos:
+          type: integer
+        cristais:
+          type: integer
+        envolve_dinheiro:
+          type: boolean
+        exige_validador_da_equipe:
+          type: boolean
+        ativa:
+          type: boolean
+        versao:
+          type: integer
+        impedimentos:
+          items:
+            enum:
+            - sem-motor-de-criterio
+            - sem-fato-que-alimenta
+            - so-por-concessao-manual
+            type: string
+          type: array
+      required:
+      - slug
+      - nome
+      - descricao
+      - classe
+      - familia
+      - pontos
+      - cristais
+      - envolve_dinheiro
+      - exige_validador_da_equipe
+      - ativa
+      - versao
+      - impedimentos
       type: object
   securitySchemes:
     bearerAuth:
