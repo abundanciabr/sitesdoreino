@@ -27,6 +27,12 @@ pytestmark = pytest.mark.django_db
 
 CATALOGO = "http://catalogo:8000/api/catalogo"
 
+# O prefixo público desta célula. Em produção quem o aplica é
+# `FORCE_SCRIPT_NAME`, do env; aqui ele entra pelo test client. Sem ele o fórum
+# seria servido em `/`, e a regra "o item da área atual some" compararia um
+# caminho que não existe em lugar nenhum.
+PREFIXO = {"SCRIPT_NAME": "/forum"}
+
 MENU = {
     "default_version": "completo",
     "versions": [
@@ -92,6 +98,13 @@ def area_publica():
         descricao="Pergunte sem medo.",
         visibilidade=Area.Visibilidade.PUBLICA,
     )
+
+
+def _menu(corpo: str) -> str:
+    """Só o pedaço da barra do site — a página tem rodapé e faixa, e os dois
+    também levam a lugares do site."""
+    inicio = corpo.index('<nav class="menu-topo">')
+    return corpo[inicio : corpo.index("</nav>", inicio)]
 
 
 def _corpo(resposta) -> str:
@@ -244,7 +257,10 @@ def test_rotulo_com_marcacao_sai_escapado(client, monkeypatch):
                 "name": "V",
                 "items": [
                     {
-                        "url": "/",
+                        # NÃO a raiz: sem o prefixo público, a home do fórum é
+                        # `/` no test client, e um item para `/` sumiria por ser
+                        # "a página atual".
+                        "url": "/cadastro",
                         "labels": {"pt-br": "<script>alert(1)</script>"},
                         "localized": False,
                         "audience": "everyone",
@@ -266,4 +282,37 @@ def test_o_estilo_do_menu_chega_ao_navegador(client):
     HTML sem regra no arquivo é um menu sem forma, e nada ficaria vermelho."""
     folha = _corpo(client.get(reverse("estatico", args=["forum.css"])))
     assert ".barra-do-site" in folha
-    assert ".barra-do-site .menu-topo a[aria-current=page]" in folha
+    assert "position: sticky" in folha
+
+
+# ---------------------------------------------------------------------------
+# O item do lugar onde voce ja esta nao aparece (pedido de 01/09/2026)
+# ---------------------------------------------------------------------------
+
+
+def test_no_forum_o_item_forum_some(client, monkeypatch):
+    """ "No Fórum ele, obviamente, não mostra o menu Fórum." Um link para onde
+    você já está gasta espaço e ensina o aluno a desconfiar do menu."""
+    dublar_catalogo(monkeypatch)
+    menu = _menu(client.get(reverse("home"), **PREFIXO).content.decode())
+    assert "Início" in menu
+    assert 'href="/forum/"' not in menu
+
+
+def test_o_item_forum_some_tambem_DENTRO_do_forum(client, monkeypatch, area_publica):
+    """A regra é por ÁREA, não por página exata: numa conversa lá dentro o
+    aluno continua no fórum, e o item continua sendo um link para onde ele já
+    está."""
+    dublar_catalogo(monkeypatch)
+    corpo = client.get(
+        reverse("area", args=[area_publica.slug]), **PREFIXO
+    ).content.decode()
+    assert 'href="/forum/"' not in _menu(corpo)
+    assert "Início" in _menu(corpo)
+
+
+def test_o_item_inicio_continua_aparecendo_no_forum(client, monkeypatch):
+    """A raiz do site não é "aqui" quando se está no fórum — e sem este guarda
+    um tratamento ingênuo de prefixo faria `/` casar com tudo."""
+    dublar_catalogo(monkeypatch)
+    assert 'href="/"' in _menu(client.get(reverse("home"), **PREFIXO).content.decode())

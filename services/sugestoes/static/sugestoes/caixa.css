@@ -616,4 +616,3 @@ th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transfo
 }
 .barra-do-site .menu-topo a:hover,
 .barra-do-site .menu-topo a:focus { background: #ececef; }
-.barra-do-site .menu-topo a[aria-current=page] { background: #1a1a1a; color: #fff; }

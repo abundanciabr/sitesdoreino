@@ -17,7 +17,7 @@ A BARRA DO SITE vem ANTES da faixa desta area, e isso e a decisao do
 mantenedor de 31/08/2026: primeiro o caminho para o site inteiro, depois o
 nome do lugar onde voce esta. Quem DECIDE o que vai nela e o processador de
 contexto (apps/core/menu.py); aqui so se desenha.
-{% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.atual %} aria-current="page"{% endif %}{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
+{% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
 <div class="faixa">
   <a href="{% url 'home' %}">Fórum da Meshcraft Academy</a>
   <span class="quem">{% if ator.autenticado %}{{ ator.pessoa.nome_exibido|default:"você" }}{% else %}visitante{% endif %}</span>
