@@ -265,5 +265,5 @@ def test_o_estilo_do_menu_chega_ao_navegador(client):
     """O fórum serve o CSS por rota própria (`armadilhas/083`): classe nova no
     HTML sem regra no arquivo é um menu sem forma, e nada ficaria vermelho."""
     folha = _corpo(client.get(reverse("estatico", args=["forum.css"])))
-    assert ".menu-topo" in folha
-    assert ".menu-topo a[aria-current=page]" in folha
+    assert ".barra-do-site" in folha
+    assert ".barra-do-site .menu-topo a[aria-current=page]" in folha
