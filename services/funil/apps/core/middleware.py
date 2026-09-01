@@ -199,14 +199,28 @@ def _progresso_da_tela(status: "dict | None") -> "dict | None":
          inteira está desligada até o mantenedor ligar a primeira regra em
          `/admin/economia/`. Barra em zero aqui seria dado fingido.
 
+      4. **a escada ainda não foi montada** — `xp_para_proximo: null` com a
+         pessoa no primeiro degrau. Não há próximo degrau porque a escola ainda
+         não ligou nenhum, e não porque alguém subiu a trilha inteira. Ver
+         abaixo: é o caso que fazia a home parabenizar quem nunca fez nada.
+
     Quando há progresso, devolve `nivel` mais UM de dois desfechos:
 
-      · `no_topo=True` — `xp_para_proximo` é `null`, não há próximo degrau
-        definido. Mostra o degrau e uma frase própria, SEM barra: barra cheia
-        que nunca vira nada é promessa que ninguém vai cumprir. `null` e `0`
-        dizem coisas diferentes e o contrato aceita os dois.
+      · `no_topo=True` — `xp_para_proximo` é `null` E a pessoa já saiu do
+        primeiro degrau. Mostra o degrau e uma frase própria, SEM barra: barra
+        cheia que nunca vira nada é promessa que ninguém vai cumprir. `null` e
+        `0` dizem coisas diferentes e o contrato aceita os dois.
       · `no_topo=False` — há um próximo degrau, e a barra mede o caminho já
         andado até ele.
+
+    **`nivel <= 1` sem próximo degrau NÃO é topo, e essa é a correção de
+    01/09/2026** (`armadilhas/271`). O `null` responde a duas perguntas
+    opostas: "venceu a escada inteira" e "não existe escada". Com a economia
+    desligada — o estado de hoje —, todo aluno que já tivesse aberto
+    `/conquistas` uma vez (o que faz a linha de perfil nascer) via na home
+    "Nível 1" e, embaixo, "você chegou ao último degrau da trilha". Ninguém
+    chega ao topo de uma trilha estando no primeiro degrau dela: enquanto for
+    assim, o quadrinho não se desenha, exatamente como no caso 3.
 
     **O que a barra mede, escrito porque é fácil ler errado:** a porta entrega
     o XP TOTAL e quanto FALTA, nunca o piso do degrau atual. Então a fração é
@@ -225,6 +239,9 @@ def _progresso_da_tela(status: "dict | None") -> "dict | None":
         return None
     falta = status.get("xp_para_proximo")
     if falta is None:
+        # Primeiro degrau e nenhum acima: escada não montada, não topo.
+        if nivel <= 1:
+            return None
         return {
             "nivel": nivel,
             "no_topo": True,

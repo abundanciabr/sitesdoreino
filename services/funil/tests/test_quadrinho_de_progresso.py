@@ -12,7 +12,8 @@ pode confundir:
 
   · números conhecidos                 → degrau, barra e o quanto falta;
   · `autenticado: true` com `null`     → entrou e ainda não jogou, sem barra;
-  · `xp_para_proximo: null`            → topo da escada, sem barra;
+  · `xp_para_proximo: null` no 1º      → escada não montada, não desenha;
+  · `xp_para_proximo: null` acima do 1º → topo da escada, sem barra;
   · `xp_para_proximo: 0`               → já tem os pontos, frase própria.
 
 **Por que `GAMIFICACAO_API_URL`/`TOKEN` não são setadas em
@@ -408,6 +409,48 @@ def test_no_topo_da_escada_mostra_o_degrau_sem_barra_nenhuma(
     assert "Nível 12" in conteudo
     assert "Você chegou ao último degrau da trilha." in conteudo
     assert 'class="barra"' not in conteudo
+
+
+def test_no_primeiro_degrau_sem_proximo_o_quadrinho_nao_parabeniza_ninguem(
+    client, logado, gamificacao_configurada
+):
+    """O defeito que o mantenedor leu na tela em 01/09/2026 (`armadilhas/271`).
+
+    `xp_para_proximo: null` com `nivel: 1` não é topo: é a escada que a escola
+    ainda não montou. E este corpo não é hipótese — é o que a porta devolve
+    HOJE para todo aluno que já tenha aberto `/conquistas` uma vez, porque a
+    economia inteira está desligada e a linha de perfil nasce ao ser olhada.
+
+    Sem este guarda, a primeira tela depois do login dizia "Nível 1" e, logo
+    abaixo, "você chegou ao último degrau da trilha".
+    """
+    logado.get(EU).mock(
+        return_value=httpx.Response(
+            200, json=status(xp=0, nivel=1, xp_para_proximo=None)
+        )
+    )
+
+    conteudo = home(client).content.decode()
+
+    assert "último degrau" not in conteudo
+    assert 'class="progresso"' not in conteudo
+
+
+def test_o_topo_de_verdade_continua_aparecendo(client, logado, gamificacao_configurada):
+    """A correção acima não pode calar quem subiu a trilha inteira.
+
+    Prova de que o guarda novo mira no primeiro degrau, e não na frase.
+    """
+    logado.get(EU).mock(
+        return_value=httpx.Response(
+            200, json=status(xp=500, nivel=2, xp_para_proximo=None)
+        )
+    )
+
+    conteudo = home(client).content.decode()
+
+    assert "Nível 2" in conteudo
+    assert "Você chegou ao último degrau da trilha." in conteudo
 
 
 def test_falta_zero_enche_a_barra_e_tem_frase_propria(
