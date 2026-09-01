@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260901-154016-TAR-093-concluida",
+  "tarefa": "TAR-093",
+  "evento": "concluida",
+  "quando": "2026-09-01T15:40:16+00:00",
+  "quem": "sessao-caixa-0109",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/825 (pouso pedido; 7 checks verdes, muralhas locais PASS 13/13, guarda vermelho->verde em ci/tests/test_reconhecer.py)",
+  "verificado_em": "2026-09-01"
+}
