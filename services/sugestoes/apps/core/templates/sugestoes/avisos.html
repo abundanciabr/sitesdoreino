@@ -135,6 +135,138 @@ queryset) — o custo é o mesmo, zero consultas a mais.
           </form>
         {% endif %}
       </article>
+      {% elif aviso.assunto == "gamificacao.nivel-alcancado" %}
+      {% comment %}
+      [GAMIFICAÇÃO] As quatro cartas de celebração (01/09/2026). Elas já eram
+      escritas e já chegavam aqui: até este PR caíam TODAS no cartão do
+      desconhecido, e quem subia de nível lia "esta tela ainda não sabe mostrar".
+
+      Os quatro seguem o cartão de matrícula em duas coisas, e pelo mesmo motivo
+      escrito lá: **sem link**, porque não há para onde levar (o perfil, a
+      galeria e as medalhas moram na célula `gamificacao`, e mandar a pessoa
+      para lá seria oferecer uma porta que bate na cara); e **sem identificador
+      opaco na tela**, porque `conquista_slug` e `destaque_id` não são dados que
+      um aluno possa usar para nada.
+
+      A voz é a DELE, não a do mantenedor: sem sigla, sem jargão, e sem XP
+      gritando. São todas boas notícias por lei da célula de origem, então o
+      cartão pode celebrar sem ressalva.
+      {% endcomment %}
+      <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
+        <div class="aviso-topo">
+          <span class="selo selo-celebracao">Nível</span>
+          {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
+          <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
+        </div>
+
+        <h3 class="aviso-titulo">Você subiu de nível</h3>
+
+        {% comment %}
+        O NÚMERO manda; o título só entra quando o slug está no mapa. Sem o
+        número, a frase existe assim mesmo e continua verdadeira: houve uma
+        subida, e é só isso que se pode afirmar. Nunca "nível " com um buraco.
+        {% endcomment %}
+        <p class="aviso-mudanca">
+          {% if aviso.nivel %}
+            Você chegou ao nível <span class="para">{{ aviso.nivel }}</span>{% if aviso.titulo_do_nivel %}, {{ aviso.titulo_do_nivel }}{% endif %}.
+          {% else %}
+            Você alcançou um nível novo.
+          {% endif %}
+        </p>
+
+        {% if not aviso.lido_em %}
+          <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+            {% csrf_token %}
+            <button type="submit" class="botao discreto">Marcar como lido</button>
+          </form>
+        {% endif %}
+      </article>
+      {% elif aviso.assunto == "gamificacao.conquista-concedida" %}
+      <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
+        <div class="aviso-topo">
+          <span class="selo selo-celebracao">Medalha</span>
+          {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
+          <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
+        </div>
+
+        <h3 class="aviso-titulo">Você ganhou uma medalha</h3>
+
+        {% comment %}
+        O NOME da medalha não aparece, e é fronteira e não esquecimento: ele mora
+        na célula `gamificacao`, que esta tela não consulta. Celebrar o fato e
+        mandar a pessoa olhar o próprio perfil é honesto; inventar um nome, não.
+        A linha da família só existe quando o parâmetro veio (ele é opcional no
+        contrato, e ausência é "não informado", nunca erro).
+        {% endcomment %}
+        <p class="aviso-mudanca">
+          Ela já está guardada no seu perfil.
+          {% if aviso.familia_frase %}{{ aviso.familia_frase }}{% endif %}
+        </p>
+
+        {% if not aviso.lido_em %}
+          <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+            {% csrf_token %}
+            <button type="submit" class="botao discreto">Marcar como lido</button>
+          </form>
+        {% endif %}
+      </article>
+      {% elif aviso.assunto == "gamificacao.marco-validado" %}
+      <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
+        <div class="aviso-topo">
+          <span class="selo selo-celebracao">Marco</span>
+          {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
+          <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
+        </div>
+
+        <h3 class="aviso-titulo">Seu marco foi aceito</h3>
+
+        {% comment %}
+        A carta mais importante do sistema, e a que menos ponto carrega: marco
+        vale zero. Quem chega aqui mandou uma prova e ESPEROU numa fila com
+        prazo, então a frase responde a pergunta que essa pessoa está fazendo há
+        dias. O que ela enviou nunca aparece: a prova é privada, e nem os colegas
+        a veem. Quem validou vira PAPEL, jamais um nome.
+        {% endcomment %}
+        <p class="aviso-mudanca">
+          Alguém conferiu o que você enviou, e o marco agora é seu.
+          {% if aviso.validador_frase %}{{ aviso.validador_frase }}{% endif %}
+        </p>
+
+        {% if not aviso.lido_em %}
+          <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+            {% csrf_token %}
+            <button type="submit" class="botao discreto">Marcar como lido</button>
+          </form>
+        {% endif %}
+      </article>
+      {% elif aviso.assunto == "gamificacao.destaque-da-semana" %}
+      <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
+        <div class="aviso-topo">
+          <span class="selo selo-celebracao">Destaque</span>
+          {% if not aviso.lido_em %}<span class="marca-novo">novo</span>{% endif %}
+          <span class="meta">{{ aviso.criado_em|date:"d/m/Y H:i" }}</span>
+        </div>
+
+        <h3 class="aviso-titulo">Sua obra foi destaque</h3>
+
+        {% comment %}
+        `semana` é a SEGUNDA-FEIRA da semana e chega como DATA, nunca data-hora,
+        justamente para ninguém converter fuso e mostrar a semana errada
+        (armadilhas/099). Ela vira `datetime.date` em `apps/core/avisos.py`, que
+        o `|date:` formata sem conversão nenhuma. Ausente ou malformada some, e a
+        frase sem ela continua verdadeira.
+        {% endcomment %}
+        <p class="aviso-mudanca">
+          Um professor escolheu o seu trabalho para a galeria da semana{% if aviso.semana %} de <span class="para">{{ aviso.semana|date:"d/m/Y" }}</span>{% endif %}.
+        </p>
+
+        {% if not aviso.lido_em %}
+          <form method="post" action="{% url 'marcar_aviso_lido' aviso.id %}">
+            {% csrf_token %}
+            <button type="submit" class="botao discreto">Marcar como lido</button>
+          </form>
+        {% endif %}
+      </article>
       {% elif aviso.assunto == "matricula.situacao-alterada" %}
       <article class="aviso{% if not aviso.lido_em %} nao-lido{% endif %}">
         <div class="aviso-topo">
