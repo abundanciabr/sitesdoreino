@@ -8,10 +8,6 @@ custo_por_queda: medio
 guarda:
   tipo: nenhum
   motivo: `nenhum portao consegue saber que os DADOS de um teste tornam a asserção tautológica: seria preciso entender a regra que o teste quer provar e conferir se a fixture a distingue de uma regra mais fraca. A cura é de METODO, e cabe numa frase: todo guarda de ordenação nasce com a sabotagem rodada, e a fixture é escolhida CONTRA a ordem que se quer provar.`
-sinal:
-  - `sorted(`
-  - `key=lambda`
-  - `assert ordem ==`
 ---
 
 # O teste de ordenação que passa sabotado, porque os dados já vinham na ordem certa
@@ -57,6 +53,13 @@ fixture em que A e B concordam prova apenas B.
 3. **Escreva no teste por que os nomes são feios.** Um comentário de uma linha
    ("os slugs são escolhidos contra a ordem alfabética de propósito") impede que
    a próxima sessão os "arrume" para nomes bonitos e devolva a tautologia.
+
+**Por que esta entrada não tem `sinal`, e a ausência é a decisão:** o sino
+reconhece uma armadilha pela SAÍDA de um comando, e a saída desta é um teste
+**verde**. Não há texto para casar. A primeira versão deste arquivo tentou
+`sorted(` e o gerador a recusou por curta demais — com razão: uma assinatura
+assim casaria saída inocente e viraria sino tocando à toa, que é o jeito
+conhecido de um sino morrer.
 
 **A pergunta que acha isto em revisão:** *se eu apagar metade da regra, este
 teste fica vermelho?* Se a resposta não for um sim óbvio, a fixture está errada.
