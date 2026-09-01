@@ -1,0 +1,14 @@
+{
+  "arquivo": "097-as-frases-dos-quatro-avisos-da-gamificacao-na-tela-do-sininh",
+  "id": "TAR-097",
+  "titulo": "As frases dos quatro avisos da gamificacao na tela do sininho",
+  "toca": [
+    "sugestoes"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado, deploy verde e a tela de avisos no ar; as quatro cartas saem do cartao generico e nenhuma delas derruba a pagina",
+  "despacho": "As frases dos quatro avisos novos, na tela do sininho (degrau 21a da escada da gamificacao).\n\nAs cartas de celebracao da gamificacao ja sao escritas e ja chegam a caixa central.\nO que falta e a tela saber desenha-las: hoje elas caem no cartao generico de\n\"assunto que esta tela nao conhece\".\n\nA tela e services/sugestoes/apps/core/avisos.py mais\nservices/sugestoes/apps/core/templates/sugestoes/avisos.html. Ela ja sabe desenhar\ndois assuntos e tem um terceiro ramo, deliberado, para o que nao conhece\n(desconhecido: True, fail-VISIVEL). Tire os quatro assuntos da gamificacao desse\nramo e de a cada um o seu cartao:\n\n  gamificacao.nivel-alcancado\n  gamificacao.conquista-concedida\n  gamificacao.marco-validado\n  gamificacao.destaque-da-semana\n\nRegras: o nivel e o campo autoritativo, o titulo_slug so escolhe o tom (mapa\nexplicito com fallback fail-open); portugues do Brasil para aluno adulto; so boa\nnoticia; sem sigla e sem jargao; parametro ausente nunca vira excecao nem string\nvazia; nenhum cartao leva a lugar nenhum (sem link, como o de matricula), porque\n{% url %} sem suggestion_id estoura NoReverseMatch e derruba a pagina inteira.\n\nUm assunto de gamificacao que a tela ainda NAO conheca tem de continuar caindo no\nramo desconhecido: nada de startswith(\"gamificacao.\") guloso.",
+  "origem": "Lote A da gamificacao, degrau 21a do PLANO-CELULA-GAMIFICACAO",
+  "criada_em": "2026-09-01"
+}
