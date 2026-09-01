@@ -28,6 +28,15 @@ STREAMS = [
     "eventos.sugestao.criada",
     "eventos.sugestao.voto-adicionado",
     "eventos.sugestao.status-alterado",
+    # O FÓRUM (degrau 17, 01/09/2026). `mensagem-removida` NÃO entra: o estorno
+    # que ela pediria precisa achar o lançamento que pagou AQUELA mensagem, e o
+    # ledger guarda o id do EVENTO, não o da mensagem. Assinar um assunto que
+    # esta célula não sabe tratar encheria o log de "handler desconhecido" e daria
+    # a impressão de que o estorno acontece. O motivo está declarado em
+    # `handlers.NAO_CREDITAM`, ao lado do resto.
+    "eventos.forum.topico-criado",
+    "eventos.forum.mensagem-criada",
+    "eventos.forum.resposta-aceita",
 ]
 
 # Convenção do lote de reentrega — MESMOS nomes e valores nas 4 células

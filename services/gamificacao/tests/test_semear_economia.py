@@ -96,8 +96,15 @@ def test_cada_site_recebe_a_propria_economia():
     _semear("escola-a")
     _semear("escola-b")
 
-    assert RegraDePontuacao.objects.filter(site_id="escola-a").count() == 6
-    assert RegraDePontuacao.objects.filter(site_id="escola-b").count() == 6
+    # O NÚMERO É MEDIDO DA FONTE, não digitado: o que este teste prova é que as
+    # duas escolas recebem a MESMA economia inteira, e isso continua verdade a
+    # cada regra nova. Um `== 6` cravado transformava toda regra acrescentada
+    # numa falsa falha aqui — e o dia em que alguém "consertasse" o número sem
+    # olhar, a promessa da Lei 9 pararia de ser medida.
+    from apps.gamificacao.management.commands.semear_economia import REGRAS
+
+    assert RegraDePontuacao.objects.filter(site_id="escola-a").count() == len(REGRAS)
+    assert RegraDePontuacao.objects.filter(site_id="escola-b").count() == len(REGRAS)
 
     RegraDePontuacao.objects.filter(site_id="escola-a", slug="quiz-aprovado").update(
         pontos=99

@@ -1276,6 +1276,48 @@ class ConfiancaDaComunidade(models.Model):
         ]
 
 
+class AjudaAceita(models.Model):
+    """Uma resposta desta pessoa resolveu a dúvida de alguém, no fórum.
+
+    **Por que uma tabela, e não uma contagem no ledger de XP.** A medalha "Mão
+    amiga" conta cinco respostas aceitas, e reconhecimento é uma coisa,
+    pagamento é outra: contar pelo ledger amarraria a medalha à regra de XP
+    estar LIGADA — o mantenedor desligaria a regra por uma semana e a medalha
+    pararia de existir junto, sem ninguém entender por quê.
+
+    **Idempotente pela mensagem, não pelo evento.** `Unique(pessoa, site_id,
+    mensagem_id)`: a mesma resposta marcada, desmarcada e remarcada conta UMA
+    vez. Se a chave fosse o `event_id`, cada remarcação viraria uma ajuda nova, e
+    dois amigos alternando a marca fabricariam a medalha em minutos.
+
+    Guarda o id de quem MARCOU junto, e não é enfeite: é a aresta "A premiou B"
+    de que a detecção de anéis de reciprocidade depende. Desde a decisão D da
+    Sessão B não há adulto no caminho do maior prêmio do sistema, e essa aresta é
+    o que torna possível enxergar um combinado entre amigos depois.
+    """
+
+    pessoa = models.ForeignKey(Pessoa, related_name="ajudas", on_delete=models.PROTECT)
+    site_id = id_do_site()
+    mensagem_id = models.CharField(max_length=64)
+    topico_id = models.CharField(max_length=64)
+    marcada_por = models.CharField(max_length=16)
+    quem_marcou = models.CharField(max_length=64, blank=True, default="")
+    occurred_at = models.DateTimeField()
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-occurred_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pessoa", "site_id", "mensagem_id"],
+                name="uma_ajuda_por_mensagem_por_pessoa",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.pessoa_id} ajudou em {self.mensagem_id}"
+
+
 # ---------------------------------------------------------------------------
 # 8. A OUTBOX — molde byte-a-byte de `services/sugestoes` [RECEITA:R3 v1]
 # ---------------------------------------------------------------------------
