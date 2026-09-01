@@ -150,11 +150,22 @@ def montar_o_cenario():
     pessoa = Pessoa.objects.create(
         id_da_plataforma=ID_OPACO, email=EMAIL, nome_exibido=NOME
     )
+    # `ativa=True` porque o cenário é o de uma escola com a escada LIGADA: o
+    # default do modelo é `False`, e um cenário desligado deixava esta suíte
+    # verde enquanto a porta prometia degrau que o mantenedor não abriu.
     NivelDefinicao.objects.create(
-        site_id=SITE, nivel=7, xp_necessario=900_000, titulo="Mestre de Ateliê"
+        site_id=SITE,
+        nivel=7,
+        xp_necessario=900_000,
+        titulo="Mestre de Ateliê",
+        ativa=True,
     )
     NivelDefinicao.objects.create(
-        site_id=SITE, nivel=8, xp_necessario=1_000_000, titulo="Mestre Maior"
+        site_id=SITE,
+        nivel=8,
+        xp_necessario=1_000_000,
+        titulo="Mestre Maior",
+        ativa=True,
     )
     perfil = PerfilJogador.objects.create(
         pessoa=pessoa,
@@ -336,6 +347,43 @@ def test_no_topo_da_escada_o_que_falta_e_null_e_nao_zero(monkeypatch):
     NivelDefinicao.objects.filter(site_id=SITE, nivel=8).delete()
     dublar_identidade(monkeypatch, corpo={"autenticado": True, "id": ID_OPACO})
     assert corpo(pedir("/eu", cookie="meshcraft_sessao=abc"))["xp_para_proximo"] is None
+
+
+def test_degrau_seguinte_DESLIGADO_nao_vira_promessa(monkeypatch):
+    """A porta e a tela contam a MESMA escada, e contam só o que está ligado.
+
+    Até 01/09/2026 esta porta filtrava por número (`nivel + 1`) e não por
+    `ativa`, enquanto `apps/core/perfil.py::escada_de` sempre filtrou. A mesma
+    escada dava duas respostas conforme quem perguntasse — e quem pergunta por
+    aqui é o quadrinho de progresso da home, que passava a prometer ao aluno um
+    degrau que o mantenedor ainda não abriu.
+    """
+    montar_o_cenario()
+    NivelDefinicao.objects.filter(site_id=SITE, nivel=8).update(ativa=False)
+    dublar_identidade(monkeypatch, corpo={"autenticado": True, "id": ID_OPACO})
+
+    assert corpo(pedir("/eu", cookie="meshcraft_sessao=abc"))["xp_para_proximo"] is None
+
+
+def test_o_proximo_degrau_e_o_primeiro_ACIMA_e_nao_o_numero_seguinte(monkeypatch):
+    """A economia liga degrau por degrau, e pular um número é legítimo.
+
+    Com o 8 desligado e um 9 ligado, quem está no 7 ainda tem para onde subir.
+    Procurar só pelo `nivel + 1` diria "topo" para quem está no meio da escada.
+    """
+    montar_o_cenario()
+    NivelDefinicao.objects.filter(site_id=SITE, nivel=8).update(ativa=False)
+    NivelDefinicao.objects.create(
+        site_id=SITE,
+        nivel=9,
+        xp_necessario=1_100_000,
+        titulo="Mestre Maior",
+        ativa=True,
+    )
+    dublar_identidade(monkeypatch, corpo={"autenticado": True, "id": ID_OPACO})
+
+    dados = corpo(pedir("/eu", cookie="meshcraft_sessao=abc"))
+    assert dados["xp_para_proximo"] == 1_100_000 - XP_SECRETO
 
 
 def test_quem_entrou_mas_ainda_nao_jogou_e_autenticado_com_numeros_em_null(

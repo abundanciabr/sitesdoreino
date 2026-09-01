@@ -350,16 +350,32 @@ def get_my_status(request):
 
 
 def _xp_para_proximo(site_id: str, perfil) -> int | None:
-    """Quanto FALTA para o próximo degrau, ou `None` no topo da escada.
+    """Quanto FALTA para o próximo degrau LIGADO, ou `None` se não houver.
 
     `None` e `0` dizem coisas diferentes e o contrato aceita os dois: `0` é
-    "está a um passo, já tem o XP"; `None` é "não há próximo degrau definido".
-    Quem desenha a barra precisa distinguir para não mostrar uma barra cheia
-    que nunca vira nada.
+    "está a um passo, já tem o XP"; `None` é "não há próximo degrau". Quem
+    desenha a barra precisa distinguir para não mostrar uma barra cheia que
+    nunca vira nada.
+
+    **`ativa=True`, e essa é a correção de 01/09/2026.** Sem o filtro, esta
+    porta contava degrau DESLIGADO e a tela da própria célula não contava
+    (`apps/core/perfil.py::escada_de` sempre filtrou) — a mesma escada dando
+    duas respostas conforme quem perguntasse, que é justamente o que a lei da
+    célula proíbe ao dizer que a conta mora num lugar só. Para o aluno isso
+    aparecia como a home prometendo um degrau que o mantenedor ainda não abriu.
+
+    **O próximo é o primeiro degrau ativo ACIMA deste, não `nivel + 1`.** A
+    economia liga degrau por degrau, e uma escada com o 2 desligado e o 3
+    ligado é configuração legítima: procurar só pelo número seguinte diria
+    "topo" para quem ainda tem para onde subir.
     """
-    proximo = NivelDefinicaoModel.objects.filter(
-        site_id=site_id, nivel=perfil.nivel + 1
-    ).first()
+    proximo = (
+        NivelDefinicaoModel.objects.filter(
+            site_id=site_id, ativa=True, nivel__gt=perfil.nivel
+        )
+        .order_by("nivel")
+        .first()
+    )
     if proximo is None:
         return None
     return max(0, proximo.xp_necessario - perfil.xp_total)
