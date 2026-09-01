@@ -1,0 +1,14 @@
+{
+  "arquivo": "101-erro-de-cors-de-terceiro-nao-pode-reprovar-o-painel-no-naveg",
+  "id": "TAR-101",
+  "titulo": "Erro de CORS de terceiro nao pode reprovar o painel no navegador",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado e o autoteste do corte externo cobrindo o caso do CORS, sem deixar de reprovar erro nosso",
+  "despacho": "Conserte `e2e/painel_no_navegador.js` para que um erro de CORS vindo de destino\nexterno declarado pare de reprovar o painel, sem que o guarda perca o poder de\nreprovar um erro NOSSO.\n\nO DEFEITO. A funcao `erroDaNossaPagina` (por volta da linha 213) decide o dono do\nerro pela ORIGEM da mensagem de console. Num erro de CORS, o navegador reporta a\nmensagem SEM url de origem: ela cai no `if (!origem) return true`, e o painel e\nreprovado por culpa da rede alheia, embora o TEXTO cite `api.github.com`. O erro\nde 403 ja e isento desde 29/08/2026; o de CORS escapou da cura. Medido em\n01/09/2026: um PR sem defeito nenhum foi reprovado e o rerun ficou verde sem uma\nlinha de diferenca.\n\nA MINA DENTRO DO CONSERTO OBVIO. A correcao que salta aos olhos (\"sem origem,\nolhe se o TEXTO cita um destino externo\") tem uma mina: `DESTINOS_EXTERNOS`\ninclui `meshcraft.top`, que e o site DA CASA, e o painel tem links para ele na\ncara. Casamento ingenuo por texto faria qualquer erro NOSSO que mencione esse\nendereco perder o poder de reprovar. O conserto nao pode trocar um guarda que\npisca por um guarda que dorme.\n\nO QUE TEM DE VALER NO FIM:\n- o erro de CORS que cita a API do GitHub deixa de reprovar;\n- um erro NOSSO cujo texto por acaso mencione um endereco da lista CONTINUA\n  reprovando;\n- `if (!origem) return true` segue sendo o padrao fail-closed: na duvida, o dono\n  e nosso.\n\nACRESCENTE ao autoteste `provaDoCorteExterno()` (nao reescreva): o caso do CORS,\no caso da mina, e os que ja existiam continuando iguais. Prove cada caso novo por\nMUTACAO deliberada depois de estar verde, e confira que o vermelho diz o NOME do\ncaso que caiu (armadilhas/268). Rode `node --check` depois de toda edicao\n(armadilhas/095).\n\nARQUIVOS-ALVO: `e2e/painel_no_navegador.js`, um registro em `painel/registros/`,\numa armadilha em `armadilhas/`, os tres eventos da fila. Somente-leitura o resto,\nem especial `services/**`, `ci/**` e `.github/workflows/**`.",
+  "origem": "Achado do despacho TAR-003 no Lote B, conferido pela maestro em 01/09/2026",
+  "criada_em": "2026-09-01"
+}

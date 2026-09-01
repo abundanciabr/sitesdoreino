@@ -233,12 +233,74 @@ function nossoPedido(pedidoUrl, base) {
  *  quebrado" e "não consegui medir o painel porque a rede lá fora falhou" são
  *  fatos diferentes. Os externos continuam SAINDO NO LOG — o que some é o
  *  poder de reprovar o painel por culpa de terceiro.
+ *
+ *  A METADE QUE ESCAPOU DAQUELA CURA, achada em 01/09/2026 pelo mesmo caminho:
+ *  um PR sem defeito nenhum foi reprovado aqui, e o rerun ficou verde sem uma
+ *  linha de diferença. O corte de 29/08 decide o dono pela ORIGEM da mensagem,
+ *  e existe uma família de erro que o navegador reporta SEM origem declarada:
+ *  o de CORS. Ele cai no `if (!origem) return true`, é adotado como nosso e
+ *  reprova o painel — embora o único fato dentro dele seja um pedido barrado a
+ *  um destino de terceiro. O 403 já era isento; o CORS não era.
+ *
+ *  POR QUE O CONSERTO ÓBVIO ESTÁ ERRADO, e esta é a parte que o próximo agente
+ *  precisa ler antes de "simplificar" o que vem abaixo. A correção que salta
+ *  aos olhos é "sem origem, veja se o TEXTO cita um destino externo". Ela tem
+ *  uma mina: `DESTINOS_EXTERNOS` inclui `meshcraft.top`, que é o site DA CASA,
+ *  e o painel tem links para ele na cara. Casamento por substring faria
+ *  qualquer erro NOSSO cujo texto mencionasse esse endereço — um `TypeError`
+ *  ao montar o link, por exemplo — perder o poder de reprovar. Seria trocar um
+ *  guarda que pisca por um guarda que dorme, e o segundo é o pior dos dois: o
+ *  primeiro faz barulho errado, o segundo faz silêncio errado.
+ *
+ *  O QUE FICA, em uma frase: sem origem declarada, o texto só isenta quando é
+ *  um RELATO DO NAVEGADOR sobre um pedido barrado E o endereço desse pedido —
+ *  lido de dentro da própria mensagem, em posição conhecida, não procurado
+ *  nela — é um destino externo declarado. Não é "o texto menciona": é "o
+ *  pedido que falhou era para". Menção nunca vira isenção, e a lista fechada
+ *  continua governando também por este caminho.
+ *
+ *  As três fronteiras, todas deliberadas:
+ *    · com origem declarada, é ELA quem decide, e o texto nem é olhado — tendo
+ *      o fato melhor, não se recorre ao pior;
+ *    · relato de pedido barrado cujo alvo é a NOSSA página continua nosso: a
+ *      marca sozinha não isenta ninguém;
+ *    · tudo que não couber nas duas regras acima cai no `return true`. Na
+ *      dúvida, o dono é nosso — esse fail-closed é a regra certa e não se mexe.
  */
+
+/** Os relatos em que o NAVEGADOR conta que um PEDIDO foi barrado — e dos quais
+ *  dá para LER, dentro do próprio texto, o endereço que ele tentou alcançar.
+ *
+ *  Lista fechada como a dos destinos, e pelo mesmo motivo: cada entrada é uma
+ *  frase que só o navegador escreve ao relatar rede, com o alvo em posição
+ *  conhecida. Nada aqui procura endereço solto no meio do texto. */
+var RELATOS_DE_PEDIDO_BARRADO = [
+  // Access to fetch at 'https://api.github.com/…' from origin 'http://127.0.0.1:8123'
+  //   has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header …
+  // (a forma é a mesma para fetch, XMLHttpRequest, script, font e stylesheet)
+  { marca: "blocked by CORS policy", alvo: /Access to [^']*\bat '([^']+)'/ },
+];
+
+/** O pedido que este texto diz ter sido barrado ia para um destino externo
+ *  declarado? Só isso isenta, e só quando o texto tem a forma de um relato. */
+function pedidoBarradoParaDestinoExterno(texto) {
+  for (var i = 0; i < RELATOS_DE_PEDIDO_BARRADO.length; i++) {
+    var relato = RELATOS_DE_PEDIDO_BARRADO[i];
+    if (texto.indexOf(relato.marca) === -1) continue;
+    var achado = relato.alvo.exec(texto);
+    if (!achado) continue;          // a marca sem alvo legível não isenta
+    return ehExterno(achado[1]);    // e o alvo ainda passa pela lista fechada
+  }
+  return false;
+}
+
 function erroDaNossaPagina(mensagem) {
   var loc = mensagem.location && mensagem.location();
   var origem = (loc && loc.url) || "";
-  if (!origem) return true;   // sem origem declarada, o dono é nosso
-  return !ehExterno(origem);
+  if (origem) return !ehExterno(origem);
+  var texto = (mensagem.text && mensagem.text()) || "";
+  if (pedidoBarradoParaDestinoExterno(texto)) return false;
+  return true;   // sem origem e sem relato de rede legível, o dono é nosso
 }
 
 async function medir(navegador, endereco, base, rotulo, esperados) {
@@ -357,6 +419,17 @@ function provaDoCorteExterno() {
   function msg(origemUrl) {
     return { location: function () { return { url: origemUrl }; } };
   }
+  // O erro de CORS chega SEM url de origem: tudo que se sabe do pedido barrado
+  // está no texto. Esta segunda fábrica existe para encenar exatamente isso —
+  // a de cima fica intocada, porque os casos dela são a metade do corte que já
+  // estava provada desde 29/08/2026 e tem de continuar valendo igual.
+  function msgSemOrigem(texto) {
+    return {
+      location: function () { return { url: "" }; },
+      text: function () { return texto; },
+    };
+  }
+
   caso("corte externo: 403 da api.github.com NÃO reprova o painel",
     erroDaNossaPagina(msg("https://api.github.com/repos/x/y/pulls")) === false);
   caso("corte externo: falha das fontes do Google NÃO reprova o painel",
@@ -367,6 +440,45 @@ function provaDoCorteExterno() {
     erroDaNossaPagina(msg("")) === true);
   caso("corte externo: destino externo NOVO reprova (a lista é fechada)",
     erroDaNossaPagina(msg("https://cdn.exemplo-que-ninguem-declarou.com/x.js")) === true);
+
+  // ---- a metade de 01/09/2026: o erro SEM ORIGEM, que é onde o CORS cai ----
+
+  // 1. O caso que reprovava um painel são. Só pode passar pelo caminho novo:
+  //    a origem está vazia, e o único fato que isenta está dentro do texto.
+  caso("corte CORS: pedido barrado à api.github.com NÃO reprova o painel",
+    erroDaNossaPagina(msgSemOrigem(
+      "Access to fetch at 'https://api.github.com/repos/abundanciabr/sitesdoreino/pulls' " +
+      "from origin 'http://127.0.0.1:8123' has been blocked by CORS policy: " +
+      "No 'Access-Control-Allow-Origin' header is present on the requested resource."
+    )) === false);
+
+  // 2. A MINA. Erro NOSSO que apenas MENCIONA o site da casa (o painel tem
+  //    links para ele). Um casamento ingênuo por substring — a correção que
+  //    salta aos olhos — adotaria isto como de terceiro e perderia o poder de
+  //    reprovar. Este caso existe para que essa versão fique vermelha.
+  caso("corte CORS: erro NOSSO que só MENCIONA meshcraft.top continua reprovando",
+    erroDaNossaPagina(msgSemOrigem(
+      "Uncaught TypeError: Cannot read properties of null (reading 'href') " +
+      "ao montar o link para https://meshcraft.top/admin/painel/"
+    )) === true);
+
+  // 3. A mina pelo outro lado: a marca de pedido barrado ESTÁ lá, mas o alvo é
+  //    a NOSSA página. Reconhecer o relato não basta — quem isenta é o alvo.
+  caso("corte CORS: pedido barrado cuja vítima é a NOSSA página continua reprovando",
+    erroDaNossaPagina(msgSemOrigem(
+      "Access to fetch at 'http://127.0.0.1:8123/divida.json' from origin 'null' " +
+      "has been blocked by CORS policy: Cross origin requests are only supported " +
+      "for protocol schemes: http, https."
+    )) === true);
+
+  // 4. A lista fechada governa também por aqui: destino não declarado reprova,
+  //    ainda que o navegador tenha dito, com todas as letras, que foi CORS.
+  caso("corte CORS: pedido barrado a destino NÃO declarado reprova (a lista é fechada)",
+    erroDaNossaPagina(msgSemOrigem(
+      "Access to fetch at 'https://cdn.exemplo-que-ninguem-declarou.com/x.json' " +
+      "from origin 'http://127.0.0.1:8123' has been blocked by CORS policy: " +
+      "No 'Access-Control-Allow-Origin' header is present on the requested resource."
+    )) === true);
 }
 
 // --------------------------------------------------------------------- o rito
