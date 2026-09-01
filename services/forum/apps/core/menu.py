@@ -102,6 +102,28 @@ def _site(host: str) -> dict:
     return site
 
 
+def site_id_do_host(host: str) -> str:
+    """O id do site deste host, ou string vazia. Nunca levanta.
+
+    **Mora aqui, e não num arquivo novo, porque o cache é o mesmo.** Este módulo
+    já é quem pergunta ao catálogo o que ele sabe deste host, e já guarda a
+    resposta por alguns minutos. Uma segunda função em outro arquivo faria uma
+    segunda chamada de rede e um segundo cache, com TTLs que divergem no primeiro
+    dia em que alguém mexer num deles.
+
+    Quem usa é a VOZ do fórum (`apps/forum/eventos.py`): os quatro eventos
+    congelados exigem `site_id`, e o fórum não tem — nem ganhou — uma variável de
+    ambiente com ele. Uma variável dessas seria uma segunda verdade sobre "que
+    site é este", que envelhece calada e ainda custaria um passo manual do
+    mantenedor na VPS.
+
+    **Vazio é resposta legítima** (catálogo fora do ar, par de tokens não
+    provisionado, host desconhecido), e quem chama trata como "não emito". A
+    falta de um evento nunca pode custar a fala de um aluno.
+    """
+    return str(_site(host).get("id") or "")
+
+
 def _rotulo(labels: dict, padrao: str) -> str:
     """O nome do item. O fórum é monolíngue: idioma padrão do site, e pronto."""
     if padrao and labels.get(padrao):
