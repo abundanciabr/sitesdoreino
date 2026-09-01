@@ -1,0 +1,15 @@
+{
+  "arquivo": "093-o-caminho-de-uma-ideia-da-caixa-ate-virar-obra-no-ar-escrito",
+  "id": "TAR-093",
+  "titulo": "O caminho de uma ideia da Caixa ate virar obra no ar, escrito e mecanizado",
+  "toca": [
+    "docs",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado; ci/reconhecer.py roda e devolve o dossie de um tema; o rito DA-IDEIA-A-OBRA existe e nao duplica MODELO-DESPACHO nem FORMATO-CHANGESPEC",
+  "despacho": "Ver docs/caixa-de-sugestoes/DA-IDEIA-A-OBRA.md (o proprio produto desta tarefa).",
+  "origem": "pedido do mantenedor em 01/09/2026, na conversa sobre a sugestao do Ricardo",
+  "criada_em": "2026-09-01"
+}
