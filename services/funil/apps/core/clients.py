@@ -617,3 +617,150 @@ class AlunosClient:
             return self.RESULTADO_JA_TEM_MATRICULA
         logger.error("pre-matricula: a alunos respondeu HTTP %s", r.status_code)
         return self.RESULTADO_FALHOU
+
+
+# ---------------------------------------------------------------------------
+# O quadrinho de progresso da home (degrau 20 do PLANO-CELULA-GAMIFICACAO)
+# ---------------------------------------------------------------------------
+# Sentinela de "veio um valor que o contrato não descreve". Existe porque `None`
+# já tem significado próprio aqui: no schema `MeuStatus` os números são
+# `integer | null`, e `null` é um estado LEGÍTIMO ("ainda não jogou", ou "topo
+# da escada"). Sem um terceiro valor, um `nivel: "sete"` seria indistinguível de
+# um `nivel: null` honesto, e a tela trataria corpo quebrado como caso normal.
+_FORA_DO_CONTRATO = object()
+
+
+def _inteiro_ou_nulo(valor):
+    """`null` continua `null`; inteiro ≥ 0 vira `int`; o resto é fora do contrato.
+
+    `bool` é subclasse de `int` em Python, e excluí-lo explicitamente evita que
+    um `true` fora do contrato vire "nível 1" por acidente de tipagem. Mesma
+    guarda de `NotificacoesClient.obter_resumo`, e pelo mesmo motivo.
+    """
+    if valor is None:
+        return None
+    if isinstance(valor, bool) or not isinstance(valor, int) or valor < 0:
+        return _FORA_DO_CONTRATO
+    return valor
+
+
+class GamificacaoClient:
+    """`contracts/gamificacao.openapi.yaml`, operação `getMyStatus` — leitura pura.
+
+    Cópia peça por peça do padrão de `NotificacoesClient.obter_resumo` (Lei 3 —
+    copia-se o PADRÃO, nunca o arquivo): mesma forma de ler config no ponto de
+    uso, mesmo timeout curto, mesma separação entre `httpx.HTTPError` e o
+    `ValueError` do `.json()`. **Falha ABERTA, sem exceção**: a gamificação fora
+    do ar custa o quadrinho de progresso, nunca a home.
+
+    Duas credenciais viajam juntas e provam coisas diferentes, como no
+    `IdentidadeClient`: o `Bearer` do par prova que **quem chama** é esta
+    célula, e o `Cookie` repassado prova quem é **a pessoa**. O cookie atravessa
+    OPACO — quem o lê é a camada de sessão da gamificação, e é por isso que ele
+    não aparece como parâmetro da operação no contrato.
+
+    **A porta responde 200 SEMPRE, inclusive para visitante** (`autenticado:
+    false`, números em `null`). Visitante não é erro, e o contrato diz isso com
+    todas as letras: obrigar o consumidor a traduzir 401 em "ninguém logado"
+    faria este quadrinho mostrar tela de erro para quem só não entrou ainda.
+    """
+
+    # Mesmo orçamento da sessão e da categoria, e pelo mesmo motivo: isto está
+    # no caminho de alguém esperando a home abrir. Estourou ⇒ a home abre sem o
+    # quadrinho, que é o pior caso aceitável.
+    TIMEOUT = 2.0
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        """Ver o comentário gêmeo em `IdentidadeClient._configuracao`
+        (`armadilhas/097`): `.get()`, nunca `os.environ[...]`, lido NO PONTO DE
+        USO. `KeyError` não é `httpx.HTTPError` e atravessaria intacto o `try`
+        abaixo, o middleware e o `{% if request.ator %}` do template — virando
+        HTTP 500 em toda página multilíngue para quem carrega um cookie
+        qualquer.
+
+        Enquanto `infra/provisionar-par-do-funil-com-a-gamificacao.sh` não
+        rodar na VPS, estas variáveis não existem — e este é um caminho
+        NORMAL, não um erro: a home abre exatamente como abria antes desta
+        mudança, sem o quadrinho.
+        """
+        base = (os.environ.get("GAMIFICACAO_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("GAMIFICACAO_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def obter_meu_status(self, cookie: str) -> "dict | None":
+        """O progresso do DONO deste cookie, ou `None` se não deu para saber.
+
+        `None` é o sinal de "não sei" — quem chama (o quadrinho) não desenha
+        nada. É DIFERENTE de um dicionário com os números em `null`, que é
+        "perguntei, e a pessoa ainda não jogou". Confundir os dois faria uma
+        gamificação fora do ar virar um "sem progresso" mentiroso, que é a
+        família do bug mais caro da Fase D (*2xx não é sucesso*: o corpo tem de
+        descrever o que foi pedido, ou é erro).
+
+        Devolve só os três campos que a tela usa, já conferidos contra o
+        contrato. Os outros (`sequencia`, `cristais`, `missoes`,
+        `celebracoes_pendentes`) existem na porta e são de propósito ignorados
+        aqui: eles são a tela de `/conquistas`, não a etiqueta que a home
+        mostra, e ler o que não se usa é o começo de depender do que não se
+        precisa.
+        """
+        config = self._configuracao()
+        if config is None:
+            # Nem tenta a rede — mesmo raciocínio dos outros clientes desta
+            # célula: sem endereço ou token não há pergunta a fazer, e esperar
+            # 2s de timeout para descobrir isso atrasaria a home de quem entrou.
+            logger.info(
+                "progresso: GAMIFICACAO_API_URL/GAMIFICACAO_API_TOKEN ausentes "
+                "no env desta célula — a home abre sem o quadrinho de progresso"
+            )
+            return None
+        base, token = config
+
+        try:
+            r = http().get(
+                f"{base}/eu",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Cookie": cookie,
+                },
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("progresso: não deu para perguntar à gamificacao: %s", erro)
+            return None
+
+        if r.status_code != 200:
+            # A porta promete 200 SEMPRE, inclusive para visitante. Qualquer
+            # outra coisa é a porta fora do contrato (ou um 401 do par mal
+            # provisionado), e nenhuma das duas vira número na tela.
+            logger.error("progresso: a gamificacao respondeu HTTP %s", r.status_code)
+            return None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # `json.JSONDecodeError` é `ValueError`, NÃO `httpx.HTTPError` —
+            # fora deste `try` ela furaria o fail-open e derrubaria a home.
+            logger.error(
+                "progresso: a gamificacao respondeu fora do contrato: %s", erro
+            )
+            return None
+
+        if not isinstance(corpo, dict) or not isinstance(
+            corpo.get("autenticado"), bool
+        ):
+            logger.error("progresso: a gamificacao respondeu um corpo fora do contrato")
+            return None
+
+        numeros = {
+            campo: _inteiro_ou_nulo(corpo.get(campo))
+            for campo in ("xp", "nivel", "xp_para_proximo")
+        }
+        if any(valor is _FORA_DO_CONTRATO for valor in numeros.values()):
+            logger.error(
+                "progresso: a gamificacao mandou um número fora do contrato "
+                "(o schema MeuStatus promete inteiro ou null)"
+            )
+            return None
+
+        return {"autenticado": corpo["autenticado"], **numeros}

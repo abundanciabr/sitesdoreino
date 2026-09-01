@@ -62,6 +62,11 @@
     .sessao .sair button { border: 0; background: none; padding: 0; font: inherit; color: inherit; text-decoration: underline; cursor: pointer; opacity: .7; }
     .andamento { font-size: 1rem; padding: .75rem 1rem; border: 1px solid #d4d4d8; border-radius: .5rem; }
     .andamento.motivo { margin-top: .5rem; opacity: .85; }
+    .progresso { margin: 0 0 .75rem; padding: .75rem 1rem; border: 1px solid #d4d4d8; border-radius: .5rem; }
+    .progresso .degrau { margin: 0; font-size: 1.05rem; font-weight: 600; }
+    .progresso .barra { height: .5rem; margin: .5rem 0; background: #e4e4e7; border-radius: .25rem; overflow: hidden; }
+    .progresso .barra span { display: block; height: 100%; background: #16a34a; }
+    .progresso .passo { margin: 0; font-size: .875rem; opacity: .8; }
 {% endblock %}
 {% block conteudo %}
 {% include "funil/_sessao.html" %}
@@ -69,6 +74,45 @@
   <h1>{% t "landing.titulo" %}</h1>
   {% if request.ator %}
   <p class="novidades">{% t "landing.novidades" %}</p>
+  {% comment %}
+  [PROGRESSO] O quadrinho da trilha, degrau 20 do PLANO-CELULA-GAMIFICACAO
+  (01/09/2026). Fica DEPOIS do aviso de novidade e ANTES dos ramos de categoria,
+  e não dentro de nenhum deles: o progresso é de quem entrou, e a categoria
+  decide outra coisa (o que a pessoa pode fazer aqui). Misturar os dois faria o
+  quadrinho sumir no dia em que a `alunos` ficasse fora do ar.
+
+  O `{% if progresso %}` abaixo é o fail-open inteiro: `None` cobre
+  tanto "não consegui perguntar" quanto "entrou
+  e ainda não jogou", e nos dois casos a home abre exatamente como abria antes
+  desta mudança. Hoje, em produção, o segundo caso é o de TODO MUNDO: a economia
+  nasceu inteira desligada (`semear_economia`) e o mantenedor ainda não ligou a
+  primeira regra em /admin/economia/. Nada de barra em zero fingindo dado.
+
+  A property só vira pergunta de rede quando esta linha é lida, e só lê dentro
+  do `{% if request.ator %}` de cima: visitante anônimo, que é a esmagadora
+  maioria do tráfego, não paga salto nenhum por causa deste bloco.
+
+  A barra é DECORAÇÃO do que a frase abaixo dela já diz, e por isso sai do fluxo
+  de leitura (`aria-hidden`). Quem usa leitor de tela ouve o degrau e o quanto
+  falta, que é a informação inteira.
+  {% endcomment %}
+  {% with progresso=request.ator.progresso %}
+  {% if progresso %}
+  <div class="progresso">
+    <p class="degrau">{% t "landing.progresso_nivel" nivel=progresso.nivel %}</p>
+    {% if progresso.no_topo %}
+    <p class="passo">{% t "landing.progresso_no_topo" %}</p>
+    {% else %}
+    <div class="barra" aria-hidden="true"><span style="width: {{ progresso.percentual }}%"></span></div>
+    {% if progresso.falta %}
+    <p class="passo">{% t "landing.progresso_falta" quantidade=progresso.falta falta=progresso.falta proximo=progresso.proximo %}</p>
+    {% else %}
+    <p class="passo">{% t "landing.progresso_no_proximo" %}</p>
+    {% endif %}
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endwith %}
   {% if request.ator.categoria == "aluno" %}
   <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.ir_para_a_caixa" %}</a>
   {% elif request.ator.categoria == "ex_aluno" %}

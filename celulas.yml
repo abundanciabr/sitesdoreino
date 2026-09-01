@@ -106,7 +106,13 @@ celulas:
 
   funil:
     caminhos: [services/funil]
-    consome: [alunos, catalogo, identidade, leads, notificacoes]
+    # `gamificacao` desde 01/09/2026: a home e a primeira tela depois do login, e
+    # ela passou a mostrar o degrau da pessoa na trilha da escola (o quadrinho de
+    # progresso, degrau 20 do PLANO-CELULA-GAMIFICACAO). O progresso e DADO DA
+    # GAMIFICACAO e mora la: o funil le `getMyStatus` pela porta de maquina, sem
+    # copia nenhuma deste lado. Fail-ABERTO como os outros pares desta celula, a
+    # gamificacao fora do ar custa o quadrinho, nunca a home.
+    consome: [alunos, catalogo, gamificacao, identidade, leads, notificacoes]
 
   gamificacao:
     caminhos: [services/gamificacao]
