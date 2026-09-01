@@ -32,6 +32,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from apps.gamificacao import forja as forjas
 from apps.gamificacao.models import Concessao, ConquistaDefinicao, PedidoDeValidacao
 from apps.gamificacao.validacao import (
     ValidacaoRecusada,
@@ -56,6 +57,9 @@ RECADOS = {
     "reenviado": "Enviado de novo. O prazo recomeçou.",
     "aceito": "Aceito. A pessoa já foi avisada.",
     "devolvido": "Devolvido, com o motivo que você escolheu.",
+    "forja-aberta": "A forja começou. A primeira tentativa já está contada.",
+    "forja-somada": "Mais uma tentativa contada. É assim que se faz.",
+    "forja-selada": "Peça selada. O número de tentativas ficou gravado nela.",
 }
 
 
@@ -346,3 +350,113 @@ def decidir(request):
         return _voltar("interno", erro=str(recusa))
 
     return _voltar("interno", recado="devolvido")
+
+
+# ---------------------------------------------------------------------------
+# A FORJA — o medidor de tentativas por peça, e o selo que sai dele
+# ---------------------------------------------------------------------------
+def _linha_da_forja(forja) -> dict:
+    """Uma peça pronta para o template, com o nome já em português.
+
+    A conta mora aqui e não dentro de `{{ }}`: template que calcula é template
+    que erra em silêncio, e ninguém escreve teste para uma expressão dentro de
+    uma chave dupla (o mesmo motivo de `Escada` trazer `falta` e `fracao`
+    prontos).
+    """
+    return {
+        "chave": forja.desafio_ref,
+        "nome": forjas.nome_da_peca(forja.desafio_ref),
+        "tentativas": forja.medidor,
+        "teto": forja.teto,
+        "no_teto": forja.medidor >= forja.teto,
+        "selo": forja.selo,
+        "selada_em": forja.selada_em,
+    }
+
+
+@require_GET
+def forja(request):
+    """A Forja: o único medidor desta escola que celebra a INSISTÊNCIA.
+
+    **Visitante não leva erro**, e **sem `SITE_ID` também não quebra** — a mesma
+    postura da Base e dos Marcos, pela mesma razão: página sem selo é uma
+    página, página quebrada não é.
+
+    A REGRA DE TELA aqui tem uma leitura própria. *"XP nunca maior que a imagem
+    da obra"* não vira "esconda o número": vira **o número de tentativas é o
+    assunto, e é dito com orgulho, não como placar**. Ele é a única coisa que
+    esta página conta, e a razão de ela existir é justamente tirar da pessoa a
+    vontade de escondê-lo.
+    """
+    de_fora = {
+        "url_de_entrada": settings.URL_DE_ENTRADA,
+        "url_da_capa": settings.URL_DA_CAPA,
+    }
+    pessoa_id, site = _pessoa_e_site(request)
+    if not pessoa_id:
+        return render(request, "gamificacao/forja.html", {"entrou": False, **de_fora})
+
+    perfil = perfil_de(pessoa_id, site)
+    return render(
+        request,
+        "gamificacao/forja.html",
+        {
+            "entrou": True,
+            "abertas": [
+                _linha_da_forja(f) for f in forjas.abertas_de(perfil.pessoa, site)
+            ],
+            "seladas": [
+                _linha_da_forja(f) for f in forjas.seladas_de(perfil.pessoa, site)
+            ],
+            "recado": RECADOS.get(request.GET.get("recado", "")),
+            "erro": request.GET.get("erro", ""),
+            **de_fora,
+        },
+    )
+
+
+@require_POST
+def forjar(request):
+    """Os três gestos da Forja, numa porta só: começar, somar, selar.
+
+    **Nenhum deles recebe o id de uma linha.** O formulário manda o NOME da
+    peça, e o dono é sempre quem a sessão diz que é — a forja de outra pessoa
+    não é protegida por uma conferência que alguém precisa lembrar de escrever,
+    ela simplesmente não existe para esta consulta (`forja._minha`).
+
+    Padrão POST-redirect-GET, como em `enviar_prova`: sem ele um F5 depois de
+    somar uma tentativa somaria outra, e o medidor que só cresce cresceria por
+    engano — que é a única forma de esse número mentir.
+    """
+    pessoa_id, site = _pessoa_e_site(request)
+    if not pessoa_id:
+        return HttpResponseRedirect(settings.URL_DE_ENTRADA)
+
+    perfil = perfil_de(pessoa_id, site)
+    gesto = request.POST.get("gesto", "")
+
+    try:
+        if gesto == "abrir":
+            forjas.abrir(
+                pessoa=perfil.pessoa,
+                site_id=site,
+                nome=(request.POST.get("nome") or "").strip(),
+            )
+            return _voltar("forja", recado="forja-aberta")
+
+        chave = (request.POST.get("peca") or "").strip()
+        if gesto == "selar":
+            forjas.selar(pessoa=perfil.pessoa, site_id=site, desafio_ref=chave)
+            return _voltar("forja", recado="forja-selada")
+
+        if gesto == "tentativa":
+            forjas.mais_uma_tentativa(
+                pessoa=perfil.pessoa, site_id=site, desafio_ref=chave
+            )
+            return _voltar("forja", recado="forja-somada")
+    except forjas.ForjaRecusada as recusa:
+        return _voltar("forja", erro=str(recusa))
+
+    # Gesto que não existe não é erro do aluno: é formulário adulterado ou
+    # navegador antigo. Volta para a página sem mexer em nada.
+    return _voltar("forja")

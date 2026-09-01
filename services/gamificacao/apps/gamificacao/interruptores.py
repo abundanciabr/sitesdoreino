@@ -191,21 +191,24 @@ SO_POR_CONCESSAO_MANUAL = "so-por-concessao-manual"
 
 # Os critérios que dependem de um fato que NADA no site produz hoje, MEDIDO e não
 # suposto: uma varredura por `.objects.create` nesta célula não acha ninguém
-# escrevendo `Forja` (degrau 14), `Sequencia` (degrau 10) nem `ProgressoDeMissao`
-# (degrau 11); `respostas_aceitas` espera o fórum ganhar voz (degrau 17) e
+# escrevendo `Sequencia` (degrau 10) nem `ProgressoDeMissao` (degrau 11), e
 # `primeira_vez` espera a plataforma saber dizer "uma obra ficou pronta"
 # (degrau 19).
 #
 # Ligar uma conquista dessas não faz mal nenhum e também não faz nada — e é
-# exatamente esse "nada" que a tela precisa dizer antes do clique. A lista encolhe
-# sozinha à medida que a escada sobe: quando a Forja existir, `forjas_seladas` sai
-# daqui e a medalha das dez forjas passa a cair.
-# `respostas_aceitas` SAIU desta lista em 01/09/2026, quando o fórum ganhou voz:
-# a medalha "Mão amiga" passou a ter fato de verdade por trás, e continuar
-# avisando que "nada alimenta isso" seria um aviso que mente.
+# exatamente esse "nada" que a tela precisa dizer antes do clique.
+#
+# A LISTA ENCOLHE SOZINHA À MEDIDA QUE A ESCADA SOBE, e duas já saíram:
+# `respostas_aceitas` em 01/09/2026, quando o fórum ganhou voz, e
+# `forjas_seladas` no mesmo dia, quando a Forja nasceu (degrau 14,
+# `apps/gamificacao/forja.py`). Nos dois casos apagar a linha daqui é PARTE de
+# fazer o fato existir, e não um detalhe para depois: a medalha "Dez forjas"
+# passou a cair de verdade — `forja.selar()` chama o motor de critérios, porque
+# a Forja vale zero XP e por isso nunca passa por `motor.recalcular` — e a tela
+# seguir dizendo "nada alimenta isso" seria um aviso que mente, que é pior que
+# nenhum aviso.
 CRITERIOS_SEM_FATO = frozenset(
     {
-        "forjas_seladas",
         "primeira_vez",
         "semanas_de_sequencia",
         "missoes_cumpridas",

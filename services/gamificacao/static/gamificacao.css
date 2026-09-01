@@ -257,3 +257,84 @@ form button {
   .pedido.atrasado { border-color: #e06a5c; }
   .pedido.atrasado .miudo strong { color: #e06a5c; }
 }
+
+/* ------------------------------------------------------------------ */
+/* A FORJA (degrau 14) — o medidor de tentativas por peça.             */
+/*                                                                     */
+/* Aqui a regra de tela tem leitura própria, e ela é o oposto da dos    */
+/* marcos: "XP nunca maior que a imagem da obra" não vira "esconda o    */
+/* número", vira "o número de tentativas É o assunto". Ele é a única    */
+/* coisa grande da página porque é a prova de insistência que a página  */
+/* existe para guardar — e a página existe justamente para tirar da     */
+/* pessoa a vontade de escondê-lo. Nenhum XP aparece por perto.         */
+/* ------------------------------------------------------------------ */
+
+.forja {
+  background: var(--caixa);
+  border: 1px solid var(--borda);
+  border-radius: 12px;
+  margin: 0 0 16px;
+  padding: 18px 20px;
+}
+
+.forja h2 {
+  font-size: 19px;
+  margin: 0 0 6px;
+}
+
+/* O contador, dito com orgulho. */
+.medidor {
+  color: var(--tinta);
+  margin: 0 0 6px;
+}
+
+.medidor strong {
+  color: var(--marca);
+  font-size: 34px;
+  line-height: 1.1;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+.forja.selada { border-color: var(--marca); }
+
+.selo-da-forja {
+  color: var(--marca);
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.titulo-da-lista {
+  font-size: 24px;
+  margin: 4px 0 10px;
+}
+
+/* Os dois gestos lado a lado: tentar de novo é o caminho comum, terminar
+   é a decisão que não volta atrás e por isso fica discreta. */
+.gestos {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 10px;
+}
+
+.gestos form { margin: 0; }
+.gestos button { margin-top: 0; }
+
+.gestos button.discreto {
+  background: transparent;
+  border: 1px solid var(--borda);
+  color: var(--tinta);
+}
+
+form input[type="text"] {
+  background: var(--papel);
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  color: var(--tinta);
+  font: inherit;
+  padding: 10px 12px;
+  width: 100%;
+}
