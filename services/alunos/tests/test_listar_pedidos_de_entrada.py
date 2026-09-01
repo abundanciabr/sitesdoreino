@@ -145,20 +145,27 @@ def test_exceto_tira_o_grupo_e_conta_quem_ficou_de_fora():
 
 
 def test_quem_foi_recusado_uma_vez_e_aluno_agora_continua_na_lista():
-    """`--exceto` tira quem SÓ tem aquela situação, e a diferença não é sutil.
+    """`--exceto` tira quem SÓ tem aquela situação, e as duas metades vão juntas.
 
-    Filtrar linha a linha apagaria da concessão uma pessoa que é aluna hoje,
-    porque ela um dia teve um pedido negado. Ninguém perceberia: ela
-    simplesmente não receberia a medalha.
+    O cenário precisa das duas pessoas ao mesmo tempo, e isso foi medido: com
+    só a Ana em cena, este teste passava mesmo com a regra apagada, porque ela
+    entra na lista de qualquer jeito. Quem separa a regra certa da errada é o
+    Dario, que só tem a recusa e por isso PRECISA aparecer contado à parte.
+    Trocar o agrupamento por um `.exclude()` na consulta faria o grupo dos que
+    ficaram de fora esvaziar em silêncio, e o mantenedor leria "ninguém ficou
+    de fora" numa rodada que deixou gente de fora.
     """
     _pedido("ana@exemplo.test", Matricula.STATUS_RECUSADA)
     _pedido("ana@exemplo.test", Matricula.STATUS_ATIVA)
+    _pedido("dario@exemplo.test", Matricula.STATUS_RECUSADA)
 
     saida = _rodar(exceto="recusada")
 
     assert "1 pessoa(s)." in saida
     assert "ativa (1):" in saida
-    assert "ficaram de fora, porque só têm pedido recusada (0):" in saida
+    assert "recusada (0):" in saida
+    assert "ficaram de fora, porque só têm pedido recusada (1):" in saida
+    assert "dario@exemplo.test" in saida
 
 
 def test_sem_exceto_ninguem_fica_de_fora_e_a_secao_nem_aparece():

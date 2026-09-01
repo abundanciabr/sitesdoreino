@@ -265,9 +265,19 @@ echo
 #    tem o token, mas a célula ainda não está no compose. Quando estiver, os
 #    dois lados já se conhecem.
 #
-#    Não há `TOKENS_COMPLETOS_GAMIFICACAO`, e a ausência é a decisão: aquele
-#    degrau libera E-MAIL, e esta célula pede só o id opaco (`getSession`).
-#    Conceder o que não se usa é superfície de graça.
+#    ESTE script não escreve `TOKENS_COMPLETOS_GAMIFICACAO`, e a ausência
+#    continua sendo a decisão dele: aquele degrau libera E-MAIL, e o caminho da
+#    PÁGINA pede só o id opaco (`getSession`). Conceder o que não se usa é
+#    superfície de graça, e este script provisiona a célula para servir telas.
+#
+#    Desde 01/09/2026 esse degrau EXISTE em produção, posto por outro caminho:
+#    a ponte da medalha de Fundador (`conceder_fundador --emails`) traduz e-mail
+#    em id opaco por `findPersonByEmail`, que exige o mesmo degrau de
+#    `getSessionFull`. Quem confere o degrau é
+#    infra/conceder-fundador-aos-alunos.sh, e quem o instala é o mantenedor, com
+#    a linha que aquele script entrega. Não "conserte" isto acrescentando a
+#    chave aqui: um script que provisiona a célula todo dia não é o lugar de uma
+#    autorização que só uma tarefa de linha de comando usa.
 # -----------------------------------------------------------------------------
 echo "== 5/5 — abrindo a conversa com a identidade =="
 MEXIDOS=""
