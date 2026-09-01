@@ -310,3 +310,199 @@ def test_o_service_worker_promete_um_aviso_visivel_por_push():
 
     assert "showNotification" in sw
     assert "userVisibleOnly: true" in js
+
+
+# ---------------------------------------------------------------------------
+# As quatro cartas da gamificação no aviso do celular (degrau 21b, 01/09/2026)
+# ---------------------------------------------------------------------------
+# Até aqui as quatro caíam no genérico "Você tem um aviso novo": honesto, e sem
+# notícia nenhuma. Estes testes medem o que o SERVIDOR entrega, que é a única
+# metade mensurável sem um celular na mão — o texto certo, no idioma certo,
+# dentro do `/sw.js`.
+ASSUNTOS_DA_GAMIFICACAO = (
+    "gamificacao.nivel-alcancado",
+    "gamificacao.conquista-concedida",
+    "gamificacao.marco-validado",
+    "gamificacao.destaque-da-semana",
+)
+
+#: O que cada assunto diz, nos três idiomas, palavra por palavra. Escrito à mão
+#: de propósito: um teste que lesse o mesmo YAML da view passaria com o catálogo
+#: inteiro em branco.
+FRASES_ESPERADAS = {
+    "gamificacao.nivel-alcancado": {
+        "en": ("You moved up a level", "Tap to see the step you reached."),
+        "pt-br": ("Você subiu de nível", "Toque para ver o degrau que você alcançou."),
+        "es": ("Subiste de nivel", "Toca para ver el escalón que alcanzaste."),
+    },
+    "gamificacao.conquista-concedida": {
+        "en": ("You earned a medal", "It is already saved in your profile."),
+        "pt-br": ("Você ganhou uma medalha", "Ela já está guardada no seu perfil."),
+        "es": ("Ganaste una medalla", "Ya está guardada en tu perfil."),
+    },
+    "gamificacao.marco-validado": {
+        "en": (
+            "Your milestone was accepted",
+            "Someone reviewed what you sent, and the milestone is yours.",
+        ),
+        "pt-br": (
+            "Seu marco foi aceito",
+            "Alguém conferiu o que você enviou, e o marco agora é seu.",
+        ),
+        "es": (
+            "Tu hito fue aceptado",
+            "Alguien revisó lo que enviaste, y el hito ahora es tuyo.",
+        ),
+    },
+    "gamificacao.destaque-da-semana": {
+        "en": (
+            "Your work was featured",
+            "A teacher picked your work for the gallery of the week.",
+        ),
+        "pt-br": (
+            "Sua obra foi destaque",
+            "Um professor escolheu o seu trabalho para a galeria da semana.",
+        ),
+        "es": (
+            "Tu obra fue destacada",
+            "Un profesor eligió tu trabajo para la galería de la semana.",
+        ),
+    },
+}
+
+
+def _configuracao_do_sw(client, idioma=None):
+    endereco = "/sw.js" if idioma is None else f"/sw.js?idioma={idioma}"
+    corpo = client.get(endereco, HTTP_HOST=HOST_MESH).content.decode()
+    return json.loads(
+        re.search(r"self\.AVISOS_DO_SITE = (\{.*?\});", corpo, re.S).group(1)
+    )
+
+
+@pytest.mark.parametrize("idioma", ["en", "pt-br", "es"])
+@pytest.mark.parametrize("assunto", ASSUNTOS_DA_GAMIFICACAO)
+def test_as_quatro_cartas_da_gamificacao_falam_os_tres_idiomas(
+    client, rede, assunto, idioma
+):
+    """Título e corpo próprios, em cada idioma. A escola serve três, e o aviso
+    do aparelho sai no idioma de quem INSTALOU (o `?idioma=` que o
+    `instalar.js` passa no registro)."""
+    textos = _configuracao_do_sw(client, idioma)["textos"]
+    titulo, corpo = FRASES_ESPERADAS[assunto][idioma]
+
+    assert textos[assunto] == {"titulo": titulo, "corpo": corpo}
+
+
+@pytest.mark.parametrize("idioma", ["en", "pt-br", "es"])
+def test_nenhuma_carta_da_gamificacao_ficou_com_o_texto_generico(client, rede, idioma):
+    """A prova de que o degrau foi de fato subido: se alguém apagar uma linha do
+    mapa, o assunto some dos `textos` e o aparelho volta ao genérico. Para estes
+    quatro isso é falha, e não é o fail-open do assunto que ninguém conhece."""
+    configuracao = _configuracao_do_sw(client, idioma)
+
+    for assunto in ASSUNTOS_DA_GAMIFICACAO:
+        assert assunto in configuracao["textos"]
+        assert configuracao["textos"][assunto] != configuracao["generico"]
+
+
+def test_a_frase_do_celular_nunca_pede_um_parametro(client, rede):
+    """A decisão de desenho, medida em vez de prometida: o `sw.js` usa `titulo`
+    e `corpo` como strings PRONTAS, sem interpolação. Uma frase com `{nivel}`
+    dentro chegaria ao celular com a chave crua na tela, porque não há ninguém
+    do outro lado para trocá-la — e quase todo parâmetro do contrato é
+    opcional, então nem sempre haveria com o que trocar."""
+    configuracao = _configuracao_do_sw(client, "pt-br")
+
+    frases = [
+        valor
+        for texto in list(configuracao["textos"].values()) + [configuracao["generico"]]
+        for valor in texto.values()
+    ]
+    assert frases  # senão o teste passaria com o catálogo vazio
+    for frase in frases:
+        assert "{" not in frase and "}" not in frase
+        assert "%s" not in frase and "%(" not in frase
+
+
+def test_assunto_desconhecido_continua_caindo_no_generico(client, rede):
+    """O fail-ABERTO que não pode ser desfeito: um assunto que esta versão do
+    site não conhece tem de continuar sem entrada nos `textos`, para o `sw.js`
+    escolher `AVISOS.generico` e a pessoa receber um aviso honesto e vago em vez
+    de nenhum.
+
+    E a armadilha específica deste degrau: a forma tentadora de cobrir os quatro
+    de uma vez é `assunto.startswith("gamificacao.")`, que passaria a desenhar
+    com o cartão do nível um quinto assunto que o contrato ganhe amanhã. Um
+    assunto, uma linha, sempre."""
+    configuracao = _configuracao_do_sw(client, "pt-br")
+
+    for inventado in (
+        "gamificacao.ainda-nao-existe",
+        "gamificacao.",
+        "matricula.situacao-alterada",
+        "jornada.passo",
+    ):
+        assert inventado not in configuracao["textos"]
+    # E o genérico continua lá, preenchido: sem ele o fallback não existiria.
+    assert configuracao["generico"]["titulo"] == "Meshcraft"
+    assert configuracao["generico"]["corpo"] == "Você tem um aviso novo."
+
+
+def test_o_service_worker_ainda_sabe_cair_no_generico():
+    """A outra metade do fail-aberto mora no arquivo servido, e é uma linha só.
+    Sem ela, um assunto desconhecido viraria `undefined.titulo` e o aviso não
+    apareceria, que é exatamente o desfecho que o genérico existe para
+    impedir."""
+    sw = (
+        Path(__file__).resolve().parent.parent / "static" / "funil" / "sw.js"
+    ).read_text(encoding="utf-8")
+
+    assert "AVISOS.textos[carta.assunto] || AVISOS.generico" in sw
+
+
+def test_o_aviso_da_sugestao_nao_mudou_uma_virgula(client, rede):
+    """O assunto que já existia antes deste degrau. Acrescentar quatro não pode
+    reescrever o primeiro: quem instalou o app por causa da Caixa de Sugestões
+    continua lendo a mesma frase."""
+    configuracao = _configuracao_do_sw(client, "pt-br")
+
+    assert configuracao["textos"]["sugestao.status-alterado"] == {
+        "titulo": "Meshcraft",
+        "corpo": "Sua sugestão teve uma novidade.",
+    }
+
+
+def test_todo_assunto_que_o_site_conhece_existe_no_contrato(client, rede):
+    """A direção segura da cerca: o site nunca inventa um assunto que a
+    plataforma não publica. A direção contrária NÃO se testa, de propósito:
+    assunto do contrato que ainda não tem frase aqui é justamente o caso do
+    genérico, e um teste que o proibisse tornaria impossível acrescentar um
+    assunto ao contrato sem tocar nesta célula no mesmo PR."""
+    contrato = json.loads(
+        (
+            Path(__file__).resolve().parents[3]
+            / "contracts"
+            / "eventos"
+            / "notificacao.devida.v1.json"
+        ).read_text(encoding="utf-8")
+    )
+    do_contrato = set(contrato["properties"]["data"]["properties"]["assunto"]["enum"])
+    conhecidos = set(_configuracao_do_sw(client, "pt-br")["textos"])
+
+    assert conhecidos, "o site não conhece assunto nenhum"
+    assert conhecidos <= do_contrato
+
+
+def test_o_sw_continua_sem_prefixo_de_idioma_e_com_os_cabecalhos(client, rede):
+    """`/sw.js` é rota de MÁQUINA: o escopo de um service worker é a pasta de
+    onde ele foi baixado, e `/pt-br/sw.js` mandaria só em `/pt-br/`. O idioma
+    vem da query, nunca do caminho. Os dois cabeçalhos são o que faz uma
+    correção aqui alcançar quem já instalou."""
+    resposta = client.get("/sw.js?idioma=pt-br", HTTP_HOST=HOST_MESH)
+
+    assert resposta.status_code == 200
+    assert resposta["Service-Worker-Allowed"] == "/"
+    assert resposta["Cache-Control"] == "no-cache"
+    assert resposta["Content-Type"] == "text/javascript"
+    for prefixo in ("pt-br", "es", "en"):
+        assert client.get(f"/{prefixo}/sw.js", HTTP_HOST=HOST_MESH).status_code == 404
