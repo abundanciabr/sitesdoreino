@@ -1,0 +1,128 @@
+{% comment %}
+A FORJA do aluno: o medidor de tentativas por peça, e o selo que sai dele.
+
+Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
+prefixo público `/conquistas` para dentro do caminho, e caminho cravado em
+string quebra em produção e SÓ lá (`armadilhas/029` e `/081`). O CSS sai de
+`{% url 'estatico' %}` e nunca de `{% static %}` (`armadilhas/102`).
+
+A REGRA DE TELA, e aqui ela tem uma leitura própria. "XP nunca maior que a
+imagem da obra" não vira "esconda o número": nesta página o número de
+tentativas É o assunto, e ele é dito com orgulho, não como placar. Ele aparece
+grande porque é a prova de insistência que a página existe para guardar, e a
+frase ao lado dele fala de esforço, nunca de posição em nenhuma lista.
+
+Não há nenhum número de XP aqui, e a ausência é decisão: forja vale zero ponto,
+e pagar insistência em pontos ensinaria a inflar o número de tentativas.
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Forja | Meshcraft Academy</title>
+<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
+</head>
+<body>
+<div class="faixa">
+  <a href="{% url 'base' %}">Suas conquistas</a>
+  <a href="{% url 'marcos' %}">Marcos reais</a>
+  <a href="{% url 'forja' %}">Forja</a>
+</div>
+
+<main>
+{% if entrou %}
+  <section class="degrau">
+    <p class="rotulo">A sua oficina</p>
+    <h1>Forja</h1>
+    <p class="passo">Aqui você conta quantas vezes tentou até a peça ficar do
+    jeito que você queria. Nenhuma tentativa vale ponto, e é de propósito: o
+    que fica gravado na peça é o número, e ele é a prova de que você não
+    desistiu. <strong>Quem forja em treze tentativas tem uma história melhor
+    que quem acertou de primeira.</strong></p>
+  </section>
+
+  {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
+  {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+
+  <section class="aviso">
+    <h2>Começar uma peça nova</h2>
+    <p>Dê um apelido curto para a peça em que você está trabalhando. Ele é só
+    seu, e serve para você reconhecer a peça quando voltar aqui.</p>
+    <form method="post" action="{% url 'forjar' %}">
+      {% csrf_token %}
+      <input type="hidden" name="gesto" value="abrir">
+      <label for="nome-da-peca">O nome da peça</label>
+      <input type="text" id="nome-da-peca" name="nome" maxlength="64"
+             placeholder="Chapéu de mago, tênis do avatar, espada curta...">
+      <button type="submit">Começar a forjar</button>
+    </form>
+  </section>
+
+  {% for peca in abertas %}
+    <section class="forja aberta">
+      <h2>{{ peca.nome }}</h2>
+      <p class="medidor"><strong>{{ peca.tentativas }}</strong>
+      {% if peca.tentativas == 1 %}tentativa{% else %}tentativas{% endif %}</p>
+
+      {% if peca.no_teto %}
+        <p class="miudo">Esta peça chegou ao limite de {{ peca.teto }}
+        tentativas. O contador para por aqui, e o seu trabalho não: quando ela
+        ficar pronta, é só dizer que terminou.</p>
+      {% endif %}
+
+      <div class="gestos">
+        {% if not peca.no_teto %}
+          <form method="post" action="{% url 'forjar' %}">
+            {% csrf_token %}
+            <input type="hidden" name="gesto" value="tentativa">
+            <input type="hidden" name="peca" value="{{ peca.chave }}">
+            <button type="submit">Tentei de novo</button>
+          </form>
+        {% endif %}
+        <form method="post" action="{% url 'forjar' %}">
+          {% csrf_token %}
+          <input type="hidden" name="gesto" value="selar">
+          <input type="hidden" name="peca" value="{{ peca.chave }}">
+          <button type="submit" class="discreto">Terminei esta peça</button>
+        </form>
+      </div>
+      <p class="miudo">Depois de selada, a peça guarda o número de tentativas
+      como ele está agora, e isso não volta atrás.</p>
+    </section>
+  {% empty %}
+    <section class="aviso">
+      <h2>Nenhuma peça na bancada</h2>
+      <p>Quando você começar uma, ela aparece aqui com o contador de
+      tentativas ao lado.</p>
+    </section>
+  {% endfor %}
+
+  {% if seladas %}
+    <section class="degrau">
+      <p class="rotulo">O que você já terminou</p>
+      <h2 class="titulo-da-lista">Peças seladas</h2>
+      <p class="passo">Cada uma destas carrega o número de tentativas que ela
+      custou. É esse número que conta a história.</p>
+    </section>
+    {% for peca in seladas %}
+      <section class="forja selada">
+        <h2>{{ peca.nome }}</h2>
+        <p class="selo-da-forja">{{ peca.selo }}</p>
+        <p class="miudo">Selada em {{ peca.selada_em|date:"d/m/Y" }}.</p>
+      </section>
+    {% endfor %}
+  {% endif %}
+{% else %}
+  <section class="convite">
+    <h1>A sua forja fica aqui</h1>
+    <p>Esta página conta quantas vezes você tentou até cada peça ficar pronta,
+    e guarda esse número nela. Ela é sua, e por isso precisa saber quem você
+    é.</p>
+    <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>
+    <p class="miudo">Ainda não é aluno? A porta de entrada da Meshcraft Academy
+    fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
+  </section>
+{% endif %}
+</main>
+</body>
+</html>
