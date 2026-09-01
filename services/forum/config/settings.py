@@ -64,7 +64,21 @@ INSTALLED_APPS = [
     # leitura. A forma é deliberadamente comum — é o que mantém aberta a porta
     # de migrar para o Discourse um dia (lei §4.2).
     "apps.forum",
+    # A fila intra-célula, que entrou com a VOZ do fórum (degrau 17): é ela que
+    # dá o entrypoint canônico `python manage.py run_huey` — o único que faz
+    # `django.setup()` + autodiscover de `tasks.py`. Sem esta linha o worker sobe
+    # com o registro VAZIO, não executa nada e não reclama de nada
+    # (`armadilhas/030`), e os eventos ficariam parados na outbox sem ninguém
+    # acusar.
+    "huey.contrib.djhuey",
 ]
+
+# A instância do Huey — importada, não nomeada por string: o djhuey lê
+# `settings.HUEY` esperando o OBJETO. `config/huey.py` NÃO faz fail-hard no
+# import, de propósito: o container web importa este módulo por causa da linha
+# acima, e a célula inteira não pode sair do ar porque a fila ficou sem env
+# (`armadilhas/097`).
+from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

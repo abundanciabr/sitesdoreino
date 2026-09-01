@@ -11,6 +11,8 @@ inventado aqui não é. Foi a recomendação em que os dois consultores externos
 concordaram.
 """
 
+import uuid
+
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVector, SearchVectorField
 from django.db import models
@@ -378,3 +380,49 @@ class TopicoLido(models.Model):
                 fields=["pessoa", "topico"], name="uma_leitura_por_pessoa_por_topico"
             ),
         ]
+
+
+# ---------------------------------------------------------------------------
+# A CAIXA DE SAÍDA — o que este fórum AFIRMA ao resto da plataforma
+# ---------------------------------------------------------------------------
+
+
+class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
+    """Uma linha por fato que o fórum conta ao resto da escola.
+
+    Nasceu em 01/09/2026, junto com a voz da célula. Até aqui o fórum era MUDO:
+    tinha gente conversando, dúvidas sendo resolvidas, e nada disso virava ponto
+    para ninguém — a medalha "Mão amiga" (cinco respostas aceitas) não tinha como
+    cair, porque ninguém contava.
+
+    O padrão é copiado das cinco células que já o rodam, nunca o arquivo e nunca
+    por import cruzado (Lei 3): um relay diferente por célula significaria N
+    modos de falha diferentes para o mesmo problema.
+
+    `payload` guarda **só o campo `data`** do envelope. O envelope inteiro é
+    montado pelo relay, no instante da publicação — guardar o envelope pronto
+    duplicaria em JSON o que já são colunas, e as duas cópias envelheceriam
+    separadas.
+    """
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    event = models.CharField(max_length=100)  # ex.: "forum.resposta-aceita"
+    version = models.PositiveSmallIntegerField(default=1)
+    payload = models.JSONField()  # SÓ o campo `data` do envelope
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    # As chaves que este evento acrescenta ao ENVELOPE (o nível de cima), e não
+    # ao `data`. Aqui é sempre o `ator_id`: os quatro eventos deste fórum têm
+    # gente por trás, e todos os quatro o exigem no contrato.
+    envelope_extra = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        indexes = [
+            # O relay pergunta sempre a mesma coisa: "o que ainda não publiquei,
+            # na ordem em que aconteceu?". Sem este índice, a pergunta vira um
+            # scan da tabela inteira — e ela só cresce.
+            models.Index(fields=["published_at", "id"]),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.event} {self.event_id}"

@@ -33,6 +33,10 @@ from .permissoes import (
     pode_moderar,
     por_que_nao_escreve,
 )
+from apps.forum import eventos
+from apps.forum.tasks import relay_apos_commit
+
+from .menu import site_id_do_host
 from .sessao import quem_e
 
 # ---------------------------------------------------------------------------
@@ -373,12 +377,28 @@ def novo_topico(request, slug: str):
             status=400,
         )
 
+    # O site sai do HOST, e a pergunta acontece ANTES da transação: é uma
+    # chamada de rede (com cache), e rede dentro de transação segura a transação
+    # aberta pelo tempo do salto. Vazio significa "não emito" — nunca "não
+    # publico o tópico".
+    site_id = site_id_do_host(request.get_host())
+
     with transaction.atomic():
         topico = Topico.objects.create(area=area, autor=ator.pessoa, titulo=titulo)
         mensagem = Mensagem.objects.create(
             topico=topico, autor=ator.pessoa, texto=texto
         )
         mensagem.indexar_para_busca()
+        # DOIS fatos, dois eventos: abrir a conversa e a primeira fala dela. O
+        # motor de XP paga por coisas diferentes, e juntar os dois num só
+        # obrigaria o consumidor a adivinhar qual aconteceu.
+        eventos.topico_criado(
+            site_id=site_id, topico=topico, ator_id=ator.pessoa.id_da_plataforma
+        )
+        eventos.mensagem_criada(
+            site_id=site_id, mensagem=mensagem, ator_id=ator.pessoa.id_da_plataforma
+        )
+        transaction.on_commit(relay_apos_commit)
 
     return redirect(f"{reverse('topico', args=[topico.pk])}#m{mensagem.pk}")
 
@@ -414,11 +434,17 @@ def responder(request, topico_id: int):
             status=400,
         )
 
+    site_id = site_id_do_host(request.get_host())
+
     with transaction.atomic():
         mensagem = Mensagem.objects.create(
             topico=topico, autor=ator.pessoa, texto=texto
         )
         mensagem.indexar_para_busca()
+        eventos.mensagem_criada(
+            site_id=site_id, mensagem=mensagem, ator_id=ator.pessoa.id_da_plataforma
+        )
+        transaction.on_commit(relay_apos_commit)
         # A marca de leitura compara com ISTO (`MarcaDeLeitura`), nunca com a
         # data de cada mensagem. Sem este avanço, uma conversa que acabou de
         # receber resposta continuaria parecendo lida para a turma inteira.
