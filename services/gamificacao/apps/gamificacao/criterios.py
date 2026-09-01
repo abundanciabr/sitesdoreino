@@ -20,11 +20,12 @@ dos 300 foi ligada a recebe na primeira vez em que o motor rodar para ela.
 
 O QUE ESTE ARQUIVO CONSEGUE ALIMENTAR HOJE, MEDIDO E NÃO SUPOSTO
 -----------------------------------------------------------------
-Três dos nove critérios têm dado de verdade por trás: `xp_acumulado`,
-`nivel_alcancado` e `conquistas_da_familia`. Os outros leem tabelas que **nenhum
-código desta plataforma escreve ainda** — uma varredura por `.objects.create` em
+Quatro dos nove critérios têm dado de verdade por trás: `xp_acumulado`,
+`nivel_alcancado`, `conquistas_da_familia` e — desde 01/09/2026, quando o fórum
+ganhou voz — `respostas_aceitas`. Os outros leem tabelas que **nenhum código
+desta plataforma escreve ainda** — uma varredura por `.objects.create` em
 `services/gamificacao` não acha ninguém criando `Forja`, `Sequencia` ou
-`ProgressoDeMissao`, e `respostas_aceitas` espera o fórum ganhar voz (degrau 17).
+`ProgressoDeMissao`.
 
 Isso não é defeito deste arquivo e não se conserta aqui: é a escada ainda não ter
 chegado nesses degraus. O que ele faz é ler a tabela de verdade e devolver o que
@@ -35,8 +36,9 @@ não ver nada acontecer nunca parecer defeito da tela.
 E vale dizer em voz alta o que a medição significa para as QUATRO medalhas que a
 escola tem semeadas hoje: nenhuma delas dispara. `fundador` é manual;
 `primeira-obra` espera uma obra que o sistema ainda não sabe registrar;
-`dez-forjas` espera a Forja; `mao-amiga` espera o fórum. O motor está pronto e
-correto — o que falta são os fatos, e cada um deles é um degrau com nome.
+`dez-forjas` espera a Forja. `mao-amiga` DEIXOU essa lista em 01/09/2026: com o
+fórum falando, ela é a primeira medalha automática que a escola consegue
+conceder de verdade.
 """
 
 from __future__ import annotations
@@ -45,6 +47,7 @@ import logging
 import threading
 
 from .models import (
+    AjudaAceita,
     Concessao,
     ConquistaDefinicao,
     Forja,
@@ -93,14 +96,18 @@ def _valor_forjas(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
 
 
 def _valor_respostas(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
-    """Respostas aceitas no fórum.
+    """Respostas aceitas no fórum. Passou a contar de verdade em 01/09/2026.
 
-    Devolve 0 e vai continuar devolvendo 0 até o fórum ANUNCIAR o que acontece
-    nele (degrau 17). Não há tabela para consultar: esta célula não sabe o que é
-    uma resposta, e inventar uma contagem a partir do ledger de XP seria contar
-    outra coisa com o nome certo — o pior tipo de número, o que parece medido.
+    **Conta `AjudaAceita`, e não o ledger de XP**, e a diferença é a que importa:
+    a medalha não pode depender de a regra de pontuação estar LIGADA.
+    Reconhecimento é uma coisa, pagamento é outra — se contasse pelo ledger, o
+    mantenedor desligaria a regra por uma semana e a medalha pararia de existir
+    junto, sem ninguém entender por quê.
+
+    A linha é idempotente pela MENSAGEM: marcar, desmarcar e remarcar conta uma
+    vez só.
     """
-    return 0
+    return AjudaAceita.objects.filter(pessoa=pessoa, site_id=site_id).count()
 
 
 def _valor_primeira_vez(pessoa: Pessoa, site_id: str, perfil: PerfilJogador) -> int:
@@ -203,11 +210,15 @@ def avaliar(pessoa_id: str, site_id: str) -> list[Concessao]:
             pessoa = Pessoa.objects.filter(id_da_plataforma=pessoa_id).first()
             if pessoa is None:
                 break
-            perfil = PerfilJogador.objects.filter(
+            # O PERFIL NASCE AO SER OLHADO, e aqui isso deixou de ser detalhe em
+            # 01/09/2026: com o fórum falando, existe gente que AJUDOU e nunca
+            # ganhou XP nenhum — a regra de pontuação pode estar desligada. Com
+            # um `filter().first()`, essa pessoa não tinha perfil, não era
+            # avaliada, e a medalha "Mão amiga" não caía para exatamente quem
+            # mais a merecia. Foi um teste que pegou.
+            perfil, _ = PerfilJogador.objects.get_or_create(
                 pessoa=pessoa, site_id=site_id
-            ).first()
-            if perfil is None:
-                break
+            )
 
             ja_tem = set(
                 Concessao.objects.filter(pessoa=pessoa, site_id=site_id).values_list(

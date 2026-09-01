@@ -158,7 +158,20 @@ def _pessoa_do_credito(regra: RegraDePontuacao, envelope: dict) -> str | None:
         # O `ator_id` do ENVELOPE é o lugar canônico do id de plataforma desde o
         # Rito de 26/08/2026 (PLANO-MESTRE das notificações §2).
         return envelope.get("ator_id") or None
-    return data.get("autor_da_sugestao_id_da_plataforma") or None
+    # AUTOR DO ALVO: quem escreveu a coisa que foi votada, ou respondida. Dois
+    # contratos congelados dão dois NOMES ao mesmo papel — a Caixa chama de
+    # `autor_da_sugestao_id_da_plataforma`, o fórum de `autor_da_resposta_id` — e
+    # os dois já são id de PLATAFORMA por contrato.
+    #
+    # Traduzir isso é do motor, não dos contratos: cada um foi congelado no seu
+    # rito, com o mantenedor presente, e renomear campo depois é quebrar
+    # consumidor por gosto de simetria. A lista é FECHADA e cresce por diff
+    # visível — não é "procure qualquer chave que pareça um autor".
+    for campo in ("autor_da_sugestao_id_da_plataforma", "autor_da_resposta_id"):
+        valor = data.get(campo)
+        if valor:
+            return valor
+    return None
 
 
 def creditos_de(envelope: dict, site_id: str) -> list[Credito]:

@@ -1,0 +1,14 @@
+{
+  "arquivo": "092-a-gamificacao-escuta-o-forum-os-quatro-avisos-viram-ponto",
+  "id": "TAR-092",
+  "titulo": "A gamificacao escuta o forum: os quatro avisos viram ponto",
+  "toca": [
+    "gamificacao"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado + teste de que uma resposta aceita credita QUEM ESCREVEU (nao quem marcou), de que a medalha Mao amiga passa a cair sem depender da regra de XP estar ligada, e de que a mensagem removida NAO e creditada, com o motivo declarado.",
+  "despacho": "Degrau 17, segunda metade. Depende da TAR-091 (o forum FALAR) e a completa: sem\nesta, o forum grita no fio e ninguem escuta.\n\nO que fazer, na celula gamificacao:\n\n1. Assinar os quatro streams do forum no consumidor (a lista STREAMS de\n   apps/eventos/.../consume_eventos.py) e ligar os handlers.\n2. O motor precisa aprender UM campo: o beneficiario \"autor_do_alvo\" hoje so\n   sabe procurar autor_da_sugestao_id_da_plataforma, da Caixa. O evento do forum\n   chama o mesmo papel de autor_da_resposta_id, e ja e id de plataforma por\n   contrato. Sao dois nomes para a mesma coisa em dois contratos congelados;\n   traduzir e do motor, nao dos contratos.\n3. Semear as regras do forum, DESLIGADAS como todas. Os valores saem da lei, nao\n   do gosto de quem escreve: \"login 0, validacao humana vale ~10x consumo\"\n   (VEREDITO, principio 5). Escreva a conta no proprio semeador.\n4. A medalha \"Mao amiga\" conta respostas aceitas. Ela NAO pode depender de a\n   regra de XP estar ligada: reconhecimento e uma coisa, pagamento e outra.\n   Guarde o fato numa linha propria, idempotente pelo id da mensagem.\n5. mensagem-removida NAO entra ainda, e a razao vai declarada em NAO_CREDITAM: o\n   estorno precisa achar o lancamento que pagou AQUELA mensagem, e o ledger\n   guarda o id do EVENTO, nao o da mensagem. Inventar a ligacao agora seria uma\n   tabela que ninguem pediu; o forum ja EMITE o fato, entao ele esta guardado\n   para o dia do estorno.\n\nCUIDADO: a quarentena de 24h e o que existe para a janela da moderacao. Toda\nregra social do forum nasce com ela.",
+  "origem": "despacho do mantenedor",
+  "criada_em": "2026-09-01"
+}
