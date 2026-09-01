@@ -23,13 +23,25 @@ from django.utils import timezone
 from apps.gamificacao.interruptores import (
     CRISTAIS_SEM_EFEITO,
     SEM_CREDITO,
+    SEM_FATO_QUE_ALIMENTA,
+    SEM_MOTOR_DE_CRITERIO,
     SEM_PRODUTOR,
+    SO_POR_CONCESSAO_MANUAL,
+    ConquistaDesconhecida,
     RegraDesconhecida,
+    impedimentos_da_conquista,
     impedimentos_de,
     listar,
+    listar_conquistas,
     mudar,
+    mudar_conquista,
 )
-from apps.gamificacao.models import LancamentoDeXP, PerfilJogador, RegraDePontuacao
+from apps.gamificacao.models import (
+    ConquistaDefinicao,
+    LancamentoDeXP,
+    PerfilJogador,
+    RegraDePontuacao,
+)
 from apps.gamificacao.motor import aplicar
 
 SITE = "site-de-teste"
@@ -275,3 +287,142 @@ def test_evento_sem_o_cracha_da_plataforma_nao_credita_ninguem():
     assert aplicar(envelope, SITE) == []
     assert LancamentoDeXP.objects.count() == 0
     assert not PerfilJogador.objects.exists(), "nenhuma Pessoa fantasma nasceu"
+
+
+# ---------------------------------------------------------------------------
+# O SEGUNDO INTERRUPTOR: as conquistas
+# ---------------------------------------------------------------------------
+# A diferença que estes testes existem para travar é UMA, e foi decidida pelo
+# mantenedor em 01/09/2026: ligar uma conquista NÃO carimba data, porque
+# reconhecer quem já cumpriu o critério é o comportamento que ele escolheu. Numa
+# regra de pontuação, a mesma ausência seria o bug mais caro desta célula.
+
+
+def _conquista(**campos) -> ConquistaDefinicao:
+    base = {
+        "slug": "primeira-obra",
+        "site_id": SITE,
+        "nome": "Primeira obra",
+        "descricao": "A primeira peça terminada.",
+        "classe": ConquistaDefinicao.Classe.MEDALHA,
+        "familia": ConquistaDefinicao.Familia.OFICIO,
+        "criterio": {"tipo": "primeira_vez", "assunto": "obra"},
+        "pontos": 50,
+        "cristais": 5,
+        "ativa": False,
+    }
+    base.update(campos)
+    return ConquistaDefinicao.objects.create(**base)
+
+
+@pytest.mark.django_db
+def test_ligar_uma_conquista_nao_carimba_data_nenhuma():
+    """A decisão do mantenedor virando ausência de campo.
+
+    Numa regra de pontuação, ligar carimba `vigente_desde` e é isso que impede
+    pagar o passado. Aqui esse carimbo seria o mecanismo de negar a "Primeira
+    obra" a quem já fez a primeira obra — e ninguém faz duas estreias. Este teste
+    existe para que ninguém "conserte" a ausência daqui a seis meses achando que
+    foi esquecimento.
+    """
+    conquista = _conquista()
+
+    depois = mudar_conquista(site_id=SITE, slug="primeira-obra", ativa=True)
+
+    assert depois.ativa is True
+    assert depois.versao == conquista.versao + 1
+    assert not hasattr(depois, "vigente_desde")
+
+
+@pytest.mark.django_db
+def test_dois_cliques_no_mesmo_botao_nao_inflam_a_versao():
+    _conquista()
+
+    primeira = mudar_conquista(site_id=SITE, slug="primeira-obra", ativa=True)
+    segunda = mudar_conquista(site_id=SITE, slug="primeira-obra", ativa=True)
+
+    assert primeira.versao == segunda.versao
+
+
+@pytest.mark.django_db
+def test_conquista_desconhecida_recusa_em_vez_de_inventar():
+    with pytest.raises(ConquistaDesconhecida):
+        mudar_conquista(site_id=SITE, slug="nao-existe", ativa=True)
+
+
+@pytest.mark.django_db
+def test_os_marcos_vem_primeiro_na_lista():
+    """A hierarquia da lei virando ordem de tela.
+
+    Realidade > Criação > Maestria > Comunidade > XP. Uma tela que lista o
+    andaime acima da espinha ensina a ordem errada a quem a lê todo dia.
+    """
+    # Os slugs são escolhidos CONTRA a ordem alfabética de propósito: com
+    # "aaa-marco" e "zzz-medalha", ordenar só por slug daria o mesmo resultado, e
+    # o teste passaria sabotado — provando nada. Medido: com a chave de classe
+    # removida, a asserção abaixo fica vermelha.
+    _conquista(slug="aaa-medalha", nome="Medalha")
+    _conquista(
+        slug="zzz-marco",
+        nome="Marco",
+        classe=ConquistaDefinicao.Classe.MARCO,
+        familia=ConquistaDefinicao.Familia.CARREIRA,
+        criterio={"tipo": "manual"},
+        pontos=0,
+        cristais=0,
+    )
+
+    ordem = [c.slug for c in listar_conquistas(SITE)]
+
+    assert ordem == ["zzz-marco", "aaa-medalha"]
+
+
+@pytest.mark.django_db
+def test_o_marco_nunca_tem_impedimento():
+    """Ele não depende de conta automática: depende de alguém mandar a prova."""
+    marco = _conquista(
+        slug="primeiro-cliente",
+        classe=ConquistaDefinicao.Classe.MARCO,
+        familia=ConquistaDefinicao.Familia.CARREIRA,
+        criterio={"tipo": "manual"},
+        pontos=0,
+        cristais=0,
+    )
+
+    assert impedimentos_da_conquista(marco) == []
+
+
+@pytest.mark.django_db
+def test_a_medalha_automatica_avisa_que_o_motor_ainda_nao_existe():
+    """O aviso que impede a frustração de ligar e não ver nada acontecer.
+
+    É a mesma lição da tela das regras: um zero sem explicação parece defeito da
+    tela, e a busca começa pelo lugar errado.
+    """
+    medalha = _conquista(criterio={"tipo": "primeira_vez", "assunto": "obra"})
+
+    assert impedimentos_da_conquista(medalha) == [SEM_MOTOR_DE_CRITERIO]
+
+
+@pytest.mark.django_db
+def test_criterio_que_nada_alimenta_avisa_as_duas_coisas():
+    """`forjas_seladas` espera a Forja; `respostas_aceitas` espera o fórum falar."""
+    medalha = _conquista(
+        slug="dez-forjas", criterio={"tipo": "forjas_seladas", "alvo": 10}
+    )
+
+    assert impedimentos_da_conquista(medalha) == [
+        SEM_MOTOR_DE_CRITERIO,
+        SEM_FATO_QUE_ALIMENTA,
+    ]
+
+
+@pytest.mark.django_db
+def test_a_medalha_manual_diz_que_so_sai_pela_mao_da_equipe():
+    medalha = _conquista(
+        slug="fundador",
+        familia=ConquistaDefinicao.Familia.EPOCA,
+        criterio={"tipo": "manual"},
+    )
+
+    assert impedimentos_da_conquista(medalha) == [SO_POR_CONCESSAO_MANUAL]
