@@ -15,6 +15,10 @@ O QUE ESTE ARQUIVO PROTEGE, e por que cada coisa
    teste é o que faz a diferença entre "funciona em dev" e "funciona".
 5. **A escada não mente.** Nível, título e a fração da barra saem de
    `NivelDefinicao` ATIVA, e a economia inteira nasce desligada.
+6. **Ausência de escada não é fim de escada.** Sem degrau ligado, a tela não
+   fala em topo, em nível nem em "0 de experiência": ela diz que a escada está
+   sendo montada. Este é o defeito que o mantenedor leu na tela em 01/09/2026,
+   e os três guardas do fim do arquivo existem para ele não voltar.
 """
 
 from __future__ import annotations
@@ -113,9 +117,15 @@ def test_a_tela_mostra_o_degrau_e_o_que_falta(client, com_site, logado):
 
 @pytest.mark.django_db
 def test_no_ultimo_degrau_a_tela_nao_promete_um_proximo(client, com_site, logado):
-    _degraus((1, 0, "Aprendiz"))
+    """Topo de VERDADE: a escada tem dois degraus e a pessoa subiu os dois.
+
+    O cenário tinha um degrau só até 01/09/2026, e por isso ficava verde com a
+    frase do topo aparecendo para quem não subiu escada nenhuma. Cenário fraco
+    é teste que prova o contrário do que o nome dele promete.
+    """
+    _degraus((1, 0, "Aprendiz"), (2, 50, "Aprendiz de Ateliê"))
     Pessoa.objects.create(id_da_plataforma=ALGUEM, email="a@b.invalid")
-    PerfilJogador.objects.create(pessoa_id=ALGUEM, site_id=SITE, xp_total=999, nivel=1)
+    PerfilJogador.objects.create(pessoa_id=ALGUEM, site_id=SITE, xp_total=999, nivel=2)
 
     corpo = client.get(reverse("base")).content.decode()
 
@@ -136,6 +146,64 @@ def test_sem_nivel_ativo_a_tela_abre_igual(client, com_site, logado):
     assert (
         "Aprendiz" not in resposta.content.decode()
     ), "mostrou um degrau que o mantenedor ainda não ligou"
+
+
+# ------------------------------------ a tela sem escada, que já mentiu uma vez
+
+
+@pytest.mark.django_db
+def test_sem_escada_a_tela_nao_diz_que_o_aluno_chegou_ao_topo(client, com_site, logado):
+    """O defeito que o mantenedor leu na tela dele em 01/09/2026.
+
+    Com a economia desligada — que é o estado de TODO aluno hoje — a Base dizia
+    "Nível 1", "você chegou ao último degrau desta escada" e "0 de experiência
+    até aqui", uma frase contradizendo a outra. A causa: `no_topo` valia "não há
+    próximo degrau", que também é verdade quando não há degrau NENHUM.
+
+    Ausência de escada não é fim de escada. Este teste é o que impede as duas de
+    voltarem a ser a mesma coisa.
+    """
+    corpo = client.get(reverse("base")).content.decode()
+
+    assert "último degrau" not in corpo, "disse que chegou ao topo de uma escada vazia"
+    assert (
+        "Nível 1" not in corpo
+    ), "mostrou como conquista o valor com que a linha nasce"
+    assert "está sendo montada" in corpo
+
+
+@pytest.mark.django_db
+def test_com_um_degrau_so_ligado_ninguem_chegou_ao_topo(client, com_site, logado):
+    """Um degrau ligado é escada que ainda não abriu, não escada vencida.
+
+    O caso é REAL e não é hipótese: a economia é ligada linha por linha em
+    `/admin/economia/`, e o instante em que o primeiro degrau vira `ativa=True`
+    é justamente aquele em que todo aluno da escola estaria "no topo".
+    """
+    _degraus((1, 0, "Aprendiz"))
+    Pessoa.objects.create(id_da_plataforma=ALGUEM, email="a@b.invalid")
+    PerfilJogador.objects.create(pessoa_id=ALGUEM, site_id=SITE, xp_total=30, nivel=1)
+
+    corpo = client.get(reverse("base")).content.decode()
+
+    assert "Aprendiz" in corpo, "escondeu o degrau que o mantenedor ligou"
+    assert "último degrau" not in corpo
+    assert "ainda não abriu" in corpo
+
+
+@pytest.mark.django_db
+def test_experiencia_zerada_vira_frase_e_nao_um_zero_solto(client, com_site, logado):
+    """ "0 de experiência até aqui" ao lado de um degrau parece placar quebrado.
+
+    E placar quebrado é o que faz o aluno desconfiar do resto da página. O
+    número volta assim que houver número.
+    """
+    _degraus((1, 0, "Aprendiz"), (2, 50, "Aprendiz de Ateliê"))
+
+    corpo = client.get(reverse("base")).content.decode()
+
+    assert "0 de experiência" not in corpo
+    assert "ainda não somou experiência" in corpo
 
 
 # ------------------------------------------- a falha que melhor se esconde
