@@ -11,6 +11,31 @@ prefixos diferentes e `/static/…` neste domínio é endereço do funil
 A REGRA DE TELA, que mandou no desenho abaixo: "XP nunca maior que a imagem da
 obra" (PLANO §5). Por isso o número não abre a página nem aparece grande. O que
 abre é o título do degrau, que é uma palavra sobre quem a pessoa está virando.
+
+OS TRÊS ESTADOS DA ESCADA, e por que eles não podem virar dois (01/09/2026)
+---------------------------------------------------------------------------
+Esta página tinha DUAS frases para TRÊS situações, e por isso mentia para todo
+aluno da escola. Enquanto a economia está desligada — que é o estado de hoje,
+`ativa=False` em todo degrau — a tela dizia "Nível 1", logo abaixo "você chegou
+ao último degrau desta escada" e, embaixo, "0 de experiência até aqui". As três
+frases se contradizem, e o mantenedor as leu assim na tela dele.
+
+A causa era o `no_topo`, que valia "não há próximo degrau" e portanto era
+verdadeiro também quando não há degrau NENHUM. Hoje as situações são três, e
+cada uma tem a sua frase:
+
+  1. `not escada.montada` — a escola não ligou degrau nenhum. Não se fala em
+     nível, porque o "Nível 1" aqui não é conquista de ninguém: é o valor com
+     que a linha nasce.
+  2. `escada.no_topo` — subiu a escada inteira, e ela tinha mais de um degrau.
+  3. `escada.tem_proximo` — o caso normal, com barra. E, se nenhum dos três
+     casar (um degrau ligado e mais nenhum acima), a frase diz o que é: o
+     degrau seguinte ainda não abriu.
+
+Nenhuma dessas frases promete pagamento retroativo, e isso é de propósito: a
+regra de XP tem data de vigência e **nunca é retroativa** (lei da célula). Dizer
+"o que você fizer até lá conta" seria a tela prometendo o que a economia não
+paga.
 {% endcomment %}<!doctype html>
 <html lang="pt-BR">
 <head>
@@ -27,28 +52,43 @@ abre é o título do degrau, que é uma palavra sobre quem a pessoa está virand
 <main>
 {% if entrou %}
   <section class="degrau">
-    {% if escada.titulo %}
-      <p class="rotulo">Você é</p>
-      <h1>{{ escada.titulo }}</h1>
-      <p class="nivel">Nível {{ escada.nivel }}</p>
+    {% if not escada.montada %}
+      <p class="rotulo">Suas conquistas</p>
+      <h1>A sua escada está sendo montada</h1>
+      <p class="passo">Os degraus desta escola ainda não abriram. Quando
+      abrirem, é aqui que você vai ver em que ponto está e o que falta para o
+      degrau seguinte.</p>
     {% else %}
-      <p class="rotulo">Você está no</p>
-      <h1>Nível {{ escada.nivel }}</h1>
+      {% if escada.titulo %}
+        <p class="rotulo">Você é</p>
+        <h1>{{ escada.titulo }}</h1>
+        <p class="nivel">Nível {{ escada.nivel }}</p>
+      {% else %}
+        <p class="rotulo">Você está no</p>
+        <h1>Nível {{ escada.nivel }}</h1>
+      {% endif %}
+
+      {% if escada.no_topo %}
+        <p class="passo">Você chegou ao último degrau desta escada. O que vem
+        agora não é um número: é o que você faz com o que aprendeu.</p>
+      {% elif escada.tem_proximo %}
+        <div class="barra" role="img"
+             aria-label="Faltam {{ escada.falta }} pontos para o próximo nível">
+          <div class="cheio" style="width: {{ escada.fracao }}%"></div>
+        </div>
+        <p class="passo">Faltam <strong>{{ escada.falta }}</strong> para o
+        próximo degrau.</p>
+      {% else %}
+        <p class="passo">O degrau seguinte desta escola ainda não abriu. Quando
+        ele abrir, é aqui que você vai ver o que falta para chegar lá.</p>
+      {% endif %}
     {% endif %}
 
-    {% if escada.no_topo %}
-      <p class="passo">Você chegou ao último degrau desta escada. O que vem
-      agora não é um número: é o que você faz com o que aprendeu.</p>
+    {% if escada.sem_xp %}
+      <p class="xp">Você ainda não somou experiência.</p>
     {% else %}
-      <div class="barra" role="img"
-           aria-label="Faltam {{ escada.falta }} pontos para o próximo nível">
-        <div class="cheio" style="width: {{ escada.fracao }}%"></div>
-      </div>
-      <p class="passo">Faltam <strong>{{ escada.falta }}</strong> para o
-      próximo degrau.</p>
+      <p class="xp">{{ escada.xp }} de experiência até aqui</p>
     {% endif %}
-
-    <p class="xp">{{ escada.xp }} de experiência até aqui</p>
   </section>
 
   <section class="aviso">
