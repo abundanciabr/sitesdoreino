@@ -2,7 +2,9 @@
 
 **Nasceu de:** sugestão "Guias de portifolio com Check-list" na Caixa (15 votos,
 categoria "Curso e aulas", autor Ricardo) · 01/09/2026
-**Estado:** estudo. Nada aqui está decidido enquanto o §6 não voltar respondido.
+**Estado:** estudo com **duas decisões do mantenedor já tomadas** (01/09/2026, na
+conversa em que o plano foi apresentado). Ver §6, que agora tem as respostas.
+A construção NÃO foi autorizada: ele pediu para guardar o plano por enquanto.
 **Molde:** `docs/caixa-de-sugestoes/MODELO-ESTUDO-DE-VIABILIDADE.md` (este é o
 primeiro estudo escrito nele, e serve de exemplo preenchido).
 
@@ -74,7 +76,7 @@ por pouco que não apagou daqui.
 
 ## §4 Onde a coisa mora
 
-**Opção A — célula nova `portfolio` (recomendada).** A obra do aluno ganha casa
+**Opção A — célula nova `portfolio`. ESCOLHIDA pelo mantenedor em 01/09/2026.** A obra do aluno ganha casa
 própria e a página pública sai dela; a gamificação só recebe o evento e acende o
 marco.
 
@@ -114,7 +116,7 @@ fórum e gamificação).
 | 06 | Porta e sessão (repassa o cookie à `identidade`, nunca assina) + tela mínima | abre a Prancheta e é reconhecido | portfolio | ~12 |
 | 07 | A Prancheta: cinco etapas, listas de conferência lidas do banco | vê o roteiro e marca o que fez | portfolio | ~12 |
 | 08 | Peças por link, com legenda, ordem e destaque | monta o portfólio | portfolio | ~10 |
-| 09 | Envio de imagem: limite, tipo real conferido, miniatura | sobe o render direto | portfolio + infra | ~12 |
+| ~~09~~ | ~~Envio de imagem no servidor~~ — **fora, por decisão de 01/09/2026** (§6.2). Volta a existir no dia em que o link colado doer | — | — | — |
 | 10 | O semáforo por peça, calculado das respostas objetivas | vê o que falta em cada peça | portfolio | ~8 |
 | 11 | Pedido de conferência + tela da equipe (molde dos marcos) | manda para a escola olhar | portfolio | ~12 |
 | 12 | Selo "conferido pela escola" + evento + carta no sininho | recebe o selo e fica sabendo | portfolio | ~9 |
@@ -129,14 +131,35 @@ Se a resposta do §6.1 for a opção B, saem 01, 03, 04, 05 e o passo H.
 
 ## §6 O que volta para o mantenedor
 
-1. **A fronteira** (§4): célula própria ou dentro das conquistas.
-2. **Onde as fotos moram:** só link colado (custo zero, link do aluno quebra) ·
-   disco da VPS (sem custo novo, exige limites e backup; medir espaço antes) ·
-   serviço de nuvem (mensal pequeno, credencial dele). Recomendação: VPS com a
-   troca isolada atrás de uma peça única, para virar nuvem sem reforma.
-3. **Assinar a obra na Caixa** (estação 4 de `DA-IDEIA-A-OBRA.md`), conferindo
+**1. A fronteira (§4) — RESPONDIDA em 01/09/2026: célula própria `portfolio`.**
+Com ela vêm a gênese, o contrato, o provisionamento, o PR de infra e o passo
+manual na VPS, e o portfólio deixa de depender da vida do sistema de pontos.
+
+**2. Onde as fotos moram — RESPONDIDA em 01/09/2026: só o link colado.**
+O aluno cola o endereço do render que já está no Drive, no ArtStation ou onde
+ele guarda. A recomendação deste estudo era o disco da VPS; o mantenedor
+escolheu o link, informado do preço, e o preço é este, escrito aqui para
+ninguém redescobri-lo por acidente:
+
+- **link de aluno quebra**, e quando quebra o portfólio dele fica com um buraco
+  que a escola não consegue consertar. Mitigação barata, que cabe na entrega 08:
+  a Prancheta confere o link quando ele é colado e avisa o aluno se ele parar de
+  responder depois (medição periódica, aviso no sininho, nunca apagar sozinho);
+- **a página pública passa a exibir imagem de domínio de terceiro.** Isso é
+  decisão de segurança de tela, não detalhe: a política de conteúdo da página
+  precisa permitir imagem externa de forma controlada, e nenhuma outra tela
+  desta plataforma faz isso hoje. Trate no PR da entrega 13, com teste;
+- **a escola não controla o que está do outro lado do link.** O selo "conferido
+  pela escola" passa a valer para o que o monitor VIU no dia da conferência, e
+  o texto do selo precisa dizer isso.
+
+A porta para mudar de ideia fica aberta e barata: o campo do link e o campo de
+uma imagem hospedada por nós cabem no mesmo modelo, e a entrega 09 volta à
+escada sem reescrever nada do que vier antes. **Não a construa antes de ele
+pedir.**
+**3. Assinar a obra na Caixa** (estação 4 de `DA-IDEIA-A-OBRA.md`), conferindo
    antes que o e-mail dele está em `SUGESTOES_APROVADORES`.
-4. **O texto dos guias** — ou a aprovação do rascunho que a entrega 16 deixa
+**4. O texto dos guias** — ou a aprovação do rascunho que a entrega 16 deixa
    pronto no editor.
 
 ## §7 O que ninguém pode inventar
