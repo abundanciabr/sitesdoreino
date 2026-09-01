@@ -1,6 +1,14 @@
 from django.urls import path, re_path
 
-from apps.core.views import base, healthz, servir_estatico
+from apps.core.views import (
+    base,
+    decidir,
+    enviar_prova,
+    healthz,
+    interno,
+    marcos,
+    servir_estatico,
+)
 from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/conquistas`): quem o
@@ -48,6 +56,21 @@ urlpatterns = [
     # produção e SÓ lá (`armadilhas/083`): com DEBUG=0 o Django não serve
     # estático, e não há nginx nem CDN atrás do Traefik.
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
+    # A TRILHA DE MARCOS REAIS (degrau 12/13). Duas telas e dois gestos:
+    #
+    # `marcos` e `enviar-prova` são do ALUNO. `interno` e `decidir` são da
+    # EQUIPE, e quem fecha essa porta é `apps/core/equipe.py`, fail-CLOSED por
+    # uma lista de ids no env — nunca o `papel` que a identidade devolve, que é
+    # de exibição ("reconhecer não é autorizar", lei da célula §5).
+    #
+    # A área da equipe mora AQUI, e não na célula `admin`, por duas razões
+    # escritas na TAR-089: a lei manda que quem autoriza nesta célula seja esta
+    # célula, e pôr a tela na `admin` exigiria abrir a porta de máquina
+    # congelada — um Rito de Contrato com o mantenedor para uma tela interna.
+    path("marcos", marcos, name="marcos"),
+    path("marcos/enviar", enviar_prova, name="enviar-prova"),
+    path("interno", interno, name="interno"),
+    path("interno/decidir", decidir, name="decidir"),
     # A BASE, e ela é a raiz da célula: `meshcraft.top/conquistas` sem mais
     # nada. Nomeada, como todas: é `{% url 'base' %}` quem carrega o prefixo
     # público para dentro do endereço. Vem por último porque `path("")` casa o

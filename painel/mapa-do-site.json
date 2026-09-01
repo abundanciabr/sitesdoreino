@@ -398,6 +398,45 @@
       "observacao": "O dia previsto chegou: /conquistas entrou no roteamento em 31/08/2026, e esta porta ficou debaixo dele, alcançável pela internet. Quem a fecha é a senha de par, nunca o roteamento, e hoje a lista de senhas está VAZIA: ninguém passa. Cada consumidor novo (o fórum, para o selo; a home, para o widget) ganha a sua no provisionamento do par."
     },
     {
+      "celula": "gamificacao",
+      "rota": "marcos",
+      "endereco": "/conquistas/marcos",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "A trilha de marcos reais",
+      "descricao": "O que o aluno conseguiu no mundo de verdade: a primeira obra terminada, o primeiro cliente, os primeiros dolares. Ele manda a prova por aqui e acompanha o que a escola respondeu. Marco nao vale ponto nenhum, de proposito.",
+      "observacao": "E a UNICA tela que conta uma devolucao: devolver um pedido nao gera aviso no sininho, porque so boa noticia vira carta. Sem esta pagina o aluno esperaria para sempre por uma resposta que ja chegou."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "marcos/enviar",
+      "endereco": "/conquistas/marcos/enviar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "Enviar a prova de um marco",
+      "descricao": "O gesto de mandar (ou remandar) a prova de um marco para a escola conferir. Nao e uma pagina: quem clica volta para a trilha com a resposta."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "interno",
+      "endereco": "/conquistas/interno",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A fila da equipe",
+      "descricao": "Onde a equipe da escola confere as provas que os alunos mandaram, com o mais urgente em cima. Aceitar registra a conquista e avisa a pessoa; devolver pede o que falta, em particular.",
+      "observacao": "PUBLICO aqui quer dizer alcancavel pela internet, nao aberto: o corte do prefixo /conquistas e do Django, nao do Traefik, entao o endereco responde para qualquer um. Quem fecha e a lista de ids no env da celula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem nao esta nela leva 403 com a razao escrita. Ela NAO usa o papel que a identidade devolve, que e de exibicao: reconhecer nao e autorizar."
+    },
+    {
+      "celula": "gamificacao",
+      "rota": "interno/decidir",
+      "endereco": "/conquistas/interno/decidir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Aceitar ou devolver um pedido",
+      "descricao": "O gesto de um clique da equipe. Nao e uma pagina: quem clica volta para a fila com a resposta.",
+      "observacao": "PUBLICO aqui quer dizer alcancavel pela internet, nao aberto: o corte do prefixo /conquistas e do Django, nao do Traefik, entao o endereco responde para qualquer um. Quem fecha e a lista de ids no env da celula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem nao esta nela leva 403 com a razao escrita. Ela NAO usa o papel que a identidade devolve, que e de exibicao: reconhecer nao e autorizar."
+    },
+    {
       "celula": "sugestoes",
       "rota": "",
       "endereco": "/forms/sugestoes/",
