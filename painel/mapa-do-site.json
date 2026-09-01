@@ -1332,6 +1332,15 @@
     },
     {
       "celula": "admin",
+      "rota": "economia/mudar-conquista",
+      "endereco": "/admin/economia/mudar-conquista",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Ligar ou desligar uma medalha ou marco",
+      "descricao": "O gesto de um clique na segunda metade da tela da economia. Nao e uma pagina: quem clica volta para a tela com a resposta."
+    },
+    {
+      "celula": "admin",
       "rota": "documentos/novo",
       "endereco": "/admin/documentos/novo",
       "alcance": "publico",
