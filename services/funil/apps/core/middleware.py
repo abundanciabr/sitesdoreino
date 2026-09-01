@@ -13,6 +13,7 @@ from apps.core import enderecos
 from apps.core.clients import (
     AlunosClient,
     CatalogoClient,
+    GamificacaoClient,
     IdentidadeClient,
     NotificacoesClient,
 )
@@ -163,6 +164,88 @@ def _consultar_categoria(cookie: str, id_da_pessoa: str) -> "dict | None":
     return situacao
 
 
+# ---------------------------------------------------------------------------
+# O QUADRINHO DE PROGRESSO da home (degrau 20 do PLANO-CELULA-GAMIFICACAO).
+# Falha ABERTA, como os três blocos acima: a gamificação fora do ar custa o
+# quadrinho, nunca a home.
+# ---------------------------------------------------------------------------
+# **Sem cache de módulo, e a ausência é deliberada.** O sino, a sessão e a
+# categoria têm cache porque são lidos em TODA página multilíngue (o
+# `_sessao.html` entra em todas elas): sem cache, uma rajada de páginas da mesma
+# pessoa viraria uma consulta HTTP por página. Este quadrinho vive numa página
+# só, a home, e a leitura já é memoizada dentro da requisição pelo próprio
+# `AtorDaRequisicao` — um dicionário de módulo aqui guardaria progresso de gente
+# entre requisições para economizar um salto que quase nunca se repete, e
+# estado global compartilhado entre pessoas é a superfície do pior bug possível
+# desta plataforma. Se um dia o quadrinho aparecer em mais de uma página, o
+# cache entra JUNTO com a função de limpeza no `conftest.py` (`armadilhas/026`:
+# cache de módulo vaza entre testes).
+
+
+def _progresso_da_tela(status: "dict | None") -> "dict | None":
+    """Traduz o corpo de `getMyStatus` no que a tela desenha, ou `None`.
+
+    `None` significa "não desenhe o quadrinho", e ele cobre TRÊS situações que
+    o código distingue de propósito, ainda que a tela as trate igual:
+
+      1. **não sei** — `status is None`: env ausente, rede fora, corpo fora do
+         contrato. É o fail-open do cliente chegando aqui.
+      2. **a gamificação não reconheceu esta pessoa** — `autenticado: false`.
+         Acontece se o par estiver ligado mas a sessão não for resolvível do
+         lado de lá; o funil não adivinha o motivo.
+      3. **entrou e ainda não jogou** — `autenticado: true` com os números em
+         `null`, porque a linha de perfil da gamificação é preguiçosa e nasce
+         no primeiro XP. É o caso NORMAL, e hoje é o de todo mundo: a economia
+         inteira está desligada até o mantenedor ligar a primeira regra em
+         `/admin/economia/`. Barra em zero aqui seria dado fingido.
+
+    Quando há progresso, devolve `nivel` mais UM de dois desfechos:
+
+      · `no_topo=True` — `xp_para_proximo` é `null`, não há próximo degrau
+        definido. Mostra o degrau e uma frase própria, SEM barra: barra cheia
+        que nunca vira nada é promessa que ninguém vai cumprir. `null` e `0`
+        dizem coisas diferentes e o contrato aceita os dois.
+      · `no_topo=False` — há um próximo degrau, e a barra mede o caminho já
+        andado até ele.
+
+    **O que a barra mede, escrito porque é fácil ler errado:** a porta entrega
+    o XP TOTAL e quanto FALTA, nunca o piso do degrau atual. Então a fração é
+    `xp / (xp + falta)` — "quanto do caminho até o próximo degrau já foi
+    andado, contando desde zero" — e não "quanto deste degrau já foi vencido".
+    As duas crescem juntas e as duas chegam a 100% no mesmo instante (quando
+    falta 0); a segunda exigiria um campo que o contrato não tem, e pedi-lo
+    seria Rito de Contrato. Não "conserte" isto subtraindo um piso que não
+    viaja por aqui.
+    """
+    if not status or not status.get("autenticado"):
+        return None
+    nivel = status.get("nivel")
+    xp = status.get("xp")
+    if nivel is None or xp is None:
+        return None
+    falta = status.get("xp_para_proximo")
+    if falta is None:
+        return {
+            "nivel": nivel,
+            "no_topo": True,
+            "falta": None,
+            "proximo": None,
+            "percentual": None,
+        }
+    alvo = xp + falta
+    # `alvo <= 0` é o único jeito de a divisão estourar, e ele é alcançável: um
+    # degrau seguinte que exija 0 XP com a pessoa em 0 XP dá 0/0. Barra cheia é
+    # a leitura certa desse caso — não falta nada.
+    percentual = 100 if alvo <= 0 else min(100, round(100 * xp / alvo))
+    return {
+        "nivel": nivel,
+        "no_topo": False,
+        "falta": falta,
+        "proximo": nivel + 1,
+        "percentual": percentual,
+    }
+
+
 class AtorDaRequisicao:
     """Quem está vendo esta página — resolvido na PRIMEIRA leitura, nunca antes.
 
@@ -188,6 +271,8 @@ class AtorDaRequisicao:
         self._avisos: "int | None" = None
         self._categoria_resolvida = False
         self._situacao: "dict | None" = None
+        self._progresso_resolvido = False
+        self._progresso: "dict | None" = None
 
     @property
     def identificado(self) -> bool:
@@ -262,6 +347,38 @@ class AtorDaRequisicao:
                 _consultar_avisos(id_da_pessoa, self._site_id) if id_da_pessoa else None
             )
         return self._avisos
+
+    @property
+    def progresso(self) -> "dict | None":
+        """O degrau desta pessoa na trilha da escola, ou `None`.
+
+        `None` = "não desenhe o quadrinho", e ele cobre tanto o "não sei"
+        (config ausente, rede fora, corpo fora do contrato) quanto o "entrou e
+        ainda não jogou" — os três casos estão escritos em
+        `_progresso_da_tela`. Um dicionário é "sei a resposta e há o que
+        mostrar": os dois são estados DIFERENTES, nunca o mesmo caminho de
+        template. É o fail-open virando "a home abre igual, sem o quadrinho".
+
+        Preguiçosa como o resto desta classe, e em DOIS níveis, exatamente como
+        `avisos_nao_lidos`: só chega à rede se ALGUÉM foi reconhecido
+        (`bool(self)`), e só consulta na PRIMEIRA leitura. Visitante anônimo, a
+        esmagadora maioria do tráfego, nunca avalia esta property — o template
+        só a lê dentro do `{% if request.ator %}` —, e mesmo quem entrou não
+        paga a consulta em página que não desenha o quadrinho, que hoje é toda
+        página menos a home.
+
+        Guardas dos dois níveis:
+        `tests/test_quadrinho_de_progresso.py`. Sem eles, a preguiça é desfeita
+        de boa-fé pelo próximo agente que "simplificar" esta classe.
+        """
+        if not self:
+            return None
+        if not self._progresso_resolvido:
+            self._progresso_resolvido = True
+            self._progresso = _progresso_da_tela(
+                GamificacaoClient().obter_meu_status(self._cookie)
+            )
+        return self._progresso
 
     def _resolver_categoria(self) -> "dict | None":
         """A situação desta pessoa, resolvida na PRIMEIRA leitura.

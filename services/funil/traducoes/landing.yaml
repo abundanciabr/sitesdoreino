@@ -184,3 +184,68 @@ pedir_entrada:
   en: "Ask to join"
   pt-br: "Pedir entrada"
   es: "Pedir acceso"
+
+# ---------------------------------------------------------------------------
+# O QUADRINHO DE PROGRESSO (degrau 20 do PLANO-CELULA-GAMIFICACAO, 01/09/2026).
+# A home é a primeira tela depois do login, e até aqui o progresso do aluno só
+# aparecia para quem abrisse `/conquistas` de propósito.
+#
+# O QUE ESTAS FRASES NÃO DIZEM, e a ausência é decisão: o TÍTULO do degrau
+# ("Aprendiz", "Modelador") não está aqui. Ele é do fórum e da gamificação, e
+# `getMyStatus` não o devolve. Inventar um rótulo nesta célula faria a home e a
+# trilha chamarem o mesmo degrau por nomes diferentes no dia em que um dos dois
+# mudasse. O quadrinho mostra o NÚMERO do degrau e o quanto falta.
+#
+# E o XP cru não aparece em frase nenhuma: a regra de tela da gamificação é
+# "XP nunca maior que a imagem da obra". Aqui isso vira o degrau em destaque, o
+# quanto falta em letra pequena, e o total nunca escrito.
+# ---------------------------------------------------------------------------
+progresso_nivel:
+  # O rótulo do degrau. "Nível" e não "degrau" porque é a palavra que a própria
+  # trilha usa; a metáfora do degrau vive nos documentos, não na tela.
+  _fonte: "0c6341"
+  en: "Level {nivel}"
+  pt-br: "Nível {nivel}"
+  es: "Nivel {nivel}"
+
+progresso_falta:
+  # Plural de verdade (CLDR, via babel), pelo mesmo motivo de
+  # `pedido_em_analise` acima: "falta 1 ponto" e "faltam 2 pontos" são frases
+  # diferentes nas três línguas, e concatenar número com texto fixo produz
+  # "falta 1 pontos".
+  #
+  # A forma `many` de pt-br e es existe porque o CLDR a exige nessas línguas (é
+  # a de "1 milhão DE pontos"), e o validador cobra as categorias EXATAS do
+  # idioma. Zero NUNCA chega aqui: quando não falta nada, o template escolhe
+  # `progresso_no_proximo`, que é uma frase diferente e não um contador em zero.
+  _fonte: "33154f"
+  en:
+    one: "{falta} point to go until level {proximo}."
+    other: "{falta} points to go until level {proximo}."
+  pt-br:
+    one: "Falta {falta} ponto para o nível {proximo}."
+    many: "Faltam {falta} de pontos para o nível {proximo}."
+    other: "Faltam {falta} pontos para o nível {proximo}."
+  es:
+    one: "Falta {falta} punto para el nivel {proximo}."
+    many: "Faltan {falta} de puntos para el nivel {proximo}."
+    other: "Faltan {falta} puntos para el nivel {proximo}."
+
+progresso_no_proximo:
+  # Falta ZERO tem chave própria, e não é preciosismo: "faltam 0 pontos" soa a
+  # defeito da tela justamente para quem está no melhor momento da trilha. Mesma
+  # escolha de `pedido_de_hoje` logo acima, e pelo mesmo motivo — frase montada
+  # por pedaço não sobrevive à tradução.
+  _fonte: "4c1ab2"
+  en: "You already have the points for the next level."
+  pt-br: "Você já tem os pontos do próximo degrau."
+  es: "Ya tienes los puntos del siguiente nivel."
+
+progresso_no_topo:
+  # O fim da escada: `xp_para_proximo` vem `null` quando não há próximo degrau
+  # definido. Aqui a tela não desenha barra nenhuma, e esta frase ocupa o lugar
+  # dela — uma barra cheia que nunca vira nada seria promessa sem destino.
+  _fonte: "a1d5ba"
+  en: "You are on the last level of the trail."
+  pt-br: "Você chegou ao último degrau da trilha."
+  es: "Llegaste al último nivel del camino."
