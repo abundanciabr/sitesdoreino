@@ -68,7 +68,12 @@ class Command(BaseCommand):
 
         if opts["consertar"]:
             for perfil, _, _ in divergentes:
-                recalcular(perfil.pessoa_id, perfil.site_id)
+                # `celebrar=False`: consertar a cópia não é a pessoa ter subido
+                # de nível. Um perfil que estava atrasado em relação ao ledger
+                # "sobe" ao ser reparado, e comemorar isso mandaria uma carta
+                # sobre um fato que aconteceu semanas antes — pelo relógio da
+                # manutenção, não pelo dela.
+                recalcular(perfil.pessoa_id, perfil.site_id, celebrar=False)
             self.stdout.write(f"consertados: {len(divergentes)}")
         else:
             self.stdout.write(

@@ -39,8 +39,16 @@ construção do banco"). Mexer nele é decisão do mantenedor, não de um motor.
 Enquanto ela não vier, o campo `cristais` das regras fica sem efeito, e este
 parágrafo é onde a próxima sessão descobre por quê.
 
-**Não emite carta de celebração.** É o degrau 9 da escada, e a TAR-061 já está
-no balcão para ele.
+**Emite UMA carta de celebração: a de nível alcançado** (degrau 9, TAR-061). As
+outras três da Sessão B — medalha, marco validado e destaque da semana — só
+podem sair quando os fatos que as justificam existirem: nada nesta célula
+concede medalha, valida marco ou destaca obra ainda (degraus 12 e 19). A porta
+por onde elas sairão já está aberta e provada contra o contrato
+(`cartas.carta_de_celebracao`); falta o fato, não o caminho.
+
+**E a carta só sai para CIMA.** Nível que cai — estorno, moderação, correção da
+equipe — não gera aviso nenhum: é lei da célula, e o guarda que a prova está em
+`tests/test_cartas_de_celebracao.py`.
 """
 
 from __future__ import annotations
@@ -52,6 +60,7 @@ from datetime import timedelta
 from django.db import IntegrityError, transaction
 from django.db.models import Sum
 
+from .cartas import carta_de_nivel
 from .models import (
     LancamentoDeXP,
     NivelDefinicao,
@@ -60,6 +69,7 @@ from .models import (
     RegraDePontuacao,
     dia_local_de,
 )
+from .tasks import relay_apos_commit
 
 logger = logging.getLogger(__name__)
 
@@ -269,18 +279,43 @@ def aplicar(envelope: dict, site_id: str) -> list[LancamentoDeXP]:
             continue
 
         gravados.append(lancamento)
-        recalcular(pessoa.id_da_plataforma, site_id)
+        # O id do FATO viaja até a carta: é ele que responde "por que eu subi
+        # de nível?" para quem for reconstruir a história depois. Sem isso, a
+        # carta apontaria para si mesma e a trilha morreria aqui.
+        recalcular(
+            pessoa.id_da_plataforma,
+            site_id,
+            origem_event_id=str(envelope["event_id"]),
+        )
 
     return gravados
 
 
-def recalcular(pessoa_id: str, site_id: str) -> PerfilJogador:
-    """Soma o ledger e reescreve os números do perfil.
+def recalcular(
+    pessoa_id: str,
+    site_id: str,
+    *,
+    origem_event_id: str | None = None,
+    celebrar: bool = True,
+) -> PerfilJogador:
+    """Soma o ledger, reescreve os números do perfil e COMEMORA se subiu.
 
     O `PerfilJogador` é cópia DESNORMALIZADA: a fonte da verdade é
     `LancamentoDeXP`, e é ela que esta função soma. Só o que está DEFINITIVO
     conta — o que está em quarentena ainda pode virar estorno, e mostrar um
     número que pode cair é pior que mostrá-lo alguns minutos depois.
+
+    **A comemoração nasce aqui, e nasce nos DOIS lugares de uma vez** (degrau 9):
+    a celebração visceral no `celebracoes_pendentes` do perfil, que a tela mostra
+    uma vez só, e a carta no sininho, pela outbox. As duas dentro da MESMA
+    transação do fato: um rollback leva as duas embora, e nunca sobra aviso de
+    uma subida que não aconteceu.
+
+    `celebrar=False` existe para UM caso e está escrito onde ele é usado
+    (`reconciliar_perfis --consertar`): consertar um número que divergiu do
+    ledger não é a pessoa ter subido de nível, é a cópia voltando a bater com a
+    fonte. Comemorar ali mandaria a carta anos depois do fato, por causa de um
+    reparo de manutenção.
     """
     with transaction.atomic():
         pessoa, _ = Pessoa.objects.get_or_create(
@@ -301,10 +336,67 @@ def recalcular(pessoa_id: str, site_id: str) -> PerfilJogador:
         # O ledger tem lançamentos negativos (estorno é linha nova, nunca
         # apagar). O perfil guarda um `PositiveIntegerField`: um saldo negativo
         # é impossível de exibir e seria recusado pelo banco.
+        nivel_anterior = perfil.nivel
         perfil.xp_total = max(0, total)
         perfil.nivel = nivel_para(perfil.xp_total, site_id)
-        perfil.save(update_fields=["xp_total", "nivel", "atualizado_em"])
+        campos = ["xp_total", "nivel", "atualizado_em"]
+
+        # SÓ PARA CIMA. Nível que cai não gera aviso nenhum — lei da célula, e a
+        # razão é de produto, não de código: notificação de culpa está na lista
+        # das mecânicas proibidas (`DECISAO-gamificacao.md`). Quem perde XP
+        # perdeu por estorno ou moderação, e já vai saber pelo caminho certo.
+        subiu = perfil.nivel > nivel_anterior
+        if celebrar and subiu:
+            _comemorar_o_nivel(perfil, origem_event_id)
+            campos.append("celebracoes_pendentes")
+
+        perfil.save(update_fields=campos)
+
+        if celebrar and subiu:
+            # DEPOIS do commit, nunca antes: é o que dá o aviso em segundos sem
+            # furar a outbox. Falhar aqui deixa a carta pendente para o relay
+            # periódico — nunca desfaz o XP.
+            transaction.on_commit(relay_apos_commit)
     return perfil
+
+
+def _comemorar_o_nivel(perfil: PerfilJogador, origem_event_id: str | None) -> None:
+    """As duas metades da comemoração, escritas juntas.
+
+    **A tela e o sininho não são a mesma coisa, e as duas precisam existir.** A
+    celebração visceral aparece em tela cheia para quem está com o site aberto,
+    uma vez só; a carta alcança quem não está. Uma sem a outra deixa metade dos
+    alunos sem saber que subiu.
+
+    O estado da celebração mora no MODELO e não na sessão — esta célula não
+    assina sessão ([INV-P12]), e o caminho curto `request.session[...]`
+    deslogaria a plataforma inteira sem erro em lugar nenhum (`armadilhas/143`).
+
+    A forma de cada item é a que a porta de máquina já congelou em
+    `apps/core/api.py` (`tipo` do vocabulário fechado + `referencia` string).
+    Escrever outra forma aqui não estouraria nada: a porta DESCARTA a linha
+    torta com um aviso no log, e a comemoração simplesmente não aconteceria.
+    """
+    degrau = NivelDefinicao.objects.filter(
+        site_id=perfil.site_id, nivel=perfil.nivel
+    ).first()
+
+    pendente = {"tipo": "nivel-alcancado", "referencia": str(perfil.nivel)}
+    pendentes = list(perfil.celebracoes_pendentes or [])
+    # Sem o `not in`, descer e voltar ao mesmo degrau (estorno seguido de
+    # crédito) empilharia a mesma comemoração duas vezes, e a pessoa veria a
+    # mesma tela cheia duas vezes seguidas.
+    if pendente not in pendentes:
+        pendentes.append(pendente)
+    perfil.celebracoes_pendentes = pendentes
+
+    carta_de_nivel(
+        site_id=perfil.site_id,
+        destinatario_id=perfil.pessoa_id,
+        nivel=perfil.nivel,
+        titulo=degrau.titulo if degrau else "",
+        origem_event_id=origem_event_id,
+    )
 
 
 def nivel_para(xp: int, site_id: str) -> int:

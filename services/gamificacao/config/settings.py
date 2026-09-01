@@ -81,7 +81,21 @@ INSTALLED_APPS = [
     # existir: a primeira impede o handler de rodar de novo, a segunda impede o
     # mesmo fato de pagar duas vezes por caminhos diferentes.
     "apps.eventos",
+    # A fila intra-célula, que entrou com a VOZ desta célula (degrau 9): é ela
+    # que dá o entrypoint canônico `python manage.py run_huey` — o único que faz
+    # `django.setup()` + autodiscover de `tasks.py`. Sem esta linha o worker
+    # sobe com o registro VAZIO, não executa nada e não reclama de nada
+    # (`armadilhas/030`), e as cartas ficariam paradas na outbox sem ninguém
+    # acusar.
+    "huey.contrib.djhuey",
 ]
+
+# A instância do Huey — importada, não nomeada por string: o djhuey lê
+# `settings.HUEY` esperando o OBJETO. `config/huey.py` NÃO faz fail-hard no
+# import, de propósito: o container web importa este módulo por causa da linha
+# acima, e a célula inteira não pode sair do ar porque a fila ficou sem env
+# (`armadilhas/097`).
+from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

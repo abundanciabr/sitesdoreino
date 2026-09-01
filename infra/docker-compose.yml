@@ -371,9 +371,9 @@ services:
   # conhece por `SCRIPT_NAME=/conquistas` no env dela — o Traefik NAO remove o
   # prefixo (armadilhas/029).
   #
-  # O consumidor de eventos entrou logo abaixo, com o motor (degrau 8). O relay
-  # Huey das cartas de celebracao ainda nao existe: ele vem no degrau 9, no
-  # molde do `sugestoes-relay`.
+  # O consumidor de eventos entrou logo abaixo, com o motor (degrau 8), e o
+  # relay das cartas de celebracao entrou em 01/09/2026 (degrau 9), no molde do
+  # `alunos-relay`. Com os dois, a celula OUVE e FALA.
   #
   # O banco `gamificacao_db` e o par `gamificacao_user` NAO nascem daqui: quem os
   # cria e `infra/provisionar-gamificacao.sh`, rodado pelo mantenedor DENTRO da
@@ -425,6 +425,47 @@ services:
     environment:
       REDIS_STREAMS_URL: redis://redis:6379/0
     command: ["python", "manage.py", "consume_eventos"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      gamificacao:
+        condition: service_healthy
+
+  # A VOZ da celula (degrau 9, 01/09/2026): publica no fio as cartas de
+  # celebracao que a outbox guardou. Hoje sai uma so — "voce subiu de nivel" —,
+  # e as outras tres da Sessao B (medalha, marco validado, destaque da semana)
+  # entram sem tocar neste arquivo, porque o que falta a elas e o FATO, nao o
+  # caminho.
+  #
+  # ELE NAO E O CAMINHO PRINCIPAL, E ISSO E DE PROPOSITO. Quem publica em
+  # segundos e o proprio processo que creditou o XP, por `transaction.on_commit`
+  # — dentro do `gamificacao-consumer`, logo acima. Este servico e a REDE DE
+  # SEGURANCA: a cada minuto ele republica o que ficou para tras (Redis fora do
+  # ar no instante do commit, processo morto no meio). Sem ele nada se perde
+  # HOJE, mas a carta ficaria pendente para sempre no dia em que o publish
+  # falhasse, e ninguem acusaria.
+  #
+  # As duas variaveis vem DAQUI e nao do env da celula, pela mesma razao ja
+  # escrita no `gamificacao-consumer`: o `infra/provisionar-gamificacao.sh`
+  # rodou em 31/08/2026, quando esta celula nao consumia nem publicava evento
+  # nenhum, e voltar a escrever nele custaria um passo manual do mantenedor por
+  # valores que nao sao segredo e valem igual em toda a plataforma. Sao
+  # topologia deste compose, nao configuracao da celula.
+  #
+  # `HUEY_REDIS_URL` aponta para o banco 1 do Redis e `REDIS_STREAMS_URL` para o
+  # 0, exatamente como nas outras celulas: a fila intra-celula e o fio entre
+  # celulas sao coisas diferentes, e dividir o mesmo banco faria uma varredura
+  # de chaves de uma passar pelas da outra.
+  gamificacao-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-gamificacao:${GAMIFICACAO_TAG:-main}
+    env_file: [env/gamificacao.env]
+    environment:
+      REDIS_STREAMS_URL: redis://redis:6379/0
+      HUEY_REDIS_URL: redis://redis:6379/1
+    command: ["python", "manage.py", "run_huey"]
     depends_on:
       postgres:
         condition: service_healthy
