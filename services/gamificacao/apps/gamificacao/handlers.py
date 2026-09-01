@@ -30,7 +30,8 @@ from __future__ import annotations
 
 import logging
 
-from .motor import aplicar
+from .models import AjudaAceita, Pessoa
+from .motor import _quando, aplicar
 
 logger = logging.getLogger(__name__)
 
@@ -97,11 +98,90 @@ def ao_status_alterado(envelope: dict) -> None:
 # O mapa que o consumidor usa. A chave é o `event` do envelope, SEM a versão —
 # é assim que ele chega no stream. Quem junta evento e versão para casar com a
 # regra é `motor.chave_do_evento`.
+# ---------------------------------------------------------------------------
+# O FÓRUM (degrau 17, 01/09/2026) — o que acontece lá dentro vira ponto aqui
+# ---------------------------------------------------------------------------
+# O fórum estava no ar e era MUDO para esta célula. Estes handlers são a outra
+# metade da ponte: ele fala, ela escuta.
+
+
+def ao_forum_topico_criado(envelope: dict) -> None:
+    """Alguém abriu uma conversa. Paga a quem abriu, com teto e quarentena."""
+    _creditar(envelope)
+
+
+def ao_forum_mensagem_criada(envelope: dict) -> None:
+    """Alguém falou.
+
+    O envelope traz `caracteres` e NÃO traz o texto — decisão da Sessão B. Este
+    handler não usa o tamanho hoje; quem o usará é o teto anti-spam, quando ele
+    passar a olhar volume em vez de contagem.
+    """
+    _creditar(envelope)
+
+
+def ao_forum_resposta_aceita(envelope: dict) -> None:
+    """A resposta que resolveu a dúvida. É o fato mais valioso do sistema.
+
+    DUAS COISAS ACONTECEM AQUI, e elas são independentes de propósito:
+
+    1. **O XP**, pela regra de pontuação — que o mantenedor liga e desliga.
+    2. **O REGISTRO da ajuda** (`AjudaAceita`), que é o que a medalha "Mão amiga"
+       conta. Ele acontece MESMO COM A REGRA DESLIGADA: reconhecimento é uma
+       coisa, pagamento é outra, e amarrar os dois faria a medalha sumir junto
+       com a regra num dia em que o mantenedor a desligasse por uma semana.
+
+    O crédito vai para quem ESCREVEU (`autor_da_resposta_id`), não para quem
+    marcou (`ator_id` do envelope) — são pessoas diferentes, e o contrato carrega
+    os dois exatamente para que ninguém confunda.
+    """
+    _registrar_a_ajuda(envelope)
+    _creditar(envelope)
+
+
+def _registrar_a_ajuda(envelope: dict) -> None:
+    """Grava a ajuda aceita, uma vez por mensagem. Nunca derruba o crédito.
+
+    Idempotente pelo par (pessoa, mensagem): marcar, desmarcar e remarcar conta
+    UMA vez. Se a chave fosse o evento, dois amigos alternando a marca
+    fabricariam a medalha em minutos.
+    """
+    data = envelope.get("data") or {}
+    site_id = data.get("site_id")
+    autor = data.get("autor_da_resposta_id")
+    mensagem_id = data.get("mensagem_id")
+    if not (site_id and autor and mensagem_id):
+        logger.warning(
+            "resposta aceita %s chegou sem site, autor ou mensagem: não registro",
+            envelope.get("event_id"),
+        )
+        return
+
+    pessoa, _ = Pessoa.objects.get_or_create(
+        id_da_plataforma=autor,
+        defaults={"email": f"{autor}@desconhecido.invalid"},
+    )
+    AjudaAceita.objects.get_or_create(
+        pessoa=pessoa,
+        site_id=site_id,
+        mensagem_id=str(mensagem_id),
+        defaults={
+            "topico_id": str(data.get("topico_id") or ""),
+            "marcada_por": str(data.get("marcada_por") or ""),
+            "quem_marcou": str(envelope.get("ator_id") or ""),
+            "occurred_at": _quando(envelope),
+        },
+    )
+
+
 HANDLERS = {
     "quiz.completado": ao_quiz_completado,
     "sugestao.criada": ao_sugestao_criada,
     "sugestao.voto-adicionado": ao_voto_adicionado,
     "sugestao.status-alterado": ao_status_alterado,
+    "forum.topico-criado": ao_forum_topico_criado,
+    "forum.mensagem-criada": ao_forum_mensagem_criada,
+    "forum.resposta-aceita": ao_forum_resposta_aceita,
 }
 
 # OS ASSUNTOS QUE CHEGAM E MESMO ASSIM NÃO VIRAM PONTO, declarados aqui porque é
@@ -115,6 +195,11 @@ HANDLERS = {
 # tela continuaria dizendo "não paga" depois de já pagar. Apagar a linha daqui é
 # PARTE de fazer o quiz pagar, e é de propósito que as duas coisas ficam juntas.
 NAO_CREDITAM = {
+    "forum.mensagem-removida": (
+        "o estorno precisa achar o lançamento que pagou AQUELA mensagem, e o "
+        "ledger guarda o id do EVENTO, não o da mensagem; o fórum já emite o "
+        "fato, então ele está guardado para o dia em que o estorno existir"
+    ),
     "quiz.completado": (
         "o contrato do quiz identifica a pessoa por e-mail, e esta célula só "
         "sabe creditar id de plataforma; o caminho é findPersonByEmail, da "

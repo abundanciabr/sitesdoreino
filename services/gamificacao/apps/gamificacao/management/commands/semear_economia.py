@@ -108,6 +108,42 @@ REGRAS = [
     # nascer. Note a direção: a célula LÊ que a aula terminou. Nada aqui decide
     # se alguém pode assisti-la, e é isso que o terceiro invariante protege.
     ("aula-concluida", "aula.concluida.v1", "ator", 25, 0, 5, 0, ""),
+    # ------------------------------------------------------------------
+    # O FÓRUM (01/09/2026), e de onde saem estes três números
+    # ------------------------------------------------------------------
+    # Da LEI, não do gosto de quem escreve o semeador. O princípio 5 do VEREDITO
+    # é literal: *"login 0; validação ~10x"*. Então:
+    #
+    #   falar numa conversa .......  5  (o "consumo" desta escola, o piso)
+    #   abrir uma conversa ........  8  (perto da sugestão criada, que vale 10)
+    #   ter a resposta ACEITA ..... 50  (dez vezes o piso, e a MAIOR do catálogo)
+    #
+    # Os 50 são deliberadamente maiores que os 40 da sugestão implementada: a lei
+    # diz que quem ajudou de verdade recebe a maior recompensa do catálogo,
+    # porque validação humana é o que está mais perto da realidade.
+    #
+    # QUARENTENA DE 24H nos três, como em todo XP social: é a janela em que a
+    # moderação pode tirar o conteúdo do ar antes de o número virar parte da
+    # identidade de alguém.
+    #
+    # E TETO nos dois primeiros, nenhum no terceiro: escrever muito é volume, e
+    # a lei §8 veta XP proporcional a volume. Ter a resposta aceita não é volume
+    # — depende de outra pessoa reconhecer, e não se fabrica sozinho.
+    ("forum-topico-criado", "forum.topico-criado.v1", "ator", 8, 0, 3, 24, ""),
+    ("forum-mensagem", "forum.mensagem-criada.v1", "ator", 5, 0, 5, 24, ""),
+    (
+        "forum-resposta-aceita",
+        "forum.resposta-aceita.v1",
+        # QUEM ESCREVEU, nunca quem marcou. O contrato carrega os dois ids
+        # exatamente para que ninguém confunda, e o motor conhece os dois nomes
+        # que os contratos dão a este papel.
+        "autor_do_alvo",
+        50,
+        0,
+        0,
+        24,
+        "",
+    ),
 ]
 
 # (slug, nome, descricao, cadencia, categoria, meta, pontos, cristais)

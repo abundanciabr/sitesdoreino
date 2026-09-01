@@ -200,10 +200,12 @@ SO_POR_CONCESSAO_MANUAL = "so-por-concessao-manual"
 # exatamente esse "nada" que a tela precisa dizer antes do clique. A lista encolhe
 # sozinha à medida que a escada sobe: quando a Forja existir, `forjas_seladas` sai
 # daqui e a medalha das dez forjas passa a cair.
+# `respostas_aceitas` SAIU desta lista em 01/09/2026, quando o fórum ganhou voz:
+# a medalha "Mão amiga" passou a ter fato de verdade por trás, e continuar
+# avisando que "nada alimenta isso" seria um aviso que mente.
 CRITERIOS_SEM_FATO = frozenset(
     {
         "forjas_seladas",
-        "respostas_aceitas",
         "primeira_vez",
         "semanas_de_sequencia",
         "missoes_cumpridas",
