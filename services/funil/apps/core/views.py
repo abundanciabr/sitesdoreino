@@ -512,12 +512,37 @@ def manifesto_do_app(request):
 # `/sw.js` em vez de serem escolhidos na hora de enviar. O catálogo é o mesmo
 # de todo texto do site (`traducoes/avisos.yaml`), nunca uma segunda casa.
 #
-# `sugestao.status-alterado` é o único assunto que a plataforma publica hoje.
 # Assunto que esta versão do site não conhece cai no genérico — e isso não é
 # defeito: o aviso pode chegar de uma parte nova antes de o aparelho ter
 # recarregado o service worker, e um aviso honesto e vago é melhor que
-# nenhum.
-TEXTOS_DO_AVISO = {"sugestao.status-alterado": "sugestao"}
+# nenhum. **Esse ramo só protege enquanto for possível cair nele**: a
+# tentação de escrever `assunto.startswith("gamificacao.")` para "cobrir os
+# quatro de uma vez" é um erro, porque o contrato pode ganhar um quinto
+# assunto amanhã e o prefixo guloso o mostraria com a frase errada em vez de
+# admitir que não o conhece. Um assunto, uma linha, sempre.
+#
+# **NENHUMA destas frases recebe parâmetro, e isso é decisão de desenho.**
+# Repare no `static/funil/sw.js`: ele pega `AVISOS.textos[carta.assunto]` e
+# usa `titulo` e `corpo` como strings PRONTAS, sem interpolação nenhuma. Não é
+# um pedaço que faltou terminar, e "consertar" isso quebraria duas coisas de
+# uma vez. Primeiro, `carta.parametros` nem sempre chega: quase todo parâmetro
+# do contrato é opcional (`familia`, `validador_papel`, `semana`), o push pode
+# vir truncado, e uma frase montada com buraco é pior que uma frase curta e
+# inteira. Segundo, a tela do celular é um CONVITE para abrir o site, não o
+# lugar de contar a novidade toda — a frase completa, com o número do nível e
+# a família da medalha, já existe no sininho (`sugestoes`, degrau 21a). Cada
+# frase daqui é verdadeira sozinha, sem depender de dado que talvez não venha.
+TEXTOS_DO_AVISO = {
+    "sugestao.status-alterado": "sugestao",
+    # As quatro cartas de celebração da gamificação (degrau 21b, 01/09/2026),
+    # congeladas em `contracts/eventos/notificacao.devida.v1.json`. Até aqui
+    # as quatro caíam no genérico "Você tem um aviso novo", que é honesto e
+    # não diz nada: quem subiu de nível merece saber disso pela tela.
+    "gamificacao.nivel-alcancado": "nivel",
+    "gamificacao.conquista-concedida": "conquista",
+    "gamificacao.marco-validado": "marco",
+    "gamificacao.destaque-da-semana": "destaque",
+}
 
 
 @require_safe

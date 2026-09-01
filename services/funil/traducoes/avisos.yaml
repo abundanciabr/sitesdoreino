@@ -98,3 +98,77 @@ js:
     en: "You have a new notice."
     pt-br: "Você tem um aviso novo."
     es: "Tienes un aviso nuevo."
+
+  # -------------------------------------------------------------------------
+  # As quatro cartas de celebração da gamificação (degrau 21b, 01/09/2026).
+  #
+  # NENHUMA delas usa parâmetro, e isso é desenho e não esquecimento: o
+  # `sw.js` pega `AVISOS.textos[carta.assunto]` e mostra `titulo` e `corpo`
+  # como strings prontas, sem interpolação nenhuma. A tela do celular é um
+  # CONVITE para abrir o site; a novidade inteira, com o número do nível e o
+  # nome da medalha, já mora no sininho. Por isso cada frase aqui é verdadeira
+  # sozinha, sem depender de dado que talvez não chegue.
+  #
+  # O tom espelha o cartão do sininho de propósito (a mesma notícia dita duas
+  # vezes não pode soar como duas notícias diferentes), e segue a regra do
+  # contrato: só BOA notícia vira carta. Nada aqui envergonha quem deixar o
+  # aparelho na mesa com a tela acesa.
+  # -------------------------------------------------------------------------
+  nivel_titulo:
+    _fonte: "656c39"
+    en: "You moved up a level"
+    pt-br: "Você subiu de nível"
+    es: "Subiste de nivel"
+
+  nivel_corpo:
+    # "Degrau" é a palavra do próprio contrato ("o aviso é sobre o degrau
+    # alcançado, não sobre o placar"): o número do nível fica para o sininho.
+    _fonte: "5a5bee"
+    en: "Tap to see the step you reached."
+    pt-br: "Toque para ver o degrau que você alcançou."
+    es: "Toca para ver el escalón que alcanzaste."
+
+  conquista_titulo:
+    _fonte: "40dd6c"
+    en: "You earned a medal"
+    pt-br: "Você ganhou uma medalha"
+    es: "Ganaste una medalla"
+
+  conquista_corpo:
+    # O NOME da medalha não aparece: ele mora na célula `gamificacao`, e o
+    # aviso do celular não consulta ninguém. Celebrar o fato e mandar a pessoa
+    # ao próprio perfil é honesto; inventar um nome, não.
+    _fonte: "2e8001"
+    en: "It is already saved in your profile."
+    pt-br: "Ela já está guardada no seu perfil."
+    es: "Ya está guardada en tu perfil."
+
+  marco_titulo:
+    _fonte: "a9961a"
+    en: "Your milestone was accepted"
+    pt-br: "Seu marco foi aceito"
+    es: "Tu hito fue aceptado"
+
+  marco_corpo:
+    # Quem chega aqui mandou uma prova e ESPEROU numa fila com prazo, então a
+    # frase responde à pergunta que essa pessoa está fazendo há dias. O que ela
+    # enviou nunca aparece (a evidência é privada), e quem validou some: no
+    # aviso do aparelho não cabe nem o papel de quem conferiu.
+    _fonte: "c1c224"
+    en: "Someone reviewed what you sent, and the milestone is yours."
+    pt-br: "Alguém conferiu o que você enviou, e o marco agora é seu."
+    es: "Alguien revisó lo que enviaste, y el hito ahora es tuyo."
+
+  destaque_titulo:
+    _fonte: "8b9481"
+    en: "Your work was featured"
+    pt-br: "Sua obra foi destaque"
+    es: "Tu obra fue destacada"
+
+  destaque_corpo:
+    # "Da semana" é o nome da galeria, não a data dela: a semana exata é
+    # parâmetro opcional e fica no sininho, onde há espaço para mostrá-la.
+    _fonte: "c5ff7d"
+    en: "A teacher picked your work for the gallery of the week."
+    pt-br: "Um professor escolheu o seu trabalho para a galeria da semana."
+    es: "Un profesor eligió tu trabajo para la galería de la semana."
