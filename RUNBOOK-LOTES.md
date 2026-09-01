@@ -164,6 +164,67 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 ## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
 
+**Lote A da gamificação — 01/09/2026** (as quatro bordas da gamificação, uma por célula:
+o backfill do Fundador · a etiqueta de nível no fórum · o quadrinho de progresso na home ·
+as frases das cartas no sininho; PRs #826, #827, #828, #829 mais o #831 de fechamento —
+**4 merges, 4 deploys verdes, 0 revert**, com dois passos do mantenedor devolvidos juntos):
+
+1. **O achado do canário vale para o lote inteiro se a maestro o repassar na hora — e a
+   janela para repassar é curta.** O canário mediu que o portão pode reprovar *"nenhum
+   registro viaja neste PR"* por LATÊNCIA da API do GitHub, com o registro já a bordo: o
+   `git ls-remote` mostrava o SHA novo e o `gh pr view --json headRefOid` ainda devolvia o
+   anterior, por até dois minutos. Mandei o aviso aos três despachos em voo, com a cura
+   (sondar o `head.sha`, não escrever um segundo registro). **Os três confirmaram ter batido
+   no mesmo atrito depois de receber o aviso**, e nenhum escreveu registro duplicado. Sem o
+   repasse, a reação óbvia — e cara — seria pagar a "dívida" de novo, criando recibo falso no
+   livro. Corolário para a montagem: o canário não serve só para provar a esteira; ele é o
+   primeiro sensor do lote, e o que ele mede tem de virar mensagem antes de os irmãos
+   chegarem no mesmo ponto.
+
+2. **Espera que mede a coisa errada é indistinguível de espera legítima — e só quem está de
+   FORA percebe.** Um despacho armou uma sonda para esperar o GitHub enxergar o commit dele
+   e ficou parado reportando "ainda não" por dois minutos. Medi de fora, dos dois lados
+   (`gh pr view --json headRefOid` e `git ls-remote`): os dois já devolviam o mesmo SHA havia
+   um tempo. A sonda esperava uma condição **já satisfeita** — provavelmente aninhamento de
+   aspas perdido ao atravessar o script. Mandei matá-la em vez de consertá-la, e o despacho
+   seguiu. **A regra: quando um despacho reporta espera repetida sem progresso, a maestro
+   mede o alvo por conta própria antes de deixá-lo esperar mais.** O teto salva do infinito;
+   ele não salva de esperar a coisa errada.
+
+3. **Três dos quatro despachos acharam um teste que não testava nada — e os três acharam
+   pelo mesmo gesto, depois do verde.** Mutação deliberada do código já verde. Os falsos-verdes
+   eram todos da mesma família, "a asserção tem mais de uma causa suficiente": um guarda de
+   regra de produto que passava porque uma `CheckConstraint` do banco já impedia o caso por
+   outro motivo; um guarda de preguiça que passava porque o cliente também desistia por falta
+   de env; um guarda de validação em que um campo inválido escondia o outro. **Nenhum dos três
+   apareceria no CI, hoje ou nunca.** Injete "prove cada guarda por mutação DEPOIS do verde"
+   em todo brief — é o único passo do rito que encontra esta classe, e ele rendeu três
+   armadilhas novas (264, 265, 266) num lote de quatro.
+
+4. **O plano que manda no lote pode citar uma cerca que já caiu, e medir isso ANTES do brief
+   muda a forma dos despachos.** O `PLANO-LOTES-DA-GAMIFICACAO.md` abre dizendo que "um PR
+   toca uma célula (a cerca do CI faz valer)". A cerca caiu em 29/08/2026 (Onda 5), e hoje
+   `ci/cerca-de-celula.sh` só cobra o Rito de Contrato. Ler o script em vez de acreditar no
+   plano permitiu que os despachos do fórum e do funil levassem **o próprio script de
+   provisionamento** no mesmo PR da tela, em vez de exigirem dois PRs de infra em separado.
+   É a lição 2 do Lote 10 na direção contrária: lá a opção oferecida não existia; aqui a
+   restrição declarada não existia mais.
+
+5. **Robô que escreve o registro dele marca `precisa_do_dono: false` mesmo quando cria um
+   passo que só o mantenedor executa — e a caixa calculada fica cega.** Dois despachos
+   entregaram scripts de provisionamento (senha de máquina, Lei 5) e os dois registraram a
+   entrega como se nada esperasse por ninguém. A caixa "Precisa de você" é calculada de
+   pedido sem resposta: ela não consegue esquecer, mas também não consegue adivinhar um
+   pedido que ninguém escreveu. **Fechamento de lote passa a incluir uma conferência
+   explícita:** todo despacho que produziu passo humano tem registro com `precisa_do_dono:
+   true`, e se não tiver, a maestro escreve o que falta. Aqui virou o registro `20260901-027`.
+
+6. **O scratchpad é COMPARTILHADO entre as sessões de um lote.** Um despacho escreveu o corpo
+   do PR num arquivo com nome genérico e outro o sobrescreveu no meio do trabalho. Não custou
+   nada desta vez (o corpo já vivia no GitHub), e podia ter custado. **Vai para o brief:
+   arquivo temporário de despacho leva o nome da célula no nome.**
+
+
 **Lote 10 — 25-26/08/2026** (o lote que a resposta do mantenedor reescreveu no meio: a lei
 das notificações + a Fase 1 dela + o canário da constituição + o falso-verde do `contrato-check`
 em 9 PRs; PRs #201, #210, #202–#209, #211, #212 — **12 merges, 9 deploys verdes, 0 revert**, com
