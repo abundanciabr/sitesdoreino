@@ -105,6 +105,79 @@ quem a escreveu. Esta área é bastidor, e é só em português.
   </div>
   {% endfor %}
 
+  {% comment %}
+  A SEGUNDA METADE (01/09/2026): o que a escola RECONHECE, contra o que ela paga.
+
+  Os marcos vêm primeiro porque a ordem é lei: Realidade acima do jogo. E o marco
+  não mostra número nenhum, de propósito — ele vale zero ponto, e um "0 pontos"
+  ao lado de "Primeiro cliente" convidaria à pergunta errada.
+  {% endcomment %}
+  <h2 class="secao">O que a escola reconhece</h2>
+
+  {% if not conquistas_lidas %}
+  <p class="aviso borda-amarela">
+    Não consegui ler as medalhas e os marcos agora. A metade de cima desta tela
+    continua valendo; esta aqui volta sozinha quando a parte das conquistas
+    responder.
+  </p>
+  {% else %}
+
+  <p class="subtitulo">
+    {% if conquistas_ligadas == 0 %}
+    <b>Nenhuma está ligada.</b> Nenhum marco aparece para o aluno, e nenhuma
+    medalha é concedida.
+    {% else %}
+    <b>{{ conquistas_ligadas }} de {{ conquistas|length }}</b> estão ligadas.
+    {% endif %}
+  </p>
+
+  {% for c in conquistas %}
+  <div class="cartao">
+    <h2>{{ c.nome }}</h2>
+    <p>{{ c.descricao }}</p>
+
+    {% if c.e_marco %}
+    <p class="numeros">
+      <b>Marco real.</b> O aluno manda a prova, alguém da equipe confere. Não
+      vale ponto nenhum, e é assim de propósito: ele não é parte do jogo.
+    </p>
+      {% if c.envolve_dinheiro %}
+      <p class="aviso">Envolve dinheiro: só a equipe da escola pode aceitar, e a
+      prova que o aluno mandar fica privada.</p>
+      {% endif %}
+    {% else %}
+    <p class="numeros">
+      <b>Medalha.</b>
+      {% if c.pontos %}Vale <b>{{ c.pontos }}</b> ponto{{ c.pontos|pluralize }}{% endif %}
+      {% if c.cristais %} e <b>{{ c.cristais }}</b> Cristal{{ c.cristais|pluralize:"is" }}{% endif %}
+    </p>
+    {% endif %}
+
+    {% for aviso in c.impedimentos %}
+    <p class="aviso borda-amarela">{{ aviso }}</p>
+    {% endfor %}
+
+    {% if c.ativa %}
+    <p class="estado"><b>Ligada.</b></p>
+    <form method="post" action="{% url 'economia_mudar_conquista' %}">
+      {% csrf_token %}
+      <input type="hidden" name="slug" value="{{ c.slug }}">
+      <input type="hidden" name="ativa" value="0">
+      <button type="submit">Desligar</button>
+    </form>
+    {% else %}
+    <p class="estado">Desligada.</p>
+    <form method="post" action="{% url 'economia_mudar_conquista' %}">
+      {% csrf_token %}
+      <input type="hidden" name="slug" value="{{ c.slug }}">
+      <input type="hidden" name="ativa" value="1">
+      <button type="submit">Ligar</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
   {% endif %}
 </div>
 {% endblock %}

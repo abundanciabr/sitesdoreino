@@ -126,6 +126,13 @@ class Registro(models.Model):
     # nao guarda copia nenhuma das regras (a lei anti-duplicacao do CLAUDE.md).
     LIGAR_REGRA = "ligar_regra"
     DESLIGAR_REGRA = "desligar_regra"
+    # [CONQUISTAS] 01/09/2026: ligar uma MEDALHA ou um MARCO. Verbos proprios, e
+    # nao os dois de cima com outro alvo, porque a pergunta que se faz ao
+    # historico e diferente: "desde quando esta regra paga?" se responde lendo os
+    # LIGAR_REGRA, e "quando a escola passou a reconhecer isto?" se responde
+    # lendo estes. Um verbo so obrigaria quem audita a adivinhar pelo slug.
+    LIGAR_CONQUISTA = "ligar_conquista"
+    DESLIGAR_CONQUISTA = "desligar_conquista"
     # [SENHA] 31/08/2026 (`DECISAO-login-por-senha.md`): o reset manual de
     # senha, pelo prontuário de um aluno. Verbo próprio pelo mesmo motivo dos
     # de cima — e com o agravante de que a senha em si NUNCA entra em
@@ -157,6 +164,8 @@ class Registro(models.Model):
         (APAGAR_DOCUMENTO, "apagar um documento definitivamente"),
         (LIGAR_REGRA, "ligar uma regra de pontuacao da escola"),
         (DESLIGAR_REGRA, "desligar uma regra de pontuacao da escola"),
+        (LIGAR_CONQUISTA, "ligar uma medalha ou marco da escola"),
+        (DESLIGAR_CONQUISTA, "desligar uma medalha ou marco da escola"),
         (RESETAR_SENHA, "resetar a senha de um aluno"),
     ]
 

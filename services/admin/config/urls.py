@@ -27,7 +27,7 @@ from apps.core.editor_de_documentos import (
     documento_versoes,
 )
 from apps.core.mapa_do_site import mapa_do_site
-from apps.core.economia import economia, economia_mudar
+from apps.core.economia import economia, economia_mudar, economia_mudar_conquista
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -134,6 +134,14 @@ urlpatterns = [
     # o gesto, com verbo proprio, na mesma gramatica das sete do menu.
     path("economia/", economia, name="economia"),
     path("economia/mudar", economia_mudar, name="economia_mudar"),
+    # A segunda metade da mesma tela (01/09/2026): as medalhas e os marcos. Rota
+    # PROPRIA e nao um campo a mais no gesto de cima, porque sao duas listas
+    # diferentes do outro lado e dois verbos diferentes na auditoria.
+    path(
+        "economia/mudar-conquista",
+        economia_mudar_conquista,
+        name="economia_mudar_conquista",
+    ),
     # O MAPA PARA IA (`apps/core/mapa_ia.py`) — a ÚNICA área desta célula que
     # responde SEM sessão, além de `/healthz` (INV-P14, `CAMINHOS_ISENTOS` em
     # `apps/core/porta.py`). Nasce fora do prefixo `painel/` de propósito: um

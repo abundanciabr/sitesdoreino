@@ -143,12 +143,24 @@ def _linha(regra: dict) -> dict:
     }
 
 
-def _contexto(request, regras, erro="", recado=""):
+def _contexto(request, regras, erro="", recado="", conquistas=None):
+    """O que a tela desenha. `conquistas=None` significa "não consegui ler".
+
+    A distinção importa e é visível: lista VAZIA quer dizer "esta escola não tem
+    nenhuma"; `None` quer dizer "a pergunta falhou agora". Sem essa diferença, uma
+    falha de rede apareceria como "a escola não tem medalhas", e ele iria procurar
+    o problema no lugar errado.
+    """
     linhas = [_linha(r) for r in regras]
+    conquistas_lidas = conquistas is not None
+    linhas_de_conquista = [_linha_de_conquista(c) for c in (conquistas or [])]
     return {
         "admin": request.admin,
         "regras": linhas,
         "ligadas": sum(1 for linha in linhas if linha["ativa"]),
+        "conquistas": linhas_de_conquista,
+        "conquistas_lidas": conquistas_lidas,
+        "conquistas_ligadas": sum(1 for c in linhas_de_conquista if c["ativa"]),
         "erro": erro,
         "recado": recado,
     }
@@ -171,14 +183,26 @@ def _sem_gamificacao(request, status=200):
 
 @require_GET
 def economia(request):
-    """A tela: uma linha por regra, com o botão de ligar ou desligar."""
-    regras = GamificacaoClient().regras()
+    """A tela: uma linha por regra e uma por conquista, com o botão de cada uma.
+
+    As duas listas vêm de duas perguntas separadas, e a segunda pode falhar
+    sozinha — foi assim durante alguns minutos em 01/09/2026, entre a publicação
+    desta tela e a da porta do outro lado. Nesse caso a metade de cima continua
+    inteira e a de baixo diz que não conseguiu ler, em vez de a tela toda cair.
+    """
+    cliente = GamificacaoClient()
+    regras = cliente.regras()
     if regras is None:
         return _sem_gamificacao(request)
     return render(
         request,
         "admin/economia.html",
-        _contexto(request, regras, recado=request.GET.get("recado", "")),
+        _contexto(
+            request,
+            regras,
+            recado=request.GET.get("recado", ""),
+            conquistas=cliente.conquistas(),
+        ),
     )
 
 
@@ -194,15 +218,7 @@ def economia_mudar(request):
     slug = (request.POST.get("slug") or "").strip()
     ativa = request.POST.get("ativa") == "1"
     if not slug:
-        regras = GamificacaoClient().regras()
-        if regras is None:
-            return _sem_gamificacao(request, status=503)
-        return render(
-            request,
-            "admin/economia.html",
-            _contexto(request, regras, erro="não veio o nome da regra"),
-            status=400,
-        )
+        return _voltar_com_erro(request, "não veio o nome da regra")
 
     situacao, frase = GamificacaoClient().mudar(slug, ativa)
     verbo = Registro.LIGAR_REGRA if ativa else Registro.DESLIGAR_REGRA
@@ -217,16 +233,112 @@ def economia_mudar(request):
         else Registro.NAO_RESPONDEU
     )
     _auditar(request, verbo, slug, desfecho, frase)
+    return _voltar_com_erro(
+        request,
+        frase,
+        status=422 if situacao == GamificacaoClient.RECUSADO else 503,
+    )
 
-    # A tela volta com as regras COMO ESTÃO GRAVADAS, nunca com o que foi
-    # recusado: mostrar o gesto que não pegou faria a página discordar do motor,
-    # e é exatamente sobre este número que ele vai confiar depois.
-    regras = GamificacaoClient().regras()
+
+# ---------------------------------------------------------------------------
+# A SEGUNDA METADE DA TELA: as medalhas e os marcos
+# ---------------------------------------------------------------------------
+# Entrou em 01/09/2026, depois de o mantenedor escolher que os dois interruptores
+# ficam na MESMA tela, em vez de espalhados por duas. O custo dessa escolha foi um
+# Rito de Contrato (a porta da gamificação estava congelada); o ganho é que ele
+# abre um lugar só e vê tudo o que a escola paga e reconhece.
+#
+# AQUI NÃO HÁ TABELA DE TRADUÇÃO, e a diferença em relação às regras é do
+# contrato: `nome` e `descricao` de uma conquista VIAJAM pela porta, como exceção
+# declarada ao "slug, nunca frase pronta". A razão está escrita lá — o texto de
+# uma conquista é dado que o mantenedor edita, não frase de interface que precise
+# existir em três idiomas.
+IMPEDIMENTOS_DE_CONQUISTA = {
+    "sem-motor-de-criterio": (
+        "Ligar não vai conceder nada ainda: a conta automática das medalhas é a "
+        "próxima peça a construir. Enquanto ela não existe, a medalha fica "
+        "disponível e ninguém a recebe."
+    ),
+    "sem-fato-que-alimenta": (
+        "E nada no site produz esse número ainda: o que esta medalha conta "
+        "depende de uma parte que não foi construída."
+    ),
+    "so-por-concessao-manual": (
+        "Esta não tem conta automática nenhuma: ela sai pela mão da equipe, uma "
+        "pessoa de cada vez. Ligar só a torna disponível para ser concedida."
+    ),
+}
+
+
+def _linha_de_conquista(conquista: dict) -> dict:
+    """Uma medalha ou marco como a tela a desenha."""
+    e_marco = conquista.get("classe") == "marco"
+    return {
+        "slug": str(conquista.get("slug", "")),
+        "nome": str(conquista.get("nome") or conquista.get("slug", "")),
+        "descricao": str(conquista.get("descricao") or ""),
+        "e_marco": e_marco,
+        # Marco vale ZERO ponto por lei, e o banco da gamificação recusa o
+        # contrário. A tela não mostra o número dele: um "0 pontos" ao lado de
+        # "Primeiro cliente" convidaria à pergunta errada.
+        "pontos": 0 if e_marco else int(conquista.get("pontos") or 0),
+        "cristais": 0 if e_marco else int(conquista.get("cristais") or 0),
+        "ativa": bool(conquista.get("ativa")),
+        "envolve_dinheiro": bool(conquista.get("envolve_dinheiro")),
+        "impedimentos": [
+            IMPEDIMENTOS_DE_CONQUISTA[chave]
+            for chave in conquista.get("impedimentos") or []
+            if chave in IMPEDIMENTOS_DE_CONQUISTA
+        ],
+    }
+
+
+@require_POST
+def economia_mudar_conquista(request):
+    """Liga ou desliga UMA medalha ou marco, e volta para a tela.
+
+    Gêmea de `economia_mudar`, com dois verbos de auditoria próprios: a pergunta
+    que se faz ao histórico é diferente ("quando a escola passou a reconhecer
+    isto?" contra "desde quando esta regra paga?").
+    """
+    slug = (request.POST.get("slug") or "").strip()
+    ativa = request.POST.get("ativa") == "1"
+    if not slug:
+        return _voltar_com_erro(request, "não veio o nome da conquista")
+
+    situacao, frase = GamificacaoClient().mudar_conquista(slug, ativa)
+    verbo = Registro.LIGAR_CONQUISTA if ativa else Registro.DESLIGAR_CONQUISTA
+    if situacao == GamificacaoClient.OK:
+        _auditar(request, verbo, slug, Registro.OK, "")
+        recado = "ligada" if ativa else "desligada"
+        return HttpResponseRedirect(f"{reverse('economia')}?recado={recado}")
+
+    desfecho = (
+        Registro.RECUSADO_PELA_CELULA
+        if situacao == GamificacaoClient.RECUSADO
+        else Registro.NAO_RESPONDEU
+    )
+    _auditar(request, verbo, slug, desfecho, frase)
+    return _voltar_com_erro(
+        request,
+        frase,
+        status=422 if situacao == GamificacaoClient.RECUSADO else 503,
+    )
+
+
+def _voltar_com_erro(request, frase: str, status: int = 400):
+    """A tela de volta, com o que ESTÁ GRAVADO e o erro por cima.
+
+    Nunca com o gesto que não pegou: mostrar o que foi recusado faria a página
+    discordar do motor, e é sobre este número que ele vai confiar depois.
+    """
+    cliente = GamificacaoClient()
+    regras = cliente.regras()
     if regras is None:
         return _sem_gamificacao(request, status=503)
     return render(
         request,
         "admin/economia.html",
-        _contexto(request, regras, erro=frase),
-        status=422 if situacao == GamificacaoClient.RECUSADO else 503,
+        _contexto(request, regras, erro=frase, conquistas=cliente.conquistas()),
+        status=status,
     )

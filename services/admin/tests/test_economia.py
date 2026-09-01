@@ -95,9 +95,59 @@ def _dentro() -> Client:
     return c
 
 
-def _gamificacao(regras=None, resposta_do_gesto=None):
+def _conquista(slug, **campos):
+    base = {
+        "slug": slug,
+        "nome": slug.replace("-", " ").capitalize(),
+        "descricao": "",
+        "classe": "medalha",
+        "familia": "oficio",
+        "pontos": 50,
+        "cristais": 5,
+        "envolve_dinheiro": False,
+        "exige_validador_da_equipe": False,
+        "ativa": False,
+        "versao": 1,
+        "impedimentos": [],
+    }
+    base.update(campos)
+    return base
+
+
+CONQUISTAS = [
+    _conquista(
+        "primeiro-cliente",
+        nome="Primeiro cliente",
+        classe="marco",
+        familia="carreira",
+        pontos=0,
+        cristais=0,
+        envolve_dinheiro=True,
+        exige_validador_da_equipe=True,
+    ),
+    _conquista("primeira-obra", impedimentos=["sem-motor-de-criterio"]),
+    _conquista(
+        "dez-forjas",
+        impedimentos=["sem-motor-de-criterio", "sem-fato-que-alimenta"],
+    ),
+]
+
+
+def _gamificacao(regras=None, resposta_do_gesto=None, conquistas=None):
     respx.get(f"{GAMIFICACAO}/economia/regras").mock(
         return_value=httpx.Response(200, json=regras if regras is not None else REGRAS)
+    )
+    # A segunda lista entrou em 01/09/2026. Ela é mockada no MESMO lugar de
+    # propósito: a tela faz duas perguntas, e um dublê que só conhecesse a
+    # primeira faria todo teste antigo passar por um caminho que a tela real não
+    # percorre mais.
+    respx.get(f"{GAMIFICACAO}/economia/conquistas").mock(
+        return_value=httpx.Response(
+            200, json=conquistas if conquistas is not None else CONQUISTAS
+        )
+    )
+    respx.post(url__startswith=f"{GAMIFICACAO}/economia/conquistas/").mock(
+        return_value=httpx.Response(200, json=_conquista("primeira-obra", ativa=True))
     )
     return respx.post(url__startswith=f"{GAMIFICACAO}/economia/regras/").mock(
         return_value=resposta_do_gesto
@@ -339,3 +389,129 @@ def test_gamificacao_muda_e_a_tela_mostra_o_que_esta_GRAVADO():
     html = resposta.content.decode()
     # As regras vieram da leitura, e nelas `sugestao-criada` continua DESLIGADA.
     assert "Nenhuma regra está ligada" in html
+
+
+# ---------------------------------------------------------------------------
+# A SEGUNDA METADE DA TELA: as medalhas e os marcos (01/09/2026)
+# ---------------------------------------------------------------------------
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_a_tela_mostra_as_conquistas_com_os_avisos_antes_do_clique():
+    _gamificacao()
+
+    corpo = _dentro().get(reverse("economia")).content.decode()
+
+    assert "O que a escola reconhece" in corpo
+    assert "Primeiro cliente" in corpo
+    # O aviso que impede a frustração: ligar uma medalha hoje não concede nada,
+    # porque a conta automática ainda não existe.
+    assert "a conta automática das medalhas é a próxima peça" in corpo
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_o_marco_nao_mostra_numero_de_ponto_nenhum():
+    """Marco vale ZERO por lei, e um "0 pontos" ao lado de "Primeiro cliente"
+    convidaria à pergunta errada. A tela diz o que ele é, não quanto vale."""
+    _gamificacao()
+
+    corpo = _dentro().get(reverse("economia")).content.decode()
+
+    assert "O aluno manda a prova" in corpo
+    assert "Envolve dinheiro" in corpo
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_ligar_uma_conquista_chama_a_gamificacao_e_audita_com_verbo_proprio():
+    _gamificacao()
+
+    resposta = _dentro().post(
+        reverse("economia_mudar_conquista"), {"slug": "primeira-obra", "ativa": "1"}
+    )
+
+    assert resposta.status_code == 302
+    registro = Registro.objects.get()
+    assert registro.acao == Registro.LIGAR_CONQUISTA
+    assert registro.alvo == "primeira-obra"
+    assert registro.desfecho == Registro.OK
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_desligar_usa_o_outro_verbo():
+    """Dois verbos e não um: "quando a escola passou a reconhecer isto?" só se
+    responde lendo os LIGAR."""
+    _gamificacao()
+
+    _dentro().post(
+        reverse("economia_mudar_conquista"), {"slug": "primeira-obra", "ativa": "0"}
+    )
+
+    assert Registro.objects.get().acao == Registro.DESLIGAR_CONQUISTA
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_sem_cracha_ninguem_liga_conquista_nenhuma():
+    """A ESCRITA é a que mais importa: ela muda o que a escola reconhece."""
+    respx.get(SESSAO).mock(
+        return_value=httpx.Response(200, json={"autenticado": False})
+    )
+    _gamificacao()
+    gesto = respx.post(url__startswith=f"{GAMIFICACAO}/economia/conquistas/")
+
+    resposta = Client().post(
+        reverse("economia_mudar_conquista"), {"slug": "primeira-obra", "ativa": "1"}
+    )
+
+    assert resposta.status_code in (302, 403)
+    assert not gesto.called, "a tela chamou a gamificação sem crachá"
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_a_metade_de_baixo_falhando_nao_derruba_a_de_cima():
+    """Foi o estado real por alguns minutos em 01/09/2026, entre a publicação
+    desta tela e a da porta do outro lado.
+
+    Lista VAZIA e "não consegui ler" são coisas diferentes, e a tela diz qual é:
+    sem essa distinção, uma falha de rede apareceria como "a escola não tem
+    medalhas" e ele procuraria o problema no lugar errado.
+    """
+    respx.get(f"{GAMIFICACAO}/economia/regras").mock(
+        return_value=httpx.Response(200, json=REGRAS)
+    )
+    respx.get(f"{GAMIFICACAO}/economia/conquistas").mock(
+        return_value=httpx.Response(503)
+    )
+
+    resposta = _dentro().get(reverse("economia"))
+    corpo = resposta.content.decode()
+
+    assert resposta.status_code == 200
+    # A metade de cima inteira.
+    assert "regras estão ligadas" in corpo or "Nenhuma regra está ligada" in corpo
+    # E a de baixo dizendo a verdade sobre si mesma.
+    assert "Não consegui ler as medalhas e os marcos agora" in corpo
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_conquista_recusada_pela_gamificacao_vira_frase_e_fica_na_auditoria():
+    _gamificacao()
+    respx.post(url__startswith=f"{GAMIFICACAO}/economia/conquistas/").mock(
+        return_value=httpx.Response(404, json={"detail": "não existe"})
+    )
+
+    resposta = _dentro().post(
+        reverse("economia_mudar_conquista"), {"slug": "nao-existe", "ativa": "1"}
+    )
+
+    assert resposta.status_code == 422
+    assert "não existe nesta escola" in resposta.content.decode()
+    registro = Registro.objects.get()
+    assert registro.acao == Registro.LIGAR_CONQUISTA
+    assert registro.desfecho == Registro.RECUSADO_PELA_CELULA

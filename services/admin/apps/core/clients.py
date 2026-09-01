@@ -904,6 +904,24 @@ class GamificacaoClient:
 
     def regras(self) -> "list | None":
         """As regras de pontuação, ligadas e desligadas. `None` = não deu."""
+        return self._listar("economia/regras", "regras")
+
+    def conquistas(self) -> "list | None":
+        """As medalhas e os marcos, ligados e desligados. `None` = não deu.
+
+        Operação `listAchievementSwitches`, do Rito de Contrato de 01/09/2026.
+        Diferente das regras, aqui vêm `nome` e `descricao` prontos — é a exceção
+        declarada no contrato, porque estas duas operações servem o bastidor do
+        mantenedor, que é só em português, e o texto de uma conquista é dado que
+        ele mesmo edita.
+        """
+        return self._listar("economia/conquistas", "conquistas")
+
+    def mudar_conquista(self, slug: str, ativa: bool) -> "tuple[str, str]":
+        """Liga ou desliga UMA medalha ou marco. Devolve (situação, frase)."""
+        return self._mudar("economia/conquistas", slug, ativa, "conquista")
+
+    def _listar(self, caminho: str, rotulo: str) -> "list | None":
         config = self._configuracao()
         if config is None:
             logger.warning(
@@ -914,7 +932,7 @@ class GamificacaoClient:
         base, token = config
         try:
             r = http().get(
-                f"{base}/economia/regras",
+                f"{base}/{caminho}",
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=self.TIMEOUT,
             )
@@ -930,12 +948,17 @@ class GamificacaoClient:
             logger.error("economia: resposta fora do contrato: %s", erro)
             return None
         if not isinstance(corpo, list):
-            logger.error("economia: resposta com forma inesperada")
+            logger.error("economia: resposta de %s com forma inesperada", rotulo)
             return None
         return corpo
 
     def mudar(self, slug: str, ativa: bool) -> "tuple[str, str]":
         """Liga ou desliga UMA regra. Devolve (situação, frase para a tela)."""
+        return self._mudar("economia/regras", slug, ativa, "regra")
+
+    def _mudar(
+        self, caminho: str, slug: str, ativa: bool, rotulo: str
+    ) -> "tuple[str, str]":
         config = self._configuracao()
         if config is None:
             return (
@@ -945,17 +968,17 @@ class GamificacaoClient:
         base, token = config
         try:
             r = http().post(
-                f"{base}/economia/regras/{quote(slug, safe='')}",
+                f"{base}/{caminho}/{quote(slug, safe='')}",
                 json={"ativa": ativa},
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=self.TIMEOUT,
             )
         except httpx.HTTPError as erro:
-            logger.error("economia: não deu para mudar a regra: %s", erro)
+            logger.error("economia: não deu para mudar a %s: %s", rotulo, erro)
             return self.NAO_RESPONDEU, "a gamificação não respondeu"
         if r.status_code == 200:
             return self.OK, ""
         if r.status_code == 404:
-            return self.RECUSADO, "essa regra não existe nesta escola"
+            return self.RECUSADO, f"essa {rotulo} não existe nesta escola"
         logger.error("economia: a mudança respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a gamificação respondeu com erro"
