@@ -1,0 +1,15 @@
+{
+  "arquivo": "104-o-texto-dos-comentarios-chega-na-exportacao-da-caixa",
+  "id": "TAR-104",
+  "titulo": "O texto dos comentarios chega na exportacao da Caixa",
+  "toca": [
+    "sugestoes",
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR do contrato, PR do provedor e PR do consumidor mergeados, com deploy verde das duas celulas e o texto dos comentarios aparecendo na tela de exportar",
+  "despacho": "Escada de tres degraus (RITOS 3): (1) contrato ganha incluir_conversa e o schema FalaNaIdeia; (2) a celula sugestoes passa a montar a conversa quando o parametro vem; (3) a tela /admin/caixa/exportar/ pede a conversa e a imprime embaixo de cada ideia. Sem nome de quem escreveu, em nenhum dos tres.",
+  "origem": "decisao do mantenedor em 02/09/2026, na conversa da analise das sugestoes",
+  "criada_em": "2026-09-02"
+}
