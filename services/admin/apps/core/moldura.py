@@ -97,10 +97,16 @@ SECOES = (
     ("painel", "Painel do sistema"),
 )
 
-# A primeira seção é a CASA, e ela é o único item que casa por igualdade em vez
-# de por prefixo: o endereço dela é prefixo de todos os outros. Ver
+# A CASA é a visão geral, e ela é o único item que casa por igualdade em vez de
+# por prefixo: o endereço dela é prefixo de todos os outros. Ver
 # `secoes_do_menu`.
-CASA = SECOES[0][0]
+#
+# Está escrita pelo NOME, e não como `SECOES[0][0]`, desde 02/09/2026 — no dia
+# em que a saída para o site passou a vir na frente dela, "o primeiro item" e
+# "a capa" deixaram de ser a mesma coisa. Amarrar a regra à POSIÇÃO faria a
+# capa parar de acender sozinha na próxima vez que alguém reordenasse o menu, e
+# em silêncio.
+CASA = "visao_geral"
 
 # O endereço do site, cru, porque cada célula é dona do próprio prefixo e esta
 # não monta endereço de ninguém. Mesma razão (e mesma forma) de
@@ -109,6 +115,25 @@ CASA = SECOES[0][0]
 # outra por natureza, e a lista sai de quem o declara.
 URL_DO_SITE = "/"
 
+# O PRIMEIRO item do menu, e ele não é uma seção da administração: é a porta de
+# SAÍDA. Escolha do mantenedor em 02/09/2026, no dia seguinte ao menu nascer:
+# *"coloque o primeiro link do Menu do Admin para ser o link para a / home,
+# acho que antes de Visão Geral"*.
+#
+# Duas coisas o separam do resto da lista, e as duas são o motivo de ele morar
+# aqui fora em vez de dentro de `SECOES`:
+#
+# 1. **Ele não passa por `reverse()`, e não pode.** `/` é endereço de OUTRA
+#    célula (a `funil`), que esta não conhece e não monta. Enfiá-lo em `SECOES`
+#    estouraria em `NoReverseMatch` e o item sumiria da tela em silêncio, que é
+#    exatamente o pulo que `secoes_do_menu` faz para link quebrado.
+# 2. **O guarda mede `SECOES` contra o mapa desta área.** Um item de outra
+#    célula ali dentro faria a conta não fechar, e a saída para o guarda seria
+#    afrouxá-lo — que é como um portão morre.
+#
+# Ele nunca acende: você não está NO site enquanto está aqui dentro.
+SAIDA_PARA_O_SITE = {"href": URL_DO_SITE, "rotulo": "Ver o site", "aqui": False}
+
 
 def enderecos_de_outras_celulas() -> set:
     """Os links desta moldura que apontam para FORA desta célula."""
@@ -116,7 +141,9 @@ def enderecos_de_outras_celulas() -> set:
 
 
 def secoes_do_menu(caminho_interno: str) -> list[dict]:
-    """As seções do menu, cada uma sabendo se é onde a pessoa está agora.
+    """Os itens do menu: a saída para o site na frente, e as seções depois.
+
+    Cada um sabe se é onde a pessoa está agora, e a saída nunca é.
 
     `caminho_interno` é o `request.path_info`: o caminho SEM o prefixo da
     célula. E a comparação DESCONTA o mesmo prefixo do que `reverse()` devolve,
@@ -140,7 +167,10 @@ def secoes_do_menu(caminho_interno: str) -> list[dict]:
     """
     prefixo = get_script_prefix()
     atual = caminho_interno.lstrip("/")
-    itens = []
+    # A saída para o site vem na frente da capa (ver `SAIDA_PARA_O_SITE`). É uma
+    # cópia, e não a constante em si: o template recebe esta lista, e devolver o
+    # objeto do módulo deixaria qualquer mexida futura vazar entre requisições.
+    itens = [dict(SAIDA_PARA_O_SITE)]
     for nome, rotulo in SECOES:
         try:
             href = reverse(nome)
@@ -153,8 +183,14 @@ def secoes_do_menu(caminho_interno: str) -> list[dict]:
 
 
 def rodape(ano: int) -> dict:
-    """O que o rodapé desta área mostra. O texto mora no template; aqui, os dados."""
-    return {"ano": ano, "url_do_site": URL_DO_SITE}
+    """O que o rodapé desta área mostra. O texto mora no template; aqui, os dados.
+
+    Ele NÃO traz mais o endereço do site: esse link subiu para a frente do menu
+    em 02/09/2026, e mantê-lo aqui embaixo seria a mesma porta duas vezes na
+    mesma tela — a repetição que o mantenedor mandou tirar no PR #891, poucas
+    horas antes, quando ela era o `← Visão geral`.
+    """
+    return {"ano": ano}
 
 
 def moldura_do_contexto(request) -> dict:
