@@ -507,6 +507,39 @@ primeira versão deste arquivo, e o teste pegou.
       font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
       font-size: 14px; line-height: 1.7; white-space: pre-wrap; word-break: break-word;
     }
+
+    /* --- a área do lançamento perpétuo (02/09/2026) -----------------------
+       As seis peças da máquina, uma embaixo da outra e NA ORDEM em que a
+       pessoa as atravessa. Coluna única de propósito: numa grade, a ordem vira
+       posição na tela e o leitor perde o "primeiro isto, depois aquilo", que é
+       a única coisa que esta página precisa ensinar.
+
+       O número grande na lateral é o degrau. Ele existe porque a máquina é uma
+       SEQUÊNCIA: sem ele, seis cartões parecidos leem como seis opções. */
+    .etapas { display: grid; gap: 12px; }
+    .etapa { background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 16px 18px; }
+    .etapa-topo { display: flex; align-items: baseline; gap: 12px; }
+    .etapa-degrau {
+      color: var(--texto-3); font-size: 22px; font-weight: 700;
+      font-variant-numeric: tabular-nums; line-height: 1;
+    }
+    .etapa h2 { font-size: 17px; margin: 0; }
+    .etapa .pergunta { color: var(--azul); font-size: 14px; margin: 8px 0 0; }
+    .etapa .resumo { color: var(--texto-2); font-size: 14px; margin: 8px 0 0; }
+    /* As portas de uma peça: lista limpa, sem marcador, cada uma com o nome que
+       o mapa do site lhe dá. O nome vira link só quando há para onde ir. */
+    .portas { list-style: none; margin: 12px 0 0; padding: 12px 0 0; border-top: 1px solid var(--linha); }
+    .portas li { padding: 6px 0; font-size: 14px; }
+    .portas .nome { font-weight: 600; }
+    .portas .endereco {
+      color: var(--texto-3); font-size: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+    .portas .explicacao { display: block; color: var(--texto-3); font-size: 13px; margin-top: 2px; }
+    /* O buraco: endereço escrito na peça que o mapa do site não conhece. Fica
+       VISÍVEL, e não escondido, porque sumir em silêncio é a pior forma de
+       perder um fato. Guarda: tests/test_perpetuo.py. */
+    .portas .faltando { color: var(--vermelho); font-weight: 600; }
   </style>
 </head>
 <body>
