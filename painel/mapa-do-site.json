@@ -1370,6 +1370,17 @@
     },
     {
       "celula": "admin",
+      "rota": "perpetuo/",
+      "endereco": "/admin/perpetuo/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "A máquina do lançamento perpétuo",
+      "descricao": "A planta do negócio: as seis peças que fazem a escola vender todo dia sem depender de uma data, na ordem em que uma pessoa as atravessa, e as portas que o site já tem para cada uma. É a porta de uma área que vai ganhar painéis, um por peça.",
+      "observacao": "Os nomes e as explicações das portas de cada peça saem deste mesmo arquivo: a tela não guarda cópia de endereço nenhum."
+    },
+    {
+      "celula": "admin",
       "rota": "economia/",
       "endereco": "/admin/economia/",
       "alcance": "publico",

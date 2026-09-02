@@ -47,6 +47,7 @@ from apps.core.menu import (
 from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import plano_publico, planos_indice
 from apps.core.painel import painel, painel_arquivo
+from apps.core.perpetuo import perpetuo
 from apps.core.robos import robos
 from apps.core.views import (
     escola,
@@ -326,6 +327,19 @@ urlpatterns = [
     # de digitacao do aluno some, e ele nao ve marca nenhuma. Mesma gramatica
     # das outras — POST, redireciona de volta para a ideia dizendo o que houve.
     path("caixa/ideia/<int:ideia_id>/texto", corrigir_ideia, name="caixa_corrigir"),
+    # O LANÇAMENTO PERPÉTUO (`apps/core/perpetuo.py`, 02/09/2026) — a área que
+    # o mantenedor pediu para reunir "várias coisas sobre o lançamento
+    # perpétuo": a máquina que vende todo dia, sem depender de uma data.
+    #
+    # FORA do prefixo `painel/`, pelo mesmo motivo do mapa e do menu: a rota
+    # genérica `painel/<qualquer coisa>` engoliria qualquer irmã dela. Nasce
+    # vizinha de `/escola/` e de `/caixa/`, na mesma gramática — e a barra
+    # final segue a convenção das outras telas, com o APPEND_SLASH atendendo
+    # quem digitar `/admin/perpetuo` sem ela.
+    #
+    # UMA rota hoje, e a área foi desenhada para ganhar irmãs: cada painel novo
+    # entra como `perpetuo/<coisa>/`, e nunca como uma tela solta noutro canto.
+    path("perpetuo/", perpetuo, name="perpetuo"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro

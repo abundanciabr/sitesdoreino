@@ -424,6 +424,72 @@ caso("a confiança viaja no resumo, contada sobre o livro inteiro",
 caso("...e o resumo é MENOR que o livro (então recontá-la lá daria errado)",
   resumoConf.registros.length <= livroDeConfianca.length + 1);
 
+// ===========================================================================
+// "ATENÇÃO AGORA" TEM TETO DE TEXTO — e o corte é de texto, nunca de fato
+// ===========================================================================
+// Medido em 02/09/2026: o resumo tinha 11 bytes de folga no orçamento de 150 KB,
+// e 49 KB dele eram incidentes abertos. Um incidente quase nunca ganha registro
+// de resposta (o conserto vira uma ENTREGA), então ele fica em "Atenção agora"
+// para sempre — um bloco que só cresce dentro de um orçamento que não cresce.
+//
+// Os quatro casos abaixo travam as quatro coisas que a cura precisa ser: ela
+// corta TEXTO, não corta FATO, escolhe pelos mais RECENTES, e tem dentes.
+console.log("== teto de texto de Atenção agora ==");
+
+var TETO = LOGICA.PROBLEMAS_COM_DETALHE;
+var muitosProblemas = [];
+for (var p = 0; p < TETO + 8; p++) {
+  // Dias diferentes, do mais antigo para o mais novo: o índice alto é o recente.
+  var dia = String(p + 1);
+  if (dia.length < 2) dia = "0" + dia;
+  muitosProblemas.push(reg({
+    arquivo: "202608" + dia + "-70" + (p % 10) + "-problema-" + p,
+    tipo: "incidente", quando: "2026-08-" + dia,
+    // Gravidade alternada de propósito: a ordem do BLOCO é por gravidade, e o
+    // teto tem de escolher por DATA. Com todos vermelhos, um teto que cortasse
+    // pela ordem do bloco passaria neste teste sem merecer.
+    gravidade: (p % 2 === 0) ? "vermelho" : "ambar",
+    titulo: "problema " + p,
+    detalhe: "um paragrafo bem comprido ".repeat(20)
+  }));
+}
+var resumoProb = LOGICA.montarResumo(muitosProblemas);
+caso("montarResumo constrói com a pilha de problemas", resumoProb.erro === null);
+
+// 1. NENHUM FATO SOME. O bloco continua listando todos, e o cabeçalho conta.
+var noResumo = {};
+resumoProb.registros.forEach(function (r) { noResumo[r.arquivo] = r; });
+caso("nenhum problema aberto some do resumo",
+  muitosProblemas.every(function (r) { return !!noResumo[r.arquivo]; }));
+
+// 2. O TEXTO É QUE TEM TETO.
+var comTexto = resumoProb.registros.filter(function (r) { return !r._so_titulo; });
+caso("o texto completo para no teto (não cresce com a pilha)",
+  comTexto.length <= TETO);
+
+// 3. QUEM FICA COM O TEXTO SÃO OS MAIS RECENTES — não os mais graves nem os
+//    mais velhos, que é o que a ordem do bloco entregaria de graça.
+var maisNovo = muitosProblemas[muitosProblemas.length - 1].arquivo;
+var maisVelho = muitosProblemas[0].arquivo;
+caso("o problema mais RECENTE mantém o texto", !noResumo[maisNovo]._so_titulo);
+caso("o mais ANTIGO viaja só como título", noResumo[maisVelho]._so_titulo === true);
+caso("...e o título dele continua lá, com a gravidade, para o bloco poder desenhá-lo",
+  noResumo[maisVelho].titulo === "problema 0" && noResumo[maisVelho].gravidade === "vermelho");
+
+// 4. O GUARDA TEM DENTES, e esta é a asserção que mede o motivo de tudo isto:
+//    depois do teto, cada problema aberto a mais custa um TÍTULO, não um
+//    parágrafo. É o que transforma um bloco que crescia sem limite num bloco
+//    com peso previsível. O detalhe fabricado acima tem ~500 letras, então um
+//    registro inteiro passa de 600 bytes e um título fica bem abaixo de 400.
+function pesoDoResumo(livro) {
+  return JSON.stringify(LOGICA.montarResumo(livro).registros).length;
+}
+var pesoBase = pesoDoResumo(muitosProblemas.slice(0, TETO + 2));
+var pesoCheio = pesoDoResumo(muitosProblemas);
+var aMais = muitosProblemas.length - (TETO + 2);
+caso("passado o teto, cada problema a mais pesa um título e não um parágrafo",
+  (pesoCheio - pesoBase) / aMais < 400);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");
