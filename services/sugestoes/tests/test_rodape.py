@@ -105,6 +105,11 @@ def test_nenhuma_rota_de_pagina_fica_sem_decisao_de_rodape():
     assert "quadro" in nomes, "a varredura não encontrou o urlconf da célula"
     sem_rodape = {nome for nome in nomes if regras.variante_da_rota(nome) is None}
     assert sem_rodape == regras.rotas_declaradas_sem_rodape() & nomes
+    # Desde 02/09/2026 a única rota sem rodapé nesta célula é o servidor de
+    # estáticos: a porta passou a mostrar o enxuto. Se esta linha ficar
+    # vermelha, alguém declarou uma PÁGINA sem rodapé — e isso precisa de
+    # motivo escrito, não de um `None` solto na tabela.
+    assert sem_rodape == {"estatico"}
     for nome in nomes - sem_rodape:
         assert regras.variante_da_rota(nome) in regras.VARIANTES
 
@@ -113,22 +118,83 @@ def test_rota_que_ninguem_decidiu_herda_o_padrao():
     assert regras.variante_da_rota("uma-tela-que-nascer-amanha") == "completo"
 
 
-def test_a_porta_da_caixa_fica_sem_rodape_e_isso_esta_escrito(client, porta):
-    """A única tela desta célula sem a folha de estilo, e por escrito.
+def test_a_porta_da_caixa_tem_o_rodape_enxuto(client, porta):
+    """A tela que eu tinha deixado de fora, e a correção de rumo.
 
     `entrar.html` não tem CSS externo, nem script, nem fonte remota, porque uma
     dependência de rede numa página de LOGIN quebra exatamente quando não
-    deveria. O rodapé precisa da folha; pendurá-lo ali obrigaria a folha a
-    entrar naquela página.
+    deveria. No PR #871 eu li essa restrição e declarei a tela "sem rodapé" —
+    aceitei o limite em vez de resolvê-lo.
 
-    A decisão mora em `REGRA_POR_ROTA`, e não em `ROTAS_SEM_PAGINA`: a porta É
-    página, e chamá-la de rota de máquina seria mentir na estrutura para caber
-    num teste.
+    O PR #734, aberto em 31/08/2026 e nunca pousado, já tinha a solução: o
+    rodapé vira PEÇA incluída pelos dois moldes, e o estilo dela entra embutido,
+    com as cores do sistema. Este guarda é o que impede a volta atrás.
+
+    Enxuto, e não completo: quem chega numa tela de entrar veio fazer UMA coisa,
+    e uma lista de links ali é atrito (mesma escolha da `funil`).
     """
-    assert regras.REGRA_POR_ROTA["entrar"] is None
-    assert "entrar" not in regras.ROTAS_SEM_PAGINA
+    assert regras.REGRA_POR_ROTA["entrar"] == "enxuto"
     corpo = client.get(reverse("entrar")).content.decode()
-    assert "<footer" not in corpo
+    assert '<footer class="rodape rodape-enxuto">' in corpo
+    assert "Todos os direitos reservados" in corpo
+    assert 'class="links"' not in corpo
+
+
+def test_o_estilo_do_rodape_da_porta_e_embutido(client, porta):
+    """Marcação sem regra é rodapé sem forma, e nada ficaria vermelho.
+
+    Esta tela NÃO carrega o `caixa.css` — de propósito. Se as regras `.rodape`
+    só existissem lá, a porta mostraria um rodapé sem borda, sem espaçamento e
+    com o tamanho de fonte do corpo, e todo guarda de renderização passaria.
+    """
+    corpo = client.get(reverse("entrar")).content.decode()
+    # A MARCAÇÃO, e não o nome do arquivo: `caixa.css` aparece nesta página
+    # dentro de um COMENTÁRIO de CSS, que explica justamente por que a folha não
+    # é carregada aqui. Procurar a string solta é a `armadilhas/247` — o guarda
+    # ficaria vermelho por ler a explicação como se fosse a coisa explicada.
+    assert '<link rel="stylesheet"' not in corpo, (
+        "a porta passou a carregar folha de estilo externa — se isso foi de "
+        "propósito, este guarda precisa mudar junto; se não, é a dependência de "
+        "rede que a tela recusa por desenho."
+    )
+    assert ".rodape {" in corpo
+    assert ".rodape .direitos" in corpo or ".rodape p {" in corpo
+
+
+def test_todo_molde_de_pagina_inteira_inclui_a_peca_do_rodape():
+    """O guarda que mede ARQUIVOS, e não telas — desenho do PR #734.
+
+    Esta célula tem DOIS moldes de página inteira: a moldura comum e a porta.
+    Um teste de tela por molde cobre os que existem hoje; molde standalone NOVO
+    é justamente o caso em que ninguém lembra de escrever o teste dele, e a peça
+    some de uma página sem nada ficar vermelho (`armadilhas/242`).
+
+    A marca é o `<!doctype`, e não a tag de abertura de HTML: a própria peça
+    CITA essa tag num comentário e seria acusada de não incluir a si mesma.
+    """
+    pasta = Path(__file__).resolve().parents[1] / "apps/core/templates/sugestoes"
+    moldes = [
+        arquivo
+        for arquivo in sorted(pasta.glob("*.html"))
+        if "<!doctype" in arquivo.read_text(encoding="utf-8").lower()
+    ]
+    assert len(moldes) >= 2, (
+        f"esperava pelo menos os DOIS moldes de página inteira desta célula e "
+        f"achei {[m.name for m in moldes]} — isto é falha de medição, não "
+        f"notícia boa ([INV-CI01])."
+    )
+    sem_a_peca = [
+        molde.name
+        for molde in moldes
+        if "sugestoes/_rodape.html" not in molde.read_text(encoding="utf-8")
+    ]
+    assert not sem_a_peca, (
+        f"estes moldes de página inteira não incluem a peça do rodapé: "
+        f"{sem_a_peca}.\nTodo molde desta célula inclui "
+        f'`{{% include "sugestoes/_rodape.html" %}}` dentro de `{{% if rodape %}}` '
+        f"— é a peça que faz o rodapé aparecer em TODAS as telas, e não só nas "
+        f"que alguém lembrou."
+    )
 
 
 def test_o_servidor_de_estaticos_nao_ganha_rodape(client, rf):
