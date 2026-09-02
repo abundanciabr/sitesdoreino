@@ -26,13 +26,41 @@ from apps.i18n.idiomas import caminho_publico
 # célula, e uma constante evita a string solta em três lugares.
 CELULA = "funil"
 
+# O valor que a `identidade` devolve no campo `papel` para quem está na lista
+# `IDENTIDADE_STAFF_EMAILS` do servidor. Escrito aqui, e não solto no meio da
+# função, porque as quatro células que desenham o menu comparam contra a MESMA
+# string — e uma delas com o valor trocado mostraria o atalho da administração
+# em três áreas do site e não na quarta.
+PAPEL_DE_EQUIPE = "staff"
 
-def _plateia_confere(audience: str, entrou: bool) -> bool:
+
+def _plateia_confere(audience: str, entrou: bool, e_equipe: bool) -> bool:
+    """Para quem este item aparece.
+
+    **Termina em `False`, e essa é a metade que mais importa.** Até 03/09/2026
+    esta função terminava em `return True`: plateia que a célula não conhecesse
+    aparecia para TODO MUNDO. Enquanto só existiam as três que todas as células
+    entendiam, isso era inofensivo; no dia em que o catálogo ganhou a quarta
+    (`staff`), esse `True` teria mostrado o atalho da área administrativa a todo
+    visitante do site — durante a janela em que uma célula ainda não tivesse
+    subido com o código novo.
+
+    Fail-CLOSED, então: o que esta célula não entende, ela não desenha. Item que
+    some é um aborrecimento; item que aparece para quem não devia é outra coisa.
+
+    `staff` sai do `papel` que a `identidade` devolve, e ele é de EXIBIÇÃO —
+    nunca autoriza nada. Esconder o atalho é estética; quem barra a entrada é a
+    porta fail-closed da célula `admin`, e ela não olha para este campo.
+    """
+    if audience == "everyone":
+        return True
     if audience == "logged_in":
         return entrou
     if audience == "logged_out":
         return not entrou
-    return True
+    if audience == "staff":
+        return e_equipe
+    return False
 
 
 def _rotulo(labels: dict, idioma: str, padrao: str) -> str:
@@ -116,11 +144,17 @@ def menu_do_topo(request) -> list:
     # lida, e ela só é lida quando algum item tem plateia. É a mesma economia
     # que o `_sessao.html` faz, e pelo mesmo motivo.
     plateias = {item.get("audience", "everyone") for item in versao.get("items") or []}
-    entrou = bool(getattr(request, "ator", None)) if plateias - {"everyone"} else False
+    ator = getattr(request, "ator", None) if plateias - {"everyone"} else None
+    entrou = bool(ator)
+    # `ator.papel` já existe nesta célula desde antes deste item, e a docstring
+    # dele diz para que serve: "para EXIBIÇÃO apenas (mostrar ou não um
+    # atalho)". Lê-lo aqui NÃO custa uma segunda consulta — o `ator` é
+    # preguiçoso e já foi resolvido pela linha de cima.
+    e_equipe = entrou and ator.papel == PAPEL_DE_EQUIPE
 
     itens = []
     for item in versao.get("items") or []:
-        if not _plateia_confere(item.get("audience", "everyone"), entrou):
+        if not _plateia_confere(item.get("audience", "everyone"), entrou, e_equipe):
             continue
         destino = item.get("url", "")
         # A comparação usa o destino CRU e o `path_info`, que o resolver já

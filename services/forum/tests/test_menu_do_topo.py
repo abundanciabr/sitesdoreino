@@ -316,3 +316,113 @@ def test_o_item_inicio_continua_aparecendo_no_forum(client, monkeypatch):
     um tratamento ingênuo de prefixo faria `/` casar com tudo."""
     dublar_catalogo(monkeypatch)
     assert 'href="/"' in _menu(client.get(reverse("home"), **PREFIXO).content.decode())
+
+
+# ---------------------------------------------------------------------------
+# A plateia `staff` — o atalho que só quem é da equipe vê (03/09/2026)
+# ---------------------------------------------------------------------------
+# Quatro guardas, e o quarto é o que ninguém pediria: plateia que esta célula
+# NÃO conhece some, em vez de aparecer para todo mundo. É ele que impede um
+# valor novo no catálogo de vazar um atalho durante a janela em que uma das
+# células ainda não subiu com o código novo.
+#
+# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras
+# (`armadilhas/242`): uma tabela certa com um chamador que passa o argumento
+# errado passaria num teste que só lê a tabela.
+MENU_COM_EQUIPE = {
+    "default_version": "v",
+    "versions": [
+        {
+            "slug": "v",
+            "name": "V",
+            "items": [
+                {
+                    "url": "/admin/",
+                    "labels": {"pt-br": "Admin"},
+                    "localized": False,
+                    "audience": "staff",
+                    "new_tab": False,
+                },
+                {
+                    "url": "/inventada/",
+                    "labels": {"pt-br": "Plateia Inventada"},
+                    "localized": False,
+                    # Valor que ESTA célula não conhece. Em produção ele só pode
+                    # chegar aqui de um catálogo mais novo que o container, que
+                    # é exatamente a janela de um deploy em andamento.
+                    "audience": "plateia-que-nao-existe",
+                    "new_tab": False,
+                },
+                {
+                    "url": "/forum/",
+                    "labels": {"pt-br": "Fórum"},
+                    "localized": False,
+                    "audience": "everyone",
+                    "new_tab": False,
+                },
+                {
+                    # O segundo item de controle, e ele existe por um motivo
+                    # medido: cada célula esconde o item que aponta para a área
+                    # onde a pessoa já está. Com um `everyone` só, o menu de
+                    # teste ficava VAZIO na célula dona daquele endereço — e um
+                    # menu vazio não é desenhado, então o guarda estourava
+                    # procurando a tag em vez de medir a plateia.
+                    "url": "/",
+                    "labels": {"pt-br": "Início"},
+                    "localized": False,
+                    "audience": "everyone",
+                    "new_tab": False,
+                },
+            ],
+        }
+    ],
+    "pages": [],
+}
+
+
+def _ator(papel: str):
+    """Um Ator do fórum com o papel que o SITE responde.
+
+    Dubla `menu.quem_e`, e não a rede: o que este bloco mede é a REGRA do menu
+    sobre o campo, não a viagem até a identidade — essa já tem guarda próprio
+    em `test_sessao.py`.
+    """
+    from apps.core.sessao import Ator
+    from apps.forum.models import Pessoa
+
+    if not papel:
+        return Ator(pessoa=None)
+    pessoa, _ = Pessoa.objects.update_or_create(
+        id_da_plataforma="idt-de-teste",
+        defaults={"email": "quem@exemplo.test", "nome_exibido": "Quem"},
+    )
+    return Ator(pessoa=pessoa, papel_do_site=papel)
+
+
+@pytest.mark.parametrize(
+    "papel,aparece",
+    [("staff", True), ("aluno", False), ("", False)],
+    ids=["equipe", "aluno", "visitante"],
+)
+def test_o_atalho_da_equipe_so_aparece_para_a_equipe(
+    client, monkeypatch, area_publica, papel, aparece
+):
+    dublar_catalogo(monkeypatch, site=dict(SITE, menu=MENU_COM_EQUIPE))
+    monkeypatch.setattr("apps.core.menu.quem_e", lambda request: _ator(papel))
+    menu = _menu(client.get(reverse("home"), **PREFIXO).content.decode())
+    assert (">Admin</a>" in menu) is aparece
+    # `Início`, e não `Fórum`: na home do fórum o item do próprio fórum some
+    # por ser "a página atual", e um controle que some não controla nada.
+    assert ">Início</a>" in menu, "o menu inteiro sumiu — o guarda não mediu nada"
+
+
+def test_plateia_desconhecida_nao_aparece_para_ninguem(
+    client, monkeypatch, area_publica
+):
+    """Fail-CLOSED. Até 03/09/2026 esta célula mostrava para TODO MUNDO o que
+    não entendia — inclusive para visitante."""
+    dublar_catalogo(monkeypatch, site=dict(SITE, menu=MENU_COM_EQUIPE))
+    for papel in ("staff", "aluno", ""):
+        monkeypatch.setattr("apps.core.menu.quem_e", lambda request, p=papel: _ator(p))
+        menu = _menu(client.get(reverse("home"), **PREFIXO).content.decode())
+        assert "Plateia Inventada" not in menu
