@@ -21,6 +21,8 @@ O que estes guardas protegem, em ordem de gravidade:
 import json
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 
 from apps.core.avisos import interessados_em
 from apps.sugestoes.models import Aviso, HistoricoStatus, Sugestao
@@ -962,3 +964,114 @@ def test_corrigir_uma_ideia_apagada_e_recusado(client, db, par_autorizado, suges
 
     assert resposta.status_code == 422
     assert "apagada definitivamente" in resposta.json()["erro"]
+
+
+# ---------------------------------------------------------------------------
+# 6. A conversa embaixo da ideia — o texto dos comentários, para quem PEDE
+# ---------------------------------------------------------------------------
+#
+# Decisão do mantenedor em 02/09/2026, no Rito de Contrato do PR #861: a
+# exportação da Caixa precisa do que os alunos escreveram nos comentários, e não
+# só de quantos foram. O parâmetro é opcional porque a conversa cresce com o uso
+# — carregá-la por padrão multiplicaria toda resposta da lista por algo que
+# nenhuma tela mostra.
+
+
+def _com_conversa(client, extra: str = "incluir_conversa=true"):
+    resposta = client.get(
+        f"{IDEIAS}?{extra}", headers={"authorization": f"Bearer {TOKEN}"}
+    )
+    assert resposta.status_code == 200, resposta.content
+    return resposta.json()
+
+
+def _comentar(sugestao, autor, texto):
+    from apps.sugestoes.models import Comentario
+
+    return Comentario.objects.create(sugestao=sugestao, autor=autor, texto=texto)
+
+
+def test_por_padrao_a_conversa_nao_vem(client, db, par_autorizado, sugestao, aluno):
+    """Quem não pede recebe exatamente a resposta de antes.
+
+    É o que faz o campo novo não quebrar nem pesar para quem já consome: a
+    contagem continua lá, o texto não.
+    """
+    _comentar(sugestao, aluno, "Isso me trava também, toda semana.")
+
+    ideia = uma(ler(client), sugestao)
+
+    assert ideia["comentarios"] == 1
+    assert ideia["conversa"] == []
+
+
+def test_pedindo_a_conversa_o_texto_vem_na_ordem_em_que_foi_escrito(
+    client, db, par_autorizado, sugestao, aluno, outro_aluno
+):
+    """A conversa se lê de cima para baixo, como ela aconteceu."""
+    _comentar(sugestao, aluno, "Primeira fala.")
+    _comentar(sugestao, outro_aluno, "Segunda fala, respondendo a primeira.")
+
+    ideia = uma(_com_conversa(client), sugestao)
+
+    assert [fala["texto"] for fala in ideia["conversa"]] == [
+        "Primeira fala.",
+        "Segunda fala, respondendo a primeira.",
+    ]
+    assert all(fala["quando"] for fala in ideia["conversa"])
+
+
+def test_a_conversa_atravessa_sem_o_nome_de_quem_escreveu(
+    client, db, par_autorizado, sugestao, aluno
+):
+    """O guarda da decisão de privacidade do contrato.
+
+    O histórico manda `por` porque a tela da moderação mostra quem moderou. A
+    conversa não tem tela que a mostre: quem a pede é a exportação do Admin,
+    cuja razão de existir é o texto sair de lá sem nome de aluno junto. Um
+    campo com nome de pessoa e nenhum consumidor que precise dele é dado
+    pessoal atravessando fronteira de graça.
+    """
+    _comentar(sugestao, aluno, "Faço isso no Blender e trava.")
+
+    corpo = _com_conversa(client)
+    ideia = uma(corpo, sugestao)
+
+    assert ideia["conversa"][0]["texto"] == "Faço isso no Blender e trava."
+    assert set(ideia["conversa"][0]) == {"texto", "quando"}
+    # E, por fora do campo: o nome de quem comentou não aparece em lugar nenhum
+    # da resposta. O `autor` da IDEIA continua vindo — é outro campo, com outro
+    # consumidor, e não é isto que este guarda protege.
+    assert aluno.nome_exibido not in json.dumps(corpo["ideias"][0]["conversa"])
+    assert aluno.email not in json.dumps(corpo)
+
+
+def test_pedir_a_conversa_nao_faz_uma_consulta_por_ideia(
+    client, db, par_autorizado, quadro, categoria, aluno, django_assert_num_queries
+):
+    """O N+1 que só apareceria quando a Caixa desse certo.
+
+    O número não é cravado: o guarda mede a MESMA leitura com 1 e com 4 ideias
+    e exige o mesmo custo. Um `assertNumQueries(13)` envelheceria na primeira
+    anotação nova da consulta, e um guarda que envelhece é um guarda desligado.
+    """
+
+    def montar(quantas):
+        for n in range(quantas):
+            ideia = Sugestao.objects.create(
+                quadro=quadro,
+                categoria=categoria,
+                autor=aluno,
+                titulo=f"Ideia {n}",
+                problema="Texto do problema.",
+            )
+            _comentar(ideia, aluno, f"Comentário da ideia {n}.")
+
+    montar(1)
+    with CaptureQueriesContext(connection) as com_uma:
+        _com_conversa(client)
+    custo_de_uma = len(com_uma.captured_queries)
+
+    montar(3)
+    with django_assert_num_queries(custo_de_uma):
+        _com_conversa(client)
