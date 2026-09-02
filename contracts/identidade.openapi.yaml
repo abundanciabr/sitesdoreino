@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Identidade — API interna
-  version: 1.0.0
+  version: 1.1.0
   description: |
     Superfície de MÁQUINA da identidade do site. Existe por uma razão só:
     qualquer célula precisa saber quem é a pessoa em qualquer página, e o
@@ -69,6 +69,35 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EmailPedido'
+        required: true
+  /pessoas/por-id:
+    post:
+      operationId: findPersonById
+      summary: Para onde escrever a esta pessoa, e em que lingua
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PessoaParaEnvio'
+      description: 'A INVERSA de findPersonByEmail, e existe pelo motivo oposto: uma celula que
+        conhece as pessoas por ID DE PLATAFORMA precisa entregar uma carta FORA do site, e correio
+        eletronico se enderecca por e-mail. A `mensageria` a chama NO INSTANTE DO ENVIO, nunca no
+        da inscricao — guardar o e-mail do outro lado criaria uma segunda casa do dado que ninguem
+        mantem quando a pessoa o troca, e gravar o idioma na inscricao congelaria a lingua de quem
+        se inscreveu (PLANO-SEQUENCIAS-DE-MENSAGENS §4.3). POST e nao GET pelo mesmo motivo da
+        irma: caminho de URL entra em log de servidor e em rastro de erro; corpo, nao. Exige
+        TOKENS_COMPLETOS_*, o degrau alto, porque esta porta DEVOLVE dado pessoal — e por isso ela
+        devolve o minimo que uma carta precisa: para onde ir e em que lingua ser escrita, nunca o
+        nome nem o papel. `email: null` e RESPOSTA (id que nao existe), nao erro. `idioma: null`
+        tambem e resposta, e quer dizer "esta pessoa nunca declarou lingua" — quem escreve a carta
+        decide o padrao, porque so ele sabe em que linguas sabe escrever.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IdPedido'
         required: true
   /tokens-de-entrada:
     post:
@@ -154,6 +183,29 @@ components:
           - type: string
           - type: 'null'
       type: object
+    IdPedido:
+      description: O id de plataforma de quem se procura — o mesmo `id` que getSession devolve.
+      properties:
+        id:
+          type: string
+      required:
+      - id
+      type: object
+    PessoaParaEnvio:
+      description: >-
+        O necessário e suficiente para endereçar uma carta: para onde ela vai e em que língua é
+        escrita. Nunca o nome, nunca o papel — quem manda um aviso automático não precisa deles,
+        e cada campo a mais aqui é um campo a mais vazando por um par de tokens.
+      type: object
+      properties:
+        email:
+          anyOf:
+          - type: string
+          - type: 'null'
+        idioma:
+          anyOf:
+          - type: string
+          - type: 'null'
     Session:
       description: 'Quem é o dono da sessão; sem sessão, só `autenticado: false`.'
       type: object
@@ -203,8 +255,13 @@ components:
     DefinirSenhaPedido:
       description: >-
         O e-mail e a senha em texto puro (transporte é HTTPS interno, nunca fica em log — o hash
-        nasce do lado da identidade, nunca do lado de quem chama). nome/site_id só valem na
+        nasce do lado da identidade, nunca do lado de quem chama). nome/site_id/idioma só valem na
         primeira vez (cunhagem); numa Identidade que já existe, são ignorados.
+
+        `idioma` é a língua em que a pessoa se cadastrou, e é a ÚNICA vez que a plataforma tem
+        essa informação de graça: ela vem do endereço que a pessoa estava navegando (`/es/cadastro`)
+        e some quando a página fecha. Quem não o envia deixa a pessoa sem língua declarada, e
+        findPersonById devolverá `idioma: null` para ela — resposta legítima, não erro.
       type: object
       required: [email, senha]
       properties:
@@ -215,6 +272,10 @@ components:
             - type: string
             - type: 'null'
         site_id:
+          anyOf:
+            - type: string
+            - type: 'null'
+        idioma:
           anyOf:
             - type: string
             - type: 'null'
