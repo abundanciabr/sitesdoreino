@@ -120,6 +120,29 @@ CSRF_COOKIE_NAME = "forum_csrf"
 CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
 CSRF_COOKIE_SECURE = not DEBUG
 
+# ---------------------------------------------------------------------------
+# O QUE DEU CERTO TAMBÉM PRECISA APARECER NO LOG
+# ---------------------------------------------------------------------------
+# Sem esta configuração, o Django não põe handler nenhum na raiz, e quem salva o
+# dia é o `logging.lastResort` da biblioteca padrão — que só emite WARNING para
+# cima. Efeito: toda FALHA desta célula aparecia no `docker compose logs`, e todo
+# SUCESSO era mudo.
+#
+# Isso custou uma rodada em 02/09/2026. O agente de IA respondeu três vezes, o
+# rascunho foi escrito na página, e a ausência de linha no log ficou ambígua
+# entre "não rodou" e "rodou e deu certo" — as duas se pareciam, e a segunda era
+# a verdadeira. A linha de sucesso do agente carrega os tokens gastos, que é
+# justamente o que se quer olhar depois de uma chamada paga.
+#
+# Só os loggers de `apps.*`, e em INFO: subir o mundo inteiro encheria o log de
+# ruído de biblioteca, e log ruidoso é log que ninguém lê.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"tela": {"class": "logging.StreamHandler"}},
+    "loggers": {"apps": {"handlers": ["tela"], "level": "INFO", "propagate": False}},
+}
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",

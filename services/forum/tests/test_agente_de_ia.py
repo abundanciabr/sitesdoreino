@@ -714,7 +714,91 @@ def test_a_chamada_que_nem_sai_tem_frase_de_rede(env, monkeypatch, conversa):
 
 
 # ---------------------------------------------------------------------------
-# 9. A TESOURA DA CONVERSA — o começo e o fim, nunca o silêncio
+# 9. O RASCUNHO PRECISA APARECER PARA QUEM O PEDIU
+# ---------------------------------------------------------------------------
+# Medido em 02/09/2026, na primeira vez que o botão funcionou: a IA respondeu
+# três vezes, o texto foi escrito na caixa, e o mantenedor disse "não apareceu
+# nada". Ele estava certo. A caixa de escrever fica no FIM da página e o POST
+# recarrega no topo, então o rascunho nascia fora da vista — três chamadas pagas
+# que ninguém viu.
+
+
+def test_o_rascunho_pronto_leva_o_cursor_ate_a_caixa(env, monkeypatch, conversa):
+    """`autofocus` faz o navegador rolar até a caixa e pôr o cursor nela."""
+    como_dono(monkeypatch)
+    dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta("Escale o UV."))
+
+    tela = gerar(Client(), conversa, orientacao="").content.decode()
+
+    # O `autofocus` tem de estar na caixa de RESPONDER, e não em qualquer uma.
+    # `name="texto"` sozinho NÃO serve de âncora: cada mensagem da conversa tem
+    # a sua caixa de edição da moderação, com esse mesmo nome, e a primeira
+    # ocorrência é uma delas. A caixa de responder é a única com `id="texto"`
+    # exato (as da moderação são `texto12`, `texto13`...). Foi este teste
+    # falhando que mostrou isso.
+    marca = 'id="texto" name="texto"'
+    assert marca in tela, "não achei a caixa de responder na tela"
+    caixa = tela[tela.index(marca) : tela.index("</textarea>", tela.index(marca))]
+    assert "autofocus" in caixa
+
+
+def test_so_abrir_a_conversa_NAO_rouba_o_foco(env, monkeypatch, conversa):
+    """Fixo, o autofocus jogaria a página para o fim de quem só quer ler."""
+    como_dono(monkeypatch)
+
+    tela = abrir(Client(), conversa).content.decode()
+
+    assert "autofocus" not in tela
+
+
+def test_o_sucesso_deixa_no_log_o_que_foi_gasto(env, monkeypatch, conversa):
+    """O que deu certo também precisa aparecer, e com os tokens.
+
+    O silêncio do sucesso custou uma rodada: sem linha nenhuma no log, "não
+    rodou" e "rodou e deu certo" ficam idênticos vistos de fora — e a segunda
+    era a verdadeira.
+    """
+    import logging
+
+    recolhidas = []
+
+    class Pega(logging.Handler):
+        def emit(self, registro):
+            recolhidas.append(registro.getMessage())
+
+    dono_do_log = logging.getLogger("apps")
+    pega = Pega()
+    dono_do_log.addHandler(pega)
+    nivel_antes = dono_do_log.level
+    dono_do_log.setLevel(logging.INFO)
+    try:
+        como_dono(monkeypatch)
+        dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta("Escale o UV."))
+        gerar(Client(), conversa, orientacao="")
+    finally:
+        dono_do_log.removeHandler(pega)
+        dono_do_log.setLevel(nivel_antes)
+
+    linha = [m for m in recolhidas if "rascunho de" in m]
+    assert linha, "o sucesso não deixou linha nenhuma no log"
+    # Os números que interessam depois de uma chamada PAGA.
+    assert "120" in linha[0] and "340" in linha[0]
+
+
+def test_o_env_da_celula_deixa_o_log_de_apps_sair(settings):
+    """A configuração sem a qual a linha acima existe e nunca aparece.
+
+    Sem `LOGGING`, o Django não põe handler na raiz e vale o `lastResort` da
+    biblioteca padrão, que só emite WARNING para cima: a falha aparecia, o
+    sucesso não.
+    """
+    dos_apps = settings.LOGGING["loggers"]["apps"]
+    assert dos_apps["level"] == "INFO"
+    assert dos_apps["handlers"], "o logger de apps não tem para onde escrever"
+
+
+# ---------------------------------------------------------------------------
+# 10. A TESOURA DA CONVERSA — o começo e o fim, nunca o silêncio
 # ---------------------------------------------------------------------------
 
 
