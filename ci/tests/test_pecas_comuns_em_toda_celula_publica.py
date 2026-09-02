@@ -30,14 +30,18 @@ mente sobre o roteamento (`ci/mapa_do_site.py`). Célula nova com página públi
 entra nesta conta **sozinha**, no dia em que a rota nascer — que é exatamente o
 que faltou em 01/09, quando as Conquistas foram ao ar.
 
-Uma célula "desenha a peça" quando tem o MOTOR e alguma tela dela USA o motor.
-Só a presença do arquivo não bastaria: uma célula poderia tê-lo sem nunca
-chamar, e o guarda passaria verde sobre uma peça que ninguém vê. As duas formas
-de ligar o motor contam, porque as duas existem em produção:
+Uma célula "desenha a peça" quando a peça está LIGADA e alguma tela dela USA o
+motor. Ligada quer dizer fiação, e não nome de arquivo: um processador de
+contexto `…<peca>_do_contexto` no `config/settings.py` da célula, ou uma tag de
+template com o nome da marca. As duas existem em produção.
 
-  · processador de contexto (`forum`, `gamificacao`, e o rodapé da `funil`)
-  · tag de template (`funil/apps/core/templatetags/menu.py` — lá a chave da
-    página sai do `resolver_match`, e a tag é chamada no `base_mobile.html`)
+**A medição já foi pelo nome do arquivo, e era frouxa demais.** A `admin` tem um
+`apps/core/menu.py` que não desenha menu nenhum: é a tela onde o mantenedor
+CONFIGURA o menu do site. Ele contava como motor, e só não deu falso-positivo
+porque a segunda metade ainda era falsa. Medir a fiação fecha isso.
+
+Só a fiação também não bastaria — uma célula pode registrar o processador e
+nenhum molde usar o que ele entrega. Por isso são as DUAS metades.
 
 FAIL-CLOSED DE INSTRUMENTAÇÃO ([INV-CI01])
 ------------------------------------------
@@ -118,11 +122,39 @@ def _templates_da_celula(celula: str) -> str:
 
 
 def _tem_motor(celula: str, peca: str) -> bool:
-    """As duas formas de ligar o motor, porque as duas existem em produção."""
-    core = SERVICES / celula / "apps" / "core"
-    return (core / f"{peca}.py").is_file() or (
-        core / "templatetags" / f"{peca}.py"
-    ).is_file()
+    """A FIAÇÃO da peça, e não o nome do arquivo.
+
+    **Isto já foi "existe `apps/core/<peca>.py`?", e era frouxo demais.** Na
+    célula `admin` existe um `apps/core/menu.py` que NÃO desenha menu nenhum: é
+    a tela `/admin/menu/`, onde o mantenedor CONFIGURA o menu do site. O guarda
+    o contava como motor, e só não deu falso-positivo porque a segunda metade (a
+    marca na tela) ainda era falsa — no dia em que qualquer template do bastidor
+    citasse `menu_do_topo`, a `admin` passaria a "desenhar o menu" sem desenhar
+    nada.
+
+    As duas formas de ligar contam, porque as duas existem em produção, e
+    nenhuma delas depende de como alguém batizou o arquivo:
+
+      · um processador de contexto `…<peca>_do_contexto` registrado no
+        `config/settings.py` da célula (`forum`, `gamificacao`, `sugestoes`, e o
+        rodapé da `funil`);
+      · uma tag de template com o nome da marca — `funil` monta o menu assim,
+        porque a chave da página sai do `resolver_match` e a tag é chamada de
+        dentro do `base_mobile.html`.
+    """
+    ajustes = SERVICES / celula / "config" / "settings.py"
+    if ajustes.is_file():
+        texto = ajustes.read_text(encoding="utf-8", errors="replace")
+        if f"{peca}_do_contexto" in texto:
+            return True
+
+    tags = SERVICES / celula / "apps" / "core" / "templatetags"
+    if tags.is_dir():
+        marca = MARCA_NA_TELA[peca].split(".")[0]
+        for modulo in tags.glob("*.py"):
+            if f"def {marca}(" in modulo.read_text(encoding="utf-8", errors="replace"):
+                return True
+    return False
 
 
 def desenha(celula: str, peca: str) -> bool:

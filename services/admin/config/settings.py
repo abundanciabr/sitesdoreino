@@ -116,6 +116,18 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # As DUAS peças do site nas páginas PÚBLICAS desta célula
+                # (`/docs/`), 02/09/2026. São processadores, e não inclusões
+                # escritas em cada template, porque "em todas as páginas" não
+                # pode depender de alguém lembrar da peça (`armadilhas/242`).
+                #
+                # Aqui a regra é INVERTIDA em relação às outras células: o
+                # padrão é NÃO mostrar, e as duas rotas públicas são a exceção
+                # declarada. Esta célula é bastidor com duas janelas para a rua,
+                # e o bastidor tem molde e navegação próprios. Ver o cabeçalho
+                # de `apps/core/rodape.py`.
+                "apps.core.rodape.rodape_do_contexto",
+                "apps.core.barra_do_site.menu_do_contexto",
             ],
         },
     },

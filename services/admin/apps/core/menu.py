@@ -67,9 +67,16 @@ from .views import _auditar
 # defeito que ela mesma documenta: em 31/08/2026 a `sugestoes` passou a desenhar
 # o menu e ficou de fora daqui por uma linha — o menu aparecia na Caixa e o
 # mantenedor não tinha onde configurá-lo. Célula que ganha o menu entra aqui no
-# MESMO PR, e `ci/tests/test_menu_no_admin.py` mede a lista contra as células
-# que de fato o desenham.
-CELULAS_COM_MENU = ("funil", "forum", "sugestoes", "gamificacao")
+# MESMO PR, e `tests/test_celulas_com_menu.py` mede a lista contra as células
+# que de fato o desenham (o caminho citado aqui até 02/09/2026,
+# `ci/tests/test_menu_no_admin.py`, nunca existiu).
+#
+# A `admin` entrou em 02/09/2026, e ela é o caso estranho: até aqui esta célula
+# só CONFIGURAVA o menu. Agora ela também o DESENHA, nas duas páginas públicas
+# dela (`/docs/`), por `apps/core/barra_do_site.py` — arquivo com nome próprio
+# justamente porque `apps/core/menu.py` é esta tela, e os dois nomes juntos
+# confundiriam para sempre quem chegasse depois.
+CELULAS_COM_MENU = ("funil", "forum", "sugestoes", "gamificacao", "admin")
 
 # Para quem o item aparece, com o nome que o mantenedor lê. A ordem é a da
 # tela; os códigos são os do contrato.

@@ -39,8 +39,6 @@
 # `armadilhas/242`, e o exemplo vivo mais recente é `services/gamificacao`, que
 # ganhou as duas em 02/09/2026) e apague a linha no MESMO PR.
 
-admin/menu :: a biblioteca pública de documentos (/docs/) mora na célula do bastidor, que é a ÚNICA sem molde público compartilhado. A tela existe desde antes do menu, e pô-la sob a moldura é PR próprio.
-admin/rodape :: idem — /docs/ e as páginas de erro são as duas superfícies públicas desta célula, e as duas herdam `base_publico.html`, que ainda não conhece as peças do site.
 quiz/menu :: MEDIDO em 02/09/2026: a célula está de pé (/quiz/healthz responde 200) e não há quiz publicado (o único slug que o semeador cria, /quiz/quiz/crivo/, responde 404). Pôr menu numa área que ninguém alcança seria gastar um par de credenciais sem ninguém para ver.
 quiz/rodape :: idem — a área existe no código e não no ar. Entra junto com o primeiro quiz publicado.
 checkout/menu :: a área de pagamento está PARADA por decisão do mantenedor (22/08/2026): nada de checkout se retoma até ele dizer que o site vai vender. A peça entra quando a área voltar.

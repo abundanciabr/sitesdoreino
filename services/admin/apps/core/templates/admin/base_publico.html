@@ -61,15 +61,77 @@ nada disso, e cada peça de fora é uma dependência que pode cair sozinha.
     .lista li { margin-bottom: 14px; }
     .lista a { font-size: 17px; font-weight: 600; text-decoration: none; }
     .sub { color: var(--texto-2); margin: 0 0 26px; }
-    .rodape { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--linha);
-              color: var(--texto-2); font-size: 13px; }
+    /* A BARRA DO SITE (`apps/core/barra_do_site.py`) e o RODAPÉ
+       (`apps/core/rodape.py`) — as mesmas peças do resto do site, com as cores
+       desta folha. Copiar o arquivo de outra célula em vez do desenho traria
+       variáveis que não existem neste `:root`, e o navegador cai no valor vazio
+       sem avisar ninguém. */
+    .barra-do-site {
+      background: var(--papel); border-bottom: 1px solid var(--linha);
+      position: sticky; top: 0; z-index: 20;
+    }
+    .barra-do-site .menu-topo {
+      display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none;
+      width: 100%; max-width: 720px; margin: 0 auto; padding: 8px 20px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .barra-do-site .menu-topo::-webkit-scrollbar { display: none; }
+    .barra-do-site .menu-topo a {
+      flex: 0 0 auto; padding: 6px 12px; border-radius: 8px; color: var(--texto);
+      text-decoration: none; font-size: 15px; font-weight: 600; white-space: nowrap;
+    }
+    .barra-do-site .menu-topo a:hover,
+    .barra-do-site .menu-topo a:focus { background: var(--fundo); }
+
+    .rodape {
+      max-width: 720px; margin: 48px auto 0; padding: 16px 20px 40px;
+      border-top: 1px solid var(--linha); color: var(--texto-2);
+      font-size: 13px; text-align: center;
+    }
+    .rodape .marca { margin: 0 0 4px; font-weight: 600; color: var(--texto); }
+    .rodape .descricao { margin: 0 0 14px; }
+    .rodape .links {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      gap: 8px 16px; margin: 0 0 14px;
+    }
+    .rodape .links a { color: var(--texto-2); text-decoration: none; }
+    .rodape .links a:hover,
+    .rodape .links a:focus { color: var(--azul); text-decoration: underline; }
+    .rodape .direitos { margin: 0; }
   </style>
 </head>
 <body>
+{% comment %}
+A BARRA DO SITE vem ANTES da faixa desta área, e isso é a decisão do mantenedor
+de 31/08/2026: primeiro o caminho para o site inteiro, depois o nome do lugar
+onde você está. Quem DECIDE o que vai nela é o processador de contexto
+(`apps/core/barra_do_site.py`); aqui só se desenha.
+
+Tudo numa linha só, com as tags coladas, pela razão da `armadilhas/033`: solta,
+cada tag põe uma linha em branco a mais na página de quem não tem menu — que é
+o estado do bastidor inteiro, e de qualquer página enquanto o catálogo não
+responder.
+{% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
 <div class="barra"><a href="/">Meshcraft</a></div>
 <div class="envolucro">
 {% block conteudo %}{% endblock %}
-  <p class="rodape">Meshcraft &middot; <a href="/">voltar ao site</a></p>
 </div>
+{% if rodape %}{% comment %}
+O RODAPÉ (`apps/core/rodape.py`) — a mesma peça do site, do fórum, da Caixa e
+das Conquistas. Ele tomou o lugar do pé de uma linha desta área ("Meshcraft ·
+voltar ao site"), por escolha do mantenedor em 02/09/2026: uma assinatura só no
+fim de toda página do site, em vez de uma por área.
+
+Fora do `envolucro` de propósito: aquele é a bancada de leitura, e o rodapé é
+assinatura da casa.
+{% endcomment %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+  <p class="marca">Meshcraft Academy</p>
+  <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
+  <nav class="links" aria-label="Links úteis">
+    <a href="{{ rodape.url_do_site }}">Início do site</a>
+    <a href="{{ rodape.url_da_biblioteca }}">Documentos</a>
+  </nav>{% endif %}{% if rodape.mostra_direitos %}
+  <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
+</footer>{% endif %}
 </body>
 </html>
