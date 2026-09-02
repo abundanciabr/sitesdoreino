@@ -483,3 +483,61 @@ exigiria um Rito de Contrato novo, e não é decisão de quem constrói.
 O guarda que impede a invenção: `test_a_carta_tem_exatamente_os_campos_que_o_contrato_exige`,
 que lê o contrato NO DISCO e confere os dois lados (campo a mais reprova tanto
 quanto campo a menos, porque o contrato é `additionalProperties: false`).
+
+## Todo handler passa a receber o `event_id`, e isso fechou uma limitação antiga
+
+O `LICOES.md` desta célula registrava, desde a receita R4, que *"o handler recebe
+só `envelope["data"]` — sem `event_id`"*. Era limitação conhecida e conviveu bem
+enquanto a idempotência de negócio bastava.
+
+O que forçou a mudança: a carta de um passo de sequência exige `origem_event_id`
+no contrato, e é ele que torna verdadeira a promessa *"a entrega do aviso é
+RASTREÁVEL"*. Sem o `event_id` chegando ao handler, a inscrição nasceria sem
+origem e o despachante, que é fail-closed, **nunca publicaria carta nenhuma** —
+a sequência inteira ficaria muda sem um erro sequer.
+
+Hoje `processar_envelope` chama `handler(envelope["data"], envelope["event_id"])`.
+O parâmetro tem default nos três handlers de pagamento, que não o usam: os testes
+que os chamam com um argumento só continuam valendo.
+
+## O `gatilho` da jornada é o nome no FIO, sem a versão
+
+`identidade.pessoa-cadastrada`, e **não** `identidade.pessoa-cadastrada.v1` — que
+é como o plano cita o contrato. A versão viaja no envelope; o nome do stream e o
+nome do evento não a carregam.
+
+Errar isto é a falha silenciosa mais fácil deste degrau inteiro: o consumidor
+recebe, o handler roda, o filtro por `gatilho` não acha jornada nenhuma, e
+ninguém é inscrito. **Nada erra, nada reclama, e a sequência simplesmente não
+acontece.** Guarda que amarra as duas pontas uma na outra:
+`test_o_gatilho_da_jornada_casa_com_o_stream_que_a_celula_escuta`.
+
+## Semear é CONTEÚDO, não esquema: comando de gerência + workflow, nunca migração
+
+O caminho curto seria uma migração de dados. Ele já foi tentado no fórum e a
+suíte respondeu com 20 testes quebrados — migração de dados entra no banco de
+TODO teste. Por isso a semeadura é `manage.py semear_boas_vindas`, e quem a roda
+na produção é `.github/workflows/semear-boas-vindas.yml`, o mesmo desenho de
+`semear-economia` e `semear-areas-do-forum`.
+
+**E o site sai de dentro do contêiner, nunca de um valor escolhido à mão.** A
+jornada é achada por `site_id`, e semear com o site errado criaria uma jornada
+que nenhum cadastro encontra: tudo responde 200, a linha existe no banco, e
+ninguém nunca recebe nada. O script lê `SITE_ID` do contêiner da `gamificacao` (a
+única célula que o declara) e, **se a `identidade` já publicou algum cadastro,
+COMPARA com o site que aquele evento carimbou de verdade** — divergiu, para. É
+medir em vez de supor, no ponto exato em que supor não daria erro nenhum.
+
+## A varredura periódica é a peça cuja ausência não dá erro
+
+`tasks.varrer_jornadas`, de cinco em cinco minutos, é o que faz o motor ANDAR. Sem
+ela, tudo o que a escada construiu fica parado: as inscrições existem, os passos
+têm hora marcada, e ninguém nunca passa para olhar. Nenhum teste de unidade
+acusaria, porque cada peça funciona.
+
+Cinco minutos, e não um: o relógio das sequências é de DIAS, a janela fecha às
+20h e o teto é diário. Um passo que espera cinco minutos não muda nada para o
+aluno, e cada passada tem custo.
+
+O import de `despacho` e `motor` é DENTRO da função: `despacho` importa `tasks`
+(precisa do `relay_apos_commit`), então importá-los no topo fecharia um ciclo.
