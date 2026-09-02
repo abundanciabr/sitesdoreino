@@ -8,6 +8,7 @@ from apps.core.caixa import (
     avaliar_ideia,
     corrigir_ideia,
     desarquivar_ideia,
+    exportar,
     ideia,
     mesa,
     mover_ideia,
@@ -292,6 +293,12 @@ urlpatterns = [
     # embutida no build como o painel. Esperada desde 28/08/2026; a fonte
     # nasceu em 29/08 e a aba nasceu junto (apps/core/robos.py).
     path("caixa/robos/", robos, name="caixa_robos"),
+    # A aba 5 — "Exportar": a Caixa inteira em texto, num campo só, para o
+    # mantenedor copiar de uma vez. Nasceu em 02/09/2026, quando ele pediu uma
+    # análise das sugestões e o robô esbarrou no que o livro já registrava em
+    # 31/08 (`20260831-002`): o conteúdo de uma ideia só se lê atrás do login,
+    # e a porta é dele. GET puro, sem escrita, sem nome de aluno no que sai.
+    path("caixa/exportar/", exportar, name="caixa_exportar"),
     # A ideia por dentro, e as tres acoes. Elas sao POST de propósito: mudam
     # coisa, e um GET seria disparado por qualquer pre-carregamento de link do
     # navegador. Depois de agir, tudo redireciona de volta para a ideia — e o

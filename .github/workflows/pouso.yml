@@ -19,7 +19,7 @@
 # `20260829-006`; Lei 4 emendada).
 #
 # ---------------------------------------------------------------------------
-# QUATRO DECISÕES QUE NÃO SÃO ÓBVIAS, E O PORQUÊ DE CADA UMA
+# SEIS DECISÕES QUE NÃO SÃO ÓBVIAS, E O PORQUÊ DE CADA UMA
 #
 # 1. USA `PISTA_TOKEN`, NÃO O `GITHUB_TOKEN`.
 #    Documentação oficial: "Events triggered by the GITHUB_TOKEN will not create
@@ -75,6 +75,41 @@
 #    pista acabou de atualizar, tem teto (`TETO_DA_ESPERA`) e orçamento por
 #    passagem (`esperas_restantes`). A decisão 3 continua valendo para todo o
 #    resto: ela não espera pelos checks de um PR que chegou cedo demais.
+#
+# 6. ELA CHAMA UM REVISOR ANTES DE MERGEAR — E ELE OPINA, NÃO REPROVA.
+#    Recomendação B11 do PLANO-MESTRE ("revisor-robô no pouso é o substituto
+#    mais próximo do revisor humano ausente"), tarefa TAR-006, despachada pelo
+#    mantenedor em 02/09/2026.
+#
+#    O QUE ELE PEGA, e é medição, não retórica: nos lotes de 01/09/2026, SEIS
+#    falsos-verdes apareceram em código que JÁ ESTAVA VERDE — todos achados por
+#    mutação deliberada do próprio autor, nenhum pelo CI (`armadilhas/264` a
+#    `269` e `272`). Todos da mesma família: a asserção tinha mais de uma causa
+#    suficiente, então o teste passava pelo motivo errado. Nenhum guarda desta
+#    casa pega essa classe, porque ela é invisível a quem só olha "passou ou não
+#    passou": o teste existe, tem nome descritivo, cobre a linha, e fica verde
+#    do mesmo jeito com a regra que ele deveria proteger arrancada do código.
+#
+#    POR QUE AQUI, E NÃO EM TODO PUSH: é no pouso que existe o fato completo —
+#    o diff final, os checks já verdes, o registro a bordo. E é aqui que um
+#    revisor humano olharia, se houvesse um.
+#
+#    POR QUE ELE NÃO BARRA: revisor que reprova vira portão sem apelação num
+#    fluxo onde não há humano para desempatar, e a casa já mediu o custo disso
+#    ("portão que reprova quem está certo ensina a ser contornado", lição 7 do
+#    Lote 9). Ele comenta no PR e o pouso segue. Se um dia passar a barrar, é
+#    decisão do mantenedor, com data.
+#
+#    POR QUE ELE NÃO PODE DERRUBAR NEM ATRASAR A PASSAGEM: `timeout` duro, tudo
+#    dentro de um `if` que não propaga falha, e do lado dele o exit code é 0 por
+#    construção. Revisor que não conseguiu rodar diz `NAO-REVISADO` e sai de
+#    cena, sem fabricar veredito. Esta pista é a máquina que faz TODO PR desta
+#    casa pousar: um erro aqui não quebra uma tela, trava a esteira inteira.
+#
+#    E ELE NUNCA EXECUTA O CÓDIGO DO PR — só lê o texto do `gh pr diff`. Este
+#    passo roda com a `PISTA_TOKEN`, que tem poder de merge; rodar código vindo
+#    de um PR aqui dentro entregaria esse poder a quem abrisse um PR, e o
+#    repositório é público. É a mesma razão da decisão 2.
 # =============================================================================
 name: pouso
 on:
@@ -185,6 +220,14 @@ jobs:
           # concorrência por meia hora.
           TETO_DA_ESPERA=420
           esperas_restantes=2
+
+          # O TETO DO REVISOR (ver o cabeçalho, decisão 6). Medido na máquina do
+          # projeto: ~0,2s de análise; o que sobra são duas conversas com o
+          # GitHub (ler o diff, comentar). Noventa segundos é folga larga, e
+          # existe porque o número que importa não é quanto ele custa quando dá
+          # certo — é quanto ele pode custar quando o GitHub pendura. Estourar o
+          # teto NÃO é reprovação de ninguém: o pouso segue.
+          TETO_DO_REVISOR=90
 
           # Devolve 0 quando não há mais check pendente (ou quando não deu para
           # saber), 1 quando estourou o teto. Ela NÃO julga o resultado dos
@@ -375,6 +418,29 @@ jobs:
               gh pr comment "$alvo" --body-file recado.md
               echo "PR #$alvo reprovou; devolvido ao autor. Seguindo para o próximo."
               continue
+            fi
+
+            # O REVISOR DE POUSO (B11 / TAR-006, 02/09/2026) — ver a decisão 6
+            # do cabeçalho. Ele lê o diff com contexto fresco, procurando a
+            # família de falso-verde que nenhum portão desta casa pega, e
+            # comenta o veredito no PR. NÃO tem poder de recusa, e por isso roda
+            # aqui, com o merge já decidido: revisor que barra vira portão sem
+            # apelação num fluxo onde não há humano para desempatar.
+            #
+            # As três blindagens, e nenhuma delas é enfeite. Se este passo
+            # falhar, demorar ou chamar algo que não responde, O POUSO DESTE PR
+            # E DOS OUTROS SEGUE NORMALMENTE:
+            #   `timeout`  — não existe espera infinita numa fila serial;
+            #   o `if`     — falha não propaga por baixo do `set -e`;
+            #   do lado de lá, `ci/revisor_de_pouso.py` sai 0 por construção e
+            #   diz `NAO-REVISADO` em vez de fabricar veredito.
+            # Guarda das três: ci/tests/test_pista_chama_o_revisor.py.
+            revisor_comecou=$(date +%s)
+            if timeout "$TETO_DO_REVISOR" python ci/revisor_de_pouso.py "$alvo" --comentar; then
+              echo "Revisor de pouso: $(($(date +%s) - revisor_comecou))s no #$alvo."
+            else
+              echo "O revisor de pouso NÃO completou no #$alvo, e isto não segura nada:"
+              echo "ele OPINA, não reprova. O pouso deste PR segue normalmente."
             fi
 
             # VERDE: mergeia pelo MESMO portão que o agente usa — a pista não

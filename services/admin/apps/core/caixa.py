@@ -575,6 +575,177 @@ def corrigir_ideia(request, ideia_id: int):
     )
 
 
+# ---------------------------------------------------------------------------
+# Aba 5 — EXPORTAR: a Caixa inteira em texto, para levar embora
+# ---------------------------------------------------------------------------
+#
+# Nasceu em 02/09/2026, de um pedido que esbarrou numa parede: o mantenedor
+# pediu uma análise das sugestões dos alunos, e o robô descobriu que não
+# consegue ler UMA linha do que eles escreveram. Não é falta de permissão, é o
+# desenho: o texto de uma ideia só existe atrás do login, e a porta da
+# administração é dele. A mesma parede já estava no livro desde 31/08, com
+# estas palavras (registro `20260831-002`): *"eu enxergo a contagem, não o
+# conteúdo"*.
+#
+# O conserto de quem sabe menos seria pedir a ele que abrisse ideia por ideia e
+# copiasse cada uma. Esta tela é o conserto de quem sabe mais: uma vez, um
+# gesto, e a Caixa inteira vira texto que ele leva para onde quiser.
+#
+# TRÊS ESCOLHAS que parecem detalhe e não são:
+#
+# 1. **Sem o nome de quem escreveu.** As outras telas mostram, e devem: lá ele
+#    decide sobre a ideia de uma pessoa, e saber de quem é faz parte. Aqui o
+#    texto FOI FEITO PARA SAIR daqui — o próximo lugar onde ele vive é uma
+#    conversa com uma IA, um documento, um e-mail. Nome de aluno não precisa
+#    fazer essa viagem para a análise funcionar, e o que não precisa viajar não
+#    viaja.
+# 2. **Sem JavaScript.** A porta manda `script-src 'self'` em toda resposta
+#    (`porta.py`) e esta célula não serve estático nenhum, então um botão
+#    "copiar" custaria um arquivo servido e uma exceção na política. Um campo
+#    de texto resolve o mesmo problema com zero risco: clicar dentro dele e
+#    apertar Ctrl+A seleciona só o conteúdo dele, nunca a página em volta.
+# 3. **O texto se explica sozinho.** O cabeçalho do que sai diz o que NÃO está
+#    ali e por quê. Quem receber isto do outro lado — uma IA, daqui a um mês —
+#    não tem como adivinhar que a contagem de comentários vem sem o texto dos
+#    comentários, e análise que não sabe o que falta inventa o que falta.
+
+# O nome humano de cada etapa, tirado das MESMAS colunas da travessia. Uma
+# segunda tabela de rótulos aqui seria uma segunda definição de etapa, e a que
+# ninguém olha é a que envelhece errada.
+ETAPA_DA_COLUNA = {chave: titulo for chave, titulo, _ in COLUNAS}
+
+# As duas saídas do trilho, em português de gente. `mesclado` não é "mesclado"
+# para ninguém que não escreveu o código.
+ETAPA_FORA_DO_TRILHO = {
+    "nao_planejado": "Recusada",
+    "mesclado": "Juntada a outra ideia",
+}
+
+RISCA = "=" * 66
+
+
+def _plural(quantos: int, singular: str, plural: str) -> str:
+    """`1 voto` / `2 votos` — sem o `|pluralize` do template, que aqui não existe."""
+    return f"{quantos} {singular if quantos == 1 else plural}"
+
+
+def _data_curta(iso: str) -> str:
+    """Uma data do contrato em português, ou uma frase honesta se não der.
+
+    O contrato promete o FORMATO ISO, não a precisão dele. `fromisoformat`
+    aceita as duas formas que o Django emite; qualquer outra coisa vira texto
+    dizendo que não sabemos, nunca um estouro no meio de uma exportação de 40
+    ideias por causa de uma data torta.
+    """
+    try:
+        return datetime.fromisoformat(iso).strftime("%d/%m/%Y")
+    except ValueError:
+        return "data desconhecida"
+
+
+def _etapa_de(ideia) -> str:
+    if ideia["status"] in ETAPA_FORA_DO_TRILHO:
+        return ETAPA_FORA_DO_TRILHO[ideia["status"]]
+    return ETAPA_DA_COLUNA.get(ideia["coluna"], ideia["status"])
+
+
+def _bloco_da_ideia(ideia) -> list:
+    """Uma ideia virada texto. Lista de linhas, para o chamador juntar."""
+    linhas = [
+        RISCA,
+        f"IDEIA {ideia['id']} · {_plural(ideia['votos'], 'voto', 'votos')} · "
+        f"{_plural(ideia['pessoas'], 'pessoa atrás dela', 'pessoas atrás dela')} · "
+        f"{_plural(ideia['comentarios'], 'comentário', 'comentários')}",
+        f"Título: {ideia['titulo']}",
+        f"Categoria: {ideia['categoria']}",
+        f"Etapa: {_etapa_de(ideia)}",
+        f"Criada em {_data_curta(ideia['criada_em'])} · "
+        f"nesta etapa há {_plural(ideia['parada_ha'], 'dia', 'dias')}",
+    ]
+
+    avaliacao = ideia.get("avaliacao")
+    if avaliacao:
+        notas = " · ".join(
+            f"{rotulo.lower()}: {avaliacao.get(campo, 0)} de 5"
+            for campo, rotulo in NOTAS_DA_AVALIACAO
+        )
+        linhas.append(f"Avaliação da equipe · {notas}")
+        if avaliacao.get("decisao_produto"):
+            linhas.append(f"Decisão de produto: {avaliacao['decisao_produto']}")
+    else:
+        linhas.append("Avaliação da equipe: ninguém escreveu nada ainda.")
+
+    if ideia.get("motivo_da_saida"):
+        linhas.append(f"Motivo que a pessoa recebeu: {ideia['motivo_da_saida']}")
+
+    linhas += ["", "O que trava, nas palavras de quem escreveu:", ideia["problema"]]
+    if ideia.get("solucao_proposta"):
+        linhas += ["", "O que a pessoa propõe:", ideia["solucao_proposta"]]
+    linhas.append("")
+    return linhas
+
+
+def texto_do_quadro(nome_do_quadro: str, ideias: list, agora: datetime) -> str:
+    """A Caixa inteira em texto corrido, pronta para copiar.
+
+    Mora no Python e não no template porque o que sai é TEXTO, e no template
+    cada quebra de linha viraria uma briga com o HTML — aqui a quebra de linha
+    É o formato.
+
+    A ordem é a mais votada primeiro, e ela está dita no cabeçalho: ordem
+    silenciosa em texto que vai para análise é uma opinião disfarçada de dado.
+    """
+    ordenadas = sorted(ideias, key=lambda i: (-i["votos"], -i["pessoas"], i["id"]))
+
+    cabecalho = [
+        f"CAIXA DE SUGESTÕES · {nome_do_quadro}",
+        f"Exportado em {agora.strftime('%d/%m/%Y, %H:%M')} (UTC) "
+        f"da área administrativa de meshcraft.top.",
+        (
+            f"{_plural(len(ordenadas), 'ideia no quadro', 'ideias no quadro')}, "
+            "da mais votada para a menos votada."
+            if ordenadas
+            else "O quadro está VAZIO: nenhum aluno escreveu nada até agora."
+        ),
+        "",
+        "O que não está neste texto, e por quê:",
+        "· Quem escreveu cada ideia. Este texto foi feito para sair da área",
+        "  administrativa, e a análise não precisa do nome de ninguém.",
+        "· O texto dos comentários. A Caixa entrega QUANTOS comentários cada",
+        "  ideia tem, não o que cada um diz.",
+        "· As ideias arquivadas e as apagadas. Arquivar é dizer que aquilo saiu",
+        "  do quadro; apagar destrói o texto para sempre.",
+        "",
+    ]
+
+    corpo = []
+    for ideia in ordenadas:
+        corpo += _bloco_da_ideia(ideia)
+
+    return "\n".join(cabecalho + corpo + [RISCA, "FIM DA EXPORTAÇÃO."])
+
+
+@require_GET
+def exportar(request):
+    quadro = CaixaClient().ideias(por_email=_email(request))
+    if quadro is None:
+        return render(request, "admin/caixa_exportar.html", {"nao_respondeu": True})
+
+    agora = datetime.now(tz.utc)
+    ideias = _enriquecer(quadro["ideias"], agora)
+
+    return render(
+        request,
+        "admin/caixa_exportar.html",
+        {
+            "quadro": quadro["quadro"],
+            "texto": texto_do_quadro(quadro["quadro"], ideias, agora),
+            "total": len(ideias),
+            "na_mesa": len(esperando(ideias)),
+        },
+    )
+
+
 def _email(request) -> str:
     """O e-mail de quem está olhando — a porta já o resolveu pela `identidade`.
 

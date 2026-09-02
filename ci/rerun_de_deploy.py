@@ -640,15 +640,96 @@ def _texto_da_pendencia(fatos: Fatos, permanente: bool) -> str:
 # --------------------------------------------------------------- o mundo ----
 
 
-def _rodar(comando: list[str], teto_s: int = 120) -> tuple[int, str]:
+def _rodar(comando: list[str], teto_s: int = 120,
+           ambiente: dict[str, str] | None = None) -> tuple[int, str]:
     try:
         proc = subprocess.run(
             comando, capture_output=True, text=True, timeout=teto_s,
-            encoding="utf-8", errors="replace",
+            encoding="utf-8", errors="replace", env=ambiente,
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as erro:
         raise ErroDeMedicao(f"{' '.join(comando[:3])}…: {erro}") from erro
     return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+
+
+# ---------------------------------------------------------------------------
+# O BRAÇO DA VACINA — TAR-051 (02/09/2026)
+#
+# A vacina tinha cabeça e não tinha braço: em 30/08/2026 ela decidiu REPETIR
+# corretamente e o `gh run rerun` devolveu 403. Não foi falta de permissão no
+# job — o log do run 33341539836 mostra `Actions: write` concedido já no `Set
+# up job`. Foi ESCOLHA DE TOKEN: `GH_TOKEN: ${{ secrets.PISTA_TOKEN ||
+# github.token }}` faz o PAT do mantenedor SOMBREAR o `github.token`, e o PAT é
+# justamente o único dos dois que não pode redisparar run.
+#
+# E o projeto já sabia disso um dia antes. O `pouso.yml` escreve, desde
+# 29/08/2026, a frase inteira — *"permissão `actions: write` no token, que a
+# `PISTA_TOKEN` não tem"* — com a mesma mensagem crua, e um teste-guarda em
+# `ci/tests/test_mergear.py` a protege. O conhecimento existia a dois arquivos
+# de distância e não alcançou quem precisava dele.
+#
+# MEDIDO em 02/09/2026, três casos isolados, cada um com o seu próprio run
+# alvo, e o veredito lido do `run_attempt` POR FORA (o `gh run rerun` devolve 0
+# só por enfileirar — armadilhas/183):
+#
+#   PISTA_TOKEN   + actions:write  → 403 "by personal access token" · 1 → 1
+#   github.token  + actions:write  → OK                             · 1 → 2
+#   github.token  + actions:read   → 403 "by integration"           · 1 → 1
+#
+# A escada, e por que ela em vez de simplesmente trocar o token: o motivo
+# escrito para preferir o PAT ("events triggered by the GITHUB_TOKEN will not
+# create a new workflow run") é VERDADEIRO para o merge da pista e não se
+# aplica a um rerun, que não cria run novo, e sim um attempt do mesmo run. Só
+# que isso eu não medi, e trocar a preferência por uma leitura de documentação
+# seria exatamente a inferência que esta tarefa foi proibida de fazer. Com a
+# escada nenhum cenário fica pior: se o mantenedor um dia der `actions: write`
+# ao PAT, a vacina volta a preferi-lo sozinha, sem ninguém tocar em código.
+#
+# FAIL-OPEN NO BRAÇO, FAIL-CLOSED NO VEREDITO: se TODOS os braços falharem, o
+# desfecho é o de hoje — `ErroDeMedicao`, código 2, issue aberta. A escada só
+# pode transformar um "não consegui" em "consegui", nunca o contrário, e nunca
+# declara ter republicado sem ter republicado.
+# ---------------------------------------------------------------------------
+def bracos_do_rerun(ambiente: dict[str, str] | None = None) -> list[tuple[str, str]]:
+    """Os tokens que a vacina tem para pedir o rerun, na ordem de tentativa.
+
+    A reserva só entra se existir E for DIFERENTE do principal: sem
+    `PISTA_TOKEN` os dois já são o mesmo `github.token`, e uma segunda
+    tentativa idêntica seria só uma linha de log mentindo sobre ter um plano B.
+    """
+    env = os.environ if ambiente is None else ambiente
+    principal = env.get("GH_TOKEN") or env.get("GITHUB_TOKEN") or ""
+    reserva = env.get("GH_TOKEN_RESERVA") or ""
+    bracos = [("o token principal", principal)]
+    if reserva and reserva != principal:
+        bracos.append(("o token do próprio job (`github.token`)", reserva))
+    return bracos
+
+
+def pedir_o_rerun(run: str, apenas_falhados: bool) -> str:
+    """Pede o rerun descendo a escada de braços. Devolve o braço que conseguiu.
+
+    Levanta `ErroDeMedicao` se nenhum conseguir — com a saída crua de CADA um,
+    porque as duas recusas se distinguem pela última palavra (`by personal
+    access token` é o PAT do mantenedor; `by integration` é o `github.token`),
+    e é ela que diz a quem pedir o conserto.
+    """
+    comando = ["gh", "run", "rerun", run]
+    if apenas_falhados:
+        comando.append("--failed")
+    recusas: list[str] = []
+    for rotulo, token in bracos_do_rerun():
+        ambiente = dict(os.environ)
+        if token:
+            ambiente["GH_TOKEN"] = token
+        codigo, saida = _rodar(comando, ambiente=ambiente)
+        if codigo == 0:
+            if recusas:
+                print(f"   ↳ o rerun subiu com {rotulo} — o anterior foi recusado.")
+            return rotulo
+        print(f"   ↳ {rotulo} foi recusado: {saida.strip()[:160]}")
+        recusas.append(f"{rotulo}: {saida.strip()[:160]}")
+    raise ErroDeMedicao("gh run rerun falhou: " + " · ".join(recusas))
 
 
 def dados_do_run(run: str) -> dict:
@@ -1108,12 +1189,12 @@ def main(argv: list[str] | None = None) -> int:
                   f"{MAXIMO_DE_TENTATIVAS})…", flush=True)
             # Run CANCELADO não tem job falhado: `--failed` não teria o que
             # repetir. Quem decide isso é a tabela, não este laço (188).
-            comando = ["gh", "run", "rerun", run]
-            if decisao.rerun_apenas_falhados:
-                comando.append("--failed")
-            codigo, saida = _rodar(comando)
-            if codigo != 0:
-                raise ErroDeMedicao(f"gh run rerun falhou: {saida.strip()[:200]}")
+            #
+            # A ESCADA DE BRAÇOS (TAR-051) mora dentro de `pedir_o_rerun`: se o
+            # token principal for recusado, ela desce para o do próprio job e
+            # diz no log qual caiu. Se nenhum passar, ela levanta o mesmo
+            # `ErroDeMedicao` de sempre — o desfecho não mudou, só o alcance.
+            pedir_o_rerun(run, decisao.rerun_apenas_falhados)
             time.sleep(INTERVALO_DE_CONFERENCIA_S)
             conclusion = esperar_o_run(run, args.teto)
             if conclusion == "success":
