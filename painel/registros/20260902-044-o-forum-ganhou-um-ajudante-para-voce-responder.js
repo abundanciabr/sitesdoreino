@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260902-036-o-forum-ganhou-um-ajudante-para-voce-responder",
+  arquivo: "20260902-044-o-forum-ganhou-um-ajudante-para-voce-responder",
   tipo: "entrega",
   quando: "2026-09-02",
   titulo: "O forum ganhou um ajudante: voce clica, a IA escreve o rascunho, voce publica",
