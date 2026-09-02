@@ -322,20 +322,27 @@ def varrer(
                     )
                 continue
 
-            if not despachar(inscricao, passo, canal):
-                # NADA saiu: nada se registra como saído. O passo continua
-                # devendo, e a passada seguinte o reencontra.
-                passada.sem_despacho += 1
-                continue
+            # O DESPACHO E O REGISTRO VIVEM OU MORREM JUNTOS. Sem esta
+            # transação comum, a carta chega ao sininho e a linha de `Entrega`
+            # que diz "saiu" pode não ser gravada — e a passada seguinte manda
+            # tudo de novo, com um `event_id` novo que a dedup do sininho não
+            # tem como pegar. É também ela que satisfaz o `emitir()` da outbox,
+            # que RECUSA gravar fora de transação.
+            with transaction.atomic():
+                if not despachar(inscricao, passo, canal):
+                    # NADA saiu: nada se registra como saído. O passo continua
+                    # devendo, e a passada seguinte o reencontra.
+                    passada.sem_despacho += 1
+                    continue
 
-            regua.registrar(
-                veredito,
-                inscricao=inscricao,
-                passo=passo,
-                canal=canal,
-                previsto_para=previsto,
-                momento=agora,
-            )
+                regua.registrar(
+                    veredito,
+                    inscricao=inscricao,
+                    passo=passo,
+                    canal=canal,
+                    previsto_para=previsto,
+                    momento=agora,
+                )
             passada.entregues += 1
             entregou_algum = True
 
