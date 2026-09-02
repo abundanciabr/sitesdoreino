@@ -447,3 +447,57 @@ def test_o_menu_padrao_da_migracao_e_coerente():
     assert normalizar_menu(padrao) == padrao
     # a página de entrar nasce sem menu: é o pedido do mantenedor, escrito no dado
     assert {"page": "funil/login", "version": ""} in padrao["pages"]
+
+
+# ---------------------------------------------------------------------------
+# A plateia de EQUIPE (03/09/2026, PR #890 — Rito de Contrato)
+# ---------------------------------------------------------------------------
+def test_a_plateia_de_equipe_e_aceita():
+    """`staff` é valor legítimo desde o Rito de Contrato do PR #890.
+
+    O mantenedor pediu um atalho para a área de administração visível só para
+    quem é da equipe. O valor sai do campo `papel` da sessão, que é de EXIBIÇÃO:
+    este validador só guarda o dado; quem decide o que fazer com ele é quem
+    desenha o menu, e quem barra a entrada é a porta da célula dona do recurso.
+    """
+    limpo = normalizar_menu(
+        {
+            "default_version": "v",
+            "versions": [
+                {
+                    "slug": "v",
+                    "name": "V",
+                    "items": [
+                        {
+                            "url": "/admin/",
+                            "labels": {"pt-br": "Admin"},
+                            "audience": "staff",
+                        }
+                    ],
+                }
+            ],
+        }
+    )
+    assert limpo["versions"][0]["items"][0]["audience"] == "staff"
+
+
+def test_a_plateia_inventada_continua_recusada():
+    """O controle da linha de cima: a lista não virou "aceita qualquer coisa"."""
+    with pytest.raises(ValidationError):
+        normalizar_menu(
+            {
+                "versions": [
+                    {
+                        "slug": "v",
+                        "name": "V",
+                        "items": [
+                            {
+                                "url": "/",
+                                "labels": {"pt-br": "Início"},
+                                "audience": "so_a_diretoria",
+                            }
+                        ],
+                    }
+                ]
+            }
+        )
