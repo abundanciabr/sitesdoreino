@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import logging
 
-from .models import AjudaAceita, Pessoa
+from .models import AjudaAceita, ConversaAberta, Pessoa
 from .motor import _quando, aplicar
 
 logger = logging.getLogger(__name__)
@@ -106,8 +106,63 @@ def ao_status_alterado(envelope: dict) -> None:
 
 
 def ao_forum_topico_criado(envelope: dict) -> None:
-    """Alguém abriu uma conversa. Paga a quem abriu, com teto e quarentena."""
+    """Alguém abriu uma conversa. Paga a quem abriu, com teto e quarentena.
+
+    DUAS COISAS ACONTECEM AQUI, e elas são independentes de propósito — é a
+    mesma separação de `ao_forum_resposta_aceita`, pela mesma razão:
+
+    1. **O XP**, pela regra de pontuação, que o mantenedor liga e desliga.
+    2. **O REGISTRO de quem abriu** (`ConversaAberta`), que é de onde os
+       Destaques da semana tiram o endereço da carta de parabéns. Ele acontece
+       MESMO COM A REGRA DESLIGADA, e hoje a economia inteira está desligada:
+       amarrar o registro ao crédito faria a tabela nascer vazia e o Destaque
+       nascer morto.
+
+    **Por que o registro precisa existir:** quando alguém da equipe escolhe um
+    trabalho para destacar, ele o vê pelo fórum (`listRecentTopics`), que devolve
+    o TÍTULO e o NOME DE EXIBIÇÃO do autor. Nome de exibição não endereça carta
+    nenhuma, e o id opaco de quem abriu só existe aqui, no `ator_id` do envelope.
+    Antes de 02/09/2026 ele chegava e era jogado fora.
+    """
+    _registrar_a_conversa(envelope)
     _creditar(envelope)
+
+
+def _registrar_a_conversa(envelope: dict) -> None:
+    """Grava de quem é esta conversa, uma vez por tópico. Nunca inventa dono.
+
+    Idempotente pelo par (site, tópico): o mesmo evento reentregue pelo relay
+    não vira uma segunda linha, porque uma discussão é aberta uma vez, por uma
+    pessoa. O `site_id` entra na chave porque o id do tópico é do fórum daquela
+    escola — o tópico 7 de duas escolas são duas conversas.
+
+    **Envelope sem `ator_id` não vira linha.** O contrato do evento o declara
+    obrigatório e não anulável ("tópico do fórum sempre tem gente atrás"), mas
+    quem consome fato de outra célula não confia na promessa: um envelope torto
+    que virasse linha atribuiria a conversa a um dono inventado, e a carta de
+    parabéns iria para a pessoa errada — ou para ninguém, com a tela afirmando o
+    contrário.
+    """
+    data = envelope.get("data") or {}
+    site_id = data.get("site_id")
+    topico_id = data.get("topico_id")
+    autor = envelope.get("ator_id")
+    if not (site_id and topico_id and autor):
+        logger.warning(
+            "tópico criado %s chegou sem site, tópico ou autor: não registro",
+            envelope.get("event_id"),
+        )
+        return
+
+    pessoa, _ = Pessoa.objects.get_or_create(
+        id_da_plataforma=autor,
+        defaults={"email": f"{autor}@desconhecido.invalid"},
+    )
+    ConversaAberta.objects.get_or_create(
+        site_id=site_id,
+        topico_id=str(topico_id),
+        defaults={"pessoa": pessoa, "occurred_at": _quando(envelope)},
+    )
 
 
 def ao_forum_mensagem_criada(envelope: dict) -> None:
