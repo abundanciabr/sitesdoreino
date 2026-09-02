@@ -1,0 +1,104 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A porta da área do lançamento perpétuo (/admin/perpetuo/, 02/09/2026).
+
+Bloco `comment`, e nunca `{#`: aquele comenta UMA LINHA SÓ, e escrito em várias
+o texto vaza para a tela (armadilhas/087). Guarda:
+tests/test_nenhum_comentario_vaza_para_a_tela.py.
+
+Zero atributo `style=` aqui dentro: o estilo mora em admin/base.html, e quem
+impede a volta dele para a marcação é tests/test_estilo_nao_volta_para_a_marcacao.py.
+
+O nome e a explicação de cada porta NÃO estão escritos aqui: vêm de
+painel/mapa-do-site.json, pela view. Ver o porquê em apps/core/perpetuo.py.
+{% endcomment %}
+{% block titulo %}Lançamento perpétuo{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft · Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'visao_geral' %}">&larr; Voltar para a visão geral</a>
+  <h1>O lançamento perpétuo</h1>
+  <p class="subtitulo">A máquina que vende todo dia, sem depender de uma data.</p>
+
+  <p class="lei">
+    Um lançamento comum abre as matrículas por alguns dias e fecha. O perpétuo
+    não fecha: cada pessoa que chega começa o próprio caminho, no relógio dela.
+    Quem entrou hoje encontra o mesmo convite que alguém encontrou semana
+    passada, na mesma ordem, porque quem conduz é a máquina e não o calendário.
+  </p>
+
+  {% if mapa_ausente %}
+  <p class="aviso espaco-20 borda-vermelha">
+    <b>Não consegui ler o mapa do site.</b>
+    As seis peças abaixo continuam verdadeiras, mas os links de cada uma vêm do
+    arquivo do mapa, e ele não veio nesta versão do site. Nada aqui está
+    quebrado por sua causa: é coisa de bastidor, e o robô da próxima
+    atualização conserta.
+  </p>
+  {% endif %}
+
+  <h2 class="titulo-de-bloco">As seis peças da máquina</h2>
+  <p class="recado-fraco espaco-abaixo-10">
+    Na ordem em que uma pessoa as atravessa, de quem nunca ouviu falar da escola
+    até quem já está dentro dela. Em cada peça, as portas que o site já tem hoje
+    para ela.
+  </p>
+
+  <div class="etapas">
+    {% for etapa in etapas %}
+    <section class="etapa">
+      <div class="etapa-topo">
+        <span class="etapa-degrau">{{ forloop.counter }}</span>
+        <h2>{{ etapa.nome }}</h2>
+      </div>
+      <p class="pergunta">{{ etapa.pergunta }}</p>
+      <p class="resumo">{{ etapa.resumo }}</p>
+      <ul class="portas">
+        {% for porta in etapa.portas %}
+        <li>
+          {% if porta.faltando %}
+          <span class="faltando">Endereço fora do mapa do site:</span>
+          <span class="endereco">{{ porta.endereco }}</span>
+          <span class="explicacao">
+            Alguém mudou este endereço e não avisou esta tela. É defeito de
+            bastidor, não seu.
+          </span>
+          {% elif porta.link %}
+          <a class="nome" href="{{ porta.link }}">{{ porta.titulo }}</a>
+          <span class="endereco">{{ porta.endereco }}</span>
+          <span class="explicacao">{{ porta.descricao }}</span>
+          {% else %}
+          <span class="nome">{{ porta.titulo }}</span>
+          <span class="endereco">{{ porta.endereco }}</span>
+          <span class="explicacao">
+            {{ porta.descricao }}
+            {% if porta.molde %}Não há um link só para esta: o endereço muda a
+            cada uma delas.{% endif %}
+          </span>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endfor %}
+  </div>
+
+  {% comment %}
+  Estado vazio HONESTO, na mesma disciplina da visão geral: esta área nasce com
+  uma tela só, e dizer isso em voz alta é melhor que deixar o mantenedor
+  procurando as outras. O que NÃO entra aqui é lista de "o que falta construir":
+  isso seria uma segunda superfície de acompanhamento, e o CLAUDE.md a proíbe.
+  O que está pronto se lê no livro, calculado, em /admin/painel/.
+  {% endcomment %}
+  <p class="aviso espaco-28">
+    <b>Esta área começa com uma página só, e é de propósito.</b>
+    Ela é a planta da máquina: serve para você e eu combinarmos, olhando o mesmo
+    desenho, qual peça ganha painel primeiro. Cada painel novo entra aqui como
+    uma página vizinha desta.
+  </p>
+</div>
+{% endblock %}
