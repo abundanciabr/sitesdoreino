@@ -24,7 +24,8 @@ Templates versionados dentro da célula. Nunca toca dinheiro, nunca bloqueia din
 - **PROIBIDO (nem ler):** as demais células, `infra/`
 
 ## Comunicação
-- **Escuta:** `pedido.criado.v1`, `pagamento.aprovado.v1`, `pagamento.recusado.v1`, `pix.expirado.v1`, `quiz.completado.v1` (consumer group `mensageria`)
+- **Escuta:** `pedido.criado.v1`, `pagamento.aprovado.v1`, `pagamento.recusado.v1`, `pix.expirado.v1`, `quiz.completado.v1`, `identidade.pessoa-cadastrada.v1` (consumer group `mensageria`). O último entrou em 02/09/2026: é o gatilho da primeira sequência de verdade, e sem ele o pedido mais óbvio do mantenedor ("após o cadastro, mandar boas-vindas") não teria o que escutar.
+- **Publica:** `notificacao.devida.v1` — a carta de um passo de sequência, pela outbox de `apps/jornadas`. Até 02/09/2026 esta célula só escutava. O assunto é `jornada.passo` e **o texto não viaja**: o sininho o busca pelo `passo_id` na hora de ler, no idioma de quem lê (modelo híbrido, Rito de 31/08/2026).
 - **Pergunta à `identidade`** (a partir das jornadas): traduz o id de PLATAFORMA
   em e-mail e idioma **na hora do envio**, nunca antes. Guardar o e-mail aqui
   seria uma segunda casa do dado que vive numa linha só (`DECISAO-EVO-01` §3), e
