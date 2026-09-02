@@ -523,6 +523,26 @@
   // Destes, os que viajam com o texto completo (a capa os desenha abertos).
   var RECENTES_COM_DETALHE = 10;
 
+  // O MESMO teto para "Atenção agora", e ele nasceu de uma medição, em
+  // 02/09/2026: o resumo tinha **11 bytes** de folga no orçamento de 150 KB, e o
+  // próximo registro de qualquer robô ia reprovar a muralha do painel. Como a lei
+  // manda todo PR trazer o seu registro, isso travaria o repositório inteiro.
+  //
+  // O QUE estava se acumulando (a pergunta que o gerador manda fazer antes de
+  // pensar no teto): "Atenção agora" é calculado como *vermelho ou âmbar sem
+  // resposta*, e um incidente quase nunca ganha registro de resposta — ele é
+  // consertado, o conserto vira uma ENTREGA, e o incidente fica aberto para
+  // sempre. Medido no mesmo dia: 49 KB do resumo eram incidentes, um deles de
+  // 4,5 KB, vários de cinco dias antes. Um bloco que só cresce dentro de um
+  // orçamento que não cresce tem data marcada, e a data chegou.
+  //
+  // O CORTE É DE TEXTO, NUNCA DE FATO. Todos os problemas abertos continuam
+  // listados, contados no cabeçalho do bloco e clicáveis; os mais antigos vão
+  // como título, com a linha que diz onde o texto está (`soTitulo`). Sumir com
+  // um problema seria a doença que este painel existe para curar; mostrar
+  // vinte parágrafos de agosto na tela de hoje é outra forma da mesma doença.
+  var PROBLEMAS_COM_DETALHE = 10;
+
   // Os campos que sobrevivem quando um registro viaja só como título. O `detalhe`
   // fica de fora de propósito: nos blocos recolhidos a página NUNCA o mostra
   // (`.item.recolhido .det{display:none}`, e não há nenhum clique que o abra) —
@@ -573,7 +593,14 @@
 
     // COM texto: o que a página desenha aberto.
     marcar(completo, blocos.caixa);
-    marcar(completo, blocos.problemas);
+    // "Atenção agora" com teto de TEXTO (ver `PROBLEMAS_COM_DETALHE`): os mais
+    // RECENTES levam o parágrafo, o resto vai como título. A ordem do bloco é
+    // por gravidade, e usá-la aqui deixaria o texto com os incidentes mais
+    // VELHOS — que é o contrário do que alguém abre a capa para ler.
+    var problemasPorData = (blocos.problemas || []).slice().sort(function (a, b) {
+      return paraData(b.quando) - paraData(a.quando);
+    });
+    marcar(completo, problemasPorData.slice(0, PROBLEMAS_COM_DETALHE));
     marcar(completo, recentes.slice(0, RECENTES_COM_DETALHE));
     mapaS.forEach(function (c) {
       if (c.estado) completo[c.estado.arquivo] = true;
@@ -581,6 +608,10 @@
     });
 
     // SÓ título: o que a página desenha recolhido, ou como uma linha.
+    // Os problemas abertos entram INTEIROS aqui e a linha final tira os que já
+    // estão em `completo`: assim nenhum deles some do resumo, e só o texto dos
+    // antigos fica para trás.
+    marcar(apenasTitulo, blocos.problemas);
     marcar(apenasTitulo, blocos.frentes);
     marcar(apenasTitulo, blocos["nao-comprovado"]);
     marcar(apenasTitulo, blocos.frescor);
@@ -617,6 +648,7 @@
     ORDEM_DO_MAPA: ORDEM_DO_MAPA,
     IMPACTOS: IMPACTOS,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
+    PROBLEMAS_COM_DETALHE: PROBLEMAS_COM_DETALHE,
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,
     montarResumo: montarResumo,
