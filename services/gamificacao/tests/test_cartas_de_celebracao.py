@@ -45,6 +45,7 @@ from pathlib import Path
 import jsonschema
 import pytest
 from django.core.management import call_command
+from django.core.management.base import CommandError
 from django.db import transaction
 from django.utils import timezone
 
@@ -357,6 +358,37 @@ def test_consertar_um_perfil_divergente_nao_comemora():
 
     assert PerfilJogador.objects.get().nivel == 2
     assert len(_cartas()) == 1, "consertar a cópia não escreve carta"
+
+
+def test_consertar_COM_avisar_manda_a_carta_de_quem_subiu():
+    """O dia em que a escada nasce, e só ele (`--avisar`, 02/09/2026).
+
+    Antes de a escola ligar os degraus, `nivel_para` devolve 1 para todo mundo:
+    não há degrau ativo nenhum. No instante em que a escada é ligada, quem já
+    tinha XP passa a estar num degrau que até então não existia. A cópia não
+    atrasou: a régua nasceu depois da altura, e por isso a subida é de HOJE.
+    """
+    _escada()
+    _regra(pontos=10)
+    aplicar(_evento(), SITE)
+    assert len(_cartas()) == 1
+
+    PerfilJogador.objects.update(nivel=1, xp_total=0)
+
+    call_command("reconciliar_perfis", "--consertar", "--avisar")
+
+    assert PerfilJogador.objects.get().nivel == 2
+    assert len(_cartas()) == 2, "quem subiu no dia da escada não foi avisado"
+
+
+def test_avisar_sozinho_e_recusado_em_vez_de_ignorado():
+    """Opção aceita e sem efeito é a que faz alguém acreditar que avisou."""
+    _escada()
+
+    with pytest.raises(CommandError) as recusa:
+        call_command("reconciliar_perfis", "--avisar")
+
+    assert "PAROU POR SEGURANÇA" in str(recusa.value)
 
 
 # ------------------------------------------- 7. nada de PII no fio

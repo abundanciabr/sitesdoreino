@@ -1,0 +1,102 @@
+# =============================================================================
+# CONFERIR AS FICHAS DOS ALUNOS — compara o nível e os pontos gravados em cada
+# ficha com o histórico de pontos, e (se pedirem) acerta as que estiverem fora.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# `PerfilJogador.xp_total` e `.nivel` são cópias desnormalizadas do razão de XP.
+# `reconciliar_perfis` é o mecanismo que prova que a cópia não mentiu, e até
+# 02/09/2026 não havia como rodá-lo em produção sem alguém entrar na VPS à mão.
+#
+# O DIA QUE PEDIU ISTO: 02/09/2026, quando a escada de degraus foi ligada. Antes
+# dela, `nivel_para` devolvia 1 para todo mundo (não havia degrau ativo); depois,
+# quem já tinha XP passou a estar num degrau que até então não existia.
+#
+# O PADRÃO É O SEGURO: sem tocar em nada, ele só OLHA e conta. Escrever exige
+# dizer `sim` no primeiro botão, e avisar os alunos exige dizer `sim` nos dois.
+#
+# POR QUE workflow_dispatch É SEGURO AQUI: não entrega código; roda um script
+# versionado que só sabe fazer uma coisa. No modo padrão ele nem escreve.
+#
+# GRUPO PRÓPRIO (`armadilhas/173`): no grupo `deploy`, um disparo manual seria
+# cancelado antes de começar num repositório com ~100 entregas por dia.
+# =============================================================================
+name: conferir-as-fichas
+on:
+  workflow_dispatch:
+    inputs:
+      consertar:
+        description: "Acertar as fichas que estiverem fora do lugar? (o padrão só olha)"
+        type: choice
+        options: ["nao", "sim"]
+        default: "nao"
+      avisar:
+        description: "E avisar quem subir de nível? (só junto de consertar=sim)"
+        type: choice
+        options: ["nao", "sim"]
+        default: "nao"
+permissions:
+  contents: read
+concurrency:
+  group: conferir-as-fichas
+  cancel-in-progress: false
+jobs:
+  conferir:
+    name: conferir as fichas contra o historico de pontos
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # inexistente AVISA e IGNORA, saindo com sucesso — falso-verde conhecido.
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/conferir-as-fichas.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/conferir-as-fichas.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/conferir-as-fichas.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Conferir na VPS
+        id: conferir
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 10m
+          # As duas escolhas viajam por `envs`, nunca costuradas no corpo de um
+          # `run:` — texto de fora interpolado em shell é a `armadilhas/047`. E
+          # o script valida as duas contra 'sim'/'nao' antes de usá-las.
+          envs: CONSERTAR,AVISAR
+          script_path: infra/conferir-as-fichas.sh
+        env:
+          CONSERTAR: ${{ inputs.consertar }}
+          AVISAR: ${{ inputs.avisar }}
+
+      # A PROVA, e não o eco (`armadilhas/114`): a linha "PRONTO:" só é impressa
+      # depois de o script ter lido a resposta do comando.
+      - name: Provar que a conferência aconteceu
+        env:
+          SAIDA: ${{ steps.conferir.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO: a conferencia das fichas terminou'; then
+            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script."
+            echo "Ela só é impressa depois de o comando responder, e sem ela nada"
+            echo "está provado — ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          echo "✅ a conferência rodou e a saída acima diz o que ela encontrou."

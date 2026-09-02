@@ -18,9 +18,26 @@ QUANDO ELE APONTA ALGO, ISSO É NOTÍCIA
 Divergência aqui significa que alguém escreveu no perfil por fora do motor, ou
 que um recálculo falhou no meio. Nos dois casos a linha que ele imprime é o
 começo da investigação, não o fim: conserte a causa, não só o número.
+
+...COM UMA EXCEÇÃO, E ELA TEM DATA: O DIA EM QUE A ESCADA NASCE
+----------------------------------------------------------------
+Há um caso em que a divergência NÃO é defeito nem manutenção atrasada: o dia em
+que a escola liga os degraus. Antes disso `nivel_para` devolvia 1 para todo
+mundo, porque não havia degrau ativo nenhum; no instante em que a escada é
+ligada, quem já tinha XP passa a estar num degrau que até então não existia. A
+cópia não "atrasou": a régua nasceu depois da altura.
+
+`--avisar` existe para esse dia, e só para ele. Com ele, quem sobe recebe a
+carta de sempre, porque desta vez o fato é de HOJE: a escola passou a chamar
+aquela pessoa pelo nome do degrau agora. Sem ele (o padrão, e o que vale para
+toda manutenção) o reparo é mudo, pela razão escrita em `motor.recalcular`.
+
+**Ele só vale junto de `--consertar`**, e o comando recusa a combinação sem
+sentido em vez de ignorá-la em silêncio. Decisão do mantenedor em 02/09/2026,
+em pergunta estruturada, no dia em que os 10 degraus foram ligados.
 """
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db.models import Sum
 
 from apps.gamificacao.models import (
@@ -40,8 +57,26 @@ class Command(BaseCommand):
             action="store_true",
             help="reescreve os perfis divergentes (o padrão é só relatar)",
         )
+        parser.add_argument(
+            "--avisar",
+            action="store_true",
+            help=(
+                "manda a carta de nível a quem subir no conserto. SÓ para o dia "
+                "em que a escada é ligada (ver o topo do arquivo); exige "
+                "--consertar"
+            ),
+        )
 
     def handle(self, *args, **opts):
+        if opts["avisar"] and not opts["consertar"]:
+            # Recusar em vez de ignorar: uma opção aceita e sem efeito é a que
+            # faz alguém acreditar que avisou quando não avisou.
+            raise CommandError(
+                "PAROU POR SEGURANÇA: --avisar só faz sentido junto de "
+                "--consertar. Sozinho ele não teria nada a comemorar, porque "
+                "sem --consertar nenhum perfil muda."
+            )
+
         divergentes = []
         for perfil in PerfilJogador.objects.select_related("pessoa"):
             somado = (
@@ -89,14 +124,23 @@ class Command(BaseCommand):
             )
 
         if opts["consertar"]:
+            # `celebrar=False` é o padrão, e a razão está em `motor.recalcular`:
+            # consertar a cópia não é a pessoa ter subido de nível. Um perfil
+            # atrasado em relação ao ledger "sobe" ao ser reparado, e comemorar
+            # isso mandaria uma carta sobre um fato de semanas antes, pelo
+            # relógio da manutenção e não pelo dela.
+            #
+            # `--avisar` inverte isso para UM dia, o em que a escada é ligada,
+            # quando a subida é de hoje mesmo (ver o topo do arquivo).
+            avisar = opts["avisar"]
             for perfil, _, _, _ in divergentes:
-                # `celebrar=False`: consertar a cópia não é a pessoa ter subido
-                # de nível. Um perfil que estava atrasado em relação ao ledger
-                # "sobe" ao ser reparado, e comemorar isso mandaria uma carta
-                # sobre um fato que aconteceu semanas antes — pelo relógio da
-                # manutenção, não pelo dela.
-                recalcular(perfil.pessoa_id, perfil.site_id, celebrar=False)
+                recalcular(perfil.pessoa_id, perfil.site_id, celebrar=avisar)
             self.stdout.write(f"consertados: {len(divergentes)}")
+            self.stdout.write(
+                "com aviso de nível para quem subiu"
+                if avisar
+                else "sem aviso nenhum (reparo é mudo)"
+            )
         else:
             self.stdout.write(
                 f"{len(divergentes)} perfil(is) divergem. Rode com --consertar "
