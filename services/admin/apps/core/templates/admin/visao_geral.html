@@ -107,6 +107,25 @@
         momento em que você liga, nunca para trás.
       </div>
     </a>
+    {% comment %}
+    A sétima porta (02/09/2026), a pedido dele: "no painel do admin crie uma
+    parte assim /admin/perpetuo onde iremos criar várias coisas sobre o
+    lançamento perpétuo". Entra na mesma grade das outras pela mesma decisão de
+    sempre: uma porta só para tudo que é gestão, e botão que ninguém encontra é
+    funcionalidade que não existe.
+
+    Vem por ÚLTIMO na grade porque é a única que não se opera: as seis de cima
+    são coisas para fazer hoje, esta é a planta do negócio, para pensar.
+    Lei: docs/decisoes/DECISAO-a-area-do-lancamento-perpetuo.md.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'perpetuo' %}">
+      <div class="rotulo">Ver a máquina do lançamento perpétuo &rarr;</div>
+      <div class="nota">
+        As seis peças que fazem a escola vender todo dia sem depender de uma
+        data, na ordem em que uma pessoa as atravessa, e as portas que o site já
+        tem para cada uma.
+      </div>
+    </a>
   </div>
 
   {% comment %}
