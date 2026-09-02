@@ -42,6 +42,18 @@ def test_o_modelo_nao_tem_coluna_de_papel():
     `senha_hash` (DECISAO-login-por-senha.md) entrou na lista em 31/08/2026 —
     é o segundo jeito de provar QUEM É, não um papel; continua fora daqui
     qualquer coluna que guardasse o QUE a pessoa pode fazer.
+
+    `idioma` entrou em 02/09/2026, pelo Rito de Contrato do e-mail de verdade,
+    e a régua que o admite é a mesma: ele descreve COMO FALAR com a pessoa, não
+    o que ela pode fazer. Nenhuma porta desta plataforma consulta o idioma para
+    decidir se alguém entra — e o dia em que uma consultar, este teste não vai
+    pegar, porque ele mede o modelo e não o uso. O que ele garante é o mais
+    barato de garantir e o mais caro de perder: que a coluna não exista.
+
+    A lista é branca DE PROPÓSITO, e é por isso que ela dá trabalho: campo novo
+    obriga quem o cria a vir aqui e escrever por que ele não é um papel. Uma
+    lista negra (`"papel" not in campos`) passaria batido no dia em que alguém
+    chamasse a coluna de `nivel_de_acesso`.
     """
     campos = {campo.name for campo in Identidade._meta.get_fields()}
     assert campos == {
@@ -51,4 +63,5 @@ def test_o_modelo_nao_tem_coluna_de_papel():
         "nome_exibido",
         "criada_em",
         "senha_hash",
+        "idioma",
     }

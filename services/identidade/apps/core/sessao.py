@@ -124,7 +124,7 @@ def cunhar_ou_recuperar(*, email: str, nome: str, site_id: str = "") -> Identida
 
 
 def definir_senha(
-    *, email: str, senha: str, nome: str = "", site_id: str = ""
+    *, email: str, senha: str, nome: str = "", site_id: str = "", idioma: str = ""
 ) -> tuple[Identidade, bool]:
     """`setPassword` — o segundo jeito de provar quem é (DECISAO-login-por-senha.md).
 
@@ -137,11 +137,23 @@ def definir_senha(
 
     A senha NUNCA aparece em texto puro depois desta função — só o hash que
     `make_password` produz entra na linha.
+
+    **`idioma` só vale na CUNHAGEM, como `nome` e `site_id`** — e aqui o "só"
+    tem uma razão a mais que os irmãos. A língua vem do endereço que a pessoa
+    estava navegando na hora (`/es/cadastro`), e quem volta para trocar a senha
+    pode estar em qualquer página: deixar essa segunda visita reescrever o
+    idioma faria a preferência da pessoa oscilar ao sabor de por onde ela
+    entrou. Trocar de língua é decisão dela, numa tela dela — não efeito
+    colateral de um formulário de senha.
     """
     with transaction.atomic():
         identidade, criada = Identidade.objects.get_or_create(
             email=email.strip().lower(),
-            defaults={"provedor": "senha", "nome_exibido": nome.strip()[:120]},
+            defaults={
+                "provedor": "senha",
+                "nome_exibido": nome.strip()[:120],
+                "idioma": idioma.strip()[:12],
+            },
         )
         identidade.senha_hash = make_password(senha)
         identidade.save(update_fields=["senha_hash"])

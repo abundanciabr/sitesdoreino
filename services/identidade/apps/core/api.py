@@ -101,6 +101,23 @@ class PessoaPorEmail(Schema):
     id: "str | None" = None
 
 
+# [POR-ID] O corpo e a resposta de `POST /pessoas/por-id` (Rito de Contrato de
+# 02/09/2026, degrau 1 do e-mail de verdade). A INVERSA da de cima, e existe
+# pelo motivo oposto: uma célula que conhece as pessoas por ID precisa entregar
+# uma carta FORA do site, e correio eletrônico se endereça por e-mail.
+class IdPedido(Schema):
+    """O id de plataforma de quem se procura — o mesmo `id` que getSession devolve."""
+
+    id: str
+
+
+class PessoaParaEnvio(Schema):
+    """O necessário e suficiente para endereçar uma carta: para onde ela vai e em que língua é escrita. Nunca o nome, nunca o papel — quem manda um aviso automático não precisa deles, e cada campo a mais aqui é um campo a mais vazando por um par de tokens."""
+
+    email: "str | None" = None
+    idioma: "str | None" = None
+
+
 # [LOGIN-POR-SENHA] Os schemas de `DECISAO-login-por-senha.md` (31/08/2026).
 class TokenDeEntrada(Schema):
     """O token efêmero a embutir no POST de /entrar/senha. Opaco para quem o recebe."""
@@ -109,12 +126,15 @@ class TokenDeEntrada(Schema):
 
 
 class DefinirSenhaPedido(Schema):
-    """O e-mail e a senha em texto puro (transporte é HTTPS interno, nunca fica em log — o hash nasce do lado da identidade, nunca do lado de quem chama). nome/site_id só valem na primeira vez (cunhagem); numa Identidade que já existe, são ignorados."""
+    """O e-mail e a senha em texto puro (transporte é HTTPS interno, nunca fica em log — o hash nasce do lado da identidade, nunca do lado de quem chama). nome/site_id/idioma só valem na primeira vez (cunhagem); numa Identidade que já existe, são ignorados.
+    `idioma` é a língua em que a pessoa se cadastrou, e é a ÚNICA vez que a plataforma tem essa informação de graça: ela vem do endereço que a pessoa estava navegando (`/es/cadastro`) e some quando a página fecha. Quem não o envia deixa a pessoa sem língua declarada, e findPersonById devolverá `idioma: null` para ela — resposta legítima, não erro.
+    """
 
     email: str
     senha: str
     nome: "str | None" = None
     site_id: "str | None" = None
+    idioma: "str | None" = None
 
 
 class PessoaComSenha(Schema):
@@ -258,6 +278,67 @@ def pessoa_por_email(request, corpo: EmailPedido):
 
 
 @router.post(
+    "/pessoas/por-id",
+    response=PessoaParaEnvio,
+    operation_id="findPersonById",
+    summary="Para onde escrever a esta pessoa, e em que lingua",
+    description=(
+        "A INVERSA de findPersonByEmail, e existe pelo motivo oposto: uma "
+        "celula que conhece as pessoas por ID DE PLATAFORMA precisa entregar "
+        "uma carta FORA do site, e correio eletronico se enderecca por e-mail. "
+        "A `mensageria` a chama NO INSTANTE DO ENVIO, nunca no da inscricao — "
+        "guardar o e-mail do outro lado criaria uma segunda casa do dado que "
+        "ninguem mantem quando a pessoa o troca, e gravar o idioma na inscricao "
+        "congelaria a lingua de quem se inscreveu "
+        "(PLANO-SEQUENCIAS-DE-MENSAGENS §4.3). POST e nao GET pelo mesmo motivo "
+        "da irma: caminho de URL entra em log de servidor e em rastro de erro; "
+        "corpo, nao. Exige TOKENS_COMPLETOS_*, o degrau alto, porque esta porta "
+        "DEVOLVE dado pessoal — e por isso ela devolve o minimo que uma carta "
+        "precisa: para onde ir e em que lingua ser escrita, nunca o nome nem o "
+        "papel. `email: null` e RESPOSTA (id que nao existe), nao erro. "
+        '`idioma: null` tambem e resposta, e quer dizer "esta pessoa nunca '
+        'declarou lingua" — quem escreve a carta decide o padrao, porque so '
+        "ele sabe em que linguas sabe escrever."
+    ),
+)
+def pessoa_por_id(request, corpo: IdPedido):
+    """Para onde escrever a esta pessoa, e em que língua — nada além disso.
+
+    **O degrau alto, e por um motivo mais forte que o da irmã.** Aquela RECEBE
+    um e-mail e diz se existe; esta DEVOLVE o e-mail. Um par com Bearer válido
+    mas sem `TOKENS_COMPLETOS_*` poderia varrer ids e colher a caixa de entrada
+    de toda a escola. Conjunto vazio ⇒ 403 para todo mundo — fail-closed por
+    construção, igual aos vizinhos.
+
+    **Nunca 404, e nunca `{}` mudo.** "Não conheço este id" é resposta legítima:
+    a `mensageria` guarda o id numa inscrição que pode sobreviver à pessoa que a
+    apagou. `email: None` diz isso sem obrigar quem chama a traduzir uma exceção
+    de rede em "não existe" — que é exatamente onde um erro de verdade passaria
+    despercebido.
+
+    **`idioma` vazio vira `None` na resposta, e a diferença é do contrato.** No
+    banco a ausência é string vazia (convenção do Django para texto); no fio ela
+    é `null`, porque `""` é um idioma que não existe e quem lesse sem cuidado
+    tentaria renderizar nele. Traduzir na borda é o lugar certo: o modelo guarda
+    do jeito do Django, o contrato fala do jeito do contrato.
+    """
+    if request.auth not in settings.TOKENS_COMPLETOS:
+        raise HttpError(403, "este par não está autorizado a procurar por id")
+
+    id_pedido = (corpo.id or "").strip()
+    if not id_pedido:
+        # 422 e não `email: null`, pelo mesmo motivo da irmã: pedido sem id é
+        # desacordo de quem chama com o contrato, e responder "não conheço" a
+        # uma pergunta que não foi feita esconderia o defeito de quem o escreveu.
+        raise HttpError(422, "id é obrigatório")
+
+    achada = Identidade.objects.filter(id=id_pedido).values("email", "idioma").first()
+    if achada is None:
+        return {"email": None, "idioma": None}
+    return {"email": achada["email"], "idioma": achada["idioma"] or None}
+
+
+@router.post(
     "/tokens-de-entrada",
     response=TokenDeEntrada,
     operation_id="issueLoginToken",
@@ -308,6 +389,7 @@ def definir_senha(request, corpo: DefinirSenhaPedido):
         senha=corpo.senha,
         nome=corpo.nome or "",
         site_id=corpo.site_id or "",
+        idioma=corpo.idioma or "",
     )
     return {"id": identidade.id, "criada": criada}
 
