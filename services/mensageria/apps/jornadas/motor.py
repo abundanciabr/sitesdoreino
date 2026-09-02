@@ -61,6 +61,26 @@ LOTE = 200
 Despachante = Callable[[Inscricao, Passo, str], bool]
 
 
+class CanalNaoSuportado(Exception):
+    """O despachante não sabe entregar por este canal — e isso NÃO é falha.
+
+    Existe como exceção própria porque as duas maneiras de "não saiu" pedem
+    coisas opostas do relógio da inscrição, e confundi-las já custou caro uma vez
+    (`armadilhas/283`):
+
+    - **Devolver `False`** é *"falhei AGORA"* — Redis fora, provedor mudo. É
+      transitório: o passo continua devendo e a passada seguinte tenta de novo.
+    - **Levantar esta exceção** é *"esta versão da plataforma não entrega por
+      aqui"*. Nenhuma quantidade de retentativa muda isso. É recusa definitiva, e
+      a jornada tem de seguir em frente — senão a pessoa fica presa no passo para
+      sempre, e as presas ocupam a frente da fila da varredura.
+
+    Exceção em vez de um terceiro valor de retorno de propósito: o contrato `bool`
+    continua valendo para o caso normal, e um despachante futuro que esqueça de
+    tratar o caso **falha alto** em vez de silenciar num valor que ninguém leu.
+    """
+
+
 def sem_despacho_ainda(inscricao: Inscricao, passo: Passo, canal: str) -> bool:
     """O despachante padrão: não entrega nada, e diz isso.
 
@@ -339,22 +359,42 @@ def varrer(
             # tudo de novo, com um `event_id` novo que a dedup do sininho não
             # tem como pegar. É também ela que satisfaz o `emitir()` da outbox,
             # que RECUSA gravar fora de transação.
-            with transaction.atomic():
-                if not despachar(inscricao, passo, canal):
-                    # NADA saiu: nada se registra como saído. O passo continua
-                    # devendo, e a passada seguinte o reencontra.
-                    passada.sem_despacho += 1
-                    falhou_o_despacho = True
-                    continue
+            try:
+                with transaction.atomic():
+                    if not despachar(inscricao, passo, canal):
+                        # NADA saiu: nada se registra como saído. O passo continua
+                        # devendo, e a passada seguinte o reencontra.
+                        passada.sem_despacho += 1
+                        falhou_o_despacho = True
+                        continue
 
-                regua.registrar(
-                    veredito,
+                    regua.registrar(
+                        veredito,
+                        inscricao=inscricao,
+                        passo=passo,
+                        canal=canal,
+                        previsto_para=previsto,
+                        momento=agora,
+                    )
+            except CanalNaoSuportado as motivo_do_canal:
+                # RECUSA DEFINITIVA por canal, e ela é irmã da recusa por
+                # preferência: nada muda com o tempo, então insistir é laço
+                # infinito. Registrar é obrigatório — "por que ele não recebeu no
+                # e-mail?" tem de continuar com resposta na tela.
+                Entrega.objects.update_or_create(
                     inscricao=inscricao,
                     passo=passo,
                     canal=canal,
-                    previsto_para=previsto,
-                    momento=agora,
+                    defaults={
+                        "previsto_para": previsto,
+                        "resultado": "pulada",
+                        "motivo": str(motivo_do_canal),
+                        "enviado_em": None,
+                    },
                 )
+                passada.puladas += 1
+                continue
+
             passada.entregues += 1
             entregou_algum = True
 
@@ -371,9 +411,10 @@ def varrer(
             # aqui ele fica escrito em vez de ser o que sobra.
             pass
         else:
-            # RECUSA DEFINITIVA — todo canal deste passo foi barrado por
-            # preferência, e a régua barra preferência SEM reagendar de
-            # propósito: "silenciado é silenciado, remarcar seria insistir".
+            # RECUSA DEFINITIVA — todo canal deste passo foi recusado de um
+            # jeito que o tempo não desfaz: a régua barrou por preferência (e
+            # barra SEM reagendar de propósito, "silenciado é silenciado"), ou o
+            # despachante não entrega por aquele canal (`CanalNaoSuportado`).
             #
             # Sem este desfecho, "não reagenda" virava "reexamina e rebarra de
             # cinco em cinco minutos, para sempre": `proximo_em` não andava, o

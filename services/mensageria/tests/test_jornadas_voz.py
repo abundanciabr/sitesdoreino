@@ -185,14 +185,25 @@ def test_o_texto_da_mensagem_NAO_viaja_na_carta():
 
 
 def test_o_despachante_recusa_os_canais_que_ainda_nao_sabe_entregar():
-    """E recusar devolvendo `False` é o que faz o motor NÃO gravar `enviada`."""
+    """A recusa continua sendo recusa — mudou COMO ela é dita, e por quê.
+
+    Até 02/09/2026 este teste afirmava `is False`. `False` quer dizer *"falhei
+    AGORA"*, e o motor o trata como transitório: o passo continua devendo e a
+    passada seguinte tenta de novo. Só que *"esta versão da plataforma não
+    entrega por aqui"* nunca deixa de ser verdade sozinha — dizê-lo com `False`
+    prendia a inscrição no passo para sempre (`armadilhas/283`).
+
+    O que este teste continua garantindo, e é o essencial: **nenhuma carta sai**
+    por um canal que a plataforma não entrega.
+    """
     jornada = uma_jornada_pronta(canais=("sino", "email", "whatsapp"))
     inscricao = inscrita(jornada)
     passo = inscricao.jornada_versao.passos.get()
 
     with transaction.atomic():
-        assert despacho.despachar(inscricao, passo, "email") is False
-        assert despacho.despachar(inscricao, passo, "whatsapp") is False
+        for canal in ("email", "whatsapp"):
+            with pytest.raises(motor.CanalNaoSuportado, match=canal):
+                despacho.despachar(inscricao, passo, canal)
     assert not OutboxEvent.objects.exists()
 
 
