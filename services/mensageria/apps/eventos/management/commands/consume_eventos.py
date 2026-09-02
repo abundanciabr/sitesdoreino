@@ -11,6 +11,7 @@ from django.db import IntegrityError, transaction
 from apps.eventos.handlers import (
     ao_pagamento_aprovado,
     ao_pagamento_recusado,
+    ao_pessoa_cadastrada,
     ao_pix_expirado,
 )
 from apps.eventos.models import EventoProcessado
@@ -23,6 +24,11 @@ STREAMS = {
     "eventos.pagamento.aprovado": ao_pagamento_aprovado,
     "eventos.pix.expirado": ao_pix_expirado,
     "eventos.pagamento.recusado": ao_pagamento_recusado,
+    # Desde 02/09/2026: o cadastro é o gatilho da primeira sequência de verdade
+    # (boas-vindas). O nome do stream é `eventos.<evento>`, SEM versão — a versão
+    # viaja no envelope, e pôr `v1` aqui faria a célula escutar um stream que
+    # ninguém escreve, em silêncio.
+    "eventos.identidade.pessoa-cadastrada": ao_pessoa_cadastrada,
 }
 
 # Convenção do LOTE — as 4 células consumidoras usam OS MESMOS nomes e valores
@@ -74,7 +80,11 @@ def processar_envelope(envelope: dict, handler) -> bool:
                 )
         except IntegrityError:
             return False  # já processado: nada foi gravado, o handler não roda
-        handler(envelope["data"])
+        # O `event_id` chega ao handler desde 02/09/2026. Era limitação
+        # conhecida desta célula (LICOES.md), e virou impedimento: a carta de um
+        # passo de sequência exige `origem_event_id` no contrato, e sem ele o
+        # despachante — fail-closed — nunca publicaria nada.
+        handler(envelope["data"], envelope["event_id"])
         return True
 
 

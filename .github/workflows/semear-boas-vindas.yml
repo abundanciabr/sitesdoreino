@@ -1,0 +1,107 @@
+# =============================================================================
+# SEMEAR A SEQUÊNCIA DE BOAS-VINDAS — cria na produção as linhas da jornada,
+# pelo pipeline, sem o mantenedor colar nada em terminal nenhum.
+#
+# POR QUE ELE EXISTE
+# ------------------
+# Subir o código de uma célula e POVOAR essa célula são dois passos, e o segundo
+# não acontece sozinho: comando de gerência não roda no deploy. Já custou duas
+# vezes em dois dias (o fórum em 30/08, a economia em 31/08). O caminho curto
+# seria uma migração de dados; ele foi tentado no fórum e a suíte respondeu com
+# 20 testes quebrados, porque migração de dados entra no banco de TODO teste, e
+# semear é CONTEÚDO, não esquema.
+#
+# POR QUE workflow_dispatch É SEGURO AQUI
+# ----------------------------------------
+# Não ENTREGA código: roda um script versionado que só sabe fazer uma coisa, e
+# essa coisa é idempotente por construção. Rodar duas vezes não duplica jornada
+# nem reescreve texto — a versão publicada é imutável no banco, e o script
+# confere isso do lado de fora do comando que semeou.
+#
+# LIGAR É ESCOLHA EXPLÍCITA, E O PADRÃO É NÃO. Sem marcar a opção, a sequência
+# nasce DESLIGADA: existe no banco e não escreve para ninguém. Ligar significa
+# que todo cadastro novo passa a receber boas-vindas — decisão do mantenedor,
+# nunca efeito colateral de um disparo.
+#
+# NÃO toca env, não escreve segredo, não reinicia serviço, não faz deploy.
+#
+# GRUPO PRÓPRIO, e isto foi aprendido caro (`armadilhas/173`):
+# `cancel-in-progress: false` NÃO faz fila ilimitada — o GitHub guarda UM run
+# pendente por grupo, e o próximo CANCELA o pendente. Num repositório com ~100
+# entregas por dia, um disparo manual no grupo `deploy` morre antes de começar.
+# =============================================================================
+name: semear-boas-vindas
+on:
+  workflow_dispatch:
+    inputs:
+      ligar:
+        description: "Ligar a sequência? (sem isto ela é criada DESLIGADA e não escreve para ninguém)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: semear-boas-vindas
+  cancel-in-progress: false
+jobs:
+  semear:
+    name: criar a sequencia de boas-vindas na producao
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # `armadilhas/149`: a ssh-action com `script_path` apontando para arquivo
+      # inexistente AVISA e IGNORA, saindo com sucesso — falso-verde conhecido.
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/semear-boas-vindas.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/semear-boas-vindas.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/semear-boas-vindas.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Semear na VPS
+        id: semear
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 10m
+          script_path: infra/semear-boas-vindas.sh
+          envs: LIGAR
+        env:
+          LIGAR: ${{ inputs.ligar && '1' || '0' }}
+
+      # A PROVA, e não o eco. `armadilhas/114`: o log da ssh-action ecoa o
+      # script inteiro, e ler o eco como se fosse a execução já enganou este
+      # projeto. A linha "PRONTO:" só existe no CAMINHO FELIZ, depois de o
+      # script CONTAR os passos e os textos no banco, por fora do comando que
+      # os criou.
+      - name: Provar que a sequência existe (não basta a conexão ter aberto)
+        # A saída viaja por `env:`, nunca costurada no corpo do `run:` — texto
+        # de fora interpolado em shell é a família da `armadilhas/047`.
+        env:
+          SAIDA: ${{ steps.semear.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO: a sequencia de boas-vindas existe'; then
+            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script."
+            echo "Ela só é impressa depois de o script CONTAR os passos e os textos"
+            echo "no banco, pelo mesmo site_id que o cadastro carimba."
+            echo "Sem ela, nada está provado — e ausência de erro não é sucesso (INV-CI01)."
+            exit 1
+          fi
+          echo "✅ a sequência de boas-vindas existe na produção, conferida pela contagem no banco."

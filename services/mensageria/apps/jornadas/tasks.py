@@ -120,3 +120,35 @@ def relay_outbox_periodico() -> int:
     Aqui os nomes são distintos de propósito.
     """
     return relay_outbox()
+
+
+@huey.periodic_task(crontab(minute="*/5"))
+def varrer_jornadas() -> int:
+    """A varredura periódica: é ela que faz o motor ANDAR em produção.
+
+    Sem esta task, tudo o que a escada construiu fica parado: as inscrições
+    existem, os passos têm hora marcada, e ninguém nunca passa para olhar. É o
+    tipo de peça cuja ausência não dá erro nenhum — só silêncio.
+
+    **De cinco em cinco minutos, e não a cada minuto.** O relógio das sequências
+    é de DIAS; a régua fecha a janela às 20h e o teto é diário. Um passo que
+    fica cinco minutos esperando não muda nada para o aluno, e a passada tem
+    custo: ela lê inscrições, avalia condição e chama a régua. O `LOTE` do motor
+    limita cada passada a 200.
+
+    O import é DENTRO da função de propósito: `despacho` importa este módulo (ele
+    precisa do `relay_apos_commit`), então importá-lo aqui em cima fecharia um
+    ciclo no carregamento.
+    """
+    from . import despacho, motor
+
+    passada = motor.varrer(despachar=despacho.despachar)
+    if passada.examinadas:
+        logger.info(
+            "varredura: %s examinadas, %s entregues, %s barradas, %s puladas",
+            passada.examinadas,
+            passada.entregues,
+            passada.barradas,
+            passada.puladas,
+        )
+    return passada.entregues
