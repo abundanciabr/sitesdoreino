@@ -27,22 +27,54 @@ from apps.core.menu import CELULAS_COM_MENU
 CELULA = Path(__file__).resolve().parents[1]
 SERVICES = CELULA.parent
 
-# O que faz uma célula "desenhar o menu": ela tem o motor E a moldura dela o
-# usa. Só a presença do arquivo não bastaria — uma célula poderia tê-lo sem
-# nunca chamar, e a lista passaria a oferecer páginas que não mostram nada.
-MARCA_NO_MOTOR = "menu do topo"
+# O que faz uma célula "desenhar o menu": a FIAÇÃO da peça, e não o nome de um
+# arquivo. As duas formas de ligar contam, porque as duas existem em produção:
+# um processador de contexto `…menu_do_contexto` registrado no `settings.py` da
+# célula, ou uma tag de template `menu_do_topo` (é assim na `funil`, onde a
+# chave da página sai do `resolver_match`).
+#
+# **Isto já foi "existe `apps/core/menu.py` com a marca?", e quebrou em
+# 02/09/2026.** Naquele dia a `admin` passou a desenhar o menu nas duas páginas
+# públicas dela, e o motor dela se chama `barra_do_site.py` — de propósito,
+# porque `apps/core/menu.py` aqui é a TELA de configuração. A varredura antiga
+# não o encontraria, e ainda tinha uma linha pulando esta célula inteira.
+#
+# É a mesma medição de `ci/tests/test_pecas_comuns_em_toda_celula_publica.py`,
+# e ela mora nos dois lugares porque as perguntas são diferentes: aquele
+# pergunta "toda célula pública desenha as peças?", este pergunta "a tela de
+# configuração oferece exatamente quem desenha?".
+MARCA_DA_TAG = "menu_do_topo"
+MARCA_DO_PROCESSADOR = "menu_do_contexto"
+
+
+def _desenha_o_menu(celula: Path) -> bool:
+    ajustes = celula / "config" / "settings.py"
+    if ajustes.is_file():
+        if MARCA_DO_PROCESSADOR in ajustes.read_text(
+            encoding="utf-8", errors="replace"
+        ):
+            return True
+    tags = celula / "apps" / "core" / "templatetags"
+    if tags.is_dir():
+        for modulo in tags.glob("*.py"):
+            if f"def {MARCA_DA_TAG}(" in modulo.read_text(
+                encoding="utf-8", errors="replace"
+            ):
+                return True
+    return False
 
 
 def celulas_que_desenham_o_menu() -> set:
-    """As células com motor de menu, lidas do disco."""
-    achadas = set()
-    for motor in SERVICES.glob("*/apps/core/menu.py"):
-        nome = motor.parents[2].name
-        if nome == CELULA.name:
-            continue  # a `admin` CONFIGURA o menu, não o desenha
-        if MARCA_NO_MOTOR in motor.read_text(encoding="utf-8"):
-            achadas.add(nome)
-    return achadas
+    """As células que desenham o menu, lidas do disco.
+
+    A `admin` NÃO é mais pulada: desde 02/09/2026 ela faz as duas pontas —
+    configura o menu do site e o desenha nas duas páginas públicas dela.
+    """
+    return {
+        pasta.name
+        for pasta in SERVICES.iterdir()
+        if pasta.is_dir() and _desenha_o_menu(pasta)
+    }
 
 
 def test_a_lista_da_tela_bate_com_quem_desenha_o_menu():
@@ -64,8 +96,10 @@ def test_a_lista_da_tela_bate_com_quem_desenha_o_menu():
     )
 
 
-@pytest.mark.parametrize("celula", ["funil", "forum", "sugestoes", "gamificacao"])
-def test_as_tres_celulas_conhecidas_continuam_na_lista(celula):
+@pytest.mark.parametrize(
+    "celula", ["funil", "forum", "sugestoes", "gamificacao", "admin"]
+)
+def test_as_celulas_conhecidas_continuam_na_lista(celula):
     """O controle positivo do guarda de cima.
 
     Sem ele, um dia em que a varredura parasse de achar qualquer motor (nome de
