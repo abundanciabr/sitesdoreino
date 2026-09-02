@@ -1,0 +1,48 @@
+# AS PEÇAS COMUNS QUE FALTAM — a dívida declarada, uma por linha.
+#
+# Lido por `ci/tests/test_pecas_comuns_em_toda_celula_publica.py`.
+#
+# A REGRA que este arquivo abre exceção: **toda célula que serve página a gente
+# desenha o menu do topo e o rodapé do site.** A lista de células públicas é
+# MEDIDA de `painel/mapa-do-site.json` (alcance `publico`, para quem é
+# `visitante` ou `aluno`, e não é gesto) — ela não é escrita à mão, e por isso
+# não envelhece: célula nova com página pública entra na conta sozinha, no dia
+# em que a rota nascer.
+#
+# POR QUE ESTE ARQUIVO EXISTE. Em 02/09/2026 o mantenedor abriu
+# `https://meshcraft.top/conquistas/` e viu a única área do site sem menu e sem
+# rodapé. A pergunta dele foi a certa: *"como podemos configurar para que em
+# todas as páginas tenha o menu e o rodapé, exceto nas páginas que já
+# configuramos para nelas não tenha?"*
+#
+# A resposta honesta era que NÃO HAVIA como. As duas peças nasceram em 31/08 nas
+# células que já tinham molde compartilhado, e a cobertura delas nunca foi
+# medida contra a lista de páginas do site — só contra a memória de quem
+# escreveu. `armadilhas/242` cura isso DENTRO de uma célula; `armadilhas/286` é
+# o mesmo defeito um andar acima, e é este arquivo mais o teste ao lado que o
+# curam.
+#
+# A CATRACA É A MESMA DAS OUTRAS DÍVIDAS DA CASA (`ci/travessoes-herdados.txt`,
+# `ci/texto-publico-bastidor.txt`): a lista é COMPROMISSO, não teto frouxo.
+#   · célula pública sem a peça e sem linha aqui  → REPROVA
+#   · linha aqui para uma peça que já existe      → REPROVA (declaração podre)
+# Os dois lados reprovam de propósito. O primeiro é o buraco; o segundo é a
+# mentira que fica no lugar dele depois que alguém consertou e esqueceu de
+# apagar a linha.
+#
+# Formato: `<celula>/<peca> :: <por que ainda não tem>`
+#   `<peca>` é `menu` ou `rodape`. Motivo com menos de 20 caracteres é recusado:
+#   carimbo não é motivo, e quem ler isto daqui a três meses precisa da razão,
+#   não do registro de que alguém passou por aqui.
+#
+# PARA TIRAR UMA LINHA DAQUI: dê à célula a peça (o molde completo está em
+# `armadilhas/242`, e o exemplo vivo mais recente é `services/gamificacao`, que
+# ganhou as duas em 02/09/2026) e apague a linha no MESMO PR.
+
+sugestoes/rodape :: a Caixa tem rodapé PRÓPRIO ("Caixa de Sugestões · o que você pedir, a equipe lê"), e trocá-lo pelo do site é decisão de tela do mantenedor, não conserto de robô. Devolvido a ele em 02/09/2026.
+admin/menu :: a biblioteca pública de documentos (/docs/) mora na célula do bastidor, que é a ÚNICA sem molde público compartilhado. A tela existe desde antes do menu, e pô-la sob a moldura é PR próprio.
+admin/rodape :: idem — /docs/ e as páginas de erro são as duas superfícies públicas desta célula, e as duas herdam `base_publico.html`, que ainda não conhece as peças do site.
+quiz/menu :: MEDIDO em 02/09/2026: a célula está de pé (/quiz/healthz responde 200) e não há quiz publicado (o único slug que o semeador cria, /quiz/quiz/crivo/, responde 404). Pôr menu numa área que ninguém alcança seria gastar um par de credenciais sem ninguém para ver.
+quiz/rodape :: idem — a área existe no código e não no ar. Entra junto com o primeiro quiz publicado.
+checkout/menu :: a área de pagamento está PARADA por decisão do mantenedor (22/08/2026): nada de checkout se retoma até ele dizer que o site vai vender. A peça entra quando a área voltar.
+checkout/rodape :: idem, e pela mesma decisão. Mexer aqui hoje seria reabrir por dentro uma frente que ele fechou por fora.
