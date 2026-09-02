@@ -19,5 +19,6 @@ definição de "o que espera por você".
     <a href="{% url 'caixa_travessia' %}" class="aba{% if atual == 'caixa_travessia' %} ativa{% endif %}"{% if atual == 'caixa_travessia' %} aria-current="page"{% endif %}>A travessia</a>
     <a href="{% url 'caixa_esperando' %}" class="aba{% if atual == 'caixa_esperando' %} ativa{% endif %}"{% if atual == 'caixa_esperando' %} aria-current="page"{% endif %}>Quem está esperando</a>
     <a href="{% url 'caixa_robos' %}" class="aba{% if atual == 'caixa_robos' %} ativa{% endif %}"{% if atual == 'caixa_robos' %} aria-current="page"{% endif %}>Os robôs</a>
+    <a href="{% url 'caixa_exportar' %}" class="aba{% if atual == 'caixa_exportar' %} ativa{% endif %}"{% if atual == 'caixa_exportar' %} aria-current="page"{% endif %}>Exportar</a>
   {% endwith %}
 </nav>

@@ -846,3 +846,156 @@ def test_fora_do_actions_a_funcao_nao_estoura(monkeypatch):
     """A vacina precisa continuar rodando na mão, do PC, sem GITHUB_OUTPUT."""
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     vacina.escrever_saida_do_passo(vacina.Decisao("nada", 0, "x"))
+
+
+# ---------------- O BRAÇO DA VACINA: a escada de tokens (TAR-051) -----------
+#
+# A vacina tinha cabeça e não tinha braço. Em 30/08/2026 ela decidiu REPETIR
+# corretamente e o `gh run rerun` devolveu 403 — não por falta de permissão no
+# job (`Actions: write` estava concedido), mas porque `secrets.PISTA_TOKEN ||
+# github.token` faz o PAT SOMBREAR o único token capaz de redisparar run.
+#
+# Medido em 02/09/2026, cada caso com o seu próprio run alvo e o veredito lido
+# do `run_attempt` por fora: PAT+write → 403 · github.token+write → OK ·
+# github.token+read → 403. O `pouso.yml` já declarava, desde 29/08, que o PAT
+# não tem `actions: write`.
+#
+# Todo teste daqui monta o vermelho para cair numa ASSERÇÃO que NOMEIA o caso —
+# nunca num estouro anterior que provaria só que o teste é novo (armadilhas/268).
+
+
+class _RerunFalso:
+    """Um `gh run rerun` de mentira que guarda QUAL token recebeu em cada volta.
+
+    Guardar o token é o ponto: sem isso, "a escada desceu" e "a escada tentou
+    duas vezes com o mesmo token" produzem exatamente o mesmo verde, e a prova
+    teria duas causas suficientes — a família de erro que este projeto achou
+    seis vezes numa semana.
+    """
+
+    def __init__(self, aceita: str | None):
+        self.aceita = aceita
+        self.tokens: list[str] = []
+        self.comandos: list[list[str]] = []
+
+    def __call__(self, comando, teto_s=120, ambiente=None):
+        token = (ambiente or {}).get("GH_TOKEN", "")
+        self.tokens.append(token)
+        self.comandos.append(list(comando))
+        if self.aceita is not None and token == self.aceita:
+            return 0, ""
+        return 1, (
+            f"run 1 cannot be rerun; Resource not accessible by {token or 'nada'}"
+        )
+
+
+def _com_tokens(monkeypatch, principal: str, reserva: str | None) -> None:
+    monkeypatch.setenv("GH_TOKEN", principal)
+    monkeypatch.delenv("GITHUB_TOKEN", raising=False)
+    if reserva is None:
+        monkeypatch.delenv("GH_TOKEN_RESERVA", raising=False)
+    else:
+        monkeypatch.setenv("GH_TOKEN_RESERVA", reserva)
+
+
+def _tentar() -> None:
+    """Chama a escada e ENGOLE o erro, para que a ASSERÇÃO seja o vermelho.
+
+    Sem isto, uma escada quebrada morre no `ErroDeMedicao` e o relatório mostra
+    a exceção em vez do caso medido — "o teste falhou" e "a escada não desceu"
+    viram o mesmo pixel (armadilhas/268). O que estes dois testes medem é a
+    LISTA de tokens que o `gh` recebeu, e ela existe nos dois desfechos.
+    """
+    try:
+        vacina.pedir_o_rerun("1", apenas_falhados=False)
+    except vacina.ErroDeMedicao:
+        pass
+
+
+def test_a_escada_DESCE_para_a_reserva_quando_o_principal_e_recusado(monkeypatch):
+    """O caso de 30/08 exatamente: o PAT recusa, o github.token consegue."""
+    _com_tokens(monkeypatch, principal="pat-do-dono", reserva="token-do-job")
+    falso = _RerunFalso(aceita="token-do-job")
+    monkeypatch.setattr(vacina, "_rodar", falso)
+
+    _tentar()
+
+    assert falso.tokens == ["pat-do-dono", "token-do-job"], (
+        "a escada tinha de tentar o principal e DEPOIS a reserva, cada um com "
+        f"o SEU token; as voltas foram: {falso.tokens}"
+    )
+
+
+def test_a_reserva_e_um_token_DIFERENTE_e_nao_a_mesma_tentativa_de_novo(monkeypatch):
+    """Duas voltas com o mesmo token seriam um plano B decorativo.
+
+    Este é o teste que separa "desceu a escada" de "insistiu": ele exige que o
+    segundo `gh` tenha recebido um token que o primeiro não tinha.
+    """
+    _com_tokens(monkeypatch, principal="pat-do-dono", reserva="token-do-job")
+    falso = _RerunFalso(aceita="token-do-job")
+    monkeypatch.setattr(vacina, "_rodar", falso)
+
+    _tentar()
+
+    assert len(set(falso.tokens)) == 2, (
+        "os dois braços usaram o MESMO token — a escada não trocou nada: "
+        f"{falso.tokens}"
+    )
+
+
+def test_sem_PISTA_TOKEN_a_vacina_NAO_tenta_duas_vezes_a_mesma_coisa(monkeypatch):
+    """Sem PAT, principal e reserva já são o mesmo valor.
+
+    Uma segunda volta idêntica não curaria nada e ainda escreveria no log que
+    havia um plano B — garantia sem mecanismo, na forma mais barata de todas.
+    """
+    _com_tokens(monkeypatch, principal="token-do-job", reserva="token-do-job")
+    falso = _RerunFalso(aceita=None)
+    monkeypatch.setattr(vacina, "_rodar", falso)
+
+    with pytest.raises(vacina.ErroDeMedicao):
+        vacina.pedir_o_rerun("1", apenas_falhados=False)
+
+    assert falso.tokens == ["token-do-job"], (
+        "o braço repetido devia ter sido descartado por `bracos_do_rerun`; "
+        f"as voltas foram: {falso.tokens}"
+    )
+
+
+def test_todos_os_bracos_recusados_ainda_e_ERRO_e_diz_os_DOIS_motivos(monkeypatch):
+    """Fail-open no braço, fail-closed no veredito.
+
+    A escada só pode transformar "não consegui" em "consegui". Quando nenhum
+    braço passa, o desfecho é o de antes dela existir — e a mensagem carrega as
+    duas recusas, porque é a última palavra delas (`by personal access token`
+    contra `by integration`) que diz a quem pedir o conserto.
+    """
+    _com_tokens(monkeypatch, principal="pat-do-dono", reserva="token-do-job")
+    monkeypatch.setattr(vacina, "_rodar", _RerunFalso(aceita=None))
+
+    with pytest.raises(vacina.ErroDeMedicao) as caiu:
+        vacina.pedir_o_rerun("1", apenas_falhados=False)
+
+    recado = str(caiu.value)
+    assert "pat-do-dono" in recado and "token-do-job" in recado, (
+        "a recusa precisa nomear os dois braços que falharam; veio: " + recado
+    )
+
+
+def test_o_failed_do_cancelado_continua_sendo_decidido_pela_TABELA(monkeypatch):
+    """Run cancelado não tem job falhado: `--failed` não teria o que repetir.
+
+    A escada mexe em QUEM pede o rerun, nunca em O QUE se repete (188). Se ela
+    tivesse passado a mandar `--failed` sempre, a cura do cancelado viraria um
+    comando sem alvo — e o vermelho de lá não apontaria para cá.
+    """
+    _com_tokens(monkeypatch, principal="token-do-job", reserva=None)
+    falso = _RerunFalso(aceita="token-do-job")
+    monkeypatch.setattr(vacina, "_rodar", falso)
+
+    vacina.pedir_o_rerun("1", apenas_falhados=False)
+    vacina.pedir_o_rerun("2", apenas_falhados=True)
+
+    assert falso.comandos[0] == ["gh", "run", "rerun", "1"]
+    assert falso.comandos[1] == ["gh", "run", "rerun", "2", "--failed"]

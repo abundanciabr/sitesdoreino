@@ -8,6 +8,7 @@ from apps.core.caixa import (
     avaliar_ideia,
     corrigir_ideia,
     desarquivar_ideia,
+    exportar,
     ideia,
     mesa,
     mover_ideia,
@@ -63,6 +64,9 @@ from apps.core.views import (
     escola_decidir,
     escola_prontuario,
     escola_resetar_senha,
+    escola_turmas,
+    escola_turmas_conferir,
+    escola_turmas_liberar,
     healthz,
     visao_geral,
 )
@@ -292,6 +296,12 @@ urlpatterns = [
     # embutida no build como o painel. Esperada desde 28/08/2026; a fonte
     # nasceu em 29/08 e a aba nasceu junto (apps/core/robos.py).
     path("caixa/robos/", robos, name="caixa_robos"),
+    # A aba 5 — "Exportar": a Caixa inteira em texto, num campo só, para o
+    # mantenedor copiar de uma vez. Nasceu em 02/09/2026, quando ele pediu uma
+    # análise das sugestões e o robô esbarrou no que o livro já registrava em
+    # 31/08 (`20260831-002`): o conteúdo de uma ideia só se lê atrás do login,
+    # e a porta é dele. GET puro, sem escrita, sem nome de aluno no que sai.
+    path("caixa/exportar/", exportar, name="caixa_exportar"),
     # A ideia por dentro, e as tres acoes. Elas sao POST de propósito: mudam
     # coisa, e um GET seria disparado por qualquer pre-carregamento de link do
     # navegador. Depois de agir, tudo redireciona de volta para a ideia — e o
@@ -365,6 +375,20 @@ urlpatterns = [
     # `DECISAO-a-ficha-nao-se-apaga.md` (29/08/2026) tirou do sistema a
     # capacidade de apagar uma ficha — aqui, e na porta da `alunos` que ela
     # chamava. Tirar o acesso e o estado `Ex-aluno`, no formulario de gestao.
+    # [TURMAS] Liberar em lote pela lista de WhatsApp das turmas (02/09/2026,
+    # pedido do mantenedor). Vizinha de `escola/alunos/`, e nao dentro dela: a
+    # tela de alunos responde "quem esta esperando?", esta responde "quem da
+    # minha lista ja chegou?" — perguntas diferentes, e uma caixa de colar no
+    # meio da lista empurraria para baixo o que ele abre aquela tela para ver.
+    path("escola/turmas/", escola_turmas, name="escola_turmas"),
+    # A conferencia e POST mesmo sendo LEITURA, e a excecao e deliberada: a
+    # lista nao caberia numa querystring, e um telefone nao tem por que passar
+    # pela barra de enderecos, pelo historico do navegador e pelo log de acesso.
+    path(
+        "escola/turmas/conferir", escola_turmas_conferir, name="escola_turmas_conferir"
+    ),
+    # A escrita em lote. POST-only pelo mesmo motivo de todas as outras.
+    path("escola/turmas/liberar", escola_turmas_liberar, name="escola_turmas_liberar"),
     path("escola/admin/promover", escola_admin_promover, name="escola_admin_promover"),
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),

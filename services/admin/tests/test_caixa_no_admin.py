@@ -131,7 +131,8 @@ def texto(resposta) -> str:
 
 
 @pytest.mark.parametrize(
-    "rota", ["caixa", "caixa_travessia", "caixa_esperando", "caixa_robos"]
+    "rota",
+    ["caixa", "caixa_travessia", "caixa_esperando", "caixa_robos", "caixa_exportar"],
 )
 def test_sem_sessao_vai_para_o_login(rota):
     """As rotas novas nascem atrás da mesma porta do resto da área."""
@@ -147,7 +148,9 @@ def test_sem_sessao_vai_para_o_login(rota):
 
 
 @respx.mock
-@pytest.mark.parametrize("rota", ["caixa", "caixa_travessia", "caixa_esperando"])
+@pytest.mark.parametrize(
+    "rota", ["caixa", "caixa_travessia", "caixa_esperando", "caixa_exportar"]
+)
 def test_a_caixa_fora_do_ar_nao_derruba_a_pagina(rota):
     """Uma ferramenta de operação que não abre é inútil justamente na hora ruim.
 

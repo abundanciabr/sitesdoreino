@@ -15,6 +15,7 @@ preenche). O `/healthz` é a exceção declarada, e por isso não o usa.
 """
 
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 
 from django.http import Http404, HttpResponseRedirect, JsonResponse
@@ -31,6 +32,8 @@ from . import documentos
 from .clients import AlunosClient, IdentidadeClient
 from .models import Administrador
 from .porta import _emails_autorizados
+from .telefone import numeros_no_texto
+from .turmas import conferir
 
 
 @require_GET
@@ -1372,3 +1375,176 @@ def escola_admin_remover(request):
     Administrador.objects.filter(email=email).update(ativo=False)
     _auditar(request, Registro.DESPROMOVER, email, Registro.OK)
     return HttpResponseRedirect(f"{reverse('escola_alunos')}?resultado=despromovido")
+
+
+# ------------------------------------------ liberar em lote pela lista de turmas
+#
+# Pedido do mantenedor em 02/09/2026: ele tem a lista dos WhatsApp das turmas
+# que já compraram fora do site, e quer liberar de uma vez todo mundo que está
+# esperando na fila e aparece nessa lista — com os dois lados que não casarem
+# MARCADOS, para ele gerenciar.
+#
+# A tela não guarda nada, e foi ele quem escolheu isso, com as três opções na
+# mesa. O motivo e a consequência estão no cabeçalho de `apps/core/turmas.py`.
+
+#: Teto do texto colado. A lista real dele tem 5 KB; 200 KB cabem umas quarenta
+#: dela. Existe para que um Ctrl+V de um arquivo errado (um PDF, uma página
+#: inteira) morra aqui e não dentro da expressão regular.
+LIMITE_DO_TEXTO = 200_000
+
+#: O nome do estado, como a `alunos` o chama no contrato. Literal aqui pelo
+#: mesmo motivo de `contar_a_escola`: esta célula não importa código da vizinha
+#: (Lei 3), e o vocabulário do contrato é o que as duas compartilham.
+AGUARDANDO = "aguardando"
+
+#: Quantas liberações caminham juntas. Sequencial, a fila de uma turma inteira
+#: levaria a página ao teto do servidor; oito de cada vez resolve trezentas em
+#: segundos. O `httpx.Client` desta célula é um só por processo e é seguro entre
+#: threads (`clients.http`), e nenhuma destas threads toca o banco — a auditoria
+#: é gravada depois, aqui na linha principal.
+LIBERACOES_EM_PARALELO = 8
+
+RECADOS_DAS_TURMAS = {
+    "nada-colado": "Cole a lista de números na caixa antes de conferir.",
+    "nada-marcado": (
+        "Nenhuma pessoa estava marcada — nada foi feito. Marque quem você quer "
+        "liberar e clique de novo."
+    ),
+}
+
+
+def _tela_das_turmas(request, colado="", recado="", contagem=None):
+    """A tela de conferência, do jeito que ela abre e do jeito que ela volta.
+
+    Uma função só para os três caminhos (abrir, conferir, liberar) porque os
+    três desenham a MESMA tela — e três montagens do mesmo contexto divergiriam
+    no primeiro campo novo, do jeito que o `LICOES.md` desta célula já descreve
+    para o painel da escola.
+
+    Fail-OPEN igual ao resto da área: `None` da `alunos` é *não consegui
+    perguntar*, e a tela diz isso. Nunca uma conferência vazia, que ele leria
+    como "ninguém da minha lista está no site".
+    """
+    cliente = AlunosClient()
+    fila = cliente.fila(AGUARDANDO)
+    alunos = cliente.alunos()
+
+    numeros = numeros_no_texto(colado[:LIMITE_DO_TEXTO]) if colado else []
+    conferencia = None
+    if numeros and fila is not None:
+        conferencia = conferir(numeros, fila, alunos)
+
+    return render(
+        request,
+        "admin/escola_turmas.html",
+        {
+            "admin": request.admin,
+            # Devolvido para a caixa de texto: sem isto, liberar uma leva
+            # apagaria a lista e ele teria de abrir o arquivo de novo para ver
+            # o que sobrou — que é justamente o gesto que esta tela existe para
+            # poupar.
+            "colado": colado,
+            "conferencia": conferencia,
+            "numeros_lidos": len(numeros),
+            "nao_consigo_perguntar": fila is None,
+            # `alunos` ausente com a fila presente é o meio-termo honesto: dá
+            # para liberar, mas a caixa "já é aluno" ficaria mentindo por
+            # omissão, e a tela avisa em vez de esconder.
+            "nao_consigo_ver_alunos": alunos is None,
+            "recado": RECADOS_DAS_TURMAS.get(recado, ""),
+            "contagem": contagem,
+        },
+    )
+
+
+@require_GET
+def escola_turmas(request):
+    """A tela vazia, esperando a lista."""
+    return _tela_das_turmas(request)
+
+
+@require_POST
+def escola_turmas_conferir(request):
+    """Cruza o que ele colou com a escola — e não muda nada.
+
+    POST porque a lista é grande demais para uma querystring, e porque um
+    telefone não tem por que aparecer na barra de endereço, no histórico do
+    navegador e no log de acesso do servidor. Leitura pura mesmo assim: nada
+    daqui escreve, e por isso não há linha de auditoria — auditar uma
+    conferência encheria de ruído o registro que alguém vai precisar ler.
+    """
+    colado = request.POST.get("lista") or ""
+    if not colado.strip():
+        return _tela_das_turmas(request, recado="nada-colado")
+    return _tela_das_turmas(request, colado=colado)
+
+
+@require_POST
+def escola_turmas_liberar(request):
+    """Libera de uma vez todos os marcados — e grava UMA linha de auditoria por pessoa.
+
+    Uma linha por pessoa, e não uma linha por leva, porque a pergunta que
+    alguém vai fazer daqui a meses é *"quem liberou a Maria, e quando?"* — e um
+    registro que dissesse "liberou 37 pessoas" obrigaria quem lê a adivinhar
+    qual delas era a Maria. O verbo é o mesmo `liberar` da tela de um em um: o
+    gesto é o mesmo, só o caminho é outro, e isso vai no detalhe.
+
+    **Os alvos são conferidos contra a fila de AGORA**, e não contra o que o
+    formulário afirma. Um id que não está esperando não é liberado — e é isso
+    que torna inofensivo o F5 que reenvia este POST: a segunda vez não acha
+    mais ninguém.
+    """
+    colado = request.POST.get("lista") or ""
+    pedidos = [a for a in request.POST.getlist("alvo") if a.strip()]
+    if not pedidos:
+        return _tela_das_turmas(request, colado=colado, recado="nada-marcado")
+
+    cliente = AlunosClient()
+    esperando = cliente.fila(AGUARDANDO)
+    if esperando is None:
+        # Sem saber quem espera, não há como conferir os alvos — e liberar
+        # às cegas o que o formulário mandou é exatamente o que a conferência
+        # acima existe para impedir.
+        return _tela_das_turmas(request, colado=colado)
+
+    na_fila_agora = {p["id"] for p in esperando}
+    alvos = [a for a in pedidos if a in na_fila_agora]
+
+    quem = request.admin.get("id") or request.admin.get("email") or "?"
+
+    def liberar(alvo):
+        return alvo, cliente.decidir(
+            alvo=alvo, decisao=Registro.LIBERAR, decidido_por=quem
+        )
+
+    resultados = []
+    if alvos:
+        with ThreadPoolExecutor(max_workers=LIBERACOES_EM_PARALELO) as equipe:
+            resultados = list(equipe.map(liberar, alvos))
+
+    Registro.objects.bulk_create(
+        [
+            Registro(
+                quem_email=request.admin.get("email") or "",
+                quem_id=request.admin.get("id") or "",
+                acao=Registro.LIBERAR,
+                alvo=alvo,
+                desfecho=DESFECHO_NA_AUDITORIA[desfecho],
+                detalhe=detalhe or "em lote, pela lista de turmas",
+            )
+            for alvo, (desfecho, detalhe) in resultados
+        ]
+    )
+
+    contagem = {
+        "liberados": sum(1 for _, (d, _m) in resultados if d == AlunosClient.OK),
+        "nao_deu": sum(
+            1 for _, (d, _m) in resultados if d == AlunosClient.NAO_RESPONDEU
+        ),
+        "recusados": sum(1 for _, (d, _m) in resultados if d == AlunosClient.RECUSADO),
+        # Marcados que já não estavam esperando quando o clique chegou — outra
+        # aba, ou o F5. Contados à parte porque não são falha: são o sistema
+        # dizendo que aquilo já estava feito.
+        "sairam_antes": len(pedidos) - len(alvos),
+    }
+    return _tela_das_turmas(request, colado=colado, contagem=contagem)
