@@ -285,3 +285,66 @@ vale ser lembrada aqui.
 Fica registrado também pelo motivo do §"não afirmar diagnóstico sem medir": a
 explicação errada quase entrou num comentário de código com voz de fato, e quem a
 desmentiu foi a sabotagem deliberada, não a releitura.
+
+## O teto diário conta só a `Entrega`, e isso é fronteira, não esquecimento
+
+A régua conta quantas mensagens já saíram para a pessoa no dia consultando
+`Entrega` — tudo que sai pelo motor das jornadas. Ela **não** conta o envio
+transacional antigo da célula (`EnvioRegistrado`, do `apps/eventos`), e não pode:
+ler aquela tabela é o **critério de morte §10.7** do plano, que permite a este
+app apenas CRIAR a linha de `EnvioRegistrado`.
+
+**A consequência, dita por inteiro:** um e-mail de pagamento aprovado que sair às
+14h não consome a vaga do dia, e uma mensagem de jornada às 18h ainda passa. Isso
+é uma frouxidão conhecida, e ela é o preço da fronteira que o mantenedor escolheu
+ao pôr o motor dentro desta célula (§8.2). Se um dia esse duplo incomodar, o
+conserto NÃO é ler a tabela vizinha: é o motor passar a registrar `Entrega`
+também para o caminho transacional, ou a separação em célula voltar à mesa com a
+medição na mão, como o próprio §10 manda.
+
+**O que a régua conta, e por quê:** toda classe, inclusive as que passam por fora
+dela. A régua protege a ATENÇÃO de uma pessoa, e atenção não distingue classe —
+uma mensagem de serviço recebida às 10h é uma mensagem recebida. O que a classe
+decide é que ela nunca é BARRADA, não que ela seja invisível.
+
+## Às 20:00 em ponto a janela já fechou, e a fronteira é declarada
+
+"Nunca depois das 20h" tem uma leitura em que 20:00 cravado ainda passa. Fica
+FECHADA (`ABRE <= hora < FECHA`): às 20:00 a mensagem já lê como "de noite" para
+quem recebe, e na dúvida a régua cala. Está escrito num teste com nome próprio
+(`test_as_20h_em_ponto_a_janela_ja_fechou`) para que uma leitura diferente seja
+uma decisão de alguém, e não um acidente de `<` contra `<=`.
+
+## Ausência de preferência NÃO é recusa, e o fail-closed é sobre outra coisa
+
+As duas coisas moram a três linhas de distância no mesmo arquivo, e confundi-las
+desligaria a plataforma para todo mundo no primeiro dia:
+
+- **Ausência** (nenhuma linha de `Preferencia`): a pessoa nunca disse nada, e
+  quem nunca disse nada não silenciou nada. Vale aceitar.
+- **Ilegível** (o banco fora, a linha corrompida, a consulta estourando): a régua
+  não conseguiu se pronunciar. Vale NÃO enviar, com o motivo gravado na
+  `Entrega` — silêncio por dúvida, nunca mensagem por dúvida.
+
+O §6.2 diz "preferência ilegível", e a palavra é essa de propósito.
+
+## O desempate mora na régua, não na varredura
+
+`ORDEM_DE_DESEMPATE` e `em_ordem_de_desempate()` ficam em `regua.py` porque a
+ordem É regra da régua: quando duas jornadas disputam a vaga do dia, ganha a
+inscrição mais antiga. Quem varre (TAR-073) só precisa obedecer, e obedecer
+significa CHAMAR essa função, nunca reescrever um `order_by` equivalente. Duas
+implementações da mesma ordem divergem no primeiro dia em que alguém mexer numa
+delas, e a divergência aqui é invisível: os dois códigos continuam ordenando,
+só que diferente.
+
+O segundo critério (`inscricao__id`) não é enfeite: dois `criada_em` iguais
+(mesmo lote, mesmo instante) empatariam de novo, e um empate que sobra é um teste
+que passa hoje e falha amanhã sem nada ter mudado.
+
+## `registrar` é `update_or_create`, e um `create` estouraria na segunda passada
+
+A trava do §5 é `unique(inscricao, passo, canal)`: uma linha por entrega, por
+canal. Um passo barrado pela régua **reagenda**, então a varredura seguinte
+reavalia a MESMA entrega — e é essa linha que passa de `barrada_pela_regua` para
+`enviada` quando a vaga abre. Com `create`, a segunda passada bateria na trava.
