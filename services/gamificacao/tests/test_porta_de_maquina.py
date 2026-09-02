@@ -656,3 +656,86 @@ def test_a_porta_responde_no_endereco_do_CONTRATO_e_nao_no_da_genese():
     assert pedir(f"/perfis?ids={ID_OPACO}").status_code == 200
     cabecalhos = {"HTTP_AUTHORIZATION": f"Bearer {TOKEN}"}
     assert Client().get("/interno/perfis", **cabecalhos).status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# O TERCEIRO INTERRUPTOR: os degraus da escada (Rito de Contrato de 02/09/2026)
+# ---------------------------------------------------------------------------
+def _escada(*, ligados: tuple[int, ...] = ()):
+    """Uma escada de três degraus, com os números `ligados` ativos."""
+    for nivel, xp, titulo in (
+        (1, 0, "Aprendiz"),
+        (2, 50, "Oficial"),
+        (3, 150, "Mestre"),
+    ):
+        NivelDefinicao.objects.create(
+            nivel=nivel,
+            site_id=SITE,
+            xp_necessario=xp,
+            titulo=titulo,
+            ativa=nivel in ligados,
+        )
+
+
+def test_a_lista_de_degraus_traz_ligados_e_desligados():
+    """A tela do mantenedor precisa mostrar o que ele PODE ligar, não só o que
+    já está valendo. Mesma razão da lista de regras."""
+    _escada(ligados=(1,))
+
+    dados = corpo(pedir("/economia/degraus"))
+
+    assert [d["nivel"] for d in dados] == [1, 2, 3]
+    assert [d["ativa"] for d in dados] == [True, False, False]
+    assert dados[0]["titulo"] == "Aprendiz"
+
+
+def test_a_lista_de_degraus_avisa_que_um_degrau_so_nao_e_escada():
+    """O aviso serve antes do clique: com um degrau, a tela do aluno diz que o
+    seguinte ainda não abriu (`armadilhas/271`)."""
+    _escada(ligados=(1,))
+
+    dados = corpo(pedir("/economia/degraus"))
+
+    assert "escada-de-um-degrau-so" in dados[0]["impedimentos"]
+    assert "sem-regra-que-paga" in dados[0]["impedimentos"]
+
+
+def test_ligar_um_degrau_pela_porta():
+    _escada()
+
+    resposta = postar("/economia/degraus/2", corpo_json={"ativa": True})
+
+    assert resposta.status_code == 200
+    assert corpo(resposta)["ativa"] is True
+    assert NivelDefinicao.objects.get(site_id=SITE, nivel=2).ativa is True
+
+
+def test_degrau_que_nao_existe_responde_404_e_nao_inventa():
+    _escada()
+
+    assert postar("/economia/degraus/99", corpo_json={"ativa": True}).status_code == 404
+
+
+@pytest.mark.parametrize(
+    "token", [None, "token-de-outra-pessoa"], ids=["sem-token", "token-errado"]
+)
+def test_ligar_um_degrau_sem_credencial_e_401(token):
+    """A porta desta célula é alcançável pela internet (`armadilhas/186`), e
+    quem a fecha é o Bearer, só ele. Vale para o terceiro interruptor como vale
+    para os dois primeiros."""
+    assert (
+        postar(
+            "/economia/degraus/1", token=token, corpo_json={"ativa": True}
+        ).status_code
+        == 401
+    )
+
+
+def test_sem_SITE_ID_a_lista_de_degraus_fica_vazia_e_ligar_recusa(monkeypatch):
+    """Leitura falha ABERTA, escrita falha FECHADA: a mesma assimetria dos
+    outros dois interruptores. Ligar na escola errada não tem volta."""
+    _escada()
+    monkeypatch.delenv("SITE_ID")
+
+    assert corpo(pedir("/economia/degraus")) == []
+    assert postar("/economia/degraus/1", corpo_json={"ativa": True}).status_code == 503

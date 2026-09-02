@@ -143,17 +143,19 @@ def _linha(regra: dict) -> dict:
     }
 
 
-def _contexto(request, regras, erro="", recado="", conquistas=None):
-    """O que a tela desenha. `conquistas=None` significa "não consegui ler".
+def _contexto(request, regras, erro="", recado="", conquistas=None, degraus=None):
+    """O que a tela desenha. `None` numa lista significa "não consegui ler".
 
     A distinção importa e é visível: lista VAZIA quer dizer "esta escola não tem
     nenhuma"; `None` quer dizer "a pergunta falhou agora". Sem essa diferença, uma
     falha de rede apareceria como "a escola não tem medalhas", e ele iria procurar
-    o problema no lugar errado.
+    o problema no lugar errado. Vale igual para as três listas.
     """
     linhas = [_linha(r) for r in regras]
     conquistas_lidas = conquistas is not None
     linhas_de_conquista = [_linha_de_conquista(c) for c in (conquistas or [])]
+    degraus_lidos = degraus is not None
+    linhas_de_degrau = [_linha_de_degrau(d) for d in (degraus or [])]
     return {
         "admin": request.admin,
         "regras": linhas,
@@ -161,6 +163,9 @@ def _contexto(request, regras, erro="", recado="", conquistas=None):
         "conquistas": linhas_de_conquista,
         "conquistas_lidas": conquistas_lidas,
         "conquistas_ligadas": sum(1 for c in linhas_de_conquista if c["ativa"]),
+        "degraus": linhas_de_degrau,
+        "degraus_lidos": degraus_lidos,
+        "degraus_ligados": sum(1 for d in linhas_de_degrau if d["ativa"]),
         "erro": erro,
         "recado": recado,
     }
@@ -202,6 +207,7 @@ def economia(request):
             regras,
             recado=request.GET.get("recado", ""),
             conquistas=cliente.conquistas(),
+            degraus=cliente.degraus(),
         ),
     )
 
@@ -326,6 +332,90 @@ def economia_mudar_conquista(request):
     )
 
 
+# ---------------------------------------------------------------------------
+# A TERCEIRA METADE DA TELA: os degraus da escada
+# ---------------------------------------------------------------------------
+# Entrou em 02/09/2026, e nasceu de uma tela que se contradizia. O mantenedor
+# abriu `/conquistas` e leu, uma embaixo da outra, "Nível 1", "você chegou ao
+# último degrau desta escada" e "0 de experiência até aqui". O defeito da tela
+# do ALUNO foi corrigido (`armadilhas/271`); o que sobrou foi a verdade, e a
+# verdade era que a escola nunca tinha ligado degrau nenhum. Havia botão aqui
+# para as regras e para as conquistas; para a escada, nada.
+#
+# A DIFERENÇA QUE A TELA PRECISA DIZER EM VOZ ALTA: ligar um degrau não paga
+# nada. Uma regra decide quanto a escola CREDITA; um degrau é a régua com que o
+# XP já existente é lido. Por isso o cartão de um degrau não mostra "vale tantos
+# pontos", e sim quanto de esforço ele PEDE.
+#
+# Como nas conquistas, o `titulo` vem pronto da porta: é a exceção declarada no
+# contrato, porque isto aqui é bastidor e o título de um degrau é dado que ele
+# mesmo edita.
+IMPEDIMENTOS_DE_DEGRAU = {
+    "escada-de-um-degrau-so": (
+        "Ligar só este não forma escada: com um degrau sozinho não há para onde "
+        "subir, e a página do aluno vai dizer que o degrau seguinte ainda não "
+        "abriu. Ligue pelo menos dois."
+    ),
+    "sem-regra-que-paga": (
+        "A escada vai aparecer, mas ninguém sobe ainda: nenhuma regra de "
+        "pontuação está ligada, então a barra do aluno nunca anda. Ligar a "
+        "primeira regra é a metade de cima desta tela."
+    ),
+}
+
+
+def _linha_de_degrau(degrau: dict) -> dict:
+    """Um degrau como a tela o desenha."""
+    return {
+        "nivel": int(degrau.get("nivel") or 0),
+        "titulo": str(degrau.get("titulo") or ""),
+        "titulo_feminino": str(degrau.get("titulo_feminino") or ""),
+        "xp_necessario": int(degrau.get("xp_necessario") or 0),
+        "ativa": bool(degrau.get("ativa")),
+        "impedimentos": [
+            IMPEDIMENTOS_DE_DEGRAU[chave]
+            for chave in degrau.get("impedimentos") or []
+            if chave in IMPEDIMENTOS_DE_DEGRAU
+        ],
+    }
+
+
+@require_POST
+def economia_mudar_degrau(request):
+    """Liga ou desliga UM degrau, e volta para a tela.
+
+    Irmã de `economia_mudar`, com duas diferenças que vêm do contrato: o alvo é
+    o NÚMERO do degrau (é ele que identifica a linha do outro lado), e o gesto
+    não paga nada a ninguém. O verbo de auditoria é próprio pela mesma razão dos
+    outros: a pergunta "quando a escola passou a chamar alguém de Oficial?" não
+    se responde lendo os verbos de regra.
+    """
+    bruto = (request.POST.get("nivel") or "").strip()
+    ativa = request.POST.get("ativa") == "1"
+    if not bruto.isdigit():
+        return _voltar_com_erro(request, "não veio o número do degrau")
+    nivel = int(bruto)
+
+    situacao, frase = GamificacaoClient().mudar_degrau(nivel, ativa)
+    verbo = Registro.LIGAR_DEGRAU if ativa else Registro.DESLIGAR_DEGRAU
+    if situacao == GamificacaoClient.OK:
+        _auditar(request, verbo, str(nivel), Registro.OK, "")
+        recado = "ligada" if ativa else "desligada"
+        return HttpResponseRedirect(f"{reverse('economia')}?recado={recado}")
+
+    desfecho = (
+        Registro.RECUSADO_PELA_CELULA
+        if situacao == GamificacaoClient.RECUSADO
+        else Registro.NAO_RESPONDEU
+    )
+    _auditar(request, verbo, str(nivel), desfecho, frase)
+    return _voltar_com_erro(
+        request,
+        frase,
+        status=422 if situacao == GamificacaoClient.RECUSADO else 503,
+    )
+
+
 def _voltar_com_erro(request, frase: str, status: int = 400):
     """A tela de volta, com o que ESTÁ GRAVADO e o erro por cima.
 
@@ -339,6 +429,12 @@ def _voltar_com_erro(request, frase: str, status: int = 400):
     return render(
         request,
         "admin/economia.html",
-        _contexto(request, regras, erro=frase, conquistas=cliente.conquistas()),
+        _contexto(
+            request,
+            regras,
+            erro=frase,
+            conquistas=cliente.conquistas(),
+            degraus=cliente.degraus(),
+        ),
         status=status,
     )

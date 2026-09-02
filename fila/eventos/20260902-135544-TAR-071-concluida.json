@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260902-135544-TAR-071-concluida",
+  "tarefa": "TAR-071",
+  "evento": "concluida",
+  "quando": "2026-09-02T13:55:44+00:00",
+  "quem": "sessao-mensageria-jornadas-2026-09-02",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/845 - as 9 tabelas do §5 em services/mensageria/apps/jornadas/, com as travas no BANCO. 53 testes verdes na celula (eram 20; 33 novos), black limpo, makemigrations --check sem pendencia, 13 muralhas PASS. VERMELHO->VERDE POR SABOTAGEM DA MIGRACAO (armadilhas/195), cada uma rodada sozinha: (1) trava parcial virando TOTAL -> 'IntegrityError: duplicate key value violates unique constraint uniq_inscricao_andando_por_jornada', 2 failed; (2) sem a chave estrangeira composta -> 'DID NOT RAISE IntegrityError', 2 failed; (3) sem os tres gatilhos -> 'DID NOT RAISE DatabaseError', 2 failed. As tres provas exigidas pelo despacho: (a) a trava PERMITE segunda inscricao depois de concluida (test_a_pessoa_que_sumiu_duas_vezes_entra_duas_vezes) e RECUSA duas andando ao mesmo tempo (test_duas_inscricoes_andando_ao_mesmo_tempo_sao_recusadas_pelo_banco); (b) unique(inscricao, passo, canal) recusa duplicata (test_a_mesma_entrega_no_mesmo_canal_e_recusada) e tres canais sao tres linhas; (c) diff VAZIO em services/mensageria/apps/eventos/, mais um teste-guarda que confere nome, campos e ausencia de condicao da uniq_envio_por_order_tipo_canal todo dia. Aprendizado: armadilhas/274 e services/mensageria/LICOES.md. Registro do livro: 20260902-003.",
+  "verificado_em": "2026-09-02"
+}

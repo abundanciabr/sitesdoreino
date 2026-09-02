@@ -16,6 +16,10 @@ O QUE ESTE ARQUIVO TRAVA:
    dois amigos alternando a marca fabricariam a medalha em minutos.
 4. **A mensagem removida não é creditada**, e o motivo está declarado em código
    (`NAO_CREDITAM`) — não escondido num handler que ninguém escreveu.
+5. **De quem é cada conversa fica GRAVADO, com a economia desligada** (02/09/2026,
+   fundação do degrau 19). O Destaque da semana precisa do id opaco de quem
+   abriu para endereçar a carta de parabéns, e esse id só existe no evento: o
+   fórum devolve o nome de EXIBIÇÃO do autor, nunca o id.
 """
 
 from __future__ import annotations
@@ -31,6 +35,7 @@ from apps.gamificacao.handlers import HANDLERS, NAO_CREDITAM
 from apps.gamificacao.models import (
     AjudaAceita,
     Concessao,
+    ConversaAberta,
     ConquistaDefinicao,
     LancamentoDeXP,
     Pessoa,
@@ -229,3 +234,106 @@ def test_resposta_aceita_sem_autor_nao_credita_ninguem():
 
     assert LancamentoDeXP.objects.count() == 0
     assert AjudaAceita.objects.count() == 0
+
+
+# ------------------------------------------- 4. de quem é cada conversa
+#
+# 02/09/2026, fundação do degrau 19 (a Galeria e os Destaques da semana). Quem
+# escolhe um trabalho para destacar o vê pelo fórum (`listRecentTopics`), que
+# devolve o TÍTULO e o NOME DE EXIBIÇÃO do autor. Nome de exibição não endereça
+# carta nenhuma: o id opaco de quem abriu só existe no `ator_id` do envelope, e
+# até aqui ele chegava e era jogado fora.
+
+QUEM_ABRIU = "pes-abriu-a-conversa"
+OUTRA_ESCOLA = "site-de-outra-escola"
+
+
+def _topico_criado(**campos) -> dict:
+    """O envelope como `contracts/eventos/forum.topico-criado.v1.json` o fixa."""
+    data = {"site_id": SITE, "topico_id": "7", "area_id": "1"}
+    data.update(campos.pop("data", {}))
+    base = {
+        "event": "forum.topico-criado",
+        "version": 1,
+        "event_id": str(uuid.uuid4()),
+        "occurred_at": timezone.now().isoformat(),
+        "ator_id": QUEM_ABRIU,
+        "data": data,
+    }
+    base.update(campos)
+    return base
+
+
+def test_de_quem_e_a_conversa_e_gravado_com_a_economia_desligada():
+    """O teste que decide se o degrau 19 nasce vivo ou morto.
+
+    A economia desta escola está DESLIGADA hoje: nenhuma regra de pontuação
+    ativa, nenhum XP creditado. Se o registro de quem abriu dependesse do
+    crédito, esta tabela nasceria vazia e continuaria vazia, e a tela de escolher
+    os destaques abriria sem nada para escolher, sem ninguém entender por quê.
+
+    É a mesma lei de `AjudaAceita`, e ela vale aqui pela mesma razão:
+    reconhecimento é uma coisa, pagamento é outra.
+    """
+    _entregar(_topico_criado())
+
+    assert LancamentoDeXP.objects.count() == 0, "sem regra ligada, ninguém paga"
+    conversa = ConversaAberta.objects.get()
+    assert conversa.pessoa_id == QUEM_ABRIU
+    assert conversa.topico_id == "7"
+    assert conversa.site_id == SITE
+
+
+def test_a_mesma_conversa_reentregue_nao_vira_duas_linhas():
+    """A chave é o TÓPICO, não o evento.
+
+    Uma discussão é aberta uma vez, por uma pessoa. Com a chave no `event_id`,
+    uma reentrega do relay mostraria a mesma conversa duas vezes na tela de
+    escolher o destaque, e a equipe destacaria duas vezes o mesmo trabalho.
+    """
+    envelope = _topico_criado()
+    _entregar(envelope)
+    _entregar(envelope)  # o MESMO evento, reentregue pelo relay
+    _entregar(_topico_criado())  # event_id novo, MESMO tópico
+
+    assert ConversaAberta.objects.count() == 1
+    assert ConversaAberta.objects.get().pessoa_id == QUEM_ABRIU
+
+
+def test_topico_sem_ator_no_envelope_nao_inventa_dono():
+    """Fail-closed: sem quem abriu, não se inventa um dono para a conversa.
+
+    O contrato do evento declara `ator_id` obrigatório e não anulável, mas quem
+    consome fato de outra célula não confia na promessa. Um envelope torto que
+    virasse linha mandaria a carta de parabéns para uma pessoa inventada, e a
+    tela afirmaria o contrário com todas as letras.
+    """
+    _entregar(_topico_criado(ator_id=""))
+    sem_a_chave = _topico_criado()
+    del sem_a_chave["ator_id"]
+    _entregar(sem_a_chave)
+
+    assert ConversaAberta.objects.count() == 0
+    assert Pessoa.objects.count() == 0, "nem a pessoa espelho é inventada"
+
+
+def test_a_conversa_de_outra_escola_nao_entra_nesta():
+    """O id do tópico é do fórum DAQUELA escola: o tópico 7 de duas é duas.
+
+    A plataforma já serve mais de um site, e o `site_id` vem do EVENTO. Sem ele
+    na chave, a conversa da segunda escola encontraria a linha da primeira e não
+    seria gravada — o Destaque de uma escola daria o crédito a alguém da outra,
+    e nada ficaria vermelho.
+    """
+    _entregar(_topico_criado())
+    _entregar(
+        _topico_criado(
+            ator_id="pes-de-outra-escola",
+            data={"site_id": OUTRA_ESCOLA},  # MESMO topico_id "7"
+        )
+    )
+
+    daqui = ConversaAberta.objects.filter(site_id=SITE)
+    assert [c.pessoa_id for c in daqui] == [QUEM_ABRIU]
+    de_la = ConversaAberta.objects.filter(site_id=OUTRA_ESCOLA)
+    assert [c.pessoa_id for c in de_la] == ["pes-de-outra-escola"]

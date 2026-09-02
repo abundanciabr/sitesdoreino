@@ -1318,6 +1318,67 @@ class AjudaAceita(models.Model):
         return f"{self.pessoa_id} ajudou em {self.mensagem_id}"
 
 
+class ConversaAberta(models.Model):
+    """De quem é cada discussão do fórum. É daqui que sai o Destaque da semana.
+
+    **Por que esta tabela existe, e por que ela é mínima.** Até 02/09/2026 esta
+    célula recebia `forum.topico-criado.v1`, creditava o XP de quem abriu e
+    jogava o resto do envelope fora. Quando alguém da equipe escolhe um trabalho
+    para destacar, o fórum sabe dizer o TÍTULO da conversa e o NOME DE EXIBIÇÃO
+    de quem a abriu (`listRecentTopics`) — e nome de exibição não endereça carta
+    nenhuma. O id opaco só existe no evento, e ele passava direto.
+
+    **Ela grava MESMO COM A ECONOMIA DESLIGADA**, e essa é a lei do lugar, a
+    mesma de `AjudaAceita`: reconhecimento é uma coisa, pagamento é outra. Hoje
+    nenhuma regra de pontuação está ligada nesta escola. Amarrar o registro ao
+    crédito de XP faria esta tabela nascer vazia e continuar vazia, e o Destaque
+    da semana nasceria morto sem ninguém entender por quê.
+
+    **Nunca o título, nunca o texto.** Quem é dono da conversa é o fórum; copiar
+    o texto dele para cá criaria uma segunda verdade que ninguém mantém (Lei 2),
+    e ela envelheceria no primeiro título editado. `area_id` viaja no evento e
+    também não é copiado: o recorte por área vem de `area_slug`, que a resposta
+    do fórum já traz.
+
+    **Idempotente pelo TÓPICO, não pelo evento.** `Unique(site_id, topico_id)`:
+    uma discussão é aberta uma vez, por uma pessoa. Com a chave no `event_id`,
+    uma reentrega do relay viraria duas linhas e a mesma conversa apareceria
+    duas vezes na tela de escolher o destaque. O `site_id` entra na chave porque
+    o id do tópico é do fórum daquela escola: o tópico 7 de duas escolas são
+    duas conversas diferentes, e fundi-las daria o crédito à pessoa errada.
+
+    LIMITAÇÃO HONESTA, PARA NINGUÉM ACHAR QUE É DEFEITO
+    ---------------------------------------------------
+    **Só dá para destacar conversas abertas DEPOIS que esta tabela entrar no
+    ar.** As anteriores esta célula não conhece, e não há como recuperá-las: o
+    evento já passou, e como a economia está DESLIGADA nem o livro-razão de XP
+    guardou rastro delas. O fórum sabe que elas existem e sabe o nome de quem as
+    abriu, mas não o id de plataforma, que é o que a carta de parabéns precisa.
+    Não é bug e não tem conserto por migração: é o preço de a tabela ter nascido
+    depois do fórum.
+    """
+
+    pessoa = models.ForeignKey(
+        Pessoa, related_name="conversas_abertas", on_delete=models.PROTECT
+    )
+    site_id = id_do_site()
+    topico_id = models.CharField(max_length=64)
+    occurred_at = models.DateTimeField()
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-occurred_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "topico_id"],
+                name="uma_conversa_por_topico_por_site",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.pessoa_id} abriu a conversa {self.topico_id}"
+
+
 # ---------------------------------------------------------------------------
 # 8. A OUTBOX — molde byte-a-byte de `services/sugestoes` [RECEITA:R3 v1]
 # ---------------------------------------------------------------------------

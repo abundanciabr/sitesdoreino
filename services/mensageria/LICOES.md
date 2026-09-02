@@ -196,3 +196,155 @@ pequeno.
 
 **Origem:** despacho mensageria/reentrega-pel (lote 2), fechando a linha
 "evento que faz o handler estourar fica pendente para sempre" do ARMADILHAS §9.
+
+## O `order_id` sintético das jornadas cabe em 100 — e é por isso que as chaves são UUID
+
+**Contexto:** o motor das sequências (`apps/jornadas`) reusa de propósito a trava
+do fluxo de dinheiro, `uniq_envio_por_order_tipo_canal`, escrevendo `order_id`
+sintético `jornada:<inscricao_id>:<passo_id>` (§4.1 do
+`PLANO-SEQUENCIAS-DE-MENSAGENS.md`). `EnvioRegistrado.order_id` é
+`CharField(max_length=100)`, e essa coluna **não se toca**.
+
+**A conta, e por que ela decidiu o tipo da chave primária:** `jornada:` são 8
+caracteres, dois UUIDs são 72, os dois `:` são 2 — **81**, com 19 de folga. Com
+chave primária inteira caberia igual; com qualquer coisa mais larga que UUID, não.
+Então a escolha de `Inscricao.id` e `Passo.id` serem `UUIDField` tem duas razões
+que se somam, e é bom que as duas estejam escritas: o `passo_id` **sai da célula**
+(é o id opaco do ramo `jornada.passo` do contrato, e id sequencial atravessando
+fronteira conta quantos passos a escola tem para quem só devia ver o próprio
+aviso), e o `order_id` sintético precisa caber sem migração no fluxo de pagamento.
+
+**A guarda:** `tests/test_jornadas_travas.py::test_o_segundo_episodio_nao_some_em_silencio_pela_trava_do_pagamento`
+mede `len(order_id) <= EnvioRegistrado.order_id.max_length` contra o campo real,
+nunca contra o número 100 escrito à mão. Se alguém encolher a coluna, o teste cai.
+
+## Versão publicada é PEDRA, e isso precisou de gatilho — a chave estrangeira não bastava
+
+**A promessa:** o mantenedor troca a frase de uma sequência quando quiser, e
+ninguém que já está no meio dela vê a frase mudar embaixo de si (§5).
+
+**O que parecia bastar:** `Inscricao` apontar para `JornadaVersao` em vez de para
+`Jornada`. Isso garante que ninguém TROQUE de versão no meio do caminho — e é a
+correção 1.2 da consultoria. Mas não garante nada sobre o CONTEÚDO daquela
+versão: um `UPDATE` no `TextoDoPasso` de uma versão publicada muda o texto de
+quem já está andando, e a tela do degrau 7 existe justamente para o mantenedor
+reescrever frases. Era "garantia sem mecanismo" um andar abaixo da correção.
+
+**O mecanismo:** três gatilhos `BEFORE UPDATE OR DELETE`, na migração `0001` de
+`jornadas`, em `jornadas_jornadaversao`, `jornadas_passo` e
+`jornadas_textodopasso`. Rascunho (`publicada_em` NULL) continua livre — é onde a
+tela mexe. **Publicar é o último `UPDATE` que a linha aceita.**
+
+**O que isto obriga em quem for construir a tela (TAR-078):** editar uma
+sequência publicada é **criar a versão seguinte e copiar os passos**, nunca
+alterar os que existem. Não é preferência de estilo: o banco recusa a alternativa.
+
+**Prova vermelho→verde, medida:** com as três linhas de `GATILHO_*` removidas da
+migração, `test_publicar_e_o_ultimo_update_que_a_versao_aceita` e
+`test_o_texto_de_uma_versao_publicada_nao_muda_embaixo_de_quem_esta_nela` falham
+com `DID NOT RAISE`.
+
+## `django.contrib.postgres` entrou em INSTALLED_APPS, e não é dependência nova
+
+`Passo.canais` é `ArrayField` — lista de canais, porque sino entregue + e-mail
+devolvido + WhatsApp barrado são três resultados independentes. É o `ArrayField`
+que torna a restrição `canais <@ ARRAY['sino','email','whatsapp']` expressável
+como `CheckConstraint` (`Q(canais__contained_by=...)`), no banco e não em Python.
+
+A entrada em `INSTALLED_APPS` é a instalação documentada do Django para os campos
+de `contrib.postgres`. Não cria tabela, não tem migração própria, e não amarra a
+célula a nada novo: ela já é Postgres em produção, em dev e no CI.
+
+## O que `Passo.janela` significa, porque o plano não disse
+
+O §5 lista o campo `janela` no `Passo` e não o define. Só existe uma leitura
+compatível com o resto do plano, e ela está escrita no `models.py`: **por quanto
+tempo o passo continua fazendo sentido depois de ficar elegível** (nulo = não
+expira). A leitura tentadora — "a janela de horário desta jornada" — é o critério
+de morte §10.4 (*"a régua do §6 ganhar exceção 'só para esta jornada'"*): a janela
+de silêncio (nunca antes das 8h, nunca depois das 20h) é UMA SÓ e vale para toda
+entrega da célula.
+
+Fica registrado aqui para a TAR-072 e a TAR-073 não terem de adivinhar, e para
+que uma leitura diferente seja uma decisão declarada em vez de um acidente.
+
+## `array_length` engana no SQL cru, não no ORM — e a diferença foi medida
+
+A restrição "passo sai por algum canal" é `~Q(canais=[])`. A explicação natural
+para essa escolha — *"`canais__len__gt=0` deixaria o vazio passar, porque
+`array_length` de array vazio é NULL"* — **foi medida e é falsa pelo ORM**: o
+Django gera `coalesce(array_length("canais", 1), 0) > 0`, e o `coalesce` fecha o
+buraco. As duas grafias funcionam.
+
+**A armadilha existe, e é do SQL escrito à mão.** Conferido em psql:
+`CHECK (array_length(c, 1) > 0)` **aceita** o array vazio — `array_length` de
+vazio é NULL, `NULL > 0` é NULL, e `CHECK` que devolve NULL passa; a linha entrou.
+Esta célula tem `RunSQL` de verdade na migração das jornadas, então a distinção
+vale ser lembrada aqui.
+
+Fica registrado também pelo motivo do §"não afirmar diagnóstico sem medir": a
+explicação errada quase entrou num comentário de código com voz de fato, e quem a
+desmentiu foi a sabotagem deliberada, não a releitura.
+
+## O teto diário conta só a `Entrega`, e isso é fronteira, não esquecimento
+
+A régua conta quantas mensagens já saíram para a pessoa no dia consultando
+`Entrega` — tudo que sai pelo motor das jornadas. Ela **não** conta o envio
+transacional antigo da célula (`EnvioRegistrado`, do `apps/eventos`), e não pode:
+ler aquela tabela é o **critério de morte §10.7** do plano, que permite a este
+app apenas CRIAR a linha de `EnvioRegistrado`.
+
+**A consequência, dita por inteiro:** um e-mail de pagamento aprovado que sair às
+14h não consome a vaga do dia, e uma mensagem de jornada às 18h ainda passa. Isso
+é uma frouxidão conhecida, e ela é o preço da fronteira que o mantenedor escolheu
+ao pôr o motor dentro desta célula (§8.2). Se um dia esse duplo incomodar, o
+conserto NÃO é ler a tabela vizinha: é o motor passar a registrar `Entrega`
+também para o caminho transacional, ou a separação em célula voltar à mesa com a
+medição na mão, como o próprio §10 manda.
+
+**O que a régua conta, e por quê:** toda classe, inclusive as que passam por fora
+dela. A régua protege a ATENÇÃO de uma pessoa, e atenção não distingue classe —
+uma mensagem de serviço recebida às 10h é uma mensagem recebida. O que a classe
+decide é que ela nunca é BARRADA, não que ela seja invisível.
+
+## Às 20:00 em ponto a janela já fechou, e a fronteira é declarada
+
+"Nunca depois das 20h" tem uma leitura em que 20:00 cravado ainda passa. Fica
+FECHADA (`ABRE <= hora < FECHA`): às 20:00 a mensagem já lê como "de noite" para
+quem recebe, e na dúvida a régua cala. Está escrito num teste com nome próprio
+(`test_as_20h_em_ponto_a_janela_ja_fechou`) para que uma leitura diferente seja
+uma decisão de alguém, e não um acidente de `<` contra `<=`.
+
+## Ausência de preferência NÃO é recusa, e o fail-closed é sobre outra coisa
+
+As duas coisas moram a três linhas de distância no mesmo arquivo, e confundi-las
+desligaria a plataforma para todo mundo no primeiro dia:
+
+- **Ausência** (nenhuma linha de `Preferencia`): a pessoa nunca disse nada, e
+  quem nunca disse nada não silenciou nada. Vale aceitar.
+- **Ilegível** (o banco fora, a linha corrompida, a consulta estourando): a régua
+  não conseguiu se pronunciar. Vale NÃO enviar, com o motivo gravado na
+  `Entrega` — silêncio por dúvida, nunca mensagem por dúvida.
+
+O §6.2 diz "preferência ilegível", e a palavra é essa de propósito.
+
+## O desempate mora na régua, não na varredura
+
+`ORDEM_DE_DESEMPATE` e `em_ordem_de_desempate()` ficam em `regua.py` porque a
+ordem É regra da régua: quando duas jornadas disputam a vaga do dia, ganha a
+inscrição mais antiga. Quem varre (TAR-073) só precisa obedecer, e obedecer
+significa CHAMAR essa função, nunca reescrever um `order_by` equivalente. Duas
+implementações da mesma ordem divergem no primeiro dia em que alguém mexer numa
+delas, e a divergência aqui é invisível: os dois códigos continuam ordenando,
+só que diferente.
+
+O segundo critério (`inscricao__id`) não é enfeite: dois `criada_em` iguais
+(mesmo lote, mesmo instante) empatariam de novo, e um empate que sobra é um teste
+que passa hoje e falha amanhã sem nada ter mudado.
+
+## `registrar` é `update_or_create`, e um `create` estouraria na segunda passada
+
+A trava do §5 é `unique(inscricao, passo, canal)`: uma linha por entrega, por
+canal. Um passo barrado pela régua **reagenda**, então a varredura seguinte
+reavalia a MESMA entrega — e é essa linha que passa de `barrada_pela_regua` para
+`enviada` quando a vaga abre. Com `create`, a segunda passada bateria na trava.
