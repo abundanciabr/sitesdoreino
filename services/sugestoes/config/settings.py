@@ -169,6 +169,12 @@ TEMPLATES = [
                 # Django só executa se o template pedir), então página que não
                 # mostra o sino não paga consulta. Ver apps/core/avisos.py.
                 "apps.core.avisos.sino",
+                # O RODAPÉ em TODA página (`apps/core/rodape.py`), 02/09/2026.
+                # É processador de contexto, e não uma inclusão escrita em cada
+                # template, porque "em todas as páginas" não pode depender de
+                # alguém lembrar da peça: tela nova nasce com rodapé
+                # (`armadilhas/242`). Quem desenha é `sugestoes/base_caixa.html`.
+                "apps.core.rodape.rodape_do_contexto",
                 # O MENU DO TOPO em TODA página (`apps.core.menu`), 31/08/2026.
                 # Processador pelo MESMO motivo do sino acima: "em todas as
                 # páginas" não pode depender de a view lembrar da peça. Ele lê o

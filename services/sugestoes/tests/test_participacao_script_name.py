@@ -26,6 +26,8 @@ O prefixo é de thread e o Django **não** o limpa entre testes: sem o
 import re
 
 import pytest
+
+from apps.core.rodape import enderecos_de_outras_celulas
 from asgiref.sync import async_to_sync
 from django.test import AsyncClient
 from django.urls import clear_script_prefix, reverse, set_script_prefix
@@ -94,7 +96,12 @@ def test_todo_link_do_quadro_leva_o_prefixo(dentro_sob_prefixo, sugestao):
     internos = LINK_INTERNO.findall(corpo)
 
     assert internos, "o quadro não tem nenhum link interno — o guarda não mediu nada"
-    sem_prefixo = [link for link in internos if not link.startswith(f"{PREFIXO}/")]
+    de_fora = enderecos_de_outras_celulas()
+    sem_prefixo = [
+        link
+        for link in internos
+        if not link.startswith(f"{PREFIXO}/") and link not in de_fora
+    ]
     assert sem_prefixo == [], (
         f"links sem o prefixo público no quadro: {sem_prefixo}. "
         "Todo endereço interno sai de {% url %}, nunca escrito à mão."
@@ -104,10 +111,11 @@ def test_todo_link_do_quadro_leva_o_prefixo(dentro_sob_prefixo, sugestao):
 def test_todo_link_da_pagina_da_sugestao_leva_o_prefixo(dentro_sob_prefixo, sugestao):
     corpo = dentro_sob_prefixo.client.get(f"/sugestoes/{sugestao.id}").content.decode()
 
+    de_fora = enderecos_de_outras_celulas()
     sem_prefixo = [
         link
         for link in LINK_INTERNO.findall(corpo)
-        if not link.startswith(f"{PREFIXO}/")
+        if not link.startswith(f"{PREFIXO}/") and link not in de_fora
     ]
     assert sem_prefixo == [], f"links sem o prefixo público: {sem_prefixo}"
 
@@ -117,10 +125,11 @@ def test_todo_link_do_formulario_de_sugerir_leva_o_prefixo(
 ):
     corpo = dentro_sob_prefixo.client.get("/sugestoes/nova").content.decode()
 
+    de_fora = enderecos_de_outras_celulas()
     sem_prefixo = [
         link
         for link in LINK_INTERNO.findall(corpo)
-        if not link.startswith(f"{PREFIXO}/")
+        if not link.startswith(f"{PREFIXO}/") and link not in de_fora
     ]
     assert sem_prefixo == [], f"links sem o prefixo público: {sem_prefixo}"
 

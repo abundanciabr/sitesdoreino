@@ -180,10 +180,28 @@ ocupa a largura toda; o `wrap` e a bancada desta area.
     {% block inspetor %}{% endblock %}
   </div>
 
-  <footer class="pe">
-    <span>Caixa de Sugestões</span>
-    <span>o que você pedir, a equipe lê</span>
-  </footer>
 </div>
+{% if rodape %}{% comment %}
+O RODAPÉ (`apps/core/rodape.py`) — a mesma peça do site, do fórum e das
+Conquistas, com o mesmo desenho. Quem DECIDE qual rodapé cada página mostra é o
+processador de contexto; aqui só se desenha.
+
+**Ele substituiu o pé próprio da Caixa** ("Caixa de Sugestões · o que você pedir,
+a equipe lê"), por escolha do mantenedor em 02/09/2026: uma assinatura só no fim
+de toda página do site, em vez de uma por área.
+
+Fora do `wrap` de propósito, como a barra do site: o `wrap` é a bancada desta
+área, e o rodapé é assinatura da casa. As tags de abertura ficam COLADAS no fim
+da linha anterior (`armadilhas/033`).
+{% endcomment %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+  <p class="marca">Meshcraft Academy</p>
+  <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
+  <nav class="links" aria-label="Links úteis">
+    <a href="{{ rodape.url_do_site }}">Início do site</a>
+    <a href="{% url 'quadro' %}">Caixa de Sugestões</a>
+    <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
+  </nav>{% endif %}{% if rodape.mostra_direitos %}
+  <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
+</footer>{% endif %}
 </body>
 </html>
