@@ -42,6 +42,16 @@ prefixos diferentes e `/static/…` neste domínio é endereço do funil
 <link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
 </head>
 <body>
+{% comment %}
+A BARRA DO SITE vem ANTES da faixa desta área, e isso é a decisão do mantenedor
+de 31/08/2026: primeiro o caminho para o site inteiro, depois o nome do lugar
+onde você está. Quem DECIDE o que vai nela é o processador de contexto
+(`apps/core/menu.py`); aqui só se desenha.
+
+Tudo numa linha só, com as tags coladas, pela razão da `armadilhas/033`: solta,
+cada tag põe uma linha em branco a mais na página de quem NÃO tem menu — que é
+o estado normal enquanto o par de credenciais com o catálogo não existir.
+{% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
 <div class="faixa">{% block faixa %}
   <a href="{% url 'base' %}">Suas conquistas</a>
 {% endblock %}</div>

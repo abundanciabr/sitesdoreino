@@ -376,3 +376,48 @@ form input[type="text"] {
 .rodape .links a:focus { color: var(--marca); text-decoration: underline; }
 
 .rodape .direitos { margin: 0; }
+
+/* A BARRA DO SITE — o menu do topo, acima da faixa desta área.
+
+   `position: sticky` porque ela é o caminho de volta: numa trilha de marcos
+   longa, um menu que sobe junto com o conteúdo é um menu que só existe no
+   começo da página.
+
+   A rolagem horizontal com a barrinha escondida é para o celular, que é onde o
+   site é lido: com seis itens, um menu que quebra em duas linhas empurra o
+   conteúdo para baixo da dobra. */
+.barra-do-site {
+  background: var(--caixa);
+  border-bottom: 1px solid var(--borda);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.barra-do-site .menu-topo {
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  gap: 4px;
+  margin: 0 auto;
+  max-width: 640px;
+  overflow-x: auto;
+  padding: 8px 20px;
+  scrollbar-width: none;
+  width: 100%;
+}
+
+.barra-do-site .menu-topo::-webkit-scrollbar { display: none; }
+
+.barra-do-site .menu-topo a {
+  border-radius: 8px;
+  color: var(--tinta);
+  flex: 0 0 auto;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 6px 12px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.barra-do-site .menu-topo a:hover,
+.barra-do-site .menu-topo a:focus { background: var(--marca-fraca); }

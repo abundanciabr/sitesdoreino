@@ -69,7 +69,7 @@ from .views import _auditar
 # mantenedor não tinha onde configurá-lo. Célula que ganha o menu entra aqui no
 # MESMO PR, e `ci/tests/test_menu_no_admin.py` mede a lista contra as células
 # que de fato o desenham.
-CELULAS_COM_MENU = ("funil", "forum", "sugestoes")
+CELULAS_COM_MENU = ("funil", "forum", "sugestoes", "gamificacao")
 
 # Para quem o item aparece, com o nome que o mantenedor lê. A ordem é a da
 # tela; os códigos são os do contrato.
