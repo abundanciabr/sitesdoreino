@@ -1,0 +1,203 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Liberar pela lista{% endblock %}
+{% block corpo %}
+<style>
+  .colar textarea { width: 100%; min-height: 130px; font-family: ui-monospace, monospace; font-size: 13px; }
+  .caixa { margin: 26px 0 0; }
+  .caixa > h2 { margin-bottom: 2px; }
+  .linha-de-pessoa { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid var(--borda); }
+  .linha-de-pessoa:last-child { border-bottom: 0; }
+  .linha-de-pessoa input[type=checkbox] { margin-top: 3px; width: 17px; height: 17px; flex: 0 0 auto; }
+  .linha-de-pessoa .quem-e b { display: block; }
+  .numeros-crus { font-family: ui-monospace, monospace; font-size: 13px; line-height: 1.9; }
+  .numeros-crus span { display: inline-block; padding: 1px 8px; margin: 0 4px 4px 0; border: 1px solid var(--borda); border-radius: 4px; }
+  .aplicar { position: sticky; bottom: 0; padding: 12px 0; background: var(--fundo); border-top: 1px solid var(--borda); }
+</style>
+
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'escola_alunos' %}">&larr; Alunos</a>
+  <h1>Liberar pela lista de turmas</h1>
+  <p class="subtitulo">
+    Cole aqui a lista dos WhatsApp das suas turmas. Eu comparo com quem está
+    esperando na fila, mostro tudo antes de mexer em qualquer coisa, e você
+    libera de uma vez só.
+  </p>
+
+  {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
+
+  {% comment %}
+  O resultado de uma leva. Aparece SÓ depois de liberar, e conta os desfechos
+  separados: "não deu" e "já não estava esperando" são coisas diferentes, e
+  juntá-las num "falharam" faria o mantenedor procurar defeito onde houve só uma
+  segunda aba aberta.
+  {% endcomment %}
+  {% if contagem %}
+  <p class="recado">
+    <b>Liberei {{ contagem.liberados }} pessoa{{ contagem.liberados|pluralize }}.</b>
+    {% if contagem.sairam_antes %}
+    {{ contagem.sairam_antes }} já não estava na fila quando o clique chegou (alguém já tinha decidido).
+    {% endif %}
+    {% if contagem.recusados %}
+    {{ contagem.recusados }} não valeu.
+    {% endif %}
+    {% if contagem.nao_deu %}
+    <b>{{ contagem.nao_deu }} não deu para saber</b> se foi aplicado. Confira essas pessoas
+    na <a href="{% url 'escola_alunos' %}">lista de alunos</a> antes de tentar de novo.
+    {% endif %}
+    A lista continua na caixa aqui embaixo, já atualizada.
+  </p>
+  {% endif %}
+
+  {% if nao_consigo_perguntar %}
+  <p class="aviso">
+    <b>Ainda não consigo perguntar quem está esperando.</b>
+    Sem isso não dá para comparar nada, e prefiro dizer isso a te mostrar uma
+    conferência vazia. O que falta é a senha de par entre esta área e a parte do
+    sistema que guarda os alunos, e ela aparece na caixa <b>Precisa de você</b> do
+    painel do sistema.
+  </p>
+  {% endif %}
+
+  <form class="forma colar" method="post" action="{% url 'escola_turmas_conferir' %}">
+    {% csrf_token %}
+    <label for="lista">A lista de números</label>
+    <textarea id="lista" name="lista" placeholder="Cole aqui. Pode colar o arquivo inteiro, com os títulos das turmas no meio: eu ignoro o que não for telefone.">{{ colado }}</textarea>
+    <button type="submit">Conferir com a fila</button>
+  </form>
+
+  {% if conferencia %}
+  <p class="nota">
+    Li <b>{{ numeros_lidos }}</b> número{{ numeros_lidos|pluralize }} na sua lista e
+    <b>{{ conferencia.total_na_fila }}</b> pessoa{{ conferencia.total_na_fila|pluralize }} esperando na fila.
+    {% if nao_consigo_ver_alunos %}
+    <br><b>Atenção:</b> não consegui ver quem já é aluno, então quem você já liberou
+    antes vai aparecer aqui embaixo como "não achei no site". Não é verdade: é falta
+    de resposta.
+    {% endif %}
+  </p>
+
+  {% comment %}
+  UM formulário para as duas caixas de gente, e não um por caixa: quem está
+  pronto e quem é só palpite são decididos no MESMO clique, e dois botões de
+  aplicar fariam o mantenedor achar que precisa clicar duas vezes.
+
+  As caixinhas dos prontos nascem MARCADAS e as dos palpites nascem VAZIAS. É a
+  diferença entre "confirme o que eu já sei" e "decida o que eu não sei", e ela é
+  a única coisa que separa liberar a pessoa certa de liberar um estranho.
+  {% endcomment %}
+  <form method="post" action="{% url 'escola_turmas_liberar' %}">
+    {% csrf_token %}
+    <input type="hidden" name="lista" value="{{ colado }}">
+
+    <div class="caixa">
+      <h2 class="titulo-de-bloco">Prontos para liberar ({{ conferencia.prontos|length }})</h2>
+      {% if conferencia.prontos %}
+      <p class="nota">O WhatsApp bate exatamente com um número da sua lista.</p>
+      <div class="cartao">
+        {% for item in conferencia.prontos %}
+        <label class="linha-de-pessoa">
+          <input type="checkbox" name="alvo" value="{{ item.pessoa.id }}" checked>
+          <span class="quem-e">
+            <b>{{ item.pessoa.nome_completo }}</b>
+            <span class="nota">{{ item.pessoa.email }} &middot; {{ item.pessoa.whatsapp }}</span>
+            <span class="nota">
+              {% if item.pessoa.esperando_ha_dias == 0 %}Pediu hoje{% else %}Espera há {{ item.pessoa.esperando_ha_dias }} dia{{ item.pessoa.esperando_ha_dias|pluralize }}{% endif %}
+              {% if item.pessoa.ja_foi_aluno %} &middot; <b>já foi aluno</b>{% endif %}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="aviso">
+        Nenhum número da sua lista casou com quem está esperando agora. Isso não é
+        erro: pode ser que todo mundo da lista já tenha sido liberado, ou que ainda
+        não tenham se cadastrado no site.
+      </p>
+      {% endif %}
+    </div>
+
+    <div class="caixa">
+      <h2 class="titulo-de-bloco">Na fila, mas não achei na sua lista ({{ conferencia.sozinhos|length }})</h2>
+      {% if conferencia.sozinhos %}
+      <p class="nota">
+        Essas pessoas pediram entrada pelo site e o WhatsApp delas não bate com
+        nenhum número seu. Elas continuam esperando, e nada acontece com elas a
+        menos que você marque a caixinha.
+      </p>
+      <div class="cartao">
+        {% for item in conferencia.sozinhos %}
+        <label class="linha-de-pessoa">
+          <input type="checkbox" name="alvo" value="{{ item.pessoa.id }}">
+          <span class="quem-e">
+            <b>{{ item.pessoa.nome_completo }}</b>
+            <span class="nota">{{ item.pessoa.email }} &middot; {{ item.pessoa.whatsapp }}</span>
+            {% if item.talvez_o_numero %}
+            <span class="nota">
+              <b>Talvez seja o seu número {{ item.talvez_o_numero }}</b>, porque os
+              últimos dígitos são os mesmos e o começo não. Confira antes de marcar.
+            </span>
+            {% endif %}
+            <span class="nota">
+              {% if item.pessoa.esperando_ha_dias == 0 %}Pediu hoje{% else %}Espera há {{ item.pessoa.esperando_ha_dias }} dia{{ item.pessoa.esperando_ha_dias|pluralize }}{% endif %}
+              {% if item.pessoa.ja_foi_aluno %} &middot; <b>já foi aluno</b>{% endif %}
+            </span>
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="nota">Ninguém. Todo mundo que está esperando apareceu na sua lista.</p>
+      {% endif %}
+    </div>
+
+    {% if conferencia.prontos or conferencia.sozinhos %}
+    <div class="aplicar">
+      <button class="sim" type="submit">Liberar os marcados</button>
+      <span class="nota">Só quem estiver com a caixinha marcada entra na escola.</span>
+    </div>
+    {% endif %}
+  </form>
+
+  <div class="caixa">
+    <h2 class="titulo-de-bloco">Da sua lista, já são alunos ({{ conferencia.ja_dentro|length }})</h2>
+    {% if conferencia.ja_dentro %}
+    <p class="nota">Nada a fazer com essas. Aparecem aqui para você não sair procurando por elas.</p>
+    <div class="cartao">
+      {% for item in conferencia.ja_dentro %}
+      <div class="linha-de-pessoa">
+        <span class="quem-e">
+          <b>{{ item.pessoa.nome_completo }}</b>
+          <span class="nota">{{ item.pessoa.email }} &middot; {{ item.numero }}</span>
+        </span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="nota">Nenhum número da sua lista pertence a alguém que já é aluno.</p>
+    {% endif %}
+  </div>
+
+  <div class="caixa">
+    <h2 class="titulo-de-bloco">Da sua lista, não achei no site ({{ conferencia.sem_par|length }})</h2>
+    {% if conferencia.sem_par %}
+    <p class="nota">
+      Esses números não pertencem a ninguém no site: nem na fila, nem entre os
+      alunos. Quase sempre quer dizer que a pessoa comprou mas ainda não se
+      cadastrou. Dá para copiar a lista daqui e chamar essa gente.
+    </p>
+    <div class="cartao numeros-crus">
+      {% for numero in conferencia.sem_par %}<span>{{ numero }}</span>{% endfor %}
+    </div>
+    {% else %}
+    <p class="nota">Nenhum. Todo número da sua lista achou alguém no site.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

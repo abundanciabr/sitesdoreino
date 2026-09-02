@@ -63,6 +63,9 @@ from apps.core.views import (
     escola_decidir,
     escola_prontuario,
     escola_resetar_senha,
+    escola_turmas,
+    escola_turmas_conferir,
+    escola_turmas_liberar,
     healthz,
     visao_geral,
 )
@@ -365,6 +368,20 @@ urlpatterns = [
     # `DECISAO-a-ficha-nao-se-apaga.md` (29/08/2026) tirou do sistema a
     # capacidade de apagar uma ficha — aqui, e na porta da `alunos` que ela
     # chamava. Tirar o acesso e o estado `Ex-aluno`, no formulario de gestao.
+    # [TURMAS] Liberar em lote pela lista de WhatsApp das turmas (02/09/2026,
+    # pedido do mantenedor). Vizinha de `escola/alunos/`, e nao dentro dela: a
+    # tela de alunos responde "quem esta esperando?", esta responde "quem da
+    # minha lista ja chegou?" — perguntas diferentes, e uma caixa de colar no
+    # meio da lista empurraria para baixo o que ele abre aquela tela para ver.
+    path("escola/turmas/", escola_turmas, name="escola_turmas"),
+    # A conferencia e POST mesmo sendo LEITURA, e a excecao e deliberada: a
+    # lista nao caberia numa querystring, e um telefone nao tem por que passar
+    # pela barra de enderecos, pelo historico do navegador e pelo log de acesso.
+    path(
+        "escola/turmas/conferir", escola_turmas_conferir, name="escola_turmas_conferir"
+    ),
+    # A escrita em lote. POST-only pelo mesmo motivo de todas as outras.
+    path("escola/turmas/liberar", escola_turmas_liberar, name="escola_turmas_liberar"),
     path("escola/admin/promover", escola_admin_promover, name="escola_admin_promover"),
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),

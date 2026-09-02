@@ -91,6 +91,17 @@
 
   <h2 class="titulo-de-bloco">Quem está esperando</h2>
 
+  {% comment %}
+  [TURMAS] A porta para a conferência em lote (02/09/2026). Fica aqui em cima da
+  fila, e não num menu: quem tem uma lista de turma na mão está olhando
+  exatamente para esta fila quando percebe que decidir um por um vai levar a
+  tarde inteira.
+  {% endcomment %}
+  <p class="nota">
+    Tem a lista de WhatsApp das suas turmas?
+    <a href="{% url 'escola_turmas' %}">Libere todo mundo de uma vez &rarr;</a>
+  </p>
+
   {% if peneirando and esperando %}
   <p class="nota">Mostrando {{ esperando|length }} de {{ total_esperando }} na fila.</p>
   {% endif %}
