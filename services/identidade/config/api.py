@@ -15,7 +15,7 @@ from apps.core.auth import bearerAuth
 # token, e o conjunto de tokens nasce vazio.
 api = NinjaAPI(
     title="Identidade — API interna",
-    version="1.0.0",
+    version="1.1.0",
     description=(
         "Superfície de MÁQUINA da identidade do site. Existe por uma razão só:\n"
         "qualquer célula precisa saber quem é a pessoa em qualquer página, e o\n"

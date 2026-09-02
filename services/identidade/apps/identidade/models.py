@@ -57,6 +57,21 @@ class Identidade(models.Model):
     # Google nunca precisou de senha) — nunca guarda a senha em texto puro,
     # só o hash que `django.contrib.auth.hashers.make_password` produz.
     senha_hash = models.CharField(max_length=128, blank=True)
+    # A LÍNGUA EM QUE A PESSOA SE CADASTROU, e a cunhagem é a única hora em que
+    # a plataforma a tem de graça: ela vem do endereço que a pessoa estava
+    # navegando (`/es/cadastro`) e some quando a página fecha. Rito de Contrato
+    # de 02/09/2026, degrau 1 do e-mail de verdade — sem este campo, `idioma`
+    # de `findPersonById` seria sempre nulo e toda carta sairia em português,
+    # inclusive para os alunos estrangeiros.
+    #
+    # Em branco é RESPOSTA, não falta: quer dizer "nunca declarou língua", e é
+    # o que toda linha de antes desta migração vale. Quem escreve a carta
+    # decide o padrão, porque só ele sabe em que línguas sabe escrever.
+    #
+    # `blank=True` e não `null=True`: string vazia e NULL diriam a mesma coisa
+    # com dois valores diferentes, e o primeiro código a comparar com `== ""`
+    # erraria metade das linhas em silêncio (convenção do Django para texto).
+    idioma = models.CharField(max_length=12, blank=True, default="")
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
         return self.nome_exibido or self.email
