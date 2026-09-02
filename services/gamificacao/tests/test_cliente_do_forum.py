@@ -169,9 +169,19 @@ def test_forum_fora_do_ar_devolve_lista_vazia(par_com_o_forum):
 
 
 def test_status_fora_de_200_devolve_lista_vazia(par_com_o_forum):
-    """401 é o desfecho mais provável de um par mal ligado, e não pode quebrar."""
+    """401 é o desfecho mais provável de um par mal ligado, e não pode quebrar.
+
+    **O corpo é uma lista BEM FORMADA de propósito**, e este detalhe é a única
+    razão de este teste medir alguma coisa. A primeira versão dele respondia
+    401 com `{"erro": "x"}`, e passava por DUAS causas suficientes: a guarda de
+    status e a guarda de forma do corpo. Apagar a guarda de status deixava o
+    teste verde, porque o dicionário caía na outra — asserção com mais de uma
+    causa suficiente, a família de falso-verde que esta casa já achou seis vezes
+    numa semana. Com um corpo que passaria por todas as outras conferências, o
+    único jeito de sair `[]` daqui é o número 401 ter sido olhado.
+    """
     with respx.mock as mock:
-        mock.get(RECENTES).mock(return_value=httpx.Response(401, json={"erro": "x"}))
+        mock.get(RECENTES).mock(return_value=httpx.Response(401, json=[_topico()]))
 
         assert topicos_recentes() == []
 
@@ -186,12 +196,28 @@ def test_duzentos_com_html_devolve_lista_vazia(par_com_o_forum):
         assert topicos_recentes() == []
 
 
-def test_corpo_que_nao_e_lista_devolve_lista_vazia(par_com_o_forum):
-    """O contrato promete array. Um objeto no lugar dele é resposta fora de forma."""
+@pytest.mark.parametrize(
+    "corpo",
+    [
+        {"topicos": [_topico()]},  # um objeto embrulhando a lista
+        "nenhum topico",  # um texto solto
+        5,  # um número
+        True,  # o JSON `true`
+    ],
+)
+def test_corpo_que_nao_e_lista_devolve_lista_vazia(par_com_o_forum, corpo):
+    """O contrato promete array. Qualquer outra coisa é resposta fora de forma.
+
+    **Os dois últimos casos são os que medem a guarda**, e é por isso que eles
+    estão aqui. Um objeto e um texto ainda seriam pegos pela conferência item a
+    item, logo abaixo dela, e um teste feito só com eles ficaria VERDE com a
+    guarda apagada: duas causas suficientes para a mesma asserção. Um número e um `true` não são
+    percorríveis: sem a guarda, o `for` estoura `TypeError` para fora de uma
+    função que promete nunca levantar, e é exatamente esse o modo de falha que
+    a lista vazia existe para impedir.
+    """
     with respx.mock as mock:
-        mock.get(RECENTES).mock(
-            return_value=httpx.Response(200, json={"topicos": [_topico()]})
-        )
+        mock.get(RECENTES).mock(return_value=httpx.Response(200, json=corpo))
 
         assert topicos_recentes() == []
 
