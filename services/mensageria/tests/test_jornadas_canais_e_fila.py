@@ -235,3 +235,61 @@ def test_as_presas_nao_engolem_a_vaga_de_quem_chega_depois():
         )
 
     assert "aluno-novo" in [quem for quem, _, _ in atendidos]
+
+
+# ---------------------------------------------------------------------------
+# A SOBRA DA REVISÃO — o canal que a plataforma ainda não sabe entregar
+# ---------------------------------------------------------------------------
+
+
+def test_canal_que_a_plataforma_nao_entrega_nao_prende_a_pessoa():
+    """ "Não sei entregar por aqui" não é falha, e retentar não o desfaz.
+
+    Contra o código anterior o despachante devolvia `False`, o motor lia isso
+    como falha transitória, e a inscrição ficava presa no passo para sempre —
+    o mesmo laço do defeito da fila entupida, por outra porta.
+    """
+    from apps.jornadas import despacho
+
+    jornada = uma_jornada(atrasos=(0,), classe="relacional", canais=("email",))
+    inscricao = motor.inscrever(
+        jornada=jornada, destinatario_id=PESSOA, site_id=SITE, momento=quando(16, 10)
+    )
+
+    passada = motor.varrer(despachar=despacho.despachar, momento=quando(16, 10))
+
+    inscricao.refresh_from_db()
+    assert passada.puladas == 1
+    assert passada.sem_despacho == 0, "não é falha de despacho, e a passada diz isso"
+    assert inscricao.estado == "concluida"
+
+    # E a pergunta "por que ele não recebeu no e-mail?" continua com resposta.
+    linha = Entrega.objects.get(canal="email")
+    assert linha.resultado == "pulada"
+    assert "ainda nao entrega pelo canal email" in linha.motivo
+    assert linha.enviado_em is None
+
+
+def test_o_canal_conhecido_sai_mesmo_com_um_desconhecido_ao_lado():
+    """Um canal que a plataforma não entrega não pode calar os que ela entrega."""
+    from uuid import uuid4
+
+    from apps.jornadas import despacho
+
+    jornada = uma_jornada(atrasos=(0,), classe="relacional", canais=("sino", "email"))
+    inscricao = motor.inscrever(
+        jornada=jornada,
+        destinatario_id=PESSOA,
+        site_id=SITE,
+        origem_event_id=uuid4(),
+        momento=quando(16, 10),
+    )
+
+    motor.varrer(despachar=despacho.despachar, momento=quando(16, 10))
+
+    inscricao.refresh_from_db()
+    assert dict(Entrega.objects.values_list("canal", "resultado")) == {
+        "sino": "enviada",
+        "email": "pulada",
+    }
+    assert inscricao.estado == "concluida"

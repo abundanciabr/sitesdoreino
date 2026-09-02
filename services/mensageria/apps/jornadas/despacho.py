@@ -10,9 +10,14 @@ O CANAL DE HOJE É O SINO, E ISSO FOI ESCOLHA DO MANTENEDOR
 depende de coragem: depende de a célula aprender a PERGUNTAR o endereço à
 `identidade` (a linha `consome:` do `celulas.yml` entra naquele PR) e de um
 provedor de verdade no lugar do `logger.info` que existe hoje. Enquanto isso,
-este despachante recusa `email` e `whatsapp` devolvendo `False` — e recusar
-devolvendo `False` é exatamente o que faz o motor NÃO gravar `enviada` para algo
-que não saiu.
+este despachante recusa `email` e `whatsapp` levantando `CanalNaoSuportado`, e a
+escolha da exceção sobre o `False` é o conserto de 02/09/2026: `False` quer dizer
+*"falhei AGORA"* (Redis fora, provedor mudo), e o motor o trata como transitório
+— o passo continua devendo e a passada seguinte tenta de novo. *"Esta versão da
+plataforma não entrega por aqui"* nunca deixa de ser verdade sozinha, então
+dizê-lo com `False` prendia a inscrição no passo **para sempre**, reexaminada de
+cinco em cinco minutos. Era o mesmo laço que a `armadilhas/283` catalogou, por
+outra porta. Nenhum dos dois grava `enviada` para algo que não saiu.
 
 POR QUE A CARTA VAI POR EVENTO, E NÃO POR ESCRITA DIRETA
 ---------------------------------------------------------
@@ -29,12 +34,15 @@ import logging
 from django.db import transaction
 
 from . import eventos, tasks
+from .motor import CanalNaoSuportado
 from .models import Inscricao, Passo
 
 logger = logging.getLogger(__name__)
 
 # Os canais que este despachante sabe entregar hoje. `email` e `whatsapp` saem
-# pela máquina de envio da própria célula, e é o degrau 8 que os liga.
+# pela máquina de envio da própria célula, e é o degrau 8 que os liga. Quem
+# acrescentar um canal aqui NÃO precisa mexer no motor: a exceção some sozinha
+# para aquele canal no instante em que ele entra neste conjunto.
 CANAIS_QUE_SEI_ENTREGAR = frozenset({"sino"})
 
 
@@ -49,7 +57,13 @@ def despachar(inscricao: Inscricao, passo: Passo, canal: str) -> bool:
     despacho + registro.
     """
     if canal not in CANAIS_QUE_SEI_ENTREGAR:
-        return False
+        # NÃO é `return False`: isto não é falha, é um fato sobre esta versão da
+        # plataforma, e retentar não o muda. O motor registra a entrega como
+        # `pulada`, com este texto no motivo, e SEGUE a jornada.
+        raise CanalNaoSuportado(
+            f"a plataforma ainda nao entrega pelo canal {canal}; "
+            f"hoje sai por {', '.join(sorted(CANAIS_QUE_SEI_ENTREGAR))}"
+        )
 
     # FAIL-CLOSED: sem saber que FATO gerou esta carta, não publico.
     # `origem_event_id` é obrigatório no contrato (`format: uuid`), e é o que
