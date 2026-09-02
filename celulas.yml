@@ -125,7 +125,20 @@ celulas:
     #
     # `alunos` NÃO entra: a gamificação não confere matrícula. Quem decide o
     # que pode é quem serve a tela; esta porta só diz de quem é o XP.
-    consome: [identidade]
+    #
+    # `forum` desde 02/09/2026, e o sentido é o INVERSO do par que já existia:
+    # até aqui o fórum perguntava a etiqueta de nível à gamificação; agora a
+    # gamificação pergunta TÍTULOS ao fórum (`listRecentTopics`,
+    # `apps/core/forum.py`). É a fundação dos Destaques da semana: título não
+    # viaja em evento, porque `forum.topico-criado.v1` tem
+    # `additionalProperties: false` e carrega só ids opacos — quem vai escolher
+    # um trabalho precisa perguntar na hora de MOSTRAR. Fail-ABERTO como os
+    # outros pares desta célula: fórum fora do ar custa a lista, nunca a tela.
+    #
+    # São DOIS pares e DOIS tokens. Reusar um valor faria a rotação de um
+    # derrubar o outro em silêncio; quem instala este é
+    # `infra/provisionar-par-da-gamificacao-com-o-forum.sh`.
+    consome: [forum, identidade]
 
   identidade:
     caminhos: [services/identidade]

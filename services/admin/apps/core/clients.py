@@ -921,6 +921,25 @@ class GamificacaoClient:
         """Liga ou desliga UMA medalha ou marco. Devolve (situação, frase)."""
         return self._mudar("economia/conquistas", slug, ativa, "conquista")
 
+    def degraus(self) -> "list | None":
+        """Os degraus da escada, ligados e desligados. `None` = não deu.
+
+        Operação `listLevelSwitches`, do Rito de Contrato de 02/09/2026. Como
+        nas conquistas, `titulo` vem pronto: é a mesma exceção declarada no
+        contrato, porque esta operação serve o bastidor do mantenedor, que é só
+        em português, e o título de um degrau é dado que ele mesmo edita.
+        """
+        return self._listar("economia/degraus", "degraus")
+
+    def mudar_degrau(self, nivel: int, ativa: bool) -> "tuple[str, str]":
+        """Liga ou desliga UM degrau. Devolve (situação, frase).
+
+        O endereço leva o NÚMERO do degrau, e não um slug: é o número que
+        identifica a linha dentro do site (o `Unique` do outro lado é o par
+        site + nível).
+        """
+        return self._mudar("economia/degraus", str(nivel), ativa, "degrau")
+
     def _listar(self, caminho: str, rotulo: str) -> "list | None":
         config = self._configuracao()
         if config is None:

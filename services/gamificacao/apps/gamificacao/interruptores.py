@@ -42,7 +42,7 @@ import logging
 
 from django.db import transaction
 
-from .models import ConquistaDefinicao, RegraDePontuacao
+from .models import ConquistaDefinicao, NivelDefinicao, RegraDePontuacao
 
 logger = logging.getLogger(__name__)
 
@@ -303,3 +303,101 @@ def mudar_conquista(
         conquista.versao,
     )
     return conquista
+
+
+# ---------------------------------------------------------------------------
+# OS DEGRAUS — o terceiro interruptor, e o único que não paga nada
+# ---------------------------------------------------------------------------
+# Nasceu da tela que se contradizia. Em 01/09/2026 o mantenedor abriu
+# `/conquistas` e leu, uma embaixo da outra, "Nível 1", "você chegou ao último
+# degrau desta escada" e "0 de experiência até aqui". O defeito da TELA foi
+# corrigido (`armadilhas/271`), e o que sobrou foi a verdade: a escola nunca
+# ligou degrau nenhum, e não havia por onde ligar. A tela dele tinha botão para
+# as regras e para as conquistas; para a escada, nada.
+#
+# **A diferença que manda no desenho: degrau não paga.** Uma regra de pontuação
+# decide quanto a escola CREDITA e por isso carrega `vigente_desde`, o mecanismo
+# do "nunca retroativo". Um degrau é a RÉGUA com que o XP já existente é lido:
+# ligar o degrau 2 não cria um ponto sequer, só passa a chamar de "Aprendiz de
+# Ateliê" quem já tinha 50. Carimbar data aqui seria negar a régua a quem já
+# tinha a altura.
+#
+# **E ligar um degrau NÃO recalcula perfil nenhum.** `PerfilJogador.nivel` é
+# desnormalizado, e quem o reescreve é o motor, na próxima vez que o XP daquela
+# pessoa mexer (`motor.nivel_para` já lê só degrau ATIVO). Para forçar o acerto
+# em massa existe `reconciliar_perfis`. A alternativa seria esta função varrer a
+# escola inteira num clique, e com ela sairia uma chuva de cartas "você subiu de
+# nível" para gente que não fez nada hoje.
+
+MINIMO_DE_DEGRAUS_PARA_HAVER_ESCADA = 2
+
+
+class DegrauDesconhecido(LookupError):
+    """Não existe degrau com esse número NESTE site. Vira 404 na porta."""
+
+
+def impedimentos_do_degrau(degrau, *, ativos_no_site: int) -> list[str]:
+    """Por que ligar (ou manter) este degrau não vai adiantar. Slugs, nunca frase.
+
+    `ativos_no_site` chega de fora porque os dois impedimentos são sobre a
+    ESCADA, e não sobre a linha: uma consulta por degrau transformaria a tela
+    do mantenedor em dez consultas para desenhar dez botões.
+    """
+    impedimentos = []
+
+    # Quantos degraus a escada teria se este estivesse ligado. Menos de dois não
+    # é escada: a tela do aluno diz que o degrau seguinte ainda não abriu, e o
+    # mantenedor precisa saber disso ANTES do clique, não depois
+    # (`armadilhas/271`).
+    depois = ativos_no_site if degrau.ativa else ativos_no_site + 1
+    if depois < MINIMO_DE_DEGRAUS_PARA_HAVER_ESCADA:
+        impedimentos.append("escada-de-um-degrau-so")
+
+    # Escada de pé com a economia inteira desligada: o aluno vê o degrau e a
+    # barra, e a barra nunca anda, porque nada credita XP. É o estado exato da
+    # escola em 02/09/2026, e dizê-lo na tela é mais honesto que deixar o
+    # mantenedor descobrir esperando.
+    if not RegraDePontuacao.objects.filter(site_id=degrau.site_id, ativa=True).exists():
+        impedimentos.append("sem-regra-que-paga")
+
+    return impedimentos
+
+
+def listar_degraus(site_id: str) -> list:
+    """Todos os degraus do site, do primeiro ao último, ligados e desligados."""
+    return list(NivelDefinicao.objects.filter(site_id=site_id).order_by("nivel"))
+
+
+def mudar_degrau(*, site_id: str, nivel: int, ativa: bool):
+    """Liga ou desliga UM degrau. Devolve a linha como ela ficou.
+
+    Sem `vigente_desde` (ver o bloco acima) e sem recálculo de perfil. Chamada
+    que não muda nada devolve a linha como está, sem gastar versão: dois cliques
+    no mesmo botão não inflam o histórico com mudanças que ninguém fez.
+    """
+    with transaction.atomic():
+        try:
+            degrau = NivelDefinicao.objects.select_for_update().get(
+                site_id=site_id, nivel=nivel
+            )
+        except NivelDefinicao.DoesNotExist as erro:
+            raise DegrauDesconhecido(
+                f"não há degrau {nivel!r} no site {site_id!r}"
+            ) from erro
+
+        if degrau.ativa == ativa:
+            return degrau
+
+        degrau.ativa = ativa
+        degrau.versao += 1
+        degrau.save(update_fields=["ativa", "versao"])
+
+    logger.info(
+        "economia: degrau %s (%s) do site %s ficou %s (versao %s)",
+        degrau.nivel,
+        degrau.titulo,
+        site_id,
+        "LIGADO" if ativa else "desligado",
+        degrau.versao,
+    )
+    return degrau
