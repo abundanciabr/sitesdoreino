@@ -331,3 +331,73 @@ def test_o_rodape_declara_o_endereco_que_e_de_outra_celula():
     não de uma cópia dentro do teste.
     """
     assert moldura.URL_DO_SITE in moldura.enderecos_de_outras_celulas()
+
+
+# ---------------------------------------------------------------------------
+# 6. O caminho de volta não é dito duas vezes (02/09/2026)
+# ---------------------------------------------------------------------------
+# Assim que o menu nasceu, o link `← Visão geral` no alto de cada tela virou a
+# segunda cópia de um botão que agora existe em TODA página. Escolha do
+# mantenedor no mesmo dia: tirar onde repete, manter onde é um passo de verdade
+# (a ficha de um aluno volta para a lista de alunos, não para a capa).
+TELAS = Path(__file__).resolve().parents[1] / "apps" / "core" / "templates" / "admin"
+
+
+def test_nenhuma_tela_repete_a_volta_para_a_visao_geral():
+    """A capa mora no menu, e o menu está em toda tela desta área.
+
+    Este guarda é de FONTE, e não de página renderizada, de propósito: ele
+    precisa alcançar as telas que a suíte não consegue abrir sem montar dado
+    (a ficha de uma pessoa, uma ideia da Caixa). O que ele mede é uma marcação
+    exata, não uma aparência, e para isso a fonte basta.
+    """
+    reincidentes = [
+        arquivo.name
+        for arquivo in sorted(TELAS.glob("*.html"))
+        for linha in arquivo.read_text(encoding="utf-8").splitlines()
+        if 'class="volta"' in linha and "visao_geral" in linha
+    ]
+    assert not reincidentes, (
+        f"estas telas voltaram a escrever o caminho para a capa à mão: "
+        f"{reincidentes}. Ele já está no menu do topo, em toda página da área "
+        f"(`apps/core/moldura.py`). Escrever de novo dá ao mantenedor dois "
+        f"botões para a mesma porta na mesma tela."
+    )
+
+
+@respx.mock
+def test_a_capa_continua_a_um_clique_de_toda_tela():
+    """O par do guarda acima: o caminho não sumiu, MUDOU de lugar.
+
+    Sem este, "tirar o link repetido" e "tirar o único link" ficariam
+    indistinguíveis para a suíte.
+    """
+    html = _texto(_cliente().get(reverse("escola")))
+    assert f'href="{reverse("visao_geral")}"' in html
+    assert ">Visão geral</a>" in html
+
+
+def test_as_telas_da_caixa_mantiveram_o_passo_para_a_mesa():
+    """As quatro abas são telas de DENTRO da Caixa, e o menu só leva à Caixa.
+
+    Elas não perderam nada ao ficar sem o `← Visão geral`, porque a faixa de
+    abas (`admin/_caixa_abas.html`) já leva de volta à mesa. Este guarda é o
+    que prova isso, em vez de eu ter conferido com o olho e escrito "confiro
+    que está tudo bem" no relatório.
+
+    A regra vale para toda tela `caixa_*.html`, inclusive uma que nasça amanhã:
+    ou ela traz a faixa de abas, ou ela escreve o próprio caminho para a mesa.
+    """
+    sem_saida = []
+    for arquivo in sorted(TELAS.glob("caixa_*.html")):
+        fonte = arquivo.read_text(encoding="utf-8")
+        if "_caixa_abas.html" in fonte:
+            continue
+        if 'class="volta"' in fonte and "'caixa'" in fonte:
+            continue
+        sem_saida.append(arquivo.name)
+    assert not sem_saida, (
+        f"estas telas da Caixa não oferecem caminho de volta à mesa: "
+        f"{sem_saida}. O menu do topo leva à Caixa, mas quem está numa aba "
+        f"precisa das abas ou de um link próprio."
+    )
