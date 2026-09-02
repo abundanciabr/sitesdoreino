@@ -47,10 +47,23 @@ CODIGO_DE_IDIOMA = re.compile(r"^[a-z]{2}(-[a-z]{2})?$")
 # da página inicial é vazia, então `funil/` é uma chave legítima.
 CHAVE_DE_PAGINA = re.compile(r"^[a-z][a-z0-9_-]*/\S*$")
 
-# Para quem o item aparece. Três valores, e nenhum a mais: a tela do Admin
-# oferece exatamente estes três em português, e um quarto valor sem tela que o
-# escreva seria dado que só nasce torto.
-PLATEIAS = ("everyone", "logged_out", "logged_in")
+# Para quem o item aparece. A tela do Admin oferece exatamente estes em
+# português, e um valor a mais sem tela que o escreva seria dado que só nasce
+# torto — por isso os dois lados mudam no MESMO PR.
+#
+# `staff` entrou em 03/09/2026, com o Rito de Contrato do PR #890: o mantenedor
+# pediu um atalho para a área de administração visível só para quem é da equipe.
+# Ele sai do campo `papel` da sessão (contrato da `identidade`, schema
+# `Session`), que é de EXIBIÇÃO — esconder um item nunca é autorizar nada, e
+# quem barra a entrada continua sendo a porta fail-closed da célula dona do
+# recurso.
+#
+# **Quem CONSOME esta lista tem uma obrigação, e ela está escrita no contrato:**
+# plateia que o consumidor não reconhecer deve ser ESCONDIDA, nunca mostrada a
+# todos. Sem isso, acrescentar um valor aqui vazaria o item durante a janela em
+# que um consumidor ainda não subiu. As quatro células aprenderam isso no #887,
+# que entrou antes do contrato de propósito.
+PLATEIAS = ("everyone", "logged_out", "logged_in", "staff")
 
 MAXIMO_DE_VERSOES = 20
 MAXIMO_DE_ITENS = 20

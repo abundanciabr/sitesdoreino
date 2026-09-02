@@ -84,6 +84,14 @@ PLATEIAS = (
     ("everyone", "Todo mundo"),
     ("logged_out", "Só quem ainda não entrou"),
     ("logged_in", "Só quem já entrou"),
+    # 03/09/2026. O rótulo diz EQUIPE, e não "administradores", porque é a
+    # verdade: quem decide é a lista `IDENTIDADE_STAFF_EMAILS` do servidor, a
+    # mesma que faz o site reconhecer alguém como equipe. Normalmente ela tem o
+    # mesmo conteúdo da lista de quem entra em `/admin`, mas são decisões
+    # separadas de propósito (ver `infra/env/identidade.env.exemplo`) — e um
+    # rótulo que prometesse "administradores" mentiria no dia em que elas
+    # divergissem, com um professor vendo um atalho que lhe devolve 404.
+    ("staff", "Só quem é da equipe"),
 )
 
 # Os três estados de uma regra de página, no vocabulário do formulário. O do

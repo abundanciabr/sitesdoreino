@@ -118,9 +118,23 @@ ESQUEMA_DO_MENU = {
                                 },
                                 "audience": {
                                     "type": "string",
-                                    "enum": ["everyone", "logged_out", "logged_in"],
+                                    "enum": [
+                                        "everyone",
+                                        "logged_out",
+                                        "logged_in",
+                                        "staff",
+                                    ],
                                     "default": "everyone",
-                                    "description": "Para quem este item aparece.",
+                                    "description": (
+                                        "Para quem este item aparece. `staff` sai do campo `papel` da "
+                                        "sessão (contrato da `identidade`, schema Session), que é de "
+                                        "EXIBIÇÃO e não autoriza nada: quem desenha o menu esconde o "
+                                        "item, e quem barra a entrada continua sendo a porta "
+                                        "fail-closed da célula dona do recurso. Plateia que um "
+                                        "consumidor NÃO reconhecer deve ser ESCONDIDA, nunca mostrada "
+                                        "a todos. Sem isso, um valor novo aqui vazaria um atalho "
+                                        "durante a janela em que um consumidor ainda não subiu."
+                                    ),
                                 },
                                 "new_tab": {
                                     "type": "boolean",
