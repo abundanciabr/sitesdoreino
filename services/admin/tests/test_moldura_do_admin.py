@@ -222,7 +222,7 @@ def test_toda_tela_da_area_traz_o_menu_e_o_rodape():
         html = _texto(cliente.get(reverse(rota)))
         assert 'class="menu-do-admin"' in html, f"{rota} abriu sem o menu"
         assert 'class="rodape-do-admin"' in html, f"{rota} abriu sem o rodapé"
-        assert "Ver o site como um visitante" in html
+        assert f'>{moldura.SAIDA_PARA_O_SITE["rotulo"]}</a>' in html
         for _, rotulo in moldura.SECOES:
             assert f">{rotulo}</a>" in html, f"{rota} não oferece {rotulo!r}"
 
@@ -280,9 +280,20 @@ def test_o_menu_aponta_para_dentro_do_prefixo(sob_o_prefixo_publico):
     """
     itens = moldura.secoes_do_menu("/escola/")
     assert itens, "o menu ficou vazio sob o prefixo de produção"
-    for item in itens:
+
+    # O primeiro item é a SAÍDA, e ela é a única que não mora sob o prefixo:
+    # `/` é endereço de outra célula. Se um dia ela ganhar `/admin` na frente,
+    # o botão de "ver o site" passará a apontar para dentro do bastidor.
+    assert itens[0]["href"] == moldura.URL_DO_SITE, itens[0]
+
+    for item in itens[1:]:
         assert item["href"].startswith("/admin/"), item
         assert "/admin/admin/" not in item["href"], item
+
+    # A saída aparece UMA vez, e este é o único regime em que dá para perguntar
+    # isso: sem o prefixo, `reverse("visao_geral")` também é `/`, e o site e a
+    # capa viram a mesma string. Sob o prefixo elas são `/` e `/admin/`.
+    assert [i["href"] for i in itens].count(moldura.URL_DO_SITE) == 1
 
 
 def test_onde_voce_esta_continua_certo_sob_o_prefixo(sob_o_prefixo_publico):
@@ -308,7 +319,7 @@ def test_toda_secao_resolve_nos_dois_regimes(sob_o_prefixo_publico):
     mantenedor concluir que o site caiu. Este guarda é o que impede esse pulo
     de acontecer sem ninguém ver.
     """
-    assert len(moldura.secoes_do_menu("/")) == len(moldura.SECOES)
+    assert len(moldura.secoes_do_menu("/")) == len(moldura.SECOES) + 1
 
 
 # ---------------------------------------------------------------------------
@@ -401,3 +412,88 @@ def test_as_telas_da_caixa_mantiveram_o_passo_para_a_mesa():
         f"{sem_saida}. O menu do topo leva à Caixa, mas quem está numa aba "
         f"precisa das abas ou de um link próprio."
     )
+
+
+# ---------------------------------------------------------------------------
+# 7. A saída para o site é o PRIMEIRO item do menu (02/09/2026)
+# ---------------------------------------------------------------------------
+# Escolha do mantenedor no dia seguinte ao menu nascer: *"coloque o primeiro
+# link do Menu do Admin para ser o link para a / home, acho que antes de Visão
+# Geral"*. Ela mexe em três coisas que podem quebrar em silêncio, e cada uma
+# tem um guarda abaixo.
+def test_o_site_e_o_primeiro_item_do_menu():
+    itens = moldura.secoes_do_menu("/")
+    assert itens[0]["href"] == moldura.URL_DO_SITE
+    assert itens[0]["rotulo"] == moldura.SAIDA_PARA_O_SITE["rotulo"]
+    assert itens[1]["rotulo"] == "Visão geral", "a capa tem de vir logo depois"
+
+
+def test_a_saida_para_o_site_nunca_acende():
+    """Você não está NO site enquanto está aqui dentro.
+
+    Se ela acendesse, seria a única luz de "onde você está" que mentiria — e
+    nas telas de dentro haveria duas acesas ao mesmo tempo.
+    """
+    for caminho in ("/", "/escola/", "/escola/alunos/", "/caixa/travessia/"):
+        assert moldura.secoes_do_menu(caminho)[0]["aqui"] is False, caminho
+
+
+def test_a_saida_nao_entra_na_conta_das_secoes():
+    """Ela não é uma seção desta área, e o guarda do mapa mede seções.
+
+    Se algum dia alguém a empurrar para dentro de `SECOES` para "simplificar",
+    duas coisas quebram de uma vez: `reverse()` estoura num endereço de outra
+    célula, e a comparação com `painel/mapa-do-site.json` deixa de fechar. É
+    mais barato reprovar aqui, dizendo o porquê.
+    """
+    assert moldura.URL_DO_SITE not in [nome for nome, _ in moldura.SECOES]
+    assert moldura.SAIDA_PARA_O_SITE["rotulo"] not in [r for _, r in moldura.SECOES]
+
+
+def test_a_capa_esta_amarrada_ao_nome_e_nao_a_posicao():
+    """O defeito que esta mudança quase criou, travado antes de existir.
+
+    `CASA` era `SECOES[0][0]` — "o primeiro da lista". Enquanto a capa fosse de
+    fato a primeira, as duas leituras davam o mesmo resultado; o defeito ficaria
+    DORMINDO até alguém reordenar o menu, e aí a capa pararia de acender em
+    silêncio.
+
+    **Este guarda lê a FONTE, e a razão é honesta: nenhum teste de execução
+    conseguiria separar as duas.** `CASA` é resolvida uma vez, na importação do
+    módulo; reordenar `SECOES` de dentro de um teste não a recalcula, e as duas
+    formas passariam igual. Escrever um teste de execução aqui daria a sensação
+    de proteção sem a proteção — que é pior que não ter guarda nenhum. Medir a
+    linha é o que sobra, e ela é medível.
+    """
+    fonte = Path(moldura.__file__).read_text(encoding="utf-8")
+    assert (
+        'CASA = "visao_geral"' in fonte
+    ), "a capa precisa ser nomeada, não deduzida da posição na lista"
+    assert "CASA = SECOES[" not in fonte, (
+        "`CASA` voltou a ser 'o primeiro da lista'. Hoje o primeiro item é a "
+        "saída para o site, então isso faria a capa parar de acender sozinha."
+    )
+
+    # E a metade que a execução mede de verdade: a capa acende na capa.
+    acesas = [i["rotulo"] for i in moldura.secoes_do_menu("/") if i["aqui"]]
+    assert acesas == ["Visão geral"], acesas
+
+
+@respx.mock
+def test_o_site_aparece_uma_vez_so_na_tela():
+    """O rodapé largou o link quando o menu o assumiu.
+
+    Duas portas para o mesmo lugar na mesma tela é exatamente a repetição que
+    o mantenedor mandou tirar no PR #891, poucas horas antes desta mudança.
+    """
+    html = _texto(_cliente().get(reverse("escola")))
+
+    # Medido no RODAPÉ, e não no documento inteiro, pela razão da
+    # `armadilhas/292` — e aqui há um motivo a mais, específico: SEM o prefixo
+    # de produção, `reverse("visao_geral")` também é `/`, então o site e a capa
+    # viram a mesma string e uma contagem no documento acusaria repetição onde
+    # não há. O rodapé é o pedaço de que esta pergunta trata.
+    rodape = html[html.index('<footer class="rodape-do-admin">') :]
+    assert "Ver o site como um visitante" not in rodape
+    assert f'href="{moldura.URL_DO_SITE}"' not in rodape
+    assert "Ver a biblioteca pública" in rodape, "a outra saída do rodapé continua"
