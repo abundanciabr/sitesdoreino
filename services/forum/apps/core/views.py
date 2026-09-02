@@ -20,6 +20,7 @@ from django.views.decorators.http import require_GET, require_POST
 
 from apps.forum.models import Area, Mensagem, Topico
 
+from . import agente
 from .etiquetas import decorar as decorar_com_etiquetas
 from .leitura import (
     marcar_area_como_lida,
@@ -267,7 +268,18 @@ def contexto_da_area(
     }
 
 
-def contexto_do_topico(request, ator, topico, *, erro="", texto="", erro_admin=""):
+def contexto_do_topico(
+    request,
+    ator,
+    topico,
+    *,
+    erro="",
+    texto="",
+    erro_admin="",
+    aviso_ia="",
+    erro_ia="",
+    orientacao="",
+):
     mensagens = Mensagem.objects.filter(topico=topico).select_related("autor")
     if not pode_moderar(ator):
         mensagens = mensagens.filter(removida_em__isnull=True)
@@ -300,6 +312,21 @@ def contexto_do_topico(request, ator, topico, *, erro="", texto="", erro_admin="
         # O destino possível de uma mudança de área. Só é montado para quem
         # modera: para o resto é consulta ao banco que ninguém vai olhar.
         "areas_para_mover": Area.objects.all() if modera else [],
+        # O RASCUNHO DA IA (02/09/2026, `apps/core/agente.py`). Os três
+        # entram juntos porque a caixa da IA é uma peça só na tela:
+        # se ela aparece, o que ela avisa, e o que a pessoa digitou na
+        # orientação (perder isso ao recusar seria a pior forma de
+        # recusar, como no resto desta função).
+        #
+        # `ia_ligada` é a MESMA leitura de env que `agente.rascunhar`
+        # faz no ponto de uso (`armadilhas/097`): a tela nunca oferece um
+        # botão que a view vai recusar, e nunca esconde um que ela
+        # aceitaria. Só é perguntada para quem modera; para o resto seria
+        # leitura de env que ninguém vai olhar.
+        "ia_ligada": modera and agente.ligado(),
+        "aviso_ia": aviso_ia,
+        "erro_ia": erro_ia,
+        "orientacao_digitada": orientacao,
     }
 
 

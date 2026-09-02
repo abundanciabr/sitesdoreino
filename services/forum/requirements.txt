@@ -37,6 +37,15 @@ respx==0.23.1
 # padrao (`armadilhas/071`).
 huey==2.5.1
 redis==5.1.1
+# O AGENTE DE IA QUE RASCUNHA RESPOSTA (02/09/2026, `apps/core/agente.py`).
+# Primeira dependencia de modelo de linguagem do projeto inteiro.
+#
+# ATENCAO A UMA COISA QUE NAO SE VE NESTA LINHA: o SDK da Anthropic 1.x roda
+# sobre `httpx2`, um pacote DIFERENTE do `httpx` acima, e os dois convivem
+# instalados. Isso importa em teste: o corte de rede da suite (`tests/conftest.py`)
+# precisou aprender a enxergar os dois, senao a suite se declara sem rede e
+# consegue chamar a internet de verdade, gastando dinheiro (`armadilhas/288`).
+anthropic==1.3.0
 # So de teste: e com ele que os contratos congelados de contracts/eventos/forum.*
 # deixam de ser documentacao e passam a reprovar o CI — o envelope real e
 # validado contra o ARQUIVO, nunca contra uma copia do formato dentro do teste.

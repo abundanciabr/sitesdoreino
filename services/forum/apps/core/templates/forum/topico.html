@@ -128,6 +128,55 @@ botão nunca é a proteção.
 {% endfor %}
 
 {% comment %}
+RASCUNHAR COM A IA (02/09/2026, mandato do mantenedor). Um botão na dúvida que
+ele quer responder, mais um campo opcional para dizer COMO a IA deve responder.
+
+Ela fica logo ANTES da caixa de responder de propósito: é para dentro daquela
+caixa que o texto vai cair, e o gesto inteiro (peço, leio, ajusto, publico)
+acontece numa descida só da página. As Ferramentas da escola lá em cima são um
+`<details>` fechado, e um botão escondido dentro dele seria um botão que ninguém
+usa.
+
+Quem decide se ela aparece é `pode_moderar`, o MESMO cálculo que a view de POST
+usa para responder 404 a quem não é da escola. Esconder o botão nunca é a
+proteção: a proteção é o 404 de lá.
+
+E ela aparece INTEIRA mesmo quando não dá para gerar (conversa trancada, fora do
+ar, chave ausente) — trocando o botão pela frase do motivo. Sumir com a caixa
+esconderia justamente a explicação de por que o botão não está lá.
+{% endcomment %}
+{% if pode_moderar %}
+  <form class="cartao escrever" method="post" action="{% url 'gerar_resposta' topico.pk %}">
+    {% csrf_token %}
+    <h2>Rascunhar com a IA</h2>
+    {% if erro_ia %}<p class="erro">{{ erro_ia }}</p>{% endif %}
+    {% if aviso_ia %}<p class="sub"><strong>{{ aviso_ia }}</strong></p>{% endif %}
+    {% if topico.estado != "publicado" %}
+      <p class="sub">Esta conversa está fora do ar, então ninguém pode responder
+        nela. Devolva ao ar nas Ferramentas da escola, lá em cima, e o botão
+        volta.</p>
+    {% elif topico.trancado %}
+      <p class="sub">Esta conversa está trancada, então não há caixa de resposta
+        para receber o rascunho. Destranque nas Ferramentas da escola, lá em
+        cima, e o botão volta.</p>
+    {% elif not ia_ligada %}
+      <p class="sub">A IA ainda não está ligada neste servidor: falta guardar a
+        chave de acesso da Anthropic na configuração do fórum. Enquanto isso, a
+        caixa de resposta aqui embaixo funciona como sempre funcionou.</p>
+    {% else %}
+      <label for="orientacao">Quer dizer como ela deve responder? (opcional)</label>
+      <textarea id="orientacao" name="orientacao" rows="2"
+                placeholder="Ex.: responda curto. Ou: fale da aula 3. Ou: ela já perguntou isso antes, seja paciente."
+                >{{ orientacao_digitada }}</textarea>
+      <button type="submit">Gerar resposta</button>
+      <p class="sub">O texto cai na caixa de resposta aqui embaixo, para você ler
+        e ajustar. Nada é publicado sem você clicar em Responder, e a resposta
+        sai com o seu nome, não com o dela.</p>
+    {% endif %}
+  </form>
+{% endif %}
+
+{% comment %}
 A CAIXA DE RESPONDER — mesma regra da caixa de abrir conversa, na área.
 `pode_escrever` vem de `apps/core/permissoes.py`; a proteção de verdade é o 403
 da view de POST. Tópico trancado esconde a caixa aqui E recusa lá.

@@ -76,6 +76,29 @@ def _lista_de_emails(nome_da_variavel: str) -> set[str]:
     return {parte.strip().lower() for parte in cru.split(",") if parte.strip()}
 
 
+def email_da_equipe(email: str) -> bool:
+    """Este e-mail é de professor ou de administrador do fórum?
+
+    A MESMA pergunta que `_resolver` faz sobre quem está do outro lado da tela,
+    feita sobre uma pessoa QUALQUER — quem escreveu uma fala antiga, por
+    exemplo. Nasceu em 02/09/2026 para o rascunho da IA
+    (`apps/core/agente.py`) saber rotular a transcrição: uma resposta que a
+    escola já deu chegando ao modelo como se fosse fala de aluno faria a IA
+    repetir o que já foi dito, ou contradizer a própria escola.
+
+    **Lê as MESMAS duas variáveis, e é por isso que não é uma segunda verdade:**
+    `FORUM_PROFESSORES` e `ADMIN_EMAILS`, no ponto de uso, com vazio
+    significando ninguém. Se um dia essas listas mudarem de nome, as duas
+    leituras quebram juntas, que é o que se quer.
+    """
+    limpo = (email or "").strip().lower()
+    if not limpo:
+        return False
+    return limpo in (
+        _lista_de_emails("FORUM_PROFESSORES") | _lista_de_emails("ADMIN_EMAILS")
+    )
+
+
 def quem_e(request) -> Ator:
     """O Ator desta requisição. Nunca levanta — o pior caso é VISITANTE.
 
