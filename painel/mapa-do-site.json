@@ -321,6 +321,18 @@
     },
     {
       "celula": "forum",
+      "rota": "t/<int:topico_id>/gerar-resposta",
+      "endereco": "/forum/t/<int:topico_id>/gerar-resposta",
+      "exemplo": "/forum/t/1/gerar-resposta",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Pedir à IA um rascunho de resposta",
+      "descricao": "O que acontece ao apertar 'Gerar resposta' numa dúvida do fórum: a IA lê a conversa e escreve um rascunho, que cai na caixa de resposta para você ler e ajustar. Tem um campo opcional para você dizer como ela deve responder.",
+      "gesto": true,
+      "observacao": "A IA nunca publica: o texto sai com o seu nome, e só depois de você clicar em Responder. É a única tela do site que gasta dinheiro por clique, e ela fica desligada enquanto a chave da Anthropic não estiver no servidor."
+    },
+    {
+      "celula": "forum",
       "rota": "m/<int:mensagem_id>/moderar",
       "endereco": "/forum/m/<int:mensagem_id>/moderar",
       "exemplo": "/forum/m/1/moderar",

@@ -71,7 +71,7 @@ done
 #    script a apagaria em silêncio, com o deploy verde (`armadilhas/111`).
 #    Guarda: `ci/tests/test_provisionamento_nao_perde_variavel.py`.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY FORUM_BUSCA_CONFIG FORUM_PROFESSORES IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS ALUNOS_API_TOKEN ALUNOS_API_URL ANTHROPIC_API_KEY DATABASE_URL DEBUG DJANGO_SECRET_KEY FORUM_BUSCA_CONFIG FORUM_PROFESSORES IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
 
 # LITERAL, e não `$ENV_FORUM`, de propósito: quem confere esta trava é
 # `ci/tests/test_provisionamento_nao_perde_variavel.py`, e ele lê o script
@@ -138,6 +138,15 @@ T_ALUNOS="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_FORUM)"
 # FOTOGRAFIA, não numa ligação viva. Se a lista mudar no painel, rode este
 # script de novo para o fórum acompanhar. Vazio ⇒ ninguém, que é fail-closed.
 ADMINS="$(ler_de "$ENV_ADMIN" ADMIN_EMAILS)"
+
+# A CHAVE DA ANTHROPIC — a única deste arquivo que eu não sei gerar.
+# Ela nasce na conta do mantenedor e custa dinheiro por uso; aqui eu só a
+# REAPROVEITO se já estiver no env vivo. Sem esta leitura, re-rodar o script
+# apagaria a chave em silêncio e o botão "Gerar resposta" sumiria do fórum sem
+# nenhum erro em lugar nenhum, com o deploy verde (`armadilhas/111` de novo, e
+# desta vez com uma variável que o próprio dono colou à mão).
+# VAZIA é um estado legítimo: a IA fica desligada e o fórum sobe igual.
+CHAVE_DA_IA="$(ler_de "$ENV_FORUM" ANTHROPIC_API_KEY)"
 
 BUSCA_CONFIG=""
 SENHA_DB="$(gerar_segredo)" || parar "não consegui gerar a senha do banco. Nada foi alterado."
@@ -213,6 +222,7 @@ ALUNOS_API_TOKEN=$T_ALUNOS
 FORUM_PROFESSORES=
 ADMIN_EMAILS=$ADMINS
 FORUM_BUSCA_CONFIG=${BUSCA_CONFIG:-}
+ANTHROPIC_API_KEY=$CHAVE_DA_IA
 ENV
 
 chown --reference="$ENV_REF" "$ENV_FORUM" 2>/dev/null \

@@ -3,6 +3,7 @@ from django.urls import path, re_path
 from apps.core.busca import buscar
 from apps.core.moderacao import (
     criar_area,
+    gerar_resposta,
     moderar_area,
     moderar_mensagem,
     moderar_topico,
@@ -66,4 +67,14 @@ urlpatterns = [
     path("a/<slug:slug>/moderar", moderar_area, name="moderar_area"),
     path("t/<int:topico_id>/moderar", moderar_topico, name="moderar_topico"),
     path("m/<int:mensagem_id>/moderar", moderar_mensagem, name="moderar_mensagem"),
+    # O RASCUNHO DA IA (02/09/2026, `apps/core/agente.py`). Mesma família
+    # das quatro acima: 404 para quem não é da escola, e `require_POST`.
+    # Aqui o POST pesa mais que nas outras: esta é a única rota do projeto
+    # que gasta dinheiro por clique, e por GET o robô do Google a
+    # dispararia sozinho em toda conversa do fórum.
+    path(
+        "t/<int:topico_id>/gerar-resposta",
+        gerar_resposta,
+        name="gerar_resposta",
+    ),
 ]

@@ -47,9 +47,10 @@ from apps.forum import eventos
 from apps.forum.models import Area, Mensagem, Topico
 from apps.forum.tasks import relay_apos_commit
 
+from . import agente
 from .menu import site_id_do_host
 from .permissoes import pode_moderar
-from .sessao import quem_e
+from .sessao import email_da_equipe, quem_e
 from .views import (
     TITULO_MAXIMO,
     TITULO_MINIMO,
@@ -95,6 +96,36 @@ ERRO_ACAO_DESCONHECIDA = (
 ERRO_BANCO_RECUSOU = (
     "O banco recusou essa combinação. Ela quebra uma regra que protege os "
     "alunos, então nada foi mudado."
+)
+
+# O RASCUNHO DA IA (02/09/2026). As duas recusas existem porque o rascunho nasce
+# dentro da caixa de responder, e nas duas situações abaixo essa caixa não está
+# na tela: gerar texto para uma caixa que não existe seria trabalho pago à
+# Anthropic e jogado fora, sem nada aparecer para quem clicou.
+ERRO_IA_TRANCADO = (
+    "Esta conversa está trancada, então não há caixa de resposta para receber o "
+    "rascunho. Destranque ali em cima e peça de novo."
+)
+ERRO_IA_FORA_DO_AR = (
+    "Esta conversa está fora do ar, então ninguém pode responder nela. Devolva "
+    "ao ar ali em cima e peça de novo."
+)
+
+# Os avisos que acompanham um rascunho PRONTO. Não são erro: são o que a pessoa
+# precisa saber antes de apertar Responder.
+AVISO_IA_PRONTO = (
+    "Rascunho da IA na caixa de resposta aqui embaixo. Leia inteiro antes de "
+    "publicar: ela não sabe preço, prazo, turma nem reembolso, e o texto sai "
+    "com o seu nome em cima."
+)
+AVISO_IA_CORTADO = (
+    "A resposta veio no limite de tamanho e terminou no meio. Complete o final "
+    "antes de publicar."
+)
+AVISO_IA_TRAVESSAO = (
+    "A IA usou risca longa no texto, e este site publica sem ela. Reescreva "
+    "essas frases com vírgula, parênteses, dois-pontos ou aspas, do jeito que "
+    "soar certo em cada uma."
 )
 
 # As duas visibilidades que o fórum sabe conferir hoje. `turma` existe no
@@ -497,3 +528,133 @@ def moderar_mensagem(request, mensagem_id: int):
             status=400,
         )
     return redirect(f"{reverse('topico', args=[topico.pk])}#m{mensagem.pk}")
+
+
+# ===========================================================================
+# O RASCUNHO DA IA — a máquina escreve, a pessoa publica
+# ===========================================================================
+# Mandato do mantenedor em 02/09/2026: *"o Admin clica na dúvida que quer
+# responder em um botão 'gerar resposta', e com um form opcional de campo único
+# para enviar mais detalhes de como o agente deverá responder"*.
+#
+# A view mora AQUI, junto das outras ferramentas da escola, por uma razão que
+# não é arrumação: é neste arquivo que vive `_so_quem_modera`, e é dele que sai
+# o 404 (nunca 403) para quem não é da escola. Uma porta de IA com regra própria
+# de permissão seria a segunda expressão da mesma regra, e a primeira a divergir.
+# Quem fala com a Anthropic é `apps/core/agente.py`; aqui fica só o que a tela
+# faz com o que voltou.
+#
+# **Esta view não escreve nada no banco**, e a ausência é a decisão. Ela devolve
+# a mesma conversa com o texto dentro da caixa de responder. Publicar continua
+# sendo um segundo clique, de uma pessoa, na rota de sempre.
+
+
+def _falas_para_a_ia(topico: Topico) -> list[tuple[str, str]]:
+    """A conversa em pares (quem, texto), SEM nome de ninguém.
+
+    Duas escolhas:
+
+    * **Mensagem fora do ar não viaja.** O que a escola tirou do ar está tirado
+      do ar, inclusive para a máquina. Um rascunho construído em cima de uma
+      fala removida devolveria pela porta da frente o que a moderação tinha
+      acabado de tirar.
+    * **O rótulo é `Escola` para fala da instituição E para fala de quem é da
+      equipe.** `publicado_pela_escola` sozinho pegaria só as mensagens
+      semeadas: a resposta que o próprio administrador escreveu ontem tem autor
+      de pessoa, e chegaria à IA como se fosse dúvida de aluno.
+    """
+    falas: list[tuple[str, str]] = []
+    for mensagem in (
+        Mensagem.objects.filter(topico=topico, removida_em__isnull=True)
+        .select_related("autor")
+        .order_by("criado_em")
+    ):
+        da_escola = mensagem.publicado_pela_escola or (
+            mensagem.autor is not None and email_da_equipe(mensagem.autor.email)
+        )
+        falas.append(("Escola" if da_escola else "Aluno", mensagem.texto))
+    return falas
+
+
+def _o_que_avisar(rascunho: agente.Rascunho) -> str:
+    """A linha que aparece com o rascunho pronto. Nunca vazia.
+
+    O aviso de sempre vem primeiro; os dois condicionais só aparecem quando têm
+    o que dizer. Juntar tudo numa frase só faria a advertência que importa (a IA
+    não sabe preço nem prazo) sumir nos dias em que não houvesse travessão
+    nenhum, e é justamente nesses dias que o texto parece confiável.
+    """
+    partes = [AVISO_IA_PRONTO]
+    if rascunho.cortado:
+        partes.append(AVISO_IA_CORTADO)
+    if agente.travessoes_em(rascunho.texto):
+        partes.append(AVISO_IA_TRAVESSAO)
+    return " ".join(partes)
+
+
+@require_POST
+def gerar_resposta(request, topico_id: int):
+    """Pede à IA o rascunho de uma resposta para esta conversa.
+
+    `require_POST` pelo mesmo motivo das outras quatro rotas daqui, um degrau
+    mais caro: gerar por GET seria uma chamada PAGA que o robô do Google
+    dispararia sozinho ao passear pela página.
+    """
+    ator = _so_quem_modera(request)
+    topico = get_object_or_404(
+        Topico.objects.select_related("area", "autor"), pk=topico_id
+    )
+    # Cortada no tamanho em vez de recusada: quem escreveu demais na caixinha
+    # quis dizer alguma coisa, e devolver a tela com um erro por causa disso
+    # seria atrito puro. O teto existe para a chamada não carregar um livro.
+    orientacao = (request.POST.get("orientacao") or "").strip()[
+        : agente.TETO_DA_ORIENTACAO
+    ]
+
+    recusa = ""
+    if topico.estado != Topico.Estado.PUBLICADO:
+        recusa = ERRO_IA_FORA_DO_AR
+    elif topico.trancado:
+        recusa = ERRO_IA_TRANCADO
+    if recusa:
+        return render(
+            request,
+            "forum/topico.html",
+            contexto_do_topico(
+                request, ator, topico, erro_ia=recusa, orientacao=orientacao
+            ),
+            status=400,
+        )
+
+    try:
+        rascunho = agente.rascunhar(
+            area_nome=topico.area.nome,
+            titulo=topico.titulo,
+            falas=_falas_para_a_ia(topico),
+            orientacao=orientacao,
+        )
+    except agente.AgenteIndisponivel as erro:
+        # A conversa volta inteira, com a frase do que houve e a orientação
+        # ainda na caixinha. 503 e não 400: quem falhou foi um serviço de fora,
+        # não o pedido de quem clicou.
+        return render(
+            request,
+            "forum/topico.html",
+            contexto_do_topico(
+                request, ator, topico, erro_ia=str(erro), orientacao=orientacao
+            ),
+            status=503,
+        )
+
+    return render(
+        request,
+        "forum/topico.html",
+        contexto_do_topico(
+            request,
+            ator,
+            topico,
+            texto=rascunho.texto,
+            aviso_ia=_o_que_avisar(rascunho),
+            orientacao=orientacao,
+        ),
+    )
