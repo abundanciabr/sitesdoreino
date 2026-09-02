@@ -78,9 +78,18 @@ MODELO = "claude-opus-5"
 TETO_DE_SAIDA = 8000
 
 # Rascunhar uma resposta de fórum é tarefa de ESCRITA, não de raciocínio duro.
-# `medium` é o degrau que entrega texto bom sem pagar pensamento que ninguém vai
-# ler. O padrão da API seria `high`.
-ESFORCO = "medium"
+# O padrão da API seria `high`; aqui é `low`, e a escolha é do mantenedor.
+#
+# ELE PEDIU EM 02/09/2026, depois de usar o botão pela primeira vez: *"a resposta
+# está demorando um pouco"*, e no mesmo pedido *"ela precisa ser mais curta e
+# objetiva"*. As duas coisas puxam para o mesmo lado, e é por isso que a troca
+# vem junto com o encolhimento das instruções lá embaixo: pensar menos e escrever
+# menos se somam, e o que ele sente é a soma.
+#
+# O que se perde é capricho em dúvida difícil, e o que se ganha é uma pessoa que
+# usa a ferramenta em vez de esperar por ela. Subir de novo é uma linha, e a
+# decisão de subir é dele.
+ESFORCO = "low"
 
 # Um minuto e meio. Muito acima dos 5 segundos dos saltos entre células
 # (`clients.py`), e de propósito: aqui não há ninguém esperando uma página
@@ -216,11 +225,18 @@ RASCUNHO de uma resposta para uma dúvida do fórum da escola. Quem publica é u
 pessoa da equipe, que vai ler e corrigir o seu texto antes de mandar.
 
 COMO ESCREVER
-Português do Brasil, direto e simples, falando com o aluno por "você". Comece \
-pela resposta: nada de saudação comprida nem de repetir a pergunta. Se a dúvida \
-for "como eu faço", responda em passos numerados. Umas 250 palavras bastam, a \
-menos que a dúvida exija mais. Não assine, não se despeça e não fale em nome da \
-escola na primeira pessoa do plural.
+Curto e direto. **No máximo 120 palavras**, e menos é melhor. A primeira frase \
+já tem de ser a resposta: nada de saudação, nada de repetir a pergunta, nada de \
+"ótima dúvida". Se a resposta cabe em duas linhas, entregue duas linhas.
+
+Linguagem simples, do dia a dia, falando com o aluno por "você". Frases curtas, \
+uma ideia por frase. Se precisar de um termo técnico do Studio ou do Blender, \
+escreva o termo e explique em três ou quatro palavras na sequência. Nada de \
+palavra difícil quando existe a fácil.
+
+Se a dúvida for "como eu faço", responda em passos numerados e curtos, um gesto \
+por passo. Não assine, não se despeça e não fale em nome da escola na primeira \
+pessoa do plural.
 
 O fórum mostra o seu texto como texto puro, sem formatação nenhuma. Escreva sem \
 markdown: nada de asterisco para negrito, nada de cabeçalho com #, nada de \

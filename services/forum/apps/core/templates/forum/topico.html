@@ -193,7 +193,24 @@ da view de POST. Tópico trancado esconde a caixa aqui E recusa lá.
     <div class="cabeca">{% include "forum/_mascote.html" %}<h2>Responder</h2></div>
     {% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
     <label for="texto">Sua resposta</label>
-    <textarea id="texto" name="texto" rows="5" required
+    {% comment %}
+    O `autofocus` SÓ existe quando um rascunho acabou de chegar, e ele conserta um
+    defeito medido em 02/09/2026, na primeira vez que o botão funcionou de verdade.
+
+    O QUE ACONTECEU: a IA respondeu, o texto foi escrito nesta caixa, e o
+    mantenedor disse "não apareceu nada". Estava tudo certo, e ele estava certo
+    também: esta caixa fica no FIM da página, depois de todas as mensagens da
+    conversa, e o POST recarrega a página no topo. O rascunho nascia fora da
+    vista, e o aviso em negrito junto. Foram três cliques, três chamadas pagas, e
+    nenhuma delas apareceu para quem as pediu.
+
+    O navegador rola até o elemento com `autofocus` ao carregar a página, e de
+    quebra deixa o cursor dentro da caixa, pronto para editar. Sem JavaScript.
+
+    E ele é CONDICIONAL de propósito: fixo, roubaria o foco de quem só abriu a
+    conversa para ler, e jogaria a página para o fim toda vez.
+    {% endcomment %}
+    <textarea id="texto" name="texto" rows="5" required{% if aviso_ia %} autofocus{% endif %}
               placeholder="Escreva como você explicaria para um colega.">{{ texto_digitado }}</textarea>
     <button type="submit">Responder</button>
   </form>
