@@ -1,0 +1,79 @@
+{% extends "admin/base.html" %}
+{% comment %}
+EXPORTAR — aba 5 da gestão da Caixa, nascida em 02/09/2026.
+
+Por que ela existe, na frase mais curta: o robô não consegue ler o que os
+alunos escreveram. O texto de uma ideia só existe atrás do login, e a porta da
+administração é do mantenedor. Sem esta tela, "analise as sugestões da turma"
+custava a ele abrir ideia por ideia e copiar cada uma à mão.
+
+Um campo de texto, e não um botão de copiar: a porta manda `script-src 'self'`
+e esta célula não serve estático nenhum. Clicar dentro do campo e apertar
+Ctrl+A seleciona só o que está dentro dele, nunca a página em volta — que é
+exatamente o que um botão faria, sem custar uma exceção na política.
+
+O `readonly` é honestidade, não trava: o que se digitasse aqui não iria para
+lugar nenhum, e um campo que aceita digitação promete que vai.
+{% endcomment %}
+{% block titulo %}Exportar | Caixa de Sugestões{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro largo">
+  <a class="volta" href="{% url 'visao_geral' %}">&larr; Visão geral</a>
+
+  {% if nao_respondeu %}
+    <h1>A Caixa inteira, em texto</h1>
+    <p class="aviso espaco-16">
+      Não consegui perguntar à Caixa agora, então não tenho o que exportar.
+      A página abriu para você ver isto escrito, e não uma lista vazia que
+      pareceria "nenhum aluno escreveu nada". Tente de novo em um minuto; se
+      insistir, avise um robô com estas palavras: "a Caixa não respondeu à
+      tela de exportar".
+    </p>
+  {% else %}
+    {% include "admin/_caixa_abas.html" %}
+
+    <style>
+      .como-copiar { background:var(--cartao, #fff); border:1px solid var(--borda); border-radius:8px; padding:12px 14px; margin:14px 0; }
+      .como-copiar ol { margin:8px 0 0; padding-left:20px; }
+      .como-copiar li { margin:4px 0; font-size:14px; }
+      .campo-export { width:100%; box-sizing:border-box; height:60vh; min-height:320px; font-family:ui-monospace,Consolas,"Courier New",monospace; font-size:12.5px; line-height:1.5; padding:12px; border:1px solid var(--borda); border-radius:8px; background:#fbfbfb; color:#222; white-space:pre; }
+      .rodape-export { font-size:12px; color:var(--texto-2); margin-top:8px; }
+    </style>
+
+    <h1>A Caixa inteira, em texto</h1>
+    <p class="carimbo">
+      {% if total %}
+        {{ total }} ideia{{ total|pluralize }} no quadro, da mais votada para a menos votada,
+        com o texto completo de cada uma.
+      {% else %}
+        O quadro está vazio no momento: nenhum aluno escreveu nada ainda. O texto abaixo diz isso
+        com todas as letras, para quem receber saber que o vazio é real e não um erro de cópia.
+      {% endif %}
+    </p>
+
+    <div class="como-copiar">
+      <b>Como levar isto embora</b>
+      <ol>
+        <li>Clique uma vez dentro da caixa cinza aqui embaixo.</li>
+        <li>Aperte <b>Ctrl+A</b>: isso seleciona só o que está dentro da caixa, nada da página.</li>
+        <li>Aperte <b>Ctrl+C</b> e cole onde quiser (numa conversa com um robô, num documento, num e-mail).</li>
+      </ol>
+    </div>
+
+    <textarea class="campo-export" readonly spellcheck="false"
+              aria-label="A Caixa de Sugestões inteira em texto, pronta para copiar">{{ texto }}</textarea>
+
+    <p class="rodape-export">
+      O nome de quem escreveu cada ideia fica de fora de propósito: este texto foi feito para sair
+      daqui, e a análise funciona sem saber de quem é. O texto dos comentários também não vem, porque
+      a Caixa entrega quantos comentários cada ideia tem, não o que cada um diz. As duas coisas estão
+      escritas no cabeçalho do próprio texto, para quem receber não precisar adivinhar o que falta.
+    </p>
+  {% endif %}
+</div>
+{% endblock %}
