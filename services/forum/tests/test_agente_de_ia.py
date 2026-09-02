@@ -518,7 +518,66 @@ def test_recusa_do_modelo_nao_vira_rascunho_vazio(env, monkeypatch, conversa):
 
 
 # ---------------------------------------------------------------------------
-# 7. A TESOURA DA CONVERSA — o começo e o fim, nunca o silêncio
+# 7. O PERCURSO INTEIRO, COM CSRF LIGADO — o caminho que o mantenedor usa
+# ---------------------------------------------------------------------------
+
+
+def test_o_botao_atravessa_o_csrf_de_verdade(env, monkeypatch, conversa):
+    """Todos os testes acima entram pela porta com o cabeçalho `cookie` na mão,
+    e `armadilhas/204` diz o que isso custa: `headers={"cookie": ...}` substitui
+    o cabeçalho INTEIRO e leva junto o `forum_csrf` que a página tinha posto lá.
+    Com o CSRF desligado na suíte, nenhum deles prova que o formulário funciona.
+
+    Este prova. Ele abre a página como o navegador abre, lê o token que a tela
+    imprimiu, e devolve o formulário como o botão devolve. Se o `{% csrf_token %}`
+    sumir do template, é aqui que aparece o vermelho.
+    """
+    import re
+
+    como_dono(monkeypatch)
+    dublar_a_anthropic(
+        monkeypatch, corpo=corpo_de_resposta("Escale o UV antes de pintar.")
+    )
+
+    navegador = Client(enforce_csrf_checks=True)
+    navegador.cookies["meshcraft_sessao"] = "um-cookie-opaco-qualquer"
+
+    tela = navegador.get(reverse("topico", args=[conversa.pk]))
+    assert tela.status_code == 200
+
+    # O TOKEN TEM DE SAIR DE DENTRO DESTE FORMULÁRIO, e não de qualquer um da
+    # página. A tela de uma conversa tem meia dúzia de formulários de moderação,
+    # todos com `{% csrf_token %}`: uma busca solta acharia o token de um deles,
+    # o POST passaria, e o teste ficaria verde com o `{% csrf_token %}` ARRANCADO
+    # do formulário da IA. Foi o que aconteceu na primeira versão deste teste, e
+    # é a família de falso-verde que esta casa cataloga (`armadilhas/266`):
+    # asserção com mais de uma causa suficiente.
+    pagina = tela.content.decode()
+    marca = 'action="' + reverse("gerar_resposta", args=[conversa.pk]) + '"'
+    assert marca in pagina, "a tela não trouxe o formulário do botão de IA"
+    formulario = pagina[
+        pagina.index(marca) : pagina.index("</form>", pagina.index(marca))
+    ]
+    achado = re.search(r'name="csrfmiddlewaretoken" value="([^"]+)"', formulario)
+    assert achado, (
+        "o formulário do botão de IA não imprimiu o token de CSRF. Sem ele o "
+        "botão responde 403 no navegador do mantenedor, e só lá."
+    )
+
+    resposta = navegador.post(
+        reverse("gerar_resposta", args=[conversa.pk]),
+        {
+            "orientacao": "responda curto",
+            "csrfmiddlewaretoken": achado.group(1),
+        },
+    )
+
+    assert resposta.status_code == 200, resposta.content[:400]
+    assert "Escale o UV antes de pintar." in resposta.content.decode()
+
+
+# ---------------------------------------------------------------------------
+# 8. A TESOURA DA CONVERSA — o começo e o fim, nunca o silêncio
 # ---------------------------------------------------------------------------
 
 
