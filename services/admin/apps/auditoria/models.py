@@ -133,6 +133,13 @@ class Registro(models.Model):
     # lendo estes. Um verbo so obrigaria quem audita a adivinhar pelo slug.
     LIGAR_CONQUISTA = "ligar_conquista"
     DESLIGAR_CONQUISTA = "desligar_conquista"
+    # [DEGRAUS] 02/09/2026: ligar um DEGRAU da escada de niveis. Verbo proprio
+    # pela mesma razao dos dois de cima, e com uma diferenca que vale registrar:
+    # ligar um degrau nao paga nada, e a regua com que o XP ja existente e lido.
+    # A pergunta que se faz a estas linhas e "quando a escola passou a chamar
+    # alguem de Oficial?", que nao se responde por nenhum dos outros verbos.
+    LIGAR_DEGRAU = "ligar_degrau"
+    DESLIGAR_DEGRAU = "desligar_degrau"
     # [SENHA] 31/08/2026 (`DECISAO-login-por-senha.md`): o reset manual de
     # senha, pelo prontuário de um aluno. Verbo próprio pelo mesmo motivo dos
     # de cima — e com o agravante de que a senha em si NUNCA entra em
@@ -166,6 +173,8 @@ class Registro(models.Model):
         (DESLIGAR_REGRA, "desligar uma regra de pontuacao da escola"),
         (LIGAR_CONQUISTA, "ligar uma medalha ou marco da escola"),
         (DESLIGAR_CONQUISTA, "desligar uma medalha ou marco da escola"),
+        (LIGAR_DEGRAU, "ligar um degrau da escada de niveis"),
+        (DESLIGAR_DEGRAU, "desligar um degrau da escada de niveis"),
         (RESETAR_SENHA, "resetar a senha de um aluno"),
     ]
 
