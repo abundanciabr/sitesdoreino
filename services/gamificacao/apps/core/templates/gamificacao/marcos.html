@@ -1,4 +1,4 @@
-{% comment %}
+{% extends "gamificacao/moldura.html" %}{% comment %}
 A trilha de MARCOS REAIS do aluno.
 
 Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
@@ -14,21 +14,15 @@ O que a página mostra é o que a pessoa fez, e o que falta fazer.
 ESTA TELA É A ÚNICA QUE CONTA A DEVOLUÇÃO. Devolver não gera aviso no sininho
 (só boa notícia vira carta), então é aqui que o aluno descobre o que faltou — em
 português, com o botão de mandar de novo ao lado.
-{% endcomment %}<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Marcos | Meshcraft Academy</title>
-<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
-</head>
-<body>
-<div class="faixa">
+{% endcomment %}
+{% block titulo %}Marcos{% endblock %}
+
+{% block faixa %}
   <a href="{% url 'base' %}">Suas conquistas</a>
   <a href="{% url 'marcos' %}">Marcos reais</a>
-</div>
+{% endblock %}
 
-<main>
+{% block conteudo %}
 {% if entrou %}
   <section class="degrau">
     <p class="rotulo">A sua trilha</p>
@@ -104,6 +98,4 @@ português, com o botão de mandar de novo ao lado.
     fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
   </section>
 {% endif %}
-</main>
-</body>
-</html>
+{% endblock %}

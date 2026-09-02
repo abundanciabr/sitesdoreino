@@ -1,4 +1,4 @@
-{% comment %}
+{% extends "gamificacao/moldura.html" %}{% comment %}
 A FILA DA EQUIPE. Bastidor, não vitrine: quem chega aqui é professor ou monitor,
 e a tela é feita para decidir depressa, não para impressionar.
 
@@ -9,21 +9,15 @@ a segunda expressão da mesma regra.
 O QUE NUNCA APARECE AQUI: nada além do que a equipe precisa para decidir. O id
 opaco de quem pediu, o marco, a prova e o prazo. Sem e-mail, sem nome real, sem
 telefone — quem precisa falar com a pessoa pergunta à célula que guarda isso.
-{% endcomment %}<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Fila da equipe | Meshcraft Academy</title>
-<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
-</head>
-<body>
-<div class="faixa">
+{% endcomment %}
+{% block titulo %}Fila da equipe{% endblock %}
+
+{% block faixa %}
   <a href="{% url 'base' %}">Suas conquistas</a>
   {% if pode %}<a href="{% url 'interno' %}">Fila da equipe</a>{% endif %}
-</div>
+{% endblock %}
 
-<main>
+{% block conteudo %}
 {% if pode %}
   <section class="degrau">
     <p class="rotulo">Bastidor</p>
@@ -87,6 +81,4 @@ telefone — quem precisa falar com a pessoa pergunta à célula que guarda isso
     inicial</a>.</p>
   </section>
 {% endif %}
-</main>
-</body>
-</html>
+{% endblock %}

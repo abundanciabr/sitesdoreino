@@ -338,3 +338,41 @@ form input[type="text"] {
   padding: 10px 12px;
   width: 100%;
 }
+
+/* O RODAPÉ — a mesma peça do site e do fórum, com as cores desta célula.
+
+   As medidas saem de `services/forum/static/forum.css`; os nomes de cor, não:
+   ali são `--linha` e `--destaque`, aqui são `--borda` e `--marca`. Copiar o
+   arquivo em vez do desenho traria variáveis que não existem neste `:root`, e o
+   navegador cai no valor vazio sem avisar ninguém.
+
+   A largura acompanha a do `main` daqui (640px), e não a do fórum (780px): o
+   rodapé é assinatura da página em que está, e uma faixa mais larga que o
+   conteúdo lê como se fosse de outro site. */
+.rodape {
+  border-top: 1px solid var(--borda);
+  color: var(--tinta-fraca);
+  font-size: 14px;
+  margin: 0 auto;
+  max-width: 640px;
+  padding: 24px 20px 40px;
+  text-align: center;
+}
+
+.rodape .marca { color: var(--tinta); font-weight: 600; margin: 0 0 4px; }
+.rodape .descricao { margin: 0 0 16px; }
+
+.rodape .links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: center;
+  margin: 0 0 16px;
+}
+
+.rodape .links a { color: var(--tinta-fraca); text-decoration: none; }
+
+.rodape .links a:hover,
+.rodape .links a:focus { color: var(--marca); text-decoration: underline; }
+
+.rodape .direitos { margin: 0; }

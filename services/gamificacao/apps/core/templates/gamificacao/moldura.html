@@ -1,0 +1,70 @@
+{% comment %}
+A MOLDURA das Conquistas: o esqueleto que TODA tela desta célula veste.
+
+## Por que ela nasceu em 02/09/2026, e por que não se chama `base.html`
+
+Até aqui esta célula tinha quatro telas e nenhuma moldura: `base.html`,
+`marcos.html`, `forja.html` e `interno.html` eram quatro documentos HTML
+completos, cada um com o próprio `<head>`, a própria faixa e o próprio fim de
+página. Funcionava, e escondia um buraco: quando o site inteiro ganhou rodapé
+(31/08/2026) e menu do topo, as duas peças foram parar na `funil` e no `forum`,
+que têm molde compartilhado, e não chegaram aqui. O mantenedor abriu
+`/conquistas/` no dia 02/09 e viu a única área do site sem menu e sem rodapé.
+
+É a `armadilhas/242` pelo lado que ela não previu. A armadilha ensina que
+`{% include %}` escrito à mão em cada template faz a peça sumir da primeira tela
+NOVA; aqui a peça sumiu da primeira CÉLULA nova, e por baixo era o mesmo defeito:
+"em todas as páginas" dependia de alguém lembrar.
+
+O nome `base.html` já é da BASE, que é a tela inicial das Conquistas
+(`/conquistas`, a `path("", base, name="base")` do urlconf). Chamar a moldura de
+`base.html` obrigaria a renomear a tela, o teste dela e a view — churn sem
+ganho, e um nome ambíguo para sempre. `moldura` é o que esta peça é.
+
+## O que ela decide, e o que ela NÃO decide
+
+Ela DESENHA; quem DECIDE mora em `apps/core/rodape.py` (e, quando o menu
+chegar, em `apps/core/menu.py`), como processador de contexto. É essa divisão
+que faz tela nova das Conquistas nascer com as peças sem tocar em nada.
+
+Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
+prefixo público `/conquistas` para dentro do caminho, e caminho cravado em
+string quebra em produção e SÓ lá (`armadilhas/029` e `/081`). O CSS sai de
+`{% url 'estatico' %}` e nunca de `{% static %}`, porque as duas tags leem
+prefixos diferentes e `/static/…` neste domínio é endereço do funil
+(`armadilhas/102`).
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Conquistas{% endblock %} | Meshcraft Academy</title>
+<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
+</head>
+<body>
+<div class="faixa">{% block faixa %}
+  <a href="{% url 'base' %}">Suas conquistas</a>
+{% endblock %}</div>
+
+<main>{% block conteudo %}{% endblock %}</main>
+{% if rodape %}{% comment %}
+O RODAPÉ (`apps/core/rodape.py`) — a mesma peça do site e do fórum, com o mesmo
+desenho. Quem DECIDE qual rodapé cada página mostra é o processador de contexto;
+aqui só se desenha. Fora do `<main>` de propósito: ele não é conteúdo das
+Conquistas, é assinatura da casa, e leitor de tela o anuncia como rodapé por
+causa da tag.
+
+As tags de abertura ficam COLADAS no fim da linha anterior (`armadilhas/033`):
+solta, cada uma põe uma linha em branco a mais na página de quem não tem rodapé.
+{% endcomment %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+  <p class="marca">Meshcraft Academy</p>
+  <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
+  <nav class="links" aria-label="Links úteis">
+    <a href="{{ rodape.url_do_site }}">Início do site</a>
+    <a href="{% url 'base' %}">Conquistas</a>
+    <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
+  </nav>{% endif %}{% if rodape.mostra_direitos %}
+  <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
+</footer>{% endif %}
+</body>
+</html>
