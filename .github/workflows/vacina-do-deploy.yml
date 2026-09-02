@@ -81,14 +81,33 @@
 #                    (INV-CI01), e ninguém mais vai olhar. ISSUE.
 #
 # -----------------------------------------------------------------------------
-# USA `PISTA_TOKEN` QUANDO ELE EXISTE
+# DOIS TOKENS, EM ESCADA — E POR QUE UM SÓ NÃO BASTAVA (TAR-051, 02/09/2026)
 #
-# Um rerun pedido pelo `GITHUB_TOKEN` cai perto demais da regra que o
-# `pouso.yml` documenta ("events triggered by the GITHUB_TOKEN will not create a
-# new workflow run") para eu apostar nela sem medir: se o rerun não gerasse o
-# `workflow_run` seguinte, a segunda volta da cura nunca aconteceria, em
-# silêncio. Com o `PISTA_TOKEN` a dúvida não existe. Sem ele, cai no token
-# padrão e DIZ no log que caiu — degradar calado é o que esta casa não faz.
+# A preferência pelo `PISTA_TOKEN` nasceu de um cuidado legítimo: um rerun
+# pedido pelo `GITHUB_TOKEN` cai perto da regra que o `pouso.yml` documenta
+# ("events triggered by the GITHUB_TOKEN will not create a new workflow run"),
+# e se o rerun não gerasse o `workflow_run` seguinte a segunda volta da cura
+# não aconteceria, em silêncio.
+#
+# O cuidado estava certo e a escolha estava errada, porque o `PISTA_TOKEN` é o
+# único dos dois tokens que NÃO PODE redisparar run — e isso já estava medido e
+# escrito no `pouso.yml` desde 29/08/2026, com a mesma mensagem crua:
+# *"permissão `actions: write` no token, que a `PISTA_TOKEN` não tem"*. Em
+# 30/08/2026, às 23:20, a vacina decidiu certo e não teve braço:
+#
+#     run 33341511607 cannot be rerun;
+#     Resource not accessible by personal access token
+#
+# O `Actions: write` abaixo estava concedido o tempo todo (o `Set up job`
+# daquele run o imprime). Quem anulou a permissão certa foi o `||`: o PAT
+# SOMBREAVA o `github.token`, que era o único capaz.
+#
+# Desde a TAR-051 os dois viajam. `ci/rerun_de_deploy.py::pedir_o_rerun` tenta
+# o principal e, se for recusado, DESCE para o do próprio job, dizendo no log
+# qual caiu. Se os dois falharem, o desfecho é o de sempre: ERROR e issue —
+# degradar calado é o que esta casa não faz. A medição dos três casos e o
+# motivo de ser uma escada, e não uma troca seca, estão no comentário de
+# `pedir_o_rerun`.
 # =============================================================================
 name: vacina-do-deploy
 on:
@@ -155,6 +174,12 @@ jobs:
         id: vacina
         env:
           GH_TOKEN: ${{ secrets.PISTA_TOKEN || github.token }}
+          # O SEGUNDO BRAÇO (TAR-051). Quando o principal é o PAT, este é o
+          # único dos dois que consegue `gh run rerun` — e sem ele a vacina
+          # decide certo e não alcança nada. Quando não há PAT, os dois são o
+          # mesmo valor e `bracos_do_rerun` descarta o repetido, em vez de
+          # tentar duas vezes a mesma coisa e chamar isso de plano B.
+          GH_TOKEN_RESERVA: ${{ github.token }}
           RUN_DOENTE: ${{ github.event.workflow_run.id }}
           ESTEIRA: ${{ github.event.workflow_run.name }}
           # A PERGUNTA, e não o segredo: interpolar `secrets.PISTA_TOKEN` dentro
@@ -164,7 +189,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$TEM_PISTA" != "true" ]; then
+          if [ "$TEM_PISTA" = "true" ]; then
+            echo "Há PISTA_TOKEN: ele é o primeiro braço, e o github.token"
+            echo "fica de reserva — o PAT não pôde redisparar run em 30/08."
+          else
             echo "AVISO: sem PISTA_TOKEN — pedindo o rerun com o token padrão."
             echo "Se a segunda volta da cura não acontecer, é aqui que se olha."
           fi
