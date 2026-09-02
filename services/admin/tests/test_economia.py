@@ -133,7 +133,28 @@ CONQUISTAS = [
 ]
 
 
-def _gamificacao(regras=None, resposta_do_gesto=None, conquistas=None):
+def _degrau(nivel: int, **campos):
+    base = {
+        "nivel": nivel,
+        "titulo": f"Degrau {nivel}",
+        "titulo_feminino": "",
+        "xp_necessario": (nivel - 1) * 50,
+        "ativa": False,
+        "versao": 1,
+        "impedimentos": [],
+    }
+    base.update(campos)
+    return base
+
+
+DEGRAUS = [
+    _degrau(1, titulo="Aprendiz", impedimentos=["sem-regra-que-paga"]),
+    _degrau(2, titulo="Oficial", impedimentos=["sem-regra-que-paga"]),
+    _degrau(3, titulo="Mestre", impedimentos=["sem-regra-que-paga"]),
+]
+
+
+def _gamificacao(regras=None, resposta_do_gesto=None, conquistas=None, degraus=None):
     respx.get(f"{GAMIFICACAO}/economia/regras").mock(
         return_value=httpx.Response(200, json=regras if regras is not None else REGRAS)
     )
@@ -148,6 +169,18 @@ def _gamificacao(regras=None, resposta_do_gesto=None, conquistas=None):
     )
     respx.post(url__startswith=f"{GAMIFICACAO}/economia/conquistas/").mock(
         return_value=httpx.Response(200, json=_conquista("primeira-obra", ativa=True))
+    )
+    # A terceira lista entrou em 02/09/2026, e é mockada aqui pela mesma razão
+    # das outras duas: a tela faz TRÊS perguntas, e um dublê que conhecesse só
+    # duas deixaria todo teste antigo passar por um caminho que a tela real não
+    # percorre mais.
+    respx.get(f"{GAMIFICACAO}/economia/degraus").mock(
+        return_value=httpx.Response(
+            200, json=degraus if degraus is not None else DEGRAUS
+        )
+    )
+    respx.post(url__startswith=f"{GAMIFICACAO}/economia/degraus/").mock(
+        return_value=httpx.Response(200, json=_degrau(2, ativa=True, versao=2))
     )
     return respx.post(url__startswith=f"{GAMIFICACAO}/economia/regras/").mock(
         return_value=resposta_do_gesto
@@ -487,6 +520,11 @@ def test_a_metade_de_baixo_falhando_nao_derruba_a_de_cima():
     respx.get(f"{GAMIFICACAO}/economia/conquistas").mock(
         return_value=httpx.Response(503)
     )
+    # A terceira pergunta responde normalmente: o que se mede aqui é UMA lista
+    # caindo sozinha, e não todas juntas.
+    respx.get(f"{GAMIFICACAO}/economia/degraus").mock(
+        return_value=httpx.Response(200, json=DEGRAUS)
+    )
 
     resposta = _dentro().get(reverse("economia"))
     corpo = resposta.content.decode()
@@ -563,3 +601,158 @@ def test_um_cristal_sozinho_continua_no_singular():
 
     assert "Cristais" not in html
     assert "Cristal" in html
+
+
+# ---------------------------------------------------------------------------
+# A TERCEIRA METADE: os degraus da escada (02/09/2026)
+# ---------------------------------------------------------------------------
+# Ela nasceu de uma tela que se contradizia. O mantenedor abriu `/conquistas` e
+# leu "Nível 1" e "você chegou ao último degrau desta escada" na mesma tela. O
+# defeito da tela do ALUNO foi corrigido (`armadilhas/271`); o que sobrou foi a
+# verdade, e a verdade é que a escola nunca ligou degrau nenhum.
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_a_tela_mostra_os_degraus_com_o_esforco_que_cada_um_pede():
+    _gamificacao()
+
+    corpo = _dentro().get(reverse("economia")).content.decode()
+
+    assert "A escada de degraus" in corpo
+    assert "Aprendiz" in corpo and "Oficial" in corpo and "Mestre" in corpo
+    assert "Chega aqui quem tem <b>50</b> ponto" in corpo
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_o_cartao_do_degrau_diz_que_ligar_nao_paga_nada():
+    """**O guarda de leitura que mais importa nesta seção.**
+
+    Uma tela que mostrasse "vale 50 pontos" ao lado de um degrau ensinaria o
+    contrário do que a economia faz: o degrau é a régua com que o XP já
+    existente é lido, e ligar não credita nada a ninguém.
+    """
+    _gamificacao()
+
+    corpo = _dentro().get(reverse("economia")).content.decode()
+
+    assert "Um degrau não paga nada" in corpo
+    assert "Ligar não cria ponto para ninguém" in corpo
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_com_a_escada_desligada_a_tela_diz_o_que_o_aluno_esta_vendo():
+    """A frase liga as duas pontas: o que ele vê aqui e o que o aluno vê lá."""
+    _gamificacao()
+
+    corpo = _dentro().get(reverse("economia")).content.decode()
+
+    assert "Nenhum degrau está ligado" in corpo
+    assert "escada dele está sendo montada" in corpo
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_com_um_degrau_so_a_tela_avisa_que_isso_nao_e_escada():
+    """O aviso serve ANTES do clique seguinte, que é a única hora em que ele
+    ajuda: com um degrau não há para onde subir (`armadilhas/271`)."""
+    _gamificacao(
+        degraus=[
+            _degrau(1, titulo="Aprendiz", ativa=True),
+            _degrau(2, titulo="Oficial", impedimentos=["escada-de-um-degrau-so"]),
+        ]
+    )
+
+    corpo = _dentro().get(reverse("economia")).content.decode()
+
+    assert "Só um degrau está ligado" in corpo
+    assert "não forma escada" in corpo
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_o_aviso_de_que_ninguem_sobe_aparece_quando_nada_paga():
+    _gamificacao()
+
+    corpo = _dentro().get(reverse("economia")).content.decode()
+
+    assert "ninguém sobe ainda" in corpo
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_ligar_um_degrau_chama_a_gamificacao_e_audita_com_verbo_proprio():
+    _gamificacao()
+
+    resposta = _dentro().post(
+        reverse("economia_mudar_degrau"), {"nivel": "2", "ativa": "1"}
+    )
+
+    assert resposta.status_code == 302
+    registro = Registro.objects.get()
+    assert registro.acao == Registro.LIGAR_DEGRAU
+    assert registro.alvo == "2"
+    assert registro.desfecho == Registro.OK
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_desligar_um_degrau_usa_o_outro_verbo():
+    _gamificacao()
+
+    _dentro().post(reverse("economia_mudar_degrau"), {"nivel": "2", "ativa": "0"})
+
+    assert Registro.objects.get().acao == Registro.DESLIGAR_DEGRAU
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_numero_de_degrau_que_nao_e_numero_nao_vira_500():
+    """Formulário adulterado ou navegador antigo: vira frase na tela, nunca
+    erro. E nada é chamado do outro lado."""
+    _gamificacao()
+    gesto = respx.post(url__startswith=f"{GAMIFICACAO}/economia/degraus/")
+
+    resposta = _dentro().post(
+        reverse("economia_mudar_degrau"), {"nivel": "dois", "ativa": "1"}
+    )
+
+    assert resposta.status_code == 400
+    assert not gesto.called
+    assert Registro.objects.count() == 0
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_sem_cracha_ninguem_liga_degrau_nenhum():
+    """A ESCRITA é a que mais importa: ela muda o que a escola mostra a todos."""
+    respx.get(SESSAO).mock(
+        return_value=httpx.Response(200, json={"autenticado": False})
+    )
+    _gamificacao()
+    gesto = respx.post(url__startswith=f"{GAMIFICACAO}/economia/degraus/")
+
+    resposta = Client().post(
+        reverse("economia_mudar_degrau"), {"nivel": "2", "ativa": "1"}
+    )
+
+    assert resposta.status_code in (302, 403)
+    assert not gesto.called
+
+
+@respx.mock
+@pytest.mark.django_db
+def test_a_escada_falhando_sozinha_nao_derruba_o_resto_da_tela():
+    """Mesma postura das outras duas listas: `None` é "não consegui ler agora",
+    e lista vazia seria "esta escola não tem escada" — coisas diferentes."""
+    _gamificacao()
+    respx.get(f"{GAMIFICACAO}/economia/degraus").mock(
+        return_value=httpx.Response(503, json={})
+    )
+
+    corpo = _dentro().get(reverse("economia")).content.decode()
+
+    assert "Não consegui ler os degraus agora" in corpo
+    assert "Terminar o quiz" in corpo, "a metade de cima caiu junto"
