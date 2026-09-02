@@ -32,14 +32,51 @@ primeira versão deste arquivo, e o teste pegou.
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       line-height: 1.6;
     }
+    /* ── A MOLDURA da área: a faixa, o menu e o rodapé ─────────────────────
+       Quem DECIDE o que vai nas três é `apps/core/moldura.py`; aqui só se
+       desenha. Até 02/09/2026 a faixa era copiada à mão em 22 templates e não
+       levava a lugar nenhum: sair de uma seção e chegar noutra passava
+       obrigatoriamente pela visão geral. */
     .barra {
       display: flex; align-items: center; justify-content: space-between;
       gap: 16px; flex-wrap: wrap;
-      padding: 14px 20px; border-bottom: 1px solid var(--linha);
+      padding: 14px 20px;
       background: var(--painel);
     }
     .barra b { font-size: 15px; }
     .barra .quem { color: var(--texto-2); font-size: 13px; }
+    /* O menu quebra em várias linhas em vez de rolar de lado: são nove seções,
+       e num celular uma barra que rola esconde metade delas atrás de um gesto
+       que ninguém adivinha. Altura a mais é barata; item invisível, não. */
+    .menu-do-admin {
+      display: flex; flex-wrap: wrap; gap: 4px;
+      padding: 0 14px 10px; background: var(--painel);
+      border-bottom: 1px solid var(--linha);
+    }
+    .menu-do-admin a {
+      padding: 5px 11px; border-radius: 8px; text-decoration: none;
+      color: var(--texto-2); font-size: 14px; font-weight: 600;
+      border: 1px solid transparent;
+    }
+    .menu-do-admin a:hover, .menu-do-admin a:focus {
+      color: var(--texto); background: var(--fundo);
+    }
+    /* Onde você está: cor E borda, nunca só a cor. Quem não distingue os dois
+       azuis continua vendo a moldura acesa. */
+    .menu-do-admin a.aqui {
+      color: var(--texto); background: var(--fundo);
+      border-color: var(--azul);
+    }
+    .rodape-do-admin {
+      max-width: 980px; margin: 56px auto 0; padding: 16px 20px 40px;
+      border-top: 1px solid var(--linha);
+      color: var(--texto-3); font-size: 13px;
+    }
+    .rodape-do-admin p { margin: 0 0 10px; }
+    .rodape-do-admin .links { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 10px; }
+    .rodape-do-admin a { color: var(--texto-2); text-decoration: none; }
+    .rodape-do-admin a:hover, .rodape-do-admin a:focus { color: var(--azul); text-decoration: underline; }
+    .rodape-do-admin .direitos { margin: 0; }
     .envolucro { max-width: 980px; margin: 0 auto; padding: 24px 20px 64px; }
     h1 { font-size: 22px; margin: 0 0 4px; }
     .subtitulo { color: var(--texto-2); font-size: 14px; margin: 0 0 24px; }
@@ -543,6 +580,49 @@ primeira versão deste arquivo, e o teste pegou.
   </style>
 </head>
 <body>
+{% comment %}
+A MOLDURA de toda tela desta área (`apps/core/moldura.py`, 02/09/2026), e o
+`{% if %}` que a cerca é a peça de segurança deste arquivo, não um detalhe de
+desenho: este mesmo molde é o de `admin/404.html`, que a porta devolve a quem
+NÃO está na lista de administradores. A porta responde "não existe" em vez de
+"você não pode" de propósito, e um menu com as nove seções desenhado ali
+entregaria o mapa do bastidor a um estranho. Sem crachá, o processador devolve
+vazio e nada disto existe. Guarda: `tests/test_moldura_do_admin.py`.
+
+Este bloco é `comment`, e nunca `{#`: aquele comenta UMA LINHA SÓ, e escrito em
+várias o texto vaza para a tela (`armadilhas/087`).
+{% endcomment %}{% if admin %}
+<header class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</header>
+{% comment %}
+As tags do menu vêm coladas, sem quebra de linha entre elas, pela razão da
+`armadilhas/033`: solta, cada uma põe um espaço a mais entre os botões.
+{% endcomment %}<nav class="menu-do-admin" aria-label="Seções da administração">{% for secao in menu_do_admin %}<a href="{{ secao.href }}"{% if secao.aqui %} class="aqui" aria-current="page"{% endif %}>{{ secao.rotulo }}</a>{% endfor %}</nav>
+{% endif %}
 {% block corpo %}{% endblock %}
+{% if rodape_do_admin %}
+{% comment %}
+O rodapé DESTA área, que não é o do site (`apps/core/rodape.py`). O do site
+assina uma página de leitura para quem visita; este orienta quem opera, e as
+duas portas que ele abre são as duas saídas daqui: o site como um visitante o
+vê, e a biblioteca pública desta mesma célula.
+
+Fora do `envolucro` de propósito, como no molde público: aquele é a bancada de
+trabalho, e o rodapé é o pé da casa.
+{% endcomment %}
+<footer class="rodape-do-admin">
+  <p>
+    Você está na área administrativa do Meshcraft, a sala de máquinas do site.
+    Nada do que aparece aqui é visto por aluno nenhum.
+  </p>
+  <nav class="links" aria-label="Sair da administração">
+    <a href="{{ rodape_do_admin.url_do_site }}">Ver o site como um visitante</a>
+    <a href="{% url 'docs_publicos' %}">Ver a biblioteca pública</a>
+  </nav>
+  <p class="direitos">Meshcraft Academy &middot; área administrativa &middot; {{ rodape_do_admin.ano }}</p>
+</footer>
+{% endif %}
 </body>
 </html>

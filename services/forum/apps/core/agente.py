@@ -40,7 +40,9 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import contextmanager
 from dataclasses import dataclass
+from typing import Iterator
 
 import anthropic
 
@@ -387,62 +389,75 @@ def _frase_do_status(erro: anthropic.APIStatusError) -> str:
     return RECUSOU_O_PEDIDO.format(codigo=codigo)
 
 
-def rascunhar(
-    *,
-    area_nome: str,
-    titulo: str,
-    falas: list[tuple[str, str]],
-    orientacao: str = "",
-) -> Rascunho:
-    """Pede à IA o rascunho de uma resposta. Levanta `AgenteIndisponivel`.
+def _cliente() -> anthropic.Anthropic:
+    """O cliente da Anthropic, montado do env NO PONTO DE USO.
 
-    **O cliente nasce a cada chamada, e isto não é o descuido de
-    `armadilhas/082`.** Lá o problema era um `SSLContext` por requisição num
-    salto que acontece em toda página aberta; aqui a chamada é rara (uma pessoa
-    da equipe apertando um botão) e dura dezenas de segundos, ao lado das quais
-    o custo de montar o cliente não existe. Em troca, a chave é relida do env a
-    cada uso: trocá-la na VPS passa a valer na próxima geração, sem reiniciar o
-    container.
+    **Nasce a cada chamada, e isto não é o descuido de `armadilhas/082`.** Lá o
+    problema era um `SSLContext` por requisição num salto que acontece em toda
+    página aberta; aqui a chamada é rara (uma pessoa da equipe apertando um
+    botão) e dura segundos, ao lado dos quais montar o cliente não existe. Em
+    troca, a chave é relida a cada uso: trocá-la na VPS passa a valer na geração
+    seguinte, sem reiniciar o container.
 
-    A escada de `except` vai do mais específico ao mais geral porque cada degrau
-    vira uma frase diferente na tela: "a chave foi recusada" e "a internet do
-    servidor falhou" mandam o mantenedor para lugares opostos. Um `except`
-    único devolveria "deu erro" para os dois.
+    **O cabeçalho do workspace só viaja quando a variável existe.** Ausente, o
+    pedido sai como saía antes de ele existir, que é o certo para quem usa chave
+    de workspace (ver `VARIAVEL_DO_WORKSPACE`).
     """
     chave = _chave()
     if not chave:
         raise AgenteIndisponivel(SEM_CHAVE)
 
-    # O CABEÇALHO DO WORKSPACE só viaja quando a variável existe. Ausente, o
-    # pedido sai exatamente como saía antes desta linha — que é o certo para
-    # quem usa chave de workspace, onde o cabeçalho seria ruído.
     workspace = (os.environ.get(VARIAVEL_DO_WORKSPACE) or "").strip()
-    cabecalhos = {CABECALHO_DO_WORKSPACE: workspace} if workspace else None
-
-    cliente = anthropic.Anthropic(
+    return anthropic.Anthropic(
         api_key=chave,
         timeout=TIMEOUT,
         max_retries=TENTATIVAS,
-        default_headers=cabecalhos,
+        default_headers=({CABECALHO_DO_WORKSPACE: workspace} if workspace else None),
     )
+
+
+def _pedido(area_nome: str, titulo: str, falas, orientacao: str) -> dict:
+    """Os argumentos da chamada, iguais para o modo de uma vez e o ao vivo.
+
+    Se cada modo montasse o seu, o primeiro dia em que alguém mexesse num deles
+    faria a resposta ao vivo sair diferente da resposta normal, sem ninguém
+    perceber: as duas continuariam funcionando.
+    """
+    return {
+        "model": MODELO,
+        "max_tokens": TETO_DE_SAIDA,
+        "output_config": {"effort": ESFORCO},
+        "system": INSTRUCOES,
+        "messages": [
+            {
+                "role": "user",
+                "content": _pergunta(
+                    area_nome=area_nome,
+                    titulo=titulo,
+                    falas=falas,
+                    orientacao=orientacao,
+                ),
+            }
+        ],
+    }
+
+
+@contextmanager
+def _traduzindo_a_falha():
+    """A escada de recusas, em UM lugar só, para as duas formas de pedir.
+
+    A ordem vai do mais específico ao mais geral porque cada degrau vira uma
+    frase diferente na tela: "a chave foi recusada" e "a internet do servidor
+    falhou" mandam o mantenedor para lugares opostos. Um `except` único
+    devolveria "deu erro" para os dois, e foi exatamente esse erro que ele
+    levou na primeira vez que usou o botão.
+
+    **Ela é um contexto, e não uma cópia em cada função,** porque o modo ao vivo
+    nasceu depois: duas escadas iguais divergiriam no primeiro conserto, e o
+    conserto iria só para a que quem mexesse estivesse olhando.
+    """
     try:
-        resposta = cliente.messages.create(
-            model=MODELO,
-            max_tokens=TETO_DE_SAIDA,
-            output_config={"effort": ESFORCO},
-            system=INSTRUCOES,
-            messages=[
-                {
-                    "role": "user",
-                    "content": _pergunta(
-                        area_nome=area_nome,
-                        titulo=titulo,
-                        falas=falas,
-                        orientacao=orientacao,
-                    ),
-                }
-            ],
-        )
+        yield
     except anthropic.AuthenticationError as erro:
         logger.warning("agente: chave recusada pela Anthropic (%s)", erro)
         raise AgenteIndisponivel(CHAVE_RECUSADA) from erro
@@ -471,6 +486,74 @@ def rascunhar(
             "agente: a Anthropic respondeu HTTP %s (%s)", erro.status_code, erro
         )
         raise AgenteIndisponivel(_frase_do_status(erro)) from erro
+
+
+def rascunhar_ao_vivo(
+    *,
+    area_nome: str,
+    titulo: str,
+    falas: list[tuple[str, str]],
+    orientacao: str = "",
+    recibo: dict | None = None,
+) -> Iterator[str]:
+    """Os pedaços do rascunho, na ordem em que a IA os escreve.
+
+    Pedido do mantenedor em 02/09/2026: *"quero o streaming da resposta sendo
+    gerada na tela ao vivo para facilitar o feedback visual"*. O motivo é o
+    susto que ele levou: sem sinal nenhum, alguns segundos de espera são
+    indistinguíveis de um botão quebrado.
+
+    **O `recibo` é uma saída lateral, e ela existe porque um gerador não devolve
+    valor para quem itera.** Quem chama passa um dicionário vazio e, quando os
+    pedaços acabam, ele volta preenchido com o que só se sabe no fim: se o texto
+    foi cortado no teto, e quantos tokens custou. Sem isso, o aviso de "terminou
+    no meio" só existiria no modo de uma vez, e o modo ao vivo entregaria uma
+    frase pela metade sem avisar.
+
+    **Nada aqui toca o banco.** Quem monta as falas é a view, ANTES de a
+    resposta começar a sair: consulta dentro de um gerador de streaming roda com
+    a resposta já aberta, e uma falha ali chegaria no meio do texto.
+    """
+    cliente = _cliente()
+    with _traduzindo_a_falha():
+        with cliente.messages.stream(
+            **_pedido(area_nome, titulo, falas, orientacao)
+        ) as fluxo:
+            for pedaco in fluxo.text_stream:
+                yield pedaco
+            final = fluxo.get_final_message()
+
+    if recibo is not None:
+        recibo["cortado"] = final.stop_reason == "max_tokens"
+        recibo["tokens_de_entrada"] = final.usage.input_tokens
+        recibo["tokens_de_saida"] = final.usage.output_tokens
+
+    logger.info(
+        "agente: rascunho ao vivo (entrada %s tokens, saída %s tokens)",
+        final.usage.input_tokens,
+        final.usage.output_tokens,
+    )
+
+
+def rascunhar(
+    *,
+    area_nome: str,
+    titulo: str,
+    falas: list[tuple[str, str]],
+    orientacao: str = "",
+) -> Rascunho:
+    """Pede à IA o rascunho INTEIRO, de uma vez. Levanta `AgenteIndisponivel`.
+
+    É o caminho de quem não tem JavaScript, e o caminho para o qual o ao vivo
+    volta quando falha (`static/forum.js`). O cliente, os argumentos da chamada
+    e a tradução das recusas são os MESMOS do modo ao vivo, e de propósito:
+    `_cliente`, `_pedido` e `_traduzindo_a_falha` existem para que as duas
+    formas de pedir nunca passem a responder coisas diferentes.
+    """
+    with _traduzindo_a_falha():
+        resposta = _cliente().messages.create(
+            **_pedido(area_nome, titulo, falas, orientacao)
+        )
 
     if resposta.stop_reason == "refusal":
         detalhe = getattr(resposta, "stop_details", None)

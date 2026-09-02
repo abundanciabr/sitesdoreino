@@ -10,11 +10,6 @@ de script: voltar para uma versão é um POST com o número dela.
 {% endcomment %}
 {% block titulo %}Histórico de {{ documento.titulo }} | Meshcraft{% endblock %}
 {% block corpo %}
-<div class="barra">
-  <b>Meshcraft &middot; Administração</b>
-  <span class="quem">{{ admin.nome }}</span>
-</div>
-
 <div class="envolucro">
   <a class="volta" href="{% url 'documento_admin' documento.nome %}">&larr; Voltar ao documento</a>
   <h1>O que já foi escrito aqui</h1>

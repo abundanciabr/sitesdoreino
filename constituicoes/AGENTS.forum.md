@@ -52,6 +52,23 @@ levou a construir em vez de instalar (com os dois pareceres externos):
   estados de moderação. **Nada de dado de outra célula copiado sem
   necessidade** — a matrícula se pergunta à `alunos`, não se espelha aqui
 
+## JavaScript, e a única forma dele aqui (desde 02/09/2026)
+
+Esta célula tem **um** arquivo de script (`static/forum.js`), e ele existe para
+uma coisa só: mostrar o rascunho da IA aparecendo ao vivo, para professor e
+administrador. Foi o primeiro JavaScript de uma página pública deste site.
+
+**A regra que ele obedece, e que vale para qualquer script futuro daqui:
+melhoria progressiva, nunca dependência.** O formulário é um `<form>` normal e
+continua sendo; o script só INTERCEPTA o envio. Se ele não carregar, se o
+navegador não tiver `fetch` com fluxo, ou se a chamada ao vivo falhar, o botão
+volta a postar e a página recarrega com o rascunho inteiro. Nenhuma tela desta
+célula pode passar a ter um caminho que só funciona com script: quem lê o fórum
+sem entrar nem chega a baixá-lo.
+
+Guarda: `tests/test_agente_de_ia.py::test_a_tela_oferece_o_ao_vivo_sem_depender_dele`,
+que reprova se o `action` do formulário deixar de ser a rota comum.
+
 ## Invariantes desta célula
 
 - **[INV-P12] Esta célula NÃO assina sessão.** Sem `SessionMiddleware`, sem

@@ -60,6 +60,14 @@
     color:var(--text-2); text-decoration:none;
   }
   .aba.ativa{border-color:var(--gold); color:var(--gold); background:var(--gold-dim);}
+  /* A porta de volta para a area administrativa. NAO leva a classe `aba`:
+     o trocador de vista reescreve o `className` de todo `.aba` a cada
+     clique (ver o fim deste arquivo), e a segunda classe sumiria ali. */
+  .volta-ao-admin{
+    margin-left:auto; align-self:center; padding:6px 12px; border-radius:8px;
+    text-decoration:none; font-size:14px; color:var(--sub);
+  }
+  .volta-ao-admin:hover, .volta-ao-admin:focus{color:var(--gold);}
   .vista{display:none;} .vista.ativa{display:block;}
 
   h2{font-family:'Space Grotesk',sans-serif; font-weight:700; font-size:18px; margin:26px 0 10px; letter-spacing:-.01em;}
@@ -213,6 +221,11 @@
     <a class="aba" data-vista="mapa" href="#mapa">🗺️ Meu mapa</a>
     <a class="aba" data-vista="operacao" href="#operacao">⚙️ Operação</a>
     <a class="aba" data-vista="memoria" href="#memoria">📚 Memória</a>
+    <!-- Caminho RELATIVO de proposito: online, `../` a partir de
+         /admin/painel/ chega em /admin/; na copia aberta do seu computador
+         ele abre a pasta de cima, que e inofensivo. Endereco absoluto
+         (/admin/) daria 404 na copia local. -->
+    <a class="volta-ao-admin" href="../">&larr; Administração</a>
   </nav>
 
   <section class="vista" id="vista-capa"></section>

@@ -146,9 +146,21 @@ ar, chave ausente) — trocando o botão pela frase do motivo. Sumir com a caixa
 esconderia justamente a explicação de por que o botão não está lá.
 {% endcomment %}
 {% if pode_moderar %}
-  <form class="cartao escrever" method="post" action="{% url 'gerar_resposta' topico.pk %}">
+  <form class="cartao escrever" method="post" id="ia-rascunho"
+        action="{% url 'gerar_resposta' topico.pk %}"
+        data-ao-vivo="{% url 'gerar_resposta_ao_vivo' topico.pk %}">
     {% csrf_token %}
     <h2>Rascunhar com a IA</h2>
+    {% comment %}
+    O `action` continua sendo a rota de SEMPRE, e o endereço do ao vivo viaja
+    como dado (`data-ao-vivo`). É essa ordem que faz o ao vivo ser uma melhoria
+    e não uma dependência: sem JavaScript, o formulário posta no `action` e o
+    rascunho chega inteiro, como chegava antes de o script existir.
+
+    O `ia-recado` é onde o script escreve o que está acontecendo. Sem script ele
+    nasce vazio e some, e quem fala é o `aviso_ia` de baixo, vindo do servidor.
+    {% endcomment %}
+    <p id="ia-recado"></p>
     {% if erro_ia %}<p class="erro">{{ erro_ia }}</p>{% endif %}
     {% if aviso_ia %}<p class="sub"><strong>{{ aviso_ia }}</strong></p>{% endif %}
     {% if topico.estado != "publicado" %}
