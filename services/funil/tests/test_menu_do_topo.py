@@ -409,3 +409,122 @@ def test_endereco_de_fora_nunca_e_aqui(client, rede):
     }
     com_menu(rede, SITE_A, HOST_A, menu=menu)
     assert "Roblox" in so_o_menu(client.get("/", HTTP_HOST=HOST_A).content.decode())
+
+
+# ---------------------------------------------------------------------------
+# A plateia `staff` — o atalho que só quem é da equipe vê (03/09/2026)
+# ---------------------------------------------------------------------------
+# Quatro guardas, e o quarto é o que ninguém pediria: plateia que esta célula
+# NÃO conhece some, em vez de aparecer para todo mundo. É ele que impede um
+# valor novo no catálogo de vazar um atalho durante a janela em que uma das
+# células ainda não subiu com o código novo.
+#
+# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras
+# (`armadilhas/242`): uma tabela certa com um chamador que passa o argumento
+# errado passaria num teste que só lê a tabela.
+MENU_COM_EQUIPE = {
+    "default_version": "v",
+    "versions": [
+        {
+            "slug": "v",
+            "name": "V",
+            "items": [
+                {
+                    "url": "/admin/",
+                    "labels": {"pt-br": "Admin"},
+                    "localized": False,
+                    "audience": "staff",
+                    "new_tab": False,
+                },
+                {
+                    "url": "/inventada/",
+                    "labels": {"pt-br": "Plateia Inventada"},
+                    "localized": False,
+                    # Valor que ESTA célula não conhece. Em produção ele só pode
+                    # chegar aqui de um catálogo mais novo que o container, que
+                    # é exatamente a janela de um deploy em andamento.
+                    "audience": "plateia-que-nao-existe",
+                    "new_tab": False,
+                },
+                {
+                    "url": "/forum/",
+                    "labels": {"pt-br": "Fórum"},
+                    "localized": False,
+                    "audience": "everyone",
+                    "new_tab": False,
+                },
+                {
+                    # O segundo item de controle, e ele existe por um motivo
+                    # medido: cada célula esconde o item que aponta para a área
+                    # onde a pessoa já está. Com um `everyone` só, o menu de
+                    # teste ficava VAZIO na célula dona daquele endereço — e um
+                    # menu vazio não é desenhado, então o guarda estourava
+                    # procurando a tag em vez de medir a plateia.
+                    "url": "/",
+                    "labels": {"pt-br": "Início"},
+                    "localized": False,
+                    "audience": "everyone",
+                    "new_tab": False,
+                },
+            ],
+        }
+    ],
+    "pages": [],
+}
+
+
+@pytest.fixture
+def logado_equipe(rede):
+    """Alguém da equipe, do ponto de vista do SITE.
+
+    A única diferença para o `logado` é o `papel`, e é de propósito: é esse
+    campo, e nenhum outro, que decide se o atalho aparece.
+    """
+    rede["get_session"].mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "autenticado": True,
+                "id": "idt-da-equipe",
+                "nome_exibido": "Quem Manda",
+                "papel": "staff",
+            },
+        )
+    )
+    return rede
+
+
+def test_o_atalho_da_equipe_aparece_para_a_equipe(client, rede, logado_equipe):
+    com_menu(rede, SITE_MESH, HOST_MESH, MENU_COM_EQUIPE)
+    menu = so_o_menu(
+        client.get("/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE).content.decode()
+    )
+    assert ">Admin</a>" in menu
+
+
+def test_o_atalho_da_equipe_some_para_o_aluno(client, rede, logado):
+    """O `logado` responde `papel: aluno` — o caso de quase todo mundo."""
+    com_menu(rede, SITE_MESH, HOST_MESH, MENU_COM_EQUIPE)
+    menu = so_o_menu(
+        client.get("/", HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE).content.decode()
+    )
+    assert ">Admin</a>" not in menu
+    assert ">Fórum</a>" in menu, "o menu inteiro sumiu — o guarda não mediu nada"
+
+
+def test_o_atalho_da_equipe_some_para_visitante(client, rede):
+    com_menu(rede, SITE_MESH, HOST_MESH, MENU_COM_EQUIPE)
+    menu = so_o_menu(client.get("/", HTTP_HOST=HOST_MESH).content.decode())
+    assert ">Admin</a>" not in menu
+    assert ">Fórum</a>" in menu
+
+
+def test_plateia_desconhecida_nao_aparece_para_ninguem(client, rede, logado_equipe):
+    """Fail-CLOSED. Até 03/09/2026 esta célula mostrava para TODO MUNDO o que
+    não entendia — inclusive para visitante."""
+    com_menu(rede, SITE_MESH, HOST_MESH, MENU_COM_EQUIPE)
+    for cabecalhos in ({"HTTP_COOKIE": COOKIE}, {}):
+        menu = so_o_menu(
+            client.get("/", HTTP_HOST=HOST_MESH, **cabecalhos).content.decode()
+        )
+        assert "Plateia Inventada" not in menu

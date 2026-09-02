@@ -46,6 +46,12 @@ logger = logging.getLogger("sugestoes.menu")
 # a mesma dupla `celula/rota` de `painel/mapa-do-site.json`.
 CELULA = "sugestoes"
 
+# O valor que a `identidade` devolve no campo `papel` para quem está na lista
+# `IDENTIDADE_STAFF_EMAILS` do servidor. As quatro células que desenham o menu
+# comparam contra a MESMA string — uma delas com o valor trocado mostraria o
+# atalho da administração em três áreas do site e não na quarta.
+PAPEL_DE_EQUIPE = "staff"
+
 # O mesmo TTL do CONV-SITE da `funil`, e o mesmo motivo: o menu muda quando o
 # mantenedor mexe nele, o que é raro, e um minuto de atraso é barato perto de
 # uma consulta de rede por página aberta.
@@ -112,12 +118,33 @@ def _rotulo(labels: dict, padrao: str) -> str:
     return next(iter(labels.values()), "")
 
 
-def _plateia_confere(audience: str, entrou: bool) -> bool:
+def _plateia_confere(audience: str, entrou: bool, e_equipe: bool) -> bool:
+    """Para quem este item aparece.
+
+    **Termina em `False`, e essa é a metade que mais importa.** Até 03/09/2026
+    esta função terminava em `return True`: plateia que a célula não conhecesse
+    aparecia para TODO MUNDO. Enquanto só existiam as três que todas as células
+    entendiam, isso era inofensivo; no dia em que o catálogo ganhou a quarta
+    (`staff`), esse `True` teria mostrado o atalho da área administrativa a todo
+    visitante do site — durante a janela em que uma célula ainda não tivesse
+    subido com o código novo.
+
+    Fail-CLOSED, então: o que esta célula não entende, ela não desenha. Item que
+    some é um aborrecimento; item que aparece para quem não devia é outra coisa.
+
+    `staff` sai do `papel` que a `identidade` devolve, e ele é de EXIBIÇÃO —
+    nunca autoriza nada. Esconder o atalho é estética; quem barra a entrada é a
+    porta fail-closed da célula `admin`, e ela não olha para este campo.
+    """
+    if audience == "everyone":
+        return True
     if audience == "logged_in":
         return entrou
     if audience == "logged_out":
         return not entrou
-    return True
+    if audience == "staff":
+        return e_equipe
+    return False
 
 
 def _versao_desta_pagina(menu: dict, chave: str) -> str:
@@ -186,10 +213,14 @@ def menu_do_contexto(request) -> dict:
     # não é — fail-closed no que dá poder.
     resolucao = getattr(request, "_resolucao_desta_requisicao", None)
     entrou = bool(resolucao is not None and getattr(resolucao, "ator", None))
+    # `papel_do_site`, e NÃO `resolucao.ator.papel`: aquele é a moderação DESTA
+    # célula (`SUGESTOES_STAFF_EMAILS`), este é o que o SITE mostra. O menu é
+    # dado do site, e a mesma pessoa tem de ver o mesmo menu em todas as áreas.
+    e_equipe = entrou and getattr(resolucao, "papel_do_site", "") == PAPEL_DE_EQUIPE
 
     itens = []
     for item in itens_brutos:
-        if not _plateia_confere(item.get("audience", "everyone"), entrou):
+        if not _plateia_confere(item.get("audience", "everyone"), entrou, e_equipe):
             continue
         destino = item.get("url", "")
         # `request.path` inclui o prefixo público desta célula, que é
