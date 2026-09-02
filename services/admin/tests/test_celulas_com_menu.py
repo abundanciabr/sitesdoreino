@@ -64,7 +64,7 @@ def test_a_lista_da_tela_bate_com_quem_desenha_o_menu():
     )
 
 
-@pytest.mark.parametrize("celula", ["funil", "forum", "sugestoes"])
+@pytest.mark.parametrize("celula", ["funil", "forum", "sugestoes", "gamificacao"])
 def test_as_tres_celulas_conhecidas_continuam_na_lista(celula):
     """O controle positivo do guarda de cima.
 

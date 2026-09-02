@@ -138,7 +138,19 @@ celulas:
     # São DOIS pares e DOIS tokens. Reusar um valor faria a rotação de um
     # derrubar o outro em silêncio; quem instala este é
     # `infra/provisionar-par-da-gamificacao-com-o-forum.sh`.
-    consome: [forum, identidade]
+    #
+    # `catalogo` desde 02/09/2026, pelo MESMO motivo do fórum e da Caixa: o menu
+    # do topo é DADO DO SITE, e esta célula mostra o MESMO menu que o site. Ela
+    # não ganhou o CONV-SITE inteiro (isso mexeria em toda a identidade daqui, e
+    # o contrato congelado não tem `site_id` em operação nenhuma) — pergunta só
+    # o menu do host da requisição, com cache de 60s, e cai para "sem menu" em
+    # qualquer tropeço.
+    #
+    # É o par que faltava quando o mantenedor abriu `/conquistas/` e viu a única
+    # área do site sem menu e sem rodapé (`armadilhas/286`). Quem o instala é
+    # `infra/provisionar-par-do-menu.sh`, o mesmo que já ligou o Admin, o fórum
+    # e a Caixa: o quinto degrau dele nasceu junto com esta linha.
+    consome: [catalogo, forum, identidade]
 
   identidade:
     caminhos: [services/identidade]

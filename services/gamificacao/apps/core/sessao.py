@@ -56,6 +56,10 @@ logger = logging.getLogger(__name__)
 # falhar fechado depressa, não pendurar a requisição dela.
 TIMEOUT = 5.0
 
+# "Ainda não perguntei nesta requisição" — diferente de "perguntei e é
+# visitante", que é `None`. Ver a docstring de `quem_e`.
+_NAO_PERGUNTEI = object()
+
 _cliente: httpx.Client | None = None
 
 
@@ -133,7 +137,40 @@ def quem_e(request) -> str | None:
     Nunca levanta: `getMyStatus` responde 200 sempre por contrato, e visitante
     não é erro. Obrigar o consumidor a traduzir 401 em "ninguém logado" é como
     o widget da home acabaria mostrando tela de erro para quem só não entrou.
+
+    **UMA resolução por requisição, guardada na própria requisição** (02/09/2026).
+    Desde que o menu do topo chegou a esta célula, quem pergunta "entrou?" são
+    DOIS: a view, e o processador de contexto que monta o menu — e o processador
+    roda DEPOIS da view que já perguntou. Sem esta memória, toda página de aluno
+    custaria duas idas à `identidade` em vez de uma, e o caminho caro seria o
+    NORMAL: os itens "Caixa" e "Conquistas" do menu do site nascem com plateia
+    `logged_in` (migração `sites/0005`), então há sempre item condicional.
+
+    A memória vive na REQUISIÇÃO, e não em módulo: ela morre com a resposta, e
+    duas pessoas nunca compartilham a mesma. Cache de sessão em variável de
+    processo é exatamente como uma tela passa verde mostrando o nome de outra
+    pessoa.
+
+    O sentinela existe porque `None` é resposta LEGÍTIMA (visitante), e precisa
+    ser lembrada como qualquer outra — com `getattr(..., None)` todo visitante
+    perguntaria de novo, que é justamente o caso mais comum de uma página
+    pública.
     """
+    guardado = getattr(request, "_quem_e_desta_requisicao", _NAO_PERGUNTEI)
+    if guardado is not _NAO_PERGUNTEI:
+        return guardado
+    resposta = _resolver_quem_e(request)
+    try:
+        request._quem_e_desta_requisicao = resposta
+    except AttributeError:
+        # Requisição que não aceita atributo novo (um dublê de teste, por
+        # exemplo) continua funcionando — só paga o salto de novo.
+        pass
+    return resposta
+
+
+def _resolver_quem_e(request) -> "str | None":
+    """A cadeia de verdade, sem memória nenhuma. Quem chama é `quem_e`."""
     cookie = request.META.get("HTTP_COOKIE", "")
     if not cookie:
         return None

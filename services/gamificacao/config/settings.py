@@ -171,6 +171,13 @@ TEMPLATES = [
                 # alguém lembrar da peça: tela nova nasce com rodapé
                 # (`armadilhas/242`). Quem desenha é `gamificacao/moldura.html`.
                 "apps.core.rodape.rodape_do_contexto",
+                # O MENU DO TOPO em TODA página (`apps/core/menu.py`),
+                # 02/09/2026. Processador pelo MESMO motivo do rodapé acima. Ele
+                # lê o menu que o mantenedor configurou em `/admin/menu/`, e
+                # falha para o lado de "sem menu" em qualquer tropeço — o que
+                # inclui o estado de hoje, enquanto o par de credenciais com o
+                # `catalogo` não existir no env desta célula.
+                "apps.core.menu.menu_do_contexto",
             ],
         },
     },

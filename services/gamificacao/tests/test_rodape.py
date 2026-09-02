@@ -113,10 +113,35 @@ def test_rota_que_ninguem_decidiu_herda_o_padrao():
 
 
 @pytest.mark.django_db
-def test_o_servidor_de_estaticos_nao_ganha_rodape(client):
+def test_o_servidor_de_estaticos_nao_ganha_rodape(client, rf):
     """Rota de MÁQUINA: um rodapé dentro de um arquivo CSS seria lixo no
-    arquivo, e o navegador o serviria como estilo."""
-    assert regras.variante_da_rota("estatico") is None
+    arquivo, e o navegador o serviria como estilo.
+
+    **A prova é um PAR, e essa é a correção de 02/09/2026** (revisor de pouso do
+    PR #868, `armadilhas/266`). A versão anterior afirmava só ausência —
+    `"<footer" not in corpo` sobre um arquivo `.css` — e um arquivo de estilo não
+    teria `<footer>` de jeito nenhum: o guarda ficaria verde com a regra
+    arrancada do código, que é o falso-verde exato daquela armadilha.
+
+    Aqui as duas metades correm sobre a MESMA função e o mesmo dublê de
+    requisição: a rota de máquina devolve `{}`, a rota de página devolve o
+    rodapé. Arranque `ROTAS_SEM_PAGINA` e a primeira cai; arranque
+    `rodape_do_contexto` e cai a segunda.
+    """
+
+    class Casamento:
+        def __init__(self, nome):
+            self.url_name = nome
+
+    def requisicao_de(nome):
+        pedido = rf.get("/")
+        pedido.resolver_match = Casamento(nome)
+        return pedido
+
+    assert regras.rodape_do_contexto(requisicao_de("estatico")) == {}
+    assert "rodape" in regras.rodape_do_contexto(requisicao_de("base"))
+
+    # E a ponta solta: o corpo servido de verdade continua sem rodapé.
     corpo = _corpo(client.get(reverse("estatico", args=["gamificacao.css"])))
     assert "<footer" not in corpo
 
