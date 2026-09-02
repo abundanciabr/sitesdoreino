@@ -4,6 +4,7 @@ from apps.core.busca import buscar
 from apps.core.moderacao import (
     criar_area,
     gerar_resposta,
+    gerar_resposta_ao_vivo,
     moderar_area,
     moderar_mensagem,
     moderar_topico,
@@ -76,5 +77,15 @@ urlpatterns = [
         "t/<int:topico_id>/gerar-resposta",
         gerar_resposta,
         name="gerar_resposta",
+    ),
+    # A MESMA coisa, em pedaços, para o navegador mostrar enquanto chega
+    # (02/09/2026). Rota separada e não um parâmetro da de cima: o corpo da
+    # resposta é de outro tipo (uma linha JSON por pedaço, não HTML), e uma
+    # view que devolve duas formas conforme um parâmetro é uma view que erra
+    # a forma no dia em que o parâmetro chega errado.
+    path(
+        "t/<int:topico_id>/gerar-resposta/ao-vivo",
+        gerar_resposta_ao_vivo,
+        name="gerar_resposta_ao_vivo",
     ),
 ]

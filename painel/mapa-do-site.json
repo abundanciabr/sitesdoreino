@@ -333,6 +333,18 @@
     },
     {
       "celula": "forum",
+      "rota": "t/<int:topico_id>/gerar-resposta/ao-vivo",
+      "endereco": "/forum/t/<int:topico_id>/gerar-resposta/ao-vivo",
+      "exemplo": "/forum/t/1/gerar-resposta/ao-vivo",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O rascunho da IA aparecendo ao vivo",
+      "descricao": "A mesma coisa do botão 'Gerar resposta', só que entregue palavra por palavra enquanto a IA escreve, para você ver que ela está trabalhando em vez de olhar uma tela parada.",
+      "gesto": true,
+      "observacao": "É uma melhoria, nunca uma dependência: se o script do navegador falhar, o botão volta a ser um formulário comum e o texto chega inteiro de uma vez."
+    },
+    {
+      "celula": "forum",
       "rota": "m/<int:mensagem_id>/moderar",
       "endereco": "/forum/m/<int:mensagem_id>/moderar",
       "exemplo": "/forum/m/1/moderar",
