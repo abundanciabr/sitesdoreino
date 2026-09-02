@@ -424,3 +424,62 @@ volume do dia. Dez mil pessoas elegíveis continuam sendo dez mil envios ao long
 das passadas; quem protege a cota do provedor é a régua de capacidade, que é
 outra peça (TAR-079). Ler o `LOTE` como proteção de volume é o conforto falso que
 faz ninguém construir a régua que falta.
+
+## A outbox mora em `apps/jornadas`, e não em `apps/eventos` — é fronteira, não gosto
+
+Um leitor procura a outbox da célula em `apps/eventos`, porque é o app que já
+fala de eventos. Ela não está lá, e a razão é o **critério de morte §10.7** do
+plano: `apps/jornadas` pode tocar `apps/eventos` num ponto só, criando a linha de
+`EnvioRegistrado`. Uma outbox lá seria uma segunda tabela alheia sendo escrita
+daqui, e o critério de morte teria sido cumprido por descuido, sem ninguém
+decidir nada.
+
+Quem publica é o motor, então a outbox é do motor. E `apps/eventos` continua
+sendo o que sempre foi: quem CONSOME evento e quem ENTREGA fora do site.
+
+## Dois `tasks.py` na mesma célula é o esperado, e o que não pode é nome repetido
+
+A célula agora tem `apps/eventos/tasks.py` (a task de envio) e
+`apps/jornadas/tasks.py` (o relay da outbox). O autodiscover do djhuey varre app
+por app, então os dois são registrados normalmente. **O que não se pode é os dois
+registrarem uma task com o MESMO nome** — a segunda substituiria a primeira em
+silêncio, e o sintoma seria um envio que nunca acontece sem erro nenhum
+(`armadilhas/030` é a vizinha: worker de pé com o registro vazio).
+
+## O despacho e o registro da entrega vivem na MESMA transação
+
+`motor.varrer()` embrulha o par (despachar, `regua.registrar`) num
+`transaction.atomic()`. Não é preciosismo, e são duas razões que se somam:
+
+1. **Sem isso, a carta chega ao sininho e a linha de `Entrega` pode não ser
+   gravada.** A passada seguinte reencontra o passo devendo e manda de novo, com
+   um `event_id` NOVO — que a dedup do sininho não tem como pegar. Duas cartas
+   iguais na caixa da mesma pessoa.
+2. **É essa transação que satisfaz o `emitir()` da outbox**, que RECUSA gravar
+   fora de transação. Uma exigência resolveu a outra.
+
+Guarda: `test_se_a_entrega_nao_puder_ser_gravada_a_carta_tambem_nao_sai`, que
+derruba o `regua.registrar` e mede que a carta sumiu junto.
+
+## Sem `origem_event_id`, a carta não sai — e isso é fail-closed declarado
+
+`origem_event_id` é obrigatório no contrato (`format: uuid`) e é o que torna
+verdadeira a promessa *"a entrega do aviso é RASTREÁVEL"*: de qualquer aviso na
+tela se chega ao acontecimento que o causou.
+
+Uma inscrição sem origem conhecida (semeada à mão, por exemplo) **não** gera
+carta. A alternativa tentadora era inventar um valor — o id da inscrição, que
+também é UUID e caberia no formato. Isso deixaria uma pista que não leva a lugar
+nenhum, e uma pista falsa é pior que a ausência dela. Toda jornada deste desenho
+é disparada por evento (§5), então a origem sempre existe no caminho real.
+
+## O `assunto` da carta de sequência é `jornada.passo`, e isso não se decide aqui
+
+Rito de Contrato de 31/08/2026, com o mantenedor presente (§8.7.1). Boas-vindas é
+INCENTIVO, então a carta leva `jornada_slug` + `passo_id` e **o texto não viaja**
+— o sino o busca na hora de ler. Inventar um assunto próprio para boas-vindas
+exigiria um Rito de Contrato novo, e não é decisão de quem constrói.
+
+O guarda que impede a invenção: `test_a_carta_tem_exatamente_os_campos_que_o_contrato_exige`,
+que lê o contrato NO DISCO e confere os dois lados (campo a mais reprova tanto
+quanto campo a menos, porque o contrato é `additionalProperties: false`).
