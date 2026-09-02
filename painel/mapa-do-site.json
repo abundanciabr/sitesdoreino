@@ -1361,6 +1361,15 @@
     },
     {
       "celula": "admin",
+      "rota": "economia/mudar-degrau",
+      "endereco": "/admin/economia/mudar-degrau",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Ligar ou desligar um degrau da escada",
+      "descricao": "O gesto de um clique na terceira parte da tela da economia. Nao e uma pagina, e nao paga nada a ninguem: o degrau e a regua que da nome ao esforco que o aluno ja tem."
+    },
+    {
+      "celula": "admin",
       "rota": "documentos/novo",
       "endereco": "/admin/documentos/novo",
       "alcance": "publico",
