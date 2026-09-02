@@ -295,6 +295,13 @@ def varrer(
         previsto = inscricao.ancora_em + passo.atraso
         entregou_algum = False
         adiar_para: datetime | None = None
+        # A TERCEIRA COISA QUE PODE ACONTECER, e não tê-la nomeada era o defeito.
+        # "Nada saiu" tinha duas causas indistinguíveis no código: a pessoa
+        # RECUSOU (preferência — decisão dela, definitiva) e o despacho FALHOU
+        # (Redis fora, carta não emitida — transitório). A primeira deve seguir a
+        # jornada; a segunda deve ser retentada. Tratar as duas como a segunda
+        # prendia quem silenciou, para sempre (ver o desfecho lá embaixo).
+        falhou_o_despacho = False
 
         for canal in passo.canais:
             veredito = regua.avaliar(
@@ -303,6 +310,10 @@ def varrer(
                 canal=canal,
                 classe=passo.classe,
                 momento=agora,
+                # QUAL mensagem está sendo avaliada. Sem isto o teto conta a
+                # própria: o sino sai, e o e-mail do mesmo passo bate na linha
+                # que o sino acabou de gravar.
+                mensagem=(inscricao.pk, passo.pk),
             )
             if veredito.barrada:
                 regua.registrar(
@@ -333,6 +344,7 @@ def varrer(
                     # NADA saiu: nada se registra como saído. O passo continua
                     # devendo, e a passada seguinte o reencontra.
                     passada.sem_despacho += 1
+                    falhou_o_despacho = True
                     continue
 
                 regua.registrar(
@@ -353,6 +365,34 @@ def varrer(
             # o passo continua sendo o mesmo.
             inscricao.proximo_em = adiar_para
             inscricao.save(update_fields=["proximo_em"])
+        elif falhou_o_despacho:
+            # Transitório: o relógio NÃO anda, o passo continua devendo, e a
+            # passada seguinte tenta de novo. É o comportamento que já existia, e
+            # aqui ele fica escrito em vez de ser o que sobra.
+            pass
+        else:
+            # RECUSA DEFINITIVA — todo canal deste passo foi barrado por
+            # preferência, e a régua barra preferência SEM reagendar de
+            # propósito: "silenciado é silenciado, remarcar seria insistir".
+            #
+            # Sem este desfecho, "não reagenda" virava "reexamina e rebarra de
+            # cinco em cinco minutos, para sempre": `proximo_em` não andava, o
+            # estado ficava `andando`, e a inscrição nunca terminava. Medido em
+            # 02/09/2026 — 11 dias de varredura com `passo_atual=0`.
+            #
+            # E o estrago não parava nela. `candidatas()` ordena pela inscrição
+            # mais antiga e a passada leva as primeiras `lote`: as presas são
+            # sempre as mais velhas e sempre estão na hora, então ocupavam a
+            # frente da fila permanentemente. Encenado com `lote=3` e 3 presas,
+            # o aluno novo foi atendido ZERO vezes em 14 passadas, sem erro
+            # nenhum. Em produção o lote é 200.
+            #
+            # Seguir a jornada é o que respeita a intenção da régua: não insiste
+            # naquele passo, e não sequestra a pessoa dentro da sequência. As
+            # linhas de `Entrega` já ficaram gravadas como
+            # `barrada_por_preferencia`, então a pergunta "por que ele não
+            # recebeu?" continua com resposta.
+            avancar(inscricao, passo)
 
     return passada
 
