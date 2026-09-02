@@ -1,0 +1,28 @@
+{% comment %}
+templates/sugestoes/_rodape.html — o rodapé da casa, o mesmo do site, do fórum e
+das Conquistas, desenhado UMA vez e mostrado em toda tela da Caixa.
+
+**Peça, e não marcação repetida em cada molde**, porque esta célula tem DOIS
+moldes de página inteira: a moldura comum (`base_caixa.html`) e a porta de
+entrada (`entrar.html`), que é uma página standalone com o próprio `<html>`. É o
+buraco que a `armadilhas/242` prevê: um molde-base não cobre a tela que não o
+estende. Escrever o rodapé duas vezes faria as duas versões divergirem no
+primeiro ajuste.
+
+**O desenho desta peça vem do PR #734**, aberto em 31/08/2026 e nunca pousado. O
+PR #871 (02/09) trouxe o rodapé para a Caixa sem ele, e declarou a porta como
+"sem rodapé" — aceitando a restrição da tela em vez de resolvê-la. Este arquivo
+desfaz aquela escolha, com a solução que já estava escrita.
+
+Ele NÃO decide nada: os blocos vêm prontos no `rodape` (`apps/core/rodape.py`),
+e é por isso que a tela do painel não vai precisar mexer aqui.
+{% endcomment %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+  <p class="marca">Meshcraft Academy</p>
+  <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
+  <nav class="links" aria-label="Links úteis">
+    <a href="{{ rodape.url_do_site }}">Início do site</a>
+    <a href="{% url 'quadro' %}">Caixa de Sugestões</a>
+    <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
+  </nav>{% endif %}{% if rodape.mostra_direitos %}
+  <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
+</footer>

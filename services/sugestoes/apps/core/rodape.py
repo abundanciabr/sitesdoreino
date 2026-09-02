@@ -19,17 +19,21 @@ O que muda em relação ao fórum, e por quê:
 * **Não há catálogo de tradução.** A Caixa é monolíngue, e o texto visível dela
   mora no template, como o resto desta célula. Quando o painel mandar nos
   textos, é `montar()` que passa a receber o que o dono escreveu.
-* **A porta da Caixa (`entrar`) fica SEM rodapé, e isso é decisão escrita.** Ela
-  é a única tela desta célula que não veste `base_caixa.html`, de propósito: o
-  `entrar.html` não tem CSS externo, nem script, nem fonte remota, porque *"uma
-  dependência de rede numa página de LOGIN é o tipo de coisa que quebra
-  exatamente quando não deveria"*. Pendurar o rodapé ali obrigaria a folha de
-  estilo a entrar naquela página, que é justamente o que ela recusa.
+* **A porta da Caixa (`entrar`) mostra o rodapé ENXUTO, e chegar a isso custou
+  uma correção de rumo.** Ela é a única tela desta célula que não veste
+  `base_caixa.html`, de propósito: o `entrar.html` não tem CSS externo, nem
+  script, nem fonte remota, porque *"uma dependência de rede numa página de
+  LOGIN é o tipo de coisa que quebra exatamente quando não deveria"*.
 
-  Ela está em `REGRA_POR_ROTA` com `None`, e não em `ROTAS_SEM_PAGINA`: a
-  primeira lista diz *"esta PÁGINA não mostra rodapé"*, a segunda diz *"isto nem
-  é página"*. A porta é página, e chamá-la de rota de máquina seria mentir na
-  estrutura para caber num teste.
+  No PR #871 eu li essa restrição e declarei a tela "sem rodapé" — aceitei o
+  limite em vez de resolvê-lo. O PR #734, aberto em 31/08/2026 e nunca pousado,
+  já tinha a solução escrita: o rodapé vira PEÇA
+  (`templates/sugestoes/_rodape.html`), incluída pelos DOIS moldes, e o estilo
+  dela entra embutido no `entrar.html`, com as cores do sistema
+  (`Canvas`/`CanvasText`), que funcionam em claro e em escuro sem carregar nada.
+
+  Enxuto, e não completo, pelo mesmo motivo da `funil`: quem chega numa tela de
+  entrar veio fazer UMA coisa, e uma lista de links ali é atrito.
 """
 
 from django.utils import timezone
@@ -48,9 +52,18 @@ VARIANTE_PADRAO = "completo"
 # **inclusive rota que nascer amanhã** — é essa a metade que impede a frase "em
 # todas as páginas" de envelhecer em silêncio (`armadilhas/242`).
 REGRA_POR_ROTA: "dict[str, str | None]" = {
-    # A porta da Caixa. Ver a razão no cabeçalho deste arquivo: ela é a única
-    # tela desta célula sem CSS externo, e o rodapé precisa da folha.
-    "entrar": None,
+    # A PORTA da Caixa mostra o rodapé ENXUTO — só a linha de direitos.
+    #
+    # Ela é a única tela desta célula sem folha de estilo externa, e no PR #871
+    # isso me fez declará-la "sem rodapé": aceitei a restrição em vez de
+    # resolvê-la. O PR #734, aberto em 31/08/2026 e nunca pousado, já tinha a
+    # solução escrita — o rodapé vira PEÇA incluída pelos dois moldes, e o
+    # estilo dela entra embutido, com as cores do sistema. É o desenho que este
+    # arquivo usa desde 02/09/2026.
+    #
+    # Enxuto, e não completo, pelo mesmo motivo da `funil`: quem chega numa tela
+    # de entrar veio fazer UMA coisa, e uma lista de links ali é atrito.
+    "entrar": "enxuto",
 }
 
 # Rotas de MÁQUINA: não são páginas. A API interna e o `/healthz` nem chegam a
