@@ -606,13 +606,19 @@ class CaixaClient:
 
     # -- leitura: fail-OPEN --------------------------------------------------
 
-    def ideias(self, por_email: str = "") -> "dict | None":
+    def ideias(self, por_email: str = "", com_conversa: bool = False) -> "dict | None":
         """O quadro inteiro com os FATOS de cada ideia, ou `None`.
 
         `por_email` não filtra nada: ele responde uma pergunta só — *esta pessoa
         pode assinar?* — e a resposta vem no campo `pode_assinar`. Quem recusa de
         verdade é a Caixa, na escrita; isto serve para a tela não desenhar um
         botão que já se sabe que vai ser recusado.
+
+        `com_conversa` pede o TEXTO dos comentários de cada ideia (contrato de
+        02/09/2026, RITOS §3). Ele é opcional aqui pelo mesmo motivo que é
+        opcional lá: a conversa cresce com o uso, e as telas de operação só
+        mostram a contagem. Quem pede é a exportação, que existe justamente
+        para levar o texto inteiro embora.
         """
         config = self._configuracao()
         if config is None:
@@ -622,10 +628,18 @@ class CaixaClient:
             )
             return None
         base, token = config
+        # Só o que foi PEDIDO viaja na URL: mandar `incluir_conversa=false` para
+        # quem não quer a conversa seria descrever o padrão como se fosse
+        # escolha, e o padrão já é esse do outro lado.
+        params = {}
+        if por_email:
+            params["por_email"] = por_email
+        if com_conversa:
+            params["incluir_conversa"] = "true"
         try:
             r = http().get(
                 f"{base}/gestao/ideias",
-                params={"por_email": por_email} if por_email else {},
+                params=params,
                 headers={"Authorization": f"Bearer {token}"},
                 timeout=self.TIMEOUT,
             )

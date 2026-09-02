@@ -681,6 +681,16 @@ def _bloco_da_ideia(ideia) -> list:
     linhas += ["", "O que trava, nas palavras de quem escreveu:", ideia["problema"]]
     if ideia.get("solucao_proposta"):
         linhas += ["", "O que a pessoa propõe:", ideia["solucao_proposta"]]
+
+    # A conversa embaixo da ideia. Ela entra depois do texto de quem sugeriu, e
+    # não antes, porque é isso que ela é: gente respondendo a uma proposta que
+    # já está na mesa. Sem nome, como tudo que sai por aqui — e o contrato nem
+    # manda o nome, então não há o que esquecer de tirar.
+    conversa = ideia.get("conversa") or []
+    if conversa:
+        linhas += ["", f"O que os outros disseram ({len(conversa)}):"]
+        linhas += [f"  - {fala['texto']}" for fala in conversa]
+
     linhas.append("")
     return linhas
 
@@ -711,8 +721,8 @@ def texto_do_quadro(nome_do_quadro: str, ideias: list, agora: datetime) -> str:
         "O que não está neste texto, e por quê:",
         "· Quem escreveu cada ideia. Este texto foi feito para sair da área",
         "  administrativa, e a análise não precisa do nome de ninguém.",
-        "· O texto dos comentários. A Caixa entrega QUANTOS comentários cada",
-        "  ideia tem, não o que cada um diz.",
+        "· Quem escreveu cada comentário. O texto das falas vem inteiro, o nome",
+        "  de quem falou não.",
         "· As ideias arquivadas e as apagadas. Arquivar é dizer que aquilo saiu",
         "  do quadro; apagar destrói o texto para sempre.",
         "",
@@ -727,7 +737,7 @@ def texto_do_quadro(nome_do_quadro: str, ideias: list, agora: datetime) -> str:
 
 @require_GET
 def exportar(request):
-    quadro = CaixaClient().ideias(por_email=_email(request))
+    quadro = CaixaClient().ideias(por_email=_email(request), com_conversa=True)
     if quadro is None:
         return render(request, "admin/caixa_exportar.html", {"nao_respondeu": True})
 

@@ -91,6 +91,7 @@ def ideia(**campos) -> dict:
         "tem_changespec": False,
         "motivo_da_saida": "",
         "avaliacao": None,
+        "conversa": [],
     }
     base.update(campos)
     return base
@@ -164,7 +165,7 @@ def test_o_cabecalho_diz_o_que_nao_veio_junto():
 
     assert "O que não está neste texto" in pagina
     assert "Quem escreveu cada ideia" in pagina
-    assert "texto dos comentários" in pagina
+    assert "Quem escreveu cada comentário" in pagina
     assert "arquivadas" in pagina
 
 
@@ -334,3 +335,89 @@ def test_a_aba_exportar_aparece_na_faixa_e_se_marca_na_propria_tela():
 
     na_tela = texto(_exportar(cliente))
     assert 'aria-current="page"' in na_tela
+
+
+# ---------------------------------------------------------------------------
+# 5. A conversa embaixo da ideia (contrato de 02/09/2026, PR #861)
+# ---------------------------------------------------------------------------
+
+
+def _falas(*textos):
+    return [{"texto": t, "quando": "2026-09-01T12:00:00+00:00"} for t in textos]
+
+
+@respx.mock
+def test_a_exportacao_pede_a_conversa_a_caixa():
+    """O parâmetro é opcional do outro lado: quem não pede, não recebe.
+
+    Este guarda mede o PEDIDO, e não o resultado — é o único lugar onde a
+    diferença entre "a Caixa não mandou" e "eu não pedi" fica visível.
+    """
+    cliente = _dentro()
+    rota = respx.get(IDEIAS).mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "quadro": "Meshcraft",
+                "pode_assinar": True,
+                "pessoas_esperando": 0,
+                "silencio_medio_em_dias": None,
+                "pessoas_em_silencio_demais": 0,
+                "ideias": [ideia()],
+            },
+        )
+    )
+
+    _exportar(cliente)
+
+    assert "incluir_conversa=true" in str(rota.calls.last.request.url)
+
+
+@respx.mock
+def test_a_conversa_sai_depois_do_texto_de_quem_sugeriu():
+    """A ordem é o sentido: comentário é gente respondendo a algo que já está na mesa."""
+    cliente = _dentro()
+    a_caixa_responde(
+        [
+            ideia(
+                conversa=_falas(
+                    "Comigo trava no mesmo ponto.",
+                    "Resolvi com um modificador, mas demorei uma semana.",
+                )
+            )
+        ]
+    )
+
+    pagina = texto(_exportar(cliente))
+
+    assert "O que os outros disseram (2)" in pagina
+    assert "Comigo trava no mesmo ponto." in pagina
+    assert "Resolvi com um modificador, mas demorei uma semana." in pagina
+    assert pagina.index("O que trava, nas palavras") < pagina.index(
+        "O que os outros disseram"
+    )
+
+
+@respx.mock
+def test_ideia_sem_conversa_nao_ganha_secao_vazia():
+    """Um cabeçalho seguido de nada faria o leitor procurar o que não existe."""
+    cliente = _dentro()
+    a_caixa_responde([ideia(comentarios=0, conversa=[])])
+
+    assert "O que os outros disseram" not in texto(_exportar(cliente))
+
+
+@respx.mock
+def test_conversa_ausente_na_resposta_nao_derruba_a_tela():
+    """A Caixa velha, ainda sem o campo novo, é um caso REAL: entre a publicação
+    de lá e a de cá existe uma janela de minutos em que a resposta vem sem
+    `conversa`. A tela abre igual, sem a seção — nunca com um erro 500."""
+    cliente = _dentro()
+    sem_o_campo = ideia()
+    del sem_o_campo["conversa"]
+    a_caixa_responde([sem_o_campo])
+
+    resposta = _exportar(cliente)
+
+    assert resposta.status_code == 200
+    assert "O que os outros disseram" not in texto(resposta)
