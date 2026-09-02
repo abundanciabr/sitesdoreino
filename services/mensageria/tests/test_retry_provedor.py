@@ -41,13 +41,26 @@ def test_provedor_fora_do_ar_registra_falha_e_propaga_para_o_huey_reenviar(envio
 
 
 def test_provedor_volta_a_funcionar_no_reenvio(envio):
+    """O provedor VOLTANDO precisa ser encenado, e isso é novidade de 02/09/2026.
+
+    Antes, a segunda chamada rodava sem `patch` nenhum e passava — porque
+    `enviar_email` era um stub que sempre dava certo. Hoje ela falharia com
+    `EmailNaoConfigurado`, já que a suíte não tem SMTP nenhum configurado.
+
+    A troca não é acomodação: é o teste voltando a medir o que ele diz medir. O
+    assunto aqui é a SEMÂNTICA DO RETRY (a linha vira `enviado` e as tentativas
+    somam), não a existência de um provedor — e um teste que dependia de o
+    provedor ser falso estava medindo o andaime.
+    """
     with patch(
         "apps.eventos.tasks.enviar_email", side_effect=ConnectionError("smtp fora")
     ):
         with pytest.raises(ConnectionError):
             processar_envio(envio.id)
 
-    processar_envio(envio.id)  # Huey reagenda; provedor já está de volta
+    # Huey reagenda; agora o provedor está de volta — e "de volta" se encena.
+    with patch("apps.eventos.tasks.enviar_email"):
+        processar_envio(envio.id)
 
     envio.refresh_from_db()
     assert envio.status == "enviado"

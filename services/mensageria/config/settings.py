@@ -71,6 +71,33 @@ USE_TZ = True
 # Guarda: tests/test_fuso_horario.py (armadilhas/099).
 TIME_ZONE = "America/Sao_Paulo"
 
+# ---------------------------------------------------------------------------
+# O E-MAIL DE VERDADE (02/09/2026) — SMTP, e a escolha do transporte é decisão
+# ---------------------------------------------------------------------------
+# O mantenedor escolheu o BREVO como provedor, entre três opções com o custo de
+# cada uma na mesa. Mas o que entra aqui é **SMTP**, e não a API HTTP do Brevo,
+# de propósito: SMTP é o denominador comum de todo provedor sério (Brevo, SES,
+# Resend, Postmark), então trocar de fornecedor um dia vira mudança de env — não
+# um PR reescrevendo o cliente. A escolha dele fica no arquivo de env da VPS,
+# que é onde ela pertence.
+#
+# `os.environ.get` com padrão vazio, nunca `env()`: o `env()` desta casa é
+# fail-hard, e derrubaria os TRÊS containers da célula no boot enquanto o passo
+# do mantenedor não estiver feito. Ausência aqui não é erro de configuração — é
+# o estado normal até ele criar a conta. Quem falha alto é o ENVIO, no ponto de
+# uso (`apps/eventos/tasks.py`), que é onde a falha significa alguma coisa.
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = os.environ.get("SMTP_HOST", "")
+EMAIL_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")
+EMAIL_HOST_USER = os.environ.get("SMTP_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+# 587 com STARTTLS é o que o Brevo documenta e o que todo provedor aceita. A
+# porta 465 (SSL direto) existiria com EMAIL_USE_SSL — as duas juntas o Django
+# recusa, e por isso a escolha é uma linha só e não duas variáveis.
+EMAIL_USE_TLS = True
+EMAIL_TIMEOUT = 20
+DEFAULT_FROM_EMAIL = os.environ.get("SMTP_FROM", "")
+
 # djhuey lê `settings.HUEY`. Precisa ser a MESMA instância que as tasks decoram
 # (config/huey.py) — uma instância nova aqui criaria uma SEGUNDA fila: o handler
 # enfileira numa, o `run_huey` escuta a outra, e nenhum e-mail sai (ARMADILHAS
