@@ -561,13 +561,44 @@ table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: .5rem .6rem; border-bottom: 1px solid var(--linha); }
 th { color: var(--texto-tenue); font-weight: 500; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
 
-/* --- o pé ---------------------------------------------------------------- */
+/* --- o pé: o RODAPÉ DO SITE, o mesmo de todas as áreas -------------------
 
-.pe {
-  margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--linha);
-  font-family: var(--f-mono); font-size: 12px; color: var(--texto-tenue);
-  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+   Ele tomou o lugar do `.pe`, o pé de duas frases que era só desta área
+   (02/09/2026, escolha do mantenedor: uma assinatura só no fim de toda página).
+
+   As medidas saem de `services/forum/static/forum.css`; as cores, não. A Caixa
+   é a única área ESCURA do site, e copiar o arquivo em vez do desenho traria um
+   `#e4e4e7` de tema claro para cima de um fundo `#15161c` — uma linha branca
+   atravessando o pé da página. Aqui tudo sai das variáveis desta folha.
+
+   Centralizado, e o `.pe` era espalhado nas pontas: com quatro blocos (marca,
+   aviso, links, direitos) as pontas viram uma coluna torta no celular. */
+.rodape {
+  border-top: 1px solid var(--linha);
+  color: var(--texto-tenue);
+  font-size: 13px;
+  margin-top: 48px;
+  padding: 16px 0 8px;
+  text-align: center;
 }
+
+.rodape .marca { color: var(--texto); font-weight: 600; margin: 0 0 4px; }
+.rodape .descricao { margin: 0 0 14px; }
+
+.rodape .links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: center;
+  margin: 0 0 14px;
+}
+
+.rodape .links a { color: var(--texto-tenue); text-decoration: none; }
+
+.rodape .links a:hover,
+.rodape .links a:focus { color: var(--laranja); text-decoration: underline; }
+
+.rodape .direitos { margin: 0; }
 
 @media (max-width: 900px) {
   .bancada { flex-direction: column; }

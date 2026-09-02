@@ -24,6 +24,8 @@ O prefixo é de thread e o Django **não** o limpa entre testes: sem o
 import re
 
 import pytest
+
+from apps.core.rodape import enderecos_de_outras_celulas
 from asgiref.sync import async_to_sync
 from django.test import AsyncClient
 from django.urls import clear_script_prefix, reverse, set_script_prefix
@@ -72,7 +74,12 @@ def test_todo_link_da_pagina_de_avisos_leva_o_prefixo(dentro_sob_prefixo, aviso)
     internos = LINK_INTERNO.findall(corpo)
 
     assert internos, "a página de avisos não tem link interno — nada foi medido"
-    sem_prefixo = [link for link in internos if not link.startswith(f"{PREFIXO}/")]
+    de_fora = enderecos_de_outras_celulas()
+    sem_prefixo = [
+        link
+        for link in internos
+        if not link.startswith(f"{PREFIXO}/") and link not in de_fora
+    ]
     assert sem_prefixo == [], (
         f"links sem o prefixo público na página de avisos: {sem_prefixo}. "
         "Todo endereço interno sai de {% url %}, nunca escrito à mão."
