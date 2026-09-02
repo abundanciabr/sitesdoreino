@@ -7,11 +7,6 @@ um dia alguém vai ler só um deles.
 {% endcomment %}
 {% block titulo %}{{ documento.titulo }}{% endblock %}
 {% block corpo %}
-<div class="barra">
-  <b>Meshcraft &middot; Administração</b>
-  <span class="quem">{{ admin.nome }}</span>
-</div>
-
 <div class="envolucro">
   <a class="volta" href="{% url 'documentos_admin' %}">&larr; Documentos</a>
 

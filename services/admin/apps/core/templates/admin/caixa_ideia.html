@@ -24,11 +24,6 @@ Três coisas ditas de propósito na tela:
 {% endcomment %}
 {% block titulo %}{% if ideia %}{{ ideia.titulo }}{% else %}Ideia{% endif %} · Caixa{% endblock %}
 {% block corpo %}
-<div class="barra">
-  <b>Meshcraft &middot; Administração</b>
-  <span class="quem">{{ admin.nome }}</span>
-</div>
-
 <div class="envolucro largo">
   <a class="volta" href="{% url 'caixa' %}">&larr; Caixa de Sugestões</a>
 

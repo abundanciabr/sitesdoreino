@@ -93,23 +93,37 @@ def test_a_visao_geral_oferece_os_dois_paineis_com_nomes_distintos():
     assert "Abrir o painel da escola" in html
 
 
+def _href_do_cartao(html: str, rotulo: str) -> str:
+    """O endereço do cartão que traz este rótulo.
+
+    O `href` mais PRÓXIMO antes do rótulo é o do `<a>` que abre aquele cartão.
+
+    Até 02/09/2026 o guarda abaixo fatiava o documento inteiro pela posição de
+    cada rótulo, e a fatia "antes do rótulo" era onde o endereço tinha de
+    estar. Isso passou a acusar falso no dia em que a área ganhou um MENU no
+    topo (`apps/core/moldura.py`): o menu traz um link para a Escola acima de
+    tudo, e ele caiu dentro da fatia. A pergunta deste guarda nunca foi sobre o
+    documento, e sim sobre o cartão — então agora ele mede o cartão, por
+    igualdade em vez de por presença. É mais apertado que a versão que ele
+    substitui, não menos.
+    """
+    ate = html.index(rotulo)
+    inicio = html.rindex('href="', 0, ate) + len('href="')
+    return html[inicio : html.index('"', inicio)]
+
+
 @respx.mock
 def test_o_painel_do_sistema_nao_se_chama_mais_painel_da_escola():
     """O defeito relatado, travado pelo DESTINO e não pelo texto solto.
 
     Não basta que as duas frases existam na página: o que quebrou foi a
-    ligação entre elas. Este teste confere que o link chamado "painel do
+    ligação entre elas. Este teste confere que o cartão chamado "painel do
     sistema" aponta para `painel` e o chamado "painel da escola" aponta para
     `escola` — trocar os dois de lugar deixaria o teste acima verde.
     """
     html = _texto(_dentro().get("/"))
-    sistema = html.index("Abrir o painel do sistema")
-    escola = html.index("Abrir o painel da escola")
-    # O href vem ANTES do rótulo dentro de cada cartão: o pedaço de HTML que
-    # antecede cada rótulo é onde o endereço dele tem de estar.
-    assert reverse("painel") in html[:sistema]
-    assert reverse("escola") in html[sistema:escola]
-    assert reverse("escola") not in html[:sistema]
+    assert _href_do_cartao(html, "Abrir o painel do sistema") == reverse("painel")
+    assert _href_do_cartao(html, "Abrir o painel da escola") == reverse("escola")
 
 
 @pytest.fixture

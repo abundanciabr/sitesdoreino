@@ -10,11 +10,6 @@ renderizador escapa antes de formatar (documentos.para_html).
 {% endcomment %}
 {% block titulo %}{% if criando %}Documento novo{% else %}Editando {{ rascunho.titulo }}{% endif %} | Meshcraft{% endblock %}
 {% block corpo %}
-<div class="barra">
-  <b>Meshcraft &middot; Administração</b>
-  <span class="quem">{{ admin.nome }}</span>
-</div>
-
 <div class="envolucro">
   {% if criando %}
   <a class="volta" href="{% url 'documentos_admin' %}">&larr; Documentos</a>
