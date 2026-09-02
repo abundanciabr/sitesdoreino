@@ -41,11 +41,30 @@ def sem_rede(monkeypatch):
     Se algum caminho tentar perguntar quem é a pessoa sem que o teste tenha
     montado o dublê, a chamada levanta — e o código de produção trata isso
     fechando a porta, que é exatamente o comportamento que se quer provar.
+
+    **SÃO DUAS BIBLIOTECAS, e desde 02/09/2026 as duas são cortadas.** O `httpx`
+    é por onde esta célula fala com `identidade`, `alunos`, `catalogo` e
+    `gamificacao`. O `httpx2` é outro pacote, instalado junto com o SDK da
+    Anthropic (`apps/core/agente.py`), e o corte antigo não o alcançava: a suíte
+    dizia no próprio docstring que não falava com a rede e podia chamar a API
+    paga da Anthropic de verdade, com a chave da máquina de quem rodasse os
+    testes (`armadilhas/288`).
+
+    O corte do `httpx2` é no TRANSPORTE, e não em `Client.post`, por dois
+    motivos: o SDK chama `Client.send`, que `post` não intercepta, e cortar no
+    transporte deixa o dublê dos testes do agente trocar essa mesma função por
+    uma resposta de mentira — exercitando o SDK de verdade, com o request e a
+    leitura da resposta que a produção usa (`armadilhas/061`).
     """
     import httpx
+    import httpx2
 
     def recusa(*args, **kwargs):
         raise httpx.ConnectError("a suíte do fórum não fala com a rede")
 
+    def recusa_httpx2(*args, **kwargs):
+        raise httpx2.ConnectError("a suíte do fórum não fala com a rede")
+
     monkeypatch.setattr(httpx.Client, "get", recusa)
     monkeypatch.setattr(httpx.Client, "post", recusa)
+    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", recusa_httpx2)

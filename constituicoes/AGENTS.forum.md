@@ -38,6 +38,15 @@ levou a construir em vez de instalar (com os dois pareceres externos):
   de entrar no env
 - **Emite:** eventos de participação (tópico criado, resposta dada) pelo
   padrão outbox, quando houver quem os consuma. Nasce sem emitir nada
+- **Fala com FORA da plataforma:** a API da Anthropic
+  (`api.anthropic.com`), e é a única célula do projeto que o faz. É o botão
+  "Gerar resposta" das ferramentas da escola (`apps/core/agente.py`,
+  02/09/2026). **Três limites que não se reabrem aqui:** a chamada é sempre
+  disparada por gesto de professor ou administrador (nunca por aluno, nunca
+  sozinha); a IA **não publica** (o texto cai na caixa de responder, e quem
+  aperta Responder é uma pessoa); e a transcrição que viaja leva `Aluno` e
+  `Escola` como rótulos, **nunca nome nem e-mail**. `ANTHROPIC_API_KEY` vazia
+  significa IA desligada, com o fórum servindo igual
 - **Banco:** `forum_db` (role `forum_user` — não enxerga nenhum outro
   database). Guarda áreas, tópicos, mensagens, marcas de leitura, anexos e
   estados de moderação. **Nada de dado de outra célula copiado sem
