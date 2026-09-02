@@ -279,7 +279,11 @@ custo dela, escrito onde quem construir vai ler.
 > veredito completo, com quem viu o quê e o que não sobreviveu à conferência,
 > está em `docs/consultorias/sequencias-de-mensagens/VEREDITO.md`.
 
-Oito tabelas **novas, no banco que a célula já tem** (`mensageria_db`) — nenhuma
+<!-- A contagem dizia OITO e a lista abaixo sempre teve NOVE: a `Efeito` entrou
+     pela decisão do §8.8, depois deste parágrafo. Corrigido na TAR-071, ao
+     construí-las. Um número que não bate com a lista logo abaixo dele é a
+     Classe 8 nascendo dentro do próprio documento. -->
+Nove tabelas **novas, no banco que a célula já tem** (`mensageria_db`) — nenhuma
 alteração nas duas que já existem. As travas em `CheckConstraint`/
 `UniqueConstraint`, no banco, nunca só em `save()` (`armadilhas/023`: um
 `queryset.update()` fura guarda escrita em Python).
@@ -522,7 +526,7 @@ provisionamento de banco novo na VPS, e o contrato `mensagem.devida.v1` sumiu
 | **0a** | **Emenda a `AGENTS.mensageria.md`:** a missão passa a incluir sequência com espera, e não só transacional | `constituicoes/` | sem isto, a cerca do CI recusa tudo que vem depois |
 | **0b** | **Rito de Contrato** com o mantenedor: `identidade.pessoa-cadastrada.v1` e os assuntos novos em `notificacao.devida.v1` | `contracts/` | não é código (RITOS §3) |
 | 1 | `identidade` ganha voz: outbox + relay + publica o cadastro | `identidade` | o cadastro finalmente vira fato na plataforma |
-| 2 | Nasce `apps/jornadas`: as **8 tabelas** e as travas (incluindo a **parcial** da `Inscricao`) — **sem mandar nada ainda** | `mensageria` | migração aplicada, `healthz` intacto |
+| 2 | Nasce `apps/jornadas`: as **9 tabelas** e as travas (incluindo a **parcial** da `Inscricao`) — **sem mandar nada ainda** | `mensageria` | migração aplicada, `healthz` intacto |
 | 3 | A régua (§6): classes, preferências, janela com piso e teto, ordem determinística | `mensageria` | a régua barra, e o motivo fica registrado |
 | 4 | O motor: consumidor dos gatilhos, inscrição, varredura periódica, condições | `mensageria` | uma pessoa entra numa jornada e o passo é agendado |
 | 5 | Publica `notificacao.devida.v1` — **a primeira sequência de verdade no ar** | `mensageria` | **boas-vindas chegando no sininho do aluno** |
