@@ -635,8 +635,12 @@ class Efeito(models.Model):
     """
 
     entrega = models.ForeignKey(
-        Entrega, on_delete=models.CASCADE, related_name="efeito"
+        Entrega, on_delete=models.CASCADE, related_name="efeitos"
     )
+    # `efeitos` no plural, e não `efeito`, mesmo com a unicidade garantida:
+    # é chave estrangeira, então o acesso reverso devolve um gerenciador, e
+    # `entrega.efeito.voltou_em` estouraria. O plural avisa disso na hora de
+    # escrever; `unique(entrega)` é quem garante que nunca haja dois.
     voltou_em = models.DateTimeField(null=True, blank=True)
     abriu_aula_em = models.DateTimeField(null=True, blank=True)
     concluiu_aula_em = models.DateTimeField(null=True, blank=True)

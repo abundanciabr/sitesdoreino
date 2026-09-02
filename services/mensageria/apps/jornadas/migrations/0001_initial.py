@@ -556,7 +556,7 @@ class Migration(migrations.Migration):
                     "entrega",
                     models.ForeignKey(
                         on_delete=django.db.models.deletion.CASCADE,
-                        related_name="efeito",
+                        related_name="efeitos",
                         to="jornadas.entrega",
                     ),
                 ),
