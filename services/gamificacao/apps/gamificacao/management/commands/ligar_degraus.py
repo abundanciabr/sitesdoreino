@@ -79,8 +79,8 @@ class Command(BaseCommand):
             raise CommandError(
                 f"PAROU POR SEGURANÇA: o site {site!r} tem só {total} degrau "
                 "cadastrado. Com um degrau não há para onde subir, e a tela do "
-                "aluno vai dizer que o degrau seguinte ainda não abriu — quem "
-                "rodou isto esperando uma escada acharia que falhou."
+                "aluno vai dizer que o degrau seguinte ainda não abriu, de modo "
+                "que quem rodou isto esperando uma escada acharia que falhou."
             )
 
         ja_ligados = degraus.filter(ativa=True).count()
