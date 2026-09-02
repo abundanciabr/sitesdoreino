@@ -12,6 +12,37 @@
 # tela dele. Crescimento puro — nenhuma operação, campo ou nome mudou, e por
 # isso nenhum consumidor precisa migrar.
 #
+# EMENDA DE 02/09/2026 (Rito de Contrato, com o mantenedor presente): entraram
+# `listLevelSwitches` e `setLevelSwitch`, o TERCEIRO interruptor da tela dele, e
+# o único que não paga nada. Crescimento puro, como o anterior: nenhuma
+# operação, campo ou nome mudou, e nenhum consumidor precisa migrar.
+#
+# COMO ELE NASCEU: em 01/09/2026 o mantenedor abriu `/conquistas` e leu, uma
+# embaixo da outra, "Nível 1", "você chegou ao último degrau desta escada" e "0
+# de experiência até aqui". O defeito da TELA foi corrigido (`armadilhas/271`),
+# e o que sobrou foi a verdade: a escola nunca ligou degrau nenhum, e não havia
+# por onde ligar. Havia botão para as regras e para as conquistas; para a
+# escada, nada.
+#
+# AS DUAS PERGUNTAS QUE ESTE RITO RESPONDEU, as duas de produto:
+#
+#   1. *Ligar um degrau reconhece quem já tem o XP dele?* SIM, e aqui a resposta
+#      é quase forçada pela natureza da coisa: degrau não paga, é a RÉGUA com
+#      que o XP já existente é lido. Ligar o degrau 2 não cria um ponto sequer,
+#      só passa a chamar de "Aprendiz de Ateliê" quem já tinha 50. Por isso,
+#      como nas conquistas, não há `vigente_desde` nestas duas operações.
+#   2. *Ligar um degrau recalcula o nível gravado de todo mundo?* NÃO.
+#      `PerfilJogador.nivel` é desnormalizado e quem o reescreve é o motor, na
+#      próxima vez que o XP daquela pessoa mexer. Varrer a escola num clique
+#      mandaria uma chuva de cartas "você subiu de nível" para gente que não fez
+#      nada naquele dia; o acerto em massa é `reconciliar_perfis`, que é comando
+#      e não botão.
+#
+# `titulo` e `titulo_feminino` VIAJAM, pela mesma exceção declarada nas
+# conquistas: estas operações servem a tela do MANTENEDOR, que é bastidor, e o
+# título de um degrau é dado que ele edita. O que o ALUNO lê continua saindo de
+# `getMyStatus` e da tela da própria célula.
+#
 # A PERGUNTA QUE O RITO RESPONDEU não foi a forma da porta (ela é gêmea da dos
 # interruptores de regra), e sim uma de PRODUTO: *ligar uma conquista reconhece
 # quem já cumpriu o critério antes?* A resposta dele foi SIM, com o custo dito
@@ -416,6 +447,101 @@ paths:
             schema:
               $ref: '#/components/schemas/PedidoDeInterruptor'
         required: true
+  /economia/degraus:
+    get:
+      operationId: listLevelSwitches
+      summary: Todos os degraus da escada, ligados e desligados
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/InterruptorDeDegrau'
+                type: array
+      description: 'A terceira metade da tela do mantenedor, e a que faltava: sem
+        nenhum
+
+        degrau ligado a pagina do aluno nao tem escada para mostrar, e diz
+
+        isso.
+
+
+        Devolve TODOS os degraus do site, do primeiro ao ultimo, porque a tela
+
+        precisa mostrar o que ele PODE ligar. `titulo` e `titulo_feminino`
+
+        viajam pela mesma excecao declarada nas conquistas: eles servem a tela
+
+        do MANTENEDOR, que e bastidor, e sao dado que ele edita. O que o ALUNO
+
+        le continua saindo de `getMyStatus` e da tela da propria celula.
+
+
+        `impedimentos` avisa antes do clique quando ligar nao vai adiantar:
+
+        `escada-de-um-degrau-so` = com este degrau a escada teria menos de
+
+        dois, e um degrau sozinho nao e escada (a tela do aluno diz que o
+
+        seguinte ainda nao abriu); `sem-regra-que-paga` = nenhuma regra de
+
+        pontuacao esta ligada neste site, entao a barra existe e nunca anda.'
+  /economia/degraus/{nivel}:
+    post:
+      operationId: setLevelSwitch
+      summary: Liga ou desliga UM degrau da escada
+      parameters:
+      - in: path
+        name: nivel
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InterruptorDeDegrau'
+      description: 'Ligar um degrau faz a escola passar a chamar por ele quem ja tem
+        o XP
+
+        que ele pede. NENHUM ponto e criado: o degrau e a regua, nao o
+
+        pagamento. Por isso nao ha `vigente_desde` aqui, pela mesma razao das
+
+        conquistas.
+
+
+        NAO RECALCULA PERFIL, e a ausencia e decisao: `PerfilJogador.nivel` e
+
+        desnormalizado e quem o reescreve e o motor, na proxima vez que o XP
+
+        daquela pessoa mexer. Varrer a escola num clique mandaria uma chuva de
+
+        cartas ''voce subiu de nivel'' para quem nao fez nada hoje; o acerto em
+
+        massa e o comando `reconciliar_perfis`.
+
+
+        `versao` sobe quando algo muda, e chamada que nao muda nada devolve a
+
+        linha como esta, sem gastar versao.
+
+
+        Numero de degrau que nao existe responde 404, como os outros dois
+
+        interruptores: inventar em silencio qual degrau o mantenedor quis
+
+        ligar seria pior que recusar.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PedidoDeInterruptor'
+        required: true
 components:
   schemas:
     PerfilPublico:
@@ -641,6 +767,36 @@ components:
       - cristais
       - envolve_dinheiro
       - exige_validador_da_equipe
+      - ativa
+      - versao
+      - impedimentos
+      type: object
+    InterruptorDeDegrau:
+      properties:
+        nivel:
+          type: integer
+        titulo:
+          type: string
+        titulo_feminino:
+          type: string
+        xp_necessario:
+          type: integer
+        ativa:
+          type: boolean
+        versao:
+          type: integer
+        impedimentos:
+          items:
+            enum:
+            - escada-de-um-degrau-so
+            - sem-regra-que-paga
+            type: string
+          type: array
+      required:
+      - nivel
+      - titulo
+      - titulo_feminino
+      - xp_necessario
       - ativa
       - versao
       - impedimentos
