@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260902-142638-TAR-073-concluida",
+  "tarefa": "TAR-073",
+  "evento": "concluida",
+  "quando": "2026-09-02T14:26:38+00:00",
+  "quem": "sessao-mensageria-motor-2026-09-02",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/854 - o motor em services/mensageria/apps/jornadas/motor.py e condicoes.py. 85 testes verdes na celula (eram 68; 17 novos), black limpo, 13 muralhas PASS. AS QUATRO PROVAS EXIGIDAS: (1) a condicao que deixa de valer ENTRE a inscricao e a varredura gera Entrega pulada -- test_a_condicao_que_deixa_de_valer_entre_a_inscricao_e_a_varredura_pula_o_passo, com a CONTRAPROVA test_a_condicao_que_CONTINUA_valendo_deixa_o_passo_sair (senao um motor que nunca entrega nada passaria); (2) o mesmo evento reentregue nao inscreve duas vezes -- test_o_mesmo_evento_reentregue_nao_inscreve_duas_vezes e o irmao depois do fim do episodio, mais a CONTRAPROVA test_um_fato_NOVO_abre_um_episodio_novo (senao a idempotencia seria a trava total disfarcada, o defeito que a consultoria achou); (3) o passo 3 sai em D+5 no cronograma ancorado mesmo com o passo 2 empurrado pela regua para D+3 -- test_o_passo_3_sai_em_D5_mesmo_com_o_passo_2_atrasado_pela_regua; (4) teto por passada -- test_a_varredura_respeita_o_teto_por_passada. VERMELHO->VERDE POR SABOTAGEM (armadilhas/195), cada uma sozinha: cronograma deixando de ser ancorado -> 1 failed; idempotencia por fato sumindo -> 1 failed com dois pk distintos; sem despacho gravando 'enviada' -> 1 failed (sem_despacho=0, entregues=1); teto sumindo -> 1 failed (examinadas=5 com lote=2); slug desconhecido virando fail-open -> 1 failed (puladas=0). DECISAO DECLARADA: o despacho e injetado e sem despachante NAO nasce linha de 'enviada' -- o envio real e o degrau 5, e marcar como enviada o que nao saiu seria falso-verde no banco contaminando o proprio teto diario. Aprendizado: armadilhas/280 e services/mensageria/LICOES.md. Registro: 20260902-013.",
+  "verificado_em": "2026-09-02"
+}

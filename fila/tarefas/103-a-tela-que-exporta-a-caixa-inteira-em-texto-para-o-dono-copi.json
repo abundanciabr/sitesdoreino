@@ -1,0 +1,14 @@
+{
+  "arquivo": "103-a-tela-que-exporta-a-caixa-inteira-em-texto-para-o-dono-copi",
+  "id": "TAR-103",
+  "titulo": "A tela que exporta a Caixa inteira em texto, para o dono copiar de uma vez",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "URL do PR mergeado + run verde do deploy-celula (admin), e a tela respondendo 200 em meshcraft.top/admin/caixa/exportar/",
+  "despacho": "Criar GET /admin/caixa/exportar/ na celula admin: uma quinta aba da Caixa que monta, num campo de texto unico, TODAS as ideias vivas do quadro com titulo, categoria, etapa, votos, plateia, contagem de comentarios, datas, o texto do aluno (problema e solucao proposta) e a avaliacao interna quando existir. Sem nome de autor (o texto sai do admin quando o dono copia). Sem JavaScript (a porta manda script-src 'self'). Fail-OPEN como as outras abas. Guardas em services/admin/tests/test_caixa_exportar.py.",
+  "origem": "pedido do mantenedor em 02/09/2026: analisar as sugestoes dos alunos; o conteudo so se le atras do login dele",
+  "criada_em": "2026-09-02"
+}

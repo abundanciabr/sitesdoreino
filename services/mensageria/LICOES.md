@@ -285,3 +285,142 @@ vale ser lembrada aqui.
 Fica registrado também pelo motivo do §"não afirmar diagnóstico sem medir": a
 explicação errada quase entrou num comentário de código com voz de fato, e quem a
 desmentiu foi a sabotagem deliberada, não a releitura.
+
+## O teto diário conta só a `Entrega`, e isso é fronteira, não esquecimento
+
+A régua conta quantas mensagens já saíram para a pessoa no dia consultando
+`Entrega` — tudo que sai pelo motor das jornadas. Ela **não** conta o envio
+transacional antigo da célula (`EnvioRegistrado`, do `apps/eventos`), e não pode:
+ler aquela tabela é o **critério de morte §10.7** do plano, que permite a este
+app apenas CRIAR a linha de `EnvioRegistrado`.
+
+**A consequência, dita por inteiro:** um e-mail de pagamento aprovado que sair às
+14h não consome a vaga do dia, e uma mensagem de jornada às 18h ainda passa. Isso
+é uma frouxidão conhecida, e ela é o preço da fronteira que o mantenedor escolheu
+ao pôr o motor dentro desta célula (§8.2). Se um dia esse duplo incomodar, o
+conserto NÃO é ler a tabela vizinha: é o motor passar a registrar `Entrega`
+também para o caminho transacional, ou a separação em célula voltar à mesa com a
+medição na mão, como o próprio §10 manda.
+
+**O que a régua conta, e por quê:** toda classe, inclusive as que passam por fora
+dela. A régua protege a ATENÇÃO de uma pessoa, e atenção não distingue classe —
+uma mensagem de serviço recebida às 10h é uma mensagem recebida. O que a classe
+decide é que ela nunca é BARRADA, não que ela seja invisível.
+
+## Às 20:00 em ponto a janela já fechou, e a fronteira é declarada
+
+"Nunca depois das 20h" tem uma leitura em que 20:00 cravado ainda passa. Fica
+FECHADA (`ABRE <= hora < FECHA`): às 20:00 a mensagem já lê como "de noite" para
+quem recebe, e na dúvida a régua cala. Está escrito num teste com nome próprio
+(`test_as_20h_em_ponto_a_janela_ja_fechou`) para que uma leitura diferente seja
+uma decisão de alguém, e não um acidente de `<` contra `<=`.
+
+## Ausência de preferência NÃO é recusa, e o fail-closed é sobre outra coisa
+
+As duas coisas moram a três linhas de distância no mesmo arquivo, e confundi-las
+desligaria a plataforma para todo mundo no primeiro dia:
+
+- **Ausência** (nenhuma linha de `Preferencia`): a pessoa nunca disse nada, e
+  quem nunca disse nada não silenciou nada. Vale aceitar.
+- **Ilegível** (o banco fora, a linha corrompida, a consulta estourando): a régua
+  não conseguiu se pronunciar. Vale NÃO enviar, com o motivo gravado na
+  `Entrega` — silêncio por dúvida, nunca mensagem por dúvida.
+
+O §6.2 diz "preferência ilegível", e a palavra é essa de propósito.
+
+## O desempate mora na régua, não na varredura
+
+`ORDEM_DE_DESEMPATE` e `em_ordem_de_desempate()` ficam em `regua.py` porque a
+ordem É regra da régua: quando duas jornadas disputam a vaga do dia, ganha a
+inscrição mais antiga. Quem varre (TAR-073) só precisa obedecer, e obedecer
+significa CHAMAR essa função, nunca reescrever um `order_by` equivalente. Duas
+implementações da mesma ordem divergem no primeiro dia em que alguém mexer numa
+delas, e a divergência aqui é invisível: os dois códigos continuam ordenando,
+só que diferente.
+
+O segundo critério (`inscricao__id`) não é enfeite: dois `criada_em` iguais
+(mesmo lote, mesmo instante) empatariam de novo, e um empate que sobra é um teste
+que passa hoje e falha amanhã sem nada ter mudado.
+
+## `registrar` é `update_or_create`, e um `create` estouraria na segunda passada
+
+A trava do §5 é `unique(inscricao, passo, canal)`: uma linha por entrega, por
+canal. Um passo barrado pela régua **reagenda**, então a varredura seguinte
+reavalia a MESMA entrega — e é essa linha que passa de `barrada_pela_regua` para
+`enviada` quando a vaga abre. Com `create`, a segunda passada bateria na trava.
+
+## Sem despachante não nasce linha de `enviada` — a decisão que o degrau 4 teve de tomar
+
+O degrau 4 (`motor.py`) entrega *"uma pessoa entra numa jornada e o passo é
+AGENDADO"*. O envio de verdade é o degrau 5 (o sininho, pelo
+`notificacao.devida.v1`) e o degrau 8 (o e-mail, que ainda nem sabe perguntar o
+endereço à `identidade`, porque a linha `consome:` entra no PR daquele degrau).
+
+Então existe, aqui, o momento em que a régua LIBERA um passo e **nada tem para
+onde entregá-lo**. E o vocabulário de `Entrega.resultado` é fechado: `enviada`,
+`pulada`, `barrada_pela_regua`, `barrada_por_preferencia`. Gravar `enviada` para
+um passo que ninguém entregou seria falso-verde escrito no banco, e ele
+contaminaria até o teto diário, que conta justamente as linhas `enviada`.
+
+**A saída foi injetar o despacho.** `varrer(despachar=...)` recebe quem sabe
+entregar; o padrão é `sem_despacho_ainda`, que devolve `False` e diz no nome o
+que falta. Quando ele devolve `False`: nenhuma `Entrega` nasce, a inscrição NÃO
+avança (o passo continua devendo e a passada seguinte o reencontra), e a
+`Passada` conta isso em `sem_despacho`, para que a ausência seja um número
+visível em vez de um silêncio.
+
+**O que isso obriga na TAR-076 (degrau 5):** passar o despachante de verdade, que
+publica o `notificacao.devida.v1` e devolve `True` só quando publicou. Nada mais
+no motor precisa mudar — e essa é a prova de que a costura está no lugar certo.
+
+## O cronograma é ancorado, e a linha que faz isso é uma só
+
+`avancar()` calcula `proximo_em = inscricao.ancora_em + seguinte.atraso`. Nunca
+`agora + atraso`. É essa linha que responde à pergunta do §5: se o passo 2 era
+para D+2 e a régua o empurrou para D+3, o passo 3 sai em **D+5**, e não em D+6.
+
+Trocá-la por `timezone.now() + atraso` parece inofensivo e passa em qualquer
+teste de caminho feliz (onde a régua não atrasa nada). O guarda é
+`test_o_passo_3_sai_em_D5_mesmo_com_o_passo_2_atrasado_pela_regua`, e ele foi
+medido contra a sabotagem.
+
+## A idempotência da inscrição tem TRÊS camadas, e a de cima não é redundante
+
+1. **`origem_event_id`** — o mesmo FATO nunca inscreve duas vezes, nem depois de
+   o episódio anterior terminar.
+2. **A trava parcial do banco** (`uniq_inscricao_andando_por_jornada`) — pega a
+   corrida entre dois consumidores no mesmo instante.
+3. **O dedup por `event_id`** do `apps/eventos`, que é a camada de fora.
+
+**A primeira existe porque a segunda não cobre o caso dela**, e isso é fácil de
+ler como duplicação: a trava parcial só impede duas inscrições ANDANDO, então um
+evento reentregue meses depois abriria um episódio novo, **legítimo pela trava e
+errado pelo fato**. E a distinção não pode virar "a trava é total": trava total é
+justamente o defeito que a consultoria achou, que fazia a jornada "sumiu" rodar
+uma vez na vida do aluno.
+
+A contraprova mora ao lado, em `test_um_fato_NOVO_abre_um_episodio_novo`: sem
+ela, um `inscrever` que simplesmente se recusasse a inscrever de novo ficaria
+verde — o defeito da trava total, disfarçado de idempotência.
+
+## Slug de condição desconhecido PULA o passo; nunca o manda assim mesmo
+
+`condicoes.avaliar()` levanta `CondicaoDesconhecida` para slug fora do
+dicionário, e o motor trata isso como "pula, com o motivo escrito". A alternativa
+tentadora (`CONDICOES.get(slug)` devolvendo `None` e o motor seguindo em frente)
+transforma um erro de digitação numa mensagem enviada para quem não devia
+recebê-la — e erro de digitação em slug é exatamente o tipo de coisa que passa
+por revisão.
+
+## O `LOTE` limita a PASSADA, e a `Passada` precisa saber qual lote usou
+
+`Passada.esgotou_o_lote` comparava com a constante `LOTE` do módulo em vez do
+lote que aquela passada recebeu — então toda passada reduzida (`varrer(lote=2)`)
+respondia "não enchi" mesmo tendo enchido. Corrigido guardando o `lote` no
+próprio relatório.
+
+E a lembrança que o §6.3 pede: o `LOTE` limita o TRABALHO de uma passada, não o
+volume do dia. Dez mil pessoas elegíveis continuam sendo dez mil envios ao longo
+das passadas; quem protege a cota do provedor é a régua de capacidade, que é
+outra peça (TAR-079). Ler o `LOTE` como proteção de volume é o conforto falso que
+faz ninguém construir a régua que falta.

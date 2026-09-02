@@ -1000,6 +1000,15 @@
     },
     {
       "celula": "admin",
+      "rota": "caixa/exportar/",
+      "endereco": "/admin/caixa/exportar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Exportar a Caixa",
+      "descricao": "A Caixa inteira em texto, num campo só, para você copiar de uma vez e levar para onde quiser analisar. Sai sem o nome de quem escreveu."
+    },
+    {
+      "celula": "admin",
       "rota": "caixa/ideia/<int:ideia_id>/",
       "endereco": "/admin/caixa/ideia/<int:ideia_id>/",
       "alcance": "publico",

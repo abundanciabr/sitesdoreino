@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260902-141327-TAR-072-concluida",
+  "tarefa": "TAR-072",
+  "evento": "concluida",
+  "quando": "2026-09-02T14:13:27+00:00",
+  "quem": "sessao-mensageria-regua-2026-09-02",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/851 - a regua do §6 em services/mensageria/apps/jornadas/regua.py. 68 testes verdes na celula (eram 53; 15 novos), black limpo, sem migracao pendente, 13 muralhas PASS. AS CINCO PROVAS EXIGIDAS: (a) test_a_medalha_da_manha_nao_barra_a_matricula_da_tarde, mais a CONTRAPROVA test_e_o_teto_estava_mesmo_ligado_naquele_dia (a mesma situacao com incentivo as 18h E barrada, entao (a) nao esta verde por o teto nao existir); (b) test_tres_jornadas_no_mesmo_dia_dao_uma_entrega_e_duas_reagendadas, com as duas barradas reagendadas para as 8h do dia seguinte e o motivo gravado; (c) test_o_passo_das_21h_nao_sai_e_espera_a_manha e test_o_passo_das_6h_nao_sai_e_espera_as_8h_do_MESMO_dia, mais a fronteira declarada em test_as_20h_em_ponto_a_janela_ja_fechou; (d) test_quem_ganha_a_vaga_do_dia_e_a_inscricao_mais_antiga, com a ordem TOTAL (criada_em, id) vindo de um lugar so, regua.ORDEM_DE_DESEMPATE; (e) test_regua_indisponivel_nao_envia_e_grava_o_motivo, com o motivo materializado na Entrega. VERMELHO->VERDE POR SABOTAGEM (armadilhas/195), cada uma sozinha: a classe deixando de isentar -> 2 failed (o cenario das 10h/18h volta); a janela perdendo a hora de abrir -> 1 failed; o teto sumindo -> 3 failed; a regua virando fail-open -> 1 failed com Veredito(libera=True, motivo='regua indisponivel, mando assim mesmo'). Aprendizado: armadilhas/276 e services/mensageria/LICOES.md. Registros: 20260902-007 (deploy verde do #845, run 33639556045) e 20260902-008.",
+  "verificado_em": "2026-09-02"
+}
