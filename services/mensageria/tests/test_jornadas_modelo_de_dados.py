@@ -300,6 +300,14 @@ def test_o_site_id_esta_em_toda_entidade_de_entrada_do_app():
     """
     com_site_id_proprio = {"Jornada", "Inscricao", "Preferencia", "EstadoDoAluno"}
     pela_corrente = {"JornadaVersao", "Passo", "TextoDoPasso", "Entrega", "Efeito"}
+    # A TERCEIRA CATEGORIA, e ela é exceção DECLARADA, não esquecimento.
+    # `OutboxEvent` não é entidade deste app: é uma CARTA pronta esperando o fio,
+    # e o `site_id` dela mora dentro de `payload`, porque `payload` é exatamente
+    # o campo `data` do contrato. Uma coluna `site_id` ao lado seria uma segunda
+    # casa do mesmo fato, e no dia em que as duas discordassem ninguém saberia
+    # qual vale. Este guarda pegou o modelo novo no minuto em que ele nasceu, que
+    # é exatamente para o que ele existe.
+    porque_e_carta_e_nao_entidade = {"OutboxEvent"}
 
     medido = set()
     for modelo in django_apps.get_app_config("jornadas").get_models():
@@ -309,7 +317,9 @@ def test_o_site_id_esta_em_toda_entidade_de_entrada_do_app():
 
     assert medido == com_site_id_proprio
     todos = {m.__name__ for m in django_apps.get_app_config("jornadas").get_models()}
-    assert todos == com_site_id_proprio | pela_corrente
+    assert todos == (
+        com_site_id_proprio | pela_corrente | porque_e_carta_e_nao_entidade
+    )
 
 
 def test_nenhuma_tabela_guarda_e_mail_nome_ou_telefone():

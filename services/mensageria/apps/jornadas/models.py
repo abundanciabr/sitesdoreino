@@ -654,3 +654,50 @@ class Efeito(models.Model):
 
     def __str__(self) -> str:
         return f"efeito de {self.entrega_id}"
+
+
+# ---------------------------------------------------------------------------
+# A VOZ DA CÉLULA — a outbox de onde as cartas saem
+# ---------------------------------------------------------------------------
+
+
+class OutboxEvent(models.Model):
+    """Uma linha por carta que este motor afirma ao resto da plataforma.
+
+    O padrão é copiado da `identidade` e da `alunos` — nunca o arquivo, e nunca
+    por import cruzado (Lei 7): um relay diferente por célula significaria N
+    modos de falha diferentes para o mesmo problema.
+
+    **POR QUE ELA MORA EM `apps/jornadas` E NÃO EM `apps/eventos`**, que é onde
+    um leitor a procuraria primeiro: o §10.7 do plano permite a este app tocar
+    `apps/eventos` num ponto só, criando a linha de `EnvioRegistrado`. Uma outbox
+    lá seria uma segunda tabela alheia sendo escrita daqui — o critério de morte,
+    cumprido por descuido. Quem publica é o motor, então a outbox é do motor.
+
+    `payload` guarda **só o campo `data`** do envelope. O envelope inteiro é
+    montado pelo relay, no instante da publicação: guardar o envelope pronto
+    duplicaria em JSON o que já são colunas, e as duas cópias envelheceriam
+    separadas.
+    """
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    event = models.CharField(max_length=100)
+    version = models.PositiveSmallIntegerField(default=1)
+    payload = models.JSONField()  # SÓ o campo `data` do envelope
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    # As chaves que este evento acrescenta ao ENVELOPE (o nível de cima), e não
+    # ao `data` — hoje o `ator_id`, que é `None` porque não há gente causando um
+    # passo de sequência. O campo existe porque o relay é burro de propósito:
+    # quem emite, que conhece o próprio contrato, é quem declara o envelope.
+    envelope_extra = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        indexes = [
+            # O caminho quente do relay é um só: "o que ainda não publiquei, na
+            # ordem em que aconteceu".
+            models.Index(fields=["published_at", "id"], name="jrn_outbox_pendentes"),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.event}#{self.event_id}"
