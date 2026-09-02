@@ -82,12 +82,16 @@ from ninja.errors import HttpError
 # `mudar` soltos neste arquivo não diriam do quê.
 from apps.gamificacao.interruptores import (
     ConquistaDesconhecida,
+    DegrauDesconhecido,
     RegraDesconhecida,
     impedimentos_da_conquista,
     impedimentos_de,
+    impedimentos_do_degrau,
 )
 from apps.gamificacao.interruptores import listar_conquistas
+from apps.gamificacao.interruptores import listar_degraus
 from apps.gamificacao.interruptores import mudar_conquista
+from apps.gamificacao.interruptores import mudar_degrau
 from apps.gamificacao.interruptores import listar as listar_interruptores
 from apps.gamificacao.interruptores import mudar as mudar_interruptor
 
@@ -711,3 +715,113 @@ def set_achievement_switch(request, slug: str, payload: PedidoDeInterruptor):
     except ConquistaDesconhecida as erro:
         raise HttpError(404, str(erro)) from erro
     return _interruptor_de_conquista(conquista)
+
+
+# ---------------------------------------------------------------------------
+# O TERCEIRO INTERRUPTOR: os degraus da escada
+# ---------------------------------------------------------------------------
+# Nasceu no Rito de Contrato de 02/09/2026, e a pergunta que o rito respondeu foi
+# de produto, como nas conquistas: **ligar um degrau reconhece quem já tem o XP
+# dele?** A resposta é sim, e ela é quase forçada pela natureza da coisa: degrau
+# não paga, é a RÉGUA com que o XP já existente é lido. Ligar o degrau 2 não cria
+# um ponto sequer; passa a chamar de "Aprendiz de Ateliê" quem já tinha 50.
+#
+# Por isso aqui, como nas conquistas, NÃO existe `vigente_desde`. E há uma coisa
+# a mais que este interruptor não faz: recalcular perfil. `PerfilJogador.nivel` é
+# desnormalizado e quem o reescreve é o motor, na próxima vez que o XP daquela
+# pessoa mexer. Varrer a escola num clique mandaria uma chuva de cartas "você
+# subiu de nível" para gente que não fez nada hoje; para o acerto em massa existe
+# `reconciliar_perfis`, que é comando e não botão.
+
+
+class InterruptorDeDegrau(Schema):
+    nivel: int
+    titulo: str
+    titulo_feminino: str
+    xp_necessario: int
+    ativa: bool
+    versao: int
+    impedimentos: list[Literal["escada-de-um-degrau-so", "sem-regra-que-paga"]]
+
+
+def _interruptor_de_degrau(degrau, *, ativos_no_site: int) -> InterruptorDeDegrau:
+    return InterruptorDeDegrau(
+        nivel=degrau.nivel,
+        titulo=degrau.titulo,
+        titulo_feminino=degrau.titulo_feminino,
+        xp_necessario=degrau.xp_necessario,
+        ativa=degrau.ativa,
+        versao=degrau.versao,
+        impedimentos=impedimentos_do_degrau(degrau, ativos_no_site=ativos_no_site),
+    )
+
+
+@router.get(
+    "/economia/degraus",
+    response=list[InterruptorDeDegrau],
+    operation_id="listLevelSwitches",
+    summary="Todos os degraus da escada, ligados e desligados",
+    description=(
+        "A terceira metade da tela do mantenedor, e a que faltava: sem nenhum\n"
+        "degrau ligado a pagina do aluno nao tem escada para mostrar, e diz\n"
+        "isso.\n"
+        "\n"
+        "Devolve TODOS os degraus do site, do primeiro ao ultimo, porque a tela\n"
+        "precisa mostrar o que ele PODE ligar. `titulo` e `titulo_feminino`\n"
+        "viajam pela mesma excecao declarada nas conquistas: eles servem a tela\n"
+        "do MANTENEDOR, que e bastidor, e sao dado que ele edita. O que o ALUNO\n"
+        "le continua saindo de `getMyStatus` e da tela da propria celula.\n"
+        "\n"
+        "`impedimentos` avisa antes do clique quando ligar nao vai adiantar:\n"
+        "`escada-de-um-degrau-so` = com este degrau a escada teria menos de\n"
+        "dois, e um degrau sozinho nao e escada (a tela do aluno diz que o\n"
+        "seguinte ainda nao abriu); `sem-regra-que-paga` = nenhuma regra de\n"
+        "pontuacao esta ligada neste site, entao a barra existe e nunca anda."
+    ),
+)
+def list_level_switches(request):
+    site_id = site_atual()
+    if site_id is None:
+        return []
+    degraus = listar_degraus(site_id)
+    ativos = sum(1 for degrau in degraus if degrau.ativa)
+    return [_interruptor_de_degrau(degrau, ativos_no_site=ativos) for degrau in degraus]
+
+
+@router.post(
+    "/economia/degraus/{nivel}",
+    response=InterruptorDeDegrau,
+    operation_id="setLevelSwitch",
+    summary="Liga ou desliga UM degrau da escada",
+    description=(
+        "Ligar um degrau faz a escola passar a chamar por ele quem ja tem o XP\n"
+        "que ele pede. NENHUM ponto e criado: o degrau e a regua, nao o\n"
+        "pagamento. Por isso nao ha `vigente_desde` aqui, pela mesma razao das\n"
+        "conquistas.\n"
+        "\n"
+        "NAO RECALCULA PERFIL, e a ausencia e decisao: `PerfilJogador.nivel` e\n"
+        "desnormalizado e quem o reescreve e o motor, na proxima vez que o XP\n"
+        "daquela pessoa mexer. Varrer a escola num clique mandaria uma chuva de\n"
+        "cartas 'voce subiu de nivel' para quem nao fez nada hoje; o acerto em\n"
+        "massa e o comando `reconciliar_perfis`.\n"
+        "\n"
+        "`versao` sobe quando algo muda, e chamada que nao muda nada devolve a\n"
+        "linha como esta, sem gastar versao.\n"
+        "\n"
+        "Numero de degrau que nao existe responde 404, como os outros dois\n"
+        "interruptores: inventar em silencio qual degrau o mantenedor quis\n"
+        "ligar seria pior que recusar."
+    ),
+)
+def set_level_switch(request, nivel: int, payload: PedidoDeInterruptor):
+    site_id = site_atual()
+    if site_id is None:
+        # Escrever na escola errada não tem volta: esta operação recusa, como as
+        # outras duas de escrita desta porta. As LEITURAS é que falham abertas.
+        raise HttpError(503, "esta instalacao nao declara SITE_ID")
+    try:
+        degrau = mudar_degrau(site_id=site_id, nivel=nivel, ativa=payload.ativa)
+    except DegrauDesconhecido as erro:
+        raise HttpError(404, str(erro)) from erro
+    ativos = NivelDefinicaoModel.objects.filter(site_id=site_id, ativa=True).count()
+    return _interruptor_de_degrau(degrau, ativos_no_site=ativos)
