@@ -221,7 +221,13 @@ class Rede:
         return httpx.Response(200, json=corpo or {"autenticado": False})
 
     def site_reconhece(
-        self, valor: str, *, email: str, nome: str = "João", com_id: bool = True
+        self,
+        valor: str,
+        *,
+        email: str,
+        nome: str = "João",
+        com_id: bool = True,
+        papel: str = "aluno",
     ) -> None:
         """Registra: quem carregar `meshcraft_sessao=<valor>` é esta pessoa.
 
@@ -232,12 +238,19 @@ class Rede:
         porta REGRAVA o id na reentrada (INV-SUG11). Foi assim que o guarda do
         fail-closed do ator nasceu verde por engano, em 26/08/2026, antes de
         alguém notar que ele não estava encenando falha nenhuma.
+
+        `papel` é o campo de EXIBIÇÃO do contrato (`Session.papel`), e o dublê
+        passou a devolvê-lo em 03/09/2026, quando o menu do topo ganhou a
+        plateia `staff`. O padrão é `aluno` porque é o que a identidade responde
+        para quase todo mundo — um dublê que devolvesse `staff` por descuido
+        faria o guarda do item de equipe passar sem medir nada.
         """
         self.sessoes[valor] = {
             "autenticado": True,
             "id": id_da_plataforma_de(email) if com_id else None,
             "nome_exibido": nome,
             "email": email,
+            "papel": papel,
         }
 
     def central_fora_do_ar(self) -> None:
@@ -524,7 +537,14 @@ def porta(client, rede, db):
     return Porta(client, rede)
 
 
-def sessao_do_site(rede: Rede, *, email: str, nome: str = "João", com_id: bool = True):
+def sessao_do_site(
+    rede: Rede,
+    *,
+    email: str,
+    nome: str = "João",
+    com_id: bool = True,
+    papel: str = "aluno",
+):
     """Um `Client` novo já carregando uma sessão VÁLIDA do site.
 
     O cookie é opaco e registrado no dublê da identidade — exatamente o
@@ -533,7 +553,7 @@ def sessao_do_site(rede: Rede, *, email: str, nome: str = "João", com_id: bool 
     from django.test import Client
 
     valor = secrets.token_urlsafe(12)
-    rede.site_reconhece(valor, email=email, nome=nome, com_id=com_id)
+    rede.site_reconhece(valor, email=email, nome=nome, com_id=com_id, papel=papel)
     cliente = Client()
     cliente.cookies["meshcraft_sessao"] = valor
     return Porta(cliente, rede, email=email)
@@ -547,9 +567,13 @@ def entrar_como(rede, matricula, db):
     do site sozinha não participa (há guarda para isso).
     """
 
-    def _entrar(email: str = "joao.silva@exemplo.test", nome: str = "João") -> Porta:
+    def _entrar(
+        email: str = "joao.silva@exemplo.test",
+        nome: str = "João",
+        papel: str = "aluno",
+    ) -> Porta:
         rede.alunos_diz(email, [matricula])
-        pessoa = sessao_do_site(rede, email=email, nome=nome)
+        pessoa = sessao_do_site(rede, email=email, nome=nome, papel=papel)
         assert pessoa.esta_dentro
         return pessoa
 

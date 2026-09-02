@@ -310,6 +310,16 @@ class Resolucao:
     ator: "Ator | None" = None
     email: str = ""
 
+    # O `papel` que a `identidade` devolve, guardado como VEIO. Ele existe para
+    # UMA coisa: a plateia `staff` do menu do topo, que é dado do SITE e precisa
+    # significar a mesma coisa em todas as áreas dele.
+    #
+    # Não confunda com `ator.papel`, que é derivado da `SUGESTOES_STAFF_EMAILS`
+    # e decide MODERAÇÃO aqui dentro. Este decide se um atalho aparece, e nada
+    # mais — o cabeçalho deste arquivo já dizia que o papel da identidade "é de
+    # EXIBIÇÃO e não autoriza nada aqui", e é exatamente esse o uso.
+    papel_do_site: str = ""
+
 
 def _sessao_central(cookie: str) -> dict:
     """A resposta da `identidade` para este cookie — com cache curto.
@@ -425,7 +435,9 @@ def _resolver(request) -> Resolucao:
         identidade = cunhar_ou_recuperar(
             email=email, nome=nome, id_da_plataforma=da_plataforma
         )
-        return Resolucao(DENTRO, Ator(identidade, PAPEL_STAFF), email)
+        return Resolucao(
+            DENTRO, Ator(identidade, PAPEL_STAFF), email, _papel_do_site(dados)
+        )
 
     try:
         categoria = _situacao(email)
@@ -446,7 +458,19 @@ def _resolver(request) -> Resolucao:
     identidade = cunhar_ou_recuperar(
         email=email, nome=nome, id_da_plataforma=da_plataforma
     )
-    return Resolucao(DENTRO, Ator(identidade, PAPEL_ALUNO), email)
+    return Resolucao(
+        DENTRO, Ator(identidade, PAPEL_ALUNO), email, _papel_do_site(dados)
+    )
+
+
+def _papel_do_site(dados: dict) -> str:
+    """O `papel` da resposta da `identidade`, como veio.
+
+    Numa função, e não repetido nas duas construções acima, porque as duas
+    precisam do mesmo valor e uma delas esquecida seria a moderadora vendo um
+    menu diferente do da aluna — sem nada ficar vermelho.
+    """
+    return (dados.get("papel") or "").strip()
 
 
 def ator_atual(request):

@@ -331,3 +331,91 @@ def test_os_outros_lugares_continuam_no_menu_da_caixa(dentro, rede, quadro):
     menu = so_o_menu(dentro.client.get(reverse("quadro"), **PREFIXO).content.decode())
     assert 'href="/"' in menu
     assert 'href="/forum/"' in menu
+
+
+# ---------------------------------------------------------------------------
+# A plateia `staff` — o atalho que só quem é da equipe vê (03/09/2026)
+# ---------------------------------------------------------------------------
+# Quatro guardas, e o quarto é o que ninguém pediria: plateia que esta célula
+# NÃO conhece some, em vez de aparecer para todo mundo. É ele que impede um
+# valor novo no catálogo de vazar um atalho durante a janela em que uma das
+# células ainda não subiu com o código novo.
+#
+# Toda asserção é sobre o CORPO RENDERIZADO, nunca sobre a tabela de regras
+# (`armadilhas/242`): uma tabela certa com um chamador que passa o argumento
+# errado passaria num teste que só lê a tabela.
+MENU_COM_EQUIPE = {
+    "default_version": "v",
+    "versions": [
+        {
+            "slug": "v",
+            "name": "V",
+            "items": [
+                {
+                    "url": "/admin/",
+                    "labels": {"pt-br": "Admin"},
+                    "localized": False,
+                    "audience": "staff",
+                    "new_tab": False,
+                },
+                {
+                    "url": "/inventada/",
+                    "labels": {"pt-br": "Plateia Inventada"},
+                    "localized": False,
+                    # Valor que ESTA célula não conhece. Em produção ele só pode
+                    # chegar aqui de um catálogo mais novo que o container, que
+                    # é exatamente a janela de um deploy em andamento.
+                    "audience": "plateia-que-nao-existe",
+                    "new_tab": False,
+                },
+                {
+                    "url": "/forum/",
+                    "labels": {"pt-br": "Fórum"},
+                    "localized": False,
+                    "audience": "everyone",
+                    "new_tab": False,
+                },
+                {
+                    # O segundo item de controle, e ele existe por um motivo
+                    # medido: cada célula esconde o item que aponta para a área
+                    # onde a pessoa já está. Com um `everyone` só, o menu de
+                    # teste ficava VAZIO na célula dona daquele endereço — e um
+                    # menu vazio não é desenhado, então o guarda estourava
+                    # procurando a tag em vez de medir a plateia.
+                    "url": "/",
+                    "labels": {"pt-br": "Início"},
+                    "localized": False,
+                    "audience": "everyone",
+                    "new_tab": False,
+                },
+            ],
+        }
+    ],
+    "pages": [],
+}
+
+
+@pytest.mark.parametrize(
+    "papel,aparece",
+    [("staff", True), ("aluno", False)],
+    ids=["equipe", "aluno"],
+)
+def test_o_atalho_da_equipe_so_aparece_para_a_equipe(
+    entrar_como, rede, quadro, papel, aparece
+):
+    """A pessoa entra pela porta REAL da Caixa, e o que muda é só o `papel` que
+    a identidade responde — que é o campo que decide o atalho."""
+    pessoa = entrar_como(papel=papel)
+    catalogo_diz(rede, site=dict(SITE, menu=MENU_COM_EQUIPE))
+    menu = so_o_menu(pessoa.client.get(reverse("quadro"), **PREFIXO).content.decode())
+    assert (">Admin</a>" in menu) is aparece
+    assert ">Fórum</a>" in menu, "o menu inteiro sumiu — o guarda não mediu nada"
+
+
+def test_plateia_desconhecida_nao_aparece_para_ninguem(entrar_como, rede, quadro):
+    """Fail-CLOSED. Até 03/09/2026 esta célula mostrava para TODO MUNDO o que
+    não entendia."""
+    pessoa = entrar_como(papel="staff")
+    catalogo_diz(rede, site=dict(SITE, menu=MENU_COM_EQUIPE))
+    menu = so_o_menu(pessoa.client.get(reverse("quadro"), **PREFIXO).content.decode())
+    assert "Plateia Inventada" not in menu
