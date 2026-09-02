@@ -138,53 +138,85 @@ def quem_e(request) -> str | None:
     não é erro. Obrigar o consumidor a traduzir 401 em "ninguém logado" é como
     o widget da home acabaria mostrando tela de erro para quem só não entrou.
 
-    **UMA resolução por requisição, guardada na própria requisição** (02/09/2026).
-    Desde que o menu do topo chegou a esta célula, quem pergunta "entrou?" são
-    DOIS: a view, e o processador de contexto que monta o menu — e o processador
-    roda DEPOIS da view que já perguntou. Sem esta memória, toda página de aluno
-    custaria duas idas à `identidade` em vez de uma, e o caminho caro seria o
-    NORMAL: os itens "Caixa" e "Conquistas" do menu do site nascem com plateia
-    `logged_in` (migração `sites/0005`), então há sempre item condicional.
-
-    A memória vive na REQUISIÇÃO, e não em módulo: ela morre com a resposta, e
-    duas pessoas nunca compartilham a mesma. Cache de sessão em variável de
-    processo é exatamente como uma tela passa verde mostrando o nome de outra
-    pessoa.
-
-    O sentinela existe porque `None` é resposta LEGÍTIMA (visitante), e precisa
-    ser lembrada como qualquer outra — com `getattr(..., None)` todo visitante
-    perguntaria de novo, que é justamente o caso mais comum de uma página
-    pública.
+    **UMA resolução por requisição**, e a memória mora em `corpo_da_sessao`,
+    logo abaixo — esta função só lê o id de lá. Até 03/09/2026 a memória era
+    daqui e guardava o id; ela desceu um andar quando o menu passou a precisar
+    também do `papel`, que vem na MESMA resposta.
     """
-    guardado = getattr(request, "_quem_e_desta_requisicao", _NAO_PERGUNTEI)
-    if guardado is not _NAO_PERGUNTEI:
-        return guardado
-    resposta = _resolver_quem_e(request)
-    try:
-        request._quem_e_desta_requisicao = resposta
-    except AttributeError:
-        # Requisição que não aceita atributo novo (um dublê de teste, por
-        # exemplo) continua funcionando — só paga o salto de novo.
-        pass
-    return resposta
-
-
-def _resolver_quem_e(request) -> "str | None":
-    """A cadeia de verdade, sem memória nenhuma. Quem chama é `quem_e`."""
-    cookie = request.META.get("HTTP_COOKIE", "")
-    if not cookie:
-        return None
-
-    try:
-        corpo = _sessao(cookie)
-    except (IdentidadeIndisponivel, ConfiguracaoAusente) as erro:
-        logger.warning("não deu para reconhecer a sessão: %s", erro)
-        return None
-
+    corpo = corpo_da_sessao(request)
     if not corpo.get("autenticado"):
         return None
     # Autenticado sem id é resposta fora de forma: não há a quem atribuir XP.
     return corpo.get("id") or None
+
+
+def corpo_da_sessao(request) -> dict:
+    """A resposta de `getSession` desta requisição, resolvida UMA vez.
+
+    **Guarda o CORPO, e não só o id, desde 03/09/2026.** O `papel` sempre veio
+    nesta mesma resposta (`Session`, contrato congelado) e era jogado fora aqui;
+    o menu do topo passou a precisar dele para a plateia `staff`, e lê-lo do
+    corpo guardado custa ZERO salto de rede novo. É o mesmo movimento que a
+    Fase 1 do sininho fez na Caixa com o `id`.
+
+    `{}` para visitante, para tropeço de rede e para env ausente — os três são o
+    mesmo, do ponto de vista de quem desenha a tela, e nenhum deles pode
+    derrubar a página.
+
+    **Por que a memória existe** (02/09/2026): quem pergunta "quem é?" são DOIS
+    — a view, e o processador de contexto que monta o menu, que roda DEPOIS da
+    view que já perguntou. Sem ela, toda página de aluno custaria duas idas à
+    `identidade` em vez de uma, e o caminho caro seria o NORMAL: os itens
+    "Caixa" e "Conquistas" do menu do site nascem com plateia `logged_in`
+    (migração `sites/0005`), então há sempre item condicional.
+
+    **A memória vive na REQUISIÇÃO, e não em módulo:** ela morre com a resposta,
+    e duas pessoas nunca compartilham a mesma. Cache de sessão em variável de
+    processo é exatamente como uma tela passa verde mostrando o nome de outra
+    pessoa.
+
+    O sentinela existe porque `{}` é resposta LEGÍTIMA (visitante), e precisa
+    ser lembrada como qualquer outra — com `getattr(..., None)` todo visitante
+    perguntaria de novo, que é justamente o caso mais comum de uma página
+    pública.
+    """
+    guardado = getattr(request, "_sessao_desta_requisicao", _NAO_PERGUNTEI)
+    if guardado is not _NAO_PERGUNTEI:
+        return guardado
+    corpo = _resolver_sessao(request)
+    try:
+        request._sessao_desta_requisicao = corpo
+    except AttributeError:
+        # Requisição que não aceita atributo novo (um dublê de teste, por
+        # exemplo) continua funcionando — só paga o salto de novo.
+        pass
+    return corpo
+
+
+def _resolver_sessao(request) -> dict:
+    """A cadeia de verdade, sem memória nenhuma. Quem chama é `corpo_da_sessao`."""
+    cookie = request.META.get("HTTP_COOKIE", "")
+    if not cookie:
+        return {}
+    try:
+        return _sessao(cookie)
+    except (IdentidadeIndisponivel, ConfiguracaoAusente) as erro:
+        logger.warning("não deu para reconhecer a sessão: %s", erro)
+        return {}
+
+
+def papel_de_exibicao(request) -> str:
+    """O `papel` que a `identidade` devolve — `aluno`, `staff`, ou vazio.
+
+    **Para EXIBIÇÃO apenas**, e o nome diz isso de propósito. Ele decide se um
+    atalho aparece no menu, e nada mais. Autorização nesta célula é a lista
+    `IDS_DA_EQUIPE` do env, conferida em `apps/core/equipe.py`, e ela não olha
+    para este campo (`DECISAO-onde-mora-a-sessao` §4: reconhecer não é
+    autorizar).
+
+    Não custa salto de rede: sai do mesmo corpo que `quem_e` já resolveu.
+    """
+    return corpo_da_sessao(request).get("papel") or ""
 
 
 def _sessao(cookie: str) -> dict:
