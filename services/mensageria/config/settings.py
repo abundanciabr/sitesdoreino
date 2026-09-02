@@ -30,9 +30,21 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    # A instalação documentada do Django para os campos de `contrib.postgres` —
+    # aqui, o `ArrayField` de `apps.jornadas.Passo.canais`. Não cria tabela, não
+    # tem migração própria, e não vira dependência nova: esta célula já é
+    # Postgres em produção, em dev e no CI.
+    "django.contrib.postgres",
     "huey.contrib.djhuey",  # entrypoint oficial do worker: manage.py run_huey (§4.11)
     "apps.core",
     "apps.eventos",
+    # O motor das sequências (`PLANO-SEQUENCIAS-DE-MENSAGENS.md` §4.1: o
+    # mantenedor escolheu em 30/08/2026 que ele mora DENTRO desta célula, e não
+    # numa célula nova). App separado, banco compartilhado: ele lê e escreve as
+    # próprias tabelas e toca `apps.eventos` num ponto só — criando a linha de
+    # `EnvioRegistrado`. Ler ou escrever qualquer outra tabela de lá é o
+    # critério de morte §10.7 do plano.
+    "apps.jornadas",
 ]
 
 MIDDLEWARE = [
