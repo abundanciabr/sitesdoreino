@@ -84,6 +84,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -655,8 +656,18 @@ def ler_diff(numero: int, raiz: Path, timeout: int) -> str:
 
 
 def comentar(numero: int, raiz: Path, texto: str, timeout: int) -> None:
-    alvo = raiz / f".revisor-de-pouso-{numero}.md"
-    try:
+    """Publica o veredito no PR, por arquivo e FORA da árvore do repositório.
+
+    Por `--body-file`: o corpo tem markdown, quebras de linha e acentos, e
+    passá-lo como argumento de linha de comando é onde escape se perde.
+
+    Fora da árvore porque este processo pode ser MORTO pelo `timeout` da pista
+    no meio do caminho. Um temporário na raiz sobreviveria ao revisor e sujaria
+    a árvore de quem o chamou — e quem o chama é a máquina que faz todo PR
+    desta casa pousar.
+    """
+    with tempfile.TemporaryDirectory(prefix="revisor-de-pouso-") as pasta:
+        alvo = Path(pasta) / f"veredito-{numero}.md"
         alvo.write_text(texto, encoding="utf-8")
         executar(
             ["gh", "pr", "comment", str(numero), "--body-file", str(alvo)],
@@ -664,8 +675,6 @@ def comentar(numero: int, raiz: Path, texto: str, timeout: int) -> None:
             descricao=f"comentar o veredito no PR #{numero}",
             timeout=timeout,
         )
-    finally:
-        alvo.unlink(missing_ok=True)
 
 
 def main(argv: list[str] | None = None) -> int:
