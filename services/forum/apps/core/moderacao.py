@@ -35,8 +35,10 @@ As cinco regras que este arquivo inteiro obedece, e que não se reabrem aqui:
 
 from __future__ import annotations
 
+import json
+
 from django.db import IntegrityError, transaction
-from django.http import Http404
+from django.http import Http404, StreamingHttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -658,3 +660,117 @@ def gerar_resposta(request, topico_id: int):
             orientacao=orientacao,
         ),
     )
+
+
+# ===========================================================================
+# O MESMO RASCUNHO, AO VIVO — palavra por palavra, enquanto ela escreve
+# ===========================================================================
+# Pedido do mantenedor em 02/09/2026: *"quero o streaming da resposta sendo
+# gerada na tela ao vivo para facilitar o feedback visual"*. O motivo é o susto
+# que ele levou horas antes: alguns segundos sem sinal nenhum são
+# indistinguíveis de um botão quebrado.
+#
+# **Esta porta NÃO substitui a de cima, e é por isso que ela não a apaga.** A
+# view `gerar_resposta` continua sendo o caminho do formulário comum, e é para
+# ela que `static/forum.js` volta quando o ao vivo falha. Duas portas para o
+# mesmo pedido é duplicação aceita e declarada: o que elas compartilham (a
+# permissão, as falas, o aviso do fim) mora em função, e o que difere é só a
+# forma de entregar.
+#
+# O CONTRATO DA RESPOSTA é uma linha JSON por pedaço, terminada em `\n`:
+#
+#     {"t": "Escale "}      texto que chegou agora
+#     {"erro": "..."}       deu errado; a frase já vem em português
+#     {"fim": "..."}        acabou; o aviso para quem vai publicar
+#
+# Linha é o quadro mais simples que sobrevive a um pedaço partido no meio pela
+# rede, e quem remonta a metade é o navegador. Não é SSE de propósito: SSE
+# traria um formato de eventos que ninguém aqui precisa, e o `EventSource` do
+# navegador nem sequer faz POST.
+
+
+def _linha(pedaco: dict) -> str:
+    """Um quadro do fluxo. `ensure_ascii=False` para o acento não virar escape."""
+    return json.dumps(pedaco, ensure_ascii=False) + "\n"
+
+
+def _fluxo_de_um_erro(frase: str) -> StreamingHttpResponse:
+    """Uma recusa no MESMO formato do fluxo.
+
+    Devolver aqui um HTML de erro obrigaria o navegador a ter dois jeitos de ler
+    a resposta, e o segundo jeito só seria exercitado no dia da falha — que é o
+    dia em que ninguém quer descobrir um caminho novo.
+    """
+    return StreamingHttpResponse(
+        iter([_linha({"erro": frase})]),
+        content_type="application/x-ndjson",
+        status=400,
+    )
+
+
+@require_POST
+def gerar_resposta_ao_vivo(request, topico_id: int):
+    """O rascunho saindo em pedaços, para o navegador mostrar enquanto chega."""
+    ator = _so_quem_modera(request)
+    topico = get_object_or_404(
+        Topico.objects.select_related("area", "autor"), pk=topico_id
+    )
+    orientacao = (request.POST.get("orientacao") or "").strip()[
+        : agente.TETO_DA_ORIENTACAO
+    ]
+
+    if topico.estado != Topico.Estado.PUBLICADO:
+        return _fluxo_de_um_erro(ERRO_IA_FORA_DO_AR)
+    if topico.trancado:
+        return _fluxo_de_um_erro(ERRO_IA_TRANCADO)
+
+    # AS FALAS SAEM DO BANCO AGORA, antes de a resposta começar. Consulta dentro
+    # do gerador rodaria com o fluxo já aberto, e uma falha ali chegaria no meio
+    # do texto, quando não há mais como devolver um erro limpo.
+    falas = _falas_para_a_ia(topico)
+    area_nome = topico.area.nome
+    titulo = topico.titulo
+
+    def pedacos():
+        recibo: dict = {}
+        inteiro: list[str] = []
+        try:
+            for pedaco in agente.rascunhar_ao_vivo(
+                area_nome=area_nome,
+                titulo=titulo,
+                falas=falas,
+                orientacao=orientacao,
+                recibo=recibo,
+            ):
+                inteiro.append(pedaco)
+                yield _linha({"t": pedaco})
+        except agente.AgenteIndisponivel as erro:
+            # No meio do fluxo o status já foi 200 e não dá para voltar atrás:
+            # a recusa viaja DENTRO do corpo, e o navegador a mostra na caixa.
+            yield _linha({"erro": str(erro)})
+            return
+
+        texto = "".join(inteiro).strip()
+        if not texto:
+            yield _linha({"erro": agente.VEIO_VAZIA})
+            return
+
+        yield _linha(
+            {
+                "fim": _o_que_avisar(
+                    agente.Rascunho(
+                        texto=texto,
+                        cortado=bool(recibo.get("cortado")),
+                        tokens_de_entrada=int(recibo.get("tokens_de_entrada") or 0),
+                        tokens_de_saida=int(recibo.get("tokens_de_saida") or 0),
+                    )
+                )
+            }
+        )
+
+    resposta = StreamingHttpResponse(pedacos(), content_type="application/x-ndjson")
+    # Sem isto, um intermediário que resolva guardar a resposta entregaria o
+    # texto inteiro no fim, e o ao vivo viraria uma espera com passos extras.
+    resposta["Cache-Control"] = "no-store"
+    resposta["X-Accel-Buffering"] = "no"
+    return resposta

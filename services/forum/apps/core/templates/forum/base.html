@@ -51,5 +51,19 @@ assinatura da casa, e leitor de tela o anuncia como rodapé por causa da tag.
   </nav>{% endif %}{% if rodape.mostra_direitos %}
   <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
 </footer>{% endif %}
+{% comment %}
+O PRIMEIRO JavaScript de uma página pública deste site (02/09/2026). Ele serve a
+uma coisa só: mostrar o rascunho da IA aparecendo ao vivo, para professor e
+administrador. Fica no FIM do corpo e sem `defer` por escolha: quando ele roda,
+o formulário que ele procura já existe.
+
+**Nada nesta página depende dele.** Se ele não carregar, se o navegador não
+tiver as peças, ou se a chamada ao vivo falhar, o botão volta a ser um
+formulário comum. Quem lê o fórum sem entrar nem chega a baixá-lo.
+
+`{% url %}` e não `{% static %}` pelo mesmo motivo do CSS: só o primeiro carrega
+o prefixo público `/forum` (`armadilhas/083`).
+{% endcomment %}
+<script src="{% url 'estatico' 'forum.js' %}"></script>
 </body>
 </html>

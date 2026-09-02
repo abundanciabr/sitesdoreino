@@ -798,7 +798,213 @@ def test_o_env_da_celula_deixa_o_log_de_apps_sair(settings):
 
 
 # ---------------------------------------------------------------------------
-# 10. A TESOURA DA CONVERSA — o começo e o fim, nunca o silêncio
+# 10. O RASCUNHO AO VIVO — pedaco por pedaco, enquanto ela escreve
+# ---------------------------------------------------------------------------
+# Pedido do mantenedor em 02/09/2026, depois do susto de achar que o botão
+# estava quebrado: alguns segundos sem sinal nenhum são indistinguíveis de uma
+# tela travada.
+#
+# O dublê aqui devolve um corpo `text/event-stream` de verdade, com a sequência
+# real de eventos da API. Assim o SDK faz o parsing que faz em produção, e um
+# erro no jeito de consumir o fluxo aparece no teste em vez de aparecer na
+# primeira chamada paga (`armadilhas/061`).
+
+EVENTOS_DO_INICIO = (
+    'event: message_start\ndata: {"type":"message_start","message":{"id":"msg_1",'
+    '"type":"message","role":"assistant","model":"claude-opus-5","content":[],'
+    '"stop_reason":null,"stop_sequence":null,'
+    '"usage":{"input_tokens":120,"output_tokens":0}}}\n\n'
+    'event: content_block_start\ndata: {"type":"content_block_start","index":0,'
+    '"content_block":{"type":"text","text":""}}\n\n'
+)
+
+
+def corpo_ao_vivo(pedacos, *, stop_reason="end_turn"):
+    """A resposta em fluxo, na forma que a API realmente manda."""
+    corpo = EVENTOS_DO_INICIO
+    for pedaco in pedacos:
+        corpo += (
+            'event: content_block_delta\ndata: {"type":"content_block_delta",'
+            '"index":0,"delta":{"type":"text_delta","text":%s}}\n\n'
+            % json.dumps(pedaco)
+        )
+    corpo += (
+        'event: content_block_stop\ndata: {"type":"content_block_stop","index":0}\n\n'
+    )
+    corpo += (
+        'event: message_delta\ndata: {"type":"message_delta","delta":'
+        '{"stop_reason":"%s","stop_sequence":null},"usage":{"output_tokens":340}}\n\n'
+        % stop_reason
+    )
+    corpo += 'event: message_stop\ndata: {"type":"message_stop"}\n\n'
+    return corpo
+
+
+def dublar_ao_vivo(monkeypatch, pedacos, *, stop_reason="end_turn", capturado=None):
+    def falso(self, request):
+        if capturado is not None:
+            capturado["corpo"] = json.loads(request.content)
+        return httpx2.Response(
+            200,
+            content=corpo_ao_vivo(pedacos, stop_reason=stop_reason).encode("utf-8"),
+            headers={"content-type": "text/event-stream"},
+            request=request,
+        )
+
+    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", falso)
+
+
+def gerar_ao_vivo(client, topico, **campos):
+    return client.post(
+        reverse("gerar_resposta_ao_vivo", args=[topico.pk]),
+        campos,
+        headers={"cookie": COOKIE},
+    )
+
+
+def quadros(resposta):
+    """As linhas JSON do fluxo, já interpretadas."""
+    inteiro = b"".join(resposta.streaming_content).decode("utf-8")
+    return [json.loads(linha) for linha in inteiro.splitlines() if linha.strip()]
+
+
+def test_ao_vivo_manda_o_texto_em_pedacos_separados(env, monkeypatch, conversa):
+    """Se viesse tudo num quadro só, o ao vivo seria uma espera com passos extras."""
+    como_dono(monkeypatch)
+    dublar_ao_vivo(monkeypatch, ["Escale ", "o UV ", "antes de pintar."])
+
+    resposta = gerar_ao_vivo(Client(), conversa, orientacao="")
+    lidos = quadros(resposta)
+
+    assert resposta.status_code == 200
+    textos = [q["t"] for q in lidos if "t" in q]
+    assert textos == ["Escale ", "o UV ", "antes de pintar."]
+    assert "".join(textos) == "Escale o UV antes de pintar."
+
+
+def test_ao_vivo_termina_avisando_quem_vai_publicar(env, monkeypatch, conversa):
+    como_dono(monkeypatch)
+    dublar_ao_vivo(monkeypatch, ["Escale o UV."])
+
+    lidos = quadros(gerar_ao_vivo(Client(), conversa, orientacao=""))
+
+    fim = [q["fim"] for q in lidos if "fim" in q]
+    assert fim, "o fluxo acabou sem dizer que acabou"
+    assert "Leia inteiro antes de publicar" in fim[0]
+
+
+def test_ao_vivo_aponta_o_travessao_no_fim(env, monkeypatch, conversa):
+    """A mesma lei do modo de uma vez: a máquina aponta, a pessoa reescreve."""
+    como_dono(monkeypatch)
+    dublar_ao_vivo(monkeypatch, ["O UV ", "— aquele mapa — ", "precisa de escala."])
+
+    lidos = quadros(gerar_ao_vivo(Client(), conversa, orientacao=""))
+
+    fim = [q["fim"] for q in lidos if "fim" in q][0]
+    assert "risca longa" in fim
+
+
+def test_ao_vivo_avisa_quando_a_resposta_veio_cortada(env, monkeypatch, conversa):
+    como_dono(monkeypatch)
+    dublar_ao_vivo(monkeypatch, ["Primeiro escale o"], stop_reason="max_tokens")
+
+    lidos = quadros(gerar_ao_vivo(Client(), conversa, orientacao=""))
+
+    assert "terminou no meio" in [q["fim"] for q in lidos if "fim" in q][0]
+
+
+def test_ao_vivo_manda_a_recusa_dentro_do_proprio_fluxo(env, monkeypatch, conversa):
+    """No meio do fluxo o status já foi 200: a recusa tem de viajar no corpo."""
+    como_dono(monkeypatch)
+    dublar_a_anthropic(
+        monkeypatch,
+        status=400,
+        corpo=erro_da_anthropic("Your credit balance is too low."),
+    )
+
+    lidos = quadros(gerar_ao_vivo(Client(), conversa, orientacao=""))
+
+    erros = [q["erro"] for q in lidos if "erro" in q]
+    assert erros and "sem crédito" in erros[0]
+
+
+def test_ao_vivo_com_a_conversa_trancada_recusa_no_mesmo_formato(
+    env, monkeypatch, conversa
+):
+    """Devolver HTML aqui obrigaria o navegador a ter dois jeitos de ler."""
+    conversa.trancado = True
+    conversa.save()
+    como_dono(monkeypatch)
+
+    resposta = gerar_ao_vivo(Client(), conversa, orientacao="")
+    lidos = quadros(resposta)
+
+    assert resposta.status_code == 400
+    assert "trancada" in [q["erro"] for q in lidos if "erro" in q][0]
+
+
+def test_ao_vivo_e_a_mesma_porta_fechada_para_quem_nao_modera(
+    env, monkeypatch, conversa
+):
+    como_aluna(monkeypatch)
+    assert gerar_ao_vivo(Client(), conversa, orientacao="").status_code == 404
+
+
+def test_ao_vivo_por_get_recusa(env, monkeypatch, conversa):
+    como_dono(monkeypatch)
+    resposta = Client().get(
+        reverse("gerar_resposta_ao_vivo", args=[conversa.pk]),
+        headers={"cookie": COOKIE},
+    )
+    assert resposta.status_code == 405
+
+
+def test_ao_vivo_pede_a_mesma_coisa_que_o_modo_de_uma_vez(env, monkeypatch, conversa):
+    """As duas formas de pedir não podem passar a responder coisas diferentes.
+
+    `_pedido` existe para isso, e este caso é o que o prova: o corpo enviado
+    carrega o mesmo modelo, o mesmo esforço e a mesma transcrição sem nomes.
+    """
+    como_dono(monkeypatch)
+    capturado: dict = {}
+    dublar_ao_vivo(monkeypatch, ["ok"], capturado=capturado)
+
+    # A RESPOSTA EM FLUXO E PREGUICOSA: o gerador so roda quando alguem le os
+    # pedacos, entao a chamada a Anthropic ainda NAO aconteceu aqui. Conferir o
+    # `capturado` sem consumir o fluxo devolve um dicionario vazio, e foi
+    # exatamente assim que este teste falhou na primeira escrita.
+    quadros(gerar_ao_vivo(Client(), conversa, orientacao="responda curto"))
+
+    corpo = capturado["corpo"]
+    assert corpo["model"] == "claude-opus-5"
+    assert corpo["output_config"] == {"effort": agente.ESFORCO}
+    assert corpo["stream"] is True
+    pergunta = corpo["messages"][0]["content"]
+    assert "responda curto" in pergunta
+    assert "[Aluno] Travei no Studio e a malha deforma." in pergunta
+    assert "Ana" not in json.dumps(corpo, ensure_ascii=False)
+
+
+def test_a_tela_oferece_o_ao_vivo_sem_depender_dele(env, monkeypatch, conversa):
+    """O `action` continua sendo a rota de sempre; o ao vivo viaja como dado.
+
+    É essa ordem que faz o script ser melhoria e não dependência: sem ele, o
+    formulário posta no `action` e o rascunho chega inteiro.
+    """
+    como_dono(monkeypatch)
+
+    tela = abrir(Client(), conversa).content.decode()
+
+    assert 'action="' + reverse("gerar_resposta", args=[conversa.pk]) + '"' in tela
+    assert (
+        'data-ao-vivo="' + reverse("gerar_resposta_ao_vivo", args=[conversa.pk]) + '"'
+        in tela
+    )
+    assert 'id="ia-recado"' in tela
+
+
+# ---------------------------------------------------------------------------
+# 11. A TESOURA DA CONVERSA — o começo e o fim, nunca o silêncio
 # ---------------------------------------------------------------------------
 
 
