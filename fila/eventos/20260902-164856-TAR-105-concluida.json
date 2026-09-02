@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260902-164856-TAR-105-concluida",
+  "tarefa": "TAR-105",
+  "evento": "concluida",
+  "quando": "2026-09-02T16:48:56+00:00",
+  "quem": "sessao-revisao-jornadas-2026-09-02",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/866 - VERMELHO->VERDE medido com Postgres de bancada. Contra origin/main os 6 guardas novos dao '4 failed, 2 passed': FAILED test_um_passo_de_dois_canais_sai_pelos_dois (assert ['sino'] == ['email','sino']), FAILED test_quem_silenciou_avanca_a_jornada_em_vez_de_ficar_preso (estado='andando' passo_atual=0 depois de 11 dias), FAILED test_a_recusa_definitiva_libera_a_pessoa_para_entrar_de_novo, FAILED test_as_presas_nao_engolem_a_vaga_de_quem_chega_depois (assert 'aluno-novo' in [] - zero atendimentos em 14 passadas com lote=3). Os 2 que ja passam sao os guardas anti-afrouxamento (o teto continua barrando a 2a mensagem do dia; falha de despacho continua NAO avancando) e sao verdes dos dois lados de proposito. Com o conserto: 6 passed. Suite da celula 108 -> 114 verdes, black limpo (42 arquivos), 13 muralhas PASS. Conferido e NAO tocado: uniq_envio_por_order_tipo_canal com zero linhas de diff em apps/eventos/ nos tres PRs revisados. Aprendizado em armadilhas/283 e 284.",
+  "verificado_em": "2026-09-02"
+}

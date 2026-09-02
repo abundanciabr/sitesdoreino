@@ -158,7 +158,12 @@ def _aceita(destinatario_id: str, site_id: str, canal: str, classe: str) -> bool
     return True if linha is None else linha.aceita
 
 
-def _quantas_hoje(destinatario_id: str, site_id: str, momento: datetime) -> int:
+def _quantas_hoje(
+    destinatario_id: str,
+    site_id: str,
+    momento: datetime,
+    excluir: tuple[object, object] | None = None,
+) -> int:
     """Quantas mensagens desta pessoa já SAÍRAM no dia de São Paulo de `momento`.
 
     O QUE ESTA CONTA ALCANÇA, E O QUE ELA NÃO ALCANÇA — dito porque a diferença
@@ -172,15 +177,39 @@ def _quantas_hoje(destinatario_id: str, site_id: str, momento: datetime) -> int:
     protege a ATENÇÃO de uma pessoa, e atenção não distingue classe: uma
     mensagem de serviço recebida às 10h é uma mensagem recebida. O que a classe
     decide é que ela nunca é BARRADA — não que ela seja invisível.
+
+    CONTA MENSAGENS, NÃO LINHAS DE ENTREGA, e a diferença é um defeito medido.
+    `Passo.canais` é lista, e a `Entrega` tem uma linha POR CANAL — de propósito
+    (VEREDITO §1.5). Contar linhas fazia o mesmo passo somar duas vezes: o sino
+    saía, gravava `resultado="enviada"`, e o e-mail DAQUELE MESMO PASSO batia no
+    teto que o sino acabara de gastar. Medido em 02/09/2026, com a mensagem que
+    o mantenedor leria na tela: *"ja recebeu 1 hoje (teto de 1 por dia)"* — a
+    régua parecendo funcionar enquanto engolia metade do aviso.
+
+    A regra que resolve vem da constituição desta célula, não de gosto: *"um teto
+    por canal seria um teto por caixa de entrada, e a pessoa é uma só"*. O
+    inverso também vale, e é o que faltava escrever: uma mensagem em duas caixas
+    continua sendo UMA mensagem para a atenção de quem lê.
+
+    Daí as DUAS metades do conserto, e a segunda quase não veio. Contar
+    `(inscricao, passo)` distintos não bastava: com teto 1, a linha do sino já
+    valia 1, e o e-mail do mesmo passo continuava barrado por ela. O teto
+    pergunta *"quantas OUTRAS mensagens esta pessoa já recebeu hoje?"* — a que
+    está sendo avaliada agora não conta contra si mesma, e é isso que o
+    `excluir=` faz. Medido: sem ele, o guarda dos dois canais continuava vermelho.
     """
     inicio, fim = _limites_do_dia(momento)
-    return Entrega.objects.filter(
+    consulta = Entrega.objects.filter(
         inscricao__destinatario_id=destinatario_id,
         inscricao__site_id=site_id,
         resultado="enviada",
         enviado_em__gte=inicio,
         enviado_em__lt=fim,
-    ).count()
+    )
+    if excluir is not None:
+        inscricao_id, passo_id = excluir
+        consulta = consulta.exclude(inscricao_id=inscricao_id, passo_id=passo_id)
+    return consulta.values("inscricao_id", "passo_id").distinct().count()
 
 
 def avaliar(
@@ -190,6 +219,7 @@ def avaliar(
     canal: str,
     classe: str,
     momento: datetime | None = None,
+    mensagem: tuple[object, object] | None = None,
 ) -> Veredito:
     """A régua inteira, na ordem que o §6.2 fixa.
 
@@ -231,7 +261,7 @@ def avaliar(
             )
 
         # 3. O teto do dia. Barrado NÃO se perde: vai para a próxima janela.
-        ja_saiu = _quantas_hoje(destinatario_id, site_id, agora)
+        ja_saiu = _quantas_hoje(destinatario_id, site_id, agora, excluir=mensagem)
         if ja_saiu >= TETO_POR_DIA:
             _, fim_do_dia = _limites_do_dia(agora)
             return Veredito(
