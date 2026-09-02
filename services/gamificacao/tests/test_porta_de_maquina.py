@@ -663,7 +663,11 @@ def test_a_porta_responde_no_endereco_do_CONTRATO_e_nao_no_da_genese():
 # ---------------------------------------------------------------------------
 def _escada(*, ligados: tuple[int, ...] = ()):
     """Uma escada de três degraus, com os números `ligados` ativos."""
-    for nivel, xp, titulo in ((1, 0, "Aprendiz"), (2, 50, "Oficial"), (3, 150, "Mestre")):
+    for nivel, xp, titulo in (
+        (1, 0, "Aprendiz"),
+        (2, 50, "Oficial"),
+        (3, 150, "Mestre"),
+    ):
         NivelDefinicao.objects.create(
             nivel=nivel,
             site_id=SITE,
@@ -720,7 +724,9 @@ def test_ligar_um_degrau_sem_credencial_e_401(token):
     quem a fecha é o Bearer, só ele. Vale para o terceiro interruptor como vale
     para os dois primeiros."""
     assert (
-        postar("/economia/degraus/1", token=token, corpo_json={"ativa": True}).status_code
+        postar(
+            "/economia/degraus/1", token=token, corpo_json={"ativa": True}
+        ).status_code
         == 401
     )
 
