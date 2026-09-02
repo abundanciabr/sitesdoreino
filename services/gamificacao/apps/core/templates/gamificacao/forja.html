@@ -1,4 +1,4 @@
-{% comment %}
+{% extends "gamificacao/moldura.html" %}{% comment %}
 A FORJA do aluno: o medidor de tentativas por peça, e o selo que sai dele.
 
 Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
@@ -14,22 +14,16 @@ frase ao lado dele fala de esforço, nunca de posição em nenhuma lista.
 
 Não há nenhum número de XP aqui, e a ausência é decisão: forja vale zero ponto,
 e pagar insistência em pontos ensinaria a inflar o número de tentativas.
-{% endcomment %}<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Forja | Meshcraft Academy</title>
-<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
-</head>
-<body>
-<div class="faixa">
+{% endcomment %}
+{% block titulo %}Forja{% endblock %}
+
+{% block faixa %}
   <a href="{% url 'base' %}">Suas conquistas</a>
   <a href="{% url 'marcos' %}">Marcos reais</a>
   <a href="{% url 'forja' %}">Forja</a>
-</div>
+{% endblock %}
 
-<main>
+{% block conteudo %}
 {% if entrou %}
   <section class="degrau">
     <p class="rotulo">A sua oficina</p>
@@ -123,6 +117,4 @@ e pagar insistência em pontos ensinaria a inflar o número de tentativas.
     fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
   </section>
 {% endif %}
-</main>
-</body>
-</html>
+{% endblock %}

@@ -165,6 +165,12 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # O RODAPÉ em TODA página (`apps/core/rodape.py`), 02/09/2026.
+                # É processador de contexto, e não uma inclusão escrita em cada
+                # template, porque "em todas as páginas" não pode depender de
+                # alguém lembrar da peça: tela nova nasce com rodapé
+                # (`armadilhas/242`). Quem desenha é `gamificacao/moldura.html`.
+                "apps.core.rodape.rodape_do_contexto",
             ],
         },
     },

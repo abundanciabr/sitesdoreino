@@ -1,4 +1,4 @@
-{% comment %}
+{% extends "gamificacao/moldura.html" %}{% comment %}
 A Base das conquistas.
 
 Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
@@ -36,20 +36,14 @@ Nenhuma dessas frases promete pagamento retroativo, e isso é de propósito: a
 regra de XP tem data de vigência e **nunca é retroativa** (lei da célula). Dizer
 "o que você fizer até lá conta" seria a tela prometendo o que a economia não
 paga.
-{% endcomment %}<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Conquistas | Meshcraft Academy</title>
-<link rel="stylesheet" href="{% url 'estatico' 'gamificacao.css' %}">
-</head>
-<body>
-<div class="faixa">
-  <a href="{% url 'base' %}">Suas conquistas</a>
-</div>
+{% endcomment %}
+{% block titulo %}Conquistas{% endblock %}
 
-<main>
+{% block faixa %}
+  <a href="{% url 'base' %}">Suas conquistas</a>
+{% endblock %}
+
+{% block conteudo %}
 {% if entrou %}
   <section class="degrau">
     {% if not escada.montada %}
@@ -107,6 +101,4 @@ paga.
     fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
   </section>
 {% endif %}
-</main>
-</body>
-</html>
+{% endblock %}
