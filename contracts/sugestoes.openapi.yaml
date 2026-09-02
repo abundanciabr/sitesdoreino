@@ -66,6 +66,12 @@ paths:
           default: false
           type: boolean
         required: false
+      - in: query
+        name: incluir_conversa
+        schema:
+          default: false
+          type: boolean
+        required: false
       responses:
         '200':
           description: OK
@@ -77,7 +83,8 @@ paths:
         se tem avaliação interna e se tem ChangeSpec aprovado. NÃO devolve colunas, baldes nem ordenação:
         agrupar é do consumidor. O e-mail de quem sugeriu nunca viaja. Por padrão as arquivadas ficam de
         fora — `incluir_arquivadas=true` as traz de volta, para quem precisa achar uma ideia arquivada
-        para desarquivar.'
+        para desarquivar. O texto dos comentários também fica de fora por padrão: `incluir_conversa=true`
+        o traz, e ele vem sem o nome de quem escreveu.'
   /gestao/ideias/{sugestao_id}:
     get:
       operationId: getManagementIdea
@@ -371,6 +378,34 @@ components:
       - notas
       - decisao_produto
       type: object
+    FalaNaIdeia:
+      description: 'Um comentário, como ele foi escrito — o que a contagem `comentarios` não diz.
+
+
+        **Sem quem escreveu, e isto é decisão, não esquecimento.** O histórico manda
+
+        `por` porque a tela da moderação mostra quem moderou: ali o nome tem função.
+
+        A conversa embaixo de uma ideia não tem tela nenhuma que a mostre — quem a
+
+        pede é a exportação do Admin, cuja razão de existir é justamente o texto sair
+
+        da área administrativa sem nome de aluno junto. Um campo com nome de pessoa
+
+        e nenhum consumidor que precise dele é dado pessoal atravessando fronteira
+
+        de graça, e a casa não faz isso (o e-mail nunca viaja; o nome exibido só vai
+
+        onde uma tela o mostra).'
+      properties:
+        texto:
+          type: string
+        quando:
+          type: string
+      required:
+      - texto
+      - quando
+      type: object
     IdeiaEmGestao:
       description: Os FATOS de uma ideia. Nenhuma coluna, nenhum balde, nenhuma ordem.
       properties:
@@ -422,6 +457,11 @@ components:
         apagada:
           default: false
           type: boolean
+        conversa:
+          default: []
+          items:
+            $ref: '#/components/schemas/FalaNaIdeia'
+          type: array
       required:
       - id
       - titulo
@@ -551,6 +591,11 @@ components:
         apagada:
           default: false
           type: boolean
+        conversa:
+          default: []
+          items:
+            $ref: '#/components/schemas/FalaNaIdeia'
+          type: array
         historico:
           items:
             $ref: '#/components/schemas/LinhaDoHistorico'
