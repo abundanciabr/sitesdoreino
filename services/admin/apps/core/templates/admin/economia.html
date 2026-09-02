@@ -178,6 +178,79 @@ quem a escreveu. Esta área é bastidor, e é só em português.
   {% endfor %}
   {% endif %}
 
+  {% comment %}
+  A TERCEIRA METADE (02/09/2026): a escada de degraus.
+
+  Ela vem por último de propósito, e a ordem conta uma história: primeiro o que a
+  escola PAGA, depois o que ela RECONHECE, e só então a régua que dá nome ao
+  tamanho. O degrau é o único destes três que não paga nada, e o cartão diz isso
+  com todas as letras: ele mostra o esforço que o degrau PEDE, nunca um valor que
+  ele valha.
+  {% endcomment %}
+  <h2 class="secao">A escada de degraus</h2>
+
+  {% if not degraus_lidos %}
+  <p class="aviso borda-amarela">
+    Não consegui ler os degraus agora. O resto desta tela continua valendo; esta
+    parte volta sozinha quando a escada responder.
+  </p>
+  {% else %}
+
+  <p class="subtitulo">
+    {% if degraus_ligados == 0 %}
+    <b>Nenhum degrau está ligado.</b> A página de conquistas do aluno diz que a
+    escada dele está sendo montada, porque é exatamente isso que está
+    acontecendo.
+    {% elif degraus_ligados == 1 %}
+    <b>Só um degrau está ligado</b>, e um degrau sozinho não é escada: não há
+    para onde subir. Ligue pelo menos mais um.
+    {% else %}
+    <b>{{ degraus_ligados }} de {{ degraus|length }}</b> estão ligados. O aluno
+    vê em qual está e quanto falta para o próximo.
+    {% endif %}
+  </p>
+
+  {% for d in degraus %}
+  <div class="cartao">
+    <h2>{{ d.titulo }}</h2>
+    <p class="numeros">
+      <b>Degrau {{ d.nivel }}.</b>
+      {% if d.xp_necessario %}
+      Chega aqui quem tem <b>{{ d.xp_necessario }}</b> ponto{{ d.xp_necessario|pluralize }} de experiência.
+      {% else %}
+      É onde todo aluno começa, sem precisar de ponto nenhum.
+      {% endif %}
+    </p>
+    <p class="numeros">
+      Um degrau não paga nada: ele é o nome que a escola dá ao esforço que a
+      pessoa já tem. Ligar não cria ponto para ninguém.
+    </p>
+
+    {% for aviso in d.impedimentos %}
+    <p class="aviso borda-amarela">{{ aviso }}</p>
+    {% endfor %}
+
+    {% if d.ativa %}
+    <p class="estado"><b>Ligado.</b></p>
+    <form method="post" action="{% url 'economia_mudar_degrau' %}">
+      {% csrf_token %}
+      <input type="hidden" name="nivel" value="{{ d.nivel }}">
+      <input type="hidden" name="ativa" value="0">
+      <button type="submit">Desligar</button>
+    </form>
+    {% else %}
+    <p class="estado">Desligado.</p>
+    <form method="post" action="{% url 'economia_mudar_degrau' %}">
+      {% csrf_token %}
+      <input type="hidden" name="nivel" value="{{ d.nivel }}">
+      <input type="hidden" name="ativa" value="1">
+      <button type="submit">Ligar</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
   {% endif %}
 </div>
 {% endblock %}

@@ -27,7 +27,12 @@ from apps.core.editor_de_documentos import (
     documento_versoes,
 )
 from apps.core.mapa_do_site import mapa_do_site
-from apps.core.economia import economia, economia_mudar, economia_mudar_conquista
+from apps.core.economia import (
+    economia,
+    economia_mudar,
+    economia_mudar_conquista,
+    economia_mudar_degrau,
+)
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -141,6 +146,12 @@ urlpatterns = [
         "economia/mudar-conquista",
         economia_mudar_conquista,
         name="economia_mudar_conquista",
+    ),
+    # [DEGRAUS] 02/09/2026: o terceiro interruptor, e o unico que nao paga nada.
+    path(
+        "economia/mudar-degrau",
+        economia_mudar_degrau,
+        name="economia_mudar_degrau",
     ),
     # O MAPA PARA IA (`apps/core/mapa_ia.py`) — a ÚNICA área desta célula que
     # responde SEM sessão, além de `/healthz` (INV-P14, `CAMINHOS_ISENTOS` em
