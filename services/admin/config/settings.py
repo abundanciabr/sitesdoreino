@@ -128,6 +128,12 @@ TEMPLATES = [
                 # de `apps/core/rodape.py`.
                 "apps.core.rodape.rodape_do_contexto",
                 "apps.core.barra_do_site.menu_do_contexto",
+                # E a MOLDURA das telas de administração (o menu do topo e o
+                # rodapé de `/admin`), pela mesma razão e com o desenho
+                # espelhado: aqui o padrão é MOSTRAR, e a exceção é não haver
+                # crachá. Ver o cabeçalho de `apps/core/moldura.py` — em
+                # especial por que ela some para quem a porta recusa.
+                "apps.core.moldura.moldura_do_contexto",
             ],
         },
     },

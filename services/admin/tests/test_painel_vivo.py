@@ -127,6 +127,15 @@ def test_todo_arquivo_que_a_pagina_pede_responde_200():
         alvo
         for alvo in re.findall(r'(?:src|href)="([^"]+)"', html)
         if not alvo.startswith(("http://", "https://", "//", "#", "data:", "mailto:"))
+        # Endereço que SOBE uma pasta não é arquivo que este painel serve: é a
+        # porta de volta para a área administrativa, que existe desde
+        # 02/09/2026 porque o painel é a única página de `/admin` sem a moldura
+        # da área (`apps/core/moldura.py`) e sem ela vira beco sem saída. Ela é
+        # relativa de propósito, para não dar 404 na cópia aberta no
+        # computador do mantenedor. Pedi-la a `painel_arquivo` seria cobrar um
+        # arquivo que nunca existiu — e o teste logo abaixo é quem cobra que a
+        # porta continue lá, para esta linha não poder esconder o sumiço dela.
+        and not alvo.startswith("..")
     }
     # Os meses que a própria página promete servir.
     declarados = set(re.findall(r'"arquivo":"(livro-\d{6}\.js)"', html))
@@ -138,6 +147,22 @@ def test_todo_arquivo_que_a_pagina_pede_responde_200():
     for alvo in sorted(pedidos | declarados):
         resposta = cliente.get(f"/painel/{alvo}")
         assert resposta.status_code == 200, f"{alvo} respondeu {resposta.status_code}"
+
+
+@respx.mock
+def test_o_painel_tem_a_porta_de_volta_para_a_area():
+    """O painel é a única página de `/admin` que não veste a moldura da área.
+
+    Ele é servido com os BYTES do repositório (`painel.py`), não por
+    `admin/base.html`, então o menu do topo e o rodapé de `apps/core/moldura.py`
+    não o alcançam. Sem esta porta o mantenedor entra no painel pelo menu e só
+    sai pelo botão de voltar do navegador.
+
+    O endereço é relativo (`../`) de propósito: online ele chega em `/admin/`;
+    na cópia aberta no computador dele, abre a pasta de cima em vez de dar 404.
+    """
+    html = _dentro().get("/painel/").content.decode("utf-8")
+    assert '<a class="volta-ao-admin" href="../">' in html
 
 
 @respx.mock
