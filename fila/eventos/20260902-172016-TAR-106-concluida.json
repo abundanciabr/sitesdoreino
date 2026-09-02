@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260902-172016-TAR-106-concluida",
+  "tarefa": "TAR-106",
+  "evento": "concluida",
+  "quando": "2026-09-02T17:20:16+00:00",
+  "quem": "sessao-revisao-jornadas-2026-09-02",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/867 - VERMELHO->VERDE medido com Postgres de bancada. Contra origin/main os 2 guardas novos dao '2 failed, 6 passed': FAILED test_canal_que_a_plataforma_nao_entrega_nao_prende_a_pessoa (estado='andando' onde devia estar 'concluida'; a inscricao ficava presa) e FAILED test_o_canal_conhecido_sai_mesmo_com_um_desconhecido_ao_lado (faltava a linha 'email: pulada'). Com o conserto: 8 passed no arquivo, suite da celula 114 -> 116 verdes, black limpo, 13 muralhas PASS. O guarda do outro lado NAO foi afrouxado: test_falha_de_despacho_NAO_avanca_a_jornada segue verde, provando que False (Redis fora) continua sendo retentado. Aprendizado em armadilhas/285.",
+  "verificado_em": "2026-09-02"
+}
