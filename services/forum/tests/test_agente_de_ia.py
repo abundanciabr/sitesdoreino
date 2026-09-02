@@ -577,7 +577,144 @@ def test_o_botao_atravessa_o_csrf_de_verdade(env, monkeypatch, conversa):
 
 
 # ---------------------------------------------------------------------------
-# 8. A TESOURA DA CONVERSA — o começo e o fim, nunca o silêncio
+# 8. O WORKSPACE, E CADA RECUSA COM A FRASE DELA
+# ---------------------------------------------------------------------------
+# Isto tudo nasceu do PRIMEIRO clique real do mantenedor, em 02/09/2026. A chave
+# dele é do tipo ligado à identidade, a Anthropic recusou com HTTP 400 pedindo o
+# `anthropic-workspace-id`, e a tela disse a ele que "pode ser a internet do
+# servidor". Duas coisas erradas de uma vez: faltava o cabeçalho, e a frase
+# mandava para o lugar errado.
+
+
+def erro_da_anthropic(mensagem: str) -> dict:
+    """O corpo de recusa da API, na forma real."""
+    return {
+        "type": "error",
+        "error": {"type": "invalid_request_error", "message": mensagem},
+    }
+
+
+def test_o_cabecalho_do_workspace_viaja_quando_a_variavel_existe(
+    env, monkeypatch, conversa
+):
+    """O SDK NÃO lê esta variável sozinho quando a chave é passada no código.
+
+    Medido em 02/09/2026 com o transporte dublado: `Anthropic(api_key=...)`
+    ignora `ANTHROPIC_WORKSPACE_ID` do ambiente. Quem manda o cabeçalho é o
+    nosso código, e é isto que este caso trava.
+    """
+    monkeypatch.setenv(agente.VARIAVEL_DO_WORKSPACE, "wrkspc_de_teste")
+    como_dono(monkeypatch)
+    capturado: dict = {}
+    dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta("ok"), capturado=capturado)
+
+    gerar(Client(), conversa, orientacao="")
+
+    assert capturado["headers"][agente.CABECALHO_DO_WORKSPACE] == "wrkspc_de_teste"
+
+
+def test_sem_a_variavel_o_cabecalho_NAO_viaja(env, monkeypatch, conversa):
+    """Chave de workspace não precisa dele, e mandar vazio seria pior que não mandar."""
+    monkeypatch.delenv(agente.VARIAVEL_DO_WORKSPACE, raising=False)
+    como_dono(monkeypatch)
+    capturado: dict = {}
+    dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta("ok"), capturado=capturado)
+
+    gerar(Client(), conversa, orientacao="")
+
+    assert agente.CABECALHO_DO_WORKSPACE not in capturado["headers"]
+
+
+def test_variavel_so_com_espaco_conta_como_ausente(env, monkeypatch, conversa):
+    monkeypatch.setenv(agente.VARIAVEL_DO_WORKSPACE, "   ")
+    como_dono(monkeypatch)
+    capturado: dict = {}
+    dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta("ok"), capturado=capturado)
+
+    gerar(Client(), conversa, orientacao="")
+
+    assert agente.CABECALHO_DO_WORKSPACE not in capturado["headers"]
+
+
+def test_falta_o_workspace_manda_rodar_o_comando_de_novo(env, monkeypatch, conversa):
+    """A recusa REAL que o mantenedor levou, palavra por palavra."""
+    como_dono(monkeypatch)
+    dublar_a_anthropic(
+        monkeypatch,
+        status=400,
+        corpo=erro_da_anthropic(
+            "anthropic-workspace-id is required when authenticating with an "
+            "identity-linked API key; send the id of the workspace this request acts in."
+        ),
+    )
+
+    tela = gerar(Client(), conversa, orientacao="").content.decode()
+
+    assert "workspace" in tela
+    assert "rodar de novo" in tela
+    # E o que ela NÃO pode dizer: a rede funcionou perfeitamente aqui.
+    assert "nem chegou a sair" not in tela
+
+
+def test_conta_sem_credito_tem_frase_propria(env, monkeypatch, conversa):
+    """Também chega como 400, e não como o 402 que o nome sugere."""
+    como_dono(monkeypatch)
+    dublar_a_anthropic(
+        monkeypatch,
+        status=400,
+        corpo=erro_da_anthropic(
+            "Your credit balance is too low to access the Anthropic API."
+        ),
+    )
+
+    tela = gerar(Client(), conversa, orientacao="").content.decode()
+
+    assert "sem crédito" in tela
+    assert "workspace" not in tela
+
+
+def test_problema_do_lado_deles_nao_culpa_a_conta(env, monkeypatch, conversa):
+    como_dono(monkeypatch)
+    dublar_a_anthropic(
+        monkeypatch, status=500, corpo=erro_da_anthropic("internal server error")
+    )
+
+    tela = gerar(Client(), conversa, orientacao="").content.decode()
+
+    assert "problema do lado dela" in tela
+
+
+def test_recusa_desconhecida_diz_o_numero_e_nao_chuta_o_motivo(
+    env, monkeypatch, conversa
+):
+    """A rede de segurança da heurística: nunca inventar um motivo."""
+    como_dono(monkeypatch)
+    dublar_a_anthropic(
+        monkeypatch, status=418, corpo=erro_da_anthropic("algo que eu nunca vi")
+    )
+
+    tela = gerar(Client(), conversa, orientacao="").content.decode()
+
+    assert "418" in tela
+    assert "NÃO é falta de internet" in tela
+
+
+def test_a_chamada_que_nem_sai_tem_frase_de_rede(env, monkeypatch, conversa):
+    """Aqui o dublê NÃO é montado de propósito: vale o corte de rede do conftest.
+
+    É o caso oposto ao das recusas acima, e a frase tem de ser oposta também:
+    ali a rede funcionou e eles disseram não; aqui a chamada não chegou a sair.
+    """
+    como_dono(monkeypatch)
+
+    tela = gerar(Client(), conversa, orientacao="").content.decode()
+
+    assert "nem chegou a sair" in tela
+    assert "não é a sua chave nem a sua conta" in tela
+
+
+# ---------------------------------------------------------------------------
+# 9. A TESOURA DA CONVERSA — o começo e o fim, nunca o silêncio
 # ---------------------------------------------------------------------------
 
 

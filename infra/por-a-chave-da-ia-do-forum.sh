@@ -90,23 +90,65 @@ case "$CHAVE" in
 esac
 
 # -----------------------------------------------------------------------------
+# 2b. O WORKSPACE — opcional, e visivel enquanto se digita (nao e segredo).
+#
+# POR QUE ELE EXISTE: em 02/09/2026, na primeira vez que o botao foi usado de
+# verdade, a Anthropic recusou com HTTP 400 e a frase "anthropic-workspace-id is
+# required when authenticating with an identity-linked API key". A chave nova,
+# ligada a identidade de quem a criou, exige dizer em qual workspace o pedido
+# age; a chave classica, de workspace, ja carrega isso e nao precisa.
+#
+# VAZIO E RESPOSTA LEGITIMA, e por isso ele nao para aqui: quem usa chave de
+# workspace aperta Enter e segue. Se fizer falta, quem avisa e a propria tela do
+# forum, com a frase que manda rodar este comando de novo.
+#
+# Ele e ecoado de proposito, ao contrario da chave: id de workspace nao e
+# segredo, e ver o que colou evita a colagem pela metade que ninguem percebe.
+# -----------------------------------------------------------------------------
+echo "Agora o WORKSPACE, e ele so faz falta se a sua chave for do tipo novo,"
+echo "ligada a sua identidade. No console da Anthropic ele aparece na parte de"
+echo "Workspaces. Se voce nao souber, aperte Enter: o forum avisa se fizer falta."
+echo
+printf 'Cole o id do workspace (ou so aperte Enter para pular): '
+read -r WORKSPACE
+echo
+
+WORKSPACE="$(printf '%s' "$WORKSPACE" | tr -d '[:space:]')"
+case "$WORKSPACE" in
+  *[!A-Za-z0-9_-]*) parar "o id do workspace tem um caractere estranho. Copie de novo, direto do console. Nada foi alterado." ;;
+esac
+
+# -----------------------------------------------------------------------------
 # 3. GRAVAR — com cópia do arquivo antes, e só a linha da chave mudando.
 # -----------------------------------------------------------------------------
 umask 077
 cp -a "$ENV_FORUM" "$ENV_FORUM.bak-$(date +%s)" || parar "não consegui guardar a cópia de segurança. Nada foi alterado."
 
-if grep -q '^ANTHROPIC_API_KEY=' "$ENV_FORUM"; then
-  sed -i "s|^ANTHROPIC_API_KEY=.*|ANTHROPIC_API_KEY=$CHAVE|" "$ENV_FORUM" \
-    || parar "a edição falhou. Há cópia intacta em $ENV_FORUM.bak-*."
-else
-  # Sem esta guarda, um arquivo que não termina em quebra de linha grudaria a
-  # chave nova no fim da última linha — e a última linha de um env é um valor.
-  if [ -s "$ENV_FORUM" ] && [ "$(tail -c 1 "$ENV_FORUM" | wc -l)" -eq 0 ]; then
-    printf '\n' >> "$ENV_FORUM" || parar "não consegui escrever em $ENV_FORUM."
+# Uma função para as DUAS variáveis: escrever cada uma com o seu próprio bloco
+# de código seria a segunda expressão da mesma regra, e a primeira a esquecer a
+# guarda da quebra de linha.
+gravar() {  # chave, valor
+  if grep -q "^$1=" "$ENV_FORUM"; then
+    sed -i "s|^$1=.*|$1=$2|" "$ENV_FORUM" \
+      || parar "a edição falhou. Há cópia intacta em $ENV_FORUM.bak-*."
+  else
+    # Sem esta guarda, um arquivo que não termina em quebra de linha grudaria a
+    # linha nova no fim da última — e a última linha de um env é um valor.
+    if [ -s "$ENV_FORUM" ] && [ "$(tail -c 1 "$ENV_FORUM" | wc -l)" -eq 0 ]; then
+      printf '\n' >> "$ENV_FORUM" || parar "não consegui escrever em $ENV_FORUM."
+    fi
+    grep -q '^# A IA que rascunha resposta no forum' "$ENV_FORUM" \
+      || printf '\n# A IA que rascunha resposta no forum (por-a-chave-da-ia-do-forum.sh).\n' >> "$ENV_FORUM"
+    printf '%s=%s\n' "$1" "$2" >> "$ENV_FORUM" \
+      || parar "não consegui escrever em $ENV_FORUM. Há cópia intacta em $ENV_FORUM.bak-*."
   fi
-  printf '\n# A IA que rascunha resposta no forum (por-a-chave-da-ia-do-forum.sh).\nANTHROPIC_API_KEY=%s\n' "$CHAVE" >> "$ENV_FORUM" \
-    || parar "não consegui escrever em $ENV_FORUM. Há cópia intacta em $ENV_FORUM.bak-*."
-fi
+}
+
+gravar ANTHROPIC_API_KEY "$CHAVE"
+# O workspace é gravado MESMO VAZIO, e isso é decisão: a linha presente e vazia
+# é o que faz o `provisionar-forum.sh` saber que ela existe, e é o que deixa
+# trocar de chave sem herdar o workspace da anterior.
+gravar ANTHROPIC_WORKSPACE_ID "$WORKSPACE"
 
 # DONO E MODO copiados de um env que JÁ FUNCIONA, e SÓ quando mudaram
 # (`armadilhas/091`, e o mesmo desenho do `garantir()` de
@@ -122,6 +164,11 @@ if [ "$(stat -c '%U:%G %a' "$ENV_FORUM" 2>/dev/null)" != "$(stat -c '%U:%G %a' "
 fi
 
 echo "  chave guardada .... ${#CHAVE} caracteres (não mostro o conteúdo, de propósito)"
+if [ -n "$WORKSPACE" ]; then
+  echo "  workspace ......... $WORKSPACE"
+else
+  echo "  workspace ......... vazio (só faz falta se a sua chave for do tipo novo)"
+fi
 
 # -----------------------------------------------------------------------------
 # 4. RECARREGAR O FÓRUM — sem isto, a chave está no arquivo e o site não sabe.

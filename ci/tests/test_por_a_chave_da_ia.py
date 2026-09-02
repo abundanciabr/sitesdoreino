@@ -25,6 +25,9 @@ mentira em `tmp_path`, em vez de afirmar coisas sobre o texto dele. É irmão de
 5. **O resto do env sobrevive inteiro** (`armadilhas/111`).
 6. **Env sem quebra de linha no fim não gruda a chave no último valor** — o caso
    que o `garantir()` do provisionamento também trata, e pelo mesmo motivo.
+7. **O workspace é opcional, é ecoado, e não é herdado** de uma chave para a
+   seguinte. Ele entrou em 02/09/2026, depois de a Anthropic recusar a chave do
+   mantenedor com `HTTP 400` pedindo o `anthropic-workspace-id`.
 
 [INV-CI01]: sem `bash` nesta máquina o guarda não tem o que medir, e isso é
 ERRO, nunca um OK silencioso.
@@ -233,7 +236,84 @@ def test_env_sem_quebra_de_linha_no_fim_nao_gruda_a_chave_no_ultimo_valor(tmp_pa
 
 
 # ---------------------------------------------------------------------------
-# 4. O QUE O SCRIPT PROMETE POR ESCRITO, ele cumpre no texto
+# 4. O WORKSPACE — a segunda pergunta, e ela pode ficar em branco
+# ---------------------------------------------------------------------------
+# Nasceu do primeiro clique real do mantenedor, em 02/09/2026: a chave dele é do
+# tipo ligado à identidade, e a Anthropic recusou com HTTP 400 pedindo o
+# `anthropic-workspace-id`. Quem usa chave de workspace não precisa dele, então
+# a pergunta existe mas não obriga.
+
+WORKSPACE = "wrkspc_de_teste"
+
+
+def test_o_workspace_e_gravado_quando_informado(tmp_path):
+    raiz = _plataforma(tmp_path)
+
+    r = _rodar(raiz, CHAVE + "\n" + WORKSPACE + "\n")
+
+    assert r.returncode == 0
+    assert _valor(raiz, "ANTHROPIC_API_KEY") == CHAVE
+    assert _valor(raiz, "ANTHROPIC_WORKSPACE_ID") == WORKSPACE
+
+
+def test_o_workspace_pode_ficar_em_branco_e_a_linha_ainda_nasce(tmp_path):
+    """Vazio é resposta legítima (chave de workspace não precisa dele).
+
+    A LINHA precisa existir mesmo vazia: é ela que faz o
+    `provisionar-forum.sh` saber que a variável existe, e é ela que deixa
+    trocar de chave sem herdar o workspace da anterior.
+    """
+    raiz = _plataforma(tmp_path)
+
+    r = _rodar(raiz, CHAVE + "\n\n")
+
+    assert r.returncode == 0
+    assert _valor(raiz, "ANTHROPIC_API_KEY") == CHAVE
+    assert _valor(raiz, "ANTHROPIC_WORKSPACE_ID") == ""
+
+
+def test_trocar_a_chave_nao_herda_o_workspace_da_anterior(tmp_path):
+    """Se herdasse, uma chave nova de workspace sairia mandando o cabeçalho da
+    antiga — e a recusa seria por um motivo que ninguém mudou."""
+    raiz = _plataforma(tmp_path)
+    assert _rodar(raiz, CHAVE + "\n" + WORKSPACE + "\n").returncode == 0
+
+    outra = "sk-ant-api03-" + "S3gundaCh4v3" * 5
+    assert _rodar(raiz, outra + "\n\n").returncode == 0
+
+    assert _valor(raiz, "ANTHROPIC_API_KEY") == outra
+    assert _valor(raiz, "ANTHROPIC_WORKSPACE_ID") == ""
+    assert _linhas_da_chave(raiz) == 1
+
+
+def test_workspace_com_caractere_estranho_e_recusado(tmp_path):
+    raiz = _plataforma(tmp_path)
+    antes = (raiz / "env" / "forum.env").read_text(encoding="utf-8")
+
+    r = _rodar(raiz, CHAVE + "\nworkspace com espaco e /barra\n")
+
+    assert r.returncode != 0
+    assert "PAROU POR SEGURANÇA" in (r.stdout + r.stderr)
+    assert (raiz / "env" / "forum.env").read_text(encoding="utf-8") == antes
+
+
+def test_o_workspace_aparece_na_tela_e_a_chave_nao(tmp_path):
+    """Assimetria de propósito: id de workspace não é segredo, chave é.
+
+    Ver o que colou evita a colagem pela metade que ninguém percebe; e a chave
+    continua invisível pelo motivo de sempre (`armadilhas/090`).
+    """
+    raiz = _plataforma(tmp_path)
+
+    r = _rodar(raiz, CHAVE + "\n" + WORKSPACE + "\n")
+
+    tela = r.stdout + r.stderr
+    assert WORKSPACE in tela
+    assert CHAVE not in tela
+
+
+# ---------------------------------------------------------------------------
+# 5. O QUE O SCRIPT PROMETE POR ESCRITO, ele cumpre no texto
 # ---------------------------------------------------------------------------
 
 

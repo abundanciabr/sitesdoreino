@@ -51,6 +51,22 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 VARIAVEL_DA_CHAVE = "ANTHROPIC_API_KEY"
 
+# EM QUAL WORKSPACE ESTA CHAMADA AGE. Opcional, e a razao de ser opcional e que
+# ela depende do TIPO da chave:
+#
+#   * chave de workspace (a classica): o workspace ja esta na chave, e mandar o
+#     cabecalho e desnecessario;
+#   * chave ligada a identidade (a nova): a Anthropic RECUSA sem ele, com
+#     HTTP 400 e a frase "anthropic-workspace-id is required when authenticating
+#     with an identity-linked API key".
+#
+# **E o SDK NAO le esta variavel sozinho quando a chave e passada no codigo.**
+# Medido em 02/09/2026 com o transporte dublado: `Anthropic(api_key=...)` ignora
+# `ANTHROPIC_WORKSPACE_ID` do ambiente, mesmo o SDK tendo uma corrente de
+# credenciais que a conhece. Quem tem de mandar o cabecalho e este arquivo.
+VARIAVEL_DO_WORKSPACE = "ANTHROPIC_WORKSPACE_ID"
+CABECALHO_DO_WORKSPACE = "anthropic-workspace-id"
+
 # O modelo mais capaz da casa. Quem paga a conta é o mantenedor, e a decisão de
 # usar um mais barato é dele, nunca uma economia silenciosa daqui.
 MODELO = "claude-opus-5"
@@ -112,10 +128,39 @@ SEM_SALDO_OU_LIMITE = (
     "definiu, ou foram muitos pedidos em pouco tempo. Espere um minuto e tente "
     "de novo. Nada mudou nesta conversa."
 )
-NAO_RESPONDEU = (
-    "Não deu para falar com a IA agora. Pode ser a internet do servidor ou uma "
-    "instabilidade do outro lado. Tente de novo em alguns minutos. Nada mudou "
-    "nesta conversa."
+# ---------------------------------------------------------------------------
+# A CHAMADA NÃO SAIU × ELES RECUSARAM — duas frases, porque são dois consertos
+# ---------------------------------------------------------------------------
+# Isto nasceu do primeiro clique real do mantenedor, em 02/09/2026. Ele recebeu
+# *"pode ser a internet do servidor ou uma instabilidade do outro lado"* e não
+# tinha o que fazer com a frase: os dois lados dela mandam para lugares opostos,
+# e o motivo real só existia no log. Uma mensagem que cobre dois consertos
+# diferentes não é uma mensagem: é um convite para abrir o log, e o mantenedor
+# não abre log.
+NAO_SAIU_DAQUI = (
+    "O servidor não conseguiu chegar até a IA: a chamada nem chegou a sair. "
+    "Isso é rede do servidor, não é a sua chave nem a sua conta. Tente de novo "
+    "em alguns minutos. Nada mudou nesta conversa."
+)
+FALTA_O_WORKSPACE = (
+    "A sua chave é do tipo ligado à sua identidade, e esse tipo exige dizer em "
+    "qual workspace o pedido age. Falta isso na configuração do fórum. O "
+    "conserto é rodar de novo, na VPS, o mesmo comando que guardou a chave: ele "
+    "agora também pergunta o workspace. Nada mudou nesta conversa."
+)
+SEM_CREDITO = (
+    "A conta da Anthropic está sem crédito, ou o crédito ainda não entrou. "
+    "Cuidado com uma pegadinha do site deles: pôr o teto de gasto e pôr crédito "
+    "são duas coisas separadas, e é fácil fazer uma achando que fez as duas. "
+    "Adicione crédito lá e tente de novo; aqui não precisa mexer em nada."
+)
+PROBLEMA_DELES = (
+    "A IA está com problema do lado dela. Não é a sua chave, nem a sua conta, "
+    "nem o servidor. Espere alguns minutos e tente de novo."
+)
+RECUSOU_O_PEDIDO = (
+    "A IA recusou o pedido (erro {codigo}), e isso NÃO é falta de internet. "
+    "Me avise com o horário: o motivo exato ficou no log do fórum."
 )
 DEMOROU_DEMAIS = (
     "A IA demorou mais do que o tempo que eu espero por ela e eu desisti. "
@@ -298,6 +343,34 @@ def _pergunta(
     return "\n".join(partes)
 
 
+def _frase_do_status(erro: anthropic.APIStatusError) -> str:
+    """A recusa HTTP da Anthropic virada em português, para quem não lê log.
+
+    **Os dois casos que a intuição erra**, e os dois já custaram tempo aqui:
+
+    * *falta o workspace* chega como **400**, não como 401. É a recusa que o
+      mantenedor levou na primeira vez que apertou o botão, e a frase antiga
+      dizia a ele que podia ser a internet do servidor.
+    * *conta sem crédito* também chega como **400**, com o motivo escrito em
+      inglês no corpo, e não como o `402` que o nome sugere.
+
+    **A busca por texto é heurística, e a rede de segurança é a frase final.**
+    Se a Anthropic reescrever as mensagens em inglês, os `if` erram e a coisa
+    cai no caso geral, que continua honesto: diz o número, diz que NÃO é falta
+    de internet, e manda avisar. Nunca inventa um motivo.
+    """
+    codigo = getattr(erro, "status_code", 0) or 0
+    dito = (str(getattr(erro, "message", "") or "") + " " + str(erro)).lower()
+
+    if CABECALHO_DO_WORKSPACE in dito or "identity-linked" in dito:
+        return FALTA_O_WORKSPACE
+    if codigo == 402 or "credit balance" in dito or "insufficient" in dito:
+        return SEM_CREDITO
+    if codigo >= 500:
+        return PROBLEMA_DELES
+    return RECUSOU_O_PEDIDO.format(codigo=codigo)
+
+
 def rascunhar(
     *,
     area_nome: str,
@@ -324,8 +397,17 @@ def rascunhar(
     if not chave:
         raise AgenteIndisponivel(SEM_CHAVE)
 
+    # O CABEÇALHO DO WORKSPACE só viaja quando a variável existe. Ausente, o
+    # pedido sai exatamente como saía antes desta linha — que é o certo para
+    # quem usa chave de workspace, onde o cabeçalho seria ruído.
+    workspace = (os.environ.get(VARIAVEL_DO_WORKSPACE) or "").strip()
+    cabecalhos = {CABECALHO_DO_WORKSPACE: workspace} if workspace else None
+
     cliente = anthropic.Anthropic(
-        api_key=chave, timeout=TIMEOUT, max_retries=TENTATIVAS
+        api_key=chave,
+        timeout=TIMEOUT,
+        max_retries=TENTATIVAS,
+        default_headers=cabecalhos,
     )
     try:
         resposta = cliente.messages.create(
@@ -361,16 +443,18 @@ def rascunhar(
         logger.warning("agente: a Anthropic passou de %ss (%s)", TIMEOUT, erro)
         raise AgenteIndisponivel(DEMOROU_DEMAIS) from erro
     except anthropic.APIConnectionError as erro:
-        logger.warning("agente: não deu para falar com a Anthropic (%s)", erro)
-        raise AgenteIndisponivel(NAO_RESPONDEU) from erro
+        # A chamada NÃO SAIU: DNS, rota, firewall, rede do Docker sem saída.
+        # É do servidor, e nunca da conta de quem paga.
+        logger.warning("agente: a chamada não saiu daqui (%s)", erro)
+        raise AgenteIndisponivel(NAO_SAIU_DAQUI) from erro
     except anthropic.APIStatusError as erro:
-        # Todo o resto que veio COM resposta HTTP: 400 por pedido malformado,
-        # 5xx do outro lado, 402 de conta sem crédito. O código entra no log
-        # porque é ele que diz ao mantenedor de quem é o problema.
+        # ELES RESPONDERAM, recusando. O caso oposto ao de cima, com conserto
+        # oposto: aqui a rede funcionou perfeitamente. O corpo da recusa entra
+        # no log inteiro, porque é dele que sai a frase da tela.
         logger.warning(
             "agente: a Anthropic respondeu HTTP %s (%s)", erro.status_code, erro
         )
-        raise AgenteIndisponivel(NAO_RESPONDEU) from erro
+        raise AgenteIndisponivel(_frase_do_status(erro)) from erro
 
     if resposta.stop_reason == "refusal":
         detalhe = getattr(resposta, "stop_details", None)

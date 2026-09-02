@@ -71,7 +71,7 @@ done
 #    script a apagaria em silêncio, com o deploy verde (`armadilhas/111`).
 #    Guarda: `ci/tests/test_provisionamento_nao_perde_variavel.py`.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ADMIN_EMAILS ALUNOS_API_TOKEN ALUNOS_API_URL ANTHROPIC_API_KEY DATABASE_URL DEBUG DJANGO_SECRET_KEY FORUM_BUSCA_CONFIG FORUM_PROFESSORES IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS ALUNOS_API_TOKEN ALUNOS_API_URL ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID DATABASE_URL DEBUG DJANGO_SECRET_KEY FORUM_BUSCA_CONFIG FORUM_PROFESSORES IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME"
 
 # LITERAL, e não `$ENV_FORUM`, de propósito: quem confere esta trava é
 # `ci/tests/test_provisionamento_nao_perde_variavel.py`, e ele lê o script
@@ -148,6 +148,9 @@ ADMINS="$(ler_de "$ENV_ADMIN" ADMIN_EMAILS)"
 # VAZIA é um estado legítimo: a IA fica desligada e o fórum sobe igual. Quem a
 # põe lá pela primeira vez é `infra/por-a-chave-da-ia-do-forum.sh`.
 CHAVE_DA_IA="$(ler_de "$ENV_FORUM" ANTHROPIC_API_KEY)"
+# E o workspace dela, pela mesma razao: quem o poe la e o mantenedor, e
+# perde-lo faria a IA voltar a ser recusada com HTTP 400 sem ninguem entender.
+WORKSPACE_DA_IA="$(ler_de "$ENV_FORUM" ANTHROPIC_WORKSPACE_ID)"
 
 BUSCA_CONFIG=""
 SENHA_DB="$(gerar_segredo)" || parar "não consegui gerar a senha do banco. Nada foi alterado."
@@ -224,6 +227,7 @@ FORUM_PROFESSORES=
 ADMIN_EMAILS=$ADMINS
 FORUM_BUSCA_CONFIG=${BUSCA_CONFIG:-}
 ANTHROPIC_API_KEY=$CHAVE_DA_IA
+ANTHROPIC_WORKSPACE_ID=$WORKSPACE_DA_IA
 ENV
 
 chown --reference="$ENV_REF" "$ENV_FORUM" 2>/dev/null \
