@@ -43,6 +43,17 @@
         <a href="{% url 'escola_alunos_liberados' %}">Ver os nomes para avisar o grupo &rarr;</a>
       </div>
       {% endif %}
+      {% comment %}
+      [RECUSADOS] 02/09/2026, pedido do mantenedor. Este cartão contava pessoas
+      e não dizia quem eram — um número sem lista levanta a pergunta e não a
+      responde. O link mora DENTRO do cartão pela mesma razão do de cima: é aqui
+      que a pergunta nasce, e é daqui que ele pediu para sair.
+      {% endcomment %}
+      {% if tipo.slug == "recusados" %}
+      <div class="nota">
+        <a href="{% url 'escola_recusados' %}">Ver quem são, e aceitar de novo &rarr;</a>
+      </div>
+      {% endif %}
     </div>
     {% endfor %}
   </div>

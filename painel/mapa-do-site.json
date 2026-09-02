@@ -878,6 +878,25 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/alunos/recusados",
+      "endereco": "/admin/escola/alunos/recusados",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A lista dos recusados",
+      "descricao": "Quem pediu entrada e você decidiu não liberar, com o motivo que você escreveu em cada um, e o botão de voltar atrás e aceitar a pessoa mesmo assim."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/alunos/reconsiderar",
+      "endereco": "/admin/escola/alunos/reconsiderar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Aceitar quem tinha sido recusado",
+      "descricao": "O que acontece ao apertar 'aceitar mesmo assim' na lista dos recusados: o pedido da pessoa volta para a fila e é liberado na sequência. Muda a vida dela, por isso não é um link."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/alunos/prontuario",
       "endereco": "/admin/escola/alunos/prontuario",
       "alcance": "publico",

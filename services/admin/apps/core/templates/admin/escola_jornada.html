@@ -65,6 +65,16 @@
       <div class="nota">
         <a href="{% url 'escola_alunos' %}?estado={{ parada.estado }}">Ver quem está aqui &rarr;</a>
       </div>
+      {% elif parada.onde %}
+      {% comment %}
+      [RECUSADOS] A parada que tem tela PRÓPRIA (02/09/2026). Antes desta linha,
+      "Recusado" caía no `{% elif %}` de baixo e mandava o mantenedor para
+      `/escola/alunos/` — a lista onde um recusado, por definição, não aparece.
+      O link contava com números que a página de destino não sabia mostrar.
+      {% endcomment %}
+      <div class="nota">
+        <a href="{% url parada.onde %}">Ver quem está aqui &rarr;</a>
+      </div>
       {% elif parada.contavel %}
       <div class="nota">
         <a href="{% url 'escola_alunos' %}">Ver na fila &rarr;</a>

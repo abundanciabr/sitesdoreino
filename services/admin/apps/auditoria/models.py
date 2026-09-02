@@ -57,6 +57,20 @@ class Registro(models.Model):
     # pediu" e "cadastrei alguém que não pediu" são gestos diferentes, e quem
     # ler esta tabela em meses precisa saber qual dos dois aconteceu.
     CADASTRAR = "cadastrar"
+    # [RECUSADOS] 02/09/2026: o mantenedor volta atrás numa recusa e aceita a
+    # pessoa. Verbo PRÓPRIO, e não um `LIBERAR` reaproveitado, porque é o único
+    # gesto desta área em que ele desfaz uma decisão dele mesmo — e a pergunta
+    # que se faz a estas linhas ("quantas vezes eu voltei atrás, e sobre quem?")
+    # não se responde lendo os `liberar`, que são milhares e falam de gente que
+    # nunca foi recusada.
+    #
+    # UMA linha no caminho feliz, e não duas — a mesma disciplina do CADASTRAR
+    # acima, que também é um gesto de dois passos: o `detalhe` conta a viagem
+    # inteira ("voltou para a fila e foi liberada"), e uma linha por salto
+    # encheria a tabela de metades que ninguém consulta separadas. O passo que
+    # FALHA é que ganha linha própria, porque aí os dois desfechos são
+    # diferentes e a diferença é exatamente o que alguém vai querer reconstruir.
+    RECONSIDERAR = "reconsiderar"
     MOVER_IDEIA = "mover_ideia"
     AVALIAR_IDEIA = "avaliar_ideia"
     ASSINAR_OBRA = "assinar_obra"
@@ -155,6 +169,7 @@ class Registro(models.Model):
         (DESPROMOVER, "remover de administrador"),
         (APAGAR, "apagar de vez"),
         (CADASTRAR, "cadastrar alguem a mao"),
+        (RECONSIDERAR, "aceitar quem tinha sido recusado"),
         (MOVER_IDEIA, "mover a ideia de fase"),
         (AVALIAR_IDEIA, "escrever a avaliacao da ideia"),
         (ASSINAR_OBRA, "assinar a obra de uma ideia"),
