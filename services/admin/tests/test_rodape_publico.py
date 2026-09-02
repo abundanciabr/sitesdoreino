@@ -159,7 +159,92 @@ def test_sem_menu_configurado_a_biblioteca_abre_igual(client):
 
 
 # ---------------------------------------------------------------------------
-# 3. As peças NÃO vazam para o bastidor
+# 3. O item do lugar onde você já está não aparece
+# ---------------------------------------------------------------------------
+MENU_DE_TESTE = {
+    "default_version": "v",
+    "versions": [
+        {
+            "slug": "v",
+            "name": "V",
+            "items": [
+                {
+                    "url": "/",
+                    "labels": {"pt-br": "Início"},
+                    "localized": False,
+                    "audience": "everyone",
+                    "new_tab": False,
+                },
+                {
+                    "url": "/docs/",
+                    "labels": {"pt-br": "Documentos"},
+                    "localized": False,
+                    "audience": "everyone",
+                    "new_tab": False,
+                },
+            ],
+        }
+    ],
+    "pages": [],
+}
+
+SITE_DE_TESTE = {
+    "id": "site-mesh",
+    "host": "testserver",
+    "default_language": "pt-br",
+    "menu": MENU_DE_TESTE,
+}
+
+
+@pytest.fixture
+def catalogo_dublado(monkeypatch):
+    from apps.core import barra_do_site
+
+    barra_do_site.limpar_cache()
+    monkeypatch.setattr(
+        "apps.core.barra_do_site.CatalogoClient",
+        lambda: type(
+            "Dublê", (), {"site_por_host": lambda self, host: SITE_DE_TESTE}
+        )(),
+    )
+    yield
+    barra_do_site.limpar_cache()
+
+
+@pytest.mark.django_db
+def test_o_item_documentos_some_dentro_da_propria_biblioteca(
+    client, settings, catalogo_dublado
+):
+    """Um link para onde você já está gasta espaço e ensina a desconfiar do menu.
+
+    **Esta célula é a exceção da casa, e o conserto foi MEDIDO.** Nas outras, o
+    prefixo público faz parte do endereço do item e `request.path` casa. Aqui o
+    `FORCE_SCRIPT_NAME` é `/admin` e a biblioteca é servida em `/docs/`: o
+    `request.path` sai `/admin/docs/` e não casa com o item `/docs/`.
+
+    Antes do conserto, a barra renderizava, numa requisição a `/docs/` sob
+    `SCRIPT_NAME=/admin`:
+
+        <a href="/">Início</a><a href="/docs/">Documentos</a>
+
+    Por isso a comparação é contra `path_info`, e por isso este guarda liga o
+    `FORCE_SCRIPT_NAME`: sem ele o teste passaria por acidente, medindo um mundo
+    que não é o de produção.
+    """
+    settings.FORCE_SCRIPT_NAME = "/admin"
+    corpo = client.get("/docs/").content.decode()
+
+    inicio = corpo.index('<nav class="menu-topo">')
+    menu = corpo[inicio : corpo.index("</nav>", inicio)]
+    assert 'href="/docs/"' not in menu
+    assert ">Início</a>" in menu, (
+        "a raiz sumiu junto — `/` é prefixo de QUALQUER caminho, e tratá-la "
+        "como as outras faria 'Início' desaparecer do site inteiro."
+    )
+
+
+# ---------------------------------------------------------------------------
+# 4. As peças NÃO vazam para o bastidor
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 def test_a_barra_do_site_nao_aparece_no_bastidor(client, rf):

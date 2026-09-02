@@ -146,7 +146,21 @@ def menu_do_contexto(request) -> dict:
         if item.get("audience", "everyone") != "everyone":
             continue
         destino = item.get("url", "")
-        if _estou_aqui(destino, request.path):
+        # `path_info`, e NÃO `path` — e aqui esta célula é a exceção da casa.
+        #
+        # Nas outras, o prefixo público (`/forum`, `/conquistas`) faz parte do
+        # endereço do item, então `request.path` é o que casa. Aqui não: o
+        # `FORCE_SCRIPT_NAME` desta célula é `/admin`, e a biblioteca é servida
+        # em `/docs/` — o Traefik roteia `/docs` para o mesmo backend sem
+        # passar pelo prefixo. `request.path` sai `/admin/docs/`, que não casa
+        # com o item `/docs/`, e o menu mostraria "Documentos" para quem já
+        # está em Documentos.
+        #
+        # MEDIDO em 02/09/2026, antes do conserto: a barra renderizava
+        # `<a href="/">Início</a><a href="/docs/">Documentos</a>` numa
+        # requisição a `/docs/` sob `SCRIPT_NAME=/admin`. Guarda em
+        # `tests/test_rodape_publico.py`.
+        if _estou_aqui(destino, request.path_info):
             continue
         itens.append(
             {
