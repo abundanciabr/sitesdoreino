@@ -915,6 +915,35 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/turmas/",
+      "endereco": "/admin/escola/turmas/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Liberar pela lista de turmas",
+      "descricao": "Você cola a lista de WhatsApp das suas turmas e o site compara com quem está esperando na fila. Mostra tudo antes de mexer em qualquer coisa: quem vai ser liberado, quem está na fila e não está na sua lista, e que números seus ainda não apareceram no site."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/turmas/conferir",
+      "endereco": "/admin/escola/turmas/conferir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Conferir a lista com a fila",
+      "descricao": "O que acontece quando você aperta 'conferir'. Só compara e mostra: não libera ninguém, não muda nada. Não é um link porque a lista de números vai no corpo do envio, e não na barra de endereço."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/turmas/liberar",
+      "endereco": "/admin/escola/turmas/liberar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Liberar a turma marcada",
+      "descricao": "O que acontece quando você aperta 'liberar os marcados'. Põe na escola, de uma vez, todas as pessoas com a caixinha marcada. Muda a vida delas, por isso não é um link."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/admin/promover",
       "endereco": "/admin/escola/admin/promover",
       "alcance": "publico",
