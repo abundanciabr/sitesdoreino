@@ -1,0 +1,160 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Alunos recusados{% endblock %}
+{% block corpo %}
+<div class="barra">
+  <b>Meshcraft &middot; Administração</b>
+  <span class="quem">{{ admin.nome }}</span>
+</div>
+
+<div class="envolucro">
+  <a class="volta" href="{% url 'escola_alunos' %}">&larr; Alunos</a>
+  <h1>Alunos recusados</h1>
+  <p class="subtitulo">
+    Quem pediu entrada e você decidiu não liberar. Recusar nunca foi definitivo
+    nesta escola: se você mudar de ideia, o botão aqui embaixo põe a pessoa
+    dentro na hora.
+  </p>
+
+  {% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
+
+  {% comment %}
+  [RECUSADOS] 02/09/2026, pedido do mantenedor. A busca é a MESMA da tela de
+  alunos, com o mesmo desenho e pelos mesmos motivos: GET (um filtro é leitura,
+  e a query string é o que torna o resultado recarregável e colável), e o
+  WhatsApp fica FORA dos campos que ela casa — ele é o dado mais sensível desta
+  área, e um campo de busca que casasse com ele convidaria a colar telefones
+  numa barra de endereço, que vai parar em histórico de navegador e log de
+  servidor.
+
+  Sem peneira de situação: aqui todo mundo tem a mesma, e um seletor com uma
+  opção só é ruído numa tela feita para leigo.
+  {% endcomment %}
+  <form class="peneira" method="get" action="{% url 'escola_recusados' %}">
+    <div class="campo">
+      <label class="rotulo" for="busca">Procurar por nome, e-mail ou turma</label>
+      <input id="busca" type="search" name="q" maxlength="120" value="{{ procurado }}"
+             placeholder="ex.: ana &middot; ana@ &middot; turma de agosto">
+    </div>
+    <button class="sim" type="submit">Procurar</button>
+    {% if peneirando %}<a class="volta" href="{% url 'escola_recusados' %}">Limpar</a>{% endif %}
+  </form>
+
+  {% if peneirando and recusados %}
+  <p class="nota">Mostrando {{ recusados|length }} de {{ total }} recusados.</p>
+  {% endif %}
+
+  {% if nao_consigo_ver %}
+  <p class="aviso">
+    <b>Ainda não consigo ver quem foi recusado.</b>
+    Falta a senha de par entre esta área e a parte do sistema que guarda os
+    alunos, um comando de uma linha no servidor, que está no painel do sistema,
+    na caixa <b>Precisa de você</b>.
+  </p>
+  {% elif not recusados and peneirando %}
+  {% comment %}
+  Vazio por PENEIRA e vazio por AUSÊNCIA são frases diferentes, e confundi-las é
+  a forma mais fácil de esta tela mentir: "você não recusou ninguém" dito a quem
+  tem cinco pessoas na lista e digitou um nome errado faria o mantenedor fechar
+  a página tranquilo.
+  {% endcomment %}
+  <p class="aviso">
+    <b>Nenhum dos {{ total }} recusados casou com a sua procura.</b>
+    A lista não está vazia: a sua busca é que não achou ninguém nela.
+    <a href="{% url 'escola_recusados' %}">Ver todos</a>.
+  </p>
+  {% elif not recusados %}
+  <p class="aviso">
+    <b>Você não recusou ninguém.</b>
+    Este zero é medido, não suposto: eu perguntei e a lista voltou vazia.
+  </p>
+  {% else %}
+  {% comment %}
+  Cartão por pessoa, e não tabela, pela mesma razão da fila: esta área é usada
+  no celular, e uma tabela de cinco colunas rola para o lado ou aperta o nome
+  até virar sopa de letras.
+  {% endcomment %}
+  <div class="cartoes">
+    {% for pessoa in recusados %}
+    <div class="cartao">
+      <div class="valor"><b>{{ pessoa.nome_completo }}</b></div>
+      <div class="nota">{{ pessoa.email }}</div>
+      <div class="nota">WhatsApp: {{ pessoa.whatsapp }}</div>
+      <div class="nota">
+        Pediu entrada em {{ pessoa.criada_em|slice:":10" }}
+        {% if pessoa.comprou_em %} &middot; diz ter comprado em {{ pessoa.comprou_em }}{% endif %}
+        {% if pessoa.turma %} &middot; turma: {{ pessoa.turma }}{% endif %}
+      </div>
+      {% if mostrar_escola %}<div class="nota">Escola: {{ pessoa.site_id }}</div>{% endif %}
+
+      {% comment %}
+      O MOTIVO é o que faz esta tela valer a pena, e por isso ele nunca fica de
+      fora. Quem abre aqui está decidindo se volta atrás, e a única coisa capaz
+      de responder isso é o que ele mesmo escreveu no dia. A lei da fila obriga
+      o motivo na recusa justamente por isto; uma linha antiga sem ele diz que
+      não sabe, em vez de fingir que não houve motivo.
+      {% endcomment %}
+      {% if pessoa.motivo_recusa %}
+      <div class="nota"><b>Você escreveu:</b> {{ pessoa.motivo_recusa }}</div>
+      {% else %}
+      <div class="nota">Sem motivo escrito nesta ficha.</div>
+      {% endif %}
+
+      {% comment %}
+      [PRONTUARIO] A mesma tarja da fila, e aqui ela pesa ainda mais: recusar
+      alguém que já foi aluno da escola é uma decisão diferente de recusar
+      alguém que nunca entrou, e é reconsiderando que a diferença aparece.
+      {% endcomment %}
+      {% if pessoa.ja_foi_aluno %}
+      <div class="nota">
+        <b>JÁ FOI ALUNO DA ESCOLA.</b>
+        {% if pessoa.saiu_em %}Saiu em {{ pessoa.saiu_em|slice:":10" }}.{% endif %}
+        <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">Ver o prontuário &rarr;</a>
+      </div>
+      {% elif pessoa.passagens_anteriores %}
+      <div class="nota">
+        Já pediu entrada antes ({{ pessoa.passagens_anteriores }}x) e nunca chegou a ser aluno.
+        <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">Ver o prontuário &rarr;</a>
+      </div>
+      {% else %}
+      <div class="nota">
+        <a href="{% url 'escola_prontuario' %}?email={{ pessoa.email|urlencode }}">Ver o prontuário &rarr;</a>
+      </div>
+      {% endif %}
+
+      {% comment %}
+      O formulário manda SÓ o id. Nome, WhatsApp e turma não viajam daqui de
+      propósito: aceitar de novo reescreve esses campos do outro lado, e campos
+      escondidos no HTML transformariam este botão numa porta de edição
+      silenciosa do cadastro de qualquer pessoa da fila. Quem relê os dados é o
+      servidor, na `alunos`.
+
+      POST com CSRF, como todo gesto desta área que muda a vida de alguém:
+      decisão que se aplica por GET é decisão que um pré-carregador de link, um
+      antivírus corporativo ou um crawler autenticado tomam sozinhos.
+      {% endcomment %}
+      <form class="decidir" method="post" action="{% url 'escola_reconsiderar' %}">
+        {% csrf_token %}
+        <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+        <button class="sim" type="submit">Aceitar mesmo assim</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <p class="aviso espaco-28">
+    <b>O que o botão faz, em uma frase:</b> o pedido da pessoa volta para a fila
+    e é liberado na sequência, que é o mesmo caminho de quem entra pelo site.
+    Ela deixa de ver a recusa, passa a entrar na área de alunos, e o motivo que
+    você tinha escrito sai da ficha dela.
+    <br><br>
+    <b>Se a segunda metade falhar, nada se perde:</b> a pessoa fica esperando na
+    fila da tela de alunos, com o botão Liberar do lado, e esta tela diz isso com
+    todas as letras. Não clique duas vezes aqui nesse caso.
+    <br><br>
+    <b>A ficha continua inteira, aqui e no prontuário.</b> Nenhum cadastro se
+    apaga nesta escola: aceitar de novo não some com a história de ninguém, e as
+    passagens anteriores continuam no prontuário de cada pessoa.
+  </p>
+</div>
+{% endblock %}
