@@ -64,6 +64,8 @@ from apps.core.views import (
     escola_jornada,
     escola_decidir,
     escola_prontuario,
+    escola_recusados,
+    escola_reconsiderar,
     escola_resetar_senha,
     escola_turmas,
     escola_turmas_conferir,
@@ -355,6 +357,21 @@ urlpatterns = [
         "escola/alunos/liberados",
         escola_alunos_liberados,
         name="escola_alunos_liberados",
+    ),
+    # [RECUSADOS] Quem voce recusou, e o botao de voltar atras (02/09/2026,
+    # pedido do mantenedor). Vizinha da lista e nao dentro dela, pelo mesmo
+    # motivo dos "liberados" acima: aquela tela responde "quem esta esperando e
+    # quem ja e aluno?", e esta responde "quem eu deixei de fora?" — leituras
+    # diferentes da mesma escola, e reconsiderar e raro perto do trabalho
+    # diario que aquela pagina serve.
+    path("escola/alunos/recusados", escola_recusados, name="escola_recusados"),
+    # O gesto de aceitar quem tinha sido recusado. POST-only pelo mesmo motivo
+    # de todas as escritas desta celula, e sem id no caminho: o alvo vem no
+    # corpo do formulario, junto do CSRF que o protege.
+    path(
+        "escola/alunos/reconsiderar",
+        escola_reconsiderar,
+        name="escola_reconsiderar",
     ),
     # [PRONTUARIO] A historia de UMA pessoa (`DECISAO-a-ficha-nao-se-apaga` §5).
     # GET, e o e-mail vem por querystring: esta tela so PERGUNTA, nao decide

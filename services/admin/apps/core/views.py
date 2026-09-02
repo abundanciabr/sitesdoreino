@@ -483,10 +483,20 @@ FAIXAS_DA_JORNADA = (
                 "titulo": "Recusado",
                 "slug": "recusados",
                 "estado": None,
+                # [RECUSADOS] A parada ganhou tela propria em 02/09/2026, e ate
+                # entao o link daqui caia em `/escola/alunos/` — onde os
+                # recusados NAO aparecem. O mapa mandava o mantenedor para uma
+                # lista que nunca teria a pessoa que ele acabara de contar.
+                # `onde` nomeia a ROTA (nunca um caminho escrito a mao: prefixo
+                # publico e coisa do `reverse()`, `armadilhas/081`).
+                "onde": "escola_recusados",
                 "acesso": False,
                 "quem": "Voce disse nao, e escreveu o motivo.",
                 "ve": "O motivo que voce escreveu, e que pode pedir de novo.",
-                "sai": "Pedindo de novo — o pedido volta limpo para a fila.",
+                "sai": (
+                    "Pedindo de novo (o pedido volta limpo para a fila), ou "
+                    "voce aceitando na lista dos recusados."
+                ),
             },
         ),
     },
@@ -775,6 +785,179 @@ def escola_alunos_liberados(request):
     )
 
 
+# ------------------------------------------------------------- os recusados
+#
+# Pedido do mantenedor em 02/09/2026: *"coloque a opção de ver a lista dos
+# alunos RECUSADOS, com a opção de os aceitar novamente"*. O cartão "Recusados"
+# contava cinco pessoas desde que o par de tokens subiu — e não havia, em lugar
+# nenhum, como saber QUEM eram. Um número sem lista é a única coisa que aquela
+# tela nunca deveria ter mostrado: ele levanta a pergunta e não a responde.
+#
+# **Tela PRÓPRIA, e não uma terceira lista dentro de `/escola/alunos/`.** Aquela
+# página já responde duas perguntas ("quem espera?" e "quem é aluno?") e é a que
+# ele abre todo dia; reconsiderar é raro, e empurrar o trabalho diário para
+# baixo por causa da exceção sairia caro toda vez. Mesmo desenho do
+# `escola_alunos_liberados`, e pelo mesmo motivo.
+#
+# **"Aceitar de novo" NÃO abre porta nova na `alunos`, e isso é a decisão do
+# desenho.** A pessoa volta para a fila e é liberada na sequência — as MESMAS
+# duas portas que o formulário do site e o cadastro à mão já usam
+# (`POST /pre-matriculas`, depois `POST /pre-matriculas/{id}/decisao`). O
+# contrato congelado já prevê exatamente isto: reenviar o pedido de quem foi
+# recusado devolve a linha para `aguardando` com o motivo da recusa limpo, e é
+# por esse caminho que a própria pessoa desfaz uma recusa desde 27/08. O que
+# esta tela acrescenta é o mantenedor poder fazê-lo por ela, sem esperar que ela
+# peça de novo.
+#
+# Uma porta nova capaz de "des-recusar" seria uma segunda forma de virar aluno,
+# com outras regras — e as duas discordariam na primeira mudança de lei
+# (`DECISAO-cadastrar-alguem-a-mao.md` §2: a mesma razão, o mesmo desenho).
+#
+# **A falha do meio é SEGURA e VISÍVEL**, também como no cadastro à mão: se a
+# liberação não acontecer, a pessoa fica esperando na fila de `/escola/alunos/`,
+# com o botão Liberar do lado. Nenhum estado escondido, e o pior desfecho é um
+# clique a mais numa lista que ele já abre todo dia.
+
+
+@require_GET
+def escola_recusados(request):
+    """Quem pediu entrada e foi recusado — e o botão de voltar atrás.
+
+    Busca DIRETO `status="recusada"` na fila, e não a leitura inteira que
+    `contar_a_escola()` traz: as contagens e a lista de alunos não aparecem
+    aqui, e pedi-las seria duas idas à rede para desenhar uma lista só.
+
+    Fail-OPEN como o resto da área: `None` é *"não consegui perguntar"*, e a
+    tela diz isso com todas as letras. Nunca uma lista vazia, que o mantenedor
+    leria como *"não recusei ninguém"* — e é justamente por lê-la assim que ele
+    deixaria de reconsiderar alguém que está esperando por isso.
+    """
+    recusados = AlunosClient().fila("recusada")
+
+    # A mesma busca da tela de alunos, sobre os mesmos campos (nome, e-mail e
+    # turma — nunca o WhatsApp, `CAMPOS_DA_BUSCA`). Reusada e não reescrita:
+    # duas peneiras divergiriam no primeiro campo novo, e a daqui casaria com
+    # algo que a de lá não casa.
+    procurado = (request.GET.get("q") or "").strip()[:120]
+    na_tela = peneirar(recusados, procurado)
+
+    return render(
+        request,
+        "admin/escola_recusados.html",
+        {
+            "admin": request.admin,
+            "recusados": na_tela,
+            "procurado": procurado,
+            "peneirando": bool(procurado),
+            # O total ANTES da peneira, para a tela poder dizer "mostrando 1 de
+            # 5" — sem ele, uma busca com um resultado só é indistinguível de
+            # uma lista que tem uma pessoa só.
+            "total": None if recusados is None else len(recusados),
+            # `None` (não perguntei) e `[]` (perguntei, não há ninguém) são
+            # telas DIFERENTES: um `{% if %}` sozinho não distingue as duas.
+            "nao_consigo_ver": recusados is None,
+            # A escola só aparece quando há MAIS DE UMA nesta lista — com uma
+            # só, o identificador interno é ruído numa tela feita para leigo.
+            "mostrar_escola": len({r.get("site_id") for r in recusados or []}) > 1,
+            "recado": RECADOS.get(request.GET.get("resultado", "")),
+        },
+    )
+
+
+@require_POST
+def escola_reconsiderar(request):
+    """Aceita alguém que tinha sido recusado. Dois passos, auditoria em cada um.
+
+    **Os dados da pessoa são relidos AQUI, do lado da `alunos`, e não vêm do
+    formulário.** Reenviar o pedido reescreve nome, WhatsApp, turma e data da
+    compra da linha (é o que `POST /pre-matriculas` faz, por contrato) — então
+    campos escondidos no HTML transformariam este botão numa porta de EDIÇÃO
+    silenciosa do cadastro de quem está na fila. Reler custa uma ida à rede e
+    fecha isso: o que volta para a fila é exatamente o que já estava lá.
+
+    Mesma disciplina de `escola_decidir` e `escola_cadastrar`: a linha de
+    auditoria é escrita depois de saber o desfecho e antes de responder,
+    inclusive quando deu errado. Uma tentativa que não chegou não pode sumir.
+    """
+    alvo = (request.POST.get("alvo") or "").strip()
+    if not alvo:
+        # Sem auditoria: não houve gesto sobre pessoa nenhuma, e gravar ruído de
+        # formulário quebrado só enche o registro que alguém vai precisar ler.
+        return HttpResponseRedirect(reverse("escola_recusados"))
+
+    quem = request.admin.get("id") or request.admin.get("email") or "?"
+    cliente = AlunosClient()
+
+    def _anotar(desfecho: str, detalhe: str, sobre: str = alvo) -> None:
+        Registro.objects.create(
+            quem_email=request.admin.get("email") or "",
+            quem_id=request.admin.get("id") or "",
+            acao=Registro.RECONSIDERAR,
+            alvo=sobre,
+            desfecho=DESFECHO_NA_AUDITORIA[desfecho],
+            detalhe=detalhe,
+        )
+
+    recusados = cliente.fila("recusada")
+    if recusados is None:
+        _anotar(
+            AlunosClient.NAO_RESPONDEU,
+            "não consegui ler a lista de recusados; nada foi tentado",
+        )
+        return HttpResponseRedirect(
+            f"{reverse('escola_recusados')}?resultado=reconsiderar-nao-deu"
+        )
+
+    pessoa = next((p for p in recusados if str(p.get("id")) == alvo), None)
+    if pessoa is None:
+        # Recusado que não está mais entre os recusados: ou a própria pessoa
+        # reenviou o pedido (e está na fila), ou outra aba já a aceitou. Recusa
+        # HONESTA, e não um "não deu certo" que mandaria ele clicar de novo.
+        _anotar(AlunosClient.RECUSADO, "esta linha não está mais entre os recusados")
+        return HttpResponseRedirect(
+            f"{reverse('escola_recusados')}?resultado=reconsiderar-sumiu"
+        )
+
+    dados = {
+        "site_id": pessoa.get("site_id") or "",
+        "email": pessoa.get("email") or "",
+        "nome_completo": pessoa.get("nome_completo") or "",
+        "whatsapp": pessoa.get("whatsapp") or "",
+    }
+    # Só o que EXISTE viaja: mandar `turma: None` apagaria a turma que a pessoa
+    # escreveu, e apagar dado é o oposto do que este botão promete.
+    if pessoa.get("turma"):
+        dados["turma"] = pessoa["turma"]
+    if pessoa.get("comprou_em"):
+        dados["comprou_em"] = pessoa["comprou_em"]
+
+    desfecho, detalhe, id_da_linha = cliente.criar_na_fila(dados)
+
+    if desfecho != AlunosClient.OK:
+        _anotar(desfecho, detalhe or "não voltou para a fila")
+        recado = (
+            "reconsiderar-nao-cabe"
+            if desfecho == AlunosClient.RECUSADO
+            else "reconsiderar-nao-deu"
+        )
+        return HttpResponseRedirect(f"{reverse('escola_recusados')}?resultado={recado}")
+
+    # Voltou para a fila: deixou de estar recusada AGORA, e ainda sem acesso. Se
+    # o segundo passo falhar, ela NÃO some — fica esperando em `/escola/alunos/`
+    # com o botão Liberar do lado, e o recado abaixo diz exatamente isso.
+    liberou, detalhe_da_liberacao = cliente.decidir(
+        alvo=id_da_linha, decisao="liberar", decidido_por=quem
+    )
+    _anotar(
+        liberou,
+        detalhe_da_liberacao or "voltou para a fila e foi liberada",
+        sobre=id_da_linha,
+    )
+
+    recado = "reconsiderado" if liberou == AlunosClient.OK else "reconsiderado-na-fila"
+    return HttpResponseRedirect(f"{reverse('escola_recusados')}?resultado={recado}")
+
+
 # ------------------------------------------------------------- o prontuário
 #
 # `DECISAO-a-ficha-nao-se-apaga.md` §5 (29/08/2026). Ele existe porque a mesma
@@ -946,6 +1129,33 @@ RECADOS = {
         "Essa pessoa é administradora pela lista do servidor, e o botão não "
         "mexe nela — é isso que impede você de se trancar para fora. Para "
         "removê-la, é no servidor."
+    ),
+    # [RECUSADOS] Os cinco desfechos de aceitar alguém que tinha sido recusado
+    # (02/09/2026). O segundo é o que importa, e é o mesmo cuidado do cadastro à
+    # mão: quando a liberação falha, a tela diz ONDE a pessoa ficou, em vez de um
+    # "não deu certo" que faria o mantenedor clicar de novo achando que nada
+    # aconteceu.
+    "reconsiderado": (
+        "Pronto: essa pessoa deixou de estar recusada e já entra na área de alunos."
+    ),
+    "reconsiderado-na-fila": (
+        "Tirei essa pessoa dos recusados, mas não consegui liberar o acesso dela "
+        "agora. Ela está esperando na fila, na tela de alunos, com o botão "
+        "Liberar do lado. Não repita aqui."
+    ),
+    "reconsiderar-sumiu": (
+        "Essa pessoa não está mais entre os recusados. Ou ela mesma pediu entrada "
+        "de novo (e está esperando na fila, na tela de alunos), ou você já a "
+        "aceitou noutra aba. Nada foi mudado."
+    ),
+    "reconsiderar-nao-cabe": (
+        "Não deu para aceitar essa pessoa por aqui: ou ela já é aluna, ou ela foi "
+        "reembolsada, e quem foi reembolsado não volta pela fila. Procure por ela "
+        "na tela de alunos."
+    ),
+    "reconsiderar-nao-deu": (
+        "Não consegui falar com a parte que guarda os alunos. A mudança PODE ter "
+        "sido aplicada mesmo assim: recarregue esta lista antes de tentar de novo."
     ),
     "voce-mesmo": (
         "Você não pode remover a si mesmo. Se fosse possível e você fosse o "
