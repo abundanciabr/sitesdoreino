@@ -109,6 +109,23 @@ class AvaliacaoDaEquipe(Schema):
     decisao_produto: str
 
 
+class FalaNaIdeia(Schema):
+    """Um comentário, como ele foi escrito — o que a contagem `comentarios` não diz.
+
+    **Sem quem escreveu, e isto é decisão, não esquecimento.** O histórico manda
+    `por` porque a tela da moderação mostra quem moderou: ali o nome tem função.
+    A conversa embaixo de uma ideia não tem tela nenhuma que a mostre — quem a
+    pede é a exportação do Admin, cuja razão de existir é justamente o texto sair
+    da área administrativa sem nome de aluno junto. Um campo com nome de pessoa
+    e nenhum consumidor que precise dele é dado pessoal atravessando fronteira
+    de graça, e a casa não faz isso (o e-mail nunca viaja; o nome exibido só vai
+    onde uma tela o mostra).
+    """
+
+    texto: str
+    quando: str
+
+
 class IdeiaEmGestao(Schema):
     """Os FATOS de uma ideia. Nenhuma coluna, nenhum balde, nenhuma ordem."""
 
@@ -152,6 +169,13 @@ class IdeiaEmGestao(Schema):
     # campo que diz à tela que não há mais nada para restaurar: o botão
     # "Restaurar" não aparece, e o conteúdo que viaja aqui já está vazio.
     apagada: bool = False
+    # A conversa embaixo da ideia, e ela só vem para quem PEDE
+    # (`incluir_conversa=true`). O padrão continua sendo a lista sem ela, pelo
+    # mesmo motivo escrito em `IdeiaComHistorico`: carregá-la sempre
+    # multiplicaria a resposta por algo que cresce com o uso — o pior tipo de
+    # custo, o que só aparece quando a Caixa dá certo. Lista vazia é resposta
+    # legítima ("ninguém comentou"), e é o que quem não pede sempre recebe.
+    conversa: "list[FalaNaIdeia]" = []
 
 
 class LinhaDoHistorico(Schema):
@@ -386,8 +410,7 @@ def _ideias_do_quadro(quadro):
     independente do estado dela, ou desarquivar ficaria impossível.
     """
     return (
-        sugestoes_ordenadas(quadro, incluir_arquivadas=True)
-        .annotate(
+        sugestoes_ordenadas(quadro, incluir_arquivadas=True).annotate(
             parada_desde=Coalesce(Max("historico__criado_em"), "criado_em"),
             tem_avaliacao=Exists(
                 AvaliacaoInterna.objects.filter(sugestao_id=OuterRef("pk"))
@@ -399,7 +422,10 @@ def _ideias_do_quadro(quadro):
                 HistoricoStatus.objects.filter(sugestao_id=OuterRef("pk"))
             ),
         )
-        .prefetch_related("historico__alterado_por", "avaliacao")
+        # `comentarios` entra no prefetch mesmo quem não pede a conversa: a
+        # consulta a mais é UMA, e sem ela `incluir_conversa=true` vira uma
+        # consulta por ideia — o N+1 que só aparece quando o quadro cresce.
+        .prefetch_related("historico__alterado_por", "avaliacao", "comentarios")
     )
 
 
@@ -416,8 +442,13 @@ def _motivo_da_saida(sugestao) -> str:
     return ultima.nota if ultima else ""
 
 
-def _como_fato(ideia, plateias) -> dict:
-    """Uma ideia, na forma que atravessa a fronteira."""
+def _como_fato(ideia, plateias, com_conversa: bool = False) -> dict:
+    """Uma ideia, na forma que atravessa a fronteira.
+
+    `com_conversa` decide se o texto dos comentários vai junto. Ele é
+    parâmetro, e não sempre-ligado, porque a conversa cresce com o uso e a
+    maioria das telas só precisa da contagem.
+    """
     return {
         "id": ideia.id,
         "titulo": ideia.titulo,
@@ -443,6 +474,14 @@ def _como_fato(ideia, plateias) -> dict:
         "arquivada_em": ideia.arquivada_em.isoformat() if ideia.arquivada_em else "",
         "motivo_do_arquivamento": ideia.motivo_do_arquivamento,
         "apagada": ideia.apagada_em is not None,
+        "conversa": (
+            [
+                {"texto": fala.texto, "quando": fala.criado_em.isoformat()}
+                for fala in ideia.comentarios.all()
+            ]
+            if com_conversa
+            else []
+        ),
         "avaliacao": (
             {
                 "impacto_educacional": ideia.avaliacao.impacto_educacional,
@@ -468,10 +507,17 @@ def _como_fato(ideia, plateias) -> dict:
         "NÃO devolve colunas, baldes nem ordenação: agrupar é do consumidor. O "
         "e-mail de quem sugeriu nunca viaja. Por padrão as arquivadas ficam de "
         "fora — `incluir_arquivadas=true` as traz de volta, para quem precisa "
-        "achar uma ideia arquivada para desarquivar."
+        "achar uma ideia arquivada para desarquivar. O texto dos comentários "
+        "também fica de fora por padrão: `incluir_conversa=true` o traz, e ele "
+        "vem sem o nome de quem escreveu."
     ),
 )
-def listar_ideias(request, por_email: str = "", incluir_arquivadas: bool = False):
+def listar_ideias(
+    request,
+    por_email: str = "",
+    incluir_arquivadas: bool = False,
+    incluir_conversa: bool = False,
+):
     quadro = quadro_atual()
     agora = timezone.now()
     todas = list(_ideias_do_quadro(quadro))
@@ -497,7 +543,10 @@ def listar_ideias(request, por_email: str = "", incluir_arquivadas: bool = False
             round(sum(silencio.values()) / len(silencio)) if silencio else None
         ),
         "pessoas_em_silencio_demais": len(caladas),
-        "ideias": [_como_fato(ideia, plateias) for ideia in ideias],
+        "ideias": [
+            _como_fato(ideia, plateias, com_conversa=incluir_conversa)
+            for ideia in ideias
+        ],
     }
 
 
