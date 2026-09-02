@@ -293,3 +293,47 @@ def test_a_issue_DIZ_qual_das_duas_doencas_foi(job):
     assert "armadilhas/127" in corpo, (
         "o vermelho por timeout precisa apontar a entrada que o explica"
     )
+
+
+def test_o_SEGUNDO_BRACO_viaja_ate_o_script(job):
+    """A escada no Python não vale nada se o YAML entregar um degrau só.
+
+    Em 30/08/2026, às 23:20, a vacina decidiu REPETIR certo e não alcançou
+    nada: `GH_TOKEN: ${{ secrets.PISTA_TOKEN || github.token }}` faz o PAT
+    sombrear o `github.token`, e o PAT é o único dos dois que não pode
+    redisparar run — coisa que o `pouso.yml` já declarava desde o dia anterior.
+    O `actions: write` do job estava concedido o tempo todo.
+
+    Medido em 02/09/2026, três casos isolados, veredito lido do `run_attempt`
+    por fora: PAT+write recusa · github.token+write redispara · github.token+read
+    recusa. Sem esta linha no YAML, `pedir_o_rerun` vê um braço só e a TAR-051
+    volta a ser um comentário bonito (Classe 2 da retrospectiva).
+    """
+    passo = next(p for p in job["steps"] if p.get("id") == "vacina")
+    reserva = str(passo["env"].get("GH_TOKEN_RESERVA", ""))
+    assert "github.token" in reserva, (
+        "o segundo braço tem de ser o `github.token` do próprio job — é o "
+        f"único medido capaz de `gh run rerun` aqui; veio: {reserva!r}"
+    )
+    assert "PISTA_TOKEN" not in reserva, (
+        "a reserva não pode ser o mesmo PAT do principal: seria repetir a "
+        "tentativa que já foi recusada em produção e chamar isso de plano B"
+    )
+
+
+def test_a_escada_de_bracos_EXISTE_do_lado_de_ca(job):
+    """O YAML entrega dois tokens; alguém tem de descer a escada com eles.
+
+    Guarda em par com a de cima: um `GH_TOKEN_RESERVA` que nenhum código lê é
+    exatamente a garantia sem mecanismo que esta casa mede há semanas.
+    """
+    import rerun_de_deploy as vacina
+
+    assert hasattr(vacina, "pedir_o_rerun"), (
+        "sumiu `pedir_o_rerun`: o rerun voltou a ser uma tentativa única, e a "
+        "reserva no YAML virou enfeite"
+    )
+    bracos = vacina.bracos_do_rerun(
+        {"GH_TOKEN": "pat", "GH_TOKEN_RESERVA": "do-job"}
+    )
+    assert [t for _, t in bracos] == ["pat", "do-job"]
