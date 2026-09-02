@@ -49,6 +49,17 @@ class Ator:
     eh_professor: bool = False
     eh_admin: bool = False
 
+    # O `papel` que a `identidade` devolve, guardado como VEIO — e é o único
+    # campo deste dataclass que não é conclusão desta célula. Ele existe para
+    # UMA coisa: a plateia `staff` do menu do topo, que é dado do SITE e precisa
+    # significar a mesma coisa em todas as áreas dele.
+    #
+    # Não confunda com `eh_equipe`, logo abaixo: aquele é quem manda no fórum
+    # (listas DESTA célula, fail-closed) e decide o que a pessoa PODE fazer.
+    # Este decide se um atalho aparece, e nada mais. Usá-lo para liberar
+    # qualquer coisa é a violação que `DECISAO-onde-mora-a-sessao` §4 proíbe.
+    papel_do_site: str = ""
+
     @property
     def autenticado(self) -> bool:
         return self.pessoa is not None
@@ -171,4 +182,6 @@ def _resolver(request) -> Ator:
         eh_aluno=(categoria == CATEGORIA_ALUNO),
         eh_professor=email in _lista_de_emails("FORUM_PROFESSORES"),
         eh_admin=email in _lista_de_emails("ADMIN_EMAILS"),
+        # Guardado como VEIO, sem conclusão nenhuma desta célula. Só o menu o lê.
+        papel_do_site=(corpo.get("papel") or "").strip(),
     )
