@@ -85,7 +85,7 @@ quem a escreveu. Esta área é bastidor, e é só em português.
       {% csrf_token %}
       <input type="hidden" name="slug" value="{{ regra.slug }}">
       <input type="hidden" name="ativa" value="0">
-      <button type="submit">Desligar esta regra</button>
+      <button type="submit">Desativar esta regra</button>
     </form>
     {% else %}
     <p class="estado">Desligada. Ninguém ganha ponto por isso hoje.</p>
@@ -157,7 +157,7 @@ quem a escreveu. Esta área é bastidor, e é só em português.
       {% csrf_token %}
       <input type="hidden" name="slug" value="{{ c.slug }}">
       <input type="hidden" name="ativa" value="0">
-      <button type="submit">Desligar</button>
+      <button type="submit">Desativar</button>
     </form>
     {% else %}
     <p class="estado">Desligada.</p>
@@ -230,7 +230,7 @@ quem a escreveu. Esta área é bastidor, e é só em português.
       {% csrf_token %}
       <input type="hidden" name="nivel" value="{{ d.nivel }}">
       <input type="hidden" name="ativa" value="0">
-      <button type="submit">Desligar</button>
+      <button type="submit">Desativar</button>
     </form>
     {% else %}
     <p class="estado">Desligado.</p>
