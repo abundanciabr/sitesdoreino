@@ -236,6 +236,55 @@ class IdentidadeClient:
             return self.NAO_RESPONDEU, "a identidade não devolveu a senha nova", ""
         return self.OK, "", senha_nova
 
+    # ------------------------------------------------------------ leitura de tela
+    #
+    # `pessoa_por_id` serve a UMA tela (o quadro de pontos, `escola_pontos.py`),
+    # não a porta de entrada desta área — por isso **fail-OPEN**, ao contrário de
+    # `sessao_completa`: a diferença não é gosto, é a mesma do `AlunosClient`
+    # logo abaixo. Aquele método decide ACESSO (quem entra); este decide o que
+    # UMA LINHA de uma lista mostra, dentro de uma área em que a pessoa já
+    # entrou. `findPersonById` exige o MESMO grau `TOKENS_COMPLETOS_ADMIN` que
+    # `getSessionFull` já usa — o par que fala com a identidade já está elevado.
+
+    def pessoa_por_id(self, pessoa_id: str) -> "str | None":
+        """O e-mail de um id opaco de plataforma, ou `None`.
+
+        `None` cobre DOIS casos que esta chamada colapsa de propósito: "a
+        identidade não respondeu" e "este id não tem e-mail" (`email: null` é
+        RESPOSTA no contrato, não erro). Quem chama (`escola_pontos.py`) trata
+        os dois do mesmo jeito — pula a linha —, e distinguir os dois exigiria
+        um terceiro estado que ninguém consome ainda.
+        """
+        config = self._configuracao()
+        if config is None:
+            return None
+        base, token = config
+
+        try:
+            r = http().post(
+                f"{base}/pessoas/por-id",
+                json={"id": pessoa_id},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error(
+                "quadro: não deu para perguntar o e-mail à identidade: %s", erro
+            )
+            return None
+        if r.status_code != 200:
+            logger.error("quadro: a identidade respondeu HTTP %s", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("quadro: resposta da identidade fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, dict):
+            return None
+        email = corpo.get("email")
+        return email if isinstance(email, str) and email else None
+
 
 class AlunosClient:
     """`contracts/alunos.openapi.yaml` — a fila de liberação (somente leitura).
@@ -944,6 +993,22 @@ class GamificacaoClient:
         em português, e o título de um degrau é dado que ele mesmo edita.
         """
         return self._listar("economia/degraus", "degraus")
+
+    def quadro(self) -> "list | None":
+        """A escola inteira, aluno por aluno: pontos, nível, última atividade
+        e conquistas. `None` = não deu.
+
+        Operação `listStudentStandings`, do Rito de Contrato de 03/09/2026 — a
+        primeira que fura o invariante 2 daquela porta (nunca XP de terceiro),
+        por exceção declarada: serve só este bastidor. Só quem já tem PerfilJogador
+        aparece (a linha é preguiçosa, Lei 7 da gamificação); quem monta a tela
+        cruza com `AlunosClient().alunos()` para saber quem falta na lista.
+
+        NÃO traz `título` nem `nome` de conquista — só `nível` e `slug`. Quem
+        chama (`escola_pontos.py`) traduz os dois cruzando com `degraus()` e
+        `conquistas()`, que já busca para a metade de cima desta mesma tela.
+        """
+        return self._listar("quadro", "quadro")
 
     def mudar_degrau(self, nivel: int, ativa: bool) -> "tuple[str, str]":
         """Liga ou desliga UM degrau. Devolve (situação, frase).
