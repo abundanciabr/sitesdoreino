@@ -150,9 +150,24 @@ def test_teto_no_meio_de_falhas_carrega_o_erro_nao_a_olhada():
 
 
 def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
-           gh_exit: int = 0) -> subprocess.CompletedProcess:
-    """Roda a CLI com gh de mentira (ESPERAR_GH) e HOME em tmp."""
+           gh_exit: int = 0, mergear_exit: int | None = None) -> subprocess.CompletedProcess:
+    """Roda a CLI com gh de mentira (ESPERAR_GH) e HOME em tmp.
+
+    `mergear_exit` liga um portão de mentira (ESPERAR_MERGEAR) que grava os
+    argumentos recebidos em `portao-chamado.txt` e sai com esse código.
+    """
     env = dict(os.environ)
+    if mergear_exit is not None:
+        portao = tmp / "portao_de_mentira.py"
+        marca = tmp / "portao-chamado.txt"
+        portao.write_text(
+            "import sys, pathlib\n"
+            f"pathlib.Path(r'{marca}').write_text(' '.join(sys.argv[1:]))\n"
+            f"print('portao de mentira: exit {mergear_exit}')\n"
+            f"sys.exit({mergear_exit})\n",
+            encoding="utf-8",
+        )
+        env["ESPERAR_MERGEAR"] = json.dumps([sys.executable, str(portao)])
     env["USERPROFILE"] = str(tmp)      # Windows: Path.home()
     env["HOME"] = str(tmp)             # POSIX (o runner do CI é Linux)
     env["ESPERAR_REPO"] = "dona/loja"
@@ -346,3 +361,67 @@ def test_regua_ausente_diz_nao_sei_nunca_inventa_numero(tmp_path):
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "não sei quanto isto costuma levar" in proc.stdout
+
+
+# ---------------------------------------------------------------------------
+# --e-pousar: o caminho inteiro num comando (03/09/2026)
+# ---------------------------------------------------------------------------
+VERDE = [{"state": "OPEN", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas"},
+]}]
+VERMELHO = [{"state": "OPEN", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "FAILURE", "name": "muralhas"},
+]}]
+RAPIDO = ["--teto", "1", "--intervalo", "0.05"]
+
+
+def test_e_pousar_sem_checks_recusa_e_ensina(tmp_path):
+    proc = _rodar(["--run", "1", *RAPIDO, "--e-pousar"], tmp_path)
+    assert proc.returncode == 2
+    assert "--e-pousar" in proc.stderr and "--checks" in proc.stderr
+
+
+def test_checks_verdes_com_e_pousar_chamam_o_portao_e_pedem_pouso(tmp_path):
+    """O que o mantenedor pediu em 03/09/2026: verde ⇒ pouso, sem ninguém voltar."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=VERDE, mergear_exit=0,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    chamado = (tmp_path / "portao-chamado.txt").read_text(encoding="utf-8")
+    assert chamado == "447 --pousar", chamado
+    assert "pedi pouso do PR 447 pelo portão" in proc.stdout
+    assert "Nada mais depende de ninguém" in proc.stdout
+
+
+def test_checks_reprovados_com_e_pousar_nunca_chamam_o_portao(tmp_path):
+    """Vermelho NUNCA vira pedido de pouso — o portão nem é acordado."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=VERMELHO, mergear_exit=0,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert not (tmp_path / "portao-chamado.txt").exists(), "chamou o portão no vermelho"
+    assert "REPROVADO" in proc.stdout
+
+
+def test_portao_que_recusa_faz_a_espera_terminar_vermelha(tmp_path):
+    """Checks verdes não bastam: o portão continua dono da decisão (base velha,
+    dívida do livro, registro ausente), e a recusa dele sai inteira na voz."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=VERDE, mergear_exit=1,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "RECUSOU o pouso do PR 447" in proc.stdout
+    assert "portao de mentira: exit 1" in proc.stdout, "a recusa do portão tem de sair na voz"
+
+
+def test_sem_e_pousar_o_verde_continua_so_verde(tmp_path):
+    """A opção é opt-in: quem não a pediu não pede pouso nenhum."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO],
+        tmp_path, gh_respostas=VERDE, mergear_exit=0,
+    )
+    assert proc.returncode == 0
+    assert not (tmp_path / "portao-chamado.txt").exists()

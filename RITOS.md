@@ -141,8 +141,9 @@ validação → muda banco → ninguém sabe mais o que aconteceu. O antídoto t
 5. **A pista, por dentro — o que acontece depois que você pede pouso:**
 
    ```bash
-   python ci/mergear.py <N> --pousar      # o caminho normal (peça 4)
-   gh pr edit <N> --add-label pousar      # o mesmo gesto, na mão
+   python ci/esperar.py --checks <N> --teto 20 --e-pousar   # o caminho normal (03/09/2026): verde, portão, pouso
+   python ci/mergear.py <N> --pousar      # o mesmo portão, chamado à mão (peça 4)
+   gh pr edit <N> --add-label pousar      # o mesmo gesto, cru
    ```
 
    E vá embora. A pista (`.github/workflows/pouso.yml`, Onda 4 do

@@ -194,12 +194,27 @@ O fluxo, sem perguntar nada:
 1. PR aberto dentro do escopo de um despacho → leia o número que o `gh`
    devolveu e **embarque o registro no mesmo ramo** (`painel/registros/`,
    citando o número — molde em `painel/LEIA-ME.md`; PR que só escritura é
-   isento). Espere os checks concluírem.
-2. `python ci/mergear.py <N> --conferir` — tudo verde?
-3. `python ci/mergear.py <N> --pousar` — pede pouso e **vá embora**. A pista
-   atualiza com a `main` de agora, confere pelo MESMO portão e mergeia; ela
-   comenta no PR o que aconteceu (pousou, devolveu, ou está esperando). O
-   registro aterrissa junto — depois do pouso não fica devendo nada ao livro.
+   isento).
+2. **UM comando, pela ferramenta `Monitor`, e vá embora** (desde 03/09/2026):
+
+   ```bash
+   python ci/esperar.py --checks <N> --teto 20 --dizendo "os checks do PR <N>" --e-pousar
+   ```
+
+   Ele espera os checks UMA vez e, ao ficarem verdes, passa pelo MESMO portão
+   (`ci/mergear.py <N> --pousar`) e pede o pouso sozinho. Vermelho, estouro ou
+   medição impossível nunca viram pedido. **Não deixe o pedido de pouso para
+   um passo seu depois:** em 03/09/2026 o rito tinha três passos, a sessão
+   acabou entre um e outro, e o mantenedor passou horas esperando um pouso
+   que esperava por ele. `--conferir` e `--pousar` à mão continuam existindo
+   para depurar, não como caminho normal.
+3. A pista atualiza com a `main` de agora, confere pelo MESMO portão e
+   mergeia; ela comenta no PR o que aconteceu (pousou, devolveu, ou está
+   esperando). O registro aterrissa junto — depois do pouso não fica devendo
+   nada ao livro. **No relatório final, diga com todas as letras que nada mais
+   depende de ninguém** e quanto a fila costuma levar (8 min de mediana): o
+   mantenedor não distingue "o robô está esperando" de "o robô está
+   trabalhando", e uma frase solta o deixou esperando um dia inteiro.
 4. Se o merge toca `services/` ou `infra/`, o veredito do run de deploy
    (seção "Depois de todo merge que dispara deploy") — esse é registro NOVO,
    pós-merge, porque só existe depois mesmo.
