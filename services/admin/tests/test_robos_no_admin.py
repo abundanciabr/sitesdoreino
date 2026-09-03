@@ -182,7 +182,7 @@ def test_o_de_agora_vem_antes_do_retrato(tmp_path, monkeypatch):
     pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
 
     ao_vivo = pagina.find("Agora, neste minuto")
-    parou = pagina.find("Pararam, e esperam alguém")
+    parou = pagina.find("Pararam no meio do caminho")
     ja_terminaram = pagina.find("Já terminaram")
 
     assert ao_vivo != -1 and parou != -1 and ja_terminaram != -1
@@ -206,7 +206,7 @@ def test_a_historia_nasce_fechada_e_o_que_pede_gente_nasce_aberto(
     assert "Já terminaram" in depois_do_details, "a história voltou a nascer aberta"
     assert "<details open" not in pagina
     # O que parou esperando alguém NUNCA fica atrás de um clique.
-    assert "Pararam, e esperam alguém" not in depois_do_details
+    assert "Pararam no meio do caminho" not in depois_do_details
 
 
 @respx.mock

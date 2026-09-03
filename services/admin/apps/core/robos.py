@@ -74,9 +74,17 @@ CANDIDATOS = (RAIZ_DA_CELULA / "fila_embutida",)
 COLUNAS = (
     {
         "estado": "bloqueada",
-        "rotulo": "Pararam, e esperam alguém",
-        "curto": "pararam esperando alguém",
-        "explicacao": "Cada cartão diz o que falta. É aqui que costuma haver algo para você decidir.",
+        "rotulo": "Pararam no meio do caminho",
+        "curto": "paradas",
+        # A frase é NEUTRA de propósito, e isso custou uma correção no mesmo dia
+        # em que a tela nasceu. A primeira versão dizia "é aqui que costuma
+        # haver algo para você decidir" — e das 11 paradas em 03/09/2026,
+        # NENHUMA esperava o mantenedor: todas esperavam outra tarefa da fila.
+        # A fila não guarda "quem esta parada espera", então a tela não tem como
+        # saber, e inventar um palpite aqui seria uma segunda definição de "o
+        # que espera por você" concorrendo com a que é CALCULADA no livro.
+        # Quem responde essa pergunta é a aba "Quem está esperando".
+        "explicacao": "O que cada uma está esperando fica escrito no cartão: umas esperam outra tarefa terminar, outras esperam uma decisão de gente.",
         "cor": "ambar",
         "recolhida": False,
     },
