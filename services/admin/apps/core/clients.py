@@ -1015,3 +1015,71 @@ class GamificacaoClient:
             return self.RECUSADO, f"essa {rotulo} não existe nesta escola"
         logger.error("economia: a mudança respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a gamificação respondeu com erro"
+
+
+class NotificacoesClient:
+    """`contracts/notificacoes.openapi.yaml`, operação `enviarAvisoDeTeste`.
+
+    Rito de Contrato de 03/09/2026 (PR #907, corrigido no #908): a porta que
+    responde "o aviso saiu daqui, e para quantos aparelhos". Nasceu de um caso
+    real — o botão de ligar os avisos falhava no navegador do mantenedor com o
+    servidor verde, e não havia como distinguir "não foi enviado" de "foi
+    enviado e não chegou" sem entrar na VPS (Lei 5).
+
+    **Escrita, e por isso `(desfecho, aparelhos)`, nunca `None`.** A pessoa
+    clicou num botão esperando saber alguma coisa: `None` aqui seria a mesma
+    mentira que `AlunosClient` e `CaixaClient` evitam na escrita — dizer "não
+    sei" quando o certo é dizer o que aconteceu, mesmo que seja "zero".
+    """
+
+    TIMEOUT = 4.0
+    OK = "ok"
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        base = (os.environ.get("NOTIFICACOES_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("NOTIFICACOES_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def enviar_aviso_de_teste(
+        self, *, site_id: str, destinatario_id: str
+    ) -> "tuple[str, int]":
+        """`(OK, N)` ou `(NAO_RESPONDEU, 0)`. `N=0` com `OK` é resultado
+        legítimo — a pessoa não ligou os avisos em aparelho nenhum, e é
+        justamente esse o diagnóstico que a porta existe para dar."""
+        config = self._configuracao()
+        if config is None:
+            logger.error(
+                "aviso de teste: NOTIFICACOES_API_URL/NOTIFICACOES_API_TOKEN "
+                "ausentes no env desta célula — o botão não pode ser usado"
+            )
+            return self.NAO_RESPONDEU, 0
+        base, token = config
+        try:
+            r = http().post(
+                f"{base}/aviso-de-teste",
+                json={"site_id": site_id, "destinatario_id": destinatario_id},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error(
+                "aviso de teste: não deu para falar com a notificacoes: %s", erro
+            )
+            return self.NAO_RESPONDEU, 0
+        if r.status_code != 200:
+            logger.error(
+                "aviso de teste: a notificacoes respondeu HTTP %s", r.status_code
+            )
+            return self.NAO_RESPONDEU, 0
+        try:
+            aparelhos = r.json().get("aparelhos")
+        except ValueError:
+            logger.error(
+                "aviso de teste: a notificacoes respondeu um corpo fora do contrato"
+            )
+            return self.NAO_RESPONDEU, 0
+        if not isinstance(aparelhos, int):
+            logger.error("aviso de teste: 'aparelhos' fora do contrato: %r", aparelhos)
+            return self.NAO_RESPONDEU, 0
+        return self.OK, aparelhos

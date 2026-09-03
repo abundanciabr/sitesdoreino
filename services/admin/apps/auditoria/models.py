@@ -161,6 +161,12 @@ class Registro(models.Model):
     # `identidade`); esta linha registra só QUEM pediu, QUANDO, e para QUAL
     # e-mail, nunca o segredo.
     RESETAR_SENHA = "resetar_senha"
+    # [AVISO DE TESTE] 03/09/2026: a pessoa mandou um aviso de teste para o
+    # proprio aparelho, para saber se os avisos na tela do celular estao
+    # funcionando. Verbo proprio porque a pergunta que se faz a estas linhas e
+    # "quantas vezes o mantenedor precisou confirmar o canal?", que nenhum
+    # outro verbo responde. Nao muda estado de aluno nenhum: e diagnostico.
+    TESTAR_AVISO = "testar_aviso"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -191,6 +197,7 @@ class Registro(models.Model):
         (LIGAR_DEGRAU, "ligar um degrau da escada de niveis"),
         (DESLIGAR_DEGRAU, "desligar um degrau da escada de niveis"),
         (RESETAR_SENHA, "resetar a senha de um aluno"),
+        (TESTAR_AVISO, "mandar um aviso de teste para o proprio aparelho"),
     ]
 
     OK = "ok"
