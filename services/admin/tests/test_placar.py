@@ -1,4 +1,9 @@
-"""O placar, `/admin/placar/` (03/09/2026): o andar zero do painel de gestão.
+"""O placar, `/admin/placar/`: o andar zero do painel de gestão.
+
+Reformulado em 03/09/2026 à noite (registro `20260903-036`): a meta virou
+"quantas pessoas compraram neste mês", com a meta grande por cima (de 0 para
+500 somadas de 03/09 a 15/12/2026), contadas pela data em que cada pessoa
+virou aluna (`virou_aluno_em`, o campo do Rito de Contrato do PR #933).
 
 O que estes guardas protegem (plano: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`):
 
@@ -7,12 +12,16 @@ O que estes guardas protegem (plano: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`):
    fail-closed do §2, e o caso que DEVE reprovar está aqui.
 2. **Os cartões do repositório são válidos.** Quem escrever um cartão torto
    descobre no PR, não na tela do mantenedor.
-3. **"Não sei" nunca vira zero.** A `alunos` fora do ar ⇒ "não consigo contar",
-   e nenhum "0 alunos" na tela.
-4. **A conta do veredito é a que o plano descreve**, e não outra: linha reta
-   da partida ao alvo, sem índice.
-5. **O par sem fonte se declara**, em vez de mostrar número inventado.
-6. **A porta continua sendo a porta**, e a visão geral leva até aqui.
+3. **"Não sei" nunca vira zero.** A `alunos` fora do ar ⇒ "não consigo contar";
+   lista sem o campo novo ⇒ "ainda não traz a data"; ficha sem data ⇒ contada
+   à parte e dita na tela. Nenhum "0" inventado.
+4. **A contagem é pela data certa**: `virou_aluno_em` em America/Sao_Paulo,
+   nunca `comprou_em`; antes da partida não conta; reembolsada não conta.
+5. **A conta do veredito é a que o plano descreve**, e não outra: linha reta
+   da partida ao alvo, sem índice. E a barra do mês deriva a meta do mês da
+   mesma linha, quando o mantenedor não fixou uma.
+6. **O par sem fonte se declara**, em vez de mostrar número inventado.
+7. **A porta continua sendo a porta**, e a visão geral leva até aqui.
 """
 
 from __future__ import annotations
@@ -67,18 +76,21 @@ def _dentro() -> Client:
     return c
 
 
-def _a_escola_responde(ativos: int, pausados: int = 0):
-    """A `alunos` respondendo: `ativos` matrículas ativas e `pausados` suspensas."""
-    matriculas = [{"status": "ativa"} for _ in range(ativos)] + [
-        {"status": "suspensa"} for _ in range(pausados)
-    ]
+def _ficha(status="ativa", virou_aluno_em="omitido", **extra):
+    ficha = {"status": status, **extra}
+    if virou_aluno_em != "omitido":
+        ficha["virou_aluno_em"] = virou_aluno_em
+    return ficha
+
+
+def _a_escola_responde(fichas: list[dict]):
     respx.get(FILA, params={"status": "aguardando"}).mock(
         return_value=httpx.Response(200, json=[])
     )
     respx.get(FILA, params={"status": "recusada"}).mock(
         return_value=httpx.Response(200, json=[])
     )
-    respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=matriculas))
+    respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=fichas))
 
 
 def _a_escola_caiu():
@@ -104,10 +116,20 @@ def test_os_cartoes_do_repositorio_sao_validos():
 def test_a_meta_e_o_par_apontam_um_para_o_outro():
     pasta = placar.diretorio_dos_cartoes()
     meta, _ = placar.ler_cartao(placar.CARTAO_DA_META, pasta)
+    mes, _ = placar.ler_cartao(placar.CARTAO_DO_MES, pasta)
     par, _ = placar.ler_cartao(placar.CARTAO_DO_PAR, pasta)
     assert meta["par"] == placar.CARTAO_DO_PAR
+    assert mes["par"] == placar.CARTAO_DO_PAR
     assert par["par"] == placar.CARTAO_DA_META
-    assert meta["andar"] == 0 and par["andar"] == 0
+    assert meta["andar"] == 0 and mes["andar"] == 0 and par["andar"] == 0
+
+
+def test_a_meta_1_e_a_que_o_mantenedor_decidiu_em_03_09():
+    """500 somadas, de 03/09 a 15/12/2026, partindo de 0 (registro 20260903-036)."""
+    meta, _ = placar.ler_cartao(placar.CARTAO_DA_META)
+    assert (meta["partida"], meta["alvo"]) == (0, 500)
+    assert (meta["partida_em"], meta["ate"]) == ("2026-09-03", "2026-12-15")
+    assert meta["acao"], "número de resultado no andar 0 diz o que fazer"
 
 
 @pytest.mark.parametrize(
@@ -119,7 +141,10 @@ def test_a_meta_e_o_par_apontam_um_para_o_outro():
         ({"componentes": ["a", "b"]}, "composto"),
         ({"fonte": None}, "sem_fonte_porque"),
         ({"versao": "1"}, "versao"),
-        ({"alvo": 200}, "os quatro juntos"),
+        ({"acao": None}, "acao"),
+        ({"direcao": "para-cima"}, "direcao"),
+        ({"alvo_do_mes": "50"}, "alvo_do_mes"),
+        ({"alvo": None}, "os quatro juntos"),
         (
             {
                 "alvo": 200,
@@ -145,15 +170,98 @@ def test_o_validador_reprova_cada_defeito(defeito, trecho):
     assert any(trecho in p for p in problemas), problemas
 
 
+# ------------------------------------------------------------------ a contagem
+
+
+PARTIDA = dt.date(2026, 9, 3)
+HOJE = dt.date(2026, 9, 20)
+
+
+def test_conta_pela_data_em_que_virou_aluna_e_nunca_pela_data_digitada():
+    fichas = [
+        _ficha(virou_aluno_em="2026-09-10T15:00:00-03:00", comprou_em="2026-07-01"),
+        _ficha(virou_aluno_em="2026-09-15T15:00:00-03:00"),
+        _ficha(status="suspensa", virou_aluno_em="2026-09-16T15:00:00-03:00"),
+        _ficha(status="encerrada", virou_aluno_em="2026-09-17T15:00:00-03:00"),
+    ]
+    r = placar.contar_compras(fichas, PARTIDA, HOJE)
+    assert r["ciclo"] == 4 and r["mes"] == 4
+    assert r["sem_data"] == 0 and r["reembolsadas"] == 0
+    assert r["total_de_alunos"] == 2
+
+
+def test_quem_virou_aluna_antes_da_partida_nao_conta():
+    """A turma liberada em lote em 02/09 é venda de outros meses."""
+    fichas = [
+        _ficha(virou_aluno_em="2026-09-02T23:59:00-03:00"),
+        _ficha(virou_aluno_em="2026-09-03T00:01:00-03:00"),
+    ]
+    r = placar.contar_compras(fichas, PARTIDA, HOJE)
+    assert r["ciclo"] == 1 and r["mes"] == 1
+    assert r["total_de_alunos"] == 2, "no total da escola as duas contam"
+
+
+def test_o_dia_e_o_de_sao_paulo_e_nao_o_de_utc():
+    """23h de 02/09 em UTC ainda é 02/09 às 20h em São Paulo; 02:00Z de 03/09 é 23h de 02/09."""
+    assert placar.dia_em_sao_paulo("2026-09-03T02:00:00Z") == dt.date(2026, 9, 2)
+    assert placar.dia_em_sao_paulo("2026-09-03T03:00:00Z") == dt.date(2026, 9, 3)
+    assert (
+        placar.dia_em_sao_paulo("2026-09-03T10:00:00") is None
+    ), "sem fuso não se adivinha"
+    assert placar.dia_em_sao_paulo(None) is None
+    assert placar.dia_em_sao_paulo("isso não é data") is None
+
+
+def test_o_mes_zera_no_dia_1_e_o_ciclo_soma():
+    hoje = dt.date(2026, 10, 5)
+    fichas = [
+        _ficha(virou_aluno_em="2026-09-20T12:00:00-03:00"),
+        _ficha(virou_aluno_em="2026-10-02T12:00:00-03:00"),
+    ]
+    r = placar.contar_compras(fichas, PARTIDA, hoje)
+    assert r["ciclo"] == 2 and r["mes"] == 1
+
+
+def test_reembolsada_nao_e_compra_e_ficha_sem_data_e_dita_a_parte():
+    fichas = [
+        _ficha(virou_aluno_em="2026-09-10T12:00:00-03:00"),
+        _ficha(status="reembolsada", virou_aluno_em="2026-09-11T12:00:00-03:00"),
+        _ficha(virou_aluno_em=None),
+    ]
+    r = placar.contar_compras(fichas, PARTIDA, HOJE)
+    assert r["ciclo"] == 1
+    assert r["reembolsadas"] == 1
+    assert r["sem_data"] == 1
+
+
+def test_lista_sem_o_campo_novo_nao_vira_zero():
+    """A `alunos` ainda sem o PR do rito: a tela diz que a data não chegou."""
+    fichas = [_ficha(), _ficha(status="suspensa")]
+    r = placar.contar_compras(fichas, PARTIDA, HOJE)
+    assert r["ciclo"] is None and r["mes"] is None
+    assert r["campo_ausente"] is True
+    assert r["total_de_alunos"] == 1, "o total de alunos continua contável"
+
+
+def test_lista_ausente_nao_vira_zero():
+    r = placar.contar_compras(None, PARTIDA, HOJE)
+    assert r["ciclo"] is None and r["total_de_alunos"] is None
+    assert r["campo_ausente"] is False
+
+
+def test_lista_vazia_e_zero_de_verdade():
+    r = placar.contar_compras([], PARTIDA, HOJE)
+    assert r["ciclo"] == 0 and r["mes"] == 0 and r["campo_ausente"] is False
+
+
 # ------------------------------------------------------------------- a conta
 
 
-HOJE = dt.date(2026, 10, 1)
 META = {
-    "alvo": 200,
-    "ate": "2026-11-30",
-    "partida": 100,
-    "partida_em": "2026-10-01",
+    "alvo": 500,
+    "ate": "2026-12-15",
+    "partida": 0,
+    "partida_em": "2026-09-03",
 }
 
 
@@ -170,40 +278,78 @@ def test_sem_contagem_o_veredito_e_nao_consigo_contar():
 
 
 def test_a_linha_reta_decide_ganhando_e_perdendo():
-    # 30 dos 60 dias passaram: esperado = 100 + 100 * 30/60 = 150.
-    meio = dt.date(2026, 10, 31)
-    assert placar.calcular_placar(META, 150, meio)["veredito"] == "ganhando"
-    assert placar.calcular_placar(META, 149, meio)["veredito"] == "perdendo"
-    r = placar.calcular_placar(META, 120, meio)
-    assert r["esperado_hoje"] == 150
-    assert r["distancia"] == 80
-    assert r["dias_restantes"] == 30
-    assert r["ritmo_por_semana"] == pytest.approx(80 / (30 / 7), abs=0.1)
+    # 103 dias de ciclo; em 09/10 passaram 36: esperado = round(500 * 36/103) = 175.
+    dia = dt.date(2026, 10, 9)
+    assert placar.esperado_em(META, dia) == 175
+    assert placar.calcular_placar(META, 175, dia)["veredito"] == "ganhando"
+    assert placar.calcular_placar(META, 174, dia)["veredito"] == "perdendo"
+    r = placar.calcular_placar(META, 100, dia)
+    assert r["distancia"] == 400
+    assert r["dias_restantes"] == 67
+    assert r["ritmo_por_semana"] == pytest.approx(400 / (67 / 7), abs=0.1)
 
 
-def test_no_dia_da_partida_qualquer_x_igual_a_partida_esta_ganhando():
-    assert placar.calcular_placar(META, 100, HOJE)["veredito"] == "ganhando"
+def test_no_dia_da_partida_zero_esta_ganhando():
+    assert placar.calcular_placar(META, 0, PARTIDA)["veredito"] == "ganhando"
 
 
 def test_meta_cumprida_e_prazo_vencido():
-    assert placar.calcular_placar(META, 200, HOJE)["veredito"] == "cumprida"
-    depois = dt.date(2026, 12, 15)
-    assert placar.calcular_placar(META, 199, depois)["veredito"] == "vencida"
-    assert placar.calcular_placar(META, 250, depois)["veredito"] == "cumprida"
+    assert placar.calcular_placar(META, 500, HOJE)["veredito"] == "cumprida"
+    depois = dt.date(2026, 12, 20)
+    assert placar.calcular_placar(META, 499, depois)["veredito"] == "vencida"
+    assert placar.calcular_placar(META, 600, depois)["veredito"] == "cumprida"
+
+
+def test_a_meta_do_mes_e_a_fatia_da_linha_reta_quando_nao_ha_alvo_fixo():
+    # Outubro inteiro: esperado(31/10) - esperado(30/09) = round(500*58/103) - round(500*27/103) = 282 - 131 = 151.
+    hoje = dt.date(2026, 10, 10)
+    r = placar.calcular_o_mes({"alvo_do_mes": None}, META, 40, hoje)
+    assert r["alvo"] == 151 and r["alvo_derivado"] is True
+    assert r["mes"] == "10/2026"
+    # 10 de 31 dias: esperado = round(151 * 10/31) = 49; 40 < 49 ⇒ perdendo.
+    assert r["esperado_hoje"] == 49
+    assert r["veredito"] == "perdendo"
+    assert (
+        placar.calcular_o_mes({"alvo_do_mes": None}, META, 49, hoje)["veredito"]
+        == "ganhando"
+    )
+
+
+def test_a_meta_do_mes_fixada_pelo_mantenedor_vence_a_derivada():
+    r = placar.calcular_o_mes({"alvo_do_mes": 30}, META, 30, dt.date(2026, 10, 10))
+    assert r["alvo"] == 30 and r["alvo_derivado"] is False
+    assert r["veredito"] == "cumprida"
+
+
+def test_a_barra_sem_contagem_diz_que_nao_consegue_contar():
+    r = placar.calcular_o_mes({"alvo_do_mes": None}, META, None, HOJE)
+    assert r["veredito"] == "nao-consigo-contar"
 
 
 # -------------------------------------------------------------------- a tela
 
 
 @respx.mock
-def test_a_pagina_mostra_o_numero_medido_e_pede_o_alvo():
-    _a_escola_responde(ativos=37, pausados=2)
+def test_a_pagina_mostra_a_barra_do_mes_e_a_meta_do_ciclo(monkeypatch):
+    monkeypatch.setattr(placar.timezone, "localdate", lambda: dt.date(2026, 9, 20))
+    _a_escola_responde(
+        [
+            _ficha(virou_aluno_em="2026-09-10T12:00:00-03:00"),
+            _ficha(virou_aluno_em="2026-09-02T12:00:00-03:00"),
+            _ficha(virou_aluno_em=None),
+            _ficha(status="reembolsada", virou_aluno_em="2026-09-12T12:00:00-03:00"),
+        ]
+    )
     resposta = _dentro().get(reverse("placar"))
     assert resposta.status_code == 200
     html = resposta.content.decode()
-    assert 'class="hero-numero">37<' in html
-    assert "aguardando você" in html
+    assert 'class="hero-numero">1<' in html, "só a que virou aluna depois da partida"
+    assert "meta do mês" in html
+    assert "para <b>500</b>" in html
+    assert "1 ficha sem data" in html
+    assert "1 reembolsada" in html
     assert "Sem dados ainda" in html, "o par sem fonte precisa se declarar"
+    assert "aguardando você" not in html
 
 
 @respx.mock
@@ -212,6 +358,14 @@ def test_a_escola_fora_do_ar_nao_vira_zero():
     html = _dentro().get(reverse("placar")).content.decode()
     assert "Não consigo contar agora" in html
     assert 'class="hero-numero">0<' not in html
+
+
+@respx.mock
+def test_a_lista_sem_o_campo_novo_diz_isso_em_vez_de_zero():
+    _a_escola_responde([_ficha(), _ficha()])
+    html = _dentro().get(reverse("placar")).content.decode()
+    assert "ainda não traz a data" in html
+    assert 'class="hero-numero"' not in html
 
 
 @respx.mock
@@ -224,7 +378,7 @@ def test_sem_cartao_valido_o_numero_nao_aparece(tmp_path, monkeypatch):
         json.dumps(torto), encoding="utf-8"
     )
     monkeypatch.setattr(placar, "diretorio_dos_cartoes", lambda: pasta)
-    _a_escola_responde(ativos=37)
+    _a_escola_responde([_ficha(virou_aluno_em="2026-09-10T12:00:00-03:00")])
     resposta = _dentro().get(reverse("placar"))
     assert resposta.status_code == 200
     html = resposta.content.decode()
@@ -237,7 +391,7 @@ def test_sem_cartao_valido_o_numero_nao_aparece(tmp_path, monkeypatch):
 
 @respx.mock
 def test_a_visao_geral_leva_ate_o_placar():
-    _a_escola_responde(ativos=1)
+    _a_escola_responde([_ficha()])
     html = _dentro().get(reverse("visao_geral")).content.decode()
     assert reverse("placar") in html
 

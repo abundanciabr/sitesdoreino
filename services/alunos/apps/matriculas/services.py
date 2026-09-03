@@ -453,7 +453,32 @@ def como_o_painel_ve(matricula: Matricula) -> dict:
             else "comprou"
         ),
         "criada_em": matricula.enrolled_at.isoformat(),
+        "virou_aluno_em": _quando_virou_aluna(matricula),
     }
+
+
+def _quando_virou_aluna(matricula: Matricula) -> str | None:
+    """O instante em que a linha passou a ser de uma ALUNA, e não de um pedido.
+
+    Rito de Contrato de 03/09/2026 (o placar do painel de gestão): a meta do
+    mantenedor virou "quantas pessoas compraram neste mês", e a data que conta,
+    nas palavras dele, é *"a data em que o aluno é liberado ou que o sistema
+    confirma o pagamento"*. Duas proveniências, duas datas:
+
+    - quem entrou pela fila (`pre:`) virou aluna no instante da DECISÃO
+      (`decidido_em`); `enrolled_at` ali é só quando pediu para entrar;
+    - quem comprou virou aluna quando o pagamento criou a linha
+      (`enrolled_at`).
+
+    NUNCA `comprou_em`: aquele é o que a própria pessoa digita no pedido,
+    opcional, e serve para o mantenedor conferir, não para contar.
+
+    Derivado a cada leitura, como `origem`: um campo gravado seria um segundo
+    lugar guardando o que `order_id` + `decidido_em` já dizem.
+    """
+    if matricula.order_id.startswith(Matricula.PREFIXO_DA_FILA):
+        return matricula.decidido_em.isoformat() if matricula.decidido_em else None
+    return matricula.enrolled_at.isoformat()
 
 
 #: Os campos que o formulário do painel pode corrigir — e SÓ eles.

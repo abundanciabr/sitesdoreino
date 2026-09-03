@@ -28,6 +28,18 @@ da casa: arquivo por entrada, nunca uma lista mantida à mão.
 | `limiar_ambar`, `limiar_vermelho` | quando a cor muda (ou `null` até a primeira medição) |
 | `versao`, `desde` | a versão da régua e desde quando vale; mudar `formula` sem subir `versao` reprova |
 | `componentes` | só em número composto; composto nunca desce ao andar 0 |
+| `acao` | **obrigatório em número de resultado no andar 0** (desde 03/09/2026 à noite): o que fazer quando ele está abaixo do esperado. Regra dos documentos do Scale OS traduzida: "se este número mudar, alguém faz algo diferente? se não, sai da primeira tela" |
+| `direcao` | `subir` (mais é melhor) · `descer` (menos é melhor) · `faixa`; opcional, é o que diz se uma seta para cima é boa ou má notícia |
+| `unidade` | pessoas, reais, dias, por cento; opcional |
+| `alvo_do_mes` | só na barra do mês (`compras-no-mes`): a meta que o mantenedor fixa para o mês corrente; `null` = a tela deriva a fatia da linha reta do ciclo que cai no mês |
+
+**Os cartões do andar 0 hoje (reformulação de 03/09/2026, registro `20260903-036`):**
+`compras-no-ciclo` (a Meta 1: de 0 para 500 pessoas somadas, de 03/09 a
+15/12/2026), `compras-no-mes` (a barra do mês, zera no dia 1) e o par
+`alunos-ativos-30d` (ainda sem fonte). `alunos-na-plataforma` desceu ao andar
+1: continua lido, é o mesmo número do mapa da jornada. A data que conta nos
+dois de compras é `virou_aluno_em` (a liberação pela fila ou a confirmação do
+pagamento; Rito de Contrato do PR #933), nunca a que a pessoa digitou.
 
 ## As regras, e quem as faz valer
 
