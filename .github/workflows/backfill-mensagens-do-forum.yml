@@ -1,0 +1,78 @@
+# =============================================================================
+# ACERTO DE CONTAS DAS MENSAGENS DO FÓRUM — a segunda metade do backfill
+# retroativo pedido pelo mantenedor em 03/09/2026 (a primeira,
+# `backfill-pontos-do-forum.yml`, cobre tópico e resposta aceita).
+#
+# `confirmar` nasce `false` de propósito: o disparo padrão é ENSAIO, que só
+# relata o que SERIA pago sem gravar nada.
+#
+# GRUPO PRÓPRIO (`armadilhas/173`): `cancel-in-progress: false` não faz fila
+# ilimitada — o GitHub guarda UM run pendente por grupo, e o próximo cancela o
+# pendente.
+# =============================================================================
+name: backfill-mensagens-do-forum
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: "Marque para GRAVAR de verdade. Desmarcado = ensaio (nada é gravado)."
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: backfill-mensagens-do-forum
+  cancel-in-progress: false
+jobs:
+  backfill:
+    name: acerto de contas das mensagens na producao
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # armadilhas/149: a ssh-action com `script_path` apontando para arquivo
+      # inexistente AVISA e IGNORA, saindo com sucesso — falso-verde conhecido.
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/backfill-mensagens-do-forum.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/backfill-mensagens-do-forum.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/backfill-mensagens-do-forum.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Rodar na VPS
+        id: rodar
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 10m
+          envs: CONFIRMAR
+          script_path: infra/backfill-mensagens-do-forum.sh
+        env:
+          CONFIRMAR: ${{ inputs.confirmar && 'sim' || 'nao' }}
+
+      # A PROVA, e não o eco (armadilhas/114).
+      - name: Mostrar e conferir o resultado
+        env:
+          SAIDA: ${{ steps.rodar.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO:'; then
+            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script — não posso afirmar o resultado."
+            exit 1
+          fi
+          echo "✅ rodou de ponta a ponta. Veja a linha TOTAL acima para o número exato."
