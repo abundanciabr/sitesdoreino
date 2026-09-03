@@ -296,6 +296,77 @@ paths:
                 properties:
                   existia: { type: boolean }
         '422': { description: campo obrigatório ausente ou inválido }
+  /aviso-de-teste:
+    post:
+      operationId: enviarAvisoDeTeste
+      summary: Manda um aviso de teste para os aparelhos de uma pessoa, a pedido dela
+      description: |
+        A porta que responde "o aviso saiu daqui, e para quantos aparelhos".
+        Rito de Contrato de 03/09/2026, com o mantenedor presente.
+
+        **Por que ela existe:** em 02/09/2026 o botão de ligar os avisos
+        falhava no navegador do mantenedor e o servidor estava verde. Não havia
+        como distinguir "o aviso não foi enviado" de "o aviso foi enviado e não
+        chegou" sem alguém entrar na VPS, e o agente não entra (Lei 5). Um
+        envio que a pessoa dispara na hora, e que devolve um número, encerra
+        essa classe de dúvida sem SSH nenhum.
+
+        **Por que HTTP e não um evento no fio, como todo o resto.** Não é
+        atalho: é a única forma que responde. O fio é assíncrono por desenho e
+        não devolve resposta a quem publicou, e o valor inteiro desta porta é a
+        RESPOSTA — `aparelhos: 0` é o diagnóstico, e um evento publicado com
+        sucesso não sabe dizer isso. Fora daqui, a regra continua de pé: carta
+        de fato do projeto nasce de evento, sempre.
+
+        **Ela cria carta no sininho**, como qualquer outro assunto (escolha do
+        mantenedor neste rito, contra a alternativa de só piscar na tela).
+        Assim um teste prova as DUAS metades de uma vez, e um aviso que não
+        chega ao celular ainda deixa rastro de que saiu daqui — que é
+        exatamente o rastro que faltou no caso que criou esta porta.
+
+        **`destinatario_id` é sempre quem PEDIU o teste.** Esta célula não tem
+        como saber isso, e por isso não promete: quem garante é a porta que
+        chama, com a sessão na mão (hoje o admin, que manda o id de quem
+        clicou). Uma porta que aceitasse qualquer id seria um jeito de fazer
+        tocar o celular dos outros, e nenhum teste vale isso.
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [site_id, destinatario_id]
+              properties:
+                site_id:
+                  type: string
+                  maxLength: 64
+                  description: Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). O teste nunca atravessa sites.
+                destinatario_id:
+                  type: string
+                  maxLength: 64
+                  description: Id da PLATAFORMA de quem pediu o teste, e de quem vai receber. Nunca o e-mail (DECISAO-EVO-01 §3).
+      responses:
+        '200':
+          description: A carta foi guardada e o envio aos aparelhos foi tentado
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [aparelhos]
+                properties:
+                  aparelhos:
+                    type: integer
+                    minimum: 0
+                    description: >-
+                      Para quantos aparelhos o aviso saiu AGORA. Zero é
+                      resposta legítima, e é o diagnóstico mais útil desta
+                      porta, porque quer dizer que a pessoa ainda não ligou os
+                      avisos em aparelho nenhum, e não que algo quebrou. A
+                      carta no sininho é criada de todo jeito.
+        '422': { description: campo obrigatório ausente ou inválido }
 components:
   securitySchemes:
     bearerAuth: { type: http, scheme: bearer }
