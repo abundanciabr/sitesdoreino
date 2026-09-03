@@ -31,6 +31,14 @@ O que este arquivo trava, e por que um teste de status não pegaria:
 6. **Toda tentativa deixa linha de auditoria**, inclusive as que falharam, e com
    verbo PRÓPRIO: voltar atrás numa decisão dele mesmo é o gesto que os
    `liberar` não sabem contar.
+
+7. **Apagar de vez é o oposto de reconsiderar, e é o único gesto irreversível
+   desta escola** (03/09/2026,
+   `docs/decisoes/DECISAO-apagar-recusado-definitivamente.md`). Reverte, só
+   para quem nunca chegou a ser aluno, a lei de 29/08 que tirou a capacidade
+   de apagar do sistema inteiro. Verbo PRÓPRIO na auditoria
+   (`Registro.APAGAR_RECUSADO`), e nunca o `APAGAR` aposentado — que era sobre
+   a ficha de um aluno, e continua impossível.
 """
 
 import httpx
@@ -51,6 +59,7 @@ DONO = "dono@exemplo.com"
 
 TELA = "/escola/alunos/recusados"
 GESTO = "/escola/alunos/reconsiderar"
+GESTO_APAGAR = "/escola/alunos/recusados/apagar"
 
 
 @pytest.fixture(autouse=True)
@@ -494,3 +503,125 @@ def test_a_auditoria_nao_guarda_pii_de_quem_foi_aceito():
         assert "Ana Paula" not in linha.detalhe
         assert "99999-0000" not in linha.detalhe
         assert "ana@exemplo.com" not in linha.detalhe
+
+
+# ------------------------------------------------------------ 7. apagar de vez
+
+
+def _apagar_de_vez(id_da_linha="7", resposta=None):
+    return respx.delete(f"{FILA}/{id_da_linha}").mock(
+        return_value=resposta or httpx.Response(200, json={"apagada": True})
+    )
+
+
+@respx.mock
+def test_o_cartao_de_recusados_mostra_o_botao_apagar_de_vez():
+    """O endereço aparece DENTRO do cartão, ao lado de "Aceitar mesmo assim" —
+    não solto em outro lugar da página."""
+    _recusados_respondem([_recusado()])
+    html = _texto(_dentro().get(TELA))
+    assert "Apagar de vez" in html
+    assert reverse("escola_apagar_recusado") in html
+
+
+@respx.mock
+def test_apagar_de_vez_manda_DELETE_e_redireciona_para_apagado():
+    apaga = _apagar_de_vez()
+
+    r = _dentro().post(GESTO_APAGAR, {"alvo": "7"})
+
+    assert apaga.called
+    assert r.status_code == 302
+    assert r["Location"].endswith("?resultado=apagado")
+
+
+@respx.mock
+def test_apagar_quem_ja_sumiu_dos_recusados_e_honesto_e_nada_muda():
+    """A `alunos` diz 404 (a linha não é mais recusada, ou nunca foi): a tela
+    não finge que apagou algo que já não estava lá."""
+    _apagar_de_vez(resposta=httpx.Response(404))
+
+    r = _dentro().post(GESTO_APAGAR, {"alvo": "7"})
+
+    assert r["Location"].endswith("?resultado=apagar-sumiu")
+
+
+@respx.mock
+def test_apagar_quem_ainda_esta_aguardando_e_recusa_honesta():
+    """409: a `alunos` recusa apagar quem ainda não foi decidido — a mesma
+    fronteira que impede este botão de alcançar mais do que um recusado."""
+    _apagar_de_vez(resposta=httpx.Response(409))
+
+    r = _dentro().post(GESTO_APAGAR, {"alvo": "7"})
+
+    assert r["Location"].endswith("?resultado=apagar-sumiu")
+
+
+@respx.mock
+def test_apagar_sem_resposta_diz_que_pode_ter_apagado_mesmo_assim():
+    """O pior desfecho aqui é pior que o do `reconsiderar`: não há "a pessoa
+    ficou esperando em tal lugar" para dizer, porque não sobra lugar nenhum se
+    a exclusão chegou a acontecer do outro lado."""
+    _apagar_de_vez(resposta=httpx.Response(500))
+
+    r = _dentro().post(GESTO_APAGAR, {"alvo": "7"})
+
+    assert r["Location"].endswith("?resultado=apagar-nao-deu")
+
+
+@respx.mock
+def test_apagar_sem_alvo_nao_faz_nada_e_nao_grava_auditoria():
+    r = _dentro().post(GESTO_APAGAR, {})
+    assert r.status_code == 302
+    assert Registro.objects.count() == 0
+
+
+def test_sem_sessao_o_gesto_de_apagar_vai_para_o_login():
+    r = Client().post(GESTO_APAGAR, {"alvo": "7"})
+    assert r.status_code == 302
+    assert r["Location"].startswith("/entrar/google?next=")
+
+
+@respx.mock
+def test_fora_da_lista_de_administradores_nao_apaga():
+    assert (
+        _dentro("estranho@exemplo.com").post(GESTO_APAGAR, {"alvo": "7"}).status_code
+        == 404
+    )
+
+
+@respx.mock
+def test_o_gesto_de_apagar_recusa_GET():
+    """Apagar por GET é apagar quando um pré-carregador de link, um antivírus
+    corporativo ou um crawler autenticado abrir a página — e este é o único
+    gesto desta área sem volta nenhuma."""
+    assert _dentro().get(GESTO_APAGAR).status_code == 405
+
+
+@respx.mock
+def test_apagar_grava_uma_linha_com_verbo_proprio_e_nao_o_apagar_aposentado():
+    apaga = _apagar_de_vez()
+
+    _dentro().post(GESTO_APAGAR, {"alvo": "7"})
+
+    linha = Registro.objects.get()
+    assert linha.acao == Registro.APAGAR_RECUSADO
+    assert linha.acao != Registro.APAGAR
+    assert linha.desfecho == Registro.OK
+    assert linha.quem_email == DONO
+    assert linha.alvo == "7"
+    assert apaga.called
+
+
+@respx.mock
+def test_apagar_falho_tambem_deixa_linha():
+    """Auditoria que só registra sucesso não responde "o que foi tentado
+    aqui?" — a mesma disciplina do `reconsiderar`."""
+    _apagar_de_vez(resposta=httpx.Response(404))
+
+    _dentro().post(GESTO_APAGAR, {"alvo": "7"})
+
+    linha = Registro.objects.get()
+    assert linha.acao == Registro.APAGAR_RECUSADO
+    assert linha.desfecho == Registro.RECUSADO_PELA_CELULA
+    assert linha.alvo == "7"

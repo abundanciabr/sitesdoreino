@@ -494,6 +494,43 @@ class AlunosClient:
         logger.error("decisao: a alunos respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
 
+    def apagar_recusado(self, alvo: str) -> "tuple[str, str]":
+        """[APAGAR-RECUSADO] Apaga de vez um pedido recusado. Devolve `(desfecho, detalhe)`.
+
+        `docs/decisoes/DECISAO-apagar-recusado-definitivamente.md` (03/09/2026).
+        Mesma disciplina fail-CONTADO de `decidir`: **nunca levanta**, e
+        `NAO_RESPONDEU` continua significando *"pode ter sido aplicado do outro
+        lado"* — um apagar que a rede não confirmou pode ter apagado mesmo
+        assim, e chamar isso de "não valeu" faria o mantenedor tentar de novo
+        sobre uma linha que já não existe.
+
+        IRREVERSÍVEL do lado da `alunos`: ao contrário de `decidir`, não há
+        dado nenhum para reler depois — a linha deixa de existir.
+        """
+        config = self._configuracao()
+        if config is None:
+            return self.NAO_RESPONDEU, "o par de tokens com a alunos não está ligado"
+        base, token = config
+
+        try:
+            r = http().delete(
+                f"{base}/pre-matriculas/{alvo}",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("apagar-recusado: não deu para falar com a alunos: %s", erro)
+            return self.NAO_RESPONDEU, "a parte que guarda os alunos não respondeu"
+
+        if r.status_code == 200:
+            return self.OK, ""
+        if r.status_code == 404:
+            return self.RECUSADO, "este pedido não está mais entre os recusados"
+        if r.status_code == 409:
+            return self.RECUSADO, "esta pessoa deixou de estar recusada"
+        logger.error("apagar-recusado: a alunos respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, "a parte que guarda os alunos respondeu com erro"
+
     def criar_na_fila(self, dados: dict) -> "tuple[str, str, str]":
         """[A MAO] Poe uma pessoa na fila em nome do mantenedor.
 

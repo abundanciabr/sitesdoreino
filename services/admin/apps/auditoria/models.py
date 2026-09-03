@@ -167,6 +167,13 @@ class Registro(models.Model):
     # "quantas vezes o mantenedor precisou confirmar o canal?", que nenhum
     # outro verbo responde. Nao muda estado de aluno nenhum: e diagnostico.
     TESTAR_AVISO = "testar_aviso"
+    # [APAGAR-RECUSADO] 03/09/2026 (`DECISAO-apagar-recusado-definitivamente.md`).
+    # Verbo PROPRIO, e nao o `APAGAR` aposentado em 29/08: aquele era sobre a
+    # ficha de um ALUNO (nunca mais acontece, so continua legivel em linha
+    # antiga); este e sobre um pedido RECUSADO, que nunca chegou a ser aluno.
+    # A mesma palavra "apagar" nos dois confundiria QUAL dos dois era possivel
+    # na data em que a linha foi escrita.
+    APAGAR_RECUSADO = "apagar_recusado"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -198,6 +205,7 @@ class Registro(models.Model):
         (DESLIGAR_DEGRAU, "desligar um degrau da escada de niveis"),
         (RESETAR_SENHA, "resetar a senha de um aluno"),
         (TESTAR_AVISO, "mandar um aviso de teste para o proprio aparelho"),
+        (APAGAR_RECUSADO, "apagar de vez um pedido recusado"),
     ]
 
     OK = "ok"
