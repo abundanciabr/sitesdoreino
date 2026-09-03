@@ -1,8 +1,8 @@
 {% extends "admin/base.html" %}
 {% comment %}
-O placar (/admin/placar/, 03/09/2026): o andar zero do painel de gestão.
-Plano: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §3 e §4.1. Regras da tela em
-apps/core/placar.py.
+O placar (/admin/placar/): o andar zero do painel de gestão. Reformulado em
+03/09/2026 à noite (registro 20260903-036): a barra do mês e a meta do ciclo,
+as duas contadas das mesmas fichas. Regras da tela em apps/core/placar.py.
 
 Bloco `comment`, e nunca `{#`: aquele comenta UMA LINHA SÓ, e escrito em várias
 o texto vaza para a tela (armadilhas/087). Guarda:
@@ -19,7 +19,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
 {% block corpo %}
 <div class="envolucro">
   <h1>O placar</h1>
-  <p class="subtitulo">Uma meta, um número, e a resposta: estamos ganhando ou perdendo?</p>
+  <p class="subtitulo">Quantas pessoas viraram alunas neste mês, e a meta grande por cima: estamos ganhando ou perdendo?</p>
 
   {% if not meta %}
   <p class="aviso borda-vermelha">
@@ -33,40 +33,80 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   </ul>
   {% else %}
 
-  <p class="lei">
-    <b>Meta Crucialmente Importante nº 1:</b> {{ meta.pergunta }}
-    {% if placar.alvo %}
-      De <b>{{ placar.partida }}</b> para <b>{{ placar.alvo }}</b> alunos até <b>{{ placar.ate }}</b>.
-    {% else %}
-      De <b>{{ placar.x|default_if_none:"?" }}</b> para <b>?</b> alunos até <b>?</b>.
-    {% endif %}
-  </p>
-
   {% if placar.veredito == "nao-consigo-contar" %}
+    {% if contagem.campo_ausente %}
+    <div class="aviso borda-amarela">
+      <b>A lista de alunos ainda não traz a data em que cada pessoa virou aluna.</b>
+      A parte que guarda os alunos respondeu, mas sem o campo novo do contrato
+      (PR #933). Isto não é zero: é a pergunta que ela ainda não sabe responder.
+      Quando o PR da célula de alunos pousar, esta tela passa a contar sozinha.
+    </div>
+    {% else %}
     <div class="aviso borda-amarela">
       <b>Não consigo contar agora.</b>
       A parte que guarda os alunos não respondeu a tempo. Isto não é zero:
       é a pergunta que não chegou. Abra de novo daqui a pouco.
     </div>
+    {% endif %}
   {% else %}
+
+    {% if mes and barra %}
     <div class="hero">
       <div>
-        <div class="hero-numero">{{ placar.x }}</div>
-        <h2 class="titulo-da-conta">aluno{{ placar.x|pluralize:"s" }} na plataforma hoje</h2>
+        <div class="hero-numero">{{ barra.x }}</div>
+        <h2 class="titulo-da-conta">
+          pessoa{{ barra.x|pluralize:"s" }} virar{{ barra.x|pluralize:"am,am" }} aluna{{ barra.x|pluralize:"s" }} em {{ barra.mes }}
+          {% if barra.alvo is not None %}(meta do mês: {{ barra.alvo }}){% endif %}
+        </h2>
       </div>
       <p class="hero-nota">
-        {{ meta.definicao }}
-        Quem declara este número: a parte que guarda os alunos ({{ meta.autoridade }}),
-        medido agora, ao vivo.
+        {{ mes.definicao }}
+        {% if barra.alvo_derivado %}
+          A meta do mês é a fatia da linha reta do ciclo que cai neste mês; você
+          pode fixar outra no cartão.
+        {% endif %}
+        Zera no dia 1. Faltam {{ barra.dias_restantes }} dia{{ barra.dias_restantes|pluralize:"s" }} para o mês fechar.
       </p>
     </div>
+    {% if barra.veredito == "cumprida" %}
+      <div class="aviso verde"><b>Meta do mês cumprida.</b> {{ barra.x }} já chega a {{ barra.alvo }}.</div>
+    {% elif barra.veredito == "ganhando" %}
+      <div class="aviso verde"><b>No mês, ganhando.</b> Pela linha reta do mês, hoje deveríamos estar em {{ barra.esperado_hoje }}, e estamos em {{ barra.x }}.</div>
+    {% elif barra.veredito == "perdendo" %}
+      <div class="aviso borda-vermelha"><b>No mês, perdendo.</b> Pela linha reta do mês, hoje deveríamos estar em {{ barra.esperado_hoje }}, e estamos em {{ barra.x }}.</div>
+    {% endif %}
+    {% elif not mes %}
+    <p class="aviso borda-vermelha"><b>O cartão da barra do mês está ausente ou inválido</b>, e sem ele a barra não aparece.</p>
+    <ul class="notas">
+      {% for recusa in recusas_do_mes %}<li>{{ recusa }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+
+    <h2 class="titulo-de-bloco espaco-20">A meta grande, por cima do mês</h2>
+    <p class="lei">
+      <b>Meta Crucialmente Importante nº 1:</b> {{ meta.pergunta }}
+      {% if placar.alvo is not None %}
+        De <b>{{ placar.partida }}</b> para <b>{{ placar.alvo }}</b> pessoas somadas, de <b>{{ placar.partida_em }}</b> até <b>{{ placar.ate }}</b>.
+      {% else %}
+        De <b>{{ placar.x|default_if_none:"?" }}</b> para <b>?</b> pessoas até <b>?</b>.
+      {% endif %}
+    </p>
+    <p class="recado">
+      <b>{{ placar.x }}</b> desde a partida.
+      {% if contagem.sem_data %}
+        <span class="rotulo">{{ contagem.sem_data }} ficha{{ contagem.sem_data|pluralize:"s" }} sem data</span>
+        (não contam, e não somem: é conserto na tela de alunos).
+      {% endif %}
+      {% if contagem.reembolsadas %}
+        {{ contagem.reembolsadas }} reembolsada{{ contagem.reembolsadas|pluralize:"s" }} no ciclo não conta{{ contagem.reembolsadas|pluralize:"m" }}: a compra foi desfeita.
+      {% endif %}
+    </p>
 
     {% if placar.veredito == "sem-alvo" %}
       <div class="aviso borda-amarela">
         <b>Sem alvo ainda: aguardando você.</b>
-        A meta precisa de um Y e de uma data ("de {{ placar.x }} para Y alunos
-        até quando"). Quando você decidir, o robô grava no cartão e no livro, e
-        esta tela passa a dizer se estamos ganhando.
+        A meta precisa de um Y e de uma data. Quando você decidir, o robô grava no
+        cartão e no livro, e esta tela passa a dizer se estamos ganhando.
       </div>
     {% elif placar.veredito == "cumprida" %}
       <div class="aviso verde"><b>Meta cumprida.</b> {{ placar.x }} já passa de {{ placar.alvo }}. Hora de fixar a próxima.</div>
@@ -85,6 +125,17 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
         Faltam {{ placar.distancia }} em {{ placar.dias_restantes }} dia{{ placar.dias_restantes|pluralize:"s" }}
         {% if placar.ritmo_por_semana %}({{ placar.ritmo_por_semana }} por semana){% endif %}.
       </div>
+    {% endif %}
+
+    {% if meta.acao %}
+    <p class="recado"><b>O que fazer quando estiver abaixo:</b> {{ meta.acao }}</p>
+    {% endif %}
+
+    {% if total and contagem.total_de_alunos is not None %}
+    <p class="recado-fraco">
+      Hoje a escola tem <b>{{ contagem.total_de_alunos }}</b> aluno{{ contagem.total_de_alunos|pluralize:"s" }}
+      (todas as turmas, contando quem entrou antes da partida). É o mesmo número do mapa da jornada.
+    </p>
     {% endif %}
   {% endif %}
 
@@ -107,9 +158,10 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   {% endif %}
 
   <p class="recado-fraco espaco-20">
-    Por que um par: uma meta de "mais alunos" se cumpre liberando contas que
+    Por que um par: uma meta de "mais compras" se cumpre liberando contas que
     nunca entram. O par diz quantos desses alunos estão vivos na escola, e
-    "ganhando" só vale quando os dois sobem. Cartão da meta: versão
+    "ganhando" só vale quando os dois sobem. A data que conta é a da liberação
+    ou a da confirmação do pagamento, nunca a que a pessoa digitou. Cartão da meta: versão
     {{ meta.versao }}, desde {{ meta.desde }}.
   </p>
   {% endif %}
