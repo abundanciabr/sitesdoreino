@@ -327,6 +327,45 @@ paths:
         '404': { description: Nao ha linha na fila com este id }
         '409': { description: Esta linha ja foi decidida — decisao nao se refaz }
         '422': { description: "Payload invalido, ou recusa sem motivo" }
+  /pre-matriculas/{id}:
+    delete:
+      operationId: deleteRejectedPreEnrollment
+      summary: Apagar de vez um pedido RECUSADO — nunca quem ja foi aluno
+      description: |
+        `docs/decisoes/DECISAO-apagar-recusado-definitivamente.md` (03/09/2026):
+        reverte, SO para esta fatia, a `DECISAO-a-ficha-nao-se-apaga.md` de
+        29/08/2026. O mantenedor decidiu que um pedido recusado — que nunca
+        chegou a virar aluno — pode ser apagado de vez, pelo botao "Apagar de
+        vez" na tela de recusados do painel.
+
+        SO ALCANCA linhas da FILA (prefixo `pre:` no order_id) com
+        `status = recusada`. Uma matricula REAL (sem esse prefixo) e 404 aqui,
+        sempre — esta porta nao e `DELETE /matriculas/{id}`, que continua sem
+        existir e continua sendo a lei de 29/08 intacta. Quem esta `aguardando`
+        tambem nao se apaga por aqui: precisa ser recusado primeiro.
+
+        IRREVERSIVEL. Depois de apagada, a linha nao existe mais em lugar
+        nenhum — nem prontuario, nem historico. O caminho reversivel continua
+        sendo `POST /pre-matriculas` (o botao "Aceitar mesmo assim" da mesma
+        tela).
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Apagada. A linha nao existe mais.
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [apagada]
+                properties:
+                  apagada: { type: boolean, enum: [true] }
+        '404': { description: Nao ha linha RECUSADA na fila com este id }
+        '409': { description: "Esta linha esta na fila mas ainda nao foi recusada — decida por POST /pre-matriculas/{id}/decisao antes de apagar" }
   /alunos/{email}/situacao:
     get:
       operationId: getStudentStanding
