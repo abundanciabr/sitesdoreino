@@ -7,8 +7,20 @@ A ORDEM DENTRO DO CARTÃO é o conserto de 03/09/2026, e ela é deliberada: o
 TÍTULO vem primeiro, grande e na cor cheia. Até esta data o cartão abria pelo
 código da tarefa ("TAR-004 · toca: infra") em cinza-claro, e o mantenedor
 precisava atravessar uma sigla e um jargão antes de chegar à única linha que
-diz do que se trata. Código e área viraram etiquetas DEPOIS do título, e
-"toca" virou "mexe em".
+diz do que se trata. Código e área viraram etiquetas DEPOIS do título.
+
+E na SEGUNDA passada do mesmo dia, quando ele disse que precisava "de uma
+página melhor para entender isso", as etiquetas se separaram em duas classes:
+
+- **as que ele lê** — ONDE a tarefa mexe, em lugares que ele reconhece ("as
+  páginas que vendem", "os pontos e as medalhas"), e QUANDO ela se mexeu pela
+  última vez. Antes o lugar era o nome técnico da célula (`ci`, `mensageria`,
+  `.github`) e a data não existia em lugar nenhum: dava para ver 76 tarefas
+  prontas sem saber se eram de ontem ou de um mês atrás.
+- **as que ele quase nunca lê** — o código `TAR-NNN` e o nome da sessão do
+  robô. Continuam na tela, apagadas: são o que ele cita quando precisa falar de
+  uma tarefa comigo, então tirar seria pior. Só deixaram de ser a primeira
+  coisa que o olho encontra.
 
 O `motivo` das concluídas é o endereço do trabalho que a fechou; `urlize`
 transforma em link clicável, porque um endereço só de texto obriga o
@@ -18,9 +30,10 @@ mantenedor a selecionar e copiar à mão.
   <span class="agora">🔒 um robô reservou esta tarefa neste minuto</span>
   <b>{{ cartao.titulo }}</b>
   <div class="etiquetas">
-    <span class="etiqueta">{{ cartao.id }}</span>
-    {% if cartao.toca %}<span class="etiqueta">mexe em: {{ cartao.toca|join:", " }}</span>{% endif %}
-    {% if cartao.quem %}<span class="etiqueta">robô: {{ cartao.quem }}</span>{% endif %}
+    {% if cartao.onde %}<span class="etiqueta">onde: {{ cartao.onde|join:", " }}</span>{% endif %}
+    {% if cartao.quando %}<span class="etiqueta">mexeu pela última vez em {{ cartao.quando|slice:"8:10" }}/{{ cartao.quando|slice:"5:7" }}</span>{% endif %}
+    <span class="etiqueta apagada">{{ cartao.id }}</span>
+    {% if cartao.quem %}<span class="etiqueta apagada">robô: {{ cartao.quem }}</span>{% endif %}
   </div>
   {% if coluna.estado == "bloqueada" %}
     <div><span class="selo-parou">PAROU</span></div>
