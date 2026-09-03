@@ -1,52 +1,62 @@
-"""`/admin/placar/` — o andar zero do painel de gestão do negócio (03/09/2026).
+"""`/admin/placar/` — o andar zero do painel de gestão do negócio.
 
-O plano é `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`; esta tela é o degrau 0 da
-escada dele (§9). O que ela responde, numa tela de celular: **estamos ganhando
-ou perdendo a Meta Crucialmente Importante?** A meta, decidida pelo mantenedor
-em 03/09/2026, é o número de alunos na plataforma, no formato das 4 Disciplinas
-da Execução: *de X para Y até quando*.
+Nasceu em 03/09/2026 de manhã medindo o total de alunos; à noite do mesmo dia
+o mantenedor reformulou a Meta Crucialmente Importante nº 1 (registro
+`20260903-036`), e esta tela passou a responder DUAS perguntas com o MESMO
+número de fichas:
 
-## As três leis desta tela, e de onde vêm
+- **a barra do mês:** quantas pessoas viraram alunas neste mês (zera todo dia
+  1), com a meta do mês ao lado;
+- **a meta grande, por cima:** de 0 para 500 pessoas somadas de 03/09 a
+  15/12/2026, no formato das 4 Disciplinas da Execução (*de X para Y até
+  quando*), com a linha reta dizendo se estamos ganhando ou perdendo.
+
+## As leis desta tela, e de onde vêm
 
 1. **Número sem cartão não aparece** (plano, §2). O cartão de uma métrica é um
    arquivo em `painel/cartoes/<nome>.json` que diz o que o número é, de onde
    vem, quem tem o direito de declará-lo e qual métrica o segura (o "par").
    Cartão ausente ou inválido ⇒ a página abre, DIZ o que faltou, e não mostra
-   o número. É o mesmo desenho do painel do dono, que recusa registro inválido
-   em vez de desenhá-lo torto. Guarda: `tests/test_placar.py`.
-2. **X é medido, nunca digitado.** Vem da mesma leitura que o mapa da jornada
-   usa (`views.contar_a_escola`), pela célula `alunos`, por HTTP e em tempo
-   real: a decisão do mantenedor de 25/08/2026 (`PLANO-AREA-ADMIN.md` §5). Duas
-   contagens divergiriam no primeiro estado novo.
-3. **"Não sei" nunca vira zero.** A `alunos` fora do ar deixa a tela dizendo
-   *"não consigo contar"*, com todas as letras. Um zero ali afirmaria que a
-   escola está vazia (`RETROSPECTIVA-FASE-D.md`, padrão 1).
+   o número. Guarda: `tests/test_placar.py`.
+2. **X é medido, nunca digitado**, e vem da célula `alunos`, por HTTP e em
+   tempo real (decisão do mantenedor de 25/08/2026). A data que conta é
+   `virou_aluno_em` (a liberação pela fila, ou a confirmação do pagamento),
+   campo do Rito de Contrato de 03/09/2026 (PR #933). Nunca `comprou_em`, que
+   é o que a pessoa digita ao pedir entrada.
+3. **"Não sei" nunca vira zero.** A `alunos` fora do ar ⇒ *"não consigo
+   contar"*. A lista chegou mas ainda sem o campo (a célula ainda não subiu o
+   PR do rito) ⇒ *"a lista ainda não traz a data"*. Ficha sem data ⇒ contada à
+   parte e dita na tela, nunca escondida (`RETROSPECTIVA-FASE-D.md`, padrão 1).
+4. **Reembolsada não é compra.** A compra foi desfeita
+   (`DECISAO-reembolso-tira-o-acesso.md`); a tela diz quantas foram.
+5. **Quem ficou antes da partida não entra.** A turma liberada em lote pela
+   lista de WhatsApp em 02/09/2026 é venda de outros meses (palavras do
+   mantenedor: neste mês ainda não houve venda). A partida é 03/09.
 
 ## O que mora no cartão e o que NÃO mora
 
-O **alvo** (Y), a **data** e a **partida** (o X do dia em que a meta foi
-fixada) moram no cartão, porque são parâmetros da régua, versionados por PR
-como qualquer regra de cálculo. O FATO de que o mantenedor decidiu o alvo mora
-no livro (`painel/registros/`, tipo `decisao`, citando o PR que mudou o
-cartão). Um lugar para a régua, um lugar para o acontecimento: nenhum fato em
-dois lugares.
-
-Enquanto o alvo não existe, o cartão diz `null` e a tela diz "aguardando o
-mantenedor". Isso não é falha: é a pendência dele, à vista.
+O **alvo** (Y), a **data** e a **partida** moram no cartão, porque são
+parâmetros da régua, versionados por PR. O FATO de que o mantenedor decidiu
+mora no livro (`painel/registros/`, tipo `decisao`). A meta do mês
+(`alvo_do_mes`) é opcional: nula, a tela deriva a fatia da linha reta que cai
+no mês; ele fixa um número quando quiser.
 
 ## O veredito, sem índice
 
 Ganhando ou perdendo é a comparação de X com o **esperado de hoje** numa linha
 reta da partida ao alvo. Não há ponderação, não há nota de 0 a 100: o plano
-proíbe número composto no andar zero (§2), e a régua mais simples é a que o
-mantenedor consegue conferir de cabeça.
+proíbe número composto no andar zero (§2), e o mantenedor marcou "sem
+preferência" quando os documentos do Scale OS propuseram a nota; ficou a
+regra da casa (registro `20260903-036`).
 """
 
 from __future__ import annotations
 
+import calendar
 import datetime as dt
 import json
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from django.shortcuts import render
 from django.utils import timezone
@@ -54,20 +64,26 @@ from django.views.decorators.http import require_GET
 
 from .clients import AlunosClient
 from .painel import CANDIDATOS
-from .views import contar_a_escola
 
 #: A subpasta do painel onde moram os cartões. Viaja para a imagem junto com o
 #: resto de `painel/` (o `deploy-celula` copia a pasta inteira).
 PASTA_DOS_CARTOES = "cartoes"
 
-#: O cartão da Meta Crucialmente Importante nº 1 e o do seu par.
-CARTAO_DA_META = "alunos-na-plataforma"
+#: A Meta Crucialmente Importante nº 1 (o ciclo), a barra do mês, o par que
+#: segura as duas, e o total de alunos que desceu ao andar 1.
+CARTAO_DA_META = "compras-no-ciclo"
+CARTAO_DO_MES = "compras-no-mes"
 CARTAO_DO_PAR = "alunos-ativos-30d"
+CARTAO_DO_TOTAL = "alunos-na-plataforma"
 
 #: Os quatro tipos de número do plano (§2). Não existe tipo "composto": um
 #: número composto é reconhecido pelo campo `componentes`, e nunca desce ao
 #: andar zero.
 TIPOS = ("resultado", "direcao", "par", "confianca")
+
+#: `direcao` (Scale OS 1.2 §33, traduzido): custo subir é ruim, compras subir
+#: é bom. Sem o campo a tela não sabe pintar a seta. Opcional por enquanto.
+DIRECOES = ("subir", "descer", "faixa")
 
 OBRIGATORIOS = (
     "nome",
@@ -83,10 +99,18 @@ OBRIGATORIOS = (
     "desde",
 )
 
-#: Quantos alunos a contagem da escola chama de "aluno". A chave é a mesma da
-#: `contar_a_escola`, e é a lista de PERMISSÃO da `alunos` que decide quem entra
-#: nela (`DECISAO-fila-de-liberacao.md`).
-CHAVE_DA_CONTAGEM = "ativos"
+#: Os status de gestão que contam como "comprou". `reembolsada` fica de fora:
+#: a compra foi desfeita. Lista de PERMISSÃO, como a `STATUS_QUE_VALEM` da
+#: `alunos`: status novo nasce fora dela e alguém decide.
+STATUS_QUE_COMPRARAM = ("ativa", "suspensa", "encerrada")
+
+#: O status que a `alunos` chama de aluno hoje (o mesmo do mapa da jornada).
+STATUS_QUE_E_ALUNO = "ativa"
+
+#: O campo do Rito de Contrato de 03/09/2026 (PR #933).
+CAMPO_DA_DATA = "virou_aluno_em"
+
+FUSO = ZoneInfo("America/Sao_Paulo")
 
 
 def diretorio_dos_cartoes() -> Path | None:
@@ -121,6 +145,14 @@ def validar(cartao: object) -> list[str]:
             "número composto (tem `componentes`) nunca desce ao andar 0: "
             "o placar mostra a coisa, não uma nota sobre a coisa"
         )
+    if andar == 0 and cartao.get("tipo") == "resultado" and not cartao.get("acao"):
+        # Scale OS 1.1 §2 e §132, virado regra: "se este número mudar, alguém
+        # faz algo diferente?" Um número no andar zero sem `acao` é um número
+        # que só se olha, e o andar zero é o que pede gesto.
+        problemas.append(
+            "número de resultado no andar 0 exige `acao`: o que fazer quando "
+            "ele estiver abaixo do esperado (o andar zero pede gesto, não olhar)"
+        )
     if cartao.get("tipo") != "confianca" and not cartao.get("par"):
         problemas.append(
             "toda métrica que pode ser forçada tem um `par` que a segura; "
@@ -133,9 +165,19 @@ def validar(cartao: object) -> list[str]:
             "`fonte` nula exige `sem_fonte_porque`: um número sem fonte precisa "
             "dizer em voz alta por que ainda não existe"
         )
+    direcao = cartao.get("direcao")
+    if direcao is not None and direcao not in DIRECOES:
+        problemas.append(f"`direcao` deve ser um de {', '.join(DIRECOES)}")
     versao = cartao.get("versao")
     if not isinstance(versao, int) or isinstance(versao, bool) or versao < 1:
         problemas.append("`versao` é um inteiro a partir de 1, sem aspas")
+    alvo_do_mes = cartao.get("alvo_do_mes")
+    if alvo_do_mes is not None and (
+        not isinstance(alvo_do_mes, int)
+        or isinstance(alvo_do_mes, bool)
+        or alvo_do_mes < 0
+    ):
+        problemas.append("`alvo_do_mes` é um inteiro sem aspas, ou null")
     problemas.extend(_validar_a_meta(cartao))
     return problemas
 
@@ -192,6 +234,92 @@ def ler_cartao(nome: str, pasta: Path | None = None) -> tuple[dict | None, list[
     return cartao, []
 
 
+# ------------------------------------------------------------------ a contagem
+
+
+def dia_em_sao_paulo(texto: object) -> dt.date | None:
+    """O DIA de um instante ISO com fuso, em America/Sao_Paulo (`armadilhas/099`).
+
+    `None` para nulo, vazio, ilegível ou sem fuso: a tela conta essas fichas à
+    parte. Instante sem fuso não diz em que dia caiu, e isso não se adivinha.
+    """
+    if not texto:
+        return None
+    try:
+        instante = dt.datetime.fromisoformat(str(texto).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if instante.tzinfo is None:
+        return None
+    return instante.astimezone(FUSO).date()
+
+
+def contar_compras(
+    alunos: list[dict] | None, partida_em: dt.date, hoje: dt.date
+) -> dict:
+    """As fichas que viraram alunas, contadas de UMA lista: o ciclo, o mês,
+    as sem data, as reembolsadas, e o total de alunos de hoje.
+
+    `ciclo`/`mes` são `None` quando não dá para contar: lista ausente
+    (`alunos is None`) ou lista sem o campo (`campo_ausente`, a célula ainda
+    não subiu o PR do rito). Zero só quando contou e deu zero.
+    """
+    vazio = {
+        "ciclo": None,
+        "mes": None,
+        "sem_data": None,
+        "reembolsadas": None,
+        "total_de_alunos": None,
+        "campo_ausente": False,
+    }
+    if alunos is None:
+        return vazio
+    total_de_alunos = sum(1 for a in alunos if a.get("status") == STATUS_QUE_E_ALUNO)
+    if alunos and not any(CAMPO_DA_DATA in a for a in alunos):
+        return {**vazio, "total_de_alunos": total_de_alunos, "campo_ausente": True}
+    inicio_do_mes = hoje.replace(day=1)
+    ciclo = mes = sem_data = reembolsadas = 0
+    for a in alunos:
+        dia = dia_em_sao_paulo(a.get(CAMPO_DA_DATA))
+        if a.get("status") == "reembolsada":
+            if dia is not None and partida_em <= dia <= hoje:
+                reembolsadas += 1
+            continue
+        if a.get("status") not in STATUS_QUE_COMPRARAM:
+            continue
+        if dia is None:
+            sem_data += 1
+            continue
+        if not partida_em <= dia <= hoje:
+            continue
+        ciclo += 1
+        if dia >= inicio_do_mes:
+            mes += 1
+    return {
+        "ciclo": ciclo,
+        "mes": mes,
+        "sem_data": sem_data,
+        "reembolsadas": reembolsadas,
+        "total_de_alunos": total_de_alunos,
+        "campo_ausente": False,
+    }
+
+
+# ------------------------------------------------------------------- a conta
+
+
+def esperado_em(cartao: dict, dia: dt.date) -> int:
+    """Onde a linha reta da partida ao alvo passa no `dia` (antes da partida
+    vale a partida; depois do fim vale o alvo)."""
+    alvo = int(cartao["alvo"])
+    partida = int(cartao["partida"])
+    ate = _data(cartao["ate"])
+    partida_em = _data(cartao["partida_em"])
+    total = (ate - partida_em).days
+    decorridos = min(max((dia - partida_em).days, 0), total)
+    return partida + round((alvo - partida) * decorridos / total) if total > 0 else alvo
+
+
 def calcular_placar(cartao: dict, x: int | None, hoje: dt.date) -> dict:
     """A conta do andar zero, pura, sem rede e sem relógio próprio.
 
@@ -216,18 +344,12 @@ def calcular_placar(cartao: dict, x: int | None, hoje: dt.date) -> dict:
         return {**base, "veredito": "sem-alvo"}
 
     alvo = int(cartao["alvo"])
-    partida = int(cartao["partida"])
     ate = _data(cartao["ate"])
-    partida_em = _data(cartao["partida_em"])
-    total = (ate - partida_em).days
-    decorridos = min(max((hoje - partida_em).days, 0), total)
-    esperado = (
-        partida + round((alvo - partida) * decorridos / total) if total > 0 else alvo
-    )
+    esperado = esperado_em(cartao, hoje)
     dias_restantes = max((ate - hoje).days, 0)
     faltam = alvo - x
     semanas = dias_restantes / 7
-    # Quantos alunos por semana faltam para chegar lá: a única conta que vira
+    # Quantas pessoas por semana faltam para chegar lá: a única conta que vira
     # gesto na segunda-feira (a "aposta da semana" do plano, §4).
     ritmo = round(faltam / semanas, 1) if faltam > 0 and semanas > 0 else None
 
@@ -249,20 +371,69 @@ def calcular_placar(cartao: dict, x: int | None, hoje: dt.date) -> dict:
     }
 
 
+def calcular_o_mes(
+    cartao_do_mes: dict, meta: dict | None, x: int | None, hoje: dt.date
+) -> dict:
+    """A barra do mês: quantas viraram alunas neste mês, contra a meta do mês.
+
+    A meta do mês é `alvo_do_mes` do cartão; nula, é a fatia da linha reta do
+    ciclo que cai neste mês (o esperado no último dia do mês menos o esperado
+    na véspera do dia 1). Sem ciclo com alvo, só a contagem, sem veredito.
+    """
+    ultimo_dia = hoje.replace(day=calendar.monthrange(hoje.year, hoje.month)[1])
+    inicio = hoje.replace(day=1)
+    alvo = cartao_do_mes.get("alvo_do_mes")
+    derivada = False
+    if alvo is None and meta is not None and meta.get("alvo") is not None:
+        vespera = inicio - dt.timedelta(days=1)
+        alvo = esperado_em(meta, ultimo_dia) - esperado_em(meta, vespera)
+        derivada = True
+    resultado = {
+        "x": x,
+        "alvo": alvo,
+        "alvo_derivado": derivada,
+        "mes": hoje.strftime("%m/%Y"),
+        "ultimo_dia": ultimo_dia,
+        "dias_restantes": (ultimo_dia - hoje).days,
+        "esperado_hoje": None,
+        "veredito": None,
+    }
+    if x is None:
+        resultado["veredito"] = "nao-consigo-contar"
+    elif alvo is None:
+        resultado["veredito"] = "sem-alvo"
+    elif x >= alvo:
+        resultado["veredito"] = "cumprida"
+    else:
+        # A linha reta DENTRO do mês: esperado hoje = alvo × dias passados / dias do mês.
+        dias_do_mes = (ultimo_dia - inicio).days + 1
+        passados = (hoje - inicio).days + 1
+        esperado = round(alvo * passados / dias_do_mes)
+        resultado["esperado_hoje"] = esperado
+        resultado["veredito"] = "ganhando" if x >= esperado else "perdendo"
+    return resultado
+
+
 @require_GET
 def placar(request):
     """O andar zero. Fail-OPEN na rede (a página abre), fail-CLOSED no cartão
     (o número não aparece sem ele)."""
     pasta = diretorio_dos_cartoes()
     meta, recusas = ler_cartao(CARTAO_DA_META, pasta)
+    mes, recusas_do_mes = ler_cartao(CARTAO_DO_MES, pasta)
     par, recusas_do_par = ler_cartao(CARTAO_DO_PAR, pasta)
+    total, _recusas_do_total = ler_cartao(CARTAO_DO_TOTAL, pasta)
 
+    hoje = timezone.localdate()
+    contagem = None
     resultado = None
+    barra = None
     if meta is not None:
-        contagens, _filas, _alunos = contar_a_escola(AlunosClient())
-        resultado = calcular_placar(
-            meta, contagens.get(CHAVE_DA_CONTAGEM), timezone.localdate()
-        )
+        partida_em = _data(meta.get("partida_em")) or hoje
+        contagem = contar_compras(AlunosClient().alunos(), partida_em, hoje)
+        resultado = calcular_placar(meta, contagem["ciclo"], hoje)
+        if mes is not None:
+            barra = calcular_o_mes(mes, meta, contagem["mes"], hoje)
 
     return render(
         request,
@@ -271,8 +442,13 @@ def placar(request):
             "admin": request.admin,
             "meta": meta,
             "recusas": recusas,
+            "mes": mes,
+            "recusas_do_mes": recusas_do_mes,
             "par": par,
             "recusas_do_par": recusas_do_par,
+            "total": total,
+            "contagem": contagem,
             "placar": resultado,
+            "barra": barra,
         },
     )

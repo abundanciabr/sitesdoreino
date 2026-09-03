@@ -1,0 +1,22 @@
+{
+  "nome": "compras-no-mes",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Quantas pessoas viraram alunas neste mês?",
+  "definicao": "A barra do mês: as mesmas fichas do ciclo (virou aluno em = liberação ou pagamento; reembolsadas não contam), só as deste mês do calendário. Zera todo dia 1. É o número que o mantenedor pediu para ver todo mês.",
+  "formula": "contagem das fichas com status ativa, suspensa ou encerrada e virou_aluno_em dentro do mês corrente (America/Sao_Paulo), nunca antes da partida do ciclo",
+  "fonte": "célula alunos, GET /matriculas, campo virou_aluno_em (PR #933), lido ao vivo pela admin",
+  "autoridade": "alunos",
+  "dono": "mantenedor",
+  "frequencia": "tempo real (HTTP, a cada abertura da tela)",
+  "direcao": "subir",
+  "unidade": "pessoas",
+  "par": "alunos-ativos-30d",
+  "acao": "A meta do mês é a fatia da linha reta do ciclo que cai neste mês, até o mantenedor fixar outra em `alvo_do_mes`. Abaixo dela: a fila de entrada é onde se age.",
+  "alvo_do_mes": null,
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Decisão do mantenedor em 03/09/2026 (registro 20260903-036): 'o número de alunos que deve ser mostrado é o número de alunos que compraram em cada mês atual, começa em 0 e vamos estabelecer a meta mensal até o último dia do mês'. `alvo_do_mes` nulo = a tela deriva a meta do mês da linha reta do ciclo (compras-no-ciclo); ele fixa um número quando quiser, por PR."
+}
