@@ -281,16 +281,69 @@ def test_o_rascunho_cai_na_caixa_de_resposta_e_nada_e_publicado(
 
 
 def test_o_modelo_e_o_que_a_casa_escolheu(env, monkeypatch, conversa):
-    """Trocar de modelo é decisão do mantenedor, nunca economia silenciosa."""
+    """Trocar de modelo é decisão do mantenedor, nunca economia silenciosa.
+
+    Este caso ficou vermelho na troca do Opus 5 para o Haiku 4.5 (02/09/2026), e
+    é assim que ele deve se comportar: mudar de modelo muda o custo, a qualidade
+    e a velocidade do que o aluno lê, e não pode passar dentro de um diff sem
+    alguém encostar no guarda.
+
+    **O id COM DATA é parte da asserção.** O apelido `claude-haiku-4-5` segue o
+    modelo quando a Anthropic o move; a data prende. Numa tela paga que fala com
+    aluno, mudar de modelo é decisão, nunca surpresa de terça-feira.
+    """
     como_dono(monkeypatch)
     capturado: dict = {}
     dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta("ok"), capturado=capturado)
 
     gerar(Client(), conversa, orientacao="")
 
-    assert capturado["corpo"]["model"] == "claude-opus-5"
+    assert capturado["corpo"]["model"] == "claude-haiku-4-5-20251001"
     assert capturado["url"].endswith("/v1/messages")
     assert capturado["headers"]["x-api-key"] == "sk-ant-de-mentira"
+
+
+def test_o_ajuste_de_capricho_NAO_viaja_com_o_haiku(env, monkeypatch, conversa):
+    """`effort` é controle da geração nova, e o Haiku 4.5 pode recusá-lo.
+
+    A referência diz que o nível `max` dá erro nele, o Haiku não está entre os
+    modelos de pensamento adaptativo, e o resto só a API de capacidades ao vivo
+    responde — que exige chave, e a chave desta casa não passa por agente.
+
+    Omitir é seguro nos dois mundos: se ele aceitasse, não mandar apenas usa o
+    padrão; se não aceita, mandar derrubaria TODA geração com HTTP 400. Este
+    caso trava o lado que não quebra, e reprova quem devolver a chave ao corpo
+    sem trocar o modelo junto.
+    """
+    como_dono(monkeypatch)
+    capturado: dict = {}
+    dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta("ok"), capturado=capturado)
+
+    gerar(Client(), conversa, orientacao="")
+
+    assert agente.ESFORCO is None, (
+        "há um valor de esforço configurado: então confirme, na API de "
+        "capacidades, que o modelo em uso o aceita — e troque este caso."
+    )
+    assert "output_config" not in capturado["corpo"]
+
+
+def test_esforco_nulo_nunca_vira_effort_null_no_corpo(env, monkeypatch, conversa):
+    """`None` mandado é diferente de não mandado.
+
+    Um `{"effort": null}` no corpo faria a API recusar um pedido que, sem a
+    chave, estaria perfeito. A guarda é o `if` do `_pedido`, e é isto que o
+    prova: nem a chave, nem um nulo dentro dela.
+    """
+    como_dono(monkeypatch)
+    capturado: dict = {}
+    dublar_a_anthropic(monkeypatch, corpo=corpo_de_resposta("ok"), capturado=capturado)
+
+    gerar(Client(), conversa, orientacao="")
+
+    inteiro = json.dumps(capturado["corpo"])
+    assert "effort" not in inteiro
+    assert "null" not in inteiro
 
 
 def test_a_orientacao_de_quem_publica_chega_ao_modelo(env, monkeypatch, conversa):
@@ -976,8 +1029,11 @@ def test_ao_vivo_pede_a_mesma_coisa_que_o_modo_de_uma_vez(env, monkeypatch, conv
     quadros(gerar_ao_vivo(Client(), conversa, orientacao="responda curto"))
 
     corpo = capturado["corpo"]
-    assert corpo["model"] == "claude-opus-5"
-    assert corpo["output_config"] == {"effort": agente.ESFORCO}
+    assert corpo["model"] == agente.MODELO
+    # O ao vivo pede EXATAMENTE o mesmo que o modo de uma vez, inclusive na
+    # ausência do ajuste de capricho: se um dos dois voltasse a mandá-lo, as
+    # duas formas passariam a responder coisas diferentes sem ninguém notar.
+    assert ("output_config" in corpo) is (agente.ESFORCO is not None)
     assert corpo["stream"] is True
     pergunta = corpo["messages"][0]["content"]
     assert "responda curto" in pergunta
