@@ -76,9 +76,44 @@ por pouco que não apagou daqui.
 
 ## §4 Onde a coisa mora
 
-**Opção A — célula nova `portfolio`. ESCOLHIDA pelo mantenedor em 01/09/2026.** A obra do aluno ganha casa
-própria e a página pública sai dela; a gamificação só recebe o evento e acende o
-marco.
+**Opção A — célula nova. ESCOLHIDA pelo mantenedor em 01/09/2026, e em
+02/09/2026 ela deixou de ser a casa do PORTFÓLIO para ser a casa das PÁGINAS
+do aluno: `pages`.**
+
+> **A emenda de 02/09/2026, e por que ela é melhor que o plano original.**
+> O mantenedor perguntou se, em vez de uma célula por coisa pedida na Caixa,
+> não havia um lugar único onde todas nascessem. Há, e o raciocínio dele fecha
+> a questão do nome: *"quero `pages` porque podemos criar todo tipo de
+> ferramentas, portfólio, estúdio, e etc"*. Um nome específico (`portfolio`,
+> `ferramentas`) excluiria o que não é ferramenta nem portfólio; o guarda-chuva
+> é o ponto.
+>
+> **O que isso muda de verdade: o custo por pedido do aluno.** O caro nesta
+> plataforma nunca foi a tela, foi a FUNDAÇÃO — banco novo, provisionamento,
+> rota, e o passo manual que só o mantenedor executa. Uma célula por sugestão
+> cobraria esse pedágio a cada pedido. Com a casa guarda-chuva ele é pago UMA
+> vez: da segunda página em diante, o custo é um PR de tela e zero passo dele.
+>
+> **Dois endereços, uma casa:**
+> - `meshcraft.top/pages/...` — a área do aluno logado. O portfólio é a
+>   primeira página; as próximas entram ao lado.
+> - `meshcraft.top/estudio/<apelido>` — a vitrine pública, **decisão 3 da
+>   Sessão A (30/08/2026), preservada**. Endereço curto de propósito: é o link
+>   que o aluno manda ao cliente, e `/pages/estudio/joao` seria pior no chat de
+>   um freelancer. Os dois prefixos apontam para a mesma célula no Traefik.
+>
+> **O que NÃO se conclui daqui:** que toda sugestão da Caixa vira uma página
+> em `/pages`. Os pedidos se dividem em quatro tipos, e só um mora aqui — aula
+> nova é conteúdo do curso; material para baixar é documento no editor;
+> mudança em tela existente se faz onde ela já está. Ver `DA-IDEIA-A-OBRA.md`,
+> estação 2.
+>
+> **Nome da célula = nome da rota (`pages`), de propósito.** O par
+> `/conquistas` ↔ `gamificacao` já custa uma tradução mental a cada leitura;
+> não se cria um segundo.
+
+A obra do aluno ganha casa própria e a página pública sai dela; a gamificação
+só recebe o evento e acende o marco.
 
 - *A favor:* a gamificação tem **critério de morte declarado** (`DECISAO-gamificacao`
   §10) — ela pode ser desligada um dia, de propósito. O portfólio é o que o
@@ -107,21 +142,21 @@ fórum e gamificação).
 |---|---|---|---|---|
 | **S** | **Conversa de fronteira com o mantenedor** | nada | — | 0 |
 | 00 | O mapa para IA cita a célula que nasce (canário do lote) | nada | painel | 2 |
-| 01 | Gênese da célula (esqueleto, INV-P12, healthz, celulas.yml, manifesto, rollback, constituição) | nada | portfolio | ~22 |
-| 02 | Modelos: portfólio, peça, item de conferência, estado do aluno | nada | portfolio | ~14 |
-| 03 | Contrato congelado + eventos `portfolio.*` | nada | contracts | ~7 |
-| 04 | `infra/provisionar-portfolio.sh` + env exemplo (SOZINHO) | nada | infra | ~5 |
+| 01 | Gênese da célula (esqueleto, INV-P12, healthz, celulas.yml, manifesto, rollback, constituição) | nada | pages | ~22 |
+| 02 | Modelos: portfólio, peça, item de conferência, estado do aluno (numa app própria dentro da casa) | nada | pages | ~14 |
+| 03 | Contrato congelado + eventos `pages.portfolio.*` | nada | contracts | ~7 |
+| 04 | `infra/provisionar-pages.sh` + env exemplo (SOZINHO) | nada | infra | ~5 |
 | **H** | **Passo manual: banco, role e env na VPS** (bloco único, fail-closed) | nada | mantenedor | 1 linha |
-| 05 | Compose + Traefik `/portfolio` e `/estudio` + inventário de rotas no MESMO PR | o endereço responde | infra | ~3 |
-| 06 | Porta e sessão (repassa o cookie à `identidade`, nunca assina) + tela mínima | abre a Prancheta e é reconhecido | portfolio | ~12 |
-| 07 | A Prancheta: cinco etapas, listas de conferência lidas do banco | vê o roteiro e marca o que fez | portfolio | ~12 |
-| 08 | Peças por link, com legenda, ordem e destaque | monta o portfólio | portfolio | ~10 |
+| 05 | Compose + Traefik `/pages` e `/estudio` + inventário de rotas no MESMO PR | o endereço responde | infra | ~3 |
+| 06 | Porta e sessão (repassa o cookie à `identidade`, nunca assina) + tela mínima | abre a Prancheta e é reconhecido | pages | ~12 |
+| 07 | A Prancheta: cinco etapas, listas de conferência lidas do banco | vê o roteiro e marca o que fez | pages | ~12 |
+| 08 | Peças por link, com legenda, ordem e destaque | monta o portfólio | pages | ~10 |
 | ~~09~~ | ~~Envio de imagem no servidor~~ — **fora, por decisão de 01/09/2026** (§6.2). Volta a existir no dia em que o link colado doer | — | — | — |
-| 10 | O semáforo por peça, calculado das respostas objetivas | vê o que falta em cada peça | portfolio | ~8 |
-| 11 | Pedido de conferência + tela da equipe (molde dos marcos) | manda para a escola olhar | portfolio | ~12 |
-| 12 | Selo "conferido pela escola" + evento + carta no sininho | recebe o selo e fica sabendo | portfolio | ~9 |
-| 13 | `/estudio/<apelido>` (opt-in, `noindex`, despublicar imediato) + versão de impressão | o link para mandar no chat | portfolio | ~12 |
-| 14 | O dossiê em PDF montado no servidor | baixa o arquivo para anexar | portfolio | ~7 |
+| 10 | O semáforo por peça, calculado das respostas objetivas | vê o que falta em cada peça | pages | ~8 |
+| 11 | Pedido de conferência + tela da equipe (molde dos marcos) | manda para a escola olhar | pages | ~12 |
+| 12 | Selo "conferido pela escola" + evento + carta no sininho | recebe o selo e fica sabendo | pages | ~9 |
+| 13 | `/estudio/<apelido>` (opt-in, `noindex`, despublicar imediato) + versão de impressão | o link para mandar no chat | pages | ~12 |
+| 14 | O dossiê em PDF montado no servidor | baixa o arquivo para anexar | pages | ~7 |
 | 15 | A gamificação escuta o evento e acende o marco "portfólio" | o marco acende na trilha | gamificacao | ~8 |
 | **16** | **Os guias no editor de documentos** (rascunho pronto, texto dele) | lê o guia com a voz da escola | admin | ~4 |
 | 17 | A sequência que convida quem terminou as aulas | recebe o convite em vez de travar | mensageria | ~9 |
