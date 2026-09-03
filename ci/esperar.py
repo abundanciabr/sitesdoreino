@@ -20,6 +20,7 @@ senão o harness mata o esperador antes da linha de morte — silêncio, a doen�
     python ci/esperar.py --run 33210 --teto 20 --dizendo "o deploy da admin"
     python ci/esperar.py --deploy <sha> --teto 20
     python ci/esperar.py --checks 447 --teto 10   (uma vez, antes do --pousar)
+    python ci/esperar.py --checks 447 --teto 20 --e-pousar   (o caminho inteiro)
     python ci/esperar.py --sonda "docker info" --teto 3 --regua docker-frio
 
 ANTES DE ESPERAR, PERGUNTE SE A ESPERA PRECISA EXISTIR. As duas que a casa
@@ -44,6 +45,16 @@ A fila nunca precisou de plateia.
 
 Quem tem motivo real (depurar a própria pista) passa `--mesmo-assim "<motivo>"`;
 a recusa ensina o caminho e não se contorna por acidente.
+
+E DESDE 03/09/2026 O CAMINHO INTEIRO É UM COMANDO SÓ: `--checks N --e-pousar`.
+O rito tinha três passos (esperar os checks, conferir o portão, pedir pouso) e
+os dois últimos dependiam de o robô VOLTAR para executá-los. Numa sessão que
+terminou entre um passo e outro, o PR ficou verde e parado, e o mantenedor
+passou horas esperando um pouso que esperava por ele. Com `--e-pousar`, a
+própria espera, ao ver os checks verdes, chama `ci/mergear.py N --pousar` (o
+MESMO portão, sem cópia de regra) e pede o pouso. Vermelho, estouro ou
+medição impossível NUNCA viram pedido: o portão só é chamado no verde, e ele
+ainda recusa por conta própria (base velha, dívida do livro, registro ausente).
 
 AS TRÊS LINHAS DO CONTRATO
 --------------------------
@@ -487,6 +498,9 @@ def main(argv: list[str] | None = None) -> int:
                    dest="ao_estourar",
                    help="o plano Z — e 'continuar esperando' não é opção")
     p.add_argument("--pr", help="o PR do --ao-estourar pousar (se o alvo não for PR)")
+    p.add_argument("--e-pousar", dest="e_pousar", action="store_true",
+                   help="ao ficar verde, passa pelo portão (ci/mergear.py --pousar) "
+                        "e pede pouso sozinho — só com --checks")
     p.add_argument("--regua", help="chave em tempos_esperados.json (senão, deduzo)")
     p.add_argument("--mesmo-assim", dest="mesmo_assim", metavar="MOTIVO",
                    help="escapa da recusa de --checks/--pouso, com o MOTIVO escrito")
@@ -551,6 +565,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.ao_estourar == "pousar" and not pr_do_pouso:
         p.error("--ao-estourar pousar precisa de um PR (--pr N)")
+    if args.e_pousar and not args.checks:
+        p.error("--e-pousar só faz sentido com --checks <PR>: é ao ficarem verdes "
+                "os checks que o portão é chamado e o pouso pedido")
     plano_z = (
         f"peço pouso do PR {pr_do_pouso} e sigo"
         if args.ao_estourar == "pousar"
@@ -617,7 +634,61 @@ def main(argv: list[str] | None = None) -> int:
     registrar_espera(alvo_txt, dizendo, teto_s, decorrido,
                      "verde" if verde else "vermelho", olhada.resumo,
                      chave_da_regua)
+    if verde and args.e_pousar:
+        return pousar_pelo_portao(str(args.checks))
     return 0 if verde else 1
+
+
+def _mergear() -> list[str]:
+    """O portão, como comando. `ESPERAR_MERGEAR` (lista JSON) é o dublê dos testes."""
+    cru = os.environ.get("ESPERAR_MERGEAR", "").strip()
+    if not cru:
+        return [sys.executable, str(Path(__file__).with_name("mergear.py"))]
+    lista = json.loads(cru)
+    if not isinstance(lista, list) or not lista:
+        raise ErroDeInstrumentacao(f"ESPERAR_MERGEAR não é lista não-vazia: {cru!r}")
+    return [str(p) for p in lista]
+
+
+def pousar_pelo_portao(pr: str) -> int:
+    """Checks verdes ⇒ o MESMO portão do rito (`ci/mergear.py N --pousar`).
+
+    Chamado só no verde, de propósito: vermelho, estouro e medição impossível
+    saem antes, pelos caminhos de sempre. O portão continua dono da decisão —
+    ele recusa base velha, dívida do livro e registro ausente por conta própria,
+    e a recusa dele sai aqui, inteira, para o robô ler. Exit 0 = pouso pedido.
+    """
+    print(f"🛬 checks verdes: passo pelo portão e peço pouso do PR {pr}…", flush=True)
+    try:
+        proc = subprocess.run(
+            [*_mergear(), pr, "--pousar"],
+            capture_output=True, text=True, timeout=300,
+            encoding="utf-8", errors="replace",
+        )
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        print(
+            f"🔴 não consegui rodar o portão para o PR {pr} ({erro}). "
+            f"Faça na mão: python ci/mergear.py {pr} --pousar",
+            flush=True,
+        )
+        return 2
+    saida = (proc.stdout or "") + (proc.stderr or "")
+    cauda = [l for l in saida.splitlines() if l.strip()][-12:]
+    for linha in cauda:
+        print("   " + linha, flush=True)
+    if proc.returncode == 0:
+        print(
+            f"✅ pedi pouso do PR {pr} pelo portão. A pista assume: atualiza, confere "
+            "e mergeia sozinha, e comenta no PR. Nada mais depende de ninguém aqui.",
+            flush=True,
+        )
+        return 0
+    print(
+        f"🔴 o portão RECUSOU o pouso do PR {pr} (exit {proc.returncode}) — o motivo "
+        "está nas linhas acima. Conserte e rode de novo; não re-tente às cegas.",
+        flush=True,
+    )
+    return 1
 
 
 if __name__ == "__main__":
