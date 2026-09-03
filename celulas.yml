@@ -72,7 +72,12 @@ celulas:
     # E e AQUI que a autorizacao mora: a gamificacao nao assina sessao
     # ([INV-P12]) e o papel da identidade nunca autoriza rota. O cracha que vale
     # e o desta area; o Bearer do par prova so quem CHAMA.
-    consome: [alunos, catalogo, gamificacao, identidade, sugestoes]
+    # `notificacoes` desde 03/09/2026: a tela /admin/avisos/ manda um aviso de
+    # teste pela porta de maquina (POST /aviso-de-teste, Rito de Contrato de
+    # 03/09/2026), para o mantenedor saber se o canal de avisos do celular esta
+    # funcionando sem precisar entrar na VPS (Lei 5). Nao guarda nada aqui: le a
+    # resposta e mostra.
+    consome: [alunos, catalogo, gamificacao, identidade, notificacoes, sugestoes]
 
   alunos:
     caminhos: [services/alunos]

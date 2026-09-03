@@ -1,0 +1,64 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A tela do botão de teste. Um botão, e o resultado do último clique — sem
+script, como toda escrita desta área: o POST recarrega a página, e o que se vê
+é sempre o que a `notificacoes` acabou de responder, nunca um número que a
+tela inventou.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087): escrito em várias linhas, a segunda em diante vaza para a
+tela.
+{% endcomment %}
+{% block titulo %}Avisos | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>Testar o aviso na tela do celular</h1>
+  <p class="subtitulo">
+    Este botão manda um aviso de teste para o aparelho onde VOCÊ ligou os
+    avisos, e diz para quantos aparelhos ele chegou. Não escolhe outra pessoa
+    de propósito: um teste só pode tocar o seu próprio celular.
+  </p>
+
+  {% if resultado == "enviado" %}
+  {% if aparelhos == "0" %}
+  <p class="aviso borda-vermelha">
+    <b>Zero aparelhos.</b> O aviso saiu daqui e está registrado no sininho,
+    mas você ainda não ligou os avisos em nenhum aparelho, e é por isso que
+    nada chegou na tela. Abra o site pelo celular ou pelo navegador onde quer
+    receber, e clique em "Ligar os avisos" lá antes de testar de novo.
+  </p>
+  {% else %}
+  <p class="aviso borda-verde">
+    <b>Chegou em {{ aparelhos }} aparelho(s).</b> O canal está funcionando de
+    ponta a ponta: a carta foi guardada no sininho e o aviso saiu para a tela.
+  </p>
+  {% endif %}
+  {% endif %}
+  {% if resultado == "nao_respondeu" %}
+  <p class="aviso borda-vermelha">
+    <b>Não deu para saber.</b> A célula que guarda os aparelhos não respondeu.
+    Pode ser o par de tokens ainda não instalado nesta máquina (um passo seu
+    na VPS), ou uma falha momentânea de rede. Tente de novo em um minuto.
+  </p>
+  {% endif %}
+  {% if resultado == "sem_site" %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui saber qual site é este.</b> O catálogo não respondeu. Não é
+    sobre o aviso: é a mesma peça que serve o menu do topo do site, e ela está
+    fora do ar agora.
+  </p>
+  {% endif %}
+
+  <form method="post" action="{% url 'avisos_testar' %}">
+    {% csrf_token %}
+    <button type="submit">Mandar um aviso de teste para mim</button>
+  </form>
+
+  <p class="aviso espaco-28">
+    Por que este botão existe: em 02/09/2026 o botão de ligar os avisos
+    falhava no navegador do mantenedor com o servidor verde, e não havia como
+    saber se o problema era do celular ou do servidor sem entrar na VPS. Este
+    é o instrumento que responde essa pergunta, sem SSH nenhum.
+  </p>
+</div>
+{% endblock %}
