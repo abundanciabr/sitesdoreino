@@ -14,10 +14,17 @@ teria como funcionar.
 — o navegador precisa dela para se inscrever. A privada mora na célula
 `notificacoes` e nunca sai de lá.
 
-As três frases de desfecho (deu certo, não deu, o aparelho bloqueou) vêm
-prontas do catálogo e ficam escondidas até o JS escolher uma. Montá-las no JS
-seria texto de tela fora do catálogo de tradução, que é a única coisa que esta
-plataforma não deixa acontecer com texto que alguém lê.
+As quatro frases de desfecho vêm prontas do catálogo e ficam escondidas até o
+JS escolher uma. Montá-las no JS seria texto de tela fora do catálogo de
+tradução, que é a única coisa que esta plataforma não deixa acontecer com texto
+que alguém lê.
+
+**Duas delas parecem a mesma e não são**, e a diferença é quem recusou:
+`nao-deu` é o NOSSO lado falhando (o servidor não confirmou), e aí tentar de
+novo mais tarde é conselho honesto; `sem-servico` é o NAVEGADOR não conseguindo
+registrar o aparelho, e aí esperar não resolve nada. Enquanto as duas eram uma
+frase só, quem usa um navegador que bloqueia push de fábrica era mandado
+esperar para sempre (02/09/2026, `armadilhas/297`).
 {% endcomment %}<aside id="avisos-no-celular" class="card instalar" hidden
   data-chave="{{ avisos_no_celular.chave }}"
   data-ligar="{{ avisos_no_celular.ligar }}"
@@ -30,6 +37,7 @@ plataforma não deixa acontecer com texto que alguém lê.
   </div>
   <p class="instalar-porque" data-parte="ligado" hidden>{% t "avisos.cartaz_ligado" %}</p>
   <p class="instalar-porque" data-parte="nao-deu" hidden>{% t "avisos.cartaz_nao_deu" %}</p>
+  <p class="instalar-porque" data-parte="sem-servico" hidden>{% t "avisos.cartaz_sem_servico" %}</p>
   <p class="instalar-porque" data-parte="recusado" hidden>{% t "avisos.cartaz_recusado" %}</p>
 </aside>
 <script src="/static/funil/avisos.js" defer></script>

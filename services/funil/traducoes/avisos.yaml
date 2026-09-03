@@ -59,6 +59,24 @@ cartaz_nao_deu:
   pt-br: "Não deu certo agora. Você pode tentar de novo mais tarde."
   es: "No funcionó ahora. Puedes intentarlo de nuevo más tarde."
 
+cartaz_sem_servico:
+  # O navegador NÃO conseguiu registrar o aparelho no serviço de push do
+  # fabricante. É diferente de `cartaz_nao_deu` (que é o nosso lado falhando) e
+  # a diferença é a frase: aqui "tente de novo mais tarde" seria promessa
+  # falsa, porque tentar de novo dá no mesmo enquanto ninguém mexer no
+  # navegador. O caso real que criou esta chave é o Brave, que vem de fábrica
+  # com as mensagens push do Google desligadas (armadilhas/297): o mantenedor
+  # bateu nisso em 02/09/2026 e a tela mandou ele esperar para sempre.
+  #
+  # A frase não cita navegador nenhum pelo nome, e isso é desenho: a lista
+  # mudaria sozinha com o tempo, e um texto que nomeia o Brave envelhece no
+  # dia em que outro navegador fizer igual. "Alguns bloqueiam de fábrica"
+  # continua verdade sem manutenção.
+  _fonte: "f9fa85"
+  en: "This browser could not turn the notices on. Some browsers block push messages by default. Check its privacy settings and try again."
+  pt-br: "Este navegador não conseguiu ligar os avisos. Alguns bloqueiam mensagens push de fábrica. Veja os ajustes de privacidade dele e tente de novo."
+  es: "Este navegador no pudo activar los avisos. Algunos bloquean los mensajes push de fábrica. Revisa sus ajustes de privacidad y prueba de nuevo."
+
 cartaz_recusado:
   # A pessoa (ou o aparelho dela) negou a permissão. O navegador só pergunta
   # uma vez, então o caminho de volta é a configuração do próprio aparelho, e

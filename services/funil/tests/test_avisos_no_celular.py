@@ -506,3 +506,97 @@ def test_o_sw_continua_sem_prefixo_de_idioma_e_com_os_cabecalhos(client, rede):
     assert resposta["Content-Type"] == "text/javascript"
     for prefixo in ("pt-br", "es", "en"):
         assert client.get(f"/{prefixo}/sw.js", HTTP_HOST=HOST_MESH).status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Quando quem recusou foi o NAVEGADOR (02/09/2026, armadilhas/297)
+# ---------------------------------------------------------------------------
+# Até aqui o cartaz tinha uma frase só para toda falha: "não deu certo agora,
+# tente de novo mais tarde". Ela é honesta quando o NOSSO servidor não
+# confirmou, e é promessa falsa quando o navegador é que não conseguiu
+# registrar o aparelho — nesse caso tentar amanhã dá exatamente no mesmo,
+# porque nada muda sozinho. O mantenedor bateu nisso no próprio site, num
+# navegador que bloqueia mensagens push de fábrica, e só descobriu o motivo
+# lendo o erro no console.
+
+#: A frase nova, palavra por palavra, nos dois idiomas que o site publica hoje.
+#: Escrita à mão de propósito: um teste que lesse o mesmo YAML da view passaria
+#: de olhos fechados com o catálogo errado.
+SEM_SERVICO = {
+    "pt-br": (
+        "Este navegador não conseguiu ligar os avisos. Alguns bloqueiam "
+        "mensagens push de fábrica. Veja os ajustes de privacidade dele e "
+        "tente de novo."
+    ),
+    "es": (
+        "Este navegador no pudo activar los avisos. Algunos bloquean los "
+        "mensajes push de fábrica. Revisa sus ajustes de privacidad y prueba "
+        "de nuevo."
+    ),
+}
+
+
+def _frase_da_parte(corpo: str, parte: str) -> str:
+    achado = re.search(r'data-parte="%s"[^>]*>(.*?)</p>' % parte, corpo, re.S)
+    assert achado, f"o cartaz não tem a parte {parte}"
+    return achado.group(1).strip()
+
+
+def test_o_cartaz_tem_um_desfecho_so_para_o_navegador_que_nao_pode(
+    client, rede, com_chave, logado
+):
+    """A frase vem do catálogo, no idioma da página, como as outras três."""
+    for idioma, frase in SEM_SERVICO.items():
+        corpo = client.get(
+            caminho_mesh(idioma), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+        ).content.decode()
+
+        assert _frase_da_parte(corpo, "sem-servico") == frase
+
+
+def test_o_desfecho_do_navegador_nao_promete_que_vai_dar_certo_depois(
+    client, rede, com_chave, logado
+):
+    """O ponto todo da mudança, medido no HTML entregue: as duas frases são
+    DIFERENTES, e só a do nosso lado manda esperar. Se alguém um dia colapsar
+    as duas de volta numa chave só, este teste cai."""
+    corpo = client.get(
+        caminho_mesh("pt-br"), HTTP_HOST=HOST_MESH, HTTP_COOKIE=COOKIE
+    ).content.decode()
+
+    do_navegador = _frase_da_parte(corpo, "sem-servico")
+    do_servidor = _frase_da_parte(corpo, "nao-deu")
+
+    assert do_navegador != do_servidor
+    assert "mais tarde" not in do_navegador
+    # E a do nosso lado continua sendo a que manda esperar: esperar ali é
+    # conselho honesto, porque o que falhou foi o servidor.
+    assert "mais tarde" in do_servidor
+
+
+def test_a_recusa_do_navegador_e_a_do_servidor_tem_caminhos_separados():
+    """Medido no arquivo servido, que é a única prova possível sem um aparelho.
+
+    A separação é estrutural, não textual: a recusa do `subscribe` é tratada
+    pelo SEGUNDO argumento do `.then`, que só alcança ela. Um `.catch`
+    pendurado no fim pegaria junto a falha do `fetch` e desfaria a distinção
+    inteira sem mudar uma linha visível — por isso ele é proibido aqui, e por
+    isso este teste mede a forma e não a mensagem do erro (que varia entre
+    navegador e versão, e nunca deve virar régua)."""
+    js = (
+        Path(__file__).resolve().parent.parent / "static" / "funil" / "avisos.js"
+    ).read_text(encoding="utf-8")
+
+    inscrever = js.split("function inscrever(registro)")[1].split(
+        "function aparelhoNaoPode"
+    )[0]
+
+    assert "}, aparelhoNaoPode);" in inscrever
+    assert ".catch(" not in inscrever
+    # Dentro do `inscrever` só existe o desfecho do NOSSO lado; o do navegador
+    # mora no tratador próprio, logo abaixo.
+    assert 'return "nao-deu";' in inscrever
+    assert "sem-servico" not in inscrever
+    assert 'return "sem-servico";' in js.split("function aparelhoNaoPode")[1]
+    # E o cartaz sabe mostrar a parte nova.
+    assert '"sem-servico"' in js.split("function mostrarSo")[1].split("}")[0]
