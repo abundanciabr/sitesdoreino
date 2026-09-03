@@ -93,6 +93,7 @@ SECOES = (
     ("documentos_admin", "Documentos"),
     ("menu_do_topo", "Menu do site"),
     ("perpetuo", "Lançamento"),
+    ("avisos", "Avisos"),
     ("mapa_do_site", "Mapa do site"),
     ("painel", "Painel do sistema"),
 )

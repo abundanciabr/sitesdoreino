@@ -121,6 +121,20 @@
         tem para cada uma.
       </div>
     </a>
+    {% comment %}
+    A oitava porta (03/09/2026), a pedido do mantenedor depois de um caso real:
+    o botão de ligar os avisos falhava no navegador dele com o servidor verde,
+    e não havia como saber de qual lado sem entrar na VPS. Um botão que
+    ninguém encontra é uma funcionalidade que não existe — mesma lição das
+    outras sete portas desta grade.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'avisos' %}">
+      <div class="rotulo">Testar o aviso no celular &rarr;</div>
+      <div class="nota">
+        Um botão que manda um aviso de teste para o seu próprio aparelho, e diz
+        para quantos aparelhos ele chegou.
+      </div>
+    </a>
   </div>
 
   {% comment %}

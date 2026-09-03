@@ -34,6 +34,7 @@ from apps.core.economia import (
     economia_mudar_conquista,
     economia_mudar_degrau,
 )
+from apps.core.avisos import avisos, avisos_testar
 from apps.core.menu import (
     menu_adicionar_item,
     menu_apagar_versao,
@@ -146,6 +147,13 @@ urlpatterns = [
     # o gesto, com verbo proprio, na mesma gramatica das sete do menu.
     path("economia/", economia, name="economia"),
     path("economia/mudar", economia_mudar, name="economia_mudar"),
+    # O botao que prova se os avisos na tela do celular estao funcionando
+    # (03/09/2026). Nasceu do caso em que o botao de ligar os avisos falhava
+    # no navegador do mantenedor com o servidor verde, e nao havia como saber
+    # de qual lado sem entrar na VPS. Duas rotas, na mesma gramatica da
+    # economia: a tela e o gesto.
+    path("avisos/", avisos, name="avisos"),
+    path("avisos/testar", avisos_testar, name="avisos_testar"),
     # A segunda metade da mesma tela (01/09/2026): as medalhas e os marcos. Rota
     # PROPRIA e nao um campo a mais no gesto de cima, porque sao duas listas
     # diferentes do outro lado e dois verbos diferentes na auditoria.

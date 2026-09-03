@@ -1433,6 +1433,26 @@
     },
     {
       "celula": "admin",
+      "rota": "avisos/",
+      "endereco": "/admin/avisos/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Testar o aviso na tela do celular",
+      "descricao": "Um botão que manda um aviso de teste para o seu próprio aparelho, e diz para quantos aparelhos ele saiu. Existe porque em 02/09/2026 o botão de ligar os avisos falhava no navegador do mantenedor com o servidor verde, e não havia como saber se o problema era do aparelho ou do servidor sem entrar na VPS."
+    },
+    {
+      "celula": "admin",
+      "rota": "avisos/testar",
+      "endereco": "/admin/avisos/testar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Mandar o aviso de teste",
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão da tela de avisos. Manda um aviso de teste para o seu próprio aparelho e volta com quantos aparelhos receberam."
+    },
+    {
+      "celula": "admin",
       "rota": "economia/",
       "endereco": "/admin/economia/",
       "alcance": "publico",
