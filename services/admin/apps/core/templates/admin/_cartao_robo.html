@@ -1,0 +1,31 @@
+{% comment %}
+UM CARTÃO DE TAREFA da aba "Os robôs". Um arquivo só, incluído pelos seis
+grupos — a mesma lei de `_caixa_abas.html`: peça repetida em seis lugares vira
+seis versões que divergem no primeiro conserto.
+
+A ORDEM DENTRO DO CARTÃO é o conserto de 03/09/2026, e ela é deliberada: o
+TÍTULO vem primeiro, grande e na cor cheia. Até esta data o cartão abria pelo
+código da tarefa ("TAR-004 · toca: infra") em cinza-claro, e o mantenedor
+precisava atravessar uma sigla e um jargão antes de chegar à única linha que
+diz do que se trata. Código e área viraram etiquetas DEPOIS do título, e
+"toca" virou "mexe em".
+
+O `motivo` das concluídas é o endereço do trabalho que a fechou; `urlize`
+transforma em link clicável, porque um endereço só de texto obriga o
+mantenedor a selecionar e copiar à mão.
+{% endcomment %}
+<div class="cartao-robo borda-{{ coluna.cor }}" data-tarefa="{{ cartao.id }}">
+  <span class="agora">🔒 um robô reservou esta tarefa neste minuto</span>
+  <b>{{ cartao.titulo }}</b>
+  <div class="etiquetas">
+    <span class="etiqueta">{{ cartao.id }}</span>
+    {% if cartao.toca %}<span class="etiqueta">mexe em: {{ cartao.toca|join:", " }}</span>{% endif %}
+    {% if cartao.quem %}<span class="etiqueta">robô: {{ cartao.quem }}</span>{% endif %}
+  </div>
+  {% if coluna.estado == "bloqueada" %}
+    <div><span class="selo-parou">PAROU</span></div>
+    <div class="motivo">{% if cartao.motivo %}{{ cartao.motivo|urlize }}{% else %}Ninguém escreveu o motivo desta parada.{% endif %}</div>
+  {% elif cartao.motivo %}
+    <div class="motivo">{{ cartao.motivo|urlize }}</div>
+  {% endif %}
+</div>

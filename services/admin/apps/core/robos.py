@@ -51,15 +51,75 @@ RAIZ_DA_CELULA = Path(__file__).resolve().parent.parent.parent
 # definição que o cabeçalho proíbe.
 CANDIDATOS = (RAIZ_DA_CELULA / "fila_embutida",)
 
-# A ordem das colunas no quadro, e a cor que cada uma carrega. A borda diz
-# AÇÃO EXIGIDA, nunca prioridade (consultoria: desenho-kanban-cores-Gemini).
+# OS GRUPOS DO QUADRO, na ordem em que aparecem na tela — e a ordem é POR
+# URGÊNCIA PARA O MANTENEDOR, não a ordem do fluxo de trabalho. O que pode
+# precisar dele vem primeiro; a história antiga vem por último e nasce fechada.
+#
+# Antes de 03/09/2026 esta ordem era a do fluxo (na fila → reivindicada → …
+# → concluída), desenhada lado a lado como colunas de um kanban. Com 101
+# tarefas na fila as colunas tinham 12, 2, 11 e SETENTA E SEIS cartões, e o
+# mantenedor abriu a tela e disse que não conseguia acompanhá-la. Kanban de
+# coluna serve para quem MOVE cartão; ele não move nenhum, ele quer saber o que
+# parou esperando por ele.
+#
+# Cada grupo carrega quatro coisas para a tela:
+#   estado     a chave do dado, vocabulário de CONTRATO de `ci/fila.py` — o
+#              template casa por ela, e ela NUNCA muda por motivo de tela;
+#   rotulo     a mesma coisa em português de gente, que é o que se lê;
+#   curto      o rótulo do placar de números lá em cima;
+#   recolhida  nasce dentro de um `details` fechado (história, não pendência).
+#
+# A cor da borda diz AÇÃO EXIGIDA, nunca prioridade (consultoria:
+# desenho-kanban-cores-Gemini).
 COLUNAS = (
-    ("na fila", "pronta para um robô pegar", "azul"),
-    ("reivindicada", "um robô já reservou", "roxo"),
-    ("em execução", "tem PR aberto agora", "roxo"),
-    ("bloqueada", "parada — o motivo está no cartão", "ambar"),
-    ("concluída", "terminou, com prova conferida", "verde"),
-    ("cancelada", "não vai mais ser feita", "cinza"),
+    {
+        "estado": "bloqueada",
+        "rotulo": "Pararam, e esperam alguém",
+        "curto": "pararam esperando alguém",
+        "explicacao": "Cada cartão diz o que falta. É aqui que costuma haver algo para você decidir.",
+        "cor": "ambar",
+        "recolhida": False,
+    },
+    {
+        "estado": "em execução",
+        "rotulo": "O trabalho já está pronto, esperando conferência",
+        "curto": "na conferência",
+        "explicacao": "Um robô mandou o trabalho e a esteira está conferindo. Ninguém precisa fazer nada.",
+        "cor": "roxo",
+        "recolhida": False,
+    },
+    {
+        "estado": "reivindicada",
+        "rotulo": "Um robô pegou, e está com ela agora",
+        "curto": "com um robô agora",
+        "explicacao": "Reservou no servidor para nenhum outro robô pisar em cima, e ainda não mandou o trabalho.",
+        "cor": "roxo",
+        "recolhida": False,
+    },
+    {
+        "estado": "na fila",
+        "rotulo": "Esperando um robô pegar",
+        "curto": "esperando um robô",
+        "explicacao": "Prontas para trabalho. Ninguém pegou ainda.",
+        "cor": "azul",
+        "recolhida": False,
+    },
+    {
+        "estado": "concluída",
+        "rotulo": "Já terminaram, com prova conferida",
+        "curto": "já terminaram",
+        "explicacao": "Cada uma traz o endereço do trabalho que a fechou. Clique para ver.",
+        "cor": "verde",
+        "recolhida": True,
+    },
+    {
+        "estado": "cancelada",
+        "rotulo": "Não vão mais ser feitas",
+        "curto": "canceladas",
+        "explicacao": "Alguém decidiu tirar da fila. O motivo fica no cartão.",
+        "cor": "cinza",
+        "recolhida": True,
+    },
 )
 
 _SCRIPT_EMBUTIDO = re.compile(
@@ -120,18 +180,20 @@ def robos(request):
 
     estados = _ler_json(pasta / "estados.json") or {}
     colunas = []
-    for nome, explicacao, cor in COLUNAS:
+    for grupo in COLUNAS:
         cartoes = sorted(
             (
                 {"id": tid, **dados}
                 for tid, dados in estados.items()
-                if dados.get("estado") == nome
+                if dados.get("estado") == grupo["estado"]
             ),
             key=lambda c: c["id"],
+            # A história vem do fim para o começo: quem abre as concluídas quer
+            # ver o que acabou de acontecer, não a TAR-001 de 29/08. Os grupos
+            # abertos (o que ainda pede trabalho) seguem na ordem de chegada.
+            reverse=grupo["recolhida"],
         )
-        colunas.append(
-            {"nome": nome, "explicacao": explicacao, "cor": cor, "cartoes": cartoes}
-        )
+        colunas.append({**grupo, "cartoes": cartoes})
 
     # A régua (`ci/tempos_esperados.json`): {"medido_em", "esperas": {chave:
     # {rotulo, p50_s, p90_s, amostra}}}. A regra de honestidade dela viaja para

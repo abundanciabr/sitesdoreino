@@ -16,6 +16,7 @@ O que estes guardas protegem:
 """
 
 import json
+import re
 
 import httpx
 import pytest
@@ -144,6 +145,17 @@ def texto(resposta) -> str:
     return resposta.content.decode()
 
 
+# A folha de estilo desta aba mora DENTRO do corpo da resposta, então toda
+# asserção de "isto NÃO está na tela" precisa podá-la antes de medir — senão um
+# nome de classe ou um comentário de CSS vira falso vermelho num teste que não
+# tem nada a ver com estilo (`armadilhas/247`).
+RE_ESTILO = re.compile(r"<style\b[^>]*>.*?</style\s*>", re.DOTALL | re.IGNORECASE)
+
+
+def texto_sem_estilo(resposta) -> str:
+    return RE_ESTILO.sub("", resposta.content.decode())
+
+
 @respx.mock
 def test_o_quadro_mostra_o_que_o_build_materializou(tmp_path, monkeypatch):
     fila_de_mentira(tmp_path, monkeypatch)
@@ -155,6 +167,73 @@ def test_o_quadro_mostra_o_que_o_build_materializou(tmp_path, monkeypatch):
     assert "aguardando despacho do mantenedor" in pagina
     # A concluída aparece com a prova por perto.
     assert "pull/516" in pagina
+
+
+@respx.mock
+def test_o_de_agora_vem_antes_do_retrato(tmp_path, monkeypatch):
+    """A ordem da página é POR URGÊNCIA, e isso é o conserto de 03/09/2026.
+
+    Até esta data a tela era um kanban de colunas lado a lado, e a coluna das
+    concluídas (76 cartões em produção) empurrava o bloco ao vivo — a única
+    coisa realmente de agora — para dezenas de rolares abaixo da dobra. O
+    mantenedor abriu a tela e disse que não conseguia acompanhá-la.
+    """
+    fila_de_mentira(tmp_path, monkeypatch)
+    pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+
+    ao_vivo = pagina.find("Agora, neste minuto")
+    parou = pagina.find("Pararam, e esperam alguém")
+    ja_terminaram = pagina.find("Já terminaram")
+
+    assert ao_vivo != -1 and parou != -1 and ja_terminaram != -1
+    assert ao_vivo < parou, "o que é de agora ficou abaixo do retrato do deploy"
+    assert parou < ja_terminaram, "a história antiga passou na frente do que parou"
+
+
+@respx.mock
+def test_a_historia_nasce_fechada_e_o_que_pede_gente_nasce_aberto(
+    tmp_path, monkeypatch
+):
+    """Concluídas e canceladas são história: elas entram num `details` FECHADO.
+
+    Em produção são 76 cartões que não pedem nada de ninguém. Abertos, eles
+    são a página inteira; fechados, são uma linha com um número do lado.
+    """
+    fila_de_mentira(tmp_path, monkeypatch)
+    pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+
+    depois_do_details = pagina.split("<details>")[-1]
+    assert "Já terminaram" in depois_do_details, "a história voltou a nascer aberta"
+    assert "<details open" not in pagina
+    # O que parou esperando alguém NUNCA fica atrás de um clique.
+    assert "Pararam, e esperam alguém" not in depois_do_details
+
+
+@respx.mock
+def test_a_tela_fala_portugues_e_nao_o_vocabulario_da_fila(tmp_path, monkeypatch):
+    """Os estados da fila são contrato; o mantenedor é leigo.
+
+    "reivindicada", "em execução" e "toca" são o vocabulário de `ci/fila.py` e
+    continuam intactos NO DADO. O que chega à tela é a tradução — a mesma lei
+    do painel do dono, que não tem sigla.
+    """
+    fila_de_mentira(tmp_path, monkeypatch)
+    pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+
+    assert "Um robô pegou, e está com ela agora" in pagina
+    assert "mexe em: infra" in pagina
+    assert "reivindicada" not in pagina
+    assert "toca:" not in pagina
+
+
+@respx.mock
+def test_o_endereco_da_prova_vira_link_clicavel(tmp_path, monkeypatch):
+    """A prova de uma concluída é um endereço, e endereço em texto cru obriga o
+    mantenedor a selecionar e copiar à mão."""
+    fila_de_mentira(tmp_path, monkeypatch)
+    pagina = texto(_dentro().get(reverse("caixa_robos")))
+
+    assert 'href="https://github.com/x/y/pull/516"' in pagina
 
 
 @respx.mock
