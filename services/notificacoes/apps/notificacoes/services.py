@@ -12,6 +12,8 @@ transacional, e misturá-las aqui alargaria o que este arquivo precisa provar.
 `id` opaco é leitura; marcá-la como lida é escrita — a fronteira de sempre).
 """
 
+import uuid
+
 from django.conf import settings
 from django.db import transaction
 from django.db.models import F
@@ -298,3 +300,57 @@ def avisar_os_aparelhos(
         except push.AparelhoMorto:
             inscricao.delete()
     return enviados
+
+
+# ---------------------------------------------------------------------------
+# O aviso de teste (Rito de Contrato de 03/09/2026)
+# ---------------------------------------------------------------------------
+#: O único assunto desta plataforma que não descreve um fato do projeto. Ele
+#: existe para PROVAR O CANAL, e está no `enum` do contrato como todos os
+#: outros — um assunto fora do contrato atravessaria o fio e viraria aviso mudo
+#: na tela de alguém.
+ASSUNTO_DE_TESTE = "sistema.teste-de-aviso"
+
+
+def enviar_aviso_de_teste(*, site_id: str, destinatario_id: str) -> int:
+    """Guarda a carta de teste e manda para os aparelhos. Devolve quantos.
+
+    **O número devolvido é o produto desta função**, e não efeito colateral: a
+    porta existe porque, em 02/09/2026, não havia como distinguir "o aviso não
+    foi enviado" de "o aviso foi enviado e não chegou" sem entrar na VPS. Zero
+    é resposta legítima e é o diagnóstico mais útil que ela dá — quer dizer que
+    a pessoa não ligou os avisos em aparelho nenhum, não que algo quebrou.
+
+    **A carta é criada mesmo quando nenhum aparelho recebe**, e isso é escolha
+    do mantenedor no rito (contra a alternativa de só piscar na tela): um teste
+    que não chega ao celular ainda deixa rastro, no sininho, de que saiu daqui.
+    É justamente o rastro que faltou no caso que criou esta porta.
+
+    **`origem_event_id` é um id novo a cada pedido.** O campo é "o event_id do
+    FATO que gerou esta carta", e aqui não há fato nem evento: há um pedido, e
+    ele é o que este id identifica. Gerar um valor novo (em vez de repetir um
+    fixo) mantém dois testes seguidos distinguíveis um do outro, que é o mínimo
+    que se espera de um instrumento de diagnóstico.
+
+    A ordem das duas metades é a mesma de todo aviso desta célula, e a razão
+    está em `avisar_os_aparelhos`: a rede fica FORA da transação que grava.
+    """
+    guardar(
+        site_id=site_id,
+        destinatario_id=destinatario_id,
+        # Quem pede o teste é quem o recebe, e por isso ele é ator e
+        # destinatário ao mesmo tempo. Não é redundância: a porta que chama é
+        # obrigada a mandar o id de quem clicou (`contracts/`), e gravar os
+        # dois iguais é o que registra, no próprio dado, que ninguém disparou
+        # aviso no aparelho de outra pessoa.
+        ator_id=destinatario_id,
+        assunto=ASSUNTO_DE_TESTE,
+        parametros={},
+        origem_event_id=str(uuid.uuid4()),
+    )
+    return avisar_os_aparelhos(
+        site_id=site_id,
+        destinatario_id=destinatario_id,
+        assunto=ASSUNTO_DE_TESTE,
+        parametros={},
+    )
