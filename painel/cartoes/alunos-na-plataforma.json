@@ -1,0 +1,22 @@
+{
+  "nome": "alunos-na-plataforma",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Quantas pessoas são alunas hoje?",
+  "definicao": "Matrículas cujo status está na lista de permissão da célula alunos (hoje, só 'ativa'). Quem está na fila esperando liberação, quem foi pausado, encerrado ou reembolsado não conta.",
+  "formula": "contagem das matrículas com status permitido, em todas as escolas da plataforma",
+  "fonte": "célula alunos, GET /matriculas, lida ao vivo pela admin (a mesma leitura do mapa da jornada)",
+  "autoridade": "alunos",
+  "dono": "mantenedor",
+  "frequencia": "tempo real (HTTP, a cada abertura da tela)",
+  "par": "alunos-ativos-30d",
+  "alvo": null,
+  "ate": null,
+  "partida": null,
+  "partida_em": null,
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Meta Crucialmente Importante nº 1, decidida pelo mantenedor em 03/09/2026 (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md §4.1). O alvo e a data são pendência dele: enquanto forem null, o placar diz 'aguardando você'. Quando ele decidir, o PR que preencher alvo/ate grava partida = o X medido naquele dia e partida_em = a data, e o livro recebe um registro de decisão citando o PR."
+}

@@ -1,0 +1,18 @@
+{
+  "nome": "alunos-ativos-30d",
+  "tipo": "par",
+  "andar": 0,
+  "pergunta": "Quantos desses alunos entraram na escola nos últimos 30 dias?",
+  "definicao": "Alunos (na lista de permissão) com ao menos uma entrada registrada na plataforma nos últimos 30 dias. Segura a meta de número de alunos: liberar contas que nunca entram faria a meta subir sem a escola crescer.",
+  "formula": "contagem de alunos com último acesso há no máximo 30 dias, dividida pelo total de alunos",
+  "fonte": null,
+  "sem_fonte_porque": "A plataforma ainda não guarda o último acesso de cada aluno em lugar nenhum: nem a célula alunos nem a identidade registram isso hoje. O número nasce no degrau 1 do plano (a célula de medição recebe o evento de entrada) e este cartão ganha fonte e versão 2 nesse PR. Até lá, o placar mostra 'sem dados' em vez de um número inventado.",
+  "autoridade": "metricas",
+  "dono": "mantenedor",
+  "frequencia": "diária",
+  "par": "alunos-na-plataforma",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03"
+}
