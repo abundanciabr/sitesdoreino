@@ -93,6 +93,9 @@ SECOES = (
     ("documentos_admin", "Documentos"),
     ("menu_do_topo", "Menu do site"),
     ("perpetuo", "Lançamento"),
+    # "Placar", e não "Metas": é UMA meta por vez (4DX), e o que a tela mostra
+    # é o número contra o alvo, não uma lista (03/09/2026).
+    ("placar", "Placar"),
     ("avisos", "Avisos"),
     ("mapa_do_site", "Mapa do site"),
     ("painel", "Painel do sistema"),

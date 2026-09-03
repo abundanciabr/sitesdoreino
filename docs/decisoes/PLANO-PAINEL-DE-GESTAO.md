@@ -553,7 +553,7 @@ o degrau N não tem registro verde, o degrau N+1 não começa. As dez fases da v
 
 | Degrau | O que nasce | O que já existe | PRs (estimativa) | Depende de |
 |---|---|---|---|---|
-| **0. O placar** | Andar 0 em `/admin/painel/` com a Meta 1 (§4.1): X medido de `alunos` por HTTP, alvo e data lidos do livro, par "ativos em 30 dias". Os primeiros cartões de métrica e o teste que recusa tile sem cartão. | a porta admin, o consumo de `alunos`, o mapa da jornada | 2 | nada |
+| **0. O placar** | Andar 0 em `/admin/placar/` (fora do prefixo `painel/`, que é do livro) com a Meta 1 (§4.1): X medido de `alunos` por HTTP, alvo e data lidos do livro, par "ativos em 30 dias". Os primeiros cartões de métrica e o teste que recusa tile sem cartão. | a porta admin, o consumo de `alunos`, o mapa da jornada | 2 | nada |
 | **1. A célula de medição** | Gênese da `metricas` (§5.2): recebe `identidade.pessoa-cadastrada`, `quiz.completado`, `forum.*`; guarda imutável; API de leitura com guarda de 401; linha em `painel/ia/04`. | contratos de evento, outbox de `alunos`, rito de gênese | 3 (gênese, consumo, API) + 1 sessão de Rito de Contrato | 0 |
 | **2. Os fatos que faltam** | Contratos de evento de `leads` e `alunos` (pediu entrada, liberada, ativa, suspensa, encerrada); a `metricas` passa a recebê-los. | as células e a caixa de saída | 2 por provedora (contrato e serviço não viajam no mesmo PR) | 1 |
 | **3. Marcos e dimensões** | Marcos automáticos calculados; marco assinado como registro; a dimensão "aprendizado" ligada ao mapa da jornada. | `/admin/escola/jornada/` | 2 | 2 |

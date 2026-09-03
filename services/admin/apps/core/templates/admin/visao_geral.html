@@ -122,6 +122,19 @@
       </div>
     </a>
     {% comment %}
+    O placar (03/09/2026): o andar zero do painel de gestão do negócio, pedido
+    pelo mantenedor junto com o plano (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md).
+    Vem logo depois da máquina do perpétuo porque é a resposta que ela pede:
+    uma meta, um número, ganhando ou perdendo.
+    {% endcomment %}
+    <a class="cartao porta" href="{% url 'placar' %}">
+      <div class="rotulo">Ver o placar &rarr;</div>
+      <div class="nota">
+        A Meta Crucialmente Importante nº 1, o número de alunos na plataforma,
+        medido ao vivo, e a resposta em uma palavra: ganhando ou perdendo.
+      </div>
+    </a>
+    {% comment %}
     A oitava porta (03/09/2026), a pedido do mantenedor depois de um caso real:
     o botão de ligar os avisos falhava no navegador dele com o servidor verde,
     e não havia como saber de qual lado sem entrar na VPS. Um botão que
