@@ -62,6 +62,7 @@ from apps.core.views import (
     documentos_admin,
     escola_alunos,
     escola_alunos_liberados,
+    escola_apagar_recusado,
     escola_cadastrar,
     escola_jornada,
     escola_decidir,
@@ -381,6 +382,16 @@ urlpatterns = [
         "escola/alunos/reconsiderar",
         escola_reconsiderar,
         name="escola_reconsiderar",
+    ),
+    # [APAGAR-RECUSADO] Apagar de vez um pedido recusado (03/09/2026,
+    # `DECISAO-apagar-recusado-definitivamente.md`). POST-only e sem id no
+    # caminho, na mesma gramática de `escola_reconsiderar` acima: o alvo vem
+    # no corpo do formulário, junto do CSRF que o protege — e é irreversível,
+    # o que torna o CSRF ainda mais importante aqui do que ali.
+    path(
+        "escola/alunos/recusados/apagar",
+        escola_apagar_recusado,
+        name="escola_apagar_recusado",
     ),
     # [PRONTUARIO] A historia de UMA pessoa (`DECISAO-a-ficha-nao-se-apaga` §5).
     # GET, e o e-mail vem por querystring: esta tela so PERGUNTA, nao decide

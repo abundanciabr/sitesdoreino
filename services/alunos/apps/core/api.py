@@ -12,7 +12,7 @@ from datetime import date
 
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.utils import timezone
 from ninja import Router
 from ninja.errors import HttpError
@@ -21,6 +21,7 @@ from apps.core.clients import IdentidadeClient
 from apps.matriculas.models import Matricula
 from apps.matriculas.services import (
     OrderIdReservado,
+    apagar_recusado,
     decidir_na_fila,
     entrar_na_fila,
     CAMPOS_CORRIGIVEIS,
@@ -865,6 +866,73 @@ def decide_pre_enrollment(request, id: str):  # `id` sombreia o builtin: é o no
     return JsonResponse({"id": str(linha.pk), "status": linha.status}, status=200)
 
 
+_DELETE_REJECTED_PRE_ENROLLMENT_OPENAPI = {
+    "parameters": [
+        {
+            "name": "id",
+            "in": "path",
+            "required": True,
+            "schema": {
+                "type": "string",
+            },
+        },
+    ],
+    "responses": {
+        "200": {
+            "description": "Apagada. A linha nao existe mais.",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["apagada"],
+                        "properties": {
+                            "apagada": {"type": "boolean", "enum": [True]},
+                        },
+                    }
+                }
+            },
+        },
+        "404": {
+            "description": "Nao ha linha RECUSADA na fila com este id",
+        },
+        "409": {
+            "description": "Esta linha esta na fila mas ainda nao foi recusada — decida por POST /pre-matriculas/{id}/decisao antes de apagar",
+        },
+    },
+}
+
+DESCRICAO_APAGAR_RECUSADO = '`docs/decisoes/DECISAO-apagar-recusado-definitivamente.md` (03/09/2026):\nreverte, SO para esta fatia, a `DECISAO-a-ficha-nao-se-apaga.md` de\n29/08/2026. O mantenedor decidiu que um pedido recusado — que nunca\nchegou a virar aluno — pode ser apagado de vez, pelo botao "Apagar de\nvez" na tela de recusados do painel.\n\nSO ALCANCA linhas da FILA (prefixo `pre:` no order_id) com\n`status = recusada`. Uma matricula REAL (sem esse prefixo) e 404 aqui,\nsempre — esta porta nao e `DELETE /matriculas/{id}`, que continua sem\nexistir e continua sendo a lei de 29/08 intacta. Quem esta `aguardando`\ntambem nao se apaga por aqui: precisa ser recusado primeiro.\n\nIRREVERSIVEL. Depois de apagada, a linha nao existe mais em lugar\nnenhum — nem prontuario, nem historico. O caminho reversivel continua\nsendo `POST /pre-matriculas` (o botao "Aceitar mesmo assim" da mesma\ntela).\n'
+
+
+@router.delete(
+    "/pre-matriculas/{id}",
+    operation_id="deleteRejectedPreEnrollment",
+    summary="Apagar de vez um pedido RECUSADO — nunca quem ja foi aluno",
+    description=DESCRICAO_APAGAR_RECUSADO,
+    openapi_extra=_DELETE_REJECTED_PRE_ENROLLMENT_OPENAPI,
+)
+def delete_rejected_pre_enrollment(request, id: str):  # `id` sombreia o builtin,
+    # como em `decide_pre_enrollment`: e o nome do parametro no contrato.
+    """[APAGAR-RECUSADO] Ver `apagar_recusado`. Nenhum corpo de requisicao:
+    apagar nao tem campo para mandar, so um alvo para confirmar."""
+    resultado = apagar_recusado(id_da_linha=id)
+    if resultado == "nao-encontrada":
+        return JsonResponse(
+            {"detail": "não há linha recusada na fila com este id"}, status=404
+        )
+    if resultado == "nao-recusada":
+        return JsonResponse(
+            {"detail": "esta linha ainda não foi recusada — decida antes de apagar"},
+            status=409,
+        )
+    # 200 e nao 204: o django-ninja declara uma resposta 200 implicita para
+    # toda operacao que nao diz o contrario, e um 204 real deixaria o schema
+    # vivo com uma resposta a mais que o congelado nao tem
+    # (`ci/contract_freeze.py`, medido na hora de congelar esta porta).
+    return JsonResponse({"apagada": True}, status=200)
+
+
 # [CATEGORIAS] Espelho EXATO do contrato congelado — `make contrato-check` compara
 # o que o django-ninja exporta com `contracts/alunos.openapi.yaml`. As descrições
 # abaixo foram COPIADAS de lá, com as quebras de linha que elas têm: uma só
@@ -1592,3 +1660,9 @@ def update_enrollment(request, id: str):
 #
 # A ausencia esta escrita aqui porque uma porta que some sem explicacao e um
 # convite a recria-la. Guarda: `tests/test_a_ficha_nao_se_apaga.py`.
+#
+# [APAGAR-RECUSADO] `DELETE /matriculas/{id}` continua sem existir — isto NAO
+# mudou em 03/09/2026. O que nasceu naquele dia foi uma porta DIFERENTE,
+# `DELETE /pre-matriculas/{id}` (acima), que so alcanca pedidos RECUSADOS —
+# nunca uma matricula que ja deu acesso. Ver `apagar_recusado` e
+# `docs/decisoes/DECISAO-apagar-recusado-definitivamente.md`.

@@ -6,6 +6,13 @@ cadastro que ele vá novamente para a lista onde ficam os cadastros aguardando a
 aprovação/liberação, com a indicação na tela de que se trata de um ex-aluno, e
 mostre o link para o prontuário do mesmo."*
 
+**03/09/2026 — a seção 4 mede uma EXCEÇÃO aberta depois, e não uma reversão
+desta lei.** `docs/decisoes/DECISAO-apagar-recusado-definitivamente.md` deixou
+o mantenedor apagar de vez um pedido RECUSADO — que nunca chegou a ser aluno.
+As quatro seções de cima continuam intactas: nenhuma delas fala de recusado,
+e `test_nao_existe_porta_que_apague_uma_ficha` continua vermelho para
+`DELETE /matriculas/{id}`, sempre.
+
 **Os quatro testes que carregam o arquivo:**
 
 1. `test_nao_existe_porta_que_apague_uma_ficha` — a capacidade saiu, não só o
@@ -331,3 +338,72 @@ def test_saiu_em_traz_a_ULTIMA_saida_e_nao_a_primeira(client, auth):
 
     assert linha["passagens_anteriores"] == 2
     assert linha["saiu_em"] == ultima_saida.isoformat()
+
+
+# --------------------------------------- 4. apagar um recusado, e só um recusado
+#
+# `docs/decisoes/DECISAO-apagar-recusado-definitivamente.md` (03/09/2026). A
+# fronteira que importa aqui é a mesma das seções de cima: um pedido RECUSADO
+# nunca foi aluno, então apagá-lo não toca a garantia que este arquivo existe
+# para proteger. Uma matrícula que já deu acesso continua inalcançável —
+# `test_apagar_nao_alcanca_quem_ja_foi_aluno` é a prova.
+
+
+def _apagar(client, auth, id_da_linha):
+    return client.delete(f"{FILA}/{id_da_linha}", **auth)
+
+
+@pytest.mark.django_db
+def test_apagar_um_recusado_remove_a_linha_para_sempre(client, auth):
+    """A exceção que a lei de 03/09/2026 abriu, no caminho feliz."""
+    alvo = criar(order_id="pre:r1", status=Matricula.STATUS_RECUSADA)
+
+    resposta = _apagar(client, auth, alvo.pk)
+
+    assert resposta.status_code == 200
+    assert resposta.json() == {"apagada": True}
+    assert not Matricula.objects.filter(pk=alvo.pk).exists()
+
+
+@pytest.mark.django_db
+def test_apagar_quem_ainda_esta_aguardando_e_recusado_primeiro(client, auth):
+    """Apagar antes da decisão apagaria a própria decisão, não só o pedido."""
+    alvo = na_fila()
+
+    resposta = _apagar(client, auth, alvo.pk)
+
+    assert resposta.status_code == 409
+    assert Matricula.objects.filter(pk=alvo.pk).exists()
+
+
+@pytest.mark.django_db
+def test_apagar_id_inexistente_e_404(client, auth):
+    resposta = _apagar(client, auth, "999999")
+    assert resposta.status_code == 404
+
+
+@pytest.mark.django_db
+def test_apagar_nao_alcanca_quem_ja_foi_aluno(client, auth):
+    """A fronteira que mantém a lei de 29/08 de pé: mesmo com o status certo por
+    acidente, uma linha que não nasceu na fila (sem o prefixo `pre:`) nunca é
+    vista por esta porta — ela é `nao-encontrada`, nunca `recusada`."""
+    alvo = criar(status=Matricula.STATUS_ENCERRADA)  # order_id SEM prefixo pre:
+
+    resposta = _apagar(client, auth, alvo.pk)
+
+    assert resposta.status_code == 404
+    assert Matricula.objects.filter(pk=alvo.pk).exists()
+
+
+def test_apagar_sem_bearer_e_recusado():
+    assert Client().delete(f"{FILA}/1").status_code == 401
+
+
+@pytest.mark.django_db
+def test_a_celula_continua_sem_apagar_matricula_generica():
+    """O caminho de código: `apagar_matricula` continua ausente — a função nova
+    é `apagar_recusado`, com fronteira própria, e não uma reencarnação dela."""
+    from apps.matriculas import services
+
+    assert not hasattr(services, "apagar_matricula")
+    assert hasattr(services, "apagar_recusado")

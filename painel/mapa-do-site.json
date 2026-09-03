@@ -918,12 +918,22 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/alunos/recusados/apagar",
+      "endereco": "/admin/escola/alunos/recusados/apagar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Apagar de vez um pedido recusado",
+      "descricao": "O que acontece ao apertar 'apagar de vez' na lista dos recusados: o pedido some para sempre, sem prontuário nem histórico. Só alcança quem nunca chegou a ser aluno — irreversível, por isso não é um link."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/alunos/prontuario",
       "endereco": "/admin/escola/alunos/prontuario",
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "A ficha de uma pessoa",
-      "descricao": "A história inteira de um aluno: quando pediu, quando entrou, o que mudou e quem mudou. Uma ficha nunca se apaga."
+      "descricao": "A história inteira de um aluno: quando pediu, quando entrou, o que mudou e quem mudou. A ficha de quem já foi aluno nunca se apaga; só um pedido recusado que nunca chegou a virar aluno pode ser apagado de vez, na lista de recusados."
     },
     {
       "celula": "admin",

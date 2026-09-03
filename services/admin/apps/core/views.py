@@ -958,6 +958,51 @@ def escola_reconsiderar(request):
     return HttpResponseRedirect(f"{reverse('escola_recusados')}?resultado={recado}")
 
 
+@require_POST
+def escola_apagar_recusado(request):
+    """Apaga de vez um pedido recusado — irreversível, e só alcança recusados.
+
+    `docs/decisoes/DECISAO-apagar-recusado-definitivamente.md` (03/09/2026),
+    que reverte `DECISAO-a-ficha-nao-se-apaga.md` só para esta fatia: um
+    pedido recusado nunca chegou a ser aluno, e o mantenedor decidiu que, para
+    ESSE caso, apagar pesa mais que manter prova.
+
+    Ao contrário de `escola_reconsiderar`, não há dado nenhum para reler
+    depois: a linha deixa de existir do lado da `alunos`, e a fronteira que
+    impede este gesto de alcançar quem já foi aluno mora lá (`apagar_recusado`
+    só enxerga linhas nascidas na fila, com `status = recusada`) — aqui do
+    lado do admin não há como, nem por engano, mandar apagar outra coisa.
+    """
+    alvo = (request.POST.get("alvo") or "").strip()
+    if not alvo:
+        # Sem auditoria: não houve gesto sobre pessoa nenhuma, e gravar ruído
+        # de formulário quebrado só enche o registro que alguém vai precisar
+        # ler um dia.
+        return HttpResponseRedirect(reverse("escola_recusados"))
+
+    desfecho, detalhe = AlunosClient().apagar_recusado(alvo)
+
+    Registro.objects.create(
+        quem_email=request.admin.get("email") or "",
+        quem_id=request.admin.get("id") or "",
+        acao=Registro.APAGAR_RECUSADO,
+        alvo=alvo,
+        desfecho=DESFECHO_NA_AUDITORIA[desfecho],
+        # Sem PII, pela mesma regra de sempre — e aqui esta linha é a ÚNICA
+        # prova que sobrevive de que aquele pedido existiu: o `alvo` deixa de
+        # apontar para linha nenhuma do lado da `alunos`.
+        detalhe=detalhe or "apagado de vez",
+    )
+
+    if desfecho == AlunosClient.OK:
+        recado = "apagado"
+    elif desfecho == AlunosClient.RECUSADO:
+        recado = "apagar-sumiu"
+    else:
+        recado = "apagar-nao-deu"
+    return HttpResponseRedirect(f"{reverse('escola_recusados')}?resultado={recado}")
+
+
 # ------------------------------------------------------------- o prontuário
 #
 # `DECISAO-a-ficha-nao-se-apaga.md` §5 (29/08/2026). Ele existe porque a mesma
@@ -1156,6 +1201,23 @@ RECADOS = {
     "reconsiderar-nao-deu": (
         "Não consegui falar com a parte que guarda os alunos. A mudança PODE ter "
         "sido aplicada mesmo assim: recarregue esta lista antes de tentar de novo."
+    ),
+    # [APAGAR-RECUSADO] Os três desfechos de apagar um pedido de vez
+    # (03/09/2026). Diferente dos de cima: aqui não há "ficou esperando em
+    # outro lugar" para dizer, porque não sobra lugar nenhum — a linha some.
+    "apagado": (
+        "Pronto: esse pedido foi apagado de vez. Não existe mais em lugar "
+        "nenhum, nem no prontuário — isso não tem volta."
+    ),
+    "apagar-sumiu": (
+        "Não apaguei: essa pessoa não está mais entre os recusados. Ou ela "
+        "mesma pediu entrada de novo, ou você já decidiu sobre ela numa outra "
+        "aba. Nada foi mudado."
+    ),
+    "apagar-nao-deu": (
+        "Não consegui falar com a parte que guarda os alunos. O pedido PODE "
+        "ter sido apagado mesmo assim: recarregue esta lista antes de tentar "
+        "de novo."
     ),
     "voce-mesmo": (
         "Você não pode remover a si mesmo. Se fosse possível e você fosse o "
