@@ -189,8 +189,7 @@ def test_virou_aluno_em_e_a_liberacao_ou_o_pagamento_nunca_o_que_a_pessoa_digito
     criar(email="sem-decisao@example.com", order_id="pre:2")
 
     por_email = {
-        linha["email"]: linha["virou_aluno_em"]
-        for linha in listar(client, auth).json()
+        linha["email"]: linha["virou_aluno_em"] for linha in listar(client, auth).json()
     }
     assert por_email["comprou@example.com"] == comprou.enrolled_at.isoformat()
     assert por_email["liberada@example.com"] == liberada.decidido_em.isoformat()
