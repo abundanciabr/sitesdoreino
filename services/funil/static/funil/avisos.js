@@ -24,6 +24,12 @@
 //      com o token do par. O navegador nunca fala com a célula direto: o token
 //      é segredo de servidor.
 //
+// **E o passo 3 tem DOIS jeitos de falhar, que a tela nunca pode confundir.**
+// O navegador pode não conseguir registrar o aparelho (falha do lado de lá,
+// que esperar não cura), e o nosso servidor pode não confirmar (falha do lado
+// de cá, que esperar cura). São duas frases diferentes no catálogo, e a função
+// `inscrever` abaixo é onde a diferença se decide.
+//
 // No iPhone o passo 2 só existe dentro do app INSTALADO. É por isso que o
 // cartaz de instalar veio primeiro, e é por isso que aqui, em iOS fora do app,
 // este arquivo fica calado em vez de mostrar um botão que não funcionaria.
@@ -47,7 +53,9 @@
   }
 
   function mostrarSo(nome) {
-    ["convite", "ligado", "nao-deu", "recusado"].forEach(function (cada) {
+    ["convite", "ligado", "nao-deu", "sem-servico", "recusado"].forEach(function (
+      cada
+    ) {
       var bloco = parte(cada);
       if (bloco) {
         bloco.hidden = cada !== nome;
@@ -161,7 +169,30 @@
             return "nao-deu";
           });
         });
-      });
+      }, aparelhoNaoPode);
+  }
+
+  // O SEGUNDO argumento do `.then` acima, e não um `.catch` no fim: a
+  // diferença é a lei desta função. Um `.catch` pendurado no fim pegaria
+  // também a falha do `fetch` logo acima, e as duas falhas não são a mesma
+  // coisa nem de longe:
+  //
+  //   · aqui o NAVEGADOR não conseguiu registrar o aparelho no serviço de push
+  //     do fabricante. Tentar de novo amanhã dá no mesmo, porque nada do nosso
+  //     lado mudou nem vai mudar;
+  //   · lá em cima é o NOSSO servidor que não confirmou, e aí "tente de novo
+  //     mais tarde" é conselho honesto.
+  //
+  // Enquanto as duas mostravam a mesma frase, quem usa um navegador que
+  // bloqueia push de fábrica (o Brave, hoje) era mandado esperar para sempre.
+  // O mantenedor bateu nisso em 02/09/2026 (`armadilhas/297`), e só descobriu
+  // porque leu o erro no console: na tela, o site prometia que um dia ia dar.
+  //
+  // Não se olha a MENSAGEM do erro para decidir. Ela varia entre navegador e
+  // versão, não é traduzida, e casá-la por texto seria uma régua que quebra
+  // sozinha. O lugar onde a promessa quebrou já diz tudo.
+  function aparelhoNaoPode() {
+    return "sem-servico";
   }
 
   function pedirPermissao(registro) {
