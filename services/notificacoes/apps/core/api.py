@@ -670,3 +670,105 @@ def esquecer_aparelho(request):
         endpoint=_texto_obrigatorio(payload, "endpoint", teto=2048),
     )
     return JsonResponse({"existia": existia}, status=200)
+
+
+# ---------------------------------------------------------------------------
+# POST /aviso-de-teste — a porta que prova que o aviso saiu (Rito de 03/09/2026)
+# ---------------------------------------------------------------------------
+# A forma abaixo é o YAML congelado transcrito, e a transcrição saiu do próprio
+# arquivo por script, como as duas de cima. Repare que ela NÃO declara
+# `security`: o contrato a declara uma vez só, na raiz, e o exportador remove a
+# repetição por operação (`_strip_redundant_operation_noise`).
+_TESTE_OPENAPI = {
+    "requestBody": {
+        "required": True,
+        "content": {
+            "application/json": {
+                "schema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["site_id", "destinatario_id"],
+                    "properties": {
+                        "site_id": {
+                            "type": "string",
+                            "maxLength": 64,
+                            "description": "Site (tenant) de onde a chamada vem (CONSTITUICAO.md Lei 9). O teste nunca atravessa sites.",
+                        },
+                        "destinatario_id": {
+                            "type": "string",
+                            "maxLength": 64,
+                            "description": "Id da PLATAFORMA de quem pediu o teste, e de quem vai receber. Nunca o e-mail (DECISAO-EVO-01 §3).",
+                        },
+                    },
+                }
+            }
+        },
+    },
+    "responses": {
+        200: {
+            "description": "A carta foi guardada e o envio aos aparelhos foi tentado",
+            "content": {
+                "application/json": {
+                    "schema": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": ["aparelhos"],
+                        "properties": {
+                            "aparelhos": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "description": "Para quantos aparelhos o aviso saiu AGORA. Zero é resposta legítima, e é o diagnóstico mais útil desta porta, porque quer dizer que a pessoa ainda não ligou os avisos em aparelho nenhum, e não que algo quebrou. A carta no sininho é criada de todo jeito.",
+                            }
+                        },
+                    }
+                }
+            },
+        },
+        422: {"description": "campo obrigatório ausente ou inválido"},
+    },
+}
+
+
+@router.post(
+    "/aviso-de-teste",
+    operation_id="enviarAvisoDeTeste",
+    summary="Manda um aviso de teste para os aparelhos de uma pessoa, a pedido dela",
+    description=(
+        'A porta que responde "o aviso saiu daqui, e para quantos aparelhos".\n'
+        "Rito de Contrato de 03/09/2026, com o mantenedor presente.\n"
+        "\n"
+        "**Por que ela existe:** em 02/09/2026 o botão de ligar os avisos\n"
+        "falhava no navegador do mantenedor e o servidor estava verde. Não havia\n"
+        'como distinguir "o aviso não foi enviado" de "o aviso foi enviado e não\n'
+        'chegou" sem alguém entrar na VPS, e o agente não entra (Lei 5). Um\n'
+        "envio que a pessoa dispara na hora, e que devolve um número, encerra\n"
+        "essa classe de dúvida sem SSH nenhum.\n"
+        "\n"
+        "**Por que HTTP e não um evento no fio, como todo o resto.** Não é\n"
+        "atalho: é a única forma que responde. O fio é assíncrono por desenho e\n"
+        "não devolve resposta a quem publicou, e o valor inteiro desta porta é a\n"
+        "RESPOSTA — `aparelhos: 0` é o diagnóstico, e um evento publicado com\n"
+        "sucesso não sabe dizer isso. Fora daqui, a regra continua de pé: carta\n"
+        "de fato do projeto nasce de evento, sempre.\n"
+        "\n"
+        "**Ela cria carta no sininho**, como qualquer outro assunto (escolha do\n"
+        "mantenedor neste rito, contra a alternativa de só piscar na tela).\n"
+        "Assim um teste prova as DUAS metades de uma vez, e um aviso que não\n"
+        "chega ao celular ainda deixa rastro de que saiu daqui — que é\n"
+        "exatamente o rastro que faltou no caso que criou esta porta.\n"
+        "\n"
+        "**`destinatario_id` é sempre quem PEDIU o teste.** Esta célula não tem\n"
+        "como saber isso, e por isso não promete: quem garante é a porta que\n"
+        "chama, com a sessão na mão (hoje o admin, que manda o id de quem\n"
+        "clicou). Uma porta que aceitasse qualquer id seria um jeito de fazer\n"
+        "tocar o celular dos outros, e nenhum teste vale isso.\n"
+    ),
+    openapi_extra=_TESTE_OPENAPI,
+)
+def enviar_aviso_de_teste(request):
+    payload = _corpo_json(request)
+    aparelhos = services.enviar_aviso_de_teste(
+        site_id=_texto_obrigatorio(payload, "site_id", teto=64),
+        destinatario_id=_texto_obrigatorio(payload, "destinatario_id", teto=64),
+    )
+    return JsonResponse({"aparelhos": aparelhos}, status=200)
