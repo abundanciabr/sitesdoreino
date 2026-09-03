@@ -996,6 +996,15 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/pontos/",
+      "endereco": "/admin/escola/pontos/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O quadro de pontos",
+      "descricao": "A turma ordenada por pontos: nível, título, medalhas, marcos de cada aluno, e quem está jogando contra quem parou de ganhar ponto."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/admin/promover",
       "endereco": "/admin/escola/admin/promover",
       "alcance": "publico",

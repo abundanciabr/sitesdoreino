@@ -45,9 +45,10 @@ api = NinjaAPI(
         "adulto tambem, e uma porta de maquina que o entrega o entrega para\n"
         "sempre.\n"
         "\n"
-        "E NADA DE XP DE TERCEIRO: `getPublicProfiles` devolve nivel e titulo;\n"
-        "XP so aparece em `getMyStatus`, e so o proprio. Placar de XP entre\n"
-        "alunos nao existe nesta plataforma.\n"
+        "E NADA DE XP DE TERCEIRO PARA UM ALUNO: `getPublicProfiles` devolve\n"
+        "nivel e titulo; XP so aparece em `getMyStatus`, e so o proprio. Placar\n"
+        "de XP entre alunos nao existe nesta plataforma. `listStudentStandings`\n"
+        "e excecao declarada: serve so o bastidor do mantenedor, nunca um aluno.\n"
     ),
     servers=[{"url": "http://gamificacao:8000/api/gamificacao"}],
     auth=bearerAuth(),
