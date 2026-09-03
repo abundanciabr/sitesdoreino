@@ -17,6 +17,30 @@
 # o único que não paga nada. Crescimento puro, como o anterior: nenhuma
 # operação, campo ou nome mudou, e nenhum consumidor precisa migrar.
 #
+# EMENDA DE 03/09/2026 (Rito de Contrato, com o mantenedor presente): entrou
+# `listStudentStandings`, o quadro de pontos que a tela nova em
+# `/admin/escola/` desenha — a turma ordenada por XP, com nível, última
+# atividade e as conquistas de cada aluno. Crescimento puro, como as três
+# emendas anteriores: nenhuma operação, campo ou nome mudou.
+#
+# ESTA É A PRIMEIRA EMENDA QUE FURA UM INVARIANTE DOS TRÊS ORIGINAIS — o 2
+# ("nunca sai XP bruto de outra pessoa"), e por escrito: a exceção é do MESMO
+# formato já aceito para o invariante 3 nas três emendas anteriores (`nome` e
+# `descricao` das conquistas e dos degraus). `listStudentStandings` serve só o
+# bastidor do mantenedor — quem autoriza quem chega até ela é a célula `admin`,
+# sobre a lista DELA, o mesmo desenho de `/economia/*`. A frase que continua
+# verdadeira, e que a emenda não toca, é a que fala de ALUNO: nenhuma operação
+# que um aluno alcança devolve XP de terceiro. Ver a descrição da própria
+# operação, abaixo, para o argumento completo.
+#
+# O INVARIANTE 1 CONTINUA INTEIRO NESTA EMENDA, e por desenho: a operação nova
+# devolve `pessoa_id` (id opaco), números e slugs de conquista — nunca e-mail,
+# nunca o `titulo` nem o `nome` de uma conquista em português. Quem consome
+# (a `admin`) já tem esse texto pronto de `listLevelSwitches` e
+# `listAchievementSwitches`, que ela já chama para a tela de economia; casar
+# número/slug com a frase em português é trabalho DELA, não desta porta — a
+# mesma disciplina que evita o mesmo fato em dois lugares.
+#
 # COMO ELE NASCEU: em 01/09/2026 o mantenedor abriu `/conquistas` e leu, uma
 # embaixo da outra, "Nível 1", "você chegou ao último degrau desta escada" e "0
 # de experiência até aqui". O defeito da TELA foi corrigido (`armadilhas/271`),
@@ -78,9 +102,12 @@
 #      em `contracts/forum.openapi.yaml` e em
 #      `contracts/eventos/forum.topico-criado.v1.json`: é dívida do `forum`, sai
 #      no próximo Rito DELE, e não se corrige de carona daqui.
-#   2. NUNCA SAI XP BRUTO DE OUTRA PESSOA. `getPublicProfiles` devolve nível e
-#      título; quem quiser XP vê o PRÓPRIO, em `getMyStatus`. Placar de XP entre
-#      alunos não existe nesta plataforma, e a porta é onde isso fica mecânico.
+#   2. NUNCA SAI XP BRUTO DE OUTRA PESSOA — PARA UM ALUNO. `getPublicProfiles`
+#      devolve nível e título; quem quiser XP vê o PRÓPRIO, em `getMyStatus`.
+#      Placar de XP entre alunos não existe nesta plataforma, e a porta é onde
+#      isso fica mecânico. `listStudentStandings` (Emenda de 03/09/2026) é
+#      exceção declarada, do mesmo formato da do invariante 3 abaixo: serve só
+#      o bastidor do mantenedor, nunca um aluno.
 #   3. SLUG, NUNCA FRASE PRONTA. O site serve três idiomas: gravar ou transmitir
 #      "Modelador" congela o idioma de quem escreveu. Quem lê traduz o slug — a
 #      mesma lição que `contracts/eventos/notificacao.devida.v1.json` já carrega
@@ -155,11 +182,13 @@ info:
     sempre.
 
 
-    E NADA DE XP DE TERCEIRO: `getPublicProfiles` devolve nivel e titulo;
+    E NADA DE XP DE TERCEIRO PARA UM ALUNO: `getPublicProfiles` devolve
 
-    XP so aparece em `getMyStatus`, e so o proprio. Placar de XP entre
+    nivel e titulo; XP so aparece em `getMyStatus`, e so o proprio. Placar
 
-    alunos nao existe nesta plataforma.
+    de XP entre alunos nao existe nesta plataforma. `listStudentStandings`
+
+    e excecao declarada: serve so o bastidor do mantenedor, nunca um aluno.
 
     '
 paths:
@@ -542,6 +571,69 @@ paths:
             schema:
               $ref: '#/components/schemas/PedidoDeInterruptor'
         required: true
+  /quadro:
+    get:
+      operationId: listStudentStandings
+      summary: 'A escola inteira, aluno por aluno: pontos, atividade e conquistas'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/AlunoDoQuadro'
+                type: array
+      description: 'O quadro que a tela do mantenedor em /admin/escola/ desenha: a turma
+
+        ordenada por XP, com nivel, ultima atividade e as conquistas de cada um.
+
+
+        EXCECAO DECLARADA AO INVARIANTE 2 DESTA PORTA (''nunca sai XP bruto de
+
+        outra pessoa''), do mesmo formato ja aceito nos tres interruptores da
+
+        economia para o invariante 3: esta operacao serve SO o bastidor do
+
+        mantenedor, e quem autoriza quem chega ate aqui e a celula admin, sobre a
+
+        lista DELA — o Bearer do par prova so QUEM CHAMA. ''Placar de XP entre
+
+        ALUNOS nao existe nesta plataforma'' continua verdade: nenhuma operacao
+
+        que um aluno alcanca devolve isto.
+
+
+        SO QUEM JA TEM PERFIL aparece na lista — PerfilJogador e preguicoso (Lei
+
+        7) e nasce no primeiro XP. Aluno sem nenhum ponto simplesmente nao esta
+
+        no mapa; quem chama trata ausencia como zero, nao como erro.
+
+
+        Devolve TODOS os perfis do site, sem paginacao, como os tres
+
+        interruptores da economia — e pelo mesmo motivo: a tela precisa da
+
+        escola inteira para ordenar por pontos e apontar quem parou.
+
+
+        NAO HA `titulo_slug` nem `nome` de conquista aqui, e a ausencia e
+
+        decisao: o invariante 1 (''nunca sai e-mail, nunca sai texto de pessoa'')
+
+        continua inteiro. A admin ja tem o texto em portugues de
+
+        listLevelSwitches e listAchievementSwitches — casar `nivel`/`slug` com a
+
+        frase e trabalho dela, nao desta porta.
+
+
+        `concessoes` IGNORA `consentimento` de proposito: aquele campo governa
+
+        exposicao ENTRE PARES (Meu Estudio, a turma), nao visibilidade para o
+
+        operador da escola, que ja enxerga o aluno inteiro por outras portas.'
 components:
   schemas:
     PerfilPublico:
@@ -800,6 +892,47 @@ components:
       - ativa
       - versao
       - impedimentos
+      type: object
+    AlunoDoQuadro:
+      properties:
+        pessoa_id:
+          type: string
+        xp:
+          type: integer
+        nivel:
+          type: integer
+        ultima_atividade_em:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+        conquistas:
+          items:
+            $ref: '#/components/schemas/ConquistaDoAluno'
+          type: array
+      required:
+      - pessoa_id
+      - xp
+      - nivel
+      - ultima_atividade_em
+      - conquistas
+      type: object
+    ConquistaDoAluno:
+      properties:
+        slug:
+          type: string
+        classe:
+          enum:
+          - medalha
+          - marco
+          type: string
+        concedida_em:
+          format: date-time
+          type: string
+      required:
+      - slug
+      - classe
+      - concedida_em
       type: object
   securitySchemes:
     bearerAuth:
