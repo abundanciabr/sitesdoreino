@@ -69,29 +69,50 @@ VARIAVEL_DA_CHAVE = "ANTHROPIC_API_KEY"
 VARIAVEL_DO_WORKSPACE = "ANTHROPIC_WORKSPACE_ID"
 CABECALHO_DO_WORKSPACE = "anthropic-workspace-id"
 
-# O modelo mais capaz da casa. Quem paga a conta é o mantenedor, e a decisão de
-# usar um mais barato é dele, nunca uma economia silenciosa daqui.
-MODELO = "claude-opus-5"
+# O MODELO, e a escolha é do mantenedor: ele pediu o Haiku 4.5 em 02/09/2026,
+# no lugar do Opus 5 com que o botão nasceu.
+#
+# O QUE ELE COMPRA E O QUE ELE PAGA, com o número na mesa antes da decisão: nas
+# medições da própria Anthropic, o Haiku 4.5 responde perguntas de conhecimento
+# a cerca de um DÉCIMO do custo do Opus 5, acertando 63% contra 92%. Muito mais
+# barato e mais rápido; mais chance de errar numa dúvida técnica de Studio ou de
+# UGC. Nesta tela o erro dele nunca chega sozinho ao aluno, porque quem publica
+# lê antes — e é isso que torna a troca uma escolha razoável aqui e não em
+# qualquer lugar.
+#
+# **É o id COM DATA, e não o apelido `claude-haiku-4-5`.** O apelido segue o
+# modelo quando a Anthropic o move; a data prende. Numa tela que fala com aluno
+# pagante, mudar de modelo é decisão, nunca surpresa de terça-feira.
+#
+# Voltar para o Opus é trocar esta linha e a de baixo.
+MODELO = "claude-haiku-4-5-20251001"
 
-# O teto de saída cobre o raciocínio E o texto: neste modelo o pensamento é
-# adaptativo por padrão e consome do mesmo orçamento. Oito mil é folga larga
-# para uma resposta de fórum de umas 250 palavras — apertar isto não economiza
-# nada (só se paga o que se usa) e corta a resposta no meio.
+# O teto de saída. Oito mil é folga larga para uma resposta de fórum de umas 120
+# palavras, e cabe com sobra no máximo do Haiku 4.5, que é 64 mil. Apertar isto
+# não economiza nada (só se paga o que se usa) e corta a resposta no meio.
 TETO_DE_SAIDA = 8000
 
-# Rascunhar uma resposta de fórum é tarefa de ESCRITA, não de raciocínio duro.
-# O padrão da API seria `high`; aqui é `low`, e a escolha é do mantenedor.
+# O NÍVEL DE CAPRICHO — e `None` quer dizer "não mando este ajuste".
 #
-# ELE PEDIU EM 02/09/2026, depois de usar o botão pela primeira vez: *"a resposta
-# está demorando um pouco"*, e no mesmo pedido *"ela precisa ser mais curta e
-# objetiva"*. As duas coisas puxam para o mesmo lado, e é por isso que a troca
-# vem junto com o encolhimento das instruções lá embaixo: pensar menos e escrever
-# menos se somam, e o que ele sente é a soma.
+# Ele existia como `"low"` enquanto o modelo era o Opus 5, e saiu junto com a
+# troca para o Haiku 4.5. **A razão é uma incerteza que eu não consigo medir
+# daqui, resolvida pelo lado seguro.** O `effort` é um controle da geração nova
+# de modelos: a referência diz que o nível `max` DÁ ERRO no Haiku 4.5, o Haiku
+# não aparece na lista dos modelos de pensamento adaptativo, e para o resto ela
+# manda consultar a API de capacidades ao vivo — que exige uma chave, e a chave
+# desta casa mora na VPS e não passa por agente (Lei 5).
 #
-# O que se perde é capricho em dúvida difícil, e o que se ganha é uma pessoa que
-# usa a ferramenta em vez de esperar por ela. Subir de novo é uma linha, e a
-# decisão de subir é dele.
-ESFORCO = "low"
+# OMITIR É SEGURO NOS DOIS MUNDOS, e é por isso que esta é a escolha e não um
+# chute: se o Haiku aceitasse o ajuste, não mandá-lo apenas usa o padrão dele;
+# se não aceita, mandá-lo derrubaria toda geração com HTTP 400 — a mesma classe
+# de recusa que já custou uma rodada nesta tela (`armadilhas/291`). Entre um
+# ganho hipotético e uma quebra possível, a tela paga fica com o lado que não
+# quebra.
+#
+# Quem voltar ao Opus 5 devolve isto a `"low"` na mesma edição do `MODELO`. E
+# quem for pôr um valor aqui para outro modelo: confira ANTES se aquele modelo
+# aceita, na API de capacidades, em vez de deduzir da documentação.
+ESFORCO = None
 
 # Um minuto e meio. Muito acima dos 5 segundos dos saltos entre células
 # (`clients.py`), e de propósito: aqui não há ninguém esperando uma página
@@ -423,10 +444,9 @@ def _pedido(area_nome: str, titulo: str, falas, orientacao: str) -> dict:
     faria a resposta ao vivo sair diferente da resposta normal, sem ninguém
     perceber: as duas continuariam funcionando.
     """
-    return {
+    corpo = {
         "model": MODELO,
         "max_tokens": TETO_DE_SAIDA,
-        "output_config": {"effort": ESFORCO},
         "system": INSTRUCOES,
         "messages": [
             {
@@ -440,6 +460,12 @@ def _pedido(area_nome: str, titulo: str, falas, orientacao: str) -> dict:
             }
         ],
     }
+    # O ajuste de capricho SÓ viaja quando há um valor. Mandar `None` não é o
+    # mesmo que não mandar: iria no corpo como `{"effort": null}` e a API
+    # recusaria um pedido que sem essa chave estaria perfeito.
+    if ESFORCO is not None:
+        corpo["output_config"] = {"effort": ESFORCO}
+    return corpo
 
 
 @contextmanager

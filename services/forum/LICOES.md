@@ -165,3 +165,43 @@ Duas diferenças propositais, para quem for mexer:
   disco. E a resposta dessa rota é um `FileResponse`: pedir `.content` dela
   levanta `AttributeError` e deixa o teste vermelho por instrumento, não por
   defeito — use `streaming_content`.
+
+## Trocar de modelo de IA não é trocar uma string
+
+Aprendido em 02/09/2026, ao passar de `claude-opus-5` para
+`claude-haiku-4-5-20251001` a pedido do mantenedor. **Os parâmetros que a
+chamada envia pertencem ao modelo, não à API**, e um que o modelo anterior
+aceitava pode derrubar o novo com `HTTP 400` — a mesma classe de recusa que já
+custou uma rodada nesta tela (`armadilhas/291`).
+
+O caso concreto: `output_config: {"effort": ...}` é um controle da geração nova
+de modelos. A referência diz que o nível `max` **dá erro no Haiku 4.5**, e o
+Haiku não está entre os modelos de pensamento adaptativo. Para os demais níveis
+ela manda consultar a **API de capacidades ao vivo** — que exige uma chave, e a
+chave desta casa mora na VPS e não passa por agente (Lei 5).
+
+**A saída não foi adivinhar: foi escolher o lado seguro nos dois mundos.** Se o
+modelo aceitasse o ajuste, não mandá-lo apenas usa o padrão dele; se não aceita,
+mandá-lo quebraria TODA geração. Entre um ganho hipotético e uma quebra
+possível, uma tela paga fica com o lado que não quebra. Por isso `ESFORCO` vale
+`None` e o `_pedido` só acrescenta a chave quando há valor — e `None` mandado
+não é o mesmo que não mandado: iria como `{"effort": null}` e seria recusado.
+
+Três coisas para quem for trocar o modelo de novo:
+
+1. **Confira os parâmetros na API de capacidades**, não na documentação. A
+   documentação envelhece por modelo; a API responde pelo modelo que você vai
+   usar de verdade.
+2. **Use o id COM DATA** (`claude-haiku-4-5-20251001`), nunca o apelido. O
+   apelido segue o modelo quando a Anthropic o move; numa tela que fala com
+   aluno pagante, mudar de modelo é decisão, nunca surpresa de terça-feira.
+3. **Espere os guardas ficarem vermelhos, e isso é o desenho funcionando.**
+   `test_o_modelo_e_o_que_a_casa_escolheu` reprovou na troca de propósito:
+   mudar de modelo muda o custo, a velocidade e a qualidade do que o aluno lê, e
+   não pode passar dentro de um diff sem alguém encostar no guarda.
+
+E o número que ficou registrado com a decisão, porque ele é o que ela custa: nas
+medições da própria Anthropic, o Haiku 4.5 responde perguntas de conhecimento a
+cerca de um décimo do custo do Opus 5, acertando **63% contra 92%**. Aqui isso é
+aceitável porque **quem publica lê antes** — o erro do modelo nunca chega
+sozinho ao aluno. Em qualquer tela onde ele chegasse, a conta seria outra.
