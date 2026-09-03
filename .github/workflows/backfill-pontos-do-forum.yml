@@ -1,0 +1,89 @@
+# =============================================================================
+# ACERTO DE CONTAS ÚNICO DO FÓRUM — dispara o backfill de XP retroativo das
+# regras forum-topico-criado e forum-resposta-aceita na produção, pelo
+# pipeline, sem o mantenedor colar nada em terminal nenhum.
+#
+# Pedido dele em 03/09/2026, depois de uma auditoria (ver
+# `infra/backfill-pontos-do-forum.sh` e o comando
+# `backfill_pontos_do_forum` para o raciocínio completo — é uma exceção
+# CONSCIENTE e ANUNCIADA à lei §10.5 do "nunca retroativo", não um contorno
+# silencioso).
+#
+# `confirmar` nasce `false` de propósito: o disparo padrão é ENSAIO, que só
+# relata o que SERIA pago sem gravar nada. Confirmar de verdade é um segundo
+# disparo explícito, com a caixa marcada — o mesmo desenho de dois passos que
+# o comando já impõe (`--confirmo`), só que também na borda do workflow.
+#
+# GRUPO PRÓPRIO (`armadilhas/173`): `cancel-in-progress: false` não faz fila
+# ilimitada — o GitHub guarda UM run pendente por grupo, e o próximo cancela o
+# pendente. Grupo próprio evita que este dispute o mesmo slot de outro
+# workflow manual.
+# =============================================================================
+name: backfill-pontos-do-forum
+on:
+  workflow_dispatch:
+    inputs:
+      confirmar:
+        description: "Marque para GRAVAR de verdade. Desmarcado = ensaio (nada é gravado)."
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: backfill-pontos-do-forum
+  cancel-in-progress: false
+jobs:
+  backfill:
+    name: acerto de contas do forum na producao
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      # armadilhas/149: a ssh-action com `script_path` apontando para arquivo
+      # inexistente AVISA e IGNORA, saindo com sucesso — falso-verde conhecido.
+      - name: Conferir que o script existe antes de abrir conexão
+        run: |
+          set -euo pipefail
+          if [ ! -f infra/backfill-pontos-do-forum.sh ]; then
+            echo "::error::PAROU POR SEGURANÇA — infra/backfill-pontos-do-forum.sh não existe neste commit."
+            exit 1
+          fi
+          bash -n infra/backfill-pontos-do-forum.sh
+          echo "✅ script presente e sintaticamente válido"
+
+      - name: Rodar na VPS
+        id: rodar
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: deploy
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          capture_stdout: true
+          command_timeout: 10m
+          envs: CONFIRMAR
+          script_path: infra/backfill-pontos-do-forum.sh
+        env:
+          CONFIRMAR: ${{ inputs.confirmar && 'sim' || 'nao' }}
+
+      # A PROVA, e não o eco (armadilhas/114): a linha "PRONTO:" só existe no
+      # caminho feliz do script, depois de ele ter visto a linha TOTAL que o
+      # próprio comando Django imprimiu.
+      - name: Mostrar e conferir o resultado
+        env:
+          SAIDA: ${{ steps.rodar.outputs.stdout }}
+        run: |
+          set -euo pipefail
+          echo "$SAIDA"
+          echo "---------------------------------------------------------------"
+          if printf '%s' "$SAIDA" | grep -q 'PAROU POR SEGURANÇA'; then
+            echo "::error::O script parou por segurança. A saída acima diz por quê. NADA foi alterado."
+            exit 1
+          fi
+          if ! printf '%s' "$SAIDA" | grep -q '^PRONTO:'; then
+            echo "::error::Não encontrei a linha 'PRONTO:' na saída do script — não posso afirmar o resultado."
+            exit 1
+          fi
+          echo "✅ rodou de ponta a ponta. Veja a linha TOTAL acima para o número exato."
