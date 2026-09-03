@@ -58,7 +58,7 @@ def _dentro() -> Client:
     return c
 
 
-def fila_de_mentira(tmp_path, monkeypatch, com_esperas=True):
+def fila_de_mentira(tmp_path, monkeypatch, com_esperas=True, com_eventos=True):
     """Uma fila embutida como o deploy a deixaria — estados JÁ materializados."""
     pasta = tmp_path / "fila_embutida"
     (pasta / "esperas").mkdir(parents=True)
@@ -137,6 +137,28 @@ def fila_de_mentira(tmp_path, monkeypatch, com_esperas=True):
             ),
             encoding="utf-8",
         )
+    if com_eventos:
+        # `deploy-celula.yml` copia `fila/.` inteira, então `eventos/` chega à
+        # imagem junto com os estados. É daqui que saem as datas e o ritmo.
+        (pasta / "eventos").mkdir()
+        for nome, tarefa, evento in (
+            ("20260901-100000-TAR-001-reivindicada", "TAR-001", "reivindicada"),
+            ("20260901-110000-TAR-004-concluida", "TAR-004", "concluida"),
+            ("20260902-100000-TAR-001-concluida", "TAR-001", "concluida"),
+            ("20260902-110000-TAR-005-concluida", "TAR-005", "concluida"),
+        ):
+            (pasta / "eventos" / f"{nome}.json").write_text(
+                json.dumps(
+                    {
+                        "arquivo": nome,
+                        "tarefa": tarefa,
+                        "evento": evento,
+                        "quando": f"{nome[:4]}-{nome[4:6]}-{nome[6:8]}T12:00:00+00:00",
+                        "quem": "sessao-de-mentira",
+                    }
+                ),
+                encoding="utf-8",
+            )
     monkeypatch.setattr(robos, "CANDIDATOS", (pasta,))
     return pasta
 
@@ -202,11 +224,11 @@ def test_a_historia_nasce_fechada_e_o_que_pede_gente_nasce_aberto(
     fila_de_mentira(tmp_path, monkeypatch)
     pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
 
-    depois_do_details = pagina.split("<details>")[-1]
-    assert "Já terminaram" in depois_do_details, "a história voltou a nascer aberta"
+    # A história fica ATRÁS de um clique: o rótulo dela é o próprio `summary`.
+    assert "<summary>Já terminaram" in pagina, "a história voltou a nascer aberta"
     assert "<details open" not in pagina
-    # O que parou esperando alguém NUNCA fica atrás de um clique.
-    assert "Pararam no meio do caminho" not in depois_do_details
+    # E o que parou NUNCA fica atrás de um clique: ele é um título de verdade.
+    assert "<h2>Pararam no meio do caminho" in pagina
 
 
 @respx.mock
@@ -221,9 +243,11 @@ def test_a_tela_fala_portugues_e_nao_o_vocabulario_da_fila(tmp_path, monkeypatch
     pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
 
     assert "Um robô pegou, e está com ela agora" in pagina
-    assert "mexe em: infra" in pagina
+    # `infra` é nome de pasta; o que ele lê é o lugar.
+    assert "onde: a fábrica (ferramenta dos robôs)" in pagina
     assert "reivindicada" not in pagina
     assert "toca:" not in pagina
+    assert "mexe em:" not in pagina
 
 
 @respx.mock
@@ -243,8 +267,10 @@ def test_as_esperas_mostram_o_que_estourou_e_a_regua(tmp_path, monkeypatch):
 
     assert "o Docker acordar" in pagina
     assert "os testes de um PR" in pagina
-    # Régua honesta: amostra pequena se declara na tela.
-    assert "pouca amostra" in pagina
+    # Régua honesta: medida com poucos casos se DECLARA, em português.
+    assert "poucas vezes ainda" in pagina
+    # E o tempo sai em tempo, não em número com um "s" colado.
+    assert "15 minutos" in pagina and "900s" not in pagina
 
 
 @respx.mock
@@ -275,3 +301,107 @@ def test_o_csp_tem_hash_da_ilha_e_connect_src_do_github(tmp_path, monkeypatch):
     # A linha de script NUNCA afrouxa — mesma lei do painel.
     assert "script-src 'self' 'sha256-" in csp
     assert "unsafe-inline" not in csp.split("style-src")[0]
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# A PASSADA DE COMPREENSÃO (03/09/2026)
+#
+# Depois de a tela ficar legível, o mantenedor disse: "vamos continuar aqui no
+# claude code mesmo, como está agora, eu só preciso de uma página melhor para
+# ENTENDER isso". Não era uma tela para agir — era uma tela para compreender.
+# Os guardas abaixo prendem as quatro coisas que mudaram por causa dessa frase.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@respx.mock
+def test_a_pagina_diz_o_que_ela_e_e_que_nao_ha_nada_a_fazer(tmp_path, monkeypatch):
+    """A tela nunca dizia o que era: caía direto nos números.
+
+    Quem não sabe o que é uma "fila de trabalho" começava a leitura no escuro.
+    A segunda frase é a que tira peso das costas dele — não há nada para fazer
+    aqui —, e ela é verdade: esta tela não tem um único botão que muda algo.
+    """
+    fila_de_mentira(tmp_path, monkeypatch)
+    pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+
+    assert "Cada cartão desta página é um pedaço de trabalho no seu site" in pagina
+    assert "Você não precisa fazer nada aqui" in pagina
+
+    # A tela é de OLHAR: nenhum formulário, nenhum botão que escreva. Ele
+    # decidiu isso com todas as letras em 03/09/2026 — "vamos continuar aqui no
+    # claude code mesmo" —, e a frase acima só continua verdadeira enquanto
+    # nada aqui agir.
+    #
+    # A medição é do CORPO DESTA PÁGINA, e não da resposta inteira: a moldura
+    # do Admin (a faixa, o menu, o rodapé) é compartilhada por 22 telas, e um
+    # formulário que nascesse lá — uma busca no menu, um botão de sair —
+    # deixaria ESTE guarda vermelho num PR que não tem nada a ver com a aba dos
+    # robôs. Guarda que fica chato é guarda que alguém desliga (`armadilhas/247`).
+    corpo = pagina.split('class="envolucro largo"')[-1].split("rodape-do-admin")[0]
+    assert "<form" not in corpo
+
+
+def test_o_lugar_tecnico_vira_um_lugar_que_ele_reconhece():
+    assert robos.onde_isso_mexe(["funil"]) == ["as páginas que vendem"]
+    assert robos.onde_isso_mexe(["gamificacao"]) == ["os pontos e as medalhas"]
+    # As sete pastas de oficina viram UM lugar só, sem repetir: distinguir `ci`
+    # de `.github` na tela dele seria precisão que não muda decisão nenhuma.
+    assert robos.onde_isso_mexe(["ci", ".github", "infra"]) == [
+        "a fábrica (ferramenta dos robôs)"
+    ]
+    # `services/funil` e `funil` são o mesmo lugar para quem lê.
+    assert robos.onde_isso_mexe(["services/funil", "funil"]) == [
+        "as páginas que vendem"
+    ]
+
+
+def test_lugar_desconhecido_aparece_cru_em_vez_de_sumir():
+    """FALHA ABERTO, e este é o guarda que impede a tradução de virar mentira.
+
+    Célula nova nasce a cada duas semanas aqui. Se o dicionário ESCONDESSE o que
+    não conhece, o dono veria uma tarefa sem lugar nenhum e nunca perguntaria —
+    a tela mentiria por omissão. Nome estranho ele pergunta; ausência, não.
+    """
+    assert robos.onde_isso_mexe(["celula-que-ainda-nao-existe"]) == [
+        "celula-que-ainda-nao-existe"
+    ]
+    assert robos.onde_isso_mexe(None) == []
+
+
+def test_o_tempo_sai_em_tempo_e_nao_em_numero_com_s_colado():
+    assert robos.em_portugues(40) == "40 segundos"
+    assert robos.em_portugues(90) == "1 minuto e meio"
+    assert robos.em_portugues(180) == "3 minutos"
+    assert robos.em_portugues(900) == "15 minutos"
+    assert robos.em_portugues(7200) == "2 horas"
+    # Medida ausente se DECLARA — nunca vira "0 segundos", que seria um fato
+    # inventado com cara de medição.
+    assert robos.em_portugues(None) == "não medido"
+
+
+def test_o_ritmo_e_contado_dos_eventos_da_fila(tmp_path, monkeypatch):
+    """ "Isto está andando?" é a pergunta que 101 cartões não respondem.
+
+    A resposta sai dos eventos que a fila JÁ escreveu — nada é recalculado nem
+    inventado. A média é sobre os dias em que houve conclusão, nunca sobre o
+    calendário inteiro, que fabricaria zeros para dias que ninguém mediu.
+    """
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    conta = robos.andamento(pasta)
+
+    assert conta["terminadas"] == 3
+    assert conta["quantos_dias"] == 2
+    assert conta["por_dia"] == "1,5"  # vírgula: a tela é em português
+    assert conta["ultima_mexida"]["TAR-001"] == "2026-09-02"
+
+
+@respx.mock
+def test_sem_a_pasta_de_eventos_a_tela_fica_mais_pobre_e_nao_quebra(
+    tmp_path, monkeypatch
+):
+    """Data ausente é uma tela mais pobre; página 500 é uma tela que não existe."""
+    pasta = fila_de_mentira(tmp_path, monkeypatch, com_eventos=False)
+    conta = robos.andamento(pasta)
+
+    assert conta["ultima_mexida"] == {} and conta["terminadas"] == 0
+    assert _dentro().get(reverse("caixa_robos")).status_code == 200
