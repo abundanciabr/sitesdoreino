@@ -533,7 +533,7 @@ def test_a_home_da_equipe_espelha_a_ordem_da_porta_da_caixa(client, da_equipe):
     """
     _situacao(da_equipe, "ex_aluno")
     conteudo = _abrir(client)
-    assert "acesso" not in conteudo or CAIXA in conteudo
+    assert "Seu acesso à escola foi encerrado" not in conteudo
     assert "Pedir para voltar" not in conteudo
     assert CAIXA in conteudo
 
