@@ -31,11 +31,21 @@ lugar nenhum, e um campo que aceita digitação promete que vai.
   {% else %}
     {% include "admin/_caixa_abas.html" %}
 
+    {% comment %}
+    Os nomes de cor aqui eram `--cartao` e `--borda`, e NENHUM DOS DOIS existe
+    no `:root` de `admin/base.html` (03/09/2026). O navegador não reclama de
+    nome inventado: ele usa o valor de reserva — daí a caixa branca — ou
+    descarta a propriedade inteira, e aí a borda cai em `currentColor` e passa a
+    ter a cor do texto. Os nomes certos são `--painel` e `--linha`, e desde este
+    dia `tests/test_toda_cor_usada_tem_dono.py` reprova quem inventar outro.
+    A caixa de texto também deixou o claro cravado: numa área de fundo escuro
+    ela era um retângulo branco no meio da tela.
+    {% endcomment %}
     <style>
-      .como-copiar { background:var(--cartao, #fff); border:1px solid var(--borda); border-radius:8px; padding:12px 14px; margin:14px 0; }
+      .como-copiar { background:var(--painel); border:1px solid var(--linha); border-radius:8px; padding:12px 14px; margin:14px 0; }
       .como-copiar ol { margin:8px 0 0; padding-left:20px; }
       .como-copiar li { margin:4px 0; font-size:14px; }
-      .campo-export { width:100%; box-sizing:border-box; height:60vh; min-height:320px; font-family:ui-monospace,Consolas,"Courier New",monospace; font-size:12.5px; line-height:1.5; padding:12px; border:1px solid var(--borda); border-radius:8px; background:#fbfbfb; color:#222; white-space:pre; }
+      .campo-export { width:100%; box-sizing:border-box; height:60vh; min-height:320px; font-family:ui-monospace,Consolas,"Courier New",monospace; font-size:12.5px; line-height:1.5; padding:12px; border:1px solid var(--linha); border-radius:8px; background:var(--fundo); color:var(--texto); white-space:pre; }
       .rodape-export { font-size:12px; color:var(--texto-2); margin-top:8px; }
     </style>
 
@@ -53,7 +63,7 @@ lugar nenhum, e um campo que aceita digitação promete que vai.
     <div class="como-copiar">
       <b>Como levar isto embora</b>
       <ol>
-        <li>Clique uma vez dentro da caixa cinza aqui embaixo.</li>
+        <li>Clique uma vez dentro da caixa de texto aqui embaixo.</li>
         <li>Aperte <b>Ctrl+A</b>: isso seleciona só o que está dentro da caixa, nada da página.</li>
         <li>Aperte <b>Ctrl+C</b> e cole onde quiser (numa conversa com um robô, num documento, num e-mail).</li>
       </ol>

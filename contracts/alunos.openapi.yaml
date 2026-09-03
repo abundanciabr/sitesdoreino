@@ -71,6 +71,17 @@ paths:
                         pedido — o numero e do provedor de pagamento e nao diz nada a
                         quem le a tela.
                     criada_em: { type: string, format: date-time }
+                    virou_aluno_em:
+                      type: [string, 'null']
+                      format: date-time
+                      description: |
+                        Quando a pessoa VIROU ALUNA. Para quem entrou pela fila (`liberado`) e o
+                        instante da liberacao; para quem comprou, o instante em que o pagamento
+                        confirmou a matricula (`criada_em`). Nasceu em 03/09/2026, no Rito de
+                        Contrato do placar do painel de gestao: a meta do mantenedor passou a ser
+                        "quantas pessoas compraram neste mes", e a data que conta e ESTA, nunca
+                        `comprou_em` (que a propria pessoa digita, opcional, pista de conferencia).
+                        Nulo so quando a linha nao tem nenhuma das duas, o que hoje nao acontece.
     post:
       operationId: createEnrollment
       summary: Matrícula manual/reprocesso — idempotente por order_id (INV-P5)
