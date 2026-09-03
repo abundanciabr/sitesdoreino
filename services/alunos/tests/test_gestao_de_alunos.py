@@ -47,6 +47,7 @@ CHAVES = {
     "status",
     "origem",
     "criada_em",
+    "virou_aluno_em",
 }
 
 
@@ -155,6 +156,47 @@ def test_a_origem_e_derivada_do_pedido_e_nao_de_um_campo(client, auth):
         "comprou@example.com": "comprou",
         "liberado@example.com": "liberado",
     }
+
+
+@pytest.mark.django_db
+def test_virou_aluno_em_e_a_liberacao_ou_o_pagamento_nunca_o_que_a_pessoa_digitou(
+    client, auth
+):
+    """Rito de Contrato de 03/09/2026: a meta do mantenedor virou "quantas
+    pessoas compraram neste mês", e a data que conta é, nas palavras dele, *"a
+    data em que o aluno é liberado ou que o sistema confirma o pagamento"*.
+
+    Três linhas, três respostas: quem comprou virou aluna quando o pagamento
+    criou a linha; quem foi liberada virou aluna na DECISÃO, não no dia em que
+    pediu; e `comprou_em` (o que a pessoa digitou) nunca entra na conta, mesmo
+    preenchido. Uma liberada sem `decidido_em` responde nulo, não uma data
+    inventada.
+    """
+    from datetime import date, datetime, timezone as tz
+
+    comprou = criar(
+        email="comprou@example.com",
+        order_id="mp-1",
+        comprou_em=date(2026, 7, 15),
+    )
+    liberada = criar(
+        email="liberada@example.com",
+        order_id="pre:1",
+        comprou_em=date(2026, 7, 20),
+        decidido_em=datetime(2026, 9, 2, 12, 0, tzinfo=tz.utc),
+        decidido_por="id-do-admin",
+    )
+    criar(email="sem-decisao@example.com", order_id="pre:2")
+
+    por_email = {
+        linha["email"]: linha["virou_aluno_em"]
+        for linha in listar(client, auth).json()
+    }
+    assert por_email["comprou@example.com"] == comprou.enrolled_at.isoformat()
+    assert por_email["liberada@example.com"] == liberada.decidido_em.isoformat()
+    assert por_email["liberada@example.com"] != liberada.enrolled_at.isoformat()
+    assert por_email["sem-decisao@example.com"] is None
+    assert "2026-07" not in (por_email["comprou@example.com"] or "")
 
 
 @pytest.mark.django_db
