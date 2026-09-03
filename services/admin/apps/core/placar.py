@@ -75,6 +75,8 @@ CARTAO_DA_META = "compras-no-ciclo"
 CARTAO_DO_MES = "compras-no-mes"
 CARTAO_DO_PAR = "alunos-ativos-30d"
 CARTAO_DO_TOTAL = "alunos-na-plataforma"
+#: A restrição desta semana (degrau 1 do plano; regra em `restricao.py`).
+CARTAO_DA_RESTRICAO = "restricao-da-semana"
 
 #: Os quatro tipos de número do plano (§2). Não existe tipo "composto": um
 #: número composto é reconhecido pelo campo `componentes`, e nunca desce ao
@@ -424,16 +426,32 @@ def placar(request):
     par, recusas_do_par = ler_cartao(CARTAO_DO_PAR, pasta)
     total, _recusas_do_total = ler_cartao(CARTAO_DO_TOTAL, pasta)
 
+    # Import tardio de propósito: `restricao` importa deste módulo (a leitura
+    # de fuso e a lista de status), e o ciclo se fecha aqui, na view.
+    from .restricao import escolher_restricao, medir_liberacao
+
+    cartao_da_restricao, recusas_da_restricao = ler_cartao(CARTAO_DA_RESTRICAO, pasta)
+
     hoje = timezone.localdate()
     contagem = None
     resultado = None
     barra = None
+    restricao = None
     if meta is not None:
         partida_em = _data(meta.get("partida_em")) or hoje
-        contagem = contar_compras(AlunosClient().alunos(), partida_em, hoje)
+        cliente = AlunosClient()
+        alunos = cliente.alunos()
+        contagem = contar_compras(alunos, partida_em, hoje)
         resultado = calcular_placar(meta, contagem["ciclo"], hoje)
         if mes is not None:
             barra = calcular_o_mes(mes, meta, contagem["mes"], hoje)
+        if cartao_da_restricao is not None:
+            # A MESMA lista de alunos da contagem: duas leituras da mesma porta
+            # na mesma requisição poderiam discordar entre si por um segundo.
+            medida = medir_liberacao(
+                cliente.fila("aguardando"), cliente.fila("recusada"), alunos, hoje
+            )
+            restricao = escolher_restricao(medida, cartao_da_restricao)
 
     return render(
         request,
@@ -450,5 +468,8 @@ def placar(request):
             "contagem": contagem,
             "placar": resultado,
             "barra": barra,
+            "cartao_da_restricao": cartao_da_restricao,
+            "recusas_da_restricao": recusas_da_restricao,
+            "restricao": restricao,
         },
     )
