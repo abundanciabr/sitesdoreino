@@ -14,35 +14,26 @@ lançamento, na hora em que ela mandou. Quem escolheu a duração foi a
 
 COMO ELE RODA
 -------------
-De minuto em minuto, pelo mesmo processo que hospeda o consumidor, ou à mão
-quando alguém quiser antecipar. Rodar duas vezes é seguro: o filtro é por
-status, e um lançamento já definitivo não é tocado de novo.
+De minuto em minuto, como task periódica do `huey` (`tasks.py::liberar_quarentena_periodico`,
+mesmo worker que já republica a outbox) — e este comando continua existindo
+para quando alguém quiser antecipar à mão. Rodar duas vezes é seguro: o
+filtro é por status, e um lançamento já definitivo não é tocado de novo.
+
+A lógica em si mora em `tasks.py::liberar_quarentena`, e este comando só a
+chama e imprime o resultado — a mesma lei anti-duplicação que proíbe o mesmo
+dado em dois lugares vale para o mesmo gesto.
 """
 
 from django.core.management.base import BaseCommand
-from django.utils import timezone
 
-from apps.gamificacao.models import LancamentoDeXP
-from apps.gamificacao.motor import recalcular
+from apps.gamificacao.tasks import liberar_quarentena
 
 
 class Command(BaseCommand):
     help = "Torna definitivo o XP em quarentena que já passou da data"
 
     def handle(self, *args, **opts):
-        agora = timezone.now()
-        vencidos = LancamentoDeXP.objects.filter(
-            status=LancamentoDeXP.Status.PENDENTE, liberado_em__lte=agora
-        )
-        # Quem recalcular depois. Coletado ANTES do update: depois dele o filtro
-        # por `pendente` não acha mais ninguém.
-        afetados = set(vencidos.values_list("pessoa_id", "site_id"))
-        quantos = vencidos.update(status=LancamentoDeXP.Status.DEFINITIVO)
-
-        for pessoa_id, site_id in afetados:
-            recalcular(pessoa_id, site_id)
-
+        quantos, perfis = liberar_quarentena()
         self.stdout.write(
-            f"liberados: {quantos} lançamento(s), "
-            f"{len(afetados)} perfil(is) recalculado(s)"
+            f"liberados: {quantos} lançamento(s), {perfis} perfil(is) recalculado(s)"
         )
