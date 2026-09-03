@@ -15,6 +15,12 @@
            pausado    → que é temporário e volta sozinho
            cadastrado → o convite para pedir entrada
 
+     E ANTES de tudo isso, desde 02/09/2026, uma pergunta que não é de
+     categoria: quem é da EQUIPE vê o caminho da Caixa e mais nada. A escada
+     de categorias não carrega esse crachá de propósito (§2.1 da decisão), então
+     a equipe caía em `cadastrado` e era convidada a pedir a entrada que já
+     tem. O comentário [EQUIPE], lá embaixo, conta o resto.
+
      A última linha MUDOU em 29/08/2026, e a mudança é uma reversão declarada:
      até então ela dizia "nada sobre a escola", porque em 28/08 o mantenedor
      recusou nominalmente convidar para a fila quem nunca pediu. No dia
@@ -113,7 +119,47 @@
   </div>
   {% endif %}
   {% endwith %}
-  {% if request.ator.categoria == "aluno" %}
+  {% if request.ator.papel == "staff" %}
+  {% comment %}
+  [EQUIPE] 02/09/2026. O mantenedor encontrou o defeito com a conta dele, pela
+  terceira vez nesta mesma tela: a home oferecia "Pedir entrada" a quem já
+  entra na Caixa pela porta da EQUIPE, e o clique provava o erro na hora,
+  porque a Caixa abria direto em vez de mostrar formulário nenhum.
+
+  A CAUSA não é a `alunos` errando: ela acerta. A escada de categorias não tem
+  (e não pode ter) o crachá de equipe — está escrito na própria porta dela, e
+  em `DECISAO-categorias-de-usuario` §2.1: quem decide quem é da equipe é a
+  lista da célula que guarda o recurso, na hora, na porta. Quem é da equipe e
+  nunca comprou nada é `cadastrado` de verdade, e o convite era a leitura
+  correta de um dado que só conta metade da história.
+
+  A CORREÇÃO é a ordem, e ela COPIA a ordem da porta que este botão linka: o
+  `resolver()` da Caixa confere equipe ANTES de conferir matrícula
+  (`services/sugestoes/apps/core/sessao.py`). Enquanto a home perguntava só a
+  categoria, ela era capaz de discordar do destino dela mesma — e discordava.
+  Espelhar a ordem é o que tira essa possibilidade da mesa, em vez de remendar
+  o sintoma de hoje.
+
+  `papel` é de EXIBIÇÃO e não autoriza nada — é a mesma leitura que
+  `apps/core/menu.py` já faz para desenhar (ou não) o atalho da administração,
+  e é por isso que ela não custa consulta nova: o `ator` já foi resolvido pelo
+  `_sessao.html` que escreve o "Olá, Fulano" acima. Quem barra continua sendo
+  a porta fail-closed de cada célula.
+
+  Efeito colateral bem-vindo: para a equipe esta tela deixa de pedir e-mail à
+  `identidade` e categoria à `alunos` — dois saltos de rede a menos, e o dado
+  mais sensível desta célula não é mais buscado para uma pergunta cuja
+  resposta não muda nada.
+
+  O LIMITE, escrito porque ele é real: são DUAS listas no servidor
+  (`IDENTIDADE_STAFF_EMAILS`, que decide este `papel`, e a lista de cada
+  célula, que decide o acesso). O provisionamento nasce copiando uma da outra,
+  mas elas PODEM divergir. Divergindo, o pior caso volta a ser um rótulo
+  errado numa tela — nunca acesso a mais nem a menos, porque nada aqui
+  autoriza coisa alguma.
+  {% endcomment %}
+  <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.ir_para_a_caixa" %}</a>
+  {% elif request.ator.categoria == "aluno" %}
   <a class="cta" href="{{ request.url_da_caixa }}">{% t "landing.ir_para_a_caixa" %}</a>
   {% elif request.ator.categoria == "ex_aluno" %}
   {% comment %}
