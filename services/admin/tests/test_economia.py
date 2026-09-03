@@ -243,6 +243,28 @@ def test_a_tela_mostra_as_regras_traduzidas_para_portugues():
 
 @respx.mock
 @pytest.mark.django_db
+def test_as_tres_regras_do_forum_tambem_saem_traduzidas():
+    """Semeadas em 01/09/2026 e esquecidas na TRADUCAO até 03/09/2026: sem
+    isto, as três apareciam com o slug cru e o mantenedor não as reconhecia
+    como "regras do fórum" para ligar — achado numa auditoria dele."""
+    _gamificacao(
+        regras=REGRAS
+        + [
+            _regra("forum-topico-criado", pontos=8, quarentena_horas=24),
+            _regra("forum-mensagem", pontos=5, quarentena_horas=24),
+            _regra("forum-resposta-aceita", pontos=50, quarentena_horas=24),
+        ]
+    )
+
+    html = _dentro().get(reverse("economia")).content.decode()
+
+    assert "Abrir uma conversa no fórum" in html
+    assert "Responder no fórum" in html
+    assert "Ter a própria resposta aceita" in html
+
+
+@respx.mock
+@pytest.mark.django_db
 def test_a_tela_diz_quantas_estao_ligadas_e_hoje_e_nenhuma():
     """O estado que ele precisa ver de longe: ninguém está ganhando ponto."""
     _gamificacao()
