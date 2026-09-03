@@ -71,8 +71,8 @@ FONTES = (
 class Command(BaseCommand):
     help = (
         "Credita retroativamente forum-topico-criado e forum-resposta-aceita "
-        "para ações anteriores a vigente_desde — exceção única e auditada ao "
-        "'nunca retroativo', pedida pelo mantenedor em 03/09/2026."
+        "para ações anteriores a vigente_desde, uma exceção única e auditada "
+        "ao 'nunca retroativo' pedida pelo mantenedor em 03/09/2026."
     )
 
     def add_arguments(self, parser):
@@ -100,12 +100,12 @@ class Command(BaseCommand):
                     site_id=site_id, slug=slug
                 ).first()
                 if regra is None:
-                    relatorio.append(f"{slug}: regra não existe neste site — pulei")
+                    relatorio.append(f"{slug}: regra não existe neste site (pulei)")
                     continue
                 if not regra.ativa or regra.vigente_desde is None:
                     relatorio.append(
-                        f"{slug}: ainda não está ligada — nada a pagar retroativo "
-                        "(ligue primeiro em /admin/economia/)"
+                        f"{slug}: ainda não está ligada, então não há nada a pagar "
+                        "retroativo (ligue primeiro em /admin/economia/)"
                     )
                     continue
 
@@ -195,7 +195,7 @@ class Command(BaseCommand):
         if not confirmo:
             self.stdout.write(
                 self.style.WARNING(
-                    "ENSAIO — nada foi gravado. Rode de novo com --confirmo para valer."
+                    "ENSAIO: nada foi gravado. Rode de novo com --confirmo para valer."
                 )
             )
         else:
