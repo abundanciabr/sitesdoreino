@@ -15,6 +15,11 @@ a tradução para a casa.
 | `ARQUITETURA-v1.md` | Arquitetura de Receita Meshcraft 10X v1.0: de empresa de infoprodutos para plataforma vertical de formação e economia criativa 3D. |
 | `ARQUITETURA-v2-blueprint-economico.md` | v2, o Blueprint Econômico-Operacional: motores, unit economics, métricas, portões de escala. |
 | `ARQUITETURA-v3-revenue-operating-system.md` | v3, o Revenue Operating System: eventos, estados, scores, regras de decisão, automação, painéis, dados. |
+| `SCALE-OS-1-a-tese.md` | **Segunda leva, 03/09/2026 (fim do dia), a "proposta nova" do mantenedor.** Meshcraft Scale OS: OKR + 4DX + Teoria das Restrições + experimentos + economia unitária, em sete camadas. 40 seções. |
+| `SCALE-OS-2-manual-operacional.md` | Scale OS 1.0, o manual: as quatro fases, a cadência (semana, mês, trimestre, ano), os 12 indicadores, a constituição de 15 regras. 176 itens. |
+| `SCALE-OS-3-arquitetura-do-painel.md` | Scale OS 1.1, o painel: menu de 11 áreas e 28 telas, a home em 11 blocos, os pipelines de decisão para tarefa. 172 itens. |
+| `SCALE-OS-4-especificacao-tecnica.md` | Scale OS 1.2, a técnica: células, rotas, tabelas, APIs, permissões, jobs, testes, 12 lotes. 276 itens. |
+| `CONFRONTO-scale-os.md` | **Não é original: é da casa.** As 34 premissas dos quatro documentos acima, cada uma confrontada com `docs/decisoes/DECISAO-*.md`, a memória e o código (`armadilhas/299`), com veredito: mantida, sem sujeito, já existe, nova, ou para o mantenedor. É deste confronto que o plano reformulado deriva. |
 
 **Avisos de leitura, para quem for derivar plano daqui:**
 
