@@ -12,6 +12,7 @@ from apps.core.views import (
     service_worker,
     servir_estatico,
     sitemap_xml,
+    ver_como_view,
     verificacao_do_google,
 )
 
@@ -48,6 +49,10 @@ urlpatterns = [
     path("avisos/ligar", ligar_avisos, name="ligar_avisos"),
     path("avisos/desligar", desligar_avisos, name="desligar_avisos"),
     path("cadastro", cadastro, name="cadastro"),  # PLANO-I18N fase 2
+    # A previa da equipe ("ver como", 02/09/2026). Localizada como as
+    # outras paginas da celula: a tarja e os rotulos sao texto de tela, e
+    # uma rota crua faria a previa sair sempre no idioma padrao.
+    path("ver-como", ver_como_view, name="ver_como"),
     # A porta de entrada do site (DECISAO-onde-mora-a-sessao). Serve em
     # /{idioma}/login pelo mesmo resolver das outras: o urlconf não conhece o
     # prefixo de idioma. O nome `entrar` é o que a peça `_sessao.html` usa em

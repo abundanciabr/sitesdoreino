@@ -177,6 +177,11 @@ ROTAS_LOCALIZAVEIS = (
     "/login",
     "/avisos/ligar",
     "/avisos/desligar",
+    # A previa da equipe (02/09/2026). E PAGINA, e nao rota de maquina: a tela
+    # tem texto, e o texto e traduzido. Que ela responda 404 para quem nao e da
+    # equipe nao muda isso — a classificacao aqui e sobre localizacao, nunca
+    # sobre quem pode entrar.
+    "/ver-como",
 )
 
 # Um urlconf tem `path()` e `re_path()`, e o guarda precisa comparar os dois com

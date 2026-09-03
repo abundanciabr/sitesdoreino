@@ -119,7 +119,7 @@
   </div>
   {% endif %}
   {% endwith %}
-  {% if request.ator.papel == "staff" %}
+  {% if request.ator.papel == "staff" and not request.ator.ver_como %}
   {% comment %}
   [EQUIPE] 02/09/2026. O mantenedor encontrou o defeito com a conta dele, pela
   terceira vez nesta mesma tela: a home oferecia "Pedir entrada" a quem já
@@ -150,6 +150,13 @@
   `identidade` e categoria à `alunos` — dois saltos de rede a menos, e o dado
   mais sensível desta célula não é mais buscado para uma pergunta cuja
   resposta não muda nada.
+
+  E DESDE 02/09/2026 ESTE RAMO CEDE À PRÉVIA (`apps/core/ver_como.py`). Sem o
+  `and not ver_como`, a equipe cairia aqui SEMPRE e a prévia nunca chegaria aos
+  ramos de categoria abaixo — a opção "ver como aluno" mostraria a tela de
+  equipe e pareceria não funcionar. Ceder aqui não afrouxa nada: `ver_como` só
+  é verdadeiro para quem já é `staff`, então a condição inteira continua sendo
+  sobre a equipe, decidindo apenas QUAL tela ela vê.
 
   O LIMITE, escrito porque ele é real: são DUAS listas no servidor
   (`IDENTIDADE_STAFF_EMAILS`, que decide este `papel`, e a lista de cada
