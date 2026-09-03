@@ -281,12 +281,31 @@ jobs:
           rm -rf services/admin/planos_embutidos
           cp -R docs/decisoes services/admin/planos_embutidos
           echo "planos embutidos: $(ls services/admin/planos_embutidos/*.md | wc -l) arquivos"
-      - name: Build & push da imagem da célula
+      # O BUILD FICA SOZINHO, E A SEPARAÇÃO É A DECISÃO (02/09/2026, PR #897).
+      # Build que falha é defeito do CÓDIGO e não se repete nunca — repetir um
+      # build quebrado é a definição de esconder o vermelho. O que ganhou
+      # repetição foi só o TRANSPORTE da imagem pronta, a única metade cujo
+      # erro é de rede. Juntar os dois num passo só daria retry ao build de
+      # graça, sem ninguém ter escolhido isso.
+      - name: Build da imagem da célula
         run: |
           IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}
           docker build -t "$IMG:${{ github.sha }}" -t "$IMG:main" "services/${{ matrix.celula }}"
-          docker push "$IMG:${{ github.sha }}"
-          docker push "$IMG:main"
+
+      # O envio, com até 3 tentativas — a vacina do `unknown blob` que derrubou
+      # o deploy do PR #897 com a imagem já construída e nomeada. A lógica
+      # (o que repete, o que para na primeira) mora em `ci/enviar_a_imagem.py`
+      # porque precisa de teste: `ci/tests/test_enviar_a_imagem.py`. Retry sem
+      # teste foi como nasceu a `armadilhas/209`.
+      #
+      # As tentativas ficam DENTRO deste run de propósito. Quando o rerun
+      # manual passa, o GitHub sobrescreve a conclusão anterior e o histórico
+      # apaga a evidência do padrão (medido em 28/08/2026) — aqui o run fecha
+      # verde e o log ainda mostra que a primeira tentativa falhou.
+      - name: Enviar a imagem ao registro (até 3 tentativas)
+        run: |
+          IMG=ghcr.io/abundanciabr/plataforma-${{ matrix.celula }}
+          python3 ci/enviar_a_imagem.py "$IMG:${{ github.sha }}" "$IMG:main"
       # =====================================================================
       # ATIVAR NA VPS — em até três tentativas, e por que isso não é preguiça.
       #
