@@ -326,8 +326,19 @@ def test_a_pagina_diz_o_que_ela_e_e_que_nao_ha_nada_a_fazer(tmp_path, monkeypatc
 
     assert "Cada cartão desta página é um pedaço de trabalho no seu site" in pagina
     assert "Você não precisa fazer nada aqui" in pagina
-    # A tela é de OLHAR: nenhum formulário, nenhum botão que escreva.
-    assert "<form" not in pagina
+
+    # A tela é de OLHAR: nenhum formulário, nenhum botão que escreva. Ele
+    # decidiu isso com todas as letras em 03/09/2026 — "vamos continuar aqui no
+    # claude code mesmo" —, e a frase acima só continua verdadeira enquanto
+    # nada aqui agir.
+    #
+    # A medição é do CORPO DESTA PÁGINA, e não da resposta inteira: a moldura
+    # do Admin (a faixa, o menu, o rodapé) é compartilhada por 22 telas, e um
+    # formulário que nascesse lá — uma busca no menu, um botão de sair —
+    # deixaria ESTE guarda vermelho num PR que não tem nada a ver com a aba dos
+    # robôs. Guarda que fica chato é guarda que alguém desliga (`armadilhas/247`).
+    corpo = pagina.split('class="envolucro largo"')[-1].split("rodape-do-admin")[0]
+    assert "<form" not in corpo
 
 
 def test_o_lugar_tecnico_vira_um_lugar_que_ele_reconhece():
