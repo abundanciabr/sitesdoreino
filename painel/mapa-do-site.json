@@ -151,6 +151,15 @@
       "descricao": "Um arquivo com um código fixo que o Google pediu para confirmar que o meshcraft.top é mesmo seu. Ninguém abre isto à mão."
     },
     {
+      "celula": "funil",
+      "rota": "ver-como",
+      "endereco": "/ver-como",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Ver o site como outra pessoa vê",
+      "descricao": "A prévia da equipe. Você escolhe uma situação (um aluno, alguém que nunca pediu vaga, um aluno pausado, um ex-aluno) e o site passa a se mostrar do jeito que alguém naquela situação vê, com uma tarja no alto e um botão para voltar ao normal. Muda só o que as telas MOSTRAM: o que você pode fazer continua o mesmo, porque cada área confere a própria lista. Só quem é da equipe abre esta página."
+    },
+    {
       "celula": "identidade",
       "rota": "entrar/google",
       "endereco": "/entrar/google",

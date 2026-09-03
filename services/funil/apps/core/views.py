@@ -4,7 +4,13 @@ from urllib.parse import urlencode
 
 from django import forms
 from django.conf import settings
-from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
+from django.http import (
+    Http404,
+    HttpResponse,
+    HttpResponseBadRequest,
+    HttpResponseRedirect,
+    JsonResponse,
+)
 from django.shortcuts import render
 from django.views.decorators.http import (
     require_http_methods,
@@ -20,6 +26,7 @@ from apps.core.clients import (
     LeadsClient,
     NotificacoesClient,
 )
+from apps.core import ver_como
 from apps.core.enderecos import (
     url_de_entrada,
     url_de_entrada_por_senha,
@@ -715,3 +722,58 @@ def capturar_lead(request):
     }
     resultado = LeadsClient().upsert_lead(payload)
     return JsonResponse(resultado, status=200)
+
+
+@require_http_methods(["GET", "POST"])
+def ver_como_view(request):
+    """A tela de "ver o site como outra pessoa ve" — e a gravacao da escolha.
+
+    Pedido do mantenedor em 02/09/2026, depois do PR #897: a conta dele entra
+    pela porta da EQUIPE e nao tem matricula, entao o site nunca lhe mostrava a
+    tela que um aluno ve — nem para conferir a propria correcao.
+
+    **404 para quem nao e da equipe, e nao 403.** A porta nao confirma que ela
+    existe para quem nao pode usa-la, que e a mesma regra da area
+    administrativa. E a guarda e conferida AQUI, alem de em `ver_como.py`: uma
+    trava so na leitura do cookie deixaria esta rota gravando disfarce para
+    qualquer um — inofensivo hoje, e exatamente o tipo de porta esquecida que
+    alguem encontra depois.
+
+    O que ela grava e um cookie de EXIBICAO, que nao autoriza nada. O que ela
+    NAO faz e mexer em sessao: sair do disfarce e apagar um cookie, nunca um
+    logout — quem se disfarcou continua sendo quem era o tempo inteiro.
+    """
+    if getattr(request, "idioma", None) is None:
+        raise Http404("ver-como só existe em site registrado no i18n")
+    ator = getattr(request, "ator", None)
+    if not ator or ator.papel != ver_como.PAPEL_DE_EQUIPE:
+        raise Http404("ver-como é da equipe")
+
+    if request.method == "POST":
+        escolha = ver_como.disfarce_valido(request.POST.get("como", ""))
+        destino = HttpResponseRedirect(
+            caminho_publico(request.i18n, request.idioma, "/")
+        )
+        if escolha:
+            destino.set_cookie(
+                ver_como.COOKIE,
+                escolha,
+                # Sem `max_age`: o disfarce morre quando o navegador fecha. Uma
+                # previa que sobrevivesse a semana viraria o mantenedor vendo o
+                # site errado dias depois sem lembrar por que.
+                httponly=True,
+                samesite="Lax",
+                secure=request.is_secure(),
+            )
+        else:
+            # Valor fora da lista tambem cai aqui, e volta ao normal de
+            # proposito: a unica coisa pior que um disfarce errado e um
+            # disfarce errado do qual nao se sai.
+            destino.delete_cookie(ver_como.COOKIE)
+        return destino
+
+    return render(
+        request,
+        "funil/ver_como.html",
+        {"disfarces": ver_como.DISFARCES, "atual": ator.ver_como},
+    )

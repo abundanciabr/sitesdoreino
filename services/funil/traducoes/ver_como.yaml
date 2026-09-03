@@ -1,0 +1,65 @@
+# traducoes/ver_como.yaml — a previa da equipe ("ver como"), 02/09/2026.
+#
+# Pedido do mantenedor depois do PR #897: a conta dele e da equipe e nao tem
+# matricula, entao o site nunca lhe mostrava a tela de um aluno. A lei do
+# disfarce mora em apps/core/ver_como.py; aqui so o texto.
+
+titulo:
+  _fonte: "5787b5"
+  en: "View as"
+  pt-br: "Ver como"
+  es: "Ver como"
+
+explicacao:
+  _fonte: "322905"
+  en: "Pick a situation to preview the site the way someone in it sees the screens."
+  pt-br: "Escolha uma situação para ver as telas do jeito que alguém nessa situação vê."
+  es: "Elija una situación para ver las pantallas como las ve alguien en esa situación."
+
+aviso_do_limite:
+  _fonte: "a46f3c"
+  en: "This changes what the screens SHOW, never what you can do. Areas keep checking their own lists, so the Suggestion Box still opens as team."
+  pt-br: "Isto muda o que as telas MOSTRAM, nunca o que você pode fazer. Cada área continua conferindo a lista dela, então a Caixa segue abrindo como equipe."
+  es: "Esto cambia lo que las pantallas MUESTRAN, nunca lo que usted puede hacer. Cada área sigue revisando su propia lista, así que la Caja sigue abriendo como equipo."
+
+opcao_aluno:
+  _fonte: "29f823"
+  en: "A student"
+  pt-br: "Um aluno"
+  es: "Un alumno"
+
+opcao_cadastrado:
+  _fonte: "b39cb6"
+  en: "Someone who signed in and never asked to join"
+  pt-br: "Alguém que entrou e nunca pediu vaga"
+  es: "Alguien que entró y nunca pidió plaza"
+
+opcao_pausado:
+  _fonte: "005823"
+  en: "A student whose access is paused"
+  pt-br: "Um aluno com acesso pausado"
+  es: "Un alumno con acceso pausado"
+
+opcao_ex_aluno:
+  _fonte: "d46361"
+  en: "Someone who is no longer a student"
+  pt-br: "Alguém que não estuda mais aqui"
+  es: "Alguien que ya no estudia aquí"
+
+voltar_ao_normal:
+  _fonte: "9f8bd3"
+  en: "Back to normal"
+  pt-br: "Voltar ao normal"
+  es: "Volver a lo normal"
+
+tarja:
+  _fonte: "23b8b4"
+  en: "Preview on: you are seeing the site as"
+  pt-br: "Prévia ligada: você está vendo o site como"
+  es: "Vista previa activa: usted ve el sitio como"
+
+atalho:
+  _fonte: "5787b5"
+  en: "View as"
+  pt-br: "Ver como"
+  es: "Ver como"

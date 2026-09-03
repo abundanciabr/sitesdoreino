@@ -9,7 +9,7 @@ from django.http import Http404, HttpResponseRedirect
 from django.utils import translation
 from django.utils.cache import patch_vary_headers
 
-from apps.core import enderecos
+from apps.core import enderecos, ver_como
 from apps.core.clients import (
     AlunosClient,
     CatalogoClient,
@@ -279,9 +279,13 @@ class AtorDaRequisicao:
     identifica ninguém, e marcar as duas iguais tiraria o cache do site inteiro.
     """
 
-    def __init__(self, cookie: str, site_id: str) -> None:
+    def __init__(self, cookie: str, site_id: str, disfarce_pedido: str = "") -> None:
         self._cookie = cookie
         self._site_id = site_id
+        # O valor CRU do cookie de "ver como". Cru de propósito: quem decide se
+        # ele vale é `ver_como` abaixo, e ela precisa do `papel` — que ainda
+        # nao foi resolvido nesta altura, porque este objeto e preguicoso.
+        self._disfarce_pedido = disfarce_pedido
         self._resolvido = False
         self._dados: "dict | None" = None
         self._avisos_resolvido = False
@@ -338,6 +342,31 @@ class AtorDaRequisicao:
         coisa alguma: autorização é fail-closed, na célula dona do recurso
         (DECISAO-onde-mora-a-sessao §4)."""
         return (self._resolver() or {}).get("papel") or ""
+
+    @property
+    def ver_como(self) -> str:
+        """A categoria que esta pessoa PEDIU para simular, ou `""`.
+
+        Pedido do mantenedor em 02/09/2026 ("como aquela opcao do Facebook de
+        Ver como"). A lei inteira do disfarce, e o porque de cada guarda, esta
+        em `apps/core/ver_como.py` — aqui fica so a leitura.
+
+        **So vale para quem a `identidade` reconhece como equipe.** Sem essa
+        condicao, qualquer visitante que escrevesse o cookie no proprio
+        navegador veria a home oferecer o caminho da Caixa e levaria um "nao"
+        na cara ao clicar: o defeito de 28/08/2026 ressuscitado por um cookie.
+
+        **Nao custa consulta nova.** Le `papel`, que sai da MESMA resposta de
+        sessao que o "Ola, Fulano" do topo ja resolveu — e visitante anonimo
+        nunca chega aqui, porque `papel` devolve vazio sem sessao.
+
+        E o que ele NAO faz: nada. Disfarce e EXIBICAO. A Caixa, o forum e a
+        area administrativa continuam conferindo as listas deles, e nenhuma
+        delas olha para este cookie.
+        """
+        if not self._disfarce_pedido:
+            return ""
+        return ver_como.disfarce_de(self.papel, self._disfarce_pedido)
 
     @property
     def avisos_nao_lidos(self) -> "int | None":
@@ -435,6 +464,12 @@ class AtorDaRequisicao:
         """
         if not self:
             return "visitante"
+        if self.ver_como:
+            # A prevoa da equipe (02/09/2026, apps/core/ver_como.py). Vem ANTES
+            # da consulta, e por isso ver como aluno nao pergunta nada a
+            # `alunos`: a resposta dela nao mudaria a tela, e perguntar seria
+            # um salto de rede para jogar fora.
+            return self.ver_como
         situacao = self._resolver_categoria()
         if not situacao:
             return "cadastrado"
@@ -458,6 +493,12 @@ class AtorDaRequisicao:
         """
         if not self:
             return False
+        if self.ver_como:
+            # Sob disfarce a categoria nao veio da `alunos`: foi ESCOLHIDA. Ela
+            # e conhecida por definicao, e sem este `True` o ramo `cadastrado`
+            # da home (que exige resposta conferida) nao desenharia nada, e a
+            # previa mostraria uma tela vazia sem explicar por que.
+            return True
         return self._resolver_categoria() is not None
 
     @property
@@ -468,6 +509,11 @@ class AtorDaRequisicao:
         tem o relógio e a linha é ela, e um consumidor que subtraísse datas
         erraria de um jeito diferente em cada célula.
         """
+        if self.ver_como:
+            # Nenhum disfarce previsto e `na_fila`, e a ausencia e deliberada:
+            # ela exigiria um "esperando ha N dias" que nao existe para quem
+            # nao esta na fila. Ver `DISFARCES` em apps/core/ver_como.py.
+            return None
         if self.categoria != "na_fila":
             return None
         return (self._resolver_categoria() or {}).get("na_fila")
@@ -644,7 +690,11 @@ class SiteResolutionMiddleware:
         # `site["id"]` já está resolvido nesta altura ([INV-P11], `__call__`
         # acima) — é o `site_id` que a Fase 5 do sino precisa para perguntar à
         # `notificacoes` (ela escopa por site: CONSTITUICAO.md Lei 9).
-        request.ator = AtorDaRequisicao(request.META.get("HTTP_COOKIE", ""), site["id"])
+        request.ator = AtorDaRequisicao(
+            request.META.get("HTTP_COOKIE", ""),
+            site["id"],
+            request.COOKIES.get(ver_como.COOKIE, ""),
+        )
         # Os dois destinos de link de quem já entrou. Ficam no request (e não
         # no contexto de cada view) porque a peça `_sessao.html` aparece em
         # TODA página multilíngue: passá-los view a view seria a mesma linha

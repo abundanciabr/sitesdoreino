@@ -1,0 +1,48 @@
+{% extends "base_mobile.html" %}
+{% load t %}
+<!-- templates/funil/ver_como.html — a prévia da equipe, pedida pelo mantenedor
+     em 02/09/2026 ("como aquela opção do Facebook de Ver como").
+
+     A tela é curta de propósito: são quatro botões e um aviso. A lei inteira do
+     disfarce (quem pode, o que ele NÃO faz, por que a fila ficou de fora) mora
+     em apps/core/ver_como.py, e não se repete aqui.
+
+     AS QUATRO OPÇÕES ESTÃO ESCRITAS À MÃO, e não num laço: a tag de tradução recusa
+     chave dinâmica de propósito (D2.3), porque chave montada em tempo de render
+     cega a análise estática que casa template e catálogo nas duas direções. O
+     preço é repetir quatro linhas; o que ela compra é o dia em que alguém
+     apagar uma tradução e o CI avisar em vez de a tela sair vazia.
+
+     O AVISO DO LIMITE NÃO É RODAPÉ, e por isso fica antes dos botões: a prévia
+     muda o que as telas mostram e nada do que a pessoa pode. Quem escolher
+     "um aluno" e clicar no caminho da Caixa vai entrar na Caixa como equipe,
+     porque é ela quem decide isso. Sem a frase, essa surpresa viraria um bug
+     reportado. -->
+{% block titulo %}{% t "ver_como.titulo" %} | Meshcraft{% endblock %}
+{% block estilo %}
+    .opcoes { display: grid; gap: .5rem; margin: 1rem 0; }
+    .opcoes button { width: 100%; padding: .9rem 1rem; border: 1px solid #d4d4d8; border-radius: .5rem; background: #fff; font: inherit; font-size: 1rem; text-align: left; cursor: pointer; }
+    .opcoes button.atual { border-color: #16a34a; border-width: 2px; font-weight: 600; }
+    .limite { font-size: .95rem; padding: .75rem 1rem; border: 1px solid #d4d4d8; border-radius: .5rem; background: #fafafa; }
+    .normal { margin-top: 1rem; }
+    .normal button { width: 100%; padding: .9rem 1rem; border: 0; border-radius: .5rem; background: #16a34a; color: #fff; font: inherit; font-size: 1rem; font-weight: 600; cursor: pointer; }
+{% endblock %}
+{% block conteudo %}
+{% include "funil/_sessao.html" %}
+<div class="card">
+  <h1>{% t "ver_como.titulo" %}</h1>
+  <p>{% t "ver_como.explicacao" %}</p>
+  <p class="limite">{% t "ver_como.aviso_do_limite" %}</p>
+  <form method="post" class="opcoes">{% csrf_token %}
+    <button type="submit" name="como" value="aluno"{% if atual == "aluno" %} class="atual"{% endif %}>{% t "ver_como.opcao_aluno" %}</button>
+    <button type="submit" name="como" value="cadastrado"{% if atual == "cadastrado" %} class="atual"{% endif %}>{% t "ver_como.opcao_cadastrado" %}</button>
+    <button type="submit" name="como" value="pausado"{% if atual == "pausado" %} class="atual"{% endif %}>{% t "ver_como.opcao_pausado" %}</button>
+    <button type="submit" name="como" value="ex_aluno"{% if atual == "ex_aluno" %} class="atual"{% endif %}>{% t "ver_como.opcao_ex_aluno" %}</button>
+  </form>
+  {% if atual %}
+  <form method="post" class="normal">{% csrf_token %}
+    <button type="submit" name="como" value="">{% t "ver_como.voltar_ao_normal" %}</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

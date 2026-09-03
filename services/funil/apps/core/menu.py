@@ -34,6 +34,26 @@ CELULA = "funil"
 PAPEL_DE_EQUIPE = "staff"
 
 
+def PLATEIA_STAFF_VE(*, papel: str, ver_como: str) -> bool:
+    """A plateia `staff` alcanca esta pessoa AGORA?
+
+    Duas condicoes, e a segunda nasceu em 02/09/2026 com a previa da equipe
+    (`apps/core/ver_como.py`): quem esta vendo o site como aluno nao pode
+    continuar vendo o atalho da administracao, senao a previa mente sobre a
+    propria coisa que ela existe para mostrar.
+
+    Funcao nomeada, e nao uma linha solta dentro de `menu_do_topo`, porque e
+    uma DECISAO e precisa de teste — o menu vem do catalogo, e um teste que
+    olhasse o HTML de um site sem item de equipe configurado passaria sem medir
+    nada.
+
+    E continua sem autorizar coisa alguma: a porta da celula `admin` nao olha
+    para isto, e quem estiver disfarcado entra la do mesmo jeito se digitar o
+    endereco. Esconder o atalho e estetica.
+    """
+    return papel == PAPEL_DE_EQUIPE and not ver_como
+
+
 def _plateia_confere(audience: str, entrou: bool, e_equipe: bool) -> bool:
     """Para quem este item aparece.
 
@@ -150,7 +170,7 @@ def menu_do_topo(request) -> list:
     # dele diz para que serve: "para EXIBIÇÃO apenas (mostrar ou não um
     # atalho)". Lê-lo aqui NÃO custa uma segunda consulta — o `ator` é
     # preguiçoso e já foi resolvido pela linha de cima.
-    e_equipe = entrou and ator.papel == PAPEL_DE_EQUIPE
+    e_equipe = entrou and PLATEIA_STAFF_VE(papel=ator.papel, ver_como=ator.ver_como)
 
     itens = []
     for item in versao.get("items") or []:
