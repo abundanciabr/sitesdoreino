@@ -329,7 +329,6 @@ paths:
         chama, com a sessão na mão (hoje o admin, que manda o id de quem
         clicou). Uma porta que aceitasse qualquer id seria um jeito de fazer
         tocar o celular dos outros, e nenhum teste vale isso.
-      security: [{ bearerAuth: [] }]
       requestBody:
         required: true
         content:
