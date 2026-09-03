@@ -108,6 +108,23 @@ do aluno: `pages`.**
 > mudança em tela existente se faz onde ela já está. Ver `DA-IDEIA-A-OBRA.md`,
 > estação 2.
 >
+> **A alternativa foi levantada pelo mantenedor e RECUSADA por ele em
+> 02/09/2026, no mesmo dia: não reabra.** A pergunta dele foi boa e merece a
+> resposta registrada, porque ela volta: *"e se as páginas fossem criadas na
+> própria célula `sugestoes`, com endereços diferentes? já cansei de criar
+> novas células"*. Tecnicamente funciona (endereço e célula são coisas
+> separadas: `/docs` e `/mapa-ia` já apontam para a célula `admin`), e a
+> decisão dele de guardar foto por LINK derrubou o argumento mais forte a favor
+> da casa própria, que era o isolamento do armazenamento de imagem. Ainda
+> assim ele escolheu a casa nova, informado de que ela custa cinco degraus e um
+> passo manual dele, e de que dentro da Caixa custaria zero.
+>
+> **O que sustenta a escolha dele: `pages` é a ÚLTIMA casa nova.** O pedágio da
+> fundação é pago uma vez e nunca mais; da segunda página em diante nenhuma
+> sugestão da Caixa pede célula nem passo do mantenedor. E a Caixa continua
+> intocada: publicar uma página nova não republica a casa da voz dos alunos,
+> que é o risco que a alternativa trazia.
+>
 > **Nome da célula = nome da rota (`pages`), de propósito.** O par
 > `/conquistas` ↔ `gamificacao` já custa uma tradução mental a cada leitura;
 > não se cria um segundo.
