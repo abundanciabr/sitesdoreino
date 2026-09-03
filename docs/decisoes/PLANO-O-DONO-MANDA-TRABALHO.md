@@ -82,10 +82,48 @@ tarefas.
 - E cria uma caixa de entrada que o painel do dono não enxerga, contra a lei
   anti-duplicação.
 
-**A recomendação é o Caminho A**, e a diferença entre os dois não é técnica: é
-se o pedido dele anda sozinho ou espera. O preço é um passo manual único, e a
-casa já pagou esse preço uma vez pelo mesmo motivo — a `PISTA_TOKEN`, que ele
-criou em 28/08/2026 para a pista poder mergear, é a mesma ideia.
+### Caminho C — uma esteira de relógio busca os pedidos na VPS
+
+O pedido fica guardado no Admin, como no B, mas quem vem buscar é uma esteira
+com `schedule` (de N em N minutos), sozinha. **A direção da confiança se
+inverte:** a chave passa a morar no GitHub, e a VPS não ganha poder nenhum
+novo.
+
+Este caminho existe neste documento porque ele **conserta o defeito que fez o B
+perder** — ninguém fica no caminho crítico —, e omiti-lo seria escolher o A por
+uma comparação incompleta.
+
+O que sobra contra ele:
+
+- **A tabela do B continua existindo.** O pedido precisa de um lugar para
+  esperar o relógio, e esse lugar é uma segunda caixa de entrada que o painel
+  não enxerga. No A não existe espera: o pedido vira arquivo no repositório e
+  some da VPS.
+- **O relógio custa minutos**, e o retorno na tela deixa de ser imediato: ele
+  aperta e não vê nada acontecer até a próxima batida.
+- **A chave não some, ela muda de lado.** Continua sendo um passo manual dele —
+  agora para a esteira poder ler o endereço protegido da VPS.
+
+O que ele ganha é real, e é só um: **a VPS não passa a poder mandar o GitHub
+rodar esteira.**
+
+### A recomendação
+
+**Caminho A**, por dois motivos, nesta ordem:
+
+1. **Nada fica guardado esperando.** O pedido vira arquivo do repositório em
+   menos de um minuto, e a fila continua sendo a definição única. B e C, os
+   dois, precisam de uma tabela nova que o painel não vê.
+2. **O retorno é imediato e sai de graça.** Ele aperta, e o PR aparece no bloco
+   ao vivo da mesma página, que já pergunta ao GitHub pelos PRs abertos.
+
+O preço é um passo manual único, e a casa já pagou esse preço uma vez pelo mesmo
+motivo: a `PISTA_TOKEN`, que ele criou em 28/08/2026 para a pista poder mergear.
+
+**Quando o C seria a escolha certa:** se o poder extra na VPS incomodar ele. A
+troca é honesta — alguns minutos de espera e uma tabela a mais, em troca de a
+VPS não ganhar nada. É decisão dele, não minha, e por isso os três estão
+escritos aqui em vez de dois.
 
 ### O que a chave pode, e o que ela não pode
 
@@ -187,9 +225,15 @@ menciona.
 
 ## Parte 5 | O que ainda depende dele
 
-1. **O mandato** para tocar `.github/` e `ci/` (CODEOWNERS) no degrau 0.
-2. **A chave**, no degrau 1 — o único passo manual, e ele vem num bloco só.
+1. **Qual ponte** — A (a tela chama o GitHub, instantâneo, a VPS ganha o poder
+   de disparar esteira) ou C (uma esteira de relógio busca, a VPS não ganha
+   nada, alguns minutos de espera). A recomendação é A; a Parte 2 diz por quê,
+   e diz também o que o C compra em troca.
+2. **O mandato** para tocar `.github/` e `ci/` (CODEOWNERS) no degrau 0. Vale
+   para os dois caminhos: os dois moram numa esteira.
+3. **A chave**, no degrau 1 — o único passo manual, e ele vem num bloco só. Os
+   dois caminhos pedem uma; muda de que lado ela fica.
 
 Nada mais. Os quatro degraus restantes são trabalho de robô, e a escada foi
-ordenada para que ele possa dizer "pode ir" uma vez e não ser incomodado de novo
-até a chave.
+ordenada para que ele possa dizer "pode ir" uma vez e não ser incomodado de
+novo até a chave.
