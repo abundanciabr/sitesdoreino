@@ -479,3 +479,92 @@ def test_o_pausado_continua_sem_convite_para_pedir_nada(client, com_email):
     assert "em análise" not in conteudo
     assert "Pedir para voltar" not in conteudo
     assert CAIXA not in conteudo
+
+
+@pytest.fixture
+def da_equipe(com_email):
+    """Quem entrou E está na `IDENTIDADE_STAFF_EMAILS` do servidor.
+
+    A ÚNICA diferença para `com_email` é o `papel`, e é de propósito: o que se
+    mede aqui é que essa palavra sozinha muda a tela, sem nenhuma outra peça
+    mudar de lugar. A `alunos` continua respondendo o que ela responde.
+    """
+    for nome in ("get_session", "get_session_full"):
+        corpo = com_email[nome].return_value.json()
+        corpo["papel"] = "staff"
+        com_email[nome].mock(return_value=httpx.Response(200, json=corpo))
+    return com_email
+
+
+# ---------------------------------- 5. a equipe entra por outra porta (02/09)
+#
+# O mantenedor encontrou isto com a conta dele, e a tela já provava o erro
+# sozinha: a home oferecia "Pedir entrada" e o clique abria a Caixa DIRETO, sem
+# formulário nenhum. Duas telas discordando sobre a mesma pessoa — o defeito
+# que a seção 1 deste arquivo nasceu para impedir, voltando pela única porta
+# que ela não vigiava.
+#
+# A escada de categorias NÃO tem o crachá de equipe, e não deve ter (§2.1): a
+# `alunos` acerta ao responder `cadastrado` sobre quem nunca comprou nada. Quem
+# estava incompleta era a pergunta da home.
+
+
+def test_a_equipe_nao_e_convidada_a_pedir_a_entrada_que_ja_tem(client, da_equipe):
+    """O defeito de 02/09, travado.
+
+    O convite continua CERTO para quem a `alunos` chama de cadastrado sem ser
+    da equipe — o teste da seção 1 mede isso com a mesma resposta da `alunos`
+    e só o `papel` diferente. As duas provas juntas são a regra inteira.
+    """
+    _situacao(da_equipe, "cadastrado")
+    conteudo = _abrir(client)
+    assert "Pedir entrada" not in conteudo
+    assert "Quer estudar no Meshcraft?" not in conteudo
+    assert CAIXA in conteudo, "a equipe entra na Caixa, e a home diz isso"
+
+
+def test_a_home_da_equipe_espelha_a_ordem_da_porta_da_caixa(client, da_equipe):
+    """Equipe ANTES de matrícula — a mesma ordem do `resolver()` da Caixa.
+
+    Sem ela a home volta a poder discordar do próprio destino: quem é da
+    equipe e tem ficha encerrada leria "seu acesso acabou" numa tela e entraria
+    na outra, no mesmo clique. Medir com `ex_aluno` é medir a ORDEM, e não
+    apenas o caso de ontem.
+    """
+    _situacao(da_equipe, "ex_aluno")
+    conteudo = _abrir(client)
+    assert "acesso" not in conteudo or CAIXA in conteudo
+    assert "Pedir para voltar" not in conteudo
+    assert CAIXA in conteudo
+
+
+def test_a_equipe_nao_paga_os_dois_saltos_de_rede(client, da_equipe):
+    """A ordem nova cobra menos, e o que ela deixa de pedir é o dado sensível.
+
+    Decidido o ramo pelo `papel` — que já estava resolvido pelo "Olá, Fulano"
+    do topo —, a categoria nunca é lida; e como o e-mail só é buscado para
+    calculá-la, ele deixa de atravessar esta célula. Guarda de preguiça, como
+    as da seção 3: sem ela, o próximo que "simplificar" o template desfaz a
+    economia de boa-fé e ninguém percebe.
+    """
+    _situacao(da_equipe, "cadastrado")
+    _abrir(client)
+    assert [c for c in da_equipe.calls if "/situacao" in str(c.request.url)] == []
+    assert [
+        c for c in da_equipe.calls if "/sessao/completa" in str(c.request.url)
+    ] == []
+
+
+def test_o_papel_desconhecido_nao_vira_equipe(client, com_email):
+    """Fail-CLOSED na palavra, como o `_plateia_confere` do menu.
+
+    `papel` é texto vindo de outra célula. Qualquer coisa que não seja
+    exatamente `staff` cai na escada de categorias de sempre — e não num ramo
+    de equipe adotado em silêncio.
+    """
+    for nome in ("get_session", "get_session_full"):
+        corpo = com_email[nome].return_value.json()
+        corpo["papel"] = "STAFF "
+        com_email[nome].mock(return_value=httpx.Response(200, json=corpo))
+    _situacao(com_email, "cadastrado")
+    assert "Pedir entrada" in _abrir(client)
