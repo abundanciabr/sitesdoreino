@@ -36,9 +36,12 @@ São as do cabeçalho do contrato, e este arquivo é onde elas ficam mecânicas:
    `contracts/eventos/forum.topico-criado.v1.json`. Sai no próximo Rito de
    Contrato do `forum` — não se corrige de carona daqui, e a cerca de célula
    reprovaria o PR que tentasse.
-2. **Nunca sai XP bruto de outra pessoa.** `getPublicProfiles` devolve nível e
-   título; quem quiser XP vê o PRÓPRIO, em `getMyStatus`. Placar de XP entre
-   alunos não existe nesta plataforma.
+2. **Nunca sai XP bruto de outra pessoa — para um ALUNO.** `getPublicProfiles`
+   devolve nível e título; quem quiser XP vê o PRÓPRIO, em `getMyStatus`.
+   Placar de XP entre alunos não existe nesta plataforma. `listStudentStandings`
+   (Rito de 03/09/2026) é uma exceção declarada, do mesmo formato da do
+   invariante 3 logo abaixo: serve só o bastidor do mantenedor, nunca um
+   aluno — ver o cabeçalho da própria operação.
 3. **Slug, nunca frase pronta.** O site serve três idiomas: transmitir
    "Modelador" congela o idioma de quem escreveu. Quem lê traduz o slug — a
    mesma lição de `contracts/eventos/notificacao.devida.v1.json` ("os dados da
@@ -72,7 +75,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Literal
 
-from django.db.models import Q
+from django.db.models import Max, Q
 from django.utils import timezone
 from django.utils.text import slugify
 from ninja import Router, Schema
@@ -97,6 +100,8 @@ from apps.gamificacao.interruptores import mudar as mudar_interruptor
 
 # ARMADILHA 020: alias obrigatório. `Sequencia` colide com o Schema homônimo do
 # contrato, e os outros seguem a mesma regra por disciplina, não por colisão.
+from apps.gamificacao.models import Concessao as ConcessaoModel
+from apps.gamificacao.models import LancamentoDeXP as LancamentoDeXPModel
 from apps.gamificacao.models import MissaoDefinicao as MissaoDefinicaoModel
 from apps.gamificacao.models import NivelDefinicao as NivelDefinicaoModel
 from apps.gamificacao.models import PerfilJogador as PerfilJogadorModel
@@ -825,3 +830,163 @@ def set_level_switch(request, nivel: int, payload: PedidoDeInterruptor):
         raise HttpError(404, str(erro)) from erro
     ativos = NivelDefinicaoModel.objects.filter(site_id=site_id, ativa=True).count()
     return _interruptor_de_degrau(degrau, ativos_no_site=ativos)
+
+
+# ---------------------------------------------------------------------------
+# O QUADRO DO BASTIDOR — pontos, atividade e conquistas, aluno por aluno
+# ---------------------------------------------------------------------------
+# Nasceu no Rito de Contrato de 03/09/2026, com o mantenedor presente. O pedido
+# dele: uma tela em `/admin/escola/` com a turma ordenada por pontos, o nível e
+# o título de cada um, as medalhas e marcos de cada um, e quem está ativo contra
+# quem parou.
+#
+# ESTA OPERAÇÃO FURA, DE PROPÓSITO E POR ESCRITO, O INVARIANTE 2 DESTA PORTA
+# ("nunca sai XP bruto de outra pessoa"). A exceção é do mesmo formato já aceito
+# para o invariante 3 nos três interruptores acima: ela serve SÓ o bastidor do
+# mantenedor — quem autoriza quem chega até aqui é a célula `admin`, sobre a
+# lista DELA, do mesmo jeito que já vale para `/economia/*`. "Placar de XP entre
+# ALUNOS não existe nesta plataforma" continua verdade: nenhum aluno lê este
+# XP, porque nenhuma operação que o aluno alcança devolve isto.
+#
+# O INVARIANTE 1 ("nunca sai e-mail, nunca sai texto de pessoa") CONTINUA
+# INTEIRO AQUI, e é por isso que a resposta não tem `titulo_slug` nem `nome` de
+# conquista: a admin já tem os dois em mãos, de `listLevelSwitches` e
+# `listAchievementSwitches` (que ela já chama para a tela de economia), e casar
+# `nivel`/`slug` com o texto em português é trabalho DELA — repetir o texto
+# aqui seria a mesma frase em dois lugares, e a lei anti-duplicação do
+# `CLAUDE.md` vale para contrato tanto quanto vale para código.
+class ConquistaDoAluno(Schema):
+    slug: str
+    classe: Literal["medalha", "marco"]
+    concedida_em: datetime
+
+
+class AlunoDoQuadro(Schema):
+    pessoa_id: str
+    xp: int
+    nivel: int
+    ultima_atividade_em: datetime | None
+    conquistas: list[ConquistaDoAluno]
+
+
+def _conquistas_por_pessoa(
+    site_id: str, ids: list[str]
+) -> dict[str, list[ConquistaDoAluno]]:
+    """`{pessoa_id: [conquistas, mais nova primeiro]}`. Pessoa sem nenhuma fica
+    de fora do mapa — quem chama trata ausência como lista vazia.
+
+    **`consentimento` NÃO filtra aqui, e isso é decisão.** Aquele campo governa
+    quem, ENTRE PARES, vê a conquista de alguém (Meu Estúdio, a turma) — a
+    escolha do aluno sobre os OUTROS alunos e o público. Esta operação serve o
+    bastidor do mantenedor, que já enxerga a escola inteira por outras portas
+    (o prontuário de matrícula, a fila de liberação); tratar o consentimento de
+    exposição entre pares como se fosse um véu contra o próprio operador da
+    escola confundiria as duas perguntas.
+    """
+    linhas = (
+        ConcessaoModel.objects.filter(site_id=site_id, pessoa_id__in=ids)
+        .select_related("conquista")
+        .order_by("pessoa_id", "-concedida_em")
+    )
+    mapa: dict[str, list[ConquistaDoAluno]] = {}
+    for linha in linhas:
+        mapa.setdefault(linha.pessoa_id, []).append(
+            ConquistaDoAluno(
+                slug=linha.conquista.slug,
+                classe=linha.conquista.classe,
+                concedida_em=linha.concedida_em,
+            )
+        )
+    return mapa
+
+
+def _ultima_atividade_por_pessoa(site_id: str, ids: list[str]) -> dict[str, datetime]:
+    """`{pessoa_id: instante do LancamentoDeXP definitivo mais recente}`.
+
+    **Só `DEFINITIVO`, nunca `pendente` nem `estornado`.** Um lançamento em
+    quarentena ainda pode ser desfeito (é o que a quarentena é para), e um
+    estorno é a prova de que aquele crédito específico não vale mais — nenhum
+    dos dois é "esta pessoa esteve ativa". Mostrar `pendente` como atividade
+    faria o quadro anunciar uma visita que ainda pode não acontecer.
+
+    Filtrado por `LancamentoDeXP`, e não pelo `atualizado_em` do perfil: aquele
+    campo é tocado por QUALQUER `recalcular()`, inclusive o reparo de
+    `reconciliar_perfis --consertar` (que roda com `celebrar=False` na própria
+    célula, precisamente porque reparo não é visita). Usar `atualizado_em` faria
+    um conserto de madrugada acender "ativo hoje" para quem não tocou o site.
+    """
+    linhas = (
+        LancamentoDeXPModel.objects.filter(
+            site_id=site_id,
+            pessoa_id__in=ids,
+            status=LancamentoDeXPModel.Status.DEFINITIVO,
+        )
+        .values("pessoa_id")
+        .annotate(ultima=Max("occurred_at"))
+    )
+    return {linha["pessoa_id"]: linha["ultima"] for linha in linhas}
+
+
+@router.get(
+    "/quadro",
+    response=list[AlunoDoQuadro],
+    operation_id="listStudentStandings",
+    summary="A escola inteira, aluno por aluno: pontos, atividade e conquistas",
+    description=(
+        "O quadro que a tela do mantenedor em /admin/escola/ desenha: a turma\n"
+        "ordenada por XP, com nivel, ultima atividade e as conquistas de cada um.\n"
+        "\n"
+        "EXCECAO DECLARADA AO INVARIANTE 2 DESTA PORTA ('nunca sai XP bruto de\n"
+        "outra pessoa'), do mesmo formato ja aceito nos tres interruptores da\n"
+        "economia para o invariante 3: esta operacao serve SO o bastidor do\n"
+        "mantenedor, e quem autoriza quem chega ate aqui e a celula admin, sobre a\n"
+        "lista DELA — o Bearer do par prova so QUEM CHAMA. 'Placar de XP entre\n"
+        "ALUNOS nao existe nesta plataforma' continua verdade: nenhuma operacao\n"
+        "que um aluno alcanca devolve isto.\n"
+        "\n"
+        "SO QUEM JA TEM PERFIL aparece na lista — PerfilJogador e preguicoso (Lei\n"
+        "7) e nasce no primeiro XP. Aluno sem nenhum ponto simplesmente nao esta\n"
+        "no mapa; quem chama trata ausencia como zero, nao como erro.\n"
+        "\n"
+        "Devolve TODOS os perfis do site, sem paginacao, como os tres\n"
+        "interruptores da economia — e pelo mesmo motivo: a tela precisa da\n"
+        "escola inteira para ordenar por pontos e apontar quem parou.\n"
+        "\n"
+        "NAO HA `titulo_slug` nem `nome` de conquista aqui, e a ausencia e\n"
+        "decisao: o invariante 1 ('nunca sai e-mail, nunca sai texto de pessoa')\n"
+        "continua inteiro. A admin ja tem o texto em portugues de\n"
+        "listLevelSwitches e listAchievementSwitches — casar `nivel`/`slug` com a\n"
+        "frase e trabalho dela, nao desta porta.\n"
+        "\n"
+        "`concessoes` IGNORA `consentimento` de proposito: aquele campo governa\n"
+        "exposicao ENTRE PARES (Meu Estudio, a turma), nao visibilidade para o\n"
+        "operador da escola, que ja enxerga o aluno inteiro por outras portas."
+    ),
+)
+def list_student_standings(request):
+    site_id = site_atual()
+    if site_id is None:
+        return []
+
+    perfis = list(
+        PerfilJogadorModel.objects.filter(site_id=site_id).only(
+            "pessoa_id", "xp_total", "nivel"
+        )
+    )
+    if not perfis:
+        return []
+
+    ids = [perfil.pessoa_id for perfil in perfis]
+    ultimas = _ultima_atividade_por_pessoa(site_id, ids)
+    conquistas = _conquistas_por_pessoa(site_id, ids)
+
+    return [
+        AlunoDoQuadro(
+            pessoa_id=perfil.pessoa_id,
+            xp=perfil.xp_total,
+            nivel=perfil.nivel,
+            ultima_atividade_em=ultimas.get(perfil.pessoa_id),
+            conquistas=conquistas.get(perfil.pessoa_id, []),
+        )
+        for perfil in perfis
+    ]

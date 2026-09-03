@@ -40,6 +40,9 @@ from django.test import Client
 from django.utils import timezone
 
 from apps.gamificacao.models import (
+    Concessao,
+    ConquistaDefinicao,
+    LancamentoDeXP,
     MissaoDefinicao,
     NivelDefinicao,
     Pessoa,
@@ -138,6 +141,13 @@ def pedir(
 
 def corpo(resposta):
     return json.loads(resposta.content)
+
+
+def _de_iso(texto: str):
+    """A string `...Z` que a porta devolve, de volta a um `datetime` ciente de
+    fuso — para comparar contra o instante gravado sem depender de quantas
+    casas de milissegundo o banco preservou."""
+    return timezone.datetime.fromisoformat(texto.replace("Z", "+00:00"))
 
 
 def montar_o_cenario():
@@ -739,3 +749,204 @@ def test_sem_SITE_ID_a_lista_de_degraus_fica_vazia_e_ligar_recusa(monkeypatch):
 
     assert corpo(pedir("/economia/degraus")) == []
     assert postar("/economia/degraus/1", corpo_json={"ativa": True}).status_code == 503
+
+
+# ---------------------------------------------------------------------------
+# O QUADRO DO BASTIDOR (Rito de Contrato de 03/09/2026): pontos, atividade e
+# conquistas, aluno por aluno — a exceção declarada ao invariante 2
+# ---------------------------------------------------------------------------
+def _lancar_xp(pessoa_id: str, *, pontos: int, occurred_at, status, sufixo: str):
+    """Um lançamento de XP, com o mínimo que o modelo exige."""
+    LancamentoDeXP.objects.create(
+        pessoa_id=pessoa_id,
+        site_id=SITE,
+        pontos=pontos,
+        origem_event_id=f"evento-{sufixo}",
+        regra_slug="quiz-aprovado",
+        occurred_at=occurred_at,
+        dia_local=occurred_at.date(),
+        status=status,
+        liberado_em=occurred_at,
+    )
+
+
+def _conceder(
+    pessoa_id: str, conquista, *, consentimento=Concessao.Consentimento.PRIVADO
+):
+    return Concessao.objects.create(
+        pessoa_id=pessoa_id,
+        site_id=SITE,
+        conquista=conquista,
+        consentimento=consentimento,
+    )
+
+
+def test_o_quadro_traz_pontos_nivel_atividade_e_conquistas_de_quem_tem_perfil():
+    """O caminho feliz: um perfil com XP, uma última atividade e uma medalha."""
+    montar_o_cenario()
+    agora = timezone.now()
+    _lancar_xp(
+        ID_OPACO,
+        pontos=10,
+        occurred_at=agora,
+        status=LancamentoDeXP.Status.DEFINITIVO,
+        sufixo="1",
+    )
+    medalha = ConquistaDefinicao.objects.create(
+        slug="primeira-obra",
+        site_id=SITE,
+        nome="Primeira obra",
+        classe=ConquistaDefinicao.Classe.MEDALHA,
+        familia=ConquistaDefinicao.Familia.OFICIO,
+    )
+    _conceder(ID_OPACO, medalha)
+
+    dados = corpo(pedir("/quadro"))
+
+    assert len(dados) == 1
+    linha = dados[0]
+    assert linha["pessoa_id"] == ID_OPACO
+    assert linha["xp"] == XP_SECRETO
+    assert linha["nivel"] == 7
+    # O SQLite guarda milissegundos, não microssegundos — comparar a string
+    # inteira contra `agora.isoformat()` quebraria por arredondamento, não por
+    # defeito. A tolerância é do teste, não da porta.
+    diferenca = agora - _de_iso(linha["ultima_atividade_em"])
+    assert abs(diferenca) < timedelta(seconds=1)
+    assert linha["conquistas"] == [
+        {
+            "slug": "primeira-obra",
+            "classe": "medalha",
+            "concedida_em": linha["conquistas"][0]["concedida_em"],
+        }
+    ]
+
+
+def test_o_quadro_NAO_vaza_email_nem_nome_mesmo_expondo_XP_de_terceiro():
+    """A exceção é ao invariante 2, nunca ao 1. `montar_o_cenario` deixa e-mail e
+    nome plantados de propósito — se algum dos dois vazasse aqui, a exceção
+    declarada teria virado uma porta sem parede nenhuma."""
+    montar_o_cenario()
+    _lancar_xp(
+        ID_OPACO,
+        pontos=1,
+        occurred_at=timezone.now(),
+        status=LancamentoDeXP.Status.DEFINITIVO,
+        sufixo="1",
+    )
+
+    saida = pedir("/quadro").content.decode()
+
+    assert (
+        str(XP_SECRETO) in saida
+    ), "o XP precisa estar lá — é o que esta operação existe para expor"
+    for proibido in [EMAIL, NOME, "ana-da-sabotagem"]:
+        assert proibido not in saida, f"VAZOU dado pessoal: {proibido!r}"
+
+
+def test_o_quadro_ignora_lancamento_pendente_e_estornado_na_ultima_atividade():
+    """Só `DEFINITIVO` conta como visita — quarentena e estorno não são fato."""
+    montar_o_cenario()
+    antiga = timezone.now() - timedelta(days=5)
+    recente = timezone.now()
+    _lancar_xp(
+        ID_OPACO,
+        pontos=10,
+        occurred_at=antiga,
+        status=LancamentoDeXP.Status.DEFINITIVO,
+        sufixo="antiga",
+    )
+    _lancar_xp(
+        ID_OPACO,
+        pontos=10,
+        occurred_at=recente,
+        status=LancamentoDeXP.Status.PENDENTE,
+        sufixo="pendente",
+    )
+    _lancar_xp(
+        ID_OPACO,
+        pontos=10,
+        occurred_at=recente,
+        status=LancamentoDeXP.Status.ESTORNADO,
+        sufixo="estornado",
+    )
+
+    dados = corpo(pedir("/quadro"))[0]
+    assert abs(antiga - _de_iso(dados["ultima_atividade_em"])) < timedelta(seconds=1)
+
+
+def test_pessoa_sem_lancamento_nenhum_tem_ultima_atividade_null():
+    """Perfil existe (Lei 7 é preguiçosa, mas alguém pode ter sido criado por
+    reconciliação) sem nenhum LancamentoDeXP definitivo: null, não erro."""
+    montar_o_cenario()
+    assert corpo(pedir("/quadro"))[0]["ultima_atividade_em"] is None
+
+
+def test_o_quadro_ignora_consentimento_PRIVADO_da_concessao():
+    """`consentimento` governa exposição ENTRE PARES, não para o operador da
+    escola — o mantenedor já enxerga o aluno inteiro por outras portas."""
+    montar_o_cenario()
+    medalha = ConquistaDefinicao.objects.create(
+        slug="segredo-do-aluno",
+        site_id=SITE,
+        nome="Segredo do aluno",
+        classe=ConquistaDefinicao.Classe.MEDALHA,
+        familia=ConquistaDefinicao.Familia.SECRETA,
+    )
+    _conceder(ID_OPACO, medalha, consentimento=Concessao.Consentimento.PRIVADO)
+
+    dados = corpo(pedir("/quadro"))[0]
+    assert [c["slug"] for c in dados["conquistas"]] == ["segredo-do-aluno"]
+
+
+def test_o_quadro_NAO_traz_titulo_slug_nem_nome_de_conquista():
+    """Invariante 1 intacto: nível e slug, nunca a frase em português. A admin
+    já tem `listLevelSwitches`/`listAchievementSwitches` para traduzir."""
+    montar_o_cenario()
+    medalha = ConquistaDefinicao.objects.create(
+        slug="primeira-obra",
+        site_id=SITE,
+        nome="Primeira obra, o nome pronto que não pode vazar aqui",
+        classe=ConquistaDefinicao.Classe.MEDALHA,
+        familia=ConquistaDefinicao.Familia.OFICIO,
+    )
+    _conceder(ID_OPACO, medalha)
+
+    saida = pedir("/quadro").content.decode()
+    assert "titulo_slug" not in saida
+    assert "nome pronto que não pode vazar" not in saida
+    assert "Mestre de Ateli" not in saida, "vazou a frase pronta do título do nível"
+
+
+def test_pessoa_sem_perfil_nao_aparece_no_quadro():
+    """`PerfilJogador` é preguiçoso (Lei 7): sem XP nenhum, sem linha — a admin
+    trata ausência como zero, cruzando com a lista inteira de alunos dela."""
+    Pessoa.objects.create(id_da_plataforma="p_sem_perfil", email="s@exemplo.com")
+    assert corpo(pedir("/quadro")) == []
+
+
+def test_o_quadro_de_outro_site_nao_aparece():
+    montar_o_cenario()
+    outra = Pessoa.objects.create(
+        id_da_plataforma="p_de_outra_loja", email="b@exemplo.com"
+    )
+    PerfilJogador.objects.create(pessoa=outra, site_id="outro-site", nivel=1)
+
+    dados = corpo(pedir("/quadro"))
+    assert [d["pessoa_id"] for d in dados] == [ID_OPACO], "vazou perfil de outro site"
+
+
+def test_sem_SITE_ID_o_quadro_fica_vazio_e_nao_quebra(monkeypatch):
+    montar_o_cenario()
+    monkeypatch.delenv("SITE_ID")
+    resposta = pedir("/quadro")
+    assert resposta.status_code == 200
+    assert corpo(resposta) == []
+
+
+@pytest.mark.parametrize(
+    "token", [None, "token-de-outra-pessoa"], ids=["sem-token", "token-errado"]
+)
+def test_o_quadro_sem_credencial_e_401(token):
+    """Mesmo cadeado das outras operações — e o único que existe (`armadilhas/186`)."""
+    assert pedir("/quadro", token=token).status_code == 401
