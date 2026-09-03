@@ -1452,6 +1452,17 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/",
+      "endereco": "/admin/placar/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "O placar",
+      "descricao": "Uma meta, um número e a resposta: estamos ganhando ou perdendo? É o andar zero do painel de gestão do negócio. Hoje mostra a Meta Crucialmente Importante nº 1, o número de alunos na plataforma, medido ao vivo na parte que guarda os alunos.",
+      "observacao": "O número só aparece se existir o cartão dele em painel/cartoes/ (o que é, de onde vem, quem pode declará-lo). Plano: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md."
+    },
+    {
+      "celula": "admin",
       "rota": "avisos/",
       "endereco": "/admin/avisos/",
       "alcance": "publico",

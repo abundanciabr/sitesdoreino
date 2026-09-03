@@ -1,0 +1,117 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O placar (/admin/placar/, 03/09/2026): o andar zero do painel de gestão.
+Plano: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §3 e §4.1. Regras da tela em
+apps/core/placar.py.
+
+Bloco `comment`, e nunca `{#`: aquele comenta UMA LINHA SÓ, e escrito em várias
+o texto vaza para a tela (armadilhas/087). Guarda:
+tests/test_nenhum_comentario_vaza_para_a_tela.py.
+
+Zero atributo `style=` aqui dentro: o estilo mora em admin/base.html, e quem
+impede a volta dele para a marcação é tests/test_estilo_nao_volta_para_a_marcacao.py.
+
+O NÚMERO só aparece dentro de `{% if meta %}`: sem cartão válido a tela diz o
+que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
+`test_placar.py::test_sem_cartao_valido_o_numero_nao_aparece` a mede.
+{% endcomment %}
+{% block titulo %}O placar{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>O placar</h1>
+  <p class="subtitulo">Uma meta, um número, e a resposta: estamos ganhando ou perdendo?</p>
+
+  {% if not meta %}
+  <p class="aviso borda-vermelha">
+    <b>O número não aparece porque falta o cartão dele.</b>
+    Esta tela se recusa a mostrar um número que não tenha cartão (o que ele é,
+    de onde vem, quem pode declará-lo). Nada aqui está quebrado por sua causa:
+    é coisa de bastidor, e o robô do próximo despacho conserta.
+  </p>
+  <ul class="notas">
+    {% for recusa in recusas %}<li>{{ recusa }}</li>{% endfor %}
+  </ul>
+  {% else %}
+
+  <p class="lei">
+    <b>Meta Crucialmente Importante nº 1:</b> {{ meta.pergunta }}
+    {% if placar.alvo %}
+      De <b>{{ placar.partida }}</b> para <b>{{ placar.alvo }}</b> alunos até <b>{{ placar.ate }}</b>.
+    {% else %}
+      De <b>{{ placar.x|default_if_none:"?" }}</b> para <b>?</b> alunos até <b>?</b>.
+    {% endif %}
+  </p>
+
+  {% if placar.veredito == "nao-consigo-contar" %}
+    <div class="aviso borda-amarela">
+      <b>Não consigo contar agora.</b>
+      A parte que guarda os alunos não respondeu a tempo. Isto não é zero:
+      é a pergunta que não chegou. Abra de novo daqui a pouco.
+    </div>
+  {% else %}
+    <div class="hero">
+      <div>
+        <div class="hero-numero">{{ placar.x }}</div>
+        <h2 class="titulo-da-conta">aluno{{ placar.x|pluralize:"s" }} na plataforma hoje</h2>
+      </div>
+      <p class="hero-nota">
+        {{ meta.definicao }}
+        Quem declara este número: a parte que guarda os alunos ({{ meta.autoridade }}),
+        medido agora, ao vivo.
+      </p>
+    </div>
+
+    {% if placar.veredito == "sem-alvo" %}
+      <div class="aviso borda-amarela">
+        <b>Sem alvo ainda: aguardando você.</b>
+        A meta precisa de um Y e de uma data ("de {{ placar.x }} para Y alunos
+        até quando"). Quando você decidir, o robô grava no cartão e no livro, e
+        esta tela passa a dizer se estamos ganhando.
+      </div>
+    {% elif placar.veredito == "cumprida" %}
+      <div class="aviso verde"><b>Meta cumprida.</b> {{ placar.x }} já passa de {{ placar.alvo }}. Hora de fixar a próxima.</div>
+    {% elif placar.veredito == "vencida" %}
+      <div class="aviso borda-vermelha"><b>O prazo passou</b> e faltaram {{ placar.distancia }}. A próxima meta começa daqui.</div>
+    {% elif placar.veredito == "ganhando" %}
+      <div class="aviso verde">
+        <b>Ganhando.</b> Na linha reta da partida ao alvo, hoje deveríamos estar em
+        {{ placar.esperado_hoje }}, e estamos em {{ placar.x }}.
+        Faltam {{ placar.distancia }} em {{ placar.dias_restantes }} dia{{ placar.dias_restantes|pluralize:"s" }}
+        {% if placar.ritmo_por_semana %}({{ placar.ritmo_por_semana }} por semana){% endif %}.
+      </div>
+    {% else %}
+      <div class="aviso borda-vermelha">
+        <b>Perdendo.</b> Hoje deveríamos estar em {{ placar.esperado_hoje }}, e estamos em {{ placar.x }}.
+        Faltam {{ placar.distancia }} em {{ placar.dias_restantes }} dia{{ placar.dias_restantes|pluralize:"s" }}
+        {% if placar.ritmo_por_semana %}({{ placar.ritmo_por_semana }} por semana){% endif %}.
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <h2 class="titulo-de-bloco espaco-20">O par que segura a meta</h2>
+  {% if par %}
+    <p class="recado">
+      <b>{{ par.pergunta }}</b>
+      {{ par.definicao }}
+      {% if par.fonte %}
+        Fonte: {{ par.fonte }}.
+      {% else %}
+        <span class="rotulo">Sem dados ainda.</span> {{ par.sem_fonte_porque }}
+      {% endif %}
+    </p>
+  {% else %}
+    <p class="aviso borda-vermelha"><b>O cartão do par está ausente ou inválido</b>, e sem ele o par não aparece.</p>
+    <ul class="notas">
+      {% for recusa in recusas_do_par %}<li>{{ recusa }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+
+  <p class="recado-fraco espaco-20">
+    Por que um par: uma meta de "mais alunos" se cumpre liberando contas que
+    nunca entram. O par diz quantos desses alunos estão vivos na escola, e
+    "ganhando" só vale quando os dois sobem. Cartão da meta: versão
+    {{ meta.versao }}, desde {{ meta.desde }}.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

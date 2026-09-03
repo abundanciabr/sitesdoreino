@@ -50,6 +50,7 @@ from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import plano_publico, planos_indice
 from apps.core.painel import painel, painel_arquivo
 from apps.core.perpetuo import perpetuo
+from apps.core.placar import placar
 from apps.core.robos import robos
 from apps.core.views import (
     escola,
@@ -352,6 +353,12 @@ urlpatterns = [
     # UMA rota hoje, e a área foi desenhada para ganhar irmãs: cada painel novo
     # entra como `perpetuo/<coisa>/`, e nunca como uma tela solta noutro canto.
     path("perpetuo/", perpetuo, name="perpetuo"),
+    # O PLACAR (`apps/core/placar.py`, 03/09/2026) — o andar zero do painel de
+    # gestão do negócio (`docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`, degrau 0):
+    # a Meta Crucialmente Importante, o número medido, e ganhando ou perdendo.
+    # Fora do prefixo `painel/` pelo mesmo motivo do perpétuo: a rota genérica
+    # `painel/<qualquer coisa>` engoliria esta.
+    path("placar/", placar, name="placar"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro
