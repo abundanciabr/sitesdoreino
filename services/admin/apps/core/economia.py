@@ -84,6 +84,24 @@ TRADUCAO = {
         "Terminar uma aula",
         "O aluno conclui uma aula do curso.",
     ),
+    # O FÓRUM (01/09/2026) — semeado junto com o fórum, e esquecido aqui até
+    # 03/09/2026: sem tradução, as três linhas apareciam com o slug cru
+    # (`forum-topico-criado`, feio mas honesto — comentário acima) e é plausível
+    # que o mantenedor nunca as tenha reconhecido como "regras do fórum" para
+    # ligar. Achado numa auditoria pedida por ele depois de o quadro de pontos
+    # continuar zerado mesmo com alunos participando.
+    "forum-topico-criado": (
+        "Abrir uma conversa no fórum",
+        "O aluno começa um tópico novo.",
+    ),
+    "forum-mensagem": (
+        "Responder no fórum",
+        "O aluno escreve numa conversa já existente.",
+    ),
+    "forum-resposta-aceita": (
+        "Ter a própria resposta aceita",
+        "Alguém marca a SUA resposta como a que resolveu a dúvida — a maior recompensa do catálogo, porque validação humana vale mais que volume.",
+    ),
 }
 
 # Os três motivos pelos quais ligar uma regra pode não fazer número nenhum se

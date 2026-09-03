@@ -29,7 +29,7 @@ from huey import crontab
 
 from config.huey import huey
 
-from .models import OutboxEvent
+from .models import LancamentoDeXP, OutboxEvent
 
 logger = logging.getLogger(__name__)
 
@@ -125,3 +125,57 @@ def relay_outbox_periodico() -> int:
     reclama (`armadilhas/030`). No compose ele é o serviço `gamificacao-relay`.
     """
     return relay_outbox()
+
+
+def liberar_quarentena() -> tuple[int, int]:
+    """Torna definitivo o XP em quarentena que já passou da data.
+
+    Mesma lógica que `management/commands/liberar_quarentena.py` chama à mão —
+    extraída para cá para que o comando e a task periódica não sejam duas
+    cópias do mesmo gesto (a lei anti-duplicação vale para comportamento tanto
+    quanto para dado). Devolve `(lançamentos liberados, perfis recalculados)`.
+
+    **Por que esta task precisava nascer, e não só o comando.** O docstring do
+    comando sempre disse *"de minuto em minuto, pelo mesmo processo que hospeda
+    o consumidor"* — mas nada no `docker-compose.yml` ou no `huey` desta célula
+    chamava o comando em lugar nenhum: ele só existia para rodar à mão. Na
+    prática, XP social (sugestão, voto, fórum) nasce em quarentena
+    (`quarentena_horas` de cada regra, RegraDePontuacao) e **ficaria represado
+    para sempre** — o aluno faria a ação, a regra pagaria de verdade, e o
+    número nunca apareceria no perfil dele, porque ninguém chamava o gesto que
+    o tira da quarentena. Achado numa auditoria pedida pelo mantenedor em
+    03/09/2026, depois de alunos já terem participado e o quadro de pontos
+    continuar zerado.
+    """
+    # Importado AQUI, não no topo do arquivo: `motor.py` importa
+    # `relay_apos_commit` deste módulo, e um `from .motor import recalcular`
+    # no topo fecharia um ciclo (motor → tasks → motor) que o Python não
+    # resolve. `tasks.py` é o módulo mais "de baixo" da célula — ele pode
+    # depender de `motor.py` numa função, nunca no import do módulo inteiro.
+    from .motor import recalcular
+
+    agora = timezone.now()
+    vencidos = LancamentoDeXP.objects.filter(
+        status=LancamentoDeXP.Status.PENDENTE, liberado_em__lte=agora
+    )
+    # Quem recalcular depois. Coletado ANTES do update: depois dele o filtro
+    # por `pendente` não acha mais ninguém.
+    afetados = set(vencidos.values_list("pessoa_id", "site_id"))
+    quantos = vencidos.update(status=LancamentoDeXP.Status.DEFINITIVO)
+
+    for pessoa_id, site_id in afetados:
+        recalcular(pessoa_id, site_id)
+
+    return quantos, len(afetados)
+
+
+@huey.periodic_task(crontab(minute="*"))
+def liberar_quarentena_periodico() -> tuple[int, int]:
+    """A rede de segurança do XP social: a cada minuto, libera quem venceu.
+
+    Mesmo desenho de `relay_outbox_periodico` — mesmo worker (`run_huey`,
+    serviço `gamificacao-relay` no compose), mesma cadência. Rodar duas vezes
+    no mesmo minuto é seguro: o filtro é por `status`, e um lançamento já
+    `DEFINITIVO` não é tocado de novo.
+    """
+    return liberar_quarentena()
