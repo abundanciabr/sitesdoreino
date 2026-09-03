@@ -255,6 +255,40 @@ def decidir_na_fila(
         return linha, "ok"
 
 
+def apagar_recusado(*, id_da_linha: str) -> str:
+    """[APAGAR-RECUSADO] Apaga de vez um pedido RECUSADO — nunca quem ja foi aluno.
+
+    `docs/decisoes/DECISAO-apagar-recusado-definitivamente.md` (03/09/2026):
+    reverte, SO para esta fatia, a `DECISAO-a-ficha-nao-se-apaga.md`. Devolve
+    `"ok"`, `"nao-encontrada"` ou `"nao-recusada"`.
+
+    A MESMA fronteira de `decidir_na_fila`: so enxerga linhas nascidas na fila
+    (prefixo `pre:` no order_id). Uma matricula REAL e `"nao-encontrada"` aqui
+    de proposito — o filtro por prefixo a exclui antes mesmo de olhar o
+    status, entao esta funcao NUNCA chega perto de quem ja teve acesso.
+
+    `"nao-recusada"` cobre quem ainda esta `aguardando`: apagar antes da
+    decisao apagaria a propria decisao, e nao so o pedido.
+    """
+    with transaction.atomic():
+        try:
+            linha = (
+                Matricula.objects.select_for_update()
+                .filter(order_id__startswith=Matricula.PREFIXO_DA_FILA)
+                .get(pk=id_da_linha)
+            )
+        except (Matricula.DoesNotExist, ValueError, TypeError):
+            # ValueError/TypeError: id que nem numero e — "nao existe linha com
+            # este id" e a resposta honesta, nao um 500.
+            return "nao-encontrada"
+
+        if linha.status != Matricula.STATUS_RECUSADA:
+            return "nao-recusada"
+
+        linha.delete()
+        return "ok"
+
+
 # ---------------------------------------------------------------- [CATEGORIAS]
 # As cinco categorias de usuário (`docs/decisoes/DECISAO-categorias-de-usuario.md`)
 # — mas só TRÊS delas são calculáveis aqui, e a ausência das outras duas é a
@@ -517,8 +551,15 @@ def atualizar_matricula(
 # que as fichas contam separadas.
 #
 # `apagar_matricula` MORREU AQUI no mesmo dia. Nao ha caminho, em lugar nenhum
-# desta celula, que apague uma Matricula — e a porta `DELETE /matriculas/{id}`
-# saiu do contrato junto. Guarda: `tests/test_a_ficha_nao_se_apaga.py`.
+# desta celula, que apague uma Matricula que ja deu acesso — e a porta
+# `DELETE /matriculas/{id}` saiu do contrato junto. Guarda:
+# `tests/test_a_ficha_nao_se_apaga.py`.
+#
+# [APAGAR-RECUSADO] Excecao aberta em 03/09/2026
+# (`docs/decisoes/DECISAO-apagar-recusado-definitivamente.md`), que reverte a
+# lei acima SO para quem nunca chegou a ser aluno: um pedido RECUSADO pode ser
+# apagado de vez, pela funcao `apagar_recusado` abaixo. `apagar_matricula`
+# continua sem existir — esta e uma funcao NOVA, com fronteira propria.
 
 
 def como_o_prontuario_ve(matricula: Matricula) -> dict:

@@ -137,24 +137,49 @@
         <input type="hidden" name="alvo" value="{{ pessoa.id }}">
         <button class="sim" type="submit">Aceitar mesmo assim</button>
       </form>
+
+      {% comment %}
+      [APAGAR-RECUSADO] 03/09/2026, `DECISAO-apagar-recusado-definitivamente.md`.
+      O ÚNICO gesto irreversível desta escola, e por isso separado do botão de
+      cima por uma linha (`.apagar-de-vez`, a mesma classe do "apagar de vez"
+      de um documento) e com o `confirm()` do navegador — a mesma trava que
+      "apagar a ideia para sempre" já usa em `caixa_ideia.html`. Sem campo
+      escondido além do `alvo`: não há dado nenhum para reenviar, porque a
+      linha vai deixar de existir.
+      {% endcomment %}
+      <div class="apagar-de-vez">
+        <form method="post" action="{% url 'escola_apagar_recusado' %}"
+              onsubmit="return confirm('Apagar este pedido de vez? Não tem como desfazer — nem eu recupero depois.');">
+          {% csrf_token %}
+          <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+          <button class="perigo" type="submit">Apagar de vez</button>
+        </form>
+      </div>
     </div>
     {% endfor %}
   </div>
   {% endif %}
 
   <p class="aviso espaco-28">
-    <b>O que o botão faz, em uma frase:</b> o pedido da pessoa volta para a fila
-    e é liberado na sequência, que é o mesmo caminho de quem entra pelo site.
-    Ela deixa de ver a recusa, passa a entrar na área de alunos, e o motivo que
-    você tinha escrito sai da ficha dela.
+    <b>O que "Aceitar mesmo assim" faz, em uma frase:</b> o pedido da pessoa
+    volta para a fila e é liberado na sequência, que é o mesmo caminho de quem
+    entra pelo site. Ela deixa de ver a recusa, passa a entrar na área de
+    alunos, e o motivo que você tinha escrito sai da ficha dela.
     <br><br>
     <b>Se a segunda metade falhar, nada se perde:</b> a pessoa fica esperando na
     fila da tela de alunos, com o botão Liberar do lado, e esta tela diz isso com
     todas as letras. Não clique duas vezes aqui nesse caso.
     <br><br>
-    <b>A ficha continua inteira, aqui e no prontuário.</b> Nenhum cadastro se
-    apaga nesta escola: aceitar de novo não some com a história de ninguém, e as
-    passagens anteriores continuam no prontuário de cada pessoa.
+    <b>"Aceitar mesmo assim" nunca apaga nada:</b> a ficha continua inteira,
+    aqui e no prontuário, mesmo depois de aceita, e as passagens anteriores
+    continuam contando a história de cada pessoa.
+    <br><br>
+    <b>"Apagar de vez" é diferente, e é o único gesto irreversível desta
+    escola.</b> Ele existe só nesta tela, e só para quem nunca chegou a ser
+    aluno: depois de apagado, o pedido não existe mais em lugar nenhum, nem no
+    prontuário. Quem já foi aluno alguma vez, mesmo tendo saído, continua com a
+    ficha protegida para sempre, sem botão de apagar em nenhuma outra tela do
+    sistema.
   </p>
 </div>
 {% endblock %}

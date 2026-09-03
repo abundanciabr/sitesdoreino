@@ -24,9 +24,19 @@ com ele a rota, o método de cliente e a porta da `alunos`. Os testes que
 mediam o apagar deram lugar a `test_nao_existe_caminho_para_apagar` — o que
 precisa de guarda agora é a AUSÊNCIA, porque um botão removido volta com uma
 linha de template e ninguém percebe.
+
+**03/09/2026 — a guarda ficou mais ESTREITA, por decisão do mantenedor, não
+por engano.** `DECISAO-apagar-recusado-definitivamente.md` abriu uma exceção:
+`AlunosClient` ganhou um método que fala DELETE de verdade
+(`apagar_recusado`), o primeiro desde 29/08. `test_nao_existe_caminho_para_apagar`
+não pôde mais dizer "nenhum DELETE nesta classe" — passou a dizer "nenhum
+DELETE mira uma matrícula REAL", que é a garantia que sempre importou. A
+ausência de `escola_aluno_apagar` e de `AlunosClient.apagar_aluno` continua
+sendo medida linha a linha, sem mudança nenhuma.
 """
 
 import inspect
+import re
 
 import httpx
 import pytest
@@ -235,14 +245,32 @@ def test_nao_existe_caminho_para_apagar():
     Tirar só o `<form>` do template deixaria a rota viva para quem soubesse o
     endereço; tirar a rota deixaria o método do cliente pronto para a próxima
     view que alguém escrevesse. A capacidade sai inteira ou não sai.
+
+    03/09/2026: `AlunosClient` passou a ter UM método que fala DELETE de
+    verdade — `apagar_recusado`, a exceção aberta por
+    `DECISAO-apagar-recusado-definitivamente.md`. Por isso esta guarda não
+    pode mais dizer "nenhum DELETE nesta classe"; ela diz o que sempre
+    importou: nenhuma chamada DELETE mira uma matrícula REAL
+    (`/matriculas/{id}`). A exceção só alcança `/pre-matriculas/{id}` — a
+    fila, nunca quem já foi aluno.
     """
     with pytest.raises(NoReverseMatch):
         reverse("escola_aluno_apagar")
 
     assert not hasattr(AlunosClient, "apagar_aluno")
-    # Nenhum método desta classe fala DELETE com a `alunos` — a porta que
-    # apagava saiu do contrato dela na mesma leva.
-    assert ".delete(" not in inspect.getsource(AlunosClient)
+
+    fonte = inspect.getsource(AlunosClient)
+    chamadas_delete = re.findall(r'\.delete\(\s*f"([^"]*)"', fonte)
+    assert chamadas_delete, (
+        "esperava pelo menos uma chamada DELETE nesta classe "
+        "(apagar_recusado) — se ela sumiu, esta asserção precisa mudar "
+        "de volta para a forma antiga"
+    )
+    for endereco in chamadas_delete:
+        assert endereco.startswith("{base}/pre-matriculas/"), (
+            f"chamada DELETE para {endereco!r} não é /pre-matriculas/ — "
+            "isto reabriria o caminho de apagar uma matrícula real"
+        )
 
 
 @respx.mock
