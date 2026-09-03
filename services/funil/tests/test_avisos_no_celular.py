@@ -600,3 +600,36 @@ def test_a_recusa_do_navegador_e_a_do_servidor_tem_caminhos_separados():
     assert 'return "sem-servico";' in js.split("function aparelhoNaoPode")[1]
     # E o cartaz sabe mostrar a parte nova.
     assert '"sem-servico"' in js.split("function mostrarSo")[1].split("}")[0]
+
+
+# ---------------------------------------------------------------------------
+# O aviso de teste (Rito de Contrato de 03/09/2026)
+# ---------------------------------------------------------------------------
+# O botão "Mandar um aviso de teste para mim" em /admin/avisos/ dispara este
+# assunto. Ele existe para PROVAR O CANAL, não para contar uma novidade — e
+# ainda assim precisa da mesma coisa que toda carta desta célula: um texto
+# reconhecível na hora, nos três idiomas, sem depender do genérico.
+
+FRASE_DO_TESTE = {
+    "en": ("Meshcraft", "It worked. This is the test you asked for."),
+    "pt-br": ("Meshcraft", "Deu certo. Este é o teste que você pediu."),
+    "es": ("Meshcraft", "Funcionó. Esta es la prueba que pediste."),
+}
+
+
+@pytest.mark.parametrize("idioma", ["en", "pt-br", "es"])
+def test_o_aviso_de_teste_fala_os_tres_idiomas(client, rede, idioma):
+    textos = _configuracao_do_sw(client, idioma)["textos"]
+    titulo, corpo = FRASE_DO_TESTE[idioma]
+
+    assert textos["sistema.teste-de-aviso"] == {"titulo": titulo, "corpo": corpo}
+
+
+def test_o_aviso_de_teste_nao_ficou_com_o_texto_generico(client, rede):
+    """A mesma prova das quatro cartas da gamificação: se alguém apagar a
+    linha do mapa, o assunto some dos `textos` e o aparelho volta ao
+    genérico — o que é fail-open correto para um assunto desconhecido, e
+    falha real para este, que já é conhecido."""
+    configuracao = _configuracao_do_sw(client, "pt-br")
+
+    assert configuracao["textos"]["sistema.teste-de-aviso"] != configuracao["generico"]

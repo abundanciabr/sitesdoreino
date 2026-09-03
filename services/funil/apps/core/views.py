@@ -541,6 +541,11 @@ def manifesto_do_app(request):
 # frase daqui é verdadeira sozinha, sem depender de dado que talvez não venha.
 TEXTOS_DO_AVISO = {
     "sugestao.status-alterado": "sugestao",
+    # O aviso de teste (Rito de Contrato de 03/09/2026): a pessoa clicou em
+    # "Mandar um aviso de teste para mim" em /admin/avisos/, e este e o texto
+    # que a tela do celular mostra. So existe para provar o canal, entao a
+    # frase e sempre a mesma, sem parametro nenhum, igual as outras.
+    "sistema.teste-de-aviso": "teste",
     # As quatro cartas de celebração da gamificação (degrau 21b, 01/09/2026),
     # congeladas em `contracts/eventos/notificacao.devida.v1.json`. Até aqui
     # as quatro caíam no genérico "Você tem um aviso novo", que é honesto e

@@ -105,6 +105,24 @@ js:
     pt-br: "Sua sugestão teve uma novidade."
     es: "Tu sugerencia tuvo una novedad."
 
+  teste_titulo:
+    _fonte: "00057d"
+    en: "Meshcraft"
+    pt-br: "Meshcraft"
+    es: "Meshcraft"
+
+  teste_corpo:
+    # A frase do aviso de teste (Rito de Contrato de 03/09/2026), disparado
+    # a partir de /admin/avisos/ quando o mantenedor quer saber se o canal
+    # de avisos do celular esta funcionando, sem precisar entrar na VPS. So
+    # existe um assunto, "sistema.teste-de-aviso", entao esta e a UNICA
+    # frase que este aviso pode mostrar - reconhecivel na hora, sem
+    # confundir com nenhuma novidade de verdade da escola.
+    _fonte: "c18735"
+    en: "It worked. This is the test you asked for."
+    pt-br: "Deu certo. Este é o teste que você pediu."
+    es: "Funcionó. Esta es la prueba que pediste."
+
   generico_titulo:
     _fonte: "00057d"
     en: "Meshcraft"
