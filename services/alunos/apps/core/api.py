@@ -1397,6 +1397,11 @@ _D2 = "DERIVADO da proveniencia da linha, nunca de um campo proprio:\n`liberado`
 
 _D3 = "Esta linha esta na FILA — decida por POST /pre-matriculas/{id}/decisao"
 
+# Rito de Contrato de 03/09/2026 (o placar do painel de gestão). O texto é o
+# MESMO do congelado em `contracts/alunos.openapi.yaml`, byte a byte: o portão
+# compara o vivo com o congelado, e uma vírgula diferente aqui é drift.
+_D4 = 'Quando a pessoa VIROU ALUNA. Para quem entrou pela fila (`liberado`) e o\ninstante da liberacao; para quem comprou, o instante em que o pagamento\nconfirmou a matricula (`criada_em`). Nasceu em 03/09/2026, no Rito de\nContrato do placar do painel de gestao: a meta do mantenedor passou a ser\n"quantas pessoas compraram neste mes", e a data que conta e ESTA, nunca\n`comprou_em` (que a propria pessoa digita, opcional, pista de conferencia).\nNulo so quando a linha nao tem nenhuma das duas, o que hoje nao acontece.\n'
+
 DESCRICAO_LISTA_DE_ALUNOS = 'A porta da GESTAO DE ALUNOS (`docs/decisoes/DECISAO-gestao-de-alunos.md`).\nAte 28/08/2026 nao existia, em lugar nenhum, como listar quem e aluno: a\ncelula so sabia responder sobre UM e-mail por vez. Era por isso que os\ncontadores de alunos do painel mostravam traco.\n\nNAO devolve quem esta na fila (`aguardando`/`recusada`) — para esses\nexiste `GET /pre-matriculas`. Duas perguntas diferentes, duas portas.\n\n`site_id` opcional: ausente = todas as escolas, e cada linha diz de qual\nveio. O painel do dono e plataforma-inteira (Lei 9).\n\nPII: devolve o WhatsApp, e continua sendo PORTA DE PAINEL — a mesma\nfamilia de `GET /pre-matriculas`. A lei da fila §5 diz que o numero sai\n"por uma porta so, a do painel administrativo"; estas duas SAO essa\nporta. Segue proibido em `GET /alunos/{email}/matriculas` e em evento.\n'
 
 DESCRICAO_ATUALIZAR = "O formulario de gestao (`DECISAO-gestao-de-alunos.md` §3). Todo campo de\ndado e OPCIONAL: manda-se so o que muda.\n\nO QUE ESTA PORTA NAO DEIXA MUDAR, e a ausencia e a decisao:\n\n- `email` — e a IDENTIDADE da linha. Troca-lo moveria a matricula, em\n  silencio, para outra pessoa, e e por e-mail que todo o resto do\n  sistema pergunta quem e aluno.\n- `site_id`, `order_id`, `product_id` — vem do fato que criou a linha\n  (uma compra, um pedido de entrada). Edita-los seria reescrever o que\n  aconteceu.\n\nNAO decide sobre quem esta na FILA: linha `aguardando`/`recusada` responde\n409 aqui. Para essas existe `POST /pre-matriculas/{id}/decisao` — uma\nporta decide ENTRADA, a outra administra quem ja entrou.\n"
@@ -1468,6 +1473,11 @@ _LIST_ALL_ENROLLMENTS_OPENAPI = {
                                     "description": _D1,
                                 },
                                 "criada_em": {"type": "string", "format": "date-time"},
+                                "virou_aluno_em": {
+                                    "type": ["string", "null"],
+                                    "format": "date-time",
+                                    "description": _D4,
+                                },
                             },
                         },
                     }
