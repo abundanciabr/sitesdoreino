@@ -73,6 +73,10 @@ não tem sigla (lei do CLAUDE.md).
         font-size: 11px; color: var(--texto-2);
         border: 1px solid var(--linha); border-radius: 6px; padding: 1px 7px;
       }
+      /* O código da tarefa e o nome do robô: ficam, porque são o que ele cita
+         para falar de uma tarefa comigo — mas param de ser a primeira coisa
+         que o olho encontra. */
+      .cartao-robo .etiqueta.apagada { color: var(--texto-3); border-color: transparent; padding-left: 0; }
       .cartao-robo .motivo { font-size: 13px; color: var(--texto-2); margin-top: 8px; }
       .cartao-robo .motivo a { word-break: break-all; }
       /* Só aparece quando o GitHub confirma a reserva NESTE MINUTO. Classe, e
@@ -117,6 +121,15 @@ não tem sigla (lei do CLAUDE.md).
       .grupo-robos details > summary { cursor: pointer; font-size: 16px; font-weight: 700; }
       .grupo-robos details .cartoes-robo { margin-top: 12px; }
 
+      /* A ABERTURA. Ela existe desde 03/09/2026 porque a página nunca dizia o
+         que ela É: caía direto em números, e quem não sabe o que é uma "fila de
+         trabalho" começa a leitura no escuro. Duas frases, e a segunda é a que
+         tira o peso das costas dele: não há nada para fazer aqui. */
+      .o-que-e-isto { border-left: 3px solid var(--linha); padding-left: 16px; margin: 14px 0 18px; }
+      .o-que-e-isto p { margin: 0 0 8px; font-size: 14px; color: var(--texto-2); max-width: 70ch; }
+      .o-que-e-isto b { color: var(--texto); }
+      .o-que-e-isto .ritmo { margin-bottom: 0; }
+
       .ao-vivo-caixa {
         background: var(--painel); border: 1px solid var(--linha);
         border-radius: 12px; padding: 16px 18px;
@@ -128,15 +141,37 @@ não tem sigla (lei do CLAUDE.md).
       .estouros li { margin: 4px 0; font-size: 13px; }
       .carimbo { font-size: 13px; color: var(--texto-2); }
       table.regua { border-collapse: collapse; margin-top: 8px; font-size: 13px; }
-      table.regua td, table.regua th { padding: 4px 14px 4px 0; text-align: left; }
-      table.regua th { color: var(--texto-2); font-weight: 600; }
+      table.regua td, table.regua th { padding: 5px 18px 5px 0; text-align: left; }
+      table.regua th { color: var(--texto-2); font-weight: 600; border-bottom: 1px solid var(--linha); }
+      /* A honestidade da régua viaja para a tela: medida com poucos casos se
+         DECLARA. Amarelo, e não vermelho — não é defeito, é pouca medição. */
+      table.regua .pouca { color: var(--amarelo); }
     </style>
 
     <h1>Os robôs</h1>
+    <div class="o-que-e-isto">
+      <p>
+        <b>Cada cartão desta página é um pedaço de trabalho no seu site</b>, escrito
+        antes de alguém começar a fazê-lo. Os robôs pegam um de cada vez, e ninguém
+        pega o que outro já pegou.
+      </p>
+      <p>
+        <b>Você não precisa fazer nada aqui.</b> Esta é a tela de olhar: ela responde
+        em que pé está o trabalho. Para pedir alguma coisa, continue falando comigo
+        na conversa, como sempre.
+      </p>
+      {% if andamento.terminadas %}
+        <p class="ritmo">
+          Até agora os robôs terminaram <b>{{ andamento.terminadas }} tarefa{{ andamento.terminadas|pluralize }}</b>
+          em {{ andamento.quantos_dias }} dia{{ andamento.quantos_dias|pluralize }} de trabalho,
+          uma média de <b>{{ andamento.por_dia }} por dia</b>.
+        </p>
+      {% endif %}
+    </div>
     <p class="carimbo espaco-abaixo-20">
-      São {{ total }} tarefa{{ total|pluralize }} na fila de trabalho dos robôs. A caixa
-      logo abaixo é de agora, perguntada ao GitHub pelo seu navegador; o quadro depois
-      dela é o retrato do último deploy.
+      São {{ total }} tarefa{{ total|pluralize }} no total. A caixa logo abaixo é de
+      agora, perguntada ao GitHub pelo seu navegador; o quadro depois dela é o retrato
+      da última publicação do site.
     </p>
 
     <section class="ao-vivo-caixa">
@@ -178,47 +213,68 @@ não tem sigla (lei do CLAUDE.md).
       {% endif %}
     {% endfor %}
 
-    <h2 class="espaco-26">As esperas dos robôs</h2>
-    {% if esperas %}
-      <p class="carimbo">
-        Resumo do diário de esperas, exportado em {{ esperas.gerado_em }} —
-        {{ esperas.total }} espera{{ esperas.total|pluralize }} anotada{{ esperas.total|pluralize }},
-        {{ esperas.verdes }} dentro do prazo.
-        O diário vivo fica na máquina onde os robôs trabalham; este é o retrato mais recente que ela mandou.
-      </p>
-      {% if esperas.estouros %}
-        <p><b>O que estourou o prazo enquanto você não olhava:</b></p>
-        <ul class="estouros">
-          {% for e in esperas.estouros %}
-            <li>
-              <b>{{ e.dizendo|default:e.alvo }}</b> — levou {{ e.decorrido_s }}s de um teto
-              de {{ e.teto_s }}s ({{ e.quando_utc }}). {{ e.detalhe|default:"" }}
-            </li>
-          {% endfor %}
-        </ul>
-      {% else %}
-        <p>Nenhuma espera estourou o prazo até a última exportação. 🎉</p>
-      {% endif %}
-    {% else %}
-      <p class="aviso">Nenhum resumo de esperas veio nesta imagem — o diário vivo mora na
-      máquina dos robôs e ainda não foi exportado. A régua abaixo continua valendo.</p>
-    {% endif %}
+    {% comment %}
+    AS ESPERAS entraram num `details` fechado em 03/09/2026, e isso é uma
+    escolha de leitura, não um jeito de esconder. Elas são material de consulta
+    ("quanto costuma demorar?"), não notícia — e estavam ocupando o fim da
+    página com uma tabela de `p50_s` / `p90_s` / `amostra`, que é a coisa mais
+    técnica que existia aqui. Os números continuam inteiros lá dentro; o que
+    mudou é que a página não começa mais a conversa por eles.
+    {% endcomment %}
+    <section class="grupo-robos">
+      <details>
+        <summary>Quanto os robôs costumam esperar</summary>
+        <p class="explica espaco-8">
+          Robô que espera não está parado por defeito: ele mandou trabalho e está
+          aguardando a conferência automática. Isto aqui é a régua do que é normal,
+          medida no que já aconteceu, nunca chutada.
+        </p>
 
-    {% if regua %}
-      <p class="espaco-14"><b>Quanto cada espera costuma levar</b>
-        <span class="carimbo">(medido em {{ regua_medida_em }}, nunca chutado)</span></p>
-      <table class="regua">
-        <tr><th>espera</th><th>normalmente</th><th>quase sempre até</th><th>amostra</th></tr>
-        {% for linha in regua %}
-          <tr>
-            <td>{{ linha.rotulo }}</td>
-            <td>{{ linha.p50_s }}s</td>
-            <td>{{ linha.p90_s }}s</td>
-            <td>{{ linha.amostra }}{% if linha.pouca_amostra %} ⚠ pouca amostra, desconfie{% endif %}</td>
-          </tr>
-        {% endfor %}
-      </table>
-    {% endif %}
+        {% if regua %}
+          <table class="regua">
+            <tr>
+              <th>a espera</th>
+              <th>normalmente leva</th>
+              <th>quase sempre até</th>
+              <th>medido em quantas vezes</th>
+            </tr>
+            {% for linha in regua %}
+              <tr>
+                <td>{{ linha.rotulo }}</td>
+                <td>{{ linha.p50 }}</td>
+                <td>{{ linha.p90 }}</td>
+                <td>{{ linha.amostra }}{% if linha.pouca_amostra %} <span class="pouca">(poucas vezes ainda, desconfie deste)</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </table>
+          <p class="carimbo espaco-8">Medido em {{ regua_medida_em }}.</p>
+        {% endif %}
+
+        {% if esperas %}
+          <p class="carimbo espaco-14">
+            Das {{ esperas.total }} espera{{ esperas.total|pluralize }} anotada{{ esperas.total|pluralize }}
+            até {{ esperas.gerado_em|slice:"0:10" }}, {{ esperas.verdes }} ficaram dentro do prazo.
+          </p>
+          {% if esperas.estouros %}
+            <p><b>O que passou do prazo enquanto você não olhava:</b></p>
+            <ul class="estouros">
+              {% for e in esperas.estouros %}
+                <li>
+                  <b>{{ e.dizendo|default:e.alvo }}</b>, que devia levar no máximo
+                  {{ e.teto_s }} segundos, levou {{ e.decorrido_s }} ({{ e.quando_utc|slice:"0:10" }}).
+                  {{ e.detalhe|default:"" }}
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p>Nenhuma espera passou do prazo. 🎉</p>
+          {% endif %}
+        {% else %}
+          <p class="aviso espaco-14">O diário de esperas não veio nesta publicação: ele mora na
+          máquina onde os robôs trabalham e ainda não foi exportado. A régua acima continua valendo.</p>
+        {% endif %}
+      </details>
+    </section>
 
     <script>
       (function () {

@@ -130,6 +130,68 @@ COLUNAS = (
     },
 )
 
+# ONDE A TAREFA MEXE, dito em lugares que o mantenedor reconhece (03/09/2026).
+#
+# O campo `toca` da fila usa 24 nomes técnicos — `ci`, `mensageria`, `funil`,
+# `.github`, `contracts`. Para quem escreve código eles são endereços; para o
+# dono do negócio não são nada. Ele abriu a tela e disse que não estava
+# conseguindo entender o que via, e "mexe em: ci" é parte do motivo.
+#
+# ISTO É TRADUÇÃO DE TELA, NÃO FONTE. O `toca` continua sendo o vocabulário de
+# contrato da fila, intocado no dado: é ele que autoriza duas tarefas a rodarem
+# em paralelo e é ele que `ci/conferencia_do_toca.py` compara com o diff. Aqui
+# só se escolhe como escrever aquilo na tela, do mesmo jeito que `rotulo` faz
+# com os estados.
+#
+# **A regra de ouro deste dicionário é FALHAR ABERTO**: nome que não está aqui
+# aparece na tela como está, cru. Célula nova nasce a cada duas semanas neste
+# projeto, e uma tradução que ESCONDESSE o desconhecido faria a tela mentir por
+# omissão — o dono veria uma tarefa "sem lugar" em vez de um nome estranho, e
+# nunca perguntaria. Nome estranho ele pergunta; ausência, não.
+ONDE_ISSO_MEXE = {
+    "admin": "a sua área de administração",
+    "alunos": "o cadastro dos alunos",
+    "catalogo": "o catálogo de cursos",
+    "checkout": "a tela de pagamento",
+    "escola": "a área do aluno",
+    "forum": "o fórum",
+    "funil": "as páginas que vendem",
+    "gamificacao": "os pontos e as medalhas",
+    "identidade": "o login e o cadastro",
+    "mensageria": "os avisos e os e-mails",
+    "notificacoes": "o sininho de avisos",
+    "quiz": "o quiz",
+    "sugestoes": "a Caixa de Sugestões",
+    # A oficina: o aluno nunca vê nada disto, e por isso as sete entram com o
+    # MESMO rótulo. Distinguir `ci` de `.github` na tela dele seria precisão
+    # sem uso — ele não decide nada com base nessa diferença.
+    ".github": "a fábrica (ferramenta dos robôs)",
+    "armadilhas": "a fábrica (ferramenta dos robôs)",
+    "ci": "a fábrica (ferramenta dos robôs)",
+    "contracts": "a fábrica (ferramenta dos robôs)",
+    "docs": "a fábrica (ferramenta dos robôs)",
+    "fila": "a fábrica (ferramenta dos robôs)",
+    "infra": "a fábrica (ferramenta dos robôs)",
+    "painel": "o seu painel",
+    "documentos": "os documentos do site",
+}
+
+
+def onde_isso_mexe(toca) -> list[str]:
+    """Os lugares de uma tarefa, traduzidos, sem repetir e em ordem estável.
+
+    `services/funil` e `funil` são o mesmo lugar para quem lê — o `toca` aceita
+    as duas formas, e sem o corte a tela mostraria o lugar duas vezes.
+    """
+    lugares = []
+    for nome in toca or []:
+        curto = str(nome).rsplit("/", 1)[-1].removesuffix(".md")
+        lugar = ONDE_ISSO_MEXE.get(curto, curto)
+        if lugar not in lugares:
+            lugares.append(lugar)
+    return lugares
+
+
 _SCRIPT_EMBUTIDO = re.compile(
     rb"<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>", re.DOTALL | re.IGNORECASE
 )
@@ -155,6 +217,94 @@ def _resumo_de_esperas(pasta: Path):
     if not resumos:
         return None
     return _ler_json(resumos[-1])
+
+
+def andamento(pasta: Path) -> dict:
+    """Quando cada tarefa se mexeu pela última vez, e quantas terminaram por dia.
+
+    **Por que isto existe.** Um quadro com 101 cartões responde "o quê", e não
+    responde "isto está andando?". Sem essa segunda resposta o dono olha para
+    76 tarefas concluídas e não sabe se são de ontem ou de um mês atrás — foi
+    parte do que ele chamou de "não estou conseguindo acompanhar" em
+    03/09/2026.
+
+    **A fonte é a mesma pasta que o deploy embute** (`fila/eventos/`, copiada
+    inteira por `deploy-celula.yml`), e cada evento já carrega `quando`. Nada
+    aqui é recalculado nem inventado: só se conta o que a fila já escreveu.
+    Estado continua sendo assunto de `estados.json`; isto é só o relógio.
+
+    **Falha aberto.** Sem a pasta (num checkout, ou se o build parar de
+    embutir), devolve vazio e a tela simplesmente não mostra as datas, em vez
+    de quebrar. Data ausente é uma tela mais pobre; página 500 é uma tela que
+    não existe.
+    """
+    ultima_mexida: dict[str, str] = {}
+    terminadas_por_dia: dict[str, int] = {}
+
+    for arquivo in sorted((pasta / "eventos").glob("*.json")):
+        evento = _ler_json(arquivo)
+        if not isinstance(evento, dict):
+            continue
+        tarefa, quando = evento.get("tarefa"), evento.get("quando")
+        if not (tarefa and isinstance(quando, str)):
+            continue
+        dia = quando[:10]
+        # Os arquivos vêm ordenados por nome, e o nome COMEÇA pelo carimbo de
+        # tempo — então o último a passar por aqui é mesmo o mais recente.
+        ultima_mexida[tarefa] = dia
+        if evento.get("evento") == "concluida":
+            terminadas_por_dia[dia] = terminadas_por_dia.get(dia, 0) + 1
+
+    dias = sorted(terminadas_por_dia)
+    total = sum(terminadas_por_dia.values())
+    return {
+        "ultima_mexida": ultima_mexida,
+        "terminadas": total,
+        "primeiro_dia": dias[0] if dias else None,
+        "ultimo_dia": dias[-1] if dias else None,
+        # Média sobre os dias em que houve conclusão — nunca sobre o calendário
+        # inteiro, que inventaria zeros para dias que ninguém mediu.
+        #
+        # Sai como TEXTO, com vírgula: o Django escreveria o número do jeito do
+        # Python ("15.2"), e ponto decimal numa tela em português é a marca de
+        # que a página foi traduzida pela metade.
+        "por_dia": (
+            f"{round(total / len(dias), 1):.1f}".replace(".", ",") if dias else None
+        ),
+        "quantos_dias": len(dias),
+    }
+
+
+def em_portugues(segundos) -> str:
+    """ "90" vira "1 minuto e meio"; "900" vira "15 minutos".
+
+    A régua das esperas é medida em segundos porque é assim que se mede, e a
+    tabela mostrava o número cru com um "s" colado. Para quem não trabalha com
+    isso, "420s" não é um tempo: é um número. A conversão acontece SÓ aqui, na
+    borda da tela — a medição não muda de unidade.
+    """
+    if not isinstance(segundos, (int, float)):
+        return "não medido"
+    segundos = int(segundos)
+    if segundos < 90:
+        return f"{segundos} segundos"
+    minutos = segundos / 60
+    if minutos < 60:
+        # "1 minuto e meio" é mais legível que "1,5 minutos", e a meia hora é a
+        # única fração que vale a pena escrever por extenso.
+        if abs(minutos - round(minutos)) < 0.1:
+            inteiros = round(minutos)
+            return f"{inteiros} minuto" + ("s" if inteiros != 1 else "")
+        if abs(minutos - int(minutos) - 0.5) < 0.1:
+            inteiros = int(minutos)
+            return (
+                "meio minuto"
+                if inteiros == 0
+                else f"{inteiros} minuto{'s' if inteiros != 1 else ''} e meio"
+            )
+        return f"cerca de {round(minutos)} minutos"
+    horas = round(segundos / 3600, 1)
+    return f"{horas:g} hora" + ("s" if horas != 1 else "")
 
 
 def _csp(html: bytes) -> str:
@@ -187,11 +337,19 @@ def robos(request):
         return resposta
 
     estados = _ler_json(pasta / "estados.json") or {}
+    relogio = andamento(pasta)
+    ultima_mexida = relogio["ultima_mexida"]
+
     colunas = []
     for grupo in COLUNAS:
         cartoes = sorted(
             (
-                {"id": tid, **dados}
+                {
+                    "id": tid,
+                    **dados,
+                    "onde": onde_isso_mexe(dados.get("toca")),
+                    "quando": ultima_mexida.get(tid),
+                }
                 for tid, dados in estados.items()
                 if dados.get("estado") == grupo["estado"]
             ),
@@ -211,8 +369,8 @@ def robos(request):
         {
             "chave": chave,
             "rotulo": medida.get("rotulo") or chave,
-            "p50_s": medida.get("p50_s"),
-            "p90_s": medida.get("p90_s"),
+            "p50": em_portugues(medida.get("p50_s")),
+            "p90": em_portugues(medida.get("p90_s")),
             "amostra": medida.get("amostra"),
             "pouca_amostra": (medida.get("amostra") or 0) < 20,
         }
@@ -226,6 +384,7 @@ def robos(request):
         {
             "colunas": colunas,
             "total": len(estados),
+            "andamento": relogio,
             "esperas": _resumo_de_esperas(pasta),
             "regua": linhas_da_regua,
             "regua_medida_em": regua.get("medido_em"),
