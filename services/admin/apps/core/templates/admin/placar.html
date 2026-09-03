@@ -139,6 +139,58 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     {% endif %}
   {% endif %}
 
+  <h2 class="titulo-de-bloco espaco-20">A restrição desta semana</h2>
+  {% if not cartao_da_restricao %}
+    <p class="aviso borda-vermelha"><b>O cartão da restrição está ausente ou inválido</b>, e sem ele o bloco não aparece.</p>
+    <ul class="notas">
+      {% for recusa in recusas_da_restricao %}<li>{{ recusa }}</li>{% endfor %}
+    </ul>
+  {% elif not restricao %}
+    <p class="recado-fraco">Sem a meta válida, a restrição não é calculada.</p>
+  {% else %}
+    <p class="recado">{{ cartao_da_restricao.pergunta }} Uma só por semana: melhorar o resto é encher um cano furado.</p>
+
+    {% if restricao.veredito == "nao-consigo-medir" %}
+      <div class="aviso borda-amarela"><b>Hoje não consegui medir a restrição.</b> A fila ou a lista de alunos não respondeu a tempo. Isto não é "está tudo bem": é a pergunta que não chegou.</div>
+    {% elif restricao.veredito == "liberacao" %}
+      <div class="aviso borda-vermelha">
+        <b>Suspeita: pediu entrada → foi liberada.</b>
+        {{ restricao.medida.esperando }} pessoa{{ restricao.medida.esperando|pluralize:"s" }} esperando na fila,
+        {{ restricao.medida.esperando_ha_muito }} há 2 dias ou mais.
+        {% if restricao.medida.mediana_dias is not None %}Tempo típico de liberação nos últimos 28 dias: {{ restricao.medida.mediana_dias }} dia{{ restricao.medida.mediana_dias|pluralize:"s" }}.{% endif %}
+        Impacto na meta: até <b>+{{ restricao.impacto }}</b> hoje. Confiança: alta (medido ao vivo).
+      </div>
+      <p class="recado"><b>O gesto:</b> {{ restricao.gesto }}</p>
+    {% elif restricao.veredito == "entrada" %}
+      <div class="aviso borda-amarela">
+        <b>Suspeita: cadastrou → pediu entrada.</b>
+        Nenhum pedido de entrada nos últimos 28 dias. Confiança: média (a admin vê os pedidos, não os cadastros que não viraram pedido).
+      </div>
+      <p class="recado"><b>O gesto:</b> {{ restricao.gesto }}</p>
+    {% else %}
+      <div class="aviso verde">
+        <b>Sem restrição medível nesta semana.</b>
+        A liberação está em dia ({{ restricao.medida.liberados_28 }} liberada{{ restricao.medida.liberados_28|pluralize:"s" }} de {{ restricao.medida.pedidos_28 }} pedido{{ restricao.medida.pedidos_28|pluralize:"s" }} em 28 dias;
+        {{ restricao.medida.esperando }} esperando, nenhuma há 2 dias ou mais). As etapas seguintes ainda não têm dados.
+      </div>
+    {% endif %}
+
+    {% if restricao.confirmada %}
+      <p class="recado"><b>Confirmada por você</b> em {{ restricao.confirmada.em }}: {{ restricao.confirmada.etapa }} (registro {{ restricao.confirmada.registro }}).</p>
+    {% else %}
+      <p class="recado-fraco">A suspeita é cálculo; a restrição de verdade é <b>aguardando a sua confirmação</b> (um registro no livro, e o robô grava no cartão).</p>
+    {% endif %}
+
+    <ul class="notas">
+      {% for etapa in restricao.etapas %}
+        <li>
+          <b>{{ etapa.nome }}</b>:
+          {% if etapa.fonte %}medido ao vivo ({{ etapa.fonte }}).{% else %}<span class="rotulo">sem dados</span> {{ etapa.sem_fonte_porque }}{% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% endif %}
+
   <h2 class="titulo-de-bloco espaco-20">O par que segura a meta</h2>
   {% if par %}
     <p class="recado">
