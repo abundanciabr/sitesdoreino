@@ -1,0 +1,98 @@
+{% extends "admin/base.html" %}
+{% block titulo %}Quadro de pontos{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a>
+  <h1>Quadro de pontos</h1>
+  <p class="subtitulo">A turma ordenada por pontos: nível, título, medalhas, marcos e quem parou.</p>
+
+  {% if nao_consigo_ver_alunos %}
+  <p class="aviso">
+    <b>Ainda não consigo ver a lista de alunos.</b>
+    Falta a senha de par entre esta área e a parte do sistema que guarda os
+    alunos — um comando de uma linha, no servidor, que está no painel do
+    sistema, na caixa <b>Precisa de você</b>.
+  </p>
+  {% else %}
+
+  {% if nao_consigo_ver_pontos %}
+  <p class="aviso">
+    <b>Ainda não consigo ver os pontos.</b>
+    A lista de alunos abaixo está completa, mas sem os números: falta a senha
+    de par entre esta área e a parte do sistema que guarda os pontos. Está na
+    caixa <b>Precisa de você</b> do painel do sistema.
+  </p>
+  {% endif %}
+  {% if nao_consigo_ver_titulos %}
+  <p class="aviso">Não consegui ler os títulos dos níveis agora — os alunos aparecem só com o número do nível.</p>
+  {% endif %}
+  {% if nao_consigo_ver_nomes_de_conquista %}
+  <p class="aviso">Não consegui ler os nomes das medalhas e marcos agora — as conquistas aparecem sem o nome delas.</p>
+  {% endif %}
+
+  {% comment %}
+  Três cartões, e não um: "quantos alunos" e "quantos pontuando" respondem
+  perguntas diferentes, e o mantenedor pediu explicitamente para saber quem
+  está andando contra quem parou.
+  {% endcomment %}
+  <div class="cartoes">
+    <div class="cartao">
+      <div class="rotulo">Alunos ativos</div>
+      <div class="valor">{{ total }}</div>
+      <div class="nota">Só quem está com a matrícula ativa hoje.</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Jogando</div>
+      <div class="valor">{{ ativos }}</div>
+      <div class="nota">Ganhou ponto nos últimos {{ dias_para_considerar_parado }} dias.</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Parados</div>
+      <div class="valor">{{ parados }}</div>
+      <div class="nota">Nunca pontuou, ou não ganha ponto há mais de {{ dias_para_considerar_parado }} dias.</div>
+    </div>
+  </div>
+
+  {% if not alunos %}
+  <p class="aviso">
+    <b>Ainda não há nenhum aluno ativo.</b>
+    Este zero é medido, não suposto: eu perguntei e a lista voltou vazia.
+  </p>
+  {% else %}
+  <div class="cartoes">
+    {% for aluno in alunos %}
+    <div class="cartao">
+      <div class="valor"><b>{{ aluno.nome }}</b></div>
+      <div class="nota">
+        {{ aluno.xp }} ponto{{ aluno.xp|pluralize }}
+        &middot; nível {{ aluno.nivel }}{% if aluno.titulo %} &middot; {{ aluno.titulo }}{% endif %}
+        {% if aluno.turma %} &middot; turma: {{ aluno.turma }}{% endif %}
+      </div>
+      <div class="nota">
+        {% if aluno.nunca_pontuou %}
+        <b>Nunca pontuou.</b>
+        {% elif aluno.esta_parado %}
+        <b>Parado</b>{% if aluno.dias_parado is not None %} — o último ponto foi há {{ aluno.dias_parado }} dia{{ aluno.dias_parado|pluralize }}{% endif %}.
+        {% else %}
+        <b>Jogando</b> — o último ponto foi há {{ aluno.dias_parado }} dia{{ aluno.dias_parado|pluralize }}.
+        {% endif %}
+      </div>
+      {% if aluno.conquistas %}
+      <div class="nota">
+        {% for c in aluno.conquistas %}
+        <span title="{% if c.e_marco %}Marco{% else %}Medalha{% endif %}">{% if c.e_marco %}&#9733;{% else %}&#9679;{% endif %} {{ c.nome }}</span>{% if not forloop.last %} &middot; {% endif %}
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="nota">Ainda sem medalha nem marco.</div>
+      {% endif %}
+      <div class="nota">
+        <a href="{% url 'escola_prontuario' %}?email={{ aluno.email|urlencode }}">Ver prontuário &rarr;</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

@@ -34,6 +34,7 @@ from apps.core.economia import (
     economia_mudar_conquista,
     economia_mudar_degrau,
 )
+from apps.core.escola_pontos import escola_pontos
 from apps.core.avisos import avisos, avisos_testar
 from apps.core.menu import (
     menu_adicionar_item,
@@ -428,6 +429,13 @@ urlpatterns = [
     ),
     # A escrita em lote. POST-only pelo mesmo motivo de todas as outras.
     path("escola/turmas/liberar", escola_turmas_liberar, name="escola_turmas_liberar"),
+    # [QUADRO DE PONTOS] A turma ordenada por XP, com nivel, titulo, medalhas,
+    # marcos e quem parou (03/09/2026, pedido do mantenedor). Vizinha de
+    # `escola/alunos/` e de `escola/turmas/`, e nao dentro de nenhuma: aquela
+    # responde "quem esta na escola?", esta responde "quem esta jogando, e
+    # quem parou?" — a gamificacao e a matricula sao duas celulas diferentes,
+    # e esta tela e o unico lugar que cruza as duas.
+    path("escola/pontos/", escola_pontos, name="escola_pontos"),
     path("escola/admin/promover", escola_admin_promover, name="escola_admin_promover"),
     path("escola/admin/remover", escola_admin_remover, name="escola_admin_remover"),
     path("", visao_geral, name="visao_geral"),
