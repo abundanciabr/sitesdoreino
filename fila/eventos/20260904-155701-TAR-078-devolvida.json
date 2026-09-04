@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260904-155701-TAR-078-devolvida",
+  "tarefa": "TAR-078",
+  "evento": "devolvida",
+  "quando": "2026-09-04T15:57:01+00:00",
+  "quem": "sessao-maestro-lote-2026-09-04",
+  "detalhe": "DESTRAVADA: os dois bloqueios cairam. A porta de maquina da mensageria existe e esta no ar (TAR-137, PR #986, deploy verde), e o contrato foi congelado no Rito de Contrato de 04/09/2026 com o mantenedor presente (TAR-138, PR #1012, mandato no registro 20260904-070). A porta ganhou tambem o interruptor de ligar e desligar sequencias, que ele pediu no proprio Rito (PR #1009). O que a tela ainda vai precisar, e nao e bloqueio para constru-la: a linha admin.consome mensageria em celulas.yml, que entra no PR do cliente, e as duas variaveis do par na VPS, que sao Lei 5 e viram pedido ao mantenedor quando a tela pousar."
+}

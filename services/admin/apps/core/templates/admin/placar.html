@@ -62,8 +62,8 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       <p class="hero-nota">
         {{ mes.definicao }}
         {% if barra.alvo_derivado %}
-          A meta do mês é a fatia da linha reta do ciclo que cai neste mês; você
-          pode fixar outra no cartão.
+          A meta do mês é a fatia da curva do ciclo que cai neste mês; você pode
+          fixar outra no cartão.
         {% endif %}
         Zera no dia 1. Faltam {{ barra.dias_restantes }} dia{{ barra.dias_restantes|pluralize:"s" }} para o mês fechar.
       </p>
@@ -71,9 +71,9 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     {% if barra.veredito == "cumprida" %}
       <div class="aviso verde"><b>Meta do mês cumprida.</b> {{ barra.x }} já chega a {{ barra.alvo }}.</div>
     {% elif barra.veredito == "ganhando" %}
-      <div class="aviso verde"><b>No mês, ganhando.</b> Pela linha reta do mês, hoje deveríamos estar em {{ barra.esperado_hoje }}, e estamos em {{ barra.x }}.</div>
+      <div class="aviso verde"><b>No mês, ganhando.</b> Pela curva do ciclo, hoje deveríamos estar em {{ barra.esperado_hoje }}, e estamos em {{ barra.x }}.</div>
     {% elif barra.veredito == "perdendo" %}
-      <div class="aviso borda-vermelha"><b>No mês, perdendo.</b> Pela linha reta do mês, hoje deveríamos estar em {{ barra.esperado_hoje }}, e estamos em {{ barra.x }}.</div>
+      <div class="aviso borda-vermelha"><b>No mês, perdendo.</b> Pela curva do ciclo, hoje deveríamos estar em {{ barra.esperado_hoje }}, e estamos em {{ barra.x }}.</div>
     {% endif %}
     {% elif not mes %}
     <p class="aviso borda-vermelha"><b>O cartão da barra do mês está ausente ou inválido</b>, e sem ele a barra não aparece.</p>
@@ -83,6 +83,15 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     {% endif %}
 
     <h2 class="titulo-de-bloco espaco-20">A meta grande, por cima do mês</h2>
+    {% comment %}
+    A porta para a régua (04/09/2026). O "deveríamos estar em" logo abaixo sai
+    da curva de semanas do cartão, e sem este link o mantenedor leria o veredito
+    sem ter como conferir de onde ele veio. Número que julga sem mostrar a régua
+    é número em que ninguém confia duas vezes.
+    {% endcomment %}
+    <p class="recado-fraco espaco-abaixo-10">
+      <a href="{% url 'ciclo' %}">Ver o calendário do ciclo, semana a semana &rarr;</a>
+    </p>
     <p class="lei">
       <b>Meta Crucialmente Importante nº 1:</b> {{ meta.pergunta }}
       {% if placar.alvo is not None %}
@@ -114,7 +123,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       <div class="aviso borda-vermelha"><b>O prazo passou</b> e faltaram {{ placar.distancia }}. A próxima meta começa daqui.</div>
     {% elif placar.veredito == "ganhando" %}
       <div class="aviso verde">
-        <b>Ganhando.</b> Na linha reta da partida ao alvo, hoje deveríamos estar em
+        <b>Ganhando.</b> Pela curva do ciclo, hoje deveríamos estar em
         {{ placar.esperado_hoje }}, e estamos em {{ placar.x }}.
         Faltam {{ placar.distancia }} em {{ placar.dias_restantes }} dia{{ placar.dias_restantes|pluralize:"s" }}
         {% if placar.ritmo_por_semana %}({{ placar.ritmo_por_semana }} por semana){% endif %}.
@@ -156,7 +165,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
         <span class="rotulo">não consegui medir</span> (a fila ou a lista não respondeu).
       {% else %}
         <b>{{ direcao.pedidos.esta_semana }}</b> nesta semana
-        {% if direcao.pedidos.meta is not None %}(meta da semana: {{ direcao.pedidos.meta }}{% if direcao.pedidos.meta_derivada %}, a fatia de 7 dias da linha reta do ciclo{% endif %}){% endif %}.
+        {% if direcao.pedidos.meta is not None %}(meta da semana: {{ direcao.pedidos.meta }}{% if direcao.pedidos.meta_derivada %}, a fatia desta semana na curva do ciclo{% endif %}){% endif %}.
         {% if direcao.pedidos.veredito == "cumprida" %}<span class="rotulo">na meta</span>{% elif direcao.pedidos.veredito == "abaixo" %}<span class="rotulo">abaixo da meta</span>{% endif %}
         Semanas anteriores: {% for n in direcao.pedidos.semanas %}{% if not forloop.first %}{{ n }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}.
         {% if direcao.pedidos.sequencia %}Sequência: {{ direcao.pedidos.sequencia }} semana{{ direcao.pedidos.sequencia|pluralize:"s" }} seguida{{ direcao.pedidos.sequencia|pluralize:"s" }} na meta.{% endif %}
