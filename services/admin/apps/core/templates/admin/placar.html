@@ -72,6 +72,68 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   </p>
   {% endif %}
 
+  {% comment %}
+  A LINHA DO TRABALHO (degrau 19, a volta do grafo causal). Não é um bloco,
+  pelo mesmo motivo da linha da memória logo acima: a capa tem teto de nove e
+  se recusa a crescer. Aqui a tela responde a segunda pergunta do quinto
+  documento do Scale OS: "que ações estão sendo executadas para movimentar
+  este indicador?".
+
+  A distinção que este trecho existe para preservar: "ninguém declarou" NUNCA
+  pode virar "nada está sendo feito". As tarefas anteriores a 04/09/2026
+  nasceram antes do campo, e dizer que a meta está abandonada por causa delas
+  seria a tela mentindo com cara de precisão. Regras em apps/core/elo.py.
+  {% endcomment %}
+  {% if declaracao is None %}
+  <p class="aviso borda-amarela">
+    <b>A fila de trabalho não veio nesta versão do site</b>, então não dá para
+    dizer o que está sendo feito por estes números. Isto não é "nada está sendo
+    feito": é a pergunta que não pôde ser feita.
+  </p>
+  {% elif trabalho %}
+  <p class="nota">
+    <b>O que está sendo feito pelos números desta tela:</b>
+  </p>
+  <ul class="notas">
+    {% for cartao, tarefas in trabalho.items %}
+    <li>
+      <b>{{ cartao }}</b>:
+      {% for t in tarefas %}{{ t.id }} ({{ t.estado }}){% if not forloop.last %}, {% endif %}{% endfor %}
+    </li>
+    {% endfor %}
+  </ul>
+    {% if declaracao.nao_declararam %}
+    <p class="nota">
+      Outras {{ declaracao.nao_declararam }} tarefa{{ declaracao.nao_declararam|pluralize:"s" }}
+      em aberto não declararam que número movem, então esta lista ainda não é o
+      trabalho todo.
+    </p>
+    {% endif %}
+  {% elif declaracao.nao_declararam %}
+  <p class="nota">
+    <b>O trabalho ainda não está ligado aos números.</b>
+    {% if declaracao.nao_declararam == declaracao.vivas %}
+    Nenhuma das {{ declaracao.vivas }} tarefa{{ declaracao.vivas|pluralize:"s" }} em
+    aberto diz que número move: todas nasceram antes desta regra.
+    {% else %}
+    Das {{ declaracao.vivas }} tarefa{{ declaracao.vivas|pluralize:"s" }} em aberto,
+    {{ declaracao.nao_declararam }} não diz{{ declaracao.nao_declararam|pluralize:"em" }}
+    que número move{% if declaracao.manutencao %}, e {{ declaracao.manutencao }} se
+    declarou manutenção da fábrica{% endif %}.
+    {% endif %}
+    Toda tarefa criada a partir de agora é obrigada a declarar, e aparece aqui.
+  </p>
+  {% elif declaracao.vivas %}
+  <p class="nota">
+    <b>Nenhuma tarefa em aberto está movendo um número desta tela.</b>
+    As {{ declaracao.vivas }} em aberto se declararam manutenção da fábrica.
+  </p>
+  {% else %}
+  <p class="nota">
+    <b>Não há tarefa em aberto na fila.</b>
+  </p>
+  {% endif %}
+
   {% if not meta %}
   <p class="aviso borda-vermelha">
     <b>O número não aparece porque falta o cartão dele.</b>

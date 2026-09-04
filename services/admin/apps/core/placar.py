@@ -672,9 +672,17 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
             "latencia-de-aprendizado",
         )
     }
-    if meta is not None:
-        from . import latencias as lat_
+    # O import é tardio pelo mesmo motivo dos de cima (o ciclo se fecha na view),
+    # mas a LEITURA sai de dentro do `if meta`: "o que está sendo feito por este
+    # número" não depende de o cartão da meta existir.
+    from . import elo as elo_
+    from . import latencias as lat_
 
+    a_fila = lat_.ler_a_fila()
+    trabalho = elo_.trabalho_por_cartao(a_fila)
+    declaracao = elo_.resumo_da_declaracao(a_fila)
+
+    if meta is not None:
         partida_em = _data(meta.get("partida_em")) or hoje
         cliente = AlunosClient()
         # UMA leitura de cada porta por requisição: a contagem, a restrição, a
@@ -712,7 +720,7 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         )
         confianca_dos_doze = doze_.confianca(os_doze)
         estrelas = [d for d in os_doze if d["nome"] in doze_.ESTRELAS]
-        latencias = lat_.medir_as_latencias(registros, lat_.ler_a_fila(), hoje)
+        latencias = lat_.medir_as_latencias(registros, a_fila, hoje)
 
         from . import mudancas as mud_
 
@@ -765,4 +773,6 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         "recusas_da_direcao": recusas_pedidos + recusas_48h,
         "direcao": direcao,
         "compromissos": compromissos,
+        "trabalho": trabalho,
+        "declaracao": declaracao,
     }
