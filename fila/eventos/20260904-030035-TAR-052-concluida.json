@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-030035-TAR-052-concluida",
+  "tarefa": "TAR-052",
+  "evento": "concluida",
+  "quando": "2026-09-04T03:00:35+00:00",
+  "quem": "sessao-ci-lote-2026-09-03",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/963 + sabotagem de cada lado reprova na assercao (1 failed / 2 failed), desfeito 6 passed; mutacao do normalizador 4 failed; ci/tests 1568 passed; muralhas PASS",
+  "verificado_em": "2026-09-04"
+}
