@@ -16,7 +16,12 @@
   "alvo_do_mes": null,
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 10,
+  "dimensoes": [
+    "turma",
+    "canal"
+  ],
   "versao": 1,
   "desde": "2026-09-03",
-  "_por_que": "Decisão do mantenedor em 03/09/2026 (registro 20260903-036): 'o número de alunos que deve ser mostrado é o número de alunos que compraram em cada mês atual, começa em 0 e vamos estabelecer a meta mensal até o último dia do mês'. `alvo_do_mes` nulo = a tela deriva a meta do mês da linha reta do ciclo (compras-no-ciclo); ele fixa um número quando quiser, por PR."
+  "_por_que": "Decisão do mantenedor em 03/09/2026 (registro 20260903-036): 'o número de alunos que deve ser mostrado é o número de alunos que compraram em cada mês atual, começa em 0 e vamos estabelecer a meta mensal até o último dia do mês'. `alvo_do_mes` nulo = a tela deriva a meta do mês da linha reta do ciclo (compras-no-ciclo); ele fixa um número quando quiser, por PR. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Sem ruído (cada pessoa conta) e foto de 10 dias. O bloco 'o que mudou' não compara este número entre meses diferentes: ele zera no dia 1, e isso é calendário, não queda."
 }

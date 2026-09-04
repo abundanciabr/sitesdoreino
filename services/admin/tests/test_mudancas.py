@@ -254,3 +254,26 @@ def test_a_reuniao_poe_a_foto_no_pedido_so_com_a_caixa_marcada():
     ), "sem número com fonte não há o que fotografar"
     com_compromisso = reuniao.montar_o_pedido({"compromisso1": "ligar"}, HOJE, foto)
     assert "FOTO DA SEMANA" not in com_compromisso
+
+
+def test_todo_cartao_com_fonte_diz_quando_a_foto_dele_envelhece():
+    """Número com fonte nasce dizendo em quantos dias a foto fica velha.
+
+    Sem `frescor_maximo` o bloco usa o padrão de 10 dias, que é um chute
+    silencioso: um número mensal marcaria "foto velha" sem razão, e um
+    semanal compararia semanas diferentes sem avisar. Cartão SEM fonte não
+    entra na foto e por isso não é cobrado aqui.
+    """
+    pasta = placar.diretorio_dos_cartoes()
+    assert pasta is not None
+    mudos = []
+    for arquivo in sorted(pasta.glob("*.json")):
+        cartao, problemas = placar.ler_cartao(arquivo.stem, pasta)
+        assert cartao is not None, (arquivo.stem, problemas)
+        if cartao.get("fonte") and cartao.get("frescor_maximo") is None:
+            mudos.append(cartao["nome"])
+    assert not mudos, (
+        f"cartões com fonte e sem `frescor_maximo`: {', '.join(mudos)}. "
+        "Diga em quantos dias a foto dele fica velha (a régua é o ritmo do "
+        "número: semanal ~8, mensal ~35)."
+    )

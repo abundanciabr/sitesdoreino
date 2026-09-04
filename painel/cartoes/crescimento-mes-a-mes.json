@@ -15,7 +15,9 @@
   "acao": "Abaixo de zero: o mês passado vendeu menos que o anterior; a pergunta da reunião é o que mudou na torneira (pedidos de entrada).",
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 35,
+  "ruido": 5,
   "versao": 1,
   "desde": "2026-09-03",
-  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Buyer Growth Rate'. Primeiro valor possível em novembro de 2026 (setembro contra outubro)."
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Buyer Growth Rate'. Primeiro valor possível em novembro de 2026 (setembro contra outubro). CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Foto de 35 dias porque a conta é entre dois meses fechados: uma foto do mês passado ainda serve. Ruído de 5 pontos, que é o pulo de um aluno a mais quando a base é pequena."
 }
