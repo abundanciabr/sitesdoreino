@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-130541-TAR-119-concluida",
+  "tarefa": "TAR-119",
+  "evento": "concluida",
+  "quando": "2026-09-04T13:05:41+00:00",
+  "quem": "sessao-painel-tar119-2026-09-04",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/985 + medicao nova do gerador: o resumo caiu de 137,1 KB (91,4% do teto) para 132,6 KB (88,4%), ja com o registro 20260904-047 dentro e sem perder um registro sequer do resumo; regua nova CAIXA_COM_DETALHE em painel/logica.js com teste-guarda de dez casos e seis mutacoes deliberadas",
+  "verificado_em": "2026-09-04"
+}
