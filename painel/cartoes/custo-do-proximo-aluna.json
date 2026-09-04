@@ -1,0 +1,22 @@
+{
+  "nome": "custo-do-proximo-aluna",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Quanto custa a próxima pessoa quando o gasto sobe?",
+  "definicao": "O custo marginal: comparar o custo por aluna em dois níveis de gasto. O custo médio esconde que o próximo real compra menos que o anterior.",
+  "formula": "(gasto do mês M menos gasto do mês M-1) dividido por (compras M menos compras M-1)",
+  "fonte": null,
+  "sem_fonte_porque": "Sem dados até três meses de gasto digitado e de compras contadas. Depende de custo-por-aluna.",
+  "autoridade": "mantenedor",
+  "dono": "mantenedor",
+  "frequencia": "mensal",
+  "direcao": "descer",
+  "unidade": "reais",
+  "par": "compras-no-ciclo",
+  "acao": "Sem dados: nasce sozinho quando custo-por-aluna tiver três meses.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Marginal CAC'."
+}
