@@ -18,7 +18,11 @@
   "partida_em": null,
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 10,
+  "dimensoes": [
+    "turma"
+  ],
   "versao": 2,
   "desde": "2026-09-03",
-  "_por_que": "Foi a Meta 1 entre a manhã e a noite de 03/09/2026. À noite o mantenedor reformulou a meta (registro 20260903-036): o placar passou a medir compras, e este número desceu para o andar 1, onde continua sendo lido (é o mesmo do mapa da jornada). Versão 2 porque o papel mudou; a fórmula não."
+  "_por_que": "Foi a Meta 1 entre a manhã e a noite de 03/09/2026. À noite o mantenedor reformulou a meta (registro 20260903-036): o placar passou a medir compras, e este número desceu para o andar 1, onde continua sendo lido (é o mesmo do mapa da jornada). Versão 2 porque o papel mudou; a fórmula não. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Sem ruído e foto de 10 dias, como a barra do mês."
 }

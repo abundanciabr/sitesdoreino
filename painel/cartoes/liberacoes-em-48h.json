@@ -15,7 +15,12 @@
   "acao": "Abaixo de 100%, ou alguém esperando há mais de 2 dias: abra a fila em /admin/escola/ e libere hoje.",
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 8,
+  "dimensoes": [
+    "turma"
+  ],
+  "ruido": 5,
   "versao": 1,
   "desde": "2026-09-03",
-  "_por_que": "Degrau 2 do plano reescrito em 03/09/2026 (§8). A meta é 100% por construção: liberar em 48 horas é a promessa da fila (DECISAO-fila-de-liberacao.md, fase 2: 'há quantos dias espera' visível)."
+  "_por_que": "Degrau 2 do plano reescrito em 03/09/2026 (§8). A meta é 100% por construção: liberar em 48 horas é a promessa da fila (DECISAO-fila-de-liberacao.md, fase 2: 'há quantos dias espera' visível). CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Ruído de 5 pontos porque a conta é uma fração de poucas liberações: com 2 no período, uma fora do prazo move 50 pontos, e movimento de arredondamento não é notícia. Foto de 8 dias, como o outro número da direção da semana."
 }

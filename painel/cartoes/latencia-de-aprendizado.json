@@ -15,7 +15,9 @@
   "acao": "Sem experimento fechado: o laboratório (degrau 12) é onde eles nascem; a reunião de segunda é onde se fecham.",
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 14,
+  "ruido": 1,
   "versao": 1,
   "desde": "2026-09-03",
-  "_por_que": "Uma das três latências da gestão (Scale OS 1.1 §166 a §169), degrau 5 do plano reescrito em 03/09/2026: o único indicador dos documentos que já tinha fonte completa no dia em que o plano nasceu. Mede a GESTÃO, não a escola, e continua funcionando quando todo o resto estiver cego. Tipo confiança: dispensa par, porque não pode ser forçada sem produzir o próprio fato que mede."
+  "_por_que": "Uma das três latências da gestão (Scale OS 1.1 §166 a §169), degrau 5 do plano reescrito em 03/09/2026: o único indicador dos documentos que já tinha fonte completa no dia em que o plano nasceu. Mede a GESTÃO, não a escola, e continua funcionando quando todo o resto estiver cego. Tipo confiança: dispensa par, porque não pode ser forçada sem produzir o próprio fato que mede. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Ruído de um dia e foto de 14 dias: experimento fecha devagar, e uma foto de duas semanas ainda é comparação honesta aqui."
 }
