@@ -731,7 +731,9 @@ def ver_avisos(request, ator):
     # lida). Filtrar na hora de ler é o que esta célula consegue fazer sozinha,
     # e é o mesmo desenho de `SugestaoQuerySet.visiveis()` — um corte de
     # visibilidade num lugar só, em vez de um campo novo em cada superfície.
+    escondidos = [i for i in itens if _sobre_ideia_apagada(i, sugestoes)]
     itens = [i for i in itens if not _sobre_ideia_apagada(i, sugestoes)]
+    _calar_o_sino(ator, escondidos)
     avisos = [_item_para_o_template(item, sugestoes) for item in itens]
     nao_lidos = sum(1 for item in itens if not item.get("lido_em"))
 
@@ -740,6 +742,68 @@ def ver_avisos(request, ator):
         PAGINA_AVISOS,
         {"ator": ator, "falha": False, "avisos": avisos, "nao_lidos": nao_lidos},
     )
+
+
+def _calar_o_sino(ator, escondidos: list[dict]) -> None:
+    """Marca como lidos os recados que esta tela ACABOU de esconder.
+
+    **O buraco que isto fecha, achado pelo mantenedor em 31/08/2026 e aberto
+    pelo próprio conserto daquele dia.** O corte de visibilidade acima tira da
+    tela o recado de uma ideia apagada; o número do sino, porém, é calculado
+    pela caixa central (`obterResumo`), que não sabe de apagamento nenhum.
+    Resultado: o sino dizia **1**, a pessoa clicava, e a lista abria vazia.
+
+    E o pior, que só apareceu ao ler o código de perto: `nao_lidos` é somado
+    DEPOIS do corte, então o botão "Marcar tudo como lido" — que aparece só
+    `{% if nao_lidos %}` — **também some**. A pessoa ficava com um número que
+    ela não tinha como zerar por caminho nenhum.
+
+    **Por que isto NÃO é um Rito de Contrato.** O contrato congelado da caixa
+    central não tem "retirar", e o registro `20260831-012` concluiu, com razão
+    para o que se sabia então, que faltava operação nova. Mas as portas que já
+    existem COMPÕEM o gesto (`armadilhas/293`): `marcarUmaComoLida` é
+    idempotente e recebe o id do aviso, que está bem aqui na resposta de
+    `listarAvisos`. Marcar o órfão como lido tira o número do sino sem inventar
+    verbo nenhum, e sem contrato novo.
+
+    **Por que no caminho de LEITURA, e não no apagamento.** Apagar uma ideia
+    popular teria de varrer os avisos de cada interessado para achar os ids —
+    o laço por pessoa que este arquivo inteiro existe para evitar (ver o
+    cabeçalho, "o leque é escrito em LOTE"). Aqui os ids já vieram na resposta
+    que a tela pediu de qualquer jeito, são no máximo os órfãos de UMA pessoa
+    (quase sempre zero), e a chamada é idempotente: a segunda visita não custa
+    nada. É reconciliação, não escrita de negócio.
+
+    **Fail-ABERTO, e de propósito.** Esta é a tela que fail VISÍVEL na
+    LISTAGEM (o comentário logo acima diz por quê: vazio e falha são estados
+    diferentes). Mas calar o sino é efeito colateral de conforto: se a caixa
+    central recusar ou sumir, a pessoa continua vendo a lista certa, e a
+    próxima visita tenta de novo. Derrubar a página por isso trocaria um
+    número teimoso por uma tela quebrada.
+    """
+    nao_lidos = [i for i in escondidos if not i.get("lido_em")]
+    if not nao_lidos:
+        return
+    destinatario_id = ator.identidade.id_da_plataforma
+    if not destinatario_id:
+        return
+    site_id = quadro_atual().site_id
+    cliente = NotificacoesClient()
+    for item in nao_lidos:
+        aviso_id = item.get("id")
+        if not aviso_id:
+            continue
+        if (
+            cliente.marcar_uma_como_lida(
+                destinatario_id=destinatario_id, site_id=site_id, id=str(aviso_id)
+            )
+            is not True
+        ):
+            logger.error(
+                "calar_o_sino: nao deu para marcar %s (recado de ideia apagada) "
+                "como lido; o numero do sino segue contando ate a proxima visita",
+                aviso_id,
+            )
 
 
 @require_POST
