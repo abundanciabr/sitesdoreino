@@ -1,0 +1,17 @@
+{
+  "arquivo": "107-fila-do-primeiro-dolar-fase-0-a-lei-da-celula-de-encomendas-",
+  "id": "TAR-107",
+  "titulo": "Fila do Primeiro Dolar, Fase 0: a lei da celula de encomendas, a constituicao dela e o contrato em papel",
+  "toca": [
+    "admin",
+    "constituicoes",
+    "fila",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com a lei (DECISAO), o plano (PLANO-MESTRE), a constituicao (constituicoes/AGENTS.encomendas.md), o anexo do contrato v1 e o mapa para IA citando a celula; deploy da admin verde lido por gh run view --json.",
+  "despacho": "Promover o plano mestre que o mantenedor trouxe (sitesdoreino-docs/plano-mestre-fila-do-primeiro-dolar.md) a lei da casa: copiar o plano para docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md sem editar o texto dele; escrever docs/decisoes/DECISAO-fila-do-primeiro-dolar.md com a decisao, a secao 3 do plano literal, as emendas da casa (escola 18+, contrato depois da porta de maquina, invariantes declarados antes do guarda, dinheiro por ultimo, portfolio no Estudio ja decidido), os invariantes J/D/S com o caminho do guarda, a tabela de parametros como dado, a escada de PRs e as decisoes pendentes do mantenedor; escrever constituicoes/AGENTS.encomendas.md; escrever o contrato HTTP v1 como anexo (o congelamento em contracts/ so vem depois da porta de maquina, armadilhas 228 e 243); citar a celula que nasce em painel/ia/04. Terminar com a pergunta estruturada ao mantenedor (aprovacao da lei, 18+, Fase 2 em paralelo com o piloto de papel, fonte do titulo enquanto nao ha Banca).",
+  "origem": "plano mestre da Fila do Primeiro Dolar (v0.1, 03/09/2026), trazido pelo mantenedor; lei em docs/decisoes/DECISAO-fila-do-primeiro-dolar.md",
+  "criada_em": "2026-09-04"
+}

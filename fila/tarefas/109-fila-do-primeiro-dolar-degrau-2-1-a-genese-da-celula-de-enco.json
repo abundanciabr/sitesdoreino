@@ -1,0 +1,21 @@
+{
+  "arquivo": "109-fila-do-primeiro-dolar-degrau-2-1-a-genese-da-celula-de-enco",
+  "id": "TAR-109",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.1: a genese da celula de encomendas, com saude, volta-atras e a lei da celula",
+  "toca": [
+    "encomendas",
+    "ci",
+    ".github",
+    "painel"
+  ],
+  "depende_de": [
+    "TAR-107"
+  ],
+  "cria": [
+    "encomendas"
+  ],
+  "evidencia_exigida": "PR mergeado: services/encomendas responde /healthz nas duas formas; os guardas de nao-assina-sessao (INV-P12), fuso e SCRIPT_NAME provados por MUTACAO com vermelho na assercao (armadilhas/195); celulas.yml (consome: []), manifesto not-applicable, rollback.yml e mapa-do-site no lugar; muralhas PASS. Deploy vermelho ate o PR de infra e esperado (armadilhas/088).",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei, com as emendas da casa ao plano), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o plano do mantenedor, secoes 5 a 9), constituicoes/AGENTS.encomendas.md e armadilhas/INDICE.md (Ctrl+F pela tecnologia que vai tocar). A secao 3 do plano (o que fica FORA) e literal: nenhum agente melhora o desenho por conta propria. PORTAO: so comeca depois de o mantenedor aprovar a lei (registro no livro respondendo ao pedido da Fase 0). TAREFA: a genese da celula services/encomendas no molde EXATO da gamificacao (TAR-034, PR #629): settings fail-hard com TIME_ZONE=America/Sao_Paulo, cookie de CSRF proprio (encomendas_csrf), /healthz nas duas formas (armadilhas 029/083/102/186), test_inv_encomendas_nao_assina_sessao.py, test_fuso_horario.py, test_healthz_script_name.py, Dockerfile/Makefile/pytest.ini/requirements, .importlinter, apps/core vazio de tela. celulas.yml com consome: [] e o comentario que explica a lista vazia (armadilhas/224). ci/manifesto-de-contratos.json not-applicable com motivo. Linha em .github/workflows/rollback.yml (armadilhas/076). painel/mapa-do-site.json. Cerca de 22 arquivos: etiqueta arquitetural com fechar-e-reabrir (armadilhas/077). NAO tocar infra/ neste PR (armadilhas/134). Provar cada guarda por mutacao DEPOIS do verde. AO POUSAR ESTE PR, crie na fila as tarefas dos degraus 2.2 a 2.10 da lei (secao 7), encadeadas por --depende-de a partir desta: elas NAO puderam nascer antes porque `toca: encomendas` so e aceito depois de a pasta existir (ci/tests/test_conferencia_do_toca.py, a dispensa `cria` vale so para a genese). E copie docs/decisoes/CONSTITUICAO-encomendas-rascunho.md para constituicoes/AGENTS.encomendas.md, revista a partir do CODIGO desta genese: constituicao sem celula e orfa (ci/tests/test_constituicoes.py).",
+  "origem": "plano mestre da Fila do Primeiro Dolar (v0.1, 03/09/2026), trazido pelo mantenedor; lei em docs/decisoes/DECISAO-fila-do-primeiro-dolar.md",
+  "criada_em": "2026-09-04"
+}
