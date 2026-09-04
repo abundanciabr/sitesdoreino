@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/encomenda.abandonada.v1.json",
+  "title": "encomenda.abandonada.v1",
+  "description": "O prazo venceu sem entrega (em_producao -> abandonada -> na_fila): a encomenda volta a fila em nova rodada de ofertas SEM este aluno, o aluno vai para o FIM da fila (a unica coisa que muda `data_entrada_fila`, INV-ENC-J4) e o cliente e avisado com nova previsao. Segundo abandono em 90 dias: pausa de 30 dias (`pausa_ate`). Entregar asset comprado ou copiado como proprio tambem e abandono, mais suspensao pelo plantao (`ator_id` = quem suspendeu). Pelo relogio, `ator_id` e null. Publicado pela celula `encomendas` (a Fila do Primeiro Dolar) pelo padrao outbox transacional (INV-P6). Escrito em papel na Fase 0 (03/09/2026), antes de a celula existir, para que consumidores (gamificacao, pagamentos, Estudio, metricas) se escrevam contra o contrato e nunca contra o codigo. So IDS OPACOS viajam: nem briefing, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Lei: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md; produto: PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (secao 7.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "encomenda.abandonada"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Id da PLATAFORMA de quem fez o gesto, ou null quando foi o RELOGIO ou o MOTOR (reavaliacao periodica, sem pessoa atras). NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "encomenda_id",
+        "aluno_id",
+        "motivo",
+        "abandonos_em_90_dias",
+        "pausa_ate"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "encomenda_id": {
+          "type": "string",
+          "description": "Id opaco da encomenda dentro da celula `encomendas`."
+        },
+        "aluno_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA do aluno (a pessoa como a celula `identidade` a conhece). NUNCA e o e-mail."
+        },
+        "motivo": {
+          "type": "string",
+          "enum": [
+            "prazo_vencido",
+            "asset_copiado"
+          ]
+        },
+        "abandonos_em_90_dias": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Contando este."
+        },
+        "pausa_ate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time",
+          "description": "Ate quando o aluno fica pausado por este abandono, ou null quando nao houve pausa."
+        }
+      }
+    }
+  }
+}
