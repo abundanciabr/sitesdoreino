@@ -14,7 +14,7 @@ migração de dados e contra um `psql` de madrugada.
 
 Duas expressões da mesma regra divergem no primeiro dia em que alguém mexer numa
 delas, e aqui divergir significa uma encomenda presa num estado de onde a tela
-não sabe sair. Por isso `test_o_python_e_o_postgres_concordam_nos_225_pares`
+não sabe sair. Por isso `test_o_python_e_o_postgres_concordam_em_todos_os_pares`
 percorre o produto cartesiano dos 15 estados e exige o mesmo veredito nos dois.
 """
 
@@ -45,7 +45,9 @@ def perfil(db):
     return PerfilProfissional.objects.create(pessoa=pessoa, site_id=SITE)
 
 
-def cria_encomenda(status=Encomenda.Status.AGUARDANDO_PAGAMENTO):
+# O padrão é `NA_FILA` desde 04/09/2026, e a troca acompanha o modelo: a
+# encomenda nasce numa pista, não no caixa (`PLANO-AREA-DE-NEGOCIACAO.md` §5).
+def cria_encomenda(status=Encomenda.Status.NA_FILA):
     return Encomenda.objects.create(
         site_id=SITE,
         origem=Encomenda.Origem.ESCOLA,
@@ -61,12 +63,19 @@ def cria_encomenda(status=Encomenda.Status.AGUARDANDO_PAGAMENTO):
 # ---------------------------------------------------------------------------
 
 
-def test_os_quinze_estados_da_secao_7_2():
-    """A lista da §7.2 do plano, contada. Estado a mais ou a menos reprova aqui."""
+def test_os_dezenove_estados_da_secao_7_2_com_a_emenda():
+    """A lista da §7.2 do plano MAIS os quatro da emenda, contada.
+
+    Eram 15 até 04/09/2026. O mantenedor liberou a negociação e o mural aberto
+    (`docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md`), e quatro estados entraram:
+    `no_mural`, `reservada`, `em_negociacao` e `acordada`. Estado a mais ou a
+    menos reprova aqui.
+    """
     assert sorted(ESTADOS_DE_ENCOMENDA) == sorted(
         [
             "abandonada",
             "aberta",
+            "acordada",
             "aguardando_cliente",
             "aguardando_pagamento",
             "aprovada",
@@ -74,15 +83,74 @@ def test_os_quinze_estados_da_secao_7_2():
             "concluida",
             "em_correcao",
             "em_mediacao",
+            "em_negociacao",
             "em_producao",
             "em_revisao",
             "entregue",
             "na_fila",
+            "no_mural",
             "oferecida",
             "para_reclassificar",
+            "reservada",
         ]
     )
-    assert len(ESTADOS_DE_ENCOMENDA) == 15
+    assert len(ESTADOS_DE_ENCOMENDA) == 19
+
+
+def test_o_caixa_nao_e_mais_a_porta_de_entrada():
+    """`aguardando_pagamento` deixou de ser o começo, e virou o penúltimo passo.
+
+    É a mudança mais fácil de desfazer sem querer, e a mais cara: se alguém
+    devolver o caixa para o início, a plataforma volta a pedir dinheiro por um
+    valor que ninguém combinou ainda, que é exatamente o que a negociação
+    existe para não fazer (`PLANO-AREA-DE-NEGOCIACAO.md` §5).
+    """
+    from apps.encomendas.models import Encomenda
+
+    assert Encomenda._meta.get_field("status").default == "na_fila"
+    # Ninguém CHEGA ao caixa senão pelo acordo.
+    quem_leva_ao_caixa = {
+        estado
+        for estado, destinos in TRANSICOES_DA_ENCOMENDA.items()
+        if "aguardando_pagamento" in destinos
+    }
+    assert quem_leva_ao_caixa == {"acordada"}
+    # E do caixa só se sai para a produção (ou para trás, pelas saídas de sempre).
+    assert TRANSICOES_DA_ENCOMENDA["aguardando_pagamento"] == frozenset(
+        {"em_producao", "cancelada", "em_mediacao"}
+    )
+
+
+def test_aceitar_uma_oferta_leva_a_negociar_e_nao_a_produzir():
+    """A seta que mais mudou de significado com a emenda.
+
+    Antes, aceitar uma oferta era começar a produzir, porque o preço já estava
+    dado. Agora é começar a NEGOCIAR. Se esta seta voltar a apontar para
+    `em_producao`, a negociação inteira vira código morto que nenhum caminho
+    alcança — e nada quebraria para avisar.
+    """
+    assert "em_negociacao" in TRANSICOES_DA_ENCOMENDA["oferecida"]
+    assert "em_producao" not in TRANSICOES_DA_ENCOMENDA["oferecida"]
+    # A chamada aberta segue o mesmo caminho: o primeiro que aceita, negocia.
+    assert "em_negociacao" in TRANSICOES_DA_ENCOMENDA["aberta"]
+    assert "em_producao" not in TRANSICOES_DA_ENCOMENDA["aberta"]
+    # E quem pegou no Mural também.
+    assert "em_negociacao" in TRANSICOES_DA_ENCOMENDA["reservada"]
+
+
+def test_quem_calou_decide_para_onde_a_negociacao_volta():
+    """[INV-ENC-N7]: cliente calado vai ao plantão, nunca ao próximo aluno.
+
+    O aluno que desiste devolve o projeto à pista dele, e o próximo aluno o
+    recebe — isso é justo, porque o projeto continua bom. Mas um cliente que
+    sumiu não é um projeto bom: mandá-lo ao próximo faria cada aluno da fila
+    gastar a própria vez num fantasma, um depois do outro, e nenhum saberia
+    por quê. Por isso as três saídas existem, e são diferentes.
+    """
+    saidas = TRANSICOES_DA_ENCOMENDA["em_negociacao"]
+    assert "acordada" in saidas
+    assert "na_fila" in saidas and "no_mural" in saidas
+    assert "para_reclassificar" in saidas
 
 
 def test_os_estados_do_textchoices_sao_os_da_maquina():
@@ -157,10 +225,18 @@ def test_o_queryset_update_tambem_e_recusado(db):
 
 
 def test_a_linha_principal_do_plano_anda_inteira(db):
-    """O caminho feliz da §7.2, do pagamento à conclusão, sem atalho nenhum."""
+    """O caminho feliz, da fila à conclusão, sem atalho nenhum.
+
+    Depois da emenda de 04/09/2026 ele passa por `em_negociacao`, `acordada` e
+    só então pelo caixa: a encomenda nasce numa pista, um aluno recebe a
+    oferta, os dois negociam, o acordo congela o combinado, o pagamento é
+    confirmado, e aí a produção começa.
+    """
     caminho = [
-        "na_fila",
         "oferecida",
+        "em_negociacao",
+        "acordada",
+        "aguardando_pagamento",
         "em_producao",
         "entregue",
         "em_revisao",
@@ -183,6 +259,51 @@ def test_a_linha_principal_do_plano_anda_inteira(db):
     )
 
 
+def test_a_linha_do_mural_anda_inteira(db):
+    """A segunda pista, ponta a ponta.
+
+    O projeto nasce no Mural, um aluno o PEGA (`reservada`), propõe, os dois
+    fecham, o pagamento é confirmado e a produção começa. É o mesmo destino da
+    fila por um caminho diferente — e é isso que prova que o Mural não é um
+    produto paralelo, e sim uma segunda porta para a mesma esteira.
+    """
+    # O projeto NASCE no Mural, e não é movido para lá: quem decide a pista é o
+    # nível, no momento em que a encomenda é criada. `na_fila -> no_mural` não
+    # é transição legal de propósito — trocar a pista de um projeto vivo é
+    # reclassificação, e reclassificação passa pelo plantão.
+    caminho = [
+        "reservada",
+        "em_negociacao",
+        "acordada",
+        "aguardando_pagamento",
+        "em_producao",
+    ]
+    encomenda = cria_encomenda(Encomenda.Status.NO_MURAL)
+    for passo in caminho:
+        encomenda.mudar_status(passo, ator_id="prof-1")
+    encomenda.refresh_from_db()
+    assert encomenda.status == "em_producao"
+
+
+def test_o_cliente_que_some_nao_cai_no_colo_do_proximo_aluno(db):
+    """[INV-ENC-N7] medido no banco, e não só na tabela de transições.
+
+    Da negociação se sai para o plantão (cliente calado) ou de volta à pista
+    (aluno calado). As duas existem, e a diferença entre elas é a regra.
+    """
+    encomenda = cria_encomenda()
+    for passo in ["oferecida", "em_negociacao", "para_reclassificar"]:
+        encomenda.mudar_status(passo, ator_id="prof-1")
+    encomenda.refresh_from_db()
+    assert encomenda.status == "para_reclassificar"
+
+    outra = cria_encomenda()
+    for passo in ["oferecida", "em_negociacao", "na_fila"]:
+        outra.mudar_status(passo, ator_id="prof-1")
+    outra.refresh_from_db()
+    assert outra.status == "na_fila"
+
+
 def test_o_mesmo_status_nao_e_transicao(db):
     """Reafirmar o estado atual é recusado em Python e ignorado pelo banco.
 
@@ -199,7 +320,7 @@ def test_o_mesmo_status_nao_e_transicao(db):
     assert encomenda.cliente_id == "cli-2"
 
 
-def test_o_python_e_o_postgres_concordam_nos_225_pares(db):
+def test_o_python_e_o_postgres_concordam_em_todos_os_pares(db):
     """A prova de que a tabela do código e a do gatilho são a MESMA.
 
     A tabela vive duas vezes: em `TRANSICOES_DA_ENCOMENDA` (que a tela lê para
