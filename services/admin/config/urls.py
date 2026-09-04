@@ -27,6 +27,19 @@ from apps.core.editor_de_documentos import (
     documento_salvar,
     documento_versoes,
 )
+from apps.core.livro import (
+    livro,
+    livro_baixar_tudo,
+    texto_apagar,
+    texto_baixar,
+    texto_criar,
+    texto_do_livro,
+    texto_editar,
+    texto_novo,
+    texto_restaurar,
+    texto_salvar,
+    textos_enviar,
+)
 from apps.core.mapa_do_site import mapa_do_site
 from apps.core.economia import (
     economia,
@@ -267,6 +280,37 @@ urlpatterns = [
         documento_restaurar,
         name="documento_restaurar",
     ),
+    # A BIBLIOTECA DO LIVRO (`apps/core/livro.py`), 04/09/2026 — onde o
+    # mantenedor guarda os textos do livro que escreve.
+    #
+    # NENHUMA destas rotas e publica, e isso nao e descuido de configuracao: e
+    # a decisao. O repositorio deste projeto e publico, o livro nao esta
+    # lancado, e por isso o texto so existe no banco e so abre para quem passa
+    # pela porta. Nao ha aqui o par `/docs/` + `/documentos/` das linhas de
+    # cima — ha um lado so.
+    #
+    # As tres primeiras vem ANTES da generica `^livro/<nome>$` pelo motivo de
+    # sempre: um texto chamado "novo" existiria na lista e nunca abriria. A
+    # `NOMES_RESERVADOS` do modulo fecha o outro lado, impedindo que ele nasca.
+    path("livro/", livro, name="livro"),
+    path("livro/novo", texto_novo, name="texto_novo"),
+    path("livro/criar", texto_criar, name="texto_criar"),
+    path("livro/enviar", textos_enviar, name="textos_enviar"),
+    path("livro/tudo.md", livro_baixar_tudo, name="livro_baixar_tudo"),
+    re_path(r"^livro/(?P<nome>[a-z0-9-]+)$", texto_do_livro, name="texto_do_livro"),
+    re_path(r"^livro/(?P<nome>[a-z0-9-]+)/editar$", texto_editar, name="texto_editar"),
+    re_path(r"^livro/(?P<nome>[a-z0-9-]+)/salvar$", texto_salvar, name="texto_salvar"),
+    # Baixar e LEITURA, e por isso GET. Guardar, editar, restaurar e apagar
+    # mudam o que esta escrito, e por isso sao POST — a mesma regra das rotas
+    # dos documentos, e pelo mesmo motivo: decisao que se aplica por GET e
+    # decisao que um pre-carregador de link toma sozinho.
+    re_path(r"^livro/(?P<nome>[a-z0-9-]+)/baixar$", texto_baixar, name="texto_baixar"),
+    re_path(
+        r"^livro/(?P<nome>[a-z0-9-]+)/restaurar$",
+        texto_restaurar,
+        name="texto_restaurar",
+    ),
+    re_path(r"^livro/(?P<nome>[a-z0-9-]+)/apagar$", texto_apagar, name="texto_apagar"),
     # OS PLANOS PARA IA (`apps/core/planos_para_ia.py`), 31/08/2026 — e as duas
     # linhas vêm ANTES das do mapa, porque a ordem é o que faz funcionar: a rota
     # genérica de baixo (`^mapa-ia/([\w.-]+)$`) casaria `mapa-ia/planos` e
