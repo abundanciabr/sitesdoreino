@@ -9,6 +9,15 @@
     <a class="botao" href="{% url 'escola_alunos' %}">Gerenciar os alunos &rarr;</a>
     <a class="botao" href="{% url 'escola_jornada' %}">Ver a jornada do aluno &rarr;</a>
     <a class="botao" href="{% url 'escola_pontos' %}">Ver o quadro de pontos &rarr;</a>
+    {% comment %}
+    A porta das sequências de mensagens (04/09/2026, degrau 7 do
+    PLANO-SEQUENCIAS-DE-MENSAGENS.md). Ela entra AGORA e não antes: a regra
+    escrita no aviso lá embaixo é que cada atalho só nasce depois que a parte do
+    sistema que sabe respondê-lo existe, e a porta de máquina da `mensageria`
+    subiu hoje, com o contrato congelado no Rito. Sem esta linha a tela nova
+    ficaria alcançável só por quem soubesse o endereço de cor.
+    {% endcomment %}
+    <a class="botao" href="{% url 'escola_jornadas' %}">Ver as sequências de mensagens &rarr;</a>
   </p>
 
   {% comment %}
@@ -19,11 +28,13 @@
   entra junto com a parte do sistema que sabe respondê-la.
   {% endcomment %}
   <p class="aviso espaco-28">
-    <b>Duas portas, e as duas falam de alunos.</b>
-    Uma administra <b>as pessoas</b> (quem está esperando, quem é aluno, e o
-    formulário de cada um); a outra mostra <b>as regras</b> — por onde alguém
-    passa entre chegar no site e sair da escola, com quantas estão em cada
-    ponto agora.
+    <b>Cada porta responde a uma pergunta diferente.</b>
+    A primeira administra <b>as pessoas</b> (quem está esperando, quem é aluno,
+    e o formulário de cada um). A segunda mostra <b>o caminho</b>: por onde
+    alguém passa entre chegar no site e sair da escola, com quantas estão em
+    cada ponto agora. A terceira mostra <b>quem está jogando</b>, por pontos. E
+    a quarta mostra <b>o que a escola escreve sozinha</b>: as sequências de
+    mensagens automáticas, o texto de cada uma, e o que foi barrado.
     <br><br>
     Turmas, aulas e certificados moram nesta mesma página quando existirem — e
     cada um só aparece depois que a parte do sistema que guarda aquele dado

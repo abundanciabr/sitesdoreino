@@ -54,6 +54,12 @@ from apps.core.ciclo import ciclo
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
 from apps.core.robos import robos
+from apps.core.sequencias import (
+    sequencia,
+    sequencia_ligar,
+    sequencia_publicar,
+    sequencias,
+)
 from apps.core.views import (
     escola,
     escola_admin_promover,
@@ -378,6 +384,46 @@ urlpatterns = [
     # dela: sao perguntas diferentes — "como funciona a escola?" e "quem esta
     # nela?" — e o mapa precisa abrir sem que ninguem role uma lista.
     path("escola/jornada/", escola_jornada, name="escola_jornada"),
+    # [SEQUENCIAS] A tela onde o mantenedor vê e EDITA as sequências de
+    # mensagens da escola (`apps/core/sequencias.py`, degrau 7 do
+    # `PLANO-SEQUENCIAS-DE-MENSAGENS.md`, 04/09/2026).
+    #
+    # Vizinha do `escola_jornada` de cima, e as duas telas são DIFERENTES:
+    # aquela é o MAPA da jornada do aluno (por onde uma pessoa passa entre
+    # chegar no site e sair da escola, com quantas estão em cada parada); esta é
+    # o conteúdo das SEQUÊNCIAS de mensagens automáticas. O plural no endereço
+    # separa as duas, e este comentário existe porque a semelhança dos nomes é
+    # o tipo de coisa que engana quem lê o diff rápido demais.
+    #
+    # A ORDEM É O QUE FAZ FUNCIONAR: `ligar` e `publicar` casariam o padrão da
+    # rota genérica logo abaixo, então vêm ANTES dela. Os dois são POST-only
+    # (`require_POST` na view) e sem barra final, na mesma gramática das quatro
+    # rotas do editor de documentos: decisão que se aplica por GET é decisão que
+    # um pré-carregador de link, um antivírus corporativo ou um crawler
+    # autenticado tomam sozinhos, e aqui uma delas muda o que sai para alunos de
+    # verdade. Um verbo por rota, nunca um POST com um campo escondido dizendo
+    # "o que fazer": com isso a auditoria e o CSRF passariam a depender de um
+    # valor de formulário, e ler este arquivo deixaria de contar o que a tela faz.
+    #
+    # O alvo vem no CORPO do formulário, junto do CSRF que o protege, e não no
+    # caminho — mesma escolha de `escola_decidir` e `escola_reconsiderar`.
+    path("escola/jornadas/", sequencias, name="escola_jornadas"),
+    path("escola/jornadas/ligar", sequencia_ligar, name="escola_jornada_ligar"),
+    path(
+        "escola/jornadas/publicar",
+        sequencia_publicar,
+        name="escola_jornada_publicar",
+    ),
+    # O padrão do slug (`[a-z0-9-]+`) é a cerca desta ponta: nome com barra ou
+    # com ponto não casa a rota, então não há caminho para pedir outra coisa à
+    # porta de máquina da `mensageria` por este endereço. A segunda cerca está
+    # do outro lado, onde jornada de outro site é 404 mesmo com o slug certo na
+    # mão (CONSTITUICAO Lei 9).
+    re_path(
+        r"^escola/jornadas/(?P<slug>[a-z0-9-]+)/$",
+        sequencia,
+        name="escola_jornada_sequencia",
+    ),
     path("escola/alunos/", escola_alunos, name="escola_alunos"),
     # A lista de nomes para colar no grupo, pedida pelo mantenedor em
     # 31/08/2026 — vizinha da lista de gestão, e não dentro dela: uma pergunta

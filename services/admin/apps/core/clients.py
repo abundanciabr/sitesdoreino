@@ -1279,3 +1279,233 @@ class MedicaoClient:
             logger.error("medicao: 'total' fora do contrato: %r", total)
             return self.NAO_RESPONDEU, None
         return self.OK, total
+
+
+class MensageriaClient:
+    """As sequências de mensagens da escola: o que existe, quem está dentro, o
+    que saiu, o que NÃO saiu, e as duas escritas.
+
+    Fala só o que está no contrato congelado (`contracts/mensageria.openapi.yaml`,
+    Rito de Contrato de 04/09/2026, com o mantenedor presente). Nunca lê o
+    `mensageria_db` (Lei 3), e **nunca guarda uma cópia** de nada aqui: a
+    sequência é dado da `mensageria`, e o mesmo fato em dois lugares é a lei
+    anti-duplicação do `CLAUDE.md` sendo quebrada. No dia em que os dois
+    discordassem, esta tela mostraria um texto e o aluno receberia outro.
+
+    ## Os desfechos são cinco, e não dois, porque a tela precisa dos cinco
+
+    Um `None` genérico obrigaria a tela a dizer "não deu" para cinco situações
+    que pedem cinco frases diferentes ao mantenedor. As três recusas do contrato
+    são fatos que ele PODE resolver sozinho, e uma tela que as achatasse num
+    erro só o mandaria procurar ajuda para algo que está a um clique:
+
+    - **`SEM_VERSAO`** (409 ao ligar): a sequência não tem versão publicada.
+      Ligada assim ela não inscreveria ninguém, e a tela mostraria "no ar" para
+      uma sequência muda.
+    - **`DESATUALIZADO`** (409 ao publicar): alguém publicou entre a leitura
+      desta tela e o clique. O `versao_base` é a trava que impede sobrescrever
+      em silêncio quem publicou primeiro.
+    - **`SEM_GRAU`** (403): o par tem só `TOKENS_SOMENTE_LEITURA_ADMIN`, e falta
+      `TOKENS_PUBLICACAO_ADMIN`. A tela lê tudo certo e só a escrita recusa: é o
+      modo de falha exato que os dois conjuntos de token existem para tornar
+      diagnosticável (`services/mensageria/apps/core/auth.py`).
+
+    ## Fail-OPEN na leitura, fail-CLOSED na escrita
+
+    Mesmo desenho de `GamificacaoClient`, pelo mesmo motivo. O par de tokens
+    `admin→mensageria` é um passo do mantenedor na VPS (Lei 5): enquanto ele não
+    existir, a tela abre dizendo o que falta, em português, em vez de 500. Uma
+    tela de operação que não abre é inútil justamente quando você precisa dela.
+    Na escrita a falha é fechada: dizer "publiquei" sem ter publicado mandaria
+    o mantenedor embora achando que a correção pegou.
+
+    As variáveis são lidas no PONTO DE USO, nunca no `__init__`
+    (`armadilhas/097`: env ausente no construtor vira HTTP 500 em toda página).
+    """
+
+    TIMEOUT = 4.0
+    OK = "ok"
+    RECUSADO = "recusado"
+    SEM_VERSAO = "sem_versao"
+    DESATUALIZADO = "desatualizado"
+    SEM_GRAU = "sem_grau"
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        base = (os.environ.get("MENSAGERIA_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("MENSAGERIA_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    def ligado(self) -> bool:
+        """O par existe no env desta célula? A tela pergunta antes de desenhar."""
+        return self._configuracao() is not None
+
+    # -- as quatro leituras --------------------------------------------------
+    def jornadas(self, site_id: str) -> "dict | None":
+        """`listJourneys`: as sequências deste site. `None` = não deu."""
+        return self._ler("jornadas", {"site_id": site_id})
+
+    def jornada(self, site_id: str, slug: str, versao: "int | None" = None):
+        """`getJourney`: os passos de uma versão, na ordem. `None` = não deu.
+
+        Sem `versao`, a porta devolve a PUBLICADA CORRENTE. Quem chama só pede
+        isto depois de saber, pela lista, que existe versão publicada: assim o
+        404 de "sequência não existe" nunca se confunde com o de "ainda não tem
+        versão", e a tela não precisa adivinhar lendo o texto de um erro.
+        """
+        parametros = {"site_id": site_id}
+        if versao is not None:
+            parametros["versao"] = versao
+        return self._ler("jornadas/" + quote(slug, safe=""), parametros)
+
+    def inscricoes(self, site_id: str, slug: str, estado: str = ""):
+        """`listEnrollments`: quem está dentro, e em que passo. `None` = não deu."""
+        parametros = {"site_id": site_id}
+        if estado:
+            parametros["estado"] = estado
+        return self._ler("jornadas/" + quote(slug, safe="") + "/inscricoes", parametros)
+
+    def entregas(self, site_id: str, inscricao_id: str) -> "dict | None":
+        """`listDeliveries`: o que saiu, o que NÃO saiu, e por quê.
+
+        É a operação que responde "por que o aluno X não recebeu?", e é a metade
+        que faz esta tela valer.
+        """
+        return self._ler(
+            "inscricoes/" + quote(inscricao_id, safe="") + "/entregas",
+            {"site_id": site_id},
+        )
+
+    def _ler(self, caminho: str, parametros: dict) -> "dict | None":
+        config = self._configuracao()
+        if config is None:
+            logger.warning(
+                "sequencias: MENSAGERIA_API_URL/MENSAGERIA_API_TOKEN ainda não "
+                "estão no env desta célula (par admin->mensageria não provisionado)"
+            )
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                base + "/" + caminho,
+                params=parametros,
+                headers={"Authorization": "Bearer " + token},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("sequencias: a mensageria não respondeu: %s", erro)
+            return None
+        if r.status_code != 200:
+            logger.error("sequencias: a mensageria respondeu HTTP %s", r.status_code)
+            return None
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            logger.error("sequencias: resposta fora do contrato: %s", erro)
+            return None
+        if not isinstance(corpo, dict):
+            logger.error("sequencias: resposta de %s com forma inesperada", caminho)
+            return None
+        return corpo
+
+    # -- as duas escritas ----------------------------------------------------
+    def publicar_texto(
+        self,
+        *,
+        site_id: str,
+        slug: str,
+        ordem: int,
+        idioma: str,
+        assunto_visivel: str,
+        corpo: str,
+        versao_base: "int | None",
+    ) -> "tuple[str, dict, str]":
+        """`publishJourneyText`: grava a frase PUBLICANDO uma versão nova.
+
+        Devolve `(situação, corpo da resposta, frase para a tela)`. O corpo traz
+        o NÚMERO da versão que nasceu, e a tela precisa dele: é com ele que ela
+        diz ao mantenedor, em português, que quem já estava no meio da sequência
+        termina com o texto antigo.
+        """
+        return self._escrever(
+            "jornadas/" + quote(slug, safe="") + "/textos",
+            {
+                "site_id": site_id,
+                "ordem": ordem,
+                "idioma": idioma,
+                "assunto_visivel": assunto_visivel,
+                "corpo": corpo,
+                "versao_base": versao_base,
+            },
+            publicando=True,
+        )
+
+    def ligar(self, *, site_id: str, slug: str, ativa: bool) -> "tuple[str, dict, str]":
+        """`setJourneyActive`: liga ou desliga, sem tocar no texto.
+
+        O pedido descreve o ESTADO desejado, não um verbo, então mandar o mesmo
+        duas vezes é 200 nas duas. A resposta traz `mudou` (que separa "acabei
+        de ligar" de "já estava ligada") e `inscricoes_andando` (quantas pessoas
+        continuam recebendo depois de desligada). A tela usa os dois.
+        """
+        return self._escrever(
+            "jornadas/" + quote(slug, safe="") + "/ativa",
+            {"site_id": site_id, "ativa": ativa},
+            publicando=False,
+        )
+
+    def _escrever(
+        self, caminho: str, corpo: dict, *, publicando: bool
+    ) -> "tuple[str, dict, str]":
+        config = self._configuracao()
+        if config is None:
+            return (
+                self.NAO_RESPONDEU,
+                {},
+                "o par de tokens com o motor das mensagens não está ligado",
+            )
+        base, token = config
+        try:
+            r = http().post(
+                base + "/" + caminho,
+                json=corpo,
+                headers={"Authorization": "Bearer " + token},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("sequencias: não deu para escrever: %s", erro)
+            return self.NAO_RESPONDEU, {}, "o motor das mensagens não respondeu"
+
+        if r.status_code == 200:
+            try:
+                resposta = r.json()
+            except ValueError:
+                logger.error("sequencias: a escrita respondeu fora do contrato")
+                return self.NAO_RESPONDEU, {}, "o motor das mensagens não respondeu"
+            if not isinstance(resposta, dict):
+                logger.error("sequencias: a escrita respondeu uma forma inesperada")
+                return self.NAO_RESPONDEU, {}, "o motor das mensagens não respondeu"
+            return self.OK, resposta, ""
+
+        if r.status_code == 403:
+            # O par existe e lê tudo, mas não tem o grau de publicação. É o modo
+            # de falha silencioso que os DOIS conjuntos de token existem para
+            # tornar visível: sem esta linha a tela diria "não respondeu", e o
+            # mantenedor iria procurar um problema de rede que não existe.
+            logger.error(
+                "sequencias: o par admin->mensageria não tem o grau de publicação "
+                "(falta TOKENS_PUBLICACAO_ADMIN no env da mensageria)"
+            )
+            return self.SEM_GRAU, {}, ""
+        if r.status_code == 404:
+            return self.RECUSADO, {}, "essa sequência não existe nesta escola"
+        if r.status_code == 409:
+            # Os dois 409 do contrato são situações diferentes, e só quem chamou
+            # sabe qual delas pediu: ligar sem versão publicada contra publicar
+            # sobre uma base que já andou. Distinguir pelo TEXTO da resposta
+            # seria amarrar esta tela à redação de uma mensagem de erro.
+            return (self.DESATUALIZADO if publicando else self.SEM_VERSAO), {}, ""
+        if r.status_code == 422:
+            return self.RECUSADO, {}, "faltou preencher alguma coisa"
+        logger.error("sequencias: a escrita respondeu HTTP %s", r.status_code)
+        return self.NAO_RESPONDEU, {}, "o motor das mensagens respondeu com erro"
