@@ -650,6 +650,14 @@ def _mergear() -> list[str]:
     return [str(p) for p in lista]
 
 
+# O texto que `ci/mergear.py` imprime quando `mergeable=UNKNOWN` (o GitHub
+# ainda calculando): é a ÚNICA recusa do portão que se remede, porque é a única
+# que não é sobre o PR — é sobre o instante da consulta.
+MARCA_DO_GITHUB_RECALCULANDO = "calcula isso de forma assíncrona"
+VOLTAS_DE_REMEDICAO = int(os.environ.get("ESPERAR_VOLTAS_DE_REMEDICAO", "6"))
+SEGUNDOS_ENTRE_REMEDICOES = float(os.environ.get("ESPERAR_SEGUNDOS_ENTRE_REMEDICOES", "20"))
+
+
 def pousar_pelo_portao(pr: str) -> int:
     """Checks verdes ⇒ o MESMO portão do rito (`ci/mergear.py N --pousar`).
 
@@ -659,20 +667,37 @@ def pousar_pelo_portao(pr: str) -> int:
     e a recusa dele sai aqui, inteira, para o robô ler. Exit 0 = pouso pedido.
     """
     print(f"🛬 checks verdes: passo pelo portão e peço pouso do PR {pr}…", flush=True)
-    try:
-        proc = subprocess.run(
-            [*_mergear(), pr, "--pousar"],
-            capture_output=True, text=True, timeout=300,
-            encoding="utf-8", errors="replace",
-        )
-    except (OSError, subprocess.TimeoutExpired) as erro:
+    # O portão sai 2 (ERROR) quando o GitHub ainda está recalculando se o PR
+    # tem conflito — e isso acontece JUSTAMENTE no segundo em que o último
+    # check fica verde, que é quando esta função é chamada. ERROR não é FAIL
+    # (RUNBOOK-LOTES §9, Lote 10, lição 3): remede-se algumas vezes antes de
+    # desistir. Medido em 03/09/2026: dois PRs seguidos do mesmo lote (#954 e
+    # #956) morreram aqui com "O GitHub calcula isso de forma assíncrona", e
+    # o `--pousar` rodado à mão 30 s depois passou.
+    for volta in range(1, VOLTAS_DE_REMEDICAO + 1):
+        try:
+            proc = subprocess.run(
+                [*_mergear(), pr, "--pousar"],
+                capture_output=True, text=True, timeout=300,
+                encoding="utf-8", errors="replace",
+            )
+        except (OSError, subprocess.TimeoutExpired) as erro:
+            print(
+                f"🔴 não consegui rodar o portão para o PR {pr} ({erro}). "
+                f"Faça na mão: python ci/mergear.py {pr} --pousar",
+                flush=True,
+            )
+            return 2
+        saida = (proc.stdout or "") + (proc.stderr or "")
+        recalculando = proc.returncode == 2 and MARCA_DO_GITHUB_RECALCULANDO in saida
+        if not recalculando or volta == VOLTAS_DE_REMEDICAO:
+            break
         print(
-            f"🔴 não consegui rodar o portão para o PR {pr} ({erro}). "
-            f"Faça na mão: python ci/mergear.py {pr} --pousar",
+            f"⏳ o portão não conseguiu medir (o GitHub ainda recalcula o PR {pr}); "
+            f"remeço em {SEGUNDOS_ENTRE_REMEDICOES}s ({volta} de {VOLTAS_DE_REMEDICAO})",
             flush=True,
         )
-        return 2
-    saida = (proc.stdout or "") + (proc.stderr or "")
+        time.sleep(SEGUNDOS_ENTRE_REMEDICOES)
     cauda = [l for l in saida.splitlines() if l.strip()][-12:]
     for linha in cauda:
         print("   " + linha, flush=True)
@@ -688,7 +713,11 @@ def pousar_pelo_portao(pr: str) -> int:
         "está nas linhas acima. Conserte e rode de novo; não re-tente às cegas.",
         flush=True,
     )
-    return 1
+    # A mesma distinção que o portão faz, preservada até aqui: FAIL é sobre o
+    # PR e sai 1; ERROR é "não consegui medir" e sai 2, como o estouro do teto.
+    # Sem isso, um lote automatizado leria "o GitHub não decidiu" como "o PR
+    # foi reprovado" e mandaria um robô consertar código que está certo.
+    return 2 if recalculando else 1
 
 
 if __name__ == "__main__":
