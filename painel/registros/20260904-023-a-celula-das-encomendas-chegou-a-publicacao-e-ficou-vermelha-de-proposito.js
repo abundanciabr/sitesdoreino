@@ -9,7 +9,8 @@
     + "publicou a admin com sucesso; o pedaço da célula encomendas parou em 'não tem serviço "
     + "algum no compose da VPS', que é exatamente o vermelho esperado até o degrau 2.10 "
     + "(armadilha 088, TAR-128). A primeira tentativa morreu por timeout de SSH (armadilha 127) "
-    + "e a vacina refez sozinha. Nada depende de ninguém.",
+    + "e a vacina refez sozinha. Nada depende de ninguém. Este recibo viajou no PR #961, "
+    + "junto com a armadilha 307.",
   autoridade: "github",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/actions/runs/33830235534",
   verificado_em: "2026-09-04",
