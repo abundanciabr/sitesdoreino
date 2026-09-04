@@ -1,0 +1,16 @@
+{
+  "arquivo": "140-fila-do-primeiro-dolar-as-tabelas-aprendem-a-negociacao-o-qu",
+  "id": "TAR-140",
+  "titulo": "Fila do Primeiro Dolar: as tabelas aprendem a negociacao (o que a emenda acrescentou depois da TAR-120)",
+  "toca": [
+    "encomendas"
+  ],
+  "depende_de": [
+    "TAR-120"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com os quatro estados novos na maquina de estados (no_mural, reservada, em_negociacao, acordada), os campos do acordo nascendo nulos, o estado inicial deixando de ser aguardando_pagamento, e o teste de todos os pares crescido; cada guarda novo provado por mutacao com vermelho na assercao; migracao aplicada, revertida e reaplicada num PostgreSQL real",
+  "despacho": "LEIA ANTES: docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md (a emenda inteira; o par.2 tem o fluxo novo desenhado), docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei e a secao 2.1 que registra a reabertura), services/encomendas/apps/encomendas/models.py (o que ja existe, e e bom: maquina de estados como DADO mais gatilho no PostgreSQL), armadilhas/INDICE.md.\n\nPOR QUE ESTA TAREFA EXISTE: a TAR-120 construiu as tabelas a partir da lei ORIGINAL, sem a emenda de 04/09/2026 que o mantenedor aprovou no mesmo dia. As duas sessoes correram em paralelo e a emenda chegou a main depois de o codigo estar escrito. Nada esta errado no que existe; falta o que a emenda acrescentou. Corrigir agora e barato: a celula nao esta no ar e o banco esta vazio.\n\nTAREFA: a maquina de estados da Encomenda passa a conhecer a negociacao. Tres mudancas, e a terceira e a que mais surpreende:\n\n1. ESTADOS NOVOS: no_mural (a segunda pista), reservada (um aluno pegou no Mural e tem relogio), em_negociacao (ha proposta viva), acordada (o acordo fechou e congelou valor, prazo, entregaveis e correcoes).\n\n2. CAMPOS NOVOS na Encomenda, todos comecando nulos: pista (fila|mural) e os do acordo (valor_cents ou o preco ja existente, prazo_dias, entregaveis, correcoes_inclusas, acordado_em). As tabelas Proposta e Acordo NAO nascem aqui: sao a TAR-134.\n\n3. O PAGAMENTO SAI DO COMECO DO FLUXO. Hoje aguardando_pagamento e o estado INICIAL, e tem de ser: nao se cobra um valor que ainda nao foi combinado. O fluxo novo e: nasce em na_fila ou no_mural -> oferecida (fila) ou reservada (mural) -> em_negociacao -> acordada -> aguardando_pagamento -> em_producao. E aberta (chamada aberta) passa a ir para em_negociacao, nao direto para em_producao.\n\nMantenha o desenho que ja esta la: transicoes como DADO, gatilho do PostgreSQL recusando o proibido, historico com autor. O teste que percorre todos os pares cresce junto (eram 15x15). Prove cada guarda novo por MUTACAO depois do verde.",
+  "origem": "a TAR-120 e a emenda de 04/09/2026 correram em paralelo; o codigo foi escrito antes de a emenda chegar a main",
+  "criada_em": "2026-09-04"
+}
