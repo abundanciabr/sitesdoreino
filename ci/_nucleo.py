@@ -370,7 +370,43 @@ def recortar(texto: str, limite: int = 2000) -> str:
 
 
 def configurar_saida() -> None:
-    """UTF-8 na saída — console cp1252 do Windows não pode virar 'erro'."""
+    """UTF-8 na minha saída E na de todo filho meu.
+
+    A primeira metade (reconfigurar `stdout`/`stderr`) é antiga: console cp1252
+    do Windows não pode virar "erro".
+
+    A SEGUNDA metade entrou em 04/09/2026 e é a que faltava. Reconfigurar a
+    minha saída não diz nada sobre a do meu filho: um `python` filho, no
+    Windows, escreve no cano pela codepage do console (cp1252), enquanto todo
+    leitor desta casa decodifica utf-8. O `í` de "assíncrona" viaja como
+    `\\xed`, chega como `\\ufffd`, e o texto nunca casa com o que o pai procura.
+
+    Medido nesta máquina em 04/09/2026, com o comando abaixo:
+
+        filho escreveu ... b'calcula isso de forma ass\\xedncrona\\r\\n'
+        o pai leu ....... 'calcula isso de forma ass\\ufffdncrona\\n'
+        a marca casa? ... False        ← e a decisão do pai virou pó
+
+    Foi assim que a remedição do ERROR do portão (`ci/esperar.py`, construída
+    em 03/09/2026 porque os PRs #954 e #956 morreram sem ela) nasceu MORTA
+    nesta máquina, que é justamente a única onde ela roda: verde na CI (Linux,
+    utf-8 por padrão), inerte em casa. Dois testes de `ci/tests/test_espera.py`
+    reprovavam aqui e passavam lá — e a `armadilhas/138` já tinha previsto essa
+    cegueira por escrito em 27/08/2026, sem que nada fosse construído.
+
+    Por que AQUI, e não em cada chamada de `subprocess`: são 90 fronteiras que
+    decodificam texto em `ci/`, e 89 delas não declaravam ambiente nenhum
+    (medido em 04/09/2026). Filho herda `os.environ`, então uma linha na porta
+    por onde as 33 ferramentas desta casa já passam cobre as 90 de uma vez.
+    Remendar chamada por chamada seria a esteira infinita: quem escrevesse a
+    de número 91 recomeçaria a doença. `setdefault` porque quem já escolheu o
+    próprio ambiente continua mandando nele.
+
+    Não cobre filho que não é Python (`git`, `gh`, `node`) — `PYTHONUTF8` é uma
+    chave do interpretador, e dizer o contrário seria garantia sem mecanismo.
+    O que cobre é a classe que mordeu: ferramenta desta casa chamando outra.
+    """
+    os.environ.setdefault("PYTHONUTF8", "1")
     for fluxo in (sys.stdout, sys.stderr):
         reconfigure = getattr(fluxo, "reconfigure", None)
         if reconfigure is not None:

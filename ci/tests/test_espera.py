@@ -33,6 +33,7 @@ from espera import (  # noqa: E402
     vigiar,
 )
 from esperar import ESPERAS_QUE_NAO_DEVIAM_EXISTIR  # noqa: E402
+from mergear import MOTIVO_GITHUB_AINDA_CALCULANDO  # noqa: E402
 
 ESPERAR = RAIZ_DO_REPO / "ci" / "esperar.py"
 
@@ -177,7 +178,13 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
             "fita.write_text(json.dumps(roteiro), encoding='utf-8')\n"
             "with chamadas.open('a', encoding='utf-8') as f:\n"
             "    f.write(' '.join(sys.argv[1:]) + chr(10))\n"
-            "print(atual['saida'])\n"
+            # Escreve BYTES, na codificação que a fita mandar (padrão utf-8).
+            # Um `print` comum escreveria na codepage do console, que é
+            # justamente a variável do defeito de 04/09/2026 — e um dublê que
+            # não consegue reproduzir a travessia não prova nada sobre ela.
+            "cp = atual.get('codepage', 'utf-8')\n"
+            "sys.stdout.buffer.write(atual['saida'].encode(cp, 'replace') + b'\\n')\n"
+            "sys.stdout.buffer.flush()\n"
             "sys.exit(atual['exit'])\n",
             encoding="utf-8",
         )
@@ -500,10 +507,15 @@ def test_deploy_com_sha_curto_de_verdade_resolve_e_diz_que_resolveu(tmp_path):
 # ---------------------------------------------------------------------------
 # A remedição do ERROR do portão (03/09/2026) — ERROR nunca é FAIL
 # ---------------------------------------------------------------------------
+# A prosa é decorativa aqui e pode ser reescrita à vontade; a marca IMPORTADA é
+# o que o `esperar.py` procura. Antes de 04/09/2026 esta fita copiava a frase
+# em português, e a cópia dava um verde falso: reescrever a mensagem no portão
+# mataria a remedição sem este teste piscar.
 RECALCULANDO = (
     "--- ERROR conflitos ---\n"
     "O GitHub calcula isso de forma assíncrona; se você acabou de dar push,\n"
     "espere alguns segundos e rode de novo.\n"
+    f"{MOTIVO_GITHUB_AINDA_CALCULANDO}\n"
     "RESULTADO  ERROR"
 )
 
@@ -559,6 +571,40 @@ def test_o_ERROR_que_nao_para_de_vir_desiste_e_conta_a_recusa_inteira(tmp_path):
     assert chamadas.count("--pousar") == 6, chamadas
     assert "RECUSOU o pouso do PR 447" in proc.stdout
     assert "calcula isso de forma assíncrona" in proc.stdout
+
+
+def test_a_remedicao_sobrevive_ao_portao_que_escreve_em_cp1252(tmp_path):
+    """A prova de fora do defeito de 04/09/2026, e ela roda em QUALQUER sistema.
+
+    O caso real: no Windows um filho Python escreve no cano pela codepage do
+    console (cp1252) enquanto o pai decodifica utf-8. O `í` de "assíncrona"
+    sai como `\\xed`, chega como `\\ufffd`, e a comparação de texto que decidia
+    remedir dizia "não" para sempre. A remedição inteira — construída em
+    03/09/2026 porque os PRs #954 e #956 morreram sem ela — nasceu inerte na
+    única máquina onde roda, e ficou verde na CI o tempo todo.
+
+    Este teste não espera por um runner Windows para ver isso: ele MANDA o
+    dublê escrever cp1252. Assim o perigo, que era de plataforma, virou uma
+    linha de fita — reproduzível no Linux da CI, no primeiro segundo.
+
+    Vermelho→verde medido em 04/09/2026: com a marca em prosa acentuada, o pai
+    lê `ass\\ufffdncrona`, não remede, e o teste reprova com uma chamada só.
+    """
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=VERDE,
+        mergear_roteiro=[
+            {"exit": 2, "saida": RECALCULANDO, "codepage": "cp1252"},
+            {"exit": 0, "saida": "POUSO PEDIDO"},
+        ],
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
+    assert chamadas.count("--pousar") == 2, (
+        "a recusa em cp1252 não foi reconhecida como 'não consegui medir' — "
+        "a decisão voltou a depender de bytes: " + repr(chamadas)
+    )
+    assert "pedi pouso do PR 447 pelo portão" in proc.stdout
 
 
 def test_sem_e_pousar_o_verde_continua_so_verde(tmp_path):
