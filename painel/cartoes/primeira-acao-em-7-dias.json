@@ -1,0 +1,22 @@
+{
+  "nome": "primeira-acao-em-7-dias",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Quem virou aluna fez algo real na primeira semana?",
+  "definicao": "Das pessoas que viraram alunas, a fração que fez a primeira ação real (primeira aula ou primeiro asset) em até 7 dias. Enquanto a célula de cursos não existir, a primeira ação real é 'entrou pela primeira vez'.",
+  "formula": "alunas com primeira ação em até 7 dias divididas pelas alunas da coorte, em por cento",
+  "fonte": null,
+  "sem_fonte_porque": "Sem dados até a célula de medição receber o evento de entrada (degrau 7) e, depois, a célula de cursos nascer (plano pedido em 03/09/2026). A plataforma não guarda o último acesso de ninguém.",
+  "autoridade": "metricas",
+  "dono": "mantenedor",
+  "frequencia": "diária",
+  "direcao": "subir",
+  "unidade": "por cento",
+  "par": "compras-no-ciclo",
+  "acao": "Sem dados: nasce com a célula de medição.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Activation D7'."
+}
