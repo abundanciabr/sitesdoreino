@@ -1,7 +1,7 @@
 ---
 schema_version: 2
 armadilha: 308
-estado: curada
+estado: guardada
 degrau: 3
 confianca: alta
 custo_por_queda: medio
