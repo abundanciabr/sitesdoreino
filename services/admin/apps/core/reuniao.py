@@ -72,8 +72,14 @@ VENCE_EM_DIAS = 7
 MAXIMO_DE_COMPROMISSOS = 2
 
 
-def montar_o_pedido(campos: dict, hoje) -> str | None:
-    """O bloco para colar numa sessão de robô. `None` se não há o que pedir."""
+def montar_o_pedido(campos: dict, hoje, foto: str | None = None) -> str | None:
+    """O bloco para colar numa sessão de robô. `None` se não há o que pedir.
+
+    `foto` é a linha `cartao=valor; ...` do placar de agora (degrau 6). Ela
+    entra no pedido quando o passo 8 tem "tirar a foto" marcado: é assim que
+    o placar ganha memória sem célula de medição, e o registro que a grava é
+    o de sempre (tipo `medicao`, campo `foto`).
+    """
     compromissos = [
         campos.get(f"compromisso{i}", "").strip()
         for i in range(1, MAXIMO_DE_COMPROMISSOS + 1)
@@ -82,7 +88,8 @@ def montar_o_pedido(campos: dict, hoje) -> str | None:
     decisoes = campos.get("decisoes", "").strip()
     aprendemos = campos.get("aprendemos", "").strip()
     confirmar = campos.get("confirmar_restricao", "").strip()
-    if not (compromissos or decisoes or aprendemos or confirmar):
+    tirar_foto = bool(campos.get("tirar_foto")) and bool(foto)
+    if not (compromissos or decisoes or aprendemos or confirmar or tirar_foto):
         return None
     linhas = [
         f"Reunião de segunda-feira do painel de gestão, {hoje.strftime('%d/%m/%Y')}.",
@@ -111,6 +118,14 @@ def montar_o_pedido(campos: dict, hoje) -> str | None:
             "- APRENDIZADO (tipo `nota`, ou armadilha se for classe nova):",
             f"  {aprendemos}",
         ]
+    if tirar_foto:
+        linhas += [
+            "- FOTO DA SEMANA (tipo `medicao`, autoridade: sessao, evidencia: o link",
+            f"  do PR, verificado_em: {hoje.isoformat()}), com o campo `foto` exatamente assim:",
+            f'  foto: "{foto}"',
+            "  Título: 'Foto da semana do placar de gestão'. É o que o placar compara",
+            "  na próxima segunda para dizer o que mudou.",
+        ]
     linhas += [
         "",
         "Compromisso da semana passada cumprido: registro tipo `resposta` com",
@@ -125,7 +140,8 @@ def reuniao(request):
     hoje = timezone.localdate()
     contexto = montar_o_placar(hoje)
     campos = request.POST if request.method == "POST" else {}
-    pedido = montar_o_pedido(campos, hoje) if request.method == "POST" else None
+    foto = (contexto.get("mudancas") or {}).get("foto_de_hoje")
+    pedido = montar_o_pedido(campos, hoje, foto) if request.method == "POST" else None
     return render(
         request,
         "admin/reuniao.html",
