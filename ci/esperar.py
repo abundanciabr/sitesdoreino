@@ -236,6 +236,57 @@ def observar_run(gh: list[str], repo: str, run_id: str) -> Olhada:
     )
 
 
+SHA_INTEIRO = 40
+
+
+def resolver_sha_inteiro(valor: str, parser) -> str:
+    """O `head_sha=` da API do GitHub casa por igualdade, nunca por prefixo.
+
+    Um sha curto (`40f6f8ae`) devolve ZERO runs, e a espera então repete
+    "nenhum run de deploy apareceu ainda" até o teto — uma frase legítima para
+    uma condição que nunca vai ser satisfeita. É a lição 2 do Lote A no
+    `RUNBOOK-LOTES.md` §9: espera que mede a coisa errada é indistinguível de
+    espera legítima, e só quem está de fora percebe. Medido em 04/09/2026, com
+    a maestro esperando 20 minutos por um deploy que já estava verde.
+
+    Aqui a cura é resolver contra o próprio repositório, que é a fonte certa e
+    está a um comando de distância. Se o objeto não existir localmente, a CLI
+    RECUSA e ensina — nunca começa uma espera que não pode terminar.
+    """
+    valor = (valor or "").strip()
+    if len(valor) == SHA_INTEIRO and all(c in "0123456789abcdef" for c in valor.lower()):
+        return valor.lower()
+    try:
+        achado = subprocess.run(
+            ["git", "rev-parse", "--verify", f"{valor}^{{commit}}"],
+            capture_output=True, text=True, timeout=30,
+            encoding="utf-8", errors="replace",
+        )
+    except (OSError, subprocess.TimeoutExpired) as erro:
+        parser.error(
+            f"--deploy recebeu '{valor}', que não é um sha inteiro de 40 caracteres, "
+            f"e não consegui resolvê-lo aqui ({erro}).\n"
+            "A API do GitHub casa o sha por IGUALDADE: um sha curto acha zero runs, "
+            "e a espera ficaria repetindo 'nenhum run apareceu' até o teto.\n"
+            "Passe o sha inteiro: git rev-parse <o-que-voce-tem>"
+        )
+    if achado.returncode != 0:
+        parser.error(
+            f"--deploy recebeu '{valor}', que não é um sha inteiro de 40 caracteres, "
+            "e este repositório não o conhece.\n"
+            "A API do GitHub casa o sha por IGUALDADE: um sha curto acha zero runs, "
+            "e a espera ficaria repetindo 'nenhum run apareceu' até o teto — uma frase "
+            "legítima para uma condição impossível.\n"
+            "Passe o sha inteiro: git rev-parse <o-que-voce-tem>"
+        )
+    inteiro = achado.stdout.strip().lower()
+    if len(inteiro) != SHA_INTEIRO:
+        parser.error(f"git rev-parse devolveu algo que não é um sha: {inteiro!r}")
+    if inteiro != valor.lower():
+        print(f"(resolvi {valor} para o sha inteiro {inteiro[:12]}…)", flush=True)
+    return inteiro
+
+
 def observar_deploy(gh: list[str], repo: str, sha: str) -> Olhada:
     dados = chamar_gh(gh, f"repos/{repo}/actions/runs?head_sha={sha}&per_page=100")
     runs = dados.get("workflow_runs") if isinstance(dados, dict) else None
@@ -523,9 +574,10 @@ def main(argv: list[str] | None = None) -> int:
         observar = lambda: observar_run(gh, repo, args.run)  # noqa: E731
         alvo_txt, graca = f"run:{args.run}", None
     elif args.deploy:
-        chave, rotulo = "deploy-celula", f"o deploy do commit {args.deploy[:12]}"
-        observar = lambda: observar_deploy(gh, repo, args.deploy)  # noqa: E731
-        alvo_txt, graca = f"deploy:{args.deploy[:12]}", args.graca
+        sha = resolver_sha_inteiro(args.deploy, p)
+        chave, rotulo = "deploy-celula", f"o deploy do commit {sha[:12]}"
+        observar = lambda: observar_deploy(gh, repo, sha)  # noqa: E731
+        alvo_txt, graca = f"deploy:{sha[:12]}", args.graca
     elif args.checks:
         chave, rotulo = "checks", f"os checks do PR {args.checks}"
         observar = lambda: observar_checks(gh, repo, args.checks)  # noqa: E731

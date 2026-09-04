@@ -444,6 +444,60 @@ def test_portao_que_recusa_faz_a_espera_terminar_vermelha(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# O --deploy resolve ou recusa o sha curto (04/09/2026)
+# ---------------------------------------------------------------------------
+DEPLOY_VERDE = [{"workflow_runs": [
+    {"path": ".github/workflows/deploy-celula.yml",
+     "status": "completed", "conclusion": "success"},
+]}]
+SHA_FALSO = "a" * 40
+
+
+def test_deploy_com_sha_inteiro_passa_direto_sem_resolver(tmp_path):
+    """40 caracteres hexadecimais é o que a API espera: nada a resolver, e o
+    script não pode depender de um repositório git para o caso normal."""
+    proc = _rodar(
+        ["--deploy", SHA_FALSO, *RAPIDO],
+        tmp_path, gh_respostas=DEPLOY_VERDE,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "resolvi" not in proc.stdout, "sha inteiro não se resolve: " + proc.stdout
+
+
+def test_deploy_com_referencia_desconhecida_RECUSA_e_ensina(tmp_path):
+    """O guarda que impede a espera impossível.
+
+    O `head_sha=` da API casa por IGUALDADE. Um sha curto acha zero runs, e a
+    espera repetiria "nenhum run apareceu ainda" até o teto — uma frase
+    legítima para uma condição que nunca vai ser satisfeita. Recusar na porta
+    é o que transforma vinte minutos perdidos em uma linha de erro.
+    """
+    proc = _rodar(
+        ["--deploy", "isto-nao-e-um-commit-de-jeito-nenhum", *RAPIDO],
+        tmp_path, gh_respostas=DEPLOY_VERDE,
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    assert "git rev-parse" in proc.stderr, "a recusa tem de ENSINAR o caminho"
+    assert "IGUALDADE" in proc.stderr, "a recusa tem de dizer POR QUE"
+
+
+def test_deploy_com_sha_curto_de_verdade_resolve_e_diz_que_resolveu(tmp_path):
+    """A outra metade: recusar tudo o que é curto seria cura pior que a doença.
+
+    Usa `HEAD` porque ele existe em qualquer checkout e não amarra o teste a um
+    commit específico. A asserção é dupla de propósito: resolveu (a espera
+    seguiu e terminou) E avisou em voz alta (a linha 'resolvi'), porque uma
+    resolução silenciosa esconderia do robô qual sha ele acabou medindo.
+    """
+    proc = _rodar(
+        ["--deploy", "HEAD", *RAPIDO],
+        tmp_path, gh_respostas=DEPLOY_VERDE,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "resolvi HEAD para o sha inteiro" in proc.stdout
+
+
+# ---------------------------------------------------------------------------
 # A remedição do ERROR do portão (03/09/2026) — ERROR nunca é FAIL
 # ---------------------------------------------------------------------------
 RECALCULANDO = (
