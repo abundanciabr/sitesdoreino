@@ -15,7 +15,7 @@
   verificado_em: "2026-09-04",
   precisa_do_dono: false,
   responde_a: null,
-  gravidade: "amarelo",
+  gravidade: "ambar",
   frente: "fabrica",
   vence_em_dias: null,
   se_eu_nao_decidir: null,
