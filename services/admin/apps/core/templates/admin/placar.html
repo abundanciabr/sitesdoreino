@@ -278,6 +278,40 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   </ul>
   {% endif %}
 
+  {% if latencias %}
+  <h2 class="titulo-de-bloco espaco-20">As três latências da gestão</h2>
+  <p class="recado">Quanto tempo a casa leva para decidir, para começar e para aprender. Medem a gestão, não a escola, e continuam funcionando quando todo o resto estiver cego.</p>
+  <ul class="notas">
+    <li>
+      <b>Sinal → decisão.</b>
+      {% if latencias.decisao.veredito == "nao-consigo-medir" %}<span class="rotulo">não medi</span> o livro não veio.
+      {% elif latencias.decisao.veredito == "sem-dados-ainda" %}nenhum pedido a você no período.
+      {% else %}
+        {% if latencias.decisao.mediana_dias is not None %}Tempo típico até você responder, nos últimos 28 dias: <b>{{ latencias.decisao.mediana_dias }} dia{{ latencias.decisao.mediana_dias|pluralize:"s" }}</b> ({{ latencias.decisao.respondidos_28 }} respondido{{ latencias.decisao.respondidos_28|pluralize:"s" }}).{% endif %}
+        {% if latencias.decisao.abertos %}<b>{{ latencias.decisao.abertos }}</b> pedido{{ latencias.decisao.abertos|pluralize:"s" }} aberto{{ latencias.decisao.abertos|pluralize:"s" }} agora, o mais velho há {{ latencias.decisao.mais_velho_dias }} dia{{ latencias.decisao.mais_velho_dias|pluralize:"s" }}: a caixa "precisa de você" em <a href="{% url 'painel' %}">/admin/painel/</a>.{% else %}Nenhum pedido aberto.{% endif %}
+      {% endif %}
+    </li>
+    <li>
+      <b>Decisão → execução.</b>
+      {% if latencias.execucao.veredito == "nao-consigo-medir" %}<span class="rotulo">não medi</span> a fila não veio.
+      {% elif latencias.execucao.veredito == "sem-dados-ainda" %}nenhuma tarefa pega no período.
+      {% else %}
+        {% if latencias.execucao.mediana_dias is not None %}Tempo típico até um robô pegar uma tarefa, nos últimos 28 dias: <b>{{ latencias.execucao.mediana_dias }} dia{{ latencias.execucao.mediana_dias|pluralize:"s" }}</b> ({{ latencias.execucao.pegas_28 }} pega{{ latencias.execucao.pegas_28|pluralize:"s" }}).{% endif %}
+        {% if latencias.execucao.paradas %}<b>{{ latencias.execucao.paradas }}</b> tarefa{{ latencias.execucao.paradas|pluralize:"s" }} na fila há mais de 7 dias sem ninguém pegar: trabalho decidido e parado (<a href="{% url 'caixa_robos' %}">os robôs</a>).{% else %}Nada parado há mais de 7 dias.{% endif %}
+      {% endif %}
+    </li>
+    <li>
+      <b>Experimento → aprendizado.</b>
+      {% if latencias.aprendizado.veredito == "nao-consigo-medir" %}<span class="rotulo">não medi</span> o livro não veio.
+      {% elif latencias.aprendizado.veredito == "sem-dados-ainda" %}nenhum experimento fechado nos últimos 28 dias; o laboratório é o degrau 12.
+      {% else %}
+        {% if latencias.aprendizado.mediana_dias is not None %}Tempo típico até o aprendizado ser incorporado: <b>{{ latencias.aprendizado.mediana_dias }} dia{{ latencias.aprendizado.mediana_dias|pluralize:"s" }}</b>.{% endif %}
+        {% if latencias.aprendizado.sem_aprendizado %}<b>{{ latencias.aprendizado.sem_aprendizado }}</b> experimento{{ latencias.aprendizado.sem_aprendizado|pluralize:"s" }} fechado{{ latencias.aprendizado.sem_aprendizado|pluralize:"s" }} sem aprendizado registrado.{% endif %}
+      {% endif %}
+    </li>
+  </ul>
+  {% endif %}
+
   <h2 class="titulo-de-bloco espaco-20">O par que segura a meta</h2>
   {% if par %}
     <p class="recado">
