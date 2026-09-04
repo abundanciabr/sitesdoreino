@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Dependências dos portões
-        run: python -m pip install --quiet pytest pyyaml
+        run: python -m pip install --quiet pytest pytest-xdist pyyaml
       # UMA fonte de verdade para quais muralhas rodam e o que cada estado
       # significa: ci/ci.py. O YAML cuida de checkout, Python e env — não de
       # decidir PASS/FAIL. Antes, este workflow listava os três scripts à mão,
@@ -100,7 +100,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Dependências dos portões
-        run: python -m pip install --quiet pytest pyyaml
+        run: python -m pip install --quiet pytest pytest-xdist pyyaml
       - name: Muralha repo-wide — guarda de segredos (INV-P8)
         shell: bash
         run: |
@@ -185,8 +185,27 @@ jobs:
   # bloqueia o pouso do mesmo jeito — `ci/mergear.py` avalia todos os checks do
   # rollup, não uma lista fixa — sem virar ponto único de parada.
   #
-  # CUSTO: zero. Repositório público, runner padrão do GitHub. Roda em paralelo
-  # com os outros três; não muda o relógio do PR.
+  # CUSTO EM DINHEIRO: zero (repositório público, runner padrão do GitHub).
+  #
+  # CUSTO EM RELÓGIO: este job É o relógio do PR, e a primeira versão deste
+  # comentário afirmava o contrário. Medido no run 33913502340, minutos depois
+  # de ele entrar: os outros três jobs fecharam em 2min15s e este levou 9min11s,
+  # empurrando a espera do PR de 1min36s (mediana de 44 casos) para 14min17s.
+  # Rodar em paralelo não ajuda quando o paralelo é mais lento que o serial
+  # inteiro — o relógio de um PR é o job mais demorado, não a soma.
+  #
+  # E o conserto NÃO foi cortar a proteção. A suíte gastava o tempo dela ABRINDO
+  # OUTROS PROGRAMAS (119 fronteiras de subprocesso; os doze testes mais lentos
+  # levam de 10 a 24 s cada um só nisso), e criar processo no Windows custa
+  # perto de dez vezes o que custa no Linux. Rodando em paralelo (`-n auto`,
+  # ligado em `ci/ci.py::_em_paralelo`):
+  #
+  #     em série ...................... 8min55s
+  #     4 processos (= este runner) ... 3min31s
+  #
+  # Antes de escolher entre proteger e ser rápido, meça: quase sempre não é um
+  # trade-off, é uma fila indiana. O mesmo `-n auto` acelera os jobs Linux e a
+  # suíte local de todo agente, que caiu de 9 para 3 minutos.
   #
   # Ele NÃO substitui reproduzir o perigo em teste: quem consegue transformar
   # "só quebra no Windows" em uma linha de fita (como
@@ -206,7 +225,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Dependências dos portões
-        run: python -m pip install --quiet pytest pyyaml
+        run: python -m pip install --quiet pytest pytest-xdist pyyaml
       # SEM forçar codepage nem `PYTHONUTF8` aqui: o console cru é exatamente a
       # condição que se quer medir. Quem precisa de UTF-8 pede em código, na
       # porta da casa (`_nucleo.configurar_saida`) — e é essa garantia que este

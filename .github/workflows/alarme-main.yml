@@ -39,7 +39,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Dependências dos portões
-        run: python -m pip install --quiet pytest pyyaml
+        run: python -m pip install --quiet pytest pytest-xdist pyyaml
       # -----------------------------------------------------------------------
       # [INV-CI01] MURALHA REPO-WIDE NA `main` — e por que UMA das três, não as
       # três. Isto foi MEDIDO em 25/08/2026 contra a `main` do dia; a medição
