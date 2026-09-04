@@ -49,10 +49,17 @@ api = NinjaAPI(
         "celula identidade. Esta celula nem guarda o e-mail de ninguem: ela o\n"
         "pergunta a identidade na hora do envio.\n"
         "\n"
-        "ESCREVER AQUI SIGNIFICA PUBLICAR VERSAO NOVA. Versao publicada e\n"
-        "imutavel por gatilho no Postgres, e quem esta no meio de uma sequencia\n"
-        "termina na versao em que entrou. A porta devolve o numero da versao\n"
-        "que nasceu, para a tela poder dizer isso em portugues simples.\n"
+        "ESCREVER O TEXTO AQUI SIGNIFICA PUBLICAR VERSAO NOVA. Versao\n"
+        "publicada e imutavel por gatilho no Postgres, e quem esta no meio\n"
+        "de uma sequencia termina na versao em que entrou. A porta devolve o\n"
+        "numero da versao que nasceu, para a tela poder dizer isso em\n"
+        "portugues simples.\n"
+        "\n"
+        "A OUTRA ESCRITA E O INTERRUPTOR, e ela NAO e conteudo: ligar e\n"
+        "desligar muda uma coluna da jornada, sem publicar versao e sem\n"
+        "tocar numa virgula do texto. Desligar vale para quem entrar depois,\n"
+        "pela mesma regra: quem ja esta no meio termina a sequencia, e a\n"
+        "resposta diz quantas pessoas sao.\n"
     ),
     servers=[{"url": "http://mensageria:8000/api/mensageria"}],
     auth=bearerAuth(),
