@@ -91,14 +91,27 @@ A resposta do mantenedor resolve isso com uma ordem, e a ordem vira três
 regras que não precisam de nenhuma invenção nova, porque a elegibilidade da
 lei já as continha:
 
-1. **Aluno com zero entregas aprovadas não vê o Mural.** Ele está na fila, e a
-   fila serve exatamente a ele, porque a ordem dela é "quem entregou menos vai
-   primeiro".
+1. **O Mural só mostra a um aluno projeto para o qual ele é elegível.** A
+   elegibilidade da lei já carrega a regra das entregas: Intermediário exige 1
+   entrega aprovada, Avançado exige 5. Quem nunca entregou não é elegível a
+   nenhum dos dois, então o Mural, para ele, nasce vazio.
 2. **Projeto de nível Iniciante nasce na fila.** Só chega ao Mural pela
    chamada aberta que já existe na lei: 24 horas sem ninguém aceitar.
-3. **Projeto de nível Intermediário ou Avançado nasce no Mural**, porque a
-   elegibilidade da lei já exige, para eles, 1 e 5 entregas aprovadas. Quem
-   pode pegá-los, por definição, já entregou.
+3. **Projeto de nível Intermediário ou Avançado nasce no Mural**, porque só
+   quem já entregou pode pegá-lo.
+
+**A exceção, e ela é deliberada:** o projeto Iniciante que caiu em chamada
+aberta aparece no Mural para **todos os elegíveis, inclusive quem tem zero
+entregas**. Isso parece contrariar a resposta do mantenedor ("primeiro a fila,
+depois o Mural"), e não contraria: a chamada aberta só existe **depois** de a
+fila ter tentado por 24 horas e falhado. A fila já teve a vez dela, e daí em
+diante o objetivo passa a ser o projeto sair, não a ordem.
+
+Sem essa exceção escrita, a regra 1 e a regra 2 se contradiziam: a chamada
+aberta da lei avisa **todos os elegíveis**, e para um projeto Iniciante isso
+inclui quem tem zero entregas — exatamente quem a regra 1 dizia não ver o
+Mural. Duas regras que se negam viram, na construção, a interpretação de quem
+codar primeiro.
 
 O efeito é o que ele pediu, em ordem: **a fila garante o primeiro dólar de
 todo formado; o Mural é para onde ele vai depois.** E é exatamente a frase que
@@ -125,6 +138,18 @@ lance. A diferença decide o produto inteiro, então está escrita aqui:
 "Pegar", ganha a vez com um relógio visível, e é ele quem negocia. Se a
 negociação falhar ou o relógio vencer, o projeto volta ao Mural para o
 próximo. **Nunca existem duas propostas vivas para o mesmo projeto.**
+
+**O relógio da reserva vale até a primeira proposta, e só até ela.** São 3
+horas úteis para o aluno olhar o briefing e propor; assim que ele propõe, esse
+relógio para e quem manda passam a ser os relógios da negociação (§4.2). Sem
+essa passagem de bastão os dois números do §9 se contradiziam: a reserva dura 3
+horas úteis e uma rodada de proposta dura 24, então a reserva venceria no meio
+da primeira rodada e o projeto voltaria ao Mural com uma proposta de pé.
+
+**E o projeto que voltou ao Mural não volta para quem já o teve.** Vale a mesma
+regra da fila ([INV-ENC-J6]): ninguém recebe a mesma encomenda duas vezes. Sem
+isso, o mesmo aluno pega, deixa vencer, pega de novo, e o projeto gira sem sair
+do lugar.
 
 Por que não leilão, mesmo agora que a negociação existe:
 
@@ -199,9 +224,29 @@ lei já previu, com limite de três.
   devolve o projeto à pista de origem.
 - **Cada proposta tem validade** (parâmetro `validade_da_proposta`, inicial
   **24 horas úteis**, no mesmo relógio de horas úteis que a lei já definiu para
-  a oferta). Vencida sem resposta, a vez volta.
+  a oferta). Vencida sem resposta, o destino **depende de quem ficou calado**, e
+  essa distinção não é detalhe:
+  - **calou o ALUNO** (recebeu contraproposta e não respondeu): o projeto volta
+    à pista de origem, para o próximo aluno. Ele não perde o lugar na fila, mas
+    perde este projeto.
+  - **calou o CLIENTE** (recebeu proposta e não respondeu): o projeto vai ao
+    **plantão**, nunca para outro aluno. Mandá-lo ao próximo faria cada aluno da
+    fila gastar a própria vez num cliente fantasma, um depois do outro, e
+    nenhum deles saberia por quê. Um cliente que sumiu é problema do plantão,
+    não fila de espera para decepcionar gente.
 - **Negociar não muda o lugar na fila.** Vale a mesma regra da lei: só o
   abandono muda o lugar. Propor, ser recusado e desistir são todos gratuitos.
+- **Um aluno tem no máximo UMA negociação viva por vez**, somando as duas
+  pistas. É a mesma forma do [INV-ENC-J2] (uma oferta pendente por aluno), e
+  ela precisa ser dita porque negociar não é o mesmo que estar trabalhando: com
+  a regra, ninguém fecha cinco acordos e descobre que tem cinco encomendas,
+  contra a regra "uma por vez" da lei (§6.5); sem ela, o aluno acumula acordos
+  que não pode cumprir.
+- **E negociar NÃO conta como "trabalhando"** para o [INV-ENC-J7]. A diferença
+  importa: "trabalhando" é quem tem encomenda aceita e prazo correndo. Quem
+  está negociando ainda não tem trabalho nenhum, e travá-lo na fila por dias
+  porque um cliente está pensando seria punir o aluno pela demora do outro
+  lado. O que a regra acima impede é só a **segunda negociação simultânea**.
 
 ### 4.3 O Acordo congela o combinado
 
@@ -213,6 +258,20 @@ registrados.
 O Acordo é o que torna a disputa julgável. Sem ele, uma reclamação de "não é
 o que eu pedi" é palavra contra palavra; com ele, o plantão compara a entrega
 com um documento que os dois lados aceitaram.
+
+**O prazo do Acordo começa a contar na confirmação do pagamento, não no
+Acordo.** Entre os dois há uma espera que não é do aluno: hoje é o plantão
+registrando "pago pela escola", e amanhã será o webhook. Se um deles demorar
+três dias, um prazo negociado de sete viraria quatro, e o aluno seria cobrado
+por um atraso que ele não causou. O relógio do prazo é o mesmo de sempre (dias
+corridos, como a lei já define); o que esta linha fixa é **onde ele começa**.
+
+**E o pedido de extensão acompanha o prazo, em vez de ser fixo.** A lei dá uma
+extensão pedida "até 24h antes do prazo", e isso nasceu de prazos de 3, 7 e 14
+dias. Com prazo negociado, um aluno pode combinar 1 dia — e aí a janela para
+pedir extensão não existe. Então: a extensão se pede até **a metade do prazo
+combinado ou 24 horas antes, o que for menor**. Prazo curto continua tendo
+janela, e prazo longo continua com a regra que a lei já tinha.
 
 ### 4.4 O que acontece com o preço de tabela
 
@@ -288,6 +347,16 @@ que ele negocie.
 E a trava que já existia e continua: **nenhuma primeira entrega chega ao
 cliente sem um humano olhar.**
 
+**O conflito de interesse do piloto, dito em voz alta.** Enquanto a única
+origem for `escola`, quem abre o projeto, quem aceita a proposta do aluno e
+quem media uma disputa sobre essa mesma negociação é a mesma equipe. Isso não
+impede o piloto de rodar, e não vale inventar governança para uma escola de uma
+professora. O que vale é **o registro**: toda aceitação de proposta e toda
+mediação guardam quem decidiu e quando, e quando a origem `escola` e a origem
+`cliente` aparecerem lado a lado no plantão, a diferença fica visível. Se um dia
+o volume justificar, a separação entre quem compra e quem julga é uma decisão
+nova, e o §12 é onde ela entra.
+
 ---
 
 ## §8 Os invariantes novos
@@ -299,9 +368,9 @@ provados por mutação com vermelho na asserção. Os códigos são definitivos.
 
 | Código | O quê | Guarda |
 |---|---|---|
-| **[INV-ENC-M1]** | O Mural nunca mostra projeto a aluno com zero entregas aprovadas | `services/encomendas/tests/test_inv_m1_mural_so_para_quem_ja_entregou.py` |
+| **[INV-ENC-M1]** | O Mural só mostra a um aluno projeto para o qual ele é elegível pelo nível (o que já embute a regra das entregas) | `services/encomendas/tests/test_inv_m1_mural_so_o_que_e_elegivel.py` |
 | **[INV-ENC-M2]** | Projeto de nível Iniciante só chega ao Mural pela chamada aberta | `.../test_inv_m2_iniciante_passa_pela_fila.py` |
-| **[INV-ENC-M3]** | Um projeto do Mural fica reservado a um aluno por vez; nunca duas propostas vivas para o mesmo projeto | `.../test_inv_m3_mural_nao_e_leilao.py` |
+| **[INV-ENC-M3]** | Um projeto do Mural fica reservado a um aluno por vez; nunca duas propostas vivas para o mesmo projeto; e ninguém pega duas vezes o mesmo projeto | `.../test_inv_m3_mural_nao_e_leilao.py` |
 | **[INV-ENC-M4]** | A ordem do Mural é só a antiguidade do projeto; nenhuma outra chave ordena | `.../test_inv_m4_ordem_unica.py` |
 | **[INV-ENC-M5]** | Nenhum projeto passa de 24h no Mural sem elegível disponível sem ir ao plantão; nada fica parado sem alguém saber | `.../test_inv_m5_nada_encalha_em_silencio.py` |
 
@@ -314,6 +383,9 @@ provados por mutação com vermelho na asserção. Os códigos são definitivos.
 | **[INV-ENC-N3]** | Acordo fechado congela valor, prazo, entregáveis e correções; mudança posterior só por mediação com autor registrado | `.../test_inv_n3_acordo_congela.py` |
 | **[INV-ENC-N4]** | Nenhuma produção começa sem Acordo **e** confirmação de pagamento registrada com autor | `.../test_inv_n4_producao_so_com_acordo_e_pagamento.py` |
 | **[INV-ENC-N5]** | Propor, ser recusado, deixar vencer ou desistir nunca alteram a data de entrada na fila | `.../test_inv_n5_negociar_e_gratis.py` |
+| **[INV-ENC-N6]** | Um aluno nunca tem duas negociações vivas ao mesmo tempo, somando as duas pistas | `.../test_inv_n6_uma_negociacao_por_aluno.py` |
+| **[INV-ENC-N7]** | Proposta vencida por silêncio do CLIENTE vai ao plantão, nunca para outro aluno | `.../test_inv_n7_cliente_calado_vai_ao_plantao.py` |
+| **[INV-ENC-N8]** | O prazo do Acordo começa a contar na confirmação de pagamento, nunca no Acordo | `.../test_inv_n8_prazo_comeca_no_pagamento.py` |
 
 **[INV-ENC-N4] substitui [INV-ENC-D13]** na ordem dos fatos, e não na
 substância: continua exigindo confirmação registrada com autor, e agora exige
@@ -359,7 +431,7 @@ encaixam onde a dependência manda:
 |---|---|---|---|
 | **2.2 emendado** | **TAR-120** | A máquina de estados da encomenda nasce já com `em_negociacao` e `acordada`, e a encomenda já com os campos do acordo, nulos. As tabelas Proposta, Acordo e reserva **não** nascem aqui | a gênese, já feita |
 | **2.11** | **TAR-133** | O Mural: as três regras de pista, a reserva com relógio, a ordem única, **M1 a M5** | TAR-123, a chamada aberta |
-| **2.12** | **TAR-134** | A Proposta e o Acordo: rodadas, validade, congelamento, piso que avisa, **N1 a N5** | TAR-133 |
+| **2.12** | **TAR-134** | A Proposta e o Acordo: rodadas, validade, congelamento, piso que avisa, **N1 a N8** | TAR-133 |
 | **2.13** | **TAR-135** | O simulador passa a provar o Mural e a negociação, e as duas propriedades que só ele alcança | TAR-134 |
 | **2.14** | **TAR-136** | Os seis parâmetros do §9 na semente e na tela do dono | TAR-134 |
 | **4 emendado** | Fase 4 | A tela do aluno ganha um quarto estado: **no Mural** | o portão da Fase 3 |
