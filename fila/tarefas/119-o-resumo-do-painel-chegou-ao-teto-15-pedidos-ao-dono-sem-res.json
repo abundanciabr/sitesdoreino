@@ -1,0 +1,14 @@
+{
+  "arquivo": "119-o-resumo-do-painel-chegou-ao-teto-15-pedidos-ao-dono-sem-res",
+  "id": "TAR-119",
+  "titulo": "O resumo do painel chegou ao teto: 15 pedidos ao dono sem resposta somam 39 KB e todo registro novo de tamanho normal reprova",
+  "toca": [
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "Registro de pendencia curto listando os pedidos abertos (ou as respostas do dono fechando-os) E medicao nova de node painel/gerar_manifesto.js com o resumo abaixo de 90% do teto; se precisar de regua nova, PR em painel/logica.js com teste-guarda e a decisao dele registrada",
+  "despacho": "MEDIDO em 03/09/2026 (sessao da Fase 0 da Fila do Primeiro Dolar, PR #946): na main de entao, `node painel/gerar_manifesto.js` gerava um resumo de 152,0 KB para um orcamento de 150 KB (153.600 bytes); UM registro novo de 1,7 KB ja reprovava o gerador com \"o resumo pesa 153780 bytes e o orcamento e 153600\". O PR #946 so passou depois de fundir dois registros num e encolher o texto a menos de 1 KB. O proximo robo que escrever um registro de tamanho normal (a mediana dos ultimos 30 e de 1,8 KB) reprova a muralha-do-painel e o ci-celula da admin sem ter feito nada de errado.\n\nO QUE SE ACUMULA (medido com um script sobre painel/registros/): 15 pedidos ao dono sem resposta (`precisa_do_dono: true` sem `responde_a` apontando para eles), de 31/08 a 03/09, somando 39,6 KB — cada um viaja inteiro no resumo, com detalhe e os quatro campos da decisao, ate ser respondido. Os 30 registros mais recentes somam outros 54 KB.\n\nA TAREFA, em dois passos, e o segundo e do dono:\n1. Medir de novo e escrever para o mantenedor, em registro `pendencia` CURTO (menos de 600 bytes, senao a propria pendencia estoura o teto), a lista dos 15 pedidos abertos com uma linha cada e o que cada um espera dele — muitos ja foram resolvidos na pratica (passos na VPS ja executados, telas ja no ar) e so precisam de um registro de resposta. Responder e o unico jeito honesto de esvaziar a capa: a lei diz que a capa se RECUSA a crescer e que estado novo entra como registro.\n2. Se depois das respostas a capa continuar acima de 90% do teto, propor ao mantenedor (pergunta estruturada, com o custo de cada lado) uma regua em painel/logica.js por PR com teste-guarda: por exemplo, pendencia com mais de N dias viaja no resumo so com titulo e os quatro campos da decisao, e o detalhe fica no livro do mes. NUNCA subir o teto sem decisao dele: o teto e desenho (painel/LEIA-ME.md, \"o tanque a vista\").\n\nNAO fazer: apagar ou editar registro existente (o livro so se acrescenta); mudar ORCAMENTO_RESUMO_BYTES por conta propria.",
+  "origem": "achado da sessao da Fase 0 da Fila do Primeiro Dolar (PR #946), 03/09/2026: o gerador do painel reprovou dois registros de tamanho normal",
+  "criada_em": "2026-09-04"
+}
