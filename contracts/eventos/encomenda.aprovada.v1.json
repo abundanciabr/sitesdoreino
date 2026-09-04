@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/encomenda.aprovada.v1.json",
+  "title": "encomenda.aprovada.v1",
+  "description": "O CLIENTE APROVOU A PECA, explicitamente ou por silencio (aguardando_cliente -> aprovada). E o evento mais consumido desta celula: a `gamificacao` carimba o Marco #3 (Primeiro Dolar) quando `primeira_aprovacao_do_aluno` e true, e o Marco #4 (Primeiro Cliente Real) quando `origem` nao e `escola` (decisao pendente 11 do plano); a `pagamentos` faz o repasse (INV-ENC-D14: repasse so depois deste fato; repasse = preco - taxa); o Estudio sabe que ha peca nova se `autorizacao_portfolio` for true (INV-ENC-S4). `ator_id` e o cliente quando explicita e null quando tacita. Publicado pela celula `encomendas` (a Fila do Primeiro Dolar) pelo padrao outbox transacional (INV-P6). Escrito em papel na Fase 0 (03/09/2026), antes de a celula existir, para que consumidores (gamificacao, pagamentos, Estudio, metricas) se escrevam contra o contrato e nunca contra o codigo. So IDS OPACOS viajam: nem briefing, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Lei: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md; produto: PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (secao 7.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "encomenda.aprovada"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Id da PLATAFORMA de quem fez o gesto, ou null quando foi o RELOGIO ou o MOTOR (reavaliacao periodica, sem pessoa atras). NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "encomenda_id",
+        "aluno_id",
+        "cliente_id",
+        "origem",
+        "cartao",
+        "nivel",
+        "forma",
+        "primeira_aprovacao_do_aluno",
+        "autorizacao_portfolio",
+        "no_prazo",
+        "preco_cents",
+        "taxa_cents"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "encomenda_id": {
+          "type": "string",
+          "description": "Id opaco da encomenda dentro da celula `encomendas`."
+        },
+        "aluno_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA do aluno (a pessoa como a celula `identidade` a conhece). NUNCA e o e-mail."
+        },
+        "cliente_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA do cliente. NUNCA e o e-mail."
+        },
+        "origem": {
+          "type": "string",
+          "enum": [
+            "fila",
+            "direto",
+            "escola"
+          ],
+          "description": "Por onde a encomenda nasceu: pela fila, por pedido direto no Estudio, ou aberta pelo plantao com a escola como cliente (lei secao 3.4)."
+        },
+        "cartao": {
+          "type": "string",
+          "enum": [
+            "item_simples",
+            "vestivel_ou_veiculo",
+            "personagem"
+          ],
+          "description": "O cartao do cardapio (plano secao 5.1). E o cartao que define nivel, prazo e preco; o cliente nunca escolhe nivel."
+        },
+        "nivel": {
+          "type": "string",
+          "enum": [
+            "iniciante",
+            "intermediario",
+            "avancado"
+          ],
+          "description": "O nivel da encomenda, derivado do cartao. E o nivel MINIMO do titulo de quem pode recebe-la (INV-ENC-J5)."
+        },
+        "forma": {
+          "type": "string",
+          "enum": [
+            "explicita",
+            "tacita"
+          ]
+        },
+        "primeira_aprovacao_do_aluno": {
+          "type": "boolean",
+          "description": "true na primeira aprovacao da vida deste aluno na plataforma. E o Marco #3 e a cerimonia do primeiro dolar (plano secao 5.8)."
+        },
+        "autorizacao_portfolio": {
+          "type": "boolean",
+          "description": "O cliente permitiu que a peca apareca no portfolio de quem a fez (caixa marcada por padrao no checkout). Sem true aqui a peca NUNCA sai pela porta de pecas aprovadas (INV-ENC-S4)."
+        },
+        "no_prazo": {
+          "type": "boolean"
+        },
+        "preco_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Dinheiro e inteiro em centavos em todo contrato desta casa (contracts/README.md, item 7). Float de dinheiro e proibido."
+        },
+        "taxa_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "A taxa da escola nesta encomenda, em centavos. Zero ate a decisao pendente 2 do plano. Repasse = preco - taxa (INV-ENC-D16: pago = repasse + taxa + reembolso)."
+        }
+      }
+    }
+  }
+}
