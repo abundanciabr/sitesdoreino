@@ -96,6 +96,10 @@ SECOES = (
     # "Placar", e não "Metas": é UMA meta por vez (4DX), e o que a tela mostra
     # é o número contra o alvo, não uma lista (03/09/2026).
     ("placar", "Placar"),
+    # A pauta de segunda-feira do painel de gestão (degrau 3, 03/09/2026): lê o
+    # placar e termina no pedido para o robô. "Reunião", curto, porque é o que
+    # o mantenedor abre toda segunda.
+    ("reuniao", "Reunião"),
     ("avisos", "Avisos"),
     ("mapa_do_site", "Mapa do site"),
     ("painel", "Painel do sistema"),

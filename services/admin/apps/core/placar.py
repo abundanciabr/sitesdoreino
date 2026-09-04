@@ -424,6 +424,21 @@ def calcular_o_mes(
 def placar(request):
     """O andar zero. Fail-OPEN na rede (a página abre), fail-CLOSED no cartão
     (o número não aparece sem ele)."""
+    return render(
+        request,
+        "admin/placar.html",
+        {"admin": request.admin, **montar_o_placar(timezone.localdate())},
+    )
+
+
+def montar_o_placar(hoje: dt.date) -> dict:
+    """Tudo que o placar mostra, calculado UMA vez por requisição.
+
+    Existe como função porque DUAS telas leem o mesmo placar: `/admin/placar/`
+    e o modo reunião (`/admin/reuniao/`, degrau 3). Duas montagens à mão
+    divergiriam no primeiro bloco novo, e o mantenedor leria a que abrisse
+    primeiro sem saber que a outra discorda.
+    """
     pasta = diretorio_dos_cartoes()
     meta, recusas = ler_cartao(CARTAO_DA_META, pasta)
     mes, recusas_do_mes = ler_cartao(CARTAO_DO_MES, pasta)
@@ -439,7 +454,6 @@ def placar(request):
     cartao_pedidos, recusas_pedidos = ler_cartao(CARTAO_DOS_PEDIDOS, pasta)
     cartao_48h, recusas_48h = ler_cartao(CARTAO_DAS_48H, pasta)
 
-    hoje = timezone.localdate()
     contagem = None
     resultado = None
     barra = None
@@ -473,28 +487,24 @@ def placar(request):
             )
             compromissos = dir_.compromissos(dir_.ler_registros(), hoje)
 
-    return render(
-        request,
-        "admin/placar.html",
-        {
-            "admin": request.admin,
-            "meta": meta,
-            "recusas": recusas,
-            "mes": mes,
-            "recusas_do_mes": recusas_do_mes,
-            "par": par,
-            "recusas_do_par": recusas_do_par,
-            "total": total,
-            "contagem": contagem,
-            "placar": resultado,
-            "barra": barra,
-            "cartao_da_restricao": cartao_da_restricao,
-            "recusas_da_restricao": recusas_da_restricao,
-            "restricao": restricao,
-            "cartao_pedidos": cartao_pedidos,
-            "cartao_48h": cartao_48h,
-            "recusas_da_direcao": recusas_pedidos + recusas_48h,
-            "direcao": direcao,
-            "compromissos": compromissos,
-        },
-    )
+    return {
+        "hoje": hoje,
+        "meta": meta,
+        "recusas": recusas,
+        "mes": mes,
+        "recusas_do_mes": recusas_do_mes,
+        "par": par,
+        "recusas_do_par": recusas_do_par,
+        "total": total,
+        "contagem": contagem,
+        "placar": resultado,
+        "barra": barra,
+        "cartao_da_restricao": cartao_da_restricao,
+        "recusas_da_restricao": recusas_da_restricao,
+        "restricao": restricao,
+        "cartao_pedidos": cartao_pedidos,
+        "cartao_48h": cartao_48h,
+        "recusas_da_direcao": recusas_pedidos + recusas_48h,
+        "direcao": direcao,
+        "compromissos": compromissos,
+    }

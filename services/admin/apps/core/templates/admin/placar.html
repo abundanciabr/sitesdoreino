@@ -55,7 +55,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       <div>
         <div class="hero-numero">{{ barra.x }}</div>
         <h2 class="titulo-da-conta">
-          pessoa{{ barra.x|pluralize:"s" }} virar{{ barra.x|pluralize:"am,am" }} aluna{{ barra.x|pluralize:"s" }} em {{ barra.mes }}
+          pessoa{{ barra.x|pluralize:"s" }} {% if barra.x == 1 %}virou aluna{% else %}viraram alunas{% endif %} em {{ barra.mes }}
           {% if barra.alvo is not None %}(meta do mês: {{ barra.alvo }}){% endif %}
         </h2>
       </div>
@@ -176,7 +176,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       {% endif %}
     </p>
 
-    <h3 class="titulo-da-conta">Os compromissos da semana</h3>
+    <h3 class="titulo-da-conta">Os compromissos da semana <a href="{% url 'reuniao' %}">(a reunião de segunda-feira)</a></h3>
     {% if compromissos is None %}
       <p class="recado-fraco">O livro não veio nesta versão do site; os compromissos não aparecem.</p>
     {% elif not compromissos %}
