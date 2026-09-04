@@ -1,0 +1,21 @@
+{
+  "nome": "latencia-de-aprendizado",
+  "tipo": "confianca",
+  "andar": 0,
+  "pergunta": "Quanto tempo passa entre um experimento fechado e o aprendizado incorporado?",
+  "definicao": "Dos experimentos encerrados (registros do livro do tipo medição que respondem a um experimento) nos últimos 28 dias, o tempo típico em dias até um registro posterior responder a eles (uma decisão, uma nota, uma armadilha). É a terceira latência: experimento → aprendizado. Enquanto não houver experimento fechado, a tela diz isso em vez de zero.",
+  "formula": "mediana de (quando do registro que responde menos quando da medição), em dias, para medições com responde_a nos últimos 28 dias que receberam resposta",
+  "fonte": "o livro de ocorrências (painel/registros/), lido pela admin",
+  "autoridade": "sessao",
+  "dono": "mantenedor",
+  "frequencia": "tempo real; muda a cada registro ou evento",
+  "direcao": "descer",
+  "unidade": "dias",
+  "par": null,
+  "acao": "Sem experimento fechado: o laboratório (degrau 12) é onde eles nascem; a reunião de segunda é onde se fecham.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Uma das três latências da gestão (Scale OS 1.1 §166 a §169), degrau 5 do plano reescrito em 03/09/2026: o único indicador dos documentos que já tinha fonte completa no dia em que o plano nasceu. Mede a GESTÃO, não a escola, e continua funcionando quando todo o resto estiver cego. Tipo confiança: dispensa par, porque não pode ser forçada sem produzir o próprio fato que mede."
+}
