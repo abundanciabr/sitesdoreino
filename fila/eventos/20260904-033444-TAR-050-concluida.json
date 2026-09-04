@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-033444-TAR-050-concluida",
+  "tarefa": "TAR-050",
+  "evento": "concluida",
+  "quando": "2026-09-04T03:34:44+00:00",
+  "quem": "sessao-ci-lote-2026-09-03",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/973 + arvore atrasada fabricada (origin bare, HEAD parado): ANTES 2 assinaturas so da pasta, DEPOIS 3 com a origem e a entrada NOVA (so local) preservada; espelho real 195 commits atras: 151 -> 168 assinaturas, 272 -> 284 entradas, 12 so na origem, em 0,19s sem rede; 3 mutacoes pegas (4/2/2 failed); ci/tests 1582 passed; muralhas PASS",
+  "verificado_em": "2026-09-04"
+}
