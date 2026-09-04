@@ -9,7 +9,7 @@ guarda:
   tipo: nenhum
   motivo: o esperar.py e o gh run view leem o run pelo id, e o GitHub responde pela tentativa mais recente; ensinar o esperar.py a dizer "esta é a tentativa N, e ela foi refeita" é mudança em ci/ (CODEOWNERS), proposta aqui e não feita neste PR
 sinal:
-  - `"total_count":0,"jobs":[]`
+  - `"total_count":0,"jobs":\[\]`
   - `terminou 'cancelled' · levou 0s`
   - `run_attempt` maior que 1 num run que você ainda está esperando
 ---
