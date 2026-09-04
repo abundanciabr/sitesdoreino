@@ -66,11 +66,13 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    # A porta desta célula ainda NÃO existe: ela nasce com a API de leitura
-    # (degrau 7.4) e é um Bearer de par entre células, não um crachá de pessoa.
-    # Quando nascer, a isenção do `/healthz` compara `request.path_info`,
-    # NUNCA `request.path` (`armadilhas/029`; o guarda já está plantado em
-    # `tests/test_healthz_script_name.py`).
+    # A porta de leitura (degrau 7.4) já existe, e NÃO entra aqui: quem a fecha
+    # é o Bearer de par, declarado operação a operação pelo django-ninja
+    # (`config/api.py`), não um middleware que peneira o caminho. É por isso que
+    # `/healthz` continua respondendo sem token e sem exceção escrita em lugar
+    # nenhum: um guarda de caminho precisaria isentá-lo, e a isenção teria de
+    # comparar `request.path_info` e nunca `request.path`, que pela borda
+    # pública traz o prefixo (`armadilhas/029`). Guarda que não existe não erra.
 ]
 
 # ---------------------------------------------------------------------------
@@ -92,6 +94,24 @@ MIDDLEWARE = [
 CSRF_COOKIE_NAME = "metricas_csrf"
 CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
 CSRF_COOKIE_SECURE = not DEBUG
+
+# ---------------------------------------------------------------------------
+# Tokens do PAR consumidor→provedor (R1), um por par: TOKENS_ACEITOS_ADMIN
+# ---------------------------------------------------------------------------
+# A `metricas` é provedora a partir do degrau 7.4: a `admin` lê os contadores
+# históricos, a cobertura e a fila de eventos mortos por `/api/metricas/`,
+# porque pela Lei 3 nenhuma célula lê o banco de outra.
+#
+# Env ausente ⇒ conjunto VAZIO ⇒ toda chamada é recusada com 401. Fail-closed
+# por construção, e sem derrubar o boot: a célula sobe, o `/healthz` responde, o
+# consumidor de eventos segue guardando fatos, e só a porta fica fechada até o
+# token existir no env. É por isso que esta é uma das poucas variáveis desta
+# célula que NÃO é fail-hard: a ausência dela fecha uma porta, não apaga a luz.
+TOKENS_ACEITOS = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_ACEITOS_") and valor
+}
 
 TEMPLATES = [
     {

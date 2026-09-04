@@ -39,12 +39,20 @@ não aqui: esta célula guarda o fato, o cartão diz o que ele significa.
 - **Expõe (telas):** nenhuma, hoje e sempre. Quem mostra número é a `admin`,
   que já tem porta, crachá e uma leitora só (o mantenedor). A única rota da
   gênese é `/healthz`, de máquina
-- **Expõe (contrato, a partir do degrau 7.4):** a recepção de eventos
-  (`/interno/eventos`) e a API de leitura (`/api/metricas/`): fotos de coorte,
-  marcos por pessoa, contadores históricos por dia, cobertura de rastreio,
-  conciliação e as fotos semanais de que o bloco "o que mudou" precisa. Nada
-  responde sem Bearer, e `/interno` **resolve** pela borda pública quando há
-  prefixo (`armadilhas/186`): quem fecha a porta é o token, nunca a topologia
+- **Expõe (máquina, desde o degrau 7.4):** a API de leitura `/api/metricas/`,
+  com quatro operações: contadores históricos por dia (`countFacts`), cobertura
+  de rastreio e frescor (`listCoverage`) e a fila de eventos mortos, em lista e
+  uma a uma (`listDeadLetters`, `getDeadLetter`). Fotos de coorte, marcos por
+  pessoa e conciliação entram nos degraus 9, 10 e 11, com as tabelas deles: uma
+  operação que hoje respondesse lista vazia pareceria resposta. Nada responde
+  sem Bearer, e o token é o único guarda que conta: hoje esta célula não tem
+  rota no Traefik, mas topologia é configuração de infra e muda sem passar por
+  aqui (`armadilhas/186`). O teste de 401 cobre TODAS as operações, medidas do
+  schema vivo
+- **A recepção NÃO é porta HTTP**, e essa é a correção de rumo do degrau 7.3: o
+  transporte de evento nesta casa é Redis Streams, e uma segunda forma de
+  entrar seria uma segunda forma de o mesmo fato chegar. Quem escuta é
+  `consume_eventos`, no molde [RECEITA:R4 v1] das outras cinco consumidoras
 - **Consome:** ninguém, por desenho. `celulas.yml` diz `consome: []` e vai
   continuar dizendo mesmo com a célula completa, porque `consome` mede leitura
   de API alheia e esta célula lê EVENTOS. Quem a consome é a `admin`, e é o
@@ -102,10 +110,11 @@ não aqui: esta célula guarda o fato, o cartão diz o que ele significa.
 | Degrau | O que nasce |
 |---|---|
 | **7.1 FEITO** | A gênese: esqueleto, `/healthz`, os três guardas, o lugar da célula nos mapas da casa |
-| 7.2 | O evento imutável e a fila de eventos mortos (tabela, migração, o guarda da imutabilidade) |
-| 7.3 | A recepção (`/interno/eventos`), Bearer de par, teste de 401 em todas as operações, recusa de duplicata |
-| 7.4 | A API de leitura, o contrato congelado pelo Rito, a `admin` como cliente |
+| **7.2 FEITO** | O evento imutável e a fila de eventos mortos (tabela, migração, a trava dupla: ORM e banco) |
+| **7.3 FEITO** | A recepção, e ela NÃO virou porta HTTP: é o consumidor de Redis Streams, com recusa de duplicata pelo id externo e fila de mortos |
+| **7.4 FEITO** | A API de leitura (`/api/metricas/`), Bearer de par, teste de 401 em todas as operações medidas do schema vivo |
 | 7.5 | O compose (`infra/`), em PR próprio (`armadilhas/134`), com o env e o banco na VPS antes (`armadilhas/088`) |
+| 7.6 | O contrato congelado pelo `RITOS.md` §3 (PR só de `contracts/`, etiqueta `contrato`, o mantenedor presente) e a `admin` como cliente, com o token do par |
 
 Até o 7.5, o `deploy-celula` desta célula fica vermelho em todo merge que a
 toca, e **isso é esperado**: o compose da VPS ainda não a conhece
