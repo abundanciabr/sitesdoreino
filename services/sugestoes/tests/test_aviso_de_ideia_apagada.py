@@ -33,6 +33,8 @@ aconteceram de verdade. Por isso metade dos testes aqui são de coisas que
 PRECISAM continuar aparecendo.
 """
 
+import json
+
 import httpx
 import pytest
 from django.urls import reverse
@@ -240,3 +242,81 @@ def test_uma_apagada_no_meio_nao_leva_as_outras(
 
     assert "Esta continua de pe" in corpo
     assert VAZIO_DE_VERDADE not in corpo
+
+
+# ---------------------------------------------------------------------------
+# 5. O sino também para de contar — o buraco que o conserto de 31/08 deixou
+#
+# O corte acima tira o recado da TELA. O número do sino, porém, vem da caixa
+# central, que não sabe de apagamento nenhum: ele continuava dizendo "1" para
+# uma lista vazia (registro `20260831-012`, achado pelo mantenedor).
+#
+# E o `nao_lidos` da página é somado DEPOIS do corte, então o botão "Marcar
+# tudo como lido" — que só aparece `{% if nao_lidos %}` — sumia junto: a
+# pessoa ficava com um número que não tinha como zerar por caminho nenhum.
+#
+# A cura NÃO é operação nova no contrato congelado (que era a conclusão de
+# 31/08): `marcarUmaComoLida` já existe, é idempotente, e o id do recado vem
+# na mesma resposta que a tela já pediu. É `armadilhas/293` — as portas
+# existentes compõem o gesto.
+# ---------------------------------------------------------------------------
+
+
+def test_o_recado_escondido_para_de_contar_no_sino(dentro, rede, sugestao):
+    """O guarda que vai do vermelho ao verde: esconder passou a incluir calar."""
+    apagar_definitivamente(sugestao)
+    _responde_com(rede, [_carta_de_sugestao(sugestao.pk, id_="900")])
+
+    dentro.client.get(reverse("avisos"))
+
+    assert rede.notificacoes_marcar_lida.call_count == 1, (
+        "a tela escondeu o recado e não o marcou como lido — o sino continua "
+        "contando um recado que a pessoa não tem como ver nem zerar"
+    )
+    enviado = json.loads(rede.notificacoes_marcar_lida.calls[0].request.content)
+    assert enviado["id"] == "900"
+
+
+def test_o_recado_de_ideia_viva_nunca_e_marcado_pela_tela(dentro, rede, sugestao):
+    """A contraprova, sem a qual o guarda de cima passaria com o remédio errado.
+
+    Marcar tudo como lido ao abrir a página zeraria o sino — e apagaria, de
+    quebra, o aviso legítimo que a pessoa ainda não leu. O remédio tem de ser
+    cirúrgico: só o que o corte escondeu.
+    """
+    _responde_com(rede, [_carta_de_sugestao(sugestao.pk)])
+
+    dentro.client.get(reverse("avisos"))
+
+    assert rede.notificacoes_marcar_lida.call_count == 0
+
+
+def test_orfao_ja_lido_nao_gasta_chamada(dentro, rede, sugestao):
+    """Idempotente é barato, mas não de graça: quem já está lido não se remarca."""
+    apagar_definitivamente(sugestao)
+    carta = _carta_de_sugestao(sugestao.pk)
+    carta["lido_em"] = "2026-08-31T10:00:00+00:00"
+    _responde_com(rede, [carta])
+
+    dentro.client.get(reverse("avisos"))
+
+    assert rede.notificacoes_marcar_lida.call_count == 0
+
+
+def test_falha_ao_calar_o_sino_nao_derruba_a_pagina(dentro, rede, sugestao):
+    """Fail-ABERTO: calar o sino é conforto, listar certo é a função da tela.
+
+    Esta página fail VISÍVEL na listagem, de propósito. O efeito colateral de
+    calar o sino segue a regra oposta: se a caixa central recusar, a pessoa
+    continua vendo a lista certa e a próxima visita tenta de novo.
+    """
+    apagar_definitivamente(sugestao)
+    _responde_com(rede, [_carta_de_sugestao(sugestao.pk)])
+    rede.notificacoes_marcar_lida.mock(
+        side_effect=httpx.ConnectError("connection refused")
+    )
+
+    resposta = dentro.client.get(reverse("avisos"))
+
+    assert resposta.status_code == 200
+    assert VAZIO_DE_VERDADE in resposta.content.decode()
