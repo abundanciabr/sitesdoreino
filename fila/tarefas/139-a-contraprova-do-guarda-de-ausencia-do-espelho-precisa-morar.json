@@ -1,0 +1,14 @@
+{
+  "arquivo": "139-a-contraprova-do-guarda-de-ausencia-do-espelho-precisa-morar",
+  "id": "TAR-139",
+  "titulo": "A contraprova do guarda de ausencia do espelho precisa morar dentro do teste",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com a contraprova no mesmo arquivo, e a prova de que ela reprova quando a funcao passa a devolver None sempre (sabotagem encenada)",
+  "despacho": "A armadilha 266 pede que a CONTRAPROVA de um guarda de ausência more DENTRO do\nteste, e não na cabeça de quem o escreveu. No PR #973 (TAR-050) ficou uma\nasserção de ausência sem esse par:\n\n    assert coletar_da_origem(outra) is None\n\nEla tem hoje uma causa suficiente, e isso foi MEDIDO à mão pela sessão que a\nescreveu: no mesmo clone, antes do `remote rename` a função devolve 1 entrada, e\ndepois devolve None. O problema não é a asserção estar errada: é a medição viver\nfora do arquivo. Amanhã alguém muda a função para devolver None em qualquer\nsituação e o guarda continua verde, porque ninguém mais sabe que o outro lado\nexistia.\n\nO que fazer: acrescentar ao mesmo arquivo de teste a contraprova, no molde da\ncasa (o teste que prova que a asserção tem UMA causa suficiente, medindo o caso\nem que ela NÃO vale). É uma linha de asserção mais o cenário que a alimenta.\n\nOnde: ci/tests/, no arquivo-guarda da TAR-050.\n\nPor que virou tarefa em vez de emenda: a sessão que a escreveu declarou a ponta\nno relatório final em vez de abrir um quarto PR e segurar o fechamento do lote\nde 03-04/09. Declarar em voz alta o que ficou por fazer é o comportamento certo;\no que não pode é a declaração morrer no relatório.",
+  "origem": "ponta declarada pela sessao-ci-lote-2026-09-03 no relatorio final do lote de 03-04/09/2026 (PR #973, armadilhas/266)",
+  "criada_em": "2026-09-04"
+}
