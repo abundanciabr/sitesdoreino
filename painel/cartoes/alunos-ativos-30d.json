@@ -15,6 +15,11 @@
   "par": "compras-no-ciclo",
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 10,
+  "dimensoes": [
+    "turma"
+  ],
   "versao": 2,
-  "desde": "2026-09-03"
+  "desde": "2026-09-03",
+  "_por_que": "CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Sem ruído e foto de 10 dias: o par tem de se mover junto com a meta, e uma pessoa a menos já é sinal."
 }

@@ -150,14 +150,40 @@ def test_teto_no_meio_de_falhas_carrega_o_erro_nao_a_olhada():
 
 
 def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
-           gh_exit: int = 0, mergear_exit: int | None = None) -> subprocess.CompletedProcess:
+           gh_exit: int = 0, mergear_exit: int | None = None,
+           mergear_roteiro: list[dict] | None = None) -> subprocess.CompletedProcess:
     """Roda a CLI com gh de mentira (ESPERAR_GH) e HOME em tmp.
 
     `mergear_exit` liga um portão de mentira (ESPERAR_MERGEAR) que grava os
     argumentos recebidos em `portao-chamado.txt` e sai com esse código.
+
+    `mergear_roteiro` é o mesmo portão de mentira, com uma resposta DIFERENTE
+    por chamada: uma lista de `{"exit": int, "saida": str}`. Serve para medir a
+    remedição — o portão que não consegue medir na primeira volta e mede na
+    segunda. Cada chamada acrescenta uma linha em `portao-chamadas.txt`.
     """
     env = dict(os.environ)
-    if mergear_exit is not None:
+    if mergear_roteiro is not None:
+        fita_do_portao = tmp / "fita-do-portao.json"
+        fita_do_portao.write_text(json.dumps(mergear_roteiro), encoding="utf-8")
+        portao = tmp / "portao_de_mentira.py"
+        chamadas = tmp / "portao-chamadas.txt"
+        portao.write_text(
+            "import json, sys, pathlib\n"
+            f"fita = pathlib.Path(r'{fita_do_portao}')\n"
+            f"chamadas = pathlib.Path(r'{chamadas}')\n"
+            "roteiro = json.loads(fita.read_text(encoding='utf-8'))\n"
+            "atual = roteiro.pop(0) if roteiro else {'exit': 0, 'saida': 'fita vazia'}\n"
+            "fita.write_text(json.dumps(roteiro), encoding='utf-8')\n"
+            "with chamadas.open('a', encoding='utf-8') as f:\n"
+            "    f.write(' '.join(sys.argv[1:]) + chr(10))\n"
+            "print(atual['saida'])\n"
+            "sys.exit(atual['exit'])\n",
+            encoding="utf-8",
+        )
+        env["ESPERAR_MERGEAR"] = json.dumps([sys.executable, str(portao)])
+        env["ESPERAR_SEGUNDOS_ENTRE_REMEDICOES"] = "0.05"
+    elif mergear_exit is not None:
         portao = tmp / "portao_de_mentira.py"
         marca = tmp / "portao-chamado.txt"
         portao.write_text(
@@ -415,6 +441,70 @@ def test_portao_que_recusa_faz_a_espera_terminar_vermelha(tmp_path):
     assert proc.returncode == 1, proc.stdout + proc.stderr
     assert "RECUSOU o pouso do PR 447" in proc.stdout
     assert "portao de mentira: exit 1" in proc.stdout, "a recusa do portão tem de sair na voz"
+
+
+# ---------------------------------------------------------------------------
+# A remedição do ERROR do portão (03/09/2026) — ERROR nunca é FAIL
+# ---------------------------------------------------------------------------
+RECALCULANDO = (
+    "--- ERROR conflitos ---\n"
+    "O GitHub calcula isso de forma assíncrona; se você acabou de dar push,\n"
+    "espere alguns segundos e rode de novo.\n"
+    "RESULTADO  ERROR"
+)
+
+
+def test_o_portao_que_nao_conseguiu_medir_e_remedido_e_o_pouso_sai(tmp_path):
+    """O caso medido em 03/09/2026: dois PRs seguidos do mesmo lote (#954 e
+    #956) morreram aqui porque o GitHub ainda recalculava o conflito no segundo
+    em que o último check ficou verde. ERROR é 'não consegui medir', nunca
+    'reprovado' — remede-se (RUNBOOK-LOTES §9, Lote 10, lição 3)."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=VERDE,
+        mergear_roteiro=[
+            {"exit": 2, "saida": RECALCULANDO},
+            {"exit": 0, "saida": "POUSO PEDIDO"},
+        ],
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
+    assert chamadas.count("--pousar") == 2, chamadas
+    assert "remeço em" in proc.stdout, "a remedição tem de FALAR, nunca esperar calada"
+    assert "pedi pouso do PR 447 pelo portão" in proc.stdout
+
+
+def test_o_portao_que_REPROVA_nao_e_remedido_nenhuma_vez(tmp_path):
+    """A contraprova que impede a cura de virar teimosia: FAIL é sobre o PR
+    (base velha, dívida do livro, registro ausente) e nunca melhora sozinho.
+    Sem este guarda, remedir seis vezes TODA recusa passaria no teste acima."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=VERDE,
+        mergear_roteiro=[
+            {"exit": 1, "saida": "FAIL dívida do livro"},
+            {"exit": 0, "saida": "POUSO PEDIDO"},
+        ],
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
+    assert chamadas.count("--pousar") == 1, "FAIL não se remede: " + repr(chamadas)
+    assert "RECUSOU o pouso do PR 447" in proc.stdout
+
+
+def test_o_ERROR_que_nao_para_de_vir_desiste_e_conta_a_recusa_inteira(tmp_path):
+    """Teto na remedição: o GitHub que nunca decide não vira espera infinita.
+    A última recusa sai inteira na voz, como sempre saiu."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--e-pousar"],
+        tmp_path, gh_respostas=VERDE,
+        mergear_roteiro=[{"exit": 2, "saida": RECALCULANDO} for _ in range(6)],
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    chamadas = (tmp_path / "portao-chamadas.txt").read_text(encoding="utf-8").split()
+    assert chamadas.count("--pousar") == 6, chamadas
+    assert "RECUSOU o pouso do PR 447" in proc.stdout
+    assert "calcula isso de forma assíncrona" in proc.stdout
 
 
 def test_sem_e_pousar_o_verde_continua_so_verde(tmp_path):

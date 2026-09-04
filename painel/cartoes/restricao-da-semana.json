@@ -16,7 +16,8 @@
   "confirmada": null,
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 8,
   "versao": 1,
   "desde": "2026-09-03",
-  "_por_que": "Degrau 1 do plano reescrito em 03/09/2026 (§6.3), a peça nova mais valiosa dos documentos do Scale OS. `confirmada` é {etapa, em, registro} quando o mantenedor confirmar; null até lá. Uma etapa nova só entra quando tiver fonte, e entra pelo módulo, não por este cartão."
+  "_por_que": "Degrau 1 do plano reescrito em 03/09/2026 (§6.3), a peça nova mais valiosa dos documentos do Scale OS. `confirmada` é {etapa, em, registro} quando o mantenedor confirmar; null até lá. Uma etapa nova só entra quando tiver fonte, e entra pelo módulo, não por este cartão. CAMPOS DE 04/09/2026 (degrau 6): frescor de 8 dias porque a restrição é da SEMANA, e uma medida mais velha do que isso já é de outra semana. Sem dimensões e sem ruído: este cartão não guarda um número, guarda a escolha de qual passagem da jornada está segurando a fila."
 }

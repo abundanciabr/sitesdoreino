@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260904-031416-TAR-078-bloqueada",
+  "tarefa": "TAR-078",
+  "evento": "bloqueada",
+  "quando": "2026-09-04T03:14:16+00:00",
+  "quem": "sessao-admin-lote-2026-09-03",
+  "detalhe": "A tela mora na admin e os dados moram no mensageria_db, e nao existe caminho entre as duas: services/mensageria/config/urls.py so tem /healthz, nao ha contracts/mensageria.openapi.yaml (o manifesto diz \"celula ainda em esqueleto\"), admin.consome nao cita mensageria em celulas.yml, e ler o banco alheio e permission denied por papel do Postgres (Lei 3). Destrava com TAR-137 (a porta de maquina) e TAR-138 (o Rito de Contrato), criadas neste mesmo PR, mais as variaveis do par na VPS (Lei 5). Degraus 6c e 6d do PLANO-SEQUENCIAS-DE-MENSAGENS.md."
+}
