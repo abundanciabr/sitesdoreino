@@ -245,10 +245,43 @@ def rodar_guardas(raiz: Path) -> list[Resultado]:
     return guarda_dos_guardas.rodar(raiz=raiz).resultados
 
 
+def _em_paralelo() -> list[str]:
+    """`-n auto` quando o pytest-xdist existe; nada quando não existe.
+
+    Medido em 04/09/2026, nesta suíte de 1685 testes, numa máquina Windows:
+
+        em série ...................... 8min55s
+        4 processos (= runner do CI) .. 3min31s
+        12 processos (a máquina toda) . 3min07s
+
+    O que a suíte faz o tempo todo é ABRIR OUTROS PROGRAMAS — 119 fronteiras de
+    subprocesso, e os doze testes mais lentos gastam de 10 a 24 segundos cada um
+    só nisso. Criar processo no Windows custa perto de dez vezes o que custa no
+    Linux, e é daí que vinham os 9 minutos: não de "o Windows é lento", mas de
+    esperar processo em fila indiana. Passar de 4 para 12 rende pouco porque o
+    piso passa a ser o teste mais lento, que não se divide.
+
+    Isto não é enfeite de velocidade: sem ele, o job `windows-a-maquina-dos-robos`
+    (que existe porque nenhum outro job desta casa roda no sistema onde os robôs
+    trabalham) faria a espera de TODO PR pular de ~1min36s para ~10min.
+
+    CONDICIONAL de propósito: quem não tiver o xdist instalado continua rodando
+    em série, mais devagar e igualmente correto. Um portão que passa a EXIGIR
+    uma dependência nova quebra a máquina de quem só fez `git pull` — e portão
+    que não roda não protege ninguém.
+    """
+    try:
+        import xdist  # noqa: F401
+    except ImportError:
+        return []
+    return ["-n", "auto"]
+
+
 def rodar_testes_do_testador(raiz: Path) -> Resultado:
     """A suíte que prova que o próprio instrumento de medição funciona."""
     proc = subprocess.run(
-        [sys.executable, "-m", "pytest", str(raiz / "ci" / "tests"), "-q"],
+        [sys.executable, "-m", "pytest", str(raiz / "ci" / "tests"), "-q",
+         *_em_paralelo()],
         cwd=str(raiz),
         capture_output=True,
         text=True,
