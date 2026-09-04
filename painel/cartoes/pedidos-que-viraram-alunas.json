@@ -1,0 +1,21 @@
+{
+  "nome": "pedidos-que-viraram-alunas",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "De quem pediu para entrar, quantos viraram alunas?",
+  "definicao": "Das pessoas que pediram entrada nos últimos 28 dias, a fração que já foi liberada. É a conversão do único funil que existe hoje: a fila.",
+  "formula": "liberadas nos últimos 28 dias divididas pelos pedidos nos últimos 28 dias (aguardando, recusados e liberados), em por cento",
+  "fonte": "célula alunos, ao vivo: GET /pre-matriculas e GET /matriculas (origem liberado)",
+  "autoridade": "alunos",
+  "dono": "mantenedor",
+  "frequencia": "tempo real (HTTP)",
+  "direcao": "subir",
+  "unidade": "por cento",
+  "par": "liberacoes-em-48h",
+  "acao": "Abaixo de 100% com gente na fila: abra a fila. Recusas também baixam este número, e recusar pode ser certo.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Core Conversion', traduzido para a fila de liberação."
+}

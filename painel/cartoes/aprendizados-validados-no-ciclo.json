@@ -1,0 +1,21 @@
+{
+  "nome": "aprendizados-validados-no-ciclo",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Quantos aprendizados a casa validou neste ciclo?",
+  "definicao": "Experimentos encerrados com resultado registrado desde a partida do ciclo: registros do livro do tipo medição que respondem a outro registro (o experimento). Uma empresa pode vender muito e aprender pouco; este número mede a segunda coisa.",
+  "formula": "contagem de registros tipo medicao com responde_a preenchido e quando >= partida_em do ciclo",
+  "fonte": "o livro de ocorrências (painel/registros/), lido pela admin",
+  "autoridade": "sessao",
+  "dono": "mantenedor",
+  "frequencia": "tempo real; muda a cada registro",
+  "direcao": "subir",
+  "unidade": "aprendizados",
+  "par": "compras-no-ciclo",
+  "acao": "Zero por muitas semanas: nenhum experimento está sendo fechado; a reunião de segunda é onde eles nascem (degrau 12, o laboratório).",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Validated Learnings per cycle'. Zero contado é zero, não 'sem dados'."
+}
