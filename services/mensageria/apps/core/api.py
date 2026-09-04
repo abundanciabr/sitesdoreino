@@ -1,5 +1,5 @@
 # apps/core/api.py  # [RECEITA:R1 v1]
-"""A porta de MÁQUINA da mensageria: as cinco operações do degrau 6c.
+"""A porta de MÁQUINA da mensageria: as seis operações do degrau 6c.
 
 POR QUE ELA EXISTE
 ------------------
@@ -13,20 +13,29 @@ O caminho de baixo continua fechado, e por Postgres e não por regra: o papel
 `admin_user` não enxerga o `mensageria_db` (Lei 3, pecado 2). Quem quiser estes
 dados passa por aqui, com Bearer, ou não passa.
 
-O QUE A TELA PRECISA RESPONDER, E QUE VIRA AS CINCO OPERAÇÕES
+O QUE A TELA PRECISA RESPONDER, E QUE VIRA AS SEIS OPERAÇÕES
 -------------------------------------------------------------
 1. `listJourneys` — quais sequências existem neste site, e qual versão vale.
 2. `getJourney` — os passos de uma versão, na ordem, com o texto por idioma,
    mais atraso, classe, canais, condição e janela.
 3. `listEnrollments` — quem está dentro, em que passo, por estado.
 4. `listDeliveries` — o que saiu e **o que NÃO saiu, com o motivo**.
-5. `publishJourneyText` — a única escrita, e ela PUBLICA VERSÃO NOVA.
+5. `publishJourneyText` — a escrita de CONTEÚDO, e ela PUBLICA VERSÃO NOVA.
+6. `setJourneyActive` — o interruptor: liga e desliga a sequência, sem tocar
+   numa vírgula do texto.
 
 A QUARTA É A QUE FAZ A TELA VALER, e é a que seria fácil deixar de fora. Sem
 ela, "por que o aluno X não recebeu?" fica sem resposta e o mantenedor olha para
 o silêncio. Com ela, a tela responde "barrada pela régua: já tinha recebido uma
 hoje" — o `resultado` (`enviada`, `pulada`, `barrada_pela_regua`,
 `barrada_por_preferencia`) mais o campo `motivo`, que é onde a régua escreve.
+
+A SEXTA NASCEU DE UM RITO, e não de uma sessão. O mantenedor decidiu em
+04/09/2026, com as cinco operações apresentadas a ele em português de leigo, que
+a tela precisa também LIGAR e DESLIGAR uma sequência (registro `20260904-070`).
+Ela entrou ANTES do congelamento do contrato (degrau 6d) porque, depois dele,
+acrescentar operação é outro Rito. Até aqui, ligar uma jornada só acontecia por
+`semear_boas_vindas --ligar`, um comando de terminal que o mantenedor não roda.
 
 AS TRÊS INVARIANTES DESTA PORTA
 -------------------------------
@@ -38,9 +47,22 @@ AS TRÊS INVARIANTES DESTA PORTA
 2. **Toda operação é escopada por `site_id`.** CONSTITUICAO Lei 9. Uma jornada
    de outro site é 404, não uma lista a mais — e a `Inscricao` de outro site é
    404 mesmo com o UUID certo na mão.
-3. **Escrever significa publicar versão nova.** Não existe caminho para editar
-   uma versão publicada, e isso não é disciplina deste arquivo: é gatilho no
-   Postgres (`apps/jornadas/publicacao.py` explica).
+3. **Escrever CONTEÚDO significa publicar versão nova.** Não existe caminho para
+   editar uma versão publicada, e isso não é disciplina deste arquivo: é gatilho
+   no Postgres (`apps/jornadas/publicacao.py` explica). O interruptor não é
+   conteúdo: ele muda uma coluna da `Jornada`, que fica FORA da versão
+   justamente porque ligar e desligar não pode reescrever o que já foi
+   publicado.
+
+AS DUAS ESCRITAS TÊM O MESMO GRAU, E ISSO É DELIBERADO (`armadilhas/318`)
+-------------------------------------------------------------------------
+`TOKENS_SOMENTE_LEITURA_<PAR>` lê; `TOKENS_PUBLICACAO_<PAR>` escreve, e já
+contém a leitura. O interruptor cai no grau de PUBLICAÇÃO, e a régua é o efeito,
+nunca o tamanho do pedido: desligar uma sequência muda o que sai para pessoas de
+verdade — mais do que trocar uma frase, porque cala a sequência inteira. Um par
+que só precisa desenhar uma tela de consulta não pode calar as boas-vindas da
+escola, e a operação nova é justamente onde essa premissa se perde: o padrão
+copiado entre células é de leitura, e ele não carrega o aviso.
 
 O SOMBREAMENTO QUE ESTA PORTA EVITA (`armadilhas/020`)
 ------------------------------------------------------
@@ -208,6 +230,28 @@ class VersaoPublicadaSaida(Schema):
     passos: int
 
 
+class InterruptorDaJornada(Schema):
+    site_id: str
+    # Um booleano, e não duas operações (`ligar`/`desligar`). O pedido descreve
+    # o ESTADO desejado, então clicar duas vezes no mesmo botão é o mesmo pedido
+    # duas vezes, e não um erro a tratar.
+    ativa: bool
+
+
+class EstadoDaJornadaSaida(Schema):
+    slug: str
+    ativa: bool
+    # `mudou` separa "acabei de ligar" de "já estava ligada", que para a tela
+    # são frases diferentes e para o banco são o mesmo estado final.
+    mudou: bool
+    # O número que impede a tela de mentir ao desligar. Desligar significa
+    # "ninguém NOVO entra": quem já está andando termina a sequência, e sem este
+    # campo a tela diria só "desligada" enquanto as mensagens continuassem
+    # saindo para quem estava dentro.
+    inscricoes_andando: int
+    versao_publicada: Optional[VersaoResumo] = None
+
+
 # ---------------------------------------------------------------------------
 # AS PEÇAS QUE TODA OPERAÇÃO REUSA
 # ---------------------------------------------------------------------------
@@ -225,6 +269,20 @@ def _site_id(valor: str | None) -> str:
 
 def _jornada(site_id: str, slug: str) -> JornadaModel:
     return get_object_or_404(JornadaModel, site_id=site_id, slug=slug)
+
+
+def _exige_grau_de_publicacao(request) -> None:
+    """O grau a mais, num lugar só, porque agora são DUAS escritas.
+
+    403 e não 401: o crachá é válido, o que falta é o grau. Uma cópia desta
+    linha por handler era o que fazia a operação de escrita seguinte nascer sem
+    cadeado (`armadilhas/318`) — aqui esquecê-la é esquecer uma chamada, e o
+    guarda de 403 que a suíte mede a partir do schema vivo acusa a ausência.
+    """
+    if request.auth not in tokens_de_publicacao():
+        raise HttpError(
+            403, "este par nao tem o grau de publicacao (TOKENS_PUBLICACAO_<PAR>)"
+        )
 
 
 def _segundos(duracao) -> int | None:
@@ -510,10 +568,7 @@ def publicar_texto_do_passo(request, slug: str, dados: TextoParaPublicar):
     `TOKENS_PUBLICACAO_<PAR>`. Quem só lê leva 403 aqui, e é por isso que os dois
     conjuntos existem (`apps/core/auth.py`).
     """
-    if request.auth not in tokens_de_publicacao():
-        raise HttpError(
-            403, "este par nao tem o grau de publicacao (TOKENS_PUBLICACAO_<PAR>)"
-        )
+    _exige_grau_de_publicacao(request)
     site = _site_id(dados.site_id)
     jornada = _jornada(site, slug)
 
@@ -556,4 +611,86 @@ def publicar_texto_do_passo(request, slug: str, dados: TextoParaPublicar):
         publicada_em=nascida.publicada_em,
         passo_id=nascida.passo_id,
         passos=nascida.passos,
+    )
+
+
+# ---------------------------------------------------------------------------
+# O INTERRUPTOR: a segunda escrita, e ela NÃO é conteúdo
+# ---------------------------------------------------------------------------
+@router.post(
+    "/jornadas/{slug}/ativa",
+    response=EstadoDaJornadaSaida,
+    operation_id="setJourneyActive",
+    summary="Liga ou desliga uma sequencia, sem tocar no texto dela",
+    description=(
+        "Liga e desliga uma sequencia. O pedido descreve o ESTADO desejado\n"
+        "(`ativa: true` ou `ativa: false`), entao mandar o mesmo pedido duas\n"
+        "vezes e 200 nas duas: `mudou` diz se a segunda mudou alguma coisa.\n"
+        "\n"
+        "NAO PUBLICA VERSAO NOVA E NAO MEXE NO TEXTO. Ligar e desligar e estado\n"
+        "da jornada, nunca conteudo dela: a operacao escreve UMA coluna, e as\n"
+        "versoes publicadas continuam intocadas.\n"
+        "\n"
+        "DESLIGAR SIGNIFICA QUE NINGUEM NOVO ENTRA. Quem ja esta no meio da\n"
+        "sequencia termina o que comecou, pela mesma regra que vale para a troca\n"
+        "de frase. Por isso a resposta traz `inscricoes_andando`: e o numero de\n"
+        "pessoas que continuam recebendo depois de desligada, e a tela precisa\n"
+        "poder dize-lo em vez de sugerir que tudo parou.\n"
+        "\n"
+        "LIGAR uma jornada que ainda nao tem versao publicada e recusado com\n"
+        "409: ligada assim ela nao inscreveria ninguem, e a tela mostraria\n"
+        "'ligada' para uma sequencia muda. DESLIGAR nunca e recusado por isso.\n"
+        "\n"
+        "Exige o grau a mais: o token precisa estar em `TOKENS_PUBLICACAO_<PAR>`,\n"
+        "e quem so tem leitura leva 403. Jornada de outro site e 404.\n"
+    ),
+)
+def ligar_ou_desligar_jornada(request, slug: str, dados: InterruptorDaJornada):
+    """Ligar uma sequência é gesto do mantenedor, e até aqui ele não tinha mão.
+
+    A `Jornada` nasce `ativa=False` de propósito, e o único caminho para ligá-la
+    era `semear_boas_vindas --ligar` — um comando de terminal, ou seja, ninguém.
+    Esta operação é a mão dele, e ela cai no grau de PUBLICAÇÃO porque calar uma
+    sequência muda o que sai para pessoas de verdade.
+
+    A RECUSA É DE UM LADO SÓ, e é a parte que merece atenção. Ligar sem versão
+    publicada seria aceito pelo banco e ignorado pelo motor
+    (`apps/jornadas/motor.py` não inscreve ninguém sem versão publicada): a tela
+    diria "no ar", o silêncio continuaria do outro lado, e nada ficaria vermelho
+    em lugar nenhum. Desligar, ao contrário, nunca é recusado: é o gesto de
+    segurança, e quem precisa dele já está com um problema na mão.
+    """
+    _exige_grau_de_publicacao(request)
+    site = _site_id(dados.site_id)
+    jornada = _jornada(site, slug)
+    corrente = versao_publicada_corrente(jornada)
+    if dados.ativa and corrente is None:
+        raise HttpError(
+            409,
+            "a jornada ainda nao tem versao publicada: ligada assim ela nao "
+            "inscreveria ninguem",
+        )
+
+    mudou = jornada.ativa != dados.ativa
+    if mudou:
+        # `queryset.update()` e não `save()`, e aqui isso é prova e não estilo:
+        # o UPDATE toca UMA coluna, enquanto um `save()` reescreveria a linha
+        # inteira. "O interruptor não mexe no texto" fica sendo o que o comando
+        # faz, e não o que este comentário promete.
+        JornadaModel.objects.filter(pk=jornada.pk).update(ativa=dados.ativa)
+
+    return EstadoDaJornadaSaida(
+        slug=jornada.slug,
+        ativa=dados.ativa,
+        mudou=mudou,
+        inscricoes_andando=InscricaoModel.objects.filter(
+            jornada=jornada, site_id=site, estado="andando"
+        ).count(),
+        versao_publicada=(
+            None
+            if corrente is None
+            else VersaoResumo(
+                numero=corrente.numero, publicada_em=corrente.publicada_em
+            )
+        ),
     )
