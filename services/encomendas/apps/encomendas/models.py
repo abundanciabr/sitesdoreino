@@ -110,16 +110,29 @@ class TransicaoProibida(ValidationError):
 # migração precisa da mesma tabela para escrever o gatilho, e o teste precisa
 # dela para provar, par a par, que o Python e o PostgreSQL concordam.
 #
-# Os 15 estados, na ordem da linha principal. `Encomenda.Status` repete os
+# Os 19 estados, na ordem da linha principal — eram 15 até 04/09/2026, quando o
+# mantenedor liberou a negociação e o mural aberto e quatro entraram:
+# `no_mural`, `reservada`, `em_negociacao` e `acordada`
+# (`docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md`). `Encomenda.Status` repete os
 # mesmos valores porque é ele quem dá o RÓTULO que a tela mostra; que as duas
 # listas nunca divirjam é o que
 # `tests/test_maquinas_de_estado.py::test_os_estados_do_textchoices_sao_os_da_maquina`
 # faz valer.
+#
+# A ORDEM DESTA LISTA MUDOU, e a mudança é a notícia: `aguardando_pagamento`
+# saiu da primeira posição e foi para o meio. Ele era o estado inicial porque o
+# preço vinha da tabela e já se conhecia antes de qualquer aluno ver o pedido;
+# com a negociação, o valor só existe depois do acordo, e não se cobra um valor
+# que ainda não foi combinado.
 ESTADOS_DE_ENCOMENDA = [
-    "aguardando_pagamento",
     "na_fila",
+    "no_mural",
     "oferecida",
+    "reservada",
     "aberta",
+    "em_negociacao",
+    "acordada",
+    "aguardando_pagamento",
     "em_producao",
     "entregue",
     "em_revisao",
@@ -140,8 +153,12 @@ ESTADOS_ATIVOS_DA_ENCOMENDA = frozenset(
     {
         "aguardando_pagamento",
         "na_fila",
+        "no_mural",
         "oferecida",
+        "reservada",
         "aberta",
+        "em_negociacao",
+        "acordada",
         "em_producao",
         "entregue",
         "em_revisao",
@@ -153,10 +170,48 @@ ESTADOS_ATIVOS_DA_ENCOMENDA = frozenset(
 )
 
 _LINHA_PRINCIPAL = {
-    "aguardando_pagamento": {"na_fila", "cancelada"},
+    # A ENCOMENDA NASCE NUMA PISTA, NÃO NO CAIXA. Até 04/09/2026 o estado
+    # inicial era `aguardando_pagamento`, e tinha de ser: o preço vinha da
+    # tabela, então já se conhecia antes de qualquer aluno ver o pedido. Com a
+    # negociação que o mantenedor liberou, o valor só existe DEPOIS do acordo —
+    # e não se cobra um valor que ainda não foi combinado
+    # (`PLANO-AREA-DE-NEGOCIACAO.md` §5). O caixa não sumiu; ele mudou de
+    # lugar, e agora fica entre `acordada` e `em_producao`.
     "na_fila": {"oferecida", "aberta", "para_reclassificar", "cancelada"},
-    "oferecida": {"na_fila", "em_producao", "aberta", "para_reclassificar"},
-    "aberta": {"em_producao"},
+    # A segunda pista. Quem chega aqui é projeto de nível Intermediário ou
+    # Avançado, porque a elegibilidade da lei já exige 1 e 5 entregas para eles
+    # — e projeto Iniciante que a fila não colocou em 24h, pela chamada aberta.
+    # `para_reclassificar` é o destino do projeto que passou 24h sem NENHUM
+    # elegível disponível: nos primeiros meses ninguém terá entrega aprovada, e
+    # sem esta seta ele ficaria parado para sempre, sem ninguém saber.
+    "no_mural": {"reservada", "para_reclassificar", "cancelada"},
+    # Aceitar uma oferta deixou de ser começar a produzir: é começar a
+    # NEGOCIAR. O aluno aceita, propõe valor e prazo, e só o acordo leva à
+    # produção.
+    "oferecida": {"na_fila", "em_negociacao", "aberta", "para_reclassificar"},
+    # O aluno pegou no Mural e tem relógio. Vencido sem proposta, volta ao
+    # Mural para o próximo — e nunca para quem já o teve.
+    "reservada": {"em_negociacao", "no_mural", "para_reclassificar"},
+    # Chamada aberta: o primeiro que aceitar leva, e leva PARA A NEGOCIAÇÃO.
+    "aberta": {"em_negociacao", "para_reclassificar"},
+    # As três saídas da negociação, e a diferença entre elas é quem ficou
+    # calado (`PLANO-AREA-DE-NEGOCIACAO.md` §4.2):
+    #   acordada             -> os dois fecharam;
+    #   na_fila / no_mural   -> o ALUNO calou ou desistiu: volta à pista dele,
+    #                           e ele não perde o lugar na fila;
+    #   para_reclassificar   -> o CLIENTE calou, ou as rodadas se esgotaram.
+    #                           Vai ao plantão, NUNCA ao próximo aluno: mandar
+    #                           ao próximo faria cada aluno da fila gastar a
+    #                           própria vez num cliente fantasma, um depois do
+    #                           outro, e nenhum saberia por quê.
+    "em_negociacao": {"acordada", "na_fila", "no_mural", "para_reclassificar"},
+    # O acordo congelou valor, prazo, entregáveis e correções. Agora sim, o
+    # caixa.
+    "acordada": {"aguardando_pagamento", "cancelada"},
+    # E daqui só se sai para a produção: o prazo do acordo começa a contar na
+    # confirmação do pagamento, não no acordo, senão a demora de quem confirma
+    # viraria atraso do aluno ([INV-ENC-N8]).
+    "aguardando_pagamento": {"em_producao", "cancelada"},
     "em_producao": {"entregue", "abandonada"},
     # A auditoria automática reprovou: volta ao aluno antes de humano nenhum ver.
     "entregue": {"em_revisao", "em_producao"},
@@ -164,8 +219,9 @@ _LINHA_PRINCIPAL = {
     "em_revisao": {"aguardando_cliente", "em_producao"},
     "aguardando_cliente": {"aprovada", "em_correcao"},
     "em_correcao": {"entregue"},
-    "para_reclassificar": {"na_fila", "cancelada"},
-    "abandonada": {"na_fila"},
+    # O plantão devolve à pista de origem, e por isso as duas setas.
+    "para_reclassificar": {"na_fila", "no_mural", "cancelada"},
+    "abandonada": {"na_fila", "no_mural"},
     "em_mediacao": {"aprovada", "cancelada"},
     "aprovada": {"concluida"},
     "concluida": set(),
@@ -470,15 +526,23 @@ class Encomenda(models.Model):
         INTERMEDIARIO = "intermediario", "Intermediário"
         AVANCADO = "avancado", "Avançado"
 
+    class Pista(models.TextChoices):
+        FILA = "fila", "Na fila (a plataforma escolhe o aluno)"
+        MURAL = "mural", "No Mural (o aluno pega)"
+
     class Confirmacao(models.TextChoices):
         WEBHOOK = "webhook", "Confirmado pelo webhook da célula de pagamentos"
         PLANTAO = "plantao", "Declarado pago pelo plantão (a escola é a cliente)"
 
     class Status(models.TextChoices):
-        AGUARDANDO_PAGAMENTO = "aguardando_pagamento", "Aguardando pagamento"
         NA_FILA = "na_fila", "Na fila"
+        NO_MURAL = "no_mural", "No Mural"
         OFERECIDA = "oferecida", "Oferecida a um aluno"
+        RESERVADA = "reservada", "Pega por um aluno no Mural"
         ABERTA = "aberta", "Chamada aberta"
+        EM_NEGOCIACAO = "em_negociacao", "Em negociação"
+        ACORDADA = "acordada", "Acordo fechado"
+        AGUARDANDO_PAGAMENTO = "aguardando_pagamento", "Aguardando pagamento"
         EM_PRODUCAO = "em_producao", "Em produção"
         ENTREGUE = "entregue", "Entregue"
         EM_REVISAO = "em_revisao", "Em revisão"
@@ -508,6 +572,15 @@ class Encomenda(models.Model):
     site_id = id_do_site()
 
     origem = models.CharField(max_length=8, choices=Origem.choices)
+    # POR ONDE ESTA ENCOMENDA CHEGA AO ALUNO. O nível decide a pista
+    # (`PLANO-AREA-DE-NEGOCIACAO.md` §3.1): Iniciante nasce na fila, porque é
+    # ela que garante o primeiro trabalho de quem nunca entregou; Intermediário
+    # e Avançado nascem no Mural, porque a elegibilidade da lei já exige 1 e 5
+    # entregas aprovadas para eles. É coluna, e não conta derivada do nível,
+    # porque a chamada aberta MOVE um projeto Iniciante para o Mural sem mudar
+    # o nível dele — e quem pergunta "onde este projeto está sendo mostrado?"
+    # precisa de uma resposta, não de uma regra para reexecutar.
+    pista = models.CharField(max_length=6, choices=Pista.choices, default=Pista.FILA)
     cliente_id = id_da_plataforma()
     cartao = models.CharField(max_length=20, choices=Cartao.choices)
     nivel = models.CharField(max_length=14, choices=Nivel.choices)
@@ -517,8 +590,32 @@ class Encomenda(models.Model):
     # guarda deles nasce na Fase 3.
     briefing = models.JSONField(default=dict, blank=True)
 
+    # O PREÇO DE REFERÊNCIA, e ele deixou de ser o preço final em 04/09/2026.
+    # Com a negociação, a tabela vira régua e não lei: ela dá ao cliente uma
+    # ideia de custo, ao aluno um chão para ancorar a proposta, e ao plantão uma
+    # medida para enxergar proposta muito fora da curva
+    # (`PLANO-AREA-DE-NEGOCIACAO.md` §4.4). O valor que vale é
+    # `acordo_valor_cents`, e são DUAS colunas de propósito: uma coluna com dois
+    # significados dependendo do estado é a forma mais barata de um relatório
+    # somar referência com acordo e ninguém perceber.
     preco_cents = models.PositiveIntegerField(default=0)
     taxa_cents = models.PositiveIntegerField(default=0)
+
+    # ── O ACORDO, que congela o combinado ────────────────────────────────────
+    # Todos nascem NULOS e só o fechamento do acordo os preenche. Depois disso
+    # não mudam: mexer neles pede mediação com autor e motivo registrados
+    # ([INV-ENC-N3]). É este bloco que torna a disputa julgável — sem ele, uma
+    # reclamação de "não é o que eu pedi" é palavra contra palavra.
+    #
+    # As tabelas `Proposta` e `Acordo` (as rodadas, as contrapropostas, o
+    # histórico da conversa) NÃO nascem aqui: são a TAR-134. O que mora nesta
+    # tabela é só o RESULTADO congelado, porque é dele que a produção, o prazo e
+    # a mediação dependem.
+    acordo_valor_cents = models.PositiveIntegerField(null=True, blank=True)
+    acordo_prazo_dias = models.PositiveSmallIntegerField(null=True, blank=True)
+    acordo_entregaveis = models.JSONField(default=list, blank=True)
+    acordo_correcoes_inclusas = models.PositiveSmallIntegerField(null=True, blank=True)
+    acordado_em = models.DateTimeField(null=True, blank=True)
 
     # Preenchidos no aceite: o prazo de produção pelo cartão, e o prometido ao
     # cliente = produção + o dia de revisão (plano §5.1). Os dois são
@@ -527,7 +624,7 @@ class Encomenda(models.Model):
     prazo_prometido_ate = models.DateTimeField(null=True, blank=True)
 
     status = models.CharField(
-        max_length=20, choices=Status.choices, default=Status.AGUARDANDO_PAGAMENTO
+        max_length=20, choices=Status.choices, default=Status.NA_FILA
     )
     aluno = models.ForeignKey(
         PerfilProfissional,

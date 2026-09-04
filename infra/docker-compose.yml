@@ -505,6 +505,41 @@ services:
       gamificacao:
         condition: service_healthy
 
+  # ---------------------------------------------------------------------------
+  # A MEDICAO (`metricas`) — o livro de fatos da plataforma.
+  # `PLANO-PAINEL-DE-GESTAO.md` §6.2, degrau 7.5. Ela nao tem tela e nao tem
+  # rota publica: nenhum `labels:` de Traefik aqui, e nao e esquecimento. Quem
+  # mostra numero nesta casa e a `admin`, que ja tem porta e cracha; esta celula
+  # so fala com quem esta na rede interna, e hoje nem isso (a porta de leitura
+  # nasce no degrau 7.4).
+  #
+  # O servico web existe mesmo sem porta publica por um motivo pratico: e o
+  # `/healthz` dele que o `x-celula` bate, e e o CMD dele que roda o `migrate`.
+  # Sem ele, o processo auxiliar migraria sozinho e nada provaria que a celula
+  # subiu (ARMADILHAS §3.13).
+  metricas:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-metricas:${METRICAS_TAG:-main}
+    env_file: [env/metricas.env]
+
+  # O que de fato trabalha nesta celula: escuta os dez assuntos com contrato
+  # congelado e guarda cada fato. Envelope torto nao derruba nada e nao some —
+  # vira linha na fila de eventos mortos, que o painel mostra.
+  metricas-eventos:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-metricas:${METRICAS_TAG:-main}
+    env_file: [env/metricas.env]
+    environment:
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: ["python", "manage.py", "consume_eventos"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      metricas:
+        condition: service_healthy
+
 volumes:
   pgdata: {}
   redisdata: {}

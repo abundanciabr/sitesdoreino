@@ -116,7 +116,15 @@ ETAPAS = (
             "vezes: aluno satisfeito vira o boca a boca que alimenta a "
             "primeira peça, de graça."
         ),
-        "portas": ("/forum/", "/conquistas/", "/forms/sugestoes/", "/admin/economia/"),
+        "portas": (
+            "/forum/",
+            "/conquistas/",
+            "/forms/sugestoes/",
+            "/admin/economia/",
+            # 04/09/2026: o quadro de pontos nasceu depois desta área, e
+            # entrega é onde ele responde ("quem está jogando, e quem parou").
+            "/admin/escola/pontos/",
+        ),
     },
     {
         "chave": "medir",
@@ -124,12 +132,23 @@ ETAPAS = (
         "pergunta": (
             "De cada cem pessoas que chegam, quantas passam para a etapa seguinte?"
         ),
+        # O texto NÃO nomeia a tela para onde aponta, e o guarda
+        # `test_o_codigo_nao_guarda_copia_do_nome_das_telas` reprovou a primeira
+        # versão que nomeava — com razão. Nome de tela citado em prosa envelhece
+        # no dia em que alguém a renomeia; o nome vivo vem do mapa, na porta
+        # logo abaixo. Isto é a lei desta área funcionando contra quem a
+        # escreveu, que é quando dá para confiar nela.
         "resumo": (
-            "A peça mais nova e a mais fraca das seis. Sem ela, melhorar a "
-            "máquina vira palpite: dá para saber quem já está na escola, mas "
-            "ainda não quantos visitaram o site e foram embora."
+            "A peça que transforma melhorar a máquina em decisão, e não em "
+            "palpite: quantas pessoas passam de uma etapa para a seguinte, e "
+            "em quais delas a casa ainda não sabe medir."
         ),
-        "portas": ("/admin/escola/jornada/",),
+        # `/admin/placar/` entra aqui em 04/09/2026, e a ordem importa: ele é
+        # a tela do funil desta casa (a barra do mês, a meta e a restrição da
+        # semana, com pedidos, liberações e tempo típico ao vivo da `alunos`).
+        # A área do perpétuo NÃO monta um funil próprio — seria a segunda
+        # definição do mesmo fato, e o `CLAUDE.md` a proíbe. Ela aponta.
+        "portas": ("/admin/placar/", "/admin/escola/jornada/"),
     },
 )
 

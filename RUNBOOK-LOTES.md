@@ -53,7 +53,8 @@ mesmo trabalho, só que junto. Lote menor = mesmo total, ritmo mais suave.
    inclusive para os caminhos CODEOWNERS que o lote tocar (Lei 4).
 2. **Recorte pela cerca:** 1 PR = 1 célula. Conte os arquivos de cada despacho NO
    PAPEL antes de escrever o brief (orçamento de 15 é portão mecânico — ARMADILHAS §5.1).
-3. **Brief fechado por despacho** (template em CAMINHO-DOURADO §2): célula, arquivos-
+3. **Brief fechado por despacho** (template em CAMINHO-DOURADO §2, que já
+   carrega a linha do Padrão de Trabalho): célula, arquivos-
    alvo, o que é somente-leitura, evidência exigida (vermelho→verde), receitas citadas
    por número — e as **armadilhas daquela tarefa já injetadas** (§3, regra 3).
 4. **Pré-voo da maestro** (5 min): `git fetch` + main verde? `alarme-main` sem issue
