@@ -1187,6 +1187,100 @@ class NotificacoesClient:
         return self.OK, aparelhos
 
 
+class MedicaoClient:
+    """contracts/metricas.openapi.yaml — `listCoverage` e `listDeadLetters`.
+
+    A `metricas` é o LIVRO DE FATOS da plataforma: ela guarda o que aconteceu,
+    para esta tela poder dizer o que MUDOU e não só o que é. Pela Lei 3 o Admin
+    não lê o banco dela (o papel `admin_user` sequer o enxerga); pergunta por
+    aqui, com o Bearer do par que o mantenedor provisionou.
+
+    FALHA ABERTA, ao contrário da `IdentidadeClient`. A diferença não é gosto: a
+    identidade decide ACESSO a esta área, e sem resposta a porta fecha; esta
+    responde uma LINHA DE CONFIANÇA no cabeçalho do placar, e derrubar a tela
+    inteira porque a memória não respondeu seria trocar um aviso por um apagão.
+    Mas fail-open aqui NÃO é fingir zero: cada desfecho tem nome próprio, e a
+    tela diz qual deles aconteceu. "Não perguntei" e "perguntei e não há nada"
+    são coisas diferentes, e confundi-las é a mentira que esta célula existe
+    para não contar.
+    """
+
+    TIMEOUT = 2.0
+
+    OK = "ok"
+    NAO_RESPONDEU = "nao-respondeu"
+    SEM_CONFIGURACAO = "sem-configuracao"
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        """Endereço e token do par, ou `None` se o env não os tiver.
+
+        Lido NO PONTO DE USO (`armadilhas/097`): o par nasce vazio e é escrito
+        na VPS por `infra/provisionar-par-da-medicao.sh`, depois do deploy. Ler
+        no import transformaria a janela entre as duas coisas em HTTP 500 em
+        toda abertura do placar.
+        """
+        base = (os.environ.get("METRICAS_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("METRICAS_API_TOKEN") or "").strip()
+        if not base or not token:
+            return None
+        return base, token
+
+    def _pedir(self, caminho: str, params: dict) -> "tuple[str, object]":
+        config = self._configuracao()
+        if config is None:
+            logger.warning(
+                "medicao: METRICAS_API_URL/METRICAS_API_TOKEN ainda não estão no "
+                "env desta célula (par admin→metricas não provisionado)"
+            )
+            return self.SEM_CONFIGURACAO, None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}{caminho}",
+                params=params,
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("medicao: a medição não respondeu: %s", erro)
+            return self.NAO_RESPONDEU, None
+        if r.status_code != 200:
+            logger.error("medicao: a medição respondeu HTTP %s", r.status_code)
+            return self.NAO_RESPONDEU, None
+        try:
+            return self.OK, r.json()
+        except ValueError as erro:
+            logger.error("medicao: resposta fora do contrato: %s", erro)
+            return self.NAO_RESPONDEU, None
+
+    def cobertura(self, site_id: str) -> "tuple[str, list | None]":
+        """De cada assunto já recebido: quantos, e quando foi o último."""
+        desfecho, corpo = self._pedir("/cobertura", {"site_id": site_id})
+        if desfecho != self.OK:
+            return desfecho, None
+        tipos = (corpo or {}).get("tipos")
+        if not isinstance(tipos, list):
+            logger.error("medicao: 'tipos' fora do contrato: %r", tipos)
+            return self.NAO_RESPONDEU, None
+        return self.OK, tipos
+
+    def quebrados(self) -> "tuple[str, int | None]":
+        """Quantos eventos chegaram e não puderam ser afirmados.
+
+        `limite=1` de propósito: o que esta tela usa é o `total`, e a fila de
+        mortos pode ter milhares de linhas num incidente. Pedir a página inteira
+        para mostrar um número seria pagar o pior caso por nada.
+        """
+        desfecho, corpo = self._pedir("/eventos-mortos", {"limite": 1})
+        if desfecho != self.OK:
+            return desfecho, None
+        total = (corpo or {}).get("total")
+        if not isinstance(total, int):
+            logger.error("medicao: 'total' fora do contrato: %r", total)
+            return self.NAO_RESPONDEU, None
+        return self.OK, total
+
+
 class MensageriaClient:
     """As sequências de mensagens da escola: o que existe, quem está dentro, o
     que saiu, o que NÃO saiu, e as duas escritas.

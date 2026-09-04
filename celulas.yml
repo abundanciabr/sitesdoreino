@@ -88,6 +88,12 @@ celulas:
     # O contrato congelou no Rito de 04/09/2026, com o mantenedor presente
     # (registro 20260904-070). Sao DOIS graus do mesmo par (leitura e
     # publicacao), e o de publicacao ja contem o de leitura.
+    # `metricas` desde 04/09/2026: a HISTORIA dos numeros da escola mora la (o
+    # livro de fatos, PLANO-PAINEL-DE-GESTAO §6.2). Todo o resto do placar conta
+    # ao vivo, e por isso so sabe dizer como as coisas estao AGORA; a linha de
+    # confianca do cabecalho pergunta a medicao quanto ja foi guardado, de que
+    # assuntos, e o que PAROU de chegar. Le pela porta de maquina, com o par que
+    # o mantenedor provisionou, e nao guarda copia de nada aqui.
     consome:
       [
         alunos,
@@ -95,6 +101,7 @@ celulas:
         gamificacao,
         identidade,
         mensageria,
+        metricas,
         notificacoes,
         sugestoes,
       ]

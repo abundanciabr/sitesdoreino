@@ -34,7 +34,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_http_methods
 
-from .placar import montar_o_placar
+from .placar import montar_o_placar, site_de
 
 #: Os oito passos da pauta, na ordem do Scale OS 1.1 §98 a §105, traduzidos.
 PASSOS = (
@@ -138,7 +138,7 @@ def montar_o_pedido(campos: dict, hoje, foto: str | None = None) -> str | None:
 def reuniao(request):
     """A pauta guiada. GET mostra os oito passos; POST devolve o pedido para o robô."""
     hoje = timezone.localdate()
-    contexto = montar_o_placar(hoje)
+    contexto = montar_o_placar(hoje, site_de(request))
     campos = request.POST if request.method == "POST" else {}
     foto = (contexto.get("mudancas") or {}).get("foto_de_hoje")
     pedido = montar_o_pedido(campos, hoje, foto) if request.method == "POST" else None

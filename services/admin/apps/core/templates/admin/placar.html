@@ -21,6 +21,57 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   <h1>O placar</h1>
   <p class="subtitulo">Quantas pessoas viraram alunas neste mês, e a meta grande por cima: estamos ganhando ou perdendo?</p>
 
+  {% comment %}
+  A LINHA DA MEMÓRIA (degrau 7.6). Não é um bloco, e isso é de propósito: a
+  capa tem teto de nove e se recusa a crescer (plano §3, guarda em
+  tests/test_capa.py). Isto é a "confiança dos dados desta tela" que o
+  cabeçalho já devia dizer, e por isso mora aqui em cima, antes dos números.
+  Cada desfecho tem frase própria: "não perguntei" e "perguntei e não há nada"
+  nunca podem virar a mesma coisa. Regras em apps/core/medicao.py.
+  {% endcomment %}
+  {% if medicao.veredito == "medindo" %}
+  <p class="nota">
+    <b>A memória da escola está guardando.</b>
+    {{ medicao.fatos }} fato{{ medicao.fatos|pluralize:"s" }} de
+    {{ medicao.assuntos }} assunto{{ medicao.assuntos|pluralize:"s" }}{% if medicao.ultimo %}, o último {{ medicao.ultimo }}{% endif %}.
+    É daqui que esta tela vai tirar o que MUDOU, e não só o que é.
+    {% if medicao.quebrados %}
+    {{ medicao.quebrados }} chegou quebrado e não foi contado.
+    {% endif %}
+  </p>
+    {% if medicao.parados %}
+    <p class="aviso borda-amarela">
+      <b>Parou de chegar:</b> {{ medicao.parados|join:", " }}.
+      Faz mais de uma semana. Ou ninguém fez isso no site, ou o aviso parou de
+      sair de alguma parte: os números históricos desses assuntos envelhecem
+      calados até isso ser olhado.
+    </p>
+    {% endif %}
+  {% elif medicao.veredito == "vazia" %}
+  <p class="nota">
+    <b>A memória da escola está ligada e ainda não guardou nada.</b>
+    Ela nasceu hoje: o primeiro fato entra assim que alguém se cadastrar,
+    responder o quiz ou escrever no fórum.
+  </p>
+  {% elif medicao.veredito == "sem-configuracao" %}
+  <p class="aviso borda-amarela">
+    <b>A memória existe, mas esta tela ainda não tem a senha para perguntar a ela.</b>
+    Falta rodar o passo do servidor que liga as duas (o robô do próximo
+    despacho te manda a linha). Nada aqui está quebrado: o que falta é a senha.
+  </p>
+  {% elif medicao.veredito == "nao-respondeu" %}
+  <p class="aviso borda-amarela">
+    <b>Não consegui perguntar à memória agora.</b>
+    Isto não é zero: é a pergunta que não chegou. Abra de novo daqui a pouco.
+  </p>
+  {% elif medicao.veredito == "sem-site" %}
+  <p class="aviso borda-amarela">
+    <b>Não consegui saber de qual site perguntar</b> (a parte que guarda os
+    sites não respondeu), então a memória ficou de fora desta tela. Os números
+    abaixo não dependem disso.
+  </p>
+  {% endif %}
+
   {% if not meta %}
   <p class="aviso borda-vermelha">
     <b>O número não aparece porque falta o cartão dele.</b>
