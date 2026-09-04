@@ -41,6 +41,7 @@ on:
           - alunos
           - catalogo
           - checkout
+          - encomendas
           - forum
           - funil
           - gamificacao

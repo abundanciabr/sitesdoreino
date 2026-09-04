@@ -1,15 +1,8 @@
-# Constituição da Célula: encomendas (a Fila do Primeiro Dólar) — RASCUNHO
-
-> **Mora em `docs/decisoes/` de propósito, e não em `constituicoes/`.**
-> Constituição em `constituicoes/` sem a célula em `services/` é órfã para
-> `ci/tests/test_constituicoes.py` (medido em 03/09/2026, `armadilhas/304`).
-> Este arquivo vira `constituicoes/AGENTS.encomendas.md` no PR da gênese
-> (TAR-109), **revisto a partir do código**, como o teste manda. Até lá, ele é
-> a constituição em papel que o plano mestre pede na Fase 0.
+# Constituição da Célula: encomendas (a Fila do Primeiro Dólar)
 > **Jurisdição:** governa apenas `services/encomendas/`. Herda `CONSTITUICAO.md`.
-> **STATUS:** APROVADA EM PAPEL (03/09/2026); **a célula ainda não existe em
-> `services/`**, nasce na gênese (TAR-109) depois de o mantenedor aprovar a
-> lei · **Merge:** pela pista (`ci/mergear.py --pousar`), com CI verde
+> **STATUS:** ATIVA (nascida em 03/09/2026, PR de gênese, TAR-109; a lei foi
+> aprovada pelo mantenedor no mesmo dia) · **Merge:** pela pista
+> (`ci/mergear.py --pousar`), com CI verde
 
 ## Missão
 Atravessar, uma vez por aluno, o ponto mais difícil da carreira de um
@@ -23,6 +16,10 @@ as emendas da casa ao plano, os invariantes, os parâmetros, a escada). O
 produto inteiro (cardápio, jornadas, livro de regras, algoritmo, textos de
 tela, cenários de aceite): `docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md`.
 O contrato v1 em papel, até congelar: `docs/decisoes/CONTRATO-encomendas-v1-rascunho.md`.
+Esta constituição nasceu em papel (`docs/decisoes/`, PR #946) e foi promovida
+para cá na gênese, revista contra o código: na gênese a célula tem UMA rota
+(`/healthz`), nenhuma tabela e nenhum cliente, e tudo o que está descrito
+abaixo como "expõe" e "consome" é o destino da escada, não o estado do disco.
 
 ## Fronteiras
 - **PERMITIDO ESCREVER:** `services/encomendas/**`
