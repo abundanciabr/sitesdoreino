@@ -74,11 +74,30 @@ Ela não mostra número nenhum. **O mapa da jornada do aluno
 uma segunda contagem, montada aqui, divergiria dela no primeiro estado novo. A
 peça "Medir" aponta para lá, e é assim que fica.
 
-O painel de números do perpétuo (as passagens de uma etapa para a seguinte)
-depende de dados que a plataforma ainda não coleta: quantas pessoas visitaram o
-site e foram embora, quantas deixaram contato e não voltaram. Construir a tela
-antes da fonte seria uma parede de zeros, que se lê como *"está tudo quebrado"*
-em vez de *"ainda não sei"*.
+### 4.1 O painel de números do funil NÃO nasce aqui (medido em 04/09/2026)
+
+Em 04/09/2026 o mantenedor escolheu "os números do funil" como o primeiro
+painel desta área. **A medição do repositório mostrou que ele já existe**, e
+por isso ele não foi construído aqui:
+
+`/admin/placar/` (degrau 1 do `PLANO-PAINEL-DE-GESTAO.md`, entregue em
+03/09/2026) mostra, ao vivo da célula `alunos`: pedidos de entrada e liberações
+nos últimos 28 e 7 dias, quantas pessoas esperam, há quanto tempo, o tempo
+típico de liberação, e a taxa da passagem. O cálculo mora em
+`services/admin/apps/core/restricao.py`, e o `ETAPAS` de lá **declara, uma por
+uma, as passagens que ainda não têm fonte e por quê** (cadastros, primeira
+entrada, escrita no fórum).
+
+Uma segunda tela de funil aqui seria a segunda leitura renderizada do mesmo
+fato, num painel de gestão que outra frente está construindo por um plano
+escrito. A área do perpétuo **aponta** para `/admin/placar/` na peça "Medir", e
+é isso que ela faz com todo número: aponta, nunca recalcula.
+
+**O que falta para o funil ficar inteiro não é tela: é fonte.** As três
+passagens sem dado esperam a célula `metricas` (degraus 7 a 9 daquele plano), e
+essa célula está parada por um passo do mantenedor no servidor, registrado em
+`20260904-052`. Enquanto ele não acontece, nenhuma tela nova pode adiantar o
+número: ela mostraria "ainda não sei" com desenho mais bonito.
 
 ## 5. Como uma página nova entra aqui
 
