@@ -1,0 +1,14 @@
+{
+  "arquivo": "108-fila-do-primeiro-dolar-fase-0-os-vinte-acontecimentos-da-enc",
+  "id": "TAR-108",
+  "titulo": "Fila do Primeiro Dolar, Fase 0: os vinte acontecimentos da encomenda ganham forma congelada em contratos",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "PR so de contracts/eventos/ (etiqueta contrato) mergeado com os 20 esquemas *.v1.json do plano (secao 7.3), envelope canonico, additionalProperties:false, so ids opacos e dinheiro em centavos inteiros; contrato_aditivo PASS.",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei, com as emendas da casa ao plano), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o plano do mantenedor, secoes 5 a 9), constituicoes/AGENTS.encomendas.md e armadilhas/INDICE.md (Ctrl+F pela tecnologia que vai tocar). A secao 3 do plano (o que fica FORA) e literal: nenhum agente melhora o desenho por conta propria. TAREFA: escrever em contracts/eventos/ os 20 eventos da secao 7.3 do plano, um arquivo por evento, no molde de contracts/eventos/forum.topico-criado.v1.json (envelope canonico do contracts/README.md, ator_id no envelope quando ha pessoa agindo, additionalProperties:false, so ids opacos, nunca e-mail nem texto do briefing). Dinheiro, quando viajar, e inteiro em centavos (README item 7). PR SO de contracts/ + o registro do livro + o evento da fila, com a etiqueta contrato (Rito de Contrato, RITOS.md secao 3) e, se passar de 15 arquivos, a etiqueta arquitetural com fechar-e-reabrir (armadilhas/077). Caminho CODEOWNERS: anunciar nominalmente no relatorio.",
+  "origem": "plano mestre da Fila do Primeiro Dolar (v0.1, 03/09/2026), trazido pelo mantenedor; lei em docs/decisoes/DECISAO-fila-do-primeiro-dolar.md",
+  "criada_em": "2026-09-04"
+}

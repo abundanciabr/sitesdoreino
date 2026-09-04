@@ -1,0 +1,21 @@
+# Versões PINADAS e iguais às das células vizinhas de propósito: quatro versões
+# da mesma biblioteca para o mesmo padrão são quatro comportamentos a depurar
+# (`armadilhas/071`).
+#
+# Django 5.1.4 porque é a versão de todas as células vivas da plataforma.
+Django==5.1.4
+psycopg[binary]==3.2.3
+dj-database-url==2.3.0
+uvicorn==0.32.1
+# A pergunta "quem é esta pessoa?" à célula identidade e "ela é aluna?" à
+# alunos — os clientes nascem no degrau 2.7 da escada, junto com a porta de
+# máquina. Entra já aqui pelo mesmo motivo das versões pinadas: quando o
+# cliente chegar, ele não escolhe versão nova.
+httpx==0.28.1
+pytest==8.3.4
+pytest-django==4.9.0
+black==24.10.0
+# O dublê de rede dos testes: sem ele, a suíte precisaria de uma identidade de
+# verdade no ar — e suíte que depende de outra célula fica vermelha por motivo
+# alheio.
+respx==0.23.1

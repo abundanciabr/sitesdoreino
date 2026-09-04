@@ -67,10 +67,16 @@ de 13 células: sinal exato do padrão 2 da retrospectiva — número escrito à
 mão em documento que nada recalcula. Recontar é sempre mais confiável que
 confiar na linha acima.)
 
-> **Uma 14ª célula está nascendo:** `gamificacao`, aprovada pelo mantenedor
-> em 30/08/2026 e ainda ausente de `services/` no momento desta escrita.
-> Ela tem seção própria logo abaixo — leia-a antes de propor qualquer
-> mecânica de ponto, selo, ranking ou recompensa em qualquer outra célula.
+> **A 14ª célula, `gamificacao`, nasceu:** aprovada pelo mantenedor em
+> 30/08/2026 e em `services/` desde o mesmo dia (PR #629). Ela tem seção
+> própria logo abaixo — leia-a antes de propor qualquer mecânica de ponto,
+> selo, ranking ou recompensa em qualquer outra célula.
+>
+> **A 15ª nasceu em 03/09/2026:** `encomendas`, a Fila do Primeiro Dólar,
+> lei aprovada pelo mantenedor e esqueleto em `services/` no mesmo dia. Seção
+> própria mais abaixo — leia-a antes de desenhar qualquer coisa que pareça
+> marketplace, fila de trabalho remunerado, oferta a aluno ou portfólio de
+> encomenda em outra célula.
 
 **Nota de método para medir tamanho de célula:** use `git ls-files
 services/<celula> | wc -l`, nunca `find`. O caso `services/pagamentos`
@@ -179,6 +185,76 @@ acima, junto com `celulas.yml`, `ci/manifesto-de-contratos.json` e
 `constituicoes/AGENTS.gamificacao.md` — e aí o teste-guarda
 `ci/tests/test_painel_ia_atualizado.py` passa a **exigir** que este mapa a
 cite, em vez de apenas aceitar que ele a antecipe.
+
+## A 15ª célula, nascida em 03/09/2026: `encomendas`
+
+**Estado:** lei escrita a partir do plano mestre v0.1 que o mantenedor
+trouxe e **aprovada por ele em 03/09/2026** (pergunta estruturada; registro
+`20260904-006`); esqueleto em `services/encomendas` no mesmo dia (só
+`/healthz`, sem tabela, sem tela, sem contrato congelado). Esta
+seção existe para que a próxima IA não desenhe marketplace, oferta de
+trabalho a aluno, fila remunerada ou portfólio de encomenda dentro de outra
+célula sem saber que já há dona para isso. **Fonte de verdade:**
+`docs/decisoes/DECISAO-fila-do-primeiro-dolar.md` (a lei: as emendas da casa
+ao plano, os invariantes, os parâmetros, a escada),
+`docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` (o produto, texto do
+mantenedor) e `docs/decisoes/CONTRATO-encomendas-v1-rascunho.md` (o contrato
+em papel). O resumo abaixo é curado: divergiu, **o original vence**. Quem
+responde "isto já foi feito?" continua sendo só o livro e a fila.
+
+**O que ela é.** O marketplace de encomendas 3D da escola visto de dentro:
+perfis profissionais dos formados, a **Fila do Primeiro Dólar** (uma fila,
+uma regra: menos entregas aprovadas primeiro, empate por quem entrou antes),
+ofertas com relógio de 3 horas úteis, encomendas com máquina de estado,
+entregas, revisão humana obrigatória na primeira entrega, correção única,
+mediação e a tela de plantão do professor. **A plataforma escolhe o aluno,
+não o cliente**: não há lista de freelancers, proposta, lance nem ranking, e
+a lista do que fica fora está copiada literalmente na lei §2.
+
+**As emendas da casa ao plano** (o plano foi escrito fora deste repositório):
+a escola é 18+, então o ator "Responsável" saiu; o contrato HTTP só congela
+depois da porta de máquina (`armadilhas/228`, `243`); os invariantes nascem
+declarados na lei e viram guarda no PR do motor; **dinheiro por último** (a
+Fase 3 espera o sinal do mantenedor, e até lá a única origem de encomenda é
+`escola`, confirmada pelo plantão com autor); o portfólio mora no Estúdio
+(`/estudio/<apelido>`, opt-in, célula `pages`), e esta célula só responde
+quais peças estão aprovadas e autorizadas; o título de Banca, enquanto a
+Banca não existe, é dado pelo professor na tela de plantão.
+
+**O que ela consome:** `identidade` (quem é o dono do cookie; ela não assina
+sessão, INV-P12) e `alunos` (a categoria da pessoa). Na gênese,
+`consome: []` (`armadilhas/224`).
+
+**O que ela oferece (contrato, Bearer por par):** `getParameters` e
+`setParameter` (a tabela de parâmetros da fila, com histórico, editada pelo
+Admin), `getQueueStanding` (a fila de uma pessoa: disponibilidade, título,
+entregas, espera estimada), `getApprovedPieces` (peças aprovadas e
+autorizadas, para o Estúdio), `confirmPayment` (da `pagamentos`, Fase 3) e
+`reportAudit` (do worker de auditoria com Blender, Fase 5).
+
+**O que ela emite:** 20 eventos (`encomenda.*`, `oferta.*`, `entrega.*`,
+`aluno.pausado`/`.disponivel`, `portfolio.publicado`, `pedido-direto.criado`,
+todos `.v1`, só ids opacos) e `notificacao.devida.v1` com assuntos
+`encomendas.*`. A gamificação escuta `encomenda.aprovada.v1` para os Marcos
+#3 (Primeiro Dólar) e #4 (Primeiro Cliente Real).
+
+| O que ela NÃO faz | Quem faz |
+|---|---|
+| Cobrar, reter, repassar, reembolsar | `pagamentos` (Fase 3, depois do sinal do mantenedor) |
+| Saber o que é Marco | `gamificacao`, por evento |
+| Mostrar o portfólio | `pages` (o Estúdio), perguntando `getApprovedPieces` |
+| Dizer quem é aluno | `alunos` (`getStudentStanding`) |
+| Dar aula ou o título de Banca | a célula de cursos (a nascer); até lá o professor dá o título |
+| Auditar o arquivo 3D | o worker de auditoria (imagem própria com Blender) |
+
+**Invariantes declarados na lei §5, com o caminho do guarda:** dez de
+justiça (`[INV-ENC-J1..J10]`: uma oferta por encomenda e por aluno, o menor
+`(entregas, data_entrada)` primeiro, só abandono muda o lugar, nível mínimo,
+nunca a mesma encomenda duas vezes, trabalhando não recebe, relógio congela
+fora de 8h–22h, vira aberta em 24h, motor idempotente), cinco de dinheiro
+(`[INV-ENC-D13..D17]`) e cinco de segurança (`[INV-ENC-S1..S5]`: sem texto
+livre entre cliente e aluno, primeira entrega sempre revisada, sem contato do
+aluno, peça só com autorização, cliente novo passa pelo plantão).
 
 ## O mecanismo de contratos: OpenAPI + eventos, e o freeze que os protege
 

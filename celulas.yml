@@ -95,6 +95,19 @@ celulas:
     caminhos: [services/checkout]
     consome: [catalogo, pagamentos]
 
+  encomendas:
+    caminhos: [services/encomendas]
+    # NASCE SEM CONSUMIR NINGUÉM, e a lista vazia é a declaração honesta —
+    # não um esquecimento. A lei prevê `consome: [alunos, identidade]`
+    # (`DECISAO-fila-do-primeiro-dolar.md` §4), e essas linhas entram no
+    # degrau 2.7 da escada, junto com os clientes que leem
+    # `IDENTIDADE_API_URL` e `ALUNOS_API_URL`. Declará-las HOJE seria
+    # declaração órfã, e o varredor reprova por isso, com razão
+    # (`armadilhas/224`): um mapa que promete a mais é tão mentiroso quanto
+    # um que promete a menos. Quem escrever os clientes volta aqui no mesmo
+    # PR — e se esquecer, o varredor cobra pelo outro lado.
+    consome: []
+
   forum:
     caminhos: [services/forum]
     # `catalogo` desde 31/08/2026: o menu do topo e DADO DO SITE, e o forum
