@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-131130-TAR-127-concluida",
+  "tarefa": "TAR-127",
+  "evento": "concluida",
+  "quando": "2026-09-04T13:11:30+00:00",
+  "quem": "sessao-encomendas-provisionar-2026-09-04",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/982 MERGED (mergeCommit d30ca94b2, lido por gh pr view --json state,mergeCommit,mergedBy). infra/provisionar-encomendas.sh + infra/env/encomendas.env.exemplo + a setima entrada do guarda ci/tests/test_provisionamento_nao_perde_variavel.py no MESMO PR. PROVA VERMELHO->VERDE por mutacao: tirar ALUNOS_API_TOKEN do heredoc e tirar SITE_ID da lista da trava deixam test_a_lista_da_trava_e_o_heredoc_nao_derivaram vermelho; tirar ALUNOS_API_URL do molde deixa test_tudo_que_o_script_escreve_esta_declarado_no_molde vermelho; restaurado, 23 passed. bash -n limpo, muralhas locais PASS 13/13. O passo do mantenedor na VPS esta registrado no livro como 20260904-046, com precisa_do_dono: true.",
+  "verificado_em": "2026-09-04"
+}

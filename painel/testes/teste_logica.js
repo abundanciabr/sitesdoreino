@@ -500,6 +500,109 @@ var aMais = muitosProblemas.length - (TETO + 2);
 caso("passado o teto, cada problema a mais pesa um título e não um parágrafo",
   (pesoCheio - pesoBase) / aMais < 400);
 
+
+// ---------------------------------------------------------------------------
+// O TETO DE TEXTO DA CAIXA "Precisa de você" (TAR-119, 04/09/2026).
+//
+// Medido no dia: o resumo estava em 137,1 KB dos 150 KB do orçamento (91,4%), e
+// a caixa era a ÚNICA fonte de texto completo SEM teto nenhum — dez pedidos
+// abertos, 22,4 KB, um parágrafo inteiro por pedido. E ela não encolhe sozinha:
+// só o dono a esvazia, respondendo. Bloco que só ele pode encolher, dentro de um
+// orçamento que não cresce, tem data marcada.
+//
+// Os seis casos travam as seis coisas que a cura precisa ser: ela corta TEXTO,
+// não corta FATO, não deixa ninguém cair fora do resumo, guarda a FICHA DA
+// DECISÃO de quem foi cortado, escolhe pelos mais RECENTES, e tem dentes.
+console.log("== teto de texto de Precisa de você ==");
+
+var TETO_CAIXA = LOGICA.CAIXA_COM_DETALHE;
+caso("a caixa tem um teto de TEXTO declarado", typeof TETO_CAIXA === "number" && TETO_CAIXA > 0);
+
+// Os pedidos ficam em AGOSTO e, depois deles, TRINTA registros de SETEMBRO. O
+// enchimento tem de ser desse tamanho por dois motivos, e o segundo só apareceu
+// quando o guarda foi mutado de propósito (04/09/2026):
+//   1. sem ele os pedidos seriam os mais recentes do livro e ganhariam texto por
+//      `RECENTES_COM_DETALHE` — o teto da caixa passaria sem ser exercido;
+//   2. `RECENTES_NO_RESUMO` são 30, e com um livro menor que isso TODO registro
+//      chega ao resumo pela porta dos recentes. A primeira versão deste teste
+//      tinha 24 registros, e por isso NÃO pegou a mutação que apagava a linha
+//      `marcar(apenasTitulo, blocos.caixa)` — o pedido cortado continuava
+//      aparecendo, carregado por outra porta. Trinta empurra os pedidos para
+//      fora dos recentes e deixa a caixa como única porta deles.
+var muitosPedidos = [];
+for (var q = 0; q < TETO_CAIXA + 8; q++) {
+  var diaP = String(q + 1);
+  if (diaP.length < 2) diaP = "0" + diaP;
+  muitosPedidos.push(reg({
+    arquivo: "202608" + diaP + "-80" + (q % 10) + "-pedido-" + q,
+    tipo: "pendencia", quando: "2026-08-" + diaP,
+    titulo: "pedido " + q,
+    precisa_do_dono: true,
+    // `frente: null` de propósito: um pedido sem frente NÃO aparece no Meu mapa,
+    // então ele só chega ao resumo se a própria caixa o levar. É este registro
+    // que descobre se o corte fez alguém sumir em vez de encolher.
+    frente: null,
+    se_eu_nao_decidir: "a frente fica parada", recomendacao: "escolha a primeira",
+    reversivel: true, impacto: "alto",
+    detalhe: "um paragrafo bem comprido ".repeat(60)
+  }));
+}
+var enchimento = [];
+for (var w = 0; w < 30; w++) {
+  var diaW = String(w + 1);
+  if (diaW.length < 2) diaW = "0" + diaW;
+  enchimento.push(reg({
+    arquivo: "202609" + diaW + "-81" + (w % 10) + "-nota-" + w,
+    tipo: "nota", quando: "2026-09-" + diaW, titulo: "nota " + w,
+    detalhe: "texto qualquer de enchimento "
+  }));
+}
+var livroCaixa = muitosPedidos.concat(enchimento);
+var resumoCaixa = LOGICA.montarResumo(livroCaixa);
+caso("montarResumo constrói com a pilha de pedidos", resumoCaixa.erro === null);
+
+var naCaixa = {};
+resumoCaixa.registros.forEach(function (r) { naCaixa[r.arquivo] = r; });
+
+// 1. NENHUM FATO SOME. Este é o caso que a caixa exige e o bloco de problemas
+//    não exigia: pedido sem frente não tem segunda porta para o resumo.
+caso("nenhum pedido aberto some do resumo",
+  muitosPedidos.every(function (r) { return !!naCaixa[r.arquivo]; }));
+caso("...e a caixa calculada do resumo tem a MESMA contagem da do livro inteiro",
+  LOGICA.caixaDeEntrada(resumoCaixa.registros, AGORA, resumoCaixa.respondidos).length ===
+  LOGICA.caixaDeEntrada(livroCaixa, AGORA).length);
+
+// 2. O TEXTO É QUE TEM TETO.
+var pedidosComTexto = muitosPedidos.filter(function (r) { return naCaixa[r.arquivo] && !naCaixa[r.arquivo]._so_titulo; });
+caso("o texto completo dos pedidos para no teto (não cresce com a pilha)",
+  pedidosComTexto.length <= TETO_CAIXA);
+
+// 3. QUEM FICA COM O TEXTO SÃO OS MAIS RECENTES — não os do topo do bloco, que
+//    é ordenado do mais VELHO para o mais novo ("pedido velho grita mais").
+//    Quem cortasse pela ordem do bloco acertaria a contagem e erraria a escolha.
+var pedidoMaisNovo = muitosPedidos[muitosPedidos.length - 1].arquivo;
+var pedidoMaisVelho = muitosPedidos[0].arquivo;
+caso("o pedido mais RECENTE mantém o texto", !naCaixa[pedidoMaisNovo]._so_titulo);
+caso("o mais ANTIGO viaja só como título", naCaixa[pedidoMaisVelho]._so_titulo === true);
+
+// 4. A FICHA DA DECISÃO SOBREVIVE AO CORTE. Sem ela o pedido cortado viraria
+//    uma linha que não dá para decidir — e aí o corte teria comido o fato.
+caso("o pedido cortado continua DECIDÍVEL (os quatro campos vêm junto)",
+  ["se_eu_nao_decidir", "recomendacao", "reversivel", "impacto"].every(function (c) {
+    return naCaixa[pedidoMaisVelho][c] !== undefined;
+  }));
+caso("...e o texto que ficou no lugar diz ONDE ler o original",
+  naCaixa[pedidoMaisVelho].detalhe.indexOf("Memória") !== -1);
+
+// 5. O GUARDA TEM DENTES. O detalhe fabricado acima tem ~1560 letras, então um
+//    pedido inteiro passa de 1900 bytes; um título com a ficha fica abaixo de
+//    800. Sem o teto, cada pedido a mais custaria o parágrafo inteiro.
+var pesoBaseCaixa = pesoDoResumo(muitosPedidos.slice(0, TETO_CAIXA + 2).concat(enchimento));
+var pesoCheioCaixa = pesoDoResumo(livroCaixa);
+var pedidosAMais = muitosPedidos.length - (TETO_CAIXA + 2);
+caso("passado o teto, cada pedido a mais pesa um título e não um parágrafo",
+  (pesoCheioCaixa - pesoBaseCaixa) / pedidosAMais < 800);
+
 console.log("");
 if (falhas.length) {
   console.error("❌ " + falhas.length + " caso(s) FALHARAM. A lógica do painel NÃO está confiável.");

@@ -564,6 +564,36 @@
   // vinte parágrafos de agosto na tela de hoje é outra forma da mesma doença.
   var PROBLEMAS_COM_DETALHE = 10;
 
+  // O MESMO teto para a caixa "Precisa de você" — e ele nasceu da MESMA medição,
+  // dois dias depois (TAR-119, 04/09/2026): o resumo estava em 137,1 KB dos
+  // 150 KB do orçamento (91,4%), e a caixa era a ÚNICA fonte de texto completo
+  // sem teto nenhum. Dez pedidos abertos pesavam 22,4 KB, e cada pedido novo
+  // custava um parágrafo inteiro dentro de um orçamento que não cresce.
+  //
+  // POR QUE a caixa cresce e não encolhe sozinha: quem a esvazia é o dono,
+  // respondendo — e cinco frentes produzem decisões mais depressa do que uma
+  // pessoa as consome. Um bloco que só ele pode encolher, dentro de um
+  // orçamento fixo, tem data marcada. É a frase que se escreveu aqui em 02/09
+  // sobre os incidentes, e ela valia igual para a caixa.
+  //
+  // O CORTE É DE TEXTO, NUNCA DE FATO, e aqui isso tem nome próprio: os quatro
+  // campos da decisão (`se_eu_nao_decidir`, `recomendacao`, `reversivel`,
+  // `impacto`) já viajam em `CAMPOS_DO_TITULO`, então o pedido cortado continua
+  // DECIDÍVEL — perde o parágrafo, não a decisão, e a ficha que a página desenha
+  // embaixo dele continua cheia. Os dez pedidos abertos em 04/09 foram medidos
+  // um a um antes deste corte: todos com os quatro campos.
+  //
+  // QUEM FICA COM O TEXTO SÃO OS MAIS RECENTES, e não os do topo do bloco: a
+  // caixa é ordenada do mais velho para o mais novo ("pedido velho grita mais"),
+  // e um pedido que está na capa há dias já foi lido. O que o dono ainda não viu
+  // é o de hoje.
+  //
+  // E é uma CONTAGEM, não uma idade. "Pendência com mais de N dias" seria mais
+  // bonito de ler e cruzaria a linha que este arquivo não cruza: congelaria o
+  // relógio do build dentro do resumo. A ordem por data dá o mesmo resultado com
+  // qualquer relógio; a idade, não.
+  var CAIXA_COM_DETALHE = 4;
+
   // Os campos que sobrevivem quando um registro viaja só como título. O `detalhe`
   // fica de fora de propósito: nos blocos recolhidos a página NUNCA o mostra
   // (`.item.recolhido .det{display:none}`, e não há nenhum clique que o abra) —
@@ -613,7 +643,14 @@
     capaS.blocos.forEach(function (b) { blocos[b.id] = b.itens; });
 
     // COM texto: o que a página desenha aberto.
-    marcar(completo, blocos.caixa);
+    // "Precisa de você" com teto de TEXTO (ver `CAIXA_COM_DETALHE`): os pedidos
+    // mais RECENTES levam o parágrafo. A ordem do bloco é do mais velho para o
+    // mais novo, e usá-la aqui deixaria o texto justamente com os pedidos que o
+    // dono já leu na capa nos últimos dias.
+    var caixaPorData = (blocos.caixa || []).slice().sort(function (a, b) {
+      return paraData(b.registro.quando) - paraData(a.registro.quando);
+    });
+    marcar(completo, caixaPorData.slice(0, CAIXA_COM_DETALHE));
     // "Atenção agora" com teto de TEXTO (ver `PROBLEMAS_COM_DETALHE`): os mais
     // RECENTES levam o parágrafo, o resto vai como título. A ordem do bloco é
     // por gravidade, e usá-la aqui deixaria o texto com os incidentes mais
@@ -632,6 +669,11 @@
     // Os problemas abertos entram INTEIROS aqui e a linha final tira os que já
     // estão em `completo`: assim nenhum deles some do resumo, e só o texto dos
     // antigos fica para trás.
+    // A caixa inteira entra aqui, e a linha final tira os que já estão em
+    // `completo`. Sem esta linha o pedido cortado acima SUMIRIA do resumo: ele
+    // só teria outra porta se tivesse `frente`, pelo `esperando` do Meu mapa —
+    // e pedido sem frente é comum. Sumir é o pior destino possível para um fato.
+    marcar(apenasTitulo, blocos.caixa);
     marcar(apenasTitulo, blocos.problemas);
     marcar(apenasTitulo, blocos.frentes);
     marcar(apenasTitulo, blocos["nao-comprovado"]);
@@ -670,6 +712,7 @@
     IMPACTOS: IMPACTOS,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     PROBLEMAS_COM_DETALHE: PROBLEMAS_COM_DETALHE,
+    CAIXA_COM_DETALHE: CAIXA_COM_DETALHE,
     ORCAMENTO_RESUMO_BYTES: ORCAMENTO_RESUMO_BYTES,
     ORCAMENTO_PAINEL_BYTES: ORCAMENTO_PAINEL_BYTES,
     montarResumo: montarResumo,
