@@ -63,6 +63,15 @@ Um portão de PR que dependesse da internet ficaria vermelho por queda de rede �
 "não consegui medir" viraria rotina até ninguém mais olhar. A prova de fora existe
 e é outra: o smoke do `deploy-infra` e as medições do `painel/`.
 
+E ele não sabe se o TÍTULO e a DESCRIÇÃO estão escritos em português de leigo.
+Isso continua sendo revisão de gente, e é o que sobrou do buraco: **o campo
+`gesto` saiu dele em 04/09/2026** (TAR-144). Rota cuja view é `@require_POST`
+não é página, e passou a EXIGIR `"gesto": true` — a checagem 4. A implicação
+vale num sentido só: `/entrar/google` é GET e é gesto legítimo, e um portão que
+exigisse a recíproca reprovaria quatro entradas corretas. O que motivou a
+checagem foram cinco endereços que a tela oferecia como link clicável e que
+devolviam 405, com tudo verde (`armadilhas/330`).
+
 Uso:
 
     python ci/mapa_do_site.py --verificar   # o varredor (muralha de todo PR)
@@ -117,6 +126,11 @@ class Rota:
     celula: str
     rota: str
     regex: bool
+    # O NOME da view, como escrito no `urls.py`. É a chave que liga a rota ao
+    # `def` que a atende, e com ela a checagem 4 (gestos) descobre se a linha é
+    # uma PÁGINA ou o que acontece ao apertar um botão. `None` quando o segundo
+    # argumento não é um nome simples — um `include(...)`, por exemplo.
+    vista: str | None = None
 
 
 @dataclass
@@ -283,8 +297,87 @@ def rotas_da_celula(raiz: Path, celula: str) -> list[Rota]:
                 primeiro.value, str
             ):
                 continue
-            rotas.append(Rota(celula, primeiro.value, regex=item.func.id == "re_path"))
+            segundo = item.args[1] if len(item.args) > 1 else None
+            rotas.append(
+                Rota(
+                    celula,
+                    primeiro.value,
+                    regex=item.func.id == "re_path",
+                    vista=segundo.id if isinstance(segundo, ast.Name) else None,
+                )
+            )
     return rotas
+
+
+# ------------------------------------------------- o que é botão, e não página
+
+# O que um decorador diz sobre o método aceito. Só três formas existem nesta
+# casa, e todas vêm de `django.views.decorators.http`.
+_SO_ACEITA_POST = "require_POST"
+_SO_ACEITA_LEITURA = ("require_GET", "require_safe")
+_LISTA_DE_METODOS = "require_http_methods"
+_METODO = re.compile(r"[\"']([A-Z]+)[\"']")
+
+# Onde NÃO se procura a view: teste é código de teste, e `migrations/` guarda a
+# fotografia de um modelo antigo — nenhum dos dois atende requisição.
+_FORA_DA_BUSCA = ("tests", "migrations")
+
+
+def _so_aceita_post(no: ast.FunctionDef | ast.AsyncFunctionDef) -> bool | None:
+    """Esta `def` só responde a POST?
+
+    `True` = só POST (logo, NÃO é página) · `False` = aceita leitura ·
+    `None` = os decoradores não dizem, e este varredor não inventa.
+    """
+    for decorador in no.decorator_list:
+        texto = ast.unparse(decorador)
+        if _SO_ACEITA_POST in texto:
+            return True
+        if any(nome in texto for nome in _SO_ACEITA_LEITURA):
+            return False
+        if _LISTA_DE_METODOS in texto:
+            metodos = set(_METODO.findall(texto))
+            return metodos == {"POST"} if metodos else None
+    return None
+
+
+def vistas_da_celula(raiz: Path, celula: str) -> dict[str, bool | None]:
+    """Por NOME de view, se ela só aceita POST — lido por AST, sem importar nada.
+
+    A busca é pelo nome, e não pelo import: seguir a cadeia de `from … import x`
+    (com re-export, `__init__.py` e apelido) daria mais formas de errar em
+    silêncio do que de acertar, e o nome é único nesta casa por convenção.
+
+    **Nome definido duas vezes com vereditos diferentes vira `None`.** Não é
+    preciosismo: é a única forma de a ambiguidade não virar uma afirmação
+    errada sobre a rota de outra pessoa. O portão só fala do que mediu.
+    """
+    encontradas: dict[str, bool | None] = {}
+    conflitantes: set[str] = set()
+    base = raiz / "services" / celula
+    for arquivo in sorted(base.rglob("*.py")):
+        if any(parte in _FORA_DA_BUSCA for parte in arquivo.relative_to(base).parts):
+            continue
+        try:
+            arvore = ast.parse(
+                arquivo.read_text(encoding="utf-8"), filename=str(arquivo)
+            )
+        except (OSError, SyntaxError):
+            # Um arquivo ilegível não é motivo para o portão inteiro parar: ele
+            # apenas não contribui nome nenhum, e as rotas que dependiam dele
+            # entram na conta de "não consegui decidir", que o relatório diz em
+            # voz alta. Silêncio é que seria o defeito.
+            continue
+        for no in ast.walk(arvore):
+            if not isinstance(no, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            veredito = _so_aceita_post(no)
+            if no.name in encontradas and encontradas[no.name] != veredito:
+                conflitantes.add(no.name)
+            encontradas.setdefault(no.name, veredito)
+    for nome in conflitantes:
+        encontradas[nome] = None
+    return encontradas
 
 
 # ------------------------------------------------------------------ o medido
@@ -583,6 +676,58 @@ def verificar(raiz: Path | None = None) -> Relatorio:
                 "\n\nUm link errado na tela do dono é pior que nenhum link: ele "
                 "manda a pessoa para um 404 e ela conclui que o site quebrou."
                 if errados
+                else ""
+            ),
+        )
+    )
+
+    # 4. Rota que SÓ aceita POST não é página, e a tela precisa saber disso.
+    #
+    #    `gesto: true` é o que faz `/admin/mapa/` NÃO oferecer link (o
+    #    `_preparar` de `services/admin/apps/core/mapa_do_site.py`). Sem a
+    #    marca, o dono clica num nome da lista e recebe 405 — aconteceu com
+    #    CINCO endereços, medidos em 04/09/2026 (`armadilhas/330`).
+    #
+    #    A IMPLICAÇÃO VALE NUM SENTIDO SÓ, e a volta nunca deve ser escrita:
+    #    só-POST ⇒ gesto é verdade sempre; gesto ⇒ só-POST é FALSO.
+    #    `/entrar/google` é GET e é gesto legítimo (abre o vaivém do Google,
+    #    não mostra página nenhuma). Um portão que exigisse a recíproca
+    #    reprovaria quatro entradas corretas no primeiro dia.
+    sem_marca: list[str] = []
+    indecididas = 0
+    vistas_por_celula: dict[str, dict[str, bool | None]] = {}
+    for (celula, rota_str), (rota, _) in sorted(medido.items()):
+        if celula not in vistas_por_celula:
+            vistas_por_celula[celula] = vistas_da_celula(raiz, celula)
+        veredito = vistas_por_celula[celula].get(rota.vista) if rota.vista else None
+        if veredito is None:
+            indecididas += 1
+            continue
+        entrada = por_chave.get((celula, rota_str))
+        if veredito and entrada is not None and not entrada.get("gesto"):
+            sem_marca.append(
+                f"  - {celula} → {rota_str!r}: a view `{rota.vista}` só aceita "
+                'POST, e a entrada não tem `"gesto": true`'
+            )
+    relatorio.registrar(
+        Resultado(
+            "gestos",
+            Estado.FAIL if sem_marca else Estado.PASS,
+            (
+                "rota que só aceita POST declarada como página"
+                if sem_marca
+                else f"nenhuma rota só-POST sem marca ({indecididas} rotas sem "
+                "veredito de método, e o portão não afirma nada sobre elas)"
+            ),
+            "\n".join(sem_marca)
+            + (
+                '\n\nAcrescente `"gesto": true` a estas entradas em '
+                f"`{ARQUIVO}`, logo depois de `para_quem`. Sem a marca, a tela "
+                "do dono oferece o endereço como link clicável — e clicar num "
+                "endereço que só aceita POST devolve 405. O que este portão "
+                "NÃO decide continua sendo revisão de gente: se o título e a "
+                "descrição estão em português de leigo."
+                if sem_marca
                 else ""
             ),
         )
