@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260904-030626-TAR-082-bloqueada",
+  "tarefa": "TAR-082",
+  "evento": "bloqueada",
+  "quando": "2026-09-04T03:06:26.580667+00:00",
+  "quem": "sessao-maestro-lote-2026-09-03",
+  "detalhe": "BLOQUEADA PELA PROVA QUE SÓ O MANTENEDOR PODE DAR, não por falta de código. Os degraus A, B, C e D foram construídos e mergeados em 31/08/2026: contrato #709, célula notificacoes #715, o site pedindo permissão #721, e a chave VAPID na VPS #723 (mais o #786, que fez o pedido de permissão nascer só do toque no botão, depois do incidente com o antivírus). O que falta é a evidência que a tarefa exige e nenhum robô consegue produzir: 'um aviso de teste recebido num celular real'. Ela depende de um passo do mantenedor na VPS, já pedido e ainda aberto no livro (registro 20260903-016), e do teste dele no próprio aparelho. Deixá-la como 'na fila' fazia o quadro anunciar como trabalho disponível algo que já está no ar e só espera uma pessoa. Quando ele responder, o caminho é um evento devolvida e então concluir com a evidência dele. Medido e registrado pela sessão-maestro do lote de 03-04/09/2026."
+}
