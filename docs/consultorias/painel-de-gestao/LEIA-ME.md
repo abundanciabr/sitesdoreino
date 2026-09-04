@@ -1,7 +1,7 @@
 # Consultoria: o painel de gestão do negócio (Meshcraft 10X)
 
 Os documentos originais que o mantenedor trouxe de uma IA externa em
-03/09/2026. As três arquiteturas estão INTEIRAS e sem edição; o texto de
+03/09/2026, e o quinto, que ele trouxe em 04/09/2026. As três arquiteturas estão INTEIRAS e sem edição; o texto de
 apoio é uma condensação fiel (mesmas seções, mesmos números, frases
 encurtadas) porque o original vinha em centenas de linhas de uma palavra.
 Guardados para a reformulação do painel que
@@ -19,6 +19,8 @@ a tradução para a casa.
 | `SCALE-OS-2-manual-operacional.md` | Scale OS 1.0, o manual: as quatro fases, a cadência (semana, mês, trimestre, ano), os 12 indicadores, a constituição de 15 regras. 176 itens. |
 | `SCALE-OS-3-arquitetura-do-painel.md` | Scale OS 1.1, o painel: menu de 11 áreas e 28 telas, a home em 11 blocos, os pipelines de decisão para tarefa. 172 itens. |
 | `SCALE-OS-4-especificacao-tecnica.md` | Scale OS 1.2, a técnica: células, rotas, tabelas, APIs, permissões, jobs, testes, 12 lotes. 276 itens. |
+| `SCALE-OS-5-growth-execution-engine.md` | **Terceira leva, 04/09/2026.** Growth Execution Engine v1.0: o mesmo Scale OS escrito como playbook de implementação para agentes de IA. 100 seções, dos princípios aos cinco marcos e à ordem de dez lotes. |
+| `CONFRONTO-growth-execution-engine.md` | **Não é original: é da casa.** O confronto do quinto documento. Resultado: 91 das 100 seções repetem premissas já julgadas e nenhum veredito muda; 8 peças novas, das quais uma (o grafo causal) é a melhor dos cinco documentos e a única grande que a casa não tem. |
 | `CONFRONTO-scale-os.md` | **Não é original: é da casa.** As 34 premissas dos quatro documentos acima, cada uma confrontada com `docs/decisoes/DECISAO-*.md`, a memória e o código (`armadilhas/299`), com veredito: mantida, sem sujeito, já existe, nova, ou para o mantenedor. É deste confronto que o plano reformulado deriva. |
 
 **Avisos de leitura, para quem for derivar plano daqui:**
