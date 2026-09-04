@@ -165,6 +165,66 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 ## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
 
+**Lotes das quatro frentes e da escada da mensageria — 04/09/2026** (quatro frentes em
+paralelo: as tabelas da Fila do Primeiro Dólar · a porta de máquina da `mensageria` · o
+teto da caixa "Precisa de você" · a contraprova do CI. Depois, no mesmo dia, o Rito de
+Contrato conduzido pela maestro, os três degraus que ele destravou, e a continuação da
+escada até os relógios da fila):
+
+1. **A tarefa que PARA por bloqueio arquitetural entrega mais do que a que constrói —
+   se o brief tiver a frase que a autoriza a parar.** A TAR-078 (a tela das sequências)
+   morreu antes da primeira linha: a tela mora na `admin`, os dados no `mensageria_db`, e
+   não havia caminho entre as duas. O agente mediu quatro vezes, **recusou construir uma
+   casca verde**, e entregou no lugar os dois degraus que faltavam no plano, duas tarefas
+   com despacho pronto e a `armadilhas/311`. Os dois degraus foram construídos horas
+   depois e a tela nasceu de verdade no mesmo dia. **O que fez isso acontecer foi uma
+   linha do brief:** *"se a tela precisar de algo que só outra célula pode dar, PARE e
+   reporte em vez de atravessar a cerca"*. Sem ela, o agente teria entregue a casca, ela
+   teria passado no CI, e o buraco apareceria semanas depois. Ponha essa frase em todo
+   brief cuja célula depende de outra.
+
+2. **O Rito de Contrato cabe DENTRO do lote — quando quem o conduz é a maestro.** O §7
+   diz que Rito nunca entra em lote, e continua certo: o que não entra é o Rito conduzido
+   por um DESPACHO. Aqui o mantenedor estava na conversa da maestro, ela apresentou as
+   seis operações e as duas garantias da porta em português de leigo, ele decidiu duas
+   coisas por pergunta estruturada (o interruptor de ligar/desligar entra antes do
+   congelamento; quem já entrou termina com o texto antigo), e o registro do livro virou o
+   **mandato nominal** que os PRs seguintes citaram. Uma escada de três degraus destravou
+   no mesmo dia, e a tarefa da tela saiu de `bloqueada` para `concluída` em horas.
+   **Corolário:** quando um lote esbarra num contrato e o mantenedor está presente,
+   a maestro conduz o Rito na hora, em vez de devolver a tarefa à fila.
+
+3. **A suíte de uma célula pode ficar vermelha SOZINHA depois de ter pousado verde.**
+   Medido: um horário fixo num teste contra uma coluna `auto_now_add`, sob uma
+   `CheckConstraint`. Verde no pouso, vermelho três horas depois, quando o relógio real
+   passou do limite. **Ninguém viu porque o `ci-celula` só roda a suíte da célula que o PR
+   toca**, e o achado veio por acaso, pelo agente do degrau SEGUINTE, antes de ele
+   escrever uma linha. Virou `armadilhas/323`. **Corolário para o brief de todo degrau que
+   continua outro: o primeiro gesto é rodar a suíte da célula.** O que ela acusar não é seu,
+   mas passa a ser seu problema, e descobrir isso no minuto zero custa muito menos do que
+   no meio do vermelho-verde.
+
+4. **No congelamento, a PROSA da porta também vira pedra, e nenhum portão pega isso.** Ao
+   gerar o YAML, a descrição da API ainda dizia *"escrever aqui significa publicar versão
+   nova"* — frase que a operação nova do interruptor acabara de tornar falsa. O portão
+   compara o congelado com o schema vivo, e **as duas pontas carregavam a mesma prosa
+   errada**: divergência zero, PASS legítimo. A lei que separa porta e contrato em dois PRs
+   (`armadilhas/228`) é justamente o que cria a janela onde a autodescrição envelhece.
+   Corrigido no PR do meio, antes do congelamento; depois dele, a mesma frase custaria
+   outro Rito. Virou `armadilhas/324`.
+
+5. **A prévia renderizada pega o que a suíte verde inteira deixa passar.** A tela nova foi
+   renderizada com os textos reais antes de fechar, e a prévia achou três erros de
+   português e um cabeçalho mostrando um código onde devia estar a frase que a pessoa lê.
+   Nenhum teste pegaria nenhum deles. **Vai para todo brief que produza tela** — e a prévia
+   é entregue ao mantenedor pela maestro, nunca pelo despacho.
+
+6. **O nome da célula não é prova de dono, nem para a maestro.** Atribuí a um despacho meu
+   um PR de outra sessão só porque o ramo começava com o nome da célula, e mandei o agente
+   explicar trabalho que não era dele. É a lição 2 do lote anterior acontecendo com quem a
+   escreveu no dia anterior. **Só duas coisas provam posse: o ramo exato que o agente
+   reportou, e o agente dizendo que é dele.**
+
 **Lote da fila do painel — 03-04/09/2026** (cinco frentes montadas do quadro AO VIVO do
 balcão e da caixa calculada do livro, nunca de memória: o canário do livro · a corrente
 das encomendas (#949 → #953) · o resgate dos quatro PRs parados desde 31/08 · três
