@@ -1,0 +1,76 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O formulário de escrever um texto do livro. Sem script nenhum, como o editor de
+documentos: cada gesto é um POST que recarrega a página.
+
+Nenhuma caixa de "publicar" aqui, e a ausência é a decisão: a Biblioteca não
+publica nada. Ver o cabeçalho de `apps/core/livro.py`.
+{% endcomment %}
+{% block titulo %}{% if criando %}Texto novo{% else %}Editando {{ rascunho.titulo }}{% endif %}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  {% if criando %}
+  <a class="volta" href="{% url 'livro' %}">&larr; O livro</a>
+  <h1>Um texto novo</h1>
+  <p class="subtitulo">
+    Cole o texto do jeito que ele está. Eu guardo letra por letra, sem corrigir
+    nada.
+  </p>
+  {% else %}
+  <a class="volta" href="{% url 'texto_do_livro' rascunho.nome %}">&larr; Voltar ao texto</a>
+  <h1>Editando</h1>
+  <p class="subtitulo">
+    O que estava escrito antes continua guardado no histórico, e você pode
+    voltar para lá a qualquer momento.
+  </p>
+  {% endif %}
+
+  {% if erro %}
+  <p class="recado borda-vermelha">{{ erro }}</p>
+  {% endif %}
+
+  <form method="post" class="editor"
+        action="{% if criando %}{% url 'texto_criar' %}{% else %}{% url 'texto_salvar' rascunho.nome %}{% endif %}">
+    {% csrf_token %}
+
+    <label class="rotulo" for="titulo">Título</label>
+    <input type="text" id="titulo" name="titulo" value="{{ rascunho.titulo }}"
+           maxlength="200" autocomplete="off" required>
+    <p class="nota">É o nome que aparece na lista do livro.</p>
+
+    {% if criando %}
+    <label class="rotulo" for="nome">Nome curto (opcional)</label>
+    <input type="text" id="nome" name="nome" value="{{ rascunho.nome }}"
+           maxlength="80" autocomplete="off">
+    <p class="nota">
+      Pode deixar em branco: eu monto a partir do título. Ele é só o endereço
+      desta página aqui dentro, e não aparece para ninguém de fora.
+    </p>
+    {% endif %}
+
+    <label class="rotulo" for="corpo">O texto</label>
+    <textarea id="corpo" name="corpo" rows="30" spellcheck="true">{{ rascunho.corpo }}</textarea>
+    <p class="nota">
+      Cole à vontade, com a formatação que ele já tem. Para dar forma:
+      <code># Título grande</code>, <code>## Título médio</code>,
+      <code>- item de lista</code>, <code>1. item numerado</code>,
+      <code>**negrito**</code>, <code>*itálico*</code> e
+      <code>&gt; citação</code>. Linha em branco separa parágrafos.
+    </p>
+
+    <label class="rotulo" for="ordem">Posição no livro</label>
+    <input type="number" id="ordem" name="ordem" value="{{ rascunho.ordem }}"
+           class="campo-curto">
+    <p class="nota">
+      Número menor aparece primeiro na lista. Na dúvida, deixe como está.
+    </p>
+
+    <div class="gestos-do-editor">
+      <button type="submit" class="salvar">
+        {% if criando %}Guardar este texto{% else %}Salvar{% endif %}
+      </button>
+      <a class="volta" href="{% if criando %}{% url 'livro' %}{% else %}{% url 'texto_do_livro' rascunho.nome %}{% endif %}">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

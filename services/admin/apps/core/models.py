@@ -1,4 +1,4 @@
-"""O que esta área GRAVA: quem administra, e os documentos que o site publica.
+"""O que esta área GRAVA: quem administra, os documentos do site, e o livro.
 
 ## Quem é administrador desta área — a metade que mora no banco
 
@@ -32,6 +32,29 @@ semeadura, quem responde "o que este documento diz" é esta tabela, e só ela.
 Mesmo desenho de `semear_areas` no fórum.
 
 Lei: `docs/decisoes/DECISAO-o-editor-de-documentos.md`.
+
+## A Biblioteca do Livro — 04/09/2026
+
+Pedido do mantenedor: *"esse texto abaixo é um dos textos de um livro que eu
+escrevi e quero uma página no site onde eu possa salvar ele para ser usado
+depois no projeto online do livro"*. `TextoDoLivro` é onde esse texto mora.
+
+**Tabela PRÓPRIA, e não uma bandeira no `Documento`, e o motivo é a fresta que
+não existe.** Os dois guardam Markdown escrito pelo mantenedor, e a tentação de
+somar um campo `e_do_livro` é real. O que a separação compra: `Documento` tem
+`publico`, e toda consulta do site aberto passa por ele; um capítulo de livro
+guardado naquela tabela ficaria a UM filtro esquecido de aparecer em
+`meshcraft.top/docs/`. Aqui não há filtro para esquecer, porque não existe rota
+pública que leia esta tabela — o livro dele não está lançado, e o repositório
+deste projeto é público de propósito.
+
+**O corpo é guardado como ele digitou, byte por byte.** É a diferença de
+propósito entre as duas tabelas: um documento do site é texto de interface, e a
+tela dele RECUSA salvar com risca comprida (`DECISAO-o-editor-de-documentos`
+§3); um texto de livro é obra do autor, e a Biblioteca não reescreve obra. A
+régua do `CLAUDE.md` continua valendo no dia em que um trecho virar página
+online, e é por isso que a tela CONTA as riscas e mostra as frases — decisão
+dele em 04/09/2026, com as três saídas na mesa.
 """
 
 from django.db import models
@@ -175,3 +198,84 @@ class VersaoDoDocumento(models.Model):
 
     def __str__(self) -> str:  # pragma: no cover - conveniencia de shell
         return f"{self.documento_id} @ {self.salvo_em:%Y-%m-%d %H:%M}"
+
+
+class TextoDoLivro(models.Model):
+    """Um texto do livro do mantenedor, do jeito que ele escreveu.
+
+    Ver o cabecalho deste arquivo para por que esta tabela e separada de
+    `Documento`, e por que o corpo nunca e reescrito.
+    """
+
+    # O endereco desta pagina dentro do bastidor: `/admin/livro/<nome>`. Ele
+    # nao sai para lugar nenhum de fora, e mesmo assim segue o mesmo padrao
+    # apertado (minusculas, numeros e hifen) dos documentos: a rota casa esse
+    # formato, e um nome fora dele seria um texto que existe na lista e nunca
+    # abre.
+    nome = models.SlugField(max_length=80, unique=True)
+    titulo = models.CharField(max_length=200)
+
+    # Menor primeiro, e o default alto manda o texto novo para o FIM. Num livro
+    # a ordem e o sumario: e ela que diz o que vem antes do que.
+    ordem = models.IntegerField(default=1000)
+
+    # O MARKDOWN CRU, exatamente como ele colou. Nada aqui e aparado, corrigido
+    # ou normalizado na gravacao — a unica troca que a tela faz e o fim de linha
+    # do Windows pelo do resto do mundo, porque o navegador manda `\r\n` e o
+    # texto colado voltaria com uma risca invisivel a cada linha.
+    corpo = models.TextField(blank=True, default="")
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        # A unica pergunta que a lista faz: os textos, na ordem do sumario.
+        indexes = [models.Index(fields=["ordem", "nome"])]
+
+    @property
+    def palavras(self) -> int:
+        """Quantas palavras este texto tem.
+
+        Um autor mede o livro em palavras, e nao em caracteres nem em linhas.
+        Contagem grosseira de proposito (separa por espaco): a pergunta que ela
+        responde e "de que tamanho isto ficou", nao "quantas palavras cabem na
+        pagina impressa".
+        """
+        return len(self.corpo.split())
+
+    def __str__(self) -> str:  # pragma: no cover - conveniencia de shell
+        return self.nome
+
+
+class VersaoDoTexto(models.Model):
+    """O retrato de um texto do livro a cada gravacao. Nunca editado.
+
+    Mesmo desenho de `VersaoDoDocumento`, e pelo motivo mais forte: o texto do
+    livro NAO viaja no Git (o repositorio e publico e o livro nao esta
+    lancado), entao aqui nao existe nem o `git log` de que os documentos
+    abriram mao. Esta tabela e a unica memoria de "o que estava escrito antes",
+    e por isso ela nasce no mesmo PR da primeira escrita: a versao anterior so
+    existe se alguem a guardou ANTES de sobrescrever.
+    """
+
+    texto = models.ForeignKey(
+        "TextoDoLivro", on_delete=models.CASCADE, related_name="versoes"
+    )
+
+    # O retrato guarda o CONTEUDO, e so ele. `ordem` fica de fora de proposito,
+    # como `arquivado` ficou no historico dos documentos: ela e onde o texto
+    # esta no sumario, nao o que ele diz — e um historico que a misturasse faria
+    # "voltar para a versao de ontem" significar tambem "e volte para o lugar de
+    # ontem no livro", que e outra decisao.
+    titulo = models.CharField(max_length=200)
+    corpo = models.TextField(blank=True, default="")
+
+    salvo_em = models.DateTimeField(auto_now_add=True)
+    salvo_por = models.EmailField(blank=True, default="")
+    gesto = models.CharField(max_length=120, blank=True, default="")
+
+    class Meta:
+        indexes = [models.Index(fields=["texto", "-salvo_em"])]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniencia de shell
+        return f"{self.texto_id} @ {self.salvo_em:%Y-%m-%d %H:%M}"

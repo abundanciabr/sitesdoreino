@@ -1,0 +1,140 @@
+{% extends "admin/base.html" %}
+{% comment %}
+Um texto do livro: o texto formatado, o aviso das riscas, o histórico e os dois
+gestos que tiram o texto de vista.
+
+O `|safe` do corpo é seguro pelo mesmo motivo explicado em `doc_publico.html` e
+em `documento_admin.html`: quem monta o HTML (`documentos.para_html`) escapa o
+texto ANTES de formatar, então marcação escrita dentro do texto aparece como
+texto na tela. A explicação está repetida nos três porque o `|safe` está nos
+três, e um dia alguém vai ler só um deles.
+
+O histórico mora AQUI dentro, e não numa tela própria como a dos documentos. A
+razão é o tamanho da área: são dois botões e uma lista, e uma terceira tela para
+isso faria o autor navegar para ver o que ele mesmo escreveu ontem.
+{% endcomment %}
+{% block titulo %}{{ texto.titulo }}{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'livro' %}">&larr; O livro</a>
+
+  {% if recado == "guardado" %}
+  <p class="recado">Texto guardado.</p>
+  {% elif recado == "salvo" %}
+  <p class="recado">Salvo.</p>
+  {% elif recado == "restaurado" %}
+  <p class="recado">Pronto: este texto voltou para a versão que você escolheu.</p>
+  {% elif recado == "versao-sumiu" %}
+  <p class="recado borda-vermelha">
+    Essa versão não existe mais, e nada foi mudado.
+  </p>
+  {% elif recado == "confirmacao" %}
+  <p class="recado borda-vermelha">
+    Não apaguei nada. Para apagar de vez, escreva o endereço do texto
+    exatamente como ele aparece na caixa, sem espaço a mais.
+  </p>
+  {% endif %}
+
+  <h1>{{ texto.titulo }}</h1>
+  <p class="nota espaco-abaixo-20">
+    {{ texto.palavras }} palavra{{ texto.palavras|pluralize:"s" }} &middot;
+    guardado em {{ texto.atualizado_em|date:"d/m/Y" }} às
+    {{ texto.atualizado_em|date:"H:i" }}
+  </p>
+
+  <p class="espaco-abaixo-20">
+    <a class="botao" href="{% url 'texto_editar' texto.nome %}">Editar este texto</a>
+    <a class="botao" href="{% url 'texto_baixar' texto.nome %}">Baixar o arquivo</a>
+  </p>
+
+  {% if riscas %}
+  {% comment %}
+  O AVISO das riscas, que aqui não recusa nada. Escolha do mantenedor em
+  04/09/2026: a Biblioteca guarda a obra como o autor escreveu, e a régua do
+  projeto (nenhum texto publicado sai com risca comprida) vale no dia em que um
+  trecho virar página online. O editor de documentos, que publica, recusa.
+  {% endcomment %}
+  <div class="aviso espaco-abaixo-20">
+    <b>Este texto tem {{ riscas|length }} risca{{ riscas|length|pluralize:"s" }} comprida{{ riscas|length|pluralize:"s" }}.</b>
+    <p class="nota">
+      Guardei do jeito que você escreveu, e não mudei nada. Este aviso é para o
+      dia em que este texto virar página no site: lá a regra do projeto é que
+      nenhum texto publicado saia com essa risca. Onde ela está:
+    </p>
+    <ul class="riscas">
+      {% for risca in riscas %}
+      <li>
+        <b>{{ risca.onde }}</b> ({{ risca.risca }})
+        <span class="frase">{{ risca.frase }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="nota">
+      As quatro trocas, escolhendo pelo papel que a risca fazia na frase:
+      <b>vírgula</b> para uma explicação no meio ("O motorista, que estava
+      cansado, parou no posto."), <b>parênteses</b> para um dado acessório ("A
+      inflação (principal vilã do orçamento) voltou a subir."),
+      <b>dois-pontos</b> quando o trecho fecha a ideia no fim ("Ele só queria
+      uma coisa: paz.") e <b>aspas</b> quando era fala de alguém ("Não quero ir
+      hoje", disse Pedro.).
+    </p>
+  </div>
+  {% endif %}
+
+  <div class="documento">{{ corpo|safe }}</div>
+
+  <details class="cadastrar espaco-34">
+    <summary>O que já foi escrito aqui ({{ versoes|length }})</summary>
+    <p class="nota">
+      Cada vez que este texto foi salvo, o que estava escrito naquele momento
+      ficou guardado. A primeira da lista é a que está valendo agora.
+    </p>
+    <div class="versoes espaco-16">
+      {% for versao in versoes %}
+      <div class="versao {% if forloop.first %}atual{% endif %}">
+        <div class="versao-topo">
+          <b>{{ versao.salvo_em|date:"d/m/Y" }} às {{ versao.salvo_em|date:"H:i" }}</b>
+          {% if forloop.first %}<span class="selo">é a que está valendo</span>{% endif %}
+        </div>
+        <p class="nota">
+          {{ versao.gesto }}{% if versao.salvo_por %}, por {{ versao.salvo_por }}{% endif %}.
+          Título: "{{ versao.titulo }}".
+        </p>
+        <p class="versao-trecho">{{ versao.corpo|truncatechars:400 }}</p>
+        {% if not forloop.first %}
+        <form method="post" action="{% url 'texto_restaurar' texto.nome %}">
+          {% csrf_token %}
+          <input type="hidden" name="versao" value="{{ versao.id }}">
+          <button type="submit">Voltar para esta versão</button>
+        </form>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    <p class="nota espaco-16">
+      Voltar para uma versão não apaga nada: o texto antigo é copiado por cima
+      do de hoje, e o de hoje continua nesta lista.
+    </p>
+  </details>
+
+  <details class="cadastrar espaco-26">
+    <summary>Apagar este texto</summary>
+    <div class="apagar-de-vez espaco-16">
+      <p class="nota">
+        <b>Apagar destrói o texto e todo o histórico dele.</b> Não tem volta,
+        nem para mim: este texto não existe no código do projeto, então não há
+        de onde tirar uma cópia. Se você só quer tirá-lo da frente, mude a
+        posição dele na lista, ao editar.
+      </p>
+      <form method="post" action="{% url 'texto_apagar' texto.nome %}">
+        {% csrf_token %}
+        <label class="rotulo" for="confirmacao">
+          Para confirmar, escreva <code>{{ texto.nome }}</code> aqui:
+        </label>
+        <input type="text" id="confirmacao" name="confirmacao" autocomplete="off">
+        <button type="submit" class="perigo">Apagar de vez</button>
+      </form>
+    </div>
+  </details>
+</div>
+{% endblock %}

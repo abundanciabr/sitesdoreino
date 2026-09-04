@@ -1,0 +1,123 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A Biblioteca do Livro. Nada de script: colar um texto e enviar arquivos são dois
+formulários que recarregam a página, como no editor de documentos.
+
+O formulário de enviar arquivos é o único desta área administrativa com
+`enctype="multipart/form-data"`, e sem ele o navegador manda só os NOMES dos
+arquivos, sem o conteúdo — falha silenciosa, com a tela dizendo que guardou zero
+textos e ninguém entendendo por quê.
+{% endcomment %}
+{% block titulo %}Livro{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>O livro</h1>
+  <p class="subtitulo">
+    Os textos que você escreveu, guardados do jeito que você escreveu. Nada
+    daqui aparece no site.
+  </p>
+
+  {% if recado == "guardado" %}
+  <p class="recado">Texto guardado.</p>
+  {% elif recado == "apagado" %}
+  <p class="recado">Apagado de vez. O texto e o histórico dele não existem mais.</p>
+  {% elif recado == "enviados" %}
+  <p class="recado">
+    {% if quantos == "0" %}
+    Nenhum arquivo entrou.
+    {% elif quantos == "1" %}
+    Um arquivo entrou e virou um texto aqui embaixo.
+    {% else %}
+    {{ quantos }} arquivos entraram e viraram textos aqui embaixo.
+    {% endif %}
+  </p>
+  {% elif recado == "sem-arquivo" %}
+  <p class="recado borda-vermelha">
+    Você apertou o botão sem escolher nenhum arquivo. Clique em "Escolher
+    arquivos", selecione os arquivos no seu computador, e mande de novo.
+  </p>
+  {% elif recado == "arquivos-demais" %}
+  <p class="recado borda-vermelha">
+    São mais de {{ limite_de_arquivos }} arquivos de uma vez, e eu não guardei
+    nenhum. Mande em duas levas.
+  </p>
+  {% endif %}
+
+  {% if recusados %}
+  <div class="recado borda-vermelha">
+    <b>Estes arquivos ficaram de fora:</b>
+    <ul class="riscas">
+      {% for recusado in recusados %}<li>{{ recusado }}</li>{% endfor %}
+    </ul>
+    <p class="nota">
+      Os outros entraram normalmente. Para salvar um arquivo em UTF-8 no Bloco
+      de Notas: abra "Arquivo", depois "Salvar como", e no campo "Codificação"
+      escolha "UTF-8".
+    </p>
+  </div>
+  {% endif %}
+
+  <p class="espaco-abaixo-20">
+    <a class="botao" href="{% url 'texto_novo' %}">Escrever ou colar um texto</a>
+    {% if textos %}
+    <a class="botao" href="{% url 'livro_baixar_tudo' %}">Baixar o livro inteiro</a>
+    {% endif %}
+  </p>
+
+  {% if textos %}
+  <p class="nota espaco-abaixo-20">
+    {{ textos|length }} texto{{ textos|length|pluralize:"s" }},
+    {{ palavras_no_total }} palavra{{ palavras_no_total|pluralize:"s" }} no total.
+  </p>
+
+  <div class="cartoes">
+    {% for texto in textos %}
+    <div class="cartao">
+      <div class="rotulo">{{ texto.titulo }}</div>
+      <div class="nota espaco-8">
+        {{ texto.palavras }} palavra{{ texto.palavras|pluralize:"s" }} &middot;
+        guardado em {{ texto.atualizado_em|date:"d/m/Y" }}
+      </div>
+      <div class="nota">
+        <a href="{% url 'texto_do_livro' texto.nome %}">Ler</a>
+        &middot;
+        <a href="{% url 'texto_editar' texto.nome %}">Editar</a>
+        &middot;
+        <a href="{% url 'texto_baixar' texto.nome %}">Baixar</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="aviso">
+    <b>A biblioteca está vazia, e é assim que ela nasce.</b>
+    Nada foi apagado. Cole o seu primeiro texto no botão ali em cima, ou mande
+    os arquivos aqui embaixo.
+  </p>
+  {% endif %}
+
+  <details class="cadastrar espaco-34">
+    <summary>Mandar arquivos do computador</summary>
+    <p class="nota">
+      Escolha um ou vários arquivos de texto (<code>.md</code>,
+      <code>.markdown</code> ou <code>.txt</code>), até
+      {{ limite_de_arquivos }} de uma vez. Cada arquivo vira um texto aqui, com
+      o título saindo da primeira linha dele.
+    </p>
+    <form method="post" enctype="multipart/form-data"
+          action="{% url 'textos_enviar' %}" class="espaco-16">
+      {% csrf_token %}
+      <input type="file" name="arquivos" multiple accept=".md,.markdown,.txt">
+      <button type="submit">Guardar estes arquivos</button>
+    </form>
+  </details>
+
+  <p class="aviso espaco-28">
+    <b>Nada daqui vai para o site, e nada daqui viaja no código do projeto.</b>
+    Estes textos moram só no banco da plataforma, e só quem administra abre esta
+    tela. O sistema guarda uma cópia de segurança do banco antes de cada
+    atualização da plataforma, e não todo dia: para dormir tranquilo, use o
+    botão "Baixar o livro inteiro" de vez em quando e guarde o arquivo com você.
+  </p>
+</div>
+{% endblock %}

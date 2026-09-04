@@ -1706,6 +1706,110 @@
       "gesto": true,
       "titulo": "Apagar um documento de vez",
       "descricao": "Nao e uma pagina: destroi o texto e todo o historico dele. Sem volta, e por isso pede que voce escreva o endereco do documento para confirmar."
+    },
+    {
+      "celula": "admin",
+      "rota": "livro/",
+      "endereco": "/admin/livro/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O livro",
+      "descricao": "Os textos do livro que voce escreve, guardados do jeito que voce escreveu. Nada daqui aparece no site: e o seu caderno, esperando o projeto online do livro."
+    },
+    {
+      "celula": "admin",
+      "rota": "livro/novo",
+      "endereco": "/admin/livro/novo",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Escrever ou colar um texto do livro",
+      "descricao": "O formulario em branco. Voce cola o texto com a formatacao que ele ja tem, e ele e guardado letra por letra, sem nenhuma correcao."
+    },
+    {
+      "celula": "admin",
+      "rota": "livro/criar",
+      "endereco": "/admin/livro/criar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Guardar o texto novo",
+      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta o botao de guardar. Diferente dos documentos do site, aqui a risca comprida nao recusa nada: ela so aparece como aviso depois."
+    },
+    {
+      "celula": "admin",
+      "rota": "livro/enviar",
+      "endereco": "/admin/livro/enviar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Guardar arquivos .md do computador",
+      "descricao": "Nao e uma pagina: e o que acontece quando voce manda varios arquivos de uma vez. Cada arquivo vira um texto, e um arquivo com problema nao derruba os outros."
+    },
+    {
+      "celula": "admin",
+      "rota": "livro/tudo.md",
+      "endereco": "/admin/livro/tudo.md",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Baixar o livro inteiro",
+      "descricao": "Todos os textos num arquivo so, na ordem do sumario. E a sua copia de seguranca: guarde no computador de vez em quando."
+    },
+    {
+      "celula": "admin",
+      "rota": "^livro/(?P<nome>[a-z0-9-]+)$",
+      "endereco": "/admin/livro/(?P<nome>[a-z0-9-]+)$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Um texto do livro",
+      "descricao": "O texto formatado na tela, com o historico do que ja foi escrito nele e o aviso de quantas riscas compridas ele tem."
+    },
+    {
+      "celula": "admin",
+      "rota": "^livro/(?P<nome>[a-z0-9-]+)/editar$",
+      "endereco": "/admin/livro/(?P<nome>[a-z0-9-]+)/editar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Editar um texto do livro",
+      "descricao": "O texto de hoje dentro de um campo, para voce reescrever. O que estava escrito antes continua guardado no historico."
+    },
+    {
+      "celula": "admin",
+      "rota": "^livro/(?P<nome>[a-z0-9-]+)/salvar$",
+      "endereco": "/admin/livro/(?P<nome>[a-z0-9-]+)/salvar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar a edicao do texto",
+      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta salvar. O texto anterior vira uma versao guardada, e nada se perde."
+    },
+    {
+      "celula": "admin",
+      "rota": "^livro/(?P<nome>[a-z0-9-]+)/baixar$",
+      "endereco": "/admin/livro/(?P<nome>[a-z0-9-]+)/baixar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Baixar um texto do livro",
+      "descricao": "O arquivo .md deste texto, identico ao que foi guardado: sem nenhuma linha acrescentada nem tirada."
+    },
+    {
+      "celula": "admin",
+      "rota": "^livro/(?P<nome>[a-z0-9-]+)/restaurar$",
+      "endereco": "/admin/livro/(?P<nome>[a-z0-9-]+)/restaurar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Voltar um texto a uma versao anterior",
+      "descricao": "Nao e uma pagina: copia uma versao antiga por cima do texto de hoje. Nada e apagado, e o de hoje continua na lista."
+    },
+    {
+      "celula": "admin",
+      "rota": "^livro/(?P<nome>[a-z0-9-]+)/apagar$",
+      "endereco": "/admin/livro/(?P<nome>[a-z0-9-]+)/apagar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Apagar um texto do livro",
+      "descricao": "Nao e uma pagina: destroi o texto e todo o historico dele, e pede o endereco digitado para confirmar. Nao tem volta, porque este texto nao existe em nenhum outro lugar."
     }
   ]
 }

@@ -38,9 +38,6 @@ próxima coisa que essa pessoa faria seria procurar como desligá-la.
 
 from __future__ import annotations
 
-import re
-import unicodedata
-
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import render
 from django.urls import reverse
@@ -63,24 +60,6 @@ from .views import _auditar
 #: pergunta com duas respostas. Rota nova sob `documentos/` entra aqui, e o
 #: guarda `test_nenhum_endereco_reservado_escapa` mede as duas juntas.
 NOMES_RESERVADOS = frozenset({"novo", "criar"})
-
-#: O maior endereço que a tela aceita. Casa com o `max_length` da coluna, e o
-#: limite existe para o endereço caber numa linha de lista sem quebrar.
-LIMITE_DO_NOME = 80
-
-
-def _apelido(texto: str) -> str:
-    """Um título que gente escreveu vira o endereço que a máquina liga.
-
-    O mantenedor digita "Como funciona a entrada"; a rota precisa de
-    "como-funciona-a-entrada". Pedir os dois seria pedir a ele que entendesse a
-    diferença — então o campo do endereço é opcional na tela, e isto é o que
-    acontece quando ele fica em branco. Mesma função da tela do menu do topo.
-    """
-    limpo = unicodedata.normalize("NFKD", texto or "")
-    limpo = "".join(c for c in limpo if not unicodedata.combining(c)).lower()
-    limpo = re.sub(r"[^a-z0-9]+", "-", limpo).strip("-")
-    return limpo[:LIMITE_DO_NOME]
 
 
 def _inteiro(texto: str, padrao: int) -> int:
@@ -171,7 +150,7 @@ def documento_criar(request):
     # Em branco, o endereço sai do título. Escrito à mão, ele ainda passa pelo
     # mesmo aparador: o mantenedor pode digitar "Guia do Aluno" no campo do
     # endereço sem saber que ali não cabe espaço nem maiúscula.
-    nome = _apelido(rascunho["nome"] or rascunho["titulo"])
+    nome = documentos.apelido(rascunho["nome"] or rascunho["titulo"])
     rascunho["nome"] = nome
     if not nome:
         return _tela(
