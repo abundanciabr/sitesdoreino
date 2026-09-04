@@ -273,6 +273,95 @@ def test_fila_invalida_para_qualquer_gesto(tmp_path, monkeypatch):
 
 
 # ---------------------------------------------------------------------------
+# Bloquear exige motivo — o verbo que faltava (04/09/2026)
+# ---------------------------------------------------------------------------
+
+
+def test_bloquear_sem_motivo_recusa_e_NAO_escreve_evento(tmp_path, monkeypatch, capsys):
+    """A mesma lei do `concluir`: `validar` reprova `bloqueada` sem `detalhe`,
+    então o balcão não pode deixar nascer um evento que a muralha vai recusar.
+    Sem este guarda, o verbo novo seria uma fábrica de fila inválida."""
+    montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="   ")
+    assert fila.cmd_bloquear(tmp_path, args) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*bloqueada*"))
+    assert "sem motivo" in capsys.readouterr().out
+
+
+def test_bloquear_com_motivo_escreve_o_evento_e_o_estado_calculado_muda(tmp_path, monkeypatch):
+    """A prova de ponta a ponta: o verbo escreve, e a CONTA do estado enxerga.
+
+    Mede as duas coisas de propósito. Um evento escrito com o nome errado, ou
+    com o motivo no campo errado, ainda produziria arquivo — e um teste que só
+    olhasse a pasta passaria enquanto o quadro continuasse dizendo `na fila`.
+    """
+    montar(tmp_path, [tarefa()], [evento()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(
+        tarefa="TAR-001", quem="sessao-a",
+        motivo="espera o passo do mantenedor na VPS",
+    )
+    assert fila.cmd_bloquear(tmp_path, args) == 0
+    escrito = list((tmp_path / "fila" / "eventos").glob("*-TAR-001-bloqueada.json"))
+    assert len(escrito) == 1
+    dados = json.loads(escrito[0].read_text(encoding="utf-8"))
+    assert dados["detalhe"] == "espera o passo do mantenedor na VPS"
+    tarefas, eventos, erros = carregar(tmp_path)
+    assert erros == [], erros
+    estado = fila.calcular_estados(tarefas, eventos)["TAR-001"]
+    assert estado["estado"] == fila.BLOQUEADA
+    assert "VPS" in estado["motivo"]
+
+
+def test_bloquear_tarefa_que_ja_terminou_recusa(tmp_path, monkeypatch, capsys):
+    """Depois do fim, silêncio: evento após o fim reprova na muralha, e o
+    balcão não escreve o que ele mesmo sabe que vai ser recusado."""
+    montar(
+        tmp_path,
+        [tarefa()],
+        [evento(), evento(tipo="concluida", hora="11:00:00",
+                evidencia="https://github.com/x/y/pull/9", verificado_em="2026-08-29")],
+    )
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="tarde demais")
+    assert fila.cmd_bloquear(tmp_path, args) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*bloqueada*"))
+    assert "já terminou" in capsys.readouterr().out
+
+
+def test_bloquear_solta_a_reserva_no_servidor(tmp_path, monkeypatch):
+    """Quem bloqueia larga a tarefa. A reserva viva conta como `reivindicada`
+    na vista ao vivo, e sozinha ela faria o quadro mostrar duas verdades
+    diferentes sobre a mesma tarefa até a trava expirar sozinha em 3 horas."""
+    montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+    soltas = []
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda raiz, tid: soltas.append(tid))
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="a porta não existe")
+    assert fila.cmd_bloquear(tmp_path, args) == 0
+    assert soltas == ["TAR-001"]
+
+
+def test_bloquear_recusa_no_espelho(tmp_path, monkeypatch, capsys):
+    """Como `concluir`: o comprovante nasce na bancada, para embarcar no PR
+    (armadilhas/192). `soltar` continua livre, porque é gesto de emergência."""
+    montar(tmp_path, [tarefa()])
+    monkeypatch.setattr(fila, "_soltar_reserva_se_houver", lambda *a: None)
+    monkeypatch.setattr(
+        fila, "_parar_se_for_o_espelho",
+        lambda acao, raiz: f"🧱 RECUSADO: {acao} no clone principal",
+    )
+    args = argparse.Namespace(tarefa="TAR-001", quem="sessao-a", motivo="qualquer um")
+    assert fila.cmd_bloquear(tmp_path, args) == 1
+    assert not list((tmp_path / "fila" / "eventos").glob("*bloqueada*"))
+    assert "clone principal" in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
 # Concluir exige evidência
 # ---------------------------------------------------------------------------
 
