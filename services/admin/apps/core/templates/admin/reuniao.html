@@ -26,7 +26,7 @@ Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
     <p class="aviso borda-amarela"><b>Não consigo contar agora.</b> A parte que guarda os alunos não respondeu. Abra o placar daqui a pouco.</p>
   {% else %}
     <p class="recado">
-      {% if barra %}<b>{{ barra.x }}</b> pessoa{{ barra.x|pluralize:"s" }} virar{{ barra.x|pluralize:"am,am" }} aluna{{ barra.x|pluralize:"s" }} em {{ barra.mes }}{% if barra.alvo is not None %} (meta do mês: {{ barra.alvo }}){% endif %}.{% endif %}
+      {% if barra %}<b>{{ barra.x }}</b> pessoa{{ barra.x|pluralize:"s" }} {% if barra.x == 1 %}virou aluna{% else %}viraram alunas{% endif %} em {{ barra.mes }}{% if barra.alvo is not None %} (meta do mês: {{ barra.alvo }}){% endif %}.{% endif %}
       Meta grande: <b>{{ placar.x }}</b> de {{ placar.alvo }} até {{ placar.ate }};
       {% if placar.veredito == "ganhando" %}<span class="rotulo">ganhando</span>{% elif placar.veredito == "perdendo" %}<span class="rotulo">perdendo</span> (hoje deveríamos estar em {{ placar.esperado_hoje }}){% elif placar.veredito == "cumprida" %}<span class="rotulo">cumprida</span>{% else %}{{ placar.veredito }}{% endif %}.
     </p>
