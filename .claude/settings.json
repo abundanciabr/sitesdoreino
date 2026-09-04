@@ -56,6 +56,11 @@
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/ci/indice_de_armadilhas.py\" --tambem-aqui",
             "timeout": 60
+          },
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/padrao_de_trabalho.py\" --aviso",
+            "timeout": 20
           }
         ]
       }
