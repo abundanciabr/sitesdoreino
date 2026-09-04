@@ -52,6 +52,39 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
 ]
 
+# ---------------------------------------------------------------------------
+# Tokens do PAR consumidor->provedor (R1) da porta de máquina, em DOIS graus.
+# ---------------------------------------------------------------------------
+# O sufixo é sempre o PAR que consome, nunca o nome desta célula:
+# `TOKENS_SOMENTE_LEITURA_ADMIN` é "o par `admin` pode ler". É a convenção que
+# as dez células com porta já seguem, e é ela que o provisionamento escreve.
+#
+# Env ausente => conjunto VAZIO => toda chamada a `/api/mensageria` é recusada
+# com 401. Fail-closed por construção, e sem derrubar o boot: a célula sobe, o
+# `/healthz` segue respondendo, o motor das jornadas segue mandando mensagem, e
+# só a porta de máquina fica fechada até o token existir no env.
+#
+# POR QUE SÃO DOIS CONJUNTOS, E NÃO UM `TOKENS_ACEITOS` plano: esta porta tem
+# uma operação que PUBLICA VERSÃO NOVA de uma sequência que escreve para alunos
+# de verdade. Conjunto plano daria essa escrita a qualquer par que só precisasse
+# desenhar uma tela de consulta. A `identidade` já separou o grau assim com
+# `TOKENS_SENHA_*` (gravar a senha de alguém é mais que perguntar quem alguém
+# é); aqui a diferença é que o grau de publicação JÁ CONTÉM a leitura, para o
+# mantenedor não ter de pôr o mesmo par nos dois envs.
+#
+# Quem lê os dois conjuntos é `apps/core/auth.py`, no ponto de uso.
+TOKENS_SOMENTE_LEITURA = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_SOMENTE_LEITURA_") and valor
+}
+
+TOKENS_PUBLICACAO = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_PUBLICACAO_") and valor
+}
+
 ROOT_URLCONF = "config.urls"
 ASGI_APPLICATION = "config.asgi.application"
 
