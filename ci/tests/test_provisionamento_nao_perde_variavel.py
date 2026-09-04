@@ -116,6 +116,18 @@ SCRIPTS = [
     # (`TOKENS_ACEITOS_ADMIN` no degrau 2.14, `REDIS_STREAMS_URL` quando o relay
     # nascer, e a lista do plantão na Fase 7). Cada uma é uma chance de o script
     # apagar o que não conhece.
+    # A oitava da família (04/09/2026, provisionamento da medição). Entrou aqui
+    # no MESMO PR do script, pelo motivo escrito acima. Este é o env mais curto
+    # da plataforma (três chaves), e é justamente por isso que a trava importa:
+    # o degrau 7.4 da escada do painel de gestão já sabe o nome da variável que
+    # vai pedir a ele (`TOKENS_ACEITOS_ADMIN`, quando a admin passar a ler os
+    # números daqui), e um arquivo de três linhas é o mais fácil de reescrever
+    # sem pensar.
+    (
+        "infra/provisionar-metricas.sh",
+        "env/metricas.env",
+        "infra/env/metricas.env.exemplo",
+    ),
     (
         "infra/provisionar-encomendas.sh",
         "env/encomendas.env",
