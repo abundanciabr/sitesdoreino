@@ -1,0 +1,392 @@
+# =============================================================================
+# CONTRATO DA CÉLULA `metricas` — a porta de LEITURA do livro de fatos da
+# plataforma (contadores históricos, cobertura de rastreio, eventos mortos).
+#
+# CONGELADO EM 04/09/2026 (Rito de Contrato, RITOS.md §3), com o mantenedor
+# presente. Mudar este arquivo é o mesmo rito: PR só de `contracts/`, etiqueta
+# `contrato`, provedor primeiro, consumidores em PRs seguintes. O portão que faz
+# valer é `ci/contract_freeze.py`.
+#
+# O QUE ESTA PORTA PROMETE, E O QUE ELA NUNCA VAI FAZER
+# -----------------------------------------------------
+# 1. **Ela só LÊ.** Não existe operação que grave, corrija ou apague um fato, e
+#    não vai existir: o livro é append-only, e a correção de um fato afirmado
+#    errado é um fato NOVO, que entra pela fila de eventos (Redis Streams),
+#    nunca por HTTP. As duas ações que MUDAM a fila de eventos mortos (tentar de
+#    novo, descartar com motivo) nascerão como operações próprias, e serão uma
+#    emenda deste contrato pelo mesmo rito.
+#
+# 2. **Nenhum dado pessoal sai por aqui, porque nenhum entra.** A célula guarda
+#    ids opacos e o corpo cru do evento que a célula emissora publicou. Para
+#    contar não é preciso saber quem é.
+#
+# 3. **Ausência nunca vira zero.** Dia sem fato não aparece em `countFacts`;
+#    assunto que nunca chegou não aparece em `listCoverage`. Quem lê distingue
+#    "medi e deu zero" de "não medi", e é para isso que `listCoverage` existe.
+#
+# 4. **Toda contagem é por DIA DE SÃO PAULO.** O armazenamento é UTC; o dia é
+#    gravado na recepção, no fuso em que esta casa decide a que mês uma pessoa
+#    pertence. Um fato das 22h do dia 30 conta no dia 30 (`armadilhas/099`).
+#
+# 5. **`countFacts` e `listCoverage` exigem `site_id` (Lei 9).** A fila de
+#    eventos mortos NÃO é escopada por site, e a exceção é honesta: um evento
+#    morto é um envelope que não pôde ser lido, e o site é uma das coisas que
+#    faltam nele. Filtrar por site ali esconderia justamente os quebrados.
+#
+# AUTORIZAÇÃO: Bearer de par (`TOKENS_ACEITOS_<PAR>`), em TODAS as operações. O
+# conjunto nasce vazio quando o env falta, e conjunto vazio recusa todo mundo
+# com 401. Quem consome hoje é a `admin`, e só ela.
+#
+# Lei do assunto: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` §6.2 e a escada do
+# §8, degrau 7. Constituição da célula: `constituicoes/AGENTS.metricas.md`.
+# =============================================================================
+openapi: 3.1.0
+info:
+  title: Metricas - API de leitura
+  version: 1.0.0
+  description: 'O livro de fatos da plataforma, lido por MAQUINA.
+
+
+    Existe para que o placar do mantenedor possa dizer o que MUDOU, e nao
+
+    so como as coisas estao agora. As celulas donas respondem o presente
+
+    ao vivo; o passado esta aqui, guardado fato a fato, imutavel.
+
+
+    Lei do assunto: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md §6.2.
+
+
+    NADA DE DADO PESSOAL SAI POR AQUI, e nem entra: esta celula guarda so
+
+    ids opacos. Para contar nao e preciso saber quem e.
+
+
+    ESTA PORTA SO LE. Um fato guardado nao se corrige nem se apaga: a
+
+    correcao e um fato novo, e ela entra pela recepcao de eventos, nunca
+
+    por aqui.
+
+
+    ONDE FALTA COBERTURA, A RESPOSTA DIZ QUE FALTA. Assunto que nunca
+
+    chegou nao aparece em listCoverage, e dia sem fato nao aparece em
+
+    countFacts: ausencia nao vira zero, porque zero e uma afirmacao sobre
+
+    o mundo.
+
+    '
+paths:
+  /contagens:
+    get:
+      operationId: countFacts
+      summary: Contagens
+      parameters:
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: de
+        schema:
+          format: date
+          type: string
+        required: true
+      - in: query
+        name: ate
+        schema:
+          format: date
+          type: string
+        required: true
+      - in: query
+        name: tipo
+        schema:
+          default: ''
+          type: string
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Contagem'
+      description: 'Quantos fatos por dia, no intervalo pedido.
+
+
+        O `dia` é o dia de SÃO PAULO, gravado na recepção: contar por UTC poria
+
+        quem entrou às 22h do dia 30 no mês seguinte, sem erro em lugar nenhum
+
+        (`armadilhas/099`). É a mesma conta que o placar já faz do outro lado.
+
+
+        Dia sem fato NÃO aparece na lista, e isso é decisão: preencher com zero
+
+        seria afirmar "nada aconteceu neste dia", quando a verdade pode ser "a
+
+        medição não estava de pé neste dia". Quem desenha a linha do tempo sabe
+
+        qual das duas é, porque `listCoverage` diz desde quando esta célula escuta.'
+  /cobertura:
+    get:
+      operationId: listCoverage
+      summary: Cobertura
+      parameters:
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cobertura'
+      description: 'De cada assunto que JÁ CHEGOU: quantos, e quando foi o último.
+
+
+        O que esta operação não faz, e quem consome precisa saber: ela não conhece
+
+        a lista de assuntos que DEVERIAM chegar. Essa lista mora nos contratos
+
+        (`contracts/eventos/*.json`), que não viajam para dentro desta imagem, e
+
+        copiá-los para cá poria o mesmo fato em dois lugares. Assunto ausente daqui
+
+        é assunto que nunca chegou; quem compara com o esperado é a `admin`, que
+
+        tem o mapa.'
+  /eventos-mortos:
+    get:
+      operationId: listDeadLetters
+      summary: Eventos Mortos
+      parameters:
+      - in: query
+        name: estado
+        schema:
+          default: ''
+          type: string
+        required: false
+      - in: query
+        name: limite
+        schema:
+          default: 50
+          type: integer
+        required: false
+      - in: query
+        name: apos
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FilaDeMortos'
+      description: 'A fila do que chegou e não pôde ser afirmado, do mais novo para o mais velho.
+
+
+        O `corpo` cru NÃO vem nesta lista, e a razão não é tamanho: um envelope
+
+        quebrado pode conter qualquer coisa que a célula emissora tenha posto nele,
+
+        inclusive o que esta casa não guarda (nome, e-mail, texto de mensagem).
+
+        Trazer isso em lote para uma tela seria espalhar o acidente. Quem precisa
+
+        ver o corpo pede UM, por `getDeadLetter`, e aí é inspeção deliberada.
+
+
+        O cursor anda por `id`, não por `recebido_em`: dois eventos mortos do mesmo
+
+        lote chegam no mesmo instante, e cursor sobre coluna que repete PULA linha
+
+        sem avisar.'
+  /eventos-mortos/{morto_id}:
+    get:
+      operationId: getDeadLetter
+      summary: Evento Morto
+      parameters:
+      - in: path
+        name: morto_id
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EventoMortoInteiro'
+      description: 'O corpo cru de um evento morto: a ação "inspecionar" do plano.
+
+
+        Id que não existe é 404, e não uma resposta vazia. Aqui quem consome é a
+
+        tela onde o mantenedor decide o que fazer com um fato que se perdeu, e
+
+        resposta vazia que parece resposta é o pior desfecho possível.'
+components:
+  schemas:
+    Contagem:
+      properties:
+        site_id:
+          type: string
+        tipo:
+          type: string
+        de:
+          format: date
+          type: string
+        ate:
+          format: date
+          type: string
+        total:
+          type: integer
+        por_dia:
+          items:
+            $ref: '#/components/schemas/DiaContado'
+          type: array
+      required:
+      - site_id
+      - tipo
+      - de
+      - ate
+      - total
+      - por_dia
+      type: object
+    DiaContado:
+      properties:
+        dia:
+          format: date
+          type: string
+        quantidade:
+          type: integer
+      required:
+      - dia
+      - quantidade
+      type: object
+    Cobertura:
+      properties:
+        site_id:
+          type: string
+        medido_em:
+          format: date-time
+          type: string
+        tipos:
+          items:
+            $ref: '#/components/schemas/TipoObservado'
+          type: array
+      required:
+      - site_id
+      - medido_em
+      - tipos
+      type: object
+    TipoObservado:
+      properties:
+        tipo:
+          type: string
+        celula:
+          type: string
+        quantidade:
+          type: integer
+        ultimo_ocorrido_em:
+          format: date-time
+          type: string
+        ultimo_recebido_em:
+          format: date-time
+          type: string
+        dias_desde_o_ultimo:
+          type: integer
+      required:
+      - tipo
+      - celula
+      - quantidade
+      - ultimo_ocorrido_em
+      - ultimo_recebido_em
+      - dias_desde_o_ultimo
+      type: object
+    EventoMortoResumo:
+      properties:
+        id:
+          type: integer
+        recebido_em:
+          format: date-time
+          type: string
+        estado:
+          type: string
+        motivo:
+          type: string
+        tipo_declarado:
+          type: string
+        event_id_declarado:
+          type: string
+      required:
+      - id
+      - recebido_em
+      - estado
+      - motivo
+      - tipo_declarado
+      - event_id_declarado
+      type: object
+    FilaDeMortos:
+      properties:
+        total:
+          type: integer
+        itens:
+          items:
+            $ref: '#/components/schemas/EventoMortoResumo'
+          type: array
+        proximo_cursor:
+          anyOf:
+          - type: integer
+          - type: 'null'
+      required:
+      - total
+      - itens
+      - proximo_cursor
+      type: object
+    EventoMortoInteiro:
+      properties:
+        id:
+          type: integer
+        recebido_em:
+          format: date-time
+          type: string
+        estado:
+          type: string
+        motivo:
+          type: string
+        tipo_declarado:
+          type: string
+        event_id_declarado:
+          type: string
+        corpo:
+          type: string
+      required:
+      - id
+      - recebido_em
+      - estado
+      - motivo
+      - tipo_declarado
+      - event_id_declarado
+      - corpo
+      type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+servers:
+- url: http://metricas:8000/api/metricas
+security:
+- bearerAuth: []
