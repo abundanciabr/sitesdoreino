@@ -77,6 +77,10 @@ CARTAO_DO_PAR = "alunos-ativos-30d"
 CARTAO_DO_TOTAL = "alunos-na-plataforma"
 #: A restrição desta semana (degrau 1 do plano; regra em `restricao.py`).
 CARTAO_DA_RESTRICAO = "restricao-da-semana"
+#: A direção da semana (degrau 2; regra em `direcao.py`): as duas medidas que
+#: a casa move na semana e que antecipam a meta.
+CARTAO_DOS_PEDIDOS = "pedidos-de-entrada-por-semana"
+CARTAO_DAS_48H = "liberacoes-em-48h"
 
 #: Os quatro tipos de número do plano (§2). Não existe tipo "composto": um
 #: número composto é reconhecido pelo campo `componentes`, e nunca desce ao
@@ -426,32 +430,48 @@ def placar(request):
     par, recusas_do_par = ler_cartao(CARTAO_DO_PAR, pasta)
     total, _recusas_do_total = ler_cartao(CARTAO_DO_TOTAL, pasta)
 
-    # Import tardio de propósito: `restricao` importa deste módulo (a leitura
-    # de fuso e a lista de status), e o ciclo se fecha aqui, na view.
+    # Import tardio de propósito: `restricao` e `direcao` importam deste módulo
+    # (a leitura de fuso e a lista de status), e o ciclo se fecha aqui, na view.
+    from . import direcao as dir_
     from .restricao import escolher_restricao, medir_liberacao
 
     cartao_da_restricao, recusas_da_restricao = ler_cartao(CARTAO_DA_RESTRICAO, pasta)
+    cartao_pedidos, recusas_pedidos = ler_cartao(CARTAO_DOS_PEDIDOS, pasta)
+    cartao_48h, recusas_48h = ler_cartao(CARTAO_DAS_48H, pasta)
 
     hoje = timezone.localdate()
     contagem = None
     resultado = None
     barra = None
     restricao = None
+    direcao = None
+    compromissos = None
     if meta is not None:
         partida_em = _data(meta.get("partida_em")) or hoje
         cliente = AlunosClient()
+        # UMA leitura de cada porta por requisição: a contagem, a restrição e
+        # a direção olham as MESMAS listas, senão discordariam entre si por
+        # um segundo de diferença.
         alunos = cliente.alunos()
+        aguardando = cliente.fila("aguardando")
+        recusados = cliente.fila("recusada")
         contagem = contar_compras(alunos, partida_em, hoje)
         resultado = calcular_placar(meta, contagem["ciclo"], hoje)
         if mes is not None:
             barra = calcular_o_mes(mes, meta, contagem["mes"], hoje)
         if cartao_da_restricao is not None:
-            # A MESMA lista de alunos da contagem: duas leituras da mesma porta
-            # na mesma requisição poderiam discordar entre si por um segundo.
-            medida = medir_liberacao(
-                cliente.fila("aguardando"), cliente.fila("recusada"), alunos, hoje
-            )
+            medida = medir_liberacao(aguardando, recusados, alunos, hoje)
             restricao = escolher_restricao(medida, cartao_da_restricao)
+        if cartao_pedidos is not None and cartao_48h is not None:
+            direcao = dir_.calcular_direcao(
+                cartao_pedidos,
+                cartao_48h,
+                meta,
+                dir_.medir_pedidos(aguardando, recusados, alunos, hoje),
+                dir_.medir_liberacoes_em_48h(aguardando, alunos, hoje),
+                hoje,
+            )
+            compromissos = dir_.compromissos(dir_.ler_registros(), hoje)
 
     return render(
         request,
@@ -471,5 +491,10 @@ def placar(request):
             "cartao_da_restricao": cartao_da_restricao,
             "recusas_da_restricao": recusas_da_restricao,
             "restricao": restricao,
+            "cartao_pedidos": cartao_pedidos,
+            "cartao_48h": cartao_48h,
+            "recusas_da_direcao": recusas_pedidos + recusas_48h,
+            "direcao": direcao,
+            "compromissos": compromissos,
         },
     )
