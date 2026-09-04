@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-130159-TAR-139-concluida",
+  "tarefa": "TAR-139",
+  "evento": "concluida",
+  "quando": "2026-09-04T13:01:59+00:00",
+  "quem": "sessao-ci-tar139-2026-09-04",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/981 + sabotagem encenada: com return None em coletar_da_origem, o teste de origin/main (sem contraprova) deu '1 passed in 1.80s' e o teste com a contraprova deu '1 failed / AssertionError: contraprova: com origin/main no lugar, mede-se / assert None is not None' (linha 207); com return None em caminhos_da_origem, o antigo deu '1 passed in 2.39s' e o novo '1 failed / assert None is not None' (linha 210)",
+  "verificado_em": "2026-09-04"
+}

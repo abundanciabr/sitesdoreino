@@ -1343,6 +1343,15 @@
       "descricao": "Responde 'estou de pé' pela rede interna."
     },
     {
+      "celula": "metricas",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida da medição",
+      "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar a história dos números da escola (quantas pessoas entraram em cada mês, o que mudou de uma semana para a outra) acabou de nascer e ainda não tem nenhuma página: ela nunca terá, porque quem mostra número é o painel em /admin/."
+    },
+    {
       "celula": "notificacoes",
       "rota": "api/notificacoes/",
       "endereco": "-",

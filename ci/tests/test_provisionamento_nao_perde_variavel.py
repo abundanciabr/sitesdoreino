@@ -108,6 +108,19 @@ SCRIPTS = [
         "env/gamificacao.env",
         "infra/env/gamificacao.env.exemplo",
     ),
+    # A sétima da família (04/09/2026, provisionamento das encomendas). Entrou
+    # aqui no MESMO PR do script, pelo motivo escrito acima — e nesta célula a
+    # data é a mais previsível de toda a lista: a escada da
+    # `DECISAO-fila-do-primeiro-dolar.md` §7 tem os degraus 2.2 a 2.14 pela
+    # frente, e TRÊS deles já sabem o nome da variável que vão pedir a este env
+    # (`TOKENS_ACEITOS_ADMIN` no degrau 2.14, `REDIS_STREAMS_URL` quando o relay
+    # nascer, e a lista do plantão na Fase 7). Cada uma é uma chance de o script
+    # apagar o que não conhece.
+    (
+        "infra/provisionar-encomendas.sh",
+        "env/encomendas.env",
+        "infra/env/encomendas.env.exemplo",
+    ),
 ]
 
 RE_LISTA = re.compile(r'^CHAVES_QUE_EU_GERO="([^"]*)"', re.MULTILINE)

@@ -149,7 +149,8 @@ primeira oportunidade de violá-la.
   `services/admin/tests/test_inv_admin_nao_assina_sessao.py`,
   `services/forum/tests/test_inv_forum_nao_assina_sessao.py`,
   `services/gamificacao/tests/test_inv_gamificacao_nao_assina_sessao.py` e
-  `services/encomendas/tests/test_inv_encomendas_nao_assina_sessao.py` —
+  `services/encomendas/tests/test_inv_encomendas_nao_assina_sessao.py` e
+  `services/metricas/tests/test_inv_metricas_nao_assina_sessao.py` —
   medem a
   CONFIGURAÇÃO da célula (sem SessionMiddleware, sem django.contrib.sessions
   e sem SESSION_ENGINE no settings dela), porque sem essas três

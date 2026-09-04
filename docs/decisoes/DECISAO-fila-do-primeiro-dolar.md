@@ -38,6 +38,12 @@ humano olhar**.
 há proposta, não há lance: é exatamente o que os marketplaces de fora vendem,
 e é exatamente o que este produto existe para não ter.
 
+> **EMENDA DE 04/09/2026 — leia o §2.1 antes de usar o parágrafo acima.**
+> O mantenedor reabriu esta decisão no dia seguinte à aprovação e liberou
+> **proposta** e **mural aberto**. "Não há proposta" deixou de valer.
+> Continuam valendo, e continuam sendo critério de morte: o cliente nunca
+> escolhe entre alunos, e não existe lance.
+
 ## 2. O que fica FORA — a seção 3 do plano, literal
 
 O plano manda copiar esta lista sem mudar uma vírgula, para nenhum agente
@@ -58,6 +64,42 @@ O plano manda copiar esta lista sem mudar uma vírgula, para nenhum agente
 
 Quem se pegar desenhando qualquer item desta lista **para e reabre a decisão
 com o mantenedor**. É também o critério de morte 1 do §9.
+
+### 2.1 A reabertura de 04/09/2026: a lista encolheu em dois itens
+
+**O mecanismo funcionou como projetado, e vale registrar isso.** Em
+04/09/2026 o mantenedor pediu, com as próprias palavras, *"uma área de
+negociação tipo contratação de freelancer... onde pessoas possam criar
+projetos e os alunos possam pegar os projetos"*. Isso é a lista acima. A
+sessão parou, não construiu nada, e reabriu a decisão com ele em pergunta
+estruturada, exatamente como este parágrafo manda. Ele respondeu três coisas:
+
+| Pergunta | Resposta |
+|---|---|
+| Como o aluno pega o trabalho? | **Os dois, em ordem**: a fila garante a primeira entrega de cada aluno; depois dela, o Mural aberto |
+| Tem negociação de preço e prazo? | **Negociação em tudo**, informado de que a recomendação era negociar só nos grandes |
+| Quem pode abrir projeto agora? | **Só a escola por enquanto**; a trava do dinheiro de 22/08/2026 fica de pé |
+
+**Saem da lista do "fora", e só nesta forma:**
+
+- **Propostas.** Passam a existir como formulário estruturado com rodadas
+  contadas, nunca como conversa. O invariante **[INV-ENC-S1]** não foi
+  revogado e é o que dá forma a elas.
+- **Mural aberto.** Passa a existir para quem já tem pelo menos uma entrega
+  aprovada. Quem tem zero entregas continua servido pela fila, que existe
+  exatamente para ele.
+
+**Continuam na lista, sem exceção:** chat livre, lances e leilão, o cliente
+escolher entre alunos, ranking, notas públicas, matriz de competências,
+percentuais entre níveis, equipes, mais de uma encomenda da fila por vez,
+matchmaking ou classificação por IA, cliente escolher o nível do modelador,
+app nativo, nome em inglês na interface.
+
+**O desenho mora em `docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md`**, e é ele
+que manda no Mural, na Proposta e no Acordo. Onde os dois divergirem, o plano
+da área de negociação vence a partir de 04/09/2026. O resto desta lei continua
+inteiro: os dez invariantes de justiça da fila não foram tocados por nada
+disto.
 
 ## 3. As emendas da casa
 
@@ -456,8 +498,13 @@ a fase escrita):**
 **Pare e reabra a decisão com o mantenedor** se qualquer uma destas acontecer:
 
 1. qualquer item do §2 (a lista do "fora") começar a ser desenhado: lista de
-   freelancers, propostas, lances, ranking, notas públicas, chat livre,
-   matchmaking ou classificação por IA;
+   freelancers, lances ou leilão, o cliente escolhendo entre alunos, ranking,
+   notas públicas, chat livre, matchmaking ou classificação por IA.
+   **Propostas e mural aberto saíram desta lista em 04/09/2026** (§2.1) e são
+   permitidos **só** na forma do `PLANO-AREA-DE-NEGOCIACAO.md`: proposta é
+   formulário com rodadas contadas, e o mural reserva o projeto a um aluno por
+   vez. Duas propostas vivas para o mesmo projeto é leilão, e leilão continua
+   sendo critério de morte;
 2. nascer uma **segunda regra de ordem** na fila (peso, prioridade paga,
    "destaque"): a fila tem uma regra, e ela está no §6.2 do plano;
 3. cobrança, retenção, repasse ou reembolso passarem a morar **nesta**
@@ -478,3 +525,4 @@ a fase escrita):**
 | O contrato v1 | anexo escrito; congela no degrau 2.8 | `CONTRATO-encomendas-v1-rascunho.md` |
 | Os 20 eventos | TAR-108 | `contracts/eventos/encomenda.*`, `oferta.*`, `entrega.*`, `aluno.*`, `portfolio.*`, `pedido-direto.*` |
 | A escada | TAR-107 a TAR-109 concluídas; TAR-120 a TAR-128 na fila, encadeadas por `depende_de` | `python ci/fila.py listar --ao-vivo` |
+| A emenda da negociação e do Mural | **aprovada em 04/09/2026** (§2.1); desenho no `PLANO-AREA-DE-NEGOCIACAO.md`; degraus novos no §10 dele | o livro e o balcão |

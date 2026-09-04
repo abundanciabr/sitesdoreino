@@ -112,11 +112,28 @@ abaixo como "expõe" e "consome" é o destino da escada, não o estado do disco.
   opt-in, célula `pages`) é a casa; daqui sai só a porta de peças aprovadas
   e autorizadas (lei §3.5).
 
-## Critérios de morte (lei §9)
-Se a construção começar a desenhar **lista de freelancers, propostas, lances,
-ranking, chat livre, matchmaking por IA**, uma **segunda regra de ordem** na
-fila, **dinheiro dentro desta célula**, um **segundo portfólio**, ou um
-**parâmetro em código**, **pare e reabra a decisão** com o mantenedor.
+## Critérios de morte (lei §9, com a emenda de 04/09/2026)
+Se a construção começar a desenhar **lista de freelancers, lances ou leilão,
+o cliente escolhendo entre alunos, ranking, notas públicas, chat livre,
+matchmaking por IA**, uma **segunda regra de ordem** (na fila ou no Mural),
+**dinheiro dentro desta célula**, um **segundo portfólio**, ou um **parâmetro
+em código**, **pare e reabra a decisão** com o mantenedor.
+
+**A emenda de 04/09/2026, e leia-a antes de achar que está violando algo.**
+O mantenedor liberou **proposta** e **mural aberto**, que antes estavam nesta
+lista. Desenho em `docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md`; a lei registra
+a reabertura no §2.1. As duas só existem na forma de lá:
+
+- **Proposta é formulário com rodadas contadas**, nunca conversa. O invariante
+  [INV-ENC-S1] (sem texto livre entre cliente e aluno) **não** foi revogado e
+  é o que lhe dá forma. Quem propõe primeiro é o aluno.
+- **O Mural é "quem pega, pega"**, com uma reserva viva por projeto e relógio.
+  **Duas propostas vivas para o mesmo projeto é leilão**, e leilão continua
+  sendo critério de morte. Só vê o Mural quem já tem uma entrega aprovada.
+
+Invariantes novos, que nascem com os degraus TAR-133 e TAR-134: **M1 a M5**
+(o Mural) e **N1 a N5** (a negociação). Os dez de justiça da fila (**J1 a
+J10**) continuam inteiros e sem exceção.
 
 ## O que esta célula ainda NÃO resolveu
 Registrado para ninguém achar que foi esquecimento (lei §8):
