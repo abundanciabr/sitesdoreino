@@ -12,6 +12,15 @@ uvicorn==0.32.1
 # máquina. Entra já aqui pelo mesmo motivo das versões pinadas: quando o
 # cliente chegar, ele não escolhe versão nova.
 httpx==0.28.1
+# O BATIMENTO do tique de um minuto (degrau 2.4: os relógios). MESMA versão de
+# gamificacao/alunos/sugestoes/checkout/quiz/mensageria de propósito: um Huey por
+# célula em versão própria seria N comportamentos de biblioteca para o mesmo
+# padrão (`armadilhas/071`). Aqui ele não carrega trabalho — só chama, de minuto
+# em minuto, a função que pergunta ao banco o que está vencido.
+huey==2.5.1
+# O `RedisHuey` do arquivo acima precisa dele para conectar. MESMA versão das
+# outras células de propósito (`armadilhas/071`).
+redis==5.1.1
 pytest==8.3.4
 pytest-django==4.9.0
 black==24.10.0

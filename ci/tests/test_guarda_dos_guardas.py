@@ -721,7 +721,6 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # do MOTOR (`DECISAO-fila-do-primeiro-dolar.md` §5): J1 e J2 as duas
         # travas de oferta pendente, J3 a regra de ordem, J4 o lugar na fila, J5
         # o nível mínimo, J6 a memória por encomenda, J7 quem está trabalhando.
-        # Os três que faltam (J8 a J10, os relógios) chegam no degrau 2.4.
         "INV-ENC-J1",
         "INV-ENC-J2",
         "INV-ENC-J3",
@@ -729,6 +728,15 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-ENC-J5",
         "INV-ENC-J6",
         "INV-ENC-J7",
+        # Os três dos RELÓGIOS chegaram no degrau 2.4 (04/09/2026, TAR-122), e
+        # com eles os dez de justiça estão completos: J8 o relógio da oferta que
+        # congela fora da janela 8h–22h, J9 a encomenda que não espera na fila
+        # além do prazo sem virar chamada aberta, J10 a reexecução que não cria
+        # oferta nova — e, no mesmo invariante, a ausência de timer agendado, que
+        # é o que faz a fila sobreviver a reinício, deploy e queda do Redis.
+        "INV-ENC-J8",
+        "INV-ENC-J9",
+        "INV-ENC-J10",
         "INV-CI01",
     ]
 

@@ -16,8 +16,7 @@
 
 ## 1. O que muda
 
-Até 04/09/2026 a meta grande do ciclo (**de 0 para 500 pessoas, de 03/09 a
-15/12/2026**) era repartida em **linha reta**: cada dia devia trazer a mesma
+Até 04/09/2026 a meta grande do ciclo era repartida em **linha reta**: cada dia devia trazer a mesma
 fatia, e o placar dizia "ganhando" ou "perdendo" contra ela.
 
 A partir de agora ela é repartida por uma **curva de 14 semanas**, declarada no
@@ -36,40 +35,80 @@ o mantenedor fazendo exatamente o que devia estar fazendo. Um painel que grita
 erro enquanto o trabalho vai bem é um painel que ensina a ignorá-lo, e um
 painel ignorado não existe.
 
-## 3. O calendário, como ele deu
+## 3. O calendário e a curva
 
-| Semana | De | Até | Meta | Acumulado |
-|---|---|---|---|---|
-| Preparação | 07/09 | 11/09 | 0 | 0 |
-| 1 | 14/09 | 18/09 | 0 | 0 |
-| 2 | 21/09 | 25/09 | 0 | 0 |
-| 3 | 28/09 | 02/10 | 0 | 0 |
-| 4 | 05/10 | 09/10 | 0 | 0 |
-| 5 | 12/10 | 16/10 | 5 | 5 |
-| 6 | 19/10 | 23/10 | 10 | 15 |
-| 7 | 26/10 | 30/10 | 20 | 35 |
-| 8 | 02/11 | 06/11 | 40 | 75 |
-| 9 | 09/11 | 13/11 | 65 | 140 |
-| 10 | 16/11 | 20/11 | 95 | 235 |
-| 11 | 23/11 | 27/11 | 125 | 360 |
-| 12 | 30/11 | 04/12 | 140 | 500 |
-| Recuperação | 07/12 | 11/12 | 0 | 500 |
+A meta grande é **de 0 para 1000 pessoas, de 03/09 a 15/12/2026** (dobrada por
+ele em 04/09/2026), repartida assim:
 
-**Setembro inteiro pede zero venda**, e outubro pede 35 (7% da meta). De
-novembro em diante estão 93%. Foi a segunda escolha do mantenedor, no mesmo dia
-04/09/2026, depois de ver uma primeira proposta com três semanas em zero: ele
-pediu **mais tempo aprendendo antes**, sabendo que isso torna as últimas semanas
-mais pesadas. As duas finais carregam 265 das 500.
+| Semana | De | Até | Meta | Acumulado | Cresce |
+|---|---|---|---|---|---|
+| Preparação | 07/09 | 11/09 | 0 | 0 | |
+| 1 | 14/09 | 18/09 | 0 | 0 | |
+| 2 | 21/09 | 25/09 | 0 | 0 | |
+| 3 | 28/09 | 02/10 | 0 | 0 | |
+| 4 | 05/10 | 09/10 | 0 | 0 | |
+| 5 | 12/10 | 16/10 | 20 | 20 | |
+| 6 | 19/10 | 23/10 | 31 | 51 | +55% |
+| 7 | 26/10 | 30/10 | 45 | 96 | +45% |
+| 8 | 02/11 | 06/11 | 69 | 165 | +53% |
+| 9 | 09/11 | 13/11 | 103 | 268 | +49% |
+| 10 | 16/11 | 20/11 | 154 | 422 | +50% |
+| 11 | 23/11 | 27/11 | 231 | 653 | +50% |
+| 12 | 30/11 | 04/12 | 347 | 1000 | +50% |
+| Recuperação | 07/12 | 11/12 | 0 | 1000 | |
 
 As datas são as do mantenedor, conferidas: todas de segunda a sexta, cinco dias
-cada. Os números da coluna "Meta" são **proposta minha**, montada sobre a forma
-que ele descreveu; ele ajusta quando quiser, editando um arquivo. E ajustou: a
-primeira versão, com três semanas em zero e a primeira venda esperada em 28/09,
-viveu menos de uma hora. Isso é o desenho funcionando, não retrabalho.
+cada.
 
-**A semana de recuperação não tem meta própria de propósito.** O que ela carrega
-é o que faltar quando a semana 12 fechar. Dar meta a ela seria transformar a
-rede de segurança em mais um degrau, e a meta grande deixaria de fechar em 500.
+### 3.1 A regra que gera os números, e por que ela não é escolha de gosto
+
+A curva **não é uma lista de números bonitos**: é `50% a mais que a semana
+anterior`, aplicado às 8 semanas que vendem. Isso responde ao pedido dele de
+*"um crescimento progressivo conforme os testes e aprendizados acontecem"* e
+resolve, de graça, o incômodo que ele apontou na primeira versão: **uma curva
+percentual nunca repete um valor.**
+
+### 3.2 O laço de três pontas, que é o achado desta decisão
+
+Com o calendário fixo, **três coisas puxam umas às outras, e só se escolhem
+duas**:
+
+> o **total** · quantas **semanas vendendo** · a **taxa de crescimento**
+
+E a consequência é contraintuitiva o bastante para merecer estar escrita:
+**quanto MENOR a taxa, MAIOR tem de ser a primeira semana.** Quem cresce pouco
+precisa começar grande para chegar ao mesmo lugar. Medido, para 1000 em 10
+semanas vendendo:
+
+| Taxa | A 1ª semana precisa ser | A última chega a |
+|---|---|---|
+| 10% | **63** | 148 |
+| 20% | 39 | 199 |
+| 30% | 23 | 249 |
+| 40% | 14 | 296 |
+| 50% | 9 | 339 |
+
+Ele pediu *"10, 20 ou 30% por semana"*, e a conta mostrou que essa faixa é a
+mais DIFÍCIL de todas com esse total: a 10% ao ano de 12 semanas, a máquina
+teria de vender 63 na primeira semana em que liga, logo depois de semanas
+vendendo zero.
+
+Vendo isso, ele escolheu **manter setembro inteiro livre** (a decisão dele de
+mais cedo no mesmo dia, que sobrou 8 semanas) e aceitar a taxa que essa escolha
+implica: **50%**. Foi decisão informada, com os dois lados da conta na tela.
+
+### 3.3 A alternativa que ficou registrada e não foi escolhida
+
+Foi proposta uma curva de **taxa afunilando** (75% no começo, 22% no fim, 3
+semanas em zero): 8, 14, 23, 38, 59, 88, 123, 168, 216, 263. O argumento a favor
+é que porcentagem engana sobre o esforço, e vale ficar escrito: ir de 8 para 14
+é +75% mas são 6 vendas a mais; ir de 216 para 263 é +22% mas são 47 a mais. Uma
+taxa fixa fica mais pesada toda semana em pessoas de verdade; a afunilada faz o
+esforço extra subir parelho.
+
+Ele escolheu a taxa fixa de 50%, e o motivo é dele: **setembro inteiro livre
+para aprender vale mais** que suavizar a reta final. Fica registrado para quando
+o ciclo for revisto.
 
 ## 4. A regra dura: a curva e a meta grande nunca discordam
 
@@ -118,16 +157,23 @@ realidade nova.
 Sem a célula `alunos`, as colunas do que aconteceu ficam **em branco**, nunca em
 zero: zero afirmaria que ninguém comprou naquela semana.
 
-## 7. A meta é 500 pessoas, confirmada
+## 7. A meta é 1000 pessoas
 
-O pedido dele dizia *"a venda dos 500 cursos para atingir os 50 alunos"*, e os
-dois números não podiam estar certos ao mesmo tempo. Perguntado em 04/09/2026,
-ele confirmou: **500 pessoas**, o mesmo número que já estava no cartão desde a
-decisão de 03/09/2026 (registro `20260903-036`). O "50" era engano de digitação.
+O pedido original dizia *"a venda dos 500 cursos para atingir os 50 alunos"*, e
+os dois números não podiam estar certos ao mesmo tempo. Perguntado em
+04/09/2026, ele confirmou 500 — e, na mesma conversa, poucos minutos depois,
+**dobrou para 1000**.
 
 A pergunta foi feita em vez de adivinhada porque a diferença era de dez vezes, e
 uma curva montada sobre o número errado seria uma régua errada julgando o ano
 inteiro, com ar de certeza.
+
+**O alvo mudou duas vezes num dia, e nenhuma tela precisou ser refeita.** É a
+prova do desenho da §5: a régua mora no cartão. Onde o número aparecia COPIADO
+(o mapa do site, o LEIA-ME dos cartões, o `_por_que` do cartão dos pedidos, o
+docstring do `placar.py`), ele foi **retirado** em vez de atualizado. Cópia de
+número é o que envelhece em silêncio, e a terceira mudança de alvo não vai
+precisar de uma caçada por textos desatualizados.
 
 **Quem faz valer:** `placar._validar_as_semanas` (a soma, a ordem e as datas) ·
 `services/admin/tests/test_ciclo.py` (a curva do cartão REAL soma a meta; o
