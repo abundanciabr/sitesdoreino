@@ -99,11 +99,20 @@ def latencia_de_decisao(registros: list[dict] | None, hoje: dt.date) -> dict:
 
 
 def ler_a_fila(pasta: Path | None = None) -> dict | None:
-    """`{ "tarefas": {id: criada_em}, "reivindicadas": {id: primeiro instante} }`."""
+    """`{ "tarefas": {id: criada_em}, "reivindicadas": {id: primeiro instante} }`.
+
+    Carrega também `titulos` e `move` (o elo com o placar, degrau 19), que a
+    latência não usa e o caminho de volta (`elo.py`) usa: a fila é lida UMA vez
+    por requisição, e dois leitores abrindo os mesmos arquivos seria desperdício
+    com duas verdades possíveis.
+    """
     pasta = pasta if pasta is not None else diretorio_da_fila()
     if pasta is None:
         return None
     tarefas: dict[str, dt.date] = {}
+    titulos: dict[str, str] = {}
+    # `None` = a tarefa não declarou, e isso é diferente de "não move nada".
+    move: dict[str, list[str] | None] = {}
     bloqueadas: set[str] = set()
     for arquivo in (
         sorted((pasta / "tarefas").glob("*.json"))
@@ -117,6 +126,9 @@ def ler_a_fila(pasta: Path | None = None) -> dict | None:
         criada = _data(t.get("criada_em"))
         if t.get("id") and criada:
             tarefas[t["id"]] = criada
+            titulos[t["id"]] = t.get("titulo") or t["id"]
+            declarado = t.get("move")
+            move[t["id"]] = declarado if isinstance(declarado, list) else None
     reivindicadas: dict[str, dt.date] = {}
     terminadas: set[str] = set()
     for arquivo in (
@@ -141,6 +153,8 @@ def ler_a_fila(pasta: Path | None = None) -> dict | None:
             terminadas.add(tarefa)
     return {
         "tarefas": tarefas,
+        "titulos": titulos,
+        "move": move,
         "reivindicadas": reivindicadas,
         "bloqueadas": bloqueadas,
         "terminadas": terminadas,
