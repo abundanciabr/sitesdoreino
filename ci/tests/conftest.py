@@ -9,6 +9,7 @@ a prova C (instrumentation failure) exige.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -18,6 +19,16 @@ import pytest
 CI = Path(__file__).resolve().parents[1]
 if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
+
+# UTF-8 em todo filho que esta suíte criar (04/09/2026). Ela é a maior criadora
+# de subprocessos da casa — 90 fronteiras que decodificam texto, e quase todas
+# moram aqui — e no Windows um filho Python escreve pela codepage do console
+# enquanto o teste lê utf-8. O sintoma não é um erro barulhento: é uma asserção
+# de texto que reprova sozinha na máquina do mantenedor e passa na CI (Linux),
+# que foi exatamente o caso de `test_espera.py` até esta data. As ferramentas de
+# `ci/` se protegem em `_nucleo.configurar_saida()`; o pytest não passa por lá,
+# então a mesma linha mora aqui.
+os.environ.setdefault("PYTHONUTF8", "1")
 
 from _nucleo import MARCAS_DA_RAIZ  # noqa: E402
 

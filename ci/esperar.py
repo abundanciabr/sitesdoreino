@@ -91,6 +91,18 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _nucleo import ErroDeInstrumentacao, configurar_saida, executar  # noqa: E402
+
+# A marca que `ci/mergear.py` imprime quando o GitHub ainda calcula se o PR tem
+# conflito: é a ÚNICA recusa do portão que se remede, porque é a única que não é
+# sobre o PR — é sobre o instante da consulta.
+#
+# IMPORTADA, nunca copiada (04/09/2026). Até esta data havia aqui uma CÓPIA da
+# frase em português que o portão imprime, e era ela que decidia se a remedição
+# acontecia. Duas maneiras de morrer, ambas caladas: o acento não sobrevivia à
+# travessia cp1252 → utf-8 no Windows (a remedição nasceu inerte na única
+# máquina onde roda), e reescrever a mensagem lá mataria a remedição aqui sem
+# nenhum teste ficar vermelho. `armadilhas/328`.
+from mergear import MOTIVO_GITHUB_AINDA_CALCULANDO  # noqa: E402
 from espera import (  # noqa: E402
     FalhasSeguidas,
     GracaVencida,
@@ -702,10 +714,6 @@ def _mergear() -> list[str]:
     return [str(p) for p in lista]
 
 
-# O texto que `ci/mergear.py` imprime quando `mergeable=UNKNOWN` (o GitHub
-# ainda calculando): é a ÚNICA recusa do portão que se remede, porque é a única
-# que não é sobre o PR — é sobre o instante da consulta.
-MARCA_DO_GITHUB_RECALCULANDO = "calcula isso de forma assíncrona"
 VOLTAS_DE_REMEDICAO = int(os.environ.get("ESPERAR_VOLTAS_DE_REMEDICAO", "6"))
 SEGUNDOS_ENTRE_REMEDICOES = float(os.environ.get("ESPERAR_SEGUNDOS_ENTRE_REMEDICOES", "20"))
 
@@ -741,7 +749,9 @@ def pousar_pelo_portao(pr: str) -> int:
             )
             return 2
         saida = (proc.stdout or "") + (proc.stderr or "")
-        recalculando = proc.returncode == 2 and MARCA_DO_GITHUB_RECALCULANDO in saida
+        recalculando = (
+            proc.returncode == 2 and MOTIVO_GITHUB_AINDA_CALCULANDO in saida
+        )
         if not recalculando or volta == VOLTAS_DE_REMEDICAO:
             break
         print(

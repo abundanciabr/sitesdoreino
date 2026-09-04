@@ -173,6 +173,24 @@ def checar_estado(pr: dict[str, Any]) -> Resultado:
     return Resultado("estado do PR", Estado.PASS, "aberto e pronto para revisão")
 
 
+# A ÚNICA recusa deste portão que se remede: ela não é sobre o PR, é sobre o
+# instante da consulta (o GitHub ainda calculando se há conflito). Quem remede
+# é `ci/esperar.py`, e ele IMPORTA esta constante — não copia a frase.
+#
+# Por que uma marca em ASCII, e não a frase em português que já estava aqui:
+# até 04/09/2026 o `esperar.py` decidia remedir procurando "calcula isso de
+# forma assíncrona" na saída deste processo. Duas coisas quebravam essa
+# decisão, e as duas quebraram. (a) O `í`: filho em cp1252, pai lendo utf-8,
+# a frase nunca casava no Windows (`_nucleo.configurar_saida`). (b) A cópia:
+# a frase vivia escrita por extenso em três lugares (aqui, no `esperar.py` e
+# no teste), e reescrever a mensagem para uma pessoa entender melhor mataria a
+# remedição em silêncio, com todos os testes verdes.
+#
+# A regra que fica: decisão de máquina anda em marca de máquina. A frase acima
+# é para o humano ler e pode ser reescrita à vontade; esta linha é contrato.
+MOTIVO_GITHUB_AINDA_CALCULANDO = "MOTIVO  github-ainda-calculando"
+
+
 def checar_mergeabilidade(pr: dict[str, Any]) -> Resultado:
     mergeavel = pr.get("mergeable")
     status = pr.get("mergeStateStatus")
@@ -191,7 +209,7 @@ def checar_mergeabilidade(pr: dict[str, Any]) -> Resultado:
             f"o GitHub ainda não sabe se dá para mergear (mergeable={mergeavel})",
             "O GitHub calcula isso de forma assíncrona; se você acabou de dar push,\n"
             "espere alguns segundos e rode de novo. Estado desconhecido não é "
-            "estado bom.",
+            "estado bom.\n" + MOTIVO_GITHUB_AINDA_CALCULANDO,
         )
     if status == "BEHIND":
         # Desde 28/08/2026 a `main` exige `strict_required_status_checks_policy`
