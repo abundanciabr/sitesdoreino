@@ -105,6 +105,17 @@ todo formado; o Mural é para onde ele vai depois.** E é exatamente a frase que
 o plano mestre já usava sem nunca ter desenhado: *"o marketplace é uma rampa,
 não um destino"*.
 
+**A quarta regra, que fecha o buraco dos primeiros meses.** Nos primeiros
+meses ninguém terá entrega aprovada, então o Mural nasce sem ninguém para
+olhá-lo. Um projeto de nível Intermediário ou Avançado aberto nesse período
+ficaria parado para sempre, sem ninguém elegível e sem ninguém sabendo. Então:
+**projeto que passa 24 horas no Mural sem nenhum aluno elegível disponível vai
+para o plantão**, com a razão escrita ("ninguém elegível ainda"). O professor
+decide: reclassificar para Iniciante, segurar, ou avisar o cliente. É o mesmo
+relógio e o mesmo destino que a lei já dava à encomenda encalhada na fila
+(§6.4), e vale a mesma regra de sempre: **nada nesta plataforma pode ficar
+parado sem alguém saber.**
+
 ### 3.2 O Mural não é leilão, e isto é desenho, não descuido
 
 O mantenedor pediu que os alunos possam **pegar** os projetos. Pegar não é dar
@@ -292,6 +303,7 @@ provados por mutação com vermelho na asserção. Os códigos são definitivos.
 | **[INV-ENC-M2]** | Projeto de nível Iniciante só chega ao Mural pela chamada aberta | `.../test_inv_m2_iniciante_passa_pela_fila.py` |
 | **[INV-ENC-M3]** | Um projeto do Mural fica reservado a um aluno por vez; nunca duas propostas vivas para o mesmo projeto | `.../test_inv_m3_mural_nao_e_leilao.py` |
 | **[INV-ENC-M4]** | A ordem do Mural é só a antiguidade do projeto; nenhuma outra chave ordena | `.../test_inv_m4_ordem_unica.py` |
+| **[INV-ENC-M5]** | Nenhum projeto passa de 24h no Mural sem elegível disponível sem ir ao plantão; nada fica parado sem alguém saber | `.../test_inv_m5_nada_encalha_em_silencio.py` |
 
 ### A negociação
 
@@ -346,7 +358,7 @@ encaixam onde a dependência manda:
 | Degrau | Tarefa | O quê | Espera |
 |---|---|---|---|
 | **2.2 emendado** | **TAR-120** | A máquina de estados da encomenda nasce já com `em_negociacao` e `acordada`, e a encomenda já com os campos do acordo, nulos. As tabelas Proposta, Acordo e reserva **não** nascem aqui | a gênese, já feita |
-| **2.11** | **TAR-133** | O Mural: as três regras de pista, a reserva com relógio, a ordem única, **M1 a M4** | TAR-123, a chamada aberta |
+| **2.11** | **TAR-133** | O Mural: as três regras de pista, a reserva com relógio, a ordem única, **M1 a M5** | TAR-123, a chamada aberta |
 | **2.12** | **TAR-134** | A Proposta e o Acordo: rodadas, validade, congelamento, piso que avisa, **N1 a N5** | TAR-133 |
 | **2.13** | **TAR-135** | O simulador passa a provar o Mural e a negociação, e as duas propriedades que só ele alcança | TAR-134 |
 | **2.14** | **TAR-136** | Os seis parâmetros do §9 na semente e na tela do dono | TAR-134 |
