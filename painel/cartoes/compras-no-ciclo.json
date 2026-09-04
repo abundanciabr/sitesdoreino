@@ -19,7 +19,13 @@
   "partida_em": "2026-09-03",
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 10,
+  "dimensoes": [
+    "turma",
+    "canal",
+    "mes-de-entrada"
+  ],
   "versao": 1,
   "desde": "2026-09-03",
-  "_por_que": "Meta Crucialmente Importante nº 1, reformulada pelo mantenedor em 03/09/2026 (registro 20260903-036): deixou de ser o total de alunos e passou a ser quantas pessoas compraram, com a meta grande 'de 0 para 500 somadas de 03/09 até 15/12/2026'. A partida é 0 porque neste mês ainda não houve venda. A régua mora aqui; o fato de ele ter decidido mora no livro."
+  "_por_que": "Meta Crucialmente Importante nº 1, reformulada pelo mantenedor em 03/09/2026 (registro 20260903-036): deixou de ser o total de alunos e passou a ser quantas pessoas compraram, com a meta grande 'de 0 para 500 somadas de 03/09 até 15/12/2026'. A partida é 0 porque neste mês ainda não houve venda. A régua mora aqui; o fato de ele ter decidido mora no livro. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Cada pessoa é notícia com esta escala, então não há ruído: qualquer diferença aparece em 'o que mudou'. A foto envelhece em 10 dias (a semana e uma folga para a reunião de segunda atrasar)."
 }
