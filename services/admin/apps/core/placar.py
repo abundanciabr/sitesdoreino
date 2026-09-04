@@ -71,7 +71,7 @@ from django.shortcuts import render
 from django.utils import timezone
 from django.views.decorators.http import require_GET
 
-from .clients import AlunosClient
+from .clients import AlunosClient, CatalogoClient
 from .painel import CANDIDATOS
 
 #: A subpasta do painel onde moram os cartões. Viaja para a imagem junto com o
@@ -604,17 +604,37 @@ def placar(request):
     return render(
         request,
         "admin/placar.html",
-        {"admin": request.admin, **montar_o_placar(timezone.localdate())},
+        {
+            "admin": request.admin,
+            **montar_o_placar(timezone.localdate(), site_de(request)),
+        },
     )
 
 
-def montar_o_placar(hoje: dt.date) -> dict:
+def site_de(request) -> str | None:
+    """O id do site desta requisição, pelo HOST — `None` se não deu para saber.
+
+    [INV-P11] e o mesmo caminho de `menu.py` e `avisos.py`: o site sai do
+    domínio pelo qual a requisição chegou, nunca de um id guardado aqui. Quem
+    precisa dele é a memória (a `metricas` conta por site, Lei 9); o resto do
+    placar não precisa, e por isso a falha aqui não estraga a tela — vira a
+    frase "não sei de qual site perguntar" numa linha só.
+    """
+    site = CatalogoClient().site_por_host(request.get_host().split(":")[0].lower())
+    return (site or {}).get("id")
+
+
+def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     """Tudo que o placar mostra, calculado UMA vez por requisição.
 
     Existe como função porque DUAS telas leem o mesmo placar: `/admin/placar/`
     e o modo reunião (`/admin/reuniao/`, degrau 3). Duas montagens à mão
     divergiriam no primeiro bloco novo, e o mantenedor leria a que abrisse
     primeiro sem saber que a outra discorda.
+
+    `site_id` é opcional e não tem default de mentira: sem ele a linha da
+    memória diz que não soube de qual site perguntar, e todo o resto da tela
+    continua igual.
     """
     pasta = diretorio_dos_cartoes()
     meta, recusas = ler_cartao(CARTAO_DA_META, pasta)
@@ -713,7 +733,14 @@ def montar_o_placar(hoje: dt.date) -> dict:
             hoje,
         )
 
+    # FORA do `if meta`: a confiança nos dados não depende de haver cartão. Se
+    # o cartão da meta faltar, a tela não mostra número nenhum — mas continua
+    # podendo dizer se a memória da escola está recebendo fatos, que é
+    # justamente o tipo de coisa que ninguém descobre olhando um número.
+    from . import medicao as med_
+
     return {
+        "medicao": med_.a_memoria(site_id, timezone.now()),
         "mudancas": mudancas,
         "latencias": latencias,
         "doze": os_doze,
