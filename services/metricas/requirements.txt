@@ -11,6 +11,11 @@ uvicorn==0.32.1
 # eventos (7.3) falam HTTP. Entra já aqui pelo mesmo motivo das versões
 # pinadas: quando o cliente chegar, ele não escolhe versão nova.
 httpx==0.28.1
+# O transporte dos eventos nesta casa é Redis Streams, com grupo de consumo,
+# PEL e fila morta (RECEITA R4 v1). Mesma versão das outras cinco consumidoras:
+# divergir tornaria impossível comparar o comportamento de duas células no meio
+# de um incidente.
+redis==5.1.1
 pytest==8.3.4
 pytest-django==4.9.0
 black==24.10.0
