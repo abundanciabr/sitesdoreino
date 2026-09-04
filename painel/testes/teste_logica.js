@@ -40,6 +40,11 @@ caso("arquivo duplicado REPROVA",
   LOGICA.validarRegistros([reg({}), reg({})]).length > 0);
 caso("responde_a inexistente REPROVA",
   LOGICA.validarRegistros([reg({ responde_a: "20990101-001-fantasma" })]).length > 0);
+// Compromisso (03/09/2026, degrau 2 do painel de gestão): promessa da semana
+// com prazo. Sem prazo não vence, e o que não vence não cobra ninguém.
+caso("compromisso com prazo passa", LOGICA.validarRegistros([reg({ tipo: "compromisso", vence_em_dias: 7 })]).length === 0);
+caso("compromisso sem prazo REPROVA", LOGICA.validarRegistros([reg({ tipo: "compromisso", vence_em_dias: null })]).length > 0);
+caso("compromisso com prazo zero REPROVA", LOGICA.validarRegistros([reg({ tipo: "compromisso", vence_em_dias: 0 })]).length > 0);
 // Número repetido no mesmo dia: a corrida entre sessões paralelas (26/08/2026,
 // quatro colisões em um dia, entre três sessões). O nome completo continua
 // único — o que se perde é o número como referência.

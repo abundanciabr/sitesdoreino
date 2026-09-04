@@ -1,0 +1,21 @@
+{
+  "nome": "liberacoes-em-48h",
+  "tipo": "direcao",
+  "andar": 0,
+  "pergunta": "Quem pede para entrar é liberado em até 48 horas?",
+  "definicao": "Das pessoas liberadas nos últimos 28 dias, a fração que esperou no máximo 2 dias entre pedir e ser liberada; e quantas esperam há mais que isso agora. É a parte da jornada que depende só da casa: quem pediu e já comprou espera o mantenedor abrir a fila. Medida de direção: cada liberação no prazo é +1 na meta sem depender de ninguém de fora.",
+  "formula": "liberadas com (virou_aluno_em - criada_em) <= 2 dias, dividido pelas liberadas nos 28 dias até hoje; e contagem de aguardando com esperando_ha_dias > 2",
+  "fonte": "célula alunos, ao vivo: GET /matriculas (origem liberado, criada_em, virou_aluno_em) e GET /pre-matriculas (aguardando, esperando_ha_dias)",
+  "autoridade": "alunos",
+  "dono": "mantenedor",
+  "frequencia": "tempo real (HTTP, a cada abertura da tela)",
+  "direcao": "subir",
+  "unidade": "por cento",
+  "par": "compras-no-ciclo",
+  "acao": "Abaixo de 100%, ou alguém esperando há mais de 2 dias: abra a fila em /admin/escola/ e libere hoje.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Degrau 2 do plano reescrito em 03/09/2026 (§8). A meta é 100% por construção: liberar em 48 horas é a promessa da fila (DECISAO-fila-de-liberacao.md, fase 2: 'há quantos dias espera' visível)."
+}

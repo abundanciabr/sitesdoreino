@@ -15,7 +15,12 @@
 (function (raiz) {
   "use strict";
 
-  var TIPOS = ["decisao", "pendencia", "resposta", "entrega", "incidente", "medicao", "frente", "rumo", "nota"];
+  // `compromisso` (03/09/2026, degrau 2 do painel de gestão): o que alguém
+  // promete fazer nesta semana. Vence em N dias; quem o cumpre escreve um
+  // registro que `responde_a` ele. O veredito (cumprido, não cumprido, em
+  // aberto) é CALCULADO, nunca marcado à mão — é a cadência de
+  // responsabilidade das 4 Disciplinas, sem tabela e sem estado.
+  var TIPOS = ["decisao", "pendencia", "resposta", "entrega", "incidente", "medicao", "frente", "rumo", "nota", "compromisso"];
   var GRAVIDADES = ["vermelho", "ambar", "info", "verde"];
   var AUTORIDADES = ["mantenedor", "github", "sonda", "rito", "sessao"];
   var FRENTES = ["site", "comunidade", "curso", "vender", "fabrica"];
@@ -82,6 +87,11 @@
       if (r.tipo === "rumo") {
         if (FRENTES.indexOf(r.frente) === -1) erros.push(nome + ": tipo 'rumo' exige a frente a que ele aponta");
         if (r.gravidade === "verde") erros.push(nome + ": tipo 'rumo' não pode ser verde — verde é prova conferida, e o futuro não se prova");
+      }
+      // Compromisso sem prazo não vence nunca, e um compromisso que não vence
+      // não consegue ser "não cumprido": seria promessa sem cobrança.
+      if (r.tipo === "compromisso" && !(typeof r.vence_em_dias === "number" && r.vence_em_dias > 0)) {
+        erros.push(nome + ": tipo 'compromisso' exige vence_em_dias (número de dias, maior que zero)");
       }
       if (r.arquivo) {
         if (vistos[r.arquivo]) erros.push(nome + ": arquivo duplicado (dois registros com o mesmo nome)");

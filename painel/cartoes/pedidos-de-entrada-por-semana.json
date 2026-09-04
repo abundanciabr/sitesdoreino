@@ -1,0 +1,22 @@
+{
+  "nome": "pedidos-de-entrada-por-semana",
+  "tipo": "direcao",
+  "andar": 0,
+  "pergunta": "Quantas pessoas pediram para entrar nesta semana?",
+  "definicao": "Pedidos de entrada na fila de liberação nos últimos 7 dias (quem espera, quem foi recusado e quem já foi liberado, todos pela data em que pediram). É a torneira da meta: ninguém vira aluna sem antes pedir para entrar, porque a venda acontece fora do site e a fila é a porta. Medida de direção: prevê a meta e pode ser movida esta semana.",
+  "formula": "contagem de pedidos com criada_em nos 7 dias até hoje (America/Sao_Paulo); as 3 semanas anteriores entram na sequência",
+  "fonte": "célula alunos, ao vivo: GET /pre-matriculas (aguardando e recusada) e GET /matriculas (origem liberado, criada_em)",
+  "autoridade": "alunos",
+  "dono": "mantenedor",
+  "frequencia": "tempo real (HTTP, a cada abertura da tela); a meta, semanal",
+  "direcao": "subir",
+  "unidade": "pessoas por semana",
+  "par": "compras-no-ciclo",
+  "acao": "Abaixo da meta da semana: o caminho da fila existe onde você divulga (a home não convida, por decisão sua de 28/08). É a aposta da semana, e vira compromisso na segunda-feira.",
+  "meta_semanal": null,
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Degrau 2 do plano reescrito em 03/09/2026 (§8). `meta_semanal` nula = a tela deriva a fatia de 7 dias da linha reta do ciclo (500 em 103 dias, uns 34 por semana); o mantenedor fixa outra por PR quando quiser."
+}

@@ -139,6 +139,60 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     {% endif %}
   {% endif %}
 
+  <h2 class="titulo-de-bloco espaco-20">A direção da semana</h2>
+  {% if not cartao_pedidos or not cartao_48h %}
+    <p class="aviso borda-vermelha"><b>Um cartão da direção está ausente ou inválido</b>, e sem ele a medida não aparece.</p>
+    <ul class="notas">
+      {% for recusa in recusas_da_direcao %}<li>{{ recusa }}</li>{% endfor %}
+    </ul>
+  {% elif not direcao %}
+    <p class="recado-fraco">Sem a meta válida, a direção não é calculada.</p>
+  {% else %}
+    <p class="recado">O que a casa move nesta semana e que antecipa a meta. Duas medidas, nunca dez.</p>
+
+    <p class="recado">
+      <b>{{ cartao_pedidos.pergunta }}</b>
+      {% if direcao.pedidos.veredito == "nao-consigo-medir" %}
+        <span class="rotulo">não consegui medir</span> (a fila ou a lista não respondeu).
+      {% else %}
+        <b>{{ direcao.pedidos.esta_semana }}</b> nesta semana
+        {% if direcao.pedidos.meta is not None %}(meta da semana: {{ direcao.pedidos.meta }}{% if direcao.pedidos.meta_derivada %}, a fatia de 7 dias da linha reta do ciclo{% endif %}){% endif %}.
+        {% if direcao.pedidos.veredito == "cumprida" %}<span class="rotulo">na meta</span>{% elif direcao.pedidos.veredito == "abaixo" %}<span class="rotulo">abaixo da meta</span>{% endif %}
+        Semanas anteriores: {% for n in direcao.pedidos.semanas %}{% if not forloop.first %}{{ n }}{% if not forloop.last %}, {% endif %}{% endif %}{% endfor %}.
+        {% if direcao.pedidos.sequencia %}Sequência: {{ direcao.pedidos.sequencia }} semana{{ direcao.pedidos.sequencia|pluralize:"s" }} seguida{{ direcao.pedidos.sequencia|pluralize:"s" }} na meta.{% endif %}
+      {% endif %}
+    </p>
+
+    <p class="recado">
+      <b>{{ cartao_48h.pergunta }}</b>
+      {% if direcao.liberacoes.veredito == "nao-consigo-medir" %}
+        <span class="rotulo">não consegui medir</span>.
+      {% elif direcao.liberacoes.veredito == "sem-liberacoes" %}
+        Nenhuma liberação nos últimos 28 dias e ninguém esperando há mais de 2 dias.
+      {% else %}
+        {% if direcao.liberacoes.por_cento is not None %}<b>{{ direcao.liberacoes.por_cento }}%</b> das {{ direcao.liberacoes.total }} liberaç{{ direcao.liberacoes.total|pluralize:"ão,ões" }} dos últimos 28 dias saíram em até 48 horas.{% endif %}
+        {% if direcao.liberacoes.esperando_ha_muito %}<b>{{ direcao.liberacoes.esperando_ha_muito }}</b> pessoa{{ direcao.liberacoes.esperando_ha_muito|pluralize:"s" }} esperando há mais de 2 dias agora.{% endif %}
+        {% if direcao.liberacoes.veredito == "cumprida" %}<span class="rotulo">na meta</span>{% else %}<span class="rotulo">abaixo da meta</span> {{ cartao_48h.acao }}{% endif %}
+      {% endif %}
+    </p>
+
+    <h3 class="titulo-da-conta">Os compromissos da semana</h3>
+    {% if compromissos is None %}
+      <p class="recado-fraco">O livro não veio nesta versão do site; os compromissos não aparecem.</p>
+    {% elif not compromissos %}
+      <p class="recado-fraco">Nenhum compromisso nas últimas 4 semanas. Um compromisso é um registro do livro do tipo "compromisso", com prazo; quem o cumpre escreve o registro que responde a ele. O veredito é calculado, nunca marcado à mão.</p>
+    {% else %}
+      <ul class="notas">
+        {% for c in compromissos %}
+          <li>
+            {% if c.veredito == "cumprido" %}<span class="rotulo">cumprido</span>{% elif c.veredito == "nao-cumprido" %}<span class="rotulo">não cumprido</span>{% else %}<span class="rotulo">em aberto</span>{% endif %}
+            {{ c.titulo }} ({{ c.quando }}{% if c.vence %}, vence {{ c.vence }}{% endif %})
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endif %}
+
   <h2 class="titulo-de-bloco espaco-20">A restrição desta semana</h2>
   {% if not cartao_da_restricao %}
     <p class="aviso borda-vermelha"><b>O cartão da restrição está ausente ou inválido</b>, e sem ele o bloco não aparece.</p>
