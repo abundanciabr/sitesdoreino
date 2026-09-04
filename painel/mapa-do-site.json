@@ -890,6 +890,47 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/jornadas/",
+      "endereco": "/admin/escola/jornadas/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "As sequências de mensagens",
+      "descricao": "As mensagens que a escola manda sozinha depois que algo acontece, com o interruptor de cada uma. Vizinha do mapa da jornada e diferente dele: aquele mostra por onde a pessoa passa, esta mostra o que a escola escreve para ela.",
+      "observacao": "Lê e escreve na célula mensageria pela porta de máquina, nunca no banco dela. Sem o par de tokens no servidor, abre dizendo o que falta em vez de mostrar tela vazia."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/jornadas/ligar",
+      "endereco": "/admin/escola/jornadas/ligar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Ligar ou desligar uma sequência",
+      "descricao": "O que acontece ao apertar o botão de ligar ou desligar na lista de sequências. Desligar significa que ninguém novo entra: quem já está no meio termina o que começou, e a tela diz quantas pessoas são."
+    },
+    {
+      "celula": "admin",
+      "rota": "escola/jornadas/publicar",
+      "endereco": "/admin/escola/jornadas/publicar",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar o texto de uma mensagem",
+      "descricao": "O que acontece ao salvar a frase de um passo: publica uma versão nova da sequência inteira. Quem já está no meio dela termina com o texto antigo, e o novo vale para quem entrar depois."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/jornadas/(?P<slug>[a-z0-9-]+)/$",
+      "endereco": "/admin/escola/jornadas/(?P<slug>[a-z0-9-]+)/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Uma sequência por dentro",
+      "descricao": "Os passos de uma sequência na ordem, o texto de cada um (editável), quem está recebendo, e o que foi barrado com o motivo escrito.",
+      "exemplo": "/admin/escola/jornadas/boas-vindas/",
+      "observacao": "É aqui que se responde \"por que o aluno X não recebeu?\": a escola guarda também o que NÃO saiu, com o motivo que a régua anotou."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/alunos/",
       "endereco": "/admin/escola/alunos/",
       "alcance": "publico",
