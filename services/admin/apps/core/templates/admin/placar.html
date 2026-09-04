@@ -176,7 +176,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       {% endif %}
     </p>
 
-    <h3 class="titulo-da-conta">Os compromissos da semana</h3>
+    <h3 class="titulo-da-conta">Os compromissos da semana <a href="{% url 'reuniao' %}">(a reunião de segunda-feira)</a></h3>
     {% if compromissos is None %}
       <p class="recado-fraco">O livro não veio nesta versão do site; os compromissos não aparecem.</p>
     {% elif not compromissos %}
