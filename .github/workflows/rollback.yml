@@ -48,6 +48,7 @@ on:
           - identidade
           - leads
           - mensageria
+          - metricas
           - notificacoes
           - pagamentos
           - quiz
