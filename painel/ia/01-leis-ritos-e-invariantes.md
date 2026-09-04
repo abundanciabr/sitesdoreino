@@ -32,10 +32,10 @@ nunca vence os documentos abaixo, na ordem:
 1. **`CONSTITUICAO.md`** — a lei suprema da plataforma inteira.
 2. **`constituicoes/AGENTS.<celula>.md`** — lei local de cada célula (onde existir).
 3. **`RITOS.md`**, **`INVARIANTES.md`**, **`CAMINHO-DOURADO.md`** — operacionais, subordinados à Constituição.
-4. **`CLAUDE.md`** — instruções de processo para sessões Claude Code (registro, worktree, tom de voz com o mantenedor).
+4. **`CLAUDE.md`** — a **1ª seção é o Padrão de Trabalho** (a Lei 10 aponta para ela: o padrão de exigência de toda tarefa, integral), seguida das instruções de processo para sessões Claude Code (registro, worktree, tom de voz com o mantenedor).
 5. **`armadilhas/`** e **`ARMADILHAS-OPERACAO.md`** — memória de campo, não lei.
 
-## CONSTITUICAO.md — as 9 leis
+## CONSTITUICAO.md — as 10 leis
 
 | Lei | Nome | O que garante |
 |---|---|---|
@@ -48,6 +48,7 @@ nunca vence os documentos abaixo, na ordem:
 | 7 | Zonas Quentes Nascem Vazias | Nenhum arquivo "que toda rota toca"; cada célula tem seus próprios settings/urls/templates/static. Exceção deliberada: `services/pagamentos/core/` (congelado, somente-leitura). |
 | 8 | Jurisprudência Pré-Paga | Invariantes de dinheiro nascem com teste-guarda **antes** da primeira feature; testes-guarda são intocáveis. |
 | 9 | Multissítio | Um único deploy serve N domínios; "site" é dado no catálogo, nunca infraestrutura nova; host não cadastrado = 404, nunca site padrão; domínio novo entra pela receita R11. |
+| 10 | O Padrão de Trabalho | Toda tarefa obedece ao Padrão de Trabalho (Modelo Steve Jobs / Apple), escrito por inteiro na 1ª seção do `CLAUDE.md`: o problema real por trás do pedido, discordar antes e executar depois, decidir em vez de servir cardápio, o produto inteiro até a tela, e a Definição de "Pronto" da regra 6 ("rodou de verdade", ou escreve "NÃO RODEI"). Trazido de fora pelo mantenedor em 04/09/2026. |
 
 **Definição de Pronto Arquitetônica** (fecha o documento): Pix quebrado ⇒ cartão
 continua vendendo (e vice-versa); webhook duplicado ⇒ uma matrícula só; deploy
