@@ -93,8 +93,8 @@ def test_o_utf8_chega_de_verdade_ao_filho_python():
     )
 
 
-def test_toda_ferramenta_que_cria_filho_python_passa_pela_porta():
-    """O guarda que pega a ferramenta de número 91 antes de ela sangrar.
+def esta_sem_a_porta(fonte: str) -> bool:
+    """A ferramenta cria filho Python, lê o texto dele, e NÃO passa pela porta?
 
     A régua é estreita de propósito, e cada limite é para não medir a coisa
     errada com precisão (que é como um portão morre):
@@ -104,30 +104,72 @@ def test_toda_ferramenta_que_cria_filho_python_passa_pela_porta():
         `git`, `gh` ou `docker` ela não faz nada, e exigi-la ali seria teatro);
       - só quem é PONTO DE ENTRADA (biblioteca não configura saída global —
         quem a chama já passou pela porta).
+    """
+    if "__main__" not in fonte:
+        return False
+    cria_filho_python = False
+    for no in ast.walk(ast.parse(fonte)):
+        if not (isinstance(no, ast.Call)
+                and ast.unparse(no.func) in CHAMADAS_DE_SUBPROCESSO):
+            continue
+        if not ({k.arg for k in no.keywords if k.arg} & DECODIFICA_TEXTO):
+            continue
+        comando = ast.unparse(no.args[0]) if no.args else ""
+        if "sys.executable" in comando or "_mergear()" in comando:
+            cria_filho_python = True
+    if not cria_filho_python:
+        return False
+    return "configurar_saida" not in fonte and "PYTHONUTF8" not in fonte
+
+
+# A ferramenta 91, escrita à mão: é o que o guarda abaixo existe para pegar.
+FERRAMENTA_DOENTE = '''
+import subprocess, sys
+def main():
+    p = subprocess.run([sys.executable, "-c", "print(1)"],
+                       capture_output=True, text=True)
+    return 0 if "1" in p.stdout else 1
+if __name__ == "__main__":
+    sys.exit(main())
+'''
+
+
+def test_o_detector_reconhece_uma_ferramenta_doente():
+    """O controle positivo, sem o qual o guarda seguinte não prova nada.
+
+    Ele afirma uma AUSÊNCIA ("nenhuma ferramenta está sem a porta"), e uma
+    ausência tem mais de uma causa suficiente: ou a casa está limpa, ou o
+    detector parou de detectar. As duas ficam verdes iguais (`armadilhas/266`,
+    apontada pelo revisor de pouso no PR #1034).
+
+    Aqui o detector é obrigado a levantar a mão diante de um caso que ele TEM de
+    pegar — e a mesma fonte, com uma linha a mais, tem de deixar de ser problema.
+    """
+    assert esta_sem_a_porta(FERRAMENTA_DOENTE), (
+        "o detector deixou de reconhecer uma ferramenta que cria filho Python, "
+        "lê o texto dele e não passa pela porta. Enquanto ele estiver assim, o "
+        "guarda da casa limpa fica verde por não enxergar, não por não haver."
+    )
+    curada = FERRAMENTA_DOENTE.replace(
+        "def main():", "def main():\n    configurar_saida()"
+    )
+    assert not esta_sem_a_porta(curada), (
+        "o detector acusa até quem passa pela porta — assim ele reprovaria a "
+        "casa inteira e seria desligado na primeira semana."
+    )
+
+
+def test_toda_ferramenta_que_cria_filho_python_passa_pela_porta():
+    """O guarda que pega a ferramenta de número 91 antes de ela sangrar.
 
     Em 04/09/2026 a lista cabia em dois nomes, `ci.py` e `esperar.py`, e os
     dois já passavam. O guarda não existe para hoje: existe para o terceiro.
+    Que ele CONSEGUE acusar, quem prova é o controle positivo acima.
     """
-    faltando = []
-    for caminho in FERRAMENTAS:
-        fonte = caminho.read_text(encoding="utf-8")
-        if "__main__" not in fonte:
-            continue
-        arvore = ast.parse(fonte, str(caminho))
-        cria_filho_python = False
-        for no in ast.walk(arvore):
-            if not (isinstance(no, ast.Call)
-                    and ast.unparse(no.func) in CHAMADAS_DE_SUBPROCESSO):
-                continue
-            if not ({k.arg for k in no.keywords if k.arg} & DECODIFICA_TEXTO):
-                continue
-            comando = ast.unparse(no.args[0]) if no.args else ""
-            if "sys.executable" in comando or "_mergear()" in comando:
-                cria_filho_python = True
-        if not cria_filho_python:
-            continue
-        if "configurar_saida" not in fonte and "PYTHONUTF8" not in fonte:
-            faltando.append(caminho.name)
+    faltando = [
+        c.name for c in FERRAMENTAS
+        if esta_sem_a_porta(c.read_text(encoding="utf-8"))
+    ]
     assert not faltando, (
         "estas ferramentas criam um filho Python e leem o texto dele sem passar "
         f"pela porta que põe UTF-8 no ambiente: {faltando}\n"
