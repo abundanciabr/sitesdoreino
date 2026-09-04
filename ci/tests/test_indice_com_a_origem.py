@@ -22,7 +22,9 @@ o clone principal.
    continua sendo enxergada.
 3. A pasta vence quando os dois lados têm o mesmo número.
 4. "Não consegui ler a origem" fala e gera só da pasta — nunca finge que a
-   origem está vazia.
+   origem está vazia. E a ausência vem com CONTRAPROVA no mesmo teste
+   (`armadilhas/266`): mede-se o clone ANTES de a ref sumir, para que
+   "devolver None sempre" reprove em vez de passar verde.
 5. Dono de guarda que só existe na origem não é referência morta.
 6. No repositório REAL, a união não perde nenhuma entrada local.
 
@@ -185,8 +187,33 @@ def test_sem_origem_gera_so_da_pasta_e_avisa(tmp_path: Path, capsys) -> None:
 
 
 def test_clone_sem_a_ref_da_origem_tambem_e_nao_medi(casa) -> None:
+    """A ausência COM a contraprova ao lado, no mesmo arquivo (`armadilhas/266`).
+
+    Um `is None` só prova alguma coisa se, no MESMO clone, o outro lado existir:
+    sem a medição de antes, as duas funções podiam passar a devolver `None` em
+    qualquer situação e este guarda continuaria verde para sempre, sem ninguém
+    saber que havia um outro lado. Então mede-se DUAS vezes, e o único fato que
+    muda entre as duas é a ref `origin/main` deixar de existir neste clone.
+
+    Antes desta contraprova a medição existia, mas morava na cabeça de quem
+    escreveu o teste (TAR-050) e já tinha envelhecido: a nota dizia "1 entrada",
+    e a medição de dentro do arquivo diz duas (a 001 do clone e a 002 que este
+    mesmo clone acabou de empurrar).
+    """
     outra = casa["outra"]
+
+    # A CONTRAPROVA: com a ref no lugar, as duas funções MEDEM de verdade.
+    antes = indice.coletar_da_origem(outra)
+    assert antes is not None, "contraprova: com `origin/main` no lugar, mede-se"
+    assert [e.nome for e in antes] == ["001-primeira.md", "002-segunda.md"]
+    caminhos_antes = indice.caminhos_da_origem(outra)
+    assert caminhos_antes is not None, "contraprova: idem para os caminhos"
+    assert f"{indice.PASTA}/002-segunda.md" in caminhos_antes
+
+    # O ÚNICO fato que muda daqui para baixo: a ref some deste clone.
     _git(outra, "remote", "rename", "origin", "espelho")
+
+    # E aí "não consegui medir" — que nunca vira "a origem está vazia".
     assert indice.coletar_da_origem(outra) is None
     assert indice.caminhos_da_origem(outra) is None
 
