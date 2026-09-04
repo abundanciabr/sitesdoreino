@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260904-098-o-mapa-do-site-tinha-cinco-links-que-devolviam-erro",
+  arquivo: "20260904-102-o-mapa-do-site-tinha-cinco-links-que-devolviam-erro",
   tipo: "entrega",
   quando: "2026-09-04",
   titulo: "O mapa do site tinha cinco links que davam erro ao clicar, e agora não tem",
