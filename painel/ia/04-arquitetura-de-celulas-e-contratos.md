@@ -259,8 +259,32 @@ uma regra: menos entregas aprovadas primeiro, empate por quem entrou antes),
 ofertas com relógio de 3 horas úteis, encomendas com máquina de estado,
 entregas, revisão humana obrigatória na primeira entrega, correção única,
 mediação e a tela de plantão do professor. **A plataforma escolhe o aluno,
-não o cliente**: não há lista de freelancers, proposta, lance nem ranking, e
-a lista do que fica fora está copiada literalmente na lei §2.
+não o cliente**: não há lista de freelancers, lance nem ranking, e a lista do
+que fica fora está copiada literalmente na lei §2.
+
+**A emenda de 04/09/2026, que a próxima IA precisa conhecer antes de ler o
+parágrafo acima.** O mantenedor pediu uma área de negociação, a sessão parou
+como o critério de morte 1 manda, perguntou, e ele liberou duas coisas que a
+lei proibia: **proposta** e **mural aberto**. Fonte de verdade:
+`docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md`, e a lei carrega o registro da
+reabertura no §2.1. O que mudou, e só isto:
+
+- **O Mural** é a segunda pista. Aluno com zero entregas aprovadas não o vê;
+  projeto de nível Iniciante nasce na fila e só chega ao Mural pela chamada
+  aberta; projeto Intermediário ou Avançado nasce nele. **Não é leilão:** uma
+  reserva viva por projeto, com relógio, e a ordem é só a antiguidade.
+- **A Proposta** é formulário com rodadas contadas, nunca conversa: o
+  invariante S1 (sem texto livre) não foi revogado e é o que lhe dá forma.
+  Quem propõe primeiro é o aluno. O acordo congela valor, prazo e entregáveis.
+- **O pagamento mudou de lugar**, não de dono: acontece depois do acordo,
+  porque não se cobra valor ainda não combinado. Não adianta uma linha de
+  cobrança, porque a origem continua sendo só `escola`.
+- **Nove invariantes novos** (M1 a M4, N1 a N5); os dez de justiça da fila
+  (J1 a J10) continuam inteiros e sem exceção.
+
+**Continua fora, e continua critério de morte:** lance ou leilão, o cliente
+escolher entre alunos, ranking, notas públicas, chat livre, segunda regra de
+ordem, matchmaking por IA.
 
 **As emendas da casa ao plano** (o plano foi escrito fora deste repositório):
 a escola é 18+, então o ator "Responsável" saiu; o contrato HTTP só congela
