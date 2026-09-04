@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/encomenda.oferecida.v1.json",
+  "title": "encomenda.oferecida.v1",
+  "description": "O motor escolheu um aluno e criou uma Oferta pendente (na_fila -> oferecida). O escolhido e o elegivel disponivel com menor (entregas_aprovadas, data_entrada_fila) — INV-ENC-J3. `expira_em` ja vem calculado pela janela de horas uteis (8h-22h, America/Sao_Paulo; INV-ENC-J8): o relogio e reavaliacao periodica, nunca timer agendado. Emitido pelo motor: `ator_id` e sempre null. Publicado pela celula `encomendas` (a Fila do Primeiro Dolar) pelo padrao outbox transacional (INV-P6). Escrito em papel na Fase 0 (03/09/2026), antes de a celula existir, para que consumidores (gamificacao, pagamentos, Estudio, metricas) se escrevam contra o contrato e nunca contra o codigo. So IDS OPACOS viajam: nem briefing, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Lei: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md; produto: PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (secao 7.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "encomenda.oferecida"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Id da PLATAFORMA de quem fez o gesto, ou null quando foi o RELOGIO ou o MOTOR (reavaliacao periodica, sem pessoa atras). NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "encomenda_id",
+        "oferta_id",
+        "aluno_id",
+        "nivel",
+        "expira_em",
+        "rodada"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "encomenda_id": {
+          "type": "string",
+          "description": "Id opaco da encomenda dentro da celula `encomendas`."
+        },
+        "oferta_id": {
+          "type": "string",
+          "description": "Id opaco da oferta. A Oferta e registro de primeira classe (plano secao 7.1): e o historico e a auditoria de justica da fila."
+        },
+        "aluno_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA do aluno (a pessoa como a celula `identidade` a conhece). NUNCA e o e-mail."
+        },
+        "nivel": {
+          "type": "string",
+          "enum": [
+            "iniciante",
+            "intermediario",
+            "avancado"
+          ],
+          "description": "O nivel da encomenda, derivado do cartao. E o nivel MINIMO do titulo de quem pode recebe-la (INV-ENC-J5)."
+        },
+        "expira_em": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Quando a oferta expira, ja descontadas as horas fora da janela."
+        },
+        "rodada": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Quantas ofertas esta encomenda ja teve, contando esta. E a medida de 'aceita na primeira oferta' (metricas, plano secao 13)."
+        }
+      }
+    }
+  }
+}

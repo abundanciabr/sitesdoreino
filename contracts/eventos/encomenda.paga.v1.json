@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/encomenda.paga.v1.json",
+  "title": "encomenda.paga.v1",
+  "description": "Uma encomenda teve o pagamento CONFIRMADO e entrou na fila (aguardando_pagamento -> na_fila). E o gatilho do motor de oferta (plano secao 7.4) e o fato que o INV-ENC-D13 mede: encomenda so entra na fila com confirmacao REGISTRADA COM AUTOR. Duas fontes de confirmacao: o webhook da celula `pagamentos` (Fase 3, `ator_id` null) e o plantao declarando 'pago pela escola' para `origem = escola` (`ator_id` = quem declarou; e a unica origem que existe ate o mantenedor liberar a Fase 3, lei secao 3.4). Publicado pela celula `encomendas` (a Fila do Primeiro Dolar) pelo padrao outbox transacional (INV-P6). Escrito em papel na Fase 0 (03/09/2026), antes de a celula existir, para que consumidores (gamificacao, pagamentos, Estudio, metricas) se escrevam contra o contrato e nunca contra o codigo. So IDS OPACOS viajam: nem briefing, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Lei: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md; produto: PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (secao 7.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "encomenda.paga"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Id da PLATAFORMA de quem fez o gesto, ou null quando foi o RELOGIO ou o MOTOR (reavaliacao periodica, sem pessoa atras). NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "encomenda_id",
+        "cliente_id",
+        "origem",
+        "cartao",
+        "nivel",
+        "preco_cents",
+        "confirmacao"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "encomenda_id": {
+          "type": "string",
+          "description": "Id opaco da encomenda dentro da celula `encomendas`."
+        },
+        "cliente_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA do cliente. NUNCA e o e-mail."
+        },
+        "origem": {
+          "type": "string",
+          "enum": [
+            "fila",
+            "direto",
+            "escola"
+          ],
+          "description": "Por onde a encomenda nasceu: pela fila, por pedido direto no Estudio, ou aberta pelo plantao com a escola como cliente (lei secao 3.4)."
+        },
+        "cartao": {
+          "type": "string",
+          "enum": [
+            "item_simples",
+            "vestivel_ou_veiculo",
+            "personagem"
+          ],
+          "description": "O cartao do cardapio (plano secao 5.1). E o cartao que define nivel, prazo e preco; o cliente nunca escolhe nivel."
+        },
+        "nivel": {
+          "type": "string",
+          "enum": [
+            "iniciante",
+            "intermediario",
+            "avancado"
+          ],
+          "description": "O nivel da encomenda, derivado do cartao. E o nivel MINIMO do titulo de quem pode recebe-la (INV-ENC-J5)."
+        },
+        "preco_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Dinheiro e inteiro em centavos em todo contrato desta casa (contracts/README.md, item 7). Float de dinheiro e proibido."
+        },
+        "confirmacao": {
+          "type": "string",
+          "enum": [
+            "webhook",
+            "plantao"
+          ],
+          "description": "De onde veio a confirmacao. `plantao` so existe para `origem = escola`."
+        }
+      }
+    }
+  }
+}

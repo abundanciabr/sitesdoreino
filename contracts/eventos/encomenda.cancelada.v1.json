@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/encomenda.cancelada.v1.json",
+  "title": "encomenda.cancelada.v1",
+  "description": "A encomenda foi cancelada. Antes do aceite: reembolso integral automatico e nada acontece com ninguem (oferta pendente cancelada, aluno mantem o lugar). Depois do aceite: so por decisao de mediacao registrada com autor (INV-ENC-D15) — o aluno mantem o lugar e a contagem (nao e entrega nem abandono). Por reclassificacao: o plantao cancelou com reembolso. `reembolso_cents` e o que a `pagamentos` devolve; zero para `origem = escola` antes da Fase 3. Publicado pela celula `encomendas` (a Fila do Primeiro Dolar) pelo padrao outbox transacional (INV-P6). Escrito em papel na Fase 0 (03/09/2026), antes de a celula existir, para que consumidores (gamificacao, pagamentos, Estudio, metricas) se escrevam contra o contrato e nunca contra o codigo. So IDS OPACOS viajam: nem briefing, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Lei: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md; produto: PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (secao 7.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "encomenda.cancelada"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Id da PLATAFORMA de quem fez o gesto, ou null quando foi o RELOGIO ou o MOTOR (reavaliacao periodica, sem pessoa atras). NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "encomenda_id",
+        "momento",
+        "reembolso",
+        "reembolso_cents",
+        "registrada_por"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "encomenda_id": {
+          "type": "string",
+          "description": "Id opaco da encomenda dentro da celula `encomendas`."
+        },
+        "momento": {
+          "type": "string",
+          "enum": [
+            "antes_do_aceite",
+            "por_mediacao",
+            "por_reclassificacao"
+          ]
+        },
+        "reembolso": {
+          "type": "string",
+          "enum": [
+            "integral",
+            "parcial",
+            "nenhum"
+          ]
+        },
+        "reembolso_cents": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Dinheiro e inteiro em centavos em todo contrato desta casa (contracts/README.md, item 7). Float de dinheiro e proibido."
+        },
+        "registrada_por": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Id da PLATAFORMA de quem decidiu, quando foi mediacao ou reclassificacao (INV-ENC-D15 exige autor); null no cancelamento automatico antes do aceite."
+        }
+      }
+    }
+  }
+}

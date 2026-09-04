@@ -472,7 +472,7 @@ a fase escrita):**
 |---|---|---|
 | O plano v0.1 | no repositório, sem edição | `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` |
 | Esta lei | **aprovada em 03/09/2026** | registro `20260904-006` |
-| A constituição da célula | escrita em papel; vira `constituicoes/AGENTS.encomendas.md` no PR da gênese, porque constituição sem célula é órfã para `ci/tests/test_constituicoes.py` | `CONSTITUICAO-encomendas-rascunho.md` |
+| A constituição da célula | promovida na gênese (03/09/2026) | `constituicoes/AGENTS.encomendas.md` |
 | O contrato v1 | anexo escrito; congela no degrau 2.8 | `CONTRATO-encomendas-v1-rascunho.md` |
 | Os 20 eventos | TAR-108 | `contracts/eventos/encomenda.*`, `oferta.*`, `entrega.*`, `aluno.*`, `portfolio.*`, `pedido-direto.*` |
 | A escada | TAR-107 a TAR-109 na fila; os degraus 2.2 a 2.10 nascem quando a gênese pousar | `python ci/fila.py listar --ao-vivo` |
