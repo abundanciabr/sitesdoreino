@@ -1,0 +1,108 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O calendário do ciclo (/admin/placar/ciclo/, 04/09/2026).
+
+Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
+tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
+admin/base.html (tests/test_estilo_nao_volta_para_a_marcacao.py).
+
+A tela NÃO guarda número nenhum: a curva vem do cartão compras-no-ciclo.json e
+o que aconteceu vem da célula alunos. Ver apps/core/ciclo.py.
+{% endcomment %}
+{% block titulo %}Calendário do ciclo{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
+  <h1>O calendário do ciclo</h1>
+  <p class="subtitulo">As 12 semanas do ciclo, mais a de preparação e a de recuperação.</p>
+
+  {% if not meta %}
+  <p class="aviso borda-vermelha">
+    <b>Não achei o cartão da meta.</b>
+    Sem ele não há ciclo para desenhar. Isso é coisa de bastidor, não sua, e o
+    robô da próxima atualização conserta.
+  </p>
+  {% elif not semanas %}
+  <p class="aviso borda-amarela">
+    <b>A meta ainda não tem calendário de semanas.</b>
+    Enquanto não tiver, o placar reparte a meta em linha reta, em partes iguais
+    do começo ao fim. Foi assim até 4 de setembro de 2026.
+  </p>
+  {% else %}
+
+  <p class="lei">
+    Aqui está a régua que o placar usa para dizer se você está ganhando ou
+    perdendo. As três primeiras semanas pedem zero venda de propósito: são as
+    de aprender a campanha, o criativo, a copy e a página de venda. Cobrar
+    venda de quem ainda está aprendendo mede a coisa errada com precisão. A
+    conta sobe devagar, acelera no meio e concentra o peso no fim, quando o que
+    funciona já é conhecido.
+  </p>
+
+  {% if nao_consigo_contar %}
+  <p class="aviso borda-amarela espaco-20">
+    <b>Não consegui perguntar quantas pessoas compraram.</b>
+    O calendário e as metas abaixo continuam certos; o que está faltando é o
+    lado do que aconteceu de verdade. As colunas ficam em branco em vez de
+    mostrar zero, porque zero seria eu afirmando que ninguém comprou.
+  </p>
+  {% endif %}
+
+  <div class="rolagem-lateral espaco-20">
+    <table class="semanas-do-ciclo">
+      <thead>
+        <tr>
+          <th>Semana</th>
+          <th>De</th>
+          <th>Até</th>
+          <th class="numero">Meta da semana</th>
+          <th class="numero">Meta acumulada</th>
+          <th class="numero">Aconteceu</th>
+          <th class="numero">Acumulado real</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in semanas %}
+        <tr class="semana {{ s.estado }}">
+          <td>
+            <b>{% if s.rotulo %}{{ s.rotulo }}{% else %}Semana {{ s.n }}{% endif %}</b>
+            {% if s.estado == "andando" %}<span class="agora">é esta</span>{% endif %}
+          </td>
+          <td>{{ s.de|date:"d/m" }}</td>
+          <td>{{ s.ate|date:"d/m" }}</td>
+          <td class="numero">{{ s.alvo }}</td>
+          <td class="numero acumulada">{{ s.acumulado }}</td>
+          <td class="numero">
+            {% if s.real is None %}
+            <span class="nao-sei">não sei</span>
+            {% else %}
+            {{ s.real }}
+            {% if s.cumpriu is True %}<span class="selo-verde">na meta</span>
+            {% elif s.cumpriu is False %}<span class="selo-vermelho">abaixo</span>{% endif %}
+            {% endif %}
+          </td>
+          <td class="numero">
+            {% if s.acumulado_real is None %}
+            <span class="nao-sei">não sei</span>
+            {% else %}{{ s.acumulado_real }}{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="recado-fraco espaco-20">
+    A soma das metas semanais é exatamente a meta grande do ciclo. Não é
+    coincidência nem cuidado meu: o painel se recusa a aceitar o cartão se as
+    duas contas discordarem, então elas nunca vão discordar em silêncio.
+  </p>
+
+  <p class="aviso espaco-28">
+    <b>A semana de recuperação existe para o caso de a meta não cair no prazo.</b>
+    Ela não tem meta própria: o que ela carrega é o que faltar quando a semana
+    12 fechar. Se nada faltar, ela é uma semana livre.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

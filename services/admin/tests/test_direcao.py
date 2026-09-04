@@ -4,8 +4,11 @@ O que estes guardas protegem:
 
 1. **As duas medidas são medidas pela data certa**, no fuso certo, nas janelas
    certas (7 dias por semana, 4 semanas para trás; 28 dias para as liberações).
-2. **A meta da semana deriva da linha reta do ciclo** quando o mantenedor não
-   fixou uma, e a fixada vence a derivada.
+2. **A meta da semana deriva da régua do ciclo** quando o mantenedor não fixou
+   uma, e a fixada vence a derivada. Desde 04/09/2026 essa régua é a CURVA de
+   `semanas` do cartão quando ela existe, e a linha reta quando não existe (os
+   testes de unidade daqui usam um `META` sem curva, e por isso continuam
+   medindo a linha reta: é o caminho de quem não declara semanas).
 3. **"Não medi" se declara**: lista que não chegou ⇒ `nao-consigo-medir`.
 4. **O compromisso é registro, e o veredito é calculado**: com resposta é
    cumprido; vencido sem resposta é não cumprido; o resto está em aberto. O
@@ -23,6 +26,7 @@ import pytest
 import respx
 from django.test import Client
 from django.urls import reverse
+from django.utils import timezone
 
 from apps.core import direcao, placar
 
@@ -295,6 +299,18 @@ def test_a_tela_mostra_as_duas_medidas_e_os_compromissos():
     )
     html = _dentro().get(reverse("placar")).content.decode()
     assert "A direção da semana" in html
-    assert "nesta semana" in html and "meta da semana: 34" in html
+    assert "nesta semana" in html
+    # A meta da semana é PERGUNTADA à régua, e não cravada aqui. Até 04/09/2026
+    # ela era o mesmo 34 toda semana, porque a meta se repartia em linha reta;
+    # com a curva do ciclo ela muda de semana para semana, e um número cravado
+    # neste teste ficaria vermelho sozinho na virada de uma segunda-feira.
+    # Este teste mede a TELA (o bloco aparece, com o número que a régua deu);
+    # quem mede se a régua está certa é `tests/test_ciclo.py`.
+    meta_do_ciclo, _recusas = placar.ler_cartao(placar.CARTAO_DA_META)
+    hoje = timezone.localdate()
+    alvo_da_semana = placar.esperado_em(meta_do_ciclo, hoje) - placar.esperado_em(
+        meta_do_ciclo, hoje - dt.timedelta(days=7)
+    )
+    assert f"meta da semana: {alvo_da_semana}" in html
     assert "100%" in html and "na meta" in html
     assert "Os compromissos da semana" in html
