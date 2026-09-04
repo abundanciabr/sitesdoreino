@@ -1,3 +1,5 @@
+publico-para-ia: true
+
 <!-- ============================================================================
      ESTE ARQUIVO É O TEXTO DO MANTENEDOR, SEM EDIÇÃO.
 

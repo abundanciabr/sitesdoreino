@@ -1,0 +1,16 @@
+{
+  "arquivo": "123-fila-do-primeiro-dolar-degrau-2-5-a-pausa-automatica-por-sil",
+  "id": "TAR-123",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.5: a pausa automatica por silencio, o interruptor do aluno e a chamada aberta",
+  "toca": [
+    "encomendas"
+  ],
+  "depende_de": [
+    "TAR-122"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado: tres silencios seguidos pausam (parametro), Aceitar ou Passar zera a contagem, voltar mantem a posicao (J4); encomenda com 24h sem aceite vira aberta e o primeiro elegivel que aceitar leva, com dois aceites simultaneos resolvidos por trava (cenarios 3 e 4 do anexo B); passar exige um dos quatro motivos; dois nao-me-sinto-pronto na mesma encomenda mandam para reclassificar.",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei: emendas §3, invariantes §5, parametros §6, escada §7), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o produto: secoes 5 a 9 e anexos), docs/decisoes/CONTRATO-encomendas-v1-rascunho.md, constituicoes/AGENTS.encomendas.md, services/encomendas/config/settings.py (os comentarios sao lei local) e armadilhas/INDICE.md (Ctrl+F pela tecnologia). A secao 3 do plano (o que fica FORA) e literal. A escola e 18+. Nunca duas sessoes no motor de oferta ao mesmo tempo. Registro do livro CURTO (< 800 bytes, armadilhas/304 e TAR-119) e medido com node painel/gerar_manifesto.js DEPOIS de git merge origin/main. Prove cada guarda por MUTACAO depois do verde. TAREFA: secoes 6.3, 6.4, 6.11 e 7.2 do plano (itens 2.7 e 2.8 do backlog dele).",
+  "origem": "lei docs/decisoes/DECISAO-fila-do-primeiro-dolar.md §7 (escada da Fase 2), aprovada pelo mantenedor em 03/09/2026 (Fase 2 em paralelo com o piloto de papel); criadas ao pousar a genese (PR #953)",
+  "criada_em": "2026-09-04"
+}

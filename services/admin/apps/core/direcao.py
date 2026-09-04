@@ -60,6 +60,7 @@ _CAMPO = {
         "responde_a",
         "vence_em_dias",
         "precisa_do_dono",
+        "foto",
     )
 }
 
@@ -109,6 +110,7 @@ def ler_registros(pasta: Path | None = None) -> list[dict] | None:
                 "responde_a": _campo(texto, "responde_a"),
                 "vence_em_dias": _campo(texto, "vence_em_dias"),
                 "precisa_do_dono": _campo(texto, "precisa_do_dono") is True,
+                "foto": _campo(texto, "foto"),
             }
         )
     return registros

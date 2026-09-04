@@ -1,0 +1,16 @@
+{
+  "arquivo": "124-fila-do-primeiro-dolar-degrau-2-6-o-simulador-de-cem-alunos-",
+  "id": "TAR-124",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.6: o simulador de cem alunos e trinta encomendas prova a justica da fila",
+  "toca": [
+    "encomendas"
+  ],
+  "depende_de": [
+    "TAR-123"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado: teste de propriedade (semente fixa) com 100 perfis e 30 encomendas por dias simulados; J1 a J10 valem em todo instante; o placar (ofertas, passes, expiracoes, abertas) sai em texto para conferir contra o piloto de papel. E o portao da Fase 2 (plano §11).",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei: emendas §3, invariantes §5, parametros §6, escada §7), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o produto: secoes 5 a 9 e anexos), docs/decisoes/CONTRATO-encomendas-v1-rascunho.md, constituicoes/AGENTS.encomendas.md, services/encomendas/config/settings.py (os comentarios sao lei local) e armadilhas/INDICE.md (Ctrl+F pela tecnologia). A secao 3 do plano (o que fica FORA) e literal. A escola e 18+. Nunca duas sessoes no motor de oferta ao mesmo tempo. Registro do livro CURTO (< 800 bytes, armadilhas/304 e TAR-119) e medido com node painel/gerar_manifesto.js DEPOIS de git merge origin/main. Prove cada guarda por MUTACAO depois do verde. TAREFA: item 2.9 do backlog do plano.",
+  "origem": "lei docs/decisoes/DECISAO-fila-do-primeiro-dolar.md §7 (escada da Fase 2), aprovada pelo mantenedor em 03/09/2026 (Fase 2 em paralelo com o piloto de papel); criadas ao pousar a genese (PR #953)",
+  "criada_em": "2026-09-04"
+}

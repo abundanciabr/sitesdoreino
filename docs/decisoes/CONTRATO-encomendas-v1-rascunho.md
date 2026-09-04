@@ -1,3 +1,5 @@
+publico-para-ia: true
+
 # ANEXO — o contrato v1 da célula `encomendas`, em papel
 
 > **O que é:** o contrato HTTP v1 que o plano mestre manda congelar na Fase 0,
