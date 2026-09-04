@@ -99,6 +99,13 @@ CABECALHO = """<!-- GERADO por `python ci/indice_de_armadilhas.py`. NÃO EDITE �
 
 # ÍNDICE DAS ARMADILHAS — uma linha por entrada
 
+> **Antes de tudo, o Padrão de Trabalho:** a PRIMEIRA seção do `CLAUDE.md` da
+> raiz é a régua de toda tarefa desta casa — resolver o problema real por trás
+> do pedido, discordar antes e executar depois, decidir em vez de servir
+> cardápio, a Definição de "Pronto" da regra 6 e as frases proibidas da 10. Ela
+> já chegou no seu contexto junto com o `CLAUDE.md`; este lembrete existe porque
+> chegar no contexto e ser USADA são coisas diferentes.
+
 > **Antes de codar, leia os 8 padrões:** `docs/decisoes/RETROSPECTIVA-FASE-D.md`.
 > Este índice cura o **caso**; lá estão as **categorias** que os atravessam
 > (falso-verde · garantia sem mecanismo · prova de fora · fail-closed na borda ·

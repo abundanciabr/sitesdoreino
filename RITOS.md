@@ -27,7 +27,8 @@ cd ../wt-<celula>-<tarefa>/services/<celula>    # ⟵ a sessão do agente ABRE A
 
 **Declaração obrigatória** (primeira linha da primeira resposta do agente):
 
-> "Li `CONSTITUICAO.md` e `constituicoes/AGENTS.<celula>.md`. Worktree:
+> "Li o **Padrão de Trabalho** (1ª seção do `CLAUDE.md`), `CONSTITUICAO.md` e
+> `constituicoes/AGENTS.<celula>.md`. Worktree:
 > `wt-<celula>-<tarefa>`. Branch: `agent/<celula>/<tarefa>`. `git status`: limpo.
 > Baseline: `make ci` verde. Tarefa: [uma frase]."
 
@@ -52,7 +53,7 @@ para o próximo agente: commite ou descarte explicitamente.
 
 ---
 
-**Quem faz valer:** `ci/muralha_pasta_compartilhada.py` (recusa edição e troca de ramo no clone principal, por hook) · `ci/sessao.py` (cria o worktree) · `ci/tests/test_muralha_pasta_compartilhada.py`.
+**Quem faz valer:** `ci/muralha_pasta_compartilhada.py` (recusa edição e troca de ramo no clone principal, por hook) · `ci/sessao.py` (cria o worktree) · `ci/padrao_de_trabalho.py` (confere que a declaração de abertura cita o Padrão) · `ci/tests/test_muralha_pasta_compartilhada.py`.
 
 ## §2 — Catraca Verde + Anti-Thrashing
 
