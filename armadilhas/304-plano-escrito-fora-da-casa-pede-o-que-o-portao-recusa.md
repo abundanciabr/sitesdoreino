@@ -10,6 +10,8 @@ guarda:
   motivo: o plano chega de fora, em prosa, e nenhum portão lê prosa; o que existe é a tradução escrita na lei da célula (DECISAO §3) antes do primeiro PR, e os portões que recusam cada pedido já existem separadamente (contract_freeze para o contrato cedo, a catraca verde para o teste vermelho, o varredor do mapa para o consumo prometido)
 sinal:
   - `congelado na Fase 0`
+  - `constituição de célula fora do lugar`
+  - `toca` apontando para caminho que não existe
   - `como esqueleto (falhando)`
   - `testes esqueleto (falhando)`
 ---
@@ -34,6 +36,23 @@ os portões desta casa recusam ou que travam a célula no PR seguinte:
   plantão, público, interno), quando aqui tela não é contrato: contrato é a
   porta de máquina, e cada rota a mais é uma rota a mais a defender pela borda
   (`armadilhas/103`, `186`).
+
+**E os dois que mordem DEPOIS de você já ter traduzido os três de cima** (custaram
+uma rodada de CI em 03/09/2026, run 33825263805, com as muralhas locais verdes):
+
+- **a constituição da célula não pode existir antes da célula**:
+  `ci/tests/test_constituicoes.py::test_toda_celula_tem_constituicao_e_nenhuma_e_orfa`
+  reprova `constituicoes/AGENTS.<celula>.md` sem `services/<celula>/`, com a
+  mensagem `constituição de célula fora do lugar` e a instrução de escrevê-la
+  *a partir do código*. O plano pede "constituição" na Fase 0; aqui ela é
+  rascunho em `docs/decisoes/` até a gênese;
+- **as tarefas da escada que tocam a célula não podem nascer antes dela**:
+  `ci/tests/test_conferencia_do_toca.py` reprova `toca: <celula>` para pasta
+  inexistente, e a dispensa `cria` vale só para a gênese (dizer que seis
+  tarefas "inauguram" a célula seria mentira no registro). Só as tarefas que
+  NÃO tocam a célula (contrato, infra, docs) podem nascer antes; as outras, a
+  gênese cria ao pousar. E esse guarda roda no `testador`, não nas `muralhas`:
+  `ci/ci.py --apenas muralhas` verde localmente não o cobre.
 
 E, por não conhecer as decisões anteriores do mantenedor, o plano assume o que
 ele já decidiu ao contrário: **menores de idade** (a escola é 18+ desde
@@ -66,12 +85,17 @@ lado.** O que funcionou em 03/09/2026:
    vermelhos → invariantes DECLARADOS na lei com o caminho do guarda, que
    entram no `INVARIANTES.md` no mesmo PR do guarda (precedente TAR-042);
    eventos → entram já (o manifesto não os amarra); rotas de tela → Parte B,
-   fora do contrato; consumo previsto → `consome: []` na gênese.
+   fora do contrato; consumo previsto → `consome: []` na gênese; constituição
+   → rascunho em `docs/decisoes/`, promovido na gênese.
 4. **As divergências com decisões anteriores dele viram pergunta estruturada**,
    com a recomendação sendo a decisão que ele já tomou. Não se "conserta" o
    plano por conta própria nem se ignora o que ele já disse.
 5. **O backlog do plano vira tarefas na fila** (`ci/fila.py criar` com
-   `--depende-de`), não uma tabela que envelhece.
+   `--depende-de`), não uma tabela que envelhece — mas só as que não tocam a
+   célula nascem antes da gênese; as outras, o despacho da gênese cria ao
+   pousar. Antes de abrir o PR, rode `python ci/ci.py --apenas testador` (ou
+   ao menos `pytest ci/tests/test_conferencia_do_toca.py ci/tests/test_constituicoes.py`):
+   as muralhas não cobrem esses dois.
 
 **A leitura que evita a queda:** antes de abrir PR, leia o plano contra
 `origin/main` **e contra o livro** (`painel/registros/`), procurando três

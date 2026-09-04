@@ -1,4 +1,11 @@
-# Constituição da Célula: encomendas (a Fila do Primeiro Dólar)
+# Constituição da Célula: encomendas (a Fila do Primeiro Dólar) — RASCUNHO
+
+> **Mora em `docs/decisoes/` de propósito, e não em `constituicoes/`.**
+> Constituição em `constituicoes/` sem a célula em `services/` é órfã para
+> `ci/tests/test_constituicoes.py` (medido em 03/09/2026, `armadilhas/304`).
+> Este arquivo vira `constituicoes/AGENTS.encomendas.md` no PR da gênese
+> (TAR-109), **revisto a partir do código**, como o teste manda. Até lá, ele é
+> a constituição em papel que o plano mestre pede na Fase 0.
 > **Jurisdição:** governa apenas `services/encomendas/`. Herda `CONSTITUICAO.md`.
 > **STATUS:** APROVADA EM PAPEL (03/09/2026); **a célula ainda não existe em
 > `services/`**, nasce na gênese (TAR-109) depois de o mantenedor aprovar a
@@ -129,6 +136,6 @@ Registrado para ninguém achar que foi esquecimento (lei §8):
 
 ## Estado da construção
 O estado de cada degrau se lê **no balcão** (`python ci/fila.py listar
---ao-vivo`), nunca aqui. A escada inteira, com as tarefas TAR-107 a TAR-118,
-está na lei §7. **Até o degrau 2.10 (compose + Traefik), o `deploy-celula`
+--ao-vivo`), nunca aqui. A escada inteira (TAR-107 a TAR-109 na fila;
+os degraus seguintes nascem quando a gênese pousar) está na lei §7. **Até o degrau 2.10 (compose + Traefik), o `deploy-celula`
 desta célula fica vermelho — isso é esperado** (`armadilhas/088`).

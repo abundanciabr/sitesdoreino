@@ -3,8 +3,8 @@
 > **O que é:** o contrato HTTP v1 que o plano mestre manda congelar na Fase 0,
 > escrito **em papel** porque nesta casa o congelado em `contracts/` só pode
 > nascer do export da porta de máquina (`armadilhas/228` e `243`). Este anexo
-> é a fonte contra a qual o degrau 2.7 (a porta, TAR-115) se escreve e o
-> degrau 2.8 (o congelamento, TAR-116) se confere. Quando
+> é a fonte contra a qual o degrau 2.7 (a porta) se escreve e o
+> degrau 2.8 (o congelamento) se confere. Quando
 > `contracts/encomendas.openapi.yaml` existir, **ele vence** e este arquivo
 > vira história.
 >
