@@ -532,12 +532,46 @@ provisionamento de banco novo na VPS, e o contrato `mensagem.devida.v1` sumiu
 | 5 | Publica `notificacao.devida.v1` — **a primeira sequência de verdade no ar** | `mensageria` | **boas-vindas chegando no sininho do aluno** |
 | 6 | `gamificacao` ganha voz (os 4 assuntos já congelados) | `gamificacao` | comemoração automática ao subir de nível |
 | **6b** | **Rito de Contrato:** `aluno.inatividade-detectada.v1` — a ausência vira evento (§5) | `contracts/` | não é código; destrava a 4ª sequência |
-| 7 | Tela em `/admin/escola/jornadas/`: quais existem, quem está em cada uma, o que foi enviado e o que foi barrado — **e é aqui que ele edita o texto** (§8.3) | `admin` | o mantenedor troca uma frase sozinho |
+| **6c** | **A porta de máquina da `mensageria`:** `config/api.py` (ler jornada, versão, passo, texto, inscrição e entrega; publicar versão nova ao editar um texto) + `export_openapi` + os testes de 401 | `mensageria` | a tela do degrau 7 passa a ter de onde ler |
+| **6d** | **Rito de Contrato:** nasce `contracts/mensageria.openapi.yaml`, e a linha do manifesto sai de `not-applicable` para `required` | `contracts/` | não é código (RITOS §3); a ordem 6c ANTES de 6d é obrigatória |
+| 7 | Tela em `/admin/escola/jornadas/`: quais existem, quem está em cada uma, o que foi enviado e o que foi barrado — **e é aqui que ele edita o texto** (§8.3). **Depende de 6c e 6d** | `admin` | o mantenedor troca uma frase sozinho |
 | **8** | **`mensageria` deixa de ser stub:** provedor de e-mail real, `consome: [identidade]`, renderização por idioma | `mensageria` | **o primeiro e-mail de verdade sai** |
 | 9 | Devolvidos e reclamações (*bounce/complaint*): endereço que devolve é marcado e não se tenta de novo | `mensageria` | a reputação do domínio sobrevive |
 | **9b** | A régua de CAPACIDADE (§6.3): teto por minuto/hora no provedor, backoff com jitter, disjuntor | `mensageria` | volume grande não degrada a entrega de todos |
 | 10 | WhatsApp oficial, se o mantenedor quiser | `mensageria` | segundo canal |
 | **11** | A tabela `Efeito` ganha tela: quem recebeu voltou? abriu aula? (§8.8, sem grupo de controle e sem rastreio) | `admin` | **ele passa a saber se as mensagens ajudam** |
+
+**Os degraus 6c e 6d entraram em 04/09/2026, e entraram porque faltavam.** A
+TAR-078 foi despachada para construir o degrau 7 e parou antes da primeira linha
+de código: a tela mora na `admin`, os dados moram no `mensageria_db`, e entre as
+duas células não existe caminho nenhum. Medido contra a `origin/main`
+(`b4c09dc7`), quatro conferências de trinta segundos:
+
+1. `services/mensageria/config/urls.py` tem uma rota só, `/healthz`. Não existe
+   `config/api.py`.
+2. Não existe `contracts/mensageria.openapi.yaml`, e a linha da célula em
+   `ci/manifesto-de-contratos.json` diz, com todas as letras, *"célula ainda em
+   esqueleto ... contrato entra pelo RITOS §3 quando a célula ganhar
+   superfície"*.
+3. Em `celulas.yml`, `admin.consome` não tem `mensageria`, e `ci/mapa_de_celulas.py`
+   reprova tanto a declaração órfã quanto a dependência escondida.
+4. O caminho de baixo também está fechado, e por Postgres, não por regra: a
+   `admin` fala com o `admin_db` pelo papel `admin_user`, que não enxerga
+   nenhum outro banco (Lei 3, pecado 2).
+
+Nenhuma dessas quatro coisas é trabalho do agente da tela: a porta é PR da
+`mensageria`, o contrato é Rito com o mantenedor presente, e as variáveis de
+ambiente do par (`MENSAGERIA_API_URL` e o Bearer dos dois lados) são da Lei 5.
+**A lição vale para qualquer escada de PRs deste projeto: dois degraus vizinhos
+em células diferentes precisam de um degrau de PORTA explícito entre eles**, ou
+o segundo agente descobre o buraco com a bancada já montada
+(`armadilhas/311`).
+
+**A ordem 6c antes de 6d não é gosto:** contrato em disco obriga a linha do
+manifesto a virar `required`, e `required` sem `export_openapi` deixa o
+`make ci` da célula em ERROR no PR seguinte, longe de quem causou. Foi o que
+aconteceu com a `gamificacao` em 30/08/2026, e está escrito em
+`armadilhas/228`.
 
 **O degrau 8 tem trabalho que só o mantenedor faz** (Lei 5 — agente não tem SSH,
 env nunca viaja por pipeline): conta no provedor, domínio remetente, e os
