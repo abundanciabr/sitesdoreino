@@ -169,6 +169,7 @@ def comparar(
                 "antigo": antigo,
                 "atual": atual,
                 "delta": delta,
+                "variacao": abs(delta),
                 "sentido": sentido,
                 "foto_velha": idade > frescor,
                 "acao": cartao.get("acao") if sentido == "piorou" else None,
