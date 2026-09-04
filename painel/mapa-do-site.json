@@ -1501,6 +1501,17 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/ciclo/",
+      "endereco": "/admin/placar/ciclo/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "O calendário do ciclo",
+      "descricao": "As 12 semanas do ciclo, mais a de preparação e a de recuperação, com a meta de vendas de cada uma, a meta acumulada e o que aconteceu de verdade em cada semana já fechada. É a régua que o placar usa para dizer se você está ganhando ou perdendo.",
+      "observacao": "As metas semanais moram no cartão da meta (painel/cartoes/compras-no-ciclo.json), e a soma delas é conferida contra a meta grande: as duas nunca podem discordar."
+    },
+    {
+      "celula": "admin",
       "rota": "reuniao/",
       "endereco": "/admin/reuniao/",
       "alcance": "publico",

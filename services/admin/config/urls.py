@@ -50,6 +50,7 @@ from apps.core.mapa_ia import mapa_ia_arquivo, mapa_ia_indice
 from apps.core.planos_para_ia import plano_publico, planos_indice
 from apps.core.painel import painel, painel_arquivo
 from apps.core.perpetuo import perpetuo
+from apps.core.ciclo import ciclo
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
 from apps.core.robos import robos
@@ -360,6 +361,16 @@ urlpatterns = [
     # Fora do prefixo `painel/` pelo mesmo motivo do perpétuo: a rota genérica
     # `painel/<qualquer coisa>` engoliria esta.
     path("placar/", placar, name="placar"),
+    # O CALENDÁRIO DO CICLO (`apps/core/ciclo.py`, 04/09/2026) — as 12
+    # semanas do ano de 12 semanas, mais a de preparação e a de
+    # recuperação, com a meta de cada uma e o que aconteceu nela.
+    #
+    # DENTRO de `placar/`, e não ao lado: é a régua que o placar usa para
+    # dizer ganhando ou perdendo, e o menu do topo (`moldura.py`) casa a
+    # seção por PREFIXO — assim o item "Placar" continua aceso aqui, que
+    # é onde o mantenedor entende que está. Um item novo no menu para uma
+    # leitura da mesma meta seria o menu crescendo sem realidade nova.
+    path("placar/ciclo/", ciclo, name="ciclo"),
     path("reuniao/", reuniao, name="reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
