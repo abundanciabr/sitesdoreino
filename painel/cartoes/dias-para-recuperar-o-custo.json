@@ -1,0 +1,22 @@
+{
+  "nome": "dias-para-recuperar-o-custo",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Em quantos dias a compra paga o custo de trazer a pessoa?",
+  "definicao": "Dias entre virar aluna e a margem acumulada dela cobrir o custo de aquisição. Pode ter margem ótima e quebrar o caixa no caminho.",
+  "formula": "primeiro dia em que a margem acumulada da coorte iguala o custo de aquisição da coorte",
+  "fonte": null,
+  "sem_fonte_porque": "Sem dados até o site vender: a venda acontece fora do site e o checkout está congelado por decisão do mantenedor (22/08/2026). O cartão fica desenhado e acende no dia em que a ordem vier.",
+  "autoridade": "pagamentos",
+  "dono": "mantenedor",
+  "frequencia": "mensal",
+  "direcao": "descer",
+  "unidade": "dias",
+  "par": "compras-no-ciclo",
+  "acao": "Sem dados até o site vender.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'CAC Payback'."
+}
