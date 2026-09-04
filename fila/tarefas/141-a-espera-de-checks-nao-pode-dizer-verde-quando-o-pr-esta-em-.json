@@ -1,0 +1,14 @@
+{
+  "arquivo": "141-a-espera-de-checks-nao-pode-dizer-verde-quando-o-pr-esta-em-",
+  "id": "TAR-141",
+  "titulo": "A espera de checks nao pode dizer verde quando o PR esta em conflito",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "evidencia_exigida": "um teste em ci/tests/ que prove, por mutacao, que --checks recusa declarar verde num PR em conflito e nao segue para o pouso",
+  "despacho": "A espera de checks (`ci/esperar.py --checks <PR>`) declara VERDE um PR que está em\nCONFLITO com a base, e em seguida pede pouso. Medido em 04/09/2026 no PR #1020:\n\n    todos os 1 checks verdes · levou 16s\n    🛬 checks verdes: passo pelo portão e peço pouso do PR 1020…\n\nO portão (`ci/mergear.py`) recusou logo depois, e é ele que salvou a rodada:\n\n    --- FAIL conflitos ---\n    --- ERROR checks obrigatórios ---\n    Estes checks precisam existir em todo PR.\n\nA causa é a `armadilhas/198`: PR com conflito não tem merge ref, então nenhum\nworkflow de `pull_request` nasce, e o único check que existe é o de outro\ngatilho. A 198 prevê que a espera fique MUDA nesse caso; o que ela faz hoje é\npior, porque diz o contrário do que aconteceu e continua o rito.\n\nPor que isto importa mais que o incômodo: `--checks` é a espera OBRIGATÓRIA antes\ndo `--pousar` (`RITOS.md` §2 peça 6), e é a única medição que muitos despachos\nolham. Uma medição que diz \"verde\" onde não há verde é exatamente a classe de\nfalha que esta casa mais persegue: falso-verde numa peça do caminho crítico. Aqui\nela só não custou nada porque o portão é independente e mede outra coisa.\n\nO CONSERTO, e ele tem de ser fail-closed: antes de declarar verde, `--checks`\nprecisa perguntar as duas coisas que o portão pergunta — o PR conflita com a\nbase? os checks obrigatórios existem? Se a resposta for \"conflita\" ou \"não\nexistem\", o desfecho é PARAR e dizer o que fazer (`git fetch origin && git merge\norigin/main`), nunca \"verde\". Ausência de evidência não é evidência de sucesso\n(INV-CI01).\n\nO guarda que fecha a tarefa: um teste em `ci/tests/` que monte a resposta de um\nPR em conflito (com um único check verde) e prove que `--checks` NÃO devolve\nverde e NÃO segue para o pouso. Provar por mutação: com o guarda removido, o\nteste fica vermelho.\n\nLer antes: `armadilhas/198`, `armadilhas/161`, e `ci/mergear.py --conferir`, que\njá faz as duas perguntas na ordem certa e é de onde a lógica se copia.",
+  "origem": "medido no PR #1020 em 04/09/2026, na sessao do degrau 7.6 do painel de gestao",
+  "criada_em": "2026-09-04"
+}
