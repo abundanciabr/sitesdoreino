@@ -64,6 +64,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -74,6 +75,11 @@ from _nucleo import (  # noqa: E402
     configurar_saida,
     raiz_do_repo,
 )
+
+# Quem sabe distinguir espelho de bancada é a muralha da pasta compartilhada
+# (`.git` DIRETÓRIO = clone principal; `.git` ARQUIVO = worktree). Importar em
+# vez de reescrever: duas leituras do mesmo fato divergiriam no primeiro dia.
+from muralha_pasta_compartilhada import raiz_do_checkout  # noqa: E402
 
 PASTA = "armadilhas"
 NOME_DO_INDICE = "INDICE.md"
@@ -412,15 +418,21 @@ def validar_sinais(sinais: list, nome: str) -> None:
 
 
 class Entrada:
-    def __init__(self, caminho: Path) -> None:
+    def __init__(
+        self, caminho: Path, linhas: list[str] | None = None, origem: str = "local"
+    ) -> None:
+        """`linhas` vem preenchido quando a entrada foi lida do git (a origem),
+        e não do disco — o resto do parse é o MESMO, de propósito."""
         self.caminho = caminho
         self.nome = caminho.name
-        try:
-            linhas = caminho.read_text(encoding="utf-8").splitlines()
-        except OSError as erro:  # pragma: no cover - I/O do sistema
-            raise ErroDeInstrumentacao(
-                f"não foi possível ler a entrada {caminho.name}", str(erro)
-            ) from erro
+        self.origem = origem
+        if linhas is None:
+            try:
+                linhas = caminho.read_text(encoding="utf-8").splitlines()
+            except OSError as erro:  # pragma: no cover - I/O do sistema
+                raise ErroDeInstrumentacao(
+                    f"não foi possível ler a entrada {caminho.name}", str(erro)
+                ) from erro
 
         titulo = ""
         for linha in linhas:
@@ -630,18 +642,137 @@ def coletar(raiz: Path) -> list[Entrada]:
     return entradas
 
 
-def conferir_guardas_vivas(entradas: list[Entrada], raiz: Path) -> None:
+# ---------------------------------------------------------------------------
+# A ORIGEM COMO FONTE (TAR-050, 04/09/2026)
+# ---------------------------------------------------------------------------
+# Os hooks rodam de `${CLAUDE_PROJECT_DIR}`, o CLONE PRINCIPAL, que a
+# `armadilhas/135` fez de espelho: ninguém trabalha lá, e ninguém o atualiza
+# a cada merge. `SINAIS.json` é gerado no `SessionStart` a partir dos
+# `armadilhas/*.md` DAQUELA pasta — então o sino de toda sessão desta casa
+# enxergava as assinaturas do dia em que o espelho parou. Medido em 30/08/2026:
+# 7 assinaturas em vez de 45, com a versão PRÉ-conserto da 185 tocando em cima
+# de sucesso. Medido de novo em 04/09/2026: 195 commits atrás, 151 assinaturas
+# em vez de 165, 10 entradas a menos. Consertos que já entraram na `main` não
+# valiam em sessão nenhuma.
+#
+# A cura: quando a árvore a materializar é o PRINCIPAL, a fonte das entradas
+# passa a ser a UNIÃO do que está em `origin/main` (lido do CACHE do git, sem
+# rede: o que o último `git fetch` de alguém deixou) com o que está na pasta,
+# e a pasta vence quando as duas têm o mesmo número (é o caso de quem está
+# escrevendo uma entrada nova, que ainda não existe na origem). Numa bancada
+# (worktree) nada muda: ela nasceu de `origin/main` e a entrada nova está nela.
+#
+# O que isto NÃO cura, dito com todas as letras: o CÓDIGO dos hooks (este
+# gerador, o sino, as muralhas) também é o do espelho. Este conserto só passa a
+# valer depois do PRÓXIMO refresh do espelho — e a partir dele os DADOS (as
+# assinaturas, que mudam todo dia) ficam frescos para sempre, enquanto o código
+# (que muda raramente) segue com a idade do espelho. Atualizar o espelho não é
+# tarefa de robô (`armadilhas/135`, `/234`): a pasta é compartilhada.
+REF_DA_VERDADE = "origin/main"
+
+
+def _git(raiz: Path, *argumentos: str) -> subprocess.CompletedProcess | None:
+    """Um git que só LÊ o cache local. None = não deu para rodar (sem git, sem
+    repositório) — e None nunca vira 'lista vazia'."""
+    try:
+        return subprocess.run(
+            ["git", "-C", str(raiz), *argumentos],
+            capture_output=True, timeout=60, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def caminhos_da_origem(raiz: Path, ref: str = REF_DA_VERDADE) -> set[str] | None:
+    """Todos os caminhos versionados em `ref`, para conferir `dono` de entrada
+    que veio da origem contra a árvore DELA (o arquivo pode não existir aqui)."""
+    proc = _git(raiz, "ls-tree", "-r", "--name-only", ref)
+    if proc is None or proc.returncode != 0:
+        return None
+    return set(proc.stdout.decode("utf-8", errors="replace").split("\n")) - {""}
+
+
+def coletar_da_origem(raiz: Path, ref: str = REF_DA_VERDADE) -> list[Entrada] | None:
+    """As entradas como estão em `ref`, lidas do cache do git, sem rede.
+
+    Devolve None quando não dá para medir (sem git, ref ausente num clone raso):
+    "não consegui medir" nunca vira "a origem está vazia" ([INV-CI01]).
+    Um `git cat-file --batch` só, para os ~300 arquivos: um processo, não 300.
+    """
+    listagem = _git(raiz, "ls-tree", "--name-only", ref, "--", f"{PASTA}/")
+    if listagem is None or listagem.returncode != 0:
+        return None
+    nomes = sorted(
+        Path(linha).name
+        for linha in listagem.stdout.decode("utf-8", errors="replace").split("\n")
+        if linha.endswith(".md") and Path(linha).name != NOME_DO_INDICE
+    )
+    if not nomes:
+        return None
+    pedido = "".join(f"{ref}:{PASTA}/{nome}\n" for nome in nomes).encode("utf-8")
+    try:
+        lote = subprocess.run(
+            ["git", "-C", str(raiz), "cat-file", "--batch"],
+            input=pedido, capture_output=True, timeout=120, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if lote.returncode != 0:
+        return None
+    entradas: list[Entrada] = []
+    dados = lote.stdout
+    pos = 0
+    for nome in nomes:
+        fim_do_cabecalho = dados.find(b"\n", pos)
+        if fim_do_cabecalho < 0:
+            return None
+        cabecalho = dados[pos:fim_do_cabecalho].decode("utf-8", errors="replace").split()
+        pos = fim_do_cabecalho + 1
+        if len(cabecalho) != 3 or cabecalho[1] != "blob":
+            return None  # "missing" ou forma inesperada: não medi
+        tamanho = int(cabecalho[2])
+        corpo = dados[pos:pos + tamanho].decode("utf-8", errors="replace")
+        pos += tamanho + 1  # o `\n` que o --batch põe depois do conteúdo
+        entradas.append(Entrada(raiz / PASTA / nome, corpo.splitlines(), origem=ref))
+    return entradas
+
+
+def unir(locais: list[Entrada], da_origem: list[Entrada]) -> tuple[list[Entrada], list[Entrada]]:
+    """A união pelo NÚMERO, com a pasta local vencendo. Devolve (todas, só-na-origem)."""
+    por_numero: dict[int | str, Entrada] = {}
+    for e in da_origem:
+        por_numero[e.numero_canonico if e.numero_canonico is not None else e.nome] = e
+    numeros_locais = set()
+    for e in locais:
+        chave = e.numero_canonico if e.numero_canonico is not None else e.nome
+        por_numero[chave] = e
+        numeros_locais.add(chave)
+    todas = sorted(por_numero.values(), key=lambda e: e.nome)
+    so_na_origem = [e for e in todas if e.origem != "local"]
+    return todas, so_na_origem
+
+
+def conferir_guardas_vivas(
+    entradas: list[Entrada], raiz: Path, na_origem: set[str] | None = None
+) -> None:
     """Guarda que aponta arquivo inexistente é pior que guarda nenhuma.
 
     Ela faz o índice dizer 'esta lição é imposta por X' quando X não existe —
     e ler nunca dá erro, então ninguém percebe (armadilhas/148). Referência
     morta é ERROR, não FAIL: regenerar não conserta, alguém precisa decidir.
+
+    Entrada que veio da ORIGEM é conferida contra a árvore da origem
+    (`na_origem`): o dono dela pode ainda não existir nesta pasta.
     """
     for entrada in entradas:
         dono = entrada.guarda.get("dono")
         if not dono:
             continue
-        if not (raiz / str(dono)).exists():
+        existe_aqui = (raiz / str(dono)).exists()
+        existe_na_origem = (
+            entrada.origem != "local" and na_origem is not None and str(dono) in na_origem
+        )
+        if not (existe_aqui or existe_na_origem):
             raise ErroDeInstrumentacao(
                 f"{entrada.nome}: a guarda aponta '{dono}', que não existe",
                 "Ou o caminho está errado, ou o mecanismo foi removido sem\n"
@@ -650,8 +781,26 @@ def conferir_guardas_vivas(entradas: list[Entrada], raiz: Path) -> None:
             )
 
 
-def montar(entradas: list[Entrada]) -> str:
-    linhas = [CABECALHO]
+def nota_do_que_falta_aqui(so_na_origem: list[Entrada]) -> str:
+    """Quando o índice foi gerado da união com a origem num espelho atrasado, ele
+    lista entradas cujo ARQUIVO não existe nesta pasta. Dizer isso no topo evita
+    o `cat` que falha sem explicação: a leitura certa é do `origin/main`."""
+    if not so_na_origem:
+        return ""
+    nomes = ", ".join(f"`{e.nome}`" for e in so_na_origem[:12])
+    if len(so_na_origem) > 12:
+        nomes += f" e mais {len(so_na_origem) - 12}"
+    return (
+        f"> **⚠️ {len(so_na_origem)} entrada(s) deste índice ainda NÃO existem nesta "
+        f"pasta** — este checkout está atrás de `{REF_DA_VERDADE}`, e o índice foi "
+        "gerado da união com a origem para o sino não ficar surdo (TAR-050). "
+        f"Abra-as assim: `git show {REF_DA_VERDADE}:{PASTA}/<arquivo>`. "
+        f"São: {nomes}.\n\n"
+    )
+
+
+def montar(entradas: list[Entrada], so_na_origem: list[Entrada] | None = None) -> str:
+    linhas = [CABECALHO, nota_do_que_falta_aqui(so_na_origem or [])]
     for e in entradas:
         antigo = f"§{e.id_antigo}" if e.id_antigo else "—"
         linhas.append(
@@ -715,10 +864,26 @@ def montar_sinais(entradas: list[Entrada]) -> str:
     return json.dumps(corpo, ensure_ascii=False, indent=2) + "\n"
 
 
-def rodar(raiz: Path, conferir: bool) -> int:
+def rodar(raiz: Path, conferir: bool, com_a_origem: bool = False) -> int:
     entradas = coletar(raiz)
+    so_na_origem: list[Entrada] = []
+    if com_a_origem:
+        da_origem = coletar_da_origem(raiz)
+        if da_origem is None:
+            # Não medi a origem. Falo, e sigo só com a pasta — nunca finjo que
+            # a origem está vazia nem que está igual ([INV-CI01]).
+            print(
+                f"AVISO indice-de-armadilhas: não consegui ler `{REF_DA_VERDADE}` "
+                f"em {raiz} (sem git, sem a ref, ou clone raso). Gerado só da "
+                f"pasta local — pode estar atrasado (TAR-050).",
+                file=sys.stderr,
+            )
+        else:
+            entradas, so_na_origem = unir(entradas, da_origem)
+            conferir_numeracao(entradas)
+            conferir_guardas_vivas(entradas, raiz, caminhos_da_origem(raiz))
     artefatos = [
-        (raiz / PASTA / NOME_DO_INDICE, montar(entradas)),
+        (raiz / PASTA / NOME_DO_INDICE, montar(entradas, so_na_origem)),
         (raiz / PASTA / NOME_DAS_GUARDAS, montar_guardas(entradas)),
         (raiz / PASTA / NOME_DOS_SINAIS, montar_sinais(entradas)),
     ]
@@ -754,9 +919,10 @@ def rodar(raiz: Path, conferir: bool) -> int:
     if not escritos:
         print(f"PASS indice-de-armadilhas: já estava em dia ({len(entradas)} entradas)")
         return 0
+    de_fora = f", {len(so_na_origem)} só em {REF_DA_VERDADE}" if so_na_origem else ""
     print(
         f"PASS indice-de-armadilhas: {', '.join(escritos)} regenerado(s) "
-        f"({len(entradas)} entradas)"
+        f"({len(entradas)} entradas{de_fora})"
     )
     return 0
 
@@ -792,6 +958,13 @@ def raizes_a_materializar(tambem_aqui: bool) -> list[Path]:
     return raizes
 
 
+def e_o_principal(raiz: Path) -> bool:
+    """`.git` DIRETÓRIO = clone principal (o espelho, de onde os hooks rodam);
+    `.git` ARQUIVO = worktree. Fora de git: não é principal (não há origem)."""
+    achado = raiz_do_checkout(raiz)
+    return bool(achado and achado[1] and achado[0] == raiz.resolve())
+
+
 def main(argv: list[str] | None = None) -> int:
     # Console cp1252 do Windows não pode virar UnicodeEncodeError no meio de uma
     # mensagem de erro acentuada (armadilhas/003).
@@ -809,7 +982,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help=(
             "materializa também na árvore de onde o comando foi chamado "
-            "(o worktree do agente), além da árvore deste arquivo"
+            "(o worktree do agente), além da árvore deste arquivo; no CLONE "
+            "PRINCIPAL, gera da união com origin/main (TAR-050)"
+        ),
+    )
+    parser.add_argument(
+        "--com-a-origem",
+        action="store_true",
+        help=(
+            "gera da UNIÃO das entradas de origin/main (cache do git, sem rede) "
+            "com as da pasta, a pasta vencendo — para um checkout atrasado não "
+            "deixar o sino surdo. Com --tambem-aqui isto é automático no clone "
+            "principal"
         ),
     )
     args = parser.parse_args(argv)
@@ -824,8 +1008,9 @@ def main(argv: list[str] | None = None) -> int:
 
     pior = 0
     for raiz in raizes:
+        com_a_origem = args.com_a_origem or (args.tambem_aqui and e_o_principal(raiz))
         try:
-            codigo = rodar(raiz, conferir=args.conferir)
+            codigo = rodar(raiz, conferir=args.conferir, com_a_origem=com_a_origem)
         except ErroDeInstrumentacao as erro:
             print(f"ERROR indice-de-armadilhas: {erro}", file=sys.stderr)
             detalhe = getattr(erro, "detalhe", "")
