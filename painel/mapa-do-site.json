@@ -1463,6 +1463,17 @@
     },
     {
       "celula": "admin",
+      "rota": "reuniao/",
+      "endereco": "/admin/reuniao/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "A reunião de segunda-feira",
+      "descricao": "A pauta guiada em oito passos, lida do mesmo placar: as estrelas-guia, a meta e a direção, os compromissos da semana passada com o veredito, a restrição, e no fim os compromissos novos. Termina no pedido para o robô: um bloco de texto para colar numa sessão, que vira registro no livro.",
+      "observacao": "Esta tela não grava nada; o que vale é o que chegar ao livro. Degrau 3 do plano do painel de gestão."
+    },
+    {
+      "celula": "admin",
       "rota": "avisos/",
       "endereco": "/admin/avisos/",
       "alcance": "publico",

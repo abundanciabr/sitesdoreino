@@ -1,0 +1,112 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O modo reunião (/admin/reuniao/, degrau 3 do painel de gestão): a pauta de
+segunda-feira em oito passos, lida do MESMO placar, que termina no pedido
+para o robô (o bloco de texto com os compromissos e as decisões, para colar
+numa sessão). Esta tela não escreve nada. Regras em apps/core/reuniao.py.
+
+Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
+{% endcomment %}
+{% block titulo %}A reunião de segunda{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>A reunião de segunda-feira</h1>
+  <p class="subtitulo">Oito passos, uma hora no máximo, e no fim um ou dois compromissos. Nada aqui é gravado: o que vale é o que chegar ao livro.</p>
+
+  {% if not meta %}
+    <p class="aviso borda-vermelha"><b>O placar não montou</b> (falta o cartão da meta), e sem ele a pauta não tem o que ler.</p>
+    <ul class="notas">{% for recusa in recusas %}<li>{{ recusa }}</li>{% endfor %}</ul>
+  {% else %}
+
+  <h2 class="titulo-de-bloco espaco-20">1. As estrelas-guia</h2>
+  <p class="recado"><span class="rotulo">sem dados</span> Alunos com resultado profissional e margem mensal entram desenhados no degrau 4 do plano; hoje nenhuma das duas tem fonte. Passe adiante.</p>
+
+  <h2 class="titulo-de-bloco espaco-20">2. A meta e a direção: estamos ganhando?</h2>
+  {% if placar.veredito == "nao-consigo-contar" %}
+    <p class="aviso borda-amarela"><b>Não consigo contar agora.</b> A parte que guarda os alunos não respondeu. Abra o placar daqui a pouco.</p>
+  {% else %}
+    <p class="recado">
+      {% if barra %}<b>{{ barra.x }}</b> pessoa{{ barra.x|pluralize:"s" }} {% if barra.x == 1 %}virou aluna{% else %}viraram alunas{% endif %} em {{ barra.mes }}{% if barra.alvo is not None %} (meta do mês: {{ barra.alvo }}){% endif %}.{% endif %}
+      Meta grande: <b>{{ placar.x }}</b> de {{ placar.alvo }} até {{ placar.ate }};
+      {% if placar.veredito == "ganhando" %}<span class="rotulo">ganhando</span>{% elif placar.veredito == "perdendo" %}<span class="rotulo">perdendo</span> (hoje deveríamos estar em {{ placar.esperado_hoje }}){% elif placar.veredito == "cumprida" %}<span class="rotulo">cumprida</span>{% else %}{{ placar.veredito }}{% endif %}.
+    </p>
+    {% if direcao %}
+    <p class="recado">
+      Pedidos de entrada nesta semana: <b>{% if direcao.pedidos.veredito == "nao-consigo-medir" %}não medi{% else %}{{ direcao.pedidos.esta_semana }}{% if direcao.pedidos.meta is not None %} de {{ direcao.pedidos.meta }}{% endif %}{% endif %}</b>.
+      Liberações em 48 horas: <b>{% if direcao.liberacoes.veredito == "nao-consigo-medir" %}não medi{% elif direcao.liberacoes.veredito == "sem-liberacoes" %}nenhuma liberação em 28 dias{% elif direcao.liberacoes.por_cento is not None %}{{ direcao.liberacoes.por_cento }}%{% else %}{{ direcao.liberacoes.esperando_ha_muito }} esperando há mais de 2 dias{% endif %}</b>.
+    </p>
+    {% endif %}
+  {% endif %}
+
+  <h2 class="titulo-de-bloco espaco-20">3. Os compromissos da semana passada</h2>
+  {% if compromissos is None %}
+    <p class="recado-fraco">O livro não veio nesta versão do site.</p>
+  {% elif not compromissos %}
+    <p class="recado-fraco">Nenhum compromisso nas últimas 4 semanas. O primeiro nasce hoje, no passo 8.</p>
+  {% else %}
+    <ul class="notas">
+      {% for c in compromissos %}
+        <li>{% if c.veredito == "cumprido" %}<span class="rotulo">cumprido</span>{% elif c.veredito == "nao-cumprido" %}<span class="rotulo">não cumprido</span>{% else %}<span class="rotulo">em aberto</span>{% endif %} {{ c.titulo }} ({{ c.quando }})</li>
+      {% endfor %}
+    </ul>
+    <p class="recado-fraco">Cumpriu um que está em aberto? O registro que responde a ele é o que o marca como cumprido; peça no passo 8.</p>
+  {% endif %}
+
+  <h2 class="titulo-de-bloco espaco-20">4. O placar de doze: só os desvios</h2>
+  <p class="recado"><span class="rotulo">sem dados</span> Os doze indicadores entram no degrau 4 do plano. Hoje os que já existem estão no passo 2.</p>
+
+  <h2 class="titulo-de-bloco espaco-20">5. A restrição desta semana</h2>
+  {% if restricao %}
+    {% if restricao.veredito == "liberacao" %}
+      <p class="recado"><b>Suspeita: pediu entrada → foi liberada.</b> {{ restricao.medida.esperando }} esperando, {{ restricao.medida.esperando_ha_muito }} há 2 dias ou mais. {{ restricao.gesto }}</p>
+    {% elif restricao.veredito == "entrada" %}
+      <p class="recado"><b>Suspeita: cadastrou → pediu entrada.</b> {{ restricao.gesto }}</p>
+    {% elif restricao.veredito == "nao-consigo-medir" %}
+      <p class="recado"><b>Não consegui medir a restrição hoje.</b></p>
+    {% else %}
+      <p class="recado"><b>Sem restrição medível nesta semana.</b> A liberação está em dia; as etapas seguintes ainda não têm dados.</p>
+    {% endif %}
+    {% if restricao.confirmada %}
+      <p class="recado-fraco">Confirmada por você em {{ restricao.confirmada.em }}: {{ restricao.confirmada.etapa }}.</p>
+    {% else %}
+      <p class="recado-fraco">Continua a mesma? Confirme no passo 8, e o robô grava no cartão.</p>
+    {% endif %}
+  {% else %}
+    <p class="recado-fraco">A restrição não montou (cartão ausente).</p>
+  {% endif %}
+
+  <h2 class="titulo-de-bloco espaco-20">6. Os experimentos</h2>
+  <p class="recado"><span class="rotulo">sem dados</span> O laboratório entra no degrau 12 do plano (experimento como registro tipo medição, resultado como registro que responde).</p>
+
+  <h2 class="titulo-de-bloco espaco-20">7. As decisões</h2>
+  <p class="recado">O que ficou decidido hoje vai no passo 8, e vira registro tipo decisão no livro.</p>
+
+  <h2 class="titulo-de-bloco espaco-20">8. Os compromissos novos, e o pedido para o robô</h2>
+  <p class="recado">Um ou dois por pessoa, nunca quinze. Cada um vence em {{ vence_em_dias }} dias; na próxima segunda o veredito aparece sozinho.</p>
+  <form class="forma" method="post" action="{% url 'reuniao' %}">
+    {% csrf_token %}
+    <label for="compromisso1">Compromisso 1 (o que, quem, até quando)</label>
+    <input id="compromisso1" name="compromisso1" type="text" maxlength="200" value="{{ campos.compromisso1|default:'' }}">
+    <label for="compromisso2">Compromisso 2 (opcional)</label>
+    <input id="compromisso2" name="compromisso2" type="text" maxlength="200" value="{{ campos.compromisso2|default:'' }}">
+    <label for="confirmar_restricao">A restrição desta semana, confirmada por você (deixe vazio se não confirmar)</label>
+    <input id="confirmar_restricao" name="confirmar_restricao" type="text" maxlength="120" value="{{ campos.confirmar_restricao|default:'' }}" placeholder="por exemplo: a liberação">
+    <label for="decisoes">Decisões de hoje (opcional)</label>
+    <textarea id="decisoes" name="decisoes" rows="3" maxlength="1000">{{ campos.decisoes|default:'' }}</textarea>
+    <label for="aprendemos">O que aprendemos (opcional)</label>
+    <textarea id="aprendemos" name="aprendemos" rows="2" maxlength="600">{{ campos.aprendemos|default:'' }}</textarea>
+    <button type="submit">Montar o pedido para o robô</button>
+  </form>
+
+  {% if montou %}
+    {% if pedido %}
+      <h3 class="titulo-da-conta espaco-20">O pedido para o robô</h3>
+      <p class="recado-fraco">Clique dentro da caixa, Ctrl+A, Ctrl+C, e cole numa sessão. Nada foi gravado aqui: o que vale é o que chegar ao livro. Recarregar a página apaga o texto.</p>
+      <textarea class="colar" rows="14" readonly>{{ pedido }}</textarea>
+    {% else %}
+      <p class="aviso borda-amarela"><b>Nada para pedir.</b> Preencha ao menos um compromisso, uma decisão, um aprendizado ou a restrição confirmada.</p>
+    {% endif %}
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

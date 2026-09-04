@@ -51,6 +51,7 @@ from apps.core.planos_para_ia import plano_publico, planos_indice
 from apps.core.painel import painel, painel_arquivo
 from apps.core.perpetuo import perpetuo
 from apps.core.placar import placar
+from apps.core.reuniao import reuniao
 from apps.core.robos import robos
 from apps.core.views import (
     escola,
@@ -359,6 +360,7 @@ urlpatterns = [
     # Fora do prefixo `painel/` pelo mesmo motivo do perpétuo: a rota genérica
     # `painel/<qualquer coisa>` engoliria esta.
     path("placar/", placar, name="placar"),
+    path("reuniao/", reuniao, name="reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
     # (`DECISAO-o-mapa-da-jornada-do-aluno.md`). Vizinho da lista e nao dentro
