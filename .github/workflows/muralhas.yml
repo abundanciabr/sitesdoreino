@@ -198,14 +198,23 @@ jobs:
   # OUTROS PROGRAMAS (119 fronteiras de subprocesso; os doze testes mais lentos
   # levam de 10 a 24 s cada um só nisso), e criar processo no Windows custa
   # perto de dez vezes o que custa no Linux. Rodando em paralelo (`-n auto`,
-  # ligado em `ci/ci.py::_em_paralelo`):
+  # ligado em `ci/ci.py::_em_paralelo`), AQUI, neste runner (run 33917004520):
   #
-  #     em série ...................... 8min55s
-  #     4 processos (= este runner) ... 3min31s
+  #     este job, em série ....... 9min11s   (suíte: 8min50s)
+  #     este job, em paralelo .... 4min53s   (suíte: 4min26s)
+  #     espera do PR inteiro ..... 14min17s → 5min12s
+  #
+  # A medição na máquina do mantenedor dá 8min55s → 3min31s com 4 processos; o
+  # runner do GitHub tem núcleo mais lento e entrega 4min26s. Os dois números
+  # estão aqui de propósito: a primeira versão deste bloco trazia só o da
+  # máquina local, rotulado "= este runner", e errava por quase um minuto. Este
+  # PR inteiro nasceu de uma frase que dizia mais do que tinha sido medido; não
+  # custava repetir o erro em letra menor.
   #
   # Antes de escolher entre proteger e ser rápido, meça: quase sempre não é um
-  # trade-off, é uma fila indiana. O mesmo `-n auto` acelera os jobs Linux e a
-  # suíte local de todo agente, que caiu de 9 para 3 minutos.
+  # trade-off, é uma fila indiana (`armadilhas/332`). O mesmo `-n auto` acelera
+  # os jobs Linux (`muralhas` caiu de 2min15s para 1min20s) e a suíte local de
+  # todo agente, que caiu de 9 para 3 minutos.
   #
   # Ele NÃO substitui reproduzir o perigo em teste: quem consegue transformar
   # "só quebra no Windows" em uma linha de fita (como
