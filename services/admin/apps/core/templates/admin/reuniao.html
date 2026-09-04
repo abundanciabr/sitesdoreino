@@ -110,6 +110,9 @@ Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
     <textarea id="decisoes" name="decisoes" rows="3" maxlength="1000">{{ campos.decisoes|default:'' }}</textarea>
     <label for="aprendemos">O que aprendemos (opcional)</label>
     <textarea id="aprendemos" name="aprendemos" rows="2" maxlength="600">{{ campos.aprendemos|default:'' }}</textarea>
+    {% if mudancas.foto_de_hoje %}
+    <label><input type="checkbox" name="tirar_foto" value="sim" {% if not montou or campos.tirar_foto %}checked{% endif %}> Tirar a foto da semana (o placar de hoje vira memória, e na próxima segunda o bloco "o que mudou" compara com ela)</label>
+    {% endif %}
     <button type="submit">Montar o pedido para o robô</button>
   </form>
 
@@ -119,7 +122,7 @@ Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
       <p class="recado-fraco">Clique dentro da caixa, Ctrl+A, Ctrl+C, e cole numa sessão. Nada foi gravado aqui: o que vale é o que chegar ao livro. Recarregar a página apaga o texto.</p>
       <textarea class="colar" rows="14" readonly>{{ pedido }}</textarea>
     {% else %}
-      <p class="aviso borda-amarela"><b>Nada para pedir.</b> Preencha ao menos um compromisso, uma decisão, um aprendizado ou a restrição confirmada.</p>
+      <p class="aviso borda-amarela"><b>Nada para pedir.</b> Preencha ao menos um compromisso, uma decisão, um aprendizado ou a restrição confirmada, ou marque a foto da semana.</p>
     {% endif %}
   {% endif %}
   {% endif %}

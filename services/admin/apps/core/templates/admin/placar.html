@@ -312,6 +312,36 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   </ul>
   {% endif %}
 
+  {% if mudancas %}
+  <h2 class="titulo-de-bloco espaco-20">O que mudou desde a semana passada</h2>
+  {% if mudancas.veredito == "nao-consigo-medir" %}
+    <p class="recado-fraco"><span class="rotulo">não medi</span> o livro não veio nesta versão do site.</p>
+  {% elif mudancas.veredito == "sem-foto" %}
+    <p class="recado">
+      <span class="rotulo">sem foto</span> Ainda não existe uma foto anterior do placar para comparar.
+      A primeira nasce na <a href="{% url 'reuniao' %}">reunião de segunda</a>: marque "tirar a foto da semana" no passo 8 e cole o pedido numa sessão.
+      Hoje o placar tem {{ mudancas.quantos_atuais }} número{{ mudancas.quantos_atuais|pluralize:"s" }} com fonte para fotografar.
+    </p>
+  {% else %}
+    <p class="recado-fraco">Comparado com a foto de {{ mudancas.foto_em|date:"d/m/Y" }} (há {{ mudancas.idade_dias }} dia{{ mudancas.idade_dias|pluralize:"s" }}). {% if mudancas.parados %}{{ mudancas.parados }} número{{ mudancas.parados|pluralize:"s" }} não se moveu{{ mudancas.parados|pluralize:",ram" }} além do ruído.{% endif %}{% if mudancas.sem_par %} {{ mudancas.sem_par }} novo{{ mudancas.sem_par|pluralize:"s" }} sem foto anterior.{% endif %}</p>
+    {% if mudancas.movidos %}
+    <ul class="notas">
+      {% for m in mudancas.movidos %}
+      <li>
+        <b>{{ m.pergunta }}</b>
+        {{ m.antigo }} → <b>{{ m.atual }}</b> {{ m.unidade }}
+        {% if m.sentido == "melhorou" %}<span class="rotulo">melhorou</span>{% elif m.sentido == "piorou" %}<span class="rotulo">piorou</span>{% else %}<span class="rotulo">mudou</span>{% endif %}
+        {% if m.foto_velha %}<span class="rotulo">foto velha</span> a comparação é com uma foto mais velha do que o cartão aceita.{% endif %}
+        {% if m.acao %}{{ m.acao }}{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="recado">Nada se moveu além do ruído desde a foto. Semana igual à anterior é notícia também: a meta grande exige que a barra suba.</p>
+    {% endif %}
+  {% endif %}
+  {% endif %}
+
   <h2 class="titulo-de-bloco espaco-20">O par que segura a meta</h2>
   {% if par %}
     <p class="recado">
