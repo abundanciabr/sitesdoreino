@@ -35,6 +35,16 @@ própria `validar` faz depois. É a porta de entrada da `armadilhas/192` — o
 arquivo nasce onde ninguém commita, o PR viaja sem ele, e `validar` responde
 `✅ Fila válida` porque o que não está lá não pode reprovar.
 
+**E a divergência apareceu na primeira vez, sem ninguém procurar.** O evento que
+uma das duas sessões escreveu à mão gravou `"quando"` com microssegundos
+(`2026-09-04T03:06:26.580667+00:00`), porque usou `datetime.isoformat()` puro. O
+balcão grava `isoformat(timespec="seconds")`, e **todos** os outros eventos da
+fila têm precisão de segundo. Nada reprovou: `validar` passou, a muralha passou,
+o estado calculou certo. É a forma mais barata desta armadilha — uma linha
+levemente diferente de todas as outras, para sempre, num arquivo que nunca se
+edita. A cara é sempre essa: não o erro que quebra, mas o detalhe que ninguém
+combinou porque não havia com quem combinar.
+
 **Solução.** O verbo entrou:
 
 ```bash
