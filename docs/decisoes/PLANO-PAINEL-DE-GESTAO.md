@@ -14,6 +14,17 @@ com as decisões da casa está em `CONFRONTO-scale-os.md`, na mesma pasta**: 34
 premissas, cada uma com veredito. Este plano deriva do confronto, não dos
 documentos direto (`armadilhas/299`).
 
+**Em 04/09/2026 ele trouxe o NONO documento** (o quinto da leva Scale OS): o
+*Growth Execution Engine v1.0*, o mesmo sistema escrito como playbook de
+implementação para agentes de IA. Confronto em
+`CONFRONTO-growth-execution-engine.md`: **91 das 100 seções repetem premissas
+já julgadas e nenhum veredito mudou**; das oito peças novas, uma entrou nesta
+escada como o degrau 19 (o grafo causal) e três viraram parágrafos nos degraus
+11 e 13 e no §9. Se você chegou aqui vindo daquele documento, leia o confronto
+ANTES de criar qualquer coisa: seguido ao pé da letra, ele manda construir uma
+célula `scale_os`, rotas `/scale-os/` e um banco de tarefas, que duplicariam a
+`metricas`, o `/admin/` e a `fila/`.
+
 Este documento NÃO é um painel: não guarda estado e não se atualiza sozinho.
 Quem responde "isto foi feito?" é o livro (`painel/registros/`) e a fila
 (`fila/`). O que este plano descreve só existe quando um PR o construir e um
@@ -344,14 +355,15 @@ decisão de 22/08 e entram desenhados.
 | **8. Os fatos que faltam** | Contratos de evento de `alunos` (pediu entrada, liberada, ativa, suspensa, encerrada, reembolsada) e de `leads`; a `metricas` os recebe. E **"como você conheceu a escola?"** no pedido de entrada, opcional (Rito de Contrato na `alunos`): a única atribuição que não depende de anúncio, semente das coortes por canal. | as células, a outbox de `alunos` | 7 |
 | **9. Marcos e dimensões** | Marcos automáticos calculados na `metricas`; marco assinado como registro; a dimensão "aprendizado" ligada ao mapa da jornada; a restrição passa a ler as quatro passagens da `metricas`. | `/admin/escola/jornada/` | 8 |
 | **10. Coortes e fotos** | A barra do mês fechada vira coorte D0; fotos D7 a D365; coorte por turma e por canal; a tabela na capa (um clique abaixo do bloco 1). | 9 | 9 |
-| **11. A confiança** | Cobertura, frescor, conciliação diária como sonda, confiança por indicador, linhagem, regras de qualidade como arquivos, a fila de eventos mortos à vista (§6.6). | sondas do sistema imunológico, sino | 7 |
+| **11. A confiança** | Cobertura, frescor, conciliação diária como sonda, confiança por indicador, linhagem, regras de qualidade como arquivos, a fila de eventos mortos à vista (§6.6). **E o alerta como objeto** (quinto documento §54 e §55): `severidade`, `confianca`, `impacto_no_negocio` e `resolvido_em`, com a regra de que nem todo desvio vira alerta, para a caixa dele não morrer de fadiga. | sondas do sistema imunológico, sino | 7 |
 | **12. O laboratório** | Experimento como registro tipo `medicao` (problema, hipótese, métrica primária, guardas, prazo); resultado como registro que `responde_a`; a tela com rodando, encerrados, vencedores, inconclusivos; a velocidade de aprendizado validado (o 12º do placar de doze); o bloco 8 da capa. Teste A/B com variante por pessoa fica desenhado até haver contagem de visitas (decisão dele em aberto desde 25/08). | o livro | 4 |
-| **13. O fechamento do ciclo** | A tela do fechamento das 12 semanas: a meta e o porquê; as medidas de direção previram?; **o que paramos de fazer** (registro `decisao` obrigatório: sem ele o ciclo não fecha); a meta seguinte gravada no cartão e no livro; a fase da escola recalculada dos portões (§6.5). | 3, 10 | 3, 10 |
+| **13. O fechamento do ciclo** | A tela do fechamento das 12 semanas: a meta e o porquê; as medidas de direção previram?; **o que paramos de fazer** (registro `decisao` obrigatório: sem ele o ciclo não fecha); a meta seguinte gravada no cartão e no livro; a fase da escola recalculada dos portões (§6.5). **O guarda deste degrau é o teste do laço inteiro** (quinto documento §81): um cenário automatizado que percorre ciclo ativo, meta, medidas de direção, medição, restrição detectada, experimento, semana aberta, tarefa gerada, tarefa executada, semana encerrada, aprendizado registrado e placar atualizado. Os pedaços já são testados; o laço, não. | 3, 10 | 3, 10 |
 | **14. A matemática** ❄ | A razão de receita (taxa, imposto, reembolso, custo variável) e as equações por camada; os oito cartões do placar de doze que dependem de venda acendem. Desenhado agora, aceso só quando o site vender. | contratos de pagamento | 7, e a ordem dele |
 | **15. A fila de próxima ação** | Regra por dimensão, versionada; roteador automação, humano ou robô; tarefas no balcão; "sucesso do aluno antes de venda" como guarda; tetos de contato como parâmetro com dono. | `mensageria/apps/jornadas`, `fila/` | 9, 3 |
 | **16. O robô analista** | UM robô, por último (Scale OS 1.2 §218), que escreve registros tipo `nota` com o contrato de saída dos documentos (afirmação, evidência, confiança, alternativas, próximo passo) e vira `pendencia` quando pede decisão; o brief da segunda-feira; o "o que estou deixando passar?" do fechamento de ciclo. Pela mesma chave que o fórum vai usar. | o livro, a chave da Anthropic (pendência dele) | 5, 11, 12 |
 | **17. Rede de talentos e B2B, à mão** | Contagens digitadas (alunos selecionados, estúdios parceiros, encaixes) como medição; o laço de talentos sai do cinza. | nada | 13 |
 | **18. Integrações de fora** | Gasto de anúncio e alcance por API em vez de digitado; WhatsApp pela API oficial. | nada | credenciais e plano pago: **passo do mantenedor** |
+| **19. O grafo causal** | A tarefa da fila passa a declarar QUE NÚMERO ela move (ou a declarar-se `manutencao`, o `whirlwind` do documento); o painel ganha o caminho de volta, de um número para as tarefas que trabalham nele. O guarda do degrau é o teste do §97 do quinto documento: de uma tarefa se chega ao número, e do número se volta às tarefas. | `fila/`, `ci/fila.py`, `painel/cartoes/`, `painel/logica.js` | 0 (não depende de célula nova nem de venda) |
 
 Os degraus 1, 2, 4 e 5 nascem sem célula nova e sem venda: tudo o que eles
 precisam já responde ao vivo hoje. É por eles que a capa deixa de ser um
@@ -379,6 +391,12 @@ número só e vira uma cabine na primeira semana.
   dele e consentimento registrado.
 - **Nenhum interruptor por porcentagem de público** (feature flag com rollout):
   tela nova entra por PR, atrás da porta, para um leitor.
+- **Nenhum nível de autonomia novo para robô.** Os níveis do quinto documento
+  (§87) já são a prática desta casa, e vale escrevê-los uma vez: o robô
+  analista do degrau 16 recomenda (nível 1); caminho CODEOWNERS exige mandato
+  do despacho (nível 2); um despacho da fila executa o reversível dentro de
+  limites (nível 3); e o nível 5 não existe por construção, porque quem
+  mergeia é a pista, não o agente.
 
 ---
 
