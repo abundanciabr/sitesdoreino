@@ -91,6 +91,11 @@ SECOES = (
     ("caixa", "Caixa"),
     ("economia", "Pontos"),
     ("documentos_admin", "Documentos"),
+    # "Livro", e não "Biblioteca": a tela guarda o livro que ele está
+    # escrevendo, e é assim que ele fala dela. "Biblioteca" ao lado de
+    # "Documentos" faria as duas parecerem a mesma coisa vista de dois ângulos
+    # (04/09/2026).
+    ("livro", "Livro"),
     ("menu_do_topo", "Menu do site"),
     ("perpetuo", "Lançamento"),
     # "Placar", e não "Metas": é UMA meta por vez (4DX), e o que a tela mostra

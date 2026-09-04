@@ -1,0 +1,17 @@
+{
+  "arquivo": "143-biblioteca-do-livro-uma-tela-no-admin-para-guardar-os-textos",
+  "id": "TAR-143",
+  "titulo": "Biblioteca do Livro: uma tela no admin para guardar os textos do livro, com a formatacao intacta",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "a tela /admin/livro/ no ar, com um texto colado e baixado de volta identico ao que entrou",
+  "despacho": "Construa a BIBLIOTECA DO LIVRO: uma area em /admin/livro/ onde o mantenedor\nguarda os textos do livro que ele escreve, com a formatacao Markdown intacta.\n\nPedido dele, em 04/09/2026: \"Esse texto abaixo e um dos textos de um livro que\neu escrevi e quero uma pagina no site onde eu possa salvar ele para ser usado\ndepois no projeto online do livro. Quero manter a formatacao e demais detalhes\ndo mesmo.\"\n\nO QUE A AREA FAZ\n\n1. Lista os textos do livro, na ordem que ele escolher, com o tamanho de cada um\n   em palavras.\n2. Escrever um texto novo colando o Markdown numa caixa, ou enviando arquivos\n   .md do computador (varios de uma vez).\n3. Ler o texto formatado na tela, com o historico de versoes junto.\n4. Baixar o .md de um texto, ou de todos num arquivo so.\n5. Apagar de vez, com o nome digitado para confirmar.\n\nAS DUAS DECISOES DO MANTENEDOR, na mesma conversa:\n\n- TRAVESSAO: a Biblioteca GUARDA o original como ele escreveu, letra por letra.\n  Ela nao publica nada para ninguem, entao a regra de 30/08/2026 nao recusa\n  aqui. A tela mostra um AVISO com as frases, para o dia em que o texto virar\n  pagina online. Isto e o contrario do editor de documentos, que recusa salvar.\n- ENVIO DE ARQUIVOS: ele quer poder mandar arquivos .md, alem de colar.\n\nO QUE NAO FAZ, e e de proposito: nenhuma rota publica. O livro dele nao esta\nlancado, o repositorio e publico, e por isso o texto nunca entra no Git nem sai\npor /docs/. Modelo proprio (TextoDoLivro), separado de Documento, para que nao\nexista caminho em que uma peca do livro escape para o site aberto.\n\nCONVENCOES: siga o editor de documentos (apps/core/editor_de_documentos.py,\nDECISAO-o-editor-de-documentos.md) — quatro rotas por verbo, formulario sem\nscript, versao gravada a cada escrita, auditoria em toda escrita.",
+  "origem": "pedido do mantenedor em 04/09/2026",
+  "criada_em": "2026-09-04"
+}

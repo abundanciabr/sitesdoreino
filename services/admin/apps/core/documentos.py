@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import html
 import re
+import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -64,6 +65,11 @@ FORA_DA_LISTA = frozenset({"LEIA-ME"})
 #: rota — o nome NÃO chega aqui com barra, então não há caminho para escapar da
 #: pasta; mesmo assim `_arquivo` confere o resultado resolvido.
 RE_NOME = re.compile(r"^[a-z0-9-]+$")
+
+#: O maior endereço que as telas desta área aceitam. Casa com o `max_length` da
+#: coluna nas duas tabelas que o usam (`Documento` e `TextoDoLivro`), e o
+#: limite existe para o endereço caber numa linha de lista sem quebrar.
+LIMITE_DO_NOME = 80
 
 #: Sem `ordem` no cabeçalho, o documento vai para o fim — e entre os sem número
 #: vale a ordem alfabética do nome do arquivo. Um default pequeno faria o
@@ -105,6 +111,26 @@ class CamposDoArquivo:
     publico: bool
     ordem: int
     corpo: str  # o markdown, sem o cabeçalho
+
+
+def apelido(texto: str) -> str:
+    """Um título que gente escreveu vira o endereço que a máquina liga.
+
+    O mantenedor digita "Como funciona a entrada"; a rota precisa de
+    `como-funciona-a-entrada`. Pedir os dois seria pedir a ele que entendesse a
+    diferença.
+
+    **Mora aqui, e não na tela que a usa**, desde 04/09/2026: a Biblioteca do
+    Livro passou a montar endereço pela mesma regra, e duas cópias dela seriam
+    o pecado 3 da Lei 3 (duplicar-e-divergir) no lugar mais fácil de divergir
+    em silêncio — uma tela aceitando um endereço que a outra recusa. Este
+    módulo já é a casa do formato do endereço (`RE_NOME`), então é a casa desta
+    função também.
+    """
+    limpo = unicodedata.normalize("NFKD", texto or "")
+    limpo = "".join(c for c in limpo if not unicodedata.combining(c)).lower()
+    limpo = re.sub(r"[^a-z0-9]+", "-", limpo).strip("-")
+    return limpo[:LIMITE_DO_NOME]
 
 
 def diretorio() -> Path | None:
@@ -269,14 +295,37 @@ def importar_da_pasta(modelo) -> int:
 #
 # Tabela, imagem e HTML cru NÃO são suportados de propósito. Documento que
 # precisar deles é conversa sobre este arquivo, nunca sobre contornar.
+#
+# **Um renderizador só, para os documentos e para o livro** (04/09/2026). A
+# Biblioteca do Livro (`apps/core/livro.py`) desenha o texto do mantenedor com
+# esta mesma função, e três marcas nasceram desse pedido: lista numerada, item
+# de lista com `*`, e itálico. Um segundo renderizador "do livro" seria o
+# pecado 3 da Lei 3 — duplicar-e-divergir —, e a divergência apareceria do
+# jeito pior: o mesmo texto desenhado de dois jeitos em duas telas da mesma
+# área. As três marcas não tiram nada de quem já escrevia documentos; elas
+# passam a formatar o que antes caía em parágrafo cru.
 # ---------------------------------------------------------------------------
 
 _NEGRITO = re.compile(r"\*\*(.+?)\*\*")
+# O itálico corre DEPOIS do negrito, e é isso que o mantém simples: quando ele
+# roda, todo `**` já virou `<strong>`, e um asterisco sobrando é itálico. Os
+# dois `(?!\s)`/`(?<!\s)` recusam `* ` e ` *`, para que uma multiplicação
+# escrita no meio de uma frase ("3 * 4 * 5") não vire texto inclinado.
+_ITALICO = re.compile(r"\*(?!\s)([^*]+?)(?<!\s)\*")
 _CODIGO = re.compile(r"`([^`]+)`")
 # O endereço de um link é restrito a caminho interno (`/…`) ou `https://`.
 # `javascript:` e `data:` não passam — e a recusa é silenciosa, virando texto,
 # porque um link morto numa página é melhor que um link que executa algo.
 _LINK = re.compile(r"\[([^\]]+)\]\((/[^\s)]*|https://[^\s)]+)\)")
+
+#: Um item de lista com marcador: `- assim` ou `* assim`. O `*` entrou com a
+#: Biblioteca do Livro, porque é o marcador que o mantenedor usa quando escreve
+#: fora daqui, e uma lista dele virava um parágrafo com asteriscos na tela.
+_ITEM = re.compile(r"^[-*]\s+(.*)$")
+#: Um item de lista NUMERADA: `1. assim`. O número que a pessoa escreveu é
+#: descartado de propósito — quem numera é o `<ol>`, e uma lista que começasse
+#: em 3 porque alguém apagou dois itens seria um erro difícil de ver.
+_ITEM_NUMERADO = re.compile(r"^\d{1,3}[.)]\s+(.*)$")
 
 
 def _linha(texto: str) -> str:
@@ -284,6 +333,7 @@ def _linha(texto: str) -> str:
     seguro = html.escape(texto)
     seguro = _CODIGO.sub(r"<code>\1</code>", seguro)
     seguro = _NEGRITO.sub(r"<strong>\1</strong>", seguro)
+    seguro = _ITALICO.sub(r"<em>\1</em>", seguro)
     # O `&quot;` do escape não atrapalha: o padrão do link não casa aspas.
     seguro = _LINK.sub(r'<a href="\2">\1</a>', seguro)
     return seguro
@@ -292,7 +342,10 @@ def _linha(texto: str) -> str:
 def para_html(markdown: str) -> str:
     """O documento como HTML — o subconjunto do `documentos/LEIA-ME.md`."""
     partes: list[str] = []
-    lista_aberta = False
+    # A lista aberta agora guarda QUAL lista está aberta ("ul" ou "ol"), e não
+    # apenas se há uma. É o que faz uma lista numerada logo depois de uma com
+    # marcadores fechar a primeira em vez de continuar dentro dela.
+    lista_aberta: str | None = None
     citacao_aberta = False
     paragrafo: list[str] = []
 
@@ -302,15 +355,33 @@ def para_html(markdown: str) -> str:
             partes.append("<p>" + " ".join(paragrafo) + "</p>")
             paragrafo = []
 
-    def fechar_blocos() -> None:
-        nonlocal lista_aberta, citacao_aberta
-        fechar_paragrafo()
+    def fechar_lista() -> None:
+        nonlocal lista_aberta
         if lista_aberta:
-            partes.append("</ul>")
-            lista_aberta = False
+            partes.append(f"</{lista_aberta}>")
+            lista_aberta = None
+
+    def fechar_citacao() -> None:
+        nonlocal citacao_aberta
         if citacao_aberta:
             partes.append("</blockquote>")
             citacao_aberta = False
+
+    def abrir_item(tag: str, conteudo: str) -> None:
+        """Um item, abrindo a lista certa e fechando a errada, se houver."""
+        nonlocal lista_aberta
+        fechar_paragrafo()
+        fechar_citacao()
+        if lista_aberta != tag:
+            fechar_lista()
+            partes.append(f"<{tag}>")
+            lista_aberta = tag
+        partes.append(f"<li>{_linha(conteudo)}</li>")
+
+    def fechar_blocos() -> None:
+        fechar_paragrafo()
+        fechar_lista()
+        fechar_citacao()
 
     for linha in markdown.splitlines():
         nua = linha.strip()
@@ -330,22 +401,19 @@ def para_html(markdown: str) -> str:
             partes.append(f"<h{nivel}>{_linha(cabecalho.group(2))}</h{nivel}>")
             continue
 
-        if nua.startswith("- "):
-            fechar_paragrafo()
-            if citacao_aberta:
-                partes.append("</blockquote>")
-                citacao_aberta = False
-            if not lista_aberta:
-                partes.append("<ul>")
-                lista_aberta = True
-            partes.append(f"<li>{_linha(nua[2:])}</li>")
+        item = _ITEM.match(nua)
+        if item:
+            abrir_item("ul", item.group(1))
+            continue
+
+        numerado = _ITEM_NUMERADO.match(nua)
+        if numerado:
+            abrir_item("ol", numerado.group(1))
             continue
 
         if nua.startswith(">"):
             fechar_paragrafo()
-            if lista_aberta:
-                partes.append("</ul>")
-                lista_aberta = False
+            fechar_lista()
             if not citacao_aberta:
                 partes.append("<blockquote>")
                 citacao_aberta = True

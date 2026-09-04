@@ -193,6 +193,19 @@ class Registro(models.Model):
     LIGAR_SEQUENCIA = "ligar_sequencia"
     DESLIGAR_SEQUENCIA = "desligar_sequencia"
     PUBLICAR_TEXTO = "publicar_texto"
+    # [LIVRO] 04/09/2026: a Biblioteca do Livro (`/admin/livro/`), onde o
+    # mantenedor guarda os textos do livro que ele escreve. Quatro verbos, na
+    # mesma gramática dos documentos logo acima.
+    #
+    # A razão de existirem é mais forte aqui do que em qualquer outra tela
+    # desta lista: o texto do livro NÃO viaja no Git, porque este repositório é
+    # público e o livro não está lançado. Não há `git log`, não há PR, não há
+    # revisão. Esta tabela e o histórico de versões são a memória inteira do
+    # que aconteceu com uma obra que não tem cópia em outro lugar.
+    CRIAR_TEXTO_LIVRO = "criar_texto_livro"
+    EDITAR_TEXTO_LIVRO = "editar_texto_livro"
+    RESTAURAR_TEXTO_LIVRO = "restaurar_texto_livro"
+    APAGAR_TEXTO_LIVRO = "apagar_texto_livro"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -228,6 +241,10 @@ class Registro(models.Model):
         (LIGAR_SEQUENCIA, "ligar uma sequencia de mensagens"),
         (DESLIGAR_SEQUENCIA, "desligar uma sequencia de mensagens"),
         (PUBLICAR_TEXTO, "trocar o texto de uma mensagem automatica"),
+        (CRIAR_TEXTO_LIVRO, "guardar um texto novo do livro"),
+        (EDITAR_TEXTO_LIVRO, "editar um texto do livro"),
+        (RESTAURAR_TEXTO_LIVRO, "voltar um texto do livro a uma versao anterior"),
+        (APAGAR_TEXTO_LIVRO, "apagar um texto do livro definitivamente"),
     ]
 
     OK = "ok"
