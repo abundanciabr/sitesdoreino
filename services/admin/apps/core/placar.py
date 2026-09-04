@@ -481,7 +481,10 @@ def montar_o_placar(hoje: dt.date) -> dict:
     os_doze = None
     estrelas = None
     confianca_dos_doze = None
+    latencias = None
     if meta is not None:
+        from . import latencias as lat_
+
         partida_em = _data(meta.get("partida_em")) or hoje
         cliente = AlunosClient()
         # UMA leitura de cada porta por requisição: a contagem, a restrição, a
@@ -519,8 +522,10 @@ def montar_o_placar(hoje: dt.date) -> dict:
         )
         confianca_dos_doze = doze_.confianca(os_doze)
         estrelas = [d for d in os_doze if d["nome"] in doze_.ESTRELAS]
+        latencias = lat_.medir_as_latencias(registros, lat_.ler_a_fila(), hoje)
 
     return {
+        "latencias": latencias,
         "doze": os_doze,
         "estrelas": estrelas,
         "confianca_dos_doze": confianca_dos_doze,

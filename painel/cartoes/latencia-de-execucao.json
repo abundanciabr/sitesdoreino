@@ -1,0 +1,21 @@
+{
+  "nome": "latencia-de-execucao",
+  "tipo": "confianca",
+  "andar": 0,
+  "pergunta": "Quanto tempo uma tarefa espera na fila até alguém pegá-la?",
+  "definicao": "Das tarefas da fila de trabalho dos robôs que foram pegas nos últimos 28 dias, o tempo típico (mediana) em dias entre a criação e a primeira reivindicação; e quantas estão na fila há mais de 7 dias sem ninguém pegar (fora as bloqueadas de propósito). É a segunda latência: decisão → execução.",
+  "formula": "mediana de (quando do evento reivindicada menos criada_em da tarefa), em dias, para tarefas reivindicadas pela primeira vez nos últimos 28 dias; mais a contagem das criadas há mais de 7 dias sem reivindicação",
+  "fonte": "a fila de trabalho (fila/tarefas e fila/eventos), embutida na admin no build, a mesma da aba 'Os robôs'",
+  "autoridade": "sessao",
+  "dono": "mantenedor",
+  "frequencia": "tempo real; muda a cada registro ou evento",
+  "direcao": "descer",
+  "unidade": "dias",
+  "par": null,
+  "acao": "Alto: há trabalho decidido que ninguém começou. Despache um lote (RUNBOOK-LOTES) ou tire da fila o que já não faz sentido.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Uma das três latências da gestão (Scale OS 1.1 §166 a §169), degrau 5 do plano reescrito em 03/09/2026: o único indicador dos documentos que já tinha fonte completa no dia em que o plano nasceu. Mede a GESTÃO, não a escola, e continua funcionando quando todo o resto estiver cego. Tipo confiança: dispensa par, porque não pode ser forçada sem produzir o próprio fato que mede."
+}

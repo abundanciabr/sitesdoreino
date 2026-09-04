@@ -51,8 +51,16 @@ SEMANAS_OLHADAS = 4
 TIPO_DO_COMPROMISSO = "compromisso"
 
 _CAMPO = {
-    nome: re.compile(r"^\s*" + nome + r':\s*(null|"([^"]*)"|(\d+))', re.M)
-    for nome in ("arquivo", "tipo", "quando", "titulo", "responde_a", "vence_em_dias")
+    nome: re.compile(r"^\s*" + nome + r':\s*(null|true|false|"([^"]*)"|(\d+))', re.M)
+    for nome in (
+        "arquivo",
+        "tipo",
+        "quando",
+        "titulo",
+        "responde_a",
+        "vence_em_dias",
+        "precisa_do_dono",
+    )
 }
 
 
@@ -73,6 +81,8 @@ def _campo(texto: str, nome: str):
         return None
     if m.group(1) == "null":
         return None
+    if m.group(1) in ("true", "false"):
+        return m.group(1) == "true"
     if m.group(3) is not None:
         return int(m.group(3))
     return m.group(2)
@@ -98,6 +108,7 @@ def ler_registros(pasta: Path | None = None) -> list[dict] | None:
                 "titulo": _campo(texto, "titulo"),
                 "responde_a": _campo(texto, "responde_a"),
                 "vence_em_dias": _campo(texto, "vence_em_dias"),
+                "precisa_do_dono": _campo(texto, "precisa_do_dono") is True,
             }
         )
     return registros
