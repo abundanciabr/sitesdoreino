@@ -1,0 +1,21 @@
+{
+  "nome": "crescimento-mes-a-mes",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Estamos crescendo de um mês para o outro?",
+  "definicao": "Quantas pessoas viraram alunas no último mês fechado, comparado com o mês fechado anterior, em por cento. Só conta meses inteiros depois da partida do ciclo (03/09/2026); enquanto não há dois meses fechados, a tela diz que ainda não dá para comparar.",
+  "formula": "(viraram alunas no mês M-1 menos viraram alunas no mês M-2) dividido por M-2, em por cento, pelas mesmas fichas de compras-no-ciclo",
+  "fonte": "célula alunos, GET /matriculas, virou_aluno_em, lido ao vivo pela admin",
+  "autoridade": "alunos",
+  "dono": "mantenedor",
+  "frequencia": "tempo real; muda no dia 1",
+  "direcao": "subir",
+  "unidade": "por cento",
+  "par": "compras-no-ciclo",
+  "acao": "Abaixo de zero: o mês passado vendeu menos que o anterior; a pergunta da reunião é o que mudou na torneira (pedidos de entrada).",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Buyer Growth Rate'. Primeiro valor possível em novembro de 2026 (setembro contra outubro)."
+}
