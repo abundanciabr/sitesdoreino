@@ -9,7 +9,7 @@ guarda:
   tipo: teste
   motivo: o verbo novo tem de recusar tudo o que a validação recusaria depois, senão ele vira fábrica de fila inválida; são cinco guardas porque são cinco recusas distintas, e a prova de que cada um morde é a mutação de uma linha por vez
 sinal:
-  - "_escrever_evento("
+  - "invalid choice: 'bloquear'"
   - "RECUSADO: bloquear sem motivo não existe"
 ---
 
