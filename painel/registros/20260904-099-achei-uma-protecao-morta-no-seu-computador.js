@@ -2,16 +2,17 @@
   arquivo: "20260904-099-achei-uma-protecao-morta-no-seu-computador",
   tipo: "nota",
   quando: "2026-09-04",
-  titulo: "Achei uma proteção que está morta no seu computador, e ninguém tinha como ver",
-  detalhe: "Quando um robô manda um trabalho para pousar e o GitHub ainda está "
-    + "calculando, a espera deveria tentar de novo em vez de desistir. No servidor "
-    + "ela tenta; no SEU computador, não: a mensagem chega com um acento quebrado e "
-    + "o robô não a reconhece, então desiste dizendo que foi recusado. Nada ficou "
-    + "fora do ar por isso, e nenhum trabalho se perdeu; o custo é um robô desistir "
-    + "à toa. Deixei na fila como TAR-142, com a medição inteira.",
+  titulo: "Um alarme falso na fábrica: dois testes acusavam um defeito que não existe",
+  detalhe: "Dois testes da fábrica ficam vermelhos no seu computador e verdes no "
+    + "servidor, e eu quase reportei que uma proteção do robô estava quebrada. Fui "
+    + "medir de novo e era o contrário: a proteção funciona (ela disparou ao vivo "
+    + "num trabalho hoje), e quem está errado é o teste, que imita o robô de um jeito "
+    + "que o robô de verdade não é. Nada está fora do ar e nada se perdeu. O custo é "
+    + "um alarme falso que faz um robô perder tempo investigando. Deixei na fila como "
+    + "TAR-142, com as duas medições, a errada e a certa.",
   autoridade: "sessao",
-  evidencia: "PR #1033. Medido em 04/09: dois testes vermelhos no Windows e verdes "
-    + "na CI, e a mesma falha com a versão anterior (não é regressão).",
+  evidencia: "PR #1033. A remedição disparou ao vivo no PR #1033 ('remeço em 20s'), "
+    + "e ci/mergear.py chama configurar_saida(); o dublê do teste, não.",
   verificado_em: "2026-09-04",
   precisa_do_dono: false,
   responde_a: null,
