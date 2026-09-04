@@ -91,6 +91,11 @@ TIPOS = ("resultado", "direcao", "par", "confianca")
 #: é bom. Sem o campo a tela não sabe pintar a seta. Opcional por enquanto.
 DIRECOES = ("subir", "descer", "faixa")
 
+#: Por onde um número se abre (degrau 6, plano §4.2). O cartão declara em
+#: `dimensoes` as que fazem sentido para ele; a tela que abre por dimensão é
+#: dos degraus 9 e 10, e o campo entra antes para o cartão já dizer a verdade.
+DIMENSOES = ("site", "turma", "mes-de-entrada", "canal")
+
 OBRIGATORIOS = (
     "nome",
     "tipo",
@@ -200,6 +205,29 @@ def validar(cartao: object) -> list[str]:
         or alvo_do_mes < 0
     ):
         problemas.append("`alvo_do_mes` é um inteiro sem aspas, ou null")
+    frescor = cartao.get("frescor_maximo")
+    if frescor is not None and (
+        not isinstance(frescor, int) or isinstance(frescor, bool) or frescor < 1
+    ):
+        problemas.append(
+            "`frescor_maximo` é um inteiro de dias a partir de 1, ou ausente: "
+            "passa disso e o número é dito como velho"
+        )
+    dimensoes = cartao.get("dimensoes")
+    if dimensoes is not None and (
+        not isinstance(dimensoes, list) or any(d not in DIMENSOES for d in dimensoes)
+    ):
+        problemas.append(
+            f"`dimensoes` é uma lista entre {', '.join(DIMENSOES)}, ou ausente"
+        )
+    ruido = cartao.get("ruido")
+    if ruido is not None and (
+        isinstance(ruido, bool) or not isinstance(ruido, (int, float)) or ruido < 0
+    ):
+        problemas.append(
+            "`ruido` é um número na unidade do cartão, zero ou maior, ou ausente: "
+            "diferença até ele não é movimento"
+        )
     problemas.extend(_validar_a_meta(cartao))
     return problemas
 
@@ -482,6 +510,15 @@ def montar_o_placar(hoje: dt.date) -> dict:
     estrelas = None
     confianca_dos_doze = None
     latencias = None
+    mudancas = None
+    cartoes_de_latencia = {
+        nome: ler_cartao(nome, pasta)[0]
+        for nome in (
+            "latencia-de-decisao",
+            "latencia-de-execucao",
+            "latencia-de-aprendizado",
+        )
+    }
     if meta is not None:
         from . import latencias as lat_
 
@@ -524,7 +561,27 @@ def montar_o_placar(hoje: dt.date) -> dict:
         estrelas = [d for d in os_doze if d["nome"] in doze_.ESTRELAS]
         latencias = lat_.medir_as_latencias(registros, lat_.ler_a_fila(), hoje)
 
+        from . import mudancas as mud_
+
+        # Depois de tudo medido: a foto compara o que a tela MOSTRA.
+        mudancas = mud_.o_que_mudou(
+            {
+                "contagem": contagem,
+                "direcao": direcao,
+                "doze": os_doze,
+                "latencias": latencias,
+                "meta": meta,
+                "total": total,
+                "cartao_pedidos": cartao_pedidos,
+                "cartao_48h": cartao_48h,
+                "cartoes_de_latencia": cartoes_de_latencia,
+            },
+            registros,
+            hoje,
+        )
+
     return {
+        "mudancas": mudancas,
         "latencias": latencias,
         "doze": os_doze,
         "estrelas": estrelas,
