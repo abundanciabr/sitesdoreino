@@ -1,0 +1,16 @@
+{
+  "arquivo": "127-fila-do-primeiro-dolar-degrau-2-9-o-roteiro-de-uma-linha-par",
+  "id": "TAR-127",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.9: o roteiro de uma linha para o dono criar o banco da celula na maquina",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [
+    "TAR-109"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR SOZINHO mergeado com infra/provisionar-encomendas.sh (banco encomendas_db, papel encomendas_user, env/encomendas.env com SCRIPT_NAME=/encomendas) fail-closed no molde de infra/provisionar-gamificacao.sh, e o env exemplo; registro no livro com precisa_do_dono: true e o bloco unico de colar, com a janela rotulada (deploy@srv...).",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei: emendas §3, invariantes §5, parametros §6, escada §7), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o produto: secoes 5 a 9 e anexos), docs/decisoes/CONTRATO-encomendas-v1-rascunho.md, constituicoes/AGENTS.encomendas.md, services/encomendas/config/settings.py (os comentarios sao lei local) e armadilhas/INDICE.md (Ctrl+F pela tecnologia). A secao 3 do plano (o que fica FORA) e literal. A escola e 18+. Nunca duas sessoes no motor de oferta ao mesmo tempo. Registro do livro CURTO (< 800 bytes, armadilhas/304 e TAR-119) e medido com node painel/gerar_manifesto.js DEPOIS de git merge origin/main. Prove cada guarda por MUTACAO depois do verde. TAREFA: molde infra/provisionar-gamificacao.sh. O passo H do mantenedor vem DEPOIS deste PR e ANTES do degrau 2.10 (licao H18): sem o banco o container entra em crashloop. Registro curto e com precisa_do_dono: true (a caixa calculada precisa saber que ha passo dele).",
+  "origem": "lei docs/decisoes/DECISAO-fila-do-primeiro-dolar.md §7 (escada da Fase 2), aprovada pelo mantenedor em 03/09/2026 (Fase 2 em paralelo com o piloto de papel); criadas ao pousar a genese (PR #953)",
+  "criada_em": "2026-09-04"
+}

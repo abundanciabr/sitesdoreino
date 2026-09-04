@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-023429-TAR-108-concluida",
+  "tarefa": "TAR-108",
+  "evento": "concluida",
+  "quando": "2026-09-04T02:34:29+00:00",
+  "quem": "sessao-encomendas-eventos-2026-09-03",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/949 (aberto, etiquetas contrato + arquitetural, Depende-de #946 ja pousado): 20 esquemas *.v1.json em contracts/eventos/ (encomenda.* 11, oferta.* 3, entrega.* 2, aluno.* 2, portfolio.publicado, pedido-direto.criado), envelope canonico com ator_id nulavel quando e o relogio/motor, additionalProperties:false nos dois niveis, so ids opacos, dinheiro em centavos inteiros; validados por script (title = arquivo, event const, required = properties); contrato_aditivo so adicoes; registro 20260904-010 a bordo.",
+  "verificado_em": "2026-09-04"
+}

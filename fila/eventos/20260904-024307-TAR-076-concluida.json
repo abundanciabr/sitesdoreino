@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-024307-TAR-076-concluida",
+  "tarefa": "TAR-076",
+  "evento": "concluida",
+  "quando": "2026-09-04T02:43:07+00:00",
+  "quem": "sessao-maestro-lote-2026-09-03",
+  "evidencia": "PRs https://github.com/abundanciabr/sitesdoreino/pull/857 e https://github.com/abundanciabr/sitesdoreino/pull/859 mergeados (TAR-076 1/2 e 2/2); registro 20260902-023 'A sequencia de boas-vindas esta criada e LIGADA no site', evidencia run 33650113539. Fechada pela maestro do lote de 03/09 porque a sessao que construiu nao registrou a conclusao no balcao; a prova de fora (aviso na caixa de uma pessoa cadastrada) segue pendente do teste do mantenedor, registrada no livro.",
+  "verificado_em": "2026-09-04"
+}

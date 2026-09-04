@@ -1,0 +1,16 @@
+{
+  "arquivo": "120-fila-do-primeiro-dolar-degrau-2-2-as-tabelas-da-celula-perfi",
+  "id": "TAR-120",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.2: as tabelas da celula (perfil, encomenda, oferta) e a tabela de parametros que o dono edita",
+  "toca": [
+    "encomendas"
+  ],
+  "depende_de": [
+    "TAR-109"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado: migracoes aplicadas num PostgreSQL 17 real; PerfilProfissional, Encomenda (com historico de status e autor), Oferta, Parametro (chave, valor, desde, motivo, quem: historico por linha nova, nunca UPDATE) e a semente dos 21 valores iniciais da lei §6; testes das maquinas de estado (plano §7.2) por transicao proibida; guarda que le cada parametro do banco e reprova constante magica.",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei: emendas §3, invariantes §5, parametros §6, escada §7), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o produto: secoes 5 a 9 e anexos), docs/decisoes/CONTRATO-encomendas-v1-rascunho.md, constituicoes/AGENTS.encomendas.md, services/encomendas/config/settings.py (os comentarios sao lei local) e armadilhas/INDICE.md (Ctrl+F pela tecnologia). A secao 3 do plano (o que fica FORA) e literal. A escola e 18+. Nunca duas sessoes no motor de oferta ao mesmo tempo. Registro do livro CURTO (< 800 bytes, armadilhas/304 e TAR-119) e medido com node painel/gerar_manifesto.js DEPOIS de git merge origin/main. Prove cada guarda por MUTACAO depois do verde. TAREFA: as entidades da secao 7.1 do plano que a Fase 2 precisa (PerfilProfissional SEM responsavel_id, Encomenda, Oferta) e a tabela Parametro (lei §3.8 e §6). Moldes: services/gamificacao/apps/gamificacao/models.py (definicoes como DADO, CheckConstraint, ids alheios como CharField opaco, remocao suave) e services/forum/apps/forum/models.py (espelho Pessoa). site_id em toda entidade (Lei 9). App nova `apps.encomendas` em INSTALLED_APPS. Nada de tela nem de porta ainda.",
+  "origem": "lei docs/decisoes/DECISAO-fila-do-primeiro-dolar.md §7 (escada da Fase 2), aprovada pelo mantenedor em 03/09/2026 (Fase 2 em paralelo com o piloto de papel); criadas ao pousar a genese (PR #953)",
+  "criada_em": "2026-09-04"
+}
