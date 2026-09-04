@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260904-091-os-relogios-da-fila-entraram-e-nada-saiu-do-ar",
+  arquivo: "20260904-096-os-relogios-da-fila-entraram-e-nada-saiu-do-ar",
   tipo: "medicao",
   quando: "2026-09-04",
   titulo: "Os relógios da fila entraram na plataforma, e nada saiu do ar",
