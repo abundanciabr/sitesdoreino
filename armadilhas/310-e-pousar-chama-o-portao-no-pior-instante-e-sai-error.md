@@ -1,13 +1,13 @@
 ---
 schema_version: 2
 armadilha: 310
-estado: documentada
+estado: guardada
 degrau: 2
 confianca: alta
 custo_por_queda: alto
 guarda:
-  tipo: nenhum
-  motivo: o ERROR é o portão funcionando (`UNKNOWN` nunca vira PASS, INV-CI01) e a cura mora no INSTANTE em que ele é chamado, não no veredito; mecanizar seria mudar `ci/esperar.py` para reconsultar o estado de conflito antes de desistir, e essa é decisão de quem for consertar o `--e-pousar`, com mandato, não efeito colateral de um despacho de célula
+  tipo: teste
+  motivo: era `nenhum`, e a própria entrada dizia o que faltava — mudar `ci/esperar.py` para reconsultar o estado antes de desistir, com mandato. Foi feito no MESMO dia (PR #964, `armadilhas/308`), e o guarda é o par de testes que fixa os dois sentidos: o ERROR se remede, o FAIL nunca se remede
 sinal:
   - `o GitHub ainda não sabe se dá para mergear`
   - `o portão RECUSOU o pouso do PR`
@@ -61,7 +61,26 @@ A `armadilhas/130` já descrevia o `UNKNOWN` na janela de merge serial, com
 o robô estava ali, olhando, e rodava de novo; aqui o comando é justamente o
 que permite ir embora, e ele falha calado do ponto de vista de quem já saiu.
 
-**Solução, e ela custa uma linha.** Ao ver `ERROR conflitos` depois do
+> **CURADO EM 04/09/2026, no mesmo dia em que esta entrada nasceu.** Esta entrada
+> escreveu o que faltava: *"mecanizar seria mudar `ci/esperar.py` para reconsultar
+> o estado de conflito antes de desistir, e essa é decisão de quem for consertar o
+> `--e-pousar`, com mandato"*. Foi exatamente isso que o **PR #964** fez, com o
+> mandato do despacho de lote, horas antes de esta entrada pousar — as duas
+> sessões não podiam se ver.
+>
+> `pousar_pelo_portao` agora **remede o portão** quando, e só quando, a recusa é
+> `ERROR` com a marca do recálculo do GitHub: seis voltas de vinte segundos,
+> falando a cada uma. `FAIL` segue sem remedição nenhuma, e o código de saída
+> passou a distinguir reprovado (`1`) de não consegui medir (`2`). O guarda é o
+> par de testes mais duas mutações deliberadas: `armadilhas/308`.
+>
+> **O que isso muda para você:** o passo à mão descrito abaixo virou **plano B**,
+> para quando as seis voltas se esgotarem (o GitHub que nunca decide) ou para
+> quem estiver numa árvore anterior ao #964. **A regra que NÃO mudou, e é o
+> melhor desta entrada:** `--e-pousar` não dispensa conferir se o pouso foi
+> pedido. A prova é a etiqueta `pousar` no PR, nunca a tela verde que veio antes.
+
+**Solução à mão, o plano B, e ela custa uma linha.** Ao ver `ERROR conflitos` depois do
 `--e-pousar`, **não repita a espera inteira** (os checks já estão verdes; medir
 de novo é gastar minutos contra um relógio que você não controla). Chame o
 portão à mão, uma vez:
