@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-163956-TAR-078-concluida",
+  "tarefa": "TAR-078",
+  "evento": "concluida",
+  "quando": "2026-09-04T16:39:56+00:00",
+  "quem": "sessao-admin-tar078-2026-09-04",
+  "evidencia": "PR #1016: a tela /admin/escola/jornadas/ com a lista, o interruptor, o texto editavel por idioma, quem esta recebendo e O QUE FOI BARRADO com o motivo. 924 testes verdes na celula, 16 guardas provados por mutacao deliberada de uma linha. Falta o par de tokens na VPS (Lei 5), registrado como pendencia 20260904-082.",
+  "verificado_em": "2026-09-04"
+}

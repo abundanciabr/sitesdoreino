@@ -77,7 +77,27 @@ celulas:
     # 03/09/2026), para o mantenedor saber se o canal de avisos do celular esta
     # funcionando sem precisar entrar na VPS (Lei 5). Nao guarda nada aqui: le a
     # resposta e mostra.
-    consome: [alunos, catalogo, gamificacao, identidade, notificacoes, sugestoes]
+    # `mensageria` desde 04/09/2026: as SEQUENCIAS de mensagens da escola sao
+    # dado da mensageria e moram la. A tela /admin/escola/jornadas/ le os
+    # passos, quem esta dentro e o que foi BARRADO pela porta de maquina, e
+    # escreve por ela duas coisas: liga/desliga uma sequencia, e publica versao
+    # nova de um texto. Nunca no banco dela, e nunca guardando copia aqui: seria
+    # o mesmo fato em dois lugares, e no dia em que os dois discordassem esta
+    # tela mostraria um texto e o aluno receberia outro.
+    #
+    # O contrato congelou no Rito de 04/09/2026, com o mantenedor presente
+    # (registro 20260904-070). Sao DOIS graus do mesmo par (leitura e
+    # publicacao), e o de publicacao ja contem o de leitura.
+    consome:
+      [
+        alunos,
+        catalogo,
+        gamificacao,
+        identidade,
+        mensageria,
+        notificacoes,
+        sugestoes,
+      ]
 
   alunos:
     caminhos: [services/alunos]
