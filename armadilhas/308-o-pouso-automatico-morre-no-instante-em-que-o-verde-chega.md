@@ -76,6 +76,15 @@ falham. As duas mutações deliberadas, cada uma sozinha, depois do verde:
 | a marca do recálculo nunca casa (a remedição some) | o guarda do ERROR e o guarda do teto |
 | remedir qualquer recusa (`returncode != 0`) | o guarda do FAIL e o guarda antigo da recusa |
 
+**Medido três vezes, por três sessões que não podiam se ver.** Na mesma
+madrugada, duas outras sessões escreveram a `306` e a `310` para este mesmo
+defeito, cada uma dentro de um PR que ainda não tinha pousado. A `310` guarda o
+que esta não tem: a consequência de ir embora sem conferir, porque o que prova
+que a fila assumiu é a **etiqueta `pousar`**, nunca a tela verde que veio antes.
+A `306` virou ponteiro para a `310`. Três entradas independentes em uma hora é a
+melhor prova de que o defeito era frequente — e o preço foi três sessões
+escrevendo catálogo em vez de código.
+
 **Onde mais isto vale.** Em qualquer lugar que trate o retorno de um portão como
 booleano. A casa já tem a lei escrita (`FAIL ≠ ERROR`, `[INV-CI01]`), e ela caiu
 aqui pelo mesmo motivo do Lote 10: saber a armadilha não protege, executar o
