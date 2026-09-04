@@ -30,10 +30,15 @@
     "             um botão. É o que explica por que há mais endereços do que telas",
     "  observacao (opcional) a nota de rodapé daquela linha",
     "",
-    "O QUE O VARREDOR NAO CONFERE (buraco declarado, RETROSPECTIVA-FASE-D §2): o texto",
-    "de titulo/descricao (nenhuma máquina sabe se está bem escrito) e o campo `gesto`",
-    "(derivá-lo exigiria seguir cada view até achar o require_POST). Os dois são",
-    "conferidos por gente, na revisão do PR."
+    "O QUE O VARREDOR NAO CONFERE (buraco declarado, RETROSPECTIVA-FASE-D §2): se o",
+    "titulo e a descricao estao escritos em português de leigo. Nenhuma máquina sabe,",
+    "e isso continua sendo revisão de gente, na leitura do PR.",
+    "",
+    "O CAMPO `gesto` SAIU DESSE BURACO em 04/09/2026 (TAR-144): rota cuja view é",
+    "`@require_POST` não é página, e o portão passou a EXIGIR a marca. A implicação",
+    "vale num sentido só — `/entrar/google` é GET e é gesto legítimo. O que motivou a",
+    "checagem: cinco endereços que a tela oferecia como link e que devolviam 405,",
+    "com tudo verde (`armadilhas/330`)."
   ],
   "enderecos": [
     {
