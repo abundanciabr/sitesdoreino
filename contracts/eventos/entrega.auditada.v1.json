@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/entrega.auditada.v1.json",
+  "title": "entrega.auditada.v1",
+  "description": "O worker de auditoria automatica (Blender headless, fora desta celula) devolveu o veredito sobre uma entrega. Reprovada: a encomenda volta a `em_producao` e o aluno le a mensagem clara ('Escala fora do padrao: 0,3 studs; o minimo e 1') antes de qualquer humano ver. Aprovada: segue para revisao humana (primeira entrega do aluno, sempre; depois, por amostragem) ou direto ao cliente. `ator_id` e sempre null: e maquina. Publicado pela celula `encomendas` (a Fila do Primeiro Dolar) pelo padrao outbox transacional (INV-P6). Escrito em papel na Fase 0 (03/09/2026), antes de a celula existir, para que consumidores (gamificacao, pagamentos, Estudio, metricas) se escrevam contra o contrato e nunca contra o codigo. So IDS OPACOS viajam: nem briefing, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Lei: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md; produto: PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (secao 7.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "entrega.auditada"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Id da PLATAFORMA de quem fez o gesto, ou null quando foi o RELOGIO ou o MOTOR (reavaliacao periodica, sem pessoa atras). NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "encomenda_id",
+        "entrega_id",
+        "resultado",
+        "itens_reprovados"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "encomenda_id": {
+          "type": "string",
+          "description": "Id opaco da encomenda dentro da celula `encomendas`."
+        },
+        "entrega_id": {
+          "type": "string",
+          "description": "Id opaco da entrega."
+        },
+        "resultado": {
+          "type": "string",
+          "enum": [
+            "aprovada",
+            "reprovada"
+          ]
+        },
+        "itens_reprovados": {
+          "type": "array",
+          "description": "Vazio quando aprovada. Os criterios sao os cinco erros mais comuns do piloto de papel (plano secao 11, Fase 1), e o vocabulario e fechado.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "triangulos",
+              "dimensoes",
+              "escala",
+              "uv",
+              "textura",
+              "nomenclatura"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/pedido-direto.criado.v1.json",
+  "title": "pedido-direto.criado.v1",
+  "description": "Um cliente pediu uma encomenda DIRETO a um aluno, pelo botao 'Encomendar direto' do Estudio (ou por link com o aluno fixado). Nasce `aguardando_pagamento` com `origem = direto`; quando pagar, sai `encomenda.paga` com essa origem. Pedido direto NAO entra na fila, NAO ocupa a vaga unica da fila do aluno (INV-ENC-J7 nao se aplica a ele) e percorre a MESMA esteira de revisao e dinheiro; conta como entrega para prioridade e Marcos. Cliente que o aluno trouxe de fora usa esta mesma porta (plano secao 5.6). Publicado pela celula `encomendas` (a Fila do Primeiro Dolar) pelo padrao outbox transacional (INV-P6). Escrito em papel na Fase 0 (03/09/2026), antes de a celula existir, para que consumidores (gamificacao, pagamentos, Estudio, metricas) se escrevam contra o contrato e nunca contra o codigo. So IDS OPACOS viajam: nem briefing, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Lei: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md; produto: PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (secao 7.3).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "pedido-direto.criado"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de quem fez o gesto — o unico identificador de pessoa que atravessa as celulas. NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "encomenda_id",
+        "aluno_id",
+        "cliente_id",
+        "cartao",
+        "nivel",
+        "via"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "encomenda_id": {
+          "type": "string",
+          "description": "Id opaco da encomenda dentro da celula `encomendas`."
+        },
+        "aluno_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA do aluno (a pessoa como a celula `identidade` a conhece). NUNCA e o e-mail."
+        },
+        "cliente_id": {
+          "type": "string",
+          "description": "Id da PLATAFORMA do cliente. NUNCA e o e-mail."
+        },
+        "cartao": {
+          "type": "string",
+          "enum": [
+            "item_simples",
+            "vestivel_ou_veiculo",
+            "personagem"
+          ],
+          "description": "O cartao do cardapio (plano secao 5.1). E o cartao que define nivel, prazo e preco; o cliente nunca escolhe nivel."
+        },
+        "nivel": {
+          "type": "string",
+          "enum": [
+            "iniciante",
+            "intermediario",
+            "avancado"
+          ],
+          "description": "O nivel da encomenda, derivado do cartao. E o nivel MINIMO do titulo de quem pode recebe-la (INV-ENC-J5)."
+        },
+        "via": {
+          "type": "string",
+          "enum": [
+            "estudio",
+            "link"
+          ],
+          "description": "Pelo botao do Estudio, ou por um link com `?para=<apelido>` que o aluno mandou ao cliente."
+        }
+      }
+    }
+  }
+}
