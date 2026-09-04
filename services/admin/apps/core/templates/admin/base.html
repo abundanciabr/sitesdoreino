@@ -593,6 +593,37 @@ primeira versão deste arquivo, e o teste pegou.
        VISÍVEL, e não escondido, porque sumir em silêncio é a pior forma de
        perder um fato. Guarda: tests/test_perpetuo.py. */
     .portas .faltando { color: var(--vermelho); font-weight: 600; }
+
+    /* --- o calendário do ciclo (04/09/2026) -------------------------------
+       Uma tabela de 14 linhas por 7 colunas. Ela rola DENTRO da própria caixa
+       no celular, e não empurra a página inteira de lado: página que rola na
+       horizontal esconde texto, e ninguém procura o que não sabe que existe. */
+    .rolagem-lateral { overflow-x: auto; }
+    .semanas-do-ciclo { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .semanas-do-ciclo th, .semanas-do-ciclo td {
+      padding: 9px 10px; border-bottom: 1px solid var(--linha);
+      text-align: left; white-space: nowrap;
+    }
+    .semanas-do-ciclo th { color: var(--texto-2); font-size: 12px; font-weight: 600; }
+    .semanas-do-ciclo .numero { text-align: right; font-variant-numeric: tabular-nums; }
+    .semanas-do-ciclo .acumulada { color: var(--texto-2); }
+    /* Onde você está, em três estados. A semana de hoje ganha fundo e borda, e
+       não só cor de texto: é a linha que o olho tem de achar sem procurar. */
+    .semana.futura td { color: var(--texto-3); }
+    .semana.andando td { background: var(--painel); border-top: 1px solid var(--azul); border-bottom-color: var(--azul); }
+    .semana .agora {
+      margin-left: 8px; padding: 1px 7px; border-radius: 6px;
+      background: var(--azul); color: #0f1115; font-size: 11px; font-weight: 700;
+    }
+    /* "Não sei" nunca é zero, e por isso não é vermelho: vermelho treinaria a
+       ler ausência de resposta como resultado ruim. */
+    .semanas-do-ciclo .nao-sei { color: var(--texto-3); font-style: italic; }
+    .selo-verde, .selo-vermelho {
+      margin-left: 7px; padding: 1px 7px; border-radius: 6px;
+      font-size: 11px; font-weight: 600; border: 1px solid;
+    }
+    .selo-verde { color: var(--verde); border-color: var(--verde); }
+    .selo-vermelho { color: var(--vermelho); border-color: var(--vermelho); }
   </style>
 </head>
 <body>

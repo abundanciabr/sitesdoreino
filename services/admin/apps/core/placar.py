@@ -9,7 +9,7 @@ número de fichas:
   1), com a meta do mês ao lado;
 - **a meta grande, por cima:** de 0 para 500 pessoas somadas de 03/09 a
   15/12/2026, no formato das 4 Disciplinas da Execução (*de X para Y até
-  quando*), com a linha reta dizendo se estamos ganhando ou perdendo.
+  quando*), com a régua do ciclo dizendo se estamos ganhando ou perdendo.
 
 ## As leis desta tela, e de onde vêm
 
@@ -38,13 +38,19 @@ número de fichas:
 O **alvo** (Y), a **data** e a **partida** moram no cartão, porque são
 parâmetros da régua, versionados por PR. O FATO de que o mantenedor decidiu
 mora no livro (`painel/registros/`, tipo `decisao`). A meta do mês
-(`alvo_do_mes`) é opcional: nula, a tela deriva a fatia da linha reta que cai
-no mês; ele fixa um número quando quiser.
+(`alvo_do_mes`) é opcional: nula, a tela deriva a fatia da régua do ciclo que
+cai no mês; ele fixa um número quando quiser.
+
+Desde 04/09/2026 essa régua tem uma peça a mais, `semanas`: a CURVA do ciclo
+(`DECISAO-o-calendario-do-ciclo.md`). Ela reparte a meta semana a semana, quase
+zero no começo e pesada no fim, em vez de em partes iguais. O cartão que não
+declara `semanas` continua medido em linha reta, como antes.
 
 ## O veredito, sem índice
 
-Ganhando ou perdendo é a comparação de X com o **esperado de hoje** numa linha
-reta da partida ao alvo. Não há ponderação, não há nota de 0 a 100: o plano
+Ganhando ou perdendo é a comparação de X com o **esperado de hoje**, que sai de
+`esperado_em`: a curva de `semanas` quando o cartão a declara, e a linha reta da
+partida ao alvo quando não. Não há ponderação, não há nota de 0 a 100: o plano
 proíbe número composto no andar zero (§2), e o mantenedor marcou "sem
 preferência" quando os documentos do Scale OS propuseram a nota; ficou a
 regra da casa (registro `20260903-036`).
@@ -229,6 +235,69 @@ def validar(cartao: object) -> list[str]:
             "diferença até ele não é movimento"
         )
     problemas.extend(_validar_a_meta(cartao))
+    problemas.extend(_validar_as_semanas(cartao))
+    return problemas
+
+
+def _validar_as_semanas(cartao: dict) -> list[str]:
+    """A curva do ciclo: 14 faixas de datas, e a soma delas É a meta grande.
+
+    A regra que importa é a última: **a soma dos alvos semanais tem de dar
+    exatamente `alvo` menos `partida`**. Sem ela, a curva e a meta grande
+    seriam duas verdades sobre o mesmo número, e no dia em que discordassem
+    ninguém saberia qual está certa — o placar diria uma coisa e o calendário
+    outra, os dois com ar de certeza. É a lei anti-duplicação do `CLAUDE.md`
+    aplicada dentro de um arquivo só.
+
+    As outras regras são o mínimo para a curva ser um calendário de verdade:
+    faixas em ordem, sem sobreposição, cada uma com começo antes do fim.
+    """
+    semanas = cartao.get("semanas")
+    if semanas is None:
+        return []
+    if not isinstance(semanas, list) or not semanas:
+        return ["`semanas` é uma lista de faixas com pelo menos uma, ou ausente"]
+    problemas: list[str] = []
+    for i, s in enumerate(semanas):
+        onde = f"semanas[{i}]"
+        if not isinstance(s, dict):
+            problemas.append(f"{onde} não é um objeto")
+            continue
+        for campo in ("n", "alvo"):
+            v = s.get(campo)
+            if not isinstance(v, int) or isinstance(v, bool) or v < 0:
+                problemas.append(
+                    f"{onde}: `{campo}` é um inteiro sem aspas, zero ou maior"
+                )
+        for campo in ("de", "ate"):
+            if _data(s.get(campo)) is None:
+                problemas.append(f"{onde}: `{campo}` é uma data AAAA-MM-DD")
+    if problemas:
+        return problemas
+
+    for i, s in enumerate(semanas):
+        de, ate = _data(s["de"]), _data(s["ate"])
+        if ate < de:
+            problemas.append(f"semanas[{i}]: `ate` vem antes de `de`")
+        if i and _data(semanas[i - 1]["ate"]) >= de:
+            problemas.append(
+                f"semanas[{i}] começa em {s['de']}, antes de a anterior terminar: "
+                "as faixas são de datas e não podem se sobrepor nem sair de ordem"
+            )
+    if problemas:
+        return problemas
+
+    if cartao.get("alvo") is None or cartao.get("partida") is None:
+        return ["`semanas` exige a meta completa no cartão (`alvo` e `partida`)"]
+    soma = sum(int(s["alvo"]) for s in semanas)
+    esperado = int(cartao["alvo"]) - int(cartao["partida"])
+    if soma != esperado:
+        problemas.append(
+            f"a soma das semanas é {soma} e a meta pede {esperado} "
+            f"(`alvo` {cartao['alvo']} menos `partida` {cartao['partida']}): "
+            "a curva não pode discordar da meta grande. Ajuste as semanas, ou "
+            "o alvo, mas nunca deixe os dois números discordarem"
+        )
     return problemas
 
 
@@ -358,11 +427,72 @@ def contar_compras(
 # ------------------------------------------------------------------- a conta
 
 
+def semanas_do_ciclo(cartao: dict) -> list[dict]:
+    """As faixas de `semanas`, cada uma com o acumulado até o fim dela.
+
+    Lista vazia quando o cartão não declara a curva, e aí `esperado_em` volta
+    para a linha reta. A conta do acumulado mora AQUI e em nenhum outro lugar:
+    a tela do calendário e a régua do placar leem a mesma função, senão as duas
+    divergiriam no primeiro ajuste de meta.
+    """
+    cru = cartao.get("semanas")
+    if not isinstance(cru, list) or not cru:
+        return []
+    faixas, acumulado = [], int(cartao.get("partida", 0))
+    for s in cru:
+        acumulado += int(s["alvo"])
+        faixas.append(
+            {
+                "n": int(s["n"]),
+                "de": _data(s["de"]),
+                "ate": _data(s["ate"]),
+                "alvo": int(s["alvo"]),
+                "acumulado": acumulado,
+                "rotulo": s.get("rotulo"),
+            }
+        )
+    return faixas
+
+
 def esperado_em(cartao: dict, dia: dt.date) -> int:
-    """Onde a linha reta da partida ao alvo passa no `dia` (antes da partida
-    vale a partida; depois do fim vale o alvo)."""
+    """Quanto a meta espera ter no `dia`.
+
+    **Com `semanas` no cartão, quem manda é a CURVA** (decisão do mantenedor de
+    04/09/2026): dentro de uma semana o esperado sobe proporcionalmente aos dias
+    já vividos dela; no buraco entre duas semanas, fica no acumulado da última
+    que fechou; antes da primeira vale a partida; depois da última, o alvo.
+
+    O passeio dentro da semana não é enfeite: sem ele o veredito
+    ganhando/perdendo daria um pulo toda segunda e ficaria congelado o resto da
+    semana, e a tela diria "ganhando" na terça de uma semana que ia terminar
+    perdida.
+
+    **Sem `semanas`, é a linha reta de sempre** — a regra antiga, intacta, para
+    todo cartão com meta que não declara curva.
+    """
     alvo = int(cartao["alvo"])
     partida = int(cartao["partida"])
+
+    faixas = semanas_do_ciclo(cartao)
+    if faixas:
+        if dia < faixas[0]["de"]:
+            return partida
+        if dia > faixas[-1]["ate"]:
+            return alvo
+        anterior = partida
+        for faixa in faixas:
+            if dia > faixa["ate"]:
+                anterior = faixa["acumulado"]
+                continue
+            if dia < faixa["de"]:
+                # O buraco entre duas semanas (o fim de semana): o esperado é o
+                # que a semana anterior fechou, nunca uma fatia da próxima.
+                return anterior
+            dias = (faixa["ate"] - faixa["de"]).days + 1
+            vividos = (dia - faixa["de"]).days + 1
+            return anterior + round(faixa["alvo"] * vividos / dias)
+        return alvo
+
     ate = _data(cartao["ate"])
     partida_em = _data(cartao["partida_em"])
     total = (ate - partida_em).days
