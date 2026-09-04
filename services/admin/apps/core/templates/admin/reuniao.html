@@ -19,7 +19,14 @@ Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
   {% else %}
 
   <h2 class="titulo-de-bloco espaco-20">1. As estrelas-guia</h2>
-  <p class="recado"><span class="rotulo">sem dados</span> Alunos com resultado profissional e margem mensal entram desenhados no degrau 4 do plano; hoje nenhuma das duas tem fonte. Passe adiante.</p>
+  {% if estrelas %}
+    <ul class="notas">
+      {% for e in estrelas %}<li><b>{{ e.cartao.pergunta }}</b> <span class="rotulo">sem dados</span> {{ e.cartao.sem_fonte_porque }}</li>{% endfor %}
+    </ul>
+    <p class="recado-fraco">Trinta segundos: as duas continuam sem fonte. Passe adiante.</p>
+  {% else %}
+    <p class="recado"><span class="rotulo">sem dados</span> As estrelas-guia não montaram (cartão ausente).</p>
+  {% endif %}
 
   <h2 class="titulo-de-bloco espaco-20">2. A meta e a direção: estamos ganhando?</h2>
   {% if placar.veredito == "nao-consigo-contar" %}
@@ -53,7 +60,15 @@ Bloco `comment`, e nunca `{#` (armadilhas/087). Zero atributo `style=`.
   {% endif %}
 
   <h2 class="titulo-de-bloco espaco-20">4. O placar de doze: só os desvios</h2>
-  <p class="recado"><span class="rotulo">sem dados</span> Os doze indicadores entram no degrau 4 do plano. Hoje os que já existem estão no passo 2.</p>
+  {% if doze %}
+    <p class="recado">{{ confianca_dos_doze.medidos }} de {{ confianca_dos_doze.total }} medidos hoje. Só os que têm número:</p>
+    <ul class="notas">
+      {% for d in doze %}{% if d.veredito == "medido" %}<li><b>{{ d.cartao.pergunta }}</b> {{ d.texto }}</li>{% endif %}{% endfor %}
+    </ul>
+    <p class="recado-fraco">Os outros dizem no placar o que precisa existir para acender. <span class="rotulo">sem dados</span> não é desvio.</p>
+  {% else %}
+    <p class="recado"><span class="rotulo">sem dados</span> Os doze não montaram (cartão ausente).</p>
+  {% endif %}
 
   <h2 class="titulo-de-bloco espaco-20">5. A restrição desta semana</h2>
   {% if restricao %}
