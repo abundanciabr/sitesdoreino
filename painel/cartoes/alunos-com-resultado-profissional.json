@@ -1,0 +1,22 @@
+{
+  "nome": "alunos-com-resultado-profissional",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Quantas alunas chegaram a um resultado profissional?",
+  "definicao": "A fração das alunas elegíveis que atingiram um marco profissional validado: primeiro, portfólio aprovado pela escola; depois, primeiro trabalho pago. É a estrela-guia de valor dos documentos do Scale OS, a que protege o aluno; a estrela econômica (margem mensal) protege a empresa, e a escola só venceu quando as duas sobem.",
+  "formula": "alunas com marco profissional validado divididas pelas alunas com tempo suficiente de casa, em por cento",
+  "fonte": null,
+  "sem_fonte_porque": "Sem dados até existir o portfólio (plano guardado, construção não autorizada) e a célula de cursos (plano pedido em 03/09/2026); o marco é ASSINADO pela escola, nunca automático.",
+  "autoridade": "metricas",
+  "dono": "mantenedor",
+  "frequencia": "mensal",
+  "direcao": "subir",
+  "unidade": "por cento",
+  "par": "margem-mensal",
+  "acao": "Sem dados: o gesto é a célula de cursos e o portfólio; até lá, a escola conta os casos à mão na reunião.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Professional Outcome Rate' e a primeira estrela-guia (decisão do mantenedor de 03/09/2026: entra desenhada, sem dados)."
+}

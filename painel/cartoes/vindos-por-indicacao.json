@@ -1,0 +1,22 @@
+{
+  "nome": "vindos-por-indicacao",
+  "tipo": "resultado",
+  "andar": 0,
+  "pergunta": "Quantas das pessoas que viraram alunas vieram por indicação?",
+  "definicao": "A fração das compras do mês que chegaram por indicação de outra aluna. É o laço de crescimento mais barato que existe.",
+  "formula": "compras do mês com origem indicação divididas por compras-no-mes, em por cento",
+  "fonte": null,
+  "sem_fonte_porque": "Sem dados: indicação não existe em célula nenhuma; nenhum evento a emite. Nasce com a pergunta 'como você conheceu a escola?' no pedido de entrada (degrau 8, Rito de Contrato) e, depois, com um programa de indicação.",
+  "autoridade": "metricas",
+  "dono": "mantenedor",
+  "frequencia": "mensal",
+  "direcao": "subir",
+  "unidade": "por cento",
+  "par": "compras-no-ciclo",
+  "acao": "Sem dados: o gesto é a pergunta 'como você conheceu a escola?' no pedido de entrada.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "versao": 1,
+  "desde": "2026-09-03",
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Referral Revenue %'."
+}
