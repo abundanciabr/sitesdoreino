@@ -45,6 +45,11 @@ caso("responde_a inexistente REPROVA",
 caso("compromisso com prazo passa", LOGICA.validarRegistros([reg({ tipo: "compromisso", vence_em_dias: 7 })]).length === 0);
 caso("compromisso sem prazo REPROVA", LOGICA.validarRegistros([reg({ tipo: "compromisso", vence_em_dias: null })]).length > 0);
 caso("compromisso com prazo zero REPROVA", LOGICA.validarRegistros([reg({ tipo: "compromisso", vence_em_dias: 0 })]).length > 0);
+// A foto da semana (04/09/2026, degrau 6): medição com "cartao=valor; ...".
+caso("foto bem formada numa medição passa", LOGICA.validarRegistros([reg({ tipo: "medicao", foto: "compras-no-mes=3; liberacoes-em-48h=100; latencia-de-decisao=1.5" })]).length === 0);
+caso("foto fora de medição REPROVA", LOGICA.validarRegistros([reg({ tipo: "nota", foto: "compras-no-mes=3" })]).length > 0);
+caso("foto torta REPROVA", LOGICA.validarRegistros([reg({ tipo: "medicao", foto: "compras no mês: três" })]).length > 0);
+caso("foto nula é ausência, passa", LOGICA.validarRegistros([reg({ tipo: "medicao", foto: null })]).length === 0);
 // Número repetido no mesmo dia: a corrida entre sessões paralelas (26/08/2026,
 // quatro colisões em um dia, entre três sessões). O nome completo continua
 // único — o que se perde é o número como referência.
