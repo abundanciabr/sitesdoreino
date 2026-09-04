@@ -1054,6 +1054,20 @@ CHAVES_DE_PARAMETRO: dict[str, tuple[str, str]] = {
 TAMANHO_MINIMO_DO_MOTIVO = 15
 
 
+class ParametroAusente(RuntimeError):
+    """Falta no banco um parâmetro da lei §6 que alguém precisa ler.
+
+    É erro, e não valor padrão, porque padrão em código seria a constante mágica
+    que a lei §3.8 proíbe (critério de morte 5) e esconderia uma semeadura que
+    não rodou. Conserto: `python manage.py semear_parametros --site <id>`.
+
+    Mora AQUI, ao lado da tabela, e não no motor: desde o degrau 2.4 quem lê
+    parâmetro são três módulos (`motor.py`, `relogio.py` e `tique.py`), e uma
+    exceção por módulo faria quem chama precisar capturar três nomes para o
+    mesmo fato. `motor.ParametroAusente` continua resolvendo, pelo import.
+    """
+
+
 class Parametro(models.Model):
     """Uma LINHA de histórico de um parâmetro. Mudar é acrescentar, nunca editar.
 

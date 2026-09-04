@@ -698,6 +698,89 @@ primeira oportunidade de violá-la.
   04/09/2026.
 - **Célula dona:** encomendas
 
+### [INV-ENC-J8] O Relógio da Oferta Não Anda Fora da Janela
+- **O quê:** entre o instante em que uma oferta é feita e o `expira_em` gravado
+  existem exatamente `relogio_da_oferta` horas **dentro da janela**
+  `janela_inicio`–`janela_fim` (hoje 8h–22h de São Paulo). Fora dela o relógio
+  congela: a oferta feita às 21h vence às 10h do dia seguinte, e a feita às 2h da
+  manhã só começa a contar às 8h. A conta é uma função pura de (instante,
+  duração, janela) em `services/encomendas/apps/encomendas/relogio.py`, e os
+  três números vêm do banco no valor vigente em `agora`. **"Horas úteis" aqui
+  são horas da JANELA, e fim de semana conta como qualquer dia** — não existe
+  chave `dias_uteis` na lei §6, e o vocabulário de parâmetros é fechado no banco.
+- **Por quê:** protege a frase que o produto inteiro promete ao aluno, e que
+  ninguém escreve porque parece óbvia demais: *ninguém perde a oportunidade
+  dormindo*. Sem a janela, uma encomenda paga às 23h chega com prazo até as 2h
+  da manhã, e a pessoa acorda com "você perdeu esta oportunidade". Ela não
+  passou; ela dormiu — e na segunda vez desliga o interruptor. Um dos três
+  números em código é o **critério de morte 5** da lei §9. Lei:
+  `DECISAO-fila-do-primeiro-dolar.md` §5 e §6; produto: plano §6.3 e §7.4.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_j8_relogio_congela_fora_da_janela.py` — a
+  propriedade varrida nas 24 horas do dia (medida pela INVERSA, `horas_uteis_entre`,
+  para o guarda não recalcular com a função que ele mede), as horas concretas que
+  o aluno lê na tela, a contraprova do congelamento (nove horas de parede para
+  três de janela) com o par verde de dentro da janela, o caminho real pelo motor,
+  a janela mudando no banco sem PR, o valor vigente em `agora`, e o fail-closed da
+  janela ausente. Mais
+  `services/encomendas/tests/test_relogio_horas_uteis.py`, que mede a função pura:
+  as bordas, a virada de dia, a virada de ano, o fim de semana e a janela
+  impossível. Provado por mutação em 04/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-J9] Nenhuma Encomenda Espera na Fila Além do Prazo
+- **O quê:** nenhuma encomenda passa de `horas_para_virar_aberta` (hoje 24h, de
+  PAREDE) em `na_fila`/`oferecida` sem virar `aberta`. O tique de um minuto vira
+  o estado e cancela a oferta viva, se houver. O marco não é `criada_em`: é a
+  última entrada na espera vinda de FORA do par `na_fila`/`oferecida` — as idas e
+  vindas internas (o silêncio de um aluno) não zeram nada, e voltar do plantão ou
+  do abandono começa uma espera nova.
+- **Por quê:** é o único dos dez de justiça que protege o CLIENTE. Sem ele, uma
+  encomenda desce a fila para sempre — cada aluno silencia, a oferta expira, ela
+  volta para `na_fila`, o próximo silencia — e quem pagou fica olhando "estamos
+  procurando um modelador" por uma semana, sem nada errado acontecendo em lugar
+  nenhum: nenhum erro, nenhum alarme, só uma fila que anda e nunca chega. O
+  relógio é de parede, e não de janela, porque a lei §6 escreve a unidade
+  ("horas na fila", contra "horas úteis" do relógio da oferta): quem espera é o
+  cliente, que não dorme junto com a janela. Lei:
+  `DECISAO-fila-do-primeiro-dolar.md` §5 e §6; produto: plano §6.4 e §7.4.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_j9_vira_aberta_em_24h.py` — a virada no
+  prazo com o par verde de um minuto antes, o rastro no histórico com motivo e
+  sem ator, a oferta viva cancelada (e não expirada) no minuto das 24h, o marco
+  que NÃO zera nas idas e vindas da fila, a encomenda devolvida pelo plantão
+  ganhando o prazo inteiro, o prazo mudando no banco sem PR, a encomenda sem
+  elegível esperando como as outras, e a varredura universal ("ninguém esperou
+  mais que o prazo"). Provado por mutação em 04/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-J10] Reexecutar Não Cria Oferta Nova, e Nada é Agendado
+- **O quê:** rodar o motor ou o tique duas vezes sobre o mesmo estado não muda
+  coisa alguma — nem uma oferta, nem um status, nem um `atualizada_em`. E a
+  outra metade, que é o mecanismo: **não existe timer agendado nesta célula**.
+  Há UM `crontab(minute="*")` na árvore inteira, e nenhum `schedule`, `revoke`,
+  `eta=` ou `delay=` — garantia de FORMA, por varredor `ast`, além do
+  comportamento.
+- **Por quê:** é o que torna a fila operável no pior dia. Um timer agendado vive
+  fora do banco (na fila do Redis, ou na memória de um processo): o deploy troca
+  o container, o Redis cai, a máquina reinicia — e o timer que morre **não deixa
+  rastro**. A oferta fica pendente para sempre, a encomenda nunca volta para a
+  fila, e ninguém recebe erro nenhum. Com reavaliação periódica a verdade inteira
+  está nas colunas: seis horas fora do ar se resolvem numa passada, porque ela
+  não pergunta "o que devia ter acontecido às 14h?", pergunta "o que está vencido
+  AGORA?". Lei: `DECISAO-fila-do-primeiro-dolar.md` §5; produto: plano §7.4, §8.6
+  e o cenário 15 do anexo B.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_j10_motor_idempotente.py` — a segunda
+  passada inerte no motor, no tique e na abertura, sempre com o par que prova que
+  a PRIMEIRA fez algo (idempotência é verdade trivial para quem não faz nada), e
+  o cenário 15 nas duas metades: relógios que não se mexem no reinício e nenhuma
+  duplicata em quatro passadas seguidas, mais as seis horas fora do ar resolvidas
+  numa passada só. A forma (nenhum agendamento por oferta, um batimento na
+  célula, e o varredor provado contra código que agenda) está em
+  `services/encomendas/tests/test_tique.py`. Provado por mutação em 04/09/2026.
+- **Célula dona:** encomendas
+
 ---
 
 ## Invariantes da própria CI
