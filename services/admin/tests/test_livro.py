@@ -277,6 +277,31 @@ def test_voltar_para_uma_versao_antiga_nao_apaga_a_de_hoje():
 
 
 @respx.mock
+def test_a_tela_corta_o_historico_e_diz_que_cortou():
+    """O corte é de DESENHO, e a tela precisa dizer isso.
+
+    Um texto salvo muitas vezes desenharia uma página de rolagem sem fim, com o
+    texto (que é o que se vem ver) empurrado para o alto. Cortar em silêncio
+    seria pior do que não cortar: o autor leria "sumiram as versões antigas".
+    """
+    from apps.core.livro import VERSOES_NA_TELA
+
+    cliente = _dentro()
+    _guardar(cliente, corpo="Começo.")
+    for numero in range(VERSOES_NA_TELA + 3):
+        cliente.post(
+            "/livro/um-capitulo/salvar",
+            {"titulo": "Um capítulo", "corpo": f"Versão {numero}.", "ordem": "10"},
+        )
+
+    corpo = cliente.get("/livro/um-capitulo").content.decode("utf-8")
+
+    assert VersaoDoTexto.objects.count() == VERSOES_NA_TELA + 4
+    assert "4 mais antigas guardadas" in corpo
+    assert "nenhuma foi apagada" in corpo
+
+
+@respx.mock
 def test_apagar_exige_o_endereco_digitado():
     """A confirmação que só pergunta "tem certeza?" vira reflexo em uma semana.
 

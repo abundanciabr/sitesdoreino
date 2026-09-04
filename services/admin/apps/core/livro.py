@@ -71,6 +71,26 @@ NOMES_RESERVADOS = frozenset({"novo", "criar", "enviar", "tudo"})
 LIMITE_DE_ARQUIVOS = 20
 LIMITE_DE_BYTES = 1_000_000
 
+#: Quantas versões a tela do texto mostra. As mais novas primeiro, e as antigas
+#: continuam guardadas: o corte é de DESENHO, não de dados. Um texto salvo
+#: duzentas vezes desenharia uma página com duzentos blocos, e o que se vem ver
+#: aqui é o texto, que ficaria no alto de uma rolagem sem fim.
+VERSOES_NA_TELA = 20
+
+# O TETO DO TEXTO COLADO, medido em 04/09/2026 e escrito aqui para ninguém
+# redescobrir: um formulário comum (o de colar) estoura em ~2,5 MB, que é o
+# `DATA_UPLOAD_MAX_MEMORY_SIZE` padrão do Django, e a resposta é um 400 CRU,
+# antes desta view existir. São cerca de 400 mil palavras numa colagem só, o
+# equivalente a cinco livros inteiros de uma vez.
+#
+# O limite NÃO foi levantado, e a decisão é essa: subir o teto de POST da célula
+# inteira por um caso que exige cinco livros numa caixa só é comprar risco de
+# memória em toda rota para um problema que ninguém tem. O ENVIO DE ARQUIVOS não
+# tem esse teto (medido: 6 MB em cinco arquivos passa, porque o Django escreve
+# arquivo grande em disco em vez de memória) — e é por lá que um livro inteiro
+# entra, um arquivo por texto, com recusa em português quando um deles passa do
+# tamanho.
+
 #: As extensões que a tela aceita no envio. Markdown e texto puro, porque é o
 #: que guarda formatação sem nada em volta. `.docx` e `.pdf` ficam de fora de
 #: propósito: os dois são pacotes, não texto, e abri-los aqui traria uma
@@ -380,7 +400,10 @@ def texto_do_livro(request, nome):
             "texto": texto,
             "corpo": documentos.para_html(texto.corpo),
             "riscas": _riscas(texto),
-            "versoes": list(texto.versoes.order_by("-salvo_em")),
+            "versoes": list(texto.versoes.order_by("-salvo_em")[:VERSOES_NA_TELA]),
+            # Quantas ficaram de fora do corte, para a tela dizer isso em vez de
+            # deixar o autor achar que o resto foi apagado.
+            "versoes_a_mais": max(texto.versoes.count() - VERSOES_NA_TELA, 0),
             "recado": request.GET.get("recado", ""),
         },
     )

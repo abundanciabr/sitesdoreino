@@ -84,7 +84,7 @@ isso faria o autor navegar para ver o que ele mesmo escreveu ontem.
   <div class="documento">{{ corpo|safe }}</div>
 
   <details class="cadastrar espaco-34">
-    <summary>O que já foi escrito aqui ({{ versoes|length }})</summary>
+    <summary>O que já foi escrito aqui ({{ versoes|length|add:versoes_a_mais }})</summary>
     <p class="nota">
       Cada vez que este texto foi salvo, o que estava escrito naquele momento
       ficou guardado. A primeira da lista é a que está valendo agora.
@@ -114,6 +114,10 @@ isso faria o autor navegar para ver o que ele mesmo escreveu ontem.
     <p class="nota espaco-16">
       Voltar para uma versão não apaga nada: o texto antigo é copiado por cima
       do de hoje, e o de hoje continua nesta lista.
+      {% if versoes_a_mais %}
+      Esta tela mostra as {{ versoes|length }} mais novas, e existem
+      {{ versoes_a_mais }} mais antigas guardadas: nenhuma foi apagada.
+      {% endif %}
     </p>
   </details>
 
