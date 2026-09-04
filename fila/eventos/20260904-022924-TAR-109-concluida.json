@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-022924-TAR-109-concluida",
+  "tarefa": "TAR-109",
+  "evento": "concluida",
+  "quando": "2026-09-04T02:29:24+00:00",
+  "quem": "sessao-encomendas-genese-2026-09-03",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/953 (aberto): services/encomendas com /healthz nas duas formas; 13 testes verdes e black limpo; os tres guardas provados por MUTACAO com vermelho na ASSERCAO (armadilhas/195): SessionMiddleware -> test_inv_encomendas_nao_assina_sessao.py:35 'assert not True' 1 failed; SESSION_ENGINE+csrftoken -> :62 e :77 \"assert 'csrftoken' == 'encomendas_csrf'\" 2 failed; TIME_ZONE apagado -> test_fuso_horario.py:67 'assert (18, 30) == (20, 30)' e :82 'assert 24/08/2026 23:00 == 25/08/2026 01:00' 4 failed; 'encomendas/' cravado no urls.py -> test_healthz_script_name.py:105 'assert 404 == 200' e :121 'assert 200 != 200' 4 failed; restaurados 4/4/5/4 passed. celulas.yml (consome: []), manifesto not-applicable, rollback.yml, mapa-do-site no lugar; muralhas 12/13 PASS (orcamento pela etiqueta), mapa-de-celulas PASS, mapa-do-site PASS, guarda_dos_guardas PASS, test_constituicoes 10 passed, test_rollback verde. Deploy vermelho ate o PR de infra e ESPERADO (armadilhas/088).",
+  "verificado_em": "2026-09-04"
+}
