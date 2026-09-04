@@ -1370,6 +1370,16 @@
       "descricao": "A parte que envia e-mails não tem nenhuma página: só este sinal, pela rede interna."
     },
     {
+      "celula": "mensageria",
+      "rota": "api/mensageria/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina das sequências de mensagens",
+      "descricao": "Por onde a sua tela de administração vai ler as sequências automáticas (quais existem, quem está dentro de cada uma, o que foi enviado e o que foi barrado, com o motivo) e por onde você troca a frase de uma mensagem. Trocar a frase publica uma versão nova: quem já está no meio da sequência termina com o texto antigo, e quem entrar depois recebe o novo.",
+      "observacao": "Fica escondida da internet: esta parte do site não tem endereço público nenhum, só existe na rede interna. Mesmo assim ela exige senha de máquina, em dois níveis: um para só ler e outro, separado, para publicar uma frase nova. Hoje as duas listas de senha estão VAZIAS, então ninguém passa: a senha do par nasce no passo de configuração da máquina, quando a tela for construída."
+    },
+    {
       "celula": "admin",
       "rota": "menu/",
       "endereco": "/admin/menu/",
