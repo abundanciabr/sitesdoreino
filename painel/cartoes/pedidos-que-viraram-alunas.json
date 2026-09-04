@@ -15,7 +15,13 @@
   "acao": "Abaixo de 100% com gente na fila: abra a fila. Recusas também baixam este número, e recusar pode ser certo.",
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 14,
+  "dimensoes": [
+    "canal",
+    "turma"
+  ],
+  "ruido": 5,
   "versao": 1,
   "desde": "2026-09-03",
-  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Core Conversion', traduzido para a fila de liberação."
+  "_por_que": "Um dos doze indicadores do placar de doze (Scale OS 1 §32; plano §4.3), degrau 4 do plano reescrito em 03/09/2026. É o 'Core Conversion', traduzido para a fila de liberação. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Ruído de 5 pontos: a fração é de poucos pedidos, e um pedido a mais move a conta sem que nada tenha mudado de verdade."
 }

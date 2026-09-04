@@ -5,6 +5,7 @@
     python ci/fila.py listar [--ao-vivo]     # estados calculados; --ao-vivo soma reservas e PRs
     python ci/fila.py pegar TAR-001 --quem "sessao-x"    # trava no servidor + evento
     python ci/fila.py soltar TAR-001 --quem "sessao-x"   # devolve à fila
+    python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..."  # trava, com o porquê
     python ci/fila.py concluir TAR-001 --quem "sessao-x" --evidencia URL
     python ci/fila.py validar                # fail-closed; roda na muralha
 
@@ -735,6 +736,49 @@ def cmd_soltar(raiz: Path, args) -> int:
     return 0
 
 
+def cmd_bloquear(raiz: Path, args) -> int:
+    """Escreve o evento `bloqueada` — o estado que existia sem ninguém para criá-lo.
+
+    O `bloqueada` é estado calculado desde que a fila nasceu, e `validar` já
+    exigia `detalhe` nele. Só faltava o verbo: quem precisasse bloquear escrevia
+    o JSON do evento à mão, fora do balcão, sem passar por nenhuma das recusas
+    daqui. Em 04/09/2026 duas sessões do mesmo lote fizeram exatamente isso, uma
+    delas chamando `_escrever_evento` por dentro do módulo.
+
+    Escrever evento à mão é a porta de entrada da `armadilhas/192`: o arquivo
+    nasce onde ninguém commita, o PR viaja sem ele, e `validar` responde
+    "✅ Fila válida" porque o que não está lá não pode reprovar.
+
+    Recusa no espelho, como `concluir`: o evento tem de nascer na bancada, para
+    embarcar no PR. Diferente do `soltar`, que continua livre porque devolver à
+    fila uma tarefa presa é gesto de emergência.
+    """
+    recusa = _parar_se_for_o_espelho("bloquear", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    estado = calcular_estados(tarefas, eventos)[tid]
+    if estado["estado"] in (CONCLUIDA, CANCELADA):
+        print(f"RECUSADO: {tid} já terminou ({estado['estado']}).")
+        print("Depois do fim, silêncio: evento após o fim reprova na muralha.")
+        return 1
+    if not (args.motivo or "").strip():
+        print("RECUSADO: bloquear sem motivo não existe.")
+        print("O motivo é o que a caixa do painel e o próximo robô vão LER para")
+        print("saber o que destrava — e `validar` reprova `bloqueada` sem detalhe.")
+        return 1
+    _soltar_reserva_se_houver(raiz, tid)
+    caminho = _escrever_evento(raiz, tid, "bloqueada", args.quem, detalhe=args.motivo)
+    print(f"⛔ {tid} bloqueada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
+    print("Para destravar: um evento `devolvida` (python ci/fila.py soltar ...).")
+    return 0
+
+
 def cmd_concluir(raiz: Path, args) -> int:
     recusa = _parar_se_for_o_espelho("concluir", raiz)
     if recusa:
@@ -838,6 +882,11 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--quem", required=True)
     p.add_argument("--motivo", default="", help="por que está devolvendo")
 
+    p = sub.add_parser("bloquear", help="trava a tarefa — exige motivo")
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--motivo", required=True, help="o que trava, e o que destrava")
+
     p = sub.add_parser("concluir", help="fecha a tarefa — exige evidência")
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
@@ -861,6 +910,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_pegar(raiz, args)
         if args.acao == "soltar":
             return cmd_soltar(raiz, args)
+        if args.acao == "bloquear":
+            return cmd_bloquear(raiz, args)
         if args.acao == "concluir":
             return cmd_concluir(raiz, args)
         return cmd_validar(raiz)

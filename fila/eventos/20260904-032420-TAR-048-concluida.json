@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-032420-TAR-048-concluida",
+  "tarefa": "TAR-048",
+  "evento": "concluida",
+  "quando": "2026-09-04T03:24:20+00:00",
+  "quem": "sessao-ci-lote-2026-09-03",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/972 + leitura de codigo-fonte com a assinatura: sino em silencio (9 formas + PowerShell); falha real com a mesma assinatura: toca (13 formas + 6 artefatos de saida); numero: 0 de 205 leituras de arquivo benigno tocam (antes 205 de 205; 43 armadilhas seguem casando o TEXTO, por desenho); vermelho no sino antigo 10 failed na assercao; 3 mutacoes pegas (6/8/6 failed); ci/tests 1613 passed; muralhas PASS",
+  "verificado_em": "2026-09-04"
+}

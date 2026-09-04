@@ -15,7 +15,9 @@
   "acao": "Alto: há trabalho decidido que ninguém começou. Despache um lote (RUNBOOK-LOTES) ou tire da fila o que já não faz sentido.",
   "limiar_ambar": null,
   "limiar_vermelho": null,
+  "frescor_maximo": 10,
+  "ruido": 0.5,
   "versao": 1,
   "desde": "2026-09-03",
-  "_por_que": "Uma das três latências da gestão (Scale OS 1.1 §166 a §169), degrau 5 do plano reescrito em 03/09/2026: o único indicador dos documentos que já tinha fonte completa no dia em que o plano nasceu. Mede a GESTÃO, não a escola, e continua funcionando quando todo o resto estiver cego. Tipo confiança: dispensa par, porque não pode ser forçada sem produzir o próprio fato que mede."
+  "_por_que": "Uma das três latências da gestão (Scale OS 1.1 §166 a §169), degrau 5 do plano reescrito em 03/09/2026: o único indicador dos documentos que já tinha fonte completa no dia em que o plano nasceu. Mede a GESTÃO, não a escola, e continua funcionando quando todo o resto estiver cego. Tipo confiança: dispensa par, porque não pode ser forçada sem produzir o próprio fato que mede. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Mesmo ruído de meio dia da latência de decisão, pela mesma razão, e sem dimensões: é a fila inteira."
 }
