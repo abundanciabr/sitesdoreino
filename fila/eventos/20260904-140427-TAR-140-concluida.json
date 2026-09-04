@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-140427-TAR-140-concluida",
+  "tarefa": "TAR-140",
+  "evento": "concluida",
+  "quando": "2026-09-04T14:04:27+00:00",
+  "quem": "sessao-encomendas-emenda-2026-09-04",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/998 MERGED (mergeCommit c4a9722c5, lido por gh pr view --json). Quatro estados novos (no_mural, reservada, em_negociacao, acordada): eram 15, sao 19. A coluna pista e os cinco campos do acordo nascendo nulos. E o caixa SAIU do comeco do fluxo: aguardando_pagamento deixou de ser o estado inicial e passou a ficar entre acordada e em_producao, porque nao se cobra um valor que ainda nao foi combinado. Por tabela, oferecida e aberta deixaram de apontar para em_producao e passam por em_negociacao. Preservado inteiro o desenho da TAR-120: transicoes como DADO, gatilho do PostgreSQL, historico com autor; a CheckConstraint de vocabulario cresceu junto (o gatilho vigia a TRANSICAO, ela vigia o VALOR). PROVA VERMELHO->VERDE por mutacao, uma por vez: devolver o caixa ao inicio deixa test_o_caixa_nao_e_mais_a_porta_de_entrada vermelho; oferecida voltar a em_producao derruba test_aceitar_uma_oferta_leva_a_negociar_e_nao_a_produzir mais o teste dos pares; tirar o plantao das saidas da negociacao derruba os dois guardas do INV-ENC-N7; apagar um estado da lista canonica derruba os dois de vocabulario. Restaurado: 81 passed (eram 76). Migracao 0002 aplicada, revertida e reaplicada num PostgreSQL 17 real. black limpo, muralhas locais PASS 13/13, ci-celula (encomendas) verde no CI. A licao da colisao entre as duas sessoes virou armadilhas/321.",
+  "verificado_em": "2026-09-04"
+}
