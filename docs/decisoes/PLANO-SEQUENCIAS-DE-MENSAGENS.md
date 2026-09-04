@@ -532,7 +532,7 @@ provisionamento de banco novo na VPS, e o contrato `mensagem.devida.v1` sumiu
 | 5 | Publica `notificacao.devida.v1` — **a primeira sequência de verdade no ar** | `mensageria` | **boas-vindas chegando no sininho do aluno** |
 | 6 | `gamificacao` ganha voz (os 4 assuntos já congelados) | `gamificacao` | comemoração automática ao subir de nível |
 | **6b** | **Rito de Contrato:** `aluno.inatividade-detectada.v1` — a ausência vira evento (§5) | `contracts/` | não é código; destrava a 4ª sequência |
-| **6c** | **A porta de máquina da `mensageria`:** `config/api.py` (ler jornada, versão, passo, texto, inscrição e entrega; publicar versão nova ao editar um texto) + `export_openapi` + os testes de 401 | `mensageria` | a tela do degrau 7 passa a ter de onde ler |
+| **6c** | **A porta de máquina da `mensageria`:** `config/api.py` (ler jornada, versão, passo, texto, inscrição e entrega; publicar versão nova ao editar um texto; **ligar e desligar a sequência**) + `export_openapi` + os testes de 401 | `mensageria` | a tela do degrau 7 passa a ter de onde ler |
 | **6d** | **Rito de Contrato:** nasce `contracts/mensageria.openapi.yaml`, e a linha do manifesto sai de `not-applicable` para `required` | `contracts/` | não é código (RITOS §3); a ordem 6c ANTES de 6d é obrigatória |
 | 7 | Tela em `/admin/escola/jornadas/`: quais existem, quem está em cada uma, o que foi enviado e o que foi barrado — **e é aqui que ele edita o texto** (§8.3). **Depende de 6c e 6d** | `admin` | o mantenedor troca uma frase sozinho |
 | **8** | **`mensageria` deixa de ser stub:** provedor de e-mail real, `consome: [identidade]`, renderização por idioma | `mensageria` | **o primeiro e-mail de verdade sai** |
@@ -566,6 +566,28 @@ ambiente do par (`MENSAGERIA_API_URL` e o Bearer dos dois lados) são da Lei 5.
 em células diferentes precisam de um degrau de PORTA explícito entre eles**, ou
 o segundo agente descobre o buraco com a bancada já montada
 (`armadilhas/311`).
+
+**O Rito do degrau 6d aconteceu em 04/09/2026, e trouxe uma operação a mais**
+(registro `20260904-070`). As cinco operações da porta foram apresentadas ao
+mantenedor em português de leigo, e ele decidiu duas coisas:
+
+1. **A tela terá o interruptor.** Além de corrigir frases, ela precisa LIGAR e
+   DESLIGAR uma sequência, e isso entrou ANTES do congelamento, enquanto era
+   barato: depois dele, acrescentar operação é outro Rito. Nasceu
+   `setJourneyActive`, no grau de PUBLICAÇÃO (calar uma sequência muda o que sai
+   para pessoas de verdade). Até aqui, ligar uma jornada só acontecia por
+   `semear_boas_vindas --ligar`, um comando de terminal que ele não roda.
+2. **Confirmada a regra que já existia:** quem está no meio de uma sequência
+   continua com o texto antigo, e a correção vale para quem entrar depois. Nada
+   mudou por causa disto (é o gatilho do Postgres do §5), e está escrito aqui
+   para ninguém "consertar" o comportamento achando que é defeito.
+
+**Desligar segue a MESMA regra da segunda decisão, e quem construir o degrau 7
+precisa saber:** desligar significa que ninguém NOVO entra; quem já está andando
+termina a sequência (o motor só consulta `Jornada.ativa` ao inscrever). Não é
+promessa de documento: a resposta da operação traz `inscricoes_andando`, o
+número de pessoas que continuam recebendo, para a tela poder dizê-lo em vez de
+sugerir que tudo parou.
 
 **A ordem 6c antes de 6d não é gosto:** contrato em disco obriga a linha do
 manifesto a virar `required`, e `required` sem `export_openapi` deixa o

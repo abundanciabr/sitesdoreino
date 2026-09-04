@@ -688,3 +688,179 @@ def test_o_healthz_continua_aberto_e_sem_cracha():
     """A sonda do compose não passa por Bearer nenhum: é ela que faz o processo
     auxiliar esperar o `migrate` terminar (ARMADILHAS §3.13)."""
     assert Client().get("/healthz").status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# O INTERRUPTOR: ligar e desligar, sem tocar no texto
+# ---------------------------------------------------------------------------
+# Decisão do mantenedor no Rito de Contrato de 04/09/2026 (registro
+# `20260904-070`): a tela precisa LIGAR e DESLIGAR uma sequência, e a operação
+# entra ANTES do congelamento, enquanto é barata.
+def acionar(slug: str, corpo_do_pedido: dict, token: str | None = TOKEN_PUBLICACAO):
+    return postar(f"/jornadas/{slug}/ativa", corpo_do_pedido, token=token)
+
+
+def test_ligar_uma_sequencia_liga_de_verdade_e_diz_que_mudou():
+    cenario = montar_o_cenario()
+    resposta = acionar(SLUG, {"site_id": SITE, "ativa": True})
+    assert resposta.status_code == 200
+    dados = corpo(resposta)
+    assert dados["ativa"] is True
+    assert dados["mudou"] is True
+    cenario["jornada"].refresh_from_db()
+    assert cenario["jornada"].ativa is True
+
+
+def test_desligar_uma_sequencia_ligada_desliga_de_verdade():
+    cenario = montar_o_cenario()
+    Jornada.objects.filter(pk=cenario["jornada"].pk).update(ativa=True)
+    dados = corpo(acionar(SLUG, {"site_id": SITE, "ativa": False}))
+    assert dados["ativa"] is False
+    assert dados["mudou"] is True
+    cenario["jornada"].refresh_from_db()
+    assert cenario["jornada"].ativa is False
+
+
+def test_acionar_duas_vezes_para_o_mesmo_lado_e_200_com_mudou_false():
+    """Idempotente, e a tela precisa saber a diferença.
+
+    Sem o `mudou`, a tela diria "sequência ligada" ao mantenedor que clicou duas
+    vezes por engano, e ele não teria como distinguir "acabei de ligar" de "já
+    estava ligada". Recusar o segundo clique seria pior: um 409 para um pedido
+    que descreve exatamente o estado em que a jornada já está.
+    """
+    montar_o_cenario()
+    assert corpo(acionar(SLUG, {"site_id": SITE, "ativa": False}))["mudou"] is False
+    assert corpo(acionar(SLUG, {"site_id": SITE, "ativa": True}))["mudou"] is True
+    assert corpo(acionar(SLUG, {"site_id": SITE, "ativa": True}))["mudou"] is False
+
+
+def test_o_interruptor_NAO_publica_versao_nova_e_NAO_toca_no_texto():
+    """Ligar é estado da jornada, nunca conteúdo dela.
+
+    O guarda compara a jornada INTEIRA antes e depois (versão, passos, canais,
+    condição e o texto de cada idioma): um interruptor que copiasse a versão,
+    como a publicação faz, faria o número subir a cada clique e encheria o banco
+    de versões idênticas sem ninguém ver.
+    """
+    cenario = montar_o_cenario()
+    antes = corpo(pedir(f"/jornadas/{SLUG}?site_id={SITE}"))
+    # Os dois cliques precisam ter ACONTECIDO: sem esta conferencia o guarda
+    # ficaria verde tambem no dia em que a operacao sumisse da porta, porque
+    # duas leituras iguais e o que ele compara.
+    assert acionar(SLUG, {"site_id": SITE, "ativa": True}).status_code == 200
+    assert acionar(SLUG, {"site_id": SITE, "ativa": False}).status_code == 200
+    depois = corpo(pedir(f"/jornadas/{SLUG}?site_id={SITE}"))
+    assert antes["passos"] == depois["passos"]
+    assert antes["versao"] == depois["versao"]
+    assert cenario["jornada"].versoes.count() == 1
+
+
+def test_ligar_uma_jornada_SEM_VERSAO_PUBLICADA_e_409_e_ela_continua_desligada():
+    """Ligada assim ela não inscreveria ninguém, e a tela mostraria "ligada".
+
+    O motor só inscreve quem tem versão publicada (`apps/jornadas/motor.py`).
+    Aceitar este clique produziria o pior desfecho desta porta: uma tela dizendo
+    que a sequência está no ar, um silêncio do outro lado, e nada vermelho em
+    lugar nenhum.
+    """
+    jornada = Jornada.objects.create(site_id=SITE, slug="so-rascunho", gatilho="x.y")
+    JornadaVersao.objects.create(jornada=jornada, numero=1)
+    assert acionar("so-rascunho", {"site_id": SITE, "ativa": True}).status_code == 409
+    jornada.refresh_from_db()
+    assert jornada.ativa is False
+
+
+def test_DESLIGAR_sempre_pode_mesmo_sem_versao_publicada():
+    """A recusa é de um lado só, e de propósito: desligar é o gesto de segurança.
+
+    Uma jornada ligada sem versão publicada é um estado que o banco permite (a
+    trava está na porta, não no schema). Se o interruptor recusasse os dois
+    lados, o mantenedor ficaria sem como desligá-la pela tela.
+    """
+    jornada = Jornada.objects.create(
+        site_id=SITE, slug="ligada-sem-versao", gatilho="x.y", ativa=True
+    )
+    assert (
+        acionar("ligada-sem-versao", {"site_id": SITE, "ativa": False}).status_code
+        == 200
+    )
+    jornada.refresh_from_db()
+    assert jornada.ativa is False
+
+
+def test_desligar_NAO_TIRA_ninguem_que_ja_esta_dentro_e_a_resposta_diz_quantos():
+    """Desligar vale para quem entrar depois, exatamente como a troca de frase.
+
+    É a mesma regra que o mantenedor confirmou no Rito de 04/09/2026 para o
+    texto, e ela vale aqui pelo mesmo motivo. Quem está no meio da sequência
+    continua andando — e a tela não precisa acreditar nesta frase: o número volta
+    na resposta, para ela poder dizer "ninguém novo entra; N pessoas que já estão
+    dentro terminam".
+    """
+    cenario = montar_o_cenario()
+    Jornada.objects.filter(pk=cenario["jornada"].pk).update(ativa=True)
+    dados = corpo(acionar(SLUG, {"site_id": SITE, "ativa": False}))
+    assert dados["inscricoes_andando"] == 1
+    cenario["inscricao"].refresh_from_db()
+    assert cenario["inscricao"].estado == "andando"
+
+
+def test_o_interruptor_de_jornada_de_outro_site_e_404():
+    """Lei 9 no interruptor: com o cracha da sua escola nao se liga a de outra.
+
+    O guarda exerce os DOIS lados de proposito. Sem o pedido que da 200, ele
+    ficaria verde tambem no dia em que a operacao sumisse da porta, porque
+    caminho inexistente responde 404 do mesmo jeito.
+    """
+    cenario = montar_o_cenario(site=OUTRO_SITE)
+    assert acionar(SLUG, {"site_id": SITE, "ativa": True}).status_code == 404
+    cenario["jornada"].refresh_from_db()
+    assert cenario["jornada"].ativa is False
+    assert acionar(SLUG, {"site_id": OUTRO_SITE, "ativa": True}).status_code == 200
+
+
+def test_o_interruptor_sem_site_id_e_422():
+    montar_o_cenario()
+    assert acionar(SLUG, {"site_id": "  ", "ativa": True}).status_code == 422
+
+
+# ---------------------------------------------------------------------------
+# O GRAU A MAIS, AGORA MEDIDO: nenhuma escrita nova nasce sem o cadeado
+# ---------------------------------------------------------------------------
+# O guarda de 403 acima nomeia UMA operação, e foi tudo que existiu enquanto a
+# porta teve uma escrita só. `armadilhas/318` é exatamente sobre a escrita
+# seguinte: ela é copiada do padrão da casa, que é de LEITURA, e o padrão não
+# carrega o aviso. Um guarda que nomeia caminhos continuaria verde cobrindo a
+# operação antiga enquanto a nova nascia sem grau — a mesma cegueira que o
+# guarda de 401 já resolveu medindo o schema vivo.
+#
+# O corpo de cada operação continua escrito à mão (o 403 mora DEPOIS da
+# validação do pydantic, então um corpo inválido daria 422 e o guarda passaria
+# provando nada). O que é medido é a COMPLETUDE da lista: operação de escrita
+# nova sem corpo declarado aqui reprova, com o nome do caminho na mensagem.
+CORPOS_DE_ESCRITA = {
+    f"/jornadas/{SLUG}/textos": {
+        "site_id": SITE,
+        "ordem": 1,
+        "idioma": "pt-br",
+        "assunto_visivel": "a",
+        "corpo": "b",
+    },
+    f"/jornadas/{SLUG}/ativa": {"site_id": SITE, "ativa": True},
+}
+
+
+def test_toda_escrita_da_porta_tem_corpo_declarado_para_o_guarda_de_403():
+    assert set(CORPOS_DE_ESCRITA) == set(_caminhos_de_escrita()), (
+        "operacao de escrita sem corpo declarado em CORPOS_DE_ESCRITA: o guarda "
+        "do grau de publicacao nao consegue exercitar esta operacao"
+    )
+
+
+@pytest.mark.parametrize("caminho", _caminhos_de_escrita())
+def test_quem_so_le_leva_403_em_TODA_operacao_de_escrita(caminho):
+    montar_o_cenario()
+    pedido = CORPOS_DE_ESCRITA.get(caminho)
+    assert pedido is not None, f"corpo nao declarado para {caminho}"
+    assert postar(caminho, pedido, token=TOKEN_LEITURA).status_code == 403
