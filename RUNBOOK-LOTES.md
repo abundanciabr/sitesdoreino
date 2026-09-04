@@ -164,6 +164,59 @@ python ci/mergear.py <N> --confirmo <N> # mergeia e confere state=MERGED
 
 ## §9 — Lições de regência (o que cada lote ensinou sobre lotes)
 
+**Lote da fila do painel — 03-04/09/2026** (cinco frentes montadas do quadro AO VIVO do
+balcão e da caixa calculada do livro, nunca de memória: o canário do livro · a corrente
+das encomendas (#949 → #953) · o resgate dos quatro PRs parados desde 31/08 · três
+defeitos medidos do CI em fila interna · a tela das sequências no admin):
+
+1. **O primeiro pouso do lote testa o INSTRUMENTO de pousar, não a esteira — e aqui ele
+   reprovou o instrumento.** O canário atravessou tudo, e mesmo assim o `--e-pousar`
+   morreu, nos DOIS primeiros PRs (#954 e #956), no mesmo ponto: o portão recusou com
+   `ERROR` no instante exato em que o último check ficou verde, e os dois pousaram com um
+   `mergear.py --pousar` repetido à mão. Não era azar. O GitHub recalcula o `mergeable`
+   quando a árvore se mexe, então `UNKNOWN` é **provável justamente naquela janela** — a
+   automação mirava no pior segundo possível, todas as vezes. **Duas falhas no mesmo ponto
+   são medição, não coincidência:** a maestro parou de despachar, curou (#964,
+   `armadilhas/308`, remede só o `ERROR` com a marca do recálculo; `FAIL` segue sem
+   remedição) e o PR da cura foi pousado pela própria cura. Corolário para a montagem:
+   **o canário tem de rodar pela MESMA automação que os agentes vão usar** — provar a
+   esteira com um atalho à mão esconde exatamente a classe de defeito que só aparece
+   quando ninguém está olhando.
+
+2. **O repasse do achado precisa sair do lote, e não há canal para isso.** O Lote A ensinou
+   a repassar aos agentes em voo; este mediu a outra metade. A ferramenta é compartilhada
+   com sessões que **não são do lote**, e em menos de uma hora três sessões independentes
+   escreveram três armadilhas para o mesmo defeito (`306`, `308`, `310`). O repasse aos
+   três despachos meus funcionou; para as vizinhas só restou comentar no PR delas depois do
+   fato. Pior: duas das três entradas ensinam um conserto manual que a cura torna **errado**,
+   e um robô futuro faria a dança à toa. Corolário: `gh pr list` no início **não** é "os PRs
+   do lote" — pergunte a cada agente quais são os dele, conte com vizinhas, e trate
+   duplicação de catálogo como trabalho de fechamento da maestro.
+
+3. **O quadro só mente pelo papel que ninguém escreveu — e mente nas duas direções.** A
+   TAR-078 aparecia `bloqueada — esperando TAR-076` enquanto o trabalho da TAR-076 estava
+   no ar desde 02/09: faltava só o evento `concluida`, que a sessão construtora nunca
+   escreveu. Um arquivo destravou uma frente inteira. Do outro lado, a TAR-082 aparecia
+   `na fila`, isto é, anunciada como trabalho disponível, quando já estava construída,
+   mergeada e esperando apenas o mantenedor testar no próprio celular — a maestro escreveu
+   o evento `bloqueada` com o motivo. **O estado é calculado e honesto; a única mentira
+   possível é o evento que ninguém escreveu.** Antes de aceitar um bloqueio, meça se o
+   bloqueador é código ou papel.
+
+4. **Resgatar PR antigo começa medindo se a `main` já o superou.** Dos quatro parados desde
+   31/08, um pousou e dois foram FECHADOS como superados (#734 pelos #871/#873, #761 pelos
+   #907 a #911) — um deles com o ramo 894 commits atrás. A hipótese natural ("estavam
+   verdes, basta atualizar") era falsa em dois de três. E o gesto que fecha o resgate é
+   perguntar **o que morre junto com o PR fechado**: aqui o código havia sobrevivido duas
+   vezes, porque outra sessão o refez sem ler o PR aberto (`armadilhas/287`), mas a lição em
+   prosa que explicava o PORQUÊ não tinha vindo junto e teria morrido no fechamento
+   (recuperada no PR de fechamento, em `services/sugestoes/LICOES.md`). Receita completa em
+   `armadilhas/305`.
+
+5. **A isenção de "só escrituração" é `painel/` e/ou `fila/`, e `armadilhas/` NÃO entra
+   nela.** O #740, um PR de uma armadilha só, foi recusado com "nenhum registro viaja neste
+   PR" e custou uma volta de checks. Vai para todo brief que preveja entrada de catálogo.
+
 **Lote A da gamificação — 01/09/2026** (as quatro bordas da gamificação, uma por célula:
 o backfill do Fundador · a etiqueta de nível no fórum · o quadrinho de progresso na home ·
 as frases das cartas no sininho; PRs #826, #827, #828, #829 mais o #831 de fechamento —

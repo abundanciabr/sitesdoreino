@@ -2123,3 +2123,46 @@ pergunta "tem certeza?" mede a INTENÇÃO de quem dispara; esta mede o ESTADO DO
 MUNDO no instante do disparo. Para um comando sem volta que roda em produção
 meses depois de escrito, é a diferença entre parar sozinho diante de quarenta
 ideias de aluno e destruir as quarenta.
+
+## O molde-base não cobre a tela que não o estende: a porta ficou sem rodapé
+
+**Sintoma.** O rodapé da casa entrou no `base_caixa.html` e apareceu no quadro,
+na ideia e nos avisos. Na **porta de entrada** (`entrar.html`) ele continuou
+ausente — sem erro, sem teste vermelho, sem log. Quem viu foi o mantenedor,
+olhando o site.
+
+**Causa.** A `entrar.html` é uma página **standalone**: tem `<!doctype>`
+próprio, `<html>` próprio e estilo embutido, porque precisa abrir mesmo quando
+a folha da Caixa não carrega. Ela não estende molde nenhum, então o `{% block %}`
+do molde comum nunca a alcança. O processador de contexto até punha o `rodape`
+no contexto dela; o que faltava era quem o desenhasse.
+
+**Solução, em três partes:**
+
+1. O rodapé virou **peça** (`templates/sugestoes/_rodape.html`), incluída pelos
+   DOIS moldes. Escrevê-lo duas vezes faria as versões divergirem no primeiro
+   ajuste.
+2. O **estilo dela também é standalone**: a porta não carrega o `caixa.css`, e
+   as regras `.rodape` foram para o `<style>` embutido, com as cores do sistema
+   (`Canvas`/`CanvasText`), que é como aquela tela se pinta em claro e escuro.
+   Marcação sem regra é rodapé sem forma, e nada fica vermelho.
+3. O guarda mede os **ARQUIVOS**, não as telas
+   (`test_todo_molde_de_pagina_inteira_inclui_a_peca_do_rodape`): todo template
+   com `<!doctype` tem de incluir a peça. Molde standalone novo é justamente o
+   caso em que ninguém lembra de escrever um teste de tela para ele — assim o
+   guarda reprova antes de a página existir. A marca é o `<!doctype`, e não a
+   tag de abertura de HTML: a própria peça CITA essa tag num comentário e seria
+   acusada de não incluir a si mesma.
+
+**Generaliza a `armadilhas/242`,** que mandava pôr a peça no molde-base e não
+previa a célula com dois moldes.
+
+**Origem, e por que esta entrada nasceu depois do código.** O desenho é da
+TAR-083 (31/08/2026, PR #734). Aquele PR ficou parado na pista por uma dívida
+do livro que era de outro PR, e enquanto isso o trabalho foi refeito por quem
+não o tinha lido (`armadilhas/287`): o mecanismo chegou à `main` pelos PRs #871
+e #873, este último adotando o desenho do #734 nominalmente. Quando o lote de
+03-04/09/2026 foi resgatar o PR antigo, mediu que a entrega já estava na `main`
+e o fechou como superado — mas **o texto que explica o porquê não tinha vindo
+junto**, e teria morrido com ele. O código sobreviveu duas vezes; a lição, só
+porque alguém foi conferir o que se perdia ao fechar.
