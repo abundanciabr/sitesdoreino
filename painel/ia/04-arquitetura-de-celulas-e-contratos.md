@@ -331,6 +331,91 @@ fora de 8h–22h, vira aberta em 24h, motor idempotente), cinco de dinheiro
 livre entre cliente e aluno, primeira entrega sempre revisada, sem contato do
 aluno, peça só com autorização, cliente novo passa pelo plantão).
 
+## A célula `cursos`, planejada em 04/09/2026 e ainda não nascida
+
+**Estado:** plano escrito a partir dos nove documentos do projeto Meshcraft
+que o mantenedor trouxe em 04/09/2026 (eles moram FORA do repositório, de
+propósito: obra não lançada, `armadilhas/331`), e levado a ele em pergunta
+estruturada na mesma sessão. **Fonte de verdade:**
+`docs/decisoes/PLANO-CELULA-CURSOS.md` (a visão, as emendas da casa aos nove
+documentos, o modelo, os eventos, as superfícies, os agentes de IA, os
+invariantes, a escada) e `docs/decisoes/CONSTITUICAO-cursos-rascunho.md` (a
+constituição em papel, promovida na gênese). O resumo abaixo é curado:
+divergiu, **o original vence**. Quem responde "isto já foi feito?" continua
+sendo só o livro e a fila. Esta seção existe para que a próxima IA não
+desenhe aula, progresso de aluno, checkpoint ou laudo dentro de outra célula
+sem saber que já há dona para isso.
+
+**O que ela é.** A sala de aula da Meshcraft: dona do conteúdo do curso (33
+encomendas e uma Bônus, cada uma com 16 peças, o roteiro da aula, a ficha do
+Guia do Mentor, o vídeo por link, as pausas reais, os 13 instrumentos), do
+progresso de cada aluno (que porta está aberta), do checkpoint (o envio, por
+link, na fila de revisão com prazo de 24 horas) e do laudo (o instrumento,
+três forças, uma mudança nomeada pela encomenda onde se aprende, a decisão, a
+data se devolvido, e a pergunta "ele sabe o que fazer amanhã de manhã?"). E
+dos **agentes de IA que trabalham nela**, começando pelo Assistente de laudo,
+no molde do agente do fórum: a IA escreve, a pessoa assina.
+
+**Por que UMA célula, e não conteúdo no repositório mais uma célula
+`avaliacao`, como os documentos de fora propunham:** o repositório é público
+e o curso é obra não lançada; `alunos` só sabe matrícula, nenhuma célula
+serve aula, e o envio é a porta da lição, então separar checkpoint e laudo
+faria a transação mais comum da escola atravessar duas células sem ganhar
+isolamento. Pares e Bancas entram como degraus desta mesma célula.
+
+**As decisões do roadmap que viram invariante aqui:** o checkpoint abre a
+porta, o calendário nunca; entregar dá XP e aprovar dá porta; **não existe o
+estado "reprovado"**; toda devolução tem uma mudança única e uma data; o
+laudo não envia sem a pergunta de amanhã de manhã; rubrica antes da opinião
+(regra de API, 422); o prazo de 24 horas não se alonga, só se registra o
+estouro; nenhuma tela compara alunos; a pausa real registra.
+
+**O que ela consome:** `identidade` (quem é o dono do cookie) e `alunos` (a
+matrícula ativa decide o acesso, fail-CLOSED). Na gênese, `consome: []`
+(`armadilhas/224`).
+
+**O que ela oferece (contrato, Bearer por par):** o editor para o Admin
+(`listLessons`, `getLesson`, `putLesson`, `putInstrument`, `publishLesson`),
+os verificadores (`checkLesson`: coerência mecânica e fidelidade por IA), o
+placar da fila (`getReviewQueue`, contagens, nunca quem) e
+`getStudentProgress` (para o Estúdio e a home).
+
+**O que ela emite:** `envio.recebido.v1`, `laudo.emitido.v1`,
+`aula.concluida.v1` (a tomada que a gamificação já previa, com `e_boss`),
+`checkpoint.devolvido.v1`, `revisao.prazo-estourado.v1`, `banca.decidida.v1`
+(Fase 5) e `notificacao.devida.v1` com assuntos `cursos.*`. Só ids opacos.
+
+| O que ela NÃO faz | Quem faz |
+|---|---|
+| XP, medalha, Marco, título de nível | `gamificacao`, por evento |
+| Portfólio, Meu Estúdio, as 35 Páginas | `pages` (o Estúdio) |
+| Matrícula, quem entra | `alunos` |
+| O curso como produto à venda | `catalogo` |
+| O quiz de captação (o Crivo) | `quiz` (o quiz da encomenda é dado da aula, com autoavaliação) |
+| O silêncio de 14 e 30 dias | jornada da `mensageria`, cancelada por `envio.recebido.v1` |
+| O Padrão, os apêndices vivos, o dicionário | a área de `documentos` |
+| Guardar arquivo | ninguém: o checkpoint é por link, como o portfólio |
+
+**Invariantes declarados na lei §9:** sete do laudo (`[INV-CUR-L1..L7]`: data
+se devolvido; "reprovado" não existe; 24 horas imutável; a IA nunca decide;
+rubrica antes; três forças e uma mudança; a pergunta), três da porta
+(`[INV-CUR-P1..P3]`: sem comparação; porta só por laudo, nunca por data, XP ou
+pagamento; checkpoint fechado até as pausas), dois do conteúdo
+(`[INV-CUR-C1..C2]`: remissão quebrada não publica; conteúdo só pela porta de
+máquina, nunca por migração com texto), dois de segurança
+(`[INV-CUR-S1..S2]`) e `[INV-P12]`.
+
+**Superfície pública:** `/cursos` (host-bound em `meshcraft.top`; 6 letras,
+passa no guarda de locale), `/cursos/<numero>`, `/cursos/<numero>/laudo`,
+`/cursos/plantao`; e o editor em `/admin/escola/aulas/`, na `admin`, pela
+porta de máquina.
+
+**Quando ela existir de verdade**, a linha dela entra na tabela das células
+acima, junto com `celulas.yml`, `ci/manifesto-de-contratos.json` e
+`constituicoes/AGENTS.cursos.md`, e aí o teste-guarda
+`ci/tests/test_painel_ia_atualizado.py` passa a **exigir** que este mapa a
+cite, em vez de apenas aceitar que ele a antecipe.
+
 ## O mecanismo de contratos: OpenAPI + eventos, e o freeze que os protege
 
 `contracts/README.md` chama a pasta de "**Muralha nº 4**" — a implementação
