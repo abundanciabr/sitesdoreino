@@ -77,6 +77,13 @@ confiar na linha acima.)
 > própria mais abaixo — leia-a antes de desenhar qualquer coisa que pareça
 > marketplace, fila de trabalho remunerado, oferta a aluno ou portfólio de
 > encomenda em outra célula.
+>
+> **A 16ª nasceu em 04/09/2026:** `metricas`, o livro de fatos da plataforma
+> (degrau 7.1 do `PLANO-PAINEL-DE-GESTAO.md`). Seção própria mais abaixo. Ela
+> é a única célula que não terá tela nenhuma, e a única cuja razão de existir
+> é o TEMPO: as demais respondem "como está agora", e ela responde "como
+> estava". Antes de propor que qualquer célula guarde histórico próprio de
+> contagem, leia a seção dela.
 
 **Nota de método para medir tamanho de célula:** use `git ls-files
 services/<celula> | wc -l`, nunca `find`. O caso `services/pagamentos`
@@ -185,6 +192,50 @@ acima, junto com `celulas.yml`, `ci/manifesto-de-contratos.json` e
 `constituicoes/AGENTS.gamificacao.md` — e aí o teste-guarda
 `ci/tests/test_painel_ia_atualizado.py` passa a **exigir** que este mapa a
 cite, em vez de apenas aceitar que ele a antecipe.
+
+## A 16ª célula, nascida em 04/09/2026: `metricas`
+
+**Onde está a lei.** `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` §6.2 (o livro
+de fatos), §6.4 (marcos, coortes, dimensões) e §6.6 (a confiança). A
+constituição da célula é `constituicoes/AGENTS.metricas.md`. Na gênese ela tem
+UMA rota (`/healthz`), nenhuma tabela e nenhum cliente: tudo o que a
+constituição descreve como "expõe" é o destino da escada, não o estado do
+disco.
+
+**O que ela é.** O livro de fatos da plataforma. Toda tela de gestão da casa
+conta AO VIVO, perguntando às células a cada abertura: isso responde "quantas
+alunas há agora" e nunca "quantas havia na semana passada". A `metricas`
+recebe os eventos que as outras publicam (`contracts/eventos/*.json`), guarda
+esses fatos imutáveis e responde por API de leitura, para que o painel possa
+dizer o que MUDOU.
+
+**O que ela NÃO é, e isto é o que mais importa para quem chega:**
+
+- **Não é dona de nada.** Ela não decide sobre pessoa, matrícula, ponto ou
+  mensagem. O dono de cada fato continua sendo quem o emitiu. Ela é
+  consumidora pura.
+- **Não tem tela, e nunca terá.** Quem mostra número é a `admin`, que já tem
+  porta e uma leitora só (o mantenedor). Propor uma tela aqui é duplicar a
+  porta de administração.
+- **Não pergunta nada a ninguém.** `celulas.yml` diz `consome: []` e vai
+  continuar dizendo com a célula completa: `consome` mede leitura de API
+  alheia, e esta célula lê EVENTOS. O que o evento não trouxer, ela não sabe,
+  e dizer "não sei" é resposta legítima. Completar buraco perguntando ao vivo
+  transformaria o livro de fatos num espelho do presente.
+- **Não guarda texto nem nome.** Só ids opacos e contagens. Para contar não é
+  preciso saber quem é.
+
+**Os invariantes que vão junto com ela** (detalhe em `AGENTS.metricas.md`): o
+evento é imutável (correção é evento novo); duplicata se recusa pelo id
+externo; evento inválido vai para a fila de eventos mortos e vira incidente,
+nunca é aceito pela metade; o fuso é `America/Sao_Paulo` porque a unidade da
+medição é o DIA; e "não sei" nunca vira zero.
+
+**A escada:** 7.1 gênese (feito) · 7.2 o evento imutável e a fila de mortos ·
+7.3 a recepção com Bearer e o teste de 401 · 7.4 a API de leitura, o contrato
+congelado e a `admin` como cliente · 7.5 o compose, em PR próprio. Até o 7.5,
+o `deploy-celula` desta célula fica vermelho em todo merge que a toca, e isso
+é esperado (`armadilhas/088`).
 
 ## A 15ª célula, nascida em 03/09/2026: `encomendas`
 

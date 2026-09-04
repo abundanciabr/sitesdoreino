@@ -121,6 +121,10 @@
       "freeze": "not-applicable",
       "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."
     },
+    "metricas": {
+      "freeze": "not-applicable",
+      "reason": "Célula nascida em 04/09/2026 (degrau 7.1 da escada do §6.2 de docs/decisoes/PLANO-PAINEL-DE-GESTAO.md): config/urls.py expõe só /healthz, não há config/api.py nem API pública. O contrato (contracts/metricas.openapi.yaml) entra pelo RITOS.md §3 no degrau 7.4, DEPOIS de a porta de leitura existir e exportar o contrato vivo — a ordem que armadilhas/228 e 243 provaram."
+    },
     "notificacoes": {
       "freeze": "required",
       "frozen": "contracts/notificacoes.openapi.yaml",
