@@ -1,0 +1,18 @@
+{
+  "arquivo": "144-o-portao-do-mapa-do-site-passa-a-exigir-a-marca-de-gesto-em-",
+  "id": "TAR-144",
+  "titulo": "O portao do mapa do site passa a exigir a marca de gesto em rota que so aceita POST",
+  "toca": [
+    "ci",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "o link do PR mergeado, com o portao reprovando uma entrada POST-only sem gesto e passando com ela",
+  "despacho": "Fechar metade do buraco declarado do cartografo do mapa do site: hoje\n`ci/mapa_do_site.py` mede o endereco de cada rota, mas nunca se a linha e uma\nPAGINA ou um GESTO de botao. O campo `gesto` do `painel/mapa-do-site.json` e o\nque faz a tela `/admin/mapa/` esconder o link — e sem ele o dono ganha um link\nclicavel que devolve 405. Em 04/09/2026 havia CINCO assim (armadilhas/330, PR\n#1036).\n\nA regra a construir, e ela e uma implicacao so:\n\n    rota cuja view tem @require_POST (ou require_http_methods so com POST)\n    ===> a entrada dela no mapa precisa de `gesto: true`\n\nA volta NAO vale e nao deve ser escrita: `/entrar/google` e GET e e gesto\nlegitimo (comeca o vaivem do Google, nao e pagina que se abre). Um portao que\nexigisse a reciproca reprovaria as quatro entradas de OAuth que estao certas.\n\nComo derivar, medido e funcionando (o script da auditoria de 04/09 esta\ndescrito em armadilhas/330): o `ci/mapa_do_site.py` ja le `urls.py` por AST e\nja conhece o nome da view; falta seguir o import ate o arquivo da view e olhar\nos decoradores. Rota cuja view nao se resolve continua sem afirmacao nenhuma\n(nao inventa veredito), e isso precisa aparecer no relatorio do portao em voz\nalta — buraco que se declara e gerenciavel, buraco silencioso nao.\n\nEscopo:\n- `ci/mapa_do_site.py`: a checagem nova, com a recusa ensinando o conserto\n  (\"acrescente `gesto: true` a esta entrada, porque a rota so aceita POST\").\n- `ci/tests/test_mapa_do_site.py`: o guarda do guarda, com um caso de rota\n  POST-only sem marca (reprova) e um de GET marcado como gesto (passa).\n- Atualizar o `_doc` do `painel/mapa-do-site.json` e a docstring de\n  `ci/mapa_do_site.py`: o buraco declarado encolheu, e o texto precisa dizer o\n  que sobrou (o titulo e a descricao continuam sem mecanismo).\n- Atualizar `armadilhas/223` e `armadilhas/330`: a parte de `gesto` deixou de\n  ser \"revisao de gente\".\n\nATENCAO — `ci/` e caminho CODEOWNERS. Esta tarefa so pousa com mandato\nexplicito do mantenedor no despacho, e o relatorio final precisa dizer\nnominalmente que ela tocou `ci/`.",
+  "origem": "despacho do mantenedor de 04/09/2026 (atualizar o mapa do site); descoberto no PR #1036",
+  "criada_em": "2026-09-04"
+}
