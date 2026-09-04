@@ -1,0 +1,17 @@
+{
+  "arquivo": "112-fila-do-primeiro-dolar-degrau-2-4-os-relogios-da-oferta-as-h",
+  "id": "TAR-112",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.4: os relogios da oferta, as horas uteis de Sao Paulo e as tres regras de tempo viram teste",
+  "toca": [
+    "encomendas",
+    "INVARIANTES.md"
+  ],
+  "depende_de": [
+    "TAR-111"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado: funcao pura horas_uteis (8h-22h, America/Sao_Paulo) com teste de borda (fim de semana, virada de dia, horario de verao inexistente); tique de 1 minuto no Huey reavaliando ofertas expiradas sem timer agendado; J8, J9, J10 como teste e no INVARIANTES.md; teste de reinicio no meio de ofertas pendentes (cenario 15 do anexo B).",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei, com as emendas da casa ao plano), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o plano do mantenedor, secoes 5 a 9), constituicoes/AGENTS.encomendas.md e armadilhas/INDICE.md (Ctrl+F pela tecnologia que vai tocar). A secao 3 do plano (o que fica FORA) e literal: nenhum agente melhora o desenho por conta propria. TAREFA: secao 8.6 e 7.4 do plano. O relogio da oferta e expira_em calculado pela janela (parametros do banco), nunca timer. Um tique por minuto (Huey periodic, molde services/mensageria ou gamificacao/tasks.py) reavalia: ofertas expiradas, encomendas para abrir. Reexecutar sem mudanca de estado nao cria oferta (J10). armadilhas/099 (USE_TZ nao escolhe fuso) e 282 (on_commit em teste).",
+  "origem": "plano mestre da Fila do Primeiro Dolar (v0.1, 03/09/2026), trazido pelo mantenedor; lei em docs/decisoes/DECISAO-fila-do-primeiro-dolar.md",
+  "criada_em": "2026-09-04"
+}

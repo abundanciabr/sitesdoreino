@@ -1,0 +1,18 @@
+{
+  "arquivo": "116-fila-do-primeiro-dolar-degrau-2-8-congelar-o-contrato-da-cel",
+  "id": "TAR-116",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.8: congelar o contrato da celula de encomendas",
+  "toca": [
+    "contracts",
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-115",
+    "TAR-108"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR SO de contracts/encomendas.openapi.yaml + a linha do manifesto virando required (etiqueta contrato) mergeado; freeze PASS na arvore com os dois; sonda_auth conferida.",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei, com as emendas da casa ao plano), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o plano do mantenedor, secoes 5 a 9), constituicoes/AGENTS.encomendas.md e armadilhas/INDICE.md (Ctrl+F pela tecnologia que vai tocar). A secao 3 do plano (o que fica FORA) e literal: nenhum agente melhora o desenho por conta propria. TAREFA: Rito de Contrato (RITOS.md secao 3), no molde do PR #704 e da armadilhas/243: o congelado nasce do export do degrau 2.7, nunca de cabeca. Caminho CODEOWNERS: anunciar nominalmente.",
+  "origem": "plano mestre da Fila do Primeiro Dolar (v0.1, 03/09/2026), trazido pelo mantenedor; lei em docs/decisoes/DECISAO-fila-do-primeiro-dolar.md",
+  "criada_em": "2026-09-04"
+}

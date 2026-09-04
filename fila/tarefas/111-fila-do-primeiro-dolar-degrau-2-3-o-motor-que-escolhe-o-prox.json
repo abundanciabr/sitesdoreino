@@ -1,0 +1,17 @@
+{
+  "arquivo": "111-fila-do-primeiro-dolar-degrau-2-3-o-motor-que-escolhe-o-prox",
+  "id": "TAR-111",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.3: o motor que escolhe o proximo da fila, e as sete regras de justica viram teste",
+  "toca": [
+    "encomendas",
+    "INVARIANTES.md"
+  ],
+  "depende_de": [
+    "TAR-110"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado: apps/encomendas/motor.py e funcao pura de (estado, agora); J1 a J7 como services/encomendas/tests/test_inv_j*.py, declarados no INVARIANTES.md no MESMO PR, cada um provado por mutacao com vermelho na assercao; guarda_dos_guardas PASS.",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei, com as emendas da casa ao plano), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o plano do mantenedor, secoes 5 a 9), constituicoes/AGENTS.encomendas.md e armadilhas/INDICE.md (Ctrl+F pela tecnologia que vai tocar). A secao 3 do plano (o que fica FORA) e literal: nenhum agente melhora o desenho por conta propria. TAREFA: o algoritmo da secao 7.4 do plano (selecao do proximo elegivel: menos entregas aprovadas, empate por data de entrada; trava por encomenda; sem oferta a quem ja passou nela; sem oferta a quem esta trabalhando ou com oferta pendente). Sem relogio ainda (degrau 2.4). Os invariantes J1 a J7 da lei (secao 5) nascem como teste E como entrada no INVARIANTES.md no mesmo PR (precedente TAR-042; armadilhas/230: o inventario de codigos em ci/tests/test_guarda_dos_guardas.py entra junto). INVARIANTES.md e caminho CODEOWNERS: mandato da lei da celula, anunciar no relatorio. NUNCA duas sessoes no motor ao mesmo tempo (plano secao 11).",
+  "origem": "plano mestre da Fila do Primeiro Dolar (v0.1, 03/09/2026), trazido pelo mantenedor; lei em docs/decisoes/DECISAO-fila-do-primeiro-dolar.md",
+  "criada_em": "2026-09-04"
+}
