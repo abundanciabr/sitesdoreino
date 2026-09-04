@@ -1,0 +1,17 @@
+{
+  "arquivo": "126-fila-do-primeiro-dolar-degrau-2-8-congelar-o-contrato-da-cel",
+  "id": "TAR-126",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.8: congelar o contrato da celula de encomendas",
+  "toca": [
+    "contracts",
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-125"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR SO de contracts/encomendas.openapi.yaml + a linha do manifesto virando required (etiqueta contrato) mergeado; freeze PASS na arvore com os dois; sonda_auth conferida; contrato_aditivo PASS.",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei: emendas §3, invariantes §5, parametros §6, escada §7), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o produto: secoes 5 a 9 e anexos), docs/decisoes/CONTRATO-encomendas-v1-rascunho.md, constituicoes/AGENTS.encomendas.md, services/encomendas/config/settings.py (os comentarios sao lei local) e armadilhas/INDICE.md (Ctrl+F pela tecnologia). A secao 3 do plano (o que fica FORA) e literal. A escola e 18+. Nunca duas sessoes no motor de oferta ao mesmo tempo. Registro do livro CURTO (< 800 bytes, armadilhas/304 e TAR-119) e medido com node painel/gerar_manifesto.js DEPOIS de git merge origin/main. Prove cada guarda por MUTACAO depois do verde. TAREFA: Rito de Contrato (RITOS.md §3) no molde do PR #704 e da armadilhas/243: o congelado nasce do export do degrau 2.7, nunca de cabeca. Caminho CODEOWNERS: anunciar nominalmente. Registro do livro a bordo.",
+  "origem": "lei docs/decisoes/DECISAO-fila-do-primeiro-dolar.md §7 (escada da Fase 2), aprovada pelo mantenedor em 03/09/2026 (Fase 2 em paralelo com o piloto de papel); criadas ao pousar a genese (PR #953)",
+  "criada_em": "2026-09-04"
+}

@@ -1,0 +1,17 @@
+{
+  "arquivo": "121-fila-do-primeiro-dolar-degrau-2-3-o-motor-que-escolhe-o-prox",
+  "id": "TAR-121",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.3: o motor que escolhe o proximo da fila, e as sete regras de justica viram teste",
+  "toca": [
+    "encomendas",
+    "INVARIANTES.md"
+  ],
+  "depende_de": [
+    "TAR-120"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado: apps/encomendas/motor.py e funcao pura de (estado, agora); [INV-ENC-J1] a [INV-ENC-J7] como services/encomendas/tests/test_inv_j1_*.py ... test_inv_j7_*.py (nomes na lei §5), declarados no INVARIANTES.md no MESMO PR (inventario de ci/tests/test_guarda_dos_guardas.py junto, armadilhas/230), cada um provado por mutacao com vermelho na assercao; guarda_dos_guardas PASS.",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei: emendas §3, invariantes §5, parametros §6, escada §7), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o produto: secoes 5 a 9 e anexos), docs/decisoes/CONTRATO-encomendas-v1-rascunho.md, constituicoes/AGENTS.encomendas.md, services/encomendas/config/settings.py (os comentarios sao lei local) e armadilhas/INDICE.md (Ctrl+F pela tecnologia). A secao 3 do plano (o que fica FORA) e literal. A escola e 18+. Nunca duas sessoes no motor de oferta ao mesmo tempo. Registro do livro CURTO (< 800 bytes, armadilhas/304 e TAR-119) e medido com node painel/gerar_manifesto.js DEPOIS de git merge origin/main. Prove cada guarda por MUTACAO depois do verde. TAREFA: o algoritmo da secao 7.4 do plano (menos entregas aprovadas primeiro, empate por data_entrada_fila; trava por encomenda; sem oferta a quem ja passou nela; sem oferta a quem esta trabalhando ou com oferta pendente; nivel minimo pelo titulo). Sem relogio ainda (degrau 2.4). INVARIANTES.md e caminho CODEOWNERS: mandato da lei aprovada; anunciar no relatorio.",
+  "origem": "lei docs/decisoes/DECISAO-fila-do-primeiro-dolar.md §7 (escada da Fase 2), aprovada pelo mantenedor em 03/09/2026 (Fase 2 em paralelo com o piloto de papel); criadas ao pousar a genese (PR #953)",
+  "criada_em": "2026-09-04"
+}

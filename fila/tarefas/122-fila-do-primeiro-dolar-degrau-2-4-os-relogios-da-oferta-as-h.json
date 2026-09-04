@@ -1,0 +1,17 @@
+{
+  "arquivo": "122-fila-do-primeiro-dolar-degrau-2-4-os-relogios-da-oferta-as-h",
+  "id": "TAR-122",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.4: os relogios da oferta, as horas uteis de Sao Paulo e as tres regras de tempo viram teste",
+  "toca": [
+    "encomendas",
+    "INVARIANTES.md"
+  ],
+  "depende_de": [
+    "TAR-121"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado: funcao pura horas_uteis (janela 8h-22h lida dos parametros, America/Sao_Paulo) com teste de borda (fim de semana, virada de dia); tique de 1 minuto no Huey reavaliando ofertas expiradas e encomendas a abrir, sem timer agendado; [INV-ENC-J8], [INV-ENC-J9], [INV-ENC-J10] como teste e no INVARIANTES.md; teste de reinicio no meio de ofertas pendentes (cenario 15 do anexo B).",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei: emendas §3, invariantes §5, parametros §6, escada §7), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o produto: secoes 5 a 9 e anexos), docs/decisoes/CONTRATO-encomendas-v1-rascunho.md, constituicoes/AGENTS.encomendas.md, services/encomendas/config/settings.py (os comentarios sao lei local) e armadilhas/INDICE.md (Ctrl+F pela tecnologia). A secao 3 do plano (o que fica FORA) e literal. A escola e 18+. Nunca duas sessoes no motor de oferta ao mesmo tempo. Registro do livro CURTO (< 800 bytes, armadilhas/304 e TAR-119) e medido com node painel/gerar_manifesto.js DEPOIS de git merge origin/main. Prove cada guarda por MUTACAO depois do verde. TAREFA: secoes 8.6 e 7.4 do plano. expira_em calculado pela janela (parametros do banco), nunca timer. Molde do Huey periodico: services/gamificacao/apps/gamificacao/tasks.py e config/huey.py. armadilhas/099 e 282.",
+  "origem": "lei docs/decisoes/DECISAO-fila-do-primeiro-dolar.md §7 (escada da Fase 2), aprovada pelo mantenedor em 03/09/2026 (Fase 2 em paralelo com o piloto de papel); criadas ao pousar a genese (PR #953)",
+  "criada_em": "2026-09-04"
+}

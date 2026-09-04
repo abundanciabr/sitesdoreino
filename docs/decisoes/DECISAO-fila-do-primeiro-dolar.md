@@ -1,3 +1,5 @@
+publico-para-ia: true
+
 # DECISÃO — a Fila do Primeiro Dólar nasce como célula própria: `encomendas`
 
 > **Estado: APROVADA pelo mantenedor em 03/09/2026**, em pergunta estruturada
@@ -368,16 +370,16 @@ listar --ao-vivo`), nunca aqui.
 | 0 | portão | **O mantenedor aprovou a lei** em 03/09/2026 (registro `20260904-006`) | mantenedor | feito |
 | **1** | — | **Piloto de papel**: 5 a 10 encomendas reais da escola, fila mantida à mão pelo professor, tudo em planilha (seção 11 do plano). **Sem código.** Pode correr em paralelo com a Fase 2 se ele decidir assim (decisão 13) | escola | — |
 | **2** | 2.1 | Gênese (esqueleto, saúde, os três guardas, `celulas.yml`, manifesto, `rollback.yml`); ~22 arquivos, etiqueta `arquitetural` | encomendas, ci, .github | TAR-109 |
-| 2 | 2.2 | Tabelas: perfil, encomenda, oferta, **parâmetros com histórico**, máquinas de estado | encomendas | nasce quando a gênese pousar |
-| 2 | 2.3 | Motor de oferta + **J1–J7** como guarda e no `INVARIANTES.md` | encomendas, INVARIANTES.md | nasce quando a gênese pousar |
-| 2 | 2.4 | Relógios, horas úteis puras, tique por minuto + **J8–J10** | encomendas, INVARIANTES.md | nasce quando a gênese pousar |
-| 2 | 2.5 | Pausa automática, interruptor, chamada aberta, passar com motivo, reclassificação | encomendas | nasce quando a gênese pousar |
-| 2 | 2.6 | **Simulador de 100 alunos** (portão da Fase 2) | encomendas | nasce quando a gênese pousar |
-| 2 | 2.7 | Porta de máquina (parâmetros, fila de uma pessoa, peças aprovadas, as duas internas em 501) + sessão repassada + `export_openapi` | encomendas | nasce quando a gênese pousar |
-| 2 | 2.8 | **Congelar o contrato** a partir do export (PR só de `contracts/` + manifesto) | contracts, ci | nasce quando a gênese pousar |
-| 2 | 2.9 | `infra/provisionar-encomendas.sh` + env exemplo (PR sozinho) | infra | nasce quando a gênese pousar |
+| 2 | 2.2 | Tabelas: perfil, encomenda, oferta, **parâmetros com histórico**, máquinas de estado | encomendas | TAR-120 |
+| 2 | 2.3 | Motor de oferta + **J1–J7** como guarda e no `INVARIANTES.md` | encomendas, INVARIANTES.md | TAR-121 |
+| 2 | 2.4 | Relógios, horas úteis puras, tique por minuto + **J8–J10** | encomendas, INVARIANTES.md | TAR-122 |
+| 2 | 2.5 | Pausa automática, interruptor, chamada aberta, passar com motivo, reclassificação | encomendas | TAR-123 |
+| 2 | 2.6 | **Simulador de 100 alunos** (portão da Fase 2) | encomendas | TAR-124 |
+| 2 | 2.7 | Porta de máquina (parâmetros, fila de uma pessoa, peças aprovadas, as duas internas em 501) + sessão repassada + `export_openapi` | encomendas | TAR-125 |
+| 2 | 2.8 | **Congelar o contrato** a partir do export (PR só de `contracts/` + manifesto) | contracts, ci | TAR-126 |
+| 2 | 2.9 | `infra/provisionar-encomendas.sh` + env exemplo (PR sozinho) | infra | TAR-127 |
 | 2 | **H** | **Passo do mantenedor na VPS**: banco, papel e env, em UM bloco de colar, janela rotulada | mantenedor | — |
-| 2 | 2.10 | Compose + Traefik `/encomendas` + inventário de rotas (PR sozinho); a célula responde `/healthz` pela internet | infra, ci | nasce quando a gênese pousar |
+| 2 | 2.10 | Compose + Traefik `/encomendas` + inventário de rotas (PR sozinho); a célula responde `/healthz` pela internet | infra, ci | TAR-128 |
 | **3** | — | Cliente e dinheiro: cardápio, briefing, cobrança → webhook → `na_fila`, extensão da `pagamentos` (D13–D17), rastreio, aprovar, cancelar. **Espera o sinal "o site vai vender"** | encomendas, pagamentos | tarefas criadas quando o portão abrir |
 | **4** | — | A tela do aluno (três estados, oportunidade, passar com motivo, espera estimada), assuntos `encomendas.*` no sininho | encomendas, contracts | idem |
 | **5** | — | Entrega, auditoria automática (worker com Blender), revisão com SLA, correção, extensão, abandono, aprovação tácita (S2) | encomendas, auditoria | idem |
@@ -475,4 +477,4 @@ a fase escrita):**
 | A constituição da célula | promovida na gênese (03/09/2026) | `constituicoes/AGENTS.encomendas.md` |
 | O contrato v1 | anexo escrito; congela no degrau 2.8 | `CONTRATO-encomendas-v1-rascunho.md` |
 | Os 20 eventos | TAR-108 | `contracts/eventos/encomenda.*`, `oferta.*`, `entrega.*`, `aluno.*`, `portfolio.*`, `pedido-direto.*` |
-| A escada | TAR-107 a TAR-109 na fila; os degraus 2.2 a 2.10 nascem quando a gênese pousar | `python ci/fila.py listar --ao-vivo` |
+| A escada | TAR-107 a TAR-109 concluídas; TAR-120 a TAR-128 na fila, encadeadas por `depende_de` | `python ci/fila.py listar --ao-vivo` |
