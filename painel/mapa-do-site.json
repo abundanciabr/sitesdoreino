@@ -27,7 +27,7 @@
     "  descricao  uma ou duas frases, sem jargão: o que é e para que serve",
     "  exemplo    (opcional) um endereço concreto e clicável, quando o real é molde",
     "  gesto      (opcional) true quando não é página: é o que acontece ao apertar",
-    "             um botão. É o que explica por que há ~97 endereços e ~35 telas",
+    "             um botão. É o que explica por que há mais endereços do que telas",
     "  observacao (opcional) a nota de rodapé daquela linha",
     "",
     "O QUE O VARREDOR NAO CONFERE (buraco declarado, RETROSPECTIVA-FASE-D §2): o texto",
@@ -446,8 +446,8 @@
       "alcance": "publico",
       "para_quem": "aluno",
       "titulo": "A trilha de marcos reais",
-      "descricao": "O que o aluno conseguiu no mundo de verdade: a primeira obra terminada, o primeiro cliente, os primeiros dolares. Ele manda a prova por aqui e acompanha o que a escola respondeu. Marco nao vale ponto nenhum, de proposito.",
-      "observacao": "E a UNICA tela que conta uma devolucao: devolver um pedido nao gera aviso no sininho, porque so boa noticia vira carta. Sem esta pagina o aluno esperaria para sempre por uma resposta que ja chegou."
+      "descricao": "O que o aluno conseguiu no mundo de verdade: a primeira obra terminada, o primeiro cliente, os primeiros dólares. Ele manda a prova por aqui e acompanha o que a escola respondeu. Marco não vale ponto nenhum, de propósito.",
+      "observacao": "É a ÚNICA tela que conta uma devolução: devolver um pedido não gera aviso no sininho, porque só boa notícia vira carta. Sem esta página o aluno esperaria para sempre por uma resposta que já chegou."
     },
     {
       "celula": "gamificacao",
@@ -455,8 +455,9 @@
       "endereco": "/conquistas/marcos/enviar",
       "alcance": "publico",
       "para_quem": "aluno",
+      "gesto": true,
       "titulo": "Enviar a prova de um marco",
-      "descricao": "O gesto de mandar (ou remandar) a prova de um marco para a escola conferir. Nao e uma pagina: quem clica volta para a trilha com a resposta."
+      "descricao": "O gesto de mandar (ou remandar) a prova de um marco para a escola conferir. Não é uma página: quem clica volta para a trilha com a resposta."
     },
     {
       "celula": "gamificacao",
@@ -466,7 +467,7 @@
       "para_quem": "equipe",
       "titulo": "A fila da equipe",
       "descricao": "Onde a equipe da escola confere as provas que os alunos mandaram, com o mais urgente em cima. Aceitar registra a conquista e avisa a pessoa; devolver pede o que falta, em particular.",
-      "observacao": "PUBLICO aqui quer dizer alcancavel pela internet, nao aberto: o corte do prefixo /conquistas e do Django, nao do Traefik, entao o endereco responde para qualquer um. Quem fecha e a lista de ids no env da celula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem nao esta nela leva 403 com a razao escrita. Ela NAO usa o papel que a identidade devolve, que e de exibicao: reconhecer nao e autorizar."
+      "observacao": "PÚBLICO aqui quer dizer alcançável pela internet, não aberto: o corte do prefixo /conquistas é do Django, não do Traefik, então o endereço responde para qualquer um. Quem fecha é a lista de ids no env da célula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem não está nela leva 403 com a razão escrita. Ela NÃO usa o papel que a identidade devolve, que é de exibição: reconhecer não é autorizar."
     },
     {
       "celula": "gamificacao",
@@ -474,9 +475,10 @@
       "endereco": "/conquistas/interno/decidir",
       "alcance": "publico",
       "para_quem": "equipe",
+      "gesto": true,
       "titulo": "Aceitar ou devolver um pedido",
-      "descricao": "O gesto de um clique da equipe. Nao e uma pagina: quem clica volta para a fila com a resposta.",
-      "observacao": "PUBLICO aqui quer dizer alcancavel pela internet, nao aberto: o corte do prefixo /conquistas e do Django, nao do Traefik, entao o endereco responde para qualquer um. Quem fecha e a lista de ids no env da celula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem nao esta nela leva 403 com a razao escrita. Ela NAO usa o papel que a identidade devolve, que e de exibicao: reconhecer nao e autorizar."
+      "descricao": "O gesto de um clique da equipe. Não é uma página: quem clica volta para a fila com a resposta.",
+      "observacao": "PÚBLICO aqui quer dizer alcançável pela internet, não aberto: o corte do prefixo /conquistas é do Django, não do Traefik, então o endereço responde para qualquer um. Quem fecha é a lista de ids no env da célula (IDS_DA_EQUIPE), fail-closed: lista vazia recusa todo mundo, inclusive o mantenedor, e quem não está nela leva 403 com a razão escrita. Ela NÃO usa o papel que a identidade devolve, que é de exibição: reconhecer não é autorizar."
     },
     {
       "celula": "gamificacao",
@@ -494,6 +496,7 @@
       "endereco": "/conquistas/forja/registrar",
       "alcance": "publico",
       "para_quem": "aluno",
+      "gesto": true,
       "titulo": "Começar, somar ou selar uma peça",
       "descricao": "Os três gestos da Forja num endereço só. Não é uma página: quem clica volta para a bancada com a resposta.",
       "observacao": "O gesto nunca recebe o número de uma linha do banco, e sim o NOME da peça: o dono é sempre quem a sessão diz que é, então a peça de outro aluno não é protegida por uma conferência que alguém precisa lembrar de escrever, ela simplesmente não existe para a consulta."
@@ -857,7 +860,7 @@
       "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "Os planos do projeto, para outras IAs",
-      "descricao": "A lista dos planos e decisoes que voce pode mandar para uma inteligencia artificial de fora ler. Texto puro, sem login. So aparece aqui o documento que se declarou publico no proprio cabecalho.",
+      "descricao": "A lista dos planos e decisões que você pode mandar para uma inteligência artificial de fora ler. Texto puro, sem login. Só aparece aqui o documento que se declarou público no próprio cabeçalho.",
       "sonda": true
     },
     {
@@ -868,7 +871,7 @@
       "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "Um plano, para outras IAs lerem",
-      "descricao": "O texto de um plano ou decisao, do jeito que esta no repositorio. Funciona com ou sem `.md` no fim. Documento que nao se declarou publico responde 'nao encontrado'."
+      "descricao": "O texto de um plano ou decisão, do jeito que está no repositório. Funciona com ou sem `.md` no fim. Documento que não se declarou público responde 'não encontrado'."
     },
     {
       "celula": "admin",
@@ -1195,7 +1198,7 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Corrigir o nome e o texto da ideia",
-      "descricao": "Para erro de digitacao do aluno. Ele passa a ver o texto novo sem marca nenhuma, e o que estava escrito antes fica guardado para a equipe."
+      "descricao": "Para erro de digitação do aluno. Ele passa a ver o texto novo sem marca nenhuma, e o que estava escrito antes fica guardado para a equipe."
     },
     {
       "celula": "admin",
@@ -1390,7 +1393,7 @@
       "alcance": "interno",
       "para_quem": "maquina",
       "titulo": "O sinal de vida da medição",
-      "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar a história dos números da escola (quantas pessoas entraram em cada mês, o que mudou de uma semana para a outra) acabou de nascer e ainda não tem nenhuma página: ela nunca terá, porque quem mostra número é o painel em /admin/."
+      "descricao": "Responde 'estou de pé' pela rede interna. A parte que guarda a história dos números da escola (quantas pessoas entraram em cada mês, o que mudou de uma semana para a outra) está no ar e acumulando fatos desde 04/09/2026, e não tem página nenhuma: ela nunca terá, porque quem mostra número é o painel em /admin/."
     },
     {
       "celula": "metricas",
@@ -1399,8 +1402,8 @@
       "alcance": "interno",
       "para_quem": "maquina",
       "titulo": "A porta por onde o painel lê a história dos números",
-      "descricao": "Por onde o seu painel vai perguntar o que aconteceu no passado: quantos fatos de cada assunto em cada dia, desde quando cada assunto chega (para a tela poder dizer 'medido há 3 dias' em vez de mostrar um número sem data) e a lista do que chegou quebrado e não pôde ser contado.",
-      "observacao": "Fica escondida da internet: esta parte do site não tem endereço público nenhum, só existe na rede interna. Mesmo assim ela exige senha de máquina, e a lista de senhas nasce VAZIA, então hoje ninguém passa. Ela só LÊ: um fato guardado aqui não se corrige nem se apaga por esta porta, nem por nenhuma outra."
+      "descricao": "Por onde o seu painel pergunta o que aconteceu no passado: quantos fatos de cada assunto em cada dia, desde quando cada assunto chega (para a tela poder dizer 'medido há 3 dias' em vez de mostrar um número sem data) e a lista do que chegou quebrado e não pôde ser contado.",
+      "observacao": "Fica escondida da internet: esta parte do site não tem endereço público nenhum, só existe na rede interna. Mesmo assim ela exige senha de máquina, e a lista de senhas nasce VAZIA: quem passa é o painel, com a senha do par criada dentro do servidor em 04/09/2026. Ela só LÊ: um fato guardado aqui não se corrige nem se apaga por esta porta, nem por nenhuma outra."
     },
     {
       "celula": "notificacoes",
@@ -1608,8 +1611,9 @@
       "endereco": "/admin/economia/mudar-conquista",
       "alcance": "publico",
       "para_quem": "equipe",
+      "gesto": true,
       "titulo": "Ligar ou desligar uma medalha ou marco",
-      "descricao": "O gesto de um clique na segunda metade da tela da economia. Nao e uma pagina: quem clica volta para a tela com a resposta."
+      "descricao": "O gesto de um clique na segunda metade da tela da economia. Não é uma página: quem clica volta para a tela com a resposta."
     },
     {
       "celula": "admin",
@@ -1617,8 +1621,9 @@
       "endereco": "/admin/economia/mudar-degrau",
       "alcance": "publico",
       "para_quem": "equipe",
+      "gesto": true,
       "titulo": "Ligar ou desligar um degrau da escada",
-      "descricao": "O gesto de um clique na terceira parte da tela da economia. Nao e uma pagina, e nao paga nada a ninguem: o degrau e a regua que da nome ao esforco que o aluno ja tem."
+      "descricao": "O gesto de um clique na terceira parte da tela da economia. Não é uma página, e não paga nada a ninguém: o degrau é a régua que dá nome ao esforço que o aluno já tem."
     },
     {
       "celula": "admin",
@@ -1627,7 +1632,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Escrever um documento novo",
-      "descricao": "O formulario em branco. O documento nasce fechado: so aparece no site aberto se voce marcar a caixa de publicar."
+      "descricao": "O formulário em branco. O documento nasce fechado: só aparece no site aberto se você marcar a caixa de publicar."
     },
     {
       "celula": "admin",
@@ -1637,7 +1642,7 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Criar o documento",
-      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta o botao de criar. Se houver risca comprida no texto, ele recusa e mostra onde esta."
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de criar. Se houver risca comprida no texto, ele recusa e mostra onde está."
     },
     {
       "celula": "admin",
@@ -1646,7 +1651,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Editar um documento",
-      "descricao": "O texto de hoje dentro de um campo, para voce reescrever. O endereco da pagina nao muda por aqui: alguem pode ter guardado o link."
+      "descricao": "O texto de hoje dentro de um campo, para você reescrever. O endereço da página não muda por aqui: alguém pode ter guardado o link."
     },
     {
       "celula": "admin",
@@ -1655,8 +1660,8 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "gesto": true,
-      "titulo": "Salvar a edicao do documento",
-      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta salvar. A mudanca aparece no site na hora, sem esperar atualizacao nenhuma."
+      "titulo": "Salvar a edição do documento",
+      "descricao": "Não é uma página: é o que acontece quando você aperta salvar. A mudança aparece no site na hora, sem esperar atualização nenhuma."
     },
     {
       "celula": "admin",
@@ -1664,8 +1669,8 @@
       "endereco": "/admin/documentos/(?P<nome>[a-z0-9-]+)/versoes$",
       "alcance": "publico",
       "para_quem": "equipe",
-      "titulo": "O historico de um documento",
-      "descricao": "Tudo o que ja foi escrito neste documento, da versao mais nova para a mais velha, com quem salvou e quando."
+      "titulo": "O histórico de um documento",
+      "descricao": "Tudo o que já foi escrito neste documento, da versão mais nova para a mais velha, com quem salvou e quando."
     },
     {
       "celula": "admin",
@@ -1674,8 +1679,8 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "gesto": true,
-      "titulo": "Voltar um documento a uma versao anterior",
-      "descricao": "Nao e uma pagina: copia um texto antigo por cima do de hoje. Nao apaga nada, o texto de hoje continua no historico."
+      "titulo": "Voltar um documento a uma versão anterior",
+      "descricao": "Não é uma página: copia um texto antigo por cima do de hoje. Não apaga nada, o texto de hoje continua no histórico."
     },
     {
       "celula": "admin",
@@ -1685,7 +1690,7 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Arquivar um documento",
-      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta arquivar. O documento sai do site na hora, e o texto continua guardado."
+      "descricao": "Não é uma página: é o que acontece quando você aperta arquivar. O documento sai do site na hora, e o texto continua guardado."
     },
     {
       "celula": "admin",
@@ -1695,7 +1700,7 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Desarquivar um documento",
-      "descricao": "Nao e uma pagina: devolve o documento ao estado em que ele estava antes de ser arquivado, inclusive se era publico."
+      "descricao": "Não é uma página: devolve o documento ao estado em que ele estava antes de ser arquivado, inclusive se era público."
     },
     {
       "celula": "admin",
@@ -1705,7 +1710,7 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Apagar um documento de vez",
-      "descricao": "Nao e uma pagina: destroi o texto e todo o historico dele. Sem volta, e por isso pede que voce escreva o endereco do documento para confirmar."
+      "descricao": "Não é uma página: destrói o texto e todo o histórico dele. Sem volta, e por isso pede que você escreva o endereço do documento para confirmar."
     },
     {
       "celula": "admin",
@@ -1714,7 +1719,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "O livro",
-      "descricao": "Os textos do livro que voce escreve, guardados do jeito que voce escreveu. Nada daqui aparece no site: e o seu caderno, esperando o projeto online do livro."
+      "descricao": "Os textos do livro que você escreve, guardados do jeito que você escreveu. Nada daqui aparece no site: é o seu caderno, esperando o projeto online do livro."
     },
     {
       "celula": "admin",
@@ -1723,7 +1728,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Escrever ou colar um texto do livro",
-      "descricao": "O formulario em branco. Voce cola o texto com a formatacao que ele ja tem, e ele e guardado letra por letra, sem nenhuma correcao."
+      "descricao": "O formulário em branco. Você cola o texto com a formatação que ele já tem, e ele é guardado letra por letra, sem nenhuma correção."
     },
     {
       "celula": "admin",
@@ -1733,7 +1738,7 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Guardar o texto novo",
-      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta o botao de guardar. Diferente dos documentos do site, aqui a risca comprida nao recusa nada: ela so aparece como aviso depois."
+      "descricao": "Não é uma página: é o que acontece quando você aperta o botão de guardar. Diferente dos documentos do site, aqui a risca comprida não recusa nada: ela só aparece como aviso depois."
     },
     {
       "celula": "admin",
@@ -1743,7 +1748,7 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Guardar arquivos .md do computador",
-      "descricao": "Nao e uma pagina: e o que acontece quando voce manda varios arquivos de uma vez. Cada arquivo vira um texto, e um arquivo com problema nao derruba os outros."
+      "descricao": "Não é uma página: é o que acontece quando você manda vários arquivos de uma vez. Cada arquivo vira um texto, e um arquivo com problema não derruba os outros."
     },
     {
       "celula": "admin",
@@ -1752,7 +1757,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Baixar o livro inteiro",
-      "descricao": "Todos os textos num arquivo so, na ordem do sumario. E a sua copia de seguranca: guarde no computador de vez em quando."
+      "descricao": "Todos os textos num arquivo só, na ordem do sumário. É a sua cópia de segurança: guarde no computador de vez em quando."
     },
     {
       "celula": "admin",
@@ -1761,7 +1766,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Um texto do livro",
-      "descricao": "O texto formatado na tela, com o historico do que ja foi escrito nele e o aviso de quantas riscas compridas ele tem."
+      "descricao": "O texto formatado na tela, com o histórico do que já foi escrito nele e o aviso de quantas riscas compridas ele tem."
     },
     {
       "celula": "admin",
@@ -1770,7 +1775,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Editar um texto do livro",
-      "descricao": "O texto de hoje dentro de um campo, para voce reescrever. O que estava escrito antes continua guardado no historico."
+      "descricao": "O texto de hoje dentro de um campo, para você reescrever. O que estava escrito antes continua guardado no histórico."
     },
     {
       "celula": "admin",
@@ -1779,8 +1784,8 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "gesto": true,
-      "titulo": "Salvar a edicao do texto",
-      "descricao": "Nao e uma pagina: e o que acontece quando voce aperta salvar. O texto anterior vira uma versao guardada, e nada se perde."
+      "titulo": "Salvar a edição do texto",
+      "descricao": "Não é uma página: é o que acontece quando você aperta salvar. O texto anterior vira uma versão guardada, e nada se perde."
     },
     {
       "celula": "admin",
@@ -1789,7 +1794,7 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "titulo": "Baixar um texto do livro",
-      "descricao": "O arquivo .md deste texto, identico ao que foi guardado: sem nenhuma linha acrescentada nem tirada."
+      "descricao": "O arquivo .md deste texto, idêntico ao que foi guardado: sem nenhuma linha acrescentada nem tirada."
     },
     {
       "celula": "admin",
@@ -1798,8 +1803,8 @@
       "alcance": "publico",
       "para_quem": "equipe",
       "gesto": true,
-      "titulo": "Voltar um texto a uma versao anterior",
-      "descricao": "Nao e uma pagina: copia uma versao antiga por cima do texto de hoje. Nada e apagado, e o de hoje continua na lista."
+      "titulo": "Voltar um texto a uma versão anterior",
+      "descricao": "Não é uma página: copia uma versão antiga por cima do texto de hoje. Nada é apagado, e o de hoje continua na lista."
     },
     {
       "celula": "admin",
@@ -1809,7 +1814,7 @@
       "para_quem": "equipe",
       "gesto": true,
       "titulo": "Apagar um texto do livro",
-      "descricao": "Nao e uma pagina: destroi o texto e todo o historico dele, e pede o endereco digitado para confirmar. Nao tem volta, porque este texto nao existe em nenhum outro lugar."
+      "descricao": "Não é uma página: destrói o texto e todo o histórico dele, e pede o endereço digitado para confirmar. Não tem volta, porque este texto não existe em nenhum outro lugar."
     }
   ]
 }
