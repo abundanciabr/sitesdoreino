@@ -43,21 +43,29 @@ painel ignorado não existe.
 | Preparação | 07/09 | 11/09 | 0 | 0 |
 | 1 | 14/09 | 18/09 | 0 | 0 |
 | 2 | 21/09 | 25/09 | 0 | 0 |
-| 3 | 28/09 | 02/10 | 5 | 5 |
-| 4 | 05/10 | 09/10 | 10 | 15 |
-| 5 | 12/10 | 16/10 | 15 | 30 |
-| 6 | 19/10 | 23/10 | 25 | 55 |
-| 7 | 26/10 | 30/10 | 35 | 90 |
-| 8 | 02/11 | 06/11 | 50 | 140 |
-| 9 | 09/11 | 13/11 | 65 | 205 |
-| 10 | 16/11 | 20/11 | 85 | 290 |
-| 11 | 23/11 | 27/11 | 105 | 395 |
-| 12 | 30/11 | 04/12 | 105 | 500 |
+| 3 | 28/09 | 02/10 | 0 | 0 |
+| 4 | 05/10 | 09/10 | 0 | 0 |
+| 5 | 12/10 | 16/10 | 5 | 5 |
+| 6 | 19/10 | 23/10 | 10 | 15 |
+| 7 | 26/10 | 30/10 | 20 | 35 |
+| 8 | 02/11 | 06/11 | 40 | 75 |
+| 9 | 09/11 | 13/11 | 65 | 140 |
+| 10 | 16/11 | 20/11 | 95 | 235 |
+| 11 | 23/11 | 27/11 | 125 | 360 |
+| 12 | 30/11 | 04/12 | 140 | 500 |
 | Recuperação | 07/12 | 11/12 | 0 | 500 |
+
+**Setembro inteiro pede zero venda**, e outubro pede 35 (7% da meta). De
+novembro em diante estão 93%. Foi a segunda escolha do mantenedor, no mesmo dia
+04/09/2026, depois de ver uma primeira proposta com três semanas em zero: ele
+pediu **mais tempo aprendendo antes**, sabendo que isso torna as últimas semanas
+mais pesadas. As duas finais carregam 265 das 500.
 
 As datas são as do mantenedor, conferidas: todas de segunda a sexta, cinco dias
 cada. Os números da coluna "Meta" são **proposta minha**, montada sobre a forma
-que ele descreveu; ele ajusta quando quiser, editando um arquivo.
+que ele descreveu; ele ajusta quando quiser, editando um arquivo. E ajustou: a
+primeira versão, com três semanas em zero e a primeira venda esperada em 28/09,
+viveu menos de uma hora. Isso é o desenho funcionando, não retrabalho.
 
 **A semana de recuperação não tem meta própria de propósito.** O que ela carrega
 é o que faltar quando a semana 12 fechar. Dar meta a ela seria transformar a
@@ -110,13 +118,16 @@ realidade nova.
 Sem a célula `alunos`, as colunas do que aconteceu ficam **em branco**, nunca em
 zero: zero afirmaria que ninguém comprou naquela semana.
 
-## 7. O que ficou em aberto para o mantenedor
+## 7. A meta é 500 pessoas, confirmada
 
-O pedido dele dizia *"a venda dos 500 cursos para atingir os 50 alunos"*. O
-número que está no sistema, decidido por ele em 03/09/2026 (registro
-`20260903-036`) e gravado no cartão, é **500 pessoas**. A curva foi montada
-sobre 500. Se o número certo for outro, muda-se o `alvo` e as 14 linhas no mesmo
-arquivo, e o validador garante que os dois continuem casando.
+O pedido dele dizia *"a venda dos 500 cursos para atingir os 50 alunos"*, e os
+dois números não podiam estar certos ao mesmo tempo. Perguntado em 04/09/2026,
+ele confirmou: **500 pessoas**, o mesmo número que já estava no cartão desde a
+decisão de 03/09/2026 (registro `20260903-036`). O "50" era engano de digitação.
+
+A pergunta foi feita em vez de adivinhada porque a diferença era de dez vezes, e
+uma curva montada sobre o número errado seria uma régua errada julgando o ano
+inteiro, com ar de certeza.
 
 **Quem faz valer:** `placar._validar_as_semanas` (a soma, a ordem e as datas) ·
 `services/admin/tests/test_ciclo.py` (a curva do cartão REAL soma a meta; o

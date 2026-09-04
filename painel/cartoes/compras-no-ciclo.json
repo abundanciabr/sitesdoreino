@@ -41,37 +41,37 @@
       "n": 3,
       "de": "2026-09-28",
       "ate": "2026-10-02",
-      "alvo": 5
+      "alvo": 0
     },
     {
       "n": 4,
       "de": "2026-10-05",
       "ate": "2026-10-09",
-      "alvo": 10
+      "alvo": 0
     },
     {
       "n": 5,
       "de": "2026-10-12",
       "ate": "2026-10-16",
-      "alvo": 15
+      "alvo": 5
     },
     {
       "n": 6,
       "de": "2026-10-19",
       "ate": "2026-10-23",
-      "alvo": 25
+      "alvo": 10
     },
     {
       "n": 7,
       "de": "2026-10-26",
       "ate": "2026-10-30",
-      "alvo": 35
+      "alvo": 20
     },
     {
       "n": 8,
       "de": "2026-11-02",
       "ate": "2026-11-06",
-      "alvo": 50
+      "alvo": 40
     },
     {
       "n": 9,
@@ -83,19 +83,19 @@
       "n": 10,
       "de": "2026-11-16",
       "ate": "2026-11-20",
-      "alvo": 85
+      "alvo": 95
     },
     {
       "n": 11,
       "de": "2026-11-23",
       "ate": "2026-11-27",
-      "alvo": 105
+      "alvo": 125
     },
     {
       "n": 12,
       "de": "2026-11-30",
       "ate": "2026-12-04",
-      "alvo": 105
+      "alvo": 140
     },
     {
       "n": 13,
@@ -113,7 +113,7 @@
     "canal",
     "mes-de-entrada"
   ],
-  "versao": 2,
+  "versao": 3,
   "desde": "2026-09-04",
-  "_por_que": "Meta Crucialmente Importante nº 1, reformulada pelo mantenedor em 03/09/2026 (registro 20260903-036): deixou de ser o total de alunos e passou a ser quantas pessoas compraram, com a meta grande 'de 0 para 500 somadas de 03/09 até 15/12/2026'. A partida é 0 porque neste mês ainda não houve venda. A régua mora aqui; o fato de ele ter decidido mora no livro. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Cada pessoa é notícia com esta escala, então não há ruído: qualquer diferença aparece em 'o que mudou'. A foto envelhece em 10 dias (a semana e uma folga para a reunião de segunda atrasar). CURVA DE 04/09/2026 (pedido do mantenedor, com o calendário dele): a meta deixou de ser distribuída em LINHA RETA e passou a seguir `semanas`, 14 faixas de segunda a sexta. As três primeiras valem 0 de propósito, porque são as semanas de aprender a campanha, o criativo, a copy e a página de venda, e cobrar venda de quem ainda está aprendendo mede a coisa errada com precisão. A soma das 14 é exatamente `alvo` menos `partida`, e o validador reprova o cartão se um dia deixar de ser: é o que impede a curva de discordar da meta grande. Lei: docs/decisoes/DECISAO-o-calendario-do-ciclo.md."
+  "_por_que": "Meta Crucialmente Importante nº 1, reformulada pelo mantenedor em 03/09/2026 (registro 20260903-036): deixou de ser o total de alunos e passou a ser quantas pessoas compraram, com a meta grande 'de 0 para 500 somadas de 03/09 até 15/12/2026'. A partida é 0 porque neste mês ainda não houve venda. A régua mora aqui; o fato de ele ter decidido mora no livro. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Cada pessoa é notícia com esta escala, então não há ruído: qualquer diferença aparece em 'o que mudou'. A foto envelhece em 10 dias (a semana e uma folga para a reunião de segunda atrasar). CURVA DE 04/09/2026 (pedido do mantenedor, com o calendário dele): a meta deixou de ser distribuída em LINHA RETA e passou a seguir `semanas`, 14 faixas de segunda a sexta. As três primeiras valem 0 de propósito, porque são as semanas de aprender a campanha, o criativo, a copy e a página de venda, e cobrar venda de quem ainda está aprendendo mede a coisa errada com precisão. A soma das 14 é exatamente `alvo` menos `partida`, e o validador reprova o cartão se um dia deixar de ser: é o que impede a curva de discordar da meta grande. Lei: docs/decisoes/DECISAO-o-calendario-do-ciclo.md. AJUSTE DA CURVA no mesmo dia, também dele, depois de ver a primeira proposta: mais tempo aprendendo antes de a meta começar a cobrar. As semanas em zero passaram de três para CINCO (setembro inteiro), a primeira venda esperada foi de 28/09 para 12/10, e o peso migrou para novembro em diante (93% da meta). É a curva reajustada por decisão dele, e não por conta nova: o desenho prevê exatamente isto, porque a régua mora num arquivo e ajustá-la é uma edição só."
 }
