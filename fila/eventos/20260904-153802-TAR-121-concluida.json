@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-153802-TAR-121-concluida",
+  "tarefa": "TAR-121",
+  "evento": "concluida",
+  "quando": "2026-09-04T15:38:02+00:00",
+  "quem": "sessao-encomendas-tar121-2026-09-04",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1011 + motor.py com miolo puro de (estado, agora); INV-ENC-J1 a J7 no INVARIANTES.md com guarda cada, os sete provados por mutacao no motor (J1 1 failed, J2 3, J3 4, J4 3, J5 4, J6 6, J7 4); 152 passed na celula; guarda_dos_guardas PASS (45 guardas em 33 invariantes); 13 muralhas PASS",
+  "verificado_em": "2026-09-04"
+}

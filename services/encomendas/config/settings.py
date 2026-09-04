@@ -77,9 +77,15 @@ INSTALLED_APPS = [
     # estado da seção 7.2 do plano em `Encomenda.TRANSICOES` e num gatilho do
     # PostgreSQL que recusa a transição proibida.
     #
-    # Ainda NÃO há motor de oferta (degrau 2.3), relógio (2.4), tela nem porta
-    # de máquina (2.7): as tabelas vieram antes de propósito, como no fórum e
-    # na gamificação.
+    # O MOTOR DE OFERTA entrou no degrau 2.3 (TAR-121), em
+    # `apps/encomendas/motor.py`: os sete invariantes de justiça [INV-ENC-J1] a
+    # [INV-ENC-J7] nasceram com ele, cada um com guarda próprio. O miolo é função
+    # pura de (estado, `agora`) e a passada é reavaliação periódica, nunca timer
+    # agendado — sobrevive a reinício, deploy e queda do Redis.
+    #
+    # Ainda NÃO há relógio de horas úteis (degrau 2.4: o motor conta horas
+    # CORRIDAS por enquanto, pela costura `calcular_expiracao`), pausa automática
+    # e chamada aberta (2.5), simulador (2.6), tela nem porta de máquina (2.7).
     "apps.encomendas",
 ]
 

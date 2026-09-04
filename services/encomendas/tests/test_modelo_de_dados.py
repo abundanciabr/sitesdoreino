@@ -38,7 +38,19 @@ from apps.encomendas.models import (
 # esquecimento que ninguém nota.
 SEM_SITE_ID = {"Pessoa"}
 
-AGORA = datetime(2026, 9, 4, 12, 0, tzinfo=fuso.utc)
+# O `AGORA` DESTES TESTES É O RELÓGIO REAL, e a troca não é estética.
+#
+# `Oferta.oferecida_em` é `auto_now_add`: quem o preenche é o relógio da
+# máquina, nunca o teste. A restrição `oferta_expira_depois_de_oferecida`
+# compara os dois. Com um instante FIXO aqui, `expira_em = AGORA + 3h` é um
+# instante que o relógio real ultrapassa — e a partir daquele minuto dez testes
+# ficam vermelhos sem ninguém ter tocado numa linha de código.
+#
+# Não é hipótese: aconteceu em 04/09/2026 às 15h UTC, três horas depois de o
+# arquivo nascer com `AGORA = datetime(2026, 9, 4, 12, 0)`. A `main` já estava
+# com a bomba armada quando o degrau seguinte (o motor, TAR-121) a encontrou.
+# `armadilhas/323`.
+AGORA = datetime.now(tz=fuso.utc)
 SITE = "escola-a"
 
 
