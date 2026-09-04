@@ -1,0 +1,16 @@
+{
+  "arquivo": "138-rito-de-contrato-nasce-o-contrato-da-mensageria-e-a-tela-das",
+  "id": "TAR-138",
+  "titulo": "Rito de Contrato: nasce o contrato da mensageria, e a tela das sequencias destrava",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [
+    "TAR-137"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR so de contracts/ + manifesto, com a etiqueta contrato, mergeado com o mantenedor presente na decisao, e a saida crua de 'python ci/contract_freeze.py mensageria' verde.",
+  "despacho": "E O DEGRAU 6d DO PLANO. NAO E CODIGO: e o Rito de Contrato do RITOS.md §3, com\no mantenedor presente.\n\n*** SO COMECE DEPOIS QUE A TAR-137 (a porta) TIVER POUSADO. ***\nA ordem nao e gosto: contrato em disco OBRIGA a linha do manifesto a virar\n`required`, e `required` sem `export_openapi` deixa o `make ci` da mensageria em\nERROR no PR seguinte, longe de quem causou. Isso ja aconteceu com a gamificacao\nem 30/08/2026 — leia armadilhas/228 antes de qualquer coisa.\n\nLEIA ANTES: docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md §7 (os degraus 6c e\n6d, com a medicao que mostrou que faltavam), RITOS.md §3 (o rito), e\ncontracts/notificacoes.openapi.yaml + contracts/gamificacao.openapi.yaml como\nmolde vivo do formato desta casa.\n\nO QUE ENTREGA:\n1. `contracts/mensageria.openapi.yaml`, congelado, com as operacoes que a\n   TAR-137 implementou — nem uma a mais. Contrato descreve o que EXISTE.\n2. A linha da `mensageria` em `ci/manifesto-de-contratos.json` saindo de\n   `not-applicable` (hoje ela diz \"celula ainda em esqueleto\") para `required`,\n   com o exportador declarado.\n3. MEDIDO ANTES DE ABRIR O PR: `python ci/contract_freeze.py mensageria` com o\n   manifesto ja alterado. Concordancia entre documentos nao e medicao.\n\nREGRAS DURAS DO RITO: PR contendo SOMENTE `contracts/` (mais o manifesto), com a\netiqueta `contrato` — a cerca (`ci/cerca-de-celula.sh`) RECUSA contrato mudando\njunto com `services/`. `contracts/` e caminho CODEOWNERS: exige mandato do\ndespacho e anuncio nominal no relatorio final. O mantenedor precisa estar\npresente na decisao, e isso NAO se contorna: se ele nao estiver, registre a\npendencia e pare.\n\nO QUE ISTO DESTRAVA: a TAR-078, a tela em /admin/escola/jornadas/ onde ele ve e\nedita as sequencias sozinho (§8.3 do plano). Depois deste PR, o PR da tela\nprecisa ainda de `admin.consome: mensageria` em celulas.yml (o varredor\n`ci/mapa_de_celulas.py` reprova declaracao orfa, entao ela entra no MESMO PR que\nescrever o cliente) e das variaveis de ambiente do par na VPS, que sao da Lei 5\ne so o mantenedor poe.",
+  "origem": "TAR-078 parou por falta deste degrau; degrau 6d do PLANO-SEQUENCIAS-DE-MENSAGENS.md (04/09/2026)",
+  "criada_em": "2026-09-04"
+}
