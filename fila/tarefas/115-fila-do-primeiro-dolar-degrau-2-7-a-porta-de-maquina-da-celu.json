@@ -1,0 +1,16 @@
+{
+  "arquivo": "115-fila-do-primeiro-dolar-degrau-2-7-a-porta-de-maquina-da-celu",
+  "id": "TAR-115",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.7: a porta de maquina da celula (parametros do dono, estado da fila de uma pessoa) e o reconhecimento de quem chama",
+  "toca": [
+    "encomendas"
+  ],
+  "depende_de": [
+    "TAR-114"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado: config/api.py com Bearer por par (TOKENS_ACEITOS_<PAR>, env ausente = 401 para todos), management command export_openapi, clients/sessao repassando o cookie a identidade (nunca assina), testes de 401 e de que /interno nao resolve pela borda publica (armadilhas/186); o OpenAPI exportado e o que vai congelar no degrau 2.8.",
+  "despacho": "LEIA ANTES: docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei, com as emendas da casa ao plano), docs/decisoes/PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md (o plano do mantenedor, secoes 5 a 9), constituicoes/AGENTS.encomendas.md e armadilhas/INDICE.md (Ctrl+F pela tecnologia que vai tocar). A secao 3 do plano (o que fica FORA) e literal: nenhum agente melhora o desenho por conta propria. TAREFA: a porta de maquina do anexo do contrato (docs/decisoes/CONTRATO-encomendas-v1-rascunho.md, Parte A): GET/PUT dos parametros (para a tela do admin), GET do estado da fila de uma pessoa (para a home e o Estudio), e as duas portas internas (pagamento confirmado, resultado da auditoria) ja declaradas mas respondendo 501 ate as fases 3 e 5. Molde: services/gamificacao/config/api.py e apps/core/sessao.py. Exportar o contrato vivo e guardar a saida: o degrau 2.8 congela A PARTIR dela (armadilhas/243).",
+  "origem": "plano mestre da Fila do Primeiro Dolar (v0.1, 03/09/2026), trazido pelo mantenedor; lei em docs/decisoes/DECISAO-fila-do-primeiro-dolar.md",
+  "criada_em": "2026-09-04"
+}
