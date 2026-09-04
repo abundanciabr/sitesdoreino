@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-131310-TAR-137-concluida",
+  "tarefa": "TAR-137",
+  "evento": "concluida",
+  "quando": "2026-09-04T13:13:10+00:00",
+  "quem": "sessao-mensageria-tar137-2026-09-04",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/986 + saida crua de 'python manage.py export_openapi': 5 operacoes (listJourneys, getJourney, listEnrollments, listDeliveries, publishJourneyText), 12 componentes, securityScheme bearerAuth, servers http://mensageria:8000/api/mensageria",
+  "verificado_em": "2026-09-04"
+}

@@ -32,7 +32,17 @@ Templates versionados dentro da célula. Nunca toca dinheiro, nunca bloqueia din
   o idioma gravado na inscrição congelaria a língua de quem se inscreveu. A linha
   `consome:` em `celulas.yml` entra no PR que escrever o cliente, não neste: o
   varredor reprova declaração órfã.
-- **Expõe:** nada público; API interna opcional para reenvio manual
+- **Expõe:** nada público. A porta de MÁQUINA `/api/mensageria` nasceu em
+  04/09/2026 (degrau 6c do `PLANO-SEQUENCIAS-DE-MENSAGENS.md`) e vive só na rede
+  interna: esta célula não tem rota no Traefik nem prefixo público. Por ela a
+  tela do mantenedor lê as jornadas, os passos com o texto por idioma, quem está
+  dentro e **o que não foi entregue, com o motivo**; e por ela ele grava uma
+  frase nova, o que **publica versão nova** e nunca edita a publicada. Quem
+  fecha é o Bearer do par, em DOIS graus: `TOKENS_SOMENTE_LEITURA_<PAR>` lê, e
+  publicar exige `TOKENS_PUBLICACAO_<PAR>`, porque grau plano daria a escrita de
+  uma sequência que fala com alunos a quem só precisava desenhar uma consulta.
+  A linha original desta constituição dizia "API interna opcional para reenvio
+  manual": esse reenvio continua não existindo, e o que existe é isto.
 - **Banco:** `mensageria_db` (role `mensageria_user`) — log de envios e templates
 
 ## Invariantes desta célula
