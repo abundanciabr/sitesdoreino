@@ -51,6 +51,9 @@ nunca um append no fim de um arquivo que outra sessão também está escrevendo.
 ```markdown
 # DESPACHO — <celula>: <tarefa em ≤5 palavras>
 CÉLULA: <celula> · WORKTREE: wt-<celula>-<tarefa> · RECEITAS: R_, R_
+PADRÃO: o Padrão de Trabalho (1ª seção do CLAUDE.md) vale nesta tarefa como em
+  todas — inclusive a regra 2 (discorde ANTES, em ≤5 linhas, com UMA alternativa
+  e o trade-off) e a regra 9 (relatório em 4 títulos, sem enchimento).
 ANTES: ARMADILHAS.md §2 (raiz) + armadilhas/INDICE.md — abra SÓ as entradas que
   casam com esta tarefa — + services/<celula>/LICOES.md, se existir. Ao terminar,
   acrescente o que aprendeu como ARQUIVO NOVO em armadilhas/NNN-slug.md + `make

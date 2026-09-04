@@ -14,6 +14,7 @@ falsificaria. A Fase 0 só termina quando o **red-team** (02-RED-TEAM.md) falha 
 | `01-BRIEF-FASE-0.md` | O brief de despacho da Fase 0 (formato de despacho para agentes). |
 | `PROMPTS-INICIAIS.md` | A sequência de despachos prontos: do repo vazio ao esqueleto que anda. |
 | `02-RED-TEAM.md` | O rito de graduação: tentativas deliberadas de matar cada muralha. |
+| `CLAUDE.md` | **O Padrão de Trabalho, íntegro, na 1ª seção** (a régua de toda tarefa) + as leis de sessão. É o único documento que entra sozinho no contexto de toda sessão. |
 | `CONSTITUICAO.md` | A lei da plataforma (herda para todas as células). |
 | `RITOS.md` | Abertura de sessão, catraca verde/anti-thrashing, mudança de contrato, emergência 2h. |
 | `INVARIANTES.md` | Jurisprudência pré-paga: os invariantes de dinheiro, com teste-guarda ANTES da primeira feature. |
