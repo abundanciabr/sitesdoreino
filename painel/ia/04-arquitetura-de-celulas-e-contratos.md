@@ -72,8 +72,8 @@ confiar na linha acima.)
 > própria logo abaixo — leia-a antes de propor qualquer mecânica de ponto,
 > selo, ranking ou recompensa em qualquer outra célula.
 >
-> **Uma 15ª foi escrita em lei e aguarda aprovação:** `encomendas`, a Fila
-> do Primeiro Dólar (03/09/2026), ainda ausente de `services/`. Seção
+> **A 15ª nasceu em 03/09/2026:** `encomendas`, a Fila do Primeiro Dólar,
+> lei aprovada pelo mantenedor e esqueleto em `services/` no mesmo dia. Seção
 > própria mais abaixo — leia-a antes de desenhar qualquer coisa que pareça
 > marketplace, fila de trabalho remunerado, oferta a aluno ou portfólio de
 > encomenda em outra célula.
@@ -186,12 +186,12 @@ acima, junto com `celulas.yml`, `ci/manifesto-de-contratos.json` e
 `ci/tests/test_painel_ia_atualizado.py` passa a **exigir** que este mapa a
 cite, em vez de apenas aceitar que ele a antecipe.
 
-## A 15ª célula, escrita em lei e ainda não nascida: `encomendas`
+## A 15ª célula, nascida em 03/09/2026: `encomendas`
 
-**Estado:** lei escrita em 03/09/2026 a partir do plano mestre v0.1 que o
-mantenedor trouxe, **aguardando a aprovação dele** (pergunta estruturada
-aberta na mesma sessão; a resposta, quando existir, é registro no livro). A
-pasta `services/encomendas` **não existe** no momento desta escrita. Esta
+**Estado:** lei escrita a partir do plano mestre v0.1 que o mantenedor
+trouxe e **aprovada por ele em 03/09/2026** (pergunta estruturada; registro
+`20260904-006`); esqueleto em `services/encomendas` no mesmo dia (só
+`/healthz`, sem tabela, sem tela, sem contrato congelado). Esta
 seção existe para que a próxima IA não desenhe marketplace, oferta de
 trabalho a aluno, fila remunerada ou portfólio de encomenda dentro de outra
 célula sem saber que já há dona para isso. **Fonte de verdade:**

@@ -147,8 +147,9 @@ primeira oportunidade de violá-la.
   por escrito; este invariante é o mecanismo que faltava à proibição.
 - **Teste-Guarda:**
   `services/admin/tests/test_inv_admin_nao_assina_sessao.py`,
-  `services/forum/tests/test_inv_forum_nao_assina_sessao.py` e
-  `services/gamificacao/tests/test_inv_gamificacao_nao_assina_sessao.py` —
+  `services/forum/tests/test_inv_forum_nao_assina_sessao.py`,
+  `services/gamificacao/tests/test_inv_gamificacao_nao_assina_sessao.py` e
+  `services/encomendas/tests/test_inv_encomendas_nao_assina_sessao.py` —
   medem a
   CONFIGURAÇÃO da célula (sem SessionMiddleware, sem django.contrib.sessions
   e sem SESSION_ENGINE no settings dela), porque sem essas três
@@ -158,8 +159,10 @@ primeira oportunidade de violá-la.
   próprio — não é sessão, mas é o mesmo problema de vizinhança: quatro células
   no mesmo host gravando `csrftoken` é uma invalidando o formulário da outra.
 - **Célula dona:** identidade (única emissora) — guarda plantado em `admin`,
-  a primeira célula a nascer **depois** da regra, e replicado em `forum` e em
-  `gamificacao`;
+  a primeira célula a nascer **depois** da regra, e replicado em `forum`, em
+  `gamificacao` e em `encomendas` (03/09/2026; ali a tentação é a cerimônia
+  do primeiro dólar, tela cheia uma vez só — o estado mora no modelo, como
+  as celebrações da gamificação);
   toda célula futura que consuma sessão herda a mesma obrigação. **No `forum`
   a obrigação pesa mais que o normal:** foi um requisito de login que criou a
   célula (`DECISAO-forum-da-escola.md` §2 — *"logado uma única vez, o site
