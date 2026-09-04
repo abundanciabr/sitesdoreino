@@ -135,6 +135,23 @@ um site padrão; `site_id` acompanha toda entidade pública e viaja nos eventos
 e independente dos sites. Domínio novo entra pela Receita R11 (DNS + cadastro),
 nunca por cirurgia de infra.
 
+**Quem faz valer:** `infra/sincronizar_sites.py` e `ci/tests/test_sincronizar_sites_tolerante.py`.
+
+## Lei 10 — O Padrão de Trabalho
+
+
+Toda tarefa desta plataforma obedece ao **Padrão de Trabalho (Modelo Steve Jobs /
+Apple)**, escrito por inteiro na PRIMEIRA seção do `CLAUDE.md` da raiz — o único
+documento que entra sozinho no contexto de toda sessão. É lei deste repositório
+desde 04/09/2026, por ordem do mantenedor, e não sugestão: resolver o problema
+REAL por trás do pedido; discordar ANTES e executar depois; decidir em vez de
+servir cardápio; responder pelo caminho inteiro até a tela do usuário; e a
+Definição de "Pronto" da regra 6, que só aceita "rodou de verdade" ou a admissão
+escrita "NÃO RODEI". As três costuras com as leis desta casa estão conciliadas no
+fim daquela seção, e é a leitura conciliada que vale.
+
+**Quem faz valer:** `ci/padrao_de_trabalho.py` · `ci/tests/test_padrao_de_trabalho.py`.
+
 ## Definição de Pronto Arquitetônica (da plataforma inteira)
 
 - Pix quebrado ⇒ cartão continua vendendo (e vice-versa)
@@ -148,6 +165,4 @@ nunca por cirurgia de infra.
 Abertura de sessão, catraca verde/anti-thrashing, mudança de contrato e emergência:
 ver `RITOS.md`. Formato de invariante (o quê / por quê / teste-guarda): ver
 `INVARIANTES.md`.
-
-**Quem faz valer:** `infra/sincronizar_sites.py` e `ci/tests/test_sincronizar_sites_tolerante.py`.
 
