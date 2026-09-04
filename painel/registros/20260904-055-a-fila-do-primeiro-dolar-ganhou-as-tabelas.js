@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260904-050-a-fila-do-primeiro-dolar-ganhou-as-tabelas",
+  arquivo: "20260904-055-a-fila-do-primeiro-dolar-ganhou-as-tabelas",
   tipo: "entrega",
   quando: "2026-09-04",
   titulo: "A Fila do Primeiro Dólar ganhou as tabelas dela",
