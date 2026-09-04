@@ -245,6 +245,39 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
     </ul>
   {% endif %}
 
+  {% if estrelas %}
+  <h2 class="titulo-de-bloco espaco-20">As estrelas-guia</h2>
+  <p class="recado">O longo prazo acima da meta: uma protege o aluno, a outra protege a empresa, e a escola só venceu quando as duas sobem.</p>
+  <ul class="notas">
+    {% for e in estrelas %}
+      <li><b>{{ e.cartao.pergunta }}</b> <span class="rotulo">sem dados</span> {{ e.cartao.sem_fonte_porque }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if doze %}
+  <h2 class="titulo-de-bloco espaco-20">O placar de doze</h2>
+  <p class="recado">
+    Os doze indicadores do dono, cada um com o seu cartão. Hoje
+    <b>{{ confianca_dos_doze.medidos }}</b> de {{ confianca_dos_doze.total }} chegaram medidos e
+    {{ confianca_dos_doze.com_fonte }} têm fonte; os outros dizem o que precisa existir para acender. Sem nota composta.
+  </p>
+  <ul class="notas">
+    {% for d in doze %}
+      <li>
+        {% if d.cartao %}<b>{{ d.cartao.pergunta }}</b>{% else %}<b>{{ d.nome }}</b>{% endif %}
+        {% if d.veredito == "medido" %}<b>{{ d.texto }}</b>
+        {% elif d.veredito == "sem-fonte" %}<span class="rotulo">sem dados</span> {{ d.cartao.sem_fonte_porque }}
+        {% elif d.veredito == "sem-dados-ainda" %}<span class="rotulo">ainda não</span> {{ d.texto }}
+        {% elif d.veredito == "sem-base" %}<span class="rotulo">sem base</span> {{ d.texto }}
+        {% elif d.veredito == "sem-cartao" %}<span class="rotulo">cartão inválido</span> {% for p in d.problemas %}{{ p }} {% endfor %}
+        {% else %}<span class="rotulo">não medi</span> a fonte existe e não respondeu agora.
+        {% endif %}
+      </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
   <h2 class="titulo-de-bloco espaco-20">O par que segura a meta</h2>
   {% if par %}
     <p class="recado">

@@ -118,6 +118,22 @@ CAMPO_DA_DATA = "virou_aluno_em"
 
 FUSO = ZoneInfo("America/Sao_Paulo")
 
+#: Os blocos da capa, na ordem do plano (§3), e o TETO: a capa se recusa a
+#: crescer. Realidade nova entra como cartão, não como bloco. O guarda mede o
+#: template (`tests/test_capa.py`): cada `titulo-de-bloco` é um bloco.
+BLOCOS_DA_CAPA = (
+    "a barra do mês e a meta grande",
+    "as estrelas-guia",
+    "a direção da semana",
+    "a restrição desta semana",
+    "o placar de doze",
+    "o par que segura a meta",
+    "o que mudou (degrau 6)",
+    "o laboratório (degrau 12)",
+    "precisa de você e os robôs (atalhos)",
+)
+TETO_DE_BLOCOS = 9
+
 
 def diretorio_dos_cartoes() -> Path | None:
     """`painel/cartoes/`, embutida ou de checkout; `None` se não veio."""
@@ -454,27 +470,33 @@ def montar_o_placar(hoje: dt.date) -> dict:
     cartao_pedidos, recusas_pedidos = ler_cartao(CARTAO_DOS_PEDIDOS, pasta)
     cartao_48h, recusas_48h = ler_cartao(CARTAO_DAS_48H, pasta)
 
+    from . import doze as doze_
+
     contagem = None
     resultado = None
     barra = None
     restricao = None
     direcao = None
     compromissos = None
+    os_doze = None
+    estrelas = None
+    confianca_dos_doze = None
     if meta is not None:
         partida_em = _data(meta.get("partida_em")) or hoje
         cliente = AlunosClient()
-        # UMA leitura de cada porta por requisição: a contagem, a restrição e
-        # a direção olham as MESMAS listas, senão discordariam entre si por
-        # um segundo de diferença.
+        # UMA leitura de cada porta por requisição: a contagem, a restrição, a
+        # direção e os doze olham as MESMAS listas, senão discordariam entre si
+        # por um segundo de diferença.
         alunos = cliente.alunos()
         aguardando = cliente.fila("aguardando")
         recusados = cliente.fila("recusada")
+        registros = dir_.ler_registros()
         contagem = contar_compras(alunos, partida_em, hoje)
         resultado = calcular_placar(meta, contagem["ciclo"], hoje)
         if mes is not None:
             barra = calcular_o_mes(mes, meta, contagem["mes"], hoje)
+        medida = medir_liberacao(aguardando, recusados, alunos, hoje)
         if cartao_da_restricao is not None:
-            medida = medir_liberacao(aguardando, recusados, alunos, hoje)
             restricao = escolher_restricao(medida, cartao_da_restricao)
         if cartao_pedidos is not None and cartao_48h is not None:
             direcao = dir_.calcular_direcao(
@@ -485,9 +507,23 @@ def montar_o_placar(hoje: dt.date) -> dict:
                 dir_.medir_liberacoes_em_48h(aguardando, alunos, hoje),
                 hoje,
             )
-            compromissos = dir_.compromissos(dir_.ler_registros(), hoje)
+            compromissos = dir_.compromissos(registros, hoje)
+        os_doze = doze_.medir_os_doze(
+            barra=barra,
+            por_mes=doze_.compras_por_mes(alunos, partida_em),
+            liberacao=medida,
+            registros=registros,
+            partida_em=partida_em,
+            hoje=hoje,
+            pasta=pasta,
+        )
+        confianca_dos_doze = doze_.confianca(os_doze)
+        estrelas = [d for d in os_doze if d["nome"] in doze_.ESTRELAS]
 
     return {
+        "doze": os_doze,
+        "estrelas": estrelas,
+        "confianca_dos_doze": confianca_dos_doze,
         "hoje": hoje,
         "meta": meta,
         "recusas": recusas,
