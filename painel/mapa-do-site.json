@@ -393,6 +393,15 @@
       "descricao": "Responde 'estou de pé' para o servidor."
     },
     {
+      "celula": "encomendas",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida das encomendas",
+      "descricao": "Responde 'estou de pé' pela rede interna. A parte que guarda a Fila do Primeiro Dólar (o marketplace de encomendas 3D) acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /encomendas."
+    },
+    {
       "celula": "gamificacao",
       "rota": "",
       "endereco": "/conquistas/",
