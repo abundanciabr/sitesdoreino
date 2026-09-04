@@ -110,7 +110,7 @@ Duas coisas que a sessão precisa saber e costumam surpreender:
 Cada degrau da escada do estudo vira **uma tarefa no balcão**, encadeada:
 
 ```bash
-python ci/fila.py criar --titulo "..." --toca <celulas> \
+python ci/fila.py criar --titulo "..." --toca <celulas> --move <cartao|manutencao> \
   --evidencia-exigida "..." --despacho "..." --depende-de TAR-NNN
 ```
 

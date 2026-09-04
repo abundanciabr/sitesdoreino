@@ -87,6 +87,7 @@ declare a escada de PRs na primeira resposta.
 ```bash
 python ci/fila.py listar --ao-vivo     # já existe TAR aberta para esta parte? PEGUE-A em vez de criar
 python ci/fila.py criar --titulo "<a parte, em uma linha para leigo>" \
+  --move <cartao do placar, ou manutencao> \
   --toca <celula> --evidencia-exigida "URL do PR mergeado + a parte visível no site" \
   --origem "despacho do mantenedor (super prompt de parte do site)"
 python ci/fila.py pegar TAR-NNN --quem "sessao-<celula>-<AAAAMMDD>"
