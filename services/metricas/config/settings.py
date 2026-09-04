@@ -57,8 +57,9 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
-    # `apps.fatos` — o evento imutável, a fila de eventos mortos e as fotos —
-    # nasce no degrau 7.2 da escada. Esqueleto não inventa tabela.
+    # O livro em si: o evento imutável e a fila de eventos mortos (degrau 7.2).
+    # As fotos e os marcos derivados entram nos degraus 9 e 10, sobre esta base.
+    "apps.fatos",
 ]
 
 MIDDLEWARE = [
