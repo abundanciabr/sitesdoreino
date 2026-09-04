@@ -90,7 +90,7 @@ def processar(cru: bytes) -> str:
         # ERROR e não WARNING: um evento que a plataforma afirmou e o livro não
         # pôde guardar é um buraco na contagem, e alguém precisa olhar.
         logger.error(
-            "EVENTO MORTO (id=%s): %s — inspecionar em /admin/, tentar de novo "
+            "EVENTO MORTO (id=%s): %s. Inspecionar em /admin/, tentar de novo "
             "ou descartar com motivo.",
             getattr(objeto, "pk", "?"),
             getattr(objeto, "motivo", "?"),
