@@ -7,9 +7,7 @@
     + "foram preenchidos nos 13 cartões que têm fonte ao vivo: em quantos dias "
     + "a foto fica velha, por onde o número se abre, e qual diferença é ruído e "
     + "não notícia. Um teste novo exige isso de todo cartão com fonte, para o "
-    + "próximo número não nascer mudo. Vai junto a armadilha 306: o pedido de "
-    + "pouso automático morre quando o GitHub ainda não calculou o PR, e a "
-    + "etiqueta não entra sozinha.",
+    + "próximo número não nascer mudo.",
   autoridade: "github",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/960",
   verificado_em: null,
