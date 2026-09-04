@@ -71,10 +71,16 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
-    # `apps.encomendas` — o perfil profissional, a fila, as ofertas, as
-    # encomendas e a tabela de parâmetros — nasce no degrau 2.2 da escada
-    # (`DECISAO-fila-do-primeiro-dolar.md` §7), com as máquinas de estado da
-    # seção 7.2 do plano como método e teste. Esqueleto não inventa tabela.
+    # O perfil profissional, a fila, as ofertas, as encomendas e a tabela de
+    # parâmetros com histórico. Nasceu no degrau 2.2 da escada
+    # (`DECISAO-fila-do-primeiro-dolar.md` §7, TAR-120), com as máquinas de
+    # estado da seção 7.2 do plano em `Encomenda.TRANSICOES` e num gatilho do
+    # PostgreSQL que recusa a transição proibida.
+    #
+    # Ainda NÃO há motor de oferta (degrau 2.3), relógio (2.4), tela nem porta
+    # de máquina (2.7): as tabelas vieram antes de propósito, como no fórum e
+    # na gamificação.
+    "apps.encomendas",
 ]
 
 MIDDLEWARE = [
