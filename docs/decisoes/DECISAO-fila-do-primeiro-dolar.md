@@ -1,11 +1,11 @@
 # DECISÃO — a Fila do Primeiro Dólar nasce como célula própria: `encomendas`
 
-> **Estado: ESCRITA em 03/09/2026 a partir do plano mestre v0.1 que o
-> mantenedor trouxe, e AGUARDANDO a aprovação dele.** A pergunta estruturada
-> foi aberta na mesma sessão (registro no livro, `precisa_do_dono: true`); até
-> a resposta, **nada de código nasce em `services/`**. Quando ele aprovar, este
-> cabeçalho é substituído por um registro NOVO no livro (registro nunca se
-> edita) e a gênese (TAR-109) destrava.
+> **Estado: APROVADA pelo mantenedor em 03/09/2026**, em pergunta estruturada
+> na mesma sessão que a escreveu (registro `20260904-006` no livro). Ele
+> decidiu: a lei vale com as emendas do §3; a escola é 18+ também aqui; a
+> Fase 2 (o motor, sem dinheiro) começa em paralelo com o piloto de papel; o
+> professor dá o título na tela de plantão até a Banca existir. A gênese
+> (TAR-109) está destravada.
 >
 > Seria a oitava reabertura nominal do congelamento arquitetural, depois de
 > `sugestoes`, `identidade`, `notificacoes`, `admin`, `forum`, `gamificacao`
@@ -191,8 +191,7 @@ Mestre de Ateliê) e **não** dizem o que alguém sabe fazer.
 **Então o título (`titulo_banca`: Nível 1, 2 ou 3) é dado pelo professor, na
 tela de plantão, com data e autor** — é o que o piloto de papel já faz à mão.
 Quando a Banca existir na célula de cursos, ela passa a ser a segunda fonte do
-mesmo campo, por evento. Decisão pendente **14** (§8), na pergunta estruturada
-da Fase 0.
+mesmo campo, por evento. Decidido por ele em 03/09/2026 (§8).
 
 ### 3.7 Avisos: esta célula emite `notificacao.devida.v1`, e não nasce consumidor novo
 
@@ -366,7 +365,7 @@ listar --ao-vivo`), nunca aqui.
 |---|---|---|---|---|
 | **0** | — | Esta lei, o plano, a constituição em papel, o anexo do contrato, o mapa para IA | docs, painel | **TAR-107** |
 | 0 | — | Os 20 eventos v1 em `contracts/eventos/` (PR só de `contracts/`, etiqueta `contrato`) | contracts | **TAR-108** |
-| 0 | portão | **O mantenedor aprova a lei** (pergunta estruturada; resposta vira registro no livro) | mantenedor | — |
+| 0 | portão | **O mantenedor aprovou a lei** em 03/09/2026 (registro `20260904-006`) | mantenedor | feito |
 | **1** | — | **Piloto de papel**: 5 a 10 encomendas reais da escola, fila mantida à mão pelo professor, tudo em planilha (seção 11 do plano). **Sem código.** Pode correr em paralelo com a Fase 2 se ele decidir assim (decisão 13) | escola | — |
 | **2** | 2.1 | Gênese (esqueleto, saúde, os três guardas, `celulas.yml`, manifesto, `rollback.yml`); ~22 arquivos, etiqueta `arquitetural` | encomendas, ci, .github | TAR-109 |
 | 2 | 2.2 | Tabelas: perfil, encomenda, oferta, **parâmetros com histórico**, máquinas de estado | encomendas | nasce quando a gênese pousar |
@@ -412,21 +411,21 @@ contra o `origin/main`. Cada uma diz **o que bloqueia** e a recomendação.
 - **10. Nomes** → "Encomendas" no menu, "Fila do Primeiro Dólar" na
   funcionalidade (§3.9). Muda em uma linha se ele preferir.
 
-**Na pergunta estruturada da Fase 0 (bloqueiam a gênese):**
+**Respondidas na pergunta estruturada da Fase 0 (03/09/2026, registro `20260904-006`):**
 
 - **A. Esta lei vale?** Aprovar promove o plano; recusar ou emendar volta ao
-  papel. Recomendação: aprovar, com as emendas do §3.
+  papel. Recomendação: aprovar, com as emendas do §3. **Resposta: aprovada.**
 - **13. A Fase 2 (motor, só código e testes) começa agora, em paralelo com o
   piloto de papel, ou espera o piloto terminar?** O plano manda esperar
   ("cada regra errada descoberta aqui custa uma linha na planilha; depois,
   custa um PR"). Nesta casa um PR custa minutos, os invariantes são testes
   que se ajustam, e o mantenedor já disse que prazo não é freio.
   Recomendação: **em paralelo**; os parâmetros que o piloto corrigir viram
-  linha nova na tabela (§3.8), sem PR.
+  linha nova na tabela (§3.8), sem PR. **Resposta: em paralelo.**
 - **14. Quem dá o título enquanto a Banca não existe?** Recomendação: o
-  professor, na tela de plantão (§3.6).
+  professor, na tela de plantão (§3.6). **Resposta: o professor.**
 - **2 (parcial). Reafirmar que a escola é 18+ para este produto**, já que o
-  plano inteiro foi escrito assumindo menores.
+  plano inteiro foi escrito assumindo menores. **Resposta: 18+.**
 
 **Ficam para a fase que as precisa (registradas no livro como pendência, com
 a fase escrita):**
@@ -472,7 +471,7 @@ a fase escrita):**
 | O quê | Estado | Onde se confere |
 |---|---|---|
 | O plano v0.1 | no repositório, sem edição | `PLANO-MESTRE-FILA-DO-PRIMEIRO-DOLAR.md` |
-| Esta lei | escrita, **aguardando aprovação** | o livro (`painel/registros/`): o pedido e, quando houver, a resposta |
+| Esta lei | **aprovada em 03/09/2026** | registro `20260904-006` |
 | A constituição da célula | escrita em papel; vira `constituicoes/AGENTS.encomendas.md` no PR da gênese, porque constituição sem célula é órfã para `ci/tests/test_constituicoes.py` | `CONSTITUICAO-encomendas-rascunho.md` |
 | O contrato v1 | anexo escrito; congela no degrau 2.8 | `CONTRATO-encomendas-v1-rascunho.md` |
 | Os 20 eventos | TAR-108 | `contracts/eventos/encomenda.*`, `oferta.*`, `entrega.*`, `aluno.*`, `portfolio.*`, `pedido-direto.*` |
