@@ -129,6 +129,102 @@ def test_ciclo_de_dependencias_reprova(tmp_path):
     assert any("ciclo" in e for e in erros)
 
 
+# ---------------------------------------------------------------------------
+# O elo com o placar: `move` (degrau 19, o grafo causal)
+#
+# A pergunta do quinto documento do Scale OS: "que resultado estratégico esta
+# tarefa move?". O campo tem TRÊS estados de propósito, e os testes abaixo
+# guardam a diferença entre eles — ausente (ninguém declarou) não é o mesmo
+# que manutenção (declarou que não move número), e nenhum dos dois é um nome
+# de cartão errado, que é o modo silencioso de a coisa apodrecer.
+# ---------------------------------------------------------------------------
+
+
+def com_cartoes(tmp_path, *nomes):
+    """O placar de mentira: um arquivo por cartão, como em `painel/cartoes/`."""
+    pasta = tmp_path / "painel" / "cartoes"
+    pasta.mkdir(parents=True, exist_ok=True)
+    for nome in nomes:
+        (pasta / f"{nome}.json").write_text("{}", encoding="utf-8")
+    return tmp_path
+
+
+def test_move_ausente_passa(tmp_path):
+    """As 123 tarefas anteriores a 04/09/2026 não declararam, e continuam válidas."""
+    montar(tmp_path, [tarefa()])
+    assert "move" not in tarefa()
+    assert fila.cmd_validar(tmp_path) == 0
+
+
+def test_move_manutencao_passa_sem_precisar_do_placar(tmp_path):
+    montar(tmp_path, [tarefa(move=["manutencao"])])
+    assert not (tmp_path / "painel" / "cartoes").exists()
+    assert fila.cmd_validar(tmp_path) == 0
+
+
+def test_move_com_cartao_que_existe_passa(tmp_path):
+    montar(tmp_path, [tarefa(move=["compras-no-mes", "liberacoes-em-48h"])])
+    com_cartoes(tmp_path, "compras-no-mes", "liberacoes-em-48h")
+    assert fila.cmd_validar(tmp_path) == 0
+
+
+def test_move_com_cartao_que_nao_existe_reprova(tmp_path):
+    """O guarda que importa: nome de número inventado não entra na fila."""
+    montar(tmp_path, [tarefa(move=["compras-no-mez"])])
+    com_cartoes(tmp_path, "compras-no-mes")
+    _, _, erros = carregar(tmp_path)
+    assert any("compras-no-mez" in e and "não é cartão" in e for e in erros)
+    assert fila.cmd_validar(tmp_path) == 1
+
+
+def test_move_vazio_reprova_porque_ausencia_nao_e_manutencao(tmp_path):
+    montar(tmp_path, [tarefa(move=[])])
+    _, _, erros = carregar(tmp_path)
+    assert any("'move' vazio" in e for e in erros)
+
+
+def test_move_manutencao_nao_se_mistura_com_numero(tmp_path):
+    montar(tmp_path, [tarefa(move=["manutencao", "compras-no-mes"])])
+    com_cartoes(tmp_path, "compras-no-mes")
+    _, _, erros = carregar(tmp_path)
+    assert any("não se mistura" in e for e in erros)
+
+
+def test_move_sem_pasta_de_cartoes_reprova_em_vez_de_deixar_passar(tmp_path):
+    """Fail-closed: sem a lista de cartões o nome não pode ser conferido."""
+    montar(tmp_path, [tarefa(move=["compras-no-mes"])])
+    _, _, erros = carregar(tmp_path)
+    assert any("não pode ser conferido" in e for e in erros)
+
+
+def test_criar_recusa_move_invalido_ANTES_de_gastar_numero(tmp_path, monkeypatch, capsys):
+    """Um erro de digitação não pode queimar um número do almoxarife."""
+    montar(tmp_path, [])
+    com_cartoes(tmp_path, "compras-no-mes")
+    monkeypatch.setattr(fila, "_parar_se_for_o_espelho", lambda *a: None)
+
+    def nunca(*a, **k):
+        raise AssertionError("não deveria ter pedido número para um `move` inválido")
+
+    monkeypatch.setattr(fila.reservar, "alocar_numero", nunca)
+    args = argparse.Namespace(
+        titulo="uma tarefa",
+        toca=["ci"],
+        depende_de=[],
+        cria=[],
+        move=["compras-no-mez"],
+        evidencia_exigida="um PR",
+        despacho="faça",
+        despacho_arquivo="",
+        origem="teste",
+    )
+    assert fila.cmd_criar(tmp_path, args) == 1
+    saida = capsys.readouterr().out
+    assert "RECUSADO" in saida
+    assert "compras-no-mes" in saida  # a lista de cartões ajuda quem errou o nome
+    assert not list((tmp_path / "fila" / "tarefas").glob("*.json"))
+
+
 def test_concluida_sem_evidencia_reprova(tmp_path):
     montar(tmp_path, [tarefa()], [evento(tipo="concluida", quem="sessao-a")])
     _, _, erros = carregar(tmp_path)

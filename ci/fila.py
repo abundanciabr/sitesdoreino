@@ -1,6 +1,7 @@
 """A FILA DE TRABALHO — tarefa é coisa registrada, e estado é uma conta.
 
-    python ci/fila.py criar --titulo "..." --toca admin --evidencia-exigida "..." \
+    python ci/fila.py criar --titulo "..." --toca admin --move compras-no-mes \
+        --evidencia-exigida "..." \
         --despacho "..." [--depende-de TAR-001] [--origem "..."]
     python ci/fila.py listar [--ao-vivo]     # estados calculados; --ao-vivo soma reservas e PRs
     python ci/fila.py pegar TAR-001 --quem "sessao-x"    # trava no servidor + evento
@@ -87,7 +88,24 @@ CAMPOS_DA_TAREFA = {
 # precisa dele, e ele existe para que um `toca` legítimo possa nomear uma célula
 # que ainda não nasceu. Quem lê e o que isso muda: `ci/conferencia_do_toca.py`,
 # em `areas_criadas` — UMA definição só, para as duas leituras não divergirem.
-CAMPOS_OPCIONAIS_DA_TAREFA = {"depende_de": list, "notas": str, "cria": list}
+# `move`: que NÚMERO do placar esta tarefa pretende mover. É o elo entre o
+# trabalho e a estratégia (degrau 19 do `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md`,
+# a peça nova do quinto documento do Scale OS: "toda tarefa deve responder que
+# resultado estratégico ela move"). TRÊS estados, diferentes de propósito:
+#   ausente                  → NINGUÉM DECLAROU. Não é o mesmo que "não move nada",
+#                              e é o estado das 123 tarefas anteriores a 04/09/2026.
+#   ["manutencao"]           → declarado: mantém a fábrica de pé, não move número.
+#   ["compras-no-mes", ...]  → move estes cartões de `painel/cartoes/`.
+# O nome tem de ser de um cartão que EXISTE: o `toca` já ensinou nesta casa que
+# campo de texto livre vira erro de digitação silencioso. Opcional aqui e
+# obrigatório em `criar` (`--move`): campo que nasce opcional no balcão nasce vazio.
+MANUTENCAO = "manutencao"
+CAMPOS_OPCIONAIS_DA_TAREFA = {
+    "depende_de": list,
+    "notas": str,
+    "cria": list,
+    "move": list,
+}
 
 CAMPOS_DO_EVENTO = {
     "arquivo": str,
@@ -319,6 +337,51 @@ def _conferir_campos(
             erros.append(f"{nome}: '{campo}' deveria ser {tipo.__name__} ou null")
 
 
+def cartoes_do_placar(raiz: Path) -> set[str] | None:
+    """Os nomes de `painel/cartoes/`. `None` quando a pasta não existe."""
+    pasta = raiz / "painel" / "cartoes"
+    if not pasta.is_dir():
+        return None
+    return {c.stem for c in pasta.glob("*.json")}
+
+
+def _conferir_move(nome: str, move: list, raiz: Path, erros: list[str]) -> None:
+    """O elo com o placar, fail-closed: nome de cartão que não existe reprova."""
+    if not move:
+        erros.append(
+            f"{nome}: 'move' vazio não diz nada — para dizer que a tarefa mantém "
+            f"a fábrica de pé, escreva [\"{MANUTENCAO}\"]; para não declarar nada, "
+            "tire o campo (ausência e manutenção são coisas diferentes)"
+        )
+        return
+    if not all(isinstance(m, str) and m.strip() for m in move):
+        erros.append(f"{nome}: 'move' precisa ser lista de textos não vazios")
+        return
+    if MANUTENCAO in move and len(move) > 1:
+        erros.append(
+            f"{nome}: '{MANUTENCAO}' não se mistura com número do placar — ou a "
+            "tarefa move algum número, ou ela mantém a fábrica de pé"
+        )
+        return
+    if move == [MANUTENCAO]:
+        return
+    cartoes = cartoes_do_placar(raiz)
+    if cartoes is None:
+        erros.append(
+            f"{nome}: 'move' cita cartão do placar, mas 'painel/cartoes/' não "
+            "existe neste checkout — sem a lista, o nome não pode ser conferido, "
+            "e nome não conferido é erro de digitação esperando para acontecer"
+        )
+        return
+    for alvo in move:
+        if alvo not in cartoes:
+            erros.append(
+                f"{nome}: 'move' cita {alvo!r}, que não é cartão de "
+                f"'painel/cartoes/' — o número precisa existir antes de uma "
+                "tarefa dizer que o move"
+            )
+
+
 def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
     """Todas as tarefas, validadas uma a uma. Erro entra em `erros`, não explode."""
     pasta = pasta_tarefas(raiz)
@@ -355,6 +418,9 @@ def carregar_tarefas(raiz: Path, erros: list[str]) -> dict[str, dict]:
         cria = dados.get("cria")
         if isinstance(cria, list) and not all(isinstance(c, str) and c.strip() for c in cria):
             erros.append(f"{nome}: 'cria' precisa ser lista de caminhos não vazios")
+        move = dados.get("move")
+        if isinstance(move, list):
+            _conferir_move(nome, move, raiz, erros)
         criada = dados.get("criada_em")
         if isinstance(criada, str) and not RE_DATA.match(criada):
             erros.append(f"{nome}: 'criada_em' precisa ser AAAA-MM-DD")
@@ -637,6 +703,17 @@ def cmd_criar(raiz: Path, args) -> int:
         if dep not in tarefas:
             print(f"RECUSADO: --depende-de {dep} não existe na fila.")
             return 1
+    # Antes de gastar número do almoxarife: o elo com o placar tem de fechar.
+    recusa_do_move: list[str] = []
+    _conferir_move("--move", args.move, raiz, recusa_do_move)
+    if recusa_do_move:
+        for linha in recusa_do_move:
+            print(f"RECUSADO: {linha.removeprefix('--move: ')}")
+        cartoes = cartoes_do_placar(raiz)
+        # A lista só ajuda quem errou um NOME; em erro de forma ela é ruído.
+        if cartoes and any("não é cartão" in linha for linha in recusa_do_move):
+            print(f"Cartões que existem: {', '.join(sorted(cartoes))}")
+        return 1
     numero = reservar.alocar_numero(raiz, "tarefa")
     tid = f"TAR-{numero}"
     stem = f"{numero}-{_slug(args.titulo)}"
@@ -649,6 +726,7 @@ def cmd_criar(raiz: Path, args) -> int:
         "toca": args.toca,
         "depende_de": args.depende_de,
         "cria": args.cria,
+        "move": args.move,
         "evidencia_exigida": args.evidencia_exigida,
         "despacho": despacho,
         "origem": args.origem,
@@ -863,6 +941,16 @@ def construir_parser() -> argparse.ArgumentParser:
         default=[],
         metavar="CAMINHO",
         help="pastas que esta tarefa traz à existência (só a gênese precisa)",
+    )
+    p.add_argument(
+        "--move",
+        required=True,
+        nargs="+",
+        metavar="CARTAO",
+        help=(
+            "que número do placar esta tarefa move (nome de painel/cartoes/), "
+            f"ou '{MANUTENCAO}' se ela mantém a fábrica de pé sem mover número"
+        ),
     )
     p.add_argument("--evidencia-exigida", required=True, help="que prova fecha esta tarefa")
     p.add_argument("--despacho", default="", help="o prompt pronto para colar")
