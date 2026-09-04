@@ -182,6 +182,20 @@ celulas:
     caminhos: [services/mensageria]
     consome: []
 
+  metricas:
+    caminhos: [services/metricas]
+    # NASCE SEM CONSUMIR NINGUÉM, e aqui a lista vazia não é um degrau da
+    # escada: é o DESENHO da célula. A `metricas` é o livro de fatos da
+    # plataforma (`PLANO-PAINEL-DE-GESTAO.md` §6.2) e é consumidora de
+    # EVENTOS, nunca de API — ela recebe o que as outras publicam por
+    # contrato (`contracts/eventos/*.json`) e responde por porta própria.
+    # `consome` neste mapa mede leitura de API de outra célula (a convenção
+    # é ler `<CELULA>_API_URL`), e esta célula não fará isso nem quando
+    # estiver completa. Quem vai consumi-la é a `admin`, e é o mapa DELA que
+    # ganha `metricas` no degrau 7.4 — no mesmo PR do cliente, senão o
+    # varredor reprova por declaração órfã, com razão (`armadilhas/224`).
+    consome: []
+
   notificacoes:
     caminhos: [services/notificacoes]
     consome: []
