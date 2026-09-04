@@ -1,0 +1,16 @@
+{
+  "arquivo": "135-fila-do-primeiro-dolar-degrau-2-13-o-simulador-passa-a-prova",
+  "id": "TAR-135",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.13: o simulador passa a provar tambem o Mural e a negociacao",
+  "toca": [
+    "encomendas"
+  ],
+  "depende_de": [
+    "TAR-134"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com o simulador cobrindo os tres niveis, as duas pistas e as rodadas de negociacao, e nenhum dos dezenove invariantes (J1-J10, M1-M4, N1-N5) violado em milhares de passos; mais as duas propriedades provadas: todo aluno com zero entregas recebe oferta em tempo finito, e nenhum projeto circula para sempre sem chegar a um aluno ou ao plantao",
+  "despacho": "LEIA ANTES: docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md (o simulador esta no par.10, degrau 2.13; as regras a provar estao nos par.3 e 4), docs/decisoes/DECISAO-fila-do-primeiro-dolar.md, armadilhas/INDICE.md.\n\nTAREFA: o simulador que a TAR-124 construiu passa a provar tambem o Mural e a negociacao. Hoje ele roda cem alunos e trinta encomendas contra a fila; depois desta tarefa ele roda o mundo inteiro: alunos com zero, uma e cinco entregas aprovadas, projetos dos tres niveis, propostas aceitas, recusadas e vencidas, reservas do Mural que expiram, e rodadas de negociacao que se esgotam.\n\nO criterio nao e \"rodou sem erro\": e NENHUM invariante violado em milhares de passos. Os dez de justica (J1 a J10), os quatro do Mural (M1 a M4) e os cinco da negociacao (N1 a N5), medidos a cada passo da simulacao e nao so no fim. E um teste de propriedade: ele existe para achar a combinacao que ninguem pensou em escrever a mao.\n\nDuas propriedades que so o simulador consegue provar, e que sao o motivo desta tarefa existir: (1) TODO aluno que entra na fila com zero entregas recebe pelo menos uma oferta em tempo finito, mesmo com o Mural existindo ao lado (e a promessa do primeiro dolar, e o Mural nao pode roubar dela); (2) nenhum projeto fica preso para sempre entre a fila, o Mural e a negociacao, dando voltas sem nunca chegar a um aluno nem ao plantao.",
+  "origem": "emenda de 04/09/2026 do mantenedor (PLANO-AREA-DE-NEGOCIACAO.md par.10)",
+  "criada_em": "2026-09-04"
+}

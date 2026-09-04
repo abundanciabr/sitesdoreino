@@ -1,0 +1,17 @@
+{
+  "arquivo": "136-fila-do-primeiro-dolar-degrau-2-14-os-seis-parametros-da-neg",
+  "id": "TAR-136",
+  "titulo": "Fila do Primeiro Dolar, degrau 2.14: os seis parametros da negociacao na semente e na tela do dono",
+  "toca": [
+    "encomendas",
+    "admin"
+  ],
+  "depende_de": [
+    "TAR-134"
+  ],
+  "cria": [],
+  "evidencia_exigida": "PR mergeado com as seis chaves semeadas com historico, o guarda que reprova constante magica no motor verde e provado por mutacao (plantar o numero em codigo deixa o teste vermelho), e a tela do Admin lendo e gravando pela porta de maquina sem guardar copia",
+  "despacho": "LEIA ANTES: docs/decisoes/PLANO-AREA-DE-NEGOCIACAO.md (os parametros novos no par.9), docs/decisoes/DECISAO-fila-do-primeiro-dolar.md (a lei par.3.8: parametro e DADO com historico, e a tela mora no Admin), services/admin/apps/core (a tela /admin/economia/ e o molde exato: le e grava pela porta de maquina, nunca guarda copia), armadilhas/INDICE.md.\n\nTAREFA: os seis parametros novos da area de negociacao entram na semente e na tela do dono. As chaves: rodadas_de_negociacao (3), validade_da_proposta (24 horas uteis), relogio_da_reserva_no_mural (3 horas uteis), entregas_para_ver_o_mural (1), piso_por_nivel.iniciante/.intermediario/.avancado (SEM valor: sai do piloto de papel, e chutar um numero agora seria inventar e depois defender), limite_da_justificativa (500 caracteres).\n\nA mesma regra dos outros: mudar e ACRESCENTAR uma linha com motivo e autor, nunca um UPDATE, e o motor le o valor vigente em `agora` (parametro mudado as 15h nao reescreve uma proposta feita as 14h). Um teste-guarda le cada chave do banco e reprova constante magica no motor: nenhum destes numeros pode viver em codigo, e isso e o criterio de morte 5 da lei.\n\nA tela mora no Admin, no mesmo desenho de /admin/economia/: le e grava pela porta de maquina da celula, nunca no banco dela e nunca guardando uma copia (seria o mesmo fato em dois lugares). Quando o dono muda um valor, o livro do painel recebe um registro.",
+  "origem": "emenda de 04/09/2026 do mantenedor (PLANO-AREA-DE-NEGOCIACAO.md par.9)",
+  "criada_em": "2026-09-04"
+}
