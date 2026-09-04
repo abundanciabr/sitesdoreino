@@ -1352,6 +1352,16 @@
       "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar a história dos números da escola (quantas pessoas entraram em cada mês, o que mudou de uma semana para a outra) acabou de nascer e ainda não tem nenhuma página: ela nunca terá, porque quem mostra número é o painel em /admin/."
     },
     {
+      "celula": "metricas",
+      "rota": "api/metricas/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "A porta por onde o painel lê a história dos números",
+      "descricao": "Por onde o seu painel vai perguntar o que aconteceu no passado: quantos fatos de cada assunto em cada dia, desde quando cada assunto chega (para a tela poder dizer 'medido há 3 dias' em vez de mostrar um número sem data) e a lista do que chegou quebrado e não pôde ser contado.",
+      "observacao": "Fica escondida da internet: esta parte do site não tem endereço público nenhum, só existe na rede interna. Mesmo assim ela exige senha de máquina, e a lista de senhas nasce VAZIA, então hoje ninguém passa. Ela só LÊ: um fato guardado aqui não se corrige nem se apaga por esta porta, nem por nenhuma outra."
+    },
+    {
       "celula": "notificacoes",
       "rota": "api/notificacoes/",
       "endereco": "-",
