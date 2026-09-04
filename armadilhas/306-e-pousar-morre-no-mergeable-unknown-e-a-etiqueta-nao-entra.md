@@ -1,56 +1,32 @@
-# `--e-pousar` morre no `mergeable=UNKNOWN` e o pouso NÃO foi pedido
+# `--e-pousar` morre no `mergeable=UNKNOWN` e a etiqueta não entra
 
-**Sintoma:** o `esperar.py` termina os checks verdes, chama o portão sozinho e a
-tarefa do `Monitor` morre com exit 1:
+**Esta entrada virou ponteiro. O caso mora na
+[310](310-e-pousar-chama-o-portao-no-pior-instante-e-sai-error.md), que é mais
+completa e traz os sinais declarados.** Leia lá.
 
-```
-✅ o PR #957: todos os 7 checks verdes · levou 1s.
-🛬 checks verdes: passo pelo portão e peço pouso do PR 957…
---- ERROR conflitos ---------------------------------------------------
-O GitHub calcula isso de forma assíncrona; se você acabou de dar push,
-espere alguns segundos e rode de novo.
-RESULTADO  ERROR
-🔴 o portão RECUSOU o pouso do PR 957 (exit 2)
-```
+**Por que existem duas:** as duas nasceram na madrugada de 04/09/2026, em
+sessões paralelas, com minutos de diferença, sobre o mesmo sintoma. Nenhuma
+podia ver a outra: cada uma estava num PR que ainda não tinha pousado quando a
+outra foi escrita. Nenhuma regra falhou (o número se pede ao almoxarife, e cada
+uma pediu o seu). O que falta é o catálogo ter como avisar que **alguém já está
+escrevendo sobre aquilo agora** — fica o caso concreto, para quem um dia
+mecanizar isso.
 
-O perigo não é a recusa: é o que ela deixa para trás. **A etiqueta `pousar` não
-entrou**, ninguém está com o PR, e a mensagem do portão fala em "rode de novo"
-sem dizer QUAL comando — quem lê depressa acha que a pista já assumiu e vai
-embora. O PR fica aberto, verde e parado até alguém reparar.
+**Resumo em duas linhas, para quem chegou pelo Ctrl+F:** o
+`esperar.py --checks N --e-pousar` chama o portão segundos depois do push, antes
+de o GitHub calcular a mergeabilidade, e sai `ERROR` com tudo verde. A etiqueta
+`pousar` **não entra**, e o PR fica parado esperando alguém que não sabe que
+está sendo esperado.
 
-**Causa:** a mesma da [130](130-mergeable-unknown-depois-de-um-merge-o-portao.md),
-por outra porta. Lá o `UNKNOWN` vinha de um merge anterior mover a `main`; aqui
-vem do **push que você acabou de dar** — o `--e-pousar` chega ao portão em
-segundos, antes de o GitHub terminar de recalcular a mergeabilidade do PR. Quanto
-mais rápido o CI fica, mais fácil é ganhar essa corrida: em 04/09/2026 aconteceu
-**três vezes na mesma hora** (PR #954 duas vezes, #957 uma), uma delas com os
-checks verdes em 1 segundo, porque eram os mesmos commits já medidos.
-
-O portão está certo em recusar: `UNKNOWN` não é `MERGEABLE`, e "não consegui
-medir" nunca vira PASS. O que falta é o segundo passo.
-
-**Solução, em uma linha:** depois de um `--e-pousar` que morreu assim, rode o
-pedido de pouso avulso.
-
-```bash
-python ci/mergear.py <N> --pousar
-```
-
-Ele passa: o estado agora é `BEHIND`, que é exatamente o caso que a pista existe
-para atender, e a etiqueta entra. **Confira que entrou** antes de ir embora:
+**O que esta entrada acrescenta à 310, e por isso ela fica:** a prova de que o
+trabalho saiu das suas mãos **não é a mensagem verde, é a etiqueta**. Depois de
+`python ci/mergear.py <N> --pousar`, confira antes de ir embora:
 
 ```bash
 gh pr view <N> --json state,labels --jq '.labels[].name'
 ```
 
-Se sair `pousar`, o PR está na fila e ninguém precisa esperar. Se não sair, o
-pouso não foi pedido, por mais verde que estivesse a tela.
-
-**O que NÃO fazer:** não repita o `--e-pousar` inteiro (ele espera os checks de
-novo, que já estão verdes, e pode voltar ao mesmo lugar), não use
-`gh pr merge`, e não trate a recusa como defeito do portão.
-
-**Regra da casa que isto reforça:** toda espera tem voz e tem teto (`RITOS.md`
-§2 peça 6) — mas *sair* de uma espera não é o mesmo que ter *entregado* o PR à
-pista. A prova de que o trabalho saiu das suas mãos é a etiqueta, não a
-mensagem verde que veio antes dela.
+Se não sair `pousar`, o pouso não foi pedido, por mais verde que estivesse a
+tela anterior. Em 04/09/2026 isto aconteceu quatro vezes numa hora (PRs #954
+duas vezes, #957 e #960), e foi essa conferência que impediu um PR pronto de
+dormir aberto.
