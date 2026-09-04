@@ -329,7 +329,8 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       {% for m in mudancas.movidos %}
       <li>
         <b>{{ m.pergunta }}</b>
-        {{ m.antigo }} → <b>{{ m.atual }}</b> {{ m.unidade }}
+        {{ m.antigo|floatformat:"-1" }} → <b>{{ m.atual|floatformat:"-1" }}</b> {{ m.unidade }}
+        ({{ m.variacao|floatformat:"-1" }} {% if m.delta > 0 %}a mais{% else %}a menos{% endif %})
         {% if m.sentido == "melhorou" %}<span class="rotulo">melhorou</span>{% elif m.sentido == "piorou" %}<span class="rotulo">piorou</span>{% else %}<span class="rotulo">mudou</span>{% endif %}
         {% if m.foto_velha %}<span class="rotulo">foto velha</span> a comparação é com uma foto mais velha do que o cartão aceita.{% endif %}
         {% if m.acao %}{{ m.acao }}{% endif %}
