@@ -40,7 +40,7 @@ pergunta "então o que fazemos?", e cada tela termina num gesto.
 Nesta casa isso se traduz assim:
 
 - **Uma meta grande por ciclo**, no formato "de X para Y até quando", com a
-  resposta em uma palavra: ganhando ou perdendo. Hoje: de 0 para 500 pessoas
+  resposta em uma palavra: ganhando ou perdendo. Hoje: de 0 para 1000 pessoas
   que viraram alunas, somadas de 03/09 a 15/12/2026, com a barra do mês
   zerando todo dia 1.
 - **Uma restrição por semana**: o único gargalo que, se melhorar, move a meta
@@ -70,7 +70,7 @@ plano adota como lei de toda tela (§2).
 | 30/08/2026 | **A escola é 18+, sem menores.** Reconfirmado em 03/09 de manhã (v1) e mantido à noite (Scale OS 1.2 §144 e §193 trazem "menor" de volta). | Sai o escopo de dado de menor, sai a objeção "pais". A pergunta não se repete: está registrada. |
 | 03/09/2026 (manhã) | **Os fatos do negócio moram numa célula nova** (nome de trabalho `metricas`). | Uma célula, não quatro (o Scale OS 1.2 propõe `painel`, `revenue`, `analytics`, `automation`). `revenue` e `analytics` são a `metricas`; `automation` é a `mensageria`; `painel` é a `admin`. |
 | 03/09/2026 (manhã) | **A própria plataforma é o CRM.** | Conciliação entre `pagamentos`, `alunos`, `identidade` e o livro de fatos; não há terceira ponta. |
-| 03/09/2026 (noite) | **A Meta 1 é "quantas pessoas compraram neste mês"**, com a barra do mês zerando no dia 1 e a meta grande por cima: **de 0 para 500 pessoas somadas, de 03/09 a 15/12/2026**. A partida é 0 porque neste mês ainda não houve venda. Registro `20260903-036`. | O placar foi reformulado (PR #936). A meta acumulada de alunos desceu ao andar 1. |
+| 03/09/2026 (noite) | **A Meta 1 é "quantas pessoas compraram neste mês"**, com a barra do mês zerando no dia 1 e a meta grande por cima: **de 0 para 500 pessoas somadas, de 03/09 a 15/12/2026**. A partida é 0 porque neste mês ainda não houve venda. Registro `20260903-036`. **Dobrada para 1000 em 04/09/2026**, com a meta repartida por uma curva de crescimento semanal (`DECISAO-o-calendario-do-ciclo.md`). | O placar foi reformulado (PR #936). A meta acumulada de alunos desceu ao andar 1. |
 | 03/09/2026 (noite) | **A data que conta é a da liberação ou a da confirmação do pagamento**, nunca a que a pessoa digitou. | Rito de Contrato autorizado por ele: `virou_aluno_em` na lista de alunos (PR #933 contrato, #934 célula). Quem foi liberado antes de 03/09 (a turma da lista de WhatsApp, 02/09) não conta no ciclo. |
 | 03/09/2026 (noite) | **Sem nota composta de 0 a 100 no topo** (ele marcou "sem preferência"; ficou a regra da casa). | Composto nunca no andar 0; se um dia entrar, só com os componentes ao lado. |
 | 03/09/2026 (noite) | **Só ele lê o painel de gestão por enquanto** ("sem preferência"; ficou a recomendação). | `ADMIN_EMAILS` continua a única porta. Papel só-leitura para a professora é decisão futura dele, não deste plano. |
@@ -131,7 +131,7 @@ capa do painel do dono: realidade nova entra como cartão, não como bloco.
 
 | # | Bloco | O que mostra | De onde vem | Estado em 03/09/2026 |
 |---|---|---|---|---|
-| 1 | **A barra do mês e a meta grande** | quantas viraram alunas neste mês (meta do mês ao lado); de 0 para 500 até 15/12; ganhando ou perdendo | `alunos` ao vivo, `virou_aluno_em` | **no ar** (PR #936) |
+| 1 | **A barra do mês e a meta grande** | quantas viraram alunas neste mês (meta do mês ao lado); de 0 para 1000 até 15/12, repartida pela curva de semanas; ganhando ou perdendo | `alunos` ao vivo, `virou_aluno_em` | **no ar** (PR #936) |
 | 2 | **A restrição desta semana** | o único gargalo que, melhorado, move a meta; linha de base, valor de hoje, impacto estimado, confiança, e o gesto | calculado das taxas de passagem da jornada (§6.3); "suspeita" é cálculo, "confirmada" é registro dele | degrau 1 |
 | 3 | **A direção da semana** | uma ou duas medidas de direção com a meta da semana, o valor de hoje e a sequência de semanas cumpridas; os compromissos da semana e o veredito da semana passada | `leads`, `alunos` (pedidos, liberações), o livro (compromissos como registros) | degrau 2 |
 | 4 | **Precisa de você** | os pedidos sem resposta, com os quatro campos da decisão | o livro (já calculado em `/admin/painel/`) | **no ar**, entra como atalho |
@@ -429,7 +429,7 @@ Garantia escrita em prosa apodrece (`RETROSPECTIVA-FASE-D.md`, padrão 2).
 ## §12 Glossário, para quem não é do ramo
 
 - **Meta Crucialmente Importante (MCI):** a única meta grande de um ciclo, no
-  formato "de X para Y até quando". Hoje: de 0 para 500 pessoas até 15/12.
+  formato "de X para Y até quando". Hoje: de 0 para 1000 pessoas até 15/12.
 - **Medida de resultado e medida de direção:** a primeira se vê depois
   (retrovisor: quem comprou); a segunda prevê a primeira e pode ser movida
   esta semana (volante: pedidos de entrada, liberações rápidas).

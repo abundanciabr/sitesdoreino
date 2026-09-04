@@ -13,7 +13,7 @@
   "unidade": "pessoas",
   "par": "alunos-ativos-30d",
   "acao": "Se estiver perdendo: a torneira é o pedido de entrada (a fila em /admin/escola/) e a liberação em até 48 horas. Abra a fila e libere quem já comprou.",
-  "alvo": 500,
+  "alvo": 1000,
   "ate": "2026-12-15",
   "partida": 0,
   "partida_em": "2026-09-03",
@@ -53,49 +53,49 @@
       "n": 5,
       "de": "2026-10-12",
       "ate": "2026-10-16",
-      "alvo": 5
+      "alvo": 20
     },
     {
       "n": 6,
       "de": "2026-10-19",
       "ate": "2026-10-23",
-      "alvo": 10
+      "alvo": 31
     },
     {
       "n": 7,
       "de": "2026-10-26",
       "ate": "2026-10-30",
-      "alvo": 20
+      "alvo": 45
     },
     {
       "n": 8,
       "de": "2026-11-02",
       "ate": "2026-11-06",
-      "alvo": 40
+      "alvo": 69
     },
     {
       "n": 9,
       "de": "2026-11-09",
       "ate": "2026-11-13",
-      "alvo": 65
+      "alvo": 103
     },
     {
       "n": 10,
       "de": "2026-11-16",
       "ate": "2026-11-20",
-      "alvo": 95
+      "alvo": 154
     },
     {
       "n": 11,
       "de": "2026-11-23",
       "ate": "2026-11-27",
-      "alvo": 125
+      "alvo": 231
     },
     {
       "n": 12,
       "de": "2026-11-30",
       "ate": "2026-12-04",
-      "alvo": 140
+      "alvo": 347
     },
     {
       "n": 13,
@@ -113,7 +113,7 @@
     "canal",
     "mes-de-entrada"
   ],
-  "versao": 3,
+  "versao": 4,
   "desde": "2026-09-04",
-  "_por_que": "Meta Crucialmente Importante nº 1, reformulada pelo mantenedor em 03/09/2026 (registro 20260903-036): deixou de ser o total de alunos e passou a ser quantas pessoas compraram, com a meta grande 'de 0 para 500 somadas de 03/09 até 15/12/2026'. A partida é 0 porque neste mês ainda não houve venda. A régua mora aqui; o fato de ele ter decidido mora no livro. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Cada pessoa é notícia com esta escala, então não há ruído: qualquer diferença aparece em 'o que mudou'. A foto envelhece em 10 dias (a semana e uma folga para a reunião de segunda atrasar). CURVA DE 04/09/2026 (pedido do mantenedor, com o calendário dele): a meta deixou de ser distribuída em LINHA RETA e passou a seguir `semanas`, 14 faixas de segunda a sexta. As três primeiras valem 0 de propósito, porque são as semanas de aprender a campanha, o criativo, a copy e a página de venda, e cobrar venda de quem ainda está aprendendo mede a coisa errada com precisão. A soma das 14 é exatamente `alvo` menos `partida`, e o validador reprova o cartão se um dia deixar de ser: é o que impede a curva de discordar da meta grande. Lei: docs/decisoes/DECISAO-o-calendario-do-ciclo.md. AJUSTE DA CURVA no mesmo dia, também dele, depois de ver a primeira proposta: mais tempo aprendendo antes de a meta começar a cobrar. As semanas em zero passaram de três para CINCO (setembro inteiro), a primeira venda esperada foi de 28/09 para 12/10, e o peso migrou para novembro em diante (93% da meta). É a curva reajustada por decisão dele, e não por conta nova: o desenho prevê exatamente isto, porque a régua mora num arquivo e ajustá-la é uma edição só."
+  "_por_que": "Meta Crucialmente Importante nº 1, reformulada pelo mantenedor em 03/09/2026 (registro 20260903-036): deixou de ser o total de alunos e passou a ser quantas pessoas compraram, com a meta grande 'de 0 para 500 somadas de 03/09 até 15/12/2026'. A partida é 0 porque neste mês ainda não houve venda. A régua mora aqui; o fato de ele ter decidido mora no livro. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Cada pessoa é notícia com esta escala, então não há ruído: qualquer diferença aparece em 'o que mudou'. A foto envelhece em 10 dias (a semana e uma folga para a reunião de segunda atrasar). CURVA DE 04/09/2026 (pedido do mantenedor, com o calendário dele): a meta deixou de ser distribuída em LINHA RETA e passou a seguir `semanas`, 14 faixas de segunda a sexta. As três primeiras valem 0 de propósito, porque são as semanas de aprender a campanha, o criativo, a copy e a página de venda, e cobrar venda de quem ainda está aprendendo mede a coisa errada com precisão. A soma das 14 é exatamente `alvo` menos `partida`, e o validador reprova o cartão se um dia deixar de ser: é o que impede a curva de discordar da meta grande. Lei: docs/decisoes/DECISAO-o-calendario-do-ciclo.md. AJUSTE DA CURVA no mesmo dia, também dele, depois de ver a primeira proposta: mais tempo aprendendo antes de a meta começar a cobrar. As semanas em zero passaram de três para CINCO (setembro inteiro), a primeira venda esperada foi de 28/09 para 12/10, e o peso migrou para novembro em diante (93% da meta). É a curva reajustada por decisão dele, e não por conta nova: o desenho prevê exatamente isto, porque a régua mora num arquivo e ajustá-la é uma edição só. META DOBRADA para 1000 em 04/09/2026, decisão dele depois de ver a conta na tela: o alvo do ciclo passou de 500 para 1000 e a curva foi remontada por CRESCIMENTO PERCENTUAL, e não mais por números escolhidos à mão. A regra é 50% de aumento por semana sobre a semana anterior, nas 8 semanas que vendem. Ele escolheu 50% sabendo do que a conta dizia: com o total, o número de semanas e a taxa, só se escolhem DOIS, e o terceiro fica decidido. Manter setembro inteiro livre para aprender (a escolha dele de mais cedo no mesmo dia) deixa 8 semanas para chegar a 1000, e 8 semanas com esse total exigem 50%. Taxa MENOR exigiria primeira semana MAIOR, que é o contrário do que a intuição diz: a 10% por semana a primeira semana teria de ser 63. Crescimento por porcentagem também resolve o incômodo que ele apontou (duas semanas com o mesmo número): uma curva percentual nunca repete um valor."
 }

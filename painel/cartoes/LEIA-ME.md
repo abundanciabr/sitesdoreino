@@ -34,8 +34,8 @@ da casa: arquivo por entrada, nunca uma lista mantida à mão.
 | `alvo_do_mes` | só na barra do mês (`compras-no-mes`): a meta que o mantenedor fixa para o mês corrente; `null` = a tela deriva a fatia da linha reta do ciclo que cai no mês |
 
 **Os cartões do andar 0 hoje (reformulação de 03/09/2026, registro `20260903-036`):**
-`compras-no-ciclo` (a Meta 1: de 0 para 500 pessoas somadas, de 03/09 a
-15/12/2026), `compras-no-mes` (a barra do mês, zera no dia 1) e o par
+`compras-no-ciclo` (a Meta 1: de 0 até o alvo do cartão, somadas, de 03/09 a
+15/12/2026, repartidas pela curva de `semanas`), `compras-no-mes` (a barra do mês, zera no dia 1) e o par
 `alunos-ativos-30d` (ainda sem fonte). `alunos-na-plataforma` desceu ao andar
 1: continua lido, é o mesmo número do mapa da jornada. A data que conta nos
 dois de compras é `virou_aluno_em` (a liberação pela fila ou a confirmação do
