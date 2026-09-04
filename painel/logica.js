@@ -21,6 +21,7 @@
   // aberto) é CALCULADO, nunca marcado à mão — é a cadência de
   // responsabilidade das 4 Disciplinas, sem tabela e sem estado.
   var TIPOS = ["decisao", "pendencia", "resposta", "entrega", "incidente", "medicao", "frente", "rumo", "nota", "compromisso"];
+  var FORMATO_DA_FOTO = /^[a-z0-9-]+=-?\d+(\.\d+)?(; [a-z0-9-]+=-?\d+(\.\d+)?)*$/;
   var GRAVIDADES = ["vermelho", "ambar", "info", "verde"];
   var AUTORIDADES = ["mantenedor", "github", "sonda", "rito", "sessao"];
   var FRENTES = ["site", "comunidade", "curso", "vender", "fabrica"];
@@ -92,6 +93,16 @@
       // não consegue ser "não cumprido": seria promessa sem cobrança.
       if (r.tipo === "compromisso" && !(typeof r.vence_em_dias === "number" && r.vence_em_dias > 0)) {
         erros.push(nome + ": tipo 'compromisso' exige vence_em_dias (número de dias, maior que zero)");
+      }
+      // A foto da semana (04/09/2026, degrau 6 do painel de gestão): uma
+      // `medicao` com o campo `foto`, "cartao=valor; cartao=valor", que o placar
+      // lê para dizer o que mudou. Só medição tira foto, e a linha tem forma
+      // fixa, senão o placar leria lixo como número.
+      if (r.foto !== undefined && r.foto !== null) {
+        if (r.tipo !== "medicao") erros.push(nome + ": 'foto' só cabe em registro tipo 'medicao'");
+        if (typeof r.foto !== "string" || !FORMATO_DA_FOTO.test(r.foto)) {
+          erros.push(nome + ": 'foto' tem a forma \"cartao=valor; cartao=valor\" (nome do cartão em minúsculas e hífens, valor numérico)");
+        }
       }
       if (r.arquivo) {
         if (vistos[r.arquivo]) erros.push(nome + ": arquivo duplicado (dois registros com o mesmo nome)");
