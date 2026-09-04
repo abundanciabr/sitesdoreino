@@ -124,10 +124,21 @@ def test_a_meta_e_o_par_apontam_um_para_o_outro():
     assert meta["andar"] == 0 and mes["andar"] == 0 and par["andar"] == 0
 
 
-def test_a_meta_1_e_a_que_o_mantenedor_decidiu_em_03_09():
-    """500 somadas, de 03/09 a 15/12/2026, partindo de 0 (registro 20260903-036)."""
+def test_a_meta_1_e_a_que_o_mantenedor_decidiu():
+    """1000 somadas, de 03/09 a 15/12/2026, partindo de 0.
+
+    O número fica CRAVADO aqui de propósito, e este é o único lugar do
+    repositório onde ele deve estar duas vezes: o papel deste guarda é afirmar
+    que o cartão diz o que o mantenedor decidiu. Um teste que perguntasse o
+    alvo ao próprio cartão passaria com qualquer alvo, inclusive um trocado por
+    engano num rebase.
+
+    A meta nasceu 500 em 03/09/2026 (registro `20260903-036`) e foi dobrada
+    para 1000 por ele em 04/09/2026, junto com a curva de crescimento semanal
+    (`DECISAO-o-calendario-do-ciclo.md`).
+    """
     meta, _ = placar.ler_cartao(placar.CARTAO_DA_META)
-    assert (meta["partida"], meta["alvo"]) == (0, 500)
+    assert (meta["partida"], meta["alvo"]) == (0, 1000)
     assert (meta["partida_em"], meta["ate"]) == ("2026-09-03", "2026-12-15")
     assert meta["acao"], "número de resultado no andar 0 diz o que fazer"
 
@@ -345,7 +356,11 @@ def test_a_pagina_mostra_a_barra_do_mes_e_a_meta_do_ciclo(monkeypatch):
     html = resposta.content.decode()
     assert 'class="hero-numero">1<' in html, "só a que virou aluna depois da partida"
     assert "meta do mês" in html
-    assert "para <b>500</b>" in html
+    # PERGUNTA o alvo ao cartão em vez de cravá-lo: este teste mede se o número
+    # CHEGA à tela, e não qual é o número. Quem guarda qual é o número é
+    # `test_a_meta_1_e_a_que_o_mantenedor_decidiu`, um só, de propósito.
+    meta_do_ciclo, _ = placar.ler_cartao(placar.CARTAO_DA_META)
+    assert f"para <b>{meta_do_ciclo['alvo']}</b>" in html
     assert "1 ficha sem data" in html
     assert "1 reembolsada" in html
     assert "Sem dados ainda" in html, "o par sem fonte precisa se declarar"

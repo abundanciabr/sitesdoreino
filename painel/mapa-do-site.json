@@ -1537,7 +1537,7 @@
       "para_quem": "equipe",
       "gesto": false,
       "titulo": "O placar",
-      "descricao": "A barra do mês (quantas pessoas viraram alunas neste mês), a meta grande por cima (de 0 para 500 até 15/12/2026) com a resposta ganhando ou perdendo, e a restrição desta semana: o único gargalo da jornada que, se melhorar, move a meta. É o andar zero do painel de gestão do negócio, medido ao vivo na parte que guarda os alunos.",
+      "descricao": "A barra do mês (quantas pessoas viraram alunas neste mês), a meta grande do ciclo por cima, com a resposta ganhando ou perdendo, e a restrição desta semana: o único gargalo da jornada que, se melhorar, move a meta. É o andar zero do painel de gestão do negócio, medido ao vivo na parte que guarda os alunos.",
       "observacao": "O número só aparece se existir o cartão dele em painel/cartoes/ (o que é, de onde vem, quem pode declará-lo). Plano: docs/decisoes/PLANO-PAINEL-DE-GESTAO.md."
     },
     {

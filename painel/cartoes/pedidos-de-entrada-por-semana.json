@@ -23,5 +23,5 @@
   ],
   "versao": 1,
   "desde": "2026-09-03",
-  "_por_que": "Degrau 2 do plano reescrito em 03/09/2026 (§8). `meta_semanal` nula = a tela deriva a fatia de 7 dias da linha reta do ciclo (500 em 103 dias, uns 34 por semana); o mantenedor fixa outra por PR quando quiser. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Foto de 8 dias porque este número é semanal: uma foto mais velha do que isso já pulou uma semana inteira e compararia coisas diferentes."
+  "_por_que": "Degrau 2 do plano reescrito em 03/09/2026 (§8). `meta_semanal` nula = a tela deriva a fatia desta semana na régua do ciclo (a curva de `semanas` de `compras-no-ciclo`, desde 04/09/2026); o mantenedor fixa outra por PR quando quiser. O número NÃO é repetido aqui de propósito: ele muda a cada semana e a cada ajuste da curva, e uma cópia envelheceria em silêncio. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Foto de 8 dias porque este número é semanal: uma foto mais velha do que isso já pulou uma semana inteira e compararia coisas diferentes."
 }

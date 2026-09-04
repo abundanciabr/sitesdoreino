@@ -7,9 +7,12 @@ número de fichas:
 
 - **a barra do mês:** quantas pessoas viraram alunas neste mês (zera todo dia
   1), com a meta do mês ao lado;
-- **a meta grande, por cima:** de 0 para 500 pessoas somadas de 03/09 a
-  15/12/2026, no formato das 4 Disciplinas da Execução (*de X para Y até
-  quando*), com a régua do ciclo dizendo se estamos ganhando ou perdendo.
+- **a meta grande, por cima:** as pessoas somadas de 03/09 a 15/12/2026, no
+  formato das 4 Disciplinas da Execução (*de X para Y até quando*), com a régua
+  do ciclo dizendo se estamos ganhando ou perdendo. O alvo NÃO é repetido neste
+  texto: ele mora no cartão e já mudou duas vezes em 04/09/2026 (de 500 para
+  1000). Número copiado para dentro de um docstring é a segunda verdade que
+  ninguém lembra de corrigir.
 
 ## As leis desta tela, e de onde vêm
 
