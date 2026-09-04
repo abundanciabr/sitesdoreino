@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260904-098-uma-protecao-dos-robos-estava-desligada-no-windows",
+  arquivo: "20260904-100-uma-protecao-dos-robos-estava-desligada-no-windows",
   tipo: "entrega",
   quando: "2026-09-04",
   titulo: "Uma proteção dos robôs estava desligada justamente no computador onde eles trabalham",
