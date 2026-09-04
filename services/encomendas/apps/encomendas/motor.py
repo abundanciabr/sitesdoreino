@@ -38,13 +38,17 @@ entre dois processos do motor, e nenhum `if` em Python resolve isso.
 
 O QUE AINDA NÃO É DESTE DEGRAU, E TEM DONO
 -------------------------------------------
-- **O relógio de horas úteis** (janela 8h–22h de São Paulo, [INV-ENC-J8]) é o
-  degrau 2.4 (TAR-122). Aqui existe a COSTURA (`calcular_expiracao`) e uma conta
-  provisória de horas corridas, `expiracao_provisoria`, que a TAR-122 substitui.
-- **Virar chamada aberta** por 24h na fila ([INV-ENC-J9]) é o degrau 2.4; a
-  chamada aberta em si (e o "salvo em chamada aberta" do [INV-ENC-J6]) é o 2.5.
-  Encomenda sem ninguém elegível fica ONDE ESTÁ, com desfecho nomeado, e é o
-  tique de 2.4 que a abre.
+- **O relógio de horas úteis** CHEGOU no degrau 2.4 (`relogio.py`,
+  [INV-ENC-J8]): a costura `calcular_expiracao` continua sendo argumento de
+  `rodar()`, e o que ela recebe por padrão deixou de ser a conta de horas
+  corridas e passou a ser a conta da janela 8h–22h de São Paulo.
+- **Virar chamada aberta** por 24h na fila ([INV-ENC-J9]) também chegou, e mora
+  no `tique.py` — não aqui. O motor varre `na_fila` e OFERECE; quem olha o
+  relógio é o tique, que roda antes dele a cada minuto. Encomenda sem ninguém
+  elegível continua ficando ONDE ESTÁ, com desfecho nomeado, até o prazo da fila
+  vencer. O que a chamada aberta FAZ depois de aberta (avisar os elegíveis, o
+  primeiro que aceitar leva, e o "salvo em chamada aberta" do [INV-ENC-J6]) é o
+  degrau 2.5.
 - **A pausa automática por três silêncios**, o interruptor do aluno e o passar
   com motivo são o degrau 2.5 (TAR-123). O motor só LÊ `disponibilidade`.
 - **Os eventos** (`encomenda.oferecida.v1` e irmãos) saem por outbox
@@ -72,7 +76,21 @@ from datetime import datetime, timedelta
 
 from django.db import IntegrityError, transaction
 
-from .models import Encomenda, Oferta, Parametro, PerfilProfissional
+from .models import (
+    Encomenda,
+    Oferta,
+    Parametro,
+    ParametroAusente,
+    PerfilProfissional,
+)
+from .relogio import calcular_expiracao as expiracao_em_horas_uteis
+
+# `ParametroAusente` mudou de casa no degrau 2.4 (foi para `models.py`, ao lado
+# da tabela) porque agora três módulos a levantam. O nome continua aqui, no
+# espaço deste módulo, de propósito: `motor.ParametroAusente` é o que os guardas
+# escrevem, e quem captura o fail-closed do motor não deveria precisar saber em
+# qual arquivo a classe foi declarada.
+__all__ = ["ParametroAusente"]
 
 # ---------------------------------------------------------------------------
 # O VOCABULÁRIO — dois mapas e cinco desfechos, todos com nome
@@ -112,15 +130,6 @@ JA_TEM_OFERTA_PENDENTE = "ja_tem_oferta_pendente"
 SEM_ELEGIVEL = "sem_elegivel"
 CORRIDA_PERDIDA = "corrida_perdida"
 SAIU_DA_FILA = "saiu_da_fila"
-
-
-class ParametroAusente(RuntimeError):
-    """Falta no banco um parâmetro da lei §6 que o motor precisa ler.
-
-    É erro, e não valor padrão, porque padrão em código seria a constante mágica
-    que a lei §3.8 proíbe (critério de morte 5) e esconderia uma semeadura que
-    não rodou. Conserto: `python manage.py semear_parametros --site <id>`.
-    """
 
 
 # ---------------------------------------------------------------------------
@@ -176,8 +185,8 @@ class Regras:
     """Os parâmetros da lei §6 que a elegibilidade usa, no valor vigente em `agora`.
 
     Só entram aqui os que o MOTOR lê. O relógio da oferta não está: ele é do
-    colaborador `calcular_expiracao`, para o degrau 2.4 trocar a conta inteira
-    sem tocar nesta classe.
+    colaborador `calcular_expiracao` (`relogio.py`), e foi essa separação que
+    deixou o degrau 2.4 trocar a conta inteira sem tocar nesta classe.
     """
 
     entregas_minimas_por_nivel: dict[str, int]
@@ -381,37 +390,6 @@ def escolher(vaga: Vaga, candidatos, regras: Regras, agora: datetime) -> Escolha
 
 
 # ---------------------------------------------------------------------------
-# O RELÓGIO, PROVISÓRIO — a costura que o degrau 2.4 substitui
-# ---------------------------------------------------------------------------
-
-
-def expiracao_provisoria(agora: datetime, *, site_id: str) -> datetime:
-    """Quando a oferta feita em `agora` expira — em horas CORRIDAS, por enquanto.
-
-    **ESTA CONTA É PROVISÓRIA E TEM DONO.** O degrau 2.4 (TAR-122) a substitui
-    pela conta de horas ÚTEIS: o relógio da oferta corre só das 8h às 22h de São
-    Paulo e congela fora da janela (plano §6.3, [INV-ENC-J8], parâmetros
-    `janela_inicio` e `janela_fim`). Até lá, o motor conta horas de relógio de
-    parede, e a diferença aparece só fora da janela.
-
-    Ela existe separada, e como ARGUMENTO de `rodar()`, para a troca do degrau
-    2.4 ser um arquivo novo e uma linha, e não uma cirurgia no meio do motor.
-
-    O número não mora aqui: `relogio_da_oferta` é parâmetro da lei §6, lido no
-    valor vigente em `agora`.
-    """
-    linha = Parametro.vigente_em("relogio_da_oferta", agora, site_id=site_id)
-    if linha is None:
-        raise ParametroAusente(
-            f"site {site_id!r}: sem valor vigente em {agora.isoformat()} para "
-            "relogio_da_oferta. Sem ele não há quando expirar, e uma oferta sem "
-            "prazo é uma encomenda parada para sempre. Rode "
-            f"`python manage.py semear_parametros --site {site_id}`."
-        )
-    return agora + timedelta(hours=int(linha.valor))
-
-
-# ---------------------------------------------------------------------------
 # A CASCA — lê o banco, chama o miolo, grava
 # ---------------------------------------------------------------------------
 
@@ -475,7 +453,7 @@ def rodar(
     agora: datetime,
     *,
     site_id: str,
-    calcular_expiracao=expiracao_provisoria,
+    calcular_expiracao=expiracao_em_horas_uteis,
 ) -> Rodada:
     """Uma passada do motor: oferece o que der, e nomeia o que não deu.
 

@@ -60,8 +60,10 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # `dj_database_url.parse` entrega `CONN_MAX_AGE = 0`, e a ausência do ajuste é
 # uma DECISÃO, não esquecimento: sob ASGI, `conn_max_age > 0` vaza uma conexão
 # de banco por requisição, e nem a suíte nem o `/healthz` nem o deploy acusam
-# (`armadilhas/170`). Quando a porta de máquina (degrau 2.7) e o tique de um
-# minuto do motor (degrau 2.4) chegarem, a resposta certa para reaproveitar
+# (`armadilhas/170`). O tique de um minuto do degrau 2.4 JÁ CHEGOU, e continua
+# sem ajuste aqui: ele roda em processo próprio (`run_huey`, síncrono), onde o
+# problema do ASGI não existe. Quando a porta de máquina (degrau 2.7) chegar, a
+# resposta certa para reaproveitar
 # conexão é o POOL nativo do Django 5.1 (`OPTIONS["pool"]` +
 # `psycopg[binary,pool]`, o desenho que a `identidade` já roda), nunca
 # `conn_max_age`.
@@ -83,11 +85,28 @@ INSTALLED_APPS = [
     # pura de (estado, `agora`) e a passada é reavaliação periódica, nunca timer
     # agendado — sobrevive a reinício, deploy e queda do Redis.
     #
-    # Ainda NÃO há relógio de horas úteis (degrau 2.4: o motor conta horas
-    # CORRIDAS por enquanto, pela costura `calcular_expiracao`), pausa automática
-    # e chamada aberta (2.5), simulador (2.6), tela nem porta de máquina (2.7).
+    # OS RELÓGIOS entraram no degrau 2.4 (TAR-122), em `apps/encomendas/relogio.py`
+    # (as horas úteis puras, [INV-ENC-J8]) e `apps/encomendas/tique.py` (a
+    # reavaliação de um minuto, [INV-ENC-J9] e [INV-ENC-J10]). O relógio da
+    # oferta corre só dentro da janela lida do banco; a encomenda que espera
+    # demais na fila vira chamada aberta. **Nenhum timer agendado**: toda a
+    # verdade está nas colunas, e por isso a fila sobrevive a reinício, deploy e
+    # queda do Redis.
     "apps.encomendas",
+    # O BATIMENTO do tique, e só isso. Diferente das vizinhas, aqui o Huey não
+    # carrega trabalho nenhum na fila do Redis: ele chama, de minuto em minuto,
+    # uma função que pergunta ao BANCO o que está vencido (`apps/encomendas/tasks.py`).
+    # Entra em INSTALLED_APPS pelo autodiscover de `tasks.py`, que só o
+    # `manage.py run_huey` faz (`armadilhas/030`).
+    "huey.contrib.djhuey",
 ]
+
+# A instância do Huey — importada, não nomeada por string: o djhuey lê
+# `settings.HUEY` esperando o OBJETO. `config/huey.py` NÃO faz fail-hard no
+# import, de propósito: o container web importa este módulo por causa da linha
+# acima, e a célula inteira não pode sair do ar porque a fila ficou sem env
+# (`armadilhas/097`).
+from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

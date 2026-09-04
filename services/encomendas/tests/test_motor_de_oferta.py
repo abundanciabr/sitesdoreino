@@ -11,16 +11,17 @@ mede o que sobra, e o que sobra é o que mantém a justiça de pé em produção
   atendido, sem uma linha de erro).
 - **Parâmetro ausente é recusa, não padrão.** Fail-closed na borda
   (`RETROSPECTIVA-FASE-D` §2, padrão 4).
-- **A costura do relógio existe e é usada.** É por ela que o degrau 2.4 troca a
-  conta de horas corridas pela de horas úteis sem cirurgia no meio do motor.
+- **A costura do relógio existe e é usada.** Foi por ela que o degrau 2.4
+  trocou a conta de horas corridas pela de horas úteis sem cirurgia no meio do
+  motor — e é ela que prova, pelo caminho real, que a troca de fato aconteceu.
 """
 
 from datetime import datetime, timedelta, timezone as fuso
 
 import pytest
 
-from apps.encomendas import motor
-from apps.encomendas.models import Encomenda, Oferta, Parametro
+from apps.encomendas import motor, relogio
+from apps.encomendas.models import Encomenda, Oferta
 
 SITE = "escola-a"
 AGORA = datetime.now(tz=fuso.utc)
@@ -223,15 +224,59 @@ def test_a_recusa_acontece_antes_da_primeira_oferta(
     assert Oferta.objects.count() == 0
 
 
-def test_relogio_da_oferta_ausente_tem_mensagem_propria(db):
-    """A conta provisória também é fail-closed, e diz o que fazer.
+# ---------------------------------------------------------------------------
+# 4. A costura do relógio — o degrau 2.4 trocou a conta, e a troca se vê daqui
+# ---------------------------------------------------------------------------
 
-    O cenário é o banco SEM semente — e tem de ser, porque a tabela é
-    append-only no PostgreSQL: apagar a linha semeada para encenar a ausência é
-    recusado por gatilho, que é o desenho da lei §3.8 funcionando.
+
+def test_a_conta_padrao_do_motor_e_a_de_horas_uteis(
+    semeado, criar_perfil, criar_encomenda
+):
+    """A troca do degrau 2.4 aconteceu de verdade, e não só no arquivo novo.
+
+    Até a TAR-121 o padrão de `rodar()` era `expiracao_provisoria`, que contava
+    horas de PAREDE. A conta de horas úteis podia nascer inteira, com guarda e
+    tudo, e o motor continuar chamando a antiga sem ninguém notar — o guarda do
+    [INV-ENC-J8] mediria a função certa, e a fila usaria a outra. Esta asserção
+    fecha esse buraco pelo caminho REAL: roda o motor sem passar colaborador
+    nenhum e confere que o `expira_em` gravado é o que a janela devolve.
+    """
+    criar_perfil("pes-1", entrada=AGORA - timedelta(days=5))
+    encomenda = criar_encomenda()
+
+    motor.rodar(AGORA, site_id=SITE)
+
+    assert Oferta.objects.get(
+        encomenda=encomenda
+    ).expira_em == relogio.calcular_expiracao(AGORA, site_id=SITE)
+
+
+def test_a_conta_provisoria_de_horas_corridas_nao_existe_mais(semeado):
+    """A contraprova da de cima: a conta antiga MORREU, não ficou de reserva.
+
+    Duas contas de expiração convivendo é a lei anti-duplicação sendo violada no
+    lugar mais caro possível — a próxima sessão escolheria uma das duas ao
+    acaso, e metade das ofertas teria prazo de parede. E a diferença entre elas
+    é visível: às 21h, a conta de parede vence à meia-noite; a da janela, às 10h
+    do dia seguinte.
+    """
+    assert not hasattr(motor, "expiracao_provisoria")
+
+
+def test_relogio_da_oferta_ausente_tem_mensagem_propria(db):
+    """A conta nova continua fail-closed, e continua dizendo o que fazer.
+
+    Este guarda existia desde o degrau 2.3, apontando para a conta provisória.
+    Ele NÃO morreu com ela: mudou de alvo, porque a promessa que ele mede não
+    mudou — sem `relogio_da_oferta` não há quando expirar, e uma oferta sem prazo
+    é uma encomenda parada para sempre.
+
+    O cenário é o banco SEM semente, e tem de ser: a tabela é append-only no
+    PostgreSQL, então apagar a linha semeada para encenar a ausência é recusado
+    por gatilho — que é o desenho da lei §3.8 funcionando.
     """
     with pytest.raises(motor.ParametroAusente) as erro:
-        motor.expiracao_provisoria(AGORA, site_id=SITE)
+        relogio.calcular_expiracao(AGORA, site_id=SITE)
 
     assert "relogio_da_oferta" in str(erro.value)
     assert "semear_parametros" in str(erro.value)
@@ -241,30 +286,11 @@ def test_o_parametro_de_outro_site_nao_serve_de_relogio(semeado):
     """A leitura é por site, e a ausência de um não se cobre com o valor do outro.
 
     A escola A está semeada; a B não. Se `vigente_em` esquecesse o `site_id`, a
-    escola B começaria a oferecer com a régua da A, e ninguém veria diferença
-    até os dois números divergirem.
+    escola B começaria a oferecer com a régua da A, e ninguém veria diferença até
+    os dois números divergirem. Mesmo guarda de antes, mesmo alvo novo.
     """
     with pytest.raises(motor.ParametroAusente):
-        motor.expiracao_provisoria(AGORA, site_id="escola-b")
-
-
-# ---------------------------------------------------------------------------
-# 4. A costura do relógio — o que o degrau 2.4 vem trocar
-# ---------------------------------------------------------------------------
-
-
-def test_a_expiracao_provisoria_le_o_parametro_do_banco(semeado):
-    """Horas CORRIDAS, por enquanto, e o número vem da tabela.
-
-    A janela de horas úteis (8h–22h, São Paulo) é o degrau 2.4 e o
-    [INV-ENC-J8]. O que este teste garante é que a troca de lá vai encontrar um
-    parâmetro sendo lido, e não um `timedelta(hours=3)` escrito à mão.
-    """
-    horas = int(Parametro.vigente_em("relogio_da_oferta", AGORA, site_id=SITE).valor)
-
-    assert motor.expiracao_provisoria(AGORA, site_id=SITE) == AGORA + timedelta(
-        hours=horas
-    )
+        relogio.calcular_expiracao(AGORA, site_id="escola-b")
 
 
 def test_o_motor_usa_a_conta_que_lhe_deram(semeado, criar_perfil, criar_encomenda):
