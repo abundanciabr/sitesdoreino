@@ -174,6 +174,25 @@ class Registro(models.Model):
     # A mesma palavra "apagar" nos dois confundiria QUAL dos dois era possivel
     # na data em que a linha foi escrita.
     APAGAR_RECUSADO = "apagar_recusado"
+    # [SEQUENCIAS] 04/09/2026, a tela `/admin/escola/jornadas/` (degrau 7 do
+    # `PLANO-SEQUENCIAS-DE-MENSAGENS.md`). TRÊS verbos, e não um só, porque as
+    # perguntas que se fazem a estas linhas são três e nenhuma responde a outra:
+    #
+    #   · "desde quando a escola manda esta sequência?" (ligar/desligar)
+    #   · "quando a mensagem 2 passou a dizer isto, e quem trocou?" (publicar)
+    #
+    # Ligar e desligar são separados pelo mesmo motivo de `LIGAR_REGRA` e
+    # `DESLIGAR_REGRA`: um verbo só, com o estado no `detalhe`, faria a leitura
+    # do histórico depender de ler o texto livre de cada linha.
+    #
+    # `PUBLICAR_TEXTO` é o verbo mais pesado desta tabela e vale dizer por quê:
+    # ele muda o que pessoas de verdade vão ler, e do outro lado ele não EDITA
+    # nada — publica uma versão nova, imutável por gatilho no Postgres. Então
+    # esta linha é a única resposta possível para "quem trocou aquela frase?":
+    # a versão antiga continua lá, mas ela não sabe quem escreveu a nova.
+    LIGAR_SEQUENCIA = "ligar_sequencia"
+    DESLIGAR_SEQUENCIA = "desligar_sequencia"
+    PUBLICAR_TEXTO = "publicar_texto"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -206,6 +225,9 @@ class Registro(models.Model):
         (RESETAR_SENHA, "resetar a senha de um aluno"),
         (TESTAR_AVISO, "mandar um aviso de teste para o proprio aparelho"),
         (APAGAR_RECUSADO, "apagar de vez um pedido recusado"),
+        (LIGAR_SEQUENCIA, "ligar uma sequencia de mensagens"),
+        (DESLIGAR_SEQUENCIA, "desligar uma sequencia de mensagens"),
+        (PUBLICAR_TEXTO, "trocar o texto de uma mensagem automatica"),
     ]
 
     OK = "ok"

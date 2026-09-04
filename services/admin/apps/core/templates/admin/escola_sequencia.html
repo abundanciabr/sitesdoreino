@@ -1,0 +1,323 @@
+{% extends "admin/base.html" %}
+{% comment %}
+UMA SEQUÊNCIA POR DENTRO: os passos, o texto editável, quem está recebendo, e o
+que foi BARRADO com o motivo.
+
+A última parte é a que faz esta tela valer, e é a mais fácil de cortar por
+engano. Sem ela, "por que o aluno X não recebeu?" fica sem resposta e o
+mantenedor olha para o silêncio.
+
+Formulários simples, sem script (docstring de apps/core/sequencias.py). Toda
+classe usada aqui EXISTE em admin/base.html: a política de segurança desta área
+bloqueia atributo `style=` e exige hash na CSP para folha embutida
+(armadilhas/199), então classe inventada não vira estilo nenhum, só some.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087).
+{% endcomment %}
+{% block titulo %}{% if sequencia %}{{ sequencia.nome }}{% else %}Sequência{% endif %} | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'escola_jornadas' %}">&larr; Todas as sequências</a></p>
+
+  {% if sem_mensageria %}
+  <h1>Sequência de mensagens</h1>
+  <p class="aviso borda-vermelha">
+    <b>Ainda não consigo falar com o motor das mensagens.</b>
+    Falta criar a ligação entre esta área e o lugar onde as sequências ficam
+    guardadas. É um passo de máquina, dentro do servidor, e está escrito no
+    relatório do robô que construiu esta tela. Nada do que está no ar mudou: as
+    mensagens continuam saindo como sempre saíram.
+  </p>
+
+  {% elif nao_existe %}
+  <h1>Essa sequência não existe</h1>
+  <p class="aviso borda-amarela">
+    Não há nenhuma sequência chamada <b>{{ slug }}</b> nesta escola. Talvez o
+    endereço tenha sido copiado errado, ou ela seja de outro site.
+  </p>
+
+  {% else %}
+
+  <h1>{{ sequencia.nome }}</h1>
+  <p class="subtitulo">Começa {{ sequencia.gatilho }}.</p>
+
+  {% if erro %}
+  <p class="aviso borda-vermelha"><b>Não deu para fazer isso.</b> {{ erro }}</p>
+  {% endif %}
+
+  {% comment %}
+  O RECADO MAIS IMPORTANTE DESTA TELA. Sem ele, o mantenedor trocaria uma frase,
+  veria um aluno receber a antiga, e concluiria que a correção não pegou. O
+  número da versão vem da própria porta, na resposta da publicação.
+  {% endcomment %}
+  {% if recado == "publicado" %}
+  <p class="aviso feito">
+    <b>Texto salvo, e ele nasceu como a versão {{ versao_nova }}.</b>
+    Salvar uma frase publica uma versão nova da sequência inteira, e é assim de
+    propósito: <b>quem já está no meio desta sequência termina com o texto
+    antigo</b>, e o texto novo vale para quem entrar a partir de agora. Não é
+    limitação, é a promessa de que ninguém vê uma mensagem mudar embaixo de si
+    no meio do caminho.
+  </p>
+  {% endif %}
+  {% if recado == "desatualizado" %}
+  <p class="aviso borda-amarela">
+    <b>Não salvei, e o motivo é bom.</b> Alguma outra publicação aconteceu
+    depois que esta página foi aberta, e gravar agora apagaria em silêncio o que
+    foi escrito antes. Recarregue a página para ver o texto de agora, e faça a
+    sua correção sobre ele.
+  </p>
+  {% endif %}
+  {% if recado == "sem_grau" %}
+  <p class="aviso borda-vermelha">
+    <b>Consigo LER as mensagens, mas não consigo mudá-las.</b>
+    A ligação entre esta área e o motor das mensagens foi criada só com
+    permissão de leitura. Falta a permissão de escrita, que é um passo de
+    máquina dentro do servidor, e está no relatório do robô que construiu esta
+    tela. Nada foi alterado.
+  </p>
+  {% endif %}
+
+  <div class="cartao">
+    {% if sequencia.ativa %}
+    <p><span class="luz no-ar">Ligada</span></p>
+    <p class="nota">Quem fizer o que a começa entra nela a partir de agora.</p>
+    {% else %}
+    <p><span class="luz">Desligada</span></p>
+    <p class="nota">Ninguém novo entra nela hoje.</p>
+    {% endif %}
+    <p class="nota">
+      {% if sequencia.versao_publicada %}
+      Está valendo a <b>versão {{ sequencia.versao_publicada }}</b>{% if sequencia.versoes > 1 %}, de {{ sequencia.versoes }} já escritas{% endif %}.
+      {% else %}
+      Ainda não tem nenhuma mensagem escrita.
+      {% endif %}
+    </p>
+  </div>
+
+  {% if not sequencia.versao_publicada %}
+  <p class="aviso borda-amarela espaco-20">
+    <b>Esta sequência ainda não tem mensagem nenhuma escrita.</b>
+    Isso é o estado normal de uma sequência que acabou de nascer, e não é
+    defeito. Enquanto for assim ela não pode ser ligada: ligada sem texto, ela
+    apareceria como "no ar" e não escreveria para ninguém.
+  </p>
+
+  {% else %}
+
+  {% comment %}
+  AS MENSAGENS. Editar aqui é publicar versão nova, e por isso a tela só oferece
+  o formulário quando a versão aberta é a que ESTÁ VALENDO: publicar copia a
+  versão corrente, e não a que está na tela. Oferecer o campo em cima de uma
+  versão antiga faria o mantenedor achar que estava corrigindo aquela, quando na
+  verdade estaria escrevendo por cima da atual.
+  {% endcomment %}
+  <h2 class="secao">As mensagens desta sequência</h2>
+
+  {% if not e_a_corrente %}
+  <p class="aviso borda-amarela">
+    <b>Você está vendo a versão {{ versao_aberta }}, que já não é a que está
+    valendo.</b> Ela aparece aqui porque quem entrou nela termina nela: é este o
+    texto que aquelas pessoas ainda vão receber. Para corrigir alguma coisa,
+    volte para a versão que está valendo.
+    <br>
+    <a class="botao espaco-8" href="{% url 'escola_jornada_sequencia' sequencia.slug %}">Ver a versão {{ sequencia.versao_publicada }}, que está valendo &rarr;</a>
+  </p>
+  {% endif %}
+
+  {% for p in passos %}
+  <div class="cartao espaco-14">
+    <h2>Mensagem {{ p.ordem }}{% if p.titulo %}: {{ p.titulo }}{% endif %}</h2>
+    <p class="nota"><b>Quando sai:</b> {{ p.quando }}</p>
+    <p class="nota"><b>Para quem:</b> {{ p.condicao }}</p>
+    <p class="nota">
+      <b>Por onde sai:</b>
+      {% for c in p.canais %}{{ c }}{% if not forloop.last %}, {% endif %}{% empty %}nenhum canal escolhido{% endfor %}.
+    </p>
+    <p class="nota"><b>{{ p.classe }}.</b> {{ p.classe_explicacao }}</p>
+
+    {% for t in p.textos %}
+    <details class="cadastrar">
+      <summary>O texto em {{ t.idioma_nome }}</summary>
+
+      {% if e_a_corrente %}
+      <form method="post" action="{% url 'escola_jornada_publicar' %}" class="forma">
+        {% csrf_token %}
+        <input type="hidden" name="slug" value="{{ sequencia.slug }}">
+        <input type="hidden" name="ordem" value="{{ p.ordem }}">
+        <input type="hidden" name="idioma" value="{{ t.idioma }}">
+        {% comment %}
+        A TRAVA CONTRA SOBRESCREVER EM SILÊNCIO. Ela viaja escondida porque é
+        sobre O QUE ESTAVA NA TELA quando você começou a escrever, e não algo
+        que se digite. Se outra publicação acontecer nesse meio-tempo, a porta
+        recusa em vez de apagar o que a outra pessoa escreveu.
+        {% endcomment %}
+        <input type="hidden" name="versao_base" value="{{ versao_aberta }}">
+        <label class="largo">
+          <span class="rotulo">O título que a pessoa vê</span>
+          <input type="text" name="assunto_visivel" value="{{ t.assunto_visivel }}" maxlength="200" required>
+        </label>
+        <label class="largo">
+          <span class="rotulo">O texto da mensagem</span>
+          <textarea name="corpo" rows="6" required>{{ t.corpo }}</textarea>
+        </label>
+        <button type="submit">Salvar este texto (publica a versão seguinte)</button>
+      </form>
+      <p class="recado-fraco">
+        Salvar publica uma versão nova da sequência inteira. Quem já está no
+        meio dela termina com o texto de agora.
+      </p>
+      {% else %}
+      <p class="nota"><b>{{ t.assunto_visivel }}</b></p>
+      <p class="nota">{{ t.corpo|linebreaksbr }}</p>
+      {% endif %}
+    </details>
+    {% empty %}
+    <p class="aviso borda-amarela">
+      Esta mensagem ainda não tem texto em nenhum idioma.
+    </p>
+    {% endfor %}
+  </div>
+  {% empty %}
+  <p class="aviso">Esta versão não tem nenhuma mensagem dentro dela.</p>
+  {% endfor %}
+
+  {% comment %}
+  QUEM ESTÁ DENTRO. A `mensageria` não guarda e não manda nome, e-mail nem
+  telefone (invariante 1 do contrato congelado): o que vem é o id opaco da
+  pessoa na plataforma. A tela o mostra como ele é, em vez de prometer um nome
+  que não tem de onde vir.
+  {% endcomment %}
+  <h2 class="secao">Quem está nesta sequência</h2>
+
+  {% if not inscricoes_lidas %}
+  <p class="aviso borda-amarela">
+    Não consegui ler a lista de pessoas agora. O resto desta tela continua
+    valendo, e esta parte volta sozinha quando o motor das mensagens responder.
+  </p>
+  {% else %}
+
+  <p class="subtitulo">
+    {% if total_de_inscricoes == 0 %}
+    <b>Ninguém entrou nesta sequência ainda.</b>
+    {% if not sequencia.ativa %}
+    Era de esperar: ela está desligada.
+    {% endif %}
+    {% else %}
+    <b>{{ total_de_inscricoes }} pessoa{{ total_de_inscricoes|pluralize }}</b>
+    já {{ total_de_inscricoes|pluralize:"entrou,entraram" }} nesta sequência.
+    Destas, <b>{{ andando }}</b> {{ andando|pluralize:"está,estão" }} recebendo
+    agora. A lista mostra as mais recentes primeiro.
+    {% endif %}
+  </p>
+
+  {% for i in inscricoes %}
+  <div class="historia">
+    <b>{{ i.estado_rotulo }}</b>
+    <span class="mapa-selo">Mensagem {{ i.passo_atual }}</span>
+    <span class="mapa-selo">Versão {{ i.versao_numero }}</span>
+    <p class="nota">{{ i.estado_explicacao }}</p>
+    <p class="mapa-endereco"><code>{{ i.destinatario_id }}</code></p>
+    <p class="recado-fraco">
+      Entrou em {{ i.criada_em }}.
+      {% if i.proximo_em %}A próxima mensagem está marcada para {{ i.proximo_em }}.{% endif %}
+      {% if i.motivo_de_saida %}Saiu porque: {{ i.motivo_de_saida }}.{% endif %}
+      {% if i.versao_numero != sequencia.versao_publicada %}
+      Esta pessoa entrou na versão {{ i.versao_numero }} e termina nela, mesmo
+      com a {{ sequencia.versao_publicada }} valendo hoje.
+      {% endif %}
+    </p>
+    {% if inscricao_aberta == i.inscricao_id %}
+    <p class="recado-fraco"><b>Você está vendo o que saiu para esta pessoa, logo abaixo.</b></p>
+    {% else %}
+    <p><a class="botao" href="?inscricao={{ i.inscricao_id }}">Ver o que saiu, e o que não saiu, para esta pessoa &rarr;</a></p>
+    {% endif %}
+  </div>
+  {% endfor %}
+  {% endif %}
+
+  {% comment %}
+  A METADE QUE FAZ A TELA VALER: o que foi BARRADO, e por quê.
+
+  A tabela do outro lado guarda também o que NÃO saiu. Uma linha por mensagem E
+  POR CANAL, porque sino entregue, e-mail devolvido e WhatsApp barrado são três
+  resultados independentes.
+
+  O rótulo ("Barrada pela régua") é traduzido aqui, do vocabulário fechado do
+  contrato. O `motivo` sai VERBATIM, porque é texto livre que a régua escreveu:
+  reescrevê-lo casando o começo da frase amarraria esta tela à redação de uma
+  mensagem da outra célula.
+  {% endcomment %}
+  {% if inscricao_aberta %}
+  <h2 class="secao">O que saiu, e o que não saiu, para esta pessoa</h2>
+
+  {% if not entregas_lidas %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui ler o histórico desta pessoa.</b>
+    Ou o motor das mensagens não respondeu agora, ou esse endereço não é de
+    ninguém desta escola. O resto da tela continua valendo.
+  </p>
+  {% else %}
+
+  <p class="subtitulo">
+    {% comment %}
+    "mensagem" não pluraliza acrescentando letra: o filtro com sufixo produzia
+    "2 mensagemns", apanhado na prévia renderizada. As duas formas escritas por
+    extenso são a única maneira certa aqui.
+    {% endcomment %}
+    {% if barradas %}
+    <b>{{ barradas }} {{ barradas|pluralize:"mensagem,mensagens" }}</b>
+    {{ barradas|pluralize:"foi,foram" }} barrada{{ barradas|pluralize }}, e o
+    motivo de cada uma está escrito abaixo. Barrada não é perdida: o que a régua
+    segura é remarcado para depois.
+    {% else %}
+    Nenhuma mensagem foi barrada para esta pessoa.
+    {% endif %}
+  </p>
+
+  {% for e in entregas %}
+  <div class="historia">
+    <b>Mensagem {{ e.ordem }}, {{ e.canal }}</b>
+    {% if e.saiu %}
+    <span class="luz no-ar">{{ e.resultado_rotulo }}</span>
+    {% elif e.barrada %}
+    <span class="luz caida">{{ e.resultado_rotulo }}</span>
+    {% else %}
+    <span class="luz">{{ e.resultado_rotulo }}</span>
+    {% endif %}
+
+    <p class="nota">{{ e.resultado_explicacao }}</p>
+
+    {% if e.motivo %}
+    <p class="nota"><b>O que a régua anotou:</b> {{ e.motivo }}</p>
+    {% endif %}
+
+    <p class="recado-fraco">
+      Estava marcada para {{ e.previsto_para }}.
+      {% if e.reagendado_para %}Foi remarcada para {{ e.reagendado_para }}.{% endif %}
+      {% if e.enviado_em %}Saiu em {{ e.enviado_em }}.{% endif %}
+    </p>
+  </div>
+  {% empty %}
+  <p class="aviso">
+    <b>Nada foi decidido para esta pessoa ainda.</b> Ela entrou na sequência, e
+    a primeira mensagem ainda não chegou na hora de sair.
+  </p>
+  {% endfor %}
+  {% endif %}
+
+  {% else %}
+  <p class="aviso espaco-28">
+    <b>Por que alguém não recebeu?</b> Escolha uma pessoa na lista acima e clique
+    em "ver o que saiu". A escola guarda também o que NÃO saiu, com o motivo
+    escrito: pode ter sido a régua que evita mandar mensagem demais no mesmo
+    dia, pode ter sido a pessoa que pediu para não receber aquele tipo de aviso,
+    ou pode ser que a condição da mensagem não valesse para ela.
+  </p>
+  {% endif %}
+
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}

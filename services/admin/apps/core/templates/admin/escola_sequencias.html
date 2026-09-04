@@ -1,0 +1,172 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A LISTA das sequências de mensagens da escola.
+
+Formulários simples, sem script: o porquê está na docstring de
+apps/core/sequencias.py, e o resumo é que cada gesto é um POST que recarrega a
+página, então o que se vê é sempre o que está gravado.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087): escrito em várias linhas, a segunda em diante vaza para a tela.
+
+Os slugs e os números vêm da célula `mensageria`, pelo contrato congelado; as
+FRASES em português são de apps/core/sequencias.py. Esta área é bastidor, e é só
+em português; a porta serve três idiomas e por isso manda slug, nunca frase
+pronta.
+
+TODA classe usada aqui EXISTE em admin/base.html. A política de segurança desta
+área bloqueia atributo `style=` e exige um hash na CSP para cada folha embutida
+(armadilhas/199), então classe inventada não vira estilo nenhum: ela só some em
+silêncio, e a tela fica com cara de defeito sem nada ficar vermelho.
+{% endcomment %}
+{% block titulo %}Sequências de mensagens | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <h1>As sequências de mensagens</h1>
+  <p class="subtitulo">
+    Uma sequência é um conjunto de mensagens que a escola manda sozinha depois
+    que alguma coisa acontece. Cada uma tem um gatilho (o que a começa) e passos
+    (o que sai, e quanto tempo depois).
+  </p>
+
+  {% if sem_site %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui saber de qual escola são as sequências.</b>
+    A parte do sistema que guarda os endereços do site não respondeu agora.
+    Recarregue a página em um minuto. Nada mudou por causa disso: nenhuma
+    mensagem foi ligada, desligada ou reescrita.
+  </p>
+
+  {% elif sem_mensageria %}
+  <p class="aviso borda-vermelha">
+    <b>Ainda não consigo falar com o motor das mensagens.</b>
+    Falta criar a ligação entre esta área e o lugar onde as sequências ficam
+    guardadas. É um passo de máquina, dentro do servidor, e está escrito no
+    relatório do robô que construiu esta tela. Nada do que está no ar mudou por
+    causa disso: as sequências continuam exatamente como estavam, e nenhuma
+    mensagem deixou de sair.
+  </p>
+
+  {% else %}
+
+  {% if erro %}
+  <p class="aviso borda-vermelha"><b>Não deu para fazer isso.</b> {{ erro }}</p>
+  {% endif %}
+
+  {% if recado == "ligada" %}
+  <p class="aviso feito">
+    <b>Sequência ligada.</b> A partir de agora, quem fizer o que a começa entra
+    nela. Quem passou por ali antes deste momento não entra para trás, de
+    propósito.
+  </p>
+  {% endif %}
+  {% if recado == "ja_estava_ligada" %}
+  <p class="aviso feito">
+    <b>Ela já estava ligada.</b> Nada mudou, e está tudo certo.
+  </p>
+  {% endif %}
+  {% if recado == "desligada" %}
+  <p class="aviso feito">
+    <b>Sequência desligada: ninguém NOVO entra nela.</b>
+    {% if quantas %}
+    Quem já estava no meio continua recebendo até o fim, e isso é
+    <b>{{ quantas }} pessoa{{ quantas|pluralize }}</b> neste momento. Não é
+    defeito: é a promessa de que ninguém vê uma sequência parar no meio.
+    {% else %}
+    Não havia ninguém no meio dela, então nada mais vai sair.
+    {% endif %}
+  </p>
+  {% endif %}
+  {% if recado == "ja_estava_desligada" %}
+  <p class="aviso feito">
+    <b>Ela já estava desligada.</b> Nada mudou, e está tudo certo.
+  </p>
+  {% endif %}
+  {% if recado == "sem_versao" %}
+  <p class="aviso borda-amarela">
+    <b>Não liguei, e o motivo é bom.</b> Esta sequência ainda não tem nenhuma
+    versão publicada, ou seja, não tem mensagem nenhuma escrita para mandar.
+    Ligada assim, ela ficaria com cara de "no ar" e não escreveria para ninguém.
+    Abra a sequência, escreva o texto do primeiro passo, e volte para ligar.
+  </p>
+  {% endif %}
+  {% if recado == "sem_grau" %}
+  <p class="aviso borda-vermelha">
+    <b>Consigo LER as sequências, mas não consigo mudá-las.</b>
+    A ligação entre esta área e o motor das mensagens foi criada só com
+    permissão de leitura. Falta a permissão de escrita, que é um passo de
+    máquina dentro do servidor, e está no relatório do robô que construiu esta
+    tela. Nada foi alterado.
+  </p>
+  {% endif %}
+
+  <p class="subtitulo">
+    {% if ligadas == 0 %}
+    <b>Nenhuma sequência está ligada.</b> Nenhuma mensagem automática sai da
+    escola neste momento.
+    {% else %}
+    <b>{{ ligadas }} de {{ sequencias|length }}</b> {{ ligadas|pluralize:"está,estão" }} ligada{{ ligadas|pluralize }}.
+    {% endif %}
+  </p>
+
+  {% for s in sequencias %}
+  <div class="cartao espaco-14">
+    <h2>{{ s.nome }}</h2>
+    <p class="nota">Começa {{ s.gatilho }}.</p>
+
+    {% comment %}
+    O estado DIZ o que é por extenso, e não só por cor: a `.luz` de base.html
+    nasceu com essa regra escrita ("quem não distingue verde de vermelho lê a
+    palavra"), e a bolinha é reforço, nunca a informação.
+    {% endcomment %}
+    {% if s.ativa %}
+    <p><span class="luz no-ar">Ligada</span></p>
+    <p class="nota">Quem fizer o que a começa entra nela.</p>
+    {% else %}
+    <p><span class="luz">Desligada</span></p>
+    <p class="nota">Ninguém entra nela hoje.</p>
+    {% endif %}
+
+    <p class="nota">
+      {% if s.versao_publicada %}
+      Está valendo a <b>versão {{ s.versao_publicada }}</b>{% if s.versoes > 1 %}, de {{ s.versoes }} já escritas{% endif %}.
+      {% else %}
+      <b>Ainda não tem nenhuma mensagem escrita.</b> Enquanto for assim, ela não
+      pode ser ligada: sem texto, não escreveria para ninguém.
+      {% endif %}
+    </p>
+
+    <form method="post" action="{% url 'escola_jornada_ligar' %}" class="espaco-14">
+      {% csrf_token %}
+      <input type="hidden" name="slug" value="{{ s.slug }}">
+      {% if s.ativa %}
+      <input type="hidden" name="ativa" value="0">
+      <button type="submit">Desligar esta sequência</button>
+      {% else %}
+      <input type="hidden" name="ativa" value="1">
+      <button type="submit">Ligar esta sequência</button>
+      {% endif %}
+    </form>
+
+    <p class="espaco-14">
+      <a class="botao" href="{% url 'escola_jornada_sequencia' s.slug %}">Ver as mensagens, quem recebe e o que foi barrado &rarr;</a>
+    </p>
+  </div>
+  {% empty %}
+  <p class="aviso">
+    <b>Esta escola ainda não tem nenhuma sequência.</b> Elas nascem junto com a
+    parte do sistema que sabe mandá-las; quando a primeira existir, ela aparece
+    aqui sozinha.
+  </p>
+  {% endfor %}
+
+  <p class="aviso espaco-28">
+    <b>Desligar nunca para quem já está no meio.</b> Isso é escolha, e não
+    limitação: uma pessoa que recebeu a mensagem 1 e a 2 não deve ficar sem a 3
+    porque você mexeu no interruptor no meio do caminho. Ninguém NOVO entra a
+    partir do desligamento, e quem já entrou termina o que começou.
+  </p>
+
+  {% endif %}
+</div>
+{% endblock %}
