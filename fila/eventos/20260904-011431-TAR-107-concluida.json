@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260904-011431-TAR-107-concluida",
+  "tarefa": "TAR-107",
+  "evento": "concluida",
+  "quando": "2026-09-04T01:14:31+00:00",
+  "quem": "sessao-encomendas-fase0-2026-09-03",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/946 (aberto; a lei, o plano sem edicao, a constituicao, o anexo do contrato v1, o mapa para IA e a escada TAR-108..118 na fila; muralhas PASS 13/13, travessao PASS, fila valida, test_painel_ia_atualizado 2 passed; o veredito do deploy da admin vira registro novo depois do pouso)",
+  "verificado_em": "2026-09-04"
+}
