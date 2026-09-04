@@ -6,8 +6,8 @@ degrau: 2
 confianca: alta
 custo_por_queda: medio
 guarda:
-  tipo: nenhum
-  motivo: o cartógrafo (`ci/mapa_do_site.py`) mede o ENDEREÇO de cada rota e é fail-closed nos dois sentidos, mas nunca olha o campo `gesto` — `armadilhas/223` já declara esse buraco. A implicação sã ("rota `@require_POST` exige `gesto: true`") é derivável e foi medida aqui; construí-la é a TAR-144, e depende de mandato porque `ci/` é CODEOWNERS
+  tipo: CI
+  motivo: construído na TAR-144, no mesmo dia, com mandato do mantenedor (`ci/` é CODEOWNERS). A checagem 4 de `ci/mapa_do_site.py` exige `gesto: true` de toda rota cuja view é `@require_POST`, e roda como muralha em todo PR. O que fica de fora, declarado em voz alta na própria tela do portão: rota cuja view não se resolve pelo nome não vira afirmação nenhuma
 sinal:
   - "require_POST"
   - "mapa-do-site.json"
@@ -84,5 +84,11 @@ O fato mora no mapa; o lugar de proteger o fato é o portão que já lê o mapa.
 PR #1036 — que também corrigiu 19 entradas escritas sem acento nenhum na tela
 que ele lê, duas entradas da `metricas` que ainda falavam no futuro de uma parte
 no ar desde 04/09, e um `~97 endereços e ~35 telas` no `_doc` do arquivo quando
-já eram 172. O portão do campo `gesto` ficou como **TAR-144**, esperando
-mandato: `ci/` é caminho CODEOWNERS.
+já eram 172.
+
+**O portão nasceu no mesmo dia** (TAR-144, PR #1040): o mantenedor deu o mandato
+para `ci/` na hora em que leu este achado. A checagem 4 de `ci/mapa_do_site.py`
+decide 149 das 183 rotas de hoje; as 34 restantes são as que não se resolvem pelo
+nome da view (`include(...)`, `healthz` sem decorador), e **a tela do portão diz
+essa conta em voz alta** — um guarda que um dia decidisse zero e ainda dissesse
+PASS é a forma exata de esta checagem morrer, e há um teste que o impede.

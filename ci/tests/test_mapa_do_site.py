@@ -15,6 +15,7 @@ repositório são provaria que ele roda — não que ele morde.
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import sys
 from pathlib import Path
@@ -28,12 +29,20 @@ import mapa_do_site  # noqa: E402
 from _nucleo import ErroDeInstrumentacao, Estado  # noqa: E402
 
 
-def _cenario(tmp_path: Path, mapa: dict | None = None) -> Path:
+def _cenario(
+    tmp_path: Path, mapa: dict | None = None, *, com_vistas: bool = False
+) -> Path:
     """Uma raiz com as quatro fontes reais e o mapa que o teste quiser.
 
     As fontes são as DE VERDADE (roteamento, urlconfs, envs, celulas.yml)
     porque a régua do varredor é o site real: um cenário com rotas inventadas
     mediria o teste, não o varredor. Só o mapa é do teste — é ele o sabotado.
+
+    `com_vistas` traz também o CÓDIGO das células (as `def` das views), que é o
+    que a checagem 4 (gestos) lê para saber se uma rota só aceita POST. É
+    opt-in porque são 408 arquivos e ~0,4 s por cenário, e a maioria dos testes
+    daqui não fala de gesto — sem ele, aquela checagem simplesmente não decide
+    nada, que é o comportamento honesto dela e não um verde falso.
     """
     raiz = tmp_path / "repo"
     # Um teste pode montar DOIS cenários (sabotagem e a sabotagem oposta) no
@@ -53,6 +62,14 @@ def _cenario(tmp_path: Path, mapa: dict | None = None) -> Path:
         destino = raiz / "services" / urls.parents[1].name / "config"
         destino.mkdir(parents=True)
         shutil.copy(urls, destino / "urls.py")
+    if com_vistas:
+        for py in (RAIZ / "services").rglob("*.py"):
+            relativo = py.relative_to(RAIZ)
+            if {"tests", "migrations"} & set(relativo.parts):
+                continue
+            alvo = raiz / relativo
+            alvo.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy(py, alvo)
     if mapa is None:
         mapa = json.loads(
             (RAIZ / "painel" / "mapa-do-site.json").read_text(encoding="utf-8")
@@ -318,3 +335,84 @@ def test_as_portas_principais_estao_sondadas():
     }
     for porta in ("/", "/login", "/forum/", "/forms/sugestoes/", "/admin/"):
         assert porta in sondadas, f"a porta {porta} deveria ter luz"
+
+
+# --------------------------------------------------------------------------
+# A checagem 4: rota que só aceita POST não é página (armadilhas/330)
+# --------------------------------------------------------------------------
+
+
+def test_rota_so_post_sem_a_marca_de_gesto_reprova(tmp_path: Path):
+    """O caso medido em 04/09/2026, e o motivo desta checagem existir.
+
+    `gesto: true` é o que faz a tela NÃO oferecer link. Sem a marca, o dono
+    clica no nome da linha e recebe 405 — e nada ficava vermelho: cinco
+    endereços viveram assim com o portão verde e os 963 testes da célula
+    `admin` passando.
+    """
+    mapa = _mapa_real()
+    _entrada(mapa, "admin", "economia/mudar-conquista").pop("gesto", None)
+    relatorio = mapa_do_site.verificar(_cenario(tmp_path, mapa, com_vistas=True))
+    assert relatorio.estado is Estado.FAIL
+    saida = relatorio.render()
+    assert "economia/mudar-conquista" in saida
+    assert "economia_mudar_conquista" in saida, "a recusa diz QUAL view decidiu"
+    assert "gesto" in saida, "a recusa entrega o conserto pronto"
+
+
+def test_gesto_em_rota_que_aceita_leitura_nao_reprova(tmp_path: Path):
+    """A recíproca é FALSA, e escrevê-la reprovaria quatro entradas corretas.
+
+    `/entrar/google` é GET e é gesto legítimo: abrir esse endereço não mostra
+    página nenhuma, dispara o vaivém do Google. Só-POST ⇒ gesto é verdade
+    sempre; gesto ⇒ só-POST, não.
+    """
+    vistas = mapa_do_site.vistas_da_celula(RAIZ, "identidade")
+    assert (
+        vistas.get("entrar_google") is not True
+    ), "se um dia esta view virar só-POST, este teste deixa de provar o que diz"
+    assert _entrada(_mapa_real(), "identidade", "entrar/google")["gesto"] is True
+    relatorio = mapa_do_site.verificar(_cenario(tmp_path, com_vistas=True))
+    assert relatorio.estado is Estado.PASS
+
+
+def test_o_portao_de_hoje_decide_a_maioria_das_rotas(tmp_path: Path):
+    """A checagem não pode virar decorativa por não decidir nada.
+
+    Ela é fail-open por desenho — rota cuja view não se resolve não vira
+    afirmação —, e é exatamente assim que ela morreria em silêncio: um dia
+    decidindo zero e ainda dizendo PASS. Este guarda fixa o piso medido em
+    04/09/2026 (149 de 183) com folga, e a conta aparece na tela do portão.
+    """
+    relatorio = mapa_do_site.verificar(_cenario(tmp_path, com_vistas=True))
+    linha = next(r for r in relatorio.resultados if r.nome == "gestos")
+    sem_veredito = int(re.search(r"\((\d+) rotas sem", linha.resumo).group(1))
+    total = len(mapa_do_site.medir(RAIZ))
+    assert sem_veredito < total // 2, (
+        f"o portão deixou de decidir {sem_veredito} de {total} rotas — a "
+        "checagem virou decoração"
+    )
+
+
+def test_nome_de_view_ambiguo_nao_vira_afirmacao(tmp_path: Path):
+    """Dois `def` com o mesmo nome e vereditos opostos: o portão cala.
+
+    A busca é pelo NOME (seguir a cadeia de imports daria mais formas de errar
+    em silêncio do que de acertar). O preço dessa escolha é a homonímia — e o
+    preço se paga calando, nunca afirmando sobre a rota de outra pessoa.
+    """
+    raiz = _cenario(tmp_path, com_vistas=True)
+    sosia = raiz / "services" / "admin" / "apps" / "core" / "sosia_do_teste.py"
+    sosia.write_text(
+        "from django.views.decorators.http import require_GET\n\n\n"
+        "@require_GET\ndef economia_mudar_conquista(request):\n    return None\n",
+        encoding="utf-8",
+    )
+    vistas = mapa_do_site.vistas_da_celula(raiz, "admin")
+    assert vistas["economia_mudar_conquista"] is None
+    mapa = _mapa_real()
+    _entrada(mapa, "admin", "economia/mudar-conquista").pop("gesto", None)
+    (raiz / "painel" / "mapa-do-site.json").write_text(
+        json.dumps(mapa, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    assert mapa_do_site.verificar(raiz).estado is Estado.PASS

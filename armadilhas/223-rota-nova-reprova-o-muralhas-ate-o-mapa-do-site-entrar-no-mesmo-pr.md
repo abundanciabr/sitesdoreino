@@ -46,8 +46,15 @@ viajam no MESMO PR. Vale para `path()`, `re_path()` e rota de gesto (o endereço
 que um botão dispara) — o varredor mede `urls.py`, não telas.
 
 O que o portão **não** confere, e por isso é revisão de gente: se o `titulo` e a
-`descricao` estão escritos em português de leigo, e se o campo `gesto` está
-correto (`RETROSPECTIVA-FASE-D` §2, buraco declarado).
+`descricao` estão escritos em português de leigo (`RETROSPECTIVA-FASE-D` §2,
+buraco declarado).
+
+**O campo `gesto` saiu desse buraco em 04/09/2026** (TAR-144): rota cuja view é
+`@require_POST` não é página, e o portão passou a EXIGIR `"gesto": true` — a
+checagem 4. Vale num sentido só, e a recíproca não é escrita: `/entrar/google` é
+GET e é gesto legítimo. Quem cria uma rota de gesto e esquece a marca é reprovado
+com a linha do conserto pronta; o que motivou a checagem foram cinco endereços
+que a tela do dono oferecia como link e que devolviam 405 (`armadilhas/330`).
 
 **Origem:** 30/08/2026, TAR-037 (as ferramentas do administrador no fórum, PR
 #627). Quatro rotas novas, quatro linhas no mapa, um `muralhas` verde.
