@@ -118,8 +118,13 @@
       ]
     },
     "mensageria": {
-      "freeze": "not-applicable",
-      "reason": "Célula ainda em esqueleto: config/urls.py expõe só /healthz, não há config/api.py nem API pública. Contrato entra pelo RITOS.md §3 quando a célula ganhar superfície."
+      "freeze": "required",
+      "frozen": "contracts/mensageria.openapi.yaml",
+      "exportador": [
+        "python",
+        "manage.py",
+        "export_openapi"
+      ]
     },
     "metricas": {
       "freeze": "required",

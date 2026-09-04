@@ -1,0 +1,717 @@
+# =============================================================================
+# CONTRATO DA CÉLULA `mensageria` — a porta de MÁQUINA das sequências de
+# mensagens (as jornadas).
+#
+# CONGELADO. Mudar este arquivo é o Rito de Contrato (RITOS.md §3): PR só de
+# `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores em
+# PRs seguintes. O portão que faz valer é `ci/contract_freeze.py`, que compara
+# este arquivo com o que a célula EXPORTA de verdade — divergência reprova.
+#
+# NASCEU DE UM RITO COM O MANTENEDOR PRESENTE, em 04/09/2026 (registro do livro
+# `20260904-070`), como a lei exige. É o degrau 6d da escada do §7 de
+# `docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md`, e ele destrava a tela do
+# degrau 7 (`/admin/escola/jornadas/`, TAR-078) — que parou antes da primeira
+# linha de código porque entre a `admin` e o `mensageria_db` não existia caminho
+# nenhum (`armadilhas/311`).
+#
+# POR QUE ESTE CONTRATO EXISTE, e não é papelada: a tela onde o mantenedor
+# decide o que a escola escreve para os alunos precisa depender do CONTRATO, e
+# nunca do banco desta célula. O motor das jornadas pode ser trocado por baixo um
+# dia sem que ninguém do outro lado saiba — e essa frase só é mecânica por causa
+# deste arquivo.
+#
+# AS DUAS DECISÕES DO MANTENEDOR NO RITO, que estão dentro do que segue:
+#
+#   1. A TELA TEM O INTERRUPTOR. `setJourneyActive` liga e desliga uma
+#      sequência, e entrou ANTES deste congelamento porque, depois dele,
+#      acrescentar operação é outro Rito. Até então ligar uma jornada só
+#      acontecia por um comando de terminal, que ele não roda.
+#   2. QUEM ESTÁ NO MEIO TERMINA COMO ENTROU. Corrigir uma frase publica versão
+#      NOVA, e a correção vale para quem entrar depois — versão publicada é
+#      imutável por gatilho no Postgres, não por disciplina de código. Desligar
+#      segue a mesma regra: ninguém novo entra, e quem já está dentro termina.
+#
+# AS INVARIANTES QUE ATRAVESSAM AS SEIS OPERAÇÕES
+# -----------------------------------------------
+# 1. NÃO SAI DADO PESSOAL. Nem e-mail, nem nome, nem telefone. Só o
+#    `destinatario_id`, que é o id OPACO de plataforma emitido pela `identidade`
+#    (`DECISAO-EVO-01` §3). Esta célula sequer guarda o e-mail de ninguém.
+# 2. TODA OPERAÇÃO É ESCOPADA POR `site_id` (CONSTITUICAO Lei 9). Jornada de
+#    outro site é 404, e a inscrição de outro site é 404 mesmo com o UUID certo
+#    na mão.
+# 3. FALHA FECHADA. Id desconhecido é 404 e parâmetro faltando é 422 — nunca uma
+#    lista vazia, que parece resposta.
+# 4. DUAS ESCRITAS, UM GRAU. `publishJourneyText` e `setJourneyActive` exigem
+#    `TOKENS_PUBLICACAO_<PAR>`; quem só tem `TOKENS_SOMENTE_LEITURA_<PAR>` leva
+#    403. O grau de publicação já CONTÉM a leitura. O porquê de não ser um
+#    conjunto plano está em `armadilhas/318`.
+#
+# Guarda: `services/mensageria/tests/test_porta_de_maquina.py`, onde a lista de
+# operações é MEDIDA deste schema, e não digitada.
+#
+# Lei do assunto: `docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md`.
+# =============================================================================
+openapi: 3.1.0
+info:
+  title: Mensageria - API interna
+  version: 1.0.0
+  description: 'Superficie de MAQUINA das sequencias de mensagens (as jornadas).
+
+    Existe para que a tela do mantenedor leia as sequencias pelo CONTRATO
+
+    e nunca pelo banco desta celula: o motor por baixo pode mudar sem que
+
+    quem consome saiba.
+
+
+    Lei do assunto: docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md.
+
+
+    NADA DE DADO PESSOAL SAI POR AQUI: nem e-mail, nem nome, nem telefone.
+
+    So o `destinatario_id`, que e o id OPACO de plataforma emitido pela
+
+    celula identidade. Esta celula nem guarda o e-mail de ninguem: ela o
+
+    pergunta a identidade na hora do envio.
+
+
+    ESCREVER O TEXTO AQUI SIGNIFICA PUBLICAR VERSAO NOVA. Versao
+
+    publicada e imutavel por gatilho no Postgres, e quem esta no meio
+
+    de uma sequencia termina na versao em que entrou. A porta devolve o
+
+    numero da versao que nasceu, para a tela poder dizer isso em
+
+    portugues simples.
+
+
+    A OUTRA ESCRITA E O INTERRUPTOR, e ela NAO e conteudo: ligar e
+
+    desligar muda uma coluna da jornada, sem publicar versao e sem
+
+    tocar numa virgula do texto. Desligar vale para quem entrar depois,
+
+    pela mesma regra: quem ja esta no meio termina a sequencia, e a
+
+    resposta diz quantas pessoas sao.
+
+    '
+paths:
+  /jornadas:
+    get:
+      operationId: listJourneys
+      summary: As sequencias de um site, com a versao publicada corrente
+      parameters:
+      - in: query
+        name: site_id
+        schema:
+          default: ''
+          type: string
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListaDeJornadas'
+      description: 'Quais sequencias existem neste site, se estao ligadas, e qual versao
+
+        vale agora. `ativa: false` e o estado NORMAL de uma jornada recem
+
+        semeada: ligar uma sequencia e decisao do mantenedor, nunca efeito
+
+        colateral de um deploy, e a tela precisa dizer isso sem alarme.
+
+
+        `versao_publicada` e nula enquanto a jornada so tiver rascunho.
+
+
+        `site_id` e obrigatorio (CONSTITUICAO Lei 9): sem ele, 422.
+
+        '
+  /jornadas/{slug}:
+    get:
+      operationId: getJourney
+      summary: 'Uma versao de uma sequencia: os passos, na ordem, com o texto por idioma'
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          default: ''
+          type: string
+        required: false
+      - in: query
+        name: versao
+        schema:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JornadaDetalhe'
+      description: 'Os passos de uma versao, na ordem, cada um com atraso, janela, classe,
+
+        canais, condicao e o texto por idioma.
+
+
+        Sem `versao`, devolve a PUBLICADA CORRENTE (a de maior numero entre as
+
+        publicadas), que e a mesma que o motor usa para inscrever. Com
+
+        `versao`, devolve aquele numero, publicado ou nao: quem esta no meio de
+
+        uma sequencia esta numa versao que ja nao e a corrente, e a tela tem de
+
+        conseguir mostrar o texto que aquela pessoa vai receber.
+
+
+        `atraso_segundos` conta a partir da ancora da inscricao, nunca do passo
+
+        anterior. Jornada de outro site e 404.
+
+        '
+  /jornadas/{slug}/inscricoes:
+    get:
+      operationId: listEnrollments
+      summary: Quem esta dentro de uma sequencia, e em que passo
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          default: ''
+          type: string
+        required: false
+      - in: query
+        name: estado
+        schema:
+          default: ''
+          type: string
+        required: false
+      - in: query
+        name: limite
+        schema:
+          default: 50
+          type: integer
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListaDeInscricoes'
+      description: 'Os episodios de uma jornada, do mais recente para o mais antigo. Cada
+
+        linha traz o `destinatario_id` (id OPACO de plataforma, nunca e-mail
+
+        nem nome), o estado, o passo em que parou e a versao em que entrou.
+
+
+        `estado` filtra por `andando`, `concluida`, `saiu` ou `cancelada`;
+
+        estado desconhecido e 422, e nao lista vazia. `limite` e cortado no
+
+        teto de 200 em vez de recusado. `total` conta o filtro INTEIRO, e nao
+
+        o que coube na pagina.
+
+        '
+  /inscricoes/{inscricao_id}/entregas:
+    get:
+      operationId: listDeliveries
+      summary: O que saiu e o que NAO saiu para uma inscricao, com o motivo
+      parameters:
+      - in: path
+        name: inscricao_id
+        schema:
+          format: uuid
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          default: ''
+          type: string
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListaDeEntregas'
+      description: 'A operacao que responde "por que o aluno X nao recebeu?". Uma linha
+
+        por passo E POR CANAL, porque sino entregue, e-mail devolvido e
+
+        WhatsApp barrado sao tres resultados independentes.
+
+
+        `resultado` e um de `enviada`, `pulada`, `barrada_pela_regua` ou
+
+        `barrada_por_preferencia`, e `motivo` e a frase curta que a regua
+
+        escreveu. O que foi barrado NAO se perde: `reagendado_para` diz para
+
+        quando foi remarcado.
+
+
+        O `site_id` e conferido mesmo com o UUID em maos: inscricao de outro
+
+        site e 404.
+
+        '
+  /jornadas/{slug}/textos:
+    post:
+      operationId: publishJourneyText
+      summary: Grava a frase de um passo PUBLICANDO uma versao nova da sequencia
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersaoPublicadaSaida'
+      description: 'A UNICA escrita desta porta, e ela nao edita nada: copia a versao
+
+        publicada corrente inteira, aplica a frase nova na copia e publica a
+
+        copia. Versao publicada e imutavel por gatilho no Postgres, e e assim
+
+        que as duas promessas do plano convivem: o mantenedor troca a frase
+
+        quando quiser, e quem ja esta no meio da sequencia termina na versao em
+
+        que entrou.
+
+
+        A resposta traz o NUMERO da versao que nasceu, para a tela poder dizer
+
+        isso ao mantenedor em portugues simples.
+
+
+        `versao_base` e opcional e serve de trava: quando vem e nao bate com a
+
+        publicada corrente, o pedido e recusado com 409 em vez de sobrescrever
+
+        em silencio quem publicou primeiro. Idioma que ainda nao existia no
+
+        passo entra como linha nova.
+
+
+        Exige o grau a mais: o token precisa estar em `TOKENS_PUBLICACAO_<PAR>`,
+
+        e quem so tem leitura leva 403. Publicar NUNCA liga uma jornada
+
+        desligada.
+
+        '
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TextoParaPublicar'
+        required: true
+  /jornadas/{slug}/ativa:
+    post:
+      operationId: setJourneyActive
+      summary: Liga ou desliga uma sequencia, sem tocar no texto dela
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstadoDaJornadaSaida'
+      description: 'Liga e desliga uma sequencia. O pedido descreve o ESTADO desejado
+
+        (`ativa: true` ou `ativa: false`), entao mandar o mesmo pedido duas
+
+        vezes e 200 nas duas: `mudou` diz se a segunda mudou alguma coisa.
+
+
+        NAO PUBLICA VERSAO NOVA E NAO MEXE NO TEXTO. Ligar e desligar e estado
+
+        da jornada, nunca conteudo dela: a operacao escreve UMA coluna, e as
+
+        versoes publicadas continuam intocadas.
+
+
+        DESLIGAR SIGNIFICA QUE NINGUEM NOVO ENTRA. Quem ja esta no meio da
+
+        sequencia termina o que comecou, pela mesma regra que vale para a troca
+
+        de frase. Por isso a resposta traz `inscricoes_andando`: e o numero de
+
+        pessoas que continuam recebendo depois de desligada, e a tela precisa
+
+        poder dize-lo em vez de sugerir que tudo parou.
+
+
+        LIGAR uma jornada que ainda nao tem versao publicada e recusado com
+
+        409: ligada assim ela nao inscreveria ninguem, e a tela mostraria
+
+        ''ligada'' para uma sequencia muda. DESLIGAR nunca e recusado por isso.
+
+
+        Exige o grau a mais: o token precisa estar em `TOKENS_PUBLICACAO_<PAR>`,
+
+        e quem so tem leitura leva 403. Jornada de outro site e 404.
+
+        '
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InterruptorDaJornada'
+        required: true
+components:
+  schemas:
+    JornadaResumo:
+      properties:
+        slug:
+          type: string
+        gatilho:
+          type: string
+        ativa:
+          type: boolean
+        criada_em:
+          format: date-time
+          type: string
+        versoes:
+          type: integer
+        versao_publicada:
+          anyOf:
+          - $ref: '#/components/schemas/VersaoResumo'
+          - type: 'null'
+      required:
+      - slug
+      - gatilho
+      - ativa
+      - criada_em
+      - versoes
+      type: object
+    ListaDeJornadas:
+      properties:
+        site_id:
+          type: string
+        jornadas:
+          items:
+            $ref: '#/components/schemas/JornadaResumo'
+          type: array
+      required:
+      - site_id
+      - jornadas
+      type: object
+    VersaoResumo:
+      properties:
+        numero:
+          type: integer
+        publicada_em:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+      required:
+      - numero
+      type: object
+    JornadaDetalhe:
+      properties:
+        site_id:
+          type: string
+        slug:
+          type: string
+        gatilho:
+          type: string
+        ativa:
+          type: boolean
+        versao:
+          $ref: '#/components/schemas/VersaoResumo'
+        publicada:
+          type: boolean
+        passos:
+          items:
+            $ref: '#/components/schemas/PassoSaida'
+          type: array
+      required:
+      - site_id
+      - slug
+      - gatilho
+      - ativa
+      - versao
+      - publicada
+      - passos
+      type: object
+    PassoSaida:
+      properties:
+        passo_id:
+          format: uuid
+          type: string
+        ordem:
+          type: integer
+        atraso_segundos:
+          type: integer
+        janela_segundos:
+          anyOf:
+          - type: integer
+          - type: 'null'
+        assunto:
+          type: string
+        classe:
+          type: string
+        canais:
+          items:
+            type: string
+          type: array
+        condicao_slug:
+          type: string
+        textos:
+          items:
+            $ref: '#/components/schemas/TextoSaida'
+          type: array
+      required:
+      - passo_id
+      - ordem
+      - atraso_segundos
+      - assunto
+      - classe
+      - canais
+      - condicao_slug
+      - textos
+      type: object
+    TextoSaida:
+      properties:
+        idioma:
+          type: string
+        assunto_visivel:
+          type: string
+        corpo:
+          type: string
+      required:
+      - idioma
+      - assunto_visivel
+      - corpo
+      type: object
+    InscricaoSaida:
+      properties:
+        inscricao_id:
+          format: uuid
+          type: string
+        destinatario_id:
+          type: string
+        estado:
+          type: string
+        passo_atual:
+          type: integer
+        versao_numero:
+          type: integer
+        ancora_em:
+          format: date-time
+          type: string
+        proximo_em:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+        motivo_de_saida:
+          type: string
+        criada_em:
+          format: date-time
+          type: string
+      required:
+      - inscricao_id
+      - destinatario_id
+      - estado
+      - passo_atual
+      - versao_numero
+      - ancora_em
+      - motivo_de_saida
+      - criada_em
+      type: object
+    ListaDeInscricoes:
+      properties:
+        slug:
+          type: string
+        total:
+          type: integer
+        inscricoes:
+          items:
+            $ref: '#/components/schemas/InscricaoSaida'
+          type: array
+      required:
+      - slug
+      - total
+      - inscricoes
+      type: object
+    EntregaSaida:
+      properties:
+        passo_id:
+          format: uuid
+          type: string
+        ordem:
+          type: integer
+        canal:
+          type: string
+        resultado:
+          type: string
+        motivo:
+          type: string
+        decidida_em:
+          format: date-time
+          type: string
+        previsto_para:
+          format: date-time
+          type: string
+        reagendado_para:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+        enviado_em:
+          anyOf:
+          - format: date-time
+            type: string
+          - type: 'null'
+        event_id:
+          anyOf:
+          - format: uuid
+            type: string
+          - type: 'null'
+      required:
+      - passo_id
+      - ordem
+      - canal
+      - resultado
+      - motivo
+      - decidida_em
+      - previsto_para
+      type: object
+    ListaDeEntregas:
+      properties:
+        inscricao_id:
+          format: uuid
+          type: string
+        estado:
+          type: string
+        entregas:
+          items:
+            $ref: '#/components/schemas/EntregaSaida'
+          type: array
+      required:
+      - inscricao_id
+      - estado
+      - entregas
+      type: object
+    VersaoPublicadaSaida:
+      properties:
+        slug:
+          type: string
+        versao:
+          type: integer
+        publicada_em:
+          format: date-time
+          type: string
+        passo_id:
+          format: uuid
+          type: string
+        passos:
+          type: integer
+      required:
+      - slug
+      - versao
+      - publicada_em
+      - passo_id
+      - passos
+      type: object
+    TextoParaPublicar:
+      properties:
+        site_id:
+          type: string
+        ordem:
+          type: integer
+        idioma:
+          type: string
+        assunto_visivel:
+          type: string
+        corpo:
+          type: string
+        versao_base:
+          anyOf:
+          - type: integer
+          - type: 'null'
+      required:
+      - site_id
+      - ordem
+      - idioma
+      - assunto_visivel
+      - corpo
+      type: object
+    EstadoDaJornadaSaida:
+      properties:
+        slug:
+          type: string
+        ativa:
+          type: boolean
+        mudou:
+          type: boolean
+        inscricoes_andando:
+          type: integer
+        versao_publicada:
+          anyOf:
+          - $ref: '#/components/schemas/VersaoResumo'
+          - type: 'null'
+      required:
+      - slug
+      - ativa
+      - mudou
+      - inscricoes_andando
+      type: object
+    InterruptorDaJornada:
+      properties:
+        site_id:
+          type: string
+        ativa:
+          type: boolean
+      required:
+      - site_id
+      - ativa
+      type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+servers:
+- url: http://mensageria:8000/api/mensageria
+security:
+- bearerAuth: []
