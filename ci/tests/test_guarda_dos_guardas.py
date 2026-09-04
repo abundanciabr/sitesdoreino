@@ -716,6 +716,19 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-GAM1",
         "INV-GAM2",
         "INV-GAM3",
+        # Os sete de justiça da fila, célula `encomendas` (04/09/2026, TAR-121,
+        # degrau 2.3 da escada). Nasceram juntos porque a lei os agrupa no degrau
+        # do MOTOR (`DECISAO-fila-do-primeiro-dolar.md` §5): J1 e J2 as duas
+        # travas de oferta pendente, J3 a regra de ordem, J4 o lugar na fila, J5
+        # o nível mínimo, J6 a memória por encomenda, J7 quem está trabalhando.
+        # Os três que faltam (J8 a J10, os relógios) chegam no degrau 2.4.
+        "INV-ENC-J1",
+        "INV-ENC-J2",
+        "INV-ENC-J3",
+        "INV-ENC-J4",
+        "INV-ENC-J5",
+        "INV-ENC-J6",
+        "INV-ENC-J7",
         "INV-CI01",
     ]
 

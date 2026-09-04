@@ -543,6 +543,161 @@ primeira oportunidade de violá-la.
   `NivelDefinicao.aulas_desbloqueadas` deixa três asserções vermelhas.
 - **Célula dona:** gamificacao
 
+### [INV-ENC-J1] Uma Encomenda Nunca Tem Duas Ofertas Pendentes
+- **O quê:** em nenhum instante existem duas `Oferta` com `resultado="pendente"`
+  para a mesma encomenda. A garantia é em três camadas, e a de fora é a que vale:
+  a varredura do motor só olha `na_fila` (e a encomenda oferecida sai desse
+  estado), o motor recusa com desfecho nomeado a encomenda que já tem oferta
+  viva, e o índice único parcial `uma_oferta_pendente_por_encomenda` do
+  PostgreSQL recusa a segunda linha. O motor trata o `IntegrityError` como
+  veredito, não como erro: ele vira o desfecho `corrida_perdida`.
+- **Por quê:** duas ofertas pendentes da mesma encomenda são duas pessoas
+  trabalhando de graça na mesma coisa, e uma delas descobrindo depois — a falha
+  que mais rápido destrói a confiança de quem está esperando a primeira chance.
+  E a corrida que a produz é entre dois PROCESSOS do motor, que nenhum `if` em
+  Python resolve: por isso a trava tem de ser do banco. Lei:
+  `DECISAO-fila-do-primeiro-dolar.md` §5; produto: plano §6.3 e §7.4.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_j1_uma_oferta_por_encomenda.py` — o caso
+  feliz, a segunda passada sobre o mesmo estado, a encomenda devolvida à fila com
+  oferta viva, a recusa do PostgreSQL provada de fora do motor, e o par verde do
+  índice ser PARCIAL (oferta respondida não ocupa a vaga; um índice total travaria
+  a fila na primeira recusa). Provado por mutação em 04/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-J2] Um Aluno Nunca Tem Duas Ofertas Pendentes
+- **O quê:** em nenhum instante uma pessoa tem duas `Oferta` pendentes. Vale
+  DENTRO de uma passada do motor (que avança o próprio estado enquanto varre) e
+  ENTRE passadas (o candidato lido do banco já vem marcado), e o índice único
+  parcial `uma_oferta_pendente_por_aluno` recusa a segunda linha.
+- **Por quê:** com três encomendas na fila e um só aluno disponível, um motor que
+  consultasse os candidatos uma vez e não avançasse ofereceria as três à mesma
+  pessoa, sem nenhuma linha parecer errada. O efeito é ela abrindo o celular e
+  vendo três relógios correndo ao mesmo tempo, sabendo que só pode aceitar um —
+  o oposto exato da promessa da tela do aluno, que é uma oportunidade por vez.
+  Lei: `DECISAO-fila-do-primeiro-dolar.md` §5; produto: plano §6.3.
+- **Teste-Guarda:** `services/encomendas/tests/test_inv_j2_uma_oferta_por_aluno.py`
+  — três encomendas e um aluno numa passada só, a passada seguinte, a razão
+  NOMEADA da recusa (`com_oferta_pendente`, e não outra), o par verde de quem
+  respondeu voltar a receber, e a recusa do PostgreSQL. Provado por mutação em
+  04/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-J3] A Oferta Vai a Quem Tem Menos Entregas, e no Empate a Quem Entrou Antes
+- **O quê:** toda oferta vai ao elegível disponível de menor
+  `(entregas_aprovadas, data_entrada_fila)`. A chave de ordenação tem exatamente
+  três termos: os dois da lei e um desempate determinístico (`perfil_id`),
+  consultado só quando os dois primeiros empatam ao microssegundo. E o
+  `Candidato` tem forma FECHADA: nenhum campo de peso, prioridade, destaque,
+  nota, ranking, patrocínio ou afinidade — quem não pode nomear não pode ordenar.
+- **Por quê:** é o invariante do produto inteiro. A promessa da Fila do Primeiro
+  Dólar não é "há trabalho": é que quem nunca entregou passa na frente. Trocar a
+  ordem dos dois termos — igualmente "justa" à primeira vista — faz o veterano de
+  365 dias levar tudo para sempre, e a fila vira o marketplace que este produto
+  existe para não ser. Uma SEGUNDA regra de ordem (peso, prioridade paga,
+  destaque) é o **critério de morte 2** da lei §9: pare e reabra a decisão com o
+  mantenedor, nunca afrouxe o guarda. Lei: `DECISAO-fila-do-primeiro-dolar.md`
+  §5 e §9; produto: plano §6.2.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_j3_menor_entregas_depois_mais_antigo.py` —
+  as duas metades da regra, o cenário que separa a ordem certa da inversa, a
+  independência da ordem de entrada, o empate total, a FORMA da chave (três
+  termos, nesta ordem) e a ausência do vocabulário da vantagem no `Candidato`.
+  Provado por mutação em 04/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-J4] Só o Abandono Muda o Lugar na Fila
+- **O quê:** passar, expirar e pausar nunca alteram `data_entrada_fila`. A
+  garantia é de FORMA além de comportamento: um varredor `ast` percorre
+  `services/encomendas/apps/` e exige que toda ESCRITA no campo (atribuição de
+  atributo, argumento de `create`/`update`/`bulk_*`, citação em
+  `save(update_fields=...)`) esteja numa função declarada na lista
+  `QUEM_PODE_MOVER_O_LUGAR` — hoje VAZIA, porque nenhum código da célula move o
+  lugar de ninguém. A leitura do campo fica em paz, de propósito.
+- **Por quê:** protege uma frase que o aluno vai ler na tela: *"você mantém o seu
+  lugar"*. Comportamento mede os gestos que existem hoje, e o degrau 2.5 traz
+  gestos novos — a pausa automática por três silêncios, a chamada aberta, a
+  reclassificação. É exatamente ali que alguém, com toda a boa intenção, escreve
+  `perfil.data_entrada_fila = agora` para "reiniciar a espera" de quem ficou
+  muito tempo pausado, e nenhum teste de comportamento escrito hoje pegaria isso:
+  o gesto ainda não existe. Lei: `DECISAO-fila-do-primeiro-dolar.md` §5;
+  produto: plano §6.2, §6.3 e §6.6.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_j4_so_abandono_muda_o_lugar.py` — a
+  varredura com a lista declarada, a prova de que o varredor enxerga as quatro
+  formas de gravar E deixa a leitura em paz, os três gestos da lei um a um, e o
+  efeito visível (quem voltou da pausa recupera a vez que tinha, na frente de
+  quem entrou depois). Provado por mutação em 04/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-J5] Nenhuma Oferta Abaixo do Nível Mínimo da Encomenda
+- **O quê:** Iniciante pede título Nível 1; Intermediário, Nível 2 e as entregas
+  aprovadas do parâmetro; Avançado, Nível 3, mais entregas e nenhum abandono na
+  janela. Título vazio é "ninguém avaliou" e fica abaixo de tudo. O título é um
+  PISO, não uma faixa: Nível 3 continua atendendo trabalho simples. **Os três
+  números vêm do banco**, no valor vigente em `agora`.
+- **Por quê:** protege os dois lados, e a segunda metade é a esquecida. O cliente
+  não recebe um personagem articulado feito por quem nunca fez um cubo; e o aluno
+  não recebe uma encomenda grande demais cedo demais, que é a forma mais rápida
+  de alguém abandonar, perder o lugar e sair da escola achando que não serve para
+  isto. Sem este invariante, a ordem da fila sozinha entregaria a encomenda mais
+  difícil da casa a quem menos pode fazê-la, porque é ele quem está em primeiro
+  lugar. Um dos três números em código é o **critério de morte 5**. Lei:
+  `DECISAO-fila-do-primeiro-dolar.md` §5, §3.6 e §6; produto: plano §6.1.
+- **Teste-Guarda:** `services/encomendas/tests/test_inv_j5_nivel_minimo.py` — o
+  título exato e o título curto de cada um dos três níveis, o título acima, o
+  perfil sem título, as duas condições do avançado com razão nomeada, a janela de
+  abandono que só pesa no avançado, a data ilegível que conta como recente em vez
+  de derrubar a rodada de todos, e a prova de que mudar o parâmetro no banco muda a régua
+  sem PR — e de que o valor lido é o vigente em `agora`, não o mais recente.
+  Provado por mutação em 04/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-J6] Ninguém Recebe a Mesma Encomenda Duas Vezes
+- **O quê:** um aluno que já recebeu uma oferta de uma encomenda não a recebe de
+  novo, qualquer que tenha sido o desfecho (passou, expirou, foi cancelada) e
+  qualquer que seja a rodada. A memória é da `Oferta`, que é registro de primeira
+  classe, e é do PAR (aluno, encomenda) — nunca da pessoa. A exceção da lei
+  ("salvo em chamada aberta") vale para o estado `aberta`, que nasce no degrau
+  2.5; o motor da fila varre `na_fila`, e aqui a regra vale sem exceção.
+- **Por quê:** sem ela a fila com poucos alunos vira um carrossel: quem passa
+  recebe a mesma encomenda de volta em minutos, porque continua sendo o primeiro
+  da ordem e a ordem não tem memória. A pessoa que disse "não curto esse tipo"
+  acaba dizendo isso quatro vezes por dia até desligar o interruptor. E a rodada
+  nova não limpa a memória: o plano manda a encomenda abandonada voltar à fila
+  *"sem esse aluno"*, e zerar ali devolveria a encomenda justamente a quem a
+  abandonou. Lei: `DECISAO-fila-do-primeiro-dolar.md` §5; produto: plano §6.3,
+  §6.4 e §6.6.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_j6_nunca_a_mesma_duas_vezes.py` — o
+  carrossel impedido, a encomenda descendo a fila inteira sem repetir ninguém, o
+  silêncio queimando a vez nesta encomenda (sem custar o lugar), o par verde da
+  memória ser por encomenda e não por pessoa, a memória atravessando rodadas, e a
+  prova de que o motor nunca abre rodada nova sozinho. Provado por mutação em
+  04/09/2026.
+- **Célula dona:** encomendas
+
+### [INV-ENC-J7] Aluno Trabalhando Não Recebe Ofertas
+- **O quê:** só o perfil com `disponibilidade="disponivel"` recebe oferta. Quem
+  está `trabalhando` (aceitou uma encomenda) e quem está `pausado` (o interruptor
+  do aluno, ou a pausa automática) ficam fora — sem perder o lugar na fila. O
+  guarda cobre o vocabulário INTEIRO de `disponibilidade` e reprova se ele
+  crescer sem alguém decidir o que o valor novo faz.
+- **Por quê:** é o que faz a fila DISTRIBUIR em vez de acumular. Sem ele, o
+  primeiro da fila (zero entregas, entrou primeiro) receberia todas as encomendas
+  de todos os dias, porque a chave de ordem o mantém em primeiro lugar até a
+  primeira entrega ser aprovada — e a Fila do Primeiro Dólar entregaria o
+  primeiro dólar a uma pessoa só. Lei: `DECISAO-fila-do-primeiro-dolar.md` §5;
+  produto: plano §6.5 e §6.3.
+- **Teste-Guarda:**
+  `services/encomendas/tests/test_inv_j7_trabalhando_nao_recebe.py` — as duas
+  indisponibilidades recusadas com razão nomeada, o par verde de quem está
+  disponível, o inventário do vocabulário, o primeiro da fila cedendo a vez sem
+  perder o lugar, uma pessoa não levando cinco encomendas, e o ciclo completo
+  (recebe, aceita, vira trabalhando, some das ofertas). Provado por mutação em
+  04/09/2026.
+- **Célula dona:** encomendas
+
 ---
 
 ## Invariantes da própria CI
