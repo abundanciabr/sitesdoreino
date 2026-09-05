@@ -90,6 +90,14 @@ confiar na linha acima.)
 > que trabalham nela), lei aprovada pelo mantenedor e esqueleto em `services/`
 > no mesmo dia. Seção própria mais abaixo — leia-a antes de desenhar aula,
 > progresso de aluno, checkpoint, laudo ou agente de IA em outra célula.
+>
+> **A 18ª ainda NÃO nasceu:** `pages`, a casa das páginas do aluno (o portfólio
+> é a primeira delas, e a vitrine pública em `/estudio/<apelido>` sai dela). A
+> casa foi escolhida pelo mantenedor em 01/09/2026, renomeada por ele em
+> 02/09/2026 e liberada para construção em 05/09/2026, mas `services/pages` não
+> existe: ela nasce no degrau 01 da escada. Seção própria mais abaixo, escrita
+> antes do código de propósito, para que ninguém desenhe portfólio de aluno ou
+> vitrine de obra dentro de outra célula.
 
 **Nota de método para medir tamanho de célula:** use `git ls-files
 services/<celula> | wc -l`, nunca `find`. O caso `services/pagamentos`
@@ -421,6 +429,113 @@ porta de máquina.
 **Ela existe desde 04/09/2026** (`celulas.yml`, `ci/manifesto-de-contratos.json`
 e `constituicoes/AGENTS.cursos.md` no lugar), e o teste-guarda
 `ci/tests/test_painel_ia_atualizado.py` **exige** que este mapa a cite.
+
+## A 18ª célula, ainda NÃO nascida: `pages`
+
+**Estado:** a casa foi escolhida pelo mantenedor em 01/09/2026, renomeada por
+ele de `portfolio` para `pages` em 02/09/2026 (registros `20260901-023`,
+`20260902-061` e `20260903-003` no livro), e a construção foi liberada por ele
+em 05/09/2026 com a assinatura do corredor
+`docs/changespecs/CS-PAGES-0001.md`. **A pasta `services/pages` ainda não
+existe**: ela nasce no degrau 01 da escada do §5 do plano, e esta seção foi
+escrita no degrau 00, de propósito, antes do código. **Fonte de verdade:**
+`docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md` (a fronteira no §4, a escada no §5,
+o preço da foto por link no §6.2, o que ninguém pode inventar no §7 e os
+critérios da escola no §8) e o corredor `CS-PAGES-0001`. O resumo abaixo é
+curado: divergiu, **o original vence**. E quem responde "isto já foi feito?"
+continua sendo só o livro (`painel/registros/`) e a fila (`fila/`). Esta seção
+existe para que a próxima IA não desenhe portfólio de aluno, vitrine pública de
+obra ou página nova do aluno dentro de outra célula sem saber que já há dona
+para isso.
+
+**O que ela é.** A casa das PÁGINAS do aluno, não só do portfólio. A razão do
+mantenedor, em 02/09/2026: *"quero `pages` porque podemos criar todo tipo de
+ferramentas, portfólio, estúdio, e etc"*. Um nome específico (`portfolio`,
+`ferramentas`) excluiria o que não é ferramenta nem portfólio, e o guarda-chuva
+é o ponto. O que isso muda de verdade é o custo por pedido do aluno: o caro
+nunca foi a tela, foi a fundação (banco novo, provisionamento, rota e o passo
+manual que só o mantenedor executa). Com a casa guarda-chuva esse pedágio é
+pago UMA vez, e da segunda página em diante o custo é um PR de tela e zero
+passo dele. É por isso que ela é, por decisão registrada, a ÚLTIMA casa nova do
+site.
+
+**Dois endereços, uma casa.** Os dois prefixos apontam para a mesma célula no
+Traefik:
+
+- `meshcraft.top/pages/...`, a área do aluno logado, onde o portfólio é a
+  primeira página e as próximas entram ao lado;
+- `meshcraft.top/estudio/<apelido>`, a vitrine pública, opt-in, com `noindex`
+  e sem e-mail, telefone ou nome completo. O endereço é curto de propósito:
+  é o link que o aluno manda ao cliente no chat, e `/pages/estudio/joao` seria
+  pior ali.
+
+**Nome da célula igual ao nome da rota, de propósito.** O par `/conquistas` para
+`gamificacao` já custa uma tradução mental a cada leitura, e não se cria um
+segundo.
+
+**Ela não assina sessão (`INV-P12`).** Repassa o cookie à `identidade`, e a
+matrícula ativa decide o acesso pelo caminho normal da porta, fail-CLOSED.
+
+**A peça tem UMA casa.** O portfólio não guarda cópia de medalha, a
+`gamificacao` não guarda cópia de peça, e a tela que precisa das duas pergunta
+por HTTP com falha ABERTA (o mesmo desenho já usado entre `forum` e
+`gamificacao`), nunca por chave estrangeira cruzando banco de célula.
+
+**A foto é LINK colado, decisão do mantenedor em 01/09/2026, e ela não se
+reabre.** O aluno cola o endereço do render que já guarda no Drive, no
+ArtStation ou onde quer que seja. O preço está escrito no §6.2 do plano, e está
+repetido aqui para ninguém o redescobrir por acidente:
+
+- **link de aluno quebra**, e quando quebra a escola não consegue consertar. A
+  mitigação é a Prancheta conferir o link no momento em que ele é colado, avisar
+  pelo sininho quando ele parar de responder depois, e **nunca apagar a peça
+  sozinha**;
+- **a página pública passa a exibir imagem de domínio de terceiro**, o que
+  nenhuma outra tela desta plataforma faz hoje. A política de conteúdo da página
+  precisa permitir imagem externa de forma controlada, com teste;
+- **a escola não controla o que está do outro lado do link**, então o selo
+  "conferido pela escola" vale para o que o monitor viu no dia da conferência, e
+  o texto do selo precisa dizer isso.
+
+Guardar imagem no servidor é o degrau 09, riscado da escada: ele volta no dia em
+que o mantenedor pedir, e **não se constrói antes disso**.
+
+**O que ela emite:** `pages.portfolio.*`, congelados no degrau 03 em
+`contracts/`. É por eles que a `gamificacao` sabe do selo e acende o marco
+"portfólio" na trilha, sem pagar XP. Nenhum outro evento novo, e nenhum outro
+contrato novo: o que ela consome é o contrato de identidade (quem é a pessoa) e
+o de matrícula ativa.
+
+**A escada, e o que ela autoriza fora desta célula.** Os degraus 01, 02, 06 a 08
+e 10 a 14 são desta célula (a gênese, os modelos, a porta, a Prancheta com as
+cinco etapas, as peças por link, o semáforo, o pedido de conferência, o selo, a
+vitrine e o dossiê em PDF). Os degraus vizinhos são de outras casas, um PR por
+degrau: `contracts` no 03, `infra` no 04 e no 05, `gamificacao` no 15 (só
+escutar o evento e acender o marco), `admin` no 16 (os guias no editor de
+documentos), `mensageria` no 17 (a sequência que convida quem terminou as aulas,
+por fato **declarado**, nunca por inferência de progresso) e `funil` no 18 (o
+caminho no menu e na home logada). O degrau 07 lê do banco a lista de
+conferência que a professora da escola escreveu no §8 do plano: pelo menos 3
+tipos de modelo entre os que o curso ensina, pelo menos 3 peças de cada tipo
+escolhido, a maioria das peças em high poly, e nada que se pareça com o modelo
+feito na aula.
+
+**O que ninguém pode inventar aqui (§7 do plano):**
+
+- nota, estrela, ranking ou voto popular em portfólio ou em peça de aluno;
+- detecção de "isto foi feito por IA";
+- trancar aula ou conteúdo do curso atrás de check-list, ponto ou nível;
+- e-mail, telefone ou nome completo na página pública, e o `noindex` não é
+  negociável;
+- guardar a peça em duas células;
+- travessão em texto que o aluno lê (`ci/travessao.py`);
+- marco real pagando XP (ele vale zero, de propósito).
+
+**Ela ainda não está em `celulas.yml`, não tem constituição, não tem manifesto e
+não tem contrato.** Enquanto a pasta não existir, o teste-guarda
+`ci/tests/test_painel_ia_atualizado.py` não a cobra: ele exige que toda célula
+de `services/` apareça neste mapa, e não proíbe o contrário. Quando ela nascer
+no degrau 01, é este parágrafo que muda.
 
 ## O mecanismo de contratos: OpenAPI + eventos, e o freeze que os protege
 

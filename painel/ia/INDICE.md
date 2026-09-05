@@ -58,7 +58,12 @@ escola), ganhou
 lei aprovada e esqueleto em `services/` em 03/09/2026, e também tem seção em
 [04]. Uma 17ª, `cursos` (a sala de aula da Meshcraft: o conteúdo do curso, o
 progresso, o checkpoint, o laudo e os agentes de IA que trabalham nela), ganhou
-lei aprovada e esqueleto em `services/` em 04/09/2026, com seção em [04]. A
+lei aprovada e esqueleto em `services/` em 04/09/2026, com seção em [04]. Uma
+18ª, `pages` (a casa das páginas do aluno: o portfólio, a Prancheta que ensina a
+montá-lo e a vitrine pública em `/estudio/<apelido>`), foi liberada para
+construção em 05/09/2026 e **ainda não existe em `services/`**: ela nasce no
+degrau 01 da escada do plano dela, e a seção em [04] foi escrita antes do
+código, de propósito. A
 comunicação entre células é
 só HTTP contratado (OpenAPI congelado) ou eventos versionados (outbox +
 Redis Streams). Tudo
@@ -164,3 +169,9 @@ idade de cada parte):
 - **04/09/2026 (noite)** — a célula `cursos` nasceu (TAR-146): a seção dela em
   [04](04-arquitetura-de-celulas-e-contratos.md) passou de "planejada" a
   "nascida", e o parágrafo das células acima ganhou a 17ª.
+- **05/09/2026**: [04](04-arquitetura-de-celulas-e-contratos.md) ganhou a seção
+  da célula `pages`, que **ainda não existe em `services/`** e nasce no degrau 01
+  da escada. Este é o degrau 00 do `docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md`:
+  o mapa cita a casa antes de ela ser construída, para que nenhuma IA desenhe
+  portfólio de aluno ou vitrine de obra em outra célula. Corredor assinado:
+  `docs/changespecs/CS-PAGES-0001.md`.
