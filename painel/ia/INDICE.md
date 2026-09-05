@@ -153,3 +153,8 @@ idade de cada parte):
   **201** entradas em 30/08/2026, contadas por
   `python ci/indice_de_armadilhas.py`. O porquê de o guarda deste mapa não
   pegar nada disso está em `armadilhas/222`.
+- **04/09/2026** — [04](04-arquitetura-de-celulas-e-contratos.md) ganhou a
+  seção da célula `cursos` (a sala de aula da Meshcraft: conteúdo, progresso,
+  checkpoint, laudo e os agentes de IA que trabalham nela), planejada nesse
+  dia a partir dos nove documentos do projeto Meshcraft e ainda não nascida.
+  Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md`.

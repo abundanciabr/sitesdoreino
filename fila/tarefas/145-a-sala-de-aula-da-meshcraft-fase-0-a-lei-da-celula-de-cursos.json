@@ -1,0 +1,19 @@
+{
+  "arquivo": "145-a-sala-de-aula-da-meshcraft-fase-0-a-lei-da-celula-de-cursos",
+  "id": "TAR-145",
+  "titulo": "A sala de aula da Meshcraft, fase 0: a lei da celula de cursos, a constituicao em papel e o mapa para IA",
+  "toca": [
+    "admin",
+    "fila",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado com o plano (PLANO-CELULA-CURSOS), a constituicao em papel, o mapa para IA citando a celula e o registro da aprovacao; deploy da admin verde lido por gh run view --json.",
+  "despacho": "Fase 0 ja executada na sessao que a criou (04/09/2026): ler os nove documentos do curso na pasta do mantenedor (fora do repositorio), conferir cada suposicao contra o origin/main, escrever o plano no molde da gamificacao com as emendas da casa, a constituicao em papel e a secao no mapa para IA, e levar a lei ao mantenedor em pergunta estruturada.",
+  "origem": "os nove documentos do projeto Meshcraft trazidos pelo mantenedor em 04/09/2026 (fora do repositorio); pedido dele: criar agentes de IA numa parte do site",
+  "criada_em": "2026-09-05"
+}
