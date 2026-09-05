@@ -16,7 +16,9 @@ cada teste.
 
 from __future__ import annotations
 
+import json
 from io import StringIO
+from unittest import mock
 from urllib.parse import quote
 
 import httpx
@@ -26,7 +28,15 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from apps.core import menu
-from apps.cursos.models import Aula, Curso, Pausa, Peca
+from apps.cursos.models import (
+    Aula,
+    Curso,
+    Pausa,
+    Peca,
+    Pessoa,
+    Progresso,
+    RegistroDePausa,
+)
 
 SITE = "escola-a"
 
@@ -178,3 +188,84 @@ def publicar(aula: Aula, **mudancas) -> Aula:
 def aula_publicada(esqueleto):
     """A E00 publicada e inteira."""
     return publicar(esqueleto.aulas.get(numero="E00"))
+
+
+# ---------------------------------------------------------------------------
+# O checkpoint (degrau 2.1): a pessoa pronta para entregar, e uma entrega válida
+# ---------------------------------------------------------------------------
+
+ARQUIVO = "https://arquivos.exemplo.test/ana/cubo-da-vitrine.blend"
+README = "Um cubo com bevel de 0,2. Abra o .blend e olhe a coleção Vitrine."
+AUTOAVALIACAO = "As arestas ficaram suaves; eu faria a base mais larga."
+
+
+def entrega(**mudancas) -> dict:
+    """Os três campos de `envio.entregar`, válidos. Cada teste muda o que mede."""
+    base = {
+        "links": [{"rotulo": "Arquivo", "url": ARQUIVO}],
+        "readme": README,
+        "laudo_do_aluno": {"texto": AUTOAVALIACAO},
+    }
+    base.update(mudancas)
+    return base
+
+
+@pytest.fixture
+def ana_pronta(aula_publicada):
+    """Ana com a E00 em produção e as duas pausas registradas: pode entregar."""
+    ana = Pessoa.objects.create(id_da_plataforma=ANA["id"], nome_exibido="Ana")
+    progresso = Progresso.objects.create(
+        pessoa=ana, aula=aula_publicada, estado=Progresso.Estado.EM_PRODUCAO
+    )
+    for pausa in aula_publicada.pausas.all():
+        RegistroDePausa.objects.create(pessoa=ana, pausa=pausa, respostas={"x": "y"})
+    return progresso
+
+
+# ---------------------------------------------------------------------------
+# O fio: o transporte do relay sob controle do teste (molde: `sugestoes`)
+# ---------------------------------------------------------------------------
+
+
+class Fio:
+    """O que saiu no `xadd`. O Redis é dublado no TRANSPORTE (`redis.from_url`),
+    pelo mesmo motivo que a `identidade` e a `alunos` são dubladas acima: uma
+    suíte que precisa de container fica vermelha por motivo alheio, e a máquina
+    do mantenedor é Windows. O que se prova é o comportamento do relay e a
+    FORMA do que ele publica."""
+
+    def __init__(self) -> None:
+        self.mensagens: list[tuple[str, dict]] = []
+        self.cliente = mock.Mock()
+        self.cliente.xadd.side_effect = self._xadd
+
+    def _xadd(self, stream: str, campos: dict) -> None:
+        # `json.loads` aqui de propósito: se o relay publicar algo que não é
+        # JSON, o teste morre no ponto exato em vez de comparar strings.
+        self.mensagens.append((stream, json.loads(campos["json"])))
+
+    @property
+    def streams(self) -> list[str]:
+        return [stream for stream, _ in self.mensagens]
+
+    def envelopes(self, event: str) -> list[dict]:
+        return [
+            envelope for _, envelope in self.mensagens if envelope["event"] == event
+        ]
+
+    def um_envelope(self, event: str) -> dict:
+        achados = self.envelopes(event)
+        assert len(achados) == 1, f"esperava 1 {event} no fio, vieram {len(achados)}"
+        return achados[0]
+
+
+@pytest.fixture
+def fio(monkeypatch):
+    """O relay publicando contra o dublê, e `REDIS_STREAMS_URL` presente. A
+    variável é montada aqui e não numa fixture `autouse` de propósito: o relay
+    a lê NO PONTO DE USO, e um teste que prove "Redis fora do ar" precisa poder
+    tirá-la."""
+    monkeypatch.setenv("REDIS_STREAMS_URL", "redis://redis.teste:6379/0")
+    linha = Fio()
+    monkeypatch.setattr("redis.from_url", lambda *a, **k: linha.cliente)
+    return linha

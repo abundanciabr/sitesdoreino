@@ -449,6 +449,17 @@
     },
     {
       "celula": "cursos",
+      "rota": "<str:numero>/checkpoint",
+      "endereco": "/cursos/<str:numero>/checkpoint",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Entregar o checkpoint da aula",
+      "descricao": "O gesto de entregar o trabalho por link: o arquivo, as prévias, o README do pacote e a autoavaliação. Não é uma página: quem entrega volta para a aula, no checkpoint, com 'recebido em, revisão até'. Só abre depois de todas as pausas registradas, e só enquanto a aula aceita entrega (em produção, ou devolvida para reenviar).",
+      "exemplo": "/cursos/E00/checkpoint"
+    },
+    {
+      "celula": "cursos",
       "rota": "^static/(?P<caminho>.*)$",
       "endereco": "/cursos/static/(?P<caminho>.*)$",
       "alcance": "publico",

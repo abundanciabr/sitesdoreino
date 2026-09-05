@@ -2,6 +2,7 @@ from django.urls import path, re_path
 
 from apps.core.views import (
     aula,
+    entregar_checkpoint,
     gravar_autoavaliacao,
     healthz,
     mapa,
@@ -28,7 +29,7 @@ from config.api import api
 #
 # As telas que ainda NÃO existem, e o degrau de cada uma: o laudo recebido em
 # `<numero>/laudo` (2.2), o plantão em `plantao` e `plantao/<envio>` (2.2). O
-# envio do checkpoint (2.1) entra como gesto desta mesma tela da aula.
+# envio do checkpoint (2.1) é gesto desta mesma tela da aula: `<numero>/checkpoint`.
 urlpatterns = [
     path("healthz", healthz),
     path("api/cursos/", api.urls),
@@ -49,6 +50,8 @@ urlpatterns = [
     path(
         "<str:numero>/autoavaliacao", gravar_autoavaliacao, name="gravar-autoavaliacao"
     ),
+    # O CHECKPOINT (degrau 2.1): o aluno entrega por link, e volta para a aula.
+    path("<str:numero>/checkpoint", entregar_checkpoint, name="entregar-checkpoint"),
     path("<str:numero>", aula, name="aula"),
     # O MAPA DAS PORTAS, e ele é a raiz da célula: `meshcraft.top/cursos` sem
     # mais nada. Vem por último porque `path("")` casa o caminho vazio.

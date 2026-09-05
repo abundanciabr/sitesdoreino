@@ -75,13 +75,23 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    # [RECEITA:R8 v1] dá o entrypoint `python manage.py run_huey` (django.setup
+    # + autodiscover de tasks.py — sem isso o worker sobe com registro vazio e
+    # não executa nada, `armadilhas/030` §4.11). É o comando do serviço
+    # auxiliar desta célula no compose (degrau 1.7): o relay da outbox e o
+    # tique do prazo de revisão, os dois em `apps/cursos/tasks.py`.
+    "huey.contrib.djhuey",
     "apps.core",
     # O conteúdo do curso como dado: o curso, os blocos, as aulas com suas 16
     # peças, as pausas e os instrumentos (degrau 1.2, `PLANO-CELULA-CURSOS.md`
-    # §4). O progresso, o envio, o laudo e o rascunho da IA vêm nos degraus
-    # 1.8, 2.1, 2.2 e 2.3.
+    # §4); o progresso (1.8); o envio e a outbox (2.1). O laudo e o rascunho
+    # da IA vêm nos degraus 2.2 e 2.3.
     "apps.cursos",
 ]
+
+# O run_huey do djhuey consome a MESMA instância onde as tasks se registram
+# (config/huey.py — leitura de HUEY_REDIS_URL nunca fail-hard no import).
+from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

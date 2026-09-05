@@ -18,9 +18,19 @@ httpx==0.28.1
 # congela no 1.4). Mesma versão das outras células de propósito
 # (`armadilhas/071`).
 django-ninja==1.3.0
+# O relay da outbox e o tique do prazo de revisão (degrau 2.1). As versões são
+# as MESMAS de sugestoes/checkout/quiz/mensageria de propósito: um relay por
+# célula em versão própria seria cinco comportamentos de biblioteca para o
+# mesmo padrão (`armadilhas/071`).
+redis==5.1.1
+huey==2.5.1
 pytest==8.3.4
 pytest-django==4.9.0
 black==24.10.0
+# Só de teste: é com ele que `contracts/eventos/*.json` deixa de ser
+# documentação e passa a reprovar o CI. O envelope real é validado contra o
+# arquivo do contrato, não contra uma cópia do formato dentro do teste.
+jsonschema==4.23.0
 # O dublê de rede dos testes: sem ele, a suíte precisaria de uma identidade de
 # verdade no ar — e suíte que depende de outra célula fica vermelha por motivo
 # alheio.

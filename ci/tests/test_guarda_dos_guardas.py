@@ -744,6 +744,10 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-CUR-P1",
         "INV-CUR-P2",
         "INV-CUR-P3",
+        # O prazo do checkpoint, célula `cursos` (05/09/2026, TAR-155, degrau
+        # 2.1 da escada): `prazo_em` = `enviado_em` + 24 h e não muda por API
+        # nenhuma; o estouro se registra, nunca alonga.
+        "INV-CUR-L3",
         "INV-CI01",
     ]
 

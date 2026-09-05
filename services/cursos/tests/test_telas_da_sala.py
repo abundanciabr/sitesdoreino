@@ -12,8 +12,8 @@ O que este arquivo protege, e por que cada coisa:
 5. **As pausas** têm um formulário cada; registrar cria `RegistroDePausa`,
    repetir é inerte, e campo vazio é recusado com frase.
 6. **O quiz** esconde a resposta-modelo até a autoavaliação ser gravada.
-7. **O checkpoint** diz que o envio nasce no próximo degrau e NÃO tem
-   formulário de envio.
+7. **O checkpoint** tem o formulário de entrega por link, na aula, apontando
+   para o gesto do checkpoint (a jornada inteira mora em `test_envio.py`).
 8. **O CSS responde sob o prefixo** e **todo link interno sai com o prefixo**
    (`armadilhas/083`, `/102`, `/081`).
 9. **O menu do topo** vem do catálogo e falha para "sem menu", nunca tela
@@ -346,15 +346,18 @@ def test_aula_sem_quiz_nao_mostra_a_secao(aluna, esqueleto, client):
 
 
 # ----------------------------------------------------------- 7. o checkpoint
-def test_o_checkpoint_diz_que_o_envio_nasce_no_proximo_degrau_sem_formulario(
-    aluna, aula_publicada, client
-):
+def test_o_checkpoint_tem_o_formulario_de_entrega_por_link(aluna, ana_pronta, client):
+    """A jornada inteira (recusas, a entrega, "recebido em") está em
+    `test_envio.py`; aqui só o lugar: o formulário mora na aula, aponta para o
+    gesto do checkpoint, e o "aceito quando" continua acima dele."""
     corpo = corpo_de(abrir(client, reverse("aula", args=["E00"])))
     inicio = corpo.index('id="checkpoint"')
     checkpoint = corpo[inicio : corpo.index("</section>", inicio)]
-    assert "O envio nasce no próximo degrau" in checkpoint
-    assert "<form" not in checkpoint
+    assert f'action="{reverse("entregar-checkpoint", args=["E00"])}"' in checkpoint
+    assert 'name="arquivo"' in checkpoint
+    assert ">Entregar<" in checkpoint
     assert "as arestas estão suaves" in checkpoint
+    assert "O envio nasce no próximo degrau" not in checkpoint
 
 
 # ------------------------------------------------ 8. o CSS e os links

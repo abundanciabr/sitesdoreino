@@ -872,6 +872,33 @@ coisa alguma, e ainda gasta a confiança de todo mundo.
   vermelhos.
 - **Célula dona:** cursos
 
+### [INV-CUR-L3] O Prazo de Revisão do Checkpoint Nunca Alonga
+- **O quê:** `Envio.prazo_em` é `enviado_em + 24 horas`, calculado uma única
+  vez no `save()` que insere a linha. Depois disso não muda por caminho
+  nenhum: nem por `save()` normal ou com `update_fields`, nem por
+  `QuerySet.update()`, nem por `bulk_update()`, e o banco tem a restrição
+  `prazo_em = enviado_em + 24 h`, que vale até para um `UPDATE` cru pelo
+  `psql`. Quando as 24 horas passam sem laudo, `envio.registrar_estouros`
+  grava a hora em `estourado_em` e nunca no prazo, e a passada seguinte não
+  regrava nem reemite (idempotente pelo filtro `estourado_em IS NULL`).
+  `envio.entregar` não tem parâmetro de prazo, de hora nem de estado.
+- **Por quê:** "24 horas é constante, com teste; `prazo_em` não muda por API;
+  o estouro se registra em `estourado_em`. Não é parâmetro" é a constituição
+  da célula, e o critério de morte da lei (§11) é justamente "o prazo de 24
+  horas como parâmetro ou com botão de alongar". Um prazo que alonga vira
+  favor negociável por aluno; o que a professora vê é sempre o fato: passou,
+  ou não passou. Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 e §9.
+- **Teste-Guarda:** `services/cursos/tests/test_inv_l3_prazo_imutavel.py` — o
+  prazo nasce da constante, um prazo mandado na criação é ignorado, atribuir e
+  salvar recusa (com e sem `update_fields`), `update()` do queryset recusa,
+  `bulk_update()` recusa, o banco recusa um `UPDATE` cru, o estouro registra
+  sem alongar, e a assinatura de `entregar` e as fontes do serviço são
+  varridas por atribuição a `prazo_em`/`enviado_em`. Provado por mutação em
+  05/09/2026: apagar o `else` do `Envio.save()` deixa 1 dente vermelho (2
+  failed, um por campo); esvaziar `update()`/`bulk_update()` de
+  `EnviosQuerySet` deixa 2 dentes vermelhos (3 failed).
+- **Célula dona:** cursos
+
 ### [INV-CI01] Portão Crítico é Fail-Closed
 - **O quê:** todo portão crítico prova positivamente que executou a medição
   antes de devolver sucesso. A semântica é de quatro estados, e não de dois:
