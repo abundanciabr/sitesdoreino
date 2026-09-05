@@ -540,6 +540,26 @@ services:
       metricas:
         condition: service_healthy
 
+  # A sala de aula (DECISAO-celula-de-cursos.md, 04/09/2026). Degrau 1.7 da
+  # escada de PLANO-CELULA-CURSOS.md §10: o passo H do mantenedor
+  # (infra/provisionar-cursos.sh) já rodou na VPS antes deste PR — é o
+  # PORTÃO deste degrau, e é o que faz `env/cursos.env` existir com
+  # `SITE_ID` preenchido antes de o container tentar subir.
+  #
+  # ORDEM DE ENTREGA: este compose entra sozinho, em PR próprio, pela mesma
+  # razão gravada no bloco `identidade` acima — uma célula nova cujo PR traz
+  # código E compose juntos trava os dois deploys no mesmo commit
+  # (`armadilhas/134`). O código da célula já está na `main` desde os PRs
+  # #1046 a #1067; só faltava este arquivo.
+  #
+  # Sem servico `-relay` ou `-consumer` ainda: o checkpoint (degrau 2.1) que
+  # precisa de outbox e Huey esta em construcao num PR separado. Quando ele
+  # pousar, o consumidor entra aqui, no molde de `metricas-eventos` acima.
+  cursos:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-cursos:${CURSOS_TAG:-main}
+    env_file: [env/cursos.env]
+
 volumes:
   pgdata: {}
   redisdata: {}
