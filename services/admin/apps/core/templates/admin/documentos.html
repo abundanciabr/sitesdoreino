@@ -3,7 +3,7 @@
 {% block corpo %}
 <div class="envolucro">
   <h1>Documentos</h1>
-  <p class="subtitulo">Tudo o que o site publica, e quem pode ler cada um.</p>
+  <p class="subtitulo">Duas pastas: a fechada, que só administradores abrem, e a aberta, que o site publica.</p>
 
   {% if recado == "apagado" %}
   <p class="recado">Apagado de vez. O texto e o histórico dele não existem mais.</p>
@@ -14,25 +14,22 @@
   </p>
 
   {% comment %}
-  A lista do administrador mostra TODOS, com a etiqueta de visibilidade bem
-  visível. É o único lugar onde as duas famílias aparecem juntas, e é de
-  propósito: sem isso, saber se um documento está no ar para o mundo exigiria
-  abrir o banco do servidor.
+  Duas pastas na mesma tela, e a fechada em primeiro: pedido do mantenedor em
+  05/09/2026 ("quero uma pasta de docs só para admins"). Não é um endereço novo
+  de propósito: `/admin/docs` chega à célula como `/docs`, o prefixo PÚBLICO, e
+  a porta não teria como distinguir os dois (`DECISAO-a-area-de-documentos.md`
+  §3). Esta lista, atrás da porta, é a única em que as duas famílias aparecem
+  juntas: sem ela, saber se um documento está no ar para o mundo exigiria abrir
+  o banco do servidor.
   {% endcomment %}
-  {% if documentos %}
+  <h2>Só administradores</h2>
+  <p class="nota">Ninguém de fora consegue abrir estes. É a pasta fechada da casa.</p>
+  {% if so_administradores %}
   <div class="cartoes">
-    {% for documento in documentos %}
+    {% for documento in so_administradores %}
     <div class="cartao">
       <div class="rotulo">{{ documento.titulo }}</div>
-      <div class="nota espaco-8">
-        {% if documento.publico %}
-        <b class="verde">PÚBLICO</b> &middot; qualquer pessoa lê em
-        <code>meshcraft.top/docs/{{ documento.nome }}</code>
-        {% else %}
-        <b class="amarelo">SÓ ADMINISTRADORES</b> &middot; ninguém de
-        fora consegue abrir
-        {% endif %}
-      </div>
+      <div class="nota espaco-8"><code>{{ documento.nome }}</code></div>
       <div class="nota">
         <a href="{% url 'documento_admin' documento.nome %}">Ler</a>
         &middot;
@@ -43,9 +40,32 @@
   </div>
   {% else %}
   <p class="aviso">
-    <b>Nenhum documento por aqui ainda.</b>
-    Se você não apagou nenhum, avise o agente: a carga inicial pode não ter
-    rodado nesta subida do sistema.
+    <b>A pasta fechada está vazia.</b> Todo documento novo nasce aqui; para
+    escrever um, use o botão acima.
+  </p>
+  {% endif %}
+
+  <h2 class="espaco-28">Públicos no site</h2>
+  <p class="nota">Qualquer pessoa lê estes em <code>meshcraft.top/docs/</code>, sem entrar em nada.</p>
+  {% if publicos %}
+  <div class="cartoes">
+    {% for documento in publicos %}
+    <div class="cartao">
+      <div class="rotulo">{{ documento.titulo }}</div>
+      <div class="nota espaco-8"><code>meshcraft.top/docs/{{ documento.nome }}</code></div>
+      <div class="nota">
+        <a href="{% url 'documento_admin' documento.nome %}">Ler</a>
+        &middot;
+        <a href="{% url 'documento_editar' documento.nome %}">Editar</a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="aviso">
+    <b>Nenhum documento público.</b> A página <code>meshcraft.top/docs/</code>
+    está no ar, mas vazia. Se você não arquivou nem fechou nenhum, avise o
+    agente: a carga inicial pode não ter rodado nesta subida do sistema.
   </p>
   {% endif %}
 
@@ -79,10 +99,10 @@
 
   <p class="aviso espaco-28">
     <b>Como um documento vira público.</b>
-    Todo documento nasce fechado, visível só nesta tela. Ele passa a aparecer em
-    <code>meshcraft.top/docs/</code> quando alguém decide abri-lo, de propósito.
-    Não existe caminho em que um texto interno escape para o site aberto por
-    esquecimento.
+    Todo documento nasce na pasta fechada, visível só nesta tela. Ele passa para
+    a pasta aberta, em <code>meshcraft.top/docs/</code>, quando alguém decide
+    abri-lo, de propósito. Não existe caminho em que um texto interno escape para
+    o site aberto por esquecimento.
   </p>
 </div>
 {% endblock %}
