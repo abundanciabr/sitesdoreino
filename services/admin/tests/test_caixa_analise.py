@@ -34,6 +34,8 @@ IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
 CAIXA = "http://sugestoes:8000/interno"
 IDEIAS = f"{CAIXA}/gestao/ideias"
+PREVIAS = f"{CAIXA}/gestao/fusoes/previas"
+FUSOES = f"{CAIXA}/gestao/fusoes"
 COOKIE = "meshcraft_sessao=qualquer-coisa-assinada"
 DONO = "dono@exemplo.com"
 
@@ -112,6 +114,14 @@ def a_caixa_responde(ideias, **topo):
     }
     corpo.update(topo)
     respx.get(IDEIAS).mock(return_value=httpx.Response(200, json=corpo))
+    # As duas conversas que a tela passou a ter em 05/09/2026, quando o botão
+    # de juntar nasceu (`DECISAO-fundir-ideias.md`). Aqui elas respondem VAZIO
+    # de propósito: os guardas deste arquivo são sobre a leitura da análise, e
+    # o dublê da junção mora em `test_caixa_fusao.py`. Sem estas duas linhas o
+    # `respx` estoura em toda abertura de página — o que é ele fazendo o
+    # trabalho dele: nenhuma requisição sai daqui sem estar declarada.
+    respx.post(PREVIAS).mock(return_value=httpx.Response(200, json={"previas": []}))
+    respx.get(FUSOES).mock(return_value=httpx.Response(200, json={"fusoes": []}))
 
 
 RE_ESTILO = re.compile("<style\\b[^>]*>.*?</style\\s*>", re.DOTALL | re.IGNORECASE)

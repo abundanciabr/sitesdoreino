@@ -38,12 +38,18 @@ tem um "Fechar" visível em cima e o fundo inteiro é clicável.
 """
 
 from datetime import datetime, timezone as tz
+from urllib.parse import urlencode
 
+from django.http import HttpResponseRedirect
 from django.shortcuts import render
-from django.views.decorators.http import require_GET
+from django.urls import reverse
+from django.views.decorators.http import require_GET, require_POST
 
-from .caixa import _data_curta, _email, _enriquecer, _etapa_de, esperando
+from apps.auditoria.models import Registro
+
+from .caixa import _data_curta, _email, _enriquecer, _etapa_de, _quem, esperando
 from .clients import CaixaClient
+from .views import _auditar
 
 # ---------------------------------------------------------------------------
 # As três mesas — de quem é a vez de trabalhar
@@ -702,28 +708,133 @@ def _padroes(ideias: list, mesas: list, familias: list) -> list:
     return [{"titulo": t, "texto": x} for t, x in padroes]
 
 
-def _fusoes(ideias: list) -> list:
-    """As fusões propostas, só com as ideias que continuam vivas."""
+def _fusoes(ideias: list, caixa: CaixaClient) -> list:
+    """As fusões propostas, com a PRÉVIA de cada uma vinda da Caixa.
+
+    A prévia não é enfeite do modal: ela é a única fonte que sabe quantas
+    pessoas votaram em mais de uma das ideias. Deste lado só existe a contagem
+    por ideia, e somá-la prometeria uma popularidade que a junção não entrega.
+
+    Uma chamada só para todos os grupos. Se ela não responder, as fusões
+    continuam aparecendo como leitura (é análise, e vale sem o botão), mas sem
+    o gesto de juntar: confirmar uma junção sem ver o resultado é exatamente o
+    que o modal existe para evitar.
+    """
     vivas = {i["id"]: i for i in ideias}
     propostas = []
     for ids, nome, motivo in FUSOES:
         membros = [vivas[i] for i in ids if i in vivas]
         if len(membros) < 2:
             continue
+        canonica, *absorvidas = membros
         propostas.append(
             {
                 "membros": membros,
+                "canonica": canonica,
+                "absorvidas": absorvidas,
                 "nome": nome,
                 "motivo": motivo,
                 "votos": sum(i["votos"] for i in membros),
+                "absorvidas_ids": ",".join(str(i["id"]) for i in absorvidas),
+                "previa": None,
             }
         )
+
+    previas = caixa.previas_de_fusao(
+        [
+            {
+                "canonica": p["canonica"]["id"],
+                "absorvidas": [i["id"] for i in p["absorvidas"]],
+            }
+            for p in propostas
+        ]
+    )
+    if previas and len(previas) == len(propostas):
+        for proposta, previa in zip(propostas, previas):
+            proposta["previa"] = previa
     return propostas
+
+
+def _de_volta(desfecho: str, recado: str):
+    """Volta para a análise dizendo o que aconteceu.
+
+    Redirecionar depois do POST é o que impede o F5 de repetir a junção — e
+    repetir uma junção é diferente de repetir um clique inofensivo.
+    """
+    campo = "recado" if desfecho == CaixaClient.OK else "erro"
+    return HttpResponseRedirect(
+        f"{reverse('caixa_analise')}?{urlencode({campo: recado})}#juncoes"
+    )
+
+
+@require_POST
+def fundir(request):
+    """A confirmação: o mantenedor viu a prévia no modal e apertou o botão."""
+    try:
+        canonica = int(request.POST.get("canonica") or 0)
+        absorvidas = [
+            int(i) for i in (request.POST.get("absorvidas") or "").split(",") if i
+        ]
+    except ValueError:
+        return _de_volta(CaixaClient.RECUSADO, "Não entendi quais ideias juntar.")
+    if not canonica or not absorvidas:
+        return _de_volta(CaixaClient.RECUSADO, "Escolha as ideias antes de juntar.")
+
+    desfecho, recado = CaixaClient().fundir(
+        canonica=canonica,
+        absorvidas=absorvidas,
+        nota=(request.POST.get("nota") or "").strip(),
+        quem=_quem(request),
+    )
+    _auditar(
+        request,
+        Registro.FUNDIR_IDEIAS,
+        f"ideia:{canonica}<-{'+'.join(str(i) for i in absorvidas)}",
+        {
+            CaixaClient.OK: Registro.OK,
+            CaixaClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
+        }.get(desfecho, Registro.NAO_RESPONDEU),
+        detalhe=recado,
+    )
+    return _de_volta(
+        desfecho,
+        (
+            "Pronto: as ideias viraram uma só, e todo mundo que estava atrás "
+            "delas foi avisado. Dá para desfazer aqui embaixo."
+            if desfecho == CaixaClient.OK
+            else recado
+        ),
+    )
+
+
+@require_POST
+def desfazer_fusao(request, fusao_id: int):
+    desfecho, recado = CaixaClient().desfazer_fusao(fusao_id, quem=_quem(request))
+    _auditar(
+        request,
+        Registro.DESFAZER_FUSAO,
+        f"fusao:{fusao_id}",
+        {
+            CaixaClient.OK: Registro.OK,
+            CaixaClient.RECUSADO: Registro.RECUSADO_PELA_CELULA,
+        }.get(desfecho, Registro.NAO_RESPONDEU),
+        detalhe=recado,
+    )
+    return _de_volta(
+        desfecho,
+        (
+            "Desfeito: cada ideia voltou a andar sozinha, com os votos e "
+            "comentários que tinha antes."
+            if desfecho == CaixaClient.OK
+            else recado
+        ),
+    )
 
 
 @require_GET
 def analise(request):
-    quadro = CaixaClient().ideias(por_email=_email(request), com_conversa=True)
+    caixa = CaixaClient()
+    quadro = caixa.ideias(por_email=_email(request), com_conversa=True)
     if quadro is None:
         return render(request, "admin/caixa_analise.html", {"nao_respondeu": True})
 
@@ -748,7 +859,10 @@ def analise(request):
             "votos": sum(i["votos"] for i in ideias),
             "familias": familias,
             "mesas": mesas,
-            "fusoes": _fusoes(ideias),
+            "fusoes": _fusoes(ideias, caixa),
+            "juncoes_feitas": caixa.fusoes(),
+            "recado": request.GET.get("recado", ""),
+            "erro": request.GET.get("erro", ""),
             "padroes": _padroes(ideias, mesas, familias),
             "esperando_assinatura": [i for i in ordenadas if i["coluna"] == "assinar"],
             "gerada_em": agora,
