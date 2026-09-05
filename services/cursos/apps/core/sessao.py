@@ -50,11 +50,16 @@ class Ator:
     Existe para UMA coisa: a plateia `staff` do menu do topo. Usá-lo para
     liberar qualquer coisa é a violação que a lei da identidade proíbe.
 
-    `eh_professor` é a plateia do plantão (degrau 2.2): a lista
-    `CURSOS_PROFESSORES`, e SÓ ela — não depende de `eh_aluno` nem de
-    `matricula_conferida`, porque a professora não precisa de matrícula para
-    dar laudo. Reconhecer não é autorizar: quem decide se alguém entra no
-    plantão é esta célula, fail-CLOSED.
+    `eh_professor` é a plateia do plantão (degrau 2.2): a união de
+    `CURSOS_PROFESSORES` com `ADMIN_EMAILS`, a MESMA lista que já abre o
+    `/admin/` (decisão do mantenedor em 05/09/2026, com as palavras dele:
+    "qualquer admin do site pode abrir"). Não depende de `eh_aluno` nem de
+    `matricula_conferida`, porque quem dá laudo não precisa de matrícula.
+
+    **Isso não afrouxa "reconhecer não é autorizar", e a diferença é o campo
+    logo acima:** quem autoriza continua sendo uma lista de e-mails decidida
+    DENTRO desta célula, fail-CLOSED, e ela apenas passou a incluir a lista do
+    `/admin/`. `papel_do_site` continua não liberando nada.
     """
 
     pessoa: Pessoa | None
@@ -159,5 +164,9 @@ def _resolver(request) -> Ator:
         eh_aluno=(categoria == CATEGORIA_ALUNO),
         matricula_conferida=conferida,
         papel_do_site=(corpo.get("papel") or "").strip(),
-        eh_professor=email in _lista_de_emails("CURSOS_PROFESSORES"),
+        # AS DUAS LISTAS, lidas no PONTO DE USO e no mesmo lugar de propósito:
+        # se um dia uma delas mudar de nome, as duas leituras quebram juntas.
+        # Molde: `services/forum/apps/core/sessao.py::email_da_equipe`.
+        eh_professor=email
+        in (_lista_de_emails("CURSOS_PROFESSORES") | _lista_de_emails("ADMIN_EMAILS")),
     )
