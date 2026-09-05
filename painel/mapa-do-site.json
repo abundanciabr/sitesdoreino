@@ -1317,6 +1317,26 @@
     },
     {
       "celula": "admin",
+      "rota": "caixa/analise/fundir",
+      "endereco": "/admin/caixa/analise/fundir",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Juntar ideias numa só",
+      "descricao": "O que acontece ao confirmar a junção: os votos e os comentários passam para a ideia que fica de pé, e quem estava atrás das outras é avisado. Dá para desfazer."
+    },
+    {
+      "celula": "admin",
+      "rota": "caixa/analise/fusao/<int:fusao_id>/desfazer",
+      "endereco": "/admin/caixa/analise/fusao/<int:fusao_id>/desfazer",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Desfazer a junção de ideias",
+      "descricao": "Cada ideia volta a andar sozinha, com os votos e comentários que tinha antes da junção."
+    },
+    {
+      "celula": "admin",
       "rota": "caixa/ideia/<int:ideia_id>/",
       "endereco": "/admin/caixa/ideia/<int:ideia_id>/",
       "alcance": "publico",

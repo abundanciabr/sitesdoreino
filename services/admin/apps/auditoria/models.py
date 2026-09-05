@@ -87,6 +87,12 @@ class Registro(models.Model):
     # comentário acima) — este é sobre a ideia, é um alvo diferente, e a
     # mesma palavra "apagar" nos dois criaria ambiguidade sobre QUEM sumiu.
     APAGAR_IDEIA = "apagar_ideia"
+    # [FUNDIR] 05/09/2026 (`DECISAO-fundir-ideias.md`). Dois verbos, e não um
+    # com um campo dizendo o sentido: juntar e desfazer são gestos com
+    # consequências opostas para quem escreveu a ideia absorvida, e quem ler
+    # esta tabela em meses precisa distingui-los sem interpretar detalhe.
+    FUNDIR_IDEIAS = "fundir_ideias"
+    DESFAZER_FUSAO = "desfazer_fusao"
     # [CORRIGIR-IDEIA] 31/08/2026 (`DECISAO-corrigir-o-texto-de-uma-ideia.md`).
     # Verbo próprio pela razão mais forte da lista: a correção é CALADA para o
     # aluno, por decisão do mantenedor. A Caixa guarda o texto anterior de cada
@@ -238,6 +244,8 @@ class Registro(models.Model):
         (ARQUIVAR_IDEIA, "arquivar a ideia"),
         (DESARQUIVAR_IDEIA, "desarquivar a ideia"),
         (APAGAR_IDEIA, "apagar a ideia definitivamente"),
+        (FUNDIR_IDEIAS, "juntar ideias numa so"),
+        (DESFAZER_FUSAO, "desfazer a juncao de ideias"),
         (CORRIGIR_IDEIA, "corrigir o texto da ideia"),
         (EDITAR_MENU, "mudar o menu do topo do site"),
         (CRIAR_DOCUMENTO, "criar um documento do site"),
