@@ -270,18 +270,47 @@ def importar_da_pasta(modelo) -> int:
     for caminho in sorted(pasta.glob("*.md")):
         if caminho.stem in FORA_DA_LISTA:
             continue
-        campos = de_texto(caminho.stem, caminho.read_text(encoding="utf-8"))
-        _, criado = modelo.objects.get_or_create(
-            nome=campos.nome,
-            defaults={
-                "titulo": campos.titulo,
-                "publico": campos.publico,
-                "ordem": campos.ordem,
-                "corpo": campos.corpo,
-            },
-        )
-        quantos += 1 if criado else 0
+        quantos += 1 if _semear(modelo, caminho) else 0
     return quantos
+
+
+def semear_documento(modelo, nome: str) -> bool:
+    """Semeia UM documento da pasta, pelo endereço. Devolve se ele entrou.
+
+    É a porta de todo documento NOVO desde 05/09/2026 (a migração `0007` foi a
+    primeira a usá-la). A `0003` já rodou no banco de produção e não roda de
+    novo, então um arquivo novo em `documentos/` não vira página sozinho: o
+    deploy termina verde e o endereço responde 404 (`armadilhas/347`). Cada
+    documento novo entra por uma migração própria, que chama isto com o nome.
+
+    Semeia SÓ o pedido. A pasta inteira é da `0003`, que roda uma vez por
+    desenho: uma segunda passagem por ela teria de responder o que fazer com
+    cada documento que já existe, e um nome só não tem essa pergunta. Nunca
+    sobrescreve, pela mesma razão de `importar_da_pasta`. Sem a pasta na imagem,
+    ou sem o arquivo, não faz nada, e a subida continua.
+    """
+    pasta = diretorio()
+    if pasta is None:
+        return False
+    caminho = pasta / f"{nome}.md"
+    if not caminho.is_file():
+        return False
+    return _semear(modelo, caminho)
+
+
+def _semear(modelo, caminho: Path) -> bool:
+    """Um arquivo vira linha, se a linha ainda não existir."""
+    campos = de_texto(caminho.stem, caminho.read_text(encoding="utf-8"))
+    _, criado = modelo.objects.get_or_create(
+        nome=campos.nome,
+        defaults={
+            "titulo": campos.titulo,
+            "publico": campos.publico,
+            "ordem": campos.ordem,
+            "corpo": campos.corpo,
+        },
+    )
+    return criado
 
 
 # ---------------------------------------------------------------------------
