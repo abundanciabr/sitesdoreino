@@ -400,57 +400,58 @@
     {
       "celula": "cursos",
       "rota": "healthz",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/cursos/healthz",
+      "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "O sinal de vida da sala de aula",
-      "descricao": "Responde 'estou de pé' pela rede interna. É por aqui que o pipeline vai saber se a parte que guarda o curso subiu inteira. Quando /cursos entrar no roteamento (degrau 1.7), este endereço passa a ser /cursos/healthz."
+      "descricao": "Responde 'estou de pé'. É por aqui que o pipeline sabe se a parte que guarda o curso subiu inteira."
     },
     {
       "celula": "cursos",
       "rota": "",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/cursos/",
+      "alcance": "publico",
       "para_quem": "aluno",
       "titulo": "O mapa das portas do curso",
-      "descricao": "A home do curso: as 34 encomendas em três Partes e doze Blocos, o estado de cada porta (trancada, disponível, em produção, enviada, devolvida, concluída) e a próxima aberta em destaque. Só abre para quem tem matrícula ativa; quem não entrou vê o convite para entrar, e quem entrou sem matrícula recebe a explicação.",
-      "observacao": "Enquanto /cursos não entra no roteamento (degrau 1.7), esta página só existe na rede interna. Quando entrar, o endereço será /cursos/."
+      "descricao": "A home do curso: as 34 encomendas em três Partes e doze Blocos, o estado de cada porta (trancada, disponível, em produção, enviada, devolvida, concluída) e a próxima aberta em destaque. Só abre para quem tem matrícula ativa; quem não entrou vê o convite para entrar, e quem entrou sem matrícula recebe a explicação."
     },
     {
       "celula": "cursos",
       "rota": "<str:numero>",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/cursos/<str:numero>",
+      "alcance": "publico",
       "para_quem": "aluno",
       "titulo": "Uma aula do curso",
       "descricao": "A encomenda inteira: as 16 peças na ordem, o vídeo por link (YouTube e Vimeo embutidos; os outros abrem em outra aba), a lista de pausas com um formulário por pausa, o quiz de autoavaliação (a resposta-modelo só abre depois de a pessoa gravar a sua) e o lugar do checkpoint, que ainda diz que o envio nasce no próximo degrau. Aula não publicada não existe para o aluno; porta trancada volta para o mapa.",
-      "observacao": "Quando /cursos entrar no roteamento (degrau 1.7), o endereço será /cursos/E00, /cursos/E01 e assim por diante."
+      "exemplo": "/cursos/E00"
     },
     {
       "celula": "cursos",
       "rota": "<str:numero>/pausas/<int:ordem>",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/cursos/<str:numero>/pausas/<int:ordem>",
+      "alcance": "publico",
       "para_quem": "aluno",
       "gesto": true,
       "titulo": "Registrar uma pausa do vídeo",
-      "descricao": "O gesto de gravar o que a pausa pediu. Não é uma página: quem registra volta para a aula, na própria pausa, com a resposta. Uma pausa, um registro: registrar de novo não muda nada."
+      "descricao": "O gesto de gravar o que a pausa pediu. Não é uma página: quem registra volta para a aula, na própria pausa, com a resposta. Uma pausa, um registro: registrar de novo não muda nada.",
+      "exemplo": "/cursos/E00/pausas/1"
     },
     {
       "celula": "cursos",
       "rota": "<str:numero>/autoavaliacao",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/cursos/<str:numero>/autoavaliacao",
+      "alcance": "publico",
       "para_quem": "aluno",
       "gesto": true,
       "titulo": "Gravar a autoavaliação do quiz",
-      "descricao": "O gesto de gravar as respostas do quiz com as próprias palavras. Não é uma página: quem grava volta para a aula, no quiz, e só então vê as respostas-modelo. Grava uma vez só."
+      "descricao": "O gesto de gravar as respostas do quiz com as próprias palavras. Não é uma página: quem grava volta para a aula, no quiz, e só então vê as respostas-modelo. Grava uma vez só.",
+      "exemplo": "/cursos/E00/autoavaliacao"
     },
     {
       "celula": "cursos",
       "rota": "^static/(?P<caminho>.*)$",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/cursos/static/(?P<caminho>.*)$",
+      "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "A aparência da sala de aula",
       "descricao": "O arquivo de estilo das telas do curso, buscado pelo navegador sozinho."
@@ -458,12 +459,11 @@
     {
       "celula": "cursos",
       "rota": "api/cursos/",
-      "endereco": "-",
-      "alcance": "interno",
+      "endereco": "/cursos/api/cursos/",
+      "alcance": "publico",
       "para_quem": "maquina",
       "titulo": "A porta de máquina do curso",
-      "descricao": "Por onde o editor do Admin lê e grava o conteúdo do curso: a lista das encomendas, cada aula com as 16 peças e as pausas, a escala de cada instrumento, e o botão de publicar. O texto das aulas mora só aqui, e entra só por aqui. Só responde a quem apresenta a senha de máquina.",
-      "observacao": "Enquanto /cursos não entra no roteamento (degrau 1.7), esta porta só existe na rede interna. Quando entrar, ela fica debaixo dele, alcançável pela internet: quem a fecha é a senha de par, nunca o roteamento, e a lista de senhas nasce VAZIA (ninguém passa) até o editor do Admin ganhar a dele."
+      "descricao": "Por onde o editor do Admin lê e grava o conteúdo do curso: a lista das encomendas, cada aula com as 16 peças e as pausas, a escala de cada instrumento, e o botão de publicar. O texto das aulas mora só aqui, e entra só por aqui. Só responde a quem apresenta a senha de máquina."
     },
     {
       "celula": "encomendas",

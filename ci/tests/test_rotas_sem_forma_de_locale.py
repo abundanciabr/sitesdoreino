@@ -275,6 +275,7 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "docs",
         "forum",
         "conquistas",
+        "cursos",
     }
 
 
