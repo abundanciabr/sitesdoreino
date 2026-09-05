@@ -1266,6 +1266,12 @@ class MedicaoClient:
     OK = "ok"
     NAO_RESPONDEU = "nao-respondeu"
     SEM_CONFIGURACAO = "sem-configuracao"
+    #: Só a inspeção de UM evento morto usa este: o contrato promete 404 para
+    #: id que não existe, e a tela precisa saber a diferença entre "esse evento
+    #: não existe" (endereço digitado errado, ou fila já limpa) e "a medição
+    #: não respondeu". Achatar os dois num erro só mandaria o mantenedor
+    #: procurar defeito onde não há nenhum.
+    NAO_EXISTE = "nao-existe"
 
     def _configuracao(self) -> "tuple[str, str] | None":
         """Endereço e token do par, ou `None` se o env não os tiver.
@@ -1281,7 +1287,13 @@ class MedicaoClient:
             return None
         return base, token
 
-    def _pedir(self, caminho: str, params: dict) -> "tuple[str, object]":
+    def _pedir(
+        self, caminho: str, params: dict, *, aceita_404: bool = False
+    ) -> "tuple[str, object]":
+        """`aceita_404` é opt-in de propósito: para a cobertura e para a fila,
+        um 404 é a porta fora do lugar, e vira `NAO_RESPONDEU` como qualquer
+        outra resposta estranha. Só quem pede UM evento por id tem um 404 que
+        significa alguma coisa."""
         config = self._configuracao()
         if config is None:
             logger.warning(
@@ -1300,6 +1312,8 @@ class MedicaoClient:
         except httpx.HTTPError as erro:
             logger.error("medicao: a medição não respondeu: %s", erro)
             return self.NAO_RESPONDEU, None
+        if aceita_404 and r.status_code == 404:
+            return self.NAO_EXISTE, None
         if r.status_code != 200:
             logger.error("medicao: a medição respondeu HTTP %s", r.status_code)
             return self.NAO_RESPONDEU, None
@@ -1320,21 +1334,53 @@ class MedicaoClient:
             return self.NAO_RESPONDEU, None
         return self.OK, tipos
 
-    def quebrados(self) -> "tuple[str, int | None]":
-        """Quantos eventos chegaram e não puderam ser afirmados.
+    def mortos(self, limite: int = 30) -> "tuple[str, dict | None]":
+        """A fila do que chegou e não pôde ser afirmado: o total e o topo dela.
 
-        `limite=1` de propósito: o que esta tela usa é o `total`, e a fila de
-        mortos pode ter milhares de linhas num incidente. Pedir a página inteira
-        para mostrar um número seria pagar o pior caso por nada.
+        `{"total": int, "itens": [...]}`. O `corpo` cru NÃO vem aqui, e não é
+        economia de bytes: o contrato o esconde da lista de propósito, porque
+        um envelope quebrado pode conter o que esta casa não guarda (nome,
+        e-mail, texto de mensagem). Quem precisa ver um corpo pede UM, por
+        `morto`, e aí é inspeção deliberada.
         """
-        desfecho, corpo = self._pedir("/eventos-mortos", {"limite": 1})
+        desfecho, corpo = self._pedir("/eventos-mortos", {"limite": limite})
         if desfecho != self.OK:
             return desfecho, None
         total = (corpo or {}).get("total")
-        if not isinstance(total, int):
-            logger.error("medicao: 'total' fora do contrato: %r", total)
+        itens = (corpo or {}).get("itens")
+        if not isinstance(total, int) or not isinstance(itens, list):
+            logger.error("medicao: a fila de mortos veio fora do contrato: %r", corpo)
             return self.NAO_RESPONDEU, None
-        return self.OK, total
+        return self.OK, {"total": total, "itens": itens}
+
+    def morto(self, morto_id: int) -> "tuple[str, dict | None]":
+        """UM evento morto, com o corpo cru: a ação "inspecionar" do plano.
+
+        Devolve `NAO_EXISTE` para id que não existe, e nunca um dicionário
+        vazio: resposta vazia que parece resposta é o pior desfecho possível
+        numa tela onde se decide o que fazer com um fato que se perdeu.
+        """
+        desfecho, corpo = self._pedir(
+            f"/eventos-mortos/{int(morto_id)}", {}, aceita_404=True
+        )
+        if desfecho != self.OK:
+            return desfecho, None
+        if not isinstance(corpo, dict) or "corpo" not in corpo:
+            logger.error("medicao: o evento morto veio fora do contrato: %r", corpo)
+            return self.NAO_RESPONDEU, None
+        return self.OK, corpo
+
+    def quebrados(self) -> "tuple[str, int | None]":
+        """Quantos eventos chegaram e não puderam ser afirmados.
+
+        `limite=1` de propósito: quem chama é a linha do placar, que usa só o
+        `total`, e a fila pode ter milhares de linhas num incidente. Pedir a
+        página inteira para mostrar um número seria pagar o pior caso por nada.
+        A conferência da forma é a de `mortos`, e não uma segunda: dois lugares
+        decidindo o que é "fora do contrato" divergem no primeiro campo novo.
+        """
+        desfecho, fila = self.mortos(limite=1)
+        return desfecho, None if fila is None else fila["total"]
 
 
 class MensageriaClient:

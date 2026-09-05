@@ -65,6 +65,7 @@ from apps.core.planos_para_ia import plano_publico, planos_indice
 from apps.core.painel import painel, painel_arquivo
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
+from apps.core.confianca import confianca, confianca_quebrado
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
 from apps.core.robos import robos
@@ -445,6 +446,25 @@ urlpatterns = [
     # é onde o mantenedor entende que está. Um item novo no menu para uma
     # leitura da mesma meta seria o menu crescendo sem realidade nova.
     path("placar/ciclo/", ciclo, name="ciclo"),
+    # A CONFIANÇA (`apps/core/confianca.py`, 05/09/2026) — cobertura, frescor e
+    # o que chegou quebrado: o degrau 11 do plano do painel de gestão (§6.6).
+    #
+    # Sub-rota do placar pela mesma razão do calendário logo acima, e por uma
+    # segunda: esta tela não é um assunto novo da administração, é a pergunta
+    # "dá para acreditar no que acabei de ler?" feita sobre AQUELES números.
+    # Como seção própria do menu ela viveria longe do que julga, e a lista de
+    # seções (`moldura.py`) cresceria sem realidade nova.
+    path("placar/confianca/", confianca, name="confianca"),
+    # A inspeção de UM evento que chegou quebrado. É a única porta desta área
+    # que mostra o corpo cru de um envelope, e por isso ela é um endereço
+    # separado em vez de um trecho da lista: o contrato esconde o corpo em
+    # lote de propósito (ele pode trazer o que esta casa não guarda), e ver um
+    # tem de ser um gesto deliberado do mantenedor.
+    path(
+        "placar/confianca/quebrado/<int:morto_id>/",
+        confianca_quebrado,
+        name="confianca_quebrado",
+    ),
     path("reuniao/", reuniao, name="reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora
