@@ -15,15 +15,25 @@ publicaria carta nenhuma.
 
 O parâmetro tem default de propósito: os três handlers de pagamento não o usam, e
 os testes que os chamam com um argumento só continuam valendo.
+
+**E desde 05/09/2026 recebe também o `ator_id`**, pelo mesmo motivo de forma: em
+`envio.recebido.v1` o aluno viaja SÓ no `ator_id` do envelope (o `data` tem os
+ids do curso, da aula e do envio, e nada de gente), e o handler que guarda de
+quem é cada envio não tinha como lê-lo. Mesmo desenho: terceiro parâmetro, com
+default, e só quem precisa o usa.
 """
+
+import logging
 
 from django.db import transaction
 
 from apps.jornadas import motor
-from apps.jornadas.models import Jornada
+from apps.jornadas.models import EnvioDeCheckpoint, Jornada
 
 from .models import EnvioRegistrado
 from .tasks import enviar_notificacao
+
+log = logging.getLogger(__name__)
 
 # O gatilho da jornada é o NOME DO EVENTO no fio, sem a versão — a mesma grafia
 # que a `identidade` publica (`apps/identidade/eventos.py::PESSOA_CADASTRADA`) e
@@ -32,6 +42,12 @@ from .tasks import enviar_notificacao
 # nada reclama, e a sequência simplesmente não acontece. Guarda:
 # `tests/test_jornadas_primeira_sequencia.py::test_o_gatilho_da_jornada_casa_com_o_stream`.
 GATILHO_CADASTRO = "identidade.pessoa-cadastrada"
+
+# A sala de aula (célula `cursos`, degrau 2.4): o laudo devolvido dispara a
+# jornada do silêncio de 14 e 30 dias; o envio recebido a cancela. Mesma regra
+# de grafia: o nome no FIO, sem a versão.
+GATILHO_DEVOLUCAO = "checkpoint.devolvido"
+EVENTO_ENVIO_RECEBIDO = "envio.recebido"
 
 # Templates versionados dentro da célula (constituicoes/AGENTS.mensageria.md).
 # TEMPLATES_POR_SITE é o ponto de extensão para override por site_id — vazio
@@ -91,7 +107,9 @@ def _registrar_e_enfileirar(
         transaction.on_commit(lambda: enviar_notificacao(envio.id))
 
 
-def ao_pagamento_aprovado(data: dict, event_id: str | None = None) -> None:
+def ao_pagamento_aprovado(
+    data: dict, event_id: str | None = None, ator_id: str | None = None
+) -> None:
     cliente = data["customer"]
     tpl = _resolver_template("boas_vindas", data["site_id"])
     contexto = {"name": cliente["name"]}
@@ -118,7 +136,9 @@ def ao_pagamento_aprovado(data: dict, event_id: str | None = None) -> None:
         )
 
 
-def ao_pix_expirado(data: dict, event_id: str | None = None) -> None:
+def ao_pix_expirado(
+    data: dict, event_id: str | None = None, ator_id: str | None = None
+) -> None:
     cliente = data["customer"]
     tpl = _resolver_template("recuperacao_pix", data["site_id"])
     contexto = {"name": cliente["name"], "recovery_url": data["recovery_url"]}
@@ -145,7 +165,9 @@ def ao_pix_expirado(data: dict, event_id: str | None = None) -> None:
         )
 
 
-def ao_pagamento_recusado(data: dict, event_id: str | None = None) -> None:
+def ao_pagamento_recusado(
+    data: dict, event_id: str | None = None, ator_id: str | None = None
+) -> None:
     cliente = data["customer"]
     tpl = _resolver_template("recuperacao_recusado", data["site_id"])
     contexto = {"name": cliente["name"], "reason_code": data["reason_code"]}
@@ -172,7 +194,9 @@ def ao_pagamento_recusado(data: dict, event_id: str | None = None) -> None:
         )
 
 
-def ao_pessoa_cadastrada(data: dict, event_id: str | None = None) -> None:
+def ao_pessoa_cadastrada(
+    data: dict, event_id: str | None = None, ator_id: str | None = None
+) -> None:
     """Alguém entrou no site pela primeira vez: inscreve nas jornadas do gatilho.
 
     O leque é por JORNADA, não por pessoa: se um dia houver duas sequências
@@ -197,4 +221,102 @@ def ao_pessoa_cadastrada(data: dict, event_id: str | None = None) -> None:
             destinatario_id=pessoa_id,
             site_id=site_id,
             origem_event_id=event_id,
+        )
+
+
+def ao_envio_recebido(
+    data: dict, event_id: str | None = None, ator_id: str | None = None
+) -> None:
+    """O aluno entregou um checkpoint: guarda de quem ele é, e cala o silêncio.
+
+    Duas coisas, e a ordem não importa porque vivem na mesma transação do
+    consumidor:
+
+    1. **A correlação.** O devolvido que vier depois só carrega o `envio_id`;
+       o aluno viaja AQUI, no `ator_id` do envelope, e em lugar nenhum mais.
+       Sem esta linha o devolvido não sabe quem inscrever, e não chuta.
+    2. **O cancelamento.** Um envio novo para a mesma (site, aluno, aula) é a
+       prova de que a pessoa agiu: o episódio do silêncio que estiver andando
+       para aquela aula é cancelado na hora, por evento, sem esperar a
+       varredura reavaliar nada.
+
+    O `ator_id` é lido do envelope (`processar_envelope` o repassa ao lado do
+    `data`): é o id de PLATAFORMA do aluno, o único que atravessa células
+    (`armadilhas/255`). Sem ele, este handler não grava nem cancela nada.
+    """
+    site_id = data["site_id"]
+    aula_id = data["aula_id"]
+    aluno_id = ator_id
+    if not aluno_id:
+        log.warning(
+            "envio.recebido %s sem ator_id: nao sei de quem e o envio %s, entao "
+            "nao guardo a correlacao nem cancelo silencio nenhum (o contrato "
+            "manda o aluno no ator_id; se isto se repetir, e defeito do produtor)",
+            event_id,
+            data["envio_id"],
+        )
+        return
+    EnvioDeCheckpoint.objects.get_or_create(
+        site_id=site_id,
+        envio_id=data["envio_id"],
+        defaults={"aula_id": aula_id, "aluno_id": aluno_id},
+    )
+    for jornada in Jornada.objects.filter(site_id=site_id, gatilho=GATILHO_DEVOLUCAO):
+        motor.cancelar(
+            jornada,
+            destinatario_id=aluno_id,
+            site_id=site_id,
+            contexto_id=aula_id,
+            motivo="o aluno enviou o checkpoint de novo",
+        )
+
+
+def ao_checkpoint_devolvido(
+    data: dict, event_id: str | None = None, ator_id: str | None = None
+) -> None:
+    """A professora devolveu o checkpoint: o relógio do silêncio começa a contar.
+
+    O aluno NÃO viaja neste evento (o `ator_id` é quem assinou o laudo). Ele
+    vem da correlação que o `envio.recebido` do mesmo `envio_id` gravou antes.
+    Se ela não existir (relay fora de ordem, ou envio anterior ao dia em que
+    esta célula passou a escutar a sala de aula), ninguém é inscrito e o log
+    diz por quê, com os ids: chutar o destinatário seria a pessoa fantasma da
+    `armadilhas/255`, e retentar cinco vezes pela PEL derrubaria o consumidor
+    cinco vezes (`_processar_e_ack` deixa a exceção subir) por um evento que,
+    na prática, nunca vai encontrar o que procura.
+
+    Um devolvido novo para a mesma (site, aluno, aula) RECOMEÇA a contagem:
+    o episódio anterior é cancelado e o novo nasce ancorado agora. O mesmo
+    devolvido reentregue não recomeça nada (`motor.recomecar`).
+
+    Jornada desligada não inscreve ninguém; quem liga é o mantenedor, na tela
+    dele, e quem faz valer é o `motor.inscrever()`.
+    """
+    site_id = data["site_id"]
+    envio = EnvioDeCheckpoint.objects.filter(
+        site_id=site_id, envio_id=data["envio_id"]
+    ).first()
+    if envio is None:
+        log.warning(
+            "checkpoint.devolvido %s chegou sem o envio.recebido do envio %s "
+            "(site %s, aula %s): nao sei quem e o aluno, entao NAO inscrevo "
+            "ninguem no silencio da devolucao. Se o envio.recebido chegar "
+            "depois, este devolvido ja foi consumido e nao volta: o aluno so "
+            "entra na jornada no proximo devolvido",
+            event_id,
+            data["envio_id"],
+            site_id,
+            data["aula_id"],
+        )
+        return
+    for jornada in Jornada.objects.filter(
+        site_id=site_id, gatilho=GATILHO_DEVOLUCAO, ativa=True
+    ):
+        motor.recomecar(
+            jornada,
+            destinatario_id=envio.aluno_id,
+            site_id=site_id,
+            contexto_id=data["aula_id"],
+            origem_event_id=event_id,
+            motivo="um devolvido novo recomecou a contagem",
         )

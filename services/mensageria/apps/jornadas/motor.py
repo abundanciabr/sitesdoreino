@@ -1,4 +1,5 @@
-"""O motor: inscrever, agendar, reavaliar a condição, desistir, e a varredura.
+"""O motor: inscrever, agendar, reavaliar a condição, desistir, cancelar por
+evento, recomeçar, e a varredura.
 
 Lei: `docs/decisoes/PLANO-SEQUENCIAS-DE-MENSAGENS.md` §2 (as três capacidades que
 não existiam), §5 (o modelo e os cinco carimbos de tempo) e §9 (os riscos, que
@@ -133,10 +134,15 @@ def inscrever(
     *,
     destinatario_id: str,
     site_id: str,
+    contexto_id: str = "",
     origem_event_id=None,
     momento: datetime | None = None,
 ) -> Inscricao | None:
     """Põe uma pessoa numa jornada. Devolve `None` quando não há onde inscrever.
+
+    `contexto_id` é o que delimita o episódio quando ele não é da pessoa
+    inteira (a aula, no silêncio da devolução). Vazio é o caso comum, e com ele
+    esta função faz exatamente o que sempre fez.
 
     TRÊS CAMADAS DE IDEMPOTÊNCIA, e nenhuma substitui a outra:
 
@@ -166,6 +172,7 @@ def inscrever(
             jornada=jornada,
             destinatario_id=destinatario_id,
             site_id=site_id,
+            contexto_id=contexto_id,
             origem_event_id=origem_event_id,
         ).first()
         if ja is not None:
@@ -181,6 +188,7 @@ def inscrever(
                 jornada_versao=versao,
                 destinatario_id=destinatario_id,
                 site_id=site_id,
+                contexto_id=contexto_id,
                 ancora_em=agora,
                 proximo_em=agora + primeiro.atraso if primeiro else None,
                 origem_event_id=origem_event_id,
@@ -193,8 +201,90 @@ def inscrever(
             jornada=jornada,
             destinatario_id=destinatario_id,
             site_id=site_id,
+            contexto_id=contexto_id,
             estado="andando",
         ).first()
+
+
+def cancelar(
+    jornada: Jornada,
+    *,
+    destinatario_id: str,
+    site_id: str,
+    contexto_id: str = "",
+    motivo: str,
+) -> int:
+    """Interrompe POR FORA o episódio que está andando. Devolve quantos parou.
+
+    É a capacidade que o §2 do plano chama de "desistir na hora certa" vinda
+    de um EVENTO, e não de uma condição reavaliada na varredura: o aluno que
+    reenviou o checkpoint não pode receber "você sabe o que fazer amanhã?"
+    amanhã, e a varredura de cinco em cinco minutos não é rápida o bastante
+    para uma pessoa que acabou de agir. O estado `cancelada` existia no
+    vocabulário desde o degrau 2; até aqui nada o escrevia.
+
+    Um `update()` e não um `save()` por linha, de propósito: a trava parcial só
+    conhece `andando`, então a linha cancelada libera a chave no mesmo
+    instante, e um episódio novo pode nascer logo depois (`recomecar`). O que
+    já saiu fica gravado em `Entrega`: cancelar não reescreve história.
+    """
+    return Inscricao.objects.filter(
+        jornada=jornada,
+        destinatario_id=destinatario_id,
+        site_id=site_id,
+        contexto_id=contexto_id,
+        estado="andando",
+    ).update(estado="cancelada", proximo_em=None, motivo_de_saida=motivo)
+
+
+def recomecar(
+    jornada: Jornada,
+    *,
+    destinatario_id: str,
+    site_id: str,
+    contexto_id: str = "",
+    origem_event_id,
+    motivo: str,
+    momento: datetime | None = None,
+) -> Inscricao | None:
+    """O relógio conta do ÚLTIMO fato: cancela o episódio andando e abre outro.
+
+    A ordem das duas conferências é o que importa aqui, e ela é fácil de
+    inverter sem que nada dê erro:
+
+    1. **O mesmo fato reentregue não recomeça nada.** Se este `origem_event_id`
+       já inscreveu alguém, devolve essa inscrição e não toca em mais nada.
+       Sem esta linha primeiro, a reentrega cancelaria o episódio que ela
+       mesma abriu e depois o `inscrever` devolveria a linha cancelada:
+       a pessoa sairia da jornada por um evento repetido, em silêncio.
+    2. Só então o episódio anterior (de OUTRO fato) é cancelado, e o novo
+       nasce ancorado em `momento`.
+    """
+    if origem_event_id is not None:
+        ja = Inscricao.objects.filter(
+            jornada=jornada,
+            destinatario_id=destinatario_id,
+            site_id=site_id,
+            contexto_id=contexto_id,
+            origem_event_id=origem_event_id,
+        ).first()
+        if ja is not None:
+            return ja
+    cancelar(
+        jornada,
+        destinatario_id=destinatario_id,
+        site_id=site_id,
+        contexto_id=contexto_id,
+        motivo=motivo,
+    )
+    return inscrever(
+        jornada,
+        destinatario_id=destinatario_id,
+        site_id=site_id,
+        contexto_id=contexto_id,
+        origem_event_id=origem_event_id,
+        momento=momento,
+    )
 
 
 def _proximo_passo(inscricao: Inscricao) -> Passo | None:
