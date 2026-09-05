@@ -20,7 +20,7 @@ from apps.core.auth import bearerAuth
 # ENTÃO QUEM FECHA A PORTA É O BEARER, E SÓ ELE: 401 sem token, e o conjunto de
 # tokens nasce VAZIO (`settings.TOKENS_ACEITOS`). Não há segunda camada por
 # baixo, e é por isso que o guarda de 401 em `tests/test_porta_exige_bearer.py`
-# cobre as CINCO operações, o token errado e o conjunto vazio, em vez de
+# cobre as SETE operações, o token errado e o conjunto vazio, em vez de
 # confiar no roteador.
 api = NinjaAPI(
     title="Cursos — API interna",
@@ -30,10 +30,11 @@ api = NinjaAPI(
         "\n"
         "Existe para que o conteudo do curso tenha UM lugar, o banco desta\n"
         "celula, e para que o editor do Admin leia e grave por aqui, nunca no\n"
-        "banco e nunca guardando copia (a lei anti-duplicacao). Este e o\n"
-        "degrau 1.3 da escada: as cinco operacoes do editor. Os verificadores\n"
-        "(checkLesson), o placar da fila (getReviewQueue) e o progresso do\n"
-        "aluno (getStudentProgress) nascem nos degraus 3.1, 2.1 e 1.8.\n"
+        "banco e nunca guardando copia (a lei anti-duplicacao). Sao as sete\n"
+        "operacoes do editor: as cinco do degrau 1.3 da escada e as duas\n"
+        "leituras de instrumento do degrau 1.3b. Os verificadores\n"
+        "(checkLesson) nascem no degrau 3.1; o placar da fila\n"
+        "(getReviewQueue) e o progresso do aluno (getStudentProgress), no 2.1.\n"
         "\n"
         "Lei do assunto: docs/decisoes/PLANO-CELULA-CURSOS.md (secoes 4 e 5).\n"
         "\n"
