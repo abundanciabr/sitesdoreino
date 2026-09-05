@@ -105,6 +105,19 @@ copiado e mandado para alguém.
       table.familias th { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--texto-3); font-weight: 600; }
       table.familias td.votos { font-weight: 700; white-space: nowrap; }
 
+      .juncao { background: var(--painel); border: 1px solid var(--linha); border-radius: 12px; padding: 14px 18px; margin-top: 12px; }
+      .juncao h3 { margin: 0 0 4px; font-size: 17px; }
+      .juncao p { margin: 0; color: var(--texto-2); max-width: 82ch; }
+      .juncao-acao { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+      .placar-fusao { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 0; }
+      .placar-fusao div { flex: 1 1 150px; background: var(--fundo); border: 1px solid var(--linha); border-radius: 10px; padding: 10px 12px; }
+      .placar-fusao b { display: block; font-size: 22px; line-height: 1.2; }
+      .placar-fusao span { font-size: 12px; color: var(--texto-2); }
+      .campo-nota { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 8px; background: var(--fundo); color: var(--texto); font-family: inherit; font-size: 14px; }
+      .botao-perigo { border-color: var(--amarelo); color: var(--amarelo); }
+      .botao-perigo:hover, .botao-perigo:focus { border-color: var(--vermelho); color: var(--vermelho); }
+      .lista-seca { margin: 8px 0 0; padding-left: 18px; color: var(--texto-2); }
+      .lista-seca li { margin: 3px 0; }
       .padrao { background: var(--painel); border: 1px solid var(--linha); border-radius: 12px; padding: 14px 18px; margin-top: 12px; }
       .padrao h3 { margin: 0 0 4px; font-size: 17px; }
       .padrao p { margin: 0; color: var(--texto-2); max-width: 82ch; }
@@ -128,6 +141,8 @@ copiado e mandado para alguém.
       .modal-rodape { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
     </style>
 
+    {% if recado %}<p class="aviso feito espaco-16">{{ recado }}</p>{% endif %}
+    {% if erro %}<p class="aviso calado espaco-16">{{ erro }}</p>{% endif %}
     <h1>A análise da Caixa</h1>
     <p class="subtitulo">
       {{ total }} ideia{{ total|pluralize }} no quadro e {{ votos }} voto{{ votos|pluralize }},
@@ -251,20 +266,61 @@ copiado e mandado para alguém.
     </div>
 
     {% if fusoes %}
-      <div class="secao">
-        <h2>As fusões que eu proporia</h2>
-        <p class="abertura">Ideias diferentes que são, na prática, o mesmo trabalho. A Caixa ainda
-          não tem o gesto de juntar de verdade (mover votos e comentários é operação inteira), então
-          isto é recomendação de leitura, e a resposta ao aluno diz "vamos tratar junto com a ideia X".</p>
+      <div class="secao" id="juncoes">
+        <h2>As junções que eu proporia</h2>
+        <p class="abertura">Ideias diferentes que são, na prática, o mesmo trabalho. O resultado
+          se confere antes de decidir, e ele surpreende: o total de votos depois quase nunca é a
+          soma, porque quem votou em duas continua sendo uma pessoa com um voto.</p>
+
         {% for fusao in fusoes %}
-          <div class="padrao">
+          <div class="juncao">
             <h3>{{ fusao.nome }}</h3>
             <p>
               <span class="numeros-de-ideia">
                 {% for i in fusao.membros %}<a class="n-ideia" href="#ideia-{{ i.id }}" title="{{ i.titulo }}">{{ i.id }}</a>{% endfor %}
               </span>
-              · {{ fusao.votos }} voto{{ fusao.votos|pluralize }} somados. {{ fusao.motivo }}
+              · {{ fusao.motivo }}
             </p>
+            <div class="juncao-acao">
+              {% if fusao.previa %}
+                <a class="botao" href="#fundir-{{ fusao.canonica.id }}">Ver como ficaria</a>
+                {% if fusao.previa.impedimento %}
+                  <span class="marca atencao">não dá agora</span>
+                {% endif %}
+              {% else %}
+                <span class="marca atencao">sem prévia: a Caixa não respondeu, e sem ver o
+                  resultado eu não ofereço o botão de juntar</span>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if juncoes_feitas %}
+      <div class="secao">
+        <h2>As junções já feitas</h2>
+        <p class="abertura">Cada uma dá para desfazer: os votos, os comentários e a fase de cada
+          ideia voltam para onde estavam. O único que não volta é o voto que a pessoa tirou depois
+          da junção, e isso é de propósito: devolvê-lo seria votar no lugar dela.</p>
+        {% for feita in juncoes_feitas %}
+          <div class="juncao">
+            <h3>{{ feita.canonica.titulo }}</h3>
+            <p>
+              Absorveu
+              {% for a in feita.absorvidas %}<b>{{ a.titulo }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.
+              {% for a in feita.absorvidas %}
+                <br>Da ideia {{ a.id }} vieram {{ a.votos_movidos }} voto{{ a.votos_movidos|pluralize }}
+                e {{ a.comentarios_movidos }} comentário{{ a.comentarios_movidos|pluralize }}{% if a.votos_descartados %},
+                e {{ a.votos_descartados }} pessoa{{ a.votos_descartados|pluralize }} já tinha votado nas duas{% endif %}.
+              {% endfor %}
+            </p>
+            <div class="juncao-acao">
+              <form method="post" action="{% url 'caixa_desfazer_fusao' feita.id %}">
+                {% csrf_token %}
+                <button class="botao botao-perigo" type="submit">Desfazer esta junção</button>
+              </form>
+            </div>
           </div>
         {% endfor %}
       </div>
@@ -294,6 +350,70 @@ copiado e mandado para alguém.
     por cima quando alguém clica. O laço é sobre `todas` (as duas listas de
     cima juntas) para esta marcação existir uma vez só.
     {% endcomment %}
+    {% for fusao in fusoes %}{% if fusao.previa %}
+      <div class="modal" id="fundir-{{ fusao.canonica.id }}" role="dialog" aria-modal="true" aria-labelledby="fundir-titulo-{{ fusao.canonica.id }}">
+        <a class="modal-fundo" href="#juncoes" aria-label="Fechar" tabindex="-1"></a>
+        <div class="modal-caixa">
+          <div class="modal-topo">
+            <h2 id="fundir-titulo-{{ fusao.canonica.id }}">Como ficaria: {{ fusao.nome }}</h2>
+            <a class="modal-fechar" href="#juncoes">Fechar</a>
+          </div>
+
+          <div class="par">
+            <span class="rotulo">A ideia que fica de pé</span>
+            <p><b>{{ fusao.previa.canonica.titulo }}</b> (ideia {{ fusao.previa.canonica.id }})</p>
+          </div>
+          <div class="par">
+            <span class="rotulo">Entram nela, e passam a ser esta</span>
+            <ul class="lista-seca">
+              {% for a in fusao.previa.absorvidas %}
+                <li>{{ a.titulo }} (ideia {{ a.id }}, {{ a.votos }} voto{{ a.votos|pluralize }})</li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div class="placar-fusao">
+            <div><b>{{ fusao.previa.votos_depois }}</b><span>votos depois da junção</span></div>
+            <div><b>{{ fusao.previa.votos_hoje }}</b><span>é quanto seria se fosse soma</span></div>
+            <div><b>{{ fusao.previa.pessoas_depois }}</b><span>pessoas atrás da ideia</span></div>
+            <div><b>{{ fusao.previa.comentarios_depois }}</b><span>comentários juntos</span></div>
+          </div>
+
+          {% if fusao.previa.votos_em_comum %}
+            <p class="aviso espaco-16">
+              {{ fusao.previa.votos_em_comum }} pessoa{{ fusao.previa.votos_em_comum|pluralize }}
+              votou em mais de uma destas ideias. Por isso o total depois é menor que a soma:
+              cada pessoa continua tendo um voto só, e ninguém perde nada.
+            </p>
+          {% endif %}
+
+          {% if fusao.previa.impedimento %}
+            <p class="aviso calado espaco-16">{{ fusao.previa.impedimento }}</p>
+            <div class="modal-rodape"><a class="botao" href="#juncoes">Fechar</a></div>
+          {% else %}
+            <form method="post" action="{% url 'caixa_fundir' %}">
+              {% csrf_token %}
+              <input type="hidden" name="canonica" value="{{ fusao.canonica.id }}">
+              <input type="hidden" name="absorvidas" value="{{ fusao.absorvidas_ids }}">
+              <div class="par">
+                <span class="rotulo">Um recado para quem escreveu (opcional)</span>
+                <input class="campo-nota" type="text" name="nota" maxlength="200"
+                       placeholder="Ex.: vamos gravar as três de uma vez.">
+              </div>
+              <p class="aviso espaco-16">
+                Ao confirmar, todo mundo que votou ou comentou nas ideias absorvidas é avisado de
+                que elas viraram esta. Dá para desfazer depois, e os votos voltam.
+              </p>
+              <div class="modal-rodape">
+                <button class="botao" type="submit">Juntar de verdade</button>
+                <a class="botao" href="#juncoes">Cancelar</a>
+              </div>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}{% endfor %}
+
     {% for ideia in todas %}
       <div class="modal" id="ideia-{{ ideia.id }}" role="dialog" aria-modal="true" aria-labelledby="modal-titulo-{{ ideia.id }}">
         <a class="modal-fundo" href="#ficha-{{ ideia.id }}" aria-label="Fechar a ideia {{ ideia.id }}" tabindex="-1"></a>
