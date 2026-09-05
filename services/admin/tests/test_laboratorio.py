@@ -297,9 +297,9 @@ def test_os_selos_de_prazo_leem_certo_em_um_dia_no_dia_e_depois(monkeypatch):
     assert "falta 1 dia<" in corpo and "faltam 1 dia" not in corpo
     assert "vence hoje" in corpo and "faltam 0 dias" not in corpo
     assert "o prazo terminou em 08/09/2026" in corpo
-    assert "venceu em" not in corpo, (
-        "o selo do atrasado não pode usar a palavra do veredito de sucesso"
-    )
+    assert (
+        "venceu em" not in corpo
+    ), "o selo do atrasado não pode usar a palavra do veredito de sucesso"
 
 
 @respx.mock
