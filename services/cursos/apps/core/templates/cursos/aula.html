@@ -128,6 +128,7 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
     <ul class="links">
       {% for link in checkpoint.envio.links %}<li>{{ link.rotulo }}: <a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.url }}</a></li>{% endfor %}
     </ul>
+    <p class="miudo"><a href="{% url 'laudo-recebido' aula.numero %}">Ver o laudo desta entrega</a></p>
   </div>
   {% endif %}
   {% if checkpoint.aberto %}

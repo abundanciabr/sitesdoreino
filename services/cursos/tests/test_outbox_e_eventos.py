@@ -29,9 +29,19 @@ from jsonschema import Draft202012Validator, FormatChecker, ValidationError
 
 from apps.cursos import envio as checkpoint
 from apps.cursos import eventos
-from apps.cursos.models import OutboxEvent
+from apps.cursos import laudo as parecer
+from apps.cursos.models import Laudo, OutboxEvent
 from apps.cursos.tasks import relay_outbox
-from tests.conftest import ARQUIVO, AUTOAVALIACAO, COOKIE, README, entrega
+from tests.conftest import (
+    ARQUIVO,
+    AUTOAVALIACAO,
+    COOKIE,
+    README,
+    entrega,
+    forcas_validas,
+    mudanca_valida,
+    notas_validas,
+)
 
 pytestmark = pytest.mark.django_db
 
@@ -192,3 +202,141 @@ def test_emitir_fora_de_transacao_e_recusado():
     with pytest.raises(eventos.EventoForaDaTransacao):
         eventos.emitir("envio.recebido", {"site_id": "escola-a"})
     assert OutboxEvent.objects.count() == 0
+
+
+# ---------------------------------------------------------------------------
+# Os três eventos do laudo (degrau 2.2, TAR-156): já congelados na gênese
+# (`contracts/eventos/{laudo.emitido,aula.concluida,checkpoint.devolvido}.v1.json`),
+# e esta célula é quem os emite pela primeira vez.
+# ---------------------------------------------------------------------------
+
+
+def _emitir(envio, professora, **mudancas):
+    base = dict(
+        avaliador=professora,
+        papel=Laudo.Papel.PROFESSOR,
+        notas=notas_validas(),
+        forcas=forcas_validas(),
+        mudanca=mudanca_valida(envio.aula),
+        decisao=Laudo.Decisao.ABERTO,
+        sabe_o_que_fazer_amanha=True,
+    )
+    base.update(mudancas)
+    return parecer.emitir(envio, **base)
+
+
+@pytest.fixture
+def no_fio_aberto(envio_na_fila, professora, fio):
+    """`aberto`: publica `envio.recebido.v1` (de `envio_na_fila`),
+    `laudo.emitido.v1` e `aula.concluida.v1` — os três pendentes na outbox."""
+    _emitir(envio_na_fila, professora, decisao=Laudo.Decisao.ABERTO)
+    assert relay_outbox() == 3
+    return fio
+
+
+@pytest.fixture
+def no_fio_devolvido(envio_na_fila, professora, fio):
+    """`devolvido`: publica `envio.recebido.v1`, `laudo.emitido.v1` e
+    `checkpoint.devolvido.v1`."""
+    amanha = datetime.now().date() + timedelta(days=1)
+    _emitir(
+        envio_na_fila,
+        professora,
+        decisao=Laudo.Decisao.DEVOLVIDO,
+        data_de_retorno=amanha,
+    )
+    assert relay_outbox() == 3
+    return fio
+
+
+def test_os_tres_contratos_do_laudo_existem():
+    for evento in ("laudo.emitido", "aula.concluida", "checkpoint.devolvido"):
+        assert (CONTRATOS / f"{evento}.v1.json").is_file()
+
+
+def test_aberto_valida_contra_o_contrato_congelado(no_fio_aberto):
+    assert set(no_fio_aberto.streams) == {
+        "eventos.envio.recebido",
+        "eventos.laudo.emitido",
+        "eventos.aula.concluida",
+    }
+    for _, envelope in no_fio_aberto.mensagens:
+        _conferir(envelope)
+
+
+def test_devolvido_valida_contra_o_contrato_congelado(no_fio_devolvido):
+    assert set(no_fio_devolvido.streams) == {
+        "eventos.envio.recebido",
+        "eventos.laudo.emitido",
+        "eventos.checkpoint.devolvido",
+    }
+    for _, envelope in no_fio_devolvido.mensagens:
+        _conferir(envelope)
+
+
+def test_laudo_emitido_leva_o_avaliador_no_envelope_e_so_ids_no_data(
+    no_fio_aberto, envio_na_fila, professora
+):
+    envelope = no_fio_aberto.um_envelope("laudo.emitido")
+    assert envelope["ator_id"] == professora.id_da_plataforma
+    assert envelope["data"] == {
+        "site_id": "escola-a",
+        "envio_id": str(envio_na_fila.pk),
+        "laudo_id": str(Laudo.objects.get().pk),
+        "decisao": "aberto",
+        "avaliador_papel": "professor",
+    }
+
+
+def test_aula_concluida_leva_o_aluno_no_envelope_e_e_boss(no_fio_aberto, envio_na_fila):
+    envelope = no_fio_aberto.um_envelope("aula.concluida")
+    assert envelope["ator_id"] == envio_na_fila.pessoa_id
+    assert envelope["data"] == {
+        "site_id": "escola-a",
+        "curso_id": str(envio_na_fila.aula.curso_id),
+        "aula_id": str(envio_na_fila.aula_id),
+        "e_boss": envio_na_fila.aula.e_boss,
+    }
+
+
+def test_checkpoint_devolvido_leva_a_data_de_retorno(no_fio_devolvido, envio_na_fila):
+    envelope = no_fio_devolvido.um_envelope("checkpoint.devolvido")
+    laudo = Laudo.objects.get()
+    assert envelope["data"] == {
+        "site_id": "escola-a",
+        "aula_id": str(envio_na_fila.aula_id),
+        "envio_id": str(envio_na_fila.pk),
+        "data_de_retorno": laudo.data_de_retorno.isoformat(),
+    }
+
+
+def test_aberto_nunca_leva_checkpoint_devolvido(no_fio_aberto):
+    assert "eventos.checkpoint.devolvido" not in no_fio_aberto.streams
+
+
+def test_devolvido_nunca_leva_aula_concluida(no_fio_devolvido):
+    assert "eventos.aula.concluida" not in no_fio_devolvido.streams
+
+
+def test_nenhum_envelope_do_laudo_carrega_nome_frase_ou_id_do_instrumento(
+    no_fio_aberto,
+):
+    for _, envelope in no_fio_aberto.mensagens:
+        cru = json.dumps(envelope, ensure_ascii=False)
+        for vazamento in (
+            "As bordas ficaram consistentes",
+            "O bevel das arestas",
+            "Praticar UV",
+            "Dani",
+        ):
+            assert vazamento not in cru, f"{vazamento!r} vazou em {envelope['event']}"
+
+
+@pytest.mark.parametrize("evento", ["laudo.emitido", "aula.concluida"])
+def test_um_campo_a_mais_no_data_do_laudo_e_recusado(no_fio_aberto, evento):
+    envelope = copy.deepcopy(no_fio_aberto.um_envelope(evento))
+    _conferir(envelope)  # o de verdade passa...
+    envelope["data"]["link"] = ARQUIVO
+    with pytest.raises(ValidationError) as recusa:
+        _conferir(envelope)  # ...e o com um campo a mais, não
+    assert "link" in str(recusa.value)
