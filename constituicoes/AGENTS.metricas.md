@@ -42,9 +42,13 @@ não aqui: esta célula guarda o fato, o cartão diz o que ele significa.
 - **Expõe (máquina, desde o degrau 7.4):** a API de leitura `/api/metricas/`,
   com quatro operações: contadores históricos por dia (`countFacts`), cobertura
   de rastreio e frescor (`listCoverage`) e a fila de eventos mortos, em lista e
-  uma a uma (`listDeadLetters`, `getDeadLetter`). Fotos de coorte, marcos por
-  pessoa e conciliação entram nos degraus 9, 10 e 11, com as tabelas deles: uma
-  operação que hoje respondesse lista vazia pareceria resposta. Nada responde
+  uma a uma (`listDeadLetters`, `getDeadLetter`). **Os marcos NÃO se leem por
+  aqui**: a tabela existe desde o degrau 9 do plano e é escrita pela recepção,
+  mas a operação de leitura é porta nova, e porta nova é Rito de Contrato com o
+  mantenedor presente (`RITOS.md` §3). Enquanto o Rito não acontece, quem
+  precisa dos marcos os lê no banco da célula. Fotos de coorte e conciliação
+  seguem sem tabela: uma operação que hoje respondesse lista vazia pareceria
+  resposta. Nada responde
   sem Bearer, e o token é o único guarda que conta: hoje esta célula não tem
   rota no Traefik, mas topologia é configuração de infra e muda sem passar por
   aqui (`armadilhas/186`). O teste de 401 cobre TODAS as operações, medidas do
@@ -115,6 +119,7 @@ não aqui: esta célula guarda o fato, o cartão diz o que ele significa.
 | **7.4 FEITO** | A API de leitura (`/api/metricas/`), Bearer de par, teste de 401 em todas as operações medidas do schema vivo |
 | 7.5 | O compose (`infra/`), em PR próprio (`armadilhas/134`), com o env e o banco na VPS antes (`armadilhas/088`) |
 | 7.6 | O contrato congelado pelo `RITOS.md` §3 (PR só de `contracts/`, etiqueta `contrato`, o mantenedor presente) e a `admin` como cliente, com o token do par |
+| **9 (do plano) FEITO pela metade** | Os MARCOS: a tabela `Marco`, a derivação automática dentro da recepção e a passada `manage.py derivar_marcos` sobre o livro já guardado. A porta de leitura NÃO nasceu junto, e é essa a metade que falta: ela é Rito de Contrato, e o mandato não foi dado |
 
 Até o 7.5, o `deploy-celula` desta célula fica vermelho em todo merge que a
 toca, e **isso é esperado**: o compose da VPS ainda não a conhece
