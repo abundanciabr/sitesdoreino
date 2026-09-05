@@ -5,30 +5,46 @@ mais valiosa dos documentos do Scale OS (1 §8 a §10 e §33; 2 Parte VII; 3 §2
 a §30; 4 Parte X): uma empresa tem muitos problemas e poucos gargalos, e
 melhorar o que não é o gargalo é encher um cano furado.
 
-## O que se mede hoje, e o que ainda não
+## De que jornada este módulo fala, e de qual ele NÃO fala
 
-A jornada que a Meta 1 atravessa tem quatro passagens: **cadastrou → pediu
-entrada → foi liberada → entrou pela primeira vez**. A `admin` só enxerga ao
-vivo, pela célula `alunos`, a passagem do meio: **pediu entrada → foi
-liberada** (a fila e a lista de alunos, com `criada_em` e `virou_aluno_em`).
-As outras três não têm fonte nesta célula ainda (cadastros moram na
-`identidade`, sem porta de contagem; "entrou pela primeira vez" não é gravado
-em lugar nenhum), e este módulo DIZ isso em vez de fingir que mediu: uma
-etapa sem dados nunca é escolhida como restrição, e a tela nomeia as que
-faltam.
+Aqui se mede a jornada da **sala de espera**: **cadastrou → pediu entrada →
+foi liberada → entrou pela primeira vez**. Os nomes das passagens são os que a
+célula `alunos` dá às próprias peças (`pre-matriculas`), e trocá-los é Rito de
+Contrato dela, não texto de painel.
+
+O que este módulo **não** é, e até 05/09/2026 dizia ser: o caminho da venda
+que leva à Meta 1. O mantenedor corrigiu a premissa naquele dia, com estas
+palavras: *"ninguém pede entrada na escola, todos entram apenas e unicamente
+pela matrícula mediante a compra do curso"*. Quem chega na fila **já comprou,
+fora do site**, e o que ele espera é confirmação. A restrição medida aqui é,
+portanto, o gargalo da CONFIRMAÇÃO de vendas feitas fora, e ela move a meta de
+verdade (cada confirmação é +1), mas não é a torneira dela. O caminho da venda
+tem cartões próprios (`visitas-na-pagina-de-venda-por-semana` e
+`compras-pelo-checkout-por-semana`), apagados enquanto o checkout estiver
+congelado pela decisão dele de 22/08/2026, e nasce medível no degrau 9 do
+plano, quando a célula de medição existir.
+
+A `admin` só enxerga ao vivo, pela célula `alunos`, a passagem do meio:
+**pediu entrada → foi liberada** (a fila e a lista de alunos, com `criada_em`
+e `virou_aluno_em`). As outras três não têm fonte nesta célula ainda
+(cadastros moram na `identidade`, sem porta de contagem; "entrou pela primeira
+vez" não é gravado em lugar nenhum), e este módulo DIZ isso em vez de fingir
+que mediu: uma etapa sem dados nunca é escolhida como restrição, e a tela
+nomeia as que faltam.
 
 ## A regra da suspeita (calculada) e a confirmação (dele)
 
 O Scale OS 1.2 §51 é claro: a IA propõe "suspeita"; o humano promove a
 "confirmada". Aqui a suspeita é regra explícita, sem peso escondido:
 
-1. Se há gente esperando na fila há 2 dias ou mais, OU o tempo mediano de
+1. Se há gente esperando na sala há 2 dias ou mais, OU o tempo mediano de
    liberação nos últimos 28 dias passa de 2 dias, a restrição suspeita é **a
-   liberação**: cada pessoa parada ali já pediu para entrar e é +1 na meta
-   ao ser liberada. Confiança ALTA: é medido ao vivo.
-2. Senão, se ninguém pediu entrada nos últimos 28 dias, a suspeita é **a
-   entrada**: a torneira está fechada. Confiança MÉDIA: a admin vê os
-   pedidos, mas não vê os cadastros que não viraram pedido.
+   confirmação**: cada pessoa parada ali já pagou, fora do site, e é +1 na
+   meta ao ser confirmada. Confiança ALTA: é medido ao vivo.
+2. Senão, se ninguém chegou à sala de espera nos últimos 28 dias, a suspeita
+   é **a chegada**: nenhuma venda feita fora chegou para confirmação.
+   Confiança MÉDIA: a admin vê quem chega na sala, mas não vê os cadastros
+   que nunca compraram.
 3. Senão, **não há restrição medível**: a liberação está em dia, e as etapas
    seguintes não têm dados. Isso é resposta, não vazio.
 
@@ -44,9 +60,9 @@ from statistics import median
 
 from .placar import STATUS_QUE_COMPRARAM, dia_em_sao_paulo
 
-#: Quanto tempo esperando na fila já é gargalo. É a medida de direção
+#: Quanto tempo esperando na sala já é gargalo. É a medida de direção
 #: "liberações em até 48 horas" do plano (§4.1 da versão da manhã, §8 degrau 2
-#: da atual): a parte da jornada que depende SÓ da casa.
+#: da atual): a parte da jornada que depende SÓ da casa, porque a pessoa já pagou.
 DIAS_DE_ESPERA_QUE_VIRAM_GARGALO = 2
 
 #: A janela da medição. 28 dias (quatro semanas cheias) e 7 (a semana), como
@@ -95,7 +111,7 @@ def medir_liberacao(
     alunos: list[dict] | None,
     hoje: dt.date,
 ) -> dict | None:
-    """A passagem "pediu entrada → foi liberada", nos últimos 28 e 7 dias.
+    """A passagem "chegou na sala → foi confirmada", nos últimos 28 e 7 dias.
 
     `None` quando não dá para medir (alguma lista não chegou): "não medi" se
     declara, não vira zero.
@@ -181,7 +197,7 @@ def escolher_restricao(medida: dict | None, cartao: dict) -> dict:
             "veredito": "liberacao",
             "confianca": "alta",
             "impacto": medida["esperando"],
-            "gesto": "Abra a fila em /admin/escola/ e libere quem já comprou: cada pessoa parada ali é +1 na meta hoje.",
+            "gesto": "Abra a fila em /admin/escola/ e confirme quem já pagou: cada pessoa parada ali comprou fora do site e é +1 na meta hoje.",
         }
     if medida["pedidos_28"] == 0:
         return {
@@ -190,6 +206,6 @@ def escolher_restricao(medida: dict | None, cartao: dict) -> dict:
             "veredito": "entrada",
             "confianca": "media",
             "impacto": None,
-            "gesto": "Ninguém pediu para entrar em 28 dias: a torneira está fechada. O caminho da fila existe onde você divulga (a home não convida, por decisão sua de 28/08).",
+            "gesto": "Ninguém chegou à sala de espera em 28 dias, ou seja, nenhuma venda feita fora do site chegou para confirmação. Hoje a compra acontece na sua divulgação (a home não convida, por decisão sua de 28/08), e o caminho da venda dentro do site ainda está apagado.",
         }
     return {**base, "veredito": "sem-restricao-medivel", "confianca": "alta"}
