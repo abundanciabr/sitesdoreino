@@ -1,0 +1,21 @@
+{
+  "arquivo": "150-sala-de-aula-degrau-1-3-a-porta-de-maquina-do-editor-listles",
+  "id": "TAR-150",
+  "titulo": "Sala de aula, degrau 1.3: a porta de maquina do editor (listLessons, getLesson, putLesson, putInstrument, publishLesson, getStudentProgress) e a sessao repassada",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-147"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: as seis operacoes em /api/cursos/ com Bearer por par (401 em todas sem token, teste), a sessao repassada a identidade (molde encomendas/forum), export_openapi imprimindo o contrato vivo, celulas.yml cursos.consome += identidade no mesmo PR do cliente, testes de porta (armadilhas do ninja 020/021/022/025), make ci verde.",
+  "despacho": "Degrau 1.3 da escada (PLANO-CELULA-CURSOS.md §10). LEIA a lei §5 (o contrato) e §6, constituicoes/AGENTS.cursos.md, armadilhas 020/021/022/025/186/224/228/243, e o molde: a porta de maquina das encomendas (degrau 2.7 delas, TAR-125) e services/forum/apps/core/sessao.py. O contrato NAO congela aqui (e o 1.4, PR so de contracts). A maestro re-briefa no template do CAMINHO-DOURADO §2 antes de despachar.",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md, lei aprovada pelo mantenedor em 04/09/2026 (registro 20260905-001); genese pousada no PR #1046 (TAR-146)",
+  "criada_em": "2026-09-05"
+}
