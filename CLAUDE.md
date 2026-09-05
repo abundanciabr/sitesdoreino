@@ -756,3 +756,72 @@ o revisor só lê). A divisão do pedido e o disparo em paralelo são julgamento
 maestro, e isso não tem mecanismo: nada no CI vê quantos sub-agentes uma sessão
 disparou. Está dito aqui com todas as letras para ninguém tomar o teste das
 fichas por garantia da regra inteira.
+
+## Plano na abertura, contas no fecho (desde 05/09/2026)
+
+
+Pedido do mantenedor em 05/09/2026, com a palavra "urgente" e o motivo escrito:
+"eu estou tendo que pedir várias vezes a mesma coisa porque ao final das tarefas
+que eu peço aqui para os robôs fazerem eles simplesmente, ao invés de prestarem
+contas da tarefa, como qualquer pessoa que acabou de fazer algo naturalmente
+faria, eles apenas arquivam as conversas, sem ao menos explicarem o que foi
+feito, se realmente foi resolvido o problema".
+
+**A lei já existia e não era obedecida.** É a regra 9 do Padrão de Trabalho
+("Como entregar"), na primeira seção deste arquivo. Das onze regras do Padrão
+ela é a única cujo cumprimento é observável de fora, e era a única sem ninguém
+que a fizesse valer: `ci/padrao_de_trabalho.py` confere que o TEXTO da régua
+continua no lugar e **declara na cara que não confere obediência**. Enquanto foi
+só prosa, foi obedecida enquanto alguém lembrava — e a medição diz quanto isso
+custava: das 40 sessões mais recentes deste projeto, **24 mudaram o mundo e
+terminaram sem prestar contas**. A maioria. Quem pagava era ele, uma pergunta
+repetida por vez.
+
+**A regra, nas duas pontas:**
+
+1. **Na abertura.** Pedido que vai mudar o mundo (editar arquivo, rodar comando
+   que altera algo, abrir PR) começa pelo **plano em caixinhas** — um título
+   `## Plano` e um `- [ ]` por passo — e o checklist vai sendo marcado enquanto
+   os passos caem. Ele é vivo: serve para o mantenedor ver onde a tarefa está
+   sem perguntar, e para o robô não perder metade do escopo no meio do caminho.
+2. **No fecho.** O turno que mudou o mundo termina com a prestação de contas,
+   nesta ordem, e ela é o formato da regra 9 com os dois blocos que ele pediu
+   em 05/09/2026:
+
+   - **O que mudou** — fatos, não adjetivos
+   - **O que foi verificado e como** — o comando e a saída real, não a promessa
+   - **O que foi cortado e por quê** — "nada" é resposta, e é comum
+   - **O que eu preciso decidir** — se nada depende dele, a linha que diz isso
+   - **Auditoria de qualidade** — a Definição de Pronto (regra 6) item a item, e
+     o que o crítico mais implacável do mundo (regra 8) atacaria neste trabalho
+   - **Veredito:** PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê
+
+**O veredito é a linha mais importante do relatório**, e existe porque o
+mantenedor é leigo em código: o que ele precisa saber, antes de tudo, é se
+acabou. **NÃO PRONTO é resposta honesta e aceita** — o portão a aceita de
+propósito. Um portão que só aceitasse PRONTO ensinaria o robô a mentir, que é a
+doença que ele veio curar.
+
+**Isto não briga com a costura 3 do Padrão** ("nada além dele" proíbe
+enchimento, não o que esta casa exige que seja dito). Os dois blocos novos são
+exigência dele, da mesma data, e cabem no mesmo lugar: a auditoria é onde a
+regra 6 e a regra 8 finalmente aparecem na tela em vez de morrerem na cabeça do
+robô.
+
+**Onde o portão CALA, e por que isso é metade do desenho:** turno que só leu,
+pergunta respondida, e — principalmente — os turnos em que o harness reacorda o
+robô para dar notícia de uma espera. Medido no transcript da sessão que motivou
+esta lei: de 232 mensagens de "usuário", **225 eram `<task-notification>`**. Um
+portão que cobrasse relatório em cada acordar pediria 225 relatórios, e o
+mantenedor aprenderia a ignorar todos. O discriminador não é adivinhação de
+texto: é o campo `origin.kind` de cada entrada do transcript.
+
+**O que o portão NÃO mede, dito na cara:** que a prestação de contas seja
+verdadeira. Nenhum portão barato mede "isto foi mesmo verificado". O que ele
+torna impossível é o SILÊNCIO — os seis blocos aparecem, o veredito fica em cima
+da mesa, e quem lê consegue cobrar. Mentira escrita é falsificável; ausência não
+é. O plano de abertura também só é exigido, nunca bloqueado: no fim do turno ele
+já não tem conserto, e travar o robô por algo irreparável só produz um robô
+travado.
+
+**Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos; o `UserPromptSubmit` exige o plano na abertura) · `ci/tests/test_prestacao_de_contas.py`.

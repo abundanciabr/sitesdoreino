@@ -231,6 +231,33 @@ def test_rascunho_no_scratchpad_nao_e_entrega(tmp_path):
     ]))
 
 
+def test_anotar_na_propria_memoria_nao_e_tarefa(tmp_path):
+    """Achado da medição contra 40 sessões reais (05/09/2026): sem esta regra,
+    "lembre-se disso" virava tarefa com seis blocos de relatório."""
+    memoria = r"C:\Users\davia\.claude\projects\C--Users-davia-x\memory\MEMORY.md"
+    _silencio(_decidir(tmp_path, [
+        _humano("lembre que a escola é 18+"),
+        _ferramenta("Edit", {"file_path": memoria}),
+        _fala("Anotado."),
+    ]))
+    _silencio(_decidir(tmp_path, [
+        _humano("lembre que a escola é 18+"),
+        _ferramenta("Bash", {"command": f'cat > "{memoria}" <<EOF\nx\nEOF'}),
+        _fala("Anotado."),
+    ]))
+
+
+def test_seta_dentro_de_frase_nao_e_arquivo(tmp_path):
+    """O outro falso positivo da mesma medição: um `>` no meio de um texto
+    entre aspas virava "escreveu em cala'". Alvo de redirecionamento tem de
+    PARECER arquivo — ponto ou separador de caminho."""
+    _silencio(_decidir(tmp_path, [
+        _humano("me explique"),
+        _ferramenta("Bash", {"command": "echo 'o portao recusa -> e cala'"}),
+        _fala("É isso."),
+    ]))
+
+
 def test_subagente_de_leitura_nao_conta_mas_despacho_conta(tmp_path):
     _silencio(_decidir(tmp_path, [
         _humano("onde mora o login?"),

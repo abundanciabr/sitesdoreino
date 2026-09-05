@@ -131,8 +131,15 @@ FERRAMENTAS_QUE_ESCREVEM = {"Edit", "Write", "NotebookEdit"}
 FERRAMENTAS_QUE_PUBLICAM = {"Artifact"}
 SUBAGENTES_DE_LEITURA = {"Explore", "Plan"}
 
-# Rascunho não é entrega: o harness manda todo arquivo temporário para cá.
-RASCUNHO = re.compile(r"scratchpad|[/\\]tmp[/\\]|AppData[/\\]Local[/\\]Temp", re.I)
+# Rascunho não é entrega: o harness manda todo arquivo temporário para cá. A
+# memória do próprio agente também não é: anotar o que aprendeu na conversa é
+# escrituração, e cobrar seis blocos por isso seria ruído. Medido contra 40
+# sessões reais em 05/09/2026 — sem esta linha, "lembrar de uma coisa" virava
+# tarefa com relatório.
+RASCUNHO = re.compile(
+    r"scratchpad|[/\\]tmp[/\\]|AppData[/\\]Local[/\\]Temp|[/\\]\.claude[/\\].*[/\\]memory[/\\]",
+    re.I,
+)
 
 COMANDOS_QUE_MUDAM = (
     (re.compile(r"\bgit\s+(?:commit|push|merge|revert|cherry-pick|tag|worktree\s+add)\b"),
@@ -151,7 +158,13 @@ COMANDOS_QUE_MUDAM = (
 
 # Redirecionamento que cria arquivo. `2>&1`, `>/dev/null` e `>$null` são ruído
 # de shell, não escrita — o dígito antes do `>` e os destinos nulos ficam fora.
-REDIRECIONA = re.compile(r"(?:^|[^0-9>&])>>?\s*(?!/dev/null|\$null|NUL\b|&)([^\s>|&;]+)")
+# O alvo precisa PARECER arquivo (ponto ou separador de caminho): sem isso o
+# `>` dentro de uma frase entre aspas virava "escreveu em cala'", que foi um
+# falso positivo real na medição contra 40 sessões (05/09/2026).
+REDIRECIONA = re.compile(
+    r"(?:^|[^0-9>&])>>?\s*(?!/dev/null|\$null|NUL\b|&)"
+    r"([\"']?[^\s>|&;\"']*[./\\][^\s>|&;\"']*[\"']?)"
+)
 
 
 # ------------------------------------------------------------- utilidades ----
@@ -242,7 +255,9 @@ def _mudanca_na_entrada(entrada: dict) -> str | None:
                     return f"{nome}: {motivo}"
             alvo = REDIRECIONA.search(comando)
             if alvo:
-                return f"{nome}: escreveu em {alvo.group(1)}"
+                destino = alvo.group(1).strip("\"'")
+                if not RASCUNHO.search(destino):
+                    return f"{nome}: escreveu em {destino}"
     return None
 
 
