@@ -69,20 +69,30 @@ DIAS_ATE_A_ANALISE_ENVELHECER = 7
 ENTREGAS_RECENTES = 3
 
 
-def _dias(desde: str, agora: datetime) -> int:
-    """Dias entre uma data do contrato e agora.
+def _momento(quando: str) -> "datetime | None":
+    """Uma data do contrato como instante comparável, ou `None`.
 
     O contrato manda texto ISO com fuso; `fromisoformat` o entende desde o
     Python 3.11. Um `strptime` com formato cravado quebraria no dia em que o
     provedor mudasse de microssegundos para segundos — e o contrato não promete
     a precisão, promete o formato.
+
+    Sem fuso, assume UTC: comparar um instante ingênuo com um consciente estoura
+    `TypeError`, e derrubar a tela inteira por causa de um campo mal formado numa
+    ideia é a pior resposta possível numa tela de operação.
     """
     try:
-        quando = datetime.fromisoformat(desde)
+        instante = datetime.fromisoformat(quando)
     except ValueError:
+        return None
+    return instante if instante.tzinfo else instante.replace(tzinfo=tz.utc)
+
+
+def _dias(desde: str, agora: datetime) -> int:
+    """Dias entre uma data do contrato e agora."""
+    quando = _momento(desde)
+    if quando is None:
         return 0
-    if quando.tzinfo is None:
-        quando = quando.replace(tzinfo=tz.utc)
     # Nunca negativo. Data no futuro acontece de verdade — relógio da máquina
     # fora de hora, fuso mal resolvido na borda — e "parada há -355142 dias"
     # não é um número esquisito: é uma frase sem sentido numa tela feita para
@@ -235,6 +245,87 @@ def travessia(request):
 
 DIAS_DE_SILENCIO_DEMAIS = 30
 
+# As cinco etapas em que uma ideia em aberto pode estar, com a palavra que o
+# mantenedor lê. Uma lista só, e DOIS usos: os números de "de onde vem a espera"
+# no lado da tela, e as opções de "Mostrar" na peneira. Escrevê-las duas vezes
+# daria duas verdades sobre quais etapas existem, e a que ninguém olha é a que
+# fica errada — é a lei anti-duplicação do projeto aplicada dentro de um arquivo.
+MOTIVOS = (
+    ("assinar", "esperando você assinar"),
+    ("chegando", "ninguém da equipe olhou ainda"),
+    ("construindo", "robô construindo"),
+    ("lendo", "na fila, andando normal"),
+    ("pode-comecar", "assinada, esperando um robô"),
+)
+
+# As MESMAS etapas com o nome curto que a aba da travessia já usa, e não a frase
+# de `MOTIVOS`. As duas dizem a mesma coisa em lugares diferentes: no mapa da
+# direita a frase completa o título "de onde vem a espera"; dentro de um seletor
+# ela seria uma linha de 29 caracteres cortada pela metade. Reusar `COLUNAS` faz
+# esta tela e a travessia chamarem cada etapa pelo mesmo nome, que é como o
+# mantenedor a lê nas duas.
+#
+# "No ar" fica de fora porque é entrega, e esta lista peneira só o que está em
+# aberto. Que as duas listas não divirjam em silêncio é guardado por
+# `test_as_duas_listas_de_etapa_falam_das_mesmas_etapas`.
+ETAPAS = tuple((chave, titulo) for chave, titulo, _ in COLUNAS if chave != "no-ar")
+
+
+def _nascimento(ideia) -> float:
+    """Quando a ideia chegou, em segundos, para poder ser invertida.
+
+    Segundos e não `datetime` porque as oito ordens abaixo são pares simétricos,
+    e o par de uma chave se escreve trocando o sinal dela — um instante não tem
+    sinal para trocar.
+
+    Data que o contrato não entregou no formato prometido vira zero, o começo de
+    tudo: ela aparece no alto de "mais antigas" em vez de derrubar a lista
+    inteira com uma exceção. Numa tela que existe para achar o que ficou
+    esquecido, o dado estranho tem de ficar VISÍVEL.
+    """
+    quando = _momento(ideia.get("criada_em", ""))
+    return quando.timestamp() if quando else 0.0
+
+
+# Como o mantenedor pode ler a lista. Pedido dele em 05/09/2026, com as palavras
+# "mais novas, mais antigas, mais votadas, menos votadas".
+#
+# **Em pares simétricos, sempre.** Um seletor em que alguns critérios viram e
+# outros não obriga a pessoa a decorar quais — e a pergunta "por que este aqui
+# não inverte?" não tem resposta boa. São quatro perguntas, cada uma com os dois
+# lados: quanta gente, quanto silêncio, quando chegou, quantos votos.
+#
+# **Votos e gente são coisas diferentes, e por isso as duas existem:** `votos`
+# conta quem clicou em votar; `pessoas` conta a plateia inteira — quem escreveu,
+# votou ou comentou. É a plateia que mede o silêncio, e é por isso que ela é a
+# ordem padrão desta tela.
+#
+# O desempate é sempre "mais gente primeiro": empate em qualquer critério cai na
+# pergunta que a tela existe para responder, que é quantas pessoas estão atrás.
+ORDENS = (
+    ("gente", "Mais gente esperando", lambda i: (-i["pessoas"], -i["parada_ha"])),
+    ("menos-gente", "Menos gente esperando", lambda i: (i["pessoas"], -i["parada_ha"])),
+    ("silencio", "Mais tempo em silêncio", lambda i: (-i["parada_ha"], -i["pessoas"])),
+    (
+        "menos-silencio",
+        "Menos tempo em silêncio",
+        lambda i: (i["parada_ha"], -i["pessoas"]),
+    ),
+    ("novas", "Mais novas", lambda i: (-_nascimento(i), -i["pessoas"])),
+    ("antigas", "Mais antigas", lambda i: (_nascimento(i), -i["pessoas"])),
+    ("votadas", "Mais votadas", lambda i: (-i["votos"], -i["pessoas"])),
+    ("menos-votadas", "Menos votadas", lambda i: (i["votos"], -i["pessoas"])),
+)
+
+#: A ordem de sempre, e a que responde um endereço sem `?ordem=`: a mesma com
+#: que esta tela nasceu em 28/08/2026.
+ORDEM_PADRAO = "gente"
+
+#: Derivados de `ORDENS` e `ETAPAS`, nunca escritos à mão: ordem ou etapa nova
+#: entra numa linha só, e a peneira a conhece no mesmo instante.
+_COMO_ORDENAR = {chave: como for chave, _, como in ORDENS}
+_ETAPAS = {chave for chave, _ in ETAPAS}
+
 
 @require_GET
 def quem_espera(request):
@@ -245,8 +336,21 @@ def quem_espera(request):
     agora = datetime.now(tz.utc)
     ideias = _enriquecer(quadro["ideias"], agora)
     em_aberto = [i for i in ideias if i["status"] not in JA_RESPONDIDAS]
-    # Gente esperando primeiro; entre iguais, o silêncio mais longo.
-    em_aberto.sort(key=lambda i: (-i["pessoas"], -i["parada_ha"]))
+
+    # A ordem e a etapa vêm da barra de endereço, por GET: ler uma lista de outro
+    # jeito é LEITURA, e a query string é o que torna o resultado recarregável,
+    # marcável e colável num recado. Mesma escolha da peneira da lista de alunos.
+    #
+    # Pedido desconhecido cai no padrão e a tela DIZ isso — nunca uma lista vazia
+    # nem um valor ignorado em silêncio, que passaria a lista inteira por
+    # "resultado do que você pediu".
+    ordem_pedida = (request.GET.get("ordem") or "").strip()
+    ordem = ordem_pedida if ordem_pedida in _COMO_ORDENAR else ORDEM_PADRAO
+    etapa_pedida = (request.GET.get("etapa") or "").strip()
+    etapa = etapa_pedida if etapa_pedida in _ETAPAS else ""
+
+    em_aberto.sort(key=_COMO_ORDENAR[ordem])
+    na_tela = [i for i in em_aberto if i["coluna"] == etapa] if etapa else em_aberto
 
     respondidas = sorted(
         (i for i in ideias if i["status"] in JA_RESPONDIDAS),
@@ -254,39 +358,56 @@ def quem_espera(request):
         reverse=True,
     )[:ENTREGAS_RECENTES]
 
-    # "De onde vem a espera" conta IDEIAS, e o rótulo na tela diz isso. Contar
-    # PESSOAS por motivo exigiria deduplicar quem está atrás de duas ideias em
-    # motivos diferentes, e essa dedução só existe do lado da Caixa (é por isso
-    # que os três números do topo viajam prontos, e estes não).
-    motivos = [
-        ("assinar", "esperando você assinar"),
-        ("chegando", "ninguém da equipe olhou ainda"),
-        ("construindo", "robô construindo"),
-        ("lendo", "na fila, andando normal"),
-        ("pode-comecar", "assinada, esperando um robô"),
-    ]
-
     return render(
         request,
         "admin/caixa_esperando.html",
         {
             "quadro": quadro["quadro"],
-            "ideias": em_aberto,
+            "ideias": na_tela,
             "gente_esperando": quadro.get("pessoas_esperando", 0),
             "silencio_medio": quadro.get("silencio_medio_em_dias"),
             "em_silencio_demais": quadro.get("pessoas_em_silencio_demais", 0),
             "limiar": DIAS_DE_SILENCIO_DEMAIS,
             "respondidas": respondidas,
+            # "De onde vem a espera" conta IDEIAS, e o rótulo na tela diz isso.
+            # Contar PESSOAS por motivo exigiria deduplicar quem está atrás de
+            # duas ideias em motivos diferentes, e essa dedução só existe do lado
+            # da Caixa (é por isso que os três números do topo viajam prontos, e
+            # estes não).
+            #
+            # Contados sobre TUDO que está em aberto, e não sobre o que a peneira
+            # deixou passar: com o filtro em "robô construindo", contar o filtrado
+            # zeraria as outras quatro linhas — e o mapa que existe para dizer
+            # onde a espera nasce viraria um espelho do próprio filtro.
             "filas": [
                 {
                     "rotulo": rotulo,
                     "chave": chave,
                     "ideias": sum(1 for i in em_aberto if i["coluna"] == chave),
                 }
-                for chave, rotulo in motivos
+                for chave, rotulo in MOTIVOS
             ],
-            "maior_plateia": em_aberto[0]["pessoas"] if em_aberto else 1,
+            # A régua da barrinha é a MAIOR plateia em aberto — `max`, e não a
+            # primeira da lista: fora da ordem padrão a primeira não é a maior, e
+            # a barra passaria de 100%. Pela mesma razão é medida antes da
+            # peneira: uma barra que muda de escala conforme o filtro deixa de
+            # poder ser comparada com a que estava ali um clique atrás.
+            "maior_plateia": max((i["pessoas"] for i in em_aberto), default=1) or 1,
             "na_mesa": len(esperando(ideias)),
+            # O que a pessoa escolheu, devolvido aos seletores: uma peneira que se
+            # apaga ao recarregar faz o mantenedor achar que está vendo a lista
+            # inteira.
+            "ordens": [(chave, rotulo) for chave, rotulo, _ in ORDENS],
+            "ordem_escolhida": ordem,
+            "etapas": ETAPAS,
+            "etapa_escolhida": etapa,
+            "pedido_desconhecido": (
+                ordem_pedida not in ("", ordem) or etapa_pedida not in ("", etapa)
+            ),
+            # Só a etapa esconde ideias; a ordem nunca esconde nada. É por isso
+            # que "mostrando 3 de 17" e o vazio-por-peneira olham só para ela.
+            "filtrando": bool(etapa),
+            "total_em_aberto": len(em_aberto),
         },
     )
 

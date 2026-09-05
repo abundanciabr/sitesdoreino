@@ -1,0 +1,17 @@
+{
+  "arquivo": "164-classificar-e-peneirar-a-lista-de-quem-esta-esperando-na-cai",
+  "id": "TAR-164",
+  "titulo": "Classificar e peneirar a lista de quem esta esperando, na Caixa",
+  "toca": [
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "latencia-de-decisao"
+  ],
+  "evidencia_exigida": "PR mergeado + deploy da celula admin verde lido por gh run view --json + a tela em /admin/caixa/esperando/ respondendo com os dois seletores",
+  "despacho": "Acrescentar a 'Quem esta esperando' (/admin/caixa/esperando/) um seletor 'Classificar por' com oito ordens em pares simetricos e um seletor de etapa, por GET, sem esconder os numeros do topo.",
+  "origem": "pedido do mantenedor em 05/09/2026, na conversa",
+  "criada_em": "2026-09-05"
+}
