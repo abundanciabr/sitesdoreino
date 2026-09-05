@@ -59,6 +59,45 @@ def test_lista_so_com_virgulas_e_403(
     assert _acessar_plantao(client).status_code == 403
 
 
+def test_as_duas_listas_vazias_e_403(
+    env_dos_pares, rede, esqueleto, client, monkeypatch
+):
+    """O plantão tem DUAS portas desde 05/09/2026, e vazio continua sendo ninguém.
+
+    Este é o guarda que a prova por mutação sabota: com `CURSOS_PROFESSORES` e
+    `ADMIN_EMAILS` as duas vazias, a união é vazia e a resposta é 403. Uma
+    variável esquecida no servidor nunca pode virar permissão para o site
+    inteiro dar laudo nos outros.
+    """
+    monkeypatch.setenv("CURSOS_PROFESSORES", "")
+    monkeypatch.setenv("ADMIN_EMAILS", "")
+    dublar_sessao(rede, ANA)
+    dublar_matricula(rede, ANA["email"], "aluno")
+    assert _acessar_plantao(client).status_code == 403
+
+
+# ------------------------------------------------ ADMIN_EMAILS também abre
+def test_admin_do_site_fora_de_cursos_professores_entra(
+    env_dos_pares, rede, esqueleto, client, monkeypatch
+):
+    """Decisão do mantenedor em 05/09/2026: "qualquer admin do site pode abrir".
+
+    A MESMA lista que já abre o `/admin/` (`ADMIN_EMAILS`) passou a abrir o
+    plantão, e a lista própria da célula continua existindo ao lado. Isto NÃO é
+    o `papel_do_site`: reconhecer continua não sendo autorizar, e quem autoriza
+    continua sendo uma lista de e-mails decidida aqui dentro, fail-CLOSED.
+    """
+    monkeypatch.delenv("CURSOS_PROFESSORES", raising=False)
+    monkeypatch.setenv("ADMIN_EMAILS", ANA["email"])
+    dublar_sessao(rede, ANA)
+    # O mantenedor não tem matrícula, e não precisa: `eh_professor` não depende
+    # da `alunos`, exatamente como para a professora da lista própria.
+    dublar_matricula(rede, ANA["email"], "cadastrado")
+    resposta = _acessar_plantao(client)
+    assert resposta.status_code == 200
+    assert "Fila de revisão" in resposta.content.decode()
+
+
 # --------------------------------------------- e-mail fora da lista = 403
 def test_email_fora_da_lista_e_403(env_dos_pares, rede, esqueleto, client, monkeypatch):
     monkeypatch.setenv("CURSOS_PROFESSORES", "outra@exemplo.com")

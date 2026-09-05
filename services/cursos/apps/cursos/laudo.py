@@ -30,8 +30,9 @@ manda uma lista de um item.
 
 O QUE ESTA FUNÇÃO NÃO DECIDE
 ------------------------------
-Quem PODE chamar `emitir()` (a professora do plantão, fail-closed por
-`CURSOS_PROFESSORES`) é `apps/core/sessao.py` + `apps/core/views.py`. Esta
+Quem PODE chamar `emitir()` (quem está no plantão, fail-closed pela união de
+`CURSOS_PROFESSORES` com `ADMIN_EMAILS`) é `apps/core/sessao.py` +
+`apps/core/views.py`. Esta
 função recebe o `avaliador` já resolvido e confia nele: não pergunta a
 `identidade` nem a `alunos`.
 """

@@ -45,9 +45,9 @@ urlpatterns = [
     # e o `<link>` sai de `{% url 'estatico' %}`, nunca de `{% static %}`: as
     # duas tags leem prefixos diferentes (`armadilhas/102`).
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
-    # O PLANTÃO (degrau 2.2). Quem entra: `CURSOS_PROFESSORES`, fail-closed
-    # (`apps/core/sessao.py::_lista_de_emails`); a `identidade` só reconhece,
-    # nunca autoriza.
+    # O PLANTÃO (degrau 2.2). Quem entra: `CURSOS_PROFESSORES` ∪ `ADMIN_EMAILS`,
+    # fail-closed (`apps/core/sessao.py::_lista_de_emails`); a `identidade` só
+    # reconhece, nunca autoriza.
     path("plantao", plantao_fila, name="plantao"),
     path("plantao/<int:envio_id>", plantao_ficha, name="plantao-ficha"),
     # A SALA DO ALUNO (degrau 1.8). Duas páginas e dois gestos, todos da

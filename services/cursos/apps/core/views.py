@@ -706,10 +706,11 @@ def _professor(request):
     """`(Ator, None)` para quem entra no plantão; `(None, resposta)` para quem
     não entra, com a resposta pronta.
 
-    Fail-CLOSED por `CURSOS_PROFESSORES`: lista vazia, e-mail fora dela, e
-    identidade fora do ar (que devolve `VISITANTE`, e `eh_professor=False`)
-    dão a MESMA resposta, 403 — nunca 500, e nunca o convite fail-OPEN da sala
-    do aluno: aqui não há "sem saber quem é, então convida a entrar".
+    Fail-CLOSED pela união de `CURSOS_PROFESSORES` com `ADMIN_EMAILS` (as duas
+    listas vazias, e-mail fora das duas, e identidade fora do ar, que devolve
+    `VISITANTE` com `eh_professor=False`) dão a MESMA resposta, 403 — nunca
+    500, e nunca o convite fail-OPEN da sala do aluno: aqui não há "sem saber
+    quem é, então convida a entrar".
     """
     ator = quem_e(request)
     if not ator.eh_professor:
