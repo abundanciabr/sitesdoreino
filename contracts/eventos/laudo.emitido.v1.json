@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/laudo.emitido.v1.json",
+  "title": "laudo.emitido.v1",
+  "description": "UMA PESSOA ASSINOU O LAUDO de um envio: o instrumento, tres forcas, uma mudanca, a decisao, a data e a pergunta. A decisao e uma de tres: `aberto` (a porta abre), `aberto_com_ajuste` (abre, com um ajuste pedido) ou `devolvido` (o envio volta com data de retorno, e vira `checkpoint.devolvido`). Nao existe uma quarta decisao negativa, nem em `Envio`, nem em `Laudo`, nem em tela (INV-CUR-L2): devolver e pedir mais uma volta com data marcada, nunca encerrar. `ator_id` e quem assinou, nunca a IA: o Assistente de laudo so prepara (plano §7). Quem consome: a `metricas`. So IDS OPACOS viajam: nem link, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Publicado pela celula cursos (a sala de aula da Meshcraft) pelo padrao outbox transacional (INV-P6). Escrito em papel em 04/09/2026, antes de a celula emiti-lo. Lei: docs/decisoes/PLANO-CELULA-CURSOS.md §5.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "laudo.emitido"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de quem ASSINOU o laudo: a professora do plantao, o par ou o membro da Banca. Nunca e a IA: o Assistente de laudo so prepara o rascunho, e nada que ele produz persiste como decisao (plano §7, INV-CUR-L4). NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "envio_id",
+        "laudo_id",
+        "decisao",
+        "avaliador_papel"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant): chave de roteamento, como em todo evento desta plataforma."
+        },
+        "envio_id": {
+          "type": "string",
+          "description": "Id opaco do envio (o checkpoint entregue por link) dentro da celula cursos. Nunca o link."
+        },
+        "laudo_id": {
+          "type": "string",
+          "description": "Id opaco do laudo dentro da celula cursos. Nunca o texto do laudo."
+        },
+        "decisao": {
+          "type": "string",
+          "enum": [
+            "aberto",
+            "aberto_com_ajuste",
+            "devolvido"
+          ],
+          "description": "`aberto` e `aberto_com_ajuste` abrem a porta da aula (e emitem `aula.concluida`); `devolvido` manda o envio de volta com `data_de_retorno` (e emite `checkpoint.devolvido`). Sao as tres unicas decisoes que existem (INV-CUR-L2)."
+        },
+        "avaliador_papel": {
+          "type": "string",
+          "enum": [
+            "professor",
+            "par",
+            "banca"
+          ],
+          "description": "O papel de quem assinou: a professora do plantao (`professor`), um aluno revisor (`par`) ou a Banca (`banca`, Fase 5). A IA nunca aparece aqui."
+        }
+      }
+    }
+  }
+}
