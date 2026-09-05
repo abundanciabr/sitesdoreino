@@ -830,16 +830,30 @@ custava: das 40 sessões mais recentes deste projeto, **24 mudaram o mundo e
 terminaram sem prestar contas**. A maioria. Quem pagava era ele, uma pergunta
 repetida por vez.
 
-**A regra, nas duas pontas:**
+**A regra, nas três pontas:**
 
 1. **Na abertura.** Pedido que vai mudar o mundo (editar arquivo, rodar comando
    que altera algo, abrir PR) começa pelo **plano em caixinhas** — um título
-   `## Plano` e um `- [ ]` por passo — e o checklist vai sendo marcado enquanto
-   os passos caem. Ele é vivo: serve para o mantenedor ver onde a tarefa está
-   sem perguntar, e para o robô não perder metade do escopo no meio do caminho.
-2. **No fecho.** O turno que mudou o mundo termina com a prestação de contas,
+   `## Plano` e um `- [ ]` por passo. Ele é vivo: serve para o mantenedor ver
+   onde a tarefa está sem perguntar, e para o robô não perder metade do escopo
+   no meio do caminho.
+2. **Ao fim de cada etapa.** Pedido dele em 05/09/2026, no mesmo dia, com as
+   palavras dele: *"quero que toda e cada tarefa mostre um checklist e um
+   roadmap claro de onde está e o que ainda precisa ser feito ao final de cada
+   etapa, fase, parte, executada"*. O checklist da abertura sumia da tela
+   depois de vinte chamadas de ferramenta, e ele não sabia se a tarefa estava
+   no passo 2 ou no 5. A regra: **cada etapa fechada termina com o checklist
+   inteiro reimpresso e marcado** — `- [x]` no que caiu, `- [ ]` no que falta —
+   e a linha `Onde estou: passo N de M`, com o próximo passo dito. Não é um
+   segundo documento: é o MESMO checklist do plano, atualizado. "Etapa" é um
+   passo do próprio plano; tarefa de um passo só tem uma etapa, e o fecho a
+   cobre.
+3. **No fecho.** O turno que mudou o mundo termina com a prestação de contas,
    nesta ordem, e ela é o formato da regra 9 com os dois blocos que ele pediu
-   em 05/09/2026:
+   em 05/09/2026. **Ela começa pelo checklist no estado final** (todo `- [x]`
+   quando PRONTO; o `- [ ]` que sobrou, com o motivo, quando NÃO PRONTO;
+   PRONTO com caixa aberta é contradição, e o portão recusa), e segue com os
+   seis blocos:
 
    - **O que mudou** — fatos, não adjetivos
    - **O que foi verificado e como** — o comando e a saída real, não a promessa
@@ -896,10 +910,19 @@ de texto (seção "Depois de todo merge que dispara deploy"), sem mecanismo.
 
 **O que o portão NÃO mede, dito na cara:** que a prestação de contas seja
 verdadeira. Nenhum portão barato mede "isto foi mesmo verificado". O que ele
-torna impossível é o SILÊNCIO — os seis blocos aparecem, o veredito fica em cima
-da mesa, e quem lê consegue cobrar. Mentira escrita é falsificável; ausência não
-é. O plano de abertura também só é exigido, nunca bloqueado: no fim do turno ele
-já não tem conserto, e travar o robô por algo irreparável só produz um robô
-travado.
+torna impossível é o SILÊNCIO — os seis blocos aparecem, o checklist marcado
+aparece, o veredito fica em cima da mesa, e quem lê consegue cobrar. Mentira
+escrita é falsificável; ausência não é. O plano de abertura também só é
+exigido, nunca bloqueado: no fim do turno ele já não tem conserto, e travar o
+robô por algo irreparável só produz um robô travado. **O checklist ao fim de
+cada etapa (ponta 2) está na mesma situação, e é dito aqui para ninguém tomar o
+portão do fecho por garantia dele:** "etapa" não existe para a máquina, e um
+portão que contasse reimpressões por chamada de ferramenta cobraria checklist
+a cada `ls`. O que o `Stop` mede é a ponta 3: o relatório final SEM caixinha é
+recusado, PRONTO com `- [ ]` aberta é recusado, e a recusa ensina as três
+pontas. O que ele NÃO distingue é o checklist do plano colado no fim com tudo
+marcado sem que nada tenha sido feito: isso é mentira escrita, falsificável,
+e fica para quem lê. A ponta 2 fica na lei, no aviso de
+abertura (`--plano`) e na memória do robô — sem mecanismo, declarado.
 
-**Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos; o `UserPromptSubmit` exige o plano na abertura) · `ci/tests/test_prestacao_de_contas.py`.
+**Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos e sem o checklist marcado; o `UserPromptSubmit` exige o plano na abertura) · `ci/tests/test_prestacao_de_contas.py`. O checklist ao fim de cada etapa em si não tem mecanismo, e está dito acima com todas as letras.
