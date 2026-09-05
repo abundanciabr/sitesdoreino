@@ -64,6 +64,7 @@ from apps.sugestoes.models import (
 )
 
 from . import apagamento
+from . import fusoes
 from . import sessao as ses
 from .changespecs import ChangeSpecInvalido, e_aprovador
 from .changespecs import registrar as registrar_changespec
@@ -881,3 +882,189 @@ def _uma_ideia(sugestao_id: int) -> dict:
     if ideia is None:
         raise Http404("ideia inexistente")
     return _como_fato(ideia, plateia_de([ideia]))
+
+
+# ---------------------------------------------------------------------------
+# As junções de ideias (05/09/2026) — prévia, fusão e desfazer
+# ---------------------------------------------------------------------------
+#
+# A regra de ouro das três: a PRÉVIA não escreve nada, e é ela que o mantenedor
+# vê antes de confirmar. `DECISAO-fundir-ideias.md`.
+
+
+class GrupoParaJuntar(Schema):
+    canonica: int
+    absorvidas: list[int]
+
+
+class RetratoDeIdeia(Schema):
+    id: int
+    titulo: str
+    votos: int
+    pessoas: int
+    comentarios: int
+
+
+class PreviaDeFusao(Schema):
+    canonica: RetratoDeIdeia
+    absorvidas: list[RetratoDeIdeia]
+    votos_hoje: int
+    votos_depois: int
+    votos_em_comum: int
+    pessoas_depois: int
+    comentarios_depois: int
+    impedimento: str = ""
+
+
+class PreviasPedidas(Schema):
+    grupos: list[GrupoParaJuntar]
+
+
+class PreviasDeFusao(Schema):
+    previas: list[PreviaDeFusao]
+
+
+class FusaoPedida(QuemAge):
+    canonica: int
+    absorvidas: list[int]
+    nota: str = ""
+
+
+class IdeiaNaJuncao(Schema):
+    id: int
+    titulo: str
+    votos_movidos: int
+    votos_descartados: int
+    comentarios_movidos: int
+
+
+class FusaoFeita(Schema):
+    id: int
+    canonica: RetratoDeIdeia
+    absorvidas: list[IdeiaNaJuncao]
+    nota: str = ""
+    feita_em: str
+    em_vigor: bool
+
+
+class FusoesEmVigor(Schema):
+    fusoes: list[FusaoFeita]
+
+
+def _fusao_como_fato(fusao) -> dict:
+    return {
+        "id": fusao.id,
+        "canonica": fusoes._retrato(fusao.canonica),
+        "absorvidas": [
+            {
+                "id": a.sugestao_id,
+                "titulo": a.sugestao.titulo,
+                "votos_movidos": len(a.votos_movidos),
+                "votos_descartados": len(a.votos_descartados),
+                "comentarios_movidos": len(a.comentarios_movidos),
+            }
+            for a in fusao.absorvidas.select_related("sugestao")
+        ],
+        "nota": fusao.nota,
+        "feita_em": fusao.feita_em.isoformat(),
+        "em_vigor": fusao.em_vigor,
+    }
+
+
+@router.post(
+    "/gestao/fusoes/previas",
+    response={200: PreviasDeFusao, 422: Recusa},
+    operation_id="previewIdeaMerges",
+    summary="Como ficariam estas junções, sem juntar nada",
+    description=(
+        "Só leitura: é o que a tela mostra antes de perguntar “tem certeza?”. "
+        "Vários grupos numa chamada só porque a tela que a usa mostra a lista "
+        "inteira de junções propostas de uma vez, e uma ida por grupo faria a "
+        "página esperar o dobro. O número que importa é `votos_depois`, e ele "
+        "quase nunca é a soma: quem votou em duas ideias juntadas continua "
+        "sendo uma pessoa com um voto, e `votos_em_comum` diz quantas são. "
+        "`impedimento` preenchido significa que esta junção não pode "
+        "acontecer, com o motivo em português — a tela mostra o motivo em vez "
+        "de esconder o botão."
+    ),
+)
+def prever_fusoes(request, payload: PreviasPedidas):
+    try:
+        return 200, {
+            "previas": [
+                fusoes.previa(
+                    canonica_id=grupo.canonica, absorvidas_ids=grupo.absorvidas
+                )
+                for grupo in payload.grupos
+            ]
+        }
+    except fusoes.FusaoInvalida as recusa:
+        return 422, {"erro": str(recusa)}
+
+
+@router.post(
+    "/gestao/fusoes",
+    response={200: FusaoFeita, 422: Recusa},
+    operation_id="mergeIdeas",
+    summary="Junta as ideias de verdade, numa transação só",
+    description=(
+        "Move os votos (quem votou em duas não vira dois votos: o repetido é "
+        "descartado e ANOTADO, para o desfazer poder devolvê-lo), move os "
+        "comentários, liga a ideia absorvida à que ficou de pé (a URL antiga "
+        "continua resolvendo) e muda o status para `mesclado` pelo caminho que "
+        "escreve histórico e avisa toda a plateia. Tudo ou nada. Recusa 422 "
+        "com o motivo em português quando a junção não pode acontecer."
+    ),
+)
+def fundir_ideias(request, payload: FusaoPedida):
+    try:
+        fusao = fusoes.fundir(
+            canonica_id=payload.canonica,
+            absorvidas_ids=payload.absorvidas,
+            nota=payload.nota,
+            por=_quem(payload),
+        )
+    except fusoes.FusaoInvalida as recusa:
+        return 422, {"erro": str(recusa)}
+    except AtorSemIdDaPlataforma as recusa:
+        return 422, {"erro": str(recusa)}
+    return 200, _fusao_como_fato(fusao)
+
+
+@router.post(
+    "/gestao/fusoes/{fusao_id}/desfazer",
+    response={200: FusaoFeita, 422: Recusa},
+    operation_id="undoIdeaMerge",
+    summary="Desfaz a junção inteira: votos, comentários e status voltam",
+    description=(
+        "Devolve o que ainda existe, e nunca inventa: um voto que a pessoa "
+        "TIROU depois da junção não volta, porque ressuscitá-lo seria votar no "
+        "lugar dela. O voto que esta operação apagou (o de quem tinha votado "
+        "nas duas) é recriado, esse sim: a pessoa não fez nada para perdê-lo. "
+        "Recusa 422 se a junção não existe ou já foi desfeita."
+    ),
+)
+def desfazer_fusao(request, fusao_id: int, payload: QuemAge):
+    try:
+        fusao = fusoes.desfazer(fusao_id=fusao_id, por=_quem(payload))
+    except fusoes.FusaoInvalida as recusa:
+        return 422, {"erro": str(recusa)}
+    except AtorSemIdDaPlataforma as recusa:
+        return 422, {"erro": str(recusa)}
+    return 200, _fusao_como_fato(fusao)
+
+
+@router.get(
+    "/gestao/fusoes",
+    response={200: FusoesEmVigor},
+    operation_id="listIdeaMerges",
+    summary="As junções que ainda valem, para poder desfazer",
+    description=(
+        "Só as que estão em vigor: junção desfeita saiu do caminho e não volta "
+        "à lista. É por aqui que a tela sabe o que oferecer para desfazer."
+    ),
+)
+def listar_fusoes(request):
+    return 200, {
+        "fusoes": [_fusao_como_fato(f) for f in fusoes.em_vigor(quadro_atual())]
+    }

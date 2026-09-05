@@ -788,3 +788,90 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
         return f"{self.event}:{self.event_id}"
+
+
+class Fusao(models.Model):
+    """Uma junção de ideias, com o RECIBO do que ela moveu.
+
+    `DECISAO-fundir-ideias.md` (05/09/2026). A espec §8 (V1.1) já mandava a
+    junção ser transacional, não duplicar o voto de quem votou nas duas,
+    preservar comentários e manter a URL antiga resolvendo. O que ela não
+    pedia, e o mantenedor pediu, é **desfazer**.
+
+    Desfazer só existe porque esta tabela guarda o que aconteceu voto a voto.
+    Sem o recibo, a junção seria irreversível na prática: depois de mover os
+    votos, ninguém saberia quais vieram de onde — e "devolver" viraria adivinhação.
+
+    Três listas, e cada uma existe por um caso que o desfazer erraria sem ela:
+
+    - `votos_movidos`: mudaram de dono. Voltam.
+    - `votos_descartados`: a pessoa já tinha votado NAS DUAS. O voto na
+      absorvida foi apagado (senão a canônica ganharia dois votos da mesma
+      pessoa, contra o `unique_together`). Desfazer o RECRIA — sem esta lista,
+      a pessoa perderia um voto para sempre, calada.
+    - `comentarios_movidos`: por id, porque comentário não se recria igual.
+
+    Reversível pelo campo `desfeita_em` (`NULL` = ainda em vigor), como o
+    arquivamento da `Sugestao`. Não herda de `RegistroAppendOnly` justamente
+    porque isto NÃO é histórico: é um estado que se desfaz. O histórico de tudo
+    o que ela causou está em `HistoricoStatus`, esse sim intocável.
+    """
+
+    canonica = models.ForeignKey(
+        Sugestao, related_name="fusoes", on_delete=models.PROTECT
+    )
+    nota = models.TextField(blank=True, default="")
+    feita_por = models.ForeignKey(
+        "Identidade", related_name="fusoes_feitas", on_delete=models.PROTECT
+    )
+    feita_em = models.DateTimeField(auto_now_add=True)
+    desfeita_em = models.DateTimeField(null=True, blank=True)
+    desfeita_por = models.ForeignKey(
+        "Identidade",
+        null=True,
+        blank=True,
+        related_name="fusoes_desfeitas",
+        on_delete=models.PROTECT,
+    )
+
+    class Meta:
+        indexes = [models.Index(fields=["canonica", "desfeita_em"])]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"fusão {self.pk} → ideia {self.canonica_id}"
+
+    @property
+    def em_vigor(self) -> bool:
+        return self.desfeita_em is None
+
+
+class IdeiaAbsorvida(models.Model):
+    """Uma ideia que entrou numa fusão, e o recibo do que ela entregou.
+
+    Uma linha por ideia absorvida: juntar três ideias numa é UMA `Fusao` com
+    duas linhas destas, e desfazer devolve as duas de uma vez. Foi o pedido
+    literal do mantenedor: *"com a opção de desfazer tudo"*.
+    """
+
+    fusao = models.ForeignKey(
+        Fusao, related_name="absorvidas", on_delete=models.CASCADE
+    )
+    sugestao = models.ForeignKey(
+        Sugestao, related_name="absorcoes", on_delete=models.PROTECT
+    )
+    status_anterior = models.CharField(max_length=20)
+    # Ids opacos de `Identidade` (a coluna `autor_id` do `Voto`), nunca linhas:
+    # e-mail não sobe para JSON nenhum (`DECISAO-EVO-01` §3).
+    votos_movidos = models.JSONField(default=list, blank=True)
+    votos_descartados = models.JSONField(default=list, blank=True)
+    comentarios_movidos = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["fusao", "sugestao"], name="uma_ideia_uma_vez_por_fusao"
+            )
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover
+        return f"ideia {self.sugestao_id} absorvida na fusão {self.fusao_id}"
