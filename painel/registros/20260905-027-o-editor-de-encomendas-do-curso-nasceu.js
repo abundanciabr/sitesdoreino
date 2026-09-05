@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260905-023-o-editor-de-encomendas-do-curso-nasceu",
+  arquivo: "20260905-027-o-editor-de-encomendas-do-curso-nasceu",
   tipo: "entrega",
   quando: "2026-09-05",
   titulo: "O editor de encomendas do curso nasceu em /admin/escola/aulas/ (PR #1063)",
