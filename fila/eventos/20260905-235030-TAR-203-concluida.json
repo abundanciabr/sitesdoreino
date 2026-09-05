@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260905-235030-TAR-203-concluida",
+  "tarefa": "TAR-203",
+  "evento": "concluida",
+  "quando": "2026-09-05T23:50:30+00:00",
+  "quem": "maestro-porta-curso-20260905",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1135 — a porta ganhou as quatro operacoes com {curso} e a parte como guarda; destravado pelo Rito de Contrato do PR #1136, que pousou antes. Medido na base nova: ci/contract_freeze.py cursos -> contrato PASS (identico ao congelado, 976 linhas) e seguranca PASS (11 operacoes). Suite da celula 518 passed; mutacao do guarda da parte derruba 3 testes na assercao; devolver 'o primeiro curso do site' derruba 7.",
+  "verificado_em": "2026-09-05"
+}
