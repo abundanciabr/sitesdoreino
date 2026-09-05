@@ -1,13 +1,13 @@
 """Teste-guarda [INV-CUR-L6]: exatamente três forças, nenhuma da lista de
 genéricos; exatamente uma mudança, com a aula onde se aprende.
 
-Lei: `PLANO-CELULA-CURSOS.md` §9. `apps/cursos/laudo.py::_validar_forcas` e
+Lei: `PLANO-CELULA-CURSOS.md` §9. `apps/cursos/laudo.py::validar_forcas` e
 `::_validar_mudanca`. A lista de genéricos é fixa: "bonito", "legal", "bom
 trabalho", "ficou bom", "parabéns" — comparação por igualdade (strip +
 minúsculo), não substring.
 
 Provado por mutação em 05/09/2026: trocar `len(limpas) != 3` por
-`len(limpas) < 3` em `_validar_forcas` deixa 1 vermelho (quatro forças
+`len(limpas) < 3` em `validar_forcas` deixa 1 vermelho (quatro forças
 passam a ser aceitas); esvaziar `FORCAS_GENERICAS` deixa 1 vermelho (força
 genérica passa a ser aceita); trocar `len(itens) != 1` por `not itens` em
 `_validar_mudanca` deixa 1 vermelho (duas mudanças passam a ser aceitas, e só
