@@ -2,12 +2,18 @@ publico-para-ia: true
 
 # PLANO — a orquestração autônoma dos robôs (as fichas, o despachante que não dorme e o que ele nunca decide)
 
-> **Estado: PROPOSTO em 05/09/2026, esperando a decisão do mantenedor**
-> (registro `20260905-005` no livro, PR #1051). Em 04/09/2026 ele perguntou
-> "como criar um sistema de agentes e sub-agentes de IA para gerenciar os robôs,
-> de modo que trabalhem com mais agilidade e velocidade", e escolheu, em pergunta
-> estruturada, receber o plano completo como documento antes de qualquer código.
-> Nenhuma tarefa da escada nasceu na fila: elas nascem quando ele aprovar (§11).
+> **Estado: APROVADO pelo mantenedor em 05/09/2026, com o rumo corrigido por
+> ele** (registros `20260905-005`, `20260905-013` e `20260905-015`; PRs #1051 e
+> #1056). Em pergunta estruturada ele aprovou a escada, a assinatura
+> como pagamento do despachante e 5 PRs em sombra antes do pouso sozinho. Em
+> seguida esclareceu o que queria, nas palavras dele: *"quando eu passar aqui
+> uma tarefa, que ela seja executada por vários agentes e sub-agentes, para
+> mais agilidade, porque hoje as tarefas demoram bastante"*. Isso é o **§0**
+> abaixo, que entrou primeiro: o degrau 1 (as fichas) mais a regra de que todo
+> pedido dele é um lote, construídos no PR #1056. O despachante (degrau
+> 2) fica como degrau seguinte, e depende de duas decisões que ele deixou para
+> depois: o teto do dia e as tarefas da fábrica (registro `20260905-015`, na
+> caixa "Precisa de você"). A tarefa dele nasce na fila quando elas chegarem.
 
 **Escrito em 05/09/2026**, a partir de: a pergunta dele; a medição da fila, do
 runbook de lotes e da pista contra o `origin/main` (commit `540f6994`); o veredito
@@ -22,6 +28,41 @@ Este documento NÃO é um painel: não guarda estado e não se atualiza sozinho.
 responde "isto foi feito?" é o livro (`painel/registros/`) e a fila (`fila/`).
 
 ---
+
+## §0 O que o mantenedor esclareceu, e o que mudou no plano
+
+Depois de aprovar a escada, ele disse o que queria de fato: **a tarefa que ele
+passa numa sessão deve ser feita por vários agentes e sub-agentes ao mesmo
+tempo, porque hoje demora.** O plano tinha mirado outro problema (nada anda
+entre as sessões dele). Os dois são reais; o dele vem primeiro.
+
+Medido nos eventos da fila em 05/09/2026 (95 tarefas concluídas por robôs):
+
+| Medição | Valor |
+|---|---|
+| Uma tarefa, do robô pegar até concluir (mediana) | 19 min |
+| Tarefas fechadas em até 30 min | 75 de 95 |
+| Entre 30 e 90 min | 16 |
+| Espera fixa por PR (checks, pista, deploy), que nenhum agente encurta | cerca de 10 min |
+
+Uma tarefa sozinha não é lenta. O que demora é o pedido grande que vira 5, 7,
+10 tarefas feitas em série pela mesma sessão, cada uma esperando seus 10
+minutos de pista antes da próxima (a célula de cursos foi uma escada assim).
+
+**A correção do rumo:** todo pedido dele é um lote, sem ele precisar dizer. A
+sessão que recebe o pedido é a maestro daquele pedido: divide em pedaços
+independentes (1 PR = 1 célula, orçamento de 15), dispara um sub-agente por
+pedaço com a ficha `despacho`, em paralelo, e mantém em série só o que depende
+de outro pedaço. O `revisor` lê cada diff enquanto os checks rodam; o
+`escrivao` escreve o registro, a armadilha e o evento da fila no mesmo tempo. Os
+10 minutos de espera de cada PR passam a acontecer ao mesmo tempo, não somados.
+É a regra nova do `CLAUDE.md` ("Todo pedido do mantenedor é um lote") e a
+emenda ao `RUNBOOK-LOTES.md` §0. As fichas são o degrau 1 do §5, sem mudança.
+
+O que os agentes não mudam, dito a ele com todas as letras: uma corrente de
+passos que dependem um do outro continua em série, e a espera da pista continua
+existindo por PR. O despachante (degrau 2) continua valendo para o outro
+problema, e espera as duas decisões do §8.
 
 ## §1 A pergunta, e a resposta em uma frase
 
@@ -421,6 +462,7 @@ aprendido vai para o `RUNBOOK-LOTES.md` §9 como lição de regência.
 
 ## Estado
 
-**PROPOSTO em 05/09/2026.** Esperando as quatro decisões do §8, em pergunta
-estruturada, na sessão em que o mantenedor decidir voltar ao assunto. Até lá,
-nada foi construído e nenhuma tarefa da escada existe na fila.
+**APROVADO em 05/09/2026, com o rumo corrigido.** O §0 (as fichas e a regra do
+lote por pedido) foi construído no PR #1056. O despachante espera as duas
+decisões do §8 (teto do dia; tarefas da fábrica), registradas como pendência
+`20260905-015`. Quem responde "isto foi feito?" continua sendo o livro e a fila.
