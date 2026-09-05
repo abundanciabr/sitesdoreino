@@ -26,6 +26,10 @@ FIACAO = RAIZ_DO_REPO / ".claude" / "settings.json"
 
 CONTAS_COMPLETAS = """Terminei.
 
+- [x] achar o evento repetido no webhook
+- [x] ignorá-lo, com teste vermelho→verde
+Onde estou: passo 2 de 2, acabou.
+
 **O que mudou** — o webhook do Pix passou a ignorar evento repetido.
 
 **O que foi verificado e como** — `pytest services/pagamentos` → 41 passed.
@@ -96,6 +100,8 @@ def _recusa_que_ensina(proc: subprocess.CompletedProcess) -> None:
                       ("**Auditoria de qualidade**", 0)):
         assert titulo in proc.stderr, f"o molde não trouxe {titulo}"
     assert "PRONTO" in proc.stderr
+    # E o roteiro que ele pediu em 05/09/2026: a recusa tem de ensinar a caixinha.
+    assert "- [x]" in proc.stderr and "Onde estou" in proc.stderr
 
 
 def _silencio(proc: subprocess.CompletedProcess) -> None:
@@ -346,6 +352,81 @@ def test_os_mesmos_titulos_soltos_na_prosa_nao_valem(tmp_path):
     ]))
 
 
+def test_relatorio_sem_o_checklist_e_recusado(tmp_path):
+    """Pedido dele em 05/09/2026: "toda e cada tarefa mostre um checklist e um
+    roadmap claro de onde está e o que ainda precisa ser feito". Os seis blocos
+    sem a caixinha eram o relatório de antes, e ele não dizia onde a tarefa
+    parou. Este teste nasceu VERMELHO contra o portão anterior."""
+    sem_checklist = "\n".join(
+        linha for linha in CONTAS_COMPLETAS.splitlines()
+        if not linha.startswith("- [") and not linha.startswith("Onde estou")
+    )
+    assert "- [x]" not in sem_checklist
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(sem_checklist),
+    ]))
+
+
+def test_caixinha_solta_na_prosa_nao_e_checklist(tmp_path):
+    """O par vermelho: `[x]` no meio de uma frase não é linha de checklist."""
+    prosa = (CONTAS_COMPLETAS
+             .replace("- [x] achar o evento repetido no webhook", "achei [x] o evento")
+             .replace("- [x] ignorá-lo, com teste vermelho→verde", "e ignorei [x] com teste"))
+    assert not any(l.startswith("- [") for l in prosa.splitlines())
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(prosa),
+    ]))
+
+
+def test_checklist_com_caixa_aberta_e_aceito(tmp_path):
+    """NÃO PRONTO honesto deixa `- [ ]` na tela. Um portão que só aceitasse
+    `[x]` ensinaria a marcar o que não foi feito — o contrário do roteiro."""
+    honesto = CONTAS_COMPLETAS.replace(
+        "- [x] achar o evento repetido no webhook",
+        "- [ ] achar o evento repetido no webhook (o log de produção não chega aqui)",
+    ).replace(
+        "- [x] ignorá-lo, com teste vermelho→verde",
+        "- [ ] ignorá-lo, com teste vermelho→verde (o teste de ponta a ponta não roda aqui)",
+    ).replace("**Veredito:** PRONTO", "**Veredito:** NÃO PRONTO")
+    assert "- [x]" not in honesto  # senão o teste não prova que `- [ ]` basta
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(honesto),
+    ]))
+
+
+def test_pronto_com_caixa_aberta_e_contradicao_e_e_recusado(tmp_path):
+    """O plano de abertura colado no fim, intocado, com PRONTO embaixo, satisfazia
+    o portão sem o robô ter marcado nada (achado do revisor do PR #1126). Ou a
+    tarefa acabou, ou sobrou passo: as duas coisas juntas não existem."""
+    contraditorio = CONTAS_COMPLETAS.replace(
+        "- [x] ignorá-lo, com teste vermelho→verde",
+        "- [ ] ignorá-lo, com teste vermelho→verde",
+    )
+    assert "**Veredito:** PRONTO" in contraditorio
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(contraditorio),
+    ]))
+
+
+def test_caixinha_quebrada_em_duas_linhas_nao_e_checklist(tmp_path):
+    """`\\s` com re.M atravessava linha: `-` numa linha e `[x]` na outra casavam."""
+    quebrado = CONTAS_COMPLETAS.replace("- [x] achar", "-\n[x] achar") \
+                               .replace("- [x] ignorá-lo", "- [x]\nignorá-lo")
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(quebrado),
+    ]))
+
+
 def test_veredito_nao_pronto_e_resposta_aceita(tmp_path):
     """NÃO PRONTO é honestidade, não falha. Um portão que só aceitasse PRONTO
     ensinaria o robô a mentir — que é a doença que ele existe para curar."""
@@ -412,6 +493,8 @@ def test_o_aviso_do_plano_sai_para_pedido_do_mantenedor():
     assert "PLANO PRIMEIRO" in proc.stdout
     assert "- [ ]" in proc.stdout
     assert "Veredito" in proc.stdout
+    # A ponta do meio (05/09/2026) só tem o aviso como mecanismo: ele tem de dizê-la.
+    assert "FIM DE CADA ETAPA" in proc.stdout and "Onde estou" in proc.stdout
 
 
 def test_o_aviso_do_plano_cala_no_acordar_da_maquina():

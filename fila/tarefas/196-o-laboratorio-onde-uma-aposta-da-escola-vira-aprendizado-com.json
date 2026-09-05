@@ -1,0 +1,18 @@
+{
+  "arquivo": "196-o-laboratorio-onde-uma-aposta-da-escola-vira-aprendizado-com",
+  "id": "TAR-196",
+  "titulo": "O laboratório: onde uma aposta da escola vira aprendizado com data",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "aprendizados-validados-no-ciclo"
+  ],
+  "evidencia_exigida": "PR mergeado com a tela /admin/placar/laboratorio/ no ar, a suíte da admin verde e teste_logica.js verde com os casos do experimento",
+  "despacho": "Degrau 12 do PLANO-PAINEL-DE-GESTAO.md: o laboratório. Experimento vira registro\ndo livro tipo medicao com problema, hipotese, metrica, guarda e vence_em_dias;\no resultado é registro novo com responde_a e veredito (venceu, perdeu,\nnao-deu-para-saber). A tela em /admin/placar/laboratorio/ mostra rodando,\npassados do prazo e encerrados por veredito, com o estado calculado. O 12º do\nplacar de doze (aprendizados-validados-no-ciclo) passa a sair dessa mesma\nregra, corrigindo a contagem antiga que somava vereditos de deploy.",
+  "origem": "degrau 12 do PLANO-PAINEL-DE-GESTAO.md",
+  "criada_em": "2026-09-05"
+}
