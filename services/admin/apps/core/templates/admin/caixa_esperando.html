@@ -145,9 +145,13 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
           etapa vazia faria o mantenedor fechar a página tranquilo.
           {% endcomment %}
           {% if filtrando and total_em_aberto %}
+            {% comment %}
+            "Tem N ideias" e não "As outras N ideias": com uma só em aberto a
+            segunda forma sai "As outras 1 ideia", que nenhum brasileiro escreve.
+            {% endcomment %}
             <p class="aviso">
               <b>Nenhuma ideia nesta etapa.</b>
-              As outras {{ total_em_aberto }} ideia{{ total_em_aberto|pluralize:"s" }} em aberto continua{{ total_em_aberto|pluralize:"m" }} lá — escolha
+              Tem {{ total_em_aberto }} ideia{{ total_em_aberto|pluralize:"s" }} em aberto em outras etapas: escolha
               <b>Todas as etapas</b> acima para ver de novo.
             </p>
           {% else %}

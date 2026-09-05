@@ -610,7 +610,7 @@ def test_etapa_vazia_nao_e_a_mesma_frase_de_nao_haver_ideia_nenhuma():
     pagina = texto(cliente.get(reverse("caixa_esperando"), {"etapa": "construindo"}))
 
     assert "Nenhuma ideia nesta etapa." in pagina
-    assert "As outras 4 ideias em aberto continuam lá" in pagina
+    assert "Tem 4 ideias em aberto em outras etapas" in pagina
     assert "já recebeu uma resposta" not in pagina
 
 
