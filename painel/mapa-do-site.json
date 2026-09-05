@@ -407,6 +407,16 @@
       "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar o curso (as aulas, o checkpoint e o laudo) acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /cursos."
     },
     {
+      "celula": "cursos",
+      "rota": "api/cursos/",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "A porta de máquina do curso",
+      "descricao": "Por onde o editor do Admin lê e grava o conteúdo do curso: a lista das encomendas, cada aula com as 16 peças e as pausas, a escala de cada instrumento, e o botão de publicar. O texto das aulas mora só aqui, e entra só por aqui. Só responde a quem apresenta a senha de máquina.",
+      "observacao": "Enquanto /cursos não entra no roteamento (degrau 1.7), esta porta só existe na rede interna. Quando entrar, ela fica debaixo dele, alcançável pela internet: quem a fecha é a senha de par, nunca o roteamento, e a lista de senhas nasce VAZIA (ninguém passa) até o editor do Admin ganhar a dele."
+    },
+    {
       "celula": "encomendas",
       "rota": "healthz",
       "endereco": "-",
