@@ -336,6 +336,108 @@ paths:
             schema:
               $ref: '#/components/schemas/QuemAge'
         required: true
+  /gestao/fusoes/previas:
+    post:
+      operationId: previewIdeaMerges
+      summary: Como ficariam estas junções, sem juntar nada
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreviasDeFusao'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+      description: 'Só leitura: é o que a tela mostra antes de perguntar “tem certeza?”. Vários grupos numa
+        chamada só porque a tela que a usa mostra a lista inteira de junções propostas de uma vez, e uma
+        ida por grupo faria a página esperar o dobro. O número que importa é `votos_depois`, e ele quase
+        nunca é a soma: quem votou em duas ideias juntadas continua sendo uma pessoa com um voto, e `votos_em_comum`
+        diz quantas são. `impedimento` preenchido significa que esta junção não pode acontecer, com o motivo
+        em português — a tela mostra o motivo em vez de esconder o botão.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PreviasPedidas'
+        required: true
+  /gestao/fusoes:
+    post:
+      operationId: mergeIdeas
+      summary: Junta as ideias de verdade, numa transação só
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FusaoFeita'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+      description: 'Move os votos (quem votou em duas não vira dois votos: o repetido é descartado e ANOTADO,
+        para o desfazer poder devolvê-lo), move os comentários, liga a ideia absorvida à que ficou de pé
+        (a URL antiga continua resolvendo) e muda o status para `mesclado` pelo caminho que escreve histórico
+        e avisa toda a plateia. Tudo ou nada. Recusa 422 com o motivo em português quando a junção não pode
+        acontecer.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FusaoPedida'
+        required: true
+    get:
+      operationId: listIdeaMerges
+      summary: As junções que ainda valem, para poder desfazer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FusoesEmVigor'
+      description: 'Só as que estão em vigor: junção desfeita saiu do caminho e não volta à lista. É por
+        aqui que a tela sabe o que oferecer para desfazer.'
+  /gestao/fusoes/{fusao_id}/desfazer:
+    post:
+      operationId: undoIdeaMerge
+      summary: 'Desfaz a junção inteira: votos, comentários e status voltam'
+      parameters:
+      - in: path
+        name: fusao_id
+        schema:
+          type: integer
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FusaoFeita'
+        '422':
+          description: Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recusa'
+      description: 'Devolve o que ainda existe, e nunca inventa: um voto que a pessoa TIROU depois da junção
+        não volta, porque ressuscitá-lo seria votar no lugar dela. O voto que esta operação apagou (o de
+        quem tinha votado nas duas) é recriado, esse sim: a pessoa não fez nada para perdê-lo. Recusa 422
+        se a junção não existe ou já foi desfeita.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuemAge'
+        required: true
 components:
   schemas:
     Session:
@@ -918,6 +1020,161 @@ components:
           type: string
       required:
       - por_email
+      type: object
+    PreviaDeFusao:
+      properties:
+        canonica:
+          $ref: '#/components/schemas/RetratoDeIdeia'
+        absorvidas:
+          items:
+            $ref: '#/components/schemas/RetratoDeIdeia'
+          type: array
+        votos_hoje:
+          type: integer
+        votos_depois:
+          type: integer
+        votos_em_comum:
+          type: integer
+        pessoas_depois:
+          type: integer
+        comentarios_depois:
+          type: integer
+        impedimento:
+          default: ''
+          type: string
+      required:
+      - canonica
+      - absorvidas
+      - votos_hoje
+      - votos_depois
+      - votos_em_comum
+      - pessoas_depois
+      - comentarios_depois
+      type: object
+    PreviasDeFusao:
+      properties:
+        previas:
+          items:
+            $ref: '#/components/schemas/PreviaDeFusao'
+          type: array
+      required:
+      - previas
+      type: object
+    RetratoDeIdeia:
+      properties:
+        id:
+          type: integer
+        titulo:
+          type: string
+        votos:
+          type: integer
+        pessoas:
+          type: integer
+        comentarios:
+          type: integer
+      required:
+      - id
+      - titulo
+      - votos
+      - pessoas
+      - comentarios
+      type: object
+    GrupoParaJuntar:
+      properties:
+        canonica:
+          type: integer
+        absorvidas:
+          items:
+            type: integer
+          type: array
+      required:
+      - canonica
+      - absorvidas
+      type: object
+    PreviasPedidas:
+      properties:
+        grupos:
+          items:
+            $ref: '#/components/schemas/GrupoParaJuntar'
+          type: array
+      required:
+      - grupos
+      type: object
+    FusaoFeita:
+      properties:
+        id:
+          type: integer
+        canonica:
+          $ref: '#/components/schemas/RetratoDeIdeia'
+        absorvidas:
+          items:
+            $ref: '#/components/schemas/IdeiaNaJuncao'
+          type: array
+        nota:
+          default: ''
+          type: string
+        feita_em:
+          type: string
+        em_vigor:
+          type: boolean
+      required:
+      - id
+      - canonica
+      - absorvidas
+      - feita_em
+      - em_vigor
+      type: object
+    IdeiaNaJuncao:
+      properties:
+        id:
+          type: integer
+        titulo:
+          type: string
+        votos_movidos:
+          type: integer
+        votos_descartados:
+          type: integer
+        comentarios_movidos:
+          type: integer
+      required:
+      - id
+      - titulo
+      - votos_movidos
+      - votos_descartados
+      - comentarios_movidos
+      type: object
+    FusaoPedida:
+      properties:
+        por_email:
+          type: string
+        por_nome:
+          default: ''
+          type: string
+        por_id_da_plataforma:
+          default: ''
+          type: string
+        canonica:
+          type: integer
+        absorvidas:
+          items:
+            type: integer
+          type: array
+        nota:
+          default: ''
+          type: string
+      required:
+      - por_email
+      - canonica
+      - absorvidas
+      type: object
+    FusoesEmVigor:
+      properties:
+        fusoes:
+          items:
+            $ref: '#/components/schemas/FusaoFeita'
+          type: array
+      required:
+      - fusoes
       type: object
   securitySchemes:
     bearerAuth:
