@@ -1,0 +1,40 @@
+from django.urls import path
+
+from apps.core.views import healthz
+
+# O urlconf da célula NÃO conhece o prefixo público: quem o aplica é
+# `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a célula de
+# endereço é editar Traefik + env, nunca cirurgia aqui (`armadilhas/029`;
+# guarda em `tests/test_healthz_script_name.py`).
+#
+# Esta casa tem DOIS endereços públicos (`PLANO-PORTFOLIO-DO-ALUNO.md` §4):
+# `/pages/...` para o aluno logado e `/estudio/<apelido>` para a vitrine que
+# ele manda ao cliente. Qual dos dois vira `SCRIPT_NAME` e como o outro chega
+# até aqui é decisão do degrau 05 (o PR do Traefik e do compose), e o motivo
+# de ela não estar tomada nesta gênese está escrito em `config/settings.py`.
+#
+# Quando as telas nascerem (degrau 06, a porta e a tela mínima; 07, a
+# Prancheta; 08, as peças por link; 11, a fila da equipe; 13, a vitrine): TODA
+# rota leva `name=`, e nenhum template escreve caminho à mão — é
+# `reverse()`/`{% url %}` quem carrega o prefixo público para dentro do
+# endereço. Caminho cravado em string quebra em produção e SÓ lá
+# (`armadilhas/029` e `/081`).
+#
+# E quando houver CSS: a rota `servir_estatico` é obrigatória, com nome próprio
+# (`estatico`), porque com DEBUG=0 o Django não serve estático e não há nginx
+# nem CDN atrás do Traefik — o arquivo vira 404 em produção e SÓ lá
+# (`armadilhas/083`). Sob prefixo, o `<link>` sai de `{% url 'estatico' %}` e
+# **nunca** de `{% static %}` (`armadilhas/102`). O molde vivo está em
+# `services/forum` e `services/cursos`.
+#
+# E quando a porta de MÁQUINA nascer (degrau 03, o contrato e os eventos
+# `pages.portfolio.*`): ela mora em `/api/pages/` e `/interno/`, e nesta célula
+# esses caminhos FICAM DEBAIXO do prefixo roteado. Ou seja,
+# `meshcraft.top/pages/interno/…` é alcançável pela internet — o corte do
+# prefixo é do Django, não do Traefik (`armadilhas/186`). Quem fecha a porta é
+# o Bearer do par, e o guarda que importa é o teste de 401 em TODAS as
+# operações; a topologia não fecha nada aqui, e escrever o contrário no
+# comentário seria ensinar errado quem chegar depois.
+urlpatterns = [
+    path("healthz", healthz),
+]
