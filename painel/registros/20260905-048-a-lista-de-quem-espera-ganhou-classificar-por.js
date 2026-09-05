@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260905-035-a-lista-de-quem-espera-ganhou-classificar-por",
+  arquivo: "20260905-048-a-lista-de-quem-espera-ganhou-classificar-por",
   tipo: "entrega",
   quando: "2026-09-05",
   titulo: "A lista de quem está esperando agora tem 'Classificar por' e um filtro de etapa",
