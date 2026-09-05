@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/envio.recebido.v1.json",
+  "title": "envio.recebido.v1",
+  "description": "O ALUNO ENTREGOU O CHECKPOINT de uma aula, por link: nasce um Envio na fila de revisao de 24 horas. `numero` e 1 no primeiro envio e 2 no reenvio depois de um laudo devolvido. `ator_id` e o aluno. Quem consome: a `mensageria` (cancela a jornada do silencio que um `checkpoint.devolvido` tiver disparado, degrau 2.4) e a `metricas` (Fase 6). So IDS OPACOS viajam: nem link, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Publicado pela celula cursos (a sala de aula da Meshcraft) pelo padrao outbox transacional (INV-P6). Escrito em papel em 04/09/2026, antes de a celula emiti-lo. Lei: docs/decisoes/PLANO-CELULA-CURSOS.md §5.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "envio.recebido"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de quem entregou: o aluno. E o unico lugar em que o aluno viaja neste evento, e por isso nunca e null. NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "curso_id",
+        "aula_id",
+        "envio_id",
+        "numero"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant): chave de roteamento, como em todo evento desta plataforma."
+        },
+        "curso_id": {
+          "type": "string",
+          "description": "Id opaco do curso dentro da celula cursos."
+        },
+        "aula_id": {
+          "type": "string",
+          "description": "Id opaco da aula (a encomenda de ensino, com suas pecas, pausas e checkpoint) dentro da celula cursos."
+        },
+        "envio_id": {
+          "type": "string",
+          "description": "Id opaco do envio (o checkpoint entregue por link) dentro da celula cursos. Nunca o link."
+        },
+        "numero": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "1 e o primeiro envio desta aula por este aluno; 2 e o reenvio depois de um laudo devolvido; e assim por diante. Cada volta e um Envio novo, com id novo."
+        }
+      }
+    }
+  }
+}

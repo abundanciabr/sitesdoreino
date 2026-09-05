@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/aula.concluida.v1.json",
+  "title": "aula.concluida.v1",
+  "description": "A PORTA DA AULA ABRIU para o aluno: um laudo com decisao `aberto` ou `aberto_com_ajuste` fechou o checkpoint desta aula. E a tomada que a gamificacao ja previa ({site_id, curso_id, aula_id}, PLANO-CELULA-GAMIFICACAO.md §4) mais `e_boss`. A porta so abre por laudo: nunca por data, por XP ou por pagamento (INV-CUR-P2). `ator_id` e o aluno. Quem consome: a `gamificacao` (XP por entrega, a medalha do Boss quando `e_boss` e true, e o Marco #1 pela fila que ja existe), a `pages` (a Pagina do portfolio) e a `metricas`. So IDS OPACOS viajam: nem link, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Publicado pela celula cursos (a sala de aula da Meshcraft) pelo padrao outbox transacional (INV-P6). Escrito em papel em 04/09/2026, antes de a celula emiti-lo. Lei: docs/decisoes/PLANO-CELULA-CURSOS.md §5.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "aula.concluida"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": "string",
+      "description": "Id da PLATAFORMA de quem concluiu: o aluno cuja porta abriu. E o unico lugar em que o aluno viaja neste evento (e a quem a gamificacao credita), e por isso nunca e null. NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "curso_id",
+        "aula_id",
+        "e_boss"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant): chave de roteamento, como em todo evento desta plataforma."
+        },
+        "curso_id": {
+          "type": "string",
+          "description": "Id opaco do curso dentro da celula cursos."
+        },
+        "aula_id": {
+          "type": "string",
+          "description": "Id opaco da aula (a encomenda de ensino, com suas pecas, pausas e checkpoint) dentro da celula cursos."
+        },
+        "e_boss": {
+          "type": "boolean",
+          "description": "true quando esta aula fecha um Bloco do curso: e a entrega que rende a medalha do Boss na gamificacao."
+        }
+      }
+    }
+  }
+}
