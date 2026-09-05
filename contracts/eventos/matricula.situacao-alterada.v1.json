@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/matricula.situacao-alterada.v1.json",
+  "title": "matricula.situacao-alterada.v1",
+  "description": "A situacao de uma matricula mudou. E o FATO — um por mudanca, nunca um por pessoa avisada. Quem avisa quem e assunto do evento 'notificacao.devida', que ja existia e continua existindo ao lado deste. POR QUE UM ASSUNTO NOVO, e nao reaproveitar a carta (a pergunta que a armadilhas/293 obriga a fazer antes de abrir o rito): a carta so nasce quando a pessoa GANHA acesso E tem identidade da plataforma (services.py, 'if destinatario_id and ganhou_acesso(...)'). Recusa, suspensao, encerramento e reembolso nao produzem carta nenhuma, e sao justamente as mudancas que o livro de fatos precisa para contar a vida de um aluno ao longo do tempo. As portas existentes NAO compoem o gesto, e por isso o rito e o caminho. Rito de Contrato de 05/09/2026, com o mantenedor presente, no degrau 8 do PLANO-PAINEL-DE-GESTAO.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "matricula.situacao-alterada"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Id da PLATAFORMA de quem causou a mudanca, ou null quando nao houve gente. NULO E CASO NORMAL AQUI, e nao excecao: uma matricula nasce 'ativa' quando o pagamento e aprovado pelo provedor, sem ninguem apertar botao. Fica no ENVELOPE, e nao dentro de 'data', para que qualquer celula leia 'quem fez isto' sem conhecer o formato do assunto (mesmo desenho de 'sugestao.status-alterado.v2' e 'notificacao.devida.v1'). NUNCA e o e-mail (DECISAO-EVO-01 §3)."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "matricula_id",
+        "situacao_nova",
+        "origem"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant) a que a matricula pertence — chave de roteamento, como em todo evento desta plataforma."
+        },
+        "matricula_id": {
+          "type": "string",
+          "description": "Id OPACO da matricula DENTRO da celula 'alunos'. E local de proposito: identifica a matricula, nunca a pessoa, e nao serve para creditar ninguem fora daqui (armadilhas/255). Quem precisa falar com a pessoa usa o 'destinatario_id' de 'notificacao.devida', que ja vem no id da plataforma."
+        },
+        "situacao_anterior": {
+          "type": "string",
+          "enum": [
+            "aguardando",
+            "recusada",
+            "ativa",
+            "suspensa",
+            "encerrada",
+            "reembolsada"
+          ],
+          "description": "O que a matricula era. AUSENTE quando a linha acabou de nascer (nao havia estado anterior): quem consome le ausencia como 'nasceu assim', nunca como erro. Mesma semantica que 'situacao_anterior' ja tem dentro de 'notificacao.devida'."
+        },
+        "situacao_nova": {
+          "type": "string",
+          "enum": [
+            "aguardando",
+            "recusada",
+            "ativa",
+            "suspensa",
+            "encerrada",
+            "reembolsada"
+          ],
+          "description": "O que a matricula passou a ser. Os seis estados sao os do modelo (Matricula.STATUS_CHOICES); 'ativa' e o unico que vale como 'esta pessoa e aluna' desde a decisao de reembolso de 31/08/2026."
+        },
+        "origem": {
+          "type": "string",
+          "enum": [
+            "comprou",
+            "liberado"
+          ],
+          "description": "COMO esta pessoa virou aluna: 'comprou' (a compra criou a linha) ou 'liberado' (entrou pela sala de espera e alguem liberou a mao). E a distincao que o mantenedor cravou em 05/09/2026: os alunos das turmas anteriores entram pedindo aprovacao, e os alunos que a meta de vendas conta vem do checkout. Sem este campo o livro de fatos nao consegue separar uma venda de um aluno antigo, e a meta contaria os dois como a mesma coisa. Derivado do prefixo do 'order_id' na origem, nunca de um campo gravado (services.py: um campo proprio seria um segundo lugar guardando o que o 'order_id' ja diz)."
+        },
+        "virou_aluno_em": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "O instante em que esta linha passou a ser de uma ALUNA, pela regra que o mantenedor fixou em 03/09/2026: a data da liberacao para quem veio da sala de espera, a da confirmacao do pagamento para quem comprou. NULO enquanto ninguem decidiu (a linha ainda espera na fila). Viaja no evento em vez de o consumidor recalcular porque a regra e da celula dona, e duas derivacoes da mesma data discordariam no primeiro caso de borda. NUNCA e 'comprou_em', que e o que a propria pessoa digita e serve para conferencia."
+        }
+      }
+    }
+  }
+}
