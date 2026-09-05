@@ -515,6 +515,15 @@
       "descricao": "Responde 'estou de pé' pela rede interna. A parte que guarda a Fila do Primeiro Dólar (o marketplace de encomendas 3D) acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /encomendas."
     },
     {
+      "celula": "pages",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida das Páginas do aluno",
+      "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar o portfólio do aluno acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, serão dois, o /pages para o aluno montar o portfólio e o /estudio para o link que ele manda ao cliente."
+    },
+    {
       "celula": "gamificacao",
       "rota": "",
       "endereco": "/conquistas/",
