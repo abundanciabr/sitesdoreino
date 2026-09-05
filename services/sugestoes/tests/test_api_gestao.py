@@ -82,13 +82,15 @@ def operacoes_da_api():
 def test_ha_operacoes_para_medir():
     """Guarda que varre lista vazia é guarda verde à toa.
 
-    10 desde `texto` (`DECISAO-corrigir-o-texto-de-uma-ideia.md`, 31/08/2026),
-    que somou-se às 9 de `apagar` (`DECISAO-apagar-ideia.md`, 29/08/2026), que
-    tinham somado às 8 de `arquivar`/`desarquivar`
-    (`DECISAO-arquivar-ideia.md`), que já somavam as 6 de
-    `DECISAO-a-gestao-da-caixa-mora-no-admin.md`.
+    14 desde as junções de ideias (`DECISAO-fundir-ideias.md`, 05/09/2026), que
+    trouxeram quatro de uma vez: prever, fundir, desfazer e listar o que dá para
+    desfazer. Elas somaram-se às 10 de `texto`
+    (`DECISAO-corrigir-o-texto-de-uma-ideia.md`, 31/08/2026), que somou-se às 9
+    de `apagar` (`DECISAO-apagar-ideia.md`, 29/08/2026), que tinham somado às 8
+    de `arquivar`/`desarquivar` (`DECISAO-arquivar-ideia.md`), que já somavam as
+    6 de `DECISAO-a-gestao-da-caixa-mora-no-admin.md`.
     """
-    assert len(operacoes_da_api()) == 10
+    assert len(operacoes_da_api()) == 14
 
 
 def test_nenhuma_operacao_responde_sem_o_token_do_par(client, db, par_autorizado):
