@@ -206,14 +206,27 @@ def test_regra_desligada_continua_sem_pagar_mesmo_com_data():
 
 @pytest.mark.django_db
 def test_regra_sem_quem_publique_o_assunto_avisa_antes_do_clique():
-    """`aula.concluida` não existe: a regra está semeada esperando o evento nascer.
+    """`banca.decidida` ainda não existe: é a Fase 5 da sala de aula, e ninguém
+    o publica hoje. Uma regra para ele ligaria sem número nenhum mexer, e a tela
+    precisa dizer isso ANTES do clique — um zero sem explicação parece defeito
+    da tela.
 
-    Ligar não faria número nenhum se mexer, e a tela precisa dizer isso ANTES do
-    clique — um zero sem explicação parece defeito da tela.
+    Até 05/09/2026 o exemplo aqui era `aula.concluida`; ele deixou esta lista
+    no dia em que a sala de aula passou a publicá-lo (teste abaixo).
     """
-    regra = _regra(slug="aula-concluida", evento_gatilho="aula.concluida.v1")
+    regra = _regra(slug="banca-decidida", evento_gatilho="banca.decidida.v1")
 
     assert impedimentos_de(regra) == [SEM_PRODUTOR]
+
+
+@pytest.mark.django_db
+def test_a_aula_concluida_tem_quem_a_publique_e_nada_a_impede():
+    """A tomada da sala de aula está ligada nas duas pontas: o consumidor assina
+    o assunto e o handler credita. A tela do mantenedor não pode continuar
+    dizendo "ninguém avisa isto" depois de a célula `cursos` passar a avisar."""
+    regra = _regra(slug="aula-concluida", evento_gatilho="aula.concluida.v1")
+
+    assert impedimentos_de(regra) == []
 
 
 @pytest.mark.django_db
