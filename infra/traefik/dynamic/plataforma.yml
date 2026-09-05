@@ -285,6 +285,33 @@ http:
       service: gamificacao
       tls: {}
 
+    cursos:
+      # A sala de aula (DECISAO-celula-de-cursos.md, 04/09/2026; degrau 1.7
+      # de PLANO-CELULA-CURSOS.md §10). O texto das aulas e obra nao lancada
+      # do mantenedor e mora so no banco desta celula.
+      #
+      # POR CAMINHO, NUNCA POR SUBDOMINIO, pela mesma razao do forum e da
+      # gamificacao acima: o cookie `meshcraft_sessao` e de HOST, e a sala
+      # depende do cracha da identidade chegar ate ela (getSessionFull).
+      #
+      # A celula conhece o prefixo por `SCRIPT_NAME=/cursos` no env dela; o
+      # Traefik NAO o remove (`armadilhas/029`).
+      #
+      # `Host(...)` explicito, como nas outras: sem ele, qualquer dominio
+      # apontado para esta VPS serviria a sala de aula.
+      #
+      # Cadeia `seguranca` (a compartilhada), e NAO a `seguranca-admin`: quem
+      # pode ver o que e decidido DENTRO da celula, por matricula ativa
+      # (fail-closed em apps/core/permissoes.py). A porta de MAQUINA, que
+      # responde sob este mesmo prefixo, tem cadeado proprio — o conjunto
+      # `TOKENS_ACEITOS_*` (`armadilhas/186`).
+      rule: "Host(`meshcraft.top`) && PathPrefix(`/cursos`)"
+      priority: 10
+      entryPoints: [websecure]
+      middlewares: [seguranca]
+      service: cursos
+      tls: {}
+
     www-meshcraft:
       # No host `www.` nenhuma PÁGINA é servida: tudo é desviado para o
       # endereço canônico. Dois endereços servindo o mesmo conteúdo rendem
@@ -384,3 +411,6 @@ http:
     gamificacao:
       loadBalancer:
         servers: [ { url: "http://gamificacao:8000" } ]
+    cursos:
+      loadBalancer:
+        servers: [ { url: "http://cursos:8000" } ]
