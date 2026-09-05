@@ -127,9 +127,10 @@ def test_o_consumidor_assina_so_o_que_tem_contrato_e_alguem_publica():
     """Stream sem publicador vira grupo de consumo vazio e ilusão de pronto.
 
     E stream sem contrato congelado seria fato construído sobre areia: o
-    formato pode mudar sem aviso. `matricula.situacao-alterada` é o assunto
-    que esta célula mais quer e está de fora justamente por isto — ele entra
-    no degrau 8, junto com o contrato dele.
+    formato pode mudar sem aviso. `matricula.situacao-alterada` era o assunto
+    que esta célula mais queria e entrou em 05/09/2026 (degrau 8), quando as
+    duas condicoes passaram a valer: contrato congelado no PR #1076 e a
+    `alunos` publicando de verdade no PR #1080.
     """
     from pathlib import Path
 
@@ -143,7 +144,11 @@ def test_o_consumidor_assina_so_o_que_tem_contrato_e_alguem_publica():
         assert list(
             contratos.glob(f"{assunto}.v*.json")
         ), f"{assunto} não tem contrato congelado em contracts/eventos/"
-    assert "eventos.matricula.situacao-alterada" not in STREAMS
+    # Estava FORA ate 05/09/2026, e a linha vivia aqui como marcador da
+    # divida. Agora e o contrario, e continua sendo uma afirmacao: se alguem
+    # remover o assunto da lista, o livro para de saber quem virou aluna e
+    # ninguem descobre olhando a tela.
+    assert "eventos.matricula.situacao-alterada" in STREAMS
 
 
 def test_o_lote_de_reentrega_nao_diverge_das_outras_celulas():
