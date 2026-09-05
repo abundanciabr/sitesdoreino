@@ -1,0 +1,22 @@
+{
+  "arquivo": "155-sala-de-aula-degrau-2-1-o-checkpoint-envio-por-link-a-fila-d",
+  "id": "TAR-155",
+  "titulo": "Sala de aula, degrau 2.1: o checkpoint (envio por link, a fila de revisao, o prazo de 24 h imutavel, o estouro registrado, outbox e os eventos envio.recebido e revisao.prazo-estourado)",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-154",
+    "TAR-149"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: Envio com prazo_em imutavel e estourado_em; a fila calculada (vencidos primeiro); OutboxEvent + relay Huey; envio.recebido.v1 e revisao.prazo-estourado.v1 emitidos pelo contrato; [INV-CUR-L3] como teste provado por mutacao; make ci verde.",
+  "despacho": "Degrau 2.1 (PLANO-CELULA-CURSOS.md §4 o checkpoint, §5 eventos, §9 L3). Molde do outbox: sugestoes; do relogio: encomendas (relogio.py, tique.py; aqui sao horas corridas, nao uteis). A maestro re-briefa no template do CAMINHO-DOURADO §2.",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md, lei aprovada pelo mantenedor em 04/09/2026 (registro 20260905-001); genese pousada no PR #1046 (TAR-146)",
+  "criada_em": "2026-09-05"
+}
