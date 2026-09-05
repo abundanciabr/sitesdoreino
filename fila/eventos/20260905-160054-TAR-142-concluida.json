@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260905-160054-TAR-142-concluida",
+  "tarefa": "TAR-142",
+  "evento": "concluida",
+  "quando": "2026-09-05T16:00:54+00:00",
+  "quem": "sessao-degrau-8-2026-09-05",
+  "evidencia": "Ja estava feito, por um conserto MELHOR do que o que esta tarefa pediu: ci/tests/conftest.py ganhou os.environ.setdefault('PYTHONUTF8','1') em 04/09/2026, com comentario citando nominalmente o test_espera.py. Protege as ~90 fronteiras de subprocesso da suite, e nao so o duble deste teste. Medido hoje no Windows do mantenedor: python -m pytest ci/tests/test_espera.py -q devolve 32 passed. O guarda e o job windows-a-maquina-dos-robos, que roda a suite num console Windows real sem forcar codepage.",
+  "verificado_em": "2026-09-05"
+}
