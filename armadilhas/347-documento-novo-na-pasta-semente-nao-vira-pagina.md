@@ -18,7 +18,7 @@ sinal:
 **Sintoma.** Você cria `documentos/<nome>.md` com `publico: true`, a suíte da
 `admin` fica verde (inclusive `test_todo_documento_do_repositorio_tem_titulo_e_renderiza`,
 que abre o seu arquivo e o desenha), o PR pousa, o `deploy-celula` termina em
-`success` conferido por `gh run view <id> --json conclusion` — e
+`success` conferido por `gh run view <id> --json conclusion`, e
 `https://meshcraft.top/docs/<nome>` responde **404**. A lista em `/docs/`
 não mostra o documento. Nada está vermelho.
 
