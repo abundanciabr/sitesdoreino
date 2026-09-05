@@ -298,7 +298,15 @@ def test_o_site_id_esta_em_toda_entidade_de_entrada_do_app():
     Este teste existe para que a lista continue sendo uma ESCOLHA visível: tabela
     nova sem `site_id` e sem corrente até uma que o tenha reprova aqui.
     """
-    com_site_id_proprio = {"Jornada", "Inscricao", "Preferencia", "EstadoDoAluno"}
+    com_site_id_proprio = {
+        "Jornada",
+        "Inscricao",
+        "Preferencia",
+        "EstadoDoAluno",
+        # A correlação envio -> aluno da sala de aula (degrau 2.4): consultada
+        # pelo par (site, envio) que o devolvido carrega, então o site é dela.
+        "EnvioDeCheckpoint",
+    }
     pela_corrente = {"JornadaVersao", "Passo", "TextoDoPasso", "Entrega", "Efeito"}
     # A TERCEIRA CATEGORIA, e ela é exceção DECLARADA, não esquecimento.
     # `OutboxEvent` não é entidade deste app: é uma CARTA pronta esperando o fio,

@@ -49,11 +49,11 @@ def test_handler_que_falha_no_meio_nao_deixa_evento_marcado_nem_envio():
     envelope = _envelope()
 
     def handler_que_falha_depois_de_registrar(
-        data: dict, event_id: str | None = None
+        data: dict, event_id: str | None = None, ator_id: str | None = None
     ) -> None:
-        # A assinatura ganhou o `event_id` em 02/09/2026: o handler das
-        # jornadas precisa saber QUAL evento o acordou, para a carta
-        # poder declarar a origem. Estes dublês não o usam.
+        # A assinatura ganhou o `event_id` em 02/09/2026 (a carta precisa
+        # declarar a origem) e o `ator_id` em 05/09/2026 (o aluno de um envio
+        # da sala de aula só viaja no envelope). Estes dublês não os usam.
         ao_pagamento_aprovado(data)  # o registro acontece de verdade...
         raise RuntimeError("conexão caiu depois do INSERT")  # ...e então falha
 
@@ -96,11 +96,11 @@ def test_integrityerror_do_handler_nao_e_confundido_com_evento_ja_processado():
     envelope = _envelope()
 
     def handler_que_colide_em_outra_constraint(
-        data: dict, event_id: str | None = None
+        data: dict, event_id: str | None = None, ator_id: str | None = None
     ) -> None:
-        # A assinatura ganhou o `event_id` em 02/09/2026: o handler das
-        # jornadas precisa saber QUAL evento o acordou, para a carta
-        # poder declarar a origem. Estes dublês não o usam.
+        # A assinatura ganhou o `event_id` em 02/09/2026 (a carta precisa
+        # declarar a origem) e o `ator_id` em 05/09/2026 (o aluno de um envio
+        # da sala de aula só viaja no envelope). Estes dublês não os usam.
         EnvioRegistrado.objects.create(
             event="pagamento.aprovado",
             site_id=data["site_id"],
