@@ -244,3 +244,25 @@ libera `db` para toda a suíte, que é o que produção faz.
 **O que NÃO mudou, e é o que sustenta o resto:** `/healthz` continua sem tocar
 no banco (é caminho isento, e a porta devolve antes da lista), e falha de banco
 vale só o env — **erro nunca AMPLIA quem entra**. As duas coisas têm teste.
+
+## Classe nova num template desta área: abra o `base.html` antes de batizar (05/09/2026)
+
+O editor de encomendas do curso (`/admin/escola/aulas/`, TAR-152) nasceu com
+uma caixa por peça chamada `.peca`. O nome era o óbvio — e **já existia** no
+`base.html`, vestindo a peça de uma ideia da Caixa de Sugestões (fundo, borda,
+`font-size: 13px`, `margin-bottom: 7px`). As duas regras se somam na cascata:
+o editor herdaria o tamanho de letra e as margens da Caixa, e nenhum teste
+ficaria vermelho, porque HTML e CSS continuam válidos.
+
+O guarda de cores (`tests/test_toda_cor_usada_tem_dono.py`, `armadilhas/302`)
+mede NOME DE VARIÁVEL, não nome de classe: colisão de classe passa por ele.
+Não existe guarda para isso, e um que houvesse teria de julgar se a colisão é
+intenção (reaproveitar `.aviso`, `.cartao`, `.volta` é o desenho da área) ou
+acidente. A régua fica com quem escreve, e ela é uma linha: **antes de criar
+uma classe num template desta célula, `grep -n "\.<nome>" apps/core/templates/admin/base.html`.**
+Achou? Ou é a classe certa para reaproveitar, ou o nome precisa dizer de que
+tela é (`.peca-da-aula`).
+
+A mesma revisão achou, no mesmo template, o caso da `armadilhas/340`: uma
+variável opcional como ARGUMENTO de filtro (`numero|default:aula.numero`) é
+500 no ramo em que ela falta. Só o teste do caminho triste apanha as duas.

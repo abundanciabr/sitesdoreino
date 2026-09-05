@@ -1,0 +1,99 @@
+{% extends "admin/base.html" %}
+{% comment %}
+UM INSTRUMENTO DE AVALIAÇÃO por dentro: a escala, os mínimos, a seção do Padrão
+e os descritores. O nome canônico e o número do cartão são da lei e só se
+leem: o formulário não os manda, e a porta recusa se mandar.
+
+A escala e os descritores são JSON editado como texto, por enquanto (degrau
+1.5 do plano da cursos). A tela confere que o texto é um objeto JSON válido
+ANTES de mandar; o resto de quem julga é a `cursos`.
+
+Este bloco é `comment`, e não `{#` (armadilhas/087). TODA classe usada aqui
+EXISTE em admin/base.html ou no <style> abaixo (armadilhas/199).
+{% endcomment %}
+{% block titulo %}{% if rascunho.nome_canonico %}Cartão {{ rascunho.cartao }}: {{ rascunho.nome_canonico }}{% else %}Instrumento {{ slug }}{% endif %}{% endblock %}
+{% block corpo %}
+<style>
+  .erro-do-campo { color: var(--vermelho); font-size: 13px; margin: 4px 0 0; }
+  .campo-recusado { border-color: var(--vermelho) !important; }
+  .so-leitura { color: var(--texto-2); font-size: 14px; margin: 0 0 18px; }
+  .so-leitura b { color: var(--texto); }
+  .editor .json { min-height: 220px; }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'escola_aulas' %}">&larr; Todas as encomendas e instrumentos</a></p>
+
+  {% if nao_existe %}
+  <h1>Esse instrumento não existe</h1>
+  <p class="aviso borda-amarela">
+    Não há nenhum instrumento chamado <b>{{ slug }}</b>. Talvez o endereço
+    tenha sido copiado errado.
+  </p>
+
+  {% elif falha_da_sala and not rascunho %}
+  <h1>Instrumento {{ slug }}</h1>
+  <p class="aviso borda-vermelha">
+    <b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}
+  </p>
+
+  {% else %}
+
+  {% if sem_cabecalho %}
+  <h1>Instrumento {{ slug }}</h1>
+  {% else %}
+  <h1>Cartão {{ rascunho.cartao }}: {{ rascunho.nome_canonico }}</h1>
+  <p class="so-leitura">
+    O nome e o número do cartão são da lei do curso e não mudam por aqui.
+    Versão <b>{{ rascunho.versao }}</b>: uma avaliação em andamento guarda a
+    versão em que começou, então salvar aqui não muda nota de ninguém.
+  </p>
+  {% endif %}
+
+  {% if erro %}
+  <p class="aviso borda-vermelha"><b>Não deu para fazer isso.</b> {{ erro }}</p>
+  {% endif %}
+  {% for frase in gerais %}
+  <p class="aviso borda-vermelha">{{ frase }}</p>
+  {% endfor %}
+  {% if recado == "salvo" %}
+  <p class="aviso feito">
+    <b>Instrumento salvo, e ele ficou na versão {{ versao_nova }}.</b>
+    Vale para as avaliações que começarem daqui em diante.
+  </p>
+  {% endif %}
+
+  <form method="post" class="editor" action="{% url 'escola_instrumento_salvar' rascunho.slug %}">
+    {% csrf_token %}
+
+    <label class="rotulo" for="escala">A escala (JSON)</label>
+    <textarea id="escala" name="escala" class="json{% if rascunho.erros.escala %} campo-recusado{% endif %}" spellcheck="false">{{ rascunho.escala }}</textarea>
+    {% if rascunho.erros.escala %}<p class="erro-do-campo">A escala {{ rascunho.erros.escala }}.</p>{% endif %}
+    <p class="nota">Os critérios, com o mínimo e o máximo de cada um. Um objeto JSON, entre chaves.</p>
+
+    <label class="rotulo" for="minimo_exercicio">O mínimo do exercício</label>
+    <input type="text" id="minimo_exercicio" name="minimo_exercicio" value="{{ rascunho.minimo_exercicio }}" maxlength="200" autocomplete="off"{% if rascunho.erros.minimo_exercicio %} class="campo-recusado"{% endif %}>
+    {% if rascunho.erros.minimo_exercicio %}<p class="erro-do-campo">O mínimo do exercício {{ rascunho.erros.minimo_exercicio }}.</p>{% endif %}
+
+    <label class="rotulo" for="minimo_contrato">O mínimo do contrato</label>
+    <input type="text" id="minimo_contrato" name="minimo_contrato" value="{{ rascunho.minimo_contrato }}" maxlength="200" autocomplete="off"{% if rascunho.erros.minimo_contrato %} class="campo-recusado"{% endif %}>
+    {% if rascunho.erros.minimo_contrato %}<p class="erro-do-campo">O mínimo do contrato {{ rascunho.erros.minimo_contrato }}.</p>{% endif %}
+
+    <label class="rotulo" for="secao_do_padrao">A seção do Padrão</label>
+    <input type="text" id="secao_do_padrao" name="secao_do_padrao" value="{{ rascunho.secao_do_padrao }}" maxlength="120" autocomplete="off"{% if rascunho.erros.secao_do_padrao %} class="campo-recusado"{% endif %}>
+    {% if rascunho.erros.secao_do_padrao %}<p class="erro-do-campo">A seção do Padrão {{ rascunho.erros.secao_do_padrao }}.</p>{% endif %}
+    <p class="nota">Onde, no Padrão de Qualidade, está a regra que este cartão mede.</p>
+
+    <label class="rotulo" for="descritores">Os descritores (JSON)</label>
+    <textarea id="descritores" name="descritores" class="json{% if rascunho.erros.descritores %} campo-recusado{% endif %}" spellcheck="false">{{ rascunho.descritores }}</textarea>
+    {% if rascunho.erros.descritores %}<p class="erro-do-campo">Os descritores {{ rascunho.erros.descritores }}.</p>{% endif %}
+    <p class="nota">O que é 5, o que é 3 e o que é 1 em cada critério. Um objeto JSON, entre chaves.</p>
+
+    <div class="gestos-do-editor">
+      <button type="submit" class="salvar">Salvar o instrumento (sobe a versão)</button>
+      <a class="volta" href="{% url 'escola_aulas' %}">Cancelar</a>
+    </div>
+  </form>
+
+  {% endif %}
+</div>
+{% endblock %}

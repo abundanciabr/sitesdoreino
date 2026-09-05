@@ -1,0 +1,320 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O EDITOR DE UMA ENCOMENDA: os campos da aula, as 18 peças na ordem canônica do
+contrato (as duas internas com o aviso de que o aluno nunca vê), as pausas como
+tabela, o botão de salvar e o de publicar.
+
+Tudo vem da `cursos` e volta para ela pela porta de máquina; esta célula não
+guarda uma linha (docstring de apps/core/aulas.py). Sem script: cada gesto é
+um POST que recarrega a página, e a política de segurança desta área exige hash
+para script embutido (armadilhas/199).
+
+O travessão AVISA e não recusa: a caixa de riscas é contada do texto que está
+na tela, e o botão de salvar continua onde estava.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087). TODA classe usada aqui EXISTE em admin/base.html ou no
+<style> logo abaixo, e o <style> entra na CSP por hash (armadilhas/199).
+{% endcomment %}
+{% block titulo %}{% if aula %}{{ aula.numero }}: {{ aula.titulo_exibido }}{% else %}Encomenda {{ numero }}{% endif %}{% endblock %}
+{% block corpo %}
+<style>
+  .editor.encomenda { max-width: 900px; }
+  .campos-da-aula { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; }
+  .campos-da-aula .inteiro { grid-column: 1 / -1; }
+  /* `.peca-da-aula`, e não `.peca`: `.peca` já existe em base.html (a peça
+     de uma ideia da Caixa) e vestiria estas caixas com o estilo de lá. */
+  .peca-da-aula { margin-top: 26px; padding-top: 14px; border-top: 1px solid var(--linha); }
+  .peca-da-aula .rotulo { margin-top: 0; font-size: 14px; color: var(--texto); }
+  .peca-da-aula .rotulo .numero-da-peca { color: var(--texto-3); font-variant-numeric: tabular-nums; margin-right: 8px; }
+  .peca-da-aula.interna { background: var(--painel); border: 1px dashed var(--amarelo); border-radius: 10px; padding: 12px 14px; }
+  .peca-da-aula textarea { min-height: 160px; }
+  .encomenda label.marcar { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 14px; }
+  .erro-do-campo { color: var(--vermelho); font-size: 13px; margin: 4px 0 0; }
+  .campo-recusado { border-color: var(--vermelho) !important; }
+  .pausas { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .pausas th { color: var(--texto-2); font-size: 12px; font-weight: 600; text-align: left; padding: 6px 6px 4px; }
+  .pausas td { padding: 4px 6px; vertical-align: top; }
+  .pausas .curto { width: 90px; }
+  .pausas .medio { width: 150px; }
+  .pausas select { width: 100%; padding: 8px 10px; font: inherit; background: var(--fundo); color: var(--texto); border: 1px solid var(--linha); border-radius: 8px; }
+  .quiz-par { margin-top: 12px; }
+  .publicar { margin-top: 34px; padding: 16px 18px; border: 1px solid var(--amarelo); border-radius: 10px; }
+  .publicar.ja { border-color: var(--verde); }
+  .publicar label.marcar { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+  .publicar button { padding: 11px 22px; font: inherit; font-weight: 600; cursor: pointer; background: var(--painel); color: var(--amarelo); border: 1px solid var(--amarelo); border-radius: 8px; }
+  .cabecalho-da-aula { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 0 18px; color: var(--texto-2); font-size: 14px; }
+  @media (max-width: 700px) { .campos-da-aula { grid-template-columns: 1fr; } }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'escola_aulas' %}">&larr; Todas as encomendas</a></p>
+
+  {% if nao_existe %}
+  <h1>Essa encomenda não existe</h1>
+  <p class="aviso borda-amarela">
+    Não há nenhuma encomenda de número <b>{{ numero }}</b> nesta escola. Talvez o
+    endereço tenha sido copiado errado, ou ela seja de outro site.
+  </p>
+
+  {% elif falha_da_sala and not rascunho %}
+  <h1>Encomenda {{ numero }}</h1>
+  <p class="aviso borda-vermelha">
+    <b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}
+  </p>
+
+  {% else %}
+
+  {% if sem_cabecalho %}
+  <h1>Encomenda {{ numero }}</h1>
+  {% else %}
+  <h1>{{ aula.numero }}: {{ aula.titulo_exibido|default:"(sem título ainda)" }}</h1>
+  <p class="cabecalho-da-aula">
+    <span>{{ aula.bloco }}</span>
+    {% if aula.publicada %}
+    <span class="luz no-ar">{{ aula.estado_rotulo }}</span>
+    <span>Publicada em <b>{{ aula.publicada_em }}</b></span>
+    {% else %}
+    <span class="luz">{{ aula.estado_rotulo }}</span>
+    <span>Só quem edita vê esta encomenda.</span>
+    {% endif %}
+    <span>Versão <b>{{ aula.versao }}</b></span>
+  </p>
+  {% endif %}
+
+  {% if erro %}
+  <p class="aviso borda-vermelha"><b>Não deu para fazer isso.</b> {{ erro }}</p>
+  {% endif %}
+  {% for frase in gerais %}
+  <p class="aviso borda-vermelha">{{ frase }}</p>
+  {% endfor %}
+
+  {% comment %}
+  O RECADO DEPOIS DE SALVAR, com o número da versão que a porta devolveu. Sem
+  ele a pessoa salva, vê a mesma tela, e não sabe se pegou.
+  {% endcomment %}
+  {% if recado == "salva" %}
+  <p class="aviso feito">
+    <b>Encomenda salva, e ela ficou na versão {{ versao_nova }}.</b>
+    {% if aula.publicada %}
+    Ela continua publicada: o que os alunos veem já é este texto.
+    {% else %}
+    Ela continua em rascunho: os alunos só a veem depois que você publicar,
+    com o botão lá no fim desta página.
+    {% endif %}
+  </p>
+  {% endif %}
+  {% if recado == "publicada" %}
+  <p class="aviso feito">
+    <b>Encomenda publicada.</b> A partir de agora ela está aberta na sala de
+    aula, na versão {{ aula.versao }}. Salvar de novo muda o texto que os alunos
+    veem, na hora.
+  </p>
+  {% endif %}
+
+  {% comment %}
+  O TRAVESSÃO AVISA E NÃO RECUSA (decisão do mantenedor, 04/09/2026). A lista é
+  contada do texto que está na tela, com o nome da peça e a linha, para o dia
+  em que a encomenda for publicada: a lei do travessão vale na tela do aluno.
+  {% endcomment %}
+  {% if riscas %}
+  <div class="aviso borda-amarela">
+    <b>{{ riscas|length }} frase{{ riscas|length|pluralize }} com travessão.</b>
+    Guardei do jeito que você escreveu. A regra do site é que nenhum texto
+    publicado saia com travessão, então antes de publicar vale reescrever cada
+    uma, trocando por vírgula, parênteses, dois-pontos ou aspas, conforme o
+    papel que a risca fazia na frase.
+    <ul class="riscas">
+      {% for r in riscas %}
+      <li><b>{{ r.onde }}</b> ({{ r.risca }}) <span class="frase">{{ r.frase }}</span></li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <form method="post" class="editor encomenda" action="{% url 'escola_aula_salvar' numero %}">
+    {% csrf_token %}
+
+    <h2 class="secao">A encomenda</h2>
+    <div class="campos-da-aula">
+      <div class="inteiro">
+        <label class="rotulo" for="pedido">O pedido do cliente</label>
+        <textarea id="pedido" name="pedido" rows="4"{% if rascunho.erros.pedido %} class="campo-recusado"{% endif %}>{{ rascunho.pedido }}</textarea>
+        {% if rascunho.erros.pedido %}<p class="erro-do-campo">O pedido {{ rascunho.erros.pedido }}.</p>{% endif %}
+        <p class="nota">Em uma ou duas frases: o que o cliente quer receber.</p>
+      </div>
+
+      <div>
+        <label class="rotulo" for="cliente">O cliente</label>
+        <input type="text" id="cliente" name="cliente" value="{{ rascunho.cliente }}" maxlength="120" autocomplete="off"{% if rascunho.erros.cliente %} class="campo-recusado"{% endif %}>
+        {% if rascunho.erros.cliente %}<p class="erro-do-campo">O cliente {{ rascunho.erros.cliente }}.</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="rotulo" for="instrumento">O instrumento cabível</label>
+        <select id="instrumento" name="instrumento"{% if rascunho.erros.instrumento %} class="campo-recusado"{% endif %}>
+          <option value=""{% if not rascunho.instrumento %} selected{% endif %}>Nenhum ainda</option>
+          {% for i in instrumentos %}
+          <option value="{{ i.slug }}"{% if i.slug == rascunho.instrumento %} selected{% endif %}>{{ i.nome_canonico }}</option>
+          {% endfor %}
+          {% if not instrumentos_lidos and rascunho.instrumento %}
+          <option value="{{ rascunho.instrumento }}" selected>{{ rascunho.instrumento }}</option>
+          {% endif %}
+        </select>
+        {% if rascunho.erros.instrumento %}<p class="erro-do-campo">O instrumento: {{ rascunho.erros.instrumento }}.</p>{% endif %}
+        {% if not instrumentos_lidos %}
+        <p class="nota">Não consegui ler a lista de instrumentos agora; o que está escolhido continua valendo.</p>
+        {% elif rascunho.instrumento %}
+        <p class="nota"><a href="{% url 'escola_instrumento' rascunho.instrumento %}">Abrir este instrumento &rarr;</a></p>
+        {% endif %}
+      </div>
+
+      <div>
+        <label class="rotulo" for="minimo">O mínimo</label>
+        <input type="text" id="minimo" name="minimo" value="{{ rascunho.minimo }}" maxlength="200" autocomplete="off"{% if rascunho.erros.minimo %} class="campo-recusado"{% endif %}>
+        {% if rascunho.erros.minimo %}<p class="erro-do-campo">O mínimo {{ rascunho.erros.minimo }}.</p>{% endif %}
+        <p class="nota">O menor entregável que ainda conta como entrega.</p>
+      </div>
+
+      <div>
+        <label class="rotulo" for="video_url">O vídeo (link)</label>
+        <input type="text" id="video_url" name="video_url" value="{{ rascunho.video_url }}" maxlength="500" autocomplete="off"{% if rascunho.erros.video_url %} class="campo-recusado"{% endif %}>
+        {% if rascunho.erros.video_url %}<p class="erro-do-campo">O vídeo {{ rascunho.erros.video_url }}.</p>{% endif %}
+        <p class="nota">O vídeo mora fora da plataforma; aqui vai só o endereço.</p>
+      </div>
+
+      <div class="inteiro">
+        <label class="rotulo" for="aceito_quando">Aceito quando (um critério por linha)</label>
+        <textarea id="aceito_quando" name="aceito_quando" rows="5"{% if rascunho.erros.aceito_quando %} class="campo-recusado"{% endif %}>{{ rascunho.aceito_quando }}</textarea>
+        {% if rascunho.erros.aceito_quando %}<p class="erro-do-campo">O "Aceito quando" {{ rascunho.erros.aceito_quando }}.</p>{% endif %}
+        <p class="nota">É a lista de conferência que o aluno vê no checkpoint. Cada linha vira um item.</p>
+      </div>
+
+      <div>
+        <label class="rotulo" for="banca_nivel">Nível de Banca</label>
+        <select id="banca_nivel" name="banca_nivel"{% if rascunho.erros.banca_nivel %} class="campo-recusado"{% endif %}>
+          <option value=""{% if not rascunho.banca_nivel %} selected{% endif %}>Sem Banca</option>
+          <option value="1"{% if rascunho.banca_nivel == "1" %} selected{% endif %}>1</option>
+          <option value="2"{% if rascunho.banca_nivel == "2" %} selected{% endif %}>2</option>
+          <option value="3"{% if rascunho.banca_nivel == "3" %} selected{% endif %}>3</option>
+        </select>
+        {% if rascunho.erros.banca_nivel %}<p class="erro-do-campo">O nível de Banca {{ rascunho.erros.banca_nivel }}.</p>{% endif %}
+      </div>
+
+      <div>
+        <label class="rotulo" for="e_boss">Boss</label>
+        <label class="marcar"><input type="checkbox" id="e_boss" name="e_boss" value="1"{% if rascunho.e_boss %} checked{% endif %}> Esta encomenda é um Boss (fecha um bloco)</label>
+        {% if rascunho.erros.e_boss %}<p class="erro-do-campo">A marca de Boss {{ rascunho.erros.e_boss }}.</p>{% endif %}
+      </div>
+    </div>
+
+    <h2 class="secao">O quiz</h2>
+    <p class="nota">Cinco perguntas com a resposta-modelo de cada uma. O aluno se autoavalia comparando com o modelo. Linha vazia não conta.</p>
+    {% if rascunho.erros.quiz %}<p class="erro-do-campo">O quiz {{ rascunho.erros.quiz }}.</p>{% endif %}
+    {% for q in rascunho.quiz %}
+    <div class="quiz-par">
+      <label class="rotulo" for="quiz_{{ q.n }}_pergunta">Pergunta {{ q.n }}</label>
+      <input type="text" id="quiz_{{ q.n }}_pergunta" name="quiz_{{ q.n }}_pergunta" value="{{ q.pergunta }}" autocomplete="off"{% if q.erro %} class="campo-recusado"{% endif %}>
+      <label class="rotulo" for="quiz_{{ q.n }}_resposta_modelo">Resposta-modelo {{ q.n }}</label>
+      <textarea id="quiz_{{ q.n }}_resposta_modelo" name="quiz_{{ q.n }}_resposta_modelo" rows="2"{% if q.erro %} class="campo-recusado"{% endif %}>{{ q.resposta_modelo }}</textarea>
+      {% if q.erro %}<p class="erro-do-campo">Pergunta {{ q.n }}: {{ q.erro }}.</p>{% endif %}
+    </div>
+    {% endfor %}
+
+    <h2 class="secao">As peças</h2>
+    <p class="nota">
+      Na ordem em que o aluno as encontra. Escreva em Markdown:
+      <code># Título grande</code>, <code>## Título médio</code>,
+      <code>- item de lista</code>, <code>**negrito**</code>,
+      <code>*itálico*</code>. Linha em branco separa parágrafos. Peça vazia é
+      peça ainda não escrita, e tudo bem.
+    </p>
+    {% if rascunho.erros.pecas %}<p class="erro-do-campo">As peças {{ rascunho.erros.pecas }}.</p>{% endif %}
+    {% for p in rascunho.pecas %}
+    <div class="peca-da-aula{% if p.interna %} interna{% endif %}">
+      <label class="rotulo" for="peca_{{ p.tipo }}"><span class="numero-da-peca">{{ forloop.counter }}</span>{{ p.nome }}</label>
+      {% if p.interna %}
+      <p class="nota"><b>Interna: o aluno nunca vê esta peça.</b> Ela serve a quem grava o vídeo e a quem avalia.</p>
+      {% endif %}
+      <textarea id="peca_{{ p.tipo }}" name="peca_{{ p.tipo }}" rows="8" spellcheck="true"{% if p.erro %} class="campo-recusado"{% endif %}>{{ p.texto }}</textarea>
+      {% if p.erro %}<p class="erro-do-campo">{{ p.nome }}: {{ p.erro }}.</p>{% endif %}
+    </div>
+    {% endfor %}
+
+    <h2 class="secao">As pausas do vídeo</h2>
+    <p class="nota">
+      O segundo em que o vídeo para e o que ele pede à pessoa. Os campos são os
+      nomes do que o formulário da pausa pergunta, separados por vírgula. Linha
+      vazia não conta.
+    </p>
+    {% if rascunho.erros.pausas %}<p class="erro-do-campo">As pausas {{ rascunho.erros.pausas }}.</p>{% endif %}
+    <div class="rolagem-lateral">
+      <table class="pausas">
+        <thead>
+          <tr>
+            <th class="curto">Ordem</th>
+            <th class="curto">Segundo</th>
+            <th class="medio">Tipo</th>
+            <th>O que pede</th>
+            <th class="medio">Campos</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for pausa in rascunho.pausas %}
+          <tr>
+            <td class="curto"><input type="text" name="pausa_{{ pausa.n }}_ordem" value="{{ pausa.ordem }}" inputmode="numeric" autocomplete="off"{% if pausa.erro %} class="campo-recusado"{% endif %}></td>
+            <td class="curto"><input type="text" name="pausa_{{ pausa.n }}_segundo" value="{{ pausa.segundo }}" inputmode="numeric" autocomplete="off"{% if pausa.erro %} class="campo-recusado"{% endif %}></td>
+            <td class="medio">
+              <select name="pausa_{{ pausa.n }}_tipo">
+                <option value=""{% if not pausa.tipo %} selected{% endif %}>escolha</option>
+                {% for valor, nome in tipos_de_pausa %}
+                <option value="{{ valor }}"{% if valor == pausa.tipo %} selected{% endif %}>{{ nome }}</option>
+                {% endfor %}
+                {% if pausa.tipo and not pausa.tipo_conhecido %}
+                <option value="{{ pausa.tipo }}" selected>{{ pausa.tipo }}</option>
+                {% endif %}
+              </select>
+            </td>
+            <td><input type="text" name="pausa_{{ pausa.n }}_pede" value="{{ pausa.pede }}" autocomplete="off"{% if pausa.erro %} class="campo-recusado"{% endif %}></td>
+            <td class="medio"><input type="text" name="pausa_{{ pausa.n }}_campos" value="{{ pausa.campos }}" autocomplete="off"></td>
+          </tr>
+          {% if pausa.erro %}
+          <tr><td colspan="5"><p class="erro-do-campo">Pausa da linha {{ pausa.n }}: {{ pausa.erro }}.</p></td></tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="gestos-do-editor">
+      <button type="submit" class="salvar">Salvar a encomenda (sobe a versão)</button>
+      <a class="volta" href="{% url 'escola_aulas' %}">Cancelar</a>
+    </div>
+  </form>
+
+  {% if not sem_cabecalho %}
+  {% comment %}
+  PUBLICAR é outro formulário, e outro verbo: salvar sobe a versão e não muda
+  o que o aluno vê; publicar não muda uma letra e abre a aula. A caixa de
+  confirmação é a "confirmação de uma linha" do desenho: sem script, é o que
+  impede um clique escorregado de abrir uma aula pela metade.
+  {% endcomment %}
+  <div class="publicar{% if aula.publicada %} ja{% endif %}">
+    {% if aula.publicada %}
+    <b>Esta encomenda está publicada</b> desde {{ aula.publicada_em }}. Os
+    alunos veem a versão que estiver salva; não há o que publicar de novo.
+    {% else %}
+    <b>Publicar para os alunos.</b> Abre esta encomenda na sala de aula, do
+    jeito que ela está salva agora (versão {{ aula.versao }}). O texto não muda;
+    o que muda é quem vê.
+    <form method="post" action="{% url 'escola_aula_publicar' aula.numero %}">
+      {% csrf_token %}
+      <label class="marcar"><input type="checkbox" name="confirmo" value="1" required> Sim, quero abrir esta encomenda para os alunos.</label>
+      <button type="submit">Publicar esta encomenda</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}

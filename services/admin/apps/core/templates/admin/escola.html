@@ -18,6 +18,13 @@
     ficaria alcançável só por quem soubesse o endereço de cor.
     {% endcomment %}
     <a class="botao" href="{% url 'escola_jornadas' %}">Ver as sequências de mensagens &rarr;</a>
+    {% comment %}
+    A porta das encomendas do curso (05/09/2026, degrau 1.5 do
+    PLANO-CELULA-CURSOS.md), pela mesma regra: a porta de máquina da `cursos`
+    existe e o contrato dela congelou (PR #1061), então a tela tem quem a
+    responda. O texto das aulas mora lá, e entra SÓ por esta porta.
+    {% endcomment %}
+    <a class="botao" href="{% url 'escola_aulas' %}">Escrever as encomendas do curso &rarr;</a>
   </p>
 
   {% comment %}
@@ -32,11 +39,13 @@
     A primeira administra <b>as pessoas</b> (quem está esperando, quem é aluno,
     e o formulário de cada um). A segunda mostra <b>o caminho</b>: por onde
     alguém passa entre chegar no site e sair da escola, com quantas estão em
-    cada ponto agora. A terceira mostra <b>quem está jogando</b>, por pontos. E
-    a quarta mostra <b>o que a escola escreve sozinha</b>: as sequências de
-    mensagens automáticas, o texto de cada uma, e o que foi barrado.
+    cada ponto agora. A terceira mostra <b>quem está jogando</b>, por pontos. A
+    quarta mostra <b>o que a escola escreve sozinha</b>: as sequências de
+    mensagens automáticas, o texto de cada uma, e o que foi barrado. E a quinta
+    é <b>o curso por dentro</b>: cada encomenda que o aluno vai entregar, com
+    as peças, as pausas do vídeo, o quiz e o botão de publicar.
     <br><br>
-    Turmas, aulas e certificados moram nesta mesma página quando existirem — e
+    Turmas e certificados moram nesta mesma página quando existirem — e
     cada um só aparece depois que a parte do sistema que guarda aquele dado
     souber entregá-lo. Um atalho que abre uma tela vazia é pior que a ausência
     dele: ele promete uma coisa que ainda não foi construída.

@@ -206,6 +206,23 @@ class Registro(models.Model):
     EDITAR_TEXTO_LIVRO = "editar_texto_livro"
     RESTAURAR_TEXTO_LIVRO = "restaurar_texto_livro"
     APAGAR_TEXTO_LIVRO = "apagar_texto_livro"
+    # [AULAS] 05/09/2026: o editor de encomendas do curso (`/admin/escola/aulas/`,
+    # degrau 1.5 do `PLANO-CELULA-CURSOS.md`). Tres verbos, porque as perguntas
+    # que se fazem a estas linhas sao tres: "quem mexeu na aula E07, e quando?",
+    # "quando a E07 foi aberta para os alunos?" e "quem trocou a escala do
+    # cartao de topologia?". Publicar e verbo proprio e nao um detalhe de
+    # gravar: gravar sobe a versao e nao muda o que o aluno ve; publicar nao
+    # muda uma letra e abre a aula. Sao gestos de pesos diferentes.
+    #
+    # Como no livro, o texto mora fora do Git (no banco da `cursos`, pela porta
+    # de maquina): esta tabela e o historico de versoes da `cursos` sao a
+    # memoria inteira de quem escreveu o que. O `detalhe` guarda a versao e a
+    # contagem de travessoes, NUNCA o texto: obra nao lancada nao entra numa
+    # tabela append-only (a regra do `LICOES.md` sobre a auditoria nao guardar o
+    # que a pessoa escreveu vale aqui com mais forca ainda).
+    EDITAR_AULA = "editar_aula"
+    PUBLICAR_AULA = "publicar_aula"
+    EDITAR_INSTRUMENTO = "editar_instrumento"
     ACOES = [
         (LIBERAR, "liberar"),
         (RECUSAR, "recusar"),
@@ -245,6 +262,9 @@ class Registro(models.Model):
         (EDITAR_TEXTO_LIVRO, "editar um texto do livro"),
         (RESTAURAR_TEXTO_LIVRO, "voltar um texto do livro a uma versao anterior"),
         (APAGAR_TEXTO_LIVRO, "apagar um texto do livro definitivamente"),
+        (EDITAR_AULA, "gravar uma encomenda do curso"),
+        (PUBLICAR_AULA, "publicar uma encomenda do curso para os alunos"),
+        (EDITAR_INSTRUMENTO, "gravar um instrumento de avaliacao do curso"),
     ]
 
     OK = "ok"

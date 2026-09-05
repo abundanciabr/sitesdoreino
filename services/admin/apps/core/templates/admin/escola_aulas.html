@@ -1,0 +1,129 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A LISTA das encomendas do curso: as 34, na ordem em que o aluno as encontra,
+com o estado, a versão e a data de publicação de cada uma; e os 13
+instrumentos, para abrir o cartão de cada um.
+
+Nada aqui é desta célula: tudo vem da `cursos`, pela porta de máquina e pelo
+contrato congelado (docstring de apps/core/aulas.py). Sem script, como as
+outras telas da escola.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087). TODA classe usada aqui EXISTE em admin/base.html ou no
+<style> logo abaixo, e o <style> entra na CSP por hash (armadilhas/199).
+{% endcomment %}
+{% block titulo %}As encomendas do curso{% endblock %}
+{% block corpo %}
+<style>
+  .encomendas { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .encomendas th, .encomendas td { padding: 9px 10px; border-bottom: 1px solid var(--linha); text-align: left; vertical-align: top; }
+  .encomendas th { color: var(--texto-2); font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .encomendas .numero { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: nowrap; }
+  .encomendas .versao { text-align: right; font-variant-numeric: tabular-nums; }
+  .encomendas a { font-weight: 600; }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{% url 'escola' %}">&larr; Painel da escola</a></p>
+  <h1>As encomendas do curso</h1>
+  <p class="subtitulo">
+    Cada aula do curso é uma encomenda: um pedido de cliente que o aluno
+    entrega. Aqui você escreve cada uma (as peças, as pausas, o quiz, o vídeo) e
+    decide quando ela abre para os alunos.
+  </p>
+
+  {% if sem_site %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui saber de qual escola são as encomendas.</b>
+    A parte do sistema que guarda os endereços do site não respondeu agora.
+    Recarregue a página em um minuto. Nada mudou por causa disso.
+  </p>
+
+  {% elif falha_da_sala %}
+  <p class="aviso borda-vermelha">
+    <b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}
+  </p>
+
+  {% else %}
+
+  <div class="cartao">
+    <span class="rotulo">Publicadas para os alunos</span>
+    <div class="valor"><b>{{ publicadas }} de {{ aulas|length }}</b></div>
+    <p class="nota">
+      {% if publicadas == 0 %}
+      Nenhuma encomenda está aberta para os alunos ainda. Publicar é um botão
+      dentro de cada uma, e só você aperta.
+      {% else %}
+      As outras continuam em rascunho: só quem edita as vê.
+      {% endif %}
+    </p>
+  </div>
+
+  {% if aulas %}
+  <div class="rolagem-lateral espaco-20">
+    <table class="encomendas">
+      <thead>
+        <tr>
+          <th>Nº</th>
+          <th>Encomenda</th>
+          <th>Onde fica</th>
+          <th>Estado</th>
+          <th class="versao">Versão</th>
+          <th>Publicada em</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for a in aulas %}
+        <tr>
+          <td class="numero">{{ a.numero }}</td>
+          <td>
+            <a href="{% url 'escola_aula' a.numero %}">{{ a.titulo_exibido|default:"(sem título ainda)" }}</a>
+            {% if a.e_boss %}<span class="mapa-selo">Boss</span>{% endif %}
+            {% if a.banca_nivel %}<span class="mapa-selo">Banca {{ a.banca_nivel }}</span>{% endif %}
+          </td>
+          <td>{{ a.bloco }}</td>
+          <td>
+            {% if a.publicada %}
+            <span class="luz no-ar">{{ a.estado_rotulo }}</span>
+            {% else %}
+            <span class="luz">{{ a.estado_rotulo }}</span>
+            {% endif %}
+          </td>
+          <td class="versao">{{ a.versao }}</td>
+          <td>{% if a.publicada_em %}{{ a.publicada_em }}{% else %}<span class="recado-fraco">ainda não</span>{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="aviso espaco-20">
+    <b>Esta escola ainda não tem nenhuma encomenda.</b> Elas nascem junto com o
+    curso, do lado da sala de aula; quando a primeira existir, ela aparece aqui
+    sozinha.
+  </p>
+  {% endif %}
+
+  <h2 class="secao">Os instrumentos de avaliação</h2>
+  <p class="subtitulo">
+    Os cartões com que cada encomenda é avaliada: a escala, os mínimos, a seção
+    do Padrão e os descritores. São os mesmos em toda escola.
+  </p>
+  {% if not instrumentos_lidos %}
+  <p class="aviso borda-amarela">
+    Não consegui ler a lista de instrumentos agora. O resto desta tela continua
+    valendo, e esta parte volta sozinha quando a sala de aula responder.
+  </p>
+  {% else %}
+  {% for i in instrumentos %}
+  <div class="historia">
+    <b>Cartão {{ i.cartao }}: <a href="{% url 'escola_instrumento' i.slug %}">{{ i.nome_canonico }}</a></b>
+    <span class="mapa-selo">versão {{ i.versao }}</span>
+  </div>
+  {% empty %}
+  <p class="aviso">Nenhum instrumento cadastrado ainda do lado da sala de aula.</p>
+  {% endfor %}
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}
