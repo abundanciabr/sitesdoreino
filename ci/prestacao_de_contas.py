@@ -304,8 +304,55 @@ def _teve_plano(entradas: list[dict], comeco: int) -> bool:
 # ------------------------------------------------------------- a decisão ----
 
 
+def trabalho_em_voo(entradas: list[dict]) -> set[str]:
+    """Tarefas de fundo já iniciadas e ainda sem desfecho.
+
+    Medido no transcript real (05/09/2026): uma tarefa nasce como
+    `toolUseResult.taskId` e morre numa `<task-notification>` que traz
+    `<status>completed|failed|stopped</status>`. Batimento de espera NÃO traz
+    `<status>` — é por isso que dá para distinguir "ainda trabalhando" de
+    "acabou" sem adivinhar pelo texto.
+
+    A varredura é do arquivo INTEIRO, não da janela: uma espera armada antes
+    da última fala dele continua em voo depois dela.
+    """
+    nascidas: set[str] = set()
+    mortas: set[str] = set()
+    for entrada in entradas:
+        resultado = entrada.get("toolUseResult")
+        if isinstance(resultado, dict) and resultado.get("taskId"):
+            nascidas.add(str(resultado["taskId"]))
+        conteudo = (entrada.get("message") or {}).get("content")
+        if (entrada.get("type") == "user" and isinstance(conteudo, str)
+                and "<task-notification>" in conteudo):
+            identidade = re.search(r"<task-id>([^<]+)</task-id>", conteudo)
+            desfecho = re.search(r"<status>([^<]+)</status>", conteudo)
+            if identidade and desfecho:
+                mortas.add(identidade.group(1).strip())
+    return nascidas - mortas
+
+
 def decidir(entradas: list[dict]) -> tuple[bool, str, bool]:
-    """(recusar, motivo, teve_plano) — a régua inteira, testável sem harness."""
+    """(recusar, motivo, teve_plano) — a régua inteira, testável sem harness.
+
+    A RÉGUA É "O TRABALHO ACABOU", NÃO "ESTE TURNO MEXEU" — corrigido em
+    05/09/2026, no mesmo dia em que o portão nasceu. A primeira versão cobrava
+    o relatório do turno que mexia no mundo, e o mantenedor mostrou a tela onde
+    isso não bastava: a sessão abriu PR, mergeou, armou a espera do deploy — e
+    daí em diante todo turno era só espera. Nenhum mexia em nada, o portão
+    calaria em todos, e a conversa seria arquivada com "Aguardando." como
+    última palavra. O relatório que ele queria é justamente o que só existe no
+    fim: o veredito do deploy.
+
+    Então a dívida NASCE com a mudança e só é COBRADA quando não há mais nada
+    em voo. Enquanto uma espera roda, o turno é livre — é trabalho em
+    andamento, e interromper com um relatório pela metade seria pior. Quando a
+    última tarefa de fundo termina, o portão cobra, e aí o relatório tem tudo.
+
+    O buraco que sobra, dito na cara: sessão que MORRE com tarefa em voo (o
+    harness derrubado, a máquina desligada) não presta contas, porque não
+    existe turno nenhum em que cobrar. Nenhum gancho de Stop alcança isso.
+    """
     comeco = inicio_da_janela(entradas)
     ultima_mudanca: tuple[int, str] | None = None
     ultima_prestacao: int | None = None
@@ -318,15 +365,21 @@ def decidir(entradas: list[dict]) -> tuple[bool, str, bool]:
             ultima_prestacao = i
 
     if ultima_mudanca is None:
-        return False, "", True  # turno que não mexeu no mundo: o portão cala
+        return False, "", True  # nada mudou nesta janela: o portão cala
     if ultima_prestacao is not None and ultima_prestacao > ultima_mudanca[0]:
         return False, "", True  # já prestou contas depois da última mudança
+    if trabalho_em_voo(entradas):
+        return False, "", True  # ainda trabalhando: a cobrança espera o fim
+
     return True, ultima_mudanca[1], _teve_plano(entradas, comeco)
 
 
 def molde(faltou_o_plano: bool) -> str:
     linhas = [
-        "🧾 PRESTAÇÃO DE CONTAS: este turno mudou o mundo e não pode terminar calado.",
+        "🧾 PRESTAÇÃO DE CONTAS: o trabalho acabou e ainda não foi prestado conta dele.",
+        "",
+        "   Não há mais nada em voo: nenhuma espera, nenhum deploy rodando. É",
+        "   AGORA que o relatório existe inteiro — com o veredito do que subiu.",
         "",
         "   O mantenedor é leigo em código e não lê o transcript. Se você parar aqui,",
         "   ele vai ter que perguntar de novo o que foi feito — foi por isso que este",
