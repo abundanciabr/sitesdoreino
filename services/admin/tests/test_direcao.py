@@ -283,6 +283,46 @@ def test_os_cartoes_da_direcao_sao_validos():
         assert cartao["tipo"] == "direcao" and cartao["par"] == placar.CARTAO_DA_META
 
 
+def test_as_duas_medidas_acesas_dizem_que_a_compra_aconteceu_fora_do_site():
+    """A correção do mantenedor de 05/09/2026, presa nos dois cartões.
+
+    Ninguém pede entrada na escola: quem está na fila JÁ COMPROU, fora do site,
+    e espera confirmação. O texto que envelheceu era o nome, não a medida, e é
+    justamente por a conta continuar exata que a volta ao texto antigo passaria
+    despercebida por qualquer suíte verde. Este guarda é o que impede a volta.
+    """
+    for nome in (placar.CARTAO_DOS_PEDIDOS, placar.CARTAO_DAS_48H):
+        cartao, problemas = placar.ler_cartao(nome)
+        assert cartao is not None, problemas
+        texto = f"{cartao['pergunta']} {cartao['definicao']} {cartao['acao']}".lower()
+        assert "sala de espera" in texto, f"{nome} não nomeia a sala de espera"
+        assert "fora do site" in texto, f"{nome} não diz que a compra foi feita fora"
+        for mentira in (
+            "pediram para entrar",
+            "pediu para entrar",
+            "pedir para entrar",
+        ):
+            assert (
+                mentira not in texto
+            ), f"{nome} ainda trata a fila como pedido de entrada"
+
+
+def test_o_caminho_da_venda_nasce_apagado_e_diz_por_que():
+    """Os dois cartões novos, e a trava que os mantém sem número.
+
+    Acender um número de venda contraria a decisão do mantenedor de 22/08/2026
+    (o checkout está congelado). O guarda é fail-closed pelo lado certo: quem
+    ligar uma fonte aqui sem ele mandar abre vermelho.
+    """
+    assert len(placar.CARTOES_DO_CAMINHO_DA_VENDA) == 2
+    for nome in placar.CARTOES_DO_CAMINHO_DA_VENDA:
+        cartao, problemas = placar.ler_cartao(nome)
+        assert cartao is not None, problemas
+        assert cartao["tipo"] == "direcao" and cartao["andar"] == 0
+        assert cartao["fonte"] is None, f"{nome} acendeu venda sem ordem do mantenedor"
+        assert "22/08/2026" in cartao["sem_fonte_porque"], "diga por que está apagado"
+
+
 # -------------------------------------------------------------------- a tela
 
 
@@ -314,3 +354,23 @@ def test_a_tela_mostra_as_duas_medidas_e_os_compromissos():
     assert f"meta da semana: {alvo_da_semana}" in html
     assert "100%" in html and "na meta" in html
     assert "Os compromissos da semana" in html
+
+
+@respx.mock
+def test_a_tela_mostra_o_caminho_da_venda_apagado():
+    """Os dois cartões sem fonte aparecem na tela, com a frase que os explica."""
+    respx.get(FILA, params={"status": "aguardando"}).mock(
+        return_value=httpx.Response(200, json=[])
+    )
+    respx.get(FILA, params={"status": "recusada"}).mock(
+        return_value=httpx.Response(200, json=[])
+    )
+    respx.get(ALUNOS_LISTA).mock(return_value=httpx.Response(200, json=[]))
+    html = _dentro().get(reverse("placar")).content.decode()
+    assert "O caminho da venda" in html
+    for nome in placar.CARTOES_DO_CAMINHO_DA_VENDA:
+        cartao, _recusas = placar.ler_cartao(nome)
+        assert cartao["pergunta"] in html, f"{nome} não aparece na tela"
+        assert (
+            cartao["sem_fonte_porque"] in html
+        ), f"{nome} não diz por que está apagado"

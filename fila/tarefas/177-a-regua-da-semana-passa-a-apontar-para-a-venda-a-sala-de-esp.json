@@ -1,0 +1,18 @@
+{
+  "arquivo": "177-a-regua-da-semana-passa-a-apontar-para-a-venda-a-sala-de-esp",
+  "id": "TAR-177",
+  "titulo": "A regua da semana passa a apontar para a venda: a sala de espera diz a verdade e o caminho da venda nasce desenhado",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-ciclo"
+  ],
+  "evidencia_exigida": "suite da admin verde com a contagem antes e depois, vermelho para verde por assercao, prova por mutacao de cada guarda novo, muralhas PASS, travessao PASS, e a previa do bloco da direcao renderizada com os cartoes reais",
+  "despacho": "O mantenedor corrigiu a premissa das duas medidas de direcao em 05/09/2026, em\ncaixa de pergunta estruturada: \"ninguem pede entrada na escola, todos entram\napenas e unicamente pela matricula mediante a compra do curso\" e \"os alunos dos\nquais estamos falando no painel das vendas sao de vendas que foram efetuadas via\ncheckout\". Quem esta na fila de liberacao ja comprou fora do site e espera\nconfirmacao: e sala de espera, nao pedido de entrada.\n\nMetade 1: os cartoes pedidos-de-entrada-por-semana e liberacoes-em-48h e o\ncalculo em services/admin/apps/core/direcao.py passam a se explicar pelo que de\nfato medem (pergunta, definicao, formula, acao e _por_que reescritos), e a\ndocstring de restricao.py para de chamar a jornada da fila de jornada da Meta 1.\n\nMetade 2: nascem os dois cartoes do caminho da venda, com fonte nula e\nsem_fonte_porque dizendo que o checkout esta congelado desde 22/08/2026:\nvisitas-na-pagina-de-venda-por-semana e compras-pelo-checkout-por-semana. Eles\naparecem no bloco da direcao, apagados, como as estrelas-guia.\n\nMetade 3: a decisao dele entra na tabela do paragrafo 1 de\ndocs/decisoes/PLANO-PAINEL-DE-GESTAO.md e as linhas dos degraus 2 e 9 param de\nmandar a restricao ler as passagens antigas.\n\nNenhum numero de venda e ligado: o checkout continua congelado por decisao dele.",
+  "origem": "brief da maestro, decisao do mantenedor de 05/09/2026",
+  "criada_em": "2026-09-05"
+}
