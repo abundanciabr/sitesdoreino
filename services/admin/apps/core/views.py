@@ -124,18 +124,23 @@ def doc_publico(request, nome):
 
 @require_GET
 def documentos_admin(request):
-    """A lista completa, com a etiqueta de visibilidade de cada um.
+    """A lista completa, em duas pastas: a fechada primeiro, depois a aberta.
 
     É o único lugar em que as duas famílias aparecem juntas — sem ele, saber se
-    um documento está no ar para o mundo exigiria abrir o repositório.
+    um documento está no ar para o mundo exigiria abrir o repositório. As duas
+    pastas na MESMA tela, e não uma rota `/admin/docs` para a fechada, porque
+    esse endereço chega à célula como `/docs`, o prefixo público, e a porta não
+    teria como distinguir os dois (`DECISAO-a-area-de-documentos.md` §3).
     """
     todos = documentos.listar(so_publicos=False, com_arquivados=True)
+    no_ar = [d for d in todos if not d.arquivado]
     return render(
         request,
         "admin/documentos.html",
         {
             "admin": request.admin,
-            "documentos": [d for d in todos if not d.arquivado],
+            "so_administradores": [d for d in no_ar if not d.publico],
+            "publicos": [d for d in no_ar if d.publico],
             # Os arquivados numa lista SEPARADA, e nao misturados com uma
             # etiqueta: eles nao estao no site, e quem abre esta tela quer ver o
             # que esta no ar. Escondidos de vez, porem, desarquivar seria
