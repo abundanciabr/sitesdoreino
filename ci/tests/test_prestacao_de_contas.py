@@ -178,11 +178,32 @@ def test_contas_antes_da_mudanca_nao_valem(tmp_path):
     ]))
 
 
-def test_mudanca_de_pedido_anterior_nao_assombra_pergunta_nova(tmp_path):
-    _silencio(_decidir(tmp_path, [
+def test_a_divida_sobrevive_a_ele_falar_outra_coisa(tmp_path):
+    """ESTE TESTE JÁ AFIRMOU O CONTRÁRIO, e o contrário era o defeito.
+
+    Ele mandou a tela: a sessão abriu o PR #1092, mergeou, e ficou esperando o
+    deploy; no meio ele respondeu uma pergunta ("deixe assim: só admin pode
+    ver, ler"); e daí em diante nada mais mudou no mundo. Como o portão só
+    media a janela aberta pela última fala dele, a dívida do trabalho já feito
+    tinha sido apagada por ELE ter digitado uma frase.
+
+    Dívida se paga com o relatório, nunca com o devedor falando outra coisa.
+    """
+    _recusa_que_ensina(_decidir(tmp_path, [
         _humano("conserte o webhook"),
         _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
         _fala("Feito."),
+        _humano("deixe assim: só admin pode ver, ler"),
+        _fala("Combinado."),
+    ]))
+
+
+def test_divida_paga_nao_assombra_pergunta_nova(tmp_path):
+    """O par verde: com o relatório entregue, a pergunta seguinte é livre."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _fala(CONTAS_COMPLETAS),
         _humano("e o que é uma célula?"),
         _fala("É um serviço isolado, com banco e deploy próprios."),
     ]))
@@ -468,94 +489,46 @@ def test_a_fiacao_literal_recusa_de_ponta_a_ponta(tmp_path):
 
 
 # ------------------------------------------------------------------------
-# A régua é "o trabalho acabou", não "este turno mexeu" (05/09/2026).
-# O mantenedor mandou a tela: a sessão abriu PR, mergeou, armou a espera do
-# deploy, e daí em diante todo turno era só espera. Nenhum mexia em nada, o
-# portão calava em todos, e a conversa ia ser arquivada com "Aguardando."
-# como última palavra — sem uma linha do que tinha sido feito.
+# A tela que ele mandou, reconstruída (05/09/2026).
+# A sessão abriu PR, mergeou e ficou em turnos de espera. O relatório do
+# trabalho nunca saiu, e a conversa ia ser arquivada com "Aguardando." como
+# última palavra.
 # ------------------------------------------------------------------------
 
-def _armou_espera(tarefa: str) -> list[dict]:
-    """Um Monitor armado: o tool_use e o resultado que carrega o taskId."""
-    return [
-        {"type": "assistant", "message": {"role": "assistant", "content": [
-            {"type": "tool_use", "name": "Monitor",
-             "input": {"description": "a espera do deploy"}}]}},
-        {"type": "user", "toolUseResult": {"taskId": tarefa, "timeoutMs": 1500000},
-         "message": {"role": "user", "content": [
-             {"type": "tool_result", "content": f"Monitor started (task {tarefa})"}]}},
-    ]
-
-
-def _desfecho_da_espera(tarefa: str, status: str) -> dict:
+def _batimento(evento: str) -> dict:
     return {"type": "user", "origin": {"kind": "task-notification"},
             "message": {"role": "user", "content":
-                        f"<task-notification>\n<task-id>{tarefa}</task-id>\n"
-                        f"<status>{status}</status>\n<summary>fim</summary>\n"
-                        "</task-notification>"}}
+                        f"<task-notification><task-id>bdeploy1</task-id>"
+                        f"<event>{evento}</event></task-notification>"}}
 
 
-def _batimento(tarefa: str, evento: str) -> dict:
-    return {"type": "user", "origin": {"kind": "task-notification"},
-            "message": {"role": "user", "content":
-                        f"<task-notification>\n<task-id>{tarefa}</task-id>\n"
-                        f"<event>{evento}</event>\n</task-notification>"}}
-
-
-def _a_tela_que_ele_mandou(acabou: bool) -> list[dict]:
-    """A sessão do PR #1092, reconstruída: mexeu no mundo, armou a espera do
-    deploy, e foi ficando em turnos de "Aguardando."."""
+def _a_tela_que_ele_mandou() -> list[dict]:
     entradas = [
         _humano("faça o relatório de apresentação do projeto"),
         _ferramenta("Bash", {"command": "gh pr create --base main --title x --body y"}),
         _fala("PR #1092 aberto."),
     ]
-    entradas += _armou_espera("bdeploy1")
     for evento in ("Sonda do merge, 18 min", "a pista atualizou o PR",
                    "Deploy em andamento", "Deploy na fila do GitHub"):
-        entradas += [_batimento("bdeploy1", evento), _fala("Aguardando.")]
-    if acabou:
-        entradas += [_desfecho_da_espera("bdeploy1", "completed"), _fala("Deploy verde.")]
+        entradas += [_batimento(evento), _fala("Aguardando.")]
     return entradas
 
 
-def test_enquanto_o_deploy_roda_o_portao_nao_interrompe(tmp_path):
-    """Metade do desenho: relatório pela metade no meio do trabalho seria pior
-    que nenhum, e viraria ruído em cada batimento de espera."""
-    _silencio(_decidir(tmp_path, _a_tela_que_ele_mandou(acabou=False)))
-
-
-def test_quando_a_ultima_espera_termina_o_portao_COBRA(tmp_path):
-    """O caso exato da tela que ele mandou. Antes desta regra o portão calava
-    aqui, e a conversa era arquivada com "Aguardando." como última palavra."""
-    proc = _decidir(tmp_path, _a_tela_que_ele_mandou(acabou=True))
+def test_a_sessao_da_captura_dele_nao_termina_calada(tmp_path):
+    proc = _decidir(tmp_path, _a_tela_que_ele_mandou())
     _recusa_que_ensina(proc)
-    assert "o trabalho acabou" in proc.stderr, proc.stderr
+    assert "trabalho feito nesta sessão" in proc.stderr, proc.stderr
 
 
-def test_espera_que_falhou_ou_foi_parada_tambem_encerra_o_voo(tmp_path):
-    """`failed` e `stopped` são desfecho como `completed`. Sem isto, uma espera
-    que morre mal deixaria a dívida presa para sempre e o portão mudo."""
-    for status in ("failed", "stopped"):
-        entradas = _a_tela_que_ele_mandou(acabou=False)
-        entradas += [_desfecho_da_espera("bdeploy1", status), _fala("A espera morreu.")]
-        _recusa_que_ensina(_decidir(tmp_path, entradas))
-
-
-def test_duas_esperas_so_a_ultima_libera_a_cobranca(tmp_path):
-    """Uma tarefa terminar não quer dizer que o trabalho acabou."""
-    entradas = [
-        _humano("suba as duas células"),
-        _ferramenta("Edit", {"file_path": "services/cursos/models.py"}),
-    ]
-    entradas += _armou_espera("bum") + _armou_espera("bdois")
-    entradas += [_desfecho_da_espera("bum", "completed"), _fala("Uma pousou.")]
-    _silencio(_decidir(tmp_path, entradas))
-    entradas += [_desfecho_da_espera("bdois", "completed"), _fala("A outra também.")]
-    _recusa_que_ensina(_decidir(tmp_path, entradas))
-
-
-def test_relatorio_no_fim_encerra_a_divida(tmp_path):
-    entradas = _a_tela_que_ele_mandou(acabou=True)
+def test_a_mesma_sessao_com_o_relatorio_passa(tmp_path):
+    entradas = _a_tela_que_ele_mandou()
     entradas[-1] = _fala(CONTAS_COMPLETAS)
     _silencio(_decidir(tmp_path, entradas))
+
+
+def test_a_fala_dele_no_meio_da_espera_nao_perdoa_a_divida(tmp_path):
+    """O detalhe exato da tela: ele respondeu algo no meio das esperas."""
+    entradas = _a_tela_que_ele_mandou()
+    entradas += [_humano("deixe assim: só admin pode ver, ler"), _fala("Combinado.")]
+    entradas += [_batimento("Deploy na fila"), _fala("Aguardando.")]
+    _recusa_que_ensina(_decidir(tmp_path, entradas))

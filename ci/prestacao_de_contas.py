@@ -46,24 +46,41 @@ O discriminador não é heurística de texto: é o campo estruturado
     origin.kind == "task-notification"  a máquina acordou    → não abre nada
     origin.kind == "peer"               outra sessão         → não abre nada
 
-Dentro da janela aberta pela última fala dele, são DUAS perguntas, e a segunda
-foi a correção mais cara deste arquivo (05/09/2026, no mesmo dia em que ele
-nasceu):
+A DÍVIDA, e por que ela atravessa as falas dele
+-----------------------------------------------
+A pergunta é uma só, e vale para a SESSÃO inteira:
 
-    1. houve mudança no mundo depois da última prestação de contas?
-    2. o trabalho ACABOU — nenhuma espera, nenhum deploy ainda em voo?
+    houve mudança no mundo depois da última prestação de contas?
 
-Só quando as duas são sim o turno deixa de poder terminar. A pergunta 2 não
-existia na primeira versão, e o mantenedor mostrou a tela em que a falta dela
-custava tudo: a sessão abriu PR, mergeou, armou a espera do deploy — e daí em
-diante todo turno era SÓ espera. Nenhum mexia no mundo, então a pergunta 1
-respondia "não" em todos, o portão calava, e a conversa ia ser arquivada com
-"Aguardando." como última palavra. O relatório que ele queria é justamente o
-que só existe no fim: o veredito do que subiu.
+Se houve, o turno não termina. Se não houve — turno de espera, pergunta
+respondida, leitura — o portão cala. É por isso que "Aguardando." continua
+barato e o trabalho feito continua caro.
 
-Enquanto há trabalho em voo o turno é livre — relatório pela metade no meio do
-trabalho seria pior que nenhum, e viraria ruído a cada batimento de espera. É
-por isso que "Aguardando." continua barato e o FIM do trabalho é caro.
+**A varredura é da sessão inteira, e não da janela aberta pela última fala
+dele.** A primeira versão olhava só para a janela, e o mantenedor mandou a tela
+que provou o erro: a sessão abriu o PR #1092, mergeou, e ficou esperando o
+deploy; no meio disso ele respondeu uma pergunta ("deixe assim: só admin pode
+ver, ler"); e a partir dali não houve mais nenhuma mudança no mundo. A dívida
+do trabalho já feito tinha sido apagada porque ELE digitou uma frase, e a
+conversa ia ser arquivada com "Aguardando." como última palavra. Dívida se paga
+com o relatório, nunca com o devedor falando outra coisa.
+
+O `origin.kind` continua servindo — só que para outra coisa: saber se o PLANO
+apareceu no pedido atual, e para o `--plano` calar nos acordares da máquina.
+
+O QUE TENTEI E NÃO FUNCIONOU, para ninguém refazer
+---------------------------------------------------
+Adiar a cobrança até "não haver mais nada em voo", para o relatório sair com o
+veredito do deploy dentro. O sinal não existe de forma confiável: medido no
+transcript real daquela sessão, **4 tarefas de fundo tinham terminado** (o `✅`
+do desfecho está lá, no último evento de cada uma) e **nenhuma recebeu a
+notificação com `<status>completed</status>`**. Um portão que dependesse disso
+ficaria mudo justamente no caso reclamado. Sinal que some sem avisar não vira
+guarda.
+
+O que sobra, dito na cara: a cobrança cai no fim do turno que FEZ o trabalho, e
+não depois do deploy. O veredito do deploy segue sendo obrigação de texto
+(`CLAUDE.md`), sem mecanismo.
 
 O QUE CONTA COMO MUDAR O MUNDO
 -------------------------------
@@ -315,60 +332,40 @@ def _teve_plano(entradas: list[dict], comeco: int) -> bool:
 # ------------------------------------------------------------- a decisão ----
 
 
-def trabalho_em_voo(entradas: list[dict]) -> set[str]:
-    """Tarefas de fundo já iniciadas e ainda sem desfecho.
-
-    Medido no transcript real (05/09/2026): uma tarefa nasce como
-    `toolUseResult.taskId` e morre numa `<task-notification>` que traz
-    `<status>completed|failed|stopped</status>`. Batimento de espera NÃO traz
-    `<status>` — é por isso que dá para distinguir "ainda trabalhando" de
-    "acabou" sem adivinhar pelo texto.
-
-    A varredura é do arquivo INTEIRO, não da janela: uma espera armada antes
-    da última fala dele continua em voo depois dela.
-    """
-    nascidas: set[str] = set()
-    mortas: set[str] = set()
-    for entrada in entradas:
-        resultado = entrada.get("toolUseResult")
-        if isinstance(resultado, dict) and resultado.get("taskId"):
-            nascidas.add(str(resultado["taskId"]))
-        conteudo = (entrada.get("message") or {}).get("content")
-        if (entrada.get("type") == "user" and isinstance(conteudo, str)
-                and "<task-notification>" in conteudo):
-            identidade = re.search(r"<task-id>([^<]+)</task-id>", conteudo)
-            desfecho = re.search(r"<status>([^<]+)</status>", conteudo)
-            if identidade and desfecho:
-                mortas.add(identidade.group(1).strip())
-    return nascidas - mortas
-
-
 def decidir(entradas: list[dict]) -> tuple[bool, str, bool]:
     """(recusar, motivo, teve_plano) — a régua inteira, testável sem harness.
 
-    A RÉGUA É "O TRABALHO ACABOU", NÃO "ESTE TURNO MEXEU" — corrigido em
-    05/09/2026, no mesmo dia em que o portão nasceu. A primeira versão cobrava
-    o relatório do turno que mexia no mundo, e o mantenedor mostrou a tela onde
-    isso não bastava: a sessão abriu PR, mergeou, armou a espera do deploy — e
-    daí em diante todo turno era só espera. Nenhum mexia em nada, o portão
-    calaria em todos, e a conversa seria arquivada com "Aguardando." como
-    última palavra. O relatório que ele queria é justamente o que só existe no
-    fim: o veredito do deploy.
+    A DÍVIDA ATRAVESSA AS FALAS DELE, e essa foi a correção mais cara deste
+    arquivo (05/09/2026, no mesmo dia em que nasceu). A primeira versão só
+    olhava para o que aconteceu DEPOIS da última fala do mantenedor. Ele mandou
+    a tela que provou o erro: a sessão abriu o PR #1092, mergeou, e ficou
+    esperando o deploy; no meio disso ele respondeu uma pergunta ("deixe assim:
+    só admin pode ver, ler"); e a partir dali NÃO houve mais nenhuma mudança no
+    mundo. Como o portão só media a janela nova, a dívida do trabalho já feito
+    tinha sido apagada — por ele ter digitado uma frase. A conversa ia ser
+    arquivada com "Aguardando." como última palavra.
 
-    Então a dívida NASCE com a mudança e só é COBRADA quando não há mais nada
-    em voo. Enquanto uma espera roda, o turno é livre — é trabalho em
-    andamento, e interromper com um relatório pela metade seria pior. Quando a
-    última tarefa de fundo termina, o portão cobra, e aí o relatório tem tudo.
+    A regra certa é a de qualquer dívida: **ela se paga com o relatório, nunca
+    com o devedor falando outra coisa.** Por isso a varredura é da SESSÃO
+    inteira: a última mudança contra a última prestação de contas.
 
-    O buraco que sobra, dito na cara: sessão que MORRE com tarefa em voo (o
-    harness derrubado, a máquina desligada) não presta contas, porque não
-    existe turno nenhum em que cobrar. Nenhum gancho de Stop alcança isso.
+    O QUE NÃO DEU CERTO, e por que não está aqui: tentei adiar a cobrança até
+    "não haver mais nada em voo", para que o relatório saísse com o veredito do
+    deploy. O sinal não existe de forma confiável — medido no transcript real
+    daquela sessão, 4 tarefas de fundo tinham TERMINADO (o `✅` do desfecho
+    está lá) e nenhuma delas recebeu a notificação com
+    `<status>completed</status>`. Um portão que dependesse disso ficaria mudo
+    justamente no caso que ele reclamou. Sinal que some sem avisar não vira
+    guarda.
+
+    O que sobra, dito na cara: a cobrança cai no fim do turno que fez o
+    trabalho, e não depois do deploy. O veredito do deploy continua sendo
+    obrigação de TEXTO (CLAUDE.md), sem mecanismo.
     """
-    comeco = inicio_da_janela(entradas)
     ultima_mudanca: tuple[int, str] | None = None
     ultima_prestacao: int | None = None
 
-    for i, entrada in enumerate(entradas[comeco:], start=comeco):
+    for i, entrada in enumerate(entradas):
         motivo = _mudanca_na_entrada(entrada)
         if motivo:
             ultima_mudanca = (i, motivo)
@@ -376,21 +373,16 @@ def decidir(entradas: list[dict]) -> tuple[bool, str, bool]:
             ultima_prestacao = i
 
     if ultima_mudanca is None:
-        return False, "", True  # nada mudou nesta janela: o portão cala
+        return False, "", True  # nada mudou na sessão: o portão cala
     if ultima_prestacao is not None and ultima_prestacao > ultima_mudanca[0]:
-        return False, "", True  # já prestou contas depois da última mudança
-    if trabalho_em_voo(entradas):
-        return False, "", True  # ainda trabalhando: a cobrança espera o fim
+        return False, "", True  # a dívida foi paga depois da última mudança
 
-    return True, ultima_mudanca[1], _teve_plano(entradas, comeco)
+    return True, ultima_mudanca[1], _teve_plano(entradas, inicio_da_janela(entradas))
 
 
 def molde(faltou_o_plano: bool) -> str:
     linhas = [
-        "🧾 PRESTAÇÃO DE CONTAS: o trabalho acabou e ainda não foi prestado conta dele.",
-        "",
-        "   Não há mais nada em voo: nenhuma espera, nenhum deploy rodando. É",
-        "   AGORA que o relatório existe inteiro — com o veredito do que subiu.",
+        "🧾 PRESTAÇÃO DE CONTAS: há trabalho feito nesta sessão sem relatório nenhum.",
         "",
         "   O mantenedor é leigo em código e não lê o transcript. Se você parar aqui,",
         "   ele vai ter que perguntar de novo o que foi feito — foi por isso que este",
