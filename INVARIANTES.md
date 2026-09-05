@@ -811,6 +811,67 @@ coisa alguma, e ainda gasta a confiança de todo mundo.
   (um `RunPython` que cria uma peça deixa três asserções vermelhas), PR #1052.
 - **Célula dona:** cursos
 
+### [INV-CUR-P1] Nenhuma Tela Compara Alunos
+- **O quê:** nenhuma tela da sala de aula (`/cursos`, `/cursos/<numero>`) devolve
+  dados de mais de uma pessoa, e nenhuma rota lista alunos, recebe o id de outra
+  pessoa ou desenha ranking. Toda consulta de `Progresso` e de `RegistroDePausa`
+  nas views é filtrada pela pessoa da sessão, e o urlconf é inventariado por
+  igualdade: as rotas de hoje são cinco, e nenhuma delas fala de duas pessoas.
+- **Por quê:** "ranking ou dois alunos lado a lado" é critério de morte da
+  célula (`constituicoes/AGENTS.cursos.md` §11 da lei). A sala é da pessoa que a
+  abriu: o que ela vê é a própria porta, o próprio registro, a própria resposta.
+  Uma tela que comparasse transformaria o curso em placar, e o placar é da
+  gamificação, por evento, nunca daqui. Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §9.
+- **Teste-Guarda:**
+  `services/cursos/tests/test_inv_p1_nenhuma_tela_compara_alunos.py` — duas
+  pessoas no banco, cada uma com progresso, registro de pausa e autoavaliação
+  próprios; toda tela percorrida como uma delas não carrega nome, id, registro
+  nem resposta da outra; o inventário de rotas por igualdade; e a medição no
+  código das views (`pessoa=` em toda consulta). Provado por mutação em
+  05/09/2026: tirar o `pessoa=` da consulta do mapa deixa 2 vermelhos, da
+  consulta de registros deixa 3, e uma rota nova de lista de alunos deixa 1.
+- **Célula dona:** cursos
+
+### [INV-CUR-P2] A Porta Só Abre Por Laudo
+- **O quê:** `concluida` só entra em `Progresso` por `progresso.concluir`, que
+  EXIGE um laudo com decisão `aberto` ou `aberto_com_ajuste` como argumento, por
+  nome, e recusa qualquer outra coisa (sem laudo, devolvido, decisão inexistente,
+  uma data, um número de XP, um pagamento). A assinatura da função não tem
+  parâmetro de data, XP nem pagamento; gravar `data_de_retorno` não muda o
+  estado; nenhuma view grava `concluida`; a aula N só sai de `trancada` quando a
+  N-1 conclui; a bônus (EB) abre quando a E32 conclui e não tranca ninguém.
+- **Por quê:** "o checkpoint abre a porta; o calendário, nunca" é a missão da
+  célula. É o [INV-GAM3] visto do lado da aula: aula atrás de XP ou de pagamento
+  dentro desta célula é critério de morte, e uma porta que abrisse por data
+  entregaria ao aluno uma aula que ele não provou saber fazer. O acesso ao curso
+  é a matrícula, e só. Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §9.
+- **Teste-Guarda:**
+  `services/cursos/tests/test_inv_p2_a_porta_so_abre_por_laudo.py` — os oito
+  substitutos de laudo recusados, a porta trancada recusada mesmo com laudo, a
+  conclusão por laudo abrindo só a `ordem + 1`, a assinatura fechada medida por
+  `inspect`, a data que não abre (no serviço e pela tela), a única gravação de
+  `concluida` medida no código, e a vizinhança da bônus. Provado por mutação em
+  05/09/2026: apagar a exigência do laudo deixa 8 vermelhos; trocar `ordem + 1`
+  por `ordem + 2` deixa 6.
+- **Célula dona:** cursos
+
+### [INV-CUR-P3] O Checkpoint Fica Fechado Até Todas as Pausas Terem Registro
+- **O quê:** `progresso.pausas_registradas` só é verdadeira quando TODAS as
+  pausas da aula têm `RegistroDePausa` da própria pessoa (registro de outra
+  pessoa não conta; aula sem pausa é verdadeira, porque não há o que registrar),
+  e a tela da aula diz "fechado" enquanto falta pausa. O formulário do checkpoint
+  (degrau 2.1) consome esta função e nunca a reescreve.
+- **Por quê:** a pausa é o lugar onde a pessoa faz o que o vídeo pediu, e o
+  checkpoint é a prova de que fez. Um envio antes de todas as pausas seria uma
+  entrega sem o meio do caminho, e o laudo da professora chegaria a um trabalho
+  que pulou etapas. Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 e §9.
+- **Teste-Guarda:**
+  `services/cursos/tests/test_inv_p3_checkpoint_fechado_ate_as_pausas.py` —
+  nenhuma, uma de duas, todas, a de outra pessoa, a aula sem pausa, e a tela nos
+  dois lados. Provado por mutação em 05/09/2026: trocar `all` por `any` deixa 4
+  vermelhos.
+- **Célula dona:** cursos
+
 ### [INV-CI01] Portão Crítico é Fail-Closed
 - **O quê:** todo portão crítico prova positivamente que executou a medição
   antes de devolver sucesso. A semântica é de quatro estados, e não de dois:

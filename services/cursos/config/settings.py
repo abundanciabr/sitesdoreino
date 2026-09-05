@@ -129,6 +129,17 @@ CSRF_COOKIE_NAME = "cursos_csrf"
 CSRF_COOKIE_PATH = FORCE_SCRIPT_NAME or "/"
 CSRF_COOKIE_SECURE = not DEBUG
 
+# ---------------------------------------------------------------------------
+# OS DOIS ENDEREÇOS QUE NÃO SÃO DESTA CÉLULA
+# ---------------------------------------------------------------------------
+# Para onde mandar quem chega sem sessão, e onde fica a capa do site. Os dois
+# moram em OUTRAS células (`identidade` e `funil`), então `{% url %}` não os
+# conhece. Com PADRÃO, de propósito: o provisionamento não escreve estas
+# chaves, e a trava de deriva dele reprova env com variável que ele não sabe
+# gerar. Molde: `services/gamificacao/config/settings.py`.
+URL_DE_ENTRADA = os.environ.get("URL_DE_ENTRADA", "/entrar/google")
+URL_DA_CAPA = os.environ.get("URL_DA_CAPA", "/")
+
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -137,6 +148,15 @@ TEMPLATES = [
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.request",
+                # O RODAPÉ e o MENU DO TOPO em TODA página (`apps/core/rodape.py`
+                # e `apps/core/menu.py`). Processadores de contexto, e não uma
+                # inclusão escrita em cada template, porque "em todas as
+                # páginas" não pode depender de alguém lembrar da peça: tela
+                # nova nasce com as duas (`armadilhas/242`), e
+                # `ci/tests/test_pecas_comuns_em_toda_celula_publica.py` mede
+                # esta fiação. Quem desenha é `cursos/moldura.html`.
+                "apps.core.rodape.rodape_do_contexto",
+                "apps.core.menu.menu_do_contexto",
             ],
         },
     },

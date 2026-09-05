@@ -1,0 +1,242 @@
+/* A sala de aula. A mesma paleta das Conquistas, de propósito: o aluno anda
+   entre as áreas do site e elas precisam parecer a mesma casa. */
+
+:root {
+  --tinta: #1b1b1f;
+  --tinta-fraca: #5c5c66;
+  --papel: #fbfaf7;
+  --caixa: #ffffff;
+  --borda: #e3e0d8;
+  --marca: #7a5cff;
+  --marca-fraca: #efeaff;
+  --verde: #1d7a4a;
+  --verde-fraco: #e6f4ec;
+  --vermelho: #a52a2a;
+  --vermelho-fraco: #fbe9e9;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--papel);
+  color: var(--tinta);
+  font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* A barra do site: o mesmo desenho das outras áreas. */
+.barra-do-site {
+  background: var(--tinta);
+  padding: 8px 20px;
+}
+
+.menu-topo a {
+  color: #fff;
+  margin-right: 18px;
+  text-decoration: none;
+}
+
+.faixa {
+  background: var(--caixa);
+  border-bottom: 1px solid var(--borda);
+  padding: 14px 20px;
+}
+
+.faixa a {
+  color: var(--tinta);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.faixa .onde {
+  color: var(--tinta-fraca);
+  margin-left: 12px;
+}
+
+main {
+  margin: 0 auto;
+  max-width: 720px;
+  padding: 32px 20px 64px;
+}
+
+section, .cabecalho-da-aula {
+  background: var(--caixa);
+  border: 1px solid var(--borda);
+  border-radius: 14px;
+  margin-bottom: 20px;
+  padding: 28px 24px;
+}
+
+.rotulo {
+  color: var(--tinta-fraca);
+  font-size: 14px;
+  letter-spacing: .04em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+h1 {
+  font-size: 30px;
+  line-height: 1.2;
+  margin: 4px 0 8px;
+}
+
+h2 {
+  font-size: 20px;
+  margin: 0 0 12px;
+}
+
+h3 {
+  font-size: 16px;
+  margin: 18px 0 8px;
+}
+
+.passo, .pede, .pedido { margin: 0 0 8px; }
+
+.miudo {
+  color: var(--tinta-fraca);
+  font-size: 14px;
+  margin: 8px 0 0;
+}
+
+.recado {
+  background: var(--verde-fraco);
+  border-radius: 10px;
+  color: var(--verde);
+  padding: 12px 16px;
+}
+
+.erro {
+  background: var(--vermelho-fraco);
+  border-radius: 10px;
+  color: var(--vermelho);
+  padding: 12px 16px;
+}
+
+/* O mapa: uma lista de portas por bloco. A porta atual é a única peça com cor
+   forte da página, porque é a única que pede um clique. */
+.portas {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.porta {
+  border-top: 1px solid var(--borda);
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.porta a { color: var(--tinta); font-weight: 600; }
+
+.porta .fechada { color: var(--tinta-fraca); }
+
+.porta .selo, .pausa .selo, .checkpoint .selo {
+  background: var(--marca-fraca);
+  border-radius: 999px;
+  color: var(--tinta);
+  font-size: 13px;
+  padding: 1px 10px;
+}
+
+.porta.estado-concluida .selo { background: var(--verde-fraco); color: var(--verde); }
+.porta.estado-trancada .selo { background: var(--papel); color: var(--tinta-fraca); }
+.porta.atual { background: var(--marca-fraca); border-radius: 8px; padding-left: 8px; }
+
+.porta .boss {
+  color: var(--marca);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.porta-atual, .botao, .convite .entrar a {
+  background: var(--marca);
+  border-radius: 10px;
+  color: #fff;
+  display: inline-block;
+  font-weight: 600;
+  padding: 10px 18px;
+  text-decoration: none;
+}
+
+.convite .entrar { margin: 22px 0 10px; }
+
+/* O vídeo embutido, na proporção de tela larga. */
+.quadro {
+  aspect-ratio: 16 / 9;
+  background: var(--tinta);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.quadro iframe {
+  border: 0;
+  height: 100%;
+  width: 100%;
+}
+
+.pausa .tipo {
+  color: var(--tinta-fraca);
+  font-size: 14px;
+  font-weight: 400;
+  margin-left: 8px;
+}
+
+.pausa.registrada { border-color: var(--verde); }
+
+.checkpoint .selo.fechado { background: var(--papel); color: var(--tinta-fraca); }
+
+label { display: block; font-weight: 600; margin: 12px 0; }
+
+textarea {
+  border: 1px solid var(--borda);
+  border-radius: 8px;
+  display: block;
+  font: inherit;
+  margin-top: 6px;
+  padding: 8px 10px;
+  width: 100%;
+}
+
+button {
+  background: var(--marca);
+  border: 0;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: 10px 18px;
+}
+
+.registro dt { font-weight: 600; margin-top: 8px; }
+.registro dd { margin: 0; white-space: pre-line; }
+
+.perguntas .pergunta { font-weight: 600; margin: 12px 0 4px; }
+.perguntas .modelo { background: var(--marca-fraca); border-radius: 8px; padding: 8px 12px; }
+
+/* O rodapé: o mesmo desenho do site e do fórum. */
+.rodape {
+  border-top: 1px solid var(--borda);
+  color: var(--tinta-fraca);
+  font-size: 14px;
+  margin: 0 auto;
+  max-width: 720px;
+  padding: 24px 20px 40px;
+}
+
+.rodape .marca {
+  color: var(--tinta);
+  font-weight: 700;
+  margin: 0 0 4px;
+}
+
+.rodape .descricao { margin: 0 0 12px; }
+
+.rodape .links a {
+  color: var(--tinta);
+  margin-right: 16px;
+}
+
+.rodape .direitos { margin: 12px 0 0; }

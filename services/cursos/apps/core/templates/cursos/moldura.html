@@ -1,0 +1,43 @@
+{% comment %}
+A MOLDURA da sala de aula: o esqueleto que TODA tela desta célula veste.
+
+Cópia do PADRÃO de `services/gamificacao/apps/core/templates/gamificacao/moldura.html`,
+nunca do arquivo (Lei 3). Ela DESENHA; quem DECIDE o menu e o rodapé são os
+processadores de contexto (`apps/core/menu.py`, `apps/core/rodape.py`), e é essa
+divisão que faz tela nova da sala nascer com as duas peças sem tocar em nada
+(`armadilhas/242` e `/286`).
+
+Todo endereço sai de `{% url %}`, nunca escrito à mão: é ele que carrega o
+prefixo público `/cursos` para dentro do caminho (`armadilhas/029` e `/081`). O
+CSS sai de `{% url 'estatico' %}` e nunca de `{% static %}` (`armadilhas/102`).
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Curso{% endblock %} | Meshcraft Academy</title>
+<link rel="stylesheet" href="{% url 'estatico' 'cursos/sala.css' %}">
+</head>
+<body>
+{% comment %}
+A BARRA DO SITE vem antes da faixa desta área (decisão do mantenedor de
+31/08/2026). Tudo numa linha, com as tags coladas (`armadilhas/033`): solta,
+cada tag põe uma linha em branco a mais na página de quem NÃO tem menu.
+{% endcomment %}{% if menu_do_topo %}<div class="barra-do-site"><nav class="menu-topo">{% for item in menu_do_topo %}<a href="{{ item.href }}"{% if item.nova_aba %} target="_blank" rel="noopener"{% endif %}>{{ item.rotulo }}</a>{% endfor %}</nav></div>{% endif %}
+<div class="faixa">{% block faixa %}
+  <a href="{% url 'mapa' %}">Curso</a>
+{% endblock %}</div>
+
+<main>{% block conteudo %}{% endblock %}</main>
+{% if rodape %}<footer class="rodape rodape-{{ rodape.variante }}">{% if rodape.mostra_assinatura %}
+  <p class="marca">Meshcraft Academy</p>
+  <p class="descricao">Atenção: Esta é uma versão de testes do site. Ainda estamos construindo a plataforma, e você está vendo o começo.</p>{% endif %}{% if rodape.mostra_links %}
+  <nav class="links" aria-label="Links úteis">
+    <a href="{{ rodape.url_do_site }}">Início do site</a>
+    <a href="{% url 'mapa' %}">Curso</a>
+    <a href="{{ rodape.url_dos_documentos }}">Documentos</a>
+  </nav>{% endif %}{% if rodape.mostra_direitos %}
+  <p class="direitos">© {{ rodape.ano }} Meshcraft Academy. Todos os direitos reservados.</p>{% endif %}
+</footer>{% endif %}
+</body>
+</html>

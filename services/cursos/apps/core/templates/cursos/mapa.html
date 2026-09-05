@@ -1,0 +1,49 @@
+{% extends "cursos/moldura.html" %}{% comment %}
+O mapa das portas: as 34 encomendas em três Partes e doze Blocos, o estado de
+cada porta, e a próxima aberta em destaque (lei §6: "Entre. Entregue. Receba.").
+
+Só a pessoa da sessão aparece aqui ([INV-CUR-P1]): nenhuma outra porta, nome
+ou número de ninguém. A conta de cada porta (estado, rótulo, se abre) vem
+pronta da view; o template só desenha.
+{% endcomment %}
+{% block titulo %}Mapa das portas{% endblock %}
+
+{% block faixa %}
+  <a href="{% url 'mapa' %}">Curso</a>
+{% endblock %}
+
+{% block conteudo %}
+{% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
+
+<section class="abertura">
+  <p class="rotulo">Sua sala de aula</p>
+  <h1>Entre. Entregue. Receba.</h1>
+  {% if atual %}
+  <p class="passo">Sua porta aberta agora:
+    {% if atual.abre %}<a class="porta-atual" href="{% url 'aula' atual.numero %}">{{ atual.titulo }}</a>{% else %}<strong>{{ atual.titulo }}</strong> (ainda em preparo pela escola){% endif %}
+  </p>
+  {% else %}
+  <p class="passo">Todas as suas portas estão fechadas por enquanto. Quando a
+  escola abrir a primeira, ela aparece aqui em destaque.</p>
+  {% endif %}
+</section>
+
+{% for parte in partes %}
+<section class="parte">
+  <h2>{{ parte.nome }}</h2>
+  {% for bloco in parte.blocos %}
+  <div class="bloco">
+    <h3>{{ bloco.nome }}</h3>
+    <ol class="portas">
+      {% for porta in bloco.portas %}
+      <li class="porta estado-{{ porta.estado }}{% if porta.atual %} atual{% endif %}">
+        {% if porta.abre %}<a href="{% url 'aula' porta.numero %}">{{ porta.titulo }}</a>{% else %}<span class="fechada">{{ porta.titulo }}</span>{% endif %}
+        <span class="selo">{{ porta.rotulo }}</span>{% if porta.boss %} <span class="boss">Boss</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% endfor %}
+</section>
+{% endfor %}
+{% endblock %}

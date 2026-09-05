@@ -1,0 +1,124 @@
+{% extends "cursos/moldura.html" %}{% comment %}
+A aula: as 16 peças na ordem canônica (as duas internas nunca chegam aqui: a
+view percorre a ORDEM_CANONICA, e elas não estão nela), o vídeo por link (só
+YouTube e Vimeo embutidos; o resto é link), a lista de pausas com um formulário
+por pausa, o quiz com a resposta-modelo escondida até a pessoa gravar a
+autoavaliação, e o lugar do checkpoint, sem formulário: o envio nasce no
+degrau 2.1.
+
+Formulário normal com melhoria progressiva: nenhum caminho existe só com
+script. O HTML das peças vem do renderizador da casa (`apps/core/markdown.py`),
+que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
+{% endcomment %}
+{% block titulo %}{{ aula.titulo_exibido }}{% endblock %}
+
+{% block faixa %}
+  <a href="{% url 'mapa' %}">Mapa das portas</a>
+  <span class="onde">{{ aula.titulo_exibido }}</span>
+{% endblock %}
+
+{% block conteudo %}
+{% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
+{% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+
+<header class="cabecalho-da-aula">
+  <p class="rotulo">{{ aula.numero }} · {{ estado }}</p>
+  <h1>{{ aula.titulo_exibido }}</h1>
+  {% if aula.pedido %}<p class="pedido">{{ aula.pedido }}</p>{% endif %}
+  {% if aula.cliente %}<p class="cliente">Cliente: {{ aula.cliente }}</p>{% endif %}
+</header>
+
+{% for peca in pecas %}
+<section class="peca" id="peca-{{ peca.tipo }}">
+  <h2>{{ peca.rotulo }}</h2>
+  {{ peca.html|safe }}
+</section>
+{% endfor %}
+
+<section class="video" id="video">
+  <h2>O vídeo da aula</h2>
+  {% if video.embutido %}
+  <div class="quadro"><iframe src="{{ video.embutido }}" title="Vídeo da aula" loading="lazy" allowfullscreen allow="fullscreen"></iframe></div>
+  <p class="miudo"><a href="{{ video.link }}" target="_blank" rel="noopener">Abrir o vídeo em outra aba</a></p>
+  {% elif video.link %}
+  <p><a class="botao" href="{{ video.link }}" target="_blank" rel="noopener">Assistir ao vídeo</a></p>
+  {% else %}
+  <p class="miudo">Esta aula ainda não tem vídeo.</p>
+  {% endif %}
+  {% if pausas %}
+  <p>O vídeo tem {{ pausas|length }} pausa{{ pausas|length|pluralize }}. Pause no
+  segundo marcado, registre o que a pausa pede, e só então retome.</p>
+  {% endif %}
+</section>
+
+{% for pausa in pausas %}
+<section class="pausa{% if pausa.registro %} registrada{% endif %}" id="pausa-{{ pausa.ordem }}">
+  <h2>Pausa {{ pausa.ordem }} aos {{ pausa.tempo }} <span class="tipo">{{ pausa.tipo }}</span></h2>
+  {% if pausa.pede %}<p class="pede">{{ pausa.pede }}</p>{% endif %}
+  {% if pausa.registro %}
+  <p class="selo">Registrada.</p>
+  <dl class="registro">
+    {% for resposta in pausa.registro %}<dt>{{ resposta.nome }}</dt><dd>{{ resposta.texto }}</dd>{% endfor %}
+  </dl>
+  {% else %}
+  <form method="post" action="{% url 'registrar-pausa' aula.numero pausa.ordem %}">
+    {% csrf_token %}
+    {% for campo in pausa.campos %}
+    <label>{{ campo.nome }}
+      <textarea name="campo_{{ campo.indice }}" rows="3" required></textarea>
+    </label>
+    {% endfor %}
+    <button type="submit">Registrar esta pausa</button>
+  </form>
+  {% endif %}
+</section>
+{% endfor %}
+
+{% if quiz.perguntas %}
+<section class="quiz" id="quiz">
+  <h2>Quiz de autoavaliação</h2>
+  {% if quiz.gravada %}
+  <p class="miudo">Você gravou suas respostas. Compare cada uma com a resposta-modelo.</p>
+  <ol class="perguntas">
+    {% for item in quiz.perguntas %}
+    <li>
+      <p class="pergunta">{{ item.pergunta }}</p>
+      <p class="minha"><strong>Sua resposta:</strong> {{ item.minha }}</p>
+      <p class="modelo"><strong>Resposta-modelo:</strong> {{ item.resposta_modelo }}</p>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}
+  <p class="miudo">Responda com as suas palavras. A resposta-modelo só abre depois
+  que você gravar, para a autoavaliação valer.</p>
+  <form method="post" action="{% url 'gravar-autoavaliacao' aula.numero %}">
+    {% csrf_token %}
+    <ol class="perguntas">
+      {% for item in quiz.perguntas %}
+      <li>
+        <label>{{ item.pergunta }}
+          <textarea name="resposta_{{ item.indice }}" rows="3" required></textarea>
+        </label>
+      </li>
+      {% endfor %}
+    </ol>
+    <button type="submit">Gravar minha autoavaliação</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="checkpoint" id="checkpoint">
+  <h2>Checkpoint</h2>
+  {% if aceito_quando %}
+  <p>A encomenda está aceita quando:</p>
+  <ul class="aceito-quando">{% for criterio in aceito_quando %}<li>{{ criterio }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if pausas_registradas %}
+  <p class="selo">Todas as pausas desta aula estão registradas.</p>
+  {% else %}
+  <p class="selo fechado">O checkpoint fica fechado até todas as pausas desta aula terem registro.</p>
+  {% endif %}
+  <p class="miudo">O envio nasce no próximo degrau da escola. Quando ele chegar, é aqui que você manda o link da sua entrega.</p>
+</section>
+{% endblock %}
