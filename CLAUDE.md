@@ -869,26 +869,30 @@ portão que cobrasse relatório em cada acordar pediria 225 relatórios, e o
 mantenedor aprenderia a ignorar todos. O discriminador não é adivinhação de
 texto: é o campo `origin.kind` de cada entrada do transcript.
 
-**A cobrança é no FIM do trabalho, não no turno que mexe — e essa distinção
-custou uma correção no mesmo dia.** A primeira versão do portão cobrava do
-turno que mudava o mundo. O mantenedor mostrou a tela em que isso não bastava:
-a sessão abriu PR, mergeou, armou a espera do deploy, e daí em diante **todo
-turno era só espera**. Nenhum mexia em nada, o portão calava em todos, e a
-conversa ia ser arquivada com "Aguardando." como última palavra — sem uma linha
-do que tinha sido feito. E o relatório que ele queria é justamente o que só
-existe no fim: o veredito do que subiu.
+**A dívida atravessa as falas dele — e essa foi a correção mais cara, no mesmo
+dia.** A primeira versão só olhava para o que aconteceu DEPOIS da última fala
+do mantenedor. Ele mandou a tela que provou o erro: a sessão abriu o PR #1092,
+mergeou, e ficou esperando o deploy; no meio disso ele respondeu uma pergunta
+("deixe assim: só admin pode ver, ler"); e a partir dali não houve mais
+nenhuma mudança no mundo. A dívida do trabalho já feito tinha sido apagada
+porque **ele digitou uma frase**, e a conversa ia ser arquivada com
+"Aguardando." como última palavra.
 
-Então a dívida **nasce** com a mudança e só é **cobrada** quando não há mais
-nada em voo. Enquanto uma espera roda, o turno é livre: relatório pela metade
-no meio do trabalho seria pior que nenhum. O sinal também é estrutural e
-medido, nunca adivinhado no texto: a tarefa de fundo nasce como
-`toolUseResult.taskId` e morre numa notificação com
-`<status>completed|failed|stopped</status>` — batimento de espera não traz
-`status`, e é isso que separa "ainda trabalhando" de "acabou".
+A regra certa é a de qualquer dívida: **ela se paga com o relatório, nunca com
+o devedor falando outra coisa.** Por isso a varredura é da SESSÃO inteira: a
+última mudança contra a última prestação de contas.
 
-**O buraco que sobra, dito na cara:** sessão que MORRE com tarefa em voo (o
-harness derrubado, a máquina desligada) não presta contas, porque não existe
-turno nenhum em que cobrar. Nenhum gancho de `Stop` alcança isso.
+**O que foi tentado e NÃO funcionou, escrito para ninguém refazer:** adiar a
+cobrança até "não haver mais nada em voo", para o relatório sair com o veredito
+do deploy dentro. O sinal não existe de forma confiável — medido no transcript
+real daquela sessão, **4 tarefas de fundo tinham terminado** (o `✅` do
+desfecho está lá) e **nenhuma recebeu a notificação com
+`<status>completed</status>`**. Um portão apoiado nisso ficaria mudo justamente
+no caso reclamado. Sinal que some sem avisar não vira guarda.
+
+**O que sobra, dito na cara:** a cobrança cai no fim do turno que FEZ o
+trabalho, e não depois do deploy. O veredito do deploy continua sendo obrigação
+de texto (seção "Depois de todo merge que dispara deploy"), sem mecanismo.
 
 **O que o portão NÃO mede, dito na cara:** que a prestação de contas seja
 verdadeira. Nenhum portão barato mede "isto foi mesmo verificado". O que ele
