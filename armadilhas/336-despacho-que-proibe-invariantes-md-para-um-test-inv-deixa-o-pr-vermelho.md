@@ -71,9 +71,12 @@ reabrir, porque os dois arquivos levaram o PR de 14 para 16 (`armadilhas/077`).
 arquivos a mais saiu ANTES da etiqueta `arquitetural`, e disparou uma rodada de
 checks que reprovou no orçamento (16 arquivos); fechar e reabrir disparou duas
 rodadas verdes no MESMO commit. `esperar.py --checks` é fail-closed sobre todas
-as execuções do commit, viu a vermelha antiga e recusou o pouso, como deve. A
-cura não é commit novo: `gh run rerun <id-do-run-reprovado> --failed` refaz só
-aquela rodada no mesmo commit, e a espera se re-arma. Ordem certa, da próxima
+as execuções do commit, viu a vermelha antiga e recusou o pouso, como deve.
+**A cura é um commit novo com a etiqueta já presente**, e não o `rerun`: esta
+entrada dizia o contrário na primeira versão, e o robô do editor de aulas mediu
+em 05/09/2026 (tentativa 2 do run 33966014079) que `gh run rerun <id> --failed`
+refaz a rodada com o MESMO payload do evento antigo, `PR_LABELS` vazio, e
+reprova de novo; `armadilhas/077` sempre disse isso. Ordem certa, da próxima
 vez: etiqueta, fechar e reabrir, e SÓ ENTÃO o push que estoura o orçamento.
 
 Régua de uma linha para quem escreve despacho: **se o ALVO tem `test_inv_`, o
