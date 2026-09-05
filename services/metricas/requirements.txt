@@ -17,6 +17,15 @@ django-ninja==1.3.0
 # divergir tornaria impossível comparar o comportamento de duas células no meio
 # de um incidente.
 redis==5.1.1
+# O freeze de contrato le o congelado (contracts/metricas.openapi.yaml) e o
+# compara byte a byte com o vivo, e o congelado e YAML. Faltou desde 04/09/2026,
+# quando o contrato desta celula congelou (#1005) e a linha dela no manifesto
+# virou `required`: o PR do Rito toca so contracts/, entao o ci-celula nem roda
+# ali, e a cobranca so chega no PRIMEIRO PR seguinte que toque a celula. Foi
+# este (#1089), cinco dias depois. Local passava por acidente, pelo PyYAML
+# global da maquina. E a armadilhas/096, na sexta celula. Mesma versao das
+# outras 12 com freeze required.
+PyYAML==6.0.2
 pytest==8.3.4
 pytest-django==4.9.0
 black==24.10.0
