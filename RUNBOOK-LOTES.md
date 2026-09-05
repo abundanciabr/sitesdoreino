@@ -1000,6 +1000,15 @@ ar** e o primeiro em que o passo do mantenedor falhou TRÊS vezes antes de dar c
     e o brief dele traz o inventário do que existe ("leia com olho de revisor,
     complete, não recomece") em vez do despacho original sozinho.
 
+49. **O scratchpad da sessão é UM só, e dois robôs do mesmo lote escrevem nele ao
+    mesmo tempo.** O robô do editor viu seus `commit-msg.txt` e `pr-body.md`
+    sobrescritos pelo robô dos pares enquanto esperava os checks (sem dano, porque já
+    tinham sido usados; com dano, seria um PR aberto com o corpo do vizinho). A pasta
+    temporária que o harness dá é da SESSÃO, não do robô. Regra para o brief: todo
+    arquivo temporário leva o número da tarefa no nome (`pr-body-TAR-152.md`), ou
+    vai numa subpasta com esse nome; e o corpo do PR se lê de volta antes do
+    `gh pr create`.
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
