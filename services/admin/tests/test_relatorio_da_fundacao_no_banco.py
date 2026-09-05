@@ -79,10 +79,12 @@ def test_a_pagina_NAO_abre_para_quem_nao_tem_login(
 
     resposta = Client().get(f"/docs/{NOME}")
 
-    assert resposta.status_code == 404, (
-        "o relatório da fundação voltou a abrir para o mundo"
+    assert (
+        resposta.status_code == 404
+    ), "o relatório da fundação voltou a abrir para o mundo"
+    assert (
+        "Os números, medidos em 5 de setembro de 2026" not in resposta.content.decode()
     )
-    assert "Os números, medidos em 5 de setembro de 2026" not in resposta.content.decode()
 
 
 def test_o_documento_continua_inteiro_para_quem_administra(
