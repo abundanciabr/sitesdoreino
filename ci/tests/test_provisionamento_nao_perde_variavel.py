@@ -133,6 +133,19 @@ SCRIPTS = [
         "env/encomendas.env",
         "infra/env/encomendas.env.exemplo",
     ),
+    # A nona da família (05/09/2026, provisionamento da sala de aula). Entrou
+    # aqui no MESMO PR do script, pelo motivo escrito acima. E a data é
+    # previsível por quatro lados: a escada do `PLANO-CELULA-CURSOS.md` §10 já
+    # sabe o nome de quatro variáveis que vão pedir a este env
+    # (`TOKENS_ACEITOS_ADMIN` no editor de aulas, `CURSOS_PROFESSORES` no
+    # plantão do degrau 2.2, `ANTHROPIC_API_KEY` e `ANTHROPIC_WORKSPACE_ID` no
+    # Assistente de laudo do 2.3). Cada uma é uma chance de o script apagar o
+    # que não conhece.
+    (
+        "infra/provisionar-cursos.sh",
+        "env/cursos.env",
+        "infra/env/cursos.env.exemplo",
+    ),
 ]
 
 RE_LISTA = re.compile(r'^CHAVES_QUE_EU_GERO="([^"]*)"', re.MULTILINE)
