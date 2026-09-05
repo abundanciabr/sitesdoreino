@@ -1,4 +1,5 @@
-"""As telas da sala de aula: o mapa das portas, a aula, e os dois gestos.
+"""As telas da sala de aula: o mapa das portas, a aula, e os três gestos (a
+pausa, a autoavaliação e, desde o degrau 2.1, a entrega do checkpoint).
 
 QUEM ENTRA, E QUEM DECIDE
 -------------------------
@@ -45,10 +46,12 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_GET, require_POST
 
+from apps.cursos import envio as checkpoint
 from apps.cursos import progresso as portas
 from apps.cursos.models import (
     Aula,
     Curso,
+    Envio,
     Pausa,
     Peca,
     Progresso,
@@ -71,7 +74,16 @@ RECADOS = {
         "Essa porta ainda está trancada. A porta aberta para você é a que está "
         "em destaque."
     ),
+    "entregue": (
+        "Recebido. Seu envio entrou na fila de revisão: o laudo chega em até "
+        "24 horas."
+    ),
 }
+
+# As prévias que o formulário do checkpoint sugere, na ordem da lei §3.12
+# (sólido, wireframe, silhueta), mais uma linha em branco para o que a
+# encomenda pedir. Toda prévia é opcional, e o rótulo sugerido pode ser trocado.
+PREVIAS_SUGERIDAS = ("Sólido", "Wireframe", "Silhueta", "")
 
 # Os estados de porta em que a pessoa TEM o que fazer nela: é destes que sai a
 # "próxima porta" em destaque no mapa. `trancada` e `concluida` ficam de fora.
@@ -415,6 +427,57 @@ def _quiz(aula: Aula, progresso: Progresso) -> dict:
     return {"perguntas": perguntas, "gravada": gravada}
 
 
+def _checkpoint(progresso: Progresso, *, pausas_ok: bool) -> dict:
+    """O bloco do checkpoint, com a conta feita aqui e não em `{{ }}`: o
+    formulário aberto ou o porquê de fechado, o número do próximo envio, os
+    critérios da escala, e o último envio (quando há), para a tela dizer
+    "recebido em, revisão até".
+
+    Toda regra é de `envio.py`: quem pode entregar, e quando. Aqui só se traduz
+    o estado em frases e campos.
+    """
+    estado = Progresso.Estado(progresso.estado)
+    if estado not in checkpoint.ESTADOS_QUE_ENTREGAM:
+        fechado_por = checkpoint.POR_QUE_NAO_ENTREGA[estado]
+    elif not pausas_ok:
+        fechado_por = checkpoint.A_FRASE_DAS_PAUSAS
+    else:
+        fechado_por = ""
+    ultimo = checkpoint.ultimo_envio(progresso)
+    return {
+        "aberto": not fechado_por,
+        "fechado_por": fechado_por,
+        "reenvio": estado == Progresso.Estado.DEVOLVIDA,
+        "proximo_numero": ultimo.numero + 1 if ultimo else 1,
+        "criterios": [
+            {
+                "indice": indice,
+                "nome": criterio.nome,
+                "notas": list(range(criterio.minimo, criterio.maximo + 1)),
+            }
+            for indice, criterio in enumerate(
+                checkpoint.criterios_de(progresso.aula.instrumento)
+            )
+        ],
+        "previas": [
+            {"indice": indice, "rotulo": rotulo}
+            for indice, rotulo in enumerate(PREVIAS_SUGERIDAS)
+        ],
+        "envio": (
+            {
+                "numero": ultimo.numero,
+                "estado": Envio.Estado(ultimo.estado).label,
+                "enviado_em": ultimo.enviado_em,
+                "prazo_em": ultimo.prazo_em,
+                "estourado_em": ultimo.estourado_em,
+                "links": ultimo.links,
+            }
+            if ultimo
+            else None
+        ),
+    }
+
+
 def _porta_aberta(request, numero: str):
     """A pessoa, o curso, a aula publicada e o progresso NÃO trancado, ou a
     resposta que recusa (o convite, o 403, o 404 ou a volta ao mapa)."""
@@ -451,7 +514,9 @@ def aula(request, numero: str):
             "video": _video(aula),
             "pausas": _pausas(aula, pessoa),
             "quiz": _quiz(aula, progresso),
-            "pausas_registradas": portas.pausas_registradas(progresso),
+            "checkpoint": _checkpoint(
+                progresso, pausas_ok=portas.pausas_registradas(progresso)
+            ),
             "aceito_quando": (
                 aula.aceito_quando if isinstance(aula.aceito_quando, list) else []
             ),
@@ -521,3 +586,61 @@ def gravar_autoavaliacao(request, numero: str):
     }
     progresso.save(update_fields=["autoavaliacao"])
     return _voltar_a_aula(numero, recado="autoavaliacao-gravada", ancora="quiz")
+
+
+def _nota(valor: str | None) -> int | None:
+    """O `<select>` manda texto; a escala quer inteiro. Vazio ou lixo é `None`,
+    e é `envio.py` quem diz "dê uma nota de 1 a 5"."""
+    try:
+        return int(valor or "")
+    except ValueError:
+        return None
+
+
+@require_POST
+def entregar_checkpoint(request, numero: str):
+    """O aluno entrega o checkpoint por link: nasce o `Envio` na fila de 24
+    horas (degrau 2.1). Toda regra mora em `envio.entregar`; aqui só se lê o
+    formulário e se traduz a recusa em frase. POST-redirect-GET: um F5 depois
+    de entregar não entrega de novo, e se entregasse a porta já estaria
+    `enviada` e a segunda seria recusada com a frase certa."""
+    pessoa, aula, progresso, recusa = _porta_aberta(request, numero)
+    if recusa is not None:
+        return recusa
+    portas.abrir(progresso)
+    links = [
+        {
+            "rotulo": checkpoint.ROTULO_DO_ARQUIVO,
+            "url": request.POST.get("arquivo", ""),
+        }
+    ]
+    for indice in range(len(PREVIAS_SUGERIDAS)):
+        links.append(
+            {
+                "rotulo": request.POST.get(f"previa_rotulo_{indice}", ""),
+                "url": request.POST.get(f"previa_url_{indice}", ""),
+            }
+        )
+    criterios = checkpoint.criterios_de(aula.instrumento)
+    if criterios:
+        laudo = {
+            "notas": {
+                criterio.nome: {
+                    "nota": _nota(request.POST.get(f"nota_{indice}")),
+                    "frase": request.POST.get(f"frase_{indice}", ""),
+                }
+                for indice, criterio in enumerate(criterios)
+            }
+        }
+    else:
+        laudo = {"texto": request.POST.get("autoavaliacao", "")}
+    try:
+        checkpoint.entregar(
+            progresso,
+            links=links,
+            readme=request.POST.get("readme", ""),
+            laudo_do_aluno=laudo,
+        )
+    except checkpoint.EnvioRecusado as motivo:
+        return _voltar_a_aula(numero, erro=str(motivo), ancora="checkpoint")
+    return _voltar_a_aula(numero, recado="entregue", ancora="checkpoint")

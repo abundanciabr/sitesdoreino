@@ -42,6 +42,10 @@ AS_ROTAS_DA_CELULA = {
     "estatico",
     "registrar-pausa",
     "gravar-autoavaliacao",
+    # O checkpoint (degrau 2.1, TAR-155): o aluno entrega por link, sempre a
+    # PORTA da própria sessão (`_porta_aberta`) — o mesmo filtro por pessoa
+    # que todas as rotas acima já respeitam.
+    "entregar-checkpoint",
     "aula",
     "mapa",
 }

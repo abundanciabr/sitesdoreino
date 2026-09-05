@@ -3,8 +3,11 @@ A aula: as 16 peças na ordem canônica (as duas internas nunca chegam aqui: a
 view percorre a ORDEM_CANONICA, e elas não estão nela), o vídeo por link (só
 YouTube e Vimeo embutidos; o resto é link), a lista de pausas com um formulário
 por pausa, o quiz com a resposta-modelo escondida até a pessoa gravar a
-autoavaliação, e o lugar do checkpoint, sem formulário: o envio nasce no
-degrau 2.1.
+autoavaliação, e o checkpoint (degrau 2.1): o formulário de entrega por link,
+fechado até todas as pausas terem registro ([INV-CUR-P3]) e enquanto a porta
+não está em produção ou devolvida; depois de entregar, "recebido em, revisão
+até" e nada de formulário até o laudo devolver. Quem decide tudo isso é a
+view, em `checkpoint`; aqui só se desenha.
 
 Formulário normal com melhoria progressiva: nenhum caminho existe só com
 script. O HTML das peças vem do renderizador da casa (`apps/core/markdown.py`),
@@ -114,11 +117,72 @@ que escapa tudo antes de marcar: por isso o `|safe` é seguro por construção.
   <p>A encomenda está aceita quando:</p>
   <ul class="aceito-quando">{% for criterio in aceito_quando %}<li>{{ criterio }}</li>{% endfor %}</ul>
   {% endif %}
-  {% if pausas_registradas %}
-  <p class="selo">Todas as pausas desta aula estão registradas.</p>
-  {% else %}
-  <p class="selo fechado">O checkpoint fica fechado até todas as pausas desta aula terem registro.</p>
+  {% if checkpoint.envio %}
+  <div class="envio">
+    <p class="selo">Envio {{ checkpoint.envio.numero }}: {{ checkpoint.envio.estado }}</p>
+    <p>Recebido em {{ checkpoint.envio.enviado_em|date:"d/m/Y" }} às {{ checkpoint.envio.enviado_em|date:"H:i" }}.
+    Revisão até {{ checkpoint.envio.prazo_em|date:"d/m/Y" }} às {{ checkpoint.envio.prazo_em|date:"H:i" }}.</p>
+    {% if checkpoint.envio.estourado_em %}
+    <p class="miudo">O prazo de revisão passou em {{ checkpoint.envio.estourado_em|date:"d/m/Y" }} às {{ checkpoint.envio.estourado_em|date:"H:i" }}. Seu envio continua na fila, na frente dos mais novos, e o laudo chega assim que a professora o abrir.</p>
+    {% endif %}
+    <ul class="links">
+      {% for link in checkpoint.envio.links %}<li>{{ link.rotulo }}: <a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.url }}</a></li>{% endfor %}
+    </ul>
+  </div>
   {% endif %}
-  <p class="miudo">O envio nasce no próximo degrau da escola. Quando ele chegar, é aqui que você manda o link da sua entrega.</p>
+  {% if checkpoint.aberto %}
+  <p class="selo">Todas as pausas desta aula estão registradas.</p>
+  {% if checkpoint.reenvio %}
+  <p>Seu envio anterior foi devolvido. Este é o envio {{ checkpoint.proximo_numero }}: mande a versão nova, com o que mudou no README.</p>
+  {% else %}
+  <p>Entregue por link: a plataforma não recebe arquivo. Suba o arquivo e as prévias onde você quiser e cole os endereços aqui.</p>
+  {% endif %}
+  <form method="post" action="{% url 'entregar-checkpoint' aula.numero %}">
+    {% csrf_token %}
+    <h3>Os links</h3>
+    <label>Arquivo (obrigatório)
+      <input type="url" name="arquivo" required placeholder="https://">
+    </label>
+    <p class="miudo">As prévias são opcionais: sólido, wireframe, silhueta, e o que a encomenda pedir. Troque o rótulo se precisar.</p>
+    {% for previa in checkpoint.previas %}
+    <div class="previa">
+      <label>Prévia
+        <input type="text" name="previa_rotulo_{{ previa.indice }}" value="{{ previa.rotulo }}" maxlength="60" placeholder="Rótulo">
+      </label>
+      <label>Link
+        <input type="url" name="previa_url_{{ previa.indice }}" placeholder="https://">
+      </label>
+    </div>
+    {% endfor %}
+    <h3>O README do pacote</h3>
+    <label>O que você entregou, e como abrir
+      <textarea name="readme" rows="5" required></textarea>
+    </label>
+    <h3>Sua autoavaliação</h3>
+    {% if checkpoint.criterios %}
+    <p class="miudo">Dê uma nota a cada critério do instrumento desta aula e escreva uma frase para cada nota: nota sem frase não diz nada.</p>
+    {% for criterio in checkpoint.criterios %}
+    <div class="criterio">
+      <label>{{ criterio.nome }}
+        <select name="nota_{{ criterio.indice }}" required>
+          <option value="">Nota</option>
+          {% for nota in criterio.notas %}<option value="{{ nota }}">{{ nota }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Por quê
+        <input type="text" name="frase_{{ criterio.indice }}" maxlength="300" required>
+      </label>
+    </div>
+    {% endfor %}
+    {% else %}
+    <label>O que ficou bom, e o que você faria diferente
+      <textarea name="autoavaliacao" rows="4" required></textarea>
+    </label>
+    {% endif %}
+    <button type="submit">Entregar</button>
+  </form>
+  {% elif checkpoint.fechado_por %}
+  <p class="selo fechado">{{ checkpoint.fechado_por }}</p>
+  {% endif %}
 </section>
 {% endblock %}

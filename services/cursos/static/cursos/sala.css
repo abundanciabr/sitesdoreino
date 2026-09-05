@@ -189,7 +189,8 @@ h3 {
 
 label { display: block; font-weight: 600; margin: 12px 0; }
 
-textarea {
+textarea, input[type="text"], input[type="url"], select {
+  background: var(--caixa);
   border: 1px solid var(--borda);
   border-radius: 8px;
   display: block;
@@ -198,6 +199,17 @@ textarea {
   padding: 8px 10px;
   width: 100%;
 }
+
+/* O formulário do checkpoint: uma prévia (rótulo e link) e um critério (nota e
+   frase) ocupam uma linha cada, o campo curto à esquerda. */
+.previa, .criterio {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 2fr;
+}
+
+.checkpoint .links { margin: 8px 0 0; padding-left: 20px; }
+.checkpoint .links a { word-break: break-all; }
 
 button {
   background: var(--marca);

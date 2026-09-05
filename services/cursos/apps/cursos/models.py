@@ -8,9 +8,14 @@ Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 (o modelo) e §9 (os invariantes
 `services/encomendas/apps/encomendas/models.py` e, para o espelho de pessoa,
 `services/forum/apps/forum/models.py`.
 
-Não há `Envio` nem `Laudo` aqui: são os degraus 2.1 e 2.2. As REGRAS do
-progresso (que porta abre, e quando) não moram neste arquivo: moram em
-`apps/cursos/progresso.py`, e é lá que o [INV-CUR-P2] é imposto.
+Desde o degrau 2.1 (TAR-155) há também O CHECKPOINT (`Envio`, o que o aluno
+entregou por link, na fila de 24 horas) e a OUTBOX (`OutboxEvent`, molde byte a
+byte de `services/sugestoes`). Não há `Laudo` aqui: é o degrau 2.2. As REGRAS
+do progresso (que porta abre, e quando) não moram neste arquivo: moram em
+`apps/cursos/progresso.py`, e é lá que o [INV-CUR-P2] é imposto; as do envio
+(quem entrega, quando, e o que a fila devolve) moram em `apps/cursos/envio.py`.
+O que mora AQUI do envio é o que só o modelo pode garantir: o prazo que não
+muda ([INV-CUR-L3]).
 
 O TEXTO DAS AULAS NUNCA ENTRA POR ARQUIVO
 -----------------------------------------
@@ -41,7 +46,11 @@ que ela sustenta. Quem impede o par incoerente é a chave estrangeira COMPOSTA
 (`armadilhas/274`). Nunca um `save()`.
 """
 
+import uuid
+from datetime import timedelta
+
 from django.db import models
+from django.utils import timezone
 
 # Os 34 números de aula, na ordem em que o aluno os encontra: "E00" a "E32" e a
 # bônus "EB". É o vocabulário fechado da coluna `Aula.numero`, e o banco recusa
@@ -521,3 +530,223 @@ class RegistroDePausa(models.Model):
 
     def __str__(self) -> str:
         return f"{self.pessoa_id}: pausa {self.pausa_id}"
+
+
+# ---------------------------------------------------------------------------
+# 10. O ENVIO: o checkpoint entregue por link, na fila de 24 horas
+# ---------------------------------------------------------------------------
+
+# As 24 horas da fila de revisão. CONSTANTE, e não parâmetro: a constituição
+# desta célula ("24 horas é constante, com teste") e o critério de morte da
+# lei §11 ("o prazo de 24 horas como parâmetro ou com botão de alongar"). São
+# horas CORRIDAS: a professora tem um dia inteiro, e o relógio não para à noite.
+PRAZO_DE_REVISAO = timedelta(hours=24)
+
+
+class PrazoImutavel(Exception):
+    """[INV-CUR-L3] Alguém tentou mudar `enviado_em` ou `prazo_em` de um envio.
+
+    A mensagem é para quem programa, não para o aluno: nenhuma tela chega aqui,
+    porque nenhuma tela tem campo de prazo. Quem chega é código novo tentando
+    "só ajustar" o prazo, e a resposta é esta exceção, nunca um valor gravado.
+    """
+
+
+class EnviosQuerySet(models.QuerySet):
+    """O `update()` e o `bulk_update()` em massa também respeitam o [INV-CUR-L3].
+
+    `Envio.objects.filter(...).update(prazo_em=...)` não passa pelo `save()`
+    do modelo, e `bulk_update()` não passa nem por `update()`: ele monta um
+    `UPDATE ... CASE WHEN` cru por fora dos dois, e sem guarda aqui o erro que
+    chegaria não seria `PrazoImutavel` — seria o banco recusando no meio da
+    transação, uma exceção de conexão quebrada, e sequer a linha certa. Sem
+    esta classe o guarda do `save()` seria uma porta trancada com a janela
+    aberta.
+    """
+
+    CAMPOS_IMUTAVEIS = frozenset({"enviado_em", "prazo_em"})
+
+    def _recusar_campos_imutaveis(self, gesto: str, campos) -> None:
+        proibidos = sorted(self.CAMPOS_IMUTAVEIS & set(campos))
+        if proibidos:
+            raise PrazoImutavel(
+                f"{gesto} tentou mudar {proibidos} de um envio. O prazo de "
+                "revisão é enviado_em + 24 h e não muda por caminho nenhum "
+                "([INV-CUR-L3]); o estouro se registra em estourado_em."
+            )
+
+    def update(self, **campos):
+        self._recusar_campos_imutaveis("update()", campos)
+        return super().update(**campos)
+
+    def bulk_update(self, objs, fields, **kwargs):
+        self._recusar_campos_imutaveis("bulk_update()", fields)
+        return super().bulk_update(objs, fields, **kwargs)
+
+
+class Envio(models.Model):
+    """O que a pessoa entregou no checkpoint de UMA aula, por link (lei §3.12).
+
+    `numero` é 1 no primeiro envio e sobe a cada reenvio depois de um laudo
+    devolvido: cada volta é um `Envio` novo, com id novo, e o anterior fica
+    como história. `links` é `[{rotulo, url}]` (o arquivo, e as prévias:
+    sólido, wireframe, silhueta, o que a encomenda pedir); `readme` é o README
+    do Pacote; `laudo_do_aluno` é a autoavaliação com o instrumento da aula
+    (`{instrumento, versao, notas: {criterio: {nota, frase}}}`, ou `{texto}`
+    quando a aula não tem instrumento com escala), na versão em que começou
+    (P04).
+
+    O PRAZO NÃO MUDA, E ISSO TEM TRÊS CADEADOS ([INV-CUR-L3])
+    -------------------------------------------------------
+    `prazo_em` é `enviado_em + 24 h`, calculado UMA vez, no `save()` que
+    insere. Depois disso: (1) o `save()` recusa qualquer mudança em `enviado_em`
+    ou `prazo_em`; (2) o `update()` E o `bulk_update()` do queryset recusam os
+    dois campos; (3) o banco tem a restrição `prazo_em = enviado_em + 24 h`,
+    que vale para o `psql`. Não existe setter, não existe parâmetro de prazo em
+    `envio.py`, e nenhuma tela tem esse campo. Quando as 24 horas passam, o que
+    muda é `estourado_em`: registra a hora, nunca alonga o prazo.
+
+    Os três estados finais (`aberto`, `aberto_com_ajuste`, `devolvido`) só o
+    laudo grava (degrau 2.2). Não existe um quarto valor de fim ([INV-CUR-L2],
+    lei §9), e um teste-guarda varre este arquivo e as migrações atrás da
+    palavra que a lei proíbe.
+    """
+
+    class Estado(models.TextChoices):
+        RECEBIDO = "recebido", "Recebido"
+        EM_REVISAO = "em_revisao", "Em revisão"
+        ABERTO = "aberto", "Aberto"
+        ABERTO_COM_AJUSTE = "aberto_com_ajuste", "Aberto com ajuste"
+        DEVOLVIDO = "devolvido", "Devolvido"
+
+    pessoa = models.ForeignKey(Pessoa, related_name="envios", on_delete=models.PROTECT)
+    aula = models.ForeignKey(Aula, related_name="envios", on_delete=models.PROTECT)
+    numero = models.PositiveSmallIntegerField()
+    links = models.JSONField(default=list)
+    readme = models.TextField(blank=True, default="")
+    laudo_do_aluno = models.JSONField(default=dict, blank=True)
+    enviado_em = models.DateTimeField(editable=False)
+    prazo_em = models.DateTimeField(editable=False)
+    estado = models.CharField(
+        max_length=17, choices=Estado.choices, default=Estado.RECEBIDO
+    )
+    estourado_em = models.DateTimeField(null=True, blank=True)
+
+    objects = EnviosQuerySet.as_manager()
+
+    class Meta:
+        # A ordem da fila de revisão: o prazo mais antigo primeiro, e por isso
+        # os vencidos primeiro. `envio.fila_de_revisao` lê daqui.
+        ordering = ["prazo_em", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pessoa", "aula", "numero"],
+                name="um_envio_por_numero_por_pessoa_por_aula",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(numero__gte=1), name="numero_de_envio_comeca_em_1"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    estado__in=[
+                        "recebido",
+                        "em_revisao",
+                        "aberto",
+                        "aberto_com_ajuste",
+                        "devolvido",
+                    ]
+                ),
+                name="estado_de_envio_no_vocabulario_fechado",
+            ),
+            # O terceiro cadeado do [INV-CUR-L3]: o banco só aceita a linha em
+            # que o prazo é exatamente enviado_em + 24 h.
+            models.CheckConstraint(
+                condition=models.Q(prazo_em=models.F("enviado_em") + PRAZO_DE_REVISAO),
+                name="prazo_de_envio_e_enviado_em_mais_24_horas",
+            ),
+            # O estouro registra um fato: ele só existe depois do prazo.
+            models.CheckConstraint(
+                condition=models.Q(estourado_em__isnull=True)
+                | models.Q(estourado_em__gte=models.F("prazo_em")),
+                name="estouro_de_envio_so_depois_do_prazo",
+            ),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            if self.enviado_em is None:
+                self.enviado_em = timezone.now()
+            self.prazo_em = self.enviado_em + PRAZO_DE_REVISAO
+        else:
+            gravados = (
+                Envio.objects.filter(pk=self.pk)
+                .values_list("enviado_em", "prazo_em")
+                .first()
+            )
+            if gravados is not None and gravados != (self.enviado_em, self.prazo_em):
+                raise PrazoImutavel(
+                    f"o envio {self.pk} tentou mudar enviado_em ou prazo_em. O "
+                    "prazo de revisão é enviado_em + 24 h e não muda por caminho "
+                    "nenhum ([INV-CUR-L3]); o estouro se registra em estourado_em."
+                )
+        super().save(*args, **kwargs)
+
+    @property
+    def vencido(self) -> bool:
+        return self.estourado_em is not None
+
+    def __str__(self) -> str:
+        return f"{self.pessoa_id}: {self.aula_id} envio {self.numero} ({self.estado})"
+
+
+# ---------------------------------------------------------------------------
+# 11. A OUTBOX: molde byte a byte de `services/sugestoes` (Lei 7: copiado)
+# ---------------------------------------------------------------------------
+
+
+class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
+    """Uma linha por fato que esta célula afirma ao resto da plataforma.
+
+    Mora AQUI, e não num app `eventos` à parte, pela mesma decisão de orçamento
+    que `pagamentos` e `sugestoes` tomaram: `apps/cursos` é o único app desta
+    célula com `models.py` + `migrations/`, e um app novo custaria outro
+    `migrations/__init__.py` sem ganho arquitetural nenhum.
+
+    `payload` guarda **só o campo `data`** do envelope. O envelope inteiro
+    (`event`/`version`/`event_id`/`occurred_at`/`data`) é montado pelo relay,
+    no instante da publicação — guardar o envelope pronto duplicaria em JSON o
+    que já são colunas, e as duas cópias envelheceriam separadas.
+
+    `event_id` é `UUIDField` **de propósito**: os contratos congelados em
+    `contracts/eventos/*.v1.json` pedem `"format": "uuid"` neste campo, como
+    TODO evento desta plataforma.
+    """
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    event = models.CharField(max_length=100)  # ex.: "envio.recebido"
+    version = models.PositiveSmallIntegerField(default=1)
+    payload = models.JSONField()  # SÓ o campo `data` do envelope
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    # As chaves que este evento acrescenta ao ENVELOPE (o nível de cima), e não
+    # ao `data`: hoje o `ator_id`, que de propósito mora no envelope para que
+    # qualquer célula leia "quem fez isto" sem conhecer o formato do assunto.
+    #
+    # POR QUE UM CAMPO GENÉRICO E NÃO UMA COLUNA `ator_id`. O relay monta o
+    # envelope para TODOS os eventos, e os contratos são `additionalProperties:
+    # false` no topo. Uma coluna `ator_id` obrigaria o relay a decidir, evento a
+    # evento, se inclui a chave — e essa decisão seria uma SEGUNDA verdade sobre
+    # os contratos, morando em código. Com este campo, quem emite (que conhece o
+    # próprio contrato) declara o que vai no envelope, e o relay continua burro.
+    #
+    # E note que `{"ator_id": None}` é DIFERENTE de `{}`: o contrato do
+    # `revisao.prazo-estourado.v1` declara `ator_id` nulável e OBRIGATÓRIO
+    # (fato de relógio não tem gente), então a chave presente com valor nulo é
+    # informação, não ausência.
+    envelope_extra = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["published_at"])]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
+        return f"{self.event}:{self.event_id}"
