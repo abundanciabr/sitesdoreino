@@ -421,6 +421,15 @@ class Inscricao(models.Model):
     destinatario_id = id_de_pessoa()
     site_id = id_do_site()
 
+    # O QUE DELIMITA O EPISÓDIO, quando não é a pessoa inteira. Vazio para a
+    # jornada que é da pessoa (boas-vindas: um episódio por pessoa); o id opaco
+    # da aula para o silêncio da devolução (degrau 2.4 da sala de aula), em que
+    # a chave é (site, aluno, AULA): o mesmo aluno com dois checkpoints
+    # devolvidos em aulas diferentes tem dois relógios, e o reenvio de uma aula
+    # não cancela o silêncio da outra. Entra na trava parcial abaixo, e com o
+    # vazio a trava continua dizendo exatamente o que dizia antes.
+    contexto_id = models.CharField(max_length=64, blank=True, default="")
+
     # A `ordem` do último passo entregue; 0 é "ainda não saiu nada".
     passo_atual = models.PositiveIntegerField(default=0)
 
@@ -447,7 +456,7 @@ class Inscricao(models.Model):
             # A TRAVA PARCIAL. A condição é o conserto inteiro: sem ela, o
             # episódio seguinte da mesma pessoa é recusado para sempre.
             models.UniqueConstraint(
-                fields=["jornada", "destinatario_id", "site_id"],
+                fields=["jornada", "destinatario_id", "site_id", "contexto_id"],
                 condition=models.Q(estado="andando"),
                 name="uniq_inscricao_andando_por_jornada",
             ),
@@ -616,6 +625,39 @@ class EstadoDoAluno(models.Model):
 
     def __str__(self) -> str:
         return f"estado de {self.destinatario_id}@{self.site_id}"
+
+
+class EnvioDeCheckpoint(models.Model):
+    """De quem é cada checkpoint entregue na sala de aula: a correlação, só ids.
+
+    `checkpoint.devolvido.v1` NÃO carrega o aluno (o `ator_id` dele é quem
+    assinou o laudo). Quem carrega é o `envio.recebido.v1` do MESMO `envio_id`,
+    que chega antes, porque o envio existe antes do laudo. Esta tabela guarda
+    essa ponte para que o devolvido saiba QUEM inscrever na jornada do silêncio
+    (degrau 2.4 do `PLANO-CELULA-CURSOS.md`, §3.6).
+
+    É PROJEÇÃO, como `EstadoDoAluno`: calculada de eventos, e a autoridade
+    sobre o envio continua na célula `cursos`. Nem link, nem texto, nem nome:
+    só os ids opacos que o contrato deixa viajar. Um devolvido cujo envio não
+    está aqui NÃO inscreve ninguém e diz isso no log: chutar o aluno seria a
+    pessoa fantasma da `armadilhas/255`.
+    """
+
+    site_id = id_do_site()
+    envio_id = models.CharField(max_length=64)
+    aula_id = models.CharField(max_length=64)
+    aluno_id = id_de_pessoa()
+    recebido_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["site_id", "envio_id"], name="uniq_envio_de_checkpoint_por_site"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"envio {self.envio_id} de {self.aluno_id} na aula {self.aula_id}"
 
 
 class Efeito(models.Model):
