@@ -9,8 +9,7 @@ guarda:
   tipo: teste
   dono: ci/tests/test_prestacao_de_contas.py
 sinal:
-  - '"etapa" não existe para a máquina'
-  - "cobraria checklist a cada"
+  - "checklist ausente ap[óo]s (?:Bash|Edit|Write|PowerShell)"
 ---
 
 # 350 — Obrigação "ao fim de cada etapa" não tem discriminador mecânico: meça a ponta que dá, e declare o meio
@@ -64,5 +63,10 @@ Separe a obrigação em pontas, e meça só a que a máquina enxerga:
 
 A prova de que a régua está no lugar certo: o teste novo tem de ficar VERMELHO
 contra o portão antigo por FALTA do checklist, e não por ruído em turno de
-leitura. Medido em 05/09/2026: 15 falhas contra o portão velho, 37 verdes com
-o novo, e os testes das 225 esperas continuam calados.
+leitura. Medido em 05/09/2026, sabotando SÓ o guarda da caixinha: 4 testes
+vermelhos pelo guarda (relatório sem checklist, caixinha solta na prosa,
+PRONTO com caixa aberta, caixinha quebrada em duas linhas); os outros 13 que caem contra o portão velho caem porque a recusa passou a
+ensinar a caixinha, que é molde, não guarda. Conte os dois números separados:
+"15 vermelhos" é prova inflada, e foi assim que a primeira versão desta
+entrada saiu (achado do revisor do PR #1126). E os testes das 225 esperas
+continuam calados.

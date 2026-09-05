@@ -851,8 +851,9 @@ repetida por vez.
 3. **No fecho.** O turno que mudou o mundo termina com a prestação de contas,
    nesta ordem, e ela é o formato da regra 9 com os dois blocos que ele pediu
    em 05/09/2026. **Ela começa pelo checklist no estado final** (todo `- [x]`
-   quando PRONTO; o `- [ ]` que sobrou, com o motivo, quando NÃO PRONTO), e
-   segue com os seis blocos:
+   quando PRONTO; o `- [ ]` que sobrou, com o motivo, quando NÃO PRONTO;
+   PRONTO com caixa aberta é contradição, e o portão recusa), e segue com os
+   seis blocos:
 
    - **O que mudou** — fatos, não adjetivos
    - **O que foi verificado e como** — o comando e a saída real, não a promessa
@@ -918,7 +919,10 @@ cada etapa (ponta 2) está na mesma situação, e é dito aqui para ninguém tom
 portão do fecho por garantia dele:** "etapa" não existe para a máquina, e um
 portão que contasse reimpressões por chamada de ferramenta cobraria checklist
 a cada `ls`. O que o `Stop` mede é a ponta 3: o relatório final SEM caixinha é
-recusado, e a recusa ensina as três pontas. A ponta 2 fica na lei, no aviso de
+recusado, PRONTO com `- [ ]` aberta é recusado, e a recusa ensina as três
+pontas. O que ele NÃO distingue é o checklist do plano colado no fim com tudo
+marcado sem que nada tenha sido feito: isso é mentira escrita, falsificável,
+e fica para quem lê. A ponta 2 fica na lei, no aviso de
 abertura (`--plano`) e na memória do robô — sem mecanismo, declarado.
 
-**Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos e sem o checklist marcado; o `UserPromptSubmit` exige o plano na abertura e o checklist ao fim de cada etapa) · `ci/tests/test_prestacao_de_contas.py`. O checklist ao fim de cada etapa em si não tem mecanismo, e está dito acima com todas as letras.
+**Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos e sem o checklist marcado; o `UserPromptSubmit` exige o plano na abertura) · `ci/tests/test_prestacao_de_contas.py`. O checklist ao fim de cada etapa em si não tem mecanismo, e está dito acima com todas as letras.

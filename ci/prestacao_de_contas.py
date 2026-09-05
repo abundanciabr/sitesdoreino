@@ -187,8 +187,11 @@ PLANO = re.compile(r"^\s*#{1,4}\s*.*\bplano\b", re.I | re.M)
 # O checklist: uma linha de caixinha, marcada ou não. É o roteiro que ele pediu
 # em 05/09/2026 — o mesmo do plano, no estado final, abrindo a prestação de
 # contas. `- [ ]` também vale: NÃO PRONTO honesto deixa caixa aberta, e um
-# portão que só aceitasse `[x]` ensinaria a marcar o que não foi feito.
-CAIXINHA = re.compile(r"^\s*[-*]\s*\[(?: |x|X)\]\s+\S", re.M)
+# portão que só aceitasse `[x]` ensinaria a marcar o que não foi feito. Só
+# espaço horizontal entre as peças: com `\s` e re.M, `-` numa linha e `[x]` na
+# seguinte casavam (achado do revisor, 05/09/2026).
+CAIXINHA = re.compile(r"^[ \t]*[-*][ \t]*\[(?: |x|X)\][ \t]+\S", re.M)
+CAIXA_ABERTA = re.compile(r"^[ \t]*[-*][ \t]*\[ \][ \t]+\S", re.M)
 
 # ------------------------------------------------- o que muda o mundo ----
 
@@ -339,11 +342,16 @@ def _prestou_contas(entrada: dict) -> bool:
         return False
     if not texto.strip():
         return False
-    return (
-        all(t.search(texto) for t in TITULOS)
-        and bool(VEREDITO.search(texto))
-        and bool(CAIXINHA.search(texto))
-    )
+    veredito = VEREDITO.search(texto)
+    if not veredito or not all(t.search(texto) for t in TITULOS):
+        return False
+    if not CAIXINHA.search(texto):
+        return False
+    # PRONTO com caixa aberta é contradição: ou a tarefa acabou, ou sobrou passo.
+    # Sem esta linha o plano de abertura colado no fim, intocado, valia como
+    # roteiro final (achado do revisor, 05/09/2026).
+    pronto_de_verdade = not veredito.group(1).lower().startswith("n")
+    return not (pronto_de_verdade and CAIXA_ABERTA.search(texto))
 
 
 def _teve_plano(entradas: list[dict], comeco: int) -> bool:
@@ -429,6 +437,7 @@ def molde(faltou_o_plano: bool) -> str:
         "",
         "   Regras que valem dentro do molde:",
         "   · O checklist é o roteiro que ele pediu: sem caixinha, o relatório não vale.",
+        "   · PRONTO com `- [ ]` aberta é contradição e é recusado: marque, ou diga NÃO PRONTO.",
         "   · Demonstre, não descreva: comando executado + saída real.",
         "   · Ou rodou de verdade, ou escreve NÃO RODEI. Nunca \"deve funcionar\".",
         "   · Se nada depende dele, DIGA a frase (\"nada depende de ninguém, ~8 min\").",

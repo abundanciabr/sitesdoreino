@@ -386,13 +386,44 @@ def test_checklist_com_caixa_aberta_e_aceito(tmp_path):
     """NÃO PRONTO honesto deixa `- [ ]` na tela. Um portão que só aceitasse
     `[x]` ensinaria a marcar o que não foi feito — o contrário do roteiro."""
     honesto = CONTAS_COMPLETAS.replace(
+        "- [x] achar o evento repetido no webhook",
+        "- [ ] achar o evento repetido no webhook (o log de produção não chega aqui)",
+    ).replace(
         "- [x] ignorá-lo, com teste vermelho→verde",
         "- [ ] ignorá-lo, com teste vermelho→verde (o teste de ponta a ponta não roda aqui)",
     ).replace("**Veredito:** PRONTO", "**Veredito:** NÃO PRONTO")
+    assert "- [x]" not in honesto  # senão o teste não prova que `- [ ]` basta
     _silencio(_decidir(tmp_path, [
         _humano("conserte"),
         _ferramenta("Edit", {"file_path": "a.py"}),
         _fala(honesto),
+    ]))
+
+
+def test_pronto_com_caixa_aberta_e_contradicao_e_e_recusado(tmp_path):
+    """O plano de abertura colado no fim, intocado, com PRONTO embaixo, satisfazia
+    o portão sem o robô ter marcado nada (achado do revisor do PR #1126). Ou a
+    tarefa acabou, ou sobrou passo: as duas coisas juntas não existem."""
+    contraditorio = CONTAS_COMPLETAS.replace(
+        "- [x] ignorá-lo, com teste vermelho→verde",
+        "- [ ] ignorá-lo, com teste vermelho→verde",
+    )
+    assert "**Veredito:** PRONTO" in contraditorio
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(contraditorio),
+    ]))
+
+
+def test_caixinha_quebrada_em_duas_linhas_nao_e_checklist(tmp_path):
+    """`\\s` com re.M atravessava linha: `-` numa linha e `[x]` na outra casavam."""
+    quebrado = CONTAS_COMPLETAS.replace("- [x] achar", "-\n[x] achar") \
+                               .replace("- [x] ignorá-lo", "- [x]\nignorá-lo")
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(quebrado),
     ]))
 
 
