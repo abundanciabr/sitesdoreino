@@ -56,7 +56,10 @@ painel poder dizer o que mudou), nasceu em 04/09/2026 e tem seção lá. Uma 15�
 `encomendas` (a Fila do Primeiro Dólar, o marketplace de encomendas 3D da
 escola), ganhou
 lei aprovada e esqueleto em `services/` em 03/09/2026, e também tem seção em
-[04]. A comunicação entre células é
+[04]. Uma 17ª, `cursos` (a sala de aula da Meshcraft: o conteúdo do curso, o
+progresso, o checkpoint, o laudo e os agentes de IA que trabalham nela), ganhou
+lei aprovada e esqueleto em `services/` em 04/09/2026, com seção em [04]. A
+comunicação entre células é
 só HTTP contratado (OpenAPI congelado) ou eventos versionados (outbox +
 Redis Streams). Tudo
 isso é lei escrita e imposta por portões mecânicos, não só convenção — ver
@@ -158,3 +161,6 @@ idade de cada parte):
   checkpoint, laudo e os agentes de IA que trabalham nela), planejada nesse
   dia a partir dos nove documentos do projeto Meshcraft e ainda não nascida.
   Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md`.
+- **04/09/2026 (noite)** — a célula `cursos` nasceu (TAR-146): a seção dela em
+  [04](04-arquitetura-de-celulas-e-contratos.md) passou de "planejada" a
+  "nascida", e o parágrafo das células acima ganhou a 17ª.
