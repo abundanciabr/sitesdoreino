@@ -58,13 +58,36 @@ não estava entre eles.
    (`test_clone_sem_o_portao_nao_prende_a_sessao`). O par verde do mesmo teste
    roda o mesmo comando contra o repositório de verdade e exige a recusa.
 
-2. **Mecanismo novo que precisa alcançar a janela dele vem com o pedido de
-   atualizar o espelho, em bloco único de colar, no relatório final.** Não é
-   opcional e não é detalhe de rodapé: sem esse passo o PR é decoração. A lei
-   proíbe o agente atualizar o clone compartilhado por conta própria
-   (`armadilhas/135` — outra sessão pode ter trabalho não commitado lá), então
-   quem faz é ele, e cabe ao agente entregar o comando pronto e dizer em qual
-   janela colar.
+2. **Mecanismo novo só existe quando alcança a janela dele — e alcançar é
+   trabalho SEU, não pedido para ele.** Sem esse passo o PR é decoração.
+
+   Desde 05/09/2026 o `--aviso` da muralha põe o espelho em dia sozinho na
+   abertura da sessão (ramo `main` + árvore limpa), então o caso comum se
+   resolve sozinho. Fica valendo para o dia em que o gancho não puder agir —
+   e para a primeira vez, quando o próprio atualizador ainda não chegou lá.
+
+   > **Não repita o erro que esta entrada já conteve.** A primeira versão
+   > deste parágrafo afirmava que "a lei proíbe o agente atualizar o clone
+   > compartilhado" e mandava entregar um bloco de colar ao mantenedor.
+   > **É falso, e foi escrito sem conferir.** O `CLAUDE.md` diz o contrário
+   > com todas as letras ("com a árvore limpa, também `git switch main` e
+   > `git pull`"), e a própria muralha abre a exceção no código:
+   >
+   > ```python
+   > if sub == "pull" and _ramo_atual(raiz) == "main" and _arvore_limpa(raiz):
+   >     return None
+   > ```
+   >
+   > O que a `armadilhas/135` proíbe é **trabalhar** no clone principal e
+   > mudar o estado dele por baixo de outra sessão — não mantê-lo fresco, que
+   > é literalmente para o que a exceção existe. Confundir as duas coisas
+   > custou um passo manual empurrado para um leigo em código, na mesma tarefa
+   > que existia para tirar passos manuais do caminho dele.
+
+   Então: **confira o ramo e a árvore, e faça o `git pull` você mesmo.** Só
+   quando a árvore estiver suja ou o ramo não for `main` é que vira assunto
+   dele — e aí sim em bloco único de colar, fail-closed, com a janela dita
+   ("cole no PC", não na VPS).
 
 **Como descobrir se você está caindo nisto agora:** o `SessionStart` já grita a
 idade do espelho ("IDADE DO ESPELHO: N commits atrás"). Se N for grande, assuma

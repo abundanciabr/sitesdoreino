@@ -790,6 +790,62 @@ class CaixaClient:
 
     # -- escrita: diz o que aconteceu ----------------------------------------
 
+    def previas_de_fusao(self, grupos: list) -> "list | None":
+        """Como ficariam estas junções, sem juntar nada. `None` = não perguntei.
+
+        Uma chamada para TODOS os grupos, e não uma por grupo: a tela mostra a
+        lista inteira de junções propostas de uma vez, e cinco idas seriam cinco
+        vezes o tempo de espera do mantenedor na abertura da página.
+
+        Fail-OPEN como as outras leituras: sem prévia a tela diz que não
+        conseguiu perguntar, e não desenha um botão de juntar — confirmar uma
+        junção sem ver o resultado é exatamente o que o modal existe para evitar.
+        """
+        config = self._configuracao()
+        if config is None:
+            return None
+        base, token = config
+        try:
+            r = http().post(
+                f"{base}/gestao/fusoes/previas",
+                json={"grupos": grupos},
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+            r.raise_for_status()
+            return r.json()["previas"]
+        except (httpx.HTTPError, KeyError, ValueError) as erro:
+            logger.error("caixa: não deu para pedir as prévias de fusão: %s", erro)
+            return None
+
+    def fusoes(self) -> "list | None":
+        """As junções em vigor, para a tela poder oferecer o desfazer."""
+        config = self._configuracao()
+        if config is None:
+            return None
+        base, token = config
+        try:
+            r = http().get(
+                f"{base}/gestao/fusoes",
+                headers={"Authorization": f"Bearer {token}"},
+                timeout=self.TIMEOUT,
+            )
+            r.raise_for_status()
+            return r.json()["fusoes"]
+        except (httpx.HTTPError, KeyError, ValueError) as erro:
+            logger.error("caixa: não deu para listar as junções: %s", erro)
+            return None
+
+    def fundir(self, *, canonica: int, absorvidas: list, nota: str, quem: dict):
+        """Junta de verdade. Devolve o par `(desfecho, recado)` das escritas."""
+        return self._escrever(
+            "/gestao/fusoes",
+            {"canonica": canonica, "absorvidas": absorvidas, "nota": nota, **quem},
+        )
+
+    def desfazer_fusao(self, fusao_id: int, *, quem: dict):
+        return self._escrever(f"/gestao/fusoes/{fusao_id}/desfazer", quem)
+
     def _escrever(self, caminho: str, corpo: dict) -> "tuple[str, str]":
         """Uma escrita, com o tratamento que as três compartilham.
 
