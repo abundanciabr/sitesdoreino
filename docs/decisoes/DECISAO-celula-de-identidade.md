@@ -148,6 +148,10 @@ cookie disputado por um cabeçalho desatualizado por alguns minutos é troca
 3. **Não** acrescente par a `TOKENS_COMPLETOS_*` sem registrar AQUI o porquê —
    e-mail é o dado que a EVO-01 §3 concentrou numa linha; cada par novo com
    acesso a ele alarga a superfície de dado pessoal.
+   - **`cursos` (05/09/2026, degrau 1.8 da sala de aula):** para perguntar à
+     `alunos` se a pessoa está matriculada, que é por e-mail; o e-mail nunca é
+     guardado nem exibido (a `Pessoa` da célula é espelho por id opaco, e a
+     tela só mostra a própria pessoa, [INV-CUR-P1]). É a mesma razão da Caixa.
 4. A partir do PR 5, sessão da Caixa é a do site: **nenhum código novo na
    `sugestoes` pode escrever `request.session`** (guarda lá) — quem grava o
    cookie `meshcraft_sessao` é só a `identidade`.

@@ -738,6 +738,12 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-ENC-J9",
         "INV-ENC-J10",
         "INV-CUR-C2",
+        # Os três da PORTA da célula `cursos` (05/09/2026, TAR-154, degrau 1.8
+        # da escada): P1 nenhuma tela compara alunos, P2 a porta só abre por
+        # laudo, P3 o checkpoint fechado até todas as pausas terem registro.
+        "INV-CUR-P1",
+        "INV-CUR-P2",
+        "INV-CUR-P3",
         "INV-CI01",
     ]
 

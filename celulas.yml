@@ -124,16 +124,15 @@ celulas:
 
   cursos:
     caminhos: [services/cursos]
-    # NASCE SEM CONSUMIR NINGUÉM, e a lista vazia é a declaração honesta —
-    # não um esquecimento. A lei prevê `consome: [alunos, identidade]`
-    # (`PLANO-CELULA-CURSOS.md` §5): a `identidade` entra no degrau 1.3 (a
-    # sessão repassada da porta de máquina) e a `alunos` no degrau 1.8 (a
-    # matrícula ativa decide o acesso à sala de aula), cada uma no PR do
-    # cliente que lê `IDENTIDADE_API_URL` e `ALUNOS_API_URL`. Declará-las HOJE
-    # seria declaração órfã, e o varredor reprova por isso, com razão
-    # (`armadilhas/224`): um mapa que promete a mais é tão mentiroso quanto um
-    # que promete a menos.
-    consome: []
+    # Os três pares entraram JUNTOS com os clientes que os leem (degrau 1.8, a
+    # sala do aluno, `apps/core/clients.py`), e não antes (`armadilhas/224`):
+    # - alunos: a matrícula ativa decide quem vê a aula (`getStudentStanding`,
+    #   fail-closed; `ALUNOS_API_URL`).
+    # - catalogo: o menu do topo é dado do site (`getSiteByHost`, fail-open;
+    #   `CATALOGO_API_URL`).
+    # - identidade: quem é a pessoa, COM e-mail, porque a matrícula se pergunta
+    #   por e-mail (`getSessionFull`; `IDENTIDADE_API_URL`).
+    consome: [alunos, catalogo, identidade]
 
   encomendas:
     caminhos: [services/encomendas]

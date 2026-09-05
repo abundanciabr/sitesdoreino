@@ -404,7 +404,56 @@
       "alcance": "interno",
       "para_quem": "maquina",
       "titulo": "O sinal de vida da sala de aula",
-      "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar o curso (as aulas, o checkpoint e o laudo) acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /cursos."
+      "descricao": "Responde 'estou de pé' pela rede interna. É por aqui que o pipeline vai saber se a parte que guarda o curso subiu inteira. Quando /cursos entrar no roteamento (degrau 1.7), este endereço passa a ser /cursos/healthz."
+    },
+    {
+      "celula": "cursos",
+      "rota": "",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "aluno",
+      "titulo": "O mapa das portas do curso",
+      "descricao": "A home do curso: as 34 encomendas em três Partes e doze Blocos, o estado de cada porta (trancada, disponível, em produção, enviada, devolvida, concluída) e a próxima aberta em destaque. Só abre para quem tem matrícula ativa; quem não entrou vê o convite para entrar, e quem entrou sem matrícula recebe a explicação.",
+      "observacao": "Enquanto /cursos não entra no roteamento (degrau 1.7), esta página só existe na rede interna. Quando entrar, o endereço será /cursos/."
+    },
+    {
+      "celula": "cursos",
+      "rota": "<str:numero>",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "aluno",
+      "titulo": "Uma aula do curso",
+      "descricao": "A encomenda inteira: as 16 peças na ordem, o vídeo por link (YouTube e Vimeo embutidos; os outros abrem em outra aba), a lista de pausas com um formulário por pausa, o quiz de autoavaliação (a resposta-modelo só abre depois de a pessoa gravar a sua) e o lugar do checkpoint, que ainda diz que o envio nasce no próximo degrau. Aula não publicada não existe para o aluno; porta trancada volta para o mapa.",
+      "observacao": "Quando /cursos entrar no roteamento (degrau 1.7), o endereço será /cursos/E00, /cursos/E01 e assim por diante."
+    },
+    {
+      "celula": "cursos",
+      "rota": "<str:numero>/pausas/<int:ordem>",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Registrar uma pausa do vídeo",
+      "descricao": "O gesto de gravar o que a pausa pediu. Não é uma página: quem registra volta para a aula, na própria pausa, com a resposta. Uma pausa, um registro: registrar de novo não muda nada."
+    },
+    {
+      "celula": "cursos",
+      "rota": "<str:numero>/autoavaliacao",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Gravar a autoavaliação do quiz",
+      "descricao": "O gesto de gravar as respostas do quiz com as próprias palavras. Não é uma página: quem grava volta para a aula, no quiz, e só então vê as respostas-modelo. Grava uma vez só."
+    },
+    {
+      "celula": "cursos",
+      "rota": "^static/(?P<caminho>.*)$",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "A aparência da sala de aula",
+      "descricao": "O arquivo de estilo das telas do curso, buscado pelo navegador sozinho."
     },
     {
       "celula": "cursos",

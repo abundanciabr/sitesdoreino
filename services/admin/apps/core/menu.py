@@ -76,7 +76,11 @@ from .views import _auditar
 # dela (`/docs/`), por `apps/core/barra_do_site.py` — arquivo com nome próprio
 # justamente porque `apps/core/menu.py` é esta tela, e os dois nomes juntos
 # confundiriam para sempre quem chegasse depois.
-CELULAS_COM_MENU = ("funil", "forum", "sugestoes", "gamificacao", "admin")
+#
+# A `cursos` entrou em 05/09/2026, com a sala do aluno (degrau 1.8): o mapa das
+# portas e a aula desenham o menu por `apps/core/menu.py` de lá, no molde da
+# `gamificacao`.
+CELULAS_COM_MENU = ("funil", "forum", "sugestoes", "gamificacao", "admin", "cursos")
 
 # Para quem o item aparece, com o nome que o mantenedor lê. A ordem é a da
 # tela; os códigos são os do contrato.

@@ -1,13 +1,16 @@
-"""O conteúdo do curso como DADO: o curso, os blocos, as aulas, as peças, as pausas
-e os instrumentos.
+"""O conteúdo do curso como DADO (o curso, os blocos, as aulas, as peças, as
+pausas e os instrumentos) e, desde o degrau 1.8, AS PESSOAS E O PROGRESSO
+(`Pessoa`, `Progresso`, `RegistroDePausa`).
 
 Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 (o modelo) e §9 (os invariantes
-[INV-CUR-C1] e [INV-CUR-C2]). Degrau 1.2 da escada (§10, TAR-147). Molde de
-código: `services/encomendas/apps/encomendas/models.py`.
+[INV-CUR-C1], [INV-CUR-C2] e os três da porta, [INV-CUR-P1..P3]). Degraus 1.2
+(TAR-147) e 1.8 (TAR-154) da escada (§10). Molde de código:
+`services/encomendas/apps/encomendas/models.py` e, para o espelho de pessoa,
+`services/forum/apps/forum/models.py`.
 
-Este arquivo guarda SÓ o conteúdo. Não há `Pessoa`, `Progresso`, `Envio` nem
-`Laudo`: são os degraus 1.8, 2.1 e 2.2. E não há tela, rota nem porta de máquina
-além de `/healthz`: a porta é o degrau 1.3.
+Não há `Envio` nem `Laudo` aqui: são os degraus 2.1 e 2.2. As REGRAS do
+progresso (que porta abre, e quando) não moram neste arquivo: moram em
+`apps/cursos/progresso.py`, e é lá que o [INV-CUR-P2] é imposto.
 
 O TEXTO DAS AULAS NUNCA ENTRA POR ARQUIVO
 -----------------------------------------
@@ -390,3 +393,131 @@ class Pausa(models.Model):
 
     def __str__(self) -> str:
         return f"{self.aula_id} pausa {self.ordem} aos {self.segundo}s ({self.tipo})"
+
+
+# ---------------------------------------------------------------------------
+# 7. A PESSOA: espelho mínimo de quem a `identidade` reconheceu
+# ---------------------------------------------------------------------------
+
+
+class Pessoa(models.Model):
+    """Quem já abriu a sala de aula, pelo id OPACO da plataforma.
+
+    **Nunca e-mail** ([INV-CUR-S1]). A matrícula se pergunta à `alunos` a cada
+    requisição, pelo e-mail que a `identidade` devolve e que esta célula usa e
+    descarta na hora (`apps/core/sessao.py`); guardá-lo aqui seria o mesmo fato
+    em dois lugares, e um deles apodreceria. `nome_exibido` é o único dado de
+    exibição, e a tela só mostra o da própria pessoa ([INV-CUR-P1]).
+    """
+
+    id_da_plataforma = models.CharField(max_length=64, primary_key=True)
+    nome_exibido = models.CharField(max_length=120, blank=True, default="")
+
+    def __str__(self) -> str:
+        return self.id_da_plataforma
+
+
+# ---------------------------------------------------------------------------
+# 8. O PROGRESSO: que porta esta pessoa tem aberta, e em que estado
+# ---------------------------------------------------------------------------
+
+
+class Progresso(models.Model):
+    """A porta de UMA aula para UMA pessoa.
+
+    Linha ausente é porta `trancada`: só se escreve quando algo acontece (a E00
+    nasce `disponivel` na primeira visita; a aula N sai de `trancada` quando a
+    N-1 conclui). `concluida` só entra por `progresso.concluir`, que EXIGE um
+    laudo aberto ([INV-CUR-P2]); nenhuma tela nem porta grava esse valor.
+
+    `cerimonia_pendente` e `laudo_lido` são os dois estados que a tentação
+    poria em `request.session`, e que deslogariam a plataforma inteira
+    (`armadilhas/143`, [INV-P12]). Moram aqui, no modelo.
+    """
+
+    class Estado(models.TextChoices):
+        TRANCADA = "trancada", "Trancada"
+        DISPONIVEL = "disponivel", "Disponível"
+        EM_PRODUCAO = "em_producao", "Em produção"
+        ENVIADA = "enviada", "Enviada"
+        DEVOLVIDA = "devolvida", "Devolvida"
+        CONCLUIDA = "concluida", "Concluída"
+
+    pessoa = models.ForeignKey(
+        Pessoa, related_name="progressos", on_delete=models.PROTECT
+    )
+    aula = models.ForeignKey(Aula, related_name="progressos", on_delete=models.PROTECT)
+    estado = models.CharField(
+        max_length=12, choices=Estado.choices, default=Estado.TRANCADA
+    )
+    autoavaliacao = models.JSONField(default=dict, blank=True)
+    data_de_retorno = models.DateField(null=True, blank=True)
+    concluida_em = models.DateTimeField(null=True, blank=True)
+    cerimonia_pendente = models.BooleanField(default=False)
+    laudo_lido = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["pessoa", "aula"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pessoa", "aula"], name="um_progresso_por_pessoa_por_aula"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    estado__in=[
+                        "trancada",
+                        "disponivel",
+                        "em_producao",
+                        "enviada",
+                        "devolvida",
+                        "concluida",
+                    ]
+                ),
+                name="estado_de_progresso_no_vocabulario_fechado",
+            ),
+            # Concluída carrega a hora em que concluiu, e só ela carrega.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(estado="concluida", concluida_em__isnull=False)
+                    | models.Q(concluida_em__isnull=True)
+                    & ~models.Q(estado="concluida")
+                ),
+                name="concluida_em_so_quando_concluida",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.pessoa_id}: {self.aula_id} ({self.estado})"
+
+
+# ---------------------------------------------------------------------------
+# 9. O REGISTRO DE PAUSA: o vídeo parou, a pessoa escreveu
+# ---------------------------------------------------------------------------
+
+
+class RegistroDePausa(models.Model):
+    """O que a pessoa registrou numa pausa do vídeo.
+
+    `respostas` é `{campo: texto}`, um por item de `Pausa.campos`. Uma pausa,
+    um registro, uma pessoa: registrar de novo não sobrescreve, e é isso que
+    faz o [INV-CUR-P3] ("o checkpoint fica fechado até todas as pausas terem
+    registro") ser contável em vez de adivinhado.
+    """
+
+    pessoa = models.ForeignKey(
+        Pessoa, related_name="registros_de_pausa", on_delete=models.PROTECT
+    )
+    pausa = models.ForeignKey(Pausa, related_name="registros", on_delete=models.PROTECT)
+    respostas = models.JSONField(default=dict, blank=True)
+    registrado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["pessoa", "pausa"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["pessoa", "pausa"], name="um_registro_por_pessoa_por_pausa"
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.pessoa_id}: pausa {self.pausa_id}"

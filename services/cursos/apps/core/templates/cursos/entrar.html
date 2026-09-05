@@ -1,0 +1,36 @@
+{% extends "cursos/moldura.html" %}{% comment %}
+A porta da sala, para quem ainda não entra: o visitante (200, convite), quem
+entrou sem matrícula ativa (403), quem entrou e a matrícula não deu para
+conferir (403, e a frase diz que foi isso), e a escola sem curso ligado (200).
+
+Quatro motivos, quatro frases, e cada uma diz o que aconteceu E o que fazer.
+Uma tela vazia diria "não há nada aqui" a quem devia ver o curso.
+{% endcomment %}
+{% block titulo %}Entrar no curso{% endblock %}
+
+{% block conteudo %}
+<section class="convite">
+{% if motivo == "entrar" %}
+  <h1>Entre para ver o curso</h1>
+  <p>A sala de aula é sua: ela mostra em que porta você está, a aula aberta e o
+  que falta para a próxima. Por isso ela precisa saber quem você é.</p>
+  <p class="entrar"><a href="{{ url_de_entrada }}">Entrar na escola</a></p>
+  <p class="miudo">Ainda não é aluno? A porta de entrada da Meshcraft Academy
+  fica na <a href="{{ url_da_capa }}">página inicial</a>.</p>
+{% elif motivo == "sem-matricula" %}
+  <h1>Não encontramos uma matrícula ativa no seu nome</h1>
+  <p>Você entrou na escola, mas o curso só abre para quem está matriculado. Se
+  você já é aluno e está vendo isto, fale com a escola pela
+  <a href="{{ url_da_capa }}">página inicial</a>: pode ser um cadastro com outro
+  e-mail.</p>
+{% elif motivo == "sem-resposta" %}
+  <h1>Não conseguimos conferir sua matrícula agora</h1>
+  <p>A parte da escola que responde por isso não respondeu. Nada foi perdido:
+  espere alguns instantes e <a href="{% url 'mapa' %}">tente de novo</a>.</p>
+{% else %}
+  <h1>O curso ainda não está ligado nesta escola</h1>
+  <p>Quando estiver, é aqui que as portas vão aparecer. Volte pela
+  <a href="{{ url_da_capa }}">página inicial</a>.</p>
+{% endif %}
+</section>
+{% endblock %}

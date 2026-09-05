@@ -25,3 +25,10 @@ black==24.10.0
 # verdade no ar — e suíte que depende de outra célula fica vermelha por motivo
 # alheio.
 respx==0.23.1
+# O freeze de contrato (ci/contract_freeze.py, via `make contrato-check`)
+# importa PyYAML para comparar o congelado com o vivo. Entrou no degrau 1.4,
+# quando contracts/cursos.openapi.yaml congelou e a linha da célula no
+# manifesto virou `required`: sem isto o CI da célula fica ERROR "PyYAML
+# indisponível", e local fica verde porque a máquina de quem desenvolve tem
+# PyYAML global (`armadilhas/096`).
+PyYAML==6.0.2
