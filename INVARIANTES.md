@@ -941,30 +941,6 @@ coisa alguma, e ainda gasta a confiança de todo mundo.
   acrescentar a palavra a um template do plantão deixa 1 vermelho.
 - **Célula dona:** cursos
 
-### [INV-CUR-L4] Nenhuma Decisão, Data ou Resposta à Pergunta Vem da IA
-- **O quê:** o Assistente de laudo (`apps/cursos/agente.py`) prepara a rubrica,
-  as três forças e a mudança, e NADA além disso: nem `RascunhoDaIA` nem
-  `agente.Sugestao` têm campo de decisão, de data de retorno ou de resposta à
-  pergunta de amanhã de manhã, e a tela volta com os três em branco mesmo
-  quando a IA os responde no JSON dela. Um laudo pedido sem decisão é recusado
-  em vez de a decisão do rascunho preencher o buraco.
-- **Por quê:** o degrau deste agente é H, "só prepara". A decisão, a data e a
-  pergunta são o produto do trabalho da professora, e uma coluna para guardá-los
-  seria o primeiro passo silencioso para a tela mostrá-los já marcados: o degrau
-  que a lei diz que nunca sobe. Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §7 e
-  §9; critério de morte 2 da constituição da célula.
-- **Teste-Guarda:**
-  `services/cursos/tests/test_inv_l4_a_ia_nao_decide.py` — a lista INTEIRA de
-  campos dos dois objetos é fixada (campo novo reprova, chame-se ele como se
-  chamar); a IA responde os três e a tela volta sem decisão marcada, com a data
-  em branco e a caixa desmarcada; o `conteudo` guardado não leva os três; e
-  `emitir` recusa um laudo sem decisão mesmo recebendo um rascunho que a traz
-  escrita. Provado por mutação em 05/09/2026: acrescentar `decisao` ao modelo,
-  com a migração junto, deixa 2 vermelhos; acrescentar `decisao: str = ""` ao
-  fim do dataclass deixa 2; copiar os três para o formulário deixa 1; completar
-  a decisão vazia com a do rascunho deixa 1.
-- **Célula dona:** cursos
-
 ### [INV-CUR-L5] A Rubrica Completa Antes de Qualquer Campo Livre
 - **O quê:** o laudo exige uma nota (dentro da escala do instrumento da aula)
   e uma frase por critério antes de aceitar forças, mudança ou decisão; nota

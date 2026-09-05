@@ -754,14 +754,10 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # completa (nota+frase) antes de qualquer campo livre, L6 exatamente
         # três forças (nenhuma genérica) e exatamente uma mudança (com aula
         # que existe no curso), L7 a pergunta de amanhã de manhã só aceita
-        # `true`.
+        # `true`. L4 (nada de decisão/data/pergunta vem da IA) fica para o
+        # degrau 2.3, quando `RascunhoDaIA` ganhar o corpo real.
         "INV-CUR-L1",
         "INV-CUR-L2",
-        # L4 chegou no degrau 2.3 (05/09/2026, TAR-157), como esta lista previa:
-        # `RascunhoDaIA` ganhou o corpo real, e com ele a garantia de que nem o
-        # modelo nem o dataclass do agente têm campo de decisão, de data ou de
-        # resposta à pergunta. O agente é degrau H e nunca sobe.
-        "INV-CUR-L4",
         "INV-CUR-L5",
         "INV-CUR-L6",
         "INV-CUR-L7",
