@@ -1,0 +1,19 @@
+{
+  "arquivo": "204-a-espera-automatica-le-execucao-cancelada-como-reprovacao-e-",
+  "id": "TAR-204",
+  "titulo": "A espera automatica le execucao cancelada como reprovacao e mente vermelho num PR verde",
+  "toca": [
+    "ci",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: ci/esperar.py passa a considerar so a entrada mais recente por nome de check, pela MESMA regra de ci/mergear.py (importada, nao copiada); teste-guarda com duble de rollup contendo CANCELLED+SUCCESS do mesmo check; prova por MUTACAO (sem o conserto o teste fica vermelho); make ci verde.",
+  "despacho": "Medido em 05/09/2026, no Rito de Contrato do PR #1136. A receita da armadilhas/077 para a etiqueta que o workflow nao enxerga manda FECHAR E REABRIR o PR, para forcar um evento novo. Isso funciona, e deixa um rastro: a execucao antiga fica CANCELLED no statusCheckRollup, ao lado da nova que passou. O rollup passa a ter DUAS entradas com o mesmo nome de check. Medido no #1136: 'conferir o toca declarado | COMPLETED | CANCELLED | 23:44:05' e 'conferir o toca declarado | COMPLETED | SUCCESS | 23:44:14'. `ci/esperar.py --checks` le a cancelada como reprovacao e anuncia REPROVADO com o PR inteiro verde; `gh pr checks` mostra so a ultima por nome e diz pass; e `ci/mergear.py --pousar`, que e a fonte de direito, aprova corretamente. Duas solucoes da casa se atropelam: quem seguir a 077 vai levar um falso vermelho da espera, e o falso vermelho e o pior tipo de defeito num portao porque ensina a ignorar o portao. Conserto: `ci/esperar.py` deve considerar, para cada NOME de check, apenas a entrada mais recente do rollup, exatamente como o portao ja faz. Confira como `ci/mergear.py` resolve isso e use a MESMA regra, importada, para as duas nao poderem discordar sobre o mesmo fato (o mesmo desenho das duas vacinas de deploy, armadilhas/127). Prove por MUTACAO com um duble de rollup que tenha a dupla CANCELLED+SUCCESS: com o conserto, verde; sem ele, vermelho.",
+  "origem": "medido pela maestro no Rito de Contrato do PR #1136, em 05/09/2026: a espera anunciou REPROVADO e o portao aprovou o mesmo PR",
+  "criada_em": "2026-09-05"
+}
