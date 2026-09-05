@@ -4,13 +4,13 @@ publico-para-ia: true
 
 > **Estado: APROVADO pelo mantenedor em 05/09/2026, com o rumo corrigido por
 > ele** (registros `20260905-005`, `20260905-013` e `20260905-015`; PRs #1051 e
-> #PR_DEGRAU_1). Em pergunta estruturada ele aprovou a escada, a assinatura
+> #1056). Em pergunta estruturada ele aprovou a escada, a assinatura
 > como pagamento do despachante e 5 PRs em sombra antes do pouso sozinho. Em
 > seguida esclareceu o que queria, nas palavras dele: *"quando eu passar aqui
 > uma tarefa, que ela seja executada por vários agentes e sub-agentes, para
 > mais agilidade, porque hoje as tarefas demoram bastante"*. Isso é o **§0**
 > abaixo, que entrou primeiro: o degrau 1 (as fichas) mais a regra de que todo
-> pedido dele é um lote, construídos no PR #PR_DEGRAU_1. O despachante (degrau
+> pedido dele é um lote, construídos no PR #1056. O despachante (degrau
 > 2) fica como degrau seguinte, e depende de duas decisões que ele deixou para
 > depois: o teto do dia e as tarefas da fábrica (registro `20260905-015`, na
 > caixa "Precisa de você"). A tarefa dele nasce na fila quando elas chegarem.
@@ -463,6 +463,6 @@ aprendido vai para o `RUNBOOK-LOTES.md` §9 como lição de regência.
 ## Estado
 
 **APROVADO em 05/09/2026, com o rumo corrigido.** O §0 (as fichas e a regra do
-lote por pedido) foi construído no PR #PR_DEGRAU_1. O despachante espera as duas
+lote por pedido) foi construído no PR #1056. O despachante espera as duas
 decisões do §8 (teto do dia; tarefas da fábrica), registradas como pendência
 `20260905-015`. Quem responde "isto foi feito?" continua sendo o livro e a fila.
