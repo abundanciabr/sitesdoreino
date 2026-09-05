@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.plataforma/eventos/revisao.prazo-estourado.v1.json",
+  "title": "revisao.prazo-estourado.v1",
+  "description": "AS 24 HORAS DE REVISAO DE UM ENVIO PASSARAM SEM LAUDO. O prazo nunca se alonga e nunca muda por API: o estouro se REGISTRA (INV-CUR-L3), e o envio segue na fila, agora vencido, ate o laudo sair. Emitido pelo relogio: `ator_id` e sempre null. Quem consome: a `metricas`; a tela do plantao le da propria celula, nunca deste evento. So IDS OPACOS viajam: nem link, nem texto, nem e-mail, nem nome. Quem precisar do detalhe pergunta a celula na hora de MOSTRAR. Publicado pela celula cursos (a sala de aula da Meshcraft) pelo padrao outbox transacional (INV-P6). Escrito em papel em 04/09/2026, antes de a celula emiti-lo. Lei: docs/decisoes/PLANO-CELULA-CURSOS.md §5.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "event",
+    "version",
+    "event_id",
+    "occurred_at",
+    "ator_id",
+    "data"
+  ],
+  "properties": {
+    "event": {
+      "const": "revisao.prazo-estourado"
+    },
+    "version": {
+      "const": 1
+    },
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Id unico DESTE fato. E a chave de idempotencia de quem consome: o mesmo evento reentregue pelo relay produz UM efeito so."
+    },
+    "occurred_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ator_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Sempre null: quem emite e o RELOGIO, nao uma pessoa. NUNCA e o e-mail."
+    },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "site_id",
+        "envio_id",
+        "horas_de_atraso"
+      ],
+      "properties": {
+        "site_id": {
+          "type": "string",
+          "description": "Site (tenant): chave de roteamento, como em todo evento desta plataforma."
+        },
+        "envio_id": {
+          "type": "string",
+          "description": "Id opaco do envio (o checkpoint entregue por link) dentro da celula cursos. Nunca o link."
+        },
+        "horas_de_atraso": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Horas completas alem das 24 de revisao no momento da emissao, no minimo 1."
+        }
+      }
+    }
+  }
+}
