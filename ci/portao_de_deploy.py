@@ -74,8 +74,29 @@ from espera import (  # noqa: E402
 REPROVA = {"failure", "timed_out", "startup_failure", "action_required", "neutral", "stale"}
 
 CI_CELULA = ".github/workflows/ci-celula.yml"
-ALARME_MAIN = ".github/workflows/alarme-main.yml"
 MURALHAS = ".github/workflows/muralhas.yml"
+# DECLARADO POR ESCRITO, e FORA de `exigidos` desde 05/09/2026 (alavanca 2 das
+# alavancas de 10x da fábrica, liberada pelo mantenedor). Até essa data o
+# portão esperava o `alarme-main` terminar antes de publicar. Medido no
+# deploy-celula de 05/09 20:25: o job `portao-de-deploy` levou 1min22s, e
+# quase tudo era essa espera (o alarme leva 1min18s, 63 s deles na suíte
+# `ci/tests/`), contra 23 s de build da imagem e 32 s de VPS.
+#
+#   - Ele não é exigido porque mede o MESMO conteúdo que o `muralhas` do PR
+#     de origem já mediu. A `main` tem política estrita
+#     (`strict_required_status_checks_policy`): o PR só mergeia com a base em
+#     dia, então a árvore da `main` depois do merge é exatamente a que os
+#     checks do PR mediram. E este portão exige e confere esse `muralhas`
+#     (`pr_de_origem` + `esperar_workflows`, em `main()`). Esperar o alarme
+#     era fazer a mesma pergunta pela terceira vez, sobre o mesmo commit.
+#   - Ele fica em `conhecidos` porque roda no mesmo `head_sha` do deploy.
+#     Fora da lista, um alarme vermelho cairia em `vermelhos_nao_previstos`
+#     e a isenção não existiria de verdade, o mesmo desenho do vigia e da
+#     vacina abaixo.
+#
+# Quem grita quando ele fica vermelho é a issue do próprio alarme
+# (`main-vermelha`), não este portão.
+ALARME_MAIN = ".github/workflows/alarme-main.yml"
 # DECLARADO POR ESCRITO, como o `vermelhos_nao_previstos` exige de todo check
 # novo. O vigia do cadeado é ALARME, não portão, e por isso entra em
 # `conhecidos` sem entrar em `exigidos`:
@@ -550,7 +571,6 @@ def main() -> int:
             # de ter RODADO verde — skipped aqui é instrumentação quebrada (F3).
             exigidos = {
                 CI_CELULA: ("ci-celula-gate", "ci-celula"),
-                ALARME_MAIN: ("guardas do repositório",),
             }
         else:
             relatorio.registrar(
@@ -560,7 +580,6 @@ def main() -> int:
             # continua obrigatório e carimba que a detecção concluiu.
             exigidos = {
                 CI_CELULA: ("ci-celula-gate",),
-                ALARME_MAIN: ("guardas do repositório",),
             }
 
         escolhidos, runs_do_commit = esperar_workflows(
@@ -590,7 +609,7 @@ def main() -> int:
             )
         )
 
-        conhecidos = set(exigidos) | {MURALHAS, VIGIA_DO_CADEADO, VACINA_DO_DEPLOY, DEPLOY_CELULA, DEPLOY_INFRA}
+        conhecidos = set(exigidos) | {MURALHAS, ALARME_MAIN, VIGIA_DO_CADEADO, VACINA_DO_DEPLOY, DEPLOY_CELULA, DEPLOY_INFRA}
         relatorio.registrar(vermelhos_nao_previstos(runs_do_commit, conhecidos))
 
     except ErroDeInstrumentacao as erro:

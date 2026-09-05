@@ -88,6 +88,15 @@ jobs:
   # CUSTO, medido no run 33315506488: o job `muralhas` leva 71 s (59 s só de
   # suíte) e o `painel-no-navegador`, em paralelo, 49 s. Este espelho roda em
   # paralelo com os dois e fica na mesma faixa — o relógio do PR não muda.
+  #
+  # O QUE O ESPELHO ESPELHA DESDE 05/09/2026 (alavanca 2 das alavancas de 10x
+  # da fábrica, liberada pelo mantenedor): SÓ a guarda de segredos, repo-wide,
+  # num checkout cru. A suíte `ci/tests/` saiu daqui e do `alarme-main` no
+  # mesmo PR: ela rodava quatro vezes por PR sobre o mesmo conteúdo, e a `main`
+  # tem política estrita, então o que o alarme media depois do merge era o que
+  # o job `muralhas` acima já tinha medido. O espelho continua sendo a cópia
+  # passo a passo do job `guardas-do-repositorio` do alarme, e
+  # `ci/tests/test_espelho_do_alarme_em_pr.py` continua comparando os dois.
   # ===========================================================================
   espelho-da-main:
     name: espelho-da-main
@@ -114,8 +123,6 @@ jobs:
           # 2 `git grep` não conseguiu varrer (ERROR). `set -e` propaga o exit
           # tal e qual, para o log distinguir "achei" de "não consegui olhar".
           bash ci/guarda-de-segredos.sh
-      - name: Testar o testador
-        run: python ci/ci.py --apenas testador
 
   # ===========================================================================
   # O PAINEL NUM NAVEGADOR DE VERDADE.

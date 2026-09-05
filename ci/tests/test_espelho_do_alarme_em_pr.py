@@ -40,6 +40,16 @@ O job `espelho-da-main` do `muralhas.yml` é o `guardas-do-repositorio` do
 §2): daqui a duas semanas alguém acrescenta um step ao alarme, esquece o
 espelho, e o buraco volta calado. Este teste compara os dois passo a passo.
 
+O QUE O ESPELHO ESPELHA DESDE 05/09/2026
+----------------------------------------
+Só a guarda de segredos, repo-wide, num checkout cru. A suíte `ci/tests/`
+saiu do `guardas-do-repositorio` e deste espelho no mesmo PR (alavanca 2 das
+alavancas de 10x da fábrica, liberada pelo mantenedor): ela rodava quatro
+vezes por PR sobre o mesmo conteúdo, e a `main` tem política estrita, então o
+que o alarme media depois do merge era o que o job `muralhas` já tinha medido
+antes. A comparação passo a passo continua: é ela que impede os dois jobs de
+divergirem em silêncio, qualquer que seja o conteúdo deles.
+
 Fail-closed no próprio teste: arquivo ausente, YAML ilegível, job ausente ⇒
 REPROVA. Nunca `skip`, nunca verde por não ter conseguido ler.
 """
