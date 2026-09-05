@@ -1769,6 +1769,28 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/confianca/",
+      "endereco": "/admin/placar/confianca/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "A confiança nos números",
+      "descricao": "Três perguntas sobre a própria medição, antes de você agir sobre qualquer número do placar: continua chegando fato de tudo que a plataforma conta, quais números já envelheceram além do prazo do cartão deles, e o que chegou até a porta e não pôde ser contado.",
+      "observacao": "Quando a parte que guarda os fatos não responde, esta tela diz que não perguntou, e nunca que está tudo limpo. Degrau 11 do plano do painel de gestão (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §6.6)."
+    },
+    {
+      "celula": "admin",
+      "rota": "placar/confianca/quebrado/<int:morto_id>/",
+      "endereco": "/admin/placar/confianca/quebrado/<int:morto_id>/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Um evento que chegou quebrado, por dentro",
+      "descricao": "O envelope de um fato que a plataforma publicou e que não pôde ser contado, exatamente como ele chegou: o motivo, o assunto que ele dizia ser, quando chegou, e o texto cru.",
+      "observacao": "É a única tela desta área que mostra o texto cru de um envelope, e por isso ela é um endereço por evento: o corpo pode trazer coisas que esta casa não guarda, e vê-lo é um gesto deliberado, um por vez."
+    },
+    {
+      "celula": "admin",
       "rota": "reuniao/",
       "endereco": "/admin/reuniao/",
       "alcance": "publico",
