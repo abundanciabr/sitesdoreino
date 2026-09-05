@@ -108,8 +108,11 @@ do disco.
 - **Esta célula não constrói portfólio.** O Estúdio (`pages`) é a casa; daqui
   sai só `getStudentProgress`.
 
-- **O conteúdo entra pela porta de máquina.** Nenhuma migração semeia texto de
-  aula; a migração só semeia slug e nome canônico de instrumento.
+- **O conteúdo entra pela porta de máquina.** Nenhuma migração roda código nem
+  semeia nada ([INV-CUR-C2], guarda `tests/test_inv_c2_conteudo_so_pela_porta.py`);
+  o esqueleto (um curso, doze blocos, 34 aulas só com número e título exibido,
+  treze instrumentos só com slug, nome canônico e cartão) entra pelo comando
+  `semear_esqueleto`, idempotente; o texto entra pela tela do Admin, e só por ela.
 
 ## Critérios de morte (lei §11)
 Se a construção começar a desenhar **um segundo lugar para o texto das

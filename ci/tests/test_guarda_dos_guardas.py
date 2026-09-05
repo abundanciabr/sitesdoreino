@@ -737,6 +737,7 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         "INV-ENC-J8",
         "INV-ENC-J9",
         "INV-ENC-J10",
+        "INV-CUR-C2",
         "INV-CI01",
     ]
 

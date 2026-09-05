@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260905-031529-TAR-147-concluida",
+  "tarefa": "TAR-147",
+  "evento": "concluida",
+  "quando": "2026-09-05T03:15:29+00:00",
+  "quem": "sessao-cursos-tabelas-2026-09-05",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1052 (aberto; Curso, Bloco, Aula, Peca, Pausa e Instrumento com unicidades e vocabularios no PostgreSQL, FK composta bloco/curso (armadilhas/274); semear_esqueleto: 1 curso, 12 blocos, 34 aulas, 13 instrumentos, 0 pecas, 0 pedidos, idempotente; 74 testes verdes, black limpo, makemigrations --check limpo; guarda do INV-CUR-C2 provado por MUTACAO com vermelho na assercao; 13 muralhas PASS; deploy vermelho ate o degrau 1.7 e esperado, armadilhas/088)",
+  "verificado_em": "2026-09-05"
+}
