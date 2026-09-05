@@ -229,7 +229,7 @@ def test_analise_de_ideia_que_saiu_do_quadro_nao_desenha_nada():
 
     # A ideia 21 tem análise escrita, mas a Caixa não a respondeu nesta abertura.
     assert "Guia de portfólio" not in pagina
-    assert "CS-CURSOS-0002" not in pagina
+    assert "CS-PAGES-0001" not in pagina
 
 
 @respx.mock
