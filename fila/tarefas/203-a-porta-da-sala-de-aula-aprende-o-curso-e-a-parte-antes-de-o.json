@@ -1,0 +1,19 @@
+{
+  "arquivo": "203-a-porta-da-sala-de-aula-aprende-o-curso-e-a-parte-antes-de-o",
+  "id": "TAR-203",
+  "titulo": "A porta da sala de aula aprende o curso e a parte, antes de o endereco mudar",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: as operacoes novas com {curso} no caminho e o filtro por parte; a resolucao do curso deixa de ser 'o primeiro do site' e passa a ser pelo slug, com 404 e frase em portugues quando nao existe; guarda provado por MUTACAO de que parte que nao casa com a aula RECUSA; os caminhos antigos continuam respondendo (contrato congelado nao quebra); manage.py export_openapi roda e mostra as operacoes novas; suite da cursos verde e make ci verde.",
+  "despacho": "A porta de maquina da celula cursos assume UM curso por site: as operacoes sao /aulas e /aulas/{numero}, com site_id, e a resolucao no codigo e `Curso.objects.filter(site_id=site).order_by(\"id\").first()`. No dia em que nascer um segundo curso, o site inteiro continua servindo o primeiro, sem erro e sem tela quebrada. Decisao do mantenedor em 05/09/2026: curso e parte entram no endereco. Este degrau faz a PORTA aprender os dois, ANTES de congelar o contrato (a ordem que armadilhas/228 e 243 provaram). Caminhos novos: /cursos/{curso}/aulas (listLessons), /cursos/{curso}/aulas/{numero} (getLesson, putLesson), /cursos/{curso}/aulas/{numero}/publicar (publishLesson), e a listagem aceita filtrar por parte. O `curso` e o slug (Unique(site_id, slug)); a `parte` e a do Bloco (1, 2 ou 3) e a aula so responde por ela se casar de verdade. Os caminhos ANTIGOS continuam existindo e respondendo, porque o contrato esta congelado e este PR nao pode quebra-lo: o congelamento do novo e um Rito proprio, da maestro. `export_openapi` roda e o export sai com as operacoes novas.",
+  "origem": "decisao do mantenedor em 05/09/2026: 'quero que ao compartilhar uma aula o link seja util para o aluno entender exatamente em qual parte do curso ele esta'",
+  "criada_em": "2026-09-05"
+}
