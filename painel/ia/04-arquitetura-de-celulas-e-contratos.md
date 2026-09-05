@@ -335,8 +335,9 @@ aluno, peça só com autorização, cliente novo passa pelo plantão).
 
 **Estado:** plano escrito a partir dos nove documentos do projeto Meshcraft
 que o mantenedor trouxe em 04/09/2026 (eles moram FORA do repositório, de
-propósito: obra não lançada, `armadilhas/331`), e levado a ele em pergunta
-estruturada na mesma sessão. **Fonte de verdade:**
+propósito: obra não lançada, `armadilhas/331`), e **aprovado por ele em
+pergunta estruturada na mesma sessão** (registro `20260905-001`, PR #1044); a
+gênese está destravada. **Fonte de verdade:**
 `docs/decisoes/PLANO-CELULA-CURSOS.md` (a visão, as emendas da casa aos nove
 documentos, o modelo, os eventos, as superfícies, os agentes de IA, os
 invariantes, a escada) e `docs/decisoes/CONSTITUICAO-cursos-rascunho.md` (a

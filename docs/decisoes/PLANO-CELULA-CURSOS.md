@@ -2,6 +2,12 @@ publico-para-ia: true
 
 # PLANO — a célula `cursos` (a sala de aula da Meshcraft, e os agentes de IA que trabalham nela)
 
+> **Estado: APROVADO pelo mantenedor em 04/09/2026**, em pergunta estruturada
+> na mesma sessão que o escreveu (registro `20260905-001` no livro, PR #1044).
+> Ele decidiu: a lei vale com as emendas do §3; onde moram os vídeos fica para a
+> fase da sala de aula (degrau 1.8), e a gênese não depende disso. A gênese
+> está destravada (TAR-146, criada neste mesmo PR, depois da TAR-145 desta fase).
+
 **Escrito em 04/09/2026**, a partir de: os nove documentos do projeto Meshcraft
 que o mantenedor trouxe nesse dia (o roadmap consolidado do curso, o playbook
 de 66 plays, a equipe de agentes, "Como começar a criar os agentes", as doze
@@ -503,16 +509,19 @@ da escada, junto com o e-mail da professora.
   capítulos chegarem**.
 - Ele e a autora: **não são a mesma pessoa**.
 
-**Na pergunta de agora (Sessão A, na mesma sessão que escreveu isto):**
+**Respondidas na Sessão A (04/09/2026, registro `20260905-001`):**
 
-- **A. Esta lei vale?** Aprovar promove o plano na gênese; recusar ou emendar
-  volta ao papel. Recomendação: aprovar, com as emendas do §3.
+- **A. Esta lei vale?** Recomendação: aprovar, com as emendas do §3.
+  **Resposta: aprovada, com as emendas.**
 - **B. Onde moram os vídeos?** O que a pausa real exige: um tocador que o site
   possa mandar parar e retomar. O que muda entre os serviços: se dá para
   restringir quem assiste, e se custa mensalidade. Recomendação: um serviço de
   vídeo com restrição por domínio (só toca dentro do `meshcraft.top`) e
   tocador controlável, como o Vimeo; o YouTube não listado é grátis, mas quem
   tiver o link assiste, e ele mostra vídeos de outros no fim.
+  **Resposta: decide na fase da sala de aula (degrau 1.8).** A sessão desse
+  degrau reabre a caixa com as mesmas opções; a gênese e o editor não dependem
+  do vídeo.
 
 **Ficam para a fase que as precisa (registradas no livro como pendência, com a
 fase escrita):**
@@ -670,5 +679,10 @@ mantenedor no repositório público).
 
 ## Estado
 
-Plano escrito em 04/09/2026. Aguarda: Sessão A (a aprovação e a decisão dos
-vídeos) → a gênese (TAR criada neste PR) → a escada.
+| O quê | Estado | Onde se confere |
+|---|---|---|
+| Este plano | **aprovado em 04/09/2026** | registro `20260905-001`, PR #1044 |
+| A constituição em papel | promovida na gênese | `CONSTITUICAO-cursos-rascunho.md` → `constituicoes/AGENTS.cursos.md` |
+| A gênese (degrau 1.1) | TAR-146 na fila | `python ci/fila.py listar --ao-vivo` |
+| Os vídeos (decisão B) | adiada por ele para o degrau 1.8 | este §8 |
+| Os capítulos | ainda no chat do claude.ai (04/09/2026) | a Fase 3 espera por eles |

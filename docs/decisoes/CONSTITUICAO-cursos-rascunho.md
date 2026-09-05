@@ -3,8 +3,8 @@ publico-para-ia: true
 # Constituição da Célula: cursos (a sala de aula da Meshcraft)
 > **Jurisdição:** governa apenas `services/cursos/`. Herda `CONSTITUICAO.md`.
 > **STATUS:** EM PAPEL (escrita em 04/09/2026 junto com
-> `PLANO-CELULA-CURSOS.md`; é promovida a `constituicoes/AGENTS.cursos.md` na
-> gênese, revista contra o código) · **Merge:** pela pista
+> `PLANO-CELULA-CURSOS.md`, aprovado pelo mantenedor no mesmo dia; é promovida
+> a `constituicoes/AGENTS.cursos.md` na gênese, revista contra o código) · **Merge:** pela pista
 > (`ci/mergear.py --pousar`), com CI verde
 
 ## Missão
@@ -118,8 +118,9 @@ célula**, **ponto calculado aqui**, **conteúdo por arquivo commitado**, ou
 ## O que esta célula ainda NÃO resolveu
 Registrado para ninguém achar que foi esquecimento (lei §8):
 
-1. **Onde moram os vídeos** (decisão B da Sessão A): o serviço, o custo e a
-   restrição de quem assiste. A pausa real exige tocador controlável.
+1. **Onde moram os vídeos**: o mantenedor adiou a decisão para a fase da sala
+   de aula (degrau 1.8), em 04/09/2026. O serviço, o custo e a restrição de
+   quem assiste; a pausa real exige tocador controlável.
 2. **O modelo e o custo do Assistente de laudo** (degrau 2.3), e a chave da
    Anthropic na VPS, que em 02/09/2026 ainda não existia.
 3. **Quando abrir a E00** para os alunos que já estão na escola: decisão de
