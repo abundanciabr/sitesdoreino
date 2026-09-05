@@ -263,7 +263,10 @@ def _em_paralelo() -> list[str]:
 
     Isto não é enfeite de velocidade: sem ele, o job `windows-a-maquina-dos-robos`
     (que existe porque nenhum outro job desta casa roda no sistema onde os robôs
-    trabalham) faria a espera de TODO PR pular de ~1min36s para ~10min.
+    trabalham) fazia a espera de TODO PR pular de ~1min36s para ~10min. Desde
+    05/09/2026 esse job mora em `.github/workflows/rede-do-windows.yml` e roda
+    na `main`, fora do caminho do PR; o paralelo continua valendo lá e na
+    máquina de todo agente.
 
     CONDICIONAL de propósito: quem não tiver o xdist instalado continua rodando
     em série, mais devagar e igualmente correto. Um portão que passa a EXIGIR

@@ -1,0 +1,176 @@
+# =============================================================================
+# A REDE DO WINDOWS — a mesma suíte, no sistema onde os robôs realmente rodam,
+# depois de cada merge na `main`.
+#
+# O BURACO: até 04/09/2026 os 33 jobs deste repositório rodavam em
+# `ubuntu-latest`, e nenhum outro. Mas os robôs desta casa trabalham na
+# máquina Windows do mantenedor. Toda diferença entre os dois sistemas era,
+# por construção, invisível para a CI — e diferença de codepage não grita:
+# ela devolve `False` numa comparação de texto e segue em frente.
+#
+# MEDIDO, e é o motivo deste job existir. A remedição do ERROR do portão de
+# pouso (`ci/esperar.py`) foi construída em 03/09/2026 porque dois PRs do
+# mesmo lote, #954 e #956, morreram sem ela. No Windows ela nasceu INERTE: o
+# `python` filho escreve "assíncrona" em cp1252, o pai lê utf-8, o `í` chega
+# como U+FFFD e a frase que decidia remedir nunca casava. Dois testes de
+# `ci/tests/test_espera.py` reprovavam aqui desde o primeiro dia, verdes na
+# CI o tempo todo. A cura só chegou porque um humano rodou a suíte na mão.
+#
+# E não foi surpresa: a `armadilhas/138` escreveu esta previsão, com todas as
+# letras, em 27/08/2026 — "o required check `muralhas` roda em ubuntu-latest,
+# não Windows" — e nada foi construído. É a terceira reincidência da mesma
+# classe (`armadilhas/003`, 138, 328). Catálogo cura o caso; só mecanismo
+# cura a classe (RETROSPECTIVA-FASE-D §2).
+#
+# CUSTO EM DINHEIRO: zero (repositório público, runner padrão do GitHub).
+#
+# CUSTO EM RELÓGIO, e a história dele. Este job nasceu em 04/09/2026 dentro do
+# `muralhas.yml`, rodando em todo PR. A primeira versão do comentário dele
+# afirmava que rodar em paralelo não custava nada, e estava errada. Medido no
+# run 33913502340, minutos depois de ele entrar: os outros três jobs fecharam
+# em 2min15s e este levou 9min11s, empurrando a espera do PR de 1min36s
+# (mediana de 44 casos) para 14min17s. Rodar em paralelo não ajuda quando o
+# paralelo é mais lento que o serial inteiro — o relógio de um PR é o job mais
+# demorado, não a soma.
+#
+# O primeiro conserto NÃO foi cortar a proteção. A suíte gastava o tempo dela
+# ABRINDO OUTROS PROGRAMAS (119 fronteiras de subprocesso; os doze testes mais
+# lentos levam de 10 a 24 s cada um só nisso), e criar processo no Windows
+# custa perto de dez vezes o que custa no Linux. Rodando em paralelo
+# (`-n auto`, ligado em `ci/ci.py::_em_paralelo`), neste runner
+# (run 33917004520):
+#
+#     este job, em série ....... 9min11s   (suíte: 8min50s)
+#     este job, em paralelo .... 4min53s   (suíte: 4min26s)
+#     espera do PR inteiro ..... 14min17s → 5min12s
+#
+# A medição na máquina do mantenedor dá 8min55s → 3min31s com 4 processos; o
+# runner do GitHub tem núcleo mais lento e entrega 4min26s. Os dois números
+# estão aqui de propósito: a primeira versão desse bloco trazia só o da
+# máquina local, rotulado "= este runner", e errava por quase um minuto.
+#
+# POR QUE ELE SAIU DO PR (05/09/2026, alavanca 1 de
+# `documentos/alavancas-10x-da-fabrica.md`, liberada pelo mantenedor em
+# pergunta estruturada, registro 20260905-075): o relógio de um PR é o job
+# mais lento; este job não é exigido pela `main` (o conjunto de regras pede só
+# `muralhas` e `ci-celula-gate`) e segurava todo PR em 4min50s, contra 41s da
+# mesma suíte no Linux. Como `ci/esperar.py --checks`, `ci/mergear.py
+# --conferir` e a pista de pouso esperam TODOS os checks do rollup, o
+# `muralhas` levava 5,8 min por PR (mediana de 40 runs) em vez de ~1,5 min, e
+# enquanto o PR esperava a base envelhecia: 155 voltas de "Merge branch
+# 'main' into" para 71 PRs desde 04/09. Um job que a `main` nem exigia
+# definia o relógio de toda a fábrica.
+#
+# A cobertura continua a mesma: TODO commit da `main` passa por aqui. O que
+# muda é que nenhum PR fica parado esperando por ele, e quem grita quando ele
+# reprova é a issue do job `alarme` abaixo (o desenho do `alarme-main.yml`,
+# reusado). Ele NÃO é um portão: não impede nada, avisa depois. O modo de
+# falha dele é "não avisou", nunca "aprovou o que não devia". O portão de
+# deploy (`ci/portao_de_deploy.py`) o conhece pelo caminho e NÃO o exige: ele
+# roda no mesmo SHA do `deploy-celula`, mede a máquina dos robôs e não o
+# código que vai para produção, e o deploy não pode esperar 5 minutos por ele.
+#
+# Ele NÃO substitui reproduzir o perigo em teste: quem consegue transformar
+# "só quebra no Windows" em uma linha de fita (como
+# `test_a_remedicao_sobrevive_ao_portao_que_escreve_em_cp1252` faz, mandando
+# o dublê escrever cp1252) deve fazê-lo — isso pega o defeito em 9 segundos
+# no Linux, não em 5 minutos aqui. Este job é a rede para o que ninguém
+# pensou em reproduzir.
+#
+# Guarda: `ci/tests/test_rede_do_windows.py`.
+# =============================================================================
+name: rede-do-windows
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  windows-a-maquina-dos-robos:
+    name: windows-a-maquina-dos-robos
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependências dos portões
+        run: python -m pip install --quiet pytest pytest-xdist pyyaml
+      # SEM forçar codepage nem `PYTHONUTF8` aqui: o console cru é exatamente a
+      # condição que se quer medir. Quem precisa de UTF-8 pede em código, na
+      # porta da casa (`_nucleo.configurar_saida`) — e é essa garantia que este
+      # job existe para exercitar de verdade, num sistema de verdade.
+      - name: Testar o testador (na codepage do Windows)
+        run: python ci/ci.py --apenas testador
+
+  alarme:
+    name: alarme
+    needs: windows-a-maquina-dos-robos
+    if: failure()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Abrir (ou atualizar) a issue da máquina dos robôs quebrada
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORPO="$(cat <<EOF
+          A suíte dos portões reprovou **no Windows**, na \`main\`, depois de um merge.
+
+          - commit: \`$SHA\`
+          - execução: $RUN_URL
+
+          ## O que isto significa
+
+          A mesma suíte passou no Linux (ela é check obrigatório de todo PR) e reprovou
+          no sistema onde os robôs desta casa realmente trabalham. Quase sempre é uma
+          diferença de codepage ou de caminho: uma comparação de texto que devolve
+          falso em silêncio no Windows e verdadeiro no Linux.
+
+          Isto é um **alarme**, não um portão: ele avisa depois do fato. O job saiu do
+          caminho do PR em 05/09/2026 porque segurava todo PR em 4min50s sem ser exigido
+          pela \`main\` (alavanca 1 de \`documentos/alavancas-10x-da-fabrica.md\`).
+
+          ## O que fazer
+
+          1. Abra a execução acima e leia o estado (\`FAIL\` = violação, \`ERROR\` = não
+             conseguiu medir; são coisas diferentes).
+          2. Reproduza numa máquina Windows: \`python ci/ci.py --apenas testador\`
+          3. Conserte por PR, como sempre, e transforme o defeito numa linha de fita
+             que reproduza o perigo no Linux (o molde é
+             \`test_a_remedicao_sobrevive_ao_portao_que_escreve_em_cp1252\`).
+
+          Feche esta issue quando a rede voltar ao verde.
+          EOF
+          )"
+
+          # Não empilhar issue: se já existe uma aberta, comenta nela.
+          EXISTENTE="$(gh issue list --label windows-vermelho --state open \
+            --json number --jq '.[0].number // empty')"
+
+          if [ -n "$EXISTENTE" ]; then
+            echo "Issue #$EXISTENTE já aberta: comentando nela."
+            gh issue comment "$EXISTENTE" --body "$CORPO"
+          else
+            # `|| true` aqui seria a mesma preguiça que o INV-CI01 combate: ele
+            # esconderia "não consegui criar a label" junto com "ela já existe".
+            # A pergunta é feita de forma explícita.
+            if ! gh label list --json name --jq '.[].name' | grep -qx windows-vermelho; then
+              gh label create windows-vermelho \
+                --description "A suite dos portoes reprovou no Windows, na main" \
+                --color b60205
+            fi
+            gh issue create \
+              --title "a máquina dos robôs quebrou na main: a suíte reprovou no Windows em ${SHA:0:8}" \
+              --label windows-vermelho \
+              --body "$CORPO"
+          fi
