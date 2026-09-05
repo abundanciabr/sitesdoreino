@@ -189,7 +189,15 @@ def test_sem_origem_a_inscricao_entra_mas_a_carta_nao_sai():
     inscricao = Inscricao.objects.get()
     assert inscricao.origem_event_id is None
 
-    passada = motor.varrer(momento=timezone.now(), despachar=despacho.despachar)
+    # Amanhã às 10h de São Paulo, e não `timezone.now()`: a inscrição foi
+    # ancorada no relógio real, então o momento da varredura precisa vir DEPOIS
+    # dela E dentro da janela da régua (8h-20h). Com o relógio cru, entre as 20h
+    # e as 8h a régua barrava o passo e o teste media `barradas=1` em vez de
+    # `sem_despacho=1`: verde de dia, vermelho à noite (`armadilhas/323`).
+    amanha_as_10 = (timezone.localtime() + timedelta(days=1)).replace(
+        hour=10, minute=0, second=0, microsecond=0
+    )
+    passada = motor.varrer(momento=amanha_as_10, despachar=despacho.despachar)
     assert passada.sem_despacho == 1
     assert passada.entregues == 0
     assert not OutboxEvent.objects.exists()

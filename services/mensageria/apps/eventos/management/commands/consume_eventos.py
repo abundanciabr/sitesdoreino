@@ -9,6 +9,8 @@ from django.core.management.base import BaseCommand
 from django.db import IntegrityError, transaction
 
 from apps.eventos.handlers import (
+    ao_checkpoint_devolvido,
+    ao_envio_recebido,
     ao_pagamento_aprovado,
     ao_pagamento_recusado,
     ao_pessoa_cadastrada,
@@ -29,6 +31,12 @@ STREAMS = {
     # viaja no envelope, e pôr `v1` aqui faria a célula escutar um stream que
     # ninguém escreve, em silêncio.
     "eventos.identidade.pessoa-cadastrada": ao_pessoa_cadastrada,
+    # Desde 05/09/2026: a sala de aula (célula `cursos`). O envio recebido
+    # guarda de quem é o checkpoint e cancela o silêncio; o devolvido dispara a
+    # jornada do silêncio de 14 e 30 dias (degrau 2.4). Os dois entram pelo
+    # MESMO consumidor e pelo mesmo grupo: nada muda no compose.
+    "eventos.envio.recebido": ao_envio_recebido,
+    "eventos.checkpoint.devolvido": ao_checkpoint_devolvido,
 }
 
 # Convenção do LOTE — as 4 células consumidoras usam OS MESMOS nomes e valores
@@ -84,7 +92,12 @@ def processar_envelope(envelope: dict, handler) -> bool:
         # conhecida desta célula (LICOES.md), e virou impedimento: a carta de um
         # passo de sequência exige `origem_event_id` no contrato, e sem ele o
         # despachante — fail-closed — nunca publicaria nada.
-        handler(envelope["data"], envelope["event_id"])
+        #
+        # O `ator_id` chega desde 05/09/2026, pelo mesmo motivo de forma: em
+        # `envio.recebido.v1` o aluno viaja SÓ no `ator_id` do envelope, e o
+        # handler que guarda de quem é o envio não tinha como lê-lo. `.get`,
+        # porque nem todo contrato desta célula o declara.
+        handler(envelope["data"], envelope["event_id"], envelope.get("ator_id"))
         return True
 
 
