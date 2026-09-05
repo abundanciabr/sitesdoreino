@@ -249,6 +249,19 @@ celulas:
     caminhos: [services/pagamentos]
     consome: []
 
+  pages:
+    caminhos: [services/pages]
+    # NASCE SEM CONSUMIR NINGUÉM, e a lista vazia é a declaração honesta —
+    # não um esquecimento. A casa das Páginas do aluno vai ler a `identidade`
+    # (quem é a pessoa) e a `alunos` (matrícula ativa), e essas duas linhas
+    # entram no degrau 06 da escada (`PLANO-PORTFOLIO-DO-ALUNO.md` §5), junto
+    # com os clientes que leem `IDENTIDADE_API_URL` e `ALUNOS_API_URL`.
+    # Declará-las HOJE seria declaração órfã, e o varredor reprova por isso,
+    # com razão (`armadilhas/224`): um mapa que promete a mais é tão mentiroso
+    # quanto um que promete a menos. Quem escrever os clientes volta aqui no
+    # mesmo PR — e se esquecer, o varredor cobra pelo outro lado.
+    consome: []
+
   quiz:
     # `services/quiz/LICOES.md` MENCIONA `CATALOGO_API_URL`, mas o código não a
     # lê — o varredor não olha `.md` de propósito: documento não é dependência,
