@@ -528,6 +528,38 @@ no meio dos passos manuais):
   maestro quem consolida numa única pergunta estruturada. Sem essa regra, um
   lote de 5 despachos em paralelo viraria 5 caixas de pergunta simultâneas.
 
+## O que você entrega para ele mora no site (desde 05/09/2026)
+
+Decisão dele, com as palavras dele: *"Você consegue colocar esse artefato em uma
+página do site? E sempre criar isso no site ao invés de artefatos?"*. Lei
+completa em `docs/decisoes/DECISAO-onde-mora-o-que-eu-entrego.md`.
+
+**Toda entrega que ele vai ler mais de uma vez nasce dentro de
+`meshcraft.top`**, nunca como página solta fora do site. Análise, relatório,
+plano, comparação, painel: se ele vai voltar nisso, tem endereço no site.
+
+A pergunta que decide ONDE é uma só: **isto se apoia em fatos que o sistema já
+conhece?**
+
+- **Sim** (votos, alunos, tarefas, dinheiro, estado de qualquer coisa): é uma
+  **tela calculada** em `/admin/`, com teste. Nunca um documento com os números
+  escritos dentro, que é fotografia e começa a mentir no dia seguinte. O padrão
+  é **fato vivo mais julgamento guardado**: o texto de análise fica no código, os
+  números vêm da fonte a cada abertura (exemplo vivo:
+  `services/admin/apps/core/analise_da_caixa.py`, aba `/admin/caixa/analise/`).
+- **Não** (plano, lei, explicação, roteiro): vai para o **editor de documentos**
+  em `/admin/documentos/`, que ele edita sem pedir nada a ninguém.
+- **Para IA de fora ler**: `/mapa-ia/planos/`, que já era lei.
+
+Continua valendo mandar **arquivo na conversa** (uma prévia, uma captura) e
+**texto curto direto na resposta**: prévia não é entrega, e o que cabe em dez
+linhas não precisa de página. O que não vale é a entrega definitiva morar fora
+do site.
+
+**Quem faz valer:** ninguém, mecanicamente — a lei está declarada em
+`ci/leis-sem-mecanismo.txt`. Um portão que adivinhasse "isto devia ser uma tela"
+reprovaria trabalho honesto e deixaria o descuido passar.
+
 ## Este projeto é para ser feito completo — nunca proponha a versão minimalista
 
 

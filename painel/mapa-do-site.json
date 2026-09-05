@@ -1279,6 +1279,15 @@
     },
     {
       "celula": "admin",
+      "rota": "caixa/analise/",
+      "endereco": "/admin/caixa/analise/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "A análise da Caixa",
+      "descricao": "As ideias da turma lidas e ordenadas por voto, com o que cada uma pede, por que importa e o que é preciso para acontecer. Clique no número de uma ideia para ler o que o aluno escreveu. Os números são lidos da Caixa na hora de abrir, nunca cópia velha."
+    },
+    {
+      "celula": "admin",
       "rota": "caixa/ideia/<int:ideia_id>/",
       "endereco": "/admin/caixa/ideia/<int:ideia_id>/",
       "alcance": "publico",
