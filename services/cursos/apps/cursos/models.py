@@ -10,12 +10,16 @@ Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 (o modelo) e §9 (os invariantes
 
 Desde o degrau 2.1 (TAR-155) há também O CHECKPOINT (`Envio`, o que o aluno
 entregou por link, na fila de 24 horas) e a OUTBOX (`OutboxEvent`, molde byte a
-byte de `services/sugestoes`). Não há `Laudo` aqui: é o degrau 2.2. As REGRAS
-do progresso (que porta abre, e quando) não moram neste arquivo: moram em
-`apps/cursos/progresso.py`, e é lá que o [INV-CUR-P2] é imposto; as do envio
-(quem entrega, quando, e o que a fila devolve) moram em `apps/cursos/envio.py`.
-O que mora AQUI do envio é o que só o modelo pode garantir: o prazo que não
-muda ([INV-CUR-L3]).
+byte de `services/sugestoes`). Desde o degrau 2.2 (TAR-156) há também O LAUDO
+(`Laudo`) e o esqueleto de `RascunhoDaIA` (o corpo real é degrau 2.3). As
+REGRAS do progresso (que porta abre, e quando) não moram neste arquivo: moram
+em `apps/cursos/progresso.py`, e é lá que o [INV-CUR-P2] é imposto; as do
+envio (quem entrega, quando, e o que a fila devolve) moram em
+`apps/cursos/envio.py`; as do laudo (as nove regras de 422, os três eventos)
+moram em `apps/cursos/laudo.py`. O que mora AQUI do envio é o que só o modelo
+pode garantir: o prazo que não muda ([INV-CUR-L3]); o que mora AQUI do laudo é
+o que só o modelo pode garantir sozinho: [INV-CUR-L1] (a metade "não é nulo")
+e [INV-CUR-L7] (a metade "só true").
 
 O TEXTO DAS AULAS NUNCA ENTRA POR ARQUIVO
 -----------------------------------------
@@ -750,3 +754,135 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
         return f"{self.event}:{self.event_id}"
+
+
+# ---------------------------------------------------------------------------
+# 12. O RASCUNHO DA IA: esqueleto mínimo (o corpo real é o degrau 2.3)
+# ---------------------------------------------------------------------------
+
+
+class RascunhoDaIA(models.Model):
+    """Só o suficiente para `Laudo.rascunho` ter algo a apontar.
+
+    O corpo real (`conteudo`, `modelo`, `tokens_entrada`, `tokens_saida`,
+    `forcas_mantidas`, `mudanca_mantida`: o que o Assistente de laudo produz e
+    as medidas da Ficha de Série do agente) é do degrau 2.3
+    (`PLANO-CELULA-CURSOS.md` §4, §7, §10, TAR-156 despacho): inventar esses
+    campos aqui desenharia, sem o mantenedor, o contrato de um agente que ainda
+    não existe. [INV-CUR-L4] ("nenhuma decisão, data ou resposta à pergunta
+    vem da IA") nasce como teste quando o corpo real chegar; este esqueleto não
+    tem CAMPO NENHUM que a pergunta possa ocupar, e é essa ausência que já o
+    satisfaz por construção, não um teste que sabota uma gravação.
+    """
+
+    envio = models.ForeignKey(
+        Envio, related_name="rascunhos_de_ia", on_delete=models.PROTECT
+    )
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
+        return f"rascunho de {self.envio_id} em {self.criado_em}"
+
+
+# ---------------------------------------------------------------------------
+# 13. O LAUDO: a decisão de uma pessoa sobre um envio (degrau 2.2)
+# ---------------------------------------------------------------------------
+
+
+class Laudo(models.Model):
+    """O laudo que fecha (ou devolve) um `Envio`: o instrumento, três forças,
+    uma mudança nomeada, a decisão, a data de retorno e a pergunta de amanhã de
+    manhã.
+
+    `envio` é UM PARA UM: um envio recebe um laudo, nunca dois. É este campo
+    (via `OneToOneField`, único no banco) que impede em definitivo o segundo
+    laudo; `apps/cursos/laudo.py::emitir` ainda confere antes, para devolver
+    uma frase em vez de um `IntegrityError` cru.
+
+    Das regras da lei (`PLANO-CELULA-CURSOS.md` §9), só DUAS o banco pode
+    garantir sozinho, sem consultar mais nada além da própria linha, e são as
+    duas constraints abaixo ([INV-CUR-L1] a metade "não é nulo";
+    [INV-CUR-L7]). As demais ([INV-CUR-L5], [INV-CUR-L6], a metade "amanhã ou
+    depois" de L1) precisam do relógio ou da escala do instrumento, e por isso
+    são do SERVIÇO, com teste — nunca menos rigorosas por estarem em Python:
+    só não CABEM num `CheckConstraint`.
+
+    `instrumento_versao` é nulo quando a aula não tem instrumento (a mesma
+    autoavaliação de texto livre que `envio.py::criterios_de` já prevê para o
+    aluno). `ajuste_feito` só é escrito com `aberto_com_ajuste`. `rascunho`
+    aponta para o esqueleto de `RascunhoDaIA` (o corpo real é degrau 2.3).
+    """
+
+    class Papel(models.TextChoices):
+        PROFESSOR = "professor", "Professor"
+        PAR = "par", "Par"
+        BANCA = "banca", "Banca"
+
+    class Decisao(models.TextChoices):
+        ABERTO = "aberto", "Aberto"
+        ABERTO_COM_AJUSTE = "aberto_com_ajuste", "Aberto com ajuste"
+        DEVOLVIDO = "devolvido", "Devolvido"
+
+    envio = models.OneToOneField(Envio, related_name="laudo", on_delete=models.PROTECT)
+    avaliador = models.ForeignKey(
+        Pessoa, related_name="laudos_emitidos", on_delete=models.PROTECT
+    )
+    papel = models.CharField(max_length=9, choices=Papel.choices)
+    instrumento_versao = models.PositiveIntegerField(null=True, blank=True)
+    notas = models.JSONField(default=dict, blank=True)
+    forcas = models.JSONField(default=list, blank=True)
+    mudanca = models.JSONField(default=dict, blank=True)
+    ajuste_feito = models.TextField(blank=True, default="")
+    decisao = models.CharField(max_length=17, choices=Decisao.choices)
+    data_de_retorno = models.DateField(null=True, blank=True)
+    sabe_o_que_fazer_amanha = models.BooleanField()
+    rascunho = models.ForeignKey(
+        RascunhoDaIA,
+        related_name="laudos",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+    )
+    emitido_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(papel__in=["professor", "par", "banca"]),
+                name="papel_de_laudo_no_vocabulario_fechado",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    decisao__in=["aberto", "aberto_com_ajuste", "devolvido"]
+                ),
+                name="decisao_de_laudo_no_vocabulario_fechado",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(instrumento_versao__isnull=True)
+                | models.Q(instrumento_versao__gte=1),
+                name="instrumento_versao_de_laudo_comeca_em_1_ou_nula",
+            ),
+            # [INV-CUR-L1], a metade que o banco garante sozinho: devolvido
+            # exige data de retorno, e qualquer OUTRA decisão a mantém nula.
+            # O "amanhã ou depois" depende do relógio no instante da escrita:
+            # é do serviço, com teste de mutação.
+            models.CheckConstraint(
+                condition=models.Q(decisao="devolvido", data_de_retorno__isnull=False)
+                | (
+                    ~models.Q(decisao="devolvido")
+                    & models.Q(data_de_retorno__isnull=True)
+                ),
+                name="data_de_retorno_so_e_sempre_com_devolvido",
+            ),
+            # [INV-CUR-L7] a pergunta de amanhã de manhã: `false` não se grava.
+            # Não é um `default=True` que o serviço poderia contornar: é a
+            # LINHA INTEIRA que o banco recusa se o valor não for verdadeiro,
+            # mesmo que um código futuro tente gravar a recusa.
+            models.CheckConstraint(
+                condition=models.Q(sabe_o_que_fazer_amanha=True),
+                name="pergunta_de_amanha_so_grava_true",
+            ),
+        ]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
+        return f"laudo de {self.envio_id} ({self.decisao})"

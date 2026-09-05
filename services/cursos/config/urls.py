@@ -5,7 +5,10 @@ from apps.core.views import (
     entregar_checkpoint,
     gravar_autoavaliacao,
     healthz,
+    laudo_recebido,
     mapa,
+    plantao_ficha,
+    plantao_fila,
     registrar_pausa,
     servir_estatico,
 )
@@ -27,9 +30,12 @@ from config.api import api
 # porta é o Bearer do par (`tests/test_porta_exige_bearer.py`); a topologia não
 # fecha nada aqui.
 #
-# As telas que ainda NÃO existem, e o degrau de cada uma: o laudo recebido em
-# `<numero>/laudo` (2.2), o plantão em `plantao` e `plantao/<envio>` (2.2). O
-# envio do checkpoint (2.1) é gesto desta mesma tela da aula: `<numero>/checkpoint`.
+# O LAUDO (degrau 2.2, TAR-156): o laudo recebido em `<numero>/laudo`, e o
+# plantão em `plantao` e `plantao/<envio>`. `plantao` é um segmento LITERAL e
+# por isso precisa vir ANTES de `<str:numero>` na lista: o conversor `str` casa
+# qualquer segmento único, e sem esta ordem "plantao" seria lido como o
+# número de uma aula (e daria 404, nunca a tela da professora) — a mesma razão
+# pela qual `healthz` e `static/` já vêm antes dele.
 urlpatterns = [
     path("healthz", healthz),
     path("api/cursos/", api.urls),
@@ -39,6 +45,11 @@ urlpatterns = [
     # e o `<link>` sai de `{% url 'estatico' %}`, nunca de `{% static %}`: as
     # duas tags leem prefixos diferentes (`armadilhas/102`).
     re_path(r"^static/(?P<caminho>.*)$", servir_estatico, name="estatico"),
+    # O PLANTÃO (degrau 2.2). Quem entra: `CURSOS_PROFESSORES`, fail-closed
+    # (`apps/core/sessao.py::_lista_de_emails`); a `identidade` só reconhece,
+    # nunca autoriza.
+    path("plantao", plantao_fila, name="plantao"),
+    path("plantao/<int:envio_id>", plantao_ficha, name="plantao-ficha"),
     # A SALA DO ALUNO (degrau 1.8). Duas páginas e dois gestos, todos da
     # PESSOA DA SESSÃO: nenhuma rota recebe o id de outra pessoa, e nenhuma
     # lista alunos ([INV-CUR-P1], `tests/test_inv_p1_nenhuma_tela_compara_alunos.py`).
@@ -52,6 +63,8 @@ urlpatterns = [
     ),
     # O CHECKPOINT (degrau 2.1): o aluno entrega por link, e volta para a aula.
     path("<str:numero>/checkpoint", entregar_checkpoint, name="entregar-checkpoint"),
+    # O LAUDO RECEBIDO (degrau 2.2): a mesma pessoa da sessão, o mais recente.
+    path("<str:numero>/laudo", laudo_recebido, name="laudo-recebido"),
     path("<str:numero>", aula, name="aula"),
     # O MAPA DAS PORTAS, e ele é a raiz da célula: `meshcraft.top/cursos` sem
     # mais nada. Vem por último porque `path("")` casa o caminho vazio.
