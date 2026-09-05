@@ -1,6 +1,6 @@
 ---
 titulo: Relatório da fundação (setembro de 2026)
-publico: true
+publico: false
 ordem: 20
 ---
 

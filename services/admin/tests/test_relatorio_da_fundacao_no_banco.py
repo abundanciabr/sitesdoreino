@@ -52,24 +52,48 @@ def test_o_relatorio_entra_no_banco_que_ja_foi_semeado(
     _correr()
 
     documento = Documento.objects.get(nome=NOME)
-    assert documento.publico is True
+    assert documento.publico is False, (
+        "a semente voltou a nascer PÚBLICA — em 05/09/2026 esta página ficou "
+        "exposta a quem não tinha login, e o pedido dele foi que só admins a "
+        "vejam. Um banco novo republicaria o relatório."
+    )
     assert documento.titulo == "Relatório da fundação (setembro de 2026)"
     assert "Para a IA que for resumir este relatório" in documento.corpo
 
 
-def test_a_pagina_publica_abre_sem_sessao_nenhuma(
+def test_a_pagina_NAO_abre_para_quem_nao_tem_login(
     banco_de_producao_antes_do_relatorio,
 ):
-    """É o endereço que vai para a pessoa que encomendou o trabalho, e para a
-    IA dela: abre sem login, e o texto chega inteiro na tela."""
+    """ESTE TESTE JÁ EXIGIU O CONTRÁRIO, e o contrário virou um vazamento.
+
+    Ele nasceu afirmando que a página abria sem login — era a intenção do dia
+    em que o relatório foi escrito. Em 05/09/2026 o mantenedor viu a página no
+    ar e pediu, com urgência, que só admins a vissem: medido antes de mexer,
+    `meshcraft.top/docs/relatorio-da-fundacao` respondia HTTP 200 com 42 KB
+    para qualquer pessoa.
+
+    404 e não 403, de propósito: um 403 confirmaria a quem está de fora que o
+    documento existe.
+    """
     _correr()
 
     resposta = Client().get(f"/docs/{NOME}")
 
-    assert resposta.status_code == 200
-    pagina = resposta.content.decode()
-    assert "Para a IA que for resumir este relatório" in pagina
-    assert "Os números, medidos em 5 de setembro de 2026" in pagina
+    assert resposta.status_code == 404, (
+        "o relatório da fundação voltou a abrir para o mundo"
+    )
+    assert "Os números, medidos em 5 de setembro de 2026" not in resposta.content.decode()
+
+
+def test_o_documento_continua_inteiro_para_quem_administra(
+    banco_de_producao_antes_do_relatorio,
+):
+    """Tirar do mundo não é apagar: o texto continua no editor, para ele."""
+    _correr()
+
+    documento = Documento.objects.get(nome=NOME)
+    assert "Para a IA que for resumir este relatório" in documento.corpo
+    assert documento in documentos.listar(so_publicos=False)
 
 
 def test_nao_sobrescreve_o_que_o_mantenedor_ja_escreveu(
