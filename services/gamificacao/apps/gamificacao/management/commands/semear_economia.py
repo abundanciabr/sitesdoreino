@@ -75,9 +75,9 @@ NIVEIS = [
 # `sugestao.status-alterado` carrega SEIS fatos (um por status), e sem o
 # qualificador a regra `sugestao-implementada` pagava 40 XP em CADA passo do
 # funil. Vazio = qualquer status, que e o caso de todos os outros assuntos.
-# Só eventos JÁ CONGELADOS, mais a tomada futura da aula. Quarentena de 24h no
-# que é social: se o conteúdo de origem for moderado, o estorno acontece antes
-# de o número virar parte da identidade de alguém.
+# Só eventos JÁ CONGELADOS. Quarentena de 24h no que é social: se o conteúdo
+# de origem for moderado, o estorno acontece antes de o número virar parte da
+# identidade de alguém.
 REGRAS = [
     ("quiz-aprovado", "quiz.completado.v1", "ator", 30, 0, 3, 0, ""),
     ("sugestao-criada", "sugestao.criada.v1", "ator", 10, 0, 3, 24, ""),
@@ -104,10 +104,26 @@ REGRAS = [
         # pagava a cada passo — medido em 31/08/2026, antes de a regra ser ligada.
         "implementado",
     ),
-    # A TOMADA FUTURA do §3 do plano: uma linha, desligada, esperando o evento
-    # nascer. Note a direção: a célula LÊ que a aula terminou. Nada aqui decide
-    # se alguém pode assisti-la, e é isso que o terceiro invariante protege.
-    ("aula-concluida", "aula.concluida.v1", "ator", 25, 0, 5, 0, ""),
+    # A SALA DE AULA (degrau 2.5, 05/09/2026): a tomada que o §3 do plano previa
+    # como "uma linha semeada", e que a célula `cursos` agora alimenta. O fato só
+    # existe quando um LAUDO abre a porta da aula, isto é, quando uma pessoa
+    # aceitou a entrega. Na escala da lei ("validação humana vale ~10x consumo")
+    # é o mesmo lugar da resposta aceita do fórum, e por isso os mesmos 50.
+    #
+    # SEM quarentena, porque a validação já aconteceu ANTES do fato: não há
+    # moderação por vir que possa desfazê-lo. E SEM teto, porque uma aula
+    # conclui uma vez por pessoa e é o laudo que impede o volume, não esta
+    # linha: com teto, o aluno cujos laudos atrasados saíssem todos no mesmo dia
+    # seria pago pela metade por causa do calendário de quem corrige.
+    #
+    # ESTA LINHA JÁ FOI SEMEADA EM PRODUÇÃO (01/09 e 03/09/2026) com os valores
+    # de antes (25 pontos, teto de 5 por dia). `get_or_create` não a alcança, de
+    # propósito: a linha é do mantenedor. Alinhar a produção a estes números é
+    # uma migração de dados que case a linha antiga inteira, decisão dele.
+    #
+    # Note a direção: a célula LÊ que a aula terminou. Nada aqui decide se
+    # alguém pode assisti-la, e é isso que o terceiro invariante protege.
+    ("aula-concluida", "aula.concluida.v1", "ator", 50, 0, 0, 0, ""),
     # ------------------------------------------------------------------
     # O FÓRUM (01/09/2026), e de onde saem estes três números
     # ------------------------------------------------------------------
