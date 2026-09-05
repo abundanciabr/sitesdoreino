@@ -1,5 +1,13 @@
 # CS-CURSOS-0002 — Guia de portfólio com checklist: a reta final deixa de travar
 
+> **SUBSTITUÍDO em 05/09/2026 por [`CS-PAGES-0001`](CS-PAGES-0001.md).**
+> Este documento manda construir na célula `cursos`, e a casa do guia de
+> portfólio é `pages`, decidida pelo mantenedor em 01 e 02/09/2026 e
+> reafirmada por ele em 05/09/2026
+> (`docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md` §4). **Não assine este
+> arquivo:** ele nunca teve `APROVADO_POR` preenchido, fica aqui como
+> história, e quem vale é o CS-PAGES-0001.
+
 ## PORTÃO DE VALIDADE — confira ANTES de mandar para aprovação
 
 - [x] **`FORA DO ESCOPO` não está vazio.**
