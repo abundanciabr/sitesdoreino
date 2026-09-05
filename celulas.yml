@@ -122,6 +122,19 @@ celulas:
     caminhos: [services/checkout]
     consome: [catalogo, pagamentos]
 
+  cursos:
+    caminhos: [services/cursos]
+    # NASCE SEM CONSUMIR NINGUÉM, e a lista vazia é a declaração honesta —
+    # não um esquecimento. A lei prevê `consome: [alunos, identidade]`
+    # (`PLANO-CELULA-CURSOS.md` §5): a `identidade` entra no degrau 1.3 (a
+    # sessão repassada da porta de máquina) e a `alunos` no degrau 1.8 (a
+    # matrícula ativa decide o acesso à sala de aula), cada uma no PR do
+    # cliente que lê `IDENTIDADE_API_URL` e `ALUNOS_API_URL`. Declará-las HOJE
+    # seria declaração órfã, e o varredor reprova por isso, com razão
+    # (`armadilhas/224`): um mapa que promete a mais é tão mentiroso quanto um
+    # que promete a menos.
+    consome: []
+
   encomendas:
     caminhos: [services/encomendas]
     # NASCE SEM CONSUMIR NINGUÉM, e a lista vazia é a declaração honesta —

@@ -41,6 +41,7 @@ on:
           - alunos
           - catalogo
           - checkout
+          - cursos
           - encomendas
           - forum
           - funil

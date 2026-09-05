@@ -84,6 +84,12 @@ confiar na linha acima.)
 > é o TEMPO: as demais respondem "como está agora", e ela responde "como
 > estava". Antes de propor que qualquer célula guarde histórico próprio de
 > contagem, leia a seção dela.
+>
+> **A 17ª nasceu em 04/09/2026:** `cursos`, a sala de aula da Meshcraft (o
+> conteúdo do curso, o progresso, o checkpoint e o laudo, e os agentes de IA
+> que trabalham nela), lei aprovada pelo mantenedor e esqueleto em `services/`
+> no mesmo dia. Seção própria mais abaixo — leia-a antes de desenhar aula,
+> progresso de aluno, checkpoint, laudo ou agente de IA em outra célula.
 
 **Nota de método para medir tamanho de célula:** use `git ls-files
 services/<celula> | wc -l`, nunca `find`. O caso `services/pagamentos`
@@ -331,13 +337,14 @@ fora de 8h–22h, vira aberta em 24h, motor idempotente), cinco de dinheiro
 livre entre cliente e aluno, primeira entrega sempre revisada, sem contato do
 aluno, peça só com autorização, cliente novo passa pelo plantão).
 
-## A célula `cursos`, planejada em 04/09/2026 e ainda não nascida
+## A célula `cursos`, nascida em 04/09/2026
 
 **Estado:** plano escrito a partir dos nove documentos do projeto Meshcraft
 que o mantenedor trouxe em 04/09/2026 (eles moram FORA do repositório, de
 propósito: obra não lançada, `armadilhas/331`), e **aprovado por ele em
-pergunta estruturada na mesma sessão** (registro `20260905-001`, PR #1044); a
-gênese está destravada. **Fonte de verdade:**
+pergunta estruturada na mesma sessão** (registro `20260905-001`, PR #1044);
+esqueleto em `services/cursos` no mesmo dia (TAR-146: só `/healthz`, sem
+tabela, sem tela, sem contrato congelado). **Fonte de verdade:**
 `docs/decisoes/PLANO-CELULA-CURSOS.md` (a visão, as emendas da casa aos nove
 documentos, o modelo, os eventos, as superfícies, os agentes de IA, os
 invariantes, a escada) e `docs/decisoes/CONSTITUICAO-cursos-rascunho.md` (a
@@ -411,11 +418,9 @@ passa no guarda de locale), `/cursos/<numero>`, `/cursos/<numero>/laudo`,
 `/cursos/plantao`; e o editor em `/admin/escola/aulas/`, na `admin`, pela
 porta de máquina.
 
-**Quando ela existir de verdade**, a linha dela entra na tabela das células
-acima, junto com `celulas.yml`, `ci/manifesto-de-contratos.json` e
-`constituicoes/AGENTS.cursos.md`, e aí o teste-guarda
-`ci/tests/test_painel_ia_atualizado.py` passa a **exigir** que este mapa a
-cite, em vez de apenas aceitar que ele a antecipe.
+**Ela existe desde 04/09/2026** (`celulas.yml`, `ci/manifesto-de-contratos.json`
+e `constituicoes/AGENTS.cursos.md` no lugar), e o teste-guarda
+`ci/tests/test_painel_ia_atualizado.py` **exige** que este mapa a cite.
 
 ## O mecanismo de contratos: OpenAPI + eventos, e o freeze que os protege
 
