@@ -130,25 +130,21 @@ REGRAS = {
 }
 
 
-def derivar(evento: Evento) -> list[Marco]:
-    """Os marcos que este fato conquista, gravados. Nunca levanta.
+def derivar(evento: Evento) -> None:
+    """Grava os marcos que este fato conquista. Nunca levanta.
 
-    Devolve os marcos escritos nesta chamada — vazio quando o fato não produz
-    conquista nenhuma, quando ela já estava lá com data igual ou mais antiga,
-    ou quando o miolo do evento não traz o que a regra precisa.
+    Não devolve nada de propósito: o que vale sobre marcos está na tabela, e
+    quem quiser saber o que mudou conta lá. Um resumo em memória seria um
+    segundo lugar dizendo a mesma coisa, e os dois poderiam discordar.
     """
     regra = REGRAS.get(evento.tipo)
     if regra is None or not isinstance(evento.dados, dict):
-        return []
-    escritos = []
+        return
     for sujeito_tipo, sujeito_id, tipo, quando in regra(evento):
-        marco = _gravar(sujeito_tipo, sujeito_id, tipo, quando, evento.event_id)
-        if marco is not None:
-            escritos.append(marco)
-    return escritos
+        _gravar(sujeito_tipo, sujeito_id, tipo, quando, evento.event_id)
 
 
-def _gravar(sujeito_tipo, sujeito_id, tipo, quando, event_id) -> Marco | None:
+def _gravar(sujeito_tipo, sujeito_id, tipo, quando, event_id) -> None:
     dia = dia_em_sao_paulo(quando)
     try:
         with transaction.atomic():
@@ -162,12 +158,8 @@ def _gravar(sujeito_tipo, sujeito_id, tipo, quando, event_id) -> Marco | None:
         # Dois processos derivando a mesma conquista no mesmo instante. O marco
         # existe, que é o que a contagem precisa; quem perdeu a corrida não
         # tem o que escrever.
-        return None
-    if nasceu:
-        return marco
-    if dia < marco.dia:
+        return
+    if not nasceu and dia < marco.dia:
         marco.dia = dia
         marco.event_id = event_id
         marco.save(update_fields=["dia", "event_id"])
-        return marco
-    return None

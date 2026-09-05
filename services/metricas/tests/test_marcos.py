@@ -21,6 +21,7 @@ que alguém declarou à mão.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 import uuid
 
@@ -228,8 +229,12 @@ def test_miolo_fora_do_contrato_guarda_o_fato_e_nao_inventa_marco():
     ]:
         entregar("matricula.situacao-alterada", dados)
     assert Evento.objects.count() == 5, "nenhum fato foi perdido por causa da leitura"
-    assert Marco.objects.filter(sujeito_id="mat-1").count() <= 1
-    assert not Marco.objects.filter(dia__isnull=True).exists()
+    assert list(Marco.objects.values_list("sujeito_id", "tipo", "dia")) == [
+        ("mat-1", Marco.Tipo.VIROU_ALUNO_COMPRANDO, dt.date(2026, 9, 30))
+    ], (
+        "só o último corpo tinha o que a regra precisa, e a data ilegível dele "
+        "cai no instante do fato em vez de virar marco sem dia"
+    )
 
 
 def test_id_maior_que_a_coluna_e_recusado_em_vez_de_cortado():
