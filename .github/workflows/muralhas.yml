@@ -154,3 +154,4 @@ jobs:
           npm install --no-save playwright@1.62.1
           npx playwright install --with-deps chromium
       - name: O painel num navegador de verdade (orçamento de amplificação)
+        run: node e2e/painel_no_navegador.js

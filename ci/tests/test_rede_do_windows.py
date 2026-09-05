@@ -97,6 +97,22 @@ def _corpo_dos_steps(job: dict) -> str:
     return json.dumps(passos, ensure_ascii=False)
 
 
+@pytest.mark.parametrize("arquivo", [MURALHAS, REDE])
+def test_todo_step_executa_algo(arquivo: str):
+    """YAML válido não é workflow válido: um step só com `name` faz o GitHub
+    recusar o arquivo inteiro ("workflow file issue"), e o PR fica sem check
+    nenhum. Aconteceu em 05/09/2026, ao tirar o job Windows: o `sed` levou
+    junto a linha `run:` do step vizinho, `yaml.safe_load` aceitou, e o
+    `muralhas` sumiu do PR #1128 até um humano ler a aba Actions."""
+    for nome, job in _carregar(arquivo)["jobs"].items():
+        for passo in job.get("steps") or []:
+            assert isinstance(passo, dict) and ("run" in passo or "uses" in passo), (
+                f"o job `{nome}` de {arquivo} tem um step sem `run` nem `uses` "
+                f"({passo!r}). O GitHub recusa o workflow inteiro por isso, e o "
+                f"PR fica sem check.{PORQUE}"
+            )
+
+
 def test_nenhum_job_do_pr_roda_no_windows():
     """O job Windows de volta ao `muralhas` devolve os 4min50s a todo PR."""
     for nome, job in _carregar(MURALHAS)["jobs"].items():
