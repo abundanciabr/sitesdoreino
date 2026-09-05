@@ -183,7 +183,10 @@ Se a resposta do §6.1 for a opção B, saem 01, 03, 04, 05 e o passo H.
 
 ## §6 O que volta para o mantenedor
 
-**1. A fronteira (§4) — RESPONDIDA em 01/09/2026: célula própria `portfolio`.**
+**1. A fronteira — RESPONDIDA em 01/09/2026 (célula própria) e EMENDADA em
+02/09/2026: a casa chama-se `pages`, é o guarda-chuva das páginas do aluno e é
+a última casa nova do site. O portfólio é a primeira página dela. A emenda está
+por extenso no §4.**
 Com ela vêm a gênese, o contrato, o provisionamento, o PR de infra e o passo
 manual na VPS, e o portfólio deixa de depender da vida do sistema de pontos.
 
