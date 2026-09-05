@@ -72,7 +72,7 @@
           {
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/ci/muralha_pasta_compartilhada.py\" --aviso",
-            "timeout": 20
+            "timeout": 120
           },
           {
             "type": "command",
