@@ -596,7 +596,16 @@ def _hook_aviso_de_sessao() -> int:
     # aparecer mesmo que a atualização falhe. "Não medi" (commits=None) não
     # atualiza nada — agir sobre medição que não existe é o oposto do que
     # este arquivo defende.
-    if idade.commits:
+    if idade.commits is None:
+        # "Não medi" nunca vira ação — e nunca vira silêncio. Sem esta fala, a
+        # recusa por falta de medição seria indistinguível de uma pasta em dia,
+        # e a prova por sabotagem mostrou que ela também era indistinguível de
+        # NÃO haver guarda nenhum: o teste ficava verde sem ele.
+        print(
+            f"🔄 ESPELHO NÃO ATUALIZADO: não consegui medir o atraso "
+            f"({idade.motivo}). Não mexo em pasta sem saber onde ela está."
+        )
+    elif idade.commits:
         try:
             recado = atualizar_o_espelho(raiz, idade.commits)
         except Exception as erro:

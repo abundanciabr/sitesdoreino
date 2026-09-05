@@ -505,12 +505,20 @@ def test_arquivo_nao_versionado_sobrevive_a_atualizacao(tmp_path):
 
 
 def test_sem_medir_a_idade_nao_atualiza_nada(tmp_path):
-    """"Não medi" nunca vira ação. Agir sobre medição que não existe é o
-    oposto do que este arquivo inteiro defende (INV-CI01)."""
+    """"Não medi" nunca vira ação — nem silêncio (INV-CI01).
+
+    Este teste NASCEU FURADO e a prova por sabotagem o pegou: ele ficava verde
+    mesmo sem o guarda, porque o merge falhava sozinho por falta da ref. Só
+    passou a discriminar quando a recusa por falta de medição ganhou FALA
+    própria — a mesma cura da `armadilhas/176`, uma camada acima.
+    """
     raiz = _montar_espelho(tmp_path / "espelho", atras=3, com_origin_main=False)
     antes = _sha(raiz)
     r = _aviso(raiz)
     assert "NÃO MEDIDA" in r.stdout, r.stdout
+    assert "não consegui medir o atraso" in r.stdout, (
+        f"a recusa por falta de medicao ficou muda: {r.stdout!r}"
+    )
     assert ATUALIZOU not in r.stdout
     assert _sha(raiz) == antes
 
