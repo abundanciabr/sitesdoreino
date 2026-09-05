@@ -2,9 +2,9 @@
   "nome": "liberacoes-em-48h",
   "tipo": "direcao",
   "andar": 0,
-  "pergunta": "Quem pede para entrar é liberado em até 48 horas?",
-  "definicao": "Das pessoas liberadas nos últimos 28 dias, a fração que esperou no máximo 2 dias entre pedir e ser liberada; e quantas esperam há mais que isso agora. É a parte da jornada que depende só da casa: quem pediu e já comprou espera o mantenedor abrir a fila. Medida de direção: cada liberação no prazo é +1 na meta sem depender de ninguém de fora.",
-  "formula": "liberadas com (virou_aluno_em - criada_em) <= 2 dias, dividido pelas liberadas nos 28 dias até hoje; e contagem de aguardando com esperando_ha_dias > 2",
+  "pergunta": "Quem já comprou e está na sala de espera é confirmado em até 48 horas?",
+  "definicao": "Das pessoas confirmadas nos últimos 28 dias, a fração que esperou no máximo 2 dias entre chegar à sala de espera e ser liberada; e quantas esperam há mais que isso agora. A pessoa já pagou, fora do site: o que este número mede é a demora da casa em confirmar o que já foi comprado. Medida de direção: cada confirmação no prazo é +1 na meta, e não depende de mais ninguém.",
+  "formula": "liberadas com (virou_aluno_em - criada_em) <= 2 dias, dividido pelas liberadas nos 28 dias até hoje; e contagem de quem espera na sala com esperando_ha_dias > 2",
   "fonte": "célula alunos, ao vivo: GET /matriculas (origem liberado, criada_em, virou_aluno_em) e GET /pre-matriculas (aguardando, esperando_ha_dias)",
   "autoridade": "alunos",
   "dono": "mantenedor",
@@ -12,7 +12,7 @@
   "direcao": "subir",
   "unidade": "por cento",
   "par": "compras-no-ciclo",
-  "acao": "Abaixo de 100%, ou alguém esperando há mais de 2 dias: abra a fila em /admin/escola/ e libere hoje.",
+  "acao": "Abaixo de 100%, ou alguém esperando há mais de 2 dias: abra a sala de espera em /admin/escola/ e confirme hoje quem já pagou.",
   "limiar_ambar": null,
   "limiar_vermelho": null,
   "frescor_maximo": 8,
@@ -20,7 +20,7 @@
     "turma"
   ],
   "ruido": 5,
-  "versao": 1,
-  "desde": "2026-09-03",
-  "_por_que": "Degrau 2 do plano reescrito em 03/09/2026 (§8). A meta é 100% por construção: liberar em 48 horas é a promessa da fila (DECISAO-fila-de-liberacao.md, fase 2: 'há quantos dias espera' visível). CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Ruído de 5 pontos porque a conta é uma fração de poucas liberações: com 2 no período, uma fora do prazo move 50 pontos, e movimento de arredondamento não é notícia. Foto de 8 dias, como o outro número da direção da semana."
+  "versao": 2,
+  "desde": "2026-09-05",
+  "_por_que": "Degrau 2 do plano (03/09/2026). A meta é 100% por construção: confirmar em 48 horas é a promessa da sala de espera (DECISAO-fila-de-liberacao.md, fase 2: 'há quantos dias espera' visível). PREMISSA CORRIGIDA PELO MANTENEDOR EM 05/09/2026: quem espera aqui não pediu para entrar, comprou fora do site e aguarda confirmação ('os alunos dos quais estamos falando no painel das vendas são de vendas que foram efetuadas via checkout'). A medida não mudou e continua exata, porque o gesto medido é o mesmo: a casa demora ou não demora a confirmar. Mudou o nome do que ela mede, e por isso a versão subiu para 2. O nome do arquivo continua correto: liberação é o gesto que a tela /admin/escola/ oferece, e é dela que sai o virou_aluno_em. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): ruído de 5 pontos porque a conta é uma fração de poucas confirmações, e com 2 no período uma fora do prazo move 50 pontos; movimento de arredondamento não é notícia. Foto de 8 dias, como o outro número da direção da semana."
 }

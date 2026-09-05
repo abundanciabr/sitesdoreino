@@ -281,7 +281,7 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
   {% elif not direcao %}
     <p class="recado-fraco">Sem a meta válida, a direção não é calculada.</p>
   {% else %}
-    <p class="recado">O que a casa move nesta semana e que antecipa a meta. Duas medidas, nunca dez.</p>
+    <p class="recado">O que a casa move nesta semana. Duas medidas acesas, nunca dez, e ao lado o caminho da venda, ainda desenhado.</p>
 
     <p class="recado">
       <b>{{ cartao_pedidos.pergunta }}</b>
@@ -301,10 +301,10 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       {% if direcao.liberacoes.veredito == "nao-consigo-medir" %}
         <span class="rotulo">não consegui medir</span>.
       {% elif direcao.liberacoes.veredito == "sem-liberacoes" %}
-        Nenhuma liberação nos últimos 28 dias e ninguém esperando há mais de 2 dias.
+        Nenhuma confirmação nos últimos 28 dias e ninguém na sala de espera há mais de 2 dias.
       {% else %}
-        {% if direcao.liberacoes.por_cento is not None %}<b>{{ direcao.liberacoes.por_cento }}%</b> das {{ direcao.liberacoes.total }} liberaç{{ direcao.liberacoes.total|pluralize:"ão,ões" }} dos últimos 28 dias saíram em até 48 horas.{% endif %}
-        {% if direcao.liberacoes.esperando_ha_muito %}<b>{{ direcao.liberacoes.esperando_ha_muito }}</b> pessoa{{ direcao.liberacoes.esperando_ha_muito|pluralize:"s" }} esperando há mais de 2 dias agora.{% endif %}
+        {% if direcao.liberacoes.por_cento is not None %}<b>{{ direcao.liberacoes.por_cento }}%</b> das {{ direcao.liberacoes.total }} confirmaç{{ direcao.liberacoes.total|pluralize:"ão,ões" }} dos últimos 28 dias saíram em até 48 horas.{% endif %}
+        {% if direcao.liberacoes.esperando_ha_muito %}<b>{{ direcao.liberacoes.esperando_ha_muito }}</b> pessoa{{ direcao.liberacoes.esperando_ha_muito|pluralize:"s" }} na sala de espera há mais de 2 dias agora.{% endif %}
         {% if direcao.liberacoes.veredito == "cumprida" %}<span class="rotulo">na meta</span>{% else %}<span class="rotulo">abaixo da meta</span> {{ cartao_48h.acao }}{% endif %}
       {% endif %}
     </p>
@@ -324,6 +324,21 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
         {% endfor %}
       </ul>
     {% endif %}
+  {% endif %}
+
+  <h3 class="titulo-da-conta">O caminho da venda, ainda apagado</h3>
+  {% if recusas_do_caminho_da_venda %}
+    <ul class="notas">
+      {% for recusa in recusas_do_caminho_da_venda %}<li>{{ recusa }}</li>{% endfor %}
+    </ul>
+  {% endif %}
+  {% if caminho_da_venda %}
+    <p class="recado">Ninguém pede entrada na escola: quem chega na sala de espera já comprou fora do site. Estas são as duas medidas do caminho da venda dentro do site, desenhadas agora e sem número até o checkout abrir.</p>
+    <ul class="notas">
+      {% for c in caminho_da_venda %}
+        <li><b>{{ c.pergunta }}</b> <span class="rotulo">sem dados</span> {{ c.sem_fonte_porque }}</li>
+      {% endfor %}
+    </ul>
   {% endif %}
 
   <h2 class="titulo-de-bloco espaco-20">A restrição desta semana</h2>
