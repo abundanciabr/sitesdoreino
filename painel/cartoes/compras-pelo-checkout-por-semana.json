@@ -1,0 +1,27 @@
+{
+  "nome": "compras-pelo-checkout-por-semana",
+  "tipo": "direcao",
+  "andar": 0,
+  "pergunta": "Quantas pessoas compraram pelo próprio site nesta semana?",
+  "definicao": "Compras concluídas no checkout do site nos últimos 7 dias. É a segunda medida do caminho da venda, e a que a meta espera de verdade: hoje toda compra acontece fora do site e chega pela sala de espera. Quem foi liberado pela sala de espera não conta aqui, para os dois caminhos nunca se confundirem num número só.",
+  "formula": "contagem de compras confirmadas no checkout com data de confirmação nos 7 dias até hoje (America/Sao_Paulo); reembolsada não conta, porque a compra foi desfeita",
+  "fonte": null,
+  "sem_fonte_porque": "O checkout está congelado por decisão do mantenedor de 22/08/2026: o site não vende, e não existe compra para contar. Um zero aqui diria que a loja não abriu, e não que ninguém comprou, e os dois são fatos bem diferentes. O cartão fica desenhado e acende no dia em que ele mandar o site vender.",
+  "autoridade": "pagamentos",
+  "dono": "mantenedor",
+  "frequencia": "semanal, quando a fonte existir",
+  "direcao": "subir",
+  "unidade": "pessoas por semana",
+  "par": "margem-mensal",
+  "acao": "Este é o número que a meta do ciclo espera. Enquanto ele estiver apagado, quem responde pela semana é a sala de espera, e ela mede a venda feita fora do site.",
+  "limiar_ambar": null,
+  "limiar_vermelho": null,
+  "frescor_maximo": 8,
+  "dimensoes": [
+    "canal",
+    "site"
+  ],
+  "versao": 1,
+  "desde": "2026-09-05",
+  "_por_que": "Decisão do mantenedor em 05/09/2026, em caixa de pergunta estruturada: 'ao lado nascem as medidas do caminho da venda (quem chega na página, quem compra), desenhadas agora e sem número até o checkout abrir'. Este é o 'quem compra'. NÃO é o mesmo número de compras-no-ciclo nem de compras-no-mes, e a diferença é o motivo de este cartão existir: aqueles contam o RESULTADO acumulado do ciclo e do mês, por qualquer caminho de entrada, e estão acesos; este conta a SEMANA e só o caminho do próprio site, e é o volante que hoje não gira. O par é a margem mensal, porque compra se força com desconto, e vender no prejuízo sobe este número enquanto afunda a empresa."
+}

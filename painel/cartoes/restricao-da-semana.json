@@ -3,8 +3,8 @@
   "tipo": "direcao",
   "andar": 0,
   "pergunta": "Qual é o único gargalo que, se melhorar esta semana, move a meta inteira?",
-  "definicao": "A etapa da jornada (cadastrou, pediu entrada, foi liberada, entrou pela primeira vez, escreveu no fórum) onde mais gente fica parada a caminho de virar aluna. A tela calcula uma SUSPEITA por regra explícita e o mantenedor CONFIRMA por registro; etapa sem dados nunca é escolhida, e a tela nomeia as que faltam.",
-  "formula": "hoje só a passagem 'pediu entrada → foi liberada' tem fonte: se há alguém esperando há 2 dias ou mais, ou a mediana de liberação em 28 dias passa de 2 dias, a suspeita é a liberação (confiança alta); senão, se ninguém pediu entrada em 28 dias, a suspeita é a entrada (confiança média); senão, não há restrição medível. Regra em services/admin/apps/core/restricao.py",
+  "definicao": "A etapa da jornada da sala de espera (cadastrou, pediu entrada, foi liberada, entrou pela primeira vez, escreveu no fórum) onde mais gente fica parada. Os nomes das etapas são os da fila de liberação, que é o que a célula alunos oferece hoje; quem está nela já comprou fora do site e aguarda confirmação. A tela calcula uma SUSPEITA por regra explícita e o mantenedor CONFIRMA por registro; etapa sem dados nunca é escolhida, e a tela nomeia as que faltam.",
+  "formula": "hoje só a passagem 'pediu entrada → foi liberada' tem fonte: se há alguém esperando há 2 dias ou mais, ou a mediana de liberação em 28 dias passa de 2 dias, a suspeita é a confirmação de quem já comprou (confiança alta); senão, se ninguém chegou à sala de espera em 28 dias, a suspeita é a chegada (confiança média); senão, não há restrição medível. Regra em services/admin/apps/core/restricao.py",
   "fonte": "célula alunos, ao vivo: GET /pre-matriculas (aguardando e recusada) e GET /matriculas (origem, criada_em, virou_aluno_em)",
   "autoridade": "alunos",
   "dono": "mantenedor",
@@ -17,7 +17,7 @@
   "limiar_ambar": null,
   "limiar_vermelho": null,
   "frescor_maximo": 8,
-  "versao": 1,
-  "desde": "2026-09-03",
-  "_por_que": "Degrau 1 do plano reescrito em 03/09/2026 (§6.3), a peça nova mais valiosa dos documentos do Scale OS. `confirmada` é {etapa, em, registro} quando o mantenedor confirmar; null até lá. Uma etapa nova só entra quando tiver fonte, e entra pelo módulo, não por este cartão. CAMPOS DE 04/09/2026 (degrau 6): frescor de 8 dias porque a restrição é da SEMANA, e uma medida mais velha do que isso já é de outra semana. Sem dimensões e sem ruído: este cartão não guarda um número, guarda a escolha de qual passagem da jornada está segurando a fila."
+  "versao": 2,
+  "desde": "2026-09-05",
+  "_por_que": "Degrau 1 do plano reescrito em 03/09/2026 (§6.3), a peça nova mais valiosa dos documentos do Scale OS. `confirmada` é {etapa, em, registro} quando o mantenedor confirmar; null até lá. Uma etapa nova só entra quando tiver fonte, e entra pelo módulo, não por este cartão. PREMISSA CORRIGIDA EM 05/09/2026 pelo mantenedor: esta jornada é a da SALA DE ESPERA, e não o caminho da venda que leva à Meta 1. Ninguém pede entrada na escola; quem está na fila já comprou fora do site. Os nomes das etapas continuam sendo os da fila de liberação porque é assim que a célula alunos chama as suas próprias peças (pre-matriculas), e trocar isso é Rito de Contrato dela, não texto de painel. O que mudou é a afirmação de que este é o caminho da meta: não é, e o caminho de verdade tem dois cartões próprios, ainda apagados. CAMPOS DE 04/09/2026 (degrau 6): frescor de 8 dias porque a restrição é da SEMANA, e uma medida mais velha do que isso já é de outra semana. Sem dimensões e sem ruído: este cartão não guarda um número, guarda a escolha de qual passagem está segurando a fila."
 }
