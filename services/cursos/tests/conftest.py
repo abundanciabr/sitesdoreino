@@ -93,6 +93,10 @@ def env_dos_pares(monkeypatch):
     monkeypatch.setenv("SITE_ID", SITE)
     monkeypatch.delenv("CATALOGO_API_URL", raising=False)
     monkeypatch.delenv("TOKEN_CATALOGO", raising=False)
+    # A segunda lista do plantão (05/09/2026). Sai daqui para que a máquina de
+    # quem roda a suíte não decida o veredito: com `ADMIN_EMAILS` no ambiente,
+    # os testes de fail-closed passariam a medir o computador, não o código.
+    monkeypatch.delenv("ADMIN_EMAILS", raising=False)
     menu.limpar_cache()
     yield
     menu.limpar_cache()
