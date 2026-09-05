@@ -515,6 +515,15 @@
       "descricao": "Responde 'estou de pé' pela rede interna. A parte que guarda a Fila do Primeiro Dólar (o marketplace de encomendas 3D) acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /encomendas."
     },
     {
+      "celula": "pages",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida das Páginas do aluno",
+      "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar o portfólio do aluno acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, serão dois, o /pages para o aluno montar o portfólio e o /estudio para o link que ele manda ao cliente."
+    },
+    {
       "celula": "gamificacao",
       "rota": "",
       "endereco": "/conquistas/",
@@ -1757,6 +1766,28 @@
       "titulo": "O calendário do ciclo",
       "descricao": "As 12 semanas do ciclo, mais a de preparação e a de recuperação, com a meta de vendas de cada uma, a meta acumulada e o que aconteceu de verdade em cada semana já fechada. É a régua que o placar usa para dizer se você está ganhando ou perdendo.",
       "observacao": "As metas semanais moram no cartão da meta (painel/cartoes/compras-no-ciclo.json), e a soma delas é conferida contra a meta grande: as duas nunca podem discordar."
+    },
+    {
+      "celula": "admin",
+      "rota": "placar/confianca/",
+      "endereco": "/admin/placar/confianca/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "A confiança nos números",
+      "descricao": "Três perguntas sobre a própria medição, antes de você agir sobre qualquer número do placar: continua chegando fato de tudo que a plataforma conta, quais números já envelheceram além do prazo do cartão deles, e o que chegou até a porta e não pôde ser contado.",
+      "observacao": "Quando a parte que guarda os fatos não responde, esta tela diz que não perguntou, e nunca que está tudo limpo. Degrau 11 do plano do painel de gestão (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §6.6)."
+    },
+    {
+      "celula": "admin",
+      "rota": "placar/confianca/quebrado/<int:morto_id>/",
+      "endereco": "/admin/placar/confianca/quebrado/<int:morto_id>/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "Um evento que chegou quebrado, por dentro",
+      "descricao": "O envelope de um fato que a plataforma publicou e que não pôde ser contado, exatamente como ele chegou: o motivo, o assunto que ele dizia ser, quando chegou, e o texto cru.",
+      "observacao": "É a única tela desta área que mostra o texto cru de um envelope, e por isso ela é um endereço por evento: o corpo pode trazer coisas que esta casa não guarda, e vê-lo é um gesto deliberado, um por vez."
     },
     {
       "celula": "admin",

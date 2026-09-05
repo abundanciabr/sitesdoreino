@@ -1,0 +1,18 @@
+{
+  "arquivo": "173-a-tela-da-confianca-da-para-acreditar-nos-numeros-do-placar",
+  "id": "TAR-173",
+  "titulo": "A tela da confianca: da para acreditar nos numeros do placar?",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "a suite da admin verde, a prova vermelho-verde por assercao e a prova por mutacao de que 'nao perguntei' nao vira 'nao ha nada'",
+  "despacho": "Degrau 11 do docs/decisoes/PLANO-PAINEL-DE-GESTAO.md (§6.6): construa a TELA DA\nCONFIANCA na celula admin, como sub-rota do placar (/admin/placar/confianca/).\n\nEla responde tres perguntas, cada uma terminando num gesto:\n\n1. Cobertura: de cada assunto que a plataforma conta, chegou fato nos ultimos 7\n   dias? O que parou aparece com o nome e ha quantos dias esta calado. Fonte:\n   listCoverage do contrato congelado da metricas.\n2. Frescor: cada cartao de painel/cartoes/ declara frescor_maximo em dias. A\n   tela diz quais numeros estao dentro do prazo e quais envelheceram, com\n   quantos dias de atraso, comparando com a ultima foto do livro.\n3. O que chegou quebrado: a fila de eventos mortos a vista, com o motivo de\n   cada um, e uma pagina de inspecao por evento. Fontes: listDeadLetters e\n   getDeadLetter.\n\nA lei desta tela: quando a metricas nao responde, ela diz \"nao perguntei\" e\nNUNCA \"nao ha nada\". Reuse os cinco desfechos que ja existem em\nservices/admin/apps/core/medicao.py, sem escrever uma segunda logica.\n\nCerca: proibido tocar contracts/ e services/metricas/ (so leitura). Sem\nJavaScript. Sem travessao. Orcamento de 15 arquivos.",
+  "origem": "degrau 11 do PLANO-PAINEL-DE-GESTAO.md",
+  "criada_em": "2026-09-05"
+}
