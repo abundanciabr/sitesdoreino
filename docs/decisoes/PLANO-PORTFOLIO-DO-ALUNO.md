@@ -183,7 +183,10 @@ Se a resposta do §6.1 for a opção B, saem 01, 03, 04, 05 e o passo H.
 
 ## §6 O que volta para o mantenedor
 
-**1. A fronteira (§4) — RESPONDIDA em 01/09/2026: célula própria `portfolio`.**
+**1. A fronteira — RESPONDIDA em 01/09/2026 (célula própria) e EMENDADA em
+02/09/2026: a casa chama-se `pages`, é o guarda-chuva das páginas do aluno e é
+a última casa nova do site. O portfólio é a primeira página dela. A emenda está
+por extenso no §4.**
 Com ela vêm a gênese, o contrato, o provisionamento, o PR de infra e o passo
 manual na VPS, e o portfólio deixa de depender da vida do sistema de pontos.
 
@@ -226,3 +229,46 @@ pedir.**
 - Guardar a peça em duas células.
 - Travessão em texto que o aluno lê (`ci/travessao.py`).
 - Marco real pagando XP (decisão 7 da Sessão A: vale zero, de propósito).
+
+## §8 Os critérios da escola, rascunho da professora (05/09/2026)
+
+O mantenedor repassou o texto abaixo numa caixa de pergunta estruturada em
+05/09/2026, respondendo à pergunta sobre quem escreveria os critérios do guia:
+quem escreveu foi a professora da escola. O texto está aqui como ela mandou,
+sem correção e sem reescrita, porque é a fala dela e o valor está justamente
+em ser o que ela escreveu.
+
+> No curso eu ensino o aluno a criar diversos tipos de modelos, sendo eles armas, carros, cabelos, acessórios, animais, e etc
+>
+> Mas deixo claro que é interessante que a pessoa TENTE criar todos esses modelos, mas sempre tem alguns que gostamos mais de modelar do que outros, e que também temos mais facilidade
+>
+> E então o aluno deve escolher PELO MENOS 3 desses "tipos de modelos" (animais armas etc) e criar mais 3 variantes, exemplo
+> "Eu tenho mais facilidade em criar acessórios, animais e armas"
+>
+> Então você vai criar 3 animais, 3 acessórios e 3 armas, pelo menos, para começar um bom portfolio
+>
+> Os modelos devem ser low poly ou high poly? (mais simples ou detalhados)
+>
+> O ideal é que sejam high poly, para impressionar o cliente e mostrar o máximo do seu potencial, mas você também pode criar algumas variações mais simples, mas o ideal é que a maioria seja de fato, high poly
+>
+> Posso usar um dos modelos do portfólio, do mesmo que eu aprendi na aula?
+>
+> É bom que você crie 3 variações que não se pareçam com a aula, para evitar que repita muitos modelos em portfólio
+>
+> OBS: Mas isso é só um rascunho, ainda podemos mudar isso mais pra frente
+
+**O que esse texto vira dentro da obra.** São quatro regras objetivas, e é o
+que a lista de conferência do aluno passa a medir: escolher pelo menos 3 tipos
+entre os que o curso ensina (armas, carros, cabelos, acessórios, animais e os
+demais); entregar pelo menos 3 peças de cada tipo escolhido, o que dá 9 peças
+no mínimo; ter a maioria das peças em high poly, com algumas variações mais
+simples permitidas; e não repetir o modelo feito na aula, nem entregar peça que
+se pareça com ele. É isso que o degrau 07 da escada do §5 lê do banco para
+montar a lista de conferência, e é isso que o degrau 16 publica como guia com a
+voz da escola.
+
+**Duas ressalvas, para ninguém errar depois.** A própria professora marcou o
+texto como rascunho, e ele pode mudar. E a casa definitiva dele é o editor de
+documentos do admin (degrau 16 da escada): no dia em que o texto for para lá,
+esta seção passa a apontar para lá em vez de guardar cópia, porque nenhum fato
+do projeto mora em dois lugares.

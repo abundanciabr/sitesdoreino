@@ -1,5 +1,20 @@
 # CS-CURSOS-0002 — Guia de portfólio com checklist: a reta final deixa de travar
 
+> ## SUPERADO. NÃO ASSINE ESTE DOCUMENTO.
+>
+> Substituído por [`CS-PAGES-0001.md`](CS-PAGES-0001.md) em 05/09/2026, antes de
+> qualquer assinatura: o `APROVADO_POR` abaixo continua vazio, e o §4 do
+> `FORMATO-CHANGESPEC.md` só torna imutável o ChangeSpec que já foi aprovado.
+>
+> **O motivo, em uma frase:** este corredor punha o portfólio na célula `cursos`
+> e cortava a vitrine pública, o selo da escola e o dossiê, contrariando a
+> decisão do mantenedor de 01 e 02/09/2026, que já tinha escolhido a célula
+> `pages` como casa do portfólio (`docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md`
+> §4, e `docs/decisoes/PLANO-CELULA-CURSOS.md` §3.3, que diz o mesmo).
+>
+> O corpo abaixo fica intacto, como registro do que foi escrito. A ideia 21 se
+> assina pelo `CS-PAGES-0001`.
+
 ## PORTÃO DE VALIDADE — confira ANTES de mandar para aprovação
 
 - [x] **`FORA DO ESCOPO` não está vazio.**

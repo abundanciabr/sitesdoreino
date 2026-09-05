@@ -178,11 +178,32 @@ def test_contas_antes_da_mudanca_nao_valem(tmp_path):
     ]))
 
 
-def test_mudanca_de_pedido_anterior_nao_assombra_pergunta_nova(tmp_path):
-    _silencio(_decidir(tmp_path, [
+def test_a_divida_sobrevive_a_ele_falar_outra_coisa(tmp_path):
+    """ESTE TESTE JÁ AFIRMOU O CONTRÁRIO, e o contrário era o defeito.
+
+    Ele mandou a tela: a sessão abriu o PR #1092, mergeou, e ficou esperando o
+    deploy; no meio ele respondeu uma pergunta ("deixe assim: só admin pode
+    ver, ler"); e daí em diante nada mais mudou no mundo. Como o portão só
+    media a janela aberta pela última fala dele, a dívida do trabalho já feito
+    tinha sido apagada por ELE ter digitado uma frase.
+
+    Dívida se paga com o relatório, nunca com o devedor falando outra coisa.
+    """
+    _recusa_que_ensina(_decidir(tmp_path, [
         _humano("conserte o webhook"),
         _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
         _fala("Feito."),
+        _humano("deixe assim: só admin pode ver, ler"),
+        _fala("Combinado."),
+    ]))
+
+
+def test_divida_paga_nao_assombra_pergunta_nova(tmp_path):
+    """O par verde: com o relatório entregue, a pergunta seguinte é livre."""
+    _silencio(_decidir(tmp_path, [
+        _humano("conserte o webhook"),
+        _ferramenta("Edit", {"file_path": "services/pagamentos/webhook.py"}),
+        _fala(CONTAS_COMPLETAS),
         _humano("e o que é uma célula?"),
         _fala("É um serviço isolado, com banco e deploy próprios."),
     ]))
@@ -465,3 +486,49 @@ def test_a_fiacao_literal_recusa_de_ponta_a_ponta(tmp_path):
     )
     assert proc.returncode == 2, (proc.returncode, proc.stdout, proc.stderr)
     assert "PRESTAÇÃO DE CONTAS" in proc.stderr
+
+
+# ------------------------------------------------------------------------
+# A tela que ele mandou, reconstruída (05/09/2026).
+# A sessão abriu PR, mergeou e ficou em turnos de espera. O relatório do
+# trabalho nunca saiu, e a conversa ia ser arquivada com "Aguardando." como
+# última palavra.
+# ------------------------------------------------------------------------
+
+def _batimento(evento: str) -> dict:
+    return {"type": "user", "origin": {"kind": "task-notification"},
+            "message": {"role": "user", "content":
+                        f"<task-notification><task-id>bdeploy1</task-id>"
+                        f"<event>{evento}</event></task-notification>"}}
+
+
+def _a_tela_que_ele_mandou() -> list[dict]:
+    entradas = [
+        _humano("faça o relatório de apresentação do projeto"),
+        _ferramenta("Bash", {"command": "gh pr create --base main --title x --body y"}),
+        _fala("PR #1092 aberto."),
+    ]
+    for evento in ("Sonda do merge, 18 min", "a pista atualizou o PR",
+                   "Deploy em andamento", "Deploy na fila do GitHub"):
+        entradas += [_batimento(evento), _fala("Aguardando.")]
+    return entradas
+
+
+def test_a_sessao_da_captura_dele_nao_termina_calada(tmp_path):
+    proc = _decidir(tmp_path, _a_tela_que_ele_mandou())
+    _recusa_que_ensina(proc)
+    assert "trabalho feito nesta sessão" in proc.stderr, proc.stderr
+
+
+def test_a_mesma_sessao_com_o_relatorio_passa(tmp_path):
+    entradas = _a_tela_que_ele_mandou()
+    entradas[-1] = _fala(CONTAS_COMPLETAS)
+    _silencio(_decidir(tmp_path, entradas))
+
+
+def test_a_fala_dele_no_meio_da_espera_nao_perdoa_a_divida(tmp_path):
+    """O detalhe exato da tela: ele respondeu algo no meio das esperas."""
+    entradas = _a_tela_que_ele_mandou()
+    entradas += [_humano("deixe assim: só admin pode ver, ler"), _fala("Combinado.")]
+    entradas += [_batimento("Deploy na fila"), _fala("Aguardando.")]
+    _recusa_que_ensina(_decidir(tmp_path, entradas))

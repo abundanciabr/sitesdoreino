@@ -869,6 +869,31 @@ portão que cobrasse relatório em cada acordar pediria 225 relatórios, e o
 mantenedor aprenderia a ignorar todos. O discriminador não é adivinhação de
 texto: é o campo `origin.kind` de cada entrada do transcript.
 
+**A dívida atravessa as falas dele — e essa foi a correção mais cara, no mesmo
+dia.** A primeira versão só olhava para o que aconteceu DEPOIS da última fala
+do mantenedor. Ele mandou a tela que provou o erro: a sessão abriu o PR #1092,
+mergeou, e ficou esperando o deploy; no meio disso ele respondeu uma pergunta
+("deixe assim: só admin pode ver, ler"); e a partir dali não houve mais
+nenhuma mudança no mundo. A dívida do trabalho já feito tinha sido apagada
+porque **ele digitou uma frase**, e a conversa ia ser arquivada com
+"Aguardando." como última palavra.
+
+A regra certa é a de qualquer dívida: **ela se paga com o relatório, nunca com
+o devedor falando outra coisa.** Por isso a varredura é da SESSÃO inteira: a
+última mudança contra a última prestação de contas.
+
+**O que foi tentado e NÃO funcionou, escrito para ninguém refazer:** adiar a
+cobrança até "não haver mais nada em voo", para o relatório sair com o veredito
+do deploy dentro. O sinal não existe de forma confiável — medido no transcript
+real daquela sessão, **4 tarefas de fundo tinham terminado** (o `✅` do
+desfecho está lá) e **nenhuma recebeu a notificação com
+`<status>completed</status>`**. Um portão apoiado nisso ficaria mudo justamente
+no caso reclamado. Sinal que some sem avisar não vira guarda.
+
+**O que sobra, dito na cara:** a cobrança cai no fim do turno que FEZ o
+trabalho, e não depois do deploy. O veredito do deploy continua sendo obrigação
+de texto (seção "Depois de todo merge que dispara deploy"), sem mecanismo.
+
 **O que o portão NÃO mede, dito na cara:** que a prestação de contas seja
 verdadeira. Nenhum portão barato mede "isto foi mesmo verificado". O que ele
 torna impossível é o SILÊNCIO — os seis blocos aparecem, o veredito fica em cima
