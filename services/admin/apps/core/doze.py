@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import datetime as dt
 
+from . import laboratorio as laboratorio_
 from .placar import STATUS_QUE_COMPRARAM, dia_em_sao_paulo, ler_cartao
 
 #: Os doze, na ordem dos documentos, com o nome do cartão da casa.
@@ -80,23 +81,17 @@ def crescimento_mes_a_mes(
     return {"veredito": "medido", "valor": round(100 * (a - b) / b), "m1": a, "m2": b}
 
 
-def aprendizados_validados(
-    registros: list[dict] | None, partida_em: dt.date
-) -> int | None:
-    """Registros tipo `medicao` que respondem a outro registro, desde a partida."""
-    if registros is None:
-        return None
-    total = 0
-    for r in registros:
-        if r.get("tipo") != "medicao" or not r.get("responde_a"):
-            continue
-        try:
-            quando = dt.date.fromisoformat(str(r.get("quando")))
-        except (TypeError, ValueError):
-            continue
-        if quando >= partida_em:
-            total += 1
-    return total
+#: O 12º dos doze é o laboratório, e a conta mora LÁ (05/09/2026, degrau 12).
+#:
+#: Até esta data a regra era "toda `medicao` com `responde_a` desde a partida",
+#: escrita aqui. Medida no livro real no dia da troca, ela dava **6** — e os
+#: seis eram vereditos de deploy respondendo a registros de entrega, num livro
+#: sem um único experimento. A conta não tinha bug: media a coisa errada com
+#: precisão, que é como um indicador morre (`armadilhas/303`).
+#:
+#: Uma regra só, dois leitores: a tela do laboratório e este número não
+#: conseguem discordar, porque são a mesma função.
+aprendizados_validados = laboratorio_.aprendizados_validados
 
 
 def medir_os_doze(

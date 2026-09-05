@@ -80,6 +80,16 @@ _CAMPO = {
         "vence_em_dias",
         "precisa_do_dono",
         "foto",
+        # Os cinco do laboratório (05/09/2026, degrau 12): um experimento é uma
+        # `medicao` que declara a aposta, e o resultado é o registro que a fecha
+        # com um `veredito`. Eles entram aqui, e não num leitor próprio de
+        # `laboratorio.py`, porque o livro tem UM leitor nesta célula: dois
+        # leitores do mesmo arquivo divergem no primeiro campo novo.
+        "problema",
+        "hipotese",
+        "metrica",
+        "guarda",
+        "veredito",
     )
 }
 
@@ -130,6 +140,11 @@ def ler_registros(pasta: Path | None = None) -> list[dict] | None:
                 "vence_em_dias": _campo(texto, "vence_em_dias"),
                 "precisa_do_dono": _campo(texto, "precisa_do_dono") is True,
                 "foto": _campo(texto, "foto"),
+                "problema": _campo(texto, "problema"),
+                "hipotese": _campo(texto, "hipotese"),
+                "metrica": _campo(texto, "metrica"),
+                "guarda": _campo(texto, "guarda"),
+                "veredito": _campo(texto, "veredito"),
             }
         )
     return registros

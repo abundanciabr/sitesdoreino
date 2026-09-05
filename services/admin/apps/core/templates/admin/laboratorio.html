@@ -1,0 +1,172 @@
+{% extends "admin/base.html" %}
+{% comment %}
+O LABORATÓRIO (/admin/placar/laboratorio/, 05/09/2026, degrau 12 do plano do
+painel de gestão).
+
+Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
+tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
+admin/base.html (tests/test_estilo_nao_volta_para_a_marcacao.py), e toda classe
+usada abaixo já existe lá.
+
+Duas regras governam cada `{% if %}` desta tela:
+
+1. LIVRO AUSENTE não é "nenhum experimento". `lab` vem `None` quando o livro
+   não chegou até esta imagem, e nesse ramo a tela diz que não conseguiu olhar.
+2. VAZIO É ESTADO DE PRIMEIRA CLASSE. Com zero experimentos a tela não mostra
+   uma lista em branco: ela explica o que é um experimento e como nasce o
+   primeiro. A tela nasceu vazia de propósito, e é esse o estado que o
+   mantenedor vai ver no primeiro dia.
+
+As contagens saem em SUBSTANTIVO, sem verbo conjugado: `pluralize` trata zero
+como plural, e "0 experimentos venceram" com verbo colado sai torto no caso que
+mais aparece.
+{% endcomment %}
+{% block titulo %}O laboratório{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
+  <h1>O laboratório</h1>
+  <p class="subtitulo">
+    Onde uma aposta da escola vira aprendizado com data. Uma escola pode vender
+    muito e aprender pouco: esta tela mede a segunda coisa.
+  </p>
+
+  <p class="lei">
+    Cada experimento é escrito no livro ANTES de se saber o resultado (o
+    problema, a aposta, qual número ela quer mover, o que a faz parar e até
+    quando), e o resultado entra depois, como um registro novo que aponta para
+    ele. Nada aqui é digitado à mão: rodando, vencido e encerrado são
+    calculados das datas e da existência do resultado.
+  </p>
+
+  {% if lab is None %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui olhar.</b> O livro de ocorrências não chegou até esta tela,
+    então ela não sabe se existem experimentos. Isto não é "nenhum experimento":
+    é a tela sem a fonte. Abra a <a href="{% url 'painel' %}">porta do painel</a>
+    e diga a uma sessão que o livro não está chegando à área administrativa.
+  </p>
+
+  {% elif lab.total == 0 %}
+  <h2 class="titulo-de-lista espaco-34">Ainda não há nenhum experimento</h2>
+  <p class="recado">
+    <b>Um experimento é uma aposta escrita antes da hora.</b> Ele tem cinco
+    partes, e as cinco são obrigatórias: o problema que dói hoje, a hipótese (o
+    que você acredita que vai acontecer), qual número do placar ela quer mover,
+    o guarda (o sinal que manda parar antes da hora) e o prazo. Escrever a
+    aposta antes é o que impede a casa de, semanas depois, lembrar a hipótese do
+    jeito que der mais certo.
+  </p>
+  <p class="recado">
+    <b>Como nasce o primeiro:</b> leve a aposta à
+    <a href="{% url 'reuniao' %}">reunião de segunda-feira</a>. No fim da pauta
+    você monta o pedido para o robô, um bloco de texto para colar numa sessão:
+    descreva ali as cinco partes. É o robô que escreve o registro no livro, e a
+    partir daí o experimento aparece nesta tela como "rodando".
+  </p>
+  <p class="nota">
+    Enquanto nenhum experimento fechar, o número "aprendizados validados no
+    ciclo", no placar de doze, é zero. Zero contado é zero, e é honesto.
+  </p>
+
+  {% else %}
+  <div class="cartoes espaco-20">
+    <div class="cartao">
+      <div class="rotulo">Rodando</div>
+      <div class="valor">{{ lab.rodando|length }}</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Passaram do prazo</div>
+      <div class="valor{% if not lab.vencidos %} vazio{% endif %}">{{ lab.vencidos|length }}</div>
+    </div>
+    <div class="cartao">
+      <div class="rotulo">Encerrados</div>
+      <div class="valor">{{ lab.encerrados|length }}</div>
+    </div>
+  </div>
+
+  {% comment %}1. O QUE PASSOU DO PRAZO — primeiro, porque é o que cobra alguém{% endcomment %}
+  {% if lab.vencidos %}
+  <h2 class="titulo-de-lista espaco-34">Passaram do prazo e ninguém escreveu o resultado</h2>
+  <p class="aviso borda-amarela">
+    Estes experimentos venceram sem veredito. Não é fracasso deles: é dívida de
+    quem prometeu julgá-los. Enquanto o resultado não for escrito, a casa gastou
+    o esforço e não ficou sabendo de nada.
+  </p>
+  <ul class="riscas">
+    {% for e in lab.vencidos %}
+    <li>
+      <b>{{ e.titulo }}</b>
+      <span class="selo-vermelho">o prazo terminou em {{ e.vence|date:"d/m/Y" }}</span>
+      <span class="nota">Problema: {{ e.problema }}</span>
+      <span class="nota">Aposta: {{ e.hipotese }} &nbsp;·&nbsp; queria mover: {{ e.metrica }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <p class="recado">
+    <b>O gesto:</b> leve-os à <a href="{% url 'reuniao' %}">reunião de segunda-feira</a>
+    e feche cada um, mesmo que o veredito seja "não deu para saber". Fechar sem
+    conclusão vale mais do que deixar a aposta aberta para sempre.
+  </p>
+  {% endif %}
+
+  {% comment %}2. O QUE ESTÁ RODANDO{% endcomment %}
+  <h2 class="titulo-de-lista espaco-34">Rodando agora</h2>
+  {% if lab.rodando %}
+  <ul class="riscas">
+    {% for e in lab.rodando %}
+    <li>
+      <b>{{ e.titulo }}</b>
+      {% if e.dias == 0 %}<span class="selo-verde">vence hoje</span>
+      {% elif e.dias %}<span class="selo-verde">falta{{ e.dias|pluralize:"m" }} {{ e.dias }} dia{{ e.dias|pluralize }}</span>
+      {% endif %}
+      <span class="nota">Problema: {{ e.problema }}</span>
+      <span class="nota">Aposta: {{ e.hipotese }} &nbsp;·&nbsp; queria mover: {{ e.metrica }}</span>
+      <span class="nota">Para antes da hora: {{ e.guarda }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="recado-fraco">
+    Nenhuma aposta em campo neste momento. A próxima nasce na
+    <a href="{% url 'reuniao' %}">reunião de segunda-feira</a>.
+  </p>
+  {% endif %}
+
+  {% comment %}3. OS ENCERRADOS, agrupados pelo veredito{% endcomment %}
+  <h2 class="titulo-de-lista espaco-34">Encerrados</h2>
+  {% if lab.encerrados %}
+    {% for grupo in lab.por_veredito %}
+    <h3 class="titulo-da-conta espaco-20">{{ grupo.nome }} ({{ grupo.itens|length }})</h3>
+    {% if grupo.itens %}
+    <ul class="riscas">
+      {% for e in grupo.itens %}
+      <li>
+        <b>{{ e.titulo }}</b>
+        <span class="nota">Aposta: {{ e.hipotese }} &nbsp;·&nbsp; queria mover: {{ e.metrica }}</span>
+        <span class="nota">Resultado em {{ e.resultado.quando|date:"d/m/Y" }}: {{ e.resultado.titulo }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="recado-fraco">Nenhum.</p>
+    {% endif %}
+    {% endfor %}
+  <p class="recado">
+    <b>O gesto:</b> aposta que venceu não vira produto sozinha. Abra a
+    <a href="{% url 'caixa_robos' %}">fila dos robôs</a> e transforme o que
+    funcionou em tarefa.
+  </p>
+  <p class="nota">
+    "Não deu para saber" é desfecho legítimo, e por isso tem um lugar próprio
+    aqui: um experimento inconclusivo não é derrota (a aposta continua de pé) nem
+    aprendizado (nada foi validado). Ele não entra na conta de "aprendizados
+    validados no ciclo", que soma só os que venceram ou perderam, porque nesses
+    dois a casa passou a saber algo que não sabia.
+  </p>
+  {% else %}
+  <p class="recado-fraco">Nenhum experimento fechado até agora.</p>
+  {% endif %}
+  {% endif %}
+</div>
+{% endblock %}
