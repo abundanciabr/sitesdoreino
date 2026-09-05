@@ -552,13 +552,46 @@ services:
   # (`armadilhas/134`). O código da célula já está na `main` desde os PRs
   # #1046 a #1067; só faltava este arquivo.
   #
-  # Sem servico `-relay` ou `-consumer` ainda: o checkpoint (degrau 2.1) que
-  # precisa de outbox e Huey esta em construcao num PR separado. Quando ele
-  # pousar, o consumidor entra aqui, no molde de `metricas-eventos` acima.
   cursos:
     <<: *celula
     image: ghcr.io/abundanciabr/plataforma-cursos:${CURSOS_TAG:-main}
     env_file: [env/cursos.env]
+
+  # O relay do checkpoint (degrau 2.1, PR #1071): publica envio.recebido.v1 e
+  # revisao.prazo-estourado.v1 (outbox + Huey, molde byte a byte de
+  # `sugestoes`) e roda o tique periodico que registra o estouro do prazo de
+  # 24h. Sem este servico o Envio grava normalmente (a entrega do aluno nao
+  # quebra), mas os dois eventos ficam pendentes para sempre e o relogio de
+  # prazo nunca roda sozinho — foi assim que o PR #1071 o deixou, de proposito
+  # (relay e topologia de infra, nao codigo de celula).
+  #
+  # AS DUAS VARIAVEIS VEM DAQUI, e nao de `env/cursos.env`, pela MESMA razao
+  # gravada no bloco `gamificacao-consumer`: o provisionamento
+  # (`infra/provisionar-cursos.sh`) ja rodou, em 05/09/2026, antes de a
+  # celula consumir ou emitir evento nenhum, e escrever isto exigiria um
+  # SEGUNDO passo manual do mantenedor para duas variaveis que nao sao
+  # segredo e valem igual em toda a plataforma. `infra/env/cursos.env.exemplo`
+  # ja diz isto por escrito, para ninguem procurar a chave la.
+  #
+  # HUEY_REDIS_URL usa o banco 9: os bancos 1 a 8 do Redis ja sao de outras
+  # celulas (`infra/env/*.env.exemplo`), e cada fila Huey precisa do PROPRIO
+  # banco — dividir um banco entre duas celulas misturaria as tarefas de uma
+  # com a outra.
+  cursos-relay:
+    <<: *processo
+    image: ghcr.io/abundanciabr/plataforma-cursos:${CURSOS_TAG:-main}
+    env_file: [env/cursos.env]
+    environment:
+      HUEY_REDIS_URL: redis://redis:6379/9
+      REDIS_STREAMS_URL: redis://redis:6379/0
+    command: ["python", "manage.py", "run_huey"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      cursos:
+        condition: service_healthy
 
 volumes:
   pgdata: {}

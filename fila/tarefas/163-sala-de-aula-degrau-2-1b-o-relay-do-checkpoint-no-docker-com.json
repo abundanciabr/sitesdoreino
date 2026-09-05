@@ -1,0 +1,21 @@
+{
+  "arquivo": "163-sala-de-aula-degrau-2-1b-o-relay-do-checkpoint-no-docker-com",
+  "id": "TAR-163",
+  "titulo": "Sala de aula, degrau 2.1b: o relay do checkpoint no docker-compose (huey run_huey), sem ele os eventos ficam pendentes para sempre",
+  "toca": [
+    "infra",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-155"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR em infra/docker-compose.yml mergeado com o servico cursos-relay (molde gamificacao-consumer + mensageria-huey), deploy-infra verde; depois de um checkpoint entregue de verdade, os eventos envio.recebido.v1 e revisao.prazo-estourado.v1 aparecem consumidos (nao mais pendentes) e o registrar_estouros roda sozinho.",
+  "despacho": "Achado do robo do checkpoint (TAR-155, PR #1071): o compose ja documentava, desde o degrau 1.7 (PR #1069), que faltava o servico do relay (\"Sem servico -relay ou -consumer ainda... quando ele pousar, o consumidor entra aqui\"). Sem ele o Envio grava normalmente, mas envio.recebido.v1 e revisao.prazo-estourado.v1 ficam pendentes para sempre e o tique periodico de 24h (registrar_estouros, uma @huey.periodic_task no mesmo processo run_huey) nunca roda. Entregue: cursos-relay no docker-compose.yml, molde de gamificacao-consumer (as duas variaveis HUEY_REDIS_URL e REDIS_STREAMS_URL por environment:, porque o provisionamento ja rodou sem elas) e mensageria-huey/sugestoes-relay (command run_huey). Banco Redis 9 (o proximo livre; 1 a 8 ja sao de outras celulas). Sem tocar services/, contracts/ nem os envs.",
+  "origem": "achado do robo do checkpoint (TAR-155, PR #1071): o proprio docker-compose.yml ja previa esta peca e ela nao tinha tarefa",
+  "criada_em": "2026-09-05"
+}
