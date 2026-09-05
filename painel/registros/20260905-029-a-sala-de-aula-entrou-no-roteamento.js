@@ -12,7 +12,7 @@
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1069",
   verificado_em: "2026-09-05",
   precisa_do_dono: false,
-  responde_a: "20260905-026",
+  responde_a: "20260905-026-as-conversas-da-sala-de-aula-esperam-uma-linha-sua-na-vps",
   gravidade: "info",
   frente: "curso",
   vence_em_dias: null,
