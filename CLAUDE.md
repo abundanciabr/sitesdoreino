@@ -720,3 +720,39 @@ morre no teto. Toda espera tem voz e tem teto: RITOS.md §2 peça 6
 
 **Quem faz valer:** `ci/portao_de_deploy.py` (nenhuma imagem sobe sem evidência verde) · `.github/workflows/alarme-main.yml` (abre issue se a `main` fica vermelha) · `ci/muralha_da_espera.py` (espera muda e sem teto é comando recusado).
 
+
+## Todo pedido do mantenedor é um lote (desde 05/09/2026)
+
+
+Decisão dele em 05/09/2026, em pergunta estruturada (registro `20260905-013`;
+lei em `docs/decisoes/PLANO-ORQUESTRACAO-AUTONOMA-DOS-ROBOS.md`). O que ele
+quer, nas palavras dele: "quando eu passar aqui uma tarefa, que ela seja
+executada por vários agentes e sub-agentes, para mais agilidade, porque hoje as
+tarefas demoram bastante". Medido na fila: uma tarefa sozinha leva 19 minutos
+de mediana; o que demora é o pedido grande virando 5, 7, 10 tarefas feitas em
+série pela mesma sessão, cada uma esperando seus 10 minutos de pista.
+
+**A regra:** a sessão que recebe um pedido dele É a maestro daquele pedido, sem
+ninguém precisar dizer "toque um lote". Ela divide o pedido em pedaços
+independentes (1 PR = 1 célula, orçamento de 15), dispara um sub-agente por
+pedaço com a ficha `despacho`, em paralelo, e mantém em série só o que depende
+de outro pedaço. Enquanto os checks de cada PR rodam, o `revisor` lê o diff e o
+`escrivao` escreve o registro, a armadilha e o evento da fila. A maestro arma
+uma espera por PR (`ci/esperar.py --checks N --e-pousar`, pela `Monitor`),
+consolida um placar só e é a única que fala com ele.
+
+**As fichas moram em `.claude/agents/`** (`despacho.md`, `revisor.md`,
+`escrivao.md`): o rito fixo está nelas, e o brief leva SÓ a tarefa e as
+armadilhas dela. Sub-agente nunca pergunta ao mantenedor e nunca dispara outro
+sub-agente: o time é plano, e quem pergunta é a maestro.
+
+O que isto NÃO muda: uma corrente de passos que dependem um do outro continua
+em série; a espera da pista continua existindo por PR (ela só deixa de somar);
+o `RUNBOOK-LOTES.md` continua sendo o como da regência.
+
+**Quem faz valer:** `ci/tests/test_fichas_de_robo.py` (as três fichas existem, só
+usam campos que o harness reconhece, nenhuma pergunta nem dispara sub-agentes, e
+o revisor só lê). A divisão do pedido e o disparo em paralelo são julgamento da
+maestro, e isso não tem mecanismo: nada no CI vê quantos sub-agentes uma sessão
+disparou. Está dito aqui com todas as letras para ninguém tomar o teste das
+fichas por garantia da regra inteira.

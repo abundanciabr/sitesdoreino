@@ -13,6 +13,14 @@
 
 ## §0 — Para você, humano: como pedir um lote
 
+**Desde 05/09/2026 você não precisa pedir.** Todo pedido seu numa sessão é um
+lote: a sessão que o recebe divide em pedaços independentes, dispara um
+sub-agente por pedaço com as fichas de `.claude/agents/`, e só o que depende
+de outro pedaço fica em série (CLAUDE.md, "Todo pedido do mantenedor é um
+lote"; decisão sua no registro `20260905-013`). O texto abaixo continua
+valendo para quando você quer que a sessão tire o trabalho DA FILA em vez de
+receber um pedido novo.
+
 Cole isto numa sessão nova (janela raiz do Claude Code, no seu PC — `PS C:\>`):
 
 ```

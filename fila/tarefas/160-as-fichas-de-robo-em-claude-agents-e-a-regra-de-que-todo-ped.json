@@ -1,0 +1,22 @@
+{
+  "arquivo": "160-as-fichas-de-robo-em-claude-agents-e-a-regra-de-que-todo-ped",
+  "id": "TAR-160",
+  "titulo": "As fichas de robo em .claude/agents e a regra de que todo pedido do mantenedor e um lote",
+  "toca": [
+    ".claude",
+    "ci",
+    "CLAUDE.md",
+    "RUNBOOK-LOTES.md",
+    "docs",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: as tres fichas (despacho, revisor, escrivao) em .claude/agents/, ci/tests/test_fichas_de_robo.py verde, a secao nova no CLAUDE.md com Quem faz valer, e a emenda do RUNBOOK-LOTES.md secao 0",
+  "despacho": "Construido na propria sessao de 05/09/2026 que recebeu a decisao do mantenedor (registro 20260905-013), no PR citado na evidencia. Lei: docs/decisoes/PLANO-ORQUESTRACAO-AUTONOMA-DOS-ROBOS.md, secao 0 e degrau 1.",
+  "origem": "decisao do mantenedor em 05/09/2026, pergunta estruturada (registro 20260905-013)",
+  "criada_em": "2026-09-05"
+}
