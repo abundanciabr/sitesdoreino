@@ -86,10 +86,23 @@ CARTAO_DO_PAR = "alunos-ativos-30d"
 CARTAO_DO_TOTAL = "alunos-na-plataforma"
 #: A restrição desta semana (degrau 1 do plano; regra em `restricao.py`).
 CARTAO_DA_RESTRICAO = "restricao-da-semana"
-#: A direção da semana (degrau 2; regra em `direcao.py`): as duas medidas que
-#: a casa move na semana e que antecipam a meta.
+#: A direção da semana (degrau 2; regra em `direcao.py`): as duas medidas que a
+#: casa move na semana. As duas olham a SALA DE ESPERA, que é a venda feita
+#: fora do site: quem está nela já comprou e aguarda confirmação (correção do
+#: mantenedor em 05/09/2026). O nome do primeiro arquivo é anterior a essa
+#: correção e continua sendo a chave da foto do livro; o cartão explica a dívida.
 CARTAO_DOS_PEDIDOS = "pedidos-de-entrada-por-semana"
 CARTAO_DAS_48H = "liberacoes-em-48h"
+
+#: O caminho da venda, ao lado das duas acesas e sem número nenhum: quem chega
+#: na página e quem compra pelo próprio site. Nascem desenhados por decisão do
+#: mantenedor de 05/09/2026, e ficam apagados enquanto o checkout estiver
+#: congelado pela decisão dele de 22/08/2026. Aparecer apagado é o desenho, e
+#: não uma falta: é como as estrelas-guia e os oito do placar de doze já nascem.
+CARTOES_DO_CAMINHO_DA_VENDA = (
+    "visitas-na-pagina-de-venda-por-semana",
+    "compras-pelo-checkout-por-semana",
+)
 
 #: Os quatro tipos de número do plano (§2). Não existe tipo "composto": um
 #: número composto é reconhecido pelo campo `componentes`, e nunca desce ao
@@ -650,6 +663,14 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
     cartao_da_restricao, recusas_da_restricao = ler_cartao(CARTAO_DA_RESTRICAO, pasta)
     cartao_pedidos, recusas_pedidos = ler_cartao(CARTAO_DOS_PEDIDOS, pasta)
     cartao_48h, recusas_48h = ler_cartao(CARTAO_DAS_48H, pasta)
+    caminho_da_venda = []
+    recusas_do_caminho_da_venda = []
+    for nome in CARTOES_DO_CAMINHO_DA_VENDA:
+        cartao, recusado = ler_cartao(nome, pasta)
+        if cartao is None:
+            recusas_do_caminho_da_venda.extend(recusado)
+        else:
+            caminho_da_venda.append(cartao)
 
     from . import doze as doze_
 
@@ -771,6 +792,8 @@ def montar_o_placar(hoje: dt.date, site_id: str | None = None) -> dict:
         "cartao_pedidos": cartao_pedidos,
         "cartao_48h": cartao_48h,
         "recusas_da_direcao": recusas_pedidos + recusas_48h,
+        "caminho_da_venda": caminho_da_venda,
+        "recusas_do_caminho_da_venda": recusas_do_caminho_da_venda,
         "direcao": direcao,
         "compromissos": compromissos,
         "trabalho": trabalho,
