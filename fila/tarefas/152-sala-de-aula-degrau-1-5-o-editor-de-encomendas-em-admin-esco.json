@@ -1,0 +1,21 @@
+{
+  "arquivo": "152-sala-de-aula-degrau-1-5-o-editor-de-encomendas-em-admin-esco",
+  "id": "TAR-152",
+  "titulo": "Sala de aula, degrau 1.5: o editor de encomendas em /admin/escola/aulas/ (16 pecas, roteiro, guia do Mentor, pausas, instrumento, aceito quando, quiz, video por link, versoes, publicar)",
+  "toca": [
+    "admin",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-151"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado na admin: a tela le e grava pela porta de maquina da cursos (nunca no banco da admin, nunca copia), admin.consome += cursos em celulas.yml no mesmo PR, o travessao AVISA e nao recusa (como na Biblioteca do Livro), testes com respx, deploy da admin verde.",
+  "despacho": "Degrau 1.5 (PLANO-CELULA-CURSOS.md §6, o editor). Molde: /admin/economia/ (gamificacao) e /admin/escola/jornadas/ (mensageria): a admin le e grava pela porta de maquina, pelo par com Bearer, sem copia. O texto entra por aqui e so por aqui ([INV-CUR-C2]); o conteudo do curso nunca vira arquivo no repo (armadilhas/331). A maestro re-briefa no template do CAMINHO-DOURADO §2.",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md, lei aprovada pelo mantenedor em 04/09/2026 (registro 20260905-001); genese pousada no PR #1046 (TAR-146)",
+  "criada_em": "2026-09-05"
+}

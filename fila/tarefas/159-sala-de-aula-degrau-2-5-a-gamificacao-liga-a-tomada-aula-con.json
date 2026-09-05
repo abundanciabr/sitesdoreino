@@ -1,0 +1,21 @@
+{
+  "arquivo": "159-sala-de-aula-degrau-2-5-a-gamificacao-liga-a-tomada-aula-con",
+  "id": "TAR-159",
+  "titulo": "Sala de aula, degrau 2.5: a gamificacao liga a tomada aula.concluida.v1 (XP por entrega, uma regra semeada; a medalha do Boss; o Marco #1 pela fila que ja existe)",
+  "toca": [
+    "gamificacao",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-149"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado na gamificacao: consumer de aula.concluida.v1 pelo contrato (idempotente), a regra de pontuacao semeada como dado (ativa=False ate o mantenedor ligar em /admin/economia/), a medalha do Boco por e_boss, sem tocar em Marco (a fila de validacao ja existe); testes; deploy verde.",
+  "despacho": "Degrau 2.5 (PLANO-CELULA-CURSOS.md §3.4 e PLANO-CELULA-GAMIFICACAO.md §4, a tomada aula.concluida.v1 = 1 linha semeada). Nada de XP calculado fora da gamificacao; nada ligado sem o dono. A maestro re-briefa no template do CAMINHO-DOURADO §2.",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md, lei aprovada pelo mantenedor em 04/09/2026 (registro 20260905-001); genese pousada no PR #1046 (TAR-146)",
+  "criada_em": "2026-09-05"
+}

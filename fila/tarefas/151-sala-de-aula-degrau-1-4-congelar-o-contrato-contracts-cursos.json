@@ -1,0 +1,22 @@
+{
+  "arquivo": "151-sala-de-aula-degrau-1-4-congelar-o-contrato-contracts-cursos",
+  "id": "TAR-151",
+  "titulo": "Sala de aula, degrau 1.4: congelar o contrato contracts/cursos.openapi.yaml a partir do export (Rito de Contrato, fora de lote)",
+  "toca": [
+    "contracts",
+    "ci",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-150"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR so de contracts/ + manifesto (cursos: required, exportador) mergeado com a etiqueta contrato; freeze-de-contrato PASS na celula; a maestro conduziu, nunca um robo de lote (RUNBOOK-LOTES §7).",
+  "despacho": "Degrau 1.4 (PLANO-CELULA-CURSOS.md §10): o contrato nasce DO EXPORT do degrau 1.3 (armadilhas/228 e 243), nunca de cabeca. Rito de Contrato (RITOS.md §3): sessao com o mantenedor presente; NAO entra em lote. Molde: o degrau 2.8 das encomendas (TAR-126).",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md, lei aprovada pelo mantenedor em 04/09/2026 (registro 20260905-001); genese pousada no PR #1046 (TAR-146)",
+  "criada_em": "2026-09-05"
+}
