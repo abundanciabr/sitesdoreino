@@ -11,6 +11,7 @@ fail-closed, INV-CI01.
 """
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -272,6 +273,12 @@ def _sha(cwd: Path) -> str:
     ).stdout.strip()
 
 
+def _git_saida(cwd: Path, *args: str) -> str:
+    return subprocess.run(
+        ["git", *args], cwd=cwd, check=True, capture_output=True, text=True,
+    ).stdout.strip()
+
+
 def _montar_espelho(
     raiz: Path,
     *,
@@ -428,4 +435,124 @@ def test_settings_do_projeto_liga_a_muralha():
     ]
     assert any("--aviso" in c for c in avisos), (
         "o SessionStart do .claude/settings.json não liga o aviso da muralha"
+    )
+
+
+# ------------------------------------------------------------------------
+# O espelho que se atualiza sozinho (05/09/2026, decisão do mantenedor).
+# Guardas: ele avança quando é seguro, e CALA a boca só quando não havia nada
+# a fazer. Toda recusa fala — atualizador mudo que parou de funcionar é
+# indistinguível de um que não tinha o que fazer (armadilhas/176).
+# ------------------------------------------------------------------------
+
+ATUALIZOU = "ESPELHO ATUALIZADO"
+NAO_ATUALIZOU = "ESPELHO NÃO ATUALIZADO"
+
+
+def test_espelho_atrasado_e_limpo_e_posto_em_dia(tmp_path):
+    """O caso que motivou tudo: a pasta do mantenedor, 758 commits atrás,
+    deixando todo mecanismo novo inerte (armadilhas/343)."""
+    raiz = _montar_espelho(tmp_path / "espelho", atras=3)
+    antes = _sha(raiz)
+    r = _aviso(raiz)
+    assert r.returncode == 0
+    assert ATUALIZOU in r.stdout, r.stdout
+    assert "3 commits atrás" in r.stdout
+    assert _sha(raiz) != antes, "o HEAD nao andou: a atualizacao nao aconteceu"
+    assert _sha(raiz) == _git_saida(raiz, "rev-parse", "origin/main")
+
+
+def test_espelho_em_dia_nao_fala_da_atualizacao(tmp_path):
+    """O par silencioso. Este aviso roda em TODA sessão dele: falar quando não
+    houve nada é o jeito de ser ignorado (armadilhas/174)."""
+    raiz = _montar_espelho(tmp_path / "espelho", atras=0)
+    r = _aviso(raiz)
+    assert ATUALIZOU not in r.stdout, r.stdout
+    assert NAO_ATUALIZOU not in r.stdout, r.stdout
+
+
+def test_arvore_suja_nao_e_tocada_e_o_aviso_diz_por_que(tmp_path):
+    """A razão de a armadilhas/135 existir: trabalho não commitado de outra
+    sessão. O atualizador não encosta, e não fica quieto sobre isso."""
+    raiz = _montar_espelho(tmp_path / "espelho", atras=3)
+    antes = _sha(raiz)
+    (raiz / "CLAUDE.md").write_text("alguem estava editando isto\n", encoding="utf-8")
+    r = _aviso(raiz)
+    assert NAO_ATUALIZOU in r.stdout, r.stdout
+    assert "NÃO COMMITADO" in r.stdout
+    assert "armadilhas/135" in r.stdout
+    assert _sha(raiz) == antes, "mexeu numa pasta com trabalho nao salvo"
+
+
+def test_ramo_que_nao_e_main_nao_e_tocado(tmp_path):
+    raiz = _montar_espelho(tmp_path / "espelho", atras=3)
+    _git("switch", "-c", "outra-coisa", cwd=raiz)
+    antes = _sha(raiz)
+    r = _aviso(raiz)
+    assert NAO_ATUALIZOU in r.stdout, r.stdout
+    assert "outra-coisa" in r.stdout, "a recusa nao diz em que ramo a pasta esta"
+    assert _sha(raiz) == antes
+
+
+def test_arquivo_nao_versionado_sobrevive_a_atualizacao(tmp_path):
+    """Untracked não suja a árvore e não pode ser perdido: as pastas soltas de
+    anotação do mantenedor vivem assim na pasta dele."""
+    raiz = _montar_espelho(tmp_path / "espelho", atras=2)
+    (raiz / "minhas-anotacoes.txt").write_text("nao me apague\n", encoding="utf-8")
+    r = _aviso(raiz)
+    assert ATUALIZOU in r.stdout, r.stdout
+    assert (raiz / "minhas-anotacoes.txt").read_text(encoding="utf-8") == "nao me apague\n"
+
+
+def test_sem_medir_a_idade_nao_atualiza_nada(tmp_path):
+    """"Não medi" nunca vira ação — nem silêncio (INV-CI01).
+
+    Este teste NASCEU FURADO e a prova por sabotagem o pegou: ele ficava verde
+    mesmo sem o guarda, porque o merge falhava sozinho por falta da ref. Só
+    passou a discriminar quando a recusa por falta de medição ganhou FALA
+    própria — a mesma cura da `armadilhas/176`, uma camada acima.
+    """
+    raiz = _montar_espelho(tmp_path / "espelho", atras=3, com_origin_main=False)
+    antes = _sha(raiz)
+    r = _aviso(raiz)
+    assert "NÃO MEDIDA" in r.stdout, r.stdout
+    assert "não consegui medir o atraso" in r.stdout, (
+        f"a recusa por falta de medicao ficou muda: {r.stdout!r}"
+    )
+    assert ATUALIZOU not in r.stdout
+    assert _sha(raiz) == antes
+
+
+def test_a_defasagem_de_uma_sessao_e_dita_na_cara(tmp_path):
+    """Os ganchos e o CLAUDE.md desta sessão já foram lidos. Prometer que a
+    regra nova "já vale" seria a mentira mais fácil deste arquivo."""
+    raiz = _montar_espelho(tmp_path / "espelho", atras=1)
+    r = _aviso(raiz)
+    assert "defasagem de uma sessão" in r.stdout, r.stdout
+    assert "próxima conversa" in r.stdout
+
+
+def test_a_janela_do_gancho_cabe_os_dois_gits(tmp_path):
+    """O guarda contra deixar a pasta dele QUEBRADA.
+
+    O harness mata o hook no `timeout` do settings.json. Se ele matar um
+    `git merge` no meio, sobra um `index.lock` e a pasta do mantenedor para
+    de funcionar até alguém apagá-lo à mão. A janela do gancho tem de ser
+    maior que a soma dos tetos internos, com folga.
+    """
+    fiacao = json.loads(FIACAO.read_text(encoding="utf-8"))
+    janela = [
+        h["timeout"]
+        for entrada in fiacao["hooks"]["SessionStart"]
+        for h in entrada["hooks"]
+        if "muralha_pasta_compartilhada" in h["command"] and "--aviso" in h["command"]
+    ]
+    assert janela, "o aviso da muralha sumiu do SessionStart"
+    fonte = MURALHA.read_text(encoding="utf-8")
+    tetos = [int(n) for n in re.findall(r'"--quiet"\), (\d+)|REF_DA_VERDADE\), (\d+)',
+                                        fonte) for n in [n[0] or n[1]] if n]
+    assert tetos, "nao achei os tetos internos no codigo da muralha"
+    assert janela[0] > sum(tetos), (
+        f"a janela do gancho ({janela[0]}s) nao cobre os tetos internos "
+        f"({tetos} = {sum(tetos)}s): o harness pode matar o git no meio do merge"
     )
