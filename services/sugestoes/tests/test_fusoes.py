@@ -138,7 +138,13 @@ def test_quem_votou_nas_duas_nao_vira_dois_votos(db, canonica, absorvida, modera
         por=moderador,
     )
 
-    assert Voto.objects.filter(sugestao=canonica).count() == 3
+    # POR NOME, e não só por número (`armadilhas/267`): contar 3 votos na
+    # canônica passaria igual se a junção tivesse trocado quem são os três —
+    # movido a carla e derrubado a ana, por exemplo. A lista de ids é a única
+    # asserção em que uma implementação errada não consegue empatar com a certa.
+    assert set(
+        Voto.objects.filter(sugestao=canonica).values_list("autor_id", flat=True)
+    ) == {ana.id, bruno.id, carla.id}
     assert Voto.objects.filter(sugestao=absorvida).count() == 0
     # E o voto repetido do bruno não sumiu do mapa: ele está anotado, e é isso
     # que permite devolvê-lo.
