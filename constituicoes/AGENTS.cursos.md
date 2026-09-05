@@ -59,8 +59,8 @@ do disco.
   fail-CLOSED). Na gênese `celulas.yml` diz `consome: []` (`armadilhas/224`);
   cada linha entra no PR do cliente que a lê (degraus 1.3 e 1.8)
 - **Auth:** Bearer dedicado por par, `TOKENS_ACEITOS_<PAR>`. Env ausente ⇒
-  conjunto vazio ⇒ 401 para todo mundo. A lista `CURSOS_PROFESSORES` decide
-  quem entra no plantão; vazia, ninguém entra
+  conjunto vazio ⇒ 401 para todo mundo. Quem entra no plantão é a união de
+  `CURSOS_PROFESSORES` com `ADMIN_EMAILS`; as duas vazias, ninguém entra
 - **Emite:** `envio.recebido.v1`, `laudo.emitido.v1`, `aula.concluida.v1`,
   `checkpoint.devolvido.v1`, `revisao.prazo-estourado.v1`, `banca.decidida.v1`
   (Fase 5) e `notificacao.devida.v1` (assuntos `cursos.*`), pelo padrão outbox
@@ -89,7 +89,12 @@ do disco.
 
 - **Reconhecer não é autorizar.** O `papel` que a `identidade` devolve é de
   exibição. Quem decide se alguém vê a aula (matrícula ativa) e se alguém
-  entra no plantão (`CURSOS_PROFESSORES`) é esta célula, fail-CLOSED.
+  entra no plantão (`CURSOS_PROFESSORES` ∪ `ADMIN_EMAILS`) é esta célula,
+  fail-CLOSED. A segunda lista entrou em 05/09/2026, por decisão do mantenedor
+  ("qualquer admin do site pode abrir"), e não afrouxa a lei: quem autoriza
+  continua sendo uma lista de e-mails desta célula, que apenas passou a
+  incluir a MESMA lista que já abre o `/admin/`. O `papel` continua sem
+  liberar nada.
 
 - **A IA nunca decide.** O `RascunhoDaIA` não tem campo de decisão, data nem
   resposta à pergunta de amanhã de manhã, e o teste sabota tentando gravá-los.
