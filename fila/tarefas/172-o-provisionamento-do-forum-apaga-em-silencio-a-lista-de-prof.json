@@ -1,0 +1,20 @@
+{
+  "arquivo": "172-o-provisionamento-do-forum-apaga-em-silencio-a-lista-de-prof",
+  "id": "TAR-172",
+  "titulo": "O provisionamento do forum apaga em silencio a lista de professores que o dono escreveu a mao",
+  "toca": [
+    "infra",
+    "ci",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado: FORUM_PROFESSORES preservada por ler_de no provisionar-forum.sh; teste-guarda novo em ci/tests/ que le TODOS os infra/provisionar-*.sh como texto e reprova chave da trava escrita vazia sem releitura; prova por MUTACAO (apagar o ler_de deixa o teste vermelho); make ci verde.",
+  "despacho": "Medido em 05/09/2026 no origin/main: `infra/provisionar-forum.sh` grava `FORUM_PROFESSORES=` LITERALMENTE VAZIA na linha 226 do heredoc, e nao existe nenhum `ler_de \"$ENV_FORUM\" FORUM_PROFESSORES` que a preserve. Logo acima, no MESMO arquivo, `ADMIN_EMAILS` (linha 140) e `ANTHROPIC_API_KEY`/`ANTHROPIC_WORKSPACE_ID` (150/153) SAO preservadas por releitura. Consequencia: re-rodar o provisionamento do forum apaga a lista de professores que o mantenedor tiver escrito a mao, em silencio, com o deploy verde. E a `armadilhas/111` viva dentro do proprio script que a casa usa como MOLDE de preservacao (a TAR-170 o copiou para a `cursos`). Quem nao e admin perde o acesso e ninguem descobre ate reclamarem. Conserto: `FORUM_PROFESSORES=\"$(ler_de \"$ENV_FORUM\" FORUM_PROFESSORES)\"` antes do heredoc, e a linha 226 passa a escrever o valor preservado, exatamente como a chave da IA ja faz. Guarda: um teste em `ci/tests/` que leia o script como TEXTO e reprove toda chave de `CHAVES_QUE_EU_GERO` que o heredoc escreva vazia sem um `ler_de` correspondente, aplicado a TODOS os `infra/provisionar-*.sh` e nao so ao do forum, porque a classe e maior que o caso. Prove por MUTACAO: com o `ler_de` no lugar, apague-o e veja o teste reprovar. SEGUNDO ACHADO, no mesmo tema, para resolver aqui ou registrar como tarefa propria: depois que `infra/provisionar-pares-da-sala-de-aula.sh` roda, `provisionar-cursos.sh` passa a RECUSAR toda nova execucao (TOKENS_ACEITOS_ADMIN, CATALOGO_API_URL e TOKEN_CATALOGO sobram na trava de deriva). A recusa e fail-closed e barulhenta, nao apaga nada, mas torna falsa a promessa de idempotencia do cabecalho daquele script.",
+  "origem": "achado do robo da TAR-170 em 05/09/2026, conferido pela maestro linha a linha antes de virar tarefa",
+  "criada_em": "2026-09-05"
+}

@@ -64,6 +64,8 @@ RAIZ="${PLATAFORMA_DIR:-/opt/plataforma}"
 ENV_CURSOS="env/cursos.env"
 ENV_IDENTIDADE="env/identidade.env"
 ENV_ALUNOS="env/alunos.env"
+# De onde sai a lista de quem entra no /admin/. Este script NÃO a gera: copia.
+ENV_ADMIN="env/admin.env"
 # A referência de dono/permissão: um env que JÁ funciona nesta máquina.
 ENV_REF="$ENV_IDENTIDADE"
 
@@ -89,14 +91,26 @@ done
 #    script a apagaria em silêncio, com o deploy verde (`armadilhas/111`).
 #    Guarda: `ci/tests/test_provisionamento_nao_perde_variavel.py`.
 #
-#    E aqui a data é a mais previsível de todas: a escada desta célula tem os
-#    degraus 1.7 a 3.3 pela frente, e quatro variáveis já têm nome antes de
-#    existir: `TOKENS_ACEITOS_ADMIN` (o editor de aulas pela porta de máquina),
-#    `CURSOS_PROFESSORES` (quem entra no plantão, degrau 2.2),
-#    `ANTHROPIC_API_KEY` e `ANTHROPIC_WORKSPACE_ID` (o Assistente de laudo,
-#    degrau 2.3). Cada uma é uma chance de o script apagar o que não conhece.
+#    A data era previsível e chegou em 05/09/2026, com o
+#    `infra/abrir-a-sala-de-aula.sh`: `ADMIN_EMAILS` (quem entra no /admin/ e,
+#    por isso, no plantão), `ANTHROPIC_API_KEY` e `ANTHROPIC_WORKSPACE_ID` (o
+#    Assistente de laudo) passaram a existir no env vivo, escritas por AQUELE
+#    roteiro. Elas entraram nesta lista no MESMO PR, e o bloco de leitura da
+#    seção 4 as PRESERVA relendo do arquivo vivo, porque reescrever o env sem
+#    saber delas as apagaria em silêncio, com o deploy verde. `CURSOS_PROFESSORES`
+#    entra junto pelo mesmo motivo: ela é lista escrita à mão pelo mantenedor,
+#    e ninguém aqui sabe inventá-la.
+#
+#    O QUE AINDA NÃO ESTÁ NESTA LISTA, e é dito na cara para ninguém descobrir
+#    pela recusa: `TOKENS_ACEITOS_ADMIN`, `CATALOGO_API_URL` e `TOKEN_CATALOGO`.
+#    Quem as escreve é `infra/provisionar-pares-da-sala-de-aula.sh`, e depois de
+#    ELE rodar esta trava passa a recusar toda nova execução deste script. A
+#    recusa é fail-closed e barulhenta (não apaga nada, e manda avisar o
+#    agente), mas ela torna falsa a promessa de idempotência do cabeçalho. Fazer
+#    este roteiro herdar as três é mudar de dono uma variável entre dois
+#    roteiros, e essa decisão pede tarefa própria, não um parágrafo aqui.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID"
+CHAVES_QUE_EU_GERO="ADMIN_EMAILS ALUNOS_API_TOKEN ALUNOS_API_URL ANTHROPIC_API_KEY ANTHROPIC_WORKSPACE_ID CURSOS_PROFESSORES DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID"
 
 # LITERAL, e não `$ENV_CURSOS`, de propósito: quem confere esta trava é
 # `ci/tests/test_provisionamento_nao_perde_variavel.py`, e ele lê o script como
@@ -229,6 +243,33 @@ T_ALUNOS="$(ler_de "$ENV_ALUNOS" TOKENS_ACEITOS_CURSOS)"
 [ -n "$T_ALUNOS" ] || T_ALUNOS="$(gerar_segredo)" || parar "não achei openssl nem /dev/urandom nesta máquina, e eu não gravo um segredo fraco. Nada foi alterado."
 [ ${#T_ALUNOS} -ge 32 ] || parar "o token do par cursos->alunos ficou curto demais. Nada foi alterado."
 
+# ── AS QUATRO QUE ESTE SCRIPT NÃO SABE GERAR, e por isso RELÊ ───────────────
+# Reescrever o arquivo inteiro sem estas quatro linhas as apagaria em silêncio,
+# com o container de pé e o deploy verde (`armadilhas/111`). O efeito seria o
+# plantão fechar para o próprio dono e o botão "Rascunhar laudo" sumir da tela,
+# sem erro em lugar nenhum. Fail-closed por falta de valor é indistinguível de
+# fail-closed por decisão, e é isso que torna esta classe de defeito cara.
+
+# Os administradores da sala de aula são os MESMOS do painel, copiados de lá
+# numa FOTOGRAFIA, não numa ligação viva (o mesmo desenho do
+# `provisionar-forum.sh`). Se a lista mudar no painel, rode este script de novo,
+# ou o `infra/abrir-a-sala-de-aula.sh`, para a sala acompanhar. Vazio ⇒ ninguém,
+# que é fail-closed.
+ADMINS="$(ler_de "$ENV_ADMIN" ADMIN_EMAILS)"
+
+# Quem entra no plantão além dos administradores: lista de ids de plataforma,
+# escrita à mão pelo mantenedor. Ninguém aqui sabe inventá-la, então ela só
+# pode ser preservada do arquivo vivo. Vazia é estado legítimo.
+PROFESSORES="$(ler_de "$ENV_CURSOS" CURSOS_PROFESSORES)"
+
+# A chave da Anthropic e o workspace dela. Nascem na conta do mantenedor, custam
+# dinheiro por uso, e chegam aqui pelo `infra/abrir-a-sala-de-aula.sh`, que as
+# copia do env do fórum. Vazias = o Assistente de laudo desligado, que é um
+# estado honesto: a célula sobe igual e só o botão de rascunhar falha, em
+# português, dizendo o que falta.
+CHAVE_DA_IA="$(ler_de "$ENV_CURSOS" ANTHROPIC_API_KEY)"
+WORKSPACE_DA_IA="$(ler_de "$ENV_CURSOS" ANTHROPIC_WORKSPACE_ID)"
+
 SENHA_DB="$(gerar_segredo)" || parar "não consegui gerar a senha do banco. Nada foi alterado."
 CHAVE_DJANGO="$(gerar_segredo)" || parar "não consegui gerar a chave do Django. Nada foi alterado."
 
@@ -267,6 +308,10 @@ IDENTIDADE_API_URL=$IDENTIDADE_URL
 IDENTIDADE_API_TOKEN=$T_IDENTIDADE
 ALUNOS_API_URL=$ALUNOS_URL
 ALUNOS_API_TOKEN=$T_ALUNOS
+ADMIN_EMAILS=$ADMINS
+CURSOS_PROFESSORES=$PROFESSORES
+ANTHROPIC_API_KEY=$CHAVE_DA_IA
+ANTHROPIC_WORKSPACE_ID=$WORKSPACE_DA_IA
 ENV
 
 chown --reference="$ENV_REF" "$ENV_CURSOS" 2>/dev/null \
@@ -355,6 +400,23 @@ echo "  banco cursos_db ........ pronto, fechado ao público"
 echo "  $ENV_CURSOS ... escrito, com SITE_ID preenchido"
 echo "  pares abertos .......... cursos->identidade, cursos->alunos"
 for arq in $MEXIDOS; do echo "  tocado ................. $arq (cópia em $arq.bak-provisionar-cursos)"; done
+if [ -n "$CHAVE_DA_IA" ]; then
+  echo "  chave da IA ............ preservada (${#CHAVE_DA_IA} caracteres, não mostro o conteúdo)"
+fi
+if [ -z "$ADMINS" ]; then
+  echo
+  echo "  AVISO: ADMIN_EMAILS ficou VAZIO (não achei em $ENV_ADMIN)."
+  echo "  Isso é fail-closed: o plantão da sala de aula fica fechado até a lista"
+  echo "  existir, inclusive para você. Rode o infra/provisionar-admin.sh e depois"
+  echo "  o infra/abrir-a-sala-de-aula.sh."
+fi
+if [ -z "$CHAVE_DA_IA" ]; then
+  echo
+  echo "  AVISO: ANTHROPIC_API_KEY ficou VAZIA (não havia uma em $ENV_CURSOS)."
+  echo "  Isso não quebra nada: a sala de aula sobe igual e só o botão"
+  echo "  'Rascunhar laudo' fica desligado. Quem a põe lá é o"
+  echo "  infra/abrir-a-sala-de-aula.sh, que a copia do env do fórum."
+fi
 echo
 echo "== PRONTO. Copie esta tela inteira e mande para o robô. =="
 echo "A sala de aula ainda NÃO está no ar: falta a entrega que a põe no"
