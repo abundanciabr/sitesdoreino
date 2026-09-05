@@ -1,0 +1,22 @@
+{
+  "arquivo": "156-sala-de-aula-degrau-2-2-o-laudo-o-formulario-do-plantao-as-r",
+  "id": "TAR-156",
+  "titulo": "Sala de aula, degrau 2.2: o laudo (o formulario do plantao, as regras como 422, os invariantes L1 L2 L5 L6 L7, os eventos laudo.emitido, aula.concluida e checkpoint.devolvido, o sininho com assuntos cursos.*, a tela do laudo com a data antes do texto)",
+  "toca": [
+    "cursos",
+    "contracts",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-155"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: Laudo com CheckConstraints; POST do laudo devolve 422 em cada regra (rubrica incompleta, nota sem frase, menos de 3 forcas, forca generica, mais de 1 mudanca, mudanca sem aula, decisao ausente, devolvido sem data, pergunta falsa); L1, L2, L5, L6, L7 provados por mutacao; os tres eventos emitidos; o Rito aditivo dos assuntos cursos.* em notificacao.devida.v1 (PR proprio de contracts, etiqueta contrato); /cursos/plantao e /cursos/plantao/<envio> para CURSOS_PROFESSORES, fail-closed; make ci verde.",
+  "despacho": "Degrau 2.2 (PLANO-CELULA-CURSOS.md §4 o laudo, §5, §6 o plantao, §9). O aditivo de notificacao.devida.v1 e Rito de Contrato aditivo: PR proprio, fora de lote, a maestro conduz. A maestro re-briefa no template do CAMINHO-DOURADO §2.",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md, lei aprovada pelo mantenedor em 04/09/2026 (registro 20260905-001); genese pousada no PR #1046 (TAR-146)",
+  "criada_em": "2026-09-05"
+}

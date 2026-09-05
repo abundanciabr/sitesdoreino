@@ -1,0 +1,21 @@
+{
+  "arquivo": "157-sala-de-aula-degrau-2-3-o-assistente-de-laudo-o-primeiro-age",
+  "id": "TAR-157",
+  "titulo": "Sala de aula, degrau 2.3: o Assistente de laudo (o primeiro agente de IA da celula: agente.py no molde do forum, RascunhoDaIA, o botao Rascunhar laudo, L4 por sabotagem, a Ficha de Serie do agente medida do dado)",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-156"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: apps/cursos/agente.py no molde de services/forum/apps/core/agente.py (chave no ponto de uso, texto do aluno como conteudo, travessao apontado, modelo com data), RascunhoDaIA sem campo de decisao/data/pergunta e [INV-CUR-L4] provado por sabotagem, o botao no formulario do plantao, forcas_mantidas e mudanca_mantida medidas na emissao do laudo, testes com transporte dublado (respx); make ci verde. O modelo e o custo: decisao do mantenedor, que a maestro pergunta antes.",
+  "despacho": "Degrau 2.3 (PLANO-CELULA-CURSOS.md §7, os agentes; a Ficha do Assistente de laudo nos oito campos; a chave da Anthropic no env, lida no ponto de uso, armadilhas/097). PORTAO: o modelo e o custo sao decisao do mantenedor (a maestro pergunta com o numero na mesa, como no forum em 02/09). A maestro re-briefa no template do CAMINHO-DOURADO §2.",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md, lei aprovada pelo mantenedor em 04/09/2026 (registro 20260905-001); genese pousada no PR #1046 (TAR-146)",
+  "criada_em": "2026-09-05"
+}

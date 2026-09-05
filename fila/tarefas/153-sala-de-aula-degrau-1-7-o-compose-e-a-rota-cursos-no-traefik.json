@@ -1,0 +1,22 @@
+{
+  "arquivo": "153-sala-de-aula-degrau-1-7-o-compose-e-a-rota-cursos-no-traefik",
+  "id": "TAR-153",
+  "titulo": "Sala de aula, degrau 1.7: o compose e a rota /cursos no Traefik, com o inventario de rotas (PR sozinho); a celula responde /healthz pela internet",
+  "toca": [
+    "infra",
+    "ci",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-148"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR sozinho de infra mergeado depois do passo H do mantenedor na VPS: servico cursos no docker-compose.yml, router /cursos no Traefik, inventario de rotas atualizado (test_rotas_sem_forma_de_locale), deploy-infra e deploy-celula da cursos verdes, https://meshcraft.top/cursos/healthz respondendo 200 de fora.",
+  "despacho": "Degrau 1.7 (PLANO-CELULA-CURSOS.md §10). PORTAO: so depois de o mantenedor rodar infra/provisionar-cursos.sh na VPS (passo H; quem entrega o bloco de colar e a maestro). Molde: o degrau 2.10 das encomendas (TAR-128) e a gamificacao (armadilhas/089 e 134). Compose em PR proprio; o inventario de rotas no MESMO PR do Traefik.",
+  "origem": "escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md, lei aprovada pelo mantenedor em 04/09/2026 (registro 20260905-001); genese pousada no PR #1046 (TAR-146)",
+  "criada_em": "2026-09-05"
+}
