@@ -934,6 +934,44 @@ ar** e o primeiro em que o passo do mantenedor falhou TRÊS vezes antes de dar c
     some junto com o código dele não reprova nada. Compare a contagem com a do início do
     despacho, sempre. Ver `armadilhas/092`.
 
+41. **Medo de colisão não justifica proibir o arquivo que a lei exige.** O despacho das
+    tabelas da `cursos` vetou `INVARIANTES.md` ("compartilhado com o lote") e mandou
+    plantar um `test_inv_*`: a célula ficou verde e três checks da raiz ficaram
+    vermelhos no guarda dos guardas, e a volta foi da maestro. Entrada de invariante e
+    linha de inventário são LINHAS NOVAS num arquivo compartilhado, e é exatamente o
+    caso que o `rebase` resolve sozinho. **Régua de uma linha para o brief: se o ALVO
+    tem `test_inv_`, o ALVO tem `INVARIANTES.md` e o inventário.** Ver `armadilhas/336`.
+
+42. **Antes de congelar um contrato, percorra cada gesto de ESCRITA e pergunte quem lê
+    de volta.** A porta da `cursos` nasceu com `putInstrument` e sem `getInstrument`:
+    o editor gravaria a escala às cegas. A leitura entrou num degrau pequeno (1.3b)
+    ANTES do congelamento, porque depois dele seria um Rito inteiro (`armadilhas/228`
+    e `243`). E foi a maestro quem o fez, não um robô: para dois gestos de leitura, o
+    contexto frio de um despacho custa mais que o degrau.
+
+43. **A pista tem paciência finita, e um check instável no Windows a esgota.** No
+    PR da tomada da gamificação a pista atualizou a base, esperou, o runner Windows
+    demorou, e ela devolveu o pedido de pouso; o job vermelho era um teste do painel
+    tropeçando em pasta temporária, não o PR. A cura tem três passos e nenhum commit:
+    `gh pr checks <N>` para achar o job, `gh run rerun <id> --failed` para refazer SÓ
+    ele, e `mergear.py --pousar` de novo. Commit vazio para "acordar" a pista gasta uma
+    rodada inteira de checks por nada.
+
+44. **"Pare o container ao terminar" sem conferência é lei sem mecanismo.** Medido no
+    fechamento do lote 2: 28 Postgres de teste órfãos na máquina do mantenedor, de
+    robôs de cinco dias. Cada brief dizia para parar. Desde este lote o fechamento
+    inclui `docker ps --format '{{.Names}}' | grep pg-` e o brief traz a linha exata
+    (`docker rm -f pg-<celula>-<tarefa>`), não a intenção. Apagar os órfãos antigos é
+    decisão do mantenedor: nenhum deles é desta sessão.
+
+45. **A ferramenta de shell desta máquina come um nível de escape, e `re.sub` come
+    outro.** Duas rodadas perdidas numa noite: um `heredoc` transformou a sequência
+    barra-n de uma string Python em quebra de linha real (arquivo que não compila),
+    e depois o `re.subn` com texto de troca fez o mesmo por conta própria. Regra para
+    a maestro: arquivo se escreve com a ferramenta de escrita, nunca por `heredoc` com
+    barras; troca por regex recebe uma FUNÇÃO, não um texto; e `write_text` no Windows
+    leva `newline` explícito, ou o arquivo inteiro vira CRLF. Ver `armadilhas/093`.
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
