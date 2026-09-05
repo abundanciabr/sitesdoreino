@@ -4,7 +4,7 @@ import uuid
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from .eventos import carta_de_situacao
+from .eventos import carta_de_situacao, fato_de_situacao
 from .models import Matricula
 from .tasks import relay_apos_commit
 
@@ -70,6 +70,9 @@ def matricular(
                     email=email,
                     name=name,
                 )
+                # [FATO] Nasceu ativa: e a matricula que a compra criou, e o
+                # unico caminho pelo qual uma VENDA chega ao livro de fatos.
+                fato_de_situacao(nova)
             return nova, True
         except IntegrityError:
             return Matricula.objects.select_for_update().get(order_id=order_id), False
@@ -130,9 +133,15 @@ def entrar_na_fila(
     }
 
     def _atualizar(linha: Matricula) -> Matricula:
+        antes = linha.status
         for campo, valor in campos.items():
             setattr(linha, campo, valor)
         linha.save(update_fields=list(campos))
+        # [FATO] Quem foi recusado e reenvia volta para `aguardando`, e isso e
+        # uma mudanca de situacao como qualquer outra. Mora AQUI e nao nos dois
+        # chamadores (o caminho normal e o de perder a corrida) para nenhum dos
+        # dois poder esquecer.
+        fato_de_situacao(linha, anterior=antes)
         return linha
 
     with transaction.atomic():
@@ -158,6 +167,9 @@ def entrar_na_fila(
                     email=email,
                     **campos,
                 )
+                # [FATO] Nasceu aguardando: alguem pediu entrada pela sala de
+                # espera. E o caminho dos alunos das turmas anteriores.
+                fato_de_situacao(nova)
             return nova, True
         except IntegrityError:
             # Perdeu a corrida contra outra requisição da mesma pessoa: quem
@@ -241,6 +253,11 @@ def decidir_na_fila(
         # com o Google, ou a `identidade` não respondeu), e a ausência da carta
         # é o comportamento correto: o acesso foi liberado do mesmo jeito, e ela
         # vê a mudança na próxima vez que abrir o site.
+        # [FATO] SEMPRE, e antes da carta: liberar e recusar sao os dois
+        # desfechos da fila, e o livro precisa dos dois. A carta so sai num
+        # deles, e so para quem tem identidade da plataforma.
+        fato_de_situacao(linha, anterior=antes, ator_id=decidido_por)
+
         if destinatario_id and ganhou_acesso(antes, linha.status):
             carta_de_situacao(
                 site_id=linha.site_id,
@@ -444,41 +461,13 @@ def como_o_painel_ve(matricula: Matricula) -> dict:
             matricula.comprou_em.isoformat() if matricula.comprou_em else None
         ),
         "status": matricula.status,
-        # DERIVADO do prefixo, nunca de um campo próprio: um campo "origem"
-        # gravado seria um segundo lugar guardando o que o `order_id` já diz, e
-        # os dois discordariam no primeiro backfill.
-        "origem": (
-            "liberado"
-            if matricula.order_id.startswith(Matricula.PREFIXO_DA_FILA)
-            else "comprou"
-        ),
+        # DERIVADO do prefixo, nunca de um campo proprio. A regra mora no
+        # MODELO desde 05/09/2026, porque o evento `matricula.situacao-alterada`
+        # tambem a le: duas derivacoes discordariam no primeiro backfill.
+        "origem": matricula.origem(),
         "criada_em": matricula.enrolled_at.isoformat(),
-        "virou_aluno_em": _quando_virou_aluna(matricula),
+        "virou_aluno_em": matricula.virou_aluno_em(),
     }
-
-
-def _quando_virou_aluna(matricula: Matricula) -> str | None:
-    """O instante em que a linha passou a ser de uma ALUNA, e não de um pedido.
-
-    Rito de Contrato de 03/09/2026 (o placar do painel de gestão): a meta do
-    mantenedor virou "quantas pessoas compraram neste mês", e a data que conta,
-    nas palavras dele, é *"a data em que o aluno é liberado ou que o sistema
-    confirma o pagamento"*. Duas proveniências, duas datas:
-
-    - quem entrou pela fila (`pre:`) virou aluna no instante da DECISÃO
-      (`decidido_em`); `enrolled_at` ali é só quando pediu para entrar;
-    - quem comprou virou aluna quando o pagamento criou a linha
-      (`enrolled_at`).
-
-    NUNCA `comprou_em`: aquele é o que a própria pessoa digita no pedido,
-    opcional, e serve para o mantenedor conferir, não para contar.
-
-    Derivado a cada leitura, como `origem`: um campo gravado seria um segundo
-    lugar guardando o que `order_id` + `decidido_em` já dizem.
-    """
-    if matricula.order_id.startswith(Matricula.PREFIXO_DA_FILA):
-        return matricula.decidido_em.isoformat() if matricula.decidido_em else None
-    return matricula.enrolled_at.isoformat()
 
 
 #: Os campos que o formulário do painel pode corrigir — e SÓ eles.
@@ -545,6 +534,12 @@ def atualizar_matricula(
         linha.decidido_por = decidido_por
         campos += ["decidido_em", "decidido_por"]
         linha.save(update_fields=campos)
+
+        # [FATO] SEMPRE: suspender, encerrar e reembolsar sao mudancas que
+        # NUNCA geram carta (a pessoa perde acesso, e a pagina de avisos mora
+        # dentro da Caixa) e sao exatamente as que o livro de fatos precisa
+        # para contar a vida de um aluno ao longo do tempo.
+        fato_de_situacao(linha, anterior=antes, ator_id=decidido_por)
 
         # [AVISO] O MESMO gesto da fila, pelo outro caminho: religar quem estava
         # pausado também é "liberei você", e a pessoa precisa saber disso do

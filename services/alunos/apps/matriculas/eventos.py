@@ -35,6 +35,10 @@ from .models import OutboxEvent
 # então, e esta célula entra sem contrato novo, só com um `assunto` a mais.
 NOTIFICACAO_DEVIDA = "notificacao.devida"
 ASSUNTO_MATRICULA = "matricula.situacao-alterada"
+#: O FATO, que e outra coisa da CARTA acima: a carta avisa UMA pessoa e so
+#: nasce quando alguem GANHA acesso; o fato conta o que aconteceu com a
+#: matricula, sempre. Contrato congelado em 05/09/2026 (PR #1076).
+SITUACAO_ALTERADA = "matricula.situacao-alterada"
 
 
 class EventoForaDaTransacao(Exception):
@@ -136,3 +140,56 @@ def carta_de_situacao(
         envelope_extra={"ator_id": decidido_por or None},
         event_id=identificador,
     )
+
+
+def fato_de_situacao(
+    linha,
+    *,
+    anterior: str = "",
+    ator_id: str = "",
+) -> "OutboxEvent | None":
+    """O FATO de a situacao de uma matricula ter mudado. `None` se nao mudou.
+
+    Contrato: `contracts/eventos/matricula.situacao-alterada.v1.json`, congelado
+    no Rito de 05/09/2026 com o mantenedor presente (degrau 8 do painel de
+    gestao).
+
+    **Por que este fato existe, ao lado da carta.** A carta
+    (`carta_de_situacao`) so nasce quando a pessoa GANHA acesso E tem
+    identidade da plataforma. Recusa, suspensao, encerramento e reembolso nao
+    produzem carta nenhuma — e sao justamente as mudancas de que o livro de
+    fatos precisa para contar a vida de um aluno ao longo do tempo. O que nao
+    for anotado na hora esta perdido: um livro append-only nao se preenche
+    para tras.
+
+    **Devolve `None` quando nada mudou, e a decisao mora AQUI de proposito.**
+    Cinco lugares desta celula mexem no status; cinco `if` espalhados
+    divergiriam no primeiro estado novo. Quem chama sempre chama, e quem decide
+    e esta funcao.
+
+    **Ela tambem agenda a publicacao**, pelo mesmo motivo: o relay depois do
+    commit e um passo que cinco chamadores poderiam esquecer, e um evento que
+    fica na outbox sem ser publicado e um fato que a plataforma tem e nao conta.
+    """
+    if anterior == linha.status:
+        return None
+
+    from .tasks import relay_apos_commit  # tardio: tasks importa models, nao este
+
+    data: dict[str, Any] = {
+        "site_id": linha.site_id,
+        "matricula_id": str(linha.pk),
+        "situacao_nova": linha.status,
+        "origem": linha.origem(),
+        "virou_aluno_em": linha.virou_aluno_em(),
+    }
+    # Ausente (e nao vazio) quando a linha acabou de nascer: o contrato le
+    # ausencia como "nasceu assim", e e a mesma semantica que a carta ja usa.
+    if anterior:
+        data["situacao_anterior"] = anterior
+
+    evento = emitir(
+        SITUACAO_ALTERADA, data, envelope_extra={"ator_id": ator_id or None}
+    )
+    transaction.on_commit(relay_apos_commit)
+    return evento
