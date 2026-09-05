@@ -95,26 +95,39 @@ def _instante(texto: object) -> dt.datetime | None:
     return quando if quando.tzinfo is not None else None
 
 
-def a_memoria(
+def a_cobertura(
     site_id: str | None,
     agora: dt.datetime,
     cliente: MedicaoClient | None = None,
 ) -> dict:
-    """A linha de confiança do cabeçalho. Nunca levanta, nunca inventa zero."""
+    """O veredito da memória e, quando ela responde, UMA LINHA POR ASSUNTO.
+
+    É a única função desta casa que decide qual dos cinco desfechos aconteceu.
+    A linha do placar (`a_memoria`) e a tela da confiança
+    (`/admin/placar/confianca/`) leem daqui, e é por isso que as duas nunca
+    conseguem discordar sobre "não perguntei" e "perguntei e não há nada": uma
+    segunda cópia dessa decisão seria a lei anti-duplicação quebrada no lugar
+    exato onde ela mais dói.
+
+    `assuntos` vem VAZIA em todo desfecho que não é `medindo`, e quem desenha
+    a tela precisa olhar o veredito antes da lista. Lista vazia aqui não
+    significa "não há assunto": significa que não houve resposta para listar.
+    """
     if not site_id:
-        return {"veredito": "sem-site"}
+        return {"veredito": "sem-site", "assuntos": []}
 
     cliente = cliente or MedicaoClient()
     desfecho, tipos = cliente.cobertura(site_id)
     if desfecho != MedicaoClient.OK:
-        return {"veredito": desfecho}
+        return {"veredito": desfecho, "assuntos": []}
     if not tipos:
-        return {"veredito": "vazia"}
+        return {"veredito": "vazia", "assuntos": []}
 
     fatos = 0
     ultimo: dt.datetime | None = None
-    parados: list[str] = []
+    assuntos: list[dict] = []
     for linha in tipos:
+        tipo = str(linha.get("tipo") or "")
         quantidade = linha.get("quantidade")
         if isinstance(quantidade, int):
             fatos += quantidade
@@ -122,8 +135,41 @@ def a_memoria(
         if recebido is not None and (ultimo is None or recebido > ultimo):
             ultimo = recebido
         dias = linha.get("dias_desde_o_ultimo")
-        if isinstance(dias, int) and dias >= DIAS_PARA_DIZER_QUE_PAROU:
-            parados.append(nome_de_gente(str(linha.get("tipo") or "")))
+        assuntos.append(
+            {
+                "tipo": tipo,
+                "nome": nome_de_gente(tipo),
+                "quantidade": quantidade if isinstance(quantidade, int) else None,
+                "dias": dias if isinstance(dias, int) else None,
+                "parou": isinstance(dias, int) and dias >= DIAS_PARA_DIZER_QUE_PAROU,
+                "ultimo": ha_quanto_tempo(recebido, agora) if recebido else None,
+            }
+        )
+
+    # Os calados na frente: quem abre esta lista está procurando o que parou,
+    # e o que parou não pode estar no fim de uma lista de vinte assuntos.
+    assuntos.sort(key=lambda a: (not a["parou"], a["nome"]))
+    return {
+        "veredito": "medindo",
+        "fatos": fatos,
+        "assuntos": assuntos,
+        # Os calados, já separados, porque as duas telas que leem daqui os
+        # querem em destaque e nenhuma das duas tem como filtrar uma lista.
+        "parados": [a for a in assuntos if a["parou"]],
+        "ultimo": ha_quanto_tempo(ultimo, agora) if ultimo else None,
+    }
+
+
+def a_memoria(
+    site_id: str | None,
+    agora: dt.datetime,
+    cliente: MedicaoClient | None = None,
+) -> dict:
+    """A linha de confiança do cabeçalho. Nunca levanta, nunca inventa zero."""
+    cliente = cliente or MedicaoClient()
+    coberta = a_cobertura(site_id, agora, cliente)
+    if coberta["veredito"] != "medindo":
+        return {"veredito": coberta["veredito"]}
 
     # A fila de mortos é uma SEGUNDA pergunta, e a resposta dela não pode
     # derrubar a primeira: se ela falhar sozinha, a linha continua dizendo o
@@ -133,9 +179,9 @@ def a_memoria(
 
     return {
         "veredito": "medindo",
-        "fatos": fatos,
-        "assuntos": len(tipos),
-        "ultimo": ha_quanto_tempo(ultimo, agora) if ultimo else None,
-        "parados": sorted(parados),
+        "fatos": coberta["fatos"],
+        "assuntos": len(coberta["assuntos"]),
+        "ultimo": coberta["ultimo"],
+        "parados": sorted(a["nome"] for a in coberta["parados"]),
         "quebrados": quebrados,
     }
