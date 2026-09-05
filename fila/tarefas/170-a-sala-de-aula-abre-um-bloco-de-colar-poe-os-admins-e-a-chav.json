@@ -1,0 +1,20 @@
+{
+  "arquivo": "170-a-sala-de-aula-abre-um-bloco-de-colar-poe-os-admins-e-a-chav",
+  "id": "TAR-170",
+  "titulo": "A sala de aula abre: um bloco de colar poe os admins e a chave da IA no env do curso e semeia as 34 aulas",
+  "toca": [
+    "infra",
+    "ci",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado com infra/abrir-a-sala-de-aula.sh e provisionar-cursos.sh preservando as quatro chaves novas; ci/tests/test_provisionamento_nao_perde_variavel.py verde; bash -n limpo nos dois scripts; make ci verde. A linha de colar entregue ao mantenedor no relatorio.",
+  "despacho": "Um script novo `infra/abrir-a-sala-de-aula.sh` (UM bloco de colar, fail-closed, molde byte a byte de `infra/por-a-chave-da-ia-do-forum.sh`: guarda contra `source`, `parar()`, `.bak-<epoch>` antes de editar, idempotente) que faz na VPS, nesta ordem: (1) le ADMIN_EMAILS de `env/admin.env`, que e a lista de direito de quem entra no /admin/, e grava em `env/cursos.env`; (2) le ANTHROPIC_API_KEY e ANTHROPIC_WORKSPACE_ID de `env/forum.env` e grava em `env/cursos.env`; (3) recria `cursos` e `cursos-relay` para relerem o env; (4) roda `semear_esqueleto --site-id <SITE_ID lido do proprio cursos.env>` dentro do container; (5) confere DENTRO do container que ADMIN_EMAILS e a chave chegaram, e so entao imprime `== PRONTO ==`. Cada recusa diz o que houve E o que fazer. E `infra/provisionar-cursos.sh` aprende as quatro chaves novas (ADMIN_EMAILS, CURSOS_PROFESSORES, ANTHROPIC_API_KEY, ANTHROPIC_WORKSPACE_ID) em CHAVES_QUE_EU_GERO e passa a PRESERVA-LAS relendo do env vivo, no molde exato de `infra/provisionar-forum.sh` (linhas 74, 142-153, 229-230); sem isso, re-provisionar recusaria para sempre. `infra/env/cursos.env.exemplo` documenta as quatro.",
+  "origem": "resposta do mantenedor em 05/09/2026: qualquer admin do site pode abrir o plantao, e a sala fica vazia por enquanto (so o esqueleto)",
+  "criada_em": "2026-09-05"
+}
