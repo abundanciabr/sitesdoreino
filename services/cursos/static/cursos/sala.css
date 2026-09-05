@@ -252,3 +252,27 @@ button {
 }
 
 .rodape .direitos { margin: 12px 0 0; }
+
+/* O plantão: a fila de revisão e o formulário do laudo. */
+.item-da-fila.vencido { border-color: var(--vermelho); }
+
+.selo.vencido { background: var(--vermelho-fraco); color: var(--vermelho); }
+
+.laudo-anterior, .laudo-vazio {
+  background: var(--marca-fraca);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.laudo-anterior .mudanca, .laudo .mudanca { font-weight: 600; }
+
+.selo.devolvido { background: var(--vermelho-fraco); color: var(--vermelho); }
+
+label.radio, label.checkbox {
+  align-items: center;
+  display: flex;
+  font-weight: 400;
+  gap: 8px;
+}
+
+label.radio input, label.checkbox input { width: auto; }

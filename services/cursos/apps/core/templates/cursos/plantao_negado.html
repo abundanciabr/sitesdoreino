@@ -1,0 +1,17 @@
+{% extends "cursos/moldura.html" %}{% comment %}
+O plantão é fail-closed, e sempre com a MESMA resposta: lista vazia, e-mail
+fora dela, ou identidade fora do ar dão 403 aqui, nunca 500 e nunca o convite
+fail-OPEN da sala do aluno (`entrar.html`). Não há como distinguir os três
+casos para quem chega: dizer "seu e-mail não está na lista" a um visitante
+denunciaria que a lista existe.
+{% endcomment %}
+{% block titulo %}Plantão{% endblock %}
+
+{% block conteudo %}
+<section class="convite">
+  <h1>Esta área é restrita ao plantão</h1>
+  <p>O plantão é onde a professora lê o que os alunos entregaram e escreve o
+  laudo de cada um. Se você é da equipe da escola e acha que deveria ter
+  acesso, fale com a coordenação.</p>
+</section>
+{% endblock %}

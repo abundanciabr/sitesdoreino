@@ -1,0 +1,47 @@
+{% extends "cursos/moldura.html" %}{% comment %}
+A fila de revisão: os envios em `recebido` ou `em_revisao`, vencidos primeiro
+(a view já recebe a lista ordenada por `prazo_em`; nada se reordena aqui).
+Reenvio mostra o laudo anterior ao lado. Formulário normal com melhoria
+progressiva: cada linha é um link para `plantao_ficha`, sem script nenhum.
+{% endcomment %}
+{% block titulo %}Plantão{% endblock %}
+
+{% block faixa %}
+  <a href="{% url 'plantao' %}">Plantão</a>
+{% endblock %}
+
+{% block conteudo %}
+{% if recado %}<p class="recado">{{ recado }}</p>{% endif %}
+
+<header class="cabecalho-da-aula">
+  <h1>Fila de revisão</h1>
+  {% if itens %}
+  <p>{{ itens|length }} envio{{ itens|length|pluralize }} esperando laudo, os vencidos primeiro.</p>
+  {% else %}
+  <p>Nenhum envio esperando laudo agora.</p>
+  {% endif %}
+</header>
+
+{% for item in itens %}
+<section class="item-da-fila{% if item.vencido %} vencido{% endif %}">
+  <p class="rotulo">{{ item.envio.aula.numero }} · {{ item.envio.pessoa.nome_exibido }} · envio {{ item.envio.numero }}</p>
+  <h2>{{ item.envio.aula.titulo_exibido }}</h2>
+  <p>Recebido em {{ item.envio.enviado_em|date:"d/m/Y" }} às {{ item.envio.enviado_em|date:"H:i" }}.
+  Revisão até {{ item.envio.prazo_em|date:"d/m/Y" }} às {{ item.envio.prazo_em|date:"H:i" }}.</p>
+  {% if item.vencido %}
+  <p class="selo vencido">Prazo de revisão vencido em {{ item.envio.estourado_em|date:"d/m/Y" }} às {{ item.envio.estourado_em|date:"H:i" }}.</p>
+  {% endif %}
+  <ul class="links">
+    {% for link in item.envio.links %}<li>{{ link.rotulo }}: <a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.url }}</a></li>{% endfor %}
+  </ul>
+  {% if item.envio.readme %}<p class="pede">{{ item.envio.readme }}</p>{% endif %}
+  {% if item.reenvio and item.laudo_anterior %}
+  <div class="laudo-anterior">
+    <p class="miudo">Este é um reenvio. O laudo anterior devolveu com a mudança pedida:</p>
+    <p class="mudanca">{{ item.laudo_anterior.mudanca.texto }}</p>
+  </div>
+  {% endif %}
+  <p><a class="botao" href="{% url 'plantao-ficha' item.envio.id %}">Dar o laudo</a></p>
+</section>
+{% endfor %}
+{% endblock %}

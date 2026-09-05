@@ -44,14 +44,17 @@ from django.http import FileResponse, Http404, HttpResponseRedirect, JsonRespons
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils import timezone
-from django.views.decorators.http import require_GET, require_POST
+from django.utils.dateparse import parse_date
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from apps.cursos import envio as checkpoint
+from apps.cursos import laudo as parecer
 from apps.cursos import progresso as portas
 from apps.cursos.models import (
     Aula,
     Curso,
     Envio,
+    Laudo,
     Pausa,
     Peca,
     Progresso,
@@ -644,3 +647,254 @@ def entregar_checkpoint(request, numero: str):
     except checkpoint.EnvioRecusado as motivo:
         return _voltar_a_aula(numero, erro=str(motivo), ancora="checkpoint")
     return _voltar_a_aula(numero, recado="entregue", ancora="checkpoint")
+
+
+# ---------------------------------------------------------------------------
+# O LAUDO RECEBIDO (degrau 2.2): a tela do aluno
+# ---------------------------------------------------------------------------
+@require_GET
+def laudo_recebido(request, numero: str):
+    """O laudo do envio mais recente desta aula, para a PESSOA DA SESSÃO
+    ([INV-CUR-P1]). Sem envio ainda, ou envio ainda sem laudo: a tela diz isso,
+    nunca um erro. A data aparece ANTES do texto quando devolvido (lei §6).
+
+    **Nunca identifica quem assinou.** A célula já não guarda e-mail nem nome
+    de terceiros aqui ([INV-CUR-S1]), e o `avaliador` não sai desta tela por
+    NOME nem por PAPEL: um laudo de Banca (Fase 5) é o veredito da mesa, não a
+    opinião de um membro, e mostrar "Banca" não identifica ninguém — mas
+    mostrar QUAL membro identificaria, e é isso que [INV-CUR-S2] proíbe. Por
+    isso o template lê só `laudo.decisao`, `laudo.notas`, `laudo.forcas`,
+    `laudo.mudanca` e `laudo.data_de_retorno`: nunca `laudo.avaliador`.
+    """
+    pessoa, aula_da_porta, progresso, recusa = _porta_aberta(request, numero)
+    if recusa is not None:
+        return recusa
+    envio = checkpoint.ultimo_envio(progresso)
+    laudo_do_envio = getattr(envio, "laudo", None) if envio is not None else None
+    return render(
+        request,
+        "cursos/laudo.html",
+        {
+            "aula": aula_da_porta,
+            "envio": envio,
+            "laudo": laudo_do_envio,
+            **_de_fora(),
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# O PLANTÃO (degrau 2.2): a tela da professora
+# ---------------------------------------------------------------------------
+# As três forças são sempre três campos fixos no formulário (nunca uma lista
+# dinâmica): é o que garante que a VIEW manda exatamente três strings ao
+# serviço em todo POST normal; o guarda de [INV-CUR-L6] que prova "2 ou 4 é
+# recusado" chama `apps/cursos/laudo.py::emitir` direto, sem passar por aqui.
+NUMERO_DE_FORCAS = 3
+
+RECADOS_DO_PLANTAO = {
+    "laudo-emitido": "Laudo emitido. O envio saiu da fila de revisão.",
+    "ja-tem-laudo": "Este envio já recebeu um laudo: não há mais nada a fazer aqui.",
+}
+
+
+def _negar_plantao(request, *, status: int = 403):
+    return render(request, "cursos/plantao_negado.html", {**_de_fora()}, status=status)
+
+
+def _professor(request):
+    """`(Ator, None)` para quem entra no plantão; `(None, resposta)` para quem
+    não entra, com a resposta pronta.
+
+    Fail-CLOSED por `CURSOS_PROFESSORES`: lista vazia, e-mail fora dela, e
+    identidade fora do ar (que devolve `VISITANTE`, e `eh_professor=False`)
+    dão a MESMA resposta, 403 — nunca 500, e nunca o convite fail-OPEN da sala
+    do aluno: aqui não há "sem saber quem é, então convida a entrar".
+    """
+    ator = quem_e(request)
+    if not ator.eh_professor:
+        return None, _negar_plantao(request)
+    return ator, None
+
+
+def _envio_do_plantao(site_id: str | None, envio_id: int) -> Envio:
+    return get_object_or_404(
+        Envio.objects.select_related("aula__curso", "aula__instrumento", "pessoa"),
+        pk=envio_id,
+        aula__curso__site_id=site_id,
+    )
+
+
+def _laudo_anterior_de(envio: Envio) -> Laudo | None:
+    """O laudo do envio (numero - 1) desta mesma pessoa e aula, para o reenvio
+    aparecer ao lado (lei §6). `None` no primeiro envio."""
+    if envio.numero <= 1:
+        return None
+    anterior = (
+        Envio.objects.filter(
+            pessoa_id=envio.pessoa_id, aula_id=envio.aula_id, numero=envio.numero - 1
+        )
+        .select_related("laudo")
+        .first()
+    )
+    return getattr(anterior, "laudo", None) if anterior is not None else None
+
+
+def _item_da_fila(envio: Envio) -> dict:
+    return {
+        "envio": envio,
+        "vencido": envio.vencido,
+        "reenvio": envio.numero > 1,
+        "laudo_anterior": _laudo_anterior_de(envio),
+    }
+
+
+@require_GET
+def plantao_fila(request):
+    """A fila de revisão: vencidos primeiro (`envio.fila_de_revisao` já ordena
+    por `prazo_em`), reenvio com o laudo anterior ao lado, o estouro à vista."""
+    ator, recusa = _professor(request)
+    if recusa is not None:
+        return recusa
+    site = site_atual()
+    itens = (
+        [_item_da_fila(envio) for envio in checkpoint.fila_de_revisao(site)]
+        if site
+        else []
+    )
+    return render(
+        request,
+        "cursos/plantao_fila.html",
+        {
+            "itens": itens,
+            "recado": RECADOS_DO_PLANTAO.get(request.GET.get("recado", "")),
+            **_de_fora(),
+        },
+    )
+
+
+def _criterios_do_formulario(envio: Envio, enviado: dict | None = None) -> list[dict]:
+    """A escala do instrumento, mais o que a professora já tinha digitado (se
+    esta é a segunda passada, depois de uma recusa 422): nada do que foi
+    escrito se perde por causa de uma nota inválida em outro critério."""
+    enviado = enviado or {}
+    return [
+        {
+            "indice": indice,
+            "nome": criterio.nome,
+            "notas": list(range(criterio.minimo, criterio.maximo + 1)),
+            "valor_nota": enviado.get(f"nota_{indice}", ""),
+            "valor_frase": enviado.get(f"frase_{indice}", ""),
+        }
+        for indice, criterio in enumerate(
+            checkpoint.criterios_de(envio.aula.instrumento)
+        )
+    ]
+
+
+def _aulas_do_curso(envio: Envio) -> list[dict]:
+    return [
+        {
+            "id": uma_aula.id,
+            "numero": uma_aula.numero,
+            "titulo": uma_aula.titulo_exibido,
+        }
+        for uma_aula in envio.aula.curso.aulas.order_by("ordem")
+    ]
+
+
+def _formulario_do_laudo(
+    request,
+    envio: Envio,
+    *,
+    erro: str = "",
+    enviado: dict | None = None,
+    status: int = 200,
+):
+    enviado = enviado or {}
+    return render(
+        request,
+        "cursos/plantao_ficha.html",
+        {
+            "envio": envio,
+            "laudo_anterior": _laudo_anterior_de(envio),
+            "criterios": _criterios_do_formulario(envio, enviado),
+            "aulas": _aulas_do_curso(envio),
+            "erro": erro,
+            "enviado": enviado,
+            **_de_fora(),
+        },
+        status=status,
+    )
+
+
+def _gravar_laudo(request, envio: Envio, avaliador):
+    """Lê o formulário, chama `laudo.emitir` e traduz a recusa em tela (422)
+    ou o sucesso em POST-redirect-GET (302) de volta para a fila."""
+    criterios = checkpoint.criterios_de(envio.aula.instrumento)
+    notas = {
+        criterio.nome: {
+            "nota": _nota(request.POST.get(f"nota_{indice}")),
+            "frase": request.POST.get(f"frase_{indice}", ""),
+        }
+        for indice, criterio in enumerate(criterios)
+    }
+    forcas = [
+        request.POST.get(f"forca_{indice}", "") for indice in range(NUMERO_DE_FORCAS)
+    ]
+    mudanca = [
+        {
+            "texto": request.POST.get("mudanca_texto", ""),
+            "aula_id": request.POST.get("mudanca_aula", ""),
+        }
+    ]
+    decisao = request.POST.get("decisao", "")
+    data_de_retorno = parse_date(request.POST.get("data_de_retorno") or "")
+    ajuste_feito = request.POST.get("ajuste_feito", "")
+    # A pergunta só existe como `true`: a caixa não marcada é OMITIDA do POST
+    # (ela não tem `value` de "não"), e ausência é lida como não respondida,
+    # nunca como `false` (lei §6, [INV-CUR-L7]).
+    sabe_o_que_fazer_amanha = (
+        True if request.POST.get("sabe_o_que_fazer_amanha") == "sim" else None
+    )
+
+    try:
+        parecer.emitir(
+            envio,
+            avaliador=avaliador,
+            papel=Laudo.Papel.PROFESSOR,
+            notas=notas,
+            forcas=forcas,
+            mudanca=mudanca,
+            decisao=decisao,
+            data_de_retorno=data_de_retorno,
+            ajuste_feito=ajuste_feito,
+            sabe_o_que_fazer_amanha=sabe_o_que_fazer_amanha,
+        )
+    except parecer.LaudoRecusado as motivo:
+        return _formulario_do_laudo(
+            request, envio, erro=str(motivo), enviado=request.POST, status=422
+        )
+    endereco = reverse("plantao")
+    return HttpResponseRedirect(f"{endereco}?recado=laudo-emitido")
+
+
+@require_http_methods(["GET", "POST"])
+def plantao_ficha(request, envio_id: int):
+    """O formulário do laudo: a rubrica completa, as três forças, a mudança, a
+    decisão, a data de retorno (só quando devolvido) e a pergunta de amanhã de
+    manhã. `GET` desenha; `POST` valida pelas nove regras de `laudo.emitir` e,
+    na recusa, RE-DESENHA com o texto digitado preservado e status 422 — ao
+    contrário do checkpoint do aluno, este formulário é grande demais para se
+    dar ao luxo de um redirect que perde tudo o que a professora escreveu.
+    """
+    ator, recusa = _professor(request)
+    if recusa is not None:
+        return recusa
+    envio = _envio_do_plantao(site_atual(), envio_id)
+    if envio.estado not in checkpoint.ESTADOS_NA_FILA:
+        endereco = reverse("plantao")
+        return HttpResponseRedirect(f"{endereco}?recado=ja-tem-laudo")
+    if request.method == "POST":
+        return _gravar_laudo(request, envio, ator.pessoa)
+    return _formulario_do_laudo(request, envio)
