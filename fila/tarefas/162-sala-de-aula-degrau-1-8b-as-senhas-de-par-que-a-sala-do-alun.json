@@ -1,0 +1,21 @@
+{
+  "arquivo": "162-sala-de-aula-degrau-1-8b-as-senhas-de-par-que-a-sala-do-alun",
+  "id": "TAR-162",
+  "titulo": "Sala de aula, degrau 1.8b: as senhas de par que a sala do aluno precisa na VPS (identidade completa, alunos e menu do catalogo), em infra/",
+  "toca": [
+    "infra",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-154"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR em infra/ mergeado com o script de par fail-closed (molde infra/provisionar-cursos.sh) provado com env de mentira; o bloco de colar entregue ao mantenedor; depois do compose (TAR-153) e da linha dele na VPS, /cursos responde com o menu do topo e reconhece a matricula.",
+  "despacho": "Degrau 1.8b (achado do despacho do 1.8, PLANO-CELULA-CURSOS.md §6.3 e DECISAO-celula-de-identidade.md §6.3): a sala do aluno (TAR-154) pergunta a identidade QUEM e a pessoa com o e-mail completo (getSessionFull), pergunta a alunos se ha matricula ativa e pede o menu do topo ao catalogo. Os tres pares existem no codigo da cursos desde o 1.8; este degrau e a metade da VPS: em infra/, no molde de infra/provisionar-cursos.sh e dos scripts de par que ja existem (grep TOKENS_COMPLETOS em infra/), um script fail-closed que (1) gera o par cursos->identidade e o acrescenta a lista TOKENS_COMPLETOS_CURSOS (ou o nome que a identidade usa para a lista curta dos pares que enxergam o e-mail completo) no env da identidade, (2) gera o par cursos->alunos em TOKENS_ACEITOS_CURSOS do env de alunos, (3) gera o par cursos->catalogo em TOKENS_ACEITOS_CURSOS do env do catalogo, e grava os tres lados da cursos (IDENTIDADE_API_TOKEN, ALUNOS_API_TOKEN, CATALOGO_API_TOKEN) em infra/env/cursos.env, com as URLs internas (http://identidade:8000/api/identidade etc., conforme servers: dos contratos). Segredo NUNCA em argumento de linha de comando (RUNBOOK-LOTES §9 licao 37): gerado dentro do script, gravado por arquivo. Entrega ao mantenedor: UM bloco de colar, janela deploy@srv, que se recusa se algo estiver estranho (PAROU POR SEGURANCA). Este PR toca infra/ (CODEOWNERS): mandato da escada aprovada; anunciar no PR. Testes: o script se prova com um env de mentira em pasta temporaria (bash, como provisionar-cursos.sh faz). Registro embarcado citando o PR; TAR pega e concluida pelo balcao.",
+  "origem": "achado do despacho do degrau 1.8 (TAR-154), escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md; o codigo da cursos le os pares no ponto de uso e a VPS precisa dos tres",
+  "criada_em": "2026-09-05"
+}
