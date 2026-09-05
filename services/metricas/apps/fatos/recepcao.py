@@ -5,7 +5,7 @@ lê o stream vive em `management/commands/consume_eventos.py`, no molde
 [RECEITA:R4 v1] que as cinco células consumidoras já seguem (Lei 3: copia-se o
 padrão entre células, nunca se importa código de uma na outra).
 
-## Três decisões que valem a leitura
+## Quatro decisões que valem a leitura
 
 **1. `receber` NUNCA levanta.** Todo caminho termina em fato guardado ou em
 evento morto. Um consumidor que estoura deixa a mensagem presa no PEL e, cinco
@@ -16,7 +16,9 @@ só existem se o evento inválido chegar até aqui.
 
 **2. O que se valida é o ENVELOPE, não o miolo.** As cinco chaves canônicas
 (`event`, `version`, `event_id`, `occurred_at`, `data`), o fuso da data, o
-formato do id e o `site_id`. O `data` é guardado como veio.
+formato do id e o `site_id`. O `data` é guardado como veio. O `ator_id` é
+guardado quando vem e NÃO é exigido: os assuntos mais antigos da casa não o
+têm, e cobrá-lo mataria fatos legítimos.
 
 Por que não validar contra o JSON Schema do contrato: os contratos vivem em
 `contracts/eventos/` e **não viajam para dentro da imagem** (o build tem por
@@ -28,7 +30,14 @@ o que `forum/tests/test_a_voz_do_forum.py` faz). Aqui a régua é: se o envelope
 está bom, o fato é guardado como veio; interpretar o `data` é trabalho de quem
 lê, e o corpo cru está lá para isso.
 
-**3. Assunto desconhecido é fato, não erro.** Diferente das outras
+**3. O marco vem depois do fato, e nunca ao preço dele.** Guardado o evento,
+`marcos.derivar` lê dele as conquistas que couberem (degrau 9) — fora da
+transação do fato, e sem levantar. Como aqui o miolo não é validado, um `data`
+fora do contrato é possível, e a resposta a ele é marco nenhum: fato guardado
+sem marco é honesto, fato recusado por causa de uma leitura seria o livro
+perdendo história.
+
+**4. Assunto desconhecido é fato, não erro.** Diferente das outras
 consumidoras, esta não tem "handler por assunto": tudo o que chega e tem
 envelope bom é guardado. É o que faz dela um livro em vez de um contador —
 guardar hoje o que ninguém perguntou ainda é a única forma de responder amanhã
@@ -43,6 +52,7 @@ import uuid
 
 from django.db import IntegrityError, transaction
 
+from .marcos import derivar
 from .models import Evento, EventoMorto, dia_em_sao_paulo
 
 #: As chaves do envelope canônico da casa (`contracts/eventos/*.json`).
@@ -148,6 +158,7 @@ def receber(cru: bytes | str) -> tuple[str, object]:
                 versao=versao,
                 celula=tipo.split(".")[0],
                 site_id=site_id[:60],
+                ator_id=_texto(envelope.get("ator_id"))[:120],
                 ocorrido_em=ocorrido_em,
                 dia=dia_em_sao_paulo(ocorrido_em),
                 dados=dados,
@@ -157,4 +168,7 @@ def receber(cru: bytes | str) -> tuple[str, object]:
         # Reentrega. É o normal de qualquer fila, e não é erro: o fato já está
         # no livro, gravado uma vez, que é o que a contagem precisa.
         return JA_TINHA, Evento.objects.filter(event_id=event_id).first()
+    # A leitura vem DEPOIS do fato, e fora da transação dele: um marco que não
+    # dá para calcular não pode custar o fato que já foi afirmado.
+    derivar(evento)
     return GUARDADO, evento

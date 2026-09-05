@@ -10,14 +10,19 @@ uvicorn==0.32.1
 # A pergunta "quem é esta pessoa?" à célula identidade (degrau 1.3) e "ela está
 # matriculada?" à alunos (degrau 1.8) — os clientes nascem nesses degraus da
 # escada. Entra já aqui pelo mesmo motivo das versões pinadas: quando o cliente
-# chegar, ele não escolhe versão nova. O SDK da Anthropic do Assistente de
-# laudo NÃO entra aqui: ele chega no degrau 2.3, na versão que o fórum já
-# pinou, e nunca antes do botão que o usa.
+# chegar, ele não escolhe versão nova.
 httpx==0.28.1
 # A porta de MÁQUINA da sala de aula (`/api/cursos`, degrau 1.3; o contrato
 # congela no 1.4). Mesma versão das outras células de propósito
 # (`armadilhas/071`).
 django-ninja==1.3.0
+# O Assistente de laudo (degrau 2.3): o SDK com que esta célula fala com um
+# modelo de linguagem. A versão é a MESMA que o fórum já pinou, pelo motivo de
+# sempre (`armadilhas/071`): duas versões da mesma biblioteca para o mesmo
+# padrão são dois comportamentos a depurar. Ele instala junto o `httpx2`, um
+# pacote DIFERENTE do `httpx` acima, e os dois convivem: é por isso que o corte
+# de rede da suíte precisa cortar os dois (`armadilhas/288`).
+anthropic==1.3.0
 # O relay da outbox e o tique do prazo de revisão (degrau 2.1). As versões são
 # as MESMAS de sugestoes/checkout/quiz/mensageria de propósito: um relay por
 # célula em versão própria seria cinco comportamentos de biblioteca para o

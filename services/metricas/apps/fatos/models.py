@@ -70,9 +70,10 @@ class Evento(models.Model):
     """Um fato afirmado por uma célula, guardado como veio.
 
     O envelope é o canônico da casa (`contracts/eventos/*.json`): `event`,
-    `version`, `event_id`, `occurred_at`, `data`. Os campos abaixo são esse
-    envelope aberto em colunas — mais `dia`, que é derivado e existe para que
-    contar por dia não custe uma conversão por linha em toda consulta.
+    `version`, `event_id`, `occurred_at`, `ator_id` (nos assuntos que têm
+    ator) e `data`. Os campos abaixo são esse envelope aberto em colunas, mais
+    `dia`, que é derivado e existe para que contar por dia não custe uma
+    conversão por linha em toda consulta.
     """
 
     #: `event_id` do envelope: a chave de idempotência. O mesmo fato reentregue
@@ -95,6 +96,16 @@ class Evento(models.Model):
 
     #: `data.site_id`: a plataforma serve mais de um site (Lei 9).
     site_id = models.CharField(max_length=60)
+
+    #: `ator_id` do envelope: o id de PLATAFORMA de quem causou o fato, vazio
+    #: quando o assunto não tem ator (`identidade.pessoa-cadastrada`,
+    #: `quiz.completado`) ou quando não houve gente (uma matrícula que nasce
+    #: ativa porque o provedor aprovou o pagamento). Guardado porque é a ÚNICA
+    #: forma de saber quem escreveu no fórum: nos contratos do fórum o autor
+    #: viaja no envelope, e `data` leva só ids de tópico, de área e o tamanho
+    #: da mensagem. Sem esta coluna o livro perdia o autor de cada fato para
+    #: sempre, e nenhuma leitura por pessoa era possível depois.
+    ator_id = models.CharField(max_length=120, blank=True, default="")
 
     #: `occurred_at`: quando o fato aconteceu no mundo.
     ocorrido_em = models.DateTimeField()
@@ -189,3 +200,96 @@ class EventoMorto(models.Model):
 
     def __str__(self) -> str:
         return f"morto: {self.tipo_declarado or 'sem tipo'} ({self.estado})"
+
+
+class Marco(models.Model):
+    """Uma conquista com data, derivada dos fatos (`PLANO-PAINEL-DE-GESTAO` §6.4).
+
+    A regra do plano, palavra por palavra: "marco é conquista com data (uma
+    pessoa tem vários); dimensão é vista calculada sobre os marcos; marco
+    automático e marco assinado são coisas diferentes e o painel diz qual é
+    qual".
+
+    **A diferença entre esta tabela e o `Evento`**, que é o que precisa ficar
+    claro para quem chegar: o evento é o que uma célula AFIRMOU, guardado como
+    veio; o marco é uma LEITURA que esta célula faz do evento. Por isso o marco
+    não é imutável: mudou a regra de derivação, os marcos se refazem a partir
+    do livro (`manage.py derivar_marcos`), e nenhum fato se perde no caminho.
+
+    **Por que o sujeito tem tipo.** "Uma pessoa tem vários marcos" é a
+    intenção, e ela ainda não é possível para a vida da matrícula: o contrato
+    de `matricula.situacao-alterada` traz `matricula_id`, um id OPACO da célula
+    `alunos` que "identifica a matricula, nunca a pessoa, e nao serve para
+    creditar ninguem fora daqui". Guardar esse id numa coluna chamada `pessoa`
+    misturaria dois vocabulários de identidade na mesma contagem, e "pessoas
+    que viraram alunas" passaria a somar maçãs com laranjas sem erro em lugar
+    nenhum (`armadilhas/303`). O sujeito diz em que vocabulário o id está, e
+    contar dentro de um vocabulário é sempre correto.
+    """
+
+    class Sujeito(models.TextChoices):
+        PESSOA = "pessoa", "Pessoa"
+        MATRICULA = "matricula", "Matrícula"
+
+    class Tipo(models.TextChoices):
+        ENTROU_NO_SITE = "entrou-no-site", "Entrou no site"
+        PEDIU_ENTRADA = "pediu-entrada", "Pediu entrada na escola"
+        VIROU_ALUNO_COMPRANDO = "virou-aluno-comprando", "Virou aluno comprando"
+        VIROU_ALUNO_LIBERADO = "virou-aluno-liberado", "Virou aluno por liberação"
+        ESCREVEU_NO_FORUM = "escreveu-no-forum", "Escreveu no fórum"
+        AJUDOU_ALGUEM = "ajudou-alguem", "Ajudou alguém no fórum"
+
+    class Procedencia(models.TextChoices):
+        AUTOMATICO = "automatico", "Automático"
+        ASSINADO = "assinado", "Assinado"
+
+    #: Em que vocabulário de identidade o `sujeito_id` está escrito.
+    sujeito_tipo = models.CharField(max_length=20, choices=Sujeito.choices)
+
+    #: O id opaco de quem conquistou. Nome e e-mail não entram aqui (a célula
+    #: guarda só id opaco), e para contar não é preciso saber quem é.
+    sujeito_id = models.CharField(max_length=120)
+
+    tipo = models.CharField(max_length=40, choices=Tipo.choices)
+
+    #: O dia de São Paulo em que a conquista aconteceu, e é a PRIMEIRA vez: um
+    #: fato mais antigo que chegue depois puxa esta data para trás, porque
+    #: dois streams não chegam em ordem entre si e a coorte é calculada daqui.
+    dia = models.DateField()
+
+    #: O `event_id` do fato que fixou a data acima. É a linhagem: com ele se
+    #: chega ao evento cru que produziu o marco, e é o que permite conferir um
+    #: número até o começo em vez de acreditar nele.
+    event_id = models.UUIDField()
+
+    #: Automático (derivado de fato) ou assinado (declarado por gente). Esta
+    #: tabela guarda SÓ o automático, e o `save()` recusa o outro: o marco
+    #: assinado mora no livro de ocorrências, por decisão do plano, e misturar
+    #: os dois aqui faria a contagem automática afirmar mais do que mediu.
+    procedencia = models.CharField(
+        max_length=20, choices=Procedencia.choices, default=Procedencia.AUTOMATICO
+    )
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["sujeito_tipo", "sujeito_id", "tipo"],
+                name="um_marco_por_sujeito_por_tipo",
+            )
+        ]
+        indexes = [models.Index(fields=["tipo", "dia"])]
+        ordering = ["dia", "tipo"]
+
+    def __str__(self) -> str:
+        return f"{self.get_tipo_display()} ({self.sujeito_tipo}) em {self.dia}"
+
+    def save(self, *args, **kwargs):
+        if self.procedencia != self.Procedencia.AUTOMATICO:
+            raise ValueError(
+                "esta tabela guarda só o marco automático, derivado de um fato "
+                "do livro. Marco assinado por gente é um registro em "
+                "painel/registros/ (PLANO-PAINEL-DE-GESTAO.md §6.4)"
+            )
+        return super().save(*args, **kwargs)

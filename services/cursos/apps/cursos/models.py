@@ -11,7 +11,7 @@ Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 (o modelo) e §9 (os invariantes
 Desde o degrau 2.1 (TAR-155) há também O CHECKPOINT (`Envio`, o que o aluno
 entregou por link, na fila de 24 horas) e a OUTBOX (`OutboxEvent`, molde byte a
 byte de `services/sugestoes`). Desde o degrau 2.2 (TAR-156) há também O LAUDO
-(`Laudo`) e o esqueleto de `RascunhoDaIA` (o corpo real é degrau 2.3). As
+(`Laudo`) e o `RascunhoDaIA` do Assistente de laudo (degrau 2.3). As
 REGRAS do progresso (que porta abre, e quando) não moram neste arquivo: moram
 em `apps/cursos/progresso.py`, e é lá que o [INV-CUR-P2] é imposto; as do
 envio (quem entrega, quando, e o que a fila devolve) moram em
@@ -757,28 +757,64 @@ class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
 
 
 # ---------------------------------------------------------------------------
-# 12. O RASCUNHO DA IA: esqueleto mínimo (o corpo real é o degrau 2.3)
+# 12. O RASCUNHO DA IA: o que o Assistente de laudo sugeriu (degrau 2.3)
 # ---------------------------------------------------------------------------
 
 
 class RascunhoDaIA(models.Model):
-    """Só o suficiente para `Laudo.rascunho` ter algo a apontar.
+    """O que o Assistente de laudo sugeriu para um envio (degrau 2.3, lei §7).
 
-    O corpo real (`conteudo`, `modelo`, `tokens_entrada`, `tokens_saida`,
-    `forcas_mantidas`, `mudanca_mantida`: o que o Assistente de laudo produz e
-    as medidas da Ficha de Série do agente) é do degrau 2.3
-    (`PLANO-CELULA-CURSOS.md` §4, §7, §10, TAR-156 despacho): inventar esses
-    campos aqui desenharia, sem o mantenedor, o contrato de um agente que ainda
-    não existe. [INV-CUR-L4] ("nenhuma decisão, data ou resposta à pergunta
-    vem da IA") nasce como teste quando o corpo real chegar; este esqueleto não
-    tem CAMPO NENHUM que a pergunta possa ocupar, e é essa ausência que já o
-    satisfaz por construção, não um teste que sabota uma gravação.
+    A COLUNA QUE NÃO EXISTE É A LEI DESTA TABELA
+    ---------------------------------------------
+    [INV-CUR-L4]: **nenhuma decisão, data ou resposta à pergunta de amanhã de
+    manhã vem da IA.** Não há, e não pode haver aqui, um campo `decisao`, um
+    `data_de_retorno` ou um `sabe_o_que_fazer_amanha`. O degrau deste agente é
+    H, "só prepara": os três são o produto do trabalho da professora, e uma
+    coluna para guardá-los seria o primeiro passo silencioso para a tela
+    mostrá-los já marcados. O guarda é
+    `tests/test_inv_l4_a_ia_nao_decide.py`, que fixa a lista INTEIRA de campos
+    desta tabela: acrescentar qualquer coluna aqui deixa a suíte vermelha até
+    quem acrescentou escrever o nome dela no teste, com a lista dos três
+    proibidos na linha de cima.
+
+    `conteudo` é a sugestão como ela veio, inteira (a rubrica, as três forças,
+    a mudança, a frase de reenvio e o bloco final): é dele que a tela
+    pré-preenche o formulário, e é dele que a comparação com o `Laudo` sai.
+
+    A FICHA DE SÉRIE DO AGENTE SAI DO DADO, NUNCA DE ANOTAÇÃO À MÃO
+    ---------------------------------------------------------------
+    `forcas_mantidas` (quantas das três sugestões a professora assinou sem
+    editar uma letra) e `mudanca_mantida` (se a mudança sugerida foi a assinada)
+    são escritas por `apps/cursos/laudo.py::emitir`, na emissão, comparando
+    este rascunho com o laudo que saiu. Ficam NULAS enquanto o laudo não existe,
+    e a diferença importa: nula é "ainda não medido", zero é "a professora
+    reescreveu as três". Um contador que nascesse em zero faria as duas coisas
+    parecerem a mesma no dia em que alguém somasse a coluna.
     """
 
     envio = models.ForeignKey(
         Envio, related_name="rascunhos_de_ia", on_delete=models.PROTECT
     )
+    conteudo = models.JSONField(default=dict, blank=True)
+    modelo = models.CharField(max_length=60)
+    tokens_entrada = models.PositiveIntegerField(default=0)
+    tokens_saida = models.PositiveIntegerField(default=0)
+    forcas_mantidas = models.PositiveSmallIntegerField(null=True, blank=True)
+    mudanca_mantida = models.BooleanField(null=True, blank=True)
     criado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            # Três é o número de forças da lei ([INV-CUR-L6]) e o número de
+            # campos do formulário. Uma medida de 4 mantidas de 3 sugeridas não
+            # é um número alto: é um erro de contagem, e o banco o recusa antes
+            # de ele virar uma Ficha de Série que mente.
+            models.CheckConstraint(
+                condition=models.Q(forcas_mantidas__isnull=True)
+                | models.Q(forcas_mantidas__lte=3),
+                name="forcas_mantidas_no_maximo_tres",
+            ),
+        ]
 
     def __str__(self) -> str:  # pragma: no cover - conveniência de admin/shell
         return f"rascunho de {self.envio_id} em {self.criado_em}"
@@ -810,7 +846,7 @@ class Laudo(models.Model):
     `instrumento_versao` é nulo quando a aula não tem instrumento (a mesma
     autoavaliação de texto livre que `envio.py::criterios_de` já prevê para o
     aluno). `ajuste_feito` só é escrito com `aberto_com_ajuste`. `rascunho`
-    aponta para o esqueleto de `RascunhoDaIA` (o corpo real é degrau 2.3).
+    aponta para a sugestão do Assistente de laudo, quando o laudo nasceu de uma.
     """
 
     class Papel(models.TextChoices):

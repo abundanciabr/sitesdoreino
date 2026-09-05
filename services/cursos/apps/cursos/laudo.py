@@ -94,7 +94,7 @@ def _validar_rubrica(instrumento, notas: Any) -> dict:
     return limpas
 
 
-def _validar_forcas(forcas: Any) -> list[str]:
+def validar_forcas(forcas: Any) -> list[str]:
     """[INV-CUR-L6] Exatamente três forças, nenhuma da lista de genéricos."""
     limpas = [str(f or "").strip() for f in (forcas or []) if str(f or "").strip()]
     if len(limpas) != 3:
@@ -137,6 +137,47 @@ def _validar_mudanca(curso, mudanca: Any) -> dict:
     return {"texto": texto, "aula_id": str(aula_id)}
 
 
+def _medir_a_ficha_de_serie(
+    rascunho: RascunhoDaIA, forcas: list[str], mudanca: dict
+) -> None:
+    """A Ficha de Série do Assistente de laudo, medida DO DADO na emissão.
+
+    Lei §7: "`RascunhoDaIA` × `Laudo`: forças mantidas sem edição, mudança
+    mantida". As duas medidas saem da comparação entre o que a IA propôs e o
+    que a professora assinou, aqui, no único instante em que os dois existem
+    lado a lado. Nenhum robô anota isto à mão depois, e nenhuma tela guarda um
+    número próprio: a Ficha se calcula do livro que estas duas colunas formam.
+
+    **"Mantida" é IGUAL, letra por letra (sem espaço nas pontas), não parecida.**
+    A pergunta que a Ficha responde é "a professora aproveitou a sugestão como
+    ela veio?", e uma força que ela reescreveu inteira, mesmo que dizendo o
+    mesmo, é trabalho dela, não do agente. Uma comparação frouxa faria a Ficha
+    subir sozinha no dia em que alguém trocasse uma vírgula.
+
+    Escreve só as duas colunas, e de propósito: o `conteudo` do rascunho é o que
+    a IA disse, e reescrevê-lo aqui apagaria a prova contra a qual a medida foi
+    feita.
+
+    A contagem varre as forças ASSINADAS, nunca as sugeridas, e é o que mantém a
+    medida dentro da restrição do banco (no máximo três): `validar_forcas` já
+    garantiu que as assinadas são exatamente três, enquanto um `conteudo` com
+    cinco forças escritas à mão faria a varredura da outra ponta contar cinco.
+    """
+    sugerido = rascunho.conteudo if isinstance(rascunho.conteudo, dict) else {}
+    sugeridas = sugerido.get("forcas")
+    sugeridas = {
+        str(f).strip() for f in (sugeridas if isinstance(sugeridas, list) else [])
+    }
+    rascunho.forcas_mantidas = sum(1 for f in forcas if f.strip() in sugeridas)
+
+    sugerida = sugerido.get("mudanca")
+    sugerida = sugerida if isinstance(sugerida, dict) else {}
+    rascunho.mudanca_mantida = (
+        str(sugerida.get("texto") or "").strip() == mudanca["texto"]
+    )
+    rascunho.save(update_fields=["forcas_mantidas", "mudanca_mantida"])
+
+
 def emitir(
     envio: Envio,
     *,
@@ -155,6 +196,13 @@ def emitir(
     devolve (`devolvido`, e o envio volta para reenvio) o envio, sempre com os
     três eventos, na mesma transação. Levanta `LaudoRecusado` (a causa mais
     específica primeiro) antes de gravar qualquer coisa.
+
+    `rascunho` é a sugestão do Assistente de laudo (degrau 2.3) quando o laudo
+    nasceu de uma. Ele NÃO decide nada aqui: nem a decisão, nem a data, nem a
+    pergunta de amanhã de manhã saem dele ([INV-CUR-L4]) — todos os três chegam
+    pelos parâmetros acima, do formulário que a professora assinou. O que a
+    presença dele muda é uma coisa só: a Ficha de Série do agente é medida na
+    emissão (`_medir_a_ficha_de_serie`).
     """
     if papel not in Laudo.Papel.values:
         raise LaudoRecusado(
@@ -164,7 +212,7 @@ def emitir(
     # (1) e (2) e (3): a rubrica, as forças, a mudança. Nenhuma delas toca o
     # banco: são puras, e por isso rodam ANTES de qualquer trava de linha.
     notas_limpas = _validar_rubrica(envio.aula.instrumento, notas)
-    forcas_limpas = _validar_forcas(forcas)
+    forcas_limpas = validar_forcas(forcas)
     mudanca_limpa = _validar_mudanca(envio.aula.curso, mudanca)
 
     # (4) a decisão está no vocabulário fechado. [INV-CUR-L2]: não existe uma
@@ -233,6 +281,10 @@ def emitir(
             sabe_o_que_fazer_amanha=True,
             rascunho=rascunho,
         )
+        if rascunho is not None:
+            # DENTRO da transação: uma Ficha de Série que sobrevivesse a um
+            # laudo desfeito mediria um laudo que não existe.
+            _medir_a_ficha_de_serie(rascunho, forcas_limpas, mudanca_limpa)
         envio_travado.estado = decisao
         envio_travado.save(update_fields=["estado"])
         eventos.emitir_laudo_emitido(laudo)
