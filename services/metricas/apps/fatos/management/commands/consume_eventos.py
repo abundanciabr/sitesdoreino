@@ -32,11 +32,17 @@ publica hoje. Assinar um stream que ninguém publica criaria um grupo de
 consumo vazio e a impressão de que o caminho está pronto (a mesma razão pela
 qual a `gamificacao` deixa `aula.concluida` de fora).
 
-`matricula.situacao-alterada` é o assunto que esta célula mais quer, porque é
-dele que sai "quem virou aluna". A `alunos` já o publica, mas ele **ainda não
-tem contrato congelado** em `contracts/eventos/` — é a dívida que o degrau 8 do
-plano existe para pagar. Ele entra aqui no mesmo PR do contrato, e não antes:
-guardar como fato o que ninguém prometeu manter é construir número sobre areia.
+`matricula.situacao-alterada` era o assunto que esta célula mais queria, e
+entrou em 05/09/2026, no degrau 8. Duas coisas precisavam ser verdade, e agora
+sao: o contrato esta congelado (`contracts/eventos/`, PR #1076) e alguem o
+publica de fato (a `alunos`, PR #1080, nos cinco caminhos que mexem no status).
+
+Vale registrar o que se descobriu ao pagar essa divida, porque o comentario
+anterior AQUI afirmava o contrario: a `alunos` **nao** publicava este assunto.
+O que existia era a CARTA (`notificacao.devida`), que leva
+"matricula.situacao-alterada" como um parametro dentro dela, e que so nasce
+quando alguem GANHA acesso e tem identidade da plataforma. Recusa, suspensao,
+encerramento e reembolso nao deixavam rastro nenhum.
 """
 
 import json
@@ -65,6 +71,11 @@ STREAMS = [
     "eventos.forum.mensagem-criada",
     "eventos.forum.resposta-aceita",
     "eventos.forum.mensagem-removida",
+    # A vida de uma matricula (`alunos`, desde 05/09/2026): quem pediu
+    # entrada, quem foi liberado, recusado, suspenso, encerrado, reembolsado.
+    # E dele que sai "quem virou aluna", e o campo `origem` separa a VENDA
+    # (`comprou`) do aluno das turmas anteriores (`liberado`).
+    "eventos.matricula.situacao-alterada",
     # A Caixa de Sugestões (`sugestoes`).
     "eventos.sugestao.criada",
     "eventos.sugestao.status-alterado",
