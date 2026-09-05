@@ -39,6 +39,7 @@ from django.db import transaction
 
 from apps.matriculas.eventos import (
     ASSUNTO_MATRICULA,
+    NOTIFICACAO_DEVIDA,
     EventoForaDaTransacao,
     carta_de_situacao,
 )
@@ -85,7 +86,15 @@ def _na_fila(email=PESSOA):
 
 
 def _cartas():
-    return list(OutboxEvent.objects.all())
+    """So as CARTAS, e nao tudo que esta na caixa de saida.
+
+    Desde 05/09/2026 a mesma outbox carrega dois tipos de evento: a CARTA
+    (`notificacao.devida`, que avisa uma pessoa) e o FATO
+    (`matricula.situacao-alterada`, que conta o que aconteceu com a
+    matricula). Sem este filtro, todo teste desta suite mediria os dois e
+    reprovaria por causa de um evento que ele nem esta olhando.
+    """
+    return list(OutboxEvent.objects.filter(event=NOTIFICACAO_DEVIDA))
 
 
 def _envelope(carta: OutboxEvent) -> dict:
