@@ -1,0 +1,20 @@
+{
+  "arquivo": "195-a-suite-dos-portoes-roda-uma-vez-por-pr-e-o-deploy-nao-esper",
+  "id": "TAR-195",
+  "titulo": "A suite dos portoes roda uma vez por PR e o deploy nao espera o alarme da main",
+  "toca": [
+    "ci",
+    ".github",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "um deploy-celula cujo job portao-de-deploy termina em menos de 30 s, medido por gh run view --json jobs, e o muralhas de um PR sem o passo repetido",
+  "despacho": "Tirar o passo Testar o testador do job guardas-do-repositorio (alarme-main.yml) e do job espelho-da-main (muralhas.yml): a suite ja rodou no PR, no mesmo conteudo, porque a main tem politica estrita. No portao de deploy, ALARME_MAIN sai de exigidos nos dois modos e entra em conhecidos; o portao continua exigindo o muralhas do PR de origem. Testes ajustados com evidencia vermelho para verde.",
+  "origem": "documento alavancas-10x-da-fabrica, alavanca 2, liberada pelo mantenedor em 05/09/2026",
+  "criada_em": "2026-09-05"
+}

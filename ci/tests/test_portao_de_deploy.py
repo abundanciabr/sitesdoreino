@@ -8,7 +8,7 @@ exportador falso do conftest.
 
 O último teste (`test_workflow_de_deploy_exige_o_portao`) é a mitigação do
 vetor de burla "editar o YAML e remover o job portao": ele afirma a FORMA dos
-dois workflows de deploy e roda no `muralhas` (PR) e no `alarme-main` (push).
+dois workflows de deploy e roda no `muralhas` (PR).
 """
 
 from __future__ import annotations
@@ -201,11 +201,11 @@ def test_ci_celula_pulado_com_celula_tocada_e_error(tmp_path):
 def test_workflow_exigido_ausente_e_error_apos_graca(tmp_path):
     cen = cenario_verde()
     cen["respostas"][f"runs?head_sha={SHA_MERGE}"]["workflow_runs"] = [
-        run_(11, CI_CELULA)  # alarme-main sumiu (deletado/desabilitado)
+        run_(12, ALARME)  # ci-celula sumiu (deletado/desabilitado)
     ]
     proc = rodar_portao(tmp_path, cen)
     assert proc.returncode == 2, proc.stdout + proc.stderr
-    assert "alarme-main" in proc.stdout
+    assert "ci-celula" in proc.stdout
 
 
 def test_checks_pendentes_apos_timeout_e_error(tmp_path):
@@ -686,3 +686,66 @@ def test_as_esteiras_estao_em_conhecidos_e_NAO_em_exigidos():
             "esteira que, na maioria dos SHAs, nem nasce (26 contra 417 em 30 "
             "dias) — trocaria um bloqueio raro por um bloqueio diário"
         )
+
+
+# ---------------------------------------------------------------------------
+# O ALARME DA MAIN SAIU DE `exigidos` (alavanca 2 das alavancas de 10x da
+# fábrica, liberada pelo mantenedor em 05/09/2026). O portão esperava o
+# `alarme-main` terminar para publicar, e ele respondia a mesma pergunta que o
+# `muralhas` do PR de origem já tinha respondido sobre o MESMO conteúdo: a
+# `main` tem política estrita, o PR só mergeia com a base em dia, e o portão
+# já exige e confere esse `muralhas`. Medido no deploy-celula de 05/09 20:25:
+# o job `portao-de-deploy` levou 1min22s, quase tudo esperando o alarme.
+#
+# O mesmo trio da armadilhas/180: a isenção existe (ausente, pendente e
+# vermelho não seguram o deploy) · a isenção é estreita (o `muralhas` do PR
+# de origem CONTINUA exigido) · a declaração está na fonte.
+# ---------------------------------------------------------------------------
+def test_alarme_main_ausente_nao_segura_o_deploy(tmp_path):
+    cen = cenario_verde()
+    cen["respostas"][f"runs?head_sha={SHA_MERGE}"]["workflow_runs"] = [
+        run_(int(RUN_ID_SELF), DEPLOY_CELULA, status="in_progress", conclusao=None),
+        run_(11, CI_CELULA),
+    ]
+    proc = rodar_portao(tmp_path, cen)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+def test_alarme_main_pendente_nao_segura_o_deploy(tmp_path):
+    # Antes da alavanca 2, este cenário era ERROR depois do teto: o portão
+    # esperava o alarme terminar. Agora ele não espera por um run que mede o
+    # que o `muralhas` do PR de origem já mediu.
+    cen = cenario_verde()
+    cen["respostas"][f"runs?head_sha={SHA_MERGE}"]["workflow_runs"][2] = run_(
+        12, ALARME, status="in_progress", conclusao=None
+    )
+    proc = rodar_portao(tmp_path, cen)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+
+
+def test_alarme_main_vermelho_no_mesmo_sha_nao_e_vermelho_nao_previsto(tmp_path):
+    # Quem grita quando o alarme reprova é a issue do próprio alarme, não este
+    # portão. Fora de `conhecidos`, o vermelho dele cairia em
+    # `vermelhos-nao-previstos` e a isenção não existiria de verdade.
+    cen = cenario_verde()
+    cen["respostas"][f"runs?head_sha={SHA_MERGE}"]["workflow_runs"][2] = run_(
+        12, ALARME, conclusao="failure"
+    )
+    proc = rodar_portao(tmp_path, cen)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "nenhum workflow vermelho fora da lista" in proc.stdout
+
+
+def test_o_alarme_esta_em_conhecidos_e_NAO_em_exigidos():
+    """A FIAÇÃO, e não a função (armadilhas/180): os testes de cima passam
+    contra o gh falso; só este fica vermelho se alguém devolver o alarme a
+    `exigidos` ou o tirar de `conhecidos`."""
+    fonte = (RAIZ / "ci" / "portao_de_deploy.py").read_text(encoding="utf-8")
+    assert "ALARME_MAIN" in _linha_dos_conhecidos(), (
+        "sem `ALARME_MAIN` em `conhecidos`, um alarme vermelho no mesmo SHA "
+        "volta a reprovar o deploy por `vermelhos-nao-previstos`"
+    )
+    assert "ALARME_MAIN: (" not in fonte, (
+        "exigir o `alarme-main` faz todo deploy esperar 1min18s por uma "
+        "medição que o `muralhas` do PR de origem já fez sobre o mesmo conteúdo"
+    )
