@@ -1,0 +1,19 @@
+{
+  "arquivo": "185-portfolio-do-aluno-degrau-10-o-semaforo-por-peca-calculado-s",
+  "id": "TAR-185",
+  "titulo": "Portfolio do aluno, degrau 10: o semaforo por peca, calculado so das respostas objetivas do aluno",
+  "toca": [
+    "pages"
+  ],
+  "depende_de": [
+    "TAR-184"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: cada peca mostra um semaforo calculado SO das respostas objetivas do aluno, e a tela lista item a item o que ainda falta naquela peca (AC-10). A regra de calculo tem teste-guarda provado por MUTACAO, com cenario forte o bastante para o guarda nao mentir.",
+  "despacho": "# DESPACHO - pages: o semaforo por peca (degrau 10 da escada do portfolio)\nCELULA: pages - WORKTREE: wt-semaforo-por-peca - BRANCH: agent/pages/semaforo-por-peca\nPADRAO: o Padrao de Trabalho (1a secao do CLAUDE.md) vale nesta tarefa como em todas, inclusive a regra 2 (discorde ANTES, em ate 5 linhas, com UMA alternativa e o trade-off) e a regra 9 (relatorio nos quatro titulos, sem enchimento).\nDECLARACAO DE ABERTURA (RITOS.md secao 1): primeira linha da sua primeira resposta.\n\nANTES DE ESCREVER CODIGO: materialize o indice (python ci/indice_de_armadilhas.py) e abra SO estas armadilhas: 195, 185, 129. Leia constituicoes/AGENTS.pages.md (a lei da casa, com o [INV-P12] e os invariantes da secao 7 do plano), docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md (secoes 4, 5 e 7) e docs/changespecs/CS-PAGES-0001.md, que e o corredor de obra assinado e manda no escopo. Onde este despacho e o corredor divergirem, o corredor vence.\n\nO QUE NINGUEM PODE INVENTAR NESTA OBRA (plano secao 7, e vale em todo degrau): nota, estrela, ranking ou voto popular em portfolio de aluno; deteccao de \"isto foi feito por IA\"; trancar aula ou conteudo atras de check-list, ponto ou nivel; e-mail, telefone ou nome completo na pagina publica (o padrao e privado e o noindex nao e negociavel); guardar a peca em duas celulas; travessao em texto que o aluno le; e marco real pagando XP.\n\nCONTEXTO (ate 5 linhas): o aluno tem as pecas e a lista. Falta ele VER o que ainda falta em cada peca, sem precisar perguntar a ninguem.\n\nTAREFA: o semaforo por peca.\n\n- Calculado SO das respostas objetivas do aluno. Nao e nota, nao e estrela, nao e opiniao da maquina sobre a obra: nota, estrela, ranking e voto popular sao PROIBIDOS (plano secao 7), e deteccao de \"isto foi feito por IA\" tambem.\n- A tela lista, item a item, o que falta naquela peca. Semaforo amarelo sem dizer o que falta e um enfeite.\n- O guarda do calculo nao pode usar como regua o proprio objeto que ele mede (armadilhas/129), e o cenario tem de ser forte: cenario fraco faz guarda de soma mentir.\n\nProve a regra de calculo por MUTACAO (armadilhas/195).\nORCAMENTO: cerca de 8 arquivos. Estourou por coesao legitima: PARE e reporte, nunca esprema arquivos.\n\nDEPLOY: com o degrau 05 ja pousado, o deploy-celula da pages passa a ser veredito de verdade. Confira o run disparado pelo merge (gh run view <id> --json status,conclusion) e reporte o resultado.\n\nO REGISTRO DO LIVRO EMBARCA NESTE PR, no mesmo ramo, citando o numero dele (armadilhas/185): abra o PR, leia o numero, escreva o registro com menos de 1 KB pela ferramenta de escrita de arquivo (nunca por heredoc), commite os eventos da fila junto, e peca o pouso com UM comando pela ferramenta Monitor: python ci/esperar.py --checks <N> --teto 20 --dizendo \"os checks do PR <N>\" --e-pousar.",
+  "origem": "escada do PLANO-PORTFOLIO-DO-ALUNO.md secao 5 e corredor de obra docs/changespecs/CS-PAGES-0001.md; genese pousada no PR #1117 (TAR-169)",
+  "criada_em": "2026-09-05"
+}

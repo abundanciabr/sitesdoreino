@@ -8,6 +8,18 @@ professora digitou) e `erro` (a frase de `laudo.py::LaudoRecusado`): nada do
 que foi escrito se perde. Formulário normal com melhoria progressiva: nenhum
 JS decide o que aparece, e a caixa da pergunta de amanhã não tem opção de
 "não" — ausente é a resposta que o servidor lê como "não respondida".
+
+O BOTÃO DA IA E O DE EMITIR SÃO O MESMO FORMULÁRIO, e o campo `gesto` os
+separa. O de rascunhar leva `formnovalidate` porque a tela ainda está vazia
+quando ele é apertado: sem isso o navegador barraria o pedido cobrando
+justamente os campos que a IA vem preencher. E é o mesmo formulário, e não uma
+segunda tag `form`, para que o que a professora já digitou viaje junto e não se
+perca no caminho.
+
+[INV-CUR-L4]: as três seções que a IA NÃO toca são a decisão, a data de retorno
+e a pergunta de amanhã de manhã. Não existe `{{ sugestao }}` dentro delas, e o
+guarda de tela (`tests/test_inv_l4_a_ia_nao_decide.py`) prova essa ausência
+pedindo um rascunho em que a IA tentou responder as três.
 {% endcomment %}
 {% block titulo %}Laudo de {{ envio.pessoa.nome_exibido }}{% endblock %}
 
@@ -43,9 +55,32 @@ JS decide o que aparece, e a caixa da pergunta de amanhã não tem opção de
 
 <form method="post" action="{% url 'plantao-ficha' envio.id %}">
   {% csrf_token %}
+  <input type="hidden" name="rascunho_id" value="{{ rascunho_id }}">
+
+  <section class="assistente">
+    <h2>O Assistente de laudo</h2>
+    {% if ia_ligada %}
+    <p class="miudo">A IA lê a encomenda, a ficha do Guia do Mentor e o que a pessoa entregou, e propõe a rubrica, três forças e uma mudança. Ela não decide, não marca data e não responde a pergunta de amanhã de manhã: isso é seu. O botão fica no fim desta página.</p>
+    {% else %}
+    <p class="miudo">A IA ainda não está ligada neste servidor: falta a chave de acesso da Anthropic na configuração da sala de aula. O laudo se escreve à mão normalmente.</p>
+    {% endif %}
+
+    {% for aviso in avisos_da_ia %}<p class="aviso-ia">{{ aviso }}</p>{% endfor %}
+
+    {% if sugestao %}
+    {% if sugestao.reenvio %}<p class="reenvio-ia"><strong>SUGERIDO, sobre a volta passada:</strong> {{ sugestao.reenvio }}</p>{% endif %}
+    <dl class="bloco-da-ia">
+      <dt>Resumo</dt><dd>{{ sugestao.bloco.resumo|default:"(a IA não escreveu)" }}</dd>
+      <dt>Lacunas</dt><dd>{{ sugestao.bloco.lacunas|default:"(a IA não escreveu)" }}</dd>
+      <dt>A verificar</dt><dd>{{ sugestao.bloco.a_verificar|default:"(a IA não escreveu)" }}</dd>
+      <dt>Origens</dt><dd>{{ sugestao.bloco.origens|default:"(a IA não escreveu)" }}</dd>
+      <dt>Para a pessoa</dt><dd>{{ sugestao.bloco.para_a_pessoa|default:"(a IA não escreveu)" }}</dd>
+    </dl>
+    {% endif %}
+  </section>
 
   <section class="rubrica">
-    <h2>A rubrica</h2>
+    <h2>A rubrica{% if sugestao.notas %} <span class="sugerido">SUGERIDO pela IA: confira nota por nota</span>{% endif %}</h2>
     {% if criterios %}
     <p class="miudo">Dê uma nota a cada critério e escreva uma frase observável para cada nota: nota sem frase não diz nada.</p>
     {% for criterio in criterios %}
@@ -67,7 +102,7 @@ JS decide o que aparece, e a caixa da pergunta de amanhã não tem opção de
   </section>
 
   <section class="forcas">
-    <h2>Três forças</h2>
+    <h2>Três forças{% if sugestao.forcas %} <span class="sugerido">SUGERIDO pela IA: reescreva o que não for seu</span>{% endif %}</h2>
     <p class="miudo">Específicas sobre este trabalho: "bonito", "legal" ou "parabéns" não dizem nada e são recusadas.</p>
     <label>Força 1<input type="text" name="forca_0" value="{{ enviado.forca_0 }}" maxlength="300" required></label>
     <label>Força 2<input type="text" name="forca_1" value="{{ enviado.forca_1 }}" maxlength="300" required></label>
@@ -75,7 +110,7 @@ JS decide o que aparece, e a caixa da pergunta de amanhã não tem opção de
   </section>
 
   <section class="mudanca">
-    <h2>Uma mudança</h2>
+    <h2>Uma mudança{% if sugestao.mudanca.texto %} <span class="sugerido">SUGERIDO pela IA</span>{% endif %}</h2>
     <p class="miudo">A mudança mais específica para a próxima entrega, e a aula onde ela se aprende.</p>
     <label>O que muda
       <textarea name="mudanca_texto" rows="3" required>{{ enviado.mudanca_texto }}</textarea>
@@ -112,6 +147,15 @@ JS decide o que aparece, e a caixa da pergunta de amanhã não tem opção de
     <p class="miudo">Sem certeza: deixe em branco e converse com a pessoa antes de enviar o laudo. Não se registra recusa.</p>
   </section>
 
-  <button type="submit">Emitir laudo</button>
+  {% comment %}
+  A ORDEM DESTES DOIS BOTÕES É UM GUARDA, não estética. "Emitir laudo" vem
+  primeiro no HTML porque, num formulário com mais de um botão, o Enter dentro
+  de qualquer campo dispara o PRIMEIRO deles. Se o de rascunhar viesse antes,
+  um Enter distraído no meio de uma frase viraria uma chamada paga à IA, e o
+  "formnovalidate" que ele precisa ter (a tela está vazia justamente quando ele
+  é útil) faria isso passar sem nem esbarrar nos campos obrigatórios.
+  {% endcomment %}
+  <button type="submit" name="gesto" value="emitir">Emitir laudo</button>
+  {% if ia_ligada %}<button type="submit" name="gesto" value="rascunhar" formnovalidate>Rascunhar laudo</button>{% endif %}
 </form>
 {% endblock %}

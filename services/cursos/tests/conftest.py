@@ -348,3 +348,74 @@ def fio(monkeypatch):
     linha = Fio()
     monkeypatch.setattr("redis.from_url", lambda *a, **k: linha.cliente)
     return linha
+
+
+# ---------------------------------------------------------------------------
+# A REDE DA ANTHROPIC: cortada para TODA a suíte, e dublada onde é medida
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture(autouse=True)
+def sem_anthropic(monkeypatch):
+    """O corte fail-closed da rede do SDK da Anthropic, em TODO teste.
+
+    **São duas bibliotecas de HTTP nesta célula, e o `respx` acima só corta
+    uma.** O `httpx` é por onde a `identidade` e a `alunos` são perguntadas; o
+    `httpx2` é outro pacote, instalado junto com o SDK da Anthropic
+    (`apps/cursos/agente.py`), e nada em `respx` o alcança. Sem este corte, a
+    suíte diria no próprio docstring que não fala com a rede e poderia chamar a
+    API PAGA de verdade, com a chave da máquina de quem rodasse os testes: foi
+    exatamente o que aconteceu no fórum (`armadilhas/288`).
+
+    O corte é no TRANSPORTE, e não em `Client.post`, por dois motivos: o SDK
+    chama `Client.send`, que `post` não intercepta, e cortar no transporte deixa
+    `dublar_a_anthropic` trocar esta mesma função por uma resposta de mentira,
+    exercitando o SDK de verdade, com o request e a leitura da resposta que a
+    produção usa (`armadilhas/061`).
+    """
+    import httpx2
+
+    def recusa(*args, **kwargs):
+        raise httpx2.ConnectError("a suíte da sala de aula não fala com a rede")
+
+    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", recusa)
+
+
+def corpo_da_anthropic(objeto, *, stop_reason: str = "end_turn") -> dict:
+    """O JSON que a API da Anthropic devolve, na forma real, com `objeto`
+    dentro do bloco de texto. `objeto` pode ser um dicionário (vira JSON) ou uma
+    string crua, para os testes que provam o que acontece quando ela vem torta."""
+    texto = (
+        objeto if isinstance(objeto, str) else json.dumps(objeto, ensure_ascii=False)
+    )
+    return {
+        "id": "msg_de_teste",
+        "type": "message",
+        "role": "assistant",
+        "model": "claude-haiku-4-5-20251001",
+        "stop_reason": stop_reason,
+        "stop_sequence": None,
+        "content": [{"type": "text", "text": texto}],
+        "usage": {"input_tokens": 1200, "output_tokens": 340},
+    }
+
+
+def dublar_a_anthropic(monkeypatch, *, status=200, corpo=None, capturado=None):
+    """Troca o TRANSPORTE do `httpx2`, que é por onde o SDK sai para a rede.
+
+    O `sem_anthropic` acima já cortou esta mesma função; aqui ela é trocada de
+    novo, por uma que responde. O SDK continua montando o request e lendo a
+    resposta como monta e lê em produção, e `capturado` recebe a URL, os
+    cabeçalhos e o CORPO REAL que saiu: é dele que sai a prova de que nome
+    nenhum viajou.
+    """
+    import httpx2
+
+    def falso(self, request):
+        if capturado is not None:
+            capturado["url"] = str(request.url)
+            capturado["headers"] = dict(request.headers)
+            capturado["corpo"] = json.loads(request.content)
+        return httpx2.Response(status, json=corpo or {}, request=request)
+
+    monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", falso)
