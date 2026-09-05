@@ -1,0 +1,19 @@
+{
+  "arquivo": "200-catalogar-e-registrar-dois-robos-confundiram-o-parametro-che",
+  "id": "TAR-200",
+  "titulo": "Catalogar e registrar: dois robôs confundiram o parâmetro --checks com quantidade de checks, não número do PR",
+  "toca": [
+    "armadilhas",
+    "fila",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado com a armadilha nova, a tarefa do conserto aberta no balcão (não construída) e o registro do livro citando o número do PR",
+  "despacho": "Catalogar em armadilhas/ o erro medido em 05/09/2026: dois robôs passaram a quantidade de checks (6 e 13) em vez do número do PR ao ci/esperar.py --checks, cada um queimando o ciclo inteiro de tentativas antes de perceber. Abrir no balcão a tarefa do conserto de fundo (ci/esperar.py recusar PR fechado/inexistente com mensagem que ensine) sem construí-la, por ser caminho CODEOWNERS sem mandato.",
+  "origem": "brief fechado do mantenedor, 05/09/2026",
+  "criada_em": "2026-09-05"
+}
