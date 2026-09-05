@@ -46,13 +46,24 @@ O discriminador não é heurística de texto: é o campo estruturado
     origin.kind == "task-notification"  a máquina acordou    → não abre nada
     origin.kind == "peer"               outra sessão         → não abre nada
 
-Dentro da janela aberta pela última fala dele, a pergunta é uma só:
+Dentro da janela aberta pela última fala dele, são DUAS perguntas, e a segunda
+foi a correção mais cara deste arquivo (05/09/2026, no mesmo dia em que ele
+nasceu):
 
-    houve mudança no mundo depois da última prestação de contas?
+    1. houve mudança no mundo depois da última prestação de contas?
+    2. o trabalho ACABOU — nenhuma espera, nenhum deploy ainda em voo?
 
-Se houve, o turno não termina. Se não houve — turno de espera, pergunta
-respondida, leitura — o portão cala. É por isso que "Aguardando." continua
-barato e o fim do trabalho continua caro.
+Só quando as duas são sim o turno deixa de poder terminar. A pergunta 2 não
+existia na primeira versão, e o mantenedor mostrou a tela em que a falta dela
+custava tudo: a sessão abriu PR, mergeou, armou a espera do deploy — e daí em
+diante todo turno era SÓ espera. Nenhum mexia no mundo, então a pergunta 1
+respondia "não" em todos, o portão calava, e a conversa ia ser arquivada com
+"Aguardando." como última palavra. O relatório que ele queria é justamente o
+que só existe no fim: o veredito do que subiu.
+
+Enquanto há trabalho em voo o turno é livre — relatório pela metade no meio do
+trabalho seria pior que nenhum, e viraria ruído a cada batimento de espera. É
+por isso que "Aguardando." continua barato e o FIM do trabalho é caro.
 
 O QUE CONTA COMO MUDAR O MUNDO
 -------------------------------

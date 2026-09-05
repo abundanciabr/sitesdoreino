@@ -869,6 +869,27 @@ portão que cobrasse relatório em cada acordar pediria 225 relatórios, e o
 mantenedor aprenderia a ignorar todos. O discriminador não é adivinhação de
 texto: é o campo `origin.kind` de cada entrada do transcript.
 
+**A cobrança é no FIM do trabalho, não no turno que mexe — e essa distinção
+custou uma correção no mesmo dia.** A primeira versão do portão cobrava do
+turno que mudava o mundo. O mantenedor mostrou a tela em que isso não bastava:
+a sessão abriu PR, mergeou, armou a espera do deploy, e daí em diante **todo
+turno era só espera**. Nenhum mexia em nada, o portão calava em todos, e a
+conversa ia ser arquivada com "Aguardando." como última palavra — sem uma linha
+do que tinha sido feito. E o relatório que ele queria é justamente o que só
+existe no fim: o veredito do que subiu.
+
+Então a dívida **nasce** com a mudança e só é **cobrada** quando não há mais
+nada em voo. Enquanto uma espera roda, o turno é livre: relatório pela metade
+no meio do trabalho seria pior que nenhum. O sinal também é estrutural e
+medido, nunca adivinhado no texto: a tarefa de fundo nasce como
+`toolUseResult.taskId` e morre numa notificação com
+`<status>completed|failed|stopped</status>` — batimento de espera não traz
+`status`, e é isso que separa "ainda trabalhando" de "acabou".
+
+**O buraco que sobra, dito na cara:** sessão que MORRE com tarefa em voo (o
+harness derrubado, a máquina desligada) não presta contas, porque não existe
+turno nenhum em que cobrar. Nenhum gancho de `Stop` alcança isso.
+
 **O que o portão NÃO mede, dito na cara:** que a prestação de contas seja
 verdadeira. Nenhum portão barato mede "isto foi mesmo verificado". O que ele
 torna impossível é o SILÊNCIO — os seis blocos aparecem, o veredito fica em cima
