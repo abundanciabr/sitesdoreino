@@ -8,13 +8,13 @@
     + "endereço passou a dar 404. O PR faz a correção permanente nas duas pontas: a semente "
     + "volta a privada (senão um banco novo republica) e uma migração vira a chave no banco que "
     + "já está no ar. O texto não foi destruído: continua inteiro no editor.",
-  autoridade: "medicao",
+  autoridade: "sonda",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1106",
   verificado_em: "2026-09-05",
   precisa_do_dono: false,
   responde_a: null,
-  gravidade: "alta",
-  frente: "admin",
+  gravidade: "ambar",
+  frente: "site",
   vence_em_dias: null,
   se_eu_nao_decidir: null,
   recomendacao: null,
