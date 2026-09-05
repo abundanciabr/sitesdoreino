@@ -229,6 +229,31 @@ def _registrar_a_ajuda(envelope: dict) -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# A SALA DE AULA (degrau 2.5, 05/09/2026) — a porta que abre vira ponto aqui
+# ---------------------------------------------------------------------------
+
+
+def ao_aula_concluida(envelope: dict) -> None:
+    """A porta de uma aula abriu para o aluno: um laudo aceitou a entrega.
+
+    É o fato que a lei desta célula chamava de tomada futura ("entregar dá XP,
+    aprovar dá porta"), e ele chega pronto para o motor: o `ator_id` do envelope
+    é o id de PLATAFORMA do aluno (o contrato o declara obrigatório, e nunca
+    e-mail), e a regra `aula-concluida` tem beneficiário `ator`. A direção
+    importa: a célula LÊ que a porta abriu. Nada aqui decide se alguém pode
+    assistir a coisa alguma, e é isso que o terceiro invariante protege.
+
+    `data.e_boss` chega `true` quando a aula fecha um Bloco, e HOJE não muda
+    nada: a medalha "Fechou um Bloco" pediria uma palavra nova no vocabulário
+    FECHADO de critérios (`criterios.CONTAS`) e uma tabela-registro para
+    contá-la, no molde de `AjudaAceita`. As duas coisas são decisão do
+    mantenedor, não de um handler (critério de morte nº 1 da lei). O XP sai
+    igual com a bandeira ligada ou desligada.
+    """
+    _creditar(envelope)
+
+
 HANDLERS = {
     "quiz.completado": ao_quiz_completado,
     "sugestao.criada": ao_sugestao_criada,
@@ -237,6 +262,7 @@ HANDLERS = {
     "forum.topico-criado": ao_forum_topico_criado,
     "forum.mensagem-criada": ao_forum_mensagem_criada,
     "forum.resposta-aceita": ao_forum_resposta_aceita,
+    "aula.concluida": ao_aula_concluida,
 }
 
 # OS ASSUNTOS QUE CHEGAM E MESMO ASSIM NÃO VIRAM PONTO, declarados aqui porque é

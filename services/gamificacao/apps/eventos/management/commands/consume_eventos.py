@@ -15,14 +15,9 @@ logger = logging.getLogger(__name__)
 
 GRUPO = "gamificacao"  # nome DESTA célula
 CONSUMIDOR = "worker-1"
-# Os quatro assuntos que a economia semeada conhece hoje
+# Os assuntos que a economia semeada conhece hoje
 # (`semear_economia.py::REGRAS`). O nome do stream é `eventos.<event>`, sem a
 # versão: quem a acrescenta para casar com a regra é `motor.chave_do_evento`.
-#
-# `aula.concluida` NÃO está aqui, e a ausência é a mesma decisão do semeador: a
-# regra existe desligada, esperando o evento nascer. Assinar um stream que
-# ninguém publica criaria um grupo de consumo vazio e a impressão de que o
-# caminho está pronto.
 STREAMS = [
     "eventos.quiz.completado",
     "eventos.sugestao.criada",
@@ -37,6 +32,13 @@ STREAMS = [
     "eventos.forum.topico-criado",
     "eventos.forum.mensagem-criada",
     "eventos.forum.resposta-aceita",
+    # A SALA DE AULA (degrau 2.5, 05/09/2026). A célula `cursos` publica este
+    # assunto toda vez que um laudo ABRE a porta de uma aula
+    # (`contracts/eventos/aula.concluida.v1.json`). É a tomada que a lei desta
+    # célula previa desde o plano ("entregar dá XP, aprovar dá porta"), e a regra
+    # `aula-concluida` já estava semeada, desligada, esperando por ele. Só a
+    # porta que abre viaja: pausa, quiz da aula e envio não rendem ponto.
+    "eventos.aula.concluida",
 ]
 
 # Convenção do lote de reentrega — MESMOS nomes e valores nas 4 células
