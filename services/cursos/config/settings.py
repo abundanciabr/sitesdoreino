@@ -142,6 +142,27 @@ TEMPLATES = [
     },
 ]
 
+# ---------------------------------------------------------------------------
+# Tokens do PAR consumidor->provedor (R1), um por par: TOKENS_ACEITOS_ADMIN etc.
+# ---------------------------------------------------------------------------
+# Env ausente => conjunto VAZIO => toda chamada a `/api/cursos` é recusada com
+# 401. Fail-closed por construção, e sem derrubar o boot: a célula sobe, o
+# `/healthz` segue respondendo, e só a porta de máquina fica fechada até o
+# token existir no env. É o mesmo desenho de `identidade`, `alunos`, `forum` e
+# `gamificacao`. O primeiro par é o editor do Admin (degrau 1.5), que lê
+# `TOKENS_ACEITOS_ADMIN` daqui e o mesmo valor em `CURSOS_API_TOKEN` de lá.
+#
+# **Aqui o conjunto vazio é o ÚNICO cadeado**, e isso é diferente da
+# `identidade`: esta célula roda sob `SCRIPT_NAME=/cursos`, e o corte do
+# prefixo é do Django, não do Traefik — a porta é alcançável pela borda pública
+# (`armadilhas/186`). Não há topologia por baixo para segurar o que este
+# conjunto deixar passar.
+TOKENS_ACEITOS = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_ACEITOS_") and valor
+}
+
 ROOT_URLCONF = "config.urls"
 ASGI_APPLICATION = "config.asgi.application"
 

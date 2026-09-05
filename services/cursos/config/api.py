@@ -1,0 +1,53 @@
+# config/api.py  # [RECEITA:R1 v1]
+from ninja import NinjaAPI
+
+from apps.core.api import router as cursos_router
+from apps.core.auth import bearerAuth
+
+# `servers` aponta para a REDE INTERNA do Docker: é o endereço que a célula
+# `admin` (o editor, degrau 1.5) porá no env dela. O valor congela em
+# `contracts/cursos.openapi.yaml` no degrau 1.4 (Rito de Contrato, RITOS.md §3);
+# depois disso, mudá-lo é Rito, nunca edição aqui.
+#
+# ATENÇÃO, E AQUI ESTA CÉLULA É COMO O `forum` E A `gamificacao`, E DIFERENTE
+# DA `identidade`: esta porta **é** alcançável pela borda pública, em
+# `meshcraft.top/cursos/api/cursos/...`. A célula roda sob `SCRIPT_NAME=/cursos`
+# e o handler ASGI do Django faz `path_info = path.removeprefix(script_name)`;
+# é o mesmo corte que faz `meshcraft.top/cursos/healthz` responder 200 com o
+# `urls.py` declarando `path("healthz", ...)` sem prefixo nenhum
+# (`armadilhas/186`; a premissa está fixada em `tests/test_healthz_script_name.py`).
+#
+# ENTÃO QUEM FECHA A PORTA É O BEARER, E SÓ ELE: 401 sem token, e o conjunto de
+# tokens nasce VAZIO (`settings.TOKENS_ACEITOS`). Não há segunda camada por
+# baixo, e é por isso que o guarda de 401 em `tests/test_porta_exige_bearer.py`
+# cobre as CINCO operações, o token errado e o conjunto vazio, em vez de
+# confiar no roteador.
+api = NinjaAPI(
+    title="Cursos — API interna",
+    version="1.0.0",
+    description=(
+        "Superficie de MAQUINA da sala de aula da Meshcraft.\n"
+        "\n"
+        "Existe para que o conteudo do curso tenha UM lugar, o banco desta\n"
+        "celula, e para que o editor do Admin leia e grave por aqui, nunca no\n"
+        "banco e nunca guardando copia (a lei anti-duplicacao). Este e o\n"
+        "degrau 1.3 da escada: as cinco operacoes do editor. Os verificadores\n"
+        "(checkLesson), o placar da fila (getReviewQueue) e o progresso do\n"
+        "aluno (getStudentProgress) nascem nos degraus 3.1, 2.1 e 1.8.\n"
+        "\n"
+        "Lei do assunto: docs/decisoes/PLANO-CELULA-CURSOS.md (secoes 4 e 5).\n"
+        "\n"
+        "O TEXTO DAS AULAS E OBRA NAO LANCADA DO MANTENEDOR: entra por esta\n"
+        "porta e so por ela; nunca por migracao, nunca por arquivo no\n"
+        "repositorio, que e publico.\n"
+        "\n"
+        "O `site_id` e obrigatorio em toda operacao de aula (uma fabrica, N\n"
+        "lojas): esta celula nao tem middleware de site, e a porta nao adivinha\n"
+        "de qual escola e a encomenda. Os instrumentos sao de plataforma\n"
+        "inteira, de proposito: os 13 cartoes sao os mesmos em toda escola.\n"
+    ),
+    servers=[{"url": "http://cursos:8000/api/cursos"}],
+    auth=bearerAuth(),
+    openapi_extra={"security": [{"bearerAuth": []}]},
+)
+api.add_router("", cursos_router)
