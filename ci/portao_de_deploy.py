@@ -136,6 +136,24 @@ VIGIA_DO_CADEADO = ".github/workflows/vigia-do-cadeado.yml"
 # nasceu. Quem grita quando ela não cura é a issue `deploy-fora-do-ar` dela
 # mesma; o desenho é o do `alarme-main`, reusado.
 VACINA_DO_DEPLOY = ".github/workflows/vacina-do-deploy.yml"
+# DECLARADA POR ESCRITO pela mesma regra (alavanca 1 de
+# `documentos/alavancas-10x-da-fabrica.md`, liberada pelo mantenedor em
+# 05/09/2026). A rede do Windows roda a suíte dos portões num `windows-latest` a
+# cada push na `main`, então ela nasce NO MESMO SHA que o `deploy-celula`, e o
+# portão de um deploy a enxerga ao listar os runs daquele SHA.
+#
+# Fora de `exigidos` por duas razões: ela mede a codepage e o console da
+# MÁQUINA DOS ROBÔS, não o código que vai para produção (a mesma suíte já
+# passou no Linux, como check obrigatório, antes do pouso); e ela leva 5
+# minutos, contra 41 s da suíte no Linux, e o deploy não pode esperá-la. Foi
+# exatamente por segurar todo PR em 4min50s sem ser exigida pela `main` que ela
+# saiu do `muralhas.yml`; exigi-la aqui devolveria a espera ao deploy.
+#
+# Em `conhecidos` porque, vermelha e desconhecida, `vermelhos_nao_previstos`
+# barraria a entrega de um commit que os checks obrigatórios já aprovaram. Quem
+# grita quando ela reprova é a issue do job `alarme` dela mesma, o desenho do
+# `alarme-main`, reusado.
+REDE_DO_WINDOWS = ".github/workflows/rede-do-windows.yml"
 # ---------------------------------------------------------------------------
 # AS DUAS ESTEIRAS DE DEPLOY, UMA PARA A OUTRA — DECLARADAS POR ESCRITO desde a
 # TAR-041 (30/08/2026), que é exatamente o que a mensagem de erro do
@@ -609,7 +627,7 @@ def main() -> int:
             )
         )
 
-        conhecidos = set(exigidos) | {MURALHAS, ALARME_MAIN, VIGIA_DO_CADEADO, VACINA_DO_DEPLOY, DEPLOY_CELULA, DEPLOY_INFRA}
+        conhecidos = set(exigidos) | {MURALHAS, ALARME_MAIN, VIGIA_DO_CADEADO, VACINA_DO_DEPLOY, REDE_DO_WINDOWS, DEPLOY_CELULA, DEPLOY_INFRA}
         relatorio.registrar(vermelhos_nao_previstos(runs_do_commit, conhecidos))
 
     except ErroDeInstrumentacao as erro:

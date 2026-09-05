@@ -1,0 +1,18 @@
+{
+  "arquivo": "197-duas-licoes-do-catalogo-e-uma-linha-da-reuniao",
+  "id": "TAR-197",
+  "titulo": "Duas licoes do catalogo e uma linha da reuniao",
+  "toca": [
+    "armadilhas",
+    "admin"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR com as duas armadilhas novas e o template corrigido",
+  "despacho": "Escrever duas armadilhas (PR #1114 metricas: sabotagem em campo de resposta nao prova nada quando existe Schema de saida; PR #1115 admin: zero e plural no pluralize) e consertar a linha estagnada de services/admin/apps/core/templates/admin/reuniao.html sobre o laboratorio, se o PR #1127 ja tiver mergeado.",
+  "origem": "brief fechado do mantenedor 05/09/2026",
+  "criada_em": "2026-09-05"
+}

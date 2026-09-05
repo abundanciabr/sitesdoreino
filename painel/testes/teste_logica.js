@@ -50,6 +50,60 @@ caso("foto bem formada numa medição passa", LOGICA.validarRegistros([reg({ tip
 caso("foto fora de medição REPROVA", LOGICA.validarRegistros([reg({ tipo: "nota", foto: "compras-no-mes=3" })]).length > 0);
 caso("foto torta REPROVA", LOGICA.validarRegistros([reg({ tipo: "medicao", foto: "compras no mês: três" })]).length > 0);
 caso("foto nula é ausência, passa", LOGICA.validarRegistros([reg({ tipo: "medicao", foto: null })]).length === 0);
+// O LABORATÓRIO (05/09/2026, degrau 12): o experimento é uma medição que
+// declara a aposta ANTES de saber o resultado, e o resultado é outro registro
+// que a fecha. Os quatro campos andam juntos porque um experimento existe para
+// ser julgado: hipótese sem métrica não vence nem perde, e métrica sem prazo
+// nunca é cobrada.
+function experimento(sobre) {
+  var base = {
+    arquivo: "20260905-901-experimento", tipo: "medicao",
+    problema: "ninguém confirma no mesmo dia",
+    hipotese: "avisar por mensagem corta a espera pela metade",
+    metrica: "liberacoes-em-48h",
+    guarda: "se alguém esperar mais de 3 dias, paramos",
+    vence_em_dias: 14
+  };
+  Object.keys(sobre || {}).forEach(function (k) { base[k] = sobre[k]; });
+  return reg(base);
+}
+caso("experimento com os cinco campos passa", LOGICA.validarRegistros([experimento({})]).length === 0);
+LOGICA.CAMPOS_DO_EXPERIMENTO.forEach(function (campo) {
+  var sem = {}; sem[campo] = null;
+  caso("experimento sem '" + campo + "' REPROVA (aposta que ninguém julga depois)",
+    LOGICA.validarRegistros([experimento(sem)]).length > 0);
+});
+caso("experimento sem prazo REPROVA", LOGICA.validarRegistros([experimento({ vence_em_dias: null })]).length > 0);
+caso("experimento com prazo zero REPROVA", LOGICA.validarRegistros([experimento({ vence_em_dias: 0 })]).length > 0);
+caso("experimento fora de 'medicao' REPROVA", LOGICA.validarRegistros([experimento({ tipo: "nota" })]).length > 0);
+caso("metrica que não é nome de cartão REPROVA",
+  LOGICA.validarRegistros([experimento({ metrica: "as liberações em 48 horas" })]).length > 0);
+caso("medição comum, sem nenhum campo de experimento, continua passando",
+  LOGICA.validarRegistros([reg({ tipo: "medicao" })]).length === 0);
+caso("resultado com veredito e responde_a passa",
+  LOGICA.validarRegistros([experimento({}), reg({
+    arquivo: "20260905-902-resultado", tipo: "medicao",
+    responde_a: "20260905-901-experimento", veredito: "venceu"
+  })]).length === 0);
+caso("'não deu para saber' é desfecho legítimo",
+  LOGICA.validarRegistros([experimento({}), reg({
+    arquivo: "20260905-902-resultado", tipo: "medicao",
+    responde_a: "20260905-901-experimento", veredito: "nao-deu-para-saber"
+  })]).length === 0);
+caso("veredito fora do vocabulário REPROVA",
+  LOGICA.validarRegistros([experimento({}), reg({
+    arquivo: "20260905-902-resultado", tipo: "medicao",
+    responde_a: "20260905-901-experimento", veredito: "meio que deu certo"
+  })]).length > 0);
+caso("veredito sem responde_a REPROVA (julgamento sem aposta)",
+  LOGICA.validarRegistros([reg({
+    arquivo: "20260905-902-resultado", tipo: "medicao", veredito: "venceu"
+  })]).length > 0);
+caso("veredito fora de 'medicao' REPROVA",
+  LOGICA.validarRegistros([experimento({}), reg({
+    arquivo: "20260905-902-resultado", tipo: "nota",
+    responde_a: "20260905-901-experimento", veredito: "venceu"
+  })]).length > 0);
 // Número repetido no mesmo dia: a corrida entre sessões paralelas (26/08/2026,
 // quatro colisões em um dia, entre três sessões). O nome completo continua
 // único — o que se perde é o número como referência.

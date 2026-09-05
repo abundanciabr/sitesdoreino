@@ -424,6 +424,21 @@ que faltou e não desenha número nenhum. É a lei do plano (§2), e o teste
       </li>
     {% endfor %}
   </ul>
+  {% comment %}
+  O LABORATÓRIO (05/09/2026, degrau 12) entra AQUI, dentro do bloco dos doze, e
+  não como um nono bloco da capa. Duas razões, e a segunda é a que decide:
+
+  1. O laboratório é a FONTE do décimo segundo número desta lista
+     (aprendizados-validados-no-ciclo). Ele mora ao lado do número que produz.
+  2. A capa tem teto de nove blocos (tests/test_capa.py) e usa oito. Gastar o
+     nono aqui fecharia a porta para sempre, e por uma tela que já tem a casa
+     natural dela dentro deste bloco.
+  {% endcomment %}
+  <p class="recado-fraco">
+    O último dos doze sai do <a href="{% url 'laboratorio' %}">laboratório</a>:
+    as apostas da escola, o que está rodando, o que passou do prazo e o que já
+    ensinou alguma coisa.
+  </p>
   {% endif %}
 
   {% if latencias %}

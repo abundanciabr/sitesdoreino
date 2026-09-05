@@ -5,7 +5,8 @@ outros programas o tempo todo (119 fronteiras de subprocesso), e criar processo
 ali custa perto de dez vezes o que custa no Linux. Em série, isso empurrava a
 espera de TODO PR desta casa de 1min36s para 14min17s — o preço do job
 `windows-a-maquina-dos-robos`, que existe porque nenhum outro job roda no
-sistema onde os robôs trabalham.
+sistema onde os robôs trabalham (desde 05/09/2026 ele mora em
+`.github/workflows/rede-do-windows.yml` e roda na `main`, fora do PR).
 
 `-n auto` derrubou para 3min31s em 4 processos. A velocidade em si não se guarda
 por teste (isso mediria a máquina do dia, não o código); o que se guarda é a
