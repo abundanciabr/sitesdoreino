@@ -899,6 +899,95 @@ coisa alguma, e ainda gasta a confiança de todo mundo.
   `EnviosQuerySet` deixa 2 dentes vermelhos (3 failed).
 - **Célula dona:** cursos
 
+### [INV-CUR-L1] Nenhum Laudo Devolvido Sem Data de Retorno de Amanhã em Diante
+- **O quê:** `Laudo.data_de_retorno` é obrigatória quando `decisao` é
+  `devolvido` (e proibida nas outras duas decisões) — garantido pelo BANCO,
+  sozinho, com um `CheckConstraint`; e é sempre amanhã ou depois no dia de São
+  Paulo — garantido pelo SERVIÇO (`apps/cursos/laudo.py::emitir`), porque essa
+  metade depende do relógio no instante da escrita, e um `CheckConstraint` não
+  o consulta.
+- **Por quê:** a escola devolve com data marcada, nunca sem ela: a data é a
+  promessa de quando o aluno volta, e sem ela "devolvido" seria indistinguível
+  de "abandonado". Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §9.
+- **Teste-Guarda:**
+  `services/cursos/tests/test_inv_l1_devolvido_exige_data_de_retorno.py` — o
+  banco recusa devolvido sem data e recusa qualquer outra decisão COM data; o
+  serviço recusa data de hoje, de ontem e ausente; aceita amanhã e datas mais à
+  frente. Provado por mutação em 05/09/2026: comentar a checagem do serviço
+  deixa 3 vermelhos (hoje passa, ontem passa, ausente passa).
+- **Célula dona:** cursos
+
+### [INV-CUR-L2] O Estado "Reprovado" Não Existe no Laudo
+- **O quê:** a palavra proibida não aparece em `Laudo.Decisao`, no serviço do
+  laudo nem nas telas do plantão e do laudo; `emitir()` recusa explicitamente
+  quem tentar mandar essa decisão.
+- **Por quê:** a escola devolve com data de retorno; nunca reprova. Uma quarta
+  decisão negativa encerraria o aluno em vez de pedir mais uma volta, e é
+  exatamente o que a missão da célula proíbe. Lei:
+  `docs/decisoes/PLANO-CELULA-CURSOS.md` §4 e §9; critério de morte da
+  constituição da célula.
+- **Teste-Guarda:** `services/cursos/tests/test_inv_l2_laudo_sem_reprovado.py`
+  — a palavra ausente do serviço e de toda tela da célula, o vocabulário de
+  `Laudo.Decisao` é exatamente os três da lei, e o serviço recusa a decisão
+  explicitamente. `services/cursos/tests/test_sem_reprovado.py` cobre o
+  `models.py` e as migrações da célula inteira (e por isso já inclui
+  `Laudo`, sem código novo lá). Provado por mutação em 05/09/2026: acrescentar
+  a decisão ao vocabulário do modelo deixa 2 vermelhos entre os dois arquivos;
+  acrescentar a palavra a um template do plantão deixa 1 vermelho.
+- **Célula dona:** cursos
+
+### [INV-CUR-L5] A Rubrica Completa Antes de Qualquer Campo Livre
+- **O quê:** o laudo exige uma nota (dentro da escala do instrumento da aula)
+  e uma frase por critério antes de aceitar forças, mudança ou decisão; nota
+  sem frase é recusada com a frase certa, e o mesmo vale para nota fora da
+  escala ou booleana.
+- **Por quê:** uma nota sem justificativa observável não ensina nada à pessoa
+  que recebe o laudo, e é a mesma régua que já vale para a autoavaliação do
+  aluno (`apps/cursos/envio.py`), reaproveitada em vez de reimplementada. Lei:
+  `docs/decisoes/PLANO-CELULA-CURSOS.md` §9.
+- **Teste-Guarda:** `services/cursos/tests/test_inv_l5_rubrica_completa.py` —
+  critério ausente, nota fora da escala, nota booleana, nota sem frase, frase
+  só com espaço, rubrica completa aceita, e chave estranha ignorada em
+  silêncio. Provado por mutação em 05/09/2026: aceitar nota sem frase deixa 2
+  vermelhos; aceitar qualquer valor não nulo como nota deixa mais 2.
+- **Célula dona:** cursos
+
+### [INV-CUR-L6] Exatamente Três Forças e Exatamente Uma Mudança
+- **O quê:** o laudo exige exatamente três forças (nenhuma da lista de
+  genéricos: "bonito", "legal", "bom trabalho", "ficou bom", "parabéns", sem
+  acento na comparação e sem diferença de maiúscula) e exatamente uma mudança,
+  com uma aula que existe no mesmo curso.
+- **Por quê:** menos de três forças é elogio raso, mais de três dilui o que
+  importa, e uma força genérica não diz nada específico sobre o trabalho da
+  pessoa; mais de uma mudança tira o foco de onde a próxima entrega precisa
+  melhorar. Lei: `docs/decisoes/PLANO-CELULA-CURSOS.md` §9.
+- **Teste-Guarda:**
+  `services/cursos/tests/test_inv_l6_forcas_e_mudanca.py` — duas, quatro e
+  três forças vazias recusadas; cada uma das cinco frases genéricas recusada,
+  em maiúscula e com espaço nas pontas; zero e duas mudanças recusadas;
+  mudança com aula de outro curso, com id não numérico e sem texto recusada.
+  Provado por mutação em 05/09/2026: aceitar mais de três forças deixa 1
+  vermelho; esvaziar a lista de genéricos deixa 6; aceitar mais de uma
+  mudança deixa 1.
+- **Célula dona:** cursos
+
+### [INV-CUR-L7] A Pergunta de Amanhã de Manhã: `false` Não Envia
+- **O quê:** `sabe_o_que_fazer_amanha` só grava `true` — o BANCO recusa a
+  linha se o valor não for verdadeiro, mesmo por fora do serviço, e o SERVIÇO
+  recusa `false` e ausência (`None`) com a MESMA frase: a pergunta não tem uma
+  terceira resposta que "envia mesmo assim".
+- **Por quê:** não se registra recusa: se a professora não tem certeza de que
+  o aluno sabe o que fazer amanhã, a conversa acontece antes do laudo, nunca
+  depois de um "não" gravado que ninguém mais revê. Lei:
+  `docs/decisoes/PLANO-CELULA-CURSOS.md` §9.
+- **Teste-Guarda:**
+  `services/cursos/tests/test_inv_l7_pergunta_de_amanha.py` — o banco recusa
+  `false` mesmo bypassando o serviço; o serviço recusa `false` e `None` com a
+  mesma frase; `true` é aceito e é o único valor gravado. Provado por mutação
+  em 05/09/2026: trocar a checagem do serviço por uma que só barra `false`
+  deixa 1 vermelho (ausência passa a ser aceita).
+- **Célula dona:** cursos
+
 ### [INV-CI01] Portão Crítico é Fail-Closed
 - **O quê:** todo portão crítico prova positivamente que executou a medição
   antes de devolver sucesso. A semântica é de quatro estados, e não de dois:

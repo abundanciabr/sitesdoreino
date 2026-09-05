@@ -28,9 +28,11 @@ from django.core.management import call_command
 from django.utils import timezone
 
 from apps.core import menu
+from apps.cursos import envio as checkpoint
 from apps.cursos.models import (
     Aula,
     Curso,
+    Instrumento,
     Pausa,
     Peca,
     Pessoa,
@@ -220,6 +222,79 @@ def ana_pronta(aula_publicada):
     for pausa in aula_publicada.pausas.all():
         RegistroDePausa.objects.create(pessoa=ana, pausa=pausa, respostas={"x": "y"})
     return progresso
+
+
+# ---------------------------------------------------------------------------
+# O laudo (degrau 2.2): um envio na fila, com instrumento de dois critérios
+# ---------------------------------------------------------------------------
+
+# O nome dos dois critérios, em ordem alfabética: os testes de laudo dependem
+# desta ordem (a mesma regra de `envio.py::criterios_de`).
+CRITERIO_1, CRITERIO_2 = "Acabamento", "Proporção"
+
+
+@pytest.fixture
+def instrumento_com_escala(esqueleto):
+    """Um dos 13 instrumentos, com dois critérios de 1 a 5 (a mesma forma que
+    o Admin grava pela porta de máquina, degrau 1.5)."""
+    instrumento = Instrumento.objects.get(slug="rubrica_de_encomenda")
+    instrumento.escala = {
+        CRITERIO_1: {"minimo": 1, "maximo": 5},
+        CRITERIO_2: {"minimo": 1, "maximo": 5},
+    }
+    instrumento.save(update_fields=["escala"])
+    return instrumento
+
+
+@pytest.fixture
+def envio_na_fila(ana_pronta, instrumento_com_escala):
+    """O envio 1 de Ana na E00, `recebido`, com a aula usando o instrumento de
+    dois critérios: pronto para `apps.cursos.laudo.emitir` ser chamado.
+
+    A autoavaliação do ALUNO (`laudo_do_aluno`) precisa da mesma forma de
+    rubrica, porque a aula agora tem instrumento com escala: `envio.entregar`
+    exige nota+frase por critério dela também, independente do laudo da
+    professora que vem depois.
+    """
+    aula_da_e00 = ana_pronta.aula
+    aula_da_e00.instrumento = instrumento_com_escala
+    aula_da_e00.save(update_fields=["instrumento"])
+    autoavaliacao = {
+        "notas": {
+            CRITERIO_1: {"nota": 3, "frase": "Autoavaliação do aluno."},
+            CRITERIO_2: {"nota": 3, "frase": "Autoavaliação do aluno."},
+        }
+    }
+    return checkpoint.entregar(ana_pronta, **entrega(laudo_do_aluno=autoavaliacao))
+
+
+@pytest.fixture
+def professora(esqueleto):
+    """O espelho mínimo da professora: uma `Pessoa` qualquer, o avaliador dos
+    testes de laudo. O acesso ao plantão (`CURSOS_PROFESSORES`) é outro
+    guarda (`tests/test_plantao_acesso.py`); este fixture só monta o dado."""
+    return Pessoa.objects.create(id_da_plataforma="p_professora", nome_exibido="Dani")
+
+
+def notas_validas() -> dict:
+    """Uma rubrica completa e válida para `instrumento_com_escala`: nota e
+    frase em cada um dos dois critérios."""
+    return {
+        CRITERIO_1: {"nota": 4, "frase": "As bordas ficaram consistentes."},
+        CRITERIO_2: {"nota": 5, "frase": "A proporção bateu com a referência."},
+    }
+
+
+def forcas_validas() -> list[str]:
+    return [
+        "O bevel das arestas ficou uniforme em todo o modelo.",
+        "A escala bateu com a referência sem precisar de ajuste.",
+        "O README explica o processo passo a passo.",
+    ]
+
+
+def mudanca_valida(aula) -> list[dict]:
+    return [{"texto": "Praticar UV na próxima entrega.", "aula_id": aula.id}]
 
 
 # ---------------------------------------------------------------------------

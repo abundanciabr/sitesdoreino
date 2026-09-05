@@ -48,6 +48,18 @@ AS_ROTAS_DA_CELULA = {
     "entregar-checkpoint",
     "aula",
     "mapa",
+    # O laudo recebido (degrau 2.2, TAR-156): a mesma porta da sessão, sem
+    # parâmetro novo — só `numero`, como `aula`.
+    "laudo-recebido",
+    # O PLANTÃO (degrau 2.2, TAR-156) é uma AUDIÊNCIA DIFERENTE, de propósito:
+    # a fila da professora mostra o envio de VÁRIOS alunos porque revisar em
+    # fila É o trabalho dela — [INV-CUR-P1] protege a sala do ALUNO (nenhuma
+    # porta do aluno compara alunos), não a tela de quem revisa. O acesso é
+    # fail-closed por `CURSOS_PROFESSORES`
+    # (`tests/test_plantao_acesso.py`), e é essa porta, não esta, quem
+    # impede a pessoa errada de ver a fila.
+    "plantao",
+    "plantao-ficha",
 }
 
 
@@ -144,11 +156,13 @@ def test_nao_existe_rota_de_lista_de_alunos():
 
 def test_nenhuma_rota_recebe_o_id_de_outra_pessoa():
     """Os parâmetros de rota são a aula, a pausa e o arquivo de estilo; a
-    pessoa é sempre a da sessão."""
+    pessoa é sempre a da sessão. `envio_id` (plantão) é a EXCEÇÃO nomeada:
+    identifica um ENVIO, nunca uma pessoa por id, e só a professora
+    (`CURSOS_PROFESSORES`, fail-closed) chega a essa rota."""
     parametros = set()
     for padrao in get_resolver().url_patterns:
         parametros |= set(re.findall(r"<(?:\w+:)?(\w+)>", str(padrao.pattern)))
-    assert parametros == {"numero", "ordem", "caminho"}
+    assert parametros == {"numero", "ordem", "caminho", "envio_id"}
 
 
 def test_toda_consulta_de_progresso_nas_views_e_filtrada_pela_pessoa():
