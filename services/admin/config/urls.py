@@ -66,6 +66,7 @@ from apps.core.painel import painel, painel_arquivo
 from apps.core.perpetuo import perpetuo
 from apps.core.ciclo import ciclo
 from apps.core.confianca import confianca, confianca_quebrado
+from apps.core.laboratorio import laboratorio
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
 from apps.core.robos import robos
@@ -465,6 +466,17 @@ urlpatterns = [
         confianca_quebrado,
         name="confianca_quebrado",
     ),
+    # O LABORATÓRIO (`apps/core/laboratorio.py`, 05/09/2026) — os experimentos
+    # da escola: rodando, passados do prazo, e encerrados com o veredito. É o
+    # degrau 12 do plano do painel de gestão.
+    #
+    # Sub-rota do placar pela mesma razão do calendário e da confiança acima, e
+    # por uma terceira, que é a mais forte das três: esta tela É a fonte do 12º
+    # número do placar de doze (`aprendizados-validados-no-ciclo`). Como seção
+    # própria do menu ela viveria longe do número que produz, e a lista de
+    # seções (`moldura.py`) cresceria sem realidade nova — experimento não é
+    # assunto novo da administração, é o que se faz para mover aqueles números.
+    path("placar/laboratorio/", laboratorio, name="laboratorio"),
     path("reuniao/", reuniao, name="reuniao"),
     path("escola/", escola, name="escola"),
     # [JORNADA] O mapa, com os numeros de agora

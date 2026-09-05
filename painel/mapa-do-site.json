@@ -1791,6 +1791,17 @@
     },
     {
       "celula": "admin",
+      "rota": "placar/laboratorio/",
+      "endereco": "/admin/placar/laboratorio/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": false,
+      "titulo": "O laboratório",
+      "descricao": "As apostas da escola: o que está rodando agora, o que passou do prazo sem ninguém escrever o resultado, e o que já terminou, separado entre o que venceu, o que perdeu e o que não deu para saber. Cada experimento é escrito antes de se saber o resultado, e o estado de cada um é calculado, nunca digitado.",
+      "observacao": "É a fonte do décimo segundo número do placar de doze, o de aprendizados validados no ciclo. Degrau 12 do plano do painel de gestão (docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, §8)."
+    },
+    {
+      "celula": "admin",
       "rota": "reuniao/",
       "endereco": "/admin/reuniao/",
       "alcance": "publico",
