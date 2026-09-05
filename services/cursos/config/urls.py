@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.core.views import healthz
+from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público (`/cursos`): quem o aplica
 # é `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a célula
@@ -32,4 +33,5 @@ from apps.core.views import healthz
 # depois.
 urlpatterns = [
     path("healthz", healthz),
+    path("api/cursos/", api.urls),
 ]
