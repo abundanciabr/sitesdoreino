@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260905-180122-TAR-164-concluida",
+  "tarefa": "TAR-164",
+  "evento": "concluida",
+  "quando": "2026-09-05T18:01:22+00:00",
+  "quem": "sessao-admin-classificar-2026-09-05",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1081 MERGED (commit 7ea71ead); deploy-celula run 33982581546 completed/success lido por gh run view --json; GET https://meshcraft.top/admin/caixa/esperando/ -> 302 para o login (o cracha vem antes da tela) e /admin/healthz -> 200",
+  "verificado_em": "2026-09-05"
+}
