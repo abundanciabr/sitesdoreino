@@ -135,8 +135,9 @@ ANALISE = {
         "mesa": "site",
         "importa": "Quem escreveu terminou as aulas e travou na reta final. É o momento clássico de "
         "desistência, com o primeiro dinheiro já quase na mesa.",
-        "precisa": "A casa nova das páginas do aluno, chamada pages, nasce primeiro: é a fundação "
-        "dela mais um passo seu no servidor. Com a casa de pé, um robô faz a tela do guia com o "
+        "precisa": "Sua assinatura do documento de obra, aqui mesmo na tela desta ideia. Depois "
+        "dela, a casa nova das páginas do aluno, chamada pages, nasce primeiro: é a fundação dela "
+        "mais um passo seu no servidor. Com a casa de pé, um robô faz a tela do guia com o "
         "checklist salvo por aluno. E a Lívia escreve os critérios (o que entra, quantos itens, "
         "ordem, o que é qualidade), sem os quais a tela não começa. "
         "O documento de obra já existe: CS-PAGES-0001.",

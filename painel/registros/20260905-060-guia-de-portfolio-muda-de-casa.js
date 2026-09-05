@@ -1,9 +1,9 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
   arquivo: "20260905-060-guia-de-portfolio-muda-de-casa",
-  tipo: "entrega",
+  tipo: "nota",
   quando: "2026-09-05",
-  titulo: "O guia de portfolio volta a ser construido na casa que voce escolheu",
-  detalhe: "O documento de obra escrito hoje mandava construir o guia de portfolio dentro da area de cursos. Voce ja tinha decidido, em 01 e 02/09, que a casa das paginas do aluno e a pages, e reafirmou isso hoje.\n\nNasceu o documento CS-PAGES-0001, que substitui o anterior sem apaga-lo, e a ficha da ideia 21 na Caixa passou a dizer a verdade: a casa pages nasce primeiro (a fundacao dela, mais um passo seu no servidor) e a tela do guia vem depois. Os criterios escritos pela Livia continuam sendo pre-requisito.",
+  titulo: "A ficha da ideia 21 na Caixa parou de apontar para o documento superado",
+  detalhe: "O documento de obra do guia de portfolio mudou de casa hoje, e a tela de analise da Caixa continuava mandando o leitor para o documento antigo, o que foi superado e que nao deve ser assinado.\n\nA ficha da ideia 21 agora aponta para o CS-PAGES-0001 e diz a ordem real das coisas: primeiro a sua assinatura, depois a casa nova das paginas (a fundacao dela e mais um passo seu no servidor), e so entao a tela do guia. O teste que vigia essa ficha passou a vigiar o nome novo.",
   autoridade: "sessao",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1102",
   verificado_em: "2026-09-05",
