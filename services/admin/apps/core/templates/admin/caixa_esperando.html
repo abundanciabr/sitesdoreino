@@ -58,7 +58,13 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
         GET, como a peneira da lista de alunos: ler a lista de outro jeito não
         muda nada, e a query string é o que deixa o resultado recarregável e
         colável num recado.
+
+        Sem NADA em aberto ela não aparece: classificar e peneirar zero ideias é
+        um controle que não faz coisa nenhuma. A régua é `total_em_aberto` e não
+        a lista desenhada, senão uma etapa vazia levaria embora o próprio
+        seletor que desfaz a escolha, e o mantenedor ficaria preso nela.
         {% endcomment %}
+        {% if total_em_aberto %}
         <form class="peneira dois-seletores" method="get" action="{% url 'caixa_esperando' %}">
           <div class="campo">
             <label class="rotulo" for="ordem">Classificar por</label>
@@ -79,6 +85,7 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
           </div>
           <button class="sim" type="submit">Mostrar</button>
         </form>
+        {% endif %}
 
         {% if pedido_desconhecido %}
         <p class="aviso">

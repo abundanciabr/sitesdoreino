@@ -649,6 +649,28 @@ def test_os_dois_seletores_chegam_na_tela_com_o_que_foi_escolhido():
     assert "Mais antigas" in pagina and "Menos votadas" in pagina
 
 
+@respx.mock
+def test_sem_nada_em_aberto_nao_ha_o_que_classificar_e_a_peneira_some():
+    """Mas ela FICA quando a etapa escolhida é que está vazia.
+
+    A régua é o que está em aberto, não a lista desenhada: se fosse a lista, uma
+    etapa sem ninguém levaria embora o próprio seletor que desfaz a escolha, e o
+    mantenedor ficaria preso nela sem outra saída além de editar o endereço.
+    """
+    cliente = _dentro()
+
+    a_caixa_responde([ideia(id=9, titulo="Ideia D", status="implementado")])
+    vazia = texto(cliente.get(reverse("caixa_esperando")))
+
+    a_caixa_responde(quatro_ideias(), pessoas_esperando=100)
+    etapa_vazia = texto(
+        cliente.get(reverse("caixa_esperando"), {"etapa": "construindo"})
+    )
+
+    assert "Classificar por" not in vazia
+    assert "Classificar por" in etapa_vazia
+
+
 def test_as_duas_listas_de_etapa_falam_das_mesmas_etapas():
     """O seletor chama a etapa pelo NOME; o mapa da direita, pela frase.
 

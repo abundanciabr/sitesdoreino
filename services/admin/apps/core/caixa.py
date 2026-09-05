@@ -245,11 +245,9 @@ def travessia(request):
 
 DIAS_DE_SILENCIO_DEMAIS = 30
 
-# As cinco etapas em que uma ideia em aberto pode estar, com a palavra que o
-# mantenedor lê. Uma lista só, e DOIS usos: os números de "de onde vem a espera"
-# no lado da tela, e as opções de "Mostrar" na peneira. Escrevê-las duas vezes
-# daria duas verdades sobre quais etapas existem, e a que ninguém olha é a que
-# fica errada — é a lei anti-duplicação do projeto aplicada dentro de um arquivo.
+# As cinco etapas em que uma ideia em aberto pode estar, ditas como FRASE: elas
+# completam o título "de onde vem a espera" no mapa do lado direito da tela, e é
+# por isso que começam em minúscula e explicam em vez de nomear.
 MOTIVOS = (
     ("assinar", "esperando você assinar"),
     ("chegando", "ninguém da equipe olhou ainda"),
@@ -300,8 +298,9 @@ def _nascimento(ideia) -> float:
 # votou ou comentou. É a plateia que mede o silêncio, e é por isso que ela é a
 # ordem padrão desta tela.
 #
-# O desempate é sempre "mais gente primeiro": empate em qualquer critério cai na
-# pergunta que a tela existe para responder, que é quantas pessoas estão atrás.
+# O desempate é "mais gente primeiro" — empate em qualquer critério cai na
+# pergunta que a tela existe para responder, que é quantas pessoas estão atrás —
+# e, nas duas ordens que JÁ são por gente, o silêncio mais longo.
 ORDENS = (
     ("gente", "Mais gente esperando", lambda i: (-i["pessoas"], -i["parada_ha"])),
     ("menos-gente", "Menos gente esperando", lambda i: (i["pessoas"], -i["parada_ha"])),
@@ -322,7 +321,10 @@ ORDENS = (
 ORDEM_PADRAO = "gente"
 
 #: Derivados de `ORDENS` e `ETAPAS`, nunca escritos à mão: ordem ou etapa nova
-#: entra numa linha só, e a peneira a conhece no mesmo instante.
+#: entra numa linha só, e a peneira a conhece no mesmo instante. O seletor não
+#: recebe `ORDENS` inteira porque a terceira posição é uma função — mandar uma
+#: função para um template é pedir que ele não a use.
+ORDENS_NA_TELA = tuple((chave, rotulo) for chave, rotulo, _ in ORDENS)
 _COMO_ORDENAR = {chave: como for chave, _, como in ORDENS}
 _ETAPAS = {chave for chave, _ in ETAPAS}
 
@@ -397,7 +399,7 @@ def quem_espera(request):
             # O que a pessoa escolheu, devolvido aos seletores: uma peneira que se
             # apaga ao recarregar faz o mantenedor achar que está vendo a lista
             # inteira.
-            "ordens": [(chave, rotulo) for chave, rotulo, _ in ORDENS],
+            "ordens": ORDENS_NA_TELA,
             "ordem_escolhida": ordem,
             "etapas": ETAPAS,
             "etapa_escolhida": etapa,
