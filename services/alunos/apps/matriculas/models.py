@@ -192,6 +192,48 @@ class Matricula(models.Model):
     decidido_por = models.CharField(max_length=128, blank=True, default="")
     motivo_recusa = models.TextField(blank=True, default="")
 
+    def virou_aluno_em(self) -> "str | None":
+        """O instante em que esta linha passou a ser de uma ALUNA.
+
+        Rito de Contrato de 03/09/2026 (o placar do painel de gestao): a meta do
+        mantenedor virou "quantas pessoas compraram neste mes", e a data que
+        conta, nas palavras dele, e *"a data em que o aluno e liberado ou que o
+        sistema confirma o pagamento"*. Duas proveniencias, duas datas:
+
+        - quem entrou pela fila (`pre:`) virou aluna no instante da DECISAO
+          (`decidido_em`); `enrolled_at` ali e so quando pediu para entrar;
+        - quem comprou virou aluna quando o pagamento criou a linha
+          (`enrolled_at`).
+
+        NUNCA `comprou_em`: aquele e o que a propria pessoa digita no pedido,
+        opcional, e serve para o mantenedor conferir, nao para contar.
+
+        Derivado a cada leitura, como `origem`: um campo gravado seria um
+        segundo lugar guardando o que `order_id` + `decidido_em` ja dizem.
+
+        MORA AQUI, e nao em `services`, desde 05/09/2026: a tela lia esta regra
+        e agora o evento `matricula.situacao-alterada` tambem precisa dela.
+        Duas derivacoes da mesma data discordariam no primeiro caso de borda.
+        """
+        if self.order_id.startswith(self.PREFIXO_DA_FILA):
+            return self.decidido_em.isoformat() if self.decidido_em else None
+        return self.enrolled_at.isoformat()
+
+    def origem(self) -> str:
+        """`comprou` ou `liberado`: COMO esta pessoa virou aluna.
+
+        Derivado do prefixo, nunca de um campo proprio — um campo "origem"
+        gravado seria um segundo lugar guardando o que o `order_id` ja diz, e
+        os dois discordariam no primeiro backfill.
+
+        E a distincao que o mantenedor cravou em 05/09/2026: os alunos das
+        turmas anteriores entram pedindo aprovacao (`liberado`), e os alunos
+        que a meta de vendas conta vem do checkout (`comprou`).
+        """
+        return (
+            "liberado" if self.order_id.startswith(self.PREFIXO_DA_FILA) else "comprou"
+        )
+
     class Meta:
         indexes = [models.Index(fields=["email"])]
         constraints = [
