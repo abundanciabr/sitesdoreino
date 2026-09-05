@@ -1,0 +1,20 @@
+{
+  "arquivo": "171-o-plantao-do-curso-passa-a-aceitar-quem-ja-e-admin-do-site-e",
+  "id": "TAR-171",
+  "titulo": "O plantao do curso passa a aceitar quem ja e admin do site, e nao so uma lista propria de professores",
+  "toca": [
+    "cursos",
+    "infra",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: sessao.py unindo CURSOS_PROFESSORES com ADMIN_EMAILS no molde do forum; teste novo nascendo vermelho (admin entra) e os testes de fail-closed de test_plantao_acesso.py continuando verdes; prova por MUTACAO nos dois sentidos (tirar ADMIN_EMAILS da uniao derruba o teste novo; as duas listas vazias continuam 403); suite da cursos verde e black limpo; make ci verde.",
+  "despacho": "Decisao do mantenedor em 05/09/2026, com as palavras dele: \"qualquer admin do site pode abrir\" o plantao. Hoje `services/cursos/apps/core/sessao.py` calcula `eh_professor` so pela lista `CURSOS_PROFESSORES`, que esta VAZIA na maquina: o laudo do degrau 2.2 subiu e ninguem consegue abrir. O molde ja existe e e do forum: `services/forum/apps/core/sessao.py` une `FORUM_PROFESSORES` com `ADMIN_EMAILS` numa funcao propria, com a docstring explicando por que as duas leituras precisam quebrar juntas. Copie esse desenho: `eh_professor` passa a ser `email in (_lista_de_emails(\"CURSOS_PROFESSORES\") | _lista_de_emails(\"ADMIN_EMAILS\"))`, lido no ponto de uso, vazio significando NINGUEM (fail-closed continua, e isso e o ponto). A lei \"reconhecer nao e autorizar\" (constituicoes/AGENTS.cursos.md linha 90) NAO e violada aqui e o PR deve dizer por que: `papel_do_site` continua sendo so plateia de menu; quem autoriza continua sendo uma lista de e-mails desta celula, e ela apenas passou a incluir a MESMA lista que ja abre o /admin/. Nao use `papel_do_site` para liberar nada. Atualize a docstring do dataclass `Ator` (que hoje diz \"a lista CURSOS_PROFESSORES, e SO ela\") e a de `apps/cursos/laudo.py` linha 34. `infra/env/cursos.env.exemplo` ganha ADMIN_EMAILS documentada (MANDATO CODEOWNERS concedido para infra/ NESTE brief, so para esse arquivo).",
+  "origem": "resposta do mantenedor em 05/09/2026 a pergunta estruturada sobre quem abre o plantao",
+  "criada_em": "2026-09-05"
+}
