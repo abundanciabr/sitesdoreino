@@ -29,6 +29,13 @@
   // fechado é o que permite a tela ordenar e colorir sem adivinhar, e o que
   // impede "médio-alto" e "bem grande" de virarem categorias novas em silêncio.
   var IMPACTOS = ["alto", "medio", "baixo"];
+  // O LABORATÓRIO (degrau 12): os quatro campos que descrevem uma aposta, e os
+  // três desfechos que a fecham. Vocabulário fechado pelo mesmo motivo de
+  // `IMPACTOS`: é ele que permite a tela agrupar sem adivinhar, e é ele que
+  // impede "meio que deu certo" de virar uma categoria nova em silêncio.
+  var CAMPOS_DO_EXPERIMENTO = ["problema", "hipotese", "metrica", "guarda"];
+  var VEREDITOS = ["venceu", "perdeu", "nao-deu-para-saber"];
+  var FORMATO_DA_METRICA = /^[a-z0-9-]+$/;
   // A ordem do MAPA é a narrativa do Roadmap (fotografia de 26/08): a fundação
   // primeiro, depois o produto, e vender por último — que é também a ordem em
   // que o mantenedor lê o projeto. A ordem de FRENTES acima é só a do vocabulário.
@@ -102,6 +109,70 @@
         if (r.tipo !== "medicao") erros.push(nome + ": 'foto' só cabe em registro tipo 'medicao'");
         if (typeof r.foto !== "string" || !FORMATO_DA_FOTO.test(r.foto)) {
           erros.push(nome + ": 'foto' tem a forma \"cartao=valor; cartao=valor\" (nome do cartão em minúsculas e hífens, valor numérico)");
+        }
+      }
+      // -----------------------------------------------------------------------
+      // O LABORATÓRIO (05/09/2026, degrau 12 do painel de gestão).
+      //
+      // Um EXPERIMENTO é uma `medicao` que declara a aposta antes de saber o
+      // resultado: o problema que dói, a hipótese, qual número ela quer mover,
+      // o que a faz parar antes da hora, e até quando (`vence_em_dias`, o mesmo
+      // campo do compromisso — prazo é prazo, e um conceito novo aqui só teria
+      // o mesmo comportamento com outro nome).
+      //
+      // POR QUE OS CINCO ANDAM JUNTOS, e a validação recusa meia declaração:
+      // um experimento existe para ser JULGADO depois. Hipótese sem métrica não
+      // tem como vencer nem perder; métrica sem prazo nunca é cobrada; qualquer
+      // um dos cinco faltando produz, semanas depois, um registro que ninguém
+      // consegue fechar — e um laboratório cheio de apostas não julgáveis é
+      // pior do que um laboratório vazio, porque parece trabalho.
+      //
+      // O RESULTADO é outro registro (`responde_a` apontando para o
+      // experimento) com `veredito`. Nunca a edição do experimento: registro
+      // não se edita nesta casa, e é justamente por isso que a aposta escrita
+      // ANTES vale alguma coisa.
+      // -----------------------------------------------------------------------
+      var declarados = CAMPOS_DO_EXPERIMENTO.filter(function (campo) {
+        return r[campo] !== undefined && r[campo] !== null;
+      });
+      declarados.forEach(function (campo) {
+        if (typeof r[campo] !== "string" || r[campo].trim() === "") {
+          erros.push(nome + ": '" + campo + "' precisa ser texto com conteúdo, ou null");
+        }
+        if (r.tipo !== "medicao") {
+          erros.push(nome + ": '" + campo + "' só cabe em registro tipo 'medicao' — um experimento é uma medição da casa");
+        }
+      });
+      if (declarados.length) {
+        var faltando = CAMPOS_DO_EXPERIMENTO.filter(function (campo) {
+          return declarados.indexOf(campo) === -1;
+        });
+        if (faltando.length) {
+          erros.push(nome + ": experimento pela metade — falta " + faltando.join(", ") +
+            ". Os quatro andam juntos (problema, hipotese, metrica, guarda), senão " +
+            "ninguém consegue julgar esta aposta depois");
+        }
+        if (!(typeof r.vence_em_dias === "number" && r.vence_em_dias > 0)) {
+          erros.push(nome + ": experimento exige vence_em_dias (número de dias, maior que zero) — " +
+            "aposta sem prazo nunca vence, e o que não vence nunca é cobrado");
+        }
+        if (typeof r.metrica === "string" && !FORMATO_DA_METRICA.test(r.metrica)) {
+          erros.push(nome + ": 'metrica' é o NOME de um cartão de painel/cartoes/ " +
+            "(minúsculas, números e hífens), e não a frase do número");
+        }
+      }
+      // O veredito mora no registro da RESPOSTA, e só faz sentido apontando
+      // para o experimento que ele fecha. Solto, ele seria um julgamento sem
+      // aposta — e "não deu para saber" é desfecho de primeira classe, com nome
+      // próprio, porque metade do valor de um laboratório é poder dizer isso.
+      if (r.veredito !== undefined && r.veredito !== null) {
+        if (VEREDITOS.indexOf(r.veredito) === -1) {
+          erros.push(nome + ": 'veredito' desconhecido '" + r.veredito + "' — os três são: " + VEREDITOS.join(", "));
+        }
+        if (r.tipo !== "medicao") erros.push(nome + ": 'veredito' só cabe em registro tipo 'medicao'");
+        if (!r.responde_a) {
+          erros.push(nome + ": 'veredito' sem 'responde_a' não fecha experimento nenhum — " +
+            "o resultado é um registro NOVO que aponta para o experimento");
         }
       }
       if (r.arquivo) {
@@ -606,6 +677,11 @@
     // sem eles apareceria como "não sei o que acontece" tendo a resposta
     // escrita no livro — pior do que não ter a resposta.
     "se_eu_nao_decidir", "recomendacao", "reversivel", "impacto"];
+  // Os campos do EXPERIMENTO ficam de fora desta lista de propósito (05/09/2026,
+  // degrau 12). O painel do dono não desenha o laboratório em canto nenhum — a
+  // tela dele é `/admin/placar/laboratorio/`, e ela lê os registros de origem,
+  // não este resumo. Carregá-los aqui gastaria o orçamento do resumo (que em
+  // 04/09/2026 estava a 91% do teto) com texto que nenhuma tela abre.
 
   function soTitulo(r) {
     var o = {};
@@ -710,6 +786,8 @@
     TIPOS: TIPOS, GRAVIDADES: GRAVIDADES, AUTORIDADES: AUTORIDADES, FRENTES: FRENTES,
     ORDEM_DO_MAPA: ORDEM_DO_MAPA,
     IMPACTOS: IMPACTOS,
+    CAMPOS_DO_EXPERIMENTO: CAMPOS_DO_EXPERIMENTO,
+    VEREDITOS: VEREDITOS,
     TETO_BLOCOS_CAPA: TETO_BLOCOS_CAPA,
     PROBLEMAS_COM_DETALHE: PROBLEMAS_COM_DETALHE,
     CAIXA_COM_DETALHE: CAIXA_COM_DETALHE,
