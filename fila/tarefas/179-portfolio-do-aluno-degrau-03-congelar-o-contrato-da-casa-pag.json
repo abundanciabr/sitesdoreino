@@ -1,0 +1,21 @@
+{
+  "arquivo": "179-portfolio-do-aluno-degrau-03-congelar-o-contrato-da-casa-pag",
+  "id": "TAR-179",
+  "titulo": "Portfolio do aluno, degrau 03: congelar o contrato da casa pages e os eventos pages.portfolio.*",
+  "toca": [
+    "pages",
+    "contracts",
+    "ci"
+  ],
+  "depende_de": [
+    "TAR-178"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: contracts/pages.openapi.yaml congelado com versao, os eventos pages.portfolio.* declarados, ci/manifesto-de-contratos.json da pages passando de not-applicable para required com a justificativa, e o teste de contrato REPROVANDO quem muda campo sem Rito, provado por mutacao (AC-03). bash ci/freeze-de-contrato.sh pages verde.",
+  "despacho": "# DESPACHO - pages: o contrato congelado e os eventos (degrau 03 da escada do portfolio)\nCELULA: contracts - WORKTREE: wt-contrato-do-portfolio - BRANCH: agent/contracts/contrato-do-portfolio\nPADRAO: o Padrao de Trabalho (1a secao do CLAUDE.md) vale nesta tarefa como em todas, inclusive a regra 2 (discorde ANTES, em ate 5 linhas, com UMA alternativa e o trade-off) e a regra 9 (relatorio nos quatro titulos, sem enchimento).\nDECLARACAO DE ABERTURA (RITOS.md secao 1): primeira linha da sua primeira resposta.\n\nANTES DE ESCREVER CODIGO: materialize o indice (python ci/indice_de_armadilhas.py) e abra SO estas armadilhas: 228, 243, 304, 097, 185. Leia constituicoes/AGENTS.pages.md (a lei da casa, com o [INV-P12] e os invariantes da secao 7 do plano), docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md (secoes 4, 5 e 7) e docs/changespecs/CS-PAGES-0001.md, que e o corredor de obra assinado e manda no escopo. Onde este despacho e o corredor divergirem, o corredor vence.\n\nO QUE NINGUEM PODE INVENTAR NESTA OBRA (plano secao 7, e vale em todo degrau): nota, estrela, ranking ou voto popular em portfolio de aluno; deteccao de \"isto foi feito por IA\"; trancar aula ou conteudo atras de check-list, ponto ou nivel; e-mail, telefone ou nome completo na pagina publica (o padrao e privado e o noindex nao e negociavel); guardar a peca em duas celulas; travessao em texto que o aluno le; e marco real pagando XP.\n\nCONTEXTO (ate 5 linhas): a pages nasceu com o manifesto em not-applicable e o motivo escrito. Este degrau troca isso por required, e a ORDEM importa: a porta de maquina precisa existir e exportar o contrato VIVO antes do congelamento, senao o freeze congela um arquivo escrito a mao que ninguem serve (armadilhas/228 e 243, e o 304 documenta isso como o erro classico de plano escrito fora desta casa).\n\nTAREFA: a porta de maquina minima da pages que exporta o contrato vivo, o congelamento dele, e a declaracao dos eventos pages.portfolio.*.\n\n- O evento que importa e o do SELO (degrau 12), que a gamificacao vai escutar no degrau 15: declare o nome e a forma dele agora, para que o degrau 15 nao invente.\n- Manifesto: not-applicable vira required, com a justificativa reescrita.\n- O teste de contrato tem de REPROVAR quem mudar campo sem Rito, e essa reprovacao se prova por MUTACAO (armadilhas/195): mude um campo do congelado e confirme o vermelho. Desfaca antes de commitar.\n\nNAO construa tela nem regra de negocio: este degrau e contrato, e so.\nORCAMENTO: cerca de 7 arquivos. Estourou por coesao legitima: PARE e reporte, nunca esprema arquivos.\n\nDEPLOY: o deploy-celula da pages vai ficar VERMELHO ate o degrau 05 (o compose com o Traefik) pousar, porque o job procura os servicos desta celula no compose da VPS e nao os acha. E armadilhas/088, e esperado, e nao se conserta na celula. Diga isso EM TEXTO no seu relatorio, senao o vermelho e lido como defeito.\n\nO REGISTRO DO LIVRO EMBARCA NESTE PR, no mesmo ramo, citando o numero dele (armadilhas/185): abra o PR, leia o numero, escreva o registro com menos de 1 KB pela ferramenta de escrita de arquivo (nunca por heredoc), commite os eventos da fila junto, e peca o pouso com UM comando pela ferramenta Monitor: python ci/esperar.py --checks <N> --teto 20 --dizendo \"os checks do PR <N>\" --e-pousar.",
+  "origem": "escada do PLANO-PORTFOLIO-DO-ALUNO.md secao 5 e corredor de obra docs/changespecs/CS-PAGES-0001.md; genese pousada no PR #1117 (TAR-169)",
+  "criada_em": "2026-09-05"
+}
