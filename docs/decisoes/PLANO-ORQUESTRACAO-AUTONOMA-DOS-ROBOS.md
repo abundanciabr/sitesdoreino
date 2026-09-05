@@ -3,7 +3,7 @@ publico-para-ia: true
 # PLANO — a orquestração autônoma dos robôs (as fichas, o despachante que não dorme e o que ele nunca decide)
 
 > **Estado: PROPOSTO em 05/09/2026, esperando a decisão do mantenedor**
-> (registro `20260905-005` no livro, PR #PR_NUMERO). Em 04/09/2026 ele perguntou
+> (registro `20260905-005` no livro, PR #1051). Em 04/09/2026 ele perguntou
 > "como criar um sistema de agentes e sub-agentes de IA para gerenciar os robôs,
 > de modo que trabalhem com mais agilidade e velocidade", e escolheu, em pergunta
 > estruturada, receber o plano completo como documento antes de qualquer código.
