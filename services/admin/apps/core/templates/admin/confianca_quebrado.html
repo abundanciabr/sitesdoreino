@@ -1,0 +1,84 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A INSPEÇÃO DE UM EVENTO QUEBRADO (/admin/placar/confianca/quebrado/<id>/).
+
+É a única tela desta área que mostra o corpo cru de um envelope que chegou da
+plataforma. Ele pode conter o que esta casa não guarda (nome, e-mail, texto de
+mensagem), e é por isso que ele não aparece na lista da tela anterior: vê-lo é
+um gesto deliberado, um evento por vez. Regras em apps/core/confianca.py.
+
+Zero atributo `style=` aqui, e nenhuma classe nova: o estilo mora em
+admin/base.html.
+{% endcomment %}
+{% block titulo %}Um evento que chegou quebrado{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'confianca' %}">&larr; Voltar para a confiança</a>
+  <h1>Um evento que chegou quebrado</h1>
+
+  {% if veredito == "ok" %}
+  <p class="subtitulo">
+    O envelope número {{ morto.id }}, exatamente como ele chegou na porta.
+  </p>
+
+  <div class="cartoes">
+    <div class="cartao">
+      <span class="rotulo">Por que ele não foi contado</span>
+      <p class="valor">{{ morto.motivo }}</p>
+    </div>
+    <div class="cartao">
+      <span class="rotulo">O assunto que ele dizia ser</span>
+      <p class="valor">{{ morto.tipo_declarado|default:"não declarou assunto" }}</p>
+    </div>
+    <div class="cartao">
+      <span class="rotulo">Quando chegou</span>
+      <p class="valor">{{ morto.quando|default:"data ilegível" }}</p>
+      <p class="nota">{{ morto.recebido_em }}</p>
+    </div>
+    <div class="cartao">
+      <span class="rotulo">Situação na fila</span>
+      <p class="valor">{{ morto.estado }}</p>
+      <p class="nota">Identificação declarada: {{ morto.event_id_declarado|default:"nenhuma" }}</p>
+    </div>
+  </div>
+
+  <h2 class="titulo-de-lista espaco-34">O envelope, sem tradução</h2>
+  <p class="recado-fraco">
+    Este é o texto cru que a plataforma publicou. Ele pode trazer coisas que
+    esta casa não guarda em lugar nenhum, e é por isso que ele só aparece aqui,
+    um por vez, e nunca na lista.
+  </p>
+  <div class="rolagem-lateral espaco-16">
+    <pre>{{ morto.corpo }}</pre>
+  </div>
+
+  <p class="aviso espaco-28">
+    <b>Ainda não dá para tentar de novo nem descartar por aqui.</b>
+    O contrato da parte que guarda os fatos só sabe LER hoje, e as duas ações
+    que mudam a fila nascerão como um passo próprio, com registro. Enquanto
+    isso, o que esta página faz é impedir que um fato perdido suma sem ninguém
+    ver.
+  </p>
+
+  {% elif veredito == "nao-existe" %}
+  <p class="aviso borda-amarela">
+    <b>Este evento não existe na fila</b> (número {{ morto_id }}).
+    Ou o endereço veio errado, ou a fila já foi limpa. Isto é diferente de eu
+    não ter conseguido perguntar.
+  </p>
+
+  {% elif veredito == "sem-configuracao" %}
+  <p class="aviso borda-amarela">
+    <b>Esta tela ainda não tem a senha para perguntar à memória.</b>
+    Falta rodar o passo do servidor que liga as duas.
+  </p>
+
+  {% else %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui perguntar à memória agora.</b>
+    Isto não quer dizer que o evento sumiu: é a pergunta que não chegou. Abra
+    de novo daqui a pouco.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}
