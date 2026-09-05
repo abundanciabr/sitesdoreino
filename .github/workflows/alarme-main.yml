@@ -103,13 +103,15 @@ jobs:
           # 2 `git grep` não conseguiu varrer (ERROR). `set -e` propaga o exit
           # tal e qual, para o log distinguir "achei" de "não consegui olhar".
           bash ci/guarda-de-segredos.sh
-      # A suíte adversarial cobre as invariantes de repositório que não dependem
-      # de célula: coerência do manifesto de contratos, a tabela-verdade do gate
-      # terminal, a semântica fail-closed e o normalizador. As invariantes DE
-      # célula (lint/type/testes/freeze) continuam com o workflow `ci-celula`,
-      # que também roda neste push.
-      - name: Testar o testador
-        run: python ci/ci.py --apenas testador
+      # A SUÍTE `ci/tests/` NÃO RODA MAIS AQUI (05/09/2026, alavanca 2 das
+      # alavancas de 10x da fábrica, liberada pelo mantenedor). Ela já rodou no
+      # PR, no job `muralhas`, sobre ESTE conteúdo: a `main` tem política
+      # estrita, o PR só mergeia com a base em dia, e o que chega aqui é o que
+      # o PR mediu. Rodar de novo era responder a mesma pergunta pela terceira
+      # vez, e o portão de deploy esperava a resposta (1min18s por deploy).
+      # A rede do Windows na `main` continua rodando a suíte na codepage dela,
+      # por outro despacho da mesma data. O guarda desta decisão é
+      # `ci/tests/test_alarme_main_roda_a_muralha_repo_wide.py`.
 
   alarme:
     name: alarme
@@ -137,9 +139,9 @@ jobs:
 
           ## O que isto significa
 
-          Alguma coisa entrou na \`main\` e quebrou uma invariante do repositório —
-          coerência do manifesto de contratos, a tabela-verdade do portão terminal,
-          ou a própria semântica fail-closed ([INV-CI01]).
+          A guarda de segredos varreu a árvore inteira da \`main\` e reprovou: ou
+          achou um segredo alcançável (FAIL), ou não conseguiu varrer (ERROR).
+          As duas coisas são diferentes, e a execução acima diz qual foi.
 
           Isto é um **alarme**, não um portão: ele avisa depois do fato. Ele nasceu
           quando a \`main\` não tinha required check nenhum (\`ARMADILHAS-OPERACAO.md §1 H3\`);
@@ -150,7 +152,7 @@ jobs:
 
           1. Abra a execução acima e leia o estado (\`FAIL\` = violação, \`ERROR\` = não
              conseguiu medir — são coisas diferentes).
-          2. Reproduza local: \`python ci/ci.py --apenas testador\`
+          2. Reproduza local: \`bash ci/guarda-de-segredos.sh\`
           3. Conserte por PR, como sempre. Se a \`main\` estiver inutilizável, reverter
              o merge é resposta legítima (RITOS.md §4: a resposta canônica é rollback).
 
