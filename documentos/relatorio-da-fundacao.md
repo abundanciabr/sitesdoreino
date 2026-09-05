@@ -1,6 +1,6 @@
 ---
 titulo: Relatório da fundação (setembro de 2026)
-publico: true
+publico: false
 ordem: 20
 ---
 
@@ -8,7 +8,7 @@ ordem: 20
 
 O que foi construído em 26 dias, e por que isso sustenta a meta de 10 milhões de reais em vendas e 50 mil alunos.
 
-> Escrito em 5 de setembro de 2026 pelo mantenedor do projeto e pela equipe de agentes de IA que construiu a plataforma, para a pessoa que encomendou este trabalho. Tudo o que está aqui foi medido no repositório e no site nesta data; os comandos para conferir cada número estão na seção **Os números, medidos em 5 de setembro de 2026**. Este documento mora em `meshcraft.top/docs/relatorio-da-fundacao` e pode ser editado pelo mantenedor: se você o leu em papel ou em cópia, o endereço tem a versão mais nova.
+> Escrito em 5 de setembro de 2026 pelo mantenedor do projeto e pela equipe de agentes de IA que construiu a plataforma, para a pessoa que encomendou este trabalho. Tudo o que está aqui foi medido no repositório e no site nesta data; os comandos para conferir cada número estão na seção **Os números, medidos em 5 de setembro de 2026**. Este documento mora na área de administração do site, onde só o mantenedor e a equipe o abrem e editam; a cópia que você recebeu é a versão da data acima.
 
 ## Como ler este relatório
 

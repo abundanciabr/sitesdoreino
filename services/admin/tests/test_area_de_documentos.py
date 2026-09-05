@@ -271,14 +271,20 @@ def test_quem_passou_pela_porta_le_o_privado(pasta):
 @respx.mock
 def test_a_lista_do_admin_diz_qual_e_publico(pasta):
     """É o único lugar em que as duas famílias aparecem juntas — sem ele, saber
-    se um documento está no ar exigiria abrir o repositório."""
+    se um documento está no ar exigiria abrir o repositório. Desde 05/09/2026
+    elas aparecem em DUAS PASTAS, a fechada primeiro (pedido do mantenedor:
+    "quero uma pasta de docs só para admins")."""
     escrever(pasta, "aberto", "---\ntitulo: Aberto\npublico: true\n---\n")
     escrever(pasta, "interno", "---\ntitulo: Interno\n---\n")
 
     corpo = _dentro().get("/documentos/").content.decode()
 
-    assert "PÚBLICO" in corpo
-    assert "SÓ ADMINISTRADORES" in corpo
+    assert "Só administradores" in corpo
+    assert "Públicos no site" in corpo
+    # cada documento na sua pasta, e a fechada vem antes
+    assert (
+        corpo.index("Interno") < corpo.index("Públicos no site") < corpo.index("Aberto")
+    )
 
 
 # ------------------- 3. nenhuma rota nova escapa pelo prefixo público
