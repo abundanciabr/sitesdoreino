@@ -972,6 +972,34 @@ ar** e o primeiro em que o passo do mantenedor falhou TRÊS vezes antes de dar c
     barras; troca por regex recebe uma FUNÇÃO, não um texto; e `write_text` no Windows
     leva `newline` explícito, ou o arquivo inteiro vira CRLF. Ver `armadilhas/093`.
 
+46. **Armadilha documentada não protege quem conduz sem abrir o índice.** A `096` dizia,
+    com o erro na chave, que a célula que vira `freeze: required` num PR de `contracts/`
+    só quebra no PRÓXIMO PR dela (`No module named 'yaml'`). A maestro conduziu o Rito
+    do contrato da `cursos` lendo a `293` e a `243`, que o sino apontou, e não a `096`,
+    e o PR seguinte da célula (a sala do aluno) voltou da pista com o `ci-celula`
+    vermelho. Duas regras: quem conduz um rito procura no índice pela palavra do rito
+    (`freeze`, `contrato`) ANTES de abrir o PR, sem esperar o sino; e o `PyYAML` entra
+    no `requirements.txt` do provedor no ÚLTIMO PR de `services/` antes do
+    congelamento (a porta, degrau 1.3), nunca depois.
+
+47. **`git push` sem refspec num ramo que rastreia `origin/main` não empurra nada, e o
+    filtro do pipe engoliu a recusa.** O ramo do robô rastreava a `main`; a maestro
+    commitou o conserto, "empurrou", e a cabeça do PR não se moveu. A espera remediu o
+    commit antigo e devolveu vermelho em 0 segundos, e esse é o sinal: **vermelho em
+    0 s depois de um push é "nada novo chegou", não "o conserto falhou".** Cura:
+    `git push origin HEAD:<ramo>` e o veredito pelo código de saída, nunca por
+    `| tail -1`. A mesma lição 30 e a §5.10, numa terceira roupa.
+
+48. **Limite de sessão não avisa a fila.** A maestro e um robô bateram no limite de
+    sessão na mesma madrugada. Os monitores continuaram rodando na máquina, a pista
+    devolveu um PR e ninguém respondeu por três horas e meia; o robô do editor morreu
+    no meio de "as vistas e os três moldes", com oito arquivos não commitados na
+    bancada. Ao retomar, o primeiro gesto é MEDIR, nunca continuar de memória:
+    `gh pr list`, o último comentário da pista em cada PR aberto, `git status` em cada
+    bancada de robô, `docker ps`. Robô morto se retoma com robô NOVO na MESMA bancada,
+    e o brief dele traz o inventário do que existe ("leia com olho de revisor,
+    complete, não recomece") em vez do despacho original sozinho.
+
 ---
 
 *Relacionados: RITOS.md (§1 abertura, §2 catraca e merge), CONSTITUICAO.md (Lei 4),
