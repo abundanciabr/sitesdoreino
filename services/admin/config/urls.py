@@ -67,6 +67,14 @@ from apps.core.ciclo import ciclo
 from apps.core.placar import placar
 from apps.core.reuniao import reuniao
 from apps.core.robos import robos
+from apps.core.aulas import (
+    aula,
+    aula_publicar,
+    aula_salvar,
+    aulas,
+    instrumento,
+    instrumento_salvar,
+)
 from apps.core.sequencias import (
     sequencia,
     sequencia_ligar,
@@ -467,6 +475,39 @@ urlpatterns = [
         r"^escola/jornadas/(?P<slug>[a-z0-9-]+)/$",
         sequencia,
         name="escola_jornada_sequencia",
+    ),
+    # [AULAS] O editor de encomendas do curso (`apps/core/aulas.py`, degrau 1.5
+    # do `PLANO-CELULA-CURSOS.md`, 05/09/2026). Vizinho das sequências, e na
+    # mesma gramática: a lista, a encomenda por dentro, e um verbo por rota
+    # para cada gesto (salvar, publicar), POST-only e sem barra final. O texto
+    # das aulas mora na `cursos` e entra SÓ por aqui, pela porta de máquina
+    # dela ([INV-CUR-C2]): esta célula não guarda cópia de uma linha.
+    #
+    # O número da aula é curto e fechado ("E00" a "E32" e "EB", vocabulário do
+    # contrato); o padrão `[A-Za-z0-9]+` é a cerca desta ponta, e a segunda está
+    # do outro lado, onde aula de outro site é 404 mesmo com o número certo
+    # (CONSTITUICAO Lei 9). O slug do instrumento segue a cerca das sequências.
+    path("escola/aulas/", aulas, name="escola_aulas"),
+    re_path(r"^escola/aulas/(?P<numero>[A-Za-z0-9]+)/$", aula, name="escola_aula"),
+    re_path(
+        r"^escola/aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
+        aula_salvar,
+        name="escola_aula_salvar",
+    ),
+    re_path(
+        r"^escola/aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
+        aula_publicar,
+        name="escola_aula_publicar",
+    ),
+    re_path(
+        r"^escola/instrumentos/(?P<slug>[a-z0-9_-]+)/$",
+        instrumento,
+        name="escola_instrumento",
+    ),
+    re_path(
+        r"^escola/instrumentos/(?P<slug>[a-z0-9_-]+)/salvar$",
+        instrumento_salvar,
+        name="escola_instrumento_salvar",
     ),
     path("escola/alunos/", escola_alunos, name="escola_alunos"),
     # A lista de nomes para colar no grupo, pedida pelo mantenedor em

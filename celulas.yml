@@ -94,10 +94,16 @@ celulas:
     # confianca do cabecalho pergunta a medicao quanto ja foi guardado, de que
     # assuntos, e o que PAROU de chegar. Le pela porta de maquina, com o par que
     # o mantenedor provisionou, e nao guarda copia de nada aqui.
+    # `cursos` desde 05/09/2026: o TEXTO das aulas do curso e obra nao lancada
+    # do mantenedor e mora SO no banco da cursos (o repositorio e publico,
+    # INV-CUR-C2). O editor /admin/escola/aulas/ le e grava pela porta de
+    # maquina dela, pelo contrato congelado no Rito de 05/09/2026 (PR #1061),
+    # e nunca guarda copia de uma linha aqui.
     consome:
       [
         alunos,
         catalogo,
+        cursos,
         gamificacao,
         identidade,
         mensageria,

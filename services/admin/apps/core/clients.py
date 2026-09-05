@@ -1509,3 +1509,167 @@ class MensageriaClient:
             return self.RECUSADO, {}, "faltou preencher alguma coisa"
         logger.error("sequencias: a escrita respondeu HTTP %s", r.status_code)
         return self.NAO_RESPONDEU, {}, "o motor das mensagens respondeu com erro"
+
+
+class CursosClient:
+    """A sala de aula: as encomendas do curso e os instrumentos de avaliação.
+
+    Fala só o que está no contrato congelado (`contracts/cursos.openapi.yaml`,
+    degrau 1.4 da escada do `PLANO-CELULA-CURSOS.md`): as sete operações do
+    editor. Nunca lê o `cursos_db` (Lei 3), e **nunca guarda uma cópia** de
+    nada aqui. O peso disso é maior do que nas outras portas deste arquivo: o
+    texto das aulas é obra NÃO LANÇADA do mantenedor, o repositório é público,
+    e o único lugar em que esse texto existe é o banco da `cursos`
+    ([INV-CUR-C2], `armadilhas/331`). Uma tabela de aulas aqui seria o mesmo
+    fato em dois lugares, e no dia em que os dois discordassem o editor
+    mostraria um texto e o aluno leria outro.
+
+    ## Os desfechos são seis, porque a tela precisa de seis frases
+
+    Um `None` genérico obrigaria a tela a dizer "não deu" para situações que o
+    mantenedor resolve de jeitos diferentes, e três delas ele resolve sozinho:
+
+    - **`SEM_CONFIGURACAO`**: o par (`CURSOS_API_URL`/`CURSOS_API_TOKEN`) não
+      está no env desta célula. É um passo dele na VPS (Lei 5), e a tela nomeia
+      o passo. Nenhuma ida à rede acontece neste caso (`armadilhas/097`).
+    - **`RECUSOU`** (401/403): o par existe aqui, mas a `cursos` não o aceita.
+      De fora é indistinguível de "não há aula nenhuma", e é por isso que tem
+      nome próprio: o conserto é conferir `TOKENS_ACEITOS_ADMIN` do outro lado,
+      e não procurar um problema de rede que não existe.
+    - **`NAO_EXISTE`** (404): a aula ou o instrumento não existe. É resposta,
+      não falha.
+    - **`RECUSADO`** (422): a `cursos` leu o corpo e recusou, e o segundo item
+      é o `detail` do contrato, com a lista de erros campo por campo. Quem o
+      traduz para português, ao lado de cada campo, é `apps/core/aulas.py`.
+    - **`NAO_RESPONDEU`**: rede, 5xx, corpo fora do contrato. Na escrita isto
+      NÃO vira "recusado": a gravação pode ter acontecido do outro lado, e a
+      tela precisa dizer "não sei" em vez de "não valeu".
+
+    ## Fail-OPEN na leitura, fail-CLOSED na escrita
+
+    Mesmo desenho de `MensageriaClient` e `GamificacaoClient`. Uma tela de
+    operação que não abre é inútil justamente quando você precisa dela; mas
+    dizer "salvei" sem ter salvado mandaria a professora embora achando que a
+    aula está guardada. As variáveis são lidas no PONTO DE USO, nunca no
+    `__init__` (`armadilhas/097`).
+    """
+
+    TIMEOUT = 4.0
+    OK = "ok"
+    SEM_CONFIGURACAO = "sem_configuracao"
+    RECUSOU = "recusou"
+    NAO_EXISTE = "nao_existe"
+    RECUSADO = "recusado"
+    NAO_RESPONDEU = "nao_respondeu"
+
+    def _configuracao(self) -> "tuple[str, str] | None":
+        base = (os.environ.get("CURSOS_API_URL") or "").strip().rstrip("/")
+        token = (os.environ.get("CURSOS_API_TOKEN") or "").strip()
+        return (base, token) if base and token else None
+
+    # -- as quatro leituras --------------------------------------------------
+    def aulas(self, site_id: str) -> "tuple[str, list | None]":
+        """`listLessons`: as encomendas deste site, na ordem do aluno."""
+        return self._pedir("get", "aulas", params={"site_id": site_id}, forma=list)
+
+    def aula(self, site_id: str, numero: str) -> "tuple[str, dict | None]":
+        """`getLesson`: uma encomenda inteira, com as 18 peças e as pausas."""
+        return self._pedir(
+            "get", "aulas/" + quote(numero, safe=""), params={"site_id": site_id}
+        )
+
+    def instrumentos(self) -> "tuple[str, list | None]":
+        """`listInstruments`: os 13 cartões, na ordem. Sem `site_id`: os
+        instrumentos são de plataforma inteira, por contrato."""
+        return self._pedir("get", "instrumentos", forma=list)
+
+    def instrumento(self, slug: str) -> "tuple[str, dict | None]":
+        """`getInstrument`: um cartão inteiro, pelo slug."""
+        return self._pedir("get", "instrumentos/" + quote(slug, safe=""))
+
+    # -- as três escritas ----------------------------------------------------
+    def gravar_aula(self, site_id: str, numero: str, corpo: dict):
+        """`putLesson`: grava a encomenda INTEIRA; a versão volta incrementada.
+
+        Em `RECUSADO` o segundo item é o `detail` do 422 (a lista de erros do
+        contrato), e não a aula: é com ele que a tela põe a frase ao lado do
+        campo certo.
+        """
+        return self._pedir(
+            "put",
+            "aulas/" + quote(numero, safe=""),
+            params={"site_id": site_id},
+            json=corpo,
+        )
+
+    def publicar_aula(self, site_id: str, numero: str) -> "tuple[str, dict | None]":
+        """`publishLesson`: estado `publicada`, data de agora, versão inalterada.
+        Idempotente do outro lado: publicar o publicado devolve como está."""
+        return self._pedir(
+            "post",
+            "aulas/" + quote(numero, safe="") + "/publicar",
+            params={"site_id": site_id},
+        )
+
+    def gravar_instrumento(self, slug: str, corpo: dict):
+        """`putInstrument`: a escala, os mínimos, a seção e os descritores.
+        `nome_canonico` e `cartao` nunca vão no corpo: são da lei, e a porta
+        recusa com 422 se forem."""
+        return self._pedir("put", "instrumentos/" + quote(slug, safe=""), json=corpo)
+
+    def _pedir(self, metodo: str, caminho: str, *, params=None, json=None, forma=dict):
+        """Uma ida à porta, com o tratamento que as sete operações compartilham.
+
+        Devolve `(desfecho, corpo)`. Sete cópias do mesmo `try` divergiriam no
+        primeiro caso de borda corrigido de um lado só.
+        """
+        config = self._configuracao()
+        if config is None:
+            logger.warning(
+                "aulas: CURSOS_API_URL/CURSOS_API_TOKEN ainda não estão no env "
+                "desta célula (par admin->cursos não provisionado)"
+            )
+            return self.SEM_CONFIGURACAO, None
+        base, token = config
+        try:
+            r = http().request(
+                metodo.upper(),
+                base + "/" + caminho,
+                params=params,
+                json=json,
+                headers={"Authorization": "Bearer " + token},
+                timeout=self.TIMEOUT,
+            )
+        except httpx.HTTPError as erro:
+            logger.error("aulas: a sala de aula não respondeu: %s", erro)
+            return self.NAO_RESPONDEU, None
+
+        if r.status_code in (401, 403):
+            logger.error(
+                "aulas: a cursos recusou o par admin->cursos (HTTP %s); confira "
+                "TOKENS_ACEITOS_ADMIN do lado da cursos",
+                r.status_code,
+            )
+            return self.RECUSOU, None
+        if r.status_code == 404:
+            return self.NAO_EXISTE, None
+        if r.status_code == 422:
+            try:
+                detalhe = r.json().get("detail")
+            except (ValueError, AttributeError):
+                detalhe = None
+            return self.RECUSADO, detalhe
+        if r.status_code != 200:
+            logger.error("aulas: a sala de aula respondeu HTTP %s", r.status_code)
+            return self.NAO_RESPONDEU, None
+
+        try:
+            corpo = r.json()
+        except ValueError as erro:
+            # *Status 2xx não é sucesso* (RETROSPECTIVA §4).
+            logger.error("aulas: resposta fora do contrato: %s", erro)
+            return self.NAO_RESPONDEU, None
+        if not isinstance(corpo, forma):
+            logger.error("aulas: resposta de %s com forma inesperada", caminho)
+            return self.NAO_RESPONDEU, None
+        return self.OK, corpo

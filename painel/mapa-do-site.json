@@ -1007,6 +1007,68 @@
     },
     {
       "celula": "admin",
+      "rota": "escola/aulas/",
+      "endereco": "/admin/escola/aulas/",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "As encomendas do curso",
+      "descricao": "A lista das aulas do curso (cada uma é uma encomenda que o aluno entrega), com o estado, a versão e a data de publicação de cada uma, e quantas já estão abertas para os alunos. Embaixo, os instrumentos de avaliação.",
+      "observacao": "Lê e escreve na célula cursos pela porta de máquina, nunca no banco dela e nunca guardando cópia: o texto das aulas é obra não lançada e mora só lá. Sem o par de chaves no servidor, abre dizendo o que falta em vez de mostrar tela vazia."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/aulas/(?P<numero>[A-Za-z0-9]+)/$",
+      "endereco": "/admin/escola/aulas/(?P<numero>[A-Za-z0-9]+)/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Uma encomenda por dentro",
+      "descricao": "O editor de uma aula: o pedido, o cliente, o instrumento, o \"Aceito quando\", o quiz, o vídeo por link, as 18 peças em Markdown na ordem em que o aluno as lê (as duas internas avisadas), as pausas do vídeo, o botão de salvar e o de publicar.",
+      "exemplo": "/admin/escola/aulas/E07/",
+      "observacao": "O travessão aqui avisa e não recusa: a tela conta as frases e salva mesmo assim, como na Biblioteca do Livro. Quem cobra é a tela do aluno, antes de publicar."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
+      "endereco": "/admin/escola/aulas/(?P<numero>[A-Za-z0-9]+)/salvar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar uma encomenda",
+      "descricao": "Não é uma página: é o que acontece ao apertar salvar no editor. Grava a aula inteira na sala de aula e a versão sobe um. Não muda o que o aluno vê: publicar é outro botão."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
+      "endereco": "/admin/escola/aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Publicar uma encomenda",
+      "descricao": "Não é uma página: é o que acontece ao confirmar a publicação. Abre a aula para os alunos do jeito que ela está salva, sem mudar uma letra do texto, e carimba a data."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/instrumentos/(?P<slug>[a-z0-9_-]+)/$",
+      "endereco": "/admin/escola/instrumentos/(?P<slug>[a-z0-9_-]+)/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Um instrumento de avaliação por dentro",
+      "descricao": "Um dos cartões com que as encomendas são avaliadas: a escala, os mínimos, a seção do Padrão e os descritores. O nome e o número do cartão são da lei e só se leem.",
+      "exemplo": "/admin/escola/instrumentos/studs/",
+      "observacao": "Os instrumentos são os mesmos em toda escola, de propósito. Salvar sobe a versão; uma avaliação em andamento guarda a versão em que começou."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/instrumentos/(?P<slug>[a-z0-9_-]+)/salvar$",
+      "endereco": "/admin/escola/instrumentos/(?P<slug>[a-z0-9_-]+)/salvar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Salvar um instrumento",
+      "descricao": "Não é uma página: é o que acontece ao apertar salvar no instrumento. A tela confere que a escala e os descritores são JSON válido antes de mandar; o resto de quem julga é a sala de aula."
+    },
+    {
+      "celula": "admin",
       "rota": "escola/alunos/",
       "endereco": "/admin/escola/alunos/",
       "alcance": "publico",
