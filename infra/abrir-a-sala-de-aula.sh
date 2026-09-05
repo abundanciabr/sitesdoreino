@@ -45,7 +45,7 @@
 # O modo de falha de 24/08 em pessoa: carregado com `source`/`.`, um `exit` daqui
 # derrubaria a sessao do mantenedor. Com `bash /tmp/sala.sh` o exit morre no filho.
 if [ "${BASH_SOURCE[0]:-$0}" != "$0" ]; then
-  echo "PAROU POR SEGURANCA: este arquivo foi carregado com 'source' (ou '.'), e assim um erro derrubaria a sua sessao. Rode com a palavra bash na frente: bash /tmp/sala.sh"
+  echo "PAROU POR SEGURANÇA: este arquivo foi carregado com 'source' (ou '.'), e assim um erro derrubaria a sua sessao. Rode com a palavra bash na frente: bash /tmp/sala.sh"
   return 1 2>/dev/null || exit 1
 fi
 
