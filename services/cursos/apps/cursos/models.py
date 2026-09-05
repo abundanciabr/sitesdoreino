@@ -65,6 +65,13 @@ NUMEROS_DE_AULA = tuple(f"E{n:02d}" for n in range(33)) + ("EB",)
 # coisa por dois nomes, e o plano §4 pede as duas colunas.
 LETRAS_DE_BLOCO = tuple("ABCDEFGHIJKL")
 
+# As 3 partes em que os 12 blocos se dividem (plano §4). É o vocabulário fechado
+# da coluna `Bloco.parte`, e desde 05/09/2026 ele também é ENDEREÇO: a parte
+# entra no link da aula, e a porta de máquina filtra e confere por ela. Mora
+# aqui, e não numa segunda lista dentro da porta, porque quem manda no
+# vocabulário é o modelo.
+PARTES_DO_CURSO = (1, 2, 3)
+
 
 def id_do_site() -> models.CharField:
     """O campo de fronteira de site: texto opaco de 64, como todo id que atravessa
@@ -151,7 +158,7 @@ class Bloco(models.Model):
                 name="letra_de_bloco_entre_a_e_l",
             ),
             models.CheckConstraint(
-                condition=models.Q(parte__in=[1, 2, 3]),
+                condition=models.Q(parte__in=list(PARTES_DO_CURSO)),
                 name="parte_de_bloco_e_1_2_ou_3",
             ),
         ]
