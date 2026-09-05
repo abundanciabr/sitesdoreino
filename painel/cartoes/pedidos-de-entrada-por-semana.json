@@ -2,9 +2,9 @@
   "nome": "pedidos-de-entrada-por-semana",
   "tipo": "direcao",
   "andar": 0,
-  "pergunta": "Quantas pessoas pediram para entrar nesta semana?",
-  "definicao": "Pedidos de entrada na fila de liberação nos últimos 7 dias (quem espera, quem foi recusado e quem já foi liberado, todos pela data em que pediram). É a torneira da meta: ninguém vira aluna sem antes pedir para entrar, porque a venda acontece fora do site e a fila é a porta. Medida de direção: prevê a meta e pode ser movida esta semana.",
-  "formula": "contagem de pedidos com criada_em nos 7 dias até hoje (America/Sao_Paulo); as 3 semanas anteriores entram na sequência",
+  "pergunta": "Quantas pessoas entraram na sala de espera nesta semana?",
+  "definicao": "Pessoas que chegaram à sala de espera nos últimos 7 dias, ou seja, quem já comprou fora do site e aguarda a sua confirmação (quem espera, quem foi recusado e quem já foi liberado, todos pela data em que chegaram). Ninguém pede entrada na escola: todo mundo entra pela matrícula, mediante a compra do curso, e enquanto o checkout estiver congelado essa compra acontece fora do site. Este número mede a venda feita fora, e não o caminho da venda no site, que tem cartões próprios e ainda apagados.",
+  "formula": "contagem de chegadas à sala de espera com criada_em nos 7 dias até hoje (America/Sao_Paulo); as 3 semanas anteriores entram na sequência",
   "fonte": "célula alunos, ao vivo: GET /pre-matriculas (aguardando e recusada) e GET /matriculas (origem liberado, criada_em)",
   "autoridade": "alunos",
   "dono": "mantenedor",
@@ -12,7 +12,7 @@
   "direcao": "subir",
   "unidade": "pessoas por semana",
   "par": "compras-no-ciclo",
-  "acao": "Abaixo da meta da semana: o caminho da fila existe onde você divulga (a home não convida, por decisão sua de 28/08). É a aposta da semana, e vira compromisso na segunda-feira.",
+  "acao": "Abaixo da meta da semana: a compra acontece fora do site, e o que traz gente para a sala de espera é a sua divulgação. O caminho da venda dentro do site ainda não existe (checkout congelado por decisão sua de 22/08/2026), e é justamente ele que este número não mede.",
   "meta_semanal": null,
   "limiar_ambar": null,
   "limiar_vermelho": null,
@@ -21,7 +21,7 @@
     "canal",
     "site"
   ],
-  "versao": 1,
-  "desde": "2026-09-03",
-  "_por_que": "Degrau 2 do plano reescrito em 03/09/2026 (§8). `meta_semanal` nula = a tela deriva a fatia desta semana na régua do ciclo (a curva de `semanas` de `compras-no-ciclo`, desde 04/09/2026); o mantenedor fixa outra por PR quando quiser. O número NÃO é repetido aqui de propósito: ele muda a cada semana e a cada ajuste da curva, e uma cópia envelheceria em silêncio. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): Foto de 8 dias porque este número é semanal: uma foto mais velha do que isso já pulou uma semana inteira e compararia coisas diferentes."
+  "versao": 2,
+  "desde": "2026-09-05",
+  "_por_que": "Nasceu no degrau 2 do plano (03/09/2026) chamando este número de 'pedidos de entrada' e dizendo que ele era a torneira da meta. PREMISSA CORRIGIDA PELO MANTENEDOR EM 05/09/2026, com as palavras dele: 'ninguém pede entrada na escola, todos entram apenas e unicamente pela matrícula mediante a compra do curso'. Quem está na fila JÁ COMPROU, fora do site, e espera confirmação. O que envelheceu foi o NOME, não a medida: a contagem continua exata, e por isso a versão subiu para 2 em vez de o cartão ser aposentado. A meta da semana continua derivada da curva de compras-no-ciclo, e isso vale enquanto toda compra passar por aqui; no dia em que o checkout abrir, quem responde pela semana é compras-pelo-checkout-por-semana. DÍVIDA DECLARADA: o nome do ARQUIVO ainda diz 'pedidos-de-entrada'. Ele é chave em placar.py, mudancas.py, nos testes e, a partir da primeira reunião de segunda, no campo foto dos registros do livro. Renomear exige tratar todas essas pontas de uma vez, o que não cabe no orçamento de 15 arquivos deste PR, e adiar depois da primeira foto custaria migração de dados no livro. Está na mão da maestro como tarefa própria. CAMPOS DE 04/09/2026 (degrau 6, o bloco 'o que mudou'): foto de 8 dias porque este número é semanal, e uma foto mais velha do que isso já pulou uma semana inteira e compararia coisas diferentes."
 }

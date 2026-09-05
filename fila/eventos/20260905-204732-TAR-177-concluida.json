@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260905-204732-TAR-177-concluida",
+  "tarefa": "TAR-177",
+  "evento": "concluida",
+  "quando": "2026-09-05T20:47:32+00:00",
+  "quem": "despacho-admin-20260905",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1120 - suite da admin 1083 -> 1114 passed (13 arquivos, dentro do orcamento). Vermelho antes do verde nos dois guardas novos: AttributeError CARTOES_DO_CAMINHO_DA_VENDA e assert 'O caminho da venda' in html, 2 failed 14 passed. Prova por mutacao, desfeita: texto antigo de volta no cartao -> 'nao nomeia a sala de espera'; fonte acesa em compras-pelo-checkout-por-semana -> 'acendeu venda sem ordem do mantenedor'; bloco apagado do template -> assert do html. ci/ci.py --apenas muralhas PASS nas 13, ci/travessao.py PASS, black limpo em 148 arquivos, node painel/gerar_manifesto.js 812 registros validos. Previa do bloco renderizada com os cartoes reais.",
+  "verificado_em": "2026-09-05"
+}
