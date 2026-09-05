@@ -140,9 +140,10 @@ def test_a_pauta_mostra_os_oito_passos_lidos_do_placar():
     assert "estamos ganhando" in html
     assert "1 pessoa virou aluna em 09/2026" in html or "virou aluna em 09/2026" in html
     assert "Suspeita: pediu entrada" in html, "a restrição do placar aparece na pauta"
+    assert html.count("sem dados") >= 3, "estrelas e doze dizem que não têm fonte"
     assert (
-        html.count("sem dados") >= 3
-    ), "estrelas, doze e experimentos dizem que não têm fonte"
+        reverse("laboratorio") in html
+    ), "o passo 6 aponta o Laboratório pela rota, não por texto morto"
     assert "Nenhum compromisso nas últimas 4 semanas" in html or "compromisso" in html
 
 
