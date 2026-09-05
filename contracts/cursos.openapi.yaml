@@ -14,15 +14,34 @@
 # que impede a porta de mudar "por acidente" debaixo dele.
 #
 # NASCEU DO EXPORT, não de cabeça: `python manage.py export_openapi` em
-# services/cursos, no degrau 1.4 da escada do §10 de
-# docs/decisoes/PLANO-CELULA-CURSOS.md, DEPOIS de a porta existir (degrau 1.3,
-# PR #1055) e ganhar as duas leituras de instrumento (degrau 1.3b, PR #1057),
-# na ordem que armadilhas/228 e 243 provaram. O que a porta oferece está na
-# lei, §5: as sete operações do editor. Os verificadores (checkLesson), o
-# placar da fila (getReviewQueue) e o progresso do aluno (getStudentProgress)
-# entram por Rito, aditivo, nos degraus 3.1, 2.1 e 2.1.
+# services/cursos, no ramo do PR #1135.
 #
-# SEGURANÇA: as sete operações exigem Bearer por par (TOKENS_ACEITOS_<PAR>);
+# O QUE O RITO DE 05/09/2026 ACRESCENTOU, e por quê: decisão do mantenedor de
+# que o endereço da sala de aula carrega o CURSO e a PARTE, com as palavras
+# dele: "quero que ao compartilhar uma aula o link da mesma seja útil para o
+# aluno entender exatamente em qual parte do curso ele está". Nasceram quatro
+# operações em `/cursos/{curso}/aulas`, onde o curso é o SLUG (resolvido pelo
+# par site+slug) e a `parte` é GUARDA, não filtro: parte que não casa com o
+# bloco da aula recusa com 404 em vez de devolver a aula, porque um endereço
+# que aponta certo para a aula errada é pior do que um endereço quebrado.
+#
+# AS QUATRO OPERAÇÕES ANTIGAS CONTINUAM VIVAS, e isso é retrocompatibilidade
+# do Rito (provedor primeiro, consumidor depois): o editor do Admin que está
+# no ar hoje as chama. Elas resolvem a aula só pelo site e por isso NÃO sabem
+# de curso; os `operationId` delas passaram a dizer isso no nome
+# (`listSiteLessons`, `getSiteLesson`, `putSiteLesson`, `publishSiteLesson`),
+# porque `operationId` é chave única no OpenAPI e duas rotas não podem chamar
+# `listLessons`. Nenhum consumidor chama por id: o Admin monta a URL à mão
+# (`services/admin/apps/core/clients.py`).
+#
+# MEDIDO E DITO NA CARA: com DOIS cursos no mesmo site, o caminho antigo
+# quebra — `getSiteLesson` devolve 500 (MultipleObjectsReturned) e
+# `listSiteLessons` mistura as aulas dos dois. É comportamento que já existia,
+# e consertá-lo seria escolher qual curso o caminho antigo serve, que é
+# exatamente a ambiguidade que o caminho novo apaga. Enquanto houver um curso
+# só, não aparece; o consumidor migra antes do segundo curso nascer.
+#
+# SEGURANÇA: as onze operações exigem Bearer por par (TOKENS_ACEITOS_<PAR>);
 # a sonda de `ci/contract_freeze.py` confere isso NA FONTE, porque o
 # django-ninja omite `security` de rota sem autenticação em vez de emitir [].
 # =============================================================================
@@ -37,15 +56,23 @@ info:
 
     celula, e para que o editor do Admin leia e grave por aqui, nunca no
 
-    banco e nunca guardando copia (a lei anti-duplicacao). Sao as sete
+    banco e nunca guardando copia (a lei anti-duplicacao). Sao onze
 
-    operacoes do editor: as cinco do degrau 1.3 da escada e as duas
+    operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,
 
-    leituras de instrumento do degrau 1.3b. Os verificadores
+    `getLesson`, `putLesson`, `publishLesson`), as quatro antigas que
 
-    (checkLesson) nascem no degrau 3.1; o placar da fila
+    resolvem a aula so pelo site (`listSiteLessons`, `getSiteLesson`,
 
-    (getReviewQueue) e o progresso do aluno (getStudentProgress), no 2.1.
+    `putSiteLesson`, `publishSiteLesson`, vivas porque o editor que ja
+
+    esta no ar as chama) e as tres de instrumento (`listInstruments`,
+
+    `getInstrument`, `putInstrument`). Os verificadores (checkLesson)
+
+    nascem no degrau 3.1; o placar da fila (getReviewQueue) e o progresso
+
+    do aluno (getStudentProgress), no 2.1.
 
 
     Lei do assunto: docs/decisoes/PLANO-CELULA-CURSOS.md (secoes 4 e 5).
@@ -66,11 +93,26 @@ info:
 
     inteira, de proposito: os 13 cartoes sao os mesmos em toda escola.
 
+
+    O CURSO E O SLUG, e a PARTE e conferida (05/09/2026): o endereco da
+
+    sala de aula carrega os dois para que o aluno saiba onde esta. Nas
+
+    quatro operacoes de `/cursos/{curso}/aulas`, o curso sai do par
+
+    site+slug (nunca `o primeiro curso do site`) e `parte` que nao casa
+
+    com o bloco da aula RECUSA com 404 em vez de devolver a aula: um
+
+    endereco que aponta certo para a aula errada e pior do que um
+
+    endereco quebrado.
+
     '
 paths:
   /aulas:
     get:
-      operationId: listLessons
+      operationId: listSiteLessons
       summary: As aulas do curso de um site, na ordem em que o aluno as encontra
       parameters:
       - in: query
@@ -98,10 +140,17 @@ paths:
 
         `site_id` e obrigatorio. Site sem curso responde lista vazia, nao
 
-        erro: nao ter curso ainda e um estado, nao uma falha.'
+        erro: nao ter curso ainda e um estado, nao uma falha.
+
+
+        ESTE CAMINHO NAO SABE DE CURSO: ele lista as aulas de TODOS os cursos
+
+        do site, e existe porque o editor que ja esta no ar o chama. Quem sabe
+
+        de curso e de parte e `listLessons`, em /cursos/{curso}/aulas.'
   /aulas/{numero}:
     get:
-      operationId: getLesson
+      operationId: getSiteLesson
       summary: 'Uma aula inteira: os campos, o instrumento, as pecas e as pausas'
       parameters:
       - in: path
@@ -132,9 +181,16 @@ paths:
         `instrumento` e o slug do cartao, ou null.
 
 
-        404 se a aula nao existe nesse site.'
+        404 se a aula nao existe nesse site.
+
+
+        ESTE CAMINHO NAO SABE DE CURSO: procura a aula pelo numero dentro do
+
+        site inteiro. Quem sabe de curso e de parte e `getLesson`, em
+
+        /cursos/{curso}/aulas/{numero}.'
     put:
-      operationId: putLesson
+      operationId: putSiteLesson
       summary: 'Grava uma aula inteira: substitui as pecas e as pausas, sobe a versao'
       parameters:
       - in: path
@@ -185,7 +241,14 @@ paths:
         conheca (numero, estado, versao...). 404 se a aula nao existe.
 
 
-        Devolve a aula como ficou, no mesmo formato de `getLesson`.'
+        Devolve a aula como ficou, no mesmo formato de `getSiteLesson`.
+
+
+        ESTE CAMINHO NAO SABE DE CURSO: procura a aula pelo numero dentro do
+
+        site inteiro. Quem sabe de curso e de parte e `putLesson`, em
+
+        /cursos/{curso}/aulas/{numero}.'
       requestBody:
         content:
           application/json:
@@ -276,7 +339,7 @@ paths:
         required: true
   /aulas/{numero}/publicar:
     post:
-      operationId: publishLesson
+      operationId: publishSiteLesson
       summary: 'Publica uma aula: estado publicada, data de agora, versao inalterada'
       parameters:
       - in: path
@@ -306,7 +369,239 @@ paths:
 
         Idempotente: publicar o que ja esta publicado devolve a aula como
 
-        esta, sem mexer na data. 404 se a aula nao existe.'
+        esta, sem mexer na data. 404 se a aula nao existe.
+
+
+        ESTE CAMINHO NAO SABE DE CURSO: procura a aula pelo numero dentro do
+
+        site inteiro. Quem sabe de curso e de parte e `publishLesson`, em
+
+        /cursos/{curso}/aulas/{numero}/publicar.'
+  /cursos/{curso}/aulas:
+    get:
+      operationId: listLessons
+      summary: As aulas de um curso, pelo slug, na ordem em que o aluno as encontra
+      parameters:
+      - in: path
+        name: curso
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: parte
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ParteDoCurso'
+          - type: 'null'
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/AulaDaListaSchema'
+                type: array
+      description: 'A lista que o editor mostra como indice e que a sala de aula percorre:
+
+        numero, ordem, titulo exibido, o bloco (letra, ordem, parte), estado,
+
+        versao, data de publicacao, se e Boss e o nivel de Banca. NENHUM texto
+
+        de peca sai aqui: e listagem, e o texto vem em `getLesson`.
+
+
+        `curso` e o SLUG, resolvido pelo par site+slug, que e a unicidade do
+
+        banco. `site_id` continua obrigatorio (uma fabrica, N lojas). Slug que
+
+        nao existe naquele site e 404 dizendo quais existem, nunca o primeiro
+
+        curso do site como consolo.
+
+
+        `parte` (1, 2 ou 3) e opcional e filtra pelos blocos daquela parte: e
+
+        o mesmo numero que viaja no endereco da sala de aula. Sem `parte`, vem
+
+        o curso inteiro. Curso sem aula responde lista vazia, nao erro.'
+  /cursos/{curso}/aulas/{numero}:
+    get:
+      operationId: getLesson
+      summary: Uma aula de um curso, inteira, conferida contra a parte do endereco
+      parameters:
+      - in: path
+        name: curso
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: numero
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: parte
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ParteDoCurso'
+          - type: 'null'
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AulaSchema'
+      description: 'Tudo o que o editor e a sala de aula precisam de uma encomenda.
+        As
+
+        pecas vem SEMPRE as 18, na ordem canonica das 16 da anatomia e depois
+
+        as duas internas (`roteiro`, `guia_do_mentor`), com texto vazio na que
+
+        ainda nao foi escrita. As pausas vem na ordem. `instrumento` e o slug
+
+        do cartao, ou null.
+
+
+        `parte` e opcional e NAO e filtro: e GUARDA. Quando ela vem e nao casa
+
+        com a parte do bloco desta aula, a resposta e 404 dizendo em que parte
+
+        a aula realmente esta, e nunca a aula. Um endereco que aponta certo
+
+        para a aula errada e pior do que um endereco quebrado, e o endereco da
+
+        sala de aula carrega a parte justamente para o aluno se localizar.
+
+
+        404 tambem se o curso nao existe naquele site, ou se a aula nao existe
+
+        naquele curso.'
+    put:
+      operationId: putLesson
+      summary: 'Grava uma aula de um curso: substitui as pecas e as pausas, sobe a
+        versao'
+      parameters:
+      - in: path
+        name: curso
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: numero
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: parte
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ParteDoCurso'
+          - type: 'null'
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AulaSchema'
+      description: 'O corpo, o que ele recusa e o que ele NAO toca sao exatamente
+        os de
+
+        `putSiteLesson`: pedido, cliente, instrumento (slug ou null), minimo,
+
+        aceito_quando, quiz, video_url, e_boss, banca_nivel, pecas e pausas;
+
+        as pecas e as pausas sao SUBSTITUIDAS numa transacao unica; a versao
+
+        sobe 1; estado e data de publicacao nao mudam. E o mesmo codigo, com a
+
+        aula resolvida pelo curso.
+
+
+        `parte` e o mesmo GUARDA de `getLesson`: parte que nao casa com o
+
+        bloco da aula recusa com 404 ANTES de gravar qualquer coisa, e nada e
+
+        escrito. 404 tambem se o curso ou a aula nao existem.
+
+
+        Devolve a aula como ficou, no mesmo formato de `getLesson`.'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AulaParaGravarSchema'
+        required: true
+  /cursos/{curso}/aulas/{numero}/publicar:
+    post:
+      operationId: publishLesson
+      summary: 'Publica uma aula de um curso: estado publicada, data de agora, versao
+        inalterada'
+      parameters:
+      - in: path
+        name: curso
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: numero
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: parte
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ParteDoCurso'
+          - type: 'null'
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AulaDaListaSchema'
+      description: 'O gesto que abre a aula para a sala de aula. Muda o estado para
+
+        `publicada` e carimba `publicada_em` com o instante de agora; a versao
+
+        NAO muda, porque publicar nao edita. Idempotente: publicar o que ja
+
+        esta publicado devolve a aula como esta, sem mexer na data.
+
+
+        `parte` e o mesmo GUARDA de `getLesson`: parte que nao casa com o
+
+        bloco da aula recusa com 404 e a aula continua como estava. 404
+
+        tambem se o curso ou a aula nao existem.'
 components:
   schemas:
     AulaDaListaSchema:
@@ -634,6 +929,12 @@ components:
       - secao_do_padrao
       - descritores
       type: object
+    ParteDoCurso:
+      enum:
+      - 1
+      - 2
+      - 3
+      type: integer
   securitySchemes:
     bearerAuth:
       type: http
