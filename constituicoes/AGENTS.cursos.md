@@ -1,10 +1,7 @@
-publico-para-ia: true
-
 # Constituição da Célula: cursos (a sala de aula da Meshcraft)
 > **Jurisdição:** governa apenas `services/cursos/`. Herda `CONSTITUICAO.md`.
-> **STATUS:** EM PAPEL (escrita em 04/09/2026 junto com
-> `PLANO-CELULA-CURSOS.md`, aprovado pelo mantenedor no mesmo dia; é promovida
-> a `constituicoes/AGENTS.cursos.md` na gênese, revista contra o código) · **Merge:** pela pista
+> **STATUS:** ATIVA (nascida em 04/09/2026, PR de gênese, TAR-146; a lei foi
+> aprovada pelo mantenedor no mesmo dia) · **Merge:** pela pista
 > (`ci/mergear.py --pousar`), com CI verde
 
 ## Missão
@@ -19,9 +16,15 @@ vivem aqui preparam e nunca publicam: a IA escreve, a pessoa assina.
 
 Lei do assunto: `docs/decisoes/PLANO-CELULA-CURSOS.md` (a visão, as emendas da
 casa aos nove documentos do projeto, o modelo, os eventos, as superfícies, os
-agentes, os invariantes, a escada). Os nove documentos do curso (roadmap,
-playbook, equipe de agentes) moram fora do repositório, de propósito
-(`armadilhas/331`); quem constrói pede o caminho ao mantenedor e os lê antes.
+agentes, os invariantes, a escada), promovido a
+`docs/decisoes/DECISAO-celula-de-cursos.md` na gênese. Os nove documentos do
+curso (roadmap, playbook, equipe de agentes) moram fora do repositório, de
+propósito (`armadilhas/331`); quem constrói pede o caminho ao mantenedor e os
+lê antes. Esta constituição nasceu em papel (`docs/decisoes/`, PR #1044) e foi
+promovida para cá na gênese, revista contra o código: na gênese a célula tem
+UMA rota (`/healthz`), nenhuma tabela e nenhum cliente, e tudo o que está
+descrito abaixo como "expõe" e "consome" é o destino da escada, não o estado
+do disco.
 
 ## Fronteiras
 - **PERMITIDO ESCREVER:** `services/cursos/**`
@@ -54,7 +57,7 @@ playbook, equipe de agentes) moram fora do repositório, de propósito
 - **Consome:** `identidade` (`getSessionFull`, quem é o dono do cookie) e
   `alunos` (`getStudentStanding`, a matrícula ativa decide o acesso,
   fail-CLOSED). Na gênese `celulas.yml` diz `consome: []` (`armadilhas/224`);
-  cada linha entra no PR do cliente que a lê
+  cada linha entra no PR do cliente que a lê (degraus 1.3 e 1.8)
 - **Auth:** Bearer dedicado por par, `TOKENS_ACEITOS_<PAR>`. Env ausente ⇒
   conjunto vazio ⇒ 401 para todo mundo. A lista `CURSOS_PROFESSORES` decide
   quem entra no plantão; vazia, ninguém entra
@@ -70,11 +73,12 @@ playbook, equipe de agentes) moram fora do repositório, de propósito
 ## Invariantes desta célula
 
 - **[INV-P12] Esta célula NÃO assina sessão.** Sem `SessionMiddleware`, sem
-  `django.contrib.sessions`, cookie de CSRF com nome próprio (`cursos_csrf`).
-  Guarda: `tests/test_inv_cursos_nao_assina_sessao.py`, plantado na gênese e
-  provado por mutação. A tentação aqui tem nome: a cerimônia do Boss é tela
-  cheia, uma vez só, e "já viu?" pede memória; `request.session` deslogaria o
-  site inteiro (`armadilhas/143`). O estado mora no MODELO.
+  `django.contrib.sessions`, sem `SESSION_ENGINE`, cookie de CSRF com nome
+  próprio (`cursos_csrf`). Guarda: `tests/test_inv_cursos_nao_assina_sessao.py`,
+  plantado na gênese e **provado por mutação**. A tentação aqui tem dois
+  nomes: a cerimônia do Boss (tela cheia, uma vez só) e "o aluno já leu o
+  laudo?"; as duas pedem memória, e `request.session` deslogaria o site
+  inteiro (`armadilhas/143`). O estado mora no MODELO.
 
 - **Os sete do laudo [INV-CUR-L1..L7]**, os três da porta **[INV-CUR-P1..P3]**,
   os dois do conteúdo **[INV-CUR-C1..C2]** e os dois de segurança
@@ -129,3 +133,11 @@ Registrado para ninguém achar que foi esquecimento (lei §8):
    **a composição das Bancas** sem pares formados (Fase 5).
 5. **Os capítulos**: ainda só no chat do claude.ai (04/09/2026). Sem eles, a
    Fase 3 espera.
+
+## Estado da construção
+O estado de cada degrau se lê **no balcão** (`python ci/fila.py listar
+--ao-vivo`), nunca aqui. A escada inteira está na lei §10 (TAR-145 e TAR-146
+na fila; os degraus seguintes nascem quando a gênese pousar, porque `toca:
+cursos` só é aceito depois de a pasta existir, `armadilhas/304`). **Até o
+degrau 1.7 (compose + Traefik), o `deploy-celula` desta célula fica vermelho —
+isso é esperado** (`armadilhas/088`).

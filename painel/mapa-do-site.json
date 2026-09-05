@@ -398,6 +398,15 @@
       "descricao": "Responde 'estou de pé' para o servidor."
     },
     {
+      "celula": "cursos",
+      "rota": "healthz",
+      "endereco": "-",
+      "alcance": "interno",
+      "para_quem": "maquina",
+      "titulo": "O sinal de vida da sala de aula",
+      "descricao": "Responde 'estou de pé' pela rede interna. A parte que vai guardar o curso (as aulas, o checkpoint e o laudo) acabou de nascer e ainda não tem nenhuma página: quando ela ganhar endereço público, ele será /cursos."
+    },
+    {
       "celula": "encomendas",
       "rota": "healthz",
       "endereco": "-",

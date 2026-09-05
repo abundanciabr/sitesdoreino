@@ -63,6 +63,10 @@
         "export_openapi"
       ]
     },
+    "cursos": {
+      "freeze": "not-applicable",
+      "reason": "Célula nascida em 04/09/2026 (degrau 1.1 da escada do §10 de docs/decisoes/PLANO-CELULA-CURSOS.md): config/urls.py expõe só /healthz, não há config/api.py nem API pública. O contrato (contracts/cursos.openapi.yaml; o que ele oferece está na lei §5) entra pelo RITOS.md §3 no degrau 1.4, DEPOIS da porta de máquina do degrau 1.3 exportar o contrato vivo — a ordem que armadilhas/228 e 243 provaram."
+    },
     "encomendas": {
       "freeze": "not-applicable",
       "reason": "Célula nascida em 03/09/2026 (degrau 2.1 da escada do §7 de docs/decisoes/DECISAO-fila-do-primeiro-dolar.md): config/urls.py expõe só /healthz, não há config/api.py nem API pública. O contrato (contracts/encomendas.openapi.yaml; em papel em docs/decisoes/CONTRATO-encomendas-v1-rascunho.md) entra pelo RITOS.md §3 no degrau 2.8, DEPOIS da porta de máquina do degrau 2.7 exportar o contrato vivo — a ordem que armadilhas/228 e 243 provaram."
