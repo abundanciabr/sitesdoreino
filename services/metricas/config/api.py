@@ -55,6 +55,21 @@ api = NinjaAPI(
         "chegou nao aparece em listCoverage, e dia sem fato nao aparece em\n"
         "countFacts: ausencia nao vira zero, porque zero e uma afirmacao sobre\n"
         "o mundo.\n"
+        "\n"
+        "MARCO NAO E FATO, e a diferenca decide o que se pode guardar. O fato e\n"
+        "o que uma celula afirmou, e nunca muda; o marco (countMilestones,\n"
+        "listMilestones) e uma LEITURA que esta celula faz dos fatos, e a data\n"
+        "dele anda para tras quando um fato mais antigo chega depois.\n"
+        "\n"
+        "MARCO TEM SUJEITO, E O SUJEITO TEM TIPO: `pessoa` ou `matricula`, que\n"
+        "sao vocabularios de identidade diferentes e nunca se somam. As duas\n"
+        "operacoes de marco carregam esse tipo em toda linha, e de proposito\n"
+        "nao oferecem nenhum total que atravesse os dois.\n"
+        "\n"
+        "MARCO NAO TEM SITE. countFacts e listCoverage exigem site_id; as duas\n"
+        "operacoes de marco contam a plataforma inteira, porque a tabela de\n"
+        "marcos nao guarda o site. Quem consome nao pode apresentar esse numero\n"
+        "como sendo de um site.\n"
     ),
     servers=[{"url": "http://metricas:8000/api/metricas"}],
     auth=bearerAuth(),
