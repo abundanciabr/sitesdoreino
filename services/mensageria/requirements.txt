@@ -10,4 +10,10 @@ pytest-django==4.9.0
 # Os testes validam os envelopes consumidos contra os contratos em disco
 # (`contracts/eventos/*.json`), como seis outras celulas ja fazem. Mesmo pino.
 jsonschema==4.23.0
+# O freeze de contrato importa PyYAML para comparar o congelado com o vivo. A
+# celula virou `required` no manifesto pelo PR de contrato (que nao toca
+# `services/`), e sem esta linha o `make contrato-check` morre no CI com
+# "No module named 'yaml'", enquanto local fica verde porque a maquina de quem
+# desenvolve tem PyYAML global (`armadilhas/096`). Mesmo pino das outras celulas.
+PyYAML==6.0.2
 black==24.10.0
