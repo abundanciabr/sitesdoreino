@@ -38,9 +38,42 @@ As três coisas que o aviso pode dizer sobre a idade, e só estas:
   não conseguiu medir ....... fala DIZENDO que não mediu. "Não medi" nunca vira
                               "está em dia" (INV-CI01) — e nunca inventa número.
 
-Ele nunca manda atualizar o espelho: a pasta é compartilhada e pode ter
-trabalho não commitado de outra sessão. O aviso é a cura; atualizar é decisão
-de quem está na frente do computador.
+DESDE 05/09/2026 O ESPELHO SE ATUALIZA SOZINHO — quando é seguro
+----------------------------------------------------------------
+Até esta data o aviso só FALAVA a idade, e atualizar era decisão de quem está
+na frente do computador. Medido no dia: a pasta do mantenedor estava 758
+commits atrás, e o gancho do `ci/padrao_de_trabalho.py`, mergeado em 04/09,
+**nunca rodara uma única vez na máquina dele** — porque os ganchos são lidos do
+`.claude/settings.json` DAQUELA pasta. Aviso que depende de um leigo lembrar de
+digitar `git pull` é garantia sem mecanismo com outro nome, e o preço era todo
+mecanismo novo nascer inerte (`armadilhas/343`).
+
+Decisão dele em 05/09/2026, em pergunta estruturada: que a pasta se atualize
+sozinha, **mas só se estiver sem trabalho pendente**. É o que
+`atualizar_o_espelho` faz, e os guardas são a razão de ela poder existir:
+
+  não é o clone principal ..... não mexe (worktree cuida da própria vida)
+  não está na `main` .......... não mexe, e DIZ (alguém pode estar no meio
+                                de algo naquela pasta)
+  árvore suja ................. não mexe, e DIZ que não mexeu
+  já está em dia .............. não mexe e CALA
+  git demorou ou recusou ...... não mexe, e DIZ o que aconteceu
+
+Nada disso é destrutivo: o avanço é `merge --ff-only`, que se RECUSA a fazer
+qualquer coisa que não seja andar para a frente na mesma linha. Arquivo não
+versionado sobrevive, e o próprio git barra a atualização se algum deles
+estivesse no caminho. É exatamente o que o `CLAUDE.md` já permitia à mão ("com
+a árvore limpa, `git switch main` e `git pull` na main, para manter o espelho
+fresco") — o que mudou é que ninguém precisa lembrar.
+
+**A defasagem de UMA sessão, dita na cara:** o `CLAUDE.md` que o harness
+injetou no prompt desta sessão foi lido ANTES deste gancho rodar, e os ganchos
+desta sessão também já foram fotografados. Então a sessão que dispara a
+atualização segue com as ordens e os ganchos ANTIGOS; quem colhe tudo novo é a
+próxima. A mensagem diz isso em vez de fingir que já valeu.
+
+O agente continua proibido de atualizar o espelho por conta própria: quem faz é
+este gancho, uma vez, na abertura, com os guardas acima.
 
 O que a muralha decide:
 
@@ -256,8 +289,10 @@ def medir_idade_do_espelho(raiz: Path) -> IdadeDoEspelho:
 
 _NAO_ATUALIZE = (
     "E NÃO atualize esta pasta por conta própria: ela é compartilhada e pode "
-    "ter trabalho não commitado de outra sessão (armadilhas/135) — atualizar "
-    "o espelho é decisão de quem está na frente do computador."
+    "ter trabalho não commitado de outra sessão (armadilhas/135). Desde "
+    "05/09/2026 quem a põe em dia é este mesmo gancho, uma vez, na abertura, "
+    "e só quando a árvore está limpa e o ramo é `main` — a linha logo abaixo "
+    "diz o que ele conseguiu fazer."
 )
 _LEIA_DO_ORIGIN = (
     "Vale para tudo que você ler DAQUI — código, contrato, lei: leia do "
@@ -268,6 +303,78 @@ _CONFIRA_AS_ORDENS = (
     f"Confira o texto vivo com `git show {REF_DA_VERDADE}:{ARQUIVO_DE_ORDENS}` "
     "antes de seguir qualquer regra que te pareça estranha. "
 )
+
+
+CABECALHO_DA_ATUALIZACAO = "🔄 ESPELHO ATUALIZADO:"
+
+
+def _rodar_git(raiz: Path, argumentos: tuple[str, ...], tempo: int):
+    """True quando o git fez o que foi pedido; senão, a frase do que houve."""
+    try:
+        saida = subprocess.run(
+            ["git", "-C", str(raiz), *argumentos],
+            capture_output=True, text=True, encoding="utf-8",
+            errors="replace", timeout=tempo,
+        )
+    except Exception as erro:
+        return f"`git {argumentos[0]}` não respondeu ({erro.__class__.__name__})"
+    if saida.returncode != 0:
+        return next(
+            (l.strip() for l in (saida.stderr or "").splitlines() if l.strip()),
+            f"`git {argumentos[0]}` falhou com código {saida.returncode}",
+        )
+    return True
+
+
+def atualizar_o_espelho(raiz: Path, atraso: int) -> str | None:
+    """Avança o espelho para `origin/main` — ou diz por que não avançou.
+
+    Devolve None só quando não havia nada a fazer e nada a dizer. Qualquer
+    recusa FALA: um atualizador silencioso que parou de funcionar é
+    indistinguível de um que não tinha o que fazer (`armadilhas/176`), e a
+    doença que ele veio curar era exatamente uma pasta velha em silêncio.
+
+    Nunca levanta: falha aqui não pode travar a abertura da sessão dele.
+    """
+    ramo = _ramo_atual(raiz)
+    if ramo != "main":
+        return (
+            f"🔄 ESPELHO NÃO ATUALIZADO: a pasta está {atraso} commits atrás, "
+            f"mas no ramo `{ramo or '(desconhecido)'}` em vez de `main`. Não "
+            "mexo em pasta que pode estar no meio de outra coisa — quem "
+            "decide aqui é o dono do computador."
+        )
+    if not _arvore_limpa(raiz):
+        return (
+            f"🔄 ESPELHO NÃO ATUALIZADO: a pasta está {atraso} commits atrás, "
+            "mas tem trabalho NÃO COMMITADO — pode ser de outra sessão "
+            "(armadilhas/135). Não encosto. Avise o dono do computador."
+        )
+
+    # A busca na rede é o MELHOR ESFORÇO, nunca a decisão. Sem rede, o cache
+    # local de origin/main ainda costuma estar à frente do HEAD — e alcançá-lo
+    # é melhor do que ficar 758 commits atrás esperando internet. Quem decide
+    # é o merge.
+    sem_rede = ""
+    resultado = _rodar_git(raiz, ("fetch", "origin", "--quiet"), 30)
+    if resultado is not True:
+        sem_rede = f" (sem alcançar a rede: {resultado}; fui até onde o cache sabia)"
+
+    resultado = _rodar_git(raiz, ("merge", "--ff-only", REF_DA_VERDADE), 45)
+    if resultado is not True:
+        return (
+            f"🔄 ESPELHO NÃO ATUALIZADO: {resultado}. A pasta continua "
+            f"{atraso} commits atrás, e o que você ler daqui pode estar velho."
+        )
+
+    return (
+        f"{CABECALHO_DA_ATUALIZACAO} a pasta estava {atraso} commits atrás e "
+        f"acabou de ser posta em dia{sem_rede}. Foi avanço direto: nada foi "
+        "desfeito e nenhum arquivo seu foi tocado. ATENÇÃO à defasagem de uma "
+        "sessão — o CLAUDE.md do seu prompt e os ganchos DESTA sessão foram "
+        "lidos ANTES disto; para o que for decisivo, leia o arquivo do disco "
+        "de novo. A próxima conversa já nasce com tudo novo."
+    )
 
 
 def frase_da_idade(idade: IdadeDoEspelho) -> str | None:
@@ -477,13 +584,28 @@ def _hook_aviso_de_sessao() -> int:
     # (armadilhas/174), e o CLAUDE.md de lá nasceu de origin/main de qualquer
     # forma. Falha da medição não pode calar o aviso que já saiu.
     try:
-        frase = frase_da_idade(medir_idade_do_espelho(raiz))
+        idade = medir_idade_do_espelho(raiz)
     except Exception as erro:
-        frase = frase_da_idade(
-            IdadeDoEspelho(None, None, f"{erro.__class__.__name__}: {erro}")
-        )
+        idade = IdadeDoEspelho(None, None, f"{erro.__class__.__name__}: {erro}")
+    frase = frase_da_idade(idade)
     if frase:
         print(frase)
+
+    # E, se há atraso medido, tenta pôr a pasta em dia (decisão dele em
+    # 05/09/2026). A ordem importa: a idade é dita ANTES, para o número
+    # aparecer mesmo que a atualização falhe. "Não medi" (commits=None) não
+    # atualiza nada — agir sobre medição que não existe é o oposto do que
+    # este arquivo defende.
+    if idade.commits:
+        try:
+            recado = atualizar_o_espelho(raiz, idade.commits)
+        except Exception as erro:
+            recado = (
+                "🔄 ESPELHO NÃO ATUALIZADO: quebrei ao tentar "
+                f"({erro.__class__.__name__}: {erro}). A pasta continua atrás."
+            )
+        if recado:
+            print(recado)
     return 0
 
 

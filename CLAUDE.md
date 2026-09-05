@@ -389,7 +389,28 @@ leituras, `git fetch`, `git worktree` e `gh`; com a árvore limpa, também
 `git switch main` e `git pull` (para manter o espelho fresco). Detalhes e
 fronteiras: `armadilhas/135`.
 
-**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, ligado como hook em `.claude/settings.json`.
+**E desde 05/09/2026 o espelho se põe em dia sozinho, na abertura da sessão.**
+Decisão do mantenedor, em pergunta estruturada, depois de medirmos o preço do
+desenho anterior: a pasta dele estava **758 commits atrás**, e como os ganchos
+são lidos do `.claude/settings.json` DAQUELA pasta, o gancho do
+`ci/padrao_de_trabalho.py` — mergeado em 04/09 — **nunca rodou uma única vez na
+máquina dele**. Todo mecanismo novo nascia inerte, em silêncio
+(`armadilhas/343`). Avisar a idade e esperar que um leigo lembrasse de digitar
+`git pull` era garantia sem mecanismo com outro nome.
+
+O `--aviso` agora avança a pasta, e **só quando é seguro**: no clone principal,
+no ramo `main`, com a árvore limpa de arquivos versionados. Fora disso ele não
+encosta — e DIZ por que não encostou, com o número do atraso na tela. O avanço
+é `merge --ff-only`, que se recusa a fazer qualquer coisa além de andar para a
+frente; arquivo não versionado sobrevive. A busca na rede é melhor esforço: sem
+internet, ele alcança o que o cache já sabia em vez de desistir.
+
+**A defasagem de uma sessão é dita na cara, não escondida:** o `CLAUDE.md` do
+prompt e os ganchos da sessão que dispara a atualização já foram lidos antes
+dela. Quem colhe tudo novo é a conversa seguinte. O agente continua proibido de
+atualizar o espelho por conta própria.
+
+**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, ligado como hook em `.claude/settings.json` · `ci/tests/test_muralha_pasta_compartilhada.py` (inclusive o guarda que exige a janela do gancho MAIOR que os tetos internos dos dois `git`, para o harness nunca matar um merge no meio e deixar um `index.lock` na pasta dele).
 
 ## O agente pede pouso; quem mergeia é a pista (desde 29/08/2026)
 
