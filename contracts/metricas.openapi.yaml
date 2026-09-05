@@ -1,11 +1,17 @@
 # =============================================================================
 # CONTRATO DA CÉLULA `metricas` — a porta de LEITURA do livro de fatos da
-# plataforma (contadores históricos, cobertura de rastreio, eventos mortos).
+# plataforma (contadores históricos, cobertura de rastreio, eventos mortos, e
+# as conquistas derivadas deles).
 #
 # CONGELADO EM 04/09/2026 (Rito de Contrato, RITOS.md §3), com o mantenedor
 # presente. Mudar este arquivo é o mesmo rito: PR só de `contracts/`, etiqueta
 # `contrato`, provedor primeiro, consumidores em PRs seguintes. O portão que faz
 # valer é `ci/contract_freeze.py`.
+#
+# EMENDADO EM 05/09/2026, pelo mesmo rito, com o mantenedor presente: nasceram
+# `countMilestones` e `listMilestones`, a porta de leitura dos MARCOS (degrau 9
+# do plano). Ele autorizou nominalmente, em pergunta estruturada, com estas
+# palavras: "Abre agora, nesta conversa".
 #
 # O QUE ESTA PORTA PROMETE, E O QUE ELA NUNCA VAI FAZER
 # -----------------------------------------------------
@@ -21,24 +27,48 @@
 #    contar não é preciso saber quem é.
 #
 # 3. **Ausência nunca vira zero.** Dia sem fato não aparece em `countFacts`;
-#    assunto que nunca chegou não aparece em `listCoverage`. Quem lê distingue
-#    "medi e deu zero" de "não medi", e é para isso que `listCoverage` existe.
+#    assunto que nunca chegou não aparece em `listCoverage`; tipo sem conquista
+#    não aparece em `countMilestones`. Quem lê distingue "medi e deu zero" de
+#    "não medi", e é para isso que `listCoverage` existe.
 #
 # 4. **Toda contagem é por DIA DE SÃO PAULO.** O armazenamento é UTC; o dia é
 #    gravado na recepção, no fuso em que esta casa decide a que mês uma pessoa
 #    pertence. Um fato das 22h do dia 30 conta no dia 30 (`armadilhas/099`).
 #
-# 5. **`countFacts` e `listCoverage` exigem `site_id` (Lei 9).** A fila de
-#    eventos mortos NÃO é escopada por site, e a exceção é honesta: um evento
-#    morto é um envelope que não pôde ser lido, e o site é uma das coisas que
-#    faltam nele. Filtrar por site ali esconderia justamente os quebrados.
+# 5. **`countFacts` e `listCoverage` exigem `site_id` (Lei 9).** Duas famílias
+#    de operação ficam de fora, e as duas exceções são honestas. A fila de
+#    eventos mortos NÃO é escopada por site porque um evento morto é um envelope
+#    que não pôde ser lido, e o site é uma das coisas que faltam nele: filtrar
+#    ali esconderia justamente os quebrados. As operações de MARCO não são
+#    escopadas por site porque a tabela de marcos não guarda o site, e um número
+#    da plataforma inteira que se declara como tal é honesto, enquanto um recorte
+#    inventado por dentro não seria. O dia em que o marco ganhar site, o filtro
+#    entra como parâmetro OPCIONAL, que é adição e não quebra ninguém.
+#
+# 6. **Marco não é fato, e isso muda o que se pode guardar.** O fato é o que uma
+#    célula afirmou, e é imutável. O marco é uma LEITURA que esta célula faz dos
+#    fatos: a data dele é a PRIMEIRA vez que o sujeito conquistou aquilo, e ela
+#    anda para trás quando um fato mais antigo chega depois. Quem guardar a
+#    resposta de `countMilestones` guarda uma fotografia, não uma verdade
+#    permanente.
+#
+# 7. **O sujeito de um marco tem TIPO, e os dois tipos nunca se somam.** Ele
+#    vale `pessoa` (identidade e fórum) ou `matricula` (a vida do aluno), porque
+#    o `matricula_id` que a célula `alunos` publica "identifica a matricula,
+#    nunca a pessoa, e nao serve para creditar ninguem fora daqui"
+#    (`contracts/eventos/matricula.situacao-alterada.v1.json`). Toda linha de
+#    contagem carrega o vocabulário em que foi contada, e nenhuma resposta
+#    oferece um total que atravesse os dois: cruzar vocabulários passa a exigir
+#    uma decisão de quem consome, em vez de acontecer por acidente
+#    (`armadilhas/303`).
 #
 # AUTORIZAÇÃO: Bearer de par (`TOKENS_ACEITOS_<PAR>`), em TODAS as operações. O
 # conjunto nasce vazio quando o env falta, e conjunto vazio recusa todo mundo
 # com 401. Quem consome hoje é a `admin`, e só ela.
 #
-# Lei do assunto: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` §6.2 e a escada do
-# §8, degrau 7. Constituição da célula: `constituicoes/AGENTS.metricas.md`.
+# Lei do assunto: `docs/decisoes/PLANO-PAINEL-DE-GESTAO.md` §6.2, §6.4 e a
+# escada do §8, degraus 7 e 9. Constituição da célula:
+# `constituicoes/AGENTS.metricas.md`.
 # =============================================================================
 openapi: 3.1.0
 info:
@@ -76,6 +106,33 @@ info:
     countFacts: ausencia nao vira zero, porque zero e uma afirmacao sobre
 
     o mundo.
+
+
+    MARCO NAO E FATO, e a diferenca decide o que se pode guardar. O fato e
+
+    o que uma celula afirmou, e nunca muda; o marco (countMilestones,
+
+    listMilestones) e uma LEITURA que esta celula faz dos fatos, e a data
+
+    dele anda para tras quando um fato mais antigo chega depois.
+
+
+    MARCO TEM SUJEITO, E O SUJEITO TEM TIPO: `pessoa` ou `matricula`, que
+
+    sao vocabularios de identidade diferentes e nunca se somam. As duas
+
+    operacoes de marco carregam esse tipo em toda linha, e de proposito
+
+    nao oferecem nenhum total que atravesse os dois.
+
+
+    MARCO NAO TEM SITE. countFacts e listCoverage exigem site_id; as duas
+
+    operacoes de marco contam a plataforma inteira, porque a tabela de
+
+    marcos nao guarda o site. Quem consome nao pode apresentar esse numero
+
+    como sendo de um site.
 
     '
 paths:
@@ -237,6 +294,137 @@ paths:
         tela onde o mantenedor decide o que fazer com um fato que se perdeu, e
 
         resposta vazia que parece resposta é o pior desfecho possível.'
+  /marcos/contagens:
+    get:
+      operationId: countMilestones
+      summary: Conquistas
+      parameters:
+      - in: query
+        name: de
+        schema:
+          format: date
+          type: string
+        required: true
+      - in: query
+        name: ate
+        schema:
+          format: date
+          type: string
+        required: true
+      - in: query
+        name: sujeito_tipo
+        schema:
+          default: ''
+          type: string
+        required: false
+      - in: query
+        name: tipo
+        schema:
+          default: ''
+          type: string
+        required: false
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContagemDeMarcos'
+      description: 'Quantas conquistas de cada tipo, por dia, no intervalo pedido.
+
+
+        O `dia` é o dia de SÃO PAULO, o mesmo de `countFacts`, e ele é a PRIMEIRA
+
+        vez que aquele sujeito conquistou aquilo. Um fato mais antigo que chegue
+
+        depois puxa a data para trás, e a conquista muda de dia: marco não é fato,
+
+        e não tem a imutabilidade deles. Quem guardar esta resposta guarda uma
+
+        fotografia, não uma verdade permanente.
+
+
+        NÃO EXISTE UM TOTAL GERAL NESTA RESPOSTA, e a ausência é o desenho. Cada
+
+        linha diz em que vocabulário de identidade os sujeitos dela foram contados,
+
+        porque `pessoa` e `matricula` são coisas diferentes: o `matricula_id` da
+
+        célula `alunos` identifica a matrícula e não serve para creditar ninguém
+
+        fora de lá. Somar os dois somaria maçãs com laranjas, e somar tipos
+
+        diferentes dentro do mesmo vocabulário contaria a mesma pessoa mais de uma
+
+        vez, porque uma pessoa tem vários marcos.
+
+
+        A CONTAGEM É DA PLATAFORMA INTEIRA, sem recorte por site, e é a diferença
+
+        para `countFacts`. A tabela de marcos não guarda o site, então este número
+
+        não pode ser apresentado como sendo de um site.
+
+
+        Tipo sem nenhuma conquista no intervalo não aparece na lista, pela mesma
+
+        razão de `countFacts`: zero é uma afirmação sobre o mundo, e a ausência
+
+        aqui pode ser "ninguém conquistou" ou "a derivação ainda não escutava esse
+
+        assunto".'
+  /marcos:
+    get:
+      operationId: listMilestones
+      summary: Marcos
+      parameters:
+      - in: query
+        name: sujeito_tipo
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: sujeito_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarcosDoSujeito'
+      description: 'Quais conquistas este sujeito tem, da mais antiga para a mais nova.
+
+
+        O SUJEITO SE PEDE EM DUAS PARTES, e as duas são obrigatórias, porque o id
+
+        sozinho não diz nada: o mesmo texto pode ser um id de pessoa e um id de
+
+        matrícula ao mesmo tempo, e são coisas diferentes. Exigir o vocabulário
+
+        junto é o que impede uma tela de cruzar os dois sem perceber.
+
+
+        Lista vazia quer dizer "nenhuma conquista derivada para este id", e nunca
+
+        "este sujeito não existe": esta célula não conhece cadastro nenhum, só o
+
+        que os fatos trouxeram. Por isso id desconhecido responde 200 com a lista
+
+        vazia, e não 404.
+
+
+        O `event_id` de cada marco é a linhagem: é o fato que fixou aquela data, e
+
+        é com ele que se confere um número até o começo em vez de acreditar nele. A
+
+        `procedencia` é sempre `automatico` nesta porta, porque esta tabela só
+
+        guarda marco derivado de fato. Marco assinado por gente mora no livro de
+
+        ocorrências, e o plano manda o painel dizer qual dos dois está mostrando.'
 components:
   schemas:
     Contagem:
@@ -381,6 +569,80 @@ components:
       - tipo_declarado
       - event_id_declarado
       - corpo
+      type: object
+    ConquistaContada:
+      properties:
+        sujeito_tipo:
+          type: string
+        tipo:
+          type: string
+        total:
+          type: integer
+        por_dia:
+          items:
+            $ref: '#/components/schemas/DiaContado'
+          type: array
+      required:
+      - sujeito_tipo
+      - tipo
+      - total
+      - por_dia
+      type: object
+    ContagemDeMarcos:
+      properties:
+        sujeito_tipo:
+          type: string
+        tipo:
+          type: string
+        de:
+          format: date
+          type: string
+        ate:
+          format: date
+          type: string
+        conquistas:
+          items:
+            $ref: '#/components/schemas/ConquistaContada'
+          type: array
+      required:
+      - sujeito_tipo
+      - tipo
+      - de
+      - ate
+      - conquistas
+      type: object
+    MarcoConquistado:
+      properties:
+        tipo:
+          type: string
+        dia:
+          format: date
+          type: string
+        event_id:
+          format: uuid
+          type: string
+        procedencia:
+          type: string
+      required:
+      - tipo
+      - dia
+      - event_id
+      - procedencia
+      type: object
+    MarcosDoSujeito:
+      properties:
+        sujeito_tipo:
+          type: string
+        sujeito_id:
+          type: string
+        marcos:
+          items:
+            $ref: '#/components/schemas/MarcoConquistado'
+          type: array
+      required:
+      - sujeito_tipo
+      - sujeito_id
+      - marcos
       type: object
   securitySchemes:
     bearerAuth:

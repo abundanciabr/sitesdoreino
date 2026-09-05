@@ -1,0 +1,18 @@
+{
+  "arquivo": "175-abrir-a-porta-de-leitura-das-conquistas-no-contrato-da-celul",
+  "id": "TAR-175",
+  "titulo": "Abrir a porta de leitura das conquistas no contrato da celula que guarda a historia",
+  "toca": [
+    "contracts",
+    "metricas"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR de contrato mergeado com a etiqueta contrato, freeze e contrato aditivo verdes",
+  "despacho": "Rito de Contrato (RITOS.md §3) na célula `metricas`, autorizado nominalmente\npelo mantenedor em 05/09/2026, em pergunta estruturada, com as palavras \"Abre\nagora, nesta conversa\".\n\nAcrescentar ao contrato congelado `contracts/metricas.openapi.yaml` duas\noperações de LEITURA dos marcos (o degrau 9 do PLANO-PAINEL-DE-GESTAO.md, cujo\nmodelo `Marco` nasceu no PR #1114):\n\n- `countMilestones` (GET /marcos/contagens): quantas conquistas de cada tipo,\n  por dia, num intervalo. Responde a pergunta do §6.4.\n- `listMilestones` (GET /marcos): quais conquistas um sujeito tem.\n\nO PR leva SÓ `contracts/` mais a escrituração (`painel/registros/`, `fila/`), e\na etiqueta `contrato`. A implementação em `services/metricas/apps/fatos/api.py`\ne a tela na `admin` são PRs seguintes, nessa ordem.\n\nA regra que não pode sumir na tradução: o marco tem `sujeito_tipo`, que vale\n`pessoa` ou `matricula`, e os dois vocabulários de identidade nunca se somam\n(`armadilhas/303`). Nenhuma resposta pode oferecer um total que atravesse os\ndois.\n\nMonte o congelado A PARTIR do exportador da célula, nunca de cabeça\n(`armadilhas/243`), e leia a prosa do `info.description` antes de congelar\n(`armadilhas/324`).",
+  "origem": "Rito de Contrato autorizado pelo mantenedor em 05/09/2026",
+  "criada_em": "2026-09-05"
+}
