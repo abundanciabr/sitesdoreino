@@ -49,6 +49,64 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
 
     <div class="bancada">
       <div>
+        {% comment %}
+        A peneira mora DENTRO da coluna da lista, e não em cima da bancada
+        inteira: ela só governa a lista. O lado direito continua contando tudo
+        que está em aberto, e um controle plantado acima dos dois prometeria
+        mandar nos dois.
+
+        GET, como a peneira da lista de alunos: ler a lista de outro jeito não
+        muda nada, e a query string é o que deixa o resultado recarregável e
+        colável num recado.
+
+        Sem NADA em aberto ela não aparece: classificar e peneirar zero ideias é
+        um controle que não faz coisa nenhuma. A régua é `total_em_aberto` e não
+        a lista desenhada, senão uma etapa vazia levaria embora o próprio
+        seletor que desfaz a escolha, e o mantenedor ficaria preso nela.
+        {% endcomment %}
+        {% if total_em_aberto %}
+        <form class="peneira dois-seletores" method="get" action="{% url 'caixa_esperando' %}">
+          <div class="campo">
+            <label class="rotulo" for="ordem">Classificar por</label>
+            <select id="ordem" name="ordem">
+              {% for valor, texto in ordens %}
+              <option value="{{ valor }}" {% if valor == ordem_escolhida %}selected{% endif %}>{{ texto }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="campo">
+            <label class="rotulo" for="etapa">Etapa</label>
+            <select id="etapa" name="etapa">
+              <option value="">Todas as etapas</option>
+              {% for valor, texto in etapas %}
+              <option value="{{ valor }}" {% if valor == etapa_escolhida %}selected{% endif %}>{{ texto }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <button class="sim" type="submit">Mostrar</button>
+        </form>
+        {% endif %}
+
+        {% if pedido_desconhecido %}
+        <p class="aviso">
+          <b>Não conheço essa forma de listar.</b>
+          O endereço pediu uma classificação ou uma etapa que esta tela não tem — link
+          antigo, ou algo editado na barra de endereço. Estou mostrando a lista <b>como
+          de costume</b>, e não uma lista vazia: sumir com as ideias seria a pior
+          resposta possível a um pedido que não existe.
+        </p>
+        {% endif %}
+
+        {% comment %}
+        Os números lá de cima contam a espera INTEIRA, com peneira ou sem ela — e
+        esta linha é o que impede o "62 alunos esperando" de parecer briga com uma
+        lista de três. É a mesma escolha da lista de alunos: os cartões contam a
+        escola, a lista mostra o que casou com o que foi pedido.
+        {% endcomment %}
+        {% if filtrando and ideias %}
+          <p class="nota">Mostrando {{ ideias|length }} de {{ total_em_aberto }} ideia{{ total_em_aberto|pluralize:"s" }} em aberto.</p>
+        {% endif %}
+
         {% for i in ideias %}
           <div class="espera{% if i.parada_ha > limiar %} calada{% endif %}">
             <div class="espera-gente">
@@ -80,7 +138,25 @@ por motivo exigiria a mesma dedução, que só a Caixa consegue fazer.
             </div>
           </div>
         {% empty %}
-          <p class="aviso">Nenhuma ideia em aberto — tudo que os alunos pediram já recebeu uma resposta.</p>
+          {% comment %}
+          Vazio por PENEIRA e vazio por AUSÊNCIA são frases diferentes, e
+          confundi-las é o jeito mais fácil de esta tela mentir: "tudo já recebeu
+          resposta" dito a quem tem dezessete ideias em aberto e escolheu uma
+          etapa vazia faria o mantenedor fechar a página tranquilo.
+          {% endcomment %}
+          {% if filtrando and total_em_aberto %}
+            {% comment %}
+            "Tem N ideias" e não "As outras N ideias": com uma só em aberto a
+            segunda forma sai "As outras 1 ideia", que nenhum brasileiro escreve.
+            {% endcomment %}
+            <p class="aviso">
+              <b>Nenhuma ideia nesta etapa.</b>
+              Tem {{ total_em_aberto }} ideia{{ total_em_aberto|pluralize:"s" }} em aberto em outras etapas: escolha
+              <b>Todas as etapas</b> acima para ver de novo.
+            </p>
+          {% else %}
+            <p class="aviso">Nenhuma ideia em aberto — tudo que os alunos pediram já recebeu uma resposta.</p>
+          {% endif %}
         {% endfor %}
       </div>
 

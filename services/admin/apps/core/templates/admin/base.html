@@ -186,6 +186,13 @@ primeira versão deste arquivo, e o teste pegou.
          caractere digitado. */
       .peneira { grid-template-columns: 2fr 1fr auto auto; align-items: end; column-gap: 10px; }
       .peneira button { margin-top: 0; }
+      /* [CLASSIFICAR] A peneira de "quem está esperando" são DOIS seletores, e
+         não um campo de digitar mais um seletor. A régua 2fr/1fr existe para
+         caber um e-mail no primeiro campo; aplicada a dois seletores, ela
+         espreme o segundo até cortar "Esperando você assinar" no meio. Colunas
+         iguais, e sem a quarta: esta peneira não tem "Limpar", porque cada
+         seletor já mostra a opção que o desfaz. */
+      .peneira.dois-seletores { grid-template-columns: 1fr 1fr auto; }
     }
     /* O formulário de gestão: rótulo em cima do campo, sempre — em tela de
        celular, rótulo ao lado vira uma coluna de duas letras. */
