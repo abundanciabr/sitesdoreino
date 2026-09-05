@@ -11,7 +11,7 @@
     + "muralha varre documentos/ inteiro por caminho, sem olhar o campo publico, então cada trecho foi "
     + "reescrito, não só o caractere trocado. Documento novo pede migração própria (armadilha 347).",
   autoridade: "github",
-  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/PLACEHOLDER",
+  evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1113",
   verificado_em: "2026-09-05",
   precisa_do_dono: false,
   responde_a: null,
