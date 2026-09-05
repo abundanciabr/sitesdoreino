@@ -95,12 +95,31 @@ são a esmagadora maioria — e é indispensável porque o modo automático dest
 harness manda escrever arquivo por heredoc de `Bash`, não pela ferramenta
 `Write`.
 
+O CHECKLIST, e por que ele é cobrado no fecho (05/09/2026, o mesmo dia)
+------------------------------------------------------------------------
+Pedido dele, com as palavras dele: "quero que toda e cada tarefa mostre um
+checklist e um roadmap claro de onde está e o que ainda precisa ser feito ao
+final de cada etapa, fase, parte, executada". O plano em caixinhas da abertura
+sumia da tela depois de vinte chamadas de ferramenta, e ele não sabia se a
+tarefa estava no passo 2 ou no 5.
+
+A lei tem três pontas (CLAUDE.md, "Plano na abertura, contas no fecho"): o
+checklist na abertura, o checklist reimpresso e marcado ao fim de CADA etapa, e
+o checklist no estado final abrindo a prestação de contas. Só a terceira é
+mensurável: "etapa" não existe para a máquina, e um portão que contasse
+reimpressões por chamada de ferramenta cobraria checklist a cada `ls`. Então o
+`Stop` exige a caixinha (`- [x]`/`- [ ]`) DENTRO da prestação de contas, e a
+recusa ensina as três pontas. A ponta do meio fica na lei, no `--plano` e na
+memória do robô — sem mecanismo, e dito aqui para ninguém tomar este portão
+por garantia dela.
+
 O QUE ELE **NÃO** MEDE, dito na cara
 -------------------------------------
 Que a prestação de contas seja VERDADEIRA. Nenhum portão barato mede "isto foi
 mesmo verificado". O que ele torna impossível é o silêncio: os seis blocos
-aparecem, com o veredito PRONTO/NÃO PRONTO em cima da mesa, e quem lê consegue
-cobrar. Mentira escrita é falsificável; ausência não é.
+aparecem, o checklist marcado aparece, o veredito PRONTO/NÃO PRONTO fica em
+cima da mesa, e quem lê consegue cobrar. Mentira escrita é falsificável;
+ausência não é.
 
 Também não mede o PLANO de abertura. O `--plano` o exige, mas exigir é tudo o
 que dá para fazer com honestidade: no Stop o turno já acabou, e bloquear por
@@ -164,6 +183,12 @@ VEREDITO = re.compile(r"veredito[\s:*—–\-]*\b(n[ãa]o\s+pronto|pronto)\b", r
 
 # O plano de abertura, cobrado pelo --plano e conferido só para o conselho.
 PLANO = re.compile(r"^\s*#{1,4}\s*.*\bplano\b", re.I | re.M)
+
+# O checklist: uma linha de caixinha, marcada ou não. É o roteiro que ele pediu
+# em 05/09/2026 — o mesmo do plano, no estado final, abrindo a prestação de
+# contas. `- [ ]` também vale: NÃO PRONTO honesto deixa caixa aberta, e um
+# portão que só aceitasse `[x]` ensinaria a marcar o que não foi feito.
+CAIXINHA = re.compile(r"^\s*[-*]\s*\[(?: |x|X)\]\s+\S", re.M)
 
 # ------------------------------------------------- o que muda o mundo ----
 
@@ -314,7 +339,11 @@ def _prestou_contas(entrada: dict) -> bool:
         return False
     if not texto.strip():
         return False
-    return all(t.search(texto) for t in TITULOS) and bool(VEREDITO.search(texto))
+    return (
+        all(t.search(texto) for t in TITULOS)
+        and bool(VEREDITO.search(texto))
+        and bool(CAIXINHA.search(texto))
+    )
 
 
 def _teve_plano(entradas: list[dict], comeco: int) -> bool:
@@ -390,6 +419,8 @@ def molde(faltou_o_plano: bool) -> str:
         "",
         "   Escreva AGORA, em português, nesta ordem e sem enfeite:",
         "",
+        "   O checklist do plano no estado final — `- [x]` no que caiu, `- [ ]` no",
+        "   que ficou, com o motivo — e a linha \"Onde estou: passo N de M\".",
     ]
     for titulo, dica in BLOCOS:
         linhas.append(f"   {titulo} — {dica}")
@@ -397,6 +428,7 @@ def molde(faltou_o_plano: bool) -> str:
         "   **Veredito:** PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê.",
         "",
         "   Regras que valem dentro do molde:",
+        "   · O checklist é o roteiro que ele pediu: sem caixinha, o relatório não vale.",
         "   · Demonstre, não descreva: comando executado + saída real.",
         "   · Ou rodou de verdade, ou escreve NÃO RODEI. Nunca \"deve funcionar\".",
         "   · Se nada depende dele, DIGA a frase (\"nada depende de ninguém, ~8 min\").",
@@ -407,8 +439,8 @@ def molde(faltou_o_plano: bool) -> str:
         linhas += [
             "",
             "   E o plano não apareceu no começo deste turno. Não dá para consertar",
-            "   agora — na próxima tarefa ele vem PRIMEIRO, em caixinhas, e vai sendo",
-            "   marcado enquanto os passos caem.",
+            "   agora — na próxima tarefa ele vem PRIMEIRO, em caixinhas, e é",
+            "   reimpresso marcado ao fim de CADA etapa, com onde você está.",
         ]
     return "\n".join(linhas)
 
@@ -454,14 +486,18 @@ def modo_contas(entrada: dict) -> int:
     return 2
 
 
-AVISO_DO_PLANO = """📋 PLANO PRIMEIRO, CONTAS DEPOIS (lei da casa, CLAUDE.md).
+AVISO_DO_PLANO = """📋 PLANO PRIMEIRO, ROTEIRO A CADA ETAPA, CONTAS DEPOIS (lei da casa, CLAUDE.md).
    Se este pedido vai mudar o mundo — editar arquivo, rodar comando que altera
    algo, abrir PR — a PRIMEIRA coisa da sua resposta é o plano em caixinhas
-   ("## Plano — <tarefa>", um "- [ ]" por passo), e ele vai sendo marcado
-   enquanto os passos caem. A ÚLTIMA é a prestação de contas: O que mudou ·
-   O que foi verificado e como · O que foi cortado e por quê · O que eu preciso
-   decidir · Auditoria de qualidade · Veredito PRONTO/NÃO PRONTO.
-   O portão do Stop recusa terminar sem ela — não é sugestão."""
+   ("## Plano — <tarefa>", um "- [ ]" por passo). Ao FIM DE CADA ETAPA,
+   reimprima o checklist inteiro marcado ("- [x]" no que caiu, "- [ ]" no que
+   falta) e a linha "Onde estou: passo N de M", com o próximo passo dito —
+   ele não lê o transcript, e é assim que sabe onde a tarefa está.
+   A ÚLTIMA coisa é a prestação de contas, que começa pelo mesmo checklist no
+   estado final: O que mudou · O que foi verificado e como · O que foi cortado
+   e por quê · O que eu preciso decidir · Auditoria de qualidade · Veredito
+   PRONTO/NÃO PRONTO. O portão do Stop recusa terminar sem ela e sem a
+   caixinha — não é sugestão."""
 
 
 def modo_plano(entrada: dict) -> int:
