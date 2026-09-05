@@ -76,11 +76,11 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
-    # `apps.cursos` — o curso, os blocos, as aulas com suas 16 peças, as
-    # pausas e os instrumentos — nasce no degrau 1.2 da escada
-    # (`PLANO-CELULA-CURSOS.md` §10), com o modelo do §4 como método e teste.
-    # O progresso, o envio, o laudo e o rascunho da IA vêm nos degraus 1.8,
-    # 2.1, 2.2 e 2.3. Esqueleto não inventa tabela.
+    # O conteúdo do curso como dado: o curso, os blocos, as aulas com suas 16
+    # peças, as pausas e os instrumentos (degrau 1.2, `PLANO-CELULA-CURSOS.md`
+    # §4). O progresso, o envio, o laudo e o rascunho da IA vêm nos degraus
+    # 1.8, 2.1, 2.2 e 2.3.
+    "apps.cursos",
 ]
 
 MIDDLEWARE = [
