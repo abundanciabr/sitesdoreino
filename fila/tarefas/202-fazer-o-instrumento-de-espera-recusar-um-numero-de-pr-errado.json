@@ -1,0 +1,17 @@
+{
+  "arquivo": "202-fazer-o-instrumento-de-espera-recusar-um-numero-de-pr-errado",
+  "id": "TAR-202",
+  "titulo": "Fazer o instrumento de espera recusar um número de PR errado, com uma frase que ensine",
+  "toca": [
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado onde ci/esperar.py, antes de esperar, confere que --checks/--pouso recebeu um PR ABERTO deste repositório; teste vermelho→verde mostrando que um número de PR mesclado ou inexistente é recusado com mensagem que ensina (ex.: 'o PR #6 está mesclado desde agosto; você quis dizer o número do SEU PR?'), e que um PR aberto de verdade continua sendo aceito e medido normalmente",
+  "despacho": "Motivado pela armadilhas/354: dois robôs passaram a QUANTIDADE de checks em vez do NÚMERO DO PR ao ci/esperar.py --checks (--checks 6 mediu o PR #6 mesclado desde os primeiros dias; --checks 13 mediu o PR #13 mesclado desde agosto), cada um queimando o teto inteiro de 20 tentativas antes de perceber. O instrumento já é fail-closed (nunca pousa o que não mede), mas hoje devolve só um 'não consegui medir' genérico repetido a cada tentativa, sem apontar a causa provável. Consertar: antes de entrar no laço de espera, ci/esperar.py confere via gh se o número recebido em --checks/--pouso é um PR ABERTO deste repositório; se for um PR fechado/mesclado ou não existir, recusa NA HORA (sem gastar tentativas) com uma frase que nomeia o estado real do PR encontrado e sugere conferir se o número não é uma contagem. Caminho CODEOWNERS (ci/): sem mandato para tocar hoje, por isso esta tarefa fica registrada e NÃO construída.",
+  "origem": "armadilhas/354, brief fechado do mantenedor 05/09/2026",
+  "criada_em": "2026-09-05"
+}
