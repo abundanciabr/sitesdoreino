@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260905-029-a-sala-de-aula-entrou-no-roteamento",
+  arquivo: "20260905-030-a-sala-de-aula-entrou-no-roteamento",
   tipo: "entrega",
   quando: "2026-09-05",
   titulo: "A sala de aula entrou no roteamento, meshcraft.top/cursos (PR #1069, degrau 1.7)",
