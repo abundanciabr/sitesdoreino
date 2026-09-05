@@ -44,6 +44,28 @@
         ]
       }
     ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import os,sys,runpy;p=os.path.join(os.environ.get('CLAUDE_PROJECT_DIR',''),'ci','prestacao_de_contas.py');sys.exit(0) if not os.path.isfile(p) else runpy.run_path(p,run_name='__main__')\" --plano",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import os,sys,runpy;p=os.path.join(os.environ.get('CLAUDE_PROJECT_DIR',''),'ci','prestacao_de_contas.py');sys.exit(0) if not os.path.isfile(p) else runpy.run_path(p,run_name='__main__')\" --contas",
+            "timeout": 20
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "hooks": [
