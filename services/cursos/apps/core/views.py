@@ -47,6 +47,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from apps.cursos import agente as assistente
 from apps.cursos import envio as checkpoint
 from apps.cursos import laudo as parecer
 from apps.cursos import progresso as portas
@@ -58,6 +59,7 @@ from apps.cursos.models import (
     Pausa,
     Peca,
     Progresso,
+    RascunhoDaIA,
     RegistroDePausa,
     TipoDePeca,
 )
@@ -692,6 +694,12 @@ def laudo_recebido(request, numero: str):
 # recusado" chama `apps/cursos/laudo.py::emitir` direto, sem passar por aqui.
 NUMERO_DE_FORCAS = 3
 
+# O valor do botão que pede a sugestão da IA. O outro botão do mesmo formulário
+# emite o laudo, e é ele o padrão: `gesto` ausente EMITE, nunca rascunha, para
+# que nenhum POST antigo ou repetido vire uma chamada paga sem alguém ter
+# clicado no botão que a pede.
+GESTO_DE_RASCUNHAR = "rascunhar"
+
 RECADOS_DO_PLANTAO = {
     "laudo-emitido": "Laudo emitido. O envio saiu da fila de revisão.",
     "ja-tem-laudo": "Este envio já recebeu um laudo: não há mais nada a fazer aqui.",
@@ -811,6 +819,8 @@ def _formulario_do_laudo(
     erro: str = "",
     enviado: dict | None = None,
     status: int = 200,
+    sugestao: assistente.Sugestao | None = None,
+    rascunho_id: str = "",
 ):
     enviado = enviado or {}
     return render(
@@ -823,10 +833,103 @@ def _formulario_do_laudo(
             "aulas": _aulas_do_curso(envio),
             "erro": erro,
             "enviado": enviado,
+            # A IA aparece na tela em três lugares, e nenhum deles preenche
+            # decisão, data nem a pergunta de amanhã de manhã ([INV-CUR-L4]).
+            "ia_ligada": assistente.ligado(),
+            "sugestao": sugestao,
+            "avisos_da_ia": assistente.avisos_de(sugestao) if sugestao else [],
+            "rascunho_id": rascunho_id,
             **_de_fora(),
         },
         status=status,
     )
+
+
+def _preenchido_pela_ia(sugestao: assistente.Sugestao, envio: Envio, digitado) -> dict:
+    """Os campos do formulário com a sugestão dentro, e o que a professora já
+    tinha digitado por cima.
+
+    **Quem digitou, ganha.** A sugestão preenche só o que está vazio: pedir um
+    rascunho no meio de um laudo meio escrito nunca apaga uma frase que a
+    professora pensou. É a regra inteira, numa frase, e por isso ela é
+    previsível na tela.
+
+    **O que esta função NÃO escreve é [INV-CUR-L4] na prática:** não há
+    `decisao`, não há `data_de_retorno` e não há `sabe_o_que_fazer_amanha` nas
+    chaves montadas aqui. Mesmo que a IA devolva os três no JSON dela (e um
+    modelo prestativo devolve), eles não têm por onde chegar ao formulário: o
+    guarda que prova isso pela tela é `tests/test_inv_l4_a_ia_nao_decide.py`.
+    """
+    campos = {chave: valor for chave, valor in digitado.items()}
+
+    def preencher(chave: str, valor) -> None:
+        if valor and not str(campos.get(chave) or "").strip():
+            campos[chave] = str(valor)
+
+    for indice, criterio in enumerate(checkpoint.criterios_de(envio.aula.instrumento)):
+        item = sugestao.notas.get(criterio.nome)
+        if item:
+            preencher(f"nota_{indice}", item["nota"])
+            preencher(f"frase_{indice}", item["frase"])
+    for indice, forca in enumerate(sugestao.forcas):
+        preencher(f"forca_{indice}", forca)
+    preencher("mudanca_texto", sugestao.mudanca.get("texto", ""))
+    preencher("mudanca_aula", sugestao.mudanca.get("aula_id", ""))
+    return campos
+
+
+def _rascunhar_o_laudo(request, envio: Envio):
+    """Pede ao Assistente de laudo a sugestão e RE-DESENHA o formulário com ela.
+
+    Nunca grava laudo, nunca redireciona: o resultado deste botão é a mesma
+    tela, com os campos pré-preenchidos e marcados "SUGERIDO", e a professora
+    ainda tem tudo a decidir. A falha da IA devolve a mesma tela com a frase do
+    que houve (503, porque quem falhou foi um serviço de fora) e sem perder uma
+    letra do que ela já tinha escrito.
+    """
+    digitado = request.POST
+    try:
+        sugestao = assistente.rascunhar(envio, laudo_anterior=_laudo_anterior_de(envio))
+    except assistente.AgenteIndisponivel as erro:
+        return _formulario_do_laudo(
+            request, envio, erro=str(erro), enviado=digitado, status=503
+        )
+
+    rascunho = RascunhoDaIA.objects.create(
+        envio=envio,
+        conteudo={
+            "notas": sugestao.notas,
+            "forcas": sugestao.forcas,
+            "mudanca": sugestao.mudanca,
+            "reenvio": sugestao.reenvio,
+            "bloco": sugestao.bloco,
+        },
+        modelo=assistente.MODELO,
+        tokens_entrada=sugestao.tokens_de_entrada,
+        tokens_saida=sugestao.tokens_de_saida,
+    )
+    return _formulario_do_laudo(
+        request,
+        envio,
+        enviado=_preenchido_pela_ia(sugestao, envio, digitado),
+        sugestao=sugestao,
+        rascunho_id=str(rascunho.pk),
+    )
+
+
+def _rascunho_deste_envio(request, envio: Envio) -> RascunhoDaIA | None:
+    """O rascunho que a tela mandou de volta no campo escondido, se for DESTE
+    envio.
+
+    O filtro por `envio` não é zelo: o campo vem do navegador, e sem ele um id
+    trocado à mão penduraria a Ficha de Série de um aluno no laudo de outro.
+    Id ausente ou que não é número devolve `None`, e o laudo sai sem rascunho:
+    emitir à mão é o caminho normal desta tela, nunca um erro.
+    """
+    id_do_rascunho = (request.POST.get("rascunho_id") or "").strip()
+    if not id_do_rascunho.isdigit():
+        return None
+    return RascunhoDaIA.objects.filter(pk=id_do_rascunho, envio=envio).first()
 
 
 def _gravar_laudo(request, envio: Envio, avaliador):
@@ -871,10 +974,16 @@ def _gravar_laudo(request, envio: Envio, avaliador):
             data_de_retorno=data_de_retorno,
             ajuste_feito=ajuste_feito,
             sabe_o_que_fazer_amanha=sabe_o_que_fazer_amanha,
+            rascunho=_rascunho_deste_envio(request, envio),
         )
     except parecer.LaudoRecusado as motivo:
         return _formulario_do_laudo(
-            request, envio, erro=str(motivo), enviado=request.POST, status=422
+            request,
+            envio,
+            erro=str(motivo),
+            enviado=request.POST,
+            status=422,
+            rascunho_id=(request.POST.get("rascunho_id") or "").strip(),
         )
     endereco = reverse("plantao")
     return HttpResponseRedirect(f"{endereco}?recado=laudo-emitido")
@@ -888,6 +997,12 @@ def plantao_ficha(request, envio_id: int):
     na recusa, RE-DESENHA com o texto digitado preservado e status 422 — ao
     contrário do checkpoint do aluno, este formulário é grande demais para se
     dar ao luxo de um redirect que perde tudo o que a professora escreveu.
+
+    **O mesmo formulário tem dois botões**, e é `gesto` que os separa:
+    "Rascunhar laudo" pede a sugestão ao Assistente de laudo e volta com os
+    campos pré-preenchidos; qualquer outro valor emite. O emitir é o PADRÃO (e
+    não o rascunhar) de propósito: um POST sem `gesto` é o caminho antigo desta
+    tela, e o que ele nunca pode virar por acidente é uma chamada paga.
     """
     ator, recusa = _professor(request)
     if recusa is not None:
@@ -897,5 +1012,7 @@ def plantao_ficha(request, envio_id: int):
         endereco = reverse("plantao")
         return HttpResponseRedirect(f"{endereco}?recado=ja-tem-laudo")
     if request.method == "POST":
+        if request.POST.get("gesto") == GESTO_DE_RASCUNHAR:
+            return _rascunhar_o_laudo(request, envio)
         return _gravar_laudo(request, envio, ator.pessoa)
     return _formulario_do_laudo(request, envio)
