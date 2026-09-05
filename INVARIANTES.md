@@ -792,6 +792,25 @@ Os invariantes acima protegem a plataforma. Este protege o INSTRUMENTO que
 verifica os outros — porque um portão que erra para o lado do verde não protege
 coisa alguma, e ainda gasta a confiança de todo mundo.
 
+### [INV-CUR-C2] O Conteúdo do Curso Entra Pela Porta de Máquina, Nunca Por Migração
+- **O quê:** nenhuma migração de `services/cursos/apps/cursos/migrations/` roda
+  código (nenhum `RunPython`), e o banco recém-migrado não tem `Peca` nenhuma nem
+  `Aula` com `pedido`. O esqueleto (um curso, doze blocos, 34 aulas só com número
+  e título exibido, treze instrumentos só com slug, nome canônico e cartão) entra
+  pelo comando `semear_esqueleto`, idempotente; o texto das aulas entra pela
+  porta de máquina (o editor do Admin, degrau 1.5 da escada), e só por ela.
+- **Por quê:** o repositório é público e o curso é obra não lançada
+  (`armadilhas/331`): uma migração com o capítulo dentro publicaria o livro para
+  sempre, inclusive no histórico. E conteúdo em dois lugares (arquivo e banco) é
+  a doença que a lei anti-duplicação existe para curar. Lei:
+  `docs/decisoes/PLANO-CELULA-CURSOS.md` §3.1 e §9.
+- **Teste-Guarda:**
+  `services/cursos/tests/test_inv_c2_conteudo_so_pela_porta.py` — nenhuma
+  migração da célula roda código (medido pelo `MigrationLoader`), zero `Peca` e
+  zero `Aula` com `pedido` depois de migrar. Provado por mutação em 05/09/2026
+  (um `RunPython` que cria uma peça deixa três asserções vermelhas), PR #1052.
+- **Célula dona:** cursos
+
 ### [INV-CI01] Portão Crítico é Fail-Closed
 - **O quê:** todo portão crítico prova positivamente que executou a medição
   antes de devolver sucesso. A semântica é de quatro estados, e não de dois:
