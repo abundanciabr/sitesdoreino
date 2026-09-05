@@ -389,7 +389,28 @@ leituras, `git fetch`, `git worktree` e `gh`; com a árvore limpa, também
 `git switch main` e `git pull` (para manter o espelho fresco). Detalhes e
 fronteiras: `armadilhas/135`.
 
-**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, ligado como hook em `.claude/settings.json`.
+**E desde 05/09/2026 o espelho se põe em dia sozinho, na abertura da sessão.**
+Decisão do mantenedor, em pergunta estruturada, depois de medirmos o preço do
+desenho anterior: a pasta dele estava **758 commits atrás**, e como os ganchos
+são lidos do `.claude/settings.json` DAQUELA pasta, o gancho do
+`ci/padrao_de_trabalho.py` — mergeado em 04/09 — **nunca rodou uma única vez na
+máquina dele**. Todo mecanismo novo nascia inerte, em silêncio
+(`armadilhas/343`). Avisar a idade e esperar que um leigo lembrasse de digitar
+`git pull` era garantia sem mecanismo com outro nome.
+
+O `--aviso` agora avança a pasta, e **só quando é seguro**: no clone principal,
+no ramo `main`, com a árvore limpa de arquivos versionados. Fora disso ele não
+encosta — e DIZ por que não encostou, com o número do atraso na tela. O avanço
+é `merge --ff-only`, que se recusa a fazer qualquer coisa além de andar para a
+frente; arquivo não versionado sobrevive. A busca na rede é melhor esforço: sem
+internet, ele alcança o que o cache já sabia em vez de desistir.
+
+**A defasagem de uma sessão é dita na cara, não escondida:** o `CLAUDE.md` do
+prompt e os ganchos da sessão que dispara a atualização já foram lidos antes
+dela. Quem colhe tudo novo é a conversa seguinte. O agente continua proibido de
+atualizar o espelho por conta própria.
+
+**Quem faz valer:** `ci/muralha_pasta_compartilhada.py`, ligado como hook em `.claude/settings.json` · `ci/tests/test_muralha_pasta_compartilhada.py` (inclusive o guarda que exige a janela do gancho MAIOR que os tetos internos dos dois `git`, para o harness nunca matar um merge no meio e deixar um `index.lock` na pasta dele).
 
 ## O agente pede pouso; quem mergeia é a pista (desde 29/08/2026)
 
@@ -506,6 +527,38 @@ no meio dos passos manuais):
   registra e devolve à maestro (RUNBOOK-LOTES.md §7, Lote 3 lição 11), e é a
   maestro quem consolida numa única pergunta estruturada. Sem essa regra, um
   lote de 5 despachos em paralelo viraria 5 caixas de pergunta simultâneas.
+
+## O que você entrega para ele mora no site (desde 05/09/2026)
+
+Decisão dele, com as palavras dele: *"Você consegue colocar esse artefato em uma
+página do site? E sempre criar isso no site ao invés de artefatos?"*. Lei
+completa em `docs/decisoes/DECISAO-onde-mora-o-que-eu-entrego.md`.
+
+**Toda entrega que ele vai ler mais de uma vez nasce dentro de
+`meshcraft.top`**, nunca como página solta fora do site. Análise, relatório,
+plano, comparação, painel: se ele vai voltar nisso, tem endereço no site.
+
+A pergunta que decide ONDE é uma só: **isto se apoia em fatos que o sistema já
+conhece?**
+
+- **Sim** (votos, alunos, tarefas, dinheiro, estado de qualquer coisa): é uma
+  **tela calculada** em `/admin/`, com teste. Nunca um documento com os números
+  escritos dentro, que é fotografia e começa a mentir no dia seguinte. O padrão
+  é **fato vivo mais julgamento guardado**: o texto de análise fica no código, os
+  números vêm da fonte a cada abertura (exemplo vivo:
+  `services/admin/apps/core/analise_da_caixa.py`, aba `/admin/caixa/analise/`).
+- **Não** (plano, lei, explicação, roteiro): vai para o **editor de documentos**
+  em `/admin/documentos/`, que ele edita sem pedir nada a ninguém.
+- **Para IA de fora ler**: `/mapa-ia/planos/`, que já era lei.
+
+Continua valendo mandar **arquivo na conversa** (uma prévia, uma captura) e
+**texto curto direto na resposta**: prévia não é entrega, e o que cabe em dez
+linhas não precisa de página. O que não vale é a entrega definitiva morar fora
+do site.
+
+**Quem faz valer:** ninguém, mecanicamente — a lei está declarada em
+`ci/leis-sem-mecanismo.txt`. Um portão que adivinhasse "isto devia ser uma tela"
+reprovaria trabalho honesto e deixaria o descuido passar.
 
 ## Este projeto é para ser feito completo — nunca proponha a versão minimalista
 
@@ -756,3 +809,72 @@ o revisor só lê). A divisão do pedido e o disparo em paralelo são julgamento
 maestro, e isso não tem mecanismo: nada no CI vê quantos sub-agentes uma sessão
 disparou. Está dito aqui com todas as letras para ninguém tomar o teste das
 fichas por garantia da regra inteira.
+
+## Plano na abertura, contas no fecho (desde 05/09/2026)
+
+
+Pedido do mantenedor em 05/09/2026, com a palavra "urgente" e o motivo escrito:
+"eu estou tendo que pedir várias vezes a mesma coisa porque ao final das tarefas
+que eu peço aqui para os robôs fazerem eles simplesmente, ao invés de prestarem
+contas da tarefa, como qualquer pessoa que acabou de fazer algo naturalmente
+faria, eles apenas arquivam as conversas, sem ao menos explicarem o que foi
+feito, se realmente foi resolvido o problema".
+
+**A lei já existia e não era obedecida.** É a regra 9 do Padrão de Trabalho
+("Como entregar"), na primeira seção deste arquivo. Das onze regras do Padrão
+ela é a única cujo cumprimento é observável de fora, e era a única sem ninguém
+que a fizesse valer: `ci/padrao_de_trabalho.py` confere que o TEXTO da régua
+continua no lugar e **declara na cara que não confere obediência**. Enquanto foi
+só prosa, foi obedecida enquanto alguém lembrava — e a medição diz quanto isso
+custava: das 40 sessões mais recentes deste projeto, **24 mudaram o mundo e
+terminaram sem prestar contas**. A maioria. Quem pagava era ele, uma pergunta
+repetida por vez.
+
+**A regra, nas duas pontas:**
+
+1. **Na abertura.** Pedido que vai mudar o mundo (editar arquivo, rodar comando
+   que altera algo, abrir PR) começa pelo **plano em caixinhas** — um título
+   `## Plano` e um `- [ ]` por passo — e o checklist vai sendo marcado enquanto
+   os passos caem. Ele é vivo: serve para o mantenedor ver onde a tarefa está
+   sem perguntar, e para o robô não perder metade do escopo no meio do caminho.
+2. **No fecho.** O turno que mudou o mundo termina com a prestação de contas,
+   nesta ordem, e ela é o formato da regra 9 com os dois blocos que ele pediu
+   em 05/09/2026:
+
+   - **O que mudou** — fatos, não adjetivos
+   - **O que foi verificado e como** — o comando e a saída real, não a promessa
+   - **O que foi cortado e por quê** — "nada" é resposta, e é comum
+   - **O que eu preciso decidir** — se nada depende dele, a linha que diz isso
+   - **Auditoria de qualidade** — a Definição de Pronto (regra 6) item a item, e
+     o que o crítico mais implacável do mundo (regra 8) atacaria neste trabalho
+   - **Veredito:** PRONTO ou NÃO PRONTO, com UMA linha dizendo por quê
+
+**O veredito é a linha mais importante do relatório**, e existe porque o
+mantenedor é leigo em código: o que ele precisa saber, antes de tudo, é se
+acabou. **NÃO PRONTO é resposta honesta e aceita** — o portão a aceita de
+propósito. Um portão que só aceitasse PRONTO ensinaria o robô a mentir, que é a
+doença que ele veio curar.
+
+**Isto não briga com a costura 3 do Padrão** ("nada além dele" proíbe
+enchimento, não o que esta casa exige que seja dito). Os dois blocos novos são
+exigência dele, da mesma data, e cabem no mesmo lugar: a auditoria é onde a
+regra 6 e a regra 8 finalmente aparecem na tela em vez de morrerem na cabeça do
+robô.
+
+**Onde o portão CALA, e por que isso é metade do desenho:** turno que só leu,
+pergunta respondida, e — principalmente — os turnos em que o harness reacorda o
+robô para dar notícia de uma espera. Medido no transcript da sessão que motivou
+esta lei: de 232 mensagens de "usuário", **225 eram `<task-notification>`**. Um
+portão que cobrasse relatório em cada acordar pediria 225 relatórios, e o
+mantenedor aprenderia a ignorar todos. O discriminador não é adivinhação de
+texto: é o campo `origin.kind` de cada entrada do transcript.
+
+**O que o portão NÃO mede, dito na cara:** que a prestação de contas seja
+verdadeira. Nenhum portão barato mede "isto foi mesmo verificado". O que ele
+torna impossível é o SILÊNCIO — os seis blocos aparecem, o veredito fica em cima
+da mesa, e quem lê consegue cobrar. Mentira escrita é falsificável; ausência não
+é. O plano de abertura também só é exigido, nunca bloqueado: no fim do turno ele
+já não tem conserto, e travar o robô por algo irreparável só produz um robô
+travado.
+
+**Quem faz valer:** `ci/prestacao_de_contas.py` (o gancho `Stop` recusa o fim do turno que mudou o mundo sem os seis blocos; o `UserPromptSubmit` exige o plano na abertura) · `ci/tests/test_prestacao_de_contas.py`.

@@ -1,0 +1,507 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A ANÁLISE — aba 6 da gestão da Caixa, nascida em 05/09/2026.
+
+Por que ela existe: o mantenedor pediu a leitura das sugestões da turma, recebeu
+uma página fora do site e respondeu com a regra que virou lei — entrega dele
+mora no site. Lei: `docs/decisoes/DECISAO-onde-mora-o-que-eu-entrego.md`.
+
+O que esta tela desenha e o que ela NÃO guarda está em `analise_da_caixa.py`:
+os fatos (voto, plateia, etapa, texto do aluno) vêm vivos da Caixa a cada
+abertura; só o julgamento é escrito à mão. Por isso não há um único número
+cravado neste arquivo.
+
+Os modais abrem por `:target` e fecham voltando para a âncora do próprio cartão
+(`#ficha-N`), que é o que faz a página voltar para onde a pessoa estava em vez
+de pular para o topo. Sem JavaScript: a porta manda `script-src 'self'` e esta
+célula não serve estático nenhum, então um modal com script custaria uma exceção
+de CSP para ganhar o que o CSS já faz. O que se perde é a tecla Esc; em troca, o
+botão "voltar" do navegador fecha, e o endereço de uma ideia aberta pode ser
+copiado e mandado para alguém.
+{% endcomment %}
+{% block titulo %}A análise | Caixa de Sugestões{% endblock %}
+{% block corpo %}
+<div class="envolucro largo">
+
+  {% if nao_respondeu %}
+    <h1>A análise da Caixa</h1>
+    <p class="aviso espaco-16">
+      Não consegui perguntar à Caixa agora, então não tenho o que analisar. A página abriu para
+      você ver isto escrito, e não uma lista vazia que pareceria "nenhum aluno escreveu nada".
+      Tente de novo em um minuto; se insistir, avise um robô com estas palavras: "a Caixa não
+      respondeu à tela da análise".
+    </p>
+  {% else %}
+    {% include "admin/_caixa_abas.html" %}
+
+    <style>
+      .painel-mesas { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0 0; }
+      .mesa-cartao { flex: 1 1 230px; background: var(--painel); border: 1px solid var(--linha); border-radius: 10px; padding: 14px 16px; }
+      .mesa-cartao.sua { border-color: var(--amarelo); }
+      .mesa-cartao .grande { font-size: 26px; font-weight: 700; display: block; line-height: 1.2; }
+      .mesa-cartao .pequeno { font-size: 13px; color: var(--texto-2); }
+
+      .secao { margin-top: 40px; }
+      .secao > h2 { border-bottom: 1px solid var(--linha); padding-bottom: 8px; margin-bottom: 4px; }
+      .secao .abertura { color: var(--texto-2); font-size: 14px; margin: 8px 0 0; max-width: 78ch; }
+
+      .ficha { background: var(--painel); border: 1px solid var(--linha); border-radius: 12px; padding: 16px 18px; margin-top: 14px; }
+      .ficha.sua { border-color: var(--amarelo); }
+      .ficha-topo { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+      .ficha-topo .posto { color: var(--texto-3); font-size: 13px; font-weight: 700; }
+      .ficha-topo h3 { margin: 0; font-size: 18px; }
+      .ficha-topo h3 a { color: var(--texto); text-decoration: none; border-bottom: 1px dotted var(--texto-3); }
+      .ficha-topo h3 a:hover, .ficha-topo h3 a:focus { color: var(--azul); border-bottom-color: var(--azul); }
+
+      .medida { display: flex; align-items: center; gap: 12px; margin: 10px 0 0; }
+      .medida .conta { font-size: 13px; color: var(--texto-2); white-space: nowrap; }
+      /* A LARGURA DA BARRA VEM POR CLASSE, e nao por `style=` na marcacao: a
+         porta manda `style-src 'self'` com o hash do estilo da casa, e hash
+         cobre bloco `<style>`, nunca atributo. Um `style="width: 40%"` seria
+         descartado pelo navegador SEM ERRO NENHUM e a barra apareceria vazia
+         na tela do dono (`tests/test_estilo_nao_volta_para_a_marcacao.py`).
+         Passo de 5%: 21 regras cobrem toda a escala, e a diferenca entre 38%
+         e 40% de barra nao existe para o olho. */
+      .barra { flex: 1; height: 6px; background: var(--fundo); border-radius: 99px; overflow: hidden; }
+      .barra b { display: block; height: 100%; background: var(--azul); }
+      .barra b.p0 { width: 0%; }
+      .barra b.p5 { width: 5%; }
+      .barra b.p10 { width: 10%; }
+      .barra b.p15 { width: 15%; }
+      .barra b.p20 { width: 20%; }
+      .barra b.p25 { width: 25%; }
+      .barra b.p30 { width: 30%; }
+      .barra b.p35 { width: 35%; }
+      .barra b.p40 { width: 40%; }
+      .barra b.p45 { width: 45%; }
+      .barra b.p50 { width: 50%; }
+      .barra b.p55 { width: 55%; }
+      .barra b.p60 { width: 60%; }
+      .barra b.p65 { width: 65%; }
+      .barra b.p70 { width: 70%; }
+      .barra b.p75 { width: 75%; }
+      .barra b.p80 { width: 80%; }
+      .barra b.p85 { width: 85%; }
+      .barra b.p90 { width: 90%; }
+      .barra b.p95 { width: 95%; }
+      .barra b.p100 { width: 100%; }
+
+      .marcas { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0 0; }
+      .marca { font-size: 12px; border: 1px solid var(--linha); border-radius: 999px; padding: 3px 10px; color: var(--texto-2); }
+      .marca.atencao { border-color: var(--amarelo); color: var(--amarelo); }
+      .marca.andando { border-color: var(--verde); color: var(--verde); }
+
+      .par { margin: 14px 0 0; }
+      .par .rotulo { display: block; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--texto-3); margin-bottom: 3px; }
+      .par p { margin: 0; max-width: 82ch; }
+
+      .numeros-de-ideia { display: inline-flex; flex-wrap: wrap; gap: 5px; }
+      .n-ideia { font-size: 12px; font-weight: 700; text-decoration: none; color: var(--texto-2); border: 1px solid var(--linha); border-radius: 6px; padding: 2px 8px; }
+      .n-ideia:hover, .n-ideia:focus { color: var(--azul); border-color: var(--azul); }
+
+      .rolagem { overflow-x: auto; margin-top: 14px; }
+      table.familias { border-collapse: collapse; width: 100%; min-width: 680px; }
+      table.familias th, table.familias td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--linha); vertical-align: top; }
+      table.familias th { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--texto-3); font-weight: 600; }
+      table.familias td.votos { font-weight: 700; white-space: nowrap; }
+
+      .juncao { background: var(--painel); border: 1px solid var(--linha); border-radius: 12px; padding: 14px 18px; margin-top: 12px; }
+      .juncao h3 { margin: 0 0 4px; font-size: 17px; }
+      .juncao p { margin: 0; color: var(--texto-2); max-width: 82ch; }
+      .juncao-acao { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+      .placar-fusao { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 0 0; }
+      .placar-fusao div { flex: 1 1 150px; background: var(--fundo); border: 1px solid var(--linha); border-radius: 10px; padding: 10px 12px; }
+      .placar-fusao b { display: block; font-size: 22px; line-height: 1.2; }
+      .placar-fusao span { font-size: 12px; color: var(--texto-2); }
+      .campo-nota { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid var(--linha); border-radius: 8px; background: var(--fundo); color: var(--texto); font-family: inherit; font-size: 14px; }
+      .botao-perigo { border-color: var(--amarelo); color: var(--amarelo); }
+      .botao-perigo:hover, .botao-perigo:focus { border-color: var(--vermelho); color: var(--vermelho); }
+      .lista-seca { margin: 8px 0 0; padding-left: 18px; color: var(--texto-2); }
+      .lista-seca li { margin: 3px 0; }
+      .padrao { background: var(--painel); border: 1px solid var(--linha); border-radius: 12px; padding: 14px 18px; margin-top: 12px; }
+      .padrao h3 { margin: 0 0 4px; font-size: 17px; }
+      .padrao p { margin: 0; color: var(--texto-2); max-width: 82ch; }
+
+      /* O MODAL, sem uma linha de script: `:target` liga, o fundo e o "Fechar"
+         desligam. `inset` cobre a tela inteira; a caixa rola por dentro quando a
+         ideia é longa, para nunca empurrar o rodapé da página. */
+      .modal { display: none; }
+      .modal:target { display: block; position: fixed; inset: 0; z-index: 60; }
+      .modal-fundo { position: absolute; inset: 0; background: rgba(0, 0, 0, .68); }
+      .modal-caixa { position: relative; max-width: 780px; margin: 4vh auto; max-height: 92vh; overflow-y: auto; background: var(--painel); border: 1px solid var(--linha); border-radius: 14px; padding: 20px 22px 26px; }
+      .modal-topo { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+      .modal-topo h2 { margin: 0; font-size: 21px; }
+      .modal-fechar { flex: none; text-decoration: none; color: var(--texto-2); border: 1px solid var(--linha); border-radius: 8px; padding: 4px 12px; font-size: 13px; font-weight: 600; }
+      .modal-fechar:hover, .modal-fechar:focus { color: var(--texto); border-color: var(--azul); }
+      .modal-carimbo { color: var(--texto-2); font-size: 13px; margin: 6px 0 0; }
+      .modal .par p, .modal .citacao { font-size: 15px; }
+      .modal .falas { margin: 6px 0 0; padding-left: 18px; color: var(--texto-2); }
+      .modal .falas li { margin: 4px 0; }
+      .campo-tarefa { width: 100%; box-sizing: border-box; min-height: 118px; font-family: ui-monospace, Consolas, "Courier New", monospace; font-size: 13px; line-height: 1.5; padding: 10px 12px; border: 1px solid var(--linha); border-radius: 8px; background: var(--fundo); color: var(--texto); }
+      .modal-rodape { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+    </style>
+
+    {% if recado %}<p class="aviso feito espaco-16">{{ recado }}</p>{% endif %}
+    {% if erro %}<p class="aviso calado espaco-16">{{ erro }}</p>{% endif %}
+    <h1>A análise da Caixa</h1>
+    <p class="subtitulo">
+      {{ total }} ideia{{ total|pluralize }} no quadro e {{ votos }} voto{{ votos|pluralize }},
+      da mais votada para a menos votada. Os números desta página são lidos da Caixa agora, nesta
+      abertura: nada aqui é cópia congelada. Clique no título de qualquer ideia para ler o que o
+      aluno escreveu, sem sair da página.
+    </p>
+
+    {% if esperando_assinatura %}
+      <p class="aviso calado">
+        <b>O topo do quadro trava em você:</b>
+        {{ esperando_assinatura|length }} ideia{{ esperando_assinatura|pluralize }} aprovada{{ esperando_assinatura|pluralize }}
+        espera{{ esperando_assinatura|pluralize:",m" }} a sua assinatura
+        ({% for i in esperando_assinatura %}<a class="n-ideia" href="#ideia-{{ i.id }}">{{ i.id }}</a>{% if not forloop.last %} {% endif %}{% endfor %}).
+        Enquanto isso não acontece, nenhum robô pode começar a obra.
+      </p>
+    {% endif %}
+
+    <div class="painel-mesas">
+      {% for mesa in mesas %}
+        <div class="mesa-cartao{% if mesa.chave == 'voce' %} sua{% endif %}">
+          <span class="grande">{{ mesa.votos }}</span>
+          <span class="pequeno">
+            voto{{ mesa.votos|pluralize }} esperam <b>{{ mesa.rotulo|lower }}</b><br>
+            {{ mesa.total }} ideia{{ mesa.total|pluralize }} · {{ mesa.explicacao }}
+          </span>
+        </div>
+      {% endfor %}
+    </div>
+
+    <div class="secao">
+      <h2>As ideias, uma a uma</h2>
+      <p class="abertura">Ordem por votos, calculada agora. O “por que importa” e o “o que é
+        preciso” são leitura de gente, escritos em 05/09/2026; tudo o mais vem vivo da Caixa.</p>
+
+      {% for ideia in ideias %}
+        <article class="ficha{% if ideia.coluna == 'assinar' %} sua{% endif %}" id="ficha-{{ ideia.id }}">
+          <div class="ficha-topo">
+            <span class="posto">Nº {{ ideia.posicao }}</span>
+            <h3><a href="#ideia-{{ ideia.id }}">{{ ideia.titulo }}</a></h3>
+          </div>
+          <div class="medida">
+            <span class="conta">{{ ideia.votos }} voto{{ ideia.votos|pluralize }} · {{ ideia.pessoas }} pessoa{{ ideia.pessoas|pluralize }} · {{ ideia.comentarios }} comentário{{ ideia.comentarios|pluralize }}</span>
+            <span class="barra"><b class="p{{ ideia.largura }}"></b></span>
+          </div>
+          <div class="marcas">
+            <span class="marca">ideia {{ ideia.id }}</span>
+            <span class="marca">{{ ideia.categoria }}</span>
+            <span class="marca{% if ideia.coluna == 'assinar' %} atencao{% endif %}">{{ ideia.etapa }}</span>
+            {% if ideia.mesa_rotulo %}<span class="marca{% if ideia.mesa == 'voce' %} atencao{% endif %}">{{ ideia.mesa_rotulo }}</span>{% endif %}
+            {% if ideia.em_obra %}<span class="marca andando">já está em obra</span>{% endif %}
+            {% if ideia.ja_existe %}<span class="marca atencao">confira: pode já existir</span>{% endif %}
+          </div>
+          <div class="par">
+            <span class="rotulo">Por que importa</span>
+            <p>{{ ideia.importa }}</p>
+          </div>
+          <div class="par">
+            <span class="rotulo">O que é preciso</span>
+            <p>{{ ideia.precisa }}</p>
+          </div>
+          {% if ideia.junta_com %}
+            <div class="par">
+              <span class="rotulo">É o mesmo trabalho que</span>
+              <span class="numeros-de-ideia">
+                {% for outra in ideia.junta_com %}<a class="n-ideia" href="#ideia-{{ outra }}">ideia {{ outra }}</a>{% endfor %}
+              </span>
+            </div>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </div>
+
+    {% if sem_analise %}
+      <div class="secao">
+        <h2>Chegaram depois desta leitura</h2>
+        <p class="abertura">Ninguém escreveu análise para estas ainda. Elas aparecem aqui, com os
+          fatos e o texto do aluno, para não sumirem por não estarem no documento.</p>
+        {% for ideia in sem_analise %}
+          <article class="ficha" id="ficha-{{ ideia.id }}">
+            <div class="ficha-topo">
+              <span class="posto">Nº {{ ideia.posicao }}</span>
+              <h3><a href="#ideia-{{ ideia.id }}">{{ ideia.titulo }}</a></h3>
+            </div>
+            <div class="medida">
+              <span class="conta">{{ ideia.votos }} voto{{ ideia.votos|pluralize }} · {{ ideia.pessoas }} pessoa{{ ideia.pessoas|pluralize }} · {{ ideia.comentarios }} comentário{{ ideia.comentarios|pluralize }}</span>
+              <span class="barra"><b class="p{{ ideia.largura }}"></b></span>
+            </div>
+            <div class="marcas">
+              <span class="marca">ideia {{ ideia.id }}</span>
+              <span class="marca">{{ ideia.categoria }}</span>
+              <span class="marca">{{ ideia.etapa }}</span>
+              <span class="marca atencao">sem análise ainda</span>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="secao">
+      <h2>Os agrupamentos</h2>
+      <p class="abertura">As ideias organizadas por assunto, com os votos somados do que está vivo
+        agora. Clique em qualquer número para ler a ideia inteira.</p>
+      <div class="rolagem">
+        <table class="familias">
+          <tr><th>Família</th><th>Ideias</th><th>Votos</th><th>Situação</th></tr>
+          {% for familia in familias %}
+            <tr>
+              <td><b>{{ familia.nome }}</b></td>
+              <td>
+                <span class="numeros-de-ideia">
+                  {% for i in familia.membros %}<a class="n-ideia" href="#ideia-{{ i.id }}" title="{{ i.titulo }}">{{ i.id }}</a>{% endfor %}
+                </span>
+              </td>
+              <td class="votos">{{ familia.votos }}</td>
+              <td>{{ familia.situacao }}</td>
+            </tr>
+          {% endfor %}
+        </table>
+      </div>
+    </div>
+
+    {% if fusoes %}
+      <div class="secao" id="juncoes">
+        <h2>As junções que eu proporia</h2>
+        <p class="abertura">Ideias diferentes que são, na prática, o mesmo trabalho. O resultado
+          se confere antes de decidir, e ele surpreende: o total de votos depois quase nunca é a
+          soma, porque quem votou em duas continua sendo uma pessoa com um voto.</p>
+
+        {% for fusao in fusoes %}
+          <div class="juncao">
+            <h3>{{ fusao.nome }}</h3>
+            <p>
+              <span class="numeros-de-ideia">
+                {% for i in fusao.membros %}<a class="n-ideia" href="#ideia-{{ i.id }}" title="{{ i.titulo }}">{{ i.id }}</a>{% endfor %}
+              </span>
+              · {{ fusao.motivo }}
+            </p>
+            <div class="juncao-acao">
+              {% if fusao.previa %}
+                <a class="botao" href="#fundir-{{ fusao.canonica.id }}">Ver como ficaria</a>
+                {% if fusao.previa.impedimento %}
+                  <span class="marca atencao">não dá agora</span>
+                {% endif %}
+              {% else %}
+                <span class="marca atencao">sem prévia: a Caixa não respondeu, e sem ver o
+                  resultado eu não ofereço o botão de juntar</span>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    {% if juncoes_feitas %}
+      <div class="secao">
+        <h2>As junções já feitas</h2>
+        <p class="abertura">Cada uma dá para desfazer: os votos, os comentários e a fase de cada
+          ideia voltam para onde estavam. O único que não volta é o voto que a pessoa tirou depois
+          da junção, e isso é de propósito: devolvê-lo seria votar no lugar dela.</p>
+        {% for feita in juncoes_feitas %}
+          <div class="juncao">
+            <h3>{{ feita.canonica.titulo }}</h3>
+            <p>
+              Absorveu
+              {% for a in feita.absorvidas %}<b>{{ a.titulo }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.
+              {% for a in feita.absorvidas %}
+                <br>Da ideia {{ a.id }} vieram {{ a.votos_movidos }} voto{{ a.votos_movidos|pluralize }}
+                e {{ a.comentarios_movidos }} comentário{{ a.comentarios_movidos|pluralize }}{% if a.votos_descartados %},
+                e {{ a.votos_descartados }} pessoa{{ a.votos_descartados|pluralize }} já tinha votado nas duas{% endif %}.
+              {% endfor %}
+            </p>
+            <div class="juncao-acao">
+              <form method="post" action="{% url 'caixa_desfazer_fusao' feita.id %}">
+                {% csrf_token %}
+                <button class="botao botao-perigo" type="submit">Desfazer esta junção</button>
+              </form>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <div class="secao">
+      <h2>Os padrões</h2>
+      <p class="abertura">O que só aparece olhando o quadro inteiro. Os números de cada parágrafo
+        são contados nesta abertura da página.</p>
+      {% for padrao in padroes %}
+        <div class="padrao">
+          <h3>{{ padrao.titulo }}</h3>
+          <p>{{ padrao.texto }}</p>
+        </div>
+      {% endfor %}
+    </div>
+
+    <p class="aviso espaco-34">
+      Nome de aluno não aparece nesta tela, nem de quem escreveu a ideia nem de quem comentou.
+      Ideia arquivada e ideia apagada também não: arquivar é dizer que aquilo saiu do quadro.
+      Página montada em {{ gerada_em|date:"d/m/Y, H:i" }} (UTC), lendo a Caixa ao vivo.
+    </p>
+
+    {% comment %}
+    OS MODAIS. Um por ideia VIVA, no fim do documento de propósito: assim eles
+    não entram no meio da leitura de quem rola a página, e o `:target` os traz
+    por cima quando alguém clica. O laço é sobre `todas` (as duas listas de
+    cima juntas) para esta marcação existir uma vez só.
+    {% endcomment %}
+    {% for fusao in fusoes %}{% if fusao.previa %}
+      <div class="modal" id="fundir-{{ fusao.canonica.id }}" role="dialog" aria-modal="true" aria-labelledby="fundir-titulo-{{ fusao.canonica.id }}">
+        <a class="modal-fundo" href="#juncoes" aria-label="Fechar" tabindex="-1"></a>
+        <div class="modal-caixa">
+          <div class="modal-topo">
+            <h2 id="fundir-titulo-{{ fusao.canonica.id }}">Como ficaria: {{ fusao.nome }}</h2>
+            <a class="modal-fechar" href="#juncoes">Fechar</a>
+          </div>
+
+          <div class="par">
+            <span class="rotulo">A ideia que fica de pé</span>
+            <p><b>{{ fusao.previa.canonica.titulo }}</b> (ideia {{ fusao.previa.canonica.id }})</p>
+          </div>
+          <div class="par">
+            <span class="rotulo">Entram nela, e passam a ser esta</span>
+            <ul class="lista-seca">
+              {% for a in fusao.previa.absorvidas %}
+                <li>{{ a.titulo }} (ideia {{ a.id }}, {{ a.votos }} voto{{ a.votos|pluralize }})</li>
+              {% endfor %}
+            </ul>
+          </div>
+
+          <div class="placar-fusao">
+            <div><b>{{ fusao.previa.votos_depois }}</b><span>votos depois da junção</span></div>
+            <div><b>{{ fusao.previa.votos_hoje }}</b><span>é quanto seria se fosse soma</span></div>
+            <div><b>{{ fusao.previa.pessoas_depois }}</b><span>pessoas atrás da ideia</span></div>
+            <div><b>{{ fusao.previa.comentarios_depois }}</b><span>comentários juntos</span></div>
+          </div>
+
+          {% if fusao.previa.votos_em_comum %}
+            <p class="aviso espaco-16">
+              {{ fusao.previa.votos_em_comum }} pessoa{{ fusao.previa.votos_em_comum|pluralize }}
+              votou em mais de uma destas ideias. Por isso o total depois é menor que a soma:
+              cada pessoa continua tendo um voto só, e ninguém perde nada.
+            </p>
+          {% endif %}
+
+          {% if fusao.previa.impedimento %}
+            <p class="aviso calado espaco-16">{{ fusao.previa.impedimento }}</p>
+            <div class="modal-rodape"><a class="botao" href="#juncoes">Fechar</a></div>
+          {% else %}
+            <form method="post" action="{% url 'caixa_fundir' %}">
+              {% csrf_token %}
+              <input type="hidden" name="canonica" value="{{ fusao.canonica.id }}">
+              <input type="hidden" name="absorvidas" value="{{ fusao.absorvidas_ids }}">
+              <div class="par">
+                <span class="rotulo">Um recado para quem escreveu (opcional)</span>
+                <input class="campo-nota" type="text" name="nota" maxlength="200"
+                       placeholder="Ex.: vamos gravar as três de uma vez.">
+              </div>
+              <p class="aviso espaco-16">
+                Ao confirmar, todo mundo que votou ou comentou nas ideias absorvidas é avisado de
+                que elas viraram esta. Dá para desfazer depois, e os votos voltam.
+              </p>
+              <div class="modal-rodape">
+                <button class="botao" type="submit">Juntar de verdade</button>
+                <a class="botao" href="#juncoes">Cancelar</a>
+              </div>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}{% endfor %}
+
+    {% for ideia in todas %}
+      <div class="modal" id="ideia-{{ ideia.id }}" role="dialog" aria-modal="true" aria-labelledby="modal-titulo-{{ ideia.id }}">
+        <a class="modal-fundo" href="#ficha-{{ ideia.id }}" aria-label="Fechar a ideia {{ ideia.id }}" tabindex="-1"></a>
+        <div class="modal-caixa">
+          <div class="modal-topo">
+            <h2 id="modal-titulo-{{ ideia.id }}">{{ ideia.titulo }}</h2>
+            <a class="modal-fechar" href="#ficha-{{ ideia.id }}">Fechar</a>
+          </div>
+          <p class="modal-carimbo">
+            Ideia {{ ideia.id }} · {{ ideia.categoria }} · {{ ideia.etapa }} ·
+            {{ ideia.votos }} voto{{ ideia.votos|pluralize }} ·
+            {{ ideia.pessoas }} pessoa{{ ideia.pessoas|pluralize }} atrás dela ·
+            criada em {{ ideia.criada }} ·
+            {% if ideia.parada_ha == 0 %}entrou nesta etapa hoje{% else %}nesta etapa há {{ ideia.parada_ha }} dia{{ ideia.parada_ha|pluralize }}{% endif %}
+          </p>
+
+          <div class="par">
+            <span class="rotulo">O que trava, nas palavras de quem escreveu</span>
+            <p class="citacao">{{ ideia.problema }}</p>
+          </div>
+
+          {% if ideia.solucao_proposta %}
+            <div class="par">
+              <span class="rotulo">O que a pessoa propõe</span>
+              <p class="citacao">{{ ideia.solucao_proposta }}</p>
+            </div>
+          {% endif %}
+
+          {% if ideia.conversa %}
+            <div class="par">
+              <span class="rotulo">O que os outros disseram ({{ ideia.conversa|length }})</span>
+              <ul class="falas">
+                {% for fala in ideia.conversa %}<li>{{ fala.texto }}</li>{% endfor %}
+              </ul>
+            </div>
+          {% endif %}
+
+          {% if ideia.avaliacao.decisao_produto %}
+            <div class="par">
+              <span class="rotulo">Decisão de produto já escrita pela equipe</span>
+              <p>{{ ideia.avaliacao.decisao_produto }}</p>
+            </div>
+          {% endif %}
+
+          {% if ideia.analisada %}
+            <div class="par">
+              <span class="rotulo">Por que importa</span>
+              <p>{{ ideia.importa }}</p>
+            </div>
+            <div class="par">
+              <span class="rotulo">O que é preciso</span>
+              <p>{{ ideia.precisa }}</p>
+            </div>
+          {% else %}
+            <p class="aviso espaco-16">Esta ideia chegou depois da leitura de 05/09/2026, então
+              ninguém escreveu análise dela ainda. O que está acima é inteiro do aluno.</p>
+          {% endif %}
+
+          {% if ideia.tarefa %}
+            <div class="par">
+              <span class="rotulo">A tarefa pronta: {{ ideia.tarefa.titulo }}</span>
+              {% comment %}
+              Um campo de texto, e não um botão de copiar, pelo mesmo motivo da
+              aba de exportar: a porta manda `script-src 'self'`. Clicar dentro
+              e apertar Ctrl+A seleciona só o que está aqui dentro.
+
+              O botão que manda isto direto para o painel de tarefas ainda não
+              existe porque o painel ainda não existe (o mantenedor está
+              terminando-o em 05/09/2026). Quando existir, é este mesmo texto
+              que ele leva — e um botão que não leva a lugar nenhum seria pior
+              do que um campo que a pessoa copia.
+              {% endcomment %}
+              <textarea class="campo-tarefa" readonly spellcheck="false" aria-label="A tarefa pronta desta ideia, para copiar">{{ ideia.tarefa.titulo }}
+
+{{ ideia.tarefa.texto }}
+
+Nasceu da ideia {{ ideia.id }} da Caixa de Sugestões ({{ ideia.votos }} voto{{ ideia.votos|pluralize }}, {{ ideia.pessoas }} pessoa{{ ideia.pessoas|pluralize }} atrás dela).</textarea>
+            </div>
+          {% endif %}
+
+          <div class="modal-rodape">
+            <a class="botao" href="{% url 'caixa_ideia' ideia.id %}">Abrir a ficha para agir</a>
+            <a class="botao" href="#ficha-{{ ideia.id }}">Fechar</a>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+
+  {% endif %}
+</div>
+{% endblock %}

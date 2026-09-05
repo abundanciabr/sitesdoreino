@@ -1,6 +1,7 @@
 from django.urls import path, re_path
 
 from apps.core.diagnostico import diag_json
+from apps.core.analise_da_caixa import analise, desfazer_fusao, fundir
 from apps.core.caixa import (
     apagar_ideia,
     arquivar_ideia,
@@ -376,6 +377,21 @@ urlpatterns = [
     # 31/08 (`20260831-002`): o conteúdo de uma ideia só se lê atrás do login,
     # e a porta é dele. GET puro, sem escrita, sem nome de aluno no que sai.
     path("caixa/exportar/", exportar, name="caixa_exportar"),
+    # A aba 6 — "A análise": a leitura das ideias da turma, com os fatos vivos
+    # e o julgamento escrito à mão (apps/core/analise_da_caixa.py). Nasceu em
+    # 05/09/2026, quando o mantenedor recebeu essa leitura numa página fora do
+    # site e decidiu que entrega dele mora no site
+    # (docs/decisoes/DECISAO-onde-mora-o-que-eu-entrego.md).
+    path("caixa/analise/", analise, name="caixa_analise"),
+    # Juntar ideias e desfazer a junção. POST de propósito, como as demais
+    # ações da Caixa: mudam coisa, e um GET seria disparado por qualquer
+    # pré-carregamento de link do navegador.
+    path("caixa/analise/fundir", fundir, name="caixa_fundir"),
+    path(
+        "caixa/analise/fusao/<int:fusao_id>/desfazer",
+        desfazer_fusao,
+        name="caixa_desfazer_fusao",
+    ),
     # A ideia por dentro, e as tres acoes. Elas sao POST de propósito: mudam
     # coisa, e um GET seria disparado por qualquer pre-carregamento de link do
     # navegador. Depois de agir, tudo redireciona de volta para a ideia — e o

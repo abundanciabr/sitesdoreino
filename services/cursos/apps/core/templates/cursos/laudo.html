@@ -1,0 +1,67 @@
+{% extends "cursos/moldura.html" %}{% comment %}
+O laudo recebido: o mais recente do envio mais recente da aula. Três estados,
+e cada um diz o que aconteceu: nenhum envio ainda, envio na fila sem laudo, e
+laudo emitido. Devolvido mostra a DATA antes do texto (lei §6): é a primeira
+coisa que a pessoa precisa saber.
+
+**Nunca identifica quem assinou** (ver o comentário em `apps/core/views.py::laudo_recebido`):
+esta tela não lê `laudo.avaliador` em lugar nenhum.
+{% endcomment %}
+{% block titulo %}Laudo · {{ aula.titulo_exibido }}{% endblock %}
+
+{% block faixa %}
+  <a href="{% url 'aula' aula.numero %}">{{ aula.titulo_exibido }}</a>
+  <span class="onde">Laudo</span>
+{% endblock %}
+
+{% block conteudo %}
+<header class="cabecalho-da-aula">
+  <p class="rotulo">{{ aula.numero }} · Laudo</p>
+  <h1>{{ aula.titulo_exibido }}</h1>
+</header>
+
+{% if not envio %}
+<section class="laudo-vazio">
+  <p>Você ainda não entregou o checkpoint desta aula. Volte para
+  <a href="{% url 'aula' aula.numero %}">a aula</a> e entregue por link quando estiver pronto.</p>
+</section>
+{% elif not laudo %}
+<section class="laudo-vazio">
+  <p class="selo">Envio {{ envio.numero }} na fila de revisão.</p>
+  <p>Recebido em {{ envio.enviado_em|date:"d/m/Y" }} às {{ envio.enviado_em|date:"H:i" }}.
+  O laudo chega em até 24 horas.</p>
+</section>
+{% else %}
+<section class="laudo">
+  {% if laudo.decisao == "devolvido" %}
+  <p class="selo devolvido">Devolvido em {{ laudo.emitido_em|date:"d/m/Y" }}: leia e reenvie até
+  {{ laudo.data_de_retorno|date:"d/m/Y" }}.</p>
+  {% elif laudo.decisao == "aberto_com_ajuste" %}
+  <p class="selo">Aberto com ajuste em {{ laudo.emitido_em|date:"d/m/Y" }}.</p>
+  {% if laudo.ajuste_feito %}<p class="pede">Ajuste feito: {{ laudo.ajuste_feito }}</p>{% endif %}
+  {% else %}
+  <p class="selo">Aberto em {{ laudo.emitido_em|date:"d/m/Y" }}.</p>
+  {% endif %}
+
+  {% if laudo.notas %}
+  <h2>A rubrica</h2>
+  <dl class="registro">
+    {% for criterio, item in laudo.notas.items %}
+    <dt>{{ criterio }}: {{ item.nota }}</dt>
+    <dd>{{ item.frase }}</dd>
+    {% endfor %}
+  </dl>
+  {% endif %}
+
+  {% if laudo.forcas %}
+  <h2>O que ficou forte</h2>
+  <ul>{% for forca in laudo.forcas %}<li>{{ forca }}</li>{% endfor %}</ul>
+  {% endif %}
+
+  {% if laudo.mudanca.texto %}
+  <h2>Uma mudança para a próxima</h2>
+  <p>{{ laudo.mudanca.texto }}</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}
