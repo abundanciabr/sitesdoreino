@@ -51,17 +51,19 @@ CORPO_DO_INSTRUMENTO = {
     "descritores": {},
 }
 
-# As cinco, uma a uma: (operationId, método, caminho, corpo). Os caminhos são os
+# As sete, uma a uma: (operationId, método, caminho, corpo). Os caminhos são os
 # reais, com `site_id` e corpo válido, para que o 401 prove o cadeado e nunca
 # um 404 ou 422 disfarçado.
-AS_CINCO = [
+AS_SETE = [
     ("listLessons", "get", f"/aulas?site_id={SITE}", None),
     ("getLesson", "get", f"/aulas/E00?site_id={SITE}", None),
     ("putLesson", "put", f"/aulas/E00?site_id={SITE}", CORPO_DA_AULA),
+    ("listInstruments", "get", "/instrumentos", None),
+    ("getInstrument", "get", "/instrumentos/studs", None),
     ("putInstrument", "put", "/instrumentos/studs", CORPO_DO_INSTRUMENTO),
     ("publishLesson", "post", f"/aulas/E00/publicar?site_id={SITE}", None),
 ]
-IDS = [operacao for operacao, *_ in AS_CINCO]
+IDS = [operacao for operacao, *_ in AS_SETE]
 
 
 @pytest.fixture(autouse=True)
@@ -82,18 +84,18 @@ def chamar(metodo: str, caminho: str, corpo=None, token: str | None = TOKEN):
     )
 
 
-@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_CINCO, ids=IDS)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_SETE, ids=IDS)
 def test_sem_token_e_401(operacao, metodo, caminho, corpo):
     assert chamar(metodo, caminho, corpo, token=None).status_code == 401
 
 
-@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_CINCO, ids=IDS)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_SETE, ids=IDS)
 def test_token_errado_e_401(operacao, metodo, caminho, corpo):
     resposta = chamar(metodo, caminho, corpo, token="token-de-outra-celula")
     assert resposta.status_code == 401
 
 
-@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_CINCO, ids=IDS)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_SETE, ids=IDS)
 def test_conjunto_de_tokens_vazio_recusa_mesmo_o_token_certo(
     settings, operacao, metodo, caminho, corpo
 ):
@@ -106,7 +108,7 @@ def test_conjunto_de_tokens_vazio_recusa_mesmo_o_token_certo(
     assert chamar(metodo, caminho, corpo).status_code == 401
 
 
-@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_CINCO, ids=IDS)
+@pytest.mark.parametrize(("operacao", "metodo", "caminho", "corpo"), AS_SETE, ids=IDS)
 def test_o_token_certo_abre_a_porta(esqueleto, operacao, metodo, caminho, corpo):
     """O cenário tem dente: com o esqueleto semeado e o token do par, as cinco
     respondem 200. Sem isto, um caminho digitado errado daria 404 sem token e

@@ -1,4 +1,4 @@
-"""A porta de MÁQUINA da sala de aula: as cinco operações do editor.
+"""A porta de MÁQUINA da sala de aula: as sete operações do editor.
 
 POR QUE ELA EXISTE
 ------------------
@@ -6,7 +6,9 @@ O conteúdo do curso mora no banco desta célula, e só nele (a lei
 anti-duplicação). O editor do Admin (degrau 1.5) lê e grava por aqui, nunca no
 banco e nunca guardando cópia. Este arquivo é o degrau 1.3 da escada
 (`PLANO-CELULA-CURSOS.md` §10, TAR-150): `listLessons`, `getLesson`,
-`putLesson`, `putInstrument` e `publishLesson`. O contrato congela no degrau
+`putLesson`, `putInstrument` e `publishLesson`; o degrau 1.3b (TAR-161)
+acrescentou `listInstruments` e `getInstrument`, porque o editor gravava a
+escala de um instrumento sem poder lê-la de volta. O contrato congela no degrau
 1.4 A PARTIR do que `manage.py export_openapi` imprime daqui, nunca de cabeça
 (`armadilhas/243`).
 
@@ -300,7 +302,7 @@ def _instrumento(instrumento: InstrumentoModel) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# AS CINCO OPERAÇÕES
+# AS SETE OPERAÇÕES
 # ---------------------------------------------------------------------------
 
 
@@ -421,6 +423,44 @@ def put_lesson(request, numero: str, site_id: str, payload: AulaParaGravarSchema
             for pausa in payload.pausas
         )
     return _aula_inteira(aula)
+
+
+@router.get(
+    "/instrumentos",
+    response=list[InstrumentoSchema],
+    operation_id="listInstruments",
+    summary="Os 13 instrumentos, na ordem dos cartoes, com escala e descritores",
+    description=(
+        "A lista que o editor usa para escolher o instrumento cabivel de uma\n"
+        "aula e para abrir a tela de cada cartao. Os instrumentos sao de\n"
+        "plataforma inteira, por isso nao ha `site_id`. Vem na ordem do cartao\n"
+        "(1 a 13), inteiros: slug, nome canonico, cartao, escala, minimos,\n"
+        "secao do Padrao, descritores e versao."
+    ),
+)
+def list_instruments(request):
+    return [
+        _instrumento(instrumento)
+        for instrumento in InstrumentoModel.objects.order_by("cartao")
+    ]
+
+
+@router.get(
+    "/instrumentos/{slug}",
+    response=InstrumentoSchema,
+    operation_id="getInstrument",
+    summary="Um instrumento inteiro, pelo slug",
+    description=(
+        "O que `putInstrument` grava, lido de volta: escala, minimos, secao do\n"
+        "Padrao, descritores e a versao vigente. 404 se o slug nao existe."
+    ),
+)
+def get_instrument(request, slug: str):
+    try:
+        instrumento = InstrumentoModel.objects.get(slug=slug)
+    except InstrumentoModel.DoesNotExist:
+        raise HttpError(404, f"o instrumento '{slug}' não existe")
+    return _instrumento(instrumento)
 
 
 @router.put(

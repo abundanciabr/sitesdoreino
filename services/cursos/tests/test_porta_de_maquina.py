@@ -63,10 +63,12 @@ OS_CAMPOS_DA_LISTA = {
     "e_boss",
     "banca_nivel",
 }
-AS_CINCO_OPERACOES = {
+AS_SETE_OPERACOES = {
     "listLessons",
     "getLesson",
     "putLesson",
+    "listInstruments",
+    "getInstrument",
     "putInstrument",
     "publishLesson",
 }
@@ -457,6 +459,58 @@ def test_publicar_404_para_aula_que_nao_existe(esqueleto):
 
 
 # ---------------------------------------------------------------------------
+# listInstruments e getInstrument: o que o editor grava, lido de volta (1.3b)
+# ---------------------------------------------------------------------------
+
+
+def test_listar_instrumentos_devolve_os_13_na_ordem_dos_cartoes(esqueleto):
+    resposta = pedir("/instrumentos")
+    assert resposta.status_code == 200, resposta.content
+    lista = corpo(resposta)
+    assert [item["cartao"] for item in lista] == list(range(1, 14))
+    assert lista[0]["slug"] == "studs"
+    assert lista[-1]["slug"] == "laudo_de_banca"
+    assert set(lista[0]) == {
+        "slug",
+        "nome_canonico",
+        "cartao",
+        "escala",
+        "minimo_exercicio",
+        "minimo_contrato",
+        "secao_do_padrao",
+        "descritores",
+        "versao",
+    }
+
+
+def test_get_instrument_le_de_volta_o_que_put_instrument_gravou(esqueleto):
+    gravado = gravar(
+        "/instrumentos/studs",
+        {
+            "escala": {"S": [0, 5]},
+            "minimo_exercicio": "18 no exercício",
+            "minimo_contrato": "20 no contrato",
+            "secao_do_padrao": "8 Diagnóstico",
+            "descritores": {"S": {"5": "a silhueta lê a 30 studs"}},
+        },
+    )
+    assert gravado.status_code == 200, gravado.content
+    resposta = pedir("/instrumentos/studs")
+    assert resposta.status_code == 200, resposta.content
+    dado = corpo(resposta)
+    assert dado["escala"] == {"S": [0, 5]}
+    assert dado["descritores"] == {"S": {"5": "a silhueta lê a 30 studs"}}
+    assert dado["minimo_contrato"] == "20 no contrato"
+    assert dado["versao"] == 2
+    assert dado["cartao"] == 1 and dado["nome_canonico"] == "Teste STUDS"
+
+
+def test_get_instrument_404_para_slug_que_nao_existe(esqueleto):
+    resposta = pedir("/instrumentos/nao-existe")
+    assert resposta.status_code == 404
+
+
+# ---------------------------------------------------------------------------
 # export_openapi: o contrato vivo que o degrau 1.4 vai congelar
 # ---------------------------------------------------------------------------
 
@@ -467,14 +521,14 @@ def exportar() -> dict:
     return json.loads(saida.getvalue())
 
 
-def test_export_openapi_traz_as_cinco_operacoes_e_nenhuma_a_mais():
+def test_export_openapi_traz_as_sete_operacoes_e_nenhuma_a_mais():
     documento = exportar()
     ids = {
         operacao["operationId"]
         for item in documento["paths"].values()
         for operacao in item.values()
     }
-    assert ids == AS_CINCO_OPERACOES
+    assert ids == AS_SETE_OPERACOES
 
 
 def test_o_contrato_declara_o_bearer_na_raiz_e_nenhuma_operacao_o_desliga():
