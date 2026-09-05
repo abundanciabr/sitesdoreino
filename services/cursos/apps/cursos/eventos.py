@@ -2,11 +2,16 @@
 """Os fatos que a sala de aula afirma ao resto da plataforma, e o único lugar
 que monta o `data` de cada um.
 
-Lei deste arquivo: `contracts/eventos/envio.recebido.v1.json` e
-`contracts/eventos/revisao.prazo-estourado.v1.json`, congelados pelo Rito de
-Contrato com o mantenedor presente (`PLANO-CELULA-CURSOS.md` §5). Nada aqui
-inventa campo, renomeia campo ou acrescenta campo "que seria útil": divergir do
-contrato é parar e avisar, nunca editar `contracts/`.
+Lei deste arquivo: `contracts/eventos/envio.recebido.v1.json`,
+`contracts/eventos/revisao.prazo-estourado.v1.json` e, desde o degrau 2.2
+(TAR-156), `contracts/eventos/laudo.emitido.v1.json`,
+`contracts/eventos/aula.concluida.v1.json` e
+`contracts/eventos/checkpoint.devolvido.v1.json` — os três do laudo JÁ
+NASCERAM CONGELADOS na gênese da célula, e este arquivo é quem os emite pela
+primeira vez. Congelados pelo Rito de Contrato com o mantenedor presente
+(`PLANO-CELULA-CURSOS.md` §5). Nada aqui inventa campo, renomeia campo ou
+acrescenta campo "que seria útil": divergir do contrato é parar e avisar,
+nunca editar `contracts/`.
 
 **Por que os construtores moram todos aqui, e não espalhados no serviço.** O
 `data` de cada evento é a superfície que as outras células vão ler por anos. Um
@@ -32,10 +37,13 @@ from typing import Any
 from django.db import transaction
 
 from . import tasks
-from .models import Envio, OutboxEvent
+from .models import Aula, Envio, Laudo, OutboxEvent
 
 ENVIO_RECEBIDO = "envio.recebido"
 PRAZO_ESTOURADO = "revisao.prazo-estourado"
+LAUDO_EMITIDO = "laudo.emitido"
+AULA_CONCLUIDA = "aula.concluida"
+CHECKPOINT_DEVOLVIDO = "checkpoint.devolvido"
 
 
 class EventoForaDaTransacao(Exception):
@@ -119,4 +127,60 @@ def emitir_prazo_estourado(envio: Envio, *, horas_de_atraso: int) -> OutboxEvent
             "horas_de_atraso": horas_de_atraso,
         },
         envelope_extra={"ator_id": None},
+    )
+
+
+def emitir_laudo_emitido(laudo: Laudo) -> OutboxEvent:
+    """`laudo.emitido.v1`: nasce em `apps/cursos/laudo.py::emitir`, sempre.
+
+    `ator_id` é quem ASSINOU o laudo (`laudo.avaliador_id`), nunca a IA
+    (`PLANO-CELULA-CURSOS.md` §7, [INV-CUR-L4]): o Assistente de laudo só
+    prepara, e nada que ele produz chega a este envelope.
+    """
+    envio = laudo.envio
+    return emitir(
+        LAUDO_EMITIDO,
+        {
+            "site_id": envio.aula.curso.site_id,
+            "envio_id": str(envio.pk),
+            "laudo_id": str(laudo.pk),
+            "decisao": laudo.decisao,
+            "avaliador_papel": laudo.papel,
+        },
+        envelope_extra={"ator_id": laudo.avaliador_id},
+    )
+
+
+def emitir_aula_concluida(aula: Aula, *, ator_id: str) -> OutboxEvent:
+    """`aula.concluida.v1`: nasce em `apps/cursos/laudo.py::emitir`, só quando a
+    decisão é `aberto` ou `aberto_com_ajuste` ([INV-CUR-P2]: a porta só abre
+    por laudo, nunca por data, XP ou pagamento). `ator_id` é o ALUNO, o único
+    lugar em que ele viaja neste evento — é a quem a gamificação credita."""
+    return emitir(
+        AULA_CONCLUIDA,
+        {
+            "site_id": aula.curso.site_id,
+            "curso_id": str(aula.curso_id),
+            "aula_id": str(aula.pk),
+            "e_boss": aula.e_boss,
+        },
+        envelope_extra={"ator_id": ator_id},
+    )
+
+
+def emitir_checkpoint_devolvido(laudo: Laudo) -> OutboxEvent:
+    """`checkpoint.devolvido.v1`: nasce em `apps/cursos/laudo.py::emitir`, só
+    quando a decisão é `devolvido`. `data_de_retorno` é sempre amanhã ou
+    depois no dia de São Paulo ([INV-CUR-L1]), garantido pelo serviço antes de
+    chegar aqui."""
+    envio = laudo.envio
+    return emitir(
+        CHECKPOINT_DEVOLVIDO,
+        {
+            "site_id": envio.aula.curso.site_id,
+            "aula_id": str(envio.aula_id),
+            "envio_id": str(envio.pk),
+            "data_de_retorno": laudo.data_de_retorno.isoformat(),
+        },
+        envelope_extra={"ator_id": laudo.avaliador_id},
     )

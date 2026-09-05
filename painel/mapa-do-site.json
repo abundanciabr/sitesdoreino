@@ -477,6 +477,35 @@
       "descricao": "Por onde o editor do Admin lê e grava o conteúdo do curso: a lista das encomendas, cada aula com as 16 peças e as pausas, a escala de cada instrumento, e o botão de publicar. O texto das aulas mora só aqui, e entra só por aqui. Só responde a quem apresenta a senha de máquina."
     },
     {
+      "celula": "cursos",
+      "rota": "<str:numero>/laudo",
+      "endereco": "/cursos/<str:numero>/laudo",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "O laudo recebido",
+      "descricao": "O laudo mais recente do envio mais recente desta aula: a rubrica, as três forças e a mudança pedida. Sem envio ainda, ou envio ainda sem laudo, a tela diz isso. Quando devolvido, a data de retorno aparece antes do texto. Nunca mostra quem assinou.",
+      "exemplo": "/cursos/E00/laudo"
+    },
+    {
+      "celula": "cursos",
+      "rota": "plantao",
+      "endereco": "/cursos/plantao",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O plantão: a fila de revisão",
+      "descricao": "A fila de envios esperando laudo, os vencidos primeiro, o reenvio com o laudo anterior ao lado. Só entra quem está na lista CURSOS_PROFESSORES; lista vazia, e-mail fora dela, ou a identidade fora do ar dão a mesma resposta, restrito."
+    },
+    {
+      "celula": "cursos",
+      "rota": "plantao/<int:envio_id>",
+      "endereco": "/cursos/plantao/<int:envio_id>",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "O formulário do laudo",
+      "descricao": "A rubrica completa, as três forças, a mudança, a decisão, a data de retorno (quando devolvido) e a pergunta de amanhã de manhã. Uma recusa (rubrica incompleta, força genérica, decisão inexistente...) redesenha a mesma tela com o que foi digitado preservado, nunca perde o que a professora escreveu.",
+      "exemplo": "/cursos/plantao/1"
+    },
+    {
       "celula": "encomendas",
       "rota": "healthz",
       "endereco": "-",
