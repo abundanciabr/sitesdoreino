@@ -150,8 +150,9 @@ primeira oportunidade de violá-la.
   `services/forum/tests/test_inv_forum_nao_assina_sessao.py`,
   `services/gamificacao/tests/test_inv_gamificacao_nao_assina_sessao.py` e
   `services/encomendas/tests/test_inv_encomendas_nao_assina_sessao.py`,
-  `services/metricas/tests/test_inv_metricas_nao_assina_sessao.py` e
-  `services/cursos/tests/test_inv_cursos_nao_assina_sessao.py` —
+  `services/metricas/tests/test_inv_metricas_nao_assina_sessao.py`,
+  `services/cursos/tests/test_inv_cursos_nao_assina_sessao.py` e
+  `services/pages/tests/test_inv_pages_nao_assina_sessao.py` —
   medem a
   CONFIGURAÇÃO da célula (sem SessionMiddleware, sem django.contrib.sessions
   e sem SESSION_ENGINE no settings dela), porque sem essas três
@@ -166,7 +167,11 @@ primeira oportunidade de violá-la.
   do primeiro dólar, tela cheia uma vez só — o estado mora no modelo, como
   as celebrações da gamificação) e em `cursos` (04/09/2026; ali são duas, a
   cerimônia do Boss e "o aluno já leu o laudo?", e o estado mora no
-  `Progresso`);
+  `Progresso`) e em `pages` (05/09/2026; ali a tentação é a Prancheta do
+  portfólio, que guarda o que o aluno já marcou na lista de conferência — e o
+  critério AC-06 do `CS-PAGES-0001` exige justamente que essa marcação
+  atravesse aparelhos, coisa que sessão não faz, então o caminho curto
+  reprovaria o próprio critério antes de deslogar a plataforma);
   toda célula futura que consuma sessão herda a mesma obrigação. **No `forum`
   a obrigação pesa mais que o normal:** foi um requisito de login que criou a
   célula (`DECISAO-forum-da-escola.md` §2 — *"logado uma única vez, o site

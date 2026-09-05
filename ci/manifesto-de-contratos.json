@@ -76,6 +76,10 @@
       "freeze": "not-applicable",
       "reason": "Célula nascida em 03/09/2026 (degrau 2.1 da escada do §7 de docs/decisoes/DECISAO-fila-do-primeiro-dolar.md): config/urls.py expõe só /healthz, não há config/api.py nem API pública. O contrato (contracts/encomendas.openapi.yaml; em papel em docs/decisoes/CONTRATO-encomendas-v1-rascunho.md) entra pelo RITOS.md §3 no degrau 2.8, DEPOIS da porta de máquina do degrau 2.7 exportar o contrato vivo — a ordem que armadilhas/228 e 243 provaram."
     },
+    "pages": {
+      "freeze": "not-applicable",
+      "reason": "Célula nascida em 05/09/2026 (degrau 01 da escada do §5 de docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md, corredor docs/changespecs/CS-PAGES-0001.md): config/urls.py expõe só /healthz, não há config/api.py nem API pública. O contrato (contracts/pages.openapi.yaml) e os eventos pages.portfolio.* entram pelo RITOS.md §3 no degrau 03, em PR próprio conduzido pela maestro, DEPOIS de a porta de máquina exportar o contrato vivo — a ordem que armadilhas/228 e 243 provaram, e que armadilhas/304 documenta como o erro clássico de plano escrito fora desta casa."
+    },
     "leads": {
       "freeze": "required",
       "frozen": "contracts/leads.openapi.yaml",
