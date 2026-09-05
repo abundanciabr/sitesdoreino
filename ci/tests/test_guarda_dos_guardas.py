@@ -748,6 +748,19 @@ def test_parse_do_documento_real_casa_os_blocos_de_hoje() -> None:
         # 2.1 da escada): `prazo_em` = `enviado_em` + 24 h e não muda por API
         # nenhuma; o estouro se registra, nunca alonga.
         "INV-CUR-L3",
+        # Os cinco do LAUDO, célula `cursos` (05/09/2026, TAR-156, degrau 2.2
+        # da escada): L1 devolvido exige data de retorno de amanhã em diante,
+        # L2 "reprovado" não existe em vocabulário nenhum, L5 a rubrica
+        # completa (nota+frase) antes de qualquer campo livre, L6 exatamente
+        # três forças (nenhuma genérica) e exatamente uma mudança (com aula
+        # que existe no curso), L7 a pergunta de amanhã de manhã só aceita
+        # `true`. L4 (nada de decisão/data/pergunta vem da IA) fica para o
+        # degrau 2.3, quando `RascunhoDaIA` ganhar o corpo real.
+        "INV-CUR-L1",
+        "INV-CUR-L2",
+        "INV-CUR-L5",
+        "INV-CUR-L6",
+        "INV-CUR-L7",
         "INV-CI01",
     ]
 

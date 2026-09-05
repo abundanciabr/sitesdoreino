@@ -1,0 +1,117 @@
+{% extends "cursos/moldura.html" %}{% comment %}
+O formulário do laudo: a rubrica primeiro, completa, antes de qualquer campo
+livre; depois as três forças, a mudança, a decisão, a data de retorno (só
+exigida quando "devolvido") e a pergunta de amanhã de manhã.
+
+Na recusa (422), a view RE-DESENHA esta mesma tela com `enviado` (o que a
+professora digitou) e `erro` (a frase de `laudo.py::LaudoRecusado`): nada do
+que foi escrito se perde. Formulário normal com melhoria progressiva: nenhum
+JS decide o que aparece, e a caixa da pergunta de amanhã não tem opção de
+"não" — ausente é a resposta que o servidor lê como "não respondida".
+{% endcomment %}
+{% block titulo %}Laudo de {{ envio.pessoa.nome_exibido }}{% endblock %}
+
+{% block faixa %}
+  <a href="{% url 'plantao' %}">Plantão</a>
+  <span class="onde">{{ envio.aula.titulo_exibido }} · {{ envio.pessoa.nome_exibido }}</span>
+{% endblock %}
+
+{% block conteudo %}
+{% if erro %}<p class="erro">{{ erro }}</p>{% endif %}
+
+<header class="cabecalho-da-aula">
+  <p class="rotulo">{{ envio.aula.numero }} · envio {{ envio.numero }}</p>
+  <h1>{{ envio.aula.titulo_exibido }}</h1>
+  <p>Recebido em {{ envio.enviado_em|date:"d/m/Y" }} às {{ envio.enviado_em|date:"H:i" }}.</p>
+</header>
+
+<section class="envio">
+  <h2>O que a pessoa entregou</h2>
+  <ul class="links">
+    {% for link in envio.links %}<li>{{ link.rotulo }}: <a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.url }}</a></li>{% endfor %}
+  </ul>
+  {% if envio.readme %}<p class="pede">{{ envio.readme }}</p>{% endif %}
+</section>
+
+{% if laudo_anterior %}
+<section class="laudo-anterior">
+  <h2>O laudo anterior</h2>
+  <p class="miudo">Este é um reenvio. A mudança pedida da última vez:</p>
+  <p class="mudanca">{{ laudo_anterior.mudanca.texto }}</p>
+</section>
+{% endif %}
+
+<form method="post" action="{% url 'plantao-ficha' envio.id %}">
+  {% csrf_token %}
+
+  <section class="rubrica">
+    <h2>A rubrica</h2>
+    {% if criterios %}
+    <p class="miudo">Dê uma nota a cada critério e escreva uma frase observável para cada nota: nota sem frase não diz nada.</p>
+    {% for criterio in criterios %}
+    <div class="criterio">
+      <label>{{ criterio.nome }}
+        <select name="nota_{{ criterio.indice }}" required>
+          <option value="">Nota</option>
+          {% for nota in criterio.notas %}<option value="{{ nota }}"{% if nota|stringformat:"s" == criterio.valor_nota %} selected{% endif %}>{{ nota }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>Por quê
+        <input type="text" name="frase_{{ criterio.indice }}" value="{{ criterio.valor_frase }}" maxlength="300" required>
+      </label>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p class="miudo">Esta aula não tem instrumento com escala.</p>
+    {% endif %}
+  </section>
+
+  <section class="forcas">
+    <h2>Três forças</h2>
+    <p class="miudo">Específicas sobre este trabalho: "bonito", "legal" ou "parabéns" não dizem nada e são recusadas.</p>
+    <label>Força 1<input type="text" name="forca_0" value="{{ enviado.forca_0 }}" maxlength="300" required></label>
+    <label>Força 2<input type="text" name="forca_1" value="{{ enviado.forca_1 }}" maxlength="300" required></label>
+    <label>Força 3<input type="text" name="forca_2" value="{{ enviado.forca_2 }}" maxlength="300" required></label>
+  </section>
+
+  <section class="mudanca">
+    <h2>Uma mudança</h2>
+    <p class="miudo">A mudança mais específica para a próxima entrega, e a aula onde ela se aprende.</p>
+    <label>O que muda
+      <textarea name="mudanca_texto" rows="3" required>{{ enviado.mudanca_texto }}</textarea>
+    </label>
+    <label>Onde se aprende
+      <select name="mudanca_aula" required>
+        <option value="">Escolha a aula</option>
+        {% for uma_aula in aulas %}<option value="{{ uma_aula.id }}"{% if uma_aula.id|stringformat:"s" == enviado.mudanca_aula %} selected{% endif %}>{{ uma_aula.numero }} · {{ uma_aula.titulo }}</option>{% endfor %}
+      </select>
+    </label>
+  </section>
+
+  <section class="decisao">
+    <h2>A decisão</h2>
+    <label class="radio"><input type="radio" name="decisao" value="aberto"{% if enviado.decisao == "aberto" %} checked{% endif %} required> Aberto: a porta seguinte abre</label>
+    <label class="radio"><input type="radio" name="decisao" value="aberto_com_ajuste"{% if enviado.decisao == "aberto_com_ajuste" %} checked{% endif %}> Aberto com ajuste: a porta abre, com um ajuste já feito</label>
+    <label class="radio"><input type="radio" name="decisao" value="devolvido"{% if enviado.decisao == "devolvido" %} checked{% endif %}> Devolvido: volta para reenvio, com data marcada</label>
+
+    <label>Se aberto com ajuste, o que foi ajustado
+      <textarea name="ajuste_feito" rows="2">{{ enviado.ajuste_feito }}</textarea>
+    </label>
+
+    <label>Se devolvido, data de retorno (amanhã ou depois)
+      <input type="date" name="data_de_retorno" value="{{ enviado.data_de_retorno }}">
+    </label>
+  </section>
+
+  <section class="pergunta-de-amanha">
+    <h2>A pergunta de amanhã de manhã</h2>
+    <label class="checkbox">
+      <input type="checkbox" name="sabe_o_que_fazer_amanha" value="sim"{% if enviado.sabe_o_que_fazer_amanha == "sim" %} checked{% endif %}>
+      Esta pessoa sabe o que fazer amanhã de manhã
+    </label>
+    <p class="miudo">Sem certeza: deixe em branco e converse com a pessoa antes de enviar o laudo. Não se registra recusa.</p>
+  </section>
+
+  <button type="submit">Emitir laudo</button>
+</form>
+{% endblock %}

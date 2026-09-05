@@ -49,12 +49,19 @@ class Ator:
     `papel_do_site` é o `papel` que a `identidade` devolve, guardado como VEIO.
     Existe para UMA coisa: a plateia `staff` do menu do topo. Usá-lo para
     liberar qualquer coisa é a violação que a lei da identidade proíbe.
+
+    `eh_professor` é a plateia do plantão (degrau 2.2): a lista
+    `CURSOS_PROFESSORES`, e SÓ ela — não depende de `eh_aluno` nem de
+    `matricula_conferida`, porque a professora não precisa de matrícula para
+    dar laudo. Reconhecer não é autorizar: quem decide se alguém entra no
+    plantão é esta célula, fail-CLOSED.
     """
 
     pessoa: Pessoa | None
     eh_aluno: bool = False
     matricula_conferida: bool = False
     papel_do_site: str = ""
+    eh_professor: bool = False
 
     @property
     def autenticado(self) -> bool:
@@ -62,6 +69,18 @@ class Ator:
 
 
 VISITANTE = Ator(pessoa=None)
+
+
+def _lista_de_emails(nome_da_variavel: str) -> set[str]:
+    """Uma lista de e-mails do env, normalizada. Vazia ⇒ ninguém.
+
+    Lida no PONTO DE USO e com default inofensivo (`armadilhas/097`): env
+    ausente fecha o poder, mas não derruba o container. **Fail-closed por
+    construção:** variável ausente ou vazia significa *ninguém tem este
+    poder*, nunca *todo mundo tem*. Molde: `services/forum/apps/core/sessao.py`.
+    """
+    cru = os.environ.get(nome_da_variavel, "") or ""
+    return {parte.strip().lower() for parte in cru.split(",") if parte.strip()}
 
 
 def site_atual() -> str | None:
@@ -140,4 +159,5 @@ def _resolver(request) -> Ator:
         eh_aluno=(categoria == CATEGORIA_ALUNO),
         matricula_conferida=conferida,
         papel_do_site=(corpo.get("papel") or "").strip(),
+        eh_professor=email in _lista_de_emails("CURSOS_PROFESSORES"),
     )
