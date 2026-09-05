@@ -1,0 +1,21 @@
+{
+  "arquivo": "161-sala-de-aula-degrau-1-3b-a-porta-ganha-a-leitura-de-instrume",
+  "id": "TAR-161",
+  "titulo": "Sala de aula, degrau 1.3b: a porta ganha a leitura de instrumentos (listInstruments e getInstrument) antes de congelar o contrato",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [
+    "TAR-150"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: GET /api/cursos/instrumentos e GET /api/cursos/instrumentos/{slug} com Bearer por par (401 sem token), no export do contrato; testes; make ci verde. Deploy vermelho ate o degrau 1.7 e esperado (armadilhas/088).",
+  "despacho": "Degrau 1.3b (achado do robo da TAR-150): o editor do Admin grava a escala de um instrumento por putInstrument mas nao tem como le-la de volta pela porta. Duas operacoes de leitura, no molde exato das cinco que ja existem em services/cursos/apps/core/api.py, com os mesmos testes de 401. Depois delas o contrato congela (degrau 1.4, TAR-151).",
+  "origem": "relatorio do robo da TAR-150 (PR #1055): entre as cinco operacoes nao havia leitura de instrumento",
+  "criada_em": "2026-09-05"
+}
