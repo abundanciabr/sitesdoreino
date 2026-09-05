@@ -118,9 +118,21 @@ BLOCOS = (
     ("**Auditoria de qualidade**", "a Definição de Pronto item a item, e o que o crítico mais duro atacaria"),
 )
 
+# Reconhecer o BLOCO, não decorar a pontuação. `**O que mudou**` e
+# `**O que mudou:**` são o mesmo bloco para quem lê, e barrar a segunda forma
+# só produziria o relatório escrito duas vezes na tela do mantenedor. Os
+# asteriscos continuam exigidos: sem eles, a mesma frase solta no meio de um
+# parágrafo passaria por título.
+TITULOS = tuple(
+    re.compile(r"\*\*\s*" + re.escape(titulo.strip("*")) + r"\s*:?\s*\*\*", re.I)
+    for titulo, _ in BLOCOS
+)
+
 # O veredito. É a linha que o mantenedor lê primeiro: ele é leigo em código e o
 # que ele precisa saber é se acabou. "NÃO PRONTO" é resposta legítima e honesta.
-VEREDITO = re.compile(r"veredito\s*:?\s*\**\s*(n[ãa]o\s+pronto|pronto)\b", re.I)
+# O separador é frouxo de propósito (dois-pontos, asterisco, travessão, hífen):
+# a régua é o veredito estar escrito, não a pontuação escolhida para escrevê-lo.
+VEREDITO = re.compile(r"veredito[\s:*—–\-]*\b(n[ãa]o\s+pronto|pronto)\b", re.I)
 
 # O plano de abertura, cobrado pelo --plano e conferido só para o conselho.
 PLANO = re.compile(r"^\s*#{1,4}\s*.*\bplano\b", re.I | re.M)
@@ -274,7 +286,7 @@ def _prestou_contas(entrada: dict) -> bool:
         return False
     if not texto.strip():
         return False
-    return all(titulo in texto for titulo, _ in BLOCOS) and bool(VEREDITO.search(texto))
+    return all(t.search(texto) for t in TITULOS) and bool(VEREDITO.search(texto))
 
 
 def _teve_plano(entradas: list[dict], comeco: int) -> bool:

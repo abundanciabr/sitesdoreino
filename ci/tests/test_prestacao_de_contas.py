@@ -294,6 +294,37 @@ def test_relatorio_sem_veredito_e_recusado(tmp_path):
     ]))
 
 
+def test_pontuacao_natural_do_relatorio_nao_barra_o_robo(tmp_path):
+    """O portão reconhece o BLOCO, não decora a pontuação. Barrar
+    `**O que mudou:**` por causa de dois-pontos só faria o mantenedor ler o
+    mesmo relatório duas vezes na tela."""
+    for variante in (
+        CONTAS_COMPLETAS.replace("**O que mudou**", "**O que mudou:**"),
+        CONTAS_COMPLETAS.replace("**Veredito:** PRONTO", "**Veredito** — PRONTO"),
+        CONTAS_COMPLETAS.replace("**Veredito:** PRONTO", "Veredito: **PRONTO**"),
+        CONTAS_COMPLETAS.replace("**Auditoria de qualidade**", "**AUDITORIA DE QUALIDADE**"),
+    ):
+        _silencio(_decidir(tmp_path, [
+            _humano("conserte"),
+            _ferramenta("Edit", {"file_path": "a.py"}),
+            _fala(variante),
+        ]))
+
+
+def test_os_mesmos_titulos_soltos_na_prosa_nao_valem(tmp_path):
+    """O par vermelho do teste acima: frouxo na pontuação, firme no bloco.
+    Sem os asteriscos, um parágrafo corrido satisfaria o portão sem entregar
+    relatório nenhum."""
+    prosa = ("Fiz o conserto. O que mudou foi o webhook, o que foi verificado e como "
+             "está nos testes, o que foi cortado e por quê: nada, o que eu preciso "
+             "decidir: nada, auditoria de qualidade ok. Veredito: PRONTO.")
+    _recusa_que_ensina(_decidir(tmp_path, [
+        _humano("conserte"),
+        _ferramenta("Edit", {"file_path": "a.py"}),
+        _fala(prosa),
+    ]))
+
+
 def test_veredito_nao_pronto_e_resposta_aceita(tmp_path):
     """NÃO PRONTO é honestidade, não falha. Um portão que só aceitasse PRONTO
     ensinaria o robô a mentir — que é a doença que ele existe para curar."""
