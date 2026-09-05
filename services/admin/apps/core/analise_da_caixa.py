@@ -135,14 +135,18 @@ ANALISE = {
         "mesa": "site",
         "importa": "Quem escreveu terminou as aulas e travou na reta final. É o momento clássico de "
         "desistência, com o primeiro dinheiro já quase na mesa.",
-        "precisa": "Dois degraus: a Lívia escreve os critérios (o que entra, quantos itens, ordem, o "
-        "que é qualidade) e um robô faz a tela de checklist com o progresso salvo. "
-        "O documento de obra já existe: CS-CURSOS-0002.",
+        "precisa": "Só a sua assinatura, aqui mesmo nesta tela. Os critérios já chegaram: a "
+        "professora escreveu o rascunho dela em 05/09 (pelo menos 3 tipos de modelo, 3 peças de "
+        "cada, a maioria em high poly, nada parecido com a aula) e ele está guardado no plano do "
+        "portfólio. Assinado o documento, a casa nova das páginas do aluno, chamada pages, nasce "
+        "primeiro: é a fundação dela mais um passo seu no servidor. Depois vem a tela do guia, "
+        "com o checklist salvo por aluno. O documento de obra já existe: CS-PAGES-0001.",
         "tarefa": {
             "titulo": "Guia de portfólio com checklist na área do aluno",
-            "texto": "Tela com os critérios da equipe e um checklist cujo progresso fica salvo por "
-            "aluno. Pré-requisito: os critérios escritos pela Lívia (sem eles a obra não começa). "
-            "Documento de obra: CS-CURSOS-0002.",
+            "texto": "Tela com os critérios da escola e um checklist cujo progresso fica salvo por "
+            "aluno, na casa pages. Pré-requisito: a fundação da célula pages. Os critérios da "
+            "professora já existem, em rascunho, no plano do portfólio. "
+            "Documento de obra: CS-PAGES-0001.",
         },
     },
     19: {
