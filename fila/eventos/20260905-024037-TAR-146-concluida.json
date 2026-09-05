@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260905-024037-TAR-146-concluida",
+  "tarefa": "TAR-146",
+  "evento": "concluida",
+  "quando": "2026-09-05T02:40:37+00:00",
+  "quem": "sessao-cursos-genese-2026-09-05",
+  "evidencia": "https://github.com/abundanciabr/sitesdoreino/pull/1046 (aberto; services/cursos com /healthz nas duas formas; 13 testes verdes e black limpo; os guardas provados por MUTACAO com vermelho na assercao (armadilhas/195): SessionMiddleware -> test_sem_middleware_de_sessao, TIME_ZONE=Chicago -> 4 testes de test_fuso_horario.py, csrftoken -> test_o_cookie_de_csrf_tem_nome_proprio, prefixo no urls -> test_urlconf_nao_conhece_o_prefixo; celulas.yml consome: [], manifesto not-applicable, rollback.yml, mapa-do-site, AGENTS.cursos.md e DECISAO-celula-de-cursos.md no lugar; 45 testes-guarda do ci e muralhas PASS 13/13; deploy vermelho ate o degrau 1.7 e esperado, armadilhas/088)",
+  "verificado_em": "2026-09-04"
+}
