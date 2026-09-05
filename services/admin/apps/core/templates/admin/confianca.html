@@ -1,0 +1,218 @@
+{% extends "admin/base.html" %}
+{% comment %}
+A CONFIANÇA (/admin/placar/confianca/, 05/09/2026, degrau 11 do plano do painel
+de gestão, §6.6).
+
+Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
+tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
+admin/base.html (tests/test_estilo_nao_volta_para_a_marcacao.py), e toda classe
+usada abaixo já existe lá.
+
+A regra que governa cada `{% if %}` desta tela: o VEREDITO vem antes de
+qualquer conta. Nenhuma frase de "está tudo em dia" pode ser desenhada num
+ramo onde a medição não respondeu. Regras em apps/core/confianca.py.
+{% endcomment %}
+{% block titulo %}A confiança nos números{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
+  <h1>Dá para acreditar nos números?</h1>
+  <p class="subtitulo">
+    Três perguntas sobre a própria medição, respondidas antes de você agir sobre
+    qualquer número do placar.
+  </p>
+
+  <p class="lei">
+    Quando alguma dessas perguntas não puder ser feita, esta tela diz que não
+    perguntou. Ela nunca escreve "está tudo limpo" para dizer que não conseguiu
+    olhar: zero é uma afirmação sobre o mundo, e silêncio não é.
+  </p>
+
+  {% comment %}1. COBERTURA{% endcomment %}
+  <h2 class="titulo-de-lista espaco-34">Continua chegando fato de tudo?</h2>
+
+  {% if cobertura.veredito == "medindo" %}
+    {% if cobertura.parados %}
+    <p class="aviso borda-amarela">
+      <b>Parou de chegar:</b>
+      {% for a in cobertura.parados %}{{ a.nome }} (há {{ a.dias }} dias){% if not forloop.last %}, {% endif %}{% endfor %}.
+      Ou ninguém fez isso no site nesse tempo, ou o aviso parou de sair de
+      alguma parte da plataforma. Enquanto isso não for olhado, os números
+      históricos desses assuntos envelhecem calados.
+    </p>
+    <p class="recado">
+      <b>O gesto:</b>
+      <a href="{% url 'caixa_robos' %}">abra a fila dos robôs</a> e peça que alguém
+      olhe por que esse aviso parou de sair.
+    </p>
+    {% else %}
+    <p class="nota">Tudo que a plataforma conta continua chegando.</p>
+    {% endif %}
+
+    <ul class="riscas espaco-16">
+      {% for a in cobertura.assuntos %}
+      <li>
+        <b>{{ a.nome }}</b>
+        {% if a.quantidade is not None %}{{ a.quantidade }} fato{{ a.quantidade|pluralize:"s" }}{% endif %}
+        {% if a.ultimo %}, o último {{ a.ultimo }}{% endif %}
+        {% if a.parou %}<span class="selo-vermelho">calado há {{ a.dias }} dias</span>
+        {% else %}<span class="selo-verde">chegando</span>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+
+    <p class="recado-fraco espaco-16">
+      Esta lista é a do que já chegou alguma vez. Um assunto que nunca chegou
+      nenhuma vez não aparece aqui, porque a parte que guarda os fatos só
+      conhece o que passou por ela. A régua de "calado" é
+      {{ dias_para_dizer_que_parou }} dias.
+    </p>
+
+  {% elif cobertura.veredito == "vazia" %}
+  <p class="aviso">
+    <b>A memória da plataforma está ligada e ainda não guardou nenhum fato.</b>
+    O primeiro entra assim que alguém se cadastrar, responder o quiz ou
+    escrever no fórum. Isto é diferente de eu não ter conseguido perguntar.
+  </p>
+
+  {% elif cobertura.veredito == "sem-configuracao" %}
+  <p class="aviso borda-amarela">
+    <b>A memória existe, mas esta tela ainda não tem a senha para perguntar a ela.</b>
+    Falta rodar o passo do servidor que liga as duas. Nada está quebrado: o que
+    falta é a senha, e nenhum número desta seção pode ser lido como zero.
+  </p>
+
+  {% elif cobertura.veredito == "sem-site" %}
+  <p class="aviso borda-amarela">
+    <b>Não consegui saber de qual site perguntar</b> (a parte que guarda os
+    sites não respondeu), então esta pergunta ficou sem resposta.
+  </p>
+
+  {% else %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui perguntar à memória agora.</b>
+    Isto não é zero: é a pergunta que não chegou. Abra de novo daqui a pouco.
+  </p>
+  {% endif %}
+
+  {% comment %}2. FRESCOR{% endcomment %}
+  <h2 class="titulo-de-lista espaco-34">Os números estão velhos?</h2>
+
+  {% if frescor.veredito == "medido" %}
+  {% comment %}
+  A conta em SUBSTANTIVOS, e não em verbos conjugados. O `pluralize` do Django
+  trata zero como plural, e "0 envelheceuram" apareceu na primeira prévia desta
+  tela. Contagem que muda de forma com o número é assim: parece certa no caso
+  que você testou e sai torta no que você não testou.
+  {% endcomment %}
+  <p class="nota">
+    Dentro do prazo: {{ frescor.no_prazo }}.
+    <b class="amarelo">Fora do prazo: {{ frescor.velhos }}.</b>
+    Nunca anotados: {{ frescor.nunca_anotados }}.
+    Ainda sem fonte: {{ frescor.sem_fonte }}.
+  </p>
+
+  <ul class="riscas espaco-16">
+    {% for l in frescor.linhas %}
+    <li>
+      <b>{{ l.pergunta|default:l.nome }}</b>
+      {% if l.estado == "velho" %}
+      <span class="selo-vermelho">atrasado {{ l.atraso }} dia{{ l.atraso|pluralize:"s" }}</span>
+      anotado pela última vez há {{ l.idade }} dias, e o cartão dele pede no
+      máximo {{ l.prazo }}.
+      {% elif l.estado == "no-prazo" %}
+      <span class="selo-verde">no prazo</span>
+      anotado há {{ l.idade }} dia{{ l.idade|pluralize:"s" }} (o cartão pede no máximo {{ l.prazo }}).
+      {% elif l.estado == "nunca-anotado" %}
+      <span class="selo">nunca anotado</span>
+      {% elif l.estado == "sem-fonte" %}
+      <span class="selo">ainda não tem fonte</span>
+      {% if l.porque %}{{ l.porque }}{% endif %}
+      {% else %}
+      <span class="selo-vermelho">cartão com defeito</span>
+      {{ l.porque }}. Enquanto ele estiver assim, este número não aparece em
+      tela nenhuma, e isso é de propósito.
+      {% endif %}
+      <p class="nota">{{ l.nome }}</p>
+    </li>
+    {% endfor %}
+  </ul>
+
+  {% if frescor.nunca_anotados %}
+  <p class="recado-fraco espaco-16">
+    "Nunca anotado" não é atraso: é um número que nenhuma foto do livro pegou
+    ainda. Não há prazo estourado a contar, há uma primeira medição a fazer.
+  </p>
+  {% endif %}
+
+  <p class="recado espaco-16">
+    <b>O gesto:</b> quem anota a idade de um número é a foto da semana, e ela
+    sai da <a href="{% url 'reuniao' %}">reunião de segunda-feira</a>, no pedido
+    para o robô do fim da pauta.
+  </p>
+
+  {% elif frescor.veredito == "sem-livro" %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui ler o livro de ocorrências</b>, que é onde as fotos dos
+    números moram. Sem ele não dá para saber a idade de nada, e chamar todos de
+    velhos seria inventar um atraso a partir da minha própria cegueira.
+  </p>
+
+  {% else %}
+  <p class="aviso borda-vermelha">
+    <b>Os cartões dos números não vieram nesta versão do site.</b>
+    Isso é coisa de bastidor, não sua: o robô da próxima atualização conserta.
+  </p>
+  {% endif %}
+
+  {% comment %}3. O QUE CHEGOU QUEBRADO{% endcomment %}
+  <h2 class="titulo-de-lista espaco-34">O que chegou quebrado?</h2>
+
+  {% if quebrados.veredito == "ok" %}
+    {% if quebrados.total %}
+    <p class="aviso borda-amarela">
+      <b>Há {{ quebrados.total }} evento{{ quebrados.total|pluralize:"s" }} na fila do que não pôde ser contado.</b>
+      Cada um é um fato que aconteceu no site e não entrou em número nenhum.
+      Abrir um mostra o envelope exatamente como ele chegou.
+    </p>
+    <ul class="riscas espaco-16">
+      {% for m in quebrados.itens %}
+      <li>
+        <b>{{ m.tipo_declarado|default:"sem assunto declarado" }}</b>
+        {{ m.motivo }}
+        {% if m.quando %}(chegou {{ m.quando }}){% endif %}
+        <a href="{% url 'confianca_quebrado' m.id %}">inspecionar</a>
+      </li>
+      {% endfor %}
+    </ul>
+      {% if quebrados.total > quebrados.itens|length %}
+      <p class="recado-fraco espaco-16">
+        Mostrando os {{ quebrados.itens|length }} mais recentes de
+        {{ quebrados.total }}.
+      </p>
+      {% endif %}
+    {% else %}
+    <p class="nota">Nada chegou quebrado.</p>
+    {% endif %}
+
+    <p class="recado-fraco espaco-16">
+      Esta fila não é separada por site, e isso é de propósito: um evento
+      quebrado é um envelope que não pôde ser lido, e o site é uma das coisas
+      que faltam nele.
+    </p>
+
+  {% elif quebrados.veredito == "sem-configuracao" %}
+  <p class="aviso borda-amarela">
+    <b>Esta tela ainda não tem a senha para ver a fila do que chegou quebrado.</b>
+    Falta o mesmo passo do servidor da primeira pergunta.
+  </p>
+
+  {% else %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui ver a fila do que chegou quebrado.</b>
+    Isto não é "nada quebrou": é a pergunta que não chegou. Abra de novo daqui
+    a pouco.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}
