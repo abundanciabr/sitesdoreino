@@ -1,0 +1,19 @@
+{
+  "arquivo": "208-o-esqueleto-do-curso-passa-a-ter-a-estrutura-do-livro-e-o-se",
+  "id": "TAR-208",
+  "titulo": "O esqueleto do curso passa a ter a estrutura do livro, e o semeador reconcilia o que ja existe",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: COM_BOSS com as 12 encomendas do livro e BANCA_POR_AULA com E10/E21/E32; o semeador reconciliando bloco, ordem, e_boss, banca_nivel e o slug do curso; teste-guarda provando que semear de novo NAO toca em titulo, pedido, cliente, minimo, aceito_quando, quiz, video, estado, versao, pecas, nome do bloco nem titulo do Boss; suite da celula verde; make ci verde.",
+  "despacho": "Feito pela maestro na propria sessao com o mantenedor, em 05/09/2026, com o motivo dele: \"precisamos ajustar o curso ao livro porque o aluno tera o livro em maos durante o curso\". O esqueleto do curso passou a carregar a estrutura da hierarquia do livro (3 Partes, 12 Blocos A-L, 33 encomendas + Bonus), e o semeador passou a RECONCILIAR essa estrutura nas linhas que ja existem, sem nunca tocar na obra do mantenedor. Tambem renomeia o curso `meshcraft` para `profissional`, que e o nivel de que este livro trata, antes de o slug entrar no endereco.",
+  "origem": "hierarquia do livro trazida pelo mantenedor em 05/09/2026 e a decisao dele de que o curso e o ",
+  "criada_em": "2026-09-06"
+}
