@@ -7,6 +7,7 @@ from apps.core.views import (
     mudar_peca,
     pecas,
     prancheta,
+    responder_peca,
 )
 from config.api import api
 
@@ -66,6 +67,12 @@ urlpatterns = [
     path("pecas", pecas, name="pecas"),
     path("pecas/guardar", guardar_peca, name="guardar_peca"),
     path("pecas/mudar", mudar_peca, name="mudar_peca"),
+    # AS RESPOSTAS DA ESCOLA SOBRE UMA PEÇA (degrau 10): as três perguntas que o
+    # semáforo lê. Porta separada do `mudar` pelo mesmo critério que separou o
+    # `guardar` dele: aqui chegam três campos escolhidos numa lista, e ali chega
+    # uma ação de um clique só. Juntá-las faria cada botão de subir e descer
+    # carregar o formulário inteiro das perguntas.
+    path("pecas/responder", responder_peca, name="responder_peca"),
     # A RAIZ do prefixo, que pela borda pública é `meshcraft.top/pages/`: a
     # Prancheta. Ela leva `name=` como toda rota desta casa, e
     # é por `{% url 'prancheta' %}` que o prefixo entra no endereço, nunca por
