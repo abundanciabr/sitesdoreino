@@ -791,3 +791,187 @@ def test_sem_repositorio_git_e_ERROR_e_nao_um_OK(tmp_path):
 def test_base_que_nao_existe_e_ERROR(fila_na_base):
     with pytest.raises(ErroDeInstrumentacao):
         fila.conferir_imutabilidade(fila_na_base, "uma-base-que-nunca-existiu")
+
+
+_NL = chr(10)
+
+
+# ---------------------------------------------------------------------------
+# O EVENTO "CONCLUÍDA" PELA PORTA DO POUSO, EM SOMBRA (06/09/2026)
+#
+# O buraco que ela mede: o rito manda pedir pouso e ir embora, então o evento
+# de conclusão depende de o robô ainda estar vivo quando o merge acontece.
+# Estes testes provam as cinco respostas da sombra e, acima de tudo, que ela
+# NÃO GRAVA NADA — é isso que a separa da versão graduada.
+# ---------------------------------------------------------------------------
+
+
+def _sombra(raiz, **muda):
+    padrao = dict(
+        numero=1200,
+        titulo="ci: o evento pela porta (TAR-001)",
+        corpo="",
+        ramo="agent/ci/evento-pela-porta",
+        url="https://github.com/dono/repo/pull/1200",
+        sha_do_merge="abcdef1234567890" + "0" * 24,
+        arquivos_do_diff=[],
+        agora=fila.datetime(2026, 9, 6, 14, 30, 5, tzinfo=fila.timezone.utc),
+    )
+    padrao.update(muda)
+    return fila.evento_de_conclusao_em_sombra(raiz, **padrao)
+
+
+def _remessa_do_evento(dados):
+    corpo = json.dumps(dados, ensure_ascii=False, indent=2)
+    return {
+        "filename": f"fila/eventos/{dados['arquivo']}.json",
+        "patch": "@@ -0,0 +1 @@" + _NL + _NL.join("+" + linha for linha in corpo.splitlines()),
+    }
+
+
+def test_pr_que_cita_tarefa_reivindicada_gera_o_evento_com_os_seis_campos(tmp_path):
+    """(a) O caso que a regra existe para cobrir."""
+    raiz = montar(tmp_path, [tarefa()], [evento(quem="despacho-ci-0609")])
+    achados = _sombra(raiz)
+    assert [a["desfecho"] for a in achados] == [fila.SOMBRA_GERARIA]
+    gerado = achados[0]["evento"]
+    assert gerado["tarefa"] == "TAR-001"
+    assert gerado["evento"] == "concluida"
+    assert gerado["quando"] == "2026-09-06T14:30:05+00:00"
+    assert gerado["quem"] == "despacho-ci-0609"
+    assert gerado["evidencia"] == (
+        "https://github.com/dono/repo/pull/1200 (merge abcdef123456)"
+    )
+    assert gerado["verificado_em"] == "2026-09-06"
+    assert "PR #1200" in gerado["detalhe"]
+    assert "https://github.com/dono/repo/pull/1200" in gerado["detalhe"]
+    assert gerado["arquivo"] == "20260906-143005-TAR-001-concluida"
+
+
+def test_o_evento_gerado_pela_porta_passa_na_validacao_da_propria_fila(tmp_path):
+    """De que serve gerar um evento que a fila recusaria? Gravado à mão no
+    lugar certo, ele tem de passar por `carregar_eventos` sem um erro."""
+    raiz = montar(tmp_path, [tarefa()], [evento(quem="despacho-ci-0609")])
+    gerado = _sombra(raiz)[0]["evento"]
+    caminho = raiz / "fila" / "eventos" / f"{gerado['arquivo']}.json"
+    caminho.write_text(json.dumps(gerado, ensure_ascii=False), encoding="utf-8")
+    tarefas, _, erros = carregar(raiz)
+    assert erros == []
+    assert fila.calcular_estados(tarefas, carregar(raiz)[1])["TAR-001"]["estado"] == (
+        fila.CONCLUIDA
+    )
+
+
+def test_a_sombra_nao_grava_nada_no_disco(tmp_path):
+    """O que a separa da versão graduada. Se este teste cair, a regra passou a
+    escrever no livro da fila sem ter graduado."""
+    raiz = montar(tmp_path, [tarefa()], [evento(quem="despacho-ci-0609")])
+    antes = sorted(p.name for p in (raiz / "fila" / "eventos").glob("*.json"))
+    _sombra(raiz)
+    depois = sorted(p.name for p in (raiz / "fila" / "eventos").glob("*.json"))
+    assert antes == depois
+
+
+def test_pr_sem_tarefa_citada_e_silencio_total(tmp_path):
+    """(b) Nem medir: a maioria dos PRs não atende tarefa nenhuma."""
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    assert _sombra(raiz, titulo="ci: um ajuste qualquer", ramo="agent/ci/ajuste") == []
+
+
+def test_tarefa_que_ninguem_pegou_nao_vira_evento(tmp_path):
+    """(c) Estado é uma conta: sem reivindicação, a porta não conclui nada."""
+    raiz = montar(tmp_path, [tarefa()], [])
+    achados = _sombra(raiz)
+    assert achados[0]["desfecho"] == fila.SOMBRA_SILENCIO
+    assert "na fila" in achados[0]["motivo"]
+
+
+def test_tarefa_ja_concluida_antes_deste_pr_nao_vira_evento(tmp_path):
+    """(c) Depois do terminal, silêncio: evento após concluída reescreveria a
+    história, e a própria `carregar_eventos` recusaria o arquivo."""
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [
+            evento(),
+            evento(
+                tipo="concluida",
+                hora="11:00:00",
+                evidencia="https://exemplo.invalido/pr/1",
+                verificado_em="2026-08-29",
+            ),
+        ],
+    )
+    achados = _sombra(raiz)
+    assert achados[0]["desfecho"] == fila.SOMBRA_SILENCIO
+    assert "conclu" in achados[0]["motivo"]
+
+
+def test_evento_que_ja_viaja_no_pr_e_ja_existe_nada_a_fazer(tmp_path):
+    """(d) O caso comum de hoje: o robô escreveu o evento à mão no ramo. A
+    pista não vê o ramo no disco, só o diff da API."""
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    a_bordo = evento(
+        tipo="concluida",
+        hora="12:00:00",
+        evidencia="https://github.com/dono/repo/pull/1200",
+        verificado_em="2026-09-06",
+    )
+    achados = _sombra(raiz, arquivos_do_diff=[_remessa_do_evento(a_bordo)])
+    assert achados[0]["desfecho"] == fila.SOMBRA_JA_EXISTE
+    assert achados[0]["evento"] is None
+
+
+def test_reivindicacao_que_viaja_no_proprio_pr_conta(tmp_path):
+    """O caminho normal: o robô pega a tarefa na bancada, e o evento de
+    reivindicação só chega à `main` com este merge. A porta lê o diff."""
+    raiz = montar(tmp_path, [tarefa()], [])
+    a_bordo = evento(quem="despacho-ci-0609")
+    achados = _sombra(raiz, arquivos_do_diff=[_remessa_do_evento(a_bordo)])
+    assert achados[0]["desfecho"] == fila.SOMBRA_GERARIA
+    assert achados[0]["evento"]["quem"] == "despacho-ci-0609"
+
+
+def test_tarefa_citada_que_nao_existe_na_fila_e_silencio_com_motivo(tmp_path):
+    raiz = montar(tmp_path, [tarefa()], [evento()])
+    achados = _sombra(raiz, titulo="ci: algo (TAR-777)")
+    assert achados[0]["tarefa"] == "TAR-777"
+    assert achados[0]["desfecho"] == fila.SOMBRA_SILENCIO
+    assert "não existe na fila" in achados[0]["motivo"]
+
+
+def test_fila_invalida_no_disco_e_silencio_e_nunca_um_evento(tmp_path):
+    """Não medir nunca é permissão (INV-CI01), nem para uma sombra."""
+    raiz = montar(tmp_path, [tarefa()], [])
+    (raiz / "fila" / "eventos" / "quebrado.json").write_text("{", encoding="utf-8")
+    achados = _sombra(raiz)
+    assert achados[0]["desfecho"] == fila.SOMBRA_SILENCIO
+    assert "inválida" in achados[0]["motivo"]
+
+
+def test_bloqueada_nao_vira_concluida_pela_porta(tmp_path):
+    raiz = montar(
+        tmp_path,
+        [tarefa()],
+        [evento(), evento(tipo="bloqueada", hora="11:00:00", detalhe="falta a chave")],
+    )
+    achados = _sombra(raiz)
+    assert achados[0]["desfecho"] == fila.SOMBRA_SILENCIO
+    assert "bloqueada" in achados[0]["motivo"]
+
+
+def test_diff_que_nao_e_evento_da_fila_e_ignorado():
+    """A leitura do diff não pode confundir qualquer JSON com um evento. Cada
+    linha aqui é um sósia que já poderia aparecer num PR de verdade."""
+    de_verdade = json.dumps(evento(tipo="concluida"), ensure_ascii=False)
+    lixo = [
+        # formato de evento, PASTA errada: registro do livro não é evento da fila
+        {"filename": "painel/registros/20260906-001.json", "patch": "+" + de_verdade},
+        # pasta certa, patch que não decodifica (diff truncado pela API)
+        {"filename": "fila/eventos/x.json", "patch": "+isto nao e json"},
+        # pasta certa, JSON válido que não é evento nenhum
+        {"filename": "fila/eventos/y.json", "patch": '+{"tipo": "nota"}'},
+        # evento REMOVIDO: linha que sai do diff não é fato que entra
+        {"filename": "fila/eventos/z.json", "patch": "-" + de_verdade},
+    ]
+    assert fila.eventos_no_diff(lixo) == []

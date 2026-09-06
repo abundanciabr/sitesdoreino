@@ -435,11 +435,15 @@ def _relatorio_vermelho() -> "mergear.Relatorio":
     return relatorio
 
 
-def _gh_de_mentira(chamadas: list, estado_apos_merge: str = "MERGED"):
+def _gh_de_mentira(
+    chamadas: list, estado_apos_merge: str = "MERGED", remessas: list | None = None
+):
     import json as _json
 
     def falso(argumentos, raiz, descricao, **kwargs):
         chamadas.append(list(argumentos))
+        if argumentos and argumentos[0] == "api":
+            return _json.dumps(remessas or [])
         if argumentos[:2] == ["pr", "view"]:
             return _json.dumps(
                 {
@@ -1117,3 +1121,156 @@ def test_a_pista_NAO_roteia_mais_pela_frase_em_portugues():
             + alvo
             + "\nRotear por prosa é o defeito que o MOTIVO-DA-RECUSA fechou."
         )
+
+
+# ---------------------------------------------------------------------------
+# A SOMBRA DO EVENTO DA FILA (06/09/2026) — a porta vê o que gravaria.
+#
+# O buraco de desenho: o rito manda pedir pouso e ir embora, então o evento
+# "concluída" da fila depende de o robô ainda estar vivo na hora do merge.
+# Aqui a porta passa a saber escrevê-lo. Nasce em SOMBRA (a lei do Sistema
+# Imunológico), e o teste que mais importa é o que prova que ela NÃO GRAVA.
+# ---------------------------------------------------------------------------
+
+
+def _fila_com_tarefa_reivindicada(raiz: Path, quem: str = "despacho-ci-0609") -> Path:
+    import json as _json
+
+    (raiz / "fila" / "tarefas").mkdir(parents=True, exist_ok=True)
+    (raiz / "fila" / "eventos").mkdir(parents=True, exist_ok=True)
+    (raiz / "fila" / "tarefas" / "001-exemplo.json").write_text(
+        _json.dumps(
+            {
+                "arquivo": "001-exemplo",
+                "id": "TAR-001",
+                "titulo": "Uma tarefa de exemplo",
+                "toca": ["ci"],
+                "evidencia_exigida": "um PR mergeado",
+                "despacho": "faça a coisa",
+                "origem": "teste",
+                "criada_em": "2026-09-06",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (raiz / "fila" / "eventos" / "20260906-100000-TAR-001-reivindicada.json").write_text(
+        _json.dumps(
+            {
+                "arquivo": "20260906-100000-TAR-001-reivindicada",
+                "tarefa": "TAR-001",
+                "evento": "reivindicada",
+                "quando": "2026-09-06T10:00:00+00:00",
+                "quem": quem,
+            }
+        ),
+        encoding="utf-8",
+    )
+    return raiz
+
+
+def _pr_que_cita_a_tarefa() -> dict:
+    return _pr(title="ci: o evento pela porta (TAR-001)", body="atende a TAR-001")
+
+
+def _eventos_no_disco(raiz: Path) -> list[str]:
+    return sorted(p.name for p in (raiz / "fila" / "eventos").glob("*.json"))
+
+
+def test_a_porta_diz_em_sombra_o_evento_que_gravaria(monkeypatch, tmp_path, capsys):
+    raiz = _fila_com_tarefa_reivindicada(tmp_path)
+    antes = _eventos_no_disco(raiz)
+    chamadas: list = []
+    monkeypatch.setenv(mergear.VARIAVEL_DA_PISTA, "sim")
+    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: raiz)
+    monkeypatch.setattr(
+        mergear, "conferir", lambda n: (_relatorio_verde(), _pr_que_cita_a_tarefa())
+    )
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "99"]) == 0
+    saida = capsys.readouterr().out
+    assert "sombra: eu teria gravado fila/eventos/" in saida
+    assert '"evento": "concluida"' in saida
+    assert '"quem": "despacho-ci-0609"' in saida
+    assert _eventos_no_disco(raiz) == antes, "sombra que grava deixou de ser sombra"
+
+
+def test_a_sombra_nao_roda_se_o_merge_nao_aconteceu(monkeypatch, tmp_path, capsys):
+    """Evento de conclusão sem merge seria mentira escrita no livro da fila."""
+    raiz = _fila_com_tarefa_reivindicada(tmp_path)
+    chamadas: list = []
+    monkeypatch.setenv(mergear.VARIAVEL_DA_PISTA, "sim")
+    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: raiz)
+    monkeypatch.setattr(
+        mergear, "conferir", lambda n: (_relatorio_verde(), _pr_que_cita_a_tarefa())
+    )
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas, "OPEN"))
+    assert mergear.main(["99", "--confirmo", "99"]) == 1
+    assert "SOMBRA" not in capsys.readouterr().out
+
+
+def test_confirmo_de_quem_nao_e_a_pista_continua_recusando_e_sem_sombra(
+    monkeypatch, tmp_path, capsys
+):
+    """(e) O guarda que já existia não pode afrouxar por causa da sombra."""
+    raiz = _fila_com_tarefa_reivindicada(tmp_path)
+    chamadas: list = []
+    monkeypatch.delenv(mergear.VARIAVEL_DA_PISTA, raising=False)
+    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: raiz)
+    monkeypatch.setattr(
+        mergear, "conferir", lambda n: (_relatorio_verde(), _pr_que_cita_a_tarefa())
+    )
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "99"]) == 1
+    assert chamadas == []
+    assert "SOMBRA" not in capsys.readouterr().out
+
+
+def test_pr_sem_tarefa_citada_nao_consulta_o_diff(monkeypatch, tmp_path, capsys):
+    """A maioria dos PRs não atende tarefa nenhuma: nem a chamada extra."""
+    raiz = _fila_com_tarefa_reivindicada(tmp_path)
+    chamadas: list = []
+    monkeypatch.setenv(mergear.VARIAVEL_DA_PISTA, "sim")
+    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: raiz)
+    monkeypatch.setattr(mergear, "conferir", lambda n: (_relatorio_verde(), _pr()))
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "99"]) == 0
+    assert not any(c and c[0] == "api" for c in chamadas)
+    assert "SOMBRA" not in capsys.readouterr().out
+
+
+def test_diff_ilegivel_nao_derruba_o_pouso_ja_consumado(monkeypatch, tmp_path, capsys):
+    """Sombra é fail-open: ela roda DEPOIS do merge, e uma exceção aqui viraria
+    um pouso bem-sucedido em ERROR. Muralha na dúvida recusa; sombra cala."""
+    raiz = _fila_com_tarefa_reivindicada(tmp_path)
+    chamadas: list = []
+
+    def _gh_que_quebra_no_diff(argumentos, raiz_, descricao, **kwargs):
+        if argumentos and argumentos[0] == "api":
+            raise mergear.ErroDeInstrumentacao("o gh caiu", "sem rede")
+        return _gh_de_mentira(chamadas)(argumentos, raiz_, descricao, **kwargs)
+
+    monkeypatch.setenv(mergear.VARIAVEL_DA_PISTA, "sim")
+    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: raiz)
+    monkeypatch.setattr(
+        mergear, "conferir", lambda n: (_relatorio_verde(), _pr_que_cita_a_tarefa())
+    )
+    monkeypatch.setattr(mergear, "_gh", _gh_que_quebra_no_diff)
+    assert mergear.main(["99", "--confirmo", "99"]) == 0
+    saida = capsys.readouterr().out
+    assert "sombra: eu teria gravado" not in saida
+    assert "não consegui ler o diff" in saida
+
+
+def test_a_sombra_nao_mergeia_nem_muda_o_veredito(monkeypatch, tmp_path):
+    """A sombra é observação pura: nenhum comando novo que ESCREVA no GitHub."""
+    raiz = _fila_com_tarefa_reivindicada(tmp_path)
+    chamadas: list = []
+    monkeypatch.setenv(mergear.VARIAVEL_DA_PISTA, "sim")
+    monkeypatch.setattr(mergear, "raiz_do_repo", lambda: raiz)
+    monkeypatch.setattr(
+        mergear, "conferir", lambda n: (_relatorio_verde(), _pr_que_cita_a_tarefa())
+    )
+    monkeypatch.setattr(mergear, "_gh", _gh_de_mentira(chamadas))
+    assert mergear.main(["99", "--confirmo", "99"]) == 0
+    escritas = [c for c in chamadas if c[:2] == ["pr", "merge"]]
+    assert len(escritas) == 1, "a sombra não pode disparar nada além do merge"
