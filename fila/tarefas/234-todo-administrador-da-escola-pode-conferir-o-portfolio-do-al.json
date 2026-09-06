@@ -1,0 +1,18 @@
+{
+  "arquivo": "234-todo-administrador-da-escola-pode-conferir-o-portfolio-do-al",
+  "id": "TAR-234",
+  "titulo": "Todo administrador da escola pode conferir o portfolio do aluno: o contrato da porta que responde isso",
+  "toca": [
+    "contracts",
+    "ci"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR do Rito de Contrato mergeado, com ci/contract_freeze.py e ci/cerca-de-celula.sh colados e o contrato provado identico ao que o django-ninja exporta",
+  "despacho": "RITO DE CONTRATO (RITOS.md secao 3): a celula `admin` ganha a primeira porta de\nmaquina dela.\n\nCELULA: contracts. Caminho CODEOWNERS: `contracts/admin.openapi.yaml` (novo) e a\nlinha da celula `admin` em `ci/manifesto-de-contratos.json`. Nada de `services/`.\n\nPOR QUE: a permissao de conferir o portfolio do aluno mora hoje numa lista escrita\na mao no env da VPS (`IDS_DA_EQUIPE`), que e uma segunda casa do mesmo fato. O\nmantenedor decidiu em 06/09/2026, em sessao de arquitetura, que \"todo admin\nconfere\", sem lista separada de conferentes. Para a `pages` obedecer a isso, ela\nprecisa perguntar a `admin` quem e administrador.\n\nO DESENHO, ja fechado: uma operacao so, de LEITURA. POST /interno/administradores/\nconsultar, operationId isAdministrator, corpo {\"email\": \"<string>\"}, resposta\n{\"e_administrador\": <boolean>} e nada mais. Bearer estatico por par.\n`additionalProperties: false` nos dois lados. POST e nao GET porque caminho de URL\nentra em log de servidor e em rastro de erro, e corpo nao.\n\nCOMO: monte o contrato A PARTIR do que o django-ninja exporta (armadilhas/243),\nnunca de cabeca, mesmo que a porta precise nascer num prototipo descartavel fora\ndo repositorio. Vire a linha do manifesto no MESMO PR (exigencia medida de\n`auditar_manifesto`, contracts/README.md ponto 1). Etiqueta `contrato` no PR.\n\nEVIDENCIA: `python ci/contract_freeze.py`, `bash ci/cerca-de-celula.sh` e\n`python ci/travessao.py` colados, mais a prova de que o congelado e identico ao\nexportado.\n\nDEPOIS DESTE PR, e e obrigatorio: o proximo PR da celula `admin` tem de ser a\nporta de maquina (config/api.py + manage.py export_openapi + testes de 401), senao\n`services/admin` fica travado no `contrato-check` (armadilhas/228). So depois dela\nvem o consumidor, na `pages`.",
+  "origem": "sessao de arquitetura com o mantenedor em 06/09/2026",
+  "criada_em": "2026-09-06"
+}
