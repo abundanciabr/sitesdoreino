@@ -4,7 +4,9 @@
 <div class="envolucro">
   <h1>O mapa do site</h1>
   <p class="subtitulo">
-    Todo endereço que este site tem hoje — o que cada um é, e quem consegue abrir.
+    Todo endereço que este site tem hoje, em árvore: as áreas principais, e
+    dentro de cada uma as páginas e as sub-páginas, do jeito que o site é
+    montado por dentro.
   </p>
 
   {% if mapa_ausente %}
@@ -35,7 +37,10 @@
     <div class="cartao">
       <div class="rotulo">São botões, não páginas</div>
       <div class="valor">{{ total_gestos }}</div>
-      <div class="nota">O que acontece quando alguém aperta algo.</div>
+      <div class="nota">
+        O que acontece quando alguém aperta algo. Eles aparecem dentro da página
+        a que pertencem.
+      </div>
     </div>
     <div class="cartao">
       <div class="rotulo">Só as máquinas usam</div>
@@ -45,13 +50,21 @@
         {{ total_internos }} delas nem sequer alcançáveis pela internet.
       </div>
     </div>
+    {% if obra %}
+    <a class="cartao porta" href="#em-obra">
+      <div class="rotulo">Ainda sendo construído</div>
+      <div class="valor">{{ obra.total }}</div>
+      <div class="nota">Tarefas que os robôs ainda não terminaram. Clique para ver.</div>
+    </a>
+    {% endif %}
   </div>
 
   {% comment %}
   A BUSCA é um formulário do servidor, e não um filtro em script — a mesma
   peneira da lista de alunos. Assim ela funciona com script bloqueado, não pede
   nada da política de segurança, e o endereço `?q=forum` fica guardável nos
-  favoritos e compartilhável.
+  favoritos e compartilhável. Ela NÃO quebra a árvore: quem casa fica, e as
+  páginas acima dele também, senão o resultado seriam galhos soltos no ar.
   {% endcomment %}
   <form class="peneira" method="get" action="{% url 'mapa_do_site' %}">
     <label class="campo">
@@ -71,7 +84,26 @@
   </p>
   {% endif %}
 
-  {% if not grupos %}
+  <details class="cadastrar legenda-do-mapa">
+    <summary>O que quer dizer cada selo</summary>
+    {% for chave, curto, titulo, explicacao in legenda %}
+    <p class="nota">
+      <span class="selo-publico selo-{{ chave }}">{{ curto }}</span>
+      <b>{{ titulo }}.</b> {{ explicacao }}
+    </p>
+    {% endfor %}
+    <p class="nota">
+      <span class="mapa-selo">molde</span>
+      O endereço não é um lugar só: vale para muitos. <code>/forum/t/12</code> e
+      <code>/forum/t/98</code> são a mesma página, com assuntos diferentes.
+    </p>
+    <p class="nota">
+      A bolinha verde ao lado de um nome é uma conferência de verdade: o seu
+      navegador abre aquele endereço agora e diz se ele respondeu.
+    </p>
+  </details>
+
+  {% if not areas %}
   <p class="aviso">
     <b>Nenhum endereço com essa palavra.</b>
     A busca olha o nome, a explicação, o endereço e as notas de cada linha —
@@ -80,14 +112,32 @@
   </p>
   {% endif %}
 
-  {% for grupo in grupos %}
+  {% for area in areas %}
   <div class="mapa-grupo">
-    <h2 class="faixa">{{ grupo.titulo }} &middot; {{ grupo.total }}</h2>
-    <p class="subtitulo">{{ grupo.explicacao }}</p>
+    <h2 class="faixa">{{ area.titulo }}</h2>
+    <p class="subtitulo">
+      {{ area.explicacao }}
+      <span class="mapa-conta">
+        {{ area.telas }} tela{{ area.telas|pluralize:"s" }}{% if area.botoes %},
+        {{ area.botoes }} botão{{ area.botoes|pluralize:",es" }}{% endif %}{% if area.maquina %},
+        {{ area.maquina }} só de máquina{% endif %}.
+      </span>
+    </p>
 
-    {% for item in grupo.paginas %}
-    <div class="mapa-item">
-      <b>{{ item.titulo }}</b>
+    {% comment %}
+    A ÁRVORE. Cada linha já vem do servidor sabendo o nível dela, e o recuo é
+    uma classe de CSS — foi assim para não precisar de um template que se inclui
+    a si mesmo a cada galho. Os botões de uma página viram etiquetas dentro
+    dela: como galhos, dobrariam a altura da árvore para responder uma pergunta
+    que ninguém faz olhando o mapa.
+    {% endcomment %}
+    {% for item in area.linhas %}
+    <div class="mapa-item galho recuo-{{ item.recuo }}">
+      <b>
+        {% if item.gesto %}<span class="mapa-selo">botão</span>{% endif %}
+        {{ item.titulo }}
+        <span class="selo-publico selo-{{ item.para_quem }}">{{ item.selo }}</span>
+      </b>
       {% comment %}
       A luz nasce ESCONDIDA e quem a mostra é o script. Com script bloqueado
       ela simplesmente não aparece — o que é honesto: ninguém mediu nada.
@@ -109,45 +159,31 @@
       </div>
       <p class="nota">{{ item.descricao }}</p>
       {% if item.observacao %}<p class="nota mapa-obs">{{ item.observacao }}</p>{% endif %}
+      {% if item.gestos %}
+      <p class="nota botoes-da-pagina">
+        <span class="rotulo-dos-botoes">Botões desta página:</span>
+        {% for gesto in item.gestos %}
+        <span class="botao-da-pagina" title="{{ gesto.descricao }} ({{ gesto.endereco }})">{{ gesto.titulo }}</span>
+        {% endfor %}
+      </p>
+      {% endif %}
     </div>
     {% endfor %}
-
-    {% if grupo.gestos %}
-    <details class="cadastrar">
-      <summary>
-        E mais {{ grupo.gestos|length }} endereço{{ grupo.gestos|length|pluralize:"s" }}
-        que não são páginas
-      </summary>
-      <p class="nota">
-        Estes não abrem no navegador: são o que acontece quando alguém aperta um
-        botão — votar, salvar, liberar, sair. Estão no mapa porque existem, e
-        porque é isso que explica a diferença entre {{ total }} endereços e
-        {{ total_telas }} telas.
-      </p>
-      {% for item in grupo.gestos %}
-      <div class="mapa-item">
-        <b>{{ item.titulo }}</b>
-        <div class="mapa-endereco"><code>{{ item.endereco }}</code></div>
-        <p class="nota">{{ item.descricao }}</p>
-        {% if item.observacao %}<p class="nota mapa-obs">{{ item.observacao }}</p>{% endif %}
-      </div>
-      {% endfor %}
-    </details>
-    {% endif %}
   </div>
   {% endfor %}
 
   {% if orfas %}
   {% comment %}
-  Zero hoje, e a seção existe para o dia em que não for: uma entrada com um
-  público que a tela não desenha sumiria em silêncio, e endereço que some do
-  mapa é exatamente o que este mapa existe para impedir.
+  Zero hoje, e a seção existe para o dia em que não for: um endereço que nenhuma
+  área do mapa acolhe apareceria aqui em vez de sumir. Endereço que some do mapa
+  é exatamente o que este mapa existe para impedir — e o teste-guarda de
+  `services/admin/tests/test_mapa_do_site.py` reprova o PR antes de chegar aqui.
   {% endcomment %}
   <div class="mapa-grupo">
-    <h2 class="faixa">Sem grupo &middot; {{ orfas|length }}</h2>
+    <h2 class="faixa">Fora de todas as áreas &middot; {{ orfas|length }}</h2>
     <p class="aviso borda-amarela">
-      Estes endereços foram cadastrados com um público que esta tela não conhece.
-      Eles aparecem aqui em vez de sumir.
+      Estes endereços não couberam em nenhuma área do mapa. Eles aparecem aqui
+      em vez de sumir. Avise o agente: falta uma área para eles.
     </p>
     {% for item in orfas %}
     <div class="mapa-item">
@@ -158,6 +194,43 @@
     {% endfor %}
   </div>
   {% endif %}
+
+  {% comment %}
+  O QUE AINDA ESTÁ SENDO CONSTRUÍDO. A árvore acima é o que existe; esta seção é
+  o que está a caminho, e vem da fila de trabalho dos robôs (a mesma fonte da
+  aba "Os robôs"). Ela fica AO LADO da árvore, e não dentro dela, porque a fila
+  sabe em que parte do sistema a tarefa mexe e não em que endereço ela vai
+  nascer — pendurar a tarefa num galho exigiria adivinhar qual.
+  {% endcomment %}
+  <div class="mapa-grupo" id="em-obra">
+    <h2 class="faixa">Ainda sendo construído</h2>
+    {% if obra %}
+    <p class="subtitulo">
+      {{ obra.total }} tarefa{{ obra.total|pluralize:"s" }} que os robôs ainda
+      não terminaram, por onde ela mexe. Uma tarefa que mexe em dois lugares
+      aparece nos dois, então a soma dos lugares é maior que {{ obra.total }}.
+      O quadro completo, com o que está esperando por você, fica em
+      <a href="{% url 'caixa_robos' %}">Os robôs</a>.
+    </p>
+    {% for lugar in obra.lugares %}
+    <details class="cadastrar">
+      <summary>{{ lugar.nome }} &middot; {{ lugar.quantas }}</summary>
+      {% for tarefa in lugar.tarefas %}
+      <p class="nota tarefa-em-obra">
+        <span class="mapa-selo">{{ tarefa.estado }}</span>
+        {{ tarefa.titulo }}
+      </p>
+      {% endfor %}
+    </details>
+    {% endfor %}
+    {% else %}
+    <p class="aviso borda-amarela">
+      <b>A fila de trabalho não veio nesta versão do site.</b>
+      Não quer dizer que não há nada em obra: quer dizer que esta página não
+      conseguiu ler a fila. O mapa acima continua valendo.
+    </p>
+    {% endif %}
+  </div>
 
   <p class="aviso espaco-34">
     <b>Por que dá para confiar neste mapa.</b>
