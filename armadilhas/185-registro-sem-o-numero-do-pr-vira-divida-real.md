@@ -11,6 +11,9 @@ guarda:
 sinal:
   - `d[íi]vida do livro +FAIL`
   - `merge\(s\) sem registro`
+gatilho:
+  - painel/registros/*
+licao: a `evidencia` do registro precisa CITAR o número do próprio PR (a URL completa dele), senão o portão de pouso reprova por dívida do livro e a conta cai na próxima sessão.
 ---
 
 # O registro viajou dentro do PR, mas a evidência não cita o número — a dívida é REAL, e cai no colo da próxima sessão
