@@ -371,7 +371,7 @@ As regras que importam:
 - Os painéis antigos de `arquivos/painel-*.html` são **lápides e fotografias**
   (história congelada). Não os atualize; não crie novos.
 
-**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` (o recibo embarca no PR e o portão confere NA PORTA; a cobrança pós-merge vira rede de segurança, que ainda lista os pagamentos já em voo) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
+**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` (o recibo embarca no PR e o portão confere NA PORTA; a cobrança pós-merge vira rede de segurança, que ainda lista os pagamentos já em voo) · `.githooks/pre-commit` → `ci/registro_no_commit.py` (o mesmo, aqui na máquina e NA HORA do commit: registro novo sem citar PR nenhum, num ramo que entrega, nem chega a virar viagem até a porta — armadilhas/185) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
 
 ## O clone principal é espelho, não bancada (desde 26/08/2026)
 
