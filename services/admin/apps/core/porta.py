@@ -299,6 +299,25 @@ class PortaAdministrativa:
             "form-action 'self'; frame-ancestors 'self'",
         )
         resposta.setdefault("Referrer-Policy", "same-origin")
+        # NENHUMA TELA DESTA ÁREA PODE FICAR GUARDADA NO NAVEGADOR (06/09/2026).
+        #
+        # Até aqui a resposta saía SEM instrução de cache nenhuma, e o navegador
+        # ficava livre para decidir sozinho — inclusive para reexibir a cópia
+        # que já tinha ao voltar, ao restaurar uma aba ou ao trocar de aba. Numa
+        # área cujo conteúdo INTEIRO é calculado do estado de agora (quem pediu
+        # acesso, quanto entrou, o que os robôs fizeram, que endereços o site
+        # tem), uma cópia velha não é uma tela desatualizada: é uma tela que
+        # MENTE, e mente exatamente como uma tela certa. O dono não tem como
+        # perceber a diferença — só percebe que "continua do jeito antigo".
+        #
+        # `setdefault` de propósito, e não atribuição: `/mapa-ia/` e
+        # `/mapa-ia/planos/` mandam `public, max-age=300` porque são texto
+        # público que uma IA de fora lê, e essas duas continuam decidindo por si.
+        #
+        # É a mesma família do `no-store` que a resposta 503 já levava, e pelo
+        # mesmo motivo: resposta que não deve sobreviver ao momento em que
+        # nasceu precisa DIZER isso, senão alguém no caminho a guarda.
+        resposta.setdefault("Cache-Control", "no-store")
         return resposta
 
     @staticmethod
