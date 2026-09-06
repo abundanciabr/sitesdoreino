@@ -18,7 +18,13 @@ mora na mesma tela em vez de inventar uma segunda.
 O MOTIVO `nao-e-da-equipe` nasceu no degrau 11, e é a fila da conferência
 (critério AC-11) fechando para quem não confere portfólio de ninguém. Ele fala
 com um PROFESSOR, e não com um aluno: por isso a frase não pede matrícula, e diz
-onde a lista dele mora.
+o gesto que resolve. Desde 06/09/2026 esse gesto mudou de lugar, e a frase com
+ele: quem confere é quem é ADMINISTRADOR da escola, promovido na área
+administrativa, e não quem alguém colou numa lista dentro do servidor.
+
+Quando a `admin` não responde, a tela é `sem-resposta`, e nunca esta: dizer
+"você não é da equipe" a um professor de verdade o mandaria pedir uma promoção
+que ele já tem.
 
 Molde: `services/cursos/apps/core/templates/cursos/entrar.html`.
 {% endcomment %}
@@ -41,10 +47,11 @@ Molde: `services/cursos/apps/core/templates/cursos/entrar.html`.
 {% elif motivo == "nao-e-da-equipe" %}
   <h1>Esta área é da equipe da escola</h1>
   <p>Aqui a equipe confere os portfólios que os alunos mandam. Você entrou na
-  escola, mas o seu nome ainda não está na lista de quem pode conferir.</p>
+  escola, mas a sua conta não é de administrador, e é isso que abre esta fila.</p>
   <p class="miudo">Se você é da equipe e está vendo esta mensagem, peça a quem
-  cuida do servidor para incluir você na lista da escola. Enquanto isso, os
-  pedidos dos alunos continuam guardados e esperando.</p>
+  cuida da escola para promover você a administrador na área administrativa. A
+  fila abre sozinha logo depois, sem ninguém precisar mexer no servidor.
+  Enquanto isso, os pedidos dos alunos continuam guardados e esperando.</p>
   <p class="miudo">Voltar para a <a href="{{ url_da_capa }}">página
   inicial</a>.</p>
 {% elif motivo == "sem-resposta" %}

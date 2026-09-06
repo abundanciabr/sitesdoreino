@@ -27,6 +27,7 @@ a restrição apagada (`armadilhas/358`). É o mesmo cuidado que
 `tests/test_modelo_de_dados.py` já toma nesta casa.
 """
 
+import json
 from datetime import timedelta
 
 import pytest
@@ -43,7 +44,16 @@ from apps.portfolio.models import (
     PedidoDeConferencia,
 )
 
-from conftest import ANA, BIA, COOKIE, OUTRO_SITE, SITE
+from conftest import (
+    ANA,
+    BIA,
+    COOKIE,
+    OUTRO_SITE,
+    SITE,
+    URL_DA_CONSULTA,
+    dublar_administrador,
+    dublar_sessao,
+)
 
 MONITORA = "p_monitora"
 
@@ -411,10 +421,17 @@ def test_a_peca_quebrada_chega_vermelha_na_fila_da_equipe(criar_portfolio, criar
 # 7. AS TELAS: o botão do aluno, a fila da equipe e a porta dela
 # ---------------------------------------------------------------------------
 # A fila da equipe é fail-CLOSED, e quem a fecha é a PORTA da casa
-# (`apps/core/porta.py`), com a lista do env no lugar da pergunta da matrícula.
-# Cada recusa afirma DUAS coisas: o estado certo, e que o conteúdo da fila não
-# saiu na resposta. Um teste que só olhasse o estado ficaria verde numa porta
-# que devolvesse 403 com a fila inteira dentro.
+# (`apps/core/porta.py`), que troca a pergunta da matrícula por uma pergunta à
+# `admin`: esta pessoa é administradora da escola? Cada recusa afirma DUAS
+# coisas: o estado certo, e que o conteúdo da fila não saiu na resposta. Um
+# teste que só olhasse o estado ficaria verde numa porta que devolvesse 403 com
+# a fila inteira dentro.
+#
+# **E são TRÊS estados, não dois**, porque *perguntei e a resposta foi não* e
+# *não deu para perguntar* são fatos diferentes: o primeiro é 403 com uma frase
+# sobre a pessoa; o segundo é 503 com `Retry-After`, e nunca uma frase falsa
+# sobre ela. Confundi-los mandaria um professor procurar quem o incluísse numa
+# lista que já o inclui.
 
 
 def texto(resposta) -> str:
@@ -423,6 +440,21 @@ def texto(resposta) -> str:
 
 def como(cookie=COOKIE):
     return {"HTTP_COOKIE": cookie}
+
+
+def a_consulta_a_admin(rede):
+    """A ÚNICA pergunta que esta casa faz à `admin`, ou o teste morre aqui.
+
+    Mede a requisição que saiu, e não o dublê: um teste que olhasse a fábrica
+    provaria o que ele mesmo montou.
+    """
+    perguntas = [
+        chamada.request
+        for chamada in rede.calls
+        if str(chamada.request.url) == URL_DA_CONSULTA
+    ]
+    assert len(perguntas) == 1, f"esperava 1 consulta à admin, vieram {len(perguntas)}"
+    return perguntas[0]
 
 
 def test_o_botao_do_aluno_poe_o_pedido_na_fila(
@@ -470,9 +502,14 @@ def test_o_aluno_ve_o_prazo_enquanto_espera(aluna, site_declarado, portfolio_com
     )
 
 
-def test_a_fila_abre_para_quem_esta_na_lista_da_equipe(
+def test_a_fila_abre_para_quem_a_admin_diz_que_e_administrador(
     da_equipe, site_declarado, portfolio_com_peca
 ):
+    """Promover alguém em `/admin/escola/` abre esta fila, e nada mais é preciso.
+
+    Era `test_a_fila_abre_para_quem_esta_na_lista_da_equipe` até 06/09/2026,
+    quando a lista de ids no env da VPS deixou de existir.
+    """
     conferencia.pedir(portfolio_com_peca("aluno-1"))
 
     resposta = Client().get("/equipe", **como())
@@ -481,14 +518,36 @@ def test_a_fila_abre_para_quem_esta_na_lista_da_equipe(
     assert "aluno-1" in texto(resposta)
 
 
-def test_a_fila_fecha_para_quem_nao_esta_na_lista(
+def test_a_pergunta_de_quem_confere_viaja_por_e_mail_e_no_corpo(
+    da_equipe, rede, site_declarado, portfolio_com_peca
+):
+    """A chave é o E-MAIL, e ele não vai no caminho da URL.
+
+    Duas coisas de uma vez, e as duas são lei: a porta da `admin` decide por
+    e-mail normalizado, então mandar o id de plataforma responderia sempre
+    `false`; e caminho de URL entra em log de servidor e em histórico de proxy,
+    corpo não. O e-mail continua sem ser guardado e sem ser exibido: ele vive o
+    tempo desta pergunta.
+    """
+    conferencia.pedir(portfolio_com_peca("aluno-1"))
+
+    Client().get("/equipe", **como())
+
+    pergunta = a_consulta_a_admin(rede)
+    assert pergunta.method == "POST"
+    assert json.loads(pergunta.content) == {"email": BIA["email"]}
+    assert BIA["email"] not in str(pergunta.url), "o e-mail viajou no caminho da URL"
+
+
+def test_a_fila_fecha_para_quem_a_admin_diz_que_nao_e(
     fora_da_equipe, site_declarado, portfolio_com_peca
 ):
-    """Lista vazia é NINGUÉM, e a recusa diz o que aconteceu.
+    """`false` é a resposta de quase todo mundo, e a recusa diz o que aconteceu.
 
-    Este é o guarda que a mutação mede: trocar o corpo de
-    `apps.core.equipe.e_da_equipe` por `return True` deixa este teste vermelho
-    na asserção, e não na construção.
+    Era `test_a_fila_fecha_para_quem_nao_esta_na_lista` até 06/09/2026. Continua
+    sendo o guarda que a mutação mede: trocar o corpo de
+    `apps.core.equipe.e_da_equipe` por `return True` deixa este teste vermelho na
+    asserção, e não na construção.
     """
     conferencia.pedir(portfolio_com_peca("aluno-1"))
 
@@ -497,6 +556,94 @@ def test_a_fila_fecha_para_quem_nao_esta_na_lista(
     assert resposta.status_code == 403
     assert "aluno-1" not in texto(resposta), "a fila vazou para fora da equipe"
     assert "área é da equipe da escola" in texto(resposta)
+
+
+def test_nao_conseguir_perguntar_fecha_a_fila_com_503_e_nunca_a_abre(
+    admin_fora_do_ar, site_declarado, portfolio_com_peca
+):
+    """O estado que decide esta obra: *não deu para perguntar* nunca é *pode entrar*.
+
+    E também não é 403: um 403 aqui diria a um professor de verdade que ele não
+    é da equipe, e o mandaria pedir uma promoção que ele já tem. O `Retry-After`
+    existe para o navegador (e para qualquer cache no caminho) não guardar uma
+    recusa temporária.
+    """
+    conferencia.pedir(portfolio_com_peca("aluno-1"))
+
+    resposta = Client().get("/equipe", **como())
+
+    assert resposta.status_code == 503
+    assert resposta["Retry-After"] == "30"
+    assert "aluno-1" not in texto(resposta), "a fila vazou numa indisponibilidade"
+
+
+@pytest.mark.parametrize(
+    "status, corpo",
+    [
+        (503, {"e_administrador": True}),
+        (200, {"e_administrador": "sim"}),
+        (200, {"resposta": True}),
+    ],
+    ids=["erro com corpo bom", "respondeu uma cadeia", "respondeu outro campo"],
+)
+def test_a_admin_que_nao_responde_o_que_promete_nao_abre_a_fila(
+    env_dos_pares, rede, site_declarado, portfolio_com_peca, status, corpo
+):
+    """Três formas de a resposta não existir, e nenhuma delas abre a fila.
+
+    A cadeia "sim" é VERDADEIRA num `if` do Python, e é aí que mora o perigo:
+    sem a régua do booleano, uma `admin` respondendo fora de forma abriria a
+    fila para todo mundo, com HTTP 200 dos dois lados e nada vermelho em lugar
+    nenhum.
+
+    **O primeiro caso traz corpo BOM de propósito.** Um erro com corpo vazio
+    seria pego pela régua do booleano, e o guarda ficaria verde com a conferência
+    do status apagada: ele provaria a peça errada (`armadilhas/155`). Com
+    `e_administrador: true` dentro de um HTTP 503, só a conferência do status
+    fecha a fila, e é ela que a mutação mede. É o caso real de um proxy que
+    devolve 503 com o último corpo em cache.
+    """
+    dublar_sessao(rede, BIA)
+    dublar_administrador(rede, status=status, corpo=corpo)
+    conferencia.pedir(portfolio_com_peca("aluno-1"))
+
+    resposta = Client().get("/equipe", **como())
+
+    assert resposta.status_code == 503
+    assert "aluno-1" not in texto(resposta)
+
+
+def test_sem_o_par_da_admin_no_env_a_fila_nao_abre_e_nem_toca_a_rede(
+    env_dos_pares, rede, sem_o_par_da_admin, site_declarado, portfolio_com_peca
+):
+    """O env da VPS de hoje, medido: a fila fecha, e desiste sem gastar timeout.
+
+    Esperar o tempo de uma chamada para descobrir que não há endereço atrasaria
+    a recusa sem mudar nada nela (`armadilhas/097`).
+    """
+    dublar_sessao(rede, BIA)
+    consulta = dublar_administrador(rede, True)
+    conferencia.pedir(portfolio_com_peca("aluno-1"))
+
+    resposta = Client().get("/equipe", **como())
+
+    assert resposta.status_code == 503
+    assert not consulta.calls, "sem o par no env, a casa ainda tentou a rede"
+
+
+def test_sem_o_par_da_admin_no_env_a_prancheta_do_aluno_continua_abrindo(
+    aluna, sem_o_par_da_admin, site_declarado
+):
+    """Fail-closed SEM fail-hard: falta o par, e só a fila da equipe some.
+
+    Este é o guarda da `armadilhas/097` nesta troca de fonte. Ler as duas
+    variáveis no import (ou no `__init__` do cliente) transformaria env ausente
+    em HTTP 500 em TODA página desta casa, com o deploy verde, e o aluno pagaria
+    por uma permissão que não é dele.
+    """
+    resposta = Client().get("/", **como())
+
+    assert resposta.status_code == 200
 
 
 def test_a_fila_fecha_para_visitante(env_dos_pares, rede, portfolio_com_peca):
@@ -558,7 +705,11 @@ def test_devolver_sem_motivo_pela_tela_nao_devolve(
 def test_quem_nao_e_da_equipe_nao_decide_nada(
     fora_da_equipe, site_declarado, portfolio_com_peca
 ):
-    """A recusa que mais importa: a porta fecha a ESCRITA, não só a leitura."""
+    """A recusa que mais importa: a porta fecha a ESCRITA, não só a leitura.
+
+    Continua verde depois da troca de fonte, e sem afrouxar nada: o que mudou é
+    quem responde a pergunta, não o que a porta faz com o não.
+    """
     pedido = conferencia.pedir(portfolio_com_peca("aluno-1"))
 
     resposta = Client().post(
