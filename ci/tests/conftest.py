@@ -164,7 +164,8 @@ class RepoFalso:
 def indice_das_armadilhas_materializado() -> None:
     """Os gerados de `armadilhas/` são MONTADOS antes da suíte que os mede.
 
-    Garante `INDICE.md`, `GUARDAS.json` e `SINAIS.json` antes de qualquer teste.
+    Garante `INDICE.md`, `GUARDAS.json`, `SINAIS.json` e `GATILHOS.json` antes
+    de qualquer teste.
 
     Desde 30/08/2026 (TAR-022) eles não moram mais no Git: eram a colisão diária
     entre robôs — toda armadilha nova reescrevia os três arquivos inteiros. Quem
