@@ -11,6 +11,7 @@ pytest-django==4.9.0
 respx==0.23.1
 black==24.10.0
 PyYAML==6.0.2
+jsonschema==4.23.0
 mypy==1.13.0
 django-stubs==5.1.1
 import-linter==2.1

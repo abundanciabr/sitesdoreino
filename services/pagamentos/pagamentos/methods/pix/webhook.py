@@ -136,7 +136,18 @@ def _montar_dados(
         "customer": _customer(intent),
     }
     if evento == "pagamento.aprovado":
-        return {**base, "method": "pix", "mp_payment_id": mp_payment_id}
+        # [TAR-225] `product_id` é OPACO — igual a `recovery_url` abaixo, veio
+        # no `metadata` da criação da intent (checkout ecoa o produto que o
+        # cliente comprou) e pagamentos só repassa, nunca interpreta. Opcional
+        # no contrato (aditivo, Rito de Contrato): AUSENTE quando o checkout
+        # não informou, nunca string vazia — é a mesma semântica que o resto da
+        # plataforma usa para "campo opcional sem valor" (ver `nota` em
+        # sugestao.status-alterado).
+        aprovado = {**base, "method": "pix", "mp_payment_id": mp_payment_id}
+        produto = str(intent.metadata.get("product_id") or "")
+        if produto:
+            aprovado["product_id"] = produto
+        return aprovado
     if evento == "pagamento.recusado":
         return {**base, "method": "pix", "reason_code": reason_code}
     # pix.expirado — recovery_url é opaco: veio no metadata da criação da
