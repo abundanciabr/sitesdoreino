@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-131016-TAR-217-devolvida",
+  "tarefa": "TAR-217",
+  "evento": "devolvida",
+  "quando": "2026-09-06T13:10:16+00:00",
+  "quem": "despacho-ci-20260906",
+  "detalhe": "mandato escrito do mantenedor para ci/tests/test_provisionar_pares_da_prancheta.py em 06/09/2026"
+}
