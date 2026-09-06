@@ -1,0 +1,22 @@
+{% extends "pages/moldura.html" %}{% comment %}
+A TELA MÍNIMA do degrau 06: a primeira coisa que o aluno reconhecido vê.
+
+O que ela prova, e é só isso: a casa sabe quem está batendo na porta. As cinco
+etapas com as listas de conferência são o degrau 07, e as peças o 08. Uma tela
+que já prometesse as etapas mentiria para o aluno.
+
+O nome vem da `identidade` e pode chegar vazio (sessão sem `nome_exibido`): a
+saudação é escrita para funcionar nos dois casos.
+{% endcomment %}
+{% block titulo %}Sua Prancheta{% endblock %}
+{% block faixa %}Prancheta{% endblock %}
+
+{% block conteudo %}
+  <h1>Olá{% if aluno.nome %}, {{ aluno.nome }}{% endif %}. Esta é a sua Prancheta.</h1>
+  <p>É aqui que o seu portfólio vai ser montado: o roteiro do que entra em cada
+  peça, o que fica de fora, a conferência da escola e o link que você manda ao
+  cliente.</p>
+  <p>As etapas e as suas peças ainda estão sendo construídas. Esta página
+  confirma que a escola reconheceu você, e é dela que o roteiro vai nascer.</p>
+  <p class="miudo"><a href="{{ url_da_capa }}">Voltar ao início do site</a></p>
+{% endblock %}

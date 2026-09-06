@@ -1,0 +1,19 @@
+{
+  "arquivo": "215-portfolio-do-aluno-os-dois-pares-que-abrem-a-porta-da-pranch",
+  "id": "TAR-215",
+  "titulo": "Portfolio do aluno: os dois pares que abrem a porta da Prancheta no env da VPS (identidade e alunos)",
+  "toca": [
+    "infra"
+  ],
+  "depende_de": [
+    "TAR-182"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado com infra/provisionar-pares-da-prancheta.sh e a trava de deriva de infra/provisionar-pages.sh aprendendo as quatro chaves novas; o token do par registrado em DECISAO-celula-de-identidade secao 6.3 e em TOKENS_COMPLETOS_PAGES; o passo manual entregue ao mantenedor como bloco unico de colar; e a prova de FORA: meshcraft.top/pages/ deixa de responder 503 e passa a devolver o convite para entrar.",
+  "despacho": "# DESPACHO - infra: os dois pares que abrem a porta da Prancheta\n\nCELULA: infra (CAMINHO CODEOWNERS - PEDE MANDATO ESCRITO DO MANTENEDOR)\n\nNASCE BLOQUEADA, e o motivo esta escrito no evento: `infra/` e caminho\nCODEOWNERS, e o degrau 06 (TAR-182) foi despachado com mandato para `pages` e\nso para ela. Quem corta na cerca cria a tarefa no mesmo PR (`armadilhas/360`):\nesta e ela. Ela destrava quando o mantenedor der mandato escrito para `infra/`\nnum despacho.\n\nO QUE ESTA FEITO (TAR-182, degrau 06): a porta de `services/pages` pergunta\nquem e a pessoa a `identidade` (`IDENTIDADE_API_URL`, `IDENTIDADE_API_TOKEN`) e\na matricula ativa a `alunos` (`ALUNOS_API_URL`, `ALUNOS_API_TOKEN`), lendo cada\nvariavel NO PONTO DE USO. Nenhuma das quatro existe em `env/pages.env` na VPS.\n\nO QUE ISSO PRODUZ HOJE, e e o comportamento correto: `meshcraft.top/pages/`\nresponde 503 com a frase \"Nao conseguimos conferir o seu acesso agora\" para\nTODO MUNDO, inclusive para aluno com matricula ativa. A porta e fail-closed por\nconstrucao: sem conseguir perguntar quem e a pessoa, ela fecha em vez de abrir\n(criterio AC-05, guarda\n`services/pages/tests/test_porta_e_tela_minima.py::test_sem_o_env_do_par_a_porta_fecha_em_vez_de_abrir`).\nIsso NAO e defeito para consertar em `pages`: e a ausencia dos pares.\n\nA TAREFA, tres pecas:\n\n1. `infra/provisionar-pares-da-prancheta.sh`, pelo molde vivo de\n   `infra/provisionar-pares-da-sala-de-aula.sh` (a celula `cursos` faz\n   exatamente as mesmas duas perguntas). Ele acrescenta as quatro chaves a\n   `env/pages.env` sem reescrever o arquivo.\n\n2. A TRAVA DE DERIVA de `infra/provisionar-pages.sh` tem de aprender as quatro.\n   Hoje ela diz `CHAVES_QUE_EU_GERO=\"DATABASE_URL DEBUG DJANGO_SECRET_KEY\n   SCRIPT_NAME\"` e RECUSA rodar se o env vivo tiver chave que ela nao sabe\n   gerar (`armadilhas/111`). O proprio roteiro ja previu esta data por escrito,\n   na secao 2 dele. Sem este passo, o provisionamento do banco para de rodar no\n   dia em que os pares existirem.\n\n3. O token do par com a `identidade` precisa entrar tambem em\n   `TOKENS_COMPLETOS_PAGES` no env DA IDENTIDADE, porque a porta chama\n   `getSessionFull` (a resposta com e-mail, que e o que a pergunta a `alunos`\n   exige). Isso e registro escrito em `DECISAO-celula-de-identidade.md` secao\n   6.3 ANTES de entrar no env, como foi feito para a `cursos`.\n\nO PASSO MANUAL do mantenedor sai como BLOCO UNICO DE COLAR, fail-closed, com a\njanela rotulada (`deploy@srv...` = ja esta DENTRO da VPS).\n\nPROVA DE FORA, e ela e o unico veredito que vale: depois do passo dele, abrir\n`https://meshcraft.top/pages/` sem sessao passa a devolver o convite para\nentrar (HTTP 200), e nao mais 503. Com sessao de aluno matriculado, a Prancheta\nabre com o nome da pessoa.",
+  "origem": "divida declarada pelo degrau 06 (TAR-182), que parou na cerca CODEOWNERS de infra/ sem mandato (armadilhas/360)",
+  "criada_em": "2026-09-06"
+}

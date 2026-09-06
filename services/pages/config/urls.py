@@ -1,6 +1,6 @@
 from django.urls import path
 
-from apps.core.views import healthz
+from apps.core.views import healthz, prancheta
 from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público: quem o aplica é
@@ -39,4 +39,13 @@ from config.api import api
 urlpatterns = [
     path("healthz", healthz),
     path("interno/", api.urls),
+    # A RAIZ do prefixo, que pela borda pública é `meshcraft.top/pages/`: a
+    # tela mínima do degrau 06. Ela leva `name=` como toda rota desta casa, e
+    # é por `{% url 'prancheta' %}` que o prefixo entra no endereço, nunca por
+    # caminho cravado em string (`armadilhas/029` e `/081`).
+    #
+    # Vem por ÚLTIMA de propósito: `path("")` casa com a raiz, e as duas rotas
+    # de máquina acima precisam ser encontradas antes de qualquer coisa
+    # declarada na raiz do urlconf.
+    path("", prancheta, name="prancheta"),
 ]

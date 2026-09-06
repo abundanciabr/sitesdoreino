@@ -1,0 +1,45 @@
+{% comment %}
+A MOLDURA da casa das Páginas do aluno: o esqueleto que TODA tela desta célula
+veste.
+
+Cópia do PADRÃO de `services/cursos/apps/core/templates/cursos/moldura.html`,
+nunca do arquivo (Lei 3).
+
+O TÍTULO usa barra vertical, e não travessão: em `<title>` a risca não é
+pontuação de frase, é separador entre a página e o nome do lugar, e a escolha
+do mantenedor em 30/08/2026 foi a barra.
+
+O ESTILO É EMBUTIDO, e isso é decisão, não pressa. Célula sob `SCRIPT_NAME`
+que serve estático por tag monta endereço da célula errada, e com `DEBUG=0` o
+Django não serve estático: sem rota própria o arquivo vira 404 em produção e SÓ
+lá (`armadilhas/083` e `/102`). O molde vivo dessa rota está em
+`services/cursos` e em `services/forum`, e ela nasce no degrau em que houver CSS
+para servir. Aqui há uma folha de dez linhas, e a mesma escolha que a área
+administrativa já fez (`admin/base.html`) custa zero rota e zero arquivo.
+
+Nenhum endereço desta casa se escreve à mão: é `{% url %}` que carrega o
+prefixo público `/pages` para dentro do caminho (`armadilhas/029` e `/081`). Os
+endereços de OUTRAS células (a entrada e a capa) vêm do env, porque
+`{% url %}` não os conhece.
+{% endcomment %}<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block titulo %}Páginas{% endblock %} | Meshcraft Academy</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { margin: 0; font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 42rem; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+  h1 { font-size: 1.6rem; line-height: 1.25; margin: 0 0 1rem; }
+  p { margin: 0 0 1rem; }
+  .faixa { padding: .75rem 1.25rem; border-bottom: 1px solid rgba(128,128,128,.35); font-weight: 600; }
+  .entrar a { display: inline-block; padding: .6rem 1.1rem; border: 1px solid currentColor; border-radius: .4rem; text-decoration: none; }
+  .miudo { font-size: .9rem; opacity: .8; }
+</style>
+</head>
+<body>
+<div class="faixa">{% block faixa %}Páginas{% endblock %}</div>
+<main>{% block conteudo %}{% endblock %}</main>
+</body>
+</html>
