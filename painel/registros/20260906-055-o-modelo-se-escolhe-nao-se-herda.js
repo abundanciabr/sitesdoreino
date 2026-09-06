@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260906-052-o-modelo-se-escolhe-nao-se-herda",
+  arquivo: "20260906-055-o-modelo-se-escolhe-nao-se-herda",
   tipo: "decisao",
   quando: "2026-09-06",
   titulo: "O modelo se escolhe, e a conversa que engorda avisa",
