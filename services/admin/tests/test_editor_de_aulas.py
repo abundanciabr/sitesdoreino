@@ -18,8 +18,9 @@ custa, se cair:
    inteiro.** Um 500 ou uma frase geral perde o texto de uma aula que não existe
    em outro lugar.
 5. **Publicar chama `publishLesson` e mostra a data**, no fuso de quem lê.
-6. **O travessão conta, lista e NÃO impede salvar** (decisão do mantenedor de
-   04/09/2026): a obra se guarda como ele escreveu.
+6. **O travessão NÃO é assunto desta tela** (decisão do mantenedor de
+   06/09/2026): a obra dele saiu da lei do travessão, e nenhuma tela pede
+   reescrita nem conta riscas.
 7. **O instrumento lê e grava; nome e cartão só se leem**, e o corpo enviado
    é exatamente o do contrato (mandar `nome_canonico` seria 422).
 8. **Fail-OPEN na leitura, fail-CLOSED na escrita.** Sala fora do ar: a lista
@@ -683,7 +684,7 @@ def test_salvar_manda_a_encomenda_inteira_e_mostra_a_versao_nova():
         "E07",
         Registro.OK,
     )
-    assert linha.detalhe == "versao 8; 0 frase(s) com travessao"
+    assert linha.detalhe == "versao 8"
 
 
 @pytest.mark.django_db
@@ -839,7 +840,19 @@ def test_publicar_sem_a_caixa_marcada_nao_chama_a_porta():
 # ---------------------------------------------------------------------------
 @pytest.mark.django_db
 @respx.mock
-def test_o_travessao_conta_e_lista_mas_nao_impede_salvar():
+def test_o_editor_nao_cobra_travessao_da_obra():
+    """A obra do mantenedor saiu da lei do travessão em 06/09/2026, e esta tela
+    NÃO conta riscas nem pede reescrita.
+
+    Este guarda afirma uma AUSÊNCIA, e por isso ele existe: sem ele, a próxima
+    sessão traz o contador de volta achando que corrige um esquecimento. Num
+    capítulo real ele listava 67 frases, e o mantenedor veria essa parede 34
+    vezes, sobre uma regra que não vale no texto dele. O porquê está em
+    `docs/decisoes/DECISAO-a-obra-fora-da-lei-do-travessao.md`.
+
+    O que continua valendo, e é medido em `test_travessao.py`: a lei do
+    travessão nas telas, nos rótulos e nos documentos DA CASA.
+    """
     _mock_site()
     _mock_instrumentos()
     com_riscas = {
@@ -861,15 +874,17 @@ def test_o_travessao_conta_e_lista_mas_nao_impede_salvar():
 
     assert resposta.status_code == 302
     assert gravacao.call_count == 1
-    assert Registro.objects.get().detalhe == "versao 2; 2 frase(s) com travessao"
+    assert Registro.objects.get().detalhe == "versao 2"
 
     html = _texto(cliente.get(resposta["Location"]))
     assert "Encomenda salva" in html
-    assert "2 frases com travessão." in html
-    assert "Guardei do jeito que você escreveu." in html
-    assert "peça &quot;O pedido&quot;, linha 1" in html
-    assert "peça &quot;Recall&quot;, linha 1" in html
-    assert "travessão (—)" in html and "meia-risca (–)" in html
+    # A obra chegou intacta à tela...
+    assert "capacete — fechado" in html
+    # ...e nenhuma palavra do antigo cobrador sobrou.
+    assert "com travessão." not in html
+    assert "Guardei do jeito que você escreveu." not in html
+    assert "reescrever cada" not in html
+    assert "meia-risca" not in html
 
 
 # ---------------------------------------------------------------------------

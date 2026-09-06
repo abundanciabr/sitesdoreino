@@ -265,12 +265,15 @@ de aba usa barra: `Cadastro | Meshcraft`.
 Onde vale: toda `templates/`, `traducoes/` e
 `documentos/`; `management/commands/`; o RÓTULO de todo `TextChoices` (fora
 `migrations/`); e qualquer arquivo com o comentário `ci:texto-publicado`.
-Fora: o bastidor do mantenedor (`ci/texto-publico-bastidor.txt`), `painel/ia/`
-e o que nunca é publicado. O portão vigia ARQUIVOS, não o banco: texto já
-semeado em produção se conserta por migração de dados (molde em
-`forum/migrations/0003`). Na dúvida, `python ci/travessao.py --listar`.
+Fora: o bastidor do mantenedor (`ci/texto-publico-bastidor.txt`), `painel/ia/`,
+o que nunca é publicado e **a OBRA dele (o texto das aulas e o do livro), onde
+nenhuma tela conta riscas nem pede reescrita**
+(`docs/decisoes/DECISAO-a-obra-fora-da-lei-do-travessao.md`). O portão vigia
+ARQUIVOS, não o banco: texto já semeado em produção se conserta por migração de
+dados (molde em `forum/migrations/0003`). Na dúvida,
+`python ci/travessao.py --listar`.
 
-**Quem faz valer:** `ci/muralha-do-travessao.sh` → `ci/travessao.py` · `ci/tests/test_travessao.py` · na escrita, `ci/muralha_do_travessao_na_escrita.py` · `ci/tests/test_muralha_do_travessao_na_escrita.py`.
+**Quem faz valer:** `ci/muralha-do-travessao.sh` → `ci/travessao.py` · `ci/tests/test_travessao.py` · na escrita, `ci/muralha_do_travessao_na_escrita.py` · `ci/tests/test_muralha_do_travessao_na_escrita.py` · a obra, `services/admin/tests/test_editor_de_aulas.py`.
 
 ## O livro de ocorrências é obrigatório, não opcional
 
