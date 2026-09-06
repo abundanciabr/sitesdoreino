@@ -51,6 +51,25 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Offer' }
         '404': { description: Oferta inexistente/despublicada NESTE site (mesmo que exista em outro — INV-P11) }
+  /produtos:
+    get:
+      operationId: listProducts
+      summary: Os produtos ativos, para quem precisa ESCOLHER um
+      description: |-
+        Quem chama isto precisa MOSTRAR uma lista para alguém escolher.
+
+        Só os ativos, porque a escolha existe para liberar acesso e ninguém deve
+        ser liberado num produto aposentado. Quem já tem uma matrícula apontando
+        para um produto aposentado continua vendo o nome dele por `getProduct`.
+      parameters: []
+      responses:
+        '200':
+          description: Os produtos ativos, em ordem de nome
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Product' }
   /produtos/{product_id}:
     get:
       operationId: getProduct
