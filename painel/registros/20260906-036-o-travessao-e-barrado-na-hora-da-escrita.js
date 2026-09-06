@@ -1,5 +1,5 @@
 (function(){ (window.REGISTROS = window.REGISTROS || []).push({
-  arquivo: "20260906-032-o-travessao-e-barrado-na-hora-da-escrita",
+  arquivo: "20260906-036-o-travessao-e-barrado-na-hora-da-escrita",
   tipo: "entrega",
   quando: "2026-09-06",
   titulo: "O travessão agora é barrado na hora em que o robô escreve",
