@@ -593,6 +593,34 @@ services:
       cursos:
         condition: service_healthy
 
+  # A casa das Paginas do aluno e do portfolio (corredor CS-PAGES-0001, degrau
+  # 05 da escada de PLANO-PORTFOLIO-DO-ALUNO.md secao 5). O passo manual do
+  # mantenedor (infra/provisionar-pages.sh) ja rodou na VPS antes deste PR: e o
+  # PORTAO deste degrau, e e ele que faz `env/pages.env` existir com
+  # `DATABASE_URL` e `SCRIPT_NAME=/pages` antes de o container tentar subir.
+  # Sem banco, `DATABASE_URL` e fail-hard e o container entra em crashloop
+  # (`armadilhas/088`, passo 2).
+  #
+  # ORDEM DE ENTREGA: este compose entra sozinho, sem tocar `services/`, pela
+  # mesma razao gravada no bloco `identidade` acima. PR de celula nova com
+  # codigo E compose juntos trava os DOIS deploys no mesmo commit, e nenhum
+  # rerun sai disso porque o vermelho e a cura moram no mesmo SHA
+  # (`armadilhas/134`). O codigo desta celula ja esta na `main` desde os PRs
+  # #1117 a #1151, e o `deploy-celula` dela vem vermelho desde entao de
+  # proposito (`armadilhas/088`): e ESTE arquivo que faltava.
+  #
+  # SEM PROCESSO AUXILIAR, e a ausencia e o desenho de hoje, nao esquecimento:
+  # esta celula nao tem `management/commands/` nenhum, e o relay dos eventos
+  # `pages.portfolio.*` nasce junto com o degrau que os publicar. Auxiliar
+  # declarado com um `command:` que a imagem ainda nao tem sai do ar como
+  # `Unknown command`, e o passo de verificacao do `deploy-infra` exige TODOS
+  # os servicos declarados em `running`: um so que nao suba derruba a
+  # verificacao da plataforma inteira (`armadilhas/088`, passo 4).
+  pages:
+    <<: *celula
+    image: ghcr.io/abundanciabr/plataforma-pages:${PAGES_TAG:-main}
+    env_file: [env/pages.env]
+
 volumes:
   pgdata: {}
   redisdata: {}

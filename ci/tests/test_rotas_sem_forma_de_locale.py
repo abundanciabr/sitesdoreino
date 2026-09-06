@@ -262,6 +262,22 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
     # ganhou, nunca o nome do mecanismo (`/gamificacao` seria a máquina falando
     # de si mesma). E, como no fórum, o CAMINHO é lei: esta célula não assina
     # sessão ([INV-P12]) e depende de o cookie de host chegar até ela.
+    #
+    # `pages` e `estudio` entraram JUNTOS com a casa das Páginas do aluno
+    # (corredor `CS-PAGES-0001`, degrau 05, 05/09/2026) — a primeira célula da
+    # plataforma com DOIS prefixos públicos apontando para o mesmo serviço,
+    # como a `admin` já fazia com `/docs` e `/mapa-ia`. Passei pelas duas
+    # regras com cada um dos dois, que é para isto que este inventário existe:
+    #   A (forma de locale): 5 e 7 letras, e a forma exige 2-3. Nenhum casa.
+    #   B (idioma declarado): `infra/sites.json` declara `en`, `es` e `pt-br`,
+    #     e nenhum dos dois está lá nem é código de idioma em língua nenhuma.
+    # E o terceiro olhar, o do prefixo CRU, que aqui é o que de fato importa:
+    # `estudio` COMEÇA por `es`, que É idioma declarado. A colisão não existe
+    # porque a regra B compara SEGMENTO INTEIRO e o roteamento de idioma casa o
+    # segmento `/es/...` — `/estudio/joao` nunca é `/es/tudio/joao`. O caminho
+    # contrário é o que dói, e está fechado: um `PathPrefix(/es)` engoliria
+    # `/estudio` junto. Por isso `/estudio` entrou também na prova adversarial
+    # lá embaixo, ao lado de `/estatisticas`, que está lá pelo mesmo motivo.
     assert segmentos == {
         "",
         "quiz",
@@ -276,6 +292,8 @@ def test_os_prefixos_de_hoje_sao_os_que_este_guarda_julgou():
         "forum",
         "conquistas",
         "cursos",
+        "pages",
+        "estudio",
     }
 
 
@@ -410,6 +428,11 @@ def test_regra_b_fecha_a_valvula_dos_reservados_de_maquina():
         "/forum",
         "/",
         "/estatisticas",
+        "/pages",
+        # `/estudio` começa por `es`, que é idioma declarado em
+        # `infra/sites.json`. Ele tem de PASSAR: a regra B compara segmento
+        # inteiro, e reprovar aqui seria o guarda comendo uma rota legítima.
+        "/estudio",
     ],
 )
 def test_aprova_os_prefixos_legitimos_de_hoje(prefixo):
