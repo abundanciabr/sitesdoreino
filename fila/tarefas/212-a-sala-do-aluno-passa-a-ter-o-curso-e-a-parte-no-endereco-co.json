@@ -1,0 +1,19 @@
+{
+  "arquivo": "212-a-sala-do-aluno-passa-a-ter-o-curso-e-a-parte-no-endereco-co",
+  "id": "TAR-212",
+  "titulo": "A sala do aluno passa a ter o curso e a parte no endereco, como no livro",
+  "toca": [
+    "cursos",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: /cursos/<curso>/ e /cursos/<curso>/parte-N/<numero>; a resolucao do curso pelo slug, nunca 'o primeiro do site'; parte que nao casa RECUSA (provado por mutacao); os enderecos antigos redirecionando em vez de morrer; o mapa agrupado por Parte e bloco; suite da cursos verde e make ci verde.",
+  "despacho": "A sala do aluno passa a carregar o curso e a parte no endereco: /cursos/<curso>/ (o mapa das portas) e /cursos/<curso>/parte-N/<numero> (a aula). Hoje sao /cursos/ e /cursos/<numero>, e o curso e resolvido em views.py como Curso.objects.filter(site_id=site).order_by(\"id\").first(), o \"primeiro do site\", que quebra em silencio no dia do segundo curso. O motivo do mantenedor, com as palavras dele: \"quero que ao compartilhar uma aula o link da mesma seja util para o aluno entender exatamente em qual parte do curso ele esta\". O aluno estara com o LIVRO EM MAOS durante o curso, entao o endereco tem que usar os mesmos numeros do livro. A parte e GUARDA e nao enfeite: parte que nao casa com o bloco da aula RECUSA, em vez de mostrar a aula. O mapa das portas passa a agrupar as aulas pelas tres Partes, com titulo, e pelos blocos dentro delas, na ordem do livro. Os enderecos antigos devem continuar respondendo com um redirecionamento permanente para o novo, porque o checkpoint desta escola e por link e nenhum link ja compartilhado pode morrer.",
+  "origem": "decisao do mantenedor em 05/09/2026 e a hierarquia do livro: o aluno tera o livro em maos durante o curso",
+  "criada_em": "2026-09-06"
+}
