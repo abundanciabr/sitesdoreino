@@ -24,17 +24,28 @@ O mantenedor pediu uma página onde ele guarda os textos do livro que escreve,
 
 5. **O envio de arquivos é tolerante por arquivo.** Um arquivo estragado no meio
    de vários não derruba os bons, e a recusa nomeia o arquivo.
+
+6. **A tela de LEITURA (`texto_ler`, 05/09/2026) não corrige travessão, e é
+   permanente.** O mesmo texto do item 3, agora medido também na tela nova —
+   se alguém "consertar" a leitura para recusar, o guarda acusa. O CSP dela
+   nunca usa `'unsafe-inline'` para script.
+
+7. **`Livro` agrupa capítulos, e a migração que o introduziu não perde
+   ninguém.** Um capítulo pré-existente entra num `Livro` padrão sozinho;
+   criar um segundo `Livro` não mexe no primeiro.
 """
 
 import httpx
 import pytest
 import respx
+from django.db import connection
+from django.db.migrations.executor import MigrationExecutor
 from django.test import Client
 from django.urls import get_resolver
 
 from apps.auditoria.models import Registro
 from apps.core.livro import NOMES_RESERVADOS
-from apps.core.models import Documento, TextoDoLivro, VersaoDoTexto
+from apps.core.models import Documento, Livro, TextoDoLivro, VersaoDoTexto
 
 BASE = "http://identidade:8000/interno"
 SESSAO = f"{BASE}/sessao/completa"
@@ -99,11 +110,13 @@ def _guardar(cliente, **campos):
         ("get", "/livro/novo"),
         ("post", "/livro/criar"),
         ("post", "/livro/enviar"),
+        ("post", "/livro/criar-livro"),
         ("get", "/livro/tudo.md"),
         ("get", "/livro/algum"),
         ("get", "/livro/algum/editar"),
         ("post", "/livro/algum/salvar"),
         ("get", "/livro/algum/baixar"),
+        ("get", "/livro/algum/ler"),
         ("post", "/livro/algum/restaurar"),
         ("post", "/livro/algum/apagar"),
     ],
@@ -438,3 +451,219 @@ def test_o_livro_inteiro_sai_num_arquivo_so_na_ordem_do_sumario():
 
     assert baixado.index("Antes.") < baixado.index("Depois.")
     assert "titulo: Primeiro" in baixado
+
+
+# --------------------------------------------------------- 7. a tela de LEITURA
+
+
+@respx.mock
+def test_texto_ler_devolve_200_com_o_corpo_formatado():
+    cliente = _dentro()
+    _guardar(cliente, corpo=TEXTO_DO_LIVRO)
+
+    resposta = cliente.get("/livro/um-capitulo/ler")
+
+    assert resposta.status_code == 200
+    corpo = resposta.content.decode("utf-8")
+    assert "<ol>" in corpo and "<li>Herói" in corpo
+    assert "<strong>história</strong>" in corpo
+
+
+@respx.mock
+def test_texto_ler_404_para_nome_inexistente():
+    resposta = _dentro().get("/livro/nao-existe/ler")
+    assert resposta.status_code == 404
+
+
+@respx.mock
+def test_texto_ler_nao_corrige_nem_recusa_travessao():
+    """Regressão da decisão do mantenedor em 05/09/2026: "Não, o livro é sua
+    voz literal" — mesmo na tela publicada para leitura."""
+    cliente = _dentro()
+    _guardar(cliente, corpo="Uma frase — com risca, publicada como está.")
+
+    resposta = cliente.get("/livro/um-capitulo/ler")
+
+    assert resposta.status_code == 200
+    assert "—" in resposta.content.decode("utf-8")
+
+
+@respx.mock
+def test_texto_ler_o_csp_tem_hash_e_nunca_unsafe_inline():
+    cliente = _dentro()
+    _guardar(cliente)
+
+    resposta = cliente.get("/livro/um-capitulo/ler")
+
+    csp = resposta["Content-Security-Policy"]
+    assert "script-src 'self' 'sha256-" in csp
+    assert "unsafe-inline" not in csp.split("script-src", 1)[1].split(";", 1)[0]
+
+
+def _bloco_de_navegacao(html: str) -> str:
+    if "leitura-nav" not in html:
+        return ""
+    return html.split('<nav class="leitura-nav">', 1)[1].split("</nav>", 1)[0]
+
+
+@respx.mock
+def test_texto_ler_navega_entre_capitulos_pela_ordem_do_livro():
+    """Três capítulos em ordens fora de sequência: a navegação segue a ORDEM
+    do sumário, não a ordem em que foram criados."""
+    cliente = _dentro()
+    _guardar(cliente, titulo="Meio", corpo="B.", ordem="20")
+    _guardar(cliente, titulo="Início", corpo="A.", ordem="10")
+    _guardar(cliente, titulo="Fim", corpo="C.", ordem="30")
+
+    nav_inicio = _bloco_de_navegacao(
+        cliente.get("/livro/inicio/ler").content.decode("utf-8")
+    )
+    nav_meio = _bloco_de_navegacao(
+        cliente.get("/livro/meio/ler").content.decode("utf-8")
+    )
+    nav_fim = _bloco_de_navegacao(cliente.get("/livro/fim/ler").content.decode("utf-8"))
+
+    assert "Início" not in nav_inicio and "Meio" in nav_inicio
+    assert "Início" in nav_meio and "Fim" in nav_meio
+    assert "Meio" in nav_fim and "Fim" not in nav_fim
+
+
+@respx.mock
+def test_texto_ler_o_primeiro_capitulo_nao_mostra_anterior_fantasma():
+    """A armadilha do índice em Python: `lista[0 - 1]` é `lista[-1]`, o
+    ÚLTIMO — um "anterior" que não pode existir na ponta de cima. Guarda
+    contra um `if posicao is not None` sozinho (sem excluir o zero), que
+    deixaria o índice negativo escapar."""
+    cliente = _dentro()
+    _guardar(cliente, titulo="Início", corpo="A.", ordem="10")
+    _guardar(cliente, titulo="Fim", corpo="C.", ordem="30")
+
+    nav = _bloco_de_navegacao(cliente.get("/livro/inicio/ler").content.decode("utf-8"))
+
+    assert "&larr;" not in nav
+    assert "Fim" in nav
+
+
+# --------------------------------------------------------------- 8. o `Livro`
+
+
+@respx.mock
+def test_um_texto_guardado_sem_nenhum_livro_ganha_um_livro_padrao():
+    """O caso comum: o mantenedor nunca criou um `Livro` à mão, e a tela
+    resolve isso sozinha na primeira gravação."""
+    _guardar(_dentro())
+
+    assert Livro.objects.count() == 1
+    livro = Livro.objects.get()
+    assert livro.slug == "meu-livro"
+    assert TextoDoLivro.objects.get().livro_id == livro.id
+
+
+@respx.mock
+def test_criar_um_segundo_livro_nao_mexe_no_primeiro():
+    cliente = _dentro()
+    _guardar(cliente, titulo="Capítulo do primeiro livro")
+    primeiro = Livro.objects.get()
+
+    resposta = cliente.post("/livro/criar-livro", {"titulo": "Segundo Livro"})
+
+    assert resposta.status_code in (302, 303)
+    assert Livro.objects.count() == 2
+    assert Livro.objects.get(pk=primeiro.pk).slug == primeiro.slug
+    assert TextoDoLivro.objects.get().livro_id == primeiro.id
+    assert Registro.objects.filter(acao=Registro.CRIAR_LIVRO).exists()
+
+
+@respx.mock
+def test_com_dois_livros_o_texto_novo_exige_escolher_um():
+    cliente = _dentro()
+    _guardar(cliente, titulo="Capítulo do primeiro livro")
+    cliente.post("/livro/criar-livro", {"titulo": "Segundo Livro"})
+
+    resposta = cliente.post(
+        "/livro/criar", {"titulo": "Sem escolha", "corpo": "X.", "ordem": "5"}
+    )
+
+    assert resposta.status_code == 422
+    assert "Escolha em qual livro" in resposta.content.decode("utf-8")
+    assert TextoDoLivro.objects.filter(titulo="Sem escolha").count() == 0
+
+
+@respx.mock
+def test_com_dois_livros_o_texto_novo_entra_no_livro_escolhido():
+    cliente = _dentro()
+    _guardar(cliente, titulo="Capítulo do primeiro livro")
+    primeiro = Livro.objects.get()
+    cliente.post("/livro/criar-livro", {"titulo": "Segundo Livro"})
+    segundo = Livro.objects.exclude(pk=primeiro.pk).get()
+
+    resposta = cliente.post(
+        "/livro/criar",
+        {
+            "titulo": "Capítulo do segundo",
+            "corpo": "Y.",
+            "ordem": "5",
+            "livro": segundo.slug,
+        },
+    )
+
+    assert resposta.status_code in (302, 303)
+    novo = TextoDoLivro.objects.get(titulo="Capítulo do segundo")
+    assert novo.livro_id == segundo.id
+
+
+@respx.mock
+def test_nenhuma_rota_publica_nova_para_a_leitura_ou_para_criar_livro():
+    """A régua da tarefa: nada de rota pública nova, nem para ler, nem para
+    criar um `Livro`. As duas continuam atrás da mesma porta de sempre."""
+    for metodo, caminho in [
+        ("get", "/livro/algum/ler"),
+        ("post", "/livro/criar-livro"),
+    ]:
+        resposta = getattr(Client(), metodo)(caminho, {})
+        assert resposta.status_code in (302, 303), caminho
+
+
+def test_a_migracao_associa_um_capitulo_preexistente_a_um_livro_padrao(db):
+    """Reconstrói o estado REAL de antes do PR: um `TextoDoLivro` sem `livro`
+    nenhum, no banco na forma de quando a coluna ainda não existia — mesmo
+    molde de `tests/test_reembolso_no_banco.py`, adaptado para uma migração
+    que muda o ESQUEMA, não só o dado.
+
+    **`transaction=True` NÃO entra aqui, e é de propósito** (`armadilhas/361`):
+    o Postgres roda DDL dentro de transação sem problema, então o `db` comum
+    (que embrulha o teste inteiro numa transação desfeita por `ROLLBACK`) já
+    basta para o `MigrationExecutor` andar para trás e para frente. Marcar
+    `transaction=True` trocaria o desmonte por um `flush` de verdade — e o
+    `flush` tenta `TRUNCATE auditoria_registro`, que o gatilho append-only da
+    tabela (`armadilhas/079`) recusa. O teste passava, e o erro estourava no
+    desmonte de um teste vizinho, sem relação nenhuma com esta migração.
+    """
+    executor = MigrationExecutor(connection)
+    alvo_antes = [("core", "0011_semear_o_guia_do_portfolio")]
+    executor.migrate(alvo_antes)
+    executor.loader.build_graph()
+
+    estado_antigo = executor.loader.project_state(alvo_antes)
+    TextoDoLivroAntigo = estado_antigo.apps.get_model("core", "TextoDoLivro")
+    TextoDoLivroAntigo.objects.using(connection.alias).create(
+        nome="cap-de-antes", titulo="Capítulo de antes", corpo="Já estava aqui."
+    )
+
+    executor = MigrationExecutor(connection)
+    alvo_depois = [("core", "0012_o_livro_por_tras_dos_capitulos")]
+    executor.migrate(alvo_depois)
+    executor.loader.build_graph()
+
+    assert Livro.objects.count() == 1
+    livro = Livro.objects.get()
+    assert livro.slug == "meu-livro"
+    capitulo = TextoDoLivro.objects.get(nome="cap-de-antes")
+    assert capitulo.livro_id == livro.id
+
+
+def test_a_migracao_em_banco_vazio_nao_cria_livro_orfao(db):
+    """Banco de teste comum (o do resto da suíte): nasce sem nenhum
+    `TextoDoLivro`, e a migração não deve inventar um `Livro` sem capítulo."""
+    assert not TextoDoLivro.objects.exists()
+    assert Livro.objects.count() == 0

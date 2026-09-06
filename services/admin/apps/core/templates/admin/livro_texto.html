@@ -12,6 +12,11 @@ três, e um dia alguém vai ler só um deles.
 O histórico mora AQUI dentro, e não numa tela própria como a dos documentos. A
 razão é o tamanho da área: são dois botões e uma lista, e uma terceira tela para
 isso faria o autor navegar para ver o que ele mesmo escreveu ontem.
+
+Esta é a tela EDITORIAL (bastidor: histórico, editar, apagar). Desde
+05/09/2026 existe também `texto_ler`, a tela de LEITURA — sem histórico nem
+botões de edição, com sumário e navegação entre capítulos. O botão "Ler" logo
+abaixo leva para lá.
 {% endcomment %}
 {% block titulo %}{{ texto.titulo }}{% endblock %}
 {% block corpo %}
@@ -43,23 +48,26 @@ isso faria o autor navegar para ver o que ele mesmo escreveu ontem.
   </p>
 
   <p class="espaco-abaixo-20">
+    <a class="botao" href="{% url 'texto_ler' texto.nome %}">Ler</a>
     <a class="botao" href="{% url 'texto_editar' texto.nome %}">Editar este texto</a>
     <a class="botao" href="{% url 'texto_baixar' texto.nome %}">Baixar o arquivo</a>
   </p>
 
   {% if riscas %}
   {% comment %}
-  O AVISO das riscas, que aqui não recusa nada. Escolha do mantenedor em
-  04/09/2026: a Biblioteca guarda a obra como o autor escreveu, e a régua do
-  projeto (nenhum texto publicado sai com risca comprida) vale no dia em que um
-  trecho virar página online. O editor de documentos, que publica, recusa.
+  O AVISO das riscas, que aqui não recusa nada e NUNCA vai recusar. Escolha do
+  mantenedor em 04/09/2026 (a Biblioteca guarda a obra como o autor escreveu),
+  reafirmada em 05/09/2026 quando ele viu a tela de LEITURA nascer: perguntado
+  se a régua do CLAUDE.md (nenhum texto publicado sai com travessão) valeria
+  para o livro publicado, ele respondeu "Não, o livro é sua voz literal". Isto
+  é EXCEÇÃO PERMANENTE, não um prazo — ver o cabeçalho de `apps/core/livro.py`.
   {% endcomment %}
   <div class="aviso espaco-abaixo-20">
     <b>Este texto tem {{ riscas|length }} risca{{ riscas|length|pluralize:"s" }} comprida{{ riscas|length|pluralize:"s" }}.</b>
     <p class="nota">
-      Guardei do jeito que você escreveu, e não mudei nada. Este aviso é para o
-      dia em que este texto virar página no site: lá a regra do projeto é que
-      nenhum texto publicado saia com essa risca. Onde ela está:
+      Guardei do jeito que você escreveu, e não mudei nada. É só uma contagem:
+      você decidiu que o livro é a sua voz literal, então estas riscas vão
+      para a tela de leitura exatamente como estão aqui. Onde elas estão:
     </p>
     <ul class="riscas">
       {% for risca in riscas %}
@@ -69,15 +77,6 @@ isso faria o autor navegar para ver o que ele mesmo escreveu ontem.
       </li>
       {% endfor %}
     </ul>
-    <p class="nota">
-      As quatro trocas, escolhendo pelo papel que a risca fazia na frase:
-      <b>vírgula</b> para uma explicação no meio ("O motorista, que estava
-      cansado, parou no posto."), <b>parênteses</b> para um dado acessório ("A
-      inflação (principal vilã do orçamento) voltou a subir."),
-      <b>dois-pontos</b> quando o trecho fecha a ideia no fim ("Ele só queria
-      uma coisa: paz.") e <b>aspas</b> quando era fala de alguém ("Não quero ir
-      hoje", disse Pedro.).
-    </p>
   </div>
   {% endif %}
 

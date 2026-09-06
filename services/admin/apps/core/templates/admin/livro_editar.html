@@ -46,6 +46,28 @@ publica nada. Ver o cabeçalho de `apps/core/livro.py`.
       Pode deixar em branco: eu monto a partir do título. Ele é só o endereço
       desta página aqui dentro, e não aparece para ninguém de fora.
     </p>
+
+    {% comment %}
+    [LIVRO] 05/09/2026 — a que livro este capítulo pertence. Só um `Livro`
+    existe ⇒ campo oculto (não há escolha real para mostrar); vários ⇒ seletor
+    de verdade. Zero `Livro` (biblioteca vazia) também some o seletor: a view
+    cria o padrão sozinha quando não vier nada, e perguntar "em qual livro"
+    antes de existir nenhum livro seria uma pergunta sem resposta possível.
+    {% endcomment %}
+    {% if livros|length > 1 %}
+    <label class="rotulo" for="livro">Livro</label>
+    <select id="livro" name="livro">
+      {% for livro_da_lista in livros %}
+      <option value="{{ livro_da_lista.slug }}"
+              {% if livro_da_lista.slug == rascunho.livro %}selected{% endif %}>
+        {{ livro_da_lista.titulo }}
+      </option>
+      {% endfor %}
+    </select>
+    <p class="nota">Em qual livro este capítulo entra.</p>
+    {% else %}
+    <input type="hidden" name="livro" value="{{ rascunho.livro }}">
+    {% endif %}
     {% endif %}
 
     <label class="rotulo" for="corpo">O texto</label>
