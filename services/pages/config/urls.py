@@ -1,6 +1,7 @@
 from django.urls import path
 
 from apps.core.views import healthz
+from config.api import api
 
 # O urlconf da célula NÃO conhece o prefixo público: quem o aplica é
 # `FORCE_SCRIPT_NAME`, lido do env em `config/settings.py`. Mover a célula de
@@ -27,14 +28,15 @@ from apps.core.views import healthz
 # **nunca** de `{% static %}` (`armadilhas/102`). O molde vivo está em
 # `services/forum` e `services/cursos`.
 #
-# E quando a porta de MÁQUINA nascer (degrau 03, o contrato e os eventos
-# `pages.portfolio.*`): ela mora em `/api/pages/` e `/interno/`, e nesta célula
-# esses caminhos FICAM DEBAIXO do prefixo roteado. Ou seja,
-# `meshcraft.top/pages/interno/…` é alcançável pela internet — o corte do
-# prefixo é do Django, não do Traefik (`armadilhas/186`). Quem fecha a porta é
-# o Bearer do par, e o guarda que importa é o teste de 401 em TODAS as
-# operações; a topologia não fecha nada aqui, e escrever o contrário no
-# comentário seria ensinar errado quem chegar depois.
+# A PORTA DE MÁQUINA nasceu no degrau 03, e mora em `/interno/`, o mesmo
+# endereço que o `forum`, a `identidade` e a `sugestoes` usam. Nesta célula esse
+# caminho FICA DEBAIXO do prefixo roteado: `meshcraft.top/pages/interno/…` é
+# alcançável pela internet, porque o corte do prefixo é do Django, não do
+# Traefik (`armadilhas/186`). Quem fecha a porta é o Bearer do par, e o guarda
+# que importa é o teste de 401 em TODAS as operações
+# (`tests/test_porta_de_maquina.py`); a topologia não fecha nada aqui, e
+# escrever o contrário no comentário seria ensinar errado quem chegar depois.
 urlpatterns = [
     path("healthz", healthz),
+    path("interno/", api.urls),
 ]

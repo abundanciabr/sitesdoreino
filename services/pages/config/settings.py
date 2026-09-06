@@ -165,6 +165,25 @@ TEMPLATES = [
     },
 ]
 
+# ---------------------------------------------------------------------------
+# Tokens do PAR consumidor->provedor (R1), um por par: TOKENS_ACEITOS_<PAR>
+# ---------------------------------------------------------------------------
+# Env ausente => conjunto VAZIO => toda chamada a `/interno` é recusada com 401.
+# Fail-closed por construção, e sem derrubar o boot: a célula sobe, o `/healthz`
+# segue respondendo, e só a porta de máquina fica fechada até o token existir no
+# env. É o mesmo desenho de `identidade`, `forum`, `gamificacao` e `cursos`.
+#
+# **Aqui o conjunto vazio é o ÚNICO cadeado.** Esta célula roda sob
+# `SCRIPT_NAME=/pages`, e o corte do prefixo é do Django, não do Traefik: a
+# porta é alcançável pela borda pública em `meshcraft.top/pages/interno/...`
+# (`armadilhas/186`). Não há topologia por baixo para segurar o que este
+# conjunto deixar passar.
+TOKENS_ACEITOS = {
+    valor
+    for chave, valor in os.environ.items()
+    if chave.startswith("TOKENS_ACEITOS_") and valor
+}
+
 ROOT_URLCONF = "config.urls"
 ASGI_APPLICATION = "config.asgi.application"
 

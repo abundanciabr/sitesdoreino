@@ -78,7 +78,7 @@
     },
     "pages": {
       "freeze": "not-applicable",
-      "reason": "Célula nascida em 05/09/2026 (degrau 01 da escada do §5 de docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md, corredor docs/changespecs/CS-PAGES-0001.md): config/urls.py expõe só /healthz, não há config/api.py nem API pública. O contrato (contracts/pages.openapi.yaml) e os eventos pages.portfolio.* entram pelo RITOS.md §3 no degrau 03, em PR próprio conduzido pela maestro, DEPOIS de a porta de máquina exportar o contrato vivo — a ordem que armadilhas/228 e 243 provaram, e que armadilhas/304 documenta como o erro clássico de plano escrito fora desta casa."
+      "reason": "A PORTA DE MÁQUINA JÁ EXISTE (config/api.py e manage.py export_openapi, degrau 03 da escada do §5 de docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md), e esta linha vira required no PRÓXIMO PR desta escada, o do Rito de Contrato, que traz contracts/pages.openapi.yaml e os eventos pages.portfolio.*. Ela não pôde virar required aqui por duas razões mecânicas: required com o arquivo ausente é ERROR, e ci/cerca-de-celula.sh recusa contracts/ mudando junto com services/. É a ordem que armadilhas/228 e 243 provaram, e que armadilhas/304 documenta como o erro clássico de plano escrito fora desta casa."
     },
     "leads": {
       "freeze": "required",
