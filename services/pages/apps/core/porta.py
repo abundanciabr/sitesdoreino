@@ -24,9 +24,15 @@ Cinco respostas, e cada uma diz o que aconteceu E o que fazer:
 | entrou, na fila da equipe, fora dela | 403, e a frase diz que foi isso     |
 
 A última linha é a área da equipe (`PREFIXO_DA_FILA_DA_EQUIPE`), que troca a
-pergunta da matrícula pela lista do env: quem confere o portfólio de um aluno
+pergunta da matrícula por outra: **esta pessoa é administradora da escola?**,
+feita à `admin` pelo contrato congelado. Quem confere o portfólio de um aluno
 não é aluno. Ela passa por esta porta como todo o resto, e a página dela recebe
 `request.membro_da_equipe` no lugar de `request.aluno`.
+
+**E o 503 vale para as DUAS perguntas de permissão desta porta.** Não conseguir
+falar com a `admin` fecha a fila com 503, nunca com 403 e nunca com "então pode
+entrar", pela mesma razão escrita abaixo: 403 diria a um professor de verdade
+uma frase falsa sobre ele, e o mandaria pedir uma promoção que ele já tem.
 
 **Por que 503, e não o 403 que a `cursos` usa no mesmo caso.** As duas formas
 existem nesta casa, e a diferença é o fato que cada uma descreve: 403 é
@@ -52,6 +58,7 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from .clients import (
+    AdminIndisponivel,
     AlunosClient,
     AlunosIndisponivel,
     ConfiguracaoAusente,
@@ -117,10 +124,10 @@ PREFIXO_PUBLICO_DA_VITRINE = "/estudio"
 #: existe para atender, e a única prova disso seria a equipe olhando um 403.
 #:
 #: Então o caminho continua atrás da porta e troca de régua: a `identidade`
-#: continua dizendo QUEM é a pessoa, e quem diz se ela pode conferir é a lista
-#: do env (`apps/core/equipe.py`), fail-CLOSED. Uma isenção aqui seria pior de
-#: duas formas: a fila abriria para qualquer visitante, e a decisão de quem
-#: entra sairia da porta para dentro de uma view.
+#: continua dizendo QUEM é a pessoa, e quem diz se ela pode conferir é a `admin`
+#: (`apps/core/equipe.py`), fail-CLOSED. Uma isenção aqui seria pior de duas
+#: formas: a fila abriria para qualquer visitante, e a decisão de quem entra
+#: sairia da porta para dentro de uma view.
 PREFIXO_DA_FILA_DA_EQUIPE = "/equipe"
 
 
@@ -181,21 +188,35 @@ class PortaDaCasa:
         # dela é a pergunta seguinte, e ela muda conforme a área.
         pessoa_id = sessao.get("id")
         nome = (sessao.get("nome_exibido") or "").strip()
+        # O e-mail é lido UMA vez, aqui, e serve às duas perguntas de permissão
+        # desta porta: a matrícula, à `alunos`, e a conferência do portfólio, à
+        # `admin`. Ele morre nelas: nada desta casa o guarda nem o exibe.
+        email = (sessao.get("email") or "").strip().lower()
 
         if _sob(request.path_info, PREFIXO_DA_FILA_DA_EQUIPE):
             # A FILA DA EQUIPE não pergunta matrícula: quem confere o portfólio
-            # de um aluno não é aluno. Quem abre é a lista do env, e a lista
-            # vazia é NINGUÉM (`apps/core/equipe.py`).
-            if not pessoa_id:
-                logger.warning("porta: sessão autenticada sem id")
+            # de um aluno não é aluno. Quem abre é a `admin`, perguntada por
+            # e-mail (`apps/core/equipe.py`).
+            if not pessoa_id or not email:
+                logger.warning("porta: sessão autenticada sem id ou sem e-mail")
                 return self._sem_resposta(request)
-            if not e_da_equipe(pessoa_id):
+            try:
+                confere_portfolio = e_da_equipe(email)
+            except (AdminIndisponivel, ConfiguracaoAusente) as erro:
+                # FECHA, e com 503. Não conseguir perguntar nunca é "pode
+                # entrar", e também não é o 403 que fala sobre a pessoa.
+                logger.warning(
+                    "porta: não deu para perguntar quem confere o portfólio: %s", erro
+                )
+                return self._sem_resposta(request)
+            if not confere_portfolio:
                 return self._nao_e_da_equipe(request)
+            # O id, e nunca o e-mail, é o que fica na resposta e na assinatura
+            # da conferência: é ele que a fila grava em `respondido_por`.
             request.membro_da_equipe = {"id": pessoa_id, "nome": nome}
             return self.get_response(request)
 
         aluno_id = pessoa_id
-        email = (sessao.get("email") or "").strip().lower()
         if not aluno_id or not email:
             # Autenticado sem id ou sem e-mail é resposta fora de forma: não dá
             # para identificar o dono do portfólio nem para perguntar à
@@ -233,9 +254,13 @@ class PortaDaCasa:
         """403 com frase, e não tela vazia.
 
         Uma tela vazia diria "não há nada aqui" a quem deveria ver a fila, e um
-        professor com o env mal configurado passaria a tarde achando que a
-        escola não tem pedidos. O 403 diz o que é: a área existe, e esta pessoa
-        não está na lista de quem confere.
+        professor passaria a tarde achando que a escola não tem pedidos. O 403
+        diz o que é: a área existe, e a `admin` respondeu que esta pessoa não é
+        administradora da escola.
+
+        **Só chega aqui quem RECEBEU a resposta.** Quem não conseguiu perguntar
+        sai pelo 503 logo acima, porque as duas frases são diferentes e mandam a
+        pessoa fazer coisas diferentes.
         """
         return self._recusar(request, "nao-e-da-equipe", status=403)
 

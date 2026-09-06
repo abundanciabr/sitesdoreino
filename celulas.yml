@@ -273,7 +273,16 @@ celulas:
     # cai para "sem menu" em qualquer tropeço, porque um menu é enfeite de
     # navegação e derrubar a Prancheta por causa dele seria a troca errada. Quem
     # lê `CATALOGO_API_URL` é `services/pages/apps/core/menu.py`.
-    consome: [alunos, catalogo, identidade]
+    #
+    # `admin` entrou em 06/09/2026, quando quem confere o portfólio do aluno
+    # deixou de ser uma lista de ids colada à mão no env da VPS e passou a ser
+    # uma PERGUNTA: esta pessoa é administradora da escola? A lista era uma
+    # segunda casa do mesmo fato, e promover alguém pela tela de `/admin/escola/`
+    # não a mudava. Quem lê `ADMIN_API_URL` é
+    # `services/pages/apps/core/clients.py`, e a decisão que ela alimenta mora em
+    # `services/pages/apps/core/porta.py`, fail-CLOSED: não conseguir perguntar
+    # fecha a fila da equipe com 503, e nunca a abre.
+    consome: [admin, alunos, catalogo, identidade]
 
   quiz:
     # `services/quiz/LICOES.md` MENCIONA `CATALOGO_API_URL`, mas o código não a

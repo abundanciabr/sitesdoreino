@@ -1,10 +1,16 @@
 """O que esta casa pergunta ao resto da plataforma, e nada além disso.
 
-Duas conversas, e a divisão de trabalho é lei:
+Três conversas, e a divisão de trabalho é lei:
 
 - **a `identidade` prova QUEM É** (`getSessionFull`, a resposta com e-mail);
 - **a `alunos` diz se a pessoa TEM MATRÍCULA** (`getStudentStanding`), e é
-  esta resposta, e só ela, que decide se a Prancheta abre (fail-CLOSED).
+  esta resposta, e só ela, que decide se a Prancheta abre (fail-CLOSED);
+- **a `admin` diz se a pessoa é ADMINISTRADORA da escola** (`isAdministrator`),
+  e é esta resposta, e só ela, que abre a fila da conferência (fail-CLOSED).
+
+**O mesmo e-mail serve às duas últimas perguntas, e continua sem ser guardado
+nem exibido.** Ele chega na resposta da `identidade`, vai nas duas perguntas e
+morre ali: nenhuma tela desta casa o mostra, e nenhuma tabela o grava.
 
 A casa não lê banco de ninguém (Lei 3): pergunta por HTTP, pelo contrato
 congelado, com Bearer do par e **timeout sempre explícito**.
@@ -70,13 +76,30 @@ class AlunosIndisponivel(RuntimeError):
     """
 
 
+class AdminIndisponivel(RuntimeError):
+    """A `admin` não respondeu, ou respondeu fora do contrato.
+
+    **Nunca vira "então deixa conferir".** Quem trata esta exceção devolve 503,
+    e não 403: os dois fatos são diferentes, e a porta desta casa já os separa
+    em respostas diferentes (`apps/core/porta.py`).
+    """
+
+
 def exigir(nome: str) -> str:
-    """Lê uma variável de ambiente NO PONTO DE USO, ou falha fechado e alto."""
+    """Lê uma variável de ambiente NO PONTO DE USO, ou falha fechado e alto.
+
+    A frase nomeia a variável e diz o tamanho do estrago, que não é o mesmo para
+    as três conversas desta casa: sem o par da `identidade` ou o da `alunos` a
+    Prancheta fecha; sem o par da `admin` fecha só a fila da equipe, e o aluno
+    não perde nada. Uma mensagem que dissesse "a Prancheta fechou" nos três casos
+    mandaria quem lê o log procurar um estrago que não existe.
+    """
     valor = (os.environ.get(nome) or "").strip()
     if not valor:
         raise ConfiguracaoAusente(
             f"variável de ambiente ausente: {nome}. "
-            "A Prancheta fica FECHADA até ela existir no env desta célula."
+            "O caminho que precisa dela fica FECHADO até ela existir no env "
+            "desta célula; os outros continuam respondendo."
         )
     return valor
 
@@ -179,3 +202,61 @@ class AlunosClient:
         if not isinstance(categoria, str) or not categoria:
             raise AlunosIndisponivel("a célula alunos respondeu sem `categoria`")
         return categoria
+
+
+class AdminClient:
+    """`contracts/admin.openapi.yaml`, operação `isAdministrator`.
+
+    Entra e-mail, sai sim ou não. `ADMIN_API_URL` é o `servers:` do contrato
+    (`http://admin:8000/interno`) e o caminho da operação é
+    `/administradores/consultar`: os dois se SOMAM, e é por isso que o dublê dos
+    testes confere a URL inteira (`armadilhas/111`).
+
+    **É POST, e não GET, e isso não é gosto:** caminho de URL entra em log de
+    servidor, em histórico de proxy e em rastro de erro; corpo, não. E-mail não
+    viaja em URL nesta casa.
+
+    **`false` é RESPOSTA, e nunca erro.** É o que esta pergunta devolve para
+    quase todo mundo, porque quase todo mundo é aluno. O que vira exceção é a
+    `admin` calada ou falando fora do contrato, e aí quem trata devolve 503:
+    *não deu para perguntar* não é *perguntei e a resposta foi não*.
+    """
+
+    def e_administrador(self, email: str) -> bool:
+        """Esta pessoa é administradora da escola? Ou exceção, nunca um chute."""
+        base = exigir("ADMIN_API_URL").rstrip("/")
+        token = exigir("ADMIN_API_TOKEN")
+        try:
+            resposta = http().post(
+                f"{base}/administradores/consultar",
+                headers={"Authorization": f"Bearer {token}"},
+                json={"email": email},
+            )
+        except httpx.RequestError as erro:
+            raise AdminIndisponivel(
+                f"não deu para falar com a célula admin: {erro}"
+            ) from erro
+
+        if resposta.status_code != 200:
+            raise AdminIndisponivel(
+                f"a célula admin respondeu HTTP {resposta.status_code}"
+            )
+
+        try:
+            corpo = resposta.json()
+        except ValueError as erro:
+            raise AdminIndisponivel(
+                f"a célula admin respondeu fora do contrato: {erro}"
+            ) from erro
+
+        resposta_da_consulta = (
+            corpo.get("e_administrador") if isinstance(corpo, dict) else None
+        )
+        # `is True` e `is False`, e nunca a verdade frouxa do Python: o contrato
+        # promete um booleano, e uma cadeia como "nao" é VERDADEIRA num `if`.
+        # Uma resposta fora de forma tem de fechar a fila, não abri-la.
+        if not isinstance(resposta_da_consulta, bool):
+            raise AdminIndisponivel(
+                "a célula admin respondeu sem `e_administrador` booleano"
+            )
+        return resposta_da_consulta

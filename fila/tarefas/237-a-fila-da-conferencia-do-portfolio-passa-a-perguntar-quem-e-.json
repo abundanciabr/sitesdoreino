@@ -1,0 +1,17 @@
+{
+  "arquivo": "237-a-fila-da-conferencia-do-portfolio-passa-a-perguntar-quem-e-",
+  "id": "TAR-237",
+  "titulo": "A fila da conferencia do portfolio passa a perguntar quem e administrador, em vez de ler uma lista escrita a mao",
+  "toca": [
+    "pages"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado em que services/pages/apps/core/equipe.py pergunta a celula admin por e-mail em vez de ler IDS_DA_EQUIPE, com os tres estados (sim, nao, nao deu para perguntar) provados por mutacao e a suite da celula verde",
+  "despacho": "CELULA: pages. Trocar a FONTE de quem pode conferir o portfolio do aluno.\n\nO PEDIDO DO MANTENEDOR, 06/09/2026: \"ao inves de colar isso na VPS, podemos\nalterar para que todo admin possa fazer isso (conferir os portfolios)? para\nagilizar\". Recebeu numa caixa de pergunta a objecao da fresta (administrador\ndesta casa ve a economia e os capitulos do livro nao lancado dele), com as duas\nsaidas na mesa, e escolheu \"simplesmente todo admin confere\", sem lista separada\nde conferentes. Decisao fechada, nao reabrir.\n\nO QUE MUDA: sai `os.environ[\"IDS_DA_EQUIPE\"]` de\nservices/pages/apps/core/equipe.py; entra a pergunta a celula `admin` pela porta\nde maquina congelada (`POST /administradores/consultar`, operationId\nisAdministrator, entra {\"email\": ...}, sai {\"e_administrador\": bool}, Bearer do\npar). A chave e E-MAIL, e a porta desta celula ja o tem na mao porque pergunta\n`getSessionFull` a `identidade`; ele continua sem ser guardado e sem ser exibido.\n\nTRES ESTADOS, e cada um tratado e testado: `true` abre a fila; `false` fecha com\n403 e a frase que manda pedir a promocao na area administrativa; NAO CONSEGUIR\nPERGUNTAR fecha com 503 e Retry-After, e NUNCA vira \"entao pode entrar\".\n\nENV AUSENTE NAO DERRUBA A CELULA (armadilhas/097): ADMIN_API_URL e\nADMIN_API_TOKEN lidas no ponto de uso, nunca no import. Sem elas, so a fila da\nequipe fica indisponivel, e nenhuma tela do aluno quebra. Nao tocar em `infra/`\nnem em `contracts/`: as duas linhas do env sao do PR de infra que vem depois.\n\nEVIDENCIA EXIGIDA: suite da celula antes e depois (Postgres de verdade),\nvermelho->verde morrendo na assercao, prova por mutacao dos tres estados, os dois\nguardas do degrau 11 verdes sem afrouxamento, freeze de contrato e travessao PASS.",
+  "origem": "pedido do mantenedor em 06/09/2026, consequencia do contrato congelado contracts/admin.openapi.yaml e da porta de maquina da admin",
+  "criada_em": "2026-09-06"
+}
