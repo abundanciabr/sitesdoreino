@@ -65,9 +65,9 @@ nasceram de medição, não de palpite:
    linha sem `"tool_use"` e sem `nde estou` não pode ser âncora nem mudança, e
    desserializá-la é custo puro.
 
-Medido em 06/09/2026 contra o maior transcript real desta casa (9,3 MB, 8.080
-linhas, 67 caixinhas): **385 ms lendo o arquivo inteiro para a frente, 4 ms
-lendo de trás para a frente**. O teto de referência da casa é 130 ms por
+Medido em 06/09/2026 contra o maior transcript real desta casa (10 MB, cerca de
+8.100 linhas, 67 caixinhas): **385 ms lendo o arquivo inteiro para a frente,
+5,6 ms lendo de trás para a frente**. O teto de referência da casa é 130 ms por
 gancho, e a versão para a frente estourava esse teto três vezes.
 
 A primeira versão deste arquivo dispensou a leitura de trás para frente por
