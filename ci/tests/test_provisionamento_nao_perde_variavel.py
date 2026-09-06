@@ -146,6 +146,26 @@ SCRIPTS = [
         "env/cursos.env",
         "infra/env/cursos.env.exemplo",
     ),
+    # A décima da família (05/09/2026, provisionamento das Páginas do aluno).
+    # Esta é a ÚNICA que não entrou no mesmo PR do script, e a exceção está
+    # dita na cara em vez de escondida: o mandato do PR #1148 autorizava
+    # `infra/` e proibia `ci/`, então aquele robô parou e declarou a dívida em
+    # vez de atravessar a cerca. Ele estava certo, e o intervalo entre os dois
+    # PRs é justamente a janela em que a convenção era só lembrança — que é o
+    # que esta lista existe para não depender.
+    #
+    # A data da deriva é previsível por três lados, todos escritos no próprio
+    # roteiro: o degrau 06 do `PLANO-PORTFOLIO-DO-ALUNO.md` vai pedir
+    # `IDENTIDADE_API_URL` e `IDENTIDADE_API_TOKEN` a este env (a porta que
+    # pergunta quem é a pessoa), o mesmo degrau vai pedir o par com a `alunos`
+    # (a matrícula ativa), e a tela da equipe do degrau 11 vai pedir um
+    # `TOKENS_ACEITOS_ADMIN`. Cada uma é uma chance de o roteiro apagar o que
+    # não conhece.
+    (
+        "infra/provisionar-pages.sh",
+        "env/pages.env",
+        "infra/env/pages.env.exemplo",
+    ),
 ]
 
 RE_LISTA = re.compile(r'^CHAVES_QUE_EU_GERO="([^"]*)"', re.MULTILINE)

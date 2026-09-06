@@ -1,0 +1,176 @@
+# =============================================================================
+# CONTRATO DA CÉLULA `pages`: a porta de MÁQUINA da casa das Páginas do aluno.
+#
+# CONGELADO. Mudar este arquivo é o Rito de Contrato (RITOS.md §3): PR só de
+# `contracts/`, com a etiqueta `contrato`, provedor primeiro e consumidores em
+# PRs seguintes. O portão que faz valer é `ci/contract_freeze.py`, que compara
+# este arquivo com o que a célula EXPORTA de verdade, e divergência reprova.
+#
+# NASCEU DO EXPORT, não de cabeça: `python manage.py export_openapi` em
+# `services/pages`, no ramo do PR #1151, que é a porta. Congelar um arquivo
+# escrito à mão que ninguém serve trava o `make ci` da célula em todo PR
+# seguinte (`armadilhas/228` e `243`; a `304` documenta isso como o erro
+# clássico de plano escrito fora desta casa).
+#
+# POR QUE ESTE CONTRATO EXISTE: a lei da obra diz que a peça tem UMA casa. O
+# portfólio não guarda cópia de medalha, a gamificação não guarda cópia de
+# peça, e a tela que precisa das duas pergunta por HTTP com falha aberta
+# (`PLANO-PORTFOLIO-DO-ALUNO.md` §4). Sem esta porta, a primeira tela que
+# precisasse do selo guardaria uma segunda cópia dele, e no dia em que as duas
+# discordassem ninguém saberia qual está certa.
+#
+# UMA OPERAÇÃO SÓ, e a estreiteza é decisão: nada mais entra porque nada mais
+# tem consumidor declarado hoje. O contrato desta casa é ADITIVO (crescer é
+# livre, remover exige autorização explícita), então nascer largo seria
+# congelar operação que ninguém chama e depois precisar de outro Rito para
+# tirá-la.
+#
+# O QUE NUNCA SAI DAQUI, e é a invariante que atravessa a operação: só id
+# opaco viaja. Nem link, nem legenda, nem apelido, nem e-mail, nem nome. E
+# nenhum verbo além de `GET`: quem muda o portfólio é o aluno, na tela desta
+# casa, com sessão. Guarda: `services/pages/tests/test_porta_de_maquina.py`,
+# provado por mutação.
+#
+# O BEARER É O ÚNICO CADEADO. A célula roda sob `SCRIPT_NAME=/pages` e o corte
+# do prefixo é do Django, não do Traefik: esta porta é alcançável pela borda
+# pública em `meshcraft.top/pages/interno/...` (`armadilhas/186`). Não há
+# topologia por baixo para segurar o que o conjunto de tokens deixar passar.
+#
+# O SELO TAMBÉM VIAJA COMO EVENTO, e é por ele que a gamificação acende o
+# marco do portfólio (critério AC-17, degrau 15 da escada):
+# `contracts/eventos/pages.portfolio.conferido.v1.json`. Quem prefere ser
+# avisado escuta o evento; quem prefere perguntar usa a operação daqui.
+#
+# O NOME DAS CINCO ETAPAS NÃO ESTÁ AQUI, de propósito. A lei fixa que são
+# cinco (o banco recusa fora de 1 a 5, critério AC-06); o texto delas é da
+# escola e mora no editor de documentos do admin, onde o mantenedor o edita
+# sem abrir PR. Nomeá-las no contrato as poria em duas casas.
+#
+# Lei do assunto: `docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md`; corredor
+# assinado: `docs/changespecs/CS-PAGES-0001.md` (critério AC-03).
+# =============================================================================
+openapi: 3.1.0
+info:
+  title: Pages — API interna
+  version: 1.0.0
+  description: 'Superficie de MAQUINA da casa das Paginas do aluno.
+
+
+    Existe porque a lei desta obra diz que a peca tem UMA casa: o
+
+    portfolio nao guarda copia de medalha, a gamificacao nao guarda copia
+
+    de peca, e a tela que precisa das duas pergunta por HTTP com falha
+
+    ABERTA (PLANO-PORTFOLIO-DO-ALUNO.md secao 4). Sem esta porta, a
+
+    primeira tela que precisasse do selo guardaria uma segunda copia
+
+    dele, e no dia em que as duas discordassem ninguem saberia qual esta
+
+    certa.
+
+
+    UMA OPERACAO SO, e essa estreiteza foi decidida: nada mais entra
+
+    porque nada mais tem consumidor declarado hoje. O contrato desta casa
+
+    cresce de graca e encolhe com autorizacao explicita, entao nascer
+
+    largo seria congelar operacao que ninguem chama e depois precisar de
+
+    um Rito de Contrato para tira-la.
+
+
+    O Bearer prova QUEM CHAMA, nunca quem e a pessoa: nao chega cookie
+
+    aqui, e esta celula nao assina sessao (INV-P12). So id opaco sai:
+
+    nem link, nem legenda, nem apelido, nem e-mail, nem nome.
+
+
+    O selo tambem viaja como EVENTO, `pages.portfolio.conferido.v1`, para
+
+    quem prefere ser avisado a perguntar.
+
+
+    Lei do assunto: docs/decisoes/PLANO-PORTFOLIO-DO-ALUNO.md e o
+
+    corredor docs/changespecs/CS-PAGES-0001.md.
+
+    '
+paths:
+  /portfolios/{site_id}/{aluno_id}:
+    get:
+      operationId: getStudentPortfolio
+      summary: Onde o aluno esta no roteiro do portfolio, e se a escola conferiu
+      parameters:
+      - in: path
+        name: site_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: aluno_id
+        schema:
+          type: string
+        required: true
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioDoAluno'
+      description: 'Responde a UNICA pergunta que outra celula faz sobre o portfolio:
+
+        em que etapa das cinco o aluno esta, e se o selo ''conferido pela
+
+        escola'' ja saiu (`conferido_em`, ou `null` enquanto nao saiu).
+
+
+        404 quando este aluno nao tem portfolio neste site, e o 404 e a
+
+        resposta CERTA: ''ele nao comecou'' e um fato, nao um erro, e devolver
+
+        200 com campos vazios obrigaria todo consumidor a inventar a propria
+
+        regra para distinguir os dois.
+
+
+        O aluno que abriu o portfolio e nunca andou responde `etapa_atual: 1`
+
+        e `conferido_em: null`. A primeira etapa e onde todo mundo comeca, e
+
+        nao existe estado anterior a ela.
+
+
+        So id opaco sai daqui. Nem link, nem legenda, nem apelido, nem
+
+        e-mail, nem nome.'
+components:
+  schemas:
+    PortfolioDoAluno:
+      description: O que sai. Campo novo aqui e mudanca de contrato (RITOS.md secao 3).
+      properties:
+        portfolio_id:
+          type: string
+        etapa_atual:
+          type: integer
+        conferido_em:
+          anyOf:
+          - type: string
+          - type: 'null'
+      required:
+      - portfolio_id
+      - etapa_atual
+      - conferido_em
+      type: object
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+servers:
+- url: http://pages:8000/interno
+security:
+- bearerAuth: []
