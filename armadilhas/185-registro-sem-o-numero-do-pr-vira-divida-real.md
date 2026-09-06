@@ -11,6 +11,9 @@ guarda:
 sinal:
   - `d[íi]vida do livro +FAIL`
   - `merge\(s\) sem registro`
+gatilho:
+  - painel/registros/*
+licao: a `evidencia` do registro precisa CITAR o número do próprio PR (a URL completa dele), senão o portão de pouso reprova por dívida do livro e a conta cai na próxima sessão.
 ---
 
 # O registro viajou dentro do PR, mas a evidência não cita o número — a dívida é REAL, e cai no colo da próxima sessão
@@ -79,3 +82,18 @@ pouso (`checar_registro_embarcado`) e recusa PR de entrega cujo registro a
 bordo não cite o próprio número. O erro desta armadilha agora é apanhado com
 um commit de conserto, antes do merge, em vez de virar dívida no colo da
 sessão seguinte.
+
+---
+
+**E em 06/09/2026 ganhou um degrau na MÃO, na hora do commit.** O que a porta
+não muda é o preço: cada captura chega depois de uma rodada inteira de checks
+(~8 min) e cobra um commit de conserto mais outra rodada. Medido no dia: uma
+única sessão foi pega QUATRO vezes, pelo mesmo erro de ordem, e concluiu que
+bastava disciplina — que é a garantia sem mecanismo que esta casa não aceita.
+Desde então `.githooks/pre-commit` → `ci/registro_no_commit.py` recusa, no
+instante do `git commit`, registro novo que não cita PR nenhum num ramo que
+entrega, e a recusa reensina os três passos da ordem. A régua local é de
+propósito mais frouxa que a da porta (basta citar ALGUM número; pendência de
+carona passa junto do recibo; ramo que só escritura é isento) e "não consegui
+medir" LIBERA o commit: quem faz valer continua sendo a porta — o degrau só
+troca dez minutos por dez segundos.

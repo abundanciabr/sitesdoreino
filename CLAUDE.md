@@ -293,7 +293,29 @@ Por que a regra é dura: até 26/08 as duas listas coexistiam e **já discordava
 mantenedor. Foi a doença do H18 voltando por dentro da própria lei que a curou
 (a auditoria que achou isso está no registro `20260826-019`).
 
-**Quem faz valer:** `ci/muralha-do-indice.sh` (constrói o índice em todo PR, prova que reconstrói igual, e reprova se um gerado voltar ao índice do Git) · `.githooks/pre-commit` (o mesmo, aqui na máquina) · `ci/muralha-das-reservas.sh` (número pedido ao almoxarife). **A LEITURA em si não tem mecanismo** e está declarada em `ci/leis-sem-mecanismo.txt`.
+**A lição do caminho chega ANTES, sem você procurar (desde 06/09/2026).** As
+duas formas de o catálogo alcançar quem trabalha eram tardias por construção: o
+índice depende de alguém dar Ctrl+F e adivinhar a palavra certa antes de errar,
+e o sino casa a MENSAGEM DE ERRO, que só existe depois da queda. Medido no dia:
+das 339 entradas, 140 tinham assinatura de erro e **nenhuma** tinha como dizer
+"isto vai te morder quando você mexer em tal lugar". Na mesma sessão a
+`armadilhas/179` mordeu um agente que a tinha no disco desde 29/08, porque
+ninguém procura por "número repetido" enquanto está escrevendo um registro.
+
+Agora uma entrada pode declarar, no frontmatter, **`gatilho:`** (os caminhos que
+se toca antes de cair nela) e **`licao:`** (a frase que salva a rodada). O
+gerador compila os dois em `armadilhas/GATILHOS.json` (gerado, como os outros
+três) e o gancho `PreToolUse` entrega a lição no momento da gravação, **uma vez
+por caminho, por sessão** — a segunda escrita passa direto, porque o objetivo é
+ensinar, não impedir. Ao escrever uma entrada nova, pergunte-se: *qual arquivo a
+pessoa está tocando quando isto morde?* Se a resposta for um caminho, ele merece
+um gatilho; se não for, a entrada segue vivendo do índice e do sino.
+
+Ele é **fail-open**, ao contrário das muralhas: catálogo ausente, JSON
+corrompido ou erro interno viram silêncio. Muralha impede e na dúvida recusa;
+lição ensina e na dúvida cala.
+
+**Quem faz valer:** `ci/muralha-do-indice.sh` (constrói o índice em todo PR, prova que reconstrói igual, e reprova se um gerado voltar ao índice do Git) · `.githooks/pre-commit` (o mesmo, aqui na máquina) · `ci/muralha-das-reservas.sh` (número pedido ao almoxarife) · `ci/licao_do_caminho.py`, ligado como `PreToolUse` em `.claude/settings.json`, com `ci/tests/test_licao_do_caminho.py` (que também reprova gatilho guloso, pela sabotagem contra `CAMINHOS_INOCENTES`). **A LEITURA em si não tem mecanismo** e está declarada em `ci/leis-sem-mecanismo.txt`; **e nada obriga uma entrada nova a declarar gatilho** — quem esquecer fica só com o índice e o sino, e isso está dito aqui de propósito, porque um portão que exigisse gatilho de toda entrada só produziria gatilho de fachada.
 
 ## Mapa do projeto para IA (desde 27/08/2026)
 
@@ -371,7 +393,7 @@ As regras que importam:
 - Os painéis antigos de `arquivos/painel-*.html` são **lápides e fotografias**
   (história congelada). Não os atualize; não crie novos.
 
-**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` (o recibo embarca no PR e o portão confere NA PORTA; a cobrança pós-merge vira rede de segurança, que ainda lista os pagamentos já em voo) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
+**Quem faz valer:** `ci/divida_do_livro.py` e `ci/mergear.py` (o recibo embarca no PR e o portão confere NA PORTA; a cobrança pós-merge vira rede de segurança, que ainda lista os pagamentos já em voo) · `.githooks/pre-commit` → `ci/registro_no_commit.py` (o mesmo, aqui na máquina e NA HORA do commit: registro novo sem citar PR nenhum, num ramo que entrega, nem chega a virar viagem até a porta — armadilhas/185) · `ci/muralha-do-painel.sh` e `ci/verificar_painel.py` (o livro válido e materializado) · `ci/tests/test_uma_casa_para_o_precisa_de_voce.py`.
 
 ## O clone principal é espelho, não bancada (desde 26/08/2026)
 
@@ -555,6 +577,30 @@ Continua valendo mandar **arquivo na conversa** (uma prévia, uma captura) e
 **texto curto direto na resposta**: prévia não é entrega, e o que cabe em dez
 linhas não precisa de página. O que não vale é a entrega definitiva morar fora
 do site.
+
+**O caminho inverso é a mesma lei, e já foi confundido: documento que ELE envia
+é ordem de serviço, não conteúdo para arquivar (desde 06/09/2026).** Aconteceu
+assim: ele mandou três documentos do curso dizendo que eles instruem os robôs a
+construir o que ainda não existe; a sessão leu os três, transformou UM em
+trabalho na fila e publicou o resto como página, e ele teve de corrigir à mão —
+"IMPORTANTISSIMO: o que eu quero não é apenas ENVIAR os documentos para o site"
+(`armadilhas/362`). A pergunta que decide é uma só: **"se eu só guardar isto, o
+que ele pediu passa a existir?"** Texto do livro indo para a Biblioteca: sim,
+guardar É a obra. Documento descrevendo curso, agente, tela ou fluxo que ainda
+não existe: não — e aí o rito é o de obra, sempre:
+
+1. **Inventário**: tudo que o documento diz que precisa EXISTIR (telas, fluxos,
+   agentes, conteúdo, integrações), em lista.
+2. **Diff com a realidade**: o que já está no ar e o que falta — olhando o
+   código e o site, nunca a memória.
+3. **O que falta vira tarefa na fila** (RITOS §5), uma por pedaço independente,
+   citando o documento de origem — a fila sobrevive à sessão; conversa
+   arquivada, não.
+4. **E o despacho começa na mesma sessão**, pela lei "Todo pedido do mantenedor
+   é um lote": tarefa na fila não é adeus, é linha de partida.
+5. **A página com o documento é subproduto** (o mapa do que falta), nunca a
+   entrega. O relatório final diz o que passou a EXISTIR, o que foi despachado
+   e o que só ele pode dar — este último em pergunta estruturada.
 
 **Quem faz valer:** ninguém, mecanicamente — a lei está declarada em
 `ci/leis-sem-mecanismo.txt`. Um portão que adivinhasse "isto devia ser uma tela"
@@ -745,7 +791,13 @@ frase por frase, com o número da linha. A recusa do portão já traz as quatro
 trocas com exemplo, na mesma tela — não é preciso voltar aqui.
 
 **Quem faz valer:** `ci/muralha-do-travessao.sh` → `ci/travessao.py` (roda em
-todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · `ci/tests/test_travessao.py`.
+todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · `ci/tests/test_travessao.py`
+· e, desde 06/09/2026, NA HORA DA ESCRITA: o gancho `PreToolUse` de
+`.claude/settings.json` → `ci/muralha_do_travessao_na_escrita.py` recusa o
+Write/Edit que aumentaria os travessões de um arquivo público, com as quatro
+trocas na própria recusa — o robô reescreve antes de o texto entrar no arquivo,
+não depois de tudo pronto. O que o gancho não vê (escrita por shell, texto já
+no banco) continua com o portão do PR · `ci/tests/test_muralha_do_travessao_na_escrita.py`.
 
 
 ## Depois de todo merge que dispara deploy

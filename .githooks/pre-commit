@@ -72,4 +72,30 @@ if [[ -n "$gerados_armadilhas" ]]; then
   echo "   A fonte é armadilhas/NNN-slug.md — é ELA que viaja no PR."
   exit 1
 fi
+
+# =============================================================================
+# O DEGRAU LOCAL DA ARMADILHA 185 (06/09/2026) — registro sem número, na mão.
+#
+# A porta do pouso (`ci/mergear.py`) recusa PR de entrega cujo registro não
+# cita o próprio número — mas ela só fala depois de uma rodada inteira de
+# checks. Medido em 06/09/2026: UMA sessão foi pega QUATRO vezes no mesmo dia,
+# pelo mesmo erro de ordem. Este degrau move a recusa para o instante do
+# commit; a regra, a recusa que ensina e a escapatória moram em
+# `ci/registro_no_commit.py`. Só o exit 1 dele prende o commit: python
+# ausente ou git engasgado NUNCA viram commit preso — quem faz valer é a porta.
+#
+# A checagem de existência antes da chamada existe porque este arquivo é
+# COMPARTILHADO por todas as bancadas (o `core.hooksPath` aponta o clone
+# principal), enquanto o script vem da árvore de trabalho de cada uma: bancada
+# criada antes do PR que cria o script tem o gancho novo e a árvore velha, e o
+# erro do Python na tela contradiz o que este comentário promete, fazendo robô
+# investigar defeito que não existe.
+# =============================================================================
+if [[ -f ci/registro_no_commit.py ]]; then
+  python ci/registro_no_commit.py
+  codigo_do_degrau=$?
+  if [[ "$codigo_do_degrau" -eq 1 ]]; then
+    exit 1
+  fi
+fi
 exit 0

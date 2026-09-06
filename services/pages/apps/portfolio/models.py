@@ -72,6 +72,28 @@ def id_da_plataforma() -> models.CharField:
     return models.CharField(max_length=64, blank=True, default="")
 
 
+class EstadoDoLink(models.TextChoices):
+    """O que a escola sabe sobre o endereço de uma peça. Critérios AC-08 e AC-09.
+
+    **Três respostas, e a terceira é a que costuma faltar.** Duas dizem o que a
+    escola SABE; a terceira diz que ela não sabe. Misturar a terceira com a
+    segunda seria acusar a obra do aluno de estar quebrada toda vez que a nossa
+    própria rede tossisse, e quem decide o que fazer com cada uma é quem chama
+    (`apps/portfolio/conferencia_do_link.py` explica a assimetria por extenso).
+
+    Mora no MÓDULO, e não dentro de `Peca`, por uma razão de linguagem e não de
+    gosto: o corpo de uma `class Meta` aninhada não enxerga os nomes do corpo da
+    classe que a contém, e as duas restrições abaixo precisam destes valores.
+
+    O rótulo é o que o aluno lê na tela, então ele sai em frase inteira e sem
+    travessão (lei do `ci/travessao.py`).
+    """
+
+    RESPONDENDO = "respondendo", "O endereço abriu na última conferência"
+    QUEBRADO = "quebrado", "O endereço parou de abrir"
+    NAO_CONFERIDO = "nao_conferido", "A escola ainda não conseguiu conferir"
+
+
 class PortfolioQuerySet(models.QuerySet):
     """A porta de leitura por aluno. É esta linha que o AC-07 mede."""
 
@@ -171,6 +193,18 @@ class Peca(models.Model):
     reordenar duas peças é uma troca, e uma restrição imediata recusaria o passo
     do meio da troca, obrigando a tela do degrau 08 a inventar posições
     temporárias.
+
+    **O ESTADO DO LINK é o preço do link colado, escrito em três colunas**
+    (plano §6.2, critérios AC-08 e AC-09). O mantenedor escolheu o link em vez
+    do arquivo no nosso disco, informado de que link de aluno quebra e de que a
+    escola não consegue consertar do lado de lá. Estas colunas são a mitigação
+    que o plano prometeu em troca: a Prancheta confere o endereço quando ele é
+    colado, volta a conferir de tempos em tempos, e MARCA o que parou de abrir.
+
+    **Marcar nunca é apagar.** A obra do aluno só sai daqui quando ele mandar
+    (critério AC-09), e é por isso que o estado é uma coluna e não uma exclusão:
+    apagar peça de aluno por causa de uma medição de rede é a falha que não tem
+    volta. Guarda: `tests/test_pecas_por_link.py`, provado por mutação.
     """
 
     portfolio = models.ForeignKey(
@@ -181,6 +215,18 @@ class Peca(models.Model):
     legenda = models.CharField(max_length=200, blank=True, default="")
     ordem = models.PositiveIntegerField()
     destaque = models.BooleanField(default=False)
+
+    estado_do_link = models.CharField(
+        max_length=16,
+        choices=EstadoDoLink.choices,
+        default=EstadoDoLink.NAO_CONFERIDO,
+    )
+    conferido_em = models.DateTimeField(null=True, blank=True)
+    # Desde QUANDO está quebrado, e é coluna separada de propósito:
+    # `conferido_em` anda a cada varredura, então ela nunca conseguiria
+    # responder "quebrou hoje" ou "quebrou no mês passado", que é justamente a
+    # diferença que muda o que o aluno faz a respeito.
+    quebrado_desde = models.DateTimeField(null=True, blank=True)
 
     criada_em = models.DateTimeField(auto_now_add=True)
     atualizada_em = models.DateTimeField(auto_now=True)
@@ -203,6 +249,27 @@ class Peca(models.Model):
             models.CheckConstraint(
                 condition=~models.Q(link=""),
                 name="a_peca_tem_link",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    estado_do_link__in=[valor for valor, _ in EstadoDoLink.choices]
+                ),
+                name="o_estado_do_link_e_um_dos_tres",
+            ),
+            # A data da quebra anda junto com a quebra, nas duas direções: peça
+            # quebrada sem data não diz desde quando, e data sem quebra é a
+            # sobra de uma volta ao normal que ninguém limpou. Metade desta
+            # restrição deixaria passar exatamente o caso que a outra proíbe.
+            models.CheckConstraint(
+                condition=models.Q(
+                    estado_do_link=EstadoDoLink.QUEBRADO,
+                    quebrado_desde__isnull=False,
+                )
+                | (
+                    ~models.Q(estado_do_link=EstadoDoLink.QUEBRADO)
+                    & models.Q(quebrado_desde__isnull=True)
+                ),
+                name="a_quebra_e_a_data_dela_andam_juntas",
             ),
         ]
 

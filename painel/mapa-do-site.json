@@ -574,6 +574,36 @@
       "descricao": "Não é uma página: é o que acontece quando o aluno aperta um item da lista de conferência da Prancheta. Abrir este endereço no navegador não mostra nada."
     },
     {
+      "celula": "pages",
+      "rota": "pecas",
+      "endereco": "/pages/pecas",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "As peças do portfólio do aluno",
+      "descricao": "A estante onde o aluno guarda as obras do portfólio dele. A imagem continua onde ele já a guarda (no Drive, no ArtStation, onde for): o que fica com a escola é o endereço dela. Aqui ele cola esse endereço, escreve a legenda, escolhe a ordem em que as obras aparecem e marca as que vão em destaque. A escola confere o endereço na hora em que ele é colado e recusa o que não abre, dizendo o motivo.",
+      "observacao": "Uma vez por dia a escola confere de novo todos os endereços guardados. O que parou de abrir aparece marcado nesta tela, com a data. Nada é apagado: a obra do aluno só sai daqui quando ele mandar."
+    },
+    {
+      "celula": "pages",
+      "rota": "pecas/guardar",
+      "endereco": "/pages/pecas/guardar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Guardar uma peça colada por link",
+      "descricao": "Não é uma página: é o que acontece quando o aluno aperta o botão de guardar depois de colar o endereço de uma obra. Abrir este endereço no navegador não mostra nada."
+    },
+    {
+      "celula": "pages",
+      "rota": "pecas/mudar",
+      "endereco": "/pages/pecas/mudar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Mudar uma peça de lugar, destacar ou tirar da estante",
+      "descricao": "Não é uma página: é o que acontece quando o aluno aperta um dos botões de uma obra que ele já guardou. Abrir este endereço no navegador não mostra nada."
+    },
+    {
       "celula": "gamificacao",
       "rota": "",
       "endereco": "/conquistas/",
@@ -1135,6 +1165,37 @@
       "gesto": true,
       "titulo": "Salvar uma encomenda",
       "descricao": "Não é uma página: é o que acontece ao apertar salvar no editor. Grava a aula inteira na sala de aula e a versão sobe um. Não muda o que o aluno vê: publicar é outro botão."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/sumario/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/sumario/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Colar o sumário do livro",
+      "descricao": "Uma área de colar e dois botões. Cole o sumário completo do livro e as 34 encomendas do curso ganham a mesma estrutura de uma vez: o cliente de cada uma e o texto próprio de cada uma das 16 peças. Prever mostra o que aconteceria, encomenda por encomenda, sem gravar nada.",
+      "observacao": "O que você já escreveu nunca é apagado: só campo vazio é preenchido, e a prévia diz o que ficou intacto. O sumário não fica guardado em lugar nenhum do sistema, e o arquivo continua só com o dono. Grava na célula cursos pela porta de máquina, nunca no banco dela.",
+      "exemplo": "/admin/escola/profissional/sumario/"
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/sumario/prever$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/sumario/prever$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Prever o que o sumário faria",
+      "descricao": "Não é uma página: é o que acontece ao apertar Prever. Lê o texto colado, compara com o que já está escrito em cada encomenda e mostra o que seria preenchido e o que ficaria como está. Nada é gravado."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/sumario/importar$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/sumario/importar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Importar o sumário para as encomendas",
+      "descricao": "Não é uma página: é o que acontece ao apertar Importar. Preenche, só nos campos que estão vazios, o que o sumário traz de cada encomenda. Campo que já tem texto é preservado, e encomenda em que nada mudaria não é tocada."
     },
     {
       "celula": "admin",

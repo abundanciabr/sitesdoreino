@@ -85,6 +85,13 @@ DATABASES = {"default": dj_database_url.parse(env("DATABASE_URL"))}
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
+    # [RECEITA:R8 v1] dá o entrypoint `python manage.py run_huey` (django.setup
+    # + autodiscover de `tasks.py` — sem isso o worker sobe com registro vazio,
+    # não executa nada e não reclama de nada, `armadilhas/030` §4.11). O único
+    # trabalho de fundo desta casa é a reconferência diária dos links das peças
+    # (critério AC-09, `apps/portfolio/tasks.py`), e é o parágrafo do
+    # `DATABASES` logo acima que explica por que ela roda AQUI e não no ASGI.
+    "huey.contrib.djhuey",
     "apps.core",
     # O portfólio, a peça, o item de conferência e o estado do aluno, nascidos
     # no degrau 02 da escada (`PLANO-PORTFOLIO-DO-ALUNO.md` §5, TAR-178), numa
@@ -98,6 +105,12 @@ INSTALLED_APPS = [
     # provado por mutação em `tests/test_isolamento_por_aluno.py`.
     "apps.portfolio",
 ]
+
+# O `run_huey` do djhuey consome a MESMA instância onde as tasks se registram
+# (`config/huey.py`, cuja leitura de `HUEY_REDIS_URL` nunca é fail-hard no
+# import). Duas instâncias separadas dariam um worker girando sobre uma fila
+# vazia, sem erro em lugar nenhum.
+from config.huey import huey as HUEY  # noqa: E402
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",

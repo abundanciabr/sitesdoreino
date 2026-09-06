@@ -176,15 +176,25 @@ def test_pela_tela_a_aula_seguinte_fica_trancada_ate_o_laudo(aluna, esqueleto, c
     """A prova de FORA: mesmo publicada, a E01 volta ao mapa até a E00 concluir."""
     publicar(aula(esqueleto, "E00"))
     publicar(aula(esqueleto, "E01"))
-    client.get(reverse("aula", args=["E00"]), HTTP_COOKIE=COOKIE)
+    client.get(
+        reverse("aula-do-curso", args=["profissional", 1, "E00"]), HTTP_COOKIE=COOKIE
+    )
     assert (
-        client.get(reverse("aula", args=["E01"]), HTTP_COOKIE=COOKIE).status_code == 302
+        client.get(
+            reverse("aula-do-curso", args=["profissional", 1, "E01"]),
+            HTTP_COOKIE=COOKIE,
+        ).status_code
+        == 302
     )
 
     e00 = Progresso.objects.get(aula__numero="E00")
     portas.concluir(e00, laudo=ABERTO)
     assert (
-        client.get(reverse("aula", args=["E01"]), HTTP_COOKIE=COOKIE).status_code == 200
+        client.get(
+            reverse("aula-do-curso", args=["profissional", 1, "E01"]),
+            HTTP_COOKIE=COOKIE,
+        ).status_code
+        == 200
     )
 
 
