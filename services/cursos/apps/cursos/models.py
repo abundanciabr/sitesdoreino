@@ -85,7 +85,29 @@ def id_do_site() -> models.CharField:
 
 
 class Curso(models.Model):
-    """Um curso por site no lançamento (plano §4). O slug do lançamento é `meshcraft`."""
+    """Um curso por site no lançamento (plano §4). O slug do lançamento é `meshcraft`.
+
+    `produto_id` é O ELO com a matrícula, e é ele que decide quem entra na sala
+    (`DECISAO-cursos-matriculas-e-alunos.md` §1: ninguém é aluno do site, todo
+    mundo é aluno de um PRODUTO). A `alunos` devolve `product_id` por matrícula;
+    a sala compara esse valor com este campo e só abre quando são o mesmo.
+
+    **É o id do produto no catálogo, e nunca o apelido do curso.** Os dois
+    existem e não são a mesma coisa: `Product.slug` é `profissional`,
+    `Product.id` é um UUID, e a matrícula guarda o UUID. Derivar o elo do
+    apelido daria certo hoje, por coincidência de nomes, e erraria em silêncio
+    no primeiro curso cujo apelido no catálogo não fosse igual ao apelido no
+    endereço. Texto opaco de 64 pela mesma regra de `id_do_site()`: id que
+    atravessa fronteira de célula nunca é `UUIDField` aqui.
+
+    **Nasce VAZIO, e curso vazio não abre para ninguém.** Quem preenche é
+    `manage.py apontar_o_produto_do_curso`, e não uma migração: [INV-CUR-C2]
+    proíbe migração que roda código nesta célula. Vazio significa *ainda não
+    sei de qual produto este curso é*, e a sala trata isso como não conseguir
+    conferir, que nesta casa fecha a porta (`apps/core/sessao.py`). Abrir para
+    todos seria o defeito que a lei acima existe para impedir: o aluno do
+    primeiro curso lendo o segundo por ter digitado o endereço.
+    """
 
     class Estado(models.TextChoices):
         RASCUNHO = "rascunho", "Rascunho"
@@ -93,6 +115,7 @@ class Curso(models.Model):
 
     site_id = id_do_site()
     slug = models.SlugField(max_length=64)
+    produto_id = models.CharField(max_length=64, blank=True, default="")
     nome = models.CharField(max_length=120)
     estado = models.CharField(
         max_length=10, choices=Estado.choices, default=Estado.RASCUNHO
