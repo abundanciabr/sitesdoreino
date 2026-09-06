@@ -525,11 +525,10 @@ def _peneirar(linhas: list[dict], procurado: str) -> list[dict]:
     linhas vêm achatadas em ordem de descida, as descendentes de uma linha são
     exatamente as seguintes com nível maior que o dela, até a próxima irmã.
     """
-    casa = [
+    manter = [
         _casa(linha, procurado) or any(_casa(g, procurado) for g in linha["gestos"])
         for linha in linhas
     ]
-    manter = list(casa)
     for i in range(len(linhas) - 1, -1, -1):
         nivel = linhas[i]["nivel"]
         j = i + 1
@@ -540,15 +539,20 @@ def _peneirar(linhas: list[dict], procurado: str) -> list[dict]:
             j += 1
 
     peneiradas = []
-    for linha, ficou, propria in zip(linhas, manter, casa):
+    for linha, ficou in zip(linhas, manter):
         if not ficou:
             continue
         if not _casa(linha, procurado):
-            # A página entrou pelo que está DENTRO dela: mostre só o que casou,
-            # senão a busca por "apagar" devolveria os sete botões da ideia.
-            achados = [g for g in linha["gestos"] if _casa(g, procurado)]
-            if achados or propria:
-                linha = {**linha, "gestos": achados}
+            # A página entrou pelo que está DENTRO dela — ou por um botão dela,
+            # ou por uma sub-página lá embaixo. Nos dois casos ela mostra só os
+            # botões que casaram: senão `/admin/escola/` entra como caminho para
+            # `recusados` e leva junto "Dar poder de administrador a alguém",
+            # que não tem nada a ver com o que foi procurado (medido em
+            # 06/09/2026, dois botões de ruído numa busca de cinco linhas).
+            linha = {
+                **linha,
+                "gestos": [g for g in linha["gestos"] if _casa(g, procurado)],
+            }
         peneiradas.append(linha)
     return peneiradas
 
@@ -602,8 +606,15 @@ def mapa_do_site(request):
         linhas = _arvore(do_grupo)
         if procurado:
             linhas = _peneirar(linhas, procurado)
-        visiveis = sum(1 + len(linha["gestos"]) for linha in linhas)
-        achados += visiveis
+        if procurado:
+            # A conta é dos endereços que CASAM, nunca das linhas desenhadas.
+            # Buscar "recusado" mostrava 9 linhas e a capa dizia "9 de 222 com
+            # recusado" — cinco delas eram só o caminho até lá. Número que não
+            # responde a própria frase é número errado (medido em 06/09/2026).
+            achados += sum(
+                (1 if _casa(linha, procurado) else 0) + len(linha["gestos"])
+                for linha in linhas
+            )
         if not linhas:
             continue
         areas.append(
@@ -626,9 +637,15 @@ def mapa_do_site(request):
                     for linha in linhas
                     if not linha["gesto"] and linha["para_quem"] == "maquina"
                 ),
-                "visiveis": visiveis,
+                "visiveis": sum(1 + len(linha["gestos"]) for linha in linhas),
             }
         )
+
+    # Sem busca, "achados" é o mapa inteiro: a contagem por casamento só existe
+    # enquanto há palavra procurada, e somar 222 comparações com string vazia
+    # daria o mesmo número por um caminho mais caro e menos óbvio.
+    if not procurado:
+        achados = len(entradas)
 
     obra = em_obra()
     resposta = render(
