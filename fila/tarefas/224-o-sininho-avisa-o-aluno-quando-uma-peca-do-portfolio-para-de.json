@@ -1,0 +1,19 @@
+{
+  "arquivo": "224-o-sininho-avisa-o-aluno-quando-uma-peca-do-portfolio-para-de",
+  "id": "TAR-224",
+  "titulo": "O sininho avisa o aluno quando uma peca do portfolio para de abrir",
+  "toca": [
+    "contracts"
+  ],
+  "depende_de": [
+    "TAR-184"
+  ],
+  "cria": [],
+  "move": [
+    "alunos-com-resultado-profissional"
+  ],
+  "evidencia_exigida": "PR mergeado: o assunto pages.peca-quebrada existe no enum de contracts/eventos/notificacao.devida.v1.json, com ramo proprio de parametros carregando so id opaco, o teste de contrato reprova quem mudar campo sem Rito, e a regra de volume (uma carta por peca ou uma por varredura) esta decidida pelo mantenedor e escrita no contrato.",
+  "despacho": "# DESPACHO - contracts: o assunto que deixa o sininho falar sobre peca com link quebrado\nCELULA: contracts - RITO DE CONTRATO, e ele exige o MANTENEDOR PRESENTE.\n\nDE ONDE ESTA TAREFA VEIO: o criterio AC-09 do `docs/changespecs/CS-PAGES-0001.md`\ntem duas metades. A primeira, \"a peca e marcada como quebrada e o sistema nunca\napaga a peca sozinho\", esta no ar desde o degrau 08 (TAR-184), provada por\nmutacao. A segunda, \"o aluno e avisado pelo sininho\", NAO foi construida, e o\nmotivo e uma cerca, nao um esquecimento.\n\nO QUE BLOQUEIA, medido no codigo: o sininho so grava carta que chega pelo evento\n`notificacao.devida.v1`, e o campo `assunto` desse contrato e um `enum` FECHADO\ncom oito valores. Nenhum deles e da casa `pages`. A propria descricao do campo\ndiz como se acrescenta um: \"assunto novo entra aqui e ganha um ramo em\n'parametros' logo abaixo, num PR PEQUENO\". Isso e `contracts/`, caminho\nCODEOWNERS, e e Rito de Contrato (`RITOS.md` secao 3), que pede o mantenedor.\n\nTAREFA, quando o mandato existir:\n\n- Acrescentar o assunto `pages.peca-quebrada` ao `enum` de\n  `contracts/eventos/notificacao.devida.v1.json`, com o ramo proprio de\n  `parametros`. So id opaco viaja: o `peca_id`, e nada do link nem da legenda,\n  pela mesma disciplina dos oito ramos que ja estao la (a tela busca o resto na\n  hora de ler).\n- Decidir com o mantenedor a REGRA DE VOLUME, porque ela e dele e nao do robo:\n  um aluno com dez pecas num Drive que saiu do ar recebe dez cartas na mesma\n  madrugada. A carta por PECA e a mais util; a carta por VARREDURA (\"tres obras\n  suas pararam de abrir\") e a menos incomoda.\n\nO QUE ESTA TAREFA NAO RESOLVE SOZINHA, e precisa ser dito: a celula `pages` ainda\nnao publica evento nenhum. A caixa de saida e o relay dela nascem no degrau 12\n(TAR-187, o selo da escola). Enquanto os dois nao existirem, o assunto novo no\ncontrato fica sem quem o emita. A ordem barata e: primeiro este contrato, depois\no degrau 12, e a publicacao da carta de peca quebrada vira um PR pequeno na\n`pages` logo atras.\n\nO QUE O ALUNO TEM HOJE, enquanto isto espera: a peca quebrada aparece marcada na\nestante dele, com a data em que parou de abrir e a frase que diz que ela continua\nguardada com a escola. Ele ve quando abre; o que falta e ser avisado sem abrir.\n\nTexto sem travessao. O registro do livro embarca no PR, citando o numero dele.",
+  "origem": "divida declarada pela TAR-184 (degrau 08 do portfolio): a metade 'marca' do AC-09 esta no ar, a metade 'avisa' precisa de assunto novo em contracts/, que e Rito de Contrato",
+  "criada_em": "2026-09-06"
+}

@@ -574,6 +574,36 @@
       "descricao": "Não é uma página: é o que acontece quando o aluno aperta um item da lista de conferência da Prancheta. Abrir este endereço no navegador não mostra nada."
     },
     {
+      "celula": "pages",
+      "rota": "pecas",
+      "endereco": "/pages/pecas",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "titulo": "As peças do portfólio do aluno",
+      "descricao": "A estante onde o aluno guarda as obras do portfólio dele. A imagem continua onde ele já a guarda (no Drive, no ArtStation, onde for): o que fica com a escola é o endereço dela. Aqui ele cola esse endereço, escreve a legenda, escolhe a ordem em que as obras aparecem e marca as que vão em destaque. A escola confere o endereço na hora em que ele é colado e recusa o que não abre, dizendo o motivo.",
+      "observacao": "Uma vez por dia a escola confere de novo todos os endereços guardados. O que parou de abrir aparece marcado nesta tela, com a data. Nada é apagado: a obra do aluno só sai daqui quando ele mandar."
+    },
+    {
+      "celula": "pages",
+      "rota": "pecas/guardar",
+      "endereco": "/pages/pecas/guardar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Guardar uma peça colada por link",
+      "descricao": "Não é uma página: é o que acontece quando o aluno aperta o botão de guardar depois de colar o endereço de uma obra. Abrir este endereço no navegador não mostra nada."
+    },
+    {
+      "celula": "pages",
+      "rota": "pecas/mudar",
+      "endereco": "/pages/pecas/mudar",
+      "alcance": "publico",
+      "para_quem": "aluno",
+      "gesto": true,
+      "titulo": "Mudar uma peça de lugar, destacar ou tirar da estante",
+      "descricao": "Não é uma página: é o que acontece quando o aluno aperta um dos botões de uma obra que ele já guardou. Abrir este endereço no navegador não mostra nada."
+    },
+    {
       "celula": "gamificacao",
       "rota": "",
       "endereco": "/conquistas/",
