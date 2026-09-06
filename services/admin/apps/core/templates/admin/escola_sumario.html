@@ -1,0 +1,192 @@
+{% extends "admin/base.html" %}
+{% comment %}
+COLAR O SUMÁRIO DO LIVRO e o curso ganhar a mesma estrutura.
+
+Uma área de colar e dois botões. PREVER mostra o que aconteceria e não grava
+nada; IMPORTAR grava, pela porta de máquina, SÓ os campos que estão vazios
+hoje. O que já tem texto é preservado, e a tela diz que preservou.
+
+Esta tela NÃO GUARDA o texto colado: ele volta para a caixa dentro da própria
+página, e o arquivo continua sendo do mantenedor (armadilhas/331). Sem uma
+linha de script: a política de segurança desta área exige hash na CSP para
+script embutido (armadilhas/199), e um POST por gesto dispensa qualquer um.
+
+Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
+(armadilhas/087). TODA classe usada aqui EXISTE em admin/base.html ou no
+<style> logo abaixo, e o <style> entra na CSP por hash (armadilhas/199).
+{% endcomment %}
+{% block titulo %}Colar o sumário do livro{% endblock %}
+{% block corpo %}
+<style>
+  .caixa-do-sumario { width: 100%; min-height: 300px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; }
+  .dois-botoes { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .linha-do-sumario { border: 1px solid var(--linha); border-radius: 8px; padding: 12px 14px; margin-top: 12px; }
+  .linha-do-sumario > h3 { margin: 0 0 8px; font-size: 15px; }
+  .linha-do-sumario .numero-da-encomenda { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .campo-do-sumario { margin: 6px 0 0; font-size: 13px; }
+  .campo-do-sumario .qual { font-weight: 600; }
+  .trecho { display: block; margin: 2px 0 0; color: var(--texto-2); white-space: pre-wrap; overflow-wrap: anywhere; }
+</style>
+<div class="envolucro">
+  <p><a class="volta" href="{{ url_da_lista }}">&larr; As encomendas do curso</a></p>
+  <h1>Colar o sumário do livro</h1>
+  <p class="subtitulo">
+    Cole aqui o sumário completo do livro e o curso ganha a mesma estrutura: o
+    cliente de cada encomenda e o texto próprio de cada uma das 16 peças.
+    <b>O que você já escreveu nunca é apagado</b>: esta tela só preenche campo
+    que está vazio, e diz na prévia o que deixou intacto.
+  </p>
+  <p class="subtitulo">
+    O sumário não fica guardado em lugar nenhum. Ele passa por aqui, vira as
+    encomendas, e o arquivo continua só com você.
+  </p>
+
+  {% if sem_site %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui saber de qual escola é este curso.</b>
+    A parte do sistema que guarda os endereços do site não respondeu agora.
+    Recarregue a página em um minuto. Nada mudou por causa disso.
+  </p>
+  {% else %}
+
+  {% if erro %}
+  <p class="aviso borda-amarela">{{ erro }}</p>
+  {% endif %}
+
+  {% if falha_da_sala %}
+  <p class="aviso borda-vermelha">
+    <b>{{ falha_da_sala.titulo }}</b> {{ falha_da_sala.explicacao }}
+    Nada foi gravado, e o texto que você colou continua na caixa abaixo.
+  </p>
+  {% endif %}
+
+  <form method="post" class="forma" action="{{ url_de_prever }}">
+    {% csrf_token %}
+    <label for="sumario"><b>O sumário completo</b></label>
+    <textarea id="sumario" name="sumario" class="caixa-do-sumario" rows="16" spellcheck="false">{{ colado }}</textarea>
+    <div class="dois-botoes">
+      <button type="submit" class="botao">Prever (não grava nada)</button>
+      <button type="submit" class="botao" formaction="{{ url_de_importar }}">Importar para as encomendas</button>
+    </div>
+    <p class="nota">
+      Comece sempre pelo <b>Prever</b>: ele mostra, encomenda por encomenda, o
+      que vai entrar e o que vai ficar como está, sem tocar em nada. Ler as 34
+      encomendas leva alguns segundos, então a página pode demorar um pouco
+      para voltar.
+    </p>
+  </form>
+
+  {% if importou %}
+  <p class="aviso borda-amarela espaco-20">
+    <b>{{ gravadas }} encomenda(s) gravada(s).</b>
+    {% if not gravadas %}
+    Nenhuma tinha campo vazio para preencher: tudo o que o sumário traz já
+    estava escrito. Nada mudou, e nenhuma versão subiu.
+    {% else %}
+    Só os campos que estavam vazios foram preenchidos. As encomendas em que
+    nada mudaria não foram tocadas, e a versão delas continua a mesma.
+    {% endif %}
+    {% if recusadas %}
+    <br><b>{{ recusadas|length }} não entraram:</b>
+    {% for n in recusadas %}<b>{{ n }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.
+    O motivo de cada uma está na lista abaixo.
+    {% endif %}
+  </p>
+  {% endif %}
+
+  {% if previu or importou %}
+  <div class="cartao espaco-20">
+    <span class="rotulo">O que o sumário traz</span>
+    <div class="valor"><b>{{ encomendas_lidas }} encomenda(s)</b></div>
+    <p class="nota">
+      {{ a_preencher }} campo(s) {% if importou %}estavam vazios{% else %}vazio(s) para preencher{% endif %} ·
+      {{ a_preservar }} campo(s) já {% if importou %}tinham{% else %}têm{% endif %} texto e {% if importou %}ficaram{% else %}ficam{% endif %} intactos.
+    </p>
+  </div>
+
+  {% if ausentes %}
+  <p class="aviso borda-amarela">
+    <b>{{ ausentes|length }} encomenda(s) do sumário não existem neste curso:</b>
+    {% for n in ausentes %}<b>{{ n }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.
+    Elas foram ignoradas. Se o livro ganhou encomendas novas, quem as cria é a
+    sala de aula, não esta tela.
+  </p>
+  {% endif %}
+
+  {% if nao_lidas %}
+  <p class="aviso borda-vermelha">
+    <b>Não consegui ler {{ nao_lidas|length }} encomenda(s):</b>
+    {% for n in nao_lidas %}<b>{{ n }}</b>{% if not forloop.last %}, {% endif %}{% endfor %}.
+    Elas não foram gravadas, de propósito: sem saber o que já estava escrito
+    nelas, gravar poderia apagar o seu texto. Tente de novo em um minuto.
+  </p>
+  {% endif %}
+
+  <h2 class="secao">Encomenda por encomenda</h2>
+  {% for linha in linhas %}
+  <div class="linha-do-sumario">
+    <h3>
+      <span class="numero-da-encomenda">{{ linha.numero }}</span> &middot; {{ linha.titulo }}
+      {% if linha.gravada %}<span class="mapa-selo">gravada, versão {{ linha.gravada }}</span>{% endif %}
+    </h3>
+
+    {% if linha.ausente %}
+    <p class="campo-do-sumario"><span class="recado-fraco">Esta encomenda não existe neste curso. Nada a fazer.</span></p>
+
+    {% elif linha.nao_li %}
+    <p class="campo-do-sumario"><b>{{ linha.nao_li }}</b> Não li o que já está escrito aqui, então não gravei nada.</p>
+
+    {% else %}
+    {% if linha.recusada %}
+    <p class="campo-do-sumario"><b>{{ linha.recusada }}</b> Nada foi gravado nesta encomenda; as outras não foram afetadas.</p>
+    {% endif %}
+
+    {% for c in linha.preencher %}
+    <p class="campo-do-sumario">
+      <span class="qual">{% if importou %}Preenchido{% else %}Vai preencher{% endif %}</span> {{ c.campo }}
+      <span class="trecho">{{ c.novo|truncatechars:400 }}</span>
+    </p>
+    {% endfor %}
+
+    {% for c in linha.preservar %}
+    <p class="campo-do-sumario">
+      <span class="qual">Deixado em paz</span> {{ c.campo }}
+      <span class="trecho">já tem texto seu: {{ c.atual|truncatechars:160 }}</span>
+    </p>
+    {% endfor %}
+
+    {% for aviso in linha.nao_coube %}
+    <p class="campo-do-sumario"><span class="qual">Ficou de fora</span> <span class="trecho">{{ aviso }}</span></p>
+    {% endfor %}
+
+    {% for peca in linha.encomenda.fora_da_anatomia %}
+    <p class="campo-do-sumario"><span class="qual">Sem campo</span> <span class="trecho">a peça "{{ peca }}" está numerada além da 16, e a encomenda só tem 16 peças.</span></p>
+    {% endfor %}
+
+    {% if not linha.preencher and not linha.preservar %}
+    <p class="campo-do-sumario"><span class="recado-fraco">O sumário não traz nada de próprio para esta encomenda.</span></p>
+    {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <h2 class="secao">O que o sumário traz e esta tela não grava</h2>
+  <p class="subtitulo">
+    Duas coisas do sumário não têm onde ser gravadas hoje: o <b>título de cada
+    encomenda</b> (o que está entre aspas) e o <b>título de cada Boss</b>. A
+    sala de aula não aceita nenhum dos dois pela ligação que esta tela usa, e
+    abrir essa ligação é trabalho do lado de lá, não daqui. Eles estão listados
+    abaixo para você saber que foram lidos, e que ninguém os perdeu.
+  </p>
+  {% if bosses %}
+  {% for letra, titulo in bosses %}
+  <div class="historia"><b>Boss {{ letra }}:</b> {{ titulo }}</div>
+  {% endfor %}
+  {% else %}
+  <p class="aviso">Nenhum Boss no texto colado.</p>
+  {% endif %}
+  {% endif %}
+
+  {% endif %}
+</div>
+{% endblock %}

@@ -87,6 +87,11 @@ from apps.core.sequencias import (
     sequencia_publicar,
     sequencias,
 )
+from apps.core.sumario import (
+    sumario,
+    sumario_importar,
+    sumario_prever,
+)
 from apps.core.views import (
     escola,
     escola_admin_promover,
@@ -591,6 +596,28 @@ urlpatterns = [
         r"aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
         aula_publicar,
         name="escola_aula_publicar",
+    ),
+    # [SUMARIO] 06/09/2026 (TAR-213) A tela que enche as 34 encomendas de uma
+    # vez, a partir do sumario do livro colado (`apps/core/sumario.py`). Sem
+    # `parte-N`: o sumario e do curso INTEIRO, e uma Parte sozinha nele nao
+    # existe. Vizinha de `aulas/`, e nao dentro dela: aquela edita UMA
+    # encomenda por vez, esta enche todas de uma vez, e sao gestos diferentes.
+    # Tres rotas porque sao tres gestos, e cada gesto e um POST proprio
+    # (`armadilhas/199`: script embutido nesta area exige hash na CSP).
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/sumario/$",
+        sumario,
+        name="escola_sumario",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/sumario/prever$",
+        sumario_prever,
+        name="escola_sumario_prever",
+    ),
+    re_path(
+        r"^escola/(?P<curso>[a-z0-9-]+)/sumario/importar$",
+        sumario_importar,
+        name="escola_sumario_importar",
     ),
     re_path(
         r"^escola/instrumentos/(?P<slug>[a-z0-9_-]+)/$",

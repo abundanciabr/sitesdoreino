@@ -24,6 +24,9 @@ RAIZ_DO_REPO = Path(__file__).resolve().parents[2]
 PORTAO = RAIZ_DO_REPO / "ci" / "prestacao_de_contas.py"
 FIACAO = RAIZ_DO_REPO / ".claude" / "settings.json"
 
+sys.path.insert(0, str(RAIZ_DO_REPO / "ci"))
+import telemetria  # noqa: E402
+
 CONTAS_COMPLETAS = """Terminei.
 
 - [x] achar o evento repetido no webhook
@@ -615,3 +618,87 @@ def test_a_fala_dele_no_meio_da_espera_nao_perdoa_a_divida(tmp_path):
     entradas += [_humano("deixe assim: só admin pode ver, ler"), _fala("Combinado.")]
     entradas += [_batimento("Deploy na fila"), _fala("Aguardando.")]
     _recusa_que_ensina(_decidir(tmp_path, entradas))
+
+
+# ------------------------------------------- Alavanca 3: série sem despacho ----
+#
+# documentos/alavancas-10x-da-fabrica.md mediu que, das 60 sessões mais
+# recentes, só 4 dispararam o robô `despacho` (16 vezes); as demais fizeram os
+# PRs de um pedido em série, na mesma sessão. Esta contagem nasce em SOMBRA
+# (Sistema Imunológico): só telemetria, nada visível, nada bloqueado — o exit
+# code continua sendo só o que `decidir()` já calculava (provado no fim desta
+# seção pelo caso que já tinha teste próprio, com 2 PRs sem despacho).
+
+
+def _repo_encenado(tmp_path: Path) -> Path:
+    casa = tmp_path / "casa"
+    (casa / ".git").mkdir(parents=True)
+    return casa
+
+
+def _pr_criado(ferramenta: str = "Bash") -> dict:
+    return _ferramenta(ferramenta, {"command": "gh pr create --base main --title x --body y"})
+
+
+def _despacho() -> dict:
+    return _ferramenta("Agent", {"subagent_type": "despacho", "prompt": "brief"})
+
+
+def test_dois_prs_sem_despacho_gravam_a_sombra(tmp_path):
+    casa = _repo_encenado(tmp_path)
+    _decidir(tmp_path, [
+        _humano("faça os dois PRs"),
+        _pr_criado("Bash"),
+        _fala("PR #1 aberto."),
+        _pr_criado("PowerShell"),
+        _fala(CONTAS_COMPLETAS),
+    ], cwd=str(casa), session_id="sessao-serie")
+    eventos = telemetria.ler_tudo(casa / ".git")
+    achados = [e for e in eventos if e.get("evento") == "serie_sem_despacho"]
+    assert len(achados) == 1, "a série de PRs sem despacho deveria ter sido medida"
+    assert achados[0]["prs_criados"] == 2
+    assert achados[0]["despachos"] == 0
+
+
+def test_prs_com_despacho_nao_conta_como_serie(tmp_path):
+    """O turno despachou: não é a série que a Alavanca 3 quer enxergar."""
+    casa = _repo_encenado(tmp_path)
+    _decidir(tmp_path, [
+        _humano("faça os dois PRs"),
+        _despacho(),
+        _pr_criado("Bash"),
+        _pr_criado("PowerShell"),
+        _fala(CONTAS_COMPLETAS),
+    ], cwd=str(casa), session_id="sessao-com-despacho")
+    eventos = telemetria.ler_tudo(casa / ".git")
+    assert not any(e.get("evento") == "serie_sem_despacho" for e in eventos)
+
+
+def test_um_pr_so_nao_dispara_a_medicao(tmp_path):
+    """O limiar é 2 ou mais: um PR sozinho não é série."""
+    casa = _repo_encenado(tmp_path)
+    _decidir(tmp_path, [
+        _humano("faça o PR"),
+        _pr_criado("Bash"),
+        _fala(CONTAS_COMPLETAS),
+    ], cwd=str(casa), session_id="sessao-um-pr")
+    eventos = telemetria.ler_tudo(casa / ".git")
+    assert not any(e.get("evento") == "serie_sem_despacho" for e in eventos)
+
+
+def test_sombra_nao_muda_o_exit_code(tmp_path):
+    """A sombra é SOMBRA: mesmo com 2 PRs sem despacho, uma sessão que já
+    prestou contas corretamente continua saindo calada (exit 0). Quem decide o
+    exit code continua sendo só `decidir()`."""
+    casa = _repo_encenado(tmp_path)
+    proc = _decidir(tmp_path, [
+        _humano("faça os dois PRs"),
+        _pr_criado("Bash"),
+        _pr_criado("PowerShell"),
+        _fala(CONTAS_COMPLETAS),
+    ], cwd=str(casa), session_id="sessao-exit-code")
+    _silencio(proc)
+    eventos = telemetria.ler_tudo(casa / ".git")
+    assert any(e.get("evento") == "serie_sem_despacho" for e in eventos), (
+        "a sombra tem de ter gravado mesmo com o turno calado"
+    )
