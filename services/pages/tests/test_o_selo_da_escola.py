@@ -6,23 +6,22 @@ ele vale para o que o monitor viu no dia da conferência"*
 (`CS-PAGES-0001.md`, AC-12). Este é o degrau 12 da escada
 (`PLANO-PORTFOLIO-DO-ALUNO.md` §5).
 
-A CARTA NO SININHO NÃO ESTÁ AQUI, E A AUSÊNCIA É UM BLOQUEIO DECLARADO
------------------------------------------------------------------------
-A carta viaja como `notificacao.devida.v1`, cujo `assunto` é uma lista FECHADA
-no contrato congelado (`enum`, com `additionalProperties: false` nos
-parâmetros). Não há ramo para o portfólio, e criar um é Rito de Contrato com o
-mantenedor, em `contracts/`, mais um ramo na tela do sininho, que mora numa
-célula que este corredor proíbe nominalmente. Publicar assunto fora do `enum`
-seria um evento fora do contrato: o aluno veria o cartão de "esta tela ainda
-não sabe mostrar", que é a resposta correta da tela e a errada para nós. O
-bloqueio está escrito no balcão e no livro.
+A CARTA NO SININHO ENTROU EM 06/09/2026, E ELA COMPLETA O CRITÉRIO
+-------------------------------------------------------------------
+Ela viaja como `notificacao.devida.v1`, cujo `assunto` é uma lista FECHADA no
+contrato congelado. O ramo do portfólio nasceu no Rito de Contrato daquele dia,
+com o mantenedor presente, e é ele que este arquivo mira: publicar assunto fora
+do `enum` seria um evento fora do contrato, e o aluno leria o cartão de "esta
+tela ainda não sabe mostrar", que é a resposta correta da tela e a errada para
+nós.
 
 O QUE ESTE ARQUIVO MEDE
 -----------------------
 1. o selo sai do aceite, com data e com quem conferiu;
 2. **sem aceite não há selo, e sem aceite não há evento** (a mutação do
-   critério: devolver e esperar não carimbam nada);
-3. o envelope publicado casa com o CONTRATO CONGELADO, lido do arquivo;
+   critério: devolver e esperar não carimbam nada, e nem avisam ninguém);
+3. os dois envelopes publicados casam com os CONTRATOS CONGELADOS, lidos dos
+   arquivos, e a carta cita o fato pelo `origem_event_id`;
 4. só ids opacos viajam, e nenhum XP viaja (o marco real vale zero);
 5. o aluno LÊ, na tela dele, que o selo vale para o dia da conferência;
 6. o fio fora do ar não perde o fato nem quebra a tela da equipe.
@@ -236,13 +235,22 @@ def test_o_contrato_do_selo_existe(portfolio_com_peca):
     assert (CONTRATOS / "pages.portfolio.conferido.v1.json").is_file()
 
 
-def test_o_aceite_publica_o_evento_no_fio(portfolio_com_peca, fio, publicado):
+def test_o_aceite_publica_o_fato_e_a_carta_no_fio(portfolio_com_peca, fio, publicado):
+    """Dois eventos, nesta ordem, e a ordem é o que a carta precisa.
+
+    O fato primeiro porque a carta cita o `event_id` dele; e os dois porque
+    dizem coisas diferentes a plateias diferentes (a máquina que acende o marco
+    e a pessoa que estava esperando).
+    """
     portfolio = portfolio_com_peca()
 
     publicado(portfolio)
 
-    assert fio.streams == ["eventos.pages.portfolio.conferido"]
-    assert OutboxEvent.objects.get().published_at is not None
+    assert fio.streams == [
+        "eventos.pages.portfolio.conferido",
+        "eventos.notificacao.devida",
+    ]
+    assert not OutboxEvent.objects.filter(published_at__isnull=True).exists()
 
 
 def test_o_envelope_publicado_casa_com_o_contrato_congelado(
@@ -276,6 +284,75 @@ def test_o_envelope_leva_quem_conferiu_e_so_ids_opacos_no_data(
     }
 
 
+def test_a_carta_do_sininho_casa_com_o_contrato_congelado(
+    portfolio_com_peca, fio, publicado
+):
+    """O guarda do Rito: assunto ou parâmetro fora do congelado reprova aqui.
+
+    O `enum` de `assunto` é fechado e os `parametros` são
+    `additionalProperties: false`, então este teste morde os dois erros que uma
+    sessão futura pode cometer sem perceber: renomear o assunto, e pendurar na
+    carta um campo "que seria útil" (a legenda, o link, o apelido).
+    """
+    publicado(portfolio_com_peca())
+
+    conferir_contra_o_contrato(fio.um_envelope("notificacao.devida"))
+
+
+def test_a_carta_endereca_o_aluno_e_leva_so_o_id_opaco(
+    portfolio_com_peca, fio, publicado
+):
+    """A igualdade é do dicionário INTEIRO, e é ela que impede o campo a mais.
+
+    O `papel` de quem conferiu é opcional no contrato e **não sai daqui hoje**:
+    esta célula reconhece a equipe por uma lista de ids no env e não sabe qual
+    deles é professor e qual é monitor. Emitir um dos dois seria escrever na
+    tela do aluno um cargo que ninguém conferiu.
+    """
+    portfolio = portfolio_com_peca()
+
+    publicado(portfolio)
+
+    carta = fio.um_envelope("notificacao.devida")
+    assert carta["ator_id"] == MONITORA
+    assert carta["data"]["site_id"] == SITE
+    assert carta["data"]["destinatario_id"] == "aluno-1"
+    assert carta["data"]["assunto"] == "pages.portfolio-conferido"
+    assert carta["data"]["parametros"] == {"portfolio_id": str(portfolio.pk)}
+
+
+def test_a_carta_cita_o_fato_que_a_causou(portfolio_com_peca, fio, publicado):
+    """De um aviso na tela se chega ao acontecimento que o causou.
+
+    Um id cunhado à parte passaria neste contrato (é um uuid como outro
+    qualquer) e mataria em silêncio a rastreabilidade que o campo promete. Por
+    isso a comparação é com o `event_id` do FATO, e não com "algum uuid".
+    """
+    publicado(portfolio_com_peca())
+
+    fato = fio.um_envelope("pages.portfolio.conferido")
+    carta = fio.um_envelope("notificacao.devida")
+    assert carta["data"]["origem_event_id"] == fato["event_id"]
+    assert carta["event_id"] != fato["event_id"]
+
+
+def test_a_devolucao_nao_manda_carta_nenhuma(portfolio_com_peca, fio):
+    """A mutação do critério pelo lado do aluno: só o SIM vira aviso.
+
+    O que a escola escreve ao devolver o aluno lê NA ESTANTE, ao lado das peças
+    que precisa arrumar. A mesma frase num sininho, longe das obras, viraria só
+    a notícia de que não foi.
+    """
+    conferencia.devolver(
+        pedido=conferencia.pedir(portfolio_com_peca()),
+        conferido_por=MONITORA,
+        motivo=MotivoDaDevolucao.POUCAS_PECAS,
+    )
+
+    assert relay_outbox() == 0
+    assert fio.mensagens == []
+
+
 def test_o_evento_leva_o_dia_da_conferencia(portfolio_com_peca, fio, publicado):
     """`occurred_at` é a data que o selo carrega, e as duas são o mesmo dia."""
     portfolio = portfolio_com_peca()
@@ -294,7 +371,7 @@ def test_a_segunda_passada_do_relay_nao_republica(portfolio_com_peca, fio, publi
     publicado(portfolio_com_peca())
 
     assert relay_outbox() == 0
-    assert len(fio.mensagens) == 1
+    assert len(fio.mensagens) == 2
 
 
 def test_sem_endereco_do_fio_o_fato_fica_pendente_em_vez_de_se_perder(
@@ -313,7 +390,7 @@ def test_sem_endereco_do_fio_o_fato_fica_pendente_em_vez_de_se_perder(
         pedido=conferencia.pedir(portfolio_com_peca()), conferido_por=MONITORA
     )
 
-    assert OutboxEvent.objects.get().published_at is None
+    assert OutboxEvent.objects.filter(published_at__isnull=True).count() == 2
 
 
 # ---------------------------------------------------------------------------
