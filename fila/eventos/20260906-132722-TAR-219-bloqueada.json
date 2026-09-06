@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-132722-TAR-219-bloqueada",
+  "tarefa": "TAR-219",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T13:27:22+00:00",
+  "quem": "despacho-infra-20260906",
+  "detalhe": "contracts/ e services/catalogo/ sao caminho CODEOWNERS e o mandato de 06/09/2026 autorizava infra/ e so ela. O quarto par de leitura do menu entrou pelo desenho que ja existia; a separacao dos graus (armadilhas/318) espera mandato escrito do mantenedor."
+}
