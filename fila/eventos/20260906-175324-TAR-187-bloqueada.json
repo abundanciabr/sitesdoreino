@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-175324-TAR-187-bloqueada",
+  "tarefa": "TAR-187",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T17:53:24+00:00",
+  "quem": "despacho-pages-selo-0609",
+  "detalhe": "O selo e o evento pages.portfolio.conferido.v1 entraram no PR #1228, com prova por mutacao. A carta no sininho NAO entrou: o campo assunto de notificacao.devida.v1 e um enum FECHADO no contrato congelado e nao tem ramo para o portfolio. Destravar exige um Rito de Contrato com o mantenedor em contracts/eventos/notificacao.devida.v1.json (CODEOWNERS, sem mandato neste despacho) mais o ramo da tela do sininho, que mora na celula sugestoes, proibida nominalmente pelo corredor CS-PAGES-0001. Publicar assunto fora do enum daria ao aluno o cartao de aviso desconhecido."
+}

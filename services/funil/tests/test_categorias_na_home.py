@@ -43,6 +43,7 @@ from test_sessao_no_site import COOKIE, logado  # noqa: F401  (fixture)
 
 HOME = "/pt-br/"
 CAIXA = "/forms/sugestoes/"
+PRANCHETA = "/pages/"
 
 
 def _abrir(client):
@@ -100,6 +101,36 @@ def com_email(rede, monkeypatch):
 def test_o_aluno_ve_o_caminho_da_caixa(client, com_email):
     _situacao(com_email, "aluno")
     assert CAIXA in _abrir(client)
+
+
+def test_o_aluno_ve_o_caminho_da_prancheta(client, com_email):
+    """AC-20 (degrau 18, PLANO-PORTFOLIO-DO-ALUNO): o aluno chega à Prancheta
+    sem digitar endereço — o link mora na home, pronto para o clique."""
+    _situacao(com_email, "aluno")
+    assert PRANCHETA in _abrir(client)
+
+
+@pytest.mark.parametrize(
+    "categoria,na_fila",
+    [
+        ("cadastrado", None),
+        (
+            "na_fila",
+            {"estado": "aguardando", "esperando_ha_dias": 1, "motivo_recusa": None},
+        ),
+        ("ex_aluno", None),
+        ("pausado", None),
+    ],
+)
+def test_quem_nao_e_aluno_nao_ve_o_caminho_da_prancheta(
+    client, com_email, categoria, na_fila
+):
+    """A Prancheta só abre para quem a `alunos` confirmou ser `aluno` (AC-05,
+    porta fail-closed da `pages`). Mostrar o link para quem não é aluno seria
+    o mesmo defeito que a Caixa já corrigiu em 28/08/2026: um botão que bate
+    na cara de quem clica."""
+    _situacao(com_email, categoria, na_fila)
+    assert PRANCHETA not in _abrir(client)
 
 
 def test_o_cadastrado_ve_o_convite_para_pedir_entrada(client, com_email):

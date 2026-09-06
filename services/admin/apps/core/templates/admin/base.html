@@ -381,11 +381,81 @@ primeira versão deste arquivo, e o teste pegou.
        (`armadilhas/199`). O traço vertical à esquerda é o galho: ele é o que
        faz uma lista de 100 linhas parecer uma árvore sem indentar tanto que o
        texto suma da tela de um celular. */
-    .galho { border-top: 1px solid var(--linha); }
-    .recuo-1 { padding-left: 16px; border-left: 2px solid var(--linha); }
-    .recuo-2 { padding-left: 32px; border-left: 2px solid var(--linha); }
-    .recuo-3 { padding-left: 48px; border-left: 2px solid var(--linha); }
-    .recuo-4 { padding-left: 64px; border-left: 2px solid var(--linha); }
+    /* --- A ÁRVORE do mapa: hierarquia que se VÊ (06/09/2026) --------------
+       A primeira versão desta tela recuava o texto por nível. O mantenedor
+       abriu e disse o que faltava: "quero poder ver onde começa e onde termina
+       cada parte do site, quais são os pais e quais são os filhos". Recuo
+       SUGERE hierarquia; ele não a mostra. O que mostra são três coisas, e
+       todas as três estão aqui embaixo:
+
+         1. a CAIXA de cada parte — o que está dentro dela é daquela parte;
+         2. o TRILHO ao lado das filhas, que começa na primeira e termina na
+            última: é onde aquele galho começa e onde ele acaba;
+         3. o GANCHO que sai do trilho e chega em cada filha, ligando-a à mãe.
+
+       Nada disto é imagem nem script: são bordas. Numa área cuja política de
+       segurança proíbe estilo por atributo (`armadilhas/199`), desenho que
+       depende de arquivo ou de script é desenho que um dia não chega. */
+    .parte-do-site {
+      border: 1px solid var(--linha); border-radius: 12px;
+      background: var(--painel);
+      margin-top: 22px; overflow: hidden;
+    }
+    .cabeca-da-parte {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid var(--linha);
+      background: rgba(76, 141, 255, .07);
+    }
+    .cabeca-da-parte h2 { margin: 0; font-size: 17px; }
+    .cabeca-da-parte .subtitulo { margin: 6px 0 0; font-size: 13px; }
+    .contas-da-parte { margin: 4px 0 0; color: var(--texto-2); font-size: 13px; }
+    .contas-da-parte code { color: var(--texto-3); }
+    .tronco { padding: 6px 14px 14px; }
+
+    /* O trilho e o gancho. O trilho é a borda esquerda de CADA nó, e não do
+       bloco que os contém: assim a última filha pode encurtar o seu, e o
+       traço para no gancho dela em vez de descer no vazio — que é a diferença
+       entre um `└` e uma linha que não acaba nunca. */
+    .filhas { margin-left: 9px; }
+    .filhas > .no-do-mapa {
+      position: relative; padding-left: 20px;
+    }
+    .filhas > .no-do-mapa::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+      border-left: 2px solid var(--linha);
+    }
+    .filhas > .no-do-mapa:last-child::before { bottom: auto; height: 19px; }
+    .filhas > .no-do-mapa::after {
+      content: ""; position: absolute; left: 0; top: 17px; width: 13px;
+      border-top: 2px solid var(--linha);
+    }
+
+    .linha-do-mapa {
+      display: block; padding: 9px 0; list-style: none;
+    }
+    .linha-do-mapa::-webkit-details-marker { display: none; }
+    /* O triângulo de abrir e fechar, desenhado à mão para ficar ANTES do nome
+       e girar. O de fábrica fica fora do fluxo e some no `display: block` que
+       o `<summary>` precisa ter para caber quatro linhas de texto. */
+    details.ramo > summary.linha-do-mapa { cursor: pointer; }
+    details.ramo > summary.linha-do-mapa .nome-do-no::before {
+      content: "▸"; display: inline-block; width: 14px;
+      color: var(--texto-3); font-size: 12px;
+    }
+    details.ramo[open] > summary.linha-do-mapa .nome-do-no::before { content: "▾"; }
+    .folha .nome-do-no { padding-left: 14px; }
+    .nome-do-no { display: block; font-size: 15px; font-weight: 600; }
+    .linha-do-mapa .mapa-endereco,
+    .linha-do-mapa .nota { display: block; padding-left: 14px; }
+    /* Quantas páginas somem se este galho fechar — a resposta à pergunta que o
+       triângulo levanta, e o tamanho de um galho fechado. */
+    .quantos-dentro {
+      display: inline-block; margin-left: 8px; padding: 0 8px;
+      border: 1px solid var(--linha); border-radius: 20px;
+      font-size: 11px; font-weight: 600; color: var(--texto-2);
+      vertical-align: 2px;
+    }
+
     /* O selo de PARA QUEM é aquela linha. Cor mais texto, nunca cor sozinha:
        quem não distingue as cores lê a palavra, e é a palavra que informa. */
     .selo-publico {

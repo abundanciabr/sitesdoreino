@@ -25,17 +25,27 @@ terceira. E não se inventa um segundo desenho: um jeito novo de fazer a mesma
 coisa custa uma segunda tela para a equipe aprender, uma segunda regra de prazo
 para a escola manter e uma segunda chance de errar.
 
-O QUE ESTE MÓDULO NÃO FAZ
---------------------------
-**Não põe o selo.** Aceitar fecha o pedido, e nada mais. O selo "conferido pela
-escola", o evento `pages.portfolio.*` e a carta no sininho são o degrau 12
-(critério AC-12), e a coluna que os guarda já espera vazia em `EstadoDoAluno`.
-Escrever o selo aqui entregaria pela metade um critério que este PR não tem
-como provar, e poria a mesma verdade em dois degraus.
+O SELO ENTROU AQUI NO DEGRAU 12, E O QUE ELE PROMETE É LIMITADO DE PROPÓSITO
+-----------------------------------------------------------------------------
+Aceitar deixou de só fechar o pedido: ele carimba o selo "conferido pela
+escola" em `EstadoDoAluno` e emite `pages.portfolio.conferido.v1` na outbox, na
+mesma transação (critério AC-12). O selo vale para o que o monitor VIU no dia
+da conferência, e não para o que o portfólio for depois: a foto entra por link
+colado e a escola não controla o que está do outro lado dele (plano §6.2). É
+por isso que ele guarda a DATA, e é isso que o texto da tela do aluno diz com
+todas as letras.
 
-**Não avisa o aluno.** Quem conta o que aconteceu é a TELA dele, que mostra o
-estado do pedido e, quando ele volta, o motivo por extenso. Carta no sininho
-depende do contrato de `notificacao.devida`, que é Rito e é o degrau 12.
+**Este módulo não paga XP, e não acende marco nenhum.** O marco real vale zero,
+de propósito (plano §7, decisão 7 da Sessão A). Quem acende é a `gamificacao`,
+no degrau 15, e ela só ESCUTA o evento.
+
+O QUE ESTE MÓDULO AINDA NÃO FAZ
+--------------------------------
+**Não avisa o aluno pelo sininho.** Quem conta o que aconteceu é a TELA dele,
+que mostra o selo com a data e, quando o portfólio volta, o motivo por extenso.
+A carta no sininho é `notificacao.devida.v1`, cujo `assunto` é uma lista
+FECHADA no contrato congelado e não tem ramo para o portfólio: acrescentá-lo é
+Rito de Contrato, com o mantenedor, e nenhuma sessão o abre sozinha.
 
 **Não bloqueia quem ainda não cumpriu o roteiro.** A lista orienta, nunca
 tranca (plano §7): um aluno com o semáforo amarelo pode pedir a conferência, e
@@ -51,12 +61,15 @@ from datetime import timedelta
 from django.db import transaction
 from django.utils import timezone
 
+from apps.portfolio import eventos
 from apps.portfolio.models import (
+    EstadoDoAluno,
     EstadoDoPedido,
     MotivoDaDevolucao,
     PedidoDeConferencia,
     Portfolio,
 )
+from apps.portfolio.tasks import relay_apos_commit
 
 # O prazo da escola para olhar um portfólio inteiro, em dias ÚTEIS. Cinco, o
 # mesmo do marco real na fila de marcos, e pela mesma razão: alguém precisa
@@ -175,19 +188,51 @@ def _conferir_quem_responde(pedido: PedidoDeConferencia, conferido_por: str) -> 
 
 
 def aceitar(*, pedido: PedidoDeConferencia, conferido_por: str) -> PedidoDeConferencia:
-    """Alguém da escola olhou o portfólio e disse sim.
+    """Alguém da escola olhou o portfólio e disse sim, e o SELO sai (AC-12).
 
-    Fecha o pedido, com data e com nome. **O selo é o degrau 12**, e não sai
-    daqui: o que este gesto grava é a decisão, e é dela que aquele degrau vai
-    partir.
+    Três escritas, e as três na MESMA transação: o pedido fecha, o selo é
+    carimbado no estado do aluno e o fato entra na outbox. Ou as três
+    acontecem, ou nenhuma. Um selo sem evento deixaria a trilha do aluno parada
+    para sempre com o portfólio já conferido; um evento sem selo faria a
+    plataforma acreditar num carimbo que a tela dele não mostra.
+
+    **A data do selo é a da conferência, e é a mesma do `respondido_em`**, lida
+    uma vez só. Dois relógios lidos em linhas diferentes dariam ao selo e ao
+    pedido instantes separados por microssegundos, e na virada da meia-noite a
+    tela do aluno mostraria dois dias para a mesma decisão.
+
+    **O selo é do PORTFÓLIO, não do pedido.** Ele mora em `EstadoDoAluno`
+    porque quem o mostra é a estante do aluno e quem o lê é a porta de máquina,
+    e nenhum dos dois pergunta qual foi o último pedido. Uma conferência nova,
+    depois de peças novas, recarimba a mesma coluna com a data nova: o selo vale
+    para o que o monitor viu no dia, e o dia que vale é sempre o último.
+
+    **O estado do aluno nasce aqui, se ainda não existir.** Ele é criado quando
+    o aluno marca o primeiro item do roteiro (degrau 07), e nada obriga quem
+    montou uma estante inteira a ter marcado alguma coisa. Sem o
+    `get_or_create`, justamente esse aluno receberia o sim da escola e nenhum
+    selo.
     """
     _conferir_quem_responde(pedido, conferido_por)
 
+    agora = timezone.now()
     with transaction.atomic():
         pedido.estado = EstadoDoPedido.ACEITO
-        pedido.respondido_em = timezone.now()
+        pedido.respondido_em = agora
         pedido.respondido_por = conferido_por
         pedido.save(update_fields=["estado", "respondido_em", "respondido_por"])
+
+        estado, _ = EstadoDoAluno.objects.get_or_create(portfolio=pedido.portfolio)
+        estado.selo_conferido_em = agora
+        estado.selo_conferido_por = conferido_por
+        estado.save(update_fields=["selo_conferido_em", "selo_conferido_por"])
+
+        eventos.fato_do_selo(pedido.portfolio, conferido_por=conferido_por)
+
+    # DEPOIS do commit, e nunca dentro dele: publicar antes poria um evento no
+    # fio para um sim que um erro seguinte tivesse revertido. Falhar aqui não
+    # custa o fato, que fica pendente na outbox, nem a tela da equipe.
+    transaction.on_commit(relay_apos_commit)
     return pedido
 
 
