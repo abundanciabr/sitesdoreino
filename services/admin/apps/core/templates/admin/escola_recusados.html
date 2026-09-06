@@ -43,6 +43,28 @@
   <p class="nota">Mostrando {{ recusados|length }} de {{ total }} recusados.</p>
   {% endif %}
 
+  {% comment %}
+  [CURSO] Sem lista de cursos, "Aceitar mesmo assim" desaparece dos cartões, e
+  esta tela diz por quê. Os dois casos são separados de propósito: falta de
+  configuração e escola sem curso publicado pedem gestos diferentes.
+  {% endcomment %}
+  {% if nao_consigo_ver_cursos %}
+  <p class="aviso">
+    <b>Ainda não consegui ver a lista de cursos, e sem ela não dá para aceitar
+    ninguém de volta.</b>
+    Aceitar aqui já libera o acesso, e toda pessoa entra em um curso. O que
+    falta é a senha de par entre esta área e o catálogo, e ela aparece na caixa
+    <b>Precisa de você</b> do painel do sistema.
+  </p>
+  {% elif not cursos %}
+  <p class="aviso">
+    <b>Nenhum curso está publicado, e sem curso não dá para aceitar ninguém de
+    volta.</b>
+    Aceitar aqui já libera o acesso, e toda pessoa entra em um curso. Publique o
+    primeiro no catálogo e volte: ninguém sai desta lista enquanto isso.
+  </p>
+  {% endif %}
+
   {% if nao_consigo_ver %}
   <p class="aviso">
     <b>Ainda não consigo ver quem foi recusado.</b>
@@ -132,11 +154,26 @@
       decisão que se aplica por GET é decisão que um pré-carregador de link, um
       antivírus corporativo ou um crawler autenticado tomam sozinhos.
       {% endcomment %}
+      {% comment %}
+      [CURSO] Aceitar mesmo assim LIBERA, e por isso pede o curso pela mesma
+      lei do botão Liberar da tela de alunos
+      (`DECISAO-cursos-matriculas-e-alunos.md` §6). Nada nasce escolhido, e sem
+      lista o botão não existe: apagar de vez, logo abaixo, continua possível,
+      porque apagar não põe ninguém em curso nenhum.
+      {% endcomment %}
+      {% if cursos %}
       <form class="decidir" method="post" action="{% url 'escola_reconsiderar' %}">
         {% csrf_token %}
         <input type="hidden" name="alvo" value="{{ pessoa.id }}">
+        <select name="product_id" required aria-label="Em qual curso essa pessoa entra">
+          <option value="">Escolha o curso...</option>
+          {% for curso in cursos %}
+          <option value="{{ curso.id }}">{{ curso.name }}</option>
+          {% endfor %}
+        </select>
         <button class="sim" type="submit">Aceitar mesmo assim</button>
       </form>
+      {% endif %}
 
       {% comment %}
       [APAGAR-RECUSADO] 03/09/2026, `DECISAO-apagar-recusado-definitivamente.md`.
