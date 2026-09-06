@@ -12,7 +12,10 @@ caro uma vez.
 
 O sino compara a saída de cada comando com as assinaturas declaradas nas
 entradas (campo `sinal` do frontmatter, compiladas em `armadilhas/SINAIS.json`
-pelo gerador) e, quando reconhece, diz ao agente qual entrada abrir.
+pelo gerador) e, quando reconhece, ENTREGA a lição ali mesmo: a `licao` do
+frontmatter, o sintoma, a causa e a solução, com o endereço junto para quem
+precisar do caso inteiro. Até 06/09/2026 ele entregava só o endereço, e o preço
+disso está medido no bloco "A LIÇÃO VEM JUNTO", mais abaixo.
 
 FAIL-OPEN, ao contrário das muralhas — e a assimetria é a lei da autoridade
 proporcional à certeza, não descuido:
@@ -41,14 +44,25 @@ from __future__ import annotations
 import json
 import re
 import sys
+import textwrap
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+try:  # fail-open: sem caderninho o sino ensina toda vez, nunca cala por isso
+    import telemetria
+except Exception:  # pragma: no cover - só num checkout quebrado
+    telemetria = None
 
 RAIZ = Path(__file__).resolve().parents[1]
 SINAIS = RAIZ / "armadilhas" / "SINAIS.json"
+GATILHOS = RAIZ / "armadilhas" / "GATILHOS.json"
 
 TETO_DA_SAIDA = 200_000  # o erro mora no fim; log de build inteiro não é regex
 MAXIMO_DE_TOQUES = 3
 TETO_DO_TRECHO = 120
+TETO_DO_RESUMO = 1500  # por armadilha; ver "A LIÇÃO VEM JUNTO" abaixo
+EVENTO_ENSINOU = "sino_ensinou"
 
 # Ler o próprio catálogo não pode tocar o sino: o texto do sintoma contém, de
 # propósito, a mensagem de erro crua que serve de assinatura.
@@ -231,6 +245,182 @@ def e_so_leitura(comando: str) -> bool:
     return viu_leitor
 
 
+# ---------------------------------------------------------------------------
+# A LIÇÃO VEM JUNTO, NÃO O ENDEREÇO (06/09/2026)
+# ---------------------------------------------------------------------------
+# Medido na semana de 06/09/2026: o sino disparou 891 vezes e, em cada uma, ele
+# dizia "LEIA armadilhas/NNN". O robô então gastava UMA CHAMADA INTEIRA — com o
+# contexto mediano de 206.460 tokens — para ler um arquivo de 996 bytes em
+# média. Foram 4,3% da cota da semana pagando ida e volta, não conhecimento: o
+# sino em si custa 227 bytes por disparo, e é barato. Caro é o que ele obriga a
+# fazer em seguida.
+#
+# Agora ele entrega o miolo junto do endereço: a `licao` do frontmatter (quando
+# a entrada declarou uma, compilada em GATILHOS.json) e as seções de Sintoma,
+# Causa e Solução, com teto de TETO_DO_RESUMO caracteres e corte no fim de um
+# parágrafo. O endereço continua na tela para quem precisar do caso inteiro.
+#
+# UMA VEZ POR SESSÃO, POR ARMADILHA — o mesmo desenho da lição do caminho, e o
+# MESMO caderninho (`ci/telemetria.py`, dentro do `.git` comum). A segunda vez
+# que a mesma assinatura casar volta a ser só o endereço em uma linha: repetir
+# 1.500 caracteres a cada comando seria trocar uma conta cara por outra, e
+# ruído é o que faz alguém desligar o mecanismo (a lição da TAR-043).
+#
+# Os nomes das seções VARIAM no catálogo, e por isso a leitura é por família e
+# não por título exato: 327 das 347 entradas escrevem `**Sintoma:**` em negrito
+# no início da linha, 20 usam `## Sintoma`, e a cura aparece como "Solução",
+# "Como se cura" ou "O que fazer". Entrada que não tem nenhuma das três não
+# quebra nada: sai só a lição, ou só o endereço.
+#
+# FAIL-OPEN como todo o resto deste arquivo: catálogo ausente, JSON corrompido,
+# arquivo de armadilha que não existe neste checkout ou erro interno voltam ao
+# comportamento de antes (o endereço), nunca ao silêncio e nunca à recusa.
+
+_FRONTMATTER = re.compile(r"\A---\r?\n.*?\r?\n---\r?\n", re.DOTALL)
+_COMENTARIO_HTML = re.compile(r"<!--.*?-->", re.DOTALL)
+_TITULO = re.compile(r"^#{1,6}\s+(.+?)\s*$")
+_RUBRICA_EM_NEGRITO = re.compile(r"^\*\*([^*\n]{1,90}?)\*\*([:：])?\s*(.*)$")
+_ACENTOS = str.maketrans("áàâãäéèêëíìîïóòôõöúùûüçñ", "aaaaaeeeeiiiiooooouuuucn")
+
+# Rótulo entregue -> os começos de nome que valem por ele. A ordem aqui é a
+# ordem em que o resumo sai na tela.
+RUBRICAS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("Sintoma", ("sintoma", "o que estava acontecendo", "o que aconteceu",
+                 "o que voce ve", "o problema")),
+    ("Causa", ("causa", "por que acontece", "por que isso acontece",
+               "por que isto acontece")),
+    ("Solução", ("solucao", "como se cura", "o que fazer", "a cura", "conserto",
+                 "correcao", "a saida", "como curar", "o conserto")),
+)
+
+
+def _normalizar_rubrica(nome: str) -> str:
+    limpo = re.sub(r"^\d+(\.\d+)*\s+", "", nome.strip())  # "4.2 Sintoma"
+    limpo = limpo.replace("`", "").lower().translate(_ACENTOS)
+    return re.sub(r"\s+", " ", limpo).strip(" :.—–-")
+
+
+def familia_da_rubrica(nome: str) -> str | None:
+    """O rótulo que este título/etiqueta representa, ou None se não é rubrica."""
+    limpo = _normalizar_rubrica(nome)
+    for rotulo, comecos in RUBRICAS:
+        for comeco in comecos:
+            if limpo == comeco:
+                return rotulo
+            if limpo.startswith(comeco) and not limpo[len(comeco)].isalnum():
+                return rotulo
+    return None
+
+
+def _parece_etiqueta(rotulo: str, dois_pontos: str | None) -> bool:
+    """Negrito no começo da linha é ETIQUETA, ou é só ênfase no meio da frase?
+
+    A diferença tem preço medido: a armadilhas/179 escreve
+    `**Sintoma.** O PR fica verde …, e ele volta com` e a linha seguinte começa
+    em `**três** checks vermelhos`. Tratar esse `**três**` como etiqueta cortava
+    o sintoma na segunda linha e entregava meia frase. Etiqueta fecha com `:` ou
+    `.`; ênfase, não.
+    """
+    return bool(dois_pontos) or rotulo.rstrip().endswith((":", ".", "："))
+
+
+def _segmentos(texto: str):
+    """(nome, corpo) de cada trecho rotulado do arquivo, na ordem do documento.
+
+    Um título (`## …`) sempre abre trecho novo. Uma etiqueta em negrito no
+    começo da linha abre trecho novo só quando é rubrica conhecida ou quando o
+    trecho aberto veio de outra etiqueta — assim `## Solução` sobrevive inteira
+    às sub-etiquetas em negrito que ela contém.
+    """
+    texto = _COMENTARIO_HTML.sub("", _FRONTMATTER.sub("", texto))
+    nome: str | None = None
+    de_negrito = False
+    corpo: list[str] = []
+    for linha in texto.splitlines():
+        titulo = _TITULO.match(linha)
+        if titulo:
+            if nome is not None:
+                yield nome, "\n".join(corpo)
+            nome, de_negrito, corpo = titulo.group(1), False, []
+            continue
+        etiqueta = _RUBRICA_EM_NEGRITO.match(linha)
+        if etiqueta and (
+            familia_da_rubrica(etiqueta.group(1))
+            or ((de_negrito or nome is None)
+                and _parece_etiqueta(etiqueta.group(1), etiqueta.group(2)))
+        ):
+            if nome is not None:
+                yield nome, "\n".join(corpo)
+            nome, de_negrito, corpo = etiqueta.group(1), True, [etiqueta.group(3)]
+            continue
+        if nome is not None:
+            corpo.append(linha)
+    if nome is not None:
+        yield nome, "\n".join(corpo)
+
+
+def secoes_da_armadilha(texto: str) -> dict[str, str]:
+    """As seções de Sintoma, Causa e Solução que a entrada realmente tem."""
+    achadas: dict[str, str] = {}
+    for nome, corpo in _segmentos(texto):
+        rotulo = familia_da_rubrica(nome)
+        if rotulo and rotulo not in achadas and corpo.strip():
+            achadas[rotulo] = corpo.strip()
+    return achadas
+
+
+def _cortar_no_paragrafo(texto: str, teto: int, arquivo: str) -> str:
+    """Corte limpo no fim de um parágrafo (ou de uma frase), com o endereço do
+    resto. Nunca devolve pedaço vazio: o teto é grande e o piso é 1/3 dele."""
+    if len(texto) <= teto:
+        return texto
+    sufixo = f"\n… o resto em {arquivo}"
+    limite = max(teto - len(sufixo), teto // 2)
+    recorte = texto[:limite]
+    for separador, sobra in (("\n\n", 0), (". ", 1), ("\n", 0)):
+        posicao = recorte.rfind(separador)
+        if posicao > limite // 3:
+            recorte = recorte[: posicao + sobra]
+            break
+    return recorte.rstrip() + sufixo
+
+
+def licoes_por_armadilha(caminho: Path = GATILHOS) -> dict[str, str]:
+    """A `licao` do frontmatter, por número de armadilha. {} se não der para ler."""
+    try:
+        dados = json.loads(caminho.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+    licoes: dict[str, str] = {}
+    for item in dados.get("gatilhos") or []:
+        numero, licao = str(item.get("armadilha") or ""), str(item.get("licao") or "")
+        if numero and licao and numero not in licoes:
+            licoes[numero] = licao.strip()
+    return licoes
+
+
+def resumo_da_armadilha(arquivo: Path, relativo: str, licao: str = "") -> str:
+    """O que salva a rodada: a lição primeiro, depois Sintoma, Causa e Solução.
+
+    Devolve "" quando não há nada a entregar (arquivo ausente, entrada sem
+    nenhuma das seções e sem lição) — e aí o sino volta a dar só o endereço.
+    """
+    blocos = []
+    if licao:
+        blocos.append(f"Lição: {licao}")
+    try:
+        texto = arquivo.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        texto = ""
+    secoes = secoes_da_armadilha(texto)
+    for rotulo, _ in RUBRICAS:
+        if secoes.get(rotulo):
+            blocos.append(f"{rotulo}: {secoes[rotulo]}")
+    if not blocos:
+        return ""
+    return _cortar_no_paragrafo("\n\n".join(blocos), TETO_DO_RESUMO, relativo)
+
+
 def _texto_da_resposta(resposta) -> str:
     """A saída do comando, seja qual for a forma que o harness use.
 
@@ -283,32 +473,94 @@ def reconhecer(saida: str, sinais: list[dict]) -> list[tuple]:
     return achados
 
 
-def montar_aviso(achados: list[tuple]) -> str:
-    linhas = []
+def montar_aviso(
+    achados: list[tuple],
+    raiz: Path = RAIZ,
+    ja_ensinadas: frozenset | set = frozenset(),
+    licoes: dict[str, str] | None = None,
+) -> tuple[str, list[str]]:
+    """O texto do aviso e os números que receberam a lição inteira agora.
+
+    Quem já recebeu a lição nesta sessão volta a levar só o endereço: repetir
+    1.500 caracteres a cada comando trocaria uma conta cara por outra.
+    """
+    if licoes is None:
+        licoes = licoes_por_armadilha(raiz / "armadilhas" / "GATILHOS.json")
+    linhas: list[str] = []
+    ensinadas: list[str] = []
     for sinal, trecho in achados:
-        linhas.append(
+        numero, arquivo = sinal["armadilha"], sinal["arquivo"]
+        cabeca = (
             f"🔔 SINO DAS ARMADILHAS: a saída deste comando casa com a assinatura "
-            f"da armadilhas/{sinal['armadilha']} — \"{sinal['titulo']}\".\n"
-            f"   Casou: {trecho!r}\n"
-            f"   LEIA {sinal['arquivo']} ANTES de tentar de novo: esta falha já "
-            f"custou uma rodada nesta casa, e a solução está escrita lá."
+            f"da armadilhas/{numero} — \"{sinal['titulo']}\".\n"
+            f"   Casou: {trecho!r}"
         )
-    return "\n".join(linhas)
+        resumo = ""
+        if numero not in ja_ensinadas:
+            resumo = resumo_da_armadilha(raiz / arquivo, arquivo, licoes.get(numero, ""))
+        if resumo:
+            ensinadas.append(numero)
+            linhas.append(
+                f"{cabeca}\n"
+                f"   Esta falha já custou uma rodada nesta casa. O essencial está "
+                f"aqui; LEIA {arquivo} se precisar do caso inteiro.\n"
+                f"{textwrap.indent(resumo, '   ')}"
+            )
+        else:
+            linhas.append(
+                f"{cabeca}\n"
+                f"   LEIA {arquivo} ANTES de tentar de novo: esta falha já "
+                f"custou uma rodada nesta casa, e a solução está escrita lá."
+            )
+    return "\n\n".join(linhas), ensinadas
 
 
-def decidir(entrada: dict, sinais: list[dict]) -> str | None:
+def avaliar(
+    entrada: dict,
+    sinais: list[dict],
+    raiz: Path = RAIZ,
+    ja_ensinadas: frozenset | set = frozenset(),
+) -> tuple[str | None, list[str]]:
     ferramenta = str(entrada.get("tool_name") or "")
     if ferramenta not in ("Bash", "PowerShell"):
-        return None
+        return None, []
     comando = str((entrada.get("tool_input") or {}).get("command") or "")
     # Ler o catálogo, ou ler código-fonte, não é sintoma (TAR-048).
     if LENDO_O_CATALOGO.search(comando) or e_so_leitura(comando):
-        return None
+        return None, []
     saida = _texto_da_resposta(entrada.get("tool_response"))
     if not saida:
-        return None
+        return None, []
     achados = reconhecer(saida[-TETO_DA_SAIDA:], sinais)
-    return montar_aviso(achados) if achados else None
+    if not achados:
+        return None, []
+    return montar_aviso(achados, raiz, ja_ensinadas)
+
+
+def decidir(entrada: dict, sinais: list[dict], raiz: Path = RAIZ,
+            ja_ensinadas: frozenset | set = frozenset()) -> str | None:
+    """Só o texto do aviso. Quem precisa saber o que foi ensinado usa `avaliar`."""
+    return avaliar(entrada, sinais, raiz, ja_ensinadas)[0]
+
+
+def ja_ensinadas_nesta_sessao(cwd: str | None, sessao: str) -> set[str]:
+    """Os números que esta sessão já recebeu por extenso.
+
+    O caderninho da telemetria é a memória — o MESMO que a lição do caminho usa
+    (`ci/licao_do_caminho.py`). Ele já existe, já é por sessão e já é comum ao
+    clone e a todos os worktrees: guardar isto à parte seria uma segunda
+    verdade sobre o mesmo fato.
+    """
+    if telemetria is None or not sessao:
+        return set()
+    raiz_git = telemetria.dir_git_comum(Path(cwd) if cwd else Path.cwd())
+    if raiz_git is None:
+        return set()
+    return {
+        str(linha.get("armadilha"))
+        for linha in telemetria.ler_tudo(raiz_git)
+        if linha.get("evento") == EVENTO_ENSINOU and linha.get("sessao") == sessao
+    }
 
 
 def _utf8_na_saida() -> None:
@@ -331,7 +583,14 @@ def main() -> int:
     _utf8_na_saida()
     try:
         entrada = json.loads(sys.stdin.buffer.read().decode("utf-8-sig"))
-        aviso = decidir(entrada, carregar_sinais())
+        sessao = str(entrada.get("session_id") or "")[:64]
+        try:
+            ja_ensinadas = ja_ensinadas_nesta_sessao(entrada.get("cwd"), sessao)
+        except Exception:
+            ja_ensinadas = set()  # sem memória o sino ensina de novo, nunca cala
+        aviso, ensinadas = avaliar(
+            entrada, carregar_sinais(), RAIZ, ja_ensinadas
+        )
         if not aviso:
             return 0
         # O aninhamento em hookSpecificOutput é obrigatório: no topo do JSON,
@@ -343,15 +602,19 @@ def main() -> int:
             }
         }, ensure_ascii=False))
         try:
-            sys.path.insert(0, str(Path(__file__).resolve().parent))
-            import telemetria
-
             telemetria.registrar(
                 "sino_tocou",
                 {"armadilhas": aviso.count("SINO DAS ARMADILHAS"),
                  "ferramenta": str(entrada.get("tool_name") or "")},
                 cwd=entrada.get("cwd"), sessao=entrada.get("session_id"),
             )
+            # Uma linha por armadilha ensinada: é o que a próxima chamada lê
+            # para não repetir a lição inteira nesta mesma sessão.
+            for numero in ensinadas:
+                telemetria.registrar(
+                    EVENTO_ENSINOU, {"armadilha": numero},
+                    cwd=entrada.get("cwd"), sessao=sessao,
+                )
         except Exception:
             pass
         return 0
