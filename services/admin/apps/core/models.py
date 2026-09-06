@@ -52,9 +52,19 @@ deste projeto é público de propósito.
 propósito entre as duas tabelas: um documento do site é texto de interface, e a
 tela dele RECUSA salvar com risca comprida (`DECISAO-o-editor-de-documentos`
 §3); um texto de livro é obra do autor, e a Biblioteca não reescreve obra. A
-régua do `CLAUDE.md` continua valendo no dia em que um trecho virar página
-online, e é por isso que a tela CONTA as riscas e mostra as frases — decisão
-dele em 04/09/2026, com as três saídas na mesa.
+tela CONTA as riscas e mostra as frases — decisão dele em 04/09/2026, com as
+três saídas na mesa — e desde 05/09/2026 essa contagem não é mais um aviso
+para o futuro: ver `Livro` logo abaixo e o cabeçalho de `apps/core/livro.py`.
+
+## `Livro` — a tela de LEITURA, 05/09/2026
+
+Um `Livro` agrupa capítulos (`TextoDoLivro.livro`). Nasceu no dia em que o
+mantenedor pediu uma tela de leitura ("parecido com o leitor da Amazon
+Kindle") e respondeu, entre duas opções na mesa, **"os dois: publicar o meu
+agora, já preparando para vários depois"** — por isso o modelo já suporta
+vários livros, mesmo só existindo um publicado por ora. A migração `0012`
+cria um `Livro` para qualquer capítulo pré-existente, e todo capítulo novo
+nasce dentro de um `Livro`, sempre.
 """
 
 from django.db import models
@@ -200,6 +210,33 @@ class VersaoDoDocumento(models.Model):
         return f"{self.documento_id} @ {self.salvo_em:%Y-%m-%d %H:%M}"
 
 
+class Livro(models.Model):
+    """Um livro do mantenedor. Um `TextoDoLivro` é um capítulo de um `Livro`.
+
+    Nasceu em 05/09/2026, quando ele pediu a tela de LEITURA (o cabeçalho de
+    `apps/core/livro.py` conta a decisão inteira). A resposta dele, entre duas
+    opções na mesa, foi "os dois: publicar o meu agora, já preparando para
+    vários depois" — o modelo já nasce com um `Livro` por cima dos capítulos,
+    mesmo só existindo um hoje.
+    """
+
+    slug = models.SlugField(max_length=80, unique=True)
+    titulo = models.CharField(max_length=200)
+
+    # Mesmo desenho de `TextoDoLivro.ordem`: menor primeiro, default alto joga
+    # o livro novo para o fim da lista.
+    ordem = models.IntegerField(default=1000)
+
+    criado_em = models.DateTimeField(auto_now_add=True)
+    atualizado_em = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["ordem", "slug"])]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniencia de shell
+        return self.titulo
+
+
 class TextoDoLivro(models.Model):
     """Um texto do livro do mantenedor, do jeito que ele escreveu.
 
@@ -214,6 +251,11 @@ class TextoDoLivro(models.Model):
     # abre.
     nome = models.SlugField(max_length=80, unique=True)
     titulo = models.CharField(max_length=200)
+
+    # O livro a que este capítulo pertence. Todo capítulo tem um, sempre — a
+    # migração `0012` associa qualquer capítulo pré-existente a um `Livro`
+    # criado por ela antes de fechar a coluna em `null=False`.
+    livro = models.ForeignKey(Livro, on_delete=models.CASCADE, related_name="capitulos")
 
     # Menor primeiro, e o default alto manda o texto novo para o FIM. Num livro
     # a ordem e o sumario: e ela que diz o que vem antes do que.
