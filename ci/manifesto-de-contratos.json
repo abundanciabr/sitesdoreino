@@ -34,7 +34,14 @@
   "celulas": {
     "admin": {
       "freeze": "not-applicable",
-      "reason": "A área administrativa CONSOME (identidade; e as provedoras de métrica a partir da fase 2) e não FORNECE: nenhuma célula chama a admin, e ela não expõe API de máquina. Contrato entra pelo RITOS.md §3 no dia em que alguém precisar consumi-la — o que a lei dela (docs/decisoes/DECISAO-celula-admin.md) não prevê."
+      "freeze": "required",
+      "frozen": "contracts/admin.openapi.yaml",
+      "exportador": [
+        "python",
+        "manage.py",
+        "export_openapi"
+      ],
+      "_nota": "PASSOU DE not-applicable PARA required em 06/09/2026, pelo Rito de Contrato (RITOS.md §3), no dia previsto pela própria linha anterior: 'contrato entra no dia em que alguém precisar consumi-la'. Quem precisa é a `pages`, que hoje só sabe quem confere o portfólio lendo um IDS_DA_EQUIPE escrito à mão no env da VPS — uma segunda casa do mesmo fato. A sessão de arquitetura com o mantenedor foi em 06/09/2026: ele escolheu 'simplesmente todo admin confere', sem lista separada de conferentes. UMA operação, e só de leitura: escrita aqui daria poder de escrita a todo par que ganhasse o token, porque o conjunto é plano (armadilhas/318). A LINHA ENTRA NO MESMO PR DO CONTRATO por exigência medida de `auditar_manifesto` (contracts/README.md ponto 1): arquivo em disco com a célula not-applicable é ERROR. ATENÇÃO, É O CASO DA `armadilhas/228`: a porta de máquina (config/api.py + manage.py export_openapi) ainda NÃO existe, então `contrato/admin` termina em ERROR com 'Unknown command: export_openapi' e bloqueia qualquer PR que toque services/admin. O PRÓXIMO PR desta célula tem de ser o da porta, e ela precisa emitir exatamente o congelado, inclusive `model_config = {\"extra\": \"forbid\"}` nos dois Schema."
     },
     "alunos": {
       "freeze": "required",
