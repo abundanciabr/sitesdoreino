@@ -46,6 +46,7 @@ from django.db import DatabaseError
 from django.utils import timezone
 
 from .models import Entrega, Inscricao, Preferencia
+from .parametros import TETO_DE_CONTATO_POR_DIA
 
 # ---------------------------------------------------------------------------
 # AS CONSTANTES DA LEI, NUM LUGAR SÓ
@@ -61,8 +62,12 @@ CLASSES_FORA_DA_REGUA = frozenset({"critica", "transacional"})
 ABRE = time(8, 0)
 FECHA = time(20, 0)
 
-# Lei 4 do §3. Uma por dia, por pessoa.
-TETO_POR_DIA = 1
+# Lei 4 do §3. Uma por dia, por pessoa. O NUMERO NAO MORA MAIS AQUI: ele e um
+# parametro com dono declarado (`parametros.py`), porque o mantenedor pode
+# querer outro e um numero solto no meio de um algoritmo nao diz de quem e a
+# decisao. Continua sendo um `int` de propósito, e nao o objeto: quem lê a linha
+# do teto lá embaixo precisa de "teto de 1 por dia" na tela, não de um dataclass.
+TETO_POR_DIA = TETO_DE_CONTATO_POR_DIA.valor
 
 # O desempate, e ele é do banco, não da sorte: quando duas jornadas disputam a
 # vaga do dia, ganha a inscrição mais antiga. Sem ordem definida, o teste do teto
@@ -199,6 +204,30 @@ def _quantas_hoje(
     `excluir=` faz. Medido: sem ele, o guarda dos dois canais continuava vermelho.
     """
     inicio, fim = _limites_do_dia(momento)
+    return quantas_mensagens_entre(
+        destinatario_id, site_id, inicio, fim, excluir=excluir
+    )
+
+
+def quantas_mensagens_entre(
+    destinatario_id: str,
+    site_id: str,
+    inicio: datetime,
+    fim: datetime,
+    excluir: tuple[object, object] | None = None,
+) -> int:
+    """Quantas MENSAGENS desta pessoa sairam em `[inicio, fim)`.
+
+    A conta inteira do teto diario mora aqui; `_quantas_hoje` so escolhe a
+    janela. A extracao aconteceu no degrau 15 do painel de gestao, quando a fila
+    de proxima acao precisou da MESMA conta numa janela de sete dias, e duas
+    implementacoes da mesma contagem divergiriam no primeiro dia em que alguem
+    mexesse numa delas, sem que nada acusasse (e o defeito medido de 02/09/2026,
+    contar linha em vez de mensagem, viveria de novo numa das duas).
+
+    Tudo que a docstring de `_quantas_hoje` explica sobre O QUE esta conta
+    alcanca continua valendo palavra por palavra, porque e esta a conta.
+    """
     consulta = Entrega.objects.filter(
         inscricao__destinatario_id=destinatario_id,
         inscricao__site_id=site_id,

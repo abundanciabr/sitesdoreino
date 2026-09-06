@@ -86,11 +86,17 @@ INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
     "apps.core",
-    # O portfólio, a peça, o item de conferência e o estado do aluno nascem no
-    # degrau 02 da escada (`PLANO-PORTFOLIO-DO-ALUNO.md` §5), numa app própria
-    # dentro desta casa. A linha dela entra no PR que a cria, não aqui:
-    # `INSTALLED_APPS` apontando para módulo inexistente derruba a célula
-    # inteira no boot, e o `/healthz` junto.
+    # O portfólio, a peça, o item de conferência e o estado do aluno, nascidos
+    # no degrau 02 da escada (`PLANO-PORTFOLIO-DO-ALUNO.md` §5, TAR-178), numa
+    # app própria dentro desta casa. Não há tela, porta de máquina nem evento:
+    # eles são os degraus 06, 03 e 12.
+    #
+    # A fronteira de site e a de aluno moram numa tabela só (`Portfolio`), e as
+    # três filhas chegam às duas pela chave estrangeira local. Nenhuma chave
+    # estrangeira sai deste banco (critério AC-02), e o isolamento por aluno
+    # tem uma porta só, o `do_aluno` dos gerenciadores (AC-07), com guarda
+    # provado por mutação em `tests/test_isolamento_por_aluno.py`.
+    "apps.portfolio",
 ]
 
 MIDDLEWARE = [
