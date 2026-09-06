@@ -93,8 +93,8 @@ def _telas(client) -> list[tuple[str, str]]:
     """Toda tela GET da célula que renderiza conteúdo, aberta como Ana."""
     telas = []
     for endereco in (
-        reverse("mapa"),
-        reverse("aula", args=["E00"]),
+        reverse("curso", args=["profissional"]),
+        reverse("aula-do-curso", args=["profissional", 1, "E00"]),
         reverse("curso", args=["profissional"]),
         reverse("aula-do-curso", args=["profissional", 1, "E00"]),
     ):
@@ -118,7 +118,9 @@ def test_nenhuma_tela_fala_de_outra_pessoa(duas_pessoas, client):
 def test_o_mapa_conta_so_as_portas_da_propria_pessoa(duas_pessoas, client):
     """Beto está em produção na E00; para Ana a E00 nasce disponível, e é
     isso que o mapa dela mostra, não o estado dele."""
-    corpo = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE).content.decode()
+    corpo = client.get(
+        reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE
+    ).content.decode()
     assert ">Disponível<" in corpo
     assert ">Em produção<" not in corpo
 
@@ -126,7 +128,7 @@ def test_o_mapa_conta_so_as_portas_da_propria_pessoa(duas_pessoas, client):
 def test_a_aula_mostra_so_os_registros_da_propria_pessoa(duas_pessoas, client):
     """Beto já registrou a pausa 1; para Ana ela continua com formulário."""
     corpo = client.get(
-        reverse("aula", args=["E00"]), HTTP_COOKIE=COOKIE
+        reverse("aula-do-curso", args=["profissional", 1, "E00"]), HTTP_COOKIE=COOKIE
     ).content.decode()
     assert 'action="' + reverse("registrar-pausa", args=["E00", 1]) in corpo
     assert "Registrada." not in corpo
