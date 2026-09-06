@@ -277,3 +277,60 @@ def test_csp_permite_iframe_de_mesma_origem_e_nao_none():
 def test_csp_vale_tambem_nas_respostas_de_recusa():
     """Página de recusa também é página: sem CSP ela seria a brecha."""
     assert "Content-Security-Policy" in Client().get("/")
+
+
+# --------------------------------------------------------------------------
+# NENHUMA TELA DESTA ÁREA PODE FICAR GUARDADA NO NAVEGADOR (06/09/2026)
+#
+# Toda tela daqui é CALCULADA do estado de agora — quem pediu acesso, quanto
+# entrou, o que os robôs fizeram, que endereços o site tem. Uma cópia velha
+# não é uma tela desatualizada: é uma tela que mente, e mente exatamente como
+# uma tela certa. O dono não tem como perceber a diferença.
+# --------------------------------------------------------------------------
+
+
+@respx.mock
+def test_nenhuma_tela_do_admin_pode_ficar_guardada_no_navegador():
+    """A resposta saía SEM instrução de cache nenhuma, e o navegador decidia.
+
+    Medido em 06/09/2026 contra o site no ar:
+
+        $ curl -s -D - -o /dev/null https://meshcraft.top/docs/
+        HTTP/1.1 200 OK
+        Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+    Nem `Cache-Control`, nem `ETag`, nem `Last-Modified`: nada dizendo ao
+    navegador o que fazer com aquilo.
+    """
+    respx.get(SESSAO).mock(
+        return_value=httpx.Response(200, json=_pessoa("dono@exemplo.com"))
+    )
+    resposta = _com_cookie().get("/")
+    assert resposta.status_code == 200
+    assert resposta["Cache-Control"] == "no-store", (
+        "a tela pode ser guardada pelo navegador e reexibida velha — e uma "
+        "tela velha desta área é indistinguível de uma tela certa"
+    )
+
+
+def test_a_recusa_tambem_nao_fica_guardada():
+    """Recusa guardada é pior que tela guardada.
+
+    O 302 para o login e o 404 de quem não está na lista sobrevivendo no cache
+    trancariam o dono para fora depois que o acesso dele fosse consertado.
+    """
+    assert Client().get("/")["Cache-Control"] == "no-store"
+
+
+@respx.mock
+def test_quem_manda_o_proprio_cache_continua_mandando():
+    """`setdefault`, e não atribuição — senão a correção atropelaria o mapa-ia.
+
+    `/mapa-ia/` e `/mapa-ia/planos/` mandam `public, max-age=300` de propósito:
+    são texto público que uma IA de fora lê, e reler o mesmo texto a cada
+    pedido é gasto sem ganho. Sem este guarda, um `resposta["Cache-Control"]`
+    no lugar do `setdefault` apagaria essa decisão sem nada ficar vermelho.
+    """
+    resposta = Client().get("/mapa-ia/")
+    assert resposta.status_code == 200, resposta.content
+    assert resposta["Cache-Control"] == "public, max-age=300"

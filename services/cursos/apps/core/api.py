@@ -139,13 +139,22 @@ class BlocoSchema(Schema):
     dispensar uma operação de leitura própria: quem grava um bloco o lê de
     volta na primeira aula dele. Gravar sem poder ler de volta foi o defeito
     que o degrau 1.3b teve de curar nos instrumentos, com um PR a mais.
+
+    OS DOIS NOVOS CARREGAM DEFAULT, E ISSO NÃO É DESCUIDO NEM ENFEITE: sem
+    ele o campo nasce em `required` no documento congelado, e
+    `ci/contrato_aditivo.py` reprova o PR do Rito, porque campo obrigatório
+    novo quebra quem consome pelo contrato antigo (`armadilhas/202`, medida
+    aqui em 06/09/2026). O valor emitido NÃO muda: o modelo sempre tem os
+    dois, com `default=""` no banco. Muda só o que o contrato EXIGE de quem
+    valida. Não tire os defaults para "deixar igual aos outros três": os
+    outros três nasceram com o contrato, estes chegaram depois.
     """
 
     letra: str
     ordem: int
     parte: int
-    nome: str
-    boss_titulo: str
+    nome: str = ""
+    boss_titulo: str = ""
 
 
 class AulaDaListaSchema(Schema):
