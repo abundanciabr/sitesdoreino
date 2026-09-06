@@ -644,8 +644,7 @@ def _escrever_json(caminho: Path, dados: dict) -> None:
     )
 
 
-def _escrever_evento(
-    raiz: Path,
+def montar_evento(
     tid: str,
     evento: str,
     quem: str,
@@ -653,10 +652,15 @@ def _escrever_evento(
     evidencia: str | None = None,
     verificado_em: str | None = None,
     agora: datetime | None = None,
-) -> Path:
+) -> dict:
+    """O conteúdo de um evento, sem tocar no disco.
+
+    Separado de `_escrever_evento` de propósito: a porta do pouso precisa
+    MOSTRAR o evento que gravaria sem gravá-lo (a sombra, mais abaixo), e duas
+    receitas para o mesmo arquivo divergiriam no primeiro dia em que alguém
+    mexesse numa só.
+    """
     agora = agora or datetime.now(timezone.utc)
-    pasta = pasta_eventos(raiz)
-    pasta.mkdir(parents=True, exist_ok=True)
     stem = f"{agora.strftime('%Y%m%d-%H%M%S')}-{tid}-{evento}"
     dados: dict = {
         "arquivo": stem,
@@ -671,9 +675,204 @@ def _escrever_evento(
         dados["evidencia"] = evidencia
     if verificado_em:
         dados["verificado_em"] = verificado_em
-    caminho = pasta / f"{stem}.json"
+    return dados
+
+
+def _escrever_evento(
+    raiz: Path,
+    tid: str,
+    evento: str,
+    quem: str,
+    detalhe: str | None = None,
+    evidencia: str | None = None,
+    verificado_em: str | None = None,
+    agora: datetime | None = None,
+) -> Path:
+    dados = montar_evento(
+        tid, evento, quem, detalhe, evidencia, verificado_em, agora
+    )
+    pasta = pasta_eventos(raiz)
+    pasta.mkdir(parents=True, exist_ok=True)
+    caminho = pasta / f"{dados['arquivo']}.json"
     _escrever_json(caminho, dados)
     return caminho
+
+
+# ---------------------------------------------------------------------------
+# O EVENTO "CONCLUÍDA" PELA PORTA DO POUSO — nasce EM SOMBRA (06/09/2026)
+#
+# O buraco é de DESENHO, e é o mesmo que `ci/divida_do_livro.py` descreve para
+# o livro: o rito manda pedir pouso e ir embora, a pista mergeia depois, e não
+# há mais ninguém ali para escrever o evento. Hoje quem escreve é o robô, à
+# mão, antes de sair — e quando a sessão acaba antes do merge, o evento não
+# nasce e a tarefa fica presa em "reivindicada" para sempre.
+#
+# Os seis campos do evento existem TODOS no instante do pouso: a tarefa (o PR
+# a cita), quando (o merge), quem (a sessão que reivindicou, que a fila já
+# sabe), evidência (a URL do PR e o commit de merge) e verificado_em. Nada
+# aqui é adivinhação.
+#
+# POR QUE SOMBRA, e não gravar de uma vez: a lei do Sistema Imunológico manda
+# regra nova nascer observando (`ci/muralha_das_armadilhas.py`, "A LEI DA
+# AUTORIDADE PROPORCIONAL À CERTEZA"). Escrever no livro da fila é escrita
+# permanente, e "corrigir é acrescentar": um evento errado gravado pela porta
+# não tem desfazer, porque depois do terminal a fila não aceita mais nada. A
+# sombra IMPRIME o que gravaria e mede, e a graduação vem depois.
+#
+# O QUE GRADUA (PR futuro, depois de uma semana de medição): que os disparos
+# medidos mostrem "geraria" batendo com o que o robô escreveria à mão, sem um
+# único caso de tarefa errada. Aí a porta passa a gravar o evento no RAMO e
+# commitá-lo ANTES do merge — antes, e não depois, porque o evento precisa
+# entrar na `main` pelo próprio PR, como o registro do livro faz desde
+# 31/08/2026 (`armadilhas/248`).
+# ---------------------------------------------------------------------------
+
+SOMBRA_GERARIA = "geraria"
+SOMBRA_JA_EXISTE = "ja_existe"
+SOMBRA_SILENCIO = "silencio"
+
+PASTA_DE_EVENTOS_NO_DIFF = "fila/eventos/"
+
+
+def eventos_no_diff(remessas: list[dict]) -> list[dict]:
+    """Os eventos da fila que viajam DENTRO de um PR, lidos do diff da API.
+
+    `remessas` é o que `gh api .../pulls/N/files` devolve: uma lista de
+    `{"filename": ..., "patch": ...}`. Vem de fora porque a pista nunca faz
+    checkout do ramo do PR (`pouso.yml`): o evento que o robô escreveu à mão
+    não está no disco de quem julga, só no diff. É o mesmo caminho que
+    `ci/divida_do_livro.py` já usa para achar o registro embarcado.
+
+    Só linhas ADICIONADAS contam, e só arquivo que se decodifica inteiro: um
+    patch truncado ou um evento removido não vira fato.
+    """
+    achados: list[dict] = []
+    for remessa in remessas or []:
+        caminho = str(remessa.get("filename") or "").replace("\\", "/")
+        if not (caminho.startswith(PASTA_DE_EVENTOS_NO_DIFF) and caminho.endswith(".json")):
+            continue
+        corpo = "\n".join(
+            linha[1:]
+            for linha in str(remessa.get("patch") or "").splitlines()
+            if linha.startswith("+") and not linha.startswith("+++")
+        )
+        try:
+            dados = json.loads(corpo)
+        except (json.JSONDecodeError, TypeError):
+            continue
+        if isinstance(dados, dict) and dados.get("evento") in EVENTOS_VALIDOS:
+            achados.append(dados)
+    return achados
+
+
+def _em_ordem(eventos: list[dict]) -> list[dict]:
+    """Cronológica, como `carregar_eventos` entrega — `calcular_estados` conta
+    com a ordem para saber qual foi o último gesto do ciclo."""
+
+    def chave(ev: dict) -> tuple[str, str]:
+        quando = ev.get("_quando")
+        if quando is None:
+            try:
+                quando = datetime.fromisoformat(str(ev.get("quando")))
+            except (TypeError, ValueError):
+                return ("", str(ev.get("arquivo") or ""))
+        return (quando.isoformat(), str(ev.get("arquivo") or ""))
+
+    return sorted(eventos, key=chave)
+
+
+def _silencio(tid: str, motivo: str) -> dict:
+    return {"tarefa": tid, "desfecho": SOMBRA_SILENCIO, "motivo": motivo, "evento": None}
+
+
+def evento_de_conclusao_em_sombra(
+    raiz: Path,
+    *,
+    numero: int,
+    titulo: str,
+    corpo: str,
+    ramo: str,
+    url: str,
+    sha_do_merge: str,
+    arquivos_do_diff: list[dict],
+    agora: datetime | None = None,
+) -> list[dict]:
+    """O que a porta do pouso GRAVARIA, sem gravar nada. Função pura de disco.
+
+    Devolve uma decisão por tarefa citada no PR: `geraria` (com o evento
+    pronto), `ja_existe` (o robô já escreveu o dele neste ramo) ou `silencio`
+    (com o motivo, que é o que a telemetria mede). PR sem tarefa citada devolve
+    lista vazia: silêncio total, sem nem medir.
+    """
+    ids: list[str] = []
+    for tid in tarefas_citadas(f"{titulo}\n{corpo}\n{ramo}"):
+        if tid not in ids:
+            ids.append(tid)
+    if not ids:
+        return []
+
+    erros: list[str] = []
+    tarefas = carregar_tarefas(raiz, erros)
+    eventos = carregar_eventos(raiz, tarefas, erros)
+    if erros:
+        # Não conseguir ler a fila nunca vira "então pode gravar" (INV-CI01).
+        return [_silencio(tid, "a fila está inválida no disco de quem julga") for tid in ids]
+
+    do_pr = eventos_no_diff(arquivos_do_diff)
+    ja_a_bordo = {
+        str(ev.get("tarefa")) for ev in do_pr if ev.get("evento") == "concluida"
+    }
+    estados = calcular_estados(tarefas, _em_ordem(eventos + do_pr))
+    agora = agora or datetime.now(timezone.utc)
+
+    saida: list[dict] = []
+    for tid in ids:
+        if tid not in tarefas:
+            saida.append(_silencio(tid, f"{tid} é citada no PR mas não existe na fila"))
+            continue
+        if tid in ja_a_bordo:
+            saida.append(
+                {
+                    "tarefa": tid,
+                    "desfecho": SOMBRA_JA_EXISTE,
+                    "motivo": "o evento de conclusão já viaja neste PR, escrito à mão",
+                    "evento": None,
+                }
+            )
+            continue
+        estado = estados[tid]
+        if estado["estado"] != REIVINDICADA:
+            saida.append(
+                _silencio(
+                    tid,
+                    f"{tid} está '{estado['estado']}', e só tarefa reivindicada "
+                    "se conclui pela porta",
+                )
+            )
+            continue
+        quem = str(estado.get("quem") or "").strip()
+        if not quem:
+            saida.append(
+                _silencio(tid, f"{tid} está reivindicada, mas a fila não sabe por quem")
+            )
+            continue
+        saida.append(
+            {
+                "tarefa": tid,
+                "desfecho": SOMBRA_GERARIA,
+                "motivo": f"reivindicada por {quem}",
+                "evento": montar_evento(
+                    tid,
+                    "concluida",
+                    quem,
+                    detalhe=f"PR #{numero}: {titulo} ({url})",
+                    evidencia=f"{url} (merge {sha_do_merge[:12]})",
+                    verificado_em=agora.strftime("%Y-%m-%d"),
+                    agora=agora,
+                ),
+            }
+        )
+    return saida
 
 
 def _carregar_ou_parar(raiz: Path) -> tuple[dict[str, dict], list[dict]]:
