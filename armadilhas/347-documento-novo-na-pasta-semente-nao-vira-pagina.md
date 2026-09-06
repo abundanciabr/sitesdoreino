@@ -11,6 +11,9 @@ guarda:
 sinal:
   - arquivo novo em `documentos/`, deploy-celula `success`, e `curl https://meshcraft.top/docs/<nome>` devolve 404
   - `importar_da_pasta` só na migração `0003`
+gatilho:
+  - documentos/*
+licao: criar o arquivo em `documentos/` NÃO publica a página: a semeadura da pasta roda uma vez só. Documento novo exige a migração de dados que o importa, no mesmo PR.
 ---
 
 # Documento NOVO em `documentos/` não vira página: a semeadura da pasta roda uma vez

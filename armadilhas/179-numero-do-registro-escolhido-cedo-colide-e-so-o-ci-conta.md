@@ -10,6 +10,9 @@ guarda:
   dono: ci/tests/test_livro_manda_ao_almoxarife.py
 sinal:
   - `n[úu]mero repetido no mesmo dia`
+gatilho:
+  - painel/registros/*
+licao: o número do registro se PEDE, nunca se escolhe olhando a pasta: `python ci/reservar.py numero registro`. E o dia do nome sai em UTC (`date -u +%Y%m%d`), não no relógio daqui.
 ---
 
 # Número do registro escolhido cedo colide — e quem conta é o CI, 15 minutos depois
