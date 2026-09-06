@@ -1,0 +1,8 @@
+{
+  "arquivo": "20260906-002450-TAR-206-bloqueada",
+  "tarefa": "TAR-206",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T00:24:50+00:00",
+  "quem": "despacho-fila-20260905",
+  "detalhe": "Espera mandato escrito do mantenedor para tocar ci/, que é caminho CODEOWNERS: o guarda que ela pede mora lá, e quem a pegasse sem mandato teria de bloquear e devolver depois de já ter gasto uma bancada. A pergunta vai a ele junto com a linha do ci/leis-sem-mecanismo.txt, numa caixa só, pela sessão que está com a obra do portfólio. Como ela volta a andar: no dia em que o mandato existir, rode python ci/fila.py soltar TAR-206."
+}
