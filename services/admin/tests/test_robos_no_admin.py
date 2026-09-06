@@ -79,12 +79,25 @@ def fila_de_mentira(tmp_path, monkeypatch, com_esperas=True, com_eventos=True):
                     "titulo": "Construir a aba",
                     "toca": ["admin"],
                 },
+                # As DUAS paradas, que é o que a tela precisa saber separar: uma
+                # só o dono destrava, a outra se destrava sozinha quando a de
+                # cima terminar. Antes de 06/09/2026 as duas eram o mesmo cartão
+                # âmbar no mesmo bloco (em produção, 27 deles, 6 do dono).
                 "TAR-003": {
                     "estado": "bloqueada",
+                    "espera": "mantenedor",
                     "motivo": "aguardando despacho do mantenedor",
                     "quem": None,
                     "titulo": "Backup antes de migração",
                     "toca": ["infra"],
+                },
+                "TAR-004": {
+                    "estado": "bloqueada",
+                    "espera": "fila",
+                    "motivo": "esperando TAR-002",
+                    "quem": None,
+                    "titulo": "A segunda metade da aba",
+                    "toca": ["admin"],
                 },
             },
             ensure_ascii=False,
@@ -204,12 +217,16 @@ def test_o_de_agora_vem_antes_do_retrato(tmp_path, monkeypatch):
     pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
 
     ao_vivo = pagina.find("Agora, neste minuto")
-    parou = pagina.find("Pararam no meio do caminho")
+    e_dele = pagina.find("Esperando uma decisão sua")
+    corrente = pagina.find("Esperando outra tarefa terminar")
     ja_terminaram = pagina.find("Já terminaram")
 
-    assert ao_vivo != -1 and parou != -1 and ja_terminaram != -1
-    assert ao_vivo < parou, "o que é de agora ficou abaixo do retrato do deploy"
-    assert parou < ja_terminaram, "a história antiga passou na frente do que parou"
+    assert ao_vivo != -1 and e_dele != -1 and corrente != -1 and ja_terminaram != -1
+    assert ao_vivo < e_dele, "o que é de agora ficou abaixo do retrato do deploy"
+    # O que só ele destrava vem antes do que se destrava sozinho: em 06/09/2026
+    # os dois eram o MESMO bloco, e ele teria de abrir 27 cartões para achar 6.
+    assert e_dele < corrente, "a corrente da fila passou na frente do que é dele"
+    assert corrente < ja_terminaram, "a história antiga passou na frente do resto"
 
 
 @respx.mock
@@ -227,8 +244,10 @@ def test_a_historia_nasce_fechada_e_o_que_pede_gente_nasce_aberto(
     # A história fica ATRÁS de um clique: o rótulo dela é o próprio `summary`.
     assert "<summary>Já terminaram" in pagina, "a história voltou a nascer aberta"
     assert "<details open" not in pagina
-    # E o que parou NUNCA fica atrás de um clique: ele é um título de verdade.
-    assert "<h2>Pararam no meio do caminho" in pagina
+    # E o que só ELE destrava NUNCA fica atrás de um clique.
+    assert "<h2>Esperando uma decisão sua" in pagina
+    # A corrente da fila, ao contrário, nasce fechada: ninguém precisa dela hoje.
+    assert "<summary>Esperando outra tarefa terminar" in pagina
 
 
 @respx.mock
@@ -318,14 +337,20 @@ def test_a_pagina_diz_o_que_ela_e_e_que_nao_ha_nada_a_fazer(tmp_path, monkeypatc
     """A tela nunca dizia o que era: caía direto nos números.
 
     Quem não sabe o que é uma "fila de trabalho" começava a leitura no escuro.
-    A segunda frase é a que tira peso das costas dele — não há nada para fazer
-    aqui —, e ela é verdade: esta tela não tem um único botão que muda algo.
+
+    A segunda frase tirava peso das costas dele — "você não precisa fazer nada
+    aqui" — e em 06/09/2026 ela virou mentira: seis tarefas em produção estavam
+    paradas esperando uma autorização ou uma prova que só ele podia dar. A frase
+    passou a depender do dado. O que continua verdade em todo caso é o resto
+    dela: a tela não age, e o pedido continua sendo feito na conversa.
     """
     fila_de_mentira(tmp_path, monkeypatch)
     pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
 
     assert "Cada cartão desta página é um pedaço de trabalho no seu site" in pagina
-    assert "Você não precisa fazer nada aqui" in pagina
+    # A fila de mentira tem UMA parada que só ele destrava (TAR-003).
+    assert "1 dela não anda sem você" in pagina
+    assert "fale comigo na conversa" in pagina
 
     # A tela é de OLHAR: nenhum formulário, nenhum botão que escreva. Ele
     # decidiu isso com todas as letras em 03/09/2026 — "vamos continuar aqui no
@@ -366,6 +391,121 @@ def test_lugar_desconhecido_aparece_cru_em_vez_de_sumir():
         "celula-que-ainda-nao-existe"
     ]
     assert robos.onde_isso_mexe(None) == []
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# AS DUAS PARADAS — o conserto de 06/09/2026
+#
+# Ele perguntou como se atualizava esta lista, e a resposta foi que ela já se
+# atualiza sozinha. O problema real era outro: as 27 paradas do dia estavam
+# todas no mesmo bloco âmbar de urgência, e SEIS delas esperavam uma decisão
+# dele. Achar essas seis custava abrir e ler 27 cartões.
+#
+# A cura não foi escrever melhor: foi o evento `bloqueada` passar a declarar
+# quem destrava (`ci/fila.py`, QUEM_DESTRAVA). Estes guardam o que a tela faz
+# com essa declaração.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@respx.mock
+def test_as_duas_paradas_nao_moram_no_mesmo_bloco(tmp_path, monkeypatch):
+    """A que só ele destrava e a que espera outra tarefa são coisas diferentes."""
+    fila_de_mentira(tmp_path, monkeypatch)
+    pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+
+    dele = pagina.find("Esperando uma decisão sua")
+    corrente = pagina.find("Esperando outra tarefa terminar")
+    assert dele != -1 and corrente != -1 and dele < corrente
+
+    # E cada cartão está do lado certo: o do dono no bloco dele, a corrente no
+    # outro. Medido pelo título, que é o que ele lê.
+    assert pagina.find("Backup antes de migração") < corrente
+    assert pagina.find("A segunda metade da aba") > corrente
+
+
+@respx.mock
+def test_parada_sem_dizer_quem_destrava_aparece_no_bloco_dele(tmp_path, monkeypatch):
+    """Falha para o lado de MOSTRAR, nunca de esconder.
+
+    Um `espera` que a tela não reconhece — dado de um build antigo, campo que um
+    dia mude de nome — vai para o bloco do mantenedor. Um cartão a mais ali
+    custa uma leitura; um cartão que some da única tela que responde "em que pé
+    está" custa uma tarefa esquecida, e ninguém ficaria sabendo.
+    """
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(
+        json.dumps(
+            {
+                "TAR-009": {
+                    "estado": "bloqueada",
+                    "motivo": "de um build anterior a 06/09/2026",
+                    "quem": None,
+                    "titulo": "A parada sem dono declarado",
+                    "toca": ["admin"],
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+
+    assert "A parada sem dono declarado" in pagina, "a tarefa sumiu da tela"
+    assert pagina.find("Esperando uma decisão sua") < pagina.find(
+        "A parada sem dono declarado"
+    )
+
+
+@respx.mock
+def test_sem_nada_esperando_ele_a_pagina_diz_isso(tmp_path, monkeypatch):
+    """O aviso some inteiro quando não há nada dele.
+
+    Aviso que fica na tela com o número zero ensina o olho a ignorar o aviso, e
+    aí ele deixa de ver no dia em que houver alguma coisa.
+    """
+    pasta = fila_de_mentira(tmp_path, monkeypatch)
+    (pasta / "estados.json").write_text(
+        json.dumps(
+            {
+                "TAR-004": {
+                    "estado": "bloqueada",
+                    "espera": "fila",
+                    "motivo": "esperando TAR-002",
+                    "quem": None,
+                    "titulo": "A segunda metade da aba",
+                    "toca": ["admin"],
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    pagina = texto_sem_estilo(_dentro().get(reverse("caixa_robos")))
+
+    assert "Nada aqui depende de você agora" in pagina
+    assert "não anda sem você" not in pagina
+    assert "Esperando uma decisão sua" not in pagina
+
+
+def test_o_grupo_certo_para_cada_parada():
+    """A regra de casamento, sem passar por HTTP: as duas paradas e o desconhecido."""
+    dele = {"estado": "bloqueada", "espera": "mantenedor"}
+    corrente = {"estado": "bloqueada", "espera": "fila"}
+    sem_dono = {"estado": "bloqueada"}
+    grupo_dele = {"estado": "bloqueada", "espera": "mantenedor"}
+    grupo_corrente = {"estado": "bloqueada", "espera": "fila"}
+    grupo_terminadas = {"estado": "concluída"}
+
+    assert robos.e_deste_grupo(dele, grupo_dele)
+    assert not robos.e_deste_grupo(dele, grupo_corrente)
+    assert robos.e_deste_grupo(corrente, grupo_corrente)
+    assert not robos.e_deste_grupo(corrente, grupo_dele)
+    # O desconhecido cai com ele, e em lugar nenhum além disso.
+    assert robos.e_deste_grupo(sem_dono, grupo_dele)
+    assert not robos.e_deste_grupo(sem_dono, grupo_corrente)
+    # Estado diferente nunca casa, com ou sem `espera`.
+    assert not robos.e_deste_grupo(dele, grupo_terminadas)
+    assert robos.e_deste_grupo({"estado": "concluída"}, grupo_terminadas)
 
 
 def test_o_tempo_sai_em_tempo_e_nao_em_numero_com_s_colado():

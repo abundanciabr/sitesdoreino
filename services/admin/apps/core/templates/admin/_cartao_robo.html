@@ -22,6 +22,16 @@ página melhor para entender isso", as etiquetas se separaram em duas classes:
   uma tarefa comigo, então tirar seria pior. Só deixaram de ser a primeira
   coisa que o olho encontra.
 
+Numa PARADA, `quem` é quem escreveu o bloqueio, e não quem está com a tarefa —
+por isso a etiqueta troca de rótulo ali. "robô: sessao-x" num cartão que espera
+uma decisão dele diria que alguém está trabalhando nele agora, que é o oposto.
+
+Saiu daqui em 06/09/2026 o selo âmbar "PAROU". Ele nasceu quando as paradas
+eram um bloco só e misturado; com o quadro separado em "Esperando uma decisão
+sua" e "Esperando outra tarefa terminar", o selo só repetia, em maiúsculas e em
+cor de alarme, o que o título do grupo acabara de dizer — e repetia igual na
+corrente da fila, que não é alarme nenhum.
+
 O `motivo` das concluídas é o endereço do trabalho que a fechou; `urlize`
 transforma em link clicável, porque um endereço só de texto obriga o
 mantenedor a selecionar e copiar à mão.
@@ -33,10 +43,9 @@ mantenedor a selecionar e copiar à mão.
     {% if cartao.onde %}<span class="etiqueta">onde: {{ cartao.onde|join:", " }}</span>{% endif %}
     {% if cartao.quando %}<span class="etiqueta">mexeu pela última vez em {{ cartao.quando|slice:"8:10" }}/{{ cartao.quando|slice:"5:7" }}</span>{% endif %}
     <span class="etiqueta apagada">{{ cartao.id }}</span>
-    {% if cartao.quem %}<span class="etiqueta apagada">robô: {{ cartao.quem }}</span>{% endif %}
+    {% if cartao.quem %}<span class="etiqueta apagada">{% if coluna.estado == "bloqueada" %}quem travou{% else %}robô{% endif %}: {{ cartao.quem }}</span>{% endif %}
   </div>
   {% if coluna.estado == "bloqueada" %}
-    <div><span class="selo-parou">PAROU</span></div>
     <div class="motivo">{% if cartao.motivo %}{{ cartao.motivo|urlize }}{% else %}Ninguém escreveu o motivo desta parada.{% endif %}</div>
   {% elif cartao.motivo %}
     <div class="motivo">{{ cartao.motivo|urlize }}</div>

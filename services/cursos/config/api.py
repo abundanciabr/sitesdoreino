@@ -20,7 +20,7 @@ from apps.core.auth import bearerAuth
 # ENTÃO QUEM FECHA A PORTA É O BEARER, E SÓ ELE: 401 sem token, e o conjunto de
 # tokens nasce VAZIO (`settings.TOKENS_ACEITOS`). Não há segunda camada por
 # baixo, e é por isso que o guarda de 401 em `tests/test_porta_exige_bearer.py`
-# cobre as SETE operações, o token errado e o conjunto vazio, em vez de
+# cobre as DOZE operações, o token errado e o conjunto vazio, em vez de
 # confiar no roteador.
 api = NinjaAPI(
     title="Cursos — API interna",
@@ -30,21 +30,33 @@ api = NinjaAPI(
         "\n"
         "Existe para que o conteudo do curso tenha UM lugar, o banco desta\n"
         "celula, e para que o editor do Admin leia e grave por aqui, nunca no\n"
-        "banco e nunca guardando copia (a lei anti-duplicacao). Sao onze\n"
+        "banco e nunca guardando copia (a lei anti-duplicacao). Sao doze\n"
         "operacoes: as quatro que sabem de CURSO e de PARTE (`listLessons`,\n"
         "`getLesson`, `putLesson`, `publishLesson`), as quatro antigas que\n"
         "resolvem a aula so pelo site (`listSiteLessons`, `getSiteLesson`,\n"
         "`putSiteLesson`, `publishSiteLesson`, vivas porque o editor que ja\n"
-        "esta no ar as chama) e as tres de instrumento (`listInstruments`,\n"
-        "`getInstrument`, `putInstrument`). Os verificadores (checkLesson)\n"
-        "nascem no degrau 3.1; o placar da fila (getReviewQueue) e o progresso\n"
-        "do aluno (getStudentProgress), no 2.1.\n"
+        "esta no ar as chama), as tres de instrumento (`listInstruments`,\n"
+        "`getInstrument`, `putInstrument`) e a do bloco (`putBlock`). Os\n"
+        "verificadores (checkLesson) nascem no degrau 3.1; o placar da fila\n"
+        "(getReviewQueue) e o progresso do aluno (getStudentProgress), no 2.1.\n"
         "\n"
         "Lei do assunto: docs/decisoes/PLANO-CELULA-CURSOS.md (secoes 4 e 5).\n"
         "\n"
         "O TEXTO DAS AULAS E OBRA NAO LANCADA DO MANTENEDOR: entra por esta\n"
         "porta e so por ela; nunca por migracao, nunca por arquivo no\n"
         "repositorio, que e publico.\n"
+        "\n"
+        "O TITULO DA ENCOMENDA E O BLOCO ENTRAM DESDE 06/09/2026. Ate essa\n"
+        "data, sete campos eram 422 no corpo de `putLesson`: numero, ordem,\n"
+        "titulo, bloco, estado, versao e data de publicacao. O titulo saiu\n"
+        "dessa lista, e e o unico que sai, porque e o unico dos sete que e OBRA\n"
+        "e nao ESTRUTURA: os outros seis sao fatos publicos do livro, escritos\n"
+        "pela instalacao do curso, e o titulo e a frase que o cliente diz na\n"
+        "encomenda e a primeira coisa que o aluno le. Ele e opcional, e ausente\n"
+        "significa nao mexer, para que a tela que nao o conhece nao apague o\n"
+        "que a outra escreveu. O nome do bloco e o titulo do Boss dele entram\n"
+        "por `putBlock`, que e operacao propria porque doze blocos servem\n"
+        "trinta e quatro encomendas e nenhum deles e de uma aula so.\n"
         "\n"
         "O `site_id` e obrigatorio em toda operacao de aula (uma fabrica, N\n"
         "lojas): esta celula nao tem middleware de site, e a porta nao adivinha\n"

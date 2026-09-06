@@ -113,63 +113,27 @@
   {% endif %}
 
   {% for area in areas %}
-  <div class="mapa-grupo">
-    <h2 class="faixa">{{ area.titulo }}</h2>
-    <p class="subtitulo">
-      {{ area.explicacao }}
-      <span class="mapa-conta">
-        {{ area.telas }} tela{{ area.telas|pluralize:"s" }}{% if area.botoes %},
-        {{ area.botoes }} botão{{ area.botoes|pluralize:",es" }}{% endif %}{% if area.maquina %},
-        {{ area.maquina }} só de máquina{% endif %}.
-      </span>
-    </p>
-
-    {% comment %}
-    A ÁRVORE. Cada linha já vem do servidor sabendo o nível dela, e o recuo é
-    uma classe de CSS — foi assim para não precisar de um template que se inclui
-    a si mesmo a cada galho. Os botões de uma página viram etiquetas dentro
-    dela: como galhos, dobrariam a altura da árvore para responder uma pergunta
-    que ninguém faz olhando o mapa.
-    {% endcomment %}
-    {% for item in area.linhas %}
-    <div class="mapa-item galho recuo-{{ item.recuo }}">
-      <b>
-        {% if item.gesto %}<span class="mapa-selo">botão</span>{% endif %}
-        {{ item.titulo }}
-        <span class="selo-publico selo-{{ item.para_quem }}">{{ item.selo }}</span>
-      </b>
-      {% comment %}
-      A luz nasce ESCONDIDA e quem a mostra é o script. Com script bloqueado
-      ela simplesmente não aparece — o que é honesto: ninguém mediu nada.
-      Uma bolinha cinza dizendo "—" seria pior, porque parece medição.
-      {% endcomment %}
-      {% if item.sonda %}
-      <span class="luz" data-sonda="{{ item.sonda }}" hidden>conferindo…</span>
-      {% endif %}
-      <div class="mapa-endereco">
-        {% if item.link %}
-        <a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.link }}</a>
-        {% if item.exemplo %}<span class="mapa-selo">exemplo</span>{% endif %}
-        {% elif item.interno %}
-        <code>sem endereço no site</code>
-        {% else %}
-        <code>{{ item.endereco }}</code>
-        {% if item.molde %}<span class="mapa-selo">molde</span>{% endif %}
-        {% endif %}
-      </div>
-      <p class="nota">{{ item.descricao }}</p>
-      {% if item.observacao %}<p class="nota mapa-obs">{{ item.observacao }}</p>{% endif %}
-      {% if item.gestos %}
-      <p class="nota botoes-da-pagina">
-        <span class="rotulo-dos-botoes">Botões desta página:</span>
-        {% for gesto in item.gestos %}
-        <span class="botao-da-pagina" title="{{ gesto.descricao }} ({{ gesto.endereco }})">{{ gesto.titulo }}</span>
-        {% endfor %}
+  {% comment %}
+  UMA PARTE DO SITE, dentro de uma caixa com borda. A borda é a resposta a
+  "onde começa e onde termina cada parte": o que está dentro dela é daquela
+  parte, o que está fora não é. Antes de 06/09/2026 as partes eram separadas só
+  por um título, e título não delimita nada.
+  {% endcomment %}
+  <section class="parte-do-site">
+    <header class="cabeca-da-parte">
+      <h2>{{ area.titulo }}</h2>
+      <p class="contas-da-parte">
+        {{ area.telas }} tela{{ area.telas|pluralize:"s" }}{% if area.botoes %} ·
+        {{ area.botoes }} botão{{ area.botoes|pluralize:",es" }}{% endif %}{% if area.maquina %} ·
+        {{ area.maquina }} só de máquina{% endif %}{% if area.comeca_em %} ·
+        começa em <code>{{ area.comeca_em }}</code>{% endif %}
       </p>
-      {% endif %}
+      <p class="subtitulo">{{ area.explicacao }}</p>
+    </header>
+    <div class="tronco">
+      {% include "admin/_ramo_do_mapa.html" with nos=area.raizes %}
     </div>
-    {% endfor %}
-  </div>
+  </section>
   {% endfor %}
 
   {% if orfas %}

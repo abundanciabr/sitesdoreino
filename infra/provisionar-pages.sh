@@ -137,12 +137,25 @@ cd "$RAIZ" 2>/dev/null || parar "não achei $RAIZ. Você está na VPS certa? (o 
 #    PERGUNTADO ao catálogo no passo 3. É o mesmo desenho de
 #    `infra/provisionar-cursos.sh`.
 #
-#    O QUE AINDA NÃO ESTÁ NESTA LISTA, e é dito na cara para ninguém descobrir
-#    pela recusa: `TOKENS_ACEITOS_ADMIN`, que a tela da equipe do degrau 11 vai
-#    pedir a este env. Quando ela existir, esta lista e o heredoc ganham a chave
-#    na MESMA edição.
+#    E A OITAVA CHEGOU COM O DEGRAU 11, com outro nome. O parágrafo que morava
+#    aqui até 06/09/2026 anunciava `TOKENS_ACEITOS_ADMIN`, porque naquele
+#    momento se imaginava a tela da equipe dentro da célula `admin`, falando com
+#    esta por token de máquina. O degrau 11 a construiu DENTRO da `pages`, como
+#    o corredor CS-PAGES-0001 manda (AC-11, `toca: [pages]`), e então não há par
+#    de token nenhum: quem abre a fila da conferência é `IDS_DA_EQUIPE`, a lista
+#    de ids de PESSOAS, lida no ponto de uso por `apps/core/equipe.py`. O palpite
+#    velho fica escrito aqui, corrigido, em vez de apagado: nome de chave futura
+#    é previsão, e previsão erra.
+#
+#    E ELA É A ÚNICA DA LISTA QUE ESTE ROTEIRO NÃO GERA NEM PERGUNTA: ele a
+#    PRESERVA, relendo o arquivo vivo antes de reescrever, como já faz com o
+#    `SCRIPT_NAME`. Quem a escreve é `infra/provisionar-equipe-do-portfolio.sh`,
+#    com o e-mail de quem confere na mão do mantenedor, porque id de pessoa real
+#    só existe no banco de produção e não se inventa. Ausente ou vazia é o estado
+#    de fábrica e é fail-closed correto: ninguém confere portfólio, a fila explica
+#    isso em português, e nada mais na célula muda.
 # -----------------------------------------------------------------------------
-CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL CATALOGO_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL SCRIPT_NAME SITE_ID TOKEN_CATALOGO"
+CHAVES_QUE_EU_GERO="ALUNOS_API_TOKEN ALUNOS_API_URL CATALOGO_API_URL DATABASE_URL DEBUG DJANGO_SECRET_KEY IDENTIDADE_API_TOKEN IDENTIDADE_API_URL IDS_DA_EQUIPE SCRIPT_NAME SITE_ID TOKEN_CATALOGO"
 
 # LITERAL, e não `$ENV_PAGES`, de propósito: quem confere esta trava é um teste
 # que lê o script como TEXTO, e na VPS não há Python nem este repositório para
@@ -211,6 +224,26 @@ if [ -f "$ENV_PAGES" ] && grep -q '^SCRIPT_NAME=' "$ENV_PAGES"; then
 else
   PREFIXO="$PREFIXO_DE_FABRICA"
   echo "  prefixo público .. primeira escrita: '${PREFIXO}'"
+fi
+echo
+
+# QUEM CONFERE O PORTFÓLIO, preservada do arquivo vivo pelo mesmo motivo do
+# prefixo, e com uma diferença que importa: aqui este roteiro não tem como
+# reconstruir o valor. Ele é uma lista de ids de PESSOAS REAIS, que só existem no
+# banco de produção, e quem a escreve é `infra/provisionar-equipe-do-portfolio.sh`
+# perguntando à `identidade` o id de cada e-mail. Reescrever o arquivo sem esta
+# releitura tiraria a equipe inteira da fila em silêncio, com o container de pé e
+# o deploy verde, que é a `armadilhas/111` em pessoa.
+#
+# VAZIA É NINGUÉM, e é o estado de fábrica: a fila abre e diz, em português, que
+# a pessoa não está na lista de quem confere. O aluno continua podendo pedir a
+# conferência, e o pedido espera guardado.
+EQUIPE="$(ler_de "$ENV_PAGES" IDS_DA_EQUIPE)"
+if [ -n "$EQUIPE" ]; then
+  QUANTOS_DA_EQUIPE=$(printf '%s' "$EQUIPE" | tr ',' '\n' | grep -c .)
+  echo "  quem confere ..... preservado do arquivo vivo: $QUANTOS_DA_EQUIPE pessoa(s)"
+else
+  echo "  quem confere ..... vazio (ninguém confere portfólio até você rodar o infra/provisionar-equipe-do-portfolio.sh)"
 fi
 echo
 
@@ -384,6 +417,7 @@ ALUNOS_API_TOKEN=$T_ALUNOS
 CATALOGO_API_URL=$CATALOGO_URL
 TOKEN_CATALOGO=$T_CATALOGO
 SITE_ID=$SITE_ID
+IDS_DA_EQUIPE=$EQUIPE
 ENV
 
 chown --reference="$ENV_REF" "$ENV_PAGES" 2>/dev/null \
@@ -406,6 +440,15 @@ echo " agora' para todo mundo. Quem as liga é a outra linha, e ela"
 echo " é uma só:"
 echo
 echo "   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-pares-da-prancheta.sh -o /tmp/s.sh && bash /tmp/s.sh"
+if [ -z "$EQUIPE" ]; then
+  echo
+  echo " E a fila da conferência do portfólio segue fechada, que é"
+  echo " o estado correto enquanto ninguém tiver sido indicado:"
+  echo " nenhuma pessoa está na lista de quem confere. Quem abre a"
+  echo " fila é esta linha, com o e-mail de quem confere no fim:"
+  echo
+  echo "   curl -fsSL https://raw.githubusercontent.com/abundanciabr/sitesdoreino/main/infra/provisionar-equipe-do-portfolio.sh -o /tmp/q.sh && bash /tmp/q.sh seu-email@exemplo.com"
+fi
 echo
 echo " Pode mandar esta tela ao agente."
 echo "=============================================================="

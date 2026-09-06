@@ -64,9 +64,9 @@ OS_CAMPOS_DA_LISTA = {
     "banca_nivel",
 }
 # As quatro que resolvem a aula pelo SITE (o editor que já está no ar as
-# chama), as quatro que resolvem pelo CURSO e conferem a PARTE (TAR-203), e as
-# três de instrumento.
-AS_ONZE_OPERACOES = {
+# chama), as quatro que resolvem pelo CURSO e conferem a PARTE (TAR-203), as
+# três de instrumento e a do bloco (TAR-221).
+AS_DOZE_OPERACOES = {
     "listSiteLessons",
     "getSiteLesson",
     "putSiteLesson",
@@ -78,7 +78,12 @@ AS_ONZE_OPERACOES = {
     "listInstruments",
     "getInstrument",
     "putInstrument",
+    "putBlock",
 }
+# O bloco viaja dentro de toda aula, e desde a TAR-221 ele leva o que o
+# mantenedor escreve: é assim que quem grava por `putBlock` lê de volta o que
+# gravou, sem operação de leitura própria.
+OS_CAMPOS_DO_BLOCO = {"letra", "ordem", "parte", "nome", "boss_titulo"}
 
 
 @pytest.fixture(autouse=True)
@@ -169,9 +174,21 @@ def test_listar_devolve_as_34_aulas_na_ordem_com_o_bloco_de_cada_uma(esqueleto):
     assert [aula["ordem"] for aula in aulas] == list(range(34))
     primeira, ultima = aulas[0], aulas[-1]
     assert primeira["titulo_exibido"] == "Encomenda 00"
-    assert primeira["bloco"] == {"letra": "A", "ordem": 1, "parte": 1}
+    assert primeira["bloco"] == {
+        "letra": "A",
+        "ordem": 1,
+        "parte": 1,
+        "nome": "",
+        "boss_titulo": "",
+    }
     assert ultima["titulo_exibido"] == "Encomenda Bônus"
-    assert ultima["bloco"] == {"letra": "L", "ordem": 12, "parte": 3}
+    assert ultima["bloco"] == {
+        "letra": "L",
+        "ordem": 12,
+        "parte": 3,
+        "nome": "",
+        "boss_titulo": "",
+    }
     assert primeira["estado"] == "rascunho"
     assert primeira["versao"] == 1
     assert primeira["publicada_em"] is None
@@ -215,7 +232,13 @@ def test_get_devolve_as_16_pecas_na_ordem_canonica_vazias_mais_as_duas_internas(
     assert aula["aceito_quando"] == []
     assert aula["quiz"] == []
     assert aula["numero"] == "E00"
-    assert aula["bloco"] == {"letra": "A", "ordem": 1, "parte": 1}
+    assert aula["bloco"] == {
+        "letra": "A",
+        "ordem": 1,
+        "parte": 1,
+        "nome": "",
+        "boss_titulo": "",
+    }
 
 
 @pytest.mark.parametrize(
@@ -339,6 +362,8 @@ def test_put_entra_inteiro_ou_nao_entra(esqueleto, monkeypatch):
         {"instrumento": "cartao-que-nao-existe"},
         {"banca_nivel": 4},
         {"estado": "publicada"},
+        {"titulo_exibido": ""},
+        {"titulo_exibido": "T" * 121},
     ],
     ids=[
         "tipo-de-peca-fora-do-vocabulario",
@@ -352,6 +377,8 @@ def test_put_entra_inteiro_ou_nao_entra(esqueleto, monkeypatch):
         "instrumento-inexistente",
         "banca-nivel-fora-de-1-a-3",
         "chave-que-a-porta-nao-conhece",
+        "titulo-vazio",
+        "titulo-maior-que-a-coluna",
     ],
 )
 def test_put_recusa_com_422(esqueleto, mudanca):
@@ -686,6 +713,174 @@ def test_os_quatro_caminhos_antigos_continuam_respondendo(esqueleto):
 
 
 # ---------------------------------------------------------------------------
+# O TÍTULO DA ENCOMENDA (TAR-221, 06/09/2026)
+# ---------------------------------------------------------------------------
+# Até esta data `titulo_exibido` era 422 no corpo, junto com número, ordem,
+# bloco, estado, versão e data de publicação. Os outros seis são ESTRUTURA (o
+# semeador os escreve, e são fatos do livro); o título é OBRA do mantenedor, a
+# frase que o cliente diz na encomenda, e não tinha por onde entrar. A aula
+# ficava "Encomenda 22" onde o livro do aluno diz "Quero que ela exista
+# inteira.".
+
+TITULO_DA_BIA = "Quero que ela exista inteira."
+
+
+def test_put_grava_o_titulo_exibido_que_veio_no_corpo(esqueleto):
+    resposta = gravar(
+        f"/aulas/E22?site_id={SITE}", aula_para_gravar(titulo_exibido=TITULO_DA_BIA)
+    )
+    assert resposta.status_code == 200, resposta.content
+    assert corpo(resposta)["titulo_exibido"] == TITULO_DA_BIA
+    assert Aula.objects.get(curso=esqueleto, numero="E22").titulo_exibido == (
+        TITULO_DA_BIA
+    )
+
+
+def test_put_sem_titulo_no_corpo_nao_sobrescreve_o_titulo_ja_escrito(esqueleto):
+    """A metade que protege obra: o editor do Admin que está no ar NÃO manda
+    este campo, e um `PUT` dele não pode apagar o título que a outra tela
+    escreveu. Ausente significa não mexer, nunca esvaziar."""
+    gravar(f"/aulas/E22?site_id={SITE}", aula_para_gravar(titulo_exibido=TITULO_DA_BIA))
+    corpo_sem_titulo = aula_para_gravar(pedido="Outro pedido, do editor antigo.")
+    assert "titulo_exibido" not in corpo_sem_titulo
+
+    resposta = gravar(f"/aulas/E22?site_id={SITE}", corpo_sem_titulo)
+
+    assert resposta.status_code == 200, resposta.content
+    assert corpo(resposta)["titulo_exibido"] == TITULO_DA_BIA
+    no_banco = Aula.objects.get(curso=esqueleto, numero="E22")
+    assert no_banco.titulo_exibido == TITULO_DA_BIA
+    assert no_banco.pedido == "Outro pedido, do editor antigo."
+
+
+def test_titulo_nulo_no_corpo_tambem_significa_nao_mexer(esqueleto):
+    """Nulo e ausente dizem a mesma coisa, de propósito: esta porta não tem
+    gesto de apagar título, e um `null` distraído não pode inventá-lo."""
+    gravar(f"/aulas/E22?site_id={SITE}", aula_para_gravar(titulo_exibido=TITULO_DA_BIA))
+    resposta = gravar(
+        f"/aulas/E22?site_id={SITE}", aula_para_gravar(titulo_exibido=None)
+    )
+    assert resposta.status_code == 200, resposta.content
+    assert corpo(resposta)["titulo_exibido"] == TITULO_DA_BIA
+
+
+def test_semear_de_novo_nao_apaga_o_titulo_que_entrou_pela_porta(esqueleto):
+    """A prova de ponta a ponta do "nunca sobrescrever obra".
+
+    O semeador reconcilia a estrutura do livro e é rodado a cada instalação. Até
+    a TAR-221 o título só nascia dele, e por isso o risco não existia; agora a
+    porta escreve o mesmo campo, e um semeador distraído apagaria a frase do
+    cliente num `docker compose exec` de rotina.
+    """
+    gravar(f"/aulas/E22?site_id={SITE}", aula_para_gravar(titulo_exibido=TITULO_DA_BIA))
+    gravar(
+        do_curso("/blocos/I"),
+        {"nome": "A Personagem", "boss_titulo": "A Personagem que anda"},
+    )
+
+    call_command("semear_esqueleto", site=SITE, stdout=StringIO())
+
+    aula = Aula.objects.get(curso=esqueleto, numero="E22")
+    assert aula.titulo_exibido == TITULO_DA_BIA
+    bloco = Bloco.objects.get(curso=esqueleto, letra="I")
+    assert (bloco.nome, bloco.boss_titulo) == ("A Personagem", "A Personagem que anda")
+
+
+# ---------------------------------------------------------------------------
+# putBlock: o nome do bloco e o título do Boss (TAR-221)
+# ---------------------------------------------------------------------------
+# São doze linhas por curso, e nenhuma delas pertence a uma aula em particular:
+# o bloco A é o mesmo para a E00, a E01 e a E02. Por isso é operação própria e
+# não campo de `putLesson`. O que se lê de volta é o bloco que já viaja dentro
+# de toda aula, e é por isso que não nasce uma operação de leitura junto.
+
+
+def bloco_para_gravar(**mudancas):
+    base = {"nome": "A Personagem", "boss_titulo": "A Personagem que anda"}
+    base.update(mudancas)
+    return base
+
+
+def test_put_block_grava_o_nome_e_o_titulo_do_boss(esqueleto):
+    resposta = gravar(do_curso("/blocos/I"), bloco_para_gravar())
+    assert resposta.status_code == 200, resposta.content
+    bloco = corpo(resposta)
+    assert set(bloco) == OS_CAMPOS_DO_BLOCO
+    assert bloco["nome"] == "A Personagem"
+    assert bloco["boss_titulo"] == "A Personagem que anda"
+    assert (bloco["letra"], bloco["ordem"], bloco["parte"]) == ("I", 9, 3)
+    no_banco = Bloco.objects.get(curso=esqueleto, letra="I")
+    assert (no_banco.nome, no_banco.boss_titulo) == (
+        "A Personagem",
+        "A Personagem que anda",
+    )
+
+
+def test_o_bloco_gravado_volta_dentro_das_aulas_dele(esqueleto):
+    """O que se grava se lê de volta, e sem operação nova: o bloco já viaja em
+    `listLessons` e em `getLesson`. Gravar sem poder ler foi o defeito que o
+    degrau 1.3b teve de curar nos instrumentos."""
+    gravar(do_curso("/blocos/I"), bloco_para_gravar())
+
+    da_lista = corpo(pedir(do_curso("/aulas") + "&parte=3"))
+    da_e22 = next(aula for aula in da_lista if aula["numero"] == "E22")
+    assert da_e22["bloco"]["nome"] == "A Personagem"
+    assert da_e22["bloco"]["boss_titulo"] == "A Personagem que anda"
+
+    inteira = corpo(pedir(do_curso("/aulas/E22")))
+    assert inteira["bloco"]["nome"] == "A Personagem"
+
+    # O bloco vizinho continua vazio: gravar um bloco não escreve nos outros.
+    assert corpo(pedir(do_curso("/aulas/E00")))["bloco"]["nome"] == ""
+
+
+def test_put_block_nao_muda_a_letra_a_ordem_nem_a_parte(esqueleto):
+    """Estrutura do livro não entra por aqui: quem a escreve é o semeador, e
+    mandá-la no corpo é 422, do mesmo jeito que `cartao` em `putInstrument`."""
+    for intruso in ({"letra": "Z"}, {"ordem": 1}, {"parte": 1}):
+        resposta = gravar(do_curso("/blocos/I"), bloco_para_gravar(**intruso))
+        assert resposta.status_code == 422, intruso
+    no_banco = Bloco.objects.get(curso=esqueleto, letra="I")
+    assert (no_banco.letra, no_banco.ordem, no_banco.parte) == ("I", 9, 3)
+    assert no_banco.nome == ""
+
+
+def test_put_block_aceita_esvaziar_o_que_ele_mesmo_escreve(esqueleto):
+    """Diferente do título da aula: aqui o corpo carrega os dois campos SEMPRE,
+    e vazio é o valor com que eles nascem. Quem corrige um nome errado precisa
+    poder apagá-lo, e não há outra tela gravando o mesmo bloco."""
+    gravar(do_curso("/blocos/I"), bloco_para_gravar())
+    resposta = gravar(do_curso("/blocos/I"), bloco_para_gravar(boss_titulo=""))
+    assert resposta.status_code == 200, resposta.content
+    assert corpo(resposta)["boss_titulo"] == ""
+    assert Bloco.objects.get(curso=esqueleto, letra="I").nome == "A Personagem"
+
+
+@pytest.mark.parametrize(
+    "caminho",
+    [
+        do_curso("/blocos/Z"),
+        do_curso("/blocos/I", curso="curso-que-nao-existe"),
+        do_curso("/blocos/I", site="outra-escola"),
+    ],
+    ids=["letra-que-nao-existe", "curso-que-nao-existe", "outro-site"],
+)
+def test_put_block_404_quando_o_bloco_nao_existe(esqueleto, caminho):
+    resposta = gravar(caminho, bloco_para_gravar())
+    assert resposta.status_code == 404
+    assert Bloco.objects.filter(curso=esqueleto, nome="A Personagem").count() == 0
+
+
+def test_put_block_grava_no_curso_do_slug_e_nao_no_vizinho(dois_cursos):
+    """O bloco A existe nos dois cursos do site: o slug decide qual recebe."""
+    resposta = gravar(do_curso("/blocos/A", curso="oficina"), bloco_para_gravar())
+    assert resposta.status_code == 200, resposta.content
+    assert Bloco.objects.get(curso=dois_cursos, letra="A").nome == "A Personagem"
+    profissional = Curso.objects.get(site_id=SITE, slug="profissional")
+    assert Bloco.objects.get(curso=profissional, letra="A").nome == ""
+
+
+# ---------------------------------------------------------------------------
 # export_openapi: o contrato vivo que o degrau 1.4 vai congelar
 # ---------------------------------------------------------------------------
 
@@ -696,14 +891,14 @@ def exportar() -> dict:
     return json.loads(saida.getvalue())
 
 
-def test_export_openapi_traz_as_onze_operacoes_e_nenhuma_a_mais():
+def test_export_openapi_traz_as_doze_operacoes_e_nenhuma_a_mais():
     documento = exportar()
     ids = [
         operacao["operationId"]
         for item in documento["paths"].values()
         for operacao in item.values()
     ]
-    assert set(ids) == AS_ONZE_OPERACOES
+    assert set(ids) == AS_DOZE_OPERACOES
     # `operationId` é chave no OpenAPI, e duas rotas com o mesmo id fazem um
     # documento inválido que o freeze compara sem reclamar: o caminho novo
     # ficou com o nome canônico, o antigo ganhou o dele.
