@@ -29,7 +29,7 @@ A_FRASE_DE_SEM_RESPOSTA = "Não conseguimos conferir sua matrícula agora"
 # -------------------------------------------------------- a E00 nasce
 def test_a_e00_nasce_disponivel_na_primeira_visita(aluna, esqueleto, client):
     assert Progresso.objects.count() == 0
-    resposta = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
+    resposta = client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
     assert resposta.status_code == 200
 
     progresso = Progresso.objects.get()
@@ -39,14 +39,16 @@ def test_a_e00_nasce_disponivel_na_primeira_visita(aluna, esqueleto, client):
 
 
 def test_a_segunda_visita_nao_cria_nada(aluna, esqueleto, client):
-    client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
-    client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
+    client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
+    client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
     assert Progresso.objects.count() == 1
     assert Pessoa.objects.count() == 1
 
 
 def test_so_a_e00_nasce_e_as_outras_33_ficam_trancadas(aluna, esqueleto, client):
-    corpo = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE).content.decode()
+    corpo = client.get(
+        reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE
+    ).content.decode()
     assert Progresso.objects.count() == 1
     # 33 portas fechadas no mapa, com o rótulo de trancada.
     assert corpo.count("estado-trancada") == 33
@@ -62,7 +64,7 @@ def test_quem_nao_tem_matricula_ativa_recebe_403_com_a_frase(
     dublar_sessao(rede, ANA)
     dublar_matricula(rede, ANA["email"], categoria)
 
-    resposta = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
+    resposta = client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
 
     assert resposta.status_code == 403, categoria
     assert A_FRASE_DE_SEM_MATRICULA in resposta.content.decode()
@@ -70,7 +72,7 @@ def test_quem_nao_tem_matricula_ativa_recebe_403_com_a_frase(
 
 
 def test_visitante_nao_recebe_403_recebe_o_convite(env_dos_pares, esqueleto, client):
-    resposta = client.get(reverse("mapa"))
+    resposta = client.get(reverse("curso", args=["profissional"]))
     assert resposta.status_code == 200
     assert "Entre para ver o curso" in resposta.content.decode()
     assert Progresso.objects.count() == 0
@@ -102,7 +104,7 @@ def test_alunos_fora_do_ar_e_403_com_frase_em_portugues_e_nunca_entra(
     else:
         rota.mock(return_value=falha)
 
-    resposta = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
+    resposta = client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
 
     assert resposta.status_code == 403, nome
     assert A_FRASE_DE_SEM_RESPOSTA in resposta.content.decode(), nome
@@ -116,7 +118,7 @@ def test_env_do_par_com_alunos_ausente_fecha_sem_derrubar(
     """`armadilhas/097`: env ausente é 403 explicado, não 500 em toda página."""
     monkeypatch.delenv(ausente)
     dublar_sessao(rede, ANA)
-    resposta = client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
+    resposta = client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
     assert resposta.status_code == 403
     assert A_FRASE_DE_SEM_RESPOSTA in resposta.content.decode()
 
@@ -125,7 +127,9 @@ def test_a_aula_tambem_fecha_sem_matricula(env_dos_pares, rede, aula_publicada, 
     """A mesma porta guarda as duas telas: nenhum caminho entra por `/E00`."""
     dublar_sessao(rede, ANA)
     dublar_matricula(rede, ANA["email"], "cadastrado")
-    resposta = client.get(reverse("aula", args=["E00"]), HTTP_COOKIE=COOKIE)
+    resposta = client.get(
+        reverse("aula-do-curso", args=["profissional", 1, "E00"]), HTTP_COOKIE=COOKIE
+    )
     assert resposta.status_code == 403
     assert "SEGREDO" not in resposta.content.decode()
 
@@ -148,6 +152,6 @@ def test_a_url_da_alunos_carrega_o_segmento_do_contrato():
 def test_a_matricula_e_perguntada_pelo_email_e_o_email_nao_e_guardado(
     aluna, esqueleto, client
 ):
-    client.get(reverse("mapa"), HTTP_COOKIE=COOKIE)
+    client.get(reverse("curso", args=["profissional"]), HTTP_COOKIE=COOKIE)
     pessoa = Pessoa.objects.get()
     assert not hasattr(pessoa, "email")
