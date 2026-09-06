@@ -6,7 +6,8 @@
     python ci/fila.py listar [--ao-vivo]     # estados calculados; --ao-vivo soma reservas e PRs
     python ci/fila.py pegar TAR-001 --quem "sessao-x"    # trava no servidor + evento
     python ci/fila.py soltar TAR-001 --quem "sessao-x"   # devolve à fila
-    python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..."  # trava, com o porquê
+    python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..." \
+        --espera mantenedor|fila                         # trava, com o porquê e quem destrava
     python ci/fila.py concluir TAR-001 --quem "sessao-x" --evidencia URL
     python ci/fila.py validar                # fail-closed; roda na muralha
     python ci/fila.py imutabilidade          # nenhuma tarefa que já existia foi editada
@@ -116,7 +117,37 @@ CAMPOS_DO_EVENTO = {
     "quando": str,
     "quem": str,
 }
-CAMPOS_OPCIONAIS_DO_EVENTO = {"detalhe": str, "evidencia": str, "verificado_em": str}
+CAMPOS_OPCIONAIS_DO_EVENTO = {
+    "detalhe": str,
+    "evidencia": str,
+    "verificado_em": str,
+    "espera": str,
+}
+
+# QUEM DESTRAVA UMA TAREFA PARADA — o campo que faltava (06/09/2026)
+#
+# "Bloqueada" sempre significou duas coisas incompatíveis no mesmo balde, e a
+# tela do dono pagava a conta: em 06/09/2026 o quadro tinha 27 paradas, e ele
+# precisava abrir os 27 cartões e ler o motivo de cada um para descobrir que
+# SEIS esperavam uma decisão dele e as outras 21 não esperavam ninguém.
+#
+# Metade da resposta já era calculada e se perdia: `calcular_estados` distingue
+# o bloqueio por DEPENDÊNCIA ABERTA (13 das 27 naquele dia — a fila andando,
+# ninguém precisa fazer nada) do bloqueio por EVENTO ESCRITO. O que não existia
+# era a segunda metade: dentro dos escritos, quem destrava.
+#
+# Ler isso do texto do `detalhe` foi considerado e RECUSADO. Seria adivinhar
+# por palavra ("espera mandato", "só o mantenedor pode") uma resposta que o
+# robô que bloqueou SABE na hora de bloquear — e `robos.py` já proíbe o palpite
+# com todas as letras: uma segunda definição de "o que espera por você" nasceria
+# concorrendo com a que o livro calcula. Quem sabe, declara.
+#
+# Dois valores, e só dois, porque a pergunta é binária: dá para um robô resolver
+# sozinho, ou não dá? Terceiro valor sempre viraria "mais ou menos", e a tela
+# não tem terceiro lugar para pôr isso.
+ESPERA_O_MANTENEDOR = "mantenedor"
+ESPERA_A_FILA = "fila"
+QUEM_DESTRAVA = (ESPERA_O_MANTENEDOR, ESPERA_A_FILA)
 
 RE_ID = re.compile(r"^TAR-(\d{3,})$")
 RE_DATA = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -155,12 +186,17 @@ PREFIXO_DA_RESERVA = "tarefa-"  # refs/reservas/tarefa-TAR-001
 #      Imunológico — regra nova nasce em sombra, dizendo o que teria feito.
 # ---------------------------------------------------------------------------
 
-# Os gestos que ESCREVEM arquivo no repositório e por isso exigem bancada.
+# Quem exige bancada é cada comando, chamando `_parar_se_for_o_espelho` na sua
+# primeira linha: `criar`, `pegar`, `bloquear`, `cancelar` e `concluir`.
 # `listar` e `validar` só leem. `soltar` escreve, e continua livre no espelho
 # de propósito: devolver à fila uma tarefa presa é gesto de emergência, e
 # emergência não pode depender de ter worktree — o evento perdido custa menos
 # que a tarefa travada (decisão do despacho da TAR-018).
-GESTOS_QUE_EXIGEM_BANCADA = ("criar", "pegar", "concluir")
+#
+# Houve aqui uma tupla `GESTOS_QUE_EXIGEM_BANCADA` que ninguém lia, e ela já
+# tinha apodrecido: nasceu sem `bloquear`, que passou a recusar no espelho em
+# 04/09/2026 sem que ela soubesse. Lista que nenhum código executa não é
+# documentação, é uma segunda verdade esperando a vez de mentir.
 
 RITO_DO_WORKTREE = (
     "git fetch origin && git worktree add ../wt-<area>-<tarefa> "
@@ -495,6 +531,18 @@ def carregar_eventos(raiz: Path, tarefas: dict[str, dict], erros: list[str]) -> 
                 erros.append(f"{nome}: concluída exige 'verificado_em' (AAAA-MM-DD)")
         if tipo in ("bloqueada", "cancelada") and not str(dados.get("detalhe") or "").strip():
             erros.append(f"{nome}: '{tipo}' sem 'detalhe' não conta a história — diga o motivo")
+        espera = dados.get("espera")
+        if espera is not None:
+            if tipo != "bloqueada":
+                erros.append(
+                    f"{nome}: 'espera' só existe em evento 'bloqueada' — "
+                    f"quem destrava só faz sentido para quem está travado (veio em '{tipo}')"
+                )
+            elif espera not in QUEM_DESTRAVA:
+                erros.append(
+                    f"{nome}: 'espera' é {espera!r}, e só existe "
+                    f"{' ou '.join(repr(v) for v in QUEM_DESTRAVA)}"
+                )
         eventos.append(dados)
     eventos.sort(key=lambda e: (e["_quando"].isoformat(), e["arquivo"]))
     # Depois do fim, silêncio: evento após concluída/cancelada é história dupla.
@@ -553,6 +601,13 @@ def calcular_estados(
                 "estado": BLOQUEADA,
                 "motivo": ultimo_ciclo.get("detalhe") or "",
                 "quem": ultimo_ciclo.get("quem"),
+                # Quem bloqueou declarou quem destrava. Ausente só nos eventos
+                # anteriores a 06/09/2026, e ausente NÃO vira `fila` por
+                # conveniência: "ninguém declarou" e "a fila resolve" são
+                # respostas diferentes, e fundi-las esconderia do dono uma
+                # tarefa que talvez fosse dele. `cmd_validar` cobra o campo em
+                # todo bloqueio vivo, então este `None` não sobrevive a um PR.
+                "espera": ultimo_ciclo.get("espera"),
             }
             estados[tid] = resultado
             return resultado
@@ -571,6 +626,10 @@ def calcular_estados(
                 "estado": BLOQUEADA,
                 "motivo": "esperando " + ", ".join(deps_abertas),
                 "quem": None,
+                # Ninguém escreveu, e ninguém precisa: esta trava se desfaz
+                # sozinha quando a tarefa de cima terminar. É a própria fila
+                # andando, e por isso nunca é assunto do mantenedor.
+                "espera": ESPERA_A_FILA,
             }
         elif tid in prs_abertos:
             resultado = {
@@ -651,6 +710,7 @@ def montar_evento(
     detalhe: str | None = None,
     evidencia: str | None = None,
     verificado_em: str | None = None,
+    espera: str | None = None,
     agora: datetime | None = None,
 ) -> dict:
     """O conteúdo de um evento, sem tocar no disco.
@@ -675,6 +735,8 @@ def montar_evento(
         dados["evidencia"] = evidencia
     if verificado_em:
         dados["verificado_em"] = verificado_em
+    if espera:
+        dados["espera"] = espera
     return dados
 
 
@@ -686,10 +748,11 @@ def _escrever_evento(
     detalhe: str | None = None,
     evidencia: str | None = None,
     verificado_em: str | None = None,
+    espera: str | None = None,
     agora: datetime | None = None,
 ) -> Path:
     dados = montar_evento(
-        tid, evento, quem, detalhe, evidencia, verificado_em, agora
+        tid, evento, quem, detalhe, evidencia, verificado_em, espera, agora
     )
     pasta = pasta_eventos(raiz)
     pasta.mkdir(parents=True, exist_ok=True)
@@ -1031,6 +1094,11 @@ def cmd_bloquear(raiz: Path, args) -> int:
     Recusa no espelho, como `concluir`: o evento tem de nascer na bancada, para
     embarcar no PR. Diferente do `soltar`, que continua livre porque devolver à
     fila uma tarefa presa é gesto de emergência.
+
+    Desde 06/09/2026 exige `--espera`, e a obrigatoriedade é a mesma lição que o
+    `--move` já deu nesta casa: campo que nasce opcional no balcão nasce vazio.
+    Quem bloqueia sabe, naquele instante, se um robô destrava aquilo sozinho —
+    ninguém depois vai saber melhor, e ninguém depois vai voltar para preencher.
     """
     recusa = _parar_se_for_o_espelho("bloquear", raiz)
     if recusa:
@@ -1052,9 +1120,74 @@ def cmd_bloquear(raiz: Path, args) -> int:
         print("saber o que destrava — e `validar` reprova `bloqueada` sem detalhe.")
         return 1
     _soltar_reserva_se_houver(raiz, tid)
-    caminho = _escrever_evento(raiz, tid, "bloqueada", args.quem, detalhe=args.motivo)
+    caminho = _escrever_evento(
+        raiz, tid, "bloqueada", args.quem, detalhe=args.motivo, espera=args.espera
+    )
     print(f"⛔ {tid} bloqueada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
+    if args.espera == ESPERA_O_MANTENEDOR:
+        print("Ela vai aparecer em 'Esperando uma decisão sua' no /admin/caixa/robos/,")
+        print("e o `motivo` é o texto que ele vai ler ali — escreva para leigo.")
     print("Para destravar: um evento `devolvida` (python ci/fila.py soltar ...).")
+    return 0
+
+
+def cmd_cancelar(raiz: Path, args) -> int:
+    """Escreve o evento `cancelada` — o segundo estado que não tinha verbo.
+
+    `cancelada` é terminal desde que a fila nasceu, `validar` já exigia
+    `detalhe` nele, e o painel já tinha o grupo "Não vão mais ser feitas" para
+    mostrá-lo. Faltava a mesma peça que faltou ao `bloquear` até 04/09/2026: a
+    porta. Quem precisasse cancelar escrevia o JSON à mão — a porta de entrada
+    da `armadilhas/192`, com o arquivo nascendo onde ninguém commita.
+
+    Medido em 06/09/2026, ao limpar a fila: oito tarefas (TAR-057 a TAR-065)
+    estavam paradas em `bloqueada` com o motivo dizendo "TRANCADA ... substituta
+    já criada". Elas nunca mais seriam feitas, e por falta deste verbo moravam
+    no bloco de urgência do painel do dono, ao lado das que esperavam decisão
+    dele. Estado sem verbo não é estado: é um lugar que ninguém alcança.
+
+    Não pede `--espera`, e isso é a diferença que importa: cancelada não espera
+    ninguém. É por isso que ela cura o que `bloqueada` não deveria carregar.
+    """
+    recusa = _parar_se_for_o_espelho("cancelar", raiz)
+    if recusa:
+        print(recusa)
+        return 1
+    tarefas, eventos = _carregar_ou_parar(raiz)
+    tid = args.tarefa
+    if tid not in tarefas:
+        print(f"RECUSADO: {tid} não existe na fila.")
+        return 1
+    estado = calcular_estados(tarefas, eventos)[tid]
+    if estado["estado"] in (CONCLUIDA, CANCELADA):
+        print(f"RECUSADO: {tid} já terminou ({estado['estado']}).")
+        print("Depois do fim, silêncio: evento após o fim reprova na muralha.")
+        return 1
+    if not (args.motivo or "").strip():
+        print("RECUSADO: cancelar sem motivo não existe.")
+        print("O motivo é o que fica no lugar da tarefa para sempre — diga por que")
+        print("ela não vai mais ser feita, e para onde foi o trabalho, se foi.")
+        return 1
+    # Quem depende dela trava para SEMPRE: `calcular_estados` só destrava
+    # dependência CONCLUÍDA. Dizer isso antes é o que separa uma decisão de uma
+    # surpresa — e foi exatamente assim que a TAR-060 caiu, por depender de uma
+    # trancada. Avisa e segue: cancelar mesmo assim é legítimo quando a
+    # substituta já existe, e o balcão não sabe se existe.
+    presas = sorted(
+        outra
+        for outra, dados in tarefas.items()
+        if tid in (dados.get("depende_de") or [])
+        and calcular_estados(tarefas, eventos)[outra]["estado"]
+        not in (CONCLUIDA, CANCELADA)
+    )
+    if presas:
+        print(f"⚠️  Estas dependem de {tid} e vão ficar presas para sempre:")
+        print(f"   {', '.join(presas)}")
+        print("   Dependência só se destrava CONCLUÍDA. Cancele-as ou dê substituta.")
+    _soltar_reserva_se_houver(raiz, tid)
+    caminho = _escrever_evento(raiz, tid, "cancelada", args.quem, detalhe=args.motivo)
+    print(f"🗑️  {tid} cancelada. Evento: {caminho.relative_to(raiz)} (commite-o no seu PR)")
+    print("Não há volta: depois do terminal, a fila não aceita mais nenhum evento.")
     return 0
 
 
@@ -1115,6 +1248,27 @@ def cmd_validar(raiz: Path) -> int:
             print(f"   - {erro}")
         return 1
     estados = calcular_estados(tarefas, eventos)
+    # Bloqueio VIVO sem `espera` reprova; bloqueio já superado, não. A régua é o
+    # estado de HOJE, e não uma data de corte no código: os 22 eventos
+    # `bloqueada` de tarefas que já seguiram adiante são história encerrada, e
+    # cobrar deles exigiria reescrever evento — que esta fila não faz. O que
+    # importa é que nenhuma tarefa PARADA fique sem dizer quem a destrava, e
+    # essa conta se refaz inteira a cada PR.
+    sem_dono = sorted(
+        tid
+        for tid, e in estados.items()
+        if e["estado"] == BLOQUEADA and not e.get("espera")
+    )
+    for tid in sem_dono:
+        erros.append(
+            f"{tid}: parada sem dizer quem destrava. Acrescente um bloqueio novo "
+            f"com --espera ({' ou '.join(QUEM_DESTRAVA)}), ou conclua/cancele a tarefa"
+        )
+    if erros:
+        print(f"❌ FILA INVÁLIDA — {len(erros)} problema(s):")
+        for erro in erros:
+            print(f"   - {erro}")
+        return 1
     contagem: dict[str, int] = {}
     for e in estados.values():
         contagem[e["estado"]] = contagem.get(e["estado"], 0) + 1
@@ -1335,10 +1489,25 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--quem", required=True)
     p.add_argument("--motivo", default="", help="por que está devolvendo")
 
-    p = sub.add_parser("bloquear", help="trava a tarefa — exige motivo")
+    p = sub.add_parser("bloquear", help="trava a tarefa — exige motivo e quem destrava")
     p.add_argument("tarefa", metavar="TAR-NNN")
     p.add_argument("--quem", required=True)
     p.add_argument("--motivo", required=True, help="o que trava, e o que destrava")
+    p.add_argument(
+        "--espera",
+        required=True,
+        choices=QUEM_DESTRAVA,
+        help=(
+            f"quem destrava: '{ESPERA_O_MANTENEDOR}' (autorização, decisão ou prova "
+            f"que só ele pode dar) ou '{ESPERA_A_FILA}' (um robô resolve quando a vez "
+            "dela chegar). O que for 'mantenedor' aparece em bloco próprio no painel"
+        ),
+    )
+
+    p = sub.add_parser("cancelar", help="tira a tarefa da fila para sempre — exige motivo")
+    p.add_argument("tarefa", metavar="TAR-NNN")
+    p.add_argument("--quem", required=True)
+    p.add_argument("--motivo", required=True, help="por que ela não vai mais ser feita")
 
     p = sub.add_parser("concluir", help="fecha a tarefa — exige evidência")
     p.add_argument("tarefa", metavar="TAR-NNN")
@@ -1375,6 +1544,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_soltar(raiz, args)
         if args.acao == "bloquear":
             return cmd_bloquear(raiz, args)
+        if args.acao == "cancelar":
+            return cmd_cancelar(raiz, args)
         if args.acao == "concluir":
             return cmd_concluir(raiz, args)
         if args.acao == "imutabilidade":

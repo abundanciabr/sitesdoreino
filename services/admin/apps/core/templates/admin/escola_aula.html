@@ -1,8 +1,13 @@
 {% extends "admin/base.html" %}
 {% comment %}
-O EDITOR DE UMA ENCOMENDA: os campos da aula, as 18 peças na ordem canônica do
-contrato (as duas internas com o aviso de que o aluno nunca vê), as pausas como
-tabela, o botão de salvar e o de publicar.
+O EDITOR DE UMA ENCOMENDA: os campos da aula, as peças na ordem canônica do
+contrato, as pausas como tabela, o botão de salvar e o de publicar.
+
+As peças vêm em três categorias, e cada uma que não é da sequência traz o aviso
+que a explica: as duas INTERNAS avisam que o aluno nunca as vê, e a vídeo-aula
+em texto avisa o contrário disso, que o aluno VÊ, só que fora da sequência, por
+um botão embaixo do capítulo. Os dois avisos não podem ser confundidos, e por
+isso não compartilham nem a caixa nem a frase.
 
 Tudo vem da `cursos` e volta para ela pela porta de máquina; esta célula não
 guarda uma linha (docstring de apps/core/aulas.py). Sem script: cada gesto é
@@ -28,6 +33,7 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   .peca-da-aula .rotulo { margin-top: 0; font-size: 14px; color: var(--texto); }
   .peca-da-aula .rotulo .numero-da-peca { color: var(--texto-3); font-variant-numeric: tabular-nums; margin-right: 8px; }
   .peca-da-aula.interna { background: var(--painel); border: 1px dashed var(--amarelo); border-radius: 10px; padding: 12px 14px; }
+  .peca-da-aula.sob-demanda { background: var(--painel); border: 1px solid var(--azul); border-radius: 10px; padding: 12px 14px; }
   .peca-da-aula textarea { min-height: 160px; }
   .encomenda label.marcar { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; font-size: 14px; }
   .erro-do-campo { color: var(--vermelho); font-size: 13px; margin: 4px 0 0; }
@@ -94,6 +100,14 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
     <span>Só quem edita vê esta encomenda.</span>
     {% endif %}
     <span>Versão <b>{{ aula.versao }}</b></span>
+  </p>
+  {% endif %}
+
+  {% if url_do_capitulo %}
+  <p class="nota">
+    Já tem o capítulo desta encomenda escrito?
+    <a href="{{ url_do_capitulo }}">Mande o capítulo inteiro de uma vez</a> e
+    ele vira as 16 peças abaixo, sem apagar nada do que você já escreveu.
   </p>
   {% endif %}
 
@@ -238,7 +252,8 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
 
     <h2 class="secao">As peças</h2>
     <p class="nota">
-      Na ordem em que o aluno as encontra. Escreva em Markdown:
+      Na ordem canônica do curso, com as que o aluno não lê em sequência
+      avisadas no lugar. Escreva em Markdown:
       <code># Título grande</code>, <code>## Título médio</code>,
       <code>- item de lista</code>, <code>**negrito**</code>,
       <code>*itálico*</code>. Linha em branco separa parágrafos. Peça vazia é
@@ -246,10 +261,13 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
     </p>
     {% if rascunho.erros.pecas %}<p class="erro-do-campo">As peças {{ rascunho.erros.pecas }}.</p>{% endif %}
     {% for p in rascunho.pecas %}
-    <div class="peca-da-aula{% if p.interna %} interna{% endif %}">
+    <div class="peca-da-aula{% if p.interna %} interna{% endif %}{% if p.sob_demanda %} sob-demanda{% endif %}">
       <label class="rotulo" for="peca_{{ p.tipo }}"><span class="numero-da-peca">{{ forloop.counter }}</span>{{ p.nome }}</label>
       {% if p.interna %}
       <p class="nota"><b>Interna: o aluno nunca vê esta peça.</b> Ela serve a quem grava o vídeo e a quem avalia.</p>
+      {% endif %}
+      {% if p.sob_demanda %}
+      <p class="nota"><b>O aluno vê esta peça, mas fora da sequência.</b> Ela não é uma das 16 peças do capítulo: é o mesmo capítulo contado como numa vídeo-aula, e o aluno chega nela por um botão embaixo do capítulo. Deixe vazia e o botão não aparece.</p>
       {% endif %}
       <textarea id="peca_{{ p.tipo }}" name="peca_{{ p.tipo }}" rows="8" spellcheck="true"{% if p.erro %} class="campo-recusado"{% endif %}>{{ p.texto }}</textarea>
       {% if p.erro %}<p class="erro-do-campo">{{ p.nome }}: {{ p.erro }}.</p>{% endif %}

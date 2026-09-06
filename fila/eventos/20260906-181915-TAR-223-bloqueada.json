@@ -1,0 +1,9 @@
+{
+  "arquivo": "20260906-181915-TAR-223-bloqueada",
+  "tarefa": "TAR-223",
+  "evento": "bloqueada",
+  "quando": "2026-09-06T18:19:15+00:00",
+  "quem": "sessao-admin-lista-dos-robos-20260906",
+  "detalhe": "A reconferencia diaria dos links do portfolio precisa de um processo novo no arquivo que liga os servicos (infra/docker-compose.yml), pasta protegida: nenhum robo entra nela sem uma autorizacao sua por escrito. Sem isso, um link de portfolio que sai do ar so e descoberto quando alguem abre a peca.",
+  "espera": "mantenedor"
+}
