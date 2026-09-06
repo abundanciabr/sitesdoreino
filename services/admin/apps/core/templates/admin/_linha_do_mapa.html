@@ -1,0 +1,42 @@
+{% comment %}
+UMA LINHA DA ÁRVORE — o nome, o endereço, quem abre, e os botões da página.
+
+Mora num arquivo próprio porque ela aparece em DOIS lugares na marcação: dentro
+do `<summary>` de um galho que abre e fecha, e solta numa folha que não tem o
+que abrir. Copiada nos dois, ela envelheceria em um só no primeiro conserto.
+{% endcomment %}
+<span class="nome-do-no">
+  {% if item.gesto %}<span class="mapa-selo">botão</span>{% endif %}
+  {{ item.titulo }}
+  <span class="selo-publico selo-{{ item.para_quem }}">{{ item.selo }}</span>
+  {% if item.dentro %}<span class="quantos-dentro">{{ item.dentro }} dentro</span>{% endif %}
+  {% comment %}
+  A luz nasce ESCONDIDA e quem a mostra é o script. Com script bloqueado ela
+  simplesmente não aparece — o que é honesto: ninguém mediu nada. Uma bolinha
+  cinza dizendo "—" seria pior, porque parece medição.
+  {% endcomment %}
+  {% if item.sonda %}
+  <span class="luz" data-sonda="{{ item.sonda }}" hidden>conferindo…</span>
+  {% endif %}
+</span>
+<span class="mapa-endereco">
+  {% if item.link %}
+  <a href="{{ item.link }}" target="_blank" rel="noopener">{{ item.link }}</a>
+  {% if item.exemplo %}<span class="mapa-selo">exemplo</span>{% endif %}
+  {% elif item.interno %}
+  <code>sem endereço no site</code>
+  {% else %}
+  <code>{{ item.endereco }}</code>
+  {% if item.molde %}<span class="mapa-selo">molde</span>{% endif %}
+  {% endif %}
+</span>
+<span class="nota">{{ item.descricao }}</span>
+{% if item.observacao %}<span class="nota mapa-obs">{{ item.observacao }}</span>{% endif %}
+{% if item.gestos %}
+<span class="nota botoes-da-pagina">
+  <span class="rotulo-dos-botoes">Botões desta página:</span>
+  {% for gesto in item.gestos %}
+  <span class="botao-da-pagina" title="{{ gesto.descricao }} ({{ gesto.endereco }})">{{ gesto.titulo }}</span>
+  {% endfor %}
+</span>
+{% endif %}

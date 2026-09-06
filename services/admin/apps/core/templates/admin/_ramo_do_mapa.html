@@ -1,0 +1,35 @@
+{% comment %}
+UM DEGRAU DA ÁRVORE, e ele se inclui a si mesmo para descer o próximo.
+
+Pedido do mantenedor em 06/09/2026: *"quero poder ver onde começa e onde termina
+cada parte do site, quais são os pais e quais são os filhos"*. A versão anterior
+desenhava uma lista plana e recuava o texto por nível — recuo SUGERE hierarquia,
+não a mostra. Só marcação aninhada permite as duas coisas que mostram:
+
+  · o `<details>`, que abre e fecha um galho INTEIRO (com filhas e netas), e diz
+    quantas páginas somem quando ele fecha;
+  · o trilho vertical ao lado das filhas, desenhado em CSS, que começa na
+    primeira filha e termina na última — que é, literalmente, onde aquela parte
+    do site começa e onde ela termina.
+
+Um template que se inclui a si mesmo é o jeito de o Django descer uma árvore de
+profundidade desconhecida. A alternativa — achatar em Python e recuar por classe
+— foi a versão que o mantenedor recusou.
+
+Os galhos nascem ABERTOS: a pergunta desta tela é "o que existe?", e uma árvore
+fechada responde "não sei" até alguém clicar quatorze vezes.
+{% endcomment %}
+{% for item in nos %}
+<div class="no-do-mapa">
+  {% if item.filhas %}
+  <details class="ramo" open>
+    <summary class="linha-do-mapa">{% include "admin/_linha_do_mapa.html" %}</summary>
+    <div class="filhas">
+      {% include "admin/_ramo_do_mapa.html" with nos=item.filhas %}
+    </div>
+  </details>
+  {% else %}
+  <div class="linha-do-mapa folha">{% include "admin/_linha_do_mapa.html" %}</div>
+  {% endif %}
+</div>
+{% endfor %}
