@@ -1,0 +1,229 @@
+{% extends "admin/base.html" %}
+{% comment %}
+AS COORTES (/admin/placar/coortes/, 05/09/2026, degrau 10 do plano do painel
+de gestão).
+
+Bloco `comment`, nunca `{#`: aquele comenta UMA LINHA SÓ e o resto vaza para a
+tela (armadilhas/087). Zero atributo `style=` aqui: o estilo mora em
+admin/base.html (tests/test_estilo_nao_volta_para_a_marcacao.py).
+
+Três regras governam cada `{% if %}` desta tela:
+
+1. NÃO PERGUNTEI nunca vira NINGUÉM ENTROU. Com a memória fora do ar, uma
+   tabela de zeros diria que a escola não recebeu ninguém no ano inteiro. Cada
+   desfecho tem a frase dele, e nenhuma delas mostra número.
+2. AS DUAS TABELAS NÃO SE SOMAM, e o aviso entre elas é peça de segurança, não
+   texto de enfeite: a de cima conta fichas de aluno, a de baixo conta pessoas
+   da plataforma, e ninguém pode cruzá-las com o olho.
+3. VAZIO É ESTADO DE PRIMEIRA CLASSE. Com zero conquistas a tela explica o que
+   é uma coorte e quando a primeira nasce, em vez de mostrar uma grade em
+   branco. É o estado que o mantenedor vê hoje.
+
+As contagens saem em SUBSTANTIVO dentro de célula de tabela, sem verbo colado:
+`pluralize` trata zero como plural, e zero é o caso que mais aparece aqui.
+{% endcomment %}
+{% block titulo %}As coortes | Meshcraft{% endblock %}
+{% block corpo %}
+<div class="envolucro">
+  <a class="volta" href="{% url 'placar' %}">&larr; Voltar para o placar</a>
+  <h1>As coortes</h1>
+  <p class="subtitulo">
+    Cada grupo que entrou no mesmo mês, e o que a memória da escola sabe sobre
+    ele. A barra do mês zera no dia 1; aqui as barras que já fecharam ficam
+    guardadas, uma linha por mês.
+  </p>
+
+  <p class="lei">
+    Coorte é quem virou aluno no mesmo mês. Acompanhar a coorte é perguntar o
+    que aconteceu com quem entrou em setembro, e não só olhar o total de hoje.
+    O mês que fecha não muda mais: ele vira a coorte daquele mês.
+  </p>
+
+  {% if coortes.veredito == "sem-configuracao" %}
+  <div class="aviso borda-amarela">
+    <b>A memória da escola ainda não está ligada nesta célula.</b>
+    Sem o par de senhas entre a administração e a parte que guarda os fatos, eu
+    não consegui perguntar nada. Por isso esta tela não mostra número nenhum:
+    uma tabela de zeros aqui diria que ninguém entrou no ano inteiro, e a
+    verdade é que ninguém foi perguntado. O passo que liga isso é rodar
+    <code>infra/provisionar-par-da-medicao.sh</code> na VPS.
+  </div>
+
+  {% elif coortes.veredito == "nao-respondeu" %}
+  <div class="aviso borda-vermelha">
+    <b>A memória da escola não respondeu agora.</b>
+    Eu não consegui perguntar quantas pessoas entraram em cada mês, e isso não
+    é a mesma coisa que ninguém ter entrado. Nenhum número aparece nesta tela
+    enquanto a resposta não vier. Se isso continuar, a tela
+    <a href="{% url 'confianca' %}">dá para acreditar nestes números?</a> mostra
+    o que a parte que guarda os fatos está conseguindo receber.
+  </div>
+
+  {% elif coortes.veredito == "vazia" %}
+  <div class="aviso borda-amarela">
+    <b>A memória respondeu, e ainda não guardou conquista nenhuma no período.</b>
+    A primeira coorte nasce no dia em que a primeira pessoa entrar na escola:
+    ela aparece aqui sozinha, com o mês dela, e a partir daí cada mês vira uma
+    linha nova que nunca mais muda.
+  </div>
+  <p class="nota">
+    Período perguntado: de {{ de|date:"d/m/Y" }} a {{ ate|date:"d/m/Y" }}.
+  </p>
+
+  {% else %}
+  {% comment %}1. A COORTE: quem entrou em cada mês (fichas de aluno){% endcomment %}
+  <h2 class="titulo-de-bloco espaco-20">Quem entrou em cada mês</h2>
+  <p class="recado">
+    No período inteiro: <b>{{ coortes.entraram_no_total }}</b>
+    entrada{{ coortes.entraram_no_total|pluralize:"s" }} na escola, somando quem
+    comprou e quem foi liberado. As duas portas aparecem em colunas separadas
+    porque dizem coisas diferentes sobre o mesmo mês, e a meta do ciclo conta a
+    compra.
+  </p>
+  <div class="rolagem-lateral">
+    <table class="tabela-coortes">
+      <thead>
+        <tr>
+          <th>Mês</th>
+          {% for coluna in coortes.colunas_de_matricula %}
+          <th class="numero">{{ coluna }}</th>
+          {% endfor %}
+          <th class="numero">Entraram (total)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in coortes.meses %}
+        <tr class="mes {% if m.aberto %}andando{% endif %}">
+          <td>
+            <b>{{ m.nome }}</b>
+            {% if m.aberto %}<span class="agora">ainda enchendo</span>{% endif %}
+          </td>
+          {% for n in m.matricula %}<td class="numero">{{ n }}</td>{% endfor %}
+          <td class="numero"><b>{{ m.entraram }}</b></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="nota">
+    O mês de cima ainda está enchendo, e por isso ele não é uma coorte fechada:
+    ele é um pedaço de mês. Compare os meses inteiros de baixo entre si; o de
+    cima só fica comparável no dia 1 do mês que vem.
+  </p>
+
+  {% comment %}2. A SEGUNDA TABELA, e o aviso que impede de cruzá-la com a primeira{% endcomment %}
+  <h2 class="titulo-de-bloco espaco-34">O que a plataforma ganhou em cada mês</h2>
+  <div class="aviso borda-amarela">
+    <b>Estes números não são o que a coorte daquele mês fez depois.</b>
+    Eles contam quem conquistou cada coisa pela primeira vez naquele mês. As
+    pessoas contadas aqui não são as fichas contadas na tabela de cima: a
+    entrada na escola é contada por ficha de aluno, e o fórum é contado por
+    pessoa da plataforma. Os dois usam identificadores diferentes, e hoje não
+    existe forma de dizer qual pessoa corresponde a qual ficha. Somar as duas
+    tabelas somaria coisas diferentes com cara de precisão.
+  </div>
+  <div class="rolagem-lateral">
+    <table class="tabela-coortes">
+      <thead>
+        <tr>
+          <th>Mês</th>
+          {% for coluna in coortes.colunas_de_pessoa %}
+          <th class="numero">{{ coluna }}</th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in coortes.meses %}
+        <tr class="mes {% if m.aberto %}andando{% endif %}">
+          <td>
+            <b>{{ m.nome }}</b>
+            {% if m.aberto %}<span class="agora">ainda enchendo</span>{% endif %}
+          </td>
+          {% for n in m.pessoa %}<td class="numero">{{ n }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <p class="nota">
+    Estes números são da plataforma inteira, e não de uma escola: a memória não
+    guarda a escola junto da conquista. Período: de {{ de|date:"d/m/Y" }} a
+    {{ ate|date:"d/m/Y" }}. Cada conquista é contada uma vez só, na primeira vez
+    que a pessoa a alcançou.
+  </p>
+  {% endif %}
+
+  {% comment %}
+  O QUE NÃO COUBE EM COLUNA aparece em TODO desfecho, e não só quando há
+  tabela: uma memória que só guardou conquista de tipo desconhecido responde
+  "não há nada para a tabela", e sem estas duas linhas o fato desapareceria
+  justamente no caso em que ele é a única coisa que existe.
+  {% endcomment %}
+  {% if coortes.sem_dia %}
+  <p class="nota">
+    {{ coortes.sem_dia }} conquista{{ coortes.sem_dia|pluralize:"s" }} chegou
+    com a data ilegível e ficou de fora das tabelas. Não sumiu: está contada
+    nesta linha, e é assunto da tela
+    <a href="{% url 'confianca' %}">da confiança nos números</a>.
+  </p>
+  {% endif %}
+  {% if coortes.novos %}
+  <p class="nota">
+    A memória já guarda conquista que esta tela ainda não sabe mostrar em
+    coluna:
+    {% for novo in coortes.novos %}<b>{{ novo.tipo }}</b> ({{ novo.total }} no período){% if not forloop.last %}, {% endif %}{% endfor %}.
+    Ela aparece aqui em vez de sumir; dar coluna a ela é uma mudança nesta tela.
+  </p>
+  {% endif %}
+
+  {% comment %}3. AS TRÊS DIMENSÕES DESENHADAS. Aparecem em todo desfecho, de
+  propósito: elas são o que FALTA, e o que falta não pode depender de a
+  medição ter respondido hoje.{% endcomment %}
+  <h2 class="titulo-de-bloco espaco-34">O que ainda não dá para abrir</h2>
+  <p class="recado">
+    Três recortes que o plano pede e que hoje não têm fonte. Eles ficam aqui
+    escritos, e não como uma coluna de zeros: zero é uma afirmação sobre o
+    mundo, e nenhum destes três foi medido.
+  </p>
+  <ul class="riscas">
+    <li>
+      <b>Por turma</b>
+      <span class="nota">
+        A turma é dado da ficha do aluno, e não viaja no aviso que a escola
+        publica quando alguém entra: esse aviso leva a escola, a ficha, a
+        situação, a porta de entrada e a data, e nada mais. Buscar a turma ao
+        vivo na lista de alunos daria uma tabela cujos totais não fechariam com
+        os desta página, porque as duas fontes contam coisas diferentes. Abrir
+        a coorte por turma pede um acordo novo entre as células, que é um Rito
+        de Contrato com você presente.
+      </span>
+    </li>
+    <li>
+      <b>Por canal</b>
+      <span class="nota">
+        Depende da pergunta "como você conheceu a escola?" no pedido de
+        entrada. Ela pertence ao checkout, congelado por decisão sua de
+        22/08/2026, e por isso ninguém foi perguntado ainda. No dia em que a
+        pergunta existir, esta tela ganha a coluna sem precisar de nada novo.
+      </span>
+    </li>
+    <li>
+      <b>A foto ao longo do tempo (7, 30, 90, 180 e 365 dias)</b>
+      <span class="nota">
+        A memória guarda a conquista, e não a fotografia dela em cada
+        aniversário do grupo. Guardar foto pede tabela e porta novas na parte
+        que guarda os fatos: outro Rito de Contrato. Enquanto isso, o que esta
+        tela mostra é calculado na hora, e por isso ele muda quando um fato
+        antigo chega atrasado.
+      </span>
+    </li>
+  </ul>
+
+  <p class="recado">
+    <b>O gesto:</b> a coorte do mês que fechou não muda mais. Leve o número dela
+    para a <a href="{% url 'reuniao' %}">reunião de segunda</a>, que é onde a
+    casa decide o que fazer com o que já aconteceu.
+  </p>
+</div>
+{% endblock %}

@@ -1,0 +1,18 @@
+{
+  "arquivo": "207-a-fila-de-proxima-acao-qual-e-o-proximo-gesto-para-cada-pess",
+  "id": "TAR-207",
+  "titulo": "A fila de proxima acao: qual e o proximo gesto para cada pessoa, e quem o faz",
+  "toca": [
+    "mensageria",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-ciclo"
+  ],
+  "evidencia_exigida": "PR mergeado: as regras versionadas em arquivo, o roteador com as tres saidas (automacao, humano, robo), o guarda 'sucesso do aluno antes de venda' provado por MUTACAO, os tetos de contato como parametro com dono declarado, make ci da mensageria verde e nada ligado em producao.",
+  "despacho": "Degrau 15 do PLANO-PAINEL-DE-GESTAO.md, na celula mensageria. Regra explicita, versionada e em arquivo; roteador com tres saidas e so tres; saida de robo vira tarefa no balcao pelo caminho que ja existe; guarda de venda com prova por mutacao; tetos de contato como parametro com dono. Reusa o que ja existe (EstadoDoAluno, regua) e nao cria banco novo.",
+  "origem": "brief do degrau 15 do PLANO-PAINEL-DE-GESTAO.md",
+  "criada_em": "2026-09-06"
+}

@@ -1,0 +1,18 @@
+{
+  "arquivo": "205-a-tela-das-coortes-quem-entrou-em-cada-mes-e-o-que-a-memoria",
+  "id": "TAR-205",
+  "titulo": "A tela das coortes: quem entrou em cada mes e o que a memoria sabe de cada grupo",
+  "toca": [
+    "admin",
+    "painel"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "compras-no-ciclo"
+  ],
+  "evidencia_exigida": "make ci da celula admin verde, prova por mutacao dos guardas novos, e a tela aberta em /admin/placar/coortes/",
+  "despacho": "Degrau 10 do docs/decisoes/PLANO-PAINEL-DE-GESTAO.md, a metade que tem fonte hoje: a tela /admin/placar/coortes/, na celula admin.\n\nEla responde \"quem entrou em cada mes, e o que a memoria da escola sabe de cada grupo\", calculada a cada abertura da porta de leitura da celula de medicao (contracts/metricas.openapi.yaml, countMilestones). Sem tabela nova, sem contrato novo, sem tocar contracts/, services/metricas/, ci/ ou .github/.\n\nAs duas metades que NAO entram, e por que: as fotos guardadas (D7 a D365) exigem tabela e operacao novas na medicao, o que e Rito de Contrato com o mantenedor presente; e a coorte por canal depende da pergunta \"como voce conheceu a escola?\", que pertence ao checkout, congelado desde 22/08/2026. As duas entram DESENHADAS na tela, dizendo em portugues por que nao tem numero, nunca com um zero mudo.\n\nEvidencia: make ci da celula admin (lint, type e test), vermelho a verde por assercao, prova por mutacao sabotando a REGRA de cada guarda novo, python ci/ci.py --apenas muralhas, python ci/travessao.py e a previa da tela renderizada com dados reais.",
+  "origem": "degrau 10 do PLANO-PAINEL-DE-GESTAO.md",
+  "criada_em": "2026-09-06"
+}
