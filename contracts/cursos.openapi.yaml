@@ -77,6 +77,27 @@
 # NASCEU DO EXPORT: `manage.py export_openapi` no ramo do PR #1233, que é o
 # provedor. O código dele fica VERMELHO no `contrato-check` até este arquivo
 # entrar na main, e isso é o portão funcionando (`armadilhas/243`).
+#
+# O QUE O RITO DE 06/09/2026 (o segundo do dia) ACRESCENTOU: a peça
+# `videoaula_em_texto`, pedida pelo mantenedor com estas palavras: "cada
+# capítulo tem uma versão do mesmo capítulo no formato de verbatim de
+# vídeo-aula, e quero um botão logo abaixo de cada capítulo para mostrar um
+# modal na tela com o conteúdo da vídeo-aula".
+#
+# ELA NÃO É A DÉCIMA SÉTIMA PEÇA DA ANATOMIA, e isto é o que mais importa
+# saber aqui. As 16 da anatomia são lei (`docs/decisoes/PLANO-CELULA-CURSOS.md`)
+# e continuam 16, com teste-guarda afirmando o número. Esta é uma TERCEIRA
+# categoria, ao lado das 16 que o aluno lê em sequência e das 2 internas que
+# ele nunca vê: o aluno vê esta, mas fora da sequência, por um botão. No
+# código a tupla se chama `TIPOS_SOB_DEMANDA`.
+#
+# Por isso o corpo das aulas passa de 18 para 19 peças, e a nova vai por
+# último. É mudança ADITIVA: quem consome pelo contrato anterior continua
+# lendo as 18 que já lia.
+#
+# NASCEU DO EXPORT: `manage.py export_openapi` no ramo do PR #1239, que é o
+# provedor. O código dele fica VERMELHO no `contrato-check` até este arquivo
+# entrar na main (`armadilhas/243`).
 # =============================================================================
 openapi: 3.1.0
 info:
@@ -164,6 +185,25 @@ info:
 
     endereco quebrado.
 
+
+    A VIDEO-AULA EM TEXTO ENTRA DESDE 06/09/2026, e ela e a decima nona
+
+    peca, nunca a decima setima. Cada encomenda passou a ter um segundo
+
+    texto, a mesma aula contada como numa video-aula, e o aluno chega nele
+
+    por um botao embaixo do capitulo, num modal. Vem e vai como PECA
+
+    (`videoaula_em_texto`) para herdar o editor, o historico de versoes, a
+
+    restricao de uma por aula e a renderizacao em Markdown que as outras ja
+
+    tem. Ela fica FORA da sequencia das 16 da anatomia, que e lei da celula
+
+    e nao cresce: quem consome esta porta mostra as 16 em ordem e esta uma
+
+    so a pedido, e NAO desenha botao quando o texto dela vem vazio.
+
     '
 paths:
   /aulas:
@@ -228,13 +268,24 @@ paths:
                 $ref: '#/components/schemas/AulaSchema'
       description: 'Tudo o que o editor precisa para desenhar o formulario de uma
 
-        encomenda. As pecas vem SEMPRE as 18, na ordem canonica das 16 da
+        encomenda. As pecas vem SEMPRE as 19, na ordem canonica das 16 da
 
-        anatomia e depois as duas internas (`roteiro`, `guia_do_mentor`),
+        anatomia, depois as duas internas (`roteiro`, `guia_do_mentor`) e por
 
-        com texto vazio na que ainda nao foi escrita. As pausas vem na ordem.
+        ultimo `videoaula_em_texto`, com texto vazio na que ainda nao foi
 
-        `instrumento` e o slug do cartao, ou null.
+        escrita. As pausas vem na ordem. `instrumento` e o slug do cartao, ou
+
+        null.
+
+
+        `videoaula_em_texto` NAO E A DECIMA SETIMA PECA DA ANATOMIA: e a mesma
+
+        encomenda contada como numa video-aula, e o aluno chega nela por um
+
+        botao embaixo do capitulo, num modal, fora da sequencia das 16. Quem a
+
+        recebe vazia nao deve desenhar botao nenhum.
 
 
         404 se a aula nao existe nesse site.
@@ -530,13 +581,22 @@ paths:
       description: 'Tudo o que o editor e a sala de aula precisam de uma encomenda.
         As
 
-        pecas vem SEMPRE as 18, na ordem canonica das 16 da anatomia e depois
+        pecas vem SEMPRE as 19, na ordem canonica das 16 da anatomia, depois
 
-        as duas internas (`roteiro`, `guia_do_mentor`), com texto vazio na que
+        as duas internas (`roteiro`, `guia_do_mentor`) e por ultimo
 
-        ainda nao foi escrita. As pausas vem na ordem. `instrumento` e o slug
+        `videoaula_em_texto`, com texto vazio na que ainda nao foi escrita. As
 
-        do cartao, ou null.
+        pausas vem na ordem. `instrumento` e o slug do cartao, ou null.
+
+
+        `videoaula_em_texto` NAO E A DECIMA SETIMA PECA DA ANATOMIA: e a mesma
+
+        encomenda contada como numa video-aula, e o aluno chega nela por um
+
+        botao embaixo do capitulo, num modal, fora da sequencia das 16. Quem a
+
+        recebe vazia nao deve desenhar botao nenhum.
 
 
         `parte` e opcional e NAO e filtro: e GUARDA. Quando ela vem e nao casa
@@ -967,8 +1027,8 @@ components:
       - cerimonia
       type: string
     TipoDePeca:
-      description: "As 16 pe\xE7as da anatomia, declaradas NA ORDEM CAN\xD4NICA, e\
-        \ as duas internas.\n\nMora no m\xF3dulo, e n\xE3o dentro de `Peca`, porque\
+      description: "As 16 pe\xE7as da anatomia NA ORDEM CAN\xD4NICA, as duas internas\
+        \ e a sob demanda.\n\nMora no m\xF3dulo, e n\xE3o dentro de `Peca`, porque\
         \ o corpo de uma `class Meta`\naninhada n\xE3o enxerga os nomes da classe\
         \ que a cont\xE9m, e a restri\xE7\xE3o do\nbanco precisa deste vocabul\xE1\
         rio. `Peca.Tipo` \xE9 este mesmo objeto."
@@ -991,6 +1051,7 @@ components:
       - dicionario_cartao_respostas
       - roteiro
       - guia_do_mentor
+      - videoaula_em_texto
       type: string
     AulaParaGravarSchema:
       additionalProperties: false
