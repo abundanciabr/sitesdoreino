@@ -1,0 +1,19 @@
+{
+  "arquivo": "222-a-tela-de-liberar-ganha-a-lista-de-cursos-e-so-libera-depois",
+  "id": "TAR-222",
+  "titulo": "A tela de liberar ganha a lista de cursos, e so libera depois da escolha",
+  "toca": [
+    "admin",
+    "painel",
+    "fila"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "alunos-na-plataforma"
+  ],
+  "evidencia_exigida": "PR mergeado: a lista de cursos lida do catalogo por contrato (nenhuma lista propria); liberar so agindo depois da escolha, sem valor pre-selecionado; o product_id indo no corpo da decisao; a liberacao em lote medida e resolvida ou declarada; estado vazio tratado (catalogo fora do ar nao oferece botao que dara 422); teste provando que sem curso nao libera, com prova por mutacao; suite da admin verde e make ci verde.",
+  "despacho": "A outra metade da DECISAO-cursos-matriculas-e-alunos.md, e ela e URGENTE por sequenciamento: o PR #1178 (celula alunos) faz a decisao de liberar EXIGIR o curso. No instante em que ele pousar, o botao de liberar do painel passa a responder 422 ate esta tarefa entrar. As duas precisam pousar juntas.\n\nO QUE FAZER na tela /admin/escola/alunos/: ao lado de cada pessoa que espera, uma LISTA DE CURSOS para escolher, e o botao de liberar so age depois da escolha. Sem valor pre-selecionado: a lei diz por que, e o motivo e que um padrao faria a escolha errada parecer escolha, e ninguem veria o erro ate o aluno abrir a sala e achar o curso errado.\n\nDE ONDE VEM A LISTA: dos produtos do catalogo (services/catalogo/apps/produtos/models.py: Product com slug, name, active), lidos POR CONTRATO. NAO crie lista de cursos dentro da admin nem dentro da alunos: a lei proibe, e duas listas divergem no primeiro curso novo.\n\nO QUE MANDAR: o campo product_id no corpo de decidePreEnrollment, com o id do produto escolhido. O PR #1178 traz a forma exata; leia o contrato depois que o Rito dele pousar.\n\nA LIBERACAO EM LOTE (a tela das turmas, que libera varios de uma vez pela lista colada) tambem passa pela mesma porta e tambem precisa do curso. Se ela existir no seu caminho, ou ela ganha a escolha do curso para o lote inteiro, ou ela para de funcionar em silencio. Meça e decida, e diga qual escolheu.\n\nESTADO VAZIO QUE IMPORTA: se o catalogo nao responder, ou nao houver produto ativo, a tela NAO pode oferecer um botao que vai dar 422. Ela diz o que houve e o que fazer, e nao libera.",
+  "origem": "DECISAO-cursos-matriculas-e-alunos.md §6, e o aviso de sequenciamento do robo da TAR-220: as duas metades precisam pousar juntas",
+  "criada_em": "2026-09-06"
+}
