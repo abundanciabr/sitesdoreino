@@ -66,6 +66,12 @@ Este bloco é `comment`, e não `{#`, porque `{#` comenta UMA LINHA SÓ
   </p>
   {% endif %}
 
+  <p class="espaco-20">
+    <a href="{% url 'escola_sumario' curso %}">Colar o sumário do livro &rarr;</a>
+    Enche todas as encomendas de uma vez com o que o sumário traz, sem apagar
+    nada do que você já escreveu.
+  </p>
+
   <div class="cartao">
     <span class="rotulo">Publicadas para os alunos</span>
     <div class="valor"><b>{{ publicadas }} de {{ aulas|length }}</b></div>

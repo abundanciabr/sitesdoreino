@@ -1138,6 +1138,37 @@
     },
     {
       "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/sumario/$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/sumario/$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "titulo": "Colar o sumário do livro",
+      "descricao": "Uma área de colar e dois botões. Cole o sumário completo do livro e as 34 encomendas do curso ganham a mesma estrutura de uma vez: o cliente de cada uma e o texto próprio de cada uma das 16 peças. Prever mostra o que aconteceria, encomenda por encomenda, sem gravar nada.",
+      "observacao": "O que você já escreveu nunca é apagado: só campo vazio é preenchido, e a prévia diz o que ficou intacto. O sumário não fica guardado em lugar nenhum do sistema, e o arquivo continua só com o dono. Grava na célula cursos pela porta de máquina, nunca no banco dela.",
+      "exemplo": "/admin/escola/profissional/sumario/"
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/sumario/prever$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/sumario/prever$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Prever o que o sumário faria",
+      "descricao": "Não é uma página: é o que acontece ao apertar Prever. Lê o texto colado, compara com o que já está escrito em cada encomenda e mostra o que seria preenchido e o que ficaria como está. Nada é gravado."
+    },
+    {
+      "celula": "admin",
+      "rota": "^escola/(?P<curso>[a-z0-9-]+)/sumario/importar$",
+      "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/sumario/importar$",
+      "alcance": "publico",
+      "para_quem": "equipe",
+      "gesto": true,
+      "titulo": "Importar o sumário para as encomendas",
+      "descricao": "Não é uma página: é o que acontece ao apertar Importar. Preenche, só nos campos que estão vazios, o que o sumário traz de cada encomenda. Campo que já tem texto é preservado, e encomenda em que nada mudaria não é tocada."
+    },
+    {
+      "celula": "admin",
       "rota": "^escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
       "endereco": "/admin/escola/(?P<curso>[a-z0-9-]+)/(?:parte-(?P<parte>[123])/)?aulas/(?P<numero>[A-Za-z0-9]+)/publicar$",
       "alcance": "publico",
