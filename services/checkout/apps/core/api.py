@@ -342,7 +342,18 @@ def place_order(request, session_id: str):
             "currency": "BRL",
             "method": method,
             "customer": comprador,
-            "metadata": {"checkout_session_id": str(sessao.id)},
+            # [TAR-225] `metadata` é o transporte OPACO que `pagamentos` já usa
+            # para ecoar dado que não é dele (mesma técnica de
+            # `recovery_url`) — nenhum Rito de Contrato em `pagamentos.openapi.yaml`
+            # por causa disto. `product_id` é sempre o do item PRINCIPAL
+            # (`itens[0]`, `_itens_do_catalogo` garante essa posição): um
+            # pedido tem uma matrícula (`order_id` é único em `alunos`), e o
+            # bump comprado junto não ganha matrícula própria — é o mesmo
+            # desenho que já existe hoje para `items` no evento `pedido.criado`.
+            "metadata": {
+                "checkout_session_id": str(sessao.id),
+                "product_id": str(itens[0]["product_id"]),
+            },
         },
     )
 

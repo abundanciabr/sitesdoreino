@@ -58,6 +58,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import uuid
@@ -68,6 +69,7 @@ CI = Path(__file__).resolve().parent
 if str(CI) not in sys.path:
     sys.path.insert(0, str(CI))
 
+import telemetria  # noqa: E402  (irmão de pasta; o insert acima é o que o permite)
 from _nucleo import (  # noqa: E402
     ErroDeInstrumentacao,
     configurar_saida,
@@ -87,6 +89,28 @@ TENTATIVAS = 25
 # isto de "não consegui falar com o servidor" é obrigatório: tratar rede caída
 # como "ocupado" faria o laço consumir números que ninguém pegou.
 MARCAS_DE_RECUSA = ("[rejected]", "stale info", "already exists", "fetch first")
+
+# O RECIBO DA ALOCAÇÃO — a prova local de que este número veio daqui.
+#
+# A reserva de verdade mora no servidor, e conferir lá custa uma ida à rede. O
+# gancho da lição do caminho (`ci/licao_do_caminho.py`) precisa saber, no
+# instante em que um registro vai ser gravado, se aquele número foi pedido ou
+# escolhido — e um gancho que bate na rede a cada Write é um gancho que alguém
+# desliga. Por isso toda alocação deixa um recibo no caderninho da telemetria:
+# ele já mora dentro do `.git` comum (não vai ao GitHub, é visível a todos os
+# worktrees da casa) e já é a memória local desta casa. Guardar isto num arquivo
+# próprio seria uma segunda verdade sobre o mesmo fato.
+#
+# A BANCADA é a identidade prática de quem alocou. O almoxarife roda como
+# subprocesso e não recebe o `session_id` do harness (só os ganchos recebem),
+# então "esta sessão" se prova pelo checkout de onde o número foi pedido — e
+# esta casa dá uma bancada por despacho (RITOS §1, muralha da pasta).
+EVENTO_DO_RECIBO = "numero_reservado"
+
+
+def bancada(raiz: Path) -> str:
+    """O checkout, num formato que os dois lados comparam sem discordar."""
+    return os.path.normcase(str(Path(raiz).resolve()))
 
 
 def _git(raiz: Path, args: list[str]) -> subprocess.CompletedProcess:
@@ -287,6 +311,19 @@ def alocar_numero(raiz: Path, superficie: str, agora: datetime | None = None) ->
                 "criado_em": agora.isoformat(),
             },
         ):
+            # Fail-open de propósito: `registrar` engole a própria falha, e um
+            # recibo perdido só faz o gancho falar em sombra sem motivo. Perder
+            # o NÚMERO por causa do caderninho é que seria inaceitável.
+            telemetria.registrar(
+                EVENTO_DO_RECIBO,
+                {
+                    "superficie": superficie,
+                    "numero": numero,
+                    "dia": chave_do_dia,
+                    "bancada": bancada(raiz),
+                },
+                cwd=str(raiz),
+            )
             return numero
         # Perdeu a corrida: outra sessão levou. Segue para o próximo.
         candidato = passo(candidato)

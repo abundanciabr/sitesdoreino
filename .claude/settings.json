@@ -57,6 +57,16 @@
             "timeout": 20
           }
         ]
+      },
+      {
+        "matcher": "Bash|PowerShell|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/ci/preco_da_conversa.py\"",
+            "timeout": 20
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
