@@ -577,16 +577,34 @@ def test_nao_conseguir_perguntar_fecha_a_fila_com_503_e_nunca_a_abre(
     assert "aluno-1" not in texto(resposta), "a fila vazou numa indisponibilidade"
 
 
-def test_resposta_fora_do_contrato_da_admin_nao_abre_a_fila(
-    env_dos_pares, rede, site_declarado, portfolio_com_peca
+@pytest.mark.parametrize(
+    "status, corpo",
+    [
+        (503, {"e_administrador": True}),
+        (200, {"e_administrador": "sim"}),
+        (200, {"resposta": True}),
+    ],
+    ids=["erro com corpo bom", "respondeu uma cadeia", "respondeu outro campo"],
+)
+def test_a_admin_que_nao_responde_o_que_promete_nao_abre_a_fila(
+    env_dos_pares, rede, site_declarado, portfolio_com_peca, status, corpo
 ):
-    """A cadeia "sim" é VERDADEIRA num `if`, e mesmo assim não é um booleano.
+    """Três formas de a resposta não existir, e nenhuma delas abre a fila.
 
-    Sem esta régua, uma `admin` respondendo fora de forma abriria a fila para
-    todo mundo, com HTTP 200 dos dois lados e nada vermelho em lugar nenhum.
+    A cadeia "sim" é VERDADEIRA num `if` do Python, e é aí que mora o perigo:
+    sem a régua do booleano, uma `admin` respondendo fora de forma abriria a
+    fila para todo mundo, com HTTP 200 dos dois lados e nada vermelho em lugar
+    nenhum.
+
+    **O primeiro caso traz corpo BOM de propósito.** Um erro com corpo vazio
+    seria pego pela régua do booleano, e o guarda ficaria verde com a conferência
+    do status apagada: ele provaria a peça errada (`armadilhas/155`). Com
+    `e_administrador: true` dentro de um HTTP 503, só a conferência do status
+    fecha a fila, e é ela que a mutação mede. É o caso real de um proxy que
+    devolve 503 com o último corpo em cache.
     """
     dublar_sessao(rede, BIA)
-    dublar_administrador(rede, corpo={"e_administrador": "sim"})
+    dublar_administrador(rede, status=status, corpo=corpo)
     conferencia.pedir(portfolio_com_peca("aluno-1"))
 
     resposta = Client().get("/equipe", **como())
