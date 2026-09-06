@@ -90,3 +90,60 @@ def test_apelido_ou_nome_vazio_para_e_ensina_o_que_fazer(apelido, nome):
     assert "não podem ser vazios" in str(erro.value)
     assert "criar_curso profissional" in str(erro.value)
     assert not Product.objects.exists()
+
+
+def test_renomear_troca_o_nome_e_diz_qual_era():
+    """A opção existe porque não há tela de produto no painel.
+
+    Sem ela, quem errasse o nome de um curso não teria caminho nenhum para
+    corrigir, e a recusa apontaria para uma tela que não existe. A saída diz o
+    nome ANTIGO junto do novo: quem renomeia por engano precisa saber o que
+    tinha antes para desfazer.
+    """
+    _rodar("profissional", "Profissional")
+
+    saida = StringIO()
+    call_command(
+        "criar_curso",
+        "profissional",
+        "Meshcraft Profissional",
+        "--renomear",
+        stdout=saida,
+    )
+
+    assert Product.objects.get(slug="profissional").name == "Meshcraft Profissional"
+    assert "Profissional" in saida.getvalue()
+    assert "Meshcraft Profissional" in saida.getvalue()
+
+
+def test_a_recusa_ensina_o_comando_que_renomeia():
+    """A mensagem tem de servir para colar, com o apelido e o nome já dentro."""
+    _rodar("profissional", "Profissional")
+
+    saida = _rodar("profissional", "Meshcraft Profissional")
+
+    assert "--renomear" in saida
+    assert "criar_curso profissional 'Meshcraft Profissional' --renomear" in saida
+
+
+def test_renomear_num_curso_que_nao_existe_apenas_cria():
+    """Pedir para renomear o que não existe não é erro: o desfecho pedido é o
+    mesmo (o curso passa a ter aquele nome), e recusar aqui só faria o
+    mantenedor rodar duas vezes."""
+    saida = StringIO()
+    call_command("criar_curso", "novo", "Curso Novo", "--renomear", stdout=saida)
+
+    assert Product.objects.get(slug="novo").name == "Curso Novo"
+    assert "✅ criado" in saida.getvalue()
+
+
+def test_renomear_com_o_mesmo_nome_nao_finge_que_mudou():
+    _rodar("profissional", "Profissional")
+
+    saida = StringIO()
+    call_command(
+        "criar_curso", "profissional", "Profissional", "--renomear", stdout=saida
+    )
+
+    assert "já existia" in saida.getvalue()
+    assert "renomeado" not in saida.getvalue()

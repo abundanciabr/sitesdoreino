@@ -96,7 +96,11 @@ def _fila_vazia():
 
 
 def _decidir(client, **campos):
-    corpo = {"alvo": ALVO, "decisao": "liberar"}
+    # [CURSO] `product_id` é obrigatório para liberar desde 06/09/2026
+    # ([INV-ALU-C1]). Entra aqui, no molde, para estes testes continuarem
+    # medindo o que sempre mediram — a auditoria e os desfechos. A escolha do
+    # curso em si é medida em `test_liberar_com_curso.py`.
+    corpo = {"alvo": ALVO, "decisao": "liberar", "product_id": "prod-um"}
     corpo.update(campos)
     return client.post(reverse("escola_decidir"), corpo)
 
