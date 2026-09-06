@@ -175,10 +175,14 @@ def test_o_cookie_viaja_opaco_e_intacto_para_a_identidade(aluna, rede):
     ["sem-cookie", "visitante", "sem-matricula", "aluno"],
 )
 def test_nenhuma_resposta_desta_casa_grava_o_cookie_do_site(
-    env_dos_pares, rede, cenario
+    env_dos_pares, rede, db, cenario
 ):
     """Se um dia esta célula assinar sessão, o site inteiro passa a deslogar
-    sozinho, sem erro, sem log e sem alarme (`armadilhas/143`)."""
+    sozinho, sem erro, sem log e sem alarme (`armadilhas/143`).
+
+    O `db` entrou no degrau 07: o cenário `aluno` atravessa a porta e desenha a
+    Prancheta, que desde então lê o roteiro da escola do banco.
+    """
     if cenario == "visitante":
         dublar_sessao(rede, {"autenticado": False})
     elif cenario != "sem-cookie":
