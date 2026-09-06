@@ -51,6 +51,12 @@ ENTRADA_PADRAO = "/entrar/google"
 # `identidade` — o `action` do mini-formulário de senha em `funil/login.html`.
 ENTRADA_SENHA_PADRAO = "/entrar/senha"
 
+# A PRANCHETA do portfólio (degrau 18 do PLANO-PORTFOLIO-DO-ALUNO, célula
+# `pages`). Único botão da home logada para lá: ele manda nas duas caras do
+# endereço, a de quem foi reconhecido e as telas de recusa da porta fail-closed
+# (`AGENTS.pages.md`, INV-P12 e AC-05) — a Prancheta se defende sozinha.
+PRANCHETA_PADRAO = "/pages/"
+
 
 def _ler(nome: str, padrao: str) -> str:
     return (os.environ.get(nome) or "").strip() or padrao
@@ -78,3 +84,7 @@ def url_do_forum() -> str:
 
 def url_dos_documentos() -> str:
     return _ler("URL_DOS_DOCUMENTOS", DOCUMENTOS_PADRAO)
+
+
+def url_da_prancheta() -> str:
+    return _ler("URL_DA_PRANCHETA", PRANCHETA_PADRAO)

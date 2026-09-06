@@ -30,6 +30,17 @@ novidades:
   pt-br: "Em breve teremos muitas novidades."
   es: "Pronto tendremos muchas novedades."
 
+ir_para_a_prancheta:
+  # O rótulo do caminho para a Prancheta do portfólio, célula `pages` (degrau
+  # 18 do PLANO-PORTFOLIO-DO-ALUNO, o último da escada, 06/09/2026). O DESTINO
+  # (`/pages/`) não mora aqui: é endereço, não copy, e vive em
+  # apps/core/enderecos.py. Só o `aluno` vê este botão — ver o comentário
+  # [PRANCHETA] no template.
+  _fonte: "1594cf"
+  en: "Go to my Portfolio Board"
+  pt-br: "Acessar minha Prancheta"
+  es: "Ir a mi Tablero de Portafolio"
+
 ir_para_a_caixa:
   # O rótulo do caminho para a Caixa de Sugestões — a única área logada do
   # site até a escola nascer. O DESTINO (`/forms/sugestoes/`) não mora aqui:
