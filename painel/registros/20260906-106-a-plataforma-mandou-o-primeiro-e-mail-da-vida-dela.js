@@ -3,7 +3,7 @@
   tipo: "entrega",
   quando: "2026-09-06",
   titulo: "A plataforma mandou o primeiro e-mail da vida dela, e ele caiu na caixa de entrada",
-  detalhe: "Voce criou a conta no Brevo, colou os 7 registros na Hostinger e rodou a linha na VPS. A carta chegou em 47 segundos, na caixa de entrada e nao no spam.\n\nSPF, DKIM e DMARC deram pass no Gmail: os tres. Ele conferiu e acreditou que a carta e sua mesmo.\n\nA plataforma parou de depender do sininho para falar com quem nao entra no site.",
+  detalhe: "Voce criou a conta no Brevo, colou os 7 registros na Hostinger e rodou a linha na VPS. A carta chegou em 47 segundos, na caixa de entrada e nao no spam.\n\nSPF, DKIM e DMARC deram pass no Gmail: os tres. Ele conferiu e acreditou que a carta e sua.\n\nAgora ela fala com quem nao entra no site.",
   autoridade: "github",
   evidencia: "https://github.com/abundanciabr/sitesdoreino/pull/1246",
   verificado_em: "2026-09-06",
