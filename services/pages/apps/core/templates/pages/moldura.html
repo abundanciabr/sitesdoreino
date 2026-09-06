@@ -80,6 +80,20 @@ tela nova desta casa herda as duas sem tocar em nada (`armadilhas/242` e
   .responder p { margin: 0 0 .5rem; }
   .responder label { display: block; font-weight: 600; margin: 0 0 .25rem; }
   .responder select { width: 100%; box-sizing: border-box; padding: .5rem; font: inherit; }
+  /* A CONFERÊNCIA DA ESCOLA (degrau 11), nas duas telas: o bloco no fim da
+     estante do aluno e o cartão de cada pedido na fila da equipe. Cinza
+     translúcido como o resto da casa, e nunca uma cor cravada, porque a tela
+     segue o tema claro ou escuro de quem abre. O ATRASADO fala por PESO de
+     borda, e não por vermelho, pelo mesmo motivo do link quebrado ali em cima:
+     peso funciona em qualquer tema e para quem não distingue cor. */
+  .conferencia { margin: 2rem 0 0; padding: 1rem 0 0; border-top: 1px solid rgba(128,128,128,.35); }
+  .recado { padding: .75rem 1rem; border-left: .25rem solid currentColor; background: rgba(128,128,128,.12); }
+  .pedido { margin: 1.5rem 0; padding: 1rem; border: 1px solid rgba(128,128,128,.35); border-radius: .4rem; }
+  .pedido.atrasado { border-width: 2px; }
+  .pedido h2 { font-size: 1.1rem; margin: 0 0 .25rem; }
+  .decidir label { display: block; font-weight: 600; margin: .75rem 0 .25rem; }
+  .decidir select { width: 100%; box-sizing: border-box; padding: .5rem; font: inherit; }
+  .rotulo { text-transform: uppercase; letter-spacing: .04em; margin: 0 0 .25rem; }
   .barra-do-site { border-bottom: 1px solid rgba(128,128,128,.35); }
   .menu-topo { display: flex; flex-wrap: wrap; gap: 1.25rem; padding: .6rem 1.25rem; font-size: .95rem; }
   .menu-topo a { text-decoration: none; }

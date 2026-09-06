@@ -292,6 +292,20 @@ def test_o_botao_de_um_aluno_nao_alcanca_a_peca_de_outro(
     assert Peca.objects.filter(pk=do_bruno.pk).exists()
 
 
+def test_um_numero_de_peca_que_nao_e_numero_devolve_404_e_nao_500(estante):
+    """`peca=abc` mandado pelo navegador é endereço torto de FORA, não defeito nosso.
+
+    A primeira versão do `mudar_peca` escrevia
+    `filter(pk=request.POST.get("peca") or 0)`: o `or 0` só troca o vazio, e o
+    Postgres recusa comparar um número com uma palavra, então a resposta era
+    500. Um 500 aqui acende alarme de defeito da casa por causa de um endereço
+    que qualquer um digita, e esconde os 500 de verdade no meio do ruído.
+    """
+    resposta = estante.post("/pecas/mudar", {"peca": "abc", "acao": "remover"})
+
+    assert resposta.status_code == 404
+
+
 # ---------------------------------------------------------------------------
 # AC-09: o link que para de responder depois
 # ---------------------------------------------------------------------------
