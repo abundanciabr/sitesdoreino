@@ -76,9 +76,9 @@ def url_da_situacao(email: str) -> str:
 
 @pytest.fixture
 def esqueleto(db):
-    """O curso `meshcraft` do site `escola-a`, com blocos, aulas e instrumentos."""
+    """O curso `profissional` do site `escola-a`, com blocos, aulas e instrumentos."""
     call_command("semear_esqueleto", site=SITE, stdout=StringIO())
-    return Curso.objects.get(site_id=SITE, slug="meshcraft")
+    return Curso.objects.get(site_id=SITE, slug="profissional")
 
 
 @pytest.fixture

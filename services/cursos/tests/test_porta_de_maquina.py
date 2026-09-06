@@ -545,17 +545,17 @@ def dois_cursos(esqueleto):
     return oficina
 
 
-def do_curso(caminho: str, curso: str = "meshcraft", site: str = SITE) -> str:
+def do_curso(caminho: str, curso: str = "profissional", site: str = SITE) -> str:
     return f"/cursos/{curso}{caminho}?site_id={site}"
 
 
 def test_listar_pelo_slug_devolve_o_curso_daquele_slug_e_nao_o_primeiro(dois_cursos):
-    """`meshcraft` é o primeiro do site; `oficina` é o segundo. Os dois têm uma
+    """`profissional` é o primeiro do site; `oficina` é o segundo. Os dois têm uma
     E00, e cada endereço devolve a sua."""
-    meshcraft = corpo(pedir(do_curso("/aulas")))
+    profissional = corpo(pedir(do_curso("/aulas")))
     oficina = corpo(pedir(do_curso("/aulas", curso="oficina")))
-    assert len(meshcraft) == 34
-    assert meshcraft[0]["titulo_exibido"] == "Encomenda 00"
+    assert len(profissional) == 34
+    assert profissional[0]["titulo_exibido"] == "Encomenda 00"
     assert [aula["titulo_exibido"] for aula in oficina] == ["Encomenda 00 da oficina"]
 
 
@@ -566,7 +566,10 @@ def test_curso_que_nao_existe_e_404_e_nunca_o_primeiro_do_site(dois_cursos):
     assert resposta.status_code == 404
     recado = corpo(resposta)["detail"]
     assert "'curso-que-nao-existe' não existe no site 'escola-a'" in recado
-    assert "meshcraft, oficina" in recado
+    # Em ordem ALFABÉTICA (`_curso` usa `order_by("slug")`), não na ordem em
+    # que foram criados: quem lê o recado procura um nome numa lista, e não a
+    # história do banco.
+    assert "oficina, profissional" in recado
 
 
 def test_o_slug_de_outro_site_nao_atravessa_a_fronteira(esqueleto):
@@ -600,11 +603,11 @@ def test_parte_fora_do_vocabulario_e_422(esqueleto):
 
 
 def test_get_pela_parte_certa_devolve_a_aula_daquele_curso(dois_cursos):
-    """A E00 do `meshcraft` está na parte 1; a da `oficina`, na parte 3."""
-    meshcraft = corpo(pedir(do_curso("/aulas/E00") + "&parte=1"))
+    """A E00 do `profissional` está na parte 1; a da `oficina`, na parte 3."""
+    profissional = corpo(pedir(do_curso("/aulas/E00") + "&parte=1"))
     oficina = corpo(pedir(do_curso("/aulas/E00", curso="oficina") + "&parte=3"))
-    assert meshcraft["titulo_exibido"] == "Encomenda 00"
-    assert meshcraft["bloco"]["parte"] == 1
+    assert profissional["titulo_exibido"] == "Encomenda 00"
+    assert profissional["bloco"]["parte"] == 1
     assert oficina["titulo_exibido"] == "Encomenda 00 da oficina"
     assert oficina["bloco"]["parte"] == 3
 
@@ -615,7 +618,7 @@ def test_get_recusa_quando_a_parte_do_endereco_nao_casa_com_a_aula(esqueleto):
     resposta = pedir(do_curso("/aulas/E00") + "&parte=2")
     assert resposta.status_code == 404
     recado = corpo(resposta)["detail"]
-    assert "a aula E00 não está na parte 2 do curso 'meshcraft'" in recado
+    assert "a aula E00 não está na parte 2 do curso 'profissional'" in recado
     assert "ela está na parte 1" in recado
 
 
@@ -643,7 +646,7 @@ def test_put_pelo_curso_grava_a_aula_daquele_curso(dois_cursos):
         "Um cubo"
     )
     # O curso vizinho não foi tocado: é a prova de que o slug decidiu.
-    vizinho = Curso.objects.get(site_id=SITE, slug="meshcraft")
+    vizinho = Curso.objects.get(site_id=SITE, slug="profissional")
     assert Aula.objects.get(curso=vizinho, numero="E00").versao == 1
 
 
