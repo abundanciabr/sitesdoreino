@@ -1,0 +1,18 @@
+{
+  "arquivo": "219-separar-quem-le-o-menu-do-site-de-quem-pode-reescrever-o-men",
+  "id": "TAR-219",
+  "titulo": "Separar quem le o menu do site de quem pode reescrever o menu",
+  "toca": [
+    "contracts",
+    "catalogo"
+  ],
+  "depende_de": [],
+  "cria": [],
+  "move": [
+    "manutencao"
+  ],
+  "evidencia_exigida": "PR mergeado com teste nascido vermelho que prova 403 para um token de leitura chamando putSiteMenu e 200 para o token de publicacao, mais o bloco unico de colar da metade da VPS",
+  "despacho": "# DESPACHO - catalogo: separar quem LE o menu de quem GRAVA o menu\n\nCELULA: catalogo (CAMINHO CODEOWNERS: `contracts/` esta na cerca, e o mandato\nde 06/09/2026 autorizava `infra/` e SO ela)\n\nNASCE BLOQUEADA, e o motivo esta escrito no evento. Quem parou na cerca cria a\ntarefa no mesmo PR (`armadilhas/360`): esta e ela. Ela destrava quando o\nmantenedor der mandato escrito para `contracts/` e `services/catalogo/` num\ndespacho.\n\nO QUE FOI MEDIDO, em 06/09/2026, ao abrir o quarto par de leitura do menu:\n`contracts/catalogo.openapi.yaml` tem a operacao `putSiteMenu` (linha 91), que\nGRAVA o menu do topo do site, e `services/catalogo/config/settings.py` monta um\nconjunto PLANO de tokens (`TOKENS_ACEITOS = {v for k, v in os.environ.items()\nif k.startswith(\"TOKENS_ACEITOS_\")}`). Os dois fatos juntos dizem que todo par\nque tem o token para LER o menu tem, de graca, o token para REESCREVE-LO.\n\nQUEM ESTA EXPOSTO HOJE, e sao quatro: `forum`, `sugestoes` e `gamificacao`\ndesde 31/08 e 02/09 (por `infra/provisionar-par-do-menu.sh`), e `pages` desde\n06/09 (por `infra/provisionar-pares-da-prancheta.sh`). Os quatro so desenham a\nbarra do topo; nenhum deles precisa gravar. Quem precisa gravar e a tela\n`/admin/menu/`, e so ela.\n\nISTO NAO E DEFEITO NOVO E NAO FOI CAUSADO PELO PR QUE CRIOU ESTA TAREFA: o\nquarto par entrou pelo mesmo desenho dos tres que ja existiam, e desviar dele\nsozinho, dentro de um PR de `infra/`, seria trocar uma exposicao conhecida por\numa inconsistencia calada. O que aquele PR fez foi MEDIR e escrever.\n\nA TAREFA, e o molde ja existe na casa: a `identidade` resolveu isto antes de\nqualquer plano, com graus PROPRIOS conferidos no handler\n(`TOKENS_COMPLETOS_*` para ver e-mail, `TOKENS_SENHA_*` para gravar senha), e\nnao com um segundo security scheme no contrato congelado. A receita esta\nescrita em `armadilhas/318`, com o codigo:\n\n  - `settings.py`: dois conjuntos, os dois fail-closed, um so para leitura e\n    outro para publicacao;\n  - o Bearer aceita os DOIS (quem publica tambem le);\n  - o handler de `putSiteMenu` devolve 403 nomeado (nao 401: o cracha e\n    valido, falta o grau) quando o token nao esta no conjunto de publicacao.\n\nA METADE DA VPS VEM DEPOIS E E DE `infra/`: renomear a chave do `admin` para o\ngrau de publicacao em `env/catalogo.env`, mantendo os quatro leitores no grau\nde leitura. Enquanto essa metade nao rodar, o conjunto de publicacao vazio\nfecharia a tela do menu do mantenedor, entao a ordem e: porta primeiro,\naceitando os dois conjuntos, e o roteiro em seguida, no MESMO dia.\n\nEVIDENCIA: teste que prova 403 para um token de leitura chamando\n`putSiteMenu`, e 200 para o token de publicacao, nascendo vermelho. Mais o\nbloco unico de colar entregue ao mantenedor para a metade da VPS.",
+  "origem": "medido em 06/09/2026 ao abrir o quarto par de leitura do menu (TAR-218): armadilhas/318 aplicada ao catalogo",
+  "criada_em": "2026-09-06"
+}
