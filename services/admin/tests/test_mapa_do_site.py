@@ -24,7 +24,7 @@ import respx
 from django.test import Client
 from django.urls import reverse
 
-from apps.core import mapa_do_site
+from apps.core import mapa_do_site, robos
 
 IDENTIDADE = "http://identidade:8000/interno"
 SESSAO = f"{IDENTIDADE}/sessao/completa"
@@ -69,10 +69,19 @@ def _arquivo() -> dict:
 
 
 @respx.mock
-def test_a_pagina_abre_e_agrupa_por_quem_consegue_ver():
+def test_a_pagina_abre_em_areas_com_a_legenda_dos_publicos():
+    """Desde 06/09/2026 o eixo é a ÁREA do site, e o público é um selo.
+
+    As duas coisas são medidas aqui porque as duas são promessas da tela: as
+    áreas principais aparecem como faixas, e a legenda continua explicando o
+    que cada selo quer dizer. Antes, o público era o eixo e a mesma área do
+    site ficava partida em quatro lugares distantes.
+    """
     resposta = _dentro().get(reverse("mapa_do_site"))
     assert resposta.status_code == 200
     html = resposta.content.decode()
+    for area in ("A vitrine e a porta de entrada", "A sala de aula", "O fórum"):
+        assert area in html, f"a área {area!r} sumiu da tela"
     for titulo in ("Para quem só visita", "Para quem é aluno", "Para você"):
         assert titulo in html
     assert "Só para as máquinas" in html
@@ -102,8 +111,8 @@ def test_a_conta_da_tela_e_a_do_arquivo():
         == resposta.context["total"]
     )
     assert not resposta.context["orfas"], (
-        "entrada com um público que a tela não desenha: ela apareceria na "
-        "seção 'sem grupo' em vez de sumir, mas o lugar de consertar é o mapa"
+        "endereço que nenhuma área da árvore acolhe: ele aparece numa faixa "
+        "amarela em vez de sumir, mas o lugar de consertar é `AREAS`"
     )
 
 
@@ -262,3 +271,278 @@ def test_o_csp_proprio_desta_pagina_nao_esquece_o_estilo():
 def test_a_luz_so_pergunta_a_este_mesmo_site():
     csp = _dentro().get(reverse("mapa_do_site"))["Content-Security-Policy"]
     assert "connect-src 'self'" in csp
+
+
+# --------------------------------------------------------------- a árvore
+#
+# Os guardas da hierarquia, pedida pelo mantenedor em 06/09/2026. Eles medem as
+# três promessas que a tela passou a fazer: toda página cabe numa área, filha
+# fica embaixo da mãe, e botão não vira galho.
+
+
+def _linha(resposta, endereco: str) -> dict:
+    """A linha da árvore de um endereço, olhada de dentro (contexto, não HTML).
+
+    Medir pelo contexto e não pelo texto é o que faz este teste falhar por
+    hierarquia errada em vez de falhar por uma vírgula no desenho.
+    """
+    for area in resposta.context["areas"]:
+        for item in area["linhas"]:
+            if item["endereco"] == endereco:
+                return item
+    raise AssertionError(f"{endereco} não está em nenhuma área da árvore")
+
+
+@respx.mock
+def test_toda_pagina_do_arquivo_cabe_em_alguma_area():
+    """O guarda que impede a lista de áreas de envelhecer em silêncio.
+
+    Rota nova exige entrada em `painel/mapa-do-site.json`, que é da célula
+    `admin` — então esta suíte roda no PR que a criar. Se o endereço novo não
+    couber em nenhuma área, é aqui que ele reprova, com o conserto escrito.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    orfas = [e["endereco"] for e in resposta.context["orfas"]]
+    assert not orfas, (
+        f"estes endereços não couberam em nenhuma área do mapa: {orfas}.\n"
+        "Conserto: em `services/admin/apps/core/mapa_do_site.py`, acrescente o "
+        "prefixo deles a uma das áreas de `AREAS`, ou crie uma área nova com "
+        "nome de gente. Sem isso eles aparecem numa faixa amarela solta, fora "
+        "da árvore."
+    )
+    # E o caminho de volta: área declarada que não acolhe nada é lista morta.
+    nas_areas = sum(
+        1 + len(linha["gestos"])
+        for area in resposta.context["areas"]
+        for linha in area["linhas"]
+    )
+    assert nas_areas == resposta.context["total"], (
+        f"a árvore mostra {nas_areas} endereços e o arquivo tem "
+        f"{resposta.context['total']} — algum sumiu no caminho"
+    )
+
+
+@respx.mock
+def test_a_sub_pagina_fica_embaixo_da_pagina():
+    """A promessa da árvore: quem está dentro aparece dentro.
+
+    Os três degraus medidos são reais e de partes diferentes do site, para o
+    teste não passar por acaso com um caso só.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    escadas = (
+        (
+            "/admin/",
+            "/admin/escola/",
+            "/admin/escola/alunos/",
+            "/admin/escola/alunos/recusados",
+        ),
+        ("/forum/", "/forum/a/<slug:slug>"),
+        ("/cursos/", "/cursos/<slug:curso>/"),
+    )
+    for escada in escadas:
+        niveis = [_linha(resposta, endereco)["nivel"] for endereco in escada]
+        assert niveis == sorted(niveis) and len(set(niveis)) == len(niveis), (
+            f"a escada {escada} saiu nos níveis {niveis} — sub-página que não "
+            "fica embaixo da página é uma árvore que não é árvore"
+        )
+
+
+@respx.mock
+def test_o_botao_mora_dentro_da_pagina_dele():
+    """96 dos 222 endereços são botões. Como galhos, dobrariam a altura."""
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    recusados = _linha(resposta, "/admin/escola/alunos/recusados")
+    apagar = [g["endereco"] for g in recusados["gestos"]]
+    assert "/admin/escola/alunos/recusados/apagar" in apagar
+    for area in resposta.context["areas"]:
+        for item in area["linhas"]:
+            assert item["endereco"] != "/admin/escola/alunos/recusados/apagar", (
+                "o botão virou galho próprio da árvore em vez de etiqueta da "
+                "página a que pertence"
+            )
+
+
+@respx.mock
+def test_a_busca_traz_a_pagina_de_cima_junto():
+    """Peneira que joga fora as mães devolve galho solto no ar.
+
+    `recusados/apagar` sem `A lista dos recusados` em cima não diz o que apaga.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"), {"q": "recusado"})
+    assert resposta.status_code == 200
+    enderecos = [
+        item["endereco"]
+        for area in resposta.context["areas"]
+        for item in area["linhas"]
+    ]
+    assert "/admin/escola/alunos/recusados" in enderecos
+    assert "/admin/escola/alunos/" in enderecos, "a mãe sumiu e o galho ficou solto"
+    assert "/admin/" in enderecos, "a raiz da área sumiu"
+    assert "/forum/" not in enderecos, "a busca não peneirou nada"
+
+
+@respx.mock
+def test_a_busca_nao_leva_junto_botao_que_nao_casou():
+    """A página de cima entra como CAMINHO, e caminho não traz carga.
+
+    Medido em 06/09/2026: buscar "recusado" trazia `/admin/escola/` só para
+    mostrar onde ficam os recusados, e junto vinham "Dar poder de administrador
+    a alguém" e "Tirar o poder de administrador" — dois botões que não têm nada
+    a ver com o que foi procurado.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"), {"q": "recusado"})
+    procurado = mapa_do_site._sem_acento("recusado")
+    for area in resposta.context["areas"]:
+        for item in area["linhas"]:
+            if mapa_do_site._casa(item, procurado):
+                continue
+            intrusos = [
+                g["titulo"]
+                for g in item["gestos"]
+                if not mapa_do_site._casa(g, procurado)
+            ]
+            assert not intrusos, (
+                f"{item['endereco']} entrou só como caminho e trouxe botões que "
+                f"não casaram: {intrusos}"
+            )
+
+
+@respx.mock
+def test_a_conta_da_busca_conta_quem_casa_e_nao_as_linhas_desenhadas():
+    """ "9 de 222 endereços com recusado" quando só 4 casam é número errado.
+
+    O número é recontado AQUI, do arquivo, sem passar por nenhuma função da
+    tela: um teste que somasse com a mesma conta que a tela usa não teria como
+    discordar dela.
+    """
+    resposta = _dentro().get(reverse("mapa_do_site"), {"q": "recusado"})
+    procurado = mapa_do_site._sem_acento("recusado")
+    do_arquivo = sum(
+        1
+        for e in _arquivo()["enderecos"]
+        if procurado
+        in mapa_do_site._sem_acento(
+            " ".join(
+                str(e.get(campo, "") or "")
+                for campo in (
+                    "titulo",
+                    "descricao",
+                    "endereco",
+                    "observacao",
+                    "exemplo",
+                )
+            )
+        )
+    )
+    assert resposta.context["achados"] == do_arquivo, (
+        f"a capa diz {resposta.context['achados']} e o arquivo tem "
+        f"{do_arquivo} endereços com essa palavra"
+    )
+    desenhadas = sum(
+        1 + len(item["gestos"])
+        for area in resposta.context["areas"]
+        for item in area["linhas"]
+    )
+    assert desenhadas > do_arquivo, (
+        "este teste só tem valor enquanto a busca desenhar MAIS linhas do que "
+        "casam (as páginas de cima); se isso deixar de ser verdade, ele passa "
+        "por acaso"
+    )
+
+
+@respx.mock
+def test_a_area_de_cada_endereco_e_uma_so():
+    """Prefixo mais longo vence, e nenhum endereço cai em duas áreas.
+
+    Sem essa regra `/admin` e um futuro `/admin/escola` disputariam a mesma
+    linha, e o dono contaria a mesma página duas vezes.
+    """
+    assert mapa_do_site.area_de("/admin/escola/alunos/") == "administracao"
+    assert mapa_do_site.area_de("/") == "vitrine"
+    assert mapa_do_site.area_de("/forum/") == "forum"
+    assert mapa_do_site.area_de("-") == mapa_do_site.AREA_INTERNA
+    # A raiz cobre só ela mesma: sem isso `/` engoliria o site inteiro.
+    assert mapa_do_site.area_de("/cursos/") == "sala"
+    # Endereço que ninguém previu devolve None, e a tela o mostra em voz alta.
+    assert mapa_do_site.area_de("/coisa-que-ninguem-declarou") is None
+
+
+# ------------------------------------------------------ o que está em obra
+
+
+def _fila_de_mentira(tmp_path, monkeypatch):
+    """Uma fila embutida como o deploy a deixaria, com os dois lados medidos.
+
+    A mistura é de propósito: duas tarefas abertas em lugares diferentes, e uma
+    já concluída que NÃO pode aparecer como obra. Sem a concluída no dado, o
+    guarda passaria mesmo com a regra de "em aberto" adulterada — foi o que
+    aconteceu na primeira mutação (`armadilhas/195`).
+    """
+    pasta = tmp_path / "fila_embutida"
+    pasta.mkdir(parents=True)
+    (pasta / "estados.json").write_text(
+        json.dumps(
+            {
+                "TAR-001": {
+                    "estado": "concluída",
+                    "titulo": "Coisa que já ficou pronta",
+                    "toca": ["forum"],
+                },
+                "TAR-002": {
+                    "estado": "na fila",
+                    "titulo": "Coisa que ainda vai ser feita",
+                    "toca": ["forum"],
+                },
+                "TAR-003": {
+                    "estado": "bloqueada",
+                    "titulo": "Coisa que parou no meio",
+                    "toca": ["quiz", "funil"],
+                },
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(robos, "CANDIDATOS", (pasta,))
+
+
+@respx.mock
+def test_o_que_esta_em_obra_vem_da_fila_e_nao_de_uma_lista_daqui(tmp_path, monkeypatch):
+    """A segunda metade do pedido: o que existe, e o que ainda está sendo feito.
+
+    Os estados são escritos AQUI por extenso, e não lidos de `EM_ABERTO`: um
+    teste que lê a mesma constante que deveria vigiar passa mesmo quando ela é
+    adulterada.
+    """
+    _fila_de_mentira(tmp_path, monkeypatch)
+    resposta = _dentro().get(reverse("mapa_do_site"))
+    html = resposta.content.decode()
+    assert "Ainda sendo construído" in html
+
+    obra = resposta.context["obra"]
+    assert obra is not None, "a fila estava lá e a tela não a leu"
+    assert obra["total"] == 2, "a tarefa já concluída entrou na conta do que falta"
+    assert "Coisa que já ficou pronta" not in html
+    assert "Coisa que ainda vai ser feita" in html
+    assert "Coisa que parou no meio" in html
+
+    for lugar in obra["lugares"]:
+        for tarefa in lugar["tarefas"]:
+            assert tarefa["estado"] not in ("concluída", "cancelada")
+
+    # O `toca` vira lugar que o dono reconhece, e uma tarefa que mexe em dois
+    # aparece nos dois: por isso a soma dos lugares passa do total, e a tela diz
+    # isso com todas as letras em vez de deixar a conta parecer errada.
+    lugares = {lugar["nome"] for lugar in obra["lugares"]}
+    assert "o fórum" in lugares and "o quiz" in lugares
+    assert sum(lugar["quantas"] for lugar in obra["lugares"]) == 3
+
+
+@respx.mock
+def test_fila_ausente_nao_vira_nada_em_obra(monkeypatch):
+    """Sem a fila, a tela DIZ que não a leu. "Nada em obra" seria mentira."""
+    monkeypatch.setattr(mapa_do_site, "diretorio_da_fila", lambda: None)
+    html = _dentro().get(reverse("mapa_do_site")).content.decode()
+    assert "A fila de trabalho não veio nesta versão do site." in html
+    assert "Ainda sendo construído" in html

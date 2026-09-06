@@ -375,6 +375,43 @@ primeira versão deste arquivo, e o teste pegou.
     .luz.caida { color: var(--vermelho); border-color: var(--vermelho); }
     .luz.caida::before { background: var(--vermelho); }
 
+    /* --- A ÁRVORE do mapa (06/09/2026) ------------------------------------
+       O recuo é uma CLASSE, e não um cálculo: o servidor já manda o nível de
+       cada linha, e atributo `style="..."` é bloqueado pela política desta área
+       (`armadilhas/199`). O traço vertical à esquerda é o galho: ele é o que
+       faz uma lista de 100 linhas parecer uma árvore sem indentar tanto que o
+       texto suma da tela de um celular. */
+    .galho { border-top: 1px solid var(--linha); }
+    .recuo-1 { padding-left: 16px; border-left: 2px solid var(--linha); }
+    .recuo-2 { padding-left: 32px; border-left: 2px solid var(--linha); }
+    .recuo-3 { padding-left: 48px; border-left: 2px solid var(--linha); }
+    .recuo-4 { padding-left: 64px; border-left: 2px solid var(--linha); }
+    /* O selo de PARA QUEM é aquela linha. Cor mais texto, nunca cor sozinha:
+       quem não distingue as cores lê a palavra, e é a palavra que informa. */
+    .selo-publico {
+      display: inline-block; margin-left: 8px; padding: 0 8px;
+      border: 1px solid var(--linha); border-radius: 20px;
+      font-size: 11px; font-weight: 600; letter-spacing: .04em;
+      color: var(--texto-3); vertical-align: 2px;
+    }
+    .selo-visitante { color: var(--verde); border-color: var(--verde); }
+    .selo-aluno { color: var(--azul); border-color: var(--azul); }
+    .selo-equipe { color: var(--amarelo); border-color: var(--amarelo); }
+    .mapa-conta { color: var(--texto-3); }
+    .legenda-do-mapa { margin: 14px 0 6px; }
+    .legenda-do-mapa .nota { margin-top: 8px; }
+    /* Os botões de uma página, dentro dela. São 96 dos 222 endereços: como
+       galhos próprios dobrariam a altura da árvore para responder uma pergunta
+       que ninguém faz olhando o mapa. O endereço de cada um fica no `title`. */
+    .botoes-da-pagina { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
+    .rotulo-dos-botoes { color: var(--texto-3); }
+    .botao-da-pagina {
+      padding: 1px 8px; border: 1px solid var(--linha); border-radius: 6px;
+      color: var(--texto-2); font-size: 12px;
+    }
+    .tarefa-em-obra { margin-top: 8px; color: var(--texto-2); }
+
+
     /* --- o que estava escrito NA MARCAÇÃO até 30/08/2026 -------------------
        Atributo `style="..."` é estilo embutido, e a política de segurança desta
        área o BLOQUEIA — a folha volta por hash (`armadilhas/199`), mas para

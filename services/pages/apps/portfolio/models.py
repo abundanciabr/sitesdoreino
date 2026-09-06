@@ -55,6 +55,8 @@ O QUE ESTE ARQUIVO NÃO GUARDA, DE PROPÓSITO
   prová-lo, e o texto ficaria em duas casas.
 """
 
+import uuid
+
 from django.db import models
 
 # As cinco etapas do roteiro da Prancheta (AC-06). Guardamos o NÚMERO da etapa,
@@ -790,3 +792,54 @@ class ItemDoRoteiro(models.Model):
 
     def __str__(self) -> str:
         return self.texto
+
+
+# ---------------------------------------------------------------------------
+# A OUTBOX: a voz desta célula, nascida no degrau 12 (critério AC-12)
+# ---------------------------------------------------------------------------
+# Molde: `services/cursos/apps/cursos/models.py`, copiado e nunca importado
+# (Lei 3). Um relay diferente por célula seria um modo de falha diferente por
+# célula para o mesmo problema.
+
+
+class OutboxEvent(models.Model):  # [RECEITA:R3 v1]
+    """Uma linha por fato que esta célula afirma ao resto da plataforma.
+
+    Mora AQUI, e não num app `eventos` à parte, pela mesma decisão de orçamento
+    que `cursos` e `sugestoes` tomaram: `apps/portfolio` é o único app desta
+    célula com `models.py` e `migrations/`, e um app novo custaria outro
+    `migrations/__init__.py` sem ganho arquitetural nenhum.
+
+    `payload` guarda **só o campo `data`** do envelope. O envelope inteiro é
+    montado pelo relay, no instante da publicação: guardar o envelope pronto
+    duplicaria em JSON o que já são colunas, e as duas cópias envelheceriam
+    separadas.
+
+    `event_id` é `UUIDField` de propósito, porque
+    `contracts/eventos/pages.portfolio.conferido.v1.json` pede
+    `"format": "uuid"` neste campo, como todo evento desta plataforma.
+    """
+
+    event_id = models.UUIDField(default=uuid.uuid4, unique=True)
+    event = models.CharField(max_length=100)  # ex.: "pages.portfolio.conferido"
+    version = models.PositiveSmallIntegerField(default=1)
+    payload = models.JSONField()  # SÓ o campo `data` do envelope
+    occurred_at = models.DateTimeField(auto_now_add=True)
+    published_at = models.DateTimeField(null=True, blank=True)
+    # As chaves que este evento acrescenta ao ENVELOPE (o nível de cima), e não
+    # ao `data`: aqui o `ator_id`, que o contrato do selo declara obrigatório e
+    # NÃO nulável, porque não existe selo que o relógio assine sozinho.
+    #
+    # Genérico, e não uma coluna `ator_id`, pelo mesmo motivo das vizinhas: os
+    # contratos são `additionalProperties: false` no topo, e uma coluna
+    # obrigaria o relay a decidir evento a evento se inclui a chave. Essa
+    # decisão seria uma segunda verdade sobre os contratos, morando em código.
+    envelope_extra = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "evento da outbox"
+        verbose_name_plural = "eventos da outbox"
+        indexes = [models.Index(fields=["published_at"])]
+
+    def __str__(self) -> str:  # pragma: no cover - conveniência de shell
+        return f"{self.event}:{self.event_id}"
