@@ -153,11 +153,17 @@ def test_teto_no_meio_de_falhas_carrega_o_erro_nao_a_olhada():
 def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
            gh_exit: int = 0, mergear_exit: int | None = None,
            mergear_roteiro: list[dict] | None = None,
-) -> subprocess.CompletedProcess:
+           gh_log: str | None = None,
+           teto_do_log_s: float | None = None) -> subprocess.CompletedProcess:
     """Roda a CLI com gh de mentira (ESPERAR_GH) e HOME em tmp.
 
     `mergear_exit` liga um portão de mentira (ESPERAR_MERGEAR) que grava os
     argumentos recebidos em `portao-chamado.txt` e sai com esse código.
+
+    `gh_log` é o que o `gh run view <id> --log-failed` de mentira devolve. Sem
+    ele o dublê SAI 1 nesse subcomando, que é o caso "o log não veio" — onde o
+    desfecho tem de cair para o texto de sempre. O texto `__DEMORA__` faz o
+    dublê dormir, para medir o teto do log sem esperar o teto de verdade.
 
     `mergear_roteiro` é o mesmo portão de mentira, com uma resposta DIFERENTE
     por chamada: uma lista de `{"exit": int, "saida": str}`. Serve para medir a
@@ -205,12 +211,36 @@ def _rodar(args: list[str], tmp: Path, gh_respostas: list[dict] | None = None,
     env["USERPROFILE"] = str(tmp)      # Windows: Path.home()
     env["HOME"] = str(tmp)             # POSIX (o runner do CI é Linux)
     env["ESPERAR_REPO"] = "dona/loja"
+    if teto_do_log_s is not None:
+        env["ESPERAR_TETO_DO_LOG_S"] = str(teto_do_log_s)
     if gh_respostas is not None:
         fita = tmp / "fita.json"
         fita.write_text(json.dumps(gh_respostas), encoding="utf-8")
+        log = tmp / "log-do-gh.txt"
+        if gh_log is not None:
+            log.write_text(gh_log, encoding="utf-8")
         fake = tmp / "gh_de_mentira.py"
         fake.write_text(
-            "import json, sys, pathlib\n"
+            "import json, sys, time, pathlib\n"
+            f"log = pathlib.Path(r'{log}')\n"
+            "if '--log-failed' in sys.argv:\n"
+            "    if not log.exists():\n"
+            "        print('gh de mentira: sem log', file=sys.stderr)\n"
+            "        sys.exit(1)\n"
+            "    corpo = log.read_text(encoding='utf-8')\n"
+            # Os dois marcadores existem para que a SABOTAGEM da guarda seja
+            # visível: um log que demora e um `gh` que falha precisam trazer
+            # uma causa boa depois do tropeço, senão o teste passaria mesmo
+            # sem o teto e sem a conferência do exit code.
+            "    codigo = 0\n"
+            "    if corpo.startswith('__DEMORA__'):\n"
+            "        corpo = corpo[len('__DEMORA__'):]\n"
+            "        time.sleep(5)\n"
+            "    if corpo.startswith('__FALHA__'):\n"
+            "        corpo = corpo[len('__FALHA__'):]\n"
+            "        codigo = 1\n"
+            "    sys.stdout.buffer.write(corpo.encode('utf-8'))\n"
+            "    sys.exit(codigo)\n"
             f"fita = pathlib.Path(r'{fita}')\n"
             "respostas = json.loads(fita.read_text(encoding='utf-8'))\n"
             f"if {gh_exit} != 0 or not respostas:\n"
@@ -636,6 +666,10 @@ VERDE_COM_RUN = [{"state": "OPEN", "statusCheckRollup": [
     {"status": "COMPLETED", "conclusion": "SUCCESS", "name": "muralhas",
      "detailsUrl": "https://github.com/dona/loja/actions/runs/8899/job/1"},
 ]}]
+VERMELHO_COM_RUN = [{"state": "OPEN", "statusCheckRollup": [
+    {"status": "COMPLETED", "conclusion": "FAILURE", "name": "muralhas",
+     "detailsUrl": "https://github.com/dona/loja/actions/runs/8899/job/1"},
+]}]
 PENDENTE = [{"state": "OPEN", "statusCheckRollup": [
     {"status": "IN_PROGRESS", "name": "muralhas"},
 ]}] * 40
@@ -732,3 +766,126 @@ def test_o_batimento_calado_no_stdout_sobrevive_no_log_da_espera(tmp_path):
     linha = json.loads(_linhas(bruto)[0])
     assert any("vou esperar" in l for l in linha["voz"]), linha
     assert any("⏳" in l for l in linha["voz"]), linha
+
+
+# ---------------------------------------------------------------------------
+# A CAUSA, não o nome do check (06/09/2026)
+#
+# Medido em 06/09/2026: 32 episódios na semana em que o desfecho vermelho disse
+# só "checks REPROVADOS: muralhas" e mandou não re-tentar às cegas. Descobrir a
+# causa que o CI já tinha impresso custou 41 chamadas de mediana, 12% da cota.
+# ---------------------------------------------------------------------------
+LOG_DO_PORTAO = (
+    "muralhas\tci\t2026-09-06T10:00:00Z ##[group]Run python ci/ci.py\n"
+    "muralhas\tci\t2026-09-06T10:00:02Z --- FAIL muralha-do-travessao ---------\n"
+    "muralhas\tci\t2026-09-06T10:00:02Z ConfigError: Schema for status 201 is "
+    "not set in response\n"
+    "muralhas\tci\t2026-09-06T10:00:03Z\n"
+    "muralhas\tci\t2026-09-06T10:00:03Z RESULTADO  FAIL\n"
+)
+
+
+def _sinal_esperado(log: str) -> str:
+    """O número da armadilha que o catálogo REAL reconhece neste log.
+
+    Calculado aqui, e não escrito à mão, para o teste não apodrecer quando o
+    catálogo mudar: se nenhum sinal casar, o teste diz isso na cara em vez de
+    provar coisa nenhuma.
+    """
+    from sino_das_armadilhas import carregar_sinais, reconhecer
+
+    achados = reconhecer(log, carregar_sinais())
+    assert achados, (
+        "o log deste teste não casa nenhum sinal de armadilhas/SINAIS.json — "
+        "escolha outra mensagem de erro do catálogo"
+    )
+    return achados[0][0]["armadilha"]
+
+
+def test_o_desfecho_reprovado_traz_o_bloco_de_falha_e_a_licao(tmp_path):
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--so-desfecho"],
+        tmp_path, gh_respostas=list(VERMELHO_COM_RUN), gh_log=LOG_DO_PORTAO,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "REPROVADO" in proc.stdout
+    assert "--- FAIL muralha-do-travessao" in proc.stdout, (
+        "o bloco --- FAIL --- do portão não chegou ao desfecho: " + proc.stdout
+    )
+    assert "ConfigError: Schema for status 201" in proc.stdout
+    assert "armadilhas/" + _sinal_esperado(LOG_DO_PORTAO) in proc.stdout
+    assert "não re-tente às cegas" not in proc.stdout, (
+        "com a causa na mão, mandar não re-tentar às cegas é o texto errado"
+    )
+    assert "RESULTADO" not in proc.stdout, (
+        "o bloco passou do fim do relatório — o veredito não é a causa"
+    )
+    assert "2026-09-06T10:00:02Z" not in proc.stdout, (
+        "o carimbo `<job>\\t<passo>\\t<ISO>` do gh comeria metade dos 600 "
+        "caracteres reservados para a causa"
+    )
+
+
+def test_sem_bloco_do_portao_valem_as_linhas_que_acusam_a_falha(tmp_path):
+    log = (
+        "ci\tpytest\t2026-09-06T10:00:00Z collecting ...\n"
+        "ci\tpytest\t2026-09-06T10:00:01Z E   AssertionError: esperava 3, veio 4\n"
+        "ci\tpytest\t2026-09-06T10:00:02Z FAILED ci/tests/test_x.py::test_y\n"
+    )
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--so-desfecho"],
+        tmp_path, gh_respostas=list(VERMELHO_COM_RUN), gh_log=log,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "AssertionError: esperava 3, veio 4" in proc.stdout
+
+
+def test_quando_o_log_nao_vem_o_desfecho_cai_para_o_texto_de_hoje(tmp_path):
+    """Fail-open: isto é lição, não muralha."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--so-desfecho"],
+        tmp_path, gh_respostas=list(VERMELHO_COM_RUN),  # sem gh_log: o dublê sai 1
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "REPROVADO" in proc.stdout
+    assert "não re-tente às cegas" in proc.stdout
+
+
+def test_a_saida_de_um_gh_que_FALHOU_nunca_e_lida_como_causa(tmp_path):
+    """Um `gh` que sai != 0 pode ter cuspido meio log antes de morrer.
+
+    Tratar esse pedaço como "a causa" é a mesma doença do falso-verde: um
+    veredito construído sobre uma medição que não terminou. O exit code manda,
+    não o que sobrou no cano.
+    """
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--so-desfecho"],
+        tmp_path, gh_respostas=list(VERMELHO_COM_RUN),
+        gh_log="__FALHA__" + LOG_DO_PORTAO,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "não re-tente às cegas" in proc.stdout
+    assert "muralha-do-travessao" not in proc.stdout
+
+
+def test_quando_o_log_demora_o_desfecho_cai_para_o_texto_de_hoje(tmp_path):
+    """O teto de 30s do log é a guarda: a causa é um bônus, e bônus nenhum
+    pode pendurar a espera (armadilhas/161). O dublê demora e SÓ DEPOIS
+    entrega uma causa boa, para a sabotagem do teto ficar visível."""
+    proc = _rodar(
+        ["--checks", "447", *RAPIDO, "--so-desfecho"],
+        tmp_path, gh_respostas=list(VERMELHO_COM_RUN),
+        gh_log="__DEMORA__" + LOG_DO_PORTAO,
+        teto_do_log_s=0.5,
+    )
+    assert proc.returncode == 1, proc.stdout + proc.stderr
+    assert "não re-tente às cegas" in proc.stdout
+    assert "muralha-do-travessao" not in proc.stdout
+
+
+def test_o_bloco_de_falha_tem_teto_de_600_caracteres():
+    from esperar import TETO_DO_BLOCO, bloco_de_falha
+
+    assert TETO_DO_BLOCO == 600
+    gordo = "\n".join("ERROR linha %d " % i + "x" * 200 for i in range(50))
+    assert len(bloco_de_falha(gordo)) <= TETO_DO_BLOCO

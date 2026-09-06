@@ -84,6 +84,15 @@ barulhento, o bastidor continua na tela (stderr) e no
 `~/.sitesdoreino/esperas.jsonl`. Quem não pede a flag segue com a voz de
 sempre, inteira no stdout: `--run`/`--deploy` pelo Monitor não mudaram nada.
 
+E O VERMELHO DIZ A CAUSA, NÃO O NOME (06/09/2026). Um desfecho que dizia só
+"checks REPROVADOS: muralhas" mandava o robô caçar; medido, isso custou 41
+chamadas de mediana em 32 episódios da semana (12% da cota) para achar um texto
+que o CI já tinha impresso. Agora o desfecho vermelho busca o log do job
+(`gh run view --log-failed`, teto de 30 s, UM job), recorta o bloco de falha e
+o casa com `armadilhas/SINAIS.json` pelo MESMO reconhecedor do sino. Tudo aí é
+fail-open: sem log, `gh` que falha ou que demora, o desfecho volta a dizer o de
+sempre. Lição não é muralha — na dúvida ela cala, em vez de recusar.
+
 Exit codes (o dialeto da casa): 0 concluiu verde · 1 concluiu REPROVADO ·
 2 estouro do teto ou medição impossível.
 
@@ -102,6 +111,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -111,6 +121,16 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from _nucleo import ErroDeInstrumentacao, configurar_saida, executar  # noqa: E402
+
+# O MESMO reconhecedor do sino, importado e nunca copiado: a regra de casar uma
+# saída com o catálogo mora num lugar só. Duplicar a regex aqui criaria duas
+# verdades que envelhecem em sentidos diferentes — a doença do painel com outro
+# nome (CLAUDE.md, lei anti-duplicação).
+from sino_das_armadilhas import (  # noqa: E402
+    TETO_DA_SAIDA,
+    carregar_sinais,
+    reconhecer,
+)
 
 # A marca que `ci/mergear.py` imprime quando o GitHub ainda calcula se o PR tem
 # conflito: é a ÚNICA recusa do portão que se remede, porque é a única que não é
@@ -135,8 +155,8 @@ from espera import (  # noqa: E402
 
 REPO_PADRAO = "abundanciabr/sitesdoreino"
 REGUA = Path(__file__).resolve().parent / "tempos_esperados.json"
+GATILHOS = Path(__file__).resolve().parents[1] / "armadilhas" / "GATILHOS.json"
 LOG_DAS_ESPERAS = Path.home() / ".sitesdoreino" / "esperas.jsonl"
-LINHAS_DE_VOZ_NO_LOG = 60
 REGUA_VELHA_APOS_DIAS = 30
 AMOSTRA_MINIMA = 20
 DEPLOYS = (".github/workflows/deploy-celula.yml", ".github/workflows/deploy-infra.yml")
@@ -265,7 +285,7 @@ def observar_run(gh: list[str], repo: str, run_id: str) -> Olhada:
     return Olhada(
         pronta=True,
         resumo=f"{nome} terminou '{conclusao}'",
-        dados={"verde": verde, "url": run.get("html_url", "")},
+        dados={"verde": verde, "url": run.get("html_url", ""), "run": str(run_id)},
     )
 
 
@@ -346,7 +366,13 @@ def observar_deploy(gh: list[str], repo: str, sha: str) -> Olhada:
     nomes = ", ".join(
         f"{Path(str(r.get('path'))).stem} '{r.get('conclusion')}'" for r in deploys
     )
-    return Olhada(pronta=True, resumo=nomes, dados={"verde": verde})
+    caidos = [r for r in deploys if r.get("conclusion") != "success"]
+    return Olhada(
+        pronta=True,
+        resumo=nomes,
+        dados={"verde": verde,
+               "run": str(caidos[0].get("id") or "") if caidos else ""},
+    )
 
 
 def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
@@ -379,10 +405,11 @@ def observar_checks(gh: list[str], repo: str, pr: str) -> Olhada:
     ]
     if ruins:
         nomes = ", ".join(str(c.get("name")) for c in ruins[:4])
+        runs = [r for r in (run_do_check(c) for c in ruins) if r]
         return Olhada(
             pronta=True,
             resumo=f"checks REPROVADOS: {nomes}",
-            dados={"verde": False},
+            dados={"verde": False, "run": runs[0] if runs else ""},
         )
     return Olhada(
         pronta=True,
@@ -557,6 +584,131 @@ def registrar_espera(alvo: str, dizendo: str, teto_s: float, decorrido: float,
             }, ensure_ascii=False) + "\n")
     except OSError:
         pass
+
+
+# ------------------------------------------------------- a causa da queda ----
+#
+# Medido em 06/09/2026: em 32 episódios da semana o desfecho vermelho disse só
+# o NOME do check ("checks REPROVADOS: muralhas") e mandou não re-tentar às
+# cegas. Descobrir a causa que o CI já tinha impresso custou 41 chamadas de
+# mediana — 12% da cota semanal gasta relendo a conversa para achar um texto
+# que estava a um `gh run view --log-failed` de distância.
+#
+# Isto é LIÇÃO, não muralha: tudo aqui é fail-open. Sem run, `gh` que falha,
+# `gh` que demora, catálogo ausente ⇒ o desfecho cai para o texto de sempre.
+# Uma muralha que morre calada é defeito; uma lição que cala é só uma lição a
+# menos, e o veredito vermelho continua vermelho.
+
+TETO_DO_LOG_S = float(os.environ.get("ESPERAR_TETO_DO_LOG_S", "30"))
+TETO_DO_BLOCO = 600
+LINHAS_DE_FALHA = 5
+LINHAS_DE_VOZ_NO_LOG = 60
+
+# O cabeçalho que `ci/_nucleo.py` imprime antes do detalhe de cada portão
+# reprovado: `--- FAIL <nome> ------`. É o bloco mais útil que existe no log,
+# porque é o único escrito PARA ser lido por quem vai consertar.
+MARCA_DO_PORTAO = re.compile(r"---\s+(?:FAIL|ERROR)\s+\S+")
+FIM_DO_RELATORIO = re.compile(r"\bRESULTADO\s+(?:PASS|FAIL|ERROR)\b")
+PADRAO_DE_FALHA = re.compile(r"FAIL|ERROR|AssertionError|Error:")
+RUN_NA_URL = re.compile(r"/actions/runs/(\d+)")
+
+# `gh run view --log-failed` carimba cada linha com `<job>\t<passo>\t<ISO>Z `.
+# São ~45 caracteres de ruído por linha: num teto de 600, o carimbo comeria
+# metade da causa. Ele sai do que se MOSTRA; o log cru continua inteiro para o
+# sino casar.
+CARIMBO_DO_GH = re.compile(
+    r"^[^\t\n]*\t[^\t\n]*\t\d{4}-\d{2}-\d{2}T[\d:.]+Z\s?"
+)
+
+
+def run_do_check(check: dict) -> str:
+    """O id do run por trás de um check do rollup — o `gh pr view` só dá a URL."""
+    url = str(check.get("detailsUrl") or check.get("targetUrl") or "")
+    achado = RUN_NA_URL.search(url)
+    return achado.group(1) if achado else ""
+
+
+def bloco_de_falha(log: str) -> str:
+    """O pedaço do log que diz o que quebrou, com teto de 600 caracteres.
+
+    Preferência absoluta pelo bloco `--- FAIL <portão> ---`: ele é o resumo que
+    a própria casa escreveu. Sem ele (pytest cru, erro de shell), valem as
+    cinco primeiras linhas que acusam falha.
+    """
+    linhas = [CARIMBO_DO_GH.sub("", l).rstrip() for l in log.splitlines()]
+    for i, linha in enumerate(linhas):
+        if MARCA_DO_PORTAO.search(linha):
+            bloco = [linha]
+            for seguinte in linhas[i + 1:]:
+                if MARCA_DO_PORTAO.search(seguinte) or FIM_DO_RELATORIO.search(seguinte):
+                    break
+                if seguinte.strip():
+                    bloco.append(seguinte)
+                if len("\n".join(bloco)) >= TETO_DO_BLOCO:
+                    break
+            return "\n".join(bloco)[:TETO_DO_BLOCO]
+    acusadas = [l for l in linhas if l.strip() and PADRAO_DE_FALHA.search(l)]
+    return "\n".join(acusadas[:LINHAS_DE_FALHA])[:TETO_DO_BLOCO]
+
+
+def licao_da_armadilha(numero: str) -> str:
+    """A `licao:` que a entrada declarou, se declarou. Fail-open."""
+    try:
+        corpo = json.loads(GATILHOS.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    for gatilho in corpo.get("gatilhos", []):
+        if str(gatilho.get("armadilha")) == numero and gatilho.get("licao"):
+            return str(gatilho["licao"])
+    return ""
+
+
+def sino_do_log(log: str) -> str:
+    """A armadilha cujo sinal casa este log — a MESMA lógica do sino.
+
+    Casa contra o log INTEIRO, não contra o bloco recortado acima: uma
+    assinatura como `dial tcp …:22: i/o timeout` quase nunca mora numa linha
+    que contenha a palavra FAIL, e peneirar antes de casar calaria o sino
+    justamente onde ele vale mais.
+    """
+    try:
+        achados = reconhecer(log[-TETO_DA_SAIDA:], carregar_sinais())
+    except (OSError, ValueError):
+        return ""
+    if not achados:
+        return ""
+    sinal = achados[0][0]
+    numero = str(sinal["armadilha"])
+    licao = licao_da_armadilha(numero) or str(sinal.get("titulo") or "").strip()
+    return (
+        f"   🔔 isto casa a armadilhas/{numero} (leia {sinal['arquivo']}) — {licao}"
+    )
+
+
+def diagnosticar(gh: list[str], repo: str, run_id: str) -> str:
+    """A causa da reprovação, do log do CI. Texto vazio = não consegui, e aí
+    o desfecho volta a dizer o de sempre."""
+    if not run_id:
+        return ""
+    try:
+        proc = subprocess.run(
+            [*gh, "run", "view", run_id, "--log-failed", "-R", repo],
+            capture_output=True, text=True, timeout=TETO_DO_LOG_S,
+            encoding="utf-8", errors="replace",
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    if proc.returncode != 0:
+        return ""
+    bloco = bloco_de_falha(proc.stdout or "")
+    if not bloco:
+        return ""
+    partes = [f"   A causa, do log do run {run_id}:"]
+    partes += ["   " + l for l in bloco.splitlines()]
+    sino = sino_do_log(proc.stdout or "")
+    if sino:
+        partes.append(sino)
+    return "\n".join(partes)
 
 
 def pedir_pouso(gh: list[str], repo: str, pr: str) -> str:
@@ -766,9 +918,11 @@ def main(argv: list[str] | None = None) -> int:
             f"🔴 {dizendo}: terminou REPROVADO — {olhada.resumo} · levou "
             f"{_fmt(decorrido)}."
         )
+        causa = diagnosticar(gh, repo, str((olhada.dados or {}).get("run") or ""))
         voz.desfecho(
-            cabeca + " O veredito real está no link do run/PR; "
-            "não re-tente às cegas."
+            cabeca + "\n" + causa if causa
+            else cabeca + " O veredito real está no link do run/PR; "
+                          "não re-tente às cegas."
         )
     elif not args.e_pousar:
         voz.desfecho(linha_verde)
