@@ -9,6 +9,7 @@
     python ci/fila.py bloquear TAR-001 --quem "sessao-x" --motivo "..."  # trava, com o porquê
     python ci/fila.py concluir TAR-001 --quem "sessao-x" --evidencia URL
     python ci/fila.py validar                # fail-closed; roda na muralha
+    python ci/fila.py imutabilidade          # nenhuma tarefa que já existia foi editada
 
 Nascida da fase 2 do plano aprovado em 29/08/2026 (veredito em
 `docs/consultorias/central-de-orquestracao/VEREDITO.md`). O que os três
@@ -40,6 +41,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -925,6 +927,170 @@ def cmd_validar(raiz: Path) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# A IMUTABILIDADE DO ARQUIVO DE TAREFA — o guarda que faltava (05/09/2026)
+#
+# A lei está no cabeçalho deste arquivo desde 29/08/2026 ("o arquivo da tarefa
+# nunca muda depois de criado" · "nada se edita, corrigir é acrescentar") e até
+# 05/09/2026 NINGUÉM a fazia valer: `validar` confere cada arquivo EM SI (molde,
+# campo obrigatório, dependência que existe, ausência de ciclo) e nunca o compara
+# com a versão anterior. Medido e catalogado em `armadilhas/356`. Este guarda
+# entrou com mandato escrito do mantenedor, porque `ci/` é caminho CODEOWNERS.
+#
+# A ASSIMETRIA é o miolo do guarda, e fica justificada aqui, não só no despacho:
+#
+#   tarefa NOVA .............. passa livre. Criar não é editar.
+#   tarefa APAGADA ........... REPROVA. Apagar e recriar é editar por outra
+#                              porta, e um guarda que ignorasse isso seria
+#                              contornado no primeiro dia.
+#   tarefa QUE JÁ EXISTE ..... só pode mudar `depende_de`.
+#
+# Por que só `depende_de`: `titulo`, `evidencia_exigida`, `despacho`, `toca`,
+# `move`, `cria`, `origem` e `criada_em` dizem O QUE a tarefa é e por que ela
+# existe. Não têm por que mudar depois de criados, porque trabalho diferente é
+# tarefa NOVA, e mexer num deles reescreve a tarefa debaixo de quem já a pegou,
+# ou apaga a prova que o `concluir` vai cobrar. O `depende_de` é o único campo
+# que descreve a RELAÇÃO com as outras tarefas: ele erra sozinho (uma escada
+# nasce encadeada em linha reta e sai com correntes falsas) e é o único cuja
+# correção NÃO tem caminho append-only, porque nenhum dos cinco eventos de
+# `EVENTOS_VALIDOS` muda uma corrente, e cancelar-e-recriar trava a vizinha para
+# sempre (`calcular_estados` só destrava a dependência CONCLUÍDA e `cmd_pegar`
+# só aceita tarefa NA FILA). Liberar só ele é o mínimo que devolve o conserto
+# sem abrir a porta para reescrever a história de uma tarefa.
+#
+# Por que fail-closed no primeiro dia, e não em sombra: o precedente legítimo foi
+# medido antes de escrever uma linha. O único commit que já corrigiu uma corrente
+# na história da fila (8dcba645, PR #1139) mudou EXATAMENTE dois `depende_de` e
+# nada mais, e passa por aqui. O que este guarda reprova é o que ninguém nunca
+# teve motivo legítimo de fazer.
+# ---------------------------------------------------------------------------
+
+CAMPO_QUE_PODE_MUDAR = "depende_de"
+BASE_PADRAO = "origin/main"
+
+
+def _git_da_fila(raiz: Path, *args: str, para_que: str) -> str:
+    """Um `git` que, quando não responde, vira ERROR e não silêncio."""
+    try:
+        proc = subprocess.run(
+            ["git", "-C", str(raiz), *args],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=60, stdin=subprocess.DEVNULL,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ErroDeInstrumentacao(
+            f"o git não respondeu ao {para_que}",
+            f"Comando: git {' '.join(args)}\n{exc}\n\n"
+            "A imutabilidade da fila NÃO foi medida. Isto não é um OK.",
+        ) from exc
+    if proc.returncode != 0:
+        raise ErroDeInstrumentacao(
+            f"o git recusou o {para_que} (exit {proc.returncode})",
+            f"Comando: git {' '.join(args)}\n{(proc.stderr or '').strip()}\n\n"
+            "A base existe nesta pasta? O checkout do CI tem fetch-depth: 0?\n"
+            "A imutabilidade da fila NÃO foi medida. Isto não é um OK.",
+        )
+    return proc.stdout
+
+
+def mudancas_em_tarefas(raiz: Path, base: str) -> list[tuple[str, str]]:
+    """(status, caminho) de cada arquivo de `fila/tarefas/` que o ramo mexeu.
+
+    `--no-renames` de propósito: renomear desdobra em remoção mais adição, para
+    nenhum dos dois lados escapar da inspeção. `-z` de propósito: os nomes de
+    tarefa têm acento, e fora do modo NUL o git citaria o caminho.
+    """
+    saida = _git_da_fila(
+        raiz, "diff", "--raw", "--no-renames", "-z", f"{base}...HEAD",
+        "--", "fila/tarefas",
+        para_que="diff de fila/tarefas contra a base",
+    )
+    pedacos = [p for p in saida.split("\0") if p]
+    mudancas: list[tuple[str, str]] = []
+    while pedacos:
+        meta = pedacos.pop(0)
+        if not meta.startswith(":") or not pedacos:
+            raise ErroDeInstrumentacao(
+                "o diff cru da fila veio numa forma que não sei ler",
+                f"Pedaço inesperado: {meta!r}\n\n"
+                "A imutabilidade da fila NÃO foi medida. Isto não é um OK.",
+            )
+        mudancas.append((meta.rsplit(" ", 1)[-1], pedacos.pop(0)))
+    return mudancas
+
+
+def _tarefa_na_revisao(raiz: Path, revisao: str, caminho: str) -> dict:
+    bruto = _git_da_fila(
+        raiz, "show", f"{revisao}:{caminho}",
+        para_que=f"leitura de {caminho} em {revisao}",
+    )
+    try:
+        return json.loads(bruto)
+    except json.JSONDecodeError as exc:
+        raise ErroDeInstrumentacao(
+            f"{caminho} não é JSON válido em {revisao}",
+            f"{exc}\n\nSem os dois lados não dá para comparar campo a campo. "
+            "A imutabilidade da fila NÃO foi medida.",
+        ) from exc
+
+
+def conferir_imutabilidade(raiz: Path, base: str) -> list[str]:
+    """As violações da lei "nada se edita", uma frase por violação."""
+    problemas: list[str] = []
+    for status, caminho in mudancas_em_tarefas(raiz, base):
+        if status.startswith("A"):
+            continue  # criar não é editar
+        if status.startswith("D"):
+            problemas.append(
+                f"{caminho} foi APAGADO — apagar e recriar é editar por outra porta"
+            )
+            continue
+        if not status.startswith("M"):
+            problemas.append(
+                f"{caminho} entrou com status '{status}' (troca de tipo ou de modo) — "
+                "arquivo de tarefa é dado, e só nasce ou fica como está"
+            )
+            continue
+        antes = _tarefa_na_revisao(raiz, base, caminho)
+        depois = _tarefa_na_revisao(raiz, "HEAD", caminho)
+        for campo in sorted(set(antes) | set(depois)):
+            if campo == CAMPO_QUE_PODE_MUDAR:
+                continue
+            if antes.get(campo) != depois.get(campo):
+                problemas.append(f"{caminho} mudou o campo '{campo}'")
+    return problemas
+
+
+def cmd_imutabilidade(raiz: Path, base: str) -> int:
+    if not (raiz / ".git").exists():
+        raise ErroDeInstrumentacao(
+            "esta pasta não é um checkout git",
+            "Sem repositório não há versão anterior com que comparar.\n"
+            "A imutabilidade da fila NÃO foi medida. Isto não é um OK.",
+        )
+    problemas = conferir_imutabilidade(raiz, base)
+    if problemas:
+        print(f"❌ FILA EDITADA — {len(problemas)} violação(ões) da lei 'nada se edita':")
+        for problema in problemas:
+            print(f"   - {problema}")
+        print()
+        print("   O arquivo de uma tarefa nunca muda depois de criado (RITOS.md §5).")
+        print(f"   A ÚNICA exceção é o campo '{CAMPO_QUE_PODE_MUDAR}', porque nenhum evento")
+        print("   conserta uma corrente errada, e cancelar-e-recriar trava a vizinha")
+        print("   para sempre (armadilhas/356).")
+        print()
+        print("   Trabalho diferente do que a tarefa descreve? Crie uma tarefa NOVA:")
+        print("     python ci/fila.py criar --titulo ... --toca <celula> --move <cartao>")
+        print("   Mudou de estado (pegou, devolveu, travou, concluiu)? Isso é EVENTO,")
+        print("   nunca campo: pegar, soltar, bloquear, concluir.")
+        return 1
+    print(
+        f"✅ Fila imutável — nenhuma tarefa que já existia mudou fora de "
+        f"'{CAMPO_QUE_PODE_MUDAR}' (base {base})."
+    )
+    return 0
+
+
 def construir_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="A fila de trabalho: tarefa registrada, estado calculado, trava no servidor."
@@ -982,6 +1148,16 @@ def construir_parser() -> argparse.ArgumentParser:
     p.add_argument("--verificado-em", default="", help="quando a prova foi conferida (AAAA-MM-DD)")
 
     sub.add_parser("validar", help="fail-closed; é o que a muralha roda")
+
+    p = sub.add_parser(
+        "imutabilidade",
+        help="o diff de fila/tarefas contra a base; é o que a muralha roda",
+    )
+    p.add_argument(
+        "--base",
+        default=os.environ.get("BASE_REF") or BASE_PADRAO,
+        help="a revisão com que comparar (padrão: BASE_REF, ou origin/main)",
+    )
     return parser
 
 
@@ -1002,6 +1178,8 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_bloquear(raiz, args)
         if args.acao == "concluir":
             return cmd_concluir(raiz, args)
+        if args.acao == "imutabilidade":
+            return cmd_imutabilidade(raiz, args.base)
         return cmd_validar(raiz)
     except ErroDeInstrumentacao as erro:
         print(f"\nPAROU POR SEGURANÇA: {erro.resumo}\n")
