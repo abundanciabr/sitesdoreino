@@ -556,6 +556,30 @@ Continua valendo mandar **arquivo na conversa** (uma prévia, uma captura) e
 linhas não precisa de página. O que não vale é a entrega definitiva morar fora
 do site.
 
+**O caminho inverso é a mesma lei, e já foi confundido: documento que ELE envia
+é ordem de serviço, não conteúdo para arquivar (desde 06/09/2026).** Aconteceu
+assim: ele mandou três documentos do curso dizendo que eles instruem os robôs a
+construir o que ainda não existe; a sessão leu os três, transformou UM em
+trabalho na fila e publicou o resto como página, e ele teve de corrigir à mão —
+"IMPORTANTISSIMO: o que eu quero não é apenas ENVIAR os documentos para o site"
+(`armadilhas/362`). A pergunta que decide é uma só: **"se eu só guardar isto, o
+que ele pediu passa a existir?"** Texto do livro indo para a Biblioteca: sim,
+guardar É a obra. Documento descrevendo curso, agente, tela ou fluxo que ainda
+não existe: não — e aí o rito é o de obra, sempre:
+
+1. **Inventário**: tudo que o documento diz que precisa EXISTIR (telas, fluxos,
+   agentes, conteúdo, integrações), em lista.
+2. **Diff com a realidade**: o que já está no ar e o que falta — olhando o
+   código e o site, nunca a memória.
+3. **O que falta vira tarefa na fila** (RITOS §5), uma por pedaço independente,
+   citando o documento de origem — a fila sobrevive à sessão; conversa
+   arquivada, não.
+4. **E o despacho começa na mesma sessão**, pela lei "Todo pedido do mantenedor
+   é um lote": tarefa na fila não é adeus, é linha de partida.
+5. **A página com o documento é subproduto** (o mapa do que falta), nunca a
+   entrega. O relatório final diz o que passou a EXISTIR, o que foi despachado
+   e o que só ele pode dar — este último em pergunta estruturada.
+
 **Quem faz valer:** ninguém, mecanicamente — a lei está declarada em
 `ci/leis-sem-mecanismo.txt`. Um portão que adivinhasse "isto devia ser uma tela"
 reprovaria trabalho honesto e deixaria o descuido passar.
@@ -745,7 +769,13 @@ frase por frase, com o número da linha. A recusa do portão já traz as quatro
 trocas com exemplo, na mesma tela — não é preciso voltar aqui.
 
 **Quem faz valer:** `ci/muralha-do-travessao.sh` → `ci/travessao.py` (roda em
-todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · `ci/tests/test_travessao.py`.
+todo PR via `ci/ci.py --apenas muralhas`; fail-closed) · `ci/tests/test_travessao.py`
+· e, desde 06/09/2026, NA HORA DA ESCRITA: o gancho `PreToolUse` de
+`.claude/settings.json` → `ci/muralha_do_travessao_na_escrita.py` recusa o
+Write/Edit que aumentaria os travessões de um arquivo público, com as quatro
+trocas na própria recusa — o robô reescreve antes de o texto entrar no arquivo,
+não depois de tudo pronto. O que o gancho não vê (escrita por shell, texto já
+no banco) continua com o portão do PR · `ci/tests/test_muralha_do_travessao_na_escrita.py`.
 
 
 ## Depois de todo merge que dispara deploy
